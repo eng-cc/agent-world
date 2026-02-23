@@ -9,7 +9,11 @@ use crate::pos_validation::validate_pos_config;
 use crate::{NodeConsensusAction, NodeError, NodeReplicationConfig};
 
 const DEFAULT_MAX_PENDING_CONSENSUS_ACTIONS: usize = 4096;
+const DEFAULT_MAX_ENGINE_PENDING_CONSENSUS_ACTIONS: usize = 4096;
 const DEFAULT_MAX_CONSENSUS_ACTION_PAYLOAD_BYTES: usize = 256 * 1024;
+const DEFAULT_MAX_COMMITTED_ACTION_BATCHES: usize = 4096;
+const DEFAULT_MAX_DYNAMIC_GOSSIP_PEERS: usize = 1024;
+const DEFAULT_DYNAMIC_GOSSIP_PEER_TTL_MS: i64 = 10 * 60 * 1000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NodeRole {
@@ -128,7 +132,11 @@ pub struct NodeConfig {
     pub require_execution_on_commit: bool,
     pub require_peer_execution_hashes: bool,
     pub max_pending_consensus_actions: usize,
+    pub max_engine_pending_consensus_actions: usize,
     pub max_consensus_action_payload_bytes: usize,
+    pub max_committed_action_batches: usize,
+    pub max_dynamic_gossip_peers: usize,
+    pub dynamic_gossip_peer_ttl_ms: i64,
     pub gossip: Option<NodeGossipConfig>,
     pub replication: Option<NodeReplicationConfig>,
 }
@@ -137,6 +145,8 @@ pub struct NodeConfig {
 pub struct NodeGossipConfig {
     pub bind_addr: SocketAddr,
     pub peers: Vec<SocketAddr>,
+    pub max_dynamic_peers: usize,
+    pub dynamic_peer_ttl_ms: i64,
 }
 
 impl NodeConfig {
@@ -175,7 +185,11 @@ impl NodeConfig {
             require_execution_on_commit: matches!(role, NodeRole::Sequencer),
             require_peer_execution_hashes: false,
             max_pending_consensus_actions: DEFAULT_MAX_PENDING_CONSENSUS_ACTIONS,
+            max_engine_pending_consensus_actions: DEFAULT_MAX_ENGINE_PENDING_CONSENSUS_ACTIONS,
             max_consensus_action_payload_bytes: DEFAULT_MAX_CONSENSUS_ACTION_PAYLOAD_BYTES,
+            max_committed_action_batches: DEFAULT_MAX_COMMITTED_ACTION_BATCHES,
+            max_dynamic_gossip_peers: DEFAULT_MAX_DYNAMIC_GOSSIP_PEERS,
+            dynamic_gossip_peer_ttl_ms: DEFAULT_DYNAMIC_GOSSIP_PEER_TTL_MS,
             gossip: None,
             replication: None,
         })
@@ -253,6 +267,60 @@ impl NodeConfig {
         Ok(self)
     }
 
+    pub fn with_max_engine_pending_consensus_actions(
+        mut self,
+        max_engine_pending_consensus_actions: usize,
+    ) -> Result<Self, NodeError> {
+        if max_engine_pending_consensus_actions == 0 {
+            return Err(NodeError::InvalidConfig {
+                reason: "max_engine_pending_consensus_actions must be positive".to_string(),
+            });
+        }
+        self.max_engine_pending_consensus_actions = max_engine_pending_consensus_actions;
+        Ok(self)
+    }
+
+    pub fn with_max_committed_action_batches(
+        mut self,
+        max_committed_action_batches: usize,
+    ) -> Result<Self, NodeError> {
+        if max_committed_action_batches == 0 {
+            return Err(NodeError::InvalidConfig {
+                reason: "max_committed_action_batches must be positive".to_string(),
+            });
+        }
+        self.max_committed_action_batches = max_committed_action_batches;
+        Ok(self)
+    }
+
+    pub fn with_max_dynamic_gossip_peers(
+        mut self,
+        max_dynamic_gossip_peers: usize,
+    ) -> Result<Self, NodeError> {
+        if max_dynamic_gossip_peers == 0 {
+            return Err(NodeError::InvalidConfig {
+                reason: "max_dynamic_gossip_peers must be positive".to_string(),
+            });
+        }
+        self.max_dynamic_gossip_peers = max_dynamic_gossip_peers;
+        self.refresh_gossip_limits();
+        Ok(self)
+    }
+
+    pub fn with_dynamic_gossip_peer_ttl_ms(
+        mut self,
+        dynamic_gossip_peer_ttl_ms: i64,
+    ) -> Result<Self, NodeError> {
+        if dynamic_gossip_peer_ttl_ms <= 0 {
+            return Err(NodeError::InvalidConfig {
+                reason: "dynamic_gossip_peer_ttl_ms must be positive".to_string(),
+            });
+        }
+        self.dynamic_gossip_peer_ttl_ms = dynamic_gossip_peer_ttl_ms;
+        self.refresh_gossip_limits();
+        Ok(self)
+    }
+
     pub fn with_gossip(
         mut self,
         bind_addr: SocketAddr,
@@ -270,6 +338,8 @@ impl NodeConfig {
         self.gossip = Some(NodeGossipConfig {
             bind_addr,
             peers: dedup.keys().copied().collect(),
+            max_dynamic_peers: self.max_dynamic_gossip_peers,
+            dynamic_peer_ttl_ms: self.dynamic_gossip_peer_ttl_ms,
         });
         Ok(self)
     }
@@ -282,6 +352,8 @@ impl NodeConfig {
         self.gossip = Some(NodeGossipConfig {
             bind_addr,
             peers: dedup.keys().copied().collect(),
+            max_dynamic_peers: self.max_dynamic_gossip_peers,
+            dynamic_peer_ttl_ms: self.dynamic_gossip_peer_ttl_ms,
         });
         self
     }
@@ -297,6 +369,13 @@ impl NodeConfig {
     pub fn with_replication(mut self, replication: NodeReplicationConfig) -> Self {
         self.replication = Some(replication);
         self
+    }
+
+    fn refresh_gossip_limits(&mut self) {
+        if let Some(gossip) = self.gossip.as_mut() {
+            gossip.max_dynamic_peers = self.max_dynamic_gossip_peers;
+            gossip.dynamic_peer_ttl_ms = self.dynamic_gossip_peer_ttl_ms;
+        }
     }
 }
 

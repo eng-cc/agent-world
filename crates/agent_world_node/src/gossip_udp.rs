@@ -1,6 +1,7 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::net::{SocketAddr, UdpSocket};
 use std::sync::Mutex;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 pub(crate) use agent_world_consensus::node_consensus_message::{
     NodeGossipAttestationMessage as GossipAttestationMessage,
@@ -25,7 +26,9 @@ pub(crate) enum GossipMessage {
 pub(crate) struct GossipEndpoint {
     socket: UdpSocket,
     bind_addr: SocketAddr,
-    peers: Mutex<BTreeSet<SocketAddr>>,
+    peers: Mutex<GossipPeerBook>,
+    max_dynamic_peers: usize,
+    dynamic_peer_ttl_ms: i64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -53,7 +56,9 @@ impl GossipEndpoint {
         Ok(Self {
             socket,
             bind_addr: config.bind_addr,
-            peers: Mutex::new(peers),
+            peers: Mutex::new(GossipPeerBook::new(peers)),
+            max_dynamic_peers: config.max_dynamic_peers.max(1),
+            dynamic_peer_ttl_ms: config.dynamic_peer_ttl_ms.max(1),
         })
     }
 
@@ -107,7 +112,12 @@ impl GossipEndpoint {
         let mut peers = self.peers.lock().map_err(|_| NodeError::Gossip {
             reason: "peers mutex poisoned".to_string(),
         })?;
-        peers.insert(peer);
+        peers.remember_dynamic_peer(
+            peer,
+            now_unix_ms(),
+            self.max_dynamic_peers,
+            self.dynamic_peer_ttl_ms,
+        );
         Ok(())
     }
 
@@ -141,9 +151,84 @@ impl GossipEndpoint {
     }
 
     fn snapshot_peers(&self) -> Result<Vec<SocketAddr>, NodeError> {
-        let peers = self.peers.lock().map_err(|_| NodeError::Gossip {
+        let mut peers = self.peers.lock().map_err(|_| NodeError::Gossip {
             reason: "peers mutex poisoned".to_string(),
         })?;
-        Ok(peers.iter().copied().collect())
+        Ok(peers.snapshot(now_unix_ms(), self.dynamic_peer_ttl_ms))
     }
+}
+
+#[derive(Debug, Clone)]
+struct GossipPeerBook {
+    static_peers: BTreeSet<SocketAddr>,
+    dynamic_peers: BTreeMap<SocketAddr, i64>,
+}
+
+impl GossipPeerBook {
+    fn new(static_peers: BTreeSet<SocketAddr>) -> Self {
+        Self {
+            static_peers,
+            dynamic_peers: BTreeMap::new(),
+        }
+    }
+
+    fn remember_dynamic_peer(
+        &mut self,
+        peer: SocketAddr,
+        now_ms: i64,
+        max_dynamic_peers: usize,
+        dynamic_peer_ttl_ms: i64,
+    ) {
+        self.prune_expired_dynamic_peers(now_ms, dynamic_peer_ttl_ms);
+        if self.static_peers.contains(&peer) {
+            return;
+        }
+        if let Some(last_seen) = self.dynamic_peers.get_mut(&peer) {
+            *last_seen = now_ms;
+            return;
+        }
+        while self.dynamic_peers.len() >= max_dynamic_peers {
+            let Some(evicted_peer) = self.oldest_dynamic_peer() else {
+                break;
+            };
+            self.dynamic_peers.remove(&evicted_peer);
+        }
+        self.dynamic_peers.insert(peer, now_ms);
+    }
+
+    fn snapshot(&mut self, now_ms: i64, dynamic_peer_ttl_ms: i64) -> Vec<SocketAddr> {
+        self.prune_expired_dynamic_peers(now_ms, dynamic_peer_ttl_ms);
+        let mut peers = self.static_peers.iter().copied().collect::<Vec<_>>();
+        peers.extend(
+            self.dynamic_peers
+                .keys()
+                .filter(|peer| !self.static_peers.contains(peer))
+                .copied(),
+        );
+        peers
+    }
+
+    fn oldest_dynamic_peer(&self) -> Option<SocketAddr> {
+        self.dynamic_peers
+            .iter()
+            .min_by(|(left_addr, left_seen), (right_addr, right_seen)| {
+                left_seen
+                    .cmp(right_seen)
+                    .then_with(|| left_addr.cmp(right_addr))
+            })
+            .map(|(peer, _)| *peer)
+    }
+
+    fn prune_expired_dynamic_peers(&mut self, now_ms: i64, dynamic_peer_ttl_ms: i64) {
+        self.dynamic_peers
+            .retain(|_, last_seen_ms| now_ms.saturating_sub(*last_seen_ms) <= dynamic_peer_ttl_ms);
+    }
+}
+
+fn now_unix_ms() -> i64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .ok()
+        .and_then(|duration| i64::try_from(duration.as_millis()).ok())
+        .unwrap_or(0)
 }

@@ -23,16 +23,10 @@ fn pos_engine_rejects_commit_without_execution_hashes_when_required() {
         .with_require_peer_execution_hashes(true)
         .with_gossip_optional(addr_b, vec![addr_a]);
     let mut engine = PosNodeEngine::new(&config).expect("engine");
-    let endpoint_a = GossipEndpoint::bind(&NodeGossipConfig {
-        bind_addr: addr_a,
-        peers: vec![addr_b],
-    })
-    .expect("endpoint a");
-    let endpoint_b = GossipEndpoint::bind(&NodeGossipConfig {
-        bind_addr: addr_b,
-        peers: vec![addr_a],
-    })
-    .expect("endpoint b");
+    let endpoint_a =
+        GossipEndpoint::bind(&gossip_config(addr_a, vec![addr_b])).expect("endpoint a");
+    let endpoint_b =
+        GossipEndpoint::bind(&gossip_config(addr_b, vec![addr_a])).expect("endpoint b");
 
     endpoint_a
         .broadcast_commit(&GossipCommitMessage {
@@ -78,16 +72,10 @@ fn pos_engine_rejects_commit_when_execution_binding_mismatches_local() {
         .with_require_peer_execution_hashes(true)
         .with_gossip_optional(addr_b, vec![addr_a]);
     let mut engine = PosNodeEngine::new(&config).expect("engine");
-    let endpoint_a = GossipEndpoint::bind(&NodeGossipConfig {
-        bind_addr: addr_a,
-        peers: vec![addr_b],
-    })
-    .expect("endpoint a");
-    let endpoint_b = GossipEndpoint::bind(&NodeGossipConfig {
-        bind_addr: addr_b,
-        peers: vec![addr_a],
-    })
-    .expect("endpoint b");
+    let endpoint_a =
+        GossipEndpoint::bind(&gossip_config(addr_a, vec![addr_b])).expect("endpoint a");
+    let endpoint_b =
+        GossipEndpoint::bind(&gossip_config(addr_b, vec![addr_a])).expect("endpoint b");
 
     let calls = Arc::new(Mutex::new(Vec::new()));
     let mut hook = RecordingExecutionHook::new(calls);
@@ -292,16 +280,9 @@ fn gossip_endpoint_learns_inbound_peer_for_followup_broadcasts() {
         .with_gossip_optional(addr_a, Vec::new());
     let mut engine_a = PosNodeEngine::new(&config_a).expect("engine a");
 
-    let endpoint_a = GossipEndpoint::bind(&NodeGossipConfig {
-        bind_addr: addr_a,
-        peers: Vec::new(),
-    })
-    .expect("endpoint a");
-    let endpoint_b = GossipEndpoint::bind(&NodeGossipConfig {
-        bind_addr: addr_b,
-        peers: vec![addr_a],
-    })
-    .expect("endpoint b");
+    let endpoint_a = GossipEndpoint::bind(&gossip_config(addr_a, Vec::new())).expect("endpoint a");
+    let endpoint_b =
+        GossipEndpoint::bind(&gossip_config(addr_b, vec![addr_a])).expect("endpoint b");
 
     endpoint_b
         .broadcast_commit(&GossipCommitMessage {
@@ -355,6 +336,132 @@ fn gossip_endpoint_learns_inbound_peer_for_followup_broadcasts() {
             GossipMessage::Commit(commit) if commit.node_id == "node-a" && commit.height == 2
         )
     }));
+}
+
+#[test]
+fn gossip_endpoint_enforces_dynamic_peer_capacity() {
+    let socket_a = UdpSocket::bind("127.0.0.1:0").expect("bind a");
+    let socket_b = UdpSocket::bind("127.0.0.1:0").expect("bind b");
+    let socket_c = UdpSocket::bind("127.0.0.1:0").expect("bind c");
+    let addr_a = socket_a.local_addr().expect("addr a");
+    let addr_b = socket_b.local_addr().expect("addr b");
+    let addr_c = socket_c.local_addr().expect("addr c");
+    drop(socket_a);
+    drop(socket_b);
+    drop(socket_c);
+
+    let endpoint_a = GossipEndpoint::bind(&NodeGossipConfig {
+        bind_addr: addr_a,
+        peers: Vec::new(),
+        max_dynamic_peers: 1,
+        dynamic_peer_ttl_ms: 60_000,
+    })
+    .expect("endpoint a");
+    let endpoint_b = GossipEndpoint::bind(&gossip_config(addr_b, Vec::new())).expect("endpoint b");
+    let endpoint_c = GossipEndpoint::bind(&gossip_config(addr_c, Vec::new())).expect("endpoint c");
+
+    endpoint_a.remember_peer(addr_b).expect("remember b");
+    thread::sleep(Duration::from_millis(2));
+    endpoint_a.remember_peer(addr_c).expect("remember c");
+
+    endpoint_a
+        .broadcast_commit(&GossipCommitMessage {
+            version: 1,
+            world_id: "world-peer-cap".to_string(),
+            node_id: "node-a".to_string(),
+            player_id: "node-a".to_string(),
+            height: 1,
+            slot: 1,
+            epoch: 0,
+            block_hash: "block-a-1".to_string(),
+            action_root: empty_action_root(),
+            actions: Vec::new(),
+            committed_at_ms: 1_000,
+            execution_block_hash: None,
+            execution_state_root: None,
+            public_key_hex: None,
+            signature_hex: None,
+        })
+        .expect("broadcast from a");
+    thread::sleep(Duration::from_millis(20));
+
+    let to_b = endpoint_b.drain_messages().expect("drain b");
+    let to_c = endpoint_c.drain_messages().expect("drain c");
+    assert!(
+        !to_b.iter().any(|received| {
+            matches!(
+                &received.message,
+                GossipMessage::Commit(commit)
+                    if commit.node_id == "node-a" && commit.height == 1
+            )
+        }),
+        "oldest dynamic peer should be evicted when capacity is full"
+    );
+    assert!(
+        to_c.iter().any(|received| {
+            matches!(
+                &received.message,
+                GossipMessage::Commit(commit)
+                    if commit.node_id == "node-a" && commit.height == 1
+            )
+        }),
+        "most recent dynamic peer should remain routable"
+    );
+}
+
+#[test]
+fn gossip_endpoint_expires_dynamic_peers_by_ttl() {
+    let socket_a = UdpSocket::bind("127.0.0.1:0").expect("bind a");
+    let socket_b = UdpSocket::bind("127.0.0.1:0").expect("bind b");
+    let addr_a = socket_a.local_addr().expect("addr a");
+    let addr_b = socket_b.local_addr().expect("addr b");
+    drop(socket_a);
+    drop(socket_b);
+
+    let endpoint_a = GossipEndpoint::bind(&NodeGossipConfig {
+        bind_addr: addr_a,
+        peers: Vec::new(),
+        max_dynamic_peers: 4,
+        dynamic_peer_ttl_ms: 20,
+    })
+    .expect("endpoint a");
+    let endpoint_b = GossipEndpoint::bind(&gossip_config(addr_b, Vec::new())).expect("endpoint b");
+
+    endpoint_a.remember_peer(addr_b).expect("remember b");
+    thread::sleep(Duration::from_millis(40));
+
+    endpoint_a
+        .broadcast_commit(&GossipCommitMessage {
+            version: 1,
+            world_id: "world-peer-ttl".to_string(),
+            node_id: "node-a".to_string(),
+            player_id: "node-a".to_string(),
+            height: 2,
+            slot: 2,
+            epoch: 0,
+            block_hash: "block-a-2".to_string(),
+            action_root: empty_action_root(),
+            actions: Vec::new(),
+            committed_at_ms: 2_000,
+            execution_block_hash: None,
+            execution_state_root: None,
+            public_key_hex: None,
+            signature_hex: None,
+        })
+        .expect("broadcast from a");
+    thread::sleep(Duration::from_millis(20));
+
+    let to_b = endpoint_b.drain_messages().expect("drain b");
+    assert!(
+        !to_b.iter().any(|received| {
+            matches!(
+                &received.message,
+                GossipMessage::Commit(commit)
+                    if commit.node_id == "node-a" && commit.height == 2
+            )
+        }),
+        "expired dynamic peer should not receive broadcasts"
+    );
 }
 
 #[test]

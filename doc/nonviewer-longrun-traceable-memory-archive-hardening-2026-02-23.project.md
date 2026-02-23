@@ -7,10 +7,10 @@
 - [x] 项目文档：`doc/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.project.md`
 
 ### T1 Node 内存边界治理（1/2/3）
-- [ ] `agent_world_node`：引擎 pending actions 有界化（不丢追溯）
-- [ ] `agent_world_node`：gossip dynamic peer TTL + 容量治理
-- [ ] `agent_world_node`：committed batches 热窗口有界化
-- [ ] 补充/更新单测
+- [x] `agent_world_node`：引擎 pending actions 有界化（不丢追溯）
+- [x] `agent_world_node`：gossip dynamic peer TTL + 容量治理
+- [x] `agent_world_node`：committed batches 热窗口有界化
+- [x] 补充/更新单测
 
 ### T2 Consensus 日志与 dead-letter 冷归档（4/5）
 - [ ] `agent_world_consensus`：文件型 audit/alert/event 日志热窗口 + CAS 冷归档
@@ -42,7 +42,7 @@
 
 ## 状态
 - 当前状态：`进行中`
-- 已完成：T0
-- 进行中：T1
-- 未开始：T2、T3、T4
+- 已完成：T0、T1
+- 进行中：T2
+- 未开始：T3、T4
 - 阻塞项：无

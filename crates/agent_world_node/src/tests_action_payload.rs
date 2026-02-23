@@ -74,6 +74,88 @@ fn runtime_execution_hook_receives_sorted_committed_actions() {
 }
 
 #[test]
+fn runtime_dequeues_actions_with_engine_capacity_limit() {
+    let config = NodeConfig::new("node-cap", "world-cap", NodeRole::Sequencer)
+        .expect("config")
+        .with_tick_interval(Duration::from_millis(10))
+        .expect("tick interval")
+        .with_max_pending_consensus_actions(16)
+        .expect("runtime pending limit")
+        .with_max_engine_pending_consensus_actions(1)
+        .expect("engine pending limit");
+    let calls = Arc::new(Mutex::new(Vec::new()));
+    let hook = RecordingExecutionHook::new(Arc::clone(&calls));
+    let mut runtime = NodeRuntime::new(config).with_execution_hook(hook);
+
+    for action_id in 1..=3 {
+        runtime
+            .submit_consensus_action_payload(action_id, vec![action_id as u8])
+            .expect("submit action");
+    }
+
+    runtime.start().expect("start");
+    thread::sleep(Duration::from_millis(240));
+    runtime.stop().expect("stop");
+
+    let snapshot = runtime.snapshot();
+    assert!(
+        snapshot.last_error.is_none(),
+        "engine should not saturate while runtime dequeues incrementally: {:?}",
+        snapshot.last_error
+    );
+
+    let calls = calls.lock().expect("lock calls");
+    let committed_ids = calls
+        .iter()
+        .flat_map(|call| call.committed_actions.iter().map(|action| action.action_id))
+        .collect::<Vec<_>>();
+    assert!(
+        committed_ids.windows(2).all(|pair| pair[0] <= pair[1]),
+        "committed action ids should remain monotonic: {committed_ids:?}"
+    );
+    assert!(
+        committed_ids.iter().copied().eq([1, 2, 3]),
+        "all queued actions should be eventually committed exactly once: {committed_ids:?}"
+    );
+}
+
+#[test]
+fn pos_engine_rejects_tick_when_engine_pending_limit_exceeded() {
+    let config = NodeConfig::new(
+        "node-engine-limit",
+        "world-engine-limit",
+        NodeRole::Observer,
+    )
+    .expect("config")
+    .with_max_engine_pending_consensus_actions(1)
+    .expect("engine pending limit");
+    let mut engine = PosNodeEngine::new(&config).expect("engine");
+
+    let action_1 = NodeConsensusAction::from_payload(1, config.player_id.clone(), vec![1_u8])
+        .expect("action 1");
+    let action_2 = NodeConsensusAction::from_payload(2, config.player_id.clone(), vec![2_u8])
+        .expect("action 2");
+    let err = engine
+        .tick(
+            &config.node_id,
+            &config.world_id,
+            1_000,
+            None,
+            None,
+            None,
+            None,
+            vec![action_1, action_2],
+            None,
+        )
+        .expect_err("engine should reject merged queue over capacity");
+    assert!(matches!(err, NodeError::Consensus { .. }));
+    assert!(
+        err.to_string().contains("engine buffer saturated"),
+        "unexpected error: {err}"
+    );
+}
+
+#[test]
 fn submit_consensus_action_payload_rejects_zero_action_id() {
     let runtime = NodeRuntime::new(
         NodeConfig::new("node-action-id", "world-action-id", NodeRole::Observer).expect("config"),
@@ -227,4 +309,47 @@ fn runtime_drains_committed_action_batches_for_viewer_consumers() {
         .map(|action| action.action_id)
         .collect();
     assert_eq!(ordered_ids, vec![1, 2]);
+}
+
+#[test]
+fn runtime_committed_batches_respect_hot_window_limit() {
+    let config = NodeConfig::new(
+        "node-batch-window",
+        "world-batch-window",
+        NodeRole::Sequencer,
+    )
+    .expect("config")
+    .with_tick_interval(Duration::from_millis(10))
+    .expect("tick interval")
+    .with_max_engine_pending_consensus_actions(1)
+    .expect("engine pending limit")
+    .with_max_committed_action_batches(2)
+    .expect("batch window");
+    let mut runtime = NodeRuntime::new(config).with_execution_hook(RecordingExecutionHook::new(
+        Arc::new(Mutex::new(Vec::new())),
+    ));
+    for action_id in 1..=5 {
+        runtime
+            .submit_consensus_action_payload(action_id, vec![action_id as u8])
+            .expect("submit action");
+    }
+
+    runtime.start().expect("start");
+    thread::sleep(Duration::from_millis(260));
+    runtime.stop().expect("stop");
+
+    let snapshot = runtime.snapshot();
+    assert!(
+        snapshot.consensus.committed_height >= 5,
+        "expected >=5 committed heights, got {}",
+        snapshot.consensus.committed_height
+    );
+
+    let batches = runtime.drain_committed_action_batches();
+    assert_eq!(batches.len(), 2, "committed batch window must be capped");
+    let retained_action_ids = batches
+        .iter()
+        .flat_map(|batch| batch.actions.iter().map(|action| action.action_id))
+        .collect::<Vec<_>>();
+    assert_eq!(retained_action_ids, vec![4, 5]);
 }

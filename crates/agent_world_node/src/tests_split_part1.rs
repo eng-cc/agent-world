@@ -55,6 +55,18 @@ fn empty_action_root() -> String {
     compute_consensus_action_root(&[]).expect("empty action root")
 }
 
+fn gossip_config(
+    bind_addr: std::net::SocketAddr,
+    peers: Vec<std::net::SocketAddr>,
+) -> NodeGossipConfig {
+    NodeGossipConfig {
+        bind_addr,
+        peers,
+        max_dynamic_peers: 1024,
+        dynamic_peer_ttl_ms: 10 * 60 * 1000,
+    }
+}
+
 fn signed_replication_config(root_dir: PathBuf, seed: u8) -> NodeReplicationConfig {
     let (private_hex, public_hex) = deterministic_keypair_hex(seed);
     NodeReplicationConfig::new(root_dir)
@@ -679,16 +691,10 @@ fn pos_engine_signature_enforced_rejects_unsigned_proposal() {
         .with_replication(signed_replication_config(temp_dir("sig-enforced"), 201));
     let mut engine = PosNodeEngine::new(&config_b).expect("engine");
 
-    let endpoint_a = GossipEndpoint::bind(&NodeGossipConfig {
-        bind_addr: addr_a,
-        peers: vec![addr_b],
-    })
-    .expect("endpoint a");
-    let endpoint_b = GossipEndpoint::bind(&NodeGossipConfig {
-        bind_addr: addr_b,
-        peers: vec![addr_a],
-    })
-    .expect("endpoint b");
+    let endpoint_a =
+        GossipEndpoint::bind(&gossip_config(addr_a, vec![addr_b])).expect("endpoint a");
+    let endpoint_b =
+        GossipEndpoint::bind(&gossip_config(addr_b, vec![addr_a])).expect("endpoint b");
 
     let unsigned_proposal = GossipProposalMessage {
         version: 1,
@@ -766,16 +772,10 @@ fn pos_engine_signature_enforced_accepts_signed_proposal_and_attestation() {
         ConsensusMessageSigner::new(attestation_signing_key, attestation_public_hex)
             .expect("attestation signer");
 
-    let endpoint_a = GossipEndpoint::bind(&NodeGossipConfig {
-        bind_addr: addr_a,
-        peers: vec![addr_b],
-    })
-    .expect("endpoint a");
-    let endpoint_b = GossipEndpoint::bind(&NodeGossipConfig {
-        bind_addr: addr_b,
-        peers: vec![addr_a],
-    })
-    .expect("endpoint b");
+    let endpoint_a =
+        GossipEndpoint::bind(&gossip_config(addr_a, vec![addr_b])).expect("endpoint a");
+    let endpoint_b =
+        GossipEndpoint::bind(&gossip_config(addr_b, vec![addr_a])).expect("endpoint b");
 
     let mut proposal = GossipProposalMessage {
         version: 1,
@@ -899,16 +899,10 @@ fn pos_engine_ingests_commit_execution_hashes() {
         .expect("validators")
         .with_gossip_optional(addr_b, vec![addr_a]);
     let mut engine = PosNodeEngine::new(&config).expect("engine");
-    let endpoint_a = GossipEndpoint::bind(&NodeGossipConfig {
-        bind_addr: addr_a,
-        peers: vec![addr_b],
-    })
-    .expect("endpoint a");
-    let endpoint_b = GossipEndpoint::bind(&NodeGossipConfig {
-        bind_addr: addr_b,
-        peers: vec![addr_a],
-    })
-    .expect("endpoint b");
+    let endpoint_a =
+        GossipEndpoint::bind(&gossip_config(addr_a, vec![addr_b])).expect("endpoint a");
+    let endpoint_b =
+        GossipEndpoint::bind(&gossip_config(addr_b, vec![addr_a])).expect("endpoint b");
 
     endpoint_a
         .broadcast_commit(&GossipCommitMessage {

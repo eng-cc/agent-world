@@ -133,8 +133,61 @@ pub fn compute_consensus_action_root(actions: &[NodeConsensusAction]) -> Result<
 fn merge_pending_consensus_actions(
     pending: &mut BTreeMap<u64, NodeConsensusAction>,
     incoming: Vec<NodeConsensusAction>,
+    max_pending_actions: usize,
 ) -> Result<(), NodeError> {
-    core_merge_pending_consensus_actions(pending, incoming).map_err(node_consensus_error)
+    let max_pending_actions = max_pending_actions.max(1);
+    let mut unique_new_actions = 0usize;
+    for action in &incoming {
+        if !pending.contains_key(&action.action_id) {
+            unique_new_actions =
+                unique_new_actions
+                    .checked_add(1)
+                    .ok_or_else(|| NodeError::Consensus {
+                        reason: "pending consensus action unique count overflow".to_string(),
+                    })?;
+        }
+    }
+    let projected = pending
+        .len()
+        .checked_add(unique_new_actions)
+        .ok_or_else(|| NodeError::Consensus {
+            reason: "pending consensus action projected length overflow".to_string(),
+        })?;
+    if projected > max_pending_actions {
+        return Err(NodeError::Consensus {
+            reason: format!(
+                "pending consensus action engine buffer saturated: current={} incoming_unique={} limit={}",
+                pending.len(),
+                unique_new_actions,
+                max_pending_actions
+            ),
+        });
+    }
+    core_merge_pending_consensus_actions(pending, incoming).map_err(node_consensus_error)?;
+    if pending.len() > max_pending_actions {
+        return Err(NodeError::Consensus {
+            reason: format!(
+                "pending consensus action engine buffer exceeded limit after merge: len={} limit={}",
+                pending.len(),
+                max_pending_actions
+            ),
+        });
+    }
+    Ok(())
+}
+
+fn dequeue_pending_consensus_actions(
+    pending: &mut Vec<NodeConsensusAction>,
+    max_count: usize,
+) -> Vec<NodeConsensusAction> {
+    if max_count == 0 || pending.is_empty() {
+        return Vec::new();
+    }
+    let drain_count = pending.len().min(max_count);
+    if drain_count == pending.len() {
+        return std::mem::take(pending);
+    }
+    pending.drain(..drain_count).collect()
 }
 
 fn drain_ordered_consensus_actions(
@@ -339,6 +392,7 @@ impl NodeRuntime {
         let committed_action_batches = Arc::clone(&self.committed_action_batches);
         let node_id = self.config.node_id.clone();
         let world_id = self.config.world_id.clone();
+        let max_committed_action_batches = self.config.max_committed_action_batches.max(1);
         let (stop_tx, stop_rx) = mpsc::channel::<()>();
 
         let worker = thread::Builder::new()
@@ -355,14 +409,18 @@ impl NodeRuntime {
                                 current.last_tick_unix_ms = Some(now_ms);
                             }
 
+                            let queued_actions = {
+                                let mut pending = pending_consensus_actions
+                                    .lock()
+                                    .unwrap_or_else(|poisoned| poisoned.into_inner());
+                                dequeue_pending_consensus_actions(
+                                    &mut pending,
+                                    engine.pending_consensus_action_capacity(),
+                                )
+                            };
+
                             let tick_result = if let Some(execution_hook) = execution_hook.as_ref()
                             {
-                                let queued_actions = {
-                                    let mut pending = pending_consensus_actions
-                                        .lock()
-                                        .unwrap_or_else(|poisoned| poisoned.into_inner());
-                                    std::mem::take(&mut *pending)
-                                };
                                 match execution_hook.lock() {
                                     Ok(mut hook) => engine.tick(
                                         &node_id,
@@ -380,12 +438,6 @@ impl NodeRuntime {
                                     }),
                                 }
                             } else {
-                                let queued_actions = {
-                                    let mut pending = pending_consensus_actions
-                                        .lock()
-                                        .unwrap_or_else(|poisoned| poisoned.into_inner());
-                                    std::mem::take(&mut *pending)
-                                };
                                 engine.tick(
                                     &node_id,
                                     &world_id,
@@ -407,6 +459,11 @@ impl NodeRuntime {
                                         let mut committed = committed_action_batches
                                             .lock()
                                             .unwrap_or_else(|poisoned| poisoned.into_inner());
+                                        let retained = max_committed_action_batches - 1;
+                                        if committed.len() > retained {
+                                            let overflow = committed.len() - retained;
+                                            committed.drain(..overflow);
+                                        }
                                         committed.push(batch);
                                     }
                                     if let Some(store) = pos_state_store.as_ref() {
@@ -620,6 +677,7 @@ struct PosNodeEngine {
     last_execution_state_root: Option<String>,
     execution_bindings: BTreeMap<u64, (String, String)>,
     pending_consensus_actions: BTreeMap<u64, NodeConsensusAction>,
+    max_pending_consensus_actions: usize,
 }
 
 type PendingProposal = NodePosPendingProposal<NodeConsensusAction, PosConsensusStatus>;

@@ -67,6 +67,18 @@ fn signed_pos_config_with_signer_seeds(
         .expect("signed pos config")
 }
 
+fn gossip_config(
+    bind_addr: std::net::SocketAddr,
+    peers: Vec<std::net::SocketAddr>,
+) -> NodeGossipConfig {
+    NodeGossipConfig {
+        bind_addr,
+        peers,
+        max_dynamic_peers: 1024,
+        dynamic_peer_ttl_ms: 10 * 60 * 1000,
+    }
+}
+
 #[derive(Debug, Serialize)]
 struct ReplicationSigningPayload<'a> {
     version: u8,
@@ -281,16 +293,10 @@ fn pos_engine_rejects_signed_proposal_when_signer_binding_mismatches_validator()
     let wrong_signer =
         ConsensusMessageSigner::new(wrong_signing_key, wrong_public_hex).expect("wrong signer");
 
-    let endpoint_a = GossipEndpoint::bind(&NodeGossipConfig {
-        bind_addr: addr_a,
-        peers: vec![addr_b],
-    })
-    .expect("endpoint a");
-    let endpoint_b = GossipEndpoint::bind(&NodeGossipConfig {
-        bind_addr: addr_b,
-        peers: vec![addr_a],
-    })
-    .expect("endpoint b");
+    let endpoint_a =
+        GossipEndpoint::bind(&gossip_config(addr_a, vec![addr_b])).expect("endpoint a");
+    let endpoint_b =
+        GossipEndpoint::bind(&gossip_config(addr_b, vec![addr_a])).expect("endpoint b");
 
     let mut proposal = GossipProposalMessage {
         version: 1,
@@ -571,11 +577,14 @@ fn runtime_replication_ingest_rejects_signed_writer_outside_allowlist() {
     );
     let encoded = serde_json::to_vec(&unauthorized_message).expect("encode message");
     let topic = super::network_bridge::default_replication_topic(world_id);
-    network
-        .publish(topic.as_str(), encoded.as_slice())
-        .expect("publish unauthorized message");
-
+    let mut last_republish_at = Instant::now() - Duration::from_millis(100);
     let unauthorized_rejected = wait_until(Instant::now() + Duration::from_secs(2), || {
+        if last_republish_at.elapsed() >= Duration::from_millis(50) {
+            network
+                .publish(topic.as_str(), encoded.as_slice())
+                .expect("publish unauthorized message");
+            last_republish_at = Instant::now();
+        }
         runtime
             .snapshot()
             .last_error

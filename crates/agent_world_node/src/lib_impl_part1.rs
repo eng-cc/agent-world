@@ -97,6 +97,7 @@ impl PosNodeEngine {
             last_execution_state_root: None,
             execution_bindings: BTreeMap::new(),
             pending_consensus_actions: BTreeMap::new(),
+            max_pending_consensus_actions: config.max_engine_pending_consensus_actions,
         })
     }
 
@@ -112,7 +113,11 @@ impl PosNodeEngine {
         queued_actions: Vec<NodeConsensusAction>,
         execution_hook: Option<&mut dyn NodeExecutionHook>,
     ) -> Result<NodeEngineTickResult, NodeError> {
-        merge_pending_consensus_actions(&mut self.pending_consensus_actions, queued_actions)?;
+        merge_pending_consensus_actions(
+            &mut self.pending_consensus_actions,
+            queued_actions,
+            self.max_pending_consensus_actions,
+        )?;
 
         if let Some(endpoint) = gossip.as_ref() {
             self.ingest_peer_messages(endpoint, node_id, world_id, replication.as_deref_mut())?;
@@ -322,12 +327,18 @@ impl PosNodeEngine {
                 let _ = merge_pending_consensus_actions(
                     &mut self.pending_consensus_actions,
                     decision.committed_actions.clone(),
+                    self.max_pending_consensus_actions,
                 );
                 self.next_height = next_height;
                 self.pending = None;
             }
         }
         Ok(())
+    }
+
+    fn pending_consensus_action_capacity(&self) -> usize {
+        self.max_pending_consensus_actions
+            .saturating_sub(self.pending_consensus_actions.len())
     }
 
     fn apply_committed_execution(
