@@ -531,12 +531,23 @@ impl proto_net::DistributedNetwork<WorldError> for SpyNetwork {
 
 #[derive(Clone, Default)]
 struct StaticProvidersDht {
-    providers: Vec<ProviderRecord>,
+    default_providers: Vec<ProviderRecord>,
+    providers_by_hash: HashMap<String, Vec<ProviderRecord>>,
 }
 
 impl StaticProvidersDht {
     fn new(providers: Vec<ProviderRecord>) -> Self {
-        Self { providers }
+        Self {
+            default_providers: providers,
+            providers_by_hash: HashMap::new(),
+        }
+    }
+
+    fn with_providers_by_hash(providers_by_hash: HashMap<String, Vec<ProviderRecord>>) -> Self {
+        Self {
+            default_providers: Vec::new(),
+            providers_by_hash,
+        }
     }
 }
 
@@ -553,9 +564,12 @@ impl proto_dht::DistributedDht<WorldError> for StaticProvidersDht {
     fn get_providers(
         &self,
         _world_id: &str,
-        _content_hash: &str,
+        content_hash: &str,
     ) -> Result<Vec<ProviderRecord>, WorldError> {
-        Ok(self.providers.clone())
+        if let Some(providers) = self.providers_by_hash.get(content_hash) {
+            return Ok(providers.clone());
+        }
+        Ok(self.default_providers.clone())
     }
 
     fn put_world_head(
@@ -669,6 +683,18 @@ fn provider_record(provider_id: &str, last_seen_ms: i64) -> ProviderRecord {
     }
 }
 
+fn map_dht(entries: &[(&str, &[&str])]) -> StaticProvidersDht {
+    let mut providers_by_hash = HashMap::new();
+    for (content_hash, providers) in entries {
+        let records = providers
+            .iter()
+            .map(|provider_id| provider_record(provider_id, 1_000))
+            .collect();
+        providers_by_hash.insert((*content_hash).to_string(), records);
+    }
+    StaticProvidersDht::with_providers_by_hash(providers_by_hash)
+}
+
 #[test]
 fn client_fetch_blob_from_dht_uses_provider_list() {
     let spy = Arc::new(SpyNetwork::default());
@@ -765,6 +791,110 @@ fn client_fetch_blob_from_dht_fails_after_ranked_provider_failures() {
         spy.provider_attempts(),
         vec![vec!["peer-1".to_string()], vec!["peer-2".to_string()]]
     );
+}
+
+#[test]
+fn provider_distribution_rejects_insufficient_replicas() {
+    let dht = map_dht(&[("hash-a", &["peer-1"]), ("hash-b", &["peer-1", "peer-2"])]);
+    let hashes = vec!["hash-a".to_string(), "hash-b".to_string()];
+
+    let err =
+        audit_provider_distribution(&dht, "w1", &hashes, ProviderDistributionPolicy::default())
+            .expect_err("insufficient replicas must fail");
+    assert!(matches!(
+        err,
+        WorldError::DistributedValidationFailed { .. }
+    ));
+}
+
+#[test]
+fn provider_distribution_rejects_single_provider_full_coverage() {
+    let dht = map_dht(&[
+        ("hash-a", &["peer-1", "peer-2"]),
+        ("hash-b", &["peer-1", "peer-3"]),
+    ]);
+    let hashes = vec!["hash-a".to_string(), "hash-b".to_string()];
+
+    let err =
+        audit_provider_distribution(&dht, "w1", &hashes, ProviderDistributionPolicy::default())
+            .expect_err("single provider full coverage must fail");
+    assert!(matches!(
+        err,
+        WorldError::DistributedValidationFailed { .. }
+    ));
+}
+
+#[test]
+fn provider_distribution_accepts_distributed_coverage() {
+    let dht = map_dht(&[
+        ("hash-a", &["peer-1", "peer-2"]),
+        ("hash-b", &["peer-2", "peer-3"]),
+        ("hash-c", &["peer-1", "peer-3"]),
+    ]);
+    let hashes = vec![
+        "hash-a".to_string(),
+        "hash-b".to_string(),
+        "hash-c".to_string(),
+    ];
+
+    let audit =
+        audit_provider_distribution(&dht, "w1", &hashes, ProviderDistributionPolicy::default())
+            .expect("distribution audit");
+    assert_eq!(audit.required_blob_count, 3);
+    assert_eq!(audit.distinct_provider_count, 3);
+}
+
+#[test]
+fn client_fetch_blobs_from_dht_with_distribution_prevents_single_provider_full_coverage() {
+    let spy = Arc::new(SpyNetwork::default());
+    let network: Arc<dyn DistributedNetwork + Send + Sync> = spy.clone();
+    let client = DistributedClient::new(network);
+    let dht = map_dht(&[
+        ("hash-a", &["peer-1", "peer-2"]),
+        ("hash-b", &["peer-1", "peer-3"]),
+    ]);
+    let hashes = vec!["hash-a".to_string(), "hash-b".to_string()];
+
+    let err = client
+        .fetch_blobs_from_dht_with_distribution(
+            "w1",
+            &hashes,
+            &dht,
+            ProviderDistributionPolicy::default(),
+        )
+        .expect_err("distribution preflight must fail");
+    assert!(matches!(
+        err,
+        WorldError::DistributedValidationFailed { .. }
+    ));
+    assert!(spy.provider_attempts().is_empty());
+}
+
+#[test]
+fn client_fetch_blobs_from_dht_with_distribution_fetches_on_valid_distribution() {
+    let spy = Arc::new(SpyNetwork::default());
+    spy.set_blob("hash-a", b"blob-a".to_vec());
+    spy.set_blob("hash-b", b"blob-b".to_vec());
+
+    let network: Arc<dyn DistributedNetwork + Send + Sync> = spy.clone();
+    let client = DistributedClient::new(network);
+    let dht = map_dht(&[
+        ("hash-a", &["peer-1", "peer-2"]),
+        ("hash-b", &["peer-3", "peer-4"]),
+    ]);
+    let hashes = vec!["hash-a".to_string(), "hash-b".to_string()];
+
+    let blobs = client
+        .fetch_blobs_from_dht_with_distribution(
+            "w1",
+            &hashes,
+            &dht,
+            ProviderDistributionPolicy::default(),
+        )
+        .expect("fetch distributed blobs");
+    assert_eq!(blobs.get("hash-a"), Some(&b"blob-a".to_vec()));
+    assert_eq!(blobs.get("hash-b"), Some(&b"blob-b".to_vec()));
+    assert_eq!(spy.provider_attempts().len(), 2);
 }
 
 #[test]

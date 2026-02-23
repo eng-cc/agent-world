@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use agent_world_proto::distributed as proto_distributed;
@@ -9,6 +10,7 @@ use super::distributed_dht::DistributedDht;
 use super::distributed_net::DistributedNetwork;
 use super::error::WorldError;
 use super::modules::{ModuleArtifact, ModuleManifest};
+use super::provider_distribution::{audit_provider_distribution, ProviderDistributionPolicy};
 use super::provider_selection::ProviderSelectionPolicy;
 use super::util::{to_canonical_cbor, unix_now_ms_i64};
 
@@ -138,6 +140,22 @@ impl DistributedClient {
                 ),
             }),
         }
+    }
+
+    pub fn fetch_blobs_from_dht_with_distribution(
+        &self,
+        world_id: &str,
+        content_hashes: &[String],
+        dht: &impl DistributedDht,
+        policy: ProviderDistributionPolicy,
+    ) -> Result<BTreeMap<String, Vec<u8>>, WorldError> {
+        audit_provider_distribution(dht, world_id, content_hashes, policy)?;
+        let mut blobs = BTreeMap::new();
+        for content_hash in content_hashes {
+            let bytes = self.fetch_blob_from_dht(world_id, content_hash, dht)?;
+            blobs.insert(content_hash.clone(), bytes);
+        }
+        Ok(blobs)
     }
 
     pub fn get_journal_segment(

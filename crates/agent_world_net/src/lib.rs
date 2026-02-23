@@ -10,6 +10,7 @@ mod index;
 mod index_store;
 mod network;
 mod provider_cache;
+mod provider_distribution;
 mod provider_selection;
 mod replay_flow;
 mod util;
@@ -39,6 +40,10 @@ pub mod distributed_index_store {
 
 pub mod distributed_provider_cache {
     pub use super::provider_cache::*;
+}
+
+pub mod distributed_provider_distribution {
+    pub use super::provider_distribution::*;
 }
 
 pub mod observer_flow {
@@ -83,6 +88,9 @@ pub use network::{DistributedNetwork, InMemoryNetwork};
 pub use proto_dht::{MembershipDirectorySnapshot, ProviderRecord};
 pub use proto_net::{NetworkMessage, NetworkRequest, NetworkResponse, NetworkSubscription};
 pub use provider_cache::{ProviderCache, ProviderCacheConfig};
+pub use provider_distribution::{
+    audit_provider_distribution, ProviderDistributionAudit, ProviderDistributionPolicy,
+};
 pub use provider_selection::ProviderSelectionPolicy;
 
 #[cfg(feature = "libp2p")]

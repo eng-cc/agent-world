@@ -11,9 +11,9 @@
 - [x] 增补 `agent_world_net` 单测：无 provider 失败 / provider 重试成功
 
 ### T2 覆盖审计与回放接线
-- [ ] 新增 provider 覆盖审计策略模块
-- [ ] 在 `replay_validate_with_head_and_dht` 接入覆盖审计
-- [ ] 补齐单测：副本不足拒绝、单节点全覆盖拒绝、分布覆盖放行
+- [x] 新增 provider 覆盖审计策略模块
+- [x] 在 DHT 批量拉取入口接入覆盖审计（`DistributedClient::fetch_blobs_from_dht_with_distribution`）
+- [x] 补齐单测：副本不足拒绝、单节点全覆盖拒绝、分布覆盖放行
 
 ### T3 收口
 - [ ] 回归：`agent_world_net`、`agent_world_distfs`、`agent_world_consensus`、`agent_world_node`
@@ -28,7 +28,7 @@
 
 ## 状态
 - 当前状态：`进行中`
-- 已完成：T0、T1
-- 进行中：T2
-- 未开始：T3
+- 已完成：T0、T1、T2
+- 进行中：T3
+- 未开始：无
 - 阻塞项：无
