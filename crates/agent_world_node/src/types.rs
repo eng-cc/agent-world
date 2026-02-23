@@ -8,6 +8,9 @@ use std::time::Duration;
 use crate::pos_validation::validate_pos_config;
 use crate::{NodeConsensusAction, NodeError, NodeReplicationConfig};
 
+const DEFAULT_MAX_PENDING_CONSENSUS_ACTIONS: usize = 4096;
+const DEFAULT_MAX_CONSENSUS_ACTION_PAYLOAD_BYTES: usize = 256 * 1024;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NodeRole {
     Sequencer,
@@ -124,6 +127,8 @@ pub struct NodeConfig {
     pub auto_attest_all_validators: bool,
     pub require_execution_on_commit: bool,
     pub require_peer_execution_hashes: bool,
+    pub max_pending_consensus_actions: usize,
+    pub max_consensus_action_payload_bytes: usize,
     pub gossip: Option<NodeGossipConfig>,
     pub replication: Option<NodeReplicationConfig>,
 }
@@ -169,6 +174,8 @@ impl NodeConfig {
             auto_attest_all_validators: false,
             require_execution_on_commit: matches!(role, NodeRole::Sequencer),
             require_peer_execution_hashes: false,
+            max_pending_consensus_actions: DEFAULT_MAX_PENDING_CONSENSUS_ACTIONS,
+            max_consensus_action_payload_bytes: DEFAULT_MAX_CONSENSUS_ACTION_PAYLOAD_BYTES,
             gossip: None,
             replication: None,
         })
@@ -218,6 +225,32 @@ impl NodeConfig {
     pub fn with_require_peer_execution_hashes(mut self, enabled: bool) -> Self {
         self.require_peer_execution_hashes = enabled;
         self
+    }
+
+    pub fn with_max_pending_consensus_actions(
+        mut self,
+        max_pending_consensus_actions: usize,
+    ) -> Result<Self, NodeError> {
+        if max_pending_consensus_actions == 0 {
+            return Err(NodeError::InvalidConfig {
+                reason: "max_pending_consensus_actions must be positive".to_string(),
+            });
+        }
+        self.max_pending_consensus_actions = max_pending_consensus_actions;
+        Ok(self)
+    }
+
+    pub fn with_max_consensus_action_payload_bytes(
+        mut self,
+        max_consensus_action_payload_bytes: usize,
+    ) -> Result<Self, NodeError> {
+        if max_consensus_action_payload_bytes == 0 {
+            return Err(NodeError::InvalidConfig {
+                reason: "max_consensus_action_payload_bytes must be positive".to_string(),
+            });
+        }
+        self.max_consensus_action_payload_bytes = max_consensus_action_payload_bytes;
+        Ok(self)
     }
 
     pub fn with_gossip(

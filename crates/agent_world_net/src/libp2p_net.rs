@@ -28,12 +28,21 @@ use agent_world_proto::distributed_net::{
 
 use crate::util::{to_canonical_cbor, unix_now_ms_i64};
 
+const DEFAULT_COMMAND_BUFFER_CAPACITY: usize = 2048;
+const DEFAULT_MAX_PUBLISHED_MESSAGES: usize = 4096;
+const DEFAULT_MAX_ERROR_MESSAGES: usize = 4096;
+const DEFAULT_MAX_LISTENING_ADDRS: usize = 128;
+
 #[derive(Debug, Clone)]
 pub struct Libp2pNetworkConfig {
     pub keypair: Option<Keypair>,
     pub listen_addrs: Vec<Multiaddr>,
     pub bootstrap_peers: Vec<Multiaddr>,
     pub republish_interval_ms: i64,
+    pub command_buffer_capacity: usize,
+    pub max_published_messages: usize,
+    pub max_error_messages: usize,
+    pub max_listening_addrs: usize,
 }
 
 impl Default for Libp2pNetworkConfig {
@@ -43,6 +52,10 @@ impl Default for Libp2pNetworkConfig {
             listen_addrs: Vec::new(),
             bootstrap_peers: Vec::new(),
             republish_interval_ms: 5 * 60 * 1000,
+            command_buffer_capacity: DEFAULT_COMMAND_BUFFER_CAPACITY,
+            max_published_messages: DEFAULT_MAX_PUBLISHED_MESSAGES,
+            max_error_messages: DEFAULT_MAX_ERROR_MESSAGES,
+            max_listening_addrs: DEFAULT_MAX_LISTENING_ADDRS,
         }
     }
 }
@@ -51,7 +64,7 @@ impl Default for Libp2pNetworkConfig {
 pub struct Libp2pNetwork {
     peer_id: PeerId,
     keypair: Keypair,
-    command_tx: mpsc::UnboundedSender<Command>,
+    command_tx: mpsc::Sender<Command>,
     inbox: Arc<Mutex<HashMap<String, Vec<Vec<u8>>>>>,
     published: Arc<Mutex<Vec<NetworkMessage>>>,
     listening_addrs: Arc<Mutex<Vec<Multiaddr>>>,
@@ -151,7 +164,11 @@ impl Libp2pNetwork {
         let listening_addrs = Arc::new(Mutex::new(Vec::new()));
         let connected_peers = Arc::new(Mutex::new(HashSet::new()));
         let errors = Arc::new(Mutex::new(Vec::new()));
-        let (command_tx, command_rx) = mpsc::unbounded();
+        let command_buffer_capacity = config.command_buffer_capacity.max(1);
+        let (command_tx, command_rx) = mpsc::channel(command_buffer_capacity);
+        let max_published_messages = config.max_published_messages.max(1);
+        let max_error_messages = config.max_error_messages.max(1);
+        let max_listening_addrs = config.max_listening_addrs.max(1);
 
         let event_inbox = Arc::clone(&inbox);
         let event_published = Arc::clone(&published);
@@ -180,20 +197,24 @@ impl Libp2pNetwork {
             for addr in config_clone.listen_addrs {
                 if let Err(err) = swarm.listen_on(addr) {
                     let msg = format!("libp2p listen failed: {err}");
-                    event_errors.lock().expect("lock errors").push(msg);
+                    push_bounded_clone(&event_errors, msg, max_error_messages, "lock errors");
                 }
             }
 
             if republish_interval_ms > 0 {
-                std::thread::spawn(move || loop {
-                    std::thread::sleep(std::time::Duration::from_millis(
-                        republish_interval_ms as u64,
-                    ));
-                    if republish_tx
-                        .unbounded_send(Command::RepublishProviders)
-                        .is_err()
-                    {
-                        break;
+                std::thread::spawn(move || {
+                    let mut republish_tx = republish_tx;
+                    loop {
+                        std::thread::sleep(std::time::Duration::from_millis(
+                            republish_interval_ms as u64,
+                        ));
+                        match republish_tx.try_send(Command::RepublishProviders) {
+                            Ok(()) => {}
+                            Err(err) if err.is_full() => {
+                                // Best effort: skip this republish tick if the command queue is saturated.
+                            }
+                            Err(_) => break,
+                        }
                     }
                 });
             }
@@ -206,7 +227,12 @@ impl Libp2pNetwork {
                             match command {
                                 Some(Command::Publish { topic, payload }) => {
                                     let message = NetworkMessage { topic: topic.clone(), payload: payload.clone() };
-                                    event_published.lock().expect("lock published").push(message);
+                                    push_bounded_clone(
+                                        &event_published,
+                                        message,
+                                        max_published_messages,
+                                        "lock published",
+                                    );
                                     let topic_handle = IdentTopic::new(topic.clone());
                                     let _ = swarm.behaviour_mut().gossipsub.publish(topic_handle, payload);
                                 }
@@ -220,9 +246,12 @@ impl Libp2pNetwork {
                                 }
                                 Some(Command::Dial { addr }) => {
                                     if let Err(err) = dial_addr_with_optional_peer_id(&mut swarm, addr) {
-                                        event_errors.lock().expect("lock errors").push(format!(
-                                            "libp2p dial failed: {err}"
-                                        ));
+                                        push_bounded_clone(
+                                            &event_errors,
+                                            format!("libp2p dial failed: {err}"),
+                                            max_error_messages,
+                                            "lock errors",
+                                        );
                                     }
                                 }
                                 Some(Command::Request { protocol, payload, providers, response }) => {
@@ -449,10 +478,12 @@ impl Libp2pNetwork {
                                     }
                                 }
                                 SwarmEvent::NewListenAddr { address, .. } => {
-                                    event_listening_addrs
-                                        .lock()
-                                        .expect("lock listening addrs")
-                                        .push(address);
+                                    push_bounded_clone(
+                                        &event_listening_addrs,
+                                        address,
+                                        max_listening_addrs,
+                                        "lock listening addrs",
+                                    );
                                 }
                                 SwarmEvent::ConnectionEstablished { peer_id, endpoint, .. } => {
                                     if !peers.contains(&peer_id) {
@@ -462,9 +493,12 @@ impl Libp2pNetwork {
                                         .lock()
                                         .expect("lock connected peers")
                                         .insert(peer_id);
-                                    event_errors.lock().expect("lock errors").push(format!(
-                                        "libp2p connection established peer={peer_id}"
-                                    ));
+                                    push_bounded_clone(
+                                        &event_errors,
+                                        format!("libp2p connection established peer={peer_id}"),
+                                        max_error_messages,
+                                        "lock errors",
+                                    );
                                     match endpoint {
                                         libp2p::core::connection::ConnectedPoint::Dialer { address, .. } => {
                                             swarm
@@ -486,19 +520,30 @@ impl Libp2pNetwork {
                                         .lock()
                                         .expect("lock connected peers")
                                         .remove(&peer_id);
-                                    event_errors.lock().expect("lock errors").push(format!(
-                                        "libp2p connection closed peer={peer_id}"
-                                    ));
+                                    push_bounded_clone(
+                                        &event_errors,
+                                        format!("libp2p connection closed peer={peer_id}"),
+                                        max_error_messages,
+                                        "lock errors",
+                                    );
                                 }
                                 SwarmEvent::OutgoingConnectionError { peer_id, error, .. } => {
-                                    event_errors.lock().expect("lock errors").push(format!(
-                                        "libp2p outgoing connection error peer={peer_id:?}: {error:?}"
-                                    ));
+                                    push_bounded_clone(
+                                        &event_errors,
+                                        format!(
+                                            "libp2p outgoing connection error peer={peer_id:?}: {error:?}"
+                                        ),
+                                        max_error_messages,
+                                        "lock errors",
+                                    );
                                 }
                                 SwarmEvent::IncomingConnectionError { error, .. } => {
-                                    event_errors.lock().expect("lock errors").push(format!(
-                                        "libp2p incoming connection error: {error:?}"
-                                    ));
+                                    push_bounded_clone(
+                                        &event_errors,
+                                        format!("libp2p incoming connection error: {error:?}"),
+                                        max_error_messages,
+                                        "lock errors",
+                                    );
                                 }
                                 _ => {}
                             }
@@ -508,9 +553,12 @@ impl Libp2pNetwork {
             });
         });
 
+        let mut bootstrap_tx = command_tx.clone();
         for addr in bootstrap_peers {
             // Best-effort: if the background task exits, dial requests can be dropped.
-            let _ = command_tx.unbounded_send(Command::Dial { addr });
+            if bootstrap_tx.try_send(Command::Dial { addr }).is_err() {
+                break;
+            }
         }
 
         Self {
@@ -538,11 +586,7 @@ impl Libp2pNetwork {
     }
 
     pub fn dial(&self, addr: Multiaddr) -> Result<(), WorldError> {
-        self.command_tx
-            .unbounded_send(Command::Dial { addr })
-            .map_err(|_| WorldError::NetworkProtocolUnavailable {
-                protocol: "libp2p".to_string(),
-            })
+        self.enqueue_command(Command::Dial { addr })
     }
 
     pub fn listening_addrs(&self) -> Vec<Multiaddr> {
@@ -564,34 +608,30 @@ impl Libp2pNetwork {
     pub fn debug_errors(&self) -> Vec<String> {
         self.errors.lock().expect("lock errors").clone()
     }
+
+    fn enqueue_command(&self, command: Command) -> Result<(), WorldError> {
+        try_send_command(&self.command_tx, command)
+    }
 }
 
 impl Drop for Libp2pNetwork {
     fn drop(&mut self) {
-        let _ = self.command_tx.unbounded_send(Command::Shutdown);
+        let _ = self.enqueue_command(Command::Shutdown);
     }
 }
 
 impl ProtoDistributedNetwork<WorldError> for Libp2pNetwork {
     fn publish(&self, topic: &str, payload: &[u8]) -> Result<(), WorldError> {
-        self.command_tx
-            .unbounded_send(Command::Publish {
-                topic: topic.to_string(),
-                payload: payload.to_vec(),
-            })
-            .map_err(|_| WorldError::NetworkProtocolUnavailable {
-                protocol: "libp2p".to_string(),
-            })
+        self.enqueue_command(Command::Publish {
+            topic: topic.to_string(),
+            payload: payload.to_vec(),
+        })
     }
 
     fn subscribe(&self, topic: &str) -> Result<NetworkSubscription, WorldError> {
-        self.command_tx
-            .unbounded_send(Command::Subscribe {
-                topic: topic.to_string(),
-            })
-            .map_err(|_| WorldError::NetworkProtocolUnavailable {
-                protocol: "libp2p".to_string(),
-            })?;
+        self.enqueue_command(Command::Subscribe {
+            topic: topic.to_string(),
+        })?;
         Ok(NetworkSubscription::new(
             topic.to_string(),
             Arc::clone(&self.inbox),
@@ -609,16 +649,12 @@ impl ProtoDistributedNetwork<WorldError> for Libp2pNetwork {
         providers: &[String],
     ) -> Result<Vec<u8>, WorldError> {
         let (sender, receiver) = oneshot::channel();
-        self.command_tx
-            .unbounded_send(Command::Request {
-                protocol: protocol.to_string(),
-                payload: payload.to_vec(),
-                providers: providers.to_vec(),
-                response: sender,
-            })
-            .map_err(|_| WorldError::NetworkProtocolUnavailable {
-                protocol: "libp2p".to_string(),
-            })?;
+        self.enqueue_command(Command::Request {
+            protocol: protocol.to_string(),
+            payload: payload.to_vec(),
+            providers: providers.to_vec(),
+            response: sender,
+        })?;
         futures::executor::block_on(receiver).map_err(|_| {
             WorldError::NetworkProtocolUnavailable {
                 protocol: "libp2p".to_string(),
@@ -631,14 +667,10 @@ impl ProtoDistributedNetwork<WorldError> for Libp2pNetwork {
         protocol: &str,
         handler: Box<dyn Fn(&[u8]) -> Result<Vec<u8>, WorldError> + Send + Sync>,
     ) -> Result<(), WorldError> {
-        self.command_tx
-            .unbounded_send(Command::RegisterHandler {
-                protocol: protocol.to_string(),
-                handler: Arc::from(handler),
-            })
-            .map_err(|_| WorldError::NetworkProtocolUnavailable {
-                protocol: "libp2p".to_string(),
-            })
+        self.enqueue_command(Command::RegisterHandler {
+            protocol: protocol.to_string(),
+            handler: Arc::from(handler),
+        })
     }
 }
 
@@ -651,14 +683,10 @@ impl ProtoDistributedDht<WorldError> for Libp2pNetwork {
     ) -> Result<(), WorldError> {
         let key = dht_provider_key(world_id, content_hash);
         let (sender, receiver) = oneshot::channel();
-        self.command_tx
-            .unbounded_send(Command::PublishProvider {
-                key,
-                response: sender,
-            })
-            .map_err(|_| WorldError::NetworkProtocolUnavailable {
-                protocol: "libp2p".to_string(),
-            })?;
+        self.enqueue_command(Command::PublishProvider {
+            key,
+            response: sender,
+        })?;
         futures::executor::block_on(receiver).map_err(|_| {
             WorldError::NetworkProtocolUnavailable {
                 protocol: "libp2p".to_string(),
@@ -673,14 +701,10 @@ impl ProtoDistributedDht<WorldError> for Libp2pNetwork {
     ) -> Result<Vec<ProviderRecord>, WorldError> {
         let key = dht_provider_key(world_id, content_hash);
         let (sender, receiver) = oneshot::channel();
-        self.command_tx
-            .unbounded_send(Command::GetProviders {
-                key,
-                response: sender,
-            })
-            .map_err(|_| WorldError::NetworkProtocolUnavailable {
-                protocol: "libp2p".to_string(),
-            })?;
+        self.enqueue_command(Command::GetProviders {
+            key,
+            response: sender,
+        })?;
         futures::executor::block_on(receiver).map_err(|_| {
             WorldError::NetworkProtocolUnavailable {
                 protocol: "libp2p".to_string(),
@@ -692,15 +716,11 @@ impl ProtoDistributedDht<WorldError> for Libp2pNetwork {
         let key = dht_world_head_key(world_id);
         let payload = to_canonical_cbor(head)?;
         let (sender, receiver) = oneshot::channel();
-        self.command_tx
-            .unbounded_send(Command::PutWorldHead {
-                key,
-                payload,
-                response: sender,
-            })
-            .map_err(|_| WorldError::NetworkProtocolUnavailable {
-                protocol: "libp2p".to_string(),
-            })?;
+        self.enqueue_command(Command::PutWorldHead {
+            key,
+            payload,
+            response: sender,
+        })?;
         futures::executor::block_on(receiver).map_err(|_| {
             WorldError::NetworkProtocolUnavailable {
                 protocol: "libp2p".to_string(),
@@ -711,14 +731,10 @@ impl ProtoDistributedDht<WorldError> for Libp2pNetwork {
     fn get_world_head(&self, world_id: &str) -> Result<Option<WorldHeadAnnounce>, WorldError> {
         let key = dht_world_head_key(world_id);
         let (sender, receiver) = oneshot::channel();
-        self.command_tx
-            .unbounded_send(Command::GetWorldHead {
-                key,
-                response: sender,
-            })
-            .map_err(|_| WorldError::NetworkProtocolUnavailable {
-                protocol: "libp2p".to_string(),
-            })?;
+        self.enqueue_command(Command::GetWorldHead {
+            key,
+            response: sender,
+        })?;
         futures::executor::block_on(receiver).map_err(|_| {
             WorldError::NetworkProtocolUnavailable {
                 protocol: "libp2p".to_string(),
@@ -734,15 +750,11 @@ impl ProtoDistributedDht<WorldError> for Libp2pNetwork {
         let key = dht_membership_key(world_id);
         let payload = to_canonical_cbor(snapshot)?;
         let (sender, receiver) = oneshot::channel();
-        self.command_tx
-            .unbounded_send(Command::PutMembershipDirectory {
-                key,
-                payload,
-                response: sender,
-            })
-            .map_err(|_| WorldError::NetworkProtocolUnavailable {
-                protocol: "libp2p".to_string(),
-            })?;
+        self.enqueue_command(Command::PutMembershipDirectory {
+            key,
+            payload,
+            response: sender,
+        })?;
         futures::executor::block_on(receiver).map_err(|_| {
             WorldError::NetworkProtocolUnavailable {
                 protocol: "libp2p".to_string(),
@@ -756,14 +768,10 @@ impl ProtoDistributedDht<WorldError> for Libp2pNetwork {
     ) -> Result<Option<MembershipDirectorySnapshot>, WorldError> {
         let key = dht_membership_key(world_id);
         let (sender, receiver) = oneshot::channel();
-        self.command_tx
-            .unbounded_send(Command::GetMembershipDirectory {
-                key,
-                response: sender,
-            })
-            .map_err(|_| WorldError::NetworkProtocolUnavailable {
-                protocol: "libp2p".to_string(),
-            })?;
+        self.enqueue_command(Command::GetMembershipDirectory {
+            key,
+            response: sender,
+        })?;
         futures::executor::block_on(receiver).map_err(|_| {
             WorldError::NetworkProtocolUnavailable {
                 protocol: "libp2p".to_string(),
@@ -1087,6 +1095,41 @@ fn decode_membership_directory(bytes: &[u8]) -> Result<MembershipDirectorySnapsh
 
 fn now_ms() -> i64 {
     unix_now_ms_i64()
+}
+
+fn try_send_command(
+    command_tx: &mpsc::Sender<Command>,
+    command: Command,
+) -> Result<(), WorldError> {
+    let mut sender = command_tx.clone();
+    sender
+        .try_send(command)
+        .map_err(|err| WorldError::NetworkProtocolUnavailable {
+            protocol: if err.is_full() {
+                "libp2p command queue saturated".to_string()
+            } else {
+                "libp2p command queue disconnected".to_string()
+            },
+        })
+}
+
+fn push_bounded_clone<T: Clone>(
+    values: &Arc<Mutex<Vec<T>>>,
+    value: T,
+    max_len: usize,
+    lock_label: &str,
+) {
+    let mut guard = values.lock().expect(lock_label);
+    push_bounded_vec(&mut guard, value, max_len);
+}
+
+fn push_bounded_vec<T>(values: &mut Vec<T>, value: T, max_len: usize) {
+    let max_len = max_len.max(1);
+    values.push(value);
+    let overflow = values.len().saturating_sub(max_len);
+    if overflow > 0 {
+        values.drain(0..overflow);
+    }
 }
 
 fn should_republish(last_ms: i64, now_ms: i64, interval_ms: i64) -> bool {

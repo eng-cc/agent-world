@@ -109,3 +109,31 @@ fn republish_interval_gate() {
     assert!(should_republish(100, 201, 100));
     assert!(!should_republish(100, 200, 0));
 }
+
+#[test]
+fn push_bounded_vec_keeps_recent_window() {
+    let mut values = vec![1_u64, 2, 3];
+    push_bounded_vec(&mut values, 4, 3);
+    assert_eq!(values, vec![2, 3, 4]);
+
+    push_bounded_vec(&mut values, 5, 1);
+    assert_eq!(values, vec![5]);
+}
+
+#[test]
+fn try_send_command_reports_queue_disconnect() {
+    let (sender, receiver) = mpsc::channel(1);
+    drop(receiver);
+    let err = try_send_command(
+        &sender,
+        Command::Subscribe {
+            topic: "topic-a".to_string(),
+        },
+    )
+    .expect_err("send must fail once receiver is dropped");
+    assert!(matches!(
+        err,
+        WorldError::NetworkProtocolUnavailable { ref protocol }
+            if protocol.contains("disconnected")
+    ));
+}

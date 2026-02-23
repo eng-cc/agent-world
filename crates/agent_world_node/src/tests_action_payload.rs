@@ -96,6 +96,43 @@ fn submit_consensus_action_payload_as_player_rejects_player_mismatch() {
 }
 
 #[test]
+fn submit_consensus_action_payload_rejects_payload_over_limit() {
+    let config = NodeConfig::new("node-limit", "world-limit", NodeRole::Observer)
+        .expect("config")
+        .with_max_consensus_action_payload_bytes(4)
+        .expect("payload limit");
+    let runtime = NodeRuntime::new(config);
+    let err = runtime
+        .submit_consensus_action_payload(1, vec![1_u8, 2, 3, 4, 5])
+        .expect_err("oversized payload must fail");
+    assert!(matches!(err, NodeError::Consensus { .. }));
+    assert!(
+        err.to_string().contains("payload too large"),
+        "unexpected error: {err}"
+    );
+}
+
+#[test]
+fn submit_consensus_action_payload_rejects_queue_saturation() {
+    let config = NodeConfig::new("node-queue", "world-queue", NodeRole::Observer)
+        .expect("config")
+        .with_max_pending_consensus_actions(1)
+        .expect("queue limit");
+    let runtime = NodeRuntime::new(config);
+    runtime
+        .submit_consensus_action_payload(1, vec![1_u8, 2, 3])
+        .expect("first action should be accepted");
+    let err = runtime
+        .submit_consensus_action_payload(2, vec![4_u8, 5, 6])
+        .expect_err("second action must fail after queue reaches limit");
+    assert!(matches!(err, NodeError::Consensus { .. }));
+    assert!(
+        err.to_string().contains("queue saturated"),
+        "unexpected error: {err}"
+    );
+}
+
+#[test]
 fn role_parse_roundtrip() {
     for role in [NodeRole::Sequencer, NodeRole::Storage, NodeRole::Observer] {
         let parsed = NodeRole::from_str(role.as_str()).expect("parse role");

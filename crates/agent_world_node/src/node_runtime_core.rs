@@ -105,6 +105,15 @@ impl NodeRuntime {
                 ),
             });
         }
+        if payload_cbor.len() > self.config.max_consensus_action_payload_bytes {
+            return Err(NodeError::Consensus {
+                reason: format!(
+                    "consensus action payload too large: bytes={} limit={}",
+                    payload_cbor.len(),
+                    self.config.max_consensus_action_payload_bytes
+                ),
+            });
+        }
         let action = NodeConsensusAction::from_payload(
             action_id,
             self.config.player_id.clone(),
@@ -115,6 +124,15 @@ impl NodeRuntime {
             .pending_consensus_actions
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
+        if pending.len() >= self.config.max_pending_consensus_actions {
+            return Err(NodeError::Consensus {
+                reason: format!(
+                    "pending consensus actions queue saturated: len={} limit={}",
+                    pending.len(),
+                    self.config.max_pending_consensus_actions
+                ),
+            });
+        }
         pending.push(action);
         Ok(())
     }
