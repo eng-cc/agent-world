@@ -26,6 +26,8 @@ mod player_chatter_tests;
 mod player_cinematic_tests;
 #[path = "egui_right_panel_player_guide_progress_tests.rs"]
 mod player_guide_progress_tests;
+#[path = "egui_right_panel_player_mission_tests.rs"]
+mod player_mission_tests;
 
 struct SnapshotRenderer {
     render_state: egui_wgpu::RenderState,

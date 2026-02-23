@@ -261,3 +261,98 @@ pub(super) fn render_player_cinematic_intro(
                 });
         });
 }
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(super) struct PlayerMissionLoopSnapshot {
+    pub(super) completed_steps: usize,
+    pub(super) title: &'static str,
+    pub(super) objective: &'static str,
+    pub(super) action_label: &'static str,
+    pub(super) action_opens_panel: bool,
+}
+
+pub(super) fn build_player_mission_loop_snapshot(
+    step: PlayerGuideStep,
+    progress: PlayerGuideProgressSnapshot,
+    locale: crate::i18n::UiLocale,
+) -> PlayerMissionLoopSnapshot {
+    let (action_label, action_opens_panel) = match (step, locale.is_zh()) {
+        (PlayerGuideStep::ConnectWorld, true) => ("等待连接完成", false),
+        (PlayerGuideStep::ConnectWorld, false) => ("Await sync", false),
+        (PlayerGuideStep::OpenPanel, true) => ("打开操作面板", true),
+        (PlayerGuideStep::OpenPanel, false) => ("Open control panel", true),
+        (PlayerGuideStep::SelectTarget, true) => ("锁定一个目标", false),
+        (PlayerGuideStep::SelectTarget, false) => ("Lock one target", false),
+        (PlayerGuideStep::ExploreAction, true) => ("执行一次关键行动", false),
+        (PlayerGuideStep::ExploreAction, false) => ("Run one key action", false),
+    };
+    PlayerMissionLoopSnapshot {
+        completed_steps: progress.completed_steps(),
+        title: if locale.is_zh() {
+            "主任务：建立行动闭环"
+        } else {
+            "Mission: Build Action Loop"
+        },
+        objective: player_goal_title(step, locale),
+        action_label,
+        action_opens_panel,
+    }
+}
+
+pub(super) fn render_player_mission_hud(
+    context: &egui::Context,
+    layout_state: &mut RightPanelLayoutState,
+    step: PlayerGuideStep,
+    progress: PlayerGuideProgressSnapshot,
+    locale: crate::i18n::UiLocale,
+    now_secs: f64,
+) {
+    let snapshot = build_player_mission_loop_snapshot(step, progress, locale);
+    let tone = player_goal_color(step);
+    let pulse = ((now_secs * 1.8).sin() * 0.5 + 0.5) as f32;
+    let mut action_clicked = false;
+    egui::Area::new(egui::Id::new("viewer-player-mission-hud"))
+        .anchor(egui::Align2::LEFT_TOP, egui::vec2(14.0, 136.0))
+        .movable(false)
+        .interactable(true)
+        .show(context, |ui| {
+            egui::Frame::group(ui.style())
+                .fill(egui::Color32::from_rgba_unmultiplied(14, 22, 34, 230))
+                .stroke(egui::Stroke::new(
+                    1.0 + 0.45 * pulse,
+                    egui::Color32::from_rgba_unmultiplied(
+                        tone.r(),
+                        tone.g(),
+                        tone.b(),
+                        (150.0 + 86.0 * pulse).round() as u8,
+                    ),
+                ))
+                .corner_radius(egui::CornerRadius::same(10))
+                .inner_margin(egui::Margin::same(10))
+                .show(ui, |ui| {
+                    ui.set_max_width(320.0);
+                    ui.small(egui::RichText::new(snapshot.title).color(tone).strong());
+                    ui.strong(snapshot.objective);
+                    ui.small(player_goal_detail(step, locale));
+                    let progress_ratio = (snapshot.completed_steps as f32 / 4.0).clamp(0.0, 1.0);
+                    ui.add(
+                        egui::ProgressBar::new(progress_ratio)
+                            .desired_width(280.0)
+                            .text(format!(
+                                "{} {}/4",
+                                if locale.is_zh() {
+                                    "任务进度"
+                                } else {
+                                    "Mission Progress"
+                                },
+                                snapshot.completed_steps
+                            )),
+                    );
+                    action_clicked = ui.button(snapshot.action_label).clicked();
+                });
+        });
+
+    if action_clicked && snapshot.action_opens_panel {
+        layout_state.panel_hidden = false;
+    }
+}

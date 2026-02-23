@@ -5,7 +5,7 @@ use super::egui_right_panel_player_guide::{
     build_player_guide_progress_snapshot, player_goal_badge, player_goal_color, player_goal_detail,
     player_goal_title, player_guide_progress_badge, player_onboarding_dismiss,
     player_onboarding_primary_action, player_onboarding_title, render_player_cinematic_intro,
-    PlayerGuideProgressSnapshot,
+    render_player_mission_hud, PlayerGuideProgressSnapshot,
 };
 use agent_world::simulator::{ResourceOwner, WorldEvent, WorldEventKind};
 use bevy_egui::egui;
@@ -1175,6 +1175,14 @@ pub(super) fn render_player_experience_layers(
     sync_player_guide_transition(&mut onboarding.guide_transition, guide_step, now_secs);
     render_player_cinematic_intro(context, state, guide_step, locale, now_secs);
     render_player_compact_hud(context, state, selection, guide_step, locale, now_secs);
+    render_player_mission_hud(
+        context,
+        layout_state,
+        guide_step,
+        guide_progress,
+        locale,
+        now_secs,
+    );
     render_player_achievement_popups(context, achievements, locale, now_secs);
     render_agent_chatter_bubbles(context, achievements, now_secs);
     render_player_goal_hint(
