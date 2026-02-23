@@ -48,3 +48,28 @@
   - 对策：固定边缘布局、层级错位、尺寸约束。
 - 文案与事件类型映射不准确。
   - 对策：优先使用已验证事件语义，并补齐映射单测。
+
+## 里程碑状态（2026-02-23）
+- M1：完成（第三阶段设计/项目文档已建立）。
+- M2：完成（Player 成就反馈已落地，含防重入与淡出单测）。
+- M3：完成（Agent 事件气泡已落地，含增量游标/队列管理单测）。
+- M4：完成（回归测试 + Web 闭环验收 + 文档收口已完成）。
+
+## 验收结论
+- 代码回归：
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer sync_player_achievements_ -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer sync_agent_chatter_bubbles_ -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer feedback_ -- --nocapture`
+- Web 闭环（Playwright）：
+  - `window.__AW_TEST__.getState()` 可访问，`connectionStatus=connected`；
+  - 页面基础语义正常（`title=Agent World Viewer (Web)`，`canvasCount=1`，`hasTestApi=true`）；
+  - `Tab` 面板开关可用，Player HUD/引导层与右侧面板切换可观察。
+- 验收截图：
+  - `output/playwright/viewer/viewer-web-vri3p3-player-overlays-hidden.png`
+  - `output/playwright/viewer/viewer-web-vri3p3-player-overlays-panel-open.png`
+  - `output/playwright/viewer/viewer-web-vri3p3-player-overlays-panel-closed.png`
+  - `output/playwright/viewer/viewer-web-vri3p3-player-overlays-selected-achievement-open-panel.png`
+- 观察说明：
+  - 本次 Web 运行中 `tick/eventCount` 维持 0，未在同次页面会话直接触发事件气泡可视样例；该链路由单测覆盖（`sync_agent_chatter_bubbles_*`）并确认增量事件到气泡队列逻辑正常。
+- 阶段结论：
+  - 第三阶段已完成“成就反馈 + Agent 世界反馈”能力建设，Player 体验层形成 HUD/引导/成就/气泡的统一渲染闭环，且未回退为技术面板主导形态。
