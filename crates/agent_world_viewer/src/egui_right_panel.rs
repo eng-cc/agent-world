@@ -86,12 +86,13 @@ use egui_right_panel_player_experience::build_player_hud_snapshot;
 use egui_right_panel_player_experience::{
     dismiss_player_onboarding_step, feedback_last_seen_event_id, feedback_toast_cap,
     feedback_toast_ids, feedback_toast_len, feedback_toast_snapshot, feedback_tone_for_event,
-    push_feedback_toast, should_show_player_onboarding_card, FeedbackTone, PlayerGuideStep,
+    player_achievement_is_unlocked, player_achievement_popup_cap, player_achievement_popup_len,
+    player_achievement_popup_milestones, push_feedback_toast, should_show_player_onboarding_card,
+    FeedbackTone, PlayerAchievementMilestone, PlayerGuideStep,
 };
 use egui_right_panel_player_experience::{
-    player_entry_card_style, render_feedback_toasts, render_player_compact_hud,
-    render_player_goal_hint, render_player_onboarding_card, resolve_player_guide_step,
-    sync_feedback_toasts, FeedbackToastState, PlayerOnboardingState,
+    player_entry_card_style, render_feedback_toasts, render_player_experience_layers,
+    sync_feedback_toasts, FeedbackToastState, PlayerAchievementState, PlayerOnboardingState,
 };
 use egui_right_panel_text_utils::{rejection_event_count, truncate_observe_text};
 use egui_right_panel_theme_runtime::render_theme_runtime_section;
@@ -146,6 +147,7 @@ pub(super) fn render_right_side_panel_egui(
     mut chat_draft: Local<AgentChatDraftState>,
     mut control_panel: Local<ControlPanelUiState>,
     mut feedback_toast_state: Local<FeedbackToastState>,
+    mut player_achievement_state: Local<PlayerAchievementState>,
     mut onboarding_state: Local<PlayerOnboardingState>,
     params: RightPanelParams,
 ) {
@@ -195,16 +197,15 @@ pub(super) fn render_right_side_panel_egui(
     }
     chat_focus_signal.wants_ime_focus = false;
     if player_mode_enabled {
-        let guide_step =
-            resolve_player_guide_step(&state.status, layout_state.as_ref(), &selection);
-        render_player_compact_hud(context, &state, &selection, guide_step, locale, now_secs);
-        render_player_goal_hint(context, guide_step, locale);
-        render_player_onboarding_card(
+        render_player_experience_layers(
             context,
-            &mut onboarding_state,
-            guide_step,
+            &state,
+            &selection,
             layout_state.as_mut(),
+            &mut onboarding_state,
+            &mut player_achievement_state,
             locale,
+            now_secs,
         );
     }
 

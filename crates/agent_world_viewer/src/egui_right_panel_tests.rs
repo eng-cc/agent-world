@@ -1,4 +1,5 @@
 use super::egui_observe_section_card::{section_tone, ObserveSectionTone};
+use super::egui_right_panel_player_experience::resolve_player_guide_step;
 use super::*;
 use crate::right_panel_module_visibility::RightPanelModuleVisibilityState;
 use crate::ViewerControl;
@@ -12,6 +13,9 @@ use std::time::Duration;
 
 const SNAPSHOT_OUTPUT_DIR: &str = "tests/snapshots";
 const SNAPSHOT_WAIT_TIMEOUT: Duration = Duration::from_secs(10);
+
+#[path = "egui_right_panel_player_achievements_tests.rs"]
+mod player_achievements_tests;
 
 struct SnapshotRenderer {
     render_state: egui_wgpu::RenderState,

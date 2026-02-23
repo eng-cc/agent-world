@@ -1,5 +1,6 @@
 use agent_world::simulator::{WorldEvent, WorldEventKind};
 use bevy_egui::egui;
+use std::collections::BTreeSet;
 
 use crate::event_click_list::event_row_label;
 use crate::selection_linking::selection_kind_label;
@@ -8,6 +9,10 @@ use crate::{RightPanelLayoutState, ViewerSelection, ViewerState};
 const FEEDBACK_TOAST_MAX: usize = 3;
 const FEEDBACK_TOAST_TTL_SECS: f64 = 4.2;
 const FEEDBACK_TOAST_FADE_SECS: f64 = 0.8;
+const PLAYER_ACHIEVEMENT_MAX: usize = 3;
+const PLAYER_ACHIEVEMENT_TTL_SECS: f64 = 5.2;
+const PLAYER_ACHIEVEMENT_FADE_SECS: f64 = 1.0;
+const PLAYER_ACHIEVEMENT_MAX_WIDTH: f32 = 320.0;
 const PLAYER_GOAL_HINT_MAX_WIDTH: f32 = 320.0;
 const PLAYER_ONBOARDING_MAX_WIDTH: f32 = 360.0;
 const PLAYER_HUD_MAX_WIDTH: f32 = 760.0;
@@ -40,6 +45,28 @@ pub(super) enum PlayerGuideStep {
     OpenPanel,
     SelectTarget,
     ExploreAction,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub(super) enum PlayerAchievementMilestone {
+    WorldConnected,
+    PanelOpened,
+    FirstSelection,
+    FirstEventSeen,
+}
+
+#[derive(Clone, Debug)]
+struct PlayerAchievementToast {
+    id: u64,
+    milestone: PlayerAchievementMilestone,
+    expires_at_secs: f64,
+}
+
+#[derive(Default)]
+pub(crate) struct PlayerAchievementState {
+    unlocked: BTreeSet<PlayerAchievementMilestone>,
+    toasts: Vec<PlayerAchievementToast>,
+    next_toast_id: u64,
 }
 
 #[derive(Default)]
@@ -179,6 +206,177 @@ pub(super) fn render_feedback_toasts(
                     });
             });
         vertical_offset += 68.0;
+    }
+}
+
+fn player_achievement_badge(locale: crate::i18n::UiLocale) -> &'static str {
+    if locale.is_zh() {
+        "里程碑解锁"
+    } else {
+        "Milestone Unlocked"
+    }
+}
+
+fn player_achievement_title(
+    milestone: PlayerAchievementMilestone,
+    locale: crate::i18n::UiLocale,
+) -> &'static str {
+    match (milestone, locale.is_zh()) {
+        (PlayerAchievementMilestone::WorldConnected, true) => "世界连接成功",
+        (PlayerAchievementMilestone::WorldConnected, false) => "World Link Established",
+        (PlayerAchievementMilestone::PanelOpened, true) => "操作面板已展开",
+        (PlayerAchievementMilestone::PanelOpened, false) => "Control Panel Online",
+        (PlayerAchievementMilestone::FirstSelection, true) => "首次锁定目标",
+        (PlayerAchievementMilestone::FirstSelection, false) => "First Target Locked",
+        (PlayerAchievementMilestone::FirstEventSeen, true) => "首次收到世界回应",
+        (PlayerAchievementMilestone::FirstEventSeen, false) => "First World Response",
+    }
+}
+
+fn player_achievement_detail(
+    milestone: PlayerAchievementMilestone,
+    locale: crate::i18n::UiLocale,
+) -> &'static str {
+    match (milestone, locale.is_zh()) {
+        (PlayerAchievementMilestone::WorldConnected, true) => "实时 Tick 与事件流已经开始。",
+        (PlayerAchievementMilestone::WorldConnected, false) => {
+            "Live ticks and events are now flowing."
+        }
+        (PlayerAchievementMilestone::PanelOpened, true) => "主操作入口已就绪，可随时查看详情。",
+        (PlayerAchievementMilestone::PanelOpened, false) => {
+            "Control entry is ready, inspect details anytime."
+        }
+        (PlayerAchievementMilestone::FirstSelection, true) => "你可以围绕该目标推进下一步行动。",
+        (PlayerAchievementMilestone::FirstSelection, false) => {
+            "You can now plan actions around this target."
+        }
+        (PlayerAchievementMilestone::FirstEventSeen, true) => "你的操作已在世界中产生反馈。",
+        (PlayerAchievementMilestone::FirstEventSeen, false) => {
+            "Your actions are now reflected in the world."
+        }
+    }
+}
+
+fn player_achievement_color(milestone: PlayerAchievementMilestone) -> egui::Color32 {
+    match milestone {
+        PlayerAchievementMilestone::WorldConnected => egui::Color32::from_rgb(56, 108, 176),
+        PlayerAchievementMilestone::PanelOpened => egui::Color32::from_rgb(72, 146, 204),
+        PlayerAchievementMilestone::FirstSelection => egui::Color32::from_rgb(58, 152, 102),
+        PlayerAchievementMilestone::FirstEventSeen => egui::Color32::from_rgb(194, 142, 62),
+    }
+}
+
+fn should_unlock_player_achievement(
+    milestone: PlayerAchievementMilestone,
+    state: &ViewerState,
+    selection: &ViewerSelection,
+    layout_state: &RightPanelLayoutState,
+) -> bool {
+    match milestone {
+        PlayerAchievementMilestone::WorldConnected => {
+            matches!(state.status, crate::ConnectionStatus::Connected)
+        }
+        PlayerAchievementMilestone::PanelOpened => !layout_state.panel_hidden,
+        PlayerAchievementMilestone::FirstSelection => selection.current.is_some(),
+        PlayerAchievementMilestone::FirstEventSeen => !state.events.is_empty(),
+    }
+}
+
+fn unlock_player_achievement(
+    achievements: &mut PlayerAchievementState,
+    milestone: PlayerAchievementMilestone,
+    now_secs: f64,
+) -> bool {
+    if !achievements.unlocked.insert(milestone) {
+        return false;
+    }
+
+    achievements.next_toast_id = achievements.next_toast_id.saturating_add(1);
+    achievements.toasts.push(PlayerAchievementToast {
+        id: achievements.next_toast_id,
+        milestone,
+        expires_at_secs: now_secs + PLAYER_ACHIEVEMENT_TTL_SECS,
+    });
+    while achievements.toasts.len() > PLAYER_ACHIEVEMENT_MAX {
+        achievements.toasts.remove(0);
+    }
+    true
+}
+
+pub(super) fn sync_player_achievements(
+    achievements: &mut PlayerAchievementState,
+    state: &ViewerState,
+    selection: &ViewerSelection,
+    layout_state: &RightPanelLayoutState,
+    now_secs: f64,
+) {
+    achievements
+        .toasts
+        .retain(|toast| toast.expires_at_secs > now_secs);
+
+    let milestones = [
+        PlayerAchievementMilestone::WorldConnected,
+        PlayerAchievementMilestone::PanelOpened,
+        PlayerAchievementMilestone::FirstSelection,
+        PlayerAchievementMilestone::FirstEventSeen,
+    ];
+
+    for milestone in milestones {
+        if achievements.unlocked.contains(&milestone) {
+            continue;
+        }
+        if should_unlock_player_achievement(milestone, state, selection, layout_state) {
+            unlock_player_achievement(achievements, milestone, now_secs);
+            break;
+        }
+    }
+}
+
+pub(super) fn render_player_achievement_popups(
+    context: &egui::Context,
+    achievements: &PlayerAchievementState,
+    locale: crate::i18n::UiLocale,
+    now_secs: f64,
+) {
+    let mut vertical_offset = 88.0;
+    let to_u8 = |value: f32| (value.clamp(0.0, 255.0)) as u8;
+    for toast in achievements.toasts.iter().rev() {
+        let remaining = (toast.expires_at_secs - now_secs).max(0.0);
+        let alpha = if remaining < PLAYER_ACHIEVEMENT_FADE_SECS {
+            (remaining / PLAYER_ACHIEVEMENT_FADE_SECS) as f32
+        } else {
+            1.0
+        };
+        let tone = player_achievement_color(toast.milestone);
+        let fill = egui::Color32::from_rgba_unmultiplied(16, 25, 20, to_u8(224.0 * alpha));
+        let stroke = egui::Stroke::new(
+            1.0,
+            egui::Color32::from_rgba_unmultiplied(
+                tone.r(),
+                tone.g(),
+                tone.b(),
+                to_u8(236.0 * alpha),
+            ),
+        );
+
+        egui::Area::new(egui::Id::new(("viewer-player-achievement", toast.id)))
+            .anchor(egui::Align2::RIGHT_TOP, egui::vec2(-14.0, vertical_offset))
+            .movable(false)
+            .interactable(false)
+            .show(context, |ui| {
+                egui::Frame::group(ui.style())
+                    .fill(fill)
+                    .stroke(stroke)
+                    .corner_radius(egui::CornerRadius::same(9))
+                    .inner_margin(egui::Margin::same(10))
+                    .show(ui, |ui| {
+                        ui.set_max_width(PLAYER_ACHIEVEMENT_MAX_WIDTH);
+                        ui.small(egui::RichText::new(player_achievement_badge(locale)).color(tone));
+                        ui.strong(player_achievement_title(toast.milestone, locale));
+                        ui.small(player_achievement_detail(toast.milestone, locale));
+                    });
+            });
+        vertical_offset += 86.0;
     }
 }
 
@@ -499,6 +697,35 @@ pub(super) fn feedback_toast_snapshot(
         .map(|toast| (toast.id, toast.tone, toast.title))
 }
 
+#[cfg(test)]
+pub(super) fn player_achievement_popup_cap() -> usize {
+    PLAYER_ACHIEVEMENT_MAX
+}
+
+#[cfg(test)]
+pub(super) fn player_achievement_popup_len(achievements: &PlayerAchievementState) -> usize {
+    achievements.toasts.len()
+}
+
+#[cfg(test)]
+pub(super) fn player_achievement_popup_milestones(
+    achievements: &PlayerAchievementState,
+) -> Vec<PlayerAchievementMilestone> {
+    achievements
+        .toasts
+        .iter()
+        .map(|toast| toast.milestone)
+        .collect()
+}
+
+#[cfg(test)]
+pub(super) fn player_achievement_is_unlocked(
+    achievements: &PlayerAchievementState,
+    milestone: PlayerAchievementMilestone,
+) -> bool {
+    achievements.unlocked.contains(&milestone)
+}
+
 pub(super) fn render_player_goal_hint(
     context: &egui::Context,
     step: PlayerGuideStep,
@@ -573,4 +800,22 @@ pub(super) fn render_player_onboarding_card(
     if primary_clicked || dismiss_clicked {
         dismiss_player_onboarding_step(onboarding, step);
     }
+}
+
+pub(super) fn render_player_experience_layers(
+    context: &egui::Context,
+    state: &ViewerState,
+    selection: &ViewerSelection,
+    layout_state: &mut RightPanelLayoutState,
+    onboarding: &mut PlayerOnboardingState,
+    achievements: &mut PlayerAchievementState,
+    locale: crate::i18n::UiLocale,
+    now_secs: f64,
+) {
+    sync_player_achievements(achievements, state, selection, layout_state, now_secs);
+    let guide_step = resolve_player_guide_step(&state.status, layout_state, selection);
+    render_player_compact_hud(context, state, selection, guide_step, locale, now_secs);
+    render_player_achievement_popups(context, achievements, locale, now_secs);
+    render_player_goal_hint(context, guide_step, locale);
+    render_player_onboarding_card(context, onboarding, guide_step, layout_state, locale);
 }
