@@ -21,6 +21,18 @@ fn temp_dir(prefix: &str) -> PathBuf {
     std::env::temp_dir().join(format!("agent-world-{prefix}-{unique}"))
 }
 
+fn write_release_locked_args_file(prefix: &str, locked_args: &[&str]) -> PathBuf {
+    let path = temp_config_path(prefix);
+    let args = locked_args
+        .iter()
+        .map(|arg| format!("\"{}\"", arg.replace('"', "\\\"")))
+        .collect::<Vec<_>>()
+        .join(", ");
+    let body = format!("locked_args = [{args}]\n");
+    fs::write(path.as_path(), body).expect("write release config");
+    path
+}
+
 fn unique_triad_gossip_base_port() -> u16 {
     let unique = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -442,6 +454,90 @@ fn parse_options_reads_custom_values() {
 fn parse_options_rejects_zero_tick_ms() {
     let err = parse_options(["--tick-ms", "0"].into_iter()).expect_err("reject zero");
     assert!(err.contains("positive integer"));
+}
+
+#[test]
+fn parse_launch_options_release_config_loads_locked_args() {
+    let path = write_release_locked_args_file(
+        "release-locked-load",
+        &[
+            "llm_bootstrap",
+            "--topology",
+            "single",
+            "--node-id",
+            "release-node-a",
+            "--node-role",
+            "observer",
+        ],
+    );
+
+    let options =
+        parse_launch_options(["--release-config", path.to_string_lossy().as_ref()].into_iter())
+            .expect("release launch options");
+    assert_eq!(options.scenario, WorldScenario::LlmBootstrap);
+    assert_eq!(options.node_topology, NodeTopologyMode::Single);
+    assert_eq!(options.node_id, "release-node-a");
+    assert_eq!(options.node_role, NodeRole::Observer);
+    assert_eq!(options.bind_addr, "127.0.0.1:5010");
+    assert!(options.web_bind_addr.is_none());
+
+    let _ = fs::remove_file(path.as_path());
+}
+
+#[test]
+fn parse_launch_options_release_config_allows_bind_overrides() {
+    let path = write_release_locked_args_file(
+        "release-locked-bind-overrides",
+        &[
+            "llm_bootstrap",
+            "--topology",
+            "single",
+            "--bind",
+            "127.0.0.1:6101",
+            "--web-bind",
+            "127.0.0.1:6102",
+        ],
+    );
+
+    let options = parse_launch_options(
+        [
+            "--release-config",
+            path.to_string_lossy().as_ref(),
+            "--bind",
+            "127.0.0.1:7201",
+            "--web-bind",
+            "127.0.0.1:7202",
+        ]
+        .into_iter(),
+    )
+    .expect("release launch with overrides");
+    assert_eq!(options.bind_addr, "127.0.0.1:7201");
+    assert_eq!(options.web_bind_addr.as_deref(), Some("127.0.0.1:7202"));
+
+    let _ = fs::remove_file(path.as_path());
+}
+
+#[test]
+fn parse_launch_options_release_config_rejects_disallowed_flags() {
+    let path = write_release_locked_args_file(
+        "release-locked-reject-flags",
+        &["llm_bootstrap", "--topology", "single"],
+    );
+
+    let err = parse_launch_options(
+        [
+            "--release-config",
+            path.to_string_lossy().as_ref(),
+            "--tick-ms",
+            "10",
+        ]
+        .into_iter(),
+    )
+    .expect_err("release config should reject non-whitelist flags");
+    assert!(err.contains("--release-config mode only allows"));
+    assert!(err.contains("--tick-ms"));
+
+    let _ = fs::remove_file(path.as_path());
 }
 
 #[test]

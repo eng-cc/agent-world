@@ -49,8 +49,10 @@ mod observation_trace_runtime;
 mod reward_runtime_network;
 #[path = "reward_runtime_settlement.rs"]
 mod reward_runtime_settlement;
+#[cfg(test)]
+use cli::parse_options;
 use cli::{
-    parse_launch_options, parse_options, print_help, resolve_triad_distributed_gossip, CliOptions,
+    parse_launch_options, print_help, resolve_triad_distributed_gossip, CliOptions,
     NodeTopologyMode,
 };
 use distfs_challenge_network::{

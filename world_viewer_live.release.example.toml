@@ -1,0 +1,19 @@
+# world_viewer_live release-locked startup arguments.
+# Use with:
+#   env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- --release-config world_viewer_live.release.example.toml
+#
+# In --release-config mode, runtime CLI only allows:
+#   --release-config, --bind, --web-bind, --help
+
+locked_args = [
+  "llm_bootstrap",
+  "--topology", "triad_distributed",
+  "--node-id", "p2p-release-node-a",
+  "--node-role", "sequencer",
+  "--triad-sequencer-gossip", "10.0.0.11:5500",
+  "--triad-storage-gossip", "10.0.0.12:5500",
+  "--triad-observer-gossip", "10.0.0.13:5500",
+  "--node-tick-ms", "200",
+  "--reward-runtime-enable",
+  "--reward-runtime-min-observer-traces", "2",
+]

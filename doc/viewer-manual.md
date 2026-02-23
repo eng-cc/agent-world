@@ -40,6 +40,20 @@ env -u NO_COLOR ./scripts/run-viewer-web.sh --address 127.0.0.1 --port 4173
   - `trunk`（`cargo install trunk`）
   - `wasm32-unknown-unknown`（`rustup target add wasm32-unknown-unknown`）
 
+## 发行模式（P2P 推荐）
+
+当节点发布后不希望再通过命令行临时调参时，使用 `--release-config <path>` 启动锁定参数文件：
+
+```bash
+env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- \
+  --release-config world_viewer_live.release.example.toml \
+  --bind 0.0.0.0:5010 \
+  --web-bind 0.0.0.0:5011
+```
+
+- `world_viewer_live.release.example.toml` 参考根目录样例，核心字段为 `locked_args = [...]`。
+- `--release-config` 模式下 CLI 仅允许 `--release-config`、`--bind`、`--web-bind`、`--help`；其余参数会直接拒绝，避免线上节点语义漂移。
+
 ## 常用交互
 - 鼠标拖拽：旋转/平移观察视角。
 - 滚轮：缩放。
