@@ -6,7 +6,7 @@
 - [x] VVU-P2：将 Agent 移动改造为耗时推进（按 tick 更新），补齐内核边界测试。
 - [x] VVU-P3：打通快照到 Viewer 的速度/方向数据链路，并落地方向与速度视觉反馈。
 - [x] VVU-P4：按 `fragment_budget` 落地 Location 破损映射，移除旧口径分支。
-- [ ] VVU-P5：完成材料差异化增强（重点收敛 Carbon/Composite 专属效果）。
+- [x] VVU-P5：完成材料差异化增强（重点收敛 Carbon/Composite 专属效果）。
 - [ ] VVU-P6：补齐新增视觉配置项解析与运行时兼容逻辑（含非法值回退测试）。
 - [ ] VVU-P7：执行 required/full 回归、Playwright Web 闭环与性能收口。
 
@@ -21,6 +21,6 @@
 - `testing-manual.md`
 
 ## 状态
-- 当前阶段：VVU-P4 完成。
-- 下一阶段：VVU-P5（材料差异化增强）进行中。
+- 当前阶段：VVU-P5 完成。
+- 下一阶段：VVU-P6（视觉配置解析与兼容）进行中。
 - 阻塞项：无。

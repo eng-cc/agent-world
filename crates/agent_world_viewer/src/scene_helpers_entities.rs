@@ -165,8 +165,8 @@ fn location_core_material(
         MaterialKind::Silicate => assets.location_core_silicate_material.clone(),
         MaterialKind::Metal => assets.location_core_metal_material.clone(),
         MaterialKind::Ice => assets.location_core_ice_material.clone(),
-        MaterialKind::Carbon => assets.location_core_metal_material.clone(),
-        MaterialKind::Composite => assets.location_core_silicate_material.clone(),
+        MaterialKind::Carbon => assets.chunk_exhausted_material.clone(),
+        MaterialKind::Composite => assets.chunk_generated_material.clone(),
     }
 }
 
@@ -238,6 +238,53 @@ pub(super) fn spawn_location_shell_details(
             )),
             DetailZoomEntity,
         ));
+    }
+
+    if material == MaterialKind::Carbon {
+        for grain_idx in 0..2 {
+            let grain_scale = Vec3::new(
+                1.16 + grain_idx as f32 * 0.12,
+                0.055 + grain_idx as f32 * 0.01,
+                1.16 + grain_idx as f32 * 0.12,
+            );
+            parent.spawn((
+                Mesh3d(assets.world_box_mesh.clone()),
+                MeshMaterial3d(assets.chunk_exhausted_material.clone()),
+                Transform::from_translation(Vec3::new(0.0, 0.02 + grain_idx as f32 * 0.02, 0.0))
+                    .with_scale(grain_scale),
+                BaseScale(grain_scale),
+                Name::new(format!(
+                    "location:detail:carbon:grain:{location_id}:{grain_idx}"
+                )),
+                DetailZoomEntity,
+            ));
+        }
+    }
+
+    if material == MaterialKind::Composite {
+        for layer_idx in 0..2 {
+            let layer_scale = Vec3::new(
+                1.10 + layer_idx as f32 * 0.14,
+                0.07 + layer_idx as f32 * 0.01,
+                1.10 + layer_idx as f32 * 0.14,
+            );
+            let layer_material = if layer_idx % 2 == 0 {
+                assets.chunk_generated_material.clone()
+            } else {
+                assets.chunk_unexplored_material.clone()
+            };
+            parent.spawn((
+                Mesh3d(assets.world_box_mesh.clone()),
+                MeshMaterial3d(layer_material),
+                Transform::from_translation(Vec3::new(0.0, 0.01 + layer_idx as f32 * 0.02, 0.0))
+                    .with_scale(layer_scale),
+                BaseScale(layer_scale),
+                Name::new(format!(
+                    "location:detail:composite:layer:{location_id}:{layer_idx}"
+                )),
+                DetailZoomEntity,
+            ));
+        }
     }
 }
 

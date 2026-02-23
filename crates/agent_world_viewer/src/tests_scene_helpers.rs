@@ -122,6 +122,52 @@ pub(super) fn spawn_location_damage_detail_test_system(
     );
 }
 
+pub(super) fn spawn_location_carbon_material_detail_test_system(
+    mut commands: Commands,
+    config: Res<Viewer3dConfig>,
+    assets: Res<Viewer3dAssets>,
+    mut scene: ResMut<Viewer3dScene>,
+) {
+    let origin = GeoPos::new(0.0, 0.0, 0.0);
+    spawn_location_entity_with_radiation(
+        &mut commands,
+        &config,
+        &assets,
+        &mut scene,
+        origin,
+        "loc-carbon",
+        "Carbon",
+        GeoPos::new(0.0, 0.0, 0.0),
+        MaterialKind::Carbon,
+        7_000,
+        500,
+        None,
+    );
+}
+
+pub(super) fn spawn_location_composite_material_detail_test_system(
+    mut commands: Commands,
+    config: Res<Viewer3dConfig>,
+    assets: Res<Viewer3dAssets>,
+    mut scene: ResMut<Viewer3dScene>,
+) {
+    let origin = GeoPos::new(0.0, 0.0, 0.0);
+    spawn_location_entity_with_radiation(
+        &mut commands,
+        &config,
+        &assets,
+        &mut scene,
+        origin,
+        "loc-composite",
+        "Composite",
+        GeoPos::new(0.0, 0.0, 0.0),
+        MaterialKind::Composite,
+        7_000,
+        500,
+        None,
+    );
+}
+
 pub(super) fn spawn_agent_scale_test_system(
     mut commands: Commands,
     config: Res<Viewer3dConfig>,

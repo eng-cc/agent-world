@@ -280,13 +280,50 @@ fn spawn_location_entity_renders_fragment_budget_damage_overlays() {
         })
         .count();
     assert_eq!(damage_count, 3);
+}
 
-    let mut marker_query = world.query::<&LocationMarker>();
-    let marker = marker_query
+#[test]
+fn spawn_location_entity_carbon_material_has_dedicated_detail_layers() {
+    let mut app = App::new();
+    app.add_systems(Update, spawn_location_carbon_material_detail_test_system);
+    app.insert_resource(Viewer3dConfig::default());
+    app.insert_resource(Viewer3dScene::default());
+    app.insert_resource(test_assets());
+
+    app.update();
+
+    let world = app.world_mut();
+    let mut query = world.query::<&Name>();
+    let carbon_layers = query
         .iter(world)
-        .find(|marker| marker.id == "loc-damage")
-        .expect("location marker exists");
-    assert_eq!(marker.damage_tier, LocationDamageTier::Severe);
+        .filter(|name| {
+            name.as_str()
+                .starts_with("location:detail:carbon:grain:loc-carbon:")
+        })
+        .count();
+    assert_eq!(carbon_layers, 2);
+}
+
+#[test]
+fn spawn_location_entity_composite_material_has_dedicated_detail_layers() {
+    let mut app = App::new();
+    app.add_systems(Update, spawn_location_composite_material_detail_test_system);
+    app.insert_resource(Viewer3dConfig::default());
+    app.insert_resource(Viewer3dScene::default());
+    app.insert_resource(test_assets());
+
+    app.update();
+
+    let world = app.world_mut();
+    let mut query = world.query::<&Name>();
+    let composite_layers = query
+        .iter(world)
+        .filter(|name| {
+            name.as_str()
+                .starts_with("location:detail:composite:layer:loc-composite:")
+        })
+        .count();
+    assert_eq!(composite_layers, 2);
 }
 
 #[test]

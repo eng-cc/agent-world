@@ -76,7 +76,6 @@ pub(super) struct LocationMarker {
     pub name: String,
     pub material: MaterialKind,
     pub radiation_emission_per_tick: i64,
-    pub damage_tier: LocationDamageTier,
 }
 
 #[derive(Component)]
@@ -660,7 +659,6 @@ pub(super) fn spawn_location_entity_with_radiation(
                 name: name.to_string(),
                 material,
                 radiation_emission_per_tick,
-                damage_tier,
             },
             BaseScale(marker_scale),
         ));
@@ -692,7 +690,6 @@ pub(super) fn spawn_location_entity_with_radiation(
                 name: name.to_string(),
                 material,
                 radiation_emission_per_tick,
-                damage_tier,
             },
             BaseScale(marker_scale),
         ))
