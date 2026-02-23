@@ -4,6 +4,7 @@ use agent_world_consensus::node_consensus_signature::{
     sign_proposal_message, NodeConsensusMessageSigner as ConsensusMessageSigner,
 };
 use agent_world_distfs::{blake3_hex, build_replication_record_with_epoch, FileReplicationRecord};
+use agent_world_proto::distributed::DistributedErrorCode;
 use agent_world_proto::distributed_net::NetworkSubscription;
 use agent_world_proto::world_error::WorldError;
 use ed25519_dalek::{Signer as _, SigningKey};
@@ -591,5 +592,57 @@ fn runtime_replication_ingest_rejects_signed_writer_outside_allowlist() {
     let snapshot = runtime.snapshot();
     assert_eq!(snapshot.consensus.network_committed_height, 0);
 
+    let _ = fs::remove_dir_all(dir);
+}
+
+#[test]
+fn runtime_fetch_handlers_reject_unsigned_fetch_request_in_signed_mode() {
+    let world_id = "world-fetch-auth-hardening";
+    let dir = temp_dir("fetch-auth-hardening");
+    let pos_config = signed_pos_config_with_signer_seeds(
+        vec![PosValidator {
+            validator_id: "node-a".to_string(),
+            stake: 100,
+        }],
+        &[("node-a", 111)],
+    );
+    let network: Arc<
+        dyn agent_world_proto::distributed_net::DistributedNetwork<WorldError> + Send + Sync,
+    > = Arc::new(TestInMemoryNetwork::default());
+
+    let config = NodeConfig::new("node-a", world_id, NodeRole::Observer)
+        .expect("config")
+        .with_tick_interval(Duration::from_millis(10))
+        .expect("tick")
+        .with_pos_config(pos_config)
+        .expect("pos config")
+        .with_auto_attest_all_validators(true)
+        .with_replication(signed_replication_config(dir.clone(), 111));
+    let mut runtime = NodeRuntime::new(config)
+        .with_replication_network(NodeReplicationNetworkHandle::new(Arc::clone(&network)));
+    runtime.start().expect("start");
+
+    let unsigned_request = super::replication::FetchCommitRequest {
+        world_id: world_id.to_string(),
+        height: 1,
+        requester_public_key_hex: None,
+        requester_signature_hex: None,
+    };
+    let payload = serde_json::to_vec(&unsigned_request).expect("encode request");
+    let err = network
+        .request(
+            super::replication::REPLICATION_FETCH_COMMIT_PROTOCOL,
+            payload.as_slice(),
+        )
+        .expect_err("unsigned fetch request should be rejected");
+    match err {
+        WorldError::NetworkRequestFailed { code, message, .. } => {
+            assert_eq!(code, DistributedErrorCode::ErrBadRequest);
+            assert!(message.contains("authorization failed"));
+        }
+        other => panic!("unexpected error: {other:?}"),
+    }
+
+    runtime.stop().expect("stop");
     let _ = fs::remove_dir_all(dir);
 }

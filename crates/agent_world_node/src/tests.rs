@@ -7,7 +7,8 @@ use agent_world_consensus::node_consensus_signature::{
 use agent_world_distfs::{FileStore as _, LocalCasStore, SingleWriterReplicationGuard};
 use agent_world_proto::distributed_net::NetworkSubscription;
 use agent_world_proto::world_error::WorldError;
-use ed25519_dalek::SigningKey;
+use ed25519_dalek::{Signer as _, SigningKey};
+use serde::Serialize;
 use std::collections::{BTreeMap, HashMap};
 use std::fs;
 use std::net::UdpSocket;
@@ -86,6 +87,76 @@ fn signed_pos_config_with_signer_seeds(
     NodePosConfig::ethereum_like(validators)
         .with_validator_signer_public_keys(signer_map)
         .expect("signed pos config")
+}
+
+#[derive(Debug, Serialize)]
+struct FetchCommitRequestSigningPayload<'a> {
+    version: u8,
+    world_id: &'a str,
+    height: u64,
+    requester_public_key_hex: Option<&'a str>,
+}
+
+#[derive(Debug, Serialize)]
+struct FetchBlobRequestSigningPayload<'a> {
+    version: u8,
+    content_hash: &'a str,
+    requester_public_key_hex: Option<&'a str>,
+}
+
+fn signed_fetch_commit_request_for_test(
+    world_id: &str,
+    height: u64,
+    signer_seed: u8,
+) -> super::replication::FetchCommitRequest {
+    let (private_hex, public_hex) = deterministic_keypair_hex(signer_seed);
+    let signing_key_bytes: [u8; 32] = hex::decode(private_hex)
+        .expect("private key decode")
+        .try_into()
+        .expect("private key len");
+    let signing_key = SigningKey::from_bytes(&signing_key_bytes);
+    let mut request = super::replication::FetchCommitRequest {
+        world_id: world_id.to_string(),
+        height,
+        requester_public_key_hex: Some(public_hex),
+        requester_signature_hex: None,
+    };
+    let payload = FetchCommitRequestSigningPayload {
+        version: 1,
+        world_id: request.world_id.as_str(),
+        height: request.height,
+        requester_public_key_hex: request.requester_public_key_hex.as_deref(),
+    };
+    let payload_bytes = serde_json::to_vec(&payload).expect("encode fetch-commit signing payload");
+    let signature = signing_key.sign(payload_bytes.as_slice());
+    request.requester_signature_hex = Some(hex::encode(signature.to_bytes()));
+    request
+}
+
+fn signed_fetch_blob_request_for_test(
+    content_hash: &str,
+    signer_seed: u8,
+) -> super::replication::FetchBlobRequest {
+    let (private_hex, public_hex) = deterministic_keypair_hex(signer_seed);
+    let signing_key_bytes: [u8; 32] = hex::decode(private_hex)
+        .expect("private key decode")
+        .try_into()
+        .expect("private key len");
+    let signing_key = SigningKey::from_bytes(&signing_key_bytes);
+    let mut request = super::replication::FetchBlobRequest {
+        content_hash: content_hash.to_string(),
+        requester_public_key_hex: Some(public_hex),
+        requester_signature_hex: None,
+    };
+    let payload = FetchBlobRequestSigningPayload {
+        version: 1,
+        content_hash: request.content_hash.as_str(),
+        requester_public_key_hex: request.requester_public_key_hex.as_deref(),
+    };
+    let payload_bytes = serde_json::to_vec(&payload).expect("encode fetch-blob signing payload");
+    let signature = signing_key.sign(payload_bytes.as_slice());
+    request.requester_signature_hex = Some(hex::encode(signature.to_bytes()));
+    request
 }
 
 #[derive(Clone)]
@@ -1478,10 +1549,8 @@ fn runtime_network_replication_fetch_handlers_serve_commit_and_blob() {
     assert!(snapshot.consensus.committed_height >= 1);
     let target_height = snapshot.consensus.committed_height;
 
-    let fetch_commit_request = super::replication::FetchCommitRequest {
-        world_id: "world-network-fetch".to_string(),
-        height: target_height,
-    };
+    let fetch_commit_request =
+        signed_fetch_commit_request_for_test("world-network-fetch", target_height, 77);
     let fetch_commit_payload =
         serde_json::to_vec(&fetch_commit_request).expect("encode fetch commit request");
     let fetch_commit_response_payload = network
@@ -1501,9 +1570,8 @@ fn runtime_network_replication_fetch_handlers_serve_commit_and_blob() {
         format!("consensus/commits/{:020}.json", target_height)
     );
 
-    let fetch_blob_request = super::replication::FetchBlobRequest {
-        content_hash: commit_message.record.content_hash.clone(),
-    };
+    let fetch_blob_request =
+        signed_fetch_blob_request_for_test(commit_message.record.content_hash.as_str(), 77);
     let fetch_blob_payload =
         serde_json::to_vec(&fetch_blob_request).expect("encode fetch blob request");
     let fetch_blob_response_payload = network
@@ -1575,10 +1643,7 @@ fn runtime_network_replication_gap_sync_fetches_missing_commits() {
     let mut commit_map = HashMap::<u64, super::replication::GossipReplicationMessage>::new();
     let mut blob_map = HashMap::<String, Vec<u8>>::new();
     for height in 1..=target_height {
-        let request = super::replication::FetchCommitRequest {
-            world_id: world_id.to_string(),
-            height,
-        };
+        let request = signed_fetch_commit_request_for_test(world_id, height, 78);
         let payload = serde_json::to_vec(&request).expect("encode commit request");
         let response_payload = network
             .request(
@@ -1741,10 +1806,7 @@ fn runtime_network_replication_gap_sync_not_found_is_non_fatal() {
     let target_height = runtime_a.snapshot().consensus.committed_height;
     runtime_a.stop().expect("stop a");
 
-    let request = super::replication::FetchCommitRequest {
-        world_id: world_id.to_string(),
-        height: target_height,
-    };
+    let request = signed_fetch_commit_request_for_test(world_id, target_height, 87);
     let payload = serde_json::to_vec(&request).expect("encode commit request");
     let response_payload = network
         .request(
@@ -1859,10 +1921,7 @@ fn runtime_network_replication_gap_sync_reports_error_after_retries_exhausted() 
     let target_height = runtime_a.snapshot().consensus.committed_height;
     runtime_a.stop().expect("stop a");
 
-    let request = super::replication::FetchCommitRequest {
-        world_id: world_id.to_string(),
-        height: target_height,
-    };
+    let request = signed_fetch_commit_request_for_test(world_id, target_height, 89);
     let payload = serde_json::to_vec(&request).expect("encode commit request");
     let response_payload = network
         .request(

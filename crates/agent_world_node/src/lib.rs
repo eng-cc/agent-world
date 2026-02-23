@@ -495,6 +495,7 @@ fn register_replication_fetch_handlers(
 
     let commit_root_dir = replication.root_dir.clone();
     let commit_world_id = world_id.to_string();
+    let commit_replication_config = replication.clone();
     network
         .register_handler(
             REPLICATION_FETCH_COMMIT_PROTOCOL,
@@ -509,6 +510,11 @@ fn register_replication_fetch_handlers(
                         commit_world_id, request.world_id
                     )));
                 }
+                commit_replication_config
+                    .authorize_fetch_commit_request(&request)
+                    .map_err(|err| {
+                        network_bad_request(format!("fetch-commit authorization failed: {}", err))
+                    })?;
                 let message = load_commit_message_from_root(
                     commit_root_dir.as_path(),
                     commit_world_id.as_str(),
@@ -529,6 +535,7 @@ fn register_replication_fetch_handlers(
         .map_err(network_replication_error)?;
 
     let blob_root_dir = replication.root_dir.clone();
+    let blob_replication_config = replication.clone();
     network
         .register_handler(
             REPLICATION_FETCH_BLOB_PROTOCOL,
@@ -536,6 +543,11 @@ fn register_replication_fetch_handlers(
                 let request =
                     serde_json::from_slice::<FetchBlobRequest>(payload).map_err(|err| {
                         network_bad_request(format!("decode fetch-blob request failed: {}", err))
+                    })?;
+                blob_replication_config
+                    .authorize_fetch_blob_request(&request)
+                    .map_err(|err| {
+                        network_bad_request(format!("fetch-blob authorization failed: {}", err))
                     })?;
                 let blob =
                     load_blob_from_root(blob_root_dir.as_path(), request.content_hash.as_str())
@@ -1268,11 +1280,10 @@ impl PosNodeEngine {
                     continue;
                 }
             };
+            let fetch_blob_request = replication.build_fetch_blob_request(content_hash.as_str())?;
             let response = match endpoint.request_json::<FetchBlobRequest, FetchBlobResponse>(
                 REPLICATION_FETCH_BLOB_PROTOCOL,
-                &FetchBlobRequest {
-                    content_hash: content_hash.clone(),
-                },
+                &fetch_blob_request,
             ) {
                 Ok(response) => response,
                 Err(err) => {
@@ -1522,10 +1533,7 @@ impl PosNodeEngine {
         replication_runtime: &mut ReplicationRuntime,
         height: u64,
     ) -> Result<GapSyncHeightOutcome, NodeError> {
-        let request = FetchCommitRequest {
-            world_id: world_id.to_string(),
-            height,
-        };
+        let request = replication_runtime.build_fetch_commit_request(world_id, height)?;
         let response = endpoint.request_json::<FetchCommitRequest, FetchCommitResponse>(
             REPLICATION_FETCH_COMMIT_PROTOCOL,
             &request,
@@ -1548,9 +1556,8 @@ impl PosNodeEngine {
             });
         }
 
-        let blob_request = FetchBlobRequest {
-            content_hash: message.record.content_hash.clone(),
-        };
+        let blob_request =
+            replication_runtime.build_fetch_blob_request(message.record.content_hash.as_str())?;
         let blob_response = endpoint.request_json::<FetchBlobRequest, FetchBlobResponse>(
             REPLICATION_FETCH_BLOB_PROTOCOL,
             &blob_request,

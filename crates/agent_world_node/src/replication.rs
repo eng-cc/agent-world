@@ -144,6 +144,88 @@ impl NodeReplicationConfig {
         &self.remote_writer_allowlist
     }
 
+    pub(crate) fn authorize_fetch_commit_request(
+        &self,
+        request: &FetchCommitRequest,
+    ) -> Result<(), NodeError> {
+        let signing_payload = fetch_commit_request_signing_bytes(request)?;
+        self.authorize_fetch_request(
+            request.requester_public_key_hex.as_deref(),
+            request.requester_signature_hex.as_deref(),
+            signing_payload.as_slice(),
+            "fetch-commit request",
+        )
+    }
+
+    pub(crate) fn authorize_fetch_blob_request(
+        &self,
+        request: &FetchBlobRequest,
+    ) -> Result<(), NodeError> {
+        let signing_payload = fetch_blob_request_signing_bytes(request)?;
+        self.authorize_fetch_request(
+            request.requester_public_key_hex.as_deref(),
+            request.requester_signature_hex.as_deref(),
+            signing_payload.as_slice(),
+            "fetch-blob request",
+        )
+    }
+
+    fn authorize_fetch_request(
+        &self,
+        requester_public_key_hex: Option<&str>,
+        requester_signature_hex: Option<&str>,
+        signing_payload: &[u8],
+        request_label: &str,
+    ) -> Result<(), NodeError> {
+        let require_auth = self.enforce_consensus_signature()
+            || !self.remote_writer_allowlist.is_empty()
+            || requester_public_key_hex.is_some()
+            || requester_signature_hex.is_some();
+        if !require_auth {
+            return Ok(());
+        }
+        if self.remote_writer_allowlist.is_empty() {
+            return Err(NodeError::Replication {
+                reason: format!(
+                    "{request_label} authorization failed: replication remote writer allowlist is empty while signature enforcement is enabled"
+                ),
+            });
+        }
+        let requester_public_key_hex =
+            requester_public_key_hex.ok_or_else(|| NodeError::Replication {
+                reason: format!(
+                    "{request_label} authorization failed: missing requester_public_key_hex"
+                ),
+            })?;
+        let requester_signature_hex =
+            requester_signature_hex.ok_or_else(|| NodeError::Replication {
+                reason: format!(
+                    "{request_label} authorization failed: missing requester_signature_hex"
+                ),
+            })?;
+        let normalized_requester_public_key_hex = normalize_replication_public_key_hex_for_request(
+            requester_public_key_hex,
+            &format!("{request_label} requester public key"),
+        )?;
+        verify_signed_fetch_request(
+            normalized_requester_public_key_hex.as_str(),
+            requester_signature_hex,
+            signing_payload,
+            request_label,
+        )?;
+        if !self
+            .remote_writer_allowlist
+            .contains(normalized_requester_public_key_hex.as_str())
+        {
+            return Err(NodeError::Replication {
+                reason: format!(
+                    "{request_label} requester is not authorized: requester_public_key_hex={normalized_requester_public_key_hex}"
+                ),
+            });
+        }
+        Ok(())
+    }
+
     fn store_root(&self) -> PathBuf {
         self.root_dir.join("store")
     }
@@ -168,6 +250,10 @@ impl NodeReplicationConfig {
 pub(crate) struct FetchCommitRequest {
     pub world_id: String,
     pub height: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub requester_public_key_hex: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub requester_signature_hex: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -179,6 +265,10 @@ pub(crate) struct FetchCommitResponse {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct FetchBlobRequest {
     pub content_hash: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub requester_public_key_hex: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub requester_signature_hex: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -260,6 +350,21 @@ struct ReplicationSigningPayload<'a> {
     record: &'a FileReplicationRecord,
     payload: &'a [u8],
     public_key_hex: Option<&'a str>,
+}
+
+#[derive(Debug, Serialize)]
+struct FetchCommitRequestSigningPayload<'a> {
+    version: u8,
+    world_id: &'a str,
+    height: u64,
+    requester_public_key_hex: Option<&'a str>,
+}
+
+#[derive(Debug, Serialize)]
+struct FetchBlobRequestSigningPayload<'a> {
+    version: u8,
+    content_hash: &'a str,
+    requester_public_key_hex: Option<&'a str>,
 }
 
 impl ReplicationRuntime {
@@ -521,6 +626,44 @@ impl ReplicationRuntime {
         load_blob_from_root(self.config.root_dir.as_path(), content_hash)
     }
 
+    pub(crate) fn build_fetch_commit_request(
+        &self,
+        world_id: &str,
+        height: u64,
+    ) -> Result<FetchCommitRequest, NodeError> {
+        let mut request = FetchCommitRequest {
+            world_id: world_id.to_string(),
+            height,
+            requester_public_key_hex: self
+                .signer
+                .as_ref()
+                .map(|signer| signer.public_key_hex.clone()),
+            requester_signature_hex: None,
+        };
+        if let Some(signer) = &self.signer {
+            request.requester_signature_hex = Some(sign_fetch_commit_request(&request, signer)?);
+        }
+        Ok(request)
+    }
+
+    pub(crate) fn build_fetch_blob_request(
+        &self,
+        content_hash: &str,
+    ) -> Result<FetchBlobRequest, NodeError> {
+        let mut request = FetchBlobRequest {
+            content_hash: content_hash.to_string(),
+            requester_public_key_hex: self
+                .signer
+                .as_ref()
+                .map(|signer| signer.public_key_hex.clone()),
+            requester_signature_hex: None,
+        };
+        if let Some(signer) = &self.signer {
+            request.requester_signature_hex = Some(sign_fetch_blob_request(&request, signer)?);
+        }
+        Ok(request)
+    }
+
     pub(crate) fn probe_storage_challenges(
         &self,
         world_id: &str,
@@ -659,6 +802,20 @@ fn normalize_replication_public_key_hex_for_config(
     Ok(hex::encode(key_bytes))
 }
 
+fn normalize_replication_public_key_hex_for_request(
+    raw: &str,
+    field: &str,
+) -> Result<String, NodeError> {
+    let normalized = raw.trim();
+    if normalized.is_empty() {
+        return Err(NodeError::Replication {
+            reason: format!("{field} cannot be empty"),
+        });
+    }
+    let key_bytes = decode_hex_array::<32>(normalized, field)?;
+    Ok(hex::encode(key_bytes))
+}
+
 fn sign_replication_message(
     message: &GossipReplicationMessage,
     signer: &ReplicationSigningKey,
@@ -700,6 +857,48 @@ fn verify_replication_message_signature(
         })
 }
 
+fn sign_fetch_commit_request(
+    request: &FetchCommitRequest,
+    signer: &ReplicationSigningKey,
+) -> Result<String, NodeError> {
+    let payload = fetch_commit_request_signing_bytes(request)?;
+    let signature: Signature = signer.signing_key.sign(&payload);
+    Ok(hex::encode(signature.to_bytes()))
+}
+
+fn sign_fetch_blob_request(
+    request: &FetchBlobRequest,
+    signer: &ReplicationSigningKey,
+) -> Result<String, NodeError> {
+    let payload = fetch_blob_request_signing_bytes(request)?;
+    let signature: Signature = signer.signing_key.sign(&payload);
+    Ok(hex::encode(signature.to_bytes()))
+}
+
+fn verify_signed_fetch_request(
+    requester_public_key_hex: &str,
+    requester_signature_hex: &str,
+    payload: &[u8],
+    request_label: &str,
+) -> Result<(), NodeError> {
+    let public_key_label = format!("{request_label} requester public key");
+    let signature_label = format!("{request_label} requester signature");
+    let public_key_bytes =
+        decode_hex_array::<32>(requester_public_key_hex, public_key_label.as_str())?;
+    let signature_bytes =
+        decode_hex_array::<64>(requester_signature_hex, signature_label.as_str())?;
+    let public_key =
+        VerifyingKey::from_bytes(&public_key_bytes).map_err(|err| NodeError::Replication {
+            reason: format!("parse {request_label} requester public key failed: {err}"),
+        })?;
+    let signature = Signature::from_bytes(&signature_bytes);
+    public_key
+        .verify(payload, &signature)
+        .map_err(|err| NodeError::Replication {
+            reason: format!("verify {request_label} requester signature failed: {err}"),
+        })
+}
+
 fn replication_signing_bytes(message: &GossipReplicationMessage) -> Result<Vec<u8>, NodeError> {
     let payload = ReplicationSigningPayload {
         version: message.version,
@@ -711,6 +910,29 @@ fn replication_signing_bytes(message: &GossipReplicationMessage) -> Result<Vec<u
     };
     serde_json::to_vec(&payload).map_err(|err| NodeError::Replication {
         reason: format!("serialize replication signing payload failed: {}", err),
+    })
+}
+
+fn fetch_commit_request_signing_bytes(request: &FetchCommitRequest) -> Result<Vec<u8>, NodeError> {
+    let payload = FetchCommitRequestSigningPayload {
+        version: REPLICATION_VERSION,
+        world_id: request.world_id.as_str(),
+        height: request.height,
+        requester_public_key_hex: request.requester_public_key_hex.as_deref(),
+    };
+    serde_json::to_vec(&payload).map_err(|err| NodeError::Replication {
+        reason: format!("serialize fetch-commit signing payload failed: {err}"),
+    })
+}
+
+fn fetch_blob_request_signing_bytes(request: &FetchBlobRequest) -> Result<Vec<u8>, NodeError> {
+    let payload = FetchBlobRequestSigningPayload {
+        version: REPLICATION_VERSION,
+        content_hash: request.content_hash.as_str(),
+        requester_public_key_hex: request.requester_public_key_hex.as_deref(),
+    };
+    serde_json::to_vec(&payload).map_err(|err| NodeError::Replication {
+        reason: format!("serialize fetch-blob signing payload failed: {err}"),
     })
 }
 
@@ -1011,6 +1233,97 @@ mod tests {
             .validate_remote_message_for_observe("node-b", "world-allowlist", &allowed_message)
             .expect("authorized writer should pass");
         assert!(accepted);
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn build_fetch_commit_request_signs_with_runtime_signer() {
+        let dir = temp_dir("fetch-commit-sign");
+        let (local_private_hex, local_public_hex) = deterministic_keypair_hex(41);
+        let config = NodeReplicationConfig::new(&dir)
+            .expect("config")
+            .with_signing_keypair(local_private_hex, local_public_hex.clone())
+            .expect("signing keypair")
+            .with_remote_writer_allowlist(vec![local_public_hex.clone()])
+            .expect("allowlist");
+        let runtime = ReplicationRuntime::new(&config, "node-a").expect("runtime");
+
+        let request = runtime
+            .build_fetch_commit_request("world-fetch-sign", 7)
+            .expect("build request");
+        assert_eq!(
+            request.requester_public_key_hex.as_deref(),
+            Some(local_public_hex.as_str())
+        );
+        assert!(request.requester_signature_hex.is_some());
+        config
+            .authorize_fetch_commit_request(&request)
+            .expect("signed request should pass authorization");
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn authorize_fetch_commit_request_rejects_missing_signature_when_required() {
+        let dir = temp_dir("fetch-commit-missing-signature");
+        let (local_private_hex, local_public_hex) = deterministic_keypair_hex(42);
+        let (_, allowed_public_hex) = deterministic_keypair_hex(43);
+        let config = NodeReplicationConfig::new(&dir)
+            .expect("config")
+            .with_signing_keypair(local_private_hex, local_public_hex)
+            .expect("signing keypair")
+            .with_remote_writer_allowlist(vec![allowed_public_hex.clone()])
+            .expect("allowlist");
+        let request = FetchCommitRequest {
+            world_id: "world-fetch-sign".to_string(),
+            height: 9,
+            requester_public_key_hex: Some(allowed_public_hex),
+            requester_signature_hex: None,
+        };
+
+        let err = config
+            .authorize_fetch_commit_request(&request)
+            .expect_err("unsigned request should fail");
+        assert!(matches!(
+            err,
+            NodeError::Replication { reason }
+                if reason.contains("missing requester_signature_hex")
+        ));
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn authorize_fetch_blob_request_rejects_requester_outside_allowlist() {
+        let dir = temp_dir("fetch-blob-allowlist");
+        let (local_private_hex, local_public_hex) = deterministic_keypair_hex(44);
+        let (_, allowed_public_hex) = deterministic_keypair_hex(45);
+        let (requester_private_hex, requester_public_hex) = deterministic_keypair_hex(46);
+        let config = NodeReplicationConfig::new(&dir)
+            .expect("config")
+            .with_signing_keypair(local_private_hex, local_public_hex)
+            .expect("signing keypair")
+            .with_remote_writer_allowlist(vec![allowed_public_hex])
+            .expect("allowlist");
+        let signer = ReplicationSigningKey {
+            signing_key: signing_key_from_hex(requester_private_hex.as_str()).expect("signing key"),
+            public_key_hex: requester_public_hex.clone(),
+        };
+        let mut request = FetchBlobRequest {
+            content_hash: "hash-1".to_string(),
+            requester_public_key_hex: Some(requester_public_hex),
+            requester_signature_hex: None,
+        };
+        request.requester_signature_hex =
+            Some(sign_fetch_blob_request(&request, &signer).expect("sign"));
+
+        let err = config
+            .authorize_fetch_blob_request(&request)
+            .expect_err("out-of-allowlist requester should fail");
+        assert!(
+            matches!(err, NodeError::Replication { reason } if reason.contains("not authorized"))
+        );
 
         let _ = std::fs::remove_dir_all(&dir);
     }
