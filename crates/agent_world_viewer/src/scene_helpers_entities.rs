@@ -139,6 +139,24 @@ fn location_shell_halo_layers(config: &Viewer3dConfig) -> usize {
     }
 }
 
+fn location_damage_overlay_layers(damage_tier: LocationDamageTier) -> usize {
+    match damage_tier {
+        LocationDamageTier::Intact => 0,
+        LocationDamageTier::Light => 1,
+        LocationDamageTier::Heavy => 2,
+        LocationDamageTier::Severe => 3,
+    }
+}
+
+fn location_core_vertical_scale(damage_tier: LocationDamageTier) -> f32 {
+    match damage_tier {
+        LocationDamageTier::Intact => 1.0,
+        LocationDamageTier::Light => 0.92,
+        LocationDamageTier::Heavy => 0.8,
+        LocationDamageTier::Severe => 0.62,
+    }
+}
+
 fn location_core_material(
     assets: &Viewer3dAssets,
     material: MaterialKind,
@@ -159,12 +177,13 @@ pub(super) fn spawn_location_shell_details(
     location_id: &str,
     material: MaterialKind,
     radiation_emission_per_tick: i64,
+    damage_tier: LocationDamageTier,
 ) {
     if !config.assets.location_shell_enabled {
         return;
     }
 
-    let core_scale = Vec3::splat(1.0);
+    let core_scale = Vec3::new(1.0, location_core_vertical_scale(damage_tier), 1.0);
     parent.spawn((
         Mesh3d(assets.location_mesh.clone()),
         MeshMaterial3d(location_core_material(assets, material)),
@@ -200,6 +219,25 @@ pub(super) fn spawn_location_shell_details(
                 DetailZoomEntity,
             ));
         }
+    }
+
+    for overlay_idx in 0..location_damage_overlay_layers(damage_tier) {
+        let overlay_scale = Vec3::new(
+            1.05 + overlay_idx as f32 * 0.14,
+            (0.085 - overlay_idx as f32 * 0.015).max(0.03),
+            1.05 + overlay_idx as f32 * 0.14,
+        );
+        parent.spawn((
+            Mesh3d(assets.world_box_mesh.clone()),
+            MeshMaterial3d(assets.chunk_exhausted_material.clone()),
+            Transform::from_translation(Vec3::new(0.0, -0.01 - overlay_idx as f32 * 0.01, 0.0))
+                .with_scale(overlay_scale),
+            BaseScale(overlay_scale),
+            Name::new(format!(
+                "location:detail:damage:{location_id}:{overlay_idx}"
+            )),
+            DetailZoomEntity,
+        ));
     }
 }
 

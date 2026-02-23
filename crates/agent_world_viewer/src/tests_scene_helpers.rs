@@ -19,6 +19,7 @@ pub(super) fn spawn_label_test_system(
         MaterialKind::Silicate,
         100,
         0,
+        None,
     );
 }
 
@@ -41,6 +42,7 @@ pub(super) fn spawn_location_scale_test_system(
         MaterialKind::Silicate,
         20_000,
         0,
+        None,
     );
 }
 
@@ -63,6 +65,7 @@ pub(super) fn spawn_location_detail_ring_test_system(
         MaterialKind::Silicate,
         20_000,
         0,
+        None,
     );
 }
 
@@ -85,6 +88,37 @@ pub(super) fn spawn_location_detail_halo_test_system(
         MaterialKind::Metal,
         6_000,
         10_000,
+        None,
+    );
+}
+
+pub(super) fn spawn_location_damage_detail_test_system(
+    mut commands: Commands,
+    config: Res<Viewer3dConfig>,
+    assets: Res<Viewer3dAssets>,
+    mut scene: ResMut<Viewer3dScene>,
+) {
+    let origin = GeoPos::new(0.0, 0.0, 0.0);
+    let mut budget = agent_world::simulator::FragmentResourceBudget::default();
+    budget
+        .total_by_element_g
+        .insert(agent_world::simulator::FragmentElementKind::Iron, 1_000);
+    budget
+        .remaining_by_element_g
+        .insert(agent_world::simulator::FragmentElementKind::Iron, 100);
+    spawn_location_entity_with_radiation(
+        &mut commands,
+        &config,
+        &assets,
+        &mut scene,
+        origin,
+        "loc-damage",
+        "Damage",
+        GeoPos::new(0.0, 0.0, 0.0),
+        MaterialKind::Silicate,
+        8_000,
+        1_000,
+        Some(&budget),
     );
 }
 
@@ -129,6 +163,7 @@ pub(super) fn spawn_agent_surface_attachment_test_system(
         MaterialKind::Silicate,
         240,
         0,
+        None,
     );
     spawn_agent_entity(
         &mut commands,
@@ -164,6 +199,7 @@ pub(super) fn spawn_agent_surface_standoff_test_system(
         MaterialKind::Silicate,
         240,
         0,
+        None,
     );
     spawn_agent_entity(
         &mut commands,

@@ -261,6 +261,35 @@ fn spawn_location_entity_renders_radiation_halo_details() {
 }
 
 #[test]
+fn spawn_location_entity_renders_fragment_budget_damage_overlays() {
+    let mut app = App::new();
+    app.add_systems(Update, spawn_location_damage_detail_test_system);
+    app.insert_resource(Viewer3dConfig::default());
+    app.insert_resource(Viewer3dScene::default());
+    app.insert_resource(test_assets());
+
+    app.update();
+
+    let world = app.world_mut();
+    let mut name_query = world.query::<&Name>();
+    let damage_count = name_query
+        .iter(world)
+        .filter(|name| {
+            name.as_str()
+                .starts_with("location:detail:damage:loc-damage:")
+        })
+        .count();
+    assert_eq!(damage_count, 3);
+
+    let mut marker_query = world.query::<&LocationMarker>();
+    let marker = marker_query
+        .iter(world)
+        .find(|marker| marker.id == "loc-damage")
+        .expect("location marker exists");
+    assert_eq!(marker.damage_tier, LocationDamageTier::Severe);
+}
+
+#[test]
 fn spawn_location_entity_skips_shell_details_when_disabled() {
     let mut app = App::new();
     app.add_systems(Update, spawn_location_detail_halo_test_system);

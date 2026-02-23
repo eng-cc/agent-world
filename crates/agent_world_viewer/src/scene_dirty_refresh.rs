@@ -72,6 +72,7 @@ pub(super) fn refresh_scene_dirty_objects(
             location.profile.material,
             visual_radius_cm,
             location.profile.radiation_emission_per_tick,
+            location.fragment_budget.as_ref(),
         );
 
         if let (Some(fragment_profile), Some(entity)) = (

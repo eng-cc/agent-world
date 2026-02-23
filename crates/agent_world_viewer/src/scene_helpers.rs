@@ -62,12 +62,21 @@ pub(super) struct AgentMarker {
     pub module_count: usize,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum LocationDamageTier {
+    Intact,
+    Light,
+    Heavy,
+    Severe,
+}
+
 #[derive(Component)]
 pub(super) struct LocationMarker {
     pub id: String,
     pub name: String,
     pub material: MaterialKind,
     pub radiation_emission_per_tick: i64,
+    pub damage_tier: LocationDamageTier,
 }
 
 #[derive(Component)]
@@ -178,6 +187,7 @@ pub(super) fn rebuild_scene_from_snapshot(
             location.profile.material,
             visual_radius_cm,
             location.profile.radiation_emission_per_tick,
+            location.fragment_budget.as_ref(),
         );
 
         if let (Some(fragment_profile), Some(entity)) = (
@@ -333,6 +343,7 @@ pub(super) fn apply_events_to_scene(
                     profile.material,
                     profile.radius_cm,
                     profile.radiation_emission_per_tick,
+                    None,
                 );
             }
             WorldEventKind::AgentRegistered { agent_id, pos, .. } => {
@@ -627,7 +638,9 @@ pub(super) fn spawn_location_entity_with_radiation(
     material: MaterialKind,
     radius_cm: i64,
     radiation_emission_per_tick: i64,
+    fragment_budget: Option<&FragmentResourceBudget>,
 ) {
+    let damage_tier = location_damage_tier(fragment_budget);
     scene
         .location_positions
         .insert(location_id.to_string(), pos);
@@ -647,6 +660,7 @@ pub(super) fn spawn_location_entity_with_radiation(
                 name: name.to_string(),
                 material,
                 radiation_emission_per_tick,
+                damage_tier,
             },
             BaseScale(marker_scale),
         ));
@@ -662,6 +676,7 @@ pub(super) fn spawn_location_entity_with_radiation(
                 location_id,
                 material,
                 radiation_emission_per_tick,
+                damage_tier,
             );
         });
         return;
@@ -677,6 +692,7 @@ pub(super) fn spawn_location_entity_with_radiation(
                 name: name.to_string(),
                 material,
                 radiation_emission_per_tick,
+                damage_tier,
             },
             BaseScale(marker_scale),
         ))
@@ -690,6 +706,7 @@ pub(super) fn spawn_location_entity_with_radiation(
             location_id,
             material,
             radiation_emission_per_tick,
+            damage_tier,
         );
     });
     scene
@@ -874,6 +891,28 @@ pub(super) fn location_visual_radius_cm(
         .cbrt()
         .max(LOCATION_DEPLETION_MIN_RADIUS_FACTOR);
     ((base_radius as f32) * radius_factor).round().max(1.0) as i64
+}
+
+pub(super) fn location_damage_tier(
+    fragment_budget: Option<&FragmentResourceBudget>,
+) -> LocationDamageTier {
+    let Some(fragment_budget) = fragment_budget else {
+        return LocationDamageTier::Intact;
+    };
+    let Some(remaining_ratio) = location_remaining_mass_ratio(fragment_budget) else {
+        return LocationDamageTier::Intact;
+    };
+
+    let damage_ratio = 1.0 - remaining_ratio.clamp(0.0, 1.0);
+    if damage_ratio < 0.2 {
+        LocationDamageTier::Intact
+    } else if damage_ratio < 0.5 {
+        LocationDamageTier::Light
+    } else if damage_ratio < 0.8 {
+        LocationDamageTier::Heavy
+    } else {
+        LocationDamageTier::Severe
+    }
 }
 
 fn location_remaining_mass_ratio(fragment_budget: &FragmentResourceBudget) -> Option<f32> {

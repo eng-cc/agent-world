@@ -26,6 +26,46 @@ fn location_visual_radius_cm_tracks_remaining_mass_ratio() {
 }
 
 #[test]
+fn location_damage_tier_uses_fragment_budget_ratio_thresholds() {
+    let mut budget = FragmentResourceBudget::default();
+    budget
+        .total_by_element_g
+        .insert(FragmentElementKind::Iron, 1_000);
+
+    budget
+        .remaining_by_element_g
+        .insert(FragmentElementKind::Iron, 900);
+    assert_eq!(
+        location_damage_tier(Some(&budget)),
+        LocationDamageTier::Intact
+    );
+
+    budget
+        .remaining_by_element_g
+        .insert(FragmentElementKind::Iron, 600);
+    assert_eq!(
+        location_damage_tier(Some(&budget)),
+        LocationDamageTier::Light
+    );
+
+    budget
+        .remaining_by_element_g
+        .insert(FragmentElementKind::Iron, 300);
+    assert_eq!(
+        location_damage_tier(Some(&budget)),
+        LocationDamageTier::Heavy
+    );
+
+    budget
+        .remaining_by_element_g
+        .insert(FragmentElementKind::Iron, 100);
+    assert_eq!(
+        location_damage_tier(Some(&budget)),
+        LocationDamageTier::Severe
+    );
+}
+
+#[test]
 fn location_render_radius_units_scales_by_world_units_without_clamp() {
     let mapped = location_render_radius_units(500_000, 0.00001);
     assert!((mapped - 5.0).abs() < f32::EPSILON);
