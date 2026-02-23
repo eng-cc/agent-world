@@ -292,6 +292,9 @@ pub(super) fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<C
             "--llm" => {
                 options.llm_mode = true;
             }
+            "--no-llm" => {
+                options.llm_mode = false;
+            }
             "--topology" => {
                 let raw = iter
                     .next()
@@ -647,7 +650,7 @@ pub(super) fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<C
 
 pub(super) fn print_help() {
     println!(
-        "Usage: world_viewer_live [scenario] [--bind <addr>] [--web-bind <addr>] [--tick-ms <ms>] [--llm] [--no-node] [--node-validator <id:stake>...] [--node-gossip-bind <addr:port>] [--node-gossip-peer <addr:port>...]"
+        "Usage: world_viewer_live [scenario] [--bind <addr>] [--web-bind <addr>] [--tick-ms <ms>] [--llm|--no-llm] [--no-node] [--node-validator <id:stake>...] [--node-gossip-bind <addr:port>] [--node-gossip-peer <addr:port>...]"
     );
     println!("Options:");
     println!("  --release-config <path> Enable release-locked launch from TOML locked_args");
@@ -656,6 +659,7 @@ pub(super) fn print_help() {
     println!("  --tick-ms <ms>    Tick interval in milliseconds (default: 200)");
     println!("  --scenario <name> Scenario name (default: twin_region_bootstrap)");
     println!("  --llm             Enable LLM decisions (default)");
+    println!("  --no-llm          Disable LLM decisions and use built-in script");
     println!(
         "  --topology <mode> Node topology mode: single|triad|triad_distributed (default: triad)"
     );

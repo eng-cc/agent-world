@@ -214,6 +214,21 @@ fn parse_options_enables_llm_mode() {
 }
 
 #[test]
+fn parse_options_disables_llm_mode() {
+    let options = parse_options(["--no-llm"].into_iter()).expect("script mode");
+    assert!(!options.llm_mode);
+}
+
+#[test]
+fn parse_options_llm_flags_follow_last_one_wins() {
+    let options = parse_options(["--no-llm", "--llm"].into_iter()).expect("llm after no-llm");
+    assert!(options.llm_mode);
+
+    let options = parse_options(["--llm", "--no-llm"].into_iter()).expect("no-llm after llm");
+    assert!(!options.llm_mode);
+}
+
+#[test]
 fn parse_options_enables_auto_attest_all_when_requested() {
     let options = parse_options(["--node-auto-attest-all"].into_iter()).expect("auto attest");
     assert!(options.node_auto_attest_all_validators);
@@ -481,6 +496,30 @@ fn parse_launch_options_release_config_loads_locked_args() {
     assert!(options.llm_mode);
     assert_eq!(options.bind_addr, "127.0.0.1:5010");
     assert!(options.web_bind_addr.is_none());
+
+    let _ = fs::remove_file(path.as_path());
+}
+
+#[test]
+fn parse_launch_options_release_config_respects_locked_no_llm() {
+    let path = write_release_locked_args_file(
+        "release-locked-no-llm",
+        &[
+            "llm_bootstrap",
+            "--topology",
+            "single",
+            "--node-id",
+            "release-node-script",
+            "--node-role",
+            "observer",
+            "--no-llm",
+        ],
+    );
+
+    let options =
+        parse_launch_options(["--release-config", path.to_string_lossy().as_ref()].into_iter())
+            .expect("release launch options");
+    assert!(!options.llm_mode);
 
     let _ = fs::remove_file(path.as_path());
 }
