@@ -280,6 +280,17 @@ fn sample_viewer_state(
     }
 }
 
+fn sample_selected_viewer_selection() -> crate::ViewerSelection {
+    crate::ViewerSelection {
+        current: Some(crate::SelectionInfo {
+            entity: Entity::from_bits(1),
+            kind: crate::SelectionKind::Agent,
+            id: "agent-1".to_string(),
+            name: Some("agent-1".to_string()),
+        }),
+    }
+}
+
 #[test]
 fn adaptive_panel_width_clamps_to_bounds() {
     assert_eq!(adaptive_panel_default_width(200.0), MAIN_PANEL_MIN_WIDTH);
@@ -606,7 +617,7 @@ fn feedback_tone_for_event_maps_warning_positive_and_info() {
 fn push_feedback_toast_clamps_queue_and_removes_oldest() {
     let mut feedback = FeedbackToastState::default();
     let locale = crate::i18n::UiLocale::EnUs;
-    for id in 1..=(FEEDBACK_TOAST_MAX as u64 + 2) {
+    for id in 1..=(feedback_toast_cap() as u64 + 2) {
         push_feedback_toast(
             &mut feedback,
             &sample_rejected_event(id, id),
@@ -615,8 +626,8 @@ fn push_feedback_toast_clamps_queue_and_removes_oldest() {
         );
     }
 
-    assert_eq!(feedback.toasts.len(), FEEDBACK_TOAST_MAX);
-    let ids: Vec<u64> = feedback.toasts.iter().map(|toast| toast.id).collect();
+    assert_eq!(feedback_toast_len(&feedback), feedback_toast_cap());
+    let ids = feedback_toast_ids(&feedback);
     assert_eq!(ids, vec![3, 4, 5]);
 }
 
@@ -630,17 +641,80 @@ fn sync_feedback_toasts_skips_history_then_tracks_new_events_only() {
     let locale = crate::i18n::UiLocale::ZhCn;
 
     sync_feedback_toasts(&mut feedback, &state, 20.0, locale);
-    assert!(feedback.toasts.is_empty());
-    assert_eq!(feedback.last_seen_event_id, Some(2));
+    assert_eq!(feedback_toast_len(&feedback), 0);
+    assert_eq!(feedback_last_seen_event_id(&feedback), Some(2));
 
     state.events.push(sample_rejected_event(3, 3));
     sync_feedback_toasts(&mut feedback, &state, 21.0, locale);
 
-    assert_eq!(feedback.last_seen_event_id, Some(3));
-    assert_eq!(feedback.toasts.len(), 1);
-    assert_eq!(feedback.toasts[0].id, 3);
-    assert_eq!(feedback.toasts[0].tone, FeedbackTone::Warning);
-    assert_eq!(feedback.toasts[0].title, "操作受阻");
+    assert_eq!(feedback_last_seen_event_id(&feedback), Some(3));
+    assert_eq!(feedback_toast_len(&feedback), 1);
+    assert_eq!(
+        feedback_toast_snapshot(&feedback, 0),
+        Some((3, FeedbackTone::Warning, "操作受阻"))
+    );
+}
+
+#[test]
+fn resolve_player_guide_step_prioritizes_connection_panel_and_selection() {
+    let hidden_layout = RightPanelLayoutState {
+        top_panel_collapsed: false,
+        panel_hidden: true,
+    };
+    let open_layout = RightPanelLayoutState {
+        top_panel_collapsed: false,
+        panel_hidden: false,
+    };
+    let empty_selection = crate::ViewerSelection::default();
+    let selected = sample_selected_viewer_selection();
+
+    assert_eq!(
+        resolve_player_guide_step(
+            &crate::ConnectionStatus::Connecting,
+            &hidden_layout,
+            &empty_selection
+        ),
+        PlayerGuideStep::ConnectWorld
+    );
+    assert_eq!(
+        resolve_player_guide_step(
+            &crate::ConnectionStatus::Connected,
+            &hidden_layout,
+            &empty_selection
+        ),
+        PlayerGuideStep::OpenPanel
+    );
+    assert_eq!(
+        resolve_player_guide_step(
+            &crate::ConnectionStatus::Connected,
+            &open_layout,
+            &empty_selection
+        ),
+        PlayerGuideStep::SelectTarget
+    );
+    assert_eq!(
+        resolve_player_guide_step(&crate::ConnectionStatus::Connected, &open_layout, &selected),
+        PlayerGuideStep::ExploreAction
+    );
+}
+
+#[test]
+fn player_onboarding_visibility_tracks_dismissed_step_only() {
+    let mut onboarding = PlayerOnboardingState::default();
+    assert!(should_show_player_onboarding_card(
+        &onboarding,
+        PlayerGuideStep::OpenPanel
+    ));
+
+    dismiss_player_onboarding_step(&mut onboarding, PlayerGuideStep::OpenPanel);
+    assert!(!should_show_player_onboarding_card(
+        &onboarding,
+        PlayerGuideStep::OpenPanel
+    ));
+    assert!(should_show_player_onboarding_card(
+        &onboarding,
+        PlayerGuideStep::SelectTarget
+    ));
 }
 
 #[test]

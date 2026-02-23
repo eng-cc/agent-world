@@ -1,4 +1,4 @@
-use agent_world::simulator::{WorldEvent, WorldEventKind};
+use agent_world::simulator::WorldEventKind;
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};
@@ -52,6 +52,10 @@ mod egui_right_panel_chat;
 mod egui_right_panel_controls;
 #[path = "egui_right_panel_env.rs"]
 mod egui_right_panel_env;
+#[path = "egui_right_panel_layout.rs"]
+mod egui_right_panel_layout;
+#[path = "egui_right_panel_player_experience.rs"]
+mod egui_right_panel_player_experience;
 #[path = "egui_right_panel_theme_runtime.rs"]
 mod egui_right_panel_theme_runtime;
 
@@ -66,6 +70,23 @@ use egui_right_panel_controls::{
 use egui_right_panel_env::env_toggle_enabled;
 use egui_right_panel_env::{
     is_ops_nav_panel_enabled, is_product_style_enabled, is_product_style_motion_enabled,
+};
+use egui_right_panel_layout::{
+    adaptive_chat_panel_default_width, adaptive_chat_panel_max_width,
+    adaptive_chat_panel_max_width_for_side_layout, adaptive_main_panel_max_width_for_layout,
+    adaptive_main_panel_min_width, adaptive_panel_default_width, adaptive_panel_max_width,
+    is_compact_chat_layout, panel_toggle_shortcut_pressed, should_show_chat_panel,
+    total_right_panel_width,
+};
+#[cfg(test)]
+use egui_right_panel_player_experience::{
+    dismiss_player_onboarding_step, feedback_last_seen_event_id, feedback_toast_cap,
+    feedback_toast_ids, feedback_toast_len, feedback_toast_snapshot, feedback_tone_for_event,
+    push_feedback_toast, should_show_player_onboarding_card, FeedbackTone, PlayerGuideStep,
+};
+use egui_right_panel_player_experience::{
+    render_feedback_toasts, render_player_goal_hint, render_player_onboarding_card,
+    resolve_player_guide_step, sync_feedback_toasts, FeedbackToastState, PlayerOnboardingState,
 };
 use egui_right_panel_theme_runtime::render_theme_runtime_section;
 
@@ -86,232 +107,6 @@ const OPS_NAV_PANEL_ENV: &str = "AGENT_WORLD_VIEWER_SHOW_OPS_NAV";
 const PRODUCT_STYLE_ENV: &str = "AGENT_WORLD_VIEWER_PRODUCT_STYLE";
 const PRODUCT_STYLE_MOTION_ENV: &str = "AGENT_WORLD_VIEWER_PRODUCT_STYLE_MOTION";
 const PANEL_ENTRY_CARD_MAX_WIDTH: f32 = 280.0;
-const FEEDBACK_TOAST_MAX: usize = 3;
-const FEEDBACK_TOAST_TTL_SECS: f64 = 4.2;
-const FEEDBACK_TOAST_FADE_SECS: f64 = 0.8;
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum FeedbackTone {
-    Positive,
-    Warning,
-    Info,
-}
-
-#[derive(Clone, Debug)]
-struct FeedbackToast {
-    id: u64,
-    title: &'static str,
-    detail: String,
-    tone: FeedbackTone,
-    expires_at_secs: f64,
-}
-
-#[derive(Default)]
-pub(super) struct FeedbackToastState {
-    toasts: Vec<FeedbackToast>,
-    last_seen_event_id: Option<u64>,
-}
-
-fn sanitize_available_width(available_width: f32, fallback: f32) -> f32 {
-    if available_width.is_finite() && available_width > 0.0 {
-        available_width
-    } else {
-        fallback
-    }
-}
-
-fn adaptive_panel_max_width(available_width: f32) -> f32 {
-    let width = sanitize_available_width(available_width, MAIN_PANEL_DEFAULT_WIDTH);
-    (width * MAIN_PANEL_MAX_WIDTH_RATIO).max(MAIN_PANEL_MIN_WIDTH)
-}
-
-fn adaptive_panel_default_width(available_width: f32) -> f32 {
-    let width = sanitize_available_width(available_width, MAIN_PANEL_DEFAULT_WIDTH);
-    (width * 0.22).clamp(MAIN_PANEL_MIN_WIDTH, adaptive_panel_max_width(width))
-}
-
-fn adaptive_chat_panel_max_width(available_width: f32) -> f32 {
-    let width = sanitize_available_width(available_width, CHAT_PANEL_DEFAULT_WIDTH);
-    (width * CHAT_PANEL_MAX_WIDTH_RATIO).max(CHAT_PANEL_MIN_WIDTH)
-}
-
-fn adaptive_chat_panel_default_width(available_width: f32) -> f32 {
-    let width = sanitize_available_width(available_width, CHAT_PANEL_DEFAULT_WIDTH);
-    (width * 0.25).clamp(CHAT_PANEL_MIN_WIDTH, adaptive_chat_panel_max_width(width))
-}
-
-fn is_compact_chat_layout(available_width: f32) -> bool {
-    let width = sanitize_available_width(available_width, MAIN_PANEL_DEFAULT_WIDTH);
-    width < CHAT_SIDE_PANEL_COMPACT_BREAKPOINT
-}
-
-fn adaptive_main_panel_min_width(available_width: f32) -> f32 {
-    if is_compact_chat_layout(available_width) {
-        MAIN_PANEL_COMPACT_MIN_WIDTH
-    } else {
-        MAIN_PANEL_MIN_WIDTH
-    }
-}
-
-fn max_total_right_panel_width_budget(available_width: f32) -> f32 {
-    let width = sanitize_available_width(available_width, MAIN_PANEL_DEFAULT_WIDTH);
-    (width - MIN_INTERACTION_VIEWPORT_WIDTH).max(0.0)
-}
-
-fn adaptive_chat_panel_max_width_for_side_layout(available_width: f32) -> f32 {
-    let layout_budget = max_total_right_panel_width_budget(available_width);
-    let chat_budget = (layout_budget - MAIN_PANEL_MIN_WIDTH).max(0.0);
-    adaptive_chat_panel_max_width(available_width).min(chat_budget)
-}
-
-fn adaptive_main_panel_max_width_for_layout(available_width: f32, chat_panel_width: f32) -> f32 {
-    let layout_budget = max_total_right_panel_width_budget(available_width);
-    let panel_budget = (layout_budget - chat_panel_width).max(0.0);
-    let panel_min_width = adaptive_main_panel_min_width(available_width);
-    adaptive_panel_max_width(available_width).min(panel_budget.max(panel_min_width))
-}
-
-fn should_show_chat_panel(layout_state: &RightPanelLayoutState, show_chat: bool) -> bool {
-    !layout_state.top_panel_collapsed && !layout_state.panel_hidden && show_chat
-}
-
-fn total_right_panel_width(main_panel_width: f32, chat_panel_width: f32) -> f32 {
-    main_panel_width.max(0.0) + chat_panel_width.max(0.0)
-}
-
-fn panel_toggle_shortcut_pressed(context: &egui::Context) -> bool {
-    let tab_pressed =
-        context.input(|input| input.key_pressed(egui::Key::Tab) && !input.modifiers.any());
-    if !tab_pressed {
-        return false;
-    }
-
-    let chat_input_focused =
-        context.memory(|memory| memory.has_focus(egui::Id::new(crate::EGUI_CHAT_INPUT_WIDGET_ID)));
-    !chat_input_focused
-}
-
-fn feedback_tone_for_event(event: &WorldEventKind) -> FeedbackTone {
-    match event {
-        WorldEventKind::ActionRejected { .. } => FeedbackTone::Warning,
-        WorldEventKind::FactoryBuilt { .. }
-        | WorldEventKind::RecipeScheduled { .. }
-        | WorldEventKind::CompoundMined { .. }
-        | WorldEventKind::CompoundRefined { .. }
-        | WorldEventKind::RadiationHarvested { .. }
-        | WorldEventKind::AgentMoved { .. }
-        | WorldEventKind::ModuleArtifactSaleCompleted { .. } => FeedbackTone::Positive,
-        _ => FeedbackTone::Info,
-    }
-}
-
-fn feedback_title_for_event(tone: FeedbackTone, locale: crate::i18n::UiLocale) -> &'static str {
-    match (tone, locale.is_zh()) {
-        (FeedbackTone::Positive, true) => "进展达成",
-        (FeedbackTone::Positive, false) => "Progress",
-        (FeedbackTone::Warning, true) => "操作受阻",
-        (FeedbackTone::Warning, false) => "Action Blocked",
-        (FeedbackTone::Info, true) => "世界更新",
-        (FeedbackTone::Info, false) => "World Update",
-    }
-}
-
-fn push_feedback_toast(
-    feedback: &mut FeedbackToastState,
-    event: &WorldEvent,
-    now_secs: f64,
-    locale: crate::i18n::UiLocale,
-) {
-    let tone = feedback_tone_for_event(&event.kind);
-    let detail = truncate_observe_text(&event_row_label(event, false, locale), 64);
-    feedback.toasts.push(FeedbackToast {
-        id: event.id,
-        title: feedback_title_for_event(tone, locale),
-        detail,
-        tone,
-        expires_at_secs: now_secs + FEEDBACK_TOAST_TTL_SECS,
-    });
-    while feedback.toasts.len() > FEEDBACK_TOAST_MAX {
-        feedback.toasts.remove(0);
-    }
-}
-
-fn sync_feedback_toasts(
-    feedback: &mut FeedbackToastState,
-    state: &ViewerState,
-    now_secs: f64,
-    locale: crate::i18n::UiLocale,
-) {
-    feedback
-        .toasts
-        .retain(|toast| toast.expires_at_secs > now_secs);
-
-    let newest_event_id = state.events.last().map(|event| event.id);
-    let Some(newest_event_id) = newest_event_id else {
-        return;
-    };
-
-    let Some(last_seen) = feedback.last_seen_event_id else {
-        feedback.last_seen_event_id = Some(newest_event_id);
-        return;
-    };
-
-    if newest_event_id <= last_seen {
-        return;
-    }
-
-    let mut seen_max = last_seen;
-    for event in state.events.iter().filter(|event| event.id > last_seen) {
-        push_feedback_toast(feedback, event, now_secs, locale);
-        seen_max = seen_max.max(event.id);
-    }
-    feedback.last_seen_event_id = Some(seen_max);
-}
-
-fn feedback_fill_color(tone: FeedbackTone, alpha: f32) -> egui::Color32 {
-    let alpha = alpha.clamp(0.0, 1.0);
-    let to_u8 = |value: f32| (value.clamp(0.0, 255.0)) as u8;
-    match tone {
-        FeedbackTone::Positive => {
-            egui::Color32::from_rgba_unmultiplied(22, 69, 50, to_u8(232.0 * alpha))
-        }
-        FeedbackTone::Warning => {
-            egui::Color32::from_rgba_unmultiplied(99, 44, 32, to_u8(236.0 * alpha))
-        }
-        FeedbackTone::Info => {
-            egui::Color32::from_rgba_unmultiplied(24, 42, 66, to_u8(224.0 * alpha))
-        }
-    }
-}
-
-fn render_feedback_toasts(context: &egui::Context, feedback: &FeedbackToastState, now_secs: f64) {
-    let mut vertical_offset = 12.0;
-    for toast in feedback.toasts.iter().rev() {
-        let remaining = (toast.expires_at_secs - now_secs).max(0.0);
-        let alpha = if remaining < FEEDBACK_TOAST_FADE_SECS {
-            (remaining / FEEDBACK_TOAST_FADE_SECS) as f32
-        } else {
-            1.0
-        };
-
-        egui::Area::new(egui::Id::new(("viewer-feedback-toast", toast.id)))
-            .anchor(egui::Align2::CENTER_TOP, egui::vec2(0.0, vertical_offset))
-            .movable(false)
-            .interactable(false)
-            .show(context, |ui| {
-                egui::Frame::group(ui.style())
-                    .fill(feedback_fill_color(toast.tone, alpha))
-                    .corner_radius(egui::CornerRadius::same(8))
-                    .inner_margin(egui::Margin::same(9))
-                    .show(ui, |ui| {
-                        ui.set_max_width(360.0);
-                        ui.strong(toast.title);
-                        ui.small(toast.detail.as_str());
-                    });
-            });
-        vertical_offset += 68.0;
-    }
-}
 
 #[derive(SystemParam)]
 pub(super) struct RightPanelParams<'w, 's> {
@@ -345,6 +140,7 @@ pub(super) fn render_right_side_panel_egui(
     mut chat_draft: Local<AgentChatDraftState>,
     mut control_panel: Local<ControlPanelUiState>,
     mut feedback_toast_state: Local<FeedbackToastState>,
+    mut onboarding_state: Local<PlayerOnboardingState>,
     params: RightPanelParams,
 ) {
     let RightPanelParams {
@@ -379,8 +175,8 @@ pub(super) fn render_right_side_panel_egui(
     };
     ensure_egui_cjk_font(context, &mut cjk_font_initialized);
     let now_secs = context.input(|input| input.time);
-    let player_feedback_enabled = *experience_mode == ViewerExperienceMode::Player;
-    if player_feedback_enabled {
+    let player_mode_enabled = *experience_mode == ViewerExperienceMode::Player;
+    if player_mode_enabled {
         sync_feedback_toasts(&mut feedback_toast_state, &state, now_secs, locale);
     }
 
@@ -392,6 +188,18 @@ pub(super) fn render_right_side_panel_egui(
         copyable_panel_state.visible = module_visibility.show_details;
     }
     chat_focus_signal.wants_ime_focus = false;
+    if player_mode_enabled {
+        let guide_step =
+            resolve_player_guide_step(&state.status, layout_state.as_ref(), &selection);
+        render_player_goal_hint(context, guide_step, locale);
+        render_player_onboarding_card(
+            context,
+            &mut onboarding_state,
+            guide_step,
+            layout_state.as_mut(),
+            locale,
+        );
+    }
 
     if layout_state.panel_hidden {
         panel_width.width_px = 0.0;
@@ -416,7 +224,7 @@ pub(super) fn render_right_side_panel_egui(
                     });
             });
         if layout_state.panel_hidden {
-            if player_feedback_enabled {
+            if player_mode_enabled {
                 render_feedback_toasts(context, &feedback_toast_state, now_secs);
             }
             return;
@@ -786,7 +594,7 @@ pub(super) fn render_right_side_panel_egui(
     panel_width.width_px =
         total_right_panel_width(panel_response.response.rect.width(), chat_panel_width);
 
-    if player_feedback_enabled {
+    if player_mode_enabled {
         render_feedback_toasts(context, &feedback_toast_state, now_secs);
     }
 }
