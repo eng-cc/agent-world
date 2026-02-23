@@ -81,7 +81,7 @@ impl Default for CliOptions {
             bind_addr: "127.0.0.1:5010".to_string(),
             web_bind_addr: None,
             tick_ms: 200,
-            llm_mode: false,
+            llm_mode: true,
             node_topology: NodeTopologyMode::Triad,
             triad_gossip_base_port: 5500,
             triad_distributed_sequencer_gossip: None,
@@ -655,7 +655,7 @@ pub(super) fn print_help() {
     println!("  --web-bind <addr> WebSocket bridge bind address (optional)");
     println!("  --tick-ms <ms>    Tick interval in milliseconds (default: 200)");
     println!("  --scenario <name> Scenario name (default: twin_region_bootstrap)");
-    println!("  --llm             Use LLM decisions instead of built-in script");
+    println!("  --llm             Enable LLM decisions (default)");
     println!(
         "  --topology <mode> Node topology mode: single|triad|triad_distributed (default: triad)"
     );

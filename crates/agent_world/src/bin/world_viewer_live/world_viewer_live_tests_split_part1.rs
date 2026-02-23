@@ -149,7 +149,7 @@ fn parse_options_defaults() {
     assert_eq!(options.bind_addr, "127.0.0.1:5010");
     assert!(options.web_bind_addr.is_none());
     assert_eq!(options.tick_ms, 200);
-    assert!(!options.llm_mode);
+    assert!(options.llm_mode);
     assert_eq!(options.node_topology, NodeTopologyMode::Triad);
     assert_eq!(options.triad_gossip_base_port, 5500);
     assert!(options.triad_distributed_sequencer_gossip.is_none());
@@ -478,6 +478,7 @@ fn parse_launch_options_release_config_loads_locked_args() {
     assert_eq!(options.node_topology, NodeTopologyMode::Single);
     assert_eq!(options.node_id, "release-node-a");
     assert_eq!(options.node_role, NodeRole::Observer);
+    assert!(options.llm_mode);
     assert_eq!(options.bind_addr, "127.0.0.1:5010");
     assert!(options.web_bind_addr.is_none());
 
