@@ -53,3 +53,21 @@
   - 对策：仅在 Player 模式限制；Director 维持原能力。
 - 文案与交互状态不一致导致误导。
   - 对策：将步骤状态统一由 `resolve_player_guide_step` 驱动，减少分叉逻辑。
+
+## 验收与结论
+- 里程碑完成情况：
+  - M1/M2/M3/M4 全部完成。
+- 回归结果：
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer` 通过（309/309）。
+  - `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-unknown` 通过。
+- Web 闭环（S6）结果：
+  - `window.__AW_TEST__` 可访问，`getState()` 返回 `tick/connectionStatus`。
+  - 语义动作链可用：`runSteps(...)` + `sendControl("pause")` + `Tab` 面板切换。
+  - 控制台 `Errors: 0`（统计 warning 1 条）。
+  - 验收截图：
+    - `output/playwright/viewer/viewer-web-vri5p3-player-edge-hidden.png`
+    - `output/playwright/viewer/viewer-web-vri5p3-player-edge-open.png`
+- 视觉观察（基于实际 Web 画面）：
+  - 隐藏态下新增右侧边缘呼出提示，面板入口更易发现且不压主场景。
+  - 引导卡/目标卡显示 4 步闭环进度（`✓ / ▶ / ·` + `x/4`），新手“当前该做什么”更明确。
+  - Player 打开面板时宽度受预算约束，主场景可见面积相较之前更稳定。
