@@ -16,6 +16,8 @@ const SNAPSHOT_WAIT_TIMEOUT: Duration = Duration::from_secs(10);
 
 #[path = "egui_right_panel_player_achievements_tests.rs"]
 mod player_achievements_tests;
+#[path = "egui_right_panel_player_atmosphere_tests.rs"]
+mod player_atmosphere_tests;
 #[path = "egui_right_panel_player_chatter_tests.rs"]
 mod player_chatter_tests;
 

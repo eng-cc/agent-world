@@ -13,6 +13,8 @@ const PLAYER_ACHIEVEMENT_MAX: usize = 3;
 const PLAYER_ACHIEVEMENT_TTL_SECS: f64 = 5.2;
 const PLAYER_ACHIEVEMENT_FADE_SECS: f64 = 1.0;
 const PLAYER_ACHIEVEMENT_MAX_WIDTH: f32 = 320.0;
+const PLAYER_ATMOSPHERE_TOP_ALPHA_BASE: f32 = 0.12;
+const PLAYER_ATMOSPHERE_BOTTOM_ALPHA_BASE: f32 = 0.08;
 const AGENT_CHATTER_MAX: usize = 4;
 const AGENT_CHATTER_TTL_SECS: f64 = 5.0;
 const AGENT_CHATTER_FADE_SECS: f64 = 0.9;
@@ -101,6 +103,15 @@ pub(super) struct PlayerHudSnapshot {
     pub events: usize,
     pub selection: String,
     pub objective: &'static str,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(super) struct PlayerAtmosphereSnapshot {
+    pub(super) top_alpha: f32,
+    pub(super) bottom_alpha: f32,
+    pub(super) orb_x_factor: f32,
+    pub(super) orb_y_factor: f32,
+    pub(super) orb_radius: f32,
 }
 
 pub(super) fn feedback_tone_for_event(event: &WorldEventKind) -> FeedbackTone {
@@ -227,6 +238,62 @@ pub(super) fn render_feedback_toasts(
             });
         vertical_offset += 68.0;
     }
+}
+
+pub(super) fn build_player_atmosphere_snapshot(now_secs: f64) -> PlayerAtmosphereSnapshot {
+    let pulse = ((now_secs * 0.55).sin() * 0.5 + 0.5) as f32;
+    let drift = ((now_secs * 0.32).cos() * 0.5 + 0.5) as f32;
+    PlayerAtmosphereSnapshot {
+        top_alpha: (PLAYER_ATMOSPHERE_TOP_ALPHA_BASE + 0.05 * pulse).clamp(0.0, 0.28),
+        bottom_alpha: (PLAYER_ATMOSPHERE_BOTTOM_ALPHA_BASE + 0.06 * drift).clamp(0.0, 0.25),
+        orb_x_factor: 0.74 + 0.08 * ((now_secs * 0.24).sin() as f32),
+        orb_y_factor: 0.22 + 0.05 * ((now_secs * 0.18).cos() as f32),
+        orb_radius: 120.0 + 42.0 * pulse,
+    }
+}
+
+pub(super) fn render_player_atmosphere(context: &egui::Context, now_secs: f64) {
+    let snapshot = build_player_atmosphere_snapshot(now_secs);
+    let rect = context.content_rect();
+    if rect.width() <= 1.0 || rect.height() <= 1.0 {
+        return;
+    }
+    let layer = egui::LayerId::new(
+        egui::Order::Background,
+        egui::Id::new("viewer-player-atmosphere"),
+    );
+    let painter = context.layer_painter(layer);
+    let to_u8 = |value: f32| (value.clamp(0.0, 255.0)) as u8;
+
+    let top_rect = egui::Rect::from_min_max(
+        rect.min,
+        egui::pos2(rect.max.x, rect.min.y + rect.height() * 0.34),
+    );
+    painter.rect_filled(
+        top_rect,
+        0.0,
+        egui::Color32::from_rgba_unmultiplied(12, 28, 44, to_u8(snapshot.top_alpha * 255.0)),
+    );
+
+    let bottom_rect = egui::Rect::from_min_max(
+        egui::pos2(rect.min.x, rect.max.y - rect.height() * 0.29),
+        rect.max,
+    );
+    painter.rect_filled(
+        bottom_rect,
+        0.0,
+        egui::Color32::from_rgba_unmultiplied(8, 18, 34, to_u8(snapshot.bottom_alpha * 255.0)),
+    );
+
+    let orb_center = egui::pos2(
+        rect.min.x + rect.width() * snapshot.orb_x_factor,
+        rect.min.y + rect.height() * snapshot.orb_y_factor,
+    );
+    painter.circle_filled(
+        orb_center,
+        snapshot.orb_radius,
+        egui::Color32::from_rgba_unmultiplied(42, 132, 188, 28),
+    );
 }
 
 fn player_achievement_badge(locale: crate::i18n::UiLocale) -> &'static str {
@@ -1089,6 +1156,7 @@ pub(super) fn render_player_experience_layers(
     locale: crate::i18n::UiLocale,
     now_secs: f64,
 ) {
+    render_player_atmosphere(context, now_secs);
     sync_player_achievements(achievements, state, selection, layout_state, now_secs);
     sync_agent_chatter_bubbles(achievements, state, now_secs, locale);
     let guide_step = resolve_player_guide_step(&state.status, layout_state, selection);
