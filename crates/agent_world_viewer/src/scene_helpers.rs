@@ -1,9 +1,9 @@
 use super::*;
 use agent_world::simulator::MaterialKind;
 use agent_world::simulator::{
-    chunk_bounds, chunk_coords, ChunkCoord, ChunkState, FragmentResourceBudget, ModuleVisualAnchor,
-    ModuleVisualEntity, PowerEvent, ResourceOwner, SpaceConfig, WorldEventKind, CHUNK_SIZE_X_CM,
-    CHUNK_SIZE_Y_CM,
+    chunk_bounds, chunk_coords, AgentKinematics, ChunkCoord, ChunkState, FragmentResourceBudget,
+    ModuleVisualAnchor, ModuleVisualEntity, PowerEvent, ResourceOwner, SpaceConfig, WorldEventKind,
+    CHUNK_SIZE_X_CM, CHUNK_SIZE_Y_CM,
 };
 
 const FACILITY_MARKER_LATERAL_OFFSET: f32 = 0.9;
@@ -30,6 +30,13 @@ const AGENT_MODULE_MARKER_MIN_DEPTH: f32 = 0.24;
 const AGENT_MODULE_MARKER_WORLD_MIN_WIDTH: f32 = 0.36;
 const AGENT_MODULE_MARKER_WORLD_MIN_HEIGHT: f32 = 0.44;
 const AGENT_MODULE_MARKER_WORLD_MIN_DEPTH: f32 = 0.32;
+const AGENT_DIRECTION_VECTOR_EPSILON: f32 = 1e-6;
+const AGENT_DIRECTION_INDICATOR_MIN_LENGTH: f32 = 0.01;
+const AGENT_DIRECTION_INDICATOR_MIN_WIDTH: f32 = 0.005;
+const AGENT_SPEED_EFFECT_MIN_SCALE: f32 = 1.05;
+const AGENT_SPEED_EFFECT_MAX_SCALE: f32 = 2.4;
+const AGENT_SPEED_EFFECT_MIN_THICKNESS: f32 = 0.004;
+const AGENT_SPEED_REFERENCE_CM_PER_TICK: f32 = 200_000.0;
 const AGENT_MODULE_LAYOUT_PRIMARY_SLOTS: [(i32, i32, i32); 16] = [
     (0, 4, 2),
     (0, 3, 2),
@@ -134,6 +141,7 @@ pub(super) fn rebuild_scene_from_snapshot(
     scene.agent_heights_cm.clear();
     scene.agent_location_ids.clear();
     scene.agent_module_counts.clear();
+    scene.agent_kinematics.clear();
     scene.location_entities.clear();
     scene.asset_entities.clear();
     scene.module_visual_entities.clear();
@@ -205,6 +213,7 @@ pub(super) fn rebuild_scene_from_snapshot(
             agent.pos,
             agent.body.height_cm,
             module_count,
+            Some(&agent.kinematics),
         );
     }
 
@@ -284,6 +293,7 @@ pub(super) fn apply_events_to_scene(
     config: &Viewer3dConfig,
     assets: &Viewer3dAssets,
     scene: &mut Viewer3dScene,
+    snapshot: &WorldSnapshot,
     _snapshot_time: u64,
     events: &[WorldEvent],
 ) {
@@ -326,12 +336,19 @@ pub(super) fn apply_events_to_scene(
                 );
             }
             WorldEventKind::AgentRegistered { agent_id, pos, .. } => {
-                let height_cm = scene
-                    .agent_heights_cm
-                    .get(agent_id)
-                    .copied()
+                let snapshot_agent = snapshot.model.agents.get(agent_id);
+                let height_cm = snapshot_agent
+                    .map(|agent| agent.body.height_cm)
+                    .or_else(|| scene.agent_heights_cm.get(agent_id).copied())
                     .unwrap_or(agent_height_cm(None));
-                let location_id = scene.agent_location_ids.get(agent_id.as_str()).cloned();
+                let location_id = snapshot_agent
+                    .map(|agent| agent.location_id.clone())
+                    .or_else(|| scene.agent_location_ids.get(agent_id.as_str()).cloned());
+                let module_count = scene
+                    .agent_module_counts
+                    .get(agent_id.as_str())
+                    .copied()
+                    .unwrap_or(0);
                 spawn_agent_entity(
                     commands,
                     config,
@@ -342,20 +359,17 @@ pub(super) fn apply_events_to_scene(
                     location_id.as_deref(),
                     *pos,
                     height_cm,
-                    scene
-                        .agent_module_counts
-                        .get(agent_id.as_str())
-                        .copied()
-                        .unwrap_or(0),
+                    module_count,
+                    snapshot_agent.map(|agent| &agent.kinematics),
                 );
             }
             WorldEventKind::AgentMoved { agent_id, to, .. } => {
-                if let Some(pos) = scene.location_positions.get(to) {
+                if let Some(agent) = snapshot.model.agents.get(agent_id) {
                     let height_cm = scene
                         .agent_heights_cm
                         .get(agent_id)
                         .copied()
-                        .unwrap_or(agent_height_cm(None));
+                        .unwrap_or(agent.body.height_cm);
                     scene
                         .agent_location_ids
                         .insert(agent_id.to_string(), to.to_string());
@@ -366,14 +380,15 @@ pub(super) fn apply_events_to_scene(
                         scene,
                         origin,
                         agent_id,
-                        Some(to.as_str()),
-                        *pos,
+                        Some(agent.location_id.as_str()),
+                        agent.pos,
                         height_cm,
                         scene
                             .agent_module_counts
                             .get(agent_id.as_str())
                             .copied()
                             .unwrap_or(0),
+                        Some(&agent.kinematics),
                     );
                 }
             }
@@ -693,6 +708,7 @@ pub(super) fn spawn_agent_entity(
     pos: GeoPos,
     height_cm: i64,
     module_count: usize,
+    kinematics: Option<&AgentKinematics>,
 ) {
     scene.agent_positions.insert(agent_id.to_string(), pos);
     scene
@@ -701,6 +717,10 @@ pub(super) fn spawn_agent_entity(
     scene
         .agent_module_counts
         .insert(agent_id.to_string(), module_count);
+    scene.agent_kinematics.insert(
+        agent_id.to_string(),
+        kinematics.cloned().unwrap_or_default(),
+    );
     if let Some(location_id) = location_id {
         scene
             .agent_location_ids
@@ -717,6 +737,7 @@ pub(super) fn spawn_agent_entity(
     let marker_world_scale = agent_module_marker_world_scale(marker_scale, cm_to_unit, height_cm);
     let module_markers = agent_module_marker_transforms(height_cm, module_count, cm_to_unit);
     let translation = agent_translation_for_render(scene, config, origin, agent_id, pos, height_cm);
+    let motion_visual = resolve_agent_motion_visual(scene, config, origin, pos, kinematics);
     if let Some(entity) = scene.agent_entities.get(agent_id) {
         commands.entity(*entity).insert((
             Transform::from_translation(translation),
@@ -751,6 +772,7 @@ pub(super) fn spawn_agent_entity(
                 module_count,
                 cm_to_unit,
             );
+            spawn_agent_motion_feedback(parent, assets, agent_id, body_scale, motion_visual);
             for (marker_idx, marker_translation) in module_markers.iter().enumerate() {
                 parent.spawn((
                     Mesh3d(assets.agent_module_marker_mesh.clone()),
@@ -800,6 +822,7 @@ pub(super) fn spawn_agent_entity(
             module_count,
             cm_to_unit,
         );
+        spawn_agent_motion_feedback(parent, assets, agent_id, body_scale, motion_visual);
         for (marker_idx, marker_translation) in module_markers.iter().enumerate() {
             parent.spawn((
                 Mesh3d(assets.agent_module_marker_mesh.clone()),
@@ -931,6 +954,92 @@ fn agent_translation_for_render(
     };
     let surface_gap = (body_half_height * 0.01).max(0.006);
     location_center + surface_normal * (radial_distance + body_half_height + surface_gap)
+}
+
+#[derive(Clone, Copy)]
+struct AgentMotionVisual {
+    direction: Vec3,
+    speed_scale: f32,
+}
+
+fn resolve_agent_motion_visual(
+    scene: &Viewer3dScene,
+    config: &Viewer3dConfig,
+    origin: GeoPos,
+    pos: GeoPos,
+    kinematics: Option<&AgentKinematics>,
+) -> Option<AgentMotionVisual> {
+    let kinematics = kinematics?;
+    if kinematics.move_remaining_cm <= 0 {
+        return None;
+    }
+
+    let target_pos = kinematics.move_target.or_else(|| {
+        kinematics
+            .move_target_location_id
+            .as_ref()
+            .and_then(|location_id| scene.location_positions.get(location_id.as_str()).copied())
+    })?;
+
+    let current = geo_to_vec3(pos, origin, config.effective_cm_to_unit());
+    let target = geo_to_vec3(target_pos, origin, config.effective_cm_to_unit());
+    let direction = target - current;
+    if direction.length_squared() <= AGENT_DIRECTION_VECTOR_EPSILON {
+        return None;
+    }
+
+    let speed_scale = ((kinematics.speed_cm_per_tick.max(1) as f32)
+        / AGENT_SPEED_REFERENCE_CM_PER_TICK)
+        .sqrt()
+        .clamp(AGENT_SPEED_EFFECT_MIN_SCALE, AGENT_SPEED_EFFECT_MAX_SCALE);
+    Some(AgentMotionVisual {
+        direction: direction.normalize(),
+        speed_scale,
+    })
+}
+
+fn spawn_agent_motion_feedback(
+    parent: &mut ChildSpawnerCommands,
+    assets: &Viewer3dAssets,
+    agent_id: &str,
+    body_scale: Vec3,
+    motion_visual: Option<AgentMotionVisual>,
+) {
+    let Some(motion_visual) = motion_visual else {
+        return;
+    };
+
+    let indicator_length = (body_scale.y * 0.92).max(AGENT_DIRECTION_INDICATOR_MIN_LENGTH);
+    let indicator_width = (body_scale.x * 0.22).max(AGENT_DIRECTION_INDICATOR_MIN_WIDTH);
+    let indicator_height = (indicator_width * 0.5).max(AGENT_DIRECTION_INDICATOR_MIN_WIDTH);
+    let indicator_rotation = Quat::from_rotation_arc(Vec3::Z, motion_visual.direction);
+    parent.spawn((
+        Mesh3d(assets.world_box_mesh.clone()),
+        MeshMaterial3d(assets.chunk_generated_material.clone()),
+        Transform::from_translation(Vec3::new(0.0, body_scale.y * 0.54, 0.0))
+            .with_rotation(indicator_rotation)
+            .with_scale(Vec3::new(
+                indicator_width,
+                indicator_height,
+                indicator_length,
+            )),
+        Name::new(format!("agent:direction_indicator:{agent_id}")),
+        DetailZoomEntity,
+    ));
+
+    let speed_radius = (body_scale.x.max(body_scale.z) * motion_visual.speed_scale).clamp(
+        body_scale.x * 0.9,
+        body_scale.x * AGENT_SPEED_EFFECT_MAX_SCALE,
+    );
+    let speed_thickness = (body_scale.y * 0.07).max(AGENT_SPEED_EFFECT_MIN_THICKNESS);
+    parent.spawn((
+        Mesh3d(assets.agent_module_marker_mesh.clone()),
+        MeshMaterial3d(assets.location_halo_material.clone()),
+        Transform::from_translation(Vec3::new(0.0, body_scale.y * 0.22, 0.0))
+            .with_scale(Vec3::new(speed_radius, speed_thickness, speed_radius)),
+        Name::new(format!("agent:speed_effect:{agent_id}")),
+        DetailZoomEntity,
+    ));
 }
 
 fn agent_body_radius_m(height_cm: i64) -> f32 {

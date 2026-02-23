@@ -17,7 +17,7 @@ use std::thread;
 
 use agent_world::geometry::GeoPos;
 use agent_world::simulator::{
-    AgentDecisionTrace, RunnerMetrics, SpaceConfig, WorldEvent, WorldSnapshot,
+    AgentDecisionTrace, AgentKinematics, RunnerMetrics, SpaceConfig, WorldEvent, WorldSnapshot,
 };
 use agent_world::viewer::{
     ViewerControl, ViewerRequest, ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
@@ -416,6 +416,7 @@ struct Viewer3dScene {
     agent_heights_cm: HashMap<String, i64>,
     agent_location_ids: HashMap<String, String>,
     agent_module_counts: HashMap<String, usize>,
+    agent_kinematics: HashMap<String, AgentKinematics>,
     location_entities: HashMap<String, Entity>,
     asset_entities: HashMap<String, Entity>,
     module_visual_entities: HashMap<String, Entity>,

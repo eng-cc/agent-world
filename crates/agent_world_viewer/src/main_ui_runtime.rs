@@ -715,6 +715,7 @@ pub(super) fn update_3d_scene(
         &config,
         &assets,
         &mut scene,
+        snapshot,
         snapshot_time,
         &state.events,
     );

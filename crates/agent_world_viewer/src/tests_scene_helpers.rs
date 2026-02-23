@@ -106,6 +106,7 @@ pub(super) fn spawn_agent_scale_test_system(
         GeoPos::new(0.0, 0.0, 0.0),
         200,
         5,
+        None,
     );
 }
 
@@ -140,6 +141,7 @@ pub(super) fn spawn_agent_surface_attachment_test_system(
         GeoPos::new(0.0, 0.0, 0.0),
         100,
         6,
+        None,
     );
 }
 
@@ -174,6 +176,7 @@ pub(super) fn spawn_agent_surface_standoff_test_system(
         GeoPos::new(0.0, 0.0, 5_240.0),
         100,
         6,
+        None,
     );
 }
 
@@ -195,6 +198,7 @@ pub(super) fn spawn_agent_module_marker_count_test_system(
         GeoPos::new(0.0, 0.0, 0.0),
         180,
         24,
+        None,
     );
 }
 
@@ -216,6 +220,37 @@ pub(super) fn spawn_agent_robot_layout_test_system(
         GeoPos::new(0.0, 0.0, 0.0),
         180,
         8,
+        None,
+    );
+}
+
+pub(super) fn spawn_agent_motion_feedback_test_system(
+    mut commands: Commands,
+    config: Res<Viewer3dConfig>,
+    assets: Res<Viewer3dAssets>,
+    mut scene: ResMut<Viewer3dScene>,
+) {
+    let origin = GeoPos::new(0.0, 0.0, 0.0);
+    let kinematics = agent_world::simulator::AgentKinematics {
+        speed_cm_per_tick: 320_000,
+        move_target_location_id: None,
+        move_target: Some(GeoPos::new(10_000.0, 0.0, 0.0)),
+        move_started_at_tick: Some(12),
+        move_eta_tick: Some(13),
+        move_remaining_cm: 10_000,
+    };
+    spawn_agent_entity(
+        &mut commands,
+        &config,
+        &assets,
+        &mut scene,
+        origin,
+        "agent-motion",
+        None,
+        GeoPos::new(0.0, 0.0, 0.0),
+        170,
+        4,
+        Some(&kinematics),
     );
 }
 

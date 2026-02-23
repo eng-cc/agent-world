@@ -103,6 +103,7 @@ pub(super) fn refresh_scene_dirty_objects(
             agent.body.height_cm,
             agent.location_id.as_str(),
             module_count,
+            &agent.kinematics,
         ) {
             continue;
         }
@@ -118,6 +119,7 @@ pub(super) fn refresh_scene_dirty_objects(
             agent.pos,
             agent.body.height_cm,
             module_count,
+            Some(&agent.kinematics),
         );
     }
 }
@@ -173,6 +175,7 @@ fn prune_absent_agents(
         scene.agent_heights_cm.remove(agent_id.as_str());
         scene.agent_location_ids.remove(agent_id.as_str());
         scene.agent_module_counts.remove(agent_id.as_str());
+        scene.agent_kinematics.remove(agent_id.as_str());
     }
 }
 
@@ -194,6 +197,7 @@ fn agent_needs_refresh(
     height_cm: i64,
     location_id: &str,
     module_count: usize,
+    kinematics: &AgentKinematics,
 ) -> bool {
     let normalized_height = height_cm.max(1);
     scene.agent_entities.get(agent_id).is_none()
@@ -205,6 +209,7 @@ fn agent_needs_refresh(
             .map(std::string::String::as_str)
             != Some(location_id)
         || scene.agent_module_counts.get(agent_id).copied() != Some(module_count)
+        || scene.agent_kinematics.get(agent_id) != Some(kinematics)
 }
 
 fn default_agent_module_count_estimate_local() -> usize {
@@ -272,6 +277,7 @@ mod tests {
     fn agent_needs_refresh_detects_module_and_location_delta() {
         let mut scene = Viewer3dScene::default();
         let agent_id = "agent-1";
+        let kinematics = AgentKinematics::default();
         let pos = GeoPos {
             x_cm: 1.0,
             y_cm: 2.0,
@@ -286,10 +292,49 @@ mod tests {
             .agent_location_ids
             .insert(agent_id.to_string(), "loc-a".to_string());
         scene.agent_module_counts.insert(agent_id.to_string(), 2);
+        scene
+            .agent_kinematics
+            .insert(agent_id.to_string(), kinematics.clone());
 
-        assert!(!agent_needs_refresh(&scene, agent_id, pos, 170, "loc-a", 2));
-        assert!(agent_needs_refresh(&scene, agent_id, pos, 170, "loc-b", 2));
-        assert!(agent_needs_refresh(&scene, agent_id, pos, 170, "loc-a", 3));
+        assert!(!agent_needs_refresh(
+            &scene,
+            agent_id,
+            pos,
+            170,
+            "loc-a",
+            2,
+            &kinematics
+        ));
+        assert!(agent_needs_refresh(
+            &scene,
+            agent_id,
+            pos,
+            170,
+            "loc-b",
+            2,
+            &kinematics
+        ));
+        assert!(agent_needs_refresh(
+            &scene,
+            agent_id,
+            pos,
+            170,
+            "loc-a",
+            3,
+            &kinematics
+        ));
+
+        let mut moving_kinematics = kinematics.clone();
+        moving_kinematics.move_remaining_cm = 100;
+        assert!(agent_needs_refresh(
+            &scene,
+            agent_id,
+            pos,
+            170,
+            "loc-a",
+            2,
+            &moving_kinematics
+        ));
     }
 
     fn sample_snapshot(time: u64) -> WorldSnapshot {

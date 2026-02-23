@@ -1,5 +1,39 @@
 use super::*;
 
+fn test_assets() -> Viewer3dAssets {
+    Viewer3dAssets {
+        agent_mesh: Handle::default(),
+        agent_material: Handle::default(),
+        agent_module_marker_mesh: Handle::default(),
+        agent_module_marker_material: Handle::default(),
+        location_mesh: Handle::default(),
+        fragment_element_material_library: FragmentElementMaterialHandles::default(),
+        asset_mesh: Handle::default(),
+        asset_material: Handle::default(),
+        power_plant_mesh: Handle::default(),
+        power_plant_material: Handle::default(),
+        power_storage_mesh: Handle::default(),
+        power_storage_material: Handle::default(),
+        location_core_silicate_material: Handle::default(),
+        location_core_metal_material: Handle::default(),
+        location_core_ice_material: Handle::default(),
+        location_halo_material: Handle::default(),
+        chunk_unexplored_material: Handle::default(),
+        chunk_generated_material: Handle::default(),
+        chunk_exhausted_material: Handle::default(),
+        world_box_mesh: Handle::default(),
+        world_floor_material: Handle::default(),
+        world_bounds_material: Handle::default(),
+        world_grid_material: Handle::default(),
+        heat_low_material: Handle::default(),
+        heat_mid_material: Handle::default(),
+        heat_high_material: Handle::default(),
+        flow_power_material: Handle::default(),
+        flow_trade_material: Handle::default(),
+        label_font: Handle::default(),
+    }
+}
+
 #[test]
 fn spawn_location_entity_keeps_anchor_without_label() {
     let mut app = App::new();
@@ -338,6 +372,51 @@ fn spawn_agent_entity_uses_body_height_scale() {
         .expect("agent body exists");
     assert!((body_transform.scale.y - (1.12 * units_per_m)).abs() < 1e-6);
     assert!((body_transform.scale.x - (0.88 * units_per_m)).abs() < 1e-6);
+}
+
+#[test]
+fn spawn_agent_entity_renders_direction_and_speed_feedback_when_moving() {
+    let mut app = App::new();
+    app.add_systems(Update, spawn_agent_motion_feedback_test_system);
+    app.insert_resource(Viewer3dConfig::default());
+    app.insert_resource(Viewer3dScene::default());
+    app.insert_resource(test_assets());
+
+    app.update();
+
+    let world = app.world_mut();
+    let mut query = world.query::<(&Name, &Transform)>();
+    let direction_transform = query
+        .iter(world)
+        .find(|(name, _)| name.as_str() == "agent:direction_indicator:agent-motion")
+        .map(|(_, transform)| *transform)
+        .expect("direction indicator exists");
+    assert_ne!(direction_transform.rotation, Quat::IDENTITY);
+
+    let mut speed_query = world.query::<&Name>();
+    assert!(speed_query
+        .iter(world)
+        .any(|name| name.as_str() == "agent:speed_effect:agent-motion"));
+}
+
+#[test]
+fn spawn_agent_entity_skips_direction_and_speed_feedback_when_stationary() {
+    let mut app = App::new();
+    app.add_systems(Update, spawn_agent_scale_test_system);
+    app.insert_resource(Viewer3dConfig::default());
+    app.insert_resource(Viewer3dScene::default());
+    app.insert_resource(test_assets());
+
+    app.update();
+
+    let world = app.world_mut();
+    let mut query = world.query::<&Name>();
+    assert!(!query
+        .iter(world)
+        .any(|name| name.as_str() == "agent:direction_indicator:agent-scale"));
+    assert!(!query
+        .iter(world)
+        .any(|name| name.as_str() == "agent:speed_effect:agent-scale"));
 }
 
 #[test]
