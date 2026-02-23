@@ -1,6 +1,8 @@
-use super::egui_right_panel_player_entry::activate_player_command_entry;
+use super::egui_right_panel_player_entry::{
+    activate_player_command_entry, should_render_hidden_panel_top_entry,
+};
 use crate::right_panel_module_visibility::RightPanelModuleVisibilityState;
-use crate::RightPanelLayoutState;
+use crate::{RightPanelLayoutState, ViewerExperienceMode};
 
 #[test]
 fn activate_player_command_entry_opens_panel_and_switches_to_command_layout() {
@@ -18,4 +20,14 @@ fn activate_player_command_entry_opens_panel_and_switches_to_command_layout() {
     assert!(visibility.show_overview);
     assert!(!visibility.show_timeline);
     assert!(!visibility.show_details);
+}
+
+#[test]
+fn hidden_panel_top_entry_is_suppressed_in_player_mode() {
+    assert!(!should_render_hidden_panel_top_entry(
+        ViewerExperienceMode::Player
+    ));
+    assert!(should_render_hidden_panel_top_entry(
+        ViewerExperienceMode::Director
+    ));
 }
