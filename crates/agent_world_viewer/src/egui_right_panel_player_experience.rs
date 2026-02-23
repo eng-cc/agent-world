@@ -52,6 +52,7 @@ struct FeedbackToast {
 pub(crate) struct FeedbackToastState {
     toasts: Vec<FeedbackToast>,
     last_seen_event_id: Option<u64>,
+    action_feedback_seen: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -178,29 +179,33 @@ pub(super) fn sync_feedback_toasts(
     feedback
         .toasts
         .retain(|toast| toast.expires_at_secs > now_secs);
-
     let newest_event_id = state.events.last().map(|event| event.id);
     let Some(newest_event_id) = newest_event_id else {
         return;
     };
-
     let Some(last_seen) = feedback.last_seen_event_id else {
         feedback.last_seen_event_id = Some(newest_event_id);
         return;
     };
-
     if newest_event_id <= last_seen {
         return;
     }
-
     let mut seen_max = last_seen;
+    let mut saw_new_event = false;
     for event in state.events.iter().filter(|event| event.id > last_seen) {
         push_feedback_toast(feedback, event, now_secs, locale);
         seen_max = seen_max.max(event.id);
+        saw_new_event = true;
     }
     feedback.last_seen_event_id = Some(seen_max);
+    if saw_new_event {
+        feedback.action_feedback_seen = true;
+    }
 }
 
+pub(super) fn player_action_feedback_seen(feedback: &FeedbackToastState) -> bool {
+    feedback.action_feedback_seen
+}
 fn feedback_fill_color(tone: FeedbackTone, alpha: f32) -> egui::Color32 {
     let alpha = alpha.clamp(0.0, 1.0);
     let to_u8 = |value: f32| (value.clamp(0.0, 255.0)) as u8;
@@ -907,7 +912,6 @@ pub(super) fn should_show_player_goal_hint(
 pub(super) fn feedback_toast_cap() -> usize {
     FEEDBACK_TOAST_MAX
 }
-
 #[cfg(test)]
 pub(super) fn feedback_toast_len(feedback: &FeedbackToastState) -> usize {
     feedback.toasts.len()
@@ -921,6 +925,11 @@ pub(super) fn feedback_toast_ids(feedback: &FeedbackToastState) -> Vec<u64> {
 #[cfg(test)]
 pub(super) fn feedback_last_seen_event_id(feedback: &FeedbackToastState) -> Option<u64> {
     feedback.last_seen_event_id
+}
+
+#[cfg(test)]
+pub(super) fn feedback_action_feedback_seen(feedback: &FeedbackToastState) -> bool {
+    feedback.action_feedback_seen
 }
 
 #[cfg(test)]
@@ -1134,6 +1143,7 @@ pub(super) fn render_player_experience_layers(
     module_visibility: &mut crate::right_panel_module_visibility::RightPanelModuleVisibilityState,
     onboarding: &mut PlayerOnboardingState,
     achievements: &mut PlayerAchievementState,
+    action_feedback_seen: bool,
     locale: crate::i18n::UiLocale,
     now_secs: f64,
 ) {
@@ -1142,8 +1152,12 @@ pub(super) fn render_player_experience_layers(
     sync_player_achievements(achievements, state, selection, layout_state, now_secs);
     sync_agent_chatter_bubbles(achievements, state, now_secs, locale);
     let guide_step = resolve_player_guide_step(&state.status, layout_state, selection);
-    let guide_progress =
-        build_player_guide_progress_snapshot(&state.status, layout_state, selection);
+    let guide_progress = build_player_guide_progress_snapshot(
+        &state.status,
+        layout_state,
+        selection,
+        action_feedback_seen,
+    );
     let onboarding_visible = should_show_player_onboarding_card(onboarding, guide_step);
     sync_player_guide_transition(&mut onboarding.guide_transition, guide_step, now_secs);
     render_player_cinematic_intro(context, state, guide_step, locale, now_secs);

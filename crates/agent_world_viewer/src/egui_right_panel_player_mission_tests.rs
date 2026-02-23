@@ -41,7 +41,7 @@ fn build_player_mission_loop_snapshot_reports_progress_and_objective() {
 
     assert_eq!(snapshot.completed_steps, 4);
     assert_eq!(snapshot.objective, "Advance The Run");
-    assert_eq!(snapshot.action_label, "Run one key action");
+    assert_eq!(snapshot.action_label, "Open command and send 1 order");
     assert!(!snapshot.action_opens_panel);
 }
 

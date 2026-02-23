@@ -42,6 +42,7 @@ pub(super) fn build_player_guide_progress_snapshot(
     status: &crate::ConnectionStatus,
     layout_state: &RightPanelLayoutState,
     selection: &ViewerSelection,
+    action_feedback_seen: bool,
 ) -> PlayerGuideProgressSnapshot {
     let connect_world_done = matches!(status, crate::ConnectionStatus::Connected);
     let open_panel_done = connect_world_done && !layout_state.panel_hidden;
@@ -50,7 +51,7 @@ pub(super) fn build_player_guide_progress_snapshot(
         connect_world_done,
         open_panel_done,
         select_target_done,
-        explore_ready: select_target_done,
+        explore_ready: select_target_done && action_feedback_seen,
     }
 }
 
@@ -87,9 +88,11 @@ pub(super) fn player_goal_detail(
         (PlayerGuideStep::SelectTarget, false) => {
             "Click an agent or location in the scene to inspect and interact."
         }
-        (PlayerGuideStep::ExploreAction, true) => "保持观察目标状态，按需执行移动、采集或建造。",
+        (PlayerGuideStep::ExploreAction, true) => {
+            "点击“直接指挥 Agent”，发送一次移动/采集/建造指令并观察反馈。"
+        }
         (PlayerGuideStep::ExploreAction, false) => {
-            "Track your target and execute move, harvest, or build actions."
+            "Click \"Command Agent\", send one move/harvest/build command, then watch feedback."
         }
     }
 }
@@ -478,8 +481,8 @@ pub(super) fn build_player_mission_loop_snapshot(
         (PlayerGuideStep::OpenPanel, false) => ("Open control panel", true),
         (PlayerGuideStep::SelectTarget, true) => ("锁定一个目标", false),
         (PlayerGuideStep::SelectTarget, false) => ("Lock one target", false),
-        (PlayerGuideStep::ExploreAction, true) => ("执行一次关键行动", false),
-        (PlayerGuideStep::ExploreAction, false) => ("Run one key action", false),
+        (PlayerGuideStep::ExploreAction, true) => ("打开指挥并发送 1 条指令", false),
+        (PlayerGuideStep::ExploreAction, false) => ("Open command and send 1 order", false),
     };
     PlayerMissionLoopSnapshot {
         completed_steps: progress.completed_steps(),

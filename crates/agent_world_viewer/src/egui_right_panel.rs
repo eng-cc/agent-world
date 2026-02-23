@@ -91,15 +91,16 @@ use egui_right_panel_player_entry::render_hidden_panel_entry;
 use egui_right_panel_player_experience::build_player_hud_snapshot;
 #[cfg(test)]
 use egui_right_panel_player_experience::{
-    dismiss_player_onboarding_step, feedback_last_seen_event_id, feedback_toast_cap,
-    feedback_toast_ids, feedback_toast_len, feedback_toast_snapshot, feedback_tone_for_event,
-    player_achievement_is_unlocked, player_achievement_popup_cap, player_achievement_popup_len,
-    player_achievement_popup_milestones, push_feedback_toast, should_show_player_goal_hint,
-    should_show_player_onboarding_card, FeedbackTone, PlayerAchievementMilestone, PlayerGuideStep,
+    dismiss_player_onboarding_step, feedback_action_feedback_seen, feedback_last_seen_event_id,
+    feedback_toast_cap, feedback_toast_ids, feedback_toast_len, feedback_toast_snapshot,
+    feedback_tone_for_event, player_achievement_is_unlocked, player_achievement_popup_cap,
+    player_achievement_popup_len, player_achievement_popup_milestones, push_feedback_toast,
+    should_show_player_goal_hint, should_show_player_onboarding_card, FeedbackTone,
+    PlayerAchievementMilestone, PlayerGuideStep,
 };
 use egui_right_panel_player_experience::{
-    render_feedback_toasts, render_player_experience_layers, sync_feedback_toasts,
-    FeedbackToastState, PlayerAchievementState, PlayerOnboardingState,
+    player_action_feedback_seen, render_feedback_toasts, render_player_experience_layers,
+    sync_feedback_toasts, FeedbackToastState, PlayerAchievementState, PlayerOnboardingState,
 };
 use egui_right_panel_text_utils::{rejection_event_count, truncate_observe_text};
 use egui_right_panel_theme_runtime::render_theme_runtime_section;
@@ -212,6 +213,7 @@ pub(super) fn render_right_side_panel_egui(
             module_visibility.as_mut(),
             &mut onboarding_state,
             &mut player_achievement_state,
+            player_action_feedback_seen(&feedback_toast_state),
             locale,
             now_secs,
         );

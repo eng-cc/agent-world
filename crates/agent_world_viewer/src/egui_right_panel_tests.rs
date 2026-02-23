@@ -684,11 +684,13 @@ fn sync_feedback_toasts_skips_history_then_tracks_new_events_only() {
     sync_feedback_toasts(&mut feedback, &state, 20.0, locale);
     assert_eq!(feedback_toast_len(&feedback), 0);
     assert_eq!(feedback_last_seen_event_id(&feedback), Some(2));
+    assert!(!feedback_action_feedback_seen(&feedback));
 
     state.events.push(sample_rejected_event(3, 3));
     sync_feedback_toasts(&mut feedback, &state, 21.0, locale);
 
     assert_eq!(feedback_last_seen_event_id(&feedback), Some(3));
+    assert!(feedback_action_feedback_seen(&feedback));
     assert_eq!(feedback_toast_len(&feedback), 1);
     assert_eq!(
         feedback_toast_snapshot(&feedback, 0),
