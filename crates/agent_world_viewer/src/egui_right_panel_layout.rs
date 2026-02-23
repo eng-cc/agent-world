@@ -67,6 +67,19 @@ pub(super) fn adaptive_main_panel_max_width_for_layout(
     adaptive_panel_max_width(available_width).min(panel_budget.max(panel_min_width))
 }
 
+pub(super) fn player_main_panel_max_width_for_layout(
+    available_width: f32,
+    chat_panel_width: f32,
+) -> f32 {
+    let panel_min_width = adaptive_main_panel_min_width(available_width);
+    let panel_budget_max =
+        adaptive_main_panel_max_width_for_layout(available_width, chat_panel_width);
+    let immersive_cap =
+        (sanitize_available_width(available_width, super::MAIN_PANEL_DEFAULT_WIDTH) * 0.34)
+            .max(panel_min_width);
+    panel_budget_max.min(immersive_cap.max(panel_min_width))
+}
+
 pub(super) fn should_show_chat_panel(
     layout_state: &RightPanelLayoutState,
     show_chat: bool,

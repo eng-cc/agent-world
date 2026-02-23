@@ -11,8 +11,7 @@ use crate::event_click_list::{
 use crate::i18n::{
     camera_mode_button_label, camera_mode_section_label, copyable_panel_toggle_label,
     experience_mode_label, language_toggle_label, locale_or_default, module_switches_title,
-    panel_entry_hint_label, panel_toggle_shortcut_hint, right_panel_toggle_label,
-    top_controls_label, top_panel_toggle_label, UiI18n,
+    right_panel_toggle_label, top_controls_label, top_panel_toggle_label, UiI18n,
 };
 use crate::right_panel_module_visibility::RightPanelModuleVisibilityState;
 use crate::selection_linking::{
@@ -55,6 +54,8 @@ mod egui_right_panel_env;
 mod egui_right_panel_layout;
 #[path = "egui_right_panel_player_card_motion.rs"]
 mod egui_right_panel_player_card_motion;
+#[path = "egui_right_panel_player_entry.rs"]
+mod egui_right_panel_player_entry;
 #[path = "egui_right_panel_player_experience.rs"]
 mod egui_right_panel_player_experience;
 #[path = "egui_right_panel_text_utils.rs"]
@@ -78,10 +79,11 @@ use egui_right_panel_layout::{
     adaptive_chat_panel_default_width, adaptive_chat_panel_max_width_for_side_layout,
     adaptive_main_panel_max_width_for_layout, adaptive_main_panel_min_width,
     adaptive_panel_default_width, is_compact_chat_layout, panel_toggle_shortcut_pressed,
-    should_show_chat_panel, total_right_panel_width,
+    player_main_panel_max_width_for_layout, should_show_chat_panel, total_right_panel_width,
 };
 #[cfg(test)]
 use egui_right_panel_layout::{adaptive_chat_panel_max_width, adaptive_panel_max_width};
+use egui_right_panel_player_entry::render_hidden_panel_entry;
 #[cfg(test)]
 use egui_right_panel_player_experience::build_player_hud_snapshot;
 #[cfg(test)]
@@ -93,8 +95,8 @@ use egui_right_panel_player_experience::{
     FeedbackTone, PlayerAchievementMilestone, PlayerGuideStep,
 };
 use egui_right_panel_player_experience::{
-    player_entry_card_style, render_feedback_toasts, render_player_experience_layers,
-    sync_feedback_toasts, FeedbackToastState, PlayerAchievementState, PlayerOnboardingState,
+    render_feedback_toasts, render_player_experience_layers, sync_feedback_toasts,
+    FeedbackToastState, PlayerAchievementState, PlayerOnboardingState,
 };
 use egui_right_panel_text_utils::{rejection_event_count, truncate_observe_text};
 use egui_right_panel_theme_runtime::render_theme_runtime_section;
@@ -213,35 +215,13 @@ pub(super) fn render_right_side_panel_egui(
 
     if layout_state.panel_hidden {
         panel_width.width_px = 0.0;
-        let (entry_fill, entry_stroke) = if player_mode_enabled {
-            player_entry_card_style(now_secs)
-        } else {
-            (
-                egui::Color32::from_rgb(15, 19, 29),
-                egui::Stroke::new(1.0, egui::Color32::from_rgb(34, 40, 56)),
-            )
-        };
-        egui::Area::new(egui::Id::new("viewer-right-panel-show-toggle"))
-            .anchor(egui::Align2::RIGHT_TOP, egui::vec2(-12.0, 12.0))
-            .movable(false)
-            .interactable(true)
-            .show(context, |ui| {
-                egui::Frame::group(ui.style())
-                    .fill(entry_fill)
-                    .stroke(entry_stroke)
-                    .corner_radius(egui::CornerRadius::same(8))
-                    .inner_margin(egui::Margin::same(10))
-                    .show(ui, |ui| {
-                        ui.set_max_width(PANEL_ENTRY_CARD_MAX_WIDTH);
-                        ui.strong(experience_mode_label(*experience_mode, locale));
-                        ui.label(panel_entry_hint_label(*experience_mode, locale));
-                        ui.small(panel_toggle_shortcut_hint(locale));
-
-                        if ui.button(right_panel_toggle_label(false, locale)).clicked() {
-                            layout_state.panel_hidden = false;
-                        }
-                    });
-            });
+        render_hidden_panel_entry(
+            context,
+            *experience_mode,
+            locale,
+            now_secs,
+            layout_state.as_mut(),
+        );
         if layout_state.panel_hidden {
             if player_mode_enabled {
                 render_feedback_toasts(context, &feedback_toast_state, now_secs);
@@ -276,9 +256,12 @@ pub(super) fn render_right_side_panel_egui(
 
     let panel_min_width = adaptive_main_panel_min_width(available_width);
     let default_panel_width = adaptive_panel_default_width(available_width).max(panel_min_width);
-    let panel_max_width =
+    let panel_max_width = if player_mode_enabled {
+        player_main_panel_max_width_for_layout(available_width, chat_panel_width)
+    } else {
         adaptive_main_panel_max_width_for_layout(available_width, chat_panel_width)
-            .max(panel_min_width);
+            .max(panel_min_width)
+    };
     let mut hide_panel_requested = false;
     let panel_response = egui::SidePanel::right("viewer-right-side-panel")
         .resizable(true)

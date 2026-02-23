@@ -1,0 +1,92 @@
+use bevy_egui::egui;
+
+use crate::i18n::{
+    panel_entry_hint_label, panel_toggle_shortcut_hint, right_panel_toggle_label, UiLocale,
+};
+use crate::{RightPanelLayoutState, ViewerExperienceMode};
+
+use super::egui_right_panel_player_experience::player_entry_card_style;
+
+fn player_edge_drawer_hint(locale: UiLocale) -> &'static str {
+    if locale.is_zh() {
+        "边缘呼出"
+    } else {
+        "Edge Drawer"
+    }
+}
+
+pub(super) fn render_hidden_panel_entry(
+    context: &egui::Context,
+    mode: ViewerExperienceMode,
+    locale: UiLocale,
+    now_secs: f64,
+    layout_state: &mut RightPanelLayoutState,
+) {
+    let player_mode_enabled = mode == ViewerExperienceMode::Player;
+    let (entry_fill, entry_stroke) = if player_mode_enabled {
+        player_entry_card_style(now_secs)
+    } else {
+        (
+            egui::Color32::from_rgb(15, 19, 29),
+            egui::Stroke::new(1.0, egui::Color32::from_rgb(34, 40, 56)),
+        )
+    };
+
+    egui::Area::new(egui::Id::new("viewer-right-panel-show-toggle"))
+        .anchor(egui::Align2::RIGHT_TOP, egui::vec2(-12.0, 12.0))
+        .movable(false)
+        .interactable(true)
+        .show(context, |ui| {
+            egui::Frame::group(ui.style())
+                .fill(entry_fill)
+                .stroke(entry_stroke)
+                .corner_radius(egui::CornerRadius::same(8))
+                .inner_margin(egui::Margin::same(10))
+                .show(ui, |ui| {
+                    ui.set_max_width(super::PANEL_ENTRY_CARD_MAX_WIDTH);
+                    ui.strong(crate::i18n::experience_mode_label(mode, locale));
+                    ui.label(panel_entry_hint_label(mode, locale));
+                    ui.small(panel_toggle_shortcut_hint(locale));
+                    if ui.button(right_panel_toggle_label(false, locale)).clicked() {
+                        layout_state.panel_hidden = false;
+                    }
+                });
+        });
+
+    if !player_mode_enabled {
+        return;
+    }
+
+    let pulse = ((now_secs * 1.2).sin() * 0.5 + 0.5) as f32;
+    let stroke = egui::Stroke::new(
+        1.0 + 0.45 * pulse,
+        egui::Color32::from_rgba_unmultiplied(
+            (74.0 + 26.0 * pulse).round() as u8,
+            (128.0 + 32.0 * pulse).round() as u8,
+            (178.0 + 24.0 * pulse).round() as u8,
+            210,
+        ),
+    );
+
+    egui::Area::new(egui::Id::new("viewer-right-panel-edge-drawer"))
+        .anchor(egui::Align2::RIGHT_CENTER, egui::vec2(-2.0, 0.0))
+        .movable(false)
+        .interactable(true)
+        .show(context, |ui| {
+            egui::Frame::group(ui.style())
+                .fill(egui::Color32::from_rgba_unmultiplied(10, 20, 34, 206))
+                .stroke(stroke)
+                .corner_radius(egui::CornerRadius::same(8))
+                .inner_margin(egui::Margin::same(6))
+                .show(ui, |ui| {
+                    ui.small(player_edge_drawer_hint(locale));
+                    ui.small(panel_toggle_shortcut_hint(locale));
+                    if ui
+                        .small_button(if locale.is_zh() { "展开" } else { "Peek" })
+                        .clicked()
+                    {
+                        layout_state.panel_hidden = false;
+                    }
+                });
+        });
+}

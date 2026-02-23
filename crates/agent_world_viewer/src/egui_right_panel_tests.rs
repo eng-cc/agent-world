@@ -374,6 +374,16 @@ fn adaptive_main_panel_max_width_for_layout_respects_interaction_budget() {
 }
 
 #[test]
+fn player_main_panel_max_width_for_layout_keeps_world_first_budget() {
+    let width = player_main_panel_max_width_for_layout(1365.0, 360.0);
+    assert!((width - 464.1).abs() < 0.1);
+    assert_eq!(
+        player_main_panel_max_width_for_layout(390.0, 0.0),
+        MAIN_PANEL_COMPACT_MIN_WIDTH
+    );
+}
+
+#[test]
 fn show_chat_panel_requires_expanded_top_and_visibility_enabled() {
     let expanded_layout = RightPanelLayoutState {
         top_panel_collapsed: false,
