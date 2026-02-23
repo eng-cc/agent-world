@@ -49,6 +49,26 @@
 - M4：小地图卡片与任务/选中联动落地并具备单测覆盖。
 - M5：回归测试 + Web 闭环验收 + 文档收口。
 
+## 验收与结论
+- 验收日期：2026-02-23（CST）。
+- 回归结果（S5）：
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer`：通过（317 passed, 0 failed）。
+  - `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-unknown`：通过。
+- Web 闭环结果（S6）：
+  - 语义 API：`window.__AW_TEST__` 可用，`getState()` 返回结构完整（`tick/connectionStatus`）。
+  - 交互链路：`runSteps("mode=3d;focus=first_location;zoom=0.85;select=first_agent;wait=0.3")`、`sendControl("pause")`、`Tab` 折叠/展开均可执行。
+  - 控制台：`Errors: 0`（Warnings: 4，均为 WebGPU/AudioContext 平台告警）。
+- 产物：
+  - `output/playwright/viewer/phase6/phase6-cinematic.png`
+  - `output/playwright/viewer/phase6/phase6-panel-open.png`
+  - `output/playwright/viewer/phase6/phase6-panel-hidden.png`
+  - `output/playwright/viewer/phase6/phase6-mission-minimap.png`
+  - `output/playwright/viewer/phase6/state-final.txt`
+  - `output/playwright/viewer/phase6/console.log`
+- 结论：
+  - 第六阶段目标已完成，Player 模式形成“电影化开场 -> 任务驱动 -> 奖励反馈 -> 小地图导向”的连续体验链路；
+  - 在真实 Web 环境中验证通过，未发现阻断发行体验的回归问题。
+
 ## 风险
 - 新增浮层过多导致遮挡主场景。
   - 对策：所有新增卡片限定宽度与边缘锚点；开场层自动短时淡出。

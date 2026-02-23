@@ -6,7 +6,7 @@
 - [x] VRI6P2：实现任务驱动 HUD（主任务/步骤进度/当前动作提示）。
 - [x] VRI6P3：实现任务推进奖励反馈强化（完成态文本与视觉层级）。
 - [x] VRI6P4：实现 Player 小地图卡片（位置缩略 + 选中高亮联动）。
-- [ ] VRI6P5：执行回归与 Web 闭环验收并完成文档收口。
+- [x] VRI6P5：执行回归与 Web 闭环验收并完成文档收口。
 
 ## 依赖
 - `crates/agent_world_viewer/src/egui_right_panel_player_experience.rs`
@@ -15,6 +15,6 @@
 - `testing-manual.md`
 
 ## 状态
-- 当前阶段：VRI6P4 完成，VRI6P5 进行中。
+- 当前阶段：第六阶段完成（VRI6P0~VRI6P5 全部完成）。
 - 阻塞项：无。
-- 最近更新：小地图卡片已落地，位置缩略与选中联动可视化已完成。
+- 最近更新：完成回归与 Web 闭环验收，验收截图与控制台记录已归档到 `output/playwright/viewer/phase6/`。
