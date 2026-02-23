@@ -44,3 +44,22 @@
   - 对策：仅压缩冗余文案与奖励块，保留目标标题、进度条与关键动作按钮。
 - 风险 3：新增状态分支导致行为不可预测。
   - 对策：将显示策略抽为纯函数并增加定向单测，保证规则可验证。
+
+## 验收结果（VRI8P3）
+- 回归结果：
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer` 通过（325 tests）。
+  - `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-unknown` 通过。
+- Web 闭环（Playwright，按 `testing-manual.md` S6）：
+  - 使用 `?test_api=1` 访问 viewer，`window.__AW_TEST__` 可用，状态采样为已连接且 tick 正常推进。
+  - 完成隐藏态、聚焦态、面板展开态（紧凑任务 HUD）与再次收起态截图采样。
+  - Console 汇总：`Total messages: 12 (Errors: 0, Warnings: 2)`，无新增功能错误。
+- 验收产物：
+  - `output/playwright/viewer/phase8/phase8-hidden-default.png`
+  - `output/playwright/viewer/phase8/phase8-hidden-focused.png`
+  - `output/playwright/viewer/phase8/phase8-panel-open-compact.png`
+  - `output/playwright/viewer/phase8/phase8-panel-hidden-after-toggle.png`
+  - `.playwright-cli/console-2026-02-23T12-40-54-234Z.log`
+- 结论：
+  - 目标提示与引导提示的重复展示已消除。
+  - 任务 HUD 在展开态的体量显著收敛，隐藏态与引导卡不再发生叠压。
+  - “世界优先 + 可随时指挥 Agent”的布局目标在 phase8 达成。
