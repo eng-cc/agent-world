@@ -7,9 +7,9 @@
 - [x] 项目文档：`doc/p2p/distfs-self-healing-control-plane-2026-02-23.project.md`
 
 ### T1 维护计划生成器
-- [ ] 新增 `replica_maintenance` 计划模型与策略
-- [ ] 实现 Repair/Rebalance 任务规划
-- [ ] 补齐单测：副本不足与负载倾斜场景
+- [x] 新增 `replica_maintenance` 计划模型与策略
+- [x] 实现 Repair/Rebalance 任务规划
+- [x] 补齐单测：副本不足与负载倾斜场景
 
 ### T2 维护执行器
 - [ ] 增加计划执行接口与执行报告
@@ -29,7 +29,7 @@
 
 ## 状态
 - 当前状态：`进行中`
-- 已完成：T0
-- 进行中：T1
-- 未开始：T2、T3
+- 已完成：T0、T1
+- 进行中：T2
+- 未开始：T3
 - 阻塞项：无

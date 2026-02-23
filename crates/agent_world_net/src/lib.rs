@@ -13,6 +13,7 @@ mod provider_cache;
 mod provider_distribution;
 mod provider_selection;
 mod replay_flow;
+mod replica_maintenance;
 mod util;
 
 #[cfg(feature = "libp2p")]
@@ -44,6 +45,10 @@ pub mod distributed_provider_cache {
 
 pub mod distributed_provider_distribution {
     pub use super::provider_distribution::*;
+}
+
+pub mod distributed_replica_maintenance {
+    pub use super::replica_maintenance::*;
 }
 
 pub mod observer_flow {
@@ -92,6 +97,10 @@ pub use provider_distribution::{
     audit_provider_distribution, ProviderDistributionAudit, ProviderDistributionPolicy,
 };
 pub use provider_selection::ProviderSelectionPolicy;
+pub use replica_maintenance::{
+    plan_replica_maintenance, ReplicaMaintenancePlan, ReplicaMaintenancePolicy,
+    ReplicaTransferKind, ReplicaTransferTask,
+};
 
 #[cfg(feature = "libp2p")]
 pub use libp2p_net::{Libp2pNetwork, Libp2pNetworkConfig};
