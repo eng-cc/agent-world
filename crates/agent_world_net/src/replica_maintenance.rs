@@ -46,6 +46,53 @@ pub struct ReplicaMaintenancePlan {
     pub warnings: Vec<String>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReplicaMaintenanceFailedTask {
+    pub task: ReplicaTransferTask,
+    pub error: WorldError,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct ReplicaMaintenanceReport {
+    pub attempted_tasks: usize,
+    pub succeeded_tasks: usize,
+    pub failed_tasks: Vec<ReplicaMaintenanceFailedTask>,
+}
+
+pub trait ReplicaTransferExecutor {
+    fn execute_transfer(
+        &self,
+        world_id: &str,
+        task: &ReplicaTransferTask,
+    ) -> Result<(), WorldError>;
+}
+
+pub fn execute_replica_maintenance_plan(
+    dht: &impl DistributedDht,
+    executor: &impl ReplicaTransferExecutor,
+    world_id: &str,
+    plan: &ReplicaMaintenancePlan,
+) -> ReplicaMaintenanceReport {
+    let mut report = ReplicaMaintenanceReport::default();
+
+    for task in plan.repair_tasks.iter().chain(plan.rebalance_tasks.iter()) {
+        report.attempted_tasks = report.attempted_tasks.saturating_add(1);
+        match execute_replica_task(dht, executor, world_id, task) {
+            Ok(()) => {
+                report.succeeded_tasks = report.succeeded_tasks.saturating_add(1);
+            }
+            Err(error) => {
+                report.failed_tasks.push(ReplicaMaintenanceFailedTask {
+                    task: task.clone(),
+                    error,
+                });
+            }
+        }
+    }
+
+    report
+}
+
 pub fn plan_replica_maintenance(
     dht: &impl DistributedDht,
     world_id: &str,
@@ -71,6 +118,17 @@ pub fn plan_replica_maintenance(
     plan_repair_tasks(&providers_by_hash, policy, &mut plan);
     plan_rebalance_tasks(&providers_by_hash, policy, &mut plan);
     Ok(plan)
+}
+
+fn execute_replica_task(
+    dht: &impl DistributedDht,
+    executor: &impl ReplicaTransferExecutor,
+    world_id: &str,
+    task: &ReplicaTransferTask,
+) -> Result<(), WorldError> {
+    executor.execute_transfer(world_id, task)?;
+    dht.publish_provider(world_id, &task.content_hash, &task.target_provider_id)?;
+    Ok(())
 }
 
 fn validate_policy(policy: ReplicaMaintenancePolicy) -> Result<(), WorldError> {
@@ -289,7 +347,8 @@ fn selection_now_ms(providers: &[ProviderRecord]) -> i64 {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
+    use std::collections::{HashMap, HashSet};
+    use std::sync::{Arc, Mutex};
 
     use agent_world_proto::distributed as proto_distributed;
 
@@ -298,22 +357,46 @@ mod tests {
 
     #[derive(Clone, Default)]
     struct StaticProvidersDht {
-        providers_by_hash: HashMap<String, Vec<ProviderRecord>>,
+        providers_by_hash: Arc<Mutex<HashMap<String, Vec<ProviderRecord>>>>,
+        published: Arc<Mutex<Vec<(String, String, String)>>>,
     }
 
     impl StaticProvidersDht {
         fn with_providers_by_hash(providers_by_hash: HashMap<String, Vec<ProviderRecord>>) -> Self {
-            Self { providers_by_hash }
+            Self {
+                providers_by_hash: Arc::new(Mutex::new(providers_by_hash)),
+                published: Arc::new(Mutex::new(Vec::new())),
+            }
+        }
+
+        fn published(&self) -> Vec<(String, String, String)> {
+            self.published.lock().expect("lock published").clone()
         }
     }
 
     impl proto_dht::DistributedDht<WorldError> for StaticProvidersDht {
         fn publish_provider(
             &self,
-            _world_id: &str,
-            _content_hash: &str,
-            _provider_id: &str,
+            world_id: &str,
+            content_hash: &str,
+            provider_id: &str,
         ) -> Result<(), WorldError> {
+            self.published.lock().expect("lock published").push((
+                world_id.to_string(),
+                content_hash.to_string(),
+                provider_id.to_string(),
+            ));
+
+            let mut providers_by_hash = self.providers_by_hash.lock().expect("lock providers");
+            let providers = providers_by_hash
+                .entry(content_hash.to_string())
+                .or_default();
+            if providers
+                .iter()
+                .all(|record| record.provider_id != provider_id)
+            {
+                providers.push(provider(provider_id, Some(300)));
+            }
             Ok(())
         }
 
@@ -324,6 +407,8 @@ mod tests {
         ) -> Result<Vec<ProviderRecord>, WorldError> {
             Ok(self
                 .providers_by_hash
+                .lock()
+                .expect("lock providers")
                 .get(content_hash)
                 .cloned()
                 .unwrap_or_default())
@@ -358,6 +443,39 @@ mod tests {
         ) -> Result<Option<super::super::distributed_dht::MembershipDirectorySnapshot>, WorldError>
         {
             Ok(None)
+        }
+    }
+
+    #[derive(Clone, Default)]
+    struct ScriptedTransferExecutor {
+        failed_hashes: HashSet<String>,
+    }
+
+    impl ScriptedTransferExecutor {
+        fn fail_on_hashes(content_hashes: &[&str]) -> Self {
+            Self {
+                failed_hashes: content_hashes
+                    .iter()
+                    .map(|content_hash| (*content_hash).to_string())
+                    .collect(),
+            }
+        }
+    }
+
+    impl ReplicaTransferExecutor for ScriptedTransferExecutor {
+        fn execute_transfer(
+            &self,
+            _world_id: &str,
+            task: &ReplicaTransferTask,
+        ) -> Result<(), WorldError> {
+            if self.failed_hashes.contains(&task.content_hash) {
+                return Err(WorldError::NetworkRequestFailed {
+                    code: proto_distributed::DistributedErrorCode::ErrNotAvailable,
+                    message: "transfer failed".to_string(),
+                    retryable: true,
+                });
+            }
+            Ok(())
         }
     }
 
@@ -490,5 +608,56 @@ mod tests {
 
         assert!(plan.repair_tasks.is_empty());
         assert!(!plan.warnings.is_empty());
+    }
+
+    #[test]
+    fn execute_replica_maintenance_plan_publishes_target_provider_on_success() {
+        let dht = StaticProvidersDht::default();
+        let executor = ScriptedTransferExecutor::default();
+        let plan = ReplicaMaintenancePlan {
+            repair_tasks: vec![ReplicaTransferTask {
+                kind: ReplicaTransferKind::Repair,
+                content_hash: "hash-a".to_string(),
+                source_provider_id: "peer-1".to_string(),
+                target_provider_id: "peer-2".to_string(),
+            }],
+            ..ReplicaMaintenancePlan::default()
+        };
+
+        let report = execute_replica_maintenance_plan(&dht, &executor, "w1", &plan);
+
+        assert_eq!(report.attempted_tasks, 1);
+        assert_eq!(report.succeeded_tasks, 1);
+        assert!(report.failed_tasks.is_empty());
+        assert_eq!(
+            dht.published(),
+            vec![("w1".to_string(), "hash-a".to_string(), "peer-2".to_string(),)]
+        );
+    }
+
+    #[test]
+    fn execute_replica_maintenance_plan_does_not_publish_on_transfer_failure() {
+        let dht = StaticProvidersDht::default();
+        let executor = ScriptedTransferExecutor::fail_on_hashes(&["hash-a"]);
+        let plan = ReplicaMaintenancePlan {
+            repair_tasks: vec![ReplicaTransferTask {
+                kind: ReplicaTransferKind::Repair,
+                content_hash: "hash-a".to_string(),
+                source_provider_id: "peer-1".to_string(),
+                target_provider_id: "peer-2".to_string(),
+            }],
+            ..ReplicaMaintenancePlan::default()
+        };
+
+        let report = execute_replica_maintenance_plan(&dht, &executor, "w1", &plan);
+
+        assert_eq!(report.attempted_tasks, 1);
+        assert_eq!(report.succeeded_tasks, 0);
+        assert_eq!(report.failed_tasks.len(), 1);
+        assert!(matches!(
+            report.failed_tasks[0].error,
+            WorldError::NetworkRequestFailed { .. }
+        ));
+        assert!(dht.published().is_empty());
     }
 }

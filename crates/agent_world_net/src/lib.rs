@@ -98,8 +98,9 @@ pub use provider_distribution::{
 };
 pub use provider_selection::ProviderSelectionPolicy;
 pub use replica_maintenance::{
-    plan_replica_maintenance, ReplicaMaintenancePlan, ReplicaMaintenancePolicy,
-    ReplicaTransferKind, ReplicaTransferTask,
+    execute_replica_maintenance_plan, plan_replica_maintenance, ReplicaMaintenanceFailedTask,
+    ReplicaMaintenancePlan, ReplicaMaintenancePolicy, ReplicaMaintenanceReport,
+    ReplicaTransferExecutor, ReplicaTransferKind, ReplicaTransferTask,
 };
 
 #[cfg(feature = "libp2p")]
