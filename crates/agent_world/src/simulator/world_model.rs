@@ -37,6 +37,36 @@ const MOVE_COST_REFERENCE_POWER_UNIT_J: i64 = 1_000;
 // ============================================================================
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct AgentKinematics {
+    /// Planned movement speed used by time-based movement semantics.
+    pub speed_cm_per_tick: i64,
+    /// Optional movement target in absolute world position.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub move_target: Option<GeoPos>,
+    /// Tick index when the current move started.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub move_started_at_tick: Option<WorldTime>,
+    /// Tick index when the current move is expected to arrive.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub move_eta_tick: Option<WorldTime>,
+    /// Remaining distance in centimeters for the current move.
+    pub move_remaining_cm: i64,
+}
+
+impl Default for AgentKinematics {
+    fn default() -> Self {
+        Self {
+            speed_cm_per_tick: 1_000,
+            move_target: None,
+            move_started_at_tick: None,
+            move_eta_tick: None,
+            move_remaining_cm: 0,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Agent {
     pub id: AgentId,
     pub pos: GeoPos,
@@ -45,6 +75,9 @@ pub struct Agent {
     pub resources: ResourceStock,
     /// Power status for M4 power system.
     pub power: AgentPowerStatus,
+    /// Movement state for upcoming time-based move execution.
+    #[serde(default)]
+    pub kinematics: AgentKinematics,
     /// Thermal status (heat accumulation).
     #[serde(default)]
     pub thermal: ThermalStatus,
@@ -59,6 +92,7 @@ impl Agent {
             location_id: location_id.into(),
             resources: ResourceStock::default(),
             power: AgentPowerStatus::default(),
+            kinematics: AgentKinematics::default(),
             thermal: ThermalStatus::default(),
         }
     }
@@ -77,6 +111,7 @@ impl Agent {
             location_id: location_id.into(),
             resources: ResourceStock::default(),
             power: AgentPowerStatus::from_config(power_config),
+            kinematics: AgentKinematics::default(),
             thermal: ThermalStatus::default(),
         }
     }

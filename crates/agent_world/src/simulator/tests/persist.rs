@@ -274,6 +274,49 @@ fn snapshot_version_validation_accepts_legacy_and_defaults_chunk_schema() {
 }
 
 #[test]
+fn snapshot_agent_kinematics_defaults_when_legacy_field_is_missing() {
+    let mut kernel = WorldKernel::new();
+    kernel.submit_action(Action::RegisterLocation {
+        location_id: "loc-1".to_string(),
+        name: "base".to_string(),
+        pos: pos(0.0, 0.0),
+        profile: LocationProfile::default(),
+    });
+    kernel.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        location_id: "loc-1".to_string(),
+    });
+    kernel.step_until_empty();
+
+    let snapshot = kernel.snapshot();
+    let mut value: serde_json::Value =
+        serde_json::from_str(&snapshot.to_json().expect("snapshot to json"))
+            .expect("parse snapshot json");
+
+    let agents = value
+        .get_mut("model")
+        .and_then(|model| model.get_mut("agents"))
+        .and_then(|agents| agents.as_object_mut())
+        .expect("agents object");
+    for agent in agents.values_mut() {
+        let map = agent.as_object_mut().expect("agent object");
+        map.remove("kinematics");
+    }
+
+    let migrated = WorldSnapshot::from_json(
+        &serde_json::to_string(&value).expect("serialize migrated snapshot"),
+    )
+    .expect("load legacy snapshot without kinematics");
+
+    let restored = migrated
+        .model
+        .agents
+        .get("agent-1")
+        .expect("restored agent exists");
+    assert_eq!(restored.kinematics, AgentKinematics::default());
+}
+
+#[test]
 fn journal_version_validation_accepts_legacy() {
     let mut journal = WorldJournal::default();
     journal.version = JOURNAL_VERSION.saturating_sub(1);

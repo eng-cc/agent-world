@@ -95,12 +95,12 @@ pub use types::{
     SNAPSHOT_VERSION,
 };
 pub use world_model::{
-    physics_parameter_specs, Agent, AgentPromptProfile, Asset, AssetKind, AsteroidFragmentConfig,
-    BoundaryReservation, ChunkState, EconomyConfig, Factory, FragmentResourceError,
-    InstalledModuleState, Location, MaterialDistributionStrategy, MaterialRadiationFactors,
-    MaterialWeights, ModuleArtifactBidState, ModuleArtifactListingState, ModuleArtifactState,
-    PhysicsConfig, PhysicsParameterSpec, PowerOrderBookState, PowerOrderState, SpaceConfig,
-    ThermalStatus, WorldConfig, WorldModel,
+    physics_parameter_specs, Agent, AgentKinematics, AgentPromptProfile, Asset, AssetKind,
+    AsteroidFragmentConfig, BoundaryReservation, ChunkState, EconomyConfig, Factory,
+    FragmentResourceError, InstalledModuleState, Location, MaterialDistributionStrategy,
+    MaterialRadiationFactors, MaterialWeights, ModuleArtifactBidState, ModuleArtifactListingState,
+    ModuleArtifactState, PhysicsConfig, PhysicsParameterSpec, PowerOrderBookState, PowerOrderState,
+    SpaceConfig, ThermalStatus, WorldConfig, WorldModel,
 };
 
 // Re-export power system types
