@@ -29,6 +29,7 @@ pub struct NodeReplicationConfig {
     signing_private_key_hex: Option<String>,
     signing_public_key_hex: Option<String>,
     enforce_signature: bool,
+    remote_writer_allowlist: BTreeSet<String>,
 }
 
 impl NodeReplicationConfig {
@@ -44,6 +45,7 @@ impl NodeReplicationConfig {
             signing_private_key_hex: None,
             signing_public_key_hex: None,
             enforce_signature: false,
+            remote_writer_allowlist: BTreeSet::new(),
         })
     }
 
@@ -64,6 +66,41 @@ impl NodeReplicationConfig {
         self.signing_private_key_hex = Some(private_key_hex);
         self.signing_public_key_hex = Some(public_key_hex);
         self.enforce_signature = true;
+        Ok(self)
+    }
+
+    pub fn with_remote_writer_allowlist(
+        mut self,
+        remote_writer_allowlist: Vec<String>,
+    ) -> Result<Self, NodeError> {
+        let mut normalized = BTreeSet::new();
+        for writer_id in remote_writer_allowlist {
+            let normalized_writer_id = normalize_replication_public_key_hex_for_config(
+                writer_id.as_str(),
+                "replication remote_writer_allowlist entry",
+            )?;
+            normalized.insert(normalized_writer_id);
+        }
+        self.remote_writer_allowlist = normalized;
+        Ok(self)
+    }
+
+    pub(crate) fn with_default_remote_writer_allowlist(
+        mut self,
+        defaults: impl IntoIterator<Item = String>,
+    ) -> Result<Self, NodeError> {
+        if !self.remote_writer_allowlist.is_empty() {
+            return Ok(self);
+        }
+        let mut normalized = BTreeSet::new();
+        for writer_id in defaults {
+            let normalized_writer_id = normalize_replication_public_key_hex_for_config(
+                writer_id.as_str(),
+                "replication remote writer default",
+            )?;
+            normalized.insert(normalized_writer_id);
+        }
+        self.remote_writer_allowlist = normalized;
         Ok(self)
     }
 
@@ -101,6 +138,10 @@ impl NodeReplicationConfig {
 
     pub(crate) fn enforce_consensus_signature(&self) -> bool {
         self.enforce_signature || self.signing_private_key_hex.is_some()
+    }
+
+    pub(crate) fn remote_writer_allowlist(&self) -> &BTreeSet<String> {
+        &self.remote_writer_allowlist
     }
 
     fn store_root(&self) -> PathBuf {
@@ -171,6 +212,7 @@ pub(crate) struct ReplicationRuntime {
     writer_state: LocalWriterState,
     signer: Option<ReplicationSigningKey>,
     enforce_signature: bool,
+    remote_writer_allowlist: BTreeSet<String>,
 }
 
 fn default_writer_epoch() -> u64 {
@@ -252,6 +294,7 @@ impl ReplicationRuntime {
             guard,
             writer_state,
             enforce_signature: config.enforce_signature || signer.is_some(),
+            remote_writer_allowlist: config.remote_writer_allowlist().clone(),
             signer,
         })
     }
@@ -537,6 +580,7 @@ impl ReplicationRuntime {
         message: &GossipReplicationMessage,
     ) -> Result<(), NodeError> {
         if self.enforce_signature
+            || !self.remote_writer_allowlist.is_empty()
             || message.signature_hex.is_some()
             || message.public_key_hex.is_some()
         {
@@ -549,6 +593,27 @@ impl ReplicationRuntime {
                     });
                 }
             }
+        }
+        self.validate_remote_writer_authorization(message.record.writer_id.as_str())?;
+        Ok(())
+    }
+
+    fn validate_remote_writer_authorization(&self, writer_id: &str) -> Result<(), NodeError> {
+        if self.remote_writer_allowlist.is_empty() {
+            if self.enforce_signature {
+                return Err(NodeError::Replication {
+                    reason: "replication remote writer allowlist is empty while signature enforcement is enabled"
+                        .to_string(),
+                });
+            }
+            return Ok(());
+        }
+        if !self.remote_writer_allowlist.contains(writer_id) {
+            return Err(NodeError::Replication {
+                reason: format!(
+                    "replication remote writer is not authorized: writer_id={writer_id}"
+                ),
+            });
         }
         Ok(())
     }
@@ -573,6 +638,25 @@ impl ReplicationRuntime {
 fn signing_key_from_hex(private_key_hex: &str) -> Result<SigningKey, NodeError> {
     let private_key = decode_hex_array::<32>(private_key_hex, "replication private key")?;
     Ok(SigningKey::from_bytes(&private_key))
+}
+
+fn normalize_replication_public_key_hex_for_config(
+    raw: &str,
+    field: &str,
+) -> Result<String, NodeError> {
+    let normalized = raw.trim();
+    if normalized.is_empty() {
+        return Err(NodeError::InvalidConfig {
+            reason: format!("{field} cannot be empty"),
+        });
+    }
+    let bytes = hex::decode(normalized).map_err(|_| NodeError::InvalidConfig {
+        reason: format!("{field} must be valid hex"),
+    })?;
+    let key_bytes: [u8; 32] = bytes.try_into().map_err(|_| NodeError::InvalidConfig {
+        reason: format!("{field} must be 32-byte hex"),
+    })?;
+    Ok(hex::encode(key_bytes))
 }
 
 fn sign_replication_message(
@@ -762,6 +846,51 @@ mod tests {
         std::env::temp_dir().join(format!("agent-world-replication-tests-{prefix}-{unique}"))
     }
 
+    fn deterministic_keypair_hex(seed: u8) -> (String, String) {
+        let bytes = [seed; 32];
+        let signing_key = SigningKey::from_bytes(&bytes);
+        (
+            hex::encode(signing_key.to_bytes()),
+            hex::encode(signing_key.verifying_key().to_bytes()),
+        )
+    }
+
+    fn signed_remote_message(
+        seed: u8,
+        world_id: &str,
+        node_id: &str,
+        sequence: u64,
+    ) -> GossipReplicationMessage {
+        let (private_hex, public_hex) = deterministic_keypair_hex(seed);
+        let signer = ReplicationSigningKey {
+            signing_key: signing_key_from_hex(private_hex.as_str()).expect("signing key"),
+            public_key_hex: public_hex.clone(),
+        };
+        let payload = format!("payload-{seed}-{sequence}").into_bytes();
+        let path = format!("{COMMIT_FILE_PREFIX}/{:020}.json", sequence.max(1));
+        let record = build_replication_record_with_epoch(
+            world_id,
+            public_hex.as_str(),
+            1,
+            sequence.max(1),
+            path.as_str(),
+            payload.as_slice(),
+            1_000,
+        )
+        .expect("record");
+        let mut message = GossipReplicationMessage {
+            version: REPLICATION_VERSION,
+            world_id: world_id.to_string(),
+            node_id: node_id.to_string(),
+            record,
+            payload,
+            public_key_hex: Some(public_hex),
+            signature_hex: None,
+        };
+        message.signature_hex = Some(sign_replication_message(&message, &signer).expect("sign"));
+        message
+    }
+
     #[test]
     fn next_local_record_position_rejects_sequence_overflow_for_existing_writer() {
         let dir = temp_dir("existing-writer-sequence-overflow");
@@ -836,6 +965,52 @@ mod tests {
         assert!(
             matches!(err, NodeError::Replication { reason } if reason.contains("sequence overflow"))
         );
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn validate_remote_message_for_observe_rejects_writer_outside_allowlist() {
+        let dir = temp_dir("allowlist-reject");
+        let (local_private_hex, local_public_hex) = deterministic_keypair_hex(21);
+        let (_, allowed_public_hex) = deterministic_keypair_hex(22);
+        let config = NodeReplicationConfig::new(&dir)
+            .expect("config")
+            .with_signing_keypair(local_private_hex, local_public_hex)
+            .expect("signing keypair")
+            .with_remote_writer_allowlist(vec![allowed_public_hex])
+            .expect("allowlist");
+        let runtime = ReplicationRuntime::new(&config, "node-b").expect("runtime");
+        let unauthorized_message = signed_remote_message(23, "world-allowlist", "node-a", 1);
+
+        let err = runtime
+            .validate_remote_message_for_observe("node-b", "world-allowlist", &unauthorized_message)
+            .expect_err("unauthorized writer should fail");
+        assert!(
+            matches!(err, NodeError::Replication { reason } if reason.contains("not authorized"))
+        );
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn validate_remote_message_for_observe_accepts_writer_in_allowlist() {
+        let dir = temp_dir("allowlist-accept");
+        let (local_private_hex, local_public_hex) = deterministic_keypair_hex(31);
+        let (_, allowed_public_hex) = deterministic_keypair_hex(32);
+        let config = NodeReplicationConfig::new(&dir)
+            .expect("config")
+            .with_signing_keypair(local_private_hex, local_public_hex)
+            .expect("signing keypair")
+            .with_remote_writer_allowlist(vec![allowed_public_hex])
+            .expect("allowlist");
+        let runtime = ReplicationRuntime::new(&config, "node-b").expect("runtime");
+        let allowed_message = signed_remote_message(32, "world-allowlist", "node-a", 1);
+
+        let accepted = runtime
+            .validate_remote_message_for_observe("node-b", "world-allowlist", &allowed_message)
+            .expect("authorized writer should pass");
+        assert!(accepted);
 
         let _ = std::fs::remove_dir_all(&dir);
     }

@@ -3,10 +3,11 @@ use super::*;
 use agent_world_consensus::node_consensus_signature::{
     sign_proposal_message, NodeConsensusMessageSigner as ConsensusMessageSigner,
 };
-use agent_world_distfs::{blake3_hex, FileReplicationRecord};
+use agent_world_distfs::{blake3_hex, build_replication_record_with_epoch, FileReplicationRecord};
 use agent_world_proto::distributed_net::NetworkSubscription;
 use agent_world_proto::world_error::WorldError;
-use ed25519_dalek::SigningKey;
+use ed25519_dalek::{Signer as _, SigningKey};
+use serde::Serialize;
 use std::collections::{BTreeMap, HashMap};
 use std::fs;
 use std::net::UdpSocket;
@@ -63,6 +64,70 @@ fn signed_pos_config_with_signer_seeds(
     NodePosConfig::ethereum_like(validators)
         .with_validator_signer_public_keys(signer_map)
         .expect("signed pos config")
+}
+
+#[derive(Debug, Serialize)]
+struct ReplicationSigningPayload<'a> {
+    version: u8,
+    world_id: &'a str,
+    node_id: &'a str,
+    record: &'a FileReplicationRecord,
+    payload: &'a [u8],
+    public_key_hex: Option<&'a str>,
+}
+
+fn sign_replication_message_for_test(
+    message: &super::replication::GossipReplicationMessage,
+    private_key_hex: &str,
+) -> String {
+    let private_key: [u8; 32] = hex::decode(private_key_hex)
+        .expect("private key decode")
+        .try_into()
+        .expect("private key length");
+    let signing_key = SigningKey::from_bytes(&private_key);
+    let payload = ReplicationSigningPayload {
+        version: message.version,
+        world_id: message.world_id.as_str(),
+        node_id: message.node_id.as_str(),
+        record: &message.record,
+        payload: &message.payload,
+        public_key_hex: message.public_key_hex.as_deref(),
+    };
+    let bytes = serde_json::to_vec(&payload).expect("encode signing payload");
+    let signature = signing_key.sign(bytes.as_slice());
+    hex::encode(signature.to_bytes())
+}
+
+fn signed_replication_message_for_writer(
+    world_id: &str,
+    node_id: &str,
+    private_key_hex: &str,
+    public_key_hex: &str,
+    sequence: u64,
+) -> super::replication::GossipReplicationMessage {
+    let payload = format!("payload-{sequence}").into_bytes();
+    let path = format!("consensus/commits/{:020}.json", sequence.max(1));
+    let record = build_replication_record_with_epoch(
+        world_id,
+        public_key_hex,
+        1,
+        sequence.max(1),
+        path.as_str(),
+        payload.as_slice(),
+        1_000,
+    )
+    .expect("record");
+    let mut message = super::replication::GossipReplicationMessage {
+        version: 1,
+        world_id: world_id.to_string(),
+        node_id: node_id.to_string(),
+        record,
+        payload,
+        public_key_hex: Some(public_key_hex.to_string()),
+        signature_hex: None,
+    };
+    message.signature_hex = Some(sign_replication_message_for_test(&message, private_key_hex));
+    message
 }
 
 fn empty_action_root() -> String {
@@ -453,6 +518,73 @@ fn runtime_replication_ingest_reports_error_and_does_not_advance_network_height_
     assert!(
         has_error,
         "runtime did not report replication ingest rejection"
+    );
+
+    runtime.stop().expect("stop");
+    let snapshot = runtime.snapshot();
+    assert_eq!(snapshot.consensus.network_committed_height, 0);
+
+    let _ = fs::remove_dir_all(dir);
+}
+
+#[test]
+fn runtime_replication_ingest_rejects_signed_writer_outside_allowlist() {
+    let world_id = "world-repl-allowlist";
+    let dir = temp_dir("repl-allowlist");
+    let validators = vec![
+        PosValidator {
+            validator_id: "node-a".to_string(),
+            stake: 60,
+        },
+        PosValidator {
+            validator_id: "node-b".to_string(),
+            stake: 40,
+        },
+    ];
+    let pos_config =
+        signed_pos_config_with_signer_seeds(validators, &[("node-a", 91), ("node-b", 92)]);
+
+    let network_impl = Arc::new(TestInMemoryNetwork::default());
+    let network: Arc<
+        dyn agent_world_proto::distributed_net::DistributedNetwork<WorldError> + Send + Sync,
+    > = network_impl.clone();
+
+    let config = NodeConfig::new("node-b", world_id, NodeRole::Observer)
+        .expect("config")
+        .with_tick_interval(Duration::from_millis(10))
+        .expect("tick")
+        .with_pos_config(pos_config)
+        .expect("pos config")
+        .with_replication(signed_replication_config(dir.clone(), 92));
+    let mut runtime = NodeRuntime::new(config)
+        .with_replication_network(NodeReplicationNetworkHandle::new(Arc::clone(&network)));
+    runtime.start().expect("start");
+
+    let (unauthorized_private_hex, unauthorized_public_hex) = deterministic_keypair_hex(99);
+    let unauthorized_message = signed_replication_message_for_writer(
+        world_id,
+        "node-a",
+        unauthorized_private_hex.as_str(),
+        unauthorized_public_hex.as_str(),
+        1,
+    );
+    let encoded = serde_json::to_vec(&unauthorized_message).expect("encode message");
+    let topic = super::network_bridge::default_replication_topic(world_id);
+    network
+        .publish(topic.as_str(), encoded.as_slice())
+        .expect("publish unauthorized message");
+
+    let unauthorized_rejected = wait_until(Instant::now() + Duration::from_secs(2), || {
+        runtime
+            .snapshot()
+            .last_error
+            .as_ref()
+            .map(|reason| reason.contains("not authorized"))
+            .unwrap_or(false)
+    });
+    assert!(
+        unauthorized_rejected,
+        "runtime did not reject unauthorized remote writer"
     );
 
     runtime.stop().expect("stop");

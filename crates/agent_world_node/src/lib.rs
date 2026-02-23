@@ -240,9 +240,21 @@ impl NodeRuntime {
                 return Err(err);
             }
         };
-        let pos_state_store = self
+        let effective_replication_config = self
             .config
             .replication
+            .as_ref()
+            .map(|config| {
+                config.clone().with_default_remote_writer_allowlist(
+                    self.config
+                        .pos_config
+                        .validator_signer_public_keys
+                        .values()
+                        .cloned(),
+                )
+            })
+            .transpose()?;
+        let pos_state_store = effective_replication_config
             .as_ref()
             .map(PosNodeStateStore::from_replication);
         if let Some(store) = pos_state_store.as_ref() {
@@ -271,7 +283,7 @@ impl NodeRuntime {
         } else {
             None
         };
-        let mut replication = if let Some(config) = &self.config.replication {
+        let mut replication = if let Some(config) = effective_replication_config.as_ref() {
             match ReplicationRuntime::new(config, &self.config.node_id) {
                 Ok(runtime) => Some(runtime),
                 Err(err) => {
@@ -282,9 +294,10 @@ impl NodeRuntime {
         } else {
             None
         };
-        if let (Some(network), Some(replication_config)) =
-            (&self.replication_network, self.config.replication.as_ref())
-        {
+        if let (Some(network), Some(replication_config)) = (
+            &self.replication_network,
+            effective_replication_config.as_ref(),
+        ) {
             if let Err(err) = register_replication_fetch_handlers(
                 network,
                 replication_config,
