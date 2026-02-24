@@ -4,13 +4,13 @@
 - [x] T0：完成方案建档
   - [x] 设计文档：`doc/testing/p2p-storage-consensus-longrun-online-stability-2026-02-24.md`
   - [x] 项目管理文档：`doc/testing/p2p-storage-consensus-longrun-online-stability-2026-02-24.project.md`
-- [ ] T1：实现长跑编排脚本最小闭环
+- [x] T1：实现长跑编排脚本最小闭环
   - [x] 新增 `scripts/p2p-longrun-soak.sh`（启动/停止/超时/清理/目录结构）
   - [x] 支持 `triad` 与 `triad_distributed` 两种拓扑
-- [ ] T2：实现指标采样与聚合判定
-  - [ ] 解析 `reward_runtime_report_dir` 下 epoch JSON
-  - [ ] 输出 `timeline.csv`、`summary.json`、`summary.md`
-  - [ ] 实现门禁：stall/lag/distfs failure ratio/invariant ok
+- [x] T2：实现指标采样与聚合判定
+  - [x] 解析 `reward_runtime_report_dir` 下 epoch JSON
+  - [x] 输出 `timeline.csv`、`summary.json`、`summary.md`
+  - [x] 实现门禁：stall/lag/distfs failure ratio/invariant ok
 - [ ] T3：实现故障注入与恢复验证
   - [ ] 支持重启/短时断连注入计划（`--chaos-plan`）
   - [ ] 输出 `chaos_events.log` 并与判定器联动
@@ -34,7 +34,7 @@
 - `crates/agent_world_node/src/types.rs`
 
 ## 状态
-- 当前阶段：T0/T1 已完成，T2 待开始。
+- 当前阶段：T0/T1/T2 已完成，T3 待开始。
 - 阻塞项：无。
-- 下一步：执行 T2（补指标采样、聚合判定与 summary 结构化输出）。
+- 下一步：执行 T3（实现 `--chaos-plan` 注入编排与 `chaos_events.log` 联动判定）。
 - 最近更新：2026-02-24。
