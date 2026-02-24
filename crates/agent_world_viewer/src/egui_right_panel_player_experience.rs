@@ -3,9 +3,10 @@ use super::egui_right_panel_player_card_motion::{
 };
 use super::egui_right_panel_player_guide::{
     build_player_guide_progress_snapshot, player_goal_badge, player_goal_color, player_goal_detail,
-    player_goal_title, player_onboarding_dismiss, player_onboarding_primary_action,
-    player_onboarding_title, render_player_cinematic_intro, render_player_guide_progress_lines,
-    render_player_layout_preset_strip, render_player_mission_hud, PlayerGuideProgressSnapshot,
+    player_goal_title, player_mission_hud_minimap_reserved_bottom, player_onboarding_dismiss,
+    player_onboarding_primary_action, player_onboarding_title, render_player_cinematic_intro,
+    render_player_guide_progress_lines, render_player_layout_preset_strip,
+    render_player_mission_hud, PlayerGuideProgressSnapshot,
 };
 use agent_world::simulator::{ResourceOwner, WorldEvent, WorldEventKind};
 use bevy_egui::egui;
@@ -227,7 +228,7 @@ pub(super) fn render_feedback_toasts(
     feedback: &FeedbackToastState,
     now_secs: f64,
 ) {
-    let mut vertical_offset = 12.0;
+    let mut vertical_offset = 14.0;
     for toast in feedback.toasts.iter().rev() {
         let remaining = (toast.expires_at_secs - now_secs).max(0.0);
         let alpha = if remaining < FEEDBACK_TOAST_FADE_SECS {
@@ -235,9 +236,8 @@ pub(super) fn render_feedback_toasts(
         } else {
             1.0
         };
-
         egui::Area::new(egui::Id::new(("viewer-feedback-toast", toast.id)))
-            .anchor(egui::Align2::CENTER_TOP, egui::vec2(0.0, vertical_offset))
+            .anchor(egui::Align2::RIGHT_TOP, egui::vec2(-14.0, vertical_offset))
             .movable(false)
             .interactable(false)
             .show(context, |ui| {
@@ -440,7 +440,7 @@ pub(super) fn render_player_achievement_popups(
     locale: crate::i18n::UiLocale,
     now_secs: f64,
 ) {
-    let mut vertical_offset = 88.0;
+    let mut vertical_offset = 228.0;
     let to_u8 = |value: f32| (value.clamp(0.0, 255.0)) as u8;
     for toast in achievements.toasts.iter().rev() {
         let remaining = (toast.expires_at_secs - now_secs).max(0.0);
@@ -460,7 +460,6 @@ pub(super) fn render_player_achievement_popups(
                 to_u8(236.0 * alpha),
             ),
         );
-
         egui::Area::new(egui::Id::new(("viewer-player-achievement", toast.id)))
             .anchor(egui::Align2::RIGHT_TOP, egui::vec2(-14.0, vertical_offset))
             .movable(false)
@@ -634,21 +633,17 @@ pub(super) fn sync_agent_chatter_bubbles(
         .chatter
         .bubbles
         .retain(|bubble| bubble.expires_at_secs > now_secs);
-
     let newest_event_id = state.events.last().map(|event| event.id);
     let Some(newest_event_id) = newest_event_id else {
         return;
     };
-
     let Some(last_seen) = achievements.chatter.last_seen_event_id else {
         achievements.chatter.last_seen_event_id = Some(newest_event_id);
         return;
     };
-
     if newest_event_id <= last_seen {
         return;
     }
-
     let mut seen_max = last_seen;
     for event in state.events.iter().filter(|event| event.id > last_seen) {
         if let Some((speaker, line, tone)) = chatter_line_for_event(event, locale) {
@@ -662,9 +657,10 @@ pub(super) fn sync_agent_chatter_bubbles(
 pub(super) fn render_agent_chatter_bubbles(
     context: &egui::Context,
     achievements: &PlayerAchievementState,
+    reserved_bottom_px: f32,
     now_secs: f64,
 ) {
-    let mut vertical_offset = 14.0;
+    let mut vertical_offset = 14.0 + reserved_bottom_px.max(0.0);
     for bubble in achievements.chatter.bubbles.iter().rev() {
         let remaining = (bubble.expires_at_secs - now_secs).max(0.0);
         let alpha = if remaining < AGENT_CHATTER_FADE_SECS {
@@ -673,7 +669,6 @@ pub(super) fn render_agent_chatter_bubbles(
             1.0
         };
         let accent = chatter_stroke_color(bubble.tone, alpha);
-
         egui::Area::new(egui::Id::new(("viewer-agent-chatter", bubble.id)))
             .anchor(
                 egui::Align2::RIGHT_BOTTOM,
@@ -1175,7 +1170,12 @@ pub(super) fn render_player_experience_layers(
         now_secs,
     );
     render_player_achievement_popups(context, achievements, locale, now_secs);
-    render_agent_chatter_bubbles(context, achievements, now_secs);
+    render_agent_chatter_bubbles(
+        context,
+        achievements,
+        player_mission_hud_minimap_reserved_bottom(layout_state.panel_hidden),
+        now_secs,
+    );
     if should_show_player_goal_hint(onboarding, guide_step, layout_state) {
         render_player_goal_hint(
             context,

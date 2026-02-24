@@ -322,12 +322,12 @@ pub(super) fn render_player_layout_preset_strip(
 }
 
 pub(super) fn should_show_player_layout_preset_strip(panel_hidden: bool) -> bool {
-    !panel_hidden
+    panel_hidden
 }
 
 pub(super) fn player_layout_preset_strip_anchor_y(panel_hidden: bool) -> f32 {
     if should_show_player_layout_preset_strip(panel_hidden) {
-        58.0
+        74.0
     } else {
         0.0
     }
@@ -810,8 +810,10 @@ pub(super) fn render_player_mission_hud(
         apply_player_layout_preset(layout_state, module_visibility, PlayerLayoutPreset::Command);
     }
 
-    let points = build_player_minimap_snapshot(state, selection);
-    render_player_minimap_card(context, &points, locale, now_secs);
+    if player_mission_hud_show_minimap(layout_state.panel_hidden) {
+        let points = build_player_minimap_snapshot(state, selection);
+        render_player_minimap_card(context, &points, locale, now_secs);
+    }
 }
 
 pub(super) fn player_mission_hud_compact_mode(panel_hidden: bool) -> bool {
@@ -830,4 +832,16 @@ pub(super) fn player_mission_hud_anchor_y(panel_hidden: bool, onboarding_visible
 
 pub(super) fn player_mission_hud_show_command_action(panel_hidden: bool) -> bool {
     panel_hidden
+}
+
+pub(super) fn player_mission_hud_show_minimap(panel_hidden: bool) -> bool {
+    panel_hidden
+}
+
+pub(super) fn player_mission_hud_minimap_reserved_bottom(panel_hidden: bool) -> f32 {
+    if player_mission_hud_show_minimap(panel_hidden) {
+        188.0
+    } else {
+        0.0
+    }
 }

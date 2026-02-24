@@ -87,12 +87,12 @@ fn resolve_player_layout_preset_tracks_command_and_intel_state() {
 
 #[test]
 fn player_layout_strip_visibility_follows_panel_hidden_state() {
-    assert!(!should_show_player_layout_preset_strip(true));
-    assert!(should_show_player_layout_preset_strip(false));
+    assert!(should_show_player_layout_preset_strip(true));
+    assert!(!should_show_player_layout_preset_strip(false));
 }
 
 #[test]
 fn player_layout_strip_anchor_moves_below_compact_hud() {
-    assert_eq!(player_layout_preset_strip_anchor_y(true), 0.0);
-    assert_eq!(player_layout_preset_strip_anchor_y(false), 58.0);
+    assert_eq!(player_layout_preset_strip_anchor_y(true), 74.0);
+    assert_eq!(player_layout_preset_strip_anchor_y(false), 0.0);
 }
