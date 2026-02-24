@@ -135,5 +135,14 @@
 - M2：已完成（已支持 epoch JSON 聚合、`timeline.csv`/`summary.json` 输出与 stall/lag/distfs/invariant 门禁）。
 - M3：已完成（已支持 `--chaos-plan` 注入与 `chaos_events.log` 联动）。
 - M4：已完成（`testing-manual.md` 已接入 S9 套件、执行剧本、证据规范与触发矩阵）。
-- M5：未开始。
+- M5：已完成。
+  - `soak_smoke` 收口样本：
+    - `./scripts/p2p-longrun-soak.sh --profile soak_smoke --duration-secs 240 --no-prewarm --out-dir .tmp/p2p_longrun_t5_smoke`
+    - 产物：`.tmp/p2p_longrun_t5_smoke/20260224-170240/{summary.md,summary.json,timeline.csv,chaos_events.log}`
+    - 结果：`overall_status=ok`，`metric_gate=insufficient_data`（无 epoch 报表，符合 `soak_smoke` 告警语义）。
+  - `soak_endurance` 收口样本（含 chaos + 门禁链路验证）：
+    - 主命令：`./scripts/p2p-longrun-soak.sh --profile soak_endurance --duration-secs 240 --no-prewarm --topologies triad_distributed --chaos-plan .tmp/p2p_chaos_t5_endurance.json --out-dir .tmp/p2p_longrun_t5_endurance`
+    - 产物：`.tmp/p2p_longrun_t5_endurance/20260224-173855/{summary.md,summary.json,timeline.csv,chaos_events.log}`
+    - 结果：`overall_status=ok`，`metric_gate=pass`，`chaos_events_total=2`，`report_samples_total=9`。
 - 备注：当运行期无 epoch 报表产出时，脚本会标记 `metric_gate=insufficient_data`（`soak_smoke` 仅告警，`soak_endurance/soak_release` 视为失败）。
+- 备注补充：本次 M5 为短窗收口样本（`duration-secs=240`），用于验证编排/故障注入/门禁链路；`20~30` 分钟与 `180+` 分钟长跑建议按 `testing-manual.md` S9 在夜间或发布前执行。

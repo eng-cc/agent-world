@@ -17,10 +17,14 @@
 - [x] T4：文档与手册接线
   - [x] 在 `testing-manual.md` 新增 S9 套件
   - [x] 新增 S9 执行剧本、证据规范、触发矩阵条目
-- [ ] T5：验证与收口
-  - [ ] 执行一次 `soak_smoke` 长跑档
-  - [ ] 执行一次 `soak_endurance` 长跑档
-  - [ ] 回写 `doc/devlog/2026-02-24.md` 与状态收口
+- [x] T5：验证与收口
+  - [x] 执行一次 `soak_smoke` 长跑档
+    - 命令：`./scripts/p2p-longrun-soak.sh --profile soak_smoke --duration-secs 240 --no-prewarm --out-dir .tmp/p2p_longrun_t5_smoke`
+    - 产物：`.tmp/p2p_longrun_t5_smoke/20260224-170240/{summary.md,summary.json,timeline.csv,chaos_events.log}`
+  - [x] 执行一次 `soak_endurance` 长跑档
+    - 命令：`./scripts/p2p-longrun-soak.sh --profile soak_endurance --duration-secs 240 --no-prewarm --topologies triad_distributed --chaos-plan .tmp/p2p_chaos_t5_endurance.json --out-dir .tmp/p2p_longrun_t5_endurance`
+    - 产物：`.tmp/p2p_longrun_t5_endurance/20260224-173855/{summary.md,summary.json,timeline.csv,chaos_events.log}`
+  - [x] 回写 `doc/devlog/2026-02-24.md` 与状态收口
 
 ## 依赖
 - `testing-manual.md`
@@ -34,7 +38,7 @@
 - `crates/agent_world_node/src/types.rs`
 
 ## 状态
-- 当前阶段：T0/T1/T2/T3/T4 已完成，T5 待开始。
+- 当前阶段：T0/T1/T2/T3/T4/T5 全部完成。
 - 阻塞项：无。
-- 下一步：执行 T5（执行 `soak_smoke` 与 `soak_endurance` 实跑并收口状态）。
+- 下一步：按 `testing-manual.md` S9 在夜间/发布前执行默认时长长跑（`soak_smoke 20~30 分钟`，`soak_endurance 180+ 分钟`）。
 - 最近更新：2026-02-24。
