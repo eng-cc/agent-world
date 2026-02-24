@@ -329,6 +329,20 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
   --chaos-plan <path-to-chaos-plan.json> \
   --out-dir .tmp/p2p_longrun
 ```
+- 长跑混沌探索（`soak_endurance` + 固定计划 + 持续注入）：
+```bash
+./scripts/p2p-longrun-soak.sh \
+  --profile soak_endurance \
+  --topologies triad_distributed \
+  --chaos-plan <path-to-chaos-plan.json> \
+  --chaos-continuous-enable \
+  --chaos-continuous-interval-secs 30 \
+  --chaos-continuous-start-sec 30 \
+  --chaos-continuous-max-events 0 \
+  --chaos-continuous-actions restart,pause \
+  --chaos-continuous-seed 20260224 \
+  --out-dir .tmp/p2p_longrun
+```
 - 关键产物：
   - `run_config.json`
   - `timeline.csv`
@@ -342,15 +356,18 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
 - 说明：
   - `soak_smoke` 在无 epoch 报表时会标记 `insufficient_data`（告警，不直接失败）。
   - `soak_endurance/soak_release` 在无 epoch 报表时会失败。
+  - continuous chaos 可与 `--chaos-plan` 同时开启，`summary.json` 会拆分 `chaos_plan_events` 与 `chaos_continuous_events`。
 
 #### S9 执行剧本（Human/AI）
 1. 先执行 S0/S4，确保基础分布式链路已绿。
 2. 准备 `chaos_plan.json`（如需恢复能力验证）：`restart`/`pause`（`disconnect` 别名）。
-3. 执行 `p2p-longrun-soak.sh`（按风险选择 `soak_smoke` 或 `soak_endurance`）。
+3. 按风险选择注入模式执行 `p2p-longrun-soak.sh`：
+   - 固定回归：仅 `--chaos-plan`
+   - 高覆盖探索：`--chaos-plan` + `--chaos-continuous-enable`
 4. 验收 `summary.json` 与 `summary.md`：
    - `overall_status`
    - 各拓扑 `status/process_status/metric_gate`
-   - `chaos_events` 与 `chaos_exempt_secs`。
+   - `chaos_plan_events` / `chaos_continuous_events` / `chaos_events` 与 `chaos_exempt_secs`。
 5. 失败时优先看 `failures.md` + `chaos_events.log` + 对应节点 `stderr.log`。
 
 ## 改动路径 -> 必跑套件矩阵（针对性执行）

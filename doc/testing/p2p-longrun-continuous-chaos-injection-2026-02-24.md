@@ -63,5 +63,5 @@
 - M0：已完成。
 - M1：已完成（持续注入参数解析、校验、调度与执行链路已落地）。
 - M2：已完成（run_config/summary 已补齐 continuous chaos 配置与 plan/continuous/total 计数字段）。
-- M3：未开始。
+- M3：已完成（`testing-manual.md` S9 已接入 continuous chaos 示例与验收口径）。
 - M4：未开始。
