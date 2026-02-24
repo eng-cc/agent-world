@@ -14,9 +14,9 @@
 - [x] T3：实现故障注入与恢复验证
   - [x] 支持重启/短时断连注入计划（`--chaos-plan`）
   - [x] 输出 `chaos_events.log` 并与判定器联动
-- [ ] T4：文档与手册接线
-  - [ ] 在 `testing-manual.md` 新增 S9 套件
-  - [ ] 新增 S9 执行剧本、证据规范、触发矩阵条目
+- [x] T4：文档与手册接线
+  - [x] 在 `testing-manual.md` 新增 S9 套件
+  - [x] 新增 S9 执行剧本、证据规范、触发矩阵条目
 - [ ] T5：验证与收口
   - [ ] 执行一次 `soak_smoke` 长跑档
   - [ ] 执行一次 `soak_endurance` 长跑档
@@ -34,7 +34,7 @@
 - `crates/agent_world_node/src/types.rs`
 
 ## 状态
-- 当前阶段：T0/T1/T2/T3 已完成，T4 待开始。
+- 当前阶段：T0/T1/T2/T3/T4 已完成，T5 待开始。
 - 阻塞项：无。
-- 下一步：执行 T4（在 `testing-manual.md` 接入 S9 套件与执行剧本）。
+- 下一步：执行 T5（执行 `soak_smoke` 与 `soak_endurance` 实跑并收口状态）。
 - 最近更新：2026-02-24。

@@ -115,7 +115,7 @@
 - 目标：验证在长时运行/高事件量下系统退化策略和稳定性。
 - 入口：`viewer-owr4-stress.sh`、`llm-longrun-stress.sh`。
 
-## 测试套件目录（S0~S8）
+## 测试套件目录（S0~S9）
 
 ### S0：基础门禁套件（L0）
 ```bash
@@ -290,117 +290,68 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
 ```bash
 ./scripts/llm-longrun-stress.sh --scenario llm_bootstrap --ticks 240
 ```
-- LLM 玩法覆盖门禁（按场景声明关键动作）：
-```bash
-./scripts/llm-longrun-stress.sh \
-  --scenario llm_bootstrap \
-  --ticks 240 \
-  --min-action-kinds 5 \
-  --require-action-kind harvest_radiation:1 \
-  --require-action-kind mine_compound:1 \
-  --require-action-kind refine_compound:1 \
-  --require-action-kind build_factory:1 \
-  --require-action-kind schedule_recipe:1
-```
-- LLM 发行口径（启用默认覆盖门禁）：
+- LLM 覆盖门禁（发行口径）：
 ```bash
 ./scripts/llm-longrun-stress.sh --scenario llm_bootstrap --ticks 240 --release-gate --release-gate-profile hybrid
 ```
-- LLM 发行口径（按 profile 拆分）：
-```bash
-./scripts/llm-longrun-stress.sh --scenario llm_bootstrap --ticks 240 --release-gate --release-gate-profile industrial
-./scripts/llm-longrun-stress.sh --scenario llm_bootstrap --ticks 240 --release-gate --release-gate-profile gameplay
-```
-- LLM gameplay 闭环基线（推荐：5 Agent + runtime bridge）：
+- LLM gameplay 对照（bridge 开/关）：
 ```bash
 ./scripts/llm-longrun-stress.sh --scenario llm_bootstrap --ticks 240 --prompt-pack story_balanced --runtime-gameplay-bridge
-```
-- LLM gameplay bridge 对照（定位 runtime-only 拒绝问题）：
-```bash
 ./scripts/llm-longrun-stress.sh --scenario llm_bootstrap --ticks 240 --prompt-pack story_balanced --no-runtime-gameplay-bridge
-```
-- 两阶段基线闭环（推荐：工业建基线 -> 治理压测）：
-```bash
-# 阶段 A：先构建工业基线并落盘
-./scripts/llm-longrun-stress.sh \
-  --scenario llm_bootstrap \
-  --ticks 1200 \
-  --prompt-pack industrial_baseline \
-  --llm-execute-until-auto-reenter-ticks 24 \
-  --release-gate --release-gate-profile industrial \
-  --save-state-dir .tmp/llm_baseline/industrial_1200 \
-  --no-llm-io
-
-# 阶段 B：从同一基线加载，专测治理/危机链路
-./scripts/llm-longrun-stress.sh \
-  --scenario llm_bootstrap \
-  --ticks 240 \
-  --prompt-pack civic_operator \
-  --release-gate --release-gate-profile gameplay \
-  --load-state-dir .tmp/llm_baseline/industrial_1200 \
-  --runtime-gameplay-bridge \
-  --no-llm-io
-```
-- LLM 游戏发展测试 prompt（非强制动作链）：
-```bash
-./scripts/llm-longrun-stress.sh --scenario llm_bootstrap --ticks 240 --prompt-pack story_balanced
-./scripts/llm-longrun-stress.sh --scenario llm_bootstrap --ticks 240 --prompt-pack civic_operator
-./scripts/llm-longrun-stress.sh --scenario llm_bootstrap --ticks 1200 --prompt-pack story_balanced --release-gate --release-gate-profile gameplay
 ```
 - git 跟踪基线 fixture smoke（`test_tier_full`）：
 ```bash
 ./scripts/llm-baseline-fixture-smoke.sh
 ```
-- Prompt 切换前后覆盖对比（用于 T1 定向验证）：
+- Prompt 切换覆盖对比（定向排障）：
 ```bash
-./scripts/llm-switch-coverage-diff.sh \
-  --log .tmp/llm_stress_story_gameplay_48_promptassembly2/run.log \
-  --switch-tick 24
+./scripts/llm-switch-coverage-diff.sh --log <run.log> --switch-tick 24
 ```
 - 说明：
-  - `viewer-owr4-stress` 在无 `OPENAI_API_KEY` 时对 `llm_bootstrap` 会退化为 script_fallback；
-  - `llm_bootstrap` 当前默认 5 Agent（多 Agent 提案/投票/协作回路基线）；
-  - LLM 查询工具新增 `world.rules.guide`，可按 `topic`（`quickstart/resources/industry/governance/economic/social/recovery/all`）读取玩法规则与阶段建议；
-  - 默认 prompt 失败恢复策略已修正：`insufficient_resource.data` 优先回切 `mine_compound`（不再默认重复 `refine_compound`）；
-  - `llm-longrun-stress.sh` 新增覆盖参数：
-    - `--min-action-kinds <n>`：断言动作种类数下限；
-    - `--require-action-kind <kind>:<min_count>`：断言关键动作计数下限（可重复）；
-    - `--release-gate`：启用发行默认门禁，并在未显式覆盖时自动对齐同名 `coverage-bootstrap-profile`；
-    - `--release-gate-profile <industrial|gameplay|hybrid>`：
-      - `industrial`：工业闭环 5 动作（`harvest_radiation/mine_compound/refine_compound/build_factory/schedule_recipe`）。
-      - `gameplay`：玩法闭环 4 动作（`open_governance_proposal/cast_governance_vote/resolve_crisis/grant_meta_progress`）。
-      - `hybrid`（默认）：工业 + gameplay 全覆盖（9 动作）。
-    - `--coverage-bootstrap-profile <none|industrial|gameplay|hybrid>`：
-      - 在 LLM loop 前执行 deterministic 覆盖预热动作链，降低 gate 对“LLM 自发触发概率”的依赖。
-      - 在 `--release-gate` 下默认等于 `--release-gate-profile`（可显式设为 `none` 关闭，用于纯随机触发对照）。
-    - `--max-parse-errors <n>`：
-      - 显式设置时按用户值执行。
-      - 未显式设置且开启 `--release-gate` 时，默认阈值为 `max(2, ceil(ticks/40))`，用于降低长跑 parse 噪声误杀。
-    - `--prompt-pack <story_balanced|frontier_builder|industrial_baseline|civic_operator|resilience_drill>`：
-      - `story_balanced`：默认推荐，按“稳定 -> 生产 -> 治理/韧性”阶段推进；短程自动单次切换，长程（中长/超长）自动多阶段切换（`--prompt-switches-json`）以避免后半程策略僵化。
-      - `frontier_builder`：偏探索与基础设施扩张。
-      - `industrial_baseline`：偏工业建基线（规则读取 -> 采矿/精炼 -> 建厂/排产），默认设置 `AGENT_WORLD_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS=24` 以减少长程重复动作的 LLM 往返。
-      - `civic_operator`：偏治理协同与组织秩序。
-      - `resilience_drill`：偏危机恢复与经济协作抗压。
-    - `--prompt-switches-json <json>`：多阶段切换计划（数组项包含 `tick` 与至少一个 `llm_*` 覆盖字段），与 `--prompt-switch-tick/--switch-llm-*` 互斥。
-    - `--runtime-gameplay-bridge` / `--no-runtime-gameplay-bridge`：
-      - 默认开启 bridge，将 simulator 的 runtime-only gameplay/economic 动作接入 runtime `World`，用于降低“非预期拒绝”噪声。
-      - 建议保留默认开启；仅在对照排障时关闭。
-    - `--runtime-gameplay-preset <none|civic_hotspot_v1>`：
-      - `civic_hotspot_v1` 会在 runtime bridge 内注入“待投票提案 + 活跃危机 + 待结算合约”句柄，提升治理/韧性动作触发稳定性。
-      - `civic_operator` 与 `resilience_drill` prompt pack 默认启用该 preset（可显式设为 `none` 关闭）。
-    - `--load-state-dir <path>` / `--save-state-dir <path>`：
-      - 支持基线状态落盘与续跑（`snapshot.json` + `journal.json`）。
-      - 当前仅支持单场景模式，便于构建“同一起点”对照。
-    - `--llm-execute-until-auto-reenter-ticks <n>`：
-      - 透传为 `AGENT_WORLD_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS=<n>`，用于控制自动续跑窗口。
-      - 建议在 1000+ tick 场景使用 12~24，以降低 wall-clock 耗时。
-  - `llm-switch-coverage-diff.sh` 用于抽取 `run.log` 在切换 tick 前后动作覆盖差异（新出现/消失动作种类）。
-  - 若覆盖门禁失败，脚本会输出缺失项与当前 `action_kind_counts`，用于快速定位玩法漏覆盖；
-  - 当 `gameplay` profile 在短中程 run（如 24/120 ticks）仍出现 coverage 缺失，先确认未误设 `--coverage-bootstrap-profile none`；若为“纯 LLM 触发对照”模式，再优先增加 ticks（>=240）并结合多阶段 prompt + `--runtime-gameplay-preset civic_hotspot_v1` 复验。
-  - 1000+ tick 长程 run 受 LLM 往返延迟影响，wall-clock 可能显著拉长；建议在后台会话（tmux/screen）执行并保留 `summary.txt` 作为验收依据。
-  - `scripts/ci-tests.sh full` 已接入 `./scripts/llm-baseline-fixture-smoke.sh`，用于保证 git 跟踪基线可加载，并可离线验证基线加载后的治理/经济续跑动作链及其状态结果（proposal/vote/meta_progress/economic_contract）。
+  - 详细参数与 profile 组合请以 `./scripts/llm-longrun-stress.sh --help` 为准；
+  - `viewer-owr4-stress` 在无 `OPENAI_API_KEY` 时，`llm_bootstrap` 会退化为 script_fallback；
+  - `scripts/ci-tests.sh full` 已接入 `./scripts/llm-baseline-fixture-smoke.sh`；
   - 压测结果需保留 CSV/summary/log 产物。
+
+### S9：P2P/存储/共识在线长跑套件（L5）
+- 长跑冒烟（默认档，`soak_smoke`）：
+```bash
+./scripts/p2p-longrun-soak.sh \
+  --profile soak_smoke \
+  --no-prewarm \
+  --out-dir .tmp/p2p_longrun
+```
+- 发布回归（`soak_endurance` + chaos 注入）：
+```bash
+./scripts/p2p-longrun-soak.sh \
+  --profile soak_endurance \
+  --topologies triad_distributed \
+  --chaos-plan <path-to-chaos-plan.json> \
+  --out-dir .tmp/p2p_longrun
+```
+- 关键产物：
+  - `run_config.json`
+  - `timeline.csv`
+  - `summary.json`
+  - `summary.md`
+  - `chaos_events.log`
+  - `failures.md`（失败时）
+- 门禁口径：
+  - `stall`、`lag_p95`、`distfs_failure_ratio`、`reward_asset_invariant_status.ok`
+  - `summary.json` 的 `overall_status == "ok"` 且各拓扑 `status == "ok"` 视为通过。
+- 说明：
+  - `soak_smoke` 在无 epoch 报表时会标记 `insufficient_data`（告警，不直接失败）。
+  - `soak_endurance/soak_release` 在无 epoch 报表时会失败。
+
+#### S9 执行剧本（Human/AI）
+1. 先执行 S0/S4，确保基础分布式链路已绿。
+2. 准备 `chaos_plan.json`（如需恢复能力验证）：`restart`/`pause`（`disconnect` 别名）。
+3. 执行 `p2p-longrun-soak.sh`（按风险选择 `soak_smoke` 或 `soak_endurance`）。
+4. 验收 `summary.json` 与 `summary.md`：
+   - `overall_status`
+   - 各拓扑 `status/process_status/metric_gate`
+   - `chaos_events` 与 `chaos_exempt_secs`。
+5. 失败时优先看 `failures.md` + `chaos_events.log` + 对应节点 `stderr.log`。
 
 ## 改动路径 -> 必跑套件矩阵（针对性执行）
 
@@ -410,13 +361,14 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
 | `crates/agent_world/src/simulator/**` | S0 + S1 | S2 + S3 + S7 + S8 |
 | `crates/agent_world/src/viewer/**` 或 `src/bin/world_viewer_live/**` | S0 + S1 + S6 | S2 + S3 + S5 |
 | `crates/agent_world_viewer/**` | S0 + S5 + S6 | S2 + S8 |
-| `crates/agent_world_node/**` | S0 + S4（node） | S2 + S3 |
-| `crates/agent_world_net/**` | S0 + S4（net） | S2 + runtime_bridge 变体 |
-| `crates/agent_world_consensus/**` | S0 + S4（consensus） | S2 |
-| `crates/agent_world_distfs/**` | S0 + S4（distfs） | S2 + S8（若影响长稳） |
+| `crates/agent_world_node/**` | S0 + S4（node） | S2 + S3 + S9（soak_smoke） |
+| `crates/agent_world_net/**` | S0 + S4（net） | S2 + runtime_bridge 变体 + S9（soak_smoke） |
+| `crates/agent_world_consensus/**` | S0 + S4（consensus） | S2 + S9（soak_smoke） |
+| `crates/agent_world_distfs/**` | S0 + S4（distfs） | S2 + S8 + S9（soak_smoke） |
 | `scripts/ci-tests.sh` / `.github/workflows/rust.yml` | S0 + S1 + `./scripts/viewer-visual-baseline.sh` + （full）`./scripts/llm-baseline-fixture-smoke.sh` | S2 + S4 + S6（抽样） |
 | `scripts/ci-m1-wasm-summary.sh` / `scripts/ci-verify-m1-wasm-summaries.py` / `.github/workflows/builtin-wasm-m1-multi-runner.yml` | `S0` + `./scripts/ci-m1-wasm-summary.sh --runner-label darwin-arm64 --out output/ci/m1-wasm-summary/darwin-arm64.json` + `./scripts/ci-verify-m1-wasm-summaries.py --summary-dir output/ci/m1-wasm-summary --expected-runners darwin-arm64` | `workflow_dispatch` 触发双 runner（`linux-x86_64,darwin-arm64`）对账 |
 | `scripts/run-viewer-web.sh` / `scripts/capture-viewer-frame.sh` | S0 + S6 | S5 + S8 |
+| `scripts/p2p-longrun-soak.sh` / `doc/testing/p2p-storage-consensus-longrun-online-stability-2026-02-24*` | S0 + S4 + S9（soak_smoke） | S9（soak_endurance） |
 
 ## Human/AI 共用执行剧本
 
@@ -428,7 +380,7 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
 ### 阶段 B：先跑低层，后跑高层
 1. 先执行 S0。
 2. 再执行对应的 L1/L2/L3 套件（S1/S2/S3/S4/S5）。
-3. 最后执行 UI 闭环与压力（S6/S8）。
+3. 最后执行 UI 闭环与压力（S6/S8/S9）。
 4. 任意层失败立即停止上层，先定位并修复。
 
 ### 阶段 C：记录结论
@@ -448,7 +400,7 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
 
 ### 高风险改动（协议/共识/分布式/发布前）
 - 必须通过：S0 + S2 + S4 + S6
-- 建议通过：S8 至少一条压力脚本
+- 建议通过：S8 至少一条压力脚本 + S9 至少一次 `soak_smoke`（发布前建议 `soak_endurance`）
 
 ## 证据规范
 
@@ -462,13 +414,14 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
 - `.playwright-cli/console-*.log`
 - `.tmp/viewer_owr4_stress/<timestamp>/`
 - `.tmp/llm_stress/`
+- `.tmp/p2p_longrun/<timestamp>/`
 
 ### 结果记录模板
 ```md
 - 目标变更：
 - 触发路径：
 - 执行者（Human/AI）：
-- 套件清单（S0~S8）：
+- 套件清单（S0~S9）：
   - Sx: 命令 / 结果 / 证据路径
 - 失败分诊：
   - 层级（L0~L5）：
@@ -504,7 +457,7 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
 - 风险 3：分布式子系统改动未触发对应 crate 测试。
   - 缓解：必须使用“改动路径矩阵”决策套件。
 - 风险 4：压力回归长期缺失，问题只在长跑暴露。
-  - 缓解：高风险改动或发布前至少执行一条 S8。
+  - 缓解：高风险改动或发布前至少执行一条 S8 或 S9。
 
 ## 里程碑
 - T1：完成基于仓库现状的分层模型与套件目录。
