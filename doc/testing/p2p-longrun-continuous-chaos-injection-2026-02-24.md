@@ -64,4 +64,4 @@
 - M1：已完成（持续注入参数解析、校验、调度与执行链路已落地）。
 - M2：已完成（run_config/summary 已补齐 continuous chaos 配置与 plan/continuous/total 计数字段）。
 - M3：已完成（`testing-manual.md` S9 已接入 continuous chaos 示例与验收口径）。
-- M4：未开始。
+- M4：已完成（短窗混合注入实跑：`.tmp/p2p_longrun_c4_check/20260224-185131`，计数验证 `chaos_plan_events_total=1`、`chaos_continuous_events_total=3`、`chaos_events_total=4`）。
