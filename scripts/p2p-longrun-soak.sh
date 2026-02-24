@@ -439,6 +439,18 @@ fi
   else
     echo "  \"chaos_plan_path\": null,"
   fi
+  echo "  \"chaos_continuous_enabled\": $chaos_continuous_enabled,"
+  echo "  \"chaos_continuous_interval_secs\": $chaos_continuous_interval_secs,"
+  echo "  \"chaos_continuous_start_sec\": $chaos_continuous_start_sec,"
+  echo "  \"chaos_continuous_max_events\": $chaos_continuous_max_events,"
+  echo "  \"chaos_continuous_actions_csv\": \"$chaos_continuous_actions_csv\","
+  if [[ "$chaos_continuous_enabled" -eq 1 ]]; then
+    echo "  \"chaos_continuous_seed\": $chaos_continuous_seed,"
+  else
+    echo "  \"chaos_continuous_seed\": null,"
+  fi
+  echo "  \"chaos_continuous_restart_down_secs\": $chaos_continuous_restart_down_secs,"
+  echo "  \"chaos_continuous_pause_duration_secs\": $chaos_continuous_pause_duration_secs,"
   echo "  \"max_stall_secs\": $max_stall_secs,"
   echo "  \"max_lag_p95\": $max_lag_p95,"
   echo "  \"max_distfs_failure_ratio\": $max_distfs_failure_ratio,"
@@ -477,6 +489,12 @@ topology_summary_ndjson="$run_dir/.topology_summary.ndjson"
   else
     echo "- chaos_plan: \`disabled\`"
   fi
+  if [[ "$chaos_continuous_enabled" -eq 1 ]]; then
+    echo "- chaos_continuous: \`enabled\` (interval=${chaos_continuous_interval_secs}s, start=${chaos_continuous_start_sec}s, max_events=${chaos_continuous_max_events}, actions=${chaos_continuous_actions_csv}, seed=${chaos_continuous_seed})"
+    echo "- chaos_continuous_durations: \`restart_down=${chaos_continuous_restart_down_secs}s,pause=${chaos_continuous_pause_duration_secs}s\`"
+  else
+    echo "- chaos_continuous: \`disabled\`"
+  fi
   echo
   echo "| topology | status | process_status | metric_gate | reports | started_at | ended_at | notes |"
   echo "|---|---|---|---|---|---|---|---|"
@@ -494,6 +512,8 @@ declare -A node_stdout_log_by_name=()
 declare -A node_stderr_log_by_name=()
 declare -A chaos_exempt_secs_by_topology=()
 declare -A chaos_events_executed_by_topology=()
+declare -A chaos_plan_events_executed_by_topology=()
+declare -A chaos_continuous_events_executed_by_topology=()
 
 analysis_report_count=0
 analysis_gate_status="insufficient_data"
@@ -1115,6 +1135,7 @@ run_topology() {
         fi
         chaos_exempt_secs_by_topology["$topology"]=$(( ${chaos_exempt_secs_by_topology[$topology]:-0} + exempt_secs ))
         chaos_events_executed_by_topology["$topology"]=$(( ${chaos_events_executed_by_topology[$topology]:-0} + 1 ))
+        chaos_plan_events_executed_by_topology["$topology"]=$(( ${chaos_plan_events_executed_by_topology[$topology]:-0} + 1 ))
       done
 
       if [[ "$continuous_enabled" -eq 1 ]]; then
@@ -1159,6 +1180,7 @@ run_topology() {
           fi
           chaos_exempt_secs_by_topology["$topology"]=$(( ${chaos_exempt_secs_by_topology[$topology]:-0} + generated_exempt_secs ))
           chaos_events_executed_by_topology["$topology"]=$(( ${chaos_events_executed_by_topology[$topology]:-0} + 1 ))
+          chaos_continuous_events_executed_by_topology["$topology"]=$(( ${chaos_continuous_events_executed_by_topology[$topology]:-0} + 1 ))
 
           continuous_generated=$((continuous_generated + 1))
           continuous_next_at_sec=$((continuous_next_at_sec + chaos_continuous_interval_secs))
@@ -1188,13 +1210,14 @@ run_topology() {
     notes_parts+=("$notes")
   fi
   local chaos_event_count=${chaos_events_executed_by_topology[$topology]:-0}
+  local chaos_plan_event_count=${chaos_plan_events_executed_by_topology[$topology]:-0}
+  local chaos_continuous_event_count=${chaos_continuous_events_executed_by_topology[$topology]:-0}
   local chaos_exempt_secs=${chaos_exempt_secs_by_topology[$topology]:-0}
   if (( chaos_event_count > 0 )); then
     notes_parts+=("chaos_events=${chaos_event_count}")
+    notes_parts+=("chaos_plan_events=${chaos_plan_event_count}")
+    notes_parts+=("chaos_continuous_events=${chaos_continuous_event_count}")
     notes_parts+=("chaos_exempt_secs=${chaos_exempt_secs}")
-  fi
-  if (( continuous_generated > 0 )); then
-    notes_parts+=("chaos_continuous_generated=${continuous_generated}")
   fi
 
   if [[ "$analysis_gate_status" == "fail" ]]; then
@@ -1232,6 +1255,8 @@ run_topology() {
     --arg gate_notes "$analysis_gate_notes" \
     --argjson report_samples "$analysis_report_count" \
     --argjson chaos_events "$chaos_event_count" \
+    --argjson chaos_plan_events "$chaos_plan_event_count" \
+    --argjson chaos_continuous_events "$chaos_continuous_event_count" \
     --argjson max_stall_secs_observed "$analysis_max_stall_secs_observed" \
     --argjson chaos_exempt_secs "$analysis_chaos_exempt_secs" \
     --argjson effective_max_stall_secs "$analysis_effective_max_stall_secs" \
@@ -1249,6 +1274,8 @@ run_topology() {
       notes: $notes,
       report_samples: $report_samples,
       chaos_events: $chaos_events,
+      chaos_plan_events: $chaos_plan_events,
+      chaos_continuous_events: $chaos_continuous_events,
       metric_gate: {
         status: $gate_status,
         notes: $gate_notes
@@ -1283,10 +1310,18 @@ write_summary_json() {
     --arg profile "$profile" \
     --arg scenario "$scenario" \
     --arg chaos_plan_path "${chaos_plan_path:-}" \
+    --arg chaos_continuous_actions_csv "$chaos_continuous_actions_csv" \
     --argjson duration_secs "$duration_secs" \
     --argjson max_stall_secs "$max_stall_secs" \
     --argjson max_lag_p95 "$max_lag_p95" \
     --argjson max_distfs_failure_ratio "$max_distfs_failure_ratio" \
+    --argjson chaos_continuous_enabled "$chaos_continuous_enabled" \
+    --argjson chaos_continuous_interval_secs "$chaos_continuous_interval_secs" \
+    --argjson chaos_continuous_start_sec "$chaos_continuous_start_sec" \
+    --argjson chaos_continuous_max_events "$chaos_continuous_max_events" \
+    --argjson chaos_continuous_seed "$chaos_continuous_seed" \
+    --argjson chaos_continuous_restart_down_secs "$chaos_continuous_restart_down_secs" \
+    --argjson chaos_continuous_pause_duration_secs "$chaos_continuous_pause_duration_secs" \
     --arg timeline_csv "$timeline_csv" \
     --arg summary_md "$summary_md" \
     --arg chaos_events_log "$chaos_events_log" \
@@ -1300,6 +1335,16 @@ write_summary_json() {
         profile: $profile,
         scenario: $scenario,
         chaos_plan: (if $chaos_plan_path == "" then null else $chaos_plan_path end),
+        chaos_continuous: {
+          enabled: ($chaos_continuous_enabled == 1),
+          interval_secs: $chaos_continuous_interval_secs,
+          start_sec: $chaos_continuous_start_sec,
+          max_events: $chaos_continuous_max_events,
+          actions_csv: $chaos_continuous_actions_csv,
+          seed: (if $chaos_continuous_enabled == 1 then $chaos_continuous_seed else null end),
+          restart_down_secs: $chaos_continuous_restart_down_secs,
+          pause_duration_secs: $chaos_continuous_pause_duration_secs
+        },
         duration_secs_per_topology: $duration_secs,
         thresholds: {
           max_stall_secs: $max_stall_secs,
@@ -1317,6 +1362,8 @@ write_summary_json() {
           topology_ok_count: ($topologies | map(select(.status == "ok")) | length),
           topology_failed_count: ($topologies | map(select(.status != "ok")) | length),
           report_samples_total: ($topologies | map(.report_samples) | add // 0),
+          chaos_plan_events_total: ($topologies | map(.chaos_plan_events) | add // 0),
+          chaos_continuous_events_total: ($topologies | map(.chaos_continuous_events) | add // 0),
           chaos_events_total: ($topologies | map(.chaos_events) | add // 0)
         },
         gate_failures: (
@@ -1337,6 +1384,8 @@ append_summary_metrics_section() {
   local topology_ok_count=0
   local topology_failed_count=0
   local report_samples_total=0
+  local chaos_plan_events_total=0
+  local chaos_continuous_events_total=0
   local chaos_events_total=0
 
   if [[ -f "$summary_json" ]]; then
@@ -1344,6 +1393,8 @@ append_summary_metrics_section() {
     topology_ok_count=$(jq -r '.totals.topology_ok_count // 0' "$summary_json")
     topology_failed_count=$(jq -r '.totals.topology_failed_count // 0' "$summary_json")
     report_samples_total=$(jq -r '.totals.report_samples_total // 0' "$summary_json")
+    chaos_plan_events_total=$(jq -r '.totals.chaos_plan_events_total // 0' "$summary_json")
+    chaos_continuous_events_total=$(jq -r '.totals.chaos_continuous_events_total // 0' "$summary_json")
     chaos_events_total=$(jq -r '.totals.chaos_events_total // 0' "$summary_json")
   fi
 
@@ -1356,16 +1407,18 @@ append_summary_metrics_section() {
     echo "- chaos_events_log: \`$chaos_events_log\`"
     echo "- topology_count: \`$topology_count\` (ok=\`$topology_ok_count\`, failed=\`$topology_failed_count\`)"
     echo "- report_samples_total: \`$report_samples_total\`"
+    echo "- chaos_plan_events_total: \`$chaos_plan_events_total\`"
+    echo "- chaos_continuous_events_total: \`$chaos_continuous_events_total\`"
     echo "- chaos_events_total: \`$chaos_events_total\`"
     echo
     echo "## Gate Metrics"
     echo
-    echo "| topology | gate | reports | chaos_events | chaos_exempt_s | max_stall_s | max_stall_s_effective | lag_p95 | distfs_ratio | invariant_all_ok |"
-    echo "|---|---|---|---|---|---|---|---|---|---|"
+    echo "| topology | gate | reports | chaos_plan | chaos_continuous | chaos_events | chaos_exempt_s | max_stall_s | max_stall_s_effective | lag_p95 | distfs_ratio | invariant_all_ok |"
+    echo "|---|---|---|---|---|---|---|---|---|---|---|---|"
     if [[ -f "$summary_json" ]]; then
-      while IFS=$'\t' read -r topology gate reports chaos_events chaos_exempt stall stall_effective lag ratio invariant; do
-        echo "| $topology | $gate | $reports | $chaos_events | $chaos_exempt | $stall | $stall_effective | $lag | $ratio | $invariant |"
-      done < <(jq -r '.topologies[] | [ .topology, .metric_gate.status, .report_samples, .chaos_events, .metrics.chaos_exempt_secs, .metrics.max_stall_secs_observed, .metrics.effective_max_stall_secs, .metrics.lag_p95, .metrics.distfs_failure_ratio, .metrics.invariant_all_ok ] | @tsv' "$summary_json")
+      while IFS=$'\t' read -r topology gate reports chaos_plan chaos_continuous chaos_events chaos_exempt stall stall_effective lag ratio invariant; do
+        echo "| $topology | $gate | $reports | $chaos_plan | $chaos_continuous | $chaos_events | $chaos_exempt | $stall | $stall_effective | $lag | $ratio | $invariant |"
+      done < <(jq -r '.topologies[] | [ .topology, .metric_gate.status, .report_samples, .chaos_plan_events, .chaos_continuous_events, .chaos_events, .metrics.chaos_exempt_secs, .metrics.max_stall_secs_observed, .metrics.effective_max_stall_secs, .metrics.lag_p95, .metrics.distfs_failure_ratio, .metrics.invariant_all_ok ] | @tsv' "$summary_json")
     fi
   } >> "$summary_md"
 }

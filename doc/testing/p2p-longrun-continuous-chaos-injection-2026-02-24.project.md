@@ -7,9 +7,9 @@
 - [x] C1：实现持续注入调度核心
   - [x] 新增 continuous chaos CLI 参数解析与校验
   - [x] 注入循环支持固定计划 + 连续注入混合模式
-- [ ] C2：实现证据与统计扩展
-  - [ ] `run_config.json` 增加 continuous chaos 配置
-  - [ ] `summary.json` / `summary.md` 增加 plan/continuous/total 计数
+- [x] C2：实现证据与统计扩展
+  - [x] `run_config.json` 增加 continuous chaos 配置
+  - [x] `summary.json` / `summary.md` 增加 plan/continuous/total 计数
 - [ ] C3：测试手册接线
   - [ ] 更新 `testing-manual.md` S9（continuous chaos 示例与说明）
 - [ ] C4：验证与收口
@@ -22,7 +22,7 @@
 - `doc/testing/p2p-storage-consensus-longrun-online-stability-2026-02-24.md`
 
 ## 状态
-- 当前阶段：C0/C1 已完成，C2 待开始。
+- 当前阶段：C0/C1/C2 已完成，C3 待开始。
 - 阻塞项：无。
-- 下一步：执行 C2（扩展 run_config/summary 证据与统计字段）。
+- 下一步：执行 C3（更新 testing-manual.md S9 的 continuous chaos 用法）。
 - 最近更新：2026-02-24。
