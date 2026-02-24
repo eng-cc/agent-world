@@ -133,5 +133,6 @@
 - M0：已完成。
 - M1：已完成（`scripts/p2p-longrun-soak.sh` 最小闭环已落地）。
 - M2：已完成（已支持 epoch JSON 聚合、`timeline.csv`/`summary.json` 输出与 stall/lag/distfs/invariant 门禁）。
-- M3~M5：未开始。
+- M3：已完成（已支持 `--chaos-plan` 注入与 `chaos_events.log` 联动）。
+- M4~M5：未开始。
 - 备注：当运行期无 epoch 报表产出时，脚本会标记 `metric_gate=insufficient_data`（`soak_smoke` 仅告警，`soak_endurance/soak_release` 视为失败）。

@@ -11,9 +11,9 @@
   - [x] 解析 `reward_runtime_report_dir` 下 epoch JSON
   - [x] 输出 `timeline.csv`、`summary.json`、`summary.md`
   - [x] 实现门禁：stall/lag/distfs failure ratio/invariant ok
-- [ ] T3：实现故障注入与恢复验证
-  - [ ] 支持重启/短时断连注入计划（`--chaos-plan`）
-  - [ ] 输出 `chaos_events.log` 并与判定器联动
+- [x] T3：实现故障注入与恢复验证
+  - [x] 支持重启/短时断连注入计划（`--chaos-plan`）
+  - [x] 输出 `chaos_events.log` 并与判定器联动
 - [ ] T4：文档与手册接线
   - [ ] 在 `testing-manual.md` 新增 S9 套件
   - [ ] 新增 S9 执行剧本、证据规范、触发矩阵条目
@@ -34,7 +34,7 @@
 - `crates/agent_world_node/src/types.rs`
 
 ## 状态
-- 当前阶段：T0/T1/T2 已完成，T3 待开始。
+- 当前阶段：T0/T1/T2/T3 已完成，T4 待开始。
 - 阻塞项：无。
-- 下一步：执行 T3（实现 `--chaos-plan` 注入编排与 `chaos_events.log` 联动判定）。
+- 下一步：执行 T4（在 `testing-manual.md` 接入 S9 套件与执行剧本）。
 - 最近更新：2026-02-24。

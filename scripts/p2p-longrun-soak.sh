@@ -21,6 +21,7 @@ Options:
   --out-dir <path>                 output root (default: .tmp/p2p_longrun)
   --startup-timeout-secs <n>       startup grace before monitor loop (default: 20)
   --poll-interval-secs <n>         monitor loop interval (default: 2)
+  --chaos-plan <path>              JSON chaos plan for restart/pause injections
   --max-stall-secs <n>             gate threshold for max no-progress window
   --max-lag-p95 <n>                gate threshold for p95(network_height - committed_height)
   --max-distfs-failure-ratio <r>   gate threshold for DistFS failed/total ratio (0~1)
@@ -39,6 +40,7 @@ Output:
     summary.json
     summary.md
     failures.md (only when failed)
+    chaos_events.log
     <topology>/nodes/<node_id>/{stdout.log,stderr.log,command.txt,report/}
 USAGE
 }
@@ -122,6 +124,7 @@ bind_host="127.0.0.1"
 out_root=".tmp/p2p_longrun"
 startup_timeout_secs=20
 poll_interval_secs=2
+chaos_plan_path=""
 max_stall_secs=""
 max_lag_p95=""
 max_distfs_failure_ratio=""
@@ -175,6 +178,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --poll-interval-secs)
       poll_interval_secs=${2:-}
+      shift 2
+      ;;
+    --chaos-plan)
+      chaos_plan_path=${2:-}
       shift 2
       ;;
     --max-stall-secs)
@@ -263,6 +270,17 @@ if [[ -z "$scenario" ]]; then
   exit 2
 fi
 
+if [[ -n "$chaos_plan_path" ]]; then
+  if [[ ! -f "$chaos_plan_path" ]]; then
+    echo "chaos plan file not found: $chaos_plan_path" >&2
+    exit 2
+  fi
+  if ! jq -e '(.events // []) | type == "array"' "$chaos_plan_path" >/dev/null; then
+    echo "invalid chaos plan format: expected JSON object with .events array" >&2
+    exit 2
+  fi
+fi
+
 if ! command -v jq >/dev/null 2>&1; then
   echo "jq is required for metrics aggregation but not found in PATH" >&2
   exit 1
@@ -295,6 +313,10 @@ for i in "${!topologies[@]}"; do
 done
 
 run_config_json="$run_dir/run_config.json"
+chaos_enabled=0
+if [[ -n "$chaos_plan_path" ]]; then
+  chaos_enabled=1
+fi
 {
   echo "{"
   echo "  \"profile\": \"$profile\","
@@ -306,6 +328,12 @@ run_config_json="$run_dir/run_config.json"
   echo "  \"bind_host\": \"$bind_host\","
   echo "  \"startup_timeout_secs\": $startup_timeout_secs,"
   echo "  \"poll_interval_secs\": $poll_interval_secs,"
+  echo "  \"chaos_enabled\": $chaos_enabled,"
+  if [[ -n "$chaos_plan_path" ]]; then
+    echo "  \"chaos_plan_path\": \"$chaos_plan_path\","
+  else
+    echo "  \"chaos_plan_path\": null,"
+  fi
   echo "  \"max_stall_secs\": $max_stall_secs,"
   echo "  \"max_lag_p95\": $max_lag_p95,"
   echo "  \"max_distfs_failure_ratio\": $max_distfs_failure_ratio,"
@@ -325,6 +353,7 @@ summary_md="$run_dir/summary.md"
 timeline_csv="$run_dir/timeline.csv"
 summary_json="$run_dir/summary.json"
 failures_md="$run_dir/failures.md"
+chaos_events_log="$run_dir/chaos_events.log"
 topology_summary_ndjson="$run_dir/.topology_summary.ndjson"
 
 {
@@ -338,6 +367,11 @@ topology_summary_ndjson="$run_dir/.topology_summary.ndjson"
   echo "- max_stall_secs: \`$max_stall_secs\`"
   echo "- max_lag_p95: \`$max_lag_p95\`"
   echo "- max_distfs_failure_ratio: \`$max_distfs_failure_ratio\`"
+  if [[ -n "$chaos_plan_path" ]]; then
+    echo "- chaos_plan: \`$chaos_plan_path\`"
+  else
+    echo "- chaos_plan: \`disabled\`"
+  fi
   echo
   echo "| topology | status | process_status | metric_gate | reports | started_at | ended_at | notes |"
   echo "|---|---|---|---|---|---|---|---|"
@@ -345,10 +379,16 @@ topology_summary_ndjson="$run_dir/.topology_summary.ndjson"
 
 echo "topology,node,epoch_index,observed_at_unix_ms,committed_height,network_committed_height,lag,total_checks,failed_checks,distfs_failure_ratio,invariant_ok,report_path" > "$timeline_csv"
 : > "$topology_summary_ndjson"
+echo "timestamp|topology|event_id|phase|action|node|detail" > "$chaos_events_log"
 
 active_cleanup_done=0
 declare -a active_pids=()
 declare -a active_nodes=()
+declare -A node_cmd_file_by_name=()
+declare -A node_stdout_log_by_name=()
+declare -A node_stderr_log_by_name=()
+declare -A chaos_exempt_secs_by_topology=()
+declare -A chaos_events_executed_by_topology=()
 
 analysis_report_count=0
 analysis_gate_status="insufficient_data"
@@ -359,6 +399,8 @@ analysis_distfs_failure_ratio="0.000000"
 analysis_distfs_total_checks=0
 analysis_distfs_failed_checks=0
 analysis_invariant_all_ok=true
+analysis_chaos_exempt_secs=0
+analysis_effective_max_stall_secs=0
 
 append_summary_row() {
   local topology=$1
@@ -370,6 +412,121 @@ append_summary_row() {
   local ended_at=$7
   local notes=$8
   echo "| $topology | $status | $process_status | $metric_gate | $reports | $started_at | $ended_at | $notes |" >> "$summary_md"
+}
+
+find_node_index_by_name() {
+  local target_node=$1
+  local idx
+  for idx in "${!active_nodes[@]}"; do
+    if [[ "${active_nodes[$idx]}" == "$target_node" ]]; then
+      printf '%s' "$idx"
+      return 0
+    fi
+  done
+  return 1
+}
+
+log_chaos_event() {
+  local topology=$1
+  local event_id=$2
+  local phase=$3
+  local action=$4
+  local node=$5
+  local detail=$6
+  local ts
+  ts=$(date '+%Y-%m-%d %H:%M:%S %Z')
+  echo "$ts|$topology|$event_id|$phase|$action|$node|$detail" >> "$chaos_events_log"
+}
+
+relaunch_node_from_saved_command() {
+  local node_name=$1
+  local idx cmd_txt stdout_log stderr_log cmd_line
+
+  if ! idx=$(find_node_index_by_name "$node_name"); then
+    echo "node not found for relaunch: $node_name" >&2
+    return 1
+  fi
+
+  cmd_txt=${node_cmd_file_by_name[$node_name]:-}
+  stdout_log=${node_stdout_log_by_name[$node_name]:-}
+  stderr_log=${node_stderr_log_by_name[$node_name]:-}
+  if [[ -z "$cmd_txt" ]] || [[ -z "$stdout_log" ]] || [[ -z "$stderr_log" ]]; then
+    echo "missing node command metadata for relaunch: $node_name" >&2
+    return 1
+  fi
+
+  cmd_line=$(tr -d '\n' < "$cmd_txt")
+  if [[ -z "$cmd_line" ]]; then
+    echo "empty command file for relaunch: $cmd_txt" >&2
+    return 1
+  fi
+
+  echo "+ $cmd_line >> $stdout_log 2>> $stderr_log"
+  bash -lc "$cmd_line" >>"$stdout_log" 2>>"$stderr_log" &
+  active_pids[$idx]=$!
+  return 0
+}
+
+execute_chaos_event() {
+  local topology=$1
+  local event_id=$2
+  local action=$3
+  local node_name=$4
+  local at_sec=$5
+  local down_secs=$6
+  local duration_secs=$7
+  local idx pid
+
+  if ! idx=$(find_node_index_by_name "$node_name"); then
+    log_chaos_event "$topology" "$event_id" "failed" "$action" "$node_name" "node_not_found"
+    return 1
+  fi
+  pid=${active_pids[$idx]}
+
+  case "$action" in
+    restart)
+      log_chaos_event "$topology" "$event_id" "start" "$action" "$node_name" "at_sec=$at_sec,down_secs=$down_secs,pid=$pid"
+      if ! kill -0 "$pid" >/dev/null 2>&1; then
+        log_chaos_event "$topology" "$event_id" "failed" "$action" "$node_name" "pid_not_alive=$pid"
+        return 1
+      fi
+      kill "$pid" >/dev/null 2>&1 || true
+      wait "$pid" >/dev/null 2>&1 || true
+      if (( down_secs > 0 )); then
+        sleep "$down_secs"
+      fi
+      if ! relaunch_node_from_saved_command "$node_name"; then
+        log_chaos_event "$topology" "$event_id" "failed" "$action" "$node_name" "relaunch_failed"
+        return 1
+      fi
+      log_chaos_event "$topology" "$event_id" "completed" "$action" "$node_name" "new_pid=${active_pids[$idx]}"
+      ;;
+    pause|disconnect)
+      log_chaos_event "$topology" "$event_id" "start" "$action" "$node_name" "at_sec=$at_sec,duration_secs=$duration_secs,pid=$pid"
+      if ! kill -0 "$pid" >/dev/null 2>&1; then
+        log_chaos_event "$topology" "$event_id" "failed" "$action" "$node_name" "pid_not_alive=$pid"
+        return 1
+      fi
+      if ! kill -STOP "$pid" >/dev/null 2>&1; then
+        log_chaos_event "$topology" "$event_id" "failed" "$action" "$node_name" "sigstop_failed"
+        return 1
+      fi
+      if (( duration_secs > 0 )); then
+        sleep "$duration_secs"
+      fi
+      if ! kill -CONT "$pid" >/dev/null 2>&1; then
+        log_chaos_event "$topology" "$event_id" "failed" "$action" "$node_name" "sigcont_failed"
+        return 1
+      fi
+      log_chaos_event "$topology" "$event_id" "completed" "$action" "$node_name" "pid=$pid"
+      ;;
+    *)
+      log_chaos_event "$topology" "$event_id" "failed" "$action" "$node_name" "unknown_action"
+      return 1
+      ;;
+  esac
+
+  return 0
 }
 
 stop_active_processes() {
@@ -453,6 +610,9 @@ launch_node() {
   "${cmd[@]}" >"$stdout_log" 2>"$stderr_log" &
   local pid=$!
 
+  node_cmd_file_by_name["$node_name"]="$cmd_txt"
+  node_stdout_log_by_name["$node_name"]="$stdout_log"
+  node_stderr_log_by_name["$node_name"]="$stderr_log"
   active_pids+=("$pid")
   active_nodes+=("$node_name")
 }
@@ -470,6 +630,8 @@ analyze_topology_metrics() {
   analysis_distfs_total_checks=0
   analysis_distfs_failed_checks=0
   analysis_invariant_all_ok=true
+  analysis_chaos_exempt_secs=${chaos_exempt_secs_by_topology[$topology]:-0}
+  analysis_effective_max_stall_secs=$((max_stall_secs + analysis_chaos_exempt_secs))
 
   local -a report_files=()
   if [[ -d "$topology_dir/nodes" ]]; then
@@ -623,8 +785,8 @@ analyze_topology_metrics() {
 
   if (( sample_with_time == 0 )); then
     gate_warnings+=("observed_at_missing")
-  elif (( analysis_max_stall_secs_observed > max_stall_secs )); then
-    gate_failures+=("stall=${analysis_max_stall_secs_observed}s>max_${max_stall_secs}s")
+  elif (( analysis_max_stall_secs_observed > analysis_effective_max_stall_secs )); then
+    gate_failures+=("stall=${analysis_max_stall_secs_observed}s>max_${analysis_effective_max_stall_secs}s")
   fi
 
   if (( analysis_lag_p95 > max_lag_p95 )); then
@@ -672,11 +834,21 @@ run_topology() {
   active_cleanup_done=0
   active_pids=()
   active_nodes=()
+  node_cmd_file_by_name=()
+  node_stdout_log_by_name=()
+  node_stderr_log_by_name=()
 
   local topology_dir="$run_dir/$topology"
   run mkdir -p "$topology_dir/nodes"
 
   local case_base_port=$((base_port + index * 100))
+  local -a chaos_event_ids=()
+  local -a chaos_event_at_secs=()
+  local -a chaos_event_nodes=()
+  local -a chaos_event_actions=()
+  local -a chaos_event_down_secs=()
+  local -a chaos_event_duration_secs=()
+  local -a chaos_event_done=()
 
   case "$topology" in
     triad)
@@ -715,30 +887,122 @@ run_topology() {
       ;;
   esac
 
-  local startup_deadline=$(( $(date +%s) + startup_timeout_secs ))
-  while :; do
-    local all_alive=1
-    local idx
-    for idx in "${!active_pids[@]}"; do
-      if ! kill -0 "${active_pids[$idx]}" >/dev/null 2>&1; then
-        all_alive=0
-        status="startup_failed"
-        notes="node=${active_nodes[$idx]} exited before startup window"
-        break
+  if [[ -n "$chaos_plan_path" ]]; then
+    local event_id at_sec node action down_secs event_duration_secs_raw
+    while IFS=$'\t' read -r event_id at_sec node action down_secs event_duration_secs_raw; do
+      [[ -z "$event_id" ]] && continue
+      [[ "$at_sec" =~ ^[0-9]+$ ]] || at_sec=0
+      [[ "$down_secs" =~ ^[0-9]+$ ]] || down_secs=0
+      [[ "$event_duration_secs_raw" =~ ^[0-9]+$ ]] || event_duration_secs_raw=0
+
+      if [[ -z "$node" ]]; then
+        log_chaos_event "$topology" "$event_id" "skipped" "$action" "none" "missing_node"
+        continue
       fi
-    done
-    if [[ "$all_alive" -eq 1 ]]; then
-      break
-    fi
-    if (( $(date +%s) >= startup_deadline )); then
-      break
-    fi
-    sleep 1
-  done
+
+      case "$action" in
+        restart|pause|disconnect) ;;
+        "")
+          action="restart"
+          ;;
+        *)
+          log_chaos_event "$topology" "$event_id" "failed" "$action" "$node" "unsupported_action"
+          status="chaos_plan_invalid"
+          notes="invalid chaos action for event=$event_id"
+          break
+          ;;
+      esac
+
+      chaos_event_ids+=("$event_id")
+      chaos_event_at_secs+=("$at_sec")
+      chaos_event_nodes+=("$node")
+      chaos_event_actions+=("$action")
+      chaos_event_down_secs+=("$down_secs")
+      chaos_event_duration_secs+=("$event_duration_secs_raw")
+      chaos_event_done+=("0")
+    done < <(
+      jq -r --arg topology "$topology" '
+        (.events // [] | to_entries[]) as $entry
+        | ($entry.value) as $event
+        | ($event.topology // "all") as $event_topology
+        | select($event_topology == "all" or $event_topology == $topology)
+        | [
+            ($event.id // ("event-" + ($entry.key | tostring))),
+            ($event.at_sec // 0),
+            ($event.node // ""),
+            ($event.action // "restart"),
+            ($event.down_secs // 0),
+            ($event.duration_secs // 0)
+          ] | @tsv
+      ' "$chaos_plan_path"
+    )
+  fi
 
   if [[ "$status" == "ok" ]]; then
-    local deadline=$(( $(date +%s) + duration_secs ))
+    local startup_deadline=$(( $(date +%s) + startup_timeout_secs ))
+    while :; do
+      local all_alive=1
+      local idx
+      for idx in "${!active_pids[@]}"; do
+        if ! kill -0 "${active_pids[$idx]}" >/dev/null 2>&1; then
+          all_alive=0
+          status="startup_failed"
+          notes="node=${active_nodes[$idx]} exited before startup window"
+          break
+        fi
+      done
+      if [[ "$all_alive" -eq 1 ]]; then
+        break
+      fi
+      if (( $(date +%s) >= startup_deadline )); then
+        break
+      fi
+      sleep 1
+    done
+  fi
+
+  if [[ "$status" == "ok" ]]; then
+    local started_epoch_sec
+    started_epoch_sec=$(date +%s)
+    local deadline=$(( started_epoch_sec + duration_secs ))
     while (( $(date +%s) < deadline )); do
+      local now_sec elapsed_sec
+      now_sec=$(date +%s)
+      elapsed_sec=$((now_sec - started_epoch_sec))
+
+      local event_idx
+      for event_idx in "${!chaos_event_ids[@]}"; do
+        if [[ "${chaos_event_done[$event_idx]}" == "1" ]]; then
+          continue
+        fi
+        local event_at=${chaos_event_at_secs[$event_idx]}
+        if (( elapsed_sec < event_at )); then
+          continue
+        fi
+
+        local event_id=${chaos_event_ids[$event_idx]}
+        local event_node=${chaos_event_nodes[$event_idx]}
+        local event_action=${chaos_event_actions[$event_idx]}
+        local event_down_secs=${chaos_event_down_secs[$event_idx]}
+        local event_duration_secs=${chaos_event_duration_secs[$event_idx]}
+
+        chaos_event_done[$event_idx]="1"
+        if ! execute_chaos_event "$topology" "$event_id" "$event_action" "$event_node" "$event_at" "$event_down_secs" "$event_duration_secs"; then
+          status="chaos_failed"
+          notes="chaos_event=${event_id} failed"
+          break 2
+        fi
+
+        local exempt_secs=0
+        if [[ "$event_action" == "restart" ]]; then
+          exempt_secs=$event_down_secs
+        else
+          exempt_secs=$event_duration_secs
+        fi
+        chaos_exempt_secs_by_topology["$topology"]=$(( ${chaos_exempt_secs_by_topology[$topology]:-0} + exempt_secs ))
+        chaos_events_executed_by_topology["$topology"]=$(( ${chaos_events_executed_by_topology[$topology]:-0} + 1 ))
+      done
+
       local idx
       for idx in "${!active_pids[@]}"; do
         if ! kill -0 "${active_pids[$idx]}" >/dev/null 2>&1; then
@@ -760,6 +1024,12 @@ run_topology() {
   local -a notes_parts=()
   if [[ "$notes" != "-" ]]; then
     notes_parts+=("$notes")
+  fi
+  local chaos_event_count=${chaos_events_executed_by_topology[$topology]:-0}
+  local chaos_exempt_secs=${chaos_exempt_secs_by_topology[$topology]:-0}
+  if (( chaos_event_count > 0 )); then
+    notes_parts+=("chaos_events=${chaos_event_count}")
+    notes_parts+=("chaos_exempt_secs=${chaos_exempt_secs}")
   fi
 
   if [[ "$analysis_gate_status" == "fail" ]]; then
@@ -796,7 +1066,10 @@ run_topology() {
     --arg gate_status "$analysis_gate_status" \
     --arg gate_notes "$analysis_gate_notes" \
     --argjson report_samples "$analysis_report_count" \
+    --argjson chaos_events "$chaos_event_count" \
     --argjson max_stall_secs_observed "$analysis_max_stall_secs_observed" \
+    --argjson chaos_exempt_secs "$analysis_chaos_exempt_secs" \
+    --argjson effective_max_stall_secs "$analysis_effective_max_stall_secs" \
     --argjson lag_p95 "$analysis_lag_p95" \
     --argjson distfs_failure_ratio "$analysis_distfs_failure_ratio" \
     --argjson distfs_total_checks "$analysis_distfs_total_checks" \
@@ -810,12 +1083,15 @@ run_topology() {
       ended_at: $ended_at,
       notes: $notes,
       report_samples: $report_samples,
+      chaos_events: $chaos_events,
       metric_gate: {
         status: $gate_status,
         notes: $gate_notes
       },
       metrics: {
         max_stall_secs_observed: $max_stall_secs_observed,
+        chaos_exempt_secs: $chaos_exempt_secs,
+        effective_max_stall_secs: $effective_max_stall_secs,
         lag_p95: $lag_p95,
         distfs_failure_ratio: $distfs_failure_ratio,
         distfs_total_checks: $distfs_total_checks,
@@ -841,12 +1117,14 @@ write_summary_json() {
     --arg run_dir "$run_dir" \
     --arg profile "$profile" \
     --arg scenario "$scenario" \
+    --arg chaos_plan_path "${chaos_plan_path:-}" \
     --argjson duration_secs "$duration_secs" \
     --argjson max_stall_secs "$max_stall_secs" \
     --argjson max_lag_p95 "$max_lag_p95" \
     --argjson max_distfs_failure_ratio "$max_distfs_failure_ratio" \
     --arg timeline_csv "$timeline_csv" \
     --arg summary_md "$summary_md" \
+    --arg chaos_events_log "$chaos_events_log" \
     --arg run_config_json "$run_config_json" \
     --argjson overall_status_code "$overall_status_code" \
     '
@@ -856,6 +1134,7 @@ write_summary_json() {
         run_dir: $run_dir,
         profile: $profile,
         scenario: $scenario,
+        chaos_plan: (if $chaos_plan_path == "" then null else $chaos_plan_path end),
         duration_secs_per_topology: $duration_secs,
         thresholds: {
           max_stall_secs: $max_stall_secs,
@@ -865,13 +1144,15 @@ write_summary_json() {
         artifacts: {
           run_config_json: $run_config_json,
           timeline_csv: $timeline_csv,
-          summary_md: $summary_md
+          summary_md: $summary_md,
+          chaos_events_log: $chaos_events_log
         },
         totals: {
           topology_count: ($topologies | length),
           topology_ok_count: ($topologies | map(select(.status == "ok")) | length),
           topology_failed_count: ($topologies | map(select(.status != "ok")) | length),
-          report_samples_total: ($topologies | map(.report_samples) | add // 0)
+          report_samples_total: ($topologies | map(.report_samples) | add // 0),
+          chaos_events_total: ($topologies | map(.chaos_events) | add // 0)
         },
         gate_failures: (
           $topologies
@@ -891,12 +1172,14 @@ append_summary_metrics_section() {
   local topology_ok_count=0
   local topology_failed_count=0
   local report_samples_total=0
+  local chaos_events_total=0
 
   if [[ -f "$summary_json" ]]; then
     topology_count=$(jq -r '.totals.topology_count // 0' "$summary_json")
     topology_ok_count=$(jq -r '.totals.topology_ok_count // 0' "$summary_json")
     topology_failed_count=$(jq -r '.totals.topology_failed_count // 0' "$summary_json")
     report_samples_total=$(jq -r '.totals.report_samples_total // 0' "$summary_json")
+    chaos_events_total=$(jq -r '.totals.chaos_events_total // 0' "$summary_json")
   fi
 
   {
@@ -905,17 +1188,19 @@ append_summary_metrics_section() {
     echo
     echo "- timeline_csv: \`$timeline_csv\`"
     echo "- summary_json: \`$summary_json\`"
+    echo "- chaos_events_log: \`$chaos_events_log\`"
     echo "- topology_count: \`$topology_count\` (ok=\`$topology_ok_count\`, failed=\`$topology_failed_count\`)"
     echo "- report_samples_total: \`$report_samples_total\`"
+    echo "- chaos_events_total: \`$chaos_events_total\`"
     echo
     echo "## Gate Metrics"
     echo
-    echo "| topology | gate | reports | max_stall_s | lag_p95 | distfs_ratio | invariant_all_ok |"
-    echo "|---|---|---|---|---|---|---|"
+    echo "| topology | gate | reports | chaos_events | chaos_exempt_s | max_stall_s | max_stall_s_effective | lag_p95 | distfs_ratio | invariant_all_ok |"
+    echo "|---|---|---|---|---|---|---|---|---|---|"
     if [[ -f "$summary_json" ]]; then
-      while IFS=$'\t' read -r topology gate reports stall lag ratio invariant; do
-        echo "| $topology | $gate | $reports | $stall | $lag | $ratio | $invariant |"
-      done < <(jq -r '.topologies[] | [ .topology, .metric_gate.status, .report_samples, .metrics.max_stall_secs_observed, .metrics.lag_p95, .metrics.distfs_failure_ratio, .metrics.invariant_all_ok ] | @tsv' "$summary_json")
+      while IFS=$'\t' read -r topology gate reports chaos_events chaos_exempt stall stall_effective lag ratio invariant; do
+        echo "| $topology | $gate | $reports | $chaos_events | $chaos_exempt | $stall | $stall_effective | $lag | $ratio | $invariant |"
+      done < <(jq -r '.topologies[] | [ .topology, .metric_gate.status, .report_samples, .chaos_events, .metrics.chaos_exempt_secs, .metrics.max_stall_secs_observed, .metrics.effective_max_stall_secs, .metrics.lag_p95, .metrics.distfs_failure_ratio, .metrics.invariant_all_ok ] | @tsv' "$summary_json")
     fi
   } >> "$summary_md"
 }
@@ -960,6 +1245,7 @@ echo "  run_dir: $run_dir"
 echo "  summary: $summary_md"
 echo "  summary_json: $summary_json"
 echo "  timeline_csv: $timeline_csv"
+echo "  chaos_events_log: $chaos_events_log"
 if [[ -f "$failures_md" ]]; then
   echo "  failures: $failures_md"
 fi
