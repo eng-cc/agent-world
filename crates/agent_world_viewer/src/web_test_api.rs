@@ -138,10 +138,31 @@ fn parse_seek_tick(payload: &JsValue) -> Option<u64> {
 }
 
 #[cfg(target_arch = "wasm32")]
+fn parse_step_count(payload: &JsValue) -> Option<usize> {
+    if payload.is_undefined() || payload.is_null() {
+        return Some(1);
+    }
+
+    if let Some(number) = payload.as_f64() {
+        if number.is_finite() && number >= 1.0 {
+            return Some(number as usize);
+        }
+    }
+
+    let count = JsReflect::get(payload, &JsValue::from_str("count")).ok()?;
+    let number = count.as_f64()?;
+    if number.is_finite() && number >= 1.0 {
+        return Some(number as usize);
+    }
+    None
+}
+
+#[cfg(target_arch = "wasm32")]
 fn parse_control_action(action: &str, payload: &JsValue) -> Option<ViewerControl> {
     match action.trim().to_ascii_lowercase().as_str() {
         "play" => Some(ViewerControl::Play),
         "pause" => Some(ViewerControl::Pause),
+        "step" => parse_step_count(payload).map(|count| ViewerControl::Step { count }),
         "seek" => parse_seek_tick(payload).map(|tick| ViewerControl::Seek { tick }),
         _ => None,
     }
