@@ -1,7 +1,11 @@
+> [!WARNING]
+> 该文档已归档，仅供历史追溯，不再作为当前实现依据。
+> 归档日期：2026-02-24
+
 # Rust 超限文件拆分（第二轮，2026-02-23）项目管理
 
 ## 任务拆解
-- [x] T0：输出设计文档（`doc/oversized-rust-file-splitting-round2-2026-02-23.md`）与本项目管理文档
+- [x] T0：输出设计文档（`doc/engineering/archive/oversized-rust-file-splitting-round2-2026-02-23.md`）与本项目管理文档
 - [x] T1：拆分 `crates/agent_world_distfs/src/challenge.rs` 的测试模块并回归
 - [x] T2：拆分 `crates/agent_world_consensus/src/pos.rs` 的测试模块并回归
 - [x] T3：拆分 `crates/agent_world_consensus/src/membership_recovery/replay.rs` 的测试模块并回归

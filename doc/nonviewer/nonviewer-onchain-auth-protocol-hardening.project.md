@@ -3,8 +3,8 @@
 ## 任务拆解
 
 ### T0 建档
-- [x] 新建设计文档：`doc/nonviewer-onchain-auth-protocol-hardening.md`
-- [x] 新建项目管理文档：`doc/nonviewer-onchain-auth-protocol-hardening.project.md`
+- [x] 新建设计文档：`doc/nonviewer/nonviewer-onchain-auth-protocol-hardening.md`
+- [x] 新建项目管理文档：`doc/nonviewer/nonviewer-onchain-auth-protocol-hardening.project.md`
 
 ### T1 协议与鉴权内核
 - [x] 扩展 `agent_world_proto::viewer` 请求结构，新增 `PlayerAuthProof`

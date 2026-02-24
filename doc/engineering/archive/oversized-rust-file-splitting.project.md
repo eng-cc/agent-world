@@ -1,7 +1,11 @@
+> [!WARNING]
+> 该文档已归档，仅供历史追溯，不再作为当前实现依据。
+> 归档日期：2026-02-24
+
 # Rust 超限文件拆分（项目管理文档）
 
 ## 任务拆解
-- [x] T0：输出设计文档（`doc/oversized-rust-file-splitting.md`）
+- [x] T0：输出设计文档（`doc/engineering/archive/oversized-rust-file-splitting.md`）
 - [x] T0：输出项目管理文档（本文件）
 - [x] T1：拆分 `crates/agent_world/src/simulator/llm_agent.rs`（<=1200 行）并补定向回归
 - [x] T2：拆分 `crates/agent_world/src/viewer/live.rs`（<=1200 行）并补定向回归

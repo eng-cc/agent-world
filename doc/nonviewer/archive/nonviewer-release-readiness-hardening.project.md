@@ -1,10 +1,14 @@
+> [!WARNING]
+> 该文档已归档，仅供历史追溯，不再作为当前实现依据。
+> 归档日期：2026-02-24
+
 # Non-Viewer 发行准备加固（项目管理文档）
 
 ## 任务拆解
 
 ### T0 建档
-- [x] 新建设计文档：`doc/nonviewer-release-readiness-hardening.md`
-- [x] 新建项目管理文档：`doc/nonviewer-release-readiness-hardening.project.md`
+- [x] 新建设计文档：`doc/nonviewer/archive/nonviewer-release-readiness-hardening.md`
+- [x] 新建项目管理文档：`doc/nonviewer/archive/nonviewer-release-readiness-hardening.project.md`
 
 ### T1 测试覆盖补齐
 - [x] 更新 `scripts/ci-tests.sh`，补齐 `node/consensus/distfs/net` 的 non-viewer 测试门禁覆盖

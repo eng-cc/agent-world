@@ -14,6 +14,7 @@
 - `doc/doc-structure-cleanup-2026-02-20.md` 与 `doc/doc-structure-cleanup-2026-02-20.project.md`：目录分层整理方案与执行状态。
 - `doc/doc-archive-audit-2026-02-20.md`、`doc/doc-archive-audit-2026-02-20.project.md`、`doc/doc-archive-audit-2026-02-20.result.md`：首轮归档审计方案与结果。
 - `doc/doc-structure-freshness-review-round2-2026-02-20.md`、`doc/doc-structure-freshness-review-round2-2026-02-20.project.md`、`doc/doc-structure-freshness-review-round2-2026-02-20.result.md`：第二轮结构与时效复核方案与结果。
+- `doc/doc-structure-freshness-review-round3-2026-02-24.md`、`doc/doc-structure-freshness-review-round3-2026-02-24.project.md`、`doc/doc-structure-freshness-review-round3-2026-02-24.result.md`：第三轮结构分层与老旧文档归档方案、执行状态与结果。
 
 ## 目录分层
 - `doc/readme/`：README 对齐与缺口收口相关设计/项目文档。
@@ -22,6 +23,8 @@
 - `doc/world-simulator/m4/`：M4 电力与工业经济专题文档。
 - `doc/world-runtime/`：运行时专题设计与技术分册。
 - `doc/p2p/`：P2P/共识/DistFS 相关文档（含归档目录）。
+- `doc/nonviewer/`：non-viewer 生产治理专题文档（含归档目录）。
+- `doc/engineering/`：工程治理专题文档（Rust 超限拆分等，含归档目录）。
 - `doc/testing/`：测试策略、分层测试、CI 流程与手册分册。
 - `doc/scripts/`：脚本相关设计与操作说明。
 - `doc/game/`：Gameplay 顶层与治理闭环文档。

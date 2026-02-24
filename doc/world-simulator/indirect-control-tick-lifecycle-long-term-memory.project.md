@@ -1,7 +1,7 @@
 # 间接控制链路 + WASM Tick 生命周期 + 长期记忆持久化（项目管理文档）
 
 ## 任务拆解
-- [x] T0：输出设计文档（`doc/indirect-control-tick-lifecycle-long-term-memory.md`）
+- [x] T0：输出设计文档（`doc/world-simulator/indirect-control-tick-lifecycle-long-term-memory.md`）
 - [x] T0：输出项目管理文档（本文件）
 - [x] T1：间接控制链路（submitter 授权 + viewer player 绑定）与测试
 - [x] T2：WASM tick 生命周期（按需唤醒/挂起）与测试

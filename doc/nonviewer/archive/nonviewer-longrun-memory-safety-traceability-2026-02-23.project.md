@@ -1,10 +1,14 @@
+> [!WARNING]
+> 该文档已归档，仅供历史追溯，不再作为当前实现依据。
+> 归档日期：2026-02-24
+
 # Non-Viewer 长稳运行内存安全与可追溯治理（项目管理）
 
 ## 任务拆解
 
 ### T0 建档
-- [x] 设计文档：`doc/nonviewer-longrun-memory-safety-traceability-2026-02-23.md`
-- [x] 项目文档：`doc/nonviewer-longrun-memory-safety-traceability-2026-02-23.project.md`
+- [x] 设计文档：`doc/nonviewer/archive/nonviewer-longrun-memory-safety-traceability-2026-02-23.md`
+- [x] 项目文档：`doc/nonviewer/archive/nonviewer-longrun-memory-safety-traceability-2026-02-23.project.md`
 
 ### T1 网络与入口背压（对应 1/2）
 - [x] `agent_world_net/libp2p_net`：命令通道有界化 + 诊断缓存有界化

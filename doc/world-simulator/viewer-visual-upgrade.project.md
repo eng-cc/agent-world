@@ -11,7 +11,7 @@
 - [x] VVU-P7：执行 required/full 回归、Playwright Web 闭环与性能收口。
 
 ## 依赖
-- `doc/viewer-visual-upgrade.md`
+- `doc/world-simulator/viewer-visual-upgrade.md`
 - `crates/agent_world/src/simulator/world_model.rs`
 - `crates/agent_world/src/simulator/kernel/*`
 - `crates/agent_world_viewer/src/scene_helpers.rs`

@@ -3,8 +3,8 @@
 ## 任务拆解
 
 ### T0 建档
-- [x] 设计文档：`doc/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.md`
-- [x] 项目文档：`doc/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.project.md`
+- [x] 设计文档：`doc/nonviewer/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.md`
+- [x] 项目文档：`doc/nonviewer/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.project.md`
 
 ### T1 Node 内存边界治理（1/2/3）
 - [x] `agent_world_node`：引擎 pending actions 有界化（不丢追溯）
