@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 
 use super::camera_controls::orbit_min_radius;
 use super::selection_linking::apply_selection;
@@ -44,10 +44,23 @@ pub(super) enum ViewerAutomationStep {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) enum ViewerAutomationTarget {
-    FirstAgent,
-    FirstLocation,
-    Agent(String),
-    Location(String),
+    FirstKind(&'static str),
+    KindId { kind: &'static str, id: String },
+}
+
+const TARGET_KIND_AGENT: &str = "agent";
+const TARGET_KIND_LOCATION: &str = "location";
+const TARGET_KIND_ASSET: &str = "asset";
+const TARGET_KIND_MODULE_VISUAL: &str = "module_visual";
+const TARGET_KIND_POWER_PLANT: &str = "power_plant";
+const TARGET_KIND_POWER_STORAGE: &str = "power_storage";
+const TARGET_KIND_CHUNK: &str = "chunk";
+const TARGET_KIND_FRAGMENT: &str = "fragment";
+
+struct TargetKindSpec<'a> {
+    selection_kind: SelectionKind,
+    entities: &'a HashMap<String, Entity>,
+    first_filter: fn(&str) -> bool,
 }
 
 enum StepResult {
@@ -297,40 +310,94 @@ fn resolve_target_entity(
     target: &ViewerAutomationTarget,
 ) -> Option<(Entity, SelectionKind, String)> {
     match target {
-        ViewerAutomationTarget::FirstAgent => {
-            first_sorted_id(&scene.agent_entities).and_then(|id| {
-                scene
-                    .agent_entities
-                    .get(id.as_str())
-                    .copied()
-                    .map(|entity| (entity, SelectionKind::Agent, id))
-            })
+        ViewerAutomationTarget::FirstKind(kind) => {
+            let spec = target_kind_spec(scene, kind)?;
+            let id = first_sorted_matching(spec.entities, spec.first_filter)
+                .or_else(|| first_sorted_id(spec.entities))?;
+            let entity = spec.entities.get(id.as_str()).copied()?;
+            Some((entity, spec.selection_kind, id))
         }
-        ViewerAutomationTarget::FirstLocation => first_sorted_id(&scene.location_entities)
-            .and_then(|id| {
-                scene
-                    .location_entities
-                    .get(id.as_str())
-                    .copied()
-                    .map(|entity| (entity, SelectionKind::Location, id))
-            }),
-        ViewerAutomationTarget::Agent(agent_id) => scene
-            .agent_entities
-            .get(agent_id.as_str())
-            .copied()
-            .map(|entity| (entity, SelectionKind::Agent, agent_id.clone())),
-        ViewerAutomationTarget::Location(location_id) => scene
-            .location_entities
-            .get(location_id.as_str())
-            .copied()
-            .map(|entity| (entity, SelectionKind::Location, location_id.clone())),
+        ViewerAutomationTarget::KindId { kind, id } => {
+            let spec = target_kind_spec(scene, kind)?;
+            spec.entities
+                .get(id.as_str())
+                .copied()
+                .map(|entity| (entity, spec.selection_kind, id.clone()))
+        }
     }
 }
 
-fn first_sorted_id(items: &std::collections::HashMap<String, Entity>) -> Option<String> {
+fn target_kind_spec<'a>(scene: &'a Viewer3dScene, kind: &str) -> Option<TargetKindSpec<'a>> {
+    match kind {
+        TARGET_KIND_AGENT => Some(TargetKindSpec {
+            selection_kind: SelectionKind::Agent,
+            entities: &scene.agent_entities,
+            first_filter: always_true,
+        }),
+        TARGET_KIND_LOCATION => Some(TargetKindSpec {
+            selection_kind: SelectionKind::Location,
+            entities: &scene.location_entities,
+            first_filter: always_true,
+        }),
+        TARGET_KIND_FRAGMENT => Some(TargetKindSpec {
+            selection_kind: SelectionKind::Fragment,
+            entities: &scene.location_entities,
+            first_filter: is_fragment_id,
+        }),
+        TARGET_KIND_ASSET => Some(TargetKindSpec {
+            selection_kind: SelectionKind::Asset,
+            entities: &scene.asset_entities,
+            first_filter: always_true,
+        }),
+        TARGET_KIND_MODULE_VISUAL => Some(TargetKindSpec {
+            selection_kind: SelectionKind::Asset,
+            entities: &scene.module_visual_entities,
+            first_filter: always_true,
+        }),
+        TARGET_KIND_POWER_PLANT => Some(TargetKindSpec {
+            selection_kind: SelectionKind::PowerPlant,
+            entities: &scene.power_plant_entities,
+            first_filter: always_true,
+        }),
+        TARGET_KIND_POWER_STORAGE => Some(TargetKindSpec {
+            selection_kind: SelectionKind::PowerStorage,
+            entities: &scene.power_storage_entities,
+            first_filter: always_true,
+        }),
+        TARGET_KIND_CHUNK => Some(TargetKindSpec {
+            selection_kind: SelectionKind::Chunk,
+            entities: &scene.chunk_entities,
+            first_filter: always_true,
+        }),
+        _ => None,
+    }
+}
+
+fn first_sorted_id(items: &HashMap<String, Entity>) -> Option<String> {
     let mut ids: Vec<_> = items.keys().cloned().collect();
     ids.sort();
     ids.into_iter().next()
+}
+
+fn first_sorted_matching(
+    items: &HashMap<String, Entity>,
+    predicate: fn(&str) -> bool,
+) -> Option<String> {
+    let mut ids: Vec<_> = items
+        .keys()
+        .filter(|id| predicate(id.as_str()))
+        .cloned()
+        .collect();
+    ids.sort();
+    ids.into_iter().next()
+}
+
+fn always_true(_id: &str) -> bool {
+    true
+}
+
+fn is_fragment_id(id: &str) -> bool {
+    id.starts_with("frag-")
 }
 
 fn config_from_values(
@@ -418,21 +485,40 @@ fn parse_target(raw: &str) -> Option<ViewerAutomationTarget> {
     if value.is_empty() {
         return None;
     }
-    match value.to_ascii_lowercase().as_str() {
-        "first_agent" => Some(ViewerAutomationTarget::FirstAgent),
-        "first_location" => Some(ViewerAutomationTarget::FirstLocation),
-        _ => {
-            let (kind, id) = value.split_once(':')?;
-            let id = id.trim();
-            if id.is_empty() {
-                return None;
-            }
-            match kind.trim().to_ascii_lowercase().as_str() {
-                "agent" => Some(ViewerAutomationTarget::Agent(id.to_string())),
-                "location" => Some(ViewerAutomationTarget::Location(id.to_string())),
-                _ => None,
-            }
-        }
+
+    let normalized = value.to_ascii_lowercase();
+    if let Some(kind_token) = normalized.strip_prefix("first_") {
+        let kind = canonical_target_kind(kind_token)?;
+        return Some(ViewerAutomationTarget::FirstKind(kind));
+    }
+    if let Some(kind_token) = normalized.strip_prefix("first:") {
+        let kind = canonical_target_kind(kind_token)?;
+        return Some(ViewerAutomationTarget::FirstKind(kind));
+    }
+
+    let (kind_token, id) = value.split_once(':')?;
+    let kind = canonical_target_kind(kind_token)?;
+    let id = id.trim();
+    if id.is_empty() {
+        return None;
+    }
+    Some(ViewerAutomationTarget::KindId {
+        kind,
+        id: id.to_string(),
+    })
+}
+
+fn canonical_target_kind(raw: &str) -> Option<&'static str> {
+    match raw.trim().to_ascii_lowercase().as_str() {
+        "agent" => Some(TARGET_KIND_AGENT),
+        "location" | "loc" => Some(TARGET_KIND_LOCATION),
+        "fragment" | "frag" => Some(TARGET_KIND_FRAGMENT),
+        "asset" => Some(TARGET_KIND_ASSET),
+        "module_visual" | "module-visual" | "modulevisual" => Some(TARGET_KIND_MODULE_VISUAL),
+        "power_plant" | "power-plant" | "powerplant" => Some(TARGET_KIND_POWER_PLANT),
+        "power_storage" | "power-storage" | "powerstorage" => Some(TARGET_KIND_POWER_STORAGE),
+        "chunk" => Some(TARGET_KIND_CHUNK),
+        _ => None,
     }
 }
 
@@ -476,21 +562,59 @@ mod tests {
     fn parse_target_supports_first_and_explicit_variants() {
         assert_eq!(
             parse_target("first_agent"),
-            Some(ViewerAutomationTarget::FirstAgent)
+            Some(ViewerAutomationTarget::FirstKind(TARGET_KIND_AGENT))
         );
         assert_eq!(
             parse_target("first_location"),
-            Some(ViewerAutomationTarget::FirstLocation)
+            Some(ViewerAutomationTarget::FirstKind(TARGET_KIND_LOCATION))
+        );
+        assert_eq!(
+            parse_target("first:power_plant"),
+            Some(ViewerAutomationTarget::FirstKind(TARGET_KIND_POWER_PLANT))
         );
         assert_eq!(
             parse_target("agent:agent-1"),
-            Some(ViewerAutomationTarget::Agent("agent-1".to_string()))
+            Some(ViewerAutomationTarget::KindId {
+                kind: TARGET_KIND_AGENT,
+                id: "agent-1".to_string(),
+            })
         );
         assert_eq!(
             parse_target("location:loc-2"),
-            Some(ViewerAutomationTarget::Location("loc-2".to_string()))
+            Some(ViewerAutomationTarget::KindId {
+                kind: TARGET_KIND_LOCATION,
+                id: "loc-2".to_string(),
+            })
         );
-        assert_eq!(parse_target("asset:a1"), None);
+        assert_eq!(
+            parse_target("power-plant:plant-1"),
+            Some(ViewerAutomationTarget::KindId {
+                kind: TARGET_KIND_POWER_PLANT,
+                id: "plant-1".to_string(),
+            })
+        );
+        assert_eq!(
+            parse_target("modulevisual:mv-1"),
+            Some(ViewerAutomationTarget::KindId {
+                kind: TARGET_KIND_MODULE_VISUAL,
+                id: "mv-1".to_string(),
+            })
+        );
+        assert_eq!(
+            parse_target("fragment:frag-2"),
+            Some(ViewerAutomationTarget::KindId {
+                kind: TARGET_KIND_FRAGMENT,
+                id: "frag-2".to_string(),
+            })
+        );
+        assert_eq!(
+            parse_target("asset:a1"),
+            Some(ViewerAutomationTarget::KindId {
+                kind: TARGET_KIND_ASSET,
+                id: "a1".to_string(),
+            })
+        );
+        assert_eq!(parse_target("unknown:x"), None);
         assert_eq!(parse_target(""), None);
     }
 
@@ -504,14 +628,20 @@ mod tests {
             vec![
                 ViewerAutomationStep::SetMode(ViewerCameraMode::ThreeD),
                 ViewerAutomationStep::WaitSeconds(0.6),
-                ViewerAutomationStep::Focus(ViewerAutomationTarget::Agent("agent-0".to_string())),
+                ViewerAutomationStep::Focus(ViewerAutomationTarget::KindId {
+                    kind: TARGET_KIND_AGENT,
+                    id: "agent-0".to_string(),
+                }),
                 ViewerAutomationStep::Pan(Vec3::new(1.0, 0.0, -2.0)),
                 ViewerAutomationStep::ZoomFactor(0.8),
                 ViewerAutomationStep::OrbitDeg {
                     yaw: 10.0,
                     pitch: -4.0
                 },
-                ViewerAutomationStep::Select(ViewerAutomationTarget::Agent("agent-0".to_string())),
+                ViewerAutomationStep::Select(ViewerAutomationTarget::KindId {
+                    kind: TARGET_KIND_AGENT,
+                    id: "agent-0".to_string(),
+                }),
             ]
         );
     }
@@ -526,9 +656,12 @@ mod tests {
         assert!(config.enabled);
         assert_eq!(
             config.steps,
-            vec![ViewerAutomationStep::Select(ViewerAutomationTarget::Agent(
-                "agent-2".to_string()
-            ))]
+            vec![ViewerAutomationStep::Select(
+                ViewerAutomationTarget::KindId {
+                    kind: TARGET_KIND_AGENT,
+                    id: "agent-2".to_string(),
+                }
+            )]
         );
     }
 
@@ -544,8 +677,73 @@ mod tests {
             config.steps,
             vec![
                 ViewerAutomationStep::WaitSeconds(0.2),
-                ViewerAutomationStep::Select(ViewerAutomationTarget::FirstAgent),
+                ViewerAutomationStep::Select(ViewerAutomationTarget::FirstKind(TARGET_KIND_AGENT)),
             ]
         );
+    }
+
+    #[test]
+    fn resolve_target_entity_supports_extended_scene_kinds() {
+        let mut scene = Viewer3dScene::default();
+        scene
+            .agent_entities
+            .insert("agent-1".to_string(), Entity::from_bits(1));
+        scene
+            .location_entities
+            .insert("loc-1".to_string(), Entity::from_bits(2));
+        scene
+            .location_entities
+            .insert("frag-2".to_string(), Entity::from_bits(3));
+        scene
+            .asset_entities
+            .insert("asset-1".to_string(), Entity::from_bits(4));
+        scene
+            .module_visual_entities
+            .insert("mv-1".to_string(), Entity::from_bits(5));
+        scene
+            .power_plant_entities
+            .insert("plant-1".to_string(), Entity::from_bits(6));
+        scene
+            .power_storage_entities
+            .insert("storage-1".to_string(), Entity::from_bits(7));
+        scene
+            .chunk_entities
+            .insert("chunk-1".to_string(), Entity::from_bits(8));
+
+        let fragment_target = ViewerAutomationTarget::FirstKind(TARGET_KIND_FRAGMENT);
+        let Some((fragment_entity, fragment_kind, fragment_id)) =
+            resolve_target_entity(&scene, &fragment_target)
+        else {
+            panic!("fragment target should resolve");
+        };
+        assert_eq!(fragment_entity, Entity::from_bits(3));
+        assert_eq!(fragment_kind, SelectionKind::Fragment);
+        assert_eq!(fragment_id, "frag-2");
+
+        let module_target = ViewerAutomationTarget::KindId {
+            kind: TARGET_KIND_MODULE_VISUAL,
+            id: "mv-1".to_string(),
+        };
+        let Some((module_entity, module_kind, module_id)) =
+            resolve_target_entity(&scene, &module_target)
+        else {
+            panic!("module_visual target should resolve");
+        };
+        assert_eq!(module_entity, Entity::from_bits(5));
+        assert_eq!(module_kind, SelectionKind::Asset);
+        assert_eq!(module_id, "mv-1");
+
+        let chunk_target = ViewerAutomationTarget::KindId {
+            kind: TARGET_KIND_CHUNK,
+            id: "chunk-1".to_string(),
+        };
+        let Some((chunk_entity, chunk_kind, chunk_id)) =
+            resolve_target_entity(&scene, &chunk_target)
+        else {
+            panic!("chunk target should resolve");
+        };
+        assert_eq!(chunk_entity, Entity::from_bits(8));
+        assert_eq!(chunk_kind, SelectionKind::Chunk);
+        assert_eq!(chunk_id, "chunk-1");
     }
 }
