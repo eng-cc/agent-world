@@ -22,6 +22,18 @@ Options:
   --startup-timeout-secs <n>       startup grace before monitor loop (default: 20)
   --poll-interval-secs <n>         monitor loop interval (default: 2)
   --chaos-plan <path>              JSON chaos plan for restart/pause injections
+  --chaos-continuous-enable        continuously inject chaos events during soak window
+  --chaos-continuous-interval-secs <n>
+                                    interval seconds between continuous chaos events (default: 30)
+  --chaos-continuous-start-sec <n> start second offset for continuous chaos injection (default: 30)
+  --chaos-continuous-max-events <n>
+                                    max continuous events per topology, 0 = unlimited (default: 0)
+  --chaos-continuous-actions <csv> comma-separated actions from restart,pause,disconnect (default: restart,pause)
+  --chaos-continuous-seed <n>      deterministic seed for continuous chaos selection (default: unix timestamp)
+  --chaos-continuous-restart-down-secs <n>
+                                    down seconds for generated restart events (default: 1)
+  --chaos-continuous-pause-duration-secs <n>
+                                    pause duration seconds for generated pause/disconnect events (default: 2)
   --max-stall-secs <n>             gate threshold for max no-progress window
   --max-lag-p95 <n>                gate threshold for p95(network_height - committed_height)
   --max-distfs-failure-ratio <r>   gate threshold for DistFS failed/total ratio (0~1)
@@ -113,6 +125,32 @@ ensure_supported_topology() {
   esac
 }
 
+ensure_supported_chaos_action() {
+  local value=$1
+  case "$value" in
+    restart|pause|disconnect) ;;
+    *)
+      echo "unsupported chaos action: $value (expected restart|pause|disconnect)" >&2
+      exit 2
+      ;;
+  esac
+}
+
+chaos_rng_state=1
+chaos_rng_seed() {
+  local seed=$1
+  local normalized=$((seed % 2147483647))
+  if (( normalized <= 0 )); then
+    normalized=$((normalized + 2147483646))
+  fi
+  chaos_rng_state=$normalized
+}
+
+chaos_rng_next() {
+  chaos_rng_state=$(( (chaos_rng_state * 48271) % 2147483647 ))
+  printf '%s' "$chaos_rng_state"
+}
+
 profile="soak_smoke"
 duration_secs=""
 topologies_csv=""
@@ -125,6 +163,14 @@ out_root=".tmp/p2p_longrun"
 startup_timeout_secs=20
 poll_interval_secs=2
 chaos_plan_path=""
+chaos_continuous_enabled=0
+chaos_continuous_interval_secs=30
+chaos_continuous_start_sec=30
+chaos_continuous_max_events=0
+chaos_continuous_actions_csv="restart,pause"
+chaos_continuous_seed=""
+chaos_continuous_restart_down_secs=1
+chaos_continuous_pause_duration_secs=2
 max_stall_secs=""
 max_lag_p95=""
 max_distfs_failure_ratio=""
@@ -182,6 +228,38 @@ while [[ $# -gt 0 ]]; do
       ;;
     --chaos-plan)
       chaos_plan_path=${2:-}
+      shift 2
+      ;;
+    --chaos-continuous-enable)
+      chaos_continuous_enabled=1
+      shift
+      ;;
+    --chaos-continuous-interval-secs)
+      chaos_continuous_interval_secs=${2:-}
+      shift 2
+      ;;
+    --chaos-continuous-start-sec)
+      chaos_continuous_start_sec=${2:-}
+      shift 2
+      ;;
+    --chaos-continuous-max-events)
+      chaos_continuous_max_events=${2:-}
+      shift 2
+      ;;
+    --chaos-continuous-actions)
+      chaos_continuous_actions_csv=${2:-}
+      shift 2
+      ;;
+    --chaos-continuous-seed)
+      chaos_continuous_seed=${2:-}
+      shift 2
+      ;;
+    --chaos-continuous-restart-down-secs)
+      chaos_continuous_restart_down_secs=${2:-}
+      shift 2
+      ;;
+    --chaos-continuous-pause-duration-secs)
+      chaos_continuous_pause_duration_secs=${2:-}
       shift 2
       ;;
     --max-stall-secs)
@@ -264,6 +342,13 @@ ensure_positive_int "--poll-interval-secs" "$poll_interval_secs"
 ensure_non_negative_int "--max-stall-secs" "$max_stall_secs"
 ensure_non_negative_int "--max-lag-p95" "$max_lag_p95"
 ensure_ratio_between_zero_and_one "--max-distfs-failure-ratio" "$max_distfs_failure_ratio"
+ensure_non_negative_int "--chaos-continuous-start-sec" "$chaos_continuous_start_sec"
+ensure_non_negative_int "--chaos-continuous-max-events" "$chaos_continuous_max_events"
+ensure_non_negative_int "--chaos-continuous-restart-down-secs" "$chaos_continuous_restart_down_secs"
+ensure_non_negative_int "--chaos-continuous-pause-duration-secs" "$chaos_continuous_pause_duration_secs"
+if [[ "$chaos_continuous_enabled" -eq 1 ]]; then
+  ensure_positive_int "--chaos-continuous-interval-secs" "$chaos_continuous_interval_secs"
+fi
 
 if [[ -z "$scenario" ]]; then
   echo "--scenario cannot be empty" >&2
@@ -279,6 +364,26 @@ if [[ -n "$chaos_plan_path" ]]; then
     echo "invalid chaos plan format: expected JSON object with .events array" >&2
     exit 2
   fi
+fi
+
+declare -a chaos_continuous_actions=()
+if [[ "$chaos_continuous_enabled" -eq 1 ]]; then
+  if [[ -z "$chaos_continuous_seed" ]]; then
+    chaos_continuous_seed=$(date +%s)
+  fi
+  ensure_non_negative_int "--chaos-continuous-seed" "$chaos_continuous_seed"
+
+  mapfile -t chaos_continuous_actions < <(printf '%s' "$chaos_continuous_actions_csv" | tr ',' '\n' | sed '/^$/d')
+  if (( ${#chaos_continuous_actions[@]} == 0 )); then
+    echo "--chaos-continuous-actions resolved to empty list" >&2
+    exit 2
+  fi
+  for i in "${!chaos_continuous_actions[@]}"; do
+    chaos_continuous_actions[$i]=$(trim "${chaos_continuous_actions[$i]}")
+    ensure_supported_chaos_action "${chaos_continuous_actions[$i]}"
+  done
+else
+  chaos_continuous_seed=0
 fi
 
 if ! command -v jq >/dev/null 2>&1; then
@@ -314,7 +419,7 @@ done
 
 run_config_json="$run_dir/run_config.json"
 chaos_enabled=0
-if [[ -n "$chaos_plan_path" ]]; then
+if [[ -n "$chaos_plan_path" ]] || [[ "$chaos_continuous_enabled" -eq 1 ]]; then
   chaos_enabled=1
 fi
 {
@@ -849,6 +954,9 @@ run_topology() {
   local -a chaos_event_down_secs=()
   local -a chaos_event_duration_secs=()
   local -a chaos_event_done=()
+  local continuous_enabled=0
+  local continuous_next_at_sec=0
+  local continuous_generated=0
 
   case "$topology" in
     triad)
@@ -938,6 +1046,12 @@ run_topology() {
     )
   fi
 
+  if [[ "$chaos_continuous_enabled" -eq 1 ]]; then
+    continuous_enabled=1
+    continuous_next_at_sec=$chaos_continuous_start_sec
+    chaos_rng_seed $((chaos_continuous_seed + (index + 1) * 104729))
+  fi
+
   if [[ "$status" == "ok" ]]; then
     local startup_deadline=$(( $(date +%s) + startup_timeout_secs ))
     while :; do
@@ -1003,6 +1117,54 @@ run_topology() {
         chaos_events_executed_by_topology["$topology"]=$(( ${chaos_events_executed_by_topology[$topology]:-0} + 1 ))
       done
 
+      if [[ "$continuous_enabled" -eq 1 ]]; then
+        while (( elapsed_sec >= continuous_next_at_sec )); do
+          if (( chaos_continuous_max_events > 0 && continuous_generated >= chaos_continuous_max_events )); then
+            continuous_enabled=0
+            break
+          fi
+
+          local rand node_idx action_idx
+          local generated_event_id generated_node generated_action
+          local generated_down_secs generated_duration_secs
+
+          rand=$(chaos_rng_next)
+          node_idx=$((rand % ${#active_nodes[@]}))
+          generated_node=${active_nodes[$node_idx]}
+
+          rand=$(chaos_rng_next)
+          action_idx=$((rand % ${#chaos_continuous_actions[@]}))
+          generated_action=${chaos_continuous_actions[$action_idx]}
+
+          generated_down_secs=0
+          generated_duration_secs=0
+          if [[ "$generated_action" == "restart" ]]; then
+            generated_down_secs=$chaos_continuous_restart_down_secs
+          else
+            generated_duration_secs=$chaos_continuous_pause_duration_secs
+          fi
+
+          generated_event_id="continuous-${topology}-${continuous_generated}"
+          if ! execute_chaos_event "$topology" "$generated_event_id" "$generated_action" "$generated_node" "$continuous_next_at_sec" "$generated_down_secs" "$generated_duration_secs"; then
+            status="chaos_failed"
+            notes="chaos_event=${generated_event_id} failed"
+            break 2
+          fi
+
+          local generated_exempt_secs=0
+          if [[ "$generated_action" == "restart" ]]; then
+            generated_exempt_secs=$generated_down_secs
+          else
+            generated_exempt_secs=$generated_duration_secs
+          fi
+          chaos_exempt_secs_by_topology["$topology"]=$(( ${chaos_exempt_secs_by_topology[$topology]:-0} + generated_exempt_secs ))
+          chaos_events_executed_by_topology["$topology"]=$(( ${chaos_events_executed_by_topology[$topology]:-0} + 1 ))
+
+          continuous_generated=$((continuous_generated + 1))
+          continuous_next_at_sec=$((continuous_next_at_sec + chaos_continuous_interval_secs))
+        done
+      fi
+
       local idx
       for idx in "${!active_pids[@]}"; do
         if ! kill -0 "${active_pids[$idx]}" >/dev/null 2>&1; then
@@ -1030,6 +1192,9 @@ run_topology() {
   if (( chaos_event_count > 0 )); then
     notes_parts+=("chaos_events=${chaos_event_count}")
     notes_parts+=("chaos_exempt_secs=${chaos_exempt_secs}")
+  fi
+  if (( continuous_generated > 0 )); then
+    notes_parts+=("chaos_continuous_generated=${continuous_generated}")
   fi
 
   if [[ "$analysis_gate_status" == "fail" ]]; then
