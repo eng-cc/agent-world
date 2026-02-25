@@ -206,6 +206,7 @@ fn main() {
 
                 let action_result = if let AgentDecision::Act(action) = &result.decision {
                     let mut used_runtime_bridge = false;
+                    let action_execution_started_at = Instant::now();
                     let executed = if let Some(bridge) = runtime_gameplay_bridge.as_mut() {
                         if is_bridgeable_action(action) {
                             match bridge.execute(tick, result.agent_id.as_str(), action.clone()) {
@@ -240,6 +241,9 @@ fn main() {
                             action.clone(),
                         )
                     };
+                    runner.record_external_action_execution_duration(
+                        action_execution_started_at.elapsed(),
+                    );
 
                     let _ = runner.notify_action_result(result.agent_id.as_str(), &executed);
                     if used_runtime_bridge {
@@ -279,6 +283,7 @@ fn main() {
     let metrics = runner.metrics();
     run_report.total_actions = metrics.total_actions + coverage_bootstrap_actions;
     run_report.total_decisions = metrics.total_decisions;
+    run_report.runtime_perf = metrics.runtime_perf;
     run_report.world_time = kernel.time();
     run_report.journal_events = kernel.journal().len();
     run_report.finalize();
@@ -364,6 +369,22 @@ fn main() {
     println!(
         "runtime_bridge_action_failure: {}",
         run_report.runtime_bridge_action_failure
+    );
+    println!(
+        "runtime_perf_health: {}",
+        run_report.runtime_perf.health.as_str()
+    );
+    println!(
+        "runtime_perf_bottleneck: {}",
+        run_report.runtime_perf.bottleneck.as_str()
+    );
+    println!(
+        "runtime_perf_tick_p95_ms: {:.3}",
+        run_report.runtime_perf.tick.p95_ms
+    );
+    println!(
+        "runtime_perf_tick_over_budget_ratio_ppm: {}",
+        run_report.runtime_perf.tick.over_budget_ratio_ppm
     );
 }
 

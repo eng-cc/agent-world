@@ -2,9 +2,11 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use std::time::{Duration, Instant};
 
 use super::agent::{ActionResult, AgentBehavior, AgentDecision, AgentDecisionTrace};
 use super::kernel::{WorldEvent, WorldEventKind, WorldKernel};
+use super::runtime_perf::{RuntimePerfCollector, RuntimePerfSnapshot};
 use super::types::{Action, WorldTime};
 
 // ============================================================================
@@ -246,6 +248,8 @@ pub struct AgentRunner<B: AgentBehavior> {
     default_quota: Option<AgentQuota>,
     /// Rate limit policy for all agents.
     rate_limit_policy: Option<RateLimitPolicy>,
+    /// Runtime execution performance collector.
+    runtime_perf: RuntimePerfCollector,
 }
 
 impl<B: AgentBehavior> Default for AgentRunner<B> {
@@ -263,6 +267,7 @@ impl<B: AgentBehavior> AgentRunner<B> {
             total_ticks: 0,
             default_quota: None,
             rate_limit_policy: None,
+            runtime_perf: RuntimePerfCollector::default(),
         }
     }
 
@@ -274,6 +279,7 @@ impl<B: AgentBehavior> AgentRunner<B> {
             total_ticks: 0,
             default_quota: None,
             rate_limit_policy: Some(rate_limit),
+            runtime_perf: RuntimePerfCollector::default(),
         }
     }
 
@@ -285,6 +291,7 @@ impl<B: AgentBehavior> AgentRunner<B> {
             total_ticks: 0,
             default_quota: Some(quota),
             rate_limit_policy: None,
+            runtime_perf: RuntimePerfCollector::default(),
         }
     }
 
@@ -363,6 +370,7 @@ impl<B: AgentBehavior> AgentRunner<B> {
     /// Returns the action result if an action was taken, or None if
     /// no agent was ready or all agents chose to wait.
     pub fn tick(&mut self, kernel: &mut WorldKernel) -> Option<AgentTickResult> {
+        let tick_started_at = Instant::now();
         self.total_ticks += 1;
         let now = kernel.time();
 
@@ -400,6 +408,8 @@ impl<B: AgentBehavior> AgentRunner<B> {
             .collect();
 
         if ready_agents.is_empty() {
+            self.runtime_perf
+                .record_tick_duration(tick_started_at.elapsed());
             return None;
         }
 
@@ -418,14 +428,28 @@ impl<B: AgentBehavior> AgentRunner<B> {
         // Get observation for the selected agent
         let observation = match kernel.observe(&agent_id) {
             Ok(obs) => obs,
-            Err(_) => return None,
+            Err(_) => {
+                self.runtime_perf
+                    .record_tick_duration(tick_started_at.elapsed());
+                return None;
+            }
         };
 
         // Get decision from the agent
-        let agent = self.agents.get_mut(&agent_id)?;
+        let agent = match self.agents.get_mut(&agent_id) {
+            Some(agent) => agent,
+            None => {
+                self.runtime_perf
+                    .record_tick_duration(tick_started_at.elapsed());
+                return None;
+            }
+        };
         agent.decision_count += 1;
 
+        let decision_started_at = Instant::now();
         let decision = agent.behavior.decide(&observation);
+        self.runtime_perf
+            .record_decision_duration(decision_started_at.elapsed());
         let decision_trace = agent.behavior.take_decision_trace();
         if let Some(trace) = decision_trace.as_ref() {
             for intent in &trace.llm_effect_intents {
@@ -442,7 +466,7 @@ impl<B: AgentBehavior> AgentRunner<B> {
             }
         }
 
-        match decision {
+        let result = match decision {
             AgentDecision::Wait => Some(AgentTickResult {
                 agent_id,
                 decision: AgentDecision::Wait,
@@ -464,12 +488,13 @@ impl<B: AgentBehavior> AgentRunner<B> {
                 agent.action_count += 1;
                 // Record action for rate limiting
                 let rate_policy = self.rate_limit_policy.as_ref();
-                let agent = self.agents.get_mut(&agent_id).unwrap();
-                agent.record_action(now, rate_policy);
+                if let Some(agent) = self.agents.get_mut(&agent_id) {
+                    agent.record_action(now, rate_policy);
+                }
 
+                let action_execution_started_at = Instant::now();
                 let action_id = kernel.submit_action_from_agent(agent_id.clone(), action.clone());
                 let event = kernel.step();
-
                 let action_result = event.map(|event| {
                     let success = !matches!(event.kind, WorldEventKind::ActionRejected { .. });
                     ActionResult {
@@ -479,11 +504,17 @@ impl<B: AgentBehavior> AgentRunner<B> {
                         event,
                     }
                 });
+                self.runtime_perf
+                    .record_action_execution_duration(action_execution_started_at.elapsed());
 
                 // Notify agent of the result
                 if let Some(ref result) = action_result {
-                    let agent = self.agents.get_mut(&agent_id).unwrap();
-                    agent.behavior.on_action_result(result);
+                    let callback_started_at = Instant::now();
+                    if let Some(agent) = self.agents.get_mut(&agent_id) {
+                        agent.behavior.on_action_result(result);
+                    }
+                    self.runtime_perf
+                        .record_callback_duration(callback_started_at.elapsed());
                 }
 
                 Some(AgentTickResult {
@@ -494,7 +525,10 @@ impl<B: AgentBehavior> AgentRunner<B> {
                     decision_trace,
                 })
             }
-        }
+        };
+        self.runtime_perf
+            .record_tick_duration(tick_started_at.elapsed());
+        result
     }
 
     /// Run one decision tick without executing actions in the kernel.
@@ -502,6 +536,7 @@ impl<B: AgentBehavior> AgentRunner<B> {
     /// This keeps agent scheduling/quota/rate-limit semantics, but defers world
     /// state transition until external consensus commit and replay.
     pub fn tick_decide_only(&mut self, kernel: &mut WorldKernel) -> Option<AgentTickResult> {
+        let tick_started_at = Instant::now();
         self.total_ticks += 1;
         let now = kernel.time();
 
@@ -531,6 +566,8 @@ impl<B: AgentBehavior> AgentRunner<B> {
             .map(|(id, _)| id.clone())
             .collect();
         if ready_agents.is_empty() {
+            self.runtime_perf
+                .record_tick_duration(tick_started_at.elapsed());
             return None;
         }
 
@@ -546,15 +583,29 @@ impl<B: AgentBehavior> AgentRunner<B> {
 
         let observation = match kernel.observe(&agent_id) {
             Ok(obs) => obs,
-            Err(_) => return None,
+            Err(_) => {
+                self.runtime_perf
+                    .record_tick_duration(tick_started_at.elapsed());
+                return None;
+            }
         };
 
-        let agent = self.agents.get_mut(&agent_id)?;
+        let agent = match self.agents.get_mut(&agent_id) {
+            Some(agent) => agent,
+            None => {
+                self.runtime_perf
+                    .record_tick_duration(tick_started_at.elapsed());
+                return None;
+            }
+        };
         agent.decision_count += 1;
+        let decision_started_at = Instant::now();
         let decision = agent.behavior.decide(&observation);
+        self.runtime_perf
+            .record_decision_duration(decision_started_at.elapsed());
         let decision_trace = agent.behavior.take_decision_trace();
 
-        match decision {
+        let result = match decision {
             AgentDecision::Wait => Some(AgentTickResult {
                 agent_id,
                 decision: AgentDecision::Wait,
@@ -584,15 +635,36 @@ impl<B: AgentBehavior> AgentRunner<B> {
                     decision_trace,
                 })
             }
-        }
+        };
+        self.runtime_perf
+            .record_tick_duration(tick_started_at.elapsed());
+        result
     }
 
     pub fn notify_action_result(&mut self, agent_id: &str, result: &ActionResult) -> bool {
         let Some(agent) = self.agents.get_mut(agent_id) else {
             return false;
         };
+        let callback_started_at = Instant::now();
         agent.behavior.on_action_result(result);
+        self.runtime_perf
+            .record_callback_duration(callback_started_at.elapsed());
         true
+    }
+
+    /// Record action execution duration when action apply happens outside the runner.
+    pub fn record_external_action_execution_duration(&mut self, duration: Duration) {
+        self.runtime_perf.record_action_execution_duration(duration);
+    }
+
+    /// Returns runtime execution performance snapshot.
+    pub fn runtime_perf_snapshot(&self) -> RuntimePerfSnapshot {
+        self.runtime_perf.snapshot()
+    }
+
+    /// Reset runtime execution performance samples.
+    pub fn reset_runtime_perf(&mut self) {
+        self.runtime_perf.reset();
     }
 
     /// Check if an agent is quota-exhausted.
@@ -718,6 +790,7 @@ impl<B: AgentBehavior> AgentRunner<B> {
                 0.0
             },
             success_rate: 0.0, // Will be computed in extended metrics
+            runtime_perf: self.runtime_perf.snapshot(),
         }
     }
 
@@ -779,6 +852,9 @@ pub struct RunnerMetrics {
     pub decisions_per_tick: f64,
     /// Success rate of actions (0.0 to 1.0).
     pub success_rate: f64,
+    /// Runtime execution performance snapshot.
+    #[serde(default)]
+    pub runtime_perf: RuntimePerfSnapshot,
 }
 
 impl Default for RunnerMetrics {
@@ -793,6 +869,7 @@ impl Default for RunnerMetrics {
             actions_per_tick: 0.0,
             decisions_per_tick: 0.0,
             success_rate: 0.0,
+            runtime_perf: RuntimePerfSnapshot::default(),
         }
     }
 }

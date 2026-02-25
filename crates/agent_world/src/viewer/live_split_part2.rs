@@ -180,7 +180,7 @@ impl ViewerLiveSession {
                     )?;
                 }
                 if self.subscribed.contains(&ViewerStream::Metrics) {
-                    self.update_metrics_from_kernel(world.kernel());
+                    self.update_metrics(world.metrics());
                     send_response(
                         writer,
                         &ViewerResponse::Metrics {
@@ -251,7 +251,7 @@ impl ViewerLiveSession {
                             }
                         }
 
-                        self.update_metrics_from_kernel(world.kernel());
+                        self.update_metrics(world.metrics());
                         self.emit_metrics(writer)?;
                     }
                     self.playing = false;
@@ -267,7 +267,7 @@ impl ViewerLiveSession {
                             },
                         )?;
                     }
-                    self.update_metrics_from_kernel(world.kernel());
+                    self.update_metrics(world.metrics());
                     self.emit_metrics(writer)?;
                     if !seek_result.reached {
                         send_response(
@@ -299,8 +299,8 @@ impl ViewerLiveSession {
         }
     }
 
-    fn update_metrics_from_kernel(&mut self, kernel: &WorldKernel) {
-        self.metrics = metrics_from_kernel(kernel);
+    fn update_metrics(&mut self, metrics: RunnerMetrics) {
+        self.metrics = metrics;
     }
 
     fn emit_metrics(&self, writer: &mut BufWriter<TcpStream>) -> Result<(), ViewerLiveServerError> {
@@ -335,6 +335,7 @@ fn metrics_from_kernel(kernel: &WorldKernel) -> RunnerMetrics {
         actions_per_tick,
         decisions_per_tick: 0.0,
         success_rate: 0.0,
+        runtime_perf: Default::default(),
     }
 }
 

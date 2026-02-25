@@ -388,6 +388,7 @@ fn metrics_from_snapshot(snapshot: &WorldSnapshot) -> RunnerMetrics {
         actions_per_tick: 0.0,
         decisions_per_tick: 0.0,
         success_rate: 0.0,
+        runtime_perf: Default::default(),
     }
 }
 

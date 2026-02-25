@@ -24,6 +24,7 @@ mod module_visual;
 mod persist;
 mod power;
 mod runner;
+mod runtime_perf;
 mod scenario;
 mod social;
 mod types;
@@ -107,6 +108,9 @@ pub use world_model::{
 pub use power::{
     AgentPowerState, AgentPowerStatus, ConsumeReason, PlantStatus, PowerConfig, PowerEvent,
     PowerPlant, PowerStorage,
+};
+pub use runtime_perf::{
+    RuntimePerfBottleneck, RuntimePerfHealth, RuntimePerfSeriesSnapshot, RuntimePerfSnapshot,
 };
 
 // Re-export event types from kernel

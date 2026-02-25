@@ -1,4 +1,5 @@
 use super::*;
+use std::time::Duration;
 
 /// A simple test agent that moves toward a target location.
 struct PatrolAgent {
@@ -612,6 +613,31 @@ fn runner_metrics_default() {
     assert_eq!(metrics.total_agents, 0);
     assert_eq!(metrics.total_actions, 0);
     assert_eq!(metrics.total_decisions, 0);
+    assert_eq!(metrics.runtime_perf.health, RuntimePerfHealth::Unknown);
+}
+
+#[test]
+fn runner_runtime_perf_snapshot_tracks_tick_and_decision_samples() {
+    let mut kernel = setup_kernel_with_wait_agent("agent-1");
+    let mut runner: AgentRunner<WaitingAgent> = AgentRunner::new();
+    runner.register(WaitingAgent::new("agent-1", 0));
+
+    let _ = runner.tick(&mut kernel).expect("tick result");
+    let perf = runner.runtime_perf_snapshot();
+    assert!(perf.tick.samples_total >= 1);
+    assert!(perf.decision.samples_total >= 1);
+    assert_ne!(perf.health, RuntimePerfHealth::Unknown);
+}
+
+#[test]
+fn runner_external_action_execution_duration_updates_perf_snapshot() {
+    let mut runner: AgentRunner<WaitingAgent> = AgentRunner::new();
+    runner.record_external_action_execution_duration(Duration::from_micros(25_000));
+
+    let perf = runner.runtime_perf_snapshot();
+    assert_eq!(perf.action_execution.samples_total, 1);
+    assert!(perf.action_execution.p95_ms >= 25.0);
+    assert_eq!(perf.bottleneck, RuntimePerfBottleneck::ActionExecution);
 }
 
 #[test]

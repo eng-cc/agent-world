@@ -3,10 +3,12 @@ use std::env;
 use std::fs;
 use std::path::Path;
 use std::process;
+use std::time::Instant;
 
 use agent_world::simulator::{
     initialize_kernel, Action as SimulatorAction, ActionResult, AgentDecision, AgentDecisionTrace,
-    AgentRunner, LlmAgentBehavior, RejectReason, WorldConfig, WorldInitConfig, WorldScenario,
+    AgentRunner, LlmAgentBehavior, RejectReason, RuntimePerfSnapshot, WorldConfig, WorldInitConfig,
+    WorldScenario,
 };
 use serde::{Deserialize, Serialize};
 
@@ -165,7 +167,7 @@ struct TraceCounts {
     step_type_counts: BTreeMap<String, u64>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 struct DemoRunReport {
     scenario: String,
     ticks_requested: u64,
@@ -184,6 +186,7 @@ struct DemoRunReport {
     first_action_tick: BTreeMap<String, u64>,
     decision_counts: DecisionCounts,
     trace_counts: TraceCounts,
+    runtime_perf: RuntimePerfSnapshot,
     world_time: u64,
     journal_events: usize,
 }
@@ -208,6 +211,7 @@ impl DemoRunReport {
             first_action_tick: BTreeMap::new(),
             decision_counts: DecisionCounts::default(),
             trace_counts: TraceCounts::default(),
+            runtime_perf: RuntimePerfSnapshot::default(),
             world_time: 0,
             journal_events: 0,
         }

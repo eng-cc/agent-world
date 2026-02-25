@@ -6,7 +6,7 @@ use crate::consensus_action_payload::{
 use agent_world_node::NodeRuntime;
 use std::collections::{HashSet, VecDeque};
 use std::sync::{Arc, Mutex};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 const MAX_INFLIGHT_CONSENSUS_ACTIONS: usize = 8;
 
@@ -178,6 +178,7 @@ impl LiveWorld {
     ) -> Result<WorldEvent, ViewerLiveServerError> {
         let action = committed.action;
         let submitter = committed.submitter;
+        let action_execution_started_at = Instant::now();
         let action_id = match &submitter {
             ActionSubmitter::System => self.kernel.submit_action_from_system(action.clone()),
             ActionSubmitter::Agent { agent_id } => self
@@ -192,6 +193,7 @@ impl LiveWorld {
                 "viewer live consensus bridge: kernel step produced no event".to_string(),
             )
         })?;
+        let action_execution_elapsed = action_execution_started_at.elapsed();
 
         if let LiveDriver::Llm(runner) = &mut self.driver {
             if let ActionSubmitter::Agent { agent_id } = &submitter {
@@ -202,6 +204,7 @@ impl LiveWorld {
                     success,
                     event: event.clone(),
                 };
+                runner.record_external_action_execution_duration(action_execution_elapsed);
                 let _ = runner.notify_action_result(agent_id.as_str(), &action_result);
             }
             sync_llm_runner_long_term_memory(&mut self.kernel, runner);

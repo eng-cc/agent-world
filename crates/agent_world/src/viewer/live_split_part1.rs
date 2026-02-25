@@ -272,7 +272,7 @@ impl ViewerLiveServer {
                     }
                 }
 
-                session.update_metrics_from_kernel(self.world.kernel());
+                session.update_metrics(self.world.metrics());
                 if let Err(err) = session.emit_metrics(&mut writer) {
                     if err.is_disconnect() {
                         break;
@@ -339,6 +339,13 @@ impl LiveWorld {
 
     fn kernel(&self) -> &WorldKernel {
         &self.kernel
+    }
+
+    fn metrics(&self) -> RunnerMetrics {
+        match &self.driver {
+            LiveDriver::Script(_) => metrics_from_kernel(&self.kernel),
+            LiveDriver::Llm(runner) => runner.metrics_with_kernel(&self.kernel),
+        }
     }
 
     fn snapshot(&self) -> WorldSnapshot {
