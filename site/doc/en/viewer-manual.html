@@ -64,8 +64,9 @@
       <section id="quickstart" class="section" data-reveal>
         <h2>Quick Start</h2>
         <h3>1) Start live server (recommended)</h3>
-        <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --llm --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011 --tick-ms 300</code></pre>
-        <p>Add `--llm` and configure key(s) in advance when LLM decision making is required.</p>
+        <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011 --tick-ms 300</code></pre>
+        <p>`world_viewer_live` enables LLM decisions by default (configure key(s) first); use `--no-llm` for script fallback.</p>
+        <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --no-llm --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011 --tick-ms 300</code></pre>
 
         <h3>2) Start viewer</h3>
         <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023</code></pre>
@@ -76,6 +77,13 @@
         <h3>4) Browser mode (Bevy + wasm)</h3>
         <pre><code>env -u NO_COLOR ./scripts/run-viewer-web.sh --address 127.0.0.1 --port 4173</code></pre>
         <p>Open: `http://127.0.0.1:4173/?ws=ws://127.0.0.1:5011`.</p>
+
+        <h3>5) Release-locked mode (optional)</h3>
+        <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- \
+  --release-config world_viewer_live.release.example.toml \
+  --bind 0.0.0.0:5010 \
+  --web-bind 0.0.0.0:5011</code></pre>
+        <p>In `--release-config` mode, only `--release-config`, `--bind`, `--web-bind`, and `--help` are accepted.</p>
       </section>
 
       <section class="section" data-reveal>
@@ -102,20 +110,21 @@
           <li>`AGENT_WORLD_VIEWER_AUTO_FOCUS_FORCE_3D=1|0` (default `1`)</li>
           <li>`AGENT_WORLD_VIEWER_AUTO_FOCUS_RADIUS=&lt;number&gt;` (optional)</li>
         </ul>
-        <p>Supported targets: `first_fragment`, `first_location`, `first_agent`, `location:&lt;id&gt;`, `agent:&lt;id&gt;`.</p>
+        <p>Supported syntax: `first:&lt;kind&gt;` and `&lt;kind&gt;:&lt;id&gt;`, with legacy aliases like `first_agent` kept compatible.</p>
+        <p>Initial kinds: `agent`, `location`, `fragment`, `asset`, `module_visual`, `power_plant`, `power_storage`, `chunk`.</p>
       </section>
 
       <section class="section" data-reveal>
         <h2>Auto Select / Automation Steps</h2>
         <ul>
-          <li>`--auto-select-target`: auto-select a target after startup (for example `first_agent`).</li>
-          <li>`--automation-steps`: execute a step sequence (for example `mode=3d;focus=first_agent;zoom=0.8`).</li>
+          <li>`--auto-select-target`: auto-select a target after startup (for example `first:agent`).</li>
+          <li>`--automation-steps`: execute a step sequence (for example `mode=3d;focus=first:agent;zoom=0.8;select=asset:asset-0`).</li>
         </ul>
         <pre><code>./scripts/capture-viewer-frame.sh \
   --scenario llm_bootstrap \
   --addr 127.0.0.1:5131 \
-  --auto-select-target first_agent \
-  --automation-steps "mode=3d;focus=first_agent;zoom=0.8"</code></pre>
+  --auto-select-target first:agent \
+  --automation-steps "mode=3d;focus=first:agent;zoom=0.8;select=fragment:frag-0"</code></pre>
       </section>
 
       <section id="web-loop" class="section" data-reveal>
@@ -142,10 +151,16 @@ bash "$PWCLI" console
 bash "$PWCLI" screenshot --filename output/playwright/viewer/viewer-web.png
 bash "$PWCLI" close</code></pre>
 
+        <h3>`sendControl(\"step\")` semantic check</h3>
+        <p>Run the following in browser console or Playwright evaluate to verify step-by-step control:</p>
+        <pre><code>window.__AW_TEST__.sendControl("step");
+window.__AW_TEST__.sendControl("step", { count: 3 });
+window.__AW_TEST__.getState();</code></pre>
+
         <h3>Outputs and Minimum Acceptance</h3>
         <ul>
           <li>Outputs: `output/playwright/viewer/*.png`, `.playwright-cli/console-*.log`.</li>
-          <li>Acceptance: page loads with `canvas`, `console error = 0`, and at least one screenshot artifact.</li>
+          <li>Acceptance: page loads with `canvas`, `console error = 0`, at least one screenshot artifact, and `step` advances tick.</li>
         </ul>
 
         <h3>Native fallback (only when web path cannot reproduce)</h3>
@@ -227,7 +242,7 @@ bash "$PWCLI" close</code></pre>
           <li>Playwright startup failure: check `node --version`, `npm --version`, and `npx` availability.</li>
           <li>Wasm errors in console: fix runtime initialization errors before debugging visuals.</li>
           <li>Cannot see detail: switch to 3D, zoom and move camera, or use `F` focus.</li>
-          <li>Auto focus not working: verify target existence, start from `first_fragment`.</li>
+          <li>Auto focus not working: verify target existence, start from `first:fragment`.</li>
           <li>Connection failure: check `world_viewer_live` process and endpoint port match.</li>
         </ul>
       </section>
@@ -243,6 +258,8 @@ bash "$PWCLI" close</code></pre>
           <li><a href="https://github.com/eng-cc/agent-world/blob/main/doc/world-simulator/viewer-overview-map-zoom.md" target="_blank" rel="noreferrer">viewer-overview-map-zoom.md</a></li>
           <li><a href="https://github.com/eng-cc/agent-world/blob/main/doc/world-simulator/viewer-agent-quick-locate.md" target="_blank" rel="noreferrer">viewer-agent-quick-locate.md</a></li>
           <li><a href="https://github.com/eng-cc/agent-world/blob/main/doc/world-simulator/viewer-copyable-text.md" target="_blank" rel="noreferrer">viewer-copyable-text.md</a></li>
+          <li><a href="https://github.com/eng-cc/agent-world/blob/main/doc/world-simulator/viewer-generic-focus-targets.md" target="_blank" rel="noreferrer">viewer-generic-focus-targets.md</a></li>
+          <li><a href="https://github.com/eng-cc/agent-world/blob/main/doc/world-simulator/viewer-web-test-api-step-control-2026-02-24.md" target="_blank" rel="noreferrer">viewer-web-test-api-step-control-2026-02-24.md</a></li>
           <li><a href="https://github.com/eng-cc/agent-world/blob/main/doc/scripts/capture-viewer-frame.md" target="_blank" rel="noreferrer">capture-viewer-frame.md</a></li>
         </ul>
       </section>

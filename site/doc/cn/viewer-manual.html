@@ -64,8 +64,9 @@
       <section id="quickstart" class="section" data-reveal>
         <h2>快速开始</h2>
         <h3>1) 启动 live server（推荐）</h3>
-        <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --llm --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011 --tick-ms 300</code></pre>
-        <p>如需 LLM 决策，增加 `--llm` 并先配置 key。</p>
+        <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011 --tick-ms 300</code></pre>
+        <p>`world_viewer_live` 默认使用 LLM 决策（需先配置 key）；如需脚本回退可显式传 `--no-llm`。</p>
+        <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --no-llm --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011 --tick-ms 300</code></pre>
 
         <h3>2) 启动 viewer</h3>
         <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023</code></pre>
@@ -76,6 +77,13 @@
         <h3>4) 浏览器模式（Bevy + wasm）</h3>
         <pre><code>env -u NO_COLOR ./scripts/run-viewer-web.sh --address 127.0.0.1 --port 4173</code></pre>
         <p>访问：`http://127.0.0.1:4173/?ws=ws://127.0.0.1:5011`。</p>
+
+        <h3>5) 发行锁定模式（可选）</h3>
+        <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- \
+  --release-config world_viewer_live.release.example.toml \
+  --bind 0.0.0.0:5010 \
+  --web-bind 0.0.0.0:5011</code></pre>
+        <p>`--release-config` 模式下仅允许 `--release-config`、`--bind`、`--web-bind`、`--help`，其余 CLI 参数会被拒绝。</p>
       </section>
 
       <section class="section" data-reveal>
@@ -102,20 +110,21 @@
           <li>`AGENT_WORLD_VIEWER_AUTO_FOCUS_FORCE_3D=1|0`（默认 `1`）</li>
           <li>`AGENT_WORLD_VIEWER_AUTO_FOCUS_RADIUS=&lt;number&gt;`（可选）</li>
         </ul>
-        <p>支持目标：`first_fragment`、`first_location`、`first_agent`、`location:&lt;id&gt;`、`agent:&lt;id&gt;`。</p>
+        <p>支持语法：`first:&lt;kind&gt;`、`&lt;kind&gt;:&lt;id&gt;`，兼容旧语法 `first_agent/first_location`。</p>
+        <p>首批 kind：`agent`、`location`、`fragment`、`asset`、`module_visual`、`power_plant`、`power_storage`、`chunk`。</p>
       </section>
 
       <section class="section" data-reveal>
         <h2>自动步骤（Auto Select / Automation Steps）</h2>
         <ul>
-          <li>`--auto-select-target`：启动后自动选中目标（如 `first_agent`）。</li>
-          <li>`--automation-steps`：执行一组自动步骤（如 `mode=3d;focus=first_agent;zoom=0.8`）。</li>
+          <li>`--auto-select-target`：启动后自动选中目标（如 `first:agent`）。</li>
+          <li>`--automation-steps`：执行一组自动步骤（如 `mode=3d;focus=first:agent;zoom=0.8;select=asset:asset-0`）。</li>
         </ul>
         <pre><code>./scripts/capture-viewer-frame.sh \
   --scenario llm_bootstrap \
   --addr 127.0.0.1:5131 \
-  --auto-select-target first_agent \
-  --automation-steps "mode=3d;focus=first_agent;zoom=0.8"</code></pre>
+  --auto-select-target first:agent \
+  --automation-steps "mode=3d;focus=first:agent;zoom=0.8;select=fragment:frag-0"</code></pre>
       </section>
 
       <section id="web-loop" class="section" data-reveal>
@@ -142,10 +151,16 @@ bash "$PWCLI" console
 bash "$PWCLI" screenshot --filename output/playwright/viewer/viewer-web.png
 bash "$PWCLI" close</code></pre>
 
+        <h3>`sendControl(\"step\")` 语义校验</h3>
+        <p>可在浏览器控制台或 Playwright evaluate 中执行以下调用，验证逐步推进生效：</p>
+        <pre><code>window.__AW_TEST__.sendControl("step");
+window.__AW_TEST__.sendControl("step", { count: 3 });
+window.__AW_TEST__.getState();</code></pre>
+
         <h3>输出目录与最小验收</h3>
         <ul>
           <li>输出：`output/playwright/viewer/*.png`、`.playwright-cli/console-*.log`。</li>
-          <li>验收：页面加载成功（含 `canvas`）、`console error = 0`、至少 1 张截图。</li>
+          <li>验收：页面加载成功（含 `canvas`）、`console error = 0`、至少 1 张截图，且 `step` 调用可推动 tick 前进。</li>
         </ul>
 
         <h3>native fallback（仅 Web 无法复现时）</h3>
@@ -227,7 +242,7 @@ bash "$PWCLI" close</code></pre>
           <li>Playwright 启动失败：检查 `node --version`、`npm --version`、`npx`。</li>
           <li>Console 出现 wasm 报错：先修复运行时错误，再判断视觉问题。</li>
           <li>看不到细节：切换 3D，放大并移动视角，或按 `F` 聚焦。</li>
-          <li>自动聚焦无效：先用 `first_fragment` 排除目标 ID 输入问题。</li>
+          <li>自动聚焦无效：先用 `first:fragment` 排除目标 ID 输入问题。</li>
           <li>连接失败：检查 `world_viewer_live` 运行状态与端口一致性。</li>
         </ul>
       </section>
@@ -243,6 +258,8 @@ bash "$PWCLI" close</code></pre>
           <li><a href="https://github.com/eng-cc/agent-world/blob/main/doc/world-simulator/viewer-overview-map-zoom.md" target="_blank" rel="noreferrer">viewer-overview-map-zoom.md</a></li>
           <li><a href="https://github.com/eng-cc/agent-world/blob/main/doc/world-simulator/viewer-agent-quick-locate.md" target="_blank" rel="noreferrer">viewer-agent-quick-locate.md</a></li>
           <li><a href="https://github.com/eng-cc/agent-world/blob/main/doc/world-simulator/viewer-copyable-text.md" target="_blank" rel="noreferrer">viewer-copyable-text.md</a></li>
+          <li><a href="https://github.com/eng-cc/agent-world/blob/main/doc/world-simulator/viewer-generic-focus-targets.md" target="_blank" rel="noreferrer">viewer-generic-focus-targets.md</a></li>
+          <li><a href="https://github.com/eng-cc/agent-world/blob/main/doc/world-simulator/viewer-web-test-api-step-control-2026-02-24.md" target="_blank" rel="noreferrer">viewer-web-test-api-step-control-2026-02-24.md</a></li>
           <li><a href="https://github.com/eng-cc/agent-world/blob/main/doc/scripts/capture-viewer-frame.md" target="_blank" rel="noreferrer">capture-viewer-frame.md</a></li>
         </ul>
       </section>

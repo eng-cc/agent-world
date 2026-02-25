@@ -242,9 +242,11 @@ env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_server -- .data
 env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010</code></pre>
           </article>
           <article class="card">
-            <h3>在线演化（可选 LLM）</h3>
-            <p>live server 持续推进世界，viewer 实时订阅状态与事件。</p>
+            <h3>在线演化（默认 LLM，可 `--no-llm` 回退）</h3>
+            <p>live server 持续推进世界，默认启用 LLM 决策；如需脚本回退可显式传 `--no-llm`。</p>
             <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- twin_region_bootstrap --bind 127.0.0.1:5010
+# 回退到内置脚本决策（可选）
+env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- twin_region_bootstrap --no-llm --bind 127.0.0.1:5010
 env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010</code></pre>
           </article>
         </div>
@@ -310,7 +312,7 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010</code></p
           <span class="proof-chip">证据覆盖：3 个标准场景</span>
           <span class="proof-chip">路径覆盖：Offline Replay + Live Viewer</span>
           <span class="proof-chip">落地覆盖：命令、事件、截图</span>
-          <span class="proof-chip is-highlight">近期更新：Hero 动效层 + 指针联动 + 架构图精修</span>
+          <span class="proof-chip is-highlight">近期更新：默认 LLM + `--no-llm`、`--release-config`、Web step 控制</span>
         </div>
         <div class="proof-timeline" data-proof-timeline>
           <article class="proof-timeline-item" data-proof-event="minimal" data-proof-visible="true">

@@ -244,9 +244,11 @@ env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_server -- .data
 env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010</code></pre>
           </article>
           <article class="card">
-            <h3>Live Evolution (Optional LLM)</h3>
-            <p>Run the live server and subscribe from the viewer to observe ongoing state transitions.</p>
+            <h3>Live Evolution (LLM by Default, `--no-llm` Fallback)</h3>
+            <p>Live server advances continuously with LLM decisions by default; pass `--no-llm` for script fallback.</p>
             <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- twin_region_bootstrap --bind 127.0.0.1:5010
+# Optional: fallback to built-in script decisions
+env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- twin_region_bootstrap --no-llm --bind 127.0.0.1:5010
 env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010</code></pre>
           </article>
         </div>
@@ -312,7 +314,7 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010</code></p
           <span class="proof-chip">Coverage: 3 reference scenarios</span>
           <span class="proof-chip">Paths: Offline Replay + Live Viewer</span>
           <span class="proof-chip">Artifacts: Commands + Events + Screenshots</span>
-          <span class="proof-chip is-highlight">Recent updates: Hero motion + pointer interaction + architecture refresh</span>
+          <span class="proof-chip is-highlight">Recent updates: default LLM + `--no-llm`, `--release-config`, and Web step control</span>
         </div>
         <div class="proof-timeline" data-proof-timeline>
           <article class="proof-timeline-item" data-proof-event="minimal" data-proof-visible="true">
