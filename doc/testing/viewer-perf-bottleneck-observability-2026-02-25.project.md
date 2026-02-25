@@ -2,7 +2,7 @@
 
 ## 任务拆解
 - [x] T1：建档（设计文档 + 项目管理文档）。
-- [ ] T2：扩展 `RenderPerfSummary` 与 `PerfHotspot` 推断逻辑（含单测）。
+- [x] T2：扩展 `RenderPerfSummary` 与 `PerfHotspot` 推断逻辑（含单测）。
 - [ ] T3：扩展 `perf_probe` 与 `scripts/viewer-owr4-stress.sh` 输出/解析（含脚本回归）。
 - [ ] T4：更新相关测试、回写文档状态与 devlog。
 
@@ -16,5 +16,5 @@
 - `doc/devlog/2026-02-25.md`
 
 ## 状态
-- 当前阶段：T1 完成，T2 进行中。
+- 当前阶段：T1/T2 完成，T3 进行中。
 - 阻塞项：无。

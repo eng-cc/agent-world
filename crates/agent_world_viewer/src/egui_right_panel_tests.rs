@@ -923,6 +923,7 @@ fn egui_kittest_overview_renders_render_perf_summary() {
         overlay_entities: 22,
         event_window_size: 88,
         auto_degrade_active: true,
+        ..crate::RenderPerfSummary::default()
     };
 
     let mut harness = Harness::new_ui(move |ui| {
@@ -940,6 +941,8 @@ fn egui_kittest_overview_renders_render_perf_summary() {
     harness.get_by_label_contains("Render: avg/p95 16.7/24.2 ms");
     harness.get_by_label_contains("Entities:180");
     harness.get_by_label_contains("Budget: auto degrade active");
+    harness.get_by_label_contains("Hotspot: render_frame");
+    harness.get_by_label_contains("Runtime: unknown/none");
 }
 
 #[derive(Default)]

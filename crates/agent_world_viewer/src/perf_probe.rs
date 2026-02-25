@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use super::render_perf_summary::RenderPerfSummary;
+use super::render_perf_summary::{infer_perf_hotspot, RenderPerfSummary};
 
 const PERF_PROBE_ENV: &str = "AGENT_WORLD_VIEWER_PERF_PROBE";
 const PERF_PROBE_INTERVAL_ENV: &str = "AGENT_WORLD_VIEWER_PERF_PROBE_INTERVAL_SECS";
@@ -73,14 +73,26 @@ pub(super) fn update_perf_probe(
     } else {
         0.0
     };
+    let hotspot = infer_perf_hotspot(&summary);
     println!(
-        "viewer perf_probe t={:.1}s avg={:.2} p95={:.2} over_budget_pct={:.2} event_window={} auto_degrade={}",
+        "viewer perf_probe t={:.1}s avg={:.2} p95={:.2} over_budget_pct={:.2} event_window={} auto_degrade={} hotspot={} runtime_health={} runtime_bottleneck={} runtime_tick_p95={:.2} runtime_decision_p95={:.2} runtime_action_p95={:.2} runtime_callback_p95={:.2} runtime_llm_api_p95={:.2} label_capacity_hit={} overlay_capacity_hit={} event_backlog_hit={}",
         state.elapsed_secs,
         summary.frame_ms_avg,
         summary.frame_ms_p95,
         over_budget_pct,
         summary.event_window_size,
-        summary.auto_degrade_active
+        summary.auto_degrade_active,
+        hotspot.as_str(),
+        summary.runtime_health.as_str(),
+        summary.runtime_bottleneck.as_str(),
+        summary.runtime_tick_p95_ms,
+        summary.runtime_decision_p95_ms,
+        summary.runtime_action_execution_p95_ms,
+        summary.runtime_callback_p95_ms,
+        summary.runtime_llm_api_p95_ms,
+        summary.label_capacity_hit,
+        summary.overlay_capacity_hit,
+        summary.event_backlog_hit,
     );
 }
 

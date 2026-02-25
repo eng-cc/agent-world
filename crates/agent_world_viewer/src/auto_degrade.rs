@@ -206,6 +206,7 @@ mod tests {
             overlay_entities: 120,
             event_window_size: 100,
             auto_degrade_active: true,
+            ..RenderPerfSummary::default()
         }
     }
 
@@ -218,6 +219,7 @@ mod tests {
             overlay_entities: 20,
             event_window_size: 24,
             auto_degrade_active: false,
+            ..RenderPerfSummary::default()
         }
     }
 

@@ -685,6 +685,7 @@ fn render_overview_section(
     ui.add(egui::Label::new(status_line(&state.status, locale)).selectable(true));
 
     if let Some(perf) = perf_summary {
+        let hotspot = crate::render_perf_summary::infer_perf_hotspot(perf);
         let frame_line = if locale.is_zh() {
             format!(
                 "渲染: avg/p95 {:.1}/{:.1} ms",
@@ -724,10 +725,38 @@ fn render_overview_section(
         } else {
             "Budget: stable".to_string()
         };
+        let hotspot_line = if locale.is_zh() {
+            format!("瓶颈: {}", hotspot.as_str())
+        } else {
+            format!("Hotspot: {}", hotspot.as_str())
+        };
+        let runtime_line = if locale.is_zh() {
+            format!(
+                "Runtime: {}/{} tick/decide/action/callback {:.1}/{:.1}/{:.1}/{:.1} ms",
+                perf.runtime_health.as_str(),
+                perf.runtime_bottleneck.as_str(),
+                perf.runtime_tick_p95_ms,
+                perf.runtime_decision_p95_ms,
+                perf.runtime_action_execution_p95_ms,
+                perf.runtime_callback_p95_ms
+            )
+        } else {
+            format!(
+                "Runtime: {}/{} tick/decision/action/callback {:.1}/{:.1}/{:.1}/{:.1} ms",
+                perf.runtime_health.as_str(),
+                perf.runtime_bottleneck.as_str(),
+                perf.runtime_tick_p95_ms,
+                perf.runtime_decision_p95_ms,
+                perf.runtime_action_execution_p95_ms,
+                perf.runtime_callback_p95_ms
+            )
+        };
 
         ui.add(egui::Label::new(frame_line).selectable(true));
         ui.add(egui::Label::new(entity_line).selectable(true));
         ui.add(egui::Label::new(budget_line).selectable(true));
+        ui.add(egui::Label::new(hotspot_line).selectable(true));
+        ui.add(egui::Label::new(runtime_line).selectable(true));
     }
 }
 
