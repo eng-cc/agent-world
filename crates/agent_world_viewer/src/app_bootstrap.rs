@@ -43,6 +43,7 @@ pub(super) fn run_ui(addr: String, offline: bool) {
         meta_check: AssetMetaCheck::Never,
         ..default()
     });
+    let default_plugins = default_plugins.set(default_pbr_plugin_for_runtime());
 
     App::new()
         .insert_resource(ViewerConfig {
@@ -225,6 +226,20 @@ fn primary_window_config() -> Window {
     window
 }
 
+fn default_pbr_plugin_for_runtime() -> bevy::pbr::PbrPlugin {
+    #[cfg(not(target_arch = "wasm32"))]
+    let plugin = bevy::pbr::PbrPlugin::default();
+    #[cfg(target_arch = "wasm32")]
+    let mut plugin = bevy::pbr::PbrPlugin::default();
+    #[cfg(target_arch = "wasm32")]
+    {
+        // SwiftShader/WebGL2 can fail deferred lighting pipeline creation in headless CI/browser
+        // runs. Keep 3D rendering on the forward path for wasm stability.
+        plugin.add_default_deferred_lighting_plugin = false;
+    }
+    plugin
+}
+
 fn resolve_panel_mode_from_env() -> ViewerPanelMode {
     let Some(raw) = std::env::var("AGENT_WORLD_VIEWER_PANEL_MODE").ok() else {
         return ViewerPanelMode::default();
@@ -400,5 +415,15 @@ mod tests {
         assert!(state.show_event_link);
         assert!(!state.show_timeline);
         assert!(!state.show_details);
+    }
+
+    #[test]
+    fn default_pbr_plugin_for_runtime_tracks_target_compat_mode() {
+        let plugin = default_pbr_plugin_for_runtime();
+        assert!(plugin.prepass_enabled);
+        #[cfg(target_arch = "wasm32")]
+        assert!(!plugin.add_default_deferred_lighting_plugin);
+        #[cfg(not(target_arch = "wasm32"))]
+        assert!(plugin.add_default_deferred_lighting_plugin);
     }
 }
