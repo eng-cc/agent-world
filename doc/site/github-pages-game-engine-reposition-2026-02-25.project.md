@@ -1,0 +1,32 @@
+# GitHub Pages 游戏+引擎定位重写（2026-02-25）项目管理文档
+
+## 任务拆解
+
+### 0. 文档与基线
+- [x] 新增设计文档（`doc/site/github-pages-game-engine-reposition-2026-02-25.md`）
+- [x] 新增项目管理文档（本文件）
+- [x] 明确内容输入基线（README、game docs、viewer manual）
+
+### 1. 首页重写（CN/EN）
+- [ ] 重写 `site/index.html` 游戏+引擎叙事（保留视觉结构与交互）
+- [ ] 重写 `site/en/index.html` 同构英文页面
+- [ ] 更新首页外链入口到当前叙事文档
+
+### 2. 文档中心重写（CN/EN）
+- [ ] 更新 `site/doc/cn/index.html`，新增游戏与引擎文档入口
+- [ ] 更新 `site/doc/en/index.html`，保持与中文同构
+- [ ] 文档目录状态文案改为“定位重写已完成，手册分层维护”
+
+### 3. 验证与收口
+- [ ] 执行 `env -u RUSTC_WRAPPER cargo check`
+- [ ] 更新本项目管理文档状态
+- [ ] 写任务日志（`doc/devlog/2026-02-25.md`）
+
+## 依赖
+- 沿用 `site/` 静态目录与 GitHub Pages 发布流程。
+- 交互兼容 `site/assets/app.js` 现有 `data-*` 标记。
+
+## 状态
+- 当前阶段：进行中（已完成任务 0）
+- 最近更新：完成建档与重写任务拆解（2026-02-25）
+- 下一步：执行任务 1（首页重写）。
