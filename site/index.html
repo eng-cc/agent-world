@@ -5,18 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="agent-world：一个持久、多主体、可审计、可回放的硅基文明世界模拟器。"
+      content="agent-world：可玩的多主体文明游戏与可编排的 WASM 游戏引擎，支持回放、审计与持续演化。"
     />
-    <meta property="og:title" content="agent-world | 硅基文明持久世界模拟器" />
+    <meta property="og:title" content="agent-world | 游戏世界 + WASM 引擎" />
     <meta
       property="og:description"
-      content="规则先行、多主体演化、事件审计与可视化观测，一站式理解 agent-world。"
+      content="把玩法循环与引擎能力放进同一条可验证链路：规则执行、事件留痕、离线回放与在线演化。"
     />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="assets/images/og-cover.png" />
     <meta property="og:locale" content="zh_CN" />
     <meta name="twitter:card" content="summary_large_image" />
-    <title>agent-world | Persistent Multi-agent World</title>
+    <title>agent-world | 游戏世界 + WASM 引擎</title>
     <link rel="canonical" href="https://eng-cc.github.io/agent-world/" />
     <link rel="alternate" hreflang="zh-CN" href="https://eng-cc.github.io/agent-world/" />
     <link rel="alternate" hreflang="en" href="https://eng-cc.github.io/agent-world/en/" />
@@ -68,58 +68,62 @@
         <canvas class="hero-canvas" data-hero-canvas aria-hidden="true"></canvas>
         <div class="hero-grid">
           <div>
-            <p class="eyebrow">Persistent World · Auditable Loop</p>
-            <h1>把 Agent 文明演化从 Demo 推进到可验证工程</h1>
+            <p class="eyebrow">Playable Game · Programmable Engine</p>
+            <h1>同一套系统，既是可玩的文明游戏，也是可扩展的 WASM 引擎</h1>
             <p class="subtitle">
-              `agent-world` 把规则约束、状态演化、回放审计放进同一条链路。
-              你既可以离线复盘实验，也可以在线观察多主体在资源与制度下的长期变化。
+              `agent-world` 把玩家体验循环、规则执行内核和模块化玩法层放进同一条闭环。
+              你可以把它当作游戏来体验，也可以把它当作引擎来搭建、替换和验证玩法规则。
             </p>
             <div class="cta-row">
-              <a class="button primary" href="#demo">30 秒快速体验</a>
-              <a class="button secondary" href="doc/cn/index.html">进入使用手册</a>
+              <a class="button primary" href="#demo">30 秒进入玩法闭环</a>
+              <a class="button secondary" href="doc/cn/index.html">进入文档中心</a>
               <a
                 class="button ghost"
-                href="https://github.com/eng-cc/agent-world/blob/main/doc/world-simulator.md"
+                href="https://github.com/eng-cc/agent-world/blob/main/doc/game/gameplay-top-level-design.md"
                 target="_blank"
                 rel="noreferrer"
-                >阅读设计文档</a
+                >游戏设计总纲</a
               >
-              <a class="button ghost" href="https://github.com/eng-cc/agent-world" target="_blank" rel="noreferrer"
-                >查看源码</a
+              <a
+                class="button ghost"
+                href="https://github.com/eng-cc/agent-world/blob/main/doc/game/gameplay-engineering-architecture.md"
+                target="_blank"
+                rel="noreferrer"
+                >玩法工程架构</a
               >
             </div>
             <div class="hero-stats">
               <article class="metric-box">
-                <strong data-counter-target="4">0</strong>
-                <span>核心系统层</span>
+                <strong data-counter-target="3">0</strong>
+                <span>玩家体验循环（微 / 中 / 长）</span>
+              </article>
+              <article class="metric-box">
+                <strong data-counter-target="5">0</strong>
+                <span>Gameplay 模块族（War/Gov/Crisis/Eco/Meta）</span>
               </article>
               <article class="metric-box">
                 <strong data-counter-target="3">0</strong>
-                <span>运行模式（离线 / 在线脚本 / 在线 LLM）</span>
-              </article>
-              <article class="metric-box">
-                <strong data-counter-target="90">0</strong>
-                <span>移动端质量门槛目标</span>
+                <span>运行模式（离线回放 / 在线脚本 / 在线 LLM）</span>
               </article>
             </div>
           </div>
           <aside class="hero-visual">
             <figure class="hero-figure">
-              <img src="assets/images/world-constellation.svg" alt="agent-world 世界观主视觉示意图" />
-              <figcaption>多主体在能源约束与规则治理下形成协作、竞争与秩序。</figcaption>
+              <img src="assets/images/world-constellation.svg" alt="agent-world 世界与引擎主视觉示意图" />
+              <figcaption>玩法循环、引擎接口与状态证据在同一世界中持续收敛。</figcaption>
             </figure>
             <div class="pulse-panel">
               <p class="panel-title">系统状态</p>
               <ul>
+                <li><span>Gameplay</span><strong>Micro/Mid/Long Loop</strong></li>
                 <li><span>Runtime</span><strong>Rule Gate</strong></li>
-                <li><span>Simulator</span><strong>State Evolving</strong></li>
-                <li><span>Viewer</span><strong>Replay Ready</strong></li>
-                <li><span>LLM Bridge</span><strong>Optional Online</strong></li>
+                <li><span>Viewer</span><strong>Replay + Live</strong></li>
+                <li><span>WASM</span><strong>Hot-swappable</strong></li>
               </ul>
             </div>
             <ul class="hero-proof-points">
-              <li>3 类场景证据 + 本地命令闭环</li>
-              <li>离线回放与在线演化并行可用</li>
+              <li>玩法体验 + 引擎能力 + 命令闭环三线对齐</li>
+              <li>中文/英文首页与文档中心同构维护</li>
             </ul>
           </aside>
         </div>
@@ -127,53 +131,53 @@
 
       <section id="matrix" class="section" data-reveal>
         <h2>核心能力</h2>
-        <p class="section-intro">只保留最关键的四个能力块，让你在 1 分钟内判断项目是否匹配你的研究与工程目标。</p>
+        <p class="section-intro">围绕“好玩 + 可扩展 + 可验证”收敛的四个核心能力块。</p>
         <div class="matrix-grid">
           <article class="matrix-item">
-            <h3>规则执行内核</h3>
-            <p>行为必须经过规则校验，拒绝越权动作并留下审计证据。</p>
-            <span>价值：保证可治理性与可解释性</span>
+            <h3>三层玩法循环</h3>
+            <p>微循环给即时反馈，中循环提供阶段成果，长循环沉淀文明级目标。</p>
+            <span>价值：持续在线动机与情绪节奏</span>
           </article>
           <article class="matrix-item">
-            <h3>持久化回放</h3>
-            <p>快照 + 事件日志组合，支持实验恢复、对比与复盘。</p>
-            <span>价值：保证可复现与可验证</span>
+            <h3>Gameplay WASM 模块化</h3>
+            <p>战争、治理、危机、经济、元进度模块可组合、可替换、可并行。</p>
+            <span>价值：玩法迭代不污染底层内核</span>
           </article>
           <article class="matrix-item">
-            <h3>多主体世界建模</h3>
-            <p>Agent 在资源、关系与制度约束下持续演化，不是一次性对话。</p>
-            <span>价值：观察协作、冲突与秩序形成</span>
+            <h3>运行时不变量护栏</h3>
+            <p>资源守恒、时间单向、行为校验等底层约束统一由 Runtime 保障。</p>
+            <span>价值：保证公平性、稳定性与可解释性</span>
           </article>
           <article class="matrix-item">
-            <h3>LLM / WASM 扩展接口</h3>
-            <p>兼容 OpenAI 风格模型与模块化规则扩展，逐步提升世界复杂度。</p>
-            <span>价值：稳定底座上持续增强智能策略</span>
+            <h3>回放与在线观测</h3>
+            <p>离线可复盘，在线可追踪，事件日志和截图可形成可审计证据。</p>
+            <span>价值：研发、压测、教学共享同一观测链路</span>
           </article>
         </div>
       </section>
 
       <section id="architecture" class="section" data-reveal>
-        <h2>架构闭环</h2>
+        <h2>游戏 + 引擎架构闭环</h2>
         <figure class="architecture-figure">
-          <img src="assets/images/architecture-flow.svg" alt="agent-world 架构流示意图" loading="lazy" />
-          <figcaption>Runtime -> Simulator -> Viewer -> LLM/Modules，配合持久化链路构成可观测闭环。</figcaption>
+          <img src="assets/images/architecture-flow.svg" alt="agent-world 游戏与引擎架构流示意图" loading="lazy" />
+          <figcaption>Gameplay Layer -> Runtime Kernel -> Viewer/Tooling -> Governance，共同支撑长期演化。</figcaption>
         </figure>
         <div class="architecture-flow">
           <article class="arch-node">
-            <h3>Runtime</h3>
-            <p>统一动作入口、策略校验与执行边界。</p>
+            <h3>Gameplay Layer</h3>
+            <p>承载战争、治理、经济等可插拔玩法规则。</p>
           </article>
           <article class="arch-node">
-            <h3>Simulator</h3>
-            <p>推进世界时间与状态，沉淀快照和事件资产。</p>
+            <h3>Runtime Kernel</h3>
+            <p>统一动作入口与不变量校验，沉淀世界状态证据。</p>
           </article>
           <article class="arch-node">
-            <h3>Viewer</h3>
-            <p>离线回放与在线订阅双路径观测世界变化。</p>
+            <h3>Viewer & Tooling</h3>
+            <p>离线回放、在线订阅与调试面板构成工程观测面。</p>
           </article>
           <article class="arch-node">
-            <h3>LLM/Modules</h3>
-            <p>按需接入外部决策能力与可插拔规则模块。</p>
+            <h3>Consensus & Governance</h3>
+            <p>通过治理提案管理模块替换与规则升级边界。</p>
           </article>
         </div>
       </section>
@@ -182,16 +186,16 @@
         <h2>应用场景</h2>
         <div class="grid cards-3">
           <article class="card">
-            <h3>协作策略实验</h3>
-            <p>对比制度差异下的资源效率、稳定性和冲突速率。</p>
+            <h3>玩家策略运营</h3>
+            <p>围绕能源、治理与联盟关系做长期决策，观察文明结构演化。</p>
           </article>
           <article class="card">
-            <h3>LLM 行为安全沙盒</h3>
-            <p>在规则护栏内评估策略，快速定位越权路径和修复点。</p>
+            <h3>玩法模块研发</h3>
+            <p>在 WASM 沙箱中迭代规则模块，并用统一事件链路验证行为后果。</p>
           </article>
           <article class="card">
-            <h3>教学与演示</h3>
-            <p>用“规则 -> 行为 -> 后果”链路解释复杂系统行为。</p>
+            <h3>教学与实验验证</h3>
+            <p>把“规则 -> 行为 -> 结果”完整链路直接用于课堂、演示与研究。</p>
           </article>
         </div>
         <div class="screens-grid">
@@ -204,7 +208,7 @@
               width="2400"
               height="1600"
             />
-            <figcaption>minimal：最小闭环验证</figcaption>
+            <figcaption>minimal：玩法最小闭环</figcaption>
           </figure>
           <figure class="screen-card">
             <img
@@ -215,7 +219,7 @@
               width="2400"
               height="1600"
             />
-            <figcaption>twin_region：双节点协作</figcaption>
+            <figcaption>twin_region：双节点协作与交易</figcaption>
           </figure>
           <figure class="screen-card">
             <img
@@ -226,7 +230,7 @@
               width="2400"
               height="1600"
             />
-            <figcaption>triad_region：群体涌现</figcaption>
+            <figcaption>triad_region：多方协作涌现</figcaption>
           </figure>
         </div>
       </section>
@@ -235,30 +239,30 @@
         <h2>演示与上手</h2>
         <div class="grid cards-2">
           <article class="card">
-            <h3>离线回放（推荐）</h3>
-            <p>先生成数据，再启动回放服务与 viewer，快速看到完整演化轨迹。</p>
+            <h3>玩法回放（推荐）</h3>
+            <p>先生成数据，再启动回放服务与 viewer，快速看到完整玩法轨迹。</p>
             <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_demo -- twin_region_bootstrap --out .data/world_viewer_data
 env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_server -- .data/world_viewer_data 127.0.0.1:5010
 env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010</code></pre>
           </article>
           <article class="card">
-            <h3>在线演化（默认 LLM，可 `--no-llm` 回退）</h3>
-            <p>live server 持续推进世界，默认启用 LLM 决策；如需脚本回退可显式传 `--no-llm`。</p>
-            <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- twin_region_bootstrap --bind 127.0.0.1:5010
-# 回退到内置脚本决策（可选）
-env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- twin_region_bootstrap --no-llm --bind 127.0.0.1:5010
-env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010</code></pre>
+            <h3>引擎在线联调（默认 LLM，可 `--no-llm` 回退）</h3>
+            <p>live server 持续推进世界并开放 web/viewer 观察端口，适合玩法与引擎同步调试。</p>
+            <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011 --tick-ms 300
+# 可选：回退到脚本决策
+env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --no-llm --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011 --tick-ms 300
+env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023</code></pre>
           </article>
         </div>
         <article class="quickstart card">
           <h3>三步完成首跑</h3>
           <ol class="steps">
             <li>克隆仓库并进入目录。</li>
-            <li>执行 `env -u RUSTC_WRAPPER cargo test` 检查环境。</li>
-            <li>运行 demo 或 live 链路，观察事件与状态变化。</li>
+            <li>执行 `env -u RUSTC_WRAPPER cargo check` 验证环境。</li>
+            <li>任选离线回放或在线联调链路，观察事件与状态变化。</li>
           </ol>
           <p class="doc-entry-note">
-            想查看完整操作细节？前往
+            想看完整参数说明与排障路径？前往
             <a href="doc/cn/index.html">文档中心（中文）</a>。
           </p>
         </article>
@@ -266,7 +270,7 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010</code></p
 
       <section id="proof" class="section" data-reveal>
         <h2>运行证据</h2>
-        <p class="section-intro">不是只看口号，而是看本地可复现的命令链和真实事件片段。</p>
+        <p class="section-intro">不仅展示概念，还展示可复现的玩法事件、引擎命令与观测结果。</p>
         <div class="proof-switcher" data-proof-switcher>
           <p class="proof-switcher-label">场景事件切换</p>
           <div class="proof-switcher-controls" role="group" aria-label="切换证据场景" data-proof-controls>
@@ -279,19 +283,20 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010</code></p
         </div>
         <div class="proof-grid">
           <article class="proof-card proof-card-key">
-            <h3>命令闭环</h3>
+            <h3>证据链</h3>
             <ol class="proof-list">
-              <li>运行 `world_viewer_demo` 生成快照与事件</li>
-              <li>启动 `world_viewer_server` 暴露回放接口</li>
-              <li>连接 viewer 观察状态与行为结果</li>
+              <li>运行 `world_viewer_demo` 或 `world_viewer_live` 生成玩法事件</li>
+              <li>通过 server 暴露回放或在线观测接口</li>
+              <li>连接 viewer 验证策略结果与规则反馈</li>
             </ol>
-            <a class="button secondary" href="#demo">复制命令开始</a>
+            <a class="button secondary" href="#demo">使用这套命令</a>
           </article>
           <article class="proof-card">
             <h3>事件样例</h3>
             <pre><code data-proof-code data-proof-panel="minimal" data-proof-visible="true">{
   "tick": 128,
   "agent": "agent-1",
+  "loop": "micro",
   "action": "harvest",
   "result": "accepted",
   "delta": { "electricity": +12 }
@@ -299,29 +304,29 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010</code></p
             <pre><code data-proof-code data-proof-panel="twin" data-proof-visible="false">[
   { "tick": 84, "agent": "agent-1", "action": "move", "to": "base-b" },
   { "tick": 91, "agent": "agent-2", "action": "trade_power", "amount": 9 },
-  { "tick": 96, "result": "both_agents_online" }
+  { "tick": 96, "result": "coordination_stable" }
 ]</code></pre>
             <pre><code data-proof-code data-proof-panel="triad" data-proof-visible="false">[
-  { "tick": 142, "agent": "agent-3", "action": "request_help", "from": "agent-1" },
+  { "tick": 142, "module": "governance", "action": "request_help", "from": "agent-3" },
   { "tick": 149, "agent": "agent-1", "action": "route_energy", "to": "agent-3" },
   { "tick": 166, "result": "triad_stability_up" }
 ]</code></pre>
           </article>
         </div>
         <div class="proof-strip">
-          <span class="proof-chip">证据覆盖：3 个标准场景</span>
-          <span class="proof-chip">路径覆盖：Offline Replay + Live Viewer</span>
-          <span class="proof-chip">落地覆盖：命令、事件、截图</span>
-          <span class="proof-chip is-highlight">近期更新：默认 LLM + `--no-llm`、`--release-config`、Web step 控制</span>
+          <span class="proof-chip">证据覆盖：玩法循环 + 引擎接口 + 调试路径</span>
+          <span class="proof-chip">运行覆盖：Offline Replay + Live LLM/Script</span>
+          <span class="proof-chip">文档覆盖：README + game docs + viewer manual</span>
+          <span class="proof-chip is-highlight">近期更新：GitHub Pages 叙事升级为“游戏 + 引擎”</span>
         </div>
         <div class="proof-timeline" data-proof-timeline>
           <article class="proof-timeline-item" data-proof-event="minimal" data-proof-visible="true">
             <span>Tick 128</span>
-            <p>minimal：采集动作被接受，电力净增 +12。</p>
+            <p>minimal：采集动作被接受，微循环获得即时资源反馈。</p>
           </article>
           <article class="proof-timeline-item" data-proof-event="minimal" data-proof-visible="true">
             <span>Tick 133</span>
-            <p>minimal：系统进入等待区间，规则循环保持稳定。</p>
+            <p>minimal：规则循环保持稳定，为下一次决策留出窗口。</p>
           </article>
           <article class="proof-timeline-item" data-proof-event="twin" data-proof-visible="false">
             <span>Tick 84</span>
@@ -329,11 +334,11 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010</code></p
           </article>
           <article class="proof-timeline-item" data-proof-event="twin" data-proof-visible="false">
             <span>Tick 91</span>
-            <p>twin_region：agent-2 发起电力交易，形成协同。</p>
+            <p>twin_region：agent-2 发起电力交易，形成协同生产。</p>
           </article>
           <article class="proof-timeline-item" data-proof-event="triad" data-proof-visible="false">
             <span>Tick 142</span>
-            <p>triad_region：agent-3 发起协作请求。</p>
+            <p>triad_region：治理模块触发协作请求。</p>
           </article>
           <article class="proof-timeline-item" data-proof-event="triad" data-proof-visible="false">
             <span>Tick 166</span>
@@ -347,23 +352,23 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010</code></p
         <div class="timeline">
           <article class="timeline-item done">
             <span class="status-tag done">已完成</span>
-            <h3>M1 / M2 · 最小闭环与回放链路</h3>
-            <p>完成规则循环、快照与日志，具备可复现实验基础。</p>
+            <h3>M1 · 可玩性基础循环</h3>
+            <p>微/中/长循环框架建立，具备长期运营的体验骨架。</p>
           </article>
           <article class="timeline-item done">
             <span class="status-tag done">已完成</span>
-            <h3>M3 · Runtime 与模块扩展</h3>
-            <p>Agent 运行时、模块接口与可观测性主线已完成并稳定收口。</p>
+            <h3>M2 · Gameplay 模块边界</h3>
+            <p>WASM 玩法层与 Runtime 内核职责分离，接口边界明确。</p>
           </article>
           <article class="timeline-item active">
             <span class="status-tag active">进行中</span>
-            <h3>M4 · 社会系统（电力 / 硬件 / 数据）</h3>
-            <p>推进制度与经济闭环，聚焦可持续演化的社会经济约束。</p>
+            <h3>M3 · 战争/政治/经济中循环验证</h3>
+            <p>聚焦多玩家博弈与制度变更，验证阶段目标达成路径。</p>
           </article>
           <article class="timeline-item next">
             <span class="status-tag next">下一阶段</span>
-            <h3>M5 · 可视化与调试增强</h3>
-            <p>继续提升高负载观测、压测基线与可视化诊断工具链。</p>
+            <h3>M4 · 长周期文明运营与社区模块</h3>
+            <p>推进玩法生态化与模块社区化，支持持续扩展与治理替换。</p>
           </article>
         </div>
       </section>
@@ -380,20 +385,29 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010</code></p
                 >
               </li>
               <li>
-                <a href="https://github.com/eng-cc/agent-world/blob/main/doc/world-simulator.md" target="_blank" rel="noreferrer"
-                  >世界设计文档</a
+                <a
+                  href="https://github.com/eng-cc/agent-world/blob/main/doc/game/gameplay-top-level-design.md"
+                  target="_blank"
+                  rel="noreferrer"
+                  >游戏可玩性设计总纲</a
                 >
               </li>
               <li>
-                <a href="https://github.com/eng-cc/agent-world/tree/main/doc/devlog" target="_blank" rel="noreferrer"
-                  >开发日志</a
+                <a
+                  href="https://github.com/eng-cc/agent-world/blob/main/doc/game/gameplay-engineering-architecture.md"
+                  target="_blank"
+                  rel="noreferrer"
+                  >游戏性模块化架构设计</a
                 >
+              </li>
+              <li>
+                <a href="doc/cn/index.html">文档中心（含 Viewer 手册）</a>
               </li>
             </ul>
           </article>
           <article class="card">
             <h3>参与贡献</h3>
-            <p>欢迎围绕 world rule、agent behavior、viewer observability 提交 Issue 或 PR。</p>
+            <p>欢迎围绕玩法循环、WASM 模块、观测工具链与规则治理提交 Issue 或 PR。</p>
             <div class="cta-row">
               <a class="button secondary" href="https://github.com/eng-cc/agent-world/issues" target="_blank" rel="noreferrer"
                 >提交 Issue</a
@@ -408,7 +422,7 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010</code></p
     </main>
 
     <footer class="footer">
-      <p>© <span data-year></span> agent-world · Build believable digital civilization</p>
+      <p>© <span data-year></span> agent-world · Build playable worlds with auditable engines</p>
     </footer>
   </body>
 </html>

@@ -5,18 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="agent-world: a persistent, multi-agent, auditable world simulator with replay and visualization."
+      content="agent-world: a playable multi-agent civilization game and a programmable WASM game engine with replay and auditability."
     />
-    <meta property="og:title" content="agent-world | Persistent Multi-agent World" />
+    <meta property="og:title" content="agent-world | Playable Game + WASM Engine" />
     <meta
       property="og:description"
-      content="Rule-first runtime, long-horizon simulation, auditable event trails, and visual observability."
+      content="Unify gameplay loops, rule execution, replay evidence, and online evolution in one verifiable stack."
     />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="../assets/images/og-cover.png" />
     <meta property="og:locale" content="en_US" />
     <meta name="twitter:card" content="summary_large_image" />
-    <title>agent-world | Persistent Multi-agent World</title>
+    <title>agent-world | Playable Game + WASM Engine</title>
     <link rel="canonical" href="https://eng-cc.github.io/agent-world/en/" />
     <link rel="alternate" hreflang="zh-CN" href="https://eng-cc.github.io/agent-world/" />
     <link rel="alternate" hreflang="en" href="https://eng-cc.github.io/agent-world/en/" />
@@ -68,58 +68,62 @@
         <canvas class="hero-canvas" data-hero-canvas aria-hidden="true"></canvas>
         <div class="hero-grid">
           <div>
-            <p class="eyebrow">Persistent World · Auditable Loop</p>
-            <h1>Move agent civilization simulation from demos to verifiable engineering</h1>
+            <p class="eyebrow">Playable Game · Programmable Engine</p>
+            <h1>One stack that works as both a civilization game and an extensible WASM engine</h1>
             <p class="subtitle">
-              `agent-world` unifies rule enforcement, state evolution, replay, and auditability in one loop.
-              You can inspect long-horizon worlds offline or monitor them online in real time.
+              `agent-world` connects player-facing loops, runtime guardrails, and modular gameplay logic in one closed loop.
+              Treat it as a game to play, or as an engine to build, swap, and validate new rule systems.
             </p>
             <div class="cta-row">
               <a class="button primary" href="#demo">Try in 30 Seconds</a>
-              <a class="button secondary" href="../doc/en/index.html">Open Manuals</a>
+              <a class="button secondary" href="../doc/en/index.html">Open Docs Hub</a>
               <a
                 class="button ghost"
-                href="https://github.com/eng-cc/agent-world/blob/main/doc/world-simulator.md"
+                href="https://github.com/eng-cc/agent-world/blob/main/doc/game/gameplay-top-level-design.md"
                 target="_blank"
                 rel="noreferrer"
-                >Read Design Doc</a
+                >Gameplay Top-level Design</a
               >
-              <a class="button ghost" href="https://github.com/eng-cc/agent-world" target="_blank" rel="noreferrer"
-                >View Source</a
+              <a
+                class="button ghost"
+                href="https://github.com/eng-cc/agent-world/blob/main/doc/game/gameplay-engineering-architecture.md"
+                target="_blank"
+                rel="noreferrer"
+                >Gameplay Engineering Architecture</a
               >
             </div>
             <div class="hero-stats">
               <article class="metric-box">
-                <strong data-counter-target="4">0</strong>
-                <span>Core system layers</span>
+                <strong data-counter-target="3">0</strong>
+                <span>Player loop layers (micro / mid / long)</span>
+              </article>
+              <article class="metric-box">
+                <strong data-counter-target="5">0</strong>
+                <span>Gameplay module families (War/Gov/Crisis/Eco/Meta)</span>
               </article>
               <article class="metric-box">
                 <strong data-counter-target="3">0</strong>
-                <span>Runtime modes (offline / live-script / live-llm)</span>
-              </article>
-              <article class="metric-box">
-                <strong data-counter-target="90">0</strong>
-                <span>Mobile quality gate target</span>
+                <span>Runtime modes (offline replay / live script / live LLM)</span>
               </article>
             </div>
           </div>
           <aside class="hero-visual">
             <figure class="hero-figure">
-              <img src="../assets/images/world-constellation.svg" alt="agent-world constellation visual" />
-              <figcaption>Agents evolve under energy constraints, governance rules, and social interactions.</figcaption>
+              <img src="../assets/images/world-constellation.svg" alt="agent-world game and engine key visual" />
+              <figcaption>Gameplay loops, engine APIs, and state evidence converge in one persistent world.</figcaption>
             </figure>
             <div class="pulse-panel">
               <p class="panel-title">System Pulse</p>
               <ul>
+                <li><span>Gameplay</span><strong>Micro/Mid/Long Loop</strong></li>
                 <li><span>Runtime</span><strong>Rule Gate</strong></li>
-                <li><span>Simulator</span><strong>State Evolving</strong></li>
-                <li><span>Viewer</span><strong>Replay Ready</strong></li>
-                <li><span>LLM Bridge</span><strong>Optional Online</strong></li>
+                <li><span>Viewer</span><strong>Replay + Live</strong></li>
+                <li><span>WASM</span><strong>Hot-swappable</strong></li>
               </ul>
             </div>
             <ul class="hero-proof-points">
-              <li>3 scenario classes with reproducible command flow</li>
-              <li>Offline replay and live evolution are both supported</li>
+              <li>Gameplay experience, engine capabilities, and command loop aligned</li>
+              <li>CN/EN pages and docs hub maintained in mirrored structure</li>
             </ul>
           </aside>
         </div>
@@ -127,55 +131,53 @@
 
       <section id="matrix" class="section" data-reveal>
         <h2>Core Capabilities</h2>
-        <p class="section-intro">
-          Four capability blocks only, so you can quickly decide if this stack matches your research or product goals.
-        </p>
+        <p class="section-intro">Four focused blocks that align fun, extensibility, and verifiability.</p>
         <div class="matrix-grid">
           <article class="matrix-item">
-            <h3>Rule Execution Kernel</h3>
-            <p>Every action goes through policy checks, with denials and consequences recorded.</p>
-            <span>Value: governance and explainability by default</span>
+            <h3>Three-layer Gameplay Loops</h3>
+            <p>Micro loops give immediate feedback, mid loops deliver milestones, long loops build civilization goals.</p>
+            <span>Value: sustained motivation and emotional pacing</span>
           </article>
           <article class="matrix-item">
-            <h3>Persistent Replay</h3>
-            <p>Snapshots and journals enable deterministic restore, compare, and postmortem analysis.</p>
-            <span>Value: reproducible and auditable experiments</span>
+            <h3>Gameplay WASM Modularity</h3>
+            <p>War, governance, crisis, economy, and meta modules can be composed, replaced, and run in parallel.</p>
+            <span>Value: evolve gameplay without polluting the core runtime</span>
           </article>
           <article class="matrix-item">
-            <h3>Multi-agent World Modeling</h3>
-            <p>Agents evolve under resource, relation, and institutional constraints over long horizons.</p>
-            <span>Value: observe cooperation, conflict, and order emergence</span>
+            <h3>Runtime Invariant Guardrails</h3>
+            <p>Resource conservation, one-way time, and action validation are enforced by the runtime kernel.</p>
+            <span>Value: fairness, stability, and explainability by default</span>
           </article>
           <article class="matrix-item">
-            <h3>LLM / WASM Extension Layer</h3>
-            <p>OpenAI-style model integration plus modular rule extensions for iterative complexity growth.</p>
-            <span>Value: stronger policies without destabilizing the core loop</span>
+            <h3>Replay and Live Observability</h3>
+            <p>Offline replay and live inspection share the same evidence trail across logs, events, and screenshots.</p>
+            <span>Value: one observability path for R&amp;D, testing, and teaching</span>
           </article>
         </div>
       </section>
 
       <section id="architecture" class="section" data-reveal>
-        <h2>Architecture Loop</h2>
+        <h2>Game + Engine Architecture Loop</h2>
         <figure class="architecture-figure">
-          <img src="../assets/images/architecture-flow.svg" alt="agent-world architecture flow" loading="lazy" />
-          <figcaption>Runtime -> Simulator -> Viewer -> LLM/Modules, backed by persistent evidence pipelines.</figcaption>
+          <img src="../assets/images/architecture-flow.svg" alt="agent-world game and engine architecture flow" loading="lazy" />
+          <figcaption>Gameplay Layer -> Runtime Kernel -> Viewer/Tooling -> Governance, supporting long-horizon evolution.</figcaption>
         </figure>
         <div class="architecture-flow">
           <article class="arch-node">
-            <h3>Runtime</h3>
-            <p>Unified action gateway, policy validation, and execution boundaries.</p>
+            <h3>Gameplay Layer</h3>
+            <p>Hosts pluggable gameplay rules for war, governance, and economy systems.</p>
           </article>
           <article class="arch-node">
-            <h3>Simulator</h3>
-            <p>Advances world time and state while writing snapshots and event logs.</p>
+            <h3>Runtime Kernel</h3>
+            <p>Enforces invariants, validates actions, and writes state evidence.</p>
           </article>
           <article class="arch-node">
-            <h3>Viewer</h3>
-            <p>Supports both offline replay and online subscription for observability.</p>
+            <h3>Viewer &amp; Tooling</h3>
+            <p>Offline replay, live subscriptions, and debugging views for engineering loops.</p>
           </article>
           <article class="arch-node">
-            <h3>LLM/Modules</h3>
-            <p>Optional policy intelligence and pluggable rule modules.</p>
+            <h3>Consensus &amp; Governance</h3>
+            <p>Controls module upgrades and rule replacement boundaries through proposals.</p>
           </article>
         </div>
       </section>
@@ -184,16 +186,16 @@
         <h2>Applied Scenarios</h2>
         <div class="grid cards-3">
           <article class="card">
-            <h3>Coordination Strategy Research</h3>
-            <p>Measure efficiency, stability, and conflict dynamics under different governance choices.</p>
+            <h3>Player Strategy Operations</h3>
+            <p>Plan long-horizon decisions around energy, governance, and alliances.</p>
           </article>
           <article class="card">
-            <h3>LLM Safety Sandbox</h3>
-            <p>Evaluate model-driven agents inside hard rule boundaries and audit failures quickly.</p>
+            <h3>Gameplay Module R&amp;D</h3>
+            <p>Iterate WASM rule modules and verify consequences through one shared event trail.</p>
           </article>
           <article class="card">
-            <h3>Teaching and Demos</h3>
-            <p>Explain the full chain from rule to behavior to consequence with replayable traces.</p>
+            <h3>Teaching and Validation</h3>
+            <p>Use a full rule -> behavior -> outcome chain for demos, classes, and experiments.</p>
           </article>
         </div>
         <div class="screens-grid">
@@ -206,7 +208,7 @@
               width="2400"
               height="1600"
             />
-            <figcaption>minimal: minimum closed loop</figcaption>
+            <figcaption>minimal: smallest playable loop</figcaption>
           </figure>
           <figure class="screen-card">
             <img
@@ -217,7 +219,7 @@
               width="2400"
               height="1600"
             />
-            <figcaption>twin_region: two-node coordination</figcaption>
+            <figcaption>twin_region: two-node coordination and trade</figcaption>
           </figure>
           <figure class="screen-card">
             <img
@@ -228,7 +230,7 @@
               width="2400"
               height="1600"
             />
-            <figcaption>triad_region: emergent group behavior</figcaption>
+            <figcaption>triad_region: multi-agent emergent collaboration</figcaption>
           </figure>
         </div>
       </section>
@@ -237,30 +239,30 @@
         <h2>Demo and Quick Start</h2>
         <div class="grid cards-2">
           <article class="card">
-            <h3>Offline Replay (Recommended)</h3>
-            <p>Generate world data, start replay server, then inspect everything in the viewer.</p>
+            <h3>Gameplay Replay (Recommended)</h3>
+            <p>Generate data, launch replay server, then inspect the complete evolution in viewer.</p>
             <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_demo -- twin_region_bootstrap --out .data/world_viewer_data
 env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_server -- .data/world_viewer_data 127.0.0.1:5010
 env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010</code></pre>
           </article>
           <article class="card">
-            <h3>Live Evolution (LLM by Default, `--no-llm` Fallback)</h3>
-            <p>Live server advances continuously with LLM decisions by default; pass `--no-llm` for script fallback.</p>
-            <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- twin_region_bootstrap --bind 127.0.0.1:5010
-# Optional: fallback to built-in script decisions
-env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- twin_region_bootstrap --no-llm --bind 127.0.0.1:5010
-env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010</code></pre>
+            <h3>Live Engine Validation (LLM by default, `--no-llm` fallback)</h3>
+            <p>Run live simulation with viewer and web endpoints for simultaneous gameplay and engine debugging.</p>
+            <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011 --tick-ms 300
+# Optional: fallback to script decisions
+env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --no-llm --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011 --tick-ms 300
+env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023</code></pre>
           </article>
         </div>
         <article class="quickstart card">
           <h3>Three-step First Run</h3>
           <ol class="steps">
             <li>Clone the repository and enter the workspace.</li>
-            <li>Run `env -u RUSTC_WRAPPER cargo test` to validate the environment.</li>
-            <li>Start demo or live flow and inspect events in viewer.</li>
+            <li>Run `env -u RUSTC_WRAPPER cargo check` to validate environment setup.</li>
+            <li>Choose replay or live flow and inspect event/state transitions.</li>
           </ol>
           <p class="doc-entry-note">
-            Need full operational details? Visit the
+            Need full parameter references and troubleshooting? Open the
             <a href="../doc/en/index.html">documentation hub (EN)</a>.
           </p>
         </article>
@@ -268,7 +270,7 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010</code></p
 
       <section id="proof" class="section" data-reveal>
         <h2>Runtime Proof</h2>
-        <p class="section-intro">Not slogans. Reproducible command flow with real event excerpts.</p>
+        <p class="section-intro">This is not positioning copy only; it is reproducible gameplay evidence and engine command flow.</p>
         <div class="proof-switcher" data-proof-switcher>
           <p class="proof-switcher-label">Scenario event switcher</p>
           <div class="proof-switcher-controls" role="group" aria-label="Switch proof scenario" data-proof-controls>
@@ -281,11 +283,11 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010</code></p
         </div>
         <div class="proof-grid">
           <article class="proof-card proof-card-key">
-            <h3>Command Loop</h3>
+            <h3>Evidence Chain</h3>
             <ol class="proof-list">
-              <li>Run `world_viewer_demo` to generate snapshots and journals</li>
-              <li>Start `world_viewer_server` to expose replay endpoint</li>
-              <li>Connect viewer and inspect behavior outcomes</li>
+              <li>Run `world_viewer_demo` or `world_viewer_live` to generate gameplay traces</li>
+              <li>Expose replay/live endpoints through server runtime</li>
+              <li>Connect viewer to verify strategy outcomes and rule feedback</li>
             </ol>
             <a class="button secondary" href="#demo">Use This Flow</a>
           </article>
@@ -294,6 +296,7 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010</code></p
             <pre><code data-proof-code data-proof-panel="minimal" data-proof-visible="true">{
   "tick": 128,
   "agent": "agent-1",
+  "loop": "micro",
   "action": "harvest",
   "result": "accepted",
   "delta": { "electricity": +12 }
@@ -301,29 +304,29 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010</code></p
             <pre><code data-proof-code data-proof-panel="twin" data-proof-visible="false">[
   { "tick": 84, "agent": "agent-1", "action": "move", "to": "base-b" },
   { "tick": 91, "agent": "agent-2", "action": "trade_power", "amount": 9 },
-  { "tick": 96, "result": "both_agents_online" }
+  { "tick": 96, "result": "coordination_stable" }
 ]</code></pre>
             <pre><code data-proof-code data-proof-panel="triad" data-proof-visible="false">[
-  { "tick": 142, "agent": "agent-3", "action": "request_help", "from": "agent-1" },
+  { "tick": 142, "module": "governance", "action": "request_help", "from": "agent-3" },
   { "tick": 149, "agent": "agent-1", "action": "route_energy", "to": "agent-3" },
   { "tick": 166, "result": "triad_stability_up" }
 ]</code></pre>
           </article>
         </div>
         <div class="proof-strip">
-          <span class="proof-chip">Coverage: 3 reference scenarios</span>
-          <span class="proof-chip">Paths: Offline Replay + Live Viewer</span>
-          <span class="proof-chip">Artifacts: Commands + Events + Screenshots</span>
-          <span class="proof-chip is-highlight">Recent updates: default LLM + `--no-llm`, `--release-config`, and Web step control</span>
+          <span class="proof-chip">Coverage: gameplay loop + engine interface + debug path</span>
+          <span class="proof-chip">Runtime: Offline Replay + Live LLM/Script</span>
+          <span class="proof-chip">Docs: README + game docs + viewer manual</span>
+          <span class="proof-chip is-highlight">Recent update: GitHub Pages narrative upgraded to "game + engine"</span>
         </div>
         <div class="proof-timeline" data-proof-timeline>
           <article class="proof-timeline-item" data-proof-event="minimal" data-proof-visible="true">
             <span>Tick 128</span>
-            <p>minimal: harvest accepted with +12 net electricity.</p>
+            <p>minimal: harvest accepted and the micro loop gets immediate resource feedback.</p>
           </article>
           <article class="proof-timeline-item" data-proof-event="minimal" data-proof-visible="true">
             <span>Tick 133</span>
-            <p>minimal: short idle period while rule loop remains stable.</p>
+            <p>minimal: rule loop remains stable and opens the next decision window.</p>
           </article>
           <article class="proof-timeline-item" data-proof-event="twin" data-proof-visible="false">
             <span>Tick 84</span>
@@ -331,15 +334,15 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010</code></p
           </article>
           <article class="proof-timeline-item" data-proof-event="twin" data-proof-visible="false">
             <span>Tick 91</span>
-            <p>twin_region: agent-2 initiated power trade and formed coordination.</p>
+            <p>twin_region: agent-2 initiated a power trade for coordinated production.</p>
           </article>
           <article class="proof-timeline-item" data-proof-event="triad" data-proof-visible="false">
             <span>Tick 142</span>
-            <p>triad_region: agent-3 requested collaborative support.</p>
+            <p>triad_region: governance module requested collaborative support.</p>
           </article>
           <article class="proof-timeline-item" data-proof-event="triad" data-proof-visible="false">
             <span>Tick 166</span>
-            <p>triad_region: route cooperation raised group stability.</p>
+            <p>triad_region: routed cooperation improved group stability.</p>
           </article>
         </div>
       </section>
@@ -349,23 +352,23 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010</code></p
         <div class="timeline">
           <article class="timeline-item done">
             <span class="status-tag done">Done</span>
-            <h3>M1 / M2 · Minimal loop and replay pipeline</h3>
-            <p>Rule cycle, snapshots, and journals are in place for reproducible experiments.</p>
+            <h3>M1 · Playability loop baseline</h3>
+            <p>Micro/mid/long loop framing is established for long-term retention.</p>
           </article>
           <article class="timeline-item done">
             <span class="status-tag done">Done</span>
-            <h3>M3 · Runtime and modular extension interface</h3>
-            <p>Runtime capability, module interface, and observability baseline are completed.</p>
+            <h3>M2 · Gameplay module boundaries</h3>
+            <p>WASM gameplay layer and runtime kernel responsibilities are clearly separated.</p>
           </article>
           <article class="timeline-item active">
             <span class="status-tag active">Active</span>
-            <h3>M4 · Socio-economic system (power / hardware / data)</h3>
-            <p>Advancing economic and governance loops for long-running world evolution.</p>
+            <h3>M3 · Mid-loop validation for war/governance/economy</h3>
+            <p>Focus on multiplayer dynamics and institutional change under bounded resources.</p>
           </article>
           <article class="timeline-item next">
             <span class="status-tag next">Next</span>
-            <h3>M5 · Visualization and debugging upgrades</h3>
-            <p>Further improve high-load observability, stress baselines, and diagnosis tooling.</p>
+            <h3>M4 · Long-horizon operations and community modules</h3>
+            <p>Scale toward ecosystem-driven gameplay modules and governance-led upgrades.</p>
           </article>
         </div>
       </section>
@@ -378,24 +381,33 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010</code></p
             <ul class="doc-links">
               <li>
                 <a href="https://github.com/eng-cc/agent-world/blob/main/README.md" target="_blank" rel="noreferrer"
-                  >README (overview)</a
+                  >README (project overview)</a
                 >
               </li>
               <li>
-                <a href="https://github.com/eng-cc/agent-world/blob/main/doc/world-simulator.md" target="_blank" rel="noreferrer"
-                  >World design doc</a
+                <a
+                  href="https://github.com/eng-cc/agent-world/blob/main/doc/game/gameplay-top-level-design.md"
+                  target="_blank"
+                  rel="noreferrer"
+                  >Gameplay Top-level Design</a
                 >
               </li>
               <li>
-                <a href="https://github.com/eng-cc/agent-world/tree/main/doc/devlog" target="_blank" rel="noreferrer"
-                  >Development logs</a
+                <a
+                  href="https://github.com/eng-cc/agent-world/blob/main/doc/game/gameplay-engineering-architecture.md"
+                  target="_blank"
+                  rel="noreferrer"
+                  >Gameplay Engineering Architecture</a
                 >
+              </li>
+              <li>
+                <a href="../doc/en/index.html">Docs Hub (includes Viewer manual)</a>
               </li>
             </ul>
           </article>
           <article class="card">
             <h3>Contribute</h3>
-            <p>Open issues or PRs around world rules, agent behavior, and viewer observability.</p>
+            <p>Open issues or PRs for gameplay loops, WASM modules, observability tooling, and governance rules.</p>
             <div class="cta-row">
               <a class="button secondary" href="https://github.com/eng-cc/agent-world/issues" target="_blank" rel="noreferrer"
                 >Open Issue</a
@@ -410,7 +422,7 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010</code></p
     </main>
 
     <footer class="footer">
-      <p>© <span data-year></span> agent-world · Build believable digital civilization</p>
+      <p>© <span data-year></span> agent-world · Build playable worlds with auditable engines</p>
     </footer>
   </body>
 </html>
