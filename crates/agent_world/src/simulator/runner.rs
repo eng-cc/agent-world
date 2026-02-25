@@ -252,6 +252,14 @@ pub struct AgentRunner<B: AgentBehavior> {
     runtime_perf: RuntimePerfCollector,
 }
 
+fn llm_api_duration_from_trace(decision_trace: Option<&AgentDecisionTrace>) -> Duration {
+    let llm_api_latency_ms = decision_trace
+        .and_then(|trace| trace.llm_diagnostics.as_ref())
+        .and_then(|diagnostics| diagnostics.latency_ms)
+        .unwrap_or(0);
+    Duration::from_millis(llm_api_latency_ms)
+}
+
 impl<B: AgentBehavior> Default for AgentRunner<B> {
     fn default() -> Self {
         Self::new()
@@ -436,21 +444,24 @@ impl<B: AgentBehavior> AgentRunner<B> {
         };
 
         // Get decision from the agent
-        let agent = match self.agents.get_mut(&agent_id) {
-            Some(agent) => agent,
-            None => {
-                self.runtime_perf
-                    .record_tick_duration(tick_started_at.elapsed());
-                return None;
-            }
-        };
-        agent.decision_count += 1;
+        let (decision, decision_trace, decision_duration) = {
+            let agent = match self.agents.get_mut(&agent_id) {
+                Some(agent) => agent,
+                None => {
+                    self.runtime_perf
+                        .record_tick_duration(tick_started_at.elapsed());
+                    return None;
+                }
+            };
+            agent.decision_count += 1;
 
-        let decision_started_at = Instant::now();
-        let decision = agent.behavior.decide(&observation);
-        self.runtime_perf
-            .record_decision_duration(decision_started_at.elapsed());
-        let decision_trace = agent.behavior.take_decision_trace();
+            let decision_started_at = Instant::now();
+            let decision = agent.behavior.decide(&observation);
+            let decision_trace = agent.behavior.take_decision_trace();
+            (decision, decision_trace, decision_started_at.elapsed())
+        };
+        let llm_api_duration =
+            self.record_decision_runtime_samples(decision_duration, decision_trace.as_ref());
         if let Some(trace) = decision_trace.as_ref() {
             for intent in &trace.llm_effect_intents {
                 kernel.record_event(WorldEventKind::LlmEffectQueued {
@@ -475,7 +486,9 @@ impl<B: AgentBehavior> AgentRunner<B> {
                 decision_trace,
             }),
             AgentDecision::WaitTicks(ticks) => {
-                agent.wait_until = Some(now.saturating_add(ticks));
+                if let Some(agent) = self.agents.get_mut(&agent_id) {
+                    agent.wait_until = Some(now.saturating_add(ticks));
+                }
                 Some(AgentTickResult {
                     agent_id,
                     decision: AgentDecision::WaitTicks(ticks),
@@ -485,10 +498,10 @@ impl<B: AgentBehavior> AgentRunner<B> {
                 })
             }
             AgentDecision::Act(action) => {
-                agent.action_count += 1;
-                // Record action for rate limiting
-                let rate_policy = self.rate_limit_policy.as_ref();
                 if let Some(agent) = self.agents.get_mut(&agent_id) {
+                    agent.action_count += 1;
+                    // Record action for rate limiting.
+                    let rate_policy = self.rate_limit_policy.as_ref();
                     agent.record_action(now, rate_policy);
                 }
 
@@ -526,8 +539,7 @@ impl<B: AgentBehavior> AgentRunner<B> {
                 })
             }
         };
-        self.runtime_perf
-            .record_tick_duration(tick_started_at.elapsed());
+        self.record_tick_duration_without_llm_api(tick_started_at.elapsed(), llm_api_duration);
         result
     }
 
@@ -590,20 +602,23 @@ impl<B: AgentBehavior> AgentRunner<B> {
             }
         };
 
-        let agent = match self.agents.get_mut(&agent_id) {
-            Some(agent) => agent,
-            None => {
-                self.runtime_perf
-                    .record_tick_duration(tick_started_at.elapsed());
-                return None;
-            }
+        let (decision, decision_trace, decision_duration) = {
+            let agent = match self.agents.get_mut(&agent_id) {
+                Some(agent) => agent,
+                None => {
+                    self.runtime_perf
+                        .record_tick_duration(tick_started_at.elapsed());
+                    return None;
+                }
+            };
+            agent.decision_count += 1;
+            let decision_started_at = Instant::now();
+            let decision = agent.behavior.decide(&observation);
+            let decision_trace = agent.behavior.take_decision_trace();
+            (decision, decision_trace, decision_started_at.elapsed())
         };
-        agent.decision_count += 1;
-        let decision_started_at = Instant::now();
-        let decision = agent.behavior.decide(&observation);
-        self.runtime_perf
-            .record_decision_duration(decision_started_at.elapsed());
-        let decision_trace = agent.behavior.take_decision_trace();
+        let llm_api_duration =
+            self.record_decision_runtime_samples(decision_duration, decision_trace.as_ref());
 
         let result = match decision {
             AgentDecision::Wait => Some(AgentTickResult {
@@ -614,7 +629,9 @@ impl<B: AgentBehavior> AgentRunner<B> {
                 decision_trace,
             }),
             AgentDecision::WaitTicks(ticks) => {
-                agent.wait_until = Some(now.saturating_add(ticks));
+                if let Some(agent) = self.agents.get_mut(&agent_id) {
+                    agent.wait_until = Some(now.saturating_add(ticks));
+                }
                 Some(AgentTickResult {
                     agent_id,
                     decision: AgentDecision::WaitTicks(ticks),
@@ -624,9 +641,11 @@ impl<B: AgentBehavior> AgentRunner<B> {
                 })
             }
             AgentDecision::Act(action) => {
-                agent.action_count += 1;
-                let rate_policy = self.rate_limit_policy.as_ref();
-                agent.record_action(now, rate_policy);
+                if let Some(agent) = self.agents.get_mut(&agent_id) {
+                    agent.action_count += 1;
+                    let rate_policy = self.rate_limit_policy.as_ref();
+                    agent.record_action(now, rate_policy);
+                }
                 Some(AgentTickResult {
                     agent_id,
                     decision: AgentDecision::Act(action),
@@ -636,8 +655,7 @@ impl<B: AgentBehavior> AgentRunner<B> {
                 })
             }
         };
-        self.runtime_perf
-            .record_tick_duration(tick_started_at.elapsed());
+        self.record_tick_duration_without_llm_api(tick_started_at.elapsed(), llm_api_duration);
         result
     }
 
@@ -650,6 +668,32 @@ impl<B: AgentBehavior> AgentRunner<B> {
         self.runtime_perf
             .record_callback_duration(callback_started_at.elapsed());
         true
+    }
+
+    fn record_decision_runtime_samples(
+        &mut self,
+        decision_total_duration: Duration,
+        decision_trace: Option<&AgentDecisionTrace>,
+    ) -> Duration {
+        let llm_api_duration = llm_api_duration_from_trace(decision_trace);
+        let decision_local_duration = decision_total_duration
+            .checked_sub(llm_api_duration)
+            .unwrap_or(Duration::from_millis(0));
+        self.runtime_perf
+            .record_decision_duration(decision_local_duration);
+        self.runtime_perf.record_llm_api_duration(llm_api_duration);
+        llm_api_duration
+    }
+
+    fn record_tick_duration_without_llm_api(
+        &mut self,
+        tick_total_duration: Duration,
+        llm_api_duration: Duration,
+    ) {
+        let tick_local_duration = tick_total_duration
+            .checked_sub(llm_api_duration)
+            .unwrap_or(Duration::from_millis(0));
+        self.runtime_perf.record_tick_duration(tick_local_duration);
     }
 
     /// Record action execution duration when action apply happens outside the runner.

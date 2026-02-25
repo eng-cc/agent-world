@@ -383,6 +383,10 @@ fn main() {
         run_report.runtime_perf.tick.p95_ms
     );
     println!(
+        "runtime_perf_llm_api_p95_ms: {:.3}",
+        run_report.runtime_perf.llm_api.p95_ms
+    );
+    println!(
         "runtime_perf_tick_over_budget_ratio_ppm: {}",
         run_report.runtime_perf.tick.over_budget_ratio_ppm
     );

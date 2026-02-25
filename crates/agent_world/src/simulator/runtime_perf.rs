@@ -7,6 +7,7 @@ const DEFAULT_TICK_BUDGET_MS: f64 = 33.0;
 const DEFAULT_DECISION_BUDGET_MS: f64 = 20.0;
 const DEFAULT_ACTION_EXECUTION_BUDGET_MS: f64 = 20.0;
 const DEFAULT_CALLBACK_BUDGET_MS: f64 = 10.0;
+const DEFAULT_LLM_API_BUDGET_MS: f64 = 1000.0;
 
 const WARN_OVER_BUDGET_RATIO_PPM: u64 = 50_000;
 const CRITICAL_OVER_BUDGET_RATIO_PPM: u64 = 200_000;
@@ -84,6 +85,8 @@ pub struct RuntimePerfSnapshot {
     pub decision: RuntimePerfSeriesSnapshot,
     pub action_execution: RuntimePerfSeriesSnapshot,
     pub callback: RuntimePerfSeriesSnapshot,
+    #[serde(default)]
+    pub llm_api: RuntimePerfSeriesSnapshot,
     pub health: RuntimePerfHealth,
     pub bottleneck: RuntimePerfBottleneck,
 }
@@ -95,6 +98,7 @@ pub(crate) struct RuntimePerfCollector {
     decision: PerfSeriesState,
     action_execution: PerfSeriesState,
     callback: PerfSeriesState,
+    llm_api: PerfSeriesState,
 }
 
 impl Default for RuntimePerfCollector {
@@ -112,6 +116,7 @@ impl RuntimePerfCollector {
             decision: PerfSeriesState::new(DEFAULT_DECISION_BUDGET_MS),
             action_execution: PerfSeriesState::new(DEFAULT_ACTION_EXECUTION_BUDGET_MS),
             callback: PerfSeriesState::new(DEFAULT_CALLBACK_BUDGET_MS),
+            llm_api: PerfSeriesState::new(DEFAULT_LLM_API_BUDGET_MS),
         }
     }
 
@@ -135,11 +140,17 @@ impl RuntimePerfCollector {
             .record(duration_to_ms(duration), self.sample_window);
     }
 
+    pub(crate) fn record_llm_api_duration(&mut self, duration: Duration) {
+        self.llm_api
+            .record(duration_to_ms(duration), self.sample_window);
+    }
+
     pub(crate) fn snapshot(&self) -> RuntimePerfSnapshot {
         let tick = self.tick.snapshot();
         let decision = self.decision.snapshot();
         let action_execution = self.action_execution.snapshot();
         let callback = self.callback.snapshot();
+        let llm_api = self.llm_api.snapshot();
         let health = derive_health([&tick, &decision, &action_execution, &callback]);
         let bottleneck = derive_bottleneck(&tick, &decision, &action_execution, &callback);
         RuntimePerfSnapshot {
@@ -148,6 +159,7 @@ impl RuntimePerfCollector {
             decision,
             action_execution,
             callback,
+            llm_api,
             health,
             bottleneck,
         }
@@ -158,6 +170,7 @@ impl RuntimePerfCollector {
         self.decision.reset();
         self.action_execution.reset();
         self.callback.reset();
+        self.llm_api.reset();
     }
 }
 
@@ -369,6 +382,7 @@ mod tests {
         collector.record_decision_duration(Duration::from_micros(7_000));
         collector.record_action_execution_duration(Duration::from_micros(11_000));
         collector.record_callback_duration(Duration::from_micros(2_000));
+        collector.record_llm_api_duration(Duration::from_micros(120_000));
         assert_eq!(collector.snapshot().health, RuntimePerfHealth::Healthy);
 
         collector.reset();
@@ -377,7 +391,27 @@ mod tests {
         assert_eq!(snapshot.decision.samples_total, 0);
         assert_eq!(snapshot.action_execution.samples_total, 0);
         assert_eq!(snapshot.callback.samples_total, 0);
+        assert_eq!(snapshot.llm_api.samples_total, 0);
         assert_eq!(snapshot.health, RuntimePerfHealth::Unknown);
         assert_eq!(snapshot.bottleneck, RuntimePerfBottleneck::None);
+    }
+
+    #[test]
+    fn collector_health_ignores_llm_api_stage() {
+        let mut collector = RuntimePerfCollector::default();
+        for _ in 0..8 {
+            collector.record_tick_duration(Duration::from_micros(8_000));
+            collector.record_decision_duration(Duration::from_micros(9_000));
+            collector.record_action_execution_duration(Duration::from_micros(11_000));
+            collector.record_callback_duration(Duration::from_micros(2_000));
+        }
+        let baseline = collector.snapshot();
+        assert_eq!(baseline.health, RuntimePerfHealth::Healthy);
+
+        collector.record_llm_api_duration(Duration::from_millis(2_500));
+        let snapshot = collector.snapshot();
+        assert_eq!(snapshot.health, RuntimePerfHealth::Healthy);
+        assert_eq!(snapshot.bottleneck, RuntimePerfBottleneck::ActionExecution);
+        assert!(snapshot.llm_api.p95_ms >= 2500.0);
     }
 }

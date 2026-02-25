@@ -152,6 +152,58 @@ impl AgentBehavior for TraceEffectAgent {
     }
 }
 
+struct LlmLatencyTraceAgent {
+    id: String,
+    latency_ms: u64,
+    decide_sleep_ms: u64,
+}
+
+impl LlmLatencyTraceAgent {
+    fn new(id: impl Into<String>, latency_ms: u64, decide_sleep_ms: u64) -> Self {
+        Self {
+            id: id.into(),
+            latency_ms,
+            decide_sleep_ms,
+        }
+    }
+}
+
+impl AgentBehavior for LlmLatencyTraceAgent {
+    fn agent_id(&self) -> &str {
+        &self.id
+    }
+
+    fn decide(&mut self, _observation: &Observation) -> AgentDecision {
+        std::thread::sleep(Duration::from_millis(self.decide_sleep_ms));
+        AgentDecision::Wait
+    }
+
+    fn take_decision_trace(&mut self) -> Option<AgentDecisionTrace> {
+        Some(AgentDecisionTrace {
+            agent_id: self.id.clone(),
+            time: 1,
+            decision: AgentDecision::Wait,
+            llm_input: Some("in".to_string()),
+            llm_output: Some("out".to_string()),
+            llm_error: None,
+            parse_error: None,
+            llm_diagnostics: Some(LlmDecisionDiagnostics {
+                model: Some("mock-llm".to_string()),
+                latency_ms: Some(self.latency_ms),
+                prompt_tokens: None,
+                completion_tokens: None,
+                total_tokens: None,
+                retry_count: 0,
+            }),
+            llm_effect_intents: vec![],
+            llm_effect_receipts: vec![],
+            llm_step_trace: vec![],
+            llm_prompt_section_trace: vec![],
+            llm_chat_messages: vec![],
+        })
+    }
+}
+
 fn setup_kernel_with_patrol_agent(agent_id: &str) -> WorldKernel {
     let config = WorldConfig {
         visibility_range_cm: DEFAULT_VISIBILITY_RANGE_CM,
@@ -638,6 +690,23 @@ fn runner_external_action_execution_duration_updates_perf_snapshot() {
     assert_eq!(perf.action_execution.samples_total, 1);
     assert!(perf.action_execution.p95_ms >= 25.0);
     assert_eq!(perf.bottleneck, RuntimePerfBottleneck::ActionExecution);
+}
+
+#[test]
+fn runner_runtime_perf_separates_llm_api_from_local_execution() {
+    let mut kernel = setup_kernel_with_wait_agent("agent-1");
+    let mut runner: AgentRunner<LlmLatencyTraceAgent> = AgentRunner::new();
+    runner.register(LlmLatencyTraceAgent::new("agent-1", 2, 6));
+
+    let _ = runner.tick_decide_only(&mut kernel).expect("tick result");
+    let perf = runner.runtime_perf_snapshot();
+    assert_eq!(perf.llm_api.samples_total, 1);
+    assert!(perf.llm_api.p95_ms >= 2.0);
+    assert!(perf.decision.samples_total >= 1);
+    assert!(perf.tick.samples_total >= 1);
+    assert!(perf.decision.p95_ms < 20.0);
+    assert!(perf.tick.p95_ms < 33.0);
+    assert_eq!(perf.health, RuntimePerfHealth::Healthy);
 }
 
 #[test]
