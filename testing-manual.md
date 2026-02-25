@@ -329,6 +329,21 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
   --chaos-plan <path-to-chaos-plan.json> \
   --out-dir .tmp/p2p_longrun
 ```
+- `180+` 分钟高覆盖基线（固定大计划 + continuous 混合）：
+```bash
+./scripts/p2p-longrun-soak.sh \
+  --profile soak_endurance \
+  --duration-secs 10800 \
+  --topologies triad_distributed \
+  --chaos-plan doc/testing/chaos-plans/p2p-soak-endurance-full-chaos-v1.json \
+  --chaos-continuous-enable \
+  --chaos-continuous-interval-secs 75 \
+  --chaos-continuous-start-sec 120 \
+  --chaos-continuous-max-events 0 \
+  --chaos-continuous-actions restart,pause,disconnect \
+  --chaos-continuous-seed 20260225 \
+  --out-dir .tmp/p2p_longrun_full_chaos
+```
 - 长跑混沌探索（`soak_endurance` + 固定计划 + 持续注入）：
 ```bash
 ./scripts/p2p-longrun-soak.sh \
@@ -357,6 +372,7 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
   - `soak_smoke` 在无 epoch 报表时会标记 `insufficient_data`（告警，不直接失败）。
   - `soak_endurance/soak_release` 在无 epoch 报表时会失败。
   - continuous chaos 可与 `--chaos-plan` 同时开启，`summary.json` 会拆分 `chaos_plan_events` 与 `chaos_continuous_events`。
+  - `soak_smoke/soak_endurance/soak_release` 是 S9 长跑执行档位，不是 Cargo feature；`test_tier_required/test_tier_full` 仍属于 S0~S2 的核心测试分层。
 
 #### S9 执行剧本（Human/AI）
 1. 先执行 S0/S4，确保基础分布式链路已绿。
