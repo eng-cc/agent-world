@@ -332,10 +332,11 @@ fn file_dead_letter_store_retention_compacts_records_to_archive() {
             .expect("append record");
     }
 
-    let active = store.list("w1", "node-a").expect("list active records");
-    assert_eq!(active.len(), 2);
-    assert_eq!(active[0].dropped_at_ms, 1001);
-    assert_eq!(active[1].dropped_at_ms, 1002);
+    let active = store.list("w1", "node-a").expect("list retained records");
+    assert_eq!(active.len(), 3);
+    assert_eq!(active[0].dropped_at_ms, 1000);
+    assert_eq!(active[1].dropped_at_ms, 1001);
+    assert_eq!(active[2].dropped_at_ms, 1002);
 
     let archive_path = root.join("w1.node-a.revocation-alert-dead-letter.archive.refs.jsonl");
     let cas_store = LocalCasStore::new(root.join("cas"));
@@ -378,10 +379,11 @@ fn file_dead_letter_store_retention_compacts_metrics_to_archive() {
 
     let active = store
         .list_delivery_metrics("w1", "node-a")
-        .expect("list active metrics");
-    assert_eq!(active.len(), 2);
-    assert_eq!(active[0].0, 1201);
-    assert_eq!(active[1].0, 1202);
+        .expect("list retained metrics");
+    assert_eq!(active.len(), 3);
+    assert_eq!(active[0].0, 1200);
+    assert_eq!(active[1].0, 1201);
+    assert_eq!(active[2].0, 1202);
 
     let archive_path = root.join("w1.node-a.revocation-alert-delivery-metrics.archive.refs.jsonl");
     let cas_store = LocalCasStore::new(root.join("cas"));
@@ -399,6 +401,62 @@ fn file_dead_letter_store_retention_compacts_metrics_to_archive() {
         })
         .collect();
     assert_eq!(archived_export_times, vec![1200]);
+
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn file_dead_letter_store_replace_rebuilds_archive_without_stale_cold_records() {
+    let root = temp_membership_dir("revocation-alert-dead-letter-replace-rebuild");
+    fs::create_dir_all(&root).expect("create temp dir");
+
+    let store = FileMembershipRevocationAlertDeadLetterStore::with_retention(
+        &root,
+        MembershipRevocationDeadLetterRetention {
+            max_dead_letter_records_per_stream: 2,
+            max_delivery_metrics_per_stream: 2,
+        },
+    )
+    .expect("create store");
+
+    let record_1000 = sample_dead_letter(
+        "w1",
+        "node-a",
+        1000,
+        MembershipRevocationAlertDeadLetterReason::RetryLimitExceeded,
+    );
+    let record_1001 = sample_dead_letter(
+        "w1",
+        "node-a",
+        1001,
+        MembershipRevocationAlertDeadLetterReason::RetryLimitExceeded,
+    );
+    let record_1002 = sample_dead_letter(
+        "w1",
+        "node-a",
+        1002,
+        MembershipRevocationAlertDeadLetterReason::RetryLimitExceeded,
+    );
+    store.append(&record_1000).expect("append record 1000");
+    store.append(&record_1001).expect("append record 1001");
+    store.append(&record_1002).expect("append record 1002");
+
+    store
+        .replace("w1", "node-a", std::slice::from_ref(&record_1002))
+        .expect("replace should rebuild retention files from remaining records");
+
+    let listed = store.list("w1", "node-a").expect("list after replace");
+    assert_eq!(listed, vec![record_1002]);
+
+    let archive_path = root.join("w1.node-a.revocation-alert-dead-letter.archive.refs.jsonl");
+    let cas_store = LocalCasStore::new(root.join("cas"));
+    let archived =
+        crate::tiered_file_log::collect_cold_jsonl_lines(archive_path.as_path(), &cas_store)
+            .expect("read archive refs after replace");
+    assert!(
+        archived.is_empty(),
+        "replace should clear stale cold refs when overflow disappears"
+    );
 
     let _ = fs::remove_dir_all(root);
 }

@@ -324,11 +324,17 @@ impl PosNodeEngine {
                     "decision.height",
                     "applying rejected decision",
                 )?;
-                let _ = merge_pending_consensus_actions(
+                merge_pending_consensus_actions(
                     &mut self.pending_consensus_actions,
                     decision.committed_actions.clone(),
                     self.max_pending_consensus_actions,
-                );
+                )
+                .map_err(|err| NodeError::Consensus {
+                    reason: format!(
+                        "requeue rejected consensus actions failed at height {}: {}",
+                        decision.height, err
+                    ),
+                })?;
                 self.next_height = next_height;
                 self.pending = None;
             }
@@ -337,8 +343,17 @@ impl PosNodeEngine {
     }
 
     fn pending_consensus_action_capacity(&self) -> usize {
+        let reserved_requeue_actions = self
+            .pending
+            .as_ref()
+            .map(|proposal| proposal.committed_actions.len())
+            .unwrap_or(0);
+        let occupied_with_reserve = self
+            .pending_consensus_actions
+            .len()
+            .saturating_add(reserved_requeue_actions);
         self.max_pending_consensus_actions
-            .saturating_sub(self.pending_consensus_actions.len())
+            .saturating_sub(occupied_with_reserve)
     }
 
     fn apply_committed_execution(

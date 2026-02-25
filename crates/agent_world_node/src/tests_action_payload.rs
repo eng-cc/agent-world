@@ -156,6 +156,112 @@ fn pos_engine_rejects_tick_when_engine_pending_limit_exceeded() {
 }
 
 #[test]
+fn pos_engine_pending_capacity_reserves_rejected_proposal_actions() {
+    let config = NodeConfig::new(
+        "node-capacity-reserve",
+        "world-capacity-reserve",
+        NodeRole::Observer,
+    )
+    .expect("config")
+    .with_max_engine_pending_consensus_actions(4)
+    .expect("engine pending limit");
+    let mut engine = PosNodeEngine::new(&config).expect("engine");
+
+    let queued = NodeConsensusAction::from_payload(1, config.player_id.clone(), vec![1_u8])
+        .expect("queued action");
+    let reserved_a = NodeConsensusAction::from_payload(2, config.player_id.clone(), vec![2_u8])
+        .expect("reserved action a");
+    let reserved_b = NodeConsensusAction::from_payload(3, config.player_id.clone(), vec![3_u8])
+        .expect("reserved action b");
+    let action_root = compute_consensus_action_root(&[reserved_a.clone(), reserved_b.clone()])
+        .expect("action root");
+
+    engine
+        .pending_consensus_actions
+        .insert(queued.action_id, queued);
+    engine.pending = Some(PendingProposal {
+        height: 1,
+        slot: 0,
+        epoch: 0,
+        proposer_id: config.node_id.clone(),
+        block_hash: "pending-block".to_string(),
+        action_root,
+        committed_actions: vec![reserved_a, reserved_b],
+        attestations: BTreeMap::new(),
+        approved_stake: 0,
+        rejected_stake: 0,
+        status: PosConsensusStatus::Pending,
+    });
+
+    assert_eq!(
+        engine.pending_consensus_action_capacity(),
+        1,
+        "capacity should reserve space for requeueing actions from the pending proposal"
+    );
+}
+
+#[test]
+fn pos_engine_apply_rejected_decision_surfaces_requeue_overflow_instead_of_dropping() {
+    let config = NodeConfig::new(
+        "node-requeue-overflow",
+        "world-requeue-overflow",
+        NodeRole::Observer,
+    )
+    .expect("config")
+    .with_max_engine_pending_consensus_actions(2)
+    .expect("engine pending limit");
+    let mut engine = PosNodeEngine::new(&config).expect("engine");
+
+    let queued = NodeConsensusAction::from_payload(1, config.player_id.clone(), vec![1_u8])
+        .expect("queued action");
+    engine
+        .pending_consensus_actions
+        .insert(queued.action_id, queued);
+
+    let rejected_a = NodeConsensusAction::from_payload(2, config.player_id.clone(), vec![2_u8])
+        .expect("rejected action a");
+    let rejected_b = NodeConsensusAction::from_payload(3, config.player_id.clone(), vec![3_u8])
+        .expect("rejected action b");
+    let action_root = compute_consensus_action_root(&[rejected_a.clone(), rejected_b.clone()])
+        .expect("action root");
+    let decision = PosDecision {
+        height: 7,
+        slot: 6,
+        epoch: 0,
+        status: PosConsensusStatus::Rejected,
+        block_hash: "rejected-block".to_string(),
+        action_root,
+        committed_actions: vec![rejected_a, rejected_b],
+        approved_stake: 0,
+        rejected_stake: 100,
+        required_stake: 67,
+        total_stake: 100,
+    };
+
+    let err = engine
+        .apply_decision(&decision)
+        .expect_err("requeue overflow must return an explicit error");
+    let reason = err.to_string();
+    assert!(
+        reason.contains("requeue rejected consensus actions failed"),
+        "error should describe requeue failure context: {reason}"
+    );
+    assert!(
+        reason.contains("engine buffer saturated"),
+        "error should preserve the saturation reason: {reason}"
+    );
+    assert_eq!(
+        engine.pending_consensus_actions.len(),
+        1,
+        "existing queued actions should remain intact when requeue fails"
+    );
+    assert_eq!(
+        engine.next_height, 1,
+        "engine height should not advance when rejected actions cannot be requeued"
+    );
+}
+
+#[test]
 fn submit_consensus_action_payload_rejects_zero_action_id() {
     let runtime = NodeRuntime::new(
         NodeConfig::new("node-action-id", "world-action-id", NodeRole::Observer).expect("config"),

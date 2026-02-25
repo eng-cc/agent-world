@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 use std::fs::{self, OpenOptions};
-use std::io::{BufRead, BufReader, Write};
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
@@ -346,18 +346,14 @@ impl FileMembershipRevocationAlertDeadLetterStore {
         node_id: &str,
     ) -> Result<Vec<MembershipRevocationAlertDeadLetterRecord>, WorldError> {
         let path = self.dead_letter_path(world_id, node_id)?;
-        if !path.exists() {
-            return Ok(Vec::new());
-        }
-
-        let file = OpenOptions::new().read(true).open(path)?;
-        let reader = BufReader::new(file);
+        let archive_path = self.dead_letter_archive_path(world_id, node_id)?;
+        let lines = tiered_file_log::collect_jsonl_lines_with_cas_refs(
+            path.as_path(),
+            archive_path.as_path(),
+            &self.cas_store,
+        )?;
         let mut records = Vec::new();
-        for line in reader.lines() {
-            let line = line?;
-            if line.trim().is_empty() {
-                continue;
-            }
+        for line in lines {
             records.push(serde_json::from_str(&line)?);
         }
         Ok(records)
@@ -369,23 +365,19 @@ impl FileMembershipRevocationAlertDeadLetterStore {
         node_id: &str,
     ) -> Result<Vec<(i64, MembershipRevocationAlertDeliveryMetrics)>, WorldError> {
         let path = self.delivery_metrics_path(world_id, node_id)?;
-        if !path.exists() {
-            return Ok(Vec::new());
-        }
-
-        let file = OpenOptions::new().read(true).open(path)?;
-        let reader = BufReader::new(file);
-        let mut lines = Vec::new();
-        for line in reader.lines() {
-            let line = line?;
-            if line.trim().is_empty() {
-                continue;
-            }
+        let archive_path = self.delivery_metrics_archive_path(world_id, node_id)?;
+        let raw_lines = tiered_file_log::collect_jsonl_lines_with_cas_refs(
+            path.as_path(),
+            archive_path.as_path(),
+            &self.cas_store,
+        )?;
+        let mut metrics = Vec::new();
+        for line in raw_lines {
             let parsed: FileMembershipRevocationAlertDeliveryMetricsLine =
                 serde_json::from_str(&line)?;
-            lines.push((parsed.exported_at_ms, parsed.metrics));
+            metrics.push((parsed.exported_at_ms, parsed.metrics));
         }
-        Ok(lines)
+        Ok(metrics)
     }
 }
 
@@ -426,9 +418,13 @@ impl MembershipRevocationAlertDeadLetterStore for FileMembershipRevocationAlertD
         records: &[MembershipRevocationAlertDeadLetterRecord],
     ) -> Result<(), WorldError> {
         let path = self.dead_letter_path(world_id, node_id)?;
+        let archive_path = self.dead_letter_archive_path(world_id, node_id)?;
         if records.is_empty() {
             if path.exists() {
-                fs::remove_file(path)?;
+                fs::remove_file(&path)?;
+            }
+            if archive_path.exists() {
+                fs::remove_file(archive_path)?;
             }
             return Ok(());
         }
@@ -443,8 +439,10 @@ impl MembershipRevocationAlertDeadLetterStore for FileMembershipRevocationAlertD
         for record in records {
             payload.push(serde_json::to_string(record)?);
         }
+        if archive_path.exists() {
+            fs::remove_file(&archive_path)?;
+        }
         fs::write(path.as_path(), payload.join("\n") + "\n")?;
-        let archive_path = self.dead_letter_archive_path(world_id, node_id)?;
         self.compact_jsonl_with_archive(
             path.as_path(),
             archive_path.as_path(),
