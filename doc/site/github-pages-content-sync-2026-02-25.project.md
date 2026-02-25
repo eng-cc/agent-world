@@ -18,15 +18,15 @@
 - [x] 补齐默认 LLM/`--no-llm`、`--release-config`、Web step 控制、通用 target 语法
 
 ### 3. 验证与收口
-- [ ] 执行 `env -u RUSTC_WRAPPER cargo check`
-- [ ] 更新本项目管理文档状态
-- [ ] 写任务日志（`doc/devlog/2026-02-25.md`）
+- [x] 执行 `env -u RUSTC_WRAPPER cargo check`
+- [x] 更新本项目管理文档状态
+- [x] 写任务日志（`doc/devlog/2026-02-25.md`）
 
 ## 依赖
 - 继续沿用 `site/` 静态目录与 GitHub Pages 工作流。
 - 内容基线以 `doc/viewer-manual.md` 和已合入代码行为为准。
 
 ## 状态
-- 当前阶段：进行中（已完成任务 0/1/2）
-- 最近更新：完成中英文首页、文档目录与手册正文的状态口径同步（2026-02-25）
-- 下一步：执行任务 3（验证与收口）。
+- 当前阶段：已完成（任务 0/1/2/3 全部完成）
+- 最近更新：执行统一校验 `env -u RUSTC_WRAPPER cargo check` 并完成文档收口（2026-02-25）
+- 下一步：无（本轮同步完成）。
