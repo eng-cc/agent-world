@@ -8,10 +8,10 @@
   - [x] `runtime_perf` 增加 `llm_api` 序列与记录接口
   - [x] `runner` 在 `tick/tick_decide_only` 拆分 `decision_local` 与 `llm_api`
   - [x] 保持 `health/bottleneck` 仅基于本地代码执行阶段
-- [ ] `RPOF-L3`：测试与高负载验证
-  - [ ] 单测：`runtime_perf` 新增边界断言
-  - [ ] 单测：`runner` decision/llm_api 拆分断言
-  - [ ] 回归：高 action + 真实 LLM 场景探针
+- [x] `RPOF-L3`：测试与高负载验证
+  - [x] 单测：`runtime_perf` 新增边界断言
+  - [x] 单测：`runner` decision/llm_api 拆分断言
+  - [x] 回归：高 action + 真实 LLM 场景探针
 - [ ] `RPOF-L4`：文档收口
   - [ ] 更新本项目状态
   - [ ] 更新 `doc/devlog/2026-02-25.md`
@@ -26,7 +26,7 @@
   - `crates/agent_world/src/simulator/tests/runner.rs`
 
 ## 状态
-- 当前阶段：`RPOF-L1`、`RPOF-L2` 完成，`RPOF-L3` 进行中
+- 当前阶段：`RPOF-L1`、`RPOF-L2`、`RPOF-L3` 完成，`RPOF-L4` 进行中
 - 阻塞：无
 - 风险跟踪：
   - trace 缺失 `llm_diagnostics.latency_ms` 时会造成 `llm_api` 低估
