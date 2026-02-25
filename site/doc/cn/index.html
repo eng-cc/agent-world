@@ -3,9 +3,9 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="agent-world 文档中心：中文使用手册与调试流程。" />
+    <meta name="description" content="agent-world 文档中心：游戏设计、玩法工程与 Viewer 手册统一入口。" />
     <meta property="og:title" content="agent-world 文档中心（中文）" />
-    <meta property="og:description" content="集中访问 Viewer 手册、调试流程与入门指引。" />
+    <meta property="og:description" content="集中访问游戏+引擎主文档与 Viewer 手册，按分层流程持续维护。" />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="../../assets/images/og-cover.png" />
     <meta property="og:locale" content="zh_CN" />
@@ -24,7 +24,7 @@
         <span>agent-world docs</span>
       </a>
       <nav class="nav" data-menu data-section-nav>
-        <a href="#catalog">手册目录</a>
+        <a href="#catalog">文档目录</a>
         <a href="#workflow">维护流程</a>
       </nav>
       <button class="menu-button" type="button" aria-label="切换菜单" data-menu-toggle>
@@ -51,24 +51,64 @@
 
     <main id="top" class="docs-main">
       <section class="section docs-hero" data-reveal>
-        <p class="eyebrow">Manual Hub</p>
-        <h1>agent-world 使用手册中心</h1>
-        <p class="subtitle">从这里进入中文手册与调试流程页面，作为 GitHub Pages 静态内容直接访问。</p>
+        <p class="eyebrow">Game + Engine Docs Hub</p>
+        <h1>agent-world 文档中心</h1>
+        <p class="subtitle">统一入口访问游戏设计、玩法工程、Viewer 手册与测试流程。定位重写已完成，文档进入分层维护。</p>
         <div class="cta-row">
-          <a class="button primary" href="#catalog">查看手册目录</a>
+          <a class="button primary" href="#catalog">查看文档目录</a>
           <a class="button secondary" href="../../index.html">返回首页</a>
         </div>
       </section>
 
       <section id="catalog" class="section" data-reveal>
-        <h2>手册目录</h2>
+        <h2>文档目录</h2>
+        <p class="section-intro">目录已从“模拟器单页”升级为“游戏 + 引擎 + 观测”三层结构。</p>
         <div class="docs-grid">
+          <article class="doc-card">
+            <p class="doc-kicker">Gameplay</p>
+            <h3>游戏可玩性设计总纲</h3>
+            <p>定义玩家动机、三层循环、战争与政治的可玩性约束，是体验设计主文档。</p>
+            <p class="doc-meta">状态：主文档（持续迭代）</p>
+            <a
+              class="button secondary"
+              href="https://github.com/eng-cc/agent-world/blob/main/doc/game/gameplay-top-level-design.md"
+              target="_blank"
+              rel="noreferrer"
+              >查看文档</a
+            >
+          </article>
+          <article class="doc-card">
+            <p class="doc-kicker">Engine</p>
+            <h3>游戏性模块化架构设计</h3>
+            <p>定义 Gameplay WASM 分层、Kernel API、生命周期与安全边界，是玩法工程主文档。</p>
+            <p class="doc-meta">状态：主文档（持续迭代）</p>
+            <a
+              class="button secondary"
+              href="https://github.com/eng-cc/agent-world/blob/main/doc/game/gameplay-engineering-architecture.md"
+              target="_blank"
+              rel="noreferrer"
+              >查看文档</a
+            >
+          </article>
           <article class="doc-card">
             <p class="doc-kicker">Viewer</p>
             <h3>Viewer 使用手册</h3>
             <p>覆盖默认 LLM/`--no-llm`、release-config、Web step 闭环与常见排查。</p>
-            <p class="doc-meta">状态：已同步（2026-02-25）</p>
+            <p class="doc-meta">状态：静态镜像已同步（2026-02-25）</p>
             <a class="button secondary" href="viewer-manual.html">进入手册</a>
+          </article>
+          <article class="doc-card">
+            <p class="doc-kicker">Testing</p>
+            <h3>闭环测试与套件矩阵</h3>
+            <p>定义 test tier、系统性测试流程、Web 闭环约定与回归矩阵基线。</p>
+            <p class="doc-meta">状态：权威流程文档（仓库主线维护）</p>
+            <a
+              class="button secondary"
+              href="https://github.com/eng-cc/agent-world/blob/main/testing-manual.md"
+              target="_blank"
+              rel="noreferrer"
+              >查看文档</a
+            >
           </article>
         </div>
       </section>
@@ -76,10 +116,11 @@
       <section id="workflow" class="section" data-reveal>
         <h2>维护流程</h2>
         <ol class="steps">
-          <li>手册内容基线维护在 `doc/viewer-manual.md`。</li>
-          <li>发布版本同步到 `site/doc/cn|en` 静态页。</li>
-          <li>提交后由 Pages 工作流自动发布。</li>
+          <li>游戏/引擎主文档基线维护在 `doc/game/*` 与 `README.md`。</li>
+          <li>Viewer 与闭环测试基线维护在 `doc/viewer-manual.md` 与 `testing-manual.md`。</li>
+          <li>发布时同步摘要到 `site/doc/cn|en` 静态页，并由 Pages 工作流自动发布。</li>
         </ol>
+        <p class="doc-entry-note">当前口径：定位重写已完成，手册按游戏、引擎、观测三层持续维护。</p>
       </section>
     </main>
 

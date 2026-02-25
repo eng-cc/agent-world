@@ -3,9 +3,9 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="agent-world docs hub: manuals and debugging workflows." />
+    <meta name="description" content="agent-world docs hub: game design, gameplay engineering, and viewer operations in one entry." />
     <meta property="og:title" content="agent-world Docs Hub (EN)" />
-    <meta property="og:description" content="Access Viewer manuals and debugging playbooks in one static location." />
+    <meta property="og:description" content="Access game+engine core docs and viewer manuals through a layered maintenance structure." />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="../../assets/images/og-cover.png" />
     <meta property="og:locale" content="en_US" />
@@ -24,7 +24,7 @@
         <span>agent-world docs</span>
       </a>
       <nav class="nav" data-menu data-section-nav>
-        <a href="#catalog">Manuals</a>
+        <a href="#catalog">Catalog</a>
         <a href="#workflow">Workflow</a>
       </nav>
       <button class="menu-button" type="button" aria-label="Toggle menu" data-menu-toggle>
@@ -51,24 +51,64 @@
 
     <main id="top" class="docs-main">
       <section class="section docs-hero" data-reveal>
-        <p class="eyebrow">Manual Hub</p>
+        <p class="eyebrow">Game + Engine Docs Hub</p>
         <h1>agent-world Documentation Hub</h1>
-        <p class="subtitle">A static entry point for manuals and debugging guides published with GitHub Pages.</p>
+        <p class="subtitle">One entry point for game design, gameplay engineering, viewer operations, and testing workflows. Repositioning is complete; layered maintenance is now active.</p>
         <div class="cta-row">
-          <a class="button primary" href="#catalog">Open Manuals</a>
+          <a class="button primary" href="#catalog">Open Catalog</a>
           <a class="button secondary" href="../../en/index.html">Back to Home</a>
         </div>
       </section>
 
       <section id="catalog" class="section" data-reveal>
-        <h2>Manual Catalog</h2>
+        <h2>Document Catalog</h2>
+        <p class="section-intro">The hub is upgraded from simulator-only guidance to game + engine + observability layers.</p>
         <div class="docs-grid">
+          <article class="doc-card">
+            <p class="doc-kicker">Gameplay</p>
+            <h3>Gameplay Top-level Design</h3>
+            <p>Defines player motivations, three-layer loops, and design constraints for war/governance gameplay.</p>
+            <p class="doc-meta">Status: primary design doc (continuously maintained)</p>
+            <a
+              class="button secondary"
+              href="https://github.com/eng-cc/agent-world/blob/main/doc/game/gameplay-top-level-design.md"
+              target="_blank"
+              rel="noreferrer"
+              >Open Doc</a
+            >
+          </article>
+          <article class="doc-card">
+            <p class="doc-kicker">Engine</p>
+            <h3>Gameplay Engineering Architecture</h3>
+            <p>Defines WASM gameplay layering, kernel API, module lifecycle, and safety boundaries.</p>
+            <p class="doc-meta">Status: primary engineering doc (continuously maintained)</p>
+            <a
+              class="button secondary"
+              href="https://github.com/eng-cc/agent-world/blob/main/doc/game/gameplay-engineering-architecture.md"
+              target="_blank"
+              rel="noreferrer"
+              >Open Doc</a
+            >
+          </article>
           <article class="doc-card">
             <p class="doc-kicker">Viewer</p>
             <h3>Viewer User Manual</h3>
             <p>Covers default LLM/`--no-llm`, release-config, Web step loop, and troubleshooting.</p>
-            <p class="doc-meta">Status: synced (2026-02-25).</p>
+            <p class="doc-meta">Status: static mirror synced (2026-02-25)</p>
             <a class="button secondary" href="viewer-manual.html">Open Manual</a>
+          </article>
+          <article class="doc-card">
+            <p class="doc-kicker">Testing</p>
+            <h3>Closed-loop Testing Manual</h3>
+            <p>Defines test tiers, system-level procedures, Web loop conventions, and suite matrix baselines.</p>
+            <p class="doc-meta">Status: authoritative process doc (maintained in main repo)</p>
+            <a
+              class="button secondary"
+              href="https://github.com/eng-cc/agent-world/blob/main/testing-manual.md"
+              target="_blank"
+              rel="noreferrer"
+              >Open Doc</a
+            >
           </article>
         </div>
       </section>
@@ -76,10 +116,11 @@
       <section id="workflow" class="section" data-reveal>
         <h2>Maintenance Workflow</h2>
         <ol class="steps">
-          <li>Use `doc/viewer-manual.md` as the content baseline.</li>
-          <li>Sync release content into `site/doc/cn|en` pages.</li>
-          <li>Publish automatically through the Pages workflow.</li>
+          <li>Maintain game/engine primary docs in `doc/game/*` and `README.md`.</li>
+          <li>Maintain viewer/testing baselines in `doc/viewer-manual.md` and `testing-manual.md`.</li>
+          <li>Sync release-ready summaries into `site/doc/cn|en` static pages and publish via Pages workflow.</li>
         </ol>
+        <p class="doc-entry-note">Current posture: repositioning complete, manuals maintained in gameplay, engine, and observability layers.</p>
       </section>
     </main>
 
