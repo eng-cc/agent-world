@@ -36,7 +36,7 @@
   - UI/相机/事件联动等单测散布在 `src/*.rs` 与 `src/tests_*.rs`
   - 快照基线：`crates/agent_world_viewer/tests/snapshots/*.png`
   - Web 启动入口：`scripts/run-viewer-web.sh`
-  - Web 闭环采样：Playwright CLI（`AGENTS.md` 标准流程）
+  - Web 闭环采样：Playwright CLI（详见 `doc/testing/web-ui-playwright-closure-manual.md`）
 
 ### 分布式与共识子系统
 - Node：`crates/agent_world_node`
@@ -186,92 +186,14 @@ env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-u
   - 该套件已并入 `S1/S2` 的默认 gate。
 
 ### S6：Web UI 闭环 smoke 套件（L4）
-1) 启动 live server（含 bridge）：
-```bash
-env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011 --tick-ms 300 --topology single --viewer-no-consensus-gate
-```
-2) 启动 web viewer：
-```bash
-env -u NO_COLOR ./scripts/run-viewer-web.sh --address 127.0.0.1 --port 4173
-```
-3) Playwright 采样：
-```bash
-source "$HOME/.nvm/nvm.sh"
-nvm use 24
-export CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
-export PWCLI="$CODEX_HOME/skills/playwright/scripts/playwright_cli.sh"
-mkdir -p output/playwright/viewer
-bash "$PWCLI" open "http://127.0.0.1:4173/?ws=ws://127.0.0.1:5011&test_api=1" --headed
-bash "$PWCLI" snapshot
-bash "$PWCLI" eval '() => typeof window.__AW_TEST__ === "object"'
-bash "$PWCLI" eval '() => window.__AW_TEST__.runSteps("mode=3d;focus=first_location;zoom=0.85;select=first_agent;wait=0.3")'
-bash "$PWCLI" eval '() => window.__AW_TEST__.sendControl("pause")'
-bash "$PWCLI" eval '() => window.__AW_TEST__.getState()'
-bash "$PWCLI" eval '() => { const s = window.__AW_TEST__.getState(); return !!s && typeof s.tick === "number" && typeof s.connectionStatus === "string"; }'
-bash "$PWCLI" console
-bash "$PWCLI" screenshot --filename output/playwright/viewer/viewer-web.png
-bash "$PWCLI" close
-```
-4) 最小通过标准：
-- `snapshot` 可见 `canvas`
-- `window.__AW_TEST__` 可用，且 `getState()` 返回 `tick/connectionStatus`
-- `console error = 0`
-- 至少 1 张截图在 `output/playwright/viewer/`
-
-5) 一键发行验收（推荐，覆盖视觉基线 + 语义门禁）：
+- S6 详细执行步骤、Playwright 命令、发布门禁与补充约定已拆分到：
+  - `doc/testing/web-ui-playwright-closure-manual.md`
+- 本手册仅保留分层与触发矩阵，执行时按上述文档操作。
+- 快速入口：
 ```bash
 ./scripts/viewer-release-qa-loop.sh
-```
-- 产物：
-  - `output/playwright/viewer/release-qa-summary-*.md`
-  - `output/playwright/viewer/release-qa-*.png`
-  - `output/playwright/viewer/release-qa-*.log`
-- 门禁要点：
-  - 视觉基线（`viewer-visual-baseline.sh`）通过；
-  - `window.__AW_TEST__` 语义动作链通过；
-  - 多缩放贴图观感门禁通过（near/mid/far 三档截图 + 相机半径语义断言 + 截图像素差异指标）；
-  - console dump 扫描 Bevy `%cERROR%c`/`[ERROR]`（避免仅依赖浏览器原生 error 计数漏报）。
-
-6) 一键全覆盖发行验收（可用性 + 视觉 + 玩法环节）：
-```bash
-./scripts/viewer-release-full-coverage.sh
-```
-- 覆盖范围：
-  - Web 可用性门禁（`viewer-release-qa-loop.sh`）；
-  - 主题包校验 + 主题变体截图 + 纹理通道矩阵截图；
-  - 关键玩法链路门禁：
-    - 工业：`harvest_radiation/mine_compound/refine_compound/build_factory/schedule_recipe`
-    - 治理危机：`open_governance_proposal/cast_governance_vote/resolve_crisis/grant_meta_progress`
-    - 经济：`open/accept/settle_economic_contract`
-- 产物：
-  - `output/playwright/viewer/release_full/<timestamp>/release-full-summary-*.md`
-  - 子目录：`web_qa/`、`theme_preview/`、`texture_inspector/`、`gameplay_industrial/`、`gameplay_governance/`
-  - 视觉抓帧状态：`theme_preview/*/capture_status.txt`、`texture_inspector/*/*/capture_status.txt`
-- 视觉门禁新增硬条件：
-  - 主题/纹理截图不仅要求 `viewer.png` 存在；
-  - 还要求 `capture_status.txt` 满足 `connection_status=connected` 且 `snapshot_ready=1`；
-  - 任一截图断连或无快照时，full coverage 直接 FAIL（避免“有图但不可用”的假通过）。
-- 快速冒烟：
-```bash
 ./scripts/viewer-release-full-coverage.sh --quick
 ```
-
-#### S6 补充约定（迁移自 `AGENTS.md`）
-- 默认链路：
-  - Web 闭环为默认，不以 native 抓图链路替代。
-- Fallback（仅 native 链路问题）：
-  - 当问题只在 native 图形链路出现，或 Web 端无法复现时，再使用：
-    - `./scripts/capture-viewer-frame.sh`
-  - 该链路定位为历史兼容/应急，不作为默认闭环流程。
-- 推荐约定：
-  - Web 闭环产物统一放在 `output/playwright/`。
-  - Playwright 优先通过 `window.__AW_TEST__`（`runSteps/setMode/focus/select/sendControl/getState`）做语义化操作，避免坐标点击脆弱性。
-  - 发布验收优先使用 `./scripts/viewer-release-qa-loop.sh` 固化流程；Web UI 渲染性能口径必须使用 GPU 硬件加速（禁止 `SwiftShader/software rendering`），Playwright 需 `open ... --headed`；LLM 场景需等待首个 tick 推进（建议 `play` 后额外观察约 12s）后再判失败。
-  - 每次调试结束清理 `run-viewer-web.sh` 后台进程，避免端口冲突。
-  - 若页面首帧空白，优先排查：
-    - `trunk` 是否完成首轮编译。
-    - 访问地址是否与脚本端口一致。
-    - 浏览器控制台是否有 wasm 初始化错误。
 
 ### S7：场景矩阵回归套件（L1 + L4）
 ```bash
