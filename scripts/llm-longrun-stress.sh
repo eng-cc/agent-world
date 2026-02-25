@@ -433,6 +433,10 @@ execute_until_continue_count=0
 action_kinds_total=0
 action_kind_pairs=""
 action_kind_counts_inline="none"
+runtime_perf_health="unknown"
+runtime_perf_bottleneck="none"
+runtime_perf_tick_p95_ms="0"
+runtime_perf_tick_over_budget_ratio_ppm=0
 
 load_metrics_from_report() {
   local report_path=$1
@@ -460,6 +464,10 @@ load_metrics_from_report() {
     module_call_count=$(jq -r '.trace_counts.step_type_counts.module_call // 0' "$report_path")
     plan_count=$(jq -r '.trace_counts.step_type_counts.plan // 0' "$report_path")
     execute_until_continue_count=$(jq -r '.trace_counts.step_type_counts.execute_until_continue // 0' "$report_path")
+    runtime_perf_health=$(jq -r '.runtime_perf.health // "unknown"' "$report_path")
+    runtime_perf_bottleneck=$(jq -r '.runtime_perf.bottleneck // "none"' "$report_path")
+    runtime_perf_tick_p95_ms=$(jq -r '.runtime_perf.tick.p95_ms // 0' "$report_path")
+    runtime_perf_tick_over_budget_ratio_ppm=$(jq -r '.runtime_perf.tick.over_budget_ratio_ppm // 0' "$report_path")
   elif command -v python3 >/dev/null 2>&1; then
     report_metrics=$(python3 - "$report_path" <<'__PYJSON__'
 import json
@@ -501,6 +509,10 @@ keys = [
     "trace_counts.step_type_counts.module_call",
     "trace_counts.step_type_counts.plan",
     "trace_counts.step_type_counts.execute_until_continue",
+    "runtime_perf.health",
+    "runtime_perf.bottleneck",
+    "runtime_perf.tick.p95_ms",
+    "runtime_perf.tick.over_budget_ratio_ppm",
 ]
 for key in keys:
     print(get(key, 0))
@@ -527,6 +539,10 @@ __PYJSON__
     module_call_count=$(printf '%s\n' "$report_metrics" | sed -n '19p')
     plan_count=$(printf '%s\n' "$report_metrics" | sed -n '20p')
     execute_until_continue_count=$(printf '%s\n' "$report_metrics" | sed -n '21p')
+    runtime_perf_health=$(printf '%s\n' "$report_metrics" | sed -n '22p')
+    runtime_perf_bottleneck=$(printf '%s\n' "$report_metrics" | sed -n '23p')
+    runtime_perf_tick_p95_ms=$(printf '%s\n' "$report_metrics" | sed -n '24p')
+    runtime_perf_tick_over_budget_ratio_ppm=$(printf '%s\n' "$report_metrics" | sed -n '25p')
     active_ticks=${active_ticks:-0}
     total_decisions=${total_decisions:-0}
     total_actions=${total_actions:-0}
@@ -548,6 +564,10 @@ __PYJSON__
     module_call_count=${module_call_count:-0}
     plan_count=${plan_count:-0}
     execute_until_continue_count=${execute_until_continue_count:-0}
+    runtime_perf_health=${runtime_perf_health:-unknown}
+    runtime_perf_bottleneck=${runtime_perf_bottleneck:-none}
+    runtime_perf_tick_p95_ms=${runtime_perf_tick_p95_ms:-0}
+    runtime_perf_tick_over_budget_ratio_ppm=${runtime_perf_tick_over_budget_ratio_ppm:-0}
   else
     active_ticks=$(extract_metric_from_log "active_ticks" "$log_path" || echo 0)
     total_decisions=$(extract_metric_from_log "total_decisions" "$log_path" || echo 0)
@@ -570,6 +590,10 @@ __PYJSON__
     module_call_count=0
     plan_count=0
     execute_until_continue_count=0
+    runtime_perf_health=$(extract_metric_from_log "runtime_perf_health" "$log_path" || echo "unknown")
+    runtime_perf_bottleneck=$(extract_metric_from_log "runtime_perf_bottleneck" "$log_path" || echo "none")
+    runtime_perf_tick_p95_ms=$(extract_metric_from_log "runtime_perf_tick_p95_ms" "$log_path" || echo 0)
+    runtime_perf_tick_over_budget_ratio_ppm=$(extract_metric_from_log "runtime_perf_tick_over_budget_ratio_ppm" "$log_path" || echo 0)
   fi
 }
 
@@ -699,6 +723,10 @@ write_summary_file() {
     echo "required_action_kinds=$required_action_kinds_config"
     echo "action_kinds_total=$action_kinds_total"
     echo "action_kind_counts=$action_kind_counts_inline"
+    echo "runtime_perf_health=$runtime_perf_health"
+    echo "runtime_perf_bottleneck=$runtime_perf_bottleneck"
+    echo "runtime_perf_tick_p95_ms=$runtime_perf_tick_p95_ms"
+    echo "runtime_perf_tick_over_budget_ratio_ppm=$runtime_perf_tick_over_budget_ratio_ppm"
     echo "llm_io_logged=$print_llm_io"
     echo "llm_io_max_chars=${llm_io_max_chars:-none}"
     echo "llm_execute_until_auto_reenter_ticks=${llm_execute_until_auto_reenter_ticks:-none}"
@@ -1196,6 +1224,7 @@ if [[ $multi_mode -eq 1 ]]; then
     printf '%s\t' llm_input_chars_total llm_input_chars_avg llm_input_chars_max
     printf '%s\t' prompt_section_clipped decision_wait decision_wait_ticks decision_act
     printf '%s\t' module_call plan execute_until_continue action_kinds_total
+    printf '%s\t' runtime_perf_health runtime_perf_bottleneck runtime_perf_tick_p95_ms runtime_perf_tick_over_budget_ratio_ppm
     printf '%s\t' llm_io_logged
     printf '%s\n' action_kind_counts
   } >"$metrics_tsv"
@@ -1263,6 +1292,8 @@ agg_plan=0
 agg_execute_until_continue=0
 agg_action_kinds_total=0
 agg_action_kinds_peak=0
+agg_runtime_perf_tick_p95_ms_peak="0"
+agg_runtime_perf_tick_over_budget_ratio_ppm_peak=0
 
 for scenario in "${scenarios[@]}"; do
   if [[ $multi_mode -eq 1 ]]; then
@@ -1419,6 +1450,12 @@ for scenario in "${scenarios[@]}"; do
   if (( action_kinds_total > agg_action_kinds_peak )); then
     agg_action_kinds_peak=$action_kinds_total
   fi
+  if awk -v current="$runtime_perf_tick_p95_ms" -v peak="$agg_runtime_perf_tick_p95_ms_peak" 'BEGIN { exit (current > peak) ? 0 : 1 }'; then
+    agg_runtime_perf_tick_p95_ms_peak="$runtime_perf_tick_p95_ms"
+  fi
+  if (( runtime_perf_tick_over_budget_ratio_ppm > agg_runtime_perf_tick_over_budget_ratio_ppm_peak )); then
+    agg_runtime_perf_tick_over_budget_ratio_ppm_peak=$runtime_perf_tick_over_budget_ratio_ppm
+  fi
 
   if [[ $multi_mode -eq 1 ]]; then
     {
@@ -1430,6 +1467,7 @@ for scenario in "${scenarios[@]}"; do
       printf '%s\t' "$llm_input_chars_total" "$llm_input_chars_avg" "$llm_input_chars_max"
       printf '%s\t' "$clipped_sections" "$decision_wait" "$decision_wait_ticks" "$decision_act"
       printf '%s\t' "$module_call_count" "$plan_count" "$execute_until_continue_count" "$action_kinds_total"
+      printf '%s\t' "$runtime_perf_health" "$runtime_perf_bottleneck" "$runtime_perf_tick_p95_ms" "$runtime_perf_tick_over_budget_ratio_ppm"
       printf '%s\t' "$print_llm_io"
       printf '%s\n' "$action_kind_counts_inline"
     } >>"$metrics_tsv"
@@ -1472,6 +1510,8 @@ if [[ $multi_mode -eq 1 ]]; then
     echo "execute_until_continue_total=$agg_execute_until_continue"
     echo "action_kinds_total=$agg_action_kinds_total"
     echo "action_kinds_peak=$agg_action_kinds_peak"
+    echo "runtime_perf_tick_p95_ms_peak=$agg_runtime_perf_tick_p95_ms_peak"
+    echo "runtime_perf_tick_over_budget_ratio_ppm_peak=$agg_runtime_perf_tick_over_budget_ratio_ppm_peak"
     echo "release_gate=$release_gate"
     echo "min_action_kinds=$min_action_kinds"
     echo "required_action_kinds=$required_action_kinds_config"
@@ -1491,6 +1531,7 @@ if [[ $multi_mode -eq 1 ]]; then
 import csv
 import json
 import sys
+from collections import Counter
 
 (
     metrics_tsv,
@@ -1529,7 +1570,11 @@ int_fields = [
     "plan",
     "execute_until_continue",
     "action_kinds_total",
+    "runtime_perf_tick_over_budget_ratio_ppm",
     "llm_io_logged",
+]
+float_fields = [
+    "runtime_perf_tick_p95_ms",
 ]
 
 rows = []
@@ -1539,6 +1584,8 @@ with open(metrics_tsv, "r", encoding="utf-8") as fh:
         normalized = dict(row)
         for key in int_fields:
             normalized[key] = int(row.get(key, 0) or 0)
+        for key in float_fields:
+            normalized[key] = float(row.get(key, 0) or 0)
         rows.append(normalized)
 
 def sum_of(key):
@@ -1547,8 +1594,12 @@ def sum_of(key):
 def peak_of(key):
     return max((item[key] for item in rows), default=0)
 
+def peak_float_of(key):
+    return max((item[key] for item in rows), default=0.0)
+
 scenario_names = [item["scenario"] for item in rows]
 avg_mean = int(sum_of("llm_input_chars_avg") / max(len(rows), 1))
+health_counts = Counter(item.get("runtime_perf_health", "unknown") for item in rows)
 
 report = {
     "mode": "multi_scenario",
@@ -1591,6 +1642,11 @@ report = {
         "repair_rounds_max": peak_of("repair_rounds_max"),
         "llm_input_chars_max": peak_of("llm_input_chars_max"),
         "action_kinds_total": peak_of("action_kinds_total"),
+    },
+    "runtime_perf": {
+        "tick_p95_ms_peak": peak_float_of("runtime_perf_tick_p95_ms"),
+        "tick_over_budget_ratio_ppm_peak": peak_of("runtime_perf_tick_over_budget_ratio_ppm"),
+        "health_counts": dict(health_counts),
     },
     "means": {
         "llm_input_chars_avg": avg_mean,
