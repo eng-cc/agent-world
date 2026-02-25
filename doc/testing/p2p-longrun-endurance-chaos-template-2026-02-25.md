@@ -52,6 +52,6 @@
 
 ## 当前状态（2026-02-25）
 - M0：已完成。
-- M1：未开始。
+- M1：已完成（新增模板：`doc/testing/chaos-plans/p2p-soak-endurance-full-chaos-v1.json`，共 `190` 个事件）。
 - M2：未开始。
 - M3：未开始。
