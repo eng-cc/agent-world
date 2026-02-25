@@ -64,6 +64,17 @@ parse_perf_metrics() {
       line_p95 = ""
       line_over = ""
       line_auto = ""
+      line_hotspot = ""
+      line_runtime_health = ""
+      line_runtime_bottleneck = ""
+      line_runtime_tick = ""
+      line_runtime_decision = ""
+      line_runtime_action = ""
+      line_runtime_callback = ""
+      line_runtime_llm_api = ""
+      line_label_capacity = ""
+      line_overlay_capacity = ""
+      line_event_backlog = ""
       for (i = 1; i <= NF; i++) {
         if ($i ~ /^avg=/) {
           split($i, parts, "=")
@@ -77,6 +88,39 @@ parse_perf_metrics() {
         } else if ($i ~ /^auto_degrade=/) {
           split($i, parts, "=")
           line_auto = parts[2]
+        } else if ($i ~ /^hotspot=/) {
+          split($i, parts, "=")
+          line_hotspot = parts[2]
+        } else if ($i ~ /^runtime_health=/) {
+          split($i, parts, "=")
+          line_runtime_health = parts[2]
+        } else if ($i ~ /^runtime_bottleneck=/) {
+          split($i, parts, "=")
+          line_runtime_bottleneck = parts[2]
+        } else if ($i ~ /^runtime_tick_p95=/) {
+          split($i, parts, "=")
+          line_runtime_tick = parts[2] + 0
+        } else if ($i ~ /^runtime_decision_p95=/) {
+          split($i, parts, "=")
+          line_runtime_decision = parts[2] + 0
+        } else if ($i ~ /^runtime_action_p95=/) {
+          split($i, parts, "=")
+          line_runtime_action = parts[2] + 0
+        } else if ($i ~ /^runtime_callback_p95=/) {
+          split($i, parts, "=")
+          line_runtime_callback = parts[2] + 0
+        } else if ($i ~ /^runtime_llm_api_p95=/) {
+          split($i, parts, "=")
+          line_runtime_llm_api = parts[2] + 0
+        } else if ($i ~ /^label_capacity_hit=/) {
+          split($i, parts, "=")
+          line_label_capacity = parts[2]
+        } else if ($i ~ /^overlay_capacity_hit=/) {
+          split($i, parts, "=")
+          line_overlay_capacity = parts[2]
+        } else if ($i ~ /^event_backlog_hit=/) {
+          split($i, parts, "=")
+          line_event_backlog = parts[2]
         }
       }
       if (line_avg != "") {
@@ -91,14 +135,76 @@ parse_perf_metrics() {
       if (line_auto == "true") {
         auto_seen = 1
       }
+      if (line_hotspot != "") {
+        hotspot_last = line_hotspot
+        if (line_hotspot != "none") {
+          hotspot_hits[line_hotspot] += 1
+        }
+      }
+      if (line_runtime_health != "") {
+        runtime_health_last = line_runtime_health
+      }
+      if (line_runtime_bottleneck != "") {
+        runtime_bottleneck_last = line_runtime_bottleneck
+      }
+      if (line_runtime_tick != "" && line_runtime_tick > runtime_tick_peak) {
+        runtime_tick_peak = line_runtime_tick
+      }
+      if (line_runtime_decision != "" && line_runtime_decision > runtime_decision_peak) {
+        runtime_decision_peak = line_runtime_decision
+      }
+      if (line_runtime_action != "" && line_runtime_action > runtime_action_peak) {
+        runtime_action_peak = line_runtime_action
+      }
+      if (line_runtime_callback != "" && line_runtime_callback > runtime_callback_peak) {
+        runtime_callback_peak = line_runtime_callback
+      }
+      if (line_runtime_llm_api != "" && line_runtime_llm_api > runtime_llm_api_peak) {
+        runtime_llm_api_peak = line_runtime_llm_api
+      }
+      if (line_label_capacity == "true") {
+        label_capacity_seen = 1
+      }
+      if (line_overlay_capacity == "true") {
+        overlay_capacity_seen = 1
+      }
+      if (line_event_backlog == "true") {
+        event_backlog_seen = 1
+      }
       samples++
     }
     END {
-      if (samples == 0) {
-        printf "0\t0\t0\t0\tfalse\n"
-      } else {
-        printf "%.2f\t%.2f\t%.2f\t%d\t%s\n", avg_last, p95_peak, over_peak, samples, (auto_seen ? "true" : "false")
+      hotspot_primary = "none"
+      hotspot_primary_hits = 0
+      for (name in hotspot_hits) {
+        if (hotspot_hits[name] > hotspot_primary_hits) {
+          hotspot_primary = name
+          hotspot_primary_hits = hotspot_hits[name]
+        }
       }
+      if (runtime_health_last == "") {
+        runtime_health_last = "unknown"
+      }
+      if (runtime_bottleneck_last == "") {
+        runtime_bottleneck_last = "none"
+      }
+      printf "%.2f\t%.2f\t%.2f\t%d\t%s\t%s\t%s\t%s\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%s\t%s\t%s\n",
+        avg_last + 0,
+        p95_peak + 0,
+        over_peak + 0,
+        samples + 0,
+        (auto_seen ? "true" : "false"),
+        hotspot_primary,
+        runtime_health_last,
+        runtime_bottleneck_last,
+        runtime_tick_peak + 0,
+        runtime_decision_peak + 0,
+        runtime_action_peak + 0,
+        runtime_callback_peak + 0,
+        runtime_llm_api_peak + 0,
+        (label_capacity_seen ? "true" : "false"),
+        (overlay_capacity_seen ? "true" : "false"),
+        (event_backlog_seen ? "true" : "false")
     }
   ' "$log_file"
 }
@@ -285,7 +391,7 @@ summary_csv="$run_dir/metrics.csv"
 summary_md="$run_dir/summary.md"
 summary_json="$run_dir/summary.json"
 
-echo "scenario,mode,profile,duration_secs,tick_ms,final_events,event_rate,status,fps_target,fps_min,frame_ms_budget,frame_ms_avg_last,frame_ms_p95_peak,fps_avg_last,fps_p95_peak,over_budget_pct_peak,max_over_budget_pct,auto_degrade_seen,perf_samples,metric_gate,baseline_gate,scenario_gate,gate_notes,server_log,viewer_log" > "$summary_csv"
+echo "scenario,mode,profile,duration_secs,tick_ms,final_events,event_rate,status,fps_target,fps_min,frame_ms_budget,frame_ms_avg_last,frame_ms_p95_peak,fps_avg_last,fps_p95_peak,over_budget_pct_peak,max_over_budget_pct,auto_degrade_seen,perf_samples,metric_gate,baseline_gate,scenario_gate,gate_notes,server_log,viewer_log,hotspot_primary,runtime_health_last,runtime_bottleneck_last,runtime_tick_p95_peak,runtime_decision_p95_peak,runtime_action_p95_peak,runtime_callback_p95_peak,runtime_llm_api_p95_peak,runtime_peak_stage,runtime_peak_p95_ms,label_capacity_seen,overlay_capacity_seen,event_backlog_seen" > "$summary_csv"
 
 server_pid=""
 viewer_pid=""
@@ -355,7 +461,7 @@ for scenario_raw in "${scenarios[@]}"; do
   status=$(awk -F': ' '/viewer status:/ {value=$2} END {if (value=="") value="unknown"; print value}' "$viewer_log")
   event_rate=$(awk -v events="$final_events" -v secs="$duration_secs" 'BEGIN { printf "%.2f", (secs > 0 ? events / secs : 0) }')
 
-  IFS=$'\t' read -r frame_ms_avg_last frame_ms_p95_peak over_budget_pct_peak perf_samples auto_degrade_seen < <(parse_perf_metrics "$viewer_log")
+  IFS=$'\t' read -r frame_ms_avg_last frame_ms_p95_peak over_budget_pct_peak perf_samples auto_degrade_seen hotspot_primary runtime_health_last runtime_bottleneck_last runtime_tick_p95_peak runtime_decision_p95_peak runtime_action_p95_peak runtime_callback_p95_peak runtime_llm_api_p95_peak label_capacity_seen overlay_capacity_seen event_backlog_seen < <(parse_perf_metrics "$viewer_log")
 
   fps_avg_last=$(awk -v ms="$frame_ms_avg_last" 'BEGIN { if (ms > 0) printf "%.2f", 1000.0 / ms; else printf "0.00" }')
   fps_p95_peak=$(awk -v ms="$frame_ms_p95_peak" 'BEGIN { if (ms > 0) printf "%.2f", 1000.0 / ms; else printf "0.00" }')
@@ -391,6 +497,41 @@ for scenario_raw in "${scenarios[@]}"; do
   if [[ "$auto_degrade_seen" == "true" ]]; then
     notes+=("auto_degrade_triggered")
   fi
+  if [[ "$hotspot_primary" != "none" ]]; then
+    notes+=("hotspot:$hotspot_primary")
+  fi
+  if [[ "$runtime_health_last" != "unknown" || "$runtime_bottleneck_last" != "none" ]]; then
+    notes+=("runtime:${runtime_health_last}/${runtime_bottleneck_last}")
+  fi
+  if [[ "$label_capacity_seen" == "true" ]]; then
+    notes+=("label_capacity_hit")
+  fi
+  if [[ "$overlay_capacity_seen" == "true" ]]; then
+    notes+=("overlay_capacity_hit")
+  fi
+  if [[ "$event_backlog_seen" == "true" ]]; then
+    notes+=("event_backlog_hit")
+  fi
+
+  runtime_peak_stage="none"
+  runtime_peak_p95_ms="0.00"
+  for stage in tick decision action callback llm_api; do
+    case "$stage" in
+      tick) candidate="$runtime_tick_p95_peak" ;;
+      decision) candidate="$runtime_decision_p95_peak" ;;
+      action) candidate="$runtime_action_p95_peak" ;;
+      callback) candidate="$runtime_callback_p95_peak" ;;
+      llm_api) candidate="$runtime_llm_api_p95_peak" ;;
+      *) candidate="0.00" ;;
+    esac
+    if float_gt "$candidate" "$runtime_peak_p95_ms"; then
+      runtime_peak_stage="$stage"
+      runtime_peak_p95_ms="$candidate"
+    fi
+  done
+  if [[ "$runtime_peak_stage" != "none" ]]; then
+    notes+=("runtime_peak:${runtime_peak_stage}=${runtime_peak_p95_ms}ms")
+  fi
 
   if [[ "$baseline_enabled" -eq 1 ]]; then
     baseline_event="${baseline_event_rate[$scenario]:-}"
@@ -420,7 +561,7 @@ for scenario_raw in "${scenarios[@]}"; do
 
   gate_notes=$(join_notes "${notes[@]}")
 
-  echo "$scenario,$mode,$profile,$duration_secs,$tick_ms,$final_events,$event_rate,$status,$fps_target,$fps_min,$perf_budget_ms,$frame_ms_avg_last,$frame_ms_p95_peak,$fps_avg_last,$fps_p95_peak,$over_budget_pct_peak,$max_over_budget_pct,$auto_degrade_seen,$perf_samples,$metric_gate,$baseline_gate,$scenario_gate,$gate_notes,$server_log,$viewer_log" >> "$summary_csv"
+  echo "$scenario,$mode,$profile,$duration_secs,$tick_ms,$final_events,$event_rate,$status,$fps_target,$fps_min,$perf_budget_ms,$frame_ms_avg_last,$frame_ms_p95_peak,$fps_avg_last,$fps_p95_peak,$over_budget_pct_peak,$max_over_budget_pct,$auto_degrade_seen,$perf_samples,$metric_gate,$baseline_gate,$scenario_gate,$gate_notes,$server_log,$viewer_log,$hotspot_primary,$runtime_health_last,$runtime_bottleneck_last,$runtime_tick_p95_peak,$runtime_decision_p95_peak,$runtime_action_p95_peak,$runtime_callback_p95_peak,$runtime_llm_api_p95_peak,$runtime_peak_stage,$runtime_peak_p95_ms,$label_capacity_seen,$overlay_capacity_seen,$event_backlog_seen" >> "$summary_csv"
   index=$((index + 1))
 done
 
@@ -487,10 +628,15 @@ PY
   echo "- 参考模板：\`doc/world-simulator/viewer-open-world-sandbox-readiness.stress-report.template.md\`"
   echo "- overall_status：\`$overall_status\`"
   echo
-  echo "| Scenario | Mode | Events/s | FPS(avg/p95) | Frame(avg/p95 ms) | OverBudget% | Status | Metric Gate | Baseline Gate | Scenario Gate |"
-  echo "|---|---|---:|---:|---:|---:|---|---|---|---|"
-  tail -n +2 "$summary_csv" | while IFS=',' read -r scenario mode _profile _dur _tick _events event_rate status _fps_target _fps_min _budget frame_avg frame_p95 fps_avg fps_p95 over_pct _max_over _auto _samples metric_gate baseline_gate scenario_gate _notes _server _viewer; do
-    echo "| $scenario | $mode | $event_rate | $fps_avg/$fps_p95 | $frame_avg/$frame_p95 | $over_pct | $status | $metric_gate | $baseline_gate | $scenario_gate |"
+  echo "| Scenario | Mode | Events/s | FPS(avg/p95) | Frame(avg/p95 ms) | OverBudget% | Hotspot | Runtime Peak p95 | Status | Metric Gate | Baseline Gate | Scenario Gate | Notes |"
+  echo "|---|---|---:|---:|---:|---:|---|---:|---|---|---|---|---|"
+  tail -n +2 "$summary_csv" | while IFS=',' read -r scenario mode _profile _dur _tick _events event_rate status _fps_target _fps_min _budget frame_avg frame_p95 fps_avg fps_p95 over_pct _max_over _auto _samples metric_gate baseline_gate scenario_gate gate_notes _server _viewer hotspot runtime_health runtime_bottleneck _rt_tick _rt_decision _rt_action _rt_callback _rt_llm runtime_peak_stage runtime_peak_p95_ms _label_seen _overlay_seen _event_seen; do
+    runtime_peak_cell="$runtime_peak_stage:$runtime_peak_p95_ms"
+    hotspot_cell="$hotspot"
+    if [[ "$runtime_health" != "unknown" || "$runtime_bottleneck" != "none" ]]; then
+      hotspot_cell="${hotspot} (${runtime_health}/${runtime_bottleneck})"
+    fi
+    echo "| $scenario | $mode | $event_rate | $fps_avg/$fps_p95 | $frame_avg/$frame_p95 | $over_pct | $hotspot_cell | $runtime_peak_cell | $status | $metric_gate | $baseline_gate | $scenario_gate | $gate_notes |"
   done
 } > "$summary_md"
 
