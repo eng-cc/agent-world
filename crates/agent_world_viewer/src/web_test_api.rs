@@ -397,12 +397,17 @@ pub(super) fn publish_web_test_api_state(
             ConnectionStatus::Connected => "connected",
             ConnectionStatus::Error(_) => "error",
         };
-        snapshot.tick = state
+        let snapshot_tick = state
             .snapshot
             .as_ref()
             .map(|snapshot| snapshot.time)
-            .or_else(|| state.metrics.as_ref().map(|metrics| metrics.total_ticks))
             .unwrap_or(0);
+        let metrics_tick = state
+            .metrics
+            .as_ref()
+            .map(|metrics| metrics.total_ticks)
+            .unwrap_or(0);
+        snapshot.tick = snapshot_tick.max(metrics_tick);
         snapshot.event_count = state.events.len();
         snapshot.trace_count = state.decision_traces.len();
         snapshot.selected_kind = selection
