@@ -12,9 +12,9 @@
   - [x] 单测：`runtime_perf` 新增边界断言
   - [x] 单测：`runner` decision/llm_api 拆分断言
   - [x] 回归：高 action + 真实 LLM 场景探针
-- [ ] `RPOF-L4`：文档收口
-  - [ ] 更新本项目状态
-  - [ ] 更新 `doc/devlog/2026-02-25.md`
+- [x] `RPOF-L4`：文档收口
+  - [x] 更新本项目状态
+  - [x] 更新 `doc/devlog/2026-02-25.md`
 
 ## 依赖
 - 设计文档：`doc/testing/runtime-performance-observability-llm-api-decoupling-2026-02-25.md`
@@ -26,9 +26,9 @@
   - `crates/agent_world/src/simulator/tests/runner.rs`
 
 ## 状态
-- 当前阶段：`RPOF-L1`、`RPOF-L2`、`RPOF-L3` 完成，`RPOF-L4` 进行中
+- 当前阶段：已完成（`RPOF-L1`~`RPOF-L4` 全部收口）
 - 阻塞：无
 - 风险跟踪：
   - trace 缺失 `llm_diagnostics.latency_ms` 时会造成 `llm_api` 低估
   - 下游脚本需兼容新增字段
-- 最近更新：2026-02-25
+- 最近更新：2026-02-25（`RPOF-L4`）
