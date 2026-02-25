@@ -40,11 +40,12 @@ impl proto_net::DistributedNetwork<WorldError> for InMemoryNetwork {
             let mut published = self.published.lock().expect("lock published");
             published.push(message.clone());
         }
-        let mut inbox = self.inbox.lock().expect("lock inbox");
-        inbox
-            .entry(topic.to_string())
-            .or_default()
-            .push(message.payload);
+        proto_net::push_bounded_inbox_message(
+            &self.inbox,
+            topic,
+            message.payload,
+            proto_net::DEFAULT_SUBSCRIPTION_INBOX_MAX_MESSAGES,
+        );
         Ok(())
     }
 
@@ -76,5 +77,34 @@ impl proto_net::DistributedNetwork<WorldError> for InMemoryNetwork {
         let mut handlers = self.handlers.lock().expect("lock handlers");
         handlers.insert(protocol.to_string(), Arc::from(handler));
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use agent_world_proto::distributed_net::DistributedNetwork as _;
+
+    #[test]
+    fn publish_evicts_oldest_messages_when_subscription_inbox_overflows() {
+        let network = InMemoryNetwork::new();
+        let subscription = network.subscribe("topic-a").expect("subscribe");
+        let max = proto_net::DEFAULT_SUBSCRIPTION_INBOX_MAX_MESSAGES;
+
+        for index in 0..(max + 2) {
+            let payload = format!("m{index}");
+            network
+                .publish("topic-a", payload.as_bytes())
+                .expect("publish");
+        }
+
+        let drained = subscription.drain();
+        assert_eq!(drained.len(), max);
+        assert_eq!(drained.first().map(Vec::as_slice), Some(b"m2".as_slice()));
+        let expected_last = format!("m{}", max + 1).into_bytes();
+        assert_eq!(
+            drained.last().map(Vec::as_slice),
+            Some(expected_last.as_slice())
+        );
     }
 }
