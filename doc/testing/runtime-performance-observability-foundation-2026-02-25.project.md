@@ -15,12 +15,12 @@
 - [x] `RPOF-5`：长跑脚本汇总扩展
   - [x] `scripts/llm-longrun-stress.sh` 读取 runtime perf 字段
   - [x] 单场景 summary 与多场景聚合输出补充
-- [ ] `RPOF-6`：测试与回归
-  - [ ] 单测：simulator runtime perf 与 runner 采样路径
-  - [ ] 脚本/命令回归与 `cargo check`
-- [ ] `RPOF-7`：文档收口
-  - [ ] 回写项目状态
-  - [ ] 更新当日 devlog
+- [x] `RPOF-6`：测试与回归
+  - [x] 单测：simulator runtime perf 与 runner 采样路径
+  - [x] 脚本/命令回归与 `cargo check`
+- [x] `RPOF-7`：文档收口
+  - [x] 回写项目状态
+  - [x] 更新当日 devlog
 
 ## 依赖
 - 设计文档：`doc/testing/runtime-performance-observability-foundation-2026-02-25.md`
@@ -32,9 +32,9 @@
   - `scripts/llm-longrun-stress.sh`
 
 ## 状态
-- 当前阶段：`RPOF-6` 进行中（执行测试回归与命令验证）
+- 当前阶段：已完成（RPOF-1~RPOF-7 全部收口）
 - 阻塞：无
 - 风险跟踪：
   - `tick_decide_only` 的 action 执行在 runner 外部，需保证补录路径完整。
   - 新字段接入 `RunnerMetrics` 后需回归 viewer/server 结构字面量初始化。
-- 最近更新：2026-02-25
+- 最近更新：2026-02-25（RPOF-7）
