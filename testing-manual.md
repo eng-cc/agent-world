@@ -266,7 +266,7 @@ bash "$PWCLI" close
 - 推荐约定：
   - Web 闭环产物统一放在 `output/playwright/`。
   - Playwright 优先通过 `window.__AW_TEST__`（`runSteps/setMode/focus/select/sendControl/getState`）做语义化操作，避免坐标点击脆弱性。
-  - 发布验收优先使用 `./scripts/viewer-release-qa-loop.sh` 固化流程，人工命令作为排障补充。
+  - 发布验收优先使用 `./scripts/viewer-release-qa-loop.sh` 固化流程，LLM 场景需等待首个 tick 推进（建议 `play` 后额外观察约 12s）后再判失败，人工命令作为排障补充。
   - 每次调试结束清理 `run-viewer-web.sh` 后台进程，避免端口冲突。
   - 若页面首帧空白，优先排查：
     - `trunk` 是否完成首轮编译。
