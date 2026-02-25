@@ -48,6 +48,11 @@
 - M2：`viewer-owr4-stress.sh` 完成指标采集、门禁判定、基线对比输出。
 - M3：完成脚本语法/帮助/短窗冒烟验证并收口文档状态。
 
+## 当前状态（2026-02-25）
+- M1：已完成（建档完成）。
+- M2：已完成（脚本已支持 profile 门禁、`perf_probe` 采集、`metrics.csv + summary.md + summary.json`、可选 baseline 对比与 `--enforce-gate`）。
+- M3：已完成（`bash -n`、`--help`、短窗 smoke、baseline smoke 均已执行）。
+
 ## 风险
 - 风险 1：运行环境波动导致短窗数据抖动，误判回退。
   - 缓解：门禁与基线对比采用可配置阈值；建议在固定机器上做发布口径对比。

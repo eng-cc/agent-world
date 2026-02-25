@@ -132,6 +132,8 @@ use main_ui_runtime::*;
 use material_library::{build_fragment_element_material_handles, FragmentElementMaterialHandles};
 use panel_layout::{spawn_top_panel_toggle, RightPanelLayoutState, TopPanelContainer};
 use panel_scroll::{RightPanelScroll, TopPanelScroll};
+#[cfg(not(target_arch = "wasm32"))]
+use render_perf_summary::sample_headless_perf_summary;
 use render_perf_summary::{sample_render_perf_summary, RenderPerfHistory, RenderPerfSummary};
 use right_panel_module_visibility::{
     persist_right_panel_module_visibility, resolve_right_panel_module_visibility_resources,

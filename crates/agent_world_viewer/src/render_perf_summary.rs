@@ -32,15 +32,7 @@ pub(super) fn sample_render_perf_summary(
     mut history: ResMut<RenderPerfHistory>,
     mut summary: ResMut<RenderPerfSummary>,
 ) {
-    if let Some(time) = time.as_deref() {
-        let frame_ms = (time.delta_secs_f64() as f32) * 1000.0;
-        if frame_ms.is_finite() && frame_ms > 0.0 {
-            history.frame_ms_samples.push_back(frame_ms);
-            while history.frame_ms_samples.len() > PERF_SAMPLE_WINDOW {
-                history.frame_ms_samples.pop_front();
-            }
-        }
-    }
+    sample_frame_time_window(time.as_deref(), &mut history);
 
     let frame_samples: Vec<f32> = history.frame_ms_samples.iter().copied().collect();
     summary.frame_ms_avg = mean_ms(&frame_samples);
@@ -64,6 +56,40 @@ pub(super) fn sample_render_perf_summary(
         >= config.render_budget.overlay_max_heat_markers
         || scene.flow_overlay_entities.len() >= config.render_budget.overlay_max_flow_segments;
     summary.auto_degrade_active = label_degraded || label_capacity_hit || overlay_capacity_hit;
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub(super) fn sample_headless_perf_summary(
+    time: Option<Res<Time>>,
+    state: Res<ViewerState>,
+    mut history: ResMut<RenderPerfHistory>,
+    mut summary: ResMut<RenderPerfSummary>,
+) {
+    sample_frame_time_window(time.as_deref(), &mut history);
+    let frame_samples: Vec<f32> = history.frame_ms_samples.iter().copied().collect();
+    summary.frame_ms_avg = mean_ms(&frame_samples);
+    summary.frame_ms_p95 = percentile_ms(&frame_samples, 0.95);
+    summary.world_entities = state
+        .snapshot
+        .as_ref()
+        .map(snapshot_world_entity_count)
+        .unwrap_or(0);
+    summary.visible_labels = 0;
+    summary.overlay_entities = 0;
+    summary.event_window_size = state.events.len();
+    summary.auto_degrade_active = false;
+}
+
+fn sample_frame_time_window(time: Option<&Time>, history: &mut RenderPerfHistory) {
+    if let Some(time) = time {
+        let frame_ms = (time.delta_secs_f64() as f32) * 1000.0;
+        if frame_ms.is_finite() && frame_ms > 0.0 {
+            history.frame_ms_samples.push_back(frame_ms);
+            while history.frame_ms_samples.len() > PERF_SAMPLE_WINDOW {
+                history.frame_ms_samples.pop_front();
+            }
+        }
+    }
 }
 
 fn mean_ms(samples: &[f32]) -> f32 {
@@ -100,6 +126,18 @@ fn scene_world_entity_count(scene: &Viewer3dScene) -> usize {
         + scene.background_entities.len()
         + scene.heat_overlay_entities.len()
         + scene.flow_overlay_entities.len()
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn snapshot_world_entity_count(snapshot: &agent_world::simulator::WorldSnapshot) -> usize {
+    let model = &snapshot.model;
+    model.locations.len()
+        + model.agents.len()
+        + model.assets.len()
+        + model.module_visual_entities.len()
+        + model.power_plants.len()
+        + model.power_storages.len()
+        + model.chunks.len()
 }
 
 #[cfg(test)]

@@ -298,6 +298,7 @@ fn default_module_visibility_state(mode: ViewerExperienceMode) -> RightPanelModu
 #[cfg(not(target_arch = "wasm32"))]
 pub(super) fn run_headless(addr: String, offline: bool) {
     let event_window = event_window_policy_from_env(DEFAULT_MAX_EVENTS);
+    let perf_probe_config = perf_probe::perf_probe_config_from_env();
     App::new()
         .insert_resource(ViewerConfig {
             addr,
@@ -306,6 +307,10 @@ pub(super) fn run_headless(addr: String, offline: bool) {
         })
         .insert_resource(HeadlessStatus::default())
         .insert_resource(OfflineConfig { offline })
+        .insert_resource(perf_probe_config)
+        .insert_resource(perf_probe::PerfProbeState::default())
+        .insert_resource(RenderPerfSummary::default())
+        .insert_resource(RenderPerfHistory::default())
         .add_plugins(MinimalPlugins)
         .add_systems(Startup, setup_startup_state)
         .add_systems(
@@ -314,6 +319,8 @@ pub(super) fn run_headless(addr: String, offline: bool) {
                 poll_viewer_messages,
                 attempt_viewer_reconnect,
                 headless_auto_play_once,
+                sample_headless_perf_summary,
+                perf_probe::update_perf_probe.after(sample_headless_perf_summary),
                 headless_report,
             )
                 .chain(),
