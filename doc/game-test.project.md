@@ -5,6 +5,7 @@
 - [x] T2 启动 Web 闭环测试链路并完成一轮真实游玩
 - [x] T3 生成并填写测试卡片到 `doc/playability_test_result/`
 - [x] T4 执行“带录屏”复测并补齐故障证据（视频 + 控制台）
+- [x] T5 作为开发者排查“不可玩”根因并补充复现证据
 
 ## 依赖
 - `doc/game-test.md`
@@ -12,13 +13,19 @@
 - `.codex/skills/playwright/SKILL.md`
 - `scripts/run-viewer-web.sh`
 - `world_viewer_live` (`cargo run -p agent_world --bin world_viewer_live`)
+- `doc/world-simulator/viewer-webgl-deferred-compat-2026-02-24.md`
 
 ## 测试记录
 - card_2026_02_25_12_20_02.md
 - card_2026_02_25_13_22_15.md
 - 录屏/截图产物：`output/playwright/playability/20260225-132109/`
+- 开发排查复现：
+  - `output/playwright/viewer/webgl-deferred-disable-verify2-20260225-143042/`
+  - `output/playwright/viewer/webgl-panic-locate-20260225-143645/`
 
 ## 状态
-- 当前阶段：已完成二次测试（第二次含录屏）
-- 风险：Web 端启动存在 `copy_deferred_lighting_id_pipeline` 渲染 panic，实测无法进入可玩状态
+- 当前阶段：已完成玩家复测 + 开发者排查
+- 风险：
+  - 基线问题：Web 端偶发 `copy_deferred_lighting_id_pipeline`（`wgpu` Validation Error）导致崩溃。
+  - 架构约束：`CopyDeferredLightingIdPlugin` 与 `Core3d` render graph 存在硬耦合，单独禁用会触发新的启动 panic（`Option::expect` -> `RuntimeError: unreachable`）。
 - 最近更新：2026-02-25
