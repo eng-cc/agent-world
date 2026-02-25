@@ -14,6 +14,14 @@
 
 ---
 
+# 一点五、Web 渲染性能测试前置（必须）
+
+1. Web UI 渲染性能测试必须在 GPU 硬件加速环境执行，`SwiftShader/software rendering` 数据不可作为性能结论。
+2. Playwright 采样必须使用 `open ... --headed`（默认 headless 可能回退到 CPU 软件渲染）。
+3. 启动后先检查控制台 `AdapterInfo`，确认不含 `SwiftShader`，再开始采样与打分。
+
+---
+
 # 二、核心渲染指标
 
 ## 1️⃣ 帧时间结构（Frame Time Breakdown）
@@ -167,10 +175,11 @@ FrameJitter = stddev(frame_time)
 
 建议：
 
-1. Headless 模式运行
-2. 输出 JSON 性能报告
-3. 比对上一个版本
-4. 性能回退超过 10% 自动报警
+1. Web UI 渲染性能采样使用 GPU 硬件加速环境（非 `SwiftShader/software rendering`）
+2. Playwright 采样使用 `open ... --headed`
+3. 输出 JSON 性能报告
+4. 比对上一个版本
+5. 性能回退超过 10% 自动报警
 
 ---
 

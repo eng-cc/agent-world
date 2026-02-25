@@ -60,3 +60,5 @@
   - 缓解：对 `perf_probe` 解析提供缺失保护并显式标记 `perf_samples=0` 为失败。
 - 风险 3：`llm_bootstrap` 在无 key 时退化为 script，影响横向可比性。
   - 缓解：输出 `mode` 字段并在摘要中保留 `script_fallback` 标识。
+- 风险 4：Playwright 默认 headless 可能回退 `SwiftShader`（CPU 软件渲染），导致 Web UI 渲染性能口径失真。
+  - 缓解：Web 渲染性能测试统一要求 GPU 硬件加速环境，`open ... --headed`，并在采样前校验 `AdapterInfo` 不含 `SwiftShader`。

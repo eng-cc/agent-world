@@ -201,7 +201,7 @@ nvm use 24
 export CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
 export PWCLI="$CODEX_HOME/skills/playwright/scripts/playwright_cli.sh"
 mkdir -p output/playwright/viewer
-bash "$PWCLI" open "http://127.0.0.1:4173/?ws=ws://127.0.0.1:5011&test_api=1"
+bash "$PWCLI" open "http://127.0.0.1:4173/?ws=ws://127.0.0.1:5011&test_api=1" --headed
 bash "$PWCLI" snapshot
 bash "$PWCLI" eval '() => typeof window.__AW_TEST__ === "object"'
 bash "$PWCLI" eval '() => window.__AW_TEST__.runSteps("mode=3d;focus=first_location;zoom=0.85;select=first_agent;wait=0.3")'
@@ -266,7 +266,7 @@ bash "$PWCLI" close
 - 推荐约定：
   - Web 闭环产物统一放在 `output/playwright/`。
   - Playwright 优先通过 `window.__AW_TEST__`（`runSteps/setMode/focus/select/sendControl/getState`）做语义化操作，避免坐标点击脆弱性。
-  - 发布验收优先使用 `./scripts/viewer-release-qa-loop.sh` 固化流程，LLM 场景需等待首个 tick 推进（建议 `play` 后额外观察约 12s）后再判失败，人工命令作为排障补充。
+  - 发布验收优先使用 `./scripts/viewer-release-qa-loop.sh` 固化流程；Web UI 渲染性能口径必须使用 GPU 硬件加速（禁止 `SwiftShader/software rendering`），Playwright 需 `open ... --headed`；LLM 场景需等待首个 tick 推进（建议 `play` 后额外观察约 12s）后再判失败。
   - 每次调试结束清理 `run-viewer-web.sh` 后台进程，避免端口冲突。
   - 若页面首帧空白，优先排查：
     - `trunk` 是否完成首轮编译。
