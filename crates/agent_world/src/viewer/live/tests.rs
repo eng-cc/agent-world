@@ -774,3 +774,28 @@ fn playback_pulse_thread_emits_and_stops_with_loop_flag() {
     playback_control.notify();
     handle.join().expect("pulse thread should exit");
 }
+
+#[test]
+fn playback_pulse_thread_stays_idle_until_enabled() {
+    let (tx, rx) = mpsc::channel();
+    let loop_running = Arc::new(AtomicBool::new(true));
+    let playback_control = PlaybackPulseControl::new();
+    let pulse_flag = Arc::clone(&loop_running);
+    let pulse_control = playback_control.clone();
+    let handle = thread::spawn(move || {
+        emit_playback_pulses(tx, Duration::from_millis(5), pulse_flag, pulse_control)
+    });
+
+    let idle_result = rx.recv_timeout(Duration::from_millis(40));
+    assert!(matches!(idle_result, Err(mpsc::RecvTimeoutError::Timeout)));
+
+    playback_control.set_enabled(true);
+    let signal = rx
+        .recv_timeout(Duration::from_millis(200))
+        .expect("should receive playback pulse after enabling");
+    assert!(matches!(signal, LiveLoopSignal::PlaybackPulse));
+
+    loop_running.store(false, Ordering::SeqCst);
+    playback_control.notify();
+    handle.join().expect("pulse thread should exit");
+}
