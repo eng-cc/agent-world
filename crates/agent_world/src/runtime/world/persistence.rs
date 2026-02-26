@@ -138,6 +138,12 @@ impl World {
                 });
             }
             let bytes = store.read_artifact(wasm_hash)?;
+            let actual_hash = super::super::util::sha256_hex(&bytes);
+            if actual_hash != *wasm_hash {
+                return Err(WorldError::ModuleStoreManifestMismatch {
+                    wasm_hash: wasm_hash.clone(),
+                });
+            }
             self.module_artifacts.insert(wasm_hash.clone());
             self.module_artifact_bytes.insert(wasm_hash.clone(), bytes);
         }

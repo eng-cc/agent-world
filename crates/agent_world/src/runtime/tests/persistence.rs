@@ -115,6 +115,28 @@ fn persist_and_restore_world_defaults_to_module_store_roundtrip() {
 }
 
 #[test]
+fn load_from_dir_rejects_tampered_module_artifact_bytes() {
+    let mut world = World::new();
+    let wasm_hash = install_test_module(&mut world, "m.persistence.tamper", b"persist-tamper");
+    let dir = temp_dir("persist-module-store-tamper");
+
+    world.save_to_dir(&dir).expect("save world");
+    fs::write(
+        dir.join("modules").join(format!("{wasm_hash}.wasm")),
+        b"tampered-bytes",
+    )
+    .expect("tamper module artifact");
+
+    let err = World::load_from_dir(&dir).expect_err("tampered module artifact should be rejected");
+    assert!(matches!(
+        err,
+        WorldError::ModuleStoreManifestMismatch { .. }
+    ));
+
+    let _ = fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn load_from_dir_without_module_store_keeps_legacy_compatibility() {
     let mut world = World::new();
     let wasm_hash = install_test_module(&mut world, "m.persistence.legacy", b"persist-legacy");
