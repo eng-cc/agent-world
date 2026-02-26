@@ -149,6 +149,11 @@ pub struct ViewerLiveServer {
     world: LiveWorld,
 }
 
+#[derive(Debug)]
+enum LiveLoopSignal {
+    Request(ViewerRequest),
+}
+
 impl ViewerLiveServer {
     pub fn new(config: ViewerLiveServerConfig) -> Result<Self, ViewerLiveServerError> {
         let init = WorldInitConfig::from_scenario(config.scenario, &WorldConfig::default());
@@ -194,7 +199,7 @@ impl ViewerLiveServer {
         stream.set_nodelay(true)?;
         let reader_stream = stream.try_clone()?;
         let mut writer = BufWriter::new(stream);
-        let (tx, rx) = mpsc::channel();
+        let (tx, rx) = mpsc::channel::<LiveLoopSignal>();
 
         thread::spawn(move || read_requests(reader_stream, tx));
 
@@ -203,7 +208,8 @@ impl ViewerLiveServer {
 
         loop {
             match rx.recv_timeout(self.config.tick_interval) {
-                Ok(command) => {
+                Ok(signal) => {
+                    let LiveLoopSignal::Request(command) = signal;
                     match session.handle_request(
                         command,
                         &mut writer,

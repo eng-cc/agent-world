@@ -347,7 +347,7 @@ fn metrics_from_kernel(kernel: &WorldKernel) -> RunnerMetrics {
     }
 }
 
-fn read_requests(stream: TcpStream, tx: mpsc::Sender<ViewerRequest>) {
+fn read_requests(stream: TcpStream, tx: mpsc::Sender<LiveLoopSignal>) {
     let mut reader = BufReader::new(stream);
     let mut line = String::new();
     loop {
@@ -361,7 +361,7 @@ fn read_requests(stream: TcpStream, tx: mpsc::Sender<ViewerRequest>) {
                 }
                 match serde_json::from_str::<ViewerRequest>(trimmed) {
                     Ok(request) => {
-                        if tx.send(request).is_err() {
+                        if tx.send(LiveLoopSignal::Request(request)).is_err() {
                             break;
                         }
                     }
