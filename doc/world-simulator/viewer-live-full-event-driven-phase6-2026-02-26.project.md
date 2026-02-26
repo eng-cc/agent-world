@@ -2,7 +2,7 @@
 
 ## 任务拆解
 - [x] T0 建档：设计文档 + 项目管理文档
-- [ ] T1 非共识驱动事件化：`NonConsensusDriveRequested` 接线
+- [x] T1 非共识驱动事件化：`NonConsensusDriveRequested` 接线
 - [ ] T2 状态变更节流：有效推进后再发射 metrics/snapshot
 - [ ] T3 回归测试：非共识驱动语义 + 背压语义
 - [ ] T4 文档与日志收口
@@ -14,5 +14,5 @@
 - `testing-manual.md`
 
 ## 状态
-- 当前阶段：进行 T1
+- 当前阶段：T1 已完成，进行 T2
 - 备注：Phase 6 聚焦非共识链路去定时化与状态变更驱动收敛。

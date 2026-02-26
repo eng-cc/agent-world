@@ -184,6 +184,7 @@ enum CoalescedSignalKind {
     LlmDecisionRequested,
     ConsensusCommitted,
     ConsensusDriveRequested,
+    NonConsensusDriveRequested,
 }
 
 #[derive(Default)]
@@ -192,10 +193,12 @@ struct LiveLoopBackpressure {
     merged_llm_decision_requested: AtomicU64,
     merged_consensus_committed: AtomicU64,
     merged_consensus_drive_requested: AtomicU64,
+    merged_non_consensus_drive_requested: AtomicU64,
     dropped_playback_pulse: AtomicU64,
     dropped_llm_decision_requested: AtomicU64,
     dropped_consensus_committed: AtomicU64,
     dropped_consensus_drive_requested: AtomicU64,
+    dropped_non_consensus_drive_requested: AtomicU64,
 }
 
 #[derive(Debug, Default, Clone, Copy)]
@@ -204,10 +207,12 @@ struct LiveLoopBackpressureSnapshot {
     merged_llm_decision_requested: u64,
     merged_consensus_committed: u64,
     merged_consensus_drive_requested: u64,
+    merged_non_consensus_drive_requested: u64,
     dropped_playback_pulse: u64,
     dropped_llm_decision_requested: u64,
     dropped_consensus_committed: u64,
     dropped_consensus_drive_requested: u64,
+    dropped_non_consensus_drive_requested: u64,
 }
 
 impl LiveLoopBackpressureSnapshot {
@@ -216,10 +221,12 @@ impl LiveLoopBackpressureSnapshot {
             || self.merged_llm_decision_requested > 0
             || self.merged_consensus_committed > 0
             || self.merged_consensus_drive_requested > 0
+            || self.merged_non_consensus_drive_requested > 0
             || self.dropped_playback_pulse > 0
             || self.dropped_llm_decision_requested > 0
             || self.dropped_consensus_committed > 0
             || self.dropped_consensus_drive_requested > 0
+            || self.dropped_non_consensus_drive_requested > 0
     }
 }
 
@@ -239,6 +246,10 @@ impl LiveLoopBackpressure {
             }
             CoalescedSignalKind::ConsensusDriveRequested => {
                 self.merged_consensus_drive_requested
+                    .fetch_add(1, Ordering::SeqCst);
+            }
+            CoalescedSignalKind::NonConsensusDriveRequested => {
+                self.merged_non_consensus_drive_requested
                     .fetch_add(1, Ordering::SeqCst);
             }
         }
@@ -261,6 +272,10 @@ impl LiveLoopBackpressure {
                 self.dropped_consensus_drive_requested
                     .fetch_add(1, Ordering::SeqCst);
             }
+            CoalescedSignalKind::NonConsensusDriveRequested => {
+                self.dropped_non_consensus_drive_requested
+                    .fetch_add(1, Ordering::SeqCst);
+            }
         }
     }
 
@@ -274,6 +289,9 @@ impl LiveLoopBackpressure {
             merged_consensus_drive_requested: self
                 .merged_consensus_drive_requested
                 .load(Ordering::SeqCst),
+            merged_non_consensus_drive_requested: self
+                .merged_non_consensus_drive_requested
+                .load(Ordering::SeqCst),
             dropped_playback_pulse: self.dropped_playback_pulse.load(Ordering::SeqCst),
             dropped_llm_decision_requested: self
                 .dropped_llm_decision_requested
@@ -281,6 +299,9 @@ impl LiveLoopBackpressure {
             dropped_consensus_committed: self.dropped_consensus_committed.load(Ordering::SeqCst),
             dropped_consensus_drive_requested: self
                 .dropped_consensus_drive_requested
+                .load(Ordering::SeqCst),
+            dropped_non_consensus_drive_requested: self
+                .dropped_non_consensus_drive_requested
                 .load(Ordering::SeqCst),
         }
     }

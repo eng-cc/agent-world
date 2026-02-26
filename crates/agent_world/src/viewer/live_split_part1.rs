@@ -156,6 +156,7 @@ enum LiveLoopSignal {
     LlmDecisionRequested,
     ConsensusCommitted,
     ConsensusDriveRequested,
+    NonConsensusDriveRequested,
     StepRequested { count: usize },
     SeekRequested { tick: u64 },
 }
@@ -214,6 +215,7 @@ impl ViewerLiveServer {
         let llm_signal_queued = Arc::new(AtomicBool::new(false));
         let consensus_signal_queued = Arc::new(AtomicBool::new(false));
         let consensus_drive_signal_queued = Arc::new(AtomicBool::new(false));
+        let non_consensus_drive_signal_queued = Arc::new(AtomicBool::new(false));
         let request_loop_running = Arc::clone(&loop_running);
         let pulse_loop_running = Arc::clone(&loop_running);
         let playback_control = PlaybackPulseControl::new();
@@ -264,7 +266,7 @@ impl ViewerLiveServer {
 
         let mut session = ViewerLiveSession::new();
         playback_control
-            .set_enabled(session.should_emit_event() && !self.world.uses_consensus_bridge());
+            .set_enabled(session.should_emit_event() && self.world.should_use_playback_pulse());
         let result = loop {
             match rx.recv() {
                 Ok(LiveLoopSignal::Request(command)) => {
@@ -298,8 +300,9 @@ impl ViewerLiveServer {
                                 }
                             }
                             let now_emitting = session.should_emit_event();
-                            playback_control
-                                .set_enabled(now_emitting && !self.world.uses_consensus_bridge());
+                            playback_control.set_enabled(
+                                now_emitting && self.world.should_use_playback_pulse(),
+                            );
                             if self.world.uses_consensus_bridge()
                                 && now_emitting
                                 && (!was_emitting || outcome.request_llm_decision)
@@ -309,6 +312,17 @@ impl ViewerLiveServer {
                                     LiveLoopSignal::ConsensusDriveRequested,
                                     &consensus_drive_signal_queued,
                                     CoalescedSignalKind::ConsensusDriveRequested,
+                                    backpressure.as_ref(),
+                                );
+                            } else if self.world.uses_non_consensus_event_drive()
+                                && now_emitting
+                                && (!was_emitting || outcome.request_llm_decision)
+                            {
+                                enqueue_coalesced_signal(
+                                    &loop_tx,
+                                    LiveLoopSignal::NonConsensusDriveRequested,
+                                    &non_consensus_drive_signal_queued,
+                                    CoalescedSignalKind::NonConsensusDriveRequested,
                                     backpressure.as_ref(),
                                 );
                             }
@@ -344,6 +358,16 @@ impl ViewerLiveServer {
                             CoalescedSignalKind::ConsensusDriveRequested,
                             backpressure.as_ref(),
                         );
+                    } else if self.world.uses_non_consensus_event_drive()
+                        && session.should_emit_event()
+                    {
+                        enqueue_coalesced_signal(
+                            &loop_tx,
+                            LiveLoopSignal::NonConsensusDriveRequested,
+                            &non_consensus_drive_signal_queued,
+                            CoalescedSignalKind::NonConsensusDriveRequested,
+                            backpressure.as_ref(),
+                        );
                     }
                 }
                 Ok(LiveLoopSignal::ConsensusCommitted) => {
@@ -364,6 +388,28 @@ impl ViewerLiveServer {
                             break Ok(());
                         }
                         break Err(err);
+                    }
+                }
+                Ok(LiveLoopSignal::NonConsensusDriveRequested) => {
+                    non_consensus_drive_signal_queued.store(false, Ordering::SeqCst);
+                    match self.handle_non_consensus_drive_requested(&mut session, &mut writer) {
+                        Ok(should_requeue) => {
+                            if should_requeue {
+                                enqueue_coalesced_signal(
+                                    &loop_tx,
+                                    LiveLoopSignal::NonConsensusDriveRequested,
+                                    &non_consensus_drive_signal_queued,
+                                    CoalescedSignalKind::NonConsensusDriveRequested,
+                                    backpressure.as_ref(),
+                                );
+                            }
+                        }
+                        Err(err) => {
+                            if err.is_disconnect() {
+                                break Ok(());
+                            }
+                            break Err(err);
+                        }
                     }
                 }
                 Ok(LiveLoopSignal::StepRequested { count }) => {
@@ -391,15 +437,17 @@ impl ViewerLiveServer {
         let backpressure_snapshot = backpressure.snapshot();
         if backpressure_snapshot.has_activity() {
             eprintln!(
-                "viewer live backpressure merged={{playback_pulse:{}, llm_decision:{}, consensus_committed:{}, consensus_drive:{}}} dropped={{playback_pulse:{}, llm_decision:{}, consensus_committed:{}, consensus_drive:{}}}",
+                "viewer live backpressure merged={{playback_pulse:{}, llm_decision:{}, consensus_committed:{}, consensus_drive:{}, non_consensus_drive:{}}} dropped={{playback_pulse:{}, llm_decision:{}, consensus_committed:{}, consensus_drive:{}, non_consensus_drive:{}}}",
                 backpressure_snapshot.merged_playback_pulse,
                 backpressure_snapshot.merged_llm_decision_requested,
                 backpressure_snapshot.merged_consensus_committed,
                 backpressure_snapshot.merged_consensus_drive_requested,
+                backpressure_snapshot.merged_non_consensus_drive_requested,
                 backpressure_snapshot.dropped_playback_pulse,
                 backpressure_snapshot.dropped_llm_decision_requested,
                 backpressure_snapshot.dropped_consensus_committed,
                 backpressure_snapshot.dropped_consensus_drive_requested,
+                backpressure_snapshot.dropped_non_consensus_drive_requested,
             );
         }
         result
@@ -413,7 +461,7 @@ impl ViewerLiveServer {
         if !session.should_emit_event() {
             return Ok(());
         }
-        if self.world.uses_consensus_bridge() {
+        if !self.world.should_use_playback_pulse() {
             return Ok(());
         }
         if !self.world.should_step_on_playback_pulse() {
@@ -461,6 +509,22 @@ impl ViewerLiveServer {
         }
         let step = self.world.step()?;
         self.emit_step_outcome(session, writer, step)
+    }
+
+    fn handle_non_consensus_drive_requested(
+        &mut self,
+        session: &mut ViewerLiveSession,
+        writer: &mut BufWriter<TcpStream>,
+    ) -> Result<bool, ViewerLiveServerError> {
+        if !session.should_emit_event() || !self.world.uses_non_consensus_event_drive() {
+            return Ok(false);
+        }
+        if !self.world.should_step_on_playback_pulse() {
+            return Ok(false);
+        }
+        let step = self.world.step()?;
+        self.emit_step_outcome(session, writer, step)?;
+        Ok(self.world.should_step_on_playback_pulse())
     }
 
     fn handle_step_request(
@@ -617,6 +681,14 @@ impl LiveWorld {
 
     fn uses_consensus_bridge(&self) -> bool {
         self.consensus_bridge.is_some()
+    }
+
+    fn should_use_playback_pulse(&self) -> bool {
+        !self.uses_consensus_bridge() && matches!(&self.driver, LiveDriver::Script(_))
+    }
+
+    fn uses_non_consensus_event_drive(&self) -> bool {
+        !self.uses_consensus_bridge() && matches!(&self.driver, LiveDriver::Llm(_))
     }
 
     fn consensus_batches_handle(
