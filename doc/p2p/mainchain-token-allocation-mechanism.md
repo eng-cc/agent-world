@@ -1,149 +1,142 @@
-# Agent World 主链 Token 分配与发行机制（草案）
+# Agent World 主链 Token 分配与发行机制（已实现）
+
+> 更新日期：2026-02-26。`NodePoints` 不是主链 Token 本体；它是桥接分配输入，主链 Token 由主链账本统一记账。
 
 ## 目标
-- 补齐主链级 tokenomics 缺口，明确“创世分配 + 持续发行 + 销毁回收 + 治理约束”的完整闭环。
-- 将现有 `NodePoints/PowerCredit` 结算链路与主链原生 Token 的经济层解耦并可桥接，避免奖励体系重复记账。
-- 提供可审计、可回放、可治理的参数化机制，保证升级不破坏历史快照与共识重放。
+- 建立主链 Token 经济闭环：创世分配、解锁领取、epoch 增发、费用销毁、治理参数更新。
+- 将 `NodePoints/PowerCredit` 与主链 Token 账本解耦，通过可审计桥接事件接入 `node_service_reward` 分配。
+- 保证快照回放一致性与参数治理可追溯性。
 
 ## 范围
-
 ### In Scope
-- 主链原生 Token（暂定 `AWT`）的创世分配规则与分配桶定义。
-- 线性/悬崖（cliff）解锁规则、可领取接口与防重放约束。
-- epoch 级增发规则（通胀区间 + 质押率反馈）与分配比例。
-- 销毁与回收规则（Gas 基础费销毁、罚没销毁、协议金库留存比例）。
-- 参数治理边界（可调范围、提案生效延迟、回放一致性）。
-- 审计报表与核心不变量。
+- 主链 Token 配置、供应、账户、创世桶、epoch 发行记录、金库余额、治理延迟队列。
+- 动作闭环：
+  - `InitializeMainTokenGenesis`
+  - `ClaimMainTokenVesting`
+  - `ApplyMainTokenEpochIssuance`
+  - `SettleMainTokenFee`
+  - `UpdateMainTokenPolicy`
+- NodePoints 结算桥接占位：在 `ApplyNodePointsSettlementSigned` 主路径内完成主链 Token 分配与审计落账。
+- `test_tier_required/test_tier_full` 定向回归入口与脚本化执行。
 
 ### Out of Scope
-- 跨链桥、二级市场 AMM、做市策略、CEX/DEX 上线流程。
-- 法币入口、KYC/合规与法律主体配置。
-- 复杂税收策略（动态税率、分层税阶、地区税制差异）。
-- NodePoints/PowerCredit 到 AWT 的自动兑换市场（本草案仅定义桥接接口占位）。
+- 跨链桥、DEX/CEX 上线、自动做市与兑换市场。
+- 法币入口、KYC/合规主体配置。
+- 复杂税收与链下清结算系统。
 
 ## 接口 / 数据
-
-### 1) 主配置（草案）
+### 1) 主配置与边界
 ```rust
 MainTokenConfig {
-  symbol: String,                  // "AWT"
-  decimals: u8,                    // 9
-  initial_supply: u128,            // 创世总量
-  max_supply: Option<u128>,        // None 表示无硬顶
-  inflation_policy: InflationPolicy,
-  issuance_split: IssuanceSplitPolicy,
-  burn_policy: BurnPolicy,
-}
-
-InflationPolicy {
-  base_rate_bps: u32,              // 默认 400 = 4.00%
-  min_rate_bps: u32,               // 默认 200 = 2.00%
-  max_rate_bps: u32,               // 默认 800 = 8.00%
-  target_stake_ratio_bps: u32,     // 默认 6000 = 60%
-  stake_feedback_gain_bps: u32,    // 默认 1000
-  epochs_per_year: u32,            // 默认 365
-}
-
-IssuanceSplitPolicy {
-  staking_reward_bps: u32,         // 默认 6000
-  node_service_reward_bps: u32,    // 默认 2000
-  ecosystem_pool_bps: u32,         // 默认 1500
-  security_reserve_bps: u32,       // 默认 500
-}
-
-BurnPolicy {
-  gas_base_fee_burn_bps: u32,      // 默认 3000
-  slash_burn_bps: u32,             // 默认 5000
-  module_fee_burn_bps: u32,        // 默认 2000
+  symbol: String,                // 默认 "AWT"
+  decimals: u8,                  // 默认 9
+  initial_supply: u64,
+  max_supply: Option<u64>,
+  inflation_policy: MainTokenInflationPolicy,
+  issuance_split: MainTokenIssuanceSplitPolicy,
+  burn_policy: MainTokenBurnPolicy,
 }
 ```
+- 边界校验入口：`validate_main_token_config_bounds(&MainTokenConfig) -> Result<(), String>`。
+- 关键约束：
+  - `issuance_split` 总和必须 `10000 bps`；
+  - `burn_policy` 各项 `<= 10000 bps`；
+  - `min_rate_bps <= base_rate_bps <= max_rate_bps`；
+  - `epochs_per_year > 0`；
+  - `max_supply >= initial_supply`（若设置）。
 
-### 2) 创世分配桶（草案）
+### 2) 动作与事件
 ```rust
-GenesisAllocationBucket {
-  bucket_id: String,
-  ratio_bps: u32,                  // 分配比例，所有 bucket 之和必须 10000
-  vesting: VestingPolicy,
-  recipient: AllocationRecipient,  // address / treasury / contract
-}
-
-VestingPolicy {
-  cliff_epochs: u64,
-  linear_unlock_epochs: u64,
-  start_epoch: u64,
-}
+Action::InitializeMainTokenGenesis { allocations }
+Action::ClaimMainTokenVesting { bucket_id, beneficiary, nonce }
+Action::ApplyMainTokenEpochIssuance { epoch_index, actual_stake_ratio_bps }
+Action::SettleMainTokenFee { fee_kind, amount }
+Action::UpdateMainTokenPolicy { proposal_id, next }
+Action::ApplyNodePointsSettlementSigned { report, signer_node_id, mint_records }
 ```
 
-建议默认桶：
-- `consensus_bootstrap_pool`: 35%
-- `ecosystem_growth_pool`: 25%
-- `protocol_treasury`: 15%
-- `core_contributor_vesting`: 15%
-- `community_bootstrap`: 10%
-
-### 3) 发行公式（草案）
-- 质押反馈通胀率：
-  - `effective_rate = clamp(base + gain * (target_stake_ratio - actual_stake_ratio), min, max)`
-- 单 epoch 增发：
-  - `epoch_issued = floor(circulating_supply * effective_rate / epochs_per_year)`
-- 增发分配：
-  - `staking = epoch_issued * staking_reward_bps / 10000`
-  - `node_service = epoch_issued * node_service_reward_bps / 10000`
-  - `ecosystem = epoch_issued * ecosystem_pool_bps / 10000`
-  - `security_reserve = remainder`
-
-### 4) 动作与事件（草案）
 ```rust
-Action::InitializeMainTokenGenesis { allocations: Vec<GenesisAllocationBucket> }
-Action::ClaimMainTokenVesting { bucket_id: String, beneficiary: String, nonce: u64 }
-Action::ApplyEpochIssuance { epoch_index: u64, actual_stake_ratio_bps: u32 }
-Action::UpdateMainTokenPolicy { proposal_id: String, next: MainTokenConfig }
-
-DomainEvent::MainTokenGenesisInitialized { total_supply: u128, bucket_count: usize }
-DomainEvent::MainTokenVestingClaimed { bucket_id: String, beneficiary: String, amount: u128 }
-DomainEvent::MainTokenEpochIssued { epoch_index: u64, issued: u128, rate_bps: u32 }
-DomainEvent::MainTokenBurned { reason: String, amount: u128 }
-DomainEvent::MainTokenPolicyUpdated { proposal_id: String, effective_epoch: u64 }
+DomainEvent::MainTokenGenesisInitialized { total_supply, allocations }
+DomainEvent::MainTokenVestingClaimed { bucket_id, beneficiary, amount, nonce }
+DomainEvent::MainTokenEpochIssued { epoch_index, inflation_rate_bps, issued_amount, ... }
+DomainEvent::MainTokenFeeSettled { fee_kind, amount, burn_amount, treasury_amount }
+DomainEvent::MainTokenPolicyUpdateScheduled { proposal_id, effective_epoch, next }
+DomainEvent::NodePointsSettlementApplied {
+  ...,
+  main_token_bridge_total_amount,
+  main_token_bridge_distributions,
+}
 ```
 
-### 5) 核心不变量（草案）
-- `sum(bucket.ratio_bps) == 10000`
-- `sum(genesis_minted) == initial_supply`
-- `claimed_vesting <= releasable_vesting`
-- `effective_rate_bps` 必须在 `[min_rate_bps, max_rate_bps]`
-- `sum(split_bps) == 10000`
-- `total_supply = initial_supply + total_issued - total_burned`
+### 3) 状态与查询
+- `WorldState` 主链 Token 相关字段：
+  - `main_token_config`
+  - `main_token_supply`
+  - `main_token_balances`
+  - `main_token_genesis_buckets`
+  - `main_token_epoch_issuance_records`
+  - `main_token_treasury_balances`
+  - `main_token_claim_nonces`
+  - `main_token_scheduled_policy_updates`
+  - `main_token_node_points_bridge_records`
+- `World` 查询入口（节选）：
+  - `main_token_config()`
+  - `main_token_supply()`
+  - `main_token_account_balance(account_id)`
+  - `main_token_treasury_balance(bucket_id)`
+  - `main_token_epoch_issuance_record(epoch_index)`
+  - `main_token_scheduled_policy_update(effective_epoch)`
+  - `main_token_node_points_bridge_record(epoch_index)`
 
-### 6) 与现有奖励系统关系（草案）
-- 现有 `NodePoints/PowerCredit` 保持独立运行，不直接替代主链原生 Token。
-- 增发分配中的 `node_service_reward_bps` 通过桥接动作消费 `EpochSettlementReport` 聚合值，作为 AWT 侧奖励输入。
-- 未启用桥接时，`node_service_reward_bps` 可暂时进入 `protocol_treasury`，避免旁路增发。
+### 4) 已落地关键语义
+- 创世分配：
+  - 分桶比例和必须为 `10000`；
+  - `initial_supply` 在创世时一次性写入 `total_supply`；
+  - 初始进入 `vested_balance`，需通过 `ClaimMainTokenVesting` 释放到 `liquid_balance`。
+- epoch 增发：
+  - `effective_rate = clamp(base + gain * (target - actual) / 10000, min, max)`；
+  - `issued = floor(circulating_supply * rate / epochs_per_year / 10000)`；
+  - 分配到 `staking/node_service/ecosystem/security`（余数归并到 `security_reserve`）。
+- 费用结算：
+  - 按 `fee_kind` 的 burn bps 计算 `burn_amount`；
+  - 剩余进入对应 treasury bucket；
+  - 同步更新 `total_supply/circulating_supply/total_burned`。
+- 治理更新：
+  - `UpdateMainTokenPolicy` 走参数边界校验；
+  - 固定延迟 `2` 个 epoch 生效（`MAIN_TOKEN_POLICY_UPDATE_DELAY_EPOCHS = 2`）；
+  - 增发与费用结算均按“目标 epoch 的有效配置”计算。
+- NodePoints 桥接占位：
+  - 预算来源：同 epoch `MainTokenEpochIssuanceRecord.node_service_reward_amount`；
+  - 分配：按 `awarded_points` 比例做确定性分配，余数按排序回填；
+  - 执行：扣减 `node_service_reward_pool`，增加节点主链 Token `liquid_balance` 与 `circulating_supply`；
+  - 审计：写入 `main_token_node_points_bridge_records[epoch]`；
+  - 当前账户映射占位策略：`account_id = node_id`。
+
+### 5) 运行手册补充
+- 主链 Token / NodePoints 桥接定向回归：
+```bash
+./scripts/main-token-regression.sh required
+./scripts/main-token-regression.sh full
+```
+- 核心审计检查点：
+  - 增发记录：`main_token_epoch_issuance_record(epoch)`；
+  - 治理延迟：`main_token_scheduled_policy_update(effective_epoch)`；
+  - 桥接记录：`main_token_node_points_bridge_record(epoch)`；
+  - 供应守恒：`main_token_supply().total_supply = initial + issued - burned`。
 
 ## 里程碑
-- **TAM-M0**：设计文档 + 项目管理文档建档。
-- **TAM-M1**：主链 Token 状态模型与快照字段落地。
-- **TAM-M2**：创世分配、解锁领取与审计事件落地。
-- **TAM-M3**：epoch 增发与分配执行路径落地。
-- **TAM-M4**：销毁/罚没/金库记账闭环落地。
-- **TAM-M5**：治理更新边界与生效延迟落地。
-- **TAM-M6**：NodePoints 桥接接口接线与回归。
-- **TAM-M7**：`test_tier_required/full` 测试矩阵与发布文档收口。
-
-## 测试策略
-- `test_tier_required`：
-  - 创世分配比例守恒；
-  - vesting 领取金额与 epoch 线性解锁正确；
-  - 通胀率边界 clamp 正确；
-  - 分配比例守恒与余数归并确定性；
-  - policy 越界更新被拒绝。
-- `test_tier_full`：
-  - 多 epoch 增发与销毁后总量守恒；
-  - 快照恢复后供应量与各桶余额一致；
-  - NodePoints 桥接启停切换下的分配一致性；
-  - 治理参数变更前后回放一致性。
+- **TAM-M0**：设计文档/项目文档建档（完成）。
+- **TAM-M1**：状态模型与快照字段落地（完成）。
+- **TAM-M2**：创世分配 + vesting 领取落地（完成）。
+- **TAM-M3**：epoch 增发与分配落地（完成）。
+- **TAM-M4**：费用销毁与金库记账落地（完成）。
+- **TAM-M5**：治理边界 + 生效延迟 + 审计事件落地（完成）。
+- **TAM-M6**：NodePoints 桥接占位接线与结算路径落地（完成）。
+- **TAM-M7**：`test_tier_required/full` 回归矩阵与脚本落地（完成）。
+- **TAM-M8**：文档回写、发布说明与运行手册补充（完成）。
 
 ## 风险
-- 参数风险：初始分配与通胀区间设置不当会造成早期过度稀释或激励不足。
-- 中心化风险：大比例金库或贡献者配额若缺少治理约束，可能引发控制权集中。
-- 实施风险：主链 Token 与现有 `PowerCredit` 并行阶段易出现“重复激励”误配。
-- 迁移风险：历史快照未包含主链 token 字段时，需要严格兼容默认值与版本迁移。
+- 参数风险：通胀/分配配置不当可能导致激励不足或稀释过快。
+- 治理风险：提案频繁变更会增加运行理解成本，需保持提案审计与发布节奏。
+- 桥接风险：当前 `node_id -> account_id` 为占位映射，后续身份体系升级时需平滑迁移。
+- 并行经济体风险：`NodePoints/PowerCredit` 与主链 Token 并行阶段仍需持续防重复激励。

@@ -170,6 +170,9 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_full simulat
 ./scripts/main-token-regression.sh required
 ./scripts/main-token-regression.sh full
 ```
+- 运行与审计口径补充：
+  - 设计与运行要点：`doc/p2p/mainchain-token-allocation-mechanism.md`
+  - 发布说明：`doc/p2p/mainchain-token-allocation-mechanism.release.md`
 - 用途：
   - 快速定位 `agent_world` 内部模块回归，不必每次跑全套 full。
 
