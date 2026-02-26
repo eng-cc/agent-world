@@ -131,6 +131,40 @@ struct ViewerLiveSession {
     metrics: RunnerMetrics,
 }
 
+#[derive(Clone)]
+struct PlaybackPulseControl {
+    state: Arc<(Mutex<PlaybackPulseState>, Condvar)>,
+}
+
+#[derive(Debug, Default)]
+struct PlaybackPulseState {
+    enabled: bool,
+}
+
+impl PlaybackPulseControl {
+    fn new() -> Self {
+        Self {
+            state: Arc::new((Mutex::new(PlaybackPulseState::default()), Condvar::new())),
+        }
+    }
+
+    fn set_enabled(&self, enabled: bool) {
+        let (state_lock, signal) = &*self.state;
+        let mut state = state_lock
+            .lock()
+            .expect("playback pulse control mutex poisoned");
+        if state.enabled != enabled {
+            state.enabled = enabled;
+            signal.notify_all();
+        }
+    }
+
+    fn notify(&self) {
+        let (_, signal) = &*self.state;
+        signal.notify_all();
+    }
+}
+
 impl ViewerLiveSession {
     fn new() -> Self {
         Self {
@@ -349,6 +383,7 @@ fn read_requests(
     stream: TcpStream,
     tx: mpsc::Sender<LiveLoopSignal>,
     loop_running: Arc<AtomicBool>,
+    playback_control: PlaybackPulseControl,
 ) {
     let mut reader = BufReader::new(stream);
     let mut line = String::new();
@@ -365,6 +400,7 @@ fn read_requests(
                     Ok(request) => {
                         if tx.send(LiveLoopSignal::Request(request)).is_err() {
                             loop_running.store(false, Ordering::SeqCst);
+                            playback_control.notify();
                             break;
                         }
                     }
@@ -373,30 +409,59 @@ fn read_requests(
             }
             Err(_) => {
                 loop_running.store(false, Ordering::SeqCst);
+                playback_control.notify();
                 break;
             }
         }
     }
     loop_running.store(false, Ordering::SeqCst);
+    playback_control.notify();
 }
 
 fn emit_playback_pulses(
     tx: mpsc::Sender<LiveLoopSignal>,
     tick_interval: Duration,
     loop_running: Arc<AtomicBool>,
+    playback_control: PlaybackPulseControl,
 ) {
     let pulse_interval = if tick_interval.is_zero() {
         Duration::from_millis(1)
     } else {
         tick_interval
     };
+
+    let (state_lock, signal) = &*playback_control.state;
+    let mut state = state_lock
+        .lock()
+        .expect("playback pulse control mutex poisoned");
     while loop_running.load(Ordering::SeqCst) {
-        thread::sleep(pulse_interval);
+        while loop_running.load(Ordering::SeqCst) && !state.enabled {
+            state = signal
+                .wait(state)
+                .expect("playback pulse control mutex poisoned");
+        }
         if !loop_running.load(Ordering::SeqCst) {
             break;
         }
-        if tx.send(LiveLoopSignal::PlaybackPulse).is_err() {
+
+        let (next_state, wait_result) = signal
+            .wait_timeout(state, pulse_interval)
+            .expect("playback pulse control mutex poisoned");
+        state = next_state;
+        if !loop_running.load(Ordering::SeqCst) {
             break;
+        }
+        if !state.enabled {
+            continue;
+        }
+        if wait_result.timed_out() {
+            drop(state);
+            if tx.send(LiveLoopSignal::PlaybackPulse).is_err() {
+                break;
+            }
+            state = state_lock
+                .lock()
+                .expect("playback pulse control mutex poisoned");
         }
     }
 }

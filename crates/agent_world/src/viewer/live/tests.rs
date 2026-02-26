@@ -757,9 +757,13 @@ fn live_world_consensus_bridge_applies_only_committed_actions() {
 fn playback_pulse_thread_emits_and_stops_with_loop_flag() {
     let (tx, rx) = mpsc::channel();
     let loop_running = Arc::new(AtomicBool::new(true));
+    let playback_control = PlaybackPulseControl::new();
+    playback_control.set_enabled(true);
     let pulse_flag = Arc::clone(&loop_running);
-    let handle =
-        thread::spawn(move || emit_playback_pulses(tx, Duration::from_millis(1), pulse_flag));
+    let pulse_control = playback_control.clone();
+    let handle = thread::spawn(move || {
+        emit_playback_pulses(tx, Duration::from_millis(1), pulse_flag, pulse_control)
+    });
 
     let signal = rx
         .recv_timeout(Duration::from_millis(200))
@@ -767,5 +771,6 @@ fn playback_pulse_thread_emits_and_stops_with_loop_flag() {
     assert!(matches!(signal, LiveLoopSignal::PlaybackPulse));
 
     loop_running.store(false, Ordering::SeqCst);
+    playback_control.notify();
     handle.join().expect("pulse thread should exit");
 }

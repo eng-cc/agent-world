@@ -3,7 +3,7 @@ use std::io::{self, BufRead, BufReader, BufWriter, Write};
 use std::net::{TcpListener, TcpStream};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
 use std::time::Duration;
 
@@ -204,15 +204,33 @@ impl ViewerLiveServer {
         let loop_running = Arc::new(AtomicBool::new(true));
         let request_loop_running = Arc::clone(&loop_running);
         let pulse_loop_running = Arc::clone(&loop_running);
+        let playback_control = PlaybackPulseControl::new();
+        let request_playback_control = playback_control.clone();
+        let pulse_playback_control = playback_control.clone();
         let request_tx = tx.clone();
         let pulse_tx = tx.clone();
         let pulse_interval = self.config.tick_interval;
 
-        thread::spawn(move || read_requests(reader_stream, request_tx, request_loop_running));
-        thread::spawn(move || emit_playback_pulses(pulse_tx, pulse_interval, pulse_loop_running));
+        thread::spawn(move || {
+            read_requests(
+                reader_stream,
+                request_tx,
+                request_loop_running,
+                request_playback_control,
+            )
+        });
+        thread::spawn(move || {
+            emit_playback_pulses(
+                pulse_tx,
+                pulse_interval,
+                pulse_loop_running,
+                pulse_playback_control,
+            )
+        });
         drop(tx);
 
         let mut session = ViewerLiveSession::new();
+        playback_control.set_enabled(session.should_emit_event());
         let result = loop {
             match rx.recv() {
                 Ok(LiveLoopSignal::Request(command)) => match session.handle_request(
@@ -222,6 +240,7 @@ impl ViewerLiveServer {
                     &self.config.world_id,
                 ) {
                     Ok(continue_running) => {
+                        playback_control.set_enabled(session.should_emit_event());
                         if !continue_running {
                             break Ok(());
                         }
@@ -245,6 +264,7 @@ impl ViewerLiveServer {
             }
         };
         loop_running.store(false, Ordering::SeqCst);
+        playback_control.notify();
         result
     }
 
