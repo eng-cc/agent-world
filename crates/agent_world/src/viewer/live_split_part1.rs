@@ -7,7 +7,7 @@ use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
 use std::time::Duration;
 
-use agent_world_node::NodeRuntime;
+use agent_world_node::{NodeCommittedActionBatchesHandle, NodeRuntime};
 
 use crate::geometry::space_distance_cm;
 use crate::simulator::{
@@ -154,6 +154,8 @@ enum LiveLoopSignal {
     Request(ViewerRequest),
     PlaybackPulse,
     LlmDecisionRequested,
+    ConsensusCommitted,
+    ConsensusDriveRequested,
     StepRequested { count: usize },
     SeekRequested { tick: u64 },
 }
@@ -205,6 +207,7 @@ impl ViewerLiveServer {
         let mut writer = BufWriter::new(stream);
         let (tx, rx) = mpsc::channel::<LiveLoopSignal>();
         let loop_running = Arc::new(AtomicBool::new(true));
+        let consensus_signal_queued = Arc::new(AtomicBool::new(false));
         let request_loop_running = Arc::clone(&loop_running);
         let pulse_loop_running = Arc::clone(&loop_running);
         let playback_control = PlaybackPulseControl::new();
@@ -214,6 +217,7 @@ impl ViewerLiveServer {
         let request_tx = tx.clone();
         let pulse_tx = tx.clone();
         let pulse_interval = self.config.tick_interval;
+        let consensus_batches_handle = self.world.consensus_batches_handle()?;
 
         thread::spawn(move || {
             read_requests(
@@ -231,44 +235,71 @@ impl ViewerLiveServer {
                 pulse_playback_control,
             )
         });
+        if let Some(committed_batches) = consensus_batches_handle {
+            let consensus_tx = tx.clone();
+            let consensus_loop_running = Arc::clone(&loop_running);
+            let queued_flag = Arc::clone(&consensus_signal_queued);
+            thread::spawn(move || {
+                emit_consensus_commit_signals(
+                    consensus_tx,
+                    consensus_loop_running,
+                    committed_batches,
+                    queued_flag,
+                )
+            });
+        }
         drop(tx);
 
         let mut session = ViewerLiveSession::new();
-        playback_control.set_enabled(session.should_emit_event());
+        playback_control
+            .set_enabled(session.should_emit_event() && !self.world.uses_consensus_bridge());
         let result = loop {
             match rx.recv() {
-                Ok(LiveLoopSignal::Request(command)) => match session.handle_request(
-                    command,
-                    &mut writer,
-                    &mut self.world,
-                    &self.config.world_id,
-                ) {
-                    Ok(outcome) => {
-                        if outcome.request_llm_decision {
-                            let _ = loop_tx.send(LiveLoopSignal::LlmDecisionRequested);
-                        }
-                        if let Some(control) = outcome.deferred_control {
-                            match control {
-                                ViewerLiveDeferredControl::Step { count } => {
-                                    let _ = loop_tx.send(LiveLoopSignal::StepRequested { count });
-                                }
-                                ViewerLiveDeferredControl::Seek { tick } => {
-                                    let _ = loop_tx.send(LiveLoopSignal::SeekRequested { tick });
+                Ok(LiveLoopSignal::Request(command)) => {
+                    let was_emitting = session.should_emit_event();
+                    match session.handle_request(
+                        command,
+                        &mut writer,
+                        &mut self.world,
+                        &self.config.world_id,
+                    ) {
+                        Ok(outcome) => {
+                            if outcome.request_llm_decision {
+                                let _ = loop_tx.send(LiveLoopSignal::LlmDecisionRequested);
+                            }
+                            if let Some(control) = outcome.deferred_control {
+                                match control {
+                                    ViewerLiveDeferredControl::Step { count } => {
+                                        let _ =
+                                            loop_tx.send(LiveLoopSignal::StepRequested { count });
+                                    }
+                                    ViewerLiveDeferredControl::Seek { tick } => {
+                                        let _ =
+                                            loop_tx.send(LiveLoopSignal::SeekRequested { tick });
+                                    }
                                 }
                             }
+                            let now_emitting = session.should_emit_event();
+                            playback_control
+                                .set_enabled(now_emitting && !self.world.uses_consensus_bridge());
+                            if self.world.uses_consensus_bridge()
+                                && now_emitting
+                                && (!was_emitting || outcome.request_llm_decision)
+                            {
+                                let _ = loop_tx.send(LiveLoopSignal::ConsensusDriveRequested);
+                            }
+                            if !outcome.continue_running {
+                                break Ok(());
+                            }
                         }
-                        playback_control.set_enabled(session.should_emit_event());
-                        if !outcome.continue_running {
-                            break Ok(());
+                        Err(err) => {
+                            if err.is_disconnect() {
+                                break Ok(());
+                            }
+                            break Err(err);
                         }
                     }
-                    Err(err) => {
-                        if err.is_disconnect() {
-                            break Ok(());
-                        }
-                        break Err(err);
-                    }
-                },
+                }
                 Ok(LiveLoopSignal::PlaybackPulse) => {
                     if let Err(err) = self.handle_playback_pulse(&mut session, &mut writer) {
                         if err.is_disconnect() {
@@ -279,6 +310,28 @@ impl ViewerLiveServer {
                 }
                 Ok(LiveLoopSignal::LlmDecisionRequested) => {
                     self.world.request_llm_decision();
+                    if self.world.uses_consensus_bridge() && session.should_emit_event() {
+                        let _ = loop_tx.send(LiveLoopSignal::ConsensusDriveRequested);
+                    }
+                }
+                Ok(LiveLoopSignal::ConsensusCommitted) => {
+                    if let Err(err) = self.handle_consensus_committed(&mut session, &mut writer) {
+                        if err.is_disconnect() {
+                            break Ok(());
+                        }
+                        break Err(err);
+                    }
+                    consensus_signal_queued.store(false, Ordering::SeqCst);
+                }
+                Ok(LiveLoopSignal::ConsensusDriveRequested) => {
+                    if let Err(err) =
+                        self.handle_consensus_drive_requested(&mut session, &mut writer)
+                    {
+                        if err.is_disconnect() {
+                            break Ok(());
+                        }
+                        break Err(err);
+                    }
                 }
                 Ok(LiveLoopSignal::StepRequested { count }) => {
                     if let Err(err) = self.handle_step_request(&mut session, &mut writer, count) {
@@ -313,6 +366,9 @@ impl ViewerLiveServer {
         if !session.should_emit_event() {
             return Ok(());
         }
+        if self.world.uses_consensus_bridge() {
+            return Ok(());
+        }
         if !self.world.should_step_on_playback_pulse() {
             return Ok(());
         }
@@ -320,26 +376,44 @@ impl ViewerLiveServer {
             return Ok(());
         }
         let step = self.world.step()?;
+        self.emit_step_outcome(session, writer, step)
+    }
 
-        if let Some(trace) = step.decision_trace {
-            if session.subscribed.contains(&ViewerStream::Events) {
-                send_response(writer, &ViewerResponse::DecisionTrace { trace })?;
+    fn handle_consensus_committed(
+        &mut self,
+        session: &mut ViewerLiveSession,
+        writer: &mut BufWriter<TcpStream>,
+    ) -> Result<(), ViewerLiveServerError> {
+        if !session.should_emit_event() || !self.world.uses_consensus_bridge() {
+            return Ok(());
+        }
+        if !self.world.can_step_for_consensus() {
+            return Ok(());
+        }
+        loop {
+            let step = self.world.step()?;
+            let had_event = step.event.is_some();
+            self.emit_step_outcome(session, writer, step)?;
+            if !had_event {
+                break;
             }
         }
-
-        if let Some(event) = step.event {
-            if session.event_allowed(&event) && session.subscribed.contains(&ViewerStream::Events) {
-                send_response(writer, &ViewerResponse::Event { event })?;
-            }
-            if session.subscribed.contains(&ViewerStream::Snapshot) {
-                let snapshot = self.world.snapshot();
-                send_response(writer, &ViewerResponse::Snapshot { snapshot })?;
-            }
-        }
-
-        session.update_metrics(self.world.metrics());
-        session.emit_metrics(writer)?;
         Ok(())
+    }
+
+    fn handle_consensus_drive_requested(
+        &mut self,
+        session: &mut ViewerLiveSession,
+        writer: &mut BufWriter<TcpStream>,
+    ) -> Result<(), ViewerLiveServerError> {
+        if !session.should_emit_event() || !self.world.uses_consensus_bridge() {
+            return Ok(());
+        }
+        if !self.world.can_step_for_consensus() {
+            return Ok(());
+        }
+        let step = self.world.step()?;
+        self.emit_step_outcome(session, writer, step)
     }
 
     fn handle_step_request(
@@ -353,31 +427,7 @@ impl ViewerLiveServer {
         for _ in 0..steps {
             self.world.request_llm_decision();
             let step = self.world.step()?;
-
-            if let Some(trace) = step.decision_trace {
-                if session.subscribed.contains(&ViewerStream::Events) {
-                    send_response(writer, &ViewerResponse::DecisionTrace { trace })?;
-                }
-            }
-
-            if let Some(event) = step.event {
-                if session.event_allowed(&event)
-                    && session.subscribed.contains(&ViewerStream::Events)
-                {
-                    send_response(writer, &ViewerResponse::Event { event })?;
-                }
-                if session.subscribed.contains(&ViewerStream::Snapshot) {
-                    send_response(
-                        writer,
-                        &ViewerResponse::Snapshot {
-                            snapshot: self.world.snapshot(),
-                        },
-                    )?;
-                }
-            }
-
-            session.update_metrics(self.world.metrics());
-            session.emit_metrics(writer)?;
+            self.emit_step_outcome(session, writer, step)?;
         }
         Ok(())
     }
@@ -411,6 +461,37 @@ impl ViewerLiveServer {
                 },
             )?;
         }
+        Ok(())
+    }
+
+    fn emit_step_outcome(
+        &mut self,
+        session: &mut ViewerLiveSession,
+        writer: &mut BufWriter<TcpStream>,
+        step: LiveStepResult,
+    ) -> Result<(), ViewerLiveServerError> {
+        if let Some(trace) = step.decision_trace {
+            if session.subscribed.contains(&ViewerStream::Events) {
+                send_response(writer, &ViewerResponse::DecisionTrace { trace })?;
+            }
+        }
+
+        if let Some(event) = step.event {
+            if session.event_allowed(&event) && session.subscribed.contains(&ViewerStream::Events) {
+                send_response(writer, &ViewerResponse::Event { event })?;
+            }
+            if session.subscribed.contains(&ViewerStream::Snapshot) {
+                send_response(
+                    writer,
+                    &ViewerResponse::Snapshot {
+                        snapshot: self.world.snapshot(),
+                    },
+                )?;
+            }
+        }
+
+        session.update_metrics(self.world.metrics());
+        session.emit_metrics(writer)?;
         Ok(())
     }
 }
@@ -485,6 +566,19 @@ impl LiveWorld {
 
     fn snapshot(&self) -> WorldSnapshot {
         self.kernel.snapshot()
+    }
+
+    fn uses_consensus_bridge(&self) -> bool {
+        self.consensus_bridge.is_some()
+    }
+
+    fn consensus_batches_handle(
+        &self,
+    ) -> Result<Option<NodeCommittedActionBatchesHandle>, ViewerLiveServerError> {
+        self.consensus_bridge
+            .as_ref()
+            .map(LiveConsensusBridge::committed_batches_handle)
+            .transpose()
     }
 
     fn can_step_for_consensus(&self) -> bool {

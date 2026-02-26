@@ -1,8 +1,9 @@
 use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Condvar, Mutex};
 use std::thread::{self, JoinHandle};
+use std::time::Duration;
 
 pub use agent_world_consensus::node_consensus_action::NodeConsensusAction;
 use agent_world_consensus::node_consensus_action::{
@@ -267,11 +268,32 @@ pub struct NodeRuntime {
     replica_maintenance_dht:
         Option<Arc<dyn proto_dht::DistributedDht<ProtoWorldError> + Send + Sync>>,
     pending_consensus_actions: Arc<Mutex<Vec<NodeConsensusAction>>>,
-    committed_action_batches: Arc<Mutex<Vec<NodeCommittedActionBatch>>>,
+    committed_action_batches: Arc<(Mutex<Vec<NodeCommittedActionBatch>>, Condvar)>,
     running: Arc<AtomicBool>,
     state: Arc<Mutex<RuntimeState>>,
     stop_tx: Option<mpsc::Sender<()>>,
     worker: Option<JoinHandle<()>>,
+}
+
+#[derive(Clone)]
+pub struct NodeCommittedActionBatchesHandle {
+    state: Arc<(Mutex<Vec<NodeCommittedActionBatch>>, Condvar)>,
+}
+
+impl NodeCommittedActionBatchesHandle {
+    pub fn wait_for_batches(&self, timeout: Duration) -> bool {
+        let (batches_lock, signal) = &*self.state;
+        let batches = batches_lock
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        if !batches.is_empty() {
+            return true;
+        }
+        let (batches, _) = signal
+            .wait_timeout_while(batches, timeout, |pending| pending.is_empty())
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        !batches.is_empty()
+    }
 }
 
 impl NodeRuntime {
@@ -287,11 +309,12 @@ impl NodeRuntime {
             *state = RuntimeState::default();
         }
         {
-            let mut committed = self
-                .committed_action_batches
+            let (committed_lock, committed_signal) = &*self.committed_action_batches;
+            let mut committed = committed_lock
                 .lock()
                 .unwrap_or_else(|poisoned| poisoned.into_inner());
             committed.clear();
+            committed_signal.notify_all();
         }
 
         let mut engine = match PosNodeEngine::new(&self.config) {
@@ -491,7 +514,9 @@ impl NodeRuntime {
                                         }
                                     }
                                     if let Some(batch) = tick.committed_action_batch {
-                                        let mut committed = committed_action_batches
+                                        let (committed_lock, committed_signal) =
+                                            &*committed_action_batches;
+                                        let mut committed = committed_lock
                                             .lock()
                                             .unwrap_or_else(|poisoned| poisoned.into_inner());
                                         let retained = max_committed_action_batches - 1;
@@ -500,6 +525,7 @@ impl NodeRuntime {
                                             committed.drain(..overflow);
                                         }
                                         committed.push(batch);
+                                        committed_signal.notify_all();
                                     }
                                     if let Some(store) = pos_state_store.as_ref() {
                                         if let Err(err) = store.save_engine_state(&engine) {
@@ -535,6 +561,8 @@ impl NodeRuntime {
                 node_id: self.config.node_id.clone(),
             });
         }
+        let (_, committed_signal) = &*self.committed_action_batches;
+        committed_signal.notify_all();
         if let Some(stop_tx) = self.stop_tx.take() {
             let _ = stop_tx.send(());
         }

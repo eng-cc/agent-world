@@ -437,6 +437,29 @@ fn emit_playback_pulses(
     }
 }
 
+fn emit_consensus_commit_signals(
+    tx: mpsc::Sender<LiveLoopSignal>,
+    loop_running: Arc<AtomicBool>,
+    committed_batches: NodeCommittedActionBatchesHandle,
+    signal_queued: Arc<AtomicBool>,
+) {
+    let wait_timeout = Duration::from_millis(50);
+    while loop_running.load(Ordering::SeqCst) {
+        if !committed_batches.wait_for_batches(wait_timeout) {
+            continue;
+        }
+        if !loop_running.load(Ordering::SeqCst) {
+            break;
+        }
+        if signal_queued.swap(true, Ordering::SeqCst) {
+            continue;
+        }
+        if tx.send(LiveLoopSignal::ConsensusCommitted).is_err() {
+            break;
+        }
+    }
+}
+
 fn send_response(
     writer: &mut BufWriter<TcpStream>,
     response: &ViewerResponse,

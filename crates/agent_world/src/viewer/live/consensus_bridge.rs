@@ -3,7 +3,7 @@ use crate::consensus_action_payload::{
     decode_consensus_action_payload, encode_consensus_action_payload, ConsensusActionPayloadBody,
     ConsensusActionPayloadEnvelope,
 };
-use agent_world_node::NodeRuntime;
+use agent_world_node::{NodeCommittedActionBatchesHandle, NodeRuntime};
 use std::collections::{HashSet, VecDeque};
 use std::sync::{Arc, Mutex};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
@@ -41,6 +41,17 @@ impl LiveConsensusBridge {
 
     pub(super) fn has_inflight_capacity(&self) -> bool {
         self.inflight_action_ids.len() < MAX_INFLIGHT_CONSENSUS_ACTIONS
+    }
+
+    pub(super) fn committed_batches_handle(
+        &self,
+    ) -> Result<NodeCommittedActionBatchesHandle, ViewerLiveServerError> {
+        let runtime = self.runtime.lock().map_err(|_| {
+            ViewerLiveServerError::Node(
+                "viewer live consensus bridge: node runtime lock poisoned".to_string(),
+            )
+        })?;
+        Ok(runtime.committed_action_batches_handle())
     }
 
     pub(super) fn refresh_committed_actions(&mut self) -> Result<(), ViewerLiveServerError> {

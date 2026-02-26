@@ -1,13 +1,13 @@
 use std::fmt;
 use std::sync::atomic::Ordering;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Condvar, Mutex};
 
 use agent_world_proto::distributed_dht as proto_dht;
 use agent_world_proto::world_error::WorldError as ProtoWorldError;
 
 use crate::{
-    NodeCommittedActionBatch, NodeConfig, NodeConsensusAction, NodeConsensusSnapshot, NodeError,
-    NodeExecutionHook, NodeReplicationNetworkHandle, NodeRuntime,
+    NodeCommittedActionBatch, NodeCommittedActionBatchesHandle, NodeConfig, NodeConsensusAction,
+    NodeConsensusSnapshot, NodeError, NodeExecutionHook, NodeReplicationNetworkHandle, NodeRuntime,
 };
 
 #[derive(Debug, Clone)]
@@ -52,7 +52,7 @@ impl NodeRuntime {
             replication_network: None,
             execution_hook: None,
             pending_consensus_actions: Arc::new(Mutex::new(Vec::new())),
-            committed_action_batches: Arc::new(Mutex::new(Vec::new())),
+            committed_action_batches: Arc::new((Mutex::new(Vec::new()), Condvar::new())),
             running: Arc::new(std::sync::atomic::AtomicBool::new(false)),
             replica_maintenance_dht: None,
             state: Arc::new(Mutex::new(RuntimeState::default())),
@@ -152,10 +152,16 @@ impl NodeRuntime {
     }
 
     pub fn drain_committed_action_batches(&self) -> Vec<NodeCommittedActionBatch> {
-        let mut committed = self
-            .committed_action_batches
+        let (committed_lock, _) = &*self.committed_action_batches;
+        let mut committed = committed_lock
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
         std::mem::take(&mut *committed)
+    }
+
+    pub fn committed_action_batches_handle(&self) -> NodeCommittedActionBatchesHandle {
+        NodeCommittedActionBatchesHandle {
+            state: Arc::clone(&self.committed_action_batches),
+        }
     }
 }
