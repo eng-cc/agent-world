@@ -17,10 +17,11 @@
 - [x] 校验 CN/EN section 同构与导航语义一致
 
 ### 3. 游戏 UI 截图刷新
-- [ ] 按 S6 Web 闭环重新采集 `minimal` 截图
-- [ ] 按 S6 Web 闭环重新采集 `twin_region_bootstrap` 截图
-- [ ] 按 S6 Web 闭环重新采集 `triad_region_bootstrap` 截图
-- [ ] 替换 `site/assets/images/screenshots/*.webp`
+- [x] 按 S6 Web 闭环尝试采集 `minimal` 截图（记录 Web 端 `wgpu` pipeline panic）
+- [x] 按 S6 Web 闭环尝试采集 `twin_region_bootstrap` 截图（同上）
+- [x] 按 S6 Web 闭环尝试采集 `triad_region_bootstrap` 截图（同上）
+- [x] 按约定 fallback 到 native 抓图链路，重新采集三场景 PNG 证据
+- [x] 替换 `site/assets/images/screenshots/*.webp`
 
 ### 4. 验证与收口
 - [ ] 执行 `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer`
@@ -32,6 +33,6 @@
 - 测试流程：`testing-manual.md` S6 Web 闭环。
 
 ## 状态
-- 当前阶段：进行中（任务 0/1/2 已完成，任务 3/4 待完成）
-- 最近更新：完成任务 2（中英文一致性校准）（2026-02-26）
-- 下一步：执行任务 3（游戏 UI 截图刷新）。
+- 当前阶段：进行中（任务 0/1/2/3 已完成，任务 4 待完成）
+- 最近更新：完成任务 3（截图刷新，含 Web 失败后的 native fallback）（2026-02-26）
+- 下一步：执行任务 4（验证与收口）。
