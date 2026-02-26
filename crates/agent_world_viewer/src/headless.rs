@@ -4,7 +4,9 @@ use bevy::prelude::*;
 use crate::ui_text::format_status;
 #[cfg(not(target_arch = "wasm32"))]
 use crate::HeadlessStatus;
-use crate::{ConnectionStatus, ViewerClient, ViewerControl, ViewerRequest, ViewerState};
+use crate::{
+    ConnectionStatus, ViewerClient, ViewerControl, ViewerExperienceMode, ViewerRequest, ViewerState,
+};
 
 const HEADLESS_AUTO_PLAY_ENV: &str = "AGENT_WORLD_VIEWER_HEADLESS_AUTO_PLAY";
 const AUTO_PLAY_ENV: &str = "AGENT_WORLD_VIEWER_AUTO_PLAY";
@@ -12,9 +14,10 @@ const AUTO_PLAY_ENV: &str = "AGENT_WORLD_VIEWER_AUTO_PLAY";
 pub(super) fn headless_auto_play_once(
     client: Option<Res<ViewerClient>>,
     state: Res<ViewerState>,
+    #[allow(unused_variables)] experience_mode: Option<Res<ViewerExperienceMode>>,
     mut sent: Local<bool>,
 ) {
-    if *sent || !headless_auto_play_enabled() {
+    if *sent || !headless_auto_play_enabled(experience_mode.as_deref()) {
         return;
     }
     if !matches!(state.status, ConnectionStatus::Connected) {
@@ -47,10 +50,16 @@ pub(super) fn headless_report(mut status: ResMut<HeadlessStatus>, state: Res<Vie
     }
 }
 
-fn headless_auto_play_enabled() -> bool {
+fn headless_auto_play_enabled(experience_mode: Option<&ViewerExperienceMode>) -> bool {
     if let Some(value) = parse_bool_env(AUTO_PLAY_ENV) {
         return value;
     }
+    #[cfg(target_arch = "wasm32")]
+    if matches!(experience_mode, Some(ViewerExperienceMode::Player)) {
+        return true;
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    let _ = experience_mode;
     if std::env::var("AGENT_WORLD_VIEWER_HEADLESS").is_ok() {
         return parse_bool_env(HEADLESS_AUTO_PLAY_ENV).unwrap_or(true);
     }

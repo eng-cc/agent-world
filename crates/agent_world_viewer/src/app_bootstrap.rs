@@ -273,7 +273,7 @@ fn default_right_panel_layout_state(mode: ViewerExperienceMode) -> RightPanelLay
     match mode {
         ViewerExperienceMode::Player => RightPanelLayoutState {
             top_panel_collapsed: false,
-            panel_hidden: true,
+            panel_hidden: false,
         },
         ViewerExperienceMode::Director => RightPanelLayoutState::default(),
     }
@@ -282,7 +282,7 @@ fn default_right_panel_layout_state(mode: ViewerExperienceMode) -> RightPanelLay
 fn default_module_visibility_state(mode: ViewerExperienceMode) -> RightPanelModuleVisibilityState {
     match mode {
         ViewerExperienceMode::Player => RightPanelModuleVisibilityState {
-            show_controls: false,
+            show_controls: true,
             show_overview: true,
             show_chat: true,
             show_overlay: false,
@@ -402,7 +402,7 @@ mod tests {
             default_right_panel_layout_state(ViewerExperienceMode::Player),
             RightPanelLayoutState {
                 top_panel_collapsed: false,
-                panel_hidden: true,
+                panel_hidden: false,
             }
         );
         assert_eq!(
@@ -414,7 +414,7 @@ mod tests {
     #[test]
     fn default_module_visibility_state_player_is_lightweight() {
         let state = default_module_visibility_state(ViewerExperienceMode::Player);
-        assert!(!state.show_controls);
+        assert!(state.show_controls);
         assert!(state.show_overview);
         assert!(state.show_chat);
         assert!(!state.show_overlay);
