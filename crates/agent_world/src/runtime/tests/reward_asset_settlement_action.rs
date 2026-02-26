@@ -54,9 +54,45 @@ fn bind_node_identity_with_seed(world: &mut World, node_id: &str, seed: u8) -> S
     private_key_hex
 }
 
+fn configure_main_token_bridge_budget(
+    world: &mut World,
+    epoch_index: u64,
+    node_service_budget: u64,
+    treasury_balance: u64,
+) {
+    world.set_main_token_config(MainTokenConfig {
+        initial_supply: 1_000,
+        ..MainTokenConfig::default()
+    });
+    world.set_main_token_supply(MainTokenSupplyState {
+        total_supply: 1_000,
+        circulating_supply: 0,
+        total_issued: 0,
+        total_burned: 0,
+    });
+    world
+        .record_main_token_epoch_issuance(MainTokenEpochIssuanceRecord {
+            epoch_index,
+            inflation_rate_bps: 0,
+            issued_amount: node_service_budget,
+            staking_reward_amount: 0,
+            node_service_reward_amount: node_service_budget,
+            ecosystem_pool_amount: 0,
+            security_reserve_amount: 0,
+        })
+        .expect("record main token issuance");
+    world
+        .set_main_token_treasury_balance(
+            MAIN_TOKEN_TREASURY_BUCKET_NODE_SERVICE_REWARD,
+            treasury_balance,
+        )
+        .expect("set node service treasury balance");
+}
+
 #[test]
 fn reward_asset_settlement_action_applies_signed_records_via_step() {
     let mut world = World::new();
+    configure_main_token_bridge_budget(&mut world, 20, 5, 5);
     bind_node_identity(&mut world, "node-a");
     let signer_private_key = bind_node_identity_with_seed(&mut world, "node-signer", 9);
     world.set_reward_signature_governance_policy(RewardSignatureGovernancePolicy {
@@ -86,11 +122,26 @@ fn reward_asset_settlement_action_applies_signed_records_via_step() {
 
     assert_eq!(world.node_power_credit_balance("node-a"), 5);
     assert_eq!(world.reward_mint_records().len(), 1);
+    assert_eq!(
+        world.main_token_treasury_balance(MAIN_TOKEN_TREASURY_BUCKET_NODE_SERVICE_REWARD),
+        0
+    );
+    assert_eq!(world.main_token_liquid_balance("node-a"), 5);
+    assert_eq!(world.main_token_supply().circulating_supply, 5);
+    assert_eq!(
+        world
+            .main_token_node_points_bridge_record(20)
+            .expect("main token bridge record")
+            .total_amount,
+        5
+    );
     match &world.journal().events.last().expect("event").body {
         WorldEventBody::Domain(DomainEvent::NodePointsSettlementApplied {
             signer_node_id,
             settlement_hash,
             minted_records,
+            main_token_bridge_total_amount,
+            main_token_bridge_distributions,
             ..
         }) => {
             assert_eq!(signer_node_id, "node-signer");
@@ -98,6 +149,11 @@ fn reward_asset_settlement_action_applies_signed_records_via_step() {
             assert_eq!(minted_records.len(), 1);
             assert_eq!(minted_records[0].node_id, "node-a");
             assert_eq!(minted_records[0].minted_power_credits, 5);
+            assert_eq!(*main_token_bridge_total_amount, 5);
+            assert_eq!(main_token_bridge_distributions.len(), 1);
+            assert_eq!(main_token_bridge_distributions[0].node_id, "node-a");
+            assert_eq!(main_token_bridge_distributions[0].account_id, "node-a");
+            assert_eq!(main_token_bridge_distributions[0].amount, 5);
         }
         other => panic!("expected NodePointsSettlementApplied, got {other:?}"),
     }
@@ -106,6 +162,7 @@ fn reward_asset_settlement_action_applies_signed_records_via_step() {
 #[test]
 fn reward_asset_settlement_action_rejects_tampered_mint_record() {
     let mut world = World::new();
+    configure_main_token_bridge_budget(&mut world, 21, 4, 4);
     bind_node_identity(&mut world, "node-a");
     let signer_private_key = bind_node_identity_with_seed(&mut world, "node-signer", 10);
     world.set_reward_signature_governance_policy(RewardSignatureGovernancePolicy {
@@ -145,6 +202,54 @@ fn reward_asset_settlement_action_rejects_tampered_mint_record() {
                     .any(|note| note.contains("mint record signature invalid")));
             }
             other => panic!("expected rule denied reject, got {other:?}"),
+        },
+        other => panic!("expected ActionRejected, got {other:?}"),
+    }
+}
+
+#[test]
+fn reward_asset_settlement_action_rejects_when_main_token_bridge_treasury_insufficient() {
+    let mut world = World::new();
+    configure_main_token_bridge_budget(&mut world, 22, 6, 5);
+    bind_node_identity(&mut world, "node-a");
+    let signer_private_key = bind_node_identity_with_seed(&mut world, "node-signer", 11);
+    world.set_reward_signature_governance_policy(RewardSignatureGovernancePolicy {
+        require_mintsig_v2: true,
+        allow_mintsig_v1_fallback: false,
+        require_redeem_signature: false,
+        require_redeem_signer_match_node_id: false,
+    });
+    world.set_reward_asset_config(RewardAssetConfig {
+        points_per_credit: 10,
+        ..RewardAssetConfig::default()
+    });
+
+    let report = settlement_report(22, vec![settlement("node-a", 60)]);
+    let mut preview = world.clone();
+    let minted_records = preview
+        .apply_node_points_settlement_mint_v2(&report, "node-signer", signer_private_key.as_str())
+        .expect("build settlement records");
+
+    world.submit_action(Action::ApplyNodePointsSettlementSigned {
+        report,
+        signer_node_id: "node-signer".to_string(),
+        mint_records: minted_records,
+    });
+    world
+        .step()
+        .expect("settlement action should reject when bridge treasury is insufficient");
+
+    assert_eq!(world.node_power_credit_balance("node-a"), 0);
+    assert!(world.reward_mint_records().is_empty());
+    assert!(world.main_token_node_points_bridge_record(22).is_none());
+    match &world.journal().events.last().expect("event").body {
+        WorldEventBody::Domain(DomainEvent::ActionRejected { reason, .. }) => match reason {
+            RejectReason::RuleDenied { notes } => {
+                assert!(notes
+                    .iter()
+                    .any(|note| { note.contains("main token bridge treasury insufficient") }));
+            }
+            other => panic!("expected RuleDenied, got {other:?}"),
         },
         other => panic!("expected ActionRejected, got {other:?}"),
     }

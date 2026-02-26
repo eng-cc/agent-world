@@ -8,10 +8,11 @@ use super::super::ResourceDelta;
 use super::super::WorldError;
 use super::super::{
     EpochSettlementReport, MainTokenAccountBalance, MainTokenConfig, MainTokenEpochIssuanceRecord,
-    MainTokenGenesisAllocationBucketState, MainTokenScheduledPolicyUpdate, MainTokenSupplyState,
-    MaterialLedgerId, MaterialStack, NodeAssetBalance, NodeRewardMintRecord, ProtocolPowerReserve,
-    RewardAssetConfig, RewardAssetInvariantReport, RewardAssetInvariantViolation,
-    RewardSignatureGovernancePolicy, SystemOrderPoolBudget,
+    MainTokenGenesisAllocationBucketState, MainTokenNodePointsBridgeEpochRecord,
+    MainTokenScheduledPolicyUpdate, MainTokenSupplyState, MaterialLedgerId, MaterialStack,
+    NodeAssetBalance, NodeRewardMintRecord, ProtocolPowerReserve, RewardAssetConfig,
+    RewardAssetInvariantReport, RewardAssetInvariantViolation, RewardSignatureGovernancePolicy,
+    SystemOrderPoolBudget,
 };
 use super::World;
 use crate::simulator::ResourceKind;
@@ -134,6 +135,15 @@ impl World {
         self.state
             .main_token_scheduled_policy_updates
             .get(&effective_epoch)
+    }
+
+    pub fn main_token_node_points_bridge_record(
+        &self,
+        epoch_index: u64,
+    ) -> Option<&MainTokenNodePointsBridgeEpochRecord> {
+        self.state
+            .main_token_node_points_bridge_records
+            .get(&epoch_index)
     }
 
     pub fn set_main_token_treasury_balance(

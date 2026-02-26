@@ -18,7 +18,9 @@ use super::gameplay_state::{
 use super::main_token::{
     main_token_bucket_unlocked_amount, MainTokenAccountBalance, MainTokenConfig,
     MainTokenEpochIssuanceRecord, MainTokenGenesisAllocationBucketState,
+    MainTokenNodePointsBridgeDistribution, MainTokenNodePointsBridgeEpochRecord,
     MainTokenScheduledPolicyUpdate, MainTokenSupplyState,
+    MAIN_TOKEN_TREASURY_BUCKET_NODE_SERVICE_REWARD,
 };
 use super::node_points::EpochSettlementReport;
 use super::reward_asset::{
@@ -243,6 +245,8 @@ pub struct WorldState {
     #[serde(default)]
     pub main_token_scheduled_policy_updates: BTreeMap<u64, MainTokenScheduledPolicyUpdate>,
     #[serde(default)]
+    pub main_token_node_points_bridge_records: BTreeMap<u64, MainTokenNodePointsBridgeEpochRecord>,
+    #[serde(default)]
     pub reward_asset_config: RewardAssetConfig,
     #[serde(default)]
     pub node_asset_balances: BTreeMap<String, NodeAssetBalance>,
@@ -302,6 +306,7 @@ impl Default for WorldState {
             main_token_treasury_balances: BTreeMap::new(),
             main_token_claim_nonces: BTreeMap::new(),
             main_token_scheduled_policy_updates: BTreeMap::new(),
+            main_token_node_points_bridge_records: BTreeMap::new(),
             reward_asset_config: RewardAssetConfig::default(),
             node_asset_balances: BTreeMap::new(),
             protocol_power_reserve: ProtocolPowerReserve::default(),
@@ -620,6 +625,8 @@ fn apply_node_points_settlement_event(
     signer_node_id: &str,
     settlement_hash: &str,
     minted_records: &[NodeRewardMintRecord],
+    main_token_bridge_total_amount: u64,
+    main_token_bridge_distributions: &[MainTokenNodePointsBridgeDistribution],
 ) -> Result<(), WorldError> {
     if signer_node_id.trim().is_empty() {
         return Err(WorldError::ResourceBalanceInvalid {
@@ -828,6 +835,172 @@ fn apply_node_points_settlement_event(
             .system_order_pool_budgets
             .insert(report.epoch_index, item);
     }
+    apply_main_token_bridge_from_settlement_event(
+        state,
+        report,
+        settlement_hash,
+        main_token_bridge_total_amount,
+        main_token_bridge_distributions,
+    )?;
+    Ok(())
+}
+
+fn apply_main_token_bridge_from_settlement_event(
+    state: &mut WorldState,
+    report: &EpochSettlementReport,
+    settlement_hash: &str,
+    total_amount: u64,
+    distributions: &[MainTokenNodePointsBridgeDistribution],
+) -> Result<(), WorldError> {
+    if state
+        .main_token_node_points_bridge_records
+        .contains_key(&report.epoch_index)
+    {
+        return Err(WorldError::ResourceBalanceInvalid {
+            reason: format!(
+                "main token node points bridge already processed for epoch={}",
+                report.epoch_index
+            ),
+        });
+    }
+    if settlement_hash.trim().is_empty() {
+        return Err(WorldError::ResourceBalanceInvalid {
+            reason: "main token bridge settlement_hash cannot be empty".to_string(),
+        });
+    }
+
+    let expected_budget = state
+        .main_token_epoch_issuance_records
+        .get(&report.epoch_index)
+        .map(|record| record.node_service_reward_amount)
+        .unwrap_or(0);
+    if total_amount > expected_budget {
+        return Err(WorldError::ResourceBalanceInvalid {
+            reason: format!(
+                "main token bridge total exceeds epoch node_service budget: epoch={} total={} budget={}",
+                report.epoch_index, total_amount, expected_budget
+            ),
+        });
+    }
+
+    let mut distribution_sum = 0_u64;
+    let mut seen_nodes = BTreeSet::new();
+    for item in distributions {
+        if item.node_id.trim().is_empty() {
+            return Err(WorldError::ResourceBalanceInvalid {
+                reason: "main token bridge distribution node_id cannot be empty".to_string(),
+            });
+        }
+        if item.account_id.trim().is_empty() {
+            return Err(WorldError::ResourceBalanceInvalid {
+                reason: format!(
+                    "main token bridge distribution account_id cannot be empty: node={}",
+                    item.node_id
+                ),
+            });
+        }
+        if item.amount == 0 {
+            return Err(WorldError::ResourceBalanceInvalid {
+                reason: format!(
+                    "main token bridge distribution amount must be > 0: node={}",
+                    item.node_id
+                ),
+            });
+        }
+        if !seen_nodes.insert(item.node_id.clone()) {
+            return Err(WorldError::ResourceBalanceInvalid {
+                reason: format!(
+                    "duplicate main token bridge distribution for node={}",
+                    item.node_id
+                ),
+            });
+        }
+        distribution_sum = distribution_sum.checked_add(item.amount).ok_or_else(|| {
+            WorldError::ResourceBalanceInvalid {
+                reason: format!(
+                    "main token bridge distribution sum overflow: epoch={}",
+                    report.epoch_index
+                ),
+            }
+        })?;
+    }
+    if distribution_sum != total_amount {
+        return Err(WorldError::ResourceBalanceInvalid {
+            reason: format!(
+                "main token bridge sum mismatch: epoch={} total={} distributions_sum={}",
+                report.epoch_index, total_amount, distribution_sum
+            ),
+        });
+    }
+
+    let treasury_balance = state
+        .main_token_treasury_balances
+        .get(MAIN_TOKEN_TREASURY_BUCKET_NODE_SERVICE_REWARD)
+        .copied()
+        .unwrap_or(0);
+    if treasury_balance < total_amount {
+        return Err(WorldError::ResourceBalanceInvalid {
+            reason: format!(
+                "main token bridge treasury insufficient: epoch={} balance={} total={}",
+                report.epoch_index, treasury_balance, total_amount
+            ),
+        });
+    }
+
+    if total_amount > 0 {
+        state.main_token_treasury_balances.insert(
+            MAIN_TOKEN_TREASURY_BUCKET_NODE_SERVICE_REWARD.to_string(),
+            treasury_balance - total_amount,
+        );
+        for item in distributions {
+            let account = state
+                .main_token_balances
+                .entry(item.account_id.clone())
+                .or_insert_with(|| MainTokenAccountBalance {
+                    account_id: item.account_id.clone(),
+                    ..MainTokenAccountBalance::default()
+                });
+            account.liquid_balance =
+                account
+                    .liquid_balance
+                    .checked_add(item.amount)
+                    .ok_or_else(|| WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "main token bridge account overflow: account={} current={} amount={}",
+                            item.account_id, account.liquid_balance, item.amount
+                        ),
+                    })?;
+        }
+        state.main_token_supply.circulating_supply = state
+            .main_token_supply
+            .circulating_supply
+            .checked_add(total_amount)
+            .ok_or_else(|| WorldError::ResourceBalanceInvalid {
+                reason: format!(
+                    "main token bridge circulating overflow: current={} amount={}",
+                    state.main_token_supply.circulating_supply, total_amount
+                ),
+            })?;
+        if state.main_token_supply.circulating_supply > state.main_token_supply.total_supply {
+            return Err(WorldError::ResourceBalanceInvalid {
+                reason: format!(
+                    "main token bridge circulating exceeds total: circulating={} total={}",
+                    state.main_token_supply.circulating_supply,
+                    state.main_token_supply.total_supply
+                ),
+            });
+        }
+    }
+
+    state.main_token_node_points_bridge_records.insert(
+        report.epoch_index,
+        MainTokenNodePointsBridgeEpochRecord {
+            epoch_index: report.epoch_index,
+            settlement_hash: settlement_hash.to_string(),
+            total_amount,
+            distributions: distributions.to_vec(),
+        },
+    );
     Ok(())
 }
 

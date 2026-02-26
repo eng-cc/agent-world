@@ -937,6 +937,8 @@ impl WorldState {
                 signer_node_id,
                 settlement_hash,
                 minted_records,
+                main_token_bridge_total_amount,
+                main_token_bridge_distributions,
             } => {
                 apply_node_points_settlement_event(
                     self,
@@ -944,6 +946,8 @@ impl WorldState {
                     signer_node_id.as_str(),
                     settlement_hash.as_str(),
                     minted_records.as_slice(),
+                    *main_token_bridge_total_amount,
+                    main_token_bridge_distributions.as_slice(),
                 )?;
             }
             event @ DomainEvent::MainTokenGenesisInitialized { .. } => {

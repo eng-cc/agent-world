@@ -164,6 +164,21 @@ pub struct MainTokenScheduledPolicyUpdate {
     pub next_config: MainTokenConfig,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct MainTokenNodePointsBridgeDistribution {
+    pub node_id: String,
+    pub account_id: String,
+    pub amount: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct MainTokenNodePointsBridgeEpochRecord {
+    pub epoch_index: u64,
+    pub settlement_hash: String,
+    pub total_amount: u64,
+    pub distributions: Vec<MainTokenNodePointsBridgeDistribution>,
+}
+
 pub fn validate_main_token_config_bounds(config: &MainTokenConfig) -> Result<(), String> {
     if config.symbol.trim().is_empty() {
         return Err("main token symbol cannot be empty".to_string());

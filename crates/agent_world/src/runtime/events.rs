@@ -14,6 +14,7 @@ use std::collections::BTreeMap;
 use super::gameplay_state::WarParticipantOutcome;
 use super::main_token::{
     MainTokenConfig, MainTokenGenesisAllocationBucketState, MainTokenGenesisAllocationPlan,
+    MainTokenNodePointsBridgeDistribution,
 };
 use super::node_points::EpochSettlementReport;
 use super::reward_asset::NodeRewardMintRecord;
@@ -550,6 +551,10 @@ pub enum DomainEvent {
         signer_node_id: String,
         settlement_hash: String,
         minted_records: Vec<NodeRewardMintRecord>,
+        #[serde(default)]
+        main_token_bridge_total_amount: u64,
+        #[serde(default)]
+        main_token_bridge_distributions: Vec<MainTokenNodePointsBridgeDistribution>,
     },
     MainTokenGenesisInitialized {
         total_supply: u64,

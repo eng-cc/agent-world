@@ -2,9 +2,10 @@ use super::super::{
     main_token_bucket_unlocked_amount, util::hash_json, Action, ActionEnvelope, ActionId, CausedBy,
     CrisisStatus, DomainEvent, EconomicContractStatus, EpochSettlementReport,
     GovernanceProposalStatus, MainTokenConfig, MainTokenFeeKind,
-    MainTokenGenesisAllocationBucketState, MainTokenGenesisAllocationPlan, MaterialLedgerId,
-    MaterialStack, NodeRewardMintRecord, ProposalId, RejectReason, WorldError, WorldEvent,
-    WorldEventBody, WorldEventId, WorldTime,
+    MainTokenGenesisAllocationBucketState, MainTokenGenesisAllocationPlan,
+    MainTokenNodePointsBridgeDistribution, MaterialLedgerId, MaterialStack, NodeRewardMintRecord,
+    NodeSettlement, ProposalId, RejectReason, WorldError, WorldEvent, WorldEventBody, WorldEventId,
+    WorldTime,
 };
 use super::body::{evaluate_expand_body_interface, validate_body_kernel_view};
 use super::logistics::{
@@ -13,7 +14,10 @@ use super::logistics::{
 };
 use super::World;
 use crate::geometry::space_distance_cm;
-use crate::runtime::main_token::{validate_main_token_config_bounds, MAIN_TOKEN_BPS_DENOMINATOR};
+use crate::runtime::main_token::{
+    validate_main_token_config_bounds, MAIN_TOKEN_BPS_DENOMINATOR,
+    MAIN_TOKEN_TREASURY_BUCKET_NODE_SERVICE_REWARD,
+};
 use crate::simulator::ResourceKind;
 use std::collections::BTreeSet;
 
@@ -209,12 +213,26 @@ impl World {
                 };
             }
         };
+        let (main_token_bridge_total_amount, main_token_bridge_distributions) =
+            match self.build_main_token_bridge_distributions_for_settlement(report) {
+                Ok(values) => values,
+                Err(reason) => {
+                    return DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!("apply node points settlement rejected: {reason}")],
+                        },
+                    };
+                }
+            };
 
         let event = DomainEvent::NodePointsSettlementApplied {
             report: report.clone(),
             signer_node_id: signer_node_id.to_string(),
             settlement_hash,
             minted_records: mint_records.to_vec(),
+            main_token_bridge_total_amount,
+            main_token_bridge_distributions,
         };
         let mut preview_state = self.state.clone();
         if let Err(err) = preview_state.apply_domain_event(&event, self.state.time) {
@@ -226,6 +244,60 @@ impl World {
             };
         }
         event
+    }
+
+    fn build_main_token_bridge_distributions_for_settlement(
+        &self,
+        report: &EpochSettlementReport,
+    ) -> Result<(u64, Vec<MainTokenNodePointsBridgeDistribution>), String> {
+        if self
+            .state
+            .main_token_node_points_bridge_records
+            .contains_key(&report.epoch_index)
+        {
+            return Err(format!(
+                "main token bridge already processed for epoch={}",
+                report.epoch_index
+            ));
+        }
+        let Some(issuance) = self
+            .state
+            .main_token_epoch_issuance_records
+            .get(&report.epoch_index)
+        else {
+            return Ok((0, Vec::new()));
+        };
+        let bridge_budget = issuance.node_service_reward_amount;
+        if bridge_budget == 0 {
+            return Ok((0, Vec::new()));
+        }
+        let treasury_balance = self
+            .state
+            .main_token_treasury_balances
+            .get(MAIN_TOKEN_TREASURY_BUCKET_NODE_SERVICE_REWARD)
+            .copied()
+            .unwrap_or(0);
+        if treasury_balance < bridge_budget {
+            return Err(format!(
+                "main token bridge treasury insufficient for epoch={} balance={} budget={}",
+                report.epoch_index, treasury_balance, bridge_budget
+            ));
+        }
+
+        let eligible = report
+            .settlements
+            .iter()
+            .filter(|settlement| settlement.awarded_points > 0)
+            .cloned()
+            .collect::<Vec<_>>();
+        if eligible.is_empty() {
+            return Ok((0, Vec::new()));
+        }
+
+        Ok(distribute_main_token_bridge_budget(
+            bridge_budget,
+            eligible.as_slice(),
+        ))
     }
 
     fn build_main_token_genesis_allocations(
@@ -1249,4 +1321,63 @@ impl World {
         self.state.time = time;
         Ok(())
     }
+}
+
+fn distribute_main_token_bridge_budget(
+    total_budget: u64,
+    settlements: &[NodeSettlement],
+) -> (u64, Vec<MainTokenNodePointsBridgeDistribution>) {
+    if total_budget == 0 || settlements.is_empty() {
+        return (0, Vec::new());
+    }
+    let total_points = settlements
+        .iter()
+        .map(|settlement| settlement.awarded_points)
+        .sum::<u64>();
+    if total_points == 0 {
+        return (0, Vec::new());
+    }
+
+    let mut distributions = Vec::with_capacity(settlements.len());
+    let mut distributed = 0_u64;
+    for settlement in settlements {
+        let amount_u128 = u128::from(total_budget)
+            .saturating_mul(u128::from(settlement.awarded_points))
+            / u128::from(total_points);
+        let amount = u64::try_from(amount_u128).unwrap_or(u64::MAX);
+        distributed = distributed.saturating_add(amount);
+        distributions.push(MainTokenNodePointsBridgeDistribution {
+            node_id: settlement.node_id.clone(),
+            account_id: settlement.node_id.clone(),
+            amount,
+        });
+    }
+
+    let mut remainder = total_budget.saturating_sub(distributed);
+    distributions.sort_by(|left, right| {
+        let left_points = settlements
+            .iter()
+            .find(|settlement| settlement.node_id == left.node_id)
+            .map(|settlement| settlement.awarded_points)
+            .unwrap_or(0);
+        let right_points = settlements
+            .iter()
+            .find(|settlement| settlement.node_id == right.node_id)
+            .map(|settlement| settlement.awarded_points)
+            .unwrap_or(0);
+        right_points
+            .cmp(&left_points)
+            .then_with(|| left.node_id.cmp(&right.node_id))
+    });
+    let mut index = 0_usize;
+    while remainder > 0 && !distributions.is_empty() {
+        let target = index % distributions.len();
+        distributions[target].amount = distributions[target].amount.saturating_add(1);
+        remainder -= 1;
+        index = index.saturating_add(1);
+    }
+
+    distributions.retain(|item| item.amount > 0);
+    distributions.sort_by(|left, right| left.node_id.cmp(&right.node_id));
+    (total_budget, distributions)
 }
