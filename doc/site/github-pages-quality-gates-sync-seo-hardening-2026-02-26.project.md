@@ -19,10 +19,10 @@
 - [x] 任务测试与提交
 
 ### T3 首页 SEO 元信息加固
-- [ ] 更新 `site/index.html` SEO/社交元信息
-- [ ] 更新 `site/en/index.html` SEO/社交元信息
-- [ ] 校验 canonical/hreflang 与 OG/Twitter 字段一致性
-- [ ] 任务测试与提交
+- [x] 更新 `site/index.html` SEO/社交元信息
+- [x] 更新 `site/en/index.html` SEO/社交元信息
+- [x] 校验 canonical/hreflang 与 OG/Twitter 字段一致性
+- [x] 任务测试与提交
 
 ### T4 回归验证与文档收口
 - [ ] 执行站点脚本回归校验与页面冒烟
@@ -36,6 +36,6 @@
 - 手册内容基线：`doc/viewer-manual.md`。
 
 ## 状态
-- 当前阶段：进行中（T0/T1/T2 完成，T3 进行中）
-- 最近更新：完成 T2（Pages 发布门禁接入）（2026-02-26）
-- 下一步：执行 T3，补齐首页 SEO/社交元信息并统一 OG 绝对 URL。
+- 当前阶段：进行中（T0/T1/T2/T3 完成，T4 进行中）
+- 最近更新：完成 T3（首页 SEO/社交元信息加固）（2026-02-26）
+- 下一步：执行 T4，完成回归验证、文档收口与最终提交。
