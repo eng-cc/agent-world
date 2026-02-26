@@ -73,9 +73,10 @@
             <p class="subtitle">
               Spend 5-15 minutes a day making strategic calls: reroute resources, swap alliances, or force policy change.
               The world keeps evolving, history does not rewind, and every decision reshapes your next conflict window.
+              First local run requires an initial Rust build (commonly 5-15 minutes, machine-dependent).
             </p>
             <div class="cta-row">
-              <a class="button primary" href="#demo">Try or Watch Demo</a>
+              <a class="button primary" href="#demo">Local 3-Step Quickstart</a>
               <a class="button secondary" href="../doc/en/index.html">Open Full Manuals</a>
             </div>
             <ul class="hero-signals">
@@ -212,7 +213,7 @@
       </section>
 
       <section id="demo" class="section" data-reveal>
-        <h2>Start Fast: Play First, Analyze Later</h2>
+        <h2>Local 3-Step Setup: Replay First, Then Go Live</h2>
         <div class="grid cards-2">
           <article class="card">
             <h3>Offline Match Replay (Recommended)</h3>
@@ -231,7 +232,7 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023</code></p
           </article>
         </div>
         <article class="quickstart card">
-          <h3>Three Steps to Your First Civilization Run</h3>
+          <h3>Three Steps to a Local First Run (First build: ~5-15 min)</h3>
           <ol class="steps">
             <li>Clone the repository and enter the workspace.</li>
             <li>Run `env -u RUSTC_WRAPPER cargo check` to validate setup.</li>
@@ -241,6 +242,7 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023</code></p
             Full parameters, troubleshooting, and test matrix live in the
             <a href="../doc/en/index.html">documentation hub (EN)</a>.
           </p>
+          <p class="doc-entry-note">After the first build, repeated local runs are usually ready in minutes.</p>
         </article>
       </section>
 
