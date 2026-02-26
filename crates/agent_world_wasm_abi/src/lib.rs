@@ -524,6 +524,8 @@ pub struct ModuleCallInput {
 pub enum ModuleCallErrorCode {
     Trap,
     Timeout,
+    OutOfFuel,
+    Interrupted,
     OutputTooLarge,
     EffectLimitExceeded,
     EmitLimitExceeded,

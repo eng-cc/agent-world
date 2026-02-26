@@ -381,9 +381,8 @@ impl WasmExecutor {
     ) -> ModuleCallFailure {
         if let Some(trap) = err.downcast_ref::<wasmtime::Trap>() {
             let code = match trap {
-                wasmtime::Trap::OutOfFuel | wasmtime::Trap::Interrupt => {
-                    ModuleCallErrorCode::Timeout
-                }
+                wasmtime::Trap::OutOfFuel => ModuleCallErrorCode::OutOfFuel,
+                wasmtime::Trap::Interrupt => ModuleCallErrorCode::Interrupted,
                 _ => ModuleCallErrorCode::Trap,
             };
             return self.failure(request, code, trap.to_string());
@@ -926,7 +925,7 @@ mod tests {
 
     #[cfg(feature = "wasmtime")]
     #[test]
-    fn wasm_executor_maps_interrupt_trap_to_timeout() {
+    fn wasm_executor_maps_interrupt_trap_to_interrupted() {
         let executor = WasmExecutor::new(WasmExecutorConfig::default());
         let request = make_request(ModuleLimits {
             max_mem_bytes: executor.config().max_mem_bytes,
@@ -938,7 +937,24 @@ mod tests {
         });
 
         let err = executor.map_wasmtime_error(&request, wasmtime::Trap::Interrupt.into());
-        assert_eq!(err.code, ModuleCallErrorCode::Timeout);
+        assert_eq!(err.code, ModuleCallErrorCode::Interrupted);
+    }
+
+    #[cfg(feature = "wasmtime")]
+    #[test]
+    fn wasm_executor_maps_out_of_fuel_trap_to_out_of_fuel() {
+        let executor = WasmExecutor::new(WasmExecutorConfig::default());
+        let request = make_request(ModuleLimits {
+            max_mem_bytes: executor.config().max_mem_bytes,
+            max_gas: executor.config().max_fuel,
+            max_call_rate: 0,
+            max_output_bytes: executor.config().max_output_bytes,
+            max_effects: 0,
+            max_emits: 0,
+        });
+
+        let err = executor.map_wasmtime_error(&request, wasmtime::Trap::OutOfFuel.into());
+        assert_eq!(err.code, ModuleCallErrorCode::OutOfFuel);
     }
 
     #[cfg(feature = "wasmtime")]
@@ -1013,7 +1029,7 @@ mod tests {
         let err = executor
             .call(&request)
             .expect_err("infinite loop should be interrupted by watchdog");
-        assert_eq!(err.code, ModuleCallErrorCode::Timeout);
+        assert_eq!(err.code, ModuleCallErrorCode::Interrupted);
         assert!(
             started.elapsed().as_millis() < 3_000,
             "watchdog timeout should preempt quickly"
