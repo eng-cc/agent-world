@@ -10,6 +10,7 @@
 - [x] T7 按用户再次请求执行夜间轮次真实游玩（带录屏）并填写卡片
 - [x] T8 按用户本轮请求再执行一轮“真实玩家”Playwright 试玩并填写卡片
 - [x] T9 提供 game-test 一键启动脚本并更新手册，防止启动参数错误
+- [x] T10 按用户本轮请求基于 `doc/game-test.md` 再执行一轮真实玩家游玩并填写卡片
 
 ## 依赖
 - `doc/game-test.md`
@@ -26,20 +27,23 @@
 - card_2026_02_25_16_40_22.md
 - card_2026_02_25_22_52_01.md
 - card_2026_02_26_11_41_06.md
+- card_2026_02_26_13_10_04.md
 - 录屏/截图产物：`output/playwright/playability/20260225-132109/`
 - 录屏/截图产物：`output/playwright/playability/20260225-163706/`
 - 录屏/截图产物：`output/playwright/playability/20260225225029/`
 - 录屏/截图产物：`output/playwright/playability/20260226-114106/`
+- 录屏/截图产物：`output/playwright/playability/20260226-131004/`
 - 开发排查复现：
   - `output/playwright/viewer/webgl-deferred-disable-verify2-20260225-143042/`
   - `output/playwright/viewer/webgl-panic-locate-20260225-143645/`
 
 ## 状态
-- 当前阶段：已完成玩家复测 + 开发者排查 + 默认链路复测 + 夜间追加复测 + 本轮日间追加复测
+- 当前阶段：已完成玩家复测 + 开发者排查 + 默认链路复测 + 夜间追加复测 + 本轮日间追加复测 + 本轮午后追加复测
 - 风险：
   - 基线问题：Web 端偶发 `copy_deferred_lighting_id_pipeline`（`wgpu` Validation Error）导致崩溃。
   - 架构约束：`CopyDeferredLightingIdPlugin` 与 `Core3d` render graph 存在硬耦合，单独禁用会触发新的启动 panic（`Option::expect` -> `RuntimeError: unreachable`）。
   - 可玩性闭环问题：夜间复测再次出现 `connectionStatus=connecting` 且 `tick` 持续 `0`，并伴随 WebGL `CONTEXT_LOST_WEBGL`，玩法闭环仍不可用。
   - 本轮新增：`ws://127.0.0.1:5010` 链路下仍复现 `connectionStatus=connecting`/`tick=0`，并出现 `WebSocket opening handshake timed out` 与 wasm panic（`assertion failed: old_size > 0`）。
+  - 本轮新增：使用 `scripts/run-game-test.sh --web-bind 127.0.0.1:5311` 链路时可达 `connectionStatus=connected`，但 `tick` 仍停留 `0`，执行 `runSteps(20)` 触发 `RuntimeError: unreachable` + wasm panic（`assertion failed: old_size > 0`），玩法仍不可持续。
   - 缓解：新增 `scripts/run-game-test.sh` 固化启动参数（默认 `--web-bind 127.0.0.1:5011`），降低测试因手工参数错误导致的假故障概率。
 - 最近更新：2026-02-26
