@@ -30,6 +30,25 @@ pub struct EffectReceipt {
 pub struct ReceiptSignature {
     pub algorithm: SignatureAlgorithm,
     pub signature_hex: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub signer_node_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub threshold: Option<u16>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub participants: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub consensus_height: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub receipts_root: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub participant_signatures: Vec<ReceiptParticipantSignature>,
+}
+
+/// Per-participant proof used by threshold signatures.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ReceiptParticipantSignature {
+    pub signer_node_id: String,
+    pub signature_hex: String,
 }
 
 /// Supported signature algorithms.
@@ -37,6 +56,8 @@ pub struct ReceiptSignature {
 #[serde(rename_all = "snake_case")]
 pub enum SignatureAlgorithm {
     HmacSha256,
+    Ed25519,
+    ThresholdEd25519,
 }
 
 /// The origin/source of an effect request.

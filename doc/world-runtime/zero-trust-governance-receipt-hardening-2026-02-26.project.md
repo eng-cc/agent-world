@@ -4,7 +4,7 @@
 - [x] T0 建立设计文档与任务拆解
 - [x] T1 P0 工件真实性链（artifact_identity 必填 + 禁止 unsigned + 注册/加载验签）
 - [x] T2 P0 治理共识绑定与原子 apply（最终性证书 + 多签门限）
-- [ ] T3 P1 收据签名升级（节点签名/阈值签名 + 共识高度锚定）
+- [x] T3 P1 收据签名升级（节点签名/阈值签名 + 共识高度锚定）
 - [ ] T4 P1 执行错误可观测性（OutOfFuel/Interrupt 区分）
 - [ ] T5 回归测试、文档回写、devlog 收口
 
@@ -18,4 +18,4 @@
 - `crates/agent_world_wasm_executor/src/lib.rs`
 
 ## 状态
-- 当前阶段：T3 进行中（P1 收据签名升级 + 共识锚定）
+- 当前阶段：T4 进行中（P1 执行错误可观测性）

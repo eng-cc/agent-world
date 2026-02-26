@@ -1,3 +1,4 @@
+use super::super::util::sha256_hex;
 use serde_json::Value as JsonValue;
 
 use super::super::{
@@ -113,14 +114,71 @@ impl World {
         let Some(signer) = &self.receipt_signer else {
             return Ok(());
         };
+        let consensus_height = self.next_receipt_consensus_height();
+        let receipts_root = self.compute_next_receipts_root(receipt, consensus_height)?;
 
         if let Some(signature) = &receipt.signature {
-            signer.verify(receipt, signature)?;
+            signer.verify(
+                receipt,
+                signature,
+                &self.state.node_identity_bindings,
+                consensus_height,
+                receipts_root.as_str(),
+            )?;
         } else {
-            let signature = signer.sign(receipt)?;
+            let signature = signer.sign(receipt, consensus_height, receipts_root.as_str())?;
             receipt.signature = Some(signature);
         }
 
         Ok(())
     }
+
+    fn next_receipt_consensus_height(&self) -> u64 {
+        self.journal.events.len() as u64 + 1
+    }
+
+    fn compute_next_receipts_root(
+        &self,
+        receipt: &EffectReceipt,
+        consensus_height: u64,
+    ) -> Result<String, WorldError> {
+        let mut root = "0".repeat(64);
+        for (idx, event) in self.journal.events.iter().enumerate() {
+            let WorldEventBody::ReceiptAppended(existing_receipt) = &event.body else {
+                continue;
+            };
+            let leaf_hash = receipt_leaf_hash(existing_receipt)?;
+            root = advance_receipts_root(root.as_str(), idx as u64 + 1, leaf_hash.as_str());
+        }
+        let next_leaf_hash = receipt_leaf_hash(receipt)?;
+        Ok(advance_receipts_root(
+            root.as_str(),
+            consensus_height,
+            next_leaf_hash.as_str(),
+        ))
+    }
+}
+
+fn advance_receipts_root(previous_root: &str, consensus_height: u64, leaf_hash: &str) -> String {
+    let payload = format!("receipts-root:v1|{previous_root}|{consensus_height}|{leaf_hash}");
+    sha256_hex(payload.as_bytes())
+}
+
+fn receipt_leaf_hash(receipt: &EffectReceipt) -> Result<String, WorldError> {
+    #[derive(serde::Serialize)]
+    struct ReceiptLeaf<'a> {
+        intent_id: &'a str,
+        status: &'a str,
+        payload: &'a JsonValue,
+        cost_cents: Option<u64>,
+    }
+
+    let leaf = ReceiptLeaf {
+        intent_id: &receipt.intent_id,
+        status: &receipt.status,
+        payload: &receipt.payload,
+        cost_cents: receipt.cost_cents,
+    };
+    let bytes = serde_json::to_vec(&leaf)?;
+    Ok(sha256_hex(bytes.as_slice()))
 }

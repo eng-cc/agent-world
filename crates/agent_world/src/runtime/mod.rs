@@ -58,8 +58,8 @@ pub use audit::{AuditCausedBy, AuditEventKind, AuditFilter};
 
 // Effect system
 pub use effect::{
-    CapabilityGrant, EffectIntent, EffectOrigin, EffectReceipt, OriginKind, ReceiptSignature,
-    SignatureAlgorithm,
+    CapabilityGrant, EffectIntent, EffectOrigin, EffectReceipt, OriginKind,
+    ReceiptParticipantSignature, ReceiptSignature, SignatureAlgorithm,
 };
 
 // Error
