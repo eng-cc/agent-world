@@ -14,7 +14,7 @@ use std::collections::BTreeMap;
 use super::gameplay_state::WarParticipantOutcome;
 use super::main_token::{
     MainTokenConfig, MainTokenGenesisAllocationBucketState, MainTokenGenesisAllocationPlan,
-    MainTokenNodePointsBridgeDistribution,
+    MainTokenNodePointsBridgeDistribution, MainTokenTreasuryDistribution,
 };
 use super::node_points::EpochSettlementReport;
 use super::reward_asset::NodeRewardMintRecord;
@@ -214,6 +214,12 @@ pub enum Action {
     UpdateMainTokenPolicy {
         proposal_id: ProposalId,
         next: MainTokenConfig,
+    },
+    DistributeMainTokenTreasury {
+        proposal_id: ProposalId,
+        distribution_id: String,
+        bucket_id: String,
+        distributions: Vec<MainTokenTreasuryDistribution>,
     },
     TransferMaterial {
         requester_agent_id: String,
@@ -586,6 +592,13 @@ pub enum DomainEvent {
         effective_epoch: u64,
         next: MainTokenConfig,
     },
+    MainTokenTreasuryDistributed {
+        proposal_id: ProposalId,
+        distribution_id: String,
+        bucket_id: String,
+        total_amount: u64,
+        distributions: Vec<MainTokenTreasuryDistribution>,
+    },
     MaterialTransferred {
         requester_agent_id: String,
         from_ledger: MaterialLedgerId,
@@ -884,6 +897,7 @@ impl DomainEvent {
             DomainEvent::MainTokenEpochIssued { .. } => None,
             DomainEvent::MainTokenFeeSettled { .. } => None,
             DomainEvent::MainTokenPolicyUpdateScheduled { .. } => None,
+            DomainEvent::MainTokenTreasuryDistributed { .. } => None,
             DomainEvent::MaterialTransferred {
                 requester_agent_id, ..
             } => Some(requester_agent_id.as_str()),

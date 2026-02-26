@@ -1,4 +1,8 @@
 use super::*;
+use crate::runtime::main_token::{
+    is_main_token_treasury_distribution_bucket, MainTokenTreasuryDistribution,
+};
+use std::collections::BTreeSet;
 
 impl World {
     pub(super) fn action_to_event_core(
@@ -343,6 +347,20 @@ impl World {
             Action::UpdateMainTokenPolicy { proposal_id, next } => Ok(WorldEventBody::Domain(
                 self.evaluate_update_main_token_policy_action(action_id, *proposal_id, next),
             )),
+            Action::DistributeMainTokenTreasury {
+                proposal_id,
+                distribution_id,
+                bucket_id,
+                distributions,
+            } => Ok(WorldEventBody::Domain(
+                self.evaluate_distribute_main_token_treasury_action(
+                    action_id,
+                    *proposal_id,
+                    distribution_id.as_str(),
+                    bucket_id.as_str(),
+                    distributions.as_slice(),
+                ),
+            )),
             Action::TransferMaterial {
                 requester_agent_id,
                 from_ledger,
@@ -451,5 +469,187 @@ impl World {
             }
             _ => unreachable!("action_to_event_core received unsupported action variant"),
         }
+    }
+
+    fn evaluate_distribute_main_token_treasury_action(
+        &self,
+        action_id: ActionId,
+        proposal_id: ProposalId,
+        distribution_id: &str,
+        bucket_id: &str,
+        distributions: &[MainTokenTreasuryDistribution],
+    ) -> DomainEvent {
+        if self.state.main_token_genesis_buckets.is_empty() {
+            return DomainEvent::ActionRejected {
+                action_id,
+                reason: RejectReason::RuleDenied {
+                    notes: vec!["main token genesis is not initialized".to_string()],
+                },
+            };
+        }
+        if proposal_id == 0 {
+            return DomainEvent::ActionRejected {
+                action_id,
+                reason: RejectReason::RuleDenied {
+                    notes: vec!["proposal_id must be > 0".to_string()],
+                },
+            };
+        }
+        let Some(proposal) = self.proposals.get(&proposal_id) else {
+            return DomainEvent::ActionRejected {
+                action_id,
+                reason: RejectReason::RuleDenied {
+                    notes: vec![format!(
+                        "distribute main token treasury rejected: governance proposal not found ({proposal_id})"
+                    )],
+                },
+            };
+        };
+        match proposal.status {
+            ProposalStatus::Approved { .. } | ProposalStatus::Applied { .. } => {}
+            _ => {
+                return DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::RuleDenied {
+                        notes: vec![format!(
+                            "distribute main token treasury rejected: governance proposal must be approved or applied ({proposal_id})"
+                        )],
+                    },
+                };
+            }
+        }
+
+        let distribution_id = distribution_id.trim();
+        if distribution_id.is_empty() {
+            return DomainEvent::ActionRejected {
+                action_id,
+                reason: RejectReason::RuleDenied {
+                    notes: vec!["distribution_id cannot be empty".to_string()],
+                },
+            };
+        }
+        if self
+            .state
+            .main_token_treasury_distribution_records
+            .contains_key(distribution_id)
+        {
+            return DomainEvent::ActionRejected {
+                action_id,
+                reason: RejectReason::RuleDenied {
+                    notes: vec![format!(
+                        "distribute main token treasury rejected: distribution_id already exists ({distribution_id})"
+                    )],
+                },
+            };
+        }
+
+        let bucket_id = bucket_id.trim();
+        if !is_main_token_treasury_distribution_bucket(bucket_id) {
+            return DomainEvent::ActionRejected {
+                action_id,
+                reason: RejectReason::RuleDenied {
+                    notes: vec![format!(
+                        "distribute main token treasury rejected: unsupported bucket ({bucket_id})"
+                    )],
+                },
+            };
+        }
+        if distributions.is_empty() {
+            return DomainEvent::ActionRejected {
+                action_id,
+                reason: RejectReason::RuleDenied {
+                    notes: vec!["distributions cannot be empty".to_string()],
+                },
+            };
+        }
+
+        let mut normalized_distributions = Vec::with_capacity(distributions.len());
+        let mut seen_accounts = BTreeSet::new();
+        let mut total_amount = 0_u64;
+        for item in distributions {
+            let account_id = item.account_id.trim();
+            if account_id.is_empty() {
+                return DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::RuleDenied {
+                        notes: vec![format!(
+                            "distribute main token treasury rejected: account_id cannot be empty (distribution_id={distribution_id})"
+                        )],
+                    },
+                };
+            }
+            if item.amount == 0 {
+                return DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::RuleDenied {
+                        notes: vec![format!(
+                            "distribute main token treasury rejected: amount must be > 0 (distribution_id={distribution_id} account_id={account_id})"
+                        )],
+                    },
+                };
+            }
+            if !seen_accounts.insert(account_id.to_string()) {
+                return DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::RuleDenied {
+                        notes: vec![format!(
+                            "distribute main token treasury rejected: duplicate account_id ({account_id})"
+                        )],
+                    },
+                };
+            }
+            total_amount = match total_amount.checked_add(item.amount) {
+                Some(value) => value,
+                None => {
+                    return DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "distribute main token treasury rejected: total_amount overflow (distribution_id={distribution_id})"
+                            )],
+                        },
+                    };
+                }
+            };
+            normalized_distributions.push(MainTokenTreasuryDistribution {
+                account_id: account_id.to_string(),
+                amount: item.amount,
+            });
+        }
+
+        let bucket_balance = self
+            .state
+            .main_token_treasury_balances
+            .get(bucket_id)
+            .copied()
+            .unwrap_or(0);
+        if bucket_balance < total_amount {
+            return DomainEvent::ActionRejected {
+                action_id,
+                reason: RejectReason::RuleDenied {
+                    notes: vec![format!(
+                        "distribute main token treasury rejected: treasury bucket insufficient (bucket={bucket_id} balance={bucket_balance} total={total_amount})"
+                    )],
+                },
+            };
+        }
+
+        let event = DomainEvent::MainTokenTreasuryDistributed {
+            proposal_id,
+            distribution_id: distribution_id.to_string(),
+            bucket_id: bucket_id.to_string(),
+            total_amount,
+            distributions: normalized_distributions,
+        };
+        let mut preview_state = self.state.clone();
+        if let Err(err) = preview_state.apply_domain_event(&event, self.state.time) {
+            return DomainEvent::ActionRejected {
+                action_id,
+                reason: RejectReason::RuleDenied {
+                    notes: vec![format!("distribute main token treasury rejected: {err:?}")],
+                },
+            };
+        }
+        event
     }
 }

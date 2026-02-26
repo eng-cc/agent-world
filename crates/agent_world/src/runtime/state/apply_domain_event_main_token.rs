@@ -1,11 +1,13 @@
 use super::super::events::MainTokenFeeKind;
 use super::super::main_token::{
-    validate_main_token_config_bounds, MAIN_TOKEN_TREASURY_BUCKET_ECOSYSTEM_POOL,
-    MAIN_TOKEN_TREASURY_BUCKET_GAS_FEE, MAIN_TOKEN_TREASURY_BUCKET_MODULE_FEE,
-    MAIN_TOKEN_TREASURY_BUCKET_NODE_SERVICE_REWARD, MAIN_TOKEN_TREASURY_BUCKET_SECURITY_RESERVE,
-    MAIN_TOKEN_TREASURY_BUCKET_SLASH, MAIN_TOKEN_TREASURY_BUCKET_STAKING_REWARD,
+    is_main_token_treasury_distribution_bucket, validate_main_token_config_bounds,
+    MAIN_TOKEN_TREASURY_BUCKET_ECOSYSTEM_POOL, MAIN_TOKEN_TREASURY_BUCKET_GAS_FEE,
+    MAIN_TOKEN_TREASURY_BUCKET_MODULE_FEE, MAIN_TOKEN_TREASURY_BUCKET_NODE_SERVICE_REWARD,
+    MAIN_TOKEN_TREASURY_BUCKET_SECURITY_RESERVE, MAIN_TOKEN_TREASURY_BUCKET_SLASH,
+    MAIN_TOKEN_TREASURY_BUCKET_STAKING_REWARD,
 };
 use super::*;
+use std::collections::BTreeSet;
 
 impl WorldState {
     pub(super) fn apply_domain_event_main_token(
@@ -529,6 +531,180 @@ impl WorldState {
                         proposal_id: *proposal_id,
                         effective_epoch: *effective_epoch,
                         next_config: next.clone(),
+                    },
+                );
+            }
+            DomainEvent::MainTokenTreasuryDistributed {
+                proposal_id,
+                distribution_id,
+                bucket_id,
+                total_amount,
+                distributions,
+            } => {
+                if *proposal_id == 0 {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: "main token treasury distribution proposal_id must be > 0"
+                            .to_string(),
+                    });
+                }
+                let distribution_id = distribution_id.trim();
+                if distribution_id.is_empty() {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: "main token treasury distribution_id cannot be empty".to_string(),
+                    });
+                }
+                let bucket_id = bucket_id.trim();
+                if !is_main_token_treasury_distribution_bucket(bucket_id) {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "main token treasury distribution bucket is not allowed: {}",
+                            bucket_id
+                        ),
+                    });
+                }
+                if *total_amount == 0 {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: "main token treasury total_amount must be > 0".to_string(),
+                    });
+                }
+                if distributions.is_empty() {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: "main token treasury distribution list cannot be empty".to_string(),
+                    });
+                }
+                if self
+                    .main_token_treasury_distribution_records
+                    .contains_key(distribution_id)
+                {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "main token treasury distribution_id already exists: {}",
+                            distribution_id
+                        ),
+                    });
+                }
+
+                let mut seen_accounts = BTreeSet::new();
+                let mut distributions_sum = 0_u64;
+                for item in distributions {
+                    let account_id = item.account_id.trim();
+                    if account_id.is_empty() {
+                        return Err(WorldError::ResourceBalanceInvalid {
+                            reason: format!(
+                                "main token treasury distribution account_id cannot be empty: distribution_id={}",
+                                distribution_id
+                            ),
+                        });
+                    }
+                    if item.amount == 0 {
+                        return Err(WorldError::ResourceBalanceInvalid {
+                            reason: format!(
+                                "main token treasury distribution amount must be > 0: distribution_id={} account_id={}",
+                                distribution_id, account_id
+                            ),
+                        });
+                    }
+                    if !seen_accounts.insert(account_id.to_string()) {
+                        return Err(WorldError::ResourceBalanceInvalid {
+                            reason: format!(
+                                "duplicate main token treasury distribution account_id: distribution_id={} account_id={}",
+                                distribution_id, account_id
+                            ),
+                        });
+                    }
+                    distributions_sum =
+                        distributions_sum.checked_add(item.amount).ok_or_else(|| {
+                            WorldError::ResourceBalanceInvalid {
+                                reason: format!(
+                                "main token treasury distribution sum overflow: distribution_id={}",
+                                distribution_id
+                            ),
+                            }
+                        })?;
+                }
+                if distributions_sum != *total_amount {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "main token treasury distribution sum mismatch: distribution_id={} total={} sum={}",
+                            distribution_id, total_amount, distributions_sum
+                        ),
+                    });
+                }
+
+                let bucket_balance = self
+                    .main_token_treasury_balances
+                    .get(bucket_id)
+                    .copied()
+                    .unwrap_or(0);
+                if bucket_balance < *total_amount {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "main token treasury bucket insufficient: bucket={} balance={} total={}",
+                            bucket_id, bucket_balance, total_amount
+                        ),
+                    });
+                }
+                self.main_token_treasury_balances
+                    .insert(bucket_id.to_string(), bucket_balance - *total_amount);
+
+                for item in distributions {
+                    let account_id = item.account_id.trim();
+                    let account = self
+                        .main_token_balances
+                        .entry(account_id.to_string())
+                        .or_insert_with(|| MainTokenAccountBalance {
+                            account_id: account_id.to_string(),
+                            ..MainTokenAccountBalance::default()
+                        });
+                    if account.account_id != account_id {
+                        return Err(WorldError::ResourceBalanceInvalid {
+                            reason: format!(
+                                "main token treasury account key mismatch: key={} value={}",
+                                account_id, account.account_id
+                            ),
+                        });
+                    }
+                    account.liquid_balance =
+                        account
+                            .liquid_balance
+                            .checked_add(item.amount)
+                            .ok_or_else(|| WorldError::ResourceBalanceInvalid {
+                                reason: format!(
+                                    "main token treasury account overflow: account={} current={} amount={}",
+                                    account_id, account.liquid_balance, item.amount
+                                ),
+                            })?;
+                }
+
+                self.main_token_supply.circulating_supply = self
+                    .main_token_supply
+                    .circulating_supply
+                    .checked_add(*total_amount)
+                    .ok_or_else(|| WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "main token circulating overflow: current={} amount={}",
+                            self.main_token_supply.circulating_supply, total_amount
+                        ),
+                    })?;
+                if self.main_token_supply.circulating_supply > self.main_token_supply.total_supply {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "main token circulating exceeds total: circulating={} total={}",
+                            self.main_token_supply.circulating_supply,
+                            self.main_token_supply.total_supply
+                        ),
+                    });
+                }
+
+                self.main_token_treasury_distribution_records.insert(
+                    distribution_id.to_string(),
+                    MainTokenTreasuryDistributionRecord {
+                        proposal_id: *proposal_id,
+                        distribution_id: distribution_id.to_string(),
+                        bucket_id: bucket_id.to_string(),
+                        total_amount: *total_amount,
+                        distributions: distributions.clone(),
+                        distributed_epoch: now,
                     },
                 );
             }

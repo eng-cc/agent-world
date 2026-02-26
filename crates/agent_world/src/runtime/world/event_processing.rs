@@ -146,6 +146,7 @@ impl World {
             | Action::ApplyMainTokenEpochIssuance { .. }
             | Action::SettleMainTokenFee { .. }
             | Action::UpdateMainTokenPolicy { .. }
+            | Action::DistributeMainTokenTreasury { .. }
             | Action::TransferMaterial { .. } => {
                 self.action_to_event_core(action_id, &envelope.action)
             }

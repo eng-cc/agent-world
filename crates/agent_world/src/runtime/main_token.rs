@@ -180,6 +180,22 @@ pub struct MainTokenNodePointsBridgeEpochRecord {
     pub distributions: Vec<MainTokenNodePointsBridgeDistribution>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct MainTokenTreasuryDistribution {
+    pub account_id: String,
+    pub amount: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct MainTokenTreasuryDistributionRecord {
+    pub proposal_id: u64,
+    pub distribution_id: String,
+    pub bucket_id: String,
+    pub total_amount: u64,
+    pub distributions: Vec<MainTokenTreasuryDistribution>,
+    pub distributed_epoch: u64,
+}
+
 pub fn validate_main_token_config_bounds(config: &MainTokenConfig) -> Result<(), String> {
     if config.symbol.trim().is_empty() {
         return Err("main token symbol cannot be empty".to_string());
@@ -276,6 +292,15 @@ pub fn validate_main_token_config_bounds(config: &MainTokenConfig) -> Result<(),
 pub fn main_token_account_id_from_node_public_key(public_key_hex: &str) -> String {
     let normalized = public_key_hex.trim().to_ascii_lowercase();
     format!("{MAIN_TOKEN_NODE_ACCOUNT_PREFIX}{normalized}")
+}
+
+pub fn is_main_token_treasury_distribution_bucket(bucket_id: &str) -> bool {
+    matches!(
+        bucket_id,
+        MAIN_TOKEN_TREASURY_BUCKET_STAKING_REWARD
+            | MAIN_TOKEN_TREASURY_BUCKET_ECOSYSTEM_POOL
+            | MAIN_TOKEN_TREASURY_BUCKET_SECURITY_RESERVE
+    )
 }
 
 pub fn main_token_bucket_unlocked_amount(

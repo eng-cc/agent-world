@@ -10,10 +10,10 @@ use super::super::WorldError;
 use super::super::{
     EpochSettlementReport, MainTokenAccountBalance, MainTokenConfig, MainTokenEpochIssuanceRecord,
     MainTokenGenesisAllocationBucketState, MainTokenNodePointsBridgeEpochRecord,
-    MainTokenScheduledPolicyUpdate, MainTokenSupplyState, MaterialLedgerId, MaterialStack,
-    NodeAssetBalance, NodeRewardMintRecord, ProtocolPowerReserve, RewardAssetConfig,
-    RewardAssetInvariantReport, RewardAssetInvariantViolation, RewardSignatureGovernancePolicy,
-    SystemOrderPoolBudget,
+    MainTokenScheduledPolicyUpdate, MainTokenSupplyState, MainTokenTreasuryDistributionRecord,
+    MaterialLedgerId, MaterialStack, NodeAssetBalance, NodeRewardMintRecord, ProtocolPowerReserve,
+    RewardAssetConfig, RewardAssetInvariantReport, RewardAssetInvariantViolation,
+    RewardSignatureGovernancePolicy, SystemOrderPoolBudget,
 };
 use super::World;
 use crate::simulator::ResourceKind;
@@ -145,6 +145,15 @@ impl World {
         self.state
             .main_token_node_points_bridge_records
             .get(&epoch_index)
+    }
+
+    pub fn main_token_treasury_distribution_record(
+        &self,
+        distribution_id: &str,
+    ) -> Option<&MainTokenTreasuryDistributionRecord> {
+        self.state
+            .main_token_treasury_distribution_records
+            .get(distribution_id)
     }
 
     pub fn set_main_token_treasury_balance(

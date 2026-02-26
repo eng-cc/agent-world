@@ -44,6 +44,9 @@ pub(super) fn event_kind_label(body: &WorldEventBody) -> &'static str {
             DomainEvent::MainTokenPolicyUpdateScheduled { .. } => {
                 "domain.main_token.policy_update_scheduled"
             }
+            DomainEvent::MainTokenTreasuryDistributed { .. } => {
+                "domain.main_token.treasury_distributed"
+            }
             DomainEvent::MaterialTransferred { .. } => "domain.material_transferred",
             DomainEvent::MaterialTransitStarted { .. } => "domain.material_transit_started",
             DomainEvent::MaterialTransitCompleted { .. } => "domain.material_transit_completed",
@@ -143,6 +146,7 @@ pub(super) fn action_kind_label(action: &Action) -> &'static str {
         Action::ApplyMainTokenEpochIssuance { .. } => "action.main_token.apply_epoch_issuance",
         Action::SettleMainTokenFee { .. } => "action.main_token.settle_fee",
         Action::UpdateMainTokenPolicy { .. } => "action.main_token.update_policy",
+        Action::DistributeMainTokenTreasury { .. } => "action.main_token.distribute_treasury",
         Action::TransferMaterial { .. } => "action.transfer_material",
         Action::FormAlliance { .. } => "action.gameplay.form_alliance",
         Action::JoinAlliance { .. } => "action.gameplay.join_alliance",

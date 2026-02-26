@@ -19,7 +19,7 @@ use super::main_token::{
     main_token_bucket_unlocked_amount, MainTokenAccountBalance, MainTokenConfig,
     MainTokenEpochIssuanceRecord, MainTokenGenesisAllocationBucketState,
     MainTokenNodePointsBridgeDistribution, MainTokenNodePointsBridgeEpochRecord,
-    MainTokenScheduledPolicyUpdate, MainTokenSupplyState,
+    MainTokenScheduledPolicyUpdate, MainTokenSupplyState, MainTokenTreasuryDistributionRecord,
     MAIN_TOKEN_TREASURY_BUCKET_NODE_SERVICE_REWARD,
 };
 use super::node_points::EpochSettlementReport;
@@ -247,6 +247,9 @@ pub struct WorldState {
     #[serde(default)]
     pub main_token_node_points_bridge_records: BTreeMap<u64, MainTokenNodePointsBridgeEpochRecord>,
     #[serde(default)]
+    pub main_token_treasury_distribution_records:
+        BTreeMap<String, MainTokenTreasuryDistributionRecord>,
+    #[serde(default)]
     pub reward_asset_config: RewardAssetConfig,
     #[serde(default)]
     pub node_asset_balances: BTreeMap<String, NodeAssetBalance>,
@@ -309,6 +312,7 @@ impl Default for WorldState {
             main_token_claim_nonces: BTreeMap::new(),
             main_token_scheduled_policy_updates: BTreeMap::new(),
             main_token_node_points_bridge_records: BTreeMap::new(),
+            main_token_treasury_distribution_records: BTreeMap::new(),
             reward_asset_config: RewardAssetConfig::default(),
             node_asset_balances: BTreeMap::new(),
             protocol_power_reserve: ProtocolPowerReserve::default(),
@@ -513,6 +517,7 @@ impl WorldState {
             | DomainEvent::MainTokenEpochIssued { .. }
             | DomainEvent::MainTokenFeeSettled { .. }
             | DomainEvent::MainTokenPolicyUpdateScheduled { .. }
+            | DomainEvent::MainTokenTreasuryDistributed { .. }
             | DomainEvent::MaterialTransferred { .. }
             | DomainEvent::MaterialTransitStarted { .. }
             | DomainEvent::MaterialTransitCompleted { .. }

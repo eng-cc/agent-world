@@ -965,6 +965,9 @@ impl WorldState {
             event @ DomainEvent::MainTokenPolicyUpdateScheduled { .. } => {
                 self.apply_domain_event_main_token(event, now)?;
             }
+            event @ DomainEvent::MainTokenTreasuryDistributed { .. } => {
+                self.apply_domain_event_main_token(event, now)?;
+            }
             event @ DomainEvent::MaterialTransferred { .. } => {
                 self.apply_domain_event_industry(event, now)?;
             }

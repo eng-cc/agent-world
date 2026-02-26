@@ -12,6 +12,9 @@ fn main_token_queries_return_defaults_when_uninitialized() {
     assert_eq!(world.main_token_treasury_balance("missing-bucket"), 0);
     assert!(world.main_token_genesis_bucket("missing-bucket").is_none());
     assert!(world.main_token_epoch_issuance_record(1).is_none());
+    assert!(world
+        .main_token_treasury_distribution_record("missing-distribution")
+        .is_none());
 }
 
 #[test]
@@ -684,4 +687,266 @@ fn main_token_policy_update_rejects_out_of_bounds_configuration() {
         other => panic!("expected ActionRejected, got {other:?}"),
     }
     assert!(world.state().main_token_scheduled_policy_updates.is_empty());
+}
+
+#[test]
+fn main_token_treasury_distribution_applies_closed_loop_and_records_audit() {
+    let mut world = World::new();
+    world.set_main_token_config(MainTokenConfig {
+        initial_supply: 1_500,
+        ..MainTokenConfig::default()
+    });
+    world.submit_action(Action::InitializeMainTokenGenesis {
+        allocations: vec![MainTokenGenesisAllocationPlan {
+            bucket_id: "genesis_pool".to_string(),
+            ratio_bps: 10_000,
+            recipient: "protocol:treasury".to_string(),
+            cliff_epochs: 0,
+            linear_unlock_epochs: 0,
+            start_epoch: 0,
+        }],
+    });
+    world.step().expect("initialize main token genesis");
+    world.set_main_token_supply(MainTokenSupplyState {
+        total_supply: 1_500,
+        circulating_supply: 1_000,
+        total_issued: 500,
+        total_burned: 0,
+    });
+    world
+        .set_main_token_treasury_balance(MAIN_TOKEN_TREASURY_BUCKET_STAKING_REWARD, 300)
+        .expect("set staking treasury balance");
+
+    let proposal_id = world
+        .propose_manifest_update(world.manifest().clone(), "alice")
+        .expect("create governance proposal");
+    world
+        .shadow_proposal(proposal_id)
+        .expect("shadow governance proposal");
+    world
+        .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)
+        .expect("approve governance proposal");
+
+    world.submit_action(Action::DistributeMainTokenTreasury {
+        proposal_id,
+        distribution_id: "dist-1".to_string(),
+        bucket_id: MAIN_TOKEN_TREASURY_BUCKET_STAKING_REWARD.to_string(),
+        distributions: vec![
+            MainTokenTreasuryDistribution {
+                account_id: "node:alice".to_string(),
+                amount: 120,
+            },
+            MainTokenTreasuryDistribution {
+                account_id: "node:bob".to_string(),
+                amount: 80,
+            },
+        ],
+    });
+    world.step().expect("distribute main token treasury");
+
+    match &world.journal().events.last().expect("event").body {
+        WorldEventBody::Domain(DomainEvent::MainTokenTreasuryDistributed {
+            proposal_id: event_proposal_id,
+            distribution_id,
+            bucket_id,
+            total_amount,
+            distributions,
+        }) => {
+            assert_eq!(*event_proposal_id, proposal_id);
+            assert_eq!(distribution_id, "dist-1");
+            assert_eq!(bucket_id, MAIN_TOKEN_TREASURY_BUCKET_STAKING_REWARD);
+            assert_eq!(*total_amount, 200);
+            assert_eq!(distributions.len(), 2);
+        }
+        other => panic!("expected MainTokenTreasuryDistributed, got {other:?}"),
+    }
+    assert_eq!(
+        world.main_token_treasury_balance(MAIN_TOKEN_TREASURY_BUCKET_STAKING_REWARD),
+        100
+    );
+    assert_eq!(world.main_token_liquid_balance("node:alice"), 120);
+    assert_eq!(world.main_token_liquid_balance("node:bob"), 80);
+    assert_eq!(world.main_token_supply().circulating_supply, 1_200);
+
+    let record = world
+        .main_token_treasury_distribution_record("dist-1")
+        .expect("distribution record");
+    assert_eq!(record.proposal_id, proposal_id);
+    assert_eq!(record.bucket_id, MAIN_TOKEN_TREASURY_BUCKET_STAKING_REWARD);
+    assert_eq!(record.total_amount, 200);
+    assert_eq!(record.distributions.len(), 2);
+}
+
+#[test]
+fn main_token_treasury_distribution_requires_approved_or_applied_governance_proposal() {
+    let mut world = World::new();
+    world.set_main_token_config(MainTokenConfig {
+        initial_supply: 1_000,
+        ..MainTokenConfig::default()
+    });
+    world.submit_action(Action::InitializeMainTokenGenesis {
+        allocations: vec![MainTokenGenesisAllocationPlan {
+            bucket_id: "genesis_pool".to_string(),
+            ratio_bps: 10_000,
+            recipient: "protocol:treasury".to_string(),
+            cliff_epochs: 0,
+            linear_unlock_epochs: 0,
+            start_epoch: 0,
+        }],
+    });
+    world.step().expect("initialize main token genesis");
+    world
+        .set_main_token_treasury_balance(MAIN_TOKEN_TREASURY_BUCKET_STAKING_REWARD, 100)
+        .expect("set staking treasury balance");
+
+    world.submit_action(Action::DistributeMainTokenTreasury {
+        proposal_id: 9_999,
+        distribution_id: "dist-missing".to_string(),
+        bucket_id: MAIN_TOKEN_TREASURY_BUCKET_STAKING_REWARD.to_string(),
+        distributions: vec![MainTokenTreasuryDistribution {
+            account_id: "node:alice".to_string(),
+            amount: 50,
+        }],
+    });
+    world
+        .step()
+        .expect("missing governance proposal should reject");
+    match &world.journal().events.last().expect("event").body {
+        WorldEventBody::Domain(DomainEvent::ActionRejected { reason, .. }) => match reason {
+            RejectReason::RuleDenied { notes } => {
+                assert!(notes
+                    .iter()
+                    .any(|note| note.contains("governance proposal not found")));
+            }
+            other => panic!("expected RuleDenied, got {other:?}"),
+        },
+        other => panic!("expected ActionRejected, got {other:?}"),
+    }
+
+    let proposal_id = world
+        .propose_manifest_update(world.manifest().clone(), "alice")
+        .expect("create governance proposal");
+    world.submit_action(Action::DistributeMainTokenTreasury {
+        proposal_id,
+        distribution_id: "dist-unapproved".to_string(),
+        bucket_id: MAIN_TOKEN_TREASURY_BUCKET_STAKING_REWARD.to_string(),
+        distributions: vec![MainTokenTreasuryDistribution {
+            account_id: "node:alice".to_string(),
+            amount: 50,
+        }],
+    });
+    world
+        .step()
+        .expect("unapproved governance proposal should reject");
+    match &world.journal().events.last().expect("event").body {
+        WorldEventBody::Domain(DomainEvent::ActionRejected { reason, .. }) => match reason {
+            RejectReason::RuleDenied { notes } => {
+                assert!(notes.iter().any(|note| {
+                    note.contains("governance proposal must be approved or applied")
+                }));
+            }
+            other => panic!("expected RuleDenied, got {other:?}"),
+        },
+        other => panic!("expected ActionRejected, got {other:?}"),
+    }
+}
+
+#[test]
+fn main_token_treasury_distribution_rejects_unsupported_bucket_and_duplicate_distribution_id() {
+    let mut world = World::new();
+    world.set_main_token_config(MainTokenConfig {
+        initial_supply: 1_000,
+        ..MainTokenConfig::default()
+    });
+    world.submit_action(Action::InitializeMainTokenGenesis {
+        allocations: vec![MainTokenGenesisAllocationPlan {
+            bucket_id: "genesis_pool".to_string(),
+            ratio_bps: 10_000,
+            recipient: "protocol:treasury".to_string(),
+            cliff_epochs: 0,
+            linear_unlock_epochs: 0,
+            start_epoch: 0,
+        }],
+    });
+    world.step().expect("initialize main token genesis");
+    world.set_main_token_supply(MainTokenSupplyState {
+        total_supply: 1_000,
+        circulating_supply: 600,
+        total_issued: 0,
+        total_burned: 0,
+    });
+    world
+        .set_main_token_treasury_balance(MAIN_TOKEN_TREASURY_BUCKET_STAKING_REWARD, 100)
+        .expect("set staking treasury balance");
+
+    let proposal_id = world
+        .propose_manifest_update(world.manifest().clone(), "alice")
+        .expect("create governance proposal");
+    world
+        .shadow_proposal(proposal_id)
+        .expect("shadow governance proposal");
+    world
+        .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)
+        .expect("approve governance proposal");
+
+    world.submit_action(Action::DistributeMainTokenTreasury {
+        proposal_id,
+        distribution_id: "dist-invalid-bucket".to_string(),
+        bucket_id: MAIN_TOKEN_TREASURY_BUCKET_NODE_SERVICE_REWARD.to_string(),
+        distributions: vec![MainTokenTreasuryDistribution {
+            account_id: "node:alice".to_string(),
+            amount: 30,
+        }],
+    });
+    world.step().expect("unsupported bucket should reject");
+    match &world.journal().events.last().expect("event").body {
+        WorldEventBody::Domain(DomainEvent::ActionRejected { reason, .. }) => match reason {
+            RejectReason::RuleDenied { notes } => {
+                assert!(notes.iter().any(|note| note.contains("unsupported bucket")));
+            }
+            other => panic!("expected RuleDenied, got {other:?}"),
+        },
+        other => panic!("expected ActionRejected, got {other:?}"),
+    }
+
+    world.submit_action(Action::DistributeMainTokenTreasury {
+        proposal_id,
+        distribution_id: "dist-dup".to_string(),
+        bucket_id: MAIN_TOKEN_TREASURY_BUCKET_STAKING_REWARD.to_string(),
+        distributions: vec![MainTokenTreasuryDistribution {
+            account_id: "node:alice".to_string(),
+            amount: 40,
+        }],
+    });
+    world
+        .step()
+        .expect("first treasury distribution should pass");
+    assert_eq!(
+        world.main_token_treasury_balance(MAIN_TOKEN_TREASURY_BUCKET_STAKING_REWARD),
+        60
+    );
+
+    world.submit_action(Action::DistributeMainTokenTreasury {
+        proposal_id,
+        distribution_id: "dist-dup".to_string(),
+        bucket_id: MAIN_TOKEN_TREASURY_BUCKET_STAKING_REWARD.to_string(),
+        distributions: vec![MainTokenTreasuryDistribution {
+            account_id: "node:bob".to_string(),
+            amount: 20,
+        }],
+    });
+    world
+        .step()
+        .expect("duplicate distribution_id should reject");
+    match &world.journal().events.last().expect("event").body {
+        WorldEventBody::Domain(DomainEvent::ActionRejected { reason, .. }) => match reason {
+            RejectReason::RuleDenied { notes } => {
+                assert!(notes
+                    .iter()
+                    .any(|note| note.contains("distribution_id already exists")));
+            }
+            other => panic!("expected RuleDenied, got {other:?}"),
+        },
+        other => panic!("expected ActionRejected, got {other:?}"),
+    }
 }
