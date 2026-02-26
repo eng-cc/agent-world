@@ -12,6 +12,7 @@
 - [x] T9 按最新命名将手册统一为 `testing-manual.md`，并在 `AGENTS.md` 增加测试引用入口
 - [x] T10 将 `AGENTS.md` 的 Agent Web 闭环细节迁移到 `testing-manual.md`，`AGENTS.md` 仅保留短入口与约束
 - [x] T11 将 `testing-manual.md` 的 Playwright/S6 执行细节拆分到独立文档并改为引用
+- [x] T12 补充 Playwright 启动防抖与失败分级处置（连接拒绝/URL 引号/会话残留/渲染 panic）
 
 ## 依赖
 - `AGENTS.md`（开发工作流、测试分层、Web 闭环优先口径）
@@ -31,4 +32,4 @@
 
 ## 状态
 - 当前阶段：已完成（`AGENTS.md` 与 `testing-manual.md` 已完成“迁移 + 引用”分工）
-- 最近更新：2026-02-25
+- 最近更新：2026-02-26

@@ -15,6 +15,18 @@ env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_boo
 ```bash
 env -u NO_COLOR ./scripts/run-viewer-web.sh --address 127.0.0.1 --port 4173
 ```
+2.1) 启动前自检（必做，防止一次性启动失败）：
+```bash
+# 1) 确认端口监听（viewer=4173, ws=5011）
+lsof -iTCP:4173 -sTCP:LISTEN -n -P
+lsof -iTCP:5011 -sTCP:LISTEN -n -P
+
+# 2) 确认主页可访问（避免 ERR_CONNECTION_REFUSED）
+curl -fsS "http://127.0.0.1:4173/" >/dev/null
+
+# 3) URL 必须带引号（含 `&`，否则 shell 会截断/拆命令）
+URL='http://127.0.0.1:4173/?ws=ws://127.0.0.1:5011&test_api=1'
+```
 3) Playwright 采样：
 ```bash
 source "$HOME/.nvm/nvm.sh"
@@ -33,11 +45,36 @@ bash "$PWCLI" console
 bash "$PWCLI" screenshot --filename output/playwright/viewer/viewer-web.png
 bash "$PWCLI" close
 ```
+3.1) Playwright 会话防抖（推荐）：
+```bash
+# 每轮前清理旧会话，避免残留 daemon/session 干扰
+bash "$PWCLI" close-all || true
+
+# 打开页面后先做 fail-fast 检查
+bash "$PWCLI" open "$URL" --headed
+bash "$PWCLI" snapshot
+bash "$PWCLI" eval '() => typeof window.__AW_TEST__ === "object"'
+bash "$PWCLI" console warning
+```
 4) 最小通过标准：
 - `snapshot` 可见 `canvas`
 - `window.__AW_TEST__` 可用，且 `getState()` 返回 `tick/connectionStatus`
 - `console error = 0`
 - 至少 1 张截图在 `output/playwright/viewer/`
+
+## 启动失败分级与处置（Fail Fast）
+- F1：`open/goto` 报 `ERR_CONNECTION_REFUSED`
+  - 结论：`trunk serve` 尚未就绪或进程已退出。
+  - 处置：回看 `run-viewer-web.sh` 输出，确认 4173 监听后再重试 `open`。
+- F2：页面可开但 console 出现 `copy_deferred_lighting_id_pipeline`、`RuntimeError: unreachable`、`CONTEXT_LOST_WEBGL`
+  - 结论：渲染初始化崩溃（非测试脚本问题）。
+  - 处置：立即归档 console/screenshot/video，标记本轮 fail，不继续做可玩性判定。
+- F3：`__AW_TEST__` 可用但 `connectionStatus=connecting` 且 `tick=0` 长时间不变
+  - 结论：语义链路未进入有效推进（连接或主循环异常）。
+  - 处置：执行 `play` 后额外观察约 12s；仍不推进则判 fail 并归档证据。
+- F4：脚本/人工流程里把 URL 写入 env 文件后 `source` 报 parse error
+  - 结论：`&` 未转义或未加引号。
+  - 处置：使用 `URL='http://...?...&...'`，或避免 `source` 这类文件。
 
 ## 一键发行验收（推荐）
 ```bash
