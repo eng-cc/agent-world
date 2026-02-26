@@ -245,8 +245,22 @@ enum ConsumeReason {
 
 ### Phase 4：高级功能
 1. 设施老化与维护
-2. 电价波动（供需平衡）
+2. 电价波动（供需平衡，纯供需模型）
 3. 停电恢复流程
+
+## M4.4 供需电价模型（2026-02-26 冻结口径）
+
+本轮冻结为“纯供需定价”，不引入峰谷时段调节项。
+
+- `base_price = clamp(market_base_price_per_pu, market_price_min_per_pu, market_price_max_per_pu)`
+- `demand_pressure_bps = clamp((requested * 10000 / max(seller_available_before, 1)) - 10000, 0, market_supply_demand_price_max_bps)`
+- `quote_price = clamp(base_price + base_price * demand_pressure_bps / 10000, market_price_min_per_pu, market_price_max_per_pu)`
+
+说明：
+
+- 当 `requested <= seller_available_before`，压力项接近 `0`，价格接近 `base_price`。
+- 当请求量显著高于可供给量时，价格按压力项上浮，但受 `market_supply_demand_price_max_bps` 与全局 `min/max` 双重约束。
+- 显式报价偏离仍由 `market_price_band_bps` 控制（用于防止离谱报价），但不参与时段调价。
 
 ## 里程碑
 
