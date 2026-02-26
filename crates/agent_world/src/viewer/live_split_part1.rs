@@ -154,6 +154,8 @@ enum LiveLoopSignal {
     Request(ViewerRequest),
     PlaybackPulse,
     LlmDecisionRequested,
+    StepRequested { count: usize },
+    SeekRequested { tick: u64 },
 }
 
 impl ViewerLiveServer {
@@ -245,6 +247,16 @@ impl ViewerLiveServer {
                         if outcome.request_llm_decision {
                             let _ = loop_tx.send(LiveLoopSignal::LlmDecisionRequested);
                         }
+                        if let Some(control) = outcome.deferred_control {
+                            match control {
+                                ViewerLiveDeferredControl::Step { count } => {
+                                    let _ = loop_tx.send(LiveLoopSignal::StepRequested { count });
+                                }
+                                ViewerLiveDeferredControl::Seek { tick } => {
+                                    let _ = loop_tx.send(LiveLoopSignal::SeekRequested { tick });
+                                }
+                            }
+                        }
                         playback_control.set_enabled(session.should_emit_event());
                         if !outcome.continue_running {
                             break Ok(());
@@ -267,6 +279,22 @@ impl ViewerLiveServer {
                 }
                 Ok(LiveLoopSignal::LlmDecisionRequested) => {
                     self.world.request_llm_decision();
+                }
+                Ok(LiveLoopSignal::StepRequested { count }) => {
+                    if let Err(err) = self.handle_step_request(&mut session, &mut writer, count) {
+                        if err.is_disconnect() {
+                            break Ok(());
+                        }
+                        break Err(err);
+                    }
+                }
+                Ok(LiveLoopSignal::SeekRequested { tick }) => {
+                    if let Err(err) = self.handle_seek_request(&mut session, &mut writer, tick) {
+                        if err.is_disconnect() {
+                            break Ok(());
+                        }
+                        break Err(err);
+                    }
                 }
                 Err(_) => break Ok(()),
             }
@@ -311,6 +339,78 @@ impl ViewerLiveServer {
 
         session.update_metrics(self.world.metrics());
         session.emit_metrics(writer)?;
+        Ok(())
+    }
+
+    fn handle_step_request(
+        &mut self,
+        session: &mut ViewerLiveSession,
+        writer: &mut BufWriter<TcpStream>,
+        count: usize,
+    ) -> Result<(), ViewerLiveServerError> {
+        session.playing = false;
+        let steps = count.max(1);
+        for _ in 0..steps {
+            self.world.request_llm_decision();
+            let step = self.world.step()?;
+
+            if let Some(trace) = step.decision_trace {
+                if session.subscribed.contains(&ViewerStream::Events) {
+                    send_response(writer, &ViewerResponse::DecisionTrace { trace })?;
+                }
+            }
+
+            if let Some(event) = step.event {
+                if session.event_allowed(&event)
+                    && session.subscribed.contains(&ViewerStream::Events)
+                {
+                    send_response(writer, &ViewerResponse::Event { event })?;
+                }
+                if session.subscribed.contains(&ViewerStream::Snapshot) {
+                    send_response(
+                        writer,
+                        &ViewerResponse::Snapshot {
+                            snapshot: self.world.snapshot(),
+                        },
+                    )?;
+                }
+            }
+
+            session.update_metrics(self.world.metrics());
+            session.emit_metrics(writer)?;
+        }
+        Ok(())
+    }
+
+    fn handle_seek_request(
+        &mut self,
+        session: &mut ViewerLiveSession,
+        writer: &mut BufWriter<TcpStream>,
+        tick: u64,
+    ) -> Result<(), ViewerLiveServerError> {
+        session.playing = false;
+        let seek_result = self.world.seek_to_tick(tick)?;
+        if session.subscribed.contains(&ViewerStream::Snapshot) {
+            send_response(
+                writer,
+                &ViewerResponse::Snapshot {
+                    snapshot: self.world.snapshot(),
+                },
+            )?;
+        }
+        session.update_metrics(self.world.metrics());
+        session.emit_metrics(writer)?;
+        if !seek_result.reached {
+            send_response(
+                writer,
+                &ViewerResponse::Error {
+                    message: format!(
+                        "live seek stalled at tick {} before target {}",
+                        seek_result.current_tick, tick
+                    ),
+                },
+            )?;
+        }
         Ok(())
     }
 }

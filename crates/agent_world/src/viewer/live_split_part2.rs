@@ -135,6 +135,13 @@ struct ViewerLiveSession {
 struct ViewerLiveRequestOutcome {
     continue_running: bool,
     request_llm_decision: bool,
+    deferred_control: Option<ViewerLiveDeferredControl>,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum ViewerLiveDeferredControl {
+    Step { count: usize },
+    Seek { tick: u64 },
 }
 
 #[derive(Clone)]
@@ -189,6 +196,7 @@ impl ViewerLiveSession {
         world_id: &str,
     ) -> Result<ViewerLiveRequestOutcome, ViewerLiveServerError> {
         let mut request_llm_decision = false;
+        let mut deferred_control = None;
         match request {
             ViewerRequest::Hello { .. } => {
                 let response = ViewerResponse::HelloAck {
@@ -271,68 +279,21 @@ impl ViewerLiveSession {
                     request_llm_decision = true;
                 }
                 ViewerControl::Step { count } => {
-                    let steps = count.max(1);
-                    for _ in 0..steps {
-                        world.request_llm_decision();
-                        let step = world.step()?;
-
-                        if let Some(trace) = step.decision_trace {
-                            if self.subscribed.contains(&ViewerStream::Events) {
-                                send_response(writer, &ViewerResponse::DecisionTrace { trace })?;
-                            }
-                        }
-
-                        if let Some(event) = step.event {
-                            if self.event_allowed(&event)
-                                && self.subscribed.contains(&ViewerStream::Events)
-                            {
-                                send_response(writer, &ViewerResponse::Event { event })?;
-                            }
-                            if self.subscribed.contains(&ViewerStream::Snapshot) {
-                                send_response(
-                                    writer,
-                                    &ViewerResponse::Snapshot {
-                                        snapshot: world.snapshot(),
-                                    },
-                                )?;
-                            }
-                        }
-
-                        self.update_metrics(world.metrics());
-                        self.emit_metrics(writer)?;
-                    }
                     self.playing = false;
+                    deferred_control = Some(ViewerLiveDeferredControl::Step {
+                        count: count.max(1),
+                    });
                 }
                 ViewerControl::Seek { tick } => {
                     self.playing = false;
-                    let seek_result = world.seek_to_tick(tick)?;
-                    if self.subscribed.contains(&ViewerStream::Snapshot) {
-                        send_response(
-                            writer,
-                            &ViewerResponse::Snapshot {
-                                snapshot: world.snapshot(),
-                            },
-                        )?;
-                    }
-                    self.update_metrics(world.metrics());
-                    self.emit_metrics(writer)?;
-                    if !seek_result.reached {
-                        send_response(
-                            writer,
-                            &ViewerResponse::Error {
-                                message: format!(
-                                    "live seek stalled at tick {} before target {}",
-                                    seek_result.current_tick, tick
-                                ),
-                            },
-                        )?;
-                    }
+                    deferred_control = Some(ViewerLiveDeferredControl::Seek { tick });
                 }
             },
         }
         Ok(ViewerLiveRequestOutcome {
             continue_running: true,
             request_llm_decision,
+            deferred_control,
         })
     }
 
