@@ -937,3 +937,128 @@ fn playback_pulse_thread_stays_idle_until_enabled() {
     playback_control.notify();
     handle.join().expect("pulse thread should exit");
 }
+
+#[test]
+fn enqueue_coalesced_signal_merges_duplicate_llm_decision_requests() {
+    let (tx, rx) = mpsc::sync_channel(4);
+    let queued = Arc::new(AtomicBool::new(false));
+    let backpressure = LiveLoopBackpressure::default();
+
+    enqueue_coalesced_signal(
+        &tx,
+        LiveLoopSignal::LlmDecisionRequested,
+        &queued,
+        CoalescedSignalKind::LlmDecisionRequested,
+        &backpressure,
+    );
+    enqueue_coalesced_signal(
+        &tx,
+        LiveLoopSignal::LlmDecisionRequested,
+        &queued,
+        CoalescedSignalKind::LlmDecisionRequested,
+        &backpressure,
+    );
+
+    let signal = rx
+        .recv_timeout(Duration::from_millis(50))
+        .expect("should receive one llm signal");
+    assert!(matches!(signal, LiveLoopSignal::LlmDecisionRequested));
+    assert!(matches!(
+        rx.recv_timeout(Duration::from_millis(50)),
+        Err(mpsc::RecvTimeoutError::Timeout)
+    ));
+
+    let snapshot = backpressure.snapshot();
+    assert_eq!(snapshot.merged_llm_decision_requested, 1);
+    assert_eq!(snapshot.dropped_llm_decision_requested, 0);
+}
+
+#[test]
+fn enqueue_coalesced_signal_drops_when_queue_is_full() {
+    let (tx, rx) = mpsc::sync_channel(1);
+    tx.send(LiveLoopSignal::StepRequested { count: 1 })
+        .expect("fill queue");
+    let queued = Arc::new(AtomicBool::new(false));
+    let backpressure = LiveLoopBackpressure::default();
+
+    enqueue_coalesced_signal(
+        &tx,
+        LiveLoopSignal::ConsensusDriveRequested,
+        &queued,
+        CoalescedSignalKind::ConsensusDriveRequested,
+        &backpressure,
+    );
+
+    let queued_signal = rx
+        .recv_timeout(Duration::from_millis(50))
+        .expect("receive original signal");
+    assert!(matches!(
+        queued_signal,
+        LiveLoopSignal::StepRequested { .. }
+    ));
+    assert!(!queued.load(Ordering::SeqCst));
+
+    let snapshot = backpressure.snapshot();
+    assert_eq!(snapshot.merged_consensus_drive_requested, 0);
+    assert_eq!(snapshot.dropped_consensus_drive_requested, 1);
+}
+
+#[test]
+fn consensus_commit_signal_thread_emits_on_committed_batches() {
+    let node_config = NodeConfig::new(
+        "node-live-commit-signal",
+        "live-minimal",
+        NodeRole::Sequencer,
+    )
+    .expect("node config")
+    .with_tick_interval(Duration::from_millis(10))
+    .expect("node tick interval");
+    let mut node_runtime = NodeRuntime::new(node_config).with_execution_hook(TestNoopExecutionHook);
+    node_runtime.start().expect("start node runtime");
+    let shared_runtime = Arc::new(Mutex::new(node_runtime));
+    let committed_batches = {
+        let runtime = shared_runtime.lock().expect("lock node runtime");
+        runtime.committed_action_batches_handle()
+    };
+
+    let (tx, rx) = mpsc::sync_channel(8);
+    let loop_running = Arc::new(AtomicBool::new(true));
+    let signal_queued = Arc::new(AtomicBool::new(false));
+    let backpressure = Arc::new(LiveLoopBackpressure::default());
+    let signal_loop_flag = Arc::clone(&loop_running);
+    let signal_queued_flag = Arc::clone(&signal_queued);
+    let signal_backpressure = Arc::clone(&backpressure);
+    let signal_thread = thread::spawn(move || {
+        emit_consensus_commit_signals(
+            tx,
+            signal_loop_flag,
+            committed_batches,
+            signal_queued_flag,
+            signal_backpressure,
+        )
+    });
+
+    let config = WorldConfig::default();
+    let init = WorldInitConfig::from_scenario(WorldScenario::Minimal, &config);
+    let mut world = LiveWorld::new_with_consensus_gate(
+        config,
+        init,
+        ViewerLiveDecisionMode::Script,
+        None,
+        Some(Arc::clone(&shared_runtime)),
+    )
+    .expect("init world");
+    let submit = world.step().expect("submit consensus action");
+    assert!(submit.event.is_none());
+
+    let signal = rx
+        .recv_timeout(Duration::from_secs(2))
+        .expect("should receive consensus committed signal");
+    assert!(matches!(signal, LiveLoopSignal::ConsensusCommitted));
+
+    loop_running.store(false, Ordering::SeqCst);
+    signal_thread.join().expect("signal thread exits");
+
+    let mut runtime = shared_runtime.lock().expect("lock node runtime");
+    runtime.stop().expect("stop node runtime");
+}
