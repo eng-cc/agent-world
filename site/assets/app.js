@@ -686,15 +686,36 @@
   }
 
   if (menu && toggle) {
+    const menuId = menu.id || "site-nav-menu";
+    if (!menu.id) {
+      menu.id = menuId;
+    }
+    if (!toggle.hasAttribute("aria-controls")) {
+      toggle.setAttribute("aria-controls", menu.id);
+    }
+
+    const setMenuOpen = (open) => {
+      menu.setAttribute("data-open", open ? "true" : "false");
+      toggle.setAttribute("aria-expanded", open ? "true" : "false");
+    };
+
+    setMenuOpen(menu.getAttribute("data-open") === "true");
+
     toggle.addEventListener("click", () => {
       const opened = menu.getAttribute("data-open") === "true";
-      menu.setAttribute("data-open", opened ? "false" : "true");
+      setMenuOpen(!opened);
     });
 
     menu.querySelectorAll("a").forEach((link) => {
       link.addEventListener("click", () => {
-        menu.setAttribute("data-open", "false");
+        setMenuOpen(false);
       });
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        setMenuOpen(false);
+      }
     });
   }
 
