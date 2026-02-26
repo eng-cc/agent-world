@@ -30,3 +30,13 @@
 ## 风险
 - 状态同步与线程唤醒时序可能引入竞态，需要以单一控制器为真源。
 - 连接断开时若未正确唤醒等待线程，可能导致线程滞留。
+
+## Phase 2 完成态（2026-02-26）
+- 已完成：`PlaybackPulse` 改为动态启停（enabled/disabled），暂停态不再产生活动脉冲。
+- 已完成：请求处理后同步脉冲控制状态，`Play/Pause/Subscribe` 变化可即时影响脉冲线程。
+- 已完成：补充“disabled 无脉冲 / enabled 后发脉冲”回归用例，live 测试组通过。
+
+## Phase 3 入口
+1. LLM 决策 mailbox 事件化（`DecisionRequested/DecisionReady`），替换布尔门控。
+2. 共识回放、viewer 控制、LLM 决策统一入事件总线，收敛顺序与背压。
+3. 引入有界队列与丢弃/降级策略，避免慢消费者场景堆积。

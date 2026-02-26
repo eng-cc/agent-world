@@ -4,7 +4,7 @@
 - [x] T0 建档：设计文档 + 项目管理文档
 - [x] T1 动态脉冲控制：暂停态零脉冲
 - [x] T2 回归测试：脉冲启停 + live 关键语义
-- [ ] T3 文档与日志收口
+- [x] T3 文档与日志收口
 
 ## 依赖
 - `crates/agent_world/src/viewer/live_split_part1.rs`
@@ -13,5 +13,5 @@
 - `testing-manual.md`
 
 ## 状态
-- 当前阶段：T0/T1/T2 已完成，进行 T3
-- 备注：已新增“disabled 无脉冲 / enabled 后发脉冲”回归用例并跑通 live 测试组；进入收口阶段。
+- 当前阶段：已完成（T0~T3）
+- 备注：Phase 2 收口完成，下一阶段进入 LLM mailbox 事件化与总线收敛。
