@@ -977,10 +977,68 @@ impl WorldState {
                         spec: spec.clone(),
                         input_ledger: site_ledger.clone(),
                         output_ledger: site_ledger,
+                        durability_ppm: 1_000_000,
                         built_at: now,
                     },
                 );
                 if let Some(cell) = self.agents.get_mut(builder_agent_id) {
+                    cell.last_active = now;
+                }
+            }
+            DomainEvent::FactoryDurabilityChanged {
+                factory_id,
+                durability_ppm,
+                ..
+            } => {
+                if let Some(factory) = self.factories.get_mut(factory_id) {
+                    factory.durability_ppm = (*durability_ppm).clamp(0, 1_000_000);
+                }
+            }
+            DomainEvent::FactoryMaintained {
+                operator_agent_id,
+                factory_id,
+                consume_ledger,
+                consumed_parts,
+                durability_ppm,
+            } => {
+                remove_material_balance_for_ledger(
+                    &mut self.material_ledgers,
+                    consume_ledger,
+                    "hardware_part",
+                    *consumed_parts,
+                )
+                .map_err(|reason| WorldError::ResourceBalanceInvalid {
+                    reason: format!("factory maintenance consume failed: {reason}"),
+                })?;
+                if let Some(factory) = self.factories.get_mut(factory_id) {
+                    factory.durability_ppm = (*durability_ppm).clamp(0, 1_000_000);
+                }
+                if let Some(cell) = self.agents.get_mut(operator_agent_id) {
+                    cell.last_active = now;
+                }
+            }
+            DomainEvent::FactoryRecycled {
+                operator_agent_id,
+                factory_id,
+                recycle_ledger,
+                recovered,
+                ..
+            } => {
+                self.factories.remove(factory_id);
+                self.pending_recipe_jobs
+                    .retain(|_, job| job.factory_id != *factory_id);
+                for stack in recovered {
+                    add_material_balance_for_ledger(
+                        &mut self.material_ledgers,
+                        recycle_ledger,
+                        stack.kind.as_str(),
+                        stack.amount,
+                    )
+                    .map_err(|reason| WorldError::ResourceBalanceInvalid {
+                        reason: format!("factory recycle material add failed: {reason}"),
+                    })?;
+                }
+                if let Some(cell) = self.agents.get_mut(operator_agent_id) {
                     cell.last_active = now;
                 }
             }

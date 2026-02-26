@@ -1,5 +1,10 @@
 use super::*;
 
+const FACTORY_DURABILITY_PPM_BASE: i64 = 1_000_000;
+const FACTORY_MAINTENANCE_PART_KIND: &str = "hardware_part";
+const FACTORY_MAINTENANCE_REPAIR_PPM_PER_PART: i64 = 25_000;
+const FACTORY_RECYCLE_BASE_PPM: i64 = 700_000;
+
 impl World {
     pub(super) fn action_to_event_economy(
         &self,
@@ -155,6 +160,190 @@ impl World {
                     reason: RejectReason::RuleDenied {
                         notes: vec!["build_factory_with_module requires module runtime".to_string()],
                     },
+                }))
+            }
+            Action::MaintainFactory {
+                operator_agent_id,
+                factory_id,
+                parts,
+            } => {
+                if *parts <= 0 {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::InvalidAmount { amount: *parts },
+                    }));
+                }
+                if !self.state.agents.contains_key(operator_agent_id) {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::AgentNotFound {
+                            agent_id: operator_agent_id.clone(),
+                        },
+                    }));
+                }
+                let Some(factory) = self.state.factories.get(factory_id) else {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::FactoryNotFound {
+                            factory_id: factory_id.clone(),
+                        },
+                    }));
+                };
+                if factory.builder_agent_id != *operator_agent_id {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "maintain factory denied: operator {} is not builder {}",
+                                operator_agent_id, factory.builder_agent_id
+                            )],
+                        },
+                    }));
+                }
+
+                let current = factory.durability_ppm.clamp(0, FACTORY_DURABILITY_PPM_BASE);
+                if current >= FACTORY_DURABILITY_PPM_BASE {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "factory {} already at full durability",
+                                factory_id
+                            )],
+                        },
+                    }));
+                }
+
+                let requested_parts = *parts;
+                let consume = vec![MaterialStack::new(
+                    FACTORY_MAINTENANCE_PART_KIND.to_string(),
+                    requested_parts,
+                )];
+                let consume_ledger = self.select_material_consume_ledger_with_world_fallback(
+                    factory.input_ledger.clone(),
+                    &consume,
+                );
+                let available =
+                    self.ledger_material_balance(&consume_ledger, FACTORY_MAINTENANCE_PART_KIND);
+                if available < requested_parts {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::InsufficientMaterial {
+                            material_kind: FACTORY_MAINTENANCE_PART_KIND.to_string(),
+                            requested: requested_parts,
+                            available,
+                        },
+                    }));
+                }
+
+                let repair_ppm = requested_parts
+                    .saturating_mul(FACTORY_MAINTENANCE_REPAIR_PPM_PER_PART)
+                    .max(0);
+                let durability_ppm = current
+                    .saturating_add(repair_ppm)
+                    .clamp(0, FACTORY_DURABILITY_PPM_BASE);
+                let recovered_ppm = durability_ppm.saturating_sub(current);
+                if recovered_ppm <= 0 {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "factory {} maintenance has no effect",
+                                factory_id
+                            )],
+                        },
+                    }));
+                }
+                let consumed_parts = recovered_ppm
+                    .saturating_add(FACTORY_MAINTENANCE_REPAIR_PPM_PER_PART - 1)
+                    .saturating_div(FACTORY_MAINTENANCE_REPAIR_PPM_PER_PART)
+                    .clamp(1, requested_parts);
+
+                Ok(WorldEventBody::Domain(DomainEvent::FactoryMaintained {
+                    operator_agent_id: operator_agent_id.clone(),
+                    factory_id: factory_id.clone(),
+                    consume_ledger,
+                    consumed_parts,
+                    durability_ppm,
+                }))
+            }
+            Action::RecycleFactory {
+                operator_agent_id,
+                factory_id,
+            } => {
+                if !self.state.agents.contains_key(operator_agent_id) {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::AgentNotFound {
+                            agent_id: operator_agent_id.clone(),
+                        },
+                    }));
+                }
+                let Some(factory) = self.state.factories.get(factory_id) else {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::FactoryNotFound {
+                            factory_id: factory_id.clone(),
+                        },
+                    }));
+                };
+                if factory.builder_agent_id != *operator_agent_id {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "recycle factory denied: operator {} is not builder {}",
+                                operator_agent_id, factory.builder_agent_id
+                            )],
+                        },
+                    }));
+                }
+                let active_jobs = self
+                    .state
+                    .pending_recipe_jobs
+                    .values()
+                    .filter(|job| job.factory_id == *factory_id)
+                    .count();
+                if active_jobs > 0 {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::FactoryBusy {
+                            factory_id: factory_id.clone(),
+                            active_jobs,
+                            recipe_slots: factory.spec.recipe_slots,
+                        },
+                    }));
+                }
+
+                let durability_ppm = factory.durability_ppm.clamp(0, FACTORY_DURABILITY_PPM_BASE);
+                let recovered = factory
+                    .spec
+                    .build_cost
+                    .iter()
+                    .filter_map(|stack| {
+                        if stack.amount <= 0 {
+                            return None;
+                        }
+                        let recovered_amount = ((stack.amount as i128)
+                            .saturating_mul(FACTORY_RECYCLE_BASE_PPM as i128)
+                            .saturating_mul(durability_ppm as i128)
+                            / (FACTORY_DURABILITY_PPM_BASE as i128)
+                            / (FACTORY_DURABILITY_PPM_BASE as i128))
+                            as i64;
+                        if recovered_amount <= 0 {
+                            None
+                        } else {
+                            Some(MaterialStack::new(stack.kind.clone(), recovered_amount))
+                        }
+                    })
+                    .collect();
+
+                Ok(WorldEventBody::Domain(DomainEvent::FactoryRecycled {
+                    operator_agent_id: operator_agent_id.clone(),
+                    factory_id: factory_id.clone(),
+                    recycle_ledger: factory.output_ledger.clone(),
+                    recovered,
+                    durability_ppm,
                 }))
             }
             Action::ScheduleRecipe {

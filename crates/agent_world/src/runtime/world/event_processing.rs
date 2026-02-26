@@ -153,6 +153,8 @@ impl World {
             Action::EmitResourceTransfer { .. }
             | Action::BuildFactory { .. }
             | Action::BuildFactoryWithModule { .. }
+            | Action::MaintainFactory { .. }
+            | Action::RecycleFactory { .. }
             | Action::ScheduleRecipe { .. }
             | Action::ScheduleRecipeWithModule { .. }
             | Action::ValidateProduct { .. }

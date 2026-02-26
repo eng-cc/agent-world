@@ -50,6 +50,10 @@ fn default_next_module_instance_id() -> u64 {
     1
 }
 
+fn default_factory_durability_ppm() -> i64 {
+    1_000_000
+}
+
 const ALLIANCE_MIN_MEMBER_COUNT: usize = 2;
 
 /// Persisted factory instance state.
@@ -63,6 +67,8 @@ pub struct FactoryState {
     pub input_ledger: MaterialLedgerId,
     #[serde(default = "default_world_material_ledger")]
     pub output_ledger: MaterialLedgerId,
+    #[serde(default = "default_factory_durability_ppm")]
+    pub durability_ppm: i64,
     pub built_at: WorldTime,
 }
 
@@ -353,6 +359,9 @@ impl WorldState {
             | DomainEvent::MaterialTransitCompleted { .. }
             | DomainEvent::FactoryBuildStarted { .. }
             | DomainEvent::FactoryBuilt { .. }
+            | DomainEvent::FactoryDurabilityChanged { .. }
+            | DomainEvent::FactoryMaintained { .. }
+            | DomainEvent::FactoryRecycled { .. }
             | DomainEvent::RecipeStarted { .. }
             | DomainEvent::RecipeCompleted { .. } => self.apply_domain_event_core(event, now)?,
             DomainEvent::GameplayPolicyUpdated { .. }

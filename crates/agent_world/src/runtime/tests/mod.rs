@@ -16,6 +16,7 @@ mod builtin_wasm_identity;
 mod builtin_wasm_materializer;
 mod economy;
 mod economy_bootstrap;
+mod economy_factory_lifecycle;
 mod economy_module_requests;
 mod effects;
 mod gameplay;

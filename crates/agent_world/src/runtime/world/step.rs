@@ -14,6 +14,7 @@ impl World {
 
     pub fn step(&mut self) -> Result<(), WorldError> {
         self.state.time = self.state.time.saturating_add(1);
+        let _ = self.process_factory_depreciation()?;
         while let Some(envelope) = self.pending_actions.pop_front() {
             if self.try_apply_runtime_module_action(&envelope)? {
                 continue;
@@ -29,6 +30,9 @@ impl World {
 
     pub fn step_with_modules(&mut self, sandbox: &mut dyn ModuleSandbox) -> Result<(), WorldError> {
         self.state.time = self.state.time.saturating_add(1);
+        for event in self.process_factory_depreciation()? {
+            self.route_event_to_modules(&event, sandbox)?;
+        }
         while let Some(envelope) = self.pending_actions.pop_front() {
             let mut action_envelope = envelope.clone();
             match self.resolve_module_backed_economy_action(&envelope, sandbox)? {

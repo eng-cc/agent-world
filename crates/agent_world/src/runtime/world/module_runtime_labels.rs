@@ -37,6 +37,11 @@ pub(super) fn event_kind_label(body: &WorldEventBody) -> &'static str {
             DomainEvent::MaterialTransitCompleted { .. } => "domain.material_transit_completed",
             DomainEvent::FactoryBuildStarted { .. } => "domain.economy.factory_build_started",
             DomainEvent::FactoryBuilt { .. } => "domain.economy.factory_built",
+            DomainEvent::FactoryDurabilityChanged { .. } => {
+                "domain.economy.factory_durability_changed"
+            }
+            DomainEvent::FactoryMaintained { .. } => "domain.economy.factory_maintained",
+            DomainEvent::FactoryRecycled { .. } => "domain.economy.factory_recycled",
             DomainEvent::RecipeStarted { .. } => "domain.economy.recipe_started",
             DomainEvent::RecipeCompleted { .. } => "domain.economy.recipe_completed",
             DomainEvent::GameplayPolicyUpdated { .. } => "domain.gameplay.policy_updated",
@@ -135,6 +140,8 @@ pub(super) fn action_kind_label(action: &Action) -> &'static str {
         Action::EmitResourceTransfer { .. } => "action.emit_resource_transfer",
         Action::BuildFactory { .. } => "action.economy.build_factory",
         Action::BuildFactoryWithModule { .. } => "action.economy.build_factory_with_module",
+        Action::MaintainFactory { .. } => "action.economy.maintain_factory",
+        Action::RecycleFactory { .. } => "action.economy.recycle_factory",
         Action::ScheduleRecipe { .. } => "action.economy.schedule_recipe",
         Action::ScheduleRecipeWithModule { .. } => "action.economy.schedule_recipe_with_module",
         Action::ValidateProduct { .. } => "action.economy.validate_product",

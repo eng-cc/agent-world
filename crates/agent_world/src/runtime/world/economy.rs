@@ -20,6 +20,9 @@ use crate::simulator::ResourceKind;
 const FACTORY_BUILD_DECISION_EMIT_KIND: &str = "economy.factory_build_decision";
 const RECIPE_EXECUTION_PLAN_EMIT_KIND: &str = "economy.recipe_execution_plan";
 const PRODUCT_VALIDATION_EMIT_KIND: &str = "economy.product_validation";
+const FACTORY_DURABILITY_PPM_BASE: i64 = 1_000_000;
+const FACTORY_DEPRECIATION_PPM_PER_MAINTENANCE_UNIT: i64 = 1_000;
+const FACTORY_DEPRECIATION_REASON: &str = "depreciation_tick";
 
 #[derive(Debug, Clone, Serialize)]
 struct ProductValidationModuleCallRequest {
@@ -302,7 +305,6 @@ impl World {
                 emitted.push(event.clone());
             }
         }
-
         Ok(emitted)
     }
 
@@ -411,7 +413,53 @@ impl World {
                 emitted.push(event.clone());
             }
         }
+        Ok(emitted)
+    }
 
+    pub(super) fn process_factory_depreciation(&mut self) -> Result<Vec<WorldEvent>, WorldError> {
+        let now = self.state.time;
+        let mut emitted = Vec::new();
+        let mut factories: Vec<_> = self.state.factories.values().cloned().collect();
+        factories.sort_by(|lhs, rhs| lhs.factory_id.cmp(&rhs.factory_id));
+
+        for factory in factories {
+            if factory.built_at >= now {
+                continue;
+            }
+            let current = factory.durability_ppm.clamp(0, FACTORY_DURABILITY_PPM_BASE);
+            if current <= 0 {
+                continue;
+            }
+            let maintenance_rate = factory.spec.maintenance_per_tick.max(0);
+            if maintenance_rate <= 0 {
+                continue;
+            }
+            let decay = maintenance_rate
+                .saturating_mul(FACTORY_DEPRECIATION_PPM_PER_MAINTENANCE_UNIT)
+                .clamp(0, FACTORY_DURABILITY_PPM_BASE);
+            if decay <= 0 {
+                continue;
+            }
+            let durability_ppm = current
+                .saturating_sub(decay)
+                .clamp(0, FACTORY_DURABILITY_PPM_BASE);
+            if durability_ppm == current {
+                continue;
+            }
+
+            self.append_event(
+                WorldEventBody::Domain(DomainEvent::FactoryDurabilityChanged {
+                    factory_id: factory.factory_id.clone(),
+                    previous_durability_ppm: current,
+                    durability_ppm,
+                    reason: FACTORY_DEPRECIATION_REASON.to_string(),
+                }),
+                None,
+            )?;
+            if let Some(event) = self.journal.events.last() {
+                emitted.push(event.clone());
+            }
+        }
         Ok(emitted)
     }
 

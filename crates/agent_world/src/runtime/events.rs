@@ -284,6 +284,15 @@ pub enum Action {
         module_id: String,
         spec: FactoryModuleSpec,
     },
+    MaintainFactory {
+        operator_agent_id: String,
+        factory_id: String,
+        parts: i64,
+    },
+    RecycleFactory {
+        operator_agent_id: String,
+        factory_id: String,
+    },
     ScheduleRecipe {
         requester_agent_id: String,
         factory_id: String,
@@ -527,6 +536,28 @@ pub enum DomainEvent {
         site_id: String,
         spec: FactoryModuleSpec,
     },
+    FactoryDurabilityChanged {
+        factory_id: String,
+        previous_durability_ppm: i64,
+        durability_ppm: i64,
+        reason: String,
+    },
+    FactoryMaintained {
+        operator_agent_id: String,
+        factory_id: String,
+        #[serde(default = "default_world_material_ledger")]
+        consume_ledger: MaterialLedgerId,
+        consumed_parts: i64,
+        durability_ppm: i64,
+    },
+    FactoryRecycled {
+        operator_agent_id: String,
+        factory_id: String,
+        #[serde(default = "default_world_material_ledger")]
+        recycle_ledger: MaterialLedgerId,
+        recovered: Vec<MaterialStack>,
+        durability_ppm: i64,
+    },
     RecipeStarted {
         job_id: ActionId,
         requester_agent_id: String,
@@ -761,6 +792,13 @@ impl DomainEvent {
             DomainEvent::FactoryBuilt {
                 builder_agent_id, ..
             } => Some(builder_agent_id.as_str()),
+            DomainEvent::FactoryDurabilityChanged { .. } => None,
+            DomainEvent::FactoryMaintained {
+                operator_agent_id, ..
+            } => Some(operator_agent_id.as_str()),
+            DomainEvent::FactoryRecycled {
+                operator_agent_id, ..
+            } => Some(operator_agent_id.as_str()),
             DomainEvent::RecipeStarted {
                 requester_agent_id, ..
             } => Some(requester_agent_id.as_str()),
