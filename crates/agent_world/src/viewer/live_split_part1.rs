@@ -471,7 +471,7 @@ impl ViewerLiveServer {
             return Ok(());
         }
         let step = self.world.step()?;
-        self.emit_step_outcome(session, writer, step)
+        self.emit_step_outcome(session, writer, step, true)
     }
 
     fn handle_consensus_committed(
@@ -488,7 +488,7 @@ impl ViewerLiveServer {
         loop {
             let step = self.world.step()?;
             let had_event = step.event.is_some();
-            self.emit_step_outcome(session, writer, step)?;
+            self.emit_step_outcome(session, writer, step, false)?;
             if !had_event {
                 break;
             }
@@ -508,7 +508,7 @@ impl ViewerLiveServer {
             return Ok(());
         }
         let step = self.world.step()?;
-        self.emit_step_outcome(session, writer, step)
+        self.emit_step_outcome(session, writer, step, false)
     }
 
     fn handle_non_consensus_drive_requested(
@@ -523,7 +523,7 @@ impl ViewerLiveServer {
             return Ok(false);
         }
         let step = self.world.step()?;
-        self.emit_step_outcome(session, writer, step)?;
+        self.emit_step_outcome(session, writer, step, false)?;
         Ok(self.world.should_step_on_playback_pulse())
     }
 
@@ -538,7 +538,7 @@ impl ViewerLiveServer {
         for _ in 0..steps {
             self.world.request_llm_decision();
             let step = self.world.step()?;
-            self.emit_step_outcome(session, writer, step)?;
+            self.emit_step_outcome(session, writer, step, true)?;
         }
         Ok(())
     }
@@ -580,7 +580,9 @@ impl ViewerLiveServer {
         session: &mut ViewerLiveSession,
         writer: &mut BufWriter<TcpStream>,
         step: LiveStepResult,
+        emit_idle_metrics: bool,
     ) -> Result<(), ViewerLiveServerError> {
+        let has_progress = step.event.is_some() || step.decision_trace.is_some();
         if let Some(trace) = step.decision_trace {
             if session.subscribed.contains(&ViewerStream::Events) {
                 send_response(writer, &ViewerResponse::DecisionTrace { trace })?;
@@ -601,8 +603,10 @@ impl ViewerLiveServer {
             }
         }
 
-        session.update_metrics(self.world.metrics());
-        session.emit_metrics(writer)?;
+        if emit_idle_metrics || has_progress {
+            session.update_metrics(self.world.metrics());
+            session.emit_metrics(writer)?;
+        }
         Ok(())
     }
 }
