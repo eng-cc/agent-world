@@ -37,7 +37,7 @@
 - [x] 运行 `env -u RUSTC_WRAPPER cargo check -p agent_world --features wasmtime`
 
 ### E6 内置 M4 工业模块包与治理装载
-- [x] 在 `agent_world_builtin_wasm` 增加内置 M4 模块（工厂/配方/制成品）：
+- [x] 在 `agent_world_builtin_wasm_modules` 增加内置 M4 模块（工厂/配方/制成品）：
   - 工厂：`m4.factory.{miner,smelter,assembler}.mk1`
   - 配方：`m4.recipe.smelter.*` + `m4.recipe.assembler.*`
   - 制成品：`m4.product.*`
@@ -52,7 +52,7 @@
 - [x] 新增 runtime 闭环测试：
   - 清单一致性、安装幂等、停用后重激活
   - 基于 `WasmExecutor` 的“基础资源 -> 中间件 -> 终端制成品（logistics_drone）”链路
-- [x] 运行 `env -u RUSTC_WRAPPER cargo test -p agent_world_builtin_wasm`
+- [x] 运行 `./scripts/sync-m4-builtin-wasm-artifacts.sh --check`
 - [x] 运行 `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::economy_bootstrap -- --nocapture`
 - [x] 运行 `env -u RUSTC_WRAPPER cargo check -p agent_world --features wasmtime`
 
@@ -92,4 +92,4 @@
 
 - 当前阶段：E8 完成（Product 校验自动闭环 + 入账门禁 + 端到端回归通过）。
 - 下一步：M4-E5（玩家/AI 自定义模块治理模板与扩展接口）按主线节奏推进。
-- 最近更新：完成 `step_with_modules` 配方完工自动 Product 校验与失败阻断入账（2026-02-14）。
+- 最近更新：修正文档中的内置模块 crate 名为 `agent_world_builtin_wasm_modules`，并同步校验命令为 `sync-m4-builtin-wasm-artifacts.sh --check`（2026-02-26）。
