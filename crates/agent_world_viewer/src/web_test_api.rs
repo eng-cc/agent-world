@@ -80,11 +80,11 @@ thread_local! {
 #[cfg(target_arch = "wasm32")]
 pub(super) struct WebTestApiBindings {
     _api: Object,
-    _run_steps: Closure<dyn FnMut(String)>,
-    _set_mode: Closure<dyn FnMut(String)>,
-    _focus: Closure<dyn FnMut(String)>,
-    _select: Closure<dyn FnMut(String)>,
-    _send_control: Closure<dyn FnMut(String, JsValue)>,
+    _run_steps: Closure<dyn FnMut(JsValue)>,
+    _set_mode: Closure<dyn FnMut(JsValue)>,
+    _focus: Closure<dyn FnMut(JsValue)>,
+    _select: Closure<dyn FnMut(JsValue)>,
+    _send_control: Closure<dyn FnMut(JsValue, JsValue)>,
     _get_state: Closure<dyn FnMut() -> JsValue>,
 }
 
@@ -166,6 +166,28 @@ fn parse_control_action(action: &str, payload: &JsValue) -> Option<ViewerControl
         "seek" => parse_seek_tick(payload).map(|tick| ViewerControl::Seek { tick }),
         _ => None,
     }
+}
+
+#[cfg(target_arch = "wasm32")]
+fn parse_string_payload(payload: &JsValue) -> Option<String> {
+    payload
+        .as_string()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+}
+
+#[cfg(target_arch = "wasm32")]
+fn parse_run_steps_command(payload: &JsValue) -> Option<WebTestApiCommand> {
+    if let Some(raw_steps) = parse_string_payload(payload) {
+        let steps = parse_automation_steps(raw_steps.as_str());
+        if steps.is_empty() {
+            return None;
+        }
+        return Some(WebTestApiCommand::EnqueueSteps(steps));
+    }
+
+    parse_step_count(payload)
+        .map(|count| WebTestApiCommand::SendControl(ViewerControl::Step { count }))
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -252,21 +274,26 @@ pub(super) fn setup_web_test_api(world: &mut World) {
 
     let api = Object::new();
 
-    let run_steps = Closure::wrap(Box::new(move |raw_steps: String| {
-        let steps = parse_automation_steps(&raw_steps);
-        if steps.is_empty() {
-            log_api_warning("web test api: runSteps ignored (no valid step parsed)");
+    let run_steps = Closure::wrap(Box::new(move |payload: JsValue| {
+        let Some(command) = parse_run_steps_command(&payload) else {
+            log_api_warning(
+                "web test api: runSteps ignored (payload must be non-empty step string or count)",
+            );
             return;
-        }
-        push_command(WebTestApiCommand::EnqueueSteps(steps));
-    }) as Box<dyn FnMut(String)>);
+        };
+        push_command(command);
+    }) as Box<dyn FnMut(JsValue)>);
     let _ = JsReflect::set(
         &api,
         &JsValue::from_str("runSteps"),
         run_steps.as_ref().unchecked_ref(),
     );
 
-    let set_mode = Closure::wrap(Box::new(move |raw_mode: String| {
+    let set_mode = Closure::wrap(Box::new(move |payload: JsValue| {
+        let Some(raw_mode) = parse_string_payload(&payload) else {
+            log_api_warning("web test api: setMode ignored (mode must be non-empty string)");
+            return;
+        };
         let Some(mode) = parse_automation_mode(&raw_mode) else {
             log_api_warning("web test api: setMode ignored (invalid mode)");
             return;
@@ -274,14 +301,18 @@ pub(super) fn setup_web_test_api(world: &mut World) {
         push_command(WebTestApiCommand::EnqueueSteps(vec![
             crate::viewer_automation::ViewerAutomationStep::SetMode(mode),
         ]));
-    }) as Box<dyn FnMut(String)>);
+    }) as Box<dyn FnMut(JsValue)>);
     let _ = JsReflect::set(
         &api,
         &JsValue::from_str("setMode"),
         set_mode.as_ref().unchecked_ref(),
     );
 
-    let focus = Closure::wrap(Box::new(move |raw_target: String| {
+    let focus = Closure::wrap(Box::new(move |payload: JsValue| {
+        let Some(raw_target) = parse_string_payload(&payload) else {
+            log_api_warning("web test api: focus ignored (target must be non-empty string)");
+            return;
+        };
         let Some(target) = parse_automation_target(&raw_target) else {
             log_api_warning("web test api: focus ignored (invalid target)");
             return;
@@ -289,14 +320,18 @@ pub(super) fn setup_web_test_api(world: &mut World) {
         push_command(WebTestApiCommand::EnqueueSteps(vec![
             crate::viewer_automation::ViewerAutomationStep::Focus(target),
         ]));
-    }) as Box<dyn FnMut(String)>);
+    }) as Box<dyn FnMut(JsValue)>);
     let _ = JsReflect::set(
         &api,
         &JsValue::from_str("focus"),
         focus.as_ref().unchecked_ref(),
     );
 
-    let select = Closure::wrap(Box::new(move |raw_target: String| {
+    let select = Closure::wrap(Box::new(move |payload: JsValue| {
+        let Some(raw_target) = parse_string_payload(&payload) else {
+            log_api_warning("web test api: select ignored (target must be non-empty string)");
+            return;
+        };
         let Some(target) = parse_automation_target(&raw_target) else {
             log_api_warning("web test api: select ignored (invalid target)");
             return;
@@ -304,20 +339,24 @@ pub(super) fn setup_web_test_api(world: &mut World) {
         push_command(WebTestApiCommand::EnqueueSteps(vec![
             crate::viewer_automation::ViewerAutomationStep::Select(target),
         ]));
-    }) as Box<dyn FnMut(String)>);
+    }) as Box<dyn FnMut(JsValue)>);
     let _ = JsReflect::set(
         &api,
         &JsValue::from_str("select"),
         select.as_ref().unchecked_ref(),
     );
 
-    let send_control = Closure::wrap(Box::new(move |action: String, payload: JsValue| {
-        let Some(control) = parse_control_action(&action, &payload) else {
+    let send_control = Closure::wrap(Box::new(move |action: JsValue, payload: JsValue| {
+        let Some(action) = parse_string_payload(&action) else {
+            log_api_warning("web test api: sendControl ignored (action must be non-empty string)");
+            return;
+        };
+        let Some(control) = parse_control_action(action.as_str(), &payload) else {
             log_api_warning("web test api: sendControl ignored (invalid action or payload)");
             return;
         };
         push_command(WebTestApiCommand::SendControl(control));
-    }) as Box<dyn FnMut(String, JsValue)>);
+    }) as Box<dyn FnMut(JsValue, JsValue)>);
     let _ = JsReflect::set(
         &api,
         &JsValue::from_str("sendControl"),
