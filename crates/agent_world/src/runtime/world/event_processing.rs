@@ -4,8 +4,8 @@ use super::super::{
     GovernanceProposalStatus, MainTokenConfig, MainTokenFeeKind,
     MainTokenGenesisAllocationBucketState, MainTokenGenesisAllocationPlan,
     MainTokenNodePointsBridgeDistribution, MaterialLedgerId, MaterialStack, NodeRewardMintRecord,
-    NodeSettlement, ProposalId, RejectReason, WorldError, WorldEvent, WorldEventBody, WorldEventId,
-    WorldTime,
+    NodeSettlement, ProposalId, ProposalStatus, RejectReason, WorldError, WorldEvent,
+    WorldEventBody, WorldEventId, WorldTime,
 };
 use super::body::{evaluate_expand_body_interface, validate_body_kernel_view};
 use super::logistics::{
@@ -867,6 +867,29 @@ impl World {
                     notes: vec!["proposal_id must be > 0".to_string()],
                 },
             };
+        }
+        let Some(proposal) = self.proposals.get(&proposal_id) else {
+            return DomainEvent::ActionRejected {
+                action_id,
+                reason: RejectReason::RuleDenied {
+                    notes: vec![format!(
+                        "update main token policy rejected: governance proposal not found ({proposal_id})"
+                    )],
+                },
+            };
+        };
+        match proposal.status {
+            ProposalStatus::Approved { .. } | ProposalStatus::Applied { .. } => {}
+            _ => {
+                return DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::RuleDenied {
+                        notes: vec![format!(
+                            "update main token policy rejected: governance proposal must be approved or applied ({proposal_id})"
+                        )],
+                    },
+                };
+            }
         }
         if let Err(reason) = validate_main_token_config_bounds(next) {
             return DomainEvent::ActionRejected {

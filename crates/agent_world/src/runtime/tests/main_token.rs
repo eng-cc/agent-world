@@ -502,19 +502,28 @@ fn main_token_policy_update_is_delayed_and_audited_before_it_affects_issuance() 
         stake_feedback_gain_bps: 0,
         epochs_per_year: 10,
     };
+    let proposal_id = world
+        .propose_manifest_update(world.manifest().clone(), "alice")
+        .expect("create governance proposal");
+    world
+        .shadow_proposal(proposal_id)
+        .expect("shadow governance proposal");
+    world
+        .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)
+        .expect("approve governance proposal");
     world.submit_action(Action::UpdateMainTokenPolicy {
-        proposal_id: 101,
+        proposal_id,
         next: scheduled_config,
     });
     world.step().expect("schedule main token policy update");
 
     let effective_epoch = match &world.journal().events.last().expect("event").body {
         WorldEventBody::Domain(DomainEvent::MainTokenPolicyUpdateScheduled {
-            proposal_id,
+            proposal_id: event_proposal_id,
             effective_epoch: event_effective_epoch,
             ..
         }) => {
-            assert_eq!(*proposal_id, 101);
+            assert_eq!(*event_proposal_id, proposal_id);
             assert!(*event_effective_epoch > schedule_base_epoch);
             *event_effective_epoch
         }
@@ -552,6 +561,82 @@ fn main_token_policy_update_is_delayed_and_audited_before_it_affects_issuance() 
 }
 
 #[test]
+fn main_token_policy_update_requires_approved_or_applied_governance_proposal() {
+    let mut world = World::new();
+    world.set_main_token_config(MainTokenConfig {
+        initial_supply: 1_000,
+        ..MainTokenConfig::default()
+    });
+
+    let mut next_config = world.main_token_config().clone();
+    next_config.inflation_policy.base_rate_bps = 500;
+
+    world.submit_action(Action::UpdateMainTokenPolicy {
+        proposal_id: 9_999,
+        next: next_config.clone(),
+    });
+    world
+        .step()
+        .expect("missing governance proposal should reject");
+    match &world.journal().events.last().expect("event").body {
+        WorldEventBody::Domain(DomainEvent::ActionRejected { reason, .. }) => match reason {
+            RejectReason::RuleDenied { notes } => {
+                assert!(notes
+                    .iter()
+                    .any(|note| note.contains("governance proposal not found")));
+            }
+            other => panic!("expected RuleDenied, got {other:?}"),
+        },
+        other => panic!("expected ActionRejected, got {other:?}"),
+    }
+
+    let proposal_id = world
+        .propose_manifest_update(world.manifest().clone(), "alice")
+        .expect("create governance proposal");
+    world.submit_action(Action::UpdateMainTokenPolicy {
+        proposal_id,
+        next: next_config.clone(),
+    });
+    world
+        .step()
+        .expect("unapproved governance proposal should reject");
+    match &world.journal().events.last().expect("event").body {
+        WorldEventBody::Domain(DomainEvent::ActionRejected { reason, .. }) => match reason {
+            RejectReason::RuleDenied { notes } => {
+                assert!(notes.iter().any(|note| {
+                    note.contains("governance proposal must be approved or applied")
+                }));
+            }
+            other => panic!("expected RuleDenied, got {other:?}"),
+        },
+        other => panic!("expected ActionRejected, got {other:?}"),
+    }
+
+    world
+        .shadow_proposal(proposal_id)
+        .expect("shadow governance proposal");
+    world
+        .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)
+        .expect("approve governance proposal");
+    world.submit_action(Action::UpdateMainTokenPolicy {
+        proposal_id,
+        next: next_config,
+    });
+    world
+        .step()
+        .expect("approved governance proposal should schedule policy update");
+    match &world.journal().events.last().expect("event").body {
+        WorldEventBody::Domain(DomainEvent::MainTokenPolicyUpdateScheduled {
+            proposal_id: event_proposal_id,
+            ..
+        }) => {
+            assert_eq!(*event_proposal_id, proposal_id);
+        }
+        other => panic!("expected MainTokenPolicyUpdateScheduled, got {other:?}"),
+    }
+}
+
+#[test]
 fn main_token_policy_update_rejects_out_of_bounds_configuration() {
     let mut world = World::new();
     world.set_main_token_config(MainTokenConfig {
@@ -567,8 +652,17 @@ fn main_token_policy_update_rejects_out_of_bounds_configuration() {
         ecosystem_pool_bps: 1_500,
         security_reserve_bps: 100,
     };
+    let proposal_id = world
+        .propose_manifest_update(world.manifest().clone(), "alice")
+        .expect("create governance proposal");
+    world
+        .shadow_proposal(proposal_id)
+        .expect("shadow governance proposal");
+    world
+        .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)
+        .expect("approve governance proposal");
     world.submit_action(Action::UpdateMainTokenPolicy {
-        proposal_id: 102,
+        proposal_id,
         next: invalid_config,
     });
     world
