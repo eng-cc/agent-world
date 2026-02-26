@@ -251,6 +251,60 @@ fn live_world_llm_event_driven_gate_avoids_repeated_empty_ticks() {
 }
 
 #[test]
+fn live_world_llm_mailbox_preserves_multiple_requests() {
+    set_test_llm_env();
+    let config = WorldConfig::default();
+    let mut init = WorldInitConfig::default();
+    init.agents = crate::simulator::AgentSpawnConfig {
+        count: 0,
+        ..crate::simulator::AgentSpawnConfig::default()
+    };
+    let mut world = LiveWorld::new(config, init, ViewerLiveDecisionMode::Llm).expect("init ok");
+
+    let first = world.step().expect("first step");
+    assert!(first.event.is_none());
+    assert!(first.decision_trace.is_none());
+    assert_eq!(world.metrics().total_ticks, 1);
+
+    world.request_llm_decision();
+    world.request_llm_decision();
+
+    let second = world.step().expect("second step");
+    assert!(second.event.is_none());
+    assert!(second.decision_trace.is_none());
+    assert_eq!(world.metrics().total_ticks, 2);
+
+    let third = world.step().expect("third step");
+    assert!(third.event.is_none());
+    assert!(third.decision_trace.is_none());
+    assert_eq!(world.metrics().total_ticks, 3);
+
+    let fourth = world.step().expect("fourth step");
+    assert!(fourth.event.is_none());
+    assert!(fourth.decision_trace.is_none());
+    assert_eq!(world.metrics().total_ticks, 3);
+}
+
+#[test]
+fn live_world_playback_pulse_gate_tracks_llm_mailbox() {
+    set_test_llm_env();
+    let config = WorldConfig::default();
+    let mut init = WorldInitConfig::default();
+    init.agents = crate::simulator::AgentSpawnConfig {
+        count: 0,
+        ..crate::simulator::AgentSpawnConfig::default()
+    };
+    let mut world = LiveWorld::new(config, init, ViewerLiveDecisionMode::Llm).expect("init ok");
+
+    assert!(world.should_step_on_playback_pulse());
+    let _ = world.step().expect("step consumes bootstrap mailbox token");
+    assert!(!world.should_step_on_playback_pulse());
+
+    world.request_llm_decision();
+    assert!(world.should_step_on_playback_pulse());
+}
+
+#[test]
 fn prompt_control_preview_reports_fields_and_next_version() {
     let config = WorldConfig::default();
     let init = WorldInitConfig::from_scenario(WorldScenario::Minimal, &config);
