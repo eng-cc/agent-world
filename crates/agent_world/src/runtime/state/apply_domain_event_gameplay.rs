@@ -1,5 +1,7 @@
 use super::*;
 
+const ECONOMIC_CONTRACT_REPUTATION_WINDOW_TICKS: u64 = 20;
+
 impl WorldState {
     pub(super) fn apply_domain_event_gameplay(
         &mut self,
@@ -368,6 +370,25 @@ impl WorldState {
                 if let Some(next) = counterparty_score_next {
                     self.reputation_scores
                         .insert(counterparty_agent_id.clone(), next);
+                }
+                if *success {
+                    self.record_successful_contract_pair_settlement(
+                        creator_agent_id.as_str(),
+                        counterparty_agent_id.as_str(),
+                        now,
+                    );
+                    self.record_reputation_reward_window_gain(
+                        creator_agent_id.as_str(),
+                        *creator_reputation_delta,
+                        now,
+                        ECONOMIC_CONTRACT_REPUTATION_WINDOW_TICKS,
+                    );
+                    self.record_reputation_reward_window_gain(
+                        counterparty_agent_id.as_str(),
+                        *counterparty_reputation_delta,
+                        now,
+                        ECONOMIC_CONTRACT_REPUTATION_WINDOW_TICKS,
+                    );
                 }
 
                 let contract = self

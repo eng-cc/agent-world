@@ -184,6 +184,12 @@ pub struct WorldState {
     #[serde(default)]
     pub economic_contracts: BTreeMap<String, EconomicContractState>,
     #[serde(default)]
+    pub contract_pair_last_success_settled_at: BTreeMap<String, WorldTime>,
+    #[serde(default)]
+    pub reputation_reward_window_started_at: BTreeMap<String, WorldTime>,
+    #[serde(default)]
+    pub reputation_reward_window_accumulated: BTreeMap<String, i64>,
+    #[serde(default)]
     pub reputation_scores: BTreeMap<String, i64>,
     #[serde(default)]
     pub wars: BTreeMap<String, WarState>,
@@ -247,6 +253,9 @@ impl Default for WorldState {
             gameplay_policy: GameplayPolicyState::default(),
             data_access_permissions: BTreeMap::new(),
             economic_contracts: BTreeMap::new(),
+            contract_pair_last_success_settled_at: BTreeMap::new(),
+            reputation_reward_window_started_at: BTreeMap::new(),
+            reputation_reward_window_accumulated: BTreeMap::new(),
             reputation_scores: BTreeMap::new(),
             wars: BTreeMap::new(),
             governance_votes: BTreeMap::new(),
@@ -304,6 +313,93 @@ impl WorldState {
         self.data_access_permissions
             .get(owner_agent_id)
             .is_some_and(|grantees| grantees.contains(accessor_agent_id))
+    }
+
+    pub fn economic_contract_pair_key(left_agent_id: &str, right_agent_id: &str) -> String {
+        if left_agent_id <= right_agent_id {
+            format!("{left_agent_id}|{right_agent_id}")
+        } else {
+            format!("{right_agent_id}|{left_agent_id}")
+        }
+    }
+
+    pub fn economic_contract_pair_cooldown_ready_at(
+        &self,
+        left_agent_id: &str,
+        right_agent_id: &str,
+        cooldown_ticks: u64,
+    ) -> Option<WorldTime> {
+        let pair_key = Self::economic_contract_pair_key(left_agent_id, right_agent_id);
+        self.contract_pair_last_success_settled_at
+            .get(&pair_key)
+            .map(|last| last.saturating_add(cooldown_ticks))
+    }
+
+    pub fn available_reputation_reward_budget(
+        &self,
+        agent_id: &str,
+        now: WorldTime,
+        window_ticks: u64,
+        window_cap: i64,
+    ) -> i64 {
+        if window_cap <= 0 {
+            return 0;
+        }
+        let in_window = self
+            .reputation_reward_window_started_at
+            .get(agent_id)
+            .is_some_and(|window_started_at| now.saturating_sub(*window_started_at) < window_ticks);
+        if !in_window {
+            return window_cap;
+        }
+        let accumulated = self
+            .reputation_reward_window_accumulated
+            .get(agent_id)
+            .copied()
+            .unwrap_or(0)
+            .max(0);
+        window_cap.saturating_sub(accumulated).max(0)
+    }
+
+    pub fn record_successful_contract_pair_settlement(
+        &mut self,
+        left_agent_id: &str,
+        right_agent_id: &str,
+        now: WorldTime,
+    ) {
+        let pair_key = Self::economic_contract_pair_key(left_agent_id, right_agent_id);
+        self.contract_pair_last_success_settled_at
+            .insert(pair_key, now);
+    }
+
+    pub fn record_reputation_reward_window_gain(
+        &mut self,
+        agent_id: &str,
+        reward_delta: i64,
+        now: WorldTime,
+        window_ticks: u64,
+    ) {
+        if reward_delta <= 0 {
+            return;
+        }
+        let in_window = self
+            .reputation_reward_window_started_at
+            .get(agent_id)
+            .is_some_and(|window_started_at| now.saturating_sub(*window_started_at) < window_ticks);
+        if in_window {
+            let current = self
+                .reputation_reward_window_accumulated
+                .get(agent_id)
+                .copied()
+                .unwrap_or(0);
+            self.reputation_reward_window_accumulated
+                .insert(agent_id.to_string(), current.saturating_add(reward_delta));
+        } else {
+            self.reputation_reward_window_started_at
+                .insert(agent_id.to_string(), now);
+            self.reputation_reward_window_accumulated
+                .insert(agent_id.to_string(), reward_delta);
+        }
     }
 
     fn settle_module_action_fee(

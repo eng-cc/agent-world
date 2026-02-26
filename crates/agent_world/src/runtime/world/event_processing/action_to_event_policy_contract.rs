@@ -374,6 +374,23 @@ impl World {
                     creator_reputation_delta,
                     counterparty_reputation_delta,
                 ) = if *success {
+                    if let Some(ready_at) = self.state.economic_contract_pair_cooldown_ready_at(
+                        contract.creator_agent_id.as_str(),
+                        contract.counterparty_agent_id.as_str(),
+                        ECONOMIC_CONTRACT_PAIR_COOLDOWN_TICKS,
+                    ) {
+                        if self.state.time < ready_at {
+                            return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                                action_id,
+                                reason: RejectReason::RuleDenied {
+                                    notes: vec![format!(
+                                        "economic contract settlement denied: pair cooldown active until tick {}",
+                                        ready_at
+                                    )],
+                                },
+                            }));
+                        }
+                    }
                     if contract.settlement_kind == ResourceKind::Data
                         && !self.state.has_data_access_permission(
                             contract.creator_agent_id.as_str(),
@@ -421,11 +438,26 @@ impl World {
                             contract.settlement_amount,
                             contract.reputation_stake,
                         );
+                    let creator_reward_budget = self.state.available_reputation_reward_budget(
+                        contract.creator_agent_id.as_str(),
+                        self.state.time,
+                        ECONOMIC_CONTRACT_REPUTATION_WINDOW_TICKS,
+                        ECONOMIC_CONTRACT_REPUTATION_WINDOW_CAP,
+                    );
+                    let counterparty_reward_budget = self.state.available_reputation_reward_budget(
+                        contract.counterparty_agent_id.as_str(),
+                        self.state.time,
+                        ECONOMIC_CONTRACT_REPUTATION_WINDOW_TICKS,
+                        ECONOMIC_CONTRACT_REPUTATION_WINDOW_CAP,
+                    );
+                    let creator_reward = success_reputation_reward.min(creator_reward_budget);
+                    let counterparty_reward =
+                        success_reputation_reward.min(counterparty_reward_budget);
                     (
                         contract.settlement_amount,
                         tax_amount,
-                        success_reputation_reward,
-                        success_reputation_reward,
+                        creator_reward,
+                        counterparty_reward,
                     )
                 } else {
                     (0, 0, -contract.reputation_stake, 0)

@@ -180,6 +180,174 @@ fn economic_contract_success_reputation_reward_respects_stake_and_cap() {
     assert_eq!(world.state().reputation_scores.get("c"), Some(&12));
 }
 
+fn advance_ticks_with_rejected_observation(world: &mut World, agent_id: &str, ticks: u64) {
+    for _ in 0..ticks {
+        world.submit_action(Action::QueryObservation {
+            agent_id: agent_id.to_string(),
+        });
+        world.step().expect("advance tick");
+    }
+}
+
+#[test]
+fn economic_contract_pair_cooldown_rejects_repeated_success_settlement() {
+    let mut world = World::new();
+    register_agents(&mut world, &["a", "b"]);
+    world
+        .set_agent_resource_balance("a", ResourceKind::Electricity, 1_000)
+        .expect("seed creator electricity");
+
+    let expires_at = world.state().time.saturating_add(20);
+    world.submit_action(Action::OpenEconomicContract {
+        creator_agent_id: "a".to_string(),
+        contract_id: "contract.cooldown.1".to_string(),
+        counterparty_agent_id: "b".to_string(),
+        settlement_kind: ResourceKind::Electricity,
+        settlement_amount: 20,
+        reputation_stake: 5,
+        expires_at,
+        description: "cooldown-first".to_string(),
+    });
+    world.step().expect("open first contract");
+    world.submit_action(Action::AcceptEconomicContract {
+        accepter_agent_id: "b".to_string(),
+        contract_id: "contract.cooldown.1".to_string(),
+    });
+    world.step().expect("accept first contract");
+    world.submit_action(Action::SettleEconomicContract {
+        operator_agent_id: "a".to_string(),
+        contract_id: "contract.cooldown.1".to_string(),
+        success: true,
+        notes: "settle first".to_string(),
+    });
+    world.step().expect("settle first contract");
+    let first_settlement_tick = world.state().time;
+
+    let second_expires_at = world.state().time.saturating_add(20);
+    world.submit_action(Action::OpenEconomicContract {
+        creator_agent_id: "a".to_string(),
+        contract_id: "contract.cooldown.2".to_string(),
+        counterparty_agent_id: "b".to_string(),
+        settlement_kind: ResourceKind::Electricity,
+        settlement_amount: 20,
+        reputation_stake: 5,
+        expires_at: second_expires_at,
+        description: "cooldown-second".to_string(),
+    });
+    world.step().expect("open second contract");
+    world.submit_action(Action::AcceptEconomicContract {
+        accepter_agent_id: "b".to_string(),
+        contract_id: "contract.cooldown.2".to_string(),
+    });
+    world.step().expect("accept second contract");
+    world.submit_action(Action::SettleEconomicContract {
+        operator_agent_id: "a".to_string(),
+        contract_id: "contract.cooldown.2".to_string(),
+        success: true,
+        notes: "settle second too early".to_string(),
+    });
+    world
+        .step()
+        .expect("second settlement should be rejected by cooldown");
+    assert_latest_rule_denied_contains(&world, "pair cooldown active");
+
+    let second_contract = world
+        .state()
+        .economic_contracts
+        .get("contract.cooldown.2")
+        .expect("second contract exists");
+    assert_eq!(second_contract.status, EconomicContractStatus::Accepted);
+
+    let target_tick = first_settlement_tick.saturating_add(5);
+    if world.state().time < target_tick {
+        let wait_ticks = target_tick.saturating_sub(world.state().time);
+        advance_ticks_with_rejected_observation(&mut world, "a", wait_ticks);
+    }
+    world.submit_action(Action::SettleEconomicContract {
+        operator_agent_id: "a".to_string(),
+        contract_id: "contract.cooldown.2".to_string(),
+        success: true,
+        notes: "settle second after cooldown".to_string(),
+    });
+    world.step().expect("settle second contract after cooldown");
+    let second_contract = world
+        .state()
+        .economic_contracts
+        .get("contract.cooldown.2")
+        .expect("second contract settled");
+    assert_eq!(second_contract.status, EconomicContractStatus::Settled);
+}
+
+#[test]
+fn economic_contract_reputation_window_cap_decays_reward_to_zero_then_recovers() {
+    let mut world = World::new();
+    register_agents(&mut world, &["a", "b", "c", "d", "e"]);
+    world
+        .set_agent_resource_balance("a", ResourceKind::Electricity, 5_000)
+        .expect("seed creator electricity");
+
+    let settle_success = |world: &mut World, contract_id: &str, counterparty_agent_id: &str| {
+        let expires_at = world.state().time.saturating_add(20);
+        world.submit_action(Action::OpenEconomicContract {
+            creator_agent_id: "a".to_string(),
+            contract_id: contract_id.to_string(),
+            counterparty_agent_id: counterparty_agent_id.to_string(),
+            settlement_kind: ResourceKind::Electricity,
+            settlement_amount: 200,
+            reputation_stake: 20,
+            expires_at,
+            description: format!("window-cap-{contract_id}"),
+        });
+        world.step().expect("open contract");
+        world.submit_action(Action::AcceptEconomicContract {
+            accepter_agent_id: counterparty_agent_id.to_string(),
+            contract_id: contract_id.to_string(),
+        });
+        world.step().expect("accept contract");
+        world.submit_action(Action::SettleEconomicContract {
+            operator_agent_id: "a".to_string(),
+            contract_id: contract_id.to_string(),
+            success: true,
+            notes: format!("settle {contract_id}"),
+        });
+        world.step().expect("settle contract");
+    };
+
+    settle_success(&mut world, "contract.window.1", "b");
+    settle_success(&mut world, "contract.window.2", "c");
+    settle_success(&mut world, "contract.window.3", "d");
+
+    let third_settle_event = world.journal().events.last().expect("third settle event");
+    match &third_settle_event.body {
+        WorldEventBody::Domain(DomainEvent::EconomicContractSettled {
+            creator_reputation_delta,
+            counterparty_reputation_delta,
+            ..
+        }) => {
+            assert_eq!(*creator_reputation_delta, 0);
+            assert_eq!(*counterparty_reputation_delta, 12);
+        }
+        other => panic!("expected EconomicContractSettled, got {other:?}"),
+    }
+
+    assert_eq!(world.state().reputation_scores.get("a"), Some(&24));
+    assert_eq!(world.state().reputation_scores.get("b"), Some(&12));
+    assert_eq!(world.state().reputation_scores.get("c"), Some(&12));
+    assert_eq!(world.state().reputation_scores.get("d"), Some(&12));
+
+    advance_ticks_with_rejected_observation(&mut world, "a", 20);
+    settle_success(&mut world, "contract.window.4", "e");
+
+    let fourth_contract = world
+        .state()
+        .economic_contracts
+        .get("contract.window.4")
+        .expect("fourth contract exists");
+    assert_eq!(fourth_contract.status, EconomicContractStatus::Settled);
+    assert_eq!(world.state().reputation_scores.get("a"), Some(&36));
+    assert_eq!(world.state().reputation_scores.get("e"), Some(&12));
+}
+
 #[test]
 fn economic_contract_respects_policy_quota_and_block_list() {
     let mut world = World::new();
