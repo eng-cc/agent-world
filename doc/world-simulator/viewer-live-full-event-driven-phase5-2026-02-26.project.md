@@ -5,7 +5,7 @@
 - [x] T1 共识提交事件化：NodeRuntime 等待接口 + viewer 监听信号接线
 - [x] T2 主循环背压：有界事件队列 + 事件合并/丢弃计数
 - [x] T3 回归测试：共识提交事件链路 + 背压语义
-- [ ] T4 文档与日志收口
+- [x] T4 文档与日志收口
 
 ## 依赖
 - `crates/agent_world/src/viewer/live_split_part1.rs`
@@ -17,5 +17,5 @@
 - `testing-manual.md`
 
 ## 状态
-- 当前阶段：T3 已完成，进行 T4
+- 当前阶段：已完成（T0~T4）
 - 备注：Phase 5 聚焦“共识提交事件化 + 有界背压”，Phase 6 再处理非共识链路去定时化。

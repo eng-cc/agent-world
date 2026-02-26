@@ -34,3 +34,13 @@
 ## 风险
 - NodeRuntime 增加等待接口后若通知丢失，可能导致 viewer 卡住或提交延迟可见。
 - 有界队列与事件合并策略若设计不当，可能造成控制命令饿死或响应顺序漂移。
+
+## Phase 5 完成态（2026-02-26）
+- 已完成：共识提交链路由定时拉取改为提交到达信号驱动，`ConsensusCommitted` 进入主循环统一处理。
+- 已完成：live 主循环切换为有界 `sync_channel`，并为可合并信号接入 merge/drop 计数。
+- 已完成：补齐共识信号线程、coalesced 合并与队列满载丢弃回归测试，`viewer::live::tests` 全组通过。
+
+## Phase 6 入口（非共识链路去定时化）
+1. 将非共识路径（script/llm 本地执行）从 `PlaybackPulse` 定时推进进一步改造成显式驱动事件。
+2. 为控制流（Play/Pause/Step/Seek）引入统一“状态变更触发器”，减少空 pulse 和冗余 metrics 推送。
+3. 收敛 live 内部信号生命周期管理，明确可合并信号与不可合并控制信号边界。
