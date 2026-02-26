@@ -33,3 +33,13 @@
 ## 风险
 - 控制信号入队后与 `PlaybackPulse` 竞态，若顺序处理不当可能造成额外空脉冲或响应时序漂移。
 - `Step` 多步循环搬迁后若遗漏 metrics/快照发射逻辑，可能造成 UI 观测回退。
+
+## Phase 4 完成态（2026-02-26）
+- 已完成：`ViewerControl::Step/Seek` 从请求处理路径剥离为 deferred control effect，由主循环 `StepRequested/SeekRequested` 显式执行。
+- 已完成：`Play/Pause/Step/Seek` 对外协议语义保持兼容，请求线程不再直接推进 world。
+- 已完成：补齐 Step/Seek deferred 回归测试，验证请求阶段不推进 tick，仅输出控制效果。
+
+## Phase 5 入口（共识提交事件化 + 背压）
+1. 将共识提交应用从“playback pulse 驱动的 step 拉取”改造成“共识提交到达即投递主循环信号”的事件链路。
+2. 引入 live 主循环有界事件队列与过载计数，避免慢连接场景下无限积压。
+3. 为共识路径增加降载策略（mailbox 合并/跳过重复唤醒）与可观测指标，进一步压缩空跑。
