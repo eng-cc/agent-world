@@ -8,17 +8,17 @@
 - [x] 明确改动范围仅为首页 Hero CTA（CN/EN）
 
 ### 1. Hero CTA 收敛与文案改写
-- [ ] `site/index.html`：首屏 CTA 收敛为 2 个（主：试玩/演示；次：文档）
-- [ ] `site/en/index.html`：首屏 CTA 收敛为 2 个（同构）
-- [ ] 重写主按钮文案，去除“30 秒进入首局”承诺性措辞
-- [ ] 执行 `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer`
-- [ ] 回写项目管理文档状态与任务日志
+- [x] `site/index.html`：首屏 CTA 收敛为 2 个（主：试玩/演示；次：文档）
+- [x] `site/en/index.html`：首屏 CTA 收敛为 2 个（同构）
+- [x] 重写主按钮文案，去除“30 秒进入首局”承诺性措辞
+- [x] 执行 `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer`
+- [x] 回写项目管理文档状态与任务日志
 
 ## 依赖
 - 复用现有 `site/assets/styles.css` 的 `.cta-row` 与 `.button` 样式能力，不新增样式依赖。
 - 保持 `site/assets/app.js` 现有行为，不引入新脚本。
 
 ## 状态
-- 当前阶段：进行中（任务 0 完成，任务 1 待执行）
-- 最近更新：完成建档并进入实现阶段（2026-02-26）
-- 下一步：执行任务 1（首页 CTA 收敛与文案改写）。
+- 当前阶段：已完成（任务 0/1 全部完成）
+- 最近更新：完成 CTA 收敛与文案改写并结项（2026-02-26）
+- 下一步：无。
