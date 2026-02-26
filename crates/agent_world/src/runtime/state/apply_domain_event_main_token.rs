@@ -1,3 +1,7 @@
+use super::super::main_token::{
+    MAIN_TOKEN_TREASURY_BUCKET_ECOSYSTEM_POOL, MAIN_TOKEN_TREASURY_BUCKET_NODE_SERVICE_REWARD,
+    MAIN_TOKEN_TREASURY_BUCKET_SECURITY_RESERVE, MAIN_TOKEN_TREASURY_BUCKET_STAKING_REWARD,
+};
 use super::*;
 
 impl WorldState {
@@ -268,8 +272,137 @@ impl WorldState {
                 self.main_token_claim_nonces
                     .insert(beneficiary.clone(), *nonce);
             }
+            DomainEvent::MainTokenEpochIssued {
+                epoch_index,
+                inflation_rate_bps,
+                issued_amount,
+                staking_reward_amount,
+                node_service_reward_amount,
+                ecosystem_pool_amount,
+                security_reserve_amount,
+            } => {
+                if self
+                    .main_token_epoch_issuance_records
+                    .contains_key(epoch_index)
+                {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "main token epoch issuance already exists: epoch={epoch_index}"
+                        ),
+                    });
+                }
+                let split_sum = staking_reward_amount
+                    .checked_add(*node_service_reward_amount)
+                    .and_then(|value| value.checked_add(*ecosystem_pool_amount))
+                    .and_then(|value| value.checked_add(*security_reserve_amount))
+                    .ok_or_else(|| WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "main token epoch split overflow: epoch={} staking={} node_service={} ecosystem={} security={}",
+                            epoch_index,
+                            staking_reward_amount,
+                            node_service_reward_amount,
+                            ecosystem_pool_amount,
+                            security_reserve_amount
+                        ),
+                    })?;
+                if split_sum != *issued_amount {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "main token epoch split mismatch: epoch={} issued={} split_sum={}",
+                            epoch_index, issued_amount, split_sum
+                        ),
+                    });
+                }
+
+                let next_total_issued = self
+                    .main_token_supply
+                    .total_issued
+                    .checked_add(*issued_amount)
+                    .ok_or_else(|| WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "main token total_issued overflow: current={} issued={}",
+                            self.main_token_supply.total_issued, issued_amount
+                        ),
+                    })?;
+                let next_total_supply = self
+                    .main_token_supply
+                    .total_supply
+                    .checked_add(*issued_amount)
+                    .ok_or_else(|| WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "main token total_supply overflow: current={} issued={}",
+                            self.main_token_supply.total_supply, issued_amount
+                        ),
+                    })?;
+                if let Some(max_supply) = self.main_token_config.max_supply {
+                    if next_total_supply > max_supply {
+                        return Err(WorldError::ResourceBalanceInvalid {
+                            reason: format!(
+                                "main token total_supply exceeds max_supply: next={} max={}",
+                                next_total_supply, max_supply
+                            ),
+                        });
+                    }
+                }
+
+                add_main_token_treasury_balance(
+                    &mut self.main_token_treasury_balances,
+                    MAIN_TOKEN_TREASURY_BUCKET_STAKING_REWARD,
+                    *staking_reward_amount,
+                )?;
+                add_main_token_treasury_balance(
+                    &mut self.main_token_treasury_balances,
+                    MAIN_TOKEN_TREASURY_BUCKET_NODE_SERVICE_REWARD,
+                    *node_service_reward_amount,
+                )?;
+                add_main_token_treasury_balance(
+                    &mut self.main_token_treasury_balances,
+                    MAIN_TOKEN_TREASURY_BUCKET_ECOSYSTEM_POOL,
+                    *ecosystem_pool_amount,
+                )?;
+                add_main_token_treasury_balance(
+                    &mut self.main_token_treasury_balances,
+                    MAIN_TOKEN_TREASURY_BUCKET_SECURITY_RESERVE,
+                    *security_reserve_amount,
+                )?;
+
+                self.main_token_supply.total_issued = next_total_issued;
+                self.main_token_supply.total_supply = next_total_supply;
+                self.main_token_epoch_issuance_records.insert(
+                    *epoch_index,
+                    MainTokenEpochIssuanceRecord {
+                        epoch_index: *epoch_index,
+                        inflation_rate_bps: *inflation_rate_bps,
+                        issued_amount: *issued_amount,
+                        staking_reward_amount: *staking_reward_amount,
+                        node_service_reward_amount: *node_service_reward_amount,
+                        ecosystem_pool_amount: *ecosystem_pool_amount,
+                        security_reserve_amount: *security_reserve_amount,
+                    },
+                );
+            }
             _ => unreachable!("apply_domain_event_main_token received unsupported event variant"),
         }
         Ok(())
     }
+}
+
+fn add_main_token_treasury_balance(
+    balances: &mut BTreeMap<String, u64>,
+    bucket_id: &str,
+    amount: u64,
+) -> Result<(), WorldError> {
+    let next = balances
+        .get(bucket_id)
+        .copied()
+        .unwrap_or(0)
+        .checked_add(amount)
+        .ok_or_else(|| WorldError::ResourceBalanceInvalid {
+            reason: format!(
+                "main token treasury balance overflow: bucket={} amount={}",
+                bucket_id, amount
+            ),
+        })?;
+    balances.insert(bucket_id.to_string(), next);
+    Ok(())
 }

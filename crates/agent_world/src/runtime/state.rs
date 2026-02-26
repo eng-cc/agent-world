@@ -498,6 +498,7 @@ impl WorldState {
             | DomainEvent::NodePointsSettlementApplied { .. }
             | DomainEvent::MainTokenGenesisInitialized { .. }
             | DomainEvent::MainTokenVestingClaimed { .. }
+            | DomainEvent::MainTokenEpochIssued { .. }
             | DomainEvent::MaterialTransferred { .. }
             | DomainEvent::MaterialTransitStarted { .. }
             | DomainEvent::MaterialTransitCompleted { .. }

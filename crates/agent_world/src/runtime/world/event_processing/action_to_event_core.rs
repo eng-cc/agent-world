@@ -327,6 +327,16 @@ impl World {
                     *nonce,
                 ),
             )),
+            Action::ApplyMainTokenEpochIssuance {
+                epoch_index,
+                actual_stake_ratio_bps,
+            } => Ok(WorldEventBody::Domain(
+                self.evaluate_apply_main_token_epoch_issuance_action(
+                    action_id,
+                    *epoch_index,
+                    *actual_stake_ratio_bps,
+                ),
+            )),
             Action::TransferMaterial {
                 requester_agent_id,
                 from_ledger,

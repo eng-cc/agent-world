@@ -253,3 +253,123 @@ fn main_token_claim_vesting_action_releases_unlocked_balance_and_rejects_nonce_r
         other => panic!("expected ActionRejected, got {other:?}"),
     }
 }
+
+#[test]
+fn main_token_epoch_issuance_applies_formula_clamp_split_and_rejects_duplicate_epoch() {
+    let mut world = World::new();
+    world.set_main_token_config(MainTokenConfig {
+        initial_supply: 1_000,
+        max_supply: Some(1_005),
+        inflation_policy: MainTokenInflationPolicy {
+            base_rate_bps: 300,
+            min_rate_bps: 200,
+            max_rate_bps: 800,
+            target_stake_ratio_bps: 6_000,
+            stake_feedback_gain_bps: 1_000,
+            epochs_per_year: 10,
+        },
+        issuance_split: MainTokenIssuanceSplitPolicy::default(),
+        ..MainTokenConfig::default()
+    });
+    world.submit_action(Action::InitializeMainTokenGenesis {
+        allocations: vec![MainTokenGenesisAllocationPlan {
+            bucket_id: "genesis_pool".to_string(),
+            ratio_bps: 10_000,
+            recipient: "protocol:treasury".to_string(),
+            cliff_epochs: 0,
+            linear_unlock_epochs: 0,
+            start_epoch: 0,
+        }],
+    });
+    world.step().expect("initialize main token genesis");
+    world.set_main_token_supply(MainTokenSupplyState {
+        total_supply: 1_000,
+        circulating_supply: 1_000,
+        total_issued: 0,
+        total_burned: 0,
+    });
+
+    world.submit_action(Action::ApplyMainTokenEpochIssuance {
+        epoch_index: 1,
+        actual_stake_ratio_bps: 6_000,
+    });
+    world.step().expect("apply epoch issuance #1");
+
+    assert_eq!(world.main_token_supply().total_issued, 3);
+    assert_eq!(world.main_token_supply().total_supply, 1_003);
+    assert_eq!(
+        world.main_token_epoch_issuance_record(1),
+        Some(&MainTokenEpochIssuanceRecord {
+            epoch_index: 1,
+            inflation_rate_bps: 300,
+            issued_amount: 3,
+            staking_reward_amount: 1,
+            node_service_reward_amount: 0,
+            ecosystem_pool_amount: 0,
+            security_reserve_amount: 2,
+        })
+    );
+    assert_eq!(
+        world.main_token_treasury_balance(MAIN_TOKEN_TREASURY_BUCKET_STAKING_REWARD),
+        1
+    );
+    assert_eq!(
+        world.main_token_treasury_balance(MAIN_TOKEN_TREASURY_BUCKET_NODE_SERVICE_REWARD),
+        0
+    );
+    assert_eq!(
+        world.main_token_treasury_balance(MAIN_TOKEN_TREASURY_BUCKET_ECOSYSTEM_POOL),
+        0
+    );
+    assert_eq!(
+        world.main_token_treasury_balance(MAIN_TOKEN_TREASURY_BUCKET_SECURITY_RESERVE),
+        2
+    );
+
+    world.submit_action(Action::ApplyMainTokenEpochIssuance {
+        epoch_index: 2,
+        actual_stake_ratio_bps: 0,
+    });
+    world.step().expect("apply epoch issuance #2");
+
+    assert_eq!(world.main_token_supply().total_issued, 5);
+    assert_eq!(world.main_token_supply().total_supply, 1_005);
+    assert_eq!(
+        world.main_token_epoch_issuance_record(2),
+        Some(&MainTokenEpochIssuanceRecord {
+            epoch_index: 2,
+            inflation_rate_bps: 800,
+            issued_amount: 2,
+            staking_reward_amount: 1,
+            node_service_reward_amount: 0,
+            ecosystem_pool_amount: 0,
+            security_reserve_amount: 1,
+        })
+    );
+    assert_eq!(
+        world.main_token_treasury_balance(MAIN_TOKEN_TREASURY_BUCKET_STAKING_REWARD),
+        2
+    );
+    assert_eq!(
+        world.main_token_treasury_balance(MAIN_TOKEN_TREASURY_BUCKET_SECURITY_RESERVE),
+        3
+    );
+
+    world.submit_action(Action::ApplyMainTokenEpochIssuance {
+        epoch_index: 2,
+        actual_stake_ratio_bps: 6_000,
+    });
+    world
+        .step()
+        .expect("duplicate epoch issuance should be rejected");
+
+    match &world.journal().events.last().expect("event").body {
+        WorldEventBody::Domain(DomainEvent::ActionRejected { reason, .. }) => match reason {
+            RejectReason::RuleDenied { notes } => {
+                assert!(notes.iter().any(|note| note.contains("already exists")));
+            }
+            other => panic!("expected RuleDenied, got {other:?}"),
+        },
+        other => panic!("expected ActionRejected, got {other:?}"),
+    }
+}

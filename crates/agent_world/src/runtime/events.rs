@@ -192,6 +192,10 @@ pub enum Action {
         beneficiary: String,
         nonce: u64,
     },
+    ApplyMainTokenEpochIssuance {
+        epoch_index: u64,
+        actual_stake_ratio_bps: u32,
+    },
     TransferMaterial {
         requester_agent_id: String,
         from_ledger: MaterialLedgerId,
@@ -539,6 +543,15 @@ pub enum DomainEvent {
         amount: u64,
         nonce: u64,
     },
+    MainTokenEpochIssued {
+        epoch_index: u64,
+        inflation_rate_bps: u32,
+        issued_amount: u64,
+        staking_reward_amount: u64,
+        node_service_reward_amount: u64,
+        ecosystem_pool_amount: u64,
+        security_reserve_amount: u64,
+    },
     MaterialTransferred {
         requester_agent_id: String,
         from_ledger: MaterialLedgerId,
@@ -834,6 +847,7 @@ impl DomainEvent {
             DomainEvent::NodePointsSettlementApplied { .. } => None,
             DomainEvent::MainTokenGenesisInitialized { .. } => None,
             DomainEvent::MainTokenVestingClaimed { beneficiary, .. } => Some(beneficiary.as_str()),
+            DomainEvent::MainTokenEpochIssued { .. } => None,
             DomainEvent::MaterialTransferred {
                 requester_agent_id, ..
             } => Some(requester_agent_id.as_str()),
