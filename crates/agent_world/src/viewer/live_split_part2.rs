@@ -128,17 +128,15 @@ struct ViewerLiveSession {
     subscribed: HashSet<ViewerStream>,
     event_filters: Option<HashSet<ViewerEventKind>>,
     playing: bool,
-    tick_interval: Duration,
     metrics: RunnerMetrics,
 }
 
 impl ViewerLiveSession {
-    fn new(tick_interval: Duration) -> Self {
+    fn new() -> Self {
         Self {
             subscribed: HashSet::new(),
             event_filters: None,
             playing: false,
-            tick_interval,
             metrics: RunnerMetrics::default(),
         }
     }
@@ -347,7 +345,11 @@ fn metrics_from_kernel(kernel: &WorldKernel) -> RunnerMetrics {
     }
 }
 
-fn read_requests(stream: TcpStream, tx: mpsc::Sender<LiveLoopSignal>) {
+fn read_requests(
+    stream: TcpStream,
+    tx: mpsc::Sender<LiveLoopSignal>,
+    loop_running: Arc<AtomicBool>,
+) {
     let mut reader = BufReader::new(stream);
     let mut line = String::new();
     loop {
@@ -362,13 +364,39 @@ fn read_requests(stream: TcpStream, tx: mpsc::Sender<LiveLoopSignal>) {
                 match serde_json::from_str::<ViewerRequest>(trimmed) {
                     Ok(request) => {
                         if tx.send(LiveLoopSignal::Request(request)).is_err() {
+                            loop_running.store(false, Ordering::SeqCst);
                             break;
                         }
                     }
                     Err(_) => {}
                 }
             }
-            Err(_) => break,
+            Err(_) => {
+                loop_running.store(false, Ordering::SeqCst);
+                break;
+            }
+        }
+    }
+    loop_running.store(false, Ordering::SeqCst);
+}
+
+fn emit_playback_pulses(
+    tx: mpsc::Sender<LiveLoopSignal>,
+    tick_interval: Duration,
+    loop_running: Arc<AtomicBool>,
+) {
+    let pulse_interval = if tick_interval.is_zero() {
+        Duration::from_millis(1)
+    } else {
+        tick_interval
+    };
+    while loop_running.load(Ordering::SeqCst) {
+        thread::sleep(pulse_interval);
+        if !loop_running.load(Ordering::SeqCst) {
+            break;
+        }
+        if tx.send(LiveLoopSignal::PlaybackPulse).is_err() {
+            break;
         }
     }
 }

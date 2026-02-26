@@ -1,11 +1,11 @@
 use std::collections::HashSet;
 use std::io::{self, BufRead, BufReader, BufWriter, Write};
 use std::net::{TcpListener, TcpStream};
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use agent_world_node::NodeRuntime;
 
@@ -152,6 +152,7 @@ pub struct ViewerLiveServer {
 #[derive(Debug)]
 enum LiveLoopSignal {
     Request(ViewerRequest),
+    PlaybackPulse,
 }
 
 impl ViewerLiveServer {
@@ -200,95 +201,84 @@ impl ViewerLiveServer {
         let reader_stream = stream.try_clone()?;
         let mut writer = BufWriter::new(stream);
         let (tx, rx) = mpsc::channel::<LiveLoopSignal>();
+        let loop_running = Arc::new(AtomicBool::new(true));
+        let request_loop_running = Arc::clone(&loop_running);
+        let pulse_loop_running = Arc::clone(&loop_running);
+        let request_tx = tx.clone();
+        let pulse_tx = tx.clone();
+        let pulse_interval = self.config.tick_interval;
 
-        thread::spawn(move || read_requests(reader_stream, tx));
+        thread::spawn(move || read_requests(reader_stream, request_tx, request_loop_running));
+        thread::spawn(move || emit_playback_pulses(pulse_tx, pulse_interval, pulse_loop_running));
+        drop(tx);
 
-        let mut session = ViewerLiveSession::new(self.config.tick_interval);
-        let mut last_tick = Instant::now();
-
-        loop {
-            match rx.recv_timeout(self.config.tick_interval) {
-                Ok(signal) => {
-                    let LiveLoopSignal::Request(command) = signal;
-                    match session.handle_request(
-                        command,
-                        &mut writer,
-                        &mut self.world,
-                        &self.config.world_id,
-                    ) {
-                        Ok(continue_running) => {
-                            if !continue_running {
-                                break;
-                            }
-                        }
-                        Err(err) => {
-                            if err.is_disconnect() {
-                                break;
-                            }
-                            return Err(err);
+        let mut session = ViewerLiveSession::new();
+        let result = loop {
+            match rx.recv() {
+                Ok(LiveLoopSignal::Request(command)) => match session.handle_request(
+                    command,
+                    &mut writer,
+                    &mut self.world,
+                    &self.config.world_id,
+                ) {
+                    Ok(continue_running) => {
+                        if !continue_running {
+                            break Ok(());
                         }
                     }
+                    Err(err) => {
+                        if err.is_disconnect() {
+                            break Ok(());
+                        }
+                        break Err(err);
+                    }
+                },
+                Ok(LiveLoopSignal::PlaybackPulse) => {
+                    if let Err(err) = self.handle_playback_pulse(&mut session, &mut writer) {
+                        if err.is_disconnect() {
+                            break Ok(());
+                        }
+                        break Err(err);
+                    }
                 }
-                Err(mpsc::RecvTimeoutError::Timeout) => {}
-                Err(mpsc::RecvTimeoutError::Disconnected) => break,
+                Err(_) => break Ok(()),
             }
+        };
+        loop_running.store(false, Ordering::SeqCst);
+        result
+    }
 
-            if session.should_emit_event() && last_tick.elapsed() >= session.tick_interval {
-                if !self.world.can_step_for_consensus() {
-                    continue;
-                }
-                let step = self.world.step()?;
+    fn handle_playback_pulse(
+        &mut self,
+        session: &mut ViewerLiveSession,
+        writer: &mut BufWriter<TcpStream>,
+    ) -> Result<(), ViewerLiveServerError> {
+        if !session.should_emit_event() {
+            return Ok(());
+        }
+        if !self.world.can_step_for_consensus() {
+            return Ok(());
+        }
+        let step = self.world.step()?;
 
-                if let Some(trace) = step.decision_trace {
-                    if session.subscribed.contains(&ViewerStream::Events) {
-                        if let Err(err) =
-                            send_response(&mut writer, &ViewerResponse::DecisionTrace { trace })
-                        {
-                            if err.is_disconnect() {
-                                break;
-                            }
-                            return Err(err);
-                        }
-                    }
-                }
-
-                if let Some(event) = step.event {
-                    if session.event_allowed(&event)
-                        && session.subscribed.contains(&ViewerStream::Events)
-                    {
-                        if let Err(err) =
-                            send_response(&mut writer, &ViewerResponse::Event { event })
-                        {
-                            if err.is_disconnect() {
-                                break;
-                            }
-                            return Err(err);
-                        }
-                    }
-                    if session.subscribed.contains(&ViewerStream::Snapshot) {
-                        let snapshot = self.world.snapshot();
-                        if let Err(err) =
-                            send_response(&mut writer, &ViewerResponse::Snapshot { snapshot })
-                        {
-                            if err.is_disconnect() {
-                                break;
-                            }
-                            return Err(err);
-                        }
-                    }
-                }
-
-                session.update_metrics(self.world.metrics());
-                if let Err(err) = session.emit_metrics(&mut writer) {
-                    if err.is_disconnect() {
-                        break;
-                    }
-                    return Err(err);
-                }
-
-                last_tick = Instant::now();
+        if let Some(trace) = step.decision_trace {
+            if session.subscribed.contains(&ViewerStream::Events) {
+                send_response(writer, &ViewerResponse::DecisionTrace { trace })?;
             }
         }
+
+        if let Some(event) = step.event {
+            if session.event_allowed(&event) && session.subscribed.contains(&ViewerStream::Events) {
+                send_response(writer, &ViewerResponse::Event { event })?;
+            }
+            if session.subscribed.contains(&ViewerStream::Snapshot) {
+                let snapshot = self.world.snapshot();
+                send_response(writer, &ViewerResponse::Snapshot { snapshot })?;
+            }
+        }
+
+        session.update_metrics(self.world.metrics());
+        session.emit_metrics(writer)?;
         Ok(())
     }
 }
