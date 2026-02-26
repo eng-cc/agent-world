@@ -243,7 +243,7 @@ fn live_world_llm_event_driven_gate_avoids_repeated_empty_ticks() {
     assert!(second.decision_trace.is_none());
     assert_eq!(world.metrics().total_ticks, 1);
 
-    world.mark_llm_decision_pending();
+    world.request_llm_decision();
     let third = world.step().expect("third step");
     assert!(third.event.is_none());
     assert!(third.decision_trace.is_none());

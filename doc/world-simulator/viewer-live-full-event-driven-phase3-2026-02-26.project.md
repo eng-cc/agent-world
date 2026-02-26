@@ -2,7 +2,7 @@
 
 ## 任务拆解
 - [x] T0 建档：设计文档 + 项目管理文档
-- [ ] T1 LLM mailbox 事件化：`LlmDecisionRequested` + mailbox 计数
+- [x] T1 LLM mailbox 事件化：`LlmDecisionRequested` + mailbox 计数
 - [ ] T2 回归测试：mailbox 语义 + live 关键语义
 - [ ] T3 文档与日志收口
 
@@ -14,5 +14,5 @@
 - `testing-manual.md`
 
 ## 状态
-- 当前阶段：T0 已完成，进行 T1
+- 当前阶段：T1 已完成，进行 T2
 - 备注：Phase 3 聚焦 LLM 决策 mailbox 事件化；后续再评估跨模块总线统一与背压策略。

@@ -131,6 +131,12 @@ struct ViewerLiveSession {
     metrics: RunnerMetrics,
 }
 
+#[derive(Debug, Clone, Copy)]
+struct ViewerLiveRequestOutcome {
+    continue_running: bool,
+    request_llm_decision: bool,
+}
+
 #[derive(Clone)]
 struct PlaybackPulseControl {
     state: Arc<(Mutex<PlaybackPulseState>, Condvar)>,
@@ -181,7 +187,8 @@ impl ViewerLiveSession {
         writer: &mut BufWriter<TcpStream>,
         world: &mut LiveWorld,
         world_id: &str,
-    ) -> Result<bool, ViewerLiveServerError> {
+    ) -> Result<ViewerLiveRequestOutcome, ViewerLiveServerError> {
+        let mut request_llm_decision = false;
         match request {
             ViewerRequest::Hello { .. } => {
                 let response = ViewerResponse::HelloAck {
@@ -237,7 +244,7 @@ impl ViewerLiveSession {
                 match result {
                     Ok(ack) => {
                         if wake_llm {
-                            world.mark_llm_decision_pending();
+                            request_llm_decision = true;
                         }
                         send_response(writer, &ViewerResponse::PromptControlAck { ack })?;
                     }
@@ -248,7 +255,7 @@ impl ViewerLiveSession {
             }
             ViewerRequest::AgentChat { request } => match world.agent_chat(request) {
                 Ok(ack) => {
-                    world.mark_llm_decision_pending();
+                    request_llm_decision = true;
                     send_response(writer, &ViewerResponse::AgentChatAck { ack })?;
                 }
                 Err(error) => {
@@ -261,12 +268,12 @@ impl ViewerLiveSession {
                 }
                 ViewerControl::Play => {
                     self.playing = true;
-                    world.mark_llm_decision_pending();
+                    request_llm_decision = true;
                 }
                 ViewerControl::Step { count } => {
                     let steps = count.max(1);
                     for _ in 0..steps {
-                        world.mark_llm_decision_pending();
+                        world.request_llm_decision();
                         let step = world.step()?;
 
                         if let Some(trace) = step.decision_trace {
@@ -323,7 +330,10 @@ impl ViewerLiveSession {
                 }
             },
         }
-        Ok(true)
+        Ok(ViewerLiveRequestOutcome {
+            continue_running: true,
+            request_llm_decision,
+        })
     }
 
     fn should_emit_event(&self) -> bool {

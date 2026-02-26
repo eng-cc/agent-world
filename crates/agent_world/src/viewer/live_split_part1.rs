@@ -153,6 +153,7 @@ pub struct ViewerLiveServer {
 enum LiveLoopSignal {
     Request(ViewerRequest),
     PlaybackPulse,
+    LlmDecisionRequested,
 }
 
 impl ViewerLiveServer {
@@ -207,6 +208,7 @@ impl ViewerLiveServer {
         let playback_control = PlaybackPulseControl::new();
         let request_playback_control = playback_control.clone();
         let pulse_playback_control = playback_control.clone();
+        let loop_tx = tx.clone();
         let request_tx = tx.clone();
         let pulse_tx = tx.clone();
         let pulse_interval = self.config.tick_interval;
@@ -239,9 +241,12 @@ impl ViewerLiveServer {
                     &mut self.world,
                     &self.config.world_id,
                 ) {
-                    Ok(continue_running) => {
+                    Ok(outcome) => {
+                        if outcome.request_llm_decision {
+                            let _ = loop_tx.send(LiveLoopSignal::LlmDecisionRequested);
+                        }
                         playback_control.set_enabled(session.should_emit_event());
-                        if !continue_running {
+                        if !outcome.continue_running {
                             break Ok(());
                         }
                     }
@@ -260,11 +265,15 @@ impl ViewerLiveServer {
                         break Err(err);
                     }
                 }
+                Ok(LiveLoopSignal::LlmDecisionRequested) => {
+                    self.world.request_llm_decision();
+                }
                 Err(_) => break Ok(()),
             }
         };
         loop_running.store(false, Ordering::SeqCst);
         playback_control.notify();
+        drop(loop_tx);
         result
     }
 
@@ -274,6 +283,9 @@ impl ViewerLiveServer {
         writer: &mut BufWriter<TcpStream>,
     ) -> Result<(), ViewerLiveServerError> {
         if !session.should_emit_event() {
+            return Ok(());
+        }
+        if !self.world.should_step_on_playback_pulse() {
             return Ok(());
         }
         if !self.world.can_step_for_consensus() {
@@ -309,7 +321,7 @@ struct LiveWorld {
     kernel: WorldKernel,
     decision_mode: ViewerLiveDecisionMode,
     driver: LiveDriver,
-    llm_decision_pending: bool,
+    llm_decision_mailbox: u64,
     consensus_gate_max_tick: Option<Arc<AtomicU64>>,
     consensus_bridge: Option<LiveConsensusBridge>,
 }
@@ -343,14 +355,18 @@ impl LiveWorld {
     ) -> Result<Self, ViewerLiveServerError> {
         let (kernel, _) = initialize_kernel(config.clone(), init.clone())?;
         let driver = build_driver(&kernel, decision_mode)?;
-        let llm_decision_pending = matches!(&driver, LiveDriver::Llm(_));
+        let llm_decision_mailbox = if matches!(&driver, LiveDriver::Llm(_)) {
+            1
+        } else {
+            0
+        };
         Ok(Self {
             config,
             init,
             kernel,
             decision_mode,
             driver,
-            llm_decision_pending,
+            llm_decision_mailbox,
             consensus_gate_max_tick,
             consensus_bridge: consensus_runtime.map(LiveConsensusBridge::new),
         })
@@ -385,7 +401,11 @@ impl LiveWorld {
         let (kernel, _) = initialize_kernel(self.config.clone(), self.init.clone())?;
         self.kernel = kernel;
         self.driver = build_driver(&self.kernel, self.decision_mode)?;
-        self.llm_decision_pending = matches!(&self.driver, LiveDriver::Llm(_));
+        self.llm_decision_mailbox = if matches!(&self.driver, LiveDriver::Llm(_)) {
+            1
+        } else {
+            0
+        };
         if let Some(bridge) = self.consensus_bridge.as_mut() {
             bridge.reset_pending();
         }
@@ -407,12 +427,13 @@ impl LiveWorld {
                 })
             }
             LiveDriver::Llm(runner) => {
-                if !self.llm_decision_pending {
+                if self.llm_decision_mailbox == 0 {
                     return Ok(LiveStepResult {
                         event: None,
                         decision_trace: None,
                     });
                 }
+                self.llm_decision_mailbox = self.llm_decision_mailbox.saturating_sub(1);
                 let tick_result = runner.tick(&mut self.kernel);
                 sync_llm_runner_long_term_memory(&mut self.kernel, runner);
                 let mut event = None;
@@ -421,7 +442,9 @@ impl LiveWorld {
                     event = result.action_result.map(|action| action.event);
                     decision_trace = result.decision_trace;
                 }
-                self.llm_decision_pending = event.is_some();
+                if event.is_some() {
+                    self.llm_decision_mailbox = self.llm_decision_mailbox.saturating_add(1);
+                }
                 Ok(LiveStepResult {
                     event,
                     decision_trace,
@@ -430,9 +453,23 @@ impl LiveWorld {
         }
     }
 
-    fn mark_llm_decision_pending(&mut self) {
+    fn request_llm_decision(&mut self) {
         if matches!(&self.driver, LiveDriver::Llm(_)) {
-            self.llm_decision_pending = true;
+            self.llm_decision_mailbox = self.llm_decision_mailbox.saturating_add(1);
+        }
+    }
+
+    fn llm_mailbox_has_pending(&self) -> bool {
+        self.llm_decision_mailbox > 0
+    }
+
+    fn should_step_on_playback_pulse(&self) -> bool {
+        if self.consensus_bridge.is_some() {
+            return true;
+        }
+        match &self.driver {
+            LiveDriver::Script(_) => true,
+            LiveDriver::Llm(_) => self.llm_mailbox_has_pending(),
         }
     }
 

@@ -122,7 +122,7 @@ impl LiveWorld {
             bridge.refresh_committed_actions()?;
             if let Some(committed) = bridge.pop_committed_action() {
                 let event = self.apply_committed_consensus_action(committed)?;
-                self.mark_llm_decision_pending();
+                self.request_llm_decision();
                 return Ok(LiveStepResult {
                     event: Some(event),
                     decision_trace: None,
@@ -149,20 +149,20 @@ impl LiveWorld {
                 })
             }
             LiveDriver::Llm(runner) => {
-                if !self.llm_decision_pending {
+                if self.llm_decision_mailbox == 0 {
                     return Ok(LiveStepResult {
                         event: None,
                         decision_trace: None,
                     });
                 }
+                self.llm_decision_mailbox = self.llm_decision_mailbox.saturating_sub(1);
                 let tick_result = runner.tick_decide_only(&mut self.kernel);
                 sync_llm_runner_long_term_memory(&mut self.kernel, runner);
                 let mut decision_trace = None;
-                let mut llm_decision_pending = false;
                 if let Some(result) = tick_result {
                     decision_trace = result.decision_trace;
                     if let AgentDecision::Act(action) = result.decision {
-                        llm_decision_pending = true;
+                        self.llm_decision_mailbox = self.llm_decision_mailbox.saturating_add(1);
                         if let Some(bridge) = self.consensus_bridge.as_mut() {
                             bridge.submit_action(
                                 action,
@@ -173,7 +173,6 @@ impl LiveWorld {
                         }
                     }
                 }
-                self.llm_decision_pending = llm_decision_pending;
                 Ok(LiveStepResult {
                     event: None,
                     decision_trace,
