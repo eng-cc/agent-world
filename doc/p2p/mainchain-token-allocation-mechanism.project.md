@@ -8,7 +8,7 @@
 - [x] TAM-4：实现 Gas/罚没/模块费用销毁与协议金库记账。
 - [x] TAM-5：实现参数治理边界（范围校验、生效延迟、提案审计事件）。
 - [x] TAM-6：实现 NodePoints -> 主链 Token 桥接占位接口并接入结算路径。
-- [ ] TAM-7：补齐 `test_tier_required` / `test_tier_full` 测试矩阵与回归脚本。
+- [x] TAM-7：补齐 `test_tier_required` / `test_tier_full` 测试矩阵与回归脚本。
 - [ ] TAM-8：文档回写、发布说明与运行手册补充。
 
 ## 依赖
@@ -21,6 +21,6 @@
 - `testing-manual.md`
 
 ## 状态
-- 当前阶段：TAM-0 ~ TAM-6 已完成。
-- 下一步：TAM-7（补齐 `test_tier_required` / `test_tier_full` 测试矩阵与回归脚本）。
+- 当前阶段：TAM-0 ~ TAM-7 已完成。
+- 下一步：TAM-8（文档回写、发布说明与运行手册补充）。
 - 最近更新：2026-02-26。
