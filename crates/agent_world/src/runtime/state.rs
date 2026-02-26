@@ -4,7 +4,7 @@ use crate::models::AgentState;
 use crate::simulator::{ModuleInstallTarget, ResourceKind};
 use agent_world_wasm_abi::{FactoryModuleSpec, MaterialStack};
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use super::agent_cell::AgentCell;
 use super::error::WorldError;
@@ -180,6 +180,8 @@ pub struct WorldState {
     #[serde(default)]
     pub gameplay_policy: GameplayPolicyState,
     #[serde(default)]
+    pub data_access_permissions: BTreeMap<String, BTreeSet<String>>,
+    #[serde(default)]
     pub economic_contracts: BTreeMap<String, EconomicContractState>,
     #[serde(default)]
     pub reputation_scores: BTreeMap<String, i64>,
@@ -243,6 +245,7 @@ impl Default for WorldState {
             pending_material_transits: BTreeMap::new(),
             alliances: BTreeMap::new(),
             gameplay_policy: GameplayPolicyState::default(),
+            data_access_permissions: BTreeMap::new(),
             economic_contracts: BTreeMap::new(),
             reputation_scores: BTreeMap::new(),
             wars: BTreeMap::new(),
@@ -288,6 +291,19 @@ impl WorldState {
         }
 
         sync_legacy_world_materials(&self.material_ledgers, &mut self.materials);
+    }
+
+    pub fn has_data_access_permission(
+        &self,
+        owner_agent_id: &str,
+        accessor_agent_id: &str,
+    ) -> bool {
+        if owner_agent_id == accessor_agent_id {
+            return true;
+        }
+        self.data_access_permissions
+            .get(owner_agent_id)
+            .is_some_and(|grantees| grantees.contains(accessor_agent_id))
     }
 
     fn settle_module_action_fee(
@@ -351,6 +367,9 @@ impl WorldState {
             | DomainEvent::ModuleArtifactBidCancelled { .. }
             | DomainEvent::ModuleArtifactSaleCompleted { .. }
             | DomainEvent::ResourceTransferred { .. }
+            | DomainEvent::DataCollected { .. }
+            | DomainEvent::DataAccessGranted { .. }
+            | DomainEvent::DataAccessRevoked { .. }
             | DomainEvent::PowerRedeemed { .. }
             | DomainEvent::PowerRedeemRejected { .. }
             | DomainEvent::NodePointsSettlementApplied { .. }
@@ -402,6 +421,23 @@ impl WorldState {
                 }
                 if from_agent_id != to_agent_id {
                     if let Some(cell) = self.agents.get_mut(to_agent_id) {
+                        cell.mailbox.push_back(event.clone());
+                    }
+                }
+            }
+            DomainEvent::DataAccessGranted {
+                owner_agent_id,
+                grantee_agent_id,
+            }
+            | DomainEvent::DataAccessRevoked {
+                owner_agent_id,
+                grantee_agent_id,
+            } => {
+                if let Some(cell) = self.agents.get_mut(owner_agent_id) {
+                    cell.mailbox.push_back(event.clone());
+                }
+                if owner_agent_id != grantee_agent_id {
+                    if let Some(cell) = self.agents.get_mut(grantee_agent_id) {
                         cell.mailbox.push_back(event.clone());
                     }
                 }

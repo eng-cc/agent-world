@@ -14,6 +14,7 @@ mod basic;
 mod body;
 mod builtin_wasm_identity;
 mod builtin_wasm_materializer;
+mod data_access_control;
 mod economy;
 mod economy_bootstrap;
 mod economy_factory_lifecycle;

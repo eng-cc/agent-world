@@ -374,6 +374,22 @@ impl World {
                     creator_reputation_delta,
                     counterparty_reputation_delta,
                 ) = if *success {
+                    if contract.settlement_kind == ResourceKind::Data
+                        && !self.state.has_data_access_permission(
+                            contract.creator_agent_id.as_str(),
+                            contract.counterparty_agent_id.as_str(),
+                        )
+                    {
+                        return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![format!(
+                                    "economic contract data settlement denied: missing access grant owner={} grantee={}",
+                                    contract.creator_agent_id, contract.counterparty_agent_id
+                                )],
+                            },
+                        }));
+                    }
                     let tax_bps = match contract.settlement_kind {
                         ResourceKind::Electricity => self.state.gameplay_policy.electricity_tax_bps,
                         ResourceKind::Data => self.state.gameplay_policy.data_tax_bps,

@@ -27,6 +27,9 @@ pub(super) fn event_kind_label(body: &WorldEventBody) -> &'static str {
             }
             DomainEvent::ModuleArtifactSaleCompleted { .. } => "domain.module_artifact_sold",
             DomainEvent::ResourceTransferred { .. } => "domain.resource_transferred",
+            DomainEvent::DataCollected { .. } => "domain.data_collected",
+            DomainEvent::DataAccessGranted { .. } => "domain.data_access_granted",
+            DomainEvent::DataAccessRevoked { .. } => "domain.data_access_revoked",
             DomainEvent::PowerRedeemed { .. } => "domain.power_redeemed",
             DomainEvent::PowerRedeemRejected { .. } => "domain.power_redeem_rejected",
             DomainEvent::NodePointsSettlementApplied { .. } => {
@@ -118,6 +121,9 @@ pub(super) fn action_kind_label(action: &Action) -> &'static str {
         Action::PlaceModuleArtifactBid { .. } => "action.module.place_artifact_bid",
         Action::CancelModuleArtifactBid { .. } => "action.module.cancel_artifact_bid",
         Action::TransferResource { .. } => "action.transfer_resource",
+        Action::CollectData { .. } => "action.economy.collect_data",
+        Action::GrantDataAccess { .. } => "action.economy.grant_data_access",
+        Action::RevokeDataAccess { .. } => "action.economy.revoke_data_access",
         Action::RedeemPower { .. } => "action.redeem_power",
         Action::RedeemPowerSigned { .. } => "action.redeem_power_signed",
         Action::ApplyNodePointsSettlementSigned { .. } => {

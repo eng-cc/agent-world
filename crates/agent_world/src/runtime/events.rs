@@ -151,6 +151,19 @@ pub enum Action {
         kind: ResourceKind,
         amount: i64,
     },
+    CollectData {
+        collector_agent_id: String,
+        electricity_cost: i64,
+        data_amount: i64,
+    },
+    GrantDataAccess {
+        owner_agent_id: String,
+        grantee_agent_id: String,
+    },
+    RevokeDataAccess {
+        owner_agent_id: String,
+        grantee_agent_id: String,
+    },
     RedeemPower {
         node_id: String,
         target_agent_id: String,
@@ -470,6 +483,19 @@ pub enum DomainEvent {
         kind: ResourceKind,
         amount: i64,
     },
+    DataCollected {
+        collector_agent_id: String,
+        electricity_cost: i64,
+        data_amount: i64,
+    },
+    DataAccessGranted {
+        owner_agent_id: String,
+        grantee_agent_id: String,
+    },
+    DataAccessRevoked {
+        owner_agent_id: String,
+        grantee_agent_id: String,
+    },
     PowerRedeemed {
         node_id: String,
         target_agent_id: String,
@@ -770,6 +796,11 @@ impl DomainEvent {
             }
             DomainEvent::ActionRejected { .. } => None,
             DomainEvent::ResourceTransferred { from_agent_id, .. } => Some(from_agent_id.as_str()),
+            DomainEvent::DataCollected {
+                collector_agent_id, ..
+            } => Some(collector_agent_id.as_str()),
+            DomainEvent::DataAccessGranted { owner_agent_id, .. } => Some(owner_agent_id.as_str()),
+            DomainEvent::DataAccessRevoked { owner_agent_id, .. } => Some(owner_agent_id.as_str()),
             DomainEvent::PowerRedeemed {
                 target_agent_id, ..
             } => Some(target_agent_id.as_str()),

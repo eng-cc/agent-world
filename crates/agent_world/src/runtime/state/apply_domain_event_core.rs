@@ -631,6 +631,118 @@ impl WorldState {
                     to.last_active = now;
                 }
             }
+            DomainEvent::DataCollected {
+                collector_agent_id,
+                electricity_cost,
+                data_amount,
+            } => {
+                if *electricity_cost <= 0 {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "data collection electricity_cost must be > 0, got {}",
+                            electricity_cost
+                        ),
+                    });
+                }
+                if *data_amount <= 0 {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "data collection data_amount must be > 0, got {}",
+                            data_amount
+                        ),
+                    });
+                }
+                let next_resources = {
+                    let collector = self.agents.get(collector_agent_id).ok_or_else(|| {
+                        WorldError::AgentNotFound {
+                            agent_id: collector_agent_id.clone(),
+                        }
+                    })?;
+                    let mut next = collector.state.resources.clone();
+                    next.remove(ResourceKind::Electricity, *electricity_cost)
+                        .map_err(|err| WorldError::ResourceBalanceInvalid {
+                            reason: format!("data collection electricity debit failed: {err:?}"),
+                        })?;
+                    next.add(ResourceKind::Data, *data_amount).map_err(|err| {
+                        WorldError::ResourceBalanceInvalid {
+                            reason: format!("data collection data credit failed: {err:?}"),
+                        }
+                    })?;
+                    next
+                };
+                let collector = self.agents.get_mut(collector_agent_id).ok_or_else(|| {
+                    WorldError::AgentNotFound {
+                        agent_id: collector_agent_id.clone(),
+                    }
+                })?;
+                collector.state.resources = next_resources;
+                collector.last_active = now;
+            }
+            DomainEvent::DataAccessGranted {
+                owner_agent_id,
+                grantee_agent_id,
+            } => {
+                if !self.agents.contains_key(owner_agent_id) {
+                    return Err(WorldError::AgentNotFound {
+                        agent_id: owner_agent_id.clone(),
+                    });
+                }
+                if !self.agents.contains_key(grantee_agent_id) {
+                    return Err(WorldError::AgentNotFound {
+                        agent_id: grantee_agent_id.clone(),
+                    });
+                }
+                if owner_agent_id != grantee_agent_id {
+                    self.data_access_permissions
+                        .entry(owner_agent_id.clone())
+                        .or_default()
+                        .insert(grantee_agent_id.clone());
+                }
+                if let Some(owner) = self.agents.get_mut(owner_agent_id) {
+                    owner.last_active = now;
+                }
+                if owner_agent_id != grantee_agent_id {
+                    if let Some(grantee) = self.agents.get_mut(grantee_agent_id) {
+                        grantee.last_active = now;
+                    }
+                }
+            }
+            DomainEvent::DataAccessRevoked {
+                owner_agent_id,
+                grantee_agent_id,
+            } => {
+                if !self.agents.contains_key(owner_agent_id) {
+                    return Err(WorldError::AgentNotFound {
+                        agent_id: owner_agent_id.clone(),
+                    });
+                }
+                if !self.agents.contains_key(grantee_agent_id) {
+                    return Err(WorldError::AgentNotFound {
+                        agent_id: grantee_agent_id.clone(),
+                    });
+                }
+                if owner_agent_id != grantee_agent_id {
+                    let remove_owner_entry = if let Some(grantees) =
+                        self.data_access_permissions.get_mut(owner_agent_id)
+                    {
+                        grantees.remove(grantee_agent_id);
+                        grantees.is_empty()
+                    } else {
+                        false
+                    };
+                    if remove_owner_entry {
+                        self.data_access_permissions.remove(owner_agent_id);
+                    }
+                }
+                if let Some(owner) = self.agents.get_mut(owner_agent_id) {
+                    owner.last_active = now;
+                }
+                if owner_agent_id != grantee_agent_id {
+                    if let Some(grantee) = self.agents.get_mut(grantee_agent_id) {
+                        grantee.last_active = now;
+                    }
+                }
+            }
             DomainEvent::PowerRedeemed {
                 node_id,
                 target_agent_id,

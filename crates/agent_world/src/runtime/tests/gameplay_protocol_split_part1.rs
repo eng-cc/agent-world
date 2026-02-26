@@ -824,6 +824,11 @@ fn economic_contract_settlement_applies_tax_and_reputation() {
         blocked_agents: Vec::new(),
     });
     world.step().expect("update gameplay policy");
+    world.submit_action(Action::GrantDataAccess {
+        owner_agent_id: "a".to_string(),
+        grantee_agent_id: "b".to_string(),
+    });
+    world.step().expect("grant data access");
 
     let expires_at = world.state().time.saturating_add(10);
     world.submit_action(Action::OpenEconomicContract {

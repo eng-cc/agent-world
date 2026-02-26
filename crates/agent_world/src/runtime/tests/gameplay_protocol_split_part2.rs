@@ -18,6 +18,11 @@ fn economic_contract_settlement_overflow_keeps_state_atomic() {
         blocked_agents: Vec::new(),
     });
     world.step().expect("update gameplay policy");
+    world.submit_action(Action::GrantDataAccess {
+        owner_agent_id: "a".to_string(),
+        grantee_agent_id: "b".to_string(),
+    });
+    world.step().expect("grant data access");
 
     let expires_at = world.state().time.saturating_add(10);
     world.submit_action(Action::OpenEconomicContract {
@@ -109,6 +114,16 @@ fn economic_contract_success_reputation_reward_respects_stake_and_cap() {
         blocked_agents: Vec::new(),
     });
     world.step().expect("update gameplay policy");
+    world.submit_action(Action::GrantDataAccess {
+        owner_agent_id: "a".to_string(),
+        grantee_agent_id: "b".to_string(),
+    });
+    world.step().expect("grant data access b");
+    world.submit_action(Action::GrantDataAccess {
+        owner_agent_id: "a".to_string(),
+        grantee_agent_id: "c".to_string(),
+    });
+    world.step().expect("grant data access c");
 
     let expires_at = world.state().time.saturating_add(10);
     world.submit_action(Action::OpenEconomicContract {

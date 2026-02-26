@@ -50,6 +50,22 @@ impl World {
                         },
                     }));
                 }
+                if *kind == ResourceKind::Data
+                    && from_agent_id != to_agent_id
+                    && !self
+                        .state
+                        .has_data_access_permission(from_agent_id, to_agent_id)
+                {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "data transfer denied: missing access grant owner={} grantee={}",
+                                from_agent_id, to_agent_id
+                            )],
+                        },
+                    }));
+                }
                 let available = from_cell.state.resources.get(*kind);
                 if available < *amount {
                     return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
@@ -67,6 +83,127 @@ impl World {
                     to_agent_id: to_agent_id.clone(),
                     kind: *kind,
                     amount: *amount,
+                }))
+            }
+            Action::CollectData {
+                collector_agent_id,
+                electricity_cost,
+                data_amount,
+            } => {
+                if !self.state.agents.contains_key(collector_agent_id) {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::AgentNotFound {
+                            agent_id: collector_agent_id.clone(),
+                        },
+                    }));
+                }
+                if *electricity_cost <= 0 {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::InvalidAmount {
+                            amount: *electricity_cost,
+                        },
+                    }));
+                }
+                if *data_amount <= 0 {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::InvalidAmount {
+                            amount: *data_amount,
+                        },
+                    }));
+                }
+                let available = self
+                    .state
+                    .agents
+                    .get(collector_agent_id)
+                    .map(|cell| cell.state.resources.get(ResourceKind::Electricity))
+                    .unwrap_or(0);
+                if available < *electricity_cost {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::InsufficientResource {
+                            agent_id: collector_agent_id.clone(),
+                            kind: ResourceKind::Electricity,
+                            requested: *electricity_cost,
+                            available,
+                        },
+                    }));
+                }
+                Ok(WorldEventBody::Domain(DomainEvent::DataCollected {
+                    collector_agent_id: collector_agent_id.clone(),
+                    electricity_cost: *electricity_cost,
+                    data_amount: *data_amount,
+                }))
+            }
+            Action::GrantDataAccess {
+                owner_agent_id,
+                grantee_agent_id,
+            } => {
+                if !self.state.agents.contains_key(owner_agent_id) {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::AgentNotFound {
+                            agent_id: owner_agent_id.clone(),
+                        },
+                    }));
+                }
+                if !self.state.agents.contains_key(grantee_agent_id) {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::AgentNotFound {
+                            agent_id: grantee_agent_id.clone(),
+                        },
+                    }));
+                }
+                if owner_agent_id == grantee_agent_id {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![
+                                "data access grant requires distinct owner and grantee".to_string()
+                            ],
+                        },
+                    }));
+                }
+                Ok(WorldEventBody::Domain(DomainEvent::DataAccessGranted {
+                    owner_agent_id: owner_agent_id.clone(),
+                    grantee_agent_id: grantee_agent_id.clone(),
+                }))
+            }
+            Action::RevokeDataAccess {
+                owner_agent_id,
+                grantee_agent_id,
+            } => {
+                if !self.state.agents.contains_key(owner_agent_id) {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::AgentNotFound {
+                            agent_id: owner_agent_id.clone(),
+                        },
+                    }));
+                }
+                if !self.state.agents.contains_key(grantee_agent_id) {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::AgentNotFound {
+                            agent_id: grantee_agent_id.clone(),
+                        },
+                    }));
+                }
+                if owner_agent_id == grantee_agent_id {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec!["data access revoke requires distinct owner and grantee"
+                                .to_string()],
+                        },
+                    }));
+                }
+                Ok(WorldEventBody::Domain(DomainEvent::DataAccessRevoked {
+                    owner_agent_id: owner_agent_id.clone(),
+                    grantee_agent_id: grantee_agent_id.clone(),
                 }))
             }
             Action::BuildFactory {

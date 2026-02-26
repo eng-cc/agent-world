@@ -186,6 +186,11 @@ fn emit_resource_transfer_overflow_keeps_balances_atomic() {
     world
         .set_agent_resource_balance("to", ResourceKind::Data, i64::MAX)
         .expect("seed to data at boundary");
+    world.submit_action(Action::GrantDataAccess {
+        owner_agent_id: "from".to_string(),
+        grantee_agent_id: "to".to_string(),
+    });
+    world.step().expect("grant data access");
     let events_before = world.journal().len();
 
     world.submit_action(Action::EmitResourceTransfer {

@@ -151,6 +151,9 @@ impl World {
                 self.action_to_event_policy_contract(action_id, &envelope.action)
             }
             Action::EmitResourceTransfer { .. }
+            | Action::CollectData { .. }
+            | Action::GrantDataAccess { .. }
+            | Action::RevokeDataAccess { .. }
             | Action::BuildFactory { .. }
             | Action::BuildFactoryWithModule { .. }
             | Action::MaintainFactory { .. }
