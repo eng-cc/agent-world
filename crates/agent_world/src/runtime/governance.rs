@@ -1,6 +1,7 @@
 //! Governance types - proposals, decisions, and events.
 
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 
 use super::events::DomainEvent;
 use super::manifest::{Manifest, ManifestPatch};
@@ -57,6 +58,33 @@ pub enum ProposalDecision {
     Reject { reason: String },
 }
 
+/// Finality certificate bound to consensus height and signer threshold.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct GovernanceFinalityCertificate {
+    pub proposal_id: ProposalId,
+    pub manifest_hash: String,
+    pub consensus_height: u64,
+    pub threshold: u16,
+    pub signatures: BTreeMap<String, String>,
+}
+
+impl GovernanceFinalityCertificate {
+    pub const SIGNATURE_PREFIX_ED25519_V1: &'static str = "govsig:ed25519:v1:";
+
+    pub fn signing_payload_v1(
+        proposal_id: ProposalId,
+        manifest_hash: &str,
+        consensus_height: u64,
+        threshold: u16,
+        signer_node_id: &str,
+    ) -> Vec<u8> {
+        format!(
+            "govfinal:ed25519:v1|{proposal_id}|{manifest_hash}|{consensus_height}|{threshold}|{signer_node_id}"
+        )
+        .into_bytes()
+    }
+}
+
 /// Events related to governance actions.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", content = "data")]
@@ -81,6 +109,12 @@ pub enum GovernanceEvent {
         proposal_id: ProposalId,
         #[serde(default)]
         manifest_hash: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        consensus_height: Option<u64>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        threshold: Option<u16>,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        signer_node_ids: Vec<String>,
     },
 }
 

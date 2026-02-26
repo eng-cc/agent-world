@@ -156,6 +156,13 @@ impl World {
             .node_identity_bindings
             .entry(TEST_MODULE_SIGNER_NODE_ID.to_string())
             .or_insert_with(test_module_signer_public_key_hex);
+        for (node_id, public_key_hex) in governance::local_governance_finality_signer_public_keys()
+        {
+            state
+                .node_identity_bindings
+                .entry(node_id)
+                .or_insert(public_key_hex);
+        }
         Self {
             manifest: Manifest::default(),
             module_registry: ModuleRegistry::default(),

@@ -123,3 +123,65 @@ fn merge_reports_conflicts() {
     assert_eq!(result.conflicts[0].patches, vec![0, 1]);
     assert_eq!(result.conflicts[0].ops.len(), 2);
 }
+
+#[test]
+fn governance_apply_with_finality_rejects_threshold_mismatch() {
+    let mut world = World::new();
+    let manifest = Manifest {
+        version: 2,
+        content: json!({ "name": "demo" }),
+    };
+    let proposal_id = world
+        .propose_manifest_update(manifest.clone(), "alice")
+        .unwrap();
+    world.shadow_proposal(proposal_id).unwrap();
+    world
+        .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)
+        .unwrap();
+
+    let mut certificate = world.build_local_finality_certificate(proposal_id).unwrap();
+    certificate.threshold = certificate.threshold.saturating_add(1);
+    let err = world
+        .apply_proposal_with_finality(proposal_id, &certificate)
+        .unwrap_err();
+    assert!(matches!(err, WorldError::GovernanceFinalityInvalid { .. }));
+}
+
+#[test]
+fn governance_apply_emits_manifest_updated_before_applied() {
+    let mut world = World::new();
+    let manifest = Manifest {
+        version: 2,
+        content: json!({ "name": "demo" }),
+    };
+    let proposal_id = world
+        .propose_manifest_update(manifest.clone(), "alice")
+        .unwrap();
+    world.shadow_proposal(proposal_id).unwrap();
+    world
+        .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)
+        .unwrap();
+    let certificate = world.build_local_finality_certificate(proposal_id).unwrap();
+
+    world
+        .apply_proposal_with_finality(proposal_id, &certificate)
+        .unwrap();
+
+    let mut manifest_updated_idx = None;
+    let mut applied_idx = None;
+    for (idx, event) in world.journal().events.iter().enumerate() {
+        match &event.body {
+            WorldEventBody::ManifestUpdated(_) => manifest_updated_idx = Some(idx),
+            WorldEventBody::Governance(GovernanceEvent::Applied {
+                proposal_id: pid, ..
+            }) if *pid == proposal_id => applied_idx = Some(idx),
+            _ => {}
+        }
+    }
+    let manifest_updated_idx = manifest_updated_idx.expect("manifest updated event");
+    let applied_idx = applied_idx.expect("applied event");
+    assert!(
+        manifest_updated_idx < applied_idx,
+        "manifest must be updated before applied marker"
+    );
+}

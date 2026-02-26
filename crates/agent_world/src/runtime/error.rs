@@ -43,6 +43,9 @@ pub enum WorldError {
         expected: String,
         found: String,
     },
+    GovernanceFinalityInvalid {
+        reason: String,
+    },
     PatchBaseMismatch {
         expected: String,
         found: String,

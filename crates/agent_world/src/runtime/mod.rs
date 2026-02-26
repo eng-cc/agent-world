@@ -71,7 +71,10 @@ pub use events::{
 };
 
 // Governance
-pub use governance::{AgentSchedule, GovernanceEvent, Proposal, ProposalDecision, ProposalStatus};
+pub use governance::{
+    AgentSchedule, GovernanceEvent, GovernanceFinalityCertificate, Proposal, ProposalDecision,
+    ProposalStatus,
+};
 
 // Manifest
 pub use manifest::{
