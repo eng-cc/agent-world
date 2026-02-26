@@ -58,16 +58,18 @@
       return;
     }
 
-    safeSetStorage(LANGUAGE_REDIRECT_KEY, "1");
-
-    const preferredLanguage = resolvePreferredLanguage();
-    const prefersEnglish = preferredLanguage.startsWith("en");
-    if (!prefersEnglish) {
+    const { pathname, search, hash } = window.location;
+    if (isDocsPath(pathname)) {
       return;
     }
 
-    const { pathname, search, hash } = window.location;
-    if (isDocsPath(pathname)) {
+    const preferredLanguage = resolvePreferredLanguage();
+    const prefersEnglish = preferredLanguage.startsWith("en");
+
+    // Entry-page visits are checked once; docs paths are intentionally excluded.
+    safeSetStorage(LANGUAGE_REDIRECT_KEY, "1");
+
+    if (!prefersEnglish) {
       return;
     }
 
