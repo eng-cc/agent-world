@@ -380,8 +380,9 @@ env -u NO_COLOR ./scripts/run-viewer-web.sh --address 127.0.0.1 --port 4173
 
 3) 执行 Playwright 闭环采样（终端 C）
 ```bash
-export CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
-export PWCLI="$CODEX_HOME/skills/playwright/scripts/playwright_cli.sh"
+export REPO_ROOT="$(pwd)"
+export PWCLI="$REPO_ROOT/.codex/skills/playwright/scripts/playwright_cli.sh"
+[ -f "$PWCLI" ] || { echo "missing playwright cli wrapper: $PWCLI" >&2; exit 1; }
 mkdir -p output/playwright/viewer
 bash "$PWCLI" open "http://127.0.0.1:4173/?ws=ws://127.0.0.1:5011"
 bash "$PWCLI" snapshot

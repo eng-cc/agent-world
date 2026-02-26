@@ -13,6 +13,7 @@
 - [x] T10 将 `AGENTS.md` 的 Agent Web 闭环细节迁移到 `testing-manual.md`，`AGENTS.md` 仅保留短入口与约束
 - [x] T11 将 `testing-manual.md` 的 Playwright/S6 执行细节拆分到独立文档并改为引用
 - [x] T12 补充 Playwright 启动防抖与失败分级处置（连接拒绝/URL 引号/会话残留/渲染 panic）
+- [x] T13 修正 Playwright CLI 路径示例为仓库内 `.codex`（移除 `CODEX_HOME` 依赖）
 
 ## 依赖
 - `AGENTS.md`（开发工作流、测试分层、Web 闭环优先口径）
