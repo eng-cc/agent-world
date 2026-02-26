@@ -14,15 +14,15 @@
 - [x] 保持 `site/assets/app.js` 所需锚点与 `data-*` 兼容
 
 ### 2. 验证与收口
-- [ ] 执行 `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer`
-- [ ] 回写本项目管理文档状态
-- [ ] 写任务日志（`doc/devlog/2026-02-26.md`）
+- [x] 执行 `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer`
+- [x] 回写本项目管理文档状态
+- [x] 写任务日志（`doc/devlog/2026-02-26.md`）
 
 ## 依赖
 - 沿用现有静态站点结构与 `site/assets/app.js` 交互逻辑。
 - 页面内容基线来自 README、game docs、viewer manual。
 
 ## 状态
-- 当前阶段：进行中（已完成任务 0/1）
-- 最近更新：完成首页 CN/EN 激进视觉重构（2026-02-26）
-- 下一步：执行任务 2（验证与收口）。
+- 当前阶段：已完成（任务 0/1/2 全部完成）
+- 最近更新：完成验证收口并结项（2026-02-26）
+- 下一步：无。
