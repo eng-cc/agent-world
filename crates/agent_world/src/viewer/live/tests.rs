@@ -4,8 +4,8 @@ use agent_world_node::{
     NodeRuntime,
 };
 use ed25519_dalek::SigningKey;
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
@@ -751,4 +751,21 @@ fn live_world_consensus_bridge_applies_only_committed_actions() {
 
     let mut locked = shared_runtime.lock().expect("lock node runtime");
     locked.stop().expect("stop node runtime");
+}
+
+#[test]
+fn playback_pulse_thread_emits_and_stops_with_loop_flag() {
+    let (tx, rx) = mpsc::channel();
+    let loop_running = Arc::new(AtomicBool::new(true));
+    let pulse_flag = Arc::clone(&loop_running);
+    let handle =
+        thread::spawn(move || emit_playback_pulses(tx, Duration::from_millis(1), pulse_flag));
+
+    let signal = rx
+        .recv_timeout(Duration::from_millis(200))
+        .expect("should receive playback pulse");
+    assert!(matches!(signal, LiveLoopSignal::PlaybackPulse));
+
+    loop_running.store(false, Ordering::SeqCst);
+    handle.join().expect("pulse thread should exit");
 }
