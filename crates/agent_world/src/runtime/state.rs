@@ -261,6 +261,8 @@ pub struct WorldState {
     #[serde(default)]
     pub node_identity_bindings: BTreeMap<String, String>,
     #[serde(default)]
+    pub node_main_token_account_bindings: BTreeMap<String, String>,
+    #[serde(default)]
     pub reward_signature_governance_policy: RewardSignatureGovernancePolicy,
 }
 
@@ -314,6 +316,7 @@ impl Default for WorldState {
             node_redeem_nonces: BTreeMap::new(),
             system_order_pool_budgets: BTreeMap::new(),
             node_identity_bindings: BTreeMap::new(),
+            node_main_token_account_bindings: BTreeMap::new(),
             reward_signature_governance_policy: RewardSignatureGovernancePolicy::default(),
         }
     }

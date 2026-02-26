@@ -1,3 +1,4 @@
+use super::super::main_token::main_token_account_id_from_node_public_key;
 use super::super::reward_asset::{
     reward_mint_signature_v1, reward_mint_signature_v2, verify_reward_mint_signature_v2,
     verify_reward_redeem_signature_v1, REWARD_MINT_SIGNATURE_V1_PREFIX,
@@ -217,6 +218,13 @@ impl World {
             .map(String::as_str)
     }
 
+    pub fn node_main_token_account(&self, node_id: &str) -> Option<&str> {
+        self.state
+            .node_main_token_account_bindings
+            .get(node_id)
+            .map(String::as_str)
+    }
+
     pub fn bind_node_identity(
         &mut self,
         node_id: &str,
@@ -237,6 +245,33 @@ impl World {
         self.state
             .node_identity_bindings
             .insert(node_id.to_string(), public_key_hex.to_string());
+        self.state
+            .node_main_token_account_bindings
+            .entry(node_id.to_string())
+            .or_insert_with(|| main_token_account_id_from_node_public_key(public_key_hex));
+        Ok(())
+    }
+
+    pub fn bind_node_main_token_account(
+        &mut self,
+        node_id: &str,
+        account_id: &str,
+    ) -> Result<(), WorldError> {
+        let node_id = node_id.trim();
+        if node_id.is_empty() {
+            return Err(WorldError::ResourceBalanceInvalid {
+                reason: "node_id cannot be empty".to_string(),
+            });
+        }
+        let account_id = account_id.trim();
+        if account_id.is_empty() {
+            return Err(WorldError::ResourceBalanceInvalid {
+                reason: "main token account_id cannot be empty".to_string(),
+            });
+        }
+        self.state
+            .node_main_token_account_bindings
+            .insert(node_id.to_string(), account_id.to_string());
         Ok(())
     }
 

@@ -126,7 +126,11 @@ fn reward_asset_settlement_action_applies_signed_records_via_step() {
         world.main_token_treasury_balance(MAIN_TOKEN_TREASURY_BUCKET_NODE_SERVICE_REWARD),
         0
     );
-    assert_eq!(world.main_token_liquid_balance("node-a"), 5);
+    let node_a_account_id = world
+        .node_main_token_account("node-a")
+        .expect("node-a main token account");
+    assert_ne!(node_a_account_id, "node-a");
+    assert_eq!(world.main_token_liquid_balance(node_a_account_id), 5);
     assert_eq!(world.main_token_supply().circulating_supply, 5);
     assert_eq!(
         world
@@ -152,7 +156,10 @@ fn reward_asset_settlement_action_applies_signed_records_via_step() {
             assert_eq!(*main_token_bridge_total_amount, 5);
             assert_eq!(main_token_bridge_distributions.len(), 1);
             assert_eq!(main_token_bridge_distributions[0].node_id, "node-a");
-            assert_eq!(main_token_bridge_distributions[0].account_id, "node-a");
+            assert_eq!(
+                main_token_bridge_distributions[0].account_id,
+                node_a_account_id
+            );
             assert_eq!(main_token_bridge_distributions[0].amount, 5);
         }
         other => panic!("expected NodePointsSettlementApplied, got {other:?}"),

@@ -15,8 +15,8 @@ use super::logistics::{
 use super::World;
 use crate::geometry::space_distance_cm;
 use crate::runtime::main_token::{
-    validate_main_token_config_bounds, MAIN_TOKEN_BPS_DENOMINATOR,
-    MAIN_TOKEN_TREASURY_BUCKET_NODE_SERVICE_REWARD,
+    main_token_account_id_from_node_public_key, validate_main_token_config_bounds,
+    MAIN_TOKEN_BPS_DENOMINATOR, MAIN_TOKEN_TREASURY_BUCKET_NODE_SERVICE_REWARD,
 };
 use crate::simulator::ResourceKind;
 use std::collections::BTreeSet;
@@ -294,10 +294,42 @@ impl World {
             return Ok((0, Vec::new()));
         }
 
-        Ok(distribute_main_token_bridge_budget(
-            bridge_budget,
-            eligible.as_slice(),
-        ))
+        let (total_amount, raw_distributions) =
+            distribute_main_token_bridge_budget(bridge_budget, eligible.as_slice());
+        let mut distributions = Vec::with_capacity(raw_distributions.len());
+        for item in raw_distributions {
+            let account_id = self.resolve_main_token_bridge_account_id_for_node(&item.node_id)?;
+            distributions.push(MainTokenNodePointsBridgeDistribution {
+                node_id: item.node_id,
+                account_id,
+                amount: item.amount,
+            });
+        }
+
+        Ok((total_amount, distributions))
+    }
+
+    fn resolve_main_token_bridge_account_id_for_node(
+        &self,
+        node_id: &str,
+    ) -> Result<String, String> {
+        if let Some(account_id) = self.state.node_main_token_account_bindings.get(node_id) {
+            let account_id = account_id.trim();
+            if account_id.is_empty() {
+                return Err(format!(
+                    "main token account binding cannot be empty: node={}",
+                    node_id
+                ));
+            }
+            return Ok(account_id.to_string());
+        }
+
+        let public_key = self
+            .state
+            .node_identity_bindings
+            .get(node_id)
+            .ok_or_else(|| format!("main token account binding missing for node={node_id}"))?;
+        Ok(main_token_account_id_from_node_public_key(public_key))
     }
 
     fn build_main_token_genesis_allocations(
