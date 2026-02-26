@@ -340,6 +340,9 @@ impl World {
             Action::SettleMainTokenFee { fee_kind, amount } => Ok(WorldEventBody::Domain(
                 self.evaluate_settle_main_token_fee_action(action_id, *fee_kind, *amount),
             )),
+            Action::UpdateMainTokenPolicy { proposal_id, next } => Ok(WorldEventBody::Domain(
+                self.evaluate_update_main_token_policy_action(action_id, *proposal_id, next),
+            )),
             Action::TransferMaterial {
                 requester_agent_id,
                 from_ledger,

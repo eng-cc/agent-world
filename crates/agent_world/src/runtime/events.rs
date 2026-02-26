@@ -12,7 +12,9 @@ use serde_json::Value as JsonValue;
 use std::collections::BTreeMap;
 
 use super::gameplay_state::WarParticipantOutcome;
-use super::main_token::{MainTokenGenesisAllocationBucketState, MainTokenGenesisAllocationPlan};
+use super::main_token::{
+    MainTokenConfig, MainTokenGenesisAllocationBucketState, MainTokenGenesisAllocationPlan,
+};
 use super::node_points::EpochSettlementReport;
 use super::reward_asset::NodeRewardMintRecord;
 use super::types::{ActionId, MaterialLedgerId, ProposalId, WorldTime};
@@ -207,6 +209,10 @@ pub enum Action {
     SettleMainTokenFee {
         fee_kind: MainTokenFeeKind,
         amount: u64,
+    },
+    UpdateMainTokenPolicy {
+        proposal_id: ProposalId,
+        next: MainTokenConfig,
     },
     TransferMaterial {
         requester_agent_id: String,
@@ -570,6 +576,11 @@ pub enum DomainEvent {
         burn_amount: u64,
         treasury_amount: u64,
     },
+    MainTokenPolicyUpdateScheduled {
+        proposal_id: ProposalId,
+        effective_epoch: u64,
+        next: MainTokenConfig,
+    },
     MaterialTransferred {
         requester_agent_id: String,
         from_ledger: MaterialLedgerId,
@@ -867,6 +878,7 @@ impl DomainEvent {
             DomainEvent::MainTokenVestingClaimed { beneficiary, .. } => Some(beneficiary.as_str()),
             DomainEvent::MainTokenEpochIssued { .. } => None,
             DomainEvent::MainTokenFeeSettled { .. } => None,
+            DomainEvent::MainTokenPolicyUpdateScheduled { .. } => None,
             DomainEvent::MaterialTransferred {
                 requester_agent_id, ..
             } => Some(requester_agent_id.as_str()),

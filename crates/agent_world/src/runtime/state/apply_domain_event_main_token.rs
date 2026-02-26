@@ -1,9 +1,9 @@
 use super::super::events::MainTokenFeeKind;
 use super::super::main_token::{
-    MAIN_TOKEN_TREASURY_BUCKET_ECOSYSTEM_POOL, MAIN_TOKEN_TREASURY_BUCKET_GAS_FEE,
-    MAIN_TOKEN_TREASURY_BUCKET_MODULE_FEE, MAIN_TOKEN_TREASURY_BUCKET_NODE_SERVICE_REWARD,
-    MAIN_TOKEN_TREASURY_BUCKET_SECURITY_RESERVE, MAIN_TOKEN_TREASURY_BUCKET_SLASH,
-    MAIN_TOKEN_TREASURY_BUCKET_STAKING_REWARD,
+    validate_main_token_config_bounds, MAIN_TOKEN_TREASURY_BUCKET_ECOSYSTEM_POOL,
+    MAIN_TOKEN_TREASURY_BUCKET_GAS_FEE, MAIN_TOKEN_TREASURY_BUCKET_MODULE_FEE,
+    MAIN_TOKEN_TREASURY_BUCKET_NODE_SERVICE_REWARD, MAIN_TOKEN_TREASURY_BUCKET_SECURITY_RESERVE,
+    MAIN_TOKEN_TREASURY_BUCKET_SLASH, MAIN_TOKEN_TREASURY_BUCKET_STAKING_REWARD,
 };
 use super::*;
 
@@ -337,7 +337,9 @@ impl WorldState {
                             self.main_token_supply.total_supply, issued_amount
                         ),
                     })?;
-                if let Some(max_supply) = self.main_token_config.max_supply {
+                let effective_config =
+                    resolve_main_token_effective_config_for_epoch(self, *epoch_index);
+                if let Some(max_supply) = effective_config.max_supply {
                     if next_total_supply > max_supply {
                         return Err(WorldError::ResourceBalanceInvalid {
                             reason: format!(
@@ -456,6 +458,80 @@ impl WorldState {
                     });
                 }
             }
+            DomainEvent::MainTokenPolicyUpdateScheduled {
+                proposal_id,
+                effective_epoch,
+                next,
+            } => {
+                if *proposal_id == 0 {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: "main token policy proposal_id must be > 0".to_string(),
+                    });
+                }
+                if *effective_epoch <= now {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "main token policy effective_epoch must be > now: effective={} now={}",
+                            effective_epoch, now
+                        ),
+                    });
+                }
+                if let Err(reason) = validate_main_token_config_bounds(next) {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!("main token policy config out of bounds: {reason}"),
+                    });
+                }
+                if next.initial_supply != self.main_token_config.initial_supply {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "main token policy cannot change initial_supply: current={} next={}",
+                            self.main_token_config.initial_supply, next.initial_supply
+                        ),
+                    });
+                }
+                if let Some(max_supply) = next.max_supply {
+                    if max_supply < self.main_token_supply.total_supply {
+                        return Err(WorldError::ResourceBalanceInvalid {
+                            reason: format!(
+                                "main token policy max_supply cannot be below current total_supply: max={} total={}",
+                                max_supply, self.main_token_supply.total_supply
+                            ),
+                        });
+                    }
+                }
+                if self
+                    .main_token_scheduled_policy_updates
+                    .contains_key(effective_epoch)
+                {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "main token policy effective_epoch already scheduled: {}",
+                            effective_epoch
+                        ),
+                    });
+                }
+                if self
+                    .main_token_scheduled_policy_updates
+                    .values()
+                    .any(|item| item.proposal_id == *proposal_id)
+                {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "main token policy proposal already scheduled: {}",
+                            proposal_id
+                        ),
+                    });
+                }
+
+                self.main_token_scheduled_policy_updates.insert(
+                    *effective_epoch,
+                    MainTokenScheduledPolicyUpdate {
+                        proposal_id: *proposal_id,
+                        effective_epoch: *effective_epoch,
+                        next_config: next.clone(),
+                    },
+                );
+            }
             _ => unreachable!("apply_domain_event_main_token received unsupported event variant"),
         }
         Ok(())
@@ -488,4 +564,16 @@ fn main_token_fee_treasury_bucket(fee_kind: MainTokenFeeKind) -> &'static str {
         MainTokenFeeKind::SlashPenalty => MAIN_TOKEN_TREASURY_BUCKET_SLASH,
         MainTokenFeeKind::ModuleFee => MAIN_TOKEN_TREASURY_BUCKET_MODULE_FEE,
     }
+}
+
+fn resolve_main_token_effective_config_for_epoch(
+    state: &WorldState,
+    epoch_index: u64,
+) -> &MainTokenConfig {
+    state
+        .main_token_scheduled_policy_updates
+        .range(..=epoch_index)
+        .next_back()
+        .map(|(_, item)| &item.next_config)
+        .unwrap_or(&state.main_token_config)
 }

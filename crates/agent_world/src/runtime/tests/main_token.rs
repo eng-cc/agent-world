@@ -456,3 +456,138 @@ fn main_token_fee_settlement_burns_supply_and_tracks_treasury_buckets() {
         other => panic!("expected ActionRejected, got {other:?}"),
     }
 }
+
+#[test]
+fn main_token_policy_update_is_delayed_and_audited_before_it_affects_issuance() {
+    let mut world = World::new();
+    world.set_main_token_config(MainTokenConfig {
+        initial_supply: 1_000,
+        inflation_policy: MainTokenInflationPolicy {
+            base_rate_bps: 300,
+            min_rate_bps: 300,
+            max_rate_bps: 300,
+            target_stake_ratio_bps: 6_000,
+            stake_feedback_gain_bps: 0,
+            epochs_per_year: 10,
+        },
+        issuance_split: MainTokenIssuanceSplitPolicy::default(),
+        ..MainTokenConfig::default()
+    });
+    world.submit_action(Action::InitializeMainTokenGenesis {
+        allocations: vec![MainTokenGenesisAllocationPlan {
+            bucket_id: "genesis_pool".to_string(),
+            ratio_bps: 10_000,
+            recipient: "protocol:treasury".to_string(),
+            cliff_epochs: 0,
+            linear_unlock_epochs: 0,
+            start_epoch: 0,
+        }],
+    });
+    world.step().expect("initialize main token genesis");
+    world.set_main_token_supply(MainTokenSupplyState {
+        total_supply: 1_000,
+        circulating_supply: 1_000,
+        total_issued: 0,
+        total_burned: 0,
+    });
+
+    let schedule_base_epoch = world.state().time;
+    let mut scheduled_config = world.main_token_config().clone();
+    scheduled_config.initial_supply = 1_000;
+    scheduled_config.inflation_policy = MainTokenInflationPolicy {
+        base_rate_bps: 800,
+        min_rate_bps: 800,
+        max_rate_bps: 800,
+        target_stake_ratio_bps: 6_000,
+        stake_feedback_gain_bps: 0,
+        epochs_per_year: 10,
+    };
+    world.submit_action(Action::UpdateMainTokenPolicy {
+        proposal_id: 101,
+        next: scheduled_config,
+    });
+    world.step().expect("schedule main token policy update");
+
+    let effective_epoch = match &world.journal().events.last().expect("event").body {
+        WorldEventBody::Domain(DomainEvent::MainTokenPolicyUpdateScheduled {
+            proposal_id,
+            effective_epoch: event_effective_epoch,
+            ..
+        }) => {
+            assert_eq!(*proposal_id, 101);
+            assert!(*event_effective_epoch > schedule_base_epoch);
+            *event_effective_epoch
+        }
+        other => panic!("expected MainTokenPolicyUpdateScheduled, got {other:?}"),
+    };
+    assert!(world
+        .main_token_scheduled_policy_update(effective_epoch)
+        .is_some());
+
+    world.submit_action(Action::ApplyMainTokenEpochIssuance {
+        epoch_index: effective_epoch - 1,
+        actual_stake_ratio_bps: 6_000,
+    });
+    world.step().expect("issue on old policy epoch");
+    assert_eq!(
+        world
+            .main_token_epoch_issuance_record(effective_epoch - 1)
+            .expect("old policy issuance")
+            .inflation_rate_bps,
+        300
+    );
+
+    world.submit_action(Action::ApplyMainTokenEpochIssuance {
+        epoch_index: effective_epoch,
+        actual_stake_ratio_bps: 6_000,
+    });
+    world.step().expect("issue on effective policy epoch");
+    assert_eq!(
+        world
+            .main_token_epoch_issuance_record(effective_epoch)
+            .expect("new policy issuance")
+            .inflation_rate_bps,
+        800
+    );
+}
+
+#[test]
+fn main_token_policy_update_rejects_out_of_bounds_configuration() {
+    let mut world = World::new();
+    world.set_main_token_config(MainTokenConfig {
+        initial_supply: 1_000,
+        ..MainTokenConfig::default()
+    });
+
+    let mut invalid_config = world.main_token_config().clone();
+    invalid_config.initial_supply = 1_000;
+    invalid_config.issuance_split = MainTokenIssuanceSplitPolicy {
+        staking_reward_bps: 6_000,
+        node_service_reward_bps: 2_000,
+        ecosystem_pool_bps: 1_500,
+        security_reserve_bps: 100,
+    };
+    world.submit_action(Action::UpdateMainTokenPolicy {
+        proposal_id: 102,
+        next: invalid_config,
+    });
+    world
+        .step()
+        .expect("invalid main token policy update should be rejected");
+
+    match &world.journal().events.last().expect("event").body {
+        WorldEventBody::Domain(DomainEvent::ActionRejected { reason, .. }) => match reason {
+            RejectReason::RuleDenied { notes } => {
+                assert!(notes
+                    .iter()
+                    .any(|note| note.contains("update main token policy rejected")));
+                assert!(notes
+                    .iter()
+                    .any(|note| note.contains("split sum must be 10000")));
+            }
+            other => panic!("expected RuleDenied, got {other:?}"),
+        },
+        other => panic!("expected ActionRejected, got {other:?}"),
+    }
+    assert!(world.state().main_token_scheduled_policy_updates.is_empty());
+}

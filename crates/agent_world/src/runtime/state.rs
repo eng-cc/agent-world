@@ -17,7 +17,8 @@ use super::gameplay_state::{
 };
 use super::main_token::{
     main_token_bucket_unlocked_amount, MainTokenAccountBalance, MainTokenConfig,
-    MainTokenEpochIssuanceRecord, MainTokenGenesisAllocationBucketState, MainTokenSupplyState,
+    MainTokenEpochIssuanceRecord, MainTokenGenesisAllocationBucketState,
+    MainTokenScheduledPolicyUpdate, MainTokenSupplyState,
 };
 use super::node_points::EpochSettlementReport;
 use super::reward_asset::{
@@ -240,6 +241,8 @@ pub struct WorldState {
     #[serde(default)]
     pub main_token_claim_nonces: BTreeMap<String, u64>,
     #[serde(default)]
+    pub main_token_scheduled_policy_updates: BTreeMap<u64, MainTokenScheduledPolicyUpdate>,
+    #[serde(default)]
     pub reward_asset_config: RewardAssetConfig,
     #[serde(default)]
     pub node_asset_balances: BTreeMap<String, NodeAssetBalance>,
@@ -298,6 +301,7 @@ impl Default for WorldState {
             main_token_epoch_issuance_records: BTreeMap::new(),
             main_token_treasury_balances: BTreeMap::new(),
             main_token_claim_nonces: BTreeMap::new(),
+            main_token_scheduled_policy_updates: BTreeMap::new(),
             reward_asset_config: RewardAssetConfig::default(),
             node_asset_balances: BTreeMap::new(),
             protocol_power_reserve: ProtocolPowerReserve::default(),
@@ -500,6 +504,7 @@ impl WorldState {
             | DomainEvent::MainTokenVestingClaimed { .. }
             | DomainEvent::MainTokenEpochIssued { .. }
             | DomainEvent::MainTokenFeeSettled { .. }
+            | DomainEvent::MainTokenPolicyUpdateScheduled { .. }
             | DomainEvent::MaterialTransferred { .. }
             | DomainEvent::MaterialTransitStarted { .. }
             | DomainEvent::MaterialTransitCompleted { .. }

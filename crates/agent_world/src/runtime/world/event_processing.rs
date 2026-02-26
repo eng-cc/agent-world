@@ -1,9 +1,10 @@
 use super::super::{
     main_token_bucket_unlocked_amount, util::hash_json, Action, ActionEnvelope, ActionId, CausedBy,
     CrisisStatus, DomainEvent, EconomicContractStatus, EpochSettlementReport,
-    GovernanceProposalStatus, MainTokenFeeKind, MainTokenGenesisAllocationBucketState,
-    MainTokenGenesisAllocationPlan, MaterialLedgerId, MaterialStack, NodeRewardMintRecord,
-    RejectReason, WorldError, WorldEvent, WorldEventBody, WorldEventId, WorldTime,
+    GovernanceProposalStatus, MainTokenConfig, MainTokenFeeKind,
+    MainTokenGenesisAllocationBucketState, MainTokenGenesisAllocationPlan, MaterialLedgerId,
+    MaterialStack, NodeRewardMintRecord, ProposalId, RejectReason, WorldError, WorldEvent,
+    WorldEventBody, WorldEventId, WorldTime,
 };
 use super::body::{evaluate_expand_body_interface, validate_body_kernel_view};
 use super::logistics::{
@@ -12,6 +13,7 @@ use super::logistics::{
 };
 use super::World;
 use crate::geometry::space_distance_cm;
+use crate::runtime::main_token::{validate_main_token_config_bounds, MAIN_TOKEN_BPS_DENOMINATOR};
 use crate::simulator::ResourceKind;
 use std::collections::BTreeSet;
 
@@ -38,6 +40,7 @@ const ECONOMIC_CONTRACT_SUCCESS_REPUTATION_REWARD_CAP: i64 = 12;
 const ECONOMIC_CONTRACT_PAIR_COOLDOWN_TICKS: u64 = 5;
 const ECONOMIC_CONTRACT_REPUTATION_WINDOW_TICKS: u64 = 20;
 const ECONOMIC_CONTRACT_REPUTATION_WINDOW_CAP: i64 = 24;
+const MAIN_TOKEN_POLICY_UPDATE_DELAY_EPOCHS: u64 = 2;
 
 mod action_to_event_core;
 mod action_to_event_economy;
@@ -138,6 +141,7 @@ impl World {
             | Action::ClaimMainTokenVesting { .. }
             | Action::ApplyMainTokenEpochIssuance { .. }
             | Action::SettleMainTokenFee { .. }
+            | Action::UpdateMainTokenPolicy { .. }
             | Action::TransferMaterial { .. } => {
                 self.action_to_event_core(action_id, &envelope.action)
             }
@@ -448,17 +452,27 @@ impl World {
         event
     }
 
+    fn resolve_main_token_effective_config_for_epoch(&self, epoch_index: u64) -> &MainTokenConfig {
+        self.state
+            .main_token_scheduled_policy_updates
+            .range(..=epoch_index)
+            .next_back()
+            .map(|(_, item)| &item.next_config)
+            .unwrap_or(&self.state.main_token_config)
+    }
+
     fn resolve_main_token_effective_rate_bps(
         &self,
+        config: &MainTokenConfig,
         actual_stake_ratio_bps: u32,
     ) -> Result<u32, String> {
-        if actual_stake_ratio_bps > 10_000 {
+        if actual_stake_ratio_bps > MAIN_TOKEN_BPS_DENOMINATOR {
             return Err(format!(
                 "actual_stake_ratio_bps must be <= 10000, got {}",
                 actual_stake_ratio_bps
             ));
         }
-        let policy = &self.state.main_token_config.inflation_policy;
+        let policy = &config.inflation_policy;
         if policy.epochs_per_year == 0 {
             return Err("inflation_policy.epochs_per_year must be > 0".to_string());
         }
@@ -475,7 +489,7 @@ impl World {
         let feedback = target
             .saturating_sub(actual)
             .saturating_mul(gain)
-            .saturating_div(i128::from(10_000_u32));
+            .saturating_div(i128::from(MAIN_TOKEN_BPS_DENOMINATOR));
         let rate = base.saturating_add(feedback);
         let clamped = rate.clamp(
             i128::from(policy.min_rate_bps),
@@ -487,10 +501,11 @@ impl World {
 
     fn resolve_main_token_epoch_issued_amount(
         &self,
+        config: &MainTokenConfig,
         inflation_rate_bps: u32,
     ) -> Result<u64, String> {
         let supply = &self.state.main_token_supply;
-        let policy = &self.state.main_token_config.inflation_policy;
+        let policy = &config.inflation_policy;
         if policy.epochs_per_year == 0 {
             return Err("inflation_policy.epochs_per_year must be > 0".to_string());
         }
@@ -502,7 +517,8 @@ impl World {
                     supply.circulating_supply, inflation_rate_bps
                 )
             })?;
-        let denominator = u128::from(policy.epochs_per_year).saturating_mul(u128::from(10_000_u32));
+        let denominator = u128::from(policy.epochs_per_year)
+            .saturating_mul(u128::from(MAIN_TOKEN_BPS_DENOMINATOR));
         if denominator == 0 {
             return Err("main token issuance denominator cannot be zero".to_string());
         }
@@ -510,7 +526,7 @@ impl World {
             "main token issuance amount conversion overflow while converting to u64".to_string()
         })?;
 
-        if let Some(max_supply) = self.state.main_token_config.max_supply {
+        if let Some(max_supply) = config.max_supply {
             if supply.total_supply > max_supply {
                 return Err(format!(
                     "main token total_supply already exceeds max_supply: total={} max={}",
@@ -525,26 +541,30 @@ impl World {
 
     fn resolve_main_token_epoch_split_amounts(
         &self,
+        config: &MainTokenConfig,
         issued_amount: u64,
     ) -> Result<(u64, u64, u64, u64), String> {
-        let split = &self.state.main_token_config.issuance_split;
+        let split = &config.issuance_split;
         let split_sum = u64::from(split.staking_reward_bps)
             .saturating_add(u64::from(split.node_service_reward_bps))
             .saturating_add(u64::from(split.ecosystem_pool_bps))
             .saturating_add(u64::from(split.security_reserve_bps));
-        if split_sum != 10_000 {
+        if split_sum != u64::from(MAIN_TOKEN_BPS_DENOMINATOR) {
             return Err(format!(
                 "main token issuance split sum must be 10000 bps, got {}",
                 split_sum
             ));
         }
 
-        let staking_reward_amount =
-            issued_amount.saturating_mul(u64::from(split.staking_reward_bps)) / 10_000;
-        let node_service_reward_amount =
-            issued_amount.saturating_mul(u64::from(split.node_service_reward_bps)) / 10_000;
-        let ecosystem_pool_amount =
-            issued_amount.saturating_mul(u64::from(split.ecosystem_pool_bps)) / 10_000;
+        let staking_reward_amount = issued_amount
+            .saturating_mul(u64::from(split.staking_reward_bps))
+            / u64::from(MAIN_TOKEN_BPS_DENOMINATOR);
+        let node_service_reward_amount = issued_amount
+            .saturating_mul(u64::from(split.node_service_reward_bps))
+            / u64::from(MAIN_TOKEN_BPS_DENOMINATOR);
+        let ecosystem_pool_amount = issued_amount
+            .saturating_mul(u64::from(split.ecosystem_pool_bps))
+            / u64::from(MAIN_TOKEN_BPS_DENOMINATOR);
         let distributed = staking_reward_amount
             .checked_add(node_service_reward_amount)
             .and_then(|value| value.checked_add(ecosystem_pool_amount))
@@ -595,19 +615,23 @@ impl World {
             };
         }
 
-        let inflation_rate_bps =
-            match self.resolve_main_token_effective_rate_bps(actual_stake_ratio_bps) {
-                Ok(value) => value,
-                Err(reason) => {
-                    return DomainEvent::ActionRejected {
-                        action_id,
-                        reason: RejectReason::RuleDenied {
-                            notes: vec![format!("apply epoch issuance rejected: {reason}")],
-                        },
-                    };
-                }
-            };
-        let issued_amount = match self.resolve_main_token_epoch_issued_amount(inflation_rate_bps) {
+        let effective_config = self.resolve_main_token_effective_config_for_epoch(epoch_index);
+        let inflation_rate_bps = match self
+            .resolve_main_token_effective_rate_bps(effective_config, actual_stake_ratio_bps)
+        {
+            Ok(value) => value,
+            Err(reason) => {
+                return DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::RuleDenied {
+                        notes: vec![format!("apply epoch issuance rejected: {reason}")],
+                    },
+                };
+            }
+        };
+        let issued_amount = match self
+            .resolve_main_token_epoch_issued_amount(effective_config, inflation_rate_bps)
+        {
             Ok(value) => value,
             Err(reason) => {
                 return DomainEvent::ActionRejected {
@@ -623,7 +647,7 @@ impl World {
             node_service_reward_amount,
             ecosystem_pool_amount,
             security_reserve_amount,
-        ) = match self.resolve_main_token_epoch_split_amounts(issued_amount) {
+        ) = match self.resolve_main_token_epoch_split_amounts(effective_config, issued_amount) {
             Ok(values) => values,
             Err(reason) => {
                 return DomainEvent::ActionRejected {
@@ -656,8 +680,12 @@ impl World {
         event
     }
 
-    fn resolve_main_token_fee_burn_bps(&self, fee_kind: MainTokenFeeKind) -> u32 {
-        let policy = &self.state.main_token_config.burn_policy;
+    fn resolve_main_token_fee_burn_bps(
+        &self,
+        config: &MainTokenConfig,
+        fee_kind: MainTokenFeeKind,
+    ) -> u32 {
+        let policy = &config.burn_policy;
         match fee_kind {
             MainTokenFeeKind::GasBaseFee => policy.gas_base_fee_burn_bps,
             MainTokenFeeKind::SlashPenalty => policy.slash_burn_bps,
@@ -687,8 +715,9 @@ impl World {
                 },
             };
         }
-        let burn_bps = self.resolve_main_token_fee_burn_bps(fee_kind);
-        if burn_bps > 10_000 {
+        let effective_config = self.resolve_main_token_effective_config_for_epoch(self.state.time);
+        let burn_bps = self.resolve_main_token_fee_burn_bps(effective_config, fee_kind);
+        if burn_bps > MAIN_TOKEN_BPS_DENOMINATOR {
             return DomainEvent::ActionRejected {
                 action_id,
                 reason: RejectReason::RuleDenied {
@@ -699,7 +728,8 @@ impl World {
                 },
             };
         }
-        let burn_amount = amount.saturating_mul(u64::from(burn_bps)) / 10_000;
+        let burn_amount =
+            amount.saturating_mul(u64::from(burn_bps)) / u64::from(MAIN_TOKEN_BPS_DENOMINATOR);
         let treasury_amount = amount.saturating_sub(burn_amount);
 
         let event = DomainEvent::MainTokenFeeSettled {
@@ -714,6 +744,104 @@ impl World {
                 action_id,
                 reason: RejectReason::RuleDenied {
                     notes: vec![format!("settle main token fee rejected: {err:?}")],
+                },
+            };
+        }
+        event
+    }
+
+    fn evaluate_update_main_token_policy_action(
+        &self,
+        action_id: ActionId,
+        proposal_id: ProposalId,
+        next: &MainTokenConfig,
+    ) -> DomainEvent {
+        if proposal_id == 0 {
+            return DomainEvent::ActionRejected {
+                action_id,
+                reason: RejectReason::RuleDenied {
+                    notes: vec!["proposal_id must be > 0".to_string()],
+                },
+            };
+        }
+        if let Err(reason) = validate_main_token_config_bounds(next) {
+            return DomainEvent::ActionRejected {
+                action_id,
+                reason: RejectReason::RuleDenied {
+                    notes: vec![format!("update main token policy rejected: {reason}")],
+                },
+            };
+        }
+        if next.initial_supply != self.state.main_token_config.initial_supply {
+            return DomainEvent::ActionRejected {
+                action_id,
+                reason: RejectReason::RuleDenied {
+                    notes: vec![format!(
+                        "update main token policy rejected: initial_supply cannot change (current={} next={})",
+                        self.state.main_token_config.initial_supply, next.initial_supply
+                    )],
+                },
+            };
+        }
+        if let Some(max_supply) = next.max_supply {
+            if max_supply < self.state.main_token_supply.total_supply {
+                return DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::RuleDenied {
+                        notes: vec![format!(
+                            "update main token policy rejected: max_supply cannot be below total_supply (max={} total={})",
+                            max_supply, self.state.main_token_supply.total_supply
+                        )],
+                    },
+                };
+            }
+        }
+
+        let effective_epoch = self
+            .state
+            .time
+            .saturating_add(MAIN_TOKEN_POLICY_UPDATE_DELAY_EPOCHS);
+        if self
+            .state
+            .main_token_scheduled_policy_updates
+            .contains_key(&effective_epoch)
+        {
+            return DomainEvent::ActionRejected {
+                action_id,
+                reason: RejectReason::RuleDenied {
+                    notes: vec![format!(
+                        "update main token policy rejected: effective_epoch already scheduled ({effective_epoch})"
+                    )],
+                },
+            };
+        }
+        if self
+            .state
+            .main_token_scheduled_policy_updates
+            .values()
+            .any(|item| item.proposal_id == proposal_id)
+        {
+            return DomainEvent::ActionRejected {
+                action_id,
+                reason: RejectReason::RuleDenied {
+                    notes: vec![format!(
+                        "update main token policy rejected: proposal already scheduled ({proposal_id})"
+                    )],
+                },
+            };
+        }
+
+        let event = DomainEvent::MainTokenPolicyUpdateScheduled {
+            proposal_id,
+            effective_epoch,
+            next: next.clone(),
+        };
+        let mut preview_state = self.state.clone();
+        if let Err(err) = preview_state.apply_domain_event(&event, self.state.time) {
+            return DomainEvent::ActionRejected {
+                action_id,
+                reason: RejectReason::RuleDenied {
+                    notes: vec![format!("update main token policy rejected: {err:?}")],
                 },
             };
         }

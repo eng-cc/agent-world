@@ -15,6 +15,7 @@ const DEFAULT_MAIN_TOKEN_SECURITY_RESERVE_BPS: u32 = 500;
 const DEFAULT_MAIN_TOKEN_GAS_BASE_FEE_BURN_BPS: u32 = 3_000;
 const DEFAULT_MAIN_TOKEN_SLASH_BURN_BPS: u32 = 5_000;
 const DEFAULT_MAIN_TOKEN_MODULE_FEE_BURN_BPS: u32 = 2_000;
+pub const MAIN_TOKEN_BPS_DENOMINATOR: u32 = 10_000;
 
 pub const MAIN_TOKEN_TREASURY_BUCKET_STAKING_REWARD: &str = "staking_reward_pool";
 pub const MAIN_TOKEN_TREASURY_BUCKET_NODE_SERVICE_REWARD: &str = "node_service_reward_pool";
@@ -154,6 +155,106 @@ pub struct MainTokenEpochIssuanceRecord {
     pub node_service_reward_amount: u64,
     pub ecosystem_pool_amount: u64,
     pub security_reserve_amount: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct MainTokenScheduledPolicyUpdate {
+    pub proposal_id: u64,
+    pub effective_epoch: u64,
+    pub next_config: MainTokenConfig,
+}
+
+pub fn validate_main_token_config_bounds(config: &MainTokenConfig) -> Result<(), String> {
+    if config.symbol.trim().is_empty() {
+        return Err("main token symbol cannot be empty".to_string());
+    }
+    if config.decimals > 18 {
+        return Err(format!(
+            "main token decimals must be <= 18, got {}",
+            config.decimals
+        ));
+    }
+    if let Some(max_supply) = config.max_supply {
+        if max_supply < config.initial_supply {
+            return Err(format!(
+                "main token max_supply must be >= initial_supply: max={} initial={}",
+                max_supply, config.initial_supply
+            ));
+        }
+    }
+
+    let inflation = &config.inflation_policy;
+    if inflation.min_rate_bps > inflation.max_rate_bps {
+        return Err(format!(
+            "main token inflation min_rate_bps > max_rate_bps: {} > {}",
+            inflation.min_rate_bps, inflation.max_rate_bps
+        ));
+    }
+    if inflation.base_rate_bps < inflation.min_rate_bps
+        || inflation.base_rate_bps > inflation.max_rate_bps
+    {
+        return Err(format!(
+            "main token inflation base_rate_bps must be within [{}, {}], got {}",
+            inflation.min_rate_bps, inflation.max_rate_bps, inflation.base_rate_bps
+        ));
+    }
+    if inflation.max_rate_bps > MAIN_TOKEN_BPS_DENOMINATOR {
+        return Err(format!(
+            "main token inflation max_rate_bps must be <= {}, got {}",
+            MAIN_TOKEN_BPS_DENOMINATOR, inflation.max_rate_bps
+        ));
+    }
+    if inflation.target_stake_ratio_bps > MAIN_TOKEN_BPS_DENOMINATOR {
+        return Err(format!(
+            "main token target_stake_ratio_bps must be <= {}, got {}",
+            MAIN_TOKEN_BPS_DENOMINATOR, inflation.target_stake_ratio_bps
+        ));
+    }
+    if inflation.stake_feedback_gain_bps > MAIN_TOKEN_BPS_DENOMINATOR {
+        return Err(format!(
+            "main token stake_feedback_gain_bps must be <= {}, got {}",
+            MAIN_TOKEN_BPS_DENOMINATOR, inflation.stake_feedback_gain_bps
+        ));
+    }
+    if inflation.epochs_per_year == 0 {
+        return Err("main token inflation epochs_per_year must be > 0".to_string());
+    }
+
+    let split = &config.issuance_split;
+    if split.staking_reward_bps > MAIN_TOKEN_BPS_DENOMINATOR
+        || split.node_service_reward_bps > MAIN_TOKEN_BPS_DENOMINATOR
+        || split.ecosystem_pool_bps > MAIN_TOKEN_BPS_DENOMINATOR
+        || split.security_reserve_bps > MAIN_TOKEN_BPS_DENOMINATOR
+    {
+        return Err(format!(
+            "main token issuance split bps must each be <= {}",
+            MAIN_TOKEN_BPS_DENOMINATOR
+        ));
+    }
+    let split_sum = split
+        .staking_reward_bps
+        .saturating_add(split.node_service_reward_bps)
+        .saturating_add(split.ecosystem_pool_bps)
+        .saturating_add(split.security_reserve_bps);
+    if split_sum != MAIN_TOKEN_BPS_DENOMINATOR {
+        return Err(format!(
+            "main token issuance split sum must be {}, got {}",
+            MAIN_TOKEN_BPS_DENOMINATOR, split_sum
+        ));
+    }
+
+    let burn = &config.burn_policy;
+    if burn.gas_base_fee_burn_bps > MAIN_TOKEN_BPS_DENOMINATOR
+        || burn.slash_burn_bps > MAIN_TOKEN_BPS_DENOMINATOR
+        || burn.module_fee_burn_bps > MAIN_TOKEN_BPS_DENOMINATOR
+    {
+        return Err(format!(
+            "main token burn bps must each be <= {}",
+            MAIN_TOKEN_BPS_DENOMINATOR
+        ));
+    }
+
+    Ok(())
 }
 
 pub fn main_token_bucket_unlocked_amount(

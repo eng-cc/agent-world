@@ -111,10 +111,11 @@ pub use main_token::{
     main_token_bucket_unlocked_amount, MainTokenAccountBalance, MainTokenBurnPolicy,
     MainTokenConfig, MainTokenEpochIssuanceRecord, MainTokenGenesisAllocationBucketState,
     MainTokenGenesisAllocationPlan, MainTokenInflationPolicy, MainTokenIssuanceSplitPolicy,
-    MainTokenSupplyState, MAIN_TOKEN_TREASURY_BUCKET_ECOSYSTEM_POOL,
-    MAIN_TOKEN_TREASURY_BUCKET_GAS_FEE, MAIN_TOKEN_TREASURY_BUCKET_MODULE_FEE,
-    MAIN_TOKEN_TREASURY_BUCKET_NODE_SERVICE_REWARD, MAIN_TOKEN_TREASURY_BUCKET_SECURITY_RESERVE,
-    MAIN_TOKEN_TREASURY_BUCKET_SLASH, MAIN_TOKEN_TREASURY_BUCKET_STAKING_REWARD,
+    MainTokenScheduledPolicyUpdate, MainTokenSupplyState,
+    MAIN_TOKEN_TREASURY_BUCKET_ECOSYSTEM_POOL, MAIN_TOKEN_TREASURY_BUCKET_GAS_FEE,
+    MAIN_TOKEN_TREASURY_BUCKET_MODULE_FEE, MAIN_TOKEN_TREASURY_BUCKET_NODE_SERVICE_REWARD,
+    MAIN_TOKEN_TREASURY_BUCKET_SECURITY_RESERVE, MAIN_TOKEN_TREASURY_BUCKET_SLASH,
+    MAIN_TOKEN_TREASURY_BUCKET_STAKING_REWARD,
 };
 pub use node_points::{
     EpochSettlementReport, NodeContributionSample, NodePointsConfig, NodePointsError,
