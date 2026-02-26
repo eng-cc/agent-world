@@ -4,7 +4,7 @@
 - [x] T0 建档：设计文档 + 项目管理文档
 - [x] T1 LLM mailbox 事件化：`LlmDecisionRequested` + mailbox 计数
 - [x] T2 回归测试：mailbox 语义 + live 关键语义
-- [ ] T3 文档与日志收口
+- [x] T3 文档与日志收口
 
 ## 依赖
 - `crates/agent_world/src/viewer/live_split_part1.rs`
@@ -14,5 +14,5 @@
 - `testing-manual.md`
 
 ## 状态
-- 当前阶段：T2 已完成，进行 T3
-- 备注：Phase 3 聚焦 LLM 决策 mailbox 事件化；后续再评估跨模块总线统一与背压策略。
+- 当前阶段：已完成（T0~T3）
+- 备注：Phase 3 收口完成；进入 Phase 4 继续推进 Step/Seek 事件化、共识事件总线化与背压治理。
