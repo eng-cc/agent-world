@@ -6,7 +6,7 @@
 - [x] T2 P0 治理共识绑定与原子 apply（最终性证书 + 多签门限）
 - [x] T3 P1 收据签名升级（节点签名/阈值签名 + 共识高度锚定）
 - [x] T4 P1 执行错误可观测性（OutOfFuel/Interrupt 区分）
-- [ ] T5 回归测试、文档回写、devlog 收口
+- [x] T5 回归测试、文档回写、devlog 收口
 
 ## 依赖
 - `doc/world-runtime/zero-trust-governance-receipt-hardening-2026-02-26.md`
@@ -18,4 +18,4 @@
 - `crates/agent_world_wasm_executor/src/lib.rs`
 
 ## 状态
-- 当前阶段：T5 进行中（回归测试、文档回写、devlog 收口）
+- 当前阶段：已完成（T0~T5）
