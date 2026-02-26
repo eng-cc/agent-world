@@ -9,11 +9,13 @@
 - [x] T6 按用户请求追加一轮“默认 world_viewer_live 链路”真实玩家复测并填写卡片
 - [x] T7 按用户再次请求执行夜间轮次真实游玩（带录屏）并填写卡片
 - [x] T8 按用户本轮请求再执行一轮“真实玩家”Playwright 试玩并填写卡片
+- [x] T9 提供 game-test 一键启动脚本并更新手册，防止启动参数错误
 
 ## 依赖
 - `doc/game-test.md`
 - `doc/playability_test_card.md`
 - `.codex/skills/playwright/SKILL.md`
+- `scripts/run-game-test.sh`
 - `scripts/run-viewer-web.sh`
 - `world_viewer_live` (`cargo run -p agent_world --bin world_viewer_live`)
 - `doc/world-simulator/viewer-webgl-deferred-compat-2026-02-24.md`
@@ -39,4 +41,5 @@
   - 架构约束：`CopyDeferredLightingIdPlugin` 与 `Core3d` render graph 存在硬耦合，单独禁用会触发新的启动 panic（`Option::expect` -> `RuntimeError: unreachable`）。
   - 可玩性闭环问题：夜间复测再次出现 `connectionStatus=connecting` 且 `tick` 持续 `0`，并伴随 WebGL `CONTEXT_LOST_WEBGL`，玩法闭环仍不可用。
   - 本轮新增：`ws://127.0.0.1:5010` 链路下仍复现 `connectionStatus=connecting`/`tick=0`，并出现 `WebSocket opening handshake timed out` 与 wasm panic（`assertion failed: old_size > 0`）。
+  - 缓解：新增 `scripts/run-game-test.sh` 固化启动参数（默认 `--web-bind 127.0.0.1:5011`），降低测试因手工参数错误导致的假故障概率。
 - 最近更新：2026-02-26
