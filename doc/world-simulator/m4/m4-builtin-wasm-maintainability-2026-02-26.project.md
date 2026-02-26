@@ -4,7 +4,7 @@
 - [x] T0 建档：设计文档 + 项目管理文档
 - [x] T1 模块模板化抽象（Recipe/Product/Factory）
 - [x] T2 Bootstrap 清单驱动化 + 一致性护栏 + 测试
-- [ ] T3 回归收口（文档、devlog、验证）
+- [x] T3 回归收口（文档、devlog、验证）
 
 ## 依赖
 - `doc/world-simulator/m4/m4-industrial-economy-wasm.md`
@@ -14,7 +14,7 @@
 - `crates/agent_world/src/runtime/tests/economy_bootstrap.rs`
 
 ## 状态
-- 当前阶段：T3（进行中）
-- 已完成：T0, T1, T2
-- 进行中：T3
+- 当前阶段：已完成
+- 已完成：T0, T1, T2, T3
+- 进行中：无
 - 阻塞项：无
