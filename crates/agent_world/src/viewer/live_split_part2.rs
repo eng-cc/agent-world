@@ -178,6 +178,137 @@ impl PlaybackPulseControl {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+enum CoalescedSignalKind {
+    PlaybackPulse,
+    LlmDecisionRequested,
+    ConsensusCommitted,
+    ConsensusDriveRequested,
+}
+
+#[derive(Default)]
+struct LiveLoopBackpressure {
+    merged_playback_pulse: AtomicU64,
+    merged_llm_decision_requested: AtomicU64,
+    merged_consensus_committed: AtomicU64,
+    merged_consensus_drive_requested: AtomicU64,
+    dropped_playback_pulse: AtomicU64,
+    dropped_llm_decision_requested: AtomicU64,
+    dropped_consensus_committed: AtomicU64,
+    dropped_consensus_drive_requested: AtomicU64,
+}
+
+#[derive(Debug, Default, Clone, Copy)]
+struct LiveLoopBackpressureSnapshot {
+    merged_playback_pulse: u64,
+    merged_llm_decision_requested: u64,
+    merged_consensus_committed: u64,
+    merged_consensus_drive_requested: u64,
+    dropped_playback_pulse: u64,
+    dropped_llm_decision_requested: u64,
+    dropped_consensus_committed: u64,
+    dropped_consensus_drive_requested: u64,
+}
+
+impl LiveLoopBackpressureSnapshot {
+    fn has_activity(&self) -> bool {
+        self.merged_playback_pulse > 0
+            || self.merged_llm_decision_requested > 0
+            || self.merged_consensus_committed > 0
+            || self.merged_consensus_drive_requested > 0
+            || self.dropped_playback_pulse > 0
+            || self.dropped_llm_decision_requested > 0
+            || self.dropped_consensus_committed > 0
+            || self.dropped_consensus_drive_requested > 0
+    }
+}
+
+impl LiveLoopBackpressure {
+    fn record_merged(&self, kind: CoalescedSignalKind) {
+        match kind {
+            CoalescedSignalKind::PlaybackPulse => {
+                self.merged_playback_pulse.fetch_add(1, Ordering::SeqCst);
+            }
+            CoalescedSignalKind::LlmDecisionRequested => {
+                self.merged_llm_decision_requested
+                    .fetch_add(1, Ordering::SeqCst);
+            }
+            CoalescedSignalKind::ConsensusCommitted => {
+                self.merged_consensus_committed
+                    .fetch_add(1, Ordering::SeqCst);
+            }
+            CoalescedSignalKind::ConsensusDriveRequested => {
+                self.merged_consensus_drive_requested
+                    .fetch_add(1, Ordering::SeqCst);
+            }
+        }
+    }
+
+    fn record_dropped(&self, kind: CoalescedSignalKind) {
+        match kind {
+            CoalescedSignalKind::PlaybackPulse => {
+                self.dropped_playback_pulse.fetch_add(1, Ordering::SeqCst);
+            }
+            CoalescedSignalKind::LlmDecisionRequested => {
+                self.dropped_llm_decision_requested
+                    .fetch_add(1, Ordering::SeqCst);
+            }
+            CoalescedSignalKind::ConsensusCommitted => {
+                self.dropped_consensus_committed
+                    .fetch_add(1, Ordering::SeqCst);
+            }
+            CoalescedSignalKind::ConsensusDriveRequested => {
+                self.dropped_consensus_drive_requested
+                    .fetch_add(1, Ordering::SeqCst);
+            }
+        }
+    }
+
+    fn snapshot(&self) -> LiveLoopBackpressureSnapshot {
+        LiveLoopBackpressureSnapshot {
+            merged_playback_pulse: self.merged_playback_pulse.load(Ordering::SeqCst),
+            merged_llm_decision_requested: self
+                .merged_llm_decision_requested
+                .load(Ordering::SeqCst),
+            merged_consensus_committed: self.merged_consensus_committed.load(Ordering::SeqCst),
+            merged_consensus_drive_requested: self
+                .merged_consensus_drive_requested
+                .load(Ordering::SeqCst),
+            dropped_playback_pulse: self.dropped_playback_pulse.load(Ordering::SeqCst),
+            dropped_llm_decision_requested: self
+                .dropped_llm_decision_requested
+                .load(Ordering::SeqCst),
+            dropped_consensus_committed: self.dropped_consensus_committed.load(Ordering::SeqCst),
+            dropped_consensus_drive_requested: self
+                .dropped_consensus_drive_requested
+                .load(Ordering::SeqCst),
+        }
+    }
+}
+
+fn enqueue_coalesced_signal(
+    tx: &mpsc::SyncSender<LiveLoopSignal>,
+    signal: LiveLoopSignal,
+    queued: &Arc<AtomicBool>,
+    kind: CoalescedSignalKind,
+    backpressure: &LiveLoopBackpressure,
+) {
+    if queued.swap(true, Ordering::SeqCst) {
+        backpressure.record_merged(kind);
+        return;
+    }
+    match tx.try_send(signal) {
+        Ok(()) => {}
+        Err(mpsc::TrySendError::Full(_)) => {
+            queued.store(false, Ordering::SeqCst);
+            backpressure.record_dropped(kind);
+        }
+        Err(mpsc::TrySendError::Disconnected(_)) => {
+            queued.store(false, Ordering::SeqCst);
+        }
+    }
+}
+
 impl ViewerLiveSession {
     fn new() -> Self {
         Self {
@@ -352,7 +483,7 @@ fn metrics_from_kernel(kernel: &WorldKernel) -> RunnerMetrics {
 
 fn read_requests(
     stream: TcpStream,
-    tx: mpsc::Sender<LiveLoopSignal>,
+    tx: mpsc::SyncSender<LiveLoopSignal>,
     loop_running: Arc<AtomicBool>,
     playback_control: PlaybackPulseControl,
 ) {
@@ -390,10 +521,12 @@ fn read_requests(
 }
 
 fn emit_playback_pulses(
-    tx: mpsc::Sender<LiveLoopSignal>,
+    tx: mpsc::SyncSender<LiveLoopSignal>,
     tick_interval: Duration,
     loop_running: Arc<AtomicBool>,
     playback_control: PlaybackPulseControl,
+    signal_queued: Arc<AtomicBool>,
+    backpressure: Arc<LiveLoopBackpressure>,
 ) {
     let pulse_interval = if tick_interval.is_zero() {
         Duration::from_millis(1)
@@ -427,9 +560,13 @@ fn emit_playback_pulses(
         }
         if wait_result.timed_out() {
             drop(state);
-            if tx.send(LiveLoopSignal::PlaybackPulse).is_err() {
-                break;
-            }
+            enqueue_coalesced_signal(
+                &tx,
+                LiveLoopSignal::PlaybackPulse,
+                &signal_queued,
+                CoalescedSignalKind::PlaybackPulse,
+                backpressure.as_ref(),
+            );
             state = state_lock
                 .lock()
                 .expect("playback pulse control mutex poisoned");
@@ -438,10 +575,11 @@ fn emit_playback_pulses(
 }
 
 fn emit_consensus_commit_signals(
-    tx: mpsc::Sender<LiveLoopSignal>,
+    tx: mpsc::SyncSender<LiveLoopSignal>,
     loop_running: Arc<AtomicBool>,
     committed_batches: NodeCommittedActionBatchesHandle,
     signal_queued: Arc<AtomicBool>,
+    backpressure: Arc<LiveLoopBackpressure>,
 ) {
     let wait_timeout = Duration::from_millis(50);
     while loop_running.load(Ordering::SeqCst) {
@@ -451,12 +589,13 @@ fn emit_consensus_commit_signals(
         if !loop_running.load(Ordering::SeqCst) {
             break;
         }
-        if signal_queued.swap(true, Ordering::SeqCst) {
-            continue;
-        }
-        if tx.send(LiveLoopSignal::ConsensusCommitted).is_err() {
-            break;
-        }
+        enqueue_coalesced_signal(
+            &tx,
+            LiveLoopSignal::ConsensusCommitted,
+            &signal_queued,
+            CoalescedSignalKind::ConsensusCommitted,
+            backpressure.as_ref(),
+        );
     }
 }
 

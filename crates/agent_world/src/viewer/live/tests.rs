@@ -871,14 +871,25 @@ fn live_world_consensus_bridge_applies_only_committed_actions() {
 
 #[test]
 fn playback_pulse_thread_emits_and_stops_with_loop_flag() {
-    let (tx, rx) = mpsc::channel();
+    let (tx, rx) = mpsc::sync_channel(8);
     let loop_running = Arc::new(AtomicBool::new(true));
     let playback_control = PlaybackPulseControl::new();
     playback_control.set_enabled(true);
     let pulse_flag = Arc::clone(&loop_running);
     let pulse_control = playback_control.clone();
+    let signal_queued = Arc::new(AtomicBool::new(false));
+    let pulse_signal_queued = Arc::clone(&signal_queued);
+    let backpressure = Arc::new(LiveLoopBackpressure::default());
+    let pulse_backpressure = Arc::clone(&backpressure);
     let handle = thread::spawn(move || {
-        emit_playback_pulses(tx, Duration::from_millis(1), pulse_flag, pulse_control)
+        emit_playback_pulses(
+            tx,
+            Duration::from_millis(1),
+            pulse_flag,
+            pulse_control,
+            pulse_signal_queued,
+            pulse_backpressure,
+        )
     });
 
     let signal = rx
@@ -893,13 +904,24 @@ fn playback_pulse_thread_emits_and_stops_with_loop_flag() {
 
 #[test]
 fn playback_pulse_thread_stays_idle_until_enabled() {
-    let (tx, rx) = mpsc::channel();
+    let (tx, rx) = mpsc::sync_channel(8);
     let loop_running = Arc::new(AtomicBool::new(true));
     let playback_control = PlaybackPulseControl::new();
     let pulse_flag = Arc::clone(&loop_running);
     let pulse_control = playback_control.clone();
+    let signal_queued = Arc::new(AtomicBool::new(false));
+    let pulse_signal_queued = Arc::clone(&signal_queued);
+    let backpressure = Arc::new(LiveLoopBackpressure::default());
+    let pulse_backpressure = Arc::clone(&backpressure);
     let handle = thread::spawn(move || {
-        emit_playback_pulses(tx, Duration::from_millis(5), pulse_flag, pulse_control)
+        emit_playback_pulses(
+            tx,
+            Duration::from_millis(5),
+            pulse_flag,
+            pulse_control,
+            pulse_signal_queued,
+            pulse_backpressure,
+        )
     });
 
     let idle_result = rx.recv_timeout(Duration::from_millis(40));

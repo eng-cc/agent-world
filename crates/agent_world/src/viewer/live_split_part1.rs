@@ -160,6 +160,8 @@ enum LiveLoopSignal {
     SeekRequested { tick: u64 },
 }
 
+const LIVE_LOOP_QUEUE_CAPACITY: usize = 256;
+
 impl ViewerLiveServer {
     pub fn new(config: ViewerLiveServerConfig) -> Result<Self, ViewerLiveServerError> {
         let init = WorldInitConfig::from_scenario(config.scenario, &WorldConfig::default());
@@ -205,9 +207,13 @@ impl ViewerLiveServer {
         stream.set_nodelay(true)?;
         let reader_stream = stream.try_clone()?;
         let mut writer = BufWriter::new(stream);
-        let (tx, rx) = mpsc::channel::<LiveLoopSignal>();
+        let (tx, rx) = mpsc::sync_channel::<LiveLoopSignal>(LIVE_LOOP_QUEUE_CAPACITY);
         let loop_running = Arc::new(AtomicBool::new(true));
+        let backpressure = Arc::new(LiveLoopBackpressure::default());
+        let playback_signal_queued = Arc::new(AtomicBool::new(false));
+        let llm_signal_queued = Arc::new(AtomicBool::new(false));
         let consensus_signal_queued = Arc::new(AtomicBool::new(false));
+        let consensus_drive_signal_queued = Arc::new(AtomicBool::new(false));
         let request_loop_running = Arc::clone(&loop_running);
         let pulse_loop_running = Arc::clone(&loop_running);
         let playback_control = PlaybackPulseControl::new();
@@ -218,6 +224,8 @@ impl ViewerLiveServer {
         let pulse_tx = tx.clone();
         let pulse_interval = self.config.tick_interval;
         let consensus_batches_handle = self.world.consensus_batches_handle()?;
+        let pulse_signal_queued = Arc::clone(&playback_signal_queued);
+        let pulse_backpressure = Arc::clone(&backpressure);
 
         thread::spawn(move || {
             read_requests(
@@ -233,18 +241,22 @@ impl ViewerLiveServer {
                 pulse_interval,
                 pulse_loop_running,
                 pulse_playback_control,
+                pulse_signal_queued,
+                pulse_backpressure,
             )
         });
         if let Some(committed_batches) = consensus_batches_handle {
             let consensus_tx = tx.clone();
             let consensus_loop_running = Arc::clone(&loop_running);
             let queued_flag = Arc::clone(&consensus_signal_queued);
+            let consensus_backpressure = Arc::clone(&backpressure);
             thread::spawn(move || {
                 emit_consensus_commit_signals(
                     consensus_tx,
                     consensus_loop_running,
                     committed_batches,
                     queued_flag,
+                    consensus_backpressure,
                 )
             });
         }
@@ -265,7 +277,13 @@ impl ViewerLiveServer {
                     ) {
                         Ok(outcome) => {
                             if outcome.request_llm_decision {
-                                let _ = loop_tx.send(LiveLoopSignal::LlmDecisionRequested);
+                                enqueue_coalesced_signal(
+                                    &loop_tx,
+                                    LiveLoopSignal::LlmDecisionRequested,
+                                    &llm_signal_queued,
+                                    CoalescedSignalKind::LlmDecisionRequested,
+                                    backpressure.as_ref(),
+                                );
                             }
                             if let Some(control) = outcome.deferred_control {
                                 match control {
@@ -286,7 +304,13 @@ impl ViewerLiveServer {
                                 && now_emitting
                                 && (!was_emitting || outcome.request_llm_decision)
                             {
-                                let _ = loop_tx.send(LiveLoopSignal::ConsensusDriveRequested);
+                                enqueue_coalesced_signal(
+                                    &loop_tx,
+                                    LiveLoopSignal::ConsensusDriveRequested,
+                                    &consensus_drive_signal_queued,
+                                    CoalescedSignalKind::ConsensusDriveRequested,
+                                    backpressure.as_ref(),
+                                );
                             }
                             if !outcome.continue_running {
                                 break Ok(());
@@ -301,6 +325,7 @@ impl ViewerLiveServer {
                     }
                 }
                 Ok(LiveLoopSignal::PlaybackPulse) => {
+                    playback_signal_queued.store(false, Ordering::SeqCst);
                     if let Err(err) = self.handle_playback_pulse(&mut session, &mut writer) {
                         if err.is_disconnect() {
                             break Ok(());
@@ -309,9 +334,16 @@ impl ViewerLiveServer {
                     }
                 }
                 Ok(LiveLoopSignal::LlmDecisionRequested) => {
+                    llm_signal_queued.store(false, Ordering::SeqCst);
                     self.world.request_llm_decision();
                     if self.world.uses_consensus_bridge() && session.should_emit_event() {
-                        let _ = loop_tx.send(LiveLoopSignal::ConsensusDriveRequested);
+                        enqueue_coalesced_signal(
+                            &loop_tx,
+                            LiveLoopSignal::ConsensusDriveRequested,
+                            &consensus_drive_signal_queued,
+                            CoalescedSignalKind::ConsensusDriveRequested,
+                            backpressure.as_ref(),
+                        );
                     }
                 }
                 Ok(LiveLoopSignal::ConsensusCommitted) => {
@@ -324,6 +356,7 @@ impl ViewerLiveServer {
                     consensus_signal_queued.store(false, Ordering::SeqCst);
                 }
                 Ok(LiveLoopSignal::ConsensusDriveRequested) => {
+                    consensus_drive_signal_queued.store(false, Ordering::SeqCst);
                     if let Err(err) =
                         self.handle_consensus_drive_requested(&mut session, &mut writer)
                     {
@@ -355,6 +388,20 @@ impl ViewerLiveServer {
         loop_running.store(false, Ordering::SeqCst);
         playback_control.notify();
         drop(loop_tx);
+        let backpressure_snapshot = backpressure.snapshot();
+        if backpressure_snapshot.has_activity() {
+            eprintln!(
+                "viewer live backpressure merged={{playback_pulse:{}, llm_decision:{}, consensus_committed:{}, consensus_drive:{}}} dropped={{playback_pulse:{}, llm_decision:{}, consensus_committed:{}, consensus_drive:{}}}",
+                backpressure_snapshot.merged_playback_pulse,
+                backpressure_snapshot.merged_llm_decision_requested,
+                backpressure_snapshot.merged_consensus_committed,
+                backpressure_snapshot.merged_consensus_drive_requested,
+                backpressure_snapshot.dropped_playback_pulse,
+                backpressure_snapshot.dropped_llm_decision_requested,
+                backpressure_snapshot.dropped_consensus_committed,
+                backpressure_snapshot.dropped_consensus_drive_requested,
+            );
+        }
         result
     }
 
