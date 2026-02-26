@@ -14,6 +14,7 @@
 - [x] T11 将 `testing-manual.md` 的 Playwright/S6 执行细节拆分到独立文档并改为引用
 - [x] T12 补充 Playwright 启动防抖与失败分级处置（连接拒绝/URL 引号/会话残留/渲染 panic）
 - [x] T13 修正 Playwright CLI 路径示例为仓库内 `.codex`（移除 `CODEX_HOME` 依赖）
+- [x] T14 强调 Web 验收必须 GPU + headed，并补充可直接执行的硬门禁命令
 
 ## 依赖
 - `AGENTS.md`（开发工作流、测试分层、Web 闭环优先口径）

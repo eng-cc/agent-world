@@ -27,6 +27,18 @@ curl -fsS "http://127.0.0.1:4173/" >/dev/null
 # 3) URL 必须带引号（含 `&`，否则 shell 会截断/拆命令）
 URL='http://127.0.0.1:4173/?ws=ws://127.0.0.1:5011&test_api=1'
 ```
+2.2) GPU + headed 硬门禁（验收必须）：
+```bash
+# A) 页面必须 headed 打开（禁止 headless 验收口径）
+bash "$PWCLI" open "$URL" --headed
+bash "$PWCLI" snapshot
+
+# B) 控制台若出现软件渲染关键字，直接判 FAIL
+bash "$PWCLI" console all | rg -n "SwiftShader|software rendering|Failed to create WebGPU Context Provider" && {
+  echo "FAIL: Web 性能/验收必须使用 GPU 硬件加速，禁止软件渲染口径" >&2
+  exit 1
+}
+```
 3) Playwright 采样：
 ```bash
 source "$HOME/.nvm/nvm.sh"
