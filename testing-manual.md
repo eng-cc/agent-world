@@ -159,6 +159,12 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required sim
 env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required viewer::live::tests:: -- --nocapture
 env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required viewer::web_bridge::tests:: -- --nocapture
 ```
+- 电价/市场机制定向回归（required/full）：
+```bash
+env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required simulator::tests::power::power_buy_zero_price_ -- --nocapture
+env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required simulator::tests::power::power_order_ -- --nocapture
+env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_full simulator::tests::power:: -- --nocapture
+```
 - 用途：
   - 快速定位 `agent_world` 内部模块回归，不必每次跑全套 full。
 
