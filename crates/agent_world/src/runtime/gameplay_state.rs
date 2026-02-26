@@ -237,10 +237,14 @@ pub struct GameplayPolicyState {
     pub electricity_tax_bps: u16,
     #[serde(default)]
     pub data_tax_bps: u16,
+    #[serde(default)]
+    pub power_trade_fee_bps: u16,
     #[serde(default = "default_policy_max_open_contracts_per_agent")]
     pub max_open_contracts_per_agent: u16,
     #[serde(default)]
     pub blocked_agents: Vec<String>,
+    #[serde(default)]
+    pub forbidden_location_ids: Vec<String>,
     #[serde(default)]
     pub updated_at: WorldTime,
 }
@@ -250,8 +254,10 @@ impl Default for GameplayPolicyState {
         Self {
             electricity_tax_bps: 200,
             data_tax_bps: 300,
+            power_trade_fee_bps: 0,
             max_open_contracts_per_agent: default_policy_max_open_contracts_per_agent(),
             blocked_agents: Vec::new(),
+            forbidden_location_ids: Vec::new(),
             updated_at: 0,
         }
     }

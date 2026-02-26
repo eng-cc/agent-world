@@ -14,8 +14,10 @@ fn economic_contract_settlement_overflow_keeps_state_atomic() {
         operator_agent_id: "a".to_string(),
         electricity_tax_bps: 0,
         data_tax_bps: 0,
+        power_trade_fee_bps: 0,
         max_open_contracts_per_agent: 4,
         blocked_agents: Vec::new(),
+        forbidden_location_ids: Vec::new(),
     });
     world.step().expect("update gameplay policy");
     world.submit_action(Action::GrantDataAccess {
@@ -110,8 +112,10 @@ fn economic_contract_success_reputation_reward_respects_stake_and_cap() {
         operator_agent_id: "a".to_string(),
         electricity_tax_bps: 0,
         data_tax_bps: 0,
+        power_trade_fee_bps: 0,
         max_open_contracts_per_agent: 8,
         blocked_agents: Vec::new(),
+        forbidden_location_ids: Vec::new(),
     });
     world.step().expect("update gameplay policy");
     world.submit_action(Action::GrantDataAccess {
@@ -358,8 +362,10 @@ fn economic_contract_respects_policy_quota_and_block_list() {
         operator_agent_id: "a".to_string(),
         electricity_tax_bps: 0,
         data_tax_bps: 0,
+        power_trade_fee_bps: 0,
         max_open_contracts_per_agent: 1,
         blocked_agents: vec!["b".to_string()],
+        forbidden_location_ids: Vec::new(),
     });
     world.step().expect("update gameplay policy");
 

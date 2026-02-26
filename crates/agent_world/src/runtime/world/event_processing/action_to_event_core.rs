@@ -23,11 +23,35 @@ impl World {
                 }
             }
             Action::MoveAgent { agent_id, to } => match self.state.agents.get(agent_id) {
-                Some(cell) => Ok(WorldEventBody::Domain(DomainEvent::AgentMoved {
-                    agent_id: agent_id.clone(),
-                    from: cell.state.pos,
-                    to: *to,
-                })),
+                Some(cell) => {
+                    let target_location_id = format!(
+                        "{}:{}:{}",
+                        to.x_cm.round() as i64,
+                        to.y_cm.round() as i64,
+                        to.z_cm.round() as i64
+                    );
+                    if self
+                        .state
+                        .gameplay_policy
+                        .forbidden_location_ids
+                        .iter()
+                        .any(|value| value == &target_location_id)
+                    {
+                        return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![format!(
+                                    "move denied by gameplay forbidden_location_ids: {target_location_id}"
+                                )],
+                            },
+                        }));
+                    }
+                    Ok(WorldEventBody::Domain(DomainEvent::AgentMoved {
+                        agent_id: agent_id.clone(),
+                        from: cell.state.pos,
+                        to: *to,
+                    }))
+                }
                 None => Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
                     action_id,
                     reason: RejectReason::AgentNotFound {

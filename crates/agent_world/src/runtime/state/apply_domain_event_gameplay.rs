@@ -13,8 +13,10 @@ impl WorldState {
                 operator_agent_id,
                 electricity_tax_bps,
                 data_tax_bps,
+                power_trade_fee_bps,
                 max_open_contracts_per_agent,
                 blocked_agents,
+                forbidden_location_ids,
             } => {
                 if !self.agents.contains_key(operator_agent_id) {
                     return Err(WorldError::AgentNotFound {
@@ -34,11 +36,26 @@ impl WorldState {
                     .collect::<Vec<_>>();
                 normalized_blocked_agents.sort();
                 normalized_blocked_agents.dedup();
+                let mut normalized_forbidden_location_ids = forbidden_location_ids
+                    .iter()
+                    .filter_map(|value| {
+                        let normalized = value.trim();
+                        if normalized.is_empty() {
+                            None
+                        } else {
+                            Some(normalized.to_string())
+                        }
+                    })
+                    .collect::<Vec<_>>();
+                normalized_forbidden_location_ids.sort();
+                normalized_forbidden_location_ids.dedup();
                 self.gameplay_policy = GameplayPolicyState {
                     electricity_tax_bps: *electricity_tax_bps,
                     data_tax_bps: *data_tax_bps,
+                    power_trade_fee_bps: *power_trade_fee_bps,
                     max_open_contracts_per_agent: *max_open_contracts_per_agent,
                     blocked_agents: normalized_blocked_agents,
+                    forbidden_location_ids: normalized_forbidden_location_ids,
                     updated_at: now,
                 };
                 if let Some(cell) = self.agents.get_mut(operator_agent_id) {

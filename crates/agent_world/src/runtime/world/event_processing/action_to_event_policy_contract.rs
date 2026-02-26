@@ -11,8 +11,10 @@ impl World {
                 operator_agent_id,
                 electricity_tax_bps,
                 data_tax_bps,
+                power_trade_fee_bps,
                 max_open_contracts_per_agent,
                 blocked_agents,
+                forbidden_location_ids,
             } => {
                 if !self.state.agents.contains_key(operator_agent_id) {
                     return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
@@ -55,6 +57,17 @@ impl World {
                         },
                     }));
                 }
+                if *power_trade_fee_bps > GAMEPLAY_POLICY_MAX_TAX_BPS {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "power_trade_fee_bps must be <= {}",
+                                GAMEPLAY_POLICY_MAX_TAX_BPS
+                            )],
+                        },
+                    }));
+                }
                 if *max_open_contracts_per_agent < GAMEPLAY_POLICY_MIN_CONTRACT_QUOTA
                     || *max_open_contracts_per_agent > GAMEPLAY_POLICY_MAX_CONTRACT_QUOTA
                 {
@@ -85,12 +98,22 @@ impl World {
                     }
                     normalized_blocked_agents.insert(candidate.to_string());
                 }
+                let mut normalized_forbidden_location_ids = BTreeSet::new();
+                for value in forbidden_location_ids {
+                    let candidate = value.trim();
+                    if candidate.is_empty() {
+                        continue;
+                    }
+                    normalized_forbidden_location_ids.insert(candidate.to_string());
+                }
                 Ok(WorldEventBody::Domain(DomainEvent::GameplayPolicyUpdated {
                     operator_agent_id: operator_agent_id.clone(),
                     electricity_tax_bps: *electricity_tax_bps,
                     data_tax_bps: *data_tax_bps,
+                    power_trade_fee_bps: *power_trade_fee_bps,
                     max_open_contracts_per_agent: *max_open_contracts_per_agent,
                     blocked_agents: normalized_blocked_agents.into_iter().collect(),
+                    forbidden_location_ids: normalized_forbidden_location_ids.into_iter().collect(),
                 }))
             }
             Action::OpenEconomicContract {
@@ -408,7 +431,12 @@ impl World {
                         }));
                     }
                     let tax_bps = match contract.settlement_kind {
-                        ResourceKind::Electricity => self.state.gameplay_policy.electricity_tax_bps,
+                        ResourceKind::Electricity => self
+                            .state
+                            .gameplay_policy
+                            .electricity_tax_bps
+                            .saturating_add(self.state.gameplay_policy.power_trade_fee_bps)
+                            .min(GAMEPLAY_POLICY_MAX_TAX_BPS),
                         ResourceKind::Data => self.state.gameplay_policy.data_tax_bps,
                     };
                     let tax_amount = contract

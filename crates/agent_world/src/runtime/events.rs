@@ -256,9 +256,12 @@ pub enum Action {
         operator_agent_id: String,
         electricity_tax_bps: u16,
         data_tax_bps: u16,
+        power_trade_fee_bps: u16,
         max_open_contracts_per_agent: u16,
         #[serde(default)]
         blocked_agents: Vec<String>,
+        #[serde(default)]
+        forbidden_location_ids: Vec<String>,
     },
     OpenEconomicContract {
         creator_agent_id: String,
@@ -616,8 +619,10 @@ pub enum DomainEvent {
         operator_agent_id: String,
         electricity_tax_bps: u16,
         data_tax_bps: u16,
+        power_trade_fee_bps: u16,
         max_open_contracts_per_agent: u16,
         blocked_agents: Vec<String>,
+        forbidden_location_ids: Vec<String>,
     },
     EconomicContractOpened {
         creator_agent_id: String,
