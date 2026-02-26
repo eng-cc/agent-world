@@ -191,17 +191,22 @@ impl ViewerLiveSession {
                 }
             }
             ViewerRequest::PromptControl { command } => {
-                let result = match command {
+                let (result, wake_llm) = match command {
                     PromptControlCommand::Preview { request } => {
-                        world.prompt_control_preview(request)
+                        (world.prompt_control_preview(request), false)
                     }
-                    PromptControlCommand::Apply { request } => world.prompt_control_apply(request),
+                    PromptControlCommand::Apply { request } => {
+                        (world.prompt_control_apply(request), true)
+                    }
                     PromptControlCommand::Rollback { request } => {
-                        world.prompt_control_rollback(request)
+                        (world.prompt_control_rollback(request), true)
                     }
                 };
                 match result {
                     Ok(ack) => {
+                        if wake_llm {
+                            world.mark_llm_decision_pending();
+                        }
                         send_response(writer, &ViewerResponse::PromptControlAck { ack })?;
                     }
                     Err(error) => {
@@ -211,6 +216,7 @@ impl ViewerLiveSession {
             }
             ViewerRequest::AgentChat { request } => match world.agent_chat(request) {
                 Ok(ack) => {
+                    world.mark_llm_decision_pending();
                     send_response(writer, &ViewerResponse::AgentChatAck { ack })?;
                 }
                 Err(error) => {
@@ -223,10 +229,12 @@ impl ViewerLiveSession {
                 }
                 ViewerControl::Play => {
                     self.playing = true;
+                    world.mark_llm_decision_pending();
                 }
                 ViewerControl::Step { count } => {
                     let steps = count.max(1);
                     for _ in 0..steps {
+                        world.mark_llm_decision_pending();
                         let step = world.step()?;
 
                         if let Some(trace) = step.decision_trace {

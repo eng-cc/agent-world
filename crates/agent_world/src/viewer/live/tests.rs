@@ -223,6 +223,34 @@ fn live_world_llm_bootstrap_script_mode_advances_tick() {
 }
 
 #[test]
+fn live_world_llm_event_driven_gate_avoids_repeated_empty_ticks() {
+    set_test_llm_env();
+    let config = WorldConfig::default();
+    let mut init = WorldInitConfig::default();
+    init.agents = crate::simulator::AgentSpawnConfig {
+        count: 0,
+        ..crate::simulator::AgentSpawnConfig::default()
+    };
+    let mut world = LiveWorld::new(config, init, ViewerLiveDecisionMode::Llm).expect("init ok");
+
+    let first = world.step().expect("first step");
+    assert!(first.event.is_none());
+    assert!(first.decision_trace.is_none());
+    assert_eq!(world.metrics().total_ticks, 1);
+
+    let second = world.step().expect("second step");
+    assert!(second.event.is_none());
+    assert!(second.decision_trace.is_none());
+    assert_eq!(world.metrics().total_ticks, 1);
+
+    world.mark_llm_decision_pending();
+    let third = world.step().expect("third step");
+    assert!(third.event.is_none());
+    assert!(third.decision_trace.is_none());
+    assert_eq!(world.metrics().total_ticks, 2);
+}
+
+#[test]
 fn prompt_control_preview_reports_fields_and_next_version() {
     let config = WorldConfig::default();
     let init = WorldInitConfig::from_scenario(WorldScenario::Minimal, &config);

@@ -293,6 +293,7 @@ struct LiveWorld {
     kernel: WorldKernel,
     decision_mode: ViewerLiveDecisionMode,
     driver: LiveDriver,
+    llm_decision_pending: bool,
     consensus_gate_max_tick: Option<Arc<AtomicU64>>,
     consensus_bridge: Option<LiveConsensusBridge>,
 }
@@ -326,12 +327,14 @@ impl LiveWorld {
     ) -> Result<Self, ViewerLiveServerError> {
         let (kernel, _) = initialize_kernel(config.clone(), init.clone())?;
         let driver = build_driver(&kernel, decision_mode)?;
+        let llm_decision_pending = matches!(&driver, LiveDriver::Llm(_));
         Ok(Self {
             config,
             init,
             kernel,
             decision_mode,
             driver,
+            llm_decision_pending,
             consensus_gate_max_tick,
             consensus_bridge: consensus_runtime.map(LiveConsensusBridge::new),
         })
@@ -366,6 +369,7 @@ impl LiveWorld {
         let (kernel, _) = initialize_kernel(self.config.clone(), self.init.clone())?;
         self.kernel = kernel;
         self.driver = build_driver(&self.kernel, self.decision_mode)?;
+        self.llm_decision_pending = matches!(&self.driver, LiveDriver::Llm(_));
         if let Some(bridge) = self.consensus_bridge.as_mut() {
             bridge.reset_pending();
         }
@@ -387,18 +391,32 @@ impl LiveWorld {
                 })
             }
             LiveDriver::Llm(runner) => {
+                if !self.llm_decision_pending {
+                    return Ok(LiveStepResult {
+                        event: None,
+                        decision_trace: None,
+                    });
+                }
                 let tick_result = runner.tick(&mut self.kernel);
                 sync_llm_runner_long_term_memory(&mut self.kernel, runner);
-                let event = tick_result
-                    .as_ref()
-                    .and_then(|result| result.action_result.as_ref())
-                    .map(|action| action.event.clone());
-                let decision_trace = tick_result.and_then(|result| result.decision_trace);
+                let mut event = None;
+                let mut decision_trace = None;
+                if let Some(result) = tick_result {
+                    event = result.action_result.map(|action| action.event);
+                    decision_trace = result.decision_trace;
+                }
+                self.llm_decision_pending = event.is_some();
                 Ok(LiveStepResult {
                     event,
                     decision_trace,
                 })
             }
+        }
+    }
+
+    fn mark_llm_decision_pending(&mut self) {
+        if matches!(&self.driver, LiveDriver::Llm(_)) {
+            self.llm_decision_pending = true;
         }
     }
 
