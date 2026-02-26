@@ -355,6 +355,7 @@ impl WasmExecutor {
         Ok(())
     }
 
+    #[cfg_attr(not(feature = "wasmtime"), allow(dead_code))]
     fn requested_fuel(&self, request: &ModuleCallRequest) -> u64 {
         if request.limits.max_gas == 0 {
             self.config.max_fuel
