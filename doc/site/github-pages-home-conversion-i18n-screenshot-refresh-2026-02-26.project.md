@@ -24,15 +24,15 @@
 - [x] 替换 `site/assets/images/screenshots/*.webp`
 
 ### 4. 验证与收口
-- [ ] 执行 `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer`
-- [ ] 回写本项目管理文档状态
-- [ ] 写任务日志（`doc/devlog/2026-02-26.md`）
+- [x] 执行 `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer`
+- [x] 回写本项目管理文档状态
+- [x] 写任务日志（`doc/devlog/2026-02-26.md`）
 
 ## 依赖
 - 站点结构：`site/` 静态目录与 `site/assets/app.js` 现有交互。
 - 测试流程：`testing-manual.md` S6 Web 闭环。
 
 ## 状态
-- 当前阶段：进行中（任务 0/1/2/3 已完成，任务 4 待完成）
-- 最近更新：完成任务 3（截图刷新，含 Web 失败后的 native fallback）（2026-02-26）
-- 下一步：执行任务 4（验证与收口）。
+- 当前阶段：已完成（任务 0/1/2/3/4 全部完成）
+- 最近更新：完成任务 4（验证与收口）（2026-02-26）
+- 下一步：无。
