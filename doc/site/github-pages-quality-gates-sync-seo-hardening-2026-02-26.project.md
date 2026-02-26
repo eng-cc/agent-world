@@ -8,10 +8,10 @@
 - [x] 明确实施范围：Pages 门禁、手册镜像同步、SEO 元信息
 
 ### T1 手册镜像路径修复与一致性检查
-- [ ] 修复 `site/doc/cn/viewer-manual.html` 过时 Playwright 路径
-- [ ] 修复 `site/doc/en/viewer-manual.html` 过时 Playwright 路径
-- [ ] 新增 `scripts/site-manual-sync-check.sh`（关键口径一致性校验）
-- [ ] 任务测试与提交
+- [x] 修复 `site/doc/cn/viewer-manual.html` 过时 Playwright 路径
+- [x] 修复 `site/doc/en/viewer-manual.html` 过时 Playwright 路径
+- [x] 新增 `scripts/site-manual-sync-check.sh`（关键口径一致性校验）
+- [x] 任务测试与提交
 
 ### T2 Pages 发布门禁接入
 - [ ] 新增 `scripts/site-link-check.sh`（站内相对链接校验）
@@ -36,6 +36,6 @@
 - 手册内容基线：`doc/viewer-manual.md`。
 
 ## 状态
-- 当前阶段：进行中（T0 完成，T1 进行中）
-- 最近更新：完成 T0 建档（2026-02-26）
-- 下一步：执行 T1，修复手册镜像路径并落地一致性检查脚本。
+- 当前阶段：进行中（T0/T1 完成，T2 进行中）
+- 最近更新：完成 T1（手册镜像路径修复与一致性检查脚本）（2026-02-26）
+- 下一步：执行 T2，新增站内链接检查并接入 Pages 发布门禁。
