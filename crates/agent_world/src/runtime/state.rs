@@ -15,6 +15,10 @@ use super::gameplay_state::{
     GovernanceVoteBallotState, GovernanceVoteState, MetaProgressState, WarParticipantOutcome,
     WarState,
 };
+use super::main_token::{
+    MainTokenAccountBalance, MainTokenConfig, MainTokenEpochIssuanceRecord,
+    MainTokenGenesisAllocationBucketState, MainTokenSupplyState,
+};
 use super::node_points::EpochSettlementReport;
 use super::reward_asset::{
     reward_mint_signature_v1, verify_reward_mint_signature_v2, NodeAssetBalance,
@@ -220,6 +224,18 @@ pub struct WorldState {
     #[serde(default = "default_module_market_sale_id")]
     pub next_module_market_sale_id: u64,
     #[serde(default)]
+    pub main_token_config: MainTokenConfig,
+    #[serde(default)]
+    pub main_token_supply: MainTokenSupplyState,
+    #[serde(default)]
+    pub main_token_balances: BTreeMap<String, MainTokenAccountBalance>,
+    #[serde(default)]
+    pub main_token_genesis_buckets: BTreeMap<String, MainTokenGenesisAllocationBucketState>,
+    #[serde(default)]
+    pub main_token_epoch_issuance_records: BTreeMap<u64, MainTokenEpochIssuanceRecord>,
+    #[serde(default)]
+    pub main_token_treasury_balances: BTreeMap<String, u64>,
+    #[serde(default)]
     pub reward_asset_config: RewardAssetConfig,
     #[serde(default)]
     pub node_asset_balances: BTreeMap<String, NodeAssetBalance>,
@@ -271,6 +287,12 @@ impl Default for WorldState {
             next_module_instance_id: default_next_module_instance_id(),
             next_module_market_order_id: default_module_market_order_id(),
             next_module_market_sale_id: default_module_market_sale_id(),
+            main_token_config: MainTokenConfig::default(),
+            main_token_supply: MainTokenSupplyState::default(),
+            main_token_balances: BTreeMap::new(),
+            main_token_genesis_buckets: BTreeMap::new(),
+            main_token_epoch_issuance_records: BTreeMap::new(),
+            main_token_treasury_balances: BTreeMap::new(),
             reward_asset_config: RewardAssetConfig::default(),
             node_asset_balances: BTreeMap::new(),
             protocol_power_reserve: ProtocolPowerReserve::default(),

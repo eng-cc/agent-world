@@ -22,6 +22,7 @@ mod governance;
 mod m1_builtin_wasm_artifact;
 mod m4_builtin_wasm_artifact;
 mod m5_builtin_wasm_artifact;
+mod main_token;
 mod manifest;
 mod module_source_compiler;
 mod module_store;
@@ -105,6 +106,11 @@ pub use modules::{
 };
 
 // Node points
+pub use main_token::{
+    MainTokenAccountBalance, MainTokenBurnPolicy, MainTokenConfig, MainTokenEpochIssuanceRecord,
+    MainTokenGenesisAllocationBucketState, MainTokenInflationPolicy, MainTokenIssuanceSplitPolicy,
+    MainTokenSupplyState,
+};
 pub use node_points::{
     EpochSettlementReport, NodeContributionSample, NodePointsConfig, NodePointsError,
     NodePointsLedger, NodePointsLedgerSnapshot, NodeSettlement,

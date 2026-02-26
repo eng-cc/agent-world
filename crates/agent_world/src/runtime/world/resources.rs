@@ -7,9 +7,11 @@ use super::super::util::hash_json;
 use super::super::ResourceDelta;
 use super::super::WorldError;
 use super::super::{
-    EpochSettlementReport, MaterialLedgerId, MaterialStack, NodeAssetBalance, NodeRewardMintRecord,
-    ProtocolPowerReserve, RewardAssetConfig, RewardAssetInvariantReport,
-    RewardAssetInvariantViolation, RewardSignatureGovernancePolicy, SystemOrderPoolBudget,
+    EpochSettlementReport, MainTokenAccountBalance, MainTokenConfig, MainTokenEpochIssuanceRecord,
+    MainTokenGenesisAllocationBucketState, MainTokenSupplyState, MaterialLedgerId, MaterialStack,
+    NodeAssetBalance, NodeRewardMintRecord, ProtocolPowerReserve, RewardAssetConfig,
+    RewardAssetInvariantReport, RewardAssetInvariantViolation, RewardSignatureGovernancePolicy,
+    SystemOrderPoolBudget,
 };
 use super::World;
 use crate::simulator::ResourceKind;
@@ -17,6 +19,127 @@ use crate::simulator::StockError;
 use std::collections::BTreeMap;
 
 impl World {
+    // ---------------------------------------------------------------------
+    // Main token ledger
+    // ---------------------------------------------------------------------
+
+    pub fn main_token_config(&self) -> &MainTokenConfig {
+        &self.state.main_token_config
+    }
+
+    pub fn set_main_token_config(&mut self, config: MainTokenConfig) {
+        self.state.main_token_config = config;
+    }
+
+    pub fn main_token_supply(&self) -> &MainTokenSupplyState {
+        &self.state.main_token_supply
+    }
+
+    pub fn set_main_token_supply(&mut self, supply: MainTokenSupplyState) {
+        self.state.main_token_supply = supply;
+    }
+
+    pub fn main_token_account_balance(&self, account_id: &str) -> Option<&MainTokenAccountBalance> {
+        self.state.main_token_balances.get(account_id)
+    }
+
+    pub fn main_token_liquid_balance(&self, account_id: &str) -> u64 {
+        self.state
+            .main_token_balances
+            .get(account_id)
+            .map(|balance| balance.liquid_balance)
+            .unwrap_or(0)
+    }
+
+    pub fn set_main_token_account_balance(
+        &mut self,
+        account_id: &str,
+        liquid_balance: u64,
+        vested_balance: u64,
+    ) -> Result<(), WorldError> {
+        let account_id = account_id.trim();
+        if account_id.is_empty() {
+            return Err(WorldError::ResourceBalanceInvalid {
+                reason: "main token account_id cannot be empty".to_string(),
+            });
+        }
+        self.state.main_token_balances.insert(
+            account_id.to_string(),
+            MainTokenAccountBalance {
+                account_id: account_id.to_string(),
+                liquid_balance,
+                vested_balance,
+            },
+        );
+        Ok(())
+    }
+
+    pub fn main_token_genesis_bucket(
+        &self,
+        bucket_id: &str,
+    ) -> Option<&MainTokenGenesisAllocationBucketState> {
+        self.state.main_token_genesis_buckets.get(bucket_id)
+    }
+
+    pub fn set_main_token_genesis_bucket(
+        &mut self,
+        bucket: MainTokenGenesisAllocationBucketState,
+    ) -> Result<(), WorldError> {
+        if bucket.bucket_id.trim().is_empty() {
+            return Err(WorldError::ResourceBalanceInvalid {
+                reason: "main token bucket_id cannot be empty".to_string(),
+            });
+        }
+        self.state
+            .main_token_genesis_buckets
+            .insert(bucket.bucket_id.clone(), bucket);
+        Ok(())
+    }
+
+    pub fn main_token_epoch_issuance_record(
+        &self,
+        epoch_index: u64,
+    ) -> Option<&MainTokenEpochIssuanceRecord> {
+        self.state
+            .main_token_epoch_issuance_records
+            .get(&epoch_index)
+    }
+
+    pub fn record_main_token_epoch_issuance(
+        &mut self,
+        record: MainTokenEpochIssuanceRecord,
+    ) -> Result<(), WorldError> {
+        self.state
+            .main_token_epoch_issuance_records
+            .insert(record.epoch_index, record);
+        Ok(())
+    }
+
+    pub fn main_token_treasury_balance(&self, bucket_id: &str) -> u64 {
+        self.state
+            .main_token_treasury_balances
+            .get(bucket_id)
+            .copied()
+            .unwrap_or(0)
+    }
+
+    pub fn set_main_token_treasury_balance(
+        &mut self,
+        bucket_id: &str,
+        amount: u64,
+    ) -> Result<(), WorldError> {
+        let bucket_id = bucket_id.trim();
+        if bucket_id.is_empty() {
+            return Err(WorldError::ResourceBalanceInvalid {
+                reason: "main token treasury bucket_id cannot be empty".to_string(),
+            });
+        }
+        self.state
+            .main_token_treasury_balances
+            .insert(bucket_id.to_string(), amount);
+        Ok(())
+    }
+
     // ---------------------------------------------------------------------
     // Reward asset ledger
     // ---------------------------------------------------------------------

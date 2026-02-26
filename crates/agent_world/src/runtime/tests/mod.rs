@@ -65,6 +65,7 @@ mod gameplay;
 mod gameplay_bootstrap;
 mod gameplay_protocol;
 mod governance;
+mod main_token;
 mod module_action_loop;
 mod module_runtime_metering;
 mod modules;
