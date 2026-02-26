@@ -12,3 +12,6 @@ wasmtime = { version = "41", optional = true }
 [features]
 default = []
 wasmtime = ["dep:wasmtime"]
+
+[dev-dependencies]
+wat = "1"
