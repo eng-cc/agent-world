@@ -148,13 +148,16 @@ wait_for_http_ready() {
   return 1
 }
 
-wait_for_tcp_ready() {
-  local host="$1"
-  local port="$2"
-  local timeout_secs="$3"
+wait_for_tcp_listener_ready() {
+  local port="$1"
+  local timeout_secs="$2"
   local i
+  if ! command -v lsof >/dev/null 2>&1 && ! command -v ss >/dev/null 2>&1; then
+    echo "warning: neither lsof nor ss found; skip passive listener probe for port ${port}" >&2
+    return 0
+  fi
   for ((i = 0; i < timeout_secs; i++)); do
-    if (echo >"/dev/tcp/${host}/${port}") >/dev/null 2>&1; then
+    if port_in_use "$port"; then
       return 0
     fi
     sleep 1
@@ -244,7 +247,7 @@ if ! wait_for_http_ready "http://${VIEWER_HOST}:${VIEWER_PORT}/" 180; then
   exit 1
 fi
 
-if ! wait_for_tcp_ready "127.0.0.1" "$WEB_BRIDGE_PORT" 60; then
+if ! wait_for_tcp_listener_ready "$WEB_BRIDGE_PORT" 60; then
   echo "error: web bridge port ${WEB_BRIDGE_PORT} did not become ready in time" >&2
   tail_logs_on_error
   exit 1
