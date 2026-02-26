@@ -85,6 +85,7 @@ fn m4_builtin_module_ids_manifest_matches_runtime_constants() {
         M4_PRODUCT_MOTOR_MODULE_ID,
         M4_PRODUCT_LOGISTICS_DRONE_MODULE_ID,
     ];
+    assert_eq!(m4_bootstrap_module_ids(), expected);
     assert_eq!(m4_builtin_module_ids_manifest(), expected);
 }
 

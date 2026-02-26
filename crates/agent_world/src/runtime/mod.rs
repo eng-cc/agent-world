@@ -138,6 +138,8 @@ pub(crate) use m5_builtin_wasm_artifact::m5_builtin_module_ids_manifest;
 pub(crate) use m5_builtin_wasm_artifact::{
     m5_builtin_module_artifact_identity, m5_builtin_wasm_module_artifact_bytes,
 };
+#[cfg(all(test, feature = "wasmtime", feature = "test_tier_full"))]
+pub(crate) use world::m4_bootstrap_module_ids;
 
 // Built-in module constants
 pub use agent_world_wasm_store::{

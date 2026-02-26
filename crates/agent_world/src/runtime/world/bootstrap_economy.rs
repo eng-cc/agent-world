@@ -14,119 +14,132 @@ use super::World;
 
 const M4_BOOTSTRAP_WASM_MAX_MEM_BYTES: u64 = 64 * 1024 * 1024;
 const M4_BOOTSTRAP_WASM_MAX_GAS: u64 = 2_000_000;
+const M4_BUILTIN_MODULE_IDS_MANIFEST: &str = include_str!("artifacts/m4_builtin_module_ids.txt");
+
+#[derive(Debug, Clone, Copy)]
+struct M4BootstrapModuleDescriptor {
+    module_id: &'static str,
+    manifest_name: &'static str,
+    max_call_rate: u32,
+}
+
+const M4_BOOTSTRAP_MODULES: &[M4BootstrapModuleDescriptor] = &[
+    M4BootstrapModuleDescriptor {
+        module_id: M4_FACTORY_MINER_MODULE_ID,
+        manifest_name: "M4FactoryMinerMk1",
+        max_call_rate: 32,
+    },
+    M4BootstrapModuleDescriptor {
+        module_id: M4_FACTORY_SMELTER_MODULE_ID,
+        manifest_name: "M4FactorySmelterMk1",
+        max_call_rate: 32,
+    },
+    M4BootstrapModuleDescriptor {
+        module_id: M4_FACTORY_ASSEMBLER_MODULE_ID,
+        manifest_name: "M4FactoryAssemblerMk1",
+        max_call_rate: 32,
+    },
+    M4BootstrapModuleDescriptor {
+        module_id: M4_RECIPE_SMELT_IRON_MODULE_ID,
+        manifest_name: "M4RecipeSmelterIronIngot",
+        max_call_rate: 128,
+    },
+    M4BootstrapModuleDescriptor {
+        module_id: M4_RECIPE_SMELT_COPPER_WIRE_MODULE_ID,
+        manifest_name: "M4RecipeSmelterCopperWire",
+        max_call_rate: 128,
+    },
+    M4BootstrapModuleDescriptor {
+        module_id: M4_RECIPE_ASSEMBLE_GEAR_MODULE_ID,
+        manifest_name: "M4RecipeAssemblerGear",
+        max_call_rate: 128,
+    },
+    M4BootstrapModuleDescriptor {
+        module_id: M4_RECIPE_ASSEMBLE_CONTROL_CHIP_MODULE_ID,
+        manifest_name: "M4RecipeAssemblerControlChip",
+        max_call_rate: 128,
+    },
+    M4BootstrapModuleDescriptor {
+        module_id: M4_RECIPE_ASSEMBLE_MOTOR_MODULE_ID,
+        manifest_name: "M4RecipeAssemblerMotorMk1",
+        max_call_rate: 128,
+    },
+    M4BootstrapModuleDescriptor {
+        module_id: M4_RECIPE_ASSEMBLE_DRONE_MODULE_ID,
+        manifest_name: "M4RecipeAssemblerLogisticsDrone",
+        max_call_rate: 128,
+    },
+    M4BootstrapModuleDescriptor {
+        module_id: M4_PRODUCT_IRON_INGOT_MODULE_ID,
+        manifest_name: "M4ProductIronIngot",
+        max_call_rate: 64,
+    },
+    M4BootstrapModuleDescriptor {
+        module_id: M4_PRODUCT_CONTROL_CHIP_MODULE_ID,
+        manifest_name: "M4ProductControlChip",
+        max_call_rate: 64,
+    },
+    M4BootstrapModuleDescriptor {
+        module_id: M4_PRODUCT_MOTOR_MODULE_ID,
+        manifest_name: "M4ProductMotorMk1",
+        max_call_rate: 64,
+    },
+    M4BootstrapModuleDescriptor {
+        module_id: M4_PRODUCT_LOGISTICS_DRONE_MODULE_ID,
+        manifest_name: "M4ProductLogisticsDrone",
+        max_call_rate: 64,
+    },
+];
+
+pub(crate) fn m4_bootstrap_module_ids() -> Vec<&'static str> {
+    M4_BOOTSTRAP_MODULES
+        .iter()
+        .map(|item| item.module_id)
+        .collect()
+}
+
+fn m4_builtin_module_ids_from_manifest() -> Vec<&'static str> {
+    M4_BUILTIN_MODULE_IDS_MANIFEST
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .collect()
+}
+
+fn ensure_m4_bootstrap_descriptor_consistency() -> Result<(), WorldError> {
+    let descriptor_ids = m4_bootstrap_module_ids();
+    let manifest_ids = m4_builtin_module_ids_from_manifest();
+    if descriptor_ids != manifest_ids {
+        return Err(WorldError::ModuleChangeInvalid {
+            reason: format!(
+                "m4 bootstrap descriptor ids mismatch module ids manifest: descriptor=[{}] manifest=[{}]",
+                descriptor_ids.join(","),
+                manifest_ids.join(",")
+            ),
+        });
+    }
+    Ok(())
+}
 
 impl World {
     pub fn install_m4_economy_bootstrap_modules(
         &mut self,
         actor: impl Into<String>,
     ) -> Result<(), WorldError> {
+        ensure_m4_bootstrap_descriptor_consistency()?;
+
         let actor = actor.into();
         let mut changes = ModuleChangeSet::default();
 
-        ensure_bootstrap_module(
-            self,
-            &mut changes,
-            M4_FACTORY_MINER_MODULE_ID,
-            &m4_builtin_wasm_artifact_for_module(M4_FACTORY_MINER_MODULE_ID)?,
-            M4_ECONOMY_MODULE_VERSION,
-            m4_factory_miner_manifest,
-        )?;
-        ensure_bootstrap_module(
-            self,
-            &mut changes,
-            M4_FACTORY_SMELTER_MODULE_ID,
-            &m4_builtin_wasm_artifact_for_module(M4_FACTORY_SMELTER_MODULE_ID)?,
-            M4_ECONOMY_MODULE_VERSION,
-            m4_factory_smelter_manifest,
-        )?;
-        ensure_bootstrap_module(
-            self,
-            &mut changes,
-            M4_FACTORY_ASSEMBLER_MODULE_ID,
-            &m4_builtin_wasm_artifact_for_module(M4_FACTORY_ASSEMBLER_MODULE_ID)?,
-            M4_ECONOMY_MODULE_VERSION,
-            m4_factory_assembler_manifest,
-        )?;
-        ensure_bootstrap_module(
-            self,
-            &mut changes,
-            M4_RECIPE_SMELT_IRON_MODULE_ID,
-            &m4_builtin_wasm_artifact_for_module(M4_RECIPE_SMELT_IRON_MODULE_ID)?,
-            M4_ECONOMY_MODULE_VERSION,
-            m4_recipe_smelt_iron_manifest,
-        )?;
-        ensure_bootstrap_module(
-            self,
-            &mut changes,
-            M4_RECIPE_SMELT_COPPER_WIRE_MODULE_ID,
-            &m4_builtin_wasm_artifact_for_module(M4_RECIPE_SMELT_COPPER_WIRE_MODULE_ID)?,
-            M4_ECONOMY_MODULE_VERSION,
-            m4_recipe_smelt_copper_wire_manifest,
-        )?;
-        ensure_bootstrap_module(
-            self,
-            &mut changes,
-            M4_RECIPE_ASSEMBLE_GEAR_MODULE_ID,
-            &m4_builtin_wasm_artifact_for_module(M4_RECIPE_ASSEMBLE_GEAR_MODULE_ID)?,
-            M4_ECONOMY_MODULE_VERSION,
-            m4_recipe_assemble_gear_manifest,
-        )?;
-        ensure_bootstrap_module(
-            self,
-            &mut changes,
-            M4_RECIPE_ASSEMBLE_CONTROL_CHIP_MODULE_ID,
-            &m4_builtin_wasm_artifact_for_module(M4_RECIPE_ASSEMBLE_CONTROL_CHIP_MODULE_ID)?,
-            M4_ECONOMY_MODULE_VERSION,
-            m4_recipe_assemble_control_chip_manifest,
-        )?;
-        ensure_bootstrap_module(
-            self,
-            &mut changes,
-            M4_RECIPE_ASSEMBLE_MOTOR_MODULE_ID,
-            &m4_builtin_wasm_artifact_for_module(M4_RECIPE_ASSEMBLE_MOTOR_MODULE_ID)?,
-            M4_ECONOMY_MODULE_VERSION,
-            m4_recipe_assemble_motor_manifest,
-        )?;
-        ensure_bootstrap_module(
-            self,
-            &mut changes,
-            M4_RECIPE_ASSEMBLE_DRONE_MODULE_ID,
-            &m4_builtin_wasm_artifact_for_module(M4_RECIPE_ASSEMBLE_DRONE_MODULE_ID)?,
-            M4_ECONOMY_MODULE_VERSION,
-            m4_recipe_assemble_drone_manifest,
-        )?;
-        ensure_bootstrap_module(
-            self,
-            &mut changes,
-            M4_PRODUCT_IRON_INGOT_MODULE_ID,
-            &m4_builtin_wasm_artifact_for_module(M4_PRODUCT_IRON_INGOT_MODULE_ID)?,
-            M4_ECONOMY_MODULE_VERSION,
-            m4_product_iron_ingot_manifest,
-        )?;
-        ensure_bootstrap_module(
-            self,
-            &mut changes,
-            M4_PRODUCT_CONTROL_CHIP_MODULE_ID,
-            &m4_builtin_wasm_artifact_for_module(M4_PRODUCT_CONTROL_CHIP_MODULE_ID)?,
-            M4_ECONOMY_MODULE_VERSION,
-            m4_product_control_chip_manifest,
-        )?;
-        ensure_bootstrap_module(
-            self,
-            &mut changes,
-            M4_PRODUCT_MOTOR_MODULE_ID,
-            &m4_builtin_wasm_artifact_for_module(M4_PRODUCT_MOTOR_MODULE_ID)?,
-            M4_ECONOMY_MODULE_VERSION,
-            m4_product_motor_manifest,
-        )?;
-        ensure_bootstrap_module(
-            self,
-            &mut changes,
-            M4_PRODUCT_LOGISTICS_DRONE_MODULE_ID,
-            &m4_builtin_wasm_artifact_for_module(M4_PRODUCT_LOGISTICS_DRONE_MODULE_ID)?,
-            M4_ECONOMY_MODULE_VERSION,
-            m4_product_logistics_drone_manifest,
-        )?;
+        for descriptor in M4_BOOTSTRAP_MODULES {
+            ensure_bootstrap_module(
+                self,
+                &mut changes,
+                descriptor,
+                &m4_builtin_wasm_artifact_for_module(descriptor.module_id)?,
+                M4_ECONOMY_MODULE_VERSION,
+            )?;
+        }
 
         if changes.is_empty() {
             return Ok(());
@@ -167,48 +180,45 @@ fn m4_bootstrap_artifact_identity(module_id: &str, wasm_hash: &str) -> ModuleArt
 fn ensure_bootstrap_module(
     world: &mut World,
     changes: &mut ModuleChangeSet,
-    module_id: &str,
+    descriptor: &M4BootstrapModuleDescriptor,
     artifact: &[u8],
     version: &str,
-    make_manifest: fn(String) -> ModuleManifest,
 ) -> Result<(), WorldError> {
     if world
         .module_registry
         .active
-        .get(module_id)
+        .get(descriptor.module_id)
         .is_some_and(|active_version| active_version == version)
     {
         return Ok(());
     }
 
-    let record_key = ModuleRegistry::record_key(module_id, version);
+    let record_key = ModuleRegistry::record_key(descriptor.module_id, version);
     if !world.module_registry.records.contains_key(&record_key) {
         let wasm_hash = util::sha256_hex(artifact);
         world.register_module_artifact(wasm_hash.clone(), artifact)?;
-        changes.register.push(make_manifest(wasm_hash));
+        changes.register.push(m4_manifest(descriptor, wasm_hash));
     }
 
     changes.activate.push(ModuleActivation {
-        module_id: module_id.to_string(),
+        module_id: descriptor.module_id.to_string(),
         version: version.to_string(),
     });
 
     Ok(())
 }
 
-fn m4_manifest(
-    module_id: &str,
-    name: &str,
-    wasm_hash: String,
-    max_call_rate: u32,
-) -> ModuleManifest {
+fn m4_manifest(descriptor: &M4BootstrapModuleDescriptor, wasm_hash: String) -> ModuleManifest {
     ModuleManifest {
-        module_id: module_id.to_string(),
-        name: name.to_string(),
+        module_id: descriptor.module_id.to_string(),
+        name: descriptor.manifest_name.to_string(),
         version: M4_ECONOMY_MODULE_VERSION.to_string(),
         kind: ModuleKind::Pure,
         role: ModuleRole::Domain,
-        artifact_identity: Some(m4_bootstrap_artifact_identity(module_id, &wasm_hash)),
+        artifact_identity: Some(m4_bootstrap_artifact_identity(
+            descriptor.module_id,
+            &wasm_hash,
+        )),
         wasm_hash,
         interface_version: "wasm-1".to_string(),
         abi_contract: ModuleAbiContract::default(),
@@ -218,127 +228,10 @@ fn m4_manifest(
         limits: ModuleLimits {
             max_mem_bytes: M4_BOOTSTRAP_WASM_MAX_MEM_BYTES,
             max_gas: M4_BOOTSTRAP_WASM_MAX_GAS,
-            max_call_rate,
+            max_call_rate: descriptor.max_call_rate,
             max_output_bytes: 4096,
             max_effects: 0,
             max_emits: 2,
         },
     }
-}
-
-fn m4_factory_miner_manifest(wasm_hash: String) -> ModuleManifest {
-    m4_manifest(
-        M4_FACTORY_MINER_MODULE_ID,
-        "M4FactoryMinerMk1",
-        wasm_hash,
-        32,
-    )
-}
-
-fn m4_factory_smelter_manifest(wasm_hash: String) -> ModuleManifest {
-    m4_manifest(
-        M4_FACTORY_SMELTER_MODULE_ID,
-        "M4FactorySmelterMk1",
-        wasm_hash,
-        32,
-    )
-}
-
-fn m4_factory_assembler_manifest(wasm_hash: String) -> ModuleManifest {
-    m4_manifest(
-        M4_FACTORY_ASSEMBLER_MODULE_ID,
-        "M4FactoryAssemblerMk1",
-        wasm_hash,
-        32,
-    )
-}
-
-fn m4_recipe_smelt_iron_manifest(wasm_hash: String) -> ModuleManifest {
-    m4_manifest(
-        M4_RECIPE_SMELT_IRON_MODULE_ID,
-        "M4RecipeSmelterIronIngot",
-        wasm_hash,
-        128,
-    )
-}
-
-fn m4_recipe_smelt_copper_wire_manifest(wasm_hash: String) -> ModuleManifest {
-    m4_manifest(
-        M4_RECIPE_SMELT_COPPER_WIRE_MODULE_ID,
-        "M4RecipeSmelterCopperWire",
-        wasm_hash,
-        128,
-    )
-}
-
-fn m4_recipe_assemble_gear_manifest(wasm_hash: String) -> ModuleManifest {
-    m4_manifest(
-        M4_RECIPE_ASSEMBLE_GEAR_MODULE_ID,
-        "M4RecipeAssemblerGear",
-        wasm_hash,
-        128,
-    )
-}
-
-fn m4_recipe_assemble_control_chip_manifest(wasm_hash: String) -> ModuleManifest {
-    m4_manifest(
-        M4_RECIPE_ASSEMBLE_CONTROL_CHIP_MODULE_ID,
-        "M4RecipeAssemblerControlChip",
-        wasm_hash,
-        128,
-    )
-}
-
-fn m4_recipe_assemble_motor_manifest(wasm_hash: String) -> ModuleManifest {
-    m4_manifest(
-        M4_RECIPE_ASSEMBLE_MOTOR_MODULE_ID,
-        "M4RecipeAssemblerMotorMk1",
-        wasm_hash,
-        128,
-    )
-}
-
-fn m4_recipe_assemble_drone_manifest(wasm_hash: String) -> ModuleManifest {
-    m4_manifest(
-        M4_RECIPE_ASSEMBLE_DRONE_MODULE_ID,
-        "M4RecipeAssemblerLogisticsDrone",
-        wasm_hash,
-        128,
-    )
-}
-
-fn m4_product_iron_ingot_manifest(wasm_hash: String) -> ModuleManifest {
-    m4_manifest(
-        M4_PRODUCT_IRON_INGOT_MODULE_ID,
-        "M4ProductIronIngot",
-        wasm_hash,
-        64,
-    )
-}
-
-fn m4_product_control_chip_manifest(wasm_hash: String) -> ModuleManifest {
-    m4_manifest(
-        M4_PRODUCT_CONTROL_CHIP_MODULE_ID,
-        "M4ProductControlChip",
-        wasm_hash,
-        64,
-    )
-}
-
-fn m4_product_motor_manifest(wasm_hash: String) -> ModuleManifest {
-    m4_manifest(
-        M4_PRODUCT_MOTOR_MODULE_ID,
-        "M4ProductMotorMk1",
-        wasm_hash,
-        64,
-    )
-}
-
-fn m4_product_logistics_drone_manifest(wasm_hash: String) -> ModuleManifest {
-    m4_manifest(
-        M4_PRODUCT_LOGISTICS_DRONE_MODULE_ID,
-        "M4ProductLogisticsDrone",
-        wasm_hash,
-        64,
-    )
 }

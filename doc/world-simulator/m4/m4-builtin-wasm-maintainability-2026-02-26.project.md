@@ -3,7 +3,7 @@
 ## 任务拆解
 - [x] T0 建档：设计文档 + 项目管理文档
 - [x] T1 模块模板化抽象（Recipe/Product/Factory）
-- [ ] T2 Bootstrap 清单驱动化 + 一致性护栏 + 测试
+- [x] T2 Bootstrap 清单驱动化 + 一致性护栏 + 测试
 - [ ] T3 回归收口（文档、devlog、验证）
 
 ## 依赖
@@ -14,7 +14,7 @@
 - `crates/agent_world/src/runtime/tests/economy_bootstrap.rs`
 
 ## 状态
-- 当前阶段：T2（进行中）
-- 已完成：T0, T1
-- 进行中：T2
+- 当前阶段：T3（进行中）
+- 已完成：T0, T1, T2
+- 进行中：T3
 - 阻塞项：无

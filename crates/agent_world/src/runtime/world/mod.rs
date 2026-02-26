@@ -27,6 +27,8 @@ mod scheduling;
 mod snapshot;
 mod step;
 
+#[cfg(all(test, feature = "wasmtime", feature = "test_tier_full"))]
+pub(crate) use bootstrap_economy::m4_bootstrap_module_ids;
 pub use bootstrap_power::M1ScenarioBootstrapConfig;
 
 use serde::{Deserialize, Serialize};
