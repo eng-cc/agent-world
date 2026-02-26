@@ -23,7 +23,12 @@
       ],
       "source_hash": "91dc34eef9090f750c38573d1138b17d9718adf80b7a3f34aa0d5a15c1b4b676",
       "build_manifest_hash": "6f92432d2b79412ae7aabc9928de1631077d26748f1371444eb28f3e80c2baf7",
-      "identity_hash": "815b62c47124e49cbcbb42f4a06447ddbe486b466f5474a576e999e28819a807"
+      "identity_hash": "815b62c47124e49cbcbb42f4a06447ddbe486b466f5474a576e999e28819a807",
+      "signer_node_id": "builtin.module.release.signer",
+      "signature_scheme": "ed25519",
+      "artifact_signatures": {
+        "b19f652d5af12e5a3f40ffb33da6b12ae241bb7e356838bb9aa0fdeb26171a74": "modsig:ed25519:v1:6f0d1eeda5e01c55e8ab67506fa19f2d90a5468513d45a75ae93b14def84130886c639efc83b1ff01167aab68cc1f758aed8a04bc486a34cc5ce5621517c560c"
+      }
     },
     {
       "module_id": "m4.factory.miner.mk1",
@@ -32,7 +37,12 @@
       ],
       "source_hash": "b8b05882eb7ca19e94c53393618e2bafefa1fae670584959fd43ecab4ab7dd92",
       "build_manifest_hash": "6f92432d2b79412ae7aabc9928de1631077d26748f1371444eb28f3e80c2baf7",
-      "identity_hash": "f5d3e7dc38258b8697f638b79c2faa7492845ba57209b27ccb2c581b0606f324"
+      "identity_hash": "f5d3e7dc38258b8697f638b79c2faa7492845ba57209b27ccb2c581b0606f324",
+      "signer_node_id": "builtin.module.release.signer",
+      "signature_scheme": "ed25519",
+      "artifact_signatures": {
+        "6e4573f87d6c723c7a472ad1857746c3f3ea0cdaf0944851e22f9a2d7fbb28ef": "modsig:ed25519:v1:15c15ac44d3dd20a936ccf2e93eee4d2fd257da742a2f9df4617526342ac1fd7eaba1b2fc9299c06b0bb54bbd6fc586e073e34f0b20dd5982492aa3f107ec40c"
+      }
     },
     {
       "module_id": "m4.factory.smelter.mk1",
@@ -41,7 +51,12 @@
       ],
       "source_hash": "e83f6c23ff6ec5c8d922aaaffa2d09dae789682c0d9e6abb7bc0ccc4045f9aad",
       "build_manifest_hash": "6f92432d2b79412ae7aabc9928de1631077d26748f1371444eb28f3e80c2baf7",
-      "identity_hash": "aa09b3c223fce246af7e05639b0a1028bc0b0b8e10fca5a11d9fb0ee38e4faee"
+      "identity_hash": "aa09b3c223fce246af7e05639b0a1028bc0b0b8e10fca5a11d9fb0ee38e4faee",
+      "signer_node_id": "builtin.module.release.signer",
+      "signature_scheme": "ed25519",
+      "artifact_signatures": {
+        "30efb8cd63518eb0964680a7c6b4439a4b4ce6186e9ff3892739a57a9192ef34": "modsig:ed25519:v1:8b5da40023ddc0c43d48ba2e4ac16462102bd9852bd1231e34954955d56f0d1e2b16123000018a94d4244dc52cfe411d8f6b89d487449bdf50321e32bdda3b0a"
+      }
     },
     {
       "module_id": "m4.product.component.control_chip",
@@ -50,7 +65,12 @@
       ],
       "source_hash": "856e56f70b237cbb138ae9c000c877a8af5334c63d6f7e07f55ce9853b02293d",
       "build_manifest_hash": "6f92432d2b79412ae7aabc9928de1631077d26748f1371444eb28f3e80c2baf7",
-      "identity_hash": "ec259b6733b99704d56daa778a96cd8936e133bf68c2dbfb610ace78753216e3"
+      "identity_hash": "ec259b6733b99704d56daa778a96cd8936e133bf68c2dbfb610ace78753216e3",
+      "signer_node_id": "builtin.module.release.signer",
+      "signature_scheme": "ed25519",
+      "artifact_signatures": {
+        "2e80cae483d9dae8a5943af93b8a80d96733bc6e961dd6e0e857d521786acc76": "modsig:ed25519:v1:7846f962ebd3251bd9e0d511eafe43337feb86a876c8465566bae02267982e11c2e62001b9833696c91ae13038242186869acaa10d3c4ad66bc8dabbbea8cb09"
+      }
     },
     {
       "module_id": "m4.product.component.motor_mk1",
@@ -59,7 +79,12 @@
       ],
       "source_hash": "ccd4ea82db73d0c1715c8595b5461d629c3e729bec78180ba0432fe0f4e81bc8",
       "build_manifest_hash": "6f92432d2b79412ae7aabc9928de1631077d26748f1371444eb28f3e80c2baf7",
-      "identity_hash": "bef536b2e193b582bc46009fd28ef5fde318361a29a9ec37bf837bf68b6fea3c"
+      "identity_hash": "bef536b2e193b582bc46009fd28ef5fde318361a29a9ec37bf837bf68b6fea3c",
+      "signer_node_id": "builtin.module.release.signer",
+      "signature_scheme": "ed25519",
+      "artifact_signatures": {
+        "a02a8bacaeec1fb3cee4ef04058326bbeefa57e79f773b6d66395d0343caaa67": "modsig:ed25519:v1:2dd6ba877b074284838566c9bb4ffa37cd5c163ab1c11574e522980ce3b64107e9ce3142ef9d9a227ab920d8acc2edc61ba8780efe5ef7cd433a9e7be0efeb0e"
+      }
     },
     {
       "module_id": "m4.product.finished.logistics_drone",
@@ -68,7 +93,12 @@
       ],
       "source_hash": "e24eca1588eae60dfafa82626b606567c2a7d5bc6591df07e68ffeddc9c5d395",
       "build_manifest_hash": "6f92432d2b79412ae7aabc9928de1631077d26748f1371444eb28f3e80c2baf7",
-      "identity_hash": "4b6fd1797395bf9f2e96672b044791ced52c05b8137df8a5f881365bfe69567e"
+      "identity_hash": "4b6fd1797395bf9f2e96672b044791ced52c05b8137df8a5f881365bfe69567e",
+      "signer_node_id": "builtin.module.release.signer",
+      "signature_scheme": "ed25519",
+      "artifact_signatures": {
+        "87b204651a175f7f708d5cc109eef24417d3287bddd9b598ec66cafc0879166e": "modsig:ed25519:v1:ec0b17f941882fc505eaeb6a3e73ffd6fc12e17c5e3c1a1100b34765e45c732cbad6ec4b46ed302670abe2e393a28ae23e1f44e36f049260eafa0d1817c9490f"
+      }
     },
     {
       "module_id": "m4.product.material.iron_ingot",
@@ -77,7 +107,12 @@
       ],
       "source_hash": "e88d1c9d2f1c675cb20db34740b8c1f63673a51073f332214a8634ad0d558415",
       "build_manifest_hash": "6f92432d2b79412ae7aabc9928de1631077d26748f1371444eb28f3e80c2baf7",
-      "identity_hash": "9359c4d4f7c2ca1fefdb693e098998520c184d5b27670c3861d3d6cec5f35fd8"
+      "identity_hash": "9359c4d4f7c2ca1fefdb693e098998520c184d5b27670c3861d3d6cec5f35fd8",
+      "signer_node_id": "builtin.module.release.signer",
+      "signature_scheme": "ed25519",
+      "artifact_signatures": {
+        "64f804a7041f892479ff331a6105c9528c75abb4533f414abf9736489410fd08": "modsig:ed25519:v1:49f41617a9ae1fcd88047c9922b2d02930af1d821c63dce11cec83ead5e093f26338015f6d1afb9f5e194f02f23e6d78938678922166b5a112af509187a3cc06"
+      }
     },
     {
       "module_id": "m4.recipe.assembler.control_chip",
@@ -86,7 +121,12 @@
       ],
       "source_hash": "a27ec16a9809871b9acb7e51fe7e9a71529cc8f2f6770231ebcc538a671d789e",
       "build_manifest_hash": "6f92432d2b79412ae7aabc9928de1631077d26748f1371444eb28f3e80c2baf7",
-      "identity_hash": "37e4e95df902614e08fec76be5f82e124c1258cce5fc06241b835038af20e429"
+      "identity_hash": "37e4e95df902614e08fec76be5f82e124c1258cce5fc06241b835038af20e429",
+      "signer_node_id": "builtin.module.release.signer",
+      "signature_scheme": "ed25519",
+      "artifact_signatures": {
+        "b667e29a84412af4eb6e985f0c9063f7ed3a119b6b336e12279e23800d38021b": "modsig:ed25519:v1:9c6fc702066c8fcae7d82ada5895ab566b38ada4267d2f3a93e547ac31a5412b4466d6d305045d40042a6a27fdfb1734c43f1c10315f273b4fc86bbc98eae700"
+      }
     },
     {
       "module_id": "m4.recipe.assembler.gear",
@@ -95,7 +135,12 @@
       ],
       "source_hash": "321e59b2c849b8e104099b30a2cda303aabb8086ac88a53ab5c072f5d4083fc8",
       "build_manifest_hash": "6f92432d2b79412ae7aabc9928de1631077d26748f1371444eb28f3e80c2baf7",
-      "identity_hash": "a50374285600e3707d1267bc86b0dbc50808e2f6758ee1d31ecca4c15734f5e2"
+      "identity_hash": "a50374285600e3707d1267bc86b0dbc50808e2f6758ee1d31ecca4c15734f5e2",
+      "signer_node_id": "builtin.module.release.signer",
+      "signature_scheme": "ed25519",
+      "artifact_signatures": {
+        "cdf591479d719399b6b4e079448b4c60a113131893a9598979729911dd44a5e3": "modsig:ed25519:v1:79e429c7fabb8576658ccc220f48d1a486afced66f50b32e086f7c314ad04d4587c81b6c0807d7e5b82d93c1bb90c8529f9f9653ad6866648bc27ba60401ee09"
+      }
     },
     {
       "module_id": "m4.recipe.assembler.logistics_drone",
@@ -104,7 +149,12 @@
       ],
       "source_hash": "05376d08c0826ece25fe96c11dcf32140bd58db46e4cb40e0fc856568e076bee",
       "build_manifest_hash": "6f92432d2b79412ae7aabc9928de1631077d26748f1371444eb28f3e80c2baf7",
-      "identity_hash": "8b3dee92bea75ee46bdc891b3ef9c9b9583d087ebcf8f399cb4342d111d63ecd"
+      "identity_hash": "8b3dee92bea75ee46bdc891b3ef9c9b9583d087ebcf8f399cb4342d111d63ecd",
+      "signer_node_id": "builtin.module.release.signer",
+      "signature_scheme": "ed25519",
+      "artifact_signatures": {
+        "e770c6ea7386b99ea8927e5a6eac64ee27c7015645705945d5db0d88db025de7": "modsig:ed25519:v1:b5a9b09e2831a95ad723c2fd61a29f64dfff20f85c07c01c420c7903ca66b9a50be31fccac0cc3f12f0c9bd59f29d312b70a1fb7b839850c88dbfc43bebf8e0a"
+      }
     },
     {
       "module_id": "m4.recipe.assembler.motor_mk1",
@@ -113,7 +163,12 @@
       ],
       "source_hash": "3c76cd6a52b965cacb133cd5c88e0258432690f7f6d490f8bb588885444d0d73",
       "build_manifest_hash": "6f92432d2b79412ae7aabc9928de1631077d26748f1371444eb28f3e80c2baf7",
-      "identity_hash": "9c73fda605c63da3fb605a2ceae4afeb064787e61fc0674cd7f6d424012633c9"
+      "identity_hash": "9c73fda605c63da3fb605a2ceae4afeb064787e61fc0674cd7f6d424012633c9",
+      "signer_node_id": "builtin.module.release.signer",
+      "signature_scheme": "ed25519",
+      "artifact_signatures": {
+        "5d510e49bd24905fe1c4deb104cb795f89765797bb66d6fd0faec84ba27e40f3": "modsig:ed25519:v1:4972684f567d4e13d36cb25c4c076161a8f368b652b4e688592f8b466d3c8968a191644f97d5b5739e160a1b0fda34ba18ef5ca11689b6f6a8b5352f2e8b1604"
+      }
     },
     {
       "module_id": "m4.recipe.smelter.copper_wire",
@@ -122,7 +177,12 @@
       ],
       "source_hash": "79ad477d004c9721876107070c77536859c3f80bdeaaec8eff75e7cf070d7af4",
       "build_manifest_hash": "6f92432d2b79412ae7aabc9928de1631077d26748f1371444eb28f3e80c2baf7",
-      "identity_hash": "d8b84a69a02285bdefb016b932a501259d7127b1c4bc517b31a471ce5b9f2422"
+      "identity_hash": "d8b84a69a02285bdefb016b932a501259d7127b1c4bc517b31a471ce5b9f2422",
+      "signer_node_id": "builtin.module.release.signer",
+      "signature_scheme": "ed25519",
+      "artifact_signatures": {
+        "2d401c637a4b0597f32ce098992b356df48ceb0c1daa7fb76f82aff42d706b40": "modsig:ed25519:v1:14a7759a93261351e49d2c075bfe66a05286a11f654be96d265def902263e67a8c64d86a7c9e9aa59bbffd097431448fd90169ef1d04777cef9e1c611508990c"
+      }
     },
     {
       "module_id": "m4.recipe.smelter.iron_ingot",
@@ -131,7 +191,12 @@
       ],
       "source_hash": "19266c6bea9b33e1a207189c747193cd034dbd85b9cfda7dff4fd93eaddcc2f9",
       "build_manifest_hash": "6f92432d2b79412ae7aabc9928de1631077d26748f1371444eb28f3e80c2baf7",
-      "identity_hash": "a44706477e89845d23bcad6ca2887c98e5a5b9db18970fb2c56cd9004f61a39d"
+      "identity_hash": "a44706477e89845d23bcad6ca2887c98e5a5b9db18970fb2c56cd9004f61a39d",
+      "signer_node_id": "builtin.module.release.signer",
+      "signature_scheme": "ed25519",
+      "artifact_signatures": {
+        "8a93492aa25e765f0d86b01bc7f35df0df2cca0cd94a0a9b856c00cb0b538db2": "modsig:ed25519:v1:672bc247bf1ea62896cbfbe77005d6120db587e22cb3658ea7ee62698f9d161e891711e078d5a81c8adee374241158fc98a0839d886e8ce16e3e41327d65f60d"
+      }
     }
   ]
 }

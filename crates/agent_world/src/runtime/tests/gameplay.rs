@@ -22,7 +22,7 @@ fn gameplay_manifest(
         version: version.to_string(),
         kind: ModuleKind::Reducer,
         role: ModuleRole::Gameplay,
-        wasm_hash,
+        wasm_hash: wasm_hash.clone(),
         interface_version: "wasm-1".to_string(),
         abi_contract: ModuleAbiContract {
             abi_version: Some(1),
@@ -40,7 +40,7 @@ fn gameplay_manifest(
         exports: vec!["reduce".to_string()],
         subscriptions: Vec::new(),
         required_caps: Vec::new(),
-        artifact_identity: None,
+        artifact_identity: Some(super::signed_test_artifact_identity(wasm_hash.as_str())),
         limits: ModuleLimits::default(),
     }
 }
@@ -72,13 +72,13 @@ fn gameplay_module_requires_gameplay_contract() {
         version: "1.0.0".to_string(),
         kind: ModuleKind::Reducer,
         role: ModuleRole::Gameplay,
-        wasm_hash,
+        wasm_hash: wasm_hash.clone(),
         interface_version: "wasm-1".to_string(),
         abi_contract: ModuleAbiContract::default(),
         exports: vec!["reduce".to_string()],
         subscriptions: Vec::new(),
         required_caps: Vec::new(),
-        artifact_identity: None,
+        artifact_identity: Some(super::signed_test_artifact_identity(wasm_hash.as_str())),
         limits: ModuleLimits::default(),
     };
     let err = apply_module_changes(

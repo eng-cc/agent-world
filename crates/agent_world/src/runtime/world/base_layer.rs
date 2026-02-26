@@ -1,8 +1,11 @@
 use std::collections::BTreeSet;
 
 use agent_world_wasm_router::{validate_subscription_filters, validate_subscription_stage};
+use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 
-use super::super::{ModuleLimits, ModuleManifest, ModuleRegistry, WorldError};
+use super::super::{
+    ModuleArtifactIdentity, ModuleLimits, ModuleManifest, ModuleRegistry, WorldError,
+};
 use super::World;
 
 impl World {
@@ -168,24 +171,7 @@ impl World {
             });
         }
 
-        if let Some(identity) = &module.artifact_identity {
-            if !identity.is_complete() {
-                return Err(WorldError::ModuleChangeInvalid {
-                    reason: format!(
-                        "module artifact_identity is incomplete for {}",
-                        module.module_id
-                    ),
-                });
-            }
-            if !identity.matches_unsigned_signature(&module.wasm_hash) {
-                return Err(WorldError::ModuleChangeInvalid {
-                    reason: format!(
-                        "module artifact_identity signature mismatch for {}",
-                        module.module_id
-                    ),
-                });
-            }
-        }
+        self.validate_module_artifact_identity(module)?;
 
         if module.interface_version != "wasm-1" {
             return Err(WorldError::ModuleChangeInvalid {
@@ -230,6 +216,101 @@ impl World {
             }
         }
 
+        Ok(())
+    }
+
+    pub(super) fn validate_module_artifact_identity(
+        &self,
+        module: &ModuleManifest,
+    ) -> Result<(), WorldError> {
+        let identity =
+            module
+                .artifact_identity
+                .as_ref()
+                .ok_or_else(|| WorldError::ModuleChangeInvalid {
+                    reason: format!(
+                        "module artifact_identity is required for {}",
+                        module.module_id
+                    ),
+                })?;
+        self.validate_module_artifact_identity_fields(module, identity)
+    }
+
+    pub(super) fn validate_module_artifact_identity_fields(
+        &self,
+        module: &ModuleManifest,
+        identity: &ModuleArtifactIdentity,
+    ) -> Result<(), WorldError> {
+        if !identity.is_complete() {
+            return Err(WorldError::ModuleChangeInvalid {
+                reason: format!(
+                    "module artifact_identity is incomplete for {}",
+                    module.module_id
+                ),
+            });
+        }
+        if identity.has_unsigned_prefix() {
+            return Err(WorldError::ModuleChangeInvalid {
+                reason: format!(
+                    "module artifact_identity unsigned signature is forbidden for {}",
+                    module.module_id
+                ),
+            });
+        }
+
+        let Some(signature_prefix) = identity.expected_signature_prefix() else {
+            return Err(WorldError::ModuleChangeInvalid {
+                reason: format!(
+                    "module artifact_identity signature_scheme unsupported for {}: {}",
+                    module.module_id, identity.signature_scheme
+                ),
+            });
+        };
+        let signature_hex = identity
+            .artifact_signature
+            .strip_prefix(signature_prefix)
+            .ok_or_else(|| WorldError::ModuleChangeInvalid {
+                reason: format!(
+                    "module artifact_identity signature prefix mismatch for {}",
+                    module.module_id
+                ),
+            })?;
+
+        let signer_public_key = self
+            .node_identity_public_key(identity.signer_node_id.as_str())
+            .ok_or_else(|| WorldError::ModuleChangeInvalid {
+                reason: format!(
+                    "module artifact_identity signer is not trusted for {}: {}",
+                    module.module_id, identity.signer_node_id
+                ),
+            })?;
+        let public_key_bytes =
+            decode_hex_array::<32>(signer_public_key, "module artifact signer public key")?;
+        let signature_bytes = decode_hex_array::<64>(signature_hex, "module artifact signature")?;
+        let verifying_key = VerifyingKey::from_bytes(&public_key_bytes).map_err(|error| {
+            WorldError::ModuleChangeInvalid {
+                reason: format!(
+                    "module artifact_identity signer public key parse failed for {}: {}",
+                    module.module_id, error
+                ),
+            }
+        })?;
+
+        let payload = ModuleArtifactIdentity::signing_payload_v1(
+            module.wasm_hash.as_str(),
+            identity.source_hash.as_str(),
+            identity.build_manifest_hash.as_str(),
+            identity.signer_node_id.as_str(),
+        );
+        let signature = Signature::from_bytes(&signature_bytes);
+        verifying_key
+            .verify(payload.as_slice(), &signature)
+            .map_err(|error| WorldError::ModuleChangeInvalid {
+                reason: format!(
+                    "module artifact_identity signature mismatch for {}: {}",
+                    module.module_id, error
+                ),
+            })?;
         Ok(())
     }
 
@@ -378,4 +459,15 @@ impl World {
         })?;
         Ok(&record.manifest)
     }
+}
+
+fn decode_hex_array<const N: usize>(raw: &str, label: &str) -> Result<[u8; N], WorldError> {
+    let bytes = hex::decode(raw).map_err(|_| WorldError::ModuleChangeInvalid {
+        reason: format!("{label} must be valid hex"),
+    })?;
+    bytes
+        .try_into()
+        .map_err(|_| WorldError::ModuleChangeInvalid {
+            reason: format!("{label} must be {N}-byte hex"),
+        })
 }

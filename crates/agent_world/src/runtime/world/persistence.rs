@@ -144,6 +144,7 @@ impl World {
                     wasm_hash: wasm_hash.clone(),
                 });
             }
+            self.validate_module_artifact_identity(&record.manifest)?;
             self.module_artifacts.insert(wasm_hash.clone());
             self.module_artifact_bytes.insert(wasm_hash.clone(), bytes);
         }

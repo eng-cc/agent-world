@@ -18,7 +18,7 @@ fn install_m1_body_module(world: &mut World) {
         version: "0.1.0".to_string(),
         kind: ModuleKind::Reducer,
         role: ModuleRole::Body,
-        wasm_hash,
+        wasm_hash: wasm_hash.clone(),
         interface_version: "wasm-1".to_string(),
         abi_contract: ModuleAbiContract::default(),
         exports: vec!["reduce".to_string()],
@@ -29,7 +29,7 @@ fn install_m1_body_module(world: &mut World) {
             filters: None,
         }],
         required_caps: Vec::new(),
-        artifact_identity: None,
+        artifact_identity: Some(super::signed_test_artifact_identity(wasm_hash.as_str())),
         limits: ModuleLimits {
             max_mem_bytes: 64 * 1024 * 1024,
             max_gas: 2_000_000,

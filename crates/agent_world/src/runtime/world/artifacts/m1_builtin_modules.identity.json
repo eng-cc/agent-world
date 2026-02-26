@@ -24,7 +24,13 @@
       ],
       "source_hash": "f8e64226e62ca648f84f953897319518f7fc745e6e5fb9b36fc8b55db3c96c08",
       "build_manifest_hash": "6f92432d2b79412ae7aabc9928de1631077d26748f1371444eb28f3e80c2baf7",
-      "identity_hash": "67eea72617eac99c231f96caecc820320f9d9927b5ae9983527ec6d23c1ee970"
+      "identity_hash": "67eea72617eac99c231f96caecc820320f9d9927b5ae9983527ec6d23c1ee970",
+      "signer_node_id": "builtin.module.release.signer",
+      "signature_scheme": "ed25519",
+      "artifact_signatures": {
+        "d79d9779ff874bf64fcf471f77b1ba1cc1a28f8866edd410d9e04009c8af07ef": "modsig:ed25519:v1:731a0920a03fa49a0ffe59937f01b0ad3bd96753ca75e51bfa9af15296fc39b47d1eba1da6819534edbfbbec3f42f0561abec8d949603fbdc9f51ce0a144f208",
+        "ebe41e68255ed42a73e6e8f0795d161ce5b8324806715b3bdf41c333d02f9fda": "modsig:ed25519:v1:2a00de489baf8a97f11a92d7ee0f266d5bb2a03d81f7bb6d2b50808747e27a75202506b151b989f323db598099b4867c1d69df14714140a704e462a3ab9e380a"
+      }
     },
     {
       "module_id": "m1.memory.core",
@@ -34,7 +40,13 @@
       ],
       "source_hash": "b7a01c19d6da60e0c370faa602e8bd56f6c73aab6e5ba5d9043ae6be3c2739ee",
       "build_manifest_hash": "6f92432d2b79412ae7aabc9928de1631077d26748f1371444eb28f3e80c2baf7",
-      "identity_hash": "a1bd18881b2eb44618bdefb5fd4f68e73fe8be7051dc4f5067efeec593113773"
+      "identity_hash": "a1bd18881b2eb44618bdefb5fd4f68e73fe8be7051dc4f5067efeec593113773",
+      "signer_node_id": "builtin.module.release.signer",
+      "signature_scheme": "ed25519",
+      "artifact_signatures": {
+        "ab572a39206a9253cd353b2b28113eff91305e9da1603a98005c8c2280033a26": "modsig:ed25519:v1:cc87866b12d5b4ba57e2cb392bcbfd4dd1e2ed7a010d440b5e72b0062e653efb116a4aa7645bf4d051b135b62b9887eecb93774a26654b927d7d28da44a69d07",
+        "ca451e08446023b6ce67a6e61dd0734af3307f81708865be8c3898d9f8393baf": "modsig:ed25519:v1:5f63b28cf62115bba985b12f6ac37fdb5efe9deaba2efb8988d8f7451292621a208c133a14df8b51ae7254af0afabb67739ce1ec9801435cc8a7100019ab7501"
+      }
     },
     {
       "module_id": "m1.mobility.basic",
@@ -44,7 +56,13 @@
       ],
       "source_hash": "a18cdcf9f2d8340079cb2ca451545a136ebd25ee7dc8f41bdb0346d9aef0371c",
       "build_manifest_hash": "6f92432d2b79412ae7aabc9928de1631077d26748f1371444eb28f3e80c2baf7",
-      "identity_hash": "6b8ca0101469544709951684d69ce9b3db3bf7001cfd93f6e397b7cd4a268bbd"
+      "identity_hash": "6b8ca0101469544709951684d69ce9b3db3bf7001cfd93f6e397b7cd4a268bbd",
+      "signer_node_id": "builtin.module.release.signer",
+      "signature_scheme": "ed25519",
+      "artifact_signatures": {
+        "67ece2dc881cf5136d07a7eb7f4992b3dde8f0d0e59d6cb26caf56624dcb11e1": "modsig:ed25519:v1:1ed93970b104bb15faa0d0b0590568ea1563d3cd7250c4a63956aa2f7e1a1a02f681808aa4948ac9588b4951db633d02fa3f9b1532a85ad13b3e96814e8f9704",
+        "7b4c97aa886d99a589a4ed7a2d6ef884f9f15d4ae6a11c5fa6c0ca8db6874a64": "modsig:ed25519:v1:660b5bc89250de32da848ba4f9a192251afc1eb1f581671be93eb4e15a0102f002208985d597c5fb05d5944e0bb1b19fa9d422700b889c1af9cebb2f99f58c04"
+      }
     },
     {
       "module_id": "m1.power.radiation_harvest",
@@ -54,7 +72,13 @@
       ],
       "source_hash": "a8c0cd402899dabad6ceb7e8bd6533732d299db69163e04672fe8d847055e885",
       "build_manifest_hash": "6f92432d2b79412ae7aabc9928de1631077d26748f1371444eb28f3e80c2baf7",
-      "identity_hash": "e830563027e9e5ae1553951a6efbd658603cd3d6da8dd2c3b429f1a49b6d363b"
+      "identity_hash": "e830563027e9e5ae1553951a6efbd658603cd3d6da8dd2c3b429f1a49b6d363b",
+      "signer_node_id": "builtin.module.release.signer",
+      "signature_scheme": "ed25519",
+      "artifact_signatures": {
+        "484e8d7207ac59679d6dac2da9fdf9afd939a3520fbf7e7dfef7c8dcae744636": "modsig:ed25519:v1:44687006787314579d719c913116b923d665f6963e7a69606ff51dfd1f82558fad61a426b18ab65329ace1f7abd6b12fe50ba3d6dc72f6b32e5c4ff860b0490a",
+        "d4dc1a5e1aef27793e69faa7682cc3b2e9fffac8d5d6a516f9b267aa724113e7": "modsig:ed25519:v1:e6905e7ced3df78f992fdae7e9590e051665b0e353e94bc6f0d926ae06f6740c3daa77cf26d0b596c25d1f611db4a87beac1b4a14e59fdef25b58fd89d3c6302"
+      }
     },
     {
       "module_id": "m1.power.storage",
@@ -64,7 +88,13 @@
       ],
       "source_hash": "8dd7dff90524d4553d79349ea2c36d901060f355d869702d27d493dedf38bd82",
       "build_manifest_hash": "6f92432d2b79412ae7aabc9928de1631077d26748f1371444eb28f3e80c2baf7",
-      "identity_hash": "1b18e8cceea8e60447fa1538a05b273d37675c10da15c5f702f093a68a3638e8"
+      "identity_hash": "1b18e8cceea8e60447fa1538a05b273d37675c10da15c5f702f093a68a3638e8",
+      "signer_node_id": "builtin.module.release.signer",
+      "signature_scheme": "ed25519",
+      "artifact_signatures": {
+        "083ac923dbed7e7a6927e19f800a1ce8f705363101d9519d23615e8bb769cfc0": "modsig:ed25519:v1:33bd3cf72f068ee296bc658c67b37dc6e44fc413867e615e34f46fbe06360f7d10c7dcc5ce9244860b8875b9373e4a36f9d22e964b839cd8236f36be0fea900b",
+        "f47b375a64bdd57bee93a8c83e9f54e314d3cd8addef7dbd5913c654f32daf1e": "modsig:ed25519:v1:2fc9869e18b92026706e247957e7bb448fb0301aede9923e76078e6fb54a3e87a4977988008f0842533fdc4ba15af024c837453e539675775ca382a70e427202"
+      }
     },
     {
       "module_id": "m1.rule.move",
@@ -74,7 +104,13 @@
       ],
       "source_hash": "00bf594452f1461e8d48602695071ea4727851d58e91acc4311540bf598aedb3",
       "build_manifest_hash": "6f92432d2b79412ae7aabc9928de1631077d26748f1371444eb28f3e80c2baf7",
-      "identity_hash": "c9b475ed926323e8684aa5dd7eca18df3a93116fd8d6ccf9ea079e749abbe67d"
+      "identity_hash": "c9b475ed926323e8684aa5dd7eca18df3a93116fd8d6ccf9ea079e749abbe67d",
+      "signer_node_id": "builtin.module.release.signer",
+      "signature_scheme": "ed25519",
+      "artifact_signatures": {
+        "67ece2dc881cf5136d07a7eb7f4992b3dde8f0d0e59d6cb26caf56624dcb11e1": "modsig:ed25519:v1:67aa844ea2f7faa21bb37cb4b3ea9f70da1be3b8c187280c21b66404f0fa13f9ec8d90ec10e531c8015bb232990bf4ad12a256614018f92b51e341eee47ef901",
+        "7b4c97aa886d99a589a4ed7a2d6ef884f9f15d4ae6a11c5fa6c0ca8db6874a64": "modsig:ed25519:v1:58b8713183ea9daf9c523410bd42c4e1a545dd50eeb00baa8df4cebc1295fce74cbc887038c64de8004ddf18a8d5dd98981e728e6fd345efec7b9967510eee06"
+      }
     },
     {
       "module_id": "m1.rule.transfer",
@@ -84,7 +120,13 @@
       ],
       "source_hash": "3a3dd3158bb01557cfd5e897e65f9e01b5d6d2ed35ed0df8fc944b1d12c3de9a",
       "build_manifest_hash": "6f92432d2b79412ae7aabc9928de1631077d26748f1371444eb28f3e80c2baf7",
-      "identity_hash": "8f471d0389071794459fbee4f6e6d72eb1715ba855e8063d33e17448404e08e4"
+      "identity_hash": "8f471d0389071794459fbee4f6e6d72eb1715ba855e8063d33e17448404e08e4",
+      "signer_node_id": "builtin.module.release.signer",
+      "signature_scheme": "ed25519",
+      "artifact_signatures": {
+        "03bcc9be03889eec4d8b8970ec1f791f01d15efa9e326d48c028b25b6b32f08e": "modsig:ed25519:v1:e3399755f92afc53bcd8e2ac55d7a2edadc90c42f38f82b399b4170ca17d8e5bc3dd146e49b406ec4644c2a92b6191811df9ac1c79c2520c7246377fdd735a0e",
+        "f6906222176e25aac78b5404ea705345cb72058722266b1e0b4c208755b017e3": "modsig:ed25519:v1:dc2ec3c4463c2df3a546e9d10ea0299145751b664fe9329bc8c9456862c316e60007913301795f40c014c96db7717fd6cb2c1ddcfbe592a61a108da5f7864e04"
+      }
     },
     {
       "module_id": "m1.rule.visibility",
@@ -94,7 +136,13 @@
       ],
       "source_hash": "ce38f0bff6bda1d7206f0f0e3775c40dd0ddf0c846b323e5b1ab04c50c2f9053",
       "build_manifest_hash": "6f92432d2b79412ae7aabc9928de1631077d26748f1371444eb28f3e80c2baf7",
-      "identity_hash": "c41394e67ad4dedd8ba1cc76c9696e19c87af298f5391f071d907a3350586b66"
+      "identity_hash": "c41394e67ad4dedd8ba1cc76c9696e19c87af298f5391f071d907a3350586b66",
+      "signer_node_id": "builtin.module.release.signer",
+      "signature_scheme": "ed25519",
+      "artifact_signatures": {
+        "73f6ef1a4970db6d3abf4bb2c5bff5a665306cba20af8d34b4a24b5687e98975": "modsig:ed25519:v1:3adbe9351eebfed5cbe30b462eda0e000c558597405275082c249b1acebebbe8d437e70c11890f025362911f256372e8b2eab738ede8a19b9abed90bc8d67109",
+        "775bc51917841eb15d08794b79bd1e22ebf8bc3064995af2480a5f88af59adb7": "modsig:ed25519:v1:0eaddb280833af0c8323132e1d96c6ef094e7e814422b7fe2cf800ef0cc5549cc6f5869572d67aca4dddfcee3db911be8fc96f456d70738c4a2735285a3eaa0a"
+      }
     },
     {
       "module_id": "m1.sensor.basic",
@@ -104,7 +152,13 @@
       ],
       "source_hash": "8aa89b2a2269507f4aeabbe3d2098f73e7fdcd654c1479830cd6ae3d6864321d",
       "build_manifest_hash": "6f92432d2b79412ae7aabc9928de1631077d26748f1371444eb28f3e80c2baf7",
-      "identity_hash": "ad56cd3bf8435c281d00719afb7e43424ed766b43c022aebeb4b6cdf7c8988bb"
+      "identity_hash": "ad56cd3bf8435c281d00719afb7e43424ed766b43c022aebeb4b6cdf7c8988bb",
+      "signer_node_id": "builtin.module.release.signer",
+      "signature_scheme": "ed25519",
+      "artifact_signatures": {
+        "73f6ef1a4970db6d3abf4bb2c5bff5a665306cba20af8d34b4a24b5687e98975": "modsig:ed25519:v1:787926e5303d24fc6d00d215ac845daf4c2e0facd1dba39aef3d46f24970728f7d01b2f71a4a6ab182fc472f81ab085e7d9dac5fdced1d3f89a8f73315faf80a",
+        "775bc51917841eb15d08794b79bd1e22ebf8bc3064995af2480a5f88af59adb7": "modsig:ed25519:v1:ab871b8e39324ccc3112ede5b070e2cdfba5ed6362890b26a8700350acd9ba187da1e9f52245d20716c8576dc5bb6f9653050d6992ad3288b91325e68adf6803"
+      }
     },
     {
       "module_id": "m1.storage.cargo",
@@ -114,7 +168,13 @@
       ],
       "source_hash": "2c1de9c4d148185d1d619721518b2766927cc4dfb68d37ee34f068ace335b3a3",
       "build_manifest_hash": "6f92432d2b79412ae7aabc9928de1631077d26748f1371444eb28f3e80c2baf7",
-      "identity_hash": "37c927c96963fc68c0ff4673053c90f9d035fd1e957ae22cd54cd2ca116a3490"
+      "identity_hash": "37c927c96963fc68c0ff4673053c90f9d035fd1e957ae22cd54cd2ca116a3490",
+      "signer_node_id": "builtin.module.release.signer",
+      "signature_scheme": "ed25519",
+      "artifact_signatures": {
+        "3b1da4cc24d5fcecb35cb650030bbb4bf9a9d11ce55e0d7329563128cdb0afda": "modsig:ed25519:v1:fd1ed3da2825a6a840a46a2f75bdb3e60dfc2e5e0bd9e0dd32f8f8c6979b8f2817aaf903b2a5e576691edf17c1d2d551d80dbaadfaaa71f9c7f0d36f1a1a330f",
+        "f4b5037db0c1df050b1009d7904df2b13c6d8ab0d31f725b60635c5de12b278b": "modsig:ed25519:v1:8d835e06ded4f4bdcbee130763b0d4b9b0849d34aee781949a615ff9e7a3e4034a0ffccc1a05c82b384058548a30a94a5b38e9b6ed21ed7767676abeb8faec08"
+      }
     }
   ]
 }

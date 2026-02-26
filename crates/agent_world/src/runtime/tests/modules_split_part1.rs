@@ -37,7 +37,7 @@ fn apply_module_changes_registers_and_activates() {
             filters: None,
         }],
         required_caps: vec!["cap.weather".to_string()],
-        artifact_identity: None,
+        artifact_identity: Some(super::signed_test_artifact_identity(wasm_hash.as_str())),
         limits: ModuleLimits {
             max_mem_bytes: 1024,
             max_gas: 10_000,
@@ -47,7 +47,6 @@ fn apply_module_changes_registers_and_activates() {
             max_emits: 2,
         },
     };
-
     let changes = ModuleChangeSet {
         register: vec![module_manifest.clone()],
         activate: vec![ModuleActivation {
@@ -127,7 +126,7 @@ fn shadow_rejects_missing_module_artifact() {
         exports: vec!["reduce".to_string()],
         subscriptions: Vec::new(),
         required_caps: vec!["cap.weather".to_string()],
-        artifact_identity: None,
+        artifact_identity: Some(super::signed_test_artifact_identity("missing-hash")),
         limits: ModuleLimits::default(),
     };
 
@@ -167,7 +166,7 @@ fn shadow_rejects_incomplete_module_artifact_identity() {
         version: "0.1.0".to_string(),
         kind: ModuleKind::Reducer,
         role: ModuleRole::Domain,
-        wasm_hash,
+        wasm_hash: wasm_hash.clone(),
         interface_version: "wasm-1".to_string(),
         abi_contract: ModuleAbiContract::default(),
         exports: vec!["reduce".to_string()],
@@ -176,6 +175,8 @@ fn shadow_rejects_incomplete_module_artifact_identity() {
         artifact_identity: Some(ModuleArtifactIdentity {
             source_hash: String::new(),
             build_manifest_hash: "build-hash".to_string(),
+            signer_node_id: "node-1".to_string(),
+            signature_scheme: "ed25519".to_string(),
             artifact_signature: "unsigned:dummy:src:build".to_string(),
         }),
         limits: ModuleLimits::default(),
@@ -220,17 +221,19 @@ fn shadow_rejects_module_artifact_identity_signature_mismatch() {
         version: "0.1.0".to_string(),
         kind: ModuleKind::Reducer,
         role: ModuleRole::Domain,
-        wasm_hash,
+        wasm_hash: wasm_hash.clone(),
         interface_version: "wasm-1".to_string(),
         abi_contract: ModuleAbiContract::default(),
         exports: vec!["reduce".to_string()],
         subscriptions: Vec::new(),
         required_caps: vec!["cap.weather".to_string()],
-        artifact_identity: Some(ModuleArtifactIdentity::unsigned(
-            "different-wasm-hash",
-            "src-hash",
-            "build-hash",
-        )),
+        artifact_identity: Some(ModuleArtifactIdentity {
+            source_hash: "src-hash".to_string(),
+            build_manifest_hash: "build-hash".to_string(),
+            signer_node_id: "node-1".to_string(),
+            signature_scheme: "ed25519".to_string(),
+            artifact_signature: "unsigned:different-wasm-hash:src-hash:build-hash".to_string(),
+        }),
         limits: ModuleLimits::default(),
     };
 
@@ -254,7 +257,7 @@ fn shadow_rejects_module_artifact_identity_signature_mismatch() {
     let WorldError::ModuleChangeInvalid { reason } = err else {
         panic!("expected ModuleChangeInvalid");
     };
-    assert!(reason.contains("artifact_identity signature mismatch"));
+    assert!(reason.contains("unsigned signature is forbidden"));
 }
 
 #[test]
@@ -273,7 +276,7 @@ fn shadow_rejects_unsupported_module_abi_version() {
         version: "0.1.0".to_string(),
         kind: ModuleKind::Reducer,
         role: ModuleRole::Domain,
-        wasm_hash,
+        wasm_hash: wasm_hash.clone(),
         interface_version: "wasm-1".to_string(),
         abi_contract: ModuleAbiContract {
             abi_version: Some(2),
@@ -286,7 +289,7 @@ fn shadow_rejects_unsupported_module_abi_version() {
         exports: vec!["reduce".to_string()],
         subscriptions: Vec::new(),
         required_caps: vec!["cap.weather".to_string()],
-        artifact_identity: None,
+        artifact_identity: Some(super::signed_test_artifact_identity(wasm_hash.as_str())),
         limits: ModuleLimits::default(),
     };
 
@@ -329,7 +332,7 @@ fn shadow_rejects_partial_module_schema_contract() {
         version: "0.1.0".to_string(),
         kind: ModuleKind::Reducer,
         role: ModuleRole::Domain,
-        wasm_hash,
+        wasm_hash: wasm_hash.clone(),
         interface_version: "wasm-1".to_string(),
         abi_contract: ModuleAbiContract {
             abi_version: Some(1),
@@ -342,7 +345,7 @@ fn shadow_rejects_partial_module_schema_contract() {
         exports: vec!["reduce".to_string()],
         subscriptions: Vec::new(),
         required_caps: vec!["cap.weather".to_string()],
-        artifact_identity: None,
+        artifact_identity: Some(super::signed_test_artifact_identity(wasm_hash.as_str())),
         limits: ModuleLimits::default(),
     };
 
@@ -385,7 +388,7 @@ fn shadow_rejects_cap_slot_binding_to_unknown_required_cap() {
         version: "0.1.0".to_string(),
         kind: ModuleKind::Reducer,
         role: ModuleRole::Domain,
-        wasm_hash,
+        wasm_hash: wasm_hash.clone(),
         interface_version: "wasm-1".to_string(),
         abi_contract: ModuleAbiContract {
             abi_version: Some(1),
@@ -401,7 +404,7 @@ fn shadow_rejects_cap_slot_binding_to_unknown_required_cap() {
         exports: vec!["reduce".to_string()],
         subscriptions: Vec::new(),
         required_caps: vec!["cap.weather".to_string()],
-        artifact_identity: None,
+        artifact_identity: Some(super::signed_test_artifact_identity(wasm_hash.as_str())),
         limits: ModuleLimits::default(),
     };
 
@@ -504,13 +507,13 @@ fn module_call_queues_effects_and_emits() {
         version: "0.1.0".to_string(),
         kind: ModuleKind::Reducer,
         role: ModuleRole::Domain,
-        wasm_hash,
+        wasm_hash: wasm_hash.clone(),
         interface_version: "wasm-1".to_string(),
         abi_contract: ModuleAbiContract::default(),
         exports: vec!["reduce".to_string()],
         subscriptions: Vec::new(),
         required_caps: vec!["cap.weather".to_string()],
-        artifact_identity: None,
+        artifact_identity: Some(super::signed_test_artifact_identity(wasm_hash.as_str())),
         limits: ModuleLimits {
             max_mem_bytes: 1024,
             max_gas: 10_000,
@@ -596,7 +599,7 @@ fn module_call_resolves_effect_cap_from_cap_slot() {
         version: "0.1.0".to_string(),
         kind: ModuleKind::Reducer,
         role: ModuleRole::Domain,
-        wasm_hash,
+        wasm_hash: wasm_hash.clone(),
         interface_version: "wasm-1".to_string(),
         abi_contract: ModuleAbiContract {
             abi_version: Some(1),
@@ -612,7 +615,7 @@ fn module_call_resolves_effect_cap_from_cap_slot() {
         exports: vec!["reduce".to_string()],
         subscriptions: Vec::new(),
         required_caps: vec!["cap.weather".to_string()],
-        artifact_identity: None,
+        artifact_identity: Some(super::signed_test_artifact_identity(wasm_hash.as_str())),
         limits: ModuleLimits {
             max_mem_bytes: 1024,
             max_gas: 10_000,
@@ -689,7 +692,7 @@ fn module_call_rejects_effect_with_unbound_cap_slot() {
         version: "0.1.0".to_string(),
         kind: ModuleKind::Reducer,
         role: ModuleRole::Domain,
-        wasm_hash,
+        wasm_hash: wasm_hash.clone(),
         interface_version: "wasm-1".to_string(),
         abi_contract: ModuleAbiContract {
             abi_version: Some(1),
@@ -702,7 +705,7 @@ fn module_call_rejects_effect_with_unbound_cap_slot() {
         exports: vec!["reduce".to_string()],
         subscriptions: Vec::new(),
         required_caps: vec!["cap.weather".to_string()],
-        artifact_identity: None,
+        artifact_identity: Some(super::signed_test_artifact_identity(wasm_hash.as_str())),
         limits: ModuleLimits {
             max_mem_bytes: 1024,
             max_gas: 10_000,
@@ -801,13 +804,13 @@ fn module_call_policy_denied_records_failure() {
         version: "0.1.0".to_string(),
         kind: ModuleKind::Reducer,
         role: ModuleRole::Domain,
-        wasm_hash,
+        wasm_hash: wasm_hash.clone(),
         interface_version: "wasm-1".to_string(),
         abi_contract: ModuleAbiContract::default(),
         exports: vec!["reduce".to_string()],
         subscriptions: Vec::new(),
         required_caps: vec!["cap.weather".to_string()],
-        artifact_identity: None,
+        artifact_identity: Some(super::signed_test_artifact_identity(wasm_hash.as_str())),
         limits: ModuleLimits {
             max_mem_bytes: 1024,
             max_gas: 10_000,

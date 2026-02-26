@@ -46,7 +46,7 @@ fn base_manifest(module_id: &str, version: &str, wasm_hash: &str) -> ModuleManif
         exports: vec!["reduce".to_string()],
         subscriptions: Vec::new(),
         required_caps: Vec::new(),
-        artifact_identity: None,
+        artifact_identity: Some(super::signed_test_artifact_identity(wasm_hash)),
         limits: ModuleLimits::default(),
     }
 }

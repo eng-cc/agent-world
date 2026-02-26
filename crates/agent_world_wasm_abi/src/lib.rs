@@ -42,43 +42,44 @@ pub struct ModuleArtifact {
 pub struct ModuleArtifactIdentity {
     pub source_hash: String,
     pub build_manifest_hash: String,
+    pub signer_node_id: String,
+    pub signature_scheme: String,
     pub artifact_signature: String,
 }
 
 impl ModuleArtifactIdentity {
+    pub const SIGNATURE_SCHEME_ED25519: &'static str = "ed25519";
+    pub const SIGNATURE_PREFIX_ED25519_V1: &'static str = "modsig:ed25519:v1:";
+
     pub fn is_complete(&self) -> bool {
         !self.source_hash.trim().is_empty()
             && !self.build_manifest_hash.trim().is_empty()
+            && !self.signer_node_id.trim().is_empty()
+            && !self.signature_scheme.trim().is_empty()
             && !self.artifact_signature.trim().is_empty()
     }
 
-    pub fn unsigned_signature(
+    pub fn signing_payload_v1(
         wasm_hash: &str,
         source_hash: &str,
         build_manifest_hash: &str,
-    ) -> String {
-        format!("unsigned:{wasm_hash}:{source_hash}:{build_manifest_hash}")
+        signer_node_id: &str,
+    ) -> Vec<u8> {
+        format!(
+            "modsig:ed25519:v1|{wasm_hash}|{source_hash}|{build_manifest_hash}|{signer_node_id}"
+        )
+        .into_bytes()
     }
 
-    pub fn unsigned(
-        wasm_hash: &str,
-        source_hash: impl Into<String>,
-        build_manifest_hash: impl Into<String>,
-    ) -> Self {
-        let source_hash = source_hash.into();
-        let build_manifest_hash = build_manifest_hash.into();
-        let artifact_signature =
-            Self::unsigned_signature(wasm_hash, &source_hash, &build_manifest_hash);
-        Self {
-            source_hash,
-            build_manifest_hash,
-            artifact_signature,
+    pub fn expected_signature_prefix(&self) -> Option<&'static str> {
+        match self.signature_scheme.as_str() {
+            Self::SIGNATURE_SCHEME_ED25519 => Some(Self::SIGNATURE_PREFIX_ED25519_V1),
+            _ => None,
         }
     }
 
-    pub fn matches_unsigned_signature(&self, wasm_hash: &str) -> bool {
-        self.artifact_signature
-            == Self::unsigned_signature(wasm_hash, &self.source_hash, &self.build_manifest_hash)
+    pub fn has_unsigned_prefix(&self) -> bool {
+        self.artifact_signature.starts_with("unsigned:")
     }
 }
 
@@ -87,6 +88,8 @@ impl Default for ModuleArtifactIdentity {
         Self {
             source_hash: String::new(),
             build_manifest_hash: String::new(),
+            signer_node_id: String::new(),
+            signature_scheme: String::new(),
             artifact_signature: String::new(),
         }
     }
@@ -639,10 +642,27 @@ mod tests {
     }
 
     #[test]
-    fn module_artifact_identity_unsigned_signature_roundtrip() {
-        let identity = ModuleArtifactIdentity::unsigned("hash-1", "src-1", "build-1");
+    fn module_artifact_identity_payload_and_prefix() {
+        let identity = ModuleArtifactIdentity {
+            source_hash: "src-1".to_string(),
+            build_manifest_hash: "build-1".to_string(),
+            signer_node_id: "node-1".to_string(),
+            signature_scheme: ModuleArtifactIdentity::SIGNATURE_SCHEME_ED25519.to_string(),
+            artifact_signature: format!(
+                "{}{}",
+                ModuleArtifactIdentity::SIGNATURE_PREFIX_ED25519_V1,
+                "abcd"
+            ),
+        };
         assert!(identity.is_complete());
-        assert!(identity.matches_unsigned_signature("hash-1"));
-        assert!(!identity.matches_unsigned_signature("hash-2"));
+        assert_eq!(
+            identity.expected_signature_prefix(),
+            Some(ModuleArtifactIdentity::SIGNATURE_PREFIX_ED25519_V1)
+        );
+        assert_eq!(
+            ModuleArtifactIdentity::signing_payload_v1("hash-1", "src-1", "build-1", "node-1"),
+            b"modsig:ed25519:v1|hash-1|src-1|build-1|node-1".to_vec()
+        );
+        assert!(!identity.has_unsigned_prefix());
     }
 }

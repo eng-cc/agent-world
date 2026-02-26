@@ -1,5 +1,7 @@
 #![cfg(any(feature = "test_tier_required", feature = "test_tier_full"))]
 
+mod common;
+
 use agent_world::runtime::*;
 use sha2::{Digest, Sha256};
 
@@ -48,13 +50,13 @@ fn governance_module_happy_path_updates_registry() {
         version: "0.1.0".to_string(),
         kind: ModuleKind::Reducer,
         role: ModuleRole::Domain,
-        wasm_hash,
+        wasm_hash: wasm_hash.clone(),
         interface_version: "wasm-1".to_string(),
         abi_contract: ModuleAbiContract::default(),
         exports: vec!["reduce".to_string()],
         subscriptions: Vec::new(),
         required_caps: Vec::new(),
-        artifact_identity: None,
+        artifact_identity: Some(common::signed_test_artifact_identity(wasm_hash.as_str())),
         limits: ModuleLimits::unbounded(),
     };
 
@@ -113,7 +115,7 @@ fn shadow_failure_blocks_apply() {
         exports: vec!["reduce".to_string()],
         subscriptions: Vec::new(),
         required_caps: Vec::new(),
-        artifact_identity: None,
+        artifact_identity: Some(common::signed_test_artifact_identity("missing-hash")),
         limits: ModuleLimits::unbounded(),
     };
 
@@ -153,7 +155,7 @@ fn module_routing_emits_event() {
         version: "0.1.0".to_string(),
         kind: ModuleKind::Reducer,
         role: ModuleRole::Domain,
-        wasm_hash,
+        wasm_hash: wasm_hash.clone(),
         interface_version: "wasm-1".to_string(),
         abi_contract: ModuleAbiContract::default(),
         exports: vec!["reduce".to_string()],
@@ -164,7 +166,7 @@ fn module_routing_emits_event() {
             filters: None,
         }],
         required_caps: Vec::new(),
-        artifact_identity: None,
+        artifact_identity: Some(common::signed_test_artifact_identity(wasm_hash.as_str())),
         limits: ModuleLimits {
             max_mem_bytes: 1024,
             max_gas: 10_000,
@@ -241,7 +243,7 @@ fn replay_preserves_module_events() {
         version: "0.1.0".to_string(),
         kind: ModuleKind::Reducer,
         role: ModuleRole::Domain,
-        wasm_hash,
+        wasm_hash: wasm_hash.clone(),
         interface_version: "wasm-1".to_string(),
         abi_contract: ModuleAbiContract::default(),
         exports: vec!["reduce".to_string()],
@@ -252,7 +254,7 @@ fn replay_preserves_module_events() {
             filters: None,
         }],
         required_caps: Vec::new(),
-        artifact_identity: None,
+        artifact_identity: Some(common::signed_test_artifact_identity(wasm_hash.as_str())),
         limits: ModuleLimits {
             max_mem_bytes: 1024,
             max_gas: 10_000,

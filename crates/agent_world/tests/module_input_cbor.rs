@@ -1,5 +1,7 @@
 #![cfg(any(feature = "test_tier_required", feature = "test_tier_full"))]
 
+mod common;
+
 use agent_world::runtime::{
     Action, Manifest, ModuleAbiContract, ModuleActivation, ModuleChangeSet, ModuleKind,
     ModuleLimits, ModuleManifest, ModuleRole, ModuleSubscription, ModuleSubscriptionStage,
@@ -97,7 +99,7 @@ fn module_route_encodes_event_input_as_cbor() {
         version: "0.1.0".to_string(),
         kind: ModuleKind::Reducer,
         role: ModuleRole::Domain,
-        wasm_hash,
+        wasm_hash: wasm_hash.clone(),
         interface_version: "wasm-1".to_string(),
         abi_contract: ModuleAbiContract::default(),
         exports: vec!["reduce".to_string()],
@@ -108,7 +110,7 @@ fn module_route_encodes_event_input_as_cbor() {
             filters: None,
         }],
         required_caps: Vec::new(),
-        artifact_identity: None,
+        artifact_identity: Some(common::signed_test_artifact_identity(wasm_hash.as_str())),
         limits: ModuleLimits {
             max_mem_bytes: 1024,
             max_gas: 10_000,
@@ -168,7 +170,7 @@ fn module_route_encodes_action_input_as_cbor() {
         version: "0.1.0".to_string(),
         kind: ModuleKind::Reducer,
         role: ModuleRole::Domain,
-        wasm_hash,
+        wasm_hash: wasm_hash.clone(),
         interface_version: "wasm-1".to_string(),
         abi_contract: ModuleAbiContract::default(),
         exports: vec!["reduce".to_string()],
@@ -179,7 +181,7 @@ fn module_route_encodes_action_input_as_cbor() {
             filters: None,
         }],
         required_caps: Vec::new(),
-        artifact_identity: None,
+        artifact_identity: Some(common::signed_test_artifact_identity(wasm_hash.as_str())),
         limits: ModuleLimits {
             max_mem_bytes: 1024,
             max_gas: 10_000,
@@ -243,7 +245,7 @@ fn module_route_pure_input_omits_state() {
         version: "0.1.0".to_string(),
         kind: ModuleKind::Pure,
         role: ModuleRole::Domain,
-        wasm_hash,
+        wasm_hash: wasm_hash.clone(),
         interface_version: "wasm-1".to_string(),
         abi_contract: ModuleAbiContract::default(),
         exports: vec!["call".to_string()],
@@ -254,7 +256,7 @@ fn module_route_pure_input_omits_state() {
             filters: None,
         }],
         required_caps: Vec::new(),
-        artifact_identity: None,
+        artifact_identity: Some(common::signed_test_artifact_identity(wasm_hash.as_str())),
         limits: ModuleLimits {
             max_mem_bytes: 1024,
             max_gas: 10_000,

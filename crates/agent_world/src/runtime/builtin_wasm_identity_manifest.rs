@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use serde::Deserialize;
 
 use super::{ModuleArtifactIdentity, WorldError};
@@ -13,6 +15,9 @@ struct BuiltinIdentityEntry {
     source_hash: String,
     build_manifest_hash: String,
     identity_hash: String,
+    signer_node_id: String,
+    signature_scheme: String,
+    artifact_signatures: BTreeMap<String, String>,
 }
 
 pub(crate) fn module_artifact_identity_from_manifest(
@@ -58,9 +63,22 @@ pub(crate) fn module_artifact_identity_from_manifest(
         });
     }
 
-    Ok(ModuleArtifactIdentity::unsigned(
-        wasm_hash,
-        entry.source_hash,
-        entry.build_manifest_hash,
-    ))
+    let artifact_signature = entry
+        .artifact_signatures
+        .get(wasm_hash)
+        .cloned()
+        .ok_or_else(|| WorldError::ModuleChangeInvalid {
+            reason: format!(
+                "builtin identity manifest {} missing artifact signature module_id={} wasm_hash={}",
+                manifest_name, module_id, wasm_hash
+            ),
+        })?;
+
+    Ok(ModuleArtifactIdentity {
+        source_hash: entry.source_hash,
+        build_manifest_hash: entry.build_manifest_hash,
+        signer_node_id: entry.signer_node_id,
+        signature_scheme: entry.signature_scheme,
+        artifact_signature,
+    })
 }

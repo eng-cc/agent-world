@@ -1,5 +1,7 @@
 #![cfg(any(feature = "test_tier_required", feature = "test_tier_full"))]
 
+mod common;
+
 use agent_world::runtime::*;
 use sha2::{Digest, Sha256};
 use std::fs;
@@ -43,7 +45,7 @@ fn module_store_roundtrip() {
         exports: vec!["reduce".to_string()],
         subscriptions: Vec::new(),
         required_caps: Vec::new(),
-        artifact_identity: None,
+        artifact_identity: Some(common::signed_test_artifact_identity(hash.as_str())),
         limits: ModuleLimits::unbounded(),
     };
 
@@ -128,7 +130,7 @@ fn world_module_store_roundtrip() {
         exports: vec!["reduce".to_string()],
         subscriptions: Vec::new(),
         required_caps: Vec::new(),
-        artifact_identity: None,
+        artifact_identity: Some(common::signed_test_artifact_identity(hash.as_str())),
         limits: ModuleLimits::unbounded(),
     };
 
@@ -200,7 +202,7 @@ fn world_save_to_dir_with_modules_roundtrip() {
         exports: vec!["reduce".to_string()],
         subscriptions: Vec::new(),
         required_caps: Vec::new(),
-        artifact_identity: None,
+        artifact_identity: Some(common::signed_test_artifact_identity(hash.as_str())),
         limits: ModuleLimits::unbounded(),
     };
 

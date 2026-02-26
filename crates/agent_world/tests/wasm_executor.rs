@@ -1,5 +1,7 @@
 #![cfg(all(feature = "wasmtime", feature = "test_tier_full"))]
 
+mod common;
+
 use agent_world::runtime::{
     Action, Manifest, ModuleAbiContract, ModuleActivation, ModuleChangeSet, ModuleKind,
     ModuleLimits, ModuleManifest, ModuleRole, ModuleSubscription, ModuleSubscriptionStage,
@@ -43,7 +45,7 @@ fn wasm_executor_module_manifest(wasm_hash: String) -> ModuleManifest {
         version: "0.1.0".to_string(),
         kind: ModuleKind::Pure,
         role: ModuleRole::Domain,
-        wasm_hash,
+        wasm_hash: wasm_hash.clone(),
         interface_version: "wasm-1".to_string(),
         abi_contract: ModuleAbiContract::default(),
         exports: vec!["call".to_string()],
@@ -54,7 +56,7 @@ fn wasm_executor_module_manifest(wasm_hash: String) -> ModuleManifest {
             filters: None,
         }],
         required_caps: Vec::new(),
-        artifact_identity: None,
+        artifact_identity: Some(common::signed_test_artifact_identity(wasm_hash.as_str())),
         limits: ModuleLimits {
             max_mem_bytes: 64 * 1024,
             max_gas: 10_000,

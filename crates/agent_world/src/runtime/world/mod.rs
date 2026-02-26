@@ -49,6 +49,25 @@ const DEFAULT_MAX_PENDING_ACTIONS: usize = 8_192;
 const DEFAULT_MAX_PENDING_EFFECTS: usize = 8_192;
 const DEFAULT_MAX_INFLIGHT_EFFECTS: usize = 8_192;
 const DEFAULT_MAX_JOURNAL_EVENTS: usize = 65_536;
+pub(super) const BUILTIN_MODULE_SIGNER_NODE_ID: &str = "builtin.module.release.signer";
+pub(super) const BUILTIN_MODULE_SIGNER_PUBLIC_KEY_HEX: &str =
+    "4b97aa20b3abd613401d4f5778eab8b6c019bd2ea912d1ce2234868536389ebb";
+#[cfg(any(test, feature = "test_tier_required", feature = "test_tier_full"))]
+pub(super) const TEST_MODULE_SIGNER_NODE_ID: &str = "test.module.release.signer";
+
+#[cfg(any(test, feature = "test_tier_required", feature = "test_tier_full"))]
+fn test_module_signer_public_key_hex() -> String {
+    use ed25519_dalek::SigningKey;
+
+    let seed = crate::runtime::util::sha256_hex(b"agent-world-test-module-artifact-signer-v1");
+    let seed_bytes = hex::decode(seed).expect("decode test module signing seed");
+    let private_key_bytes: [u8; 32] = seed_bytes
+        .as_slice()
+        .try_into()
+        .expect("test module signing seed is 32 bytes");
+    let signing_key = SigningKey::from_bytes(&private_key_bytes);
+    hex::encode(signing_key.verifying_key().to_bytes())
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WorldRuntimeMemoryLimits {
@@ -128,6 +147,15 @@ impl World {
 
     pub fn new_with_state(mut state: WorldState) -> Self {
         state.migrate_legacy_material_ledgers();
+        state
+            .node_identity_bindings
+            .entry(BUILTIN_MODULE_SIGNER_NODE_ID.to_string())
+            .or_insert_with(|| BUILTIN_MODULE_SIGNER_PUBLIC_KEY_HEX.to_string());
+        #[cfg(any(test, feature = "test_tier_required", feature = "test_tier_full"))]
+        state
+            .node_identity_bindings
+            .entry(TEST_MODULE_SIGNER_NODE_ID.to_string())
+            .or_insert_with(test_module_signer_public_key_hex);
         Self {
             manifest: Manifest::default(),
             module_registry: ModuleRegistry::default(),

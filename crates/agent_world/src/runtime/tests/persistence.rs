@@ -32,7 +32,7 @@ fn install_test_module(world: &mut World, module_id: &str, wasm_bytes: &[u8]) ->
         exports: vec!["reduce".to_string()],
         subscriptions: Vec::new(),
         required_caps: Vec::new(),
-        artifact_identity: None,
+        artifact_identity: Some(super::signed_test_artifact_identity(wasm_hash.as_str())),
         limits: ModuleLimits::unbounded(),
     };
     let changes = ModuleChangeSet {
