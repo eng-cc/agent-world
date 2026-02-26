@@ -16,8 +16,8 @@ use super::gameplay_state::{
     WarState,
 };
 use super::main_token::{
-    MainTokenAccountBalance, MainTokenConfig, MainTokenEpochIssuanceRecord,
-    MainTokenGenesisAllocationBucketState, MainTokenSupplyState,
+    main_token_bucket_unlocked_amount, MainTokenAccountBalance, MainTokenConfig,
+    MainTokenEpochIssuanceRecord, MainTokenGenesisAllocationBucketState, MainTokenSupplyState,
 };
 use super::node_points::EpochSettlementReport;
 use super::reward_asset::{
@@ -31,6 +31,8 @@ use super::util::hash_json;
 mod apply_domain_event_core;
 mod apply_domain_event_gameplay;
 mod apply_domain_event_governance_meta;
+mod apply_domain_event_industry;
+mod apply_domain_event_main_token;
 
 fn default_world_material_ledger() -> MaterialLedgerId {
     MaterialLedgerId::world()
@@ -236,6 +238,8 @@ pub struct WorldState {
     #[serde(default)]
     pub main_token_treasury_balances: BTreeMap<String, u64>,
     #[serde(default)]
+    pub main_token_claim_nonces: BTreeMap<String, u64>,
+    #[serde(default)]
     pub reward_asset_config: RewardAssetConfig,
     #[serde(default)]
     pub node_asset_balances: BTreeMap<String, NodeAssetBalance>,
@@ -293,6 +297,7 @@ impl Default for WorldState {
             main_token_genesis_buckets: BTreeMap::new(),
             main_token_epoch_issuance_records: BTreeMap::new(),
             main_token_treasury_balances: BTreeMap::new(),
+            main_token_claim_nonces: BTreeMap::new(),
             reward_asset_config: RewardAssetConfig::default(),
             node_asset_balances: BTreeMap::new(),
             protocol_power_reserve: ProtocolPowerReserve::default(),
@@ -491,6 +496,8 @@ impl WorldState {
             | DomainEvent::PowerRedeemed { .. }
             | DomainEvent::PowerRedeemRejected { .. }
             | DomainEvent::NodePointsSettlementApplied { .. }
+            | DomainEvent::MainTokenGenesisInitialized { .. }
+            | DomainEvent::MainTokenVestingClaimed { .. }
             | DomainEvent::MaterialTransferred { .. }
             | DomainEvent::MaterialTransitStarted { .. }
             | DomainEvent::MaterialTransitCompleted { .. }

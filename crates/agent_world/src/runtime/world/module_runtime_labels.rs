@@ -35,6 +35,10 @@ pub(super) fn event_kind_label(body: &WorldEventBody) -> &'static str {
             DomainEvent::NodePointsSettlementApplied { .. } => {
                 "domain.reward.node_points_settlement_applied"
             }
+            DomainEvent::MainTokenGenesisInitialized { .. } => {
+                "domain.main_token.genesis_initialized"
+            }
+            DomainEvent::MainTokenVestingClaimed { .. } => "domain.main_token.vesting_claimed",
             DomainEvent::MaterialTransferred { .. } => "domain.material_transferred",
             DomainEvent::MaterialTransitStarted { .. } => "domain.material_transit_started",
             DomainEvent::MaterialTransitCompleted { .. } => "domain.material_transit_completed",
@@ -129,6 +133,8 @@ pub(super) fn action_kind_label(action: &Action) -> &'static str {
         Action::ApplyNodePointsSettlementSigned { .. } => {
             "action.reward.apply_node_points_settlement_signed"
         }
+        Action::InitializeMainTokenGenesis { .. } => "action.main_token.initialize_genesis",
+        Action::ClaimMainTokenVesting { .. } => "action.main_token.claim_vesting",
         Action::TransferMaterial { .. } => "action.transfer_material",
         Action::FormAlliance { .. } => "action.gameplay.form_alliance",
         Action::JoinAlliance { .. } => "action.gameplay.join_alliance",

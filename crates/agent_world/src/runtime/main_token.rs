@@ -116,6 +116,16 @@ pub struct MainTokenAccountBalance {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct MainTokenGenesisAllocationPlan {
+    pub bucket_id: String,
+    pub ratio_bps: u32,
+    pub recipient: String,
+    pub cliff_epochs: u64,
+    pub linear_unlock_epochs: u64,
+    pub start_epoch: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct MainTokenGenesisAllocationBucketState {
     pub bucket_id: String,
     pub ratio_bps: u32,
@@ -136,4 +146,22 @@ pub struct MainTokenEpochIssuanceRecord {
     pub node_service_reward_amount: u64,
     pub ecosystem_pool_amount: u64,
     pub security_reserve_amount: u64,
+}
+
+pub fn main_token_bucket_unlocked_amount(
+    bucket: &MainTokenGenesisAllocationBucketState,
+    current_epoch: u64,
+) -> u64 {
+    let unlock_start_epoch = bucket.start_epoch.saturating_add(bucket.cliff_epochs);
+    if current_epoch < unlock_start_epoch {
+        return 0;
+    }
+    if bucket.linear_unlock_epochs == 0 {
+        return bucket.allocated_amount;
+    }
+    let elapsed = current_epoch.saturating_sub(unlock_start_epoch);
+    if elapsed >= bucket.linear_unlock_epochs {
+        return bucket.allocated_amount;
+    }
+    bucket.allocated_amount.saturating_mul(elapsed) / bucket.linear_unlock_epochs
 }

@@ -12,6 +12,7 @@ use serde_json::Value as JsonValue;
 use std::collections::BTreeMap;
 
 use super::gameplay_state::WarParticipantOutcome;
+use super::main_token::{MainTokenGenesisAllocationBucketState, MainTokenGenesisAllocationPlan};
 use super::node_points::EpochSettlementReport;
 use super::reward_asset::NodeRewardMintRecord;
 use super::types::{ActionId, MaterialLedgerId, ProposalId, WorldTime};
@@ -182,6 +183,14 @@ pub enum Action {
         report: EpochSettlementReport,
         signer_node_id: String,
         mint_records: Vec<NodeRewardMintRecord>,
+    },
+    InitializeMainTokenGenesis {
+        allocations: Vec<MainTokenGenesisAllocationPlan>,
+    },
+    ClaimMainTokenVesting {
+        bucket_id: String,
+        beneficiary: String,
+        nonce: u64,
     },
     TransferMaterial {
         requester_agent_id: String,
@@ -520,6 +529,16 @@ pub enum DomainEvent {
         settlement_hash: String,
         minted_records: Vec<NodeRewardMintRecord>,
     },
+    MainTokenGenesisInitialized {
+        total_supply: u64,
+        allocations: Vec<MainTokenGenesisAllocationBucketState>,
+    },
+    MainTokenVestingClaimed {
+        bucket_id: String,
+        beneficiary: String,
+        amount: u64,
+        nonce: u64,
+    },
     MaterialTransferred {
         requester_agent_id: String,
         from_ledger: MaterialLedgerId,
@@ -813,6 +832,8 @@ impl DomainEvent {
                 target_agent_id, ..
             } => Some(target_agent_id.as_str()),
             DomainEvent::NodePointsSettlementApplied { .. } => None,
+            DomainEvent::MainTokenGenesisInitialized { .. } => None,
+            DomainEvent::MainTokenVestingClaimed { beneficiary, .. } => Some(beneficiary.as_str()),
             DomainEvent::MaterialTransferred {
                 requester_agent_id, ..
             } => Some(requester_agent_id.as_str()),

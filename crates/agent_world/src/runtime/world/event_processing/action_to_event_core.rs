@@ -309,6 +309,24 @@ impl World {
                     mint_records.as_slice(),
                 ),
             )),
+            Action::InitializeMainTokenGenesis { allocations } => Ok(WorldEventBody::Domain(
+                self.evaluate_initialize_main_token_genesis_action(
+                    action_id,
+                    allocations.as_slice(),
+                ),
+            )),
+            Action::ClaimMainTokenVesting {
+                bucket_id,
+                beneficiary,
+                nonce,
+            } => Ok(WorldEventBody::Domain(
+                self.evaluate_claim_main_token_vesting_action(
+                    action_id,
+                    bucket_id.as_str(),
+                    beneficiary.as_str(),
+                    *nonce,
+                ),
+            )),
             Action::TransferMaterial {
                 requester_agent_id,
                 from_ledger,

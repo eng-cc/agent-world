@@ -123,6 +123,10 @@ impl World {
             .unwrap_or(0)
     }
 
+    pub fn main_token_last_claim_nonce(&self, beneficiary: &str) -> Option<u64> {
+        self.state.main_token_claim_nonces.get(beneficiary).copied()
+    }
+
     pub fn set_main_token_treasury_balance(
         &mut self,
         bucket_id: &str,

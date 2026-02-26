@@ -127,3 +127,129 @@ fn main_token_snapshot_roundtrip_persists_state() {
         })
     );
 }
+
+#[test]
+fn main_token_initialize_genesis_action_populates_buckets_and_vested_balances() {
+    let mut world = World::new();
+    world.set_main_token_config(MainTokenConfig {
+        initial_supply: 1_000,
+        ..MainTokenConfig::default()
+    });
+
+    world.submit_action(Action::InitializeMainTokenGenesis {
+        allocations: vec![
+            MainTokenGenesisAllocationPlan {
+                bucket_id: "consensus_bootstrap_pool".to_string(),
+                ratio_bps: 6_000,
+                recipient: "node:validator".to_string(),
+                cliff_epochs: 0,
+                linear_unlock_epochs: 10,
+                start_epoch: 0,
+            },
+            MainTokenGenesisAllocationPlan {
+                bucket_id: "ecosystem_growth_pool".to_string(),
+                ratio_bps: 4_000,
+                recipient: "protocol:treasury".to_string(),
+                cliff_epochs: 0,
+                linear_unlock_epochs: 20,
+                start_epoch: 0,
+            },
+        ],
+    });
+    world.step().expect("initialize main token genesis");
+
+    assert_eq!(world.main_token_supply().total_supply, 1_000);
+    assert_eq!(world.main_token_supply().circulating_supply, 0);
+    assert_eq!(world.main_token_liquid_balance("node:validator"), 0);
+    assert_eq!(world.main_token_liquid_balance("protocol:treasury"), 0);
+    assert_eq!(
+        world
+            .main_token_account_balance("node:validator")
+            .expect("validator account")
+            .vested_balance,
+        600
+    );
+    assert_eq!(
+        world
+            .main_token_account_balance("protocol:treasury")
+            .expect("treasury account")
+            .vested_balance,
+        400
+    );
+    let total_allocated = world
+        .state()
+        .main_token_genesis_buckets
+        .values()
+        .map(|bucket| bucket.allocated_amount)
+        .sum::<u64>();
+    assert_eq!(total_allocated, 1_000);
+    match &world.journal().events.last().expect("event").body {
+        WorldEventBody::Domain(DomainEvent::MainTokenGenesisInitialized {
+            total_supply,
+            allocations,
+        }) => {
+            assert_eq!(*total_supply, 1_000);
+            assert_eq!(allocations.len(), 2);
+        }
+        other => panic!("expected MainTokenGenesisInitialized, got {other:?}"),
+    }
+}
+
+#[test]
+fn main_token_claim_vesting_action_releases_unlocked_balance_and_rejects_nonce_replay() {
+    let mut world = World::new();
+    world.set_main_token_config(MainTokenConfig {
+        initial_supply: 1_000,
+        ..MainTokenConfig::default()
+    });
+    world.submit_action(Action::InitializeMainTokenGenesis {
+        allocations: vec![MainTokenGenesisAllocationPlan {
+            bucket_id: "core_contributor_vesting".to_string(),
+            ratio_bps: 10_000,
+            recipient: "player:alice".to_string(),
+            cliff_epochs: 0,
+            linear_unlock_epochs: 10,
+            start_epoch: 0,
+        }],
+    });
+    world.step().expect("initialize main token genesis");
+
+    world.submit_action(Action::ClaimMainTokenVesting {
+        bucket_id: "core_contributor_vesting".to_string(),
+        beneficiary: "player:alice".to_string(),
+        nonce: 1,
+    });
+    world.step().expect("claim vesting");
+
+    let alice = world
+        .main_token_account_balance("player:alice")
+        .expect("alice account");
+    assert_eq!(alice.liquid_balance, 200);
+    assert_eq!(alice.vested_balance, 800);
+    assert_eq!(world.main_token_supply().circulating_supply, 200);
+    assert_eq!(world.main_token_last_claim_nonce("player:alice"), Some(1));
+    assert_eq!(
+        world
+            .main_token_genesis_bucket("core_contributor_vesting")
+            .expect("bucket")
+            .claimed_amount,
+        200
+    );
+
+    world.submit_action(Action::ClaimMainTokenVesting {
+        bucket_id: "core_contributor_vesting".to_string(),
+        beneficiary: "player:alice".to_string(),
+        nonce: 1,
+    });
+    world.step().expect("nonce replay should be rejected");
+
+    match &world.journal().events.last().expect("event").body {
+        WorldEventBody::Domain(DomainEvent::ActionRejected { reason, .. }) => match reason {
+            RejectReason::RuleDenied { notes } => {
+                assert!(notes.iter().any(|note| note.contains("nonce replay")));
+            }
+            other => panic!("expected RuleDenied, got {other:?}"),
+        },
+        other => panic!("expected ActionRejected, got {other:?}"),
+    }
+}

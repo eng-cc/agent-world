@@ -1,8 +1,9 @@
 use super::super::{
-    util::hash_json, Action, ActionEnvelope, ActionId, CausedBy, CrisisStatus, DomainEvent,
-    EconomicContractStatus, EpochSettlementReport, GovernanceProposalStatus, MaterialLedgerId,
-    MaterialStack, NodeRewardMintRecord, RejectReason, WorldError, WorldEvent, WorldEventBody,
-    WorldEventId, WorldTime,
+    main_token_bucket_unlocked_amount, util::hash_json, Action, ActionEnvelope, ActionId, CausedBy,
+    CrisisStatus, DomainEvent, EconomicContractStatus, EpochSettlementReport,
+    GovernanceProposalStatus, MainTokenGenesisAllocationBucketState,
+    MainTokenGenesisAllocationPlan, MaterialLedgerId, MaterialStack, NodeRewardMintRecord,
+    RejectReason, WorldError, WorldEvent, WorldEventBody, WorldEventId, WorldTime,
 };
 use super::body::{evaluate_expand_body_interface, validate_body_kernel_view};
 use super::logistics::{
@@ -133,6 +134,8 @@ impl World {
             | Action::RedeemPower { .. }
             | Action::RedeemPowerSigned { .. }
             | Action::ApplyNodePointsSettlementSigned { .. }
+            | Action::InitializeMainTokenGenesis { .. }
+            | Action::ClaimMainTokenVesting { .. }
             | Action::TransferMaterial { .. } => {
                 self.action_to_event_core(action_id, &envelope.action)
             }
@@ -213,6 +216,230 @@ impl World {
                 action_id,
                 reason: RejectReason::RuleDenied {
                     notes: vec![format!("apply node points settlement rejected: {err:?}")],
+                },
+            };
+        }
+        event
+    }
+
+    fn build_main_token_genesis_allocations(
+        &self,
+        plans: &[MainTokenGenesisAllocationPlan],
+    ) -> Result<Vec<MainTokenGenesisAllocationBucketState>, String> {
+        if plans.is_empty() {
+            return Err("allocations cannot be empty".to_string());
+        }
+        let mut seen_bucket_ids = BTreeSet::new();
+        let mut ratio_sum = 0_u64;
+        for plan in plans {
+            if plan.bucket_id.trim().is_empty() {
+                return Err("allocation bucket_id cannot be empty".to_string());
+            }
+            if !seen_bucket_ids.insert(plan.bucket_id.as_str()) {
+                return Err(format!(
+                    "duplicate allocation bucket_id: {}",
+                    plan.bucket_id
+                ));
+            }
+            if plan.recipient.trim().is_empty() {
+                return Err(format!(
+                    "allocation recipient cannot be empty: bucket={}",
+                    plan.bucket_id
+                ));
+            }
+            if plan.ratio_bps == 0 {
+                return Err(format!(
+                    "allocation ratio must be > 0: bucket={}",
+                    plan.bucket_id
+                ));
+            }
+            ratio_sum = ratio_sum.saturating_add(u64::from(plan.ratio_bps));
+        }
+        if ratio_sum != 10_000 {
+            return Err(format!(
+                "allocation ratio sum must be 10000 bps, got {}",
+                ratio_sum
+            ));
+        }
+
+        let initial_supply = self.state.main_token_config.initial_supply;
+        if initial_supply == 0 {
+            return Err("main token initial_supply must be > 0".to_string());
+        }
+
+        let mut allocations = Vec::with_capacity(plans.len());
+        let mut distributed = 0_u64;
+        for plan in plans {
+            let allocated_u128 =
+                (u128::from(initial_supply) * u128::from(plan.ratio_bps)) / u128::from(10_000_u32);
+            let allocated_amount = u64::try_from(allocated_u128).map_err(|_| {
+                format!(
+                    "allocated amount overflow: bucket={} amount={allocated_u128}",
+                    plan.bucket_id
+                )
+            })?;
+            distributed = distributed
+                .checked_add(allocated_amount)
+                .ok_or_else(|| "distributed allocation overflow".to_string())?;
+            allocations.push(MainTokenGenesisAllocationBucketState {
+                bucket_id: plan.bucket_id.clone(),
+                ratio_bps: plan.ratio_bps,
+                recipient: plan.recipient.clone(),
+                cliff_epochs: plan.cliff_epochs,
+                linear_unlock_epochs: plan.linear_unlock_epochs,
+                start_epoch: plan.start_epoch,
+                allocated_amount,
+                claimed_amount: 0,
+            });
+        }
+
+        let mut remainder = initial_supply.saturating_sub(distributed);
+        allocations.sort_by(|a, b| {
+            b.ratio_bps
+                .cmp(&a.ratio_bps)
+                .then_with(|| a.bucket_id.cmp(&b.bucket_id))
+        });
+        let mut index = 0_usize;
+        while remainder > 0 && !allocations.is_empty() {
+            let target = index % allocations.len();
+            allocations[target].allocated_amount =
+                allocations[target].allocated_amount.saturating_add(1);
+            remainder -= 1;
+            index = index.saturating_add(1);
+        }
+        allocations.sort_by(|a, b| a.bucket_id.cmp(&b.bucket_id));
+        Ok(allocations)
+    }
+
+    fn evaluate_initialize_main_token_genesis_action(
+        &self,
+        action_id: ActionId,
+        allocations: &[MainTokenGenesisAllocationPlan],
+    ) -> DomainEvent {
+        if !self.state.main_token_genesis_buckets.is_empty() {
+            return DomainEvent::ActionRejected {
+                action_id,
+                reason: RejectReason::RuleDenied {
+                    notes: vec!["main token genesis is already initialized".to_string()],
+                },
+            };
+        }
+        if self.state.main_token_supply.total_supply > 0
+            || self.state.main_token_supply.total_issued > 0
+            || self.state.main_token_supply.total_burned > 0
+        {
+            return DomainEvent::ActionRejected {
+                action_id,
+                reason: RejectReason::RuleDenied {
+                    notes: vec!["main token supply is already initialized".to_string()],
+                },
+            };
+        }
+
+        let resolved_allocations = match self.build_main_token_genesis_allocations(allocations) {
+            Ok(values) => values,
+            Err(reason) => {
+                return DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::RuleDenied {
+                        notes: vec![format!("initialize main token genesis rejected: {reason}")],
+                    },
+                };
+            }
+        };
+
+        let event = DomainEvent::MainTokenGenesisInitialized {
+            total_supply: self.state.main_token_config.initial_supply,
+            allocations: resolved_allocations,
+        };
+        let mut preview_state = self.state.clone();
+        if let Err(err) = preview_state.apply_domain_event(&event, self.state.time) {
+            return DomainEvent::ActionRejected {
+                action_id,
+                reason: RejectReason::RuleDenied {
+                    notes: vec![format!("initialize main token genesis rejected: {err:?}")],
+                },
+            };
+        }
+        event
+    }
+
+    fn evaluate_claim_main_token_vesting_action(
+        &self,
+        action_id: ActionId,
+        bucket_id: &str,
+        beneficiary: &str,
+        nonce: u64,
+    ) -> DomainEvent {
+        if bucket_id.trim().is_empty() {
+            return DomainEvent::ActionRejected {
+                action_id,
+                reason: RejectReason::RuleDenied {
+                    notes: vec!["bucket_id cannot be empty".to_string()],
+                },
+            };
+        }
+        if beneficiary.trim().is_empty() {
+            return DomainEvent::ActionRejected {
+                action_id,
+                reason: RejectReason::RuleDenied {
+                    notes: vec!["beneficiary cannot be empty".to_string()],
+                },
+            };
+        }
+        if nonce == 0 {
+            return DomainEvent::ActionRejected {
+                action_id,
+                reason: RejectReason::RuleDenied {
+                    notes: vec!["nonce must be > 0".to_string()],
+                },
+            };
+        }
+        let Some(bucket) = self.state.main_token_genesis_buckets.get(bucket_id) else {
+            return DomainEvent::ActionRejected {
+                action_id,
+                reason: RejectReason::RuleDenied {
+                    notes: vec![format!("genesis bucket not found: {bucket_id}")],
+                },
+            };
+        };
+        if bucket.recipient != beneficiary {
+            return DomainEvent::ActionRejected {
+                action_id,
+                reason: RejectReason::RuleDenied {
+                    notes: vec![format!(
+                        "beneficiary mismatch: bucket recipient={} claim beneficiary={}",
+                        bucket.recipient, beneficiary
+                    )],
+                },
+            };
+        }
+        let unlocked = main_token_bucket_unlocked_amount(bucket, self.state.time);
+        let releasable = unlocked.saturating_sub(bucket.claimed_amount);
+        if releasable == 0 {
+            return DomainEvent::ActionRejected {
+                action_id,
+                reason: RejectReason::RuleDenied {
+                    notes: vec![format!(
+                        "no releasable vesting balance for bucket={} at epoch={}",
+                        bucket_id, self.state.time
+                    )],
+                },
+            };
+        }
+
+        let event = DomainEvent::MainTokenVestingClaimed {
+            bucket_id: bucket_id.to_string(),
+            beneficiary: beneficiary.to_string(),
+            amount: releasable,
+            nonce,
+        };
+        let mut preview_state = self.state.clone();
+        if let Err(err) = preview_state.apply_domain_event(&event, self.state.time) {
+            return DomainEvent::ActionRejected {
+                action_id,
+                reason: RejectReason::RuleDenied {
+                    notes: vec![format!("claim main token vesting rejected: {err:?}")],
                 },
             };
         }

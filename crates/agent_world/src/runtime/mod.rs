@@ -107,8 +107,9 @@ pub use modules::{
 
 // Node points
 pub use main_token::{
-    MainTokenAccountBalance, MainTokenBurnPolicy, MainTokenConfig, MainTokenEpochIssuanceRecord,
-    MainTokenGenesisAllocationBucketState, MainTokenInflationPolicy, MainTokenIssuanceSplitPolicy,
+    main_token_bucket_unlocked_amount, MainTokenAccountBalance, MainTokenBurnPolicy,
+    MainTokenConfig, MainTokenEpochIssuanceRecord, MainTokenGenesisAllocationBucketState,
+    MainTokenGenesisAllocationPlan, MainTokenInflationPolicy, MainTokenIssuanceSplitPolicy,
     MainTokenSupplyState,
 };
 pub use node_points::{
