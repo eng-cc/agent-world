@@ -680,10 +680,8 @@ impl WorldKernel {
             });
         }
 
-        let mut distance_km = 0;
-        let mut loss = 0;
-        if from_location != to_location {
-            distance_km = self.power_transfer_distance_km(&from_location, &to_location)?;
+        let loss = if from_location != to_location {
+            let distance_km = self.power_transfer_distance_km(&from_location, &to_location)?;
             let max_distance_km = self.config.power.transfer_max_distance_km;
             if distance_km > max_distance_km {
                 return Err(RejectReason::PowerTransferDistanceExceeded {
@@ -691,19 +689,19 @@ impl WorldKernel {
                     max_distance_km,
                 });
             }
-            loss = self.power_transfer_loss(amount, distance_km);
+            let loss = self.power_transfer_loss(amount, distance_km);
             if loss >= amount {
                 return Err(RejectReason::PowerTransferLossExceedsAmount { amount, loss });
             }
-        }
+            loss
+        } else {
+            0
+        };
 
         Ok(PreparedPowerTransfer {
             loss,
-            quoted_price_per_pu: self.quote_power_market_price_per_pu(
-                amount,
-                distance_km,
-                seller_available_before,
-            ),
+            quoted_price_per_pu: self
+                .quote_power_market_price_per_pu(amount, seller_available_before),
         })
     }
 
@@ -829,38 +827,28 @@ impl WorldKernel {
         loss.min(amount as i128) as i64
     }
 
-    fn quote_power_market_price_per_pu(
-        &self,
-        amount: i64,
-        distance_km: i64,
-        seller_available_before: i64,
-    ) -> i64 {
+    fn quote_power_market_price_per_pu(&self, amount: i64, seller_available_before: i64) -> i64 {
         let cfg = &self.config.power;
         let min_price = cfg.market_price_min_per_pu.max(0);
         let max_price = cfg.market_price_max_per_pu.max(min_price);
         let base_price = cfg.market_base_price_per_pu.clamp(min_price, max_price);
 
-        let scarcity_bps = if seller_available_before <= 0 {
+        // Pure supply-demand pricing:
+        // demand_pressure_bps = clamp((requested / available - 1) * 10_000, 0, max_bps)
+        let demand_pressure_bps = if seller_available_before <= 0 {
             cfg.market_scarcity_price_max_bps
         } else {
             ((amount as i128)
                 .saturating_mul(10_000)
                 .saturating_div(seller_available_before as i128))
+            .saturating_sub(10_000)
             .clamp(0, cfg.market_scarcity_price_max_bps as i128) as i64
         };
-        let scarcity_premium = ((base_price as i128)
-            .saturating_mul(scarcity_bps as i128)
-            .saturating_add(9_999)
-            / 10_000) as i64;
-        let distance_premium = ((base_price as i128)
-            .saturating_mul(distance_km.max(0) as i128)
-            .saturating_mul(cfg.market_distance_price_per_km_bps as i128)
-            .saturating_add(9_999)
-            / 10_000) as i64;
+        let demand_premium =
+            ((base_price as i128).saturating_mul(demand_pressure_bps as i128) / 10_000) as i64;
 
         base_price
-            .saturating_add(scarcity_premium)
-            .saturating_add(distance_premium)
+            .saturating_add(demand_premium)
             .clamp(min_price, max_price)
     }
 

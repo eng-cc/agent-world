@@ -85,9 +85,10 @@ pub struct PowerConfig {
     pub market_price_min_per_pu: i64,
     /// Maximum allowed market price.
     pub market_price_max_per_pu: i64,
-    /// Max scarcity premium applied when seller inventory is tight.
+    /// Max demand-pressure premium in basis points:
+    /// `clamp((requested / available - 1) * 10_000, 0, cap)`.
     pub market_scarcity_price_max_bps: i64,
-    /// Distance premium per km, in basis points on top of base price.
+    /// Deprecated compatibility field (distance no longer affects market quote).
     pub market_distance_price_per_km_bps: i64,
     /// Allowed explicit price deviation from quote, in bps.
     pub market_price_band_bps: i64,

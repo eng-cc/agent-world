@@ -599,9 +599,9 @@ fn power_buy_zero_price_uses_dynamic_market_quote() {
     };
     assert_eq!(amount, 10);
     assert_eq!(loss, 0);
-    assert_eq!(quoted_price_per_pu, 3);
-    assert_eq!(price_per_pu, 3);
-    assert_eq!(settlement_amount, 30);
+    assert_eq!(quoted_price_per_pu, 2);
+    assert_eq!(price_per_pu, 2);
+    assert_eq!(settlement_amount, 20);
 }
 
 #[test]
@@ -706,7 +706,9 @@ fn power_transfer_rejects_when_location_owner_involved() {
 
 #[test]
 fn place_power_order_matches_buy_and_sell_and_clears_book() {
-    let mut kernel = WorldKernel::new();
+    let mut config = WorldConfig::default();
+    config.power.market_base_price_per_pu = 2;
+    let mut kernel = WorldKernel::with_config(config);
     kernel.submit_action(Action::RegisterLocation {
         location_id: "hub".to_string(),
         name: "hub".to_string(),
@@ -851,7 +853,9 @@ fn cancel_power_order_removes_open_order() {
 
 #[test]
 fn power_order_match_prefers_lower_ask_price() {
-    let mut kernel = WorldKernel::new();
+    let mut config = WorldConfig::default();
+    config.power.market_base_price_per_pu = 2;
+    let mut kernel = WorldKernel::with_config(config);
     kernel.submit_action(Action::RegisterLocation {
         location_id: "hub".to_string(),
         name: "hub".to_string(),
@@ -943,7 +947,9 @@ fn power_order_match_prefers_lower_ask_price() {
 
 #[test]
 fn power_order_match_prefers_earlier_order_at_same_price() {
-    let mut kernel = WorldKernel::new();
+    let mut config = WorldConfig::default();
+    config.power.market_base_price_per_pu = 2;
+    let mut kernel = WorldKernel::with_config(config);
     kernel.submit_action(Action::RegisterLocation {
         location_id: "hub".to_string(),
         name: "hub".to_string(),

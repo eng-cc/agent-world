@@ -62,7 +62,9 @@ fn replay_from_snapshot_matches_same_seed_and_action_sequence() {
 
 #[test]
 fn replay_from_snapshot_matches_power_orderbook_sequence() {
-    let mut kernel = WorldKernel::new();
+    let mut config = WorldConfig::default();
+    config.power.market_base_price_per_pu = 2;
+    let mut kernel = WorldKernel::with_config(config);
     kernel.submit_action(Action::RegisterLocation {
         location_id: "hub".to_string(),
         name: "hub".to_string(),
