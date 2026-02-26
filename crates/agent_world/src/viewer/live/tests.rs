@@ -4,6 +4,8 @@ use agent_world_node::{
     NodeRuntime,
 };
 use ed25519_dalek::SigningKey;
+use std::io::BufWriter;
+use std::net::{TcpListener, TcpStream};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
@@ -25,6 +27,14 @@ fn test_signer(seed: u8) -> (String, String) {
         hex::encode(signing_key.verifying_key().to_bytes()),
         hex::encode(private_key),
     )
+}
+
+fn test_writer_pair() -> (BufWriter<TcpStream>, TcpStream) {
+    let listener = TcpListener::bind("127.0.0.1:0").expect("bind test listener");
+    let addr = listener.local_addr().expect("listener local addr");
+    let client = TcpStream::connect(addr).expect("connect test client");
+    let (server, _) = listener.accept().expect("accept test peer");
+    (BufWriter::new(server), client)
 }
 
 fn signed_prompt_control_apply_request(
@@ -207,6 +217,58 @@ fn live_world_seek_reports_stall_when_world_cannot_advance() {
     assert!(!result.reached);
     assert_eq!(result.current_tick, 0);
     assert_eq!(world.kernel.time(), 0);
+}
+
+#[test]
+fn step_control_is_deferred_from_request_handler() {
+    let config = WorldConfig::default();
+    let init = WorldInitConfig::from_scenario(WorldScenario::Minimal, &config);
+    let mut world = LiveWorld::new(config, init, ViewerLiveDecisionMode::Script).expect("init ok");
+    let mut session = ViewerLiveSession::new();
+    let (mut writer, _peer) = test_writer_pair();
+
+    let outcome = session
+        .handle_request(
+            ViewerRequest::Control {
+                mode: ViewerControl::Step { count: 3 },
+            },
+            &mut writer,
+            &mut world,
+            "test-world",
+        )
+        .expect("handle step control");
+
+    assert_eq!(world.kernel.time(), 0);
+    assert!(matches!(
+        outcome.deferred_control,
+        Some(ViewerLiveDeferredControl::Step { count: 3 })
+    ));
+}
+
+#[test]
+fn seek_control_is_deferred_from_request_handler() {
+    let config = WorldConfig::default();
+    let init = WorldInitConfig::from_scenario(WorldScenario::Minimal, &config);
+    let mut world = LiveWorld::new(config, init, ViewerLiveDecisionMode::Script).expect("init ok");
+    let mut session = ViewerLiveSession::new();
+    let (mut writer, _peer) = test_writer_pair();
+
+    let outcome = session
+        .handle_request(
+            ViewerRequest::Control {
+                mode: ViewerControl::Seek { tick: 5 },
+            },
+            &mut writer,
+            &mut world,
+            "test-world",
+        )
+        .expect("handle seek control");
+
+    assert_eq!(world.kernel.time(), 0);
+    assert!(matches!(
+        outcome.deferred_control,
+        Some(ViewerLiveDeferredControl::Seek { tick: 5 })
+    ));
 }
 
 #[test]
