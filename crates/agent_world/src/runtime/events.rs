@@ -25,6 +25,14 @@ fn default_module_action_fee_kind() -> ResourceKind {
     ResourceKind::Electricity
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum MainTokenFeeKind {
+    GasBaseFee,
+    SlashPenalty,
+    ModuleFee,
+}
+
 /// An envelope wrapping an action with its ID.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ActionEnvelope {
@@ -195,6 +203,10 @@ pub enum Action {
     ApplyMainTokenEpochIssuance {
         epoch_index: u64,
         actual_stake_ratio_bps: u32,
+    },
+    SettleMainTokenFee {
+        fee_kind: MainTokenFeeKind,
+        amount: u64,
     },
     TransferMaterial {
         requester_agent_id: String,
@@ -552,6 +564,12 @@ pub enum DomainEvent {
         ecosystem_pool_amount: u64,
         security_reserve_amount: u64,
     },
+    MainTokenFeeSettled {
+        fee_kind: MainTokenFeeKind,
+        amount: u64,
+        burn_amount: u64,
+        treasury_amount: u64,
+    },
     MaterialTransferred {
         requester_agent_id: String,
         from_ledger: MaterialLedgerId,
@@ -848,6 +866,7 @@ impl DomainEvent {
             DomainEvent::MainTokenGenesisInitialized { .. } => None,
             DomainEvent::MainTokenVestingClaimed { beneficiary, .. } => Some(beneficiary.as_str()),
             DomainEvent::MainTokenEpochIssued { .. } => None,
+            DomainEvent::MainTokenFeeSettled { .. } => None,
             DomainEvent::MaterialTransferred {
                 requester_agent_id, ..
             } => Some(requester_agent_id.as_str()),

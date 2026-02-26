@@ -373,3 +373,86 @@ fn main_token_epoch_issuance_applies_formula_clamp_split_and_rejects_duplicate_e
         other => panic!("expected ActionRejected, got {other:?}"),
     }
 }
+
+#[test]
+fn main_token_fee_settlement_burns_supply_and_tracks_treasury_buckets() {
+    let mut world = World::new();
+    world.set_main_token_config(MainTokenConfig {
+        initial_supply: 1_000,
+        burn_policy: MainTokenBurnPolicy {
+            gas_base_fee_burn_bps: 3_000,
+            slash_burn_bps: 5_000,
+            module_fee_burn_bps: 2_000,
+        },
+        ..MainTokenConfig::default()
+    });
+    world.submit_action(Action::InitializeMainTokenGenesis {
+        allocations: vec![MainTokenGenesisAllocationPlan {
+            bucket_id: "genesis_pool".to_string(),
+            ratio_bps: 10_000,
+            recipient: "protocol:treasury".to_string(),
+            cliff_epochs: 0,
+            linear_unlock_epochs: 0,
+            start_epoch: 0,
+        }],
+    });
+    world.step().expect("initialize main token genesis");
+    world.set_main_token_supply(MainTokenSupplyState {
+        total_supply: 1_000,
+        circulating_supply: 500,
+        total_issued: 0,
+        total_burned: 0,
+    });
+
+    world.submit_action(Action::SettleMainTokenFee {
+        fee_kind: MainTokenFeeKind::GasBaseFee,
+        amount: 100,
+    });
+    world.step().expect("settle gas fee");
+
+    world.submit_action(Action::SettleMainTokenFee {
+        fee_kind: MainTokenFeeKind::SlashPenalty,
+        amount: 100,
+    });
+    world.step().expect("settle slash fee");
+
+    world.submit_action(Action::SettleMainTokenFee {
+        fee_kind: MainTokenFeeKind::ModuleFee,
+        amount: 100,
+    });
+    world.step().expect("settle module fee");
+
+    assert_eq!(world.main_token_supply().total_supply, 900);
+    assert_eq!(world.main_token_supply().circulating_supply, 200);
+    assert_eq!(world.main_token_supply().total_burned, 100);
+    assert_eq!(
+        world.main_token_treasury_balance(MAIN_TOKEN_TREASURY_BUCKET_GAS_FEE),
+        70
+    );
+    assert_eq!(
+        world.main_token_treasury_balance(MAIN_TOKEN_TREASURY_BUCKET_SLASH),
+        50
+    );
+    assert_eq!(
+        world.main_token_treasury_balance(MAIN_TOKEN_TREASURY_BUCKET_MODULE_FEE),
+        80
+    );
+
+    world.submit_action(Action::SettleMainTokenFee {
+        fee_kind: MainTokenFeeKind::GasBaseFee,
+        amount: 250,
+    });
+    world
+        .step()
+        .expect("insufficient circulating should reject");
+
+    match &world.journal().events.last().expect("event").body {
+        WorldEventBody::Domain(DomainEvent::ActionRejected { reason, .. }) => match reason {
+            RejectReason::RuleDenied { notes } => {
+                assert!(notes.iter().any(|note| note.contains("circulating")));
+            }
+            other => panic!("expected RuleDenied, got {other:?}"),
+        },
+        other => panic!("expected ActionRejected, got {other:?}"),
+    }
+}

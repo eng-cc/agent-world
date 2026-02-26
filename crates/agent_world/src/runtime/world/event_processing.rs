@@ -1,7 +1,7 @@
 use super::super::{
     main_token_bucket_unlocked_amount, util::hash_json, Action, ActionEnvelope, ActionId, CausedBy,
     CrisisStatus, DomainEvent, EconomicContractStatus, EpochSettlementReport,
-    GovernanceProposalStatus, MainTokenGenesisAllocationBucketState,
+    GovernanceProposalStatus, MainTokenFeeKind, MainTokenGenesisAllocationBucketState,
     MainTokenGenesisAllocationPlan, MaterialLedgerId, MaterialStack, NodeRewardMintRecord,
     RejectReason, WorldError, WorldEvent, WorldEventBody, WorldEventId, WorldTime,
 };
@@ -137,6 +137,7 @@ impl World {
             | Action::InitializeMainTokenGenesis { .. }
             | Action::ClaimMainTokenVesting { .. }
             | Action::ApplyMainTokenEpochIssuance { .. }
+            | Action::SettleMainTokenFee { .. }
             | Action::TransferMaterial { .. } => {
                 self.action_to_event_core(action_id, &envelope.action)
             }
@@ -649,6 +650,70 @@ impl World {
                 action_id,
                 reason: RejectReason::RuleDenied {
                     notes: vec![format!("apply epoch issuance rejected: {err:?}")],
+                },
+            };
+        }
+        event
+    }
+
+    fn resolve_main_token_fee_burn_bps(&self, fee_kind: MainTokenFeeKind) -> u32 {
+        let policy = &self.state.main_token_config.burn_policy;
+        match fee_kind {
+            MainTokenFeeKind::GasBaseFee => policy.gas_base_fee_burn_bps,
+            MainTokenFeeKind::SlashPenalty => policy.slash_burn_bps,
+            MainTokenFeeKind::ModuleFee => policy.module_fee_burn_bps,
+        }
+    }
+
+    fn evaluate_settle_main_token_fee_action(
+        &self,
+        action_id: ActionId,
+        fee_kind: MainTokenFeeKind,
+        amount: u64,
+    ) -> DomainEvent {
+        if self.state.main_token_genesis_buckets.is_empty() {
+            return DomainEvent::ActionRejected {
+                action_id,
+                reason: RejectReason::RuleDenied {
+                    notes: vec!["main token genesis is not initialized".to_string()],
+                },
+            };
+        }
+        if amount == 0 {
+            return DomainEvent::ActionRejected {
+                action_id,
+                reason: RejectReason::RuleDenied {
+                    notes: vec!["main token fee amount must be > 0".to_string()],
+                },
+            };
+        }
+        let burn_bps = self.resolve_main_token_fee_burn_bps(fee_kind);
+        if burn_bps > 10_000 {
+            return DomainEvent::ActionRejected {
+                action_id,
+                reason: RejectReason::RuleDenied {
+                    notes: vec![format!(
+                        "main token burn bps must be <= 10000, got {}",
+                        burn_bps
+                    )],
+                },
+            };
+        }
+        let burn_amount = amount.saturating_mul(u64::from(burn_bps)) / 10_000;
+        let treasury_amount = amount.saturating_sub(burn_amount);
+
+        let event = DomainEvent::MainTokenFeeSettled {
+            fee_kind,
+            amount,
+            burn_amount,
+            treasury_amount,
+        };
+        let mut preview_state = self.state.clone();
+        if let Err(err) = preview_state.apply_domain_event(&event, self.state.time) {
+            return DomainEvent::ActionRejected {
+                action_id,
+                reason: RejectReason::RuleDenied {
+                    notes: vec![format!("settle main token fee rejected: {err:?}")],
                 },
             };
         }

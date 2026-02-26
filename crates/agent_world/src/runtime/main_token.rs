@@ -20,6 +20,9 @@ pub const MAIN_TOKEN_TREASURY_BUCKET_STAKING_REWARD: &str = "staking_reward_pool
 pub const MAIN_TOKEN_TREASURY_BUCKET_NODE_SERVICE_REWARD: &str = "node_service_reward_pool";
 pub const MAIN_TOKEN_TREASURY_BUCKET_ECOSYSTEM_POOL: &str = "ecosystem_pool";
 pub const MAIN_TOKEN_TREASURY_BUCKET_SECURITY_RESERVE: &str = "security_reserve";
+pub const MAIN_TOKEN_TREASURY_BUCKET_GAS_FEE: &str = "gas_fee_treasury";
+pub const MAIN_TOKEN_TREASURY_BUCKET_SLASH: &str = "slash_treasury";
+pub const MAIN_TOKEN_TREASURY_BUCKET_MODULE_FEE: &str = "module_fee_treasury";
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MainTokenInflationPolicy {

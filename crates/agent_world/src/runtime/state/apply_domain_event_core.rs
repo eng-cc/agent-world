@@ -955,6 +955,9 @@ impl WorldState {
             event @ DomainEvent::MainTokenEpochIssued { .. } => {
                 self.apply_domain_event_main_token(event, now)?;
             }
+            event @ DomainEvent::MainTokenFeeSettled { .. } => {
+                self.apply_domain_event_main_token(event, now)?;
+            }
             event @ DomainEvent::MaterialTransferred { .. } => {
                 self.apply_domain_event_industry(event, now)?;
             }

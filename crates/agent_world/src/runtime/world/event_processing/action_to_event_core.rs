@@ -337,6 +337,9 @@ impl World {
                     *actual_stake_ratio_bps,
                 ),
             )),
+            Action::SettleMainTokenFee { fee_kind, amount } => Ok(WorldEventBody::Domain(
+                self.evaluate_settle_main_token_fee_action(action_id, *fee_kind, *amount),
+            )),
             Action::TransferMaterial {
                 requester_agent_id,
                 from_ledger,

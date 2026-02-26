@@ -1,6 +1,9 @@
+use super::super::events::MainTokenFeeKind;
 use super::super::main_token::{
-    MAIN_TOKEN_TREASURY_BUCKET_ECOSYSTEM_POOL, MAIN_TOKEN_TREASURY_BUCKET_NODE_SERVICE_REWARD,
-    MAIN_TOKEN_TREASURY_BUCKET_SECURITY_RESERVE, MAIN_TOKEN_TREASURY_BUCKET_STAKING_REWARD,
+    MAIN_TOKEN_TREASURY_BUCKET_ECOSYSTEM_POOL, MAIN_TOKEN_TREASURY_BUCKET_GAS_FEE,
+    MAIN_TOKEN_TREASURY_BUCKET_MODULE_FEE, MAIN_TOKEN_TREASURY_BUCKET_NODE_SERVICE_REWARD,
+    MAIN_TOKEN_TREASURY_BUCKET_SECURITY_RESERVE, MAIN_TOKEN_TREASURY_BUCKET_SLASH,
+    MAIN_TOKEN_TREASURY_BUCKET_STAKING_REWARD,
 };
 use super::*;
 
@@ -381,6 +384,78 @@ impl WorldState {
                     },
                 );
             }
+            DomainEvent::MainTokenFeeSettled {
+                fee_kind,
+                amount,
+                burn_amount,
+                treasury_amount,
+            } => {
+                if *amount == 0 {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: "main token fee amount must be > 0".to_string(),
+                    });
+                }
+                let settled_sum = burn_amount.checked_add(*treasury_amount).ok_or_else(|| {
+                    WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "main token fee settled overflow: amount={} burn={} treasury={}",
+                            amount, burn_amount, treasury_amount
+                        ),
+                    }
+                })?;
+                if settled_sum != *amount {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "main token fee settled mismatch: amount={} burn={} treasury={}",
+                            amount, burn_amount, treasury_amount
+                        ),
+                    });
+                }
+                if self.main_token_supply.circulating_supply < *amount {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "main token circulating supply insufficient for fee settlement: circulating={} amount={}",
+                            self.main_token_supply.circulating_supply, amount
+                        ),
+                    });
+                }
+                if self.main_token_supply.total_supply < *burn_amount {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "main token total_supply insufficient for burn: total={} burn={}",
+                            self.main_token_supply.total_supply, burn_amount
+                        ),
+                    });
+                }
+
+                self.main_token_supply.circulating_supply -= *amount;
+                self.main_token_supply.total_supply -= *burn_amount;
+                self.main_token_supply.total_burned = self
+                    .main_token_supply
+                    .total_burned
+                    .checked_add(*burn_amount)
+                    .ok_or_else(|| WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "main token total_burned overflow: current={} burn={}",
+                            self.main_token_supply.total_burned, burn_amount
+                        ),
+                    })?;
+                add_main_token_treasury_balance(
+                    &mut self.main_token_treasury_balances,
+                    main_token_fee_treasury_bucket(*fee_kind),
+                    *treasury_amount,
+                )?;
+
+                if self.main_token_supply.circulating_supply > self.main_token_supply.total_supply {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "main token circulating exceeds total supply after fee settlement: circulating={} total={}",
+                            self.main_token_supply.circulating_supply,
+                            self.main_token_supply.total_supply
+                        ),
+                    });
+                }
+            }
             _ => unreachable!("apply_domain_event_main_token received unsupported event variant"),
         }
         Ok(())
@@ -405,4 +480,12 @@ fn add_main_token_treasury_balance(
         })?;
     balances.insert(bucket_id.to_string(), next);
     Ok(())
+}
+
+fn main_token_fee_treasury_bucket(fee_kind: MainTokenFeeKind) -> &'static str {
+    match fee_kind {
+        MainTokenFeeKind::GasBaseFee => MAIN_TOKEN_TREASURY_BUCKET_GAS_FEE,
+        MainTokenFeeKind::SlashPenalty => MAIN_TOKEN_TREASURY_BUCKET_SLASH,
+        MainTokenFeeKind::ModuleFee => MAIN_TOKEN_TREASURY_BUCKET_MODULE_FEE,
+    }
 }

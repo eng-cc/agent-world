@@ -499,6 +499,7 @@ impl WorldState {
             | DomainEvent::MainTokenGenesisInitialized { .. }
             | DomainEvent::MainTokenVestingClaimed { .. }
             | DomainEvent::MainTokenEpochIssued { .. }
+            | DomainEvent::MainTokenFeeSettled { .. }
             | DomainEvent::MaterialTransferred { .. }
             | DomainEvent::MaterialTransitStarted { .. }
             | DomainEvent::MaterialTransitCompleted { .. }

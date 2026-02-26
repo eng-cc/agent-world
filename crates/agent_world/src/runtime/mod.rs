@@ -68,7 +68,8 @@ pub use error::WorldError;
 
 // Events
 pub use events::{
-    Action, ActionEnvelope, CausedBy, DomainEvent, ModuleSourcePackage, RejectReason,
+    Action, ActionEnvelope, CausedBy, DomainEvent, MainTokenFeeKind, ModuleSourcePackage,
+    RejectReason,
 };
 
 // Governance
@@ -111,8 +112,9 @@ pub use main_token::{
     MainTokenConfig, MainTokenEpochIssuanceRecord, MainTokenGenesisAllocationBucketState,
     MainTokenGenesisAllocationPlan, MainTokenInflationPolicy, MainTokenIssuanceSplitPolicy,
     MainTokenSupplyState, MAIN_TOKEN_TREASURY_BUCKET_ECOSYSTEM_POOL,
+    MAIN_TOKEN_TREASURY_BUCKET_GAS_FEE, MAIN_TOKEN_TREASURY_BUCKET_MODULE_FEE,
     MAIN_TOKEN_TREASURY_BUCKET_NODE_SERVICE_REWARD, MAIN_TOKEN_TREASURY_BUCKET_SECURITY_RESERVE,
-    MAIN_TOKEN_TREASURY_BUCKET_STAKING_REWARD,
+    MAIN_TOKEN_TREASURY_BUCKET_SLASH, MAIN_TOKEN_TREASURY_BUCKET_STAKING_REWARD,
 };
 pub use node_points::{
     EpochSettlementReport, NodeContributionSample, NodePointsConfig, NodePointsError,

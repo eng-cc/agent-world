@@ -40,6 +40,7 @@ pub(super) fn event_kind_label(body: &WorldEventBody) -> &'static str {
             }
             DomainEvent::MainTokenVestingClaimed { .. } => "domain.main_token.vesting_claimed",
             DomainEvent::MainTokenEpochIssued { .. } => "domain.main_token.epoch_issued",
+            DomainEvent::MainTokenFeeSettled { .. } => "domain.main_token.fee_settled",
             DomainEvent::MaterialTransferred { .. } => "domain.material_transferred",
             DomainEvent::MaterialTransitStarted { .. } => "domain.material_transit_started",
             DomainEvent::MaterialTransitCompleted { .. } => "domain.material_transit_completed",
@@ -137,6 +138,7 @@ pub(super) fn action_kind_label(action: &Action) -> &'static str {
         Action::InitializeMainTokenGenesis { .. } => "action.main_token.initialize_genesis",
         Action::ClaimMainTokenVesting { .. } => "action.main_token.claim_vesting",
         Action::ApplyMainTokenEpochIssuance { .. } => "action.main_token.apply_epoch_issuance",
+        Action::SettleMainTokenFee { .. } => "action.main_token.settle_fee",
         Action::TransferMaterial { .. } => "action.transfer_material",
         Action::FormAlliance { .. } => "action.gameplay.form_alliance",
         Action::JoinAlliance { .. } => "action.gameplay.join_alliance",
