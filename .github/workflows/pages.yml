@@ -5,6 +5,9 @@ on:
     branches: ["main"]
     paths:
       - "site/**"
+      - "scripts/site-link-check.sh"
+      - "scripts/site-manual-sync-check.sh"
+      - "doc/viewer-manual.md"
       - ".github/workflows/pages.yml"
       - "README.md"
   workflow_dispatch:
@@ -27,6 +30,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Run Site Quality Gates
+        run: |
+          ./scripts/site-link-check.sh
+          ./scripts/site-manual-sync-check.sh
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

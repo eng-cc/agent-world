@@ -14,9 +14,9 @@
 - [x] 任务测试与提交
 
 ### T2 Pages 发布门禁接入
-- [ ] 新增 `scripts/site-link-check.sh`（站内相对链接校验）
-- [ ] 更新 `.github/workflows/pages.yml`，部署前执行校验脚本
-- [ ] 任务测试与提交
+- [x] 新增 `scripts/site-link-check.sh`（站内相对链接校验）
+- [x] 更新 `.github/workflows/pages.yml`，部署前执行校验脚本
+- [x] 任务测试与提交
 
 ### T3 首页 SEO 元信息加固
 - [ ] 更新 `site/index.html` SEO/社交元信息
@@ -36,6 +36,6 @@
 - 手册内容基线：`doc/viewer-manual.md`。
 
 ## 状态
-- 当前阶段：进行中（T0/T1 完成，T2 进行中）
-- 最近更新：完成 T1（手册镜像路径修复与一致性检查脚本）（2026-02-26）
-- 下一步：执行 T2，新增站内链接检查并接入 Pages 发布门禁。
+- 当前阶段：进行中（T0/T1/T2 完成，T3 进行中）
+- 最近更新：完成 T2（Pages 发布门禁接入）（2026-02-26）
+- 下一步：执行 T3，补齐首页 SEO/社交元信息并统一 OG 绝对 URL。
