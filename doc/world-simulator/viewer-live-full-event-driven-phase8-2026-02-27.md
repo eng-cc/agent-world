@@ -33,3 +33,26 @@
 - 移除定时脉冲后，若 `Play` 初始触发链路遗漏，可能表现为不推进。
 - 统计项调整后，已有日志解析脚本若依赖旧字段可能失配。
 - 若仍有外部调用依赖已删除配置项，可能触发编译错误，需要同步收敛调用侧。
+
+## Phase 8 完成态（T3）
+
+### 交付结果
+- script 路径默认且唯一推进模式已收敛为 `event_drive`：
+  - 删除 `ViewerLiveScriptPacingMode` 与 `ViewerLiveServerConfig.script_pacing_mode`。
+  - 删除 `with_script_pacing_mode` 配置入口。
+- `timer_pulse` 回退链路已清理：
+  - 删除 playback pulse 信号、控制结构、线程发射逻辑及对应主循环分支。
+  - live backpressure 统计移除 playback pulse merge/drop 字段。
+- 调用侧已同步：
+  - `viewer/mod.rs` 不再导出 `ViewerLiveScriptPacingMode`。
+  - `world_viewer_live` 不再向 live server 传递 tick-based pacing 配置。
+
+### 验收证据
+- 回归测试（test_tier_required）：
+  - `env -u RUSTC_WRAPPER cargo fmt --all -- --check`
+  - `env -u RUSTC_WRAPPER cargo check -p agent_world`
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world viewer::live::tests:: -- --nocapture`
+- 仓库 pre-commit required 矩阵通过（`agent_world` / `agent_world_consensus` / `agent_world_distfs` / `agent_world_viewer`）。
+
+### 阶段结论
+- Phase 8 达成：script 路径已切换为默认且唯一事件驱动，`timer_pulse` 回退开关与回退链路代码已清理。
