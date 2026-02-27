@@ -37,3 +37,23 @@
 - 事件窗口裁剪时，`eventSeq -> tick` 映射可能找不到目标事件；需要明确告警与降级行为。
 - 外部脚本仍读取 `tick`，若直接删除会破坏兼容；本阶段仅做别名保留。
 - 若误触 runtime 内核时间语义，会引入回放与规则层回归；需严格限定改造边界。
+
+## Phase 11 完成态（T3）
+- `__AW_TEST__.getState()` 已同时提供：
+  - 事件游标：`eventSeq`
+  - 逻辑时间：`logicalTime`
+  - 兼容字段：`tick`（等于 `logicalTime`）
+- `__AW_TEST__.sendControl()` 已支持 `seek_event`/`seek_event_seq`：
+  - 外部传入 `eventSeq`；
+  - 前端在事件窗口内映射到现有 `ViewerControl::Seek { tick }`；
+  - 找不到映射目标时输出稳定告警并拒绝无效控制。
+- 架构边界保持正确：
+  - 调度继续事件驱动；
+  - runtime 逻辑时间保留；
+  - 对外接口逐步去 tick 耦合而不破坏既有调用。
+
+## 验收证据
+- `env -u RUSTC_WRAPPER cargo fmt --all -- --check`
+- `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer`
+- `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-unknown`
+- pre-commit required 套件（`agent_world`/`agent_world_consensus`/`agent_world_distfs`/`agent_world_viewer`）通过
