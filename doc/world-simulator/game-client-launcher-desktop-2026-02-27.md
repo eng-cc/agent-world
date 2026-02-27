@@ -29,6 +29,7 @@
   - viewer host: `127.0.0.1`
   - viewer port: `4173`
   - viewer static dir: `web`
+  - LLM: 默认启用
 - URL：`http://{viewer-host}:{viewer-port}/?ws=ws://{web-bind-host}:{web-bind-port}`
 
 ### 打包目录

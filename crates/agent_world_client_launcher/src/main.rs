@@ -117,7 +117,7 @@ impl Default for LaunchConfig {
             viewer_host: DEFAULT_VIEWER_HOST.to_string(),
             viewer_port: DEFAULT_VIEWER_PORT.to_string(),
             viewer_static_dir,
-            llm_enabled: false,
+            llm_enabled: true,
             auto_open_browser: true,
             launcher_bin,
         }
@@ -604,6 +604,12 @@ mod tests {
         assert_eq!(normalize_host_for_url("0.0.0.0"), "127.0.0.1");
         assert_eq!(normalize_host_for_url(""), "127.0.0.1");
         assert_eq!(normalize_host_for_url("192.168.0.2"), "192.168.0.2");
+    }
+
+    #[test]
+    fn launch_config_defaults_enable_llm() {
+        let config = LaunchConfig::default();
+        assert!(config.llm_enabled);
     }
 
     #[test]
