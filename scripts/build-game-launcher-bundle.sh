@@ -113,9 +113,11 @@ run mkdir -p "$BUNDLE_BIN_DIR" "$BUNDLE_WEB_DIR"
 
 # 1) Build native binaries for launcher/live/client launcher.
 if [[ "$PROFILE" == "release" ]]; then
-  run env -u RUSTC_WRAPPER cargo build --release -p agent_world --bin world_game_launcher --bin world_viewer_live -p agent_world_client_launcher
+  run env -u RUSTC_WRAPPER cargo build --release -p agent_world --bin world_game_launcher --bin world_viewer_live
+  run env -u RUSTC_WRAPPER cargo build --release -p agent_world_client_launcher
 else
-  run env -u RUSTC_WRAPPER cargo build -p agent_world --bin world_game_launcher --bin world_viewer_live -p agent_world_client_launcher
+  run env -u RUSTC_WRAPPER cargo build -p agent_world --bin world_game_launcher --bin world_viewer_live
+  run env -u RUSTC_WRAPPER cargo build -p agent_world_client_launcher
 fi
 
 LAUNCHER_SRC="$ROOT_DIR/target/$TARGET_SUBDIR/$LAUNCHER_BIN_NAME"
