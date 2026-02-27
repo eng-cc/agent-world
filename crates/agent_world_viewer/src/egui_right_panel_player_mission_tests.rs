@@ -22,6 +22,10 @@ fn build_player_mission_loop_snapshot_open_panel_requires_open_action() {
 
     assert_eq!(snapshot.completed_steps, 1);
     assert_eq!(snapshot.objective, "Open Control Panel");
+    assert_eq!(snapshot.short_goals[0].label, "Open control panel");
+    assert!(!snapshot.short_goals[0].complete);
+    assert_eq!(snapshot.short_goals[1].label, "Lock one target");
+    assert!(!snapshot.short_goals[1].complete);
     assert_eq!(snapshot.action_label, "Open control panel");
     assert!(snapshot.action_opens_panel);
 }
@@ -42,6 +46,10 @@ fn build_player_mission_loop_snapshot_reports_progress_and_objective() {
 
     assert_eq!(snapshot.completed_steps, 4);
     assert_eq!(snapshot.objective, "Advance The Run");
+    assert_eq!(snapshot.short_goals[0].label, "Send first order");
+    assert!(snapshot.short_goals[0].complete);
+    assert_eq!(snapshot.short_goals[1].label, "Confirm world feedback");
+    assert!(snapshot.short_goals[1].complete);
     assert_eq!(snapshot.action_label, "Open command and send 1 order");
     assert!(!snapshot.action_opens_panel);
 }

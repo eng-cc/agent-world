@@ -450,8 +450,15 @@ pub(super) struct PlayerMissionLoopSnapshot {
     pub(super) completed_steps: usize,
     pub(super) title: &'static str,
     pub(super) objective: &'static str,
+    pub(super) short_goals: [PlayerShortGoalSnapshot; 2],
     pub(super) action_label: &'static str,
     pub(super) action_opens_panel: bool,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) struct PlayerShortGoalSnapshot {
+    pub(super) label: &'static str,
+    pub(super) complete: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -484,6 +491,7 @@ pub(super) fn build_player_mission_loop_snapshot(
         (PlayerGuideStep::ExploreAction, true) => ("打开指挥并发送 1 条指令", false),
         (PlayerGuideStep::ExploreAction, false) => ("Open command and send 1 order", false),
     };
+    let short_goals = build_player_short_goals(step, progress, locale);
     PlayerMissionLoopSnapshot {
         completed_steps: progress.completed_steps(),
         title: if locale.is_zh() {
@@ -492,9 +500,62 @@ pub(super) fn build_player_mission_loop_snapshot(
             "Mission: Build Action Loop"
         },
         objective: player_goal_title(step, locale),
+        short_goals,
         action_label,
         action_opens_panel,
     }
+}
+
+fn build_player_short_goals(
+    step: PlayerGuideStep,
+    progress: PlayerGuideProgressSnapshot,
+    locale: crate::i18n::UiLocale,
+) -> [PlayerShortGoalSnapshot; 2] {
+    let (labels, done) = match (step, locale.is_zh()) {
+        (PlayerGuideStep::ConnectWorld, true) => (
+            ["建立世界连接", "展开操作面板"],
+            [progress.connect_world_done, progress.open_panel_done],
+        ),
+        (PlayerGuideStep::ConnectWorld, false) => (
+            ["Connect to world", "Open control panel"],
+            [progress.connect_world_done, progress.open_panel_done],
+        ),
+        (PlayerGuideStep::OpenPanel, true) => (
+            ["展开操作面板", "锁定一个目标"],
+            [progress.open_panel_done, progress.select_target_done],
+        ),
+        (PlayerGuideStep::OpenPanel, false) => (
+            ["Open control panel", "Lock one target"],
+            [progress.open_panel_done, progress.select_target_done],
+        ),
+        (PlayerGuideStep::SelectTarget, true) => (
+            ["锁定一个目标", "发送首条指令"],
+            [progress.select_target_done, progress.explore_ready],
+        ),
+        (PlayerGuideStep::SelectTarget, false) => (
+            ["Lock one target", "Send first order"],
+            [progress.select_target_done, progress.explore_ready],
+        ),
+        (PlayerGuideStep::ExploreAction, true) => (
+            ["发送首条指令", "确认世界反馈"],
+            [progress.explore_ready, progress.explore_ready],
+        ),
+        (PlayerGuideStep::ExploreAction, false) => (
+            ["Send first order", "Confirm world feedback"],
+            [progress.explore_ready, progress.explore_ready],
+        ),
+    };
+
+    [
+        PlayerShortGoalSnapshot {
+            label: labels[0],
+            complete: done[0],
+        },
+        PlayerShortGoalSnapshot {
+            label: labels[1],
+            complete: done[1],
+        },
+    ]
 }
 
 pub(super) fn build_player_reward_feedback_snapshot(
@@ -751,7 +812,31 @@ pub(super) fn render_player_mission_hud(
                 .show(ui, |ui| {
                     ui.set_max_width(if compact_mode { 280.0 } else { 320.0 });
                     ui.small(egui::RichText::new(snapshot.title).color(tone).strong());
+                    ui.small(if locale.is_zh() {
+                        "主目标"
+                    } else {
+                        "Main Goal"
+                    });
                     ui.strong(snapshot.objective);
+                    ui.small(
+                        egui::RichText::new(if locale.is_zh() {
+                            "短目标"
+                        } else {
+                            "Short Goals"
+                        })
+                        .color(egui::Color32::from_rgb(166, 188, 226)),
+                    );
+                    for goal in snapshot.short_goals {
+                        let marker = if goal.complete { "✓" } else { "□" };
+                        let color = if goal.complete {
+                            tone
+                        } else {
+                            egui::Color32::from_gray(182)
+                        };
+                        ui.small(
+                            egui::RichText::new(format!("{marker} {}", goal.label)).color(color),
+                        );
+                    }
                     if !compact_mode {
                         ui.small(player_goal_detail(step, locale));
                     }
