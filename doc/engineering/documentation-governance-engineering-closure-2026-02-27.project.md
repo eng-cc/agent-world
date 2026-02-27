@@ -6,7 +6,7 @@
 - [x] T2 全量修复非归档文档绝对路径为相对路径
 - [x] T3 接入 `scripts/ci-tests.sh` required/full 流程
 - [x] T4 更新 `testing-manual.md` 文档治理门禁入口
-- [ ] T5 回归验证、项目文档状态收口、补齐当日 devlog
+- [x] T5 回归验证、项目文档状态收口、补齐当日 devlog
 
 ## 依赖
 - `scripts/ci-tests.sh`
@@ -15,6 +15,6 @@
 - `doc/**/*.md`（非 archive / 非 devlog）
 
 ## 状态
-- 当前阶段：进行中（T5）
+- 当前阶段：已完成（T0~T5）
 - 阻塞项：无
-- 最近更新：2026-02-27（完成 T1~T4，进入 T5）
+- 最近更新：2026-02-27（完成 T5，项目收口）
