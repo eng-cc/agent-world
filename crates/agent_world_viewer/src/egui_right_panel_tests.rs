@@ -36,6 +36,8 @@ mod player_minimap_tests;
 mod player_mission_tests;
 #[path = "egui_right_panel_player_reward_tests.rs"]
 mod player_reward_tests;
+#[path = "egui_right_panel_player_stuck_tests.rs"]
+mod player_stuck_tests;
 
 struct SnapshotRenderer {
     render_state: egui_wgpu::RenderState,

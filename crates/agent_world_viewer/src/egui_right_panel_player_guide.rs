@@ -902,6 +902,7 @@ pub(super) fn render_player_mission_hud(
     onboarding_visible: bool,
     step: PlayerGuideStep,
     progress: PlayerGuideProgressSnapshot,
+    stuck_hint: Option<&str>,
     locale: crate::i18n::UiLocale,
     now_secs: f64,
 ) {
@@ -976,6 +977,22 @@ pub(super) fn render_player_mission_hud(
                     });
                     if !compact_mode {
                         ui.small(player_goal_detail(step, locale));
+                    }
+                    if let Some(stuck_hint) = stuck_hint {
+                        egui::Frame::group(ui.style())
+                            .fill(egui::Color32::from_rgba_unmultiplied(84, 42, 28, 132))
+                            .stroke(egui::Stroke::new(
+                                1.0,
+                                egui::Color32::from_rgb(224, 146, 92),
+                            ))
+                            .corner_radius(egui::CornerRadius::same(6))
+                            .inner_margin(egui::Margin::same(6))
+                            .show(ui, |ui| {
+                                ui.small(
+                                    egui::RichText::new(stuck_hint)
+                                        .color(egui::Color32::from_rgb(248, 210, 180)),
+                                );
+                            });
                     }
                     let progress_ratio = (snapshot.completed_steps as f32 / 4.0).clamp(0.0, 1.0);
                     ui.add(

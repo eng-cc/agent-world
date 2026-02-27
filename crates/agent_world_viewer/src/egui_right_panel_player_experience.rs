@@ -32,6 +32,7 @@ const AGENT_CHATTER_MAX_WIDTH: f32 = 320.0;
 const PLAYER_GOAL_HINT_MAX_WIDTH: f32 = 320.0;
 const PLAYER_ONBOARDING_MAX_WIDTH: f32 = 360.0;
 const PLAYER_HUD_MAX_WIDTH: f32 = 760.0;
+const PLAYER_STUCK_HINT_SECS: f64 = 5.0;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum FeedbackTone {
@@ -106,6 +107,14 @@ pub(crate) struct PlayerAchievementState {
 pub(crate) struct PlayerOnboardingState {
     dismissed_step: Option<PlayerGuideStep>,
     guide_transition: PlayerGuideTransitionState,
+    no_progress_watch: PlayerNoProgressWatch,
+}
+
+#[derive(Default)]
+struct PlayerNoProgressWatch {
+    last_tick: u64,
+    last_event_count: usize,
+    last_progress_at_secs: Option<f64>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -903,6 +912,64 @@ pub(super) fn should_show_player_goal_hint(
     layout_state.panel_hidden && !should_show_player_onboarding_card(onboarding, step)
 }
 
+pub(super) fn sync_player_stuck_hint_state(
+    onboarding: &mut PlayerOnboardingState,
+    state: &ViewerState,
+    now_secs: f64,
+) -> Option<f64> {
+    if !matches!(state.status, crate::ConnectionStatus::Connected) {
+        onboarding.no_progress_watch = PlayerNoProgressWatch::default();
+        return None;
+    }
+    let watch = &mut onboarding.no_progress_watch;
+    let current_tick = player_current_tick(state);
+    let current_event_count = state.events.len();
+    let Some(last_progress_at) = watch.last_progress_at_secs else {
+        watch.last_tick = current_tick;
+        watch.last_event_count = current_event_count;
+        watch.last_progress_at_secs = Some(now_secs);
+        return None;
+    };
+
+    let tick_advanced = current_tick > watch.last_tick;
+    let events_advanced = current_event_count > watch.last_event_count;
+    if tick_advanced || events_advanced {
+        watch.last_tick = current_tick;
+        watch.last_event_count = current_event_count;
+        watch.last_progress_at_secs = Some(now_secs);
+        return None;
+    }
+
+    let idle_secs = (now_secs - last_progress_at).max(0.0);
+    if idle_secs >= PLAYER_STUCK_HINT_SECS {
+        Some(idle_secs)
+    } else {
+        None
+    }
+}
+
+pub(super) fn build_player_stuck_hint(
+    step: PlayerGuideStep,
+    locale: crate::i18n::UiLocale,
+    idle_secs: f64,
+) -> String {
+    let idle_secs = idle_secs.round() as u64;
+    match (step, locale.is_zh()) {
+        (PlayerGuideStep::ExploreAction, true) => {
+            format!("检测到 {idle_secs} 秒无进展：点击“执行下一步”或“直接指挥 Agent”恢复推进")
+        }
+        (PlayerGuideStep::ExploreAction, false) => format!(
+            "No progress for {idle_secs}s: click \"Do next step\" or \"Command Agent\" to resume"
+        ),
+        (_, true) => {
+            format!("检测到 {idle_secs} 秒无进展：先完成当前主任务步骤再继续")
+        }
+        (_, false) => {
+            format!("No progress for {idle_secs}s: complete the current main step to recover")
+        }
+    }
+}
+
 #[cfg(test)]
 pub(super) fn feedback_toast_cap() -> usize {
     FEEDBACK_TOAST_MAX
@@ -1154,6 +1221,8 @@ pub(super) fn render_player_experience_layers(
         selection,
         action_feedback_seen,
     );
+    let stuck_idle_secs = sync_player_stuck_hint_state(onboarding, state, now_secs);
+    let stuck_hint = stuck_idle_secs.map(|idle| build_player_stuck_hint(guide_step, locale, idle));
     let onboarding_visible = should_show_player_onboarding_card(onboarding, guide_step);
     sync_player_guide_transition(&mut onboarding.guide_transition, guide_step, now_secs);
     render_player_cinematic_intro(context, state, guide_step, locale, now_secs);
@@ -1168,6 +1237,7 @@ pub(super) fn render_player_experience_layers(
         onboarding_visible,
         guide_step,
         guide_progress,
+        stuck_hint.as_deref(),
         locale,
         now_secs,
     );
