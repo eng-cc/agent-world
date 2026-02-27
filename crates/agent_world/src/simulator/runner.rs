@@ -659,6 +659,85 @@ impl<B: AgentBehavior> AgentRunner<B> {
         result
     }
 
+    /// Collect multiple agent intents in the same logical tick and commit as one kernel batch.
+    ///
+    /// `max_agents` controls how many ready agents can contribute intents in this batch.
+    /// When `max_agents == 0`, all currently registered agents are eligible.
+    pub fn tick_collect_intents_and_commit(
+        &mut self,
+        kernel: &mut WorldKernel,
+        max_agents: usize,
+    ) -> Vec<AgentTickResult> {
+        let limit = if max_agents == 0 {
+            self.agents.len().max(1)
+        } else {
+            max_agents
+        };
+        let mut results = Vec::new();
+        for _ in 0..limit {
+            let Some(result) = self.tick_decide_only(kernel) else {
+                break;
+            };
+            results.push(result);
+        }
+        if results.is_empty() {
+            return results;
+        }
+
+        let mut submitted_actions = Vec::new();
+        for (index, result) in results.iter().enumerate() {
+            if let AgentDecision::Act(action) = &result.decision {
+                let action_id =
+                    kernel.submit_action_from_agent(result.agent_id.clone(), action.clone());
+                submitted_actions.push((index, result.agent_id.clone(), action.clone(), action_id));
+            }
+        }
+
+        if submitted_actions.is_empty() {
+            return results;
+        }
+
+        let action_execution_started_at = Instant::now();
+        let events = kernel.step_intents_batch();
+        self.runtime_perf
+            .record_action_execution_duration(action_execution_started_at.elapsed());
+
+        let mut event_by_action_id = BTreeMap::new();
+        if let Some(report) = kernel.last_intent_batch_report() {
+            let rejected_count = report.rejected_action_ids.len();
+            for (offset, action_id) in report.rejected_action_ids.iter().enumerate() {
+                if let Some(event) = events.get(offset) {
+                    event_by_action_id.insert(*action_id, event.clone());
+                }
+            }
+            for (offset, action_id) in report.accepted_action_ids.iter().enumerate() {
+                let index = rejected_count.saturating_add(offset);
+                if let Some(event) = events.get(index) {
+                    event_by_action_id.insert(*action_id, event.clone());
+                }
+            }
+        }
+
+        for (index, agent_id, action, action_id) in submitted_actions {
+            let Some(event) = event_by_action_id.get(&action_id).cloned() else {
+                continue;
+            };
+            let success = !matches!(event.kind, WorldEventKind::ActionRejected { .. });
+            let action_result = ActionResult {
+                action,
+                action_id,
+                success,
+                event,
+            };
+            if let Some(result) = results.get_mut(index) {
+                result.action_result = Some(action_result.clone());
+            }
+            let _ = self.notify_action_result(agent_id.as_str(), &action_result);
+        }
+
+        results
+    }
+
     pub fn notify_action_result(&mut self, agent_id: &str, result: &ActionResult) -> bool {
         let Some(agent) = self.agents.get_mut(agent_id) else {
             return false;

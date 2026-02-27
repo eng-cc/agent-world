@@ -23,7 +23,7 @@ use std::sync::{Arc, Mutex};
 
 use super::memory::LongTermMemoryEntry;
 use super::types::{
-    Action, ActionEnvelope, ActionId, FragmentElementKind, WorldEventId, WorldTime,
+    Action, ActionEnvelope, ActionId, AgentId, FragmentElementKind, WorldEventId, WorldTime,
 };
 use super::world_model::{AgentPromptProfile, FragmentResourceError, WorldConfig, WorldModel};
 
@@ -54,6 +54,8 @@ impl ChunkRuntimeConfig {
     }
 }
 
+#[allow(unused_imports)]
+pub use step::{IntentBatchReport, IntentConflictResolution};
 pub use types::{
     merge_kernel_rule_decisions, ChunkGenerationCause, FragmentReplenishedEntry, KernelRuleCost,
     KernelRuleDecision, KernelRuleDecisionMergeError, KernelRuleModuleContext,
@@ -110,8 +112,20 @@ pub struct WorldKernel {
     model: WorldModel,
     #[serde(default)]
     chunk_runtime: ChunkRuntimeConfig,
+    #[serde(default)]
+    intel_ttl_ticks: WorldTime,
+    #[serde(skip, default)]
+    intel_cache: BTreeMap<AgentId, IntelCacheEntry>,
+    #[serde(skip, default)]
+    last_intent_batch_report: Option<IntentBatchReport>,
     #[serde(skip, default)]
     rule_hooks: RuleHookRegistry,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+struct IntelCacheEntry {
+    observation: Observation,
+    expires_at_tick: WorldTime,
 }
 
 impl WorldKernel {
@@ -135,6 +149,9 @@ impl WorldKernel {
             journal: Vec::new(),
             model,
             chunk_runtime: ChunkRuntimeConfig::default(),
+            intel_ttl_ticks: 0,
+            intel_cache: BTreeMap::new(),
+            last_intent_batch_report: None,
             rule_hooks: RuleHookRegistry::default(),
         }
     }
@@ -153,8 +170,22 @@ impl WorldKernel {
             journal: Vec::new(),
             model,
             chunk_runtime,
+            intel_ttl_ticks: 0,
+            intel_cache: BTreeMap::new(),
+            last_intent_batch_report: None,
             rule_hooks: RuleHookRegistry::default(),
         }
+    }
+
+    pub fn set_intel_ttl_ticks(&mut self, ttl_ticks: WorldTime) {
+        self.intel_ttl_ticks = ttl_ticks;
+        if ttl_ticks == 0 {
+            self.intel_cache.clear();
+        }
+    }
+
+    pub fn intel_ttl_ticks(&self) -> WorldTime {
+        self.intel_ttl_ticks
     }
 
     pub fn add_pre_action_rule_hook<F>(&mut self, hook: F)

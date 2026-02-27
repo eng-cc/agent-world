@@ -12,6 +12,14 @@ use super::WorldKernel;
 
 impl WorldKernel {
     pub fn observe(&mut self, agent_id: &str) -> Result<Observation, RejectReason> {
+        if self.intel_ttl_ticks > 0 {
+            if let Some(cached) = self.intel_cache.get(agent_id) {
+                if cached.expires_at_tick > self.time {
+                    return Ok(cached.observation.clone());
+                }
+            }
+        }
+
         let Some(agent) = self.model.agents.get(agent_id) else {
             return Err(RejectReason::AgentNotFound {
                 agent_id: agent_id.to_string(),
@@ -113,7 +121,7 @@ impl WorldKernel {
             .collect::<Vec<_>>();
         social_edges.sort_by(|left, right| left.edge_id.cmp(&right.edge_id));
 
-        Ok(Observation {
+        let observation = Observation {
             time: self.time,
             agent_id: agent_id.to_string(),
             pos: agent.pos,
@@ -137,7 +145,17 @@ impl WorldKernel {
                 facts: social_facts,
                 edges: social_edges,
             },
-        })
+        };
+        if self.intel_ttl_ticks > 0 {
+            self.intel_cache.insert(
+                agent_id.to_string(),
+                super::IntelCacheEntry {
+                    observation: observation.clone(),
+                    expires_at_tick: self.time.saturating_add(self.intel_ttl_ticks),
+                },
+            );
+        }
+        Ok(observation)
     }
 
     pub(super) fn ensure_chunk_generated_at(

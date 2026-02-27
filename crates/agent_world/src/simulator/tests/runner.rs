@@ -233,6 +233,33 @@ fn setup_kernel_with_patrol_agent(agent_id: &str) -> WorldKernel {
     kernel
 }
 
+fn setup_kernel_with_conflict_agents() -> WorldKernel {
+    let config = WorldConfig {
+        visibility_range_cm: DEFAULT_VISIBILITY_RANGE_CM,
+        move_cost_per_km_electricity: 0,
+        ..Default::default()
+    };
+    let mut kernel = WorldKernel::with_config(config);
+    for (id, x) in [("loc-1", 0.0), ("loc-2", 1.0), ("loc-3", 2.0)] {
+        kernel.submit_action(Action::RegisterLocation {
+            location_id: id.to_string(),
+            name: id.to_string(),
+            pos: pos(x, 0.0),
+            profile: LocationProfile::default(),
+        });
+    }
+    kernel.submit_action(Action::RegisterAgent {
+        agent_id: "agent-a".to_string(),
+        location_id: "loc-1".to_string(),
+    });
+    kernel.submit_action(Action::RegisterAgent {
+        agent_id: "agent-b".to_string(),
+        location_id: "loc-2".to_string(),
+    });
+    kernel.step_until_empty();
+    kernel
+}
+
 fn setup_kernel_with_wait_agent(agent_id: &str) -> WorldKernel {
     let mut kernel = WorldKernel::new();
     kernel.submit_action(Action::RegisterLocation {
@@ -399,6 +426,126 @@ fn agent_runner_tick_decide_only_defers_world_mutation_until_notified() {
             .action_results,
         vec![true]
     );
+}
+
+#[test]
+fn agent_runner_batch_intents_conflict_is_deterministic_and_explainable() {
+    let mut kernel = setup_kernel_with_conflict_agents();
+    let mut runner: AgentRunner<PatrolAgent> = AgentRunner::new();
+    runner.register(PatrolAgent::new("agent-a", vec!["loc-3".to_string()]));
+    runner.register(PatrolAgent::new("agent-b", vec!["loc-3".to_string()]));
+
+    let results = runner.tick_collect_intents_and_commit(&mut kernel, 2);
+    assert_eq!(results.len(), 2);
+
+    let report = kernel
+        .last_intent_batch_report()
+        .expect("intent batch report exists");
+    assert_eq!(report.intent_count, 2);
+    assert_eq!(report.conflicts.len(), 1);
+    assert_eq!(report.conflicts[0].conflict_key, "move_to:loc-3");
+    assert_eq!(
+        report.conflicts[0].winner_action_id,
+        report.accepted_action_ids[0]
+    );
+    assert_eq!(
+        report.conflicts[0].loser_action_ids,
+        report.rejected_action_ids
+    );
+
+    let success_agents: Vec<_> = results
+        .iter()
+        .filter(|result| result.is_success())
+        .map(|result| result.agent_id.clone())
+        .collect();
+    let failed_agents: Vec<_> = results
+        .iter()
+        .filter(|result| {
+            result
+                .action_result
+                .as_ref()
+                .is_some_and(|r| r.is_rejected())
+        })
+        .map(|result| result.agent_id.clone())
+        .collect();
+    assert_eq!(success_agents, vec!["agent-a".to_string()]);
+    assert_eq!(failed_agents, vec!["agent-b".to_string()]);
+
+    let rejected = results
+        .iter()
+        .find(|result| result.agent_id == "agent-b")
+        .and_then(|result| result.action_result.as_ref())
+        .expect("agent-b has rejected action");
+    let reject_reason = rejected.reject_reason().expect("reject reason");
+    match reject_reason {
+        RejectReason::RuleDenied { notes } => {
+            assert!(
+                notes
+                    .iter()
+                    .any(|note| note.contains("intent conflict on key=move_to:loc-3")),
+                "missing conflict reason notes: {notes:?}"
+            );
+        }
+        other => panic!("unexpected reject reason: {other:?}"),
+    }
+
+    // Replay with same intents should produce the same winner.
+    let mut kernel_replay = setup_kernel_with_conflict_agents();
+    let mut runner_replay: AgentRunner<PatrolAgent> = AgentRunner::new();
+    runner_replay.register(PatrolAgent::new("agent-a", vec!["loc-3".to_string()]));
+    runner_replay.register(PatrolAgent::new("agent-b", vec!["loc-3".to_string()]));
+    let replay_results = runner_replay.tick_collect_intents_and_commit(&mut kernel_replay, 2);
+    let replay_success_agents: Vec<_> = replay_results
+        .iter()
+        .filter(|result| result.is_success())
+        .map(|result| result.agent_id.clone())
+        .collect();
+    assert_eq!(replay_success_agents, vec!["agent-a".to_string()]);
+}
+
+#[test]
+fn observation_intel_ttl_uses_cached_view_until_expired() {
+    let mut kernel = setup_kernel_with_conflict_agents();
+    kernel.set_intel_ttl_ticks(2);
+
+    let initial = kernel.observe("agent-a").expect("initial observation");
+    let initial_b_location = initial
+        .visible_agents
+        .iter()
+        .find(|agent| agent.agent_id == "agent-b")
+        .map(|agent| agent.location_id.clone())
+        .expect("agent-b visible");
+    assert_eq!(initial_b_location, "loc-2");
+
+    kernel.submit_action(Action::MoveAgent {
+        agent_id: "agent-b".to_string(),
+        to: "loc-3".to_string(),
+    });
+    kernel.step().expect("move agent-b");
+
+    let cached = kernel.observe("agent-a").expect("cached observation");
+    let cached_b_location = cached
+        .visible_agents
+        .iter()
+        .find(|agent| agent.agent_id == "agent-b")
+        .map(|agent| agent.location_id.clone())
+        .expect("agent-b visible");
+    assert_eq!(cached_b_location, "loc-2");
+
+    kernel.submit_action(Action::MoveAgent {
+        agent_id: "agent-a".to_string(),
+        to: "loc-1".to_string(),
+    });
+    kernel.step().expect("advance tick");
+
+    let refreshed = kernel.observe("agent-a").expect("refreshed observation");
+    let refreshed_b_location = refreshed
+        .visible_agents
+        .iter()
+        .find(|agent| agent.agent_id == "agent-b")
+        .map(|agent| agent.location_id.clone())
+        .expect("agent-b visible");
+    assert_eq!(refreshed_b_location, "loc-3");
 }
 
 #[test]

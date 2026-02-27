@@ -50,6 +50,9 @@ impl WorldKernel {
             journal: journal.events,
             model: snapshot.model,
             chunk_runtime: snapshot.chunk_runtime,
+            intel_ttl_ticks: 0,
+            intel_cache: Default::default(),
+            last_intent_batch_report: None,
             rule_hooks: Default::default(),
         })
     }
@@ -81,6 +84,9 @@ impl WorldKernel {
             journal: journal.events.clone(),
             model: snapshot.model,
             chunk_runtime: snapshot.chunk_runtime,
+            intel_ttl_ticks: 0,
+            intel_cache: Default::default(),
+            last_intent_batch_report: None,
             rule_hooks: Default::default(),
         };
 
