@@ -5,7 +5,8 @@ use crate::ui_text::format_status;
 #[cfg(not(target_arch = "wasm32"))]
 use crate::HeadlessStatus;
 use crate::{
-    ConnectionStatus, ViewerClient, ViewerControl, ViewerExperienceMode, ViewerRequest, ViewerState,
+    dispatch_viewer_control, ConnectionStatus, ViewerClient, ViewerControl,
+    ViewerControlProfileState, ViewerExperienceMode, ViewerState,
 };
 
 const HEADLESS_AUTO_PLAY_ENV: &str = "AGENT_WORLD_VIEWER_HEADLESS_AUTO_PLAY";
@@ -13,6 +14,7 @@ const AUTO_PLAY_ENV: &str = "AGENT_WORLD_VIEWER_AUTO_PLAY";
 
 pub(super) fn headless_auto_play_once(
     client: Option<Res<ViewerClient>>,
+    control_profile: Option<Res<ViewerControlProfileState>>,
     state: Res<ViewerState>,
     #[allow(unused_variables)] experience_mode: Option<Res<ViewerExperienceMode>>,
     mut sent: Local<bool>,
@@ -26,9 +28,7 @@ pub(super) fn headless_auto_play_once(
     let Some(client) = client else {
         return;
     };
-    let _ = client.tx.send(ViewerRequest::Control {
-        mode: ViewerControl::Play,
-    });
+    let _ = dispatch_viewer_control(&client, control_profile.as_deref(), ViewerControl::Play);
     *sent = true;
 }
 

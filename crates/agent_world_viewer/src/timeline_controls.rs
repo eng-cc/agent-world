@@ -1,5 +1,5 @@
 use agent_world::simulator::{PowerEvent, WorldEvent, WorldEventKind};
-use agent_world::viewer::{ViewerControl, ViewerRequest};
+use agent_world::viewer::ViewerControl;
 use bevy::ecs::hierarchy::ChildSpawnerCommands;
 use bevy::prelude::*;
 use bevy::ui::RelativeCursorPosition;
@@ -10,7 +10,9 @@ use crate::ui_locale_text::{
     seek_button_label, timeline_insights, timeline_jump_label, timeline_mark_filter_label,
     timeline_mode_label, timeline_status_line,
 };
-use crate::{ControlButton, ViewerClient, ViewerState};
+use crate::{
+    dispatch_viewer_control, ControlButton, ViewerClient, ViewerControlProfileState, ViewerState,
+};
 
 const DENSITY_BINS: usize = 16;
 const MAX_TICK_LABELS: usize = 4;
@@ -483,22 +485,29 @@ pub(super) fn handle_timeline_seek_submit(
         ),
     >,
     client: Option<Res<ViewerClient>>,
+    control_profile: Option<Res<ViewerControlProfileState>>,
     mut timeline: ResMut<TimelineUiState>,
 ) {
     for interaction in &mut interactions {
         if *interaction == Interaction::Pressed {
-            timeline_seek_action(&mut timeline, client.as_deref());
+            timeline_seek_action(&mut timeline, client.as_deref(), control_profile.as_deref());
         }
     }
 }
 
-pub(super) fn timeline_seek_action(timeline: &mut TimelineUiState, client: Option<&ViewerClient>) {
+pub(super) fn timeline_seek_action(
+    timeline: &mut TimelineUiState,
+    client: Option<&ViewerClient>,
+    control_profile: Option<&ViewerControlProfileState>,
+) {
     if let Some(client) = client {
-        let _ = client.tx.send(ViewerRequest::Control {
-            mode: ViewerControl::Seek {
+        let _ = dispatch_viewer_control(
+            client,
+            control_profile,
+            ViewerControl::Seek {
                 tick: timeline.target_tick,
             },
-        });
+        );
     }
     timeline.manual_override = false;
     timeline.drag_active = false;
@@ -875,6 +884,7 @@ fn format_tick_list(ticks: &[u64], max_items: usize) -> String {
 pub(super) fn handle_control_buttons(
     mut interactions: Query<(&Interaction, &ControlButton), (Changed<Interaction>, With<Button>)>,
     client: Option<Res<ViewerClient>>,
+    control_profile: Option<Res<ViewerControlProfileState>>,
     state: Res<ViewerState>,
     mut loading: ResMut<StepControlLoadingState>,
 ) {
@@ -889,9 +899,8 @@ pub(super) fn handle_control_buttons(
 
         mark_step_loading_on_control(&button.control, &state, &mut loading);
         if let Some(client) = client.as_deref() {
-            let _ = client.tx.send(ViewerRequest::Control {
-                mode: button.control.clone(),
-            });
+            let _ =
+                dispatch_viewer_control(client, control_profile.as_deref(), button.control.clone());
         }
     }
 }

@@ -38,8 +38,9 @@ use crate::world_overlay::overlay_status_text_public;
 use crate::{
     grid_line_thickness, CopyableTextPanelState, DiagnosisState, EventObjectLinkState,
     GridLineKind, RenderPerfSummary, RightPanelLayoutState, RightPanelWidthState,
-    TimelineMarkFilterState, Viewer3dConfig, ViewerCameraMode, ViewerClient, ViewerExperienceMode,
-    ViewerSelection, ViewerState, WorldOverlayConfig,
+    TimelineMarkFilterState, Viewer3dConfig, ViewerCameraMode, ViewerClient,
+    ViewerControlProfileState, ViewerExperienceMode, ViewerSelection, ViewerState,
+    WorldOverlayConfig,
 };
 
 #[path = "egui_observe_section_card.rs"]
@@ -139,6 +140,7 @@ pub(super) struct RightPanelParams<'w, 's> {
     viewer_3d_config: Option<Res<'w, Viewer3dConfig>>,
     loading: ResMut<'w, StepControlLoadingState>,
     client: Option<Res<'w, ViewerClient>>,
+    control_profile: Option<Res<'w, ViewerControlProfileState>>,
     chat_focus_signal: ResMut<'w, crate::ChatInputFocusSignal>,
     timeline: ResMut<'w, TimelineUiState>,
     timeline_filters: ResMut<'w, TimelineMarkFilterState>,
@@ -174,6 +176,7 @@ pub(super) fn render_right_side_panel_egui(
         viewer_3d_config,
         mut loading,
         client,
+        control_profile,
         mut chat_focus_signal,
         mut timeline,
         mut timeline_filters,
@@ -210,6 +213,7 @@ pub(super) fn render_right_side_panel_egui(
             &state,
             &selection,
             client.as_deref(),
+            control_profile.as_deref(),
             layout_state.as_mut(),
             module_visibility.as_mut(),
             &mut onboarding_state,
@@ -403,6 +407,7 @@ pub(super) fn render_right_side_panel_egui(
                     loading.as_mut(),
                     &mut control_panel,
                     client.as_deref(),
+                    control_profile.as_deref(),
                 );
                 render_theme_runtime_section(ui, locale, theme_runtime.as_mut());
             }
@@ -536,6 +541,7 @@ pub(super) fn render_right_side_panel_egui(
                     timeline.as_mut(),
                     timeline_filters.as_mut(),
                     client.as_deref(),
+                    control_profile.as_deref(),
                 );
             }
 
@@ -939,6 +945,7 @@ fn render_timeline_section(
     timeline: &mut TimelineUiState,
     filters: &mut TimelineMarkFilterState,
     client: Option<&ViewerClient>,
+    control_profile: Option<&ViewerControlProfileState>,
 ) {
     let current_tick = state
         .snapshot
@@ -1037,7 +1044,7 @@ fn render_timeline_section(
             timeline.manual_override = true;
         }
         if ui.button(seek_button_label(locale)).clicked() {
-            timeline_seek_action(timeline, client);
+            timeline_seek_action(timeline, client, control_profile);
         }
     });
 

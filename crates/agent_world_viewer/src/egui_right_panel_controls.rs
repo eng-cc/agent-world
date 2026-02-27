@@ -4,7 +4,9 @@ use crate::button_feedback::{mark_step_loading_on_control, StepControlLoadingSta
 use crate::i18n::{
     advanced_debug_toggle_label, module_toggle_label, play_pause_toggle_label, step_button_label,
 };
-use crate::{ViewerClient, ViewerControl, ViewerState};
+use crate::{
+    dispatch_viewer_control, ViewerClient, ViewerControl, ViewerControlProfileState, ViewerState,
+};
 
 #[derive(Default)]
 pub(crate) struct ControlPanelUiState {
@@ -33,6 +35,7 @@ pub(super) fn render_control_buttons(
     loading: &mut StepControlLoadingState,
     control_ui: &mut ControlPanelUiState,
     client: Option<&ViewerClient>,
+    control_profile: Option<&ViewerControlProfileState>,
 ) {
     ui.horizontal_wrapped(|ui| {
         let play_pause = if control_ui.playing {
@@ -44,7 +47,14 @@ pub(super) fn render_control_buttons(
             .button(play_pause_toggle_label(control_ui.playing, locale))
             .clicked()
         {
-            send_control_request(play_pause, state, loading, control_ui, client);
+            send_control_request(
+                play_pause,
+                state,
+                loading,
+                control_ui,
+                client,
+                control_profile,
+            );
         }
 
         if ui
@@ -71,7 +81,14 @@ pub(super) fn render_control_buttons(
             )
             .clicked()
         {
-            send_control_request(step_control, state, loading, control_ui, client);
+            send_control_request(
+                step_control,
+                state,
+                loading,
+                control_ui,
+                client,
+                control_profile,
+            );
         }
     });
 }
@@ -82,12 +99,11 @@ pub(super) fn send_control_request(
     loading: &mut StepControlLoadingState,
     control_ui: &mut ControlPanelUiState,
     client: Option<&ViewerClient>,
+    control_profile: Option<&ViewerControlProfileState>,
 ) {
     mark_step_loading_on_control(&control, state, loading);
     if let Some(client) = client {
-        let _ = client.tx.send(agent_world::viewer::ViewerRequest::Control {
-            mode: control.clone(),
-        });
+        let _ = dispatch_viewer_control(client, control_profile, control.clone());
     }
     match control {
         ViewerControl::Play => control_ui.playing = true,

@@ -527,6 +527,7 @@ fn send_control_request_updates_playing_state() {
         &mut loading,
         &mut control_ui,
         None,
+        None,
     );
     assert!(control_ui.playing);
 
@@ -535,6 +536,7 @@ fn send_control_request_updates_playing_state() {
         &state,
         &mut loading,
         &mut control_ui,
+        None,
         None,
     );
     assert!(!control_ui.playing);
@@ -545,6 +547,7 @@ fn send_control_request_updates_playing_state() {
         &mut loading,
         &mut control_ui,
         None,
+        None,
     );
     assert!(control_ui.playing);
 
@@ -553,6 +556,7 @@ fn send_control_request_updates_playing_state() {
         &state,
         &mut loading,
         &mut control_ui,
+        None,
         None,
     );
     assert!(!control_ui.playing);
@@ -580,6 +584,7 @@ fn egui_kittest_control_buttons_merge_play_pause_and_fold_advanced_debug() {
                 &state.viewer_state,
                 &mut state.loading,
                 &mut state.control_ui,
+                None,
                 None,
             );
         },
@@ -965,6 +970,7 @@ fn egui_kittest_timeline_filter_button_toggles_state() {
                 &state.viewer_state,
                 &mut state.timeline,
                 &mut state.filters,
+                None,
                 None,
             );
         },

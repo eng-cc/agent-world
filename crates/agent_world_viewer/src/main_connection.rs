@@ -108,6 +108,7 @@ pub(super) fn viewer_client_from_addr(addr: String) -> ViewerClient {
 pub(super) fn setup_connection(mut commands: Commands, config: Res<ViewerConfig>) {
     commands.insert_resource(viewer_client_from_addr(config.addr.clone()));
     commands.insert_resource(ViewerState::default());
+    commands.insert_resource(ViewerControlProfileState::default());
 }
 
 pub(super) fn setup_startup_state(
@@ -127,6 +128,35 @@ pub(super) fn setup_offline_state(mut commands: Commands) {
         status: ConnectionStatus::Error("offline mode".to_string()),
         ..ViewerState::default()
     });
+    commands.insert_resource(ViewerControlProfileState::default());
+}
+
+fn control_request_for_profile(
+    profile: Option<ViewerControlProfile>,
+    control: ViewerControl,
+) -> Option<ViewerRequest> {
+    match profile {
+        Some(ViewerControlProfile::Playback) => Some(ViewerRequest::PlaybackControl {
+            mode: agent_world::viewer::PlaybackControl::from(control),
+        }),
+        Some(ViewerControlProfile::Live) => {
+            let mode = agent_world::viewer::LiveControl::try_from(control).ok()?;
+            Some(ViewerRequest::LiveControl { mode })
+        }
+        None => Some(ViewerRequest::Control { mode: control }),
+    }
+}
+
+pub(super) fn dispatch_viewer_control(
+    client: &ViewerClient,
+    profile_state: Option<&ViewerControlProfileState>,
+    control: ViewerControl,
+) -> bool {
+    let profile = profile_state.and_then(|state| state.profile);
+    let Some(request) = control_request_for_profile(profile, control) else {
+        return false;
+    };
+    client.tx.send(request).is_ok()
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -378,6 +408,7 @@ pub(super) fn send_request(
 
 pub(super) fn poll_viewer_messages(
     mut state: ResMut<ViewerState>,
+    mut control_profile: Option<ResMut<ViewerControlProfileState>>,
     config: Res<ViewerConfig>,
     client: Option<Res<ViewerClient>>,
 ) {
@@ -399,8 +430,14 @@ pub(super) fn poll_viewer_messages(
     loop {
         match receiver.try_recv() {
             Ok(message) => match message {
-                ViewerResponse::HelloAck { .. } => {
+                ViewerResponse::HelloAck {
+                    control_profile: profile,
+                    ..
+                } => {
                     state.status = ConnectionStatus::Connected;
+                    if let Some(control_profile) = control_profile.as_deref_mut() {
+                        control_profile.profile = Some(profile);
+                    }
                 }
                 ViewerResponse::Snapshot { snapshot } => {
                     state.snapshot = Some(snapshot);
@@ -420,6 +457,9 @@ pub(super) fn poll_viewer_messages(
                 }
                 ViewerResponse::Error { message } => {
                     state.status = ConnectionStatus::Error(friendly_connection_error(&message));
+                    if let Some(control_profile) = control_profile.as_deref_mut() {
+                        control_profile.profile = None;
+                    }
                 }
                 ViewerResponse::PromptControlAck { .. } => {}
                 ViewerResponse::PromptControlError { .. } => {}
@@ -429,6 +469,9 @@ pub(super) fn poll_viewer_messages(
                         "agent chat error: {} ({})",
                         error.message, error.code
                     ));
+                    if let Some(control_profile) = control_profile.as_deref_mut() {
+                        control_profile.profile = None;
+                    }
                 }
             },
             Err(mpsc::TryRecvError::Empty) => break,
@@ -436,6 +479,9 @@ pub(super) fn poll_viewer_messages(
                 if !matches!(state.status, ConnectionStatus::Error(_)) {
                     state.status =
                         ConnectionStatus::Error(friendly_connection_error("disconnected"));
+                }
+                if let Some(control_profile) = control_profile.as_deref_mut() {
+                    control_profile.profile = None;
                 }
                 break;
             }
@@ -449,6 +495,7 @@ pub(super) fn attempt_viewer_reconnect(
     offline: Option<Res<OfflineConfig>>,
     time: Option<Res<Time>>,
     state: Option<ResMut<ViewerState>>,
+    mut control_profile: Option<ResMut<ViewerControlProfileState>>,
     mut reconnect: Local<ViewerReconnectRuntime>,
 ) {
     if offline.as_deref().is_some_and(|cfg| cfg.offline) {
@@ -492,6 +539,65 @@ pub(super) fn attempt_viewer_reconnect(
 
     commands.insert_resource(viewer_client_from_addr(config.addr.clone()));
     state.status = ConnectionStatus::Connecting;
+    if let Some(control_profile) = control_profile.as_deref_mut() {
+        control_profile.profile = None;
+    }
     reconnect.attempt = reconnect.attempt.saturating_add(1);
     reconnect.next_retry_at_secs = Some(now + reconnect_backoff_secs(reconnect.attempt));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn control_request_defaults_to_legacy_before_hello_profile() {
+        let request = control_request_for_profile(None, ViewerControl::Play)
+            .expect("control request should be produced");
+        assert_eq!(
+            request,
+            ViewerRequest::Control {
+                mode: ViewerControl::Play,
+            }
+        );
+    }
+
+    #[test]
+    fn control_request_maps_to_playback_channel_when_profile_is_playback() {
+        let request = control_request_for_profile(
+            Some(ViewerControlProfile::Playback),
+            ViewerControl::Seek { tick: 42 },
+        )
+        .expect("control request should be produced");
+        assert_eq!(
+            request,
+            ViewerRequest::PlaybackControl {
+                mode: agent_world::viewer::PlaybackControl::Seek { tick: 42 },
+            }
+        );
+    }
+
+    #[test]
+    fn control_request_maps_to_live_channel_without_seek() {
+        let request = control_request_for_profile(
+            Some(ViewerControlProfile::Live),
+            ViewerControl::Step { count: 3 },
+        )
+        .expect("control request should be produced");
+        assert_eq!(
+            request,
+            ViewerRequest::LiveControl {
+                mode: agent_world::viewer::LiveControl::Step { count: 3 },
+            }
+        );
+    }
+
+    #[test]
+    fn control_request_rejects_seek_in_live_profile() {
+        let request = control_request_for_profile(
+            Some(ViewerControlProfile::Live),
+            ViewerControl::Seek { tick: 9 },
+        );
+        assert_eq!(request, None);
+    }
 }

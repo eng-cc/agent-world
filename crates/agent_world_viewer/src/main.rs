@@ -20,7 +20,8 @@ use agent_world::simulator::{
     AgentDecisionTrace, AgentKinematics, RunnerMetrics, SpaceConfig, WorldEvent, WorldSnapshot,
 };
 use agent_world::viewer::{
-    ViewerControl, ViewerRequest, ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
+    ViewerControl, ViewerControlProfile, ViewerRequest, ViewerResponse, ViewerStream,
+    VIEWER_PROTOCOL_VERSION,
 };
 use bevy::core_pipeline::tonemapping::{DebandDither, Tonemapping};
 use bevy::post_process::bloom::Bloom;
@@ -368,6 +369,11 @@ struct ViewerConfig {
 #[derive(Resource, Default)]
 struct OfflineConfig {
     offline: bool,
+}
+
+#[derive(Resource, Clone, Copy, Debug, Default)]
+struct ViewerControlProfileState {
+    profile: Option<ViewerControlProfile>,
 }
 
 #[cfg(not(target_arch = "wasm32"))]

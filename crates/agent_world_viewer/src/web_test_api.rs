@@ -3,9 +3,17 @@ use crate::viewer_automation::{
     enqueue_runtime_steps, parse_automation_mode, parse_automation_steps, parse_automation_target,
 };
 #[cfg(target_arch = "wasm32")]
+use crate::{
+    dispatch_viewer_control, ViewerAutomationState, ViewerClient, ViewerControlProfileState,
+    ViewerSelection, ViewerState,
+};
+#[cfg(target_arch = "wasm32")]
 use crate::{ConnectionStatus, SelectionKind};
 use crate::{OrbitCamera, Viewer3dCamera, ViewerCameraMode};
-use crate::{ViewerAutomationState, ViewerClient, ViewerSelection, ViewerState};
+#[cfg(not(target_arch = "wasm32"))]
+use crate::{
+    ViewerAutomationState, ViewerClient, ViewerControlProfileState, ViewerSelection, ViewerState,
+};
 #[cfg(target_arch = "wasm32")]
 use agent_world::viewer::{ViewerControl, ViewerRequest};
 use bevy::prelude::*;
@@ -809,6 +817,7 @@ pub(super) fn consume_web_test_api_commands(
     mut automation_state: ResMut<ViewerAutomationState>,
     _state: Option<Res<ViewerState>>,
     client: Option<Res<ViewerClient>>,
+    control_profile: Option<Res<ViewerControlProfileState>>,
 ) {
     let mut commands = Vec::new();
     WEB_TEST_API_COMMAND_QUEUE.with(|queue| {
@@ -839,10 +848,7 @@ pub(super) fn consume_web_test_api_commands(
                     });
                     continue;
                 };
-                let sent = client
-                    .tx
-                    .send(ViewerRequest::Control { mode: control })
-                    .is_ok();
+                let sent = dispatch_viewer_control(client, control_profile.as_deref(), control);
                 mutate_last_control_feedback(feedback_id, |feedback| {
                     if sent {
                         feedback.stage = "executing".to_string();
@@ -869,6 +875,7 @@ pub(super) fn consume_web_test_api_commands(
     _automation_state: ResMut<ViewerAutomationState>,
     _state: Option<Res<ViewerState>>,
     _client: Option<Res<ViewerClient>>,
+    _control_profile: Option<Res<ViewerControlProfileState>>,
 ) {
 }
 
@@ -879,6 +886,7 @@ pub(super) fn publish_web_test_api_state(
     camera_mode: Res<ViewerCameraMode>,
     cameras: Query<(&OrbitCamera, &Projection), With<Viewer3dCamera>>,
     client: Option<Res<ViewerClient>>,
+    control_profile: Option<Res<ViewerControlProfileState>>,
 ) {
     WEB_TEST_API_STATE_SNAPSHOT.with(|slot| {
         let mut snapshot = slot.borrow_mut();
@@ -971,12 +979,11 @@ pub(super) fn publish_web_test_api_state(
                     if feedback.no_progress_frames >= CONTROL_STALL_FRAME_THRESHOLD {
                         if feedback.action == "step" {
                             let recovered = client.as_ref().is_some_and(|viewer_client| {
-                                viewer_client
-                                    .tx
-                                    .send(ViewerRequest::Control {
-                                        mode: ViewerControl::Play,
-                                    })
-                                    .is_ok()
+                                dispatch_viewer_control(
+                                    viewer_client,
+                                    control_profile.as_deref(),
+                                    ViewerControl::Play,
+                                )
                             });
                             feedback.reason = Some(format!(
                                 "Cause: step accepted but no world delta within stall window ({} frames)",

@@ -93,6 +93,7 @@ pub(super) fn run_ui(addr: String, offline: bool) {
         .insert_resource(module_visibility_state)
         .insert_resource(module_visibility_path)
         .insert_resource(StepControlLoadingState::default())
+        .insert_resource(ViewerControlProfileState::default())
         .add_plugins(default_plugins)
         .add_plugins(EguiPlugin::default())
         .insert_resource(OfflineConfig { offline })

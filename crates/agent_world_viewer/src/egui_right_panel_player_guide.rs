@@ -915,6 +915,7 @@ pub(super) fn render_player_mission_hud(
     state: &crate::ViewerState,
     selection: &ViewerSelection,
     client: Option<&crate::ViewerClient>,
+    control_profile: Option<&crate::ViewerControlProfileState>,
     layout_state: &mut RightPanelLayoutState,
     module_visibility: &mut crate::right_panel_module_visibility::RightPanelModuleVisibilityState,
     onboarding_visible: bool,
@@ -1126,9 +1127,11 @@ pub(super) fn render_player_mission_hud(
     if action_clicked && step == PlayerGuideStep::ExploreAction {
         apply_player_layout_preset(layout_state, module_visibility, PlayerLayoutPreset::Command);
         if let Some(client) = client {
-            let _ = client.tx.send(agent_world::viewer::ViewerRequest::Control {
-                mode: agent_world::viewer::ViewerControl::Play,
-            });
+            let _ = crate::dispatch_viewer_control(
+                client,
+                control_profile,
+                agent_world::viewer::ViewerControl::Play,
+            );
         }
     }
     if command_clicked {
@@ -1136,14 +1139,18 @@ pub(super) fn render_player_mission_hud(
     }
     if let Some(client) = client {
         if recover_play_clicked {
-            let _ = client.tx.send(agent_world::viewer::ViewerRequest::Control {
-                mode: agent_world::viewer::ViewerControl::Play,
-            });
+            let _ = crate::dispatch_viewer_control(
+                client,
+                control_profile,
+                agent_world::viewer::ViewerControl::Play,
+            );
         }
         if recover_step_clicked {
-            let _ = client.tx.send(agent_world::viewer::ViewerRequest::Control {
-                mode: agent_world::viewer::ViewerControl::Step { count: 8 },
-            });
+            let _ = crate::dispatch_viewer_control(
+                client,
+                control_profile,
+                agent_world::viewer::ViewerControl::Step { count: 8 },
+            );
         }
     }
 
