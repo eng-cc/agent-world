@@ -4,7 +4,7 @@
 - [x] T0 建档：设计文档 + 项目管理文档
 - [x] T1 script 节拍策略：`timer_pulse` / `event_drive` 双模接线
 - [x] T2 可观测性：信号级吞吐/merge/drop/处理耗时统计
-- [ ] T3 回归测试 + Web 闭环验证
+- [x] T3 回归测试 + Web 闭环验证
 - [ ] T4 文档与日志收口
 
 ## 依赖
@@ -14,5 +14,5 @@
 - `testing-manual.md`
 
 ## 状态
-- 当前阶段：进行 T3
-- 备注：T2 已完成，live loop 可输出信号级入队/处理吞吐与处理耗时（avg/max）统计。
+- 当前阶段：进行 T4
+- 备注：T3 已完成，S6 Web smoke（headed + `__AW_TEST__` + console/screenshot）证据已归档。
