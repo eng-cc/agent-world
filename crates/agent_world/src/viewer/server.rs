@@ -4,7 +4,6 @@ use std::net::{TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 use std::thread;
-use std::time::{Duration, Instant};
 
 use crate::simulator::{
     PersistError, RunnerMetrics, WorldEvent, WorldJournal, WorldSnapshot, WorldTime,
@@ -20,7 +19,6 @@ pub struct ViewerServerConfig {
     pub bind_addr: String,
     pub snapshot_path: PathBuf,
     pub journal_path: PathBuf,
-    pub tick_interval: Duration,
     pub world_id: String,
 }
 
@@ -38,18 +36,12 @@ impl ViewerServerConfig {
             bind_addr: "127.0.0.1:5010".to_string(),
             snapshot_path,
             journal_path,
-            tick_interval: Duration::from_millis(50),
             world_id,
         }
     }
 
     pub fn with_bind_addr(mut self, addr: impl Into<String>) -> Self {
         self.bind_addr = addr.into();
-        self
-    }
-
-    pub fn with_tick_interval(mut self, interval: Duration) -> Self {
-        self.tick_interval = interval;
         self
     }
 
@@ -127,11 +119,10 @@ impl ViewerServer {
 
         thread::spawn(move || read_requests(reader_stream, tx));
 
-        let mut session = ViewerSession::new(&self.journal.events, self.config.tick_interval);
-        let mut last_tick = Instant::now();
+        let mut session = ViewerSession::new(&self.journal.events);
 
         loop {
-            match rx.recv_timeout(self.config.tick_interval) {
+            match rx.recv() {
                 Ok(command) => {
                     if !session.handle_request(
                         command,
@@ -142,20 +133,7 @@ impl ViewerServer {
                         break;
                     }
                 }
-                Err(mpsc::RecvTimeoutError::Timeout) => {}
-                Err(mpsc::RecvTimeoutError::Disconnected) => break,
-            }
-
-            if session.should_emit_event() && last_tick.elapsed() >= session.tick_interval {
-                if let Some(event) = session.next_event() {
-                    let time = event.time;
-                    send_response(&mut writer, &ViewerResponse::Event { event })?;
-                    session.update_metrics_time(time);
-                    session.emit_metrics(&mut writer)?;
-                    last_tick = Instant::now();
-                } else {
-                    session.playing = false;
-                }
+                Err(_) => break,
             }
         }
         Ok(())
@@ -167,20 +145,16 @@ struct ViewerSession<'a> {
     subscribed: HashSet<ViewerStream>,
     event_filters: Option<HashSet<ViewerEventKind>>,
     cursor: usize,
-    playing: bool,
-    tick_interval: Duration,
     metrics: RunnerMetrics,
 }
 
 impl<'a> ViewerSession<'a> {
-    fn new(events: &'a [WorldEvent], tick_interval: Duration) -> Self {
+    fn new(events: &'a [WorldEvent]) -> Self {
         Self {
             events,
             subscribed: HashSet::new(),
             event_filters: None,
             cursor: 0,
-            playing: false,
-            tick_interval,
             metrics: RunnerMetrics::default(),
         }
     }
@@ -233,25 +207,15 @@ impl<'a> ViewerSession<'a> {
                 }
             }
             ViewerRequest::Control { mode } => match mode {
-                ViewerControl::Pause => {
-                    self.playing = false;
-                }
-                ViewerControl::Play => {
-                    self.playing = true;
-                }
+                ViewerControl::Pause => {}
+                ViewerControl::Play => self.emit_playback_events(writer)?,
                 ViewerControl::Step { count } => {
                     let steps = count.max(1);
                     for _ in 0..steps {
-                        if let Some(event) = self.next_event() {
-                            let time = event.time;
-                            send_response(writer, &ViewerResponse::Event { event })?;
-                            self.update_metrics_time(time);
-                            self.emit_metrics(writer)?;
-                        } else {
+                        if !self.emit_next_event(writer)? {
                             break;
                         }
                     }
-                    self.playing = false;
                 }
                 ViewerControl::Seek { tick } => {
                     self.cursor = seek_to_tick(self.events, tick);
@@ -288,8 +252,29 @@ impl<'a> ViewerSession<'a> {
         Ok(true)
     }
 
-    fn should_emit_event(&self) -> bool {
-        self.playing && self.subscribed.contains(&ViewerStream::Events)
+    fn emit_playback_events(
+        &mut self,
+        writer: &mut BufWriter<TcpStream>,
+    ) -> Result<(), ViewerServerError> {
+        if !self.subscribed.contains(&ViewerStream::Events) {
+            return Ok(());
+        }
+        while self.emit_next_event(writer)? {}
+        Ok(())
+    }
+
+    fn emit_next_event(
+        &mut self,
+        writer: &mut BufWriter<TcpStream>,
+    ) -> Result<bool, ViewerServerError> {
+        let Some(event) = self.next_event() else {
+            return Ok(false);
+        };
+        let time = event.time;
+        send_response(writer, &ViewerResponse::Event { event })?;
+        self.update_metrics_time(time);
+        self.emit_metrics(writer)?;
+        Ok(true)
     }
 
     fn next_event(&mut self) -> Option<WorldEvent> {

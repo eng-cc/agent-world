@@ -104,6 +104,85 @@ fn offline_server_accepts_client_and_emits_snapshot_and_event() {
     let _ = fs::remove_dir_all(&temp_dir);
 }
 
+#[cfg(feature = "test_tier_required")]
+#[test]
+fn offline_server_play_control_streams_events_without_timer_ticks() {
+    let temp_dir = make_temp_dir("viewer-offline-play");
+    let _summary =
+        generate_viewer_demo(&temp_dir, WorldScenario::TwinRegionBootstrap).expect("demo data");
+
+    let port = find_free_port();
+    let addr = format!("127.0.0.1:{port}");
+    let config = ViewerServerConfig::from_dir(&temp_dir).with_bind_addr(addr.clone());
+    let server = ViewerServer::load(config).expect("server load");
+
+    let handle = thread::spawn(move || server.run_once().expect("run once"));
+
+    let stream = connect_with_retry(&addr, Duration::from_secs(1));
+    stream
+        .set_read_timeout(Some(Duration::from_secs(2)))
+        .expect("timeout");
+    let reader_stream = stream.try_clone().expect("clone");
+    let mut writer = BufWriter::new(stream);
+
+    send_request(
+        &mut writer,
+        &ViewerRequest::Hello {
+            client: "test".to_string(),
+            version: VIEWER_PROTOCOL_VERSION,
+        },
+    );
+    send_request(
+        &mut writer,
+        &ViewerRequest::Subscribe {
+            streams: vec![ViewerStream::Events],
+            event_kinds: Vec::new(),
+        },
+    );
+    send_request(
+        &mut writer,
+        &ViewerRequest::Control {
+            mode: ViewerControl::Play,
+        },
+    );
+
+    let mut reader = BufReader::new(reader_stream);
+    let mut line = String::new();
+    let mut event_count = 0_usize;
+    let start = Instant::now();
+    while start.elapsed() < Duration::from_secs(2) {
+        line.clear();
+        match reader.read_line(&mut line) {
+            Ok(0) => break,
+            Ok(_) => {
+                let trimmed = line.trim();
+                if trimmed.is_empty() {
+                    continue;
+                }
+                if let Ok(ViewerResponse::Event { .. }) =
+                    serde_json::from_str::<ViewerResponse>(trimmed)
+                {
+                    event_count = event_count.saturating_add(1);
+                    if event_count >= 2 {
+                        break;
+                    }
+                }
+            }
+            Err(_) => break,
+        }
+    }
+
+    assert!(
+        event_count >= 2,
+        "expected play control to stream at least 2 events, got {event_count}"
+    );
+
+    drop(reader);
+    drop(writer);
+    handle.join().expect("server exit");
+    let _ = fs::remove_dir_all(&temp_dir);
+}
+
 fn make_temp_dir(prefix: &str) -> PathBuf {
     let mut dir = std::env::temp_dir();
     let nanos = std::time::SystemTime::now()
