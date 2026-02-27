@@ -253,7 +253,12 @@ fn schedule_recipe_consumes_inputs_and_power_then_produces_outputs() {
         other => panic!("expected RecipeStarted, got {other:?}"),
     }
 
-    world.step().expect("complete recipe");
+    for _ in 0..4 {
+        if world.pending_recipe_jobs_len() == 0 {
+            break;
+        }
+        world.step().expect("advance recipe toward completion");
+    }
     assert_eq!(world.pending_recipe_jobs_len(), 0);
     assert_eq!(world.material_balance("motor_mk1"), 2);
     assert_eq!(world.material_balance("metal_scrap"), 1);
@@ -785,9 +790,15 @@ fn schedule_recipe_with_module_uses_module_plan() {
     assert_eq!(world.resource_balance(ResourceKind::Electricity), 21);
     assert_eq!(world.pending_recipe_jobs_len(), 1);
 
-    world
-        .step_with_modules(&mut sandbox)
-        .expect("complete recipe with module");
+    for _ in 0..4 {
+        if world.pending_recipe_jobs_len() == 0 {
+            break;
+        }
+        world
+            .step_with_modules(&mut sandbox)
+            .expect("advance module recipe toward completion");
+    }
+    assert_eq!(world.pending_recipe_jobs_len(), 0);
     assert_eq!(world.material_balance("motor_mk1"), 2);
     assert_eq!(world.material_balance("metal_scrap"), 1);
 }
@@ -948,9 +959,14 @@ fn schedule_recipe_with_module_auto_validates_outputs_before_commit() {
         .expect("start recipe with module");
     assert_eq!(world.pending_recipe_jobs_len(), 1);
 
-    world
-        .step_with_modules(&mut sandbox)
-        .expect("complete recipe with automatic product validation");
+    for _ in 0..4 {
+        if world.pending_recipe_jobs_len() == 0 {
+            break;
+        }
+        world
+            .step_with_modules(&mut sandbox)
+            .expect("advance module recipe toward validated completion");
+    }
     assert_eq!(world.pending_recipe_jobs_len(), 0);
     assert_eq!(world.material_balance("logistics_drone"), 1);
     assert_eq!(world.material_balance("assembly_scrap"), 1);
@@ -1055,9 +1071,14 @@ fn schedule_recipe_with_module_blocks_commit_when_product_validation_fails() {
         .expect("start recipe with module");
     assert_eq!(world.pending_recipe_jobs_len(), 1);
 
-    world
-        .step_with_modules(&mut sandbox)
-        .expect("settle recipe with product rejection");
+    for _ in 0..4 {
+        if world.pending_recipe_jobs_len() == 0 {
+            break;
+        }
+        world
+            .step_with_modules(&mut sandbox)
+            .expect("advance module recipe toward rejection settlement");
+    }
     assert_eq!(world.pending_recipe_jobs_len(), 0);
     assert_eq!(world.material_balance("logistics_drone"), 0);
     assert_eq!(world.material_balance("assembly_scrap"), 0);

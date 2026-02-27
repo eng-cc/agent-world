@@ -103,6 +103,61 @@ fn factory_depreciation_reduces_durability_each_tick() {
 }
 
 #[test]
+fn factory_depreciation_scales_with_active_recipe_load() {
+    let mut world = World::new();
+    register_builder(&mut world, "builder-a");
+    build_factory_ready(
+        &mut world,
+        "builder-a",
+        "site-1",
+        factory_spec("factory.load", 1, 2, 3),
+    );
+
+    world
+        .set_material_balance("iron_ingot", 2)
+        .expect("seed recipe input");
+    world.set_resource_balance(ResourceKind::Electricity, 20);
+    world.submit_action(Action::ScheduleRecipe {
+        requester_agent_id: "builder-a".to_string(),
+        factory_id: "factory.load".to_string(),
+        recipe_id: "recipe.load".to_string(),
+        plan: RecipeExecutionPlan::accepted(
+            1,
+            vec![MaterialStack::new("iron_ingot", 1)],
+            vec![MaterialStack::new("control_chip", 1)],
+            Vec::new(),
+            1,
+            3,
+        ),
+    });
+    world.step().expect("start recipe");
+    assert_eq!(world.pending_recipe_jobs_len(), 1);
+
+    let durability_before_loaded_tick = world
+        .snapshot()
+        .state
+        .factories
+        .get("factory.load")
+        .expect("factory exists")
+        .durability_ppm;
+    assert_eq!(durability_before_loaded_tick, 997_000);
+
+    world.step().expect("depreciation under load");
+
+    let durability_after_loaded_tick = world
+        .snapshot()
+        .state
+        .factories
+        .get("factory.load")
+        .expect("factory exists")
+        .durability_ppm;
+    assert_eq!(
+        durability_before_loaded_tick - durability_after_loaded_tick,
+        4_500
+    );
+}
+
+#[test]
 fn maintain_factory_consumes_hardware_part_and_recovers_durability() {
     let mut world = World::new();
     register_builder(&mut world, "builder-a");
@@ -185,6 +240,136 @@ fn recycle_factory_removes_factory_and_returns_materials() {
         }
         other => panic!("expected FactoryRecycled, got {other:?}"),
     }
+}
+
+#[test]
+fn schedule_recipe_world_fallback_adds_one_tick_delay_for_moderate_bottleneck_deficit() {
+    let mut world = World::new();
+    register_builder(&mut world, "builder-a");
+    world
+        .set_ledger_material_balance(MaterialLedgerId::agent("builder-a"), "steel_plate", 20)
+        .expect("seed agent steel");
+    world
+        .set_ledger_material_balance(MaterialLedgerId::agent("builder-a"), "circuit_board", 4)
+        .expect("seed agent circuits");
+    world.submit_action(Action::BuildFactory {
+        builder_agent_id: "builder-a".to_string(),
+        site_id: "site-1".to_string(),
+        spec: factory_spec("factory.scarcity.moderate", 1, 1, 1),
+    });
+    world.step().expect("start build");
+    world.step().expect("complete build");
+
+    world
+        .set_ledger_material_balance(MaterialLedgerId::site("site-1"), "iron_ingot", 6)
+        .expect("seed partial local bottleneck");
+    world
+        .set_material_balance("iron_ingot", 20)
+        .expect("seed world bottleneck");
+    world.set_resource_balance(ResourceKind::Electricity, 20);
+
+    world.submit_action(Action::ScheduleRecipe {
+        requester_agent_id: "builder-a".to_string(),
+        factory_id: "factory.scarcity.moderate".to_string(),
+        recipe_id: "recipe.scarcity.moderate".to_string(),
+        plan: RecipeExecutionPlan::accepted(
+            1,
+            vec![MaterialStack::new("iron_ingot", 10)],
+            vec![MaterialStack::new("motor_mk1", 1)],
+            Vec::new(),
+            1,
+            3,
+        ),
+    });
+    world.step().expect("start delayed recipe");
+
+    let now = world.snapshot().state.time;
+    let started = world.journal().events.last().expect("recipe started");
+    match &started.body {
+        WorldEventBody::Domain(DomainEvent::RecipeStarted {
+            consume_ledger,
+            output_ledger,
+            duration_ticks,
+            ready_at,
+            ..
+        }) => {
+            assert_eq!(consume_ledger, &MaterialLedgerId::world());
+            assert_eq!(output_ledger, &MaterialLedgerId::world());
+            assert_eq!(*duration_ticks, 4);
+            assert_eq!(*ready_at, now.saturating_add(4));
+        }
+        other => panic!("expected RecipeStarted, got {other:?}"),
+    }
+
+    for _ in 0..3 {
+        world.step().expect("wait delayed completion");
+    }
+    assert_eq!(world.pending_recipe_jobs_len(), 1);
+    world.step().expect("complete delayed recipe");
+    assert_eq!(world.pending_recipe_jobs_len(), 0);
+}
+
+#[test]
+fn schedule_recipe_world_fallback_adds_two_tick_delay_for_severe_bottleneck_deficit() {
+    let mut world = World::new();
+    register_builder(&mut world, "builder-a");
+    world
+        .set_ledger_material_balance(MaterialLedgerId::agent("builder-a"), "steel_plate", 20)
+        .expect("seed agent steel");
+    world
+        .set_ledger_material_balance(MaterialLedgerId::agent("builder-a"), "circuit_board", 4)
+        .expect("seed agent circuits");
+    world.submit_action(Action::BuildFactory {
+        builder_agent_id: "builder-a".to_string(),
+        site_id: "site-1".to_string(),
+        spec: factory_spec("factory.scarcity.severe", 1, 1, 1),
+    });
+    world.step().expect("start build");
+    world.step().expect("complete build");
+
+    world
+        .set_ledger_material_balance(MaterialLedgerId::site("site-1"), "iron_ingot", 2)
+        .expect("seed severe local bottleneck");
+    world
+        .set_material_balance("iron_ingot", 20)
+        .expect("seed world bottleneck");
+    world.set_resource_balance(ResourceKind::Electricity, 20);
+
+    world.submit_action(Action::ScheduleRecipe {
+        requester_agent_id: "builder-a".to_string(),
+        factory_id: "factory.scarcity.severe".to_string(),
+        recipe_id: "recipe.scarcity.severe".to_string(),
+        plan: RecipeExecutionPlan::accepted(
+            1,
+            vec![MaterialStack::new("iron_ingot", 10)],
+            vec![MaterialStack::new("motor_mk1", 1)],
+            Vec::new(),
+            1,
+            3,
+        ),
+    });
+    world.step().expect("start delayed recipe");
+
+    let now = world.snapshot().state.time;
+    let started = world.journal().events.last().expect("recipe started");
+    match &started.body {
+        WorldEventBody::Domain(DomainEvent::RecipeStarted {
+            duration_ticks,
+            ready_at,
+            ..
+        }) => {
+            assert_eq!(*duration_ticks, 5);
+            assert_eq!(*ready_at, now.saturating_add(5));
+        }
+        other => panic!("expected RecipeStarted, got {other:?}"),
+    }
+
+    for _ in 0..4 {
+        world.step().expect("wait severe delayed completion");
+    }
+    assert_eq!(world.pending_recipe_jobs_len(), 1);
+    world.step().expect("complete severe delayed recipe");
+    assert_eq!(world.pending_recipe_jobs_len(), 0);
 }
 
 #[test]

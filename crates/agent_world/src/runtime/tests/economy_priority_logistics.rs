@@ -49,6 +49,9 @@ fn due_recipe_jobs_prioritize_survival_over_expansion() {
     world
         .set_material_balance("iron_ingot", 4)
         .expect("seed recipe input");
+    world
+        .set_ledger_material_balance(MaterialLedgerId::site("site-1"), "iron_ingot", 4)
+        .expect("seed site recipe input");
     world.set_resource_balance(ResourceKind::Electricity, 20);
 
     let expansion_plan = RecipeExecutionPlan::accepted(
@@ -132,8 +135,14 @@ fn bottleneck_pressure_bumps_recipe_completion_priority() {
         .set_material_balance("gear", 4)
         .expect("seed non-bottleneck material");
     world
+        .set_ledger_material_balance(MaterialLedgerId::site("site-1"), "gear", 4)
+        .expect("seed site non-bottleneck material");
+    world
         .set_material_balance("control_chip", 2)
         .expect("seed bottleneck material");
+    world
+        .set_ledger_material_balance(MaterialLedgerId::site("site-1"), "control_chip", 2)
+        .expect("seed site bottleneck material");
     world.set_resource_balance(ResourceKind::Electricity, 20);
 
     let non_bottleneck_plan = RecipeExecutionPlan::accepted(
