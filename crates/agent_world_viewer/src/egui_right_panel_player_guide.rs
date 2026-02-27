@@ -450,6 +450,8 @@ pub(super) struct PlayerMissionLoopSnapshot {
     pub(super) completed_steps: usize,
     pub(super) title: &'static str,
     pub(super) objective: &'static str,
+    pub(super) completion_condition: &'static str,
+    pub(super) eta: &'static str,
     pub(super) short_goals: [PlayerShortGoalSnapshot; 2],
     pub(super) action_label: &'static str,
     pub(super) action_opens_panel: bool,
@@ -499,7 +501,9 @@ pub(super) fn build_player_mission_loop_snapshot(
         } else {
             "Mission: Build Action Loop"
         },
-        objective: player_goal_title(step, locale),
+        objective: player_goal_action_sentence(step, locale),
+        completion_condition: player_goal_completion_condition(step, locale),
+        eta: player_goal_eta(step, locale),
         short_goals,
         action_label,
         action_opens_panel,
@@ -591,6 +595,55 @@ pub(super) fn build_player_reward_feedback_snapshot(
             ),
             complete: false,
         },
+    }
+}
+
+fn player_goal_action_sentence(
+    step: PlayerGuideStep,
+    locale: crate::i18n::UiLocale,
+) -> &'static str {
+    match (step, locale.is_zh()) {
+        (PlayerGuideStep::ConnectWorld, true) => "等待连接状态变为“已连接”",
+        (PlayerGuideStep::ConnectWorld, false) => "Wait until connection status becomes Connected",
+        (PlayerGuideStep::OpenPanel, true) => "打开右侧操作面板，进入可操作状态",
+        (PlayerGuideStep::OpenPanel, false) => "Open the right control panel to unlock actions",
+        (PlayerGuideStep::SelectTarget, true) => "在场景中选择 1 个 Agent 或地点",
+        (PlayerGuideStep::SelectTarget, false) => "Select one agent or location in the scene",
+        (PlayerGuideStep::ExploreAction, true) => "发送 1 次指令并确认世界出现新反馈",
+        (PlayerGuideStep::ExploreAction, false) => {
+            "Send one command and confirm new world feedback"
+        }
+    }
+}
+
+fn player_goal_completion_condition(
+    step: PlayerGuideStep,
+    locale: crate::i18n::UiLocale,
+) -> &'static str {
+    match (step, locale.is_zh()) {
+        (PlayerGuideStep::ConnectWorld, true) => "完成条件：状态栏显示“已连接”",
+        (PlayerGuideStep::ConnectWorld, false) => "Completion: connection chip shows Connected",
+        (PlayerGuideStep::OpenPanel, true) => "完成条件：右侧面板可见",
+        (PlayerGuideStep::OpenPanel, false) => "Completion: right panel is visible",
+        (PlayerGuideStep::SelectTarget, true) => "完成条件：目标栏出现选中对象",
+        (PlayerGuideStep::SelectTarget, false) => "Completion: target chip shows a selected object",
+        (PlayerGuideStep::ExploreAction, true) => "完成条件：你的操作后新增至少 1 条世界反馈",
+        (PlayerGuideStep::ExploreAction, false) => {
+            "Completion: at least one new world feedback appears"
+        }
+    }
+}
+
+fn player_goal_eta(step: PlayerGuideStep, locale: crate::i18n::UiLocale) -> &'static str {
+    match (step, locale.is_zh()) {
+        (PlayerGuideStep::ConnectWorld, true) => "预计耗时：约 10 秒",
+        (PlayerGuideStep::ConnectWorld, false) => "ETA: about 10s",
+        (PlayerGuideStep::OpenPanel, true) => "预计耗时：约 5 秒",
+        (PlayerGuideStep::OpenPanel, false) => "ETA: about 5s",
+        (PlayerGuideStep::SelectTarget, true) => "预计耗时：约 10 秒",
+        (PlayerGuideStep::SelectTarget, false) => "ETA: about 10s",
+        (PlayerGuideStep::ExploreAction, true) => "预计耗时：约 20 秒",
+        (PlayerGuideStep::ExploreAction, false) => "ETA: about 20s",
     }
 }
 
@@ -818,25 +871,28 @@ pub(super) fn render_player_mission_hud(
                         "Main Goal"
                     });
                     ui.strong(snapshot.objective);
-                    ui.small(
-                        egui::RichText::new(if locale.is_zh() {
-                            "短目标"
-                        } else {
-                            "Short Goals"
-                        })
-                        .color(egui::Color32::from_rgb(166, 188, 226)),
-                    );
-                    for goal in snapshot.short_goals {
-                        let marker = if goal.complete { "✓" } else { "□" };
-                        let color = if goal.complete {
-                            tone
-                        } else {
-                            egui::Color32::from_gray(182)
-                        };
-                        ui.small(
-                            egui::RichText::new(format!("{marker} {}", goal.label)).color(color),
-                        );
-                    }
+                    ui.small(snapshot.completion_condition);
+                    ui.small(snapshot.eta);
+                    egui::CollapsingHeader::new(if locale.is_zh() {
+                        "展开短目标"
+                    } else {
+                        "Expand short goals"
+                    })
+                    .default_open(false)
+                    .show(ui, |ui| {
+                        for goal in snapshot.short_goals {
+                            let marker = if goal.complete { "✓" } else { "□" };
+                            let color = if goal.complete {
+                                tone
+                            } else {
+                                egui::Color32::from_gray(182)
+                            };
+                            ui.small(
+                                egui::RichText::new(format!("{marker} {}", goal.label))
+                                    .color(color),
+                            );
+                        }
+                    });
                     if !compact_mode {
                         ui.small(player_goal_detail(step, locale));
                     }

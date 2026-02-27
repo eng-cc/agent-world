@@ -21,7 +21,15 @@ fn build_player_mission_loop_snapshot_open_panel_requires_open_action() {
     );
 
     assert_eq!(snapshot.completed_steps, 1);
-    assert_eq!(snapshot.objective, "Open Control Panel");
+    assert_eq!(
+        snapshot.objective,
+        "Open the right control panel to unlock actions"
+    );
+    assert_eq!(
+        snapshot.completion_condition,
+        "Completion: right panel is visible"
+    );
+    assert_eq!(snapshot.eta, "ETA: about 5s");
     assert_eq!(snapshot.short_goals[0].label, "Open control panel");
     assert!(!snapshot.short_goals[0].complete);
     assert_eq!(snapshot.short_goals[1].label, "Lock one target");
@@ -45,7 +53,15 @@ fn build_player_mission_loop_snapshot_reports_progress_and_objective() {
     );
 
     assert_eq!(snapshot.completed_steps, 4);
-    assert_eq!(snapshot.objective, "Advance The Run");
+    assert_eq!(
+        snapshot.objective,
+        "Send one command and confirm new world feedback"
+    );
+    assert_eq!(
+        snapshot.completion_condition,
+        "Completion: at least one new world feedback appears"
+    );
+    assert_eq!(snapshot.eta, "ETA: about 20s");
     assert_eq!(snapshot.short_goals[0].label, "Send first order");
     assert!(snapshot.short_goals[0].complete);
     assert_eq!(snapshot.short_goals[1].label, "Confirm world feedback");
