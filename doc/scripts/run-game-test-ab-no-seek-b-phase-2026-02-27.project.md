@@ -2,7 +2,7 @@
 
 ## 任务拆解
 - [x] T0 建立设计文档与项目管理文档
-- [ ] T1 改造 `scripts/run-game-test-ab.sh` 的 B 段为无 seek 探针
+- [x] T1 改造 `scripts/run-game-test-ab.sh` 的 B 段为无 seek 探针
 - [ ] T2 执行脚本验证并收口文档/devlog
 
 ## 依赖
@@ -11,5 +11,5 @@
 - `doc/devlog/2026-02-27.md`
 
 ## 状态
-- 当前阶段：进行中（下一步 T1）
+- 当前阶段：进行中（下一步 T2）
 - 备注：与“viewer live 禁用 seek”策略保持一致。

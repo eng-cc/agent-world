@@ -10,7 +10,7 @@ Usage: ./scripts/run-game-test-ab.sh [options] [run-game-test options...]
 
 Run a stable A/B playability loop and emit quantitative metrics:
 - A phase: play -> observe -> pause
-- B phase: step/seek control probes
+- B phase: step-chain control probes (no seek)
 - Outputs TTFC / effective control hit-rate / max no-progress window
 
 Options:
@@ -383,18 +383,17 @@ async (page) => {
   });
   await page.screenshot({ path: "${OUT_DIR}/step1-phase-a.png", scale: "css", type: "png" });
 
-  const phaseBStep = await sendControlProbe({
-    name: "phase_b_step",
+  const phaseBStepPrimary = await sendControlProbe({
+    name: "phase_b_step_primary",
     action: "step",
     payload: { count: 8 },
     expectProgress: true,
     timeoutMs: 6000,
   });
-  const afterStep = await readState();
-  const phaseBSeek = await sendControlProbe({
-    name: "phase_b_seek",
-    action: "seek",
-    payload: { tick: Math.max(logicalTick(afterStep) + 2, 1) },
+  const phaseBStepFollowup = await sendControlProbe({
+    name: "phase_b_step_followup",
+    action: "step",
+    payload: { count: 2 },
     expectProgress: true,
     timeoutMs: 6000,
   });
@@ -410,7 +409,7 @@ async (page) => {
   const finalState = await waitForConnected("final");
   await page.screenshot({ path: "${OUT_DIR}/step3-final.png", scale: "css", type: "png" });
 
-  const commands = [phaseAPlay, phaseAPause, phaseBStep, phaseBSeek, phaseBMoveProbe];
+  const commands = [phaseAPlay, phaseAPause, phaseBStepPrimary, phaseBStepFollowup, phaseBMoveProbe];
   const expectedProgressControls = commands.filter((item) => item.expectProgress);
   const progressedControls = expectedProgressControls.filter((item) => item.progressed);
   const acceptedControls = commands.filter((item) => item.accepted);
@@ -435,10 +434,10 @@ async (page) => {
         pass: phaseAPlay.progressed && phaseAPause.accepted,
       },
       phaseB: {
-        step: phaseBStep,
-        seek: phaseBSeek,
+        stepPrimary: phaseBStepPrimary,
+        stepFollowup: phaseBStepFollowup,
         moveProbe: phaseBMoveProbe,
-        pass: phaseBStep.progressed && phaseBSeek.progressed,
+        pass: phaseBStepPrimary.progressed && phaseBStepFollowup.progressed,
       },
     },
     commands,
@@ -534,7 +533,7 @@ summary_lines = [
     "",
     "## A/B Verdict",
     f"- A (play/pause): `{'PASS' if phase_a_pass else 'FAIL'}`",
-    f"- B (step/seek): `{'PASS' if phase_b_pass else 'FAIL'}`",
+    f"- B (step chain): `{'PASS' if phase_b_pass else 'FAIL'}`",
     "",
     "## Control Probes",
 ] + cmd_lines + [""]
@@ -549,7 +548,7 @@ card_lines = [
     f"- 无进展窗口时长（ms，connected 下 tick 不变最长窗口）：`{max_stall}`",
     "- A/B 分段结论：",
     f"  - A（play/pause）：`{'PASS' if phase_a_pass else 'FAIL'}`",
-    f"  - B（step/seek）：`{'PASS' if phase_b_pass else 'FAIL'}`",
+    f"  - B（step链路）：`{'PASS' if phase_b_pass else 'FAIL'}`",
     "",
 ]
 card_path.write_text("\n".join(card_lines), encoding="utf-8")
