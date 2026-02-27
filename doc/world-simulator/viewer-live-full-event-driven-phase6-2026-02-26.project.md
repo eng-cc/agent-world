@@ -5,7 +5,7 @@
 - [x] T1 非共识驱动事件化：`NonConsensusDriveRequested` 接线
 - [x] T2 状态变更节流：有效推进后再发射 metrics/snapshot
 - [x] T3 回归测试：非共识驱动语义 + 背压语义
-- [ ] T4 文档与日志收口
+- [x] T4 文档与日志收口
 
 ## 依赖
 - `crates/agent_world/src/viewer/live_split_part1.rs`
@@ -14,5 +14,5 @@
 - `testing-manual.md`
 
 ## 状态
-- 当前阶段：T3 已完成，进行 T4
+- 当前阶段：已完成（T0~T4）
 - 备注：Phase 6 聚焦非共识链路去定时化与状态变更驱动收敛。
