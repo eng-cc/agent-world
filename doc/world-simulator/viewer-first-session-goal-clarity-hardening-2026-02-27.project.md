@@ -5,7 +5,7 @@
 - [x] T1 主任务结构化：动作句 + 完成条件 + 预计耗时 + 次任务折叠
 - [x] T2 下一步按钮与主任务剩余提示
 - [x] T3 卡住检测（5 秒无进展）与恢复提示
-- [ ] T4 首局结算卡片 + 测试 + 文档收口
+- [x] T4 首局结算卡片 + 测试 + 文档收口
 
 ## 依赖
 - `doc/world-simulator/viewer-first-session-goal-control-feedback-2026-02-27.md`
@@ -15,5 +15,5 @@
 - `crates/agent_world_viewer/src/egui_right_panel_player_experience.rs`
 
 ## 状态
-- 当前阶段：进行中（T0~T3 已完成，T4 待开始）
+- 当前阶段：已完成（T0~T4）
 - 阻塞项：无

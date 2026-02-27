@@ -108,6 +108,11 @@ pub(crate) struct PlayerOnboardingState {
     dismissed_step: Option<PlayerGuideStep>,
     guide_transition: PlayerGuideTransitionState,
     no_progress_watch: PlayerNoProgressWatch,
+    first_session_started_at_secs: Option<f64>,
+    first_session_start_tick: u64,
+    first_session_start_event_count: usize,
+    first_session_summary_visible: bool,
+    first_session_summary_shown: bool,
 }
 
 #[derive(Default)]
@@ -124,6 +129,16 @@ pub(super) struct PlayerHudSnapshot {
     pub events: usize,
     pub selection: String,
     pub objective: &'static str,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(super) struct PlayerFirstSessionSummarySnapshot {
+    pub(super) duration_secs: u64,
+    pub(super) tick_gain: u64,
+    pub(super) event_gain: usize,
+    pub(super) title: &'static str,
+    pub(super) detail: String,
+    pub(super) next_tip: &'static str,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -970,6 +985,132 @@ pub(super) fn build_player_stuck_hint(
     }
 }
 
+pub(super) fn sync_player_first_session_summary_state(
+    onboarding: &mut PlayerOnboardingState,
+    state: &ViewerState,
+    progress: PlayerGuideProgressSnapshot,
+    now_secs: f64,
+) {
+    if onboarding.first_session_started_at_secs.is_none()
+        && matches!(state.status, crate::ConnectionStatus::Connected)
+    {
+        onboarding.first_session_started_at_secs = Some(now_secs);
+        onboarding.first_session_start_tick = player_current_tick(state);
+        onboarding.first_session_start_event_count = state.events.len();
+    }
+
+    if progress.explore_ready && !onboarding.first_session_summary_shown {
+        onboarding.first_session_summary_visible = true;
+        onboarding.first_session_summary_shown = true;
+    }
+}
+
+pub(super) fn dismiss_player_first_session_summary(onboarding: &mut PlayerOnboardingState) {
+    onboarding.first_session_summary_visible = false;
+}
+
+#[cfg(test)]
+pub(super) fn player_first_session_summary_visible(onboarding: &PlayerOnboardingState) -> bool {
+    onboarding.first_session_summary_visible
+}
+
+pub(super) fn build_player_first_session_summary_snapshot(
+    onboarding: &PlayerOnboardingState,
+    state: &ViewerState,
+    locale: crate::i18n::UiLocale,
+    now_secs: f64,
+) -> Option<PlayerFirstSessionSummarySnapshot> {
+    if !onboarding.first_session_summary_visible {
+        return None;
+    }
+    let started_at = onboarding.first_session_started_at_secs?;
+    let duration_secs = (now_secs - started_at).max(0.0).round() as u64;
+    let tick_gain = player_current_tick(state).saturating_sub(onboarding.first_session_start_tick);
+    let event_gain = state
+        .events
+        .len()
+        .saturating_sub(onboarding.first_session_start_event_count);
+    Some(match locale.is_zh() {
+        true => PlayerFirstSessionSummarySnapshot {
+            duration_secs,
+            tick_gain,
+            event_gain,
+            title: "首局回顾：行动闭环已建立",
+            detail: format!(
+                "用时约 {} 秒，世界推进 +{} tick，新增 {} 条反馈事件。",
+                duration_secs, tick_gain, event_gain
+            ),
+            next_tip: "下一步建议：继续在 Command 视图发出 2~3 条策略指令并观察变化。",
+        },
+        false => PlayerFirstSessionSummarySnapshot {
+            duration_secs,
+            tick_gain,
+            event_gain,
+            title: "First Session Recap: action loop established",
+            detail: format!(
+                "About {}s, world advanced +{} ticks, and {} new feedback events.",
+                duration_secs, tick_gain, event_gain
+            ),
+            next_tip: "Next: stay in Command view and issue 2-3 strategy commands.",
+        },
+    })
+}
+
+fn render_player_first_session_summary(
+    context: &egui::Context,
+    onboarding: &mut PlayerOnboardingState,
+    state: &ViewerState,
+    locale: crate::i18n::UiLocale,
+    now_secs: f64,
+) {
+    let Some(summary) =
+        build_player_first_session_summary_snapshot(onboarding, state, locale, now_secs)
+    else {
+        return;
+    };
+    let mut close_clicked = false;
+    egui::Area::new(egui::Id::new("viewer-player-first-session-summary"))
+        .anchor(egui::Align2::CENTER_TOP, egui::vec2(0.0, 86.0))
+        .movable(false)
+        .interactable(true)
+        .show(context, |ui| {
+            egui::Frame::group(ui.style())
+                .fill(egui::Color32::from_rgba_unmultiplied(22, 34, 30, 236))
+                .stroke(egui::Stroke::new(
+                    1.0,
+                    egui::Color32::from_rgb(86, 174, 126),
+                ))
+                .corner_radius(egui::CornerRadius::same(10))
+                .inner_margin(egui::Margin::same(12))
+                .show(ui, |ui| {
+                    ui.set_max_width(460.0);
+                    ui.small(
+                        egui::RichText::new(if locale.is_zh() {
+                            "首局结算"
+                        } else {
+                            "Session Summary"
+                        })
+                        .color(egui::Color32::from_rgb(142, 220, 174)),
+                    );
+                    ui.strong(summary.title);
+                    ui.small(summary.detail.as_str());
+                    ui.small(summary.next_tip);
+                    ui.horizontal_wrapped(|ui| {
+                        close_clicked = ui
+                            .button(if locale.is_zh() {
+                                "继续游戏"
+                            } else {
+                                "Continue"
+                            })
+                            .clicked();
+                    });
+                });
+        });
+    if close_clicked {
+        dismiss_player_first_session_summary(onboarding);
+    }
+}
+
 #[cfg(test)]
 pub(super) fn feedback_toast_cap() -> usize {
     FEEDBACK_TOAST_MAX
@@ -1223,6 +1364,7 @@ pub(super) fn render_player_experience_layers(
     );
     let stuck_idle_secs = sync_player_stuck_hint_state(onboarding, state, now_secs);
     let stuck_hint = stuck_idle_secs.map(|idle| build_player_stuck_hint(guide_step, locale, idle));
+    sync_player_first_session_summary_state(onboarding, state, guide_progress, now_secs);
     let onboarding_visible = should_show_player_onboarding_card(onboarding, guide_step);
     sync_player_guide_transition(&mut onboarding.guide_transition, guide_step, now_secs);
     render_player_cinematic_intro(context, state, guide_step, locale, now_secs);
@@ -1248,6 +1390,7 @@ pub(super) fn render_player_experience_layers(
         player_mission_hud_minimap_reserved_bottom(layout_state.panel_hidden),
         now_secs,
     );
+    render_player_first_session_summary(context, onboarding, state, locale, now_secs);
     if should_show_player_goal_hint(onboarding, guide_step, layout_state) {
         render_player_goal_hint(
             context,

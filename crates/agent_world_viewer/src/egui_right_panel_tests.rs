@@ -38,6 +38,8 @@ mod player_mission_tests;
 mod player_reward_tests;
 #[path = "egui_right_panel_player_stuck_tests.rs"]
 mod player_stuck_tests;
+#[path = "egui_right_panel_player_summary_tests.rs"]
+mod player_summary_tests;
 
 struct SnapshotRenderer {
     render_state: egui_wgpu::RenderState,
