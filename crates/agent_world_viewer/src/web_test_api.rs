@@ -34,6 +34,7 @@ const TEST_API_GLOBAL_NAME: &str = "__AW_TEST__";
 enum WebTestApiCommand {
     EnqueueSteps(Vec<crate::viewer_automation::ViewerAutomationStep>),
     SendControl(ViewerControl),
+    SeekEventSeq { event_seq: u64 },
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -135,6 +136,28 @@ fn parse_seek_tick(payload: &JsValue) -> Option<u64> {
     let number = tick.as_f64()?;
     if number.is_finite() && number >= 0.0 {
         return Some(number as u64);
+    }
+    None
+}
+
+#[cfg(target_arch = "wasm32")]
+fn parse_event_seq(payload: &JsValue) -> Option<u64> {
+    if let Some(number) = payload.as_f64() {
+        if number.is_finite() && number >= 0.0 {
+            return Some(number as u64);
+        }
+    }
+
+    for key in ["eventSeq", "event_seq", "seq"] {
+        let Ok(value) = JsReflect::get(payload, &JsValue::from_str(key)) else {
+            continue;
+        };
+        let Some(number) = value.as_f64() else {
+            continue;
+        };
+        if number.is_finite() && number >= 0.0 {
+            return Some(number as u64);
+        }
     }
     None
 }
@@ -363,6 +386,19 @@ pub(super) fn setup_web_test_api(world: &mut World) {
             log_api_warning("web test api: sendControl ignored (action must be non-empty string)");
             return;
         };
+        if matches!(
+            action.trim().to_ascii_lowercase().as_str(),
+            "seek_event" | "seek_event_seq"
+        ) {
+            let Some(event_seq) = parse_event_seq(&payload) else {
+                log_api_warning(
+                    "web test api: sendControl ignored (seek_event requires numeric eventSeq)",
+                );
+                return;
+            };
+            push_command(WebTestApiCommand::SeekEventSeq { event_seq });
+            return;
+        }
         let Some(control) = parse_control_action(action.as_str(), &payload) else {
             log_api_warning("web test api: sendControl ignored (invalid action or payload)");
             return;
@@ -403,6 +439,7 @@ pub(super) fn setup_web_test_api(_world: &mut World) {}
 #[cfg(target_arch = "wasm32")]
 pub(super) fn consume_web_test_api_commands(
     mut automation_state: ResMut<ViewerAutomationState>,
+    state: Option<Res<ViewerState>>,
     client: Option<Res<ViewerClient>>,
 ) {
     let mut commands = Vec::new();
@@ -423,6 +460,34 @@ pub(super) fn consume_web_test_api_commands(
                     let _ = client.tx.send(ViewerRequest::Control { mode: control });
                 }
             }
+            WebTestApiCommand::SeekEventSeq { event_seq } => {
+                let Some(client) = client.as_deref() else {
+                    continue;
+                };
+                let seek_tick = if event_seq == 0 {
+                    Some(0)
+                } else {
+                    state
+                        .as_deref()
+                        .and_then(|viewer_state| {
+                            viewer_state
+                                .events
+                                .iter()
+                                .filter(|event| event.id >= event_seq)
+                                .min_by_key(|event| event.id)
+                        })
+                        .map(|event| event.time)
+                };
+                let Some(tick) = seek_tick else {
+                    log_api_warning(
+                        "web test api: seek_event ignored (eventSeq not found in current event window)",
+                    );
+                    continue;
+                };
+                let _ = client.tx.send(ViewerRequest::Control {
+                    mode: ViewerControl::Seek { tick },
+                });
+            }
         }
     }
 }
@@ -430,6 +495,7 @@ pub(super) fn consume_web_test_api_commands(
 #[cfg(not(target_arch = "wasm32"))]
 pub(super) fn consume_web_test_api_commands(
     _automation_state: ResMut<ViewerAutomationState>,
+    _state: Option<Res<ViewerState>>,
     _client: Option<Res<ViewerClient>>,
 ) {
 }
