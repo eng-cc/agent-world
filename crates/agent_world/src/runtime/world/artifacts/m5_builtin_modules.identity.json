@@ -19,71 +19,76 @@
     {
       "module_id": "m5.gameplay.crisis.cycle",
       "hash_tokens": [
-        "2f905cfd550f220accbe7236fd1feaeb2f5fe0c9e91c11e25ad1c1db9aae8b50"
+        "d34de0ee54916416be43cb4c8a1beb944ecde61c8196c33b628f870407281c97"
       ],
-      "source_hash": "3080546b9157bcfb8fc4d0080dd8d668e8c50b7ecd00370eb598a857a9ffcf81",
+      "source_hash": "589702ef3b9b3d0b349c017d0b0c2cc8ba2a2ea2f12f7feb49ba4119ca801554",
       "build_manifest_hash": "6f92432d2b79412ae7aabc9928de1631077d26748f1371444eb28f3e80c2baf7",
-      "identity_hash": "8b7d9de5d3d4ac1b7e180856152fd0f82de0169cf7cc282d523cb3555fda475f",
+      "identity_hash": "f99e0059d02ad81a42e31374e9b5a2952d07f76dd9de5ea503527afde8e59a13",
       "signer_node_id": "builtin.module.release.signer",
       "signature_scheme": "ed25519",
       "artifact_signatures": {
-        "2f905cfd550f220accbe7236fd1feaeb2f5fe0c9e91c11e25ad1c1db9aae8b50": "modsig:ed25519:v1:c17d9e4ee43c932d01979feadff64cedf4e4380d5e13b1bea3762190692826db4ce6a9ae0d967c5c27c076cde7b7f4f184d2c68a2eb60e3bae2950e82ffedb0c"
+        "d039851a30fec87f4c80ec46eb3e4a0e30c94fdb0cae621a3b73c7222465ad9f": "modsig:ed25519:v1:9c00903051258eb476f9ff9f39d9d365ba4d34f55e67b657146abeb33d11e4e5e5c65f881569a61e2bf2a3e5def7c49153d36780439181872e6c1b41eb3e9a07",
+        "d34de0ee54916416be43cb4c8a1beb944ecde61c8196c33b628f870407281c97": "modsig:ed25519:v1:be5680d265c8f2a38626be4f0fce8362143a817472b6e1ea92fd444680672b537fe00f10ff5f46f0e65fa8e613a215c8375293ba54fb3888e9315d02e14dfa0a"
       }
     },
     {
       "module_id": "m5.gameplay.economic.overlay",
       "hash_tokens": [
-        "36645c1c3fd590c4212691ba1ae0a881ef12171a9d375ee8693127e610968274"
+        "04540a5656d10f26c600096ccacd17ade030c72ddebb87bf693b418f7eb0002c"
       ],
-      "source_hash": "97ac278a551643a1efbcbf41f58954f0e5a2fff3e1d72f78dbb654501d890970",
+      "source_hash": "9bda17cbb77982d9850e5c7572bbbba7ccd80e81f4e3b39e14ebb785215f1333",
       "build_manifest_hash": "6f92432d2b79412ae7aabc9928de1631077d26748f1371444eb28f3e80c2baf7",
-      "identity_hash": "5987bbaa6a7f66898459e464f9077960058256ae4720917c564781ca9b85bb8d",
+      "identity_hash": "c67013c6cfb9a04d644148e6c4890cdacc1f06e05c38d5f539c37a46816f0292",
       "signer_node_id": "builtin.module.release.signer",
       "signature_scheme": "ed25519",
       "artifact_signatures": {
-        "36645c1c3fd590c4212691ba1ae0a881ef12171a9d375ee8693127e610968274": "modsig:ed25519:v1:20821f219d4542ccae8aeb04619e73aed39ca7e6642fda378e636ba971ee705d6356aeaa5c0f0977c327b6fbb12e821475958a2f06ec25cfa2ecf95203086f0f"
+        "04540a5656d10f26c600096ccacd17ade030c72ddebb87bf693b418f7eb0002c": "modsig:ed25519:v1:aa9d0242b671dedfd8652db18331cd4d9822bee6ec9747063f38e1b7feff08fde08320c4941888924f7a8c3031258d51fa2bb47d5e84af2f8db6ad55a1a70601",
+        "36645c1c3fd590c4212691ba1ae0a881ef12171a9d375ee8693127e610968274": "modsig:ed25519:v1:8c393fe1586cdb9eeb473baa13ae0ccdda8b50830b8ab0bf34b266ef9c18988670c6cefd73c0b62afe953f6bf0fd92394397b5e757b9a52654588763f7613f09"
       }
     },
     {
       "module_id": "m5.gameplay.governance.council",
       "hash_tokens": [
-        "d9a1b4d26c2a0d3fbc86bb77114200a7e7d772ae8b15b66a07b4fad9c3102413"
+        "27543c4fc946e7d10578163eebb35fad63a7497f0c3782559bdc2773139bf18d"
       ],
-      "source_hash": "cff41d8d4de8a43218d251f5eb3babf5f7296278c01e1e072597634688917790",
+      "source_hash": "b35409c0eb5e8b6727a9d90c51c1a157f95460e7c8b8b1655fa091b66d8544be",
       "build_manifest_hash": "6f92432d2b79412ae7aabc9928de1631077d26748f1371444eb28f3e80c2baf7",
-      "identity_hash": "95413bbd5ef4038cd72e8b9f4b65949a66534347771ddbf34257a171db7e9b29",
+      "identity_hash": "67d6c462126f90f8fd114f8971e722484595bd593794feaccc0d45c11ee58b34",
       "signer_node_id": "builtin.module.release.signer",
       "signature_scheme": "ed25519",
       "artifact_signatures": {
-        "d9a1b4d26c2a0d3fbc86bb77114200a7e7d772ae8b15b66a07b4fad9c3102413": "modsig:ed25519:v1:b0ca64fa20aa64cf54484461225e6310dc46b409e3f483bf7d0b56108ba509f79ae21b8c0e441fa104c7290189d64fef73f5eec7ea0b833e47742c94dc9b2d0c"
+        "27543c4fc946e7d10578163eebb35fad63a7497f0c3782559bdc2773139bf18d": "modsig:ed25519:v1:0086805b33c410aaf3b4cbd82730950a1f2a4dfe8ae62ffe60fd0ab03581743761868b85ed94fa7faf7c2505cf64454b5801f5e4943949c004668eddf5ced605",
+        "d9a1b4d26c2a0d3fbc86bb77114200a7e7d772ae8b15b66a07b4fad9c3102413": "modsig:ed25519:v1:ed7ba66721c8ce06b215e4b660ad5941bbcc93d9a694a74e60a34a1c09568fc80e62994e8f1dd45141b64a726c2cb3adc24c3382ec5cf92014cef9d870a67b0f"
       }
     },
     {
       "module_id": "m5.gameplay.meta.progression",
       "hash_tokens": [
-        "bc9795cd1011d08ca209ae20f46232f40f769365e941543f2c2dc0c51f3ea9c3"
+        "79b0502e027d62c067027a0bd0217d45b561de65ce3e293127fed75bc13e0dd0"
       ],
-      "source_hash": "17d57bd44672b40f4ce8f7052519034398d1d64254400333ac9b51b408f8e73f",
+      "source_hash": "b60bedcaa657d6ebaa762e91476ac0dc16cb6bd3f6ad81dcc64510cf1c254ad3",
       "build_manifest_hash": "6f92432d2b79412ae7aabc9928de1631077d26748f1371444eb28f3e80c2baf7",
-      "identity_hash": "c91947e579c320edf7ef35e13b517c0b2e666db11aa074fe9b2433215572b9c5",
+      "identity_hash": "33389ce5df0cc241f97afc109ab3a1b2126c775754a56c3e58fc1960e10161f9",
       "signer_node_id": "builtin.module.release.signer",
       "signature_scheme": "ed25519",
       "artifact_signatures": {
-        "bc9795cd1011d08ca209ae20f46232f40f769365e941543f2c2dc0c51f3ea9c3": "modsig:ed25519:v1:00c38d28917cbc6f5395ea515391c2aa39ec77c95c84dd5fab21b75c535c9e9c2d2ebb693a97e50d64fa825c386c2f9553abc986332c9d02b57344265f56c205"
+        "79b0502e027d62c067027a0bd0217d45b561de65ce3e293127fed75bc13e0dd0": "modsig:ed25519:v1:26f8d58fe010c24e72508d786bcebcfeaa21f94af79a1935f4d90fca483a54fa2bd65e565e4f119badf75adbdd5fe574582af48c4dd37dffab7e0b5a2e6f0c08",
+        "bc9795cd1011d08ca209ae20f46232f40f769365e941543f2c2dc0c51f3ea9c3": "modsig:ed25519:v1:6a03e96f0834bc283dd81de68b100a6509177edd7aa99793076752e4e6cd9a0a146c17e67f3bb6c218d6a0cd6b3ac0ab52a10d6d9b072ab0a7d6bb0919d28e01"
       }
     },
     {
       "module_id": "m5.gameplay.war.core",
       "hash_tokens": [
-        "9c19a832b28ddb8ee4db1dcc73dd41fe34b34c077a0f9386599e45bf466f8c15"
+        "d8bfe226e856e87050d37b7d22f1e7b3dd069ab2aacdf114c56223749e09042c"
       ],
-      "source_hash": "21a440d1774ca0fa6c43c3e59497b51687b329ed1a52b778b2fa35f361bb685b",
+      "source_hash": "994dfb22294a559a3f00383277023e5a706eb5bcb3c4b440863e051b5f7be0e6",
       "build_manifest_hash": "6f92432d2b79412ae7aabc9928de1631077d26748f1371444eb28f3e80c2baf7",
-      "identity_hash": "3721858fb00a4eaa895d12516ade9b35a02f6d018baf6e250e270376c3d02507",
+      "identity_hash": "dffdf03e09303e3a3bacf3e3bf4ce20002057b2ce0b4fc11d3423dfce45db2fd",
       "signer_node_id": "builtin.module.release.signer",
       "signature_scheme": "ed25519",
       "artifact_signatures": {
-        "9c19a832b28ddb8ee4db1dcc73dd41fe34b34c077a0f9386599e45bf466f8c15": "modsig:ed25519:v1:7a3fe9814ba8d4acb74263754c491a2fcdee4c91036e5300de43249c19f8fc08bedf2ecbfd1356926dbf608d0593c828be00d3cd03fd38d6f94ba744d7a22308"
+        "9c19a832b28ddb8ee4db1dcc73dd41fe34b34c077a0f9386599e45bf466f8c15": "modsig:ed25519:v1:6afe12dd755bc9fc5cdb1b15e13d823b21ac1454ed75c410e5f5ebf06900e8b9e7756b68b3022a09c4618448c837c54a27b58aef8dc9e54444b75d33178f6309",
+        "d8bfe226e856e87050d37b7d22f1e7b3dd069ab2aacdf114c56223749e09042c": "modsig:ed25519:v1:4b1f0e661d083505ee9ab8a2b5feb3c3036f0e1ccd7ab7afec0332db4238bd43af64f2bd104e381268bd7479892bd95b6ee3705b2797a1772854b10dcd977b0f"
       }
     }
   ]
