@@ -5,7 +5,7 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc;
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use agent_world_node::{NodeCommittedActionBatchesHandle, NodeRuntime};
 
@@ -174,6 +174,12 @@ enum LiveLoopSignal {
     SeekRequested { tick: u64 },
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum LiveLoopIterationAction {
+    Continue,
+    Stop,
+}
+
 const LIVE_LOOP_QUEUE_CAPACITY: usize = 256;
 
 impl ViewerLiveServer {
@@ -243,6 +249,7 @@ impl ViewerLiveServer {
         let consensus_batches_handle = self.world.consensus_batches_handle()?;
         let pulse_signal_queued = Arc::clone(&playback_signal_queued);
         let pulse_backpressure = Arc::clone(&backpressure);
+        let request_backpressure = Arc::clone(&backpressure);
 
         thread::spawn(move || {
             read_requests(
@@ -250,6 +257,7 @@ impl ViewerLiveServer {
                 request_tx,
                 request_loop_running,
                 request_playback_control,
+                request_backpressure,
             )
         });
         thread::spawn(move || {
@@ -283,86 +291,86 @@ impl ViewerLiveServer {
         playback_control
             .set_enabled(session.should_emit_event() && self.world.should_use_playback_pulse());
         let result = loop {
-            match rx.recv() {
-                Ok(LiveLoopSignal::Request(command)) => {
+            let signal = match rx.recv() {
+                Ok(signal) => signal,
+                Err(_) => break Ok(()),
+            };
+            let signal_kind = signal.kind();
+            let signal_started_at = Instant::now();
+            let action_result: Result<LiveLoopIterationAction, ViewerLiveServerError> = match signal
+            {
+                LiveLoopSignal::Request(command) => {
                     let was_emitting = session.should_emit_event();
-                    match session.handle_request(
+                    let outcome = session.handle_request(
                         command,
                         &mut writer,
                         &mut self.world,
                         &self.config.world_id,
-                    ) {
-                        Ok(outcome) => {
-                            if outcome.request_llm_decision {
-                                enqueue_coalesced_signal(
-                                    &loop_tx,
-                                    LiveLoopSignal::LlmDecisionRequested,
-                                    &llm_signal_queued,
-                                    CoalescedSignalKind::LlmDecisionRequested,
-                                    backpressure.as_ref(),
-                                );
-                            }
-                            if let Some(control) = outcome.deferred_control {
-                                match control {
-                                    ViewerLiveDeferredControl::Step { count } => {
-                                        let _ =
-                                            loop_tx.send(LiveLoopSignal::StepRequested { count });
-                                    }
-                                    ViewerLiveDeferredControl::Seek { tick } => {
-                                        let _ =
-                                            loop_tx.send(LiveLoopSignal::SeekRequested { tick });
-                                    }
+                    )?;
+                    if outcome.request_llm_decision {
+                        enqueue_coalesced_signal(
+                            &loop_tx,
+                            LiveLoopSignal::LlmDecisionRequested,
+                            &llm_signal_queued,
+                            CoalescedSignalKind::LlmDecisionRequested,
+                            backpressure.as_ref(),
+                        );
+                    }
+                    if let Some(control) = outcome.deferred_control {
+                        match control {
+                            ViewerLiveDeferredControl::Step { count } => {
+                                if loop_tx
+                                    .send(LiveLoopSignal::StepRequested { count })
+                                    .is_ok()
+                                {
+                                    backpressure.record_enqueued(LiveLoopSignalKind::StepRequested);
                                 }
                             }
-                            let now_emitting = session.should_emit_event();
-                            playback_control.set_enabled(
-                                now_emitting && self.world.should_use_playback_pulse(),
-                            );
-                            if self.world.uses_consensus_bridge()
-                                && now_emitting
-                                && (!was_emitting || outcome.request_llm_decision)
-                            {
-                                enqueue_coalesced_signal(
-                                    &loop_tx,
-                                    LiveLoopSignal::ConsensusDriveRequested,
-                                    &consensus_drive_signal_queued,
-                                    CoalescedSignalKind::ConsensusDriveRequested,
-                                    backpressure.as_ref(),
-                                );
-                            } else if self.world.uses_non_consensus_event_drive()
-                                && now_emitting
-                                && (!was_emitting || outcome.request_llm_decision)
-                            {
-                                enqueue_coalesced_signal(
-                                    &loop_tx,
-                                    LiveLoopSignal::NonConsensusDriveRequested,
-                                    &non_consensus_drive_signal_queued,
-                                    CoalescedSignalKind::NonConsensusDriveRequested,
-                                    backpressure.as_ref(),
-                                );
+                            ViewerLiveDeferredControl::Seek { tick } => {
+                                if loop_tx.send(LiveLoopSignal::SeekRequested { tick }).is_ok() {
+                                    backpressure.record_enqueued(LiveLoopSignalKind::SeekRequested);
+                                }
                             }
-                            if !outcome.continue_running {
-                                break Ok(());
-                            }
-                        }
-                        Err(err) => {
-                            if err.is_disconnect() {
-                                break Ok(());
-                            }
-                            break Err(err);
                         }
                     }
+                    let now_emitting = session.should_emit_event();
+                    playback_control
+                        .set_enabled(now_emitting && self.world.should_use_playback_pulse());
+                    if self.world.uses_consensus_bridge()
+                        && now_emitting
+                        && (!was_emitting || outcome.request_llm_decision)
+                    {
+                        enqueue_coalesced_signal(
+                            &loop_tx,
+                            LiveLoopSignal::ConsensusDriveRequested,
+                            &consensus_drive_signal_queued,
+                            CoalescedSignalKind::ConsensusDriveRequested,
+                            backpressure.as_ref(),
+                        );
+                    } else if self.world.uses_non_consensus_event_drive()
+                        && now_emitting
+                        && (!was_emitting || outcome.request_llm_decision)
+                    {
+                        enqueue_coalesced_signal(
+                            &loop_tx,
+                            LiveLoopSignal::NonConsensusDriveRequested,
+                            &non_consensus_drive_signal_queued,
+                            CoalescedSignalKind::NonConsensusDriveRequested,
+                            backpressure.as_ref(),
+                        );
+                    }
+                    if outcome.continue_running {
+                        Ok(LiveLoopIterationAction::Continue)
+                    } else {
+                        Ok(LiveLoopIterationAction::Stop)
+                    }
                 }
-                Ok(LiveLoopSignal::PlaybackPulse) => {
+                LiveLoopSignal::PlaybackPulse => {
                     playback_signal_queued.store(false, Ordering::SeqCst);
-                    if let Err(err) = self.handle_playback_pulse(&mut session, &mut writer) {
-                        if err.is_disconnect() {
-                            break Ok(());
-                        }
-                        break Err(err);
-                    }
+                    self.handle_playback_pulse(&mut session, &mut writer)?;
+                    Ok(LiveLoopIterationAction::Continue)
                 }
-                Ok(LiveLoopSignal::LlmDecisionRequested) => {
+                LiveLoopSignal::LlmDecisionRequested => {
                     llm_signal_queued.store(false, Ordering::SeqCst);
                     self.world.request_llm_decision();
                     if self.world.uses_consensus_bridge() && session.should_emit_event() {
@@ -384,66 +392,52 @@ impl ViewerLiveServer {
                             backpressure.as_ref(),
                         );
                     }
+                    Ok(LiveLoopIterationAction::Continue)
                 }
-                Ok(LiveLoopSignal::ConsensusCommitted) => {
-                    if let Err(err) = self.handle_consensus_committed(&mut session, &mut writer) {
-                        if err.is_disconnect() {
-                            break Ok(());
-                        }
-                        break Err(err);
-                    }
+                LiveLoopSignal::ConsensusCommitted => {
+                    self.handle_consensus_committed(&mut session, &mut writer)?;
                     consensus_signal_queued.store(false, Ordering::SeqCst);
+                    Ok(LiveLoopIterationAction::Continue)
                 }
-                Ok(LiveLoopSignal::ConsensusDriveRequested) => {
+                LiveLoopSignal::ConsensusDriveRequested => {
                     consensus_drive_signal_queued.store(false, Ordering::SeqCst);
-                    if let Err(err) =
-                        self.handle_consensus_drive_requested(&mut session, &mut writer)
-                    {
-                        if err.is_disconnect() {
-                            break Ok(());
-                        }
-                        break Err(err);
-                    }
+                    self.handle_consensus_drive_requested(&mut session, &mut writer)?;
+                    Ok(LiveLoopIterationAction::Continue)
                 }
-                Ok(LiveLoopSignal::NonConsensusDriveRequested) => {
+                LiveLoopSignal::NonConsensusDriveRequested => {
                     non_consensus_drive_signal_queued.store(false, Ordering::SeqCst);
-                    match self.handle_non_consensus_drive_requested(&mut session, &mut writer) {
-                        Ok(should_requeue) => {
-                            if should_requeue {
-                                enqueue_coalesced_signal(
-                                    &loop_tx,
-                                    LiveLoopSignal::NonConsensusDriveRequested,
-                                    &non_consensus_drive_signal_queued,
-                                    CoalescedSignalKind::NonConsensusDriveRequested,
-                                    backpressure.as_ref(),
-                                );
-                            }
-                        }
-                        Err(err) => {
-                            if err.is_disconnect() {
-                                break Ok(());
-                            }
-                            break Err(err);
-                        }
+                    let should_requeue =
+                        self.handle_non_consensus_drive_requested(&mut session, &mut writer)?;
+                    if should_requeue {
+                        enqueue_coalesced_signal(
+                            &loop_tx,
+                            LiveLoopSignal::NonConsensusDriveRequested,
+                            &non_consensus_drive_signal_queued,
+                            CoalescedSignalKind::NonConsensusDriveRequested,
+                            backpressure.as_ref(),
+                        );
                     }
+                    Ok(LiveLoopIterationAction::Continue)
                 }
-                Ok(LiveLoopSignal::StepRequested { count }) => {
-                    if let Err(err) = self.handle_step_request(&mut session, &mut writer, count) {
-                        if err.is_disconnect() {
-                            break Ok(());
-                        }
-                        break Err(err);
+                LiveLoopSignal::StepRequested { count } => {
+                    self.handle_step_request(&mut session, &mut writer, count)?;
+                    Ok(LiveLoopIterationAction::Continue)
+                }
+                LiveLoopSignal::SeekRequested { tick } => {
+                    self.handle_seek_request(&mut session, &mut writer, tick)?;
+                    Ok(LiveLoopIterationAction::Continue)
+                }
+            };
+            backpressure.record_handled(signal_kind, signal_started_at.elapsed());
+            match action_result {
+                Ok(LiveLoopIterationAction::Continue) => {}
+                Ok(LiveLoopIterationAction::Stop) => break Ok(()),
+                Err(err) => {
+                    if err.is_disconnect() {
+                        break Ok(());
                     }
+                    break Err(err);
                 }
-                Ok(LiveLoopSignal::SeekRequested { tick }) => {
-                    if let Err(err) = self.handle_seek_request(&mut session, &mut writer, tick) {
-                        if err.is_disconnect() {
-                            break Ok(());
-                        }
-                        break Err(err);
-                    }
-                }
-                Err(_) => break Ok(()),
             }
         };
         loop_running.store(false, Ordering::SeqCst);
@@ -452,7 +446,7 @@ impl ViewerLiveServer {
         let backpressure_snapshot = backpressure.snapshot();
         if backpressure_snapshot.has_activity() {
             eprintln!(
-                "viewer live backpressure merged={{playback_pulse:{}, llm_decision:{}, consensus_committed:{}, consensus_drive:{}, non_consensus_drive:{}}} dropped={{playback_pulse:{}, llm_decision:{}, consensus_committed:{}, consensus_drive:{}, non_consensus_drive:{}}}",
+                "viewer live backpressure merged={{playback_pulse:{}, llm_decision:{}, consensus_committed:{}, consensus_drive:{}, non_consensus_drive:{}}} dropped={{playback_pulse:{}, llm_decision:{}, consensus_committed:{}, consensus_drive:{}, non_consensus_drive:{}}} signals=[{}]",
                 backpressure_snapshot.merged_playback_pulse,
                 backpressure_snapshot.merged_llm_decision_requested,
                 backpressure_snapshot.merged_consensus_committed,
@@ -463,6 +457,7 @@ impl ViewerLiveServer {
                 backpressure_snapshot.dropped_consensus_committed,
                 backpressure_snapshot.dropped_consensus_drive_requested,
                 backpressure_snapshot.dropped_non_consensus_drive_requested,
+                format_live_loop_signal_stats(&backpressure_snapshot),
             );
         }
         result

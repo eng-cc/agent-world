@@ -187,7 +187,76 @@ enum CoalescedSignalKind {
     NonConsensusDriveRequested,
 }
 
-#[derive(Default)]
+const LIVE_LOOP_SIGNAL_KIND_COUNT: usize = 8;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum LiveLoopSignalKind {
+    Request,
+    PlaybackPulse,
+    LlmDecisionRequested,
+    ConsensusCommitted,
+    ConsensusDriveRequested,
+    NonConsensusDriveRequested,
+    StepRequested,
+    SeekRequested,
+}
+
+impl LiveLoopSignalKind {
+    const ALL: [Self; LIVE_LOOP_SIGNAL_KIND_COUNT] = [
+        Self::Request,
+        Self::PlaybackPulse,
+        Self::LlmDecisionRequested,
+        Self::ConsensusCommitted,
+        Self::ConsensusDriveRequested,
+        Self::NonConsensusDriveRequested,
+        Self::StepRequested,
+        Self::SeekRequested,
+    ];
+
+    fn as_index(self) -> usize {
+        match self {
+            Self::Request => 0,
+            Self::PlaybackPulse => 1,
+            Self::LlmDecisionRequested => 2,
+            Self::ConsensusCommitted => 3,
+            Self::ConsensusDriveRequested => 4,
+            Self::NonConsensusDriveRequested => 5,
+            Self::StepRequested => 6,
+            Self::SeekRequested => 7,
+        }
+    }
+
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Request => "request",
+            Self::PlaybackPulse => "playback_pulse",
+            Self::LlmDecisionRequested => "llm_decision",
+            Self::ConsensusCommitted => "consensus_committed",
+            Self::ConsensusDriveRequested => "consensus_drive",
+            Self::NonConsensusDriveRequested => "non_consensus_drive",
+            Self::StepRequested => "step",
+            Self::SeekRequested => "seek",
+        }
+    }
+}
+
+impl LiveLoopSignal {
+    fn kind(&self) -> LiveLoopSignalKind {
+        match self {
+            LiveLoopSignal::Request(_) => LiveLoopSignalKind::Request,
+            LiveLoopSignal::PlaybackPulse => LiveLoopSignalKind::PlaybackPulse,
+            LiveLoopSignal::LlmDecisionRequested => LiveLoopSignalKind::LlmDecisionRequested,
+            LiveLoopSignal::ConsensusCommitted => LiveLoopSignalKind::ConsensusCommitted,
+            LiveLoopSignal::ConsensusDriveRequested => LiveLoopSignalKind::ConsensusDriveRequested,
+            LiveLoopSignal::NonConsensusDriveRequested => {
+                LiveLoopSignalKind::NonConsensusDriveRequested
+            }
+            LiveLoopSignal::StepRequested { .. } => LiveLoopSignalKind::StepRequested,
+            LiveLoopSignal::SeekRequested { .. } => LiveLoopSignalKind::SeekRequested,
+        }
+    }
+}
+
 struct LiveLoopBackpressure {
     merged_playback_pulse: AtomicU64,
     merged_llm_decision_requested: AtomicU64,
@@ -199,6 +268,10 @@ struct LiveLoopBackpressure {
     dropped_consensus_committed: AtomicU64,
     dropped_consensus_drive_requested: AtomicU64,
     dropped_non_consensus_drive_requested: AtomicU64,
+    enqueued_signals: [AtomicU64; LIVE_LOOP_SIGNAL_KIND_COUNT],
+    handled_signals: [AtomicU64; LIVE_LOOP_SIGNAL_KIND_COUNT],
+    handled_nanos_total: [AtomicU64; LIVE_LOOP_SIGNAL_KIND_COUNT],
+    handled_nanos_max: [AtomicU64; LIVE_LOOP_SIGNAL_KIND_COUNT],
 }
 
 #[derive(Debug, Default, Clone, Copy)]
@@ -213,6 +286,36 @@ struct LiveLoopBackpressureSnapshot {
     dropped_consensus_committed: u64,
     dropped_consensus_drive_requested: u64,
     dropped_non_consensus_drive_requested: u64,
+    signal_stats: [LiveLoopSignalStatsSnapshot; LIVE_LOOP_SIGNAL_KIND_COUNT],
+}
+
+#[derive(Debug, Default, Clone, Copy)]
+struct LiveLoopSignalStatsSnapshot {
+    enqueued: u64,
+    handled: u64,
+    avg_handle_us: u64,
+    max_handle_us: u64,
+}
+
+impl Default for LiveLoopBackpressure {
+    fn default() -> Self {
+        Self {
+            merged_playback_pulse: AtomicU64::new(0),
+            merged_llm_decision_requested: AtomicU64::new(0),
+            merged_consensus_committed: AtomicU64::new(0),
+            merged_consensus_drive_requested: AtomicU64::new(0),
+            merged_non_consensus_drive_requested: AtomicU64::new(0),
+            dropped_playback_pulse: AtomicU64::new(0),
+            dropped_llm_decision_requested: AtomicU64::new(0),
+            dropped_consensus_committed: AtomicU64::new(0),
+            dropped_consensus_drive_requested: AtomicU64::new(0),
+            dropped_non_consensus_drive_requested: AtomicU64::new(0),
+            enqueued_signals: std::array::from_fn(|_| AtomicU64::new(0)),
+            handled_signals: std::array::from_fn(|_| AtomicU64::new(0)),
+            handled_nanos_total: std::array::from_fn(|_| AtomicU64::new(0)),
+            handled_nanos_max: std::array::from_fn(|_| AtomicU64::new(0)),
+        }
+    }
 }
 
 impl LiveLoopBackpressureSnapshot {
@@ -227,10 +330,30 @@ impl LiveLoopBackpressureSnapshot {
             || self.dropped_consensus_committed > 0
             || self.dropped_consensus_drive_requested > 0
             || self.dropped_non_consensus_drive_requested > 0
+            || self
+                .signal_stats
+                .iter()
+                .any(|stats| stats.enqueued > 0 || stats.handled > 0)
+    }
+
+    fn signal_stats(&self, kind: LiveLoopSignalKind) -> LiveLoopSignalStatsSnapshot {
+        self.signal_stats[kind.as_index()]
     }
 }
 
 impl LiveLoopBackpressure {
+    fn record_enqueued(&self, kind: LiveLoopSignalKind) {
+        self.enqueued_signals[kind.as_index()].fetch_add(1, Ordering::SeqCst);
+    }
+
+    fn record_handled(&self, kind: LiveLoopSignalKind, elapsed: Duration) {
+        let index = kind.as_index();
+        self.handled_signals[index].fetch_add(1, Ordering::SeqCst);
+        let nanos = elapsed.as_nanos().min(u64::MAX as u128) as u64;
+        self.handled_nanos_total[index].fetch_add(nanos, Ordering::SeqCst);
+        fetch_max_atomic(&self.handled_nanos_max[index], nanos);
+    }
+
     fn record_merged(&self, kind: CoalescedSignalKind) {
         match kind {
             CoalescedSignalKind::PlaybackPulse => {
@@ -303,7 +426,68 @@ impl LiveLoopBackpressure {
             dropped_non_consensus_drive_requested: self
                 .dropped_non_consensus_drive_requested
                 .load(Ordering::SeqCst),
+            signal_stats: std::array::from_fn(|index| {
+                let enqueued = self.enqueued_signals[index].load(Ordering::SeqCst);
+                let handled = self.handled_signals[index].load(Ordering::SeqCst);
+                let total_nanos = self.handled_nanos_total[index].load(Ordering::SeqCst);
+                let max_nanos = self.handled_nanos_max[index].load(Ordering::SeqCst);
+                LiveLoopSignalStatsSnapshot {
+                    enqueued,
+                    handled,
+                    avg_handle_us: if handled > 0 {
+                        total_nanos / handled / 1_000
+                    } else {
+                        0
+                    },
+                    max_handle_us: max_nanos / 1_000,
+                }
+            }),
         }
+    }
+}
+
+impl CoalescedSignalKind {
+    fn signal_kind(self) -> LiveLoopSignalKind {
+        match self {
+            Self::PlaybackPulse => LiveLoopSignalKind::PlaybackPulse,
+            Self::LlmDecisionRequested => LiveLoopSignalKind::LlmDecisionRequested,
+            Self::ConsensusCommitted => LiveLoopSignalKind::ConsensusCommitted,
+            Self::ConsensusDriveRequested => LiveLoopSignalKind::ConsensusDriveRequested,
+            Self::NonConsensusDriveRequested => LiveLoopSignalKind::NonConsensusDriveRequested,
+        }
+    }
+}
+
+fn fetch_max_atomic(target: &AtomicU64, value: u64) {
+    let mut current = target.load(Ordering::SeqCst);
+    while value > current {
+        match target.compare_exchange(current, value, Ordering::SeqCst, Ordering::SeqCst) {
+            Ok(_) => break,
+            Err(observed) => current = observed,
+        }
+    }
+}
+
+fn format_live_loop_signal_stats(snapshot: &LiveLoopBackpressureSnapshot) -> String {
+    let mut parts = Vec::new();
+    for kind in LiveLoopSignalKind::ALL {
+        let stats = snapshot.signal_stats(kind);
+        if stats.enqueued == 0 && stats.handled == 0 {
+            continue;
+        }
+        parts.push(format!(
+            "{}={{in:{}, handled:{}, avg_us:{}, max_us:{}}}",
+            kind.as_str(),
+            stats.enqueued,
+            stats.handled,
+            stats.avg_handle_us,
+            stats.max_handle_us
+        ));
+    }
+    if parts.is_empty() {
+        "none".to_string()
+    } else {
+        parts.join(", ")
     }
 }
 
@@ -319,7 +503,9 @@ fn enqueue_coalesced_signal(
         return;
     }
     match tx.try_send(signal) {
-        Ok(()) => {}
+        Ok(()) => {
+            backpressure.record_enqueued(kind.signal_kind());
+        }
         Err(mpsc::TrySendError::Full(_)) => {
             queued.store(false, Ordering::SeqCst);
             backpressure.record_dropped(kind);
@@ -507,6 +693,7 @@ fn read_requests(
     tx: mpsc::SyncSender<LiveLoopSignal>,
     loop_running: Arc<AtomicBool>,
     playback_control: PlaybackPulseControl,
+    backpressure: Arc<LiveLoopBackpressure>,
 ) {
     let mut reader = BufReader::new(stream);
     let mut line = String::new();
@@ -526,6 +713,7 @@ fn read_requests(
                             playback_control.notify();
                             break;
                         }
+                        backpressure.record_enqueued(LiveLoopSignalKind::Request);
                     }
                     Err(_) => {}
                 }

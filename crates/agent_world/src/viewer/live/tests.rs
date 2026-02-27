@@ -1106,6 +1106,9 @@ fn enqueue_coalesced_signal_merges_duplicate_llm_decision_requests() {
     let snapshot = backpressure.snapshot();
     assert_eq!(snapshot.merged_llm_decision_requested, 1);
     assert_eq!(snapshot.dropped_llm_decision_requested, 0);
+    let llm_stats = snapshot.signal_stats(LiveLoopSignalKind::LlmDecisionRequested);
+    assert_eq!(llm_stats.enqueued, 1);
+    assert_eq!(llm_stats.handled, 0);
 }
 
 #[test]
@@ -1136,6 +1139,29 @@ fn enqueue_coalesced_signal_drops_when_queue_is_full() {
     let snapshot = backpressure.snapshot();
     assert_eq!(snapshot.merged_consensus_drive_requested, 0);
     assert_eq!(snapshot.dropped_consensus_drive_requested, 1);
+    let drive_stats = snapshot.signal_stats(LiveLoopSignalKind::ConsensusDriveRequested);
+    assert_eq!(drive_stats.enqueued, 0);
+    assert_eq!(drive_stats.handled, 0);
+}
+
+#[test]
+fn live_loop_backpressure_records_per_signal_latency_metrics() {
+    let backpressure = LiveLoopBackpressure::default();
+
+    backpressure.record_enqueued(LiveLoopSignalKind::Request);
+    backpressure.record_handled(LiveLoopSignalKind::Request, Duration::from_micros(120));
+    backpressure.record_handled(LiveLoopSignalKind::Request, Duration::from_micros(380));
+
+    let snapshot = backpressure.snapshot();
+    let request_stats = snapshot.signal_stats(LiveLoopSignalKind::Request);
+    assert_eq!(request_stats.enqueued, 1);
+    assert_eq!(request_stats.handled, 2);
+    assert_eq!(request_stats.avg_handle_us, 250);
+    assert_eq!(request_stats.max_handle_us, 380);
+    assert!(snapshot.has_activity());
+
+    let summary = format_live_loop_signal_stats(&snapshot);
+    assert!(summary.contains("request={in:1, handled:2, avg_us:250, max_us:380}"));
 }
 
 #[test]
