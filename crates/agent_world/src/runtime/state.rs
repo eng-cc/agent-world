@@ -8,7 +8,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use super::agent_cell::AgentCell;
 use super::error::WorldError;
-use super::events::DomainEvent;
+use super::events::{DomainEvent, MaterialTransitPriority};
 use super::gameplay_state::{
     AllianceState, CrisisState, CrisisStatus, EconomicContractState, EconomicContractStatus,
     GameplayPolicyState, GovernanceProposalState, GovernanceProposalStatus,
@@ -110,6 +110,8 @@ pub struct RecipeJobState {
     pub consume_ledger: MaterialLedgerId,
     #[serde(default = "default_world_material_ledger")]
     pub output_ledger: MaterialLedgerId,
+    #[serde(default)]
+    pub bottleneck_tags: Vec<String>,
     pub ready_at: WorldTime,
 }
 
@@ -124,6 +126,8 @@ pub struct MaterialTransitJobState {
     pub amount: i64,
     pub distance_km: i64,
     pub loss_bps: i64,
+    #[serde(default)]
+    pub priority: MaterialTransitPriority,
     pub ready_at: WorldTime,
 }
 

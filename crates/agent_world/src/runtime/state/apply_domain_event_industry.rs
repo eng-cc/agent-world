@@ -46,6 +46,7 @@ impl WorldState {
                 amount,
                 distance_km,
                 loss_bps,
+                priority,
                 ready_at,
             } => {
                 remove_material_balance_for_ledger(
@@ -68,6 +69,7 @@ impl WorldState {
                         amount: *amount,
                         distance_km: *distance_km,
                         loss_bps: *loss_bps,
+                        priority: *priority,
                         ready_at: *ready_at,
                     },
                 );
@@ -228,6 +230,7 @@ impl WorldState {
                 duration_ticks,
                 consume_ledger,
                 output_ledger,
+                bottleneck_tags,
                 ready_at,
             } => {
                 for stack in consume {
@@ -264,6 +267,7 @@ impl WorldState {
                         duration_ticks: *duration_ticks,
                         consume_ledger: consume_ledger.clone(),
                         output_ledger: output_ledger.clone(),
+                        bottleneck_tags: bottleneck_tags.clone(),
                         ready_at: *ready_at,
                     },
                 );

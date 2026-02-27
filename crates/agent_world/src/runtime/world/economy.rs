@@ -46,6 +46,12 @@ const SCALE_KEYWORDS: &[&str] = &[
 const EXPANSION_KEYWORDS: &[&str] = &["expand", "outpost", "colony", "colonize", "frontier"];
 const CRITICAL_ELECTRICITY_FLOOR: i64 = 5;
 const CRITICAL_HARDWARE_PART_FLOOR: i64 = 3;
+const BOTTLENECK_LOW_STOCK_THRESHOLDS: &[(&str, i64)] = &[
+    ("iron_ingot", 8),
+    ("copper_wire", 8),
+    ("control_chip", 4),
+    ("motor_mk1", 4),
+];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 enum ProductionQueuePriority {
@@ -341,6 +347,7 @@ impl World {
                     produce: job.produce,
                     byproducts: job.byproducts,
                     output_ledger: job.output_ledger,
+                    bottleneck_tags: job.bottleneck_tags,
                 }),
                 None,
             )?;
@@ -461,6 +468,7 @@ impl World {
                     produce: committed_produce,
                     byproducts: committed_byproducts,
                     output_ledger: job.output_ledger,
+                    bottleneck_tags: job.bottleneck_tags,
                 }),
                 None,
             )?;
@@ -598,12 +606,16 @@ impl World {
                 .iter()
                 .map(|stack| stack.kind.to_ascii_lowercase()),
         );
-        production_priority_from_tokens(
+        let baseline = production_priority_from_tokens(
             &tokens,
             self.is_electricity_critical(),
             self.is_hardware_parts_critical(),
             ProductionQueuePriority::Scale,
-        )
+        );
+        if self.is_bottleneck_pressure_active(&job.bottleneck_tags) {
+            return bump_recipe_priority_under_bottleneck(baseline);
+        }
+        baseline
     }
 
     fn is_electricity_critical(&self) -> bool {
@@ -612,6 +624,21 @@ impl World {
 
     fn is_hardware_parts_critical(&self) -> bool {
         self.material_balance("hardware_part") <= CRITICAL_HARDWARE_PART_FLOOR
+    }
+
+    fn is_bottleneck_pressure_active(&self, bottleneck_tags: &[String]) -> bool {
+        bottleneck_tags.iter().any(|tag| {
+            self.total_material_balance(tag.as_str()) <= bottleneck_low_stock_threshold(tag)
+        })
+    }
+
+    fn total_material_balance(&self, material_kind: &str) -> i64 {
+        self.state
+            .material_ledgers
+            .values()
+            .filter_map(|ledger| ledger.get(material_kind))
+            .copied()
+            .sum()
     }
 
     fn evaluate_product_with_module(
@@ -839,6 +866,24 @@ fn production_priority_from_tokens(
         return ProductionQueuePriority::Expansion;
     }
     default_priority
+}
+
+fn bump_recipe_priority_under_bottleneck(
+    priority: ProductionQueuePriority,
+) -> ProductionQueuePriority {
+    match priority {
+        ProductionQueuePriority::Survival => ProductionQueuePriority::Survival,
+        ProductionQueuePriority::Energy => ProductionQueuePriority::Survival,
+        ProductionQueuePriority::Scale => ProductionQueuePriority::Energy,
+        ProductionQueuePriority::Expansion => ProductionQueuePriority::Scale,
+    }
+}
+
+fn bottleneck_low_stock_threshold(tag: &str) -> i64 {
+    BOTTLENECK_LOW_STOCK_THRESHOLDS
+        .iter()
+        .find_map(|(kind, threshold)| (*kind == tag).then_some(*threshold))
+        .unwrap_or(4)
 }
 
 fn has_any_keyword(tokens: &[String], keywords: &[&str]) -> bool {

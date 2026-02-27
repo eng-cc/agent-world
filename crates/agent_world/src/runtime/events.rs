@@ -28,12 +28,29 @@ fn default_module_action_fee_kind() -> ResourceKind {
     ResourceKind::Electricity
 }
 
+fn default_material_transit_priority() -> MaterialTransitPriority {
+    MaterialTransitPriority::Standard
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum MainTokenFeeKind {
     GasBaseFee,
     SlashPenalty,
     ModuleFee,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum MaterialTransitPriority {
+    Urgent,
+    Standard,
+}
+
+impl Default for MaterialTransitPriority {
+    fn default() -> Self {
+        Self::Standard
+    }
 }
 
 /// An envelope wrapping an action with its ID.
@@ -606,6 +623,8 @@ pub enum DomainEvent {
         kind: String,
         amount: i64,
         distance_km: i64,
+        #[serde(default = "default_material_transit_priority")]
+        priority: MaterialTransitPriority,
     },
     MaterialTransitStarted {
         job_id: ActionId,
@@ -617,6 +636,8 @@ pub enum DomainEvent {
         distance_km: i64,
         loss_bps: i64,
         ready_at: WorldTime,
+        #[serde(default = "default_material_transit_priority")]
+        priority: MaterialTransitPriority,
     },
     MaterialTransitCompleted {
         job_id: ActionId,
@@ -628,6 +649,8 @@ pub enum DomainEvent {
         received_amount: i64,
         loss_amount: i64,
         distance_km: i64,
+        #[serde(default = "default_material_transit_priority")]
+        priority: MaterialTransitPriority,
     },
     FactoryBuildStarted {
         job_id: ActionId,
@@ -681,6 +704,8 @@ pub enum DomainEvent {
         consume_ledger: MaterialLedgerId,
         #[serde(default = "default_world_material_ledger")]
         output_ledger: MaterialLedgerId,
+        #[serde(default)]
+        bottleneck_tags: Vec<String>,
         ready_at: WorldTime,
     },
     RecipeCompleted {
@@ -693,6 +718,8 @@ pub enum DomainEvent {
         byproducts: Vec<MaterialStack>,
         #[serde(default = "default_world_material_ledger")]
         output_ledger: MaterialLedgerId,
+        #[serde(default)]
+        bottleneck_tags: Vec<String>,
     },
     GameplayPolicyUpdated {
         operator_agent_id: String,

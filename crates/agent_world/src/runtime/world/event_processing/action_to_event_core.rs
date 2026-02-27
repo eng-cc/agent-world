@@ -4,6 +4,17 @@ use crate::runtime::main_token::{
 };
 use std::collections::BTreeSet;
 
+const MATERIAL_TRANSIT_URGENT_KEYWORDS: &[&str] = &[
+    "survival",
+    "lifeline",
+    "critical",
+    "repair",
+    "maintenance",
+    "oxygen",
+    "water",
+    "emergency",
+];
+
 impl World {
     pub(super) fn action_to_event_core(
         &self,
@@ -427,6 +438,7 @@ impl World {
                         },
                     }));
                 }
+                let priority = material_transit_priority_for_kind(kind.as_str());
 
                 if *distance_km == 0 {
                     return Ok(WorldEventBody::Domain(DomainEvent::MaterialTransferred {
@@ -436,6 +448,7 @@ impl World {
                         kind: kind.clone(),
                         amount: *amount,
                         distance_km: *distance_km,
+                        priority,
                     }));
                 }
 
@@ -464,6 +477,7 @@ impl World {
                         distance_km: *distance_km,
                         loss_bps: MATERIAL_TRANSFER_LOSS_PER_KM_BPS,
                         ready_at,
+                        priority,
                     },
                 ))
             }
@@ -651,5 +665,17 @@ impl World {
             };
         }
         event
+    }
+}
+
+fn material_transit_priority_for_kind(kind: &str) -> MaterialTransitPriority {
+    let normalized = kind.to_ascii_lowercase();
+    if MATERIAL_TRANSIT_URGENT_KEYWORDS
+        .iter()
+        .any(|keyword| normalized.contains(keyword))
+    {
+        MaterialTransitPriority::Urgent
+    } else {
+        MaterialTransitPriority::Standard
     }
 }

@@ -3,9 +3,9 @@ use super::super::{
     CrisisStatus, DomainEvent, EconomicContractStatus, EpochSettlementReport,
     GovernanceProposalStatus, MainTokenConfig, MainTokenFeeKind,
     MainTokenGenesisAllocationBucketState, MainTokenGenesisAllocationPlan,
-    MainTokenNodePointsBridgeDistribution, MaterialLedgerId, MaterialStack, NodeRewardMintRecord,
-    NodeSettlement, ProposalId, ProposalStatus, RejectReason, WorldError, WorldEvent,
-    WorldEventBody, WorldEventId, WorldTime,
+    MainTokenNodePointsBridgeDistribution, MaterialLedgerId, MaterialStack,
+    MaterialTransitPriority, NodeRewardMintRecord, NodeSettlement, ProposalId, ProposalStatus,
+    RejectReason, WorldError, WorldEvent, WorldEventBody, WorldEventId, WorldTime,
 };
 use super::body::{evaluate_expand_body_interface, validate_body_kernel_view};
 use super::logistics::{

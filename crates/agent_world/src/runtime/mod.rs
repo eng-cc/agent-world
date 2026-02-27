@@ -68,8 +68,8 @@ pub use error::WorldError;
 
 // Events
 pub use events::{
-    Action, ActionEnvelope, CausedBy, DomainEvent, MainTokenFeeKind, ModuleSourcePackage,
-    RejectReason,
+    Action, ActionEnvelope, CausedBy, DomainEvent, MainTokenFeeKind, MaterialTransitPriority,
+    ModuleSourcePackage, RejectReason,
 };
 
 // Governance

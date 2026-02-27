@@ -22,7 +22,7 @@ impl World {
             .filter(|job| job.ready_at <= now)
             .cloned()
             .collect();
-        due_jobs.sort_by_key(|job| (job.ready_at, job.job_id));
+        due_jobs.sort_by_key(|job| (job.ready_at, job.priority, job.job_id));
 
         for job in due_jobs {
             let loss_amount = ((job.amount as i128)
@@ -31,7 +31,7 @@ impl World {
                 / 10_000)
                 .clamp(0, job.amount as i128) as i64;
             let received_amount = job.amount.saturating_sub(loss_amount);
-            self.record_logistics_sla_completion(job.ready_at, now);
+            self.record_logistics_sla_completion(job.ready_at, now, job.priority);
 
             self.append_event(
                 WorldEventBody::Domain(DomainEvent::MaterialTransitCompleted {
@@ -44,6 +44,7 @@ impl World {
                     received_amount,
                     loss_amount,
                     distance_km: job.distance_km,
+                    priority: job.priority,
                 }),
                 None,
             )?;

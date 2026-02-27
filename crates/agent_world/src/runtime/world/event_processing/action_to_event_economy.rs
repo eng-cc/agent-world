@@ -4,6 +4,7 @@ const FACTORY_DURABILITY_PPM_BASE: i64 = 1_000_000;
 const FACTORY_MAINTENANCE_PART_KIND: &str = "hardware_part";
 const FACTORY_MAINTENANCE_REPAIR_PPM_PER_PART: i64 = 25_000;
 const FACTORY_RECYCLE_BASE_PPM: i64 = 700_000;
+const BOTTLENECK_TAG_KINDS: &[&str] = &["iron_ingot", "copper_wire", "control_chip", "motor_mk1"];
 
 impl World {
     pub(super) fn action_to_event_economy(
@@ -594,6 +595,7 @@ impl World {
                 }
                 let duration_ticks = plan.duration_ticks.max(1);
                 let ready_at = self.state.time.saturating_add(duration_ticks as u64);
+                let bottleneck_tags = infer_bottleneck_tags(&plan.consume);
                 Ok(WorldEventBody::Domain(DomainEvent::RecipeStarted {
                     job_id: action_id,
                     requester_agent_id: requester_agent_id.clone(),
@@ -607,6 +609,7 @@ impl World {
                     duration_ticks,
                     consume_ledger,
                     output_ledger,
+                    bottleneck_tags,
                     ready_at,
                 }))
             }
@@ -707,4 +710,18 @@ impl World {
             _ => unreachable!("action_to_event_economy received unsupported action variant"),
         }
     }
+}
+
+fn infer_bottleneck_tags(consume: &[MaterialStack]) -> Vec<String> {
+    let tags: BTreeSet<String> = consume
+        .iter()
+        .filter_map(|stack| {
+            let normalized = stack.kind.to_ascii_lowercase();
+            BOTTLENECK_TAG_KINDS
+                .iter()
+                .find(|kind| normalized == **kind)
+                .map(|kind| (*kind).to_string())
+        })
+        .collect();
+    tags.into_iter().collect()
 }
