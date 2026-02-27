@@ -21,7 +21,7 @@ use wasm_bindgen::closure::Closure;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::{JsCast, JsValue};
 #[cfg(target_arch = "wasm32")]
-use web_sys::js_sys::{Object, Reflect as JsReflect};
+use web_sys::js_sys::{Array, Object, Reflect as JsReflect};
 #[cfg(target_arch = "wasm32")]
 use web_sys::UrlSearchParams;
 
@@ -29,12 +29,37 @@ use web_sys::UrlSearchParams;
 const TEST_API_QUERY_KEY: &str = "test_api";
 #[cfg(target_arch = "wasm32")]
 const TEST_API_GLOBAL_NAME: &str = "__AW_TEST__";
+#[cfg(target_arch = "wasm32")]
+const WEB_TEST_API_CONTROL_ACTIONS: [&str; 5] = ["play", "pause", "step", "seek", "seek_event"];
 
 #[cfg(target_arch = "wasm32")]
 enum WebTestApiCommand {
     EnqueueSteps(Vec<crate::viewer_automation::ViewerAutomationStep>),
-    SendControl(ViewerControl),
-    SeekEventSeq { event_seq: u64 },
+    SendControl {
+        control: ViewerControl,
+        feedback_id: u64,
+    },
+    SeekEventSeq {
+        event_seq: u64,
+        feedback_id: u64,
+    },
+}
+
+#[cfg(target_arch = "wasm32")]
+#[derive(Clone, Debug)]
+struct WebTestApiControlFeedback {
+    id: u64,
+    action: String,
+    accepted: bool,
+    parsed_control: Option<String>,
+    reason: Option<String>,
+    hint: Option<String>,
+    effect: String,
+    baseline_logical_time: u64,
+    baseline_event_seq: u64,
+    delta_logical_time: u64,
+    delta_event_seq: u64,
+    awaiting_effect: bool,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -52,6 +77,7 @@ struct WebTestApiStateSnapshot {
     camera_mode: &'static str,
     camera_radius: f64,
     camera_ortho_scale: f64,
+    last_control_feedback: Option<WebTestApiControlFeedback>,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -70,6 +96,7 @@ impl Default for WebTestApiStateSnapshot {
             camera_mode: "3d",
             camera_radius: 0.0,
             camera_ortho_scale: 0.0,
+            last_control_feedback: None,
         }
     }
 }
@@ -78,6 +105,7 @@ impl Default for WebTestApiStateSnapshot {
 thread_local! {
     static WEB_TEST_API_COMMAND_QUEUE: RefCell<VecDeque<WebTestApiCommand>> = RefCell::new(VecDeque::new());
     static WEB_TEST_API_STATE_SNAPSHOT: RefCell<WebTestApiStateSnapshot> = RefCell::new(WebTestApiStateSnapshot::default());
+    static WEB_TEST_API_CONTROL_FEEDBACK_ID: RefCell<u64> = const { RefCell::new(0) };
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -87,7 +115,9 @@ pub(super) struct WebTestApiBindings {
     _set_mode: Closure<dyn FnMut(JsValue)>,
     _focus: Closure<dyn FnMut(JsValue)>,
     _select: Closure<dyn FnMut(JsValue)>,
-    _send_control: Closure<dyn FnMut(JsValue, JsValue)>,
+    _describe_controls: Closure<dyn FnMut() -> JsValue>,
+    _fill_control_example: Closure<dyn FnMut(JsValue) -> JsValue>,
+    _send_control: Closure<dyn FnMut(JsValue, JsValue) -> JsValue>,
     _get_state: Closure<dyn FnMut() -> JsValue>,
 }
 
@@ -122,6 +152,173 @@ fn web_test_api_enabled(window: &web_sys::Window) -> bool {
 fn push_command(command: WebTestApiCommand) {
     WEB_TEST_API_COMMAND_QUEUE.with(|queue| {
         queue.borrow_mut().push_back(command);
+    });
+}
+
+#[cfg(target_arch = "wasm32")]
+fn next_control_feedback_id() -> u64 {
+    WEB_TEST_API_CONTROL_FEEDBACK_ID.with(|counter| {
+        let mut counter = counter.borrow_mut();
+        *counter = counter.saturating_add(1);
+        *counter
+    })
+}
+
+#[cfg(target_arch = "wasm32")]
+fn latest_logical_time_event_seq() -> (u64, u64) {
+    WEB_TEST_API_STATE_SNAPSHOT.with(|slot| {
+        let snapshot = slot.borrow();
+        (snapshot.logical_time, snapshot.event_seq)
+    })
+}
+
+#[cfg(target_arch = "wasm32")]
+fn control_payload_example(action: &str) -> JsValue {
+    match action {
+        "play" | "pause" => JsValue::NULL,
+        "step" => {
+            let payload = Object::new();
+            let _ = JsReflect::set(
+                &payload,
+                &JsValue::from_str("count"),
+                &JsValue::from_f64(5.0),
+            );
+            JsValue::from(payload)
+        }
+        "seek" => {
+            let payload = Object::new();
+            let _ = JsReflect::set(
+                &payload,
+                &JsValue::from_str("tick"),
+                &JsValue::from_f64(120.0),
+            );
+            JsValue::from(payload)
+        }
+        "seek_event" => {
+            let payload = Object::new();
+            let _ = JsReflect::set(
+                &payload,
+                &JsValue::from_str("eventSeq"),
+                &JsValue::from_f64(42.0),
+            );
+            JsValue::from(payload)
+        }
+        _ => JsValue::NULL,
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+fn control_description(action: &str, is_zh: bool) -> &'static str {
+    match (action, is_zh) {
+        ("play", true) => "开始连续推进世界",
+        ("play", false) => "Start continuous world advancement",
+        ("pause", true) => "暂停连续推进",
+        ("pause", false) => "Pause continuous advancement",
+        ("step", true) => "推进固定步数（payload.count）",
+        ("step", false) => "Advance fixed steps (payload.count)",
+        ("seek", true) => "跳转到逻辑时间 tick（payload.tick）",
+        ("seek", false) => "Seek to logical time tick (payload.tick)",
+        ("seek_event", true) => "按事件游标跳转（payload.eventSeq）",
+        ("seek_event", false) => "Seek by event cursor (payload.eventSeq)",
+        (_, true) => "未知动作",
+        (_, false) => "Unknown action",
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+fn build_control_catalog_js_value() -> JsValue {
+    let object = Object::new();
+    let controls = Array::new();
+    for action in WEB_TEST_API_CONTROL_ACTIONS {
+        let entry = Object::new();
+        let _ = JsReflect::set(
+            &entry,
+            &JsValue::from_str("action"),
+            &JsValue::from_str(action),
+        );
+        let _ = JsReflect::set(
+            &entry,
+            &JsValue::from_str("description"),
+            &JsValue::from_str(control_description(action, false)),
+        );
+        let _ = JsReflect::set(
+            &entry,
+            &JsValue::from_str("descriptionZh"),
+            &JsValue::from_str(control_description(action, true)),
+        );
+        let _ = JsReflect::set(
+            &entry,
+            &JsValue::from_str("examplePayload"),
+            &control_payload_example(action),
+        );
+        controls.push(&entry);
+    }
+    let _ = JsReflect::set(&object, &JsValue::from_str("controls"), &controls);
+    let _ = JsReflect::set(
+        &object,
+        &JsValue::from_str("usage"),
+        &JsValue::from_str("Use fillControlExample(action) then sendControl(action, payload)."),
+    );
+    JsValue::from(object)
+}
+
+#[cfg(target_arch = "wasm32")]
+fn parse_control_example_action(payload: &JsValue) -> Option<String> {
+    let action = parse_string_payload(payload)?;
+    let action = action.trim().to_ascii_lowercase();
+    if action == "seek_event_seq" {
+        return Some("seek_event".to_string());
+    }
+    WEB_TEST_API_CONTROL_ACTIONS
+        .iter()
+        .find(|candidate| **candidate == action)
+        .map(|_| action)
+}
+
+#[cfg(target_arch = "wasm32")]
+fn parse_control_action_label(control: &ViewerControl) -> String {
+    match control {
+        ViewerControl::Play => "play".to_string(),
+        ViewerControl::Pause => "pause".to_string(),
+        ViewerControl::Step { count } => format!("step(count={count})"),
+        ViewerControl::Seek { tick } => format!("seek(tick={tick})"),
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+fn control_action_hint(action: &str, locale_zh: bool) -> String {
+    match (action, locale_zh) {
+        ("step", true) => "示例 payload: {\"count\": 5}".to_string(),
+        ("step", false) => "Example payload: {\"count\": 5}".to_string(),
+        ("seek", true) => "示例 payload: {\"tick\": 120}".to_string(),
+        ("seek", false) => "Example payload: {\"tick\": 120}".to_string(),
+        ("seek_event", true) => "示例 payload: {\"eventSeq\": 42}".to_string(),
+        ("seek_event", false) => "Example payload: {\"eventSeq\": 42}".to_string(),
+        (_, true) => "可用动作: play, pause, step, seek, seek_event".to_string(),
+        (_, false) => "Valid actions: play, pause, step, seek, seek_event".to_string(),
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+fn update_last_control_feedback(feedback: WebTestApiControlFeedback) {
+    WEB_TEST_API_STATE_SNAPSHOT.with(|slot| {
+        slot.borrow_mut().last_control_feedback = Some(feedback);
+    });
+}
+
+#[cfg(target_arch = "wasm32")]
+fn mutate_last_control_feedback(
+    feedback_id: u64,
+    mutator: impl FnOnce(&mut WebTestApiControlFeedback),
+) {
+    WEB_TEST_API_STATE_SNAPSHOT.with(|slot| {
+        let mut snapshot = slot.borrow_mut();
+        let Some(current) = snapshot.last_control_feedback.as_mut() else {
+            return;
+        };
+        if current.id == feedback_id {
+            mutator(current);
+        }
     });
 }
 
@@ -194,6 +391,16 @@ fn parse_control_action(action: &str, payload: &JsValue) -> Option<ViewerControl
 }
 
 #[cfg(target_arch = "wasm32")]
+fn normalize_control_action(action: &str) -> String {
+    let action = action.trim().to_ascii_lowercase();
+    if action == "seek_event_seq" {
+        "seek_event".to_string()
+    } else {
+        action
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
 fn parse_string_payload(payload: &JsValue) -> Option<String> {
     payload
         .as_string()
@@ -211,8 +418,105 @@ fn parse_run_steps_command(payload: &JsValue) -> Option<WebTestApiCommand> {
         return Some(WebTestApiCommand::EnqueueSteps(steps));
     }
 
-    parse_step_count(payload)
-        .map(|count| WebTestApiCommand::SendControl(ViewerControl::Step { count }))
+    parse_step_count(payload).map(|count| WebTestApiCommand::SendControl {
+        control: ViewerControl::Step { count },
+        feedback_id: 0,
+    })
+}
+
+#[cfg(target_arch = "wasm32")]
+fn build_control_feedback_js_value(feedback: &WebTestApiControlFeedback) -> JsValue {
+    let object = Object::new();
+    let _ = JsReflect::set(
+        &object,
+        &JsValue::from_str("id"),
+        &JsValue::from_f64(feedback.id as f64),
+    );
+    let _ = JsReflect::set(
+        &object,
+        &JsValue::from_str("action"),
+        &JsValue::from_str(feedback.action.as_str()),
+    );
+    let _ = JsReflect::set(
+        &object,
+        &JsValue::from_str("accepted"),
+        &JsValue::from_bool(feedback.accepted),
+    );
+    let _ = JsReflect::set(
+        &object,
+        &JsValue::from_str("parsedControl"),
+        &feedback
+            .parsed_control
+            .as_ref()
+            .map(|value| JsValue::from_str(value))
+            .unwrap_or(JsValue::NULL),
+    );
+    let _ = JsReflect::set(
+        &object,
+        &JsValue::from_str("reason"),
+        &feedback
+            .reason
+            .as_ref()
+            .map(|value| JsValue::from_str(value))
+            .unwrap_or(JsValue::NULL),
+    );
+    let _ = JsReflect::set(
+        &object,
+        &JsValue::from_str("hint"),
+        &feedback
+            .hint
+            .as_ref()
+            .map(|value| JsValue::from_str(value))
+            .unwrap_or(JsValue::NULL),
+    );
+    let _ = JsReflect::set(
+        &object,
+        &JsValue::from_str("effect"),
+        &JsValue::from_str(feedback.effect.as_str()),
+    );
+    let _ = JsReflect::set(
+        &object,
+        &JsValue::from_str("deltaLogicalTime"),
+        &JsValue::from_f64(feedback.delta_logical_time as f64),
+    );
+    let _ = JsReflect::set(
+        &object,
+        &JsValue::from_str("deltaEventSeq"),
+        &JsValue::from_f64(feedback.delta_event_seq as f64),
+    );
+    let _ = JsReflect::set(
+        &object,
+        &JsValue::from_str("awaitingEffect"),
+        &JsValue::from_bool(feedback.awaiting_effect),
+    );
+    JsValue::from(object)
+}
+
+#[cfg(target_arch = "wasm32")]
+fn build_control_feedback(
+    action: String,
+    accepted: bool,
+    parsed_control: Option<String>,
+    reason: Option<String>,
+    hint: Option<String>,
+    effect: String,
+    awaiting_effect: bool,
+) -> WebTestApiControlFeedback {
+    let (baseline_logical_time, baseline_event_seq) = latest_logical_time_event_seq();
+    WebTestApiControlFeedback {
+        id: next_control_feedback_id(),
+        action,
+        accepted,
+        parsed_control,
+        reason,
+        hint,
+        effect,
+        baseline_logical_time,
+        baseline_event_seq,
+        delta_logical_time: 0,
+        delta_event_seq: 0,
+        awaiting_effect,
+    }
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -294,6 +598,15 @@ fn build_state_js_value(snapshot: &WebTestApiStateSnapshot) -> JsValue {
         &object,
         &JsValue::from_str("cameraOrthoScale"),
         &JsValue::from_f64(snapshot.camera_ortho_scale),
+    );
+    let _ = JsReflect::set(
+        &object,
+        &JsValue::from_str("lastControlFeedback"),
+        &snapshot
+            .last_control_feedback
+            .as_ref()
+            .map(build_control_feedback_js_value)
+            .unwrap_or(JsValue::NULL),
     );
     JsValue::from(object)
 }
@@ -381,30 +694,155 @@ pub(super) fn setup_web_test_api(world: &mut World) {
         select.as_ref().unchecked_ref(),
     );
 
-    let send_control = Closure::wrap(Box::new(move |action: JsValue, payload: JsValue| {
-        let Some(action) = parse_string_payload(&action) else {
-            log_api_warning("web test api: sendControl ignored (action must be non-empty string)");
-            return;
+    let describe_controls =
+        Closure::wrap(
+            Box::new(move || -> JsValue { build_control_catalog_js_value() })
+                as Box<dyn FnMut() -> JsValue>,
+        );
+    let _ = JsReflect::set(
+        &api,
+        &JsValue::from_str("describeControls"),
+        describe_controls.as_ref().unchecked_ref(),
+    );
+
+    let fill_control_example = Closure::wrap(Box::new(move |action: JsValue| -> JsValue {
+        let Some(action) = parse_control_example_action(&action) else {
+            log_api_warning("web test api: fillControlExample ignored (invalid action)");
+            return JsValue::NULL;
         };
-        if matches!(
-            action.trim().to_ascii_lowercase().as_str(),
-            "seek_event" | "seek_event_seq"
-        ) {
-            let Some(event_seq) = parse_event_seq(&payload) else {
-                log_api_warning(
-                    "web test api: sendControl ignored (seek_event requires numeric eventSeq)",
+        let object = Object::new();
+        let _ = JsReflect::set(
+            &object,
+            &JsValue::from_str("action"),
+            &JsValue::from_str(action.as_str()),
+        );
+        let _ = JsReflect::set(
+            &object,
+            &JsValue::from_str("payload"),
+            &control_payload_example(action.as_str()),
+        );
+        JsValue::from(object)
+    }) as Box<dyn FnMut(JsValue) -> JsValue>);
+    let _ = JsReflect::set(
+        &api,
+        &JsValue::from_str("fillControlExample"),
+        fill_control_example.as_ref().unchecked_ref(),
+    );
+
+    let send_control = Closure::wrap(
+        Box::new(move |action: JsValue, payload: JsValue| -> JsValue {
+            let Some(raw_action) = parse_string_payload(&action) else {
+                let feedback = build_control_feedback(
+                    "<empty>".to_string(),
+                    false,
+                    None,
+                    Some("action must be a non-empty string".to_string()),
+                    Some(control_action_hint("unknown", false)),
+                    "rejected before enqueue".to_string(),
+                    false,
                 );
-                return;
+                update_last_control_feedback(feedback.clone());
+                log_api_warning(
+                    "web test api: sendControl ignored (action must be non-empty string)",
+                );
+                return build_control_feedback_js_value(&feedback);
             };
-            push_command(WebTestApiCommand::SeekEventSeq { event_seq });
-            return;
-        }
-        let Some(control) = parse_control_action(action.as_str(), &payload) else {
-            log_api_warning("web test api: sendControl ignored (invalid action or payload)");
-            return;
-        };
-        push_command(WebTestApiCommand::SendControl(control));
-    }) as Box<dyn FnMut(JsValue, JsValue)>);
+
+            let action = normalize_control_action(raw_action.as_str());
+            if !WEB_TEST_API_CONTROL_ACTIONS
+                .iter()
+                .any(|candidate| *candidate == action.as_str())
+            {
+                let feedback = build_control_feedback(
+                    action.clone(),
+                    false,
+                    None,
+                    Some(format!("unsupported action: {}", action)),
+                    Some(control_action_hint("unknown", false)),
+                    "rejected before enqueue".to_string(),
+                    false,
+                );
+                update_last_control_feedback(feedback.clone());
+                let warning =
+                    format!("web test api: sendControl ignored (unsupported action: {action})");
+                log_api_warning(warning.as_str());
+                return build_control_feedback_js_value(&feedback);
+            }
+
+            if action == "seek_event" {
+                let Some(event_seq) = parse_event_seq(&payload) else {
+                    let feedback = build_control_feedback(
+                        action.clone(),
+                        false,
+                        None,
+                        Some("seek_event requires numeric payload.eventSeq".to_string()),
+                        Some(control_action_hint(action.as_str(), false)),
+                        "rejected before enqueue".to_string(),
+                        false,
+                    );
+                    update_last_control_feedback(feedback.clone());
+                    log_api_warning(
+                        "web test api: sendControl ignored (seek_event requires numeric eventSeq)",
+                    );
+                    return build_control_feedback_js_value(&feedback);
+                };
+                let feedback = build_control_feedback(
+                    action,
+                    true,
+                    Some(format!("seek_event(eventSeq={event_seq})")),
+                    None,
+                    Some("queued, waiting for event cursor resolution".to_string()),
+                    "queued control request".to_string(),
+                    true,
+                );
+                let feedback_id = feedback.id;
+                update_last_control_feedback(feedback.clone());
+                push_command(WebTestApiCommand::SeekEventSeq {
+                    event_seq,
+                    feedback_id,
+                });
+                return build_control_feedback_js_value(&feedback);
+            }
+
+            let Some(control) = parse_control_action(action.as_str(), &payload) else {
+                let reason = match action.as_str() {
+                    "step" => "step requires numeric payload.count >= 1",
+                    "seek" => "seek requires numeric payload.tick >= 0",
+                    _ => "invalid payload for control action",
+                };
+                let feedback = build_control_feedback(
+                    action.clone(),
+                    false,
+                    None,
+                    Some(reason.to_string()),
+                    Some(control_action_hint(action.as_str(), false)),
+                    "rejected before enqueue".to_string(),
+                    false,
+                );
+                update_last_control_feedback(feedback.clone());
+                let warning = format!("web test api: sendControl ignored ({reason})");
+                log_api_warning(warning.as_str());
+                return build_control_feedback_js_value(&feedback);
+            };
+            let parsed_label = parse_control_action_label(&control);
+            let feedback = build_control_feedback(
+                action,
+                true,
+                Some(parsed_label),
+                None,
+                Some("queued, check getState().lastControlFeedback for world delta".to_string()),
+                "queued control request".to_string(),
+                true,
+            );
+            let feedback_id = feedback.id;
+            update_last_control_feedback(feedback.clone());
+            push_command(WebTestApiCommand::SendControl {
+                control,
+                feedback_id,
+            });
+            build_control_feedback_js_value(&feedback)
+        }) as Box<dyn FnMut(JsValue, JsValue) -> JsValue>,
+    );
     let _ = JsReflect::set(
         &api,
         &JsValue::from_str("sendControl"),
@@ -428,6 +866,8 @@ pub(super) fn setup_web_test_api(world: &mut World) {
         _set_mode: set_mode,
         _focus: focus,
         _select: select,
+        _describe_controls: describe_controls,
+        _fill_control_example: fill_control_example,
         _send_control: send_control,
         _get_state: get_state,
     });
@@ -455,13 +895,34 @@ pub(super) fn consume_web_test_api_commands(
             WebTestApiCommand::EnqueueSteps(steps) => {
                 enqueue_runtime_steps(&mut automation_state, steps);
             }
-            WebTestApiCommand::SendControl(control) => {
-                if let Some(client) = client.as_deref() {
-                    let _ = client.tx.send(ViewerRequest::Control { mode: control });
-                }
-            }
-            WebTestApiCommand::SeekEventSeq { event_seq } => {
+            WebTestApiCommand::SendControl {
+                control,
+                feedback_id,
+            } => {
                 let Some(client) = client.as_deref() else {
+                    mutate_last_control_feedback(feedback_id, |feedback| {
+                        feedback.accepted = false;
+                        feedback.reason = Some("viewer client is not available".to_string());
+                        feedback.hint = Some("reconnect then retry sendControl".to_string());
+                        feedback.effect = "dropped before dispatch".to_string();
+                        feedback.awaiting_effect = false;
+                    });
+                    continue;
+                };
+                let _ = client.tx.send(ViewerRequest::Control { mode: control });
+            }
+            WebTestApiCommand::SeekEventSeq {
+                event_seq,
+                feedback_id,
+            } => {
+                let Some(client) = client.as_deref() else {
+                    mutate_last_control_feedback(feedback_id, |feedback| {
+                        feedback.accepted = false;
+                        feedback.reason = Some("viewer client is not available".to_string());
+                        feedback.hint = Some("reconnect then retry sendControl".to_string());
+                        feedback.effect = "dropped before dispatch".to_string();
+                        feedback.awaiting_effect = false;
+                    });
                     continue;
                 };
                 let seek_tick = if event_seq == 0 {
@@ -482,10 +943,23 @@ pub(super) fn consume_web_test_api_commands(
                     log_api_warning(
                         "web test api: seek_event ignored (eventSeq not found in current event window)",
                     );
+                    mutate_last_control_feedback(feedback_id, |feedback| {
+                        feedback.accepted = false;
+                        feedback.reason =
+                            Some("eventSeq not found in current event window".to_string());
+                        feedback.hint =
+                            Some("runSteps first, then retry with newer eventSeq".to_string());
+                        feedback.effect = "rejected during dispatch".to_string();
+                        feedback.awaiting_effect = false;
+                    });
                     continue;
                 };
                 let _ = client.tx.send(ViewerRequest::Control {
                     mode: ViewerControl::Seek { tick },
+                });
+                mutate_last_control_feedback(feedback_id, |feedback| {
+                    feedback.parsed_control = Some(format!("seek(tick={tick})"));
+                    feedback.hint = Some("seek dispatched, waiting for world delta".to_string());
                 });
             }
         }
@@ -574,6 +1048,29 @@ pub(super) fn publish_web_test_api_state(
         } else {
             snapshot.camera_radius = 0.0;
             snapshot.camera_ortho_scale = 0.0;
+        }
+
+        let connection_ready = matches!(state.status, ConnectionStatus::Connected);
+        let latest_logical_time = snapshot.logical_time;
+        let latest_event_seq = snapshot.event_seq;
+        if let Some(feedback) = snapshot.last_control_feedback.as_mut() {
+            if feedback.awaiting_effect {
+                let delta_logical_time =
+                    latest_logical_time.saturating_sub(feedback.baseline_logical_time);
+                let delta_event_seq = latest_event_seq.saturating_sub(feedback.baseline_event_seq);
+                feedback.delta_logical_time = delta_logical_time;
+                feedback.delta_event_seq = delta_event_seq;
+                if delta_logical_time > 0 || delta_event_seq > 0 {
+                    feedback.effect =
+                        format!("world advanced: logicalTime +{delta_logical_time}, eventSeq +{delta_event_seq}");
+                    feedback.hint = Some("input was accepted and world state advanced".to_string());
+                    feedback.awaiting_effect = false;
+                } else if connection_ready {
+                    feedback.effect = "queued, waiting for next world delta".to_string();
+                } else {
+                    feedback.effect = "queued, waiting for world connection".to_string();
+                }
+            }
         }
     });
 }
