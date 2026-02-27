@@ -23,6 +23,7 @@
 - [x] T20 按用户本轮请求在“首局目标清晰度加固”后执行一轮 Playwright A/B 实机复测并填写卡片
 - [x] T21 按用户本轮请求基于 `doc/game-test.md` 再执行一轮真实玩家游玩（带录屏）并填写卡片
 - [x] T22 按用户本轮请求基于 `doc/game-test.md` 再执行一轮真实玩家游玩并填写卡片
+- [x] T23 按用户本轮请求基于 `doc/game-test.md` 再执行一轮真实玩家游玩并填写卡片
 
 ## 依赖
 - `doc/game-test.md`
@@ -49,6 +50,7 @@
 - card_2026_02_27_19_32_27.md
 - card_2026_02_27_19_47_08.md
 - card_2026_02_27_20_32_17.md
+- card_2026_02_27_21_04_46.md
 - 录屏/截图产物：`output/playwright/playability/20260225-132109/`
 - 录屏/截图产物：`output/playwright/playability/20260225-163706/`
 - 录屏/截图产物：`output/playwright/playability/20260225225029/`
@@ -63,13 +65,14 @@
 - A/B 量化产物：`output/playwright/playability/20260227-193149/`
 - A/B 量化产物：`output/playwright/playability/20260227-194519/`
 - A/B 量化产物：`output/playwright/playability/20260227-202842/`
+- A/B 量化产物：`output/playwright/playability/20260227-210446/`
 - 手册改版记录：`doc/game-test.md`（2026-02-27，用户标注“你不能改这个文档”）
 - 开发排查复现：
   - `output/playwright/viewer/webgl-deferred-disable-verify2-20260225-143042/`
   - `output/playwright/viewer/webgl-panic-locate-20260225-143645/`
 
 ## 状态
-- 当前阶段：已完成玩家复测 + 开发者排查 + 默认链路复测 + 夜间追加复测 + 本轮日间追加复测 + 本轮午后追加复测 + 本轮傍晚追加复测 + 本轮追加复测 + 本轮下午追加复测 + 本轮黄昏追加复测 + 本轮傍晚新增复测 + A/B 量化脚本化复测 + 用户手册改版同步 + 文档治理白名单接入 + 首局目标清晰度加固后 A/B 实机复测 + 本轮追加 A/B 实机复测 + 本轮晚间追加 A/B 实机复测（2026-02-27 20:32）
+- 当前阶段：已完成玩家复测 + 开发者排查 + 默认链路复测 + 夜间追加复测 + 本轮日间追加复测 + 本轮午后追加复测 + 本轮傍晚追加复测 + 本轮追加复测 + 本轮下午追加复测 + 本轮黄昏追加复测 + 本轮傍晚新增复测 + A/B 量化脚本化复测 + 用户手册改版同步 + 文档治理白名单接入 + 首局目标清晰度加固后 A/B 实机复测 + 本轮追加 A/B 实机复测 + 本轮晚间追加 A/B 实机复测 + 本轮深夜追加 A/B 实机复测（2026-02-27 21:05）
 - 风险：
   - 运行前置：默认开启 LLM 后，若环境缺失可用 LLM 配置，`run-game-test.sh` 可能在启动阶段失败；可临时使用 `--no-llm` 回退脚本决策。
   - 基线问题：Web 端偶发 `copy_deferred_lighting_id_pipeline`（`wgpu` Validation Error）导致崩溃。
@@ -87,6 +90,7 @@
   - 本轮观测：在 `output/playwright/playability/20260227-193149/` 复测中，首局任务卡目标文案可见且 `play` 可触发推进（TTFC=`4575ms`，A 段 PASS）；但 `step` 出现 accepted 无推进，B 段 FAIL（有效控制命中率 `2/3`，无进展窗口 `6096ms`），控制层可预期性仍需增强。
   - 本轮观测：在 `output/playwright/playability/20260227-194519/` 复测中，链路稳定 `connected` 且 `tick` 从 `0` 推进到 `3`（TTFC=`4895ms`，A 段 PASS）；但 B 段仍复现 `step` accepted 无推进（`2` -> `2`），有效控制命中率 `2/3`、无进展窗口 `6072ms`，说明 `step` 的可预期推进性问题仍持续。
   - 本轮观测：在 `output/playwright/playability/20260227-202842/` 复测中，链路稳定 `connected` 且 `tick` 从 `0` 推进到 `3`（TTFC=`8387ms`，A 段 PASS）；但 B 段继续复现 `step` accepted 无推进（`2` -> `2`），有效控制命中率 `2/3`、无进展窗口 `6048ms`，`step` 可预期推进性问题仍未收敛。
+  - 本轮观测：在 `output/playwright/playability/20260227-210446/` 复测中，链路稳定 `connected` 且 `tick` 从 `45` 推进到 `53`，A/B 两段均 PASS（TTFC=`4566ms`，有效控制命中率 `3/3`，无进展窗口 `3383ms`）；但 `move` 动作仍会被拒绝并触发 `sendControl ignored`，动作可发现性仍需持续优化。
   - 文档约束：`doc/game-test.md` 当前为用户锁定版本（标题含“你不能改这个文档”）；后续流程优化应通过新增外围设计/项目文档承载，避免直接改手册冲突。
   - 治理约束：`scripts/doc-governance-check.sh` 已对白名单项目文档 `doc/game-test.project.md` 跳过配对设计文档章节检查；后续新增白名单需保持最小化并附理由，避免治理规则失效。
 - 最近更新：2026-02-27
