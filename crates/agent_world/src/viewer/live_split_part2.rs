@@ -141,7 +141,6 @@ struct ViewerLiveRequestOutcome {
 #[derive(Debug, Clone, Copy)]
 enum ViewerLiveDeferredControl {
     Step { count: usize },
-    Seek { tick: u64 },
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -152,7 +151,7 @@ enum CoalescedSignalKind {
     NonConsensusDriveRequested,
 }
 
-const LIVE_LOOP_SIGNAL_KIND_COUNT: usize = 7;
+const LIVE_LOOP_SIGNAL_KIND_COUNT: usize = 6;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum LiveLoopSignalKind {
@@ -162,7 +161,6 @@ enum LiveLoopSignalKind {
     ConsensusDriveRequested,
     NonConsensusDriveRequested,
     StepRequested,
-    SeekRequested,
 }
 
 impl LiveLoopSignalKind {
@@ -173,7 +171,6 @@ impl LiveLoopSignalKind {
         Self::ConsensusDriveRequested,
         Self::NonConsensusDriveRequested,
         Self::StepRequested,
-        Self::SeekRequested,
     ];
 
     fn as_index(self) -> usize {
@@ -184,7 +181,6 @@ impl LiveLoopSignalKind {
             Self::ConsensusDriveRequested => 3,
             Self::NonConsensusDriveRequested => 4,
             Self::StepRequested => 5,
-            Self::SeekRequested => 6,
         }
     }
 
@@ -196,7 +192,6 @@ impl LiveLoopSignalKind {
             Self::ConsensusDriveRequested => "consensus_drive",
             Self::NonConsensusDriveRequested => "non_consensus_drive",
             Self::StepRequested => "step",
-            Self::SeekRequested => "seek",
         }
     }
 }
@@ -212,7 +207,6 @@ impl LiveLoopSignal {
                 LiveLoopSignalKind::NonConsensusDriveRequested
             }
             LiveLoopSignal::StepRequested { .. } => LiveLoopSignalKind::StepRequested,
-            LiveLoopSignal::SeekRequested { .. } => LiveLoopSignalKind::SeekRequested,
         }
     }
 }
@@ -567,7 +561,10 @@ impl ViewerLiveSession {
                 }
                 ViewerControl::Seek { tick } => {
                     self.playing = false;
-                    deferred_control = Some(ViewerLiveDeferredControl::Seek { tick });
+                    // P2P live mode is monotonic and does not support rewind/seek semantics.
+                    eprintln!(
+                        "viewer live: ignore seek control in live mode (target_tick={tick})"
+                    );
                 }
             },
         }

@@ -34,6 +34,7 @@ impl LiveConsensusBridge {
         }
     }
 
+    #[cfg(test)]
     pub(super) fn reset_pending(&mut self) {
         self.inflight_action_ids.clear();
         self.committed_actions.clear();

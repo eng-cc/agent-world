@@ -21,8 +21,6 @@ use crate::simulator::{
 #[path = "live/consensus_bridge.rs"]
 mod consensus_bridge;
 use consensus_bridge::*;
-#[path = "live/seek.rs"]
-mod seek;
 
 use super::auth::{
     verify_agent_chat_auth_proof, verify_prompt_control_apply_auth_proof,
@@ -150,7 +148,6 @@ enum LiveLoopSignal {
     ConsensusDriveRequested,
     NonConsensusDriveRequested,
     StepRequested { count: usize },
-    SeekRequested { tick: u64 },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -278,20 +275,9 @@ impl ViewerLiveServer {
                         );
                     }
                     if let Some(control) = outcome.deferred_control {
-                        match control {
-                            ViewerLiveDeferredControl::Step { count } => {
-                                if loop_tx
-                                    .send(LiveLoopSignal::StepRequested { count })
-                                    .is_ok()
-                                {
-                                    backpressure.record_enqueued(LiveLoopSignalKind::StepRequested);
-                                }
-                            }
-                            ViewerLiveDeferredControl::Seek { tick } => {
-                                if loop_tx.send(LiveLoopSignal::SeekRequested { tick }).is_ok() {
-                                    backpressure.record_enqueued(LiveLoopSignalKind::SeekRequested);
-                                }
-                            }
+                        let ViewerLiveDeferredControl::Step { count } = control;
+                        if loop_tx.send(LiveLoopSignal::StepRequested { count }).is_ok() {
+                            backpressure.record_enqueued(LiveLoopSignalKind::StepRequested);
                         }
                     }
                     let now_emitting = session.should_emit_event();
@@ -375,10 +361,6 @@ impl ViewerLiveServer {
                 }
                 LiveLoopSignal::StepRequested { count } => {
                     self.handle_step_request(&mut session, &mut writer, count)?;
-                    Ok(LiveLoopIterationAction::Continue)
-                }
-                LiveLoopSignal::SeekRequested { tick } => {
-                    self.handle_seek_request(&mut session, &mut writer, tick)?;
                     Ok(LiveLoopIterationAction::Continue)
                 }
             };
@@ -484,38 +466,6 @@ impl ViewerLiveServer {
         Ok(())
     }
 
-    fn handle_seek_request(
-        &mut self,
-        session: &mut ViewerLiveSession,
-        writer: &mut BufWriter<TcpStream>,
-        tick: u64,
-    ) -> Result<(), ViewerLiveServerError> {
-        session.playing = false;
-        let seek_result = self.world.seek_to_tick(tick)?;
-        if session.subscribed.contains(&ViewerStream::Snapshot) {
-            send_response(
-                writer,
-                &ViewerResponse::Snapshot {
-                    snapshot: self.world.snapshot(),
-                },
-            )?;
-        }
-        session.update_metrics(self.world.metrics());
-        session.emit_metrics(writer)?;
-        if !seek_result.reached {
-            send_response(
-                writer,
-                &ViewerResponse::Error {
-                    message: format!(
-                        "live seek stalled at tick {} before target {}",
-                        seek_result.current_tick, tick
-                    ),
-                },
-            )?;
-        }
-        Ok(())
-    }
-
     fn emit_step_outcome(
         &mut self,
         session: &mut ViewerLiveSession,
@@ -553,9 +503,12 @@ impl ViewerLiveServer {
 }
 
 struct LiveWorld {
+    #[cfg(test)]
     config: WorldConfig,
+    #[cfg(test)]
     init: WorldInitConfig,
     kernel: WorldKernel,
+    #[cfg(test)]
     decision_mode: ViewerLiveDecisionMode,
     driver: LiveDriver,
     llm_decision_mailbox: u64,
@@ -590,6 +543,10 @@ impl LiveWorld {
         consensus_gate_max_tick: Option<Arc<AtomicU64>>,
         consensus_runtime: Option<Arc<Mutex<NodeRuntime>>>,
     ) -> Result<Self, ViewerLiveServerError> {
+        #[cfg(test)]
+        let reset_config = config.clone();
+        #[cfg(test)]
+        let reset_init = init.clone();
         let (kernel, _) = initialize_kernel(config.clone(), init.clone())?;
         let driver = build_driver(&kernel, decision_mode)?;
         let llm_decision_mailbox = if matches!(&driver, LiveDriver::Llm(_)) {
@@ -598,9 +555,12 @@ impl LiveWorld {
             0
         };
         Ok(Self {
-            config,
-            init,
+            #[cfg(test)]
+            config: reset_config,
+            #[cfg(test)]
+            init: reset_init,
             kernel,
+            #[cfg(test)]
             decision_mode,
             driver,
             llm_decision_mailbox,
@@ -651,6 +611,7 @@ impl LiveWorld {
         self.kernel.time() < max_tick.load(Ordering::SeqCst)
     }
 
+    #[cfg(test)]
     fn reset(&mut self) -> Result<(), ViewerLiveServerError> {
         let (kernel, _) = initialize_kernel(self.config.clone(), self.init.clone())?;
         self.kernel = kernel;

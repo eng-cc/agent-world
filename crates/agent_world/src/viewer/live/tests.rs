@@ -199,50 +199,6 @@ fn live_world_consensus_gate_limits_step_budget() {
 }
 
 #[test]
-fn live_world_seek_to_future_tick_advances_time() {
-    let config = WorldConfig::default();
-    let init = WorldInitConfig::from_scenario(WorldScenario::Minimal, &config);
-    let mut world = LiveWorld::new(config, init, ViewerLiveDecisionMode::Script).expect("init ok");
-
-    let result = world.seek_to_tick(3).expect("seek ok");
-    assert!(result.reached);
-    assert_eq!(result.current_tick, 3);
-    assert_eq!(world.kernel.time(), 3);
-}
-
-#[test]
-fn live_world_seek_to_past_tick_resets_and_replays() {
-    let config = WorldConfig::default();
-    let init = WorldInitConfig::from_scenario(WorldScenario::Minimal, &config);
-    let mut world = LiveWorld::new(config, init, ViewerLiveDecisionMode::Script).expect("init ok");
-
-    let forward = world.seek_to_tick(5).expect("seek forward");
-    assert!(forward.reached);
-    assert_eq!(world.kernel.time(), 5);
-
-    let rewind = world.seek_to_tick(2).expect("seek rewind");
-    assert!(rewind.reached);
-    assert_eq!(rewind.current_tick, 2);
-    assert_eq!(world.kernel.time(), 2);
-}
-
-#[test]
-fn live_world_seek_reports_stall_when_world_cannot_advance() {
-    let config = WorldConfig::default();
-    let mut init = WorldInitConfig::default();
-    init.agents = crate::simulator::AgentSpawnConfig {
-        count: 0,
-        ..crate::simulator::AgentSpawnConfig::default()
-    };
-    let mut world = LiveWorld::new(config, init, ViewerLiveDecisionMode::Script).expect("init ok");
-
-    let result = world.seek_to_tick(2).expect("seek handled");
-    assert!(!result.reached);
-    assert_eq!(result.current_tick, 0);
-    assert_eq!(world.kernel.time(), 0);
-}
-
-#[test]
 fn step_control_is_deferred_from_request_handler() {
     let config = WorldConfig::default();
     let init = WorldInitConfig::from_scenario(WorldScenario::Minimal, &config);
@@ -269,7 +225,7 @@ fn step_control_is_deferred_from_request_handler() {
 }
 
 #[test]
-fn seek_control_is_deferred_from_request_handler() {
+fn seek_control_is_ignored_in_live_request_handler() {
     let config = WorldConfig::default();
     let init = WorldInitConfig::from_scenario(WorldScenario::Minimal, &config);
     let mut world = LiveWorld::new(config, init, ViewerLiveDecisionMode::Script).expect("init ok");
@@ -288,10 +244,7 @@ fn seek_control_is_deferred_from_request_handler() {
         .expect("handle seek control");
 
     assert_eq!(world.kernel.time(), 0);
-    assert!(matches!(
-        outcome.deferred_control,
-        Some(ViewerLiveDeferredControl::Seek { tick: 5 })
-    ));
+    assert!(outcome.deferred_control.is_none());
 }
 
 #[test]
