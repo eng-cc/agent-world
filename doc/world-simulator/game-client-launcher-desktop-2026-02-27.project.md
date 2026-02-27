@@ -3,7 +3,7 @@
 ## 任务拆解
 - [x] T0 建档：设计文档 + 项目管理文档。
 - [x] T1 新增 `agent_world_client_launcher` 桌面 GUI 启动器（启动/停止/URL/日志）并补单元测试。
-- [ ] T2 更新 `scripts/build-game-launcher-bundle.sh`，打包客户端启动器并生成 `run-client.sh`。
+- [x] T2 更新 `scripts/build-game-launcher-bundle.sh`，打包客户端启动器并生成 `run-client.sh`。
 - [ ] T3 文档收口（项目状态、手册入口、验收记录）。
 
 ## 依赖
@@ -13,4 +13,4 @@
 
 ## 状态
 - 当前阶段：进行中。
-- 当前任务：T2（接入打包脚本与客户端入口脚本）。
+- 当前任务：T3（文档收口与验收记录）。
