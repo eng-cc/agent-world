@@ -68,6 +68,20 @@ fn step_twice(world: &mut World, sandbox: &mut WasmExecutor) {
         .expect("settle module-backed action");
 }
 
+fn start_and_settle_recipe(world: &mut World, sandbox: &mut WasmExecutor) {
+    world
+        .step_with_modules(sandbox)
+        .expect("start module-backed recipe action");
+    for _ in 0..8 {
+        if world.pending_recipe_jobs_len() == 0 {
+            break;
+        }
+        world
+            .step_with_modules(sandbox)
+            .expect("settle module-backed recipe action");
+    }
+}
+
 #[test]
 fn m4_builtin_module_ids_manifest_matches_runtime_constants() {
     let expected = vec![
@@ -101,6 +115,49 @@ fn install_m4_economy_bootstrap_modules_registers_and_activates() {
         let key = ModuleRegistry::record_key(module_id, M4_ECONOMY_MODULE_VERSION);
         assert!(world.module_registry().records.contains_key(&key));
     }
+}
+
+#[test]
+fn install_m4_economy_bootstrap_modules_injects_layered_profiles() {
+    let mut world = World::new();
+    world
+        .install_m4_economy_bootstrap_modules("bootstrap")
+        .expect("install m4 economy modules");
+
+    let iron_ore = world
+        .state()
+        .material_profiles
+        .get("iron_ore")
+        .expect("material profile iron_ore");
+    assert_eq!(iron_ore.tier, 1);
+    assert_eq!(iron_ore.category, "ore");
+
+    let factory_core = world
+        .state()
+        .material_profiles
+        .get("factory_core")
+        .expect("material profile factory_core");
+    assert_eq!(factory_core.tier, 5);
+    assert_eq!(factory_core.category, "infrastructure");
+
+    let module_rack = world
+        .state()
+        .product_profiles
+        .get("module_rack")
+        .expect("product profile module_rack");
+    assert_eq!(module_rack.role_tag, "governance");
+    assert_eq!(module_rack.unlock_stage, "governance");
+
+    let drone_recipe = world
+        .state()
+        .recipe_profiles
+        .get("recipe.assembler.logistics_drone")
+        .expect("recipe profile logistics_drone");
+    assert_eq!(drone_recipe.stage_gate, "scale_out");
+    assert!(drone_recipe
+        .preferred_factory_tags
+        .iter()
+        .any(|tag| tag == "assembler"));
 }
 
 #[test]
@@ -220,7 +277,7 @@ fn m4_economy_modules_drive_resource_to_product_chain() {
         desired_batches: 8,
         deterministic_seed: 20260214,
     });
-    step_twice(&mut world, &mut wasm);
+    start_and_settle_recipe(&mut world, &mut wasm);
 
     world.submit_action(Action::ScheduleRecipeWithModule {
         requester_agent_id: "builder-a".to_string(),
@@ -230,7 +287,7 @@ fn m4_economy_modules_drive_resource_to_product_chain() {
         desired_batches: 5,
         deterministic_seed: 20260214,
     });
-    step_twice(&mut world, &mut wasm);
+    start_and_settle_recipe(&mut world, &mut wasm);
 
     world.submit_action(Action::BuildFactoryWithModule {
         builder_agent_id: "builder-a".to_string(),
@@ -259,7 +316,7 @@ fn m4_economy_modules_drive_resource_to_product_chain() {
         desired_batches: 4,
         deterministic_seed: 20260214,
     });
-    step_twice(&mut world, &mut wasm);
+    start_and_settle_recipe(&mut world, &mut wasm);
 
     world.submit_action(Action::ScheduleRecipeWithModule {
         requester_agent_id: "builder-a".to_string(),
@@ -269,7 +326,7 @@ fn m4_economy_modules_drive_resource_to_product_chain() {
         desired_batches: 1,
         deterministic_seed: 20260214,
     });
-    step_twice(&mut world, &mut wasm);
+    start_and_settle_recipe(&mut world, &mut wasm);
 
     world.submit_action(Action::ScheduleRecipeWithModule {
         requester_agent_id: "builder-a".to_string(),
@@ -279,7 +336,7 @@ fn m4_economy_modules_drive_resource_to_product_chain() {
         desired_batches: 2,
         deterministic_seed: 20260214,
     });
-    step_twice(&mut world, &mut wasm);
+    start_and_settle_recipe(&mut world, &mut wasm);
 
     world.submit_action(Action::ScheduleRecipeWithModule {
         requester_agent_id: "builder-a".to_string(),
@@ -289,7 +346,7 @@ fn m4_economy_modules_drive_resource_to_product_chain() {
         desired_batches: 1,
         deterministic_seed: 20260214,
     });
-    step_twice(&mut world, &mut wasm);
+    start_and_settle_recipe(&mut world, &mut wasm);
 
     assert_eq!(world.material_balance("logistics_drone"), 1);
     assert_eq!(world.material_balance("motor_mk1"), 0);

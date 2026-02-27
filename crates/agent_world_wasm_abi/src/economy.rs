@@ -26,6 +26,64 @@ impl MaterialStack {
     }
 }
 
+/// Transport loss class used for material logistics weighting.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum MaterialTransportLossClass {
+    Low,
+    #[default]
+    Medium,
+    High,
+}
+
+/// Default logistics priority for one material kind.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum MaterialDefaultPriority {
+    Urgent,
+    #[default]
+    Standard,
+}
+
+/// Runtime material profile used by layered economy tuning.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MaterialProfileV1 {
+    pub kind: String,
+    pub tier: u8,
+    pub category: String,
+    pub stack_limit: i64,
+    #[serde(default)]
+    pub transport_loss_class: MaterialTransportLossClass,
+    #[serde(default)]
+    pub decay_bps_per_tick: i64,
+    #[serde(default)]
+    pub default_priority: MaterialDefaultPriority,
+}
+
+/// Runtime product profile used by progression and role tuning.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ProductProfileV1 {
+    pub product_id: String,
+    pub role_tag: String,
+    #[serde(default)]
+    pub maintenance_sink: Vec<MaterialStack>,
+    pub tradable: bool,
+    #[serde(default)]
+    pub unlock_stage: String,
+}
+
+/// Runtime recipe profile used by bottleneck and stage tuning.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RecipeProfileV1 {
+    pub recipe_id: String,
+    #[serde(default)]
+    pub bottleneck_tags: Vec<String>,
+    #[serde(default)]
+    pub stage_gate: String,
+    #[serde(default)]
+    pub preferred_factory_tags: Vec<String>,
+}
+
 /// Static recipe definition emitted by a recipe module.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RecipeModuleSpec {
@@ -268,6 +326,65 @@ mod tests {
         let value = serde_json::to_string(&EconomyModuleKind::Recipe)
             .expect("serialize economy module kind");
         assert_eq!(value, "\"recipe\"");
+    }
+
+    #[test]
+    fn material_profile_round_trips_with_defaults() {
+        let profile = MaterialProfileV1 {
+            kind: "iron_ingot".to_string(),
+            tier: 2,
+            category: "intermediate".to_string(),
+            stack_limit: 500,
+            transport_loss_class: MaterialTransportLossClass::Medium,
+            decay_bps_per_tick: 10,
+            default_priority: MaterialDefaultPriority::Standard,
+        };
+        let json = serde_json::to_vec(&profile).expect("serialize material profile");
+        let decoded: MaterialProfileV1 =
+            serde_json::from_slice(&json).expect("deserialize material profile");
+        assert_eq!(decoded, profile);
+
+        let legacy = serde_json::json!({
+            "kind": "copper_ore",
+            "tier": 1,
+            "category": "ore",
+            "stack_limit": 800
+        });
+        let legacy_decoded: MaterialProfileV1 =
+            serde_json::from_value(legacy).expect("deserialize legacy material profile");
+        assert_eq!(
+            legacy_decoded.transport_loss_class,
+            MaterialTransportLossClass::Medium
+        );
+        assert_eq!(
+            legacy_decoded.default_priority,
+            MaterialDefaultPriority::Standard
+        );
+    }
+
+    #[test]
+    fn product_and_recipe_profiles_round_trip_json() {
+        let product = ProductProfileV1 {
+            product_id: "module_rack".to_string(),
+            role_tag: "scale".to_string(),
+            maintenance_sink: vec![MaterialStack::new("hardware_part", 1)],
+            tradable: true,
+            unlock_stage: "scale_out".to_string(),
+        };
+        let recipe = RecipeProfileV1 {
+            recipe_id: "recipe.assembler.module_rack".to_string(),
+            bottleneck_tags: vec!["control_chip".to_string(), "sensor_pack".to_string()],
+            stage_gate: "scale_out".to_string(),
+            preferred_factory_tags: vec!["assembler".to_string(), "precision".to_string()],
+        };
+        let product_json = serde_json::to_vec(&product).expect("serialize product profile");
+        let recipe_json = serde_json::to_vec(&recipe).expect("serialize recipe profile");
+        let product_decoded: ProductProfileV1 =
+            serde_json::from_slice(&product_json).expect("deserialize product profile");
+        let recipe_decoded: RecipeProfileV1 =
+            serde_json::from_slice(&recipe_json).expect("deserialize recipe profile");
+        assert_eq!(product_decoded, product);
+        assert_eq!(recipe_decoded, recipe);
     }
 
     #[test]

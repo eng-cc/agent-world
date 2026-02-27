@@ -11,9 +11,10 @@ use super::super::{
     EpochSettlementReport, MainTokenAccountBalance, MainTokenConfig, MainTokenEpochIssuanceRecord,
     MainTokenGenesisAllocationBucketState, MainTokenNodePointsBridgeEpochRecord,
     MainTokenScheduledPolicyUpdate, MainTokenSupplyState, MainTokenTreasuryDistributionRecord,
-    MaterialLedgerId, MaterialStack, NodeAssetBalance, NodeRewardMintRecord, ProtocolPowerReserve,
-    RewardAssetConfig, RewardAssetInvariantReport, RewardAssetInvariantViolation,
-    RewardSignatureGovernancePolicy, SystemOrderPoolBudget,
+    MaterialLedgerId, MaterialProfileV1, MaterialStack, NodeAssetBalance, NodeRewardMintRecord,
+    ProductProfileV1, ProtocolPowerReserve, RecipeProfileV1, RewardAssetConfig,
+    RewardAssetInvariantReport, RewardAssetInvariantViolation, RewardSignatureGovernancePolicy,
+    SystemOrderPoolBudget,
 };
 use super::World;
 use crate::simulator::ResourceKind;
@@ -774,6 +775,62 @@ impl World {
             })?;
         *entry = next;
         Ok(*entry)
+    }
+
+    pub fn material_profile(&self, material_kind: &str) -> Option<&MaterialProfileV1> {
+        self.state.material_profiles.get(material_kind)
+    }
+
+    pub fn product_profile(&self, product_id: &str) -> Option<&ProductProfileV1> {
+        self.state.product_profiles.get(product_id)
+    }
+
+    pub fn recipe_profile(&self, recipe_id: &str) -> Option<&RecipeProfileV1> {
+        self.state.recipe_profiles.get(recipe_id)
+    }
+
+    pub fn upsert_material_profile(
+        &mut self,
+        profile: MaterialProfileV1,
+    ) -> Result<(), WorldError> {
+        if profile.kind.trim().is_empty() {
+            return Err(WorldError::ResourceBalanceInvalid {
+                reason: "material profile kind cannot be empty".to_string(),
+            });
+        }
+        if profile.tier == 0 {
+            return Err(WorldError::ResourceBalanceInvalid {
+                reason: format!("material profile tier must be >= 1: {}", profile.kind),
+            });
+        }
+        self.state
+            .material_profiles
+            .insert(profile.kind.clone(), profile);
+        Ok(())
+    }
+
+    pub fn upsert_product_profile(&mut self, profile: ProductProfileV1) -> Result<(), WorldError> {
+        if profile.product_id.trim().is_empty() {
+            return Err(WorldError::ResourceBalanceInvalid {
+                reason: "product profile product_id cannot be empty".to_string(),
+            });
+        }
+        self.state
+            .product_profiles
+            .insert(profile.product_id.clone(), profile);
+        Ok(())
+    }
+
+    pub fn upsert_recipe_profile(&mut self, profile: RecipeProfileV1) -> Result<(), WorldError> {
+        if profile.recipe_id.trim().is_empty() {
+            return Err(WorldError::ResourceBalanceInvalid {
+                reason: "recipe profile recipe_id cannot be empty".to_string(),
+            });
+        }
+        self.state
+            .recipe_profiles
+            .insert(profile.recipe_id.clone(), profile);
+        Ok(())
     }
 
     pub fn material_balance(&self, material_kind: &str) -> i64 {
