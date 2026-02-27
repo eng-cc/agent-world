@@ -52,7 +52,7 @@ const DEFAULT_MAX_INFLIGHT_EFFECTS: usize = 8_192;
 const DEFAULT_MAX_JOURNAL_EVENTS: usize = 65_536;
 pub(super) const BUILTIN_MODULE_SIGNER_NODE_ID: &str = "builtin.module.release.signer";
 pub(super) const BUILTIN_MODULE_SIGNER_PUBLIC_KEY_HEX: &str =
-    "4b97aa20b3abd613401d4f5778eab8b6c019bd2ea912d1ce2234868536389ebb";
+    "f61424cc8b1f0141f393ef95313a52c1ac4e4674fe182ebeb9234c27038a5b02";
 #[cfg(any(test, feature = "test_tier_required", feature = "test_tier_full"))]
 pub(super) const TEST_MODULE_SIGNER_NODE_ID: &str = "test.module.release.signer";
 

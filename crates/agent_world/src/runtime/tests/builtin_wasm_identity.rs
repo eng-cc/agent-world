@@ -45,7 +45,7 @@ fn builtin_identity_manifest_resolves_m4_entry() {
 fn builtin_identity_manifest_resolves_m5_entry() {
     let identity = m5_builtin_module_artifact_identity(
         "m5.gameplay.war.core",
-        "d8bfe226e856e87050d37b7d22f1e7b3dd069ab2aacdf114c56223749e09042c",
+        "9c19a832b28ddb8ee4db1dcc73dd41fe34b34c077a0f9386599e45bf466f8c15",
     )
     .expect("resolve m5 identity");
     assert!(identity.is_complete());

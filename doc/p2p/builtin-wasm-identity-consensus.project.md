@@ -14,6 +14,7 @@
 - [x] BWI-11 门禁与流程改造：`scripts/ci-tests.sh required` 覆盖 `m1/m4/m5 --check`，文档与测试手册同步
 - [x] BWI-12 过时方案归档：将 hash-only 旧设计文档迁移到 `archive/` 并修复活跃引用
 - [x] BWI-13 回归收口：required tier + 定向 materializer 测试 + 清单校验 + 文档状态更新
+- [x] BWI-14 维护收口：更新 m1/m5 hash 后补齐 m1/m4/m5 identity 重签，并同步 builtin signer 公钥
 
 ## 依赖
 - `scripts/sync-m1-builtin-wasm-artifacts.sh`
@@ -31,5 +32,5 @@
 - `crates/agent_world/src/runtime/world/bootstrap_gameplay.rs`
 
 ## 状态
-- 当前阶段：已完成（BWI-13）
-- 最近更新：BWI-13 完成，项目收口（2026-02-20）
+- 当前阶段：已完成（BWI-14）
+- 最近更新：BWI-14 完成，hash+identity+签名闭环回归通过（2026-02-27）
