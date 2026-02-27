@@ -165,11 +165,23 @@ fn live_world_reset_rebuilds_kernel() {
 fn live_server_config_supports_llm_mode() {
     let config = ViewerLiveServerConfig::new(WorldScenario::Minimal);
     assert_eq!(config.decision_mode, ViewerLiveDecisionMode::Script);
+    assert_eq!(
+        config.script_pacing_mode,
+        ViewerLiveScriptPacingMode::TimerPulse
+    );
     assert!(config.consensus_gate_max_tick.is_none());
     assert!(config.consensus_runtime.is_none());
 
     let llm_config = config.clone().with_llm_mode(true);
     assert_eq!(llm_config.decision_mode, ViewerLiveDecisionMode::Llm);
+
+    let event_drive_config = config
+        .clone()
+        .with_script_pacing_mode(ViewerLiveScriptPacingMode::EventDrive);
+    assert_eq!(
+        event_drive_config.script_pacing_mode,
+        ViewerLiveScriptPacingMode::EventDrive
+    );
 
     let script_config = llm_config.with_decision_mode(ViewerLiveDecisionMode::Script);
     assert_eq!(script_config.decision_mode, ViewerLiveDecisionMode::Script);
@@ -184,6 +196,7 @@ fn live_world_consensus_gate_limits_step_budget() {
         config,
         init,
         ViewerLiveDecisionMode::Script,
+        ViewerLiveScriptPacingMode::TimerPulse,
         Some(Arc::clone(&gate)),
         None,
     )
@@ -398,6 +411,21 @@ fn live_world_drive_modes_split_pulse_and_event_paths() {
     assert!(script_world.should_use_playback_pulse());
     assert!(!script_world.uses_non_consensus_event_drive());
 
+    let script_event_config = WorldConfig::default();
+    let script_event_init =
+        WorldInitConfig::from_scenario(WorldScenario::Minimal, &script_event_config);
+    let script_event_world = LiveWorld::new_with_consensus_gate(
+        script_event_config,
+        script_event_init,
+        ViewerLiveDecisionMode::Script,
+        ViewerLiveScriptPacingMode::EventDrive,
+        None,
+        None,
+    )
+    .expect("init");
+    assert!(!script_event_world.should_use_playback_pulse());
+    assert!(script_event_world.uses_non_consensus_event_drive());
+
     set_test_llm_env();
     let llm_config = WorldConfig::default();
     let mut llm_init = WorldInitConfig::default();
@@ -409,6 +437,30 @@ fn live_world_drive_modes_split_pulse_and_event_paths() {
         LiveWorld::new(llm_config, llm_init, ViewerLiveDecisionMode::Llm).expect("init");
     assert!(!llm_world.should_use_playback_pulse());
     assert!(llm_world.uses_non_consensus_event_drive());
+}
+
+#[test]
+fn live_world_script_event_drive_stops_requeue_on_idle_step() {
+    let config = WorldConfig::default();
+    let mut init = WorldInitConfig::default();
+    init.agents = crate::simulator::AgentSpawnConfig {
+        count: 0,
+        ..crate::simulator::AgentSpawnConfig::default()
+    };
+    let mut world = LiveWorld::new_with_consensus_gate(
+        config,
+        init,
+        ViewerLiveDecisionMode::Script,
+        ViewerLiveScriptPacingMode::EventDrive,
+        None,
+        None,
+    )
+    .expect("init");
+
+    let step = world.step().expect("step");
+    assert!(step.event.is_none());
+    assert!(step.decision_trace.is_none());
+    assert!(!world.should_requeue_non_consensus_drive(&step));
 }
 
 #[test]
@@ -924,6 +976,7 @@ fn live_world_consensus_bridge_applies_only_committed_actions() {
         config,
         init,
         ViewerLiveDecisionMode::Script,
+        ViewerLiveScriptPacingMode::TimerPulse,
         None,
         Some(Arc::clone(&shared_runtime)),
     )
@@ -1126,6 +1179,7 @@ fn consensus_commit_signal_thread_emits_on_committed_batches() {
         config,
         init,
         ViewerLiveDecisionMode::Script,
+        ViewerLiveScriptPacingMode::TimerPulse,
         None,
         Some(Arc::clone(&shared_runtime)),
     )

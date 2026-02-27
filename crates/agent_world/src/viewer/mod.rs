@@ -13,7 +13,8 @@ pub use auth::{
 };
 pub use demo::{generate_viewer_demo, ViewerDemoError, ViewerDemoSummary};
 pub use live::{
-    ViewerLiveDecisionMode, ViewerLiveServer, ViewerLiveServerConfig, ViewerLiveServerError,
+    ViewerLiveDecisionMode, ViewerLiveScriptPacingMode, ViewerLiveServer, ViewerLiveServerConfig,
+    ViewerLiveServerError,
 };
 pub use protocol::{
     AgentChatAck, AgentChatError, AgentChatRequest, PlayerAuthProof, PlayerAuthScheme,

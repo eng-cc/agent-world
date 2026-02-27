@@ -44,6 +44,12 @@ pub enum ViewerLiveDecisionMode {
     Llm,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ViewerLiveScriptPacingMode {
+    TimerPulse,
+    EventDrive,
+}
+
 #[derive(Debug, Clone)]
 pub struct ViewerLiveServerConfig {
     pub bind_addr: String,
@@ -51,6 +57,7 @@ pub struct ViewerLiveServerConfig {
     pub scenario: WorldScenario,
     pub world_id: String,
     pub decision_mode: ViewerLiveDecisionMode,
+    pub script_pacing_mode: ViewerLiveScriptPacingMode,
     pub consensus_gate_max_tick: Option<Arc<AtomicU64>>,
     pub consensus_runtime: Option<Arc<Mutex<NodeRuntime>>>,
 }
@@ -63,6 +70,7 @@ impl ViewerLiveServerConfig {
             world_id: format!("live-{}", scenario.as_str()),
             scenario,
             decision_mode: ViewerLiveDecisionMode::Script,
+            script_pacing_mode: ViewerLiveScriptPacingMode::TimerPulse,
             consensus_gate_max_tick: None,
             consensus_runtime: None,
         }
@@ -85,6 +93,11 @@ impl ViewerLiveServerConfig {
 
     pub fn with_decision_mode(mut self, mode: ViewerLiveDecisionMode) -> Self {
         self.decision_mode = mode;
+        self
+    }
+
+    pub fn with_script_pacing_mode(mut self, mode: ViewerLiveScriptPacingMode) -> Self {
+        self.script_pacing_mode = mode;
         self
     }
 
@@ -171,6 +184,7 @@ impl ViewerLiveServer {
                 WorldConfig::default(),
                 init,
                 config.decision_mode,
+                config.script_pacing_mode,
                 Some(max_tick),
                 config.consensus_runtime.clone(),
             )?
@@ -179,6 +193,7 @@ impl ViewerLiveServer {
                 WorldConfig::default(),
                 init,
                 config.decision_mode,
+                config.script_pacing_mode,
                 None,
                 config.consensus_runtime.clone(),
             )?
@@ -523,8 +538,9 @@ impl ViewerLiveServer {
             return Ok(false);
         }
         let step = self.world.step()?;
+        let should_requeue = self.world.should_requeue_non_consensus_drive(&step);
         self.emit_step_outcome(session, writer, step, false)?;
-        Ok(self.world.should_step_on_playback_pulse())
+        Ok(should_requeue)
     }
 
     fn handle_step_request(
@@ -616,6 +632,7 @@ struct LiveWorld {
     init: WorldInitConfig,
     kernel: WorldKernel,
     decision_mode: ViewerLiveDecisionMode,
+    script_pacing_mode: ViewerLiveScriptPacingMode,
     driver: LiveDriver,
     llm_decision_mailbox: u64,
     consensus_gate_max_tick: Option<Arc<AtomicU64>>,
@@ -639,13 +656,21 @@ impl LiveWorld {
         init: WorldInitConfig,
         decision_mode: ViewerLiveDecisionMode,
     ) -> Result<Self, ViewerLiveServerError> {
-        Self::new_with_consensus_gate(config, init, decision_mode, None, None)
+        Self::new_with_consensus_gate(
+            config,
+            init,
+            decision_mode,
+            ViewerLiveScriptPacingMode::TimerPulse,
+            None,
+            None,
+        )
     }
 
     fn new_with_consensus_gate(
         config: WorldConfig,
         init: WorldInitConfig,
         decision_mode: ViewerLiveDecisionMode,
+        script_pacing_mode: ViewerLiveScriptPacingMode,
         consensus_gate_max_tick: Option<Arc<AtomicU64>>,
         consensus_runtime: Option<Arc<Mutex<NodeRuntime>>>,
     ) -> Result<Self, ViewerLiveServerError> {
@@ -661,6 +686,7 @@ impl LiveWorld {
             init,
             kernel,
             decision_mode,
+            script_pacing_mode,
             driver,
             llm_decision_mailbox,
             consensus_gate_max_tick,
@@ -688,11 +714,21 @@ impl LiveWorld {
     }
 
     fn should_use_playback_pulse(&self) -> bool {
-        !self.uses_consensus_bridge() && matches!(&self.driver, LiveDriver::Script(_))
+        !self.uses_consensus_bridge()
+            && matches!(&self.driver, LiveDriver::Script(_))
+            && self.script_pacing_mode == ViewerLiveScriptPacingMode::TimerPulse
     }
 
     fn uses_non_consensus_event_drive(&self) -> bool {
-        !self.uses_consensus_bridge() && matches!(&self.driver, LiveDriver::Llm(_))
+        if self.uses_consensus_bridge() {
+            return false;
+        }
+        match &self.driver {
+            LiveDriver::Script(_) => {
+                self.script_pacing_mode == ViewerLiveScriptPacingMode::EventDrive
+            }
+            LiveDriver::Llm(_) => true,
+        }
     }
 
     fn consensus_batches_handle(
@@ -786,6 +822,19 @@ impl LiveWorld {
         }
         match &self.driver {
             LiveDriver::Script(_) => true,
+            LiveDriver::Llm(_) => self.llm_mailbox_has_pending(),
+        }
+    }
+
+    fn should_requeue_non_consensus_drive(&self, step: &LiveStepResult) -> bool {
+        if self.consensus_bridge.is_some() {
+            return false;
+        }
+        match &self.driver {
+            LiveDriver::Script(_) => {
+                self.script_pacing_mode == ViewerLiveScriptPacingMode::EventDrive
+                    && step.event.is_some()
+            }
             LiveDriver::Llm(_) => self.llm_mailbox_has_pending(),
         }
     }
