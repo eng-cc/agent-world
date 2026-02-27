@@ -18,8 +18,7 @@ fn live_server_accepts_client_and_emits_snapshot_and_event() {
 
     let mut server = ViewerLiveServer::new(
         ViewerLiveServerConfig::new(WorldScenario::TwinRegionBootstrap)
-            .with_bind_addr(addr.clone())
-            .with_tick_interval(Duration::from_millis(10)),
+            .with_bind_addr(addr.clone()),
     )
     .expect("server");
 

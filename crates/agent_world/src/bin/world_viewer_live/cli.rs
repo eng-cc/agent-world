@@ -39,7 +39,6 @@ pub(super) struct CliOptions {
     pub scenario: WorldScenario,
     pub bind_addr: String,
     pub web_bind_addr: Option<String>,
-    pub tick_ms: u64,
     pub llm_mode: bool,
     pub node_topology: NodeTopologyMode,
     pub triad_gossip_base_port: u16,
@@ -80,7 +79,6 @@ impl Default for CliOptions {
             scenario: WorldScenario::TwinRegionBootstrap,
             bind_addr: "127.0.0.1:5010".to_string(),
             web_bind_addr: None,
-            tick_ms: 200,
             llm_mode: true,
             node_topology: NodeTopologyMode::Triad,
             triad_gossip_base_port: 5500,
@@ -265,16 +263,6 @@ pub(super) fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<C
                     .next()
                     .ok_or_else(|| "--bind requires an address".to_string())?
                     .to_string();
-            }
-            "--tick-ms" => {
-                let raw = iter
-                    .next()
-                    .ok_or_else(|| "--tick-ms requires a positive integer".to_string())?;
-                options.tick_ms = raw
-                    .parse::<u64>()
-                    .ok()
-                    .filter(|value| *value > 0)
-                    .ok_or_else(|| "--tick-ms requires a positive integer".to_string())?;
             }
             "--web-bind" => {
                 options.web_bind_addr = Some(
@@ -650,13 +638,12 @@ pub(super) fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<C
 
 pub(super) fn print_help() {
     println!(
-        "Usage: world_viewer_live [scenario] [--bind <addr>] [--web-bind <addr>] [--tick-ms <ms>] [--llm|--no-llm] [--no-node] [--node-validator <id:stake>...] [--node-gossip-bind <addr:port>] [--node-gossip-peer <addr:port>...]"
+        "Usage: world_viewer_live [scenario] [--bind <addr>] [--web-bind <addr>] [--llm|--no-llm] [--no-node] [--node-validator <id:stake>...] [--node-gossip-bind <addr:port>] [--node-gossip-peer <addr:port>...]"
     );
     println!("Options:");
     println!("  --release-config <path> Enable release-locked launch from TOML locked_args");
     println!("  --bind <addr>     Bind address (default: 127.0.0.1:5010)");
     println!("  --web-bind <addr> WebSocket bridge bind address (optional)");
-    println!("  --tick-ms <ms>    Tick interval in milliseconds (default: 200)");
     println!("  --scenario <name> Scenario name (default: twin_region_bootstrap)");
     println!("  --llm             Enable LLM decisions (default)");
     println!("  --no-llm          Disable LLM decisions and use built-in script");

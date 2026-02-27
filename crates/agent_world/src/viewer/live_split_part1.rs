@@ -246,9 +246,15 @@ impl ViewerLiveServer {
 
         let mut session = ViewerLiveSession::new();
         let result = loop {
-            let signal = match rx.recv() {
+            let signal = match rx.recv_timeout(Duration::from_millis(50)) {
                 Ok(signal) => signal,
-                Err(_) => break Ok(()),
+                Err(mpsc::RecvTimeoutError::Timeout) => {
+                    if !loop_running.load(Ordering::SeqCst) {
+                        break Ok(());
+                    }
+                    continue;
+                }
+                Err(mpsc::RecvTimeoutError::Disconnected) => break Ok(()),
             };
             let signal_kind = signal.kind();
             let signal_started_at = Instant::now();

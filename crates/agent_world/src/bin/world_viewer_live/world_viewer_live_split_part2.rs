@@ -50,7 +50,7 @@ fn start_reward_runtime_worker(
         settlement_leader_stale_ms: options.reward_runtime_leader_stale_ms,
         settlement_failover_enabled: options.reward_runtime_failover_enabled,
         reward_network,
-        poll_interval: Duration::from_millis(options.tick_ms),
+        poll_interval: Duration::from_millis(options.node_tick_ms),
         signer_node_id,
         signer_private_key_hex: signer_keypair.private_key_hex,
         signer_public_key_hex: signer_keypair.public_key_hex,

@@ -148,7 +148,6 @@ fn parse_options_defaults() {
     assert_eq!(options.scenario, WorldScenario::TwinRegionBootstrap);
     assert_eq!(options.bind_addr, "127.0.0.1:5010");
     assert!(options.web_bind_addr.is_none());
-    assert_eq!(options.tick_ms, 200);
     assert!(options.llm_mode);
     assert_eq!(options.node_topology, NodeTopologyMode::Triad);
     assert_eq!(options.triad_gossip_base_port, 5500);
@@ -245,8 +244,6 @@ fn parse_options_reads_custom_values() {
             "127.0.0.1:9001",
             "--web-bind",
             "127.0.0.1:9002",
-            "--tick-ms",
-            "50",
             "--viewer-no-consensus-gate",
             "--node-id",
             "viewer-live-1",
@@ -327,7 +324,6 @@ fn parse_options_reads_custom_values() {
     assert_eq!(options.scenario, WorldScenario::LlmBootstrap);
     assert_eq!(options.bind_addr, "127.0.0.1:9001");
     assert_eq!(options.web_bind_addr.as_deref(), Some("127.0.0.1:9002"));
-    assert_eq!(options.tick_ms, 50);
     assert_eq!(options.node_topology, NodeTopologyMode::Single);
     assert!(!options.viewer_consensus_gate);
     assert_eq!(options.node_id, "viewer-live-1");
@@ -466,9 +462,10 @@ fn parse_options_reads_custom_values() {
 }
 
 #[test]
-fn parse_options_rejects_zero_tick_ms() {
-    let err = parse_options(["--tick-ms", "0"].into_iter()).expect_err("reject zero");
-    assert!(err.contains("positive integer"));
+fn parse_options_rejects_legacy_tick_ms_flag() {
+    let err = parse_options(["llm_bootstrap", "--tick-ms", "0"].into_iter())
+        .expect_err("reject legacy flag");
+    assert!(err.contains("unexpected argument: --tick-ms"));
 }
 
 #[test]
@@ -568,14 +565,14 @@ fn parse_launch_options_release_config_rejects_disallowed_flags() {
         [
             "--release-config",
             path.to_string_lossy().as_ref(),
-            "--tick-ms",
+            "--node-tick-ms",
             "10",
         ]
         .into_iter(),
     )
     .expect_err("release config should reject non-whitelist flags");
     assert!(err.contains("--release-config mode only allows"));
-    assert!(err.contains("--tick-ms"));
+    assert!(err.contains("--node-tick-ms"));
 
     let _ = fs::remove_file(path.as_path());
 }
