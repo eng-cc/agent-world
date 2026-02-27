@@ -1,5 +1,3 @@
-use bevy::prelude::*;
-
 #[cfg(target_arch = "wasm32")]
 use crate::viewer_automation::{
     enqueue_runtime_steps, parse_automation_mode, parse_automation_steps, parse_automation_target,
@@ -10,12 +8,11 @@ use crate::{OrbitCamera, Viewer3dCamera, ViewerCameraMode};
 use crate::{ViewerAutomationState, ViewerClient, ViewerSelection, ViewerState};
 #[cfg(target_arch = "wasm32")]
 use agent_world::viewer::{ViewerControl, ViewerRequest};
-
+use bevy::prelude::*;
 #[cfg(target_arch = "wasm32")]
 use std::cell::RefCell;
 #[cfg(target_arch = "wasm32")]
 use std::collections::VecDeque;
-
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::closure::Closure;
 #[cfg(target_arch = "wasm32")]
@@ -24,7 +21,6 @@ use wasm_bindgen::{JsCast, JsValue};
 use web_sys::js_sys::{Array, Object, Reflect as JsReflect};
 #[cfg(target_arch = "wasm32")]
 use web_sys::UrlSearchParams;
-
 #[cfg(target_arch = "wasm32")]
 const TEST_API_QUERY_KEY: &str = "test_api";
 #[cfg(target_arch = "wasm32")]
@@ -33,7 +29,6 @@ const TEST_API_GLOBAL_NAME: &str = "__AW_TEST__";
 const WEB_TEST_API_CONTROL_ACTIONS: [&str; 5] = ["play", "pause", "step", "seek", "seek_event"];
 #[cfg(target_arch = "wasm32")]
 const CONTROL_STALL_FRAME_THRESHOLD: u32 = 150;
-
 #[cfg(target_arch = "wasm32")]
 enum WebTestApiCommand {
     EnqueueSteps(Vec<crate::viewer_automation::ViewerAutomationStep>),
@@ -46,7 +41,6 @@ enum WebTestApiCommand {
         feedback_id: u64,
     },
 }
-
 #[cfg(target_arch = "wasm32")]
 #[derive(Clone, Debug)]
 struct WebTestApiControlFeedback {
@@ -66,7 +60,6 @@ struct WebTestApiControlFeedback {
     awaiting_effect: bool,
     no_progress_frames: u32,
 }
-
 #[derive(Clone, Debug)]
 pub(super) struct WebTestApiControlFeedbackSnapshot {
     pub(super) action: String,
@@ -75,7 +68,6 @@ pub(super) struct WebTestApiControlFeedbackSnapshot {
     pub(super) hint: Option<String>,
     pub(super) effect: String,
 }
-
 #[cfg(target_arch = "wasm32")]
 #[derive(Clone, Debug)]
 struct WebTestApiStateSnapshot {
@@ -93,7 +85,6 @@ struct WebTestApiStateSnapshot {
     camera_ortho_scale: f64,
     last_control_feedback: Option<WebTestApiControlFeedback>,
 }
-
 #[cfg(target_arch = "wasm32")]
 impl Default for WebTestApiStateSnapshot {
     fn default() -> Self {
@@ -114,14 +105,12 @@ impl Default for WebTestApiStateSnapshot {
         }
     }
 }
-
 #[cfg(target_arch = "wasm32")]
 thread_local! {
     static WEB_TEST_API_COMMAND_QUEUE: RefCell<VecDeque<WebTestApiCommand>> = RefCell::new(VecDeque::new());
     static WEB_TEST_API_STATE_SNAPSHOT: RefCell<WebTestApiStateSnapshot> = RefCell::new(WebTestApiStateSnapshot::default());
     static WEB_TEST_API_CONTROL_FEEDBACK_ID: RefCell<u64> = const { RefCell::new(0) };
 }
-
 #[cfg(target_arch = "wasm32")]
 pub(super) struct WebTestApiBindings {
     _api: Object,
@@ -238,7 +227,6 @@ fn control_description(action: &str, is_zh: bool) -> &'static str {
         (_, false) => "Unknown action",
     }
 }
-
 #[cfg(target_arch = "wasm32")]
 fn build_control_catalog_js_value() -> JsValue {
     let object = Object::new();
@@ -275,7 +263,6 @@ fn build_control_catalog_js_value() -> JsValue {
     );
     JsValue::from(object)
 }
-
 #[cfg(target_arch = "wasm32")]
 fn parse_control_example_action(payload: &JsValue) -> Option<String> {
     let action = parse_string_payload(payload)?;
@@ -288,7 +275,6 @@ fn parse_control_example_action(payload: &JsValue) -> Option<String> {
         .find(|candidate| **candidate == action)
         .map(|_| action)
 }
-
 #[cfg(target_arch = "wasm32")]
 fn parse_control_action_label(control: &ViewerControl) -> String {
     match control {
@@ -298,7 +284,6 @@ fn parse_control_action_label(control: &ViewerControl) -> String {
         ViewerControl::Seek { tick } => format!("seek(tick={tick})"),
     }
 }
-
 #[cfg(target_arch = "wasm32")]
 fn control_action_hint(action: &str, locale_zh: bool) -> String {
     match (action, locale_zh) {
@@ -312,7 +297,6 @@ fn control_action_hint(action: &str, locale_zh: bool) -> String {
         (_, false) => "Valid actions: play, pause, step, seek, seek_event".to_string(),
     }
 }
-
 #[cfg(target_arch = "wasm32")]
 fn update_last_control_feedback(feedback: WebTestApiControlFeedback) {
     WEB_TEST_API_STATE_SNAPSHOT.with(|slot| {
@@ -1063,6 +1047,7 @@ pub(super) fn publish_web_test_api_state(
     selection: Res<ViewerSelection>,
     camera_mode: Res<ViewerCameraMode>,
     cameras: Query<(&OrbitCamera, &Projection), With<Viewer3dCamera>>,
+    client: Option<Res<ViewerClient>>,
 ) {
     WEB_TEST_API_STATE_SNAPSHOT.with(|slot| {
         let mut snapshot = slot.borrow_mut();
@@ -1153,14 +1138,44 @@ pub(super) fn publish_web_test_api_state(
                 } else if connection_ready {
                     feedback.no_progress_frames = feedback.no_progress_frames.saturating_add(1);
                     if feedback.no_progress_frames >= CONTROL_STALL_FRAME_THRESHOLD {
-                        feedback.stage = "blocked".to_string();
-                        feedback.reason = Some(
-                            "no world delta observed while connected (control stalled)".to_string(),
-                        );
-                        feedback.hint =
-                            Some(control_action_hint(feedback.action.as_str(), false));
-                        feedback.effect = "accepted without observed progress".to_string();
-                        feedback.awaiting_effect = false;
+                        if feedback.action == "step" {
+                            let recovery_tick = latest_logical_time.saturating_add(1);
+                            let recovered = client.as_ref().is_some_and(|viewer_client| {
+                                viewer_client
+                                    .tx
+                                    .send(ViewerRequest::Control {
+                                        mode: ViewerControl::Seek {
+                                            tick: recovery_tick,
+                                        },
+                                    })
+                                    .is_ok()
+                            });
+                            feedback.reason = Some(format!(
+                                "Cause: step accepted but no world delta within stall window ({} frames)",
+                                CONTROL_STALL_FRAME_THRESHOLD
+                            ));
+                            if recovered {
+                                feedback.stage = "executing".to_string();
+                                feedback.hint = Some(format!("Next: auto recovery dispatched seek(tick={recovery_tick}); if still stalled, try play or seek +12"));
+                                feedback.effect = "step stalled, auto recovery seek dispatched".to_string();
+                                feedback.baseline_logical_time = latest_logical_time;
+                                feedback.baseline_event_seq = latest_event_seq;
+                                feedback.no_progress_frames = 0;
+                            } else {
+                                feedback.stage = "blocked".to_string();
+                                feedback.hint =
+                                    Some("Next: use play / seek, then retry step".to_string());
+                                feedback.effect = "accepted without observed progress".to_string();
+                                feedback.awaiting_effect = false;
+                            }
+                        } else {
+                            feedback.stage = "blocked".to_string();
+                            feedback.reason =
+                                Some("Cause: no world delta observed while connected".to_string());
+                            feedback.hint = Some(control_action_hint(feedback.action.as_str(), false));
+                            feedback.effect = "accepted without observed progress".to_string();
+                            feedback.awaiting_effect = false;
+                        }
                     } else {
                         feedback.stage = "executing".to_string();
                         feedback.effect = "queued, waiting for next world delta".to_string();
@@ -1180,5 +1195,6 @@ pub(super) fn publish_web_test_api_state(
     _selection: Res<ViewerSelection>,
     _camera_mode: Res<ViewerCameraMode>,
     _cameras: Query<(&OrbitCamera, &Projection), With<Viewer3dCamera>>,
+    _client: Option<Res<ViewerClient>>,
 ) {
 }
