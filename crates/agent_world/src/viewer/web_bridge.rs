@@ -12,7 +12,6 @@ use tungstenite::{accept, Error as WsError};
 pub struct ViewerWebBridgeConfig {
     pub bind_addr: String,
     pub upstream_addr: String,
-    pub poll_interval: Duration,
 }
 
 impl ViewerWebBridgeConfig {
@@ -20,13 +19,7 @@ impl ViewerWebBridgeConfig {
         Self {
             bind_addr: bind_addr.into(),
             upstream_addr: upstream_addr.into(),
-            poll_interval: Duration::from_millis(10),
         }
-    }
-
-    pub fn with_poll_interval(mut self, interval: Duration) -> Self {
-        self.poll_interval = interval;
-        self
     }
 }
 
@@ -75,8 +68,12 @@ impl ViewerWebBridge {
     }
 
     fn serve_stream(&self, stream: TcpStream) -> Result<(), ViewerWebBridgeError> {
+        const WS_READ_TIMEOUT: Duration = Duration::from_millis(20);
+
         let mut websocket = accept(stream).map_err(map_handshake_error)?;
-        websocket.get_mut().set_nonblocking(true)?;
+        websocket
+            .get_mut()
+            .set_read_timeout(Some(WS_READ_TIMEOUT))?;
 
         let upstream = TcpStream::connect(&self.config.upstream_addr)?;
         upstream.set_nodelay(true)?;
@@ -98,6 +95,7 @@ impl ViewerWebBridge {
                         }
                     }
                     Err(WsError::Io(err)) if err.kind() == io::ErrorKind::WouldBlock => {}
+                    Err(WsError::Io(err)) if err.kind() == io::ErrorKind::TimedOut => {}
                     Err(WsError::ConnectionClosed) | Err(WsError::AlreadyClosed) => break,
                     Err(err) => return Err(err.into()),
                 }
@@ -111,8 +109,6 @@ impl ViewerWebBridge {
                         Err(mpsc::TryRecvError::Disconnected) => return Ok(()),
                     }
                 }
-
-                thread::sleep(self.config.poll_interval);
             }
             Ok(())
         })();
@@ -208,7 +204,6 @@ mod tests {
         let config = ViewerWebBridgeConfig::new("127.0.0.1:5011", "127.0.0.1:5010");
         assert_eq!(config.bind_addr, "127.0.0.1:5011");
         assert_eq!(config.upstream_addr, "127.0.0.1:5010");
-        assert_eq!(config.poll_interval, Duration::from_millis(10));
     }
 
     #[test]
@@ -266,10 +261,10 @@ mod tests {
                 .expect("send session2 line");
         });
 
-        let bridge = ViewerWebBridge::new(
-            ViewerWebBridgeConfig::new("127.0.0.1:0", upstream_addr.to_string())
-                .with_poll_interval(Duration::from_millis(1)),
-        );
+        let bridge = ViewerWebBridge::new(ViewerWebBridgeConfig::new(
+            "127.0.0.1:0",
+            upstream_addr.to_string(),
+        ));
 
         run_ws_session(&bridge, "first-request");
         assert_eq!(
