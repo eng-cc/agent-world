@@ -42,3 +42,12 @@
 - Web Test API 在 wasm 场景下返回对象结构新增字段，可能影响旧自动化脚本断言。
 - 引导文案改造若与现有玩家模式布局冲突，可能造成 UI 拥挤。
 - 过多调试信息可能干扰普通玩家视图，需要在呈现层保持克制。
+
+## 完成态（2026-02-27）
+- 首局目标已升级为“主目标 + 两个短目标”结构，并接入玩家 Mission HUD。
+- Web Test API 已新增：
+  - `describeControls()`
+  - `fillControlExample(action)`
+  - 结构化 `sendControl(action, payload)` 返回
+  - `getState().lastControlFeedback`
+- 输入解释链路已覆盖“入参解析、失败原因、建议下一步、世界状态增量（logicalTime/eventSeq）”。
