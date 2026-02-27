@@ -23,6 +23,37 @@ const PRODUCT_VALIDATION_EMIT_KIND: &str = "economy.product_validation";
 const FACTORY_DURABILITY_PPM_BASE: i64 = 1_000_000;
 const FACTORY_DEPRECIATION_PPM_PER_MAINTENANCE_UNIT: i64 = 1_000;
 const FACTORY_DEPRECIATION_REASON: &str = "depreciation_tick";
+const SURVIVAL_KEYWORDS: &[&str] = &[
+    "survival",
+    "lifeline",
+    "life",
+    "repair",
+    "maintenance",
+    "critical",
+    "bootstrap",
+    "food",
+    "oxygen",
+    "water",
+];
+const ENERGY_KEYWORDS: &[&str] = &["power", "energy", "electricity", "battery", "grid"];
+const SCALE_KEYWORDS: &[&str] = &[
+    "throughput",
+    "automation",
+    "industry",
+    "production",
+    "factory",
+];
+const EXPANSION_KEYWORDS: &[&str] = &["expand", "outpost", "colony", "colonize", "frontier"];
+const CRITICAL_ELECTRICITY_FLOOR: i64 = 5;
+const CRITICAL_HARDWARE_PART_FLOOR: i64 = 3;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum ProductionQueuePriority {
+    Survival = 0,
+    Energy = 1,
+    Scale = 2,
+    Expansion = 3,
+}
 
 #[derive(Debug, Clone, Serialize)]
 struct ProductValidationModuleCallRequest {
@@ -261,7 +292,13 @@ impl World {
             .filter(|job| job.ready_at <= now)
             .cloned()
             .collect();
-        due_builds.sort_by_key(|job| (job.ready_at, job.job_id));
+        due_builds.sort_by_key(|job| {
+            (
+                self.production_priority_for_factory_job(job) as u8,
+                job.ready_at,
+                job.job_id,
+            )
+        });
 
         for job in due_builds {
             self.append_event(
@@ -285,7 +322,13 @@ impl World {
             .filter(|job| job.ready_at <= now)
             .cloned()
             .collect();
-        due_recipes.sort_by_key(|job| (job.ready_at, job.job_id));
+        due_recipes.sort_by_key(|job| {
+            (
+                self.production_priority_for_recipe_job(job) as u8,
+                job.ready_at,
+                job.job_id,
+            )
+        });
 
         for job in due_recipes {
             self.append_event(
@@ -322,7 +365,13 @@ impl World {
             .filter(|job| job.ready_at <= now)
             .cloned()
             .collect();
-        due_builds.sort_by_key(|job| (job.ready_at, job.job_id));
+        due_builds.sort_by_key(|job| {
+            (
+                self.production_priority_for_factory_job(job) as u8,
+                job.ready_at,
+                job.job_id,
+            )
+        });
 
         for job in due_builds {
             self.append_event(
@@ -346,7 +395,13 @@ impl World {
             .filter(|job| job.ready_at <= now)
             .cloned()
             .collect();
-        due_recipes.sort_by_key(|job| (job.ready_at, job.job_id));
+        due_recipes.sort_by_key(|job| {
+            (
+                self.production_priority_for_recipe_job(job) as u8,
+                job.ready_at,
+                job.job_id,
+            )
+        });
 
         for job in due_recipes {
             let mut committed_produce = job.produce.clone();
@@ -509,6 +564,54 @@ impl World {
             &output,
             RECIPE_EXECUTION_PLAN_EMIT_KIND,
         )
+    }
+
+    fn production_priority_for_factory_job(
+        &self,
+        job: &super::super::FactoryBuildJobState,
+    ) -> ProductionQueuePriority {
+        let mut tokens = vec![
+            job.spec.factory_id.to_ascii_lowercase(),
+            job.spec.display_name.to_ascii_lowercase(),
+        ];
+        tokens.extend(job.spec.tags.iter().map(|tag| tag.to_ascii_lowercase()));
+        production_priority_from_tokens(
+            &tokens,
+            self.is_electricity_critical(),
+            self.is_hardware_parts_critical(),
+            ProductionQueuePriority::Expansion,
+        )
+    }
+
+    fn production_priority_for_recipe_job(
+        &self,
+        job: &super::super::RecipeJobState,
+    ) -> ProductionQueuePriority {
+        let mut tokens = vec![job.recipe_id.to_ascii_lowercase()];
+        tokens.extend(
+            job.produce
+                .iter()
+                .map(|stack| stack.kind.to_ascii_lowercase()),
+        );
+        tokens.extend(
+            job.byproducts
+                .iter()
+                .map(|stack| stack.kind.to_ascii_lowercase()),
+        );
+        production_priority_from_tokens(
+            &tokens,
+            self.is_electricity_critical(),
+            self.is_hardware_parts_critical(),
+            ProductionQueuePriority::Scale,
+        )
+    }
+
+    fn is_electricity_critical(&self) -> bool {
+        self.resource_balance(ResourceKind::Electricity) <= CRITICAL_ELECTRICITY_FLOOR
+    }
+
+    fn is_hardware_parts_critical(&self) -> bool {
+        self.material_balance("hardware_part") <= CRITICAL_HARDWARE_PART_FLOOR
     }
 
     fn evaluate_product_with_module(
@@ -709,4 +812,39 @@ impl World {
             MaterialLedgerId::world()
         }
     }
+}
+
+fn production_priority_from_tokens(
+    tokens: &[String],
+    electricity_critical: bool,
+    hardware_critical: bool,
+    default_priority: ProductionQueuePriority,
+) -> ProductionQueuePriority {
+    if has_any_keyword(tokens, SURVIVAL_KEYWORDS) {
+        return ProductionQueuePriority::Survival;
+    }
+    if hardware_critical && has_keyword(tokens, "repair") {
+        return ProductionQueuePriority::Survival;
+    }
+    if has_any_keyword(tokens, ENERGY_KEYWORDS) {
+        if electricity_critical {
+            return ProductionQueuePriority::Survival;
+        }
+        return ProductionQueuePriority::Energy;
+    }
+    if has_any_keyword(tokens, SCALE_KEYWORDS) {
+        return ProductionQueuePriority::Scale;
+    }
+    if has_any_keyword(tokens, EXPANSION_KEYWORDS) {
+        return ProductionQueuePriority::Expansion;
+    }
+    default_priority
+}
+
+fn has_any_keyword(tokens: &[String], keywords: &[&str]) -> bool {
+    keywords.iter().any(|keyword| has_keyword(tokens, keyword))
+}
+
+fn has_keyword(tokens: &[String], keyword: &str) -> bool {
+    tokens.iter().any(|token| token.contains(keyword))
 }

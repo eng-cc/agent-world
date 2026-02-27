@@ -25,6 +25,7 @@ impl World {
         let _ = self.process_due_economy_jobs()?;
         let _ = self.process_due_material_transits()?;
         let _ = self.process_gameplay_cycles()?;
+        self.refresh_threat_heatmap();
         Ok(())
     }
 
@@ -142,6 +143,7 @@ impl World {
         for event in self.process_gameplay_cycles_with_modules(sandbox)? {
             self.route_event_to_modules(&event, sandbox)?;
         }
+        self.refresh_threat_heatmap();
         Ok(())
     }
 }

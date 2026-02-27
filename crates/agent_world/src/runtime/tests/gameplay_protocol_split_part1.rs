@@ -297,6 +297,83 @@ fn gameplay_protocol_actions_drive_persisted_state() {
 }
 
 #[test]
+fn threat_heatmap_tracks_active_war_and_crisis_risk() {
+    let mut world = World::new();
+    register_agents(&mut world, &["a", "b", "c", "d"]);
+
+    world.submit_action(Action::FormAlliance {
+        proposer_agent_id: "a".to_string(),
+        alliance_id: "alliance.red".to_string(),
+        members: vec!["b".to_string()],
+        charter: "mutual defense".to_string(),
+    });
+    world.step().expect("form red alliance");
+    world.submit_action(Action::FormAlliance {
+        proposer_agent_id: "c".to_string(),
+        alliance_id: "alliance.blue".to_string(),
+        members: vec!["d".to_string()],
+        charter: "mutual defense".to_string(),
+    });
+    world.step().expect("form blue alliance");
+    seed_war_ready_resources(&mut world, &["a"]);
+
+    world.submit_action(Action::DeclareWar {
+        initiator_agent_id: "a".to_string(),
+        war_id: "war.threat.001".to_string(),
+        aggressor_alliance_id: "alliance.red".to_string(),
+        defender_alliance_id: "alliance.blue".to_string(),
+        objective: "threat-map".to_string(),
+        intensity: 3,
+    });
+    world.step().expect("declare war");
+
+    let heatmap = world.threat_heatmap();
+    assert!(heatmap.get("alliance:alliance.red").copied().unwrap_or(0) > 0);
+    assert!(heatmap.get("alliance:alliance.blue").copied().unwrap_or(0) > 0);
+    assert!(heatmap.get("global:war").copied().unwrap_or(0) > 0);
+
+    let crisis_id = advance_until_auto_crisis(&mut world);
+    let crisis_kind = world
+        .state()
+        .crises
+        .get(&crisis_id)
+        .expect("crisis exists")
+        .kind
+        .clone();
+    let heatmap_after_crisis = world.threat_heatmap();
+    assert!(
+        heatmap_after_crisis
+            .get(format!("crisis:{crisis_kind}").as_str())
+            .copied()
+            .unwrap_or(0)
+            > 0
+    );
+    assert!(
+        heatmap_after_crisis
+            .get("global:crisis")
+            .copied()
+            .unwrap_or(0)
+            > 0
+    );
+
+    world.submit_action(Action::ResolveCrisis {
+        resolver_agent_id: "c".to_string(),
+        crisis_id: crisis_id.clone(),
+        strategy: "stabilize".to_string(),
+        success: true,
+    });
+    world.step().expect("resolve crisis");
+    let heatmap_after_resolution = world.threat_heatmap();
+    assert!(
+        heatmap_after_resolution
+            .get("global:crisis")
+            .copied()
+            .unwrap_or(0)
+            == 0
+    );
+}
+
+#[test]
 fn declare_war_rejects_initiator_outside_aggressor_alliance() {
     let mut world = World::new();
     register_agents(&mut world, &["a", "b", "c", "d"]);

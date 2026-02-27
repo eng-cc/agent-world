@@ -31,6 +31,7 @@ impl World {
                 / 10_000)
                 .clamp(0, job.amount as i128) as i64;
             let received_amount = job.amount.saturating_sub(loss_amount);
+            self.record_logistics_sla_completion(job.ready_at, now);
 
             self.append_event(
                 WorldEventBody::Domain(DomainEvent::MaterialTransitCompleted {

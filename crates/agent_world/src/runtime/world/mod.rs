@@ -43,7 +43,8 @@ use super::policy::PolicySet;
 use super::signer::ReceiptSigner;
 use super::snapshot::{Journal, SnapshotCatalog};
 use super::state::WorldState;
-use super::types::{ActionId, IntentSeq, ProposalId, WorldEventId};
+use super::types::{ActionId, IntentSeq, ProposalId, WorldEventId, WorldTime};
+use super::CrisisStatus;
 
 const DEFAULT_MAX_PENDING_ACTIONS: usize = 8_192;
 const DEFAULT_MAX_PENDING_EFFECTS: usize = 8_192;
@@ -97,6 +98,37 @@ pub struct WorldRuntimeBackpressureStats {
     pub journal_events_evicted: u64,
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LogisticsSlaMetrics {
+    pub completed_transits: u64,
+    pub fulfilled_transits: u64,
+    pub breached_transits: u64,
+    pub total_delay_ticks: u64,
+}
+
+impl LogisticsSlaMetrics {
+    pub fn breach_rate(&self) -> f64 {
+        if self.completed_transits == 0 {
+            return 0.0;
+        }
+        self.breached_transits as f64 / self.completed_transits as f64
+    }
+
+    pub fn fulfillment_rate(&self) -> f64 {
+        if self.completed_transits == 0 {
+            return 1.0;
+        }
+        self.fulfilled_transits as f64 / self.completed_transits as f64
+    }
+
+    pub fn average_delay_ticks(&self) -> f64 {
+        if self.completed_transits == 0 {
+            return 0.0;
+        }
+        self.total_delay_ticks as f64 / self.completed_transits as f64
+    }
+}
+
 /// The main World runtime that orchestrates the simulation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct World {
@@ -138,6 +170,10 @@ pub struct World {
     runtime_memory_limits: WorldRuntimeMemoryLimits,
     #[serde(default)]
     runtime_backpressure_stats: WorldRuntimeBackpressureStats,
+    #[serde(default)]
+    logistics_sla_metrics: LogisticsSlaMetrics,
+    #[serde(default)]
+    threat_heatmap: BTreeMap<String, i64>,
 }
 
 impl World {
@@ -192,6 +228,8 @@ impl World {
             receipt_signer: None,
             runtime_memory_limits: WorldRuntimeMemoryLimits::default(),
             runtime_backpressure_stats: WorldRuntimeBackpressureStats::default(),
+            logistics_sla_metrics: LogisticsSlaMetrics::default(),
+            threat_heatmap: BTreeMap::new(),
         }
     }
 
@@ -241,6 +279,14 @@ impl World {
 
     pub fn runtime_backpressure_stats(&self) -> &WorldRuntimeBackpressureStats {
         &self.runtime_backpressure_stats
+    }
+
+    pub fn logistics_sla_metrics(&self) -> &LogisticsSlaMetrics {
+        &self.logistics_sla_metrics
+    }
+
+    pub fn threat_heatmap(&self) -> &BTreeMap<String, i64> {
+        &self.threat_heatmap
     }
 
     pub fn with_runtime_memory_limits(mut self, limits: WorldRuntimeMemoryLimits) -> Self {
@@ -296,6 +342,59 @@ impl World {
     pub(super) fn push_pending_effect_bounded(&mut self, intent: EffectIntent) {
         self.pending_effects.push_back(intent);
         self.enforce_pending_effect_limit();
+    }
+
+    pub(super) fn record_logistics_sla_completion(
+        &mut self,
+        expected_ready_at: WorldTime,
+        completed_at: WorldTime,
+    ) {
+        self.logistics_sla_metrics.completed_transits = self
+            .logistics_sla_metrics
+            .completed_transits
+            .saturating_add(1);
+        if completed_at > expected_ready_at {
+            let delay = completed_at.saturating_sub(expected_ready_at);
+            self.logistics_sla_metrics.breached_transits = self
+                .logistics_sla_metrics
+                .breached_transits
+                .saturating_add(1);
+            self.logistics_sla_metrics.total_delay_ticks = self
+                .logistics_sla_metrics
+                .total_delay_ticks
+                .saturating_add(delay);
+        } else {
+            self.logistics_sla_metrics.fulfilled_transits = self
+                .logistics_sla_metrics
+                .fulfilled_transits
+                .saturating_add(1);
+        }
+    }
+
+    pub(super) fn refresh_threat_heatmap(&mut self) {
+        let mut next = BTreeMap::new();
+        for war in self.state.wars.values() {
+            if !war.active {
+                continue;
+            }
+            let war_risk = (war.intensity as i64).saturating_mul(10).max(10);
+            *next
+                .entry(format!("alliance:{}", war.aggressor_alliance_id))
+                .or_insert(0) += war_risk;
+            *next
+                .entry(format!("alliance:{}", war.defender_alliance_id))
+                .or_insert(0) += war_risk;
+            *next.entry("global:war".to_string()).or_insert(0) += war_risk;
+        }
+        for crisis in self.state.crises.values() {
+            if !matches!(crisis.status, CrisisStatus::Active) {
+                continue;
+            }
+            let crisis_risk = (crisis.severity as i64).saturating_mul(12).max(12);
+            *next.entry(format!("crisis:{}", crisis.kind)).or_insert(0) += crisis_risk;
+            *next.entry("global:crisis".to_string()).or_insert(0) += crisis_risk;
+        }
+        self.threat_heatmap = next;
     }
 
     pub(super) fn enforce_pending_effect_limit(&mut self) {
