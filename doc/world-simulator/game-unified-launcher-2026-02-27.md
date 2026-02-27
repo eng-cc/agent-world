@@ -26,7 +26,7 @@
 - `--web-bind <host:port>`：默认 `127.0.0.1:5011`。
 - `--viewer-host <host>`：默认 `127.0.0.1`。
 - `--viewer-port <port>`：默认 `4173`。
-- `--viewer-static-dir <path>`：默认 `crates/agent_world_viewer/dist`。
+- `--viewer-static-dir <path>`：默认 `web`（发行包目录）；开发态可传入 `crates/agent_world_viewer/dist`。
 - `--with-llm`：默认关闭（与现有可玩性测试口径一致）。
 - `--no-open-browser`：默认自动打开浏览器。
 
@@ -43,6 +43,19 @@
 - M2：内置静态 HTTP 服务可稳定服务 trunk build 产物。
 - M3：发行打包脚本完成并可一次性生成可分发目录。
 - M4：文档更新，给出玩家启动命令与回归测试记录。
+
+## 手册入口（落地命令）
+- 构建发行包：
+  - `./scripts/build-game-launcher-bundle.sh --out-dir output/release/game-launcher-local`
+- 启动发行包（统一入口）：
+  - `output/release/game-launcher-local/run-game.sh`
+- 启动 launcher（工作区直跑）：
+  - `env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_game_launcher -- --viewer-static-dir crates/agent_world_viewer/dist`
+
+## 完成态（2026-02-27）
+- `world_game_launcher` 已提供统一入口：后端 `world_viewer_live` + 内置静态 HTTP 服务 + URL 自动打开。
+- 启动器具备基础路径安全（拒绝目录穿越）与 SPA 路由回退能力。
+- `scripts/build-game-launcher-bundle.sh` 已能输出可分发目录（`bin/ + web/ + run-game.sh`）。
 
 ## 风险
 - 静态服务器实现过于简化可能导致浏览器资源请求兼容问题。
