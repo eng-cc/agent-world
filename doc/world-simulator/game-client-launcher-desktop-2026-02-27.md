@@ -49,3 +49,14 @@
   - 缓解：先以 `cargo check` 和单元测试保证构建链路，运行时提供 CLI fallback（`world_game_launcher`）。
 - 子进程崩溃时 UI 状态不同步。
   - 缓解：轮询 `try_wait`，崩溃后自动切回未运行状态并写入日志。
+
+## 手册入口（落地命令）
+- 直跑桌面客户端启动器（开发态）：`env -u RUSTC_WRAPPER cargo run -p agent_world_client_launcher`
+- 构建可分发目录：`./scripts/build-game-launcher-bundle.sh --out-dir output/release/game-launcher-local --web-dist site`
+- 玩家入口（桌面 GUI）：`output/release/game-launcher-local/run-client.sh`
+- CLI 兜底入口：`output/release/game-launcher-local/run-game.sh`
+
+## 完成态（2026-02-27）
+- M1 完成：`agent_world_client_launcher` 已具备参数编辑、启动/停止、日志显示与一键打开 URL。
+- M2 完成：打包脚本已纳入 `agent_world_client_launcher` 并生成 `run-client.sh`。
+- M3 完成：已补齐手册入口与验收记录，形成“桌面 GUI + CLI fallback”的可分发启动路径。
