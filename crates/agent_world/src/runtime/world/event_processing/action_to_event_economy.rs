@@ -540,6 +540,39 @@ impl World {
                         },
                     }));
                 }
+                let recipe_profile = self.recipe_profile(recipe_id);
+                if let Some(profile) = recipe_profile {
+                    if !recipe_stage_gate_allowed(
+                        self.state.industry_progress.stage,
+                        profile.stage_gate.as_str(),
+                    ) {
+                        return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![format!(
+                                    "recipe stage gate denied: recipe={} required_stage={} current_stage={}",
+                                    recipe_id,
+                                    profile.stage_gate,
+                                    industry_stage_label(self.state.industry_progress.stage),
+                                )],
+                            },
+                        }));
+                    }
+                    if !recipe_preferred_tags_compatible(
+                        &profile.preferred_factory_tags,
+                        &factory.spec.tags,
+                    ) {
+                        return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![format!(
+                                    "recipe preferred_factory_tags mismatch: recipe={} preferred={:?} factory_tags={:?}",
+                                    recipe_id, profile.preferred_factory_tags, factory.spec.tags
+                                )],
+                            },
+                        }));
+                    }
+                }
                 let preferred_consume_ledger = factory.input_ledger.clone();
                 let consume_ledger = self.select_material_consume_ledger_with_world_fallback(
                     preferred_consume_ledger.clone(),
@@ -597,7 +630,7 @@ impl World {
                 }
                 let market_quotes =
                     build_material_market_quotes(self, &preferred_consume_ledger, &plan.consume);
-                let bottleneck_tags = infer_bottleneck_tags(&plan.consume);
+                let bottleneck_tags = resolve_recipe_bottleneck_tags(recipe_profile, &plan.consume);
                 let scarcity_delay_ticks = compute_local_scarcity_delay_ticks(
                     self,
                     &preferred_consume_ledger,
@@ -814,9 +847,9 @@ fn build_material_market_quotes(
     }
 
     let governance_tax_bps = governance_tax_bps_for_material_quotes(world);
-    let transit_loss_bps = MATERIAL_TRANSFER_LOSS_PER_KM_BPS.max(0);
     let mut quotes = Vec::with_capacity(requested_by_kind.len());
     for (kind, requested_amount) in requested_by_kind {
+        let transit_loss_bps = material_transit_loss_bps_for_kind(world, kind.as_str());
         let local_available_amount = world
             .ledger_material_balance(preferred_consume_ledger, kind.as_str())
             .max(0);
@@ -849,4 +882,83 @@ fn build_material_market_quotes(
         });
     }
     quotes
+}
+
+fn recipe_stage_gate_allowed(
+    current_stage: crate::runtime::IndustryStage,
+    stage_gate: &str,
+) -> bool {
+    let normalized = stage_gate.trim();
+    if normalized.is_empty() {
+        return true;
+    }
+    let Some(required_stage) = parse_industry_stage(normalized) else {
+        return true;
+    };
+    current_stage >= required_stage
+}
+
+fn parse_industry_stage(raw: &str) -> Option<crate::runtime::IndustryStage> {
+    match raw.trim().to_ascii_lowercase().as_str() {
+        "bootstrap" => Some(crate::runtime::IndustryStage::Bootstrap),
+        "scale_out" | "scaleout" | "scale-out" => Some(crate::runtime::IndustryStage::ScaleOut),
+        "governance" => Some(crate::runtime::IndustryStage::Governance),
+        _ => None,
+    }
+}
+
+fn industry_stage_label(stage: crate::runtime::IndustryStage) -> &'static str {
+    match stage {
+        crate::runtime::IndustryStage::Bootstrap => "bootstrap",
+        crate::runtime::IndustryStage::ScaleOut => "scale_out",
+        crate::runtime::IndustryStage::Governance => "governance",
+    }
+}
+
+fn recipe_preferred_tags_compatible(preferred_tags: &[String], factory_tags: &[String]) -> bool {
+    if preferred_tags.is_empty() {
+        return true;
+    }
+    let normalized_factory: BTreeSet<String> = factory_tags
+        .iter()
+        .map(|tag| tag.trim().to_ascii_lowercase())
+        .filter(|tag| !tag.is_empty())
+        .collect();
+    preferred_tags.iter().any(|tag| {
+        let normalized = tag.trim().to_ascii_lowercase();
+        !normalized.is_empty() && normalized_factory.contains(normalized.as_str())
+    })
+}
+
+fn resolve_recipe_bottleneck_tags(
+    recipe_profile: Option<&crate::runtime::RecipeProfileV1>,
+    consume: &[MaterialStack],
+) -> Vec<String> {
+    let from_profile: BTreeSet<String> = recipe_profile
+        .map(|profile| {
+            profile
+                .bottleneck_tags
+                .iter()
+                .map(|tag| tag.trim().to_ascii_lowercase())
+                .filter(|tag| !tag.is_empty())
+                .collect()
+        })
+        .unwrap_or_default();
+    if !from_profile.is_empty() {
+        return from_profile.into_iter().collect();
+    }
+    infer_bottleneck_tags(consume)
+}
+
+fn material_transit_loss_bps_for_kind(world: &World, kind: &str) -> i64 {
+    let base = MATERIAL_TRANSFER_LOSS_PER_KM_BPS.max(0);
+    let factor = world
+        .material_profile(kind)
+        .map(|profile| match profile.transport_loss_class {
+            crate::runtime::MaterialTransportLossClass::Low => 1_i64,
+            crate::runtime::MaterialTransportLossClass::Medium => 2_i64,
+            crate::runtime::MaterialTransportLossClass::High => 4_i64,
+        })
+        .unwrap_or(1);
+    base.saturating_mul(factor)
 }

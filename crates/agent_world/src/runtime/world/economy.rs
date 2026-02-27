@@ -630,16 +630,32 @@ impl World {
                 .iter()
                 .map(|stack| stack.kind.to_ascii_lowercase()),
         );
-        let baseline = production_priority_from_tokens(
-            &tokens,
-            self.is_electricity_critical(),
-            self.is_hardware_parts_critical(),
-            ProductionQueuePriority::Scale,
-        );
+        let baseline = self
+            .production_priority_from_recipe_role_tags(job)
+            .unwrap_or_else(|| {
+                production_priority_from_tokens(
+                    &tokens,
+                    self.is_electricity_critical(),
+                    self.is_hardware_parts_critical(),
+                    ProductionQueuePriority::Scale,
+                )
+            });
         if self.is_bottleneck_pressure_active(&job.bottleneck_tags) {
             return bump_recipe_priority_under_bottleneck(baseline);
         }
         baseline
+    }
+
+    fn production_priority_from_recipe_role_tags(
+        &self,
+        job: &super::super::RecipeJobState,
+    ) -> Option<ProductionQueuePriority> {
+        job.produce
+            .iter()
+            .chain(job.byproducts.iter())
+            .filter_map(|stack| self.product_profile(stack.kind.as_str()))
+            .filter_map(|profile| production_priority_from_role_tag(profile.role_tag.as_str()))
+            .min()
     }
 
     fn is_electricity_critical(&self) -> bool {
@@ -916,4 +932,14 @@ fn has_any_keyword(tokens: &[String], keywords: &[&str]) -> bool {
 
 fn has_keyword(tokens: &[String], keyword: &str) -> bool {
     tokens.iter().any(|token| token.contains(keyword))
+}
+
+fn production_priority_from_role_tag(role_tag: &str) -> Option<ProductionQueuePriority> {
+    match role_tag.trim().to_ascii_lowercase().as_str() {
+        "survival" => Some(ProductionQueuePriority::Survival),
+        "energy" => Some(ProductionQueuePriority::Energy),
+        "scale" => Some(ProductionQueuePriority::Scale),
+        "explore" | "governance" => Some(ProductionQueuePriority::Expansion),
+        _ => None,
+    }
 }

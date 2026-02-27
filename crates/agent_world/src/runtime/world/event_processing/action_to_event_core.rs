@@ -438,7 +438,8 @@ impl World {
                         },
                     }));
                 }
-                let priority = material_transit_priority_for_kind(kind.as_str());
+                let priority = material_transit_priority_for_kind(self, kind.as_str());
+                let loss_bps = material_transit_loss_bps_for_kind(self, kind.as_str());
 
                 if *distance_km == 0 {
                     return Ok(WorldEventBody::Domain(DomainEvent::MaterialTransferred {
@@ -475,7 +476,7 @@ impl World {
                         kind: kind.clone(),
                         amount: *amount,
                         distance_km: *distance_km,
-                        loss_bps: MATERIAL_TRANSFER_LOSS_PER_KM_BPS,
+                        loss_bps,
                         ready_at,
                         priority,
                     },
@@ -668,7 +669,14 @@ impl World {
     }
 }
 
-fn material_transit_priority_for_kind(kind: &str) -> MaterialTransitPriority {
+fn material_transit_priority_for_kind(world: &World, kind: &str) -> MaterialTransitPriority {
+    if let Some(profile) = world.material_profile(kind) {
+        return match profile.default_priority {
+            crate::runtime::MaterialDefaultPriority::Urgent => MaterialTransitPriority::Urgent,
+            crate::runtime::MaterialDefaultPriority::Standard => MaterialTransitPriority::Standard,
+        };
+    }
+
     let normalized = kind.to_ascii_lowercase();
     if MATERIAL_TRANSIT_URGENT_KEYWORDS
         .iter()
@@ -678,4 +686,17 @@ fn material_transit_priority_for_kind(kind: &str) -> MaterialTransitPriority {
     } else {
         MaterialTransitPriority::Standard
     }
+}
+
+fn material_transit_loss_bps_for_kind(world: &World, kind: &str) -> i64 {
+    let base = MATERIAL_TRANSFER_LOSS_PER_KM_BPS.max(0);
+    let factor = world
+        .material_profile(kind)
+        .map(|profile| match profile.transport_loss_class {
+            crate::runtime::MaterialTransportLossClass::Low => 1_i64,
+            crate::runtime::MaterialTransportLossClass::Medium => 2_i64,
+            crate::runtime::MaterialTransportLossClass::High => 4_i64,
+        })
+        .unwrap_or(1);
+    base.saturating_mul(factor)
 }

@@ -421,19 +421,19 @@ fn m4_default_recipe_profiles() -> Vec<RecipeProfileV1> {
         recipe_profile(
             "recipe.assembler.control_chip",
             vec!["copper_wire"],
-            "scale_out",
+            "bootstrap",
             vec!["assembler", "precision"],
         ),
         recipe_profile(
             "recipe.assembler.motor_mk1",
             vec!["control_chip"],
-            "scale_out",
+            "bootstrap",
             vec!["assembler", "precision"],
         ),
         recipe_profile(
             "recipe.assembler.logistics_drone",
             vec!["motor_mk1", "control_chip"],
-            "scale_out",
+            "bootstrap",
             vec!["assembler"],
         ),
         recipe_profile(
