@@ -1,6 +1,6 @@
 // Action mempool aggregation and deduplication.
 
-use std::collections::{HashMap, VecDeque};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 
 use agent_world_proto::distributed::{ActionBatch, ActionEnvelope};
 use serde::Serialize;
@@ -43,6 +43,7 @@ pub struct ActionMempool {
     config: ActionMempoolConfig,
     actions: HashMap<String, ActionEnvelope>,
     per_actor: HashMap<String, Vec<String>>,
+    idempotency_index: HashMap<String, String>,
     arrival: VecDeque<String>,
 }
 
@@ -52,6 +53,7 @@ impl ActionMempool {
             config,
             actions: HashMap::new(),
             per_actor: HashMap::new(),
+            idempotency_index: HashMap::new(),
             arrival: VecDeque::new(),
         }
     }
@@ -68,6 +70,13 @@ impl ActionMempool {
         if self.actions.contains_key(&action.action_id) {
             return false;
         }
+        if let Some(idempotency_lookup_key) =
+            actor_idempotency_lookup_key(action.actor_id.as_str(), action.idempotency_key.as_str())
+        {
+            if self.idempotency_index.contains_key(&idempotency_lookup_key) {
+                return false;
+            }
+        }
 
         let actor_count = self
             .per_actor
@@ -83,6 +92,12 @@ impl ActionMempool {
         let actor_actions = self.per_actor.entry(action.actor_id.clone()).or_default();
         actor_actions.push(action.action_id.clone());
         self.arrival.push_back(action.action_id.clone());
+        if let Some(idempotency_lookup_key) =
+            actor_idempotency_lookup_key(action.actor_id.as_str(), action.idempotency_key.as_str())
+        {
+            self.idempotency_index
+                .insert(idempotency_lookup_key, action.action_id.clone());
+        }
         self.actions.insert(action.action_id.clone(), action);
         true
     }
@@ -94,6 +109,17 @@ impl ActionMempool {
             actor_actions.retain(|id| id != action_id);
             if actor_actions.is_empty() {
                 self.per_actor.remove(&action.actor_id);
+            }
+        }
+        if let Some(idempotency_lookup_key) =
+            actor_idempotency_lookup_key(action.actor_id.as_str(), action.idempotency_key.as_str())
+        {
+            if self
+                .idempotency_index
+                .get(&idempotency_lookup_key)
+                .is_some_and(|existing| existing == action_id)
+            {
+                self.idempotency_index.remove(&idempotency_lookup_key);
             }
         }
         Some(action)
@@ -174,6 +200,76 @@ impl ActionMempool {
         }))
     }
 
+    pub fn take_zone_batches_with_rules(
+        &mut self,
+        world_id: &str,
+        proposer_id: &str,
+        rules: ActionBatchRules,
+        timestamp_ms: i64,
+    ) -> Result<Vec<ActionBatch>, WorldError> {
+        if self.actions.is_empty() {
+            return Ok(Vec::new());
+        }
+        let mut candidates: Vec<ActionEnvelope> = self.actions.values().cloned().collect();
+        candidates.sort_by(|left, right| {
+            left.timestamp_ms
+                .cmp(&right.timestamp_ms)
+                .then_with(|| left.action_id.cmp(&right.action_id))
+        });
+
+        let mut zone_candidates = BTreeMap::<String, Vec<ActionEnvelope>>::new();
+        for candidate in candidates {
+            zone_candidates
+                .entry(normalized_zone_id(candidate.zone_id.as_str()))
+                .or_default()
+                .push(candidate);
+        }
+
+        let mut batches = Vec::new();
+        for (_zone, mut zone_actions) in zone_candidates {
+            zone_actions.sort_by(|left, right| {
+                left.timestamp_ms
+                    .cmp(&right.timestamp_ms)
+                    .then_with(|| left.action_id.cmp(&right.action_id))
+            });
+            let mut selected = Vec::new();
+            let mut total_bytes = 0usize;
+            for action in zone_actions {
+                if selected.len() >= rules.max_actions {
+                    break;
+                }
+                let size_bytes = action_size_bytes(&action)?;
+                if size_bytes > rules.max_payload_bytes {
+                    self.remove_action(&action.action_id);
+                    continue;
+                }
+                let next_total_bytes =
+                    checked_usize_add(total_bytes, size_bytes, "mempool zone batch bytes")?;
+                if next_total_bytes > rules.max_payload_bytes {
+                    break;
+                }
+                total_bytes = next_total_bytes;
+                selected.push(action);
+            }
+            if selected.is_empty() {
+                continue;
+            }
+            for action in &selected {
+                self.remove_action(&action.action_id);
+            }
+            let batch_id = batch_id_for_actions(&selected)?;
+            batches.push(ActionBatch {
+                world_id: world_id.to_string(),
+                batch_id,
+                actions: selected,
+                proposer_id: proposer_id.to_string(),
+                timestamp_ms,
+                signature: String::new(),
+            });
+        }
+        Ok(batches)
+    }
+
     fn evict_if_needed(&mut self) {
         while self.actions.len() >= self.config.max_actions {
             let Some(evicted_id) = self.arrival.pop_front() else {
@@ -185,12 +281,23 @@ impl ActionMempool {
 }
 
 fn batch_id_for_actions(actions: &[ActionEnvelope]) -> Result<String, WorldError> {
-    let mut ids: Vec<String> = actions
+    #[derive(Debug, Serialize)]
+    struct BatchHashInput<'a> {
+        action_id: &'a str,
+        intent_batch_hash: &'a str,
+        idempotency_key: &'a str,
+    }
+
+    let mut entries: Vec<BatchHashInput<'_>> = actions
         .iter()
-        .map(|action| action.action_id.clone())
+        .map(|action| BatchHashInput {
+            action_id: action.action_id.as_str(),
+            intent_batch_hash: action.intent_batch_hash.as_str(),
+            idempotency_key: action.idempotency_key.as_str(),
+        })
         .collect();
-    ids.sort();
-    let bytes = to_canonical_cbor(&ids)?;
+    entries.sort_by(|left, right| left.action_id.cmp(right.action_id));
+    let bytes = to_canonical_cbor(&entries)?;
     Ok(blake3_hex(&bytes))
 }
 
@@ -215,11 +322,36 @@ fn to_canonical_cbor<T: Serialize>(value: &T) -> Result<Vec<u8>, WorldError> {
     Ok(buf)
 }
 
+fn actor_idempotency_lookup_key(actor_id: &str, idempotency_key: &str) -> Option<String> {
+    if idempotency_key.trim().is_empty() {
+        return None;
+    }
+    Some(format!("{actor_id}:{idempotency_key}"))
+}
+
+fn normalized_zone_id(zone_id: &str) -> String {
+    if zone_id.trim().is_empty() {
+        "global".to_string()
+    } else {
+        zone_id.to_string()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     fn action(id: &str, actor: &str, ts: i64) -> ActionEnvelope {
+        action_with_meta(id, actor, ts, "", "")
+    }
+
+    fn action_with_meta(
+        id: &str,
+        actor: &str,
+        ts: i64,
+        idempotency_key: &str,
+        intent_batch_hash: &str,
+    ) -> ActionEnvelope {
         ActionEnvelope {
             world_id: "w1".to_string(),
             action_id: id.to_string(),
@@ -229,6 +361,9 @@ mod tests {
             payload_hash: "hash".to_string(),
             nonce: 1,
             timestamp_ms: ts,
+            intent_batch_hash: intent_batch_hash.to_string(),
+            idempotency_key: idempotency_key.to_string(),
+            zone_id: String::new(),
             signature: String::new(),
         }
     }
@@ -250,6 +385,33 @@ mod tests {
         assert!(pool.add_action(action("a1", "actor1", 1)));
         assert!(!pool.add_action(action("a2", "actor1", 2)));
         assert_eq!(pool.len(), 1);
+    }
+
+    #[test]
+    fn mempool_dedups_by_actor_idempotency_key() {
+        let mut pool = ActionMempool::new(ActionMempoolConfig::default());
+        assert!(pool.add_action(action_with_meta(
+            "a1",
+            "actor1",
+            1,
+            "idem-001",
+            "intent-hash-1"
+        )));
+        assert!(!pool.add_action(action_with_meta(
+            "a2",
+            "actor1",
+            2,
+            "idem-001",
+            "intent-hash-2"
+        )));
+        assert!(pool.add_action(action_with_meta(
+            "a3",
+            "actor2",
+            3,
+            "idem-001",
+            "intent-hash-3"
+        )));
+        assert_eq!(pool.len(), 2);
     }
 
     #[test]
@@ -322,5 +484,60 @@ mod tests {
             }
             other => panic!("unexpected error: {other:?}"),
         }
+    }
+
+    #[test]
+    fn batch_id_is_stable_with_intent_hash_and_idempotency_keys() {
+        let mut pool_a = ActionMempool::new(ActionMempoolConfig::default());
+        let mut pool_b = ActionMempool::new(ActionMempoolConfig::default());
+
+        let first = action_with_meta("a1", "actor1", 2, "idem-1", "intent-1");
+        let second = action_with_meta("a2", "actor2", 1, "idem-2", "intent-2");
+
+        assert!(pool_a.add_action(first.clone()));
+        assert!(pool_a.add_action(second.clone()));
+
+        assert!(pool_b.add_action(second));
+        assert!(pool_b.add_action(first));
+
+        let batch_a = pool_a
+            .take_batch_with_rules("w1", "seq-1", ActionBatchRules::default(), 1_000)
+            .expect("batch")
+            .expect("some batch");
+        let batch_b = pool_b
+            .take_batch_with_rules("w1", "seq-1", ActionBatchRules::default(), 1_000)
+            .expect("batch")
+            .expect("some batch");
+        assert_eq!(batch_a.batch_id, batch_b.batch_id);
+    }
+
+    #[test]
+    fn take_zone_batches_segments_actions_by_zone() {
+        let mut pool = ActionMempool::new(ActionMempoolConfig::default());
+        let mut zone_a_1 = action("a1", "actor1", 1);
+        zone_a_1.zone_id = "zone-a".to_string();
+        let mut zone_a_2 = action("a2", "actor2", 2);
+        zone_a_2.zone_id = "zone-a".to_string();
+        let mut zone_b_1 = action("a3", "actor3", 1);
+        zone_b_1.zone_id = "zone-b".to_string();
+        assert!(pool.add_action(zone_a_1));
+        assert!(pool.add_action(zone_a_2));
+        assert!(pool.add_action(zone_b_1));
+
+        let batches = pool
+            .take_zone_batches_with_rules("w1", "seq-1", ActionBatchRules::default(), 1_000)
+            .expect("zone batches");
+        assert_eq!(batches.len(), 2);
+        for batch in &batches {
+            let mut zones: Vec<String> = batch
+                .actions
+                .iter()
+                .map(|action| normalized_zone_id(action.zone_id.as_str()))
+                .collect();
+            zones.sort();
+            zones.dedup();
+            assert_eq!(zones.len(), 1);
+        }
+        assert!(pool.is_empty());
     }
 }

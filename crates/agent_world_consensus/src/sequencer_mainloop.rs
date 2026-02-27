@@ -504,6 +504,9 @@ fn state_root_for_actions(actions: &[ActionEnvelope]) -> Result<String, WorldErr
             payload_hash: &action.payload_hash,
             nonce: action.nonce,
             timestamp_ms: action.timestamp_ms,
+            intent_batch_hash: &action.intent_batch_hash,
+            idempotency_key: &action.idempotency_key,
+            zone_id: &action.zone_id,
         })
         .collect();
     let bytes = to_canonical_cbor(&summary)?;
@@ -527,6 +530,9 @@ struct ActionStateSummary<'a> {
     payload_hash: &'a str,
     nonce: u64,
     timestamp_ms: i64,
+    intent_batch_hash: &'a str,
+    idempotency_key: &'a str,
+    zone_id: &'a str,
 }
 
 fn to_canonical_cbor<T: Serialize>(value: &T) -> Result<Vec<u8>, WorldError> {
@@ -555,6 +561,9 @@ mod tests {
             payload_hash: format!("payload-{id}"),
             nonce: 1,
             timestamp_ms: ts,
+            intent_batch_hash: String::new(),
+            idempotency_key: String::new(),
+            zone_id: String::new(),
             signature: String::new(),
         }
     }

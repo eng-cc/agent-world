@@ -37,6 +37,9 @@ fn sample_action() -> proto_distributed::ActionEnvelope {
         payload_hash: "hash".to_string(),
         nonce: 1,
         timestamp_ms: 10,
+        intent_batch_hash: String::new(),
+        idempotency_key: String::new(),
+        zone_id: String::new(),
         signature: "sig".to_string(),
     }
 }

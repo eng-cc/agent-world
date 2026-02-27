@@ -254,6 +254,9 @@ mod tests {
             payload_hash: "hash".to_string(),
             nonce: 7,
             timestamp_ms: 42,
+            intent_batch_hash: String::new(),
+            idempotency_key: String::new(),
+            zone_id: String::new(),
             signature: String::new(),
         }
     }

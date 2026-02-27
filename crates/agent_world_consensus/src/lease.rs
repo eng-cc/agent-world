@@ -1,6 +1,7 @@
 // Lease-based single-writer coordination for sequencer roles.
 
 use super::util::blake3_hex;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LeaseState {
@@ -175,6 +176,86 @@ impl LeaseManager {
     }
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct ScopedLeaseManager {
+    leases: HashMap<String, LeaseManager>,
+}
+
+impl ScopedLeaseManager {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn current(&self, scope: &str) -> Option<&LeaseState> {
+        self.leases.get(scope).and_then(LeaseManager::current)
+    }
+
+    pub fn try_acquire(
+        &mut self,
+        scope: &str,
+        holder_id: &str,
+        now_ms: i64,
+        ttl_ms: i64,
+    ) -> LeaseDecision {
+        if scope.trim().is_empty() {
+            return LeaseDecision {
+                granted: false,
+                lease: None,
+                reason: Some("scope cannot be empty".to_string()),
+            };
+        }
+        self.leases
+            .entry(scope.to_string())
+            .or_default()
+            .try_acquire(holder_id, now_ms, ttl_ms)
+    }
+
+    pub fn renew(
+        &mut self,
+        scope: &str,
+        lease_id: &str,
+        now_ms: i64,
+        ttl_ms: i64,
+    ) -> LeaseDecision {
+        let Some(manager) = self.leases.get_mut(scope) else {
+            return LeaseDecision {
+                granted: false,
+                lease: None,
+                reason: Some("scope has no active lease".to_string()),
+            };
+        };
+        manager.renew(lease_id, now_ms, ttl_ms)
+    }
+
+    pub fn release(&mut self, scope: &str, lease_id: &str) -> bool {
+        let Some(manager) = self.leases.get_mut(scope) else {
+            return false;
+        };
+        let released = manager.release(lease_id);
+        if released && manager.current().is_none() {
+            self.leases.remove(scope);
+        }
+        released
+    }
+
+    pub fn expire_if_needed(&mut self, scope: &str, now_ms: i64) -> Option<LeaseState> {
+        let expired = self.leases.get_mut(scope)?.expire_if_needed(now_ms);
+        if expired.is_some()
+            && self
+                .leases
+                .get(scope)
+                .is_some_and(|manager| manager.current().is_none())
+        {
+            self.leases.remove(scope);
+        }
+        expired
+    }
+
+    pub fn scope_count(&self) -> usize {
+        self.leases.len()
+    }
+}
+
 fn checked_lease_term_increment(value: u64) -> Result<u64, String> {
     value
         .checked_add(1)
@@ -281,5 +362,28 @@ mod tests {
             manager.current().expect("active lease").expires_at_ms,
             previous_expiry
         );
+    }
+
+    #[test]
+    fn scoped_manager_allows_parallel_zone_leases() {
+        let mut scoped = ScopedLeaseManager::new();
+        let zone_a = scoped.try_acquire("zone-a", "seq-1", 100, 20);
+        let zone_b = scoped.try_acquire("zone-b", "seq-2", 100, 20);
+        assert!(zone_a.granted);
+        assert!(zone_b.granted);
+        assert_eq!(scoped.scope_count(), 2);
+    }
+
+    #[test]
+    fn scoped_manager_blocks_conflict_within_same_zone() {
+        let mut scoped = ScopedLeaseManager::new();
+        let first = scoped.try_acquire("zone-a", "seq-1", 100, 20);
+        assert!(first.granted);
+        let second = scoped.try_acquire("zone-a", "seq-2", 110, 20);
+        assert!(!second.granted);
+        let lease_id = first.lease.expect("lease").lease_id;
+        assert!(scoped.release("zone-a", &lease_id));
+        let retry = scoped.try_acquire("zone-a", "seq-2", 120, 20);
+        assert!(retry.granted);
     }
 }

@@ -93,7 +93,7 @@ pub mod util {
     }
 }
 
-pub use lease::{LeaseDecision, LeaseManager, LeaseState};
+pub use lease::{LeaseDecision, LeaseManager, LeaseState, ScopedLeaseManager};
 pub use membership::{
     FileMembershipAuditStore, InMemoryMembershipAuditStore, MembershipAuditStore,
     MembershipDirectoryAnnounce, MembershipDirectorySigner, MembershipDirectorySignerKeyring,

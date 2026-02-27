@@ -96,6 +96,12 @@ pub struct ActionEnvelope {
     pub payload_hash: String,
     pub nonce: u64,
     pub timestamp_ms: i64,
+    #[serde(default)]
+    pub intent_batch_hash: String,
+    #[serde(default)]
+    pub idempotency_key: String,
+    #[serde(default)]
+    pub zone_id: String,
     pub signature: String,
 }
 
@@ -362,6 +368,9 @@ mod tests {
             payload_hash: "hash".to_string(),
             nonce: 7,
             timestamp_ms: 123,
+            intent_batch_hash: String::new(),
+            idempotency_key: String::new(),
+            zone_id: String::new(),
             signature: "sig".to_string(),
         };
         let encoded = serde_cbor::to_vec(&envelope).expect("encode action envelope");
