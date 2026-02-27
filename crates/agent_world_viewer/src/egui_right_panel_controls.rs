@@ -2,8 +2,7 @@ use bevy_egui::egui;
 
 use crate::button_feedback::{mark_step_loading_on_control, StepControlLoadingState};
 use crate::i18n::{
-    advanced_debug_toggle_label, control_button_label, module_toggle_label,
-    play_pause_toggle_label, step_button_label,
+    advanced_debug_toggle_label, module_toggle_label, play_pause_toggle_label, step_button_label,
 };
 use crate::{ViewerClient, ViewerControl, ViewerState};
 
@@ -73,14 +72,6 @@ pub(super) fn render_control_buttons(
             .clicked()
         {
             send_control_request(step_control, state, loading, control_ui, client);
-        }
-
-        let seek_zero = ViewerControl::Seek { tick: 0 };
-        if ui
-            .button(control_button_label(&seek_zero, locale))
-            .clicked()
-        {
-            send_control_request(seek_zero, state, loading, control_ui, client);
         }
     });
 }

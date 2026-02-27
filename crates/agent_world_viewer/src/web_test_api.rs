@@ -26,7 +26,7 @@ const TEST_API_QUERY_KEY: &str = "test_api";
 #[cfg(target_arch = "wasm32")]
 const TEST_API_GLOBAL_NAME: &str = "__AW_TEST__";
 #[cfg(target_arch = "wasm32")]
-const WEB_TEST_API_CONTROL_ACTIONS: [&str; 5] = ["play", "pause", "step", "seek", "seek_event"];
+const WEB_TEST_API_CONTROL_ACTIONS: [&str; 3] = ["play", "pause", "step"];
 #[cfg(target_arch = "wasm32")]
 const CONTROL_STALL_FRAME_THRESHOLD: u32 = 150;
 #[cfg(target_arch = "wasm32")]
@@ -34,10 +34,6 @@ enum WebTestApiCommand {
     EnqueueSteps(Vec<crate::viewer_automation::ViewerAutomationStep>),
     SendControl {
         control: ViewerControl,
-        feedback_id: u64,
-    },
-    SeekEventSeq {
-        event_seq: u64,
         feedback_id: u64,
     },
 }
@@ -188,24 +184,6 @@ fn control_payload_example(action: &str) -> JsValue {
             );
             JsValue::from(payload)
         }
-        "seek" => {
-            let payload = Object::new();
-            let _ = JsReflect::set(
-                &payload,
-                &JsValue::from_str("tick"),
-                &JsValue::from_f64(120.0),
-            );
-            JsValue::from(payload)
-        }
-        "seek_event" => {
-            let payload = Object::new();
-            let _ = JsReflect::set(
-                &payload,
-                &JsValue::from_str("eventSeq"),
-                &JsValue::from_f64(42.0),
-            );
-            JsValue::from(payload)
-        }
         _ => JsValue::NULL,
     }
 }
@@ -219,10 +197,6 @@ fn control_description(action: &str, is_zh: bool) -> &'static str {
         ("pause", false) => "Pause continuous advancement",
         ("step", true) => "推进固定步数（payload.count）",
         ("step", false) => "Advance fixed steps (payload.count)",
-        ("seek", true) => "跳转到逻辑时间 tick（payload.tick）",
-        ("seek", false) => "Seek to logical time tick (payload.tick)",
-        ("seek_event", true) => "按事件游标跳转（payload.eventSeq）",
-        ("seek_event", false) => "Seek by event cursor (payload.eventSeq)",
         (_, true) => "未知动作",
         (_, false) => "Unknown action",
     }
@@ -267,9 +241,6 @@ fn build_control_catalog_js_value() -> JsValue {
 fn parse_control_example_action(payload: &JsValue) -> Option<String> {
     let action = parse_string_payload(payload)?;
     let action = action.trim().to_ascii_lowercase();
-    if action == "seek_event_seq" {
-        return Some("seek_event".to_string());
-    }
     WEB_TEST_API_CONTROL_ACTIONS
         .iter()
         .find(|candidate| **candidate == action)
@@ -289,12 +260,8 @@ fn control_action_hint(action: &str, locale_zh: bool) -> String {
     match (action, locale_zh) {
         ("step", true) => "示例 payload: {\"count\": 5}".to_string(),
         ("step", false) => "Example payload: {\"count\": 5}".to_string(),
-        ("seek", true) => "示例 payload: {\"tick\": 120}".to_string(),
-        ("seek", false) => "Example payload: {\"tick\": 120}".to_string(),
-        ("seek_event", true) => "示例 payload: {\"eventSeq\": 42}".to_string(),
-        ("seek_event", false) => "Example payload: {\"eventSeq\": 42}".to_string(),
-        (_, true) => "可用动作: play, pause, step, seek, seek_event".to_string(),
-        (_, false) => "Valid actions: play, pause, step, seek, seek_event".to_string(),
+        (_, true) => "可用动作: play, pause, step".to_string(),
+        (_, false) => "Valid actions: play, pause, step".to_string(),
     }
 }
 #[cfg(target_arch = "wasm32")]
@@ -318,43 +285,6 @@ fn mutate_last_control_feedback(
             mutator(current);
         }
     });
-}
-
-#[cfg(target_arch = "wasm32")]
-fn parse_seek_tick(payload: &JsValue) -> Option<u64> {
-    if let Some(number) = payload.as_f64() {
-        if number.is_finite() && number >= 0.0 {
-            return Some(number as u64);
-        }
-    }
-    let tick = JsReflect::get(payload, &JsValue::from_str("tick")).ok()?;
-    let number = tick.as_f64()?;
-    if number.is_finite() && number >= 0.0 {
-        return Some(number as u64);
-    }
-    None
-}
-
-#[cfg(target_arch = "wasm32")]
-fn parse_event_seq(payload: &JsValue) -> Option<u64> {
-    if let Some(number) = payload.as_f64() {
-        if number.is_finite() && number >= 0.0 {
-            return Some(number as u64);
-        }
-    }
-
-    for key in ["eventSeq", "event_seq", "seq"] {
-        let Ok(value) = JsReflect::get(payload, &JsValue::from_str(key)) else {
-            continue;
-        };
-        let Some(number) = value.as_f64() else {
-            continue;
-        };
-        if number.is_finite() && number >= 0.0 {
-            return Some(number as u64);
-        }
-    }
-    None
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -383,19 +313,13 @@ fn parse_control_action(action: &str, payload: &JsValue) -> Option<ViewerControl
         "play" => Some(ViewerControl::Play),
         "pause" => Some(ViewerControl::Pause),
         "step" => parse_step_count(payload).map(|count| ViewerControl::Step { count }),
-        "seek" => parse_seek_tick(payload).map(|tick| ViewerControl::Seek { tick }),
         _ => None,
     }
 }
 
 #[cfg(target_arch = "wasm32")]
 fn normalize_control_action(action: &str) -> String {
-    let action = action.trim().to_ascii_lowercase();
-    if action == "seek_event_seq" {
-        "seek_event".to_string()
-    } else {
-        action
-    }
+    action.trim().to_ascii_lowercase()
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -809,45 +733,9 @@ pub(super) fn setup_web_test_api(world: &mut World) {
                 return build_control_feedback_js_value(&feedback);
             }
 
-            if action == "seek_event" {
-                let Some(event_seq) = parse_event_seq(&payload) else {
-                    let feedback = build_control_feedback(
-                        action.clone(),
-                        false,
-                        None,
-                        Some("seek_event requires numeric payload.eventSeq".to_string()),
-                        Some(control_action_hint(action.as_str(), false)),
-                        "rejected before enqueue".to_string(),
-                        false,
-                    );
-                    update_last_control_feedback(feedback.clone());
-                    log_api_warning(
-                        "web test api: sendControl ignored (seek_event requires numeric eventSeq)",
-                    );
-                    return build_control_feedback_js_value(&feedback);
-                };
-                let feedback = build_control_feedback(
-                    action,
-                    true,
-                    Some(format!("seek_event(eventSeq={event_seq})")),
-                    None,
-                    Some("queued, waiting for event cursor resolution".to_string()),
-                    "queued control request".to_string(),
-                    true,
-                );
-                let feedback_id = feedback.id;
-                update_last_control_feedback(feedback.clone());
-                push_command(WebTestApiCommand::SeekEventSeq {
-                    event_seq,
-                    feedback_id,
-                });
-                return build_control_feedback_js_value(&feedback);
-            }
-
             let Some(control) = parse_control_action(action.as_str(), &payload) else {
                 let reason = match action.as_str() {
                     "step" => "step requires numeric payload.count >= 1",
-                    "seek" => "seek requires numeric payload.tick >= 0",
                     _ => "invalid payload for control action",
                 };
                 let feedback = build_control_feedback(
@@ -919,7 +807,7 @@ pub(super) fn setup_web_test_api(_world: &mut World) {}
 #[cfg(target_arch = "wasm32")]
 pub(super) fn consume_web_test_api_commands(
     mut automation_state: ResMut<ViewerAutomationState>,
-    state: Option<Res<ViewerState>>,
+    _state: Option<Res<ViewerState>>,
     client: Option<Res<ViewerClient>>,
 ) {
     let mut commands = Vec::new();
@@ -970,63 +858,6 @@ pub(super) fn consume_web_test_api_commands(
                         feedback.effect = "dropped before dispatch".to_string();
                         feedback.awaiting_effect = false;
                     }
-                });
-            }
-            WebTestApiCommand::SeekEventSeq {
-                event_seq,
-                feedback_id,
-            } => {
-                let Some(client) = client.as_deref() else {
-                    mutate_last_control_feedback(feedback_id, |feedback| {
-                        feedback.accepted = false;
-                        feedback.enqueued = false;
-                        feedback.stage = "blocked".to_string();
-                        feedback.reason = Some("viewer client is not available".to_string());
-                        feedback.hint = Some("reconnect then retry sendControl".to_string());
-                        feedback.effect = "dropped before dispatch".to_string();
-                        feedback.awaiting_effect = false;
-                    });
-                    continue;
-                };
-                let seek_tick = if event_seq == 0 {
-                    Some(0)
-                } else {
-                    state
-                        .as_deref()
-                        .and_then(|viewer_state| {
-                            viewer_state
-                                .events
-                                .iter()
-                                .filter(|event| event.id >= event_seq)
-                                .min_by_key(|event| event.id)
-                        })
-                        .map(|event| event.time)
-                };
-                let Some(tick) = seek_tick else {
-                    log_api_warning(
-                        "web test api: seek_event ignored (eventSeq not found in current event window)",
-                    );
-                    mutate_last_control_feedback(feedback_id, |feedback| {
-                        feedback.accepted = false;
-                        feedback.enqueued = false;
-                        feedback.stage = "blocked".to_string();
-                        feedback.reason =
-                            Some("eventSeq not found in current event window".to_string());
-                        feedback.hint =
-                            Some("runSteps first, then retry with newer eventSeq".to_string());
-                        feedback.effect = "rejected during dispatch".to_string();
-                        feedback.awaiting_effect = false;
-                    });
-                    continue;
-                };
-                let _ = client.tx.send(ViewerRequest::Control {
-                    mode: ViewerControl::Seek { tick },
-                });
-                mutate_last_control_feedback(feedback_id, |feedback| {
-                    feedback.parsed_control = Some(format!("seek(tick={tick})"));
-                    feedback.stage = "executing".to_string();
-                    feedback.enqueued = true;
-                    feedback.hint = Some("seek dispatched, waiting for world delta".to_string());
                 });
             }
         }
@@ -1139,14 +970,11 @@ pub(super) fn publish_web_test_api_state(
                     feedback.no_progress_frames = feedback.no_progress_frames.saturating_add(1);
                     if feedback.no_progress_frames >= CONTROL_STALL_FRAME_THRESHOLD {
                         if feedback.action == "step" {
-                            let recovery_tick = latest_logical_time.saturating_add(1);
                             let recovered = client.as_ref().is_some_and(|viewer_client| {
                                 viewer_client
                                     .tx
                                     .send(ViewerRequest::Control {
-                                        mode: ViewerControl::Seek {
-                                            tick: recovery_tick,
-                                        },
+                                        mode: ViewerControl::Play,
                                     })
                                     .is_ok()
                             });
@@ -1156,15 +984,18 @@ pub(super) fn publish_web_test_api_state(
                             ));
                             if recovered {
                                 feedback.stage = "executing".to_string();
-                                feedback.hint = Some(format!("Next: auto recovery dispatched seek(tick={recovery_tick}); if still stalled, try play or seek +12"));
-                                feedback.effect = "step stalled, auto recovery seek dispatched".to_string();
+                                feedback.hint = Some(
+                                    "Next: auto recovery dispatched play; if still stalled, retry step"
+                                        .to_string(),
+                                );
+                                feedback.effect = "step stalled, auto recovery play dispatched"
+                                    .to_string();
                                 feedback.baseline_logical_time = latest_logical_time;
                                 feedback.baseline_event_seq = latest_event_seq;
                                 feedback.no_progress_frames = 0;
                             } else {
                                 feedback.stage = "blocked".to_string();
-                                feedback.hint =
-                                    Some("Next: use play / seek, then retry step".to_string());
+                                feedback.hint = Some("Next: use play, then retry step".to_string());
                                 feedback.effect = "accepted without observed progress".to_string();
                                 feedback.awaiting_effect = false;
                             }

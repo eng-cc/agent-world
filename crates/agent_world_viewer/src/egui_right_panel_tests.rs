@@ -599,7 +599,6 @@ fn egui_kittest_control_buttons_merge_play_pause_and_fold_advanced_debug() {
     harness.run();
     assert!(harness.state().control_ui.advanced_debug_expanded);
     harness.get_by_label("单步");
-    harness.get_by_label("跳转 0");
 }
 
 #[test]

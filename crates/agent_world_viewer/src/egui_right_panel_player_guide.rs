@@ -939,10 +939,8 @@ pub(super) fn render_player_mission_hud(
     let pulse = ((now_secs * 1.8).sin() * 0.5 + 0.5) as f32;
     let mut action_clicked = false;
     let mut command_clicked = false;
-    let (mut recover_play_clicked, mut recover_step_clicked, mut recover_seek_clicked) =
-        (false, false, false);
+    let (mut recover_play_clicked, mut recover_step_clicked) = (false, false);
     let control_feedback = latest_web_test_api_control_feedback();
-    let recovery_seek_tick = player_current_tick(state).saturating_add(12);
     egui::Area::new(egui::Id::new("viewer-player-mission-hud"))
         .anchor(egui::Align2::LEFT_TOP, egui::vec2(14.0, mission_anchor_y))
         .movable(false)
@@ -1027,13 +1025,6 @@ pub(super) fn render_player_mission_hud(
                                                 "恢复：step x8"
                                             } else {
                                                 "Recover: step x8"
-                                            })
-                                            .clicked();
-                                        recover_seek_clicked = ui
-                                            .button(if locale.is_zh() {
-                                                "恢复：seek +12"
-                                            } else {
-                                                "Recover: seek +12"
                                             })
                                             .clicked();
                                     });
@@ -1152,13 +1143,6 @@ pub(super) fn render_player_mission_hud(
         if recover_step_clicked {
             let _ = client.tx.send(agent_world::viewer::ViewerRequest::Control {
                 mode: agent_world::viewer::ViewerControl::Step { count: 8 },
-            });
-        }
-        if recover_seek_clicked {
-            let _ = client.tx.send(agent_world::viewer::ViewerRequest::Control {
-                mode: agent_world::viewer::ViewerControl::Seek {
-                    tick: recovery_seek_tick,
-                },
             });
         }
     }
