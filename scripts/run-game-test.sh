@@ -7,7 +7,6 @@ VIEWER_HOST="127.0.0.1"
 VIEWER_PORT="4173"
 LIVE_BIND_ADDR="127.0.0.1:5023"
 WEB_BRIDGE_ADDR="127.0.0.1:5011"
-TICK_MS="300"
 ENABLE_LLM="0"
 
 usage() {
@@ -23,7 +22,6 @@ Options:
   --viewer-port <port>     Viewer HTTP port (default: 4173)
   --live-bind <addr:port>  world_viewer_live TCP bind (default: 127.0.0.1:5023)
   --web-bind <addr:port>   WebSocket bridge bind (default: 127.0.0.1:5011)
-  --tick-ms <ms>           Tick interval in milliseconds (default: 300)
   --with-llm               Enable LLM mode (default: disabled)
   -h, --help               Show this help
 USAGE
@@ -47,10 +45,6 @@ while [[ $# -gt 0 ]]; do
       WEB_BRIDGE_ADDR="${2:-}"
       shift 2
       ;;
-    --tick-ms)
-      TICK_MS="${2:-}"
-      shift 2
-      ;;
     --with-llm)
       ENABLE_LLM="1"
       shift
@@ -67,18 +61,13 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ -z "$VIEWER_HOST" || -z "$VIEWER_PORT" || -z "$LIVE_BIND_ADDR" || -z "$WEB_BRIDGE_ADDR" || -z "$TICK_MS" ]]; then
+if [[ -z "$VIEWER_HOST" || -z "$VIEWER_PORT" || -z "$LIVE_BIND_ADDR" || -z "$WEB_BRIDGE_ADDR" ]]; then
   echo "error: empty argument is not allowed" >&2
   exit 1
 fi
 
 if ! [[ "$VIEWER_PORT" =~ ^[0-9]+$ ]]; then
   echo "error: --viewer-port must be numeric" >&2
-  exit 1
-fi
-
-if ! [[ "$TICK_MS" =~ ^[0-9]+$ ]]; then
-  echo "error: --tick-ms must be numeric" >&2
   exit 1
 fi
 
@@ -208,7 +197,6 @@ WORLD_ARGS=(
   llm_bootstrap
   --bind "$LIVE_BIND_ADDR"
   --web-bind "$WEB_BRIDGE_ADDR"
-  --tick-ms "$TICK_MS"
   --topology single
   --viewer-no-consensus-gate
 )

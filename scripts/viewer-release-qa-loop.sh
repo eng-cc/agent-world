@@ -14,7 +14,6 @@ Options:
   --web-bind <host:port>     web bridge bind (default: 127.0.0.1:5011)
   --viewer-host <host>       web viewer host (default: 127.0.0.1)
   --viewer-port <port>       web viewer port (default: 4173)
-  --tick-ms <ms>             live tick interval (default: 300)
   --out-dir <path>           artifact output dir (default: output/playwright/viewer)
   --with-consensus-gate      keep world_viewer_live consensus gate/topology defaults
   --skip-visual-baseline     skip scripts/viewer-visual-baseline.sh
@@ -68,7 +67,6 @@ live_bind="127.0.0.1:5023"
 web_bind="127.0.0.1:5011"
 viewer_host="127.0.0.1"
 viewer_port="4173"
-tick_ms="300"
 out_dir="output/playwright/viewer"
 with_consensus_gate=0
 skip_visual_baseline=0
@@ -94,10 +92,6 @@ while [[ $# -gt 0 ]]; do
       ;;
     --viewer-port)
       viewer_port=${2:-}
-      shift 2
-      ;;
-    --tick-ms)
-      tick_ms=${2:-}
       shift 2
       ;;
     --out-dir)
@@ -130,10 +124,6 @@ done
 
 if [[ ! "$viewer_port" =~ ^[0-9]+$ ]]; then
   echo "error: --viewer-port must be an integer" >&2
-  exit 2
-fi
-if [[ ! "$tick_ms" =~ ^[0-9]+$ ]]; then
-  echo "error: --tick-ms must be an integer" >&2
   exit 2
 fi
 if [[ "$live_bind" != *:* ]]; then
@@ -193,7 +183,7 @@ web_host=${web_bind%:*}
 web_port=${web_bind##*:}
 viewer_url="http://${viewer_host}:${viewer_port}/?ws=ws://${web_bind}&test_api=1"
 
-live_args=("$scenario" "--bind" "$live_bind" "--web-bind" "$web_bind" "--tick-ms" "$tick_ms")
+live_args=("$scenario" "--bind" "$live_bind" "--web-bind" "$web_bind")
 if [[ "$with_consensus_gate" -eq 0 ]]; then
   # Release QA loop uses single topology + no gate by default to avoid
   # triad consensus readiness from masking viewer semantic regressions.

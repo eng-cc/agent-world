@@ -11,7 +11,6 @@ Usage: ./scripts/capture-viewer-frame.sh [options]
 Options:
   --scenario <name>       world_viewer_live scenario (default: llm_bootstrap)
   --addr <host:port>      bind/viewer address (default: 127.0.0.1:5023)
-  --tick-ms <ms>          live tick interval in ms (default: 300)
   --display <display>     Xvfb display id for Linux mode (default: :100)
   --width <px>            virtual screen width (default: 1280)
   --height <px>           virtual screen height (default: 800)
@@ -409,7 +408,6 @@ capture_macos() {
 
 scenario="llm_bootstrap"
 addr="127.0.0.1:5023"
-tick_ms="300"
 display=":100"
 width="1280"
 height="800"
@@ -433,10 +431,6 @@ while [[ $# -gt 0 ]]; do
       ;;
     --addr)
       addr=${2:-}
-      shift 2
-      ;;
-    --tick-ms)
-      tick_ms=${2:-}
       shift 2
       ;;
     --display)
@@ -552,7 +546,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-server_cmd=(env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- "$scenario" --bind "$addr" --tick-ms "$tick_ms")
+server_cmd=(env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- "$scenario" --bind "$addr")
 if [[ $enable_llm -eq 1 ]]; then
   server_cmd+=(--llm)
 fi

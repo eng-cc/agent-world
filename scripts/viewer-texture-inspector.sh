@@ -18,7 +18,6 @@ Options:
   --variants <list>        default,matte,glossy,all (default: all)
   --scenario <name>        world_viewer_live scenario (default: llm_bootstrap)
   --base-port <port>       start port per capture (default: 6123)
-  --tick-ms <ms>           live tick interval (default: 300)
   --viewer-wait <sec>      viewer wait before capture (default: 8)
   --render-profile <name>  debug,balanced,cinematic (default: cinematic)
   --fragment-strategy <s>  readability,fidelity (default: fidelity)
@@ -141,7 +140,6 @@ inspect_raw="all"
 variants_raw="all"
 scenario="llm_bootstrap"
 base_port=6123
-tick_ms=300
 viewer_wait=8
 render_profile="cinematic"
 fragment_strategy="fidelity"
@@ -174,10 +172,6 @@ while [[ $# -gt 0 ]]; do
       ;;
     --base-port)
       base_port=${2:-}
-      shift 2
-      ;;
-    --tick-ms)
-      tick_ms=${2:-}
       shift 2
       ;;
     --viewer-wait)
@@ -320,7 +314,6 @@ for entity in "${entities[@]}"; do
       run ./scripts/capture-viewer-frame.sh \
         --scenario "$scenario" \
         --addr "127.0.0.1:$port" \
-        --tick-ms "$tick_ms" \
         --viewer-wait "$viewer_wait" \
         --auto-focus-target first_location \
         --automation-steps "$automation_steps" \

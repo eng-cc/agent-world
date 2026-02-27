@@ -10,7 +10,6 @@ Usage: ./scripts/viewer-owr4-stress.sh [options]
 
 Options:
   --duration-secs <n>        duration per scenario in seconds (default: 45)
-  --tick-ms <n>              world_viewer_live tick interval (default: 120)
   --base-port <n>            first port for scenario runs (default: 5420)
   --out-dir <path>           output root directory (default: .tmp/viewer_owr4_stress)
   --event-window-size <n>    viewer event window cap for stress capture (default: 50000)
@@ -210,7 +209,6 @@ parse_perf_metrics() {
 }
 
 duration_secs=45
-tick_ms=120
 base_port=5420
 out_root=".tmp/viewer_owr4_stress"
 event_window_size=50000
@@ -229,10 +227,6 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --duration-secs)
       duration_secs=${2:-}
-      shift 2
-      ;;
-    --tick-ms)
-      tick_ms=${2:-}
       shift 2
       ;;
     --base-port)
@@ -299,7 +293,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-for value_name in duration_secs tick_ms base_port event_window_size; do
+for value_name in duration_secs base_port event_window_size; do
   value=${!value_name}
   if [[ ! "$value" =~ ^[0-9]+$ ]] || [[ "$value" -le 0 ]]; then
     echo "invalid $value_name: $value" >&2
@@ -366,7 +360,7 @@ declare -A baseline_frame_ms_p95_peak
 if [[ -n "$baseline_csv" ]]; then
   if head -n 1 "$baseline_csv" | grep -q "frame_ms_p95_peak"; then
     baseline_enabled=1
-    while IFS=',' read -r b_scenario _b_mode _b_profile _b_duration _b_tick _b_events b_event_rate _b_status _b_fps_target _b_fps_min _b_budget _b_frame_avg b_frame_p95 _b_fps_avg _b_fps_p95 _b_over _b_max_over _b_auto _b_samples _b_metric_gate _b_baseline_gate _b_scenario_gate _b_notes _b_server _b_viewer; do
+    while IFS=',' read -r b_scenario _b_mode _b_profile _b_duration _b_events b_event_rate _b_status _b_fps_target _b_fps_min _b_budget _b_frame_avg b_frame_p95 _b_fps_avg _b_fps_p95 _b_over _b_max_over _b_auto _b_samples _b_metric_gate _b_baseline_gate _b_scenario_gate _b_notes _b_server _b_viewer; do
       if [[ "$b_scenario" == "scenario" ]] || [[ -z "$b_scenario" ]]; then
         continue
       fi
@@ -391,7 +385,7 @@ summary_csv="$run_dir/metrics.csv"
 summary_md="$run_dir/summary.md"
 summary_json="$run_dir/summary.json"
 
-echo "scenario,mode,profile,duration_secs,tick_ms,final_events,event_rate,status,fps_target,fps_min,frame_ms_budget,frame_ms_avg_last,frame_ms_p95_peak,fps_avg_last,fps_p95_peak,over_budget_pct_peak,max_over_budget_pct,auto_degrade_seen,perf_samples,metric_gate,baseline_gate,scenario_gate,gate_notes,server_log,viewer_log,hotspot_primary,runtime_health_last,runtime_bottleneck_last,runtime_tick_p95_peak,runtime_decision_p95_peak,runtime_action_p95_peak,runtime_callback_p95_peak,runtime_llm_api_p95_peak,runtime_peak_stage,runtime_peak_p95_ms,label_capacity_seen,overlay_capacity_seen,event_backlog_seen" > "$summary_csv"
+echo "scenario,mode,profile,duration_secs,final_events,event_rate,status,fps_target,fps_min,frame_ms_budget,frame_ms_avg_last,frame_ms_p95_peak,fps_avg_last,fps_p95_peak,over_budget_pct_peak,max_over_budget_pct,auto_degrade_seen,perf_samples,metric_gate,baseline_gate,scenario_gate,gate_notes,server_log,viewer_log,hotspot_primary,runtime_health_last,runtime_bottleneck_last,runtime_tick_p95_peak,runtime_decision_p95_peak,runtime_action_p95_peak,runtime_callback_p95_peak,runtime_llm_api_p95_peak,runtime_peak_stage,runtime_peak_p95_ms,label_capacity_seen,overlay_capacity_seen,event_backlog_seen" > "$summary_csv"
 
 server_pid=""
 viewer_pid=""
@@ -427,7 +421,7 @@ for scenario_raw in "${scenarios[@]}"; do
   viewer_log="$scenario_dir/viewer.log"
 
   mode="script"
-  server_cmd=(env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- "$scenario" --bind "$addr" --tick-ms "$tick_ms")
+  server_cmd=(env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- "$scenario" --bind "$addr")
   if [[ "$scenario" == "llm_bootstrap" ]]; then
     if [[ -n "${OPENAI_API_KEY:-}" ]]; then
       mode="llm"
@@ -561,7 +555,7 @@ for scenario_raw in "${scenarios[@]}"; do
 
   gate_notes=$(join_notes "${notes[@]}")
 
-  echo "$scenario,$mode,$profile,$duration_secs,$tick_ms,$final_events,$event_rate,$status,$fps_target,$fps_min,$perf_budget_ms,$frame_ms_avg_last,$frame_ms_p95_peak,$fps_avg_last,$fps_p95_peak,$over_budget_pct_peak,$max_over_budget_pct,$auto_degrade_seen,$perf_samples,$metric_gate,$baseline_gate,$scenario_gate,$gate_notes,$server_log,$viewer_log,$hotspot_primary,$runtime_health_last,$runtime_bottleneck_last,$runtime_tick_p95_peak,$runtime_decision_p95_peak,$runtime_action_p95_peak,$runtime_callback_p95_peak,$runtime_llm_api_p95_peak,$runtime_peak_stage,$runtime_peak_p95_ms,$label_capacity_seen,$overlay_capacity_seen,$event_backlog_seen" >> "$summary_csv"
+  echo "$scenario,$mode,$profile,$duration_secs,$final_events,$event_rate,$status,$fps_target,$fps_min,$perf_budget_ms,$frame_ms_avg_last,$frame_ms_p95_peak,$fps_avg_last,$fps_p95_peak,$over_budget_pct_peak,$max_over_budget_pct,$auto_degrade_seen,$perf_samples,$metric_gate,$baseline_gate,$scenario_gate,$gate_notes,$server_log,$viewer_log,$hotspot_primary,$runtime_health_last,$runtime_bottleneck_last,$runtime_tick_p95_peak,$runtime_decision_p95_peak,$runtime_action_p95_peak,$runtime_callback_p95_peak,$runtime_llm_api_p95_peak,$runtime_peak_stage,$runtime_peak_p95_ms,$label_capacity_seen,$overlay_capacity_seen,$event_backlog_seen" >> "$summary_csv"
   index=$((index + 1))
 done
 
@@ -615,7 +609,6 @@ PY
   echo
   echo "- 运行目录：\`$run_dir\`"
   echo "- 运行时长（每场景）：\`$duration_secs\` 秒"
-  echo "- Tick 间隔：\`$tick_ms\` ms"
   echo "- Profile：\`$profile\`"
   echo "- Gate 阈值：\`fps_target=$fps_target\`，\`fps_min=$fps_min\`，\`perf_budget_ms=$perf_budget_ms\`，\`max_over_budget_pct=$max_over_budget_pct\`"
   if [[ "$baseline_enabled" -eq 1 ]]; then
@@ -630,7 +623,7 @@ PY
   echo
   echo "| Scenario | Mode | Events/s | FPS(avg/p95) | Frame(avg/p95 ms) | OverBudget% | Hotspot | Runtime Peak p95 | Status | Metric Gate | Baseline Gate | Scenario Gate | Notes |"
   echo "|---|---|---:|---:|---:|---:|---|---:|---|---|---|---|---|"
-  tail -n +2 "$summary_csv" | while IFS=',' read -r scenario mode _profile _dur _tick _events event_rate status _fps_target _fps_min _budget frame_avg frame_p95 fps_avg fps_p95 over_pct _max_over _auto _samples metric_gate baseline_gate scenario_gate gate_notes _server _viewer hotspot runtime_health runtime_bottleneck _rt_tick _rt_decision _rt_action _rt_callback _rt_llm runtime_peak_stage runtime_peak_p95_ms _label_seen _overlay_seen _event_seen; do
+  tail -n +2 "$summary_csv" | while IFS=',' read -r scenario mode _profile _dur _events event_rate status _fps_target _fps_min _budget frame_avg frame_p95 fps_avg fps_p95 over_pct _max_over _auto _samples metric_gate baseline_gate scenario_gate gate_notes _server _viewer hotspot runtime_health runtime_bottleneck _rt_tick _rt_decision _rt_action _rt_callback _rt_llm runtime_peak_stage runtime_peak_p95_ms _label_seen _overlay_seen _event_seen; do
     runtime_peak_cell="$runtime_peak_stage:$runtime_peak_p95_ms"
     hotspot_cell="$hotspot"
     if [[ "$runtime_health" != "unknown" || "$runtime_bottleneck" != "none" ]]; then

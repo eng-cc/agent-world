@@ -15,7 +15,6 @@ Options:
   --scenario <name>                world_viewer_live scenario (default: triad_p2p_bootstrap)
   --llm                            enable LLM mode for world_viewer_live
   --no-llm                         disable LLM mode (default)
-  --tick-ms <n>                    world_viewer_live tick interval (default: 200)
   --base-port <n>                  base port for per-topology allocation (default: 5610)
   --bind-host <host>               bind host for gossip/live endpoints (default: 127.0.0.1)
   --out-dir <path>                 output root (default: .tmp/p2p_longrun)
@@ -156,7 +155,6 @@ duration_secs=""
 topologies_csv=""
 scenario="triad_p2p_bootstrap"
 llm_enabled=0
-tick_ms=200
 base_port=5610
 bind_host="127.0.0.1"
 out_root=".tmp/p2p_longrun"
@@ -201,10 +199,6 @@ while [[ $# -gt 0 ]]; do
     --no-llm)
       llm_enabled=0
       shift
-      ;;
-    --tick-ms)
-      tick_ms=${2:-}
-      shift 2
       ;;
     --base-port)
       base_port=${2:-}
@@ -335,7 +329,6 @@ if [[ -z "$max_distfs_failure_ratio" ]]; then
 fi
 
 ensure_positive_int "--duration-secs" "$duration_secs"
-ensure_positive_int "--tick-ms" "$tick_ms"
 ensure_positive_int "--base-port" "$base_port"
 ensure_positive_int "--startup-timeout-secs" "$startup_timeout_secs"
 ensure_positive_int "--poll-interval-secs" "$poll_interval_secs"
@@ -428,7 +421,6 @@ fi
   echo "  \"duration_secs\": $duration_secs,"
   echo "  \"scenario\": \"$scenario\","
   echo "  \"llm_enabled\": $llm_enabled,"
-  echo "  \"tick_ms\": $tick_ms,"
   echo "  \"base_port\": $base_port,"
   echo "  \"bind_host\": \"$bind_host\","
   echo "  \"startup_timeout_secs\": $startup_timeout_secs,"
@@ -480,7 +472,6 @@ topology_summary_ndjson="$run_dir/.topology_summary.ndjson"
   echo "- profile: \`$profile\`"
   echo "- duration_secs_per_topology: \`$duration_secs\`"
   echo "- scenario: \`$scenario\`"
-  echo "- tick_ms: \`$tick_ms\`"
   echo "- max_stall_secs: \`$max_stall_secs\`"
   echo "- max_lag_p95: \`$max_lag_p95\`"
   echo "- max_distfs_failure_ratio: \`$max_distfs_failure_ratio\`"
@@ -717,7 +708,6 @@ launch_node() {
   local -a cmd=(
     "$live_bin"
     "$scenario"
-    --tick-ms "$tick_ms"
     --no-llm
     --reward-runtime-enable
     --reward-runtime-report-dir "$report_dir"

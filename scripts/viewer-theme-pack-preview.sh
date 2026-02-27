@@ -12,7 +12,6 @@ Options:
   --scenario <name>        world_viewer_live scenario (default: llm_bootstrap)
   --theme-pack <name>      theme pack: industrial_v2,industrial_v1 (default: industrial_v2)
   --base-port <port>       starting port for per-variant capture (default: 5423)
-  --tick-ms <ms>           live tick interval (default: 300)
   --viewer-wait <sec>      viewer wait before capture (default: 10)
   --variants <list>        comma-separated variants: default,matte,glossy,all (default: all)
   --out-dir <dir>          output root (default: output/theme_preview/<timestamp>)
@@ -65,7 +64,6 @@ resolve_variants() {
 scenario="llm_bootstrap"
 theme_pack="industrial_v2"
 base_port=5423
-tick_ms=300
 viewer_wait=10
 variants_raw="all"
 out_dir=""
@@ -83,10 +81,6 @@ while [[ $# -gt 0 ]]; do
       ;;
     --base-port)
       base_port=${2:-}
-      shift 2
-      ;;
-    --tick-ms)
-      tick_ms=${2:-}
       shift 2
       ;;
     --viewer-wait)
@@ -170,7 +164,6 @@ for variant in "${variants[@]}"; do
     run ./scripts/capture-viewer-frame.sh \
       --scenario "$scenario" \
       --addr "127.0.0.1:$port" \
-      --tick-ms "$tick_ms" \
       --viewer-wait "$viewer_wait" \
       --auto-focus-target first_location \
       --automation-steps "$automation_steps" \
@@ -203,7 +196,6 @@ for variant in "${variants[@]}"; do
 scenario=$scenario
 variant=$variant
 port=$port
-tick_ms=$tick_ms
 viewer_wait=$viewer_wait
 theme_pack=$theme_pack
 preset_file=$preset_file
