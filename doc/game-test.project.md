@@ -19,6 +19,7 @@
 - [x] T16 按用户本轮请求基于 `doc/game-test.md` 再执行一轮真实玩家游玩并填写卡片
 - [x] T17 落地 A/B 分段量化复测脚本与卡片量化字段（TTFC/有效控制命中率/无进展窗口）
 - [x] T18 同步用户改版 `doc/game-test.md`（最小手册 + 不可改约束）并更新项目状态
+- [x] T19 为 `doc/game-test.md` 增加文档治理白名单，避免精简手册被 pre-commit 拦截
 
 ## 依赖
 - `doc/game-test.md`
@@ -59,7 +60,7 @@
   - `output/playwright/viewer/webgl-panic-locate-20260225-143645/`
 
 ## 状态
-- 当前阶段：已完成玩家复测 + 开发者排查 + 默认链路复测 + 夜间追加复测 + 本轮日间追加复测 + 本轮午后追加复测 + 本轮傍晚追加复测 + 本轮追加复测 + 本轮下午追加复测 + 本轮黄昏追加复测 + 本轮傍晚新增复测 + A/B 量化脚本化复测 + 用户手册改版同步（2026-02-27 16:48）
+- 当前阶段：已完成玩家复测 + 开发者排查 + 默认链路复测 + 夜间追加复测 + 本轮日间追加复测 + 本轮午后追加复测 + 本轮傍晚追加复测 + 本轮追加复测 + 本轮下午追加复测 + 本轮黄昏追加复测 + 本轮傍晚新增复测 + A/B 量化脚本化复测 + 用户手册改版同步 + 文档治理白名单接入（2026-02-27 16:53）
 - 风险：
   - 运行前置：默认开启 LLM 后，若环境缺失可用 LLM 配置，`run-game-test.sh` 可能在启动阶段失败；可临时使用 `--no-llm` 回退脚本决策。
   - 基线问题：Web 端偶发 `copy_deferred_lighting_id_pipeline`（`wgpu` Validation Error）导致崩溃。
@@ -75,4 +76,5 @@
   - 本轮观测：默认 `scripts/run-game-test.sh` 链路（`ws://127.0.0.1:5011`）下 `connectionStatus=connected`，`tick` 从 `6` 增长到 `28`，`sendControl(\"play\", {})` 可接受并返回“world advanced”反馈；`move` 动作被拒并明确提示可用动作集合（`play/pause/step/seek/seek_event`），可解释性提升，但 UI 内动作发现路径仍偏弱。
   - 本轮观测：A/B 量化脚本 `scripts/run-game-test-ab.sh` 可稳定产出 `ab_metrics.json/md` 与卡片量化片段；在 `output/playwright/playability/20260227-163758/` 这轮中捕获到 `tick=0` 持续停滞（TTFC=`null`，有效控制命中率 `0/3`，无进展窗口 `6162ms`），可用于快速识别“连接可达但不可推进”故障。
   - 文档约束：`doc/game-test.md` 当前为用户锁定版本（标题含“你不能改这个文档”）；后续流程优化应通过新增外围设计/项目文档承载，避免直接改手册冲突。
+  - 治理约束：`scripts/doc-governance-check.sh` 已对白名单项目文档 `doc/game-test.project.md` 跳过配对设计文档章节检查；后续新增白名单需保持最小化并附理由，避免治理规则失效。
 - 最近更新：2026-02-27

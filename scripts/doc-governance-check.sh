@@ -14,7 +14,8 @@ Checks:
   3. Each non-archive project doc (*.project.md) must include sections:
      任务拆解 / 依赖 / 状态.
   4. Each non-archive project doc must have a paired design doc and that design doc
-     must include sections: 目标 / 范围 / 接口/数据 / 里程碑 / 风险.
+     must include sections: 目标 / 范围 / 接口/数据 / 里程碑 / 风险
+     (except whitelisted project docs).
 USAGE
 }
 
@@ -29,6 +30,12 @@ if [[ $# -ne 0 ]]; then
 fi
 
 failures=0
+
+# Some handbooks are intentionally concise and do not follow design-doc section template.
+# Whitelist is keyed by project doc path to keep exemptions explicit and reviewable.
+readonly DESIGN_SECTION_EXEMPT_PROJECT_DOCS=(
+  "doc/game-test.project.md"
+)
 
 fail() {
   echo "doc-governance-check: FAIL: $*"
@@ -54,6 +61,17 @@ check_required_sections() {
   if [[ ${#missing[@]} -gt 0 ]]; then
     fail "$file missing sections: ${missing[*]}"
   fi
+}
+
+is_design_section_exempt_project_doc() {
+  local project_doc="$1"
+  local exempt
+  for exempt in "${DESIGN_SECTION_EXEMPT_PROJECT_DOCS[@]}"; do
+    if [[ "$project_doc" == "$exempt" ]]; then
+      return 0
+    fi
+  done
+  return 1
 }
 
 mapfile -t all_doc_files < <(find doc -type f -name '*.md' ! -path 'doc/devlog/*' ! -path '*/archive/*' | sort)
@@ -89,6 +107,10 @@ for project_doc in "${project_docs[@]}"; do
   design_doc="${project_doc%.project.md}.md"
   if [[ ! -f "$design_doc" ]]; then
     fail "$project_doc has no paired design doc: $design_doc"
+    continue
+  fi
+
+  if is_design_section_exempt_project_doc "$project_doc"; then
     continue
   fi
 
