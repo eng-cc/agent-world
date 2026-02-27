@@ -12,6 +12,7 @@
 - [x] T9 提供 game-test 一键启动脚本并更新手册，防止启动参数错误
 - [x] T10 按用户本轮请求基于 `doc/game-test.md` 再执行一轮真实玩家游玩并填写卡片
 - [x] T11 按用户本轮请求基于 `doc/game-test.md` 执行傍晚轮次真实玩家游玩并填写卡片
+- [x] T12 按用户本轮请求基于 `doc/game-test.md` 再执行一轮真实玩家游玩并填写卡片
 
 ## 依赖
 - `doc/game-test.md`
@@ -30,18 +31,20 @@
 - card_2026_02_26_11_41_06.md
 - card_2026_02_26_13_10_04.md
 - card_2026_02_26_16_27_06.md
+- card_2026_02_27_13_23_51.md
 - 录屏/截图产物：`output/playwright/playability/20260225-132109/`
 - 录屏/截图产物：`output/playwright/playability/20260225-163706/`
 - 录屏/截图产物：`output/playwright/playability/20260225225029/`
 - 录屏/截图产物：`output/playwright/playability/20260226-114106/`
 - 录屏/截图产物：`output/playwright/playability/20260226-131004/`
 - 录屏/截图产物：`output/playwright/playability/20260226-162706/`
+- 录屏/截图产物：`output/playwright/playability/20260227-132351/`
 - 开发排查复现：
   - `output/playwright/viewer/webgl-deferred-disable-verify2-20260225-143042/`
   - `output/playwright/viewer/webgl-panic-locate-20260225-143645/`
 
 ## 状态
-- 当前阶段：已完成玩家复测 + 开发者排查 + 默认链路复测 + 夜间追加复测 + 本轮日间追加复测 + 本轮午后追加复测 + 本轮傍晚追加复测
+- 当前阶段：已完成玩家复测 + 开发者排查 + 默认链路复测 + 夜间追加复测 + 本轮日间追加复测 + 本轮午后追加复测 + 本轮傍晚追加复测 + 本轮追加复测（2026-02-27 13:23）
 - 风险：
   - 基线问题：Web 端偶发 `copy_deferred_lighting_id_pipeline`（`wgpu` Validation Error）导致崩溃。
   - 架构约束：`CopyDeferredLightingIdPlugin` 与 `Core3d` render graph 存在硬耦合，单独禁用会触发新的启动 panic（`Option::expect` -> `RuntimeError: unreachable`）。
@@ -50,4 +53,5 @@
   - 本轮新增：使用 `scripts/run-game-test.sh --web-bind 127.0.0.1:5311` 链路时可达 `connectionStatus=connected`，但 `tick` 仍停留 `0`，执行 `runSteps(20)` 触发 `RuntimeError: unreachable` + wasm panic（`assertion failed: old_size > 0`），玩法仍不可持续。
   - 缓解：新增 `scripts/run-game-test.sh` 固化启动参数（默认 `--web-bind 127.0.0.1:5011`），降低测试因手工参数错误导致的假故障概率。
   - 本轮观测：`scripts/run-game-test.sh --web-bind 127.0.0.1:6011` 链路下 `connectionStatus=connected`，`tick` 从 `8` 增长到 `41`，`runSteps(20)` 返回 `null`，未再出现 wasm panic；当前主要剩余体验问题是目标引导不足与 `sendControl` 入参语义不清（警告：`sendControl ignored`）。
-- 最近更新：2026-02-26
+  - 本轮观测：默认 `scripts/run-game-test.sh` 链路（`ws://127.0.0.1:5011`）下 `connectionStatus=connected`，`tick` 从 `10` 增长到 `49`，`runSteps(25)` 返回 `null`，可玩闭环维持可用；但 `sendControl ignored` 警告仍在，玩家输入语义提示仍需优化。
+- 最近更新：2026-02-27
