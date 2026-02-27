@@ -63,3 +63,4 @@
 - M3 完成：已补齐手册入口与验收记录，形成“桌面 GUI + CLI fallback”的可分发启动路径。
 - 补充修复：客户端启动器接入 CJK 字体 fallback，默认内置中文字体，支持 `AGENT_WORLD_CLIENT_LAUNCHER_FONT` 覆盖字体路径，修复中文乱码问题。
 - 补充修复：`build-game-launcher-bundle.sh` 的 release 构建改为分步构建，避免多包 `--bin` 过滤导致 `agent_world_client_launcher` 未产出。
+- 补充修复：打包脚本新增 `--web-dist` 防误用校验（拒绝 `site/` 文档站目录），并修复 `trunk build` 在 `NO_COLOR=1` 环境报错与相对 `--dist` 路径写入错误目录的问题。

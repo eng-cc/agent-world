@@ -44,6 +44,24 @@ ensure_command() {
   fi
 }
 
+validate_web_dist_source() {
+  local web_dist="$1"
+  local index_html="$web_dist/index.html"
+  if [[ ! -f "$index_html" ]]; then
+    echo "error: --web-dist must contain index.html: $web_dist" >&2
+    exit 1
+  fi
+
+  # Guardrail: this script often gets pointed at top-level `site/`, which is
+  # docs/marketing pages and will open GitHub Pages instead of the game viewer.
+  if grep -E -q "eng-cc\.github\.io/agent-world|doc/cn/index.html|会进化的文明战争游戏" "$index_html"; then
+    echo "error: --web-dist appears to be docs/marketing site, not viewer web dist: $web_dist" >&2
+    echo "hint: remove --web-dist to let script run trunk build automatically," >&2
+    echo "      or pass a dist directory built from crates/agent_world_viewer." >&2
+    exit 1
+  fi
+}
+
 resolve_binary_name() {
   local base="$1"
   if [[ "$(uname -s)" == MINGW* || "$(uname -s)" == MSYS* || "$(uname -s)" == CYGWIN* ]]; then
@@ -87,6 +105,9 @@ if [[ -z "$OUT_DIR" ]]; then
   ts="$(date +%Y%m%d-%H%M%S)"
   OUT_DIR="$ROOT_DIR/output/release/game-launcher-$ts"
 fi
+if [[ "$OUT_DIR" != /* ]]; then
+  OUT_DIR="$ROOT_DIR/$OUT_DIR"
+fi
 
 if [[ "$PROFILE" != "release" && "$PROFILE" != "dev" ]]; then
   echo "error: --profile must be release or dev" >&2
@@ -96,6 +117,9 @@ fi
 if [[ -n "$WEB_DIST_SOURCE" && ! -d "$WEB_DIST_SOURCE" ]]; then
   echo "error: --web-dist path does not exist: $WEB_DIST_SOURCE" >&2
   exit 1
+fi
+if [[ -n "$WEB_DIST_SOURCE" ]]; then
+  validate_web_dist_source "$WEB_DIST_SOURCE"
 fi
 
 LAUNCHER_BIN_NAME="$(resolve_binary_name world_game_launcher)"
@@ -154,9 +178,9 @@ else
   run rm -rf "$BUNDLE_WEB_DIR"
   run mkdir -p "$BUNDLE_WEB_DIR"
   if [[ "$PROFILE" == "release" ]]; then
-    run bash -lc "cd '$ROOT_DIR/crates/agent_world_viewer' && trunk build --release --dist '$BUNDLE_WEB_DIR'"
+    run bash -lc "cd '$ROOT_DIR/crates/agent_world_viewer' && env -u NO_COLOR trunk build --release --dist '$BUNDLE_WEB_DIR'"
   else
-    run bash -lc "cd '$ROOT_DIR/crates/agent_world_viewer' && trunk build --dist '$BUNDLE_WEB_DIR'"
+    run bash -lc "cd '$ROOT_DIR/crates/agent_world_viewer' && env -u NO_COLOR trunk build --dist '$BUNDLE_WEB_DIR'"
   fi
 fi
 

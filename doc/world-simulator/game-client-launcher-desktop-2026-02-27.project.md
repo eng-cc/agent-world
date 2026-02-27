@@ -8,6 +8,7 @@
 - [x] T4 修复客户端启动器中文乱码：接入 CJK 字体 fallback（支持环境变量覆盖）。
 - [x] T5 调整桌面启动器默认参数：默认启用 LLM。
 - [x] T6 修复打包脚本 release 实跑失败：拆分 cargo build 以确保产出 `agent_world_client_launcher`。
+- [x] T7 修复打包脚本前端资源误用：拒绝 `site/` 误传，修正 `trunk build` 的 `NO_COLOR` 与相对路径问题。
 
 ## 依赖
 - 复用 `world_game_launcher` 作为核心编排执行器。
@@ -15,5 +16,5 @@
 - 桌面环境需具备图形会话以运行 GUI 启动器。
 
 ## 状态
-- 当前阶段：已完成（T0~T6）。
+- 当前阶段：已完成（T0~T7）。
 - 当前任务：无（已结项）。
