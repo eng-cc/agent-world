@@ -1,9 +1,12 @@
 use std::env;
 use std::ffi::OsStr;
+use std::fs;
 use std::io::{Read, Write};
-use std::net::TcpStream;
+use std::net::{TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
 use std::process::{self, Child, Command};
+use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
+use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -12,7 +15,7 @@ const DEFAULT_LIVE_BIND: &str = "127.0.0.1:5023";
 const DEFAULT_WEB_BIND: &str = "127.0.0.1:5011";
 const DEFAULT_VIEWER_HOST: &str = "127.0.0.1";
 const DEFAULT_VIEWER_PORT: u16 = 4173;
-const DEFAULT_VIEWER_WEB_SCRIPT: &str = "scripts/run-viewer-web.sh";
+const DEFAULT_VIEWER_STATIC_DIR: &str = "web";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct CliOptions {
@@ -21,7 +24,7 @@ struct CliOptions {
     web_bind: String,
     viewer_host: String,
     viewer_port: u16,
-    viewer_web_script: String,
+    viewer_static_dir: String,
     with_llm: bool,
     open_browser: bool,
 }
@@ -34,11 +37,18 @@ impl Default for CliOptions {
             web_bind: DEFAULT_WEB_BIND.to_string(),
             viewer_host: DEFAULT_VIEWER_HOST.to_string(),
             viewer_port: DEFAULT_VIEWER_PORT,
-            viewer_web_script: DEFAULT_VIEWER_WEB_SCRIPT.to_string(),
+            viewer_static_dir: DEFAULT_VIEWER_STATIC_DIR.to_string(),
             with_llm: false,
             open_browser: true,
         }
     }
+}
+
+#[derive(Debug)]
+struct StaticHttpServer {
+    stop_tx: Sender<()>,
+    error_rx: Receiver<String>,
+    join_handle: Option<thread::JoinHandle<()>>,
 }
 
 fn main() {
@@ -65,14 +75,18 @@ fn main() {
 
 fn run_launcher(options: &CliOptions) -> Result<(), String> {
     let world_viewer_live_bin = resolve_world_viewer_live_binary()?;
-    let viewer_web_script = resolve_viewer_web_script(options.viewer_web_script.as_str())?;
+    let viewer_static_dir = resolve_viewer_static_dir(options.viewer_static_dir.as_str())?;
 
     let mut world_child = spawn_world_viewer_live(&world_viewer_live_bin, options)?;
-    let mut web_child = spawn_viewer_web(&viewer_web_script, options)?;
+    let mut server = start_static_http_server(
+        options.viewer_host.as_str(),
+        options.viewer_port,
+        viewer_static_dir.as_path(),
+    )?;
 
     let ready_result = wait_until_ready(options);
     if let Err(err) = ready_result {
-        terminate_child(&mut web_child);
+        stop_static_http_server(&mut server);
         terminate_child(&mut world_child);
         return Err(err);
     }
@@ -81,7 +95,7 @@ fn run_launcher(options: &CliOptions) -> Result<(), String> {
     println!("Launcher stack is ready.");
     println!("- URL: {game_url}");
     println!("- world_viewer_live pid: {}", world_child.id());
-    println!("- web viewer pid: {}", web_child.id());
+    println!("- web static root: {}", viewer_static_dir.display());
     println!("Press Ctrl+C to stop.");
 
     if options.open_browser {
@@ -91,7 +105,10 @@ fn run_launcher(options: &CliOptions) -> Result<(), String> {
         }
     }
 
-    monitor_children(&mut world_child, &mut web_child)
+    let monitor_result = monitor_world_and_server(&mut world_child, &mut server);
+    stop_static_http_server(&mut server);
+    terminate_child(&mut world_child);
+    monitor_result
 }
 
 fn spawn_world_viewer_live(path: &Path, options: &CliOptions) -> Result<Child, String> {
@@ -118,19 +135,223 @@ fn spawn_world_viewer_live(path: &Path, options: &CliOptions) -> Result<Child, S
     })
 }
 
-fn spawn_viewer_web(path: &Path, options: &CliOptions) -> Result<Child, String> {
-    let mut command = Command::new(path);
-    command
-        .arg("--address")
-        .arg(options.viewer_host.as_str())
-        .arg("--port")
-        .arg(options.viewer_port.to_string());
-    command.spawn().map_err(|err| {
-        format!(
-            "failed to start viewer web script `{}`: {err}",
-            path.display()
-        )
+fn start_static_http_server(
+    host: &str,
+    port: u16,
+    root_dir: &Path,
+) -> Result<StaticHttpServer, String> {
+    let listener = TcpListener::bind((host, port))
+        .map_err(|err| format!("failed to bind static HTTP server at {host}:{port}: {err}"))?;
+    listener
+        .set_nonblocking(true)
+        .map_err(|err| format!("failed to set static HTTP listener nonblocking: {err}"))?;
+
+    let (stop_tx, stop_rx) = mpsc::channel::<()>();
+    let (error_tx, error_rx) = mpsc::channel::<String>();
+    let root_dir = Arc::new(root_dir.to_path_buf());
+    let join_handle = thread::spawn(move || {
+        if let Err(err) = run_static_http_loop(listener, root_dir, stop_rx) {
+            let _ = error_tx.send(err);
+        }
+    });
+
+    Ok(StaticHttpServer {
+        stop_tx,
+        error_rx,
+        join_handle: Some(join_handle),
     })
+}
+
+fn run_static_http_loop(
+    listener: TcpListener,
+    root_dir: Arc<PathBuf>,
+    stop_rx: Receiver<()>,
+) -> Result<(), String> {
+    loop {
+        match stop_rx.try_recv() {
+            Ok(_) | Err(TryRecvError::Disconnected) => return Ok(()),
+            Err(TryRecvError::Empty) => {}
+        }
+
+        match listener.accept() {
+            Ok((stream, _addr)) => {
+                let root_dir = Arc::clone(&root_dir);
+                thread::spawn(move || {
+                    if let Err(err) = handle_http_connection(stream, root_dir.as_path()) {
+                        eprintln!("warning: static HTTP connection failed: {err}");
+                    }
+                });
+            }
+            Err(err) if err.kind() == std::io::ErrorKind::WouldBlock => {
+                thread::sleep(Duration::from_millis(20));
+            }
+            Err(err) => {
+                return Err(format!("static HTTP accept failed: {err}"));
+            }
+        }
+    }
+}
+
+fn handle_http_connection(mut stream: TcpStream, root_dir: &Path) -> Result<(), String> {
+    stream
+        .set_read_timeout(Some(Duration::from_secs(2)))
+        .map_err(|err| format!("failed to set read timeout: {err}"))?;
+
+    let mut buffer = [0u8; 8192];
+    let bytes = stream
+        .read(&mut buffer)
+        .map_err(|err| format!("failed to read request: {err}"))?;
+    if bytes == 0 {
+        return Ok(());
+    }
+
+    let request = String::from_utf8_lossy(&buffer[..bytes]);
+    let Some(line) = request.lines().next() else {
+        write_http_response(&mut stream, 400, "text/plain", b"Bad Request", false)
+            .map_err(|err| format!("failed to write 400 response: {err}"))?;
+        return Ok(());
+    };
+
+    let mut parts = line.split_whitespace();
+    let method = parts.next().unwrap_or("");
+    let target = parts.next().unwrap_or("");
+
+    let head_only = method.eq_ignore_ascii_case("HEAD");
+    if !method.eq_ignore_ascii_case("GET") && !head_only {
+        write_http_response(&mut stream, 405, "text/plain", b"Method Not Allowed", false)
+            .map_err(|err| format!("failed to write 405 response: {err}"))?;
+        return Ok(());
+    }
+
+    let resolved = match resolve_static_asset_path(root_dir, target) {
+        Ok(resolved) => resolved,
+        Err(_) => {
+            write_http_response(&mut stream, 400, "text/plain", b"Bad Request", head_only)
+                .map_err(|err| format!("failed to write 400 response: {err}"))?;
+            return Ok(());
+        }
+    };
+
+    match resolved {
+        Some(path) => {
+            let body = fs::read(&path).map_err(|err| {
+                format!("failed to read static asset `{}`: {err}", path.display())
+            })?;
+            write_http_response(
+                &mut stream,
+                200,
+                content_type_for_path(path.as_path()),
+                body.as_slice(),
+                head_only,
+            )
+            .map_err(|err| format!("failed to write 200 response: {err}"))?;
+        }
+        None => {
+            write_http_response(&mut stream, 404, "text/plain", b"Not Found", head_only)
+                .map_err(|err| format!("failed to write 404 response: {err}"))?;
+        }
+    }
+
+    Ok(())
+}
+
+fn resolve_static_asset_path(root_dir: &Path, raw_target: &str) -> Result<Option<PathBuf>, String> {
+    let path_only = raw_target
+        .split('?')
+        .next()
+        .unwrap_or(raw_target)
+        .split('#')
+        .next()
+        .unwrap_or(raw_target);
+
+    let relative = sanitize_relative_request_path(path_only)?;
+    let direct_path = if relative.as_os_str().is_empty() {
+        root_dir.join("index.html")
+    } else {
+        root_dir.join(relative.as_path())
+    };
+
+    if direct_path.is_file() {
+        return Ok(Some(direct_path));
+    }
+
+    let has_extension = Path::new(path_only)
+        .file_name()
+        .and_then(|name| Path::new(name).extension())
+        .is_some();
+    if !has_extension {
+        let spa_index = root_dir.join("index.html");
+        if spa_index.is_file() {
+            return Ok(Some(spa_index));
+        }
+    }
+
+    Ok(None)
+}
+
+fn sanitize_relative_request_path(raw_path: &str) -> Result<PathBuf, String> {
+    let trimmed = raw_path.trim();
+    if trimmed.is_empty() {
+        return Ok(PathBuf::new());
+    }
+
+    let normalized = trimmed.strip_prefix('/').unwrap_or(trimmed);
+    let mut cleaned = PathBuf::new();
+    for segment in normalized.split('/') {
+        if segment.is_empty() || segment == "." {
+            continue;
+        }
+        if segment == ".." || segment.contains('\\') {
+            return Err("path traversal is not allowed".to_string());
+        }
+        cleaned.push(segment);
+    }
+
+    Ok(cleaned)
+}
+
+fn content_type_for_path(path: &Path) -> &'static str {
+    match path.extension().and_then(|ext| ext.to_str()) {
+        Some("html") => "text/html; charset=utf-8",
+        Some("js") => "text/javascript; charset=utf-8",
+        Some("css") => "text/css; charset=utf-8",
+        Some("json") => "application/json; charset=utf-8",
+        Some("wasm") => "application/wasm",
+        Some("svg") => "image/svg+xml",
+        Some("png") => "image/png",
+        Some("jpg") | Some("jpeg") => "image/jpeg",
+        Some("webp") => "image/webp",
+        Some("ico") => "image/x-icon",
+        Some("map") => "application/json; charset=utf-8",
+        Some("txt") => "text/plain; charset=utf-8",
+        _ => "application/octet-stream",
+    }
+}
+
+fn write_http_response(
+    stream: &mut TcpStream,
+    status_code: u16,
+    content_type: &str,
+    body: &[u8],
+    head_only: bool,
+) -> std::io::Result<()> {
+    let status_text = match status_code {
+        200 => "OK",
+        400 => "Bad Request",
+        404 => "Not Found",
+        405 => "Method Not Allowed",
+        _ => "Internal Server Error",
+    };
+    let headers = format!(
+        "HTTP/1.1 {status_code} {status_text}\r\nContent-Type: {content_type}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+        body.len()
+    );
+    stream.write_all(headers.as_bytes())?;
+    if !head_only {
+        stream.write_all(body)?;
+    }
+    stream.flush()?;
+    Ok(())
 }
 
 fn wait_until_ready(options: &CliOptions) -> Result<(), String> {
@@ -139,7 +360,7 @@ fn wait_until_ready(options: &CliOptions) -> Result<(), String> {
         options.viewer_port,
         "viewer host/port",
     )?;
-    wait_for_http_ready(viewer_host.as_str(), viewer_port, Duration::from_secs(180)).map_err(
+    wait_for_http_ready(viewer_host.as_str(), viewer_port, Duration::from_secs(30)).map_err(
         |err| format!("viewer HTTP did not become ready at {viewer_host}:{viewer_port}: {err}"),
     )?;
 
@@ -149,25 +370,40 @@ fn wait_until_ready(options: &CliOptions) -> Result<(), String> {
     })
 }
 
-fn monitor_children(world_child: &mut Child, web_child: &mut Child) -> Result<(), String> {
+fn monitor_world_and_server(
+    world_child: &mut Child,
+    server: &mut StaticHttpServer,
+) -> Result<(), String> {
     loop {
         if let Some(status) = world_child
             .try_wait()
             .map_err(|err| format!("failed to query world_viewer_live status: {err}"))?
         {
-            terminate_child(web_child);
             return Err(format!("world_viewer_live exited unexpectedly: {status}"));
         }
 
-        if let Some(status) = web_child
-            .try_wait()
-            .map_err(|err| format!("failed to query web viewer process status: {err}"))?
-        {
-            terminate_child(world_child);
-            return Err(format!("viewer web process exited unexpectedly: {status}"));
+        match server.error_rx.try_recv() {
+            Ok(err) => return Err(format!("static HTTP server failed: {err}")),
+            Err(TryRecvError::Disconnected) => {
+                return Err("static HTTP server channel disconnected unexpectedly".to_string());
+            }
+            Err(TryRecvError::Empty) => {}
+        }
+
+        if let Some(handle) = server.join_handle.as_ref() {
+            if handle.is_finished() {
+                return Err("static HTTP server exited unexpectedly".to_string());
+            }
         }
 
         thread::sleep(Duration::from_millis(400));
+    }
+}
+
+fn stop_static_http_server(server: &mut StaticHttpServer) {
+    let _ = server.stop_tx.send(());
+    if let Some(handle) = server.join_handle.take() {
+        let _ = handle.join();
     }
 }
 
@@ -269,8 +505,8 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
                     return Err("--viewer-port must be in 1..=65535".to_string());
                 }
             }
-            "--viewer-web-script" => {
-                options.viewer_web_script = parse_required_value(&mut iter, "--viewer-web-script")?;
+            "--viewer-static-dir" => {
+                options.viewer_static_dir = parse_required_value(&mut iter, "--viewer-static-dir")?;
             }
             "--with-llm" => {
                 options.with_llm = true;
@@ -364,22 +600,33 @@ fn resolve_world_viewer_live_binary() -> Result<PathBuf, String> {
     Err("failed to locate `world_viewer_live` binary; build it first or set AGENT_WORLD_WORLD_VIEWER_LIVE_BIN".to_string())
 }
 
-fn resolve_viewer_web_script(raw: &str) -> Result<PathBuf, String> {
+fn resolve_viewer_static_dir(raw: &str) -> Result<PathBuf, String> {
     let user_path = PathBuf::from(raw);
-    if user_path.is_file() {
+    if user_path.is_dir() {
         return Ok(user_path);
     }
 
-    let manifest_fallback = Path::new(env!("CARGO_MANIFEST_DIR"))
+    if user_path.is_relative() {
+        if let Ok(current_exe) = env::current_exe() {
+            if let Some(bin_dir) = current_exe.parent() {
+                let sibling_candidate = bin_dir.join("..").join(&user_path);
+                if sibling_candidate.is_dir() {
+                    return Ok(sibling_candidate);
+                }
+            }
+        }
+    }
+
+    let dev_fallback = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("..")
-        .join("..")
-        .join(raw);
-    if manifest_fallback.is_file() {
-        return Ok(manifest_fallback);
+        .join("agent_world_viewer")
+        .join("dist");
+    if raw == DEFAULT_VIEWER_STATIC_DIR && dev_fallback.is_dir() {
+        return Ok(dev_fallback);
     }
 
     Err(format!(
-        "viewer web script not found: `{raw}` (also checked workspace fallback)"
+        "viewer static dir not found: `{raw}`; provide --viewer-static-dir <path> (expected trunk build output)"
     ))
 }
 
@@ -448,7 +695,7 @@ fn print_help() {
         "Usage: world_game_launcher [options]\n\n\
 Start player stack with one command:\n\
 - start world_viewer_live\n\
-- start web viewer (run-viewer-web.sh)\n\
+- start built-in static web server\n\
 - print URL and optionally open browser\n\n\
 Options:\n\
   --scenario <name>            world_viewer_live scenario (default: {DEFAULT_SCENARIO})\n\
@@ -456,7 +703,7 @@ Options:\n\
   --web-bind <host:port>       world_viewer_live web bridge bind (default: {DEFAULT_WEB_BIND})\n\
   --viewer-host <host>         web viewer host (default: {DEFAULT_VIEWER_HOST})\n\
   --viewer-port <port>         web viewer port (default: {DEFAULT_VIEWER_PORT})\n\
-  --viewer-web-script <path>   viewer web startup script (default: {DEFAULT_VIEWER_WEB_SCRIPT})\n\
+  --viewer-static-dir <path>   prebuilt web asset dir (default: {DEFAULT_VIEWER_STATIC_DIR})\n\
   --with-llm                   enable llm mode\n\
   --no-open-browser            do not auto open browser\n\
   -h, --help                   show help\n\n\
@@ -467,8 +714,14 @@ Env:\n\
 
 #[cfg(test)]
 mod world_game_launcher_tests {
+    use std::env;
+    use std::fs;
+    use std::path::{Path, PathBuf};
+    use std::time::{SystemTime, UNIX_EPOCH};
+
     use super::{
-        build_game_url, parse_host_port, parse_options, CliOptions, DEFAULT_LIVE_BIND,
+        build_game_url, content_type_for_path, parse_host_port, parse_options,
+        resolve_static_asset_path, sanitize_relative_request_path, CliOptions, DEFAULT_LIVE_BIND,
         DEFAULT_SCENARIO,
     };
 
@@ -479,6 +732,7 @@ mod world_game_launcher_tests {
         assert_eq!(options.live_bind, DEFAULT_LIVE_BIND);
         assert!(!options.with_llm);
         assert!(options.open_browser);
+        assert_eq!(options.viewer_static_dir, "web");
     }
 
     #[test]
@@ -495,8 +749,8 @@ mod world_game_launcher_tests {
                 "0.0.0.0",
                 "--viewer-port",
                 "4777",
-                "--viewer-web-script",
-                "custom.sh",
+                "--viewer-static-dir",
+                "dist",
                 "--with-llm",
                 "--no-open-browser",
             ]
@@ -509,7 +763,7 @@ mod world_game_launcher_tests {
         assert_eq!(options.web_bind, "127.0.0.1:6201");
         assert_eq!(options.viewer_host, "0.0.0.0");
         assert_eq!(options.viewer_port, 4777);
-        assert_eq!(options.viewer_web_script, "custom.sh");
+        assert_eq!(options.viewer_static_dir, "dist");
         assert!(options.with_llm);
         assert!(!options.open_browser);
     }
@@ -561,5 +815,59 @@ mod world_game_launcher_tests {
         };
         let url = build_game_url(&options);
         assert_eq!(url, "http://127.0.0.1:4173/?ws=ws://127.0.0.1:5011");
+    }
+
+    #[test]
+    fn sanitize_relative_request_path_rejects_traversal() {
+        let err = sanitize_relative_request_path("/../etc/passwd").expect_err("should fail");
+        assert!(err.contains("traversal"));
+    }
+
+    #[test]
+    fn resolve_static_asset_path_supports_spa_fallback() {
+        let temp_dir = make_temp_dir("spa_fallback");
+        fs::write(temp_dir.join("index.html"), "<html>ok</html>").expect("write index");
+        let resolved = resolve_static_asset_path(temp_dir.as_path(), "/app/route?x=1")
+            .expect("resolve should succeed")
+            .expect("should fallback to index");
+        assert_eq!(resolved, temp_dir.join("index.html"));
+        let _ = fs::remove_dir_all(temp_dir);
+    }
+
+    #[test]
+    fn resolve_static_asset_path_returns_none_for_missing_static_asset() {
+        let temp_dir = make_temp_dir("missing_asset");
+        fs::write(temp_dir.join("index.html"), "<html>ok</html>").expect("write index");
+        let resolved = resolve_static_asset_path(temp_dir.as_path(), "/assets/missing.js")
+            .expect("resolve should succeed");
+        assert!(resolved.is_none());
+        let _ = fs::remove_dir_all(temp_dir);
+    }
+
+    #[test]
+    fn content_type_for_path_covers_wasm_and_js() {
+        assert_eq!(
+            content_type_for_path(Path::new("a.wasm")),
+            "application/wasm"
+        );
+        assert_eq!(
+            content_type_for_path(Path::new("a.js")),
+            "text/javascript; charset=utf-8"
+        );
+    }
+
+    fn make_temp_dir(label: &str) -> PathBuf {
+        let mut path = env::temp_dir();
+        let stamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("time")
+            .as_nanos();
+        path.push(format!(
+            "agent_world_launcher_test_{label}_{}_{}",
+            std::process::id(),
+            stamp
+        ));
+        fs::create_dir_all(&path).expect("create temp dir");
+        path
     }
 }
