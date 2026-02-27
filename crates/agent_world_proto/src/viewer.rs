@@ -32,6 +32,13 @@ pub enum ViewerRequest {
         event_kinds: Vec<ViewerEventKind>,
     },
     RequestSnapshot,
+    PlaybackControl {
+        mode: PlaybackControl,
+    },
+    LiveControl {
+        mode: LiveControl,
+    },
+    // Legacy mixed control channel. Prefer PlaybackControl/LiveControl.
     Control {
         mode: ViewerControl,
     },
@@ -145,6 +152,32 @@ pub enum ViewerEventKind {
     PromptUpdated,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum ViewerControlProfile {
+    #[default]
+    Playback,
+    Live,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "mode", rename_all = "snake_case")]
+pub enum PlaybackControl {
+    Pause,
+    Play,
+    Step { count: usize },
+    Seek { tick: u64 },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "mode", rename_all = "snake_case")]
+pub enum LiveControl {
+    Pause,
+    Play,
+    Step { count: usize },
+}
+
+// Legacy mixed control channel. Prefer PlaybackControl/LiveControl.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "mode", rename_all = "snake_case")]
 pub enum ViewerControl {
@@ -161,6 +194,8 @@ pub enum ViewerResponse<Snapshot, Event, DecisionTrace, Metrics, Time> {
         server: String,
         version: u32,
         world_id: String,
+        #[serde(default)]
+        control_profile: ViewerControlProfile,
     },
     Snapshot {
         snapshot: Snapshot,
@@ -239,6 +274,51 @@ pub struct AgentChatError {
     pub agent_id: Option<String>,
 }
 
+impl From<PlaybackControl> for ViewerControl {
+    fn from(value: PlaybackControl) -> Self {
+        match value {
+            PlaybackControl::Pause => Self::Pause,
+            PlaybackControl::Play => Self::Play,
+            PlaybackControl::Step { count } => Self::Step { count },
+            PlaybackControl::Seek { tick } => Self::Seek { tick },
+        }
+    }
+}
+
+impl From<ViewerControl> for PlaybackControl {
+    fn from(value: ViewerControl) -> Self {
+        match value {
+            ViewerControl::Pause => Self::Pause,
+            ViewerControl::Play => Self::Play,
+            ViewerControl::Step { count } => Self::Step { count },
+            ViewerControl::Seek { tick } => Self::Seek { tick },
+        }
+    }
+}
+
+impl From<LiveControl> for ViewerControl {
+    fn from(value: LiveControl) -> Self {
+        match value {
+            LiveControl::Pause => Self::Pause,
+            LiveControl::Play => Self::Play,
+            LiveControl::Step { count } => Self::Step { count },
+        }
+    }
+}
+
+impl TryFrom<ViewerControl> for LiveControl {
+    type Error = &'static str;
+
+    fn try_from(value: ViewerControl) -> Result<Self, Self::Error> {
+        match value {
+            ViewerControl::Pause => Ok(Self::Pause),
+            ViewerControl::Play => Ok(Self::Play),
+            ViewerControl::Step { count } => Ok(Self::Step { count }),
+            ViewerControl::Seek { .. } => Err("seek is not valid in live control mode"),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -247,6 +327,26 @@ mod tests {
     fn viewer_request_round_trip() {
         let request = ViewerRequest::Control {
             mode: ViewerControl::Step { count: 2 },
+        };
+        let json = serde_json::to_string(&request).expect("serialize request");
+        let parsed: ViewerRequest = serde_json::from_str(&json).expect("deserialize request");
+        assert_eq!(parsed, request);
+    }
+
+    #[test]
+    fn viewer_playback_control_request_round_trip() {
+        let request = ViewerRequest::PlaybackControl {
+            mode: PlaybackControl::Seek { tick: 24 },
+        };
+        let json = serde_json::to_string(&request).expect("serialize request");
+        let parsed: ViewerRequest = serde_json::from_str(&json).expect("deserialize request");
+        assert_eq!(parsed, request);
+    }
+
+    #[test]
+    fn viewer_live_control_request_round_trip() {
+        let request = ViewerRequest::LiveControl {
+            mode: LiveControl::Step { count: 3 },
         };
         let json = serde_json::to_string(&request).expect("serialize request");
         let parsed: ViewerRequest = serde_json::from_str(&json).expect("deserialize request");
@@ -414,5 +514,29 @@ mod tests {
             u64,
         > = serde_json::from_str(&json).expect("deserialize response");
         assert_eq!(parsed, response);
+    }
+
+    #[test]
+    fn viewer_hello_ack_defaults_to_playback_profile_for_legacy_payload() {
+        let json = r#"{
+            "type":"hello_ack",
+            "server":"agent_world",
+            "version":1,
+            "world_id":"w1"
+        }"#;
+        let parsed: ViewerResponse<
+            serde_json::Value,
+            serde_json::Value,
+            serde_json::Value,
+            serde_json::Value,
+            u64,
+        > = serde_json::from_str(json).expect("deserialize hello ack");
+        let ViewerResponse::HelloAck {
+            control_profile, ..
+        } = parsed
+        else {
+            panic!("expected hello ack");
+        };
+        assert_eq!(control_profile, ViewerControlProfile::Playback);
     }
 }

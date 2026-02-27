@@ -5,9 +5,10 @@ use crate::simulator::{
 };
 
 pub use proto::{
-    AgentChatError, AgentChatRequest, PlayerAuthProof, PlayerAuthScheme, PromptControlApplyRequest,
-    PromptControlCommand, PromptControlError, PromptControlOperation, PromptControlRollbackRequest,
-    ViewerControl, ViewerEventKind, ViewerRequest, ViewerStream, VIEWER_PROTOCOL_VERSION,
+    AgentChatError, AgentChatRequest, LiveControl, PlaybackControl, PlayerAuthProof,
+    PlayerAuthScheme, PromptControlApplyRequest, PromptControlCommand, PromptControlError,
+    PromptControlOperation, PromptControlRollbackRequest, ViewerControl, ViewerControlProfile,
+    ViewerEventKind, ViewerRequest, ViewerStream, VIEWER_PROTOCOL_VERSION,
 };
 
 pub type ViewerResponse =

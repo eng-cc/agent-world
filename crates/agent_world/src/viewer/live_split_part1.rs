@@ -29,8 +29,8 @@ use super::auth::{
 use super::protocol::{
     viewer_event_kind_matches, AgentChatAck, AgentChatError, AgentChatRequest, PromptControlAck,
     PromptControlApplyRequest, PromptControlCommand, PromptControlError, PromptControlOperation,
-    PromptControlRollbackRequest, ViewerControl, ViewerEventKind, ViewerRequest, ViewerResponse,
-    ViewerStream, VIEWER_PROTOCOL_VERSION,
+    PromptControlRollbackRequest, ViewerControl, ViewerControlProfile, ViewerEventKind,
+    ViewerRequest, ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
 };
 #[path = "live/live_helpers.rs"]
 mod live_helpers;

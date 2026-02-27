@@ -478,6 +478,7 @@ impl ViewerLiveSession {
                     server: "agent_world".to_string(),
                     version: VIEWER_PROTOCOL_VERSION,
                     world_id: world_id.to_string(),
+                    control_profile: ViewerControlProfile::Live,
                 };
                 send_response(writer, &response)?;
             }
@@ -512,6 +513,20 @@ impl ViewerLiveSession {
                     )?;
                 }
             }
+            ViewerRequest::PlaybackControl { mode } => {
+                self.apply_control_mode(
+                    ViewerControl::from(mode),
+                    &mut request_llm_decision,
+                    &mut deferred_control,
+                );
+            }
+            ViewerRequest::LiveControl { mode } => {
+                self.apply_control_mode(
+                    ViewerControl::from(mode),
+                    &mut request_llm_decision,
+                    &mut deferred_control,
+                );
+            }
             ViewerRequest::PromptControl { command } => {
                 let (result, wake_llm) = match command {
                     PromptControlCommand::Preview { request } => {
@@ -545,34 +560,44 @@ impl ViewerLiveSession {
                     send_response(writer, &ViewerResponse::AgentChatError { error })?;
                 }
             },
-            ViewerRequest::Control { mode } => match mode {
-                ViewerControl::Pause => {
-                    self.playing = false;
-                }
-                ViewerControl::Play => {
-                    self.playing = true;
-                    request_llm_decision = true;
-                }
-                ViewerControl::Step { count } => {
-                    self.playing = false;
-                    deferred_control = Some(ViewerLiveDeferredControl::Step {
-                        count: count.max(1),
-                    });
-                }
-                ViewerControl::Seek { tick } => {
-                    self.playing = false;
-                    // P2P live mode is monotonic and does not support rewind/seek semantics.
-                    eprintln!(
-                        "viewer live: ignore seek control in live mode (target_tick={tick})"
-                    );
-                }
-            },
+            ViewerRequest::Control { mode } => {
+                // Legacy compatibility: map mixed control channel into live semantics.
+                self.apply_control_mode(mode, &mut request_llm_decision, &mut deferred_control);
+            }
         }
         Ok(ViewerLiveRequestOutcome {
             continue_running: true,
             request_llm_decision,
             deferred_control,
         })
+    }
+
+    fn apply_control_mode(
+        &mut self,
+        mode: ViewerControl,
+        request_llm_decision: &mut bool,
+        deferred_control: &mut Option<ViewerLiveDeferredControl>,
+    ) {
+        match mode {
+            ViewerControl::Pause => {
+                self.playing = false;
+            }
+            ViewerControl::Play => {
+                self.playing = true;
+                *request_llm_decision = true;
+            }
+            ViewerControl::Step { count } => {
+                self.playing = false;
+                *deferred_control = Some(ViewerLiveDeferredControl::Step {
+                    count: count.max(1),
+                });
+            }
+            ViewerControl::Seek { tick } => {
+                self.playing = false;
+                // P2P live mode is monotonic and does not support rewind/seek semantics.
+                eprintln!("viewer live: ignore seek control in live mode (target_tick={tick})");
+            }
+        }
     }
 
     fn should_emit_event(&self) -> bool {

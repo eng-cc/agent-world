@@ -10,8 +10,9 @@ use crate::simulator::{
 };
 
 use super::protocol::{
-    viewer_event_kind_matches, AgentChatError, PromptControlError, ViewerControl, ViewerEventKind,
-    ViewerRequest, ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
+    viewer_event_kind_matches, AgentChatError, PlaybackControl, PromptControlError,
+    ViewerControlProfile, ViewerEventKind, ViewerRequest, ViewerResponse, ViewerStream,
+    VIEWER_PROTOCOL_VERSION,
 };
 
 #[derive(Debug, Clone)]
@@ -172,6 +173,7 @@ impl<'a> ViewerSession<'a> {
                     server: "agent_world".to_string(),
                     version: VIEWER_PROTOCOL_VERSION,
                     world_id: world_id.to_string(),
+                    control_profile: ViewerControlProfile::Playback,
                 };
                 send_response(writer, &response)?;
             }
@@ -206,23 +208,23 @@ impl<'a> ViewerSession<'a> {
                     )?;
                 }
             }
-            ViewerRequest::Control { mode } => match mode {
-                ViewerControl::Pause => {}
-                ViewerControl::Play => self.emit_playback_events(writer)?,
-                ViewerControl::Step { count } => {
-                    let steps = count.max(1);
-                    for _ in 0..steps {
-                        if !self.emit_next_event(writer)? {
-                            break;
-                        }
-                    }
-                }
-                ViewerControl::Seek { tick } => {
-                    self.cursor = seek_to_tick(self.events, tick);
-                    self.update_metrics_time(tick);
-                    self.emit_metrics(writer)?;
-                }
-            },
+            ViewerRequest::PlaybackControl { mode } => {
+                self.handle_playback_control(mode, writer)?
+            }
+            ViewerRequest::LiveControl { mode } => {
+                send_response(
+                    writer,
+                    &ViewerResponse::Error {
+                        message: format!(
+                            "live_control is not supported in offline playback server (mode={mode:?})"
+                        ),
+                    },
+                )?;
+            }
+            ViewerRequest::Control { mode } => {
+                // Legacy compatibility: map mixed control channel into playback semantics.
+                self.handle_playback_control(PlaybackControl::from(mode), writer)?
+            }
             ViewerRequest::PromptControl { .. } => {
                 send_response(
                     writer,
@@ -260,6 +262,31 @@ impl<'a> ViewerSession<'a> {
             return Ok(());
         }
         while self.emit_next_event(writer)? {}
+        Ok(())
+    }
+
+    fn handle_playback_control(
+        &mut self,
+        mode: PlaybackControl,
+        writer: &mut BufWriter<TcpStream>,
+    ) -> Result<(), ViewerServerError> {
+        match mode {
+            PlaybackControl::Pause => {}
+            PlaybackControl::Play => self.emit_playback_events(writer)?,
+            PlaybackControl::Step { count } => {
+                let steps = count.max(1);
+                for _ in 0..steps {
+                    if !self.emit_next_event(writer)? {
+                        break;
+                    }
+                }
+            }
+            PlaybackControl::Seek { tick } => {
+                self.cursor = seek_to_tick(self.events, tick);
+                self.update_metrics_time(tick);
+                self.emit_metrics(writer)?;
+            }
+        }
         Ok(())
     }
 
