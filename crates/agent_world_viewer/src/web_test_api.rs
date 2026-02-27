@@ -40,7 +40,8 @@ enum WebTestApiCommand {
 #[derive(Clone, Debug)]
 struct WebTestApiStateSnapshot {
     connection_status: &'static str,
-    tick: u64,
+    logical_time: u64,
+    event_seq: u64,
     selected_kind: Option<String>,
     selected_id: Option<String>,
     error_count: u64,
@@ -57,7 +58,8 @@ impl Default for WebTestApiStateSnapshot {
     fn default() -> Self {
         Self {
             connection_status: "connecting",
-            tick: 0,
+            logical_time: 0,
+            event_seq: 0,
             selected_kind: None,
             selected_id: None,
             error_count: 0,
@@ -200,8 +202,18 @@ fn build_state_js_value(snapshot: &WebTestApiStateSnapshot) -> JsValue {
     );
     let _ = JsReflect::set(
         &object,
+        &JsValue::from_str("logicalTime"),
+        &JsValue::from_f64(snapshot.logical_time as f64),
+    );
+    let _ = JsReflect::set(
+        &object,
+        &JsValue::from_str("eventSeq"),
+        &JsValue::from_f64(snapshot.event_seq as f64),
+    );
+    let _ = JsReflect::set(
+        &object,
         &JsValue::from_str("tick"),
-        &JsValue::from_f64(snapshot.tick as f64),
+        &JsValue::from_f64(snapshot.logical_time as f64),
     );
     let _ = JsReflect::set(
         &object,
@@ -446,7 +458,13 @@ pub(super) fn publish_web_test_api_state(
             .as_ref()
             .map(|metrics| metrics.total_ticks)
             .unwrap_or(0);
-        snapshot.tick = snapshot_tick.max(metrics_tick);
+        snapshot.logical_time = snapshot_tick.max(metrics_tick);
+        snapshot.event_seq = state
+            .events
+            .iter()
+            .map(|event| event.id)
+            .max()
+            .unwrap_or(snapshot.event_seq);
         snapshot.event_count = state.events.len();
         snapshot.trace_count = state.decision_traces.len();
         snapshot.selected_kind = selection
