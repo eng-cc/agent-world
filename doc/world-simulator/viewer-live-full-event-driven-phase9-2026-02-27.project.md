@@ -4,7 +4,7 @@
 - [x] T0 建档：设计文档 + 项目管理文档
 - [x] T1 代码收敛：删除 `world_viewer_live --tick-ms` 与 `CliOptions.tick_ms`
 - [x] T2 脚本收敛：删除所有脚本对 `--tick-ms` 的透传链路
-- [ ] T3 文档收敛：更新活跃手册与脚本说明，移除 `--tick-ms` 示例
+- [x] T3 文档收敛：更新活跃手册与脚本说明，移除 `--tick-ms` 示例
 - [ ] T4 回归与结项：required 测试 + 阶段文档收口
 
 ## 依赖
@@ -22,5 +22,5 @@
 - `doc/viewer-manual.md`
 
 ## 状态
-- 当前阶段：进行中（T0~T2 已完成，进行 T3）
+- 当前阶段：进行中（T0~T3 已完成，进行 T4）
 - 备注：Phase 9 只清理 viewer live 旧 tick 入口，不改 node/runtime 基础 tick 机制。

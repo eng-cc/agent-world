@@ -212,7 +212,7 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
 ### S8：长稳与压力套件（L5）
 - Viewer 压测：
 ```bash
-./scripts/viewer-owr4-stress.sh --duration-secs 45 --tick-ms 120 --scenarios triad_region_bootstrap,llm_bootstrap
+./scripts/viewer-owr4-stress.sh --duration-secs 45 --scenarios triad_region_bootstrap,llm_bootstrap
 ```
 - LLM 长稳：
 ```bash

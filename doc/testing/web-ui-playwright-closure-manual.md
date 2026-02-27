@@ -9,7 +9,7 @@
 ## S6：Web UI 闭环 smoke 套件（L4）
 1) 启动 live server（含 bridge）：
 ```bash
-env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011 --tick-ms 300 --topology single --viewer-no-consensus-gate
+env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011 --topology single --viewer-no-consensus-gate
 ```
 2) 启动 web viewer：
 ```bash

@@ -29,7 +29,6 @@
   - `--scenario <name>`：默认 `llm_bootstrap`
   - `--viewer-port <port>`：默认 `4173`
   - `--web-bridge-port <port>`：默认 `5011`
-  - `--tick-ms <ms>`：默认 `300`
   - `--out-dir <dir>`：默认 `output/playwright/viewer`
 
 ### 语义化断言（Web）

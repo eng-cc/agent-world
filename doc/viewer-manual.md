@@ -15,13 +15,13 @@
 
 ### 1）启动 live server（推荐）
 ```bash
-env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011 --tick-ms 300
+env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011
 ```
 `world_viewer_live` 默认使用 LLM 决策（仍需先配置 LLM key）；`--llm` 可保留用于显式声明。
 如需临时回退到内置脚本决策，可显式传 `--no-llm`。
 
 ```bash
-env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --no-llm --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011 --tick-ms 300
+env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --no-llm --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011
 ```
 
 ### 2）启动 viewer
@@ -370,7 +370,7 @@ python3 scripts/generate-viewer-industrial-theme-assets.py --quality v1 --out-di
 ### 标准流程
 1) 启动 live server（终端 A）
 ```bash
-env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011 --tick-ms 300
+env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011
 ```
 
 2) 启动 Web Viewer（终端 B）
@@ -403,7 +403,7 @@ bash "$PWCLI" close
 ### native fallback（仅在 Web 无法复现或排查图形链路）
 基础调用：
 ```bash
-./scripts/capture-viewer-frame.sh --scenario asteroid_fragment_detail_bootstrap --addr 127.0.0.1:5131 --tick-ms 300 --viewer-wait 12 --auto-focus-target first_fragment --auto-focus-radius 18
+./scripts/capture-viewer-frame.sh --scenario asteroid_fragment_detail_bootstrap --addr 127.0.0.1:5131 --viewer-wait 12 --auto-focus-target first_fragment --auto-focus-radius 18
 ```
 
 常用增强参数：

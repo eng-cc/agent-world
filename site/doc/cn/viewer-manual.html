@@ -64,9 +64,9 @@
       <section id="quickstart" class="section" data-reveal>
         <h2>快速开始</h2>
         <h3>1) 启动 live server（推荐）</h3>
-        <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011 --tick-ms 300</code></pre>
+        <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011</code></pre>
         <p>`world_viewer_live` 默认使用 LLM 决策（需先配置 key）；如需脚本回退可显式传 `--no-llm`。</p>
-        <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --no-llm --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011 --tick-ms 300</code></pre>
+        <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --no-llm --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011</code></pre>
 
         <h3>2) 启动 viewer</h3>
         <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023</code></pre>
@@ -138,7 +138,7 @@
 
         <h3>标准流程</h3>
         <p>终端 A：启动 live server。</p>
-        <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011 --tick-ms 300</code></pre>
+        <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011</code></pre>
         <p>终端 B：启动 Web Viewer。</p>
         <pre><code>env -u NO_COLOR ./scripts/run-viewer-web.sh --address 127.0.0.1 --port 4173</code></pre>
         <p>终端 C：执行 Playwright 闭环采样。</p>
@@ -164,7 +164,7 @@ window.__AW_TEST__.getState();</code></pre>
         </ul>
 
         <h3>native fallback（仅 Web 无法复现时）</h3>
-        <pre><code>./scripts/capture-viewer-frame.sh --scenario asteroid_fragment_detail_bootstrap --addr 127.0.0.1:5131 --tick-ms 300 --viewer-wait 12 --auto-focus-target first_fragment --auto-focus-radius 18</code></pre>
+        <pre><code>./scripts/capture-viewer-frame.sh --scenario asteroid_fragment_detail_bootstrap --addr 127.0.0.1:5131 --viewer-wait 12 --auto-focus-target first_fragment --auto-focus-radius 18</code></pre>
         <p>常用增强参数：`--capture-max-wait`、`--no-prewarm`、`--keep-tmp`、`--auto-focus-keep-2d`。</p>
       </section>
 

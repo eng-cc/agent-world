@@ -31,9 +31,9 @@
 - 脚本路径：`scripts/capture-viewer-frame.sh`
 - 典型调用：
   - `./scripts/capture-viewer-frame.sh`
-  - `./scripts/capture-viewer-frame.sh --scenario llm_bootstrap --addr 127.0.0.1:5023 --tick-ms 300 --viewer-wait 8`
+  - `./scripts/capture-viewer-frame.sh --scenario llm_bootstrap --addr 127.0.0.1:5023 --viewer-wait 8`
 - 可选参数：
-  - `--scenario` / `--addr` / `--tick-ms` / `--display` / `--width` / `--height` / `--viewer-wait` / `--llm` / `--keep-tmp`
+  - `--scenario` / `--addr` / `--display` / `--width` / `--height` / `--viewer-wait` / `--llm` / `--keep-tmp`
   - `--auto-focus-target`：启动 viewer 后自动聚焦目标（如 `first_fragment`、`location:frag-1`、`agent:agent-0`）
   - `--auto-focus-radius`：自动聚焦半径覆盖值
   - `--auto-focus-keep-2d`：自动聚焦时保持 2D（默认切换 3D）
