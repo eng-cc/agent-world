@@ -210,7 +210,6 @@ fn main() {
 
     let mut config = ViewerLiveServerConfig::new(options.scenario)
         .with_bind_addr(options.bind_addr)
-        .with_tick_interval(Duration::from_millis(options.tick_ms))
         .with_decision_mode(if options.llm_mode {
             ViewerLiveDecisionMode::Llm
         } else {

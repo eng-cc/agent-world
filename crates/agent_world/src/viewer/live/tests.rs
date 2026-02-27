@@ -165,23 +165,11 @@ fn live_world_reset_rebuilds_kernel() {
 fn live_server_config_supports_llm_mode() {
     let config = ViewerLiveServerConfig::new(WorldScenario::Minimal);
     assert_eq!(config.decision_mode, ViewerLiveDecisionMode::Script);
-    assert_eq!(
-        config.script_pacing_mode,
-        ViewerLiveScriptPacingMode::TimerPulse
-    );
     assert!(config.consensus_gate_max_tick.is_none());
     assert!(config.consensus_runtime.is_none());
 
     let llm_config = config.clone().with_llm_mode(true);
     assert_eq!(llm_config.decision_mode, ViewerLiveDecisionMode::Llm);
-
-    let event_drive_config = config
-        .clone()
-        .with_script_pacing_mode(ViewerLiveScriptPacingMode::EventDrive);
-    assert_eq!(
-        event_drive_config.script_pacing_mode,
-        ViewerLiveScriptPacingMode::EventDrive
-    );
 
     let script_config = llm_config.with_decision_mode(ViewerLiveDecisionMode::Script);
     assert_eq!(script_config.decision_mode, ViewerLiveDecisionMode::Script);
@@ -196,7 +184,6 @@ fn live_world_consensus_gate_limits_step_budget() {
         config,
         init,
         ViewerLiveDecisionMode::Script,
-        ViewerLiveScriptPacingMode::TimerPulse,
         Some(Arc::clone(&gate)),
         None,
     )
@@ -384,7 +371,7 @@ fn live_world_llm_mailbox_preserves_multiple_requests() {
 }
 
 #[test]
-fn live_world_playback_pulse_gate_tracks_llm_mailbox() {
+fn live_world_event_drive_gate_tracks_llm_mailbox() {
     set_test_llm_env();
     let config = WorldConfig::default();
     let mut init = WorldInitConfig::default();
@@ -394,37 +381,21 @@ fn live_world_playback_pulse_gate_tracks_llm_mailbox() {
     };
     let mut world = LiveWorld::new(config, init, ViewerLiveDecisionMode::Llm).expect("init ok");
 
-    assert!(world.should_step_on_playback_pulse());
+    assert!(world.should_step_on_event_drive());
     let _ = world.step().expect("step consumes bootstrap mailbox token");
-    assert!(!world.should_step_on_playback_pulse());
+    assert!(!world.should_step_on_event_drive());
 
     world.request_llm_decision();
-    assert!(world.should_step_on_playback_pulse());
+    assert!(world.should_step_on_event_drive());
 }
 
 #[test]
-fn live_world_drive_modes_split_pulse_and_event_paths() {
+fn live_world_non_consensus_path_is_event_drive_only() {
     let script_config = WorldConfig::default();
     let script_init = WorldInitConfig::from_scenario(WorldScenario::Minimal, &script_config);
     let script_world =
         LiveWorld::new(script_config, script_init, ViewerLiveDecisionMode::Script).expect("init");
-    assert!(script_world.should_use_playback_pulse());
-    assert!(!script_world.uses_non_consensus_event_drive());
-
-    let script_event_config = WorldConfig::default();
-    let script_event_init =
-        WorldInitConfig::from_scenario(WorldScenario::Minimal, &script_event_config);
-    let script_event_world = LiveWorld::new_with_consensus_gate(
-        script_event_config,
-        script_event_init,
-        ViewerLiveDecisionMode::Script,
-        ViewerLiveScriptPacingMode::EventDrive,
-        None,
-        None,
-    )
-    .expect("init");
-    assert!(!script_event_world.should_use_playback_pulse());
-    assert!(script_event_world.uses_non_consensus_event_drive());
+    assert!(script_world.uses_non_consensus_event_drive());
 
     set_test_llm_env();
     let llm_config = WorldConfig::default();
@@ -435,7 +406,6 @@ fn live_world_drive_modes_split_pulse_and_event_paths() {
     };
     let llm_world =
         LiveWorld::new(llm_config, llm_init, ViewerLiveDecisionMode::Llm).expect("init");
-    assert!(!llm_world.should_use_playback_pulse());
     assert!(llm_world.uses_non_consensus_event_drive());
 }
 
@@ -447,15 +417,7 @@ fn live_world_script_event_drive_stops_requeue_on_idle_step() {
         count: 0,
         ..crate::simulator::AgentSpawnConfig::default()
     };
-    let mut world = LiveWorld::new_with_consensus_gate(
-        config,
-        init,
-        ViewerLiveDecisionMode::Script,
-        ViewerLiveScriptPacingMode::EventDrive,
-        None,
-        None,
-    )
-    .expect("init");
+    let mut world = LiveWorld::new(config, init, ViewerLiveDecisionMode::Script).expect("init");
 
     let step = world.step().expect("step");
     assert!(step.event.is_none());
@@ -976,7 +938,6 @@ fn live_world_consensus_bridge_applies_only_committed_actions() {
         config,
         init,
         ViewerLiveDecisionMode::Script,
-        ViewerLiveScriptPacingMode::TimerPulse,
         None,
         Some(Arc::clone(&shared_runtime)),
     )
@@ -1002,75 +963,6 @@ fn live_world_consensus_bridge_applies_only_committed_actions() {
 
     let mut locked = shared_runtime.lock().expect("lock node runtime");
     locked.stop().expect("stop node runtime");
-}
-
-#[test]
-fn playback_pulse_thread_emits_and_stops_with_loop_flag() {
-    let (tx, rx) = mpsc::sync_channel(8);
-    let loop_running = Arc::new(AtomicBool::new(true));
-    let playback_control = PlaybackPulseControl::new();
-    playback_control.set_enabled(true);
-    let pulse_flag = Arc::clone(&loop_running);
-    let pulse_control = playback_control.clone();
-    let signal_queued = Arc::new(AtomicBool::new(false));
-    let pulse_signal_queued = Arc::clone(&signal_queued);
-    let backpressure = Arc::new(LiveLoopBackpressure::default());
-    let pulse_backpressure = Arc::clone(&backpressure);
-    let handle = thread::spawn(move || {
-        emit_playback_pulses(
-            tx,
-            Duration::from_millis(1),
-            pulse_flag,
-            pulse_control,
-            pulse_signal_queued,
-            pulse_backpressure,
-        )
-    });
-
-    let signal = rx
-        .recv_timeout(Duration::from_millis(200))
-        .expect("should receive playback pulse");
-    assert!(matches!(signal, LiveLoopSignal::PlaybackPulse));
-
-    loop_running.store(false, Ordering::SeqCst);
-    playback_control.notify();
-    handle.join().expect("pulse thread should exit");
-}
-
-#[test]
-fn playback_pulse_thread_stays_idle_until_enabled() {
-    let (tx, rx) = mpsc::sync_channel(8);
-    let loop_running = Arc::new(AtomicBool::new(true));
-    let playback_control = PlaybackPulseControl::new();
-    let pulse_flag = Arc::clone(&loop_running);
-    let pulse_control = playback_control.clone();
-    let signal_queued = Arc::new(AtomicBool::new(false));
-    let pulse_signal_queued = Arc::clone(&signal_queued);
-    let backpressure = Arc::new(LiveLoopBackpressure::default());
-    let pulse_backpressure = Arc::clone(&backpressure);
-    let handle = thread::spawn(move || {
-        emit_playback_pulses(
-            tx,
-            Duration::from_millis(5),
-            pulse_flag,
-            pulse_control,
-            pulse_signal_queued,
-            pulse_backpressure,
-        )
-    });
-
-    let idle_result = rx.recv_timeout(Duration::from_millis(40));
-    assert!(matches!(idle_result, Err(mpsc::RecvTimeoutError::Timeout)));
-
-    playback_control.set_enabled(true);
-    let signal = rx
-        .recv_timeout(Duration::from_millis(200))
-        .expect("should receive playback pulse after enabling");
-    assert!(matches!(signal, LiveLoopSignal::PlaybackPulse));
-
-    loop_running.store(false, Ordering::SeqCst);
-    playback_control.notify();
-    handle.join().expect("pulse thread should exit");
 }
 
 #[test]
@@ -1205,7 +1097,6 @@ fn consensus_commit_signal_thread_emits_on_committed_batches() {
         config,
         init,
         ViewerLiveDecisionMode::Script,
-        ViewerLiveScriptPacingMode::TimerPulse,
         None,
         Some(Arc::clone(&shared_runtime)),
     )

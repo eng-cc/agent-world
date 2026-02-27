@@ -3,7 +3,7 @@ use std::io::{self, BufRead, BufReader, BufWriter, Write};
 use std::net::{TcpListener, TcpStream};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc;
-use std::sync::{Arc, Condvar, Mutex};
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -44,20 +44,12 @@ pub enum ViewerLiveDecisionMode {
     Llm,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ViewerLiveScriptPacingMode {
-    TimerPulse,
-    EventDrive,
-}
-
 #[derive(Debug, Clone)]
 pub struct ViewerLiveServerConfig {
     pub bind_addr: String,
-    pub tick_interval: Duration,
     pub scenario: WorldScenario,
     pub world_id: String,
     pub decision_mode: ViewerLiveDecisionMode,
-    pub script_pacing_mode: ViewerLiveScriptPacingMode,
     pub consensus_gate_max_tick: Option<Arc<AtomicU64>>,
     pub consensus_runtime: Option<Arc<Mutex<NodeRuntime>>>,
 }
@@ -66,11 +58,9 @@ impl ViewerLiveServerConfig {
     pub fn new(scenario: WorldScenario) -> Self {
         Self {
             bind_addr: "127.0.0.1:5010".to_string(),
-            tick_interval: Duration::from_millis(200),
             world_id: format!("live-{}", scenario.as_str()),
             scenario,
             decision_mode: ViewerLiveDecisionMode::Script,
-            script_pacing_mode: ViewerLiveScriptPacingMode::TimerPulse,
             consensus_gate_max_tick: None,
             consensus_runtime: None,
         }
@@ -81,11 +71,6 @@ impl ViewerLiveServerConfig {
         self
     }
 
-    pub fn with_tick_interval(mut self, interval: Duration) -> Self {
-        self.tick_interval = interval;
-        self
-    }
-
     pub fn with_world_id(mut self, world_id: impl Into<String>) -> Self {
         self.world_id = world_id.into();
         self
@@ -93,11 +78,6 @@ impl ViewerLiveServerConfig {
 
     pub fn with_decision_mode(mut self, mode: ViewerLiveDecisionMode) -> Self {
         self.decision_mode = mode;
-        self
-    }
-
-    pub fn with_script_pacing_mode(mut self, mode: ViewerLiveScriptPacingMode) -> Self {
-        self.script_pacing_mode = mode;
         self
     }
 
@@ -165,7 +145,6 @@ pub struct ViewerLiveServer {
 #[derive(Debug)]
 enum LiveLoopSignal {
     Request(ViewerRequest),
-    PlaybackPulse,
     LlmDecisionRequested,
     ConsensusCommitted,
     ConsensusDriveRequested,
@@ -190,7 +169,6 @@ impl ViewerLiveServer {
                 WorldConfig::default(),
                 init,
                 config.decision_mode,
-                config.script_pacing_mode,
                 Some(max_tick),
                 config.consensus_runtime.clone(),
             )?
@@ -199,7 +177,6 @@ impl ViewerLiveServer {
                 WorldConfig::default(),
                 init,
                 config.decision_mode,
-                config.script_pacing_mode,
                 None,
                 config.consensus_runtime.clone(),
             )?
@@ -232,23 +209,14 @@ impl ViewerLiveServer {
         let (tx, rx) = mpsc::sync_channel::<LiveLoopSignal>(LIVE_LOOP_QUEUE_CAPACITY);
         let loop_running = Arc::new(AtomicBool::new(true));
         let backpressure = Arc::new(LiveLoopBackpressure::default());
-        let playback_signal_queued = Arc::new(AtomicBool::new(false));
         let llm_signal_queued = Arc::new(AtomicBool::new(false));
         let consensus_signal_queued = Arc::new(AtomicBool::new(false));
         let consensus_drive_signal_queued = Arc::new(AtomicBool::new(false));
         let non_consensus_drive_signal_queued = Arc::new(AtomicBool::new(false));
         let request_loop_running = Arc::clone(&loop_running);
-        let pulse_loop_running = Arc::clone(&loop_running);
-        let playback_control = PlaybackPulseControl::new();
-        let request_playback_control = playback_control.clone();
-        let pulse_playback_control = playback_control.clone();
         let loop_tx = tx.clone();
         let request_tx = tx.clone();
-        let pulse_tx = tx.clone();
-        let pulse_interval = self.config.tick_interval;
         let consensus_batches_handle = self.world.consensus_batches_handle()?;
-        let pulse_signal_queued = Arc::clone(&playback_signal_queued);
-        let pulse_backpressure = Arc::clone(&backpressure);
         let request_backpressure = Arc::clone(&backpressure);
 
         thread::spawn(move || {
@@ -256,18 +224,7 @@ impl ViewerLiveServer {
                 reader_stream,
                 request_tx,
                 request_loop_running,
-                request_playback_control,
                 request_backpressure,
-            )
-        });
-        thread::spawn(move || {
-            emit_playback_pulses(
-                pulse_tx,
-                pulse_interval,
-                pulse_loop_running,
-                pulse_playback_control,
-                pulse_signal_queued,
-                pulse_backpressure,
             )
         });
         if let Some(committed_batches) = consensus_batches_handle {
@@ -288,8 +245,6 @@ impl ViewerLiveServer {
         drop(tx);
 
         let mut session = ViewerLiveSession::new();
-        playback_control
-            .set_enabled(session.should_emit_event() && self.world.should_use_playback_pulse());
         let result = loop {
             let signal = match rx.recv() {
                 Ok(signal) => signal,
@@ -334,8 +289,6 @@ impl ViewerLiveServer {
                         }
                     }
                     let now_emitting = session.should_emit_event();
-                    playback_control
-                        .set_enabled(now_emitting && self.world.should_use_playback_pulse());
                     if self.world.uses_consensus_bridge()
                         && now_emitting
                         && (!was_emitting || outcome.request_llm_decision)
@@ -364,11 +317,6 @@ impl ViewerLiveServer {
                     } else {
                         Ok(LiveLoopIterationAction::Stop)
                     }
-                }
-                LiveLoopSignal::PlaybackPulse => {
-                    playback_signal_queued.store(false, Ordering::SeqCst);
-                    self.handle_playback_pulse(&mut session, &mut writer)?;
-                    Ok(LiveLoopIterationAction::Continue)
                 }
                 LiveLoopSignal::LlmDecisionRequested => {
                     llm_signal_queued.store(false, Ordering::SeqCst);
@@ -441,18 +389,15 @@ impl ViewerLiveServer {
             }
         };
         loop_running.store(false, Ordering::SeqCst);
-        playback_control.notify();
         drop(loop_tx);
         let backpressure_snapshot = backpressure.snapshot();
         if backpressure_snapshot.has_activity() {
             eprintln!(
-                "viewer live backpressure merged={{playback_pulse:{}, llm_decision:{}, consensus_committed:{}, consensus_drive:{}, non_consensus_drive:{}}} dropped={{playback_pulse:{}, llm_decision:{}, consensus_committed:{}, consensus_drive:{}, non_consensus_drive:{}}} signals=[{}]",
-                backpressure_snapshot.merged_playback_pulse,
+                "viewer live backpressure merged={{llm_decision:{}, consensus_committed:{}, consensus_drive:{}, non_consensus_drive:{}}} dropped={{llm_decision:{}, consensus_committed:{}, consensus_drive:{}, non_consensus_drive:{}}} signals=[{}]",
                 backpressure_snapshot.merged_llm_decision_requested,
                 backpressure_snapshot.merged_consensus_committed,
                 backpressure_snapshot.merged_consensus_drive_requested,
                 backpressure_snapshot.merged_non_consensus_drive_requested,
-                backpressure_snapshot.dropped_playback_pulse,
                 backpressure_snapshot.dropped_llm_decision_requested,
                 backpressure_snapshot.dropped_consensus_committed,
                 backpressure_snapshot.dropped_consensus_drive_requested,
@@ -461,27 +406,6 @@ impl ViewerLiveServer {
             );
         }
         result
-    }
-
-    fn handle_playback_pulse(
-        &mut self,
-        session: &mut ViewerLiveSession,
-        writer: &mut BufWriter<TcpStream>,
-    ) -> Result<(), ViewerLiveServerError> {
-        if !session.should_emit_event() {
-            return Ok(());
-        }
-        if !self.world.should_use_playback_pulse() {
-            return Ok(());
-        }
-        if !self.world.should_step_on_playback_pulse() {
-            return Ok(());
-        }
-        if !self.world.can_step_for_consensus() {
-            return Ok(());
-        }
-        let step = self.world.step()?;
-        self.emit_step_outcome(session, writer, step, true)
     }
 
     fn handle_consensus_committed(
@@ -529,7 +453,7 @@ impl ViewerLiveServer {
         if !session.should_emit_event() || !self.world.uses_non_consensus_event_drive() {
             return Ok(false);
         }
-        if !self.world.should_step_on_playback_pulse() {
+        if !self.world.should_step_on_event_drive() {
             return Ok(false);
         }
         let step = self.world.step()?;
@@ -627,7 +551,6 @@ struct LiveWorld {
     init: WorldInitConfig,
     kernel: WorldKernel,
     decision_mode: ViewerLiveDecisionMode,
-    script_pacing_mode: ViewerLiveScriptPacingMode,
     driver: LiveDriver,
     llm_decision_mailbox: u64,
     consensus_gate_max_tick: Option<Arc<AtomicU64>>,
@@ -651,21 +574,13 @@ impl LiveWorld {
         init: WorldInitConfig,
         decision_mode: ViewerLiveDecisionMode,
     ) -> Result<Self, ViewerLiveServerError> {
-        Self::new_with_consensus_gate(
-            config,
-            init,
-            decision_mode,
-            ViewerLiveScriptPacingMode::TimerPulse,
-            None,
-            None,
-        )
+        Self::new_with_consensus_gate(config, init, decision_mode, None, None)
     }
 
     fn new_with_consensus_gate(
         config: WorldConfig,
         init: WorldInitConfig,
         decision_mode: ViewerLiveDecisionMode,
-        script_pacing_mode: ViewerLiveScriptPacingMode,
         consensus_gate_max_tick: Option<Arc<AtomicU64>>,
         consensus_runtime: Option<Arc<Mutex<NodeRuntime>>>,
     ) -> Result<Self, ViewerLiveServerError> {
@@ -681,7 +596,6 @@ impl LiveWorld {
             init,
             kernel,
             decision_mode,
-            script_pacing_mode,
             driver,
             llm_decision_mailbox,
             consensus_gate_max_tick,
@@ -708,22 +622,8 @@ impl LiveWorld {
         self.consensus_bridge.is_some()
     }
 
-    fn should_use_playback_pulse(&self) -> bool {
-        !self.uses_consensus_bridge()
-            && matches!(&self.driver, LiveDriver::Script(_))
-            && self.script_pacing_mode == ViewerLiveScriptPacingMode::TimerPulse
-    }
-
     fn uses_non_consensus_event_drive(&self) -> bool {
-        if self.uses_consensus_bridge() {
-            return false;
-        }
-        match &self.driver {
-            LiveDriver::Script(_) => {
-                self.script_pacing_mode == ViewerLiveScriptPacingMode::EventDrive
-            }
-            LiveDriver::Llm(_) => true,
-        }
+        !self.uses_consensus_bridge()
     }
 
     fn consensus_batches_handle(
@@ -811,7 +711,7 @@ impl LiveWorld {
         self.llm_decision_mailbox > 0
     }
 
-    fn should_step_on_playback_pulse(&self) -> bool {
+    fn should_step_on_event_drive(&self) -> bool {
         if self.consensus_bridge.is_some() {
             return true;
         }
@@ -826,10 +726,7 @@ impl LiveWorld {
             return false;
         }
         match &self.driver {
-            LiveDriver::Script(_) => {
-                self.script_pacing_mode == ViewerLiveScriptPacingMode::EventDrive
-                    && step.event.is_some()
-            }
+            LiveDriver::Script(_) => step.event.is_some(),
             LiveDriver::Llm(_) => self.llm_mailbox_has_pending(),
         }
     }
