@@ -97,6 +97,11 @@ impl WorldState {
                         reason: format!("material transit completion failed: {reason}"),
                     })?;
                 }
+                self.industry_progress.completed_material_transits = self
+                    .industry_progress
+                    .completed_material_transits
+                    .saturating_add(1);
+                self.refresh_industry_progress_stage(now);
                 if let Some(cell) = self.agents.get_mut(requester_agent_id) {
                     cell.last_active = now;
                 }
@@ -156,6 +161,7 @@ impl WorldState {
                         built_at: now,
                     },
                 );
+                self.refresh_industry_progress_stage(now);
                 if let Some(cell) = self.agents.get_mut(builder_agent_id) {
                     cell.last_active = now;
                 }
@@ -231,6 +237,7 @@ impl WorldState {
                 consume_ledger,
                 output_ledger,
                 bottleneck_tags,
+                market_quotes,
                 ready_at,
             } => {
                 for stack in consume {
@@ -271,6 +278,11 @@ impl WorldState {
                         ready_at: *ready_at,
                     },
                 );
+                for quote in market_quotes {
+                    self.industry_progress
+                        .latest_market_quotes
+                        .insert(quote.kind.clone(), quote.clone());
+                }
                 if let Some(cell) = self.agents.get_mut(requester_agent_id) {
                     cell.last_active = now;
                 }
@@ -306,6 +318,11 @@ impl WorldState {
                         reason: format!("recipe byproduct failed: {reason}"),
                     })?;
                 }
+                self.industry_progress.completed_recipe_jobs = self
+                    .industry_progress
+                    .completed_recipe_jobs
+                    .saturating_add(1);
+                self.refresh_industry_progress_stage(now);
                 if let Some(cell) = self.agents.get_mut(requester_agent_id) {
                     cell.last_active = now;
                 }
@@ -313,5 +330,30 @@ impl WorldState {
             _ => unreachable!("apply_domain_event_industry received unsupported event variant"),
         }
         Ok(())
+    }
+
+    pub(super) fn refresh_industry_progress_stage(&mut self, now: WorldTime) {
+        let current = self.industry_progress.stage;
+        let mut next = current;
+
+        if next == IndustryStage::Bootstrap
+            && self.industry_progress.completed_recipe_jobs >= 3
+            && !self.factories.is_empty()
+        {
+            next = IndustryStage::ScaleOut;
+        }
+
+        let governance_enabled =
+            self.gameplay_policy.electricity_tax_bps > 0 || self.gameplay_policy.data_tax_bps > 0;
+        let governance_throughput_ready = self.industry_progress.completed_recipe_jobs >= 6
+            || self.industry_progress.completed_material_transits >= 3;
+        if next == IndustryStage::ScaleOut && governance_enabled && governance_throughput_ready {
+            next = IndustryStage::Governance;
+        }
+
+        if next != current {
+            self.industry_progress.stage = next;
+            self.industry_progress.stage_updated_at = now;
+        }
     }
 }

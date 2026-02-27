@@ -1,4 +1,6 @@
+use super::super::super::MaterialMarketQuote;
 use super::*;
+use std::collections::BTreeMap;
 
 const FACTORY_DURABILITY_PPM_BASE: i64 = 1_000_000;
 const FACTORY_MAINTENANCE_PART_KIND: &str = "hardware_part";
@@ -593,6 +595,8 @@ impl World {
                         },
                     }));
                 }
+                let market_quotes =
+                    build_material_market_quotes(self, &preferred_consume_ledger, &plan.consume);
                 let bottleneck_tags = infer_bottleneck_tags(&plan.consume);
                 let scarcity_delay_ticks = compute_local_scarcity_delay_ticks(
                     self,
@@ -620,6 +624,7 @@ impl World {
                     consume_ledger,
                     output_ledger,
                     bottleneck_tags,
+                    market_quotes,
                     ready_at,
                 }))
             }
@@ -780,4 +785,68 @@ fn compute_local_scarcity_delay_ticks(
     } else {
         1
     }
+}
+
+fn governance_tax_bps_for_material_quotes(world: &World) -> u16 {
+    world
+        .state
+        .gameplay_policy
+        .electricity_tax_bps
+        .saturating_add(world.state.gameplay_policy.data_tax_bps)
+        .min(10_000)
+}
+
+fn build_material_market_quotes(
+    world: &World,
+    preferred_consume_ledger: &MaterialLedgerId,
+    consume: &[MaterialStack],
+) -> Vec<MaterialMarketQuote> {
+    let mut requested_by_kind: BTreeMap<String, i64> = BTreeMap::new();
+    for stack in consume {
+        if stack.amount <= 0 {
+            continue;
+        }
+        let entry = requested_by_kind.entry(stack.kind.clone()).or_insert(0);
+        *entry = entry.saturating_add(stack.amount);
+    }
+    if requested_by_kind.is_empty() {
+        return Vec::new();
+    }
+
+    let governance_tax_bps = governance_tax_bps_for_material_quotes(world);
+    let transit_loss_bps = MATERIAL_TRANSFER_LOSS_PER_KM_BPS.max(0);
+    let mut quotes = Vec::with_capacity(requested_by_kind.len());
+    for (kind, requested_amount) in requested_by_kind {
+        let local_available_amount = world
+            .ledger_material_balance(preferred_consume_ledger, kind.as_str())
+            .max(0);
+        let world_available_amount = world
+            .ledger_material_balance(&MaterialLedgerId::world(), kind.as_str())
+            .max(0);
+        let local_deficit_amount = requested_amount
+            .saturating_sub(local_available_amount)
+            .max(0);
+        let deficit_ratio_bps = if requested_amount > 0 {
+            ((local_deficit_amount as i128)
+                .saturating_mul(10_000)
+                .saturating_div(requested_amount as i128)) as i64
+        } else {
+            0
+        };
+        let effective_cost_index_ppm = 1_000_000_i64
+            .saturating_add(deficit_ratio_bps.saturating_mul(100))
+            .saturating_add(transit_loss_bps.saturating_mul(100))
+            .saturating_add(i64::from(governance_tax_bps).saturating_mul(100));
+        quotes.push(MaterialMarketQuote {
+            kind,
+            requested_amount,
+            local_available_amount,
+            world_available_amount,
+            local_deficit_amount,
+            transit_loss_bps,
+            governance_tax_bps,
+            effective_cost_index_ppm,
+        });
+    }
+    quotes
 }

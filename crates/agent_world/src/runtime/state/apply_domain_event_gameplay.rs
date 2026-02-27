@@ -58,6 +58,7 @@ impl WorldState {
                     forbidden_location_ids: normalized_forbidden_location_ids,
                     updated_at: now,
                 };
+                self.refresh_industry_progress_stage(now);
                 if let Some(cell) = self.agents.get_mut(operator_agent_id) {
                     cell.last_active = now;
                 }

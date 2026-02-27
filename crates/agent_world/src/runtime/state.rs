@@ -8,7 +8,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use super::agent_cell::AgentCell;
 use super::error::WorldError;
-use super::events::{DomainEvent, MaterialTransitPriority};
+use super::events::{DomainEvent, IndustryStage, MaterialMarketQuote, MaterialTransitPriority};
 use super::gameplay_state::{
     AllianceState, CrisisState, CrisisStatus, EconomicContractState, EconomicContractStatus,
     GameplayPolicyState, GovernanceProposalState, GovernanceProposalStatus,
@@ -131,6 +131,21 @@ pub struct MaterialTransitJobState {
     pub ready_at: WorldTime,
 }
 
+/// Lightweight observability state for industry progression and market snapshots.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct IndustryProgressState {
+    #[serde(default)]
+    pub stage: IndustryStage,
+    #[serde(default)]
+    pub stage_updated_at: WorldTime,
+    #[serde(default)]
+    pub completed_recipe_jobs: u64,
+    #[serde(default)]
+    pub completed_material_transits: u64,
+    #[serde(default)]
+    pub latest_market_quotes: BTreeMap<String, MaterialMarketQuote>,
+}
+
 /// Active market listing for one module artifact.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ModuleArtifactListingState {
@@ -188,6 +203,8 @@ pub struct WorldState {
     pub pending_recipe_jobs: BTreeMap<ActionId, RecipeJobState>,
     #[serde(default)]
     pub pending_material_transits: BTreeMap<ActionId, MaterialTransitJobState>,
+    #[serde(default)]
+    pub industry_progress: IndustryProgressState,
     #[serde(default)]
     pub alliances: BTreeMap<String, AllianceState>,
     #[serde(default)]
@@ -285,6 +302,7 @@ impl Default for WorldState {
             pending_factory_builds: BTreeMap::new(),
             pending_recipe_jobs: BTreeMap::new(),
             pending_material_transits: BTreeMap::new(),
+            industry_progress: IndustryProgressState::default(),
             alliances: BTreeMap::new(),
             gameplay_policy: GameplayPolicyState::default(),
             data_access_permissions: BTreeMap::new(),

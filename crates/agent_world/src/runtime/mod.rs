@@ -68,8 +68,8 @@ pub use error::WorldError;
 
 // Events
 pub use events::{
-    Action, ActionEnvelope, CausedBy, DomainEvent, MainTokenFeeKind, MaterialTransitPriority,
-    ModuleSourcePackage, RejectReason,
+    Action, ActionEnvelope, CausedBy, DomainEvent, IndustryStage, MainTokenFeeKind,
+    MaterialMarketQuote, MaterialTransitPriority, ModuleSourcePackage, RejectReason,
 };
 
 // Governance
@@ -204,8 +204,8 @@ pub use snapshot::{
 
 // State
 pub use state::{
-    FactoryBuildJobState, FactoryState, MaterialTransitJobState, ModuleInstanceState,
-    RecipeJobState, WorldState,
+    FactoryBuildJobState, FactoryState, IndustryProgressState, MaterialTransitJobState,
+    ModuleInstanceState, RecipeJobState, WorldState,
 };
 
 // World

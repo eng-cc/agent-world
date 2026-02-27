@@ -32,6 +32,32 @@ fn default_material_transit_priority() -> MaterialTransitPriority {
     MaterialTransitPriority::Standard
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum IndustryStage {
+    Bootstrap,
+    ScaleOut,
+    Governance,
+}
+
+impl Default for IndustryStage {
+    fn default() -> Self {
+        Self::Bootstrap
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MaterialMarketQuote {
+    pub kind: String,
+    pub requested_amount: i64,
+    pub local_available_amount: i64,
+    pub world_available_amount: i64,
+    pub local_deficit_amount: i64,
+    pub transit_loss_bps: i64,
+    pub governance_tax_bps: u16,
+    pub effective_cost_index_ppm: i64,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum MainTokenFeeKind {
@@ -706,6 +732,8 @@ pub enum DomainEvent {
         output_ledger: MaterialLedgerId,
         #[serde(default)]
         bottleneck_tags: Vec<String>,
+        #[serde(default)]
+        market_quotes: Vec<MaterialMarketQuote>,
         ready_at: WorldTime,
     },
     RecipeCompleted {
