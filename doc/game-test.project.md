@@ -16,6 +16,7 @@
 - [x] T13 按用户本轮请求基于 `doc/game-test.md` 再执行一轮真实玩家游玩并填写卡片
 - [x] T14 按用户请求将 `scripts/run-game-test.sh` 默认切换为开启 LLM（保留 `--no-llm` 回退）
 - [x] T15 按用户本轮请求基于 `doc/game-test.md` 再执行一轮真实玩家游玩并填写卡片
+- [x] T16 按用户本轮请求基于 `doc/game-test.md` 再执行一轮真实玩家游玩并填写卡片
 
 ## 依赖
 - `doc/game-test.md`
@@ -37,6 +38,7 @@
 - card_2026_02_27_13_23_51.md
 - card_2026_02_27_14_44_41.md
 - card_2026_02_27_15_05_28.md
+- card_2026_02_27_16_06_17.md
 - 录屏/截图产物：`output/playwright/playability/20260225-132109/`
 - 录屏/截图产物：`output/playwright/playability/20260225-163706/`
 - 录屏/截图产物：`output/playwright/playability/20260225225029/`
@@ -46,12 +48,13 @@
 - 录屏/截图产物：`output/playwright/playability/20260227-132351/`
 - 录屏/截图产物：`output/playwright/playability/20260227-144441/`
 - 录屏/截图产物：`output/playwright/playability/20260227-150528/`
+- 录屏/截图产物：`output/playwright/playability/20260227-160617/`
 - 开发排查复现：
   - `output/playwright/viewer/webgl-deferred-disable-verify2-20260225-143042/`
   - `output/playwright/viewer/webgl-panic-locate-20260225-143645/`
 
 ## 状态
-- 当前阶段：已完成玩家复测 + 开发者排查 + 默认链路复测 + 夜间追加复测 + 本轮日间追加复测 + 本轮午后追加复测 + 本轮傍晚追加复测 + 本轮追加复测 + 本轮下午追加复测 + 本轮黄昏追加复测（2026-02-27 15:10）
+- 当前阶段：已完成玩家复测 + 开发者排查 + 默认链路复测 + 夜间追加复测 + 本轮日间追加复测 + 本轮午后追加复测 + 本轮傍晚追加复测 + 本轮追加复测 + 本轮下午追加复测 + 本轮黄昏追加复测 + 本轮傍晚新增复测（2026-02-27 16:08）
 - 风险：
   - 运行前置：默认开启 LLM 后，若环境缺失可用 LLM 配置，`run-game-test.sh` 可能在启动阶段失败；可临时使用 `--no-llm` 回退脚本决策。
   - 基线问题：Web 端偶发 `copy_deferred_lighting_id_pipeline`（`wgpu` Validation Error）导致崩溃。
@@ -64,4 +67,5 @@
   - 本轮观测：默认 `scripts/run-game-test.sh` 链路（`ws://127.0.0.1:5011`）下 `connectionStatus=connected`，`tick` 从 `10` 增长到 `49`，`runSteps(25)` 返回 `null`，可玩闭环维持可用；但 `sendControl ignored` 警告仍在，玩家输入语义提示仍需优化。
   - 本轮观测：默认 `scripts/run-game-test.sh` 链路（`ws://127.0.0.1:5011`）下 `connectionStatus=connected`，`tick` 从 `28` 增长到 `287`，`runSteps(25)` 返回 `null`，无致命错误；但 `sendControl ignored` 与 `AudioContext` 警告仍在，控制语义与交互提示仍需加强。
   - 本轮观测：默认 `scripts/run-game-test.sh` 链路（`ws://127.0.0.1:5011`）下 `connectionStatus=connected`，`tick` 从 `24` 增长到 `40`，无崩溃且 `runSteps(30)` 返回 `null`；但后半段 `runSteps(25)` 后 `tick` 停留 `40`，同时出现 `sendControl ignored` 与 `AudioContext` 警告，说明控制语义与停滞反馈仍需强化。
+  - 本轮观测：默认 `scripts/run-game-test.sh` 链路（`ws://127.0.0.1:5011`）下 `connectionStatus=connected`，`tick` 从 `6` 增长到 `28`，`sendControl(\"play\", {})` 可接受并返回“world advanced”反馈；`move` 动作被拒并明确提示可用动作集合（`play/pause/step/seek/seek_event`），可解释性提升，但 UI 内动作发现路径仍偏弱。
 - 最近更新：2026-02-27
