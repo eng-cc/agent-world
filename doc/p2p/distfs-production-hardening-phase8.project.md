@@ -7,10 +7,10 @@
 - [x] DPH8-4：执行回归测试，回写文档状态与 devlog。
 
 ## 依赖
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/bin/world_viewer_live/distfs_probe_runtime.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/bin/world_viewer_live.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/bin/world_viewer_live/world_viewer_live_tests.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/doc/p2p/distfs-production-hardening-phase8.md`
+- `crates/agent_world/src/bin/world_viewer_live/distfs_probe_runtime.rs`
+- `crates/agent_world/src/bin/world_viewer_live.rs`
+- `crates/agent_world/src/bin/world_viewer_live/world_viewer_live_tests.rs`
+- `doc/p2p/distfs-production-hardening-phase8.md`
 
 ## 状态
 - 当前阶段：Phase 8 收口（DPH8-1 ~ DPH8-4 全部完成）。

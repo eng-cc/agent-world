@@ -7,11 +7,11 @@
 - [x] T3：补齐测试并执行定向回归（node + world_viewer_live），回写文档与 devlog。
 
 ## 依赖
-- `/Users/scc/.codex/worktrees/ee97/agent-world/doc/p2p/node-execution-verification-reward-leader-failover-hardening.md`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world_node/src/types.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world_node/src/lib.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/bin/world_viewer_live/cli.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/bin/world_viewer_live.rs`
+- `doc/p2p/node-execution-verification-reward-leader-failover-hardening.md`
+- `crates/agent_world_node/src/types.rs`
+- `crates/agent_world_node/src/lib.rs`
+- `crates/agent_world/src/bin/world_viewer_live/cli.rs`
+- `crates/agent_world/src/bin/world_viewer_live.rs`
 
 ## 状态
 - 当前阶段：T0~T3 已全部完成。

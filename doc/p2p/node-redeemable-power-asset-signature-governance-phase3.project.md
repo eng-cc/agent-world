@@ -9,14 +9,14 @@
 - [x] SGC-5：补齐 `test_tier_required` 回归、回写文档状态与 devlog 收口。
 
 ## 依赖
-- `/Users/scc/.codex/worktrees/ee97/agent-world/doc/p2p/node-redeemable-power-asset-signature-governance-phase3.md`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/runtime/reward_asset.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/runtime/world/resources.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/runtime/world/event_processing.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/runtime/events.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/runtime/tests/reward_asset.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/bin/world_viewer_live.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/doc/devlog/2026-02-17.md`
+- `doc/p2p/node-redeemable-power-asset-signature-governance-phase3.md`
+- `crates/agent_world/src/runtime/reward_asset.rs`
+- `crates/agent_world/src/runtime/world/resources.rs`
+- `crates/agent_world/src/runtime/world/event_processing.rs`
+- `crates/agent_world/src/runtime/events.rs`
+- `crates/agent_world/src/runtime/tests/reward_asset.rs`
+- `crates/agent_world/src/bin/world_viewer_live.rs`
+- `doc/devlog/2026-02-17.md`
 
 ## 状态
 - 当前阶段：SGC-0 ~ SGC-5 全部完成。

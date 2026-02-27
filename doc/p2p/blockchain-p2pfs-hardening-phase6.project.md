@@ -6,10 +6,10 @@
 - [x] HP6-2：补齐策略误配/大小写兼容单测并执行回归，回写文档状态与 devlog。
 
 ## 依赖
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world_consensus/src/membership.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world_consensus/src/membership_logic.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world_consensus/src/membership_tests.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/doc/devlog/2026-02-17.md`
+- `crates/agent_world_consensus/src/membership.rs`
+- `crates/agent_world_consensus/src/membership_logic.rs`
+- `crates/agent_world_consensus/src/membership_tests.rs`
+- `doc/devlog/2026-02-17.md`
 
 ## 状态
 - 当前阶段：HP6-0 ~ HP6-2 全部完成。

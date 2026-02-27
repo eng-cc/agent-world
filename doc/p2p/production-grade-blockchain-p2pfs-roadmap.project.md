@@ -7,11 +7,11 @@
 - [x] PRG-4：补齐测试并执行 `test_tier_required` 回归，回写文档与 devlog。
 
 ## 依赖
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world_node/src/lib.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world_node/src/pos_state_store.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/bin/world_viewer_live.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/bin/world_viewer_live/reward_runtime_network.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/doc/devlog/2026-02-17.md`
+- `crates/agent_world_node/src/lib.rs`
+- `crates/agent_world_node/src/pos_state_store.rs`
+- `crates/agent_world/src/bin/world_viewer_live.rs`
+- `crates/agent_world/src/bin/world_viewer_live/reward_runtime_network.rs`
+- `doc/devlog/2026-02-17.md`
 
 ## 状态
 - 当前阶段：PRG-1 ~ PRG-4 全部完成。

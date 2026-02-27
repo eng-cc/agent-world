@@ -9,18 +9,18 @@
 - [x] CCG-5：完成 PoS 单链路收敛（`pos` 复用 `node_pos` 推进核心）、定向回归和文档/devlog 收口。
 
 ## 依赖
-- `/Users/scc/.codex/worktrees/ee97/agent-world/doc/p2p/consensus-code-consolidation-to-agent-world-consensus.md`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world_consensus/src/lib.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world_consensus/src/node_consensus_action.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world_consensus/src/node_consensus_message.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world_consensus/src/node_consensus_signature.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world_consensus/src/dht.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world_consensus/src/network.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world_consensus/src/node_pos.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world_consensus/src/pos.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world_node/src/lib.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world_node/src/gossip_udp.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world_node/src/node_runtime_core.rs`
+- `doc/p2p/consensus-code-consolidation-to-agent-world-consensus.md`
+- `crates/agent_world_consensus/src/lib.rs`
+- `crates/agent_world_consensus/src/node_consensus_action.rs`
+- `crates/agent_world_consensus/src/node_consensus_message.rs`
+- `crates/agent_world_consensus/src/node_consensus_signature.rs`
+- `crates/agent_world_consensus/src/dht.rs`
+- `crates/agent_world_consensus/src/network.rs`
+- `crates/agent_world_consensus/src/node_pos.rs`
+- `crates/agent_world_consensus/src/pos.rs`
+- `crates/agent_world_node/src/lib.rs`
+- `crates/agent_world_node/src/gossip_udp.rs`
+- `crates/agent_world_node/src/node_runtime_core.rs`
 
 ## 状态
 - 当前阶段：CCG-0~CCG-5 全部完成。

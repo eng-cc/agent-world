@@ -8,9 +8,9 @@
 - [x] DPH1-5：执行 `agent_world_distfs` 回归测试，回写文档状态与 devlog。
 
 ## 依赖
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world_distfs/src/lib.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/doc/p2p/distfs-standard-file-io.md`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/doc/p2p/distfs-production-hardening-phase1.md`
+- `crates/agent_world_distfs/src/lib.rs`
+- `doc/p2p/distfs-standard-file-io.md`
+- `doc/p2p/distfs-production-hardening-phase1.md`
 
 ## 状态
 - 当前阶段：DPH1-5 已完成，Phase 1 收口。

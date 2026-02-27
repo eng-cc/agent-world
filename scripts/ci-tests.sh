@@ -84,6 +84,7 @@ run_agent_world_viewer_wasm_check() {
 }
 
 run_required_gate_checks() {
+  run ./scripts/doc-governance-check.sh
   run env -u RUSTC_WRAPPER cargo fmt --all -- --check
 }
 

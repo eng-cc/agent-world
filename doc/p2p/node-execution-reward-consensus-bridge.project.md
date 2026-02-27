@@ -9,13 +9,13 @@
 - [x] ERCB-5：回写项目状态与 devlog 收口。
 
 ## 依赖
-- `/Users/scc/.codex/worktrees/ee97/agent-world/doc/p2p/node-execution-reward-consensus-bridge.md`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/bin/world_viewer_live.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/bin/world_viewer_live/reward_runtime_settlement.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/bin/world_viewer_live/distfs_probe_runtime.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/runtime/node_points_runtime.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/bin/world_viewer_live/world_viewer_live_tests.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/doc/devlog/2026-02-17.md`
+- `doc/p2p/node-execution-reward-consensus-bridge.md`
+- `crates/agent_world/src/bin/world_viewer_live.rs`
+- `crates/agent_world/src/bin/world_viewer_live/reward_runtime_settlement.rs`
+- `crates/agent_world/src/bin/world_viewer_live/distfs_probe_runtime.rs`
+- `crates/agent_world/src/runtime/node_points_runtime.rs`
+- `crates/agent_world/src/bin/world_viewer_live/world_viewer_live_tests.rs`
+- `doc/devlog/2026-02-17.md`
 
 ## 状态
 - 当前阶段：ERCB 全部完成。

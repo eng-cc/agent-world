@@ -7,10 +7,10 @@
 - [x] DPH7-4：执行回归测试，回写文档状态与 devlog。
 
 ## 依赖
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world_distfs/src/challenge_scheduler.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/bin/world_viewer_live.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/bin/world_viewer_live/distfs_probe_runtime.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/doc/p2p/distfs-production-hardening-phase7.md`
+- `crates/agent_world_distfs/src/challenge_scheduler.rs`
+- `crates/agent_world/src/bin/world_viewer_live.rs`
+- `crates/agent_world/src/bin/world_viewer_live/distfs_probe_runtime.rs`
+- `doc/p2p/distfs-production-hardening-phase7.md`
 
 ## 状态
 - 当前阶段：Phase 7 收口（DPH7-1 ~ DPH7-4 全部完成）。

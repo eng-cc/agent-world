@@ -36,6 +36,23 @@
 - 工业化建造/制造流程（设施生产、产线、资源链）
 - 市场机制的实现与演化驱动（仅预留扩展点）
 
+## 接口/数据
+
+- 核心配置：`PowerConfig`（空闲消耗、阈值、传输损耗、最大传输距离）。
+- 关键实体：
+  - `PowerPlant`
+  - `PowerStorage`
+  - `AgentPowerState`
+- 关键动作：
+  - `BuyPower` / `SellPower`
+  - `DrawPower` / `StorePower`
+- 关键事件：
+  - `PowerGenerated`
+  - `PowerConsumed`
+  - `PowerTransferred`
+  - `PowerStateChanged`
+- 运行时入口：`WorldKernel::process_power_tick` 与相关电力状态查询接口。
+
 ## 核心概念
 
 ### 电力单位

@@ -6,11 +6,11 @@
 - [x] HP8-2：补齐共享工具单测并执行回归，回写文档状态与 devlog。
 
 ## 依赖
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world_consensus/src/lib.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world_consensus/src/signature.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world_consensus/src/membership_logic.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world_consensus/src/sequencer_mainloop.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/doc/devlog/2026-02-17.md`
+- `crates/agent_world_consensus/src/lib.rs`
+- `crates/agent_world_consensus/src/signature.rs`
+- `crates/agent_world_consensus/src/membership_logic.rs`
+- `crates/agent_world_consensus/src/sequencer_mainloop.rs`
+- `doc/devlog/2026-02-17.md`
 
 ## 状态
 - 当前阶段：HP8-0 ~ HP8-2 全部完成。

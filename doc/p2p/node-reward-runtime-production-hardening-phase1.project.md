@@ -8,12 +8,12 @@
 - [x] PRH1-5：补齐/更新测试，执行 `test_tier_required` 回归，回写文档状态与 devlog。
 
 ## 依赖
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/runtime/node_points.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/runtime/node_points_runtime.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/runtime/reward_asset.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/runtime/world/event_processing.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/bin/world_viewer_live.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/doc/devlog/2026-02-17.md`
+- `crates/agent_world/src/runtime/node_points.rs`
+- `crates/agent_world/src/runtime/node_points_runtime.rs`
+- `crates/agent_world/src/runtime/reward_asset.rs`
+- `crates/agent_world/src/runtime/world/event_processing.rs`
+- `crates/agent_world/src/bin/world_viewer_live.rs`
+- `doc/devlog/2026-02-17.md`
 
 ## 状态
 - 当前阶段：PRH1-1 ~ PRH1-5 已完成。

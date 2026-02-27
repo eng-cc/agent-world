@@ -9,12 +9,12 @@
 - [x] AHA-5：文档状态回写、devlog 收口、发布说明整理。
 
 ## 依赖
-- `/Users/scc/.codex/worktrees/ee97/agent-world/doc/p2p/node-redeemable-power-asset-audit-hardening.md`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/runtime/reward_asset.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/runtime/world/resources.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/runtime/tests/reward_asset.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/bin/world_viewer_live.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/doc/devlog/2026-02-16.md`
+- `doc/p2p/node-redeemable-power-asset-audit-hardening.md`
+- `crates/agent_world/src/runtime/reward_asset.rs`
+- `crates/agent_world/src/runtime/world/resources.rs`
+- `crates/agent_world/src/runtime/tests/reward_asset.rs`
+- `crates/agent_world/src/bin/world_viewer_live.rs`
+- `doc/devlog/2026-02-16.md`
 
 ## 状态
 - 当前阶段：AHA-0 ~ AHA-5 全部完成。

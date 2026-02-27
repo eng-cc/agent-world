@@ -13,16 +13,16 @@
 - [x] RPA-9：文档状态回写、devlog 收口、发布说明整理。
 
 ## 依赖
-- `/Users/scc/.codex/worktrees/ee97/agent-world/doc/p2p/node-redeemable-power-asset.md`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/runtime/node_points.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/runtime/node_points_runtime.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/runtime/state.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/runtime/events.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world_proto/src/distributed.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world_consensus/src/pos.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/bin/world_viewer_live.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world_distfs/src/lib.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/doc/devlog/2026-02-16.md`
+- `doc/p2p/node-redeemable-power-asset.md`
+- `crates/agent_world/src/runtime/node_points.rs`
+- `crates/agent_world/src/runtime/node_points_runtime.rs`
+- `crates/agent_world/src/runtime/state.rs`
+- `crates/agent_world/src/runtime/events.rs`
+- `crates/agent_world_proto/src/distributed.rs`
+- `crates/agent_world_consensus/src/pos.rs`
+- `crates/agent_world/src/bin/world_viewer_live.rs`
+- `crates/agent_world_distfs/src/lib.rs`
+- `doc/devlog/2026-02-16.md`
 
 ## 状态
 - 当前阶段：RPA-0 ~ RPA-9 全部完成。

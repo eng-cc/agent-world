@@ -6,11 +6,11 @@
 - [x] NWC-3：稳定 `viewer::web_bridge` 重连测试并执行回归检查，回写文档/devlog。
 
 ## 依赖
-- `/Users/scc/ccwork/agent-world/crates/agent_world_node/src/lib.rs`
-- `/Users/scc/ccwork/agent-world/crates/agent_world_node/src/libp2p_replication_network.rs`
-- `/Users/scc/ccwork/agent-world/crates/agent_world_node/src/libp2p_replication_network_wasm.rs`
-- `/Users/scc/ccwork/agent-world/crates/agent_world/src/viewer/web_bridge.rs`
-- `/Users/scc/ccwork/agent-world/doc/scripts/pre-commit.md`
+- `crates/agent_world_node/src/lib.rs`
+- `crates/agent_world_node/src/libp2p_replication_network.rs`
+- `crates/agent_world_node/src/libp2p_replication_network_wasm.rs`
+- `crates/agent_world/src/viewer/web_bridge.rs`
+- `doc/scripts/pre-commit.md`
 
 ## 状态
 - 当前阶段：已完成（NWC-1 ~ NWC-3 全部完成）。

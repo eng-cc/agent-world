@@ -6,10 +6,10 @@
 - [x] POS-3：执行回归测试，回写文档状态与 devlog 收口。
 
 ## 依赖
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world_consensus/src/quorum.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world_consensus/src/lib.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world_proto/src/distributed_consensus.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/doc/p2p/archive/distributed-consensus.md`
+- `crates/agent_world_consensus/src/quorum.rs`
+- `crates/agent_world_consensus/src/lib.rs`
+- `crates/agent_world_proto/src/distributed_consensus.rs`
+- `doc/p2p/archive/distributed-consensus.md`
 
 ## 状态
 - 当前阶段：POS-3 完成，PoS head 共识特性已收口。

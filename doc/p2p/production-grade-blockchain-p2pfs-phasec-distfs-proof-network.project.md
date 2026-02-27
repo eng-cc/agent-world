@@ -7,14 +7,14 @@
 - [x] PRG-C4：补齐测试并执行 `test_tier_required` 回归，回写文档与 devlog。
 
 ## 依赖
-- `/Users/scc/.codex/worktrees/ee97/agent-world/doc/p2p/production-grade-blockchain-p2pfs-roadmap.md`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/doc/p2p/production-grade-blockchain-p2pfs-phasec-distfs-proof-network.md`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/bin/world_viewer_live.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/bin/world_viewer_live/distfs_challenge_network.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/bin/world_viewer_live/observation_trace_runtime.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/bin/world_viewer_live/distfs_probe_runtime.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/bin/world_viewer_live/reward_runtime_network.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/doc/devlog/2026-02-17.md`
+- `doc/p2p/production-grade-blockchain-p2pfs-roadmap.md`
+- `doc/p2p/production-grade-blockchain-p2pfs-phasec-distfs-proof-network.md`
+- `crates/agent_world/src/bin/world_viewer_live.rs`
+- `crates/agent_world/src/bin/world_viewer_live/distfs_challenge_network.rs`
+- `crates/agent_world/src/bin/world_viewer_live/observation_trace_runtime.rs`
+- `crates/agent_world/src/bin/world_viewer_live/distfs_probe_runtime.rs`
+- `crates/agent_world/src/bin/world_viewer_live/reward_runtime_network.rs`
+- `doc/devlog/2026-02-17.md`
 
 ## 状态
 - 当前阶段：PRG-C1 ~ PRG-C4 全部完成。

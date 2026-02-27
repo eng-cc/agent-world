@@ -7,10 +7,10 @@
 - [x] UBR-4：执行 `test_tier_required` 回归，更新状态与 devlog 收口。
 
 ## 依赖
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/runtime/node_points.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/runtime/node_points_runtime.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/runtime/mod.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/doc/devlog/2026-02-16.md`
+- `crates/agent_world/src/runtime/node_points.rs`
+- `crates/agent_world/src/runtime/node_points_runtime.rs`
+- `crates/agent_world/src/runtime/mod.rs`
+- `doc/devlog/2026-02-16.md`
 
 ## 状态
 - 当前阶段：节点基础在线时长奖励阶段完成（UBR-1~UBR-4 全部完成）。

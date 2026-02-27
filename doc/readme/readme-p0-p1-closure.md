@@ -1,7 +1,7 @@
 # README 对齐收口：P0/P1 设计文档
 
 ## 目标
-- 对齐 `/Users/scc/ccwork/agent-world/README.md` 的三条核心承诺：
+- 对齐 `README.md` 的三条核心承诺：
   - 共识提交与执行状态可验证绑定。
   - 在线可视化主路径不再可无约束绕过共识进度。
   - Agent 可通过世界内动作完成 WASM 模块部署/安装闭环。

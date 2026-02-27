@@ -7,9 +7,9 @@
 - [x] DPH6-4：执行回归测试，回写文档状态与 devlog。
 
 ## 依赖
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world_distfs/src/challenge_scheduler.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/bin/world_viewer_live/distfs_probe_runtime.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/doc/p2p/distfs-production-hardening-phase6.md`
+- `crates/agent_world_distfs/src/challenge_scheduler.rs`
+- `crates/agent_world/src/bin/world_viewer_live/distfs_probe_runtime.rs`
+- `doc/p2p/distfs-production-hardening-phase6.md`
 
 ## 状态
 - 当前阶段：DPH6-4 已完成，Phase 6 收口。

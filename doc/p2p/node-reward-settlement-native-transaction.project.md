@@ -9,13 +9,13 @@
 - [x] NSTX-5：执行 `test_tier_required` 回归，回写文档状态与 devlog 收口。
 
 ## 依赖
-- `/Users/scc/.codex/worktrees/ee97/agent-world/doc/p2p/node-reward-settlement-native-transaction.md`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/runtime/events.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/runtime/world/event_processing.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/runtime/state.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/bin/world_viewer_live.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/runtime/tests/reward_asset.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/bin/world_viewer_live/world_viewer_live_tests.rs`
+- `doc/p2p/node-reward-settlement-native-transaction.md`
+- `crates/agent_world/src/runtime/events.rs`
+- `crates/agent_world/src/runtime/world/event_processing.rs`
+- `crates/agent_world/src/runtime/state.rs`
+- `crates/agent_world/src/bin/world_viewer_live.rs`
+- `crates/agent_world/src/runtime/tests/reward_asset.rs`
+- `crates/agent_world/src/bin/world_viewer_live/world_viewer_live_tests.rs`
 
 ## 状态
 - 当前阶段：NSTX-0~NSTX-5 全部完成；奖励结算已切换为网络共识主路径原生交易。

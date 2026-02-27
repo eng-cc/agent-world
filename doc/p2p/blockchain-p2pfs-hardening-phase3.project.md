@@ -7,11 +7,11 @@
 - [x] HP3-3：补齐测试并执行 `test_tier_required` 回归，回写文档状态与 devlog。
 
 ## 依赖
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world_consensus/src/signature.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world_consensus/src/sequencer_mainloop.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world_consensus/src/lib.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world_consensus/Cargo.toml`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/doc/devlog/2026-02-17.md`
+- `crates/agent_world_consensus/src/signature.rs`
+- `crates/agent_world_consensus/src/sequencer_mainloop.rs`
+- `crates/agent_world_consensus/src/lib.rs`
+- `crates/agent_world_consensus/Cargo.toml`
+- `doc/devlog/2026-02-17.md`
 
 ## 状态
 - 当前阶段：HP3-0 ~ HP3-3 全部完成。
