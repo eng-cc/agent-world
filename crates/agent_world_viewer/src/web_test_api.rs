@@ -31,6 +31,8 @@ const TEST_API_QUERY_KEY: &str = "test_api";
 const TEST_API_GLOBAL_NAME: &str = "__AW_TEST__";
 #[cfg(target_arch = "wasm32")]
 const WEB_TEST_API_CONTROL_ACTIONS: [&str; 5] = ["play", "pause", "step", "seek", "seek_event"];
+#[cfg(target_arch = "wasm32")]
+const CONTROL_STALL_FRAME_THRESHOLD: u32 = 150;
 
 #[cfg(target_arch = "wasm32")]
 enum WebTestApiCommand {
@@ -51,6 +53,8 @@ struct WebTestApiControlFeedback {
     id: u64,
     action: String,
     accepted: bool,
+    enqueued: bool,
+    stage: String,
     parsed_control: Option<String>,
     reason: Option<String>,
     hint: Option<String>,
@@ -60,6 +64,16 @@ struct WebTestApiControlFeedback {
     delta_logical_time: u64,
     delta_event_seq: u64,
     awaiting_effect: bool,
+    no_progress_frames: u32,
+}
+
+#[derive(Clone, Debug)]
+pub(super) struct WebTestApiControlFeedbackSnapshot {
+    pub(super) action: String,
+    pub(super) stage: String,
+    pub(super) reason: Option<String>,
+    pub(super) hint: Option<String>,
+    pub(super) effect: String,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -444,6 +458,16 @@ fn build_control_feedback_js_value(feedback: &WebTestApiControlFeedback) -> JsVa
     );
     let _ = JsReflect::set(
         &object,
+        &JsValue::from_str("enqueued"),
+        &JsValue::from_bool(feedback.enqueued),
+    );
+    let _ = JsReflect::set(
+        &object,
+        &JsValue::from_str("stage"),
+        &JsValue::from_str(feedback.stage.as_str()),
+    );
+    let _ = JsReflect::set(
+        &object,
         &JsValue::from_str("parsedControl"),
         &feedback
             .parsed_control
@@ -503,10 +527,19 @@ fn build_control_feedback(
     awaiting_effect: bool,
 ) -> WebTestApiControlFeedback {
     let (baseline_logical_time, baseline_event_seq) = latest_logical_time_event_seq();
+    let stage = if !accepted {
+        "blocked"
+    } else if awaiting_effect {
+        "received"
+    } else {
+        "applied"
+    };
     WebTestApiControlFeedback {
         id: next_control_feedback_id(),
         action,
         accepted,
+        enqueued: accepted && awaiting_effect,
+        stage: stage.to_string(),
         parsed_control,
         reason,
         hint,
@@ -516,7 +549,30 @@ fn build_control_feedback(
         delta_logical_time: 0,
         delta_event_seq: 0,
         awaiting_effect,
+        no_progress_frames: 0,
     }
+}
+
+#[cfg(target_arch = "wasm32")]
+pub(super) fn latest_web_test_api_control_feedback() -> Option<WebTestApiControlFeedbackSnapshot> {
+    WEB_TEST_API_STATE_SNAPSHOT.with(|slot| {
+        let snapshot = slot.borrow();
+        snapshot
+            .last_control_feedback
+            .as_ref()
+            .map(|feedback| WebTestApiControlFeedbackSnapshot {
+                action: feedback.action.clone(),
+                stage: feedback.stage.clone(),
+                reason: feedback.reason.clone(),
+                hint: feedback.hint.clone(),
+                effect: feedback.effect.clone(),
+            })
+    })
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub(super) fn latest_web_test_api_control_feedback() -> Option<WebTestApiControlFeedbackSnapshot> {
+    None
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -902,6 +958,8 @@ pub(super) fn consume_web_test_api_commands(
                 let Some(client) = client.as_deref() else {
                     mutate_last_control_feedback(feedback_id, |feedback| {
                         feedback.accepted = false;
+                        feedback.enqueued = false;
+                        feedback.stage = "blocked".to_string();
                         feedback.reason = Some("viewer client is not available".to_string());
                         feedback.hint = Some("reconnect then retry sendControl".to_string());
                         feedback.effect = "dropped before dispatch".to_string();
@@ -909,7 +967,26 @@ pub(super) fn consume_web_test_api_commands(
                     });
                     continue;
                 };
-                let _ = client.tx.send(ViewerRequest::Control { mode: control });
+                let sent = client
+                    .tx
+                    .send(ViewerRequest::Control { mode: control })
+                    .is_ok();
+                mutate_last_control_feedback(feedback_id, |feedback| {
+                    if sent {
+                        feedback.stage = "executing".to_string();
+                        feedback.enqueued = true;
+                        feedback.hint =
+                            Some("dispatch accepted, waiting for world delta".to_string());
+                    } else {
+                        feedback.accepted = false;
+                        feedback.enqueued = false;
+                        feedback.stage = "blocked".to_string();
+                        feedback.reason = Some("viewer client channel send failed".to_string());
+                        feedback.hint = Some("retry control after reconnect".to_string());
+                        feedback.effect = "dropped before dispatch".to_string();
+                        feedback.awaiting_effect = false;
+                    }
+                });
             }
             WebTestApiCommand::SeekEventSeq {
                 event_seq,
@@ -918,6 +995,8 @@ pub(super) fn consume_web_test_api_commands(
                 let Some(client) = client.as_deref() else {
                     mutate_last_control_feedback(feedback_id, |feedback| {
                         feedback.accepted = false;
+                        feedback.enqueued = false;
+                        feedback.stage = "blocked".to_string();
                         feedback.reason = Some("viewer client is not available".to_string());
                         feedback.hint = Some("reconnect then retry sendControl".to_string());
                         feedback.effect = "dropped before dispatch".to_string();
@@ -945,6 +1024,8 @@ pub(super) fn consume_web_test_api_commands(
                     );
                     mutate_last_control_feedback(feedback_id, |feedback| {
                         feedback.accepted = false;
+                        feedback.enqueued = false;
+                        feedback.stage = "blocked".to_string();
                         feedback.reason =
                             Some("eventSeq not found in current event window".to_string());
                         feedback.hint =
@@ -959,6 +1040,8 @@ pub(super) fn consume_web_test_api_commands(
                 });
                 mutate_last_control_feedback(feedback_id, |feedback| {
                     feedback.parsed_control = Some(format!("seek(tick={tick})"));
+                    feedback.stage = "executing".to_string();
+                    feedback.enqueued = true;
                     feedback.hint = Some("seek dispatched, waiting for world delta".to_string());
                 });
             }
@@ -1061,13 +1144,29 @@ pub(super) fn publish_web_test_api_state(
                 feedback.delta_logical_time = delta_logical_time;
                 feedback.delta_event_seq = delta_event_seq;
                 if delta_logical_time > 0 || delta_event_seq > 0 {
+                    feedback.stage = "applied".to_string();
+                    feedback.no_progress_frames = 0;
                     feedback.effect =
                         format!("world advanced: logicalTime +{delta_logical_time}, eventSeq +{delta_event_seq}");
                     feedback.hint = Some("input was accepted and world state advanced".to_string());
                     feedback.awaiting_effect = false;
                 } else if connection_ready {
-                    feedback.effect = "queued, waiting for next world delta".to_string();
+                    feedback.no_progress_frames = feedback.no_progress_frames.saturating_add(1);
+                    if feedback.no_progress_frames >= CONTROL_STALL_FRAME_THRESHOLD {
+                        feedback.stage = "blocked".to_string();
+                        feedback.reason = Some(
+                            "no world delta observed while connected (control stalled)".to_string(),
+                        );
+                        feedback.hint =
+                            Some(control_action_hint(feedback.action.as_str(), false));
+                        feedback.effect = "accepted without observed progress".to_string();
+                        feedback.awaiting_effect = false;
+                    } else {
+                        feedback.stage = "executing".to_string();
+                        feedback.effect = "queued, waiting for next world delta".to_string();
+                    }
                 } else {
+                    feedback.stage = "received".to_string();
                     feedback.effect = "queued, waiting for world connection".to_string();
                 }
             }

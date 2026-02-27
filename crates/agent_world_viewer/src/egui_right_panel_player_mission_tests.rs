@@ -1,7 +1,7 @@
 use super::egui_right_panel_player_experience::PlayerGuideStep;
 use super::egui_right_panel_player_guide::{
     build_player_mission_loop_snapshot, build_player_mission_remaining_hint,
-    player_mission_hud_anchor_y, player_mission_hud_compact_mode,
+    player_control_stage_label, player_mission_hud_anchor_y, player_mission_hud_compact_mode,
     player_mission_hud_minimap_reserved_bottom, player_mission_hud_show_command_action,
     player_mission_hud_show_minimap, PlayerGuideProgressSnapshot,
 };
@@ -142,4 +142,20 @@ fn player_mission_hud_minimap_is_visible_only_in_world_first_mode() {
 fn player_mission_hud_minimap_reserves_chatter_space() {
     assert_eq!(player_mission_hud_minimap_reserved_bottom(true), 188.0);
     assert_eq!(player_mission_hud_minimap_reserved_bottom(false), 0.0);
+}
+
+#[test]
+fn player_control_stage_label_maps_core_states() {
+    assert_eq!(
+        player_control_stage_label("received", crate::i18n::UiLocale::EnUs),
+        "Received"
+    );
+    assert_eq!(
+        player_control_stage_label("blocked", crate::i18n::UiLocale::EnUs),
+        "Blocked"
+    );
+    assert_eq!(
+        player_control_stage_label("applied", crate::i18n::UiLocale::ZhCn),
+        "已生效"
+    );
 }

@@ -1,7 +1,7 @@
+use crate::web_test_api::latest_web_test_api_control_feedback;
+use crate::{RightPanelLayoutState, ViewerSelection};
 use bevy_egui::egui;
 use std::collections::HashMap;
-
-use crate::{RightPanelLayoutState, ViewerSelection};
 
 use super::egui_right_panel_player_experience::PlayerGuideStep;
 
@@ -340,6 +340,24 @@ fn player_current_tick(state: &crate::ViewerState) -> u64 {
         .map(|snapshot| snapshot.time)
         .or_else(|| state.metrics.as_ref().map(|metrics| metrics.total_ticks))
         .unwrap_or(0)
+}
+
+pub(super) fn player_control_stage_label(
+    stage: &str,
+    locale: crate::i18n::UiLocale,
+) -> &'static str {
+    match (stage, locale.is_zh()) {
+        ("received", true) => "已接收",
+        ("received", false) => "Received",
+        ("executing", true) => "执行中",
+        ("executing", false) => "Executing",
+        ("applied", true) => "已生效",
+        ("applied", false) => "Applied",
+        ("blocked", true) => "已阻断",
+        ("blocked", false) => "Blocked",
+        (_, true) => "处理中",
+        (_, false) => "Pending",
+    }
 }
 
 pub(super) fn player_cinematic_intro_alpha(status: &crate::ConnectionStatus, tick: u64) -> f32 {
@@ -918,10 +936,13 @@ pub(super) fn render_player_mission_hud(
     let compact_mode = player_mission_hud_compact_mode(layout_state.panel_hidden);
     let mission_anchor_y =
         player_mission_hud_anchor_y(layout_state.panel_hidden, onboarding_visible);
-    let show_command_action = player_mission_hud_show_command_action(layout_state.panel_hidden);
     let pulse = ((now_secs * 1.8).sin() * 0.5 + 0.5) as f32;
     let mut action_clicked = false;
     let mut command_clicked = false;
+    let (mut recover_play_clicked, mut recover_step_clicked, mut recover_seek_clicked) =
+        (false, false, false);
+    let control_feedback = latest_web_test_api_control_feedback();
+    let recovery_seek_tick = player_current_tick(state).saturating_add(12);
     egui::Area::new(egui::Id::new("viewer-player-mission-hud"))
         .anchor(egui::Align2::LEFT_TOP, egui::vec2(14.0, mission_anchor_y))
         .movable(false)
@@ -992,6 +1013,72 @@ pub(super) fn render_player_mission_hud(
                                     egui::RichText::new(stuck_hint)
                                         .color(egui::Color32::from_rgb(248, 210, 180)),
                                 );
+                                if client.is_some() {
+                                    ui.horizontal_wrapped(|ui| {
+                                        recover_play_clicked = ui
+                                            .button(if locale.is_zh() {
+                                                "恢复：play"
+                                            } else {
+                                                "Recover: play"
+                                            })
+                                            .clicked();
+                                        recover_step_clicked = ui
+                                            .button(if locale.is_zh() {
+                                                "恢复：step x8"
+                                            } else {
+                                                "Recover: step x8"
+                                            })
+                                            .clicked();
+                                        recover_seek_clicked = ui
+                                            .button(if locale.is_zh() {
+                                                "恢复：seek +12"
+                                            } else {
+                                                "Recover: seek +12"
+                                            })
+                                            .clicked();
+                                    });
+                                }
+                            });
+                    }
+                    if let Some(feedback) = control_feedback.as_ref() {
+                        let stage_color = match feedback.stage.as_str() {
+                            "applied" => egui::Color32::from_rgb(78, 182, 108),
+                            "blocked" => egui::Color32::from_rgb(226, 128, 98),
+                            "executing" => egui::Color32::from_rgb(118, 168, 236),
+                            _ => egui::Color32::from_rgb(186, 206, 238),
+                        };
+                        egui::Frame::group(ui.style())
+                            .fill(egui::Color32::from_rgba_unmultiplied(28, 36, 52, 156))
+                            .stroke(egui::Stroke::new(1.0, stage_color))
+                            .corner_radius(egui::CornerRadius::same(6))
+                            .inner_margin(egui::Margin::same(6))
+                            .show(ui, |ui| {
+                                ui.small(if locale.is_zh() {
+                                    "控制反馈"
+                                } else {
+                                    "Control Feedback"
+                                });
+                                ui.small(
+                                    egui::RichText::new(format!(
+                                        "{} · {}",
+                                        feedback.action,
+                                        player_control_stage_label(feedback.stage.as_str(), locale)
+                                    ))
+                                    .color(stage_color),
+                                );
+                                ui.small(feedback.effect.as_str());
+                                if let Some(reason) = feedback.reason.as_ref() {
+                                    ui.small(
+                                        egui::RichText::new(reason.as_str())
+                                            .color(egui::Color32::from_rgb(226, 164, 136)),
+                                    );
+                                }
+                                if let Some(hint) = feedback.hint.as_ref() {
+                                    ui.small(
+                                        egui::RichText::new(hint.as_str())
+                                            .color(egui::Color32::from_rgb(186, 206, 238)),
+                                    );
+                                }
                             });
                     }
                     let progress_ratio = (snapshot.completed_steps as f32 / 4.0).clamp(0.0, 1.0);
@@ -1029,7 +1116,7 @@ pub(super) fn render_player_mission_hud(
                     }
                     ui.horizontal_wrapped(|ui| {
                         action_clicked = ui.button(snapshot.action_label).clicked();
-                        if show_command_action {
+                        if player_mission_hud_show_command_action(layout_state.panel_hidden) {
                             command_clicked = ui
                                 .button(if locale.is_zh() {
                                     "直接指挥 Agent"
@@ -1055,6 +1142,25 @@ pub(super) fn render_player_mission_hud(
     }
     if command_clicked {
         apply_player_layout_preset(layout_state, module_visibility, PlayerLayoutPreset::Command);
+    }
+    if let Some(client) = client {
+        if recover_play_clicked {
+            let _ = client.tx.send(agent_world::viewer::ViewerRequest::Control {
+                mode: agent_world::viewer::ViewerControl::Play,
+            });
+        }
+        if recover_step_clicked {
+            let _ = client.tx.send(agent_world::viewer::ViewerRequest::Control {
+                mode: agent_world::viewer::ViewerControl::Step { count: 8 },
+            });
+        }
+        if recover_seek_clicked {
+            let _ = client.tx.send(agent_world::viewer::ViewerRequest::Control {
+                mode: agent_world::viewer::ViewerControl::Seek {
+                    tick: recovery_seek_tick,
+                },
+            });
+        }
     }
 
     if player_mission_hud_show_minimap(layout_state.panel_hidden) {
