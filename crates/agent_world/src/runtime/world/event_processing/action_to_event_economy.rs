@@ -540,7 +540,7 @@ impl World {
                 }
                 let preferred_consume_ledger = factory.input_ledger.clone();
                 let consume_ledger = self.select_material_consume_ledger_with_world_fallback(
-                    preferred_consume_ledger,
+                    preferred_consume_ledger.clone(),
                     &plan.consume,
                 );
                 let output_ledger = if consume_ledger == MaterialLedgerId::world() {
@@ -593,9 +593,19 @@ impl World {
                         },
                     }));
                 }
-                let duration_ticks = plan.duration_ticks.max(1);
-                let ready_at = self.state.time.saturating_add(duration_ticks as u64);
                 let bottleneck_tags = infer_bottleneck_tags(&plan.consume);
+                let scarcity_delay_ticks = compute_local_scarcity_delay_ticks(
+                    self,
+                    &preferred_consume_ledger,
+                    &consume_ledger,
+                    &plan.consume,
+                    &bottleneck_tags,
+                );
+                let duration_ticks = plan
+                    .duration_ticks
+                    .max(1)
+                    .saturating_add(scarcity_delay_ticks);
+                let ready_at = self.state.time.saturating_add(duration_ticks as u64);
                 Ok(WorldEventBody::Domain(DomainEvent::RecipeStarted {
                     job_id: action_id,
                     requester_agent_id: requester_agent_id.clone(),
@@ -724,4 +734,50 @@ fn infer_bottleneck_tags(consume: &[MaterialStack]) -> Vec<String> {
         })
         .collect();
     tags.into_iter().collect()
+}
+
+fn compute_local_scarcity_delay_ticks(
+    world: &World,
+    preferred_consume_ledger: &MaterialLedgerId,
+    consume_ledger: &MaterialLedgerId,
+    consume: &[MaterialStack],
+    bottleneck_tags: &[String],
+) -> u32 {
+    if *preferred_consume_ledger == MaterialLedgerId::world()
+        || *consume_ledger != MaterialLedgerId::world()
+        || bottleneck_tags.is_empty()
+    {
+        return 0;
+    }
+
+    let bottleneck_set: BTreeSet<&str> = bottleneck_tags.iter().map(String::as_str).collect();
+    let mut requested_total: i128 = 0;
+    let mut deficit_total: i128 = 0;
+    for stack in consume {
+        if stack.amount <= 0 {
+            continue;
+        }
+        let normalized_kind = stack.kind.to_ascii_lowercase();
+        if !bottleneck_set.contains(normalized_kind.as_str()) {
+            continue;
+        }
+        let requested = stack.amount as i128;
+        let available = world
+            .ledger_material_balance(preferred_consume_ledger, stack.kind.as_str())
+            .max(0) as i128;
+        requested_total = requested_total.saturating_add(requested);
+        deficit_total = deficit_total.saturating_add(requested.saturating_sub(available).max(0));
+    }
+
+    if requested_total <= 0 || deficit_total <= 0 {
+        return 0;
+    }
+    let deficit_ratio_bps = deficit_total
+        .saturating_mul(10_000)
+        .saturating_div(requested_total);
+    if deficit_ratio_bps >= 7_000 {
+        2
+    } else {
+        1
+    }
 }

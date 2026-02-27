@@ -23,6 +23,8 @@ const PRODUCT_VALIDATION_EMIT_KIND: &str = "economy.product_validation";
 const FACTORY_DURABILITY_PPM_BASE: i64 = 1_000_000;
 const FACTORY_DEPRECIATION_PPM_PER_MAINTENANCE_UNIT: i64 = 1_000;
 const FACTORY_DEPRECIATION_REASON: &str = "depreciation_tick";
+const FACTORY_LOAD_FACTOR_BASE_BPS: i64 = 10_000;
+const FACTORY_LOAD_FACTOR_MAX_BPS: i64 = 20_000;
 const SURVIVAL_KEYWORDS: &[&str] = &[
     "survival",
     "lifeline",
@@ -497,9 +499,31 @@ impl World {
             if maintenance_rate <= 0 {
                 continue;
             }
-            let decay = maintenance_rate
+            let base_decay = maintenance_rate
                 .saturating_mul(FACTORY_DEPRECIATION_PPM_PER_MAINTENANCE_UNIT)
                 .clamp(0, FACTORY_DURABILITY_PPM_BASE);
+            if base_decay <= 0 {
+                continue;
+            }
+            let active_jobs = self
+                .state
+                .pending_recipe_jobs
+                .values()
+                .filter(|job| job.factory_id == factory.factory_id.as_str())
+                .count() as i64;
+            let recipe_slots = i64::from(factory.spec.recipe_slots.max(1));
+            let utilization_bps = ((active_jobs as i128)
+                .saturating_mul(FACTORY_LOAD_FACTOR_BASE_BPS as i128)
+                .saturating_div(recipe_slots as i128))
+            .clamp(0, FACTORY_LOAD_FACTOR_BASE_BPS as i128)
+                as i64;
+            let load_factor_bps = FACTORY_LOAD_FACTOR_BASE_BPS
+                .saturating_add(utilization_bps)
+                .clamp(FACTORY_LOAD_FACTOR_BASE_BPS, FACTORY_LOAD_FACTOR_MAX_BPS);
+            let decay = ((base_decay as i128)
+                .saturating_mul(load_factor_bps as i128)
+                .saturating_div(FACTORY_LOAD_FACTOR_BASE_BPS as i128))
+            .clamp(0, FACTORY_DURABILITY_PPM_BASE as i128) as i64;
             if decay <= 0 {
                 continue;
             }
