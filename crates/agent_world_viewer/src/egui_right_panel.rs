@@ -209,6 +209,7 @@ pub(super) fn render_right_side_panel_egui(
             context,
             &state,
             &selection,
+            client.as_deref(),
             layout_state.as_mut(),
             module_visibility.as_mut(),
             &mut onboarding_state,

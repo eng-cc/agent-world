@@ -484,14 +484,16 @@ pub(super) fn build_player_mission_loop_snapshot(
     locale: crate::i18n::UiLocale,
 ) -> PlayerMissionLoopSnapshot {
     let (action_label, action_opens_panel) = match (step, locale.is_zh()) {
-        (PlayerGuideStep::ConnectWorld, true) => ("等待连接完成", false),
-        (PlayerGuideStep::ConnectWorld, false) => ("Await sync", false),
-        (PlayerGuideStep::OpenPanel, true) => ("打开操作面板", true),
-        (PlayerGuideStep::OpenPanel, false) => ("Open control panel", true),
-        (PlayerGuideStep::SelectTarget, true) => ("锁定一个目标", false),
-        (PlayerGuideStep::SelectTarget, false) => ("Lock one target", false),
-        (PlayerGuideStep::ExploreAction, true) => ("打开指挥并发送 1 条指令", false),
-        (PlayerGuideStep::ExploreAction, false) => ("Open command and send 1 order", false),
+        (PlayerGuideStep::ConnectWorld, true) => ("执行下一步：确认连接状态", false),
+        (PlayerGuideStep::ConnectWorld, false) => ("Do next step: Check connection", false),
+        (PlayerGuideStep::OpenPanel, true) => ("执行下一步：打开面板", true),
+        (PlayerGuideStep::OpenPanel, false) => ("Do next step: Open panel", true),
+        (PlayerGuideStep::SelectTarget, true) => ("执行下一步：切换任务视图并选目标", false),
+        (PlayerGuideStep::SelectTarget, false) => {
+            ("Do next step: Switch to mission view and select", false)
+        }
+        (PlayerGuideStep::ExploreAction, true) => ("执行下一步：打开指挥并开始推进", false),
+        (PlayerGuideStep::ExploreAction, false) => ("Do next step: Open command and play", false),
     };
     let short_goals = build_player_short_goals(step, progress, locale);
     PlayerMissionLoopSnapshot {
@@ -644,6 +646,79 @@ fn player_goal_eta(step: PlayerGuideStep, locale: crate::i18n::UiLocale) -> &'st
         (PlayerGuideStep::SelectTarget, false) => "ETA: about 10s",
         (PlayerGuideStep::ExploreAction, true) => "预计耗时：约 20 秒",
         (PlayerGuideStep::ExploreAction, false) => "ETA: about 20s",
+    }
+}
+
+pub(super) fn build_player_mission_remaining_hint(
+    step: PlayerGuideStep,
+    progress: PlayerGuideProgressSnapshot,
+    state: &crate::ViewerState,
+    locale: crate::i18n::UiLocale,
+) -> String {
+    let current_tick = player_current_tick(state);
+    match (step, locale.is_zh()) {
+        (PlayerGuideStep::ConnectWorld, true) => {
+            if progress.connect_world_done {
+                "剩余：已完成连接，可进入下一步".to_string()
+            } else {
+                "剩余：等待状态栏出现“已连接”".to_string()
+            }
+        }
+        (PlayerGuideStep::ConnectWorld, false) => {
+            if progress.connect_world_done {
+                "Remaining: connection done, proceed to next step".to_string()
+            } else {
+                "Remaining: wait until the status chip shows Connected".to_string()
+            }
+        }
+        (PlayerGuideStep::OpenPanel, true) => {
+            if progress.open_panel_done {
+                "剩余：面板已展开，继续锁定目标".to_string()
+            } else {
+                "剩余：展开右侧面板".to_string()
+            }
+        }
+        (PlayerGuideStep::OpenPanel, false) => {
+            if progress.open_panel_done {
+                "Remaining: panel opened, proceed to target selection".to_string()
+            } else {
+                "Remaining: open the right panel".to_string()
+            }
+        }
+        (PlayerGuideStep::SelectTarget, true) => {
+            if progress.select_target_done {
+                "剩余：目标已锁定，继续发出首条指令".to_string()
+            } else {
+                "剩余：在场景里选中 1 个 Agent 或地点".to_string()
+            }
+        }
+        (PlayerGuideStep::SelectTarget, false) => {
+            if progress.select_target_done {
+                "Remaining: target locked, send your first command".to_string()
+            } else {
+                "Remaining: select one agent or location in the scene".to_string()
+            }
+        }
+        (PlayerGuideStep::ExploreAction, true) => {
+            let remaining_tick = 20_u64.saturating_sub(current_tick);
+            if !progress.explore_ready {
+                "剩余：发送指令后至少出现 1 条新的世界反馈".to_string()
+            } else if remaining_tick > 0 {
+                format!("剩余：再推进约 {remaining_tick} tick（目标 tick=20）")
+            } else {
+                "剩余：首局主循环目标已达成".to_string()
+            }
+        }
+        (PlayerGuideStep::ExploreAction, false) => {
+            let remaining_tick = 20_u64.saturating_sub(current_tick);
+            if !progress.explore_ready {
+                "Remaining: trigger at least one new world feedback after your command".to_string()
+            } else if remaining_tick > 0 {
+                format!("Remaining: advance about {remaining_tick} more ticks (goal tick=20)")
+            } else {
+                "Remaining: first-session loop target reached".to_string()
+            }
+        }
     }
 }
 
@@ -821,6 +896,7 @@ pub(super) fn render_player_mission_hud(
     context: &egui::Context,
     state: &crate::ViewerState,
     selection: &ViewerSelection,
+    client: Option<&crate::ViewerClient>,
     layout_state: &mut RightPanelLayoutState,
     module_visibility: &mut crate::right_panel_module_visibility::RightPanelModuleVisibilityState,
     onboarding_visible: bool,
@@ -830,6 +906,7 @@ pub(super) fn render_player_mission_hud(
     now_secs: f64,
 ) {
     let snapshot = build_player_mission_loop_snapshot(step, progress, locale);
+    let remaining_hint = build_player_mission_remaining_hint(step, progress, state, locale);
     let reward = build_player_reward_feedback_snapshot(progress, locale);
     let tone = player_goal_color(step);
     let reward_tone = if reward.complete {
@@ -873,6 +950,10 @@ pub(super) fn render_player_mission_hud(
                     ui.strong(snapshot.objective);
                     ui.small(snapshot.completion_condition);
                     ui.small(snapshot.eta);
+                    ui.small(
+                        egui::RichText::new(remaining_hint.as_str())
+                            .color(egui::Color32::from_rgb(186, 206, 238)),
+                    );
                     egui::CollapsingHeader::new(if locale.is_zh() {
                         "展开短目标"
                     } else {
@@ -946,6 +1027,14 @@ pub(super) fn render_player_mission_hud(
 
     if action_clicked && snapshot.action_opens_panel {
         layout_state.panel_hidden = false;
+    }
+    if action_clicked && step == PlayerGuideStep::ExploreAction {
+        apply_player_layout_preset(layout_state, module_visibility, PlayerLayoutPreset::Command);
+        if let Some(client) = client {
+            let _ = client.tx.send(agent_world::viewer::ViewerRequest::Control {
+                mode: agent_world::viewer::ViewerControl::Play,
+            });
+        }
     }
     if command_clicked {
         apply_player_layout_preset(layout_state, module_visibility, PlayerLayoutPreset::Command);
