@@ -31,3 +31,35 @@
 - 离线 `Play` 从“定速推送”变为“事件驱动批量推送”后，前端若依赖慢速动画可能表现变化。
 - web bridge 去轮询后需确保断连退出、上游重连行为不退化。
 - 若误触 node/runtime 基础 tick 机制，可能引入共识回归，需要严格边界控制。
+
+## Phase 10 完成态（T4）
+
+### 交付结果
+- `viewer/server` 已去除定时回放推进链路：
+  - 删除 `ViewerServerConfig.tick_interval` 与 `with_tick_interval`。
+  - 主循环从 `recv_timeout + tick` 收敛为 `recv()` 请求驱动。
+  - `Control::Play` 改为单次请求触发的连续事件输出，不再依赖定时 tick。
+- `viewer/web_bridge` 已去除可配置轮询链路：
+  - 删除 `ViewerWebBridgeConfig.poll_interval` 与 `with_poll_interval`。
+  - 删除 `thread::sleep` 轮询，改为 socket 超时读 + 事件转发。
+- 活跃入口与文档已清理旧 `--tick-ms` 示例：
+  - `site/index.html`、`site/en/index.html`
+  - `doc/world-simulator/visualization.md`
+  - `doc/world-simulator/viewer-i18n.md`
+  - `doc/world-simulator/viewer-open-world-sandbox-readiness.md`
+  - `doc/world-simulator/viewer-open-world-sandbox-readiness.stress-report.template.md`
+  - `doc/testing/p2p-storage-consensus-longrun-online-stability-2026-02-24.md`
+- 删除 legacy `--tick-ms` 拒绝断言测试，避免保留旧参数语义噪音：
+  - `crates/agent_world/src/bin/world_viewer_live/world_viewer_live_tests_split_part1.rs`
+
+### 验收证据
+- `env -u RUSTC_WRAPPER cargo fmt --all -- --check`
+- `env -u RUSTC_WRAPPER cargo check -p agent_world`
+- `env -u RUSTC_WRAPPER cargo test -p agent_world viewer::live::tests:: -- --nocapture`
+- `env -u RUSTC_WRAPPER cargo test -p agent_world viewer::web_bridge::tests:: -- --nocapture`
+- `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required --test viewer_offline_integration -- --nocapture`
+- `rg --line-number --no-heading --glob '!doc/devlog/**' --glob '!doc/world-simulator/viewer-live-full-event-driven-phase9-2026-02-27*' -- \"--tick-ms\" .`
+
+### 阶段结论
+- Phase 10 达成：`agent_world::viewer` 活跃链路已移除旧 tick/poll 驱动入口与可配置轮询参数，viewer 运行路径收敛为事件驱动语义。
+- 当前剩余 tick 仅在 node/runtime 基础机制及其测试中（例如 `agent_world_node` 与相关配置），不属于 viewer old-code 清理范围。
