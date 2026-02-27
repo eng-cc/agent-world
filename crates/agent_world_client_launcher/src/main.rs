@@ -4,6 +4,7 @@ use std::io::{BufRead, BufReader, Read};
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
+use std::sync::Arc;
 use std::time::Duration;
 
 use eframe::egui;
@@ -14,6 +15,10 @@ const DEFAULT_WEB_BIND: &str = "127.0.0.1:5011";
 const DEFAULT_VIEWER_HOST: &str = "127.0.0.1";
 const DEFAULT_VIEWER_PORT: &str = "4173";
 const MAX_LOG_LINES: usize = 2000;
+const EGUI_CJK_FONT_NAME: &str = "agent-world-cjk";
+const EGUI_CJK_FONT_BYTES: &[u8] =
+    include_bytes!("../../agent_world_viewer/assets/fonts/ms-yahei.ttf");
+const CLIENT_LAUNCHER_FONT_ENV: &str = "AGENT_WORLD_CLIENT_LAUNCHER_FONT";
 
 fn main() -> eframe::Result<()> {
     let native_options = eframe::NativeOptions {
@@ -24,8 +29,67 @@ fn main() -> eframe::Result<()> {
     eframe::run_native(
         "Agent World Client Launcher",
         native_options,
-        Box::new(|_cc| Ok(Box::<ClientLauncherApp>::default())),
+        Box::new(|cc| {
+            configure_egui_fonts(&cc.egui_ctx);
+            Ok(Box::<ClientLauncherApp>::default())
+        }),
     )
+}
+
+fn configure_egui_fonts(context: &egui::Context) {
+    let mut fonts = egui::FontDefinitions::default();
+    match load_font_override_from_env() {
+        Some((font_name, font_data)) => install_cjk_font(&mut fonts, font_name, font_data),
+        None => install_cjk_font(
+            &mut fonts,
+            EGUI_CJK_FONT_NAME.to_string(),
+            egui::FontData::from_static(EGUI_CJK_FONT_BYTES),
+        ),
+    }
+    context.set_fonts(fonts);
+}
+
+fn load_font_override_from_env() -> Option<(String, egui::FontData)> {
+    let path = env::var(CLIENT_LAUNCHER_FONT_ENV).ok()?;
+    let path = path.trim();
+    if path.is_empty() {
+        return None;
+    }
+
+    match std::fs::read(path) {
+        Ok(bytes) => Some((
+            format!("{EGUI_CJK_FONT_NAME}-custom"),
+            egui::FontData::from_owned(bytes),
+        )),
+        Err(err) => {
+            eprintln!(
+                "warning: failed to read font from {CLIENT_LAUNCHER_FONT_ENV}={path}: {err}; fallback to embedded CJK font"
+            );
+            None
+        }
+    }
+}
+
+fn install_cjk_font(
+    fonts: &mut egui::FontDefinitions,
+    font_name: String,
+    font_data: egui::FontData,
+) {
+    fonts
+        .font_data
+        .insert(font_name.clone(), Arc::new(font_data));
+
+    fonts
+        .families
+        .entry(egui::FontFamily::Proportional)
+        .or_default()
+        .insert(0, font_name.clone());
+
+    fonts
+        .families
+        .entry(egui::FontFamily::Monospace)
+        .or_default()
+        .push(font_name);
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -483,9 +547,10 @@ fn open_browser(url: &str) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::{
-        build_game_url, build_launcher_args, normalize_host_for_url, parse_host_port, parse_port,
-        LaunchConfig,
+        build_game_url, build_launcher_args, install_cjk_font, normalize_host_for_url,
+        parse_host_port, parse_port, LaunchConfig, EGUI_CJK_FONT_NAME,
     };
+    use eframe::egui;
 
     #[test]
     fn parse_port_rejects_zero() {
@@ -539,5 +604,32 @@ mod tests {
         assert_eq!(normalize_host_for_url("0.0.0.0"), "127.0.0.1");
         assert_eq!(normalize_host_for_url(""), "127.0.0.1");
         assert_eq!(normalize_host_for_url("192.168.0.2"), "192.168.0.2");
+    }
+
+    #[test]
+    fn install_cjk_font_registers_font_and_priority() {
+        let mut fonts = egui::FontDefinitions::default();
+        install_cjk_font(
+            &mut fonts,
+            EGUI_CJK_FONT_NAME.to_string(),
+            egui::FontData::from_static(&[0u8, 1u8]),
+        );
+
+        assert!(fonts.font_data.contains_key(EGUI_CJK_FONT_NAME));
+
+        let proportional = fonts
+            .families
+            .get(&egui::FontFamily::Proportional)
+            .expect("proportional family");
+        assert_eq!(
+            proportional.first().map(String::as_str),
+            Some(EGUI_CJK_FONT_NAME)
+        );
+
+        let monospace = fonts
+            .families
+            .get(&egui::FontFamily::Monospace)
+            .expect("monospace family");
+        assert!(monospace.iter().any(|name| name == EGUI_CJK_FONT_NAME));
     }
 }
