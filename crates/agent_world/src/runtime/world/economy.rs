@@ -11,8 +11,10 @@ use std::collections::BTreeMap;
 use super::super::util::to_canonical_cbor;
 use super::super::{
     Action, ActionEnvelope, ActionId, DomainEvent, MaterialLedgerId, RejectReason, WorldError,
-    WorldEvent, WorldEventBody, M4_PRODUCT_CONTROL_CHIP_MODULE_ID, M4_PRODUCT_IRON_INGOT_MODULE_ID,
-    M4_PRODUCT_LOGISTICS_DRONE_MODULE_ID, M4_PRODUCT_MOTOR_MODULE_ID,
+    WorldEvent, WorldEventBody, M4_PRODUCT_ALLOY_PLATE_MODULE_ID,
+    M4_PRODUCT_CONTROL_CHIP_MODULE_ID, M4_PRODUCT_FACTORY_CORE_MODULE_ID,
+    M4_PRODUCT_IRON_INGOT_MODULE_ID, M4_PRODUCT_LOGISTICS_DRONE_MODULE_ID,
+    M4_PRODUCT_MODULE_RACK_MODULE_ID, M4_PRODUCT_MOTOR_MODULE_ID, M4_PRODUCT_SENSOR_PACK_MODULE_ID,
 };
 use super::World;
 use crate::simulator::ResourceKind;
@@ -728,9 +730,13 @@ impl World {
     fn builtin_product_module_for_kind(product_kind: &str) -> Option<&'static str> {
         match product_kind {
             "iron_ingot" => Some(M4_PRODUCT_IRON_INGOT_MODULE_ID),
+            "alloy_plate" => Some(M4_PRODUCT_ALLOY_PLATE_MODULE_ID),
             "control_chip" => Some(M4_PRODUCT_CONTROL_CHIP_MODULE_ID),
             "motor_mk1" => Some(M4_PRODUCT_MOTOR_MODULE_ID),
             "logistics_drone" => Some(M4_PRODUCT_LOGISTICS_DRONE_MODULE_ID),
+            "sensor_pack" => Some(M4_PRODUCT_SENSOR_PACK_MODULE_ID),
+            "module_rack" => Some(M4_PRODUCT_MODULE_RACK_MODULE_ID),
+            "factory_core" => Some(M4_PRODUCT_FACTORY_CORE_MODULE_ID),
             _ => None,
         }
     }

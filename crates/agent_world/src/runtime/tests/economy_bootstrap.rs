@@ -90,14 +90,22 @@ fn m4_builtin_module_ids_manifest_matches_runtime_constants() {
         M4_FACTORY_ASSEMBLER_MODULE_ID,
         M4_RECIPE_SMELT_IRON_MODULE_ID,
         M4_RECIPE_SMELT_COPPER_WIRE_MODULE_ID,
+        M4_RECIPE_SMELT_ALLOY_PLATE_MODULE_ID,
         M4_RECIPE_ASSEMBLE_GEAR_MODULE_ID,
         M4_RECIPE_ASSEMBLE_CONTROL_CHIP_MODULE_ID,
         M4_RECIPE_ASSEMBLE_MOTOR_MODULE_ID,
         M4_RECIPE_ASSEMBLE_DRONE_MODULE_ID,
+        M4_RECIPE_ASSEMBLE_SENSOR_PACK_MODULE_ID,
+        M4_RECIPE_ASSEMBLE_MODULE_RACK_MODULE_ID,
+        M4_RECIPE_ASSEMBLE_FACTORY_CORE_MODULE_ID,
         M4_PRODUCT_IRON_INGOT_MODULE_ID,
+        M4_PRODUCT_ALLOY_PLATE_MODULE_ID,
         M4_PRODUCT_CONTROL_CHIP_MODULE_ID,
         M4_PRODUCT_MOTOR_MODULE_ID,
         M4_PRODUCT_LOGISTICS_DRONE_MODULE_ID,
+        M4_PRODUCT_SENSOR_PACK_MODULE_ID,
+        M4_PRODUCT_MODULE_RACK_MODULE_ID,
+        M4_PRODUCT_FACTORY_CORE_MODULE_ID,
     ];
     assert_eq!(m4_bootstrap_module_ids(), expected);
     assert_eq!(m4_builtin_module_ids_manifest(), expected);
@@ -238,16 +246,16 @@ fn m4_economy_modules_drive_resource_to_product_chain() {
         .set_material_balance("refractory_brick", 8)
         .expect("seed refractory bricks");
     world
-        .set_material_balance("iron_ore", 40)
+        .set_material_balance("iron_ore", 60)
         .expect("seed iron ore");
     world
-        .set_material_balance("carbon_fuel", 10)
+        .set_material_balance("carbon_fuel", 20)
         .expect("seed carbon fuel");
     world
-        .set_material_balance("copper_ore", 20)
+        .set_material_balance("copper_ore", 60)
         .expect("seed copper ore");
     world
-        .set_material_balance("polymer_resin", 4)
+        .set_material_balance("polymer_resin", 12)
         .expect("seed polymer resin");
 
     world.submit_action(Action::BuildFactoryWithModule {
@@ -274,7 +282,7 @@ fn m4_economy_modules_drive_resource_to_product_chain() {
         factory_id: "factory.smelter.mk1".to_string(),
         recipe_id: "recipe.smelter.iron_ingot".to_string(),
         module_id: M4_RECIPE_SMELT_IRON_MODULE_ID.to_string(),
-        desired_batches: 8,
+        desired_batches: 12,
         deterministic_seed: 20260214,
     });
     start_and_settle_recipe(&mut world, &mut wasm);
@@ -284,7 +292,7 @@ fn m4_economy_modules_drive_resource_to_product_chain() {
         factory_id: "factory.smelter.mk1".to_string(),
         recipe_id: "recipe.smelter.copper_wire".to_string(),
         module_id: M4_RECIPE_SMELT_COPPER_WIRE_MODULE_ID.to_string(),
-        desired_batches: 5,
+        desired_batches: 12,
         deterministic_seed: 20260214,
     });
     start_and_settle_recipe(&mut world, &mut wasm);
@@ -323,7 +331,7 @@ fn m4_economy_modules_drive_resource_to_product_chain() {
         factory_id: "factory.assembler.mk1".to_string(),
         recipe_id: "recipe.assembler.control_chip".to_string(),
         module_id: M4_RECIPE_ASSEMBLE_CONTROL_CHIP_MODULE_ID.to_string(),
-        desired_batches: 1,
+        desired_batches: 4,
         deterministic_seed: 20260214,
     });
     start_and_settle_recipe(&mut world, &mut wasm);
@@ -348,16 +356,63 @@ fn m4_economy_modules_drive_resource_to_product_chain() {
     });
     start_and_settle_recipe(&mut world, &mut wasm);
 
+    world.submit_action(Action::ScheduleRecipeWithModule {
+        requester_agent_id: "builder-a".to_string(),
+        factory_id: "factory.smelter.mk1".to_string(),
+        recipe_id: "recipe.smelter.alloy_plate".to_string(),
+        module_id: M4_RECIPE_SMELT_ALLOY_PLATE_MODULE_ID.to_string(),
+        desired_batches: 3,
+        deterministic_seed: 20260214,
+    });
+    start_and_settle_recipe(&mut world, &mut wasm);
+
+    world.submit_action(Action::ScheduleRecipeWithModule {
+        requester_agent_id: "builder-a".to_string(),
+        factory_id: "factory.assembler.mk1".to_string(),
+        recipe_id: "recipe.assembler.sensor_pack".to_string(),
+        module_id: M4_RECIPE_ASSEMBLE_SENSOR_PACK_MODULE_ID.to_string(),
+        desired_batches: 2,
+        deterministic_seed: 20260214,
+    });
+    start_and_settle_recipe(&mut world, &mut wasm);
+
+    world.submit_action(Action::ScheduleRecipeWithModule {
+        requester_agent_id: "builder-a".to_string(),
+        factory_id: "factory.assembler.mk1".to_string(),
+        recipe_id: "recipe.assembler.module_rack".to_string(),
+        module_id: M4_RECIPE_ASSEMBLE_MODULE_RACK_MODULE_ID.to_string(),
+        desired_batches: 1,
+        deterministic_seed: 20260214,
+    });
+    start_and_settle_recipe(&mut world, &mut wasm);
+
+    world.submit_action(Action::ScheduleRecipeWithModule {
+        requester_agent_id: "builder-a".to_string(),
+        factory_id: "factory.assembler.mk1".to_string(),
+        recipe_id: "recipe.assembler.factory_core".to_string(),
+        module_id: M4_RECIPE_ASSEMBLE_FACTORY_CORE_MODULE_ID.to_string(),
+        desired_batches: 1,
+        deterministic_seed: 20260214,
+    });
+    start_and_settle_recipe(&mut world, &mut wasm);
+
+    assert_eq!(world.material_balance("factory_core"), 1);
+    assert_eq!(world.material_balance("module_rack"), 0);
+    assert_eq!(world.material_balance("sensor_pack"), 0);
     assert_eq!(world.material_balance("logistics_drone"), 1);
     assert_eq!(world.material_balance("motor_mk1"), 0);
     assert_eq!(world.material_balance("control_chip"), 0);
     assert_eq!(world.material_balance("gear"), 0);
-    assert_eq!(world.material_balance("iron_ingot"), 4);
-    assert_eq!(world.material_balance("copper_wire"), 2);
-    assert_eq!(world.material_balance("slag"), 8);
-    assert_eq!(world.material_balance("waste_resin"), 1);
+    assert_eq!(world.material_balance("alloy_plate"), 3);
+    assert_eq!(world.material_balance("iron_ingot"), 10);
+    assert_eq!(world.material_balance("copper_wire"), 8);
+    assert_eq!(world.material_balance("slag"), 15);
+    assert_eq!(world.material_balance("waste_resin"), 4);
     assert_eq!(world.material_balance("assembly_scrap"), 1);
-    assert_eq!(world.resource_balance(ResourceKind::Electricity), 258);
+    assert_eq!(world.material_balance("calibration_scrap"), 2);
+    assert_eq!(world.material_balance("precision_scrap"), 1);
+    assert_eq!(world.material_balance("structural_waste"), 1);
+    assert_eq!(world.resource_balance(ResourceKind::Electricity), 99);
 
     let rejected_events = world
         .journal()

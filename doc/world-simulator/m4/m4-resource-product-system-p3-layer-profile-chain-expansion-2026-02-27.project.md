@@ -4,7 +4,7 @@
 - [x] T0：输出 P3 设计文档与项目管理文档。
 - [x] T1：落地 Profile 结构（ABI + WorldState）与默认目录注入。
 - [x] T2：接线 Profile 驱动规则（优先级、运损、阶段门槛、瓶颈标签、role_tag 优先级）。
-- [ ] T3：扩展内置模块链路并同步 bootstrap/hash/identity 清单。
+- [x] T3：扩展内置模块链路并同步 bootstrap/hash/identity 清单。
 - [ ] T4：完成 required/full 回归，回写文档状态与 devlog 收口。
 
 ## 依赖
@@ -18,6 +18,6 @@
 - `crates/agent_world/src/runtime/world/artifacts/m4_builtin_*`
 
 ## 状态
-- 当前阶段：进行中（T0/T1/T2 已完成，执行 T3）。
+- 当前阶段：进行中（T0/T1/T2/T3 已完成，执行 T4）。
 - 阻塞项：无。
-- 下一步：扩展内置模块链路并同步 bootstrap/hash/identity 清单。
+- 下一步：执行 required/full 回归并完成文档/devlog 收口。

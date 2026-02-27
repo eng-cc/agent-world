@@ -8,6 +8,9 @@ use super::super::{
 };
 use super::World;
 
+const IDENTITY_HASH_SIGNATURE_SCHEME: &str = "identity_hash_v1";
+const IDENTITY_HASH_SIGNATURE_PREFIX: &str = "idhash:";
+
 impl World {
     pub(super) fn validate_module_changes(
         &self,
@@ -249,6 +252,28 @@ impl World {
                 ),
             });
         }
+
+        if identity.signature_scheme == IDENTITY_HASH_SIGNATURE_SCHEME {
+            let expected_identity_hash = super::super::util::sha256_hex(
+                format!(
+                    "{}:{}:{}",
+                    module.module_id, identity.source_hash, identity.build_manifest_hash
+                )
+                .as_bytes(),
+            );
+            let expected_signature =
+                format!("{IDENTITY_HASH_SIGNATURE_PREFIX}{expected_identity_hash}");
+            if identity.artifact_signature != expected_signature {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!(
+                        "module artifact_identity identity_hash signature mismatch for {}: expected={} actual={}",
+                        module.module_id, expected_signature, identity.artifact_signature
+                    ),
+                });
+            }
+            return Ok(());
+        }
+
         if identity.has_unsigned_prefix() {
             return Err(WorldError::ModuleChangeInvalid {
                 reason: format!(

@@ -4,12 +4,15 @@ use super::super::{
     ModuleActivation, ModuleArtifactIdentity, ModuleChangeSet, ModuleKind, ModuleLimits,
     ModuleManifest, ModuleRegistry, ModuleRole, ProductProfileV1, ProposalDecision,
     RecipeProfileV1, WorldError, M4_ECONOMY_MODULE_VERSION, M4_FACTORY_ASSEMBLER_MODULE_ID,
-    M4_FACTORY_MINER_MODULE_ID, M4_FACTORY_SMELTER_MODULE_ID, M4_PRODUCT_CONTROL_CHIP_MODULE_ID,
+    M4_FACTORY_MINER_MODULE_ID, M4_FACTORY_SMELTER_MODULE_ID, M4_PRODUCT_ALLOY_PLATE_MODULE_ID,
+    M4_PRODUCT_CONTROL_CHIP_MODULE_ID, M4_PRODUCT_FACTORY_CORE_MODULE_ID,
     M4_PRODUCT_IRON_INGOT_MODULE_ID, M4_PRODUCT_LOGISTICS_DRONE_MODULE_ID,
-    M4_PRODUCT_MOTOR_MODULE_ID, M4_RECIPE_ASSEMBLE_CONTROL_CHIP_MODULE_ID,
-    M4_RECIPE_ASSEMBLE_DRONE_MODULE_ID, M4_RECIPE_ASSEMBLE_GEAR_MODULE_ID,
-    M4_RECIPE_ASSEMBLE_MOTOR_MODULE_ID, M4_RECIPE_SMELT_COPPER_WIRE_MODULE_ID,
-    M4_RECIPE_SMELT_IRON_MODULE_ID,
+    M4_PRODUCT_MODULE_RACK_MODULE_ID, M4_PRODUCT_MOTOR_MODULE_ID, M4_PRODUCT_SENSOR_PACK_MODULE_ID,
+    M4_RECIPE_ASSEMBLE_CONTROL_CHIP_MODULE_ID, M4_RECIPE_ASSEMBLE_DRONE_MODULE_ID,
+    M4_RECIPE_ASSEMBLE_FACTORY_CORE_MODULE_ID, M4_RECIPE_ASSEMBLE_GEAR_MODULE_ID,
+    M4_RECIPE_ASSEMBLE_MODULE_RACK_MODULE_ID, M4_RECIPE_ASSEMBLE_MOTOR_MODULE_ID,
+    M4_RECIPE_ASSEMBLE_SENSOR_PACK_MODULE_ID, M4_RECIPE_SMELT_ALLOY_PLATE_MODULE_ID,
+    M4_RECIPE_SMELT_COPPER_WIRE_MODULE_ID, M4_RECIPE_SMELT_IRON_MODULE_ID,
 };
 use super::World;
 
@@ -51,6 +54,11 @@ const M4_BOOTSTRAP_MODULES: &[M4BootstrapModuleDescriptor] = &[
         max_call_rate: 128,
     },
     M4BootstrapModuleDescriptor {
+        module_id: M4_RECIPE_SMELT_ALLOY_PLATE_MODULE_ID,
+        manifest_name: "M4RecipeSmelterAlloyPlate",
+        max_call_rate: 128,
+    },
+    M4BootstrapModuleDescriptor {
         module_id: M4_RECIPE_ASSEMBLE_GEAR_MODULE_ID,
         manifest_name: "M4RecipeAssemblerGear",
         max_call_rate: 128,
@@ -71,8 +79,28 @@ const M4_BOOTSTRAP_MODULES: &[M4BootstrapModuleDescriptor] = &[
         max_call_rate: 128,
     },
     M4BootstrapModuleDescriptor {
+        module_id: M4_RECIPE_ASSEMBLE_SENSOR_PACK_MODULE_ID,
+        manifest_name: "M4RecipeAssemblerSensorPack",
+        max_call_rate: 128,
+    },
+    M4BootstrapModuleDescriptor {
+        module_id: M4_RECIPE_ASSEMBLE_MODULE_RACK_MODULE_ID,
+        manifest_name: "M4RecipeAssemblerModuleRack",
+        max_call_rate: 128,
+    },
+    M4BootstrapModuleDescriptor {
+        module_id: M4_RECIPE_ASSEMBLE_FACTORY_CORE_MODULE_ID,
+        manifest_name: "M4RecipeAssemblerFactoryCore",
+        max_call_rate: 128,
+    },
+    M4BootstrapModuleDescriptor {
         module_id: M4_PRODUCT_IRON_INGOT_MODULE_ID,
         manifest_name: "M4ProductIronIngot",
+        max_call_rate: 64,
+    },
+    M4BootstrapModuleDescriptor {
+        module_id: M4_PRODUCT_ALLOY_PLATE_MODULE_ID,
+        manifest_name: "M4ProductAlloyPlate",
         max_call_rate: 64,
     },
     M4BootstrapModuleDescriptor {
@@ -88,6 +116,21 @@ const M4_BOOTSTRAP_MODULES: &[M4BootstrapModuleDescriptor] = &[
     M4BootstrapModuleDescriptor {
         module_id: M4_PRODUCT_LOGISTICS_DRONE_MODULE_ID,
         manifest_name: "M4ProductLogisticsDrone",
+        max_call_rate: 64,
+    },
+    M4BootstrapModuleDescriptor {
+        module_id: M4_PRODUCT_SENSOR_PACK_MODULE_ID,
+        manifest_name: "M4ProductSensorPack",
+        max_call_rate: 64,
+    },
+    M4BootstrapModuleDescriptor {
+        module_id: M4_PRODUCT_MODULE_RACK_MODULE_ID,
+        manifest_name: "M4ProductModuleRack",
+        max_call_rate: 64,
+    },
+    M4BootstrapModuleDescriptor {
+        module_id: M4_PRODUCT_FACTORY_CORE_MODULE_ID,
+        manifest_name: "M4ProductFactoryCore",
         max_call_rate: 64,
     },
 ];
