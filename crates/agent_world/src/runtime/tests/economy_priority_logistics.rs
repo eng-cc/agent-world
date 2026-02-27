@@ -1,6 +1,7 @@
 use super::pos;
 use crate::runtime::{
-    Action, DomainEvent, MaterialLedgerId, MaterialTransitPriority, World, WorldEventBody,
+    Action, DomainEvent, GovernanceProposalStatus, IndustryStage, MaterialLedgerId,
+    MaterialTransitPriority, World, WorldEventBody,
 };
 use crate::simulator::ResourceKind;
 use agent_world_wasm_abi::{FactoryModuleSpec, MaterialStack, RecipeExecutionPlan};
@@ -21,6 +22,45 @@ fn factory_spec(factory_id: &str, build_time_ticks: u32, recipe_slots: u16) -> F
         throughput_bps: 10_000,
         maintenance_per_tick: 1,
     }
+}
+
+fn authorize_policy_update(world: &mut World, operator_agent_id: &str, proposal_key: &str) {
+    world.submit_action(Action::OpenGovernanceProposal {
+        proposer_agent_id: operator_agent_id.to_string(),
+        proposal_key: proposal_key.to_string(),
+        title: format!("title.{proposal_key}"),
+        description: "authorize gameplay policy update".to_string(),
+        options: vec!["approve".to_string(), "reject".to_string()],
+        voting_window_ticks: 1,
+        quorum_weight: 3,
+        pass_threshold_bps: 5_000,
+    });
+    world.step().expect("open governance proposal");
+
+    world.submit_action(Action::CastGovernanceVote {
+        voter_agent_id: operator_agent_id.to_string(),
+        proposal_key: proposal_key.to_string(),
+        option: "approve".to_string(),
+        weight: 3,
+    });
+    world.step().expect("cast governance vote");
+
+    for _ in 0..2 {
+        let Some(proposal) = world.state().governance_proposals.get(proposal_key) else {
+            break;
+        };
+        if proposal.status != GovernanceProposalStatus::Open {
+            break;
+        }
+        world.step().expect("advance governance proposal");
+    }
+
+    let proposal = world
+        .state()
+        .governance_proposals
+        .get(proposal_key)
+        .expect("proposal finalized");
+    assert_eq!(proposal.status, GovernanceProposalStatus::Passed);
 }
 
 #[test]
@@ -321,4 +361,223 @@ fn due_transits_prioritize_urgent_before_standard_with_same_ready_at() {
     assert_eq!(metrics.fulfilled_transits, 2);
     assert_eq!(metrics.urgent_completed_transits, 1);
     assert_eq!(metrics.urgent_fulfilled_transits, 1);
+}
+
+#[test]
+fn recipe_started_market_quote_reflects_governance_tax_change() {
+    let mut world = World::new();
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "builder-a".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.step().expect("register builder");
+
+    world
+        .set_material_balance("steel_plate", 20)
+        .expect("seed build steel");
+    world
+        .set_material_balance("circuit_board", 4)
+        .expect("seed build circuits");
+    world.submit_action(Action::BuildFactory {
+        builder_agent_id: "builder-a".to_string(),
+        site_id: "site-1".to_string(),
+        spec: factory_spec("factory.quote", 1, 1),
+    });
+    world.step().expect("start build");
+    world.step().expect("factory ready");
+
+    world
+        .set_ledger_material_balance(MaterialLedgerId::site("site-1"), "iron_ingot", 12)
+        .expect("seed local recipe input");
+    world
+        .set_material_balance("iron_ingot", 100)
+        .expect("seed world recipe input");
+    world.set_resource_balance(ResourceKind::Electricity, 50);
+
+    authorize_policy_update(&mut world, "builder-a", "proposal.policy.zero-tax");
+    world.submit_action(Action::UpdateGameplayPolicy {
+        operator_agent_id: "builder-a".to_string(),
+        electricity_tax_bps: 0,
+        data_tax_bps: 0,
+        power_trade_fee_bps: 0,
+        max_open_contracts_per_agent: 16,
+        blocked_agents: Vec::new(),
+        forbidden_location_ids: Vec::new(),
+    });
+    world.step().expect("set zero tax policy");
+
+    let plan = RecipeExecutionPlan::accepted(
+        1,
+        vec![MaterialStack::new("iron_ingot", 2)],
+        vec![MaterialStack::new("gear", 1)],
+        Vec::new(),
+        1,
+        1,
+    );
+    world.submit_action(Action::ScheduleRecipe {
+        requester_agent_id: "builder-a".to_string(),
+        factory_id: "factory.quote".to_string(),
+        recipe_id: "recipe.quote.low_tax".to_string(),
+        plan: plan.clone(),
+    });
+    world.step().expect("start low tax recipe");
+
+    let low_tax_quote = match &world.journal().events.last().expect("recipe started").body {
+        WorldEventBody::Domain(DomainEvent::RecipeStarted { market_quotes, .. }) => market_quotes
+            .iter()
+            .find(|quote| quote.kind == "iron_ingot")
+            .expect("iron quote under low tax")
+            .clone(),
+        other => panic!("expected RecipeStarted, got {other:?}"),
+    };
+    assert_eq!(low_tax_quote.governance_tax_bps, 0);
+
+    world.step().expect("complete low tax recipe");
+
+    authorize_policy_update(&mut world, "builder-a", "proposal.policy.high-tax");
+    world.submit_action(Action::UpdateGameplayPolicy {
+        operator_agent_id: "builder-a".to_string(),
+        electricity_tax_bps: 900,
+        data_tax_bps: 700,
+        power_trade_fee_bps: 0,
+        max_open_contracts_per_agent: 16,
+        blocked_agents: Vec::new(),
+        forbidden_location_ids: Vec::new(),
+    });
+    world.step().expect("set high tax policy");
+
+    world.submit_action(Action::ScheduleRecipe {
+        requester_agent_id: "builder-a".to_string(),
+        factory_id: "factory.quote".to_string(),
+        recipe_id: "recipe.quote.high_tax".to_string(),
+        plan,
+    });
+    world.step().expect("start high tax recipe");
+
+    let high_tax_quote = match &world.journal().events.last().expect("recipe started").body {
+        WorldEventBody::Domain(DomainEvent::RecipeStarted { market_quotes, .. }) => market_quotes
+            .iter()
+            .find(|quote| quote.kind == "iron_ingot")
+            .expect("iron quote under high tax")
+            .clone(),
+        other => panic!("expected RecipeStarted, got {other:?}"),
+    };
+    assert_eq!(high_tax_quote.governance_tax_bps, 1_600);
+    assert!(
+        high_tax_quote.effective_cost_index_ppm > low_tax_quote.effective_cost_index_ppm,
+        "expected effective cost to increase with governance tax: low={:?} high={:?}",
+        low_tax_quote,
+        high_tax_quote
+    );
+}
+
+#[test]
+fn industry_stage_progresses_from_bootstrap_to_scale_out_and_governance() {
+    let mut world = World::new();
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "builder-a".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.step().expect("register builder");
+
+    world
+        .set_material_balance("steel_plate", 20)
+        .expect("seed build steel");
+    world
+        .set_material_balance("circuit_board", 4)
+        .expect("seed build circuits");
+    world.submit_action(Action::BuildFactory {
+        builder_agent_id: "builder-a".to_string(),
+        site_id: "site-1".to_string(),
+        spec: factory_spec("factory.stage", 1, 1),
+    });
+    world.step().expect("start build");
+    world.step().expect("factory ready");
+
+    world
+        .set_ledger_material_balance(MaterialLedgerId::site("site-1"), "iron_ingot", 30)
+        .expect("seed local recipe material");
+    world.set_resource_balance(ResourceKind::Electricity, 100);
+
+    authorize_policy_update(&mut world, "builder-a", "proposal.policy.disable-tax");
+    world.submit_action(Action::UpdateGameplayPolicy {
+        operator_agent_id: "builder-a".to_string(),
+        electricity_tax_bps: 0,
+        data_tax_bps: 0,
+        power_trade_fee_bps: 0,
+        max_open_contracts_per_agent: 16,
+        blocked_agents: Vec::new(),
+        forbidden_location_ids: Vec::new(),
+    });
+    world.step().expect("disable tax policy");
+
+    let recipe_plan = RecipeExecutionPlan::accepted(
+        1,
+        vec![MaterialStack::new("iron_ingot", 2)],
+        vec![MaterialStack::new("gear", 1)],
+        Vec::new(),
+        1,
+        1,
+    );
+    for index in 0..3 {
+        world.submit_action(Action::ScheduleRecipe {
+            requester_agent_id: "builder-a".to_string(),
+            factory_id: "factory.stage".to_string(),
+            recipe_id: format!("recipe.stage.{index}"),
+            plan: recipe_plan.clone(),
+        });
+        world.step().expect("start recipe");
+        world.step().expect("complete recipe");
+    }
+
+    assert_eq!(
+        world.state().industry_progress.stage,
+        IndustryStage::ScaleOut
+    );
+    assert_eq!(world.state().industry_progress.completed_recipe_jobs, 3);
+    assert_eq!(
+        world.state().industry_progress.completed_material_transits,
+        0
+    );
+
+    world
+        .set_ledger_material_balance(MaterialLedgerId::site("site-a"), "copper_wire", 60)
+        .expect("seed transit material");
+    for _ in 0..3 {
+        world.submit_action(Action::TransferMaterial {
+            requester_agent_id: "builder-a".to_string(),
+            from_ledger: MaterialLedgerId::site("site-a"),
+            to_ledger: MaterialLedgerId::site("site-b"),
+            kind: "copper_wire".to_string(),
+            amount: 10,
+            distance_km: 100,
+        });
+        world.step().expect("start transit");
+        world.step().expect("complete transit");
+    }
+    assert_eq!(
+        world.state().industry_progress.stage,
+        IndustryStage::ScaleOut
+    );
+    assert_eq!(
+        world.state().industry_progress.completed_material_transits,
+        3
+    );
+
+    authorize_policy_update(&mut world, "builder-a", "proposal.policy.enable-tax");
+    world.submit_action(Action::UpdateGameplayPolicy {
+        operator_agent_id: "builder-a".to_string(),
+        electricity_tax_bps: 500,
+        data_tax_bps: 0,
+        power_trade_fee_bps: 0,
+        max_open_contracts_per_agent: 16,
+        blocked_agents: Vec::new(),
+        forbidden_location_ids: Vec::new(),
+    });
+    world.step().expect("enable tax policy");
+
+    assert_eq!(
+        world.state().industry_progress.stage,
+        IndustryStage::Governance
+    );
 }
