@@ -1,0 +1,51 @@
+# 可发行客户端启动器（Desktop）设计文档（2026-02-27）
+
+## 目标
+- 提供面向玩家的“客户端启动器”桌面应用，减少命令行操作门槛。
+- 玩家可通过 GUI 完成：启动/停止游戏栈、查看当前连接地址、一键打开游戏页面。
+- 与现有 `world_game_launcher` 复用同一运行链路，避免复制核心启动逻辑。
+
+## 范围
+- 新增桌面客户端启动器 crate：`crates/agent_world_client_launcher`。
+- 启动器 GUI 提供：
+  - 基础参数编辑（LLM 开关、viewer/live/web bind、静态资源目录）。
+  - 启动/停止按钮与进程状态显示。
+  - 一键打开游戏 URL。
+  - 启动日志滚动展示（stdout/stderr 汇总）。
+- 发行打包脚本纳入桌面启动器二进制，并生成 `run-client.sh` 入口。
+
+## 非目标
+- 本阶段不实现自动更新器。
+- 不实现复杂账号系统、支付或在线补丁分发。
+- 不改动 `world_viewer_live` 与 `world_game_launcher` 的核心业务协议。
+
+## 接口/数据
+### 桌面启动器行为
+- 子进程：调用 `world_game_launcher`（并透传 GUI 参数）
+- 默认参数：
+  - scenario: `llm_bootstrap`
+  - live bind: `127.0.0.1:5023`
+  - web bind: `127.0.0.1:5011`
+  - viewer host: `127.0.0.1`
+  - viewer port: `4173`
+  - viewer static dir: `web`
+- URL：`http://{viewer-host}:{viewer-port}/?ws=ws://{web-bind-host}:{web-bind-port}`
+
+### 打包目录
+- `bin/agent_world_client_launcher`
+- `bin/world_game_launcher`
+- `bin/world_viewer_live`
+- `web/`
+- `run-client.sh`
+- `run-game.sh`
+
+## 里程碑
+- M1：Desktop GUI 启动器 MVP（启动/停止/URL/日志）可运行。
+- M2：打包脚本接入客户端启动器并可产出分发目录。
+- M3：手册与项目文档收口，给出玩家可执行路径。
+
+## 风险
+- GUI 依赖在不同 Linux 环境下可能出现图形后端兼容差异。
+  - 缓解：先以 `cargo check` 和单元测试保证构建链路，运行时提供 CLI fallback（`world_game_launcher`）。
+- 子进程崩溃时 UI 状态不同步。
+  - 缓解：轮询 `try_wait`，崩溃后自动切回未运行状态并写入日志。
