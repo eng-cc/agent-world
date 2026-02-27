@@ -17,6 +17,7 @@
 
 ## 接口/数据
 - 启动接口：`./scripts/run-game-test.sh`
+- A/B 量化复测接口：`./scripts/run-game-test-ab.sh`
 - 浏览器自动化接口：`./.codex/skills/playwright/scripts/playwright_cli.sh`
 - 测试卡片模板：`doc/playability_test_card.md`
 - 结果目录：
@@ -55,3 +56,24 @@
 PLAYWRIGHT_CLI_SESSION=game-test-open \
 ./.codex/skills/playwright/scripts/playwright_cli.sh open "http://127.0.0.1:4173/?ws=ws://127.0.0.1:5011&test_api=1" --headed
 ```
+
+## 推荐：A/B 分段 + 量化复测
+优先使用以下脚本执行可复现闭环，降低“命令漂移”与“手工漏步骤”风险：
+
+```bash
+./scripts/run-game-test-ab.sh
+```
+
+脚本会自动完成：
+- 启动/复用测试栈并打开 Playwright 会话
+- 稳定截图（固定文件名）与录屏
+- A 段：`play -> 观察 -> pause`
+- B 段：`step/seek` 控制探针 + 无效动作探针
+- 产出量化指标：
+  - `TTFC`（首次可控时间，ms）
+  - `有效控制命中率`（有效推进控制次数 / 预期推进控制次数）
+  - `无进展窗口时长`（connected 下 tick 不变最长窗口）
+- 输出结果：
+  - `ab_metrics.json`
+  - `ab_metrics.md`
+  - `card_quant_metrics.md`（可直接粘贴到卡片）
