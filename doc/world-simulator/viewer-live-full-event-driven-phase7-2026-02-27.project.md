@@ -5,7 +5,7 @@
 - [x] T1 script 节拍策略：`timer_pulse` / `event_drive` 双模接线
 - [x] T2 可观测性：信号级吞吐/merge/drop/处理耗时统计
 - [x] T3 回归测试 + Web 闭环验证
-- [ ] T4 文档与日志收口
+- [x] T4 文档与日志收口
 
 ## 依赖
 - `crates/agent_world/src/viewer/live_split_part1.rs`
@@ -14,5 +14,5 @@
 - `testing-manual.md`
 
 ## 状态
-- 当前阶段：进行 T4
-- 备注：T3 已完成，S6 Web smoke（headed + `__AW_TEST__` + console/screenshot）证据已归档。
+- 当前阶段：已完成（T0~T4）
+- 备注：Phase 7 完成，系统具备可切换“完全事件驱动”运行模式；默认口径仍保持 script `timer_pulse` 兼容策略。
