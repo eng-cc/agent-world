@@ -10,7 +10,6 @@
 ```bash
 ./scripts/viewer-owr4-stress.sh \
   --duration-secs 45 \
-  --tick-ms 120 \
   --scenarios triad_region_bootstrap,llm_bootstrap
 ```
 
@@ -21,10 +20,10 @@
 | `llm_bootstrap` | llm | 事件与决策链路压力（LLM 高负载） |
 
 ## 结果汇总（脚本输出）
-| 场景 | mode | duration(s) | tick(ms) | final_events | events/s | viewer status |
-|---|---:|---:|---:|---:|---:|---|
-| triad_region_bootstrap |  |  |  |  |  |  |
-| llm_bootstrap |  |  |  |  |  |  |
+| 场景 | mode | duration(s) | final_events | events/s | viewer status |
+|---|---:|---:|---:|---:|---|
+| triad_region_bootstrap |  |  |  |  |  |
+| llm_bootstrap |  |  |  |  |  |
 
 ## 渲染指标（人工补录）
 > 从 viewer 右侧性能摘要或回放记录补录。

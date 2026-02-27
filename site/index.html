@@ -223,9 +223,9 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010</code></p
           <article class="card">
             <h3>在线持续战局（LLM 默认）</h3>
             <p>进入持续推进模式，观察多日策略拉扯与对抗稳定性。</p>
-            <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011 --tick-ms 300
+            <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011
 # 可选：回退脚本决策
-env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --no-llm --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011 --tick-ms 300
+env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --no-llm --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011
 env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023</code></pre>
           </article>
         </div>

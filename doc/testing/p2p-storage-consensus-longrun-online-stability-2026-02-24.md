@@ -31,7 +31,6 @@
   - `--duration-secs <n>`
   - `--topology <triad|triad_distributed>`
   - `--scenario <name>`（默认 `triad_p2p_bootstrap`）
-  - `--tick-ms <n>`
   - `--enable-chaos`
   - `--chaos-plan <path>`
   - `--out-dir <path>`（默认 `.tmp/p2p_longrun`）

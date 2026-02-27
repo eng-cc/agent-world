@@ -225,9 +225,9 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010</code></p
           <article class="card">
             <h3>Live Continuous Match (LLM default)</h3>
             <p>Run the world continuously and observe multi-day strategic pull-and-counterpull.</p>
-            <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011 --tick-ms 300
+            <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011
 # Optional: fallback to scripted decisions
-env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --no-llm --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011 --tick-ms 300
+env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --no-llm --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011
 env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023</code></pre>
           </article>
         </div>

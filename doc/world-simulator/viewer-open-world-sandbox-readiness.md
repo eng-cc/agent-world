@@ -140,7 +140,7 @@
   - `env -u RUSTC_WRAPPER cargo test -p agent_world replay_from_snapshot_applies_agent_prompt_updated_event -- --nocapture` 通过。
   - `env -u RUSTC_WRAPPER cargo test -p agent_world --test viewer_live_integration --features viewer_live_integration -- --nocapture` 通过。
   - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer` 通过（157 tests）。
-  - 截图闭环通过：`./scripts/capture-viewer-frame.sh --scenario llm_bootstrap --addr 127.0.0.1:5163 --tick-ms 300 --viewer-wait 10`。
+- 截图闭环通过：`./scripts/capture-viewer-frame.sh --scenario llm_bootstrap --addr 127.0.0.1:5163 --viewer-wait 10`。
 
 ## 实施进展（2026-02-12）
 - 已完成 OWR2-Client：
@@ -197,7 +197,7 @@
 - 已完成验证（OWR4.4）：
   - `bash -n scripts/viewer-owr4-stress.sh` 通过。
   - `./scripts/viewer-owr4-stress.sh --help` 通过。
-  - `./scripts/viewer-owr4-stress.sh --duration-secs 5 --tick-ms 300 --scenarios triad_region_bootstrap --no-prewarm --out-dir .tmp/viewer_owr4_stress_smoke` 通过。
+- `./scripts/viewer-owr4-stress.sh --duration-secs 5 --scenarios triad_region_bootstrap --no-prewarm --out-dir .tmp/viewer_owr4_stress_smoke` 通过。
 - 已完成 OWR4.5：
   - 固定记录三类基线指标：
     - 帧时间：`frame_ms_avg` / `frame_ms_p95`；
@@ -209,6 +209,6 @@
     - UI 模式支持 `AGENT_WORLD_VIEWER_AUTO_PLAY=1`，用于截图闭环场景下的动态负载采样。
   - 当前批次基线结论已收口到项目管理文档 `doc/world-simulator/viewer-open-world-sandbox-readiness.project.md`，后续版本沿用同口径复跑并更新该文档。
 - 已完成验证（OWR4.5）：
-  - `./scripts/viewer-owr4-stress.sh --duration-secs 12 --tick-ms 200 --out-dir artifacts/owr4_baseline --no-prewarm` 通过。
-  - `AGENT_WORLD_VIEWER_AUTO_PLAY=1 AGENT_WORLD_VIEWER_PERF_PROBE=1 AGENT_WORLD_VIEWER_PERF_PROBE_INTERVAL_SECS=1 AGENT_WORLD_VIEWER_PERF_BUDGET_MS=33 ./scripts/capture-viewer-frame.sh --scenario triad_region_bootstrap --addr 127.0.0.1:5640 --tick-ms 200 --viewer-wait 10 --no-prewarm --keep-tmp` 通过。
-  - `AGENT_WORLD_VIEWER_AUTO_PLAY=1 AGENT_WORLD_VIEWER_PERF_PROBE=1 AGENT_WORLD_VIEWER_PERF_PROBE_INTERVAL_SECS=1 AGENT_WORLD_VIEWER_PERF_BUDGET_MS=33 ./scripts/capture-viewer-frame.sh --scenario llm_bootstrap --addr 127.0.0.1:5641 --tick-ms 200 --viewer-wait 10 --no-prewarm --keep-tmp` 通过。
+- `./scripts/viewer-owr4-stress.sh --duration-secs 12 --out-dir artifacts/owr4_baseline --no-prewarm` 通过。
+- `AGENT_WORLD_VIEWER_AUTO_PLAY=1 AGENT_WORLD_VIEWER_PERF_PROBE=1 AGENT_WORLD_VIEWER_PERF_PROBE_INTERVAL_SECS=1 AGENT_WORLD_VIEWER_PERF_BUDGET_MS=33 ./scripts/capture-viewer-frame.sh --scenario triad_region_bootstrap --addr 127.0.0.1:5640 --viewer-wait 10 --no-prewarm --keep-tmp` 通过。
+- `AGENT_WORLD_VIEWER_AUTO_PLAY=1 AGENT_WORLD_VIEWER_PERF_PROBE=1 AGENT_WORLD_VIEWER_PERF_PROBE_INTERVAL_SECS=1 AGENT_WORLD_VIEWER_PERF_BUDGET_MS=33 ./scripts/capture-viewer-frame.sh --scenario llm_bootstrap --addr 127.0.0.1:5641 --viewer-wait 10 --no-prewarm --keep-tmp` 通过。

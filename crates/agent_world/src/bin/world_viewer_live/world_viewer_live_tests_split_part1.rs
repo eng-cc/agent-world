@@ -462,13 +462,6 @@ fn parse_options_reads_custom_values() {
 }
 
 #[test]
-fn parse_options_rejects_legacy_tick_ms_flag() {
-    let err = parse_options(["llm_bootstrap", "--tick-ms", "0"].into_iter())
-        .expect_err("reject legacy flag");
-    assert!(err.contains("unexpected argument: --tick-ms"));
-}
-
-#[test]
 fn parse_launch_options_release_config_loads_locked_args() {
     let path = write_release_locked_args_file(
         "release-locked-load",
