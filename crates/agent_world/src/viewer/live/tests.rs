@@ -4,7 +4,7 @@ use agent_world_node::{
     NodeRuntime,
 };
 use ed25519_dalek::SigningKey;
-use std::io::BufWriter;
+use std::io::{BufRead, BufReader, BufWriter};
 use std::net::{TcpListener, TcpStream};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{mpsc, Arc, Mutex};
@@ -35,6 +35,29 @@ fn test_writer_pair() -> (BufWriter<TcpStream>, TcpStream) {
     let client = TcpStream::connect(addr).expect("connect test client");
     let (server, _) = listener.accept().expect("accept test peer");
     (BufWriter::new(server), client)
+}
+
+fn read_response_line(peer: &TcpStream, timeout: Duration) -> Option<String> {
+    let stream = peer.try_clone().expect("clone test peer");
+    stream
+        .set_read_timeout(Some(timeout))
+        .expect("set read timeout");
+    let mut reader = BufReader::new(stream);
+    let mut line = String::new();
+    match reader.read_line(&mut line) {
+        Ok(0) => None,
+        Ok(_) => Some(line),
+        Err(err) => {
+            if matches!(
+                err.kind(),
+                std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut
+            ) {
+                None
+            } else {
+                panic!("read response line failed: {err}");
+            }
+        }
+    }
 }
 
 fn signed_prompt_control_apply_request(
@@ -364,6 +387,65 @@ fn live_world_playback_pulse_gate_tracks_llm_mailbox() {
 
     world.request_llm_decision();
     assert!(world.should_step_on_playback_pulse());
+}
+
+#[test]
+fn live_world_drive_modes_split_pulse_and_event_paths() {
+    let script_config = WorldConfig::default();
+    let script_init = WorldInitConfig::from_scenario(WorldScenario::Minimal, &script_config);
+    let script_world =
+        LiveWorld::new(script_config, script_init, ViewerLiveDecisionMode::Script).expect("init");
+    assert!(script_world.should_use_playback_pulse());
+    assert!(!script_world.uses_non_consensus_event_drive());
+
+    set_test_llm_env();
+    let llm_config = WorldConfig::default();
+    let mut llm_init = WorldInitConfig::default();
+    llm_init.agents = crate::simulator::AgentSpawnConfig {
+        count: 0,
+        ..crate::simulator::AgentSpawnConfig::default()
+    };
+    let llm_world =
+        LiveWorld::new(llm_config, llm_init, ViewerLiveDecisionMode::Llm).expect("init");
+    assert!(!llm_world.should_use_playback_pulse());
+    assert!(llm_world.uses_non_consensus_event_drive());
+}
+
+#[test]
+fn emit_step_outcome_skips_idle_metrics_when_disabled() {
+    let config = ViewerLiveServerConfig::new(WorldScenario::Minimal);
+    let mut server = ViewerLiveServer::new(config).expect("server");
+    let mut session = ViewerLiveSession::new();
+    session.subscribed.insert(ViewerStream::Metrics);
+    let (mut writer, peer) = test_writer_pair();
+
+    server
+        .emit_step_outcome(
+            &mut session,
+            &mut writer,
+            LiveStepResult {
+                event: None,
+                decision_trace: None,
+            },
+            false,
+        )
+        .expect("emit throttled outcome");
+    assert!(read_response_line(&peer, Duration::from_millis(50)).is_none());
+
+    server
+        .emit_step_outcome(
+            &mut session,
+            &mut writer,
+            LiveStepResult {
+                event: None,
+                decision_trace: None,
+            },
+            true,
+        )
+        .expect("emit forced metrics");
+    let line = read_response_line(&peer, Duration::from_millis(200))
+        .expect("metrics response should be present");
+    assert!(line.contains("\"metrics\""));
 }
 
 #[test]
