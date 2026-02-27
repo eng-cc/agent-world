@@ -14,6 +14,7 @@
 - [x] T11 按用户本轮请求基于 `doc/game-test.md` 执行傍晚轮次真实玩家游玩并填写卡片
 - [x] T12 按用户本轮请求基于 `doc/game-test.md` 再执行一轮真实玩家游玩并填写卡片
 - [x] T13 按用户本轮请求基于 `doc/game-test.md` 再执行一轮真实玩家游玩并填写卡片
+- [x] T14 按用户请求将 `scripts/run-game-test.sh` 默认切换为开启 LLM（保留 `--no-llm` 回退）
 
 ## 依赖
 - `doc/game-test.md`
@@ -49,6 +50,7 @@
 ## 状态
 - 当前阶段：已完成玩家复测 + 开发者排查 + 默认链路复测 + 夜间追加复测 + 本轮日间追加复测 + 本轮午后追加复测 + 本轮傍晚追加复测 + 本轮追加复测 + 本轮下午追加复测（2026-02-27 14:49）
 - 风险：
+  - 运行前置：默认开启 LLM 后，若环境缺失可用 LLM 配置，`run-game-test.sh` 可能在启动阶段失败；可临时使用 `--no-llm` 回退脚本决策。
   - 基线问题：Web 端偶发 `copy_deferred_lighting_id_pipeline`（`wgpu` Validation Error）导致崩溃。
   - 架构约束：`CopyDeferredLightingIdPlugin` 与 `Core3d` render graph 存在硬耦合，单独禁用会触发新的启动 panic（`Option::expect` -> `RuntimeError: unreachable`）。
   - 可玩性闭环问题：夜间复测再次出现 `connectionStatus=connecting` 且 `tick` 持续 `0`，并伴随 WebGL `CONTEXT_LOST_WEBGL`，玩法闭环仍不可用。

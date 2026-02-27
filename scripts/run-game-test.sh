@@ -7,14 +7,14 @@ VIEWER_HOST="127.0.0.1"
 VIEWER_PORT="4173"
 LIVE_BIND_ADDR="127.0.0.1:5023"
 WEB_BRIDGE_ADDR="127.0.0.1:5011"
-ENABLE_LLM="0"
+ENABLE_LLM="1"
 
 usage() {
   cat <<'USAGE'
 Usage: ./scripts/run-game-test.sh [options]
 
 Start a stable web playability test stack with safe defaults:
-- world_viewer_live: llm_bootstrap --no-llm --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011
+- world_viewer_live: llm_bootstrap --llm --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011
 - web viewer: run-viewer-web.sh --address 127.0.0.1 --port 4173
 
 Options:
@@ -22,7 +22,8 @@ Options:
   --viewer-port <port>     Viewer HTTP port (default: 4173)
   --live-bind <addr:port>  world_viewer_live TCP bind (default: 127.0.0.1:5023)
   --web-bind <addr:port>   WebSocket bridge bind (default: 127.0.0.1:5011)
-  --with-llm               Enable LLM mode (default: disabled)
+  --with-llm               Enable LLM mode (default: enabled)
+  --no-llm                 Disable LLM mode (fallback to built-in script)
   -h, --help               Show this help
 USAGE
 }
@@ -47,6 +48,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --with-llm)
       ENABLE_LLM="1"
+      shift
+      ;;
+    --no-llm)
+      ENABLE_LLM="0"
       shift
       ;;
     -h|--help)
