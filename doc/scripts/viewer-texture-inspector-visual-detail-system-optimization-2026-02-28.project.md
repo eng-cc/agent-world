@@ -4,7 +4,7 @@
 - [x] T0：输出设计文档 `doc/scripts/viewer-texture-inspector-visual-detail-system-optimization-2026-02-28.md`
 - [x] T0：输出项目管理文档（本文件）
 - [x] T1：viewer 启动层支持 `AGENT_WORLD_VIEWER_PANEL_HIDDEN` 并补测试
-- [ ] T2：inspector 落地构图候选策略 + 资源包 + 灯光预设 + 元数据
+- [x] T2：inspector 落地构图候选策略 + 资源包 + 灯光预设 + 元数据
 - [ ] T3：执行 power 场景回归并完成结项文档/日志
 
 ## 依赖
@@ -14,6 +14,6 @@
 - `ffmpeg`
 
 ## 状态
-- 当前阶段：进行中（T1 已完成，执行 T2）
+- 当前阶段：进行中（T2 已完成，执行 T3）
 - 阻塞：无
-- 下一步：实现 inspector 构图候选策略 + 资源包 + 灯光预设 + 元数据
+- 下一步：执行 power 场景回归并完成结项文档/日志

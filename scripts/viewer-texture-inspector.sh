@@ -39,14 +39,20 @@ Options:
   --automation-steps <s>   override viewer automation steps for all captures
   --closeup-automation-steps <s>
                            override closeup automation steps for all captures
+  --composition-profile <id>
+                           legacy,art_review_v2 (default: art_review_v2)
   --art-lighting           enable art-review lighting preset
   --no-art-lighting        disable art-review lighting preset
+  --lighting-profile <id>  art_review_v1,art_review_v2 (default: art_review_v2)
+  --resource-pack-file <p> optional env file for entity/variant resource overrides
+  --art-hide-panel         hide right panel in art capture (default: on when art_capture=1)
+  --no-art-hide-panel      keep right panel visible in art capture
   --variant-ssim-threshold <f>
                            power variant validation threshold (default: 0.9995)
   --detail-edge-threshold <f>
                            closeup detail edge threshold (default: 0.35)
   --semantic-gate-mode <m> off,auto,strict (default: auto)
-  --crop-window <w:h:x:y>  crop window for viewer_art.png; use 'none' to disable crop
+  --crop-window <w:h:x:y>  crop window for viewer_art.png; use 'none' or 'auto'
   --preview-mode <mode>    scene_proxy,lookdev,direct_entity (default: scene_proxy)
   --material-profile <id>  theme_default,art_review_v1 (default: theme_default)
   --no-prewarm             pass --no-prewarm to all capture runs
@@ -165,6 +171,31 @@ capture_status_value() {
   ' "$status_file"
 }
 
+upper_key_name() {
+  local raw=${1:-}
+  echo "$raw" | tr '[:lower:]' '[:upper:]' | tr '-' '_'
+}
+
+resource_pack_value() {
+  local entity=$1
+  local variant=$2
+  local field=$3
+  local entity_key
+  entity_key=$(upper_key_name "$entity")
+  local variant_key
+  variant_key=$(upper_key_name "$variant")
+  local variant_level_key="TEXTURE_INSPECTOR_RESOURCE_${entity_key}_${variant_key}_${field}"
+  local entity_level_key="TEXTURE_INSPECTOR_RESOURCE_${entity_key}_${field}"
+
+  local value="${!variant_level_key-}"
+  if [[ -n "$value" ]]; then
+    echo "$value"
+    return 0
+  fi
+
+  echo "${!entity_level_key-}"
+}
+
 resolve_focus_target_for_entity() {
   local entity=$1
   local scenario_name=${2:-}
@@ -191,30 +222,66 @@ resolve_focus_target_for_entity() {
 
 resolve_power_closeup_pose() {
   local focus_target=$1
-  if [[ "$focus_target" == "first_location" ]]; then
-    # In non-power scenarios, fallback to wider closeup to avoid clipping giant source meshes.
-    echo "pan=0.6,0,0;zoom=2.2;orbit=20,-30;wait=0.8"
-  else
-    echo "zoom=1.2;orbit=38,-20;wait=0.8"
-  fi
+  local profile=${2:-legacy}
+  case "$profile" in
+    art_review_v2)
+      if [[ "$focus_target" == "first_location" ]]; then
+        # Wider baseline closeup keeps giant proxy meshes readable.
+        echo "pan=0.45,0,0;zoom=1.75;orbit=24,-24;wait=0.9"
+      else
+        echo "zoom=0.72;orbit=44,-18;wait=0.9"
+      fi
+      ;;
+    *)
+      if [[ "$focus_target" == "first_location" ]]; then
+        echo "pan=0.6,0,0;zoom=2.2;orbit=20,-30;wait=0.8"
+      else
+        echo "zoom=1.2;orbit=38,-20;wait=0.8"
+      fi
+      ;;
+  esac
 }
 
 resolve_power_fallback_closeup_pose() {
   local focus_target=$1
-  if [[ "$focus_target" == "first_location" ]]; then
-    echo "pan=0.6,0,0;zoom=2.6;orbit=20,-30;wait=0.9"
-  else
-    echo "zoom=0.9;orbit=46,-14;wait=0.9"
-  fi
+  local profile=${2:-legacy}
+  case "$profile" in
+    art_review_v2)
+      if [[ "$focus_target" == "first_location" ]]; then
+        echo "pan=0.5,0,0;zoom=1.95;orbit=30,-20;wait=1.0"
+      else
+        echo "zoom=0.6;orbit=54,-12;wait=1.0"
+      fi
+      ;;
+    *)
+      if [[ "$focus_target" == "first_location" ]]; then
+        echo "pan=0.6,0,0;zoom=2.6;orbit=20,-30;wait=0.9"
+      else
+        echo "zoom=0.9;orbit=46,-14;wait=0.9"
+      fi
+      ;;
+  esac
 }
 
 resolve_power_hero_pose() {
   local focus_target=$1
-  if [[ "$focus_target" == "first_location" ]]; then
-    echo "pan=0.4,0,0;zoom=1.6;orbit=20,-30;wait=0.6"
-  else
-    echo "zoom=1.6;orbit=20,-30;wait=0.6"
-  fi
+  local profile=${2:-legacy}
+  case "$profile" in
+    art_review_v2)
+      if [[ "$focus_target" == "first_location" ]]; then
+        echo "pan=0.3,0,0;zoom=1.4;orbit=18,-28;wait=0.7"
+      else
+        echo "zoom=1.25;orbit=18,-28;wait=0.7"
+      fi
+      ;;
+    *)
+      if [[ "$focus_target" == "first_location" ]]; then
+        echo "pan=0.4,0,0;zoom=1.6;orbit=20,-30;wait=0.6"
+      else
+        echo "zoom=1.6;orbit=20,-30;wait=0.6"
+      fi
+      ;;
+  esac
 }
 
 default_automation_steps_for_entity() {
@@ -222,7 +289,7 @@ default_automation_steps_for_entity() {
   local focus_target
   focus_target=$(resolve_focus_target_for_entity "$entity" "$scenario")
   local power_hero_pose
-  power_hero_pose=$(resolve_power_hero_pose "$focus_target")
+  power_hero_pose=$(resolve_power_hero_pose "$focus_target" "$composition_profile")
   case "$1" in
     agent)
       echo "mode=3d;focus=first_location;zoom=1.5;orbit=18,-26;wait=0.6"
@@ -250,7 +317,7 @@ default_closeup_automation_steps_for_entity() {
   local focus_target
   focus_target=$(resolve_focus_target_for_entity "$entity" "$scenario")
   local power_closeup_pose
-  power_closeup_pose=$(resolve_power_closeup_pose "$focus_target")
+  power_closeup_pose=$(resolve_power_closeup_pose "$focus_target" "$composition_profile")
   case "$1" in
     agent)
       echo "mode=3d;focus=first_location;zoom=1.15;orbit=30,-20;wait=0.8"
@@ -278,7 +345,7 @@ fallback_closeup_automation_steps_for_entity() {
   local focus_target
   focus_target=$(resolve_focus_target_for_entity "$entity" "$scenario")
   local power_fallback_pose
-  power_fallback_pose=$(resolve_power_fallback_closeup_pose "$focus_target")
+  power_fallback_pose=$(resolve_power_fallback_closeup_pose "$focus_target" "$composition_profile")
   case "$1" in
     power_plant)
       echo "mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};${power_fallback_pose}"
@@ -288,6 +355,35 @@ fallback_closeup_automation_steps_for_entity() {
       ;;
     *)
       echo "mode=3d;focus=first_location;zoom=0.95;orbit=42,-16;wait=0.9"
+      ;;
+  esac
+}
+
+retry_closeup_candidate_specs_for_entity() {
+  local entity=$1
+  local focus_target
+  focus_target=$(resolve_focus_target_for_entity "$entity" "$scenario")
+  case "$entity" in
+    power_plant|power_storage)
+      case "$composition_profile" in
+        art_review_v2)
+          if [[ "$focus_target" == "first_location" ]]; then
+            echo "wide_a|mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};pan=0.52,0,0;zoom=2.05;orbit=22,-24;wait=1.0"
+            echo "wide_b|mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};pan=0.36,0,0;zoom=1.85;orbit=34,-18;wait=1.0"
+            echo "silhouette|mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};pan=0.28,0,0;zoom=1.65;orbit=48,-14;wait=1.1"
+          else
+            echo "wide_a|mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};zoom=0.60;orbit=54,-12;wait=1.0"
+            echo "three_quarter|mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};pan=0.14,0,0;zoom=0.52;orbit=32,-14;wait=1.0"
+            echo "silhouette|mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};zoom=0.48;orbit=68,-10;wait=1.1"
+          fi
+          ;;
+        *)
+          echo "fallback|$(fallback_closeup_automation_steps_for_entity "$entity")"
+          ;;
+      esac
+      ;;
+    *)
+      echo "fallback|$(fallback_closeup_automation_steps_for_entity "$entity")"
       ;;
   esac
 }
@@ -344,6 +440,10 @@ parse_crop_window() {
   local raw=${1:-none}
   local normalized
   normalized=$(echo "$raw" | tr '[:upper:]' '[:lower:]')
+  if [[ "$normalized" == "auto" ]]; then
+    echo "auto"
+    return 0
+  fi
   if [[ "$normalized" == "none" || "$normalized" == "off" || "$normalized" == "disable" ]]; then
     echo "none"
     return 0
@@ -351,7 +451,7 @@ parse_crop_window() {
 
   IFS=':' read -r crop_w crop_h crop_x crop_y extra <<<"$raw"
   if [[ -n "${extra:-}" || -z "${crop_w:-}" || -z "${crop_h:-}" || -z "${crop_x:-}" || -z "${crop_y:-}" ]]; then
-    echo "invalid --crop-window: $raw (expected w:h:x:y or none)" >&2
+    echo "invalid --crop-window: $raw (expected w:h:x:y, auto, or none)" >&2
     exit 2
   fi
 
@@ -368,6 +468,44 @@ parse_crop_window() {
   fi
 
   echo "${crop_w}:${crop_h}:${crop_x}:${crop_y}"
+}
+
+resolve_effective_crop_window() {
+  local crop_window_request=$1
+  local entity=$2
+  local art_capture_flag=$3
+  local panel_hidden_flag=$4
+
+  if [[ "$crop_window_request" != "auto" ]]; then
+    echo "$crop_window_request"
+    return 0
+  fi
+
+  if [[ "$art_capture_flag" -ne 1 ]]; then
+    echo "none"
+    return 0
+  fi
+
+  if [[ "$panel_hidden_flag" -eq 1 ]]; then
+    case "$entity" in
+      power_plant|power_storage)
+        echo "920:700:120:50"
+        ;;
+      *)
+        echo "900:680:130:60"
+        ;;
+    esac
+    return 0
+  fi
+
+  case "$entity" in
+    power_plant|power_storage)
+      echo "600:620:0:120"
+      ;;
+    *)
+      echo "600:620:0:120"
+      ;;
+  esac
 }
 
 crop_or_copy_image() {
@@ -608,6 +746,62 @@ apply_variant_material_profile() {
   esac
 }
 
+apply_art_lighting_profile() {
+  local profile=$1
+  local entity=$2
+  local variant=$3
+
+  case "$profile" in
+    art_review_v1)
+      set_or_unset_env "AGENT_WORLD_VIEWER_TONEMAPPING" "aces"
+      set_or_unset_env "AGENT_WORLD_VIEWER_BLOOM_ENABLED" "0"
+      set_or_unset_env "AGENT_WORLD_VIEWER_BLOOM_INTENSITY" "0"
+      set_or_unset_env "AGENT_WORLD_VIEWER_COLOR_GRADING_EXPOSURE" "-0.35"
+      set_or_unset_env "AGENT_WORLD_VIEWER_AMBIENT_BRIGHTNESS" "95"
+      set_or_unset_env "AGENT_WORLD_VIEWER_FILL_LIGHT_RATIO" "0.46"
+      set_or_unset_env "AGENT_WORLD_VIEWER_RIM_LIGHT_RATIO" "0.32"
+      set_or_unset_env "AGENT_WORLD_VIEWER_EXPOSURE_EV100" "12.8"
+      ;;
+    art_review_v2)
+      set_or_unset_env "AGENT_WORLD_VIEWER_TONEMAPPING" "aces"
+      set_or_unset_env "AGENT_WORLD_VIEWER_BLOOM_ENABLED" "0"
+      set_or_unset_env "AGENT_WORLD_VIEWER_BLOOM_INTENSITY" "0"
+
+      case "$entity" in
+        power_plant|power_storage)
+          set_or_unset_env "AGENT_WORLD_VIEWER_COLOR_GRADING_EXPOSURE" "-0.05"
+          set_or_unset_env "AGENT_WORLD_VIEWER_AMBIENT_BRIGHTNESS" "88"
+          set_or_unset_env "AGENT_WORLD_VIEWER_FILL_LIGHT_RATIO" "0.36"
+          set_or_unset_env "AGENT_WORLD_VIEWER_RIM_LIGHT_RATIO" "0.58"
+          set_or_unset_env "AGENT_WORLD_VIEWER_EXPOSURE_EV100" "12.4"
+          ;;
+        asset|agent)
+          set_or_unset_env "AGENT_WORLD_VIEWER_COLOR_GRADING_EXPOSURE" "-0.16"
+          set_or_unset_env "AGENT_WORLD_VIEWER_AMBIENT_BRIGHTNESS" "92"
+          set_or_unset_env "AGENT_WORLD_VIEWER_FILL_LIGHT_RATIO" "0.42"
+          set_or_unset_env "AGENT_WORLD_VIEWER_RIM_LIGHT_RATIO" "0.44"
+          set_or_unset_env "AGENT_WORLD_VIEWER_EXPOSURE_EV100" "12.6"
+          ;;
+        *)
+          set_or_unset_env "AGENT_WORLD_VIEWER_COLOR_GRADING_EXPOSURE" "-0.22"
+          set_or_unset_env "AGENT_WORLD_VIEWER_AMBIENT_BRIGHTNESS" "94"
+          set_or_unset_env "AGENT_WORLD_VIEWER_FILL_LIGHT_RATIO" "0.40"
+          set_or_unset_env "AGENT_WORLD_VIEWER_RIM_LIGHT_RATIO" "0.40"
+          set_or_unset_env "AGENT_WORLD_VIEWER_EXPOSURE_EV100" "12.7"
+          ;;
+      esac
+
+      if [[ "$variant" == "matte" ]]; then
+        set_or_unset_env "AGENT_WORLD_VIEWER_COLOR_GRADING_EXPOSURE" "0.00"
+      elif [[ "$variant" == "glossy" ]]; then
+        set_or_unset_env "AGENT_WORLD_VIEWER_COLOR_GRADING_EXPOSURE" "-0.10"
+      fi
+      ;;
+    *)
+      ;;
+  esac
+}
+
 resolve_variant_texture_override() {
   local shared_override=$1
   local template_override=$2
@@ -691,7 +885,11 @@ use_source_mesh=0
 art_capture=0
 automation_steps_override=""
 closeup_automation_steps_override=""
+composition_profile="art_review_v2"
 art_lighting_mode="auto"
+lighting_profile="art_review_v2"
+resource_pack_file=""
+art_hide_panel_mode="auto"
 variant_ssim_threshold="0.9995"
 detail_edge_threshold="0.35"
 semantic_gate_mode="auto"
@@ -794,12 +992,32 @@ while [[ $# -gt 0 ]]; do
       closeup_automation_steps_override=${2:-}
       shift 2
       ;;
+    --composition-profile)
+      composition_profile=${2:-}
+      shift 2
+      ;;
     --art-lighting)
       art_lighting_mode="on"
       shift
       ;;
     --no-art-lighting)
       art_lighting_mode="off"
+      shift
+      ;;
+    --lighting-profile)
+      lighting_profile=${2:-}
+      shift 2
+      ;;
+    --resource-pack-file)
+      resource_pack_file=${2:-}
+      shift 2
+      ;;
+    --art-hide-panel)
+      art_hide_panel_mode="on"
+      shift
+      ;;
+    --no-art-hide-panel)
+      art_hide_panel_mode="off"
       shift
       ;;
     --variant-ssim-threshold)
@@ -892,6 +1110,41 @@ case "$material_profile" in
     ;;
 esac
 
+case "$composition_profile" in
+  legacy|art_review_v2)
+    ;;
+  *)
+    echo "invalid --composition-profile: $composition_profile" >&2
+    echo "supported composition profiles: legacy,art_review_v2" >&2
+    exit 2
+    ;;
+esac
+
+case "$lighting_profile" in
+  art_review_v1|art_review_v2)
+    ;;
+  *)
+    echo "invalid --lighting-profile: $lighting_profile" >&2
+    echo "supported lighting profiles: art_review_v1,art_review_v2" >&2
+    exit 2
+    ;;
+esac
+
+case "$art_hide_panel_mode" in
+  on|off|auto)
+    ;;
+  *)
+    echo "invalid art panel mode: $art_hide_panel_mode" >&2
+    echo "supported modes: on,off,auto" >&2
+    exit 2
+    ;;
+esac
+
+if [[ -n "$resource_pack_file" && ! -f "$resource_pack_file" ]]; then
+  echo "missing --resource-pack-file: $resource_pack_file" >&2
+  exit 1
+fi
+
 if [[ -z "$out_dir" ]]; then
   timestamp=$(date '+%Y%m%d_%H%M%S')
   out_dir="output/texture_inspector/$timestamp"
@@ -920,12 +1173,14 @@ if [[ "$art_capture" -eq 1 && "$use_source_mesh" -eq 0 ]]; then
     use_source_mesh=1
   fi
 fi
+art_panel_hidden=0
+if [[ "$art_hide_panel_mode" == "on" ]]; then
+  art_panel_hidden=1
+elif [[ "$art_hide_panel_mode" == "auto" && "$art_capture" -eq 1 ]]; then
+  art_panel_hidden=1
+fi
 if [[ -z "$crop_window_raw" ]]; then
-  if [[ "$art_capture" -eq 1 ]]; then
-    crop_window_raw="600:620:0:120"
-  else
-    crop_window_raw="none"
-  fi
+  crop_window_raw="auto"
 fi
 crop_window=$(parse_crop_window "$crop_window_raw")
 
@@ -946,6 +1201,9 @@ capture_variant_bundle() {
   local closeup_steps=$6
   local no_prewarm_arg=$7
   local retry_attempt=$8
+  local closeup_candidate_index=${9:-0}
+  local closeup_candidate_total=${10:-1}
+  local closeup_pose_label=${11:-initial}
   local src_prefix
   src_prefix=$(entity_prefix "$entity")
 
@@ -954,6 +1212,9 @@ capture_variant_bundle() {
   (
     # Load base theme preset first, then pin variant and inspector overrides.
     source "$preset_file"
+    if [[ -n "$resource_pack_file" ]]; then
+      source "$resource_pack_file"
+    fi
 
     material_variant_preset_for_run="$variant"
     if [[ "$material_profile" == "art_review_v1" ]]; then
@@ -986,16 +1247,14 @@ capture_variant_bundle() {
       export AGENT_WORLD_VIEWER_EXPERIENCE_MODE="director"
       export AGENT_WORLD_VIEWER_PANEL_MODE="observe"
       export AGENT_WORLD_VIEWER_SHOW_OPS_NAV=0
+      if [[ "$art_panel_hidden" -eq 1 ]]; then
+        export AGENT_WORLD_VIEWER_PANEL_HIDDEN=1
+      else
+        unset AGENT_WORLD_VIEWER_PANEL_HIDDEN || true
+      fi
     fi
     if [[ "$art_lighting_enabled" -eq 1 ]]; then
-      export AGENT_WORLD_VIEWER_TONEMAPPING="aces"
-      export AGENT_WORLD_VIEWER_BLOOM_ENABLED=0
-      export AGENT_WORLD_VIEWER_BLOOM_INTENSITY=0
-      export AGENT_WORLD_VIEWER_COLOR_GRADING_EXPOSURE=-0.35
-      export AGENT_WORLD_VIEWER_AMBIENT_BRIGHTNESS=95
-      export AGENT_WORLD_VIEWER_FILL_LIGHT_RATIO=0.46
-      export AGENT_WORLD_VIEWER_RIM_LIGHT_RATIO=0.32
-      export AGENT_WORLD_VIEWER_EXPOSURE_EV100=12.8
+      apply_art_lighting_profile "$lighting_profile" "$entity" "$variant"
     fi
 
     src_mesh_key="AGENT_WORLD_VIEWER_${src_prefix}_MESH_ASSET"
@@ -1009,28 +1268,49 @@ capture_variant_bundle() {
     src_normal="${!src_normal_key:-}"
     src_mr="${!src_mr_key:-}"
     src_emissive="${!src_emissive_key:-}"
+    pack_mesh_override=$(resource_pack_value "$entity" "$variant" "MESH_ASSET")
+    pack_base_texture_override=$(resource_pack_value "$entity" "$variant" "BASE_TEXTURE_ASSET")
+    pack_normal_texture_override=$(resource_pack_value "$entity" "$variant" "NORMAL_TEXTURE_ASSET")
+    pack_mr_texture_override=$(resource_pack_value "$entity" "$variant" "METALLIC_ROUGHNESS_TEXTURE_ASSET")
+    pack_emissive_texture_override=$(resource_pack_value "$entity" "$variant" "EMISSIVE_TEXTURE_ASSET")
+    resource_pack_override_hits=0
+    for raw_override in \
+      "$pack_mesh_override" \
+      "$pack_base_texture_override" \
+      "$pack_normal_texture_override" \
+      "$pack_mr_texture_override" \
+      "$pack_emissive_texture_override"; do
+      if [[ -n "$raw_override" ]]; then
+        resource_pack_override_hits=$((resource_pack_override_hits + 1))
+      fi
+    done
     variant_base_texture_override=$(resolve_variant_texture_override "$override_base_texture" "$override_base_texture_template" "$variant")
     variant_normal_texture_override=$(resolve_variant_texture_override "$override_normal_texture" "$override_normal_texture_template" "$variant")
     variant_mr_texture_override=$(resolve_variant_texture_override "$override_mr_texture" "$override_mr_texture_template" "$variant")
     variant_emissive_texture_override=$(resolve_variant_texture_override "$override_emissive_texture" "$override_emissive_texture_template" "$variant")
+    effective_mesh_asset="${pack_mesh_override:-$src_mesh}"
+    effective_base_texture_asset="${variant_base_texture_override:-${pack_base_texture_override:-$src_base}}"
+    effective_normal_texture_asset="${variant_normal_texture_override:-${pack_normal_texture_override:-$src_normal}}"
+    effective_mr_texture_asset="${variant_mr_texture_override:-${pack_mr_texture_override:-$src_mr}}"
+    effective_emissive_texture_asset="${variant_emissive_texture_override:-${pack_emissive_texture_override:-$src_emissive}}"
 
     if [[ "$effective_preview_mode" == "direct_entity" ]]; then
       if [[ "$use_source_mesh" -eq 1 ]]; then
-        set_or_unset_env "AGENT_WORLD_VIEWER_${src_prefix}_MESH_ASSET" "$src_mesh"
+        set_or_unset_env "AGENT_WORLD_VIEWER_${src_prefix}_MESH_ASSET" "$effective_mesh_asset"
       fi
-      set_or_unset_env "AGENT_WORLD_VIEWER_${src_prefix}_BASE_TEXTURE_ASSET" "${variant_base_texture_override:-$src_base}"
-      set_or_unset_env "AGENT_WORLD_VIEWER_${src_prefix}_NORMAL_TEXTURE_ASSET" "${variant_normal_texture_override:-$src_normal}"
-      set_or_unset_env "AGENT_WORLD_VIEWER_${src_prefix}_METALLIC_ROUGHNESS_TEXTURE_ASSET" "${variant_mr_texture_override:-$src_mr}"
-      set_or_unset_env "AGENT_WORLD_VIEWER_${src_prefix}_EMISSIVE_TEXTURE_ASSET" "${variant_emissive_texture_override:-$src_emissive}"
+      set_or_unset_env "AGENT_WORLD_VIEWER_${src_prefix}_BASE_TEXTURE_ASSET" "$effective_base_texture_asset"
+      set_or_unset_env "AGENT_WORLD_VIEWER_${src_prefix}_NORMAL_TEXTURE_ASSET" "$effective_normal_texture_asset"
+      set_or_unset_env "AGENT_WORLD_VIEWER_${src_prefix}_METALLIC_ROUGHNESS_TEXTURE_ASSET" "$effective_mr_texture_asset"
+      set_or_unset_env "AGENT_WORLD_VIEWER_${src_prefix}_EMISSIVE_TEXTURE_ASSET" "$effective_emissive_texture_asset"
     else
       if [[ "$use_source_mesh" -eq 1 ]]; then
-        set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_MESH_ASSET" "$src_mesh"
+        set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_MESH_ASSET" "$effective_mesh_asset"
       fi
 
-      set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_BASE_TEXTURE_ASSET" "${variant_base_texture_override:-$src_base}"
-      set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_NORMAL_TEXTURE_ASSET" "${variant_normal_texture_override:-$src_normal}"
-      set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_METALLIC_ROUGHNESS_TEXTURE_ASSET" "${variant_mr_texture_override:-$src_mr}"
-      set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_EMISSIVE_TEXTURE_ASSET" "${variant_emissive_texture_override:-$src_emissive}"
+      set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_BASE_TEXTURE_ASSET" "$effective_base_texture_asset"
+      set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_NORMAL_TEXTURE_ASSET" "$effective_normal_texture_asset"
+      set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_METALLIC_ROUGHNESS_TEXTURE_ASSET" "$effective_mr_texture_asset"
+      set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_EMISSIVE_TEXTURE_ASSET" "$effective_emissive_texture_asset"
     fi
 
     direct_entity_mesh_key="AGENT_WORLD_VIEWER_${src_prefix}_MESH_ASSET"
@@ -1074,9 +1354,10 @@ capture_variant_bundle() {
     cp .tmp/screens/live_server.log "$variant_dir/live_server.log"
     cp .tmp/screens/viewer.log "$variant_dir/viewer.log"
     cp "$capture_status_file" "$variant_dir/capture_status.txt"
-    viewer_art_capture_status=$(crop_or_copy_image "$variant_dir/viewer.png" "$variant_dir/viewer_art.png" "$crop_window")
+    effective_crop_window=$(resolve_effective_crop_window "$crop_window" "$entity" "$art_capture" "$art_panel_hidden")
+    viewer_art_capture_status=$(crop_or_copy_image "$variant_dir/viewer.png" "$variant_dir/viewer_art.png" "$effective_crop_window")
     if [[ "$viewer_art_capture_status" == "crop_failed_fallback" ]]; then
-      echo "warn: crop failed, fallback to viewer.png (entity=$entity variant=$variant crop_window=$crop_window)" >&2
+      echo "warn: crop failed, fallback to viewer.png (entity=$entity variant=$variant crop_window=$effective_crop_window)" >&2
     fi
 
     capture_connection_status_closeup="$capture_connection_status"
@@ -1132,9 +1413,9 @@ capture_variant_bundle() {
       cp .tmp/screens/live_server.log "$variant_dir/live_server_closeup.log"
       cp .tmp/screens/viewer.log "$variant_dir/viewer_closeup.log"
       cp "$capture_status_file" "$variant_dir/capture_status_closeup.txt"
-      viewer_art_closeup_capture_status=$(crop_or_copy_image "$variant_dir/viewer_closeup.png" "$variant_dir/viewer_art_closeup.png" "$crop_window")
+      viewer_art_closeup_capture_status=$(crop_or_copy_image "$variant_dir/viewer_closeup.png" "$variant_dir/viewer_art_closeup.png" "$effective_crop_window")
       if [[ "$viewer_art_closeup_capture_status" == "crop_failed_fallback" ]]; then
-        echo "warn: closeup crop failed, fallback to viewer_closeup.png (entity=$entity variant=$variant crop_window=$crop_window)" >&2
+        echo "warn: closeup crop failed, fallback to viewer_closeup.png (entity=$entity variant=$variant crop_window=$effective_crop_window)" >&2
       fi
       closeup_edge_energy=$(image_edge_energy "$variant_dir/viewer_art_closeup.png")
     else
@@ -1175,19 +1456,41 @@ art_capture=$art_capture
 preview_mode=$preview_mode
 preview_mode_effective=$effective_preview_mode
 preview_mode_fallback_reason=$preview_mode_fallback_reason
+composition_profile=$composition_profile
 material_profile=$material_profile
 material_variant_preset_for_run=$material_variant_preset_for_run
 hero_automation_steps=$hero_steps
 closeup_automation_steps=$closeup_steps
-crop_window=$crop_window
+closeup_pose_label=$closeup_pose_label
+closeup_candidate_index=$closeup_candidate_index
+closeup_candidate_total=$closeup_candidate_total
+crop_window_requested=$crop_window
+crop_window_effective=$effective_crop_window
 viewer_art_capture_status=$viewer_art_capture_status
 viewer_art_closeup_capture_status=$viewer_art_closeup_capture_status
 retry_attempt=$retry_attempt
 art_lighting_enabled=$art_lighting_enabled
+lighting_profile=$lighting_profile
+panel_hidden=$art_panel_hidden
 variant_ssim_threshold=$variant_ssim_threshold
 detail_edge_threshold=$detail_edge_threshold
 semantic_gate_mode=$semantic_gate_mode
 use_source_mesh=$use_source_mesh
+resource_pack_file=$resource_pack_file
+resource_pack_override_hits=$resource_pack_override_hits
+resource_pack_mesh_override=$pack_mesh_override
+resource_pack_base_texture_override=$pack_base_texture_override
+resource_pack_normal_texture_override=$pack_normal_texture_override
+resource_pack_mr_texture_override=$pack_mr_texture_override
+resource_pack_emissive_texture_override=$pack_emissive_texture_override
+lighting_tonemapping=${AGENT_WORLD_VIEWER_TONEMAPPING:-}
+lighting_bloom_enabled=${AGENT_WORLD_VIEWER_BLOOM_ENABLED:-}
+lighting_bloom_intensity=${AGENT_WORLD_VIEWER_BLOOM_INTENSITY:-}
+lighting_color_grading_exposure=${AGENT_WORLD_VIEWER_COLOR_GRADING_EXPOSURE:-}
+lighting_ambient_brightness=${AGENT_WORLD_VIEWER_AMBIENT_BRIGHTNESS:-}
+lighting_fill_light_ratio=${AGENT_WORLD_VIEWER_FILL_LIGHT_RATIO:-}
+lighting_rim_light_ratio=${AGENT_WORLD_VIEWER_RIM_LIGHT_RATIO:-}
+lighting_exposure_ev100=${AGENT_WORLD_VIEWER_EXPOSURE_EV100:-}
 location_interference_disabled=$location_interference_disabled
 lookdev_location_shell_enabled=${AGENT_WORLD_VIEWER_LOCATION_SHELL_ENABLED:-}
 lookdev_location_radiation_glow=${AGENT_WORLD_VIEWER_LOCATION_RADIATION_GLOW:-}
@@ -1206,6 +1509,11 @@ base_texture_effective_override=$variant_base_texture_override
 normal_texture_effective_override=$variant_normal_texture_override
 mr_texture_effective_override=$variant_mr_texture_override
 emissive_texture_effective_override=$variant_emissive_texture_override
+effective_mesh_asset=$effective_mesh_asset
+effective_base_texture_asset=$effective_base_texture_asset
+effective_normal_texture_asset=$effective_normal_texture_asset
+effective_mr_texture_asset=$effective_mr_texture_asset
+effective_emissive_texture_asset=$effective_emissive_texture_asset
 location_mesh_asset=${AGENT_WORLD_VIEWER_LOCATION_MESH_ASSET:-}
 location_base_texture_asset=${AGENT_WORLD_VIEWER_LOCATION_BASE_TEXTURE_ASSET:-}
 location_normal_texture_asset=${AGENT_WORLD_VIEWER_LOCATION_NORMAL_TEXTURE_ASSET:-}
@@ -1239,7 +1547,6 @@ META
 for entity in "${entities[@]}"; do
   entity_default_automation_steps=$(default_automation_steps_for_entity "$entity")
   entity_default_closeup_steps=$(default_closeup_automation_steps_for_entity "$entity")
-  entity_retry_closeup_steps=$(fallback_closeup_automation_steps_for_entity "$entity")
 
   for variant in "${variants[@]}"; do
     port=$((base_port + capture_index))
@@ -1267,7 +1574,7 @@ for entity in "${entities[@]}"; do
       no_prewarm_arg="--no-prewarm"
     fi
 
-    capture_variant_bundle "$entity" "$variant" "$variant_dir" "$port" "$hero_steps" "$closeup_steps" "$no_prewarm_arg" "0"
+    capture_variant_bundle "$entity" "$variant" "$variant_dir" "$port" "$hero_steps" "$closeup_steps" "$no_prewarm_arg" "0" "0" "1" "initial"
   done
 
   if [[ "$art_capture" -eq 1 && ( "$entity" == "power_plant" || "$entity" == "power_storage" ) ]]; then
@@ -1286,6 +1593,8 @@ for entity in "${entities[@]}"; do
       retry_low_edge=0
       validation_retry_reason="none"
       validation_status="passed"
+      validation_retry_candidates_attempted=0
+      validation_retry_candidate_used="none"
       if float_ge "$min_ssim" "$variant_ssim_threshold"; then
         initial_high_ssim=1
       fi
@@ -1305,31 +1614,58 @@ for entity in "${entities[@]}"; do
           validation_retry_reason="high_ssim"
         fi
         validation_status="retrying"
-        echo "warn: material variant validation triggered entity=$entity reason=$validation_retry_reason unique_count=$unique_count min_ssim=$min_ssim min_edge=$min_edge_energy semantic_fail_count=$semantic_fail_count threshold=$variant_ssim_threshold edge_threshold=$detail_edge_threshold; retry with fallback closeup camera" >&2
-        for retry_variant in default matte glossy; do
-          retry_dir="$out_dir/$entity/$retry_variant"
-          if [[ ! -d "$retry_dir" ]]; then
+        mapfile -t retry_candidates < <(retry_closeup_candidate_specs_for_entity "$entity")
+        retry_candidates_total=${#retry_candidates[@]}
+        if [[ "$retry_candidates_total" -eq 0 ]]; then
+          retry_candidates=("fallback|$(fallback_closeup_automation_steps_for_entity "$entity")")
+          retry_candidates_total=1
+        fi
+        echo "warn: material variant validation triggered entity=$entity reason=$validation_retry_reason unique_count=$unique_count min_ssim=$min_ssim min_edge=$min_edge_energy semantic_fail_count=$semantic_fail_count threshold=$variant_ssim_threshold edge_threshold=$detail_edge_threshold; retry with closeup candidates=$retry_candidates_total" >&2
+        for retry_candidate in "${retry_candidates[@]}"; do
+          validation_retry_candidates_attempted=$((validation_retry_candidates_attempted + 1))
+          retry_candidate_label=${retry_candidate%%|*}
+          retry_candidate_steps=${retry_candidate#*|}
+          if [[ -z "$retry_candidate_steps" ]]; then
             continue
           fi
-          retry_port=$((base_port + capture_index))
-          capture_index=$((capture_index + 1))
-          capture_variant_bundle "$entity" "$retry_variant" "$retry_dir" "$retry_port" "$entity_default_automation_steps" "$entity_retry_closeup_steps" "--no-prewarm" "1"
+
+          for retry_variant in default matte glossy; do
+            retry_dir="$out_dir/$entity/$retry_variant"
+            if [[ ! -d "$retry_dir" ]]; then
+              continue
+            fi
+            retry_port=$((base_port + capture_index))
+            capture_index=$((capture_index + 1))
+            capture_variant_bundle "$entity" "$retry_variant" "$retry_dir" "$retry_port" "$entity_default_automation_steps" "$retry_candidate_steps" "--no-prewarm" "1" "$validation_retry_candidates_attempted" "$retry_candidates_total" "$retry_candidate_label"
+          done
+
+          unique_count_retry=$(variant_hash_unique_count "$out_dir" "$entity")
+          min_ssim_retry=$(variant_min_pair_ssim "$out_dir" "$entity")
+          min_edge_energy_retry=$(variant_min_edge_energy "$out_dir" "$entity")
+          semantic_fail_count_retry=$(variant_semantic_fail_count "$out_dir" "$entity")
+          retry_high_ssim=0
+          retry_low_edge=0
+          if float_ge "$min_ssim_retry" "$variant_ssim_threshold"; then
+            retry_high_ssim=1
+          fi
+          if float_lt "$min_edge_energy_retry" "$detail_edge_threshold"; then
+            retry_low_edge=1
+          fi
+
+          if [[ "$unique_count_retry" -eq 1 || "$retry_high_ssim" -eq 1 || "$retry_low_edge" -eq 1 || "$semantic_fail_count_retry" -gt 0 ]]; then
+            validation_status="retrying"
+            echo "warn: material variant candidate failed entity=$entity candidate=$retry_candidate_label unique_count=$unique_count_retry min_ssim=$min_ssim_retry min_edge=$min_edge_energy_retry semantic_fail_count=$semantic_fail_count_retry threshold=$variant_ssim_threshold edge_threshold=$detail_edge_threshold" >&2
+          else
+            validation_status="passed_after_retry"
+            validation_retry_candidate_used="$retry_candidate_label"
+            break
+          fi
         done
-        unique_count_retry=$(variant_hash_unique_count "$out_dir" "$entity")
-        min_ssim_retry=$(variant_min_pair_ssim "$out_dir" "$entity")
-        min_edge_energy_retry=$(variant_min_edge_energy "$out_dir" "$entity")
-        semantic_fail_count_retry=$(variant_semantic_fail_count "$out_dir" "$entity")
-        if float_ge "$min_ssim_retry" "$variant_ssim_threshold"; then
-          retry_high_ssim=1
-        fi
-        if float_lt "$min_edge_energy_retry" "$detail_edge_threshold"; then
-          retry_low_edge=1
-        fi
-        if [[ "$unique_count_retry" -eq 1 || "$retry_high_ssim" -eq 1 || "$retry_low_edge" -eq 1 || "$semantic_fail_count_retry" -gt 0 ]]; then
+
+        if [[ "$validation_status" != "passed_after_retry" ]]; then
           validation_status="failed_after_retry"
+          validation_retry_candidate_used="exhausted"
           echo "warn: material variant validation still failed after retry entity=$entity unique_count=$unique_count_retry min_ssim=$min_ssim_retry min_edge=$min_edge_energy_retry semantic_fail_count=$semantic_fail_count_retry threshold=$variant_ssim_threshold edge_threshold=$detail_edge_threshold" >&2
-        else
-          validation_status="passed_after_retry"
         fi
       fi
 
@@ -1347,6 +1683,9 @@ min_edge_energy_initial=$min_edge_energy
 min_edge_energy_after_retry=$min_edge_energy_retry
 semantic_fail_count_initial=$semantic_fail_count
 semantic_fail_count_after_retry=$semantic_fail_count_retry
+retry_candidates_attempted=$validation_retry_candidates_attempted
+retry_candidate_used=$validation_retry_candidate_used
+composition_profile=$composition_profile
 VALIDATION
 
       for retry_variant in default matte glossy; do
@@ -1364,6 +1703,9 @@ VALIDATION
           echo "variant_validation_min_edge_energy_after_retry=$min_edge_energy_retry" >>"$retry_meta"
           echo "variant_validation_semantic_fail_count_initial=$semantic_fail_count" >>"$retry_meta"
           echo "variant_validation_semantic_fail_count_after_retry=$semantic_fail_count_retry" >>"$retry_meta"
+          echo "variant_validation_retry_candidates_attempted=$validation_retry_candidates_attempted" >>"$retry_meta"
+          echo "variant_validation_retry_candidate_used=$validation_retry_candidate_used" >>"$retry_meta"
+          echo "variant_validation_composition_profile=$composition_profile" >>"$retry_meta"
         fi
       done
     fi
