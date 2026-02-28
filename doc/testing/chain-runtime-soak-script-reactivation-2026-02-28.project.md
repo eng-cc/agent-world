@@ -3,7 +3,7 @@
 ## 任务拆解
 - [x] T0 建档：设计文档 + 项目管理文档。
 - [x] T1 改造 `s10-five-node-game-soak.sh` 为可运行的 `world_chain_runtime` 五节点脚本。
-- [ ] T2 改造 `p2p-longrun-soak.sh` 为可运行的 `world_chain_runtime` 脚本（含 chaos 注入）。
+- [x] T2 改造 `p2p-longrun-soak.sh` 为可运行的 `world_chain_runtime` 脚本（含 chaos 注入）。
 - [ ] T3 回归与收口：更新手册口径、补任务日志、结项。
 
 ## 依赖
@@ -12,5 +12,5 @@
 - `testing-manual.md` 与 `doc/testing/*` 启动口径
 
 ## 状态
-- 当前阶段：进行中（T0~T1 已完成，执行 T2）。
-- 当前任务：T2 改造 `p2p-longrun-soak.sh`。
+- 当前阶段：进行中（T0~T2 已完成，执行 T3）。
+- 当前任务：T3 回归与收口（手册口径更新 + 结项）。

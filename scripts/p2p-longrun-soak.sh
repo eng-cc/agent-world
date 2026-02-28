@@ -9,38 +9,40 @@ usage() {
 Usage: ./scripts/p2p-longrun-soak.sh [options]
 
 Status:
-  blocked (2026-02-28): this script depends on removed world_viewer_live embedded-node flags.
-  Use world_chain_runtime/world_game_launcher instead.
+  active (2026-02-28): this script runs p2p soak topologies via world_chain_runtime.
 
 Options:
   --profile <name>                 soak_smoke | soak_endurance | soak_release (default: soak_smoke)
   --duration-secs <n>              override per-topology soak duration seconds
   --topologies <csv>               comma-separated topologies: triad,triad_distributed
-  --scenario <name>                world_viewer_live scenario (default: triad_p2p_bootstrap)
-  --llm                            enable LLM mode for world_viewer_live
-  --no-llm                         disable LLM mode (default)
+  --scenario <name>                legacy compatibility label (recorded only, default: triad_p2p_bootstrap)
+  --llm                            legacy compatibility flag (no effect, recorded only)
+  --no-llm                         legacy compatibility flag (default)
   --base-port <n>                  base port for per-topology allocation (default: 5610)
-  --bind-host <host>               bind host for gossip/live endpoints (default: 127.0.0.1)
+  --bind-host <host>               bind host for gossip/status endpoints (default: 127.0.0.1)
   --out-dir <path>                 output root (default: .tmp/p2p_longrun)
   --startup-timeout-secs <n>       startup grace before monitor loop (default: 20)
   --poll-interval-secs <n>         monitor loop interval (default: 2)
-  --chaos-plan <path>              JSON chaos plan for restart/pause injections
+  --curl-timeout-secs <n>          HTTP timeout for status polling (default: 2)
+  --node-tick-ms <n>               node tick interval in milliseconds (default: 200)
+  --chaos-plan <path>              JSON chaos plan for restart/pause/disconnect injections
   --chaos-continuous-enable        continuously inject chaos events during soak window
   --chaos-continuous-interval-secs <n>
-                                    interval seconds between continuous chaos events (default: 30)
+                                   interval seconds between continuous chaos events (default: 30)
   --chaos-continuous-start-sec <n> start second offset for continuous chaos injection (default: 30)
   --chaos-continuous-max-events <n>
-                                    max continuous events per topology, 0 = unlimited (default: 0)
+                                   max continuous events per topology, 0 = unlimited (default: 0)
   --chaos-continuous-actions <csv> comma-separated actions from restart,pause,disconnect (default: restart,pause)
   --chaos-continuous-seed <n>      deterministic seed for continuous chaos selection (default: unix timestamp)
   --chaos-continuous-restart-down-secs <n>
-                                    down seconds for generated restart events (default: 1)
+                                   down seconds for generated restart events (default: 1)
   --chaos-continuous-pause-duration-secs <n>
-                                    pause duration seconds for generated pause/disconnect events (default: 2)
+                                   pause duration seconds for generated pause/disconnect events (default: 2)
   --max-stall-secs <n>             gate threshold for max no-progress window
   --max-lag-p95 <n>                gate threshold for p95(network_height - committed_height)
-  --max-distfs-failure-ratio <r>   gate threshold for DistFS failed/total ratio (0~1)
+  --max-distfs-failure-ratio <r>   compatibility threshold, currently unavailable metric (0~1)
   --no-prewarm                     skip cargo build prewarm
+  --dry-run                        render topology commands only, do not run node processes
   -h, --help                       show help
 
 Profiles:
@@ -56,24 +58,8 @@ Output:
     summary.md
     failures.md (only when failed)
     chaos_events.log
-    <topology>/nodes/<node_id>/{stdout.log,stderr.log,command.txt,report/}
+    <topology>/nodes/<node_label>/{stdout.log,stderr.log,command.txt}
 USAGE
-}
-
-legacy_chain_entrypoint_block() {
-  cat >&2 <<'MSG'
-error: scripts/p2p-longrun-soak.sh is blocked.
-
-Reason:
-- world_viewer_live embedded-node path was removed on 2026-02-28.
-- legacy flags used by this script (--topology/--node-*/--reward-runtime-*) no longer work.
-
-Migration:
-1) Multi-node chain soak: migrate to world_chain_runtime orchestration.
-2) Single-stack game launch: use world_game_launcher.
-3) Details: doc/testing/launcher-chain-script-migration-2026-02-28.md
-MSG
-  exit 1
 }
 
 run() {
@@ -91,25 +77,23 @@ trim() {
 join_by() {
   local sep=$1
   shift || true
-  local out=""
   local first=1
   local item
   for item in "$@"; do
     [[ -z "$item" ]] && continue
     if [[ "$first" -eq 1 ]]; then
-      out="$item"
+      printf '%s' "$item"
       first=0
     else
-      out="${out}${sep}${item}"
+      printf '%s%s' "$sep" "$item"
     fi
   done
-  printf '%s' "$out"
 }
 
 ensure_positive_int() {
   local flag=$1
   local value=$2
-  if [[ ! "$value" =~ ^[0-9]+$ ]] || [[ "$value" -le 0 ]]; then
+  if [[ ! "$value" =~ ^[0-9]+$ ]] || (( value <= 0 )); then
     echo "invalid $flag: $value" >&2
     exit 2
   fi
@@ -155,6 +139,24 @@ ensure_supported_chaos_action() {
   esac
 }
 
+safe_int() {
+  local value=$1
+  if [[ "$value" =~ ^-?[0-9]+$ ]]; then
+    printf '%s' "$value"
+  else
+    printf '0'
+  fi
+}
+
+slugify() {
+  local raw=$1
+  local slug
+  slug=$(printf '%s' "$raw" | tr -cs '[:alnum:]_-' '-')
+  slug=${slug##-}
+  slug=${slug%%-}
+  printf '%s' "$slug"
+}
+
 chaos_rng_state=1
 chaos_rng_seed() {
   local seed=$1
@@ -180,6 +182,8 @@ bind_host="127.0.0.1"
 out_root=".tmp/p2p_longrun"
 startup_timeout_secs=20
 poll_interval_secs=2
+curl_timeout_secs=2
+node_tick_ms=200
 chaos_plan_path=""
 chaos_continuous_enabled=0
 chaos_continuous_interval_secs=30
@@ -193,6 +197,7 @@ max_stall_secs=""
 max_lag_p95=""
 max_distfs_failure_ratio=""
 prewarm=1
+dry_run=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -238,6 +243,14 @@ while [[ $# -gt 0 ]]; do
       ;;
     --poll-interval-secs)
       poll_interval_secs=${2:-}
+      shift 2
+      ;;
+    --curl-timeout-secs)
+      curl_timeout_secs=${2:-}
+      shift 2
+      ;;
+    --node-tick-ms)
+      node_tick_ms=${2:-}
       shift 2
       ;;
     --chaos-plan)
@@ -292,6 +305,10 @@ while [[ $# -gt 0 ]]; do
       prewarm=0
       shift
       ;;
+    --dry-run)
+      dry_run=1
+      shift
+      ;;
     -h|--help)
       usage
       exit 0
@@ -303,8 +320,6 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
-
-legacy_chain_entrypoint_block
 
 case "$profile" in
   soak_smoke)
@@ -354,6 +369,8 @@ ensure_positive_int "--duration-secs" "$duration_secs"
 ensure_positive_int "--base-port" "$base_port"
 ensure_positive_int "--startup-timeout-secs" "$startup_timeout_secs"
 ensure_positive_int "--poll-interval-secs" "$poll_interval_secs"
+ensure_positive_int "--curl-timeout-secs" "$curl_timeout_secs"
+ensure_positive_int "--node-tick-ms" "$node_tick_ms"
 ensure_non_negative_int "--max-stall-secs" "$max_stall_secs"
 ensure_non_negative_int "--max-lag-p95" "$max_lag_p95"
 ensure_ratio_between_zero_and_one "--max-distfs-failure-ratio" "$max_distfs_failure_ratio"
@@ -365,6 +382,7 @@ if [[ "$chaos_continuous_enabled" -eq 1 ]]; then
   ensure_positive_int "--chaos-continuous-interval-secs" "$chaos_continuous_interval_secs"
 fi
 
+scenario=$(trim "$scenario")
 if [[ -z "$scenario" ]]; then
   echo "--scenario cannot be empty" >&2
   exit 2
@@ -401,18 +419,33 @@ else
   chaos_continuous_seed=0
 fi
 
+mapfile -t topologies < <(printf '%s' "$topologies_csv" | tr ',' '\n' | sed '/^$/d')
+if (( ${#topologies[@]} == 0 )); then
+  echo "--topologies resolved to empty list" >&2
+  exit 2
+fi
+for i in "${!topologies[@]}"; do
+  topologies[$i]=$(trim "${topologies[$i]}")
+  ensure_supported_topology "${topologies[$i]}"
+done
+
 if ! command -v jq >/dev/null 2>&1; then
   echo "jq is required for metrics aggregation but not found in PATH" >&2
   exit 1
 fi
 
-if [[ "$prewarm" -eq 1 ]]; then
-  run env -u RUSTC_WRAPPER cargo build -p agent_world --bin world_viewer_live
+if ! command -v curl >/dev/null 2>&1; then
+  echo "curl is required for endpoint polling but not found in PATH" >&2
+  exit 1
 fi
 
-live_bin="$repo_root/target/debug/world_viewer_live"
-if [[ ! -x "$live_bin" ]]; then
-  echo "world_viewer_live binary not found: $live_bin" >&2
+if [[ "$prewarm" -eq 1 ]] && [[ "$dry_run" -eq 0 ]]; then
+  run env -u RUSTC_WRAPPER cargo build -p agent_world --bin world_chain_runtime
+fi
+
+chain_bin="$repo_root/target/debug/world_chain_runtime"
+if [[ "$dry_run" -eq 0 ]] && [[ ! -x "$chain_bin" ]]; then
+  echo "world_chain_runtime binary not found: $chain_bin" >&2
   echo "run with prewarm enabled or build it manually first" >&2
   exit 1
 fi
@@ -421,65 +454,7 @@ timestamp=$(date +%Y%m%d-%H%M%S)
 run_dir="$out_root/$timestamp"
 run mkdir -p "$run_dir"
 
-mapfile -t topologies < <(printf '%s' "$topologies_csv" | tr ',' '\n' | sed '/^$/d')
-if (( ${#topologies[@]} == 0 )); then
-  echo "--topologies resolved to empty list" >&2
-  exit 2
-fi
-
-for i in "${!topologies[@]}"; do
-  topologies[$i]=$(trim "${topologies[$i]}")
-  ensure_supported_topology "${topologies[$i]}"
-done
-
 run_config_json="$run_dir/run_config.json"
-chaos_enabled=0
-if [[ -n "$chaos_plan_path" ]] || [[ "$chaos_continuous_enabled" -eq 1 ]]; then
-  chaos_enabled=1
-fi
-{
-  echo "{"
-  echo "  \"profile\": \"$profile\","
-  echo "  \"duration_secs\": $duration_secs,"
-  echo "  \"scenario\": \"$scenario\","
-  echo "  \"llm_enabled\": $llm_enabled,"
-  echo "  \"base_port\": $base_port,"
-  echo "  \"bind_host\": \"$bind_host\","
-  echo "  \"startup_timeout_secs\": $startup_timeout_secs,"
-  echo "  \"poll_interval_secs\": $poll_interval_secs,"
-  echo "  \"chaos_enabled\": $chaos_enabled,"
-  if [[ -n "$chaos_plan_path" ]]; then
-    echo "  \"chaos_plan_path\": \"$chaos_plan_path\","
-  else
-    echo "  \"chaos_plan_path\": null,"
-  fi
-  echo "  \"chaos_continuous_enabled\": $chaos_continuous_enabled,"
-  echo "  \"chaos_continuous_interval_secs\": $chaos_continuous_interval_secs,"
-  echo "  \"chaos_continuous_start_sec\": $chaos_continuous_start_sec,"
-  echo "  \"chaos_continuous_max_events\": $chaos_continuous_max_events,"
-  echo "  \"chaos_continuous_actions_csv\": \"$chaos_continuous_actions_csv\","
-  if [[ "$chaos_continuous_enabled" -eq 1 ]]; then
-    echo "  \"chaos_continuous_seed\": $chaos_continuous_seed,"
-  else
-    echo "  \"chaos_continuous_seed\": null,"
-  fi
-  echo "  \"chaos_continuous_restart_down_secs\": $chaos_continuous_restart_down_secs,"
-  echo "  \"chaos_continuous_pause_duration_secs\": $chaos_continuous_pause_duration_secs,"
-  echo "  \"max_stall_secs\": $max_stall_secs,"
-  echo "  \"max_lag_p95\": $max_lag_p95,"
-  echo "  \"max_distfs_failure_ratio\": $max_distfs_failure_ratio,"
-  echo "  \"topologies\": ["
-  for i in "${!topologies[@]}"; do
-    suffix=","
-    if (( i == ${#topologies[@]} - 1 )); then
-      suffix=""
-    fi
-    echo "    \"${topologies[$i]}\"$suffix"
-  done
-  echo "  ]"
-  echo "}"
-} > "$run_config_json"
-
 summary_md="$run_dir/summary.md"
 timeline_csv="$run_dir/timeline.csv"
 summary_json="$run_dir/summary.json"
@@ -487,16 +462,81 @@ failures_md="$run_dir/failures.md"
 chaos_events_log="$run_dir/chaos_events.log"
 topology_summary_ndjson="$run_dir/.topology_summary.ndjson"
 
+jq -n \
+  --arg profile "$profile" \
+  --arg scenario "$scenario" \
+  --arg bind_host "$bind_host" \
+  --arg out_dir "$out_root" \
+  --arg topologies_csv "$topologies_csv" \
+  --arg chaos_plan_path "$chaos_plan_path" \
+  --arg chaos_continuous_actions_csv "$chaos_continuous_actions_csv" \
+  --argjson llm_enabled "$llm_enabled" \
+  --argjson duration_secs "$duration_secs" \
+  --argjson base_port "$base_port" \
+  --argjson startup_timeout_secs "$startup_timeout_secs" \
+  --argjson poll_interval_secs "$poll_interval_secs" \
+  --argjson curl_timeout_secs "$curl_timeout_secs" \
+  --argjson node_tick_ms "$node_tick_ms" \
+  --argjson max_stall_secs "$max_stall_secs" \
+  --argjson max_lag_p95 "$max_lag_p95" \
+  --argjson max_distfs_failure_ratio "$max_distfs_failure_ratio" \
+  --argjson chaos_continuous_enabled "$chaos_continuous_enabled" \
+  --argjson chaos_continuous_interval_secs "$chaos_continuous_interval_secs" \
+  --argjson chaos_continuous_start_sec "$chaos_continuous_start_sec" \
+  --argjson chaos_continuous_max_events "$chaos_continuous_max_events" \
+  --argjson chaos_continuous_seed "$chaos_continuous_seed" \
+  --argjson chaos_continuous_restart_down_secs "$chaos_continuous_restart_down_secs" \
+  --argjson chaos_continuous_pause_duration_secs "$chaos_continuous_pause_duration_secs" \
+  --argjson dry_run "$dry_run" \
+  --argjson topologies "$(printf '%s\n' "${topologies[@]}" | jq -R -s 'split("\n") | map(select(length > 0))')" \
+  '{
+    profile: $profile,
+    scenario_compat: $scenario,
+    llm_enabled_compat: ($llm_enabled == 1),
+    duration_secs: $duration_secs,
+    bind_host: $bind_host,
+    base_port: $base_port,
+    startup_timeout_secs: $startup_timeout_secs,
+    poll_interval_secs: $poll_interval_secs,
+    curl_timeout_secs: $curl_timeout_secs,
+    node_tick_ms: $node_tick_ms,
+    thresholds: {
+      max_stall_secs: $max_stall_secs,
+      max_lag_p95: $max_lag_p95,
+      max_distfs_failure_ratio_compat: $max_distfs_failure_ratio
+    },
+    topologies: $topologies,
+    topologies_csv: $topologies_csv,
+    chaos: {
+      enabled: ($chaos_plan_path != "" or $chaos_continuous_enabled == 1),
+      plan_path: (if $chaos_plan_path == "" then null else $chaos_plan_path end),
+      continuous_enabled: ($chaos_continuous_enabled == 1),
+      continuous_interval_secs: $chaos_continuous_interval_secs,
+      continuous_start_sec: $chaos_continuous_start_sec,
+      continuous_max_events: $chaos_continuous_max_events,
+      continuous_actions_csv: $chaos_continuous_actions_csv,
+      continuous_seed: (if $chaos_continuous_enabled == 1 then $chaos_continuous_seed else null end),
+      continuous_restart_down_secs: $chaos_continuous_restart_down_secs,
+      continuous_pause_duration_secs: $chaos_continuous_pause_duration_secs
+    },
+    dry_run: ($dry_run == 1),
+    compatibility_notes: [
+      "--scenario/--llm are accepted but no longer affect world_chain_runtime topology"
+    ]
+  }' > "$run_config_json"
+
 {
   echo "# P2P Longrun Soak Summary"
   echo
   echo "- run_dir: \`$run_dir\`"
   echo "- profile: \`$profile\`"
   echo "- duration_secs_per_topology: \`$duration_secs\`"
-  echo "- scenario: \`$scenario\`"
+  echo "- scenario_compat: \`$scenario\`"
+  echo "- llm_enabled_compat: \`$llm_enabled\`"
+  echo "- node_tick_ms: \`$node_tick_ms\`"
   echo "- max_stall_secs: \`$max_stall_secs\`"
   echo "- max_lag_p95: \`$max_lag_p95\`"
-  echo "- max_distfs_failure_ratio: \`$max_distfs_failure_ratio\`"
+  echo "- max_distfs_failure_ratio (compat): \`$max_distfs_failure_ratio\`"
   if [[ -n "$chaos_plan_path" ]]; then
     echo "- chaos_plan: \`$chaos_plan_path\`"
   else
@@ -517,29 +557,6 @@ echo "topology,node,epoch_index,observed_at_unix_ms,committed_height,network_com
 : > "$topology_summary_ndjson"
 echo "timestamp|topology|event_id|phase|action|node|detail" > "$chaos_events_log"
 
-active_cleanup_done=0
-declare -a active_pids=()
-declare -a active_nodes=()
-declare -A node_cmd_file_by_name=()
-declare -A node_stdout_log_by_name=()
-declare -A node_stderr_log_by_name=()
-declare -A chaos_exempt_secs_by_topology=()
-declare -A chaos_events_executed_by_topology=()
-declare -A chaos_plan_events_executed_by_topology=()
-declare -A chaos_continuous_events_executed_by_topology=()
-
-analysis_report_count=0
-analysis_gate_status="insufficient_data"
-analysis_gate_notes="no_epoch_reports"
-analysis_max_stall_secs_observed=0
-analysis_lag_p95=0
-analysis_distfs_failure_ratio="0.000000"
-analysis_distfs_total_checks=0
-analysis_distfs_failed_checks=0
-analysis_invariant_all_ok=true
-analysis_chaos_exempt_secs=0
-analysis_effective_max_stall_secs=0
-
 append_summary_row() {
   local topology=$1
   local status=$2
@@ -550,6 +567,79 @@ append_summary_row() {
   local ended_at=$7
   local notes=$8
   echo "| $topology | $status | $process_status | $metric_gate | $reports | $started_at | $ended_at | $notes |" >> "$summary_md"
+}
+
+active_cleanup_done=0
+declare -a active_pids=()
+declare -a active_nodes=()
+declare -A node_cmd_file_by_name=()
+declare -A node_stdout_log_by_name=()
+declare -A node_stderr_log_by_name=()
+declare -A node_status_url_by_name=()
+declare -A node_balances_url_by_name=()
+declare -A node_runtime_id_by_name=()
+
+declare -A chaos_exempt_secs_by_topology=()
+declare -A chaos_events_executed_by_topology=()
+declare -A chaos_plan_events_executed_by_topology=()
+declare -A chaos_continuous_events_executed_by_topology=()
+
+stop_active_processes() {
+  if [[ "$active_cleanup_done" -eq 1 ]]; then
+    return 0
+  fi
+  active_cleanup_done=1
+
+  local pid
+  for pid in "${active_pids[@]}"; do
+    if kill -0 "$pid" >/dev/null 2>&1; then
+      kill "$pid" >/dev/null 2>&1 || true
+    fi
+  done
+
+  local deadline=$(( $(date +%s) + 8 ))
+  while :; do
+    local any_alive=0
+    for pid in "${active_pids[@]}"; do
+      if kill -0 "$pid" >/dev/null 2>&1; then
+        any_alive=1
+        break
+      fi
+    done
+    if [[ "$any_alive" -eq 0 ]]; then
+      break
+    fi
+    if (( $(date +%s) >= deadline )); then
+      for pid in "${active_pids[@]}"; do
+        if kill -0 "$pid" >/dev/null 2>&1; then
+          kill -9 "$pid" >/dev/null 2>&1 || true
+        fi
+      done
+      break
+    fi
+    sleep 1
+  done
+
+  for pid in "${active_pids[@]}"; do
+    wait "$pid" >/dev/null 2>&1 || true
+  done
+}
+
+cleanup_on_exit() {
+  stop_active_processes
+}
+trap cleanup_on_exit EXIT
+
+reset_active_topology_state() {
+  active_cleanup_done=0
+  active_pids=()
+  active_nodes=()
+  node_cmd_file_by_name=()
+  node_stdout_log_by_name=()
+  node_stderr_log_by_name=()
+  node_status_url_by_name=()
+  node_balances_url_by_name=()
+  node_runtime_id_by_name=()
 }
 
 find_node_index_by_name() {
@@ -667,100 +757,100 @@ execute_chaos_event() {
   return 0
 }
 
-stop_active_processes() {
-  if [[ "$active_cleanup_done" -eq 1 ]]; then
-    return 0
-  fi
-  active_cleanup_done=1
-
-  local idx
-  for idx in "${!active_pids[@]}"; do
-    local pid=${active_pids[$idx]}
-    if kill -0 "$pid" >/dev/null 2>&1; then
-      kill "$pid" >/dev/null 2>&1 || true
-    fi
-  done
-
-  local deadline=$(( $(date +%s) + 8 ))
-  while :; do
-    local any_alive=0
-    local pid
-    for pid in "${active_pids[@]}"; do
-      if kill -0 "$pid" >/dev/null 2>&1; then
-        any_alive=1
-        break
-      fi
-    done
-    if [[ "$any_alive" -eq 0 ]]; then
-      break
-    fi
-    if (( $(date +%s) >= deadline )); then
-      for pid in "${active_pids[@]}"; do
-        if kill -0 "$pid" >/dev/null 2>&1; then
-          kill -9 "$pid" >/dev/null 2>&1 || true
-        fi
-      done
-      break
-    fi
-    sleep 1
-  done
-
-  for pid in "${active_pids[@]}"; do
-    wait "$pid" >/dev/null 2>&1 || true
-  done
-}
-
-cleanup_on_exit() {
-  stop_active_processes
-}
-trap cleanup_on_exit EXIT
-
 launch_node() {
   local topology_dir=$1
   local node_name=$2
-  shift 2
+  local status_url=$3
+  local balances_url=$4
+  local runtime_id=$5
+  shift 5
+
   local node_dir="$topology_dir/nodes/$node_name"
-  local report_dir="$node_dir/report"
   local stdout_log="$node_dir/stdout.log"
   local stderr_log="$node_dir/stderr.log"
   local cmd_txt="$node_dir/command.txt"
 
-  run mkdir -p "$report_dir"
+  run mkdir -p "$node_dir"
 
-  local -a cmd=(
-    "$live_bin"
-    "$scenario"
-    --no-llm
-    --reward-runtime-enable
-    --reward-runtime-report-dir "$report_dir"
-    "$@"
-  )
-
-  if [[ "$llm_enabled" -eq 1 ]]; then
-    cmd=("${cmd[@]/--no-llm/--llm}")
-  fi
-
-  printf '%q ' "${cmd[@]}" > "$cmd_txt"
+  printf '%q ' "$@" > "$cmd_txt"
   printf '\n' >> "$cmd_txt"
 
-  echo "+ ${cmd[*]} > $stdout_log 2> $stderr_log"
-  "${cmd[@]}" >"$stdout_log" 2>"$stderr_log" &
+  echo "+ $* > $stdout_log 2> $stderr_log"
+  "$@" >"$stdout_log" 2>"$stderr_log" &
   local pid=$!
 
   node_cmd_file_by_name["$node_name"]="$cmd_txt"
   node_stdout_log_by_name["$node_name"]="$stdout_log"
   node_stderr_log_by_name["$node_name"]="$stderr_log"
+  node_status_url_by_name["$node_name"]="$status_url"
+  node_balances_url_by_name["$node_name"]="$balances_url"
+  node_runtime_id_by_name["$node_name"]="$runtime_id"
+
   active_pids+=("$pid")
   active_nodes+=("$node_name")
 }
 
-analyze_topology_metrics() {
+wait_for_topology_ready() {
+  local deadline=$(( $(date +%s) + startup_timeout_secs ))
+  while :; do
+    local all_ready=1
+    local idx node_name
+    for idx in "${!active_nodes[@]}"; do
+      node_name=${active_nodes[$idx]}
+      if ! kill -0 "${active_pids[$idx]}" >/dev/null 2>&1; then
+        echo "node exited before startup ready: $node_name" >&2
+        return 1
+      fi
+      if ! curl -fsS --max-time "$curl_timeout_secs" "${node_status_url_by_name[$node_name]%/v1/chain/status}/healthz" >/dev/null 2>&1; then
+        all_ready=0
+      fi
+    done
+    if [[ "$all_ready" -eq 1 ]]; then
+      return 0
+    fi
+    if (( $(date +%s) >= deadline )); then
+      echo "startup timeout waiting for /healthz on topology" >&2
+      return 1
+    fi
+    sleep 1
+  done
+}
+
+analysis_report_count=0
+analysis_gate_status="insufficient_data"
+analysis_gate_notes="no_samples"
+analysis_max_stall_secs_observed=0
+analysis_lag_p95=0
+analysis_distfs_failure_ratio="0.000000"
+analysis_distfs_total_checks=0
+analysis_distfs_failed_checks=0
+analysis_invariant_all_ok=true
+analysis_chaos_exempt_secs=0
+analysis_effective_max_stall_secs=0
+analysis_status_samples_ok=0
+analysis_balances_samples_ok=0
+analysis_running_false_samples=0
+analysis_last_error_samples=0
+analysis_balance_load_error_samples=0
+analysis_peer_zero_samples=0
+analysis_http_failure_samples=0
+analysis_minted_non_empty_samples=0
+analysis_monotonic_ok=true
+analysis_monotonic_violation_nodes=""
+analysis_lag_values_file=""
+analysis_runtime_errors_file=""
+analysis_topology_dir=""
+best_height=-1
+last_progress_epoch_sec=0
+declare -A analysis_node_prev_committed=()
+declare -A analysis_node_monotonic_violations=()
+
+reset_topology_analysis() {
   local topology=$1
   local topology_dir=$2
-
   analysis_report_count=0
   analysis_gate_status="insufficient_data"
-  analysis_gate_notes="no_epoch_reports"
+  analysis_gate_notes="no_samples"
   analysis_max_stall_secs_observed=0
   analysis_lag_p95=0
   analysis_distfs_failure_ratio="0.000000"
@@ -769,179 +859,280 @@ analyze_topology_metrics() {
   analysis_invariant_all_ok=true
   analysis_chaos_exempt_secs=${chaos_exempt_secs_by_topology[$topology]:-0}
   analysis_effective_max_stall_secs=$((max_stall_secs + analysis_chaos_exempt_secs))
+  analysis_status_samples_ok=0
+  analysis_balances_samples_ok=0
+  analysis_running_false_samples=0
+  analysis_last_error_samples=0
+  analysis_balance_load_error_samples=0
+  analysis_peer_zero_samples=0
+  analysis_http_failure_samples=0
+  analysis_minted_non_empty_samples=0
+  analysis_monotonic_ok=true
+  analysis_monotonic_violation_nodes=""
+  analysis_lag_values_file="$topology_dir/.lag_values.txt"
+  analysis_runtime_errors_file="$topology_dir/.runtime_errors.tsv"
+  analysis_topology_dir="$topology_dir"
+  : > "$analysis_lag_values_file"
+  : > "$analysis_runtime_errors_file"
+  best_height=-1
+  last_progress_epoch_sec=$(date +%s)
+  analysis_node_prev_committed=()
+  analysis_node_monotonic_violations=()
+}
 
-  local -a report_files=()
-  if [[ -d "$topology_dir/nodes" ]]; then
-    while IFS= read -r report_path; do
-      report_files+=("$report_path")
-    done < <(find "$topology_dir/nodes" -mindepth 3 -maxdepth 3 -type f -name 'epoch-*.json' | sort)
+append_topology_timeline_sample() {
+  local topology=$1
+  local node_name=$2
+  local epoch_index=$3
+  local observed_at_unix_ms=$4
+  local committed_height=$5
+  local network_committed_height=$6
+  local lag=$7
+  local invariant_ok=$8
+  local report_path=$9
+
+  jq -rRn \
+    --arg topology "$topology" \
+    --arg node "$node_name" \
+    --arg epoch "$epoch_index" \
+    --arg observed "$observed_at_unix_ms" \
+    --arg committed "$committed_height" \
+    --arg network "$network_committed_height" \
+    --arg lag "$lag" \
+    --arg invariant "$invariant_ok" \
+    --arg report "$report_path" \
+    '[
+      $topology,
+      $node,
+      ($epoch|tonumber),
+      ($observed|tonumber),
+      ($committed|tonumber),
+      ($network|tonumber),
+      ($lag|tonumber),
+      0,
+      0,
+      "0.000000",
+      ($invariant == "true"),
+      $report
+    ] | @csv' >> "$timeline_csv"
+}
+
+poll_topology_node_once() {
+  local topology=$1
+  local node_name=$2
+  local status_url=${node_status_url_by_name[$node_name]}
+  local balances_url=${node_balances_url_by_name[$node_name]}
+
+  local status_json=""
+  local balances_json=""
+  local status_ok=0
+  local balances_ok=0
+
+  if status_json=$(curl -fsS --max-time "$curl_timeout_secs" "$status_url" 2>/dev/null); then
+    status_ok=1
+  fi
+  if balances_json=$(curl -fsS --max-time "$curl_timeout_secs" "$balances_url" 2>/dev/null); then
+    balances_ok=1
   fi
 
-  analysis_report_count=${#report_files[@]}
-  if (( analysis_report_count == 0 )); then
-    return 0
+  local observed_at_unix_ms epoch_index committed_height network_committed_height running known_peer_heads last_error
+  observed_at_unix_ms=$(( $(date +%s) * 1000 ))
+  epoch_index=0
+  committed_height=0
+  network_committed_height=0
+  running="false"
+  known_peer_heads=0
+  last_error=""
+
+  if [[ "$status_ok" -eq 1 ]]; then
+    observed_at_unix_ms=$(safe_int "$(jq -r '.observed_at_unix_ms // 0' <<< "$status_json")")
+    epoch_index=$(safe_int "$(jq -r '.consensus.epoch // 0' <<< "$status_json")")
+    committed_height=$(safe_int "$(jq -r '.consensus.committed_height // 0' <<< "$status_json")")
+    network_committed_height=$(safe_int "$(jq -r '.consensus.network_committed_height // 0' <<< "$status_json")")
+    running=$(jq -r '.running // false' <<< "$status_json")
+    known_peer_heads=$(safe_int "$(jq -r '.consensus.known_peer_heads // 0' <<< "$status_json")")
+    last_error=$(jq -r '.last_error // empty' <<< "$status_json")
   fi
 
-  local samples_tsv="$topology_dir/.metric_samples.tsv"
-  : > "$samples_tsv"
+  local reward_mint_record_count balance_load_error
+  reward_mint_record_count=0
+  balance_load_error=""
+  if [[ "$balances_ok" -eq 1 ]]; then
+    reward_mint_record_count=$(safe_int "$(jq -r '.reward_mint_record_count // 0' <<< "$balances_json")")
+    balance_load_error=$(jq -r '.load_error // empty' <<< "$balances_json")
+  fi
 
-  declare -A node_total_max=()
-  declare -A node_failed_at_max=()
-  local invariant_failed=0
+  local lag=$((network_committed_height - committed_height))
+  if (( lag < 0 )); then
+    lag=0
+  fi
 
-  local report_file node_name metrics
-  local epoch_index observed_at committed_height network_committed_height total_checks failed_checks invariant_ok
-  local lag ratio
+  local invariant_ok="true"
+  if [[ "$running" != "true" ]] || [[ -n "$last_error" ]]; then
+    invariant_ok="false"
+  fi
 
-  for report_file in "${report_files[@]}"; do
-    node_name=$(basename "$(dirname "$(dirname "$report_file")")")
+  append_topology_timeline_sample \
+    "$topology" \
+    "$node_name" \
+    "$epoch_index" \
+    "$observed_at_unix_ms" \
+    "$committed_height" \
+    "$network_committed_height" \
+    "$lag" \
+    "$invariant_ok" \
+    "$status_url"
 
-    if ! metrics=$(jq -r '[
-      (.settlement_report.epoch_index // .node_snapshot.consensus.epoch // 0),
-      (.observed_at_unix_ms // 0),
-      (.node_snapshot.consensus.committed_height // 0),
-      (.node_snapshot.consensus.network_committed_height // 0),
-      (.distfs_challenge_report.total_checks // 0),
-      (.distfs_challenge_report.failed_checks // 0),
-      ((.reward_asset_invariant_status.ok // false) | tostring)
-    ] | @tsv' "$report_file"); then
-      echo "warning: failed to parse report JSON: $report_file" >&2
-      continue
-    fi
+  analysis_report_count=$((analysis_report_count + 1))
 
-    if [[ -z "$metrics" ]]; then
-      continue
-    fi
+  if [[ "$status_ok" -eq 1 ]]; then
+    analysis_status_samples_ok=$((analysis_status_samples_ok + 1))
+  else
+    analysis_http_failure_samples=$((analysis_http_failure_samples + 1))
+  fi
+  if [[ "$balances_ok" -eq 1 ]]; then
+    analysis_balances_samples_ok=$((analysis_balances_samples_ok + 1))
+  else
+    analysis_http_failure_samples=$((analysis_http_failure_samples + 1))
+  fi
 
-    IFS=$'\t' read -r epoch_index observed_at committed_height network_committed_height total_checks failed_checks invariant_ok <<< "$metrics"
+  if [[ "$running" != "true" ]]; then
+    analysis_running_false_samples=$((analysis_running_false_samples + 1))
+  fi
+  if [[ -n "$last_error" ]]; then
+    analysis_last_error_samples=$((analysis_last_error_samples + 1))
+    printf '%s\t%s\n' "$node_name" "$last_error" >> "$analysis_runtime_errors_file"
+  fi
+  if [[ -n "$balance_load_error" ]]; then
+    analysis_balance_load_error_samples=$((analysis_balance_load_error_samples + 1))
+  fi
+  if (( known_peer_heads <= 0 )); then
+    analysis_peer_zero_samples=$((analysis_peer_zero_samples + 1))
+  fi
+  if (( reward_mint_record_count > 0 )); then
+    analysis_minted_non_empty_samples=$((analysis_minted_non_empty_samples + 1))
+  fi
 
-    [[ "$epoch_index" =~ ^-?[0-9]+$ ]] || epoch_index=0
-    [[ "$observed_at" =~ ^-?[0-9]+$ ]] || observed_at=0
-    [[ "$committed_height" =~ ^-?[0-9]+$ ]] || committed_height=0
-    [[ "$network_committed_height" =~ ^-?[0-9]+$ ]] || network_committed_height=0
-    [[ "$total_checks" =~ ^-?[0-9]+$ ]] || total_checks=0
-    [[ "$failed_checks" =~ ^-?[0-9]+$ ]] || failed_checks=0
+  echo "$lag" >> "$analysis_lag_values_file"
 
-    if (( total_checks < 0 )); then
-      total_checks=0
-    fi
-    if (( failed_checks < 0 )); then
-      failed_checks=0
-    fi
+  local now_sec
+  now_sec=$(date +%s)
+  if (( best_height < 0 )); then
+    best_height=$committed_height
+    last_progress_epoch_sec=$now_sec
+  elif (( committed_height > best_height )); then
+    best_height=$committed_height
+    last_progress_epoch_sec=$now_sec
+  fi
+  local stall=$((now_sec - last_progress_epoch_sec))
+  if (( stall > analysis_max_stall_secs_observed )); then
+    analysis_max_stall_secs_observed=$stall
+  fi
 
-    lag=$((network_committed_height - committed_height))
-    if (( lag < 0 )); then
-      lag=0
-    fi
+  local prev_committed=${analysis_node_prev_committed[$node_name]:-}
+  if [[ -n "$prev_committed" ]] && (( committed_height < prev_committed )); then
+    analysis_node_monotonic_violations["$node_name"]=1
+  fi
+  analysis_node_prev_committed["$node_name"]=$committed_height
+}
 
-    ratio=$(awk -v failed="$failed_checks" -v total="$total_checks" 'BEGIN { if (total > 0) printf "%.6f", failed / total; else printf "0.000000"; }')
-
-    printf '"%s","%s",%s,%s,%s,%s,%s,%s,%s,%s,%s,"%s"\n' \
-      "$topology" "$node_name" "$epoch_index" "$observed_at" "$committed_height" "$network_committed_height" "$lag" "$total_checks" "$failed_checks" "$ratio" "$invariant_ok" "$report_file" >> "$timeline_csv"
-
-    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
-      "$observed_at" "$committed_height" "$lag" "$total_checks" "$failed_checks" "$invariant_ok" "$node_name" >> "$samples_tsv"
-
-    local prev_total=${node_total_max[$node_name]:--1}
-    if (( total_checks > prev_total )); then
-      node_total_max["$node_name"]=$total_checks
-      node_failed_at_max["$node_name"]=$failed_checks
-    elif (( total_checks == prev_total )); then
-      local prev_failed=${node_failed_at_max[$node_name]:-0}
-      if (( failed_checks > prev_failed )); then
-        node_failed_at_max["$node_name"]=$failed_checks
-      fi
-    fi
-
-    if [[ "$invariant_ok" != "true" ]]; then
-      invariant_failed=1
-    fi
+poll_topology_all_nodes() {
+  local topology=$1
+  local node_name
+  for node_name in "${active_nodes[@]}"; do
+    poll_topology_node_once "$topology" "$node_name"
   done
+}
 
-  local node
-  for node in "${!node_total_max[@]}"; do
-    analysis_distfs_total_checks=$((analysis_distfs_total_checks + node_total_max[$node]))
-    analysis_distfs_failed_checks=$((analysis_distfs_failed_checks + ${node_failed_at_max[$node]:-0}))
-  done
-  analysis_distfs_failure_ratio=$(awk -v failed="$analysis_distfs_failed_checks" -v total="$analysis_distfs_total_checks" 'BEGIN { if (total > 0) printf "%.6f", failed / total; else printf "0.000000"; }')
-
-  local sorted_samples="$topology_dir/.metric_samples.sorted.tsv"
-  sort -n -k1,1 "$samples_tsv" > "$sorted_samples"
-
-  local best_height=-1
-  local last_progress_ms=0
-  local max_stall_ms=0
-  local sample_with_time=0
-  local sample_observed sample_committed _
-  while IFS=$'\t' read -r sample_observed sample_committed _; do
-    [[ "$sample_observed" =~ ^-?[0-9]+$ ]] || continue
-    [[ "$sample_committed" =~ ^-?[0-9]+$ ]] || continue
-    if (( sample_observed <= 0 )); then
-      continue
-    fi
-    sample_with_time=$((sample_with_time + 1))
-    if (( best_height < 0 )); then
-      best_height=$sample_committed
-      last_progress_ms=$sample_observed
-    elif (( sample_committed > best_height )); then
-      best_height=$sample_committed
-      last_progress_ms=$sample_observed
-    fi
-    local stall_gap=$((sample_observed - last_progress_ms))
-    if (( stall_gap > max_stall_ms )); then
-      max_stall_ms=$stall_gap
-    fi
-  done < "$sorted_samples"
-  analysis_max_stall_secs_observed=$((max_stall_ms / 1000))
-
-  local lag_values="$topology_dir/.metric_lags.txt"
-  cut -f3 "$samples_tsv" | sed '/^[[:space:]]*$/d' | sort -n > "$lag_values"
+compute_topology_lag_p95() {
   local lag_count
-  lag_count=$(wc -l < "$lag_values" | tr -d ' ')
+  lag_count=$(wc -l < "$analysis_lag_values_file" | tr -d ' ')
   if [[ -z "$lag_count" ]]; then
     lag_count=0
   fi
-  if (( lag_count > 0 )); then
-    local p95_rank=$(( (95 * lag_count + 99) / 100 ))
-    if (( p95_rank < 1 )); then
-      p95_rank=1
-    fi
-    analysis_lag_p95=$(sed -n "${p95_rank}p" "$lag_values")
-    [[ "$analysis_lag_p95" =~ ^-?[0-9]+$ ]] || analysis_lag_p95=0
-  else
+  if (( lag_count <= 0 )); then
     analysis_lag_p95=0
+    return 0
+  fi
+  local sorted_lag_file="$analysis_topology_dir/.lag_values.sorted.txt"
+  sort -n "$analysis_lag_values_file" > "$sorted_lag_file"
+  local p95_rank=$(( (95 * lag_count + 99) / 100 ))
+  if (( p95_rank < 1 )); then
+    p95_rank=1
+  fi
+  analysis_lag_p95=$(sed -n "${p95_rank}p" "$sorted_lag_file")
+  analysis_lag_p95=$(safe_int "$analysis_lag_p95")
+}
+
+finalize_topology_metric_gate() {
+  local chaos_event_count=${1:-0}
+  compute_topology_lag_p95
+
+  if (( ${#analysis_node_monotonic_violations[@]} > 0 )); then
+    analysis_monotonic_ok=false
+    analysis_monotonic_violation_nodes=$(printf '%s\n' "${!analysis_node_monotonic_violations[@]}" | sort | paste -sd ',' -)
   fi
 
+  analysis_distfs_total_checks=0
+  analysis_distfs_failed_checks=0
+  analysis_distfs_failure_ratio="0.000000"
   analysis_invariant_all_ok=true
-  if (( invariant_failed == 1 )); then
+  if (( analysis_running_false_samples > 0 || analysis_last_error_samples > 0 )); then
     analysis_invariant_all_ok=false
   fi
 
   local -a gate_failures=()
   local -a gate_warnings=()
 
-  if (( sample_with_time == 0 )); then
-    gate_warnings+=("observed_at_missing")
-  elif (( analysis_max_stall_secs_observed > analysis_effective_max_stall_secs )); then
+  if (( analysis_report_count <= 0 )); then
+    gate_failures+=("no_samples")
+  fi
+  if (( analysis_status_samples_ok <= 0 )); then
+    gate_failures+=("status_endpoint_unreachable")
+  fi
+  if (( analysis_balances_samples_ok <= 0 )); then
+    gate_failures+=("balances_endpoint_unreachable")
+  fi
+  if (( analysis_running_false_samples > 0 )); then
+    if (( chaos_event_count > 0 )); then
+      gate_warnings+=("running_false_samples=${analysis_running_false_samples}")
+    else
+      gate_failures+=("running_false_samples=${analysis_running_false_samples}")
+    fi
+  fi
+  if (( analysis_last_error_samples > 0 )); then
+    gate_failures+=("last_error_samples=${analysis_last_error_samples}")
+  fi
+  if (( analysis_max_stall_secs_observed > analysis_effective_max_stall_secs )); then
     gate_failures+=("stall=${analysis_max_stall_secs_observed}s>max_${analysis_effective_max_stall_secs}s")
   fi
-
   if (( analysis_lag_p95 > max_lag_p95 )); then
     gate_failures+=("lag_p95=${analysis_lag_p95}>max_${max_lag_p95}")
   fi
-
-  if (( analysis_distfs_total_checks > 0 )); then
-    local ratio_exceeded
-    ratio_exceeded=$(awk -v ratio="$analysis_distfs_failure_ratio" -v max="$max_distfs_failure_ratio" 'BEGIN { if (ratio > max) print 1; else print 0; }')
-    if [[ "$ratio_exceeded" == "1" ]]; then
-      gate_failures+=("distfs_failure_ratio=${analysis_distfs_failure_ratio}>max_${max_distfs_failure_ratio}")
+  if [[ "$analysis_monotonic_ok" != "true" ]]; then
+    if (( chaos_event_count > 0 )); then
+      gate_warnings+=("committed_height_not_monotonic nodes=${analysis_monotonic_violation_nodes}")
+    else
+      gate_failures+=("committed_height_not_monotonic nodes=${analysis_monotonic_violation_nodes}")
     fi
-  else
-    gate_warnings+=("distfs_checks=0")
   fi
 
-  if [[ "$analysis_invariant_all_ok" != "true" ]]; then
-    gate_failures+=("reward_asset_invariant_not_ok")
+  gate_warnings+=("distfs_metrics_unavailable")
+  if (( analysis_balance_load_error_samples > 0 )); then
+    gate_warnings+=("balances_load_error_samples=${analysis_balance_load_error_samples}")
+  fi
+  if (( analysis_peer_zero_samples > 0 )); then
+    gate_warnings+=("known_peer_heads_zero_samples=${analysis_peer_zero_samples}")
+  fi
+  if (( analysis_http_failure_samples > 0 )); then
+    if (( chaos_event_count > 0 )); then
+      gate_warnings+=("http_failure_samples=${analysis_http_failure_samples}")
+    else
+      gate_failures+=("http_failure_samples=${analysis_http_failure_samples}")
+    fi
+  fi
+  if (( analysis_minted_non_empty_samples <= 0 )); then
+    gate_warnings+=("minted_records_empty")
   fi
 
   if (( ${#gate_failures[@]} > 0 )); then
@@ -968,17 +1159,157 @@ run_topology() {
   status="ok"
   notes="-"
 
-  active_cleanup_done=0
-  active_pids=()
-  active_nodes=()
-  node_cmd_file_by_name=()
-  node_stdout_log_by_name=()
-  node_stderr_log_by_name=()
+  reset_active_topology_state
 
   local topology_dir="$run_dir/$topology"
   run mkdir -p "$topology_dir/nodes"
 
+  local -a node_labels=("sequencer" "storage" "observer")
+  local -a node_roles=("sequencer" "storage" "observer")
+  local -a node_stakes=(50 30 20)
+  local -a node_runtime_ids=()
+  local -a node_gossip_addrs=()
+  local -a node_status_binds=()
+  local -a validator_specs=()
   local case_base_port=$((base_port + index * 100))
+  local topology_slug
+  topology_slug=$(slugify "$topology")
+  local world_id="p2p-${topology_slug}-${timestamp}"
+
+  local i
+  for i in "${!node_labels[@]}"; do
+    local label=${node_labels[$i]}
+    local runtime_id="soak-${topology_slug}-${timestamp}-${label}"
+    local gossip_addr="$bind_host:$((case_base_port + i + 1))"
+    local status_bind="$bind_host:$((case_base_port + i + 21))"
+    node_runtime_ids+=("$runtime_id")
+    node_gossip_addrs+=("$gossip_addr")
+    node_status_binds+=("$status_bind")
+    validator_specs+=("${runtime_id}:${node_stakes[$i]}")
+  done
+
+  if [[ "$dry_run" -eq 1 ]]; then
+    for i in "${!node_labels[@]}"; do
+      local label=${node_labels[$i]}
+      local role=${node_roles[$i]}
+      local runtime_id=${node_runtime_ids[$i]}
+      local status_bind=${node_status_binds[$i]}
+      local gossip_addr=${node_gossip_addrs[$i]}
+      local -a cmd=(
+        "$chain_bin"
+        --node-id "$runtime_id"
+        --world-id "$world_id"
+        --status-bind "$status_bind"
+        --node-role "$role"
+        --node-tick-ms "$node_tick_ms"
+        --node-gossip-bind "$gossip_addr"
+      )
+      if [[ "$role" == "sequencer" ]]; then
+        cmd+=(--node-auto-attest-all)
+      else
+        cmd+=(--node-no-auto-attest-all)
+      fi
+      local validator
+      for validator in "${validator_specs[@]}"; do
+        cmd+=(--node-validator "$validator")
+      done
+      local peer_idx
+      for peer_idx in "${!node_labels[@]}"; do
+        if (( peer_idx == i )); then
+          continue
+        fi
+        cmd+=(--node-gossip-peer "${node_gossip_addrs[$peer_idx]}")
+      done
+
+      local node_dir="$topology_dir/nodes/$label"
+      local cmd_txt="$node_dir/command.txt"
+      run mkdir -p "$node_dir"
+      printf '%q ' "${cmd[@]}" > "$cmd_txt"
+      printf '\n' >> "$cmd_txt"
+      echo "+ dry-run command[$topology/$label]: ${cmd[*]}"
+    done
+
+    append_summary_row "$topology" "dry_run" "dry_run" "dry_run" "0" "$started_at" "$started_at" "commands_rendered_only"
+    jq -n \
+      --arg topology "$topology" \
+      --arg started_at "$started_at" \
+      '{
+        topology: $topology,
+        status: "dry_run",
+        process_status: "dry_run",
+        started_at: $started_at,
+        ended_at: $started_at,
+        notes: "commands_rendered_only",
+        report_samples: 0,
+        chaos_events: 0,
+        chaos_plan_events: 0,
+        chaos_continuous_events: 0,
+        metric_gate: {
+          status: "dry_run",
+          notes: "commands_rendered_only"
+        },
+        metrics: {
+          max_stall_secs_observed: 0,
+          chaos_exempt_secs: 0,
+          effective_max_stall_secs: 0,
+          lag_p95: 0,
+          distfs_failure_ratio: "0.000000",
+          distfs_total_checks: 0,
+          distfs_failed_checks: 0,
+          invariant_all_ok: true,
+          status_samples_ok: 0,
+          balances_samples_ok: 0,
+          running_false_samples: 0,
+          last_error_samples: 0,
+          minted_non_empty_samples: 0,
+          committed_height_monotonic: true,
+          committed_height_monotonic_violation_nodes: []
+        }
+      }' >> "$topology_summary_ndjson"
+    return 0
+  fi
+
+  for i in "${!node_labels[@]}"; do
+    local label=${node_labels[$i]}
+    local role=${node_roles[$i]}
+    local runtime_id=${node_runtime_ids[$i]}
+    local status_bind=${node_status_binds[$i]}
+    local gossip_addr=${node_gossip_addrs[$i]}
+    local status_url="http://${status_bind}/v1/chain/status"
+    local balances_url="http://${status_bind}/v1/chain/balances"
+
+    local -a cmd=(
+      "$chain_bin"
+      --node-id "$runtime_id"
+      --world-id "$world_id"
+      --status-bind "$status_bind"
+      --node-role "$role"
+      --node-tick-ms "$node_tick_ms"
+      --node-gossip-bind "$gossip_addr"
+    )
+
+    if [[ "$role" == "sequencer" ]]; then
+      cmd+=(--node-auto-attest-all)
+    else
+      cmd+=(--node-no-auto-attest-all)
+    fi
+
+    local validator
+    for validator in "${validator_specs[@]}"; do
+      cmd+=(--node-validator "$validator")
+    done
+
+    local peer_idx
+    for peer_idx in "${!node_labels[@]}"; do
+      if (( peer_idx == i )); then
+        continue
+      fi
+      cmd+=(--node-gossip-peer "${node_gossip_addrs[$peer_idx]}")
+    done
+
+    launch_node "$topology_dir" "$label" "$status_url" "$balances_url" "$runtime_id" "${cmd[@]}"
+  done
+
   local -a chaos_event_ids=()
   local -a chaos_event_at_secs=()
   local -a chaos_event_nodes=()
@@ -989,43 +1320,6 @@ run_topology() {
   local continuous_enabled=0
   local continuous_next_at_sec=0
   local continuous_generated=0
-
-  case "$topology" in
-    triad)
-      launch_node "$topology_dir" "triad" \
-        --topology triad \
-        --bind "$bind_host:$((case_base_port + 10))"
-      ;;
-    triad_distributed)
-      local seq_gossip="$bind_host:$((case_base_port + 1))"
-      local storage_gossip="$bind_host:$((case_base_port + 2))"
-      local observer_gossip="$bind_host:$((case_base_port + 3))"
-      local node_id_base="soak-${timestamp}-${index}"
-
-      launch_node "$topology_dir" "sequencer" \
-        --topology triad_distributed \
-        --node-id "$node_id_base" \
-        --node-role sequencer \
-        --triad-sequencer-gossip "$seq_gossip" \
-        --bind "$bind_host:$((case_base_port + 11))"
-
-      launch_node "$topology_dir" "storage" \
-        --topology triad_distributed \
-        --node-id "$node_id_base" \
-        --node-role storage \
-        --triad-sequencer-gossip "$seq_gossip" \
-        --triad-storage-gossip "$storage_gossip" \
-        --bind "$bind_host:$((case_base_port + 12))"
-
-      launch_node "$topology_dir" "observer" \
-        --topology triad_distributed \
-        --node-id "$node_id_base" \
-        --node-role observer \
-        --triad-sequencer-gossip "$seq_gossip" \
-        --triad-observer-gossip "$observer_gossip" \
-        --bind "$bind_host:$((case_base_port + 13))"
-      ;;
-  esac
 
   if [[ -n "$chaos_plan_path" ]]; then
     local event_id at_sec node action down_secs event_duration_secs_raw
@@ -1040,13 +1334,22 @@ run_topology() {
         continue
       fi
 
+      local node_resolved="$node"
+      local label_idx
+      for label_idx in "${!node_labels[@]}"; do
+        if [[ "$node" == "${node_runtime_ids[$label_idx]}" ]]; then
+          node_resolved=${node_labels[$label_idx]}
+          break
+        fi
+      done
+
       case "$action" in
         restart|pause|disconnect) ;;
         "")
           action="restart"
           ;;
         *)
-          log_chaos_event "$topology" "$event_id" "failed" "$action" "$node" "unsupported_action"
+          log_chaos_event "$topology" "$event_id" "failed" "$action" "$node_resolved" "unsupported_action"
           status="chaos_plan_invalid"
           notes="invalid chaos action for event=$event_id"
           break
@@ -1055,7 +1358,7 @@ run_topology() {
 
       chaos_event_ids+=("$event_id")
       chaos_event_at_secs+=("$at_sec")
-      chaos_event_nodes+=("$node")
+      chaos_event_nodes+=("$node_resolved")
       chaos_event_actions+=("$action")
       chaos_event_down_secs+=("$down_secs")
       chaos_event_duration_secs+=("$event_duration_secs_raw")
@@ -1084,33 +1387,17 @@ run_topology() {
     chaos_rng_seed $((chaos_continuous_seed + (index + 1) * 104729))
   fi
 
-  if [[ "$status" == "ok" ]]; then
-    local startup_deadline=$(( $(date +%s) + startup_timeout_secs ))
-    while :; do
-      local all_alive=1
-      local idx
-      for idx in "${!active_pids[@]}"; do
-        if ! kill -0 "${active_pids[$idx]}" >/dev/null 2>&1; then
-          all_alive=0
-          status="startup_failed"
-          notes="node=${active_nodes[$idx]} exited before startup window"
-          break
-        fi
-      done
-      if [[ "$all_alive" -eq 1 ]]; then
-        break
-      fi
-      if (( $(date +%s) >= startup_deadline )); then
-        break
-      fi
-      sleep 1
-    done
+  if ! wait_for_topology_ready; then
+    status="startup_failed"
+    notes="failed to reach /healthz across all nodes"
   fi
+
+  reset_topology_analysis "$topology" "$topology_dir"
 
   if [[ "$status" == "ok" ]]; then
     local started_epoch_sec
     started_epoch_sec=$(date +%s)
-    local deadline=$(( started_epoch_sec + duration_secs ))
+    local deadline=$((started_epoch_sec + duration_secs))
     while (( $(date +%s) < deadline )); do
       local now_sec elapsed_sec
       now_sec=$(date +%s)
@@ -1199,6 +1486,8 @@ run_topology() {
         done
       fi
 
+      poll_topology_all_nodes "$topology"
+
       local idx
       for idx in "${!active_pids[@]}"; do
         if ! kill -0 "${active_pids[$idx]}" >/dev/null 2>&1; then
@@ -1207,24 +1496,32 @@ run_topology() {
           break 2
         fi
       done
+
       sleep "$poll_interval_secs"
     done
+
+    if [[ "$status" == "ok" ]]; then
+      poll_topology_all_nodes "$topology"
+    fi
   fi
 
   stop_active_processes
 
-  local process_status=$status
-  analyze_topology_metrics "$topology" "$topology_dir"
+  local chaos_event_count=${chaos_events_executed_by_topology[$topology]:-0}
+  local chaos_plan_event_count=${chaos_plan_events_executed_by_topology[$topology]:-0}
+  local chaos_continuous_event_count=${chaos_continuous_events_executed_by_topology[$topology]:-0}
+  local chaos_exempt_secs=${chaos_exempt_secs_by_topology[$topology]:-0}
 
+  analysis_chaos_exempt_secs=$chaos_exempt_secs
+  analysis_effective_max_stall_secs=$((max_stall_secs + analysis_chaos_exempt_secs))
+  finalize_topology_metric_gate "$chaos_event_count"
+
+  local process_status=$status
   local final_status=$status
   local -a notes_parts=()
   if [[ "$notes" != "-" ]]; then
     notes_parts+=("$notes")
   fi
-  local chaos_event_count=${chaos_events_executed_by_topology[$topology]:-0}
-  local chaos_plan_event_count=${chaos_plan_events_executed_by_topology[$topology]:-0}
-  local chaos_continuous_event_count=${chaos_continuous_events_executed_by_topology[$topology]:-0}
-  local chaos_exempt_secs=${chaos_exempt_secs_by_topology[$topology]:-0}
   if (( chaos_event_count > 0 )); then
     notes_parts+=("chaos_events=${chaos_event_count}")
     notes_parts+=("chaos_plan_events=${chaos_plan_event_count}")
@@ -1277,6 +1574,13 @@ run_topology() {
     --argjson distfs_total_checks "$analysis_distfs_total_checks" \
     --argjson distfs_failed_checks "$analysis_distfs_failed_checks" \
     --argjson invariant_all_ok "$analysis_invariant_all_ok" \
+    --argjson status_samples_ok "$analysis_status_samples_ok" \
+    --argjson balances_samples_ok "$analysis_balances_samples_ok" \
+    --argjson running_false_samples "$analysis_running_false_samples" \
+    --argjson last_error_samples "$analysis_last_error_samples" \
+    --argjson minted_non_empty_samples "$analysis_minted_non_empty_samples" \
+    --argjson monotonic_ok "$analysis_monotonic_ok" \
+    --arg monotonic_violation_nodes "$analysis_monotonic_violation_nodes" \
     '{
       topology: $topology,
       status: $status,
@@ -1300,7 +1604,18 @@ run_topology() {
         distfs_failure_ratio: $distfs_failure_ratio,
         distfs_total_checks: $distfs_total_checks,
         distfs_failed_checks: $distfs_failed_checks,
-        invariant_all_ok: $invariant_all_ok
+        invariant_all_ok: $invariant_all_ok,
+        status_samples_ok: $status_samples_ok,
+        balances_samples_ok: $balances_samples_ok,
+        running_false_samples: $running_false_samples,
+        last_error_samples: $last_error_samples,
+        minted_non_empty_samples: $minted_non_empty_samples,
+        committed_height_monotonic: $monotonic_ok,
+        committed_height_monotonic_violation_nodes: (
+          if $monotonic_violation_nodes == "" then []
+          else ($monotonic_violation_nodes | split(","))
+          end
+        )
       }
     }' >> "$topology_summary_ndjson"
 
@@ -1323,6 +1638,7 @@ write_summary_json() {
     --arg scenario "$scenario" \
     --arg chaos_plan_path "${chaos_plan_path:-}" \
     --arg chaos_continuous_actions_csv "$chaos_continuous_actions_csv" \
+    --argjson llm_enabled "$llm_enabled" \
     --argjson duration_secs "$duration_secs" \
     --argjson max_stall_secs "$max_stall_secs" \
     --argjson max_lag_p95 "$max_lag_p95" \
@@ -1334,6 +1650,7 @@ write_summary_json() {
     --argjson chaos_continuous_seed "$chaos_continuous_seed" \
     --argjson chaos_continuous_restart_down_secs "$chaos_continuous_restart_down_secs" \
     --argjson chaos_continuous_pause_duration_secs "$chaos_continuous_pause_duration_secs" \
+    --argjson dry_run "$dry_run" \
     --arg timeline_csv "$timeline_csv" \
     --arg summary_md "$summary_md" \
     --arg chaos_events_log "$chaos_events_log" \
@@ -1345,7 +1662,8 @@ write_summary_json() {
         generated_at_utc: $generated_at,
         run_dir: $run_dir,
         profile: $profile,
-        scenario: $scenario,
+        scenario_compat: $scenario,
+        llm_enabled_compat: ($llm_enabled == 1),
         chaos_plan: (if $chaos_plan_path == "" then null else $chaos_plan_path end),
         chaos_continuous: {
           enabled: ($chaos_continuous_enabled == 1),
@@ -1357,11 +1675,12 @@ write_summary_json() {
           restart_down_secs: $chaos_continuous_restart_down_secs,
           pause_duration_secs: $chaos_continuous_pause_duration_secs
         },
+        dry_run: ($dry_run == 1),
         duration_secs_per_topology: $duration_secs,
         thresholds: {
           max_stall_secs: $max_stall_secs,
           max_lag_p95: $max_lag_p95,
-          max_distfs_failure_ratio: $max_distfs_failure_ratio
+          max_distfs_failure_ratio_compat: $max_distfs_failure_ratio
         },
         artifacts: {
           run_config_json: $run_config_json,
@@ -1371,8 +1690,8 @@ write_summary_json() {
         },
         totals: {
           topology_count: ($topologies | length),
-          topology_ok_count: ($topologies | map(select(.status == "ok")) | length),
-          topology_failed_count: ($topologies | map(select(.status != "ok")) | length),
+          topology_ok_count: ($topologies | map(select(.status == "ok" or .status == "dry_run")) | length),
+          topology_failed_count: ($topologies | map(select(.status != "ok" and .status != "dry_run")) | length),
           report_samples_total: ($topologies | map(.report_samples) | add // 0),
           chaos_plan_events_total: ($topologies | map(.chaos_plan_events) | add // 0),
           chaos_continuous_events_total: ($topologies | map(.chaos_continuous_events) | add // 0),
@@ -1386,7 +1705,12 @@ write_summary_json() {
             })
         ),
         topologies: $topologies,
-        overall_status: (if $overall_status_code == 0 then "ok" else "failed" end)
+        overall_status: (
+          if $dry_run == 1 then "dry_run"
+          elif $overall_status_code == 0 then "ok"
+          else "failed"
+          end
+        )
       }
     ' "$topology_summary_ndjson" > "$summary_json"
 }
@@ -1425,19 +1749,19 @@ append_summary_metrics_section() {
     echo
     echo "## Gate Metrics"
     echo
-    echo "| topology | gate | reports | chaos_plan | chaos_continuous | chaos_events | chaos_exempt_s | max_stall_s | max_stall_s_effective | lag_p95 | distfs_ratio | invariant_all_ok |"
-    echo "|---|---|---|---|---|---|---|---|---|---|---|---|"
+    echo "| topology | gate | reports | chaos_plan | chaos_continuous | chaos_events | chaos_exempt_s | max_stall_s | max_stall_s_effective | lag_p95 | distfs_ratio | invariant_all_ok | minted_samples |"
+    echo "|---|---|---|---|---|---|---|---|---|---|---|---|---|"
     if [[ -f "$summary_json" ]]; then
-      while IFS=$'\t' read -r topology gate reports chaos_plan chaos_continuous chaos_events chaos_exempt stall stall_effective lag ratio invariant; do
-        echo "| $topology | $gate | $reports | $chaos_plan | $chaos_continuous | $chaos_events | $chaos_exempt | $stall | $stall_effective | $lag | $ratio | $invariant |"
-      done < <(jq -r '.topologies[] | [ .topology, .metric_gate.status, .report_samples, .chaos_plan_events, .chaos_continuous_events, .chaos_events, .metrics.chaos_exempt_secs, .metrics.max_stall_secs_observed, .metrics.effective_max_stall_secs, .metrics.lag_p95, .metrics.distfs_failure_ratio, .metrics.invariant_all_ok ] | @tsv' "$summary_json")
+      while IFS=$'\t' read -r topology gate reports chaos_plan chaos_continuous chaos_events chaos_exempt stall stall_effective lag ratio invariant minted; do
+        echo "| $topology | $gate | $reports | $chaos_plan | $chaos_continuous | $chaos_events | $chaos_exempt | $stall | $stall_effective | $lag | $ratio | $invariant | $minted |"
+      done < <(jq -r '.topologies[] | [ .topology, .metric_gate.status, .report_samples, .chaos_plan_events, .chaos_continuous_events, .chaos_events, .metrics.chaos_exempt_secs, .metrics.max_stall_secs_observed, .metrics.effective_max_stall_secs, .metrics.lag_p95, .metrics.distfs_failure_ratio, .metrics.invariant_all_ok, .metrics.minted_non_empty_samples ] | @tsv' "$summary_json")
     fi
   } >> "$summary_md"
 }
 
 write_failures_md() {
   local overall_status_code=$1
-  if (( overall_status_code == 0 )); then
+  if (( overall_status_code == 0 )) || [[ "$dry_run" -eq 1 ]]; then
     rm -f "$failures_md"
     return 0
   fi
@@ -1447,7 +1771,7 @@ write_failures_md() {
     echo
     echo "- run_dir: \`$run_dir\`"
     echo "- profile: \`$profile\`"
-    echo "- scenario: \`$scenario\`"
+    echo "- scenario_compat: \`$scenario\`"
     echo
     echo "## Failed Topologies"
     if [[ -f "$summary_json" ]]; then
@@ -1478,6 +1802,10 @@ echo "  timeline_csv: $timeline_csv"
 echo "  chaos_events_log: $chaos_events_log"
 if [[ -f "$failures_md" ]]; then
   echo "  failures: $failures_md"
+fi
+
+if [[ "$dry_run" -eq 1 ]]; then
+  exit 0
 fi
 
 exit "$overall_status"
