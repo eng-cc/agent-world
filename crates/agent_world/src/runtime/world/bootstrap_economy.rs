@@ -13,6 +13,7 @@ use super::super::{
     M4_RECIPE_ASSEMBLE_MODULE_RACK_MODULE_ID, M4_RECIPE_ASSEMBLE_MOTOR_MODULE_ID,
     M4_RECIPE_ASSEMBLE_SENSOR_PACK_MODULE_ID, M4_RECIPE_SMELT_ALLOY_PLATE_MODULE_ID,
     M4_RECIPE_SMELT_COPPER_WIRE_MODULE_ID, M4_RECIPE_SMELT_IRON_MODULE_ID,
+    M4_RECIPE_SMELT_POLYMER_RESIN_MODULE_ID,
 };
 use super::World;
 
@@ -51,6 +52,11 @@ const M4_BOOTSTRAP_MODULES: &[M4BootstrapModuleDescriptor] = &[
     M4BootstrapModuleDescriptor {
         module_id: M4_RECIPE_SMELT_COPPER_WIRE_MODULE_ID,
         manifest_name: "M4RecipeSmelterCopperWire",
+        max_call_rate: 128,
+    },
+    M4BootstrapModuleDescriptor {
+        module_id: M4_RECIPE_SMELT_POLYMER_RESIN_MODULE_ID,
+        manifest_name: "M4RecipeSmelterPolymerResin",
         max_call_rate: 128,
     },
     M4BootstrapModuleDescriptor {
@@ -454,6 +460,12 @@ fn m4_default_recipe_profiles() -> Vec<RecipeProfileV1> {
             vec!["copper_ore"],
             "bootstrap",
             vec!["smelter"],
+        ),
+        recipe_profile(
+            "recipe.smelter.polymer_resin",
+            vec!["carbon_fuel", "silicate_ore"],
+            "bootstrap",
+            vec!["smelter", "thermal"],
         ),
         recipe_profile(
             "recipe.assembler.gear",

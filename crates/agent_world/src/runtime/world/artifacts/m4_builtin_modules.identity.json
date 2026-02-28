@@ -204,6 +204,15 @@
       "source_hash": "9a0e133481e059691a84e1dcb52a9b8e5e4da191a6b1f175f9ff630ab232b214",
       "build_manifest_hash": "6f92432d2b79412ae7aabc9928de1631077d26748f1371444eb28f3e80c2baf7",
       "identity_hash": "6492b7ab867c5b2383ea2d7b253f459a237dca9257b4006834316bd2788691c7"
+    },
+    {
+      "module_id": "m4.recipe.smelter.polymer_resin",
+      "hash_tokens": [
+        "9038d7ab04db1e2e7add924f41c8231e82cccd1b7a057c58b0d71b7feef67c44"
+      ],
+      "source_hash": "e87aedf12ee37b07940723be490123b66034a64939bab0c8faacb56b84141b11",
+      "build_manifest_hash": "6f92432d2b79412ae7aabc9928de1631077d26748f1371444eb28f3e80c2baf7",
+      "identity_hash": "7ab58d6f2a9fd7e5c044af946c2a5bd13541f070879277ddede8351deb47867f"
     }
   ]
 }

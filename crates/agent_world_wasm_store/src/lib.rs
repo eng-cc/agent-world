@@ -28,6 +28,7 @@ pub const M4_FACTORY_SMELTER_MODULE_ID: &str = "m4.factory.smelter.mk1";
 pub const M4_FACTORY_ASSEMBLER_MODULE_ID: &str = "m4.factory.assembler.mk1";
 pub const M4_RECIPE_SMELT_IRON_MODULE_ID: &str = "m4.recipe.smelter.iron_ingot";
 pub const M4_RECIPE_SMELT_COPPER_WIRE_MODULE_ID: &str = "m4.recipe.smelter.copper_wire";
+pub const M4_RECIPE_SMELT_POLYMER_RESIN_MODULE_ID: &str = "m4.recipe.smelter.polymer_resin";
 pub const M4_RECIPE_ASSEMBLE_GEAR_MODULE_ID: &str = "m4.recipe.assembler.gear";
 pub const M4_RECIPE_ASSEMBLE_CONTROL_CHIP_MODULE_ID: &str = "m4.recipe.assembler.control_chip";
 pub const M4_RECIPE_ASSEMBLE_MOTOR_MODULE_ID: &str = "m4.recipe.assembler.motor_mk1";

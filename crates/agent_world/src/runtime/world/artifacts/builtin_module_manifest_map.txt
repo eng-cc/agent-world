@@ -13,6 +13,7 @@ m4.factory.smelter.mk1 crates/agent_world_builtin_wasm_modules/m4_factory_smelte
 m4.factory.assembler.mk1 crates/agent_world_builtin_wasm_modules/m4_factory_assembler_mk1/Cargo.toml
 m4.recipe.smelter.iron_ingot crates/agent_world_builtin_wasm_modules/m4_recipe_smelter_iron_ingot/Cargo.toml
 m4.recipe.smelter.copper_wire crates/agent_world_builtin_wasm_modules/m4_recipe_smelter_copper_wire/Cargo.toml
+m4.recipe.smelter.polymer_resin crates/agent_world_builtin_wasm_modules/m4_recipe_smelter_polymer_resin/Cargo.toml
 m4.recipe.smelter.alloy_plate crates/agent_world_builtin_wasm_modules/m4_recipe_smelter_alloy_plate/Cargo.toml
 m4.recipe.assembler.gear crates/agent_world_builtin_wasm_modules/m4_recipe_assembler_gear/Cargo.toml
 m4.recipe.assembler.control_chip crates/agent_world_builtin_wasm_modules/m4_recipe_assembler_control_chip/Cargo.toml

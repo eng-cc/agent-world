@@ -3,6 +3,7 @@ m4.factory.smelter.mk1
 m4.factory.assembler.mk1
 m4.recipe.smelter.iron_ingot
 m4.recipe.smelter.copper_wire
+m4.recipe.smelter.polymer_resin
 m4.recipe.smelter.alloy_plate
 m4.recipe.assembler.gear
 m4.recipe.assembler.control_chip
