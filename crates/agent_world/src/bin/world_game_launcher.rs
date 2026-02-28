@@ -317,6 +317,7 @@ fn handle_http_connection(mut stream: TcpStream, root_dir: &Path) -> Result<(), 
             let body = fs::read(&path).map_err(|err| {
                 format!("failed to read static asset `{}`: {err}", path.display())
             })?;
+            let body = sanitize_index_html_for_embedded_server(path.as_path(), body.as_slice());
             write_http_response(
                 &mut stream,
                 200,
@@ -406,6 +407,33 @@ fn content_type_for_path(path: &Path) -> &'static str {
         Some("txt") => "text/plain; charset=utf-8",
         _ => "application/octet-stream",
     }
+}
+
+fn sanitize_index_html_for_embedded_server(path: &Path, body: &[u8]) -> Vec<u8> {
+    if path.file_name() != Some(OsStr::new("index.html")) {
+        return body.to_vec();
+    }
+    strip_trunk_autoreload_script(body)
+}
+
+fn strip_trunk_autoreload_script(body: &[u8]) -> Vec<u8> {
+    let html = String::from_utf8_lossy(body);
+    let marker = ".well-known/trunk/ws";
+    let Some(marker_index) = html.find(marker) else {
+        return body.to_vec();
+    };
+    let Some(script_start) = html[..marker_index].rfind("<script") else {
+        return body.to_vec();
+    };
+    let Some(script_end_rel) = html[marker_index..].find("</script>") else {
+        return body.to_vec();
+    };
+    let script_end = marker_index + script_end_rel + "</script>".len();
+
+    let mut sanitized = String::with_capacity(html.len());
+    sanitized.push_str(&html[..script_start]);
+    sanitized.push_str(&html[script_end..]);
+    sanitized.into_bytes()
 }
 
 fn write_http_response(
@@ -949,8 +977,9 @@ mod world_game_launcher_tests {
 
     use super::{
         build_game_url, content_type_for_path, parse_host_port, parse_options,
-        resolve_static_asset_path, sanitize_relative_request_path, CliOptions,
-        DEFAULT_CHAIN_NODE_ID, DEFAULT_CHAIN_STATUS_BIND, DEFAULT_LIVE_BIND, DEFAULT_SCENARIO,
+        resolve_static_asset_path, sanitize_index_html_for_embedded_server,
+        sanitize_relative_request_path, CliOptions, DEFAULT_CHAIN_NODE_ID,
+        DEFAULT_CHAIN_STATUS_BIND, DEFAULT_LIVE_BIND, DEFAULT_SCENARIO,
     };
 
     #[test]
@@ -1120,6 +1149,29 @@ mod world_game_launcher_tests {
             content_type_for_path(Path::new("a.js")),
             "text/javascript; charset=utf-8"
         );
+    }
+
+    #[test]
+    fn sanitize_index_html_for_embedded_server_removes_trunk_reload_script() {
+        let html = concat!(
+            "<html><body>",
+            "<script>window.bootstrap = true;</script>",
+            "<script>const url = 'ws://{{__TRUNK_ADDRESS__}}{{__TRUNK_WS_BASE__}}.well-known/trunk/ws';</script>",
+            "</body></html>"
+        );
+        let sanitized =
+            sanitize_index_html_for_embedded_server(Path::new("index.html"), html.as_bytes());
+        let sanitized = String::from_utf8(sanitized).expect("utf-8");
+        assert!(sanitized.contains("window.bootstrap = true"));
+        assert!(!sanitized.contains(".well-known/trunk/ws"));
+        assert!(!sanitized.contains("__TRUNK_ADDRESS__"));
+    }
+
+    #[test]
+    fn sanitize_index_html_for_embedded_server_keeps_non_index_files_unchanged() {
+        let body = b"<script>.well-known/trunk/ws</script>";
+        let sanitized = sanitize_index_html_for_embedded_server(Path::new("app.js"), body);
+        assert_eq!(sanitized, body);
     }
 
     fn make_temp_dir(label: &str) -> PathBuf {
