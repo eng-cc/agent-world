@@ -14,6 +14,10 @@ const DEFAULT_LIVE_BIND: &str = "127.0.0.1:5023";
 const DEFAULT_WEB_BIND: &str = "127.0.0.1:5011";
 const DEFAULT_VIEWER_HOST: &str = "127.0.0.1";
 const DEFAULT_VIEWER_PORT: &str = "4173";
+const DEFAULT_CHAIN_STATUS_BIND: &str = "127.0.0.1:5121";
+const DEFAULT_CHAIN_NODE_ID: &str = "viewer-live-node";
+const DEFAULT_CHAIN_NODE_ROLE: &str = "sequencer";
+const DEFAULT_CHAIN_NODE_TICK_MS: &str = "200";
 const MAX_LOG_LINES: usize = 2000;
 const EGUI_CJK_FONT_NAME: &str = "agent-world-cjk";
 const EGUI_CJK_FONT_BYTES: &[u8] =
@@ -101,6 +105,13 @@ struct LaunchConfig {
     viewer_port: String,
     viewer_static_dir: String,
     llm_enabled: bool,
+    chain_enabled: bool,
+    chain_status_bind: String,
+    chain_node_id: String,
+    chain_world_id: String,
+    chain_node_role: String,
+    chain_node_tick_ms: String,
+    chain_node_validators: String,
     auto_open_browser: bool,
     launcher_bin: String,
 }
@@ -118,6 +129,13 @@ impl Default for LaunchConfig {
             viewer_port: DEFAULT_VIEWER_PORT.to_string(),
             viewer_static_dir,
             llm_enabled: true,
+            chain_enabled: true,
+            chain_status_bind: DEFAULT_CHAIN_STATUS_BIND.to_string(),
+            chain_node_id: DEFAULT_CHAIN_NODE_ID.to_string(),
+            chain_world_id: String::new(),
+            chain_node_role: DEFAULT_CHAIN_NODE_ROLE.to_string(),
+            chain_node_tick_ms: DEFAULT_CHAIN_NODE_TICK_MS.to_string(),
+            chain_node_validators: String::new(),
             auto_open_browser: true,
             launcher_bin,
         }
@@ -278,7 +296,26 @@ impl eframe::App for ClientLauncherApp {
                 ui.label("viewer port");
                 ui.text_edit_singleline(&mut self.config.viewer_port);
                 ui.checkbox(&mut self.config.llm_enabled, "启用 LLM");
+                ui.checkbox(&mut self.config.chain_enabled, "启用链运行时");
                 ui.checkbox(&mut self.config.auto_open_browser, "自动打开浏览器");
+            });
+
+            ui.horizontal_wrapped(|ui| {
+                ui.label("chain status bind");
+                ui.text_edit_singleline(&mut self.config.chain_status_bind);
+                ui.label("chain node id");
+                ui.text_edit_singleline(&mut self.config.chain_node_id);
+                ui.label("chain world id");
+                ui.text_edit_singleline(&mut self.config.chain_world_id);
+            });
+
+            ui.horizontal_wrapped(|ui| {
+                ui.label("chain role");
+                ui.text_edit_singleline(&mut self.config.chain_node_role);
+                ui.label("chain tick ms");
+                ui.text_edit_singleline(&mut self.config.chain_node_tick_ms);
+                ui.label("chain validators");
+                ui.text_edit_singleline(&mut self.config.chain_node_validators);
             });
 
             ui.horizontal_wrapped(|ui| {
@@ -351,6 +388,15 @@ fn build_launcher_args(config: &LaunchConfig) -> Result<Vec<String>, String> {
     if config.viewer_static_dir.trim().is_empty() {
         return Err("viewer static dir cannot be empty".to_string());
     }
+    if config.chain_enabled {
+        parse_host_port(config.chain_status_bind.as_str(), "chain status bind")?;
+        if config.chain_node_id.trim().is_empty() {
+            return Err("chain node id cannot be empty".to_string());
+        }
+        parse_chain_role(config.chain_node_role.as_str())?;
+        parse_port(config.chain_node_tick_ms.as_str(), "chain tick ms")?;
+        let _ = parse_chain_validators(config.chain_node_validators.as_str())?;
+    }
 
     let mut args = vec![
         "--scenario".to_string(),
@@ -366,6 +412,28 @@ fn build_launcher_args(config: &LaunchConfig) -> Result<Vec<String>, String> {
         "--viewer-static-dir".to_string(),
         config.viewer_static_dir.trim().to_string(),
     ];
+
+    if config.chain_enabled {
+        args.push("--chain-enable".to_string());
+        args.push("--chain-status-bind".to_string());
+        args.push(config.chain_status_bind.trim().to_string());
+        args.push("--chain-node-id".to_string());
+        args.push(config.chain_node_id.trim().to_string());
+        if !config.chain_world_id.trim().is_empty() {
+            args.push("--chain-world-id".to_string());
+            args.push(config.chain_world_id.trim().to_string());
+        }
+        args.push("--chain-node-role".to_string());
+        args.push(parse_chain_role(config.chain_node_role.as_str())?);
+        args.push("--chain-node-tick-ms".to_string());
+        args.push(parse_port(config.chain_node_tick_ms.as_str(), "chain tick ms")?.to_string());
+        for validator in parse_chain_validators(config.chain_node_validators.as_str())? {
+            args.push("--chain-node-validator".to_string());
+            args.push(validator);
+        }
+    } else {
+        args.push("--chain-disable".to_string());
+    }
 
     if config.llm_enabled {
         args.push("--with-llm".to_string());
@@ -417,6 +485,37 @@ fn parse_host_port(raw: &str, label: &str) -> Result<(String, u16), String> {
     }
     let port = parse_port(port_raw, label)?;
     Ok((host.trim().to_string(), port))
+}
+
+fn parse_chain_role(raw: &str) -> Result<String, String> {
+    let role = raw.trim().to_ascii_lowercase();
+    match role.as_str() {
+        "sequencer" | "storage" | "observer" => Ok(role),
+        _ => Err("chain role must be one of: sequencer|storage|observer".to_string()),
+    }
+}
+
+fn parse_chain_validators(raw: &str) -> Result<Vec<String>, String> {
+    let mut validators = Vec::new();
+    for token in raw.split([',', ';', ' ']) {
+        let token = token.trim();
+        if token.is_empty() {
+            continue;
+        }
+        let (validator_id, stake) = token
+            .rsplit_once(':')
+            .ok_or_else(|| "chain validators must be <validator_id:stake>".to_string())?;
+        if validator_id.trim().is_empty() {
+            return Err("chain validators cannot contain empty validator_id".to_string());
+        }
+        let stake = stake
+            .parse::<u64>()
+            .ok()
+            .filter(|value| *value > 0)
+            .ok_or_else(|| "chain validator stake must be positive integer".to_string())?;
+        validators.push(format!("{}:{}", validator_id.trim(), stake));
+    }
+    Ok(validators)
 }
 
 fn spawn_launcher_process(bin: &str, args: &[String]) -> Result<RunningProcess, String> {
@@ -548,7 +647,8 @@ fn open_browser(url: &str) -> Result<(), String> {
 mod tests {
     use super::{
         build_game_url, build_launcher_args, install_cjk_font, normalize_host_for_url,
-        parse_host_port, parse_port, LaunchConfig, EGUI_CJK_FONT_NAME,
+        parse_chain_role, parse_chain_validators, parse_host_port, parse_port, LaunchConfig,
+        EGUI_CJK_FONT_NAME,
     };
     use eframe::egui;
 
@@ -569,12 +669,14 @@ mod tests {
         let config = LaunchConfig {
             llm_enabled: true,
             auto_open_browser: false,
+            chain_enabled: false,
             ..LaunchConfig::default()
         };
         let args = build_launcher_args(&config).expect("args should build");
         assert!(args.contains(&"--with-llm".to_string()));
         assert!(args.contains(&"--no-open-browser".to_string()));
         assert!(args.contains(&"--viewer-static-dir".to_string()));
+        assert!(args.contains(&"--chain-disable".to_string()));
     }
 
     #[test]
@@ -610,6 +712,48 @@ mod tests {
     fn launch_config_defaults_enable_llm() {
         let config = LaunchConfig::default();
         assert!(config.llm_enabled);
+        assert!(config.chain_enabled);
+    }
+
+    #[test]
+    fn build_launcher_args_contains_chain_overrides_when_enabled() {
+        let config = LaunchConfig {
+            chain_enabled: true,
+            chain_status_bind: "127.0.0.1:6121".to_string(),
+            chain_node_id: "chain-node-a".to_string(),
+            chain_world_id: "live-chain-a".to_string(),
+            chain_node_role: "storage".to_string(),
+            chain_node_tick_ms: "350".to_string(),
+            chain_node_validators: "node-a:55,node-b:45".to_string(),
+            ..LaunchConfig::default()
+        };
+        let args = build_launcher_args(&config).expect("args should build");
+        assert!(args.contains(&"--chain-enable".to_string()));
+        assert!(args.contains(&"--chain-status-bind".to_string()));
+        assert!(args.contains(&"127.0.0.1:6121".to_string()));
+        assert!(args.contains(&"--chain-node-id".to_string()));
+        assert!(args.contains(&"chain-node-a".to_string()));
+        assert!(args.contains(&"--chain-world-id".to_string()));
+        assert!(args.contains(&"live-chain-a".to_string()));
+        assert!(args.contains(&"--chain-node-role".to_string()));
+        assert!(args.contains(&"storage".to_string()));
+        assert!(args.contains(&"--chain-node-tick-ms".to_string()));
+        assert!(args.contains(&"350".to_string()));
+        assert!(args.contains(&"--chain-node-validator".to_string()));
+        assert!(args.contains(&"node-a:55".to_string()));
+        assert!(args.contains(&"node-b:45".to_string()));
+    }
+
+    #[test]
+    fn parse_chain_role_rejects_invalid_value() {
+        let err = parse_chain_role("invalid").expect_err("should fail");
+        assert!(err.contains("sequencer|storage|observer"));
+    }
+
+    #[test]
+    fn parse_chain_validators_rejects_invalid_format() {
+        let err = parse_chain_validators("node-a").expect_err("should fail");
+        assert!(err.contains("<validator_id:stake>"));
     }
 
     #[test]

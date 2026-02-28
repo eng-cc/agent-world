@@ -15,6 +15,7 @@ Build a distributable launcher bundle:
 - bin/agent_world_client_launcher
 - bin/world_game_launcher
 - bin/world_viewer_live
+- bin/world_chain_runtime
 - web/ (prebuilt viewer static assets)
 - run-client.sh (desktop client launcher entry)
 - run-game.sh (one-command entry)
@@ -124,6 +125,7 @@ fi
 
 LAUNCHER_BIN_NAME="$(resolve_binary_name world_game_launcher)"
 LIVE_BIN_NAME="$(resolve_binary_name world_viewer_live)"
+CHAIN_BIN_NAME="$(resolve_binary_name world_chain_runtime)"
 CLIENT_LAUNCHER_BIN_NAME="$(resolve_binary_name agent_world_client_launcher)"
 TARGET_SUBDIR="$PROFILE"
 if [[ "$PROFILE" == "dev" ]]; then
@@ -137,25 +139,28 @@ run mkdir -p "$BUNDLE_BIN_DIR" "$BUNDLE_WEB_DIR"
 
 # 1) Build native binaries for launcher/live/client launcher.
 if [[ "$PROFILE" == "release" ]]; then
-  run env -u RUSTC_WRAPPER cargo build --release -p agent_world --bin world_game_launcher --bin world_viewer_live
+  run env -u RUSTC_WRAPPER cargo build --release -p agent_world --bin world_game_launcher --bin world_viewer_live --bin world_chain_runtime
   run env -u RUSTC_WRAPPER cargo build --release -p agent_world_client_launcher
 else
-  run env -u RUSTC_WRAPPER cargo build -p agent_world --bin world_game_launcher --bin world_viewer_live
+  run env -u RUSTC_WRAPPER cargo build -p agent_world --bin world_game_launcher --bin world_viewer_live --bin world_chain_runtime
   run env -u RUSTC_WRAPPER cargo build -p agent_world_client_launcher
 fi
 
 LAUNCHER_SRC="$ROOT_DIR/target/$TARGET_SUBDIR/$LAUNCHER_BIN_NAME"
 LIVE_SRC="$ROOT_DIR/target/$TARGET_SUBDIR/$LIVE_BIN_NAME"
+CHAIN_SRC="$ROOT_DIR/target/$TARGET_SUBDIR/$CHAIN_BIN_NAME"
 CLIENT_LAUNCHER_SRC="$ROOT_DIR/target/$TARGET_SUBDIR/$CLIENT_LAUNCHER_BIN_NAME"
 
 if [[ "$DRY_RUN" != "1" ]]; then
   [[ -f "$LAUNCHER_SRC" ]] || { echo "error: launcher binary not found: $LAUNCHER_SRC" >&2; exit 1; }
   [[ -f "$LIVE_SRC" ]] || { echo "error: world_viewer_live binary not found: $LIVE_SRC" >&2; exit 1; }
+  [[ -f "$CHAIN_SRC" ]] || { echo "error: world_chain_runtime binary not found: $CHAIN_SRC" >&2; exit 1; }
   [[ -f "$CLIENT_LAUNCHER_SRC" ]] || { echo "error: client launcher binary not found: $CLIENT_LAUNCHER_SRC" >&2; exit 1; }
 fi
 
 run cp "$LAUNCHER_SRC" "$BUNDLE_BIN_DIR/$LAUNCHER_BIN_NAME"
 run cp "$LIVE_SRC" "$BUNDLE_BIN_DIR/$LIVE_BIN_NAME"
+run cp "$CHAIN_SRC" "$BUNDLE_BIN_DIR/$CHAIN_BIN_NAME"
 run cp "$CLIENT_LAUNCHER_SRC" "$BUNDLE_BIN_DIR/$CLIENT_LAUNCHER_BIN_NAME"
 
 # 2) Prepare web dist (trunk build by default).
@@ -191,6 +196,7 @@ set -euo pipefail
 ROOT_DIR=\"\$(cd \"\$(dirname \"\${BASH_SOURCE[0]}\")\" && pwd)\"
 AGENT_WORLD_GAME_LAUNCHER_BIN=\"\$ROOT_DIR/bin/$LAUNCHER_BIN_NAME\" \
 AGENT_WORLD_GAME_STATIC_DIR=\"\$ROOT_DIR/web\" \
+AGENT_WORLD_WORLD_CHAIN_RUNTIME_BIN=\"\$ROOT_DIR/bin/$CHAIN_BIN_NAME\" \
 \"\$ROOT_DIR/bin/$CLIENT_LAUNCHER_BIN_NAME\" \"\$@\"
 LAUNCH"
 run chmod +x "$OUT_DIR/run-client.sh"
@@ -220,6 +226,7 @@ Bundle layout:
 - bin/agent_world_client_launcher
 - bin/world_game_launcher
 - bin/world_viewer_live
+- bin/world_chain_runtime
 - web/
 - run-client.sh
 - run-game.sh
@@ -230,6 +237,7 @@ Bundle ready: $OUT_DIR
 - client launcher: $BUNDLE_BIN_DIR/$CLIENT_LAUNCHER_BIN_NAME
 - launcher:        $BUNDLE_BIN_DIR/$LAUNCHER_BIN_NAME
 - live:            $BUNDLE_BIN_DIR/$LIVE_BIN_NAME
+- chain runtime:   $BUNDLE_BIN_DIR/$CHAIN_BIN_NAME
 - web:             $BUNDLE_WEB_DIR
 - entries:         $OUT_DIR/run-client.sh, $OUT_DIR/run-game.sh
 INFO
