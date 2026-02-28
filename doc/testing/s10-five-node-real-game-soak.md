@@ -53,6 +53,9 @@
 - 启动前默认隔离历史 `output/node-distfs/s10-*` 目录，保证每轮从干净 PoS/复制状态起跑。
 - `world_viewer_live` 在单节点拓扑下仅 sequencer 启用执行 hook 与执行强约束，storage/observer 以复制追平为主，避免同步提交高度跳变导致执行链路自锁。
 - sequencer 执行桥在遇到非连续 committed 高度时采用“容错续跑”策略：记录告警并继续处理当前 commit，避免因偶发高度跳变导致长跑共识停摆。
+- 奖励结算签名链路约束：
+  - 结算 envelope 的 signer key 按 `node_id` 从根密钥派生，所有节点使用同一派生规则进行绑定与验签，避免“本地 root key 直签”导致跨节点验签不一致。
+  - 结算 envelope 网络编码使用 CBOR（解码兼容 JSON 回退），降低跨节点传输后签名载荷失真风险。
 
 ### 3) S10 门禁指标
 - 共识：`committed_height` 单调推进，`stall <= max_stall_secs`。

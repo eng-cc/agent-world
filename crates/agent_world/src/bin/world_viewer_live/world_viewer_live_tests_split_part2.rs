@@ -53,6 +53,91 @@ fn build_reward_settlement_mint_records_uses_preview_world_without_mutation() {
 }
 
 #[test]
+fn reward_runtime_node_identity_bindings_derive_signer_binding_from_root_key() {
+    let options = parse_options(
+        [
+            "--topology",
+            "single",
+            "--node-validator",
+            "node-sequencer:70",
+            "--node-validator",
+            "node-storage:30",
+            "--reward-runtime-signer",
+            "node-sequencer",
+            "--reward-runtime-leader-node",
+            "node-sequencer",
+        ]
+        .into_iter(),
+    )
+    .expect("options");
+
+    let root_private = [41_u8; 32];
+    let root_signing_key = ed25519_dalek::SigningKey::from_bytes(&root_private);
+    let root_keypair = node_keypair_config::NodeKeypairConfig {
+        private_key_hex: hex::encode(root_signing_key.to_bytes()),
+        public_key_hex: hex::encode(root_signing_key.verifying_key().to_bytes()),
+    };
+
+    let bindings = reward_runtime_node_identity_bindings(
+        &options,
+        "node-sequencer",
+        "node-sequencer",
+        "node-sequencer",
+        &root_keypair,
+    )
+    .expect("bindings");
+
+    let expected_signer =
+        derive_node_consensus_signer_keypair("node-sequencer", &root_keypair).expect("derive");
+    assert_eq!(
+        bindings.get("node-sequencer"),
+        Some(&expected_signer.public_key_hex)
+    );
+    assert_ne!(
+        bindings.get("node-sequencer"),
+        Some(&root_keypair.public_key_hex)
+    );
+    assert!(bindings.contains_key("node-storage"));
+}
+
+#[test]
+fn ensure_reward_runtime_settlement_node_identity_bindings_rejects_missing_binding() {
+    let mut world = RuntimeWorld::new();
+    let report = agent_world::runtime::EpochSettlementReport {
+        epoch_index: 1,
+        pool_points: 10,
+        storage_pool_points: 0,
+        distributed_points: 10,
+        storage_distributed_points: 0,
+        total_distributed_points: 10,
+        settlements: vec![agent_world::runtime::NodeSettlement {
+            node_id: "node-missing".to_string(),
+            obligation_met: true,
+            compute_score: 0.0,
+            storage_score: 0.0,
+            uptime_score: 0.0,
+            reliability_score: 0.0,
+            storage_reward_score: 0.0,
+            rewardable_storage_bytes: 0,
+            penalty_score: 0.0,
+            total_score: 0.0,
+            main_awarded_points: 10,
+            storage_awarded_points: 0,
+            awarded_points: 10,
+            cumulative_points: 10,
+        }],
+    };
+
+    let err = ensure_reward_runtime_settlement_node_identity_bindings(
+        &mut world,
+        &report,
+        &std::collections::BTreeMap::new(),
+    )
+    .expect_err("missing binding should fail");
+    assert!(err.contains("missing configured key"));
+}
+
+#[test]
 fn collect_distfs_challenge_report_returns_zero_for_empty_store() {
     let dir = temp_dir("distfs-probe-empty");
     let mut state = StorageChallengeProbeCursorState::default();

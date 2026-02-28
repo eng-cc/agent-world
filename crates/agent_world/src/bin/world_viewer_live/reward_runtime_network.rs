@@ -157,15 +157,24 @@ struct ObservationTraceIdentityPayload<'a> {
 pub(super) fn encode_reward_settlement_envelope(
     envelope: &RewardSettlementEnvelope,
 ) -> Result<Vec<u8>, String> {
-    serde_json::to_vec(envelope)
+    serde_cbor::to_vec(envelope)
         .map_err(|err| format!("encode settlement envelope failed: {}", err))
 }
 
 pub(super) fn decode_reward_settlement_envelope(
     payload: &[u8],
 ) -> Result<RewardSettlementEnvelope, String> {
-    serde_json::from_slice::<RewardSettlementEnvelope>(payload)
-        .map_err(|err| format!("decode settlement envelope failed: {}", err))
+    match serde_cbor::from_slice::<RewardSettlementEnvelope>(payload) {
+        Ok(envelope) => Ok(envelope),
+        Err(cbor_err) => {
+            serde_json::from_slice::<RewardSettlementEnvelope>(payload).map_err(|json_err| {
+                format!(
+                    "decode settlement envelope failed (cbor: {}; json: {})",
+                    cbor_err, json_err
+                )
+            })
+        }
+    }
 }
 
 pub(super) fn reward_settlement_envelope_id(

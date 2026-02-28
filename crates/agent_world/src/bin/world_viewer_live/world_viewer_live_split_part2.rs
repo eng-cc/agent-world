@@ -26,8 +26,11 @@ fn start_reward_runtime_worker(
     if report_dir.is_empty() {
         return Err("reward runtime report dir cannot be empty".to_string());
     }
-    let signer_keypair = ensure_node_keypair_in_config(Path::new(DEFAULT_CONFIG_FILE_NAME))
-        .map_err(|err| format!("failed to load reward runtime signer keypair: {err}"))?;
+    let signer_root_keypair = ensure_node_keypair_in_config(Path::new(DEFAULT_CONFIG_FILE_NAME))
+        .map_err(|err| format!("failed to load reward runtime signer root keypair: {err}"))?;
+    let signer_keypair =
+        derive_node_consensus_signer_keypair(signer_node_id.as_str(), &signer_root_keypair)
+            .map_err(|err| format!("failed to derive reward runtime signer keypair: {err}"))?;
     let world_id = handle.world_id.clone();
     let primary_node_id = handle.primary_node_id.clone();
     let settlement_leader_node_id = options
@@ -42,7 +45,7 @@ fn start_reward_runtime_worker(
         primary_node_id.as_str(),
         signer_node_id.as_str(),
         settlement_leader_node_id.as_str(),
-        &signer_keypair,
+        &signer_root_keypair,
     )?;
     let node_report_root = reward_runtime_node_report_root(
         options.reward_runtime_report_dir.as_str(),
@@ -127,10 +130,6 @@ fn reward_runtime_node_identity_bindings(
 
     let mut bindings = BTreeMap::new();
     for node_id in node_ids {
-        if node_id == signer_node_id {
-            bindings.insert(node_id, root_keypair.public_key_hex.clone());
-            continue;
-        }
         let keypair = derive_node_consensus_signer_keypair(node_id.as_str(), root_keypair)?;
         bindings.insert(node_id, keypair.public_key_hex);
     }
@@ -626,8 +625,6 @@ fn reward_runtime_loop(
             if let Err(err) = ensure_reward_runtime_settlement_node_identity_bindings(
                 &mut reward_world,
                 &report,
-                &config.signer_private_key_hex,
-                &config.signer_public_key_hex,
                 &config.reward_runtime_node_identity_bindings,
             ) {
                 eprintln!("reward runtime settlement identity binding failed: {err}");
@@ -887,24 +884,16 @@ fn reward_runtime_consensus_ready_for_settlement(snapshot: &NodeSnapshot) -> boo
 fn ensure_reward_runtime_settlement_node_identity_bindings(
     reward_world: &mut RuntimeWorld,
     report: &EpochSettlementReport,
-    signer_private_key_hex: &str,
-    signer_public_key_hex: &str,
     configured_bindings: &BTreeMap<String, String>,
 ) -> Result<(), String> {
-    let signer_root_keypair = node_keypair_config::NodeKeypairConfig {
-        private_key_hex: signer_private_key_hex.to_string(),
-        public_key_hex: signer_public_key_hex.to_string(),
-    };
     for settlement in &report.settlements {
         let node_id = settlement.node_id.as_str();
         if reward_world.node_identity_public_key(node_id).is_some() {
             continue;
         }
-        let public_key_hex = if let Some(bound) = configured_bindings.get(node_id) {
-            bound.clone()
-        } else {
-            derive_node_consensus_signer_keypair(node_id, &signer_root_keypair)?.public_key_hex
-        };
+        let public_key_hex = configured_bindings.get(node_id).cloned().ok_or_else(|| {
+            format!("settlement node identity binding missing configured key: {node_id}")
+        })?;
         reward_world
             .bind_node_identity(node_id, public_key_hex.as_str())
             .map_err(|err| format!("{:?}", err))?;
