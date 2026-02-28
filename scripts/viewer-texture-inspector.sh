@@ -27,12 +27,15 @@ Options:
   --emissive-texture <p>   override source emissive texture
   --use-source-mesh        use inspected entity mesh as location mesh in preview
   --out-dir <dir>          output root (default: output/texture_inspector/<timestamp>)
+  --art-capture            enable art-review mode (director ui + source mesh + crop output)
+  --automation-steps <s>   override viewer automation steps for all captures
+  --crop-window <w:h:x:y>  crop window for viewer_art.png; use 'none' to disable crop
   --no-prewarm             pass --no-prewarm to all capture runs
   -h, --help               show help
 
 Outputs:
   output/texture_inspector/<timestamp>/<entity>/<variant>/
-    viewer.png live_server.log viewer.log meta.txt
+    viewer.png viewer_art.png live_server.log viewer.log meta.txt
 USAGE
 }
 
@@ -135,6 +138,59 @@ capture_status_value() {
   grep -E "^${key}=" "$status_file" | tail -n 1 | cut -d'=' -f2-
 }
 
+default_automation_steps_for_entity() {
+  case "$1" in
+    agent)
+      echo "mode=3d;focus=first_location;zoom=0.22;orbit=18,-28;wait=0.6"
+      ;;
+    location)
+      echo "mode=3d;focus=first_location;zoom=0.34;orbit=14,-24;wait=0.6"
+      ;;
+    asset)
+      echo "mode=3d;focus=first_location;zoom=0.26;orbit=18,-30;wait=0.6"
+      ;;
+    power_plant)
+      echo "mode=3d;focus=first_location;zoom=0.24;orbit=20,-30;wait=0.6"
+      ;;
+    power_storage)
+      echo "mode=3d;focus=first_location;zoom=0.24;orbit=20,-30;wait=0.6"
+      ;;
+    *)
+      echo "mode=3d;focus=first_location;pan=0,2,0;zoom=1.2;orbit=10,-25;select=first_location;wait=0.4"
+      ;;
+  esac
+}
+
+parse_crop_window() {
+  local raw=${1:-none}
+  local normalized
+  normalized=$(echo "$raw" | tr '[:upper:]' '[:lower:]')
+  if [[ "$normalized" == "none" || "$normalized" == "off" || "$normalized" == "disable" ]]; then
+    echo "none"
+    return 0
+  fi
+
+  IFS=':' read -r crop_w crop_h crop_x crop_y extra <<<"$raw"
+  if [[ -n "${extra:-}" || -z "${crop_w:-}" || -z "${crop_h:-}" || -z "${crop_x:-}" || -z "${crop_y:-}" ]]; then
+    echo "invalid --crop-window: $raw (expected w:h:x:y or none)" >&2
+    exit 2
+  fi
+
+  for value in "$crop_w" "$crop_h" "$crop_x" "$crop_y"; do
+    if [[ ! "$value" =~ ^[0-9]+$ ]]; then
+      echo "invalid --crop-window: $raw (all values must be non-negative integers)" >&2
+      exit 2
+    fi
+  done
+
+  if [[ "$crop_w" -eq 0 || "$crop_h" -eq 0 ]]; then
+    echo "invalid --crop-window: $raw (width/height must be > 0)" >&2
+    exit 2
+  fi
+
+  echo "${crop_w}:${crop_h}:${crop_x}:${crop_y}"
+}
+
 preset_file="crates/agent_world_viewer/assets/themes/industrial_v1/presets/industrial_default.env"
 inspect_raw="all"
 variants_raw="all"
@@ -146,6 +202,9 @@ fragment_strategy="fidelity"
 out_dir=""
 force_no_prewarm=0
 use_source_mesh=0
+art_capture=0
+automation_steps_override=""
+crop_window_raw=""
 
 override_base_texture=""
 override_normal_texture=""
@@ -210,6 +269,18 @@ while [[ $# -gt 0 ]]; do
       out_dir=${2:-}
       shift 2
       ;;
+    --art-capture)
+      art_capture=1
+      shift
+      ;;
+    --automation-steps)
+      automation_steps_override=${2:-}
+      shift 2
+      ;;
+    --crop-window)
+      crop_window_raw=${2:-}
+      shift 2
+      ;;
     --no-prewarm)
       force_no_prewarm=1
       shift
@@ -265,15 +336,34 @@ entities=($(resolve_entities "$inspect_raw"))
 variants=($(resolve_variants "$variants_raw"))
 mkdir -p "$out_dir"
 
-automation_steps="mode=3d;focus=first_location;pan=0,2,0;zoom=1.2;orbit=10,-25;select=first_location;wait=0.4"
+default_automation_steps="mode=3d;focus=first_location;pan=0,2,0;zoom=1.2;orbit=10,-25;select=first_location;wait=0.4"
+if [[ "$art_capture" -eq 1 && "$use_source_mesh" -eq 0 ]]; then
+  use_source_mesh=1
+fi
+if [[ -z "$crop_window_raw" ]]; then
+  if [[ "$art_capture" -eq 1 ]]; then
+    crop_window_raw="600:620:0:120"
+  else
+    crop_window_raw="none"
+  fi
+fi
+crop_window=$(parse_crop_window "$crop_window_raw")
 
 capture_index=0
 for entity in "${entities[@]}"; do
   src_prefix=$(entity_prefix "$entity")
+  entity_default_automation_steps=$(default_automation_steps_for_entity "$entity")
   for variant in "${variants[@]}"; do
     port=$((base_port + capture_index))
     variant_dir="$out_dir/$entity/$variant"
     mkdir -p "$variant_dir"
+    if [[ -n "$automation_steps_override" ]]; then
+      automation_steps="$automation_steps_override"
+    elif [[ "$art_capture" -eq 1 ]]; then
+      automation_steps="$entity_default_automation_steps"
+    else
+      automation_steps="$default_automation_steps"
+    fi
 
     no_prewarm_arg=""
     if [[ "$force_no_prewarm" -eq 1 || "$capture_index" -gt 0 ]]; then
@@ -289,6 +379,11 @@ for entity in "${entities[@]}"; do
       export AGENT_WORLD_VIEWER_FRAGMENT_MATERIAL_STRATEGY="$fragment_strategy"
       export AGENT_WORLD_VIEWER_SHOW_LOCATIONS=1
       export AGENT_WORLD_VIEWER_SHOW_AGENTS=0
+      if [[ "$art_capture" -eq 1 ]]; then
+        export AGENT_WORLD_VIEWER_EXPERIENCE_MODE="director"
+        export AGENT_WORLD_VIEWER_PANEL_MODE="observe"
+        export AGENT_WORLD_VIEWER_SHOW_OPS_NAV=0
+      fi
 
       src_mesh_key="AGENT_WORLD_VIEWER_${src_prefix}_MESH_ASSET"
       src_base_key="AGENT_WORLD_VIEWER_${src_prefix}_BASE_TEXTURE_ASSET"
@@ -342,6 +437,20 @@ for entity in "${entities[@]}"; do
       cp .tmp/screens/viewer.log "$variant_dir/viewer.log"
       cp "$capture_status_file" "$variant_dir/capture_status.txt"
 
+      viewer_art_capture_status="passthrough"
+      if [[ "$crop_window" == "none" ]]; then
+        cp "$variant_dir/viewer.png" "$variant_dir/viewer_art.png"
+      else
+        IFS=':' read -r crop_w crop_h crop_x crop_y <<<"$crop_window"
+        if ffmpeg -y -i "$variant_dir/viewer.png" -vf "crop=${crop_w}:${crop_h}:${crop_x}:${crop_y}" "$variant_dir/viewer_art.png" >/dev/null 2>&1; then
+          viewer_art_capture_status="cropped"
+        else
+          viewer_art_capture_status="crop_failed_fallback"
+          cp "$variant_dir/viewer.png" "$variant_dir/viewer_art.png"
+          echo "warn: crop failed, fallback to viewer.png (entity=$entity variant=$variant crop_window=$crop_window)" >&2
+        fi
+      fi
+
       cat >"$variant_dir/meta.txt" <<META
 preset_file=$preset_file
 scenario=$scenario
@@ -350,6 +459,10 @@ variant=$variant
 port=$port
 render_profile=$render_profile
 fragment_strategy=$fragment_strategy
+art_capture=$art_capture
+automation_steps=$automation_steps
+crop_window=$crop_window
+viewer_art_capture_status=$viewer_art_capture_status
 use_source_mesh=$use_source_mesh
 location_mesh_asset=${AGENT_WORLD_VIEWER_LOCATION_MESH_ASSET:-}
 location_base_texture_asset=${AGENT_WORLD_VIEWER_LOCATION_BASE_TEXTURE_ASSET:-}
