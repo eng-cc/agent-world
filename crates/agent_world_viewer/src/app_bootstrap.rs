@@ -271,14 +271,41 @@ fn parse_experience_mode(raw: &str) -> Option<ViewerExperienceMode> {
     }
 }
 
-fn default_right_panel_layout_state(mode: ViewerExperienceMode) -> RightPanelLayoutState {
-    match mode {
+fn parse_env_toggle(raw: &str) -> Option<bool> {
+    match raw.trim().to_ascii_lowercase().as_str() {
+        "1" | "true" | "yes" | "on" => Some(true),
+        "0" | "false" | "no" | "off" => Some(false),
+        _ => None,
+    }
+}
+
+fn resolve_panel_hidden_override_from_env() -> Option<bool> {
+    std::env::var("AGENT_WORLD_VIEWER_PANEL_HIDDEN")
+        .ok()
+        .and_then(|raw| parse_env_toggle(raw.as_str()))
+}
+
+fn default_right_panel_layout_state_with_override(
+    mode: ViewerExperienceMode,
+    panel_hidden_override: Option<bool>,
+) -> RightPanelLayoutState {
+    let mut state = match mode {
         ViewerExperienceMode::Player => RightPanelLayoutState {
             top_panel_collapsed: false,
             panel_hidden: false,
         },
         ViewerExperienceMode::Director => RightPanelLayoutState::default(),
+    };
+
+    if let Some(panel_hidden) = panel_hidden_override {
+        state.panel_hidden = panel_hidden;
     }
+
+    state
+}
+
+fn default_right_panel_layout_state(mode: ViewerExperienceMode) -> RightPanelLayoutState {
+    default_right_panel_layout_state_with_override(mode, resolve_panel_hidden_override_from_env())
 }
 
 fn default_module_visibility_state(mode: ViewerExperienceMode) -> RightPanelModuleVisibilityState {
@@ -410,6 +437,39 @@ mod tests {
         assert_eq!(
             default_right_panel_layout_state(ViewerExperienceMode::Director),
             RightPanelLayoutState::default()
+        );
+    }
+
+    #[test]
+    fn parse_env_toggle_supports_on_and_off_values() {
+        assert_eq!(parse_env_toggle("true"), Some(true));
+        assert_eq!(parse_env_toggle(" On "), Some(true));
+        assert_eq!(parse_env_toggle("0"), Some(false));
+        assert_eq!(parse_env_toggle("off"), Some(false));
+        assert_eq!(parse_env_toggle("invalid"), None);
+    }
+
+    #[test]
+    fn right_panel_layout_state_applies_panel_hidden_override() {
+        assert_eq!(
+            default_right_panel_layout_state_with_override(
+                ViewerExperienceMode::Director,
+                Some(true)
+            ),
+            RightPanelLayoutState {
+                top_panel_collapsed: false,
+                panel_hidden: true,
+            }
+        );
+        assert_eq!(
+            default_right_panel_layout_state_with_override(
+                ViewerExperienceMode::Player,
+                Some(false)
+            ),
+            RightPanelLayoutState {
+                top_panel_collapsed: false,
+                panel_hidden: false,
+            }
         );
     }
 
