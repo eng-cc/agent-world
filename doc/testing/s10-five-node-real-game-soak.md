@@ -37,6 +37,9 @@
   - `--base-port <n>`：端口基准（默认 5810）。
   - `--out-dir <path>`：输出目录（默认 `.tmp/s10_game_longrun`）。
   - `--max-stall-secs <n>`、`--max-lag-p95 <n>`、`--max-distfs-failure-ratio <0~1>`：门禁阈值。
+  - `--node-auto-attest-all` / `--node-no-auto-attest-all` / `--node-auto-attest-sequencer-only`：
+    控制节点本地自动 attest 策略（默认 `sequencer_only`）。
+  - `--preserve-node-state`：保留历史 `output/node-distfs/s10-*` 状态（默认隔离历史状态，避免跨 run 污染）。
   - `--dry-run`：仅输出配置与命令，不启动进程。
 
 ### 2) 拓扑与验证人配置
@@ -47,6 +50,8 @@
   - `s10-observer-a:15`
   - `s10-observer-b:10`
 - 每节点配置 gossip bind + full-mesh peers，形成真实网络消息交换路径。
+- 启动前默认隔离历史 `output/node-distfs/s10-*` 目录，保证每轮从干净 PoS/复制状态起跑。
+- `world_viewer_live` 在单节点拓扑下仅 sequencer 启用执行 hook 与执行强约束，storage/observer 以复制追平为主，避免同步提交高度跳变导致执行链路自锁。
 
 ### 3) S10 门禁指标
 - 共识：`committed_height` 单调推进，`stall <= max_stall_secs`。
@@ -87,3 +92,5 @@
   - 缓解：默认 `--no-llm`，需要时显式 `--llm`。
 - 无 chaos 注入时对恢复能力覆盖不足。
   - 缓解：S10 先做稳定基线，恢复能力继续由 S9 chaos 套件承担。
+- 默认 `sequencer_only` auto-attest 策略降低了“全节点真实投票网络”覆盖度。
+  - 缓解：保留 `--node-no-auto-attest-all`/`--node-auto-attest-all` 可切换模式；发布前可按风险级别补跑 stricter 配置。

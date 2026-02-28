@@ -18,6 +18,11 @@
   - [x] 结算发布判定支持“已存在 committed checkpoint（高度>0）”的 Pending 状态，避免发布链路长期跳过。
   - [x] 奖励运行时预绑定并补齐 settlement 涉及节点身份，确保 mint 签名校验路径可执行。
   - [x] 执行真实短跑验证，确认 `minted_records` 样本出现且门禁通过。
+- [x] T6：修复 no-LLM 长跑 `committed_height` 长时间不增长（stall）问题。
+  - [x] `world_viewer_live` 单节点模式仅在 sequencer 角色启用执行 hook 与执行强约束，避免非 sequencer 同步提交时触发 contiguous-height 错误导致共识卡死。
+  - [x] `scripts/s10-five-node-game-soak.sh` 增加节点状态隔离（默认搬迁历史 `output/node-distfs/s10-*`），避免跨 run 污染导致恢复到旧 pending 提案。
+  - [x] `scripts/s10-five-node-game-soak.sh` 增加可控 auto-attest 策略（默认 `sequencer_only`，可切 `all/off`），在五节点 no-LLM 长跑中保持持续推进且避免多节点高度分叉。
+  - [x] 执行真实短跑回归（`260s` + `max_stall=120`），确认门禁通过且高度持续增长。
 
 ## 依赖
 - `scripts/p2p-longrun-soak.sh`（复用指标口径与产物约定）
@@ -26,6 +31,6 @@
 - `testing-manual.md`
 
 ## 状态
-- 当前阶段：已完成（T0~T5）。
+- 当前阶段：已完成（T0~T6）。
 - 阻塞项：无。
 - 最近更新：2026-02-28。

@@ -873,6 +873,8 @@ fn start_live_node_applies_pos_options() {
         .validator_signer_public_keys
         .contains_key("node-backup"));
     assert!(!config.auto_attest_all_validators);
+    assert!(!config.require_execution_on_commit);
+    assert!(!config.require_peer_execution_hashes);
     let gossip = config.gossip.as_ref().expect("gossip config");
     assert_eq!(
         gossip.bind_addr,
@@ -980,6 +982,8 @@ fn start_live_node_starts_triad_distributed_storage_role() {
     );
     assert_eq!(config.pos_config.validators.len(), 3);
     assert_eq!(config.pos_config.validator_signer_public_keys.len(), 3);
+    assert!(!config.require_execution_on_commit);
+    assert!(!config.require_peer_execution_hashes);
     assert_eq!(runtime.auxiliary_runtimes.len(), 0);
     locked.stop().expect("stop");
 }
@@ -1016,6 +1020,8 @@ fn start_live_node_starts_triad_distributed_sequencer_without_static_peers() {
         "127.0.0.1:7601".parse::<SocketAddr>().expect("addr")
     );
     assert!(gossip.peers.is_empty());
+    assert!(config.require_execution_on_commit);
+    assert!(config.require_peer_execution_hashes);
     assert_eq!(runtime.auxiliary_runtimes.len(), 0);
     locked.stop().expect("stop");
 }

@@ -624,9 +624,10 @@ fn start_single_live_node(
         .with_pos_config(pos_config)
         .map_err(|err| format!("failed to apply node pos config: {err:?}"))?;
     config = config.with_auto_attest_all_validators(options.node_auto_attest_all_validators);
+    let require_execution = matches!(options.node_role, NodeRole::Sequencer);
     config = config
-        .with_require_execution_on_commit(true)
-        .with_require_peer_execution_hashes(true);
+        .with_require_execution_on_commit(require_execution)
+        .with_require_peer_execution_hashes(require_execution);
     if !options.node_gossip_peers.is_empty() && options.node_gossip_bind.is_none() {
         return Err("node gossip peers require --node-gossip-bind".to_string());
     }
@@ -638,23 +639,25 @@ fn start_single_live_node(
         keypair,
     )?);
 
-    let storage_root = Path::new("output")
-        .join("node-distfs")
-        .join(options.node_id.as_str())
-        .join("store");
-    let node_report_root = reward_runtime_node_report_root(
-        options.reward_runtime_report_dir.as_str(),
-        options.node_id.as_str(),
-    );
     let mut runtime = NodeRuntime::new(config);
-    let execution_driver = NodeRuntimeExecutionDriver::new(
-        node_report_root.join(DEFAULT_REWARD_RUNTIME_EXECUTION_BRIDGE_STATE_FILE),
-        node_report_root.join(DEFAULT_REWARD_RUNTIME_EXECUTION_WORLD_DIR),
-        node_report_root.join(DEFAULT_REWARD_RUNTIME_EXECUTION_RECORDS_DIR),
-        storage_root,
-    )
-    .map_err(|err| format!("failed to initialize node execution driver: {err}"))?;
-    runtime = runtime.with_execution_hook(execution_driver);
+    if matches!(options.node_role, NodeRole::Sequencer) {
+        let storage_root = Path::new("output")
+            .join("node-distfs")
+            .join(options.node_id.as_str())
+            .join("store");
+        let node_report_root = reward_runtime_node_report_root(
+            options.reward_runtime_report_dir.as_str(),
+            options.node_id.as_str(),
+        );
+        let execution_driver = NodeRuntimeExecutionDriver::new(
+            node_report_root.join(DEFAULT_REWARD_RUNTIME_EXECUTION_BRIDGE_STATE_FILE),
+            node_report_root.join(DEFAULT_REWARD_RUNTIME_EXECUTION_WORLD_DIR),
+            node_report_root.join(DEFAULT_REWARD_RUNTIME_EXECUTION_RECORDS_DIR),
+            storage_root,
+        )
+        .map_err(|err| format!("failed to initialize node execution driver: {err}"))?;
+        runtime = runtime.with_execution_hook(execution_driver);
+    }
 
     let (mut runtime, reward_network) =
         attach_optional_replication_network(options, runtime, options.node_role)?;
@@ -718,14 +721,14 @@ fn start_triad_live_nodes(
             NodeRole::Storage,
             storage_bind,
             vec![sequencer_bind, observer_bind],
-            true,
+            false,
         ),
         (
             observer_node_id,
             NodeRole::Observer,
             observer_bind,
             vec![sequencer_bind, storage_bind],
-            true,
+            false,
         ),
     ];
 
@@ -742,9 +745,10 @@ fn start_triad_live_nodes(
             .with_pos_config(triad_pos_config.clone())
             .map_err(|err| format!("failed to apply triad pos config for {node_id}: {err:?}"))?;
         config = config.with_auto_attest_all_validators(options.node_auto_attest_all_validators);
+        let require_execution = matches!(role, NodeRole::Sequencer);
         config = config
-            .with_require_execution_on_commit(true)
-            .with_require_peer_execution_hashes(true);
+            .with_require_execution_on_commit(require_execution)
+            .with_require_peer_execution_hashes(require_execution);
         config = config.with_gossip_optional(bind_addr, peers);
         config = config.with_replication(build_node_replication_config(node_id.as_str(), keypair)?);
 
@@ -829,8 +833,8 @@ fn start_triad_distributed_live_node(
     ];
     let (node_id, attach_execution_hook) = match options.node_role {
         NodeRole::Sequencer => (sequencer_node_id, true),
-        NodeRole::Storage => (storage_node_id, true),
-        NodeRole::Observer => (observer_node_id, true),
+        NodeRole::Storage => (storage_node_id, false),
+        NodeRole::Observer => (observer_node_id, false),
     };
 
     let mut config = NodeConfig::new(node_id.clone(), world_id.to_string(), options.node_role)
@@ -843,9 +847,10 @@ fn start_triad_distributed_live_node(
         format!("failed to apply triad_distributed pos config for {node_id}: {err:?}")
     })?;
     config = config.with_auto_attest_all_validators(options.node_auto_attest_all_validators);
+    let require_execution = matches!(options.node_role, NodeRole::Sequencer);
     config = config
-        .with_require_execution_on_commit(true)
-        .with_require_peer_execution_hashes(true);
+        .with_require_execution_on_commit(require_execution)
+        .with_require_peer_execution_hashes(require_execution);
     config = config.with_gossip_optional(bind_addr, peers);
     config = config.with_replication(build_node_replication_config(node_id.as_str(), keypair)?);
 

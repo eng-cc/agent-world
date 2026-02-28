@@ -24,6 +24,11 @@ Options:
   --max-stall-secs <n>             gate threshold for max no-progress window (default: 300)
   --max-lag-p95 <n>                gate threshold for p95(network_height - committed_height) (default: 12)
   --max-distfs-failure-ratio <r>   gate threshold for DistFS failed/total ratio (0~1, default: 0.25)
+  --node-auto-attest-all           enable local auto-attesting all validators on all nodes
+  --node-no-auto-attest-all        disable local auto-attesting all validators on all nodes
+  --node-auto-attest-sequencer-only
+                                   enable auto-attest only on sequencer (default)
+  --preserve-node-state            keep existing output/node-distfs/s10-* snapshot/state
   --no-prewarm                     skip cargo build prewarm
   --dry-run                        write config and commands only, do not start processes
   -h, --help                       show help
@@ -116,6 +121,8 @@ poll_interval_secs=2
 max_stall_secs=300
 max_lag_p95=12
 max_distfs_failure_ratio="0.25"
+node_auto_attest_mode=1
+isolate_node_state=1
 prewarm=1
 dry_run=0
 
@@ -176,6 +183,22 @@ while [[ $# -gt 0 ]]; do
     --max-distfs-failure-ratio)
       max_distfs_failure_ratio=${2:-}
       shift 2
+      ;;
+    --node-auto-attest-all)
+      node_auto_attest_mode=2
+      shift
+      ;;
+    --node-no-auto-attest-all)
+      node_auto_attest_mode=0
+      shift
+      ;;
+    --node-auto-attest-sequencer-only)
+      node_auto_attest_mode=1
+      shift
+      ;;
+    --preserve-node-state)
+      isolate_node_state=0
+      shift
       ;;
     --no-prewarm)
       prewarm=0
@@ -337,6 +360,8 @@ jq -n \
   --argjson max_stall_secs "$max_stall_secs" \
   --argjson max_lag_p95 "$max_lag_p95" \
   --argjson max_distfs_failure_ratio "$max_distfs_failure_ratio" \
+  --argjson node_auto_attest_mode "$node_auto_attest_mode" \
+  --argjson isolate_node_state "$isolate_node_state" \
   --argjson dry_run "$dry_run" \
   --argjson validators "$validators_json" \
   --argjson nodes "$nodes_json" \
@@ -356,6 +381,13 @@ jq -n \
       max_lag_p95: $max_lag_p95,
       max_distfs_failure_ratio: $max_distfs_failure_ratio
     },
+    node_auto_attest_mode: (
+      if $node_auto_attest_mode == 2 then "all"
+      elif $node_auto_attest_mode == 1 then "sequencer_only"
+      else "off"
+      end
+    ),
+    isolate_node_state: ($isolate_node_state == 1),
     dry_run: ($dry_run == 1),
     validators: $validators,
     nodes: $nodes
@@ -373,6 +405,14 @@ jq -n \
   echo "- max_stall_secs: \`$max_stall_secs\`"
   echo "- max_lag_p95: \`$max_lag_p95\`"
   echo "- max_distfs_failure_ratio: \`$max_distfs_failure_ratio\`"
+  node_auto_attest_mode_label="off"
+  if [[ "$node_auto_attest_mode" -eq 2 ]]; then
+    node_auto_attest_mode_label="all"
+  elif [[ "$node_auto_attest_mode" -eq 1 ]]; then
+    node_auto_attest_mode_label="sequencer_only"
+  fi
+  echo "- node_auto_attest_mode: \`$node_auto_attest_mode_label\`"
+  echo "- isolate_node_state: \`$isolate_node_state\`"
   echo
   echo "| run | status | process_status | metric_gate | reports | started_at | ended_at | notes |"
   echo "|---|---|---|---|---|---|---|---|"
@@ -414,6 +454,12 @@ prepare_node_command() {
     --node-repl-libp2p-listen "$(node_repl_addr "$idx")"
   )
 
+  if [[ "$node_auto_attest_mode" -eq 2 ]] || { [[ "$node_auto_attest_mode" -eq 1 ]] && [[ "$role" == "sequencer" ]]; }; then
+    cmd+=(--node-auto-attest-all)
+  else
+    cmd+=(--node-no-auto-attest-all)
+  fi
+
   if [[ "$llm_enabled" -eq 1 ]]; then
     cmd+=(--llm)
   else
@@ -435,6 +481,23 @@ prepare_node_command() {
   done
 
   prepared_cmd=("${cmd[@]}")
+}
+
+isolate_node_state_dirs() {
+  local backup_root="$run_dir/node_state_backup"
+  local node_id state_dir backup_dir
+  for node_id in "${node_ids[@]}"; do
+    state_dir="$repo_root/output/node-distfs/$node_id"
+    if [[ ! -d "$state_dir" ]]; then
+      continue
+    fi
+    run mkdir -p "$backup_root"
+    backup_dir="$backup_root/${node_id}-$(date +%s)"
+    while [[ -e "$backup_dir" ]]; do
+      backup_dir="${backup_dir}-$RANDOM"
+    done
+    run mv "$state_dir" "$backup_dir"
+  done
 }
 
 active_cleanup_done=0
@@ -1004,6 +1067,10 @@ if [[ "$dry_run" -eq 1 ]]; then
   echo "  summary: $summary_md"
   echo "  summary_json: $summary_json"
   exit 0
+fi
+
+if [[ "$isolate_node_state" -eq 1 ]]; then
+  isolate_node_state_dirs
 fi
 
 started_at=$(date '+%Y-%m-%d %H:%M:%S %Z')
