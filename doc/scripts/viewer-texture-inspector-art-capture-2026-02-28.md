@@ -15,7 +15,8 @@
   - 新增 closeup 二次抓图产物（`viewer_closeup.png`、`viewer_art_closeup.png`）。
   - 为 `power_plant/power_storage` 增加三变体一致性校验与重试策略。
   - 为 art-capture 新增材质评审灯光口径（低 bloom + 稳定曝光 + 强化轮廓光）。
-  - 为 power 实体改用实体目标焦点（`first_power_plant` / `first_power_storage`）。
+  - 为 power 实体接入场景自适应焦点：power 场景使用 `first_power_*`，非 power 场景回退 `first_location`。
+  - 在非 power 场景下为 power 实体增加构图补偿（hero/closeup 的 `pan` + `zoom` 组合），减少贴脸与偏边裁切。
   - 将镜头参数与裁切参数写入每组 `meta.txt`，便于复盘。
 - **范围外**
   - 不改动 `world_viewer_live` 协议与运行时数据结构。
@@ -46,6 +47,7 @@
 - **T3 变体校验增强**：closeup 双图与 power 实体一致性门禁/重试落地。
 - **T4 视觉调参**：修复镜头贴脸问题并完成全量复跑与人工复核。
 - **T5 视觉门禁强化**：实体焦点 + 灯光口径 + SSIM 阈值门禁落地与全量验证。
+- **T6 构图稳定修复**：修复非 power 场景下 power 焦点失效导致的镜头中断，并完成 hero/closeup 构图回归。
 
 ## 风险
 - **镜头过近或过远**：不同 mesh 尺度差异可能导致裁切后主体不完整。
@@ -54,6 +56,8 @@
   - 缓解：将 art-capture 预设 zoom 调整为可读近中景（`>1`），并保留 closeup fallback 角度。
 - **“哈希不同但视觉仍相近”漏检风险**：会误判为可评审样本。
   - 缓解：新增 `min_pair_ssim` 与阈值门禁，触发重试并可失败出具。
+- **焦点目标缺失导致自动化提前中断**：`focus=first_power_*` 在非 power 场景可能不存在，后续 `zoom/orbit/pan` 不执行。
+  - 缓解：按场景回退焦点到 `first_location`，并为非 power 场景配置专用构图参数。
 - **裁切区域误伤主体**：固定裁切窗口在极端场景可能截掉目标。
   - 缓解：提供 `--crop-window` 覆盖并记录到 `meta.txt`。
 - **运行环境依赖差异**：裁切依赖 `ffmpeg` 过滤表达式，环境差异可能导致失败。

@@ -145,7 +145,64 @@ capture_status_value() {
   grep -E "^${key}=" "$status_file" | tail -n 1 | cut -d'=' -f2-
 }
 
+resolve_focus_target_for_entity() {
+  local entity=$1
+  local scenario_name=${2:-}
+  case "$entity" in
+    power_plant)
+      if [[ "$scenario_name" == *power* ]]; then
+        echo "first_power_plant"
+      else
+        echo "first_location"
+      fi
+      ;;
+    power_storage)
+      if [[ "$scenario_name" == *power* ]]; then
+        echo "first_power_storage"
+      else
+        echo "first_location"
+      fi
+      ;;
+    *)
+      echo "first_location"
+      ;;
+  esac
+}
+
+resolve_power_closeup_pose() {
+  local focus_target=$1
+  if [[ "$focus_target" == "first_location" ]]; then
+    # In non-power scenarios, fallback to wider closeup to avoid clipping giant source meshes.
+    echo "pan=0.6,0,0;zoom=2.2;orbit=20,-30;wait=0.8"
+  else
+    echo "zoom=1.2;orbit=38,-20;wait=0.8"
+  fi
+}
+
+resolve_power_fallback_closeup_pose() {
+  local focus_target=$1
+  if [[ "$focus_target" == "first_location" ]]; then
+    echo "pan=0.6,0,0;zoom=2.6;orbit=20,-30;wait=0.9"
+  else
+    echo "zoom=0.9;orbit=46,-14;wait=0.9"
+  fi
+}
+
+resolve_power_hero_pose() {
+  local focus_target=$1
+  if [[ "$focus_target" == "first_location" ]]; then
+    echo "pan=0.4,0,0;zoom=1.6;orbit=20,-30;wait=0.6"
+  else
+    echo "zoom=1.6;orbit=20,-30;wait=0.6"
+  fi
+}
+
 default_automation_steps_for_entity() {
+  local entity=$1
+  local focus_target
+  focus_target=$(resolve_focus_target_for_entity "$entity" "$scenario")
+  local power_hero_pose
+  power_hero_pose=$(resolve_power_hero_pose "$focus_target")
   case "$1" in
     agent)
       echo "mode=3d;focus=first_location;zoom=1.5;orbit=18,-26;wait=0.6"
@@ -157,10 +214,10 @@ default_automation_steps_for_entity() {
       echo "mode=3d;focus=first_location;zoom=1.55;orbit=18,-28;wait=0.6"
       ;;
     power_plant)
-      echo "mode=3d;focus=first_power_plant;zoom=1.6;orbit=20,-30;wait=0.6"
+      echo "mode=3d;focus=${focus_target};${power_hero_pose}"
       ;;
     power_storage)
-      echo "mode=3d;focus=first_power_storage;zoom=1.6;orbit=20,-30;wait=0.6"
+      echo "mode=3d;focus=${focus_target};${power_hero_pose}"
       ;;
     *)
       echo "mode=3d;focus=first_location;pan=0,2,0;zoom=1.2;orbit=10,-25;select=first_location;wait=0.4"
@@ -169,6 +226,11 @@ default_automation_steps_for_entity() {
 }
 
 default_closeup_automation_steps_for_entity() {
+  local entity=$1
+  local focus_target
+  focus_target=$(resolve_focus_target_for_entity "$entity" "$scenario")
+  local power_closeup_pose
+  power_closeup_pose=$(resolve_power_closeup_pose "$focus_target")
   case "$1" in
     agent)
       echo "mode=3d;focus=first_location;zoom=1.15;orbit=30,-20;wait=0.8"
@@ -180,10 +242,10 @@ default_closeup_automation_steps_for_entity() {
       echo "mode=3d;focus=first_location;zoom=1.15;orbit=32,-22;wait=0.8"
       ;;
     power_plant)
-      echo "mode=3d;focus=first_power_plant;zoom=1.2;orbit=38,-20;wait=0.8"
+      echo "mode=3d;focus=${focus_target};${power_closeup_pose}"
       ;;
     power_storage)
-      echo "mode=3d;focus=first_power_storage;zoom=1.2;orbit=38,-20;wait=0.8"
+      echo "mode=3d;focus=${focus_target};${power_closeup_pose}"
       ;;
     *)
       echo "mode=3d;focus=first_location;zoom=0.18;orbit=30,-22;wait=0.7"
@@ -192,12 +254,17 @@ default_closeup_automation_steps_for_entity() {
 }
 
 fallback_closeup_automation_steps_for_entity() {
+  local entity=$1
+  local focus_target
+  focus_target=$(resolve_focus_target_for_entity "$entity" "$scenario")
+  local power_fallback_pose
+  power_fallback_pose=$(resolve_power_fallback_closeup_pose "$focus_target")
   case "$1" in
     power_plant)
-      echo "mode=3d;focus=first_power_plant;zoom=0.9;orbit=46,-14;wait=0.9"
+      echo "mode=3d;focus=${focus_target};${power_fallback_pose}"
       ;;
     power_storage)
-      echo "mode=3d;focus=first_power_storage;zoom=0.9;orbit=46,-14;wait=0.9"
+      echo "mode=3d;focus=${focus_target};${power_fallback_pose}"
       ;;
     *)
       echo "mode=3d;focus=first_location;zoom=0.95;orbit=42,-16;wait=0.9"

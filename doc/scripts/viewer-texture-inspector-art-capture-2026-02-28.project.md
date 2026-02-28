@@ -16,6 +16,9 @@
 - [x] T5：新增/接线 art-lighting 评审灯光口径（可开关）
 - [x] T5：新增 SSIM 阈值门禁（含重试、元数据、`variant_validation.txt` 字段）
 - [x] T5：执行 smoke + 全量复跑并记录视觉检查结论
+- [x] T6：修复非 power 场景下 `focus=first_power_*` 失效导致自动化步骤中断
+- [x] T6：为非 power 场景 power 实体重标定 hero/closeup/fallback 构图（`pan+zoom+orbit`）
+- [x] T6：执行 power smoke 复跑并人工抽样检查 `viewer_art_closeup.png` 可读性
 
 ## 依赖
 - `scripts/capture-viewer-frame.sh`（现有截图链路）
@@ -23,6 +26,6 @@
 - `env -u RUSTC_WRAPPER cargo run`（viewer/live 运行约束）
 
 ## 状态
-- 当前阶段：已完成（T0~T5）
+- 当前阶段：已完成（T0~T6）
 - 阻塞：无
 - 下一步：无（本轮任务已结项）
