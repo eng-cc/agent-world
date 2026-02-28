@@ -277,6 +277,7 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
 
 ### S10：五节点真实游戏数据在线长跑套件（L5）
 - 当前状态（2026-02-28）：`scripts/s10-five-node-game-soak.sh` 已恢复为可执行脚本，底座为五进程 `world_chain_runtime`。
+- 当前状态补充（2026-03-01）：reward worker 在空存储时会自动写入 distfs probe seed blob，发布基线下 `distfs_total_checks` 应为正数。
 - 建议命令（smoke）：
 ```bash
 ./scripts/s10-five-node-game-soak.sh --duration-secs 600 --no-prewarm
@@ -292,7 +293,7 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
 - 通过标准：
   - 命令返回 `rc=0`；
   - `summary.json` 中 `run.status == "ok"`，并产出 `timeline.csv`；
-  - 若 `run.metric_gate.status == "insufficient_data"`，需在 `run.notes` 中确认仅为指标数据未就绪告警（如 `distfs_metrics_unavailable`），且不得伴随 `metric_gate_failed`；
+  - `summary.json` 中 `run.metric_gate.status == "pass"`（一般告警通过 `run.metric_gate.notes` 留痕，不应降级为 `insufficient_data`）；
   - 若失败，必须保留 `failures.md` 作为分诊依据。
 - 参考文档：`doc/testing/chain-runtime-soak-script-reactivation-2026-02-28.md`、`doc/testing/s10-five-node-real-game-soak.md`。
 
