@@ -507,6 +507,7 @@ pub(super) fn timeline_seek_action(
             ViewerControl::Seek {
                 tick: timeline.target_tick,
             },
+            None,
         );
     }
     timeline.manual_override = false;
@@ -899,8 +900,12 @@ pub(super) fn handle_control_buttons(
 
         mark_step_loading_on_control(&button.control, &state, &mut loading);
         if let Some(client) = client.as_deref() {
-            let _ =
-                dispatch_viewer_control(client, control_profile.as_deref(), button.control.clone());
+            let _ = dispatch_viewer_control(
+                client,
+                control_profile.as_deref(),
+                button.control.clone(),
+                None,
+            );
         }
     }
 }

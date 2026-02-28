@@ -134,16 +134,21 @@ pub(super) fn setup_offline_state(mut commands: Commands) {
 fn control_request_for_profile(
     profile: Option<ViewerControlProfile>,
     control: ViewerControl,
+    request_id: Option<u64>,
 ) -> Option<ViewerRequest> {
     match profile {
         Some(ViewerControlProfile::Playback) => Some(ViewerRequest::PlaybackControl {
             mode: agent_world::viewer::PlaybackControl::from(control),
+            request_id,
         }),
         Some(ViewerControlProfile::Live) => {
             let mode = agent_world::viewer::LiveControl::try_from(control).ok()?;
-            Some(ViewerRequest::LiveControl { mode })
+            Some(ViewerRequest::LiveControl { mode, request_id })
         }
-        None => Some(ViewerRequest::Control { mode: control }),
+        None => Some(ViewerRequest::Control {
+            mode: control,
+            request_id,
+        }),
     }
 }
 
@@ -151,9 +156,10 @@ pub(super) fn dispatch_viewer_control(
     client: &ViewerClient,
     profile_state: Option<&ViewerControlProfileState>,
     control: ViewerControl,
+    request_id: Option<u64>,
 ) -> bool {
     let profile = profile_state.and_then(|state| state.profile);
-    let Some(request) = control_request_for_profile(profile, control) else {
+    let Some(request) = control_request_for_profile(profile, control, request_id) else {
         return false;
     };
     client.tx.send(request).is_ok()
@@ -455,6 +461,9 @@ pub(super) fn poll_viewer_messages(
                 ViewerResponse::Metrics { metrics, .. } => {
                     state.metrics = Some(metrics);
                 }
+                ViewerResponse::ControlCompletionAck { ack } => {
+                    crate::web_test_api::record_control_completion_ack(ack);
+                }
                 ViewerResponse::Error { message } => {
                     state.status = ConnectionStatus::Error(friendly_connection_error(&message));
                     if let Some(control_profile) = control_profile.as_deref_mut() {
@@ -552,12 +561,13 @@ mod tests {
 
     #[test]
     fn control_request_defaults_to_legacy_before_hello_profile() {
-        let request = control_request_for_profile(None, ViewerControl::Play)
+        let request = control_request_for_profile(None, ViewerControl::Play, None)
             .expect("control request should be produced");
         assert_eq!(
             request,
             ViewerRequest::Control {
                 mode: ViewerControl::Play,
+                request_id: None,
             }
         );
     }
@@ -567,12 +577,14 @@ mod tests {
         let request = control_request_for_profile(
             Some(ViewerControlProfile::Playback),
             ViewerControl::Seek { tick: 42 },
+            Some(42),
         )
         .expect("control request should be produced");
         assert_eq!(
             request,
             ViewerRequest::PlaybackControl {
                 mode: agent_world::viewer::PlaybackControl::Seek { tick: 42 },
+                request_id: Some(42),
             }
         );
     }
@@ -582,12 +594,14 @@ mod tests {
         let request = control_request_for_profile(
             Some(ViewerControlProfile::Live),
             ViewerControl::Step { count: 3 },
+            Some(8),
         )
         .expect("control request should be produced");
         assert_eq!(
             request,
             ViewerRequest::LiveControl {
                 mode: agent_world::viewer::LiveControl::Step { count: 3 },
+                request_id: Some(8),
             }
         );
     }
@@ -597,6 +611,7 @@ mod tests {
         let request = control_request_for_profile(
             Some(ViewerControlProfile::Live),
             ViewerControl::Seek { tick: 9 },
+            Some(9),
         );
         assert_eq!(request, None);
     }

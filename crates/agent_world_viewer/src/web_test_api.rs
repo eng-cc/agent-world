@@ -15,12 +15,12 @@ use crate::{
     ViewerAutomationState, ViewerClient, ViewerControlProfileState, ViewerSelection, ViewerState,
 };
 #[cfg(target_arch = "wasm32")]
-use agent_world::viewer::{ViewerControl, ViewerRequest};
+use agent_world::viewer::{ControlCompletionStatus, ViewerControl};
 use bevy::prelude::*;
 #[cfg(target_arch = "wasm32")]
 use std::cell::RefCell;
 #[cfg(target_arch = "wasm32")]
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::closure::Closure;
 #[cfg(target_arch = "wasm32")]
@@ -43,12 +43,14 @@ enum WebTestApiCommand {
     SendControl {
         control: ViewerControl,
         feedback_id: u64,
+        request_id: Option<u64>,
     },
 }
 #[cfg(target_arch = "wasm32")]
 #[derive(Clone, Debug)]
 struct WebTestApiControlFeedback {
     id: u64,
+    request_id: Option<u64>,
     action: String,
     accepted: bool,
     enqueued: bool,
@@ -113,6 +115,7 @@ impl Default for WebTestApiStateSnapshot {
 thread_local! {
     static WEB_TEST_API_COMMAND_QUEUE: RefCell<VecDeque<WebTestApiCommand>> = RefCell::new(VecDeque::new());
     static WEB_TEST_API_STATE_SNAPSHOT: RefCell<WebTestApiStateSnapshot> = RefCell::new(WebTestApiStateSnapshot::default());
+    static WEB_TEST_API_COMPLETION_ACKS: RefCell<HashMap<u64, agent_world::viewer::ControlCompletionAck>> = RefCell::new(HashMap::new());
     static WEB_TEST_API_CONTROL_FEEDBACK_ID: RefCell<u64> = const { RefCell::new(0) };
 }
 #[cfg(target_arch = "wasm32")]
@@ -296,6 +299,23 @@ fn mutate_last_control_feedback(
 }
 
 #[cfg(target_arch = "wasm32")]
+fn take_control_completion_ack(
+    request_id: u64,
+) -> Option<agent_world::viewer::ControlCompletionAck> {
+    WEB_TEST_API_COMPLETION_ACKS.with(|acks| acks.borrow_mut().remove(&request_id))
+}
+
+#[cfg(target_arch = "wasm32")]
+pub(super) fn record_control_completion_ack(ack: agent_world::viewer::ControlCompletionAck) {
+    WEB_TEST_API_COMPLETION_ACKS.with(|acks| {
+        acks.borrow_mut().insert(ack.request_id, ack);
+    });
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub(super) fn record_control_completion_ack(_ack: agent_world::viewer::ControlCompletionAck) {}
+
+#[cfg(target_arch = "wasm32")]
 fn parse_step_count(payload: &JsValue) -> Option<usize> {
     if payload.is_undefined() || payload.is_null() {
         return Some(1);
@@ -351,6 +371,7 @@ fn parse_run_steps_command(payload: &JsValue) -> Option<WebTestApiCommand> {
     parse_step_count(payload).map(|count| WebTestApiCommand::SendControl {
         control: ViewerControl::Step { count },
         feedback_id: 0,
+        request_id: None,
     })
 }
 
@@ -361,6 +382,14 @@ fn build_control_feedback_js_value(feedback: &WebTestApiControlFeedback) -> JsVa
         &object,
         &JsValue::from_str("id"),
         &JsValue::from_f64(feedback.id as f64),
+    );
+    let _ = JsReflect::set(
+        &object,
+        &JsValue::from_str("requestId"),
+        &feedback
+            .request_id
+            .map(|value| JsValue::from_f64(value as f64))
+            .unwrap_or(JsValue::NULL),
     );
     let _ = JsReflect::set(
         &object,
@@ -452,6 +481,7 @@ fn build_control_feedback(
     };
     WebTestApiControlFeedback {
         id: next_control_feedback_id(),
+        request_id: None,
         action,
         accepted,
         enqueued: accepted && awaiting_effect,
@@ -761,7 +791,7 @@ pub(super) fn setup_web_test_api(world: &mut World) {
                 return build_control_feedback_js_value(&feedback);
             };
             let parsed_label = parse_control_action_label(&control);
-            let feedback = build_control_feedback(
+            let mut feedback = build_control_feedback(
                 action,
                 true,
                 Some(parsed_label),
@@ -770,11 +800,18 @@ pub(super) fn setup_web_test_api(world: &mut World) {
                 "queued control request".to_string(),
                 true,
             );
+            let request_id = if matches!(control, ViewerControl::Step { .. }) {
+                Some(feedback.id)
+            } else {
+                None
+            };
+            feedback.request_id = request_id;
             let feedback_id = feedback.id;
             update_last_control_feedback(feedback.clone());
             push_command(WebTestApiCommand::SendControl {
                 control,
                 feedback_id,
+                request_id,
             });
             build_control_feedback_js_value(&feedback)
         }) as Box<dyn FnMut(JsValue, JsValue) -> JsValue>,
@@ -835,6 +872,7 @@ pub(super) fn consume_web_test_api_commands(
             WebTestApiCommand::SendControl {
                 control,
                 feedback_id,
+                request_id,
             } => {
                 let Some(client) = client.as_deref() else {
                     mutate_last_control_feedback(feedback_id, |feedback| {
@@ -848,7 +886,12 @@ pub(super) fn consume_web_test_api_commands(
                     });
                     continue;
                 };
-                let sent = dispatch_viewer_control(client, control_profile.as_deref(), control);
+                let sent = dispatch_viewer_control(
+                    client,
+                    control_profile.as_deref(),
+                    control,
+                    request_id,
+                );
                 mutate_last_control_feedback(feedback_id, |feedback| {
                     if sent {
                         feedback.stage = "executing".to_string();
@@ -962,65 +1005,107 @@ pub(super) fn publish_web_test_api_state(
         let latest_event_seq = snapshot.event_seq;
         if let Some(feedback) = snapshot.last_control_feedback.as_mut() {
             if feedback.awaiting_effect {
-                let delta_logical_time =
-                    latest_logical_time.saturating_sub(feedback.baseline_logical_time);
-                let delta_event_seq = latest_event_seq.saturating_sub(feedback.baseline_event_seq);
-                feedback.delta_logical_time = delta_logical_time;
-                feedback.delta_event_seq = delta_event_seq;
-                if delta_logical_time > 0 || delta_event_seq > 0 {
-                    feedback.stage = "applied".to_string();
-                    feedback.no_progress_frames = 0;
-                    feedback.effect =
-                        format!("world advanced: logicalTime +{delta_logical_time}, eventSeq +{delta_event_seq}");
-                    feedback.hint = Some("input was accepted and world state advanced".to_string());
-                    feedback.awaiting_effect = false;
-                } else if connection_ready {
-                    feedback.no_progress_frames = feedback.no_progress_frames.saturating_add(1);
-                    if feedback.no_progress_frames >= CONTROL_STALL_FRAME_THRESHOLD {
-                        if feedback.action == "step" {
-                            let recovered = client.as_ref().is_some_and(|viewer_client| {
-                                dispatch_viewer_control(
-                                    viewer_client,
-                                    control_profile.as_deref(),
-                                    ViewerControl::Play,
-                                )
-                            });
-                            feedback.reason = Some(format!(
-                                "Cause: step accepted but no world delta within stall window ({} frames)",
-                                CONTROL_STALL_FRAME_THRESHOLD
-                            ));
-                            if recovered {
-                                feedback.stage = "executing".to_string();
+                let mut completion_ack_applied = false;
+                if let Some(request_id) = feedback.request_id {
+                    if let Some(ack) = take_control_completion_ack(request_id) {
+                        feedback.delta_logical_time = ack.delta_logical_time;
+                        feedback.delta_event_seq = ack.delta_event_seq;
+                        feedback.no_progress_frames = 0;
+                        match ack.status {
+                            ControlCompletionStatus::Advanced => {
+                                feedback.stage = "applied".to_string();
+                                feedback.reason = None;
                                 feedback.hint = Some(
-                                    "Next: auto recovery dispatched play; if still stalled, retry step"
-                                        .to_string(),
+                                    "completion ack received: step advanced world".to_string(),
                                 );
-                                feedback.effect = "step stalled, auto recovery play dispatched"
-                                    .to_string();
-                                feedback.baseline_logical_time = latest_logical_time;
-                                feedback.baseline_event_seq = latest_event_seq;
-                                feedback.no_progress_frames = 0;
+                                feedback.effect = format!(
+                                    "completion ack: logicalTime +{}, eventSeq +{}",
+                                    ack.delta_logical_time, ack.delta_event_seq
+                                );
+                            }
+                            ControlCompletionStatus::TimeoutNoProgress => {
+                                feedback.stage = "blocked".to_string();
+                                feedback.reason =
+                                    Some("Cause: completion ack timeout_no_progress".to_string());
+                                feedback.hint = Some("Next: use play, then retry step".to_string());
+                                feedback.effect =
+                                    "completion ack: timeout without observed progress"
+                                        .to_string();
+                            }
+                        }
+                        feedback.awaiting_effect = false;
+                        completion_ack_applied = true;
+                    }
+                }
+
+                if !completion_ack_applied {
+                    let delta_logical_time =
+                        latest_logical_time.saturating_sub(feedback.baseline_logical_time);
+                    let delta_event_seq =
+                        latest_event_seq.saturating_sub(feedback.baseline_event_seq);
+                    feedback.delta_logical_time = delta_logical_time;
+                    feedback.delta_event_seq = delta_event_seq;
+                    if delta_logical_time > 0 || delta_event_seq > 0 {
+                        feedback.stage = "applied".to_string();
+                        feedback.no_progress_frames = 0;
+                        feedback.effect = format!(
+                            "world advanced: logicalTime +{delta_logical_time}, eventSeq +{delta_event_seq}"
+                        );
+                        feedback.hint =
+                            Some("input was accepted and world state advanced".to_string());
+                        feedback.awaiting_effect = false;
+                    } else if connection_ready {
+                        feedback.no_progress_frames = feedback.no_progress_frames.saturating_add(1);
+                        if feedback.no_progress_frames >= CONTROL_STALL_FRAME_THRESHOLD {
+                            if feedback.action == "step" {
+                                let recovered = client.as_ref().is_some_and(|viewer_client| {
+                                    dispatch_viewer_control(
+                                        viewer_client,
+                                        control_profile.as_deref(),
+                                        ViewerControl::Play,
+                                        None,
+                                    )
+                                });
+                                feedback.reason = Some(format!(
+                                    "Cause: step accepted but no world delta within stall window ({} frames)",
+                                    CONTROL_STALL_FRAME_THRESHOLD
+                                ));
+                                if recovered {
+                                    feedback.stage = "executing".to_string();
+                                    feedback.hint = Some(
+                                        "Next: auto recovery dispatched play; if still stalled, retry step"
+                                            .to_string(),
+                                    );
+                                    feedback.effect = "step stalled, auto recovery play dispatched"
+                                        .to_string();
+                                    feedback.baseline_logical_time = latest_logical_time;
+                                    feedback.baseline_event_seq = latest_event_seq;
+                                    feedback.no_progress_frames = 0;
+                                } else {
+                                    feedback.stage = "blocked".to_string();
+                                    feedback.hint =
+                                        Some("Next: use play, then retry step".to_string());
+                                    feedback.effect =
+                                        "accepted without observed progress".to_string();
+                                    feedback.awaiting_effect = false;
+                                }
                             } else {
                                 feedback.stage = "blocked".to_string();
-                                feedback.hint = Some("Next: use play, then retry step".to_string());
+                                feedback.reason =
+                                    Some("Cause: no world delta observed while connected".to_string());
+                                feedback.hint =
+                                    Some(control_action_hint(feedback.action.as_str(), false));
                                 feedback.effect = "accepted without observed progress".to_string();
                                 feedback.awaiting_effect = false;
                             }
                         } else {
-                            feedback.stage = "blocked".to_string();
-                            feedback.reason =
-                                Some("Cause: no world delta observed while connected".to_string());
-                            feedback.hint = Some(control_action_hint(feedback.action.as_str(), false));
-                            feedback.effect = "accepted without observed progress".to_string();
-                            feedback.awaiting_effect = false;
+                            feedback.stage = "executing".to_string();
+                            feedback.effect = "queued, waiting for next world delta".to_string();
                         }
                     } else {
-                        feedback.stage = "executing".to_string();
-                        feedback.effect = "queued, waiting for next world delta".to_string();
+                        feedback.stage = "received".to_string();
+                        feedback.effect = "queued, waiting for world connection".to_string();
                     }
-                } else {
-                    feedback.stage = "received".to_string();
-                    feedback.effect = "queued, waiting for world connection".to_string();
                 }
             }
         }

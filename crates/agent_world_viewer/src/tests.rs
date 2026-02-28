@@ -317,7 +317,8 @@ fn handle_control_buttons_sends_request() {
     assert_eq!(
         request,
         ViewerRequest::Control {
-            mode: ViewerControl::Step { count: 2 }
+            mode: ViewerControl::Step { count: 2 },
+            request_id: None,
         }
     );
 }
@@ -359,16 +360,20 @@ fn control_buttons_send_expected_requests() {
     }
 
     assert!(seen.contains(&ViewerRequest::Control {
-        mode: ViewerControl::Play
+        mode: ViewerControl::Play,
+        request_id: None,
     }));
     assert!(seen.contains(&ViewerRequest::Control {
-        mode: ViewerControl::Pause
+        mode: ViewerControl::Pause,
+        request_id: None,
     }));
     assert!(seen.contains(&ViewerRequest::Control {
-        mode: ViewerControl::Step { count: 1 }
+        mode: ViewerControl::Step { count: 1 },
+        request_id: None,
     }));
     assert!(seen.contains(&ViewerRequest::Control {
-        mode: ViewerControl::Seek { tick: 0 }
+        mode: ViewerControl::Seek { tick: 0 },
+        request_id: None,
     }));
 }
 
@@ -409,7 +414,8 @@ fn timeline_adjust_and_submit_sends_seek_request() {
     assert_eq!(
         request,
         ViewerRequest::Control {
-            mode: ViewerControl::Seek { tick: 25 }
+            mode: ViewerControl::Seek { tick: 25 },
+            request_id: None,
         }
     );
 }
@@ -654,7 +660,8 @@ fn headless_auto_play_sends_play_once_after_connected() {
     assert_eq!(
         first,
         ViewerRequest::Control {
-            mode: ViewerControl::Play
+            mode: ViewerControl::Play,
+            request_id: None,
         }
     );
 

@@ -1131,6 +1131,7 @@ pub(super) fn render_player_mission_hud(
                 client,
                 control_profile,
                 agent_world::viewer::ViewerControl::Play,
+                None,
             );
         }
     }
@@ -1143,6 +1144,7 @@ pub(super) fn render_player_mission_hud(
                 client,
                 control_profile,
                 agent_world::viewer::ViewerControl::Play,
+                None,
             );
         }
         if recover_step_clicked {
@@ -1150,6 +1152,7 @@ pub(super) fn render_player_mission_hud(
                 client,
                 control_profile,
                 agent_world::viewer::ViewerControl::Step { count: 8 },
+                None,
             );
         }
     }

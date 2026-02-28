@@ -28,7 +28,12 @@ pub(super) fn headless_auto_play_once(
     let Some(client) = client else {
         return;
     };
-    let _ = dispatch_viewer_control(&client, control_profile.as_deref(), ViewerControl::Play);
+    let _ = dispatch_viewer_control(
+        &client,
+        control_profile.as_deref(),
+        ViewerControl::Play,
+        None,
+    );
     *sent = true;
 }
 

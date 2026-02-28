@@ -103,7 +103,7 @@ pub(super) fn send_control_request(
 ) {
     mark_step_loading_on_control(&control, state, loading);
     if let Some(client) = client {
-        let _ = dispatch_viewer_control(client, control_profile, control.clone());
+        let _ = dispatch_viewer_control(client, control_profile, control.clone(), None);
     }
     match control {
         ViewerControl::Play => control_ui.playing = true,
