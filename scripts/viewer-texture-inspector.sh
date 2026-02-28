@@ -43,6 +43,9 @@ Options:
   --no-art-lighting        disable art-review lighting preset
   --variant-ssim-threshold <f>
                            power variant validation threshold (default: 0.9995)
+  --detail-edge-threshold <f>
+                           closeup detail edge threshold (default: 0.35)
+  --semantic-gate-mode <m> off,auto,strict (default: auto)
   --crop-window <w:h:x:y>  crop window for viewer_art.png; use 'none' to disable crop
   --preview-mode <mode>    scene_proxy,lookdev,direct_entity (default: scene_proxy)
   --material-profile <id>  theme_default,art_review_v1 (default: theme_default)
@@ -152,7 +155,14 @@ set_or_unset_env() {
 capture_status_value() {
   local status_file=$1
   local key=$2
-  grep -E "^${key}=" "$status_file" | tail -n 1 | cut -d'=' -f2-
+  awk -F'=' -v wanted="$key" '
+    $1 == wanted {
+      value = substr($0, index($0, "=") + 1)
+    }
+    END {
+      print value
+    }
+  ' "$status_file"
 }
 
 resolve_focus_target_for_entity() {
@@ -282,6 +292,54 @@ fallback_closeup_automation_steps_for_entity() {
   esac
 }
 
+expected_selection_kind_for_entity() {
+  local entity=$1
+  case "$entity" in
+    power_plant)
+      echo "power_plant"
+      ;;
+    power_storage)
+      echo "power_storage"
+      ;;
+    agent)
+      echo "agent"
+      ;;
+    location)
+      echo "location"
+      ;;
+    asset)
+      echo "asset"
+      ;;
+    *)
+      echo ""
+      ;;
+  esac
+}
+
+semantic_gate_enforced_for_entity() {
+  local entity=$1
+  local mode=$2
+  local art_capture_flag=$3
+  local preview_mode_effective=$4
+  case "$mode" in
+    off)
+      return 1
+      ;;
+    strict)
+      return 0
+      ;;
+    auto)
+      if [[ "$art_capture_flag" -eq 1 && "$preview_mode_effective" == "direct_entity" && ( "$entity" == "power_plant" || "$entity" == "power_storage" ) ]]; then
+        return 0
+      fi
+      return 1
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
 parse_crop_window() {
   local raw=${1:-none}
   local normalized
@@ -370,6 +428,16 @@ parse_unit_interval_float_or_exit() {
   echo "$raw"
 }
 
+parse_non_negative_float_or_exit() {
+  local raw=$1
+  local option_name=$2
+  if ! awk -v value="$raw" 'BEGIN { exit !(value ~ /^[0-9]*\.?[0-9]+$/ && value >= 0) }'; then
+    echo "invalid ${option_name}: $raw (expected >= 0)" >&2
+    exit 2
+  fi
+  echo "$raw"
+}
+
 float_ge() {
   local lhs=$1
   local rhs=$2
@@ -380,6 +448,39 @@ float_lt() {
   local lhs=$1
   local rhs=$2
   awk -v lhs="$lhs" -v rhs="$rhs" 'BEGIN { exit !(lhs < rhs) }'
+}
+
+meta_value() {
+  local meta_file=$1
+  local key=$2
+  if [[ ! -f "$meta_file" ]]; then
+    echo ""
+    return 0
+  fi
+  awk -F'=' -v wanted="$key" '
+    $1 == wanted {
+      value = substr($0, index($0, "=") + 1)
+    }
+    END {
+      print value
+    }
+  ' "$meta_file"
+}
+
+image_edge_energy() {
+  local path=$1
+  if [[ ! -f "$path" ]]; then
+    echo "0"
+    return 0
+  fi
+
+  local value
+  value=$(ffmpeg -i "$path" -vf "format=gray,edgedetect=low=0.08:high=0.2,signalstats,metadata=print:file=-" -f null - 2>/dev/null | grep 'lavfi.signalstats.YAVG=' | tail -n 1 | sed -E 's/.*lavfi.signalstats.YAVG=([0-9.]+).*/\1/' || true)
+  if [[ -z "$value" ]]; then
+    echo "0"
+    return 0
+  fi
+  echo "$value"
 }
 
 variant_pair_ssim_value() {
@@ -540,6 +641,42 @@ variant_min_pair_ssim() {
   echo "$min_ssim"
 }
 
+variant_min_edge_energy() {
+  local root=$1
+  local entity=$2
+  local min_edge="999999"
+  local variant
+  for variant in default matte glossy; do
+    local path="$root/$entity/$variant/viewer_art_closeup.png"
+    local value
+    value=$(image_edge_energy "$path")
+    if float_lt "$value" "$min_edge"; then
+      min_edge="$value"
+    fi
+  done
+  if [[ "$min_edge" == "999999" ]]; then
+    echo "0"
+  else
+    echo "$min_edge"
+  fi
+}
+
+variant_semantic_fail_count() {
+  local root=$1
+  local entity=$2
+  local fail_count=0
+  local variant
+  for variant in default matte glossy; do
+    local meta_file="$root/$entity/$variant/meta.txt"
+    local pass
+    pass=$(meta_value "$meta_file" "selection_gate_pass")
+    if [[ "$pass" == "0" ]]; then
+      fail_count=$((fail_count + 1))
+    fi
+  done
+  echo "$fail_count"
+}
+
 preset_file="crates/agent_world_viewer/assets/themes/industrial_v1/presets/industrial_default.env"
 inspect_raw="all"
 variants_raw="all"
@@ -556,6 +693,8 @@ automation_steps_override=""
 closeup_automation_steps_override=""
 art_lighting_mode="auto"
 variant_ssim_threshold="0.9995"
+detail_edge_threshold="0.35"
+semantic_gate_mode="auto"
 crop_window_raw=""
 preview_mode="scene_proxy"
 material_profile="theme_default"
@@ -667,6 +806,14 @@ while [[ $# -gt 0 ]]; do
       variant_ssim_threshold=${2:-}
       shift 2
       ;;
+    --detail-edge-threshold)
+      detail_edge_threshold=${2:-}
+      shift 2
+      ;;
+    --semantic-gate-mode)
+      semantic_gate_mode=${2:-}
+      shift 2
+      ;;
     --crop-window)
       crop_window_raw=${2:-}
       shift 2
@@ -751,6 +898,17 @@ if [[ -z "$out_dir" ]]; then
 fi
 
 variant_ssim_threshold=$(parse_unit_interval_float_or_exit "$variant_ssim_threshold" "--variant-ssim-threshold")
+detail_edge_threshold=$(parse_non_negative_float_or_exit "$detail_edge_threshold" "--detail-edge-threshold")
+
+case "$semantic_gate_mode" in
+  off|auto|strict)
+    ;;
+  *)
+    echo "invalid --semantic-gate-mode: $semantic_gate_mode" >&2
+    echo "supported semantic gate modes: off,auto,strict" >&2
+    exit 2
+    ;;
+esac
 
 entities=($(resolve_entities "$inspect_raw"))
 variants=($(resolve_variants "$variants_raw"))
@@ -924,6 +1082,18 @@ capture_variant_bundle() {
     capture_connection_status_closeup="$capture_connection_status"
     capture_snapshot_ready_closeup="$capture_snapshot_ready"
     viewer_art_closeup_capture_status="passthrough"
+    selection_kind_closeup=$(capture_status_value "$capture_status_file" "selection_kind")
+    selection_id_closeup=$(capture_status_value "$capture_status_file" "selection_id")
+    camera_mode_closeup=$(capture_status_value "$capture_status_file" "camera_mode")
+    orbit_radius_closeup=$(capture_status_value "$capture_status_file" "orbit_radius")
+    scene_power_plant_count_closeup=$(capture_status_value "$capture_status_file" "scene_power_plant_count")
+    scene_power_storage_count_closeup=$(capture_status_value "$capture_status_file" "scene_power_storage_count")
+    selection_gate_expected_kind=$(expected_selection_kind_for_entity "$entity")
+    selection_gate_mode_effective="$semantic_gate_mode"
+    selection_gate_enforced=0
+    selection_gate_pass=1
+    selection_gate_reason="skipped"
+    closeup_edge_energy="0"
 
     if [[ "$art_capture" -eq 1 ]]; then
       run ./scripts/capture-viewer-frame.sh \
@@ -943,6 +1113,12 @@ capture_variant_bundle() {
       capture_connection_status_closeup=$(capture_status_value "$capture_status_file" "connection_status")
       capture_snapshot_ready_closeup=$(capture_status_value "$capture_status_file" "snapshot_ready")
       capture_last_error_closeup=$(capture_status_value "$capture_status_file" "last_error")
+      selection_kind_closeup=$(capture_status_value "$capture_status_file" "selection_kind")
+      selection_id_closeup=$(capture_status_value "$capture_status_file" "selection_id")
+      camera_mode_closeup=$(capture_status_value "$capture_status_file" "camera_mode")
+      orbit_radius_closeup=$(capture_status_value "$capture_status_file" "orbit_radius")
+      scene_power_plant_count_closeup=$(capture_status_value "$capture_status_file" "scene_power_plant_count")
+      scene_power_storage_count_closeup=$(capture_status_value "$capture_status_file" "scene_power_storage_count")
       if [[ "$capture_connection_status_closeup" != "connected" || "$capture_snapshot_ready_closeup" != "1" ]]; then
         echo "texture inspector closeup capture connectivity gate failed: entity=$entity variant=$variant connection_status=${capture_connection_status_closeup:-unknown} snapshot_ready=${capture_snapshot_ready_closeup:-unknown}" >&2
         if [[ -n "$capture_last_error_closeup" ]]; then
@@ -960,12 +1136,31 @@ capture_variant_bundle() {
       if [[ "$viewer_art_closeup_capture_status" == "crop_failed_fallback" ]]; then
         echo "warn: closeup crop failed, fallback to viewer_closeup.png (entity=$entity variant=$variant crop_window=$crop_window)" >&2
       fi
+      closeup_edge_energy=$(image_edge_energy "$variant_dir/viewer_art_closeup.png")
     else
       cp "$variant_dir/viewer.png" "$variant_dir/viewer_closeup.png"
       cp "$variant_dir/live_server.log" "$variant_dir/live_server_closeup.log"
       cp "$variant_dir/viewer.log" "$variant_dir/viewer_closeup.log"
       cp "$variant_dir/capture_status.txt" "$variant_dir/capture_status_closeup.txt"
       cp "$variant_dir/viewer_art.png" "$variant_dir/viewer_art_closeup.png"
+      closeup_edge_energy=$(image_edge_energy "$variant_dir/viewer_art_closeup.png")
+    fi
+
+    if semantic_gate_enforced_for_entity "$entity" "$semantic_gate_mode" "$art_capture" "$effective_preview_mode"; then
+      selection_gate_enforced=1
+      if [[ -z "$selection_gate_expected_kind" ]]; then
+        selection_gate_pass=0
+        selection_gate_reason="expected_kind_missing"
+      elif [[ "$selection_kind_closeup" != "$selection_gate_expected_kind" ]]; then
+        selection_gate_pass=0
+        selection_gate_reason="selection_kind_mismatch:${selection_kind_closeup:-none}"
+      elif [[ "$camera_mode_closeup" != "3d" ]]; then
+        selection_gate_pass=0
+        selection_gate_reason="camera_mode_not_3d:${camera_mode_closeup:-unknown}"
+      else
+        selection_gate_pass=1
+        selection_gate_reason="matched"
+      fi
     fi
 
     cat >"$variant_dir/meta.txt" <<META
@@ -990,6 +1185,8 @@ viewer_art_closeup_capture_status=$viewer_art_closeup_capture_status
 retry_attempt=$retry_attempt
 art_lighting_enabled=$art_lighting_enabled
 variant_ssim_threshold=$variant_ssim_threshold
+detail_edge_threshold=$detail_edge_threshold
+semantic_gate_mode=$semantic_gate_mode
 use_source_mesh=$use_source_mesh
 location_interference_disabled=$location_interference_disabled
 lookdev_location_shell_enabled=${AGENT_WORLD_VIEWER_LOCATION_SHELL_ENABLED:-}
@@ -1019,6 +1216,18 @@ direct_entity_base_texture_asset=$direct_entity_base_texture_asset
 direct_entity_normal_texture_asset=$direct_entity_normal_texture_asset
 direct_entity_metallic_roughness_texture_asset=$direct_entity_metallic_roughness_texture_asset
 direct_entity_emissive_texture_asset=$direct_entity_emissive_texture_asset
+selection_gate_mode_effective=$selection_gate_mode_effective
+selection_gate_enforced=$selection_gate_enforced
+selection_gate_expected_kind=$selection_gate_expected_kind
+selection_gate_selection_kind_closeup=${selection_kind_closeup:-}
+selection_gate_selection_id_closeup=${selection_id_closeup:-}
+selection_gate_camera_mode_closeup=${camera_mode_closeup:-}
+selection_gate_orbit_radius_closeup=${orbit_radius_closeup:-}
+selection_gate_reason=$selection_gate_reason
+selection_gate_pass=$selection_gate_pass
+closeup_edge_energy=$closeup_edge_energy
+scene_power_plant_count_closeup=${scene_power_plant_count_closeup:-}
+scene_power_storage_count_closeup=${scene_power_storage_count_closeup:-}
 capture_connection_status=$capture_connection_status
 capture_snapshot_ready=$capture_snapshot_ready
 capture_connection_status_closeup=$capture_connection_status_closeup
@@ -1065,25 +1274,38 @@ for entity in "${entities[@]}"; do
     if captures_are_all_present "$out_dir" "$entity"; then
       unique_count=$(variant_hash_unique_count "$out_dir" "$entity")
       min_ssim=$(variant_min_pair_ssim "$out_dir" "$entity")
+      min_edge_energy=$(variant_min_edge_energy "$out_dir" "$entity")
+      semantic_fail_count=$(variant_semantic_fail_count "$out_dir" "$entity")
       unique_count_retry="$unique_count"
       min_ssim_retry="$min_ssim"
+      min_edge_energy_retry="$min_edge_energy"
+      semantic_fail_count_retry="$semantic_fail_count"
       initial_high_ssim=0
       retry_high_ssim=0
+      initial_low_edge=0
+      retry_low_edge=0
       validation_retry_reason="none"
       validation_status="passed"
       if float_ge "$min_ssim" "$variant_ssim_threshold"; then
         initial_high_ssim=1
       fi
-      if [[ "$unique_count" -eq 1 || "$initial_high_ssim" -eq 1 ]]; then
+      if float_lt "$min_edge_energy" "$detail_edge_threshold"; then
+        initial_low_edge=1
+      fi
+      if [[ "$unique_count" -eq 1 || "$initial_high_ssim" -eq 1 || "$initial_low_edge" -eq 1 || "$semantic_fail_count" -gt 0 ]]; then
         if [[ "$unique_count" -eq 1 && "$initial_high_ssim" -eq 1 ]]; then
           validation_retry_reason="identical_hash_and_high_ssim"
         elif [[ "$unique_count" -eq 1 ]]; then
           validation_retry_reason="identical_hash"
+        elif [[ "$semantic_fail_count" -gt 0 ]]; then
+          validation_retry_reason="selection_gate_failed"
+        elif [[ "$initial_low_edge" -eq 1 ]]; then
+          validation_retry_reason="low_edge_energy"
         else
           validation_retry_reason="high_ssim"
         fi
         validation_status="retrying"
-        echo "warn: material variant validation triggered entity=$entity reason=$validation_retry_reason unique_count=$unique_count min_ssim=$min_ssim threshold=$variant_ssim_threshold; retry with fallback closeup camera" >&2
+        echo "warn: material variant validation triggered entity=$entity reason=$validation_retry_reason unique_count=$unique_count min_ssim=$min_ssim min_edge=$min_edge_energy semantic_fail_count=$semantic_fail_count threshold=$variant_ssim_threshold edge_threshold=$detail_edge_threshold; retry with fallback closeup camera" >&2
         for retry_variant in default matte glossy; do
           retry_dir="$out_dir/$entity/$retry_variant"
           if [[ ! -d "$retry_dir" ]]; then
@@ -1095,12 +1317,17 @@ for entity in "${entities[@]}"; do
         done
         unique_count_retry=$(variant_hash_unique_count "$out_dir" "$entity")
         min_ssim_retry=$(variant_min_pair_ssim "$out_dir" "$entity")
+        min_edge_energy_retry=$(variant_min_edge_energy "$out_dir" "$entity")
+        semantic_fail_count_retry=$(variant_semantic_fail_count "$out_dir" "$entity")
         if float_ge "$min_ssim_retry" "$variant_ssim_threshold"; then
           retry_high_ssim=1
         fi
-        if [[ "$unique_count_retry" -eq 1 || "$retry_high_ssim" -eq 1 ]]; then
+        if float_lt "$min_edge_energy_retry" "$detail_edge_threshold"; then
+          retry_low_edge=1
+        fi
+        if [[ "$unique_count_retry" -eq 1 || "$retry_high_ssim" -eq 1 || "$retry_low_edge" -eq 1 || "$semantic_fail_count_retry" -gt 0 ]]; then
           validation_status="failed_after_retry"
-          echo "warn: material variant validation still failed after retry entity=$entity unique_count=$unique_count_retry min_ssim=$min_ssim_retry threshold=$variant_ssim_threshold" >&2
+          echo "warn: material variant validation still failed after retry entity=$entity unique_count=$unique_count_retry min_ssim=$min_ssim_retry min_edge=$min_edge_energy_retry semantic_fail_count=$semantic_fail_count_retry threshold=$variant_ssim_threshold edge_threshold=$detail_edge_threshold" >&2
         else
           validation_status="passed_after_retry"
         fi
@@ -1115,6 +1342,11 @@ unique_count_after_retry=$unique_count_retry
 ssim_threshold=$variant_ssim_threshold
 min_pair_ssim_initial=$min_ssim
 min_pair_ssim_after_retry=$min_ssim_retry
+detail_edge_threshold=$detail_edge_threshold
+min_edge_energy_initial=$min_edge_energy
+min_edge_energy_after_retry=$min_edge_energy_retry
+semantic_fail_count_initial=$semantic_fail_count
+semantic_fail_count_after_retry=$semantic_fail_count_retry
 VALIDATION
 
       for retry_variant in default matte glossy; do
@@ -1127,6 +1359,11 @@ VALIDATION
           echo "variant_validation_ssim_threshold=$variant_ssim_threshold" >>"$retry_meta"
           echo "variant_validation_min_pair_ssim_initial=$min_ssim" >>"$retry_meta"
           echo "variant_validation_min_pair_ssim_after_retry=$min_ssim_retry" >>"$retry_meta"
+          echo "variant_validation_detail_edge_threshold=$detail_edge_threshold" >>"$retry_meta"
+          echo "variant_validation_min_edge_energy_initial=$min_edge_energy" >>"$retry_meta"
+          echo "variant_validation_min_edge_energy_after_retry=$min_edge_energy_retry" >>"$retry_meta"
+          echo "variant_validation_semantic_fail_count_initial=$semantic_fail_count" >>"$retry_meta"
+          echo "variant_validation_semantic_fail_count_after_retry=$semantic_fail_count_retry" >>"$retry_meta"
         fi
       done
     fi
