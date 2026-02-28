@@ -4,10 +4,10 @@
 - [x] T0：完成 S10 设计文档与项目管理文档建档。
   - [x] `doc/testing/s10-five-node-real-game-soak.md`
   - [x] `doc/testing/s10-five-node-real-game-soak.project.md`
-- [ ] T1：实现 `scripts/s10-five-node-game-soak.sh` 五节点编排脚本。
-  - [ ] 五节点启动/停止与输出目录管理。
-  - [ ] 指标聚合与 `summary.json`/`summary.md` 生成。
-  - [ ] `--dry-run` 与 `--help` 支持。
+- [x] T1：实现 `scripts/s10-five-node-game-soak.sh` 五节点编排脚本。
+  - [x] 五节点启动/停止与输出目录管理。
+  - [x] 指标聚合与 `summary.json`/`summary.md` 生成。
+  - [x] `--dry-run` 与 `--help` 支持。
 - [ ] T2：接入 `testing-manual.md` 的 S10 章节与触发矩阵说明。
 - [ ] T3：执行脚本级验证（语法/帮助/dry-run）并收口文档状态与 devlog。
 
@@ -18,6 +18,6 @@
 - `testing-manual.md`
 
 ## 状态
-- 当前阶段：进行中（T0 已完成，执行 T1）。
+- 当前阶段：进行中（T0~T1 已完成，执行 T2）。
 - 阻塞项：无。
 - 最近更新：2026-02-28。
