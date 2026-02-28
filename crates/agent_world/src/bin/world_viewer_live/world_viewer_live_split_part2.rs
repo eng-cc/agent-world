@@ -265,6 +265,8 @@ fn reward_runtime_loop(
     let mut applied_settlement_envelope_ids = BTreeSet::new();
     let mut applied_observation_trace_ids = BTreeSet::new();
     let mut epoch_observer_nodes = BTreeSet::new();
+    let mut settlement_apply_attempts_total: u64 = 0;
+    let mut settlement_apply_failures_total: u64 = 0;
 
     loop {
         match stop_rx.recv_timeout(config.poll_interval) {
@@ -530,6 +532,8 @@ fn reward_runtime_loop(
         }
 
         let mut applied_settlement_ids_this_tick = Vec::new();
+        let mut settlement_apply_attempts_this_tick: u64 = 0;
+        let mut settlement_apply_failures_this_tick: u64 = 0;
         if let Some(subscription) = settlement_subscription.as_ref() {
             for payload in subscription.drain() {
                 let envelope = match decode_reward_settlement_envelope(payload.as_slice()) {
@@ -552,12 +556,19 @@ fn reward_runtime_loop(
                 if applied_settlement_envelope_ids.contains(envelope_id.as_str()) {
                     continue;
                 }
+                settlement_apply_attempts_total = settlement_apply_attempts_total.saturating_add(1);
+                settlement_apply_attempts_this_tick =
+                    settlement_apply_attempts_this_tick.saturating_add(1);
                 match apply_reward_settlement_envelope(&mut reward_world, &envelope) {
                     Ok(()) => {
                         applied_settlement_envelope_ids.insert(envelope_id.clone());
                         applied_settlement_ids_this_tick.push(envelope_id);
                     }
                     Err(err) => {
+                        settlement_apply_failures_total =
+                            settlement_apply_failures_total.saturating_add(1);
+                        settlement_apply_failures_this_tick =
+                            settlement_apply_failures_this_tick.saturating_add(1);
                         eprintln!("reward runtime apply settlement envelope failed: {err}");
                     }
                 }
@@ -721,6 +732,9 @@ fn reward_runtime_loop(
                         }
                     }
                 }
+                settlement_apply_attempts_total = settlement_apply_attempts_total.saturating_add(1);
+                settlement_apply_attempts_this_tick =
+                    settlement_apply_attempts_this_tick.saturating_add(1);
                 match apply_reward_settlement_envelope(&mut reward_world, &envelope) {
                     Ok(()) => {
                         applied_settlement_envelope_ids.insert(envelope_id.clone());
@@ -728,6 +742,8 @@ fn reward_runtime_loop(
                         published_settlement_envelope_id = Some(envelope_id);
                     }
                     Err(err) => {
+                        settlement_apply_failures_total =
+                            settlement_apply_failures_total.saturating_add(1);
                         eprintln!("reward runtime local settlement envelope apply failed: {err}");
                         continue;
                     }
@@ -756,6 +772,9 @@ fn reward_runtime_loop(
                     continue;
                 }
             };
+            settlement_apply_attempts_total = settlement_apply_attempts_total.saturating_add(1);
+            settlement_apply_attempts_this_tick =
+                settlement_apply_attempts_this_tick.saturating_add(1);
             match apply_reward_settlement_envelope(&mut reward_world, &envelope) {
                 Ok(()) => {
                     applied_settlement_envelope_ids.insert(envelope_id.clone());
@@ -763,6 +782,8 @@ fn reward_runtime_loop(
                     published_settlement_envelope_id = Some(envelope_id);
                 }
                 Err(err) => {
+                    settlement_apply_failures_total =
+                        settlement_apply_failures_total.saturating_add(1);
                     eprintln!("reward runtime local settlement apply failed: {err}");
                     continue;
                 }
@@ -843,6 +864,15 @@ fn reward_runtime_loop(
                 "failover_publisher_node_id": failover_publisher_node_id,
                 "published_settlement_envelope_id": published_settlement_envelope_id,
                 "applied_settlement_envelope_ids": applied_settlement_ids_this_tick,
+                "settlement_apply_attempts_this_tick": settlement_apply_attempts_this_tick,
+                "settlement_apply_failures_this_tick": settlement_apply_failures_this_tick,
+                "settlement_apply_attempts_total": settlement_apply_attempts_total,
+                "settlement_apply_failures_total": settlement_apply_failures_total,
+                "settlement_apply_failure_ratio": if settlement_apply_attempts_total > 0 {
+                    settlement_apply_failures_total as f64 / settlement_apply_attempts_total as f64
+                } else {
+                    0.0
+                },
                 "observer_trace_threshold_met": observer_trace_threshold_met,
                 "settlement_skipped_reason": settlement_skipped_reason,
             },

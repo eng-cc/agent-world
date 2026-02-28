@@ -24,6 +24,8 @@ Options:
   --max-stall-secs <n>             gate threshold for max no-progress window (default: 300)
   --max-lag-p95 <n>                gate threshold for p95(network_height - committed_height) (default: 12)
   --max-distfs-failure-ratio <r>   gate threshold for DistFS failed/total ratio (0~1, default: 0.25)
+  --max-settlement-apply-failure-ratio <r>
+                                   gate threshold for settlement apply failed/attempts ratio (0~1, default: 0)
   --node-auto-attest-all           enable local auto-attesting all validators on all nodes
   --node-no-auto-attest-all        disable local auto-attesting all validators on all nodes
   --node-auto-attest-sequencer-only
@@ -121,6 +123,7 @@ poll_interval_secs=2
 max_stall_secs=300
 max_lag_p95=12
 max_distfs_failure_ratio="0.25"
+max_settlement_apply_failure_ratio="0"
 node_auto_attest_mode=1
 isolate_node_state=1
 prewarm=1
@@ -184,6 +187,10 @@ while [[ $# -gt 0 ]]; do
       max_distfs_failure_ratio=${2:-}
       shift 2
       ;;
+    --max-settlement-apply-failure-ratio)
+      max_settlement_apply_failure_ratio=${2:-}
+      shift 2
+      ;;
     --node-auto-attest-all)
       node_auto_attest_mode=2
       shift
@@ -229,6 +236,7 @@ ensure_positive_int "--poll-interval-secs" "$poll_interval_secs"
 ensure_non_negative_int "--max-stall-secs" "$max_stall_secs"
 ensure_non_negative_int "--max-lag-p95" "$max_lag_p95"
 ensure_ratio_between_zero_and_one "--max-distfs-failure-ratio" "$max_distfs_failure_ratio"
+ensure_ratio_between_zero_and_one "--max-settlement-apply-failure-ratio" "$max_settlement_apply_failure_ratio"
 
 scenario=$(trim "$scenario")
 if [[ -z "$scenario" ]]; then
@@ -360,6 +368,7 @@ jq -n \
   --argjson max_stall_secs "$max_stall_secs" \
   --argjson max_lag_p95 "$max_lag_p95" \
   --argjson max_distfs_failure_ratio "$max_distfs_failure_ratio" \
+  --argjson max_settlement_apply_failure_ratio "$max_settlement_apply_failure_ratio" \
   --argjson node_auto_attest_mode "$node_auto_attest_mode" \
   --argjson isolate_node_state "$isolate_node_state" \
   --argjson dry_run "$dry_run" \
@@ -379,7 +388,8 @@ jq -n \
     thresholds: {
       max_stall_secs: $max_stall_secs,
       max_lag_p95: $max_lag_p95,
-      max_distfs_failure_ratio: $max_distfs_failure_ratio
+      max_distfs_failure_ratio: $max_distfs_failure_ratio,
+      max_settlement_apply_failure_ratio: $max_settlement_apply_failure_ratio
     },
     node_auto_attest_mode: (
       if $node_auto_attest_mode == 2 then "all"
@@ -405,6 +415,7 @@ jq -n \
   echo "- max_stall_secs: \`$max_stall_secs\`"
   echo "- max_lag_p95: \`$max_lag_p95\`"
   echo "- max_distfs_failure_ratio: \`$max_distfs_failure_ratio\`"
+  echo "- max_settlement_apply_failure_ratio: \`$max_settlement_apply_failure_ratio\`"
   node_auto_attest_mode_label="off"
   if [[ "$node_auto_attest_mode" -eq 2 ]]; then
     node_auto_attest_mode_label="all"
@@ -418,7 +429,7 @@ jq -n \
   echo "|---|---|---|---|---|---|---|---|"
 } > "$summary_md"
 
-echo "node,epoch_index,observed_at_unix_ms,committed_height,network_committed_height,lag,total_checks,failed_checks,distfs_failure_ratio,invariant_ok,total_distributed_points,minted_record_count,report_path" > "$timeline_csv"
+echo "node,epoch_index,observed_at_unix_ms,committed_height,network_committed_height,lag,total_checks,failed_checks,distfs_failure_ratio,invariant_ok,total_distributed_points,minted_record_count,settlement_apply_attempts_total,settlement_apply_failures_total,settlement_apply_failure_ratio,report_path" > "$timeline_csv"
 
 append_summary_row() {
   local run_name=$1
@@ -583,6 +594,9 @@ analysis_lag_p95=0
 analysis_distfs_failure_ratio="0.000000"
 analysis_distfs_total_checks=0
 analysis_distfs_failed_checks=0
+analysis_settlement_apply_failure_ratio="0.000000"
+analysis_settlement_apply_attempts=0
+analysis_settlement_apply_failures=0
 analysis_invariant_all_ok=true
 analysis_settlement_positive_samples=0
 analysis_minted_non_empty_samples=0
@@ -598,6 +612,9 @@ analyze_metrics() {
   analysis_distfs_failure_ratio="0.000000"
   analysis_distfs_total_checks=0
   analysis_distfs_failed_checks=0
+  analysis_settlement_apply_failure_ratio="0.000000"
+  analysis_settlement_apply_attempts=0
+  analysis_settlement_apply_failures=0
   analysis_invariant_all_ok=true
   analysis_settlement_positive_samples=0
   analysis_minted_non_empty_samples=0
@@ -621,11 +638,14 @@ analyze_metrics() {
 
   declare -A node_total_max=()
   declare -A node_failed_at_max=()
+  declare -A node_settlement_attempts_max=()
+  declare -A node_settlement_failures_at_max=()
   local invariant_failed=0
 
   local report_file node_name metrics
   local epoch_index observed_at committed_height network_committed_height total_checks failed_checks
   local invariant_ok total_distributed_points minted_record_count lag ratio
+  local settlement_apply_attempts_total settlement_apply_failures_total settlement_apply_ratio
   for report_file in "${report_files[@]}"; do
     node_name=${report_file#"$run_dir/nodes/"}
     node_name=${node_name%%/*}
@@ -639,7 +659,9 @@ analyze_metrics() {
       (.distfs_challenge_report.failed_checks // 0),
       ((.reward_asset_invariant_status.ok // false) | tostring),
       ((.settlement_report.total_distributed_points // 0) | tonumber? // 0),
-      ((.minted_records // []) | length)
+      ((.minted_records // []) | length),
+      ((.reward_settlement_transport.settlement_apply_attempts_total // 0) | tonumber? // 0),
+      ((.reward_settlement_transport.settlement_apply_failures_total // 0) | tonumber? // 0)
     ] | @tsv' "$report_file"); then
       echo "warning: failed to parse report JSON: $report_file" >&2
       continue
@@ -658,7 +680,9 @@ analyze_metrics() {
       failed_checks \
       invariant_ok \
       total_distributed_points \
-      minted_record_count <<< "$metrics"
+      minted_record_count \
+      settlement_apply_attempts_total \
+      settlement_apply_failures_total <<< "$metrics"
 
     [[ "$epoch_index" =~ ^-?[0-9]+$ ]] || epoch_index=0
     [[ "$observed_at" =~ ^-?[0-9]+$ ]] || observed_at=0
@@ -668,6 +692,8 @@ analyze_metrics() {
     [[ "$failed_checks" =~ ^-?[0-9]+$ ]] || failed_checks=0
     [[ "$total_distributed_points" =~ ^-?[0-9]+$ ]] || total_distributed_points=0
     [[ "$minted_record_count" =~ ^-?[0-9]+$ ]] || minted_record_count=0
+    [[ "$settlement_apply_attempts_total" =~ ^-?[0-9]+$ ]] || settlement_apply_attempts_total=0
+    [[ "$settlement_apply_failures_total" =~ ^-?[0-9]+$ ]] || settlement_apply_failures_total=0
 
     if (( total_checks < 0 )); then
       total_checks=0
@@ -681,6 +707,12 @@ analyze_metrics() {
     if (( minted_record_count < 0 )); then
       minted_record_count=0
     fi
+    if (( settlement_apply_attempts_total < 0 )); then
+      settlement_apply_attempts_total=0
+    fi
+    if (( settlement_apply_failures_total < 0 )); then
+      settlement_apply_failures_total=0
+    fi
 
     lag=$((network_committed_height - committed_height))
     if (( lag < 0 )); then
@@ -688,8 +720,9 @@ analyze_metrics() {
     fi
 
     ratio=$(awk -v failed="$failed_checks" -v total="$total_checks" 'BEGIN { if (total > 0) printf "%.6f", failed / total; else printf "0.000000"; }')
+    settlement_apply_ratio=$(awk -v failed="$settlement_apply_failures_total" -v total="$settlement_apply_attempts_total" 'BEGIN { if (total > 0) printf "%.6f", failed / total; else printf "0.000000"; }')
 
-    printf '"%s",%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,"%s"\n' \
+    printf '"%s",%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,"%s"\n' \
       "$node_name" \
       "$epoch_index" \
       "$observed_at" \
@@ -702,9 +735,12 @@ analyze_metrics() {
       "$invariant_ok" \
       "$total_distributed_points" \
       "$minted_record_count" \
+      "$settlement_apply_attempts_total" \
+      "$settlement_apply_failures_total" \
+      "$settlement_apply_ratio" \
       "$report_file" >> "$timeline_csv"
 
-    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
       "$observed_at" \
       "$committed_height" \
       "$lag" \
@@ -713,6 +749,8 @@ analyze_metrics() {
       "$invariant_ok" \
       "$total_distributed_points" \
       "$minted_record_count" \
+      "$settlement_apply_attempts_total" \
+      "$settlement_apply_failures_total" \
       "$node_name" >> "$samples_tsv"
 
     local prev_total=${node_total_max[$node_name]:--1}
@@ -723,6 +761,17 @@ analyze_metrics() {
       local prev_failed=${node_failed_at_max[$node_name]:-0}
       if (( failed_checks > prev_failed )); then
         node_failed_at_max["$node_name"]=$failed_checks
+      fi
+    fi
+
+    local prev_settlement_attempts=${node_settlement_attempts_max[$node_name]:--1}
+    if (( settlement_apply_attempts_total > prev_settlement_attempts )); then
+      node_settlement_attempts_max["$node_name"]=$settlement_apply_attempts_total
+      node_settlement_failures_at_max["$node_name"]=$settlement_apply_failures_total
+    elif (( settlement_apply_attempts_total == prev_settlement_attempts )); then
+      local prev_settlement_failures=${node_settlement_failures_at_max[$node_name]:-0}
+      if (( settlement_apply_failures_total > prev_settlement_failures )); then
+        node_settlement_failures_at_max["$node_name"]=$settlement_apply_failures_total
       fi
     fi
 
@@ -743,6 +792,11 @@ analyze_metrics() {
     analysis_distfs_failed_checks=$((analysis_distfs_failed_checks + ${node_failed_at_max[$node]:-0}))
   done
   analysis_distfs_failure_ratio=$(awk -v failed="$analysis_distfs_failed_checks" -v total="$analysis_distfs_total_checks" 'BEGIN { if (total > 0) printf "%.6f", failed / total; else printf "0.000000"; }')
+  for node in "${!node_settlement_attempts_max[@]}"; do
+    analysis_settlement_apply_attempts=$((analysis_settlement_apply_attempts + node_settlement_attempts_max[$node]))
+    analysis_settlement_apply_failures=$((analysis_settlement_apply_failures + ${node_settlement_failures_at_max[$node]:-0}))
+  done
+  analysis_settlement_apply_failure_ratio=$(awk -v failed="$analysis_settlement_apply_failures" -v total="$analysis_settlement_apply_attempts" 'BEGIN { if (total > 0) printf "%.6f", failed / total; else printf "0.000000"; }')
 
   local sorted_samples="$run_dir/.metric_samples.sorted.tsv"
   sort -n -k1,1 "$samples_tsv" > "$sorted_samples"
@@ -774,11 +828,11 @@ analyze_metrics() {
   analysis_max_stall_secs_observed=$((max_stall_ms / 1000))
 
   local sorted_by_node="$run_dir/.metric_samples.by_node.tsv"
-  sort -k9,9 -n -k1,1 "$samples_tsv" > "$sorted_by_node"
+  sort -k11,11 -k1,1n "$samples_tsv" > "$sorted_by_node"
   declare -A node_prev_committed=()
   declare -A node_monotonic_violations=()
   local line_observed line_committed line_node
-  while IFS=$'\t' read -r line_observed line_committed _ _ _ _ _ _ line_node; do
+  while IFS=$'\t' read -r line_observed line_committed _ _ _ _ _ _ _ _ line_node; do
     [[ "$line_observed" =~ ^-?[0-9]+$ ]] || continue
     [[ "$line_committed" =~ ^-?[0-9]+$ ]] || continue
     local prev=${node_prev_committed[$line_node]:-}
@@ -836,6 +890,16 @@ analyze_metrics() {
     fi
   else
     gate_warnings+=("distfs_checks=0")
+  fi
+
+  if (( analysis_settlement_apply_attempts <= 0 )); then
+    gate_failures+=("settlement_apply_attempts=0")
+  else
+    local settlement_ratio_exceeded
+    settlement_ratio_exceeded=$(awk -v ratio="$analysis_settlement_apply_failure_ratio" -v max="$max_settlement_apply_failure_ratio" 'BEGIN { if (ratio > max) print 1; else print 0; }')
+    if [[ "$settlement_ratio_exceeded" == "1" ]]; then
+      gate_failures+=("settlement_apply_failure_ratio=${analysis_settlement_apply_failure_ratio}>max_${max_settlement_apply_failure_ratio}")
+    fi
   fi
 
   if [[ "$analysis_invariant_all_ok" != "true" ]]; then
@@ -899,12 +963,16 @@ write_summary_json() {
     --argjson max_stall_secs "$max_stall_secs" \
     --argjson max_lag_p95 "$max_lag_p95" \
     --argjson max_distfs_failure_ratio "$max_distfs_failure_ratio" \
+    --argjson max_settlement_apply_failure_ratio "$max_settlement_apply_failure_ratio" \
     --argjson report_samples "$analysis_report_count" \
     --argjson max_stall_secs_observed "$analysis_max_stall_secs_observed" \
     --argjson lag_p95 "$analysis_lag_p95" \
     --argjson distfs_failure_ratio "$analysis_distfs_failure_ratio" \
     --argjson distfs_total_checks "$analysis_distfs_total_checks" \
     --argjson distfs_failed_checks "$analysis_distfs_failed_checks" \
+    --argjson settlement_apply_failure_ratio "$analysis_settlement_apply_failure_ratio" \
+    --argjson settlement_apply_attempts "$analysis_settlement_apply_attempts" \
+    --argjson settlement_apply_failures "$analysis_settlement_apply_failures" \
     --argjson invariant_all_ok "$analysis_invariant_all_ok" \
     --argjson settlement_positive_samples "$analysis_settlement_positive_samples" \
     --argjson minted_non_empty_samples "$analysis_minted_non_empty_samples" \
@@ -920,7 +988,8 @@ write_summary_json() {
       thresholds: {
         max_stall_secs: $max_stall_secs,
         max_lag_p95: $max_lag_p95,
-        max_distfs_failure_ratio: $max_distfs_failure_ratio
+        max_distfs_failure_ratio: $max_distfs_failure_ratio,
+        max_settlement_apply_failure_ratio: $max_settlement_apply_failure_ratio
       },
       artifacts: {
         run_config_json: $run_config_json,
@@ -945,6 +1014,9 @@ write_summary_json() {
           distfs_failure_ratio: $distfs_failure_ratio,
           distfs_total_checks: $distfs_total_checks,
           distfs_failed_checks: $distfs_failed_checks,
+          settlement_apply_failure_ratio: $settlement_apply_failure_ratio,
+          settlement_apply_attempts: $settlement_apply_attempts,
+          settlement_apply_failures: $settlement_apply_failures,
           invariant_all_ok: $invariant_all_ok,
           settlement_positive_samples: $settlement_positive_samples,
           minted_non_empty_samples: $minted_non_empty_samples,
@@ -980,6 +1052,9 @@ append_summary_metrics_section() {
     echo "| distfs_failure_ratio | $analysis_distfs_failure_ratio |"
     echo "| distfs_total_checks | $analysis_distfs_total_checks |"
     echo "| distfs_failed_checks | $analysis_distfs_failed_checks |"
+    echo "| settlement_apply_failure_ratio | $analysis_settlement_apply_failure_ratio |"
+    echo "| settlement_apply_attempts | $analysis_settlement_apply_attempts |"
+    echo "| settlement_apply_failures | $analysis_settlement_apply_failures |"
     echo "| invariant_all_ok | $analysis_invariant_all_ok |"
     echo "| settlement_positive_samples | $analysis_settlement_positive_samples |"
     echo "| minted_non_empty_samples | $analysis_minted_non_empty_samples |"

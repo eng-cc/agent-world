@@ -36,7 +36,7 @@
   - `--reward-points-per-credit <n>`：积分到 credit 的换算比例（默认 100，用于短跑窗口内触发 minted records 样本）。
   - `--base-port <n>`：端口基准（默认 5810）。
   - `--out-dir <path>`：输出目录（默认 `.tmp/s10_game_longrun`）。
-  - `--max-stall-secs <n>`、`--max-lag-p95 <n>`、`--max-distfs-failure-ratio <0~1>`：门禁阈值。
+  - `--max-stall-secs <n>`、`--max-lag-p95 <n>`、`--max-distfs-failure-ratio <0~1>`、`--max-settlement-apply-failure-ratio <0~1>`：门禁阈值。
   - `--node-auto-attest-all` / `--node-no-auto-attest-all` / `--node-auto-attest-sequencer-only`：
     控制节点本地自动 attest 策略（默认 `sequencer_only`）。
   - `--preserve-node-state`：保留历史 `output/node-distfs/s10-*` 状态（默认隔离历史状态，避免跨 run 污染）。
@@ -56,11 +56,16 @@
 - 奖励结算签名链路约束：
   - 结算 envelope 的 signer key 按 `node_id` 从根密钥派生，所有节点使用同一派生规则进行绑定与验签，避免“本地 root key 直签”导致跨节点验签不一致。
   - 结算 envelope 网络编码使用 CBOR（解码兼容 JSON 回退），降低跨节点传输后签名载荷失真风险。
+- 奖励 epoch 报表在 `reward_settlement_transport` 下暴露结算应用累计计数：
+  - `settlement_apply_attempts_total`
+  - `settlement_apply_failures_total`
+  - `settlement_apply_failure_ratio`
 
 ### 3) S10 门禁指标
 - 共识：`committed_height` 单调推进，`stall <= max_stall_secs`。
 - 网络追平：`lag_p95(network_committed_height - committed_height) <= max_lag_p95`。
 - 存储挑战：`distfs_failure_ratio <= max_distfs_failure_ratio`（在有样本时）。
+- 结算应用：`settlement_apply_attempts_total > 0` 且 `settlement_apply_failure_ratio <= max_settlement_apply_failure_ratio`（默认阈值 `0`，即失败率清零）。
 - 资产一致性：`reward_asset_invariant_status.ok == true`。
 - 真实数据交换：
   - 至少出现一次 `settlement_report.total_distributed_points > 0`；

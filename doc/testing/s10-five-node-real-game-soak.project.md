@@ -32,10 +32,11 @@
   - [x] `reward_runtime_node_identity_bindings` 移除 signer 特殊 root 绑定，所有节点身份统一派生规则。
   - [x] 结算 envelope 网络编码切换为 CBOR（解码兼容 JSON 回退），修复跨节点验签失败。
   - [x] 执行真实短长跑回归：`20260228-180015`（`260s`）五节点 `stderr` 中 `apply settlement envelope failed` / `verify settlement signature failed` / `settlement signer public key mismatch` 计数均为 0。
-- [ ] T9：将“结算 envelope 应用失败率”纳入硬门禁。
-  - [ ] 在 reward runtime epoch 报表中暴露结算应用尝试/失败累计计数。
-  - [ ] `scripts/s10-five-node-game-soak.sh` 增加 `max_settlement_apply_failure_ratio` 阈值与门禁判定。
-  - [ ] `summary.json`/`summary.md` 增加结算应用失败率指标输出。
+- [x] T9：将“结算 envelope 应用失败率”纳入硬门禁。
+  - [x] 在 reward runtime epoch 报表中暴露结算应用尝试/失败累计计数。
+  - [x] `scripts/s10-five-node-game-soak.sh` 增加 `max_settlement_apply_failure_ratio` 阈值与门禁判定。
+  - [x] `summary.json`/`summary.md` 增加结算应用失败率指标输出。
+  - [x] 真实短跑验证：`20260228-181651`（`130s`）门禁通过，`settlement_apply_attempts=7`、`settlement_apply_failures=0`、`settlement_apply_failure_ratio=0`，五节点结算相关 `stderr` 告警计数为 0。
 - [ ] T10：执行连续多轮长跑稳定性验证（3x600s + 1x 更长）并收口发布结论。
   - [ ] 连续跑测产物落盘并逐轮核验关键告警为 0。
   - [ ] 汇总门禁结果并更新项目状态为完成。
@@ -47,6 +48,6 @@
 - `testing-manual.md`
 
 ## 状态
-- 当前阶段：进行中（T8 已完成，执行 T9）。
+- 当前阶段：进行中（T9 已完成，执行 T10）。
 - 阻塞项：无。
 - 最近更新：2026-02-28。
