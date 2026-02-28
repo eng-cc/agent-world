@@ -36,6 +36,7 @@ Options:
   --variant-ssim-threshold <f>
                            power variant validation threshold (default: 0.9995)
   --crop-window <w:h:x:y>  crop window for viewer_art.png; use 'none' to disable crop
+  --preview-mode <mode>    scene_proxy,lookdev (default: scene_proxy)
   --no-prewarm             pass --no-prewarm to all capture runs
   -h, --help               show help
 
@@ -436,6 +437,7 @@ closeup_automation_steps_override=""
 art_lighting_mode="auto"
 variant_ssim_threshold="0.9995"
 crop_window_raw=""
+preview_mode="scene_proxy"
 
 override_base_texture=""
 override_normal_texture=""
@@ -528,6 +530,10 @@ while [[ $# -gt 0 ]]; do
       crop_window_raw=${2:-}
       shift 2
       ;;
+    --preview-mode)
+      preview_mode=${2:-}
+      shift 2
+      ;;
     --no-prewarm)
       force_no_prewarm=1
       shift
@@ -570,6 +576,16 @@ case "$fragment_strategy" in
   *)
     echo "invalid --fragment-strategy: $fragment_strategy" >&2
     echo "supported fragment strategies: readability,fidelity" >&2
+    exit 2
+    ;;
+esac
+
+case "$preview_mode" in
+  scene_proxy|lookdev)
+    ;;
+  *)
+    echo "invalid --preview-mode: $preview_mode" >&2
+    echo "supported preview modes: scene_proxy,lookdev" >&2
     exit 2
     ;;
 esac
@@ -629,6 +645,15 @@ capture_variant_bundle() {
     export AGENT_WORLD_VIEWER_FRAGMENT_MATERIAL_STRATEGY="$fragment_strategy"
     export AGENT_WORLD_VIEWER_SHOW_LOCATIONS=1
     export AGENT_WORLD_VIEWER_SHOW_AGENTS=0
+    if [[ "$preview_mode" == "lookdev" ]]; then
+      set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_SHELL_ENABLED" "0"
+      set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_RADIATION_GLOW" "0"
+      set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_DAMAGE_VISUAL" "0"
+    else
+      set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_SHELL_ENABLED" ""
+      set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_RADIATION_GLOW" ""
+      set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_DAMAGE_VISUAL" ""
+    fi
     if [[ "$art_capture" -eq 1 ]]; then
       export AGENT_WORLD_VIEWER_EXPERIENCE_MODE="director"
       export AGENT_WORLD_VIEWER_PANEL_MODE="observe"
@@ -757,6 +782,7 @@ port=$port
 render_profile=$render_profile
 fragment_strategy=$fragment_strategy
 art_capture=$art_capture
+preview_mode=$preview_mode
 hero_automation_steps=$hero_steps
 closeup_automation_steps=$closeup_steps
 crop_window=$crop_window
@@ -766,6 +792,9 @@ retry_attempt=$retry_attempt
 art_lighting_enabled=$art_lighting_enabled
 variant_ssim_threshold=$variant_ssim_threshold
 use_source_mesh=$use_source_mesh
+lookdev_location_shell_enabled=${AGENT_WORLD_VIEWER_LOCATION_SHELL_ENABLED:-}
+lookdev_location_radiation_glow=${AGENT_WORLD_VIEWER_LOCATION_RADIATION_GLOW:-}
+lookdev_location_damage_visual=${AGENT_WORLD_VIEWER_LOCATION_DAMAGE_VISUAL:-}
 location_mesh_asset=${AGENT_WORLD_VIEWER_LOCATION_MESH_ASSET:-}
 location_base_texture_asset=${AGENT_WORLD_VIEWER_LOCATION_BASE_TEXTURE_ASSET:-}
 location_normal_texture_asset=${AGENT_WORLD_VIEWER_LOCATION_NORMAL_TEXTURE_ASSET:-}

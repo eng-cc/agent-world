@@ -3,9 +3,9 @@
 ## 任务拆解
 - [x] T0：输出设计文档 `doc/scripts/viewer-texture-inspector-material-recognizability-2026-02-28.md`
 - [x] T0：输出项目管理文档（本文件）
-- [ ] T1：为 `viewer-texture-inspector` 新增 `--preview-mode` 与 `lookdev` 模式（关闭 location shell/radiation/damage 干扰）
-- [ ] T1：将 `preview_mode` 与 lookdev 开关写入 `meta.txt`
-- [ ] T1：执行 test_tier_required（语法/help/smoke）并记录结论
+- [x] T1：为 `viewer-texture-inspector` 新增 `--preview-mode` 与 `lookdev` 模式（关闭 location shell/radiation/damage 干扰）
+- [x] T1：将 `preview_mode` 与 lookdev 开关写入 `meta.txt`
+- [x] T1：执行 test_tier_required（语法/help/smoke）并记录结论
 - [ ] T2：实现 `direct_entity` 预览链路（直连被检实体槽位）
 - [ ] T2：补充 `direct_entity` 失败回退与元数据字段
 - [ ] T3：引入 per-entity/per-variant 参数层并接入脚本
@@ -18,6 +18,6 @@
 - `env -u RUSTC_WRAPPER cargo run -p agent_world_viewer`（viewer 启动约束）
 
 ## 状态
-- 当前阶段：进行中（T0 已完成，执行 T1）
+- 当前阶段：进行中（T1 已完成，执行 T2）
 - 阻塞：无
-- 下一步：实现 `--preview-mode lookdev`，并完成语法/help/smoke 验证
+- 下一步：实现 `direct_entity` 预览链路与回退元数据
