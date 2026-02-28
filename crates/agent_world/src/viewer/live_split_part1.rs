@@ -27,10 +27,11 @@ use super::auth::{
     verify_prompt_control_rollback_auth_proof, PromptControlAuthIntent,
 };
 use super::protocol::{
-    viewer_event_kind_matches, AgentChatAck, AgentChatError, AgentChatRequest, PromptControlAck,
-    PromptControlApplyRequest, PromptControlCommand, PromptControlError, PromptControlOperation,
-    PromptControlRollbackRequest, ViewerControl, ViewerControlProfile, ViewerEventKind,
-    ViewerRequest, ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
+    viewer_event_kind_matches, AgentChatAck, AgentChatError, AgentChatRequest,
+    ControlCompletionAck, ControlCompletionStatus, PromptControlAck, PromptControlApplyRequest,
+    PromptControlCommand, PromptControlError, PromptControlOperation, PromptControlRollbackRequest,
+    ViewerControl, ViewerControlProfile, ViewerEventKind, ViewerRequest, ViewerResponse,
+    ViewerStream, VIEWER_PROTOCOL_VERSION,
 };
 #[path = "live/live_helpers.rs"]
 mod live_helpers;
@@ -147,7 +148,10 @@ enum LiveLoopSignal {
     ConsensusCommitted,
     ConsensusDriveRequested,
     NonConsensusDriveRequested,
-    StepRequested { count: usize },
+    StepRequested {
+        count: usize,
+        request_id: Option<u64>,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -277,9 +281,9 @@ impl ViewerLiveServer {
                         );
                     }
                     if let Some(control) = outcome.deferred_control {
-                        let ViewerLiveDeferredControl::Step { count } = control;
+                        let ViewerLiveDeferredControl::Step { count, request_id } = control;
                         if loop_tx
-                            .send(LiveLoopSignal::StepRequested { count })
+                            .send(LiveLoopSignal::StepRequested { count, request_id })
                             .is_ok()
                         {
                             backpressure.record_enqueued(LiveLoopSignalKind::StepRequested);
@@ -364,8 +368,8 @@ impl ViewerLiveServer {
                     }
                     Ok(LiveLoopIterationAction::Continue)
                 }
-                LiveLoopSignal::StepRequested { count } => {
-                    self.handle_step_request(&mut session, &mut writer, count)?;
+                LiveLoopSignal::StepRequested { count, request_id } => {
+                    self.handle_step_request(&mut session, &mut writer, count, request_id)?;
                     Ok(LiveLoopIterationAction::Continue)
                 }
             };
@@ -460,9 +464,12 @@ impl ViewerLiveServer {
         session: &mut ViewerLiveSession,
         writer: &mut BufWriter<TcpStream>,
         count: usize,
+        request_id: Option<u64>,
     ) -> Result<(), ViewerLiveServerError> {
         session.playing = false;
         let steps = count.max(1);
+        let baseline_logical_time = self.world.logical_time();
+        let baseline_event_seq = self.world.latest_event_seq();
         for _ in 0..steps {
             self.world.request_llm_decision();
             let mut step = self.world.step()?;
@@ -481,6 +488,32 @@ impl ViewerLiveServer {
                 }
             }
             self.emit_step_outcome(session, writer, step, true)?;
+        }
+        if let Some(request_id) = request_id {
+            let delta_logical_time = self
+                .world
+                .logical_time()
+                .saturating_sub(baseline_logical_time);
+            let delta_event_seq = self
+                .world
+                .latest_event_seq()
+                .saturating_sub(baseline_event_seq);
+            let status = if delta_logical_time > 0 || delta_event_seq > 0 {
+                ControlCompletionStatus::Advanced
+            } else {
+                ControlCompletionStatus::TimeoutNoProgress
+            };
+            send_response(
+                writer,
+                &ViewerResponse::ControlCompletionAck {
+                    ack: ControlCompletionAck {
+                        request_id,
+                        status,
+                        delta_logical_time,
+                        delta_event_seq,
+                    },
+                },
+            )?;
         }
         Ok(())
     }
@@ -601,6 +634,18 @@ impl LiveWorld {
 
     fn snapshot(&self) -> WorldSnapshot {
         self.kernel.snapshot()
+    }
+
+    fn logical_time(&self) -> u64 {
+        self.kernel.time()
+    }
+
+    fn latest_event_seq(&self) -> u64 {
+        self.kernel
+            .journal()
+            .last()
+            .map(|event| event.id)
+            .unwrap_or(0)
     }
 
     fn uses_consensus_bridge(&self) -> bool {

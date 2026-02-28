@@ -140,7 +140,10 @@ struct ViewerLiveRequestOutcome {
 
 #[derive(Debug, Clone, Copy)]
 enum ViewerLiveDeferredControl {
-    Step { count: usize },
+    Step {
+        count: usize,
+        request_id: Option<u64>,
+    },
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -513,16 +516,18 @@ impl ViewerLiveSession {
                     )?;
                 }
             }
-            ViewerRequest::PlaybackControl { mode } => {
+            ViewerRequest::PlaybackControl { mode, request_id } => {
                 self.apply_control_mode(
                     ViewerControl::from(mode),
+                    request_id,
                     &mut request_llm_decision,
                     &mut deferred_control,
                 );
             }
-            ViewerRequest::LiveControl { mode } => {
+            ViewerRequest::LiveControl { mode, request_id } => {
                 self.apply_control_mode(
                     ViewerControl::from(mode),
+                    request_id,
                     &mut request_llm_decision,
                     &mut deferred_control,
                 );
@@ -560,9 +565,14 @@ impl ViewerLiveSession {
                     send_response(writer, &ViewerResponse::AgentChatError { error })?;
                 }
             },
-            ViewerRequest::Control { mode } => {
+            ViewerRequest::Control { mode, request_id } => {
                 // Legacy compatibility: map mixed control channel into live semantics.
-                self.apply_control_mode(mode, &mut request_llm_decision, &mut deferred_control);
+                self.apply_control_mode(
+                    mode,
+                    request_id,
+                    &mut request_llm_decision,
+                    &mut deferred_control,
+                );
             }
         }
         Ok(ViewerLiveRequestOutcome {
@@ -575,6 +585,7 @@ impl ViewerLiveSession {
     fn apply_control_mode(
         &mut self,
         mode: ViewerControl,
+        request_id: Option<u64>,
         request_llm_decision: &mut bool,
         deferred_control: &mut Option<ViewerLiveDeferredControl>,
     ) {
@@ -590,6 +601,7 @@ impl ViewerLiveSession {
                 self.playing = false;
                 *deferred_control = Some(ViewerLiveDeferredControl::Step {
                     count: count.max(1),
+                    request_id,
                 });
             }
             ViewerControl::Seek { tick } => {

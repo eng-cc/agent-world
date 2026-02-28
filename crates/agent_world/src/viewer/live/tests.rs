@@ -9,7 +9,7 @@ use std::net::{TcpListener, TcpStream};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 fn set_test_llm_env() {
     std::env::set_var(crate::simulator::ENV_LLM_MODEL, "gpt-4o-mini");
@@ -58,6 +58,46 @@ fn read_response_line(peer: &TcpStream, timeout: Duration) -> Option<String> {
             }
         }
     }
+}
+
+fn read_control_completion_ack(
+    peer: &TcpStream,
+    timeout: Duration,
+) -> Option<crate::viewer::ControlCompletionAck> {
+    let stream = peer.try_clone().expect("clone test peer");
+    stream
+        .set_read_timeout(Some(Duration::from_millis(100)))
+        .expect("set read timeout");
+    let mut reader = BufReader::new(stream);
+    let start = Instant::now();
+    let mut line = String::new();
+    while start.elapsed() < timeout {
+        line.clear();
+        match reader.read_line(&mut line) {
+            Ok(0) => continue,
+            Ok(_) => {}
+            Err(err) => {
+                if matches!(
+                    err.kind(),
+                    std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut
+                ) {
+                    continue;
+                }
+                panic!("read response line failed: {err}");
+            }
+        }
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        let Ok(response) = serde_json::from_str::<crate::viewer::ViewerResponse>(trimmed) else {
+            continue;
+        };
+        if let crate::viewer::ViewerResponse::ControlCompletionAck { ack } = response {
+            return Some(ack);
+        }
+    }
+    None
 }
 
 fn signed_prompt_control_apply_request(
@@ -210,6 +250,7 @@ fn step_control_is_deferred_from_request_handler() {
         .handle_request(
             ViewerRequest::Control {
                 mode: ViewerControl::Step { count: 3 },
+                request_id: None,
             },
             &mut writer,
             &mut world,
@@ -220,7 +261,10 @@ fn step_control_is_deferred_from_request_handler() {
     assert_eq!(world.kernel.time(), 0);
     assert!(matches!(
         outcome.deferred_control,
-        Some(ViewerLiveDeferredControl::Step { count: 3 })
+        Some(ViewerLiveDeferredControl::Step {
+            count: 3,
+            request_id: None,
+        })
     ));
 }
 
@@ -236,6 +280,7 @@ fn seek_control_is_ignored_in_live_request_handler() {
         .handle_request(
             ViewerRequest::Control {
                 mode: ViewerControl::Seek { tick: 5 },
+                request_id: None,
             },
             &mut writer,
             &mut world,
@@ -965,6 +1010,61 @@ fn consensus_committed_advances_world_even_when_session_paused() {
 }
 
 #[test]
+fn step_request_emits_completion_ack_advanced_when_world_progresses() {
+    let config = ViewerLiveServerConfig::new(WorldScenario::Minimal)
+        .with_decision_mode(ViewerLiveDecisionMode::Script);
+    let mut server = ViewerLiveServer::new(config).expect("init server");
+    let mut session = ViewerLiveSession::new();
+    let (mut writer, peer) = test_writer_pair();
+
+    server
+        .handle_step_request(&mut session, &mut writer, 1, Some(2001))
+        .expect("step request should complete");
+
+    let ack = read_control_completion_ack(&peer, Duration::from_secs(1))
+        .expect("control completion ack should be emitted");
+    assert_eq!(ack.request_id, 2001);
+    assert_eq!(ack.status, ControlCompletionStatus::Advanced);
+    assert!(ack.delta_logical_time > 0 || ack.delta_event_seq > 0);
+}
+
+#[test]
+fn step_request_emits_completion_ack_timeout_when_consensus_has_no_commit() {
+    let node_config = NodeConfig::new(
+        "node-live-step-timeout",
+        "live-minimal",
+        NodeRole::Sequencer,
+    )
+    .expect("node config")
+    .with_tick_interval(Duration::from_secs(5))
+    .expect("node tick interval");
+    let mut node_runtime = NodeRuntime::new(node_config).with_execution_hook(TestNoopExecutionHook);
+    node_runtime.start().expect("start node runtime");
+    let shared_runtime = Arc::new(Mutex::new(node_runtime));
+
+    let config = ViewerLiveServerConfig::new(WorldScenario::Minimal)
+        .with_decision_mode(ViewerLiveDecisionMode::Script)
+        .with_consensus_runtime(Arc::clone(&shared_runtime));
+    let mut server = ViewerLiveServer::new(config).expect("init server");
+    let mut session = ViewerLiveSession::new();
+    let (mut writer, peer) = test_writer_pair();
+
+    server
+        .handle_step_request(&mut session, &mut writer, 1, Some(2002))
+        .expect("step request should complete");
+
+    let ack = read_control_completion_ack(&peer, Duration::from_secs(2))
+        .expect("control completion ack should be emitted");
+    assert_eq!(ack.request_id, 2002);
+    assert_eq!(ack.status, ControlCompletionStatus::TimeoutNoProgress);
+    assert_eq!(ack.delta_logical_time, 0);
+    assert_eq!(ack.delta_event_seq, 0);
+
+    let mut locked = shared_runtime.lock().expect("lock node runtime");
+    locked.stop().expect("stop node runtime");
+}
+
+#[test]
 fn enqueue_coalesced_signal_merges_duplicate_llm_decision_requests() {
     let (tx, rx) = mpsc::sync_channel(4);
     let queued = Arc::new(AtomicBool::new(false));
@@ -1005,8 +1105,11 @@ fn enqueue_coalesced_signal_merges_duplicate_llm_decision_requests() {
 #[test]
 fn enqueue_coalesced_signal_drops_when_queue_is_full() {
     let (tx, rx) = mpsc::sync_channel(1);
-    tx.send(LiveLoopSignal::StepRequested { count: 1 })
-        .expect("fill queue");
+    tx.send(LiveLoopSignal::StepRequested {
+        count: 1,
+        request_id: None,
+    })
+    .expect("fill queue");
     let queued = Arc::new(AtomicBool::new(false));
     let backpressure = LiveLoopBackpressure::default();
 

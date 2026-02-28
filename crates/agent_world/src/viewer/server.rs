@@ -10,9 +10,9 @@ use crate::simulator::{
 };
 
 use super::protocol::{
-    viewer_event_kind_matches, AgentChatError, PlaybackControl, PromptControlError,
-    ViewerControlProfile, ViewerEventKind, ViewerRequest, ViewerResponse, ViewerStream,
-    VIEWER_PROTOCOL_VERSION,
+    viewer_event_kind_matches, AgentChatError, ControlCompletionAck, ControlCompletionStatus,
+    PlaybackControl, PromptControlError, ViewerControlProfile, ViewerEventKind, ViewerRequest,
+    ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
 };
 
 #[derive(Debug, Clone)]
@@ -147,6 +147,7 @@ struct ViewerSession<'a> {
     event_filters: Option<HashSet<ViewerEventKind>>,
     cursor: usize,
     metrics: RunnerMetrics,
+    last_event_seq: u64,
 }
 
 impl<'a> ViewerSession<'a> {
@@ -157,6 +158,7 @@ impl<'a> ViewerSession<'a> {
             event_filters: None,
             cursor: 0,
             metrics: RunnerMetrics::default(),
+            last_event_seq: 0,
         }
     }
 
@@ -208,10 +210,13 @@ impl<'a> ViewerSession<'a> {
                     )?;
                 }
             }
-            ViewerRequest::PlaybackControl { mode } => {
-                self.handle_playback_control(mode, writer)?
+            ViewerRequest::PlaybackControl { mode, request_id } => {
+                self.handle_playback_control(mode, request_id, writer)?
             }
-            ViewerRequest::LiveControl { mode } => {
+            ViewerRequest::LiveControl {
+                mode,
+                request_id: _request_id,
+            } => {
                 send_response(
                     writer,
                     &ViewerResponse::Error {
@@ -221,9 +226,9 @@ impl<'a> ViewerSession<'a> {
                     },
                 )?;
             }
-            ViewerRequest::Control { mode } => {
+            ViewerRequest::Control { mode, request_id } => {
                 // Legacy compatibility: map mixed control channel into playback semantics.
-                self.handle_playback_control(PlaybackControl::from(mode), writer)?
+                self.handle_playback_control(PlaybackControl::from(mode), request_id, writer)?
             }
             ViewerRequest::PromptControl { .. } => {
                 send_response(
@@ -268,17 +273,43 @@ impl<'a> ViewerSession<'a> {
     fn handle_playback_control(
         &mut self,
         mode: PlaybackControl,
+        request_id: Option<u64>,
         writer: &mut BufWriter<TcpStream>,
     ) -> Result<(), ViewerServerError> {
         match mode {
             PlaybackControl::Pause => {}
             PlaybackControl::Play => self.emit_playback_events(writer)?,
             PlaybackControl::Step { count } => {
+                let baseline_logical_time = self.metrics.total_ticks;
+                let baseline_event_seq = self.last_event_seq;
                 let steps = count.max(1);
                 for _ in 0..steps {
                     if !self.emit_next_event(writer)? {
                         break;
                     }
+                }
+                if let Some(request_id) = request_id {
+                    let delta_logical_time = self
+                        .metrics
+                        .total_ticks
+                        .saturating_sub(baseline_logical_time);
+                    let delta_event_seq = self.last_event_seq.saturating_sub(baseline_event_seq);
+                    let status = if delta_logical_time > 0 || delta_event_seq > 0 {
+                        ControlCompletionStatus::Advanced
+                    } else {
+                        ControlCompletionStatus::TimeoutNoProgress
+                    };
+                    send_response(
+                        writer,
+                        &ViewerResponse::ControlCompletionAck {
+                            ack: ControlCompletionAck {
+                                request_id,
+                                status,
+                                delta_logical_time,
+                                delta_event_seq,
+                            },
+                        },
+                    )?;
                 }
             }
             PlaybackControl::Seek { tick } => {
@@ -298,6 +329,7 @@ impl<'a> ViewerSession<'a> {
             return Ok(false);
         };
         let time = event.time;
+        self.last_event_seq = event.id;
         send_response(writer, &ViewerResponse::Event { event })?;
         self.update_metrics_time(time);
         self.emit_metrics(writer)?;
@@ -408,6 +440,9 @@ fn metrics_from_snapshot(snapshot: &WorldSnapshot) -> RunnerMetrics {
 mod tests {
     use super::*;
     use crate::simulator::{RejectReason, WorldEventKind};
+    use std::io::{BufRead, BufReader, BufWriter};
+    use std::net::{TcpListener, TcpStream};
+    use std::time::{Duration, Instant};
 
     fn make_event(id: u64, time: WorldTime) -> WorldEvent {
         WorldEvent {
@@ -419,6 +454,55 @@ mod tests {
         }
     }
 
+    fn test_writer_pair() -> (BufWriter<TcpStream>, TcpStream) {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("bind test listener");
+        let addr = listener.local_addr().expect("listener local addr");
+        let client = TcpStream::connect(addr).expect("connect test client");
+        let (server, _) = listener.accept().expect("accept test peer");
+        (BufWriter::new(server), client)
+    }
+
+    fn read_control_completion_ack(
+        peer: &TcpStream,
+        timeout: Duration,
+    ) -> Option<crate::viewer::ControlCompletionAck> {
+        let stream = peer.try_clone().expect("clone test peer");
+        stream
+            .set_read_timeout(Some(Duration::from_millis(100)))
+            .expect("set read timeout");
+        let mut reader = BufReader::new(stream);
+        let start = Instant::now();
+        let mut line = String::new();
+        while start.elapsed() < timeout {
+            line.clear();
+            match reader.read_line(&mut line) {
+                Ok(0) => continue,
+                Ok(_) => {}
+                Err(err) => {
+                    if matches!(
+                        err.kind(),
+                        std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut
+                    ) {
+                        continue;
+                    }
+                    panic!("read response line failed: {err}");
+                }
+            }
+            let trimmed = line.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+            let Ok(response) = serde_json::from_str::<crate::viewer::ViewerResponse>(trimmed)
+            else {
+                continue;
+            };
+            if let crate::viewer::ViewerResponse::ControlCompletionAck { ack } = response {
+                return Some(ack);
+            }
+        }
+        None
+    }
+
     #[test]
     fn seek_to_tick_finds_first_event_at_or_after_time() {
         let events = vec![make_event(1, 10), make_event(2, 20), make_event(3, 30)];
@@ -427,5 +511,40 @@ mod tests {
         assert_eq!(seek_to_tick(&events, 15), 1);
         assert_eq!(seek_to_tick(&events, 25), 2);
         assert_eq!(seek_to_tick(&events, 35), 3);
+    }
+
+    #[test]
+    fn playback_step_emits_completion_ack_advanced_when_event_emitted() {
+        let events = vec![make_event(1, 10)];
+        let mut session = ViewerSession::new(&events);
+        let (mut writer, peer) = test_writer_pair();
+
+        session
+            .handle_playback_control(PlaybackControl::Step { count: 1 }, Some(3001), &mut writer)
+            .expect("step control");
+
+        let ack = read_control_completion_ack(&peer, Duration::from_secs(1))
+            .expect("control completion ack should be emitted");
+        assert_eq!(ack.request_id, 3001);
+        assert_eq!(ack.status, ControlCompletionStatus::Advanced);
+        assert!(ack.delta_logical_time > 0 || ack.delta_event_seq > 0);
+    }
+
+    #[test]
+    fn playback_step_emits_completion_ack_timeout_when_no_event_emitted() {
+        let events = vec![];
+        let mut session = ViewerSession::new(&events);
+        let (mut writer, peer) = test_writer_pair();
+
+        session
+            .handle_playback_control(PlaybackControl::Step { count: 1 }, Some(3002), &mut writer)
+            .expect("step control");
+
+        let ack = read_control_completion_ack(&peer, Duration::from_secs(1))
+            .expect("control completion ack should be emitted");
+        assert_eq!(ack.request_id, 3002);
+        assert_eq!(ack.status, ControlCompletionStatus::TimeoutNoProgress);
+        assert_eq!(ack.delta_logical_time, 0);
+        assert_eq!(ack.delta_event_seq, 0);
     }
 }
