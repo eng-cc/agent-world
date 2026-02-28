@@ -72,6 +72,7 @@ fn live_server_accepts_client_and_emits_snapshot_and_event() {
         &mut writer,
         &ViewerRequest::Control {
             mode: ViewerControl::Step { count: 1 },
+            request_id: None,
         },
     );
 

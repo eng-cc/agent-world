@@ -34,13 +34,19 @@ pub enum ViewerRequest {
     RequestSnapshot,
     PlaybackControl {
         mode: PlaybackControl,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        request_id: Option<u64>,
     },
     LiveControl {
         mode: LiveControl,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        request_id: Option<u64>,
     },
     // Legacy mixed control channel. Prefer PlaybackControl/LiveControl.
     Control {
         mode: ViewerControl,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        request_id: Option<u64>,
     },
     PromptControl {
         command: PromptControlCommand,
@@ -210,6 +216,9 @@ pub enum ViewerResponse<Snapshot, Event, DecisionTrace, Metrics, Time> {
         time: Option<Time>,
         metrics: Metrics,
     },
+    ControlCompletionAck {
+        ack: ControlCompletionAck<Time>,
+    },
     PromptControlAck {
         ack: PromptControlAck<Time>,
     },
@@ -225,6 +234,21 @@ pub enum ViewerResponse<Snapshot, Event, DecisionTrace, Metrics, Time> {
     Error {
         message: String,
     },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ControlCompletionStatus {
+    Advanced,
+    TimeoutNoProgress,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ControlCompletionAck<Time> {
+    pub request_id: u64,
+    pub status: ControlCompletionStatus,
+    pub delta_logical_time: Time,
+    pub delta_event_seq: u64,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -327,6 +351,7 @@ mod tests {
     fn viewer_request_round_trip() {
         let request = ViewerRequest::Control {
             mode: ViewerControl::Step { count: 2 },
+            request_id: Some(7),
         };
         let json = serde_json::to_string(&request).expect("serialize request");
         let parsed: ViewerRequest = serde_json::from_str(&json).expect("deserialize request");
@@ -337,6 +362,7 @@ mod tests {
     fn viewer_playback_control_request_round_trip() {
         let request = ViewerRequest::PlaybackControl {
             mode: PlaybackControl::Seek { tick: 24 },
+            request_id: Some(11),
         };
         let json = serde_json::to_string(&request).expect("serialize request");
         let parsed: ViewerRequest = serde_json::from_str(&json).expect("deserialize request");
@@ -347,10 +373,26 @@ mod tests {
     fn viewer_live_control_request_round_trip() {
         let request = ViewerRequest::LiveControl {
             mode: LiveControl::Step { count: 3 },
+            request_id: Some(13),
         };
         let json = serde_json::to_string(&request).expect("serialize request");
         let parsed: ViewerRequest = serde_json::from_str(&json).expect("deserialize request");
         assert_eq!(parsed, request);
+    }
+
+    #[test]
+    fn viewer_control_request_defaults_request_id_to_none_for_legacy_payload() {
+        let request = ViewerRequest::Control {
+            mode: ViewerControl::Step { count: 2 },
+            request_id: None,
+        };
+        let json = serde_json::to_string(&request).expect("serialize request");
+        assert!(!json.contains("request_id"));
+        let parsed: ViewerRequest = serde_json::from_str(&json).expect("deserialize request");
+        let ViewerRequest::Control { request_id, .. } = parsed else {
+            panic!("expected control request");
+        };
+        assert_eq!(request_id, None);
     }
 
     #[test]
@@ -476,6 +518,33 @@ mod tests {
                 ],
                 digest: "abc".to_string(),
                 rolled_back_to_version: Some(5),
+            },
+        };
+        let json = serde_json::to_string(&response).expect("serialize response");
+        let parsed: ViewerResponse<
+            serde_json::Value,
+            serde_json::Value,
+            serde_json::Value,
+            serde_json::Value,
+            u64,
+        > = serde_json::from_str(&json).expect("deserialize response");
+        assert_eq!(parsed, response);
+    }
+
+    #[test]
+    fn viewer_response_round_trip_control_completion_ack() {
+        let response = ViewerResponse::<
+            serde_json::Value,
+            serde_json::Value,
+            serde_json::Value,
+            serde_json::Value,
+            u64,
+        >::ControlCompletionAck {
+            ack: ControlCompletionAck {
+                request_id: 42,
+                status: ControlCompletionStatus::TimeoutNoProgress,
+                delta_logical_time: 0,
+                delta_event_seq: 0,
             },
         };
         let json = serde_json::to_string(&response).expect("serialize response");

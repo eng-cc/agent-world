@@ -16,10 +16,11 @@ pub use live::{
     ViewerLiveDecisionMode, ViewerLiveServer, ViewerLiveServerConfig, ViewerLiveServerError,
 };
 pub use protocol::{
-    AgentChatAck, AgentChatError, AgentChatRequest, LiveControl, PlaybackControl, PlayerAuthProof,
-    PlayerAuthScheme, PromptControlAck, PromptControlApplyRequest, PromptControlCommand,
-    PromptControlError, PromptControlOperation, PromptControlRollbackRequest, ViewerControl,
-    ViewerControlProfile, ViewerRequest, ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
+    AgentChatAck, AgentChatError, AgentChatRequest, ControlCompletionAck, ControlCompletionStatus,
+    LiveControl, PlaybackControl, PlayerAuthProof, PlayerAuthScheme, PromptControlAck,
+    PromptControlApplyRequest, PromptControlCommand, PromptControlError, PromptControlOperation,
+    PromptControlRollbackRequest, ViewerControl, ViewerControlProfile, ViewerRequest,
+    ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
 };
 pub use server::{ViewerServer, ViewerServerConfig, ViewerServerError};
 pub use web_bridge::{ViewerWebBridge, ViewerWebBridgeConfig, ViewerWebBridgeError};

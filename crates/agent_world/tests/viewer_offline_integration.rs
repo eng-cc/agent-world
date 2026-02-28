@@ -57,6 +57,7 @@ fn offline_server_accepts_client_and_emits_snapshot_and_event() {
         &mut writer,
         &ViewerRequest::Control {
             mode: ViewerControl::Step { count: 1 },
+            request_id: None,
         },
     );
 
@@ -143,6 +144,7 @@ fn offline_server_play_control_streams_events_without_timer_ticks() {
         &mut writer,
         &ViewerRequest::Control {
             mode: ViewerControl::Play,
+            request_id: None,
         },
     );
 

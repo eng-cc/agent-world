@@ -5,16 +5,17 @@ use crate::simulator::{
 };
 
 pub use proto::{
-    AgentChatError, AgentChatRequest, LiveControl, PlaybackControl, PlayerAuthProof,
-    PlayerAuthScheme, PromptControlApplyRequest, PromptControlCommand, PromptControlError,
-    PromptControlOperation, PromptControlRollbackRequest, ViewerControl, ViewerControlProfile,
-    ViewerEventKind, ViewerRequest, ViewerStream, VIEWER_PROTOCOL_VERSION,
+    AgentChatError, AgentChatRequest, ControlCompletionStatus, LiveControl, PlaybackControl,
+    PlayerAuthProof, PlayerAuthScheme, PromptControlApplyRequest, PromptControlCommand,
+    PromptControlError, PromptControlOperation, PromptControlRollbackRequest, ViewerControl,
+    ViewerControlProfile, ViewerEventKind, ViewerRequest, ViewerStream, VIEWER_PROTOCOL_VERSION,
 };
 
 pub type ViewerResponse =
     proto::ViewerResponse<WorldSnapshot, WorldEvent, AgentDecisionTrace, RunnerMetrics, WorldTime>;
 pub type PromptControlAck = proto::PromptControlAck<WorldTime>;
 pub type AgentChatAck = proto::AgentChatAck<WorldTime>;
+pub type ControlCompletionAck = proto::ControlCompletionAck<WorldTime>;
 
 pub fn viewer_event_kind_matches(filter: &ViewerEventKind, kind: &WorldEventKind) -> bool {
     match (filter, kind) {
@@ -38,6 +39,7 @@ mod tests {
     fn viewer_request_round_trip() {
         let request = ViewerRequest::Control {
             mode: ViewerControl::Step { count: 2 },
+            request_id: Some(1),
         };
         let json = serde_json::to_string(&request).expect("serialize request");
         let parsed: ViewerRequest = serde_json::from_str(&json).expect("deserialize request");
