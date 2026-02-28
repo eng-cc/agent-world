@@ -25,6 +25,14 @@ Options:
   --normal-texture <path>  override source normal texture
   --mr-texture <path>      override source metallic_roughness texture
   --emissive-texture <p>   override source emissive texture
+  --base-texture-template <p>
+                           variant texture template, supports {variant}
+  --normal-texture-template <p>
+                           variant normal template, supports {variant}
+  --mr-texture-template <p>
+                           variant metallic_roughness template, supports {variant}
+  --emissive-texture-template <p>
+                           variant emissive template, supports {variant}
   --use-source-mesh        use inspected entity mesh as location mesh in preview
   --out-dir <dir>          output root (default: output/texture_inspector/<timestamp>)
   --art-capture            enable art-review mode (director ui + source mesh + crop output)
@@ -499,6 +507,22 @@ apply_variant_material_profile() {
   esac
 }
 
+resolve_variant_texture_override() {
+  local shared_override=$1
+  local template_override=$2
+  local variant=$3
+
+  if [[ -n "$template_override" ]]; then
+    echo "${template_override//\{variant\}/$variant}"
+    return 0
+  fi
+  if [[ -n "$shared_override" ]]; then
+    echo "$shared_override"
+    return 0
+  fi
+  echo ""
+}
+
 variant_min_pair_ssim() {
   local root=$1
   local entity=$2
@@ -540,6 +564,10 @@ override_base_texture=""
 override_normal_texture=""
 override_mr_texture=""
 override_emissive_texture=""
+override_base_texture_template=""
+override_normal_texture_template=""
+override_mr_texture_template=""
+override_emissive_texture_template=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -589,6 +617,22 @@ while [[ $# -gt 0 ]]; do
       ;;
     --emissive-texture)
       override_emissive_texture=${2:-}
+      shift 2
+      ;;
+    --base-texture-template)
+      override_base_texture_template=${2:-}
+      shift 2
+      ;;
+    --normal-texture-template)
+      override_normal_texture_template=${2:-}
+      shift 2
+      ;;
+    --mr-texture-template)
+      override_mr_texture_template=${2:-}
+      shift 2
+      ;;
+    --emissive-texture-template)
+      override_emissive_texture_template=${2:-}
       shift 2
       ;;
     --use-source-mesh)
@@ -805,24 +849,28 @@ capture_variant_bundle() {
     src_normal="${!src_normal_key:-}"
     src_mr="${!src_mr_key:-}"
     src_emissive="${!src_emissive_key:-}"
+    variant_base_texture_override=$(resolve_variant_texture_override "$override_base_texture" "$override_base_texture_template" "$variant")
+    variant_normal_texture_override=$(resolve_variant_texture_override "$override_normal_texture" "$override_normal_texture_template" "$variant")
+    variant_mr_texture_override=$(resolve_variant_texture_override "$override_mr_texture" "$override_mr_texture_template" "$variant")
+    variant_emissive_texture_override=$(resolve_variant_texture_override "$override_emissive_texture" "$override_emissive_texture_template" "$variant")
 
     if [[ "$effective_preview_mode" == "direct_entity" ]]; then
       if [[ "$use_source_mesh" -eq 1 ]]; then
         set_or_unset_env "AGENT_WORLD_VIEWER_${src_prefix}_MESH_ASSET" "$src_mesh"
       fi
-      set_or_unset_env "AGENT_WORLD_VIEWER_${src_prefix}_BASE_TEXTURE_ASSET" "${override_base_texture:-$src_base}"
-      set_or_unset_env "AGENT_WORLD_VIEWER_${src_prefix}_NORMAL_TEXTURE_ASSET" "${override_normal_texture:-$src_normal}"
-      set_or_unset_env "AGENT_WORLD_VIEWER_${src_prefix}_METALLIC_ROUGHNESS_TEXTURE_ASSET" "${override_mr_texture:-$src_mr}"
-      set_or_unset_env "AGENT_WORLD_VIEWER_${src_prefix}_EMISSIVE_TEXTURE_ASSET" "${override_emissive_texture:-$src_emissive}"
+      set_or_unset_env "AGENT_WORLD_VIEWER_${src_prefix}_BASE_TEXTURE_ASSET" "${variant_base_texture_override:-$src_base}"
+      set_or_unset_env "AGENT_WORLD_VIEWER_${src_prefix}_NORMAL_TEXTURE_ASSET" "${variant_normal_texture_override:-$src_normal}"
+      set_or_unset_env "AGENT_WORLD_VIEWER_${src_prefix}_METALLIC_ROUGHNESS_TEXTURE_ASSET" "${variant_mr_texture_override:-$src_mr}"
+      set_or_unset_env "AGENT_WORLD_VIEWER_${src_prefix}_EMISSIVE_TEXTURE_ASSET" "${variant_emissive_texture_override:-$src_emissive}"
     else
       if [[ "$use_source_mesh" -eq 1 ]]; then
         set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_MESH_ASSET" "$src_mesh"
       fi
 
-      set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_BASE_TEXTURE_ASSET" "${override_base_texture:-$src_base}"
-      set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_NORMAL_TEXTURE_ASSET" "${override_normal_texture:-$src_normal}"
-      set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_METALLIC_ROUGHNESS_TEXTURE_ASSET" "${override_mr_texture:-$src_mr}"
-      set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_EMISSIVE_TEXTURE_ASSET" "${override_emissive_texture:-$src_emissive}"
+      set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_BASE_TEXTURE_ASSET" "${variant_base_texture_override:-$src_base}"
+      set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_NORMAL_TEXTURE_ASSET" "${variant_normal_texture_override:-$src_normal}"
+      set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_METALLIC_ROUGHNESS_TEXTURE_ASSET" "${variant_mr_texture_override:-$src_mr}"
+      set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_EMISSIVE_TEXTURE_ASSET" "${variant_emissive_texture_override:-$src_emissive}"
     fi
 
     run ./scripts/capture-viewer-frame.sh \
@@ -939,6 +987,14 @@ material_asset_roughness_override=${AGENT_WORLD_VIEWER_MATERIAL_ASSET_ROUGHNESS:
 material_asset_metallic_override=${AGENT_WORLD_VIEWER_MATERIAL_ASSET_METALLIC:-}
 material_facility_roughness_override=${AGENT_WORLD_VIEWER_MATERIAL_FACILITY_ROUGHNESS:-}
 material_facility_metallic_override=${AGENT_WORLD_VIEWER_MATERIAL_FACILITY_METALLIC:-}
+base_texture_template_override=$override_base_texture_template
+normal_texture_template_override=$override_normal_texture_template
+mr_texture_template_override=$override_mr_texture_template
+emissive_texture_template_override=$override_emissive_texture_template
+base_texture_effective_override=$variant_base_texture_override
+normal_texture_effective_override=$variant_normal_texture_override
+mr_texture_effective_override=$variant_mr_texture_override
+emissive_texture_effective_override=$variant_emissive_texture_override
 location_mesh_asset=${AGENT_WORLD_VIEWER_LOCATION_MESH_ASSET:-}
 location_base_texture_asset=${AGENT_WORLD_VIEWER_LOCATION_BASE_TEXTURE_ASSET:-}
 location_normal_texture_asset=${AGENT_WORLD_VIEWER_LOCATION_NORMAL_TEXTURE_ASSET:-}
