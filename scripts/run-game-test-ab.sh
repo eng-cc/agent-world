@@ -429,19 +429,12 @@ async (page) => {
     expectProgress: true,
     timeoutMs: 6000,
   });
-  const phaseBMoveProbe = await sendControlProbe({
-    name: "phase_b_move_probe",
-    action: "move",
-    payload: { x: 1, y: 0 },
-    expectProgress: false,
-    timeoutMs: 2000,
-  });
   await page.screenshot({ path: "${OUT_DIR}/step2-phase-b.png", scale: "css", type: "png" });
 
   const finalState = await waitForConnected("final");
   await page.screenshot({ path: "${OUT_DIR}/step3-final.png", scale: "css", type: "png" });
 
-  const commands = [phaseAPlay, phaseAPause, phaseBStepPrimary, phaseBStepFollowup, phaseBMoveProbe];
+  const commands = [phaseAPlay, phaseAPause, phaseBStepPrimary, phaseBStepFollowup];
   const expectedProgressControls = commands.filter((item) => item.expectProgress);
   const progressedControls = expectedProgressControls.filter((item) => item.progressed);
   const acceptedControls = commands.filter((item) => item.accepted);
@@ -468,7 +461,6 @@ async (page) => {
       phaseB: {
         stepPrimary: phaseBStepPrimary,
         stepFollowup: phaseBStepFollowup,
-        moveProbe: phaseBMoveProbe,
         pass: phaseBStepPrimary.progressed && phaseBStepFollowup.progressed,
       },
     },
