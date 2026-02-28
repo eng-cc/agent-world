@@ -36,7 +36,7 @@ Options:
   --variant-ssim-threshold <f>
                            power variant validation threshold (default: 0.9995)
   --crop-window <w:h:x:y>  crop window for viewer_art.png; use 'none' to disable crop
-  --preview-mode <mode>    scene_proxy,lookdev (default: scene_proxy)
+  --preview-mode <mode>    scene_proxy,lookdev,direct_entity (default: scene_proxy)
   --no-prewarm             pass --no-prewarm to all capture runs
   -h, --help               show help
 
@@ -581,11 +581,11 @@ case "$fragment_strategy" in
 esac
 
 case "$preview_mode" in
-  scene_proxy|lookdev)
+  scene_proxy|lookdev|direct_entity)
     ;;
   *)
     echo "invalid --preview-mode: $preview_mode" >&2
-    echo "supported preview modes: scene_proxy,lookdev" >&2
+    echo "supported preview modes: scene_proxy,lookdev,direct_entity" >&2
     exit 2
     ;;
 esac
@@ -603,7 +603,9 @@ mkdir -p "$out_dir"
 
 default_automation_steps="mode=3d;focus=first_location;pan=0,2,0;zoom=1.2;orbit=10,-25;select=first_location;wait=0.4"
 if [[ "$art_capture" -eq 1 && "$use_source_mesh" -eq 0 ]]; then
-  use_source_mesh=1
+  if [[ "$preview_mode" != "direct_entity" ]]; then
+    use_source_mesh=1
+  fi
 fi
 if [[ -z "$crop_window_raw" ]]; then
   if [[ "$art_capture" -eq 1 ]]; then
@@ -645,7 +647,13 @@ capture_variant_bundle() {
     export AGENT_WORLD_VIEWER_FRAGMENT_MATERIAL_STRATEGY="$fragment_strategy"
     export AGENT_WORLD_VIEWER_SHOW_LOCATIONS=1
     export AGENT_WORLD_VIEWER_SHOW_AGENTS=0
-    if [[ "$preview_mode" == "lookdev" ]]; then
+    effective_preview_mode="$preview_mode"
+    preview_mode_fallback_reason="none"
+    if [[ "$preview_mode" == "direct_entity" && "$entity" == "location" ]]; then
+      effective_preview_mode="scene_proxy"
+      preview_mode_fallback_reason="location_direct_entity_not_applicable"
+    fi
+    if [[ "$effective_preview_mode" == "lookdev" ]]; then
       set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_SHELL_ENABLED" "0"
       set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_RADIATION_GLOW" "0"
       set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_DAMAGE_VISUAL" "0"
@@ -682,14 +690,24 @@ capture_variant_bundle() {
     src_mr="${!src_mr_key:-}"
     src_emissive="${!src_emissive_key:-}"
 
-    if [[ "$use_source_mesh" -eq 1 ]]; then
-      set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_MESH_ASSET" "$src_mesh"
-    fi
+    if [[ "$effective_preview_mode" == "direct_entity" ]]; then
+      if [[ "$use_source_mesh" -eq 1 ]]; then
+        set_or_unset_env "AGENT_WORLD_VIEWER_${src_prefix}_MESH_ASSET" "$src_mesh"
+      fi
+      set_or_unset_env "AGENT_WORLD_VIEWER_${src_prefix}_BASE_TEXTURE_ASSET" "${override_base_texture:-$src_base}"
+      set_or_unset_env "AGENT_WORLD_VIEWER_${src_prefix}_NORMAL_TEXTURE_ASSET" "${override_normal_texture:-$src_normal}"
+      set_or_unset_env "AGENT_WORLD_VIEWER_${src_prefix}_METALLIC_ROUGHNESS_TEXTURE_ASSET" "${override_mr_texture:-$src_mr}"
+      set_or_unset_env "AGENT_WORLD_VIEWER_${src_prefix}_EMISSIVE_TEXTURE_ASSET" "${override_emissive_texture:-$src_emissive}"
+    else
+      if [[ "$use_source_mesh" -eq 1 ]]; then
+        set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_MESH_ASSET" "$src_mesh"
+      fi
 
-    set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_BASE_TEXTURE_ASSET" "${override_base_texture:-$src_base}"
-    set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_NORMAL_TEXTURE_ASSET" "${override_normal_texture:-$src_normal}"
-    set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_METALLIC_ROUGHNESS_TEXTURE_ASSET" "${override_mr_texture:-$src_mr}"
-    set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_EMISSIVE_TEXTURE_ASSET" "${override_emissive_texture:-$src_emissive}"
+      set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_BASE_TEXTURE_ASSET" "${override_base_texture:-$src_base}"
+      set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_NORMAL_TEXTURE_ASSET" "${override_normal_texture:-$src_normal}"
+      set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_METALLIC_ROUGHNESS_TEXTURE_ASSET" "${override_mr_texture:-$src_mr}"
+      set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_EMISSIVE_TEXTURE_ASSET" "${override_emissive_texture:-$src_emissive}"
+    fi
 
     run ./scripts/capture-viewer-frame.sh \
       --scenario "$scenario" \
@@ -783,6 +801,8 @@ render_profile=$render_profile
 fragment_strategy=$fragment_strategy
 art_capture=$art_capture
 preview_mode=$preview_mode
+preview_mode_effective=$effective_preview_mode
+preview_mode_fallback_reason=$preview_mode_fallback_reason
 hero_automation_steps=$hero_steps
 closeup_automation_steps=$closeup_steps
 crop_window=$crop_window
