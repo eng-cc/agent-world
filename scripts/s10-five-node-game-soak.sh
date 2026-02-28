@@ -8,6 +8,10 @@ usage() {
   cat <<'USAGE'
 Usage: ./scripts/s10-five-node-game-soak.sh [options]
 
+Status:
+  blocked (2026-02-28): this script depends on removed world_viewer_live embedded-node flags.
+  Use world_chain_runtime/world_game_launcher instead.
+
 Options:
   --duration-secs <n>              soak duration seconds (default: 1800)
   --scenario <name>                world_viewer_live scenario (default: llm_bootstrap)
@@ -51,6 +55,22 @@ Output:
     failures.md (only when failed)
     nodes/<node_id>/{command.txt,stdout.log,stderr.log,report/}
 USAGE
+}
+
+legacy_chain_entrypoint_block() {
+  cat >&2 <<'MSG'
+error: scripts/s10-five-node-game-soak.sh is blocked.
+
+Reason:
+- world_viewer_live embedded-node path was removed on 2026-02-28.
+- legacy flags used by this script (--topology/--node-*/--reward-runtime-*) no longer work.
+
+Migration:
+1) Multi-node chain soak: migrate to world_chain_runtime orchestration.
+2) Single-stack game launch: use world_game_launcher.
+3) Details: doc/testing/launcher-chain-script-migration-2026-02-28.md
+MSG
+  exit 1
 }
 
 run() {
@@ -226,6 +246,8 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+legacy_chain_entrypoint_block
 
 ensure_positive_int "--duration-secs" "$duration_secs"
 ensure_positive_int "--reward-runtime-epoch-duration-secs" "$reward_runtime_epoch_duration_secs"

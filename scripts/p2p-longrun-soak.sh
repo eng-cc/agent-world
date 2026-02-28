@@ -8,6 +8,10 @@ usage() {
   cat <<'USAGE'
 Usage: ./scripts/p2p-longrun-soak.sh [options]
 
+Status:
+  blocked (2026-02-28): this script depends on removed world_viewer_live embedded-node flags.
+  Use world_chain_runtime/world_game_launcher instead.
+
 Options:
   --profile <name>                 soak_smoke | soak_endurance | soak_release (default: soak_smoke)
   --duration-secs <n>              override per-topology soak duration seconds
@@ -54,6 +58,22 @@ Output:
     chaos_events.log
     <topology>/nodes/<node_id>/{stdout.log,stderr.log,command.txt,report/}
 USAGE
+}
+
+legacy_chain_entrypoint_block() {
+  cat >&2 <<'MSG'
+error: scripts/p2p-longrun-soak.sh is blocked.
+
+Reason:
+- world_viewer_live embedded-node path was removed on 2026-02-28.
+- legacy flags used by this script (--topology/--node-*/--reward-runtime-*) no longer work.
+
+Migration:
+1) Multi-node chain soak: migrate to world_chain_runtime orchestration.
+2) Single-stack game launch: use world_game_launcher.
+3) Details: doc/testing/launcher-chain-script-migration-2026-02-28.md
+MSG
+  exit 1
 }
 
 run() {
@@ -283,6 +303,8 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+legacy_chain_entrypoint_block
 
 case "$profile" in
   soak_smoke)
