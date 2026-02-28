@@ -26,7 +26,7 @@
 - [x] T23 按用户本轮请求基于 `doc/game-test.md` 再执行一轮真实玩家游玩并填写卡片
 - [x] T24 按用户本轮请求基于 `doc/game-test.md` 再执行一轮真实玩家游玩并填写卡片
 - [x] T25 按用户本轮请求基于 `doc/game-test.md` 再执行一轮真实玩家游玩（带录屏）并填写卡片
-- [x] T26 按用户本轮请求基于 `doc/game-test.md` 再执行一轮真实玩家游玩（带录屏）并填写卡片
+- [x] T26 按用户本轮请求回退上一轮短测卡片提交，并执行手动长玩复测（带录屏）后重新填写卡片
 
 ## 依赖
 - `doc/game-test.md`
@@ -56,7 +56,7 @@
 - card_2026_02_27_21_04_46.md
 - card_2026_02_27_23_21_00.md
 - card_2026_02_28_19_22_20.md
-- card_2026_02_28_21_05_39.md
+- card_2026_02_28_21_22_51.md
 - 录屏/截图产物：`output/playwright/playability/20260225-132109/`
 - 录屏/截图产物：`output/playwright/playability/20260225-163706/`
 - 录屏/截图产物：`output/playwright/playability/20260225225029/`
@@ -74,14 +74,14 @@
 - A/B 量化产物：`output/playwright/playability/20260227-210446/`
 - A/B 量化产物：`output/playwright/playability/20260227-232100/`
 - A/B 量化产物：`output/playwright/playability/20260228-192220/`
-- A/B 量化产物：`output/playwright/playability/20260228-210539/`
+- 手动长玩产物：`output/playwright/playability/20260228-212251-long/`
 - 手册改版记录：`doc/game-test.md`（2026-02-27，用户标注“你不能改这个文档”）
 - 开发排查复现：
   - `output/playwright/viewer/webgl-deferred-disable-verify2-20260225-143042/`
   - `output/playwright/viewer/webgl-panic-locate-20260225-143645/`
 
 ## 状态
-- 当前阶段：已完成玩家复测 + 开发者排查 + 默认链路复测 + 夜间追加复测 + 本轮日间追加复测 + 本轮午后追加复测 + 本轮傍晚追加复测 + 本轮追加复测 + 本轮下午追加复测 + 本轮黄昏追加复测 + 本轮傍晚新增复测 + A/B 量化脚本化复测 + 用户手册改版同步 + 文档治理白名单接入 + 首局目标清晰度加固后 A/B 实机复测 + 本轮追加 A/B 实机复测 + 本轮晚间追加 A/B 实机复测 + 本轮深夜追加 A/B 实机复测 + 本轮午夜追加 A/B 实机复测 + 本轮晚间追加 A/B 实机复测 + 本轮深夜新增 A/B 实机复测（2026-02-28 21:13）
+- 当前阶段：已完成玩家复测 + 开发者排查 + 默认链路复测 + 夜间追加复测 + 本轮日间追加复测 + 本轮午后追加复测 + 本轮傍晚追加复测 + 本轮追加复测 + 本轮下午追加复测 + 本轮黄昏追加复测 + 本轮傍晚新增复测 + A/B 量化脚本化复测 + 用户手册改版同步 + 文档治理白名单接入 + 首局目标清晰度加固后 A/B 实机复测 + 本轮追加 A/B 实机复测 + 本轮晚间追加 A/B 实机复测 + 本轮深夜追加 A/B 实机复测 + 本轮午夜追加 A/B 实机复测 + 本轮晚间追加 A/B 实机复测 + 按用户要求回退短测并完成手动长玩复测（2026-02-28 21:33）
 - 风险：
   - 运行前置：默认开启 LLM 后，若环境缺失可用 LLM 配置，`run-game-test.sh` 可能在启动阶段失败；可临时使用 `--no-llm` 回退脚本决策。
   - 基线问题：Web 端偶发 `copy_deferred_lighting_id_pipeline`（`wgpu` Validation Error）导致崩溃。
@@ -102,7 +102,7 @@
   - 本轮观测：在 `output/playwright/playability/20260227-210446/` 复测中，链路稳定 `connected` 且 `tick` 从 `45` 推进到 `53`，A/B 两段均 PASS（TTFC=`4566ms`，有效控制命中率 `3/3`，无进展窗口 `3383ms`）；但 `move` 动作仍会被拒绝并触发 `sendControl ignored`，动作可发现性仍需持续优化。
   - 本轮观测：在 `output/playwright/playability/20260227-232100/` 复测中，链路稳定 `connected` 且 `tick` 从 `5` 推进到 `14`（TTFC=`323ms`，A 段 PASS）；但 B 段再次出现 `step` accepted 无推进（`14` -> `14`），有效控制命中率 `2/3`、无进展窗口 `4511ms`，`step` 的推进一致性仍需治理。
   - 本轮观测：在 `output/playwright/playability/20260228-192220/` 复测中，链路稳定 `connected` 且 `tick` 从 `0` 推进到 `3`（TTFC=`2285ms`，A 段 PASS）；但 B 段继续复现第二次 `step` accepted 无推进（`2` -> `2`），有效控制命中率 `2/3`、无进展窗口 `6101ms`，并伴随 `AudioContext` 与 `sendControl ignored (unsupported action: move)` 警告。
-  - 本轮观测：在 `output/playwright/playability/20260228-210539/` 复测中，链路稳定 `connected` 且 `tick` 从 `0` 推进到 `2`；但 A 段 `play` 直接命中 `completed_no_progress`（TTFC=`null`，A 段 FAIL），B 段首次 `step(count=8)` 继续 `accepted` 无推进，仅第二次 `step(count=2)` 推进（有效控制命中率 `1/3`、无进展窗口 `3609ms`），并伴随 `AudioContext` 与 `sendControl ignored (unsupported action: move)` 警告。
+  - 本轮观测：在 `output/playwright/playability/20260228-212251-long/` 手动长玩（约 9 分钟）中，`connectionStatus=connected` 持续稳定，`tick` 从 `1` 推进到 `201`，`play/step` 均可持续推进（TTFC=`4040ms`，有效控制命中率 `5/5`，无进展窗口 `4213ms`）；`move` 仍被拒绝（`unsupported action: move`），且控制台存在大量 trunk 占位符 WS 错误（`ERR_NAME_NOT_RESOLVED`）与 `favicon 404` 噪音，易误导玩家对系统稳定性的判断。
   - 文档约束：`doc/game-test.md` 当前为用户锁定版本（标题含“你不能改这个文档”）；后续流程优化应通过新增外围设计/项目文档承载，避免直接改手册冲突。
   - 治理约束：`scripts/doc-governance-check.sh` 已对白名单项目文档 `doc/game-test.project.md` 跳过配对设计文档章节检查；后续新增白名单需保持最小化并附理由，避免治理规则失效。
 - 最近更新：2026-02-28
