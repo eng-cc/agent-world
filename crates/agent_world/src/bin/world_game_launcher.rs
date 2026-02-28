@@ -170,11 +170,7 @@ fn spawn_world_viewer_live(path: &Path, options: &CliOptions) -> Result<Child, S
         .arg("--bind")
         .arg(options.live_bind.as_str())
         .arg("--web-bind")
-        .arg(options.web_bind.as_str())
-        .arg("--topology")
-        .arg("single")
-        .arg("--viewer-no-consensus-gate")
-        .arg("--no-node");
+        .arg(options.web_bind.as_str());
     if options.with_llm {
         command.arg("--llm");
     } else {
