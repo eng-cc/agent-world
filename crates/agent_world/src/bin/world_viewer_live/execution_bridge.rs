@@ -228,11 +228,14 @@ impl NodeExecutionHook for NodeRuntimeExecutionDriver {
                 execution_state_root,
             });
         }
-        if context.height != self.state.last_applied_committed_height.saturating_add(1) {
-            return Err(format!(
-                "execution driver requires contiguous committed heights: last_applied={} incoming={}",
+        let next_expected_height = self.state.last_applied_committed_height.saturating_add(1);
+        if context.height != next_expected_height {
+            eprintln!(
+                "execution driver detected non-contiguous committed heights: last_applied={} incoming={} (continuing with gap)",
                 self.state.last_applied_committed_height, context.height
-            ));
+            );
+            self.state.last_applied_committed_height = context.height.saturating_sub(1);
+            self.state.last_node_block_hash = None;
         }
 
         let computed_action_root =
@@ -903,6 +906,61 @@ mod tests {
         let state = load_execution_bridge_state(state_path.as_path()).expect("load state");
         assert_eq!(state.last_applied_committed_height, 2);
         assert_eq!(state.last_node_block_hash.as_deref(), Some("node-h2"));
+
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn node_runtime_execution_driver_tolerates_non_contiguous_commit_heights() {
+        let dir = temp_dir("execution-driver-gap");
+        let state_path = dir.join("state.json");
+        let world_dir = dir.join("world");
+        let records_dir = dir.join("records");
+        let storage_root = dir.join("store");
+        let mut driver = NodeRuntimeExecutionDriver::new(
+            state_path.clone(),
+            world_dir,
+            records_dir.clone(),
+            storage_root,
+        )
+        .expect("driver");
+        let empty_action_root = compute_consensus_action_root(&[]).expect("empty action root");
+
+        driver
+            .on_commit(NodeExecutionCommitContext {
+                world_id: "w1".to_string(),
+                node_id: "node-a".to_string(),
+                height: 1,
+                slot: 0,
+                epoch: 0,
+                node_block_hash: "node-h1".to_string(),
+                action_root: empty_action_root.clone(),
+                committed_actions: Vec::new(),
+                committed_at_unix_ms: 1_000,
+            })
+            .expect("first commit");
+        let gap_commit = driver
+            .on_commit(NodeExecutionCommitContext {
+                world_id: "w1".to_string(),
+                node_id: "node-a".to_string(),
+                height: 3,
+                slot: 2,
+                epoch: 0,
+                node_block_hash: "node-h3".to_string(),
+                action_root: empty_action_root,
+                committed_actions: Vec::new(),
+                committed_at_unix_ms: 3_000,
+            })
+            .expect("gap commit");
+
+        assert_eq!(gap_commit.execution_height, 3);
+        assert!(records_dir.join("00000000000000000001.json").exists());
+        assert!(records_dir.join("00000000000000000003.json").exists());
+        assert!(!records_dir.join("00000000000000000002.json").exists());
+
+        let state = load_execution_bridge_state(state_path.as_path()).expect("load state");
+        assert_eq!(state.last_applied_committed_height, 3);
+        assert_eq!(state.last_node_block_hash.as_deref(), Some("node-h3"));
 
         let _ = fs::remove_dir_all(dir);
     }

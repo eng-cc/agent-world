@@ -23,6 +23,10 @@
   - [x] `scripts/s10-five-node-game-soak.sh` 增加节点状态隔离（默认搬迁历史 `output/node-distfs/s10-*`），避免跨 run 污染导致恢复到旧 pending 提案。
   - [x] `scripts/s10-five-node-game-soak.sh` 增加可控 auto-attest 策略（默认 `sequencer_only`，可切 `all/off`），在五节点 no-LLM 长跑中保持持续推进且避免多节点高度分叉。
   - [x] 执行真实短跑回归（`260s` + `max_stall=120`），确认门禁通过且高度持续增长。
+- [x] T7：修复 sequencer 执行桥在非连续 committed 高度下的偶发卡死。
+  - [x] `execution_bridge` 在 `on_commit` 遇到高度跳变时改为容错续跑（记录告警并继续处理当前高度），不再直接返回 contiguous-height 错误。
+  - [x] 增加单元测试覆盖非连续高度提交场景（`height: 1 -> 3`）。
+  - [x] 执行真实长跑回归：失败样本 `20260228-165423`（旧二进制，`stall=842s`）与修复后样本 `20260228-172637`（新二进制，`600s` 门禁通过，`max_stall_secs_observed=0`）。
 
 ## 依赖
 - `scripts/p2p-longrun-soak.sh`（复用指标口径与产物约定）
@@ -31,6 +35,6 @@
 - `testing-manual.md`
 
 ## 状态
-- 当前阶段：已完成（T0~T6）。
+- 当前阶段：已完成（T0~T7）。
 - 阻塞项：无。
 - 最近更新：2026-02-28。

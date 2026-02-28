@@ -52,6 +52,7 @@
 - 每节点配置 gossip bind + full-mesh peers，形成真实网络消息交换路径。
 - 启动前默认隔离历史 `output/node-distfs/s10-*` 目录，保证每轮从干净 PoS/复制状态起跑。
 - `world_viewer_live` 在单节点拓扑下仅 sequencer 启用执行 hook 与执行强约束，storage/observer 以复制追平为主，避免同步提交高度跳变导致执行链路自锁。
+- sequencer 执行桥在遇到非连续 committed 高度时采用“容错续跑”策略：记录告警并继续处理当前 commit，避免因偶发高度跳变导致长跑共识停摆。
 
 ### 3) S10 门禁指标
 - 共识：`committed_height` 单调推进，`stall <= max_stall_secs`。
