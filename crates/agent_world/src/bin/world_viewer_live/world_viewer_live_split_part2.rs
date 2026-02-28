@@ -37,6 +37,13 @@ fn start_reward_runtime_worker(
         .filter(|value| !value.is_empty())
         .map(ToOwned::to_owned)
         .unwrap_or_else(|| infer_default_reward_runtime_leader_node_id(primary_node_id.as_str()));
+    let reward_runtime_node_identity_bindings = reward_runtime_node_identity_bindings(
+        options,
+        primary_node_id.as_str(),
+        signer_node_id.as_str(),
+        settlement_leader_node_id.as_str(),
+        &signer_keypair,
+    )?;
     let node_report_root = reward_runtime_node_report_root(
         options.reward_runtime_report_dir.as_str(),
         primary_node_id.as_str(),
@@ -77,6 +84,7 @@ fn start_reward_runtime_worker(
         initial_reserve_power_units: options.reward_initial_reserve_power_units,
         min_observer_traces: options.reward_runtime_min_observer_traces,
         reward_runtime_epoch_duration_secs: options.reward_runtime_epoch_duration_secs,
+        reward_runtime_node_identity_bindings,
     };
 
     let (stop_tx, stop_rx) = mpsc::channel::<()>();
@@ -99,6 +107,34 @@ fn stop_reward_runtime_worker(worker: Option<RewardRuntimeWorker>) {
     if worker.join_handle.join().is_err() {
         eprintln!("reward runtime worker join failed");
     }
+}
+
+fn reward_runtime_node_identity_bindings(
+    options: &CliOptions,
+    local_node_id: &str,
+    signer_node_id: &str,
+    settlement_leader_node_id: &str,
+    root_keypair: &node_keypair_config::NodeKeypairConfig,
+) -> Result<BTreeMap<String, String>, String> {
+    let mut node_ids = BTreeSet::new();
+    node_ids.insert(local_node_id.trim().to_string());
+    node_ids.insert(signer_node_id.trim().to_string());
+    node_ids.insert(settlement_leader_node_id.trim().to_string());
+    for validator in &options.node_validators {
+        node_ids.insert(validator.validator_id.trim().to_string());
+    }
+    node_ids.retain(|node_id| !node_id.is_empty());
+
+    let mut bindings = BTreeMap::new();
+    for node_id in node_ids {
+        if node_id == signer_node_id {
+            bindings.insert(node_id, root_keypair.public_key_hex.clone());
+            continue;
+        }
+        let keypair = derive_node_consensus_signer_keypair(node_id.as_str(), root_keypair)?;
+        bindings.insert(node_id, keypair.public_key_hex);
+    }
+    Ok(bindings)
 }
 
 fn reward_runtime_loop(
@@ -168,10 +204,15 @@ fn reward_runtime_loop(
         available_power_units: config.initial_reserve_power_units.max(0),
         redeemed_power_units: 0,
     });
-    let _ = reward_world.bind_node_identity(
-        config.signer_node_id.as_str(),
-        config.signer_public_key_hex.as_str(),
-    );
+    for (node_id, public_key_hex) in &config.reward_runtime_node_identity_bindings {
+        if let Err(err) = reward_world.bind_node_identity(node_id.as_str(), public_key_hex.as_str())
+        {
+            eprintln!(
+                "reward runtime bind node identity failed node={} err={:?}",
+                node_id, err
+            );
+        }
+    }
     let settlement_topic = reward_settlement_topic(config.world_id.as_str());
     let settlement_subscription = match config.reward_network.as_ref() {
         Some(network) => match network.subscribe(settlement_topic.as_str()) {
@@ -573,16 +614,25 @@ fn reward_runtime_loop(
         };
         let local_is_settlement_publisher = snapshot.node_id == settlement_leader_node_id
             || failover_publisher_node_id.as_deref() == Some(snapshot.node_id.as_str());
+        let consensus_ready_for_settlement =
+            reward_runtime_consensus_ready_for_settlement(&snapshot);
         let should_publish_settlement = settlement_network_enabled
             && observer_trace_threshold_met
-            && matches!(
-                snapshot.consensus.last_status,
-                Some(PosConsensusStatus::Committed)
-            )
+            && consensus_ready_for_settlement
             && local_is_settlement_publisher;
         let requires_local_settlement = observer_trace_threshold_met
             && (should_publish_settlement || !settlement_network_enabled);
         let minted_records = if requires_local_settlement {
+            if let Err(err) = ensure_reward_runtime_settlement_node_identity_bindings(
+                &mut reward_world,
+                &report,
+                &config.signer_private_key_hex,
+                &config.signer_public_key_hex,
+                &config.reward_runtime_node_identity_bindings,
+            ) {
+                eprintln!("reward runtime settlement identity binding failed: {err}");
+                continue;
+            }
             match build_reward_settlement_mint_records(
                 &reward_world,
                 &report,
@@ -606,11 +656,13 @@ fn reward_runtime_loop(
                 observer_trace_count_for_epoch, config.min_observer_traces
             ));
         } else if settlement_network_enabled && !should_publish_settlement {
-            settlement_skipped_reason = if !matches!(
-                snapshot.consensus.last_status,
-                Some(PosConsensusStatus::Committed)
-            ) {
-                Some("local node consensus status is not committed".to_string())
+            settlement_skipped_reason = if !consensus_ready_for_settlement {
+                Some(format!(
+                    "local node consensus is not ready for settlement: status={:?} committed_height={} network_committed_height={}",
+                    snapshot.consensus.last_status,
+                    snapshot.consensus.committed_height,
+                    snapshot.consensus.network_committed_height
+                ))
             } else if snapshot.node_id != settlement_leader_node_id
                 && !config.settlement_failover_enabled
             {
@@ -819,6 +871,45 @@ fn reward_runtime_loop(
             }
         }
     }
+}
+
+fn reward_runtime_consensus_ready_for_settlement(snapshot: &NodeSnapshot) -> bool {
+    if matches!(
+        snapshot.consensus.last_status,
+        Some(PosConsensusStatus::Committed)
+    ) {
+        return true;
+    }
+    snapshot.consensus.committed_height > 0
+        && snapshot.consensus.network_committed_height >= snapshot.consensus.committed_height
+}
+
+fn ensure_reward_runtime_settlement_node_identity_bindings(
+    reward_world: &mut RuntimeWorld,
+    report: &EpochSettlementReport,
+    signer_private_key_hex: &str,
+    signer_public_key_hex: &str,
+    configured_bindings: &BTreeMap<String, String>,
+) -> Result<(), String> {
+    let signer_root_keypair = node_keypair_config::NodeKeypairConfig {
+        private_key_hex: signer_private_key_hex.to_string(),
+        public_key_hex: signer_public_key_hex.to_string(),
+    };
+    for settlement in &report.settlements {
+        let node_id = settlement.node_id.as_str();
+        if reward_world.node_identity_public_key(node_id).is_some() {
+            continue;
+        }
+        let public_key_hex = if let Some(bound) = configured_bindings.get(node_id) {
+            bound.clone()
+        } else {
+            derive_node_consensus_signer_keypair(node_id, &signer_root_keypair)?.public_key_hex
+        };
+        reward_world
+            .bind_node_identity(node_id, public_key_hex.as_str())
+            .map_err(|err| format!("{:?}", err))?;
+    }
+    Ok(())
 }
 
 fn reward_runtime_points_config(epoch_duration_secs_override: Option<u64>) -> NodePointsConfig {

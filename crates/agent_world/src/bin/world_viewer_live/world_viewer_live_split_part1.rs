@@ -11,10 +11,11 @@ use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use agent_world::runtime::{
-    measure_directory_storage_bytes, Action as RuntimeAction, LocalCasStore, NodePointsConfig,
-    NodePointsRuntimeCollector, NodePointsRuntimeCollectorSnapshot, NodePointsRuntimeHeuristics,
-    NodePointsRuntimeObservation, ProtocolPowerReserve, RewardAssetConfig,
-    RewardAssetInvariantReport, RewardSignatureGovernancePolicy, World as RuntimeWorld,
+    measure_directory_storage_bytes, Action as RuntimeAction, EpochSettlementReport, LocalCasStore,
+    NodePointsConfig, NodePointsRuntimeCollector, NodePointsRuntimeCollectorSnapshot,
+    NodePointsRuntimeHeuristics, NodePointsRuntimeObservation, ProtocolPowerReserve,
+    RewardAssetConfig, RewardAssetInvariantReport, RewardSignatureGovernancePolicy,
+    World as RuntimeWorld,
 };
 #[cfg(test)]
 use agent_world::simulator::WorldScenario;
@@ -143,6 +144,7 @@ struct RewardRuntimeLoopConfig {
     initial_reserve_power_units: i64,
     min_observer_traces: u32,
     reward_runtime_epoch_duration_secs: Option<u64>,
+    reward_runtime_node_identity_bindings: BTreeMap<String, String>,
 }
 
 #[derive(Debug)]

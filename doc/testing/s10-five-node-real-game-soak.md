@@ -66,6 +66,14 @@
   - `failures.md`（失败时）
   - `nodes/<node_id>/{command.txt,stdout.log,stderr.log,report/*.json}`
 
+### 5) 结算发布与 mint 前置条件（运行时约束）
+- 结算发布采用“共识已就绪”判定：
+  - 优先 `last_status=Committed`；
+  - 若 `last_status=Pending`，但已存在稳定 committed checkpoint（`committed_height > 0` 且 `network_committed_height >= committed_height`），仍允许 leader 发布 settlement envelope。
+- 奖励运行时在 mint 之前会确保 settlement 中涉及节点身份已绑定：
+  - 优先使用运行时已配置验证人/leader/local 节点身份；
+  - 对缺失节点按根密钥派生并补齐绑定，避免 `node identity is not bound` 导致 minted 为空。
+
 ## 里程碑
 - M0：设计文档与项目管理文档建档。
 - M1：S10 五节点编排脚本落地（启动/停止/汇总）。
