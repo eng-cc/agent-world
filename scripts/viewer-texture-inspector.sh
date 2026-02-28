@@ -224,10 +224,10 @@ default_automation_steps_for_entity() {
       echo "mode=3d;focus=first_location;zoom=1.55;orbit=18,-28;wait=0.6"
       ;;
     power_plant)
-      echo "mode=3d;focus=${focus_target};${power_hero_pose}"
+      echo "mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};${power_hero_pose}"
       ;;
     power_storage)
-      echo "mode=3d;focus=${focus_target};${power_hero_pose}"
+      echo "mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};${power_hero_pose}"
       ;;
     *)
       echo "mode=3d;focus=first_location;pan=0,2,0;zoom=1.2;orbit=10,-25;select=first_location;wait=0.4"
@@ -252,10 +252,10 @@ default_closeup_automation_steps_for_entity() {
       echo "mode=3d;focus=first_location;zoom=1.15;orbit=32,-22;wait=0.8"
       ;;
     power_plant)
-      echo "mode=3d;focus=${focus_target};${power_closeup_pose}"
+      echo "mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};${power_closeup_pose}"
       ;;
     power_storage)
-      echo "mode=3d;focus=${focus_target};${power_closeup_pose}"
+      echo "mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};${power_closeup_pose}"
       ;;
     *)
       echo "mode=3d;focus=first_location;zoom=0.18;orbit=30,-22;wait=0.7"
@@ -271,10 +271,10 @@ fallback_closeup_automation_steps_for_entity() {
   power_fallback_pose=$(resolve_power_fallback_closeup_pose "$focus_target")
   case "$1" in
     power_plant)
-      echo "mode=3d;focus=${focus_target};${power_fallback_pose}"
+      echo "mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};${power_fallback_pose}"
       ;;
     power_storage)
-      echo "mode=3d;focus=${focus_target};${power_fallback_pose}"
+      echo "mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};${power_fallback_pose}"
       ;;
     *)
       echo "mode=3d;focus=first_location;zoom=0.95;orbit=42,-16;wait=0.9"
@@ -813,7 +813,9 @@ capture_variant_bundle() {
       effective_preview_mode="scene_proxy"
       preview_mode_fallback_reason="location_direct_entity_not_applicable"
     fi
-    if [[ "$effective_preview_mode" == "lookdev" ]]; then
+    location_interference_disabled=0
+    if [[ "$effective_preview_mode" == "lookdev" || "$effective_preview_mode" == "direct_entity" ]]; then
+      location_interference_disabled=1
       set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_SHELL_ENABLED" "0"
       set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_RADIATION_GLOW" "0"
       set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_DAMAGE_VISUAL" "0"
@@ -872,6 +874,17 @@ capture_variant_bundle() {
       set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_METALLIC_ROUGHNESS_TEXTURE_ASSET" "${variant_mr_texture_override:-$src_mr}"
       set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_EMISSIVE_TEXTURE_ASSET" "${variant_emissive_texture_override:-$src_emissive}"
     fi
+
+    direct_entity_mesh_key="AGENT_WORLD_VIEWER_${src_prefix}_MESH_ASSET"
+    direct_entity_base_key="AGENT_WORLD_VIEWER_${src_prefix}_BASE_TEXTURE_ASSET"
+    direct_entity_normal_key="AGENT_WORLD_VIEWER_${src_prefix}_NORMAL_TEXTURE_ASSET"
+    direct_entity_mr_key="AGENT_WORLD_VIEWER_${src_prefix}_METALLIC_ROUGHNESS_TEXTURE_ASSET"
+    direct_entity_emissive_key="AGENT_WORLD_VIEWER_${src_prefix}_EMISSIVE_TEXTURE_ASSET"
+    direct_entity_mesh_asset="${!direct_entity_mesh_key:-}"
+    direct_entity_base_texture_asset="${!direct_entity_base_key:-}"
+    direct_entity_normal_texture_asset="${!direct_entity_normal_key:-}"
+    direct_entity_metallic_roughness_texture_asset="${!direct_entity_mr_key:-}"
+    direct_entity_emissive_texture_asset="${!direct_entity_emissive_key:-}"
 
     run ./scripts/capture-viewer-frame.sh \
       --scenario "$scenario" \
@@ -978,6 +991,7 @@ retry_attempt=$retry_attempt
 art_lighting_enabled=$art_lighting_enabled
 variant_ssim_threshold=$variant_ssim_threshold
 use_source_mesh=$use_source_mesh
+location_interference_disabled=$location_interference_disabled
 lookdev_location_shell_enabled=${AGENT_WORLD_VIEWER_LOCATION_SHELL_ENABLED:-}
 lookdev_location_radiation_glow=${AGENT_WORLD_VIEWER_LOCATION_RADIATION_GLOW:-}
 lookdev_location_damage_visual=${AGENT_WORLD_VIEWER_LOCATION_DAMAGE_VISUAL:-}
@@ -1000,6 +1014,11 @@ location_base_texture_asset=${AGENT_WORLD_VIEWER_LOCATION_BASE_TEXTURE_ASSET:-}
 location_normal_texture_asset=${AGENT_WORLD_VIEWER_LOCATION_NORMAL_TEXTURE_ASSET:-}
 location_metallic_roughness_texture_asset=${AGENT_WORLD_VIEWER_LOCATION_METALLIC_ROUGHNESS_TEXTURE_ASSET:-}
 location_emissive_texture_asset=${AGENT_WORLD_VIEWER_LOCATION_EMISSIVE_TEXTURE_ASSET:-}
+direct_entity_mesh_asset=$direct_entity_mesh_asset
+direct_entity_base_texture_asset=$direct_entity_base_texture_asset
+direct_entity_normal_texture_asset=$direct_entity_normal_texture_asset
+direct_entity_metallic_roughness_texture_asset=$direct_entity_metallic_roughness_texture_asset
+direct_entity_emissive_texture_asset=$direct_entity_emissive_texture_asset
 capture_connection_status=$capture_connection_status
 capture_snapshot_ready=$capture_snapshot_ready
 capture_connection_status_closeup=$capture_connection_status_closeup
