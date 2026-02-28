@@ -46,3 +46,18 @@
   - 缓解：提供样例文件并设定清晰优先级（CLI > 资源包 > preset）。
 - **灯光与阈值耦合**：灯光变化可能影响 edge/ssim 指标。
   - 缓解：回归固定 profile，落盘完整指标用于比较。
+
+## T3 回归结论（2026-03-01）
+- 回归命令：
+  - `./scripts/viewer-texture-inspector.sh --inspect power_plant,power_storage --scenario power_bootstrap --art-capture --preview-mode direct_entity --material-profile art_review_v1 --semantic-gate-mode auto --detail-edge-threshold 0.35 --variant-ssim-threshold 0.9995 --no-prewarm --out-dir output/texture_inspector/framework_t3_visual_opt_power_scene_20260301`
+- 结果：
+  - `power_plant`：`status=passed`，`min_pair_ssim_initial=0.986556`，`min_edge_energy_initial=0.430453`。
+  - `power_storage`：`status=passed`，`min_pair_ssim_initial=0.987376`，`min_edge_energy_initial=0.476528`。
+  - 元数据链路完整：`composition_profile=art_review_v2`、`lighting_profile=art_review_v2`、`panel_hidden=1`、`selection_gate_pass=1`。
+- 视觉抽检：
+  - closeup 成图仍以大面积平涂块面为主，实体读形不足；仅依赖 edge/ssim 指标会产生“通过但不可评审”的误判。
+  - 关键线索：`selection_gate_orbit_radius_closeup` 在 power 场景稳定落在 `0.023040`，明显偏小。
+
+## 后续优化入口
+- 在 T4 引入设施实体尺度归一（按 location 半径/世界单位缩放），修复“设施尺寸与镜头半径不一致”导致的贴脸构图。
+- 回归目标从“仅阈值通过”升级为“阈值通过 + 可读性通过（至少能看清主体轮廓与纹理走向）”。

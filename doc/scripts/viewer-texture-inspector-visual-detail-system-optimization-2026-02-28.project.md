@@ -5,7 +5,8 @@
 - [x] T0：输出项目管理文档（本文件）
 - [x] T1：viewer 启动层支持 `AGENT_WORLD_VIEWER_PANEL_HIDDEN` 并补测试
 - [x] T2：inspector 落地构图候选策略 + 资源包 + 灯光预设 + 元数据
-- [ ] T3：执行 power 场景回归并完成结项文档/日志
+- [x] T3：执行 power 场景回归并完成结项文档/日志
+- [ ] T4：设施实体尺度归一化（power_plant/power_storage）并复跑视觉回归
 
 ## 依赖
 - `crates/agent_world_viewer/src/app_bootstrap.rs`
@@ -14,6 +15,6 @@
 - `ffmpeg`
 
 ## 状态
-- 当前阶段：进行中（T2 已完成，执行 T3）
+- 当前阶段：进行中（T3 已完成，执行 T4）
 - 阻塞：无
-- 下一步：执行 power 场景回归并完成结项文档/日志
+- 下一步：修复设施尺度与镜头半径失配，复跑 power 场景并更新结论
