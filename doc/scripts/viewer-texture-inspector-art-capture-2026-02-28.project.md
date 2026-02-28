@@ -12,6 +12,10 @@
 - [x] T3：实现 `power_plant/power_storage` 三变体一致性校验、重试与 `variant_validation.txt`
 - [x] T4：修复镜头贴脸问题（重标定各实体 `hero/closeup` 默认镜头）
 - [x] T4：执行全量复跑（15 组合）并完成视觉检查结论
+- [x] T5：为 power 实体改造焦点目标（`first_power_plant` / `first_power_storage`）
+- [x] T5：新增/接线 art-lighting 评审灯光口径（可开关）
+- [x] T5：新增 SSIM 阈值门禁（含重试、元数据、`variant_validation.txt` 字段）
+- [x] T5：执行 smoke + 全量复跑并记录视觉检查结论
 
 ## 依赖
 - `scripts/capture-viewer-frame.sh`（现有截图链路）
@@ -19,6 +23,6 @@
 - `env -u RUSTC_WRAPPER cargo run`（viewer/live 运行约束）
 
 ## 状态
-- 当前阶段：已完成（T0~T4）
+- 当前阶段：已完成（T0~T5）
 - 阻塞：无
 - 下一步：无（本轮任务已结项）

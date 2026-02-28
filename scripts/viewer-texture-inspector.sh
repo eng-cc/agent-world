@@ -31,6 +31,10 @@ Options:
   --automation-steps <s>   override viewer automation steps for all captures
   --closeup-automation-steps <s>
                            override closeup automation steps for all captures
+  --art-lighting           enable art-review lighting preset
+  --no-art-lighting        disable art-review lighting preset
+  --variant-ssim-threshold <f>
+                           power variant validation threshold (default: 0.9995)
   --crop-window <w:h:x:y>  crop window for viewer_art.png; use 'none' to disable crop
   --no-prewarm             pass --no-prewarm to all capture runs
   -h, --help               show help
@@ -153,10 +157,10 @@ default_automation_steps_for_entity() {
       echo "mode=3d;focus=first_location;zoom=1.55;orbit=18,-28;wait=0.6"
       ;;
     power_plant)
-      echo "mode=3d;focus=first_location;zoom=1.6;orbit=20,-30;wait=0.6"
+      echo "mode=3d;focus=first_power_plant;zoom=1.6;orbit=20,-30;wait=0.6"
       ;;
     power_storage)
-      echo "mode=3d;focus=first_location;zoom=1.6;orbit=20,-30;wait=0.6"
+      echo "mode=3d;focus=first_power_storage;zoom=1.6;orbit=20,-30;wait=0.6"
       ;;
     *)
       echo "mode=3d;focus=first_location;pan=0,2,0;zoom=1.2;orbit=10,-25;select=first_location;wait=0.4"
@@ -176,10 +180,10 @@ default_closeup_automation_steps_for_entity() {
       echo "mode=3d;focus=first_location;zoom=1.15;orbit=32,-22;wait=0.8"
       ;;
     power_plant)
-      echo "mode=3d;focus=first_location;zoom=1.2;orbit=38,-20;wait=0.8"
+      echo "mode=3d;focus=first_power_plant;zoom=1.2;orbit=38,-20;wait=0.8"
       ;;
     power_storage)
-      echo "mode=3d;focus=first_location;zoom=1.2;orbit=38,-20;wait=0.8"
+      echo "mode=3d;focus=first_power_storage;zoom=1.2;orbit=38,-20;wait=0.8"
       ;;
     *)
       echo "mode=3d;focus=first_location;zoom=0.18;orbit=30,-22;wait=0.7"
@@ -189,8 +193,11 @@ default_closeup_automation_steps_for_entity() {
 
 fallback_closeup_automation_steps_for_entity() {
   case "$1" in
-    power_plant|power_storage)
-      echo "mode=3d;focus=first_location;zoom=0.9;orbit=46,-14;wait=0.9"
+    power_plant)
+      echo "mode=3d;focus=first_power_plant;zoom=0.9;orbit=46,-14;wait=0.9"
+      ;;
+    power_storage)
+      echo "mode=3d;focus=first_power_storage;zoom=0.9;orbit=46,-14;wait=0.9"
       ;;
     *)
       echo "mode=3d;focus=first_location;zoom=0.95;orbit=42,-16;wait=0.9"
@@ -276,6 +283,75 @@ variant_hash_unique_count() {
   printf "%s\n" "${hashes[@]}" | sort -u | wc -l | tr -d ' '
 }
 
+parse_unit_interval_float_or_exit() {
+  local raw=$1
+  local option_name=$2
+  if ! awk -v value="$raw" 'BEGIN { exit !(value ~ /^[0-9]*\.?[0-9]+$/ && value >= 0 && value <= 1) }'; then
+    echo "invalid ${option_name}: $raw (expected 0..1)" >&2
+    exit 2
+  fi
+  echo "$raw"
+}
+
+float_ge() {
+  local lhs=$1
+  local rhs=$2
+  awk -v lhs="$lhs" -v rhs="$rhs" 'BEGIN { exit !(lhs >= rhs) }'
+}
+
+float_lt() {
+  local lhs=$1
+  local rhs=$2
+  awk -v lhs="$lhs" -v rhs="$rhs" 'BEGIN { exit !(lhs < rhs) }'
+}
+
+variant_pair_ssim_value() {
+  local root=$1
+  local entity=$2
+  local a=$3
+  local b=$4
+  local path_a="$root/$entity/$a/viewer_art_closeup.png"
+  local path_b="$root/$entity/$b/viewer_art_closeup.png"
+
+  if [[ ! -f "$path_a" || ! -f "$path_b" ]]; then
+    echo "1"
+    return 0
+  fi
+
+  local line
+  line=$(ffmpeg -i "$path_a" -i "$path_b" -lavfi ssim -f null - 2>&1 | grep 'All:' | tail -n 1 || true)
+  if [[ -z "$line" ]]; then
+    echo "1"
+    return 0
+  fi
+
+  local value
+  value=$(echo "$line" | sed -E 's/.*All:([0-9.]+).*/\1/' || true)
+  if [[ -z "$value" ]]; then
+    echo "1"
+    return 0
+  fi
+
+  echo "$value"
+}
+
+variant_min_pair_ssim() {
+  local root=$1
+  local entity=$2
+  local min_ssim="1"
+  local pairs=("default matte" "default glossy" "matte glossy")
+  local pair
+  for pair in "${pairs[@]}"; do
+    read -r a b <<<"$pair"
+    local value
+    value=$(variant_pair_ssim_value "$root" "$entity" "$a" "$b")
+    if float_lt "$value" "$min_ssim"; then
+      min_ssim="$value"
+    fi
+  done
+  echo "$min_ssim"
+}
+
 preset_file="crates/agent_world_viewer/assets/themes/industrial_v1/presets/industrial_default.env"
 inspect_raw="all"
 variants_raw="all"
@@ -290,6 +366,8 @@ use_source_mesh=0
 art_capture=0
 automation_steps_override=""
 closeup_automation_steps_override=""
+art_lighting_mode="auto"
+variant_ssim_threshold="0.9995"
 crop_window_raw=""
 
 override_base_texture=""
@@ -367,6 +445,18 @@ while [[ $# -gt 0 ]]; do
       closeup_automation_steps_override=${2:-}
       shift 2
       ;;
+    --art-lighting)
+      art_lighting_mode="on"
+      shift
+      ;;
+    --no-art-lighting)
+      art_lighting_mode="off"
+      shift
+      ;;
+    --variant-ssim-threshold)
+      variant_ssim_threshold=${2:-}
+      shift 2
+      ;;
     --crop-window)
       crop_window_raw=${2:-}
       shift 2
@@ -422,6 +512,8 @@ if [[ -z "$out_dir" ]]; then
   out_dir="output/texture_inspector/$timestamp"
 fi
 
+variant_ssim_threshold=$(parse_unit_interval_float_or_exit "$variant_ssim_threshold" "--variant-ssim-threshold")
+
 entities=($(resolve_entities "$inspect_raw"))
 variants=($(resolve_variants "$variants_raw"))
 mkdir -p "$out_dir"
@@ -438,6 +530,13 @@ if [[ -z "$crop_window_raw" ]]; then
   fi
 fi
 crop_window=$(parse_crop_window "$crop_window_raw")
+
+art_lighting_enabled=0
+if [[ "$art_lighting_mode" == "on" ]]; then
+  art_lighting_enabled=1
+elif [[ "$art_lighting_mode" == "auto" && "$art_capture" -eq 1 ]]; then
+  art_lighting_enabled=1
+fi
 
 capture_index=0
 capture_variant_bundle() {
@@ -467,6 +566,16 @@ capture_variant_bundle() {
       export AGENT_WORLD_VIEWER_EXPERIENCE_MODE="director"
       export AGENT_WORLD_VIEWER_PANEL_MODE="observe"
       export AGENT_WORLD_VIEWER_SHOW_OPS_NAV=0
+    fi
+    if [[ "$art_lighting_enabled" -eq 1 ]]; then
+      export AGENT_WORLD_VIEWER_TONEMAPPING="aces"
+      export AGENT_WORLD_VIEWER_BLOOM_ENABLED=0
+      export AGENT_WORLD_VIEWER_BLOOM_INTENSITY=0
+      export AGENT_WORLD_VIEWER_COLOR_GRADING_EXPOSURE=-0.35
+      export AGENT_WORLD_VIEWER_AMBIENT_BRIGHTNESS=95
+      export AGENT_WORLD_VIEWER_FILL_LIGHT_RATIO=0.46
+      export AGENT_WORLD_VIEWER_RIM_LIGHT_RATIO=0.32
+      export AGENT_WORLD_VIEWER_EXPOSURE_EV100=12.8
     fi
 
     src_mesh_key="AGENT_WORLD_VIEWER_${src_prefix}_MESH_ASSET"
@@ -587,6 +696,8 @@ crop_window=$crop_window
 viewer_art_capture_status=$viewer_art_capture_status
 viewer_art_closeup_capture_status=$viewer_art_closeup_capture_status
 retry_attempt=$retry_attempt
+art_lighting_enabled=$art_lighting_enabled
+variant_ssim_threshold=$variant_ssim_threshold
 use_source_mesh=$use_source_mesh
 location_mesh_asset=${AGENT_WORLD_VIEWER_LOCATION_MESH_ASSET:-}
 location_base_texture_asset=${AGENT_WORLD_VIEWER_LOCATION_BASE_TEXTURE_ASSET:-}
@@ -638,11 +749,26 @@ for entity in "${entities[@]}"; do
   if [[ "$art_capture" -eq 1 && ( "$entity" == "power_plant" || "$entity" == "power_storage" ) ]]; then
     if captures_are_all_present "$out_dir" "$entity"; then
       unique_count=$(variant_hash_unique_count "$out_dir" "$entity")
+      min_ssim=$(variant_min_pair_ssim "$out_dir" "$entity")
       unique_count_retry="$unique_count"
+      min_ssim_retry="$min_ssim"
+      initial_high_ssim=0
+      retry_high_ssim=0
+      validation_retry_reason="none"
       validation_status="passed"
-      if [[ "$unique_count" -eq 1 ]]; then
+      if float_ge "$min_ssim" "$variant_ssim_threshold"; then
+        initial_high_ssim=1
+      fi
+      if [[ "$unique_count" -eq 1 || "$initial_high_ssim" -eq 1 ]]; then
+        if [[ "$unique_count" -eq 1 && "$initial_high_ssim" -eq 1 ]]; then
+          validation_retry_reason="identical_hash_and_high_ssim"
+        elif [[ "$unique_count" -eq 1 ]]; then
+          validation_retry_reason="identical_hash"
+        else
+          validation_retry_reason="high_ssim"
+        fi
         validation_status="retrying"
-        echo "warn: material variant validation detected identical closeup captures entity=$entity; retry with fallback closeup camera" >&2
+        echo "warn: material variant validation triggered entity=$entity reason=$validation_retry_reason unique_count=$unique_count min_ssim=$min_ssim threshold=$variant_ssim_threshold; retry with fallback closeup camera" >&2
         for retry_variant in default matte glossy; do
           retry_dir="$out_dir/$entity/$retry_variant"
           if [[ ! -d "$retry_dir" ]]; then
@@ -653,9 +779,13 @@ for entity in "${entities[@]}"; do
           capture_variant_bundle "$entity" "$retry_variant" "$retry_dir" "$retry_port" "$entity_default_automation_steps" "$entity_retry_closeup_steps" "--no-prewarm" "1"
         done
         unique_count_retry=$(variant_hash_unique_count "$out_dir" "$entity")
-        if [[ "$unique_count_retry" -eq 1 ]]; then
+        min_ssim_retry=$(variant_min_pair_ssim "$out_dir" "$entity")
+        if float_ge "$min_ssim_retry" "$variant_ssim_threshold"; then
+          retry_high_ssim=1
+        fi
+        if [[ "$unique_count_retry" -eq 1 || "$retry_high_ssim" -eq 1 ]]; then
           validation_status="failed_after_retry"
-          echo "warn: material variant validation still identical after retry entity=$entity" >&2
+          echo "warn: material variant validation still failed after retry entity=$entity unique_count=$unique_count_retry min_ssim=$min_ssim_retry threshold=$variant_ssim_threshold" >&2
         else
           validation_status="passed_after_retry"
         fi
@@ -664,16 +794,24 @@ for entity in "${entities[@]}"; do
       cat >"$out_dir/$entity/variant_validation.txt" <<VALIDATION
 entity=$entity
 status=$validation_status
+retry_reason=$validation_retry_reason
 unique_count_initial=$unique_count
 unique_count_after_retry=$unique_count_retry
+ssim_threshold=$variant_ssim_threshold
+min_pair_ssim_initial=$min_ssim
+min_pair_ssim_after_retry=$min_ssim_retry
 VALIDATION
 
       for retry_variant in default matte glossy; do
         retry_meta="$out_dir/$entity/$retry_variant/meta.txt"
         if [[ -f "$retry_meta" ]]; then
           echo "variant_validation=$validation_status" >>"$retry_meta"
+          echo "variant_validation_retry_reason=$validation_retry_reason" >>"$retry_meta"
           echo "variant_validation_unique_count_initial=$unique_count" >>"$retry_meta"
           echo "variant_validation_unique_count_after_retry=$unique_count_retry" >>"$retry_meta"
+          echo "variant_validation_ssim_threshold=$variant_ssim_threshold" >>"$retry_meta"
+          echo "variant_validation_min_pair_ssim_initial=$min_ssim" >>"$retry_meta"
+          echo "variant_validation_min_pair_ssim_after_retry=$min_ssim_retry" >>"$retry_meta"
         fi
       done
     fi
