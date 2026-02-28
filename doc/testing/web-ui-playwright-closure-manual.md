@@ -7,15 +7,17 @@
 - 让 Human/AI 在同一套命令下可复现实机浏览器结果。
 
 ## S6：Web UI 闭环 smoke 套件（L4）
-1) 启动 live server（含 bridge）：
+1) 启动 launcher（含 world_viewer_live + world_chain_runtime + 内置 web 静态服务）：
 ```bash
-env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011 --topology single --viewer-no-consensus-gate
+env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_game_launcher -- \
+  --scenario llm_bootstrap \
+  --live-bind 127.0.0.1:5023 \
+  --web-bind 127.0.0.1:5011 \
+  --viewer-host 127.0.0.1 \
+  --viewer-port 4173 \
+  --no-open-browser
 ```
-2) 启动 web viewer：
-```bash
-env -u NO_COLOR ./scripts/run-viewer-web.sh --address 127.0.0.1 --port 4173
-```
-2.1) 启动前自检（必做，防止一次性启动失败）：
+2) 启动前自检（必做，防止一次性启动失败）：
 ```bash
 # 1) 确认端口监听（viewer=4173, ws=5011）
 lsof -iTCP:4173 -sTCP:LISTEN -n -P
@@ -27,7 +29,7 @@ curl -fsS "http://127.0.0.1:4173/" >/dev/null
 # 3) URL 必须带引号（含 `&`，否则 shell 会截断/拆命令）
 URL='http://127.0.0.1:4173/?ws=ws://127.0.0.1:5011&test_api=1'
 ```
-2.2) GPU + headed 硬门禁（验收必须）：
+3) GPU + headed 硬门禁（验收必须）：
 ```bash
 # A) 页面必须 headed 打开（禁止 headless 验收口径）
 bash "$PWCLI" open "$URL" --headed
@@ -39,7 +41,7 @@ bash "$PWCLI" console all | rg -n "SwiftShader|software rendering|Failed to crea
   exit 1
 }
 ```
-3) Playwright 采样：
+4) Playwright 采样：
 ```bash
 source "$HOME/.nvm/nvm.sh"
 nvm use 24
@@ -58,7 +60,7 @@ bash "$PWCLI" console
 bash "$PWCLI" screenshot --filename output/playwright/viewer/viewer-web.png
 bash "$PWCLI" close
 ```
-3.1) Playwright 会话防抖（推荐）：
+4.1) Playwright 会话防抖（推荐）：
 ```bash
 # 每轮前清理旧会话，避免残留 daemon/session 干扰
 bash "$PWCLI" close-all || true
@@ -69,7 +71,7 @@ bash "$PWCLI" snapshot
 bash "$PWCLI" eval '() => typeof window.__AW_TEST__ === "object"'
 bash "$PWCLI" console warning
 ```
-4) 最小通过标准：
+5) 最小通过标准：
 - `snapshot` 可见 `canvas`
 - `window.__AW_TEST__` 可用，且 `getState()` 返回 `tick/connectionStatus`
 - `console error = 0`
@@ -77,8 +79,8 @@ bash "$PWCLI" console warning
 
 ## 启动失败分级与处置（Fail Fast）
 - F1：`open/goto` 报 `ERR_CONNECTION_REFUSED`
-  - 结论：`trunk serve` 尚未就绪或进程已退出。
-  - 处置：回看 `run-viewer-web.sh` 输出，确认 4173 监听后再重试 `open`。
+  - 结论：`world_game_launcher` 尚未就绪或进程已退出。
+  - 处置：回看 `world_game_launcher` 输出，确认 4173 监听后再重试 `open`。
 - F2：页面可开但 console 出现 `copy_deferred_lighting_id_pipeline`、`RuntimeError: unreachable`、`CONTEXT_LOST_WEBGL`
   - 结论：渲染初始化崩溃（非测试脚本问题）。
   - 处置：立即归档 console/screenshot/video，标记本轮 fail，不继续做可玩性判定。
@@ -138,8 +140,8 @@ bash "$PWCLI" console warning
   - Web 闭环产物统一放在 `output/playwright/`。
   - Playwright 优先通过 `window.__AW_TEST__`（`runSteps/setMode/focus/select/sendControl/getState`）做语义化操作，避免坐标点击脆弱性。
   - 发布验收优先使用 `./scripts/viewer-release-qa-loop.sh` 固化流程；Web UI 渲染性能口径必须使用 GPU 硬件加速（禁止 `SwiftShader/software rendering`），Playwright 需 `open ... --headed`；LLM 场景需等待首个 tick 推进（建议 `play` 后额外观察约 12s）后再判失败。
-  - 每次调试结束清理 `run-viewer-web.sh` 后台进程，避免端口冲突。
+  - 每次调试结束清理 `world_game_launcher` 后台进程，避免端口冲突。
   - 若页面首帧空白，优先排查：
-    - `trunk` 是否完成首轮编译。
+    - `world_game_launcher` 是否完成首轮启动（包含 viewer + static server）。
     - 访问地址是否与脚本端口一致。
     - 浏览器控制台是否有 wasm 初始化错误。

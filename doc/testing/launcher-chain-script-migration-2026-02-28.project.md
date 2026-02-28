@@ -4,7 +4,7 @@
 - [x] T0 建档：设计文档 + 项目管理文档。
 - [x] T1 迁移日常脚本：`run-game-test.sh`、`viewer-release-qa-loop.sh` 改为 `world_game_launcher`。
 - [x] T2 长跑脚本阻断：`s10-five-node-game-soak.sh`、`p2p-longrun-soak.sh` 启动前显式失败并提示迁移方向。
-- [ ] T3 文档收口：更新手册口径与项目状态，补任务日志。
+- [x] T3 文档收口：更新手册口径与项目状态，补任务日志。
 
 ## 依赖
 - `crates/agent_world/src/bin/world_game_launcher.rs`
@@ -12,5 +12,5 @@
 - 现有测试脚本与 `testing-manual.md`
 
 ## 状态
-- 当前阶段：进行中（T0~T2 已完成，执行 T3）。
-- 当前任务：T3 文档收口。
+- 当前阶段：已完成（T0~T3）。
+- 当前任务：无（项目结项）。

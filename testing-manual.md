@@ -35,7 +35,7 @@
 - 覆盖：
   - UI/相机/事件联动等单测散布在 `src/*.rs` 与 `src/tests_*.rs`
   - 快照基线：`crates/agent_world_viewer/tests/snapshots/*.png`
-  - Web 启动入口：`scripts/run-viewer-web.sh`
+  - Web 启动入口：`world_game_launcher`（内置静态服务，`run-viewer-web.sh` 仅保留为兼容/排障工具）
   - Web 闭环采样：Playwright CLI（详见 `doc/testing/web-ui-playwright-closure-manual.md`）
 
 ### 分布式与共识子系统
@@ -109,7 +109,7 @@
 
 ### L4 UI 闭环层（Web 为默认）
 - 目标：验证真实用户路径可用性（加载、交互、状态可见、无 console error）。
-- 默认：`run-viewer-web.sh + Playwright`。
+- 默认：`world_game_launcher + Playwright`。
 - native 抓图：仅 fallback（Web 无法复现或 native 图形链路问题）。
 
 ### L5 长稳与压力层
@@ -251,110 +251,23 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
   - `scripts/ci-tests.sh full` 已接入 `./scripts/llm-baseline-fixture-smoke.sh`；
   - 压测结果需保留 CSV/summary/log 产物。
 
-### S9：P2P/存储/共识在线长跑套件（L5）
-- 长跑冒烟（默认档，`soak_smoke`）：
+### S9：P2P/存储/共识在线长跑套件（L5，迁移中）
+- 当前状态（2026-02-28）：`scripts/p2p-longrun-soak.sh` 已改为启动前显式阻断（旧 `world_viewer_live --node-*` 链路已下线）。
+- 当前可执行检查（迁移守卫）：
 ```bash
-./scripts/p2p-longrun-soak.sh \
-  --profile soak_smoke \
-  --no-prewarm \
-  --out-dir .tmp/p2p_longrun
+./scripts/p2p-longrun-soak.sh
 ```
-- 发布回归（`soak_endurance` + chaos 注入）：
-```bash
-./scripts/p2p-longrun-soak.sh \
-  --profile soak_endurance \
-  --topologies triad_distributed \
-  --chaos-plan <path-to-chaos-plan.json> \
-  --out-dir .tmp/p2p_longrun
-```
-- `180+` 分钟高覆盖基线（固定大计划 + continuous 混合）：
-```bash
-./scripts/p2p-longrun-soak.sh \
-  --profile soak_endurance \
-  --duration-secs 10800 \
-  --topologies triad_distributed \
-  --chaos-plan doc/testing/chaos-plans/p2p-soak-endurance-full-chaos-v1.json \
-  --chaos-continuous-enable \
-  --chaos-continuous-interval-secs 75 \
-  --chaos-continuous-start-sec 120 \
-  --chaos-continuous-max-events 0 \
-  --chaos-continuous-actions restart,pause,disconnect \
-  --chaos-continuous-seed 20260225 \
-  --out-dir .tmp/p2p_longrun_full_chaos
-```
-- 长跑混沌探索（`soak_endurance` + 固定计划 + 持续注入）：
-```bash
-./scripts/p2p-longrun-soak.sh \
-  --profile soak_endurance \
-  --topologies triad_distributed \
-  --chaos-plan <path-to-chaos-plan.json> \
-  --chaos-continuous-enable \
-  --chaos-continuous-interval-secs 30 \
-  --chaos-continuous-start-sec 30 \
-  --chaos-continuous-max-events 0 \
-  --chaos-continuous-actions restart,pause \
-  --chaos-continuous-seed 20260224 \
-  --out-dir .tmp/p2p_longrun
-```
-- 关键产物：
-  - `run_config.json`
-  - `timeline.csv`
-  - `summary.json`
-  - `summary.md`
-  - `chaos_events.log`
-  - `failures.md`（失败时）
-- 门禁口径：
-  - `stall`、`lag_p95`、`distfs_failure_ratio`、`reward_asset_invariant_status.ok`
-  - `summary.json` 的 `overall_status == "ok"` 且各拓扑 `status == "ok"` 视为通过。
-- 说明：
-  - `soak_smoke` 在无 epoch 报表时会标记 `insufficient_data`（告警，不直接失败）。
-  - `soak_endurance/soak_release` 在无 epoch 报表时会失败。
-  - continuous chaos 可与 `--chaos-plan` 同时开启，`summary.json` 会拆分 `chaos_plan_events` 与 `chaos_continuous_events`。
-  - `soak_smoke/soak_endurance/soak_release` 是 S9 长跑执行档位，不是 Cargo feature；`test_tier_required/test_tier_full` 仍属于 S0~S2 的核心测试分层。
+- 通过标准：返回 `rc=1` 且输出迁移指引（`world_chain_runtime` / `world_game_launcher`）。
+- 迁移文档：`doc/testing/launcher-chain-script-migration-2026-02-28.md`。
 
-#### S9 执行剧本（Human/AI）
-1. 先执行 S0/S4，确保基础分布式链路已绿。
-2. 准备 `chaos_plan.json`（如需恢复能力验证）：`restart`/`pause`（`disconnect` 别名）。
-3. 按风险选择注入模式执行 `p2p-longrun-soak.sh`：
-   - 固定回归：仅 `--chaos-plan`
-   - 高覆盖探索：`--chaos-plan` + `--chaos-continuous-enable`
-4. 验收 `summary.json` 与 `summary.md`：
-   - `overall_status`
-   - 各拓扑 `status/process_status/metric_gate`
-   - `chaos_plan_events` / `chaos_continuous_events` / `chaos_events` 与 `chaos_exempt_secs`。
-5. 失败时优先看 `failures.md` + `chaos_events.log` + 对应节点 `stderr.log`。
-
-### S10：五节点真实游戏数据在线长跑套件（L5）
-- 五节点真实数据基线（`single` 五进程）：
+### S10：五节点真实游戏数据在线长跑套件（L5，迁移中）
+- 当前状态（2026-02-28）：`scripts/s10-five-node-game-soak.sh` 已改为启动前显式阻断（旧 `world_viewer_live --node-*` 链路已下线）。
+- 当前可执行检查（迁移守卫）：
 ```bash
-./scripts/s10-five-node-game-soak.sh \
-  --duration-secs 1800 \
-  --scenario llm_bootstrap \
-  --no-llm \
-  --out-dir .tmp/s10_game_longrun
+./scripts/s10-five-node-game-soak.sh
 ```
-- 参数演练（不启动进程，仅渲染命令与配置）：
-```bash
-./scripts/s10-five-node-game-soak.sh \
-  --dry-run \
-  --no-prewarm \
-  --out-dir .tmp/s10_game_longrun
-```
-- 关键产物：
-  - `run_config.json`
-  - `timeline.csv`
-  - `summary.json`
-  - `summary.md`
-  - `failures.md`（失败时）
-  - `nodes/<node_id>/{command.txt,stdout.log,stderr.log,report/}`
-- 门禁口径（S10）：
-  - `stall`、`lag_p95`、`distfs_failure_ratio`、`reward_asset_invariant_status.ok`
-  - 至少一次 `settlement_report.total_distributed_points > 0`
-  - 至少一次 `minted_records` 非空
-  - `summary.json` 的 `overall_status == "ok"` 视为通过
-- 与 S9 的边界：
-  - S9：强调 P2P/存储/共识在线稳定性与 chaos 恢复能力；
-  - S10：强调真实 gameplay 数据交换、结算分发与资产不变量（当前轮次默认无 chaos）。
+- 通过标准：返回 `rc=1` 且输出迁移指引（`world_chain_runtime` / `world_game_launcher`）。
+- 迁移文档：`doc/testing/launcher-chain-script-migration-2026-02-28.md`。
 
 ## 改动路径 -> 必跑套件矩阵（针对性执行）
 
@@ -364,15 +277,15 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
 | `crates/agent_world/src/simulator/**` | S0 + S1 | S2 + S3 + S7 + S8 |
 | `crates/agent_world/src/viewer/**` 或 `src/bin/world_viewer_live/**` | S0 + S1 + S6 | S2 + S3 + S5 |
 | `crates/agent_world_viewer/**` | S0 + S5 + S6 | S2 + S8 |
-| `crates/agent_world_node/**` | S0 + S4（node） | S2 + S3 + S9（soak_smoke） + S10 |
-| `crates/agent_world_net/**` | S0 + S4（net） | S2 + runtime_bridge 变体 + S9（soak_smoke） + S10 |
-| `crates/agent_world_consensus/**` | S0 + S4（consensus） | S2 + S9（soak_smoke） + S10 |
-| `crates/agent_world_distfs/**` | S0 + S4（distfs） | S2 + S8 + S9（soak_smoke） + S10 |
+| `crates/agent_world_node/**` | S0 + S4（node） | S2 + S3 + S8 +（S9/S10 新编排完成后补跑） |
+| `crates/agent_world_net/**` | S0 + S4（net） | S2 + runtime_bridge 变体 + S8 +（S9/S10 新编排完成后补跑） |
+| `crates/agent_world_consensus/**` | S0 + S4（consensus） | S2 + S8 +（S9/S10 新编排完成后补跑） |
+| `crates/agent_world_distfs/**` | S0 + S4（distfs） | S2 + S8 +（S9/S10 新编排完成后补跑） |
 | `scripts/ci-tests.sh` / `.github/workflows/rust.yml` | S0（含 `./scripts/doc-governance-check.sh`） + S1 + `./scripts/viewer-visual-baseline.sh` + （full）`./scripts/llm-baseline-fixture-smoke.sh` | S2 + S4 + S6（抽样） |
 | `scripts/ci-m1-wasm-summary.sh` / `scripts/ci-verify-m1-wasm-summaries.py` / `.github/workflows/builtin-wasm-m1-multi-runner.yml` | `S0` + `./scripts/ci-m1-wasm-summary.sh --runner-label darwin-arm64 --out output/ci/m1-wasm-summary/darwin-arm64.json` + `./scripts/ci-verify-m1-wasm-summaries.py --summary-dir output/ci/m1-wasm-summary --expected-runners darwin-arm64` | `workflow_dispatch` 触发双 runner（`linux-x86_64,darwin-arm64`）对账 |
 | `scripts/run-viewer-web.sh` / `scripts/capture-viewer-frame.sh` | S0 + S6 | S5 + S8 |
-| `scripts/p2p-longrun-soak.sh` / `doc/testing/p2p-storage-consensus-longrun-online-stability-2026-02-24*` | S0 + S4 + S9（soak_smoke） | S9（soak_endurance） |
-| `scripts/s10-five-node-game-soak.sh` / `doc/testing/s10-five-node-real-game-soak*` | S0 + S4 + S10 | S9（soak_smoke） |
+| `scripts/p2p-longrun-soak.sh` / `doc/testing/p2p-storage-consensus-longrun-online-stability-2026-02-24*` | S0 + 阻断提示校验（S9 迁移守卫） | 新编排脚本完成后补跑长稳 |
+| `scripts/s10-five-node-game-soak.sh` / `doc/testing/s10-five-node-real-game-soak*` | S0 + 阻断提示校验（S10 迁移守卫） | 新编排脚本完成后补跑长稳 |
 
 ## Human/AI 共用执行剧本
 
@@ -384,7 +297,7 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
 ### 阶段 B：先跑低层，后跑高层
 1. 先执行 S0。
 2. 再执行对应的 L1/L2/L3 套件（S1/S2/S3/S4/S5）。
-3. 最后执行 UI 闭环与压力（S6/S8/S9/S10）。
+3. 最后执行 UI 闭环与压力（S6/S8；S9/S10 在新编排脚本完成后执行）。
 4. 任意层失败立即停止上层，先定位并修复。
 
 ### 阶段 C：记录结论
@@ -404,7 +317,7 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
 
 ### 高风险改动（协议/共识/分布式/发布前）
 - 必须通过：S0 + S2 + S4 + S6
-- 建议通过：S8 至少一条压力脚本 + S9 或 S10 至少一次在线长跑（发布前建议补 `S9 soak_endurance`）
+- 建议通过：S8 至少一条压力脚本；S9/S10 当前为迁移守卫，待新编排脚本完成后补一次在线长跑。
 
 ## 证据规范
 
@@ -441,7 +354,7 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
 2. L1 失败：优先定位业务逻辑回归或断言漂移。
 3. L2 失败：优先检查协议兼容、连接时序、桥接参数。
 4. L3 失败：优先检查分布式状态恢复、签名校验、网络行为。
-5. L4 失败：先判定是否环境问题（端口、Node、trunk、wasm 初始化），再判定 UI 回归。
+5. L4 失败：先判定是否环境问题（端口、launcher 进程、wasm 初始化），再判定 UI 回归。
 6. L5 失败：判定是否性能退化、资源泄漏、长时状态累计问题。
 
 ## TODO（待收口）
@@ -462,7 +375,7 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
 - 风险 3：分布式子系统改动未触发对应 crate 测试。
   - 缓解：必须使用“改动路径矩阵”决策套件。
 - 风险 4：压力回归长期缺失，问题只在长跑暴露。
-  - 缓解：高风险改动或发布前至少执行一条 S8/S9/S10。
+  - 缓解：高风险改动或发布前至少执行一条 S8；S9/S10 新编排可用后补齐长跑验证。
 
 ## 里程碑
 - T1：完成基于仓库现状的分层模型与套件目录。
