@@ -16,6 +16,10 @@ const DEFAULT_WEB_BIND: &str = "127.0.0.1:5011";
 const DEFAULT_VIEWER_HOST: &str = "127.0.0.1";
 const DEFAULT_VIEWER_PORT: u16 = 4173;
 const DEFAULT_VIEWER_STATIC_DIR: &str = "web";
+const DEFAULT_CHAIN_STATUS_BIND: &str = "127.0.0.1:5121";
+const DEFAULT_CHAIN_NODE_ID: &str = "viewer-live-node";
+const DEFAULT_CHAIN_NODE_ROLE: &str = "sequencer";
+const DEFAULT_CHAIN_NODE_TICK_MS: u64 = 200;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct CliOptions {
@@ -27,6 +31,13 @@ struct CliOptions {
     viewer_static_dir: String,
     with_llm: bool,
     open_browser: bool,
+    chain_enabled: bool,
+    chain_status_bind: String,
+    chain_node_id: String,
+    chain_world_id: Option<String>,
+    chain_node_role: String,
+    chain_node_tick_ms: u64,
+    chain_node_validators: Vec<String>,
 }
 
 impl Default for CliOptions {
@@ -40,6 +51,13 @@ impl Default for CliOptions {
             viewer_static_dir: DEFAULT_VIEWER_STATIC_DIR.to_string(),
             with_llm: false,
             open_browser: true,
+            chain_enabled: true,
+            chain_status_bind: DEFAULT_CHAIN_STATUS_BIND.to_string(),
+            chain_node_id: DEFAULT_CHAIN_NODE_ID.to_string(),
+            chain_world_id: None,
+            chain_node_role: DEFAULT_CHAIN_NODE_ROLE.to_string(),
+            chain_node_tick_ms: DEFAULT_CHAIN_NODE_TICK_MS,
+            chain_node_validators: Vec::new(),
         }
     }
 }
@@ -75,9 +93,27 @@ fn main() {
 
 fn run_launcher(options: &CliOptions) -> Result<(), String> {
     let world_viewer_live_bin = resolve_world_viewer_live_binary()?;
+    let world_chain_runtime_bin = if options.chain_enabled {
+        Some(resolve_world_chain_runtime_binary()?)
+    } else {
+        None
+    };
     let viewer_static_dir = resolve_viewer_static_dir(options.viewer_static_dir.as_str())?;
 
-    let mut world_child = spawn_world_viewer_live(&world_viewer_live_bin, options)?;
+    let mut chain_child = if let Some(chain_bin) = world_chain_runtime_bin.as_ref() {
+        Some(spawn_world_chain_runtime(chain_bin.as_path(), options)?)
+    } else {
+        None
+    };
+    let mut world_child = match spawn_world_viewer_live(&world_viewer_live_bin, options) {
+        Ok(child) => child,
+        Err(err) => {
+            if let Some(child) = chain_child.as_mut() {
+                terminate_child(child);
+            }
+            return Err(err);
+        }
+    };
     let mut server = start_static_http_server(
         options.viewer_host.as_str(),
         options.viewer_port,
@@ -88,6 +124,9 @@ fn run_launcher(options: &CliOptions) -> Result<(), String> {
     if let Err(err) = ready_result {
         stop_static_http_server(&mut server);
         terminate_child(&mut world_child);
+        if let Some(child) = chain_child.as_mut() {
+            terminate_child(child);
+        }
         return Err(err);
     }
 
@@ -95,6 +134,15 @@ fn run_launcher(options: &CliOptions) -> Result<(), String> {
     println!("Launcher stack is ready.");
     println!("- URL: {game_url}");
     println!("- world_viewer_live pid: {}", world_child.id());
+    if let Some(chain_child) = chain_child.as_ref() {
+        println!("- world_chain_runtime pid: {}", chain_child.id());
+        println!(
+            "- chain status: http://{}/v1/chain/status",
+            options.chain_status_bind
+        );
+    } else {
+        println!("- world_chain_runtime: disabled");
+    }
     println!("- web static root: {}", viewer_static_dir.display());
     println!("Press Ctrl+C to stop.");
 
@@ -105,9 +153,13 @@ fn run_launcher(options: &CliOptions) -> Result<(), String> {
         }
     }
 
-    let monitor_result = monitor_world_and_server(&mut world_child, &mut server);
+    let monitor_result =
+        monitor_world_chain_and_server(&mut world_child, chain_child.as_mut(), &mut server);
     stop_static_http_server(&mut server);
     terminate_child(&mut world_child);
+    if let Some(child) = chain_child.as_mut() {
+        terminate_child(child);
+    }
     monitor_result
 }
 
@@ -121,7 +173,8 @@ fn spawn_world_viewer_live(path: &Path, options: &CliOptions) -> Result<Child, S
         .arg(options.web_bind.as_str())
         .arg("--topology")
         .arg("single")
-        .arg("--viewer-no-consensus-gate");
+        .arg("--viewer-no-consensus-gate")
+        .arg("--no-node");
     if options.with_llm {
         command.arg("--llm");
     } else {
@@ -133,6 +186,37 @@ fn spawn_world_viewer_live(path: &Path, options: &CliOptions) -> Result<Child, S
             path.display()
         )
     })
+}
+
+fn spawn_world_chain_runtime(path: &Path, options: &CliOptions) -> Result<Child, String> {
+    let mut command = Command::new(path);
+    command
+        .arg("--node-id")
+        .arg(options.chain_node_id.as_str())
+        .arg("--world-id")
+        .arg(chain_world_id(options).as_str())
+        .arg("--status-bind")
+        .arg(options.chain_status_bind.as_str())
+        .arg("--node-role")
+        .arg(options.chain_node_role.as_str())
+        .arg("--node-tick-ms")
+        .arg(options.chain_node_tick_ms.to_string());
+    for validator in &options.chain_node_validators {
+        command.arg("--node-validator").arg(validator.as_str());
+    }
+    command.spawn().map_err(|err| {
+        format!(
+            "failed to start world_chain_runtime from `{}`: {err}",
+            path.display()
+        )
+    })
+}
+
+fn chain_world_id(options: &CliOptions) -> String {
+    options
+        .chain_world_id
+        .clone()
+        .unwrap_or_else(|| format!("live-{}", options.scenario))
 }
 
 fn start_static_http_server(
@@ -365,13 +449,36 @@ fn wait_until_ready(options: &CliOptions) -> Result<(), String> {
     )?;
 
     let (bridge_host, bridge_port) = parse_host_port(options.web_bind.as_str(), "--web-bind")?;
-    wait_for_tcp_ready(bridge_host.as_str(), bridge_port, Duration::from_secs(60)).map_err(|err| {
-        format!("web bridge did not become ready at {bridge_host}:{bridge_port}: {err}")
-    })
+    wait_for_tcp_ready(bridge_host.as_str(), bridge_port, Duration::from_secs(60)).map_err(
+        |err| format!("web bridge did not become ready at {bridge_host}:{bridge_port}: {err}"),
+    )?;
+
+    if options.chain_enabled {
+        let (chain_status_host, chain_status_port) =
+            parse_host_port(options.chain_status_bind.as_str(), "--chain-status-bind")?;
+        let chain_status_host = if chain_status_host == "0.0.0.0" {
+            "127.0.0.1".to_string()
+        } else {
+            chain_status_host
+        };
+        wait_for_http_ready(
+            chain_status_host.as_str(),
+            chain_status_port,
+            Duration::from_secs(30),
+        )
+        .map_err(|err| {
+            format!(
+                "chain status HTTP did not become ready at {}:{}: {}",
+                chain_status_host, chain_status_port, err
+            )
+        })?;
+    }
+    Ok(())
 }
 
-fn monitor_world_and_server(
+fn monitor_world_chain_and_server(
     world_child: &mut Child,
+    mut chain_child: Option<&mut Child>,
     server: &mut StaticHttpServer,
 ) -> Result<(), String> {
     loop {
@@ -380,6 +487,14 @@ fn monitor_world_and_server(
             .map_err(|err| format!("failed to query world_viewer_live status: {err}"))?
         {
             return Err(format!("world_viewer_live exited unexpectedly: {status}"));
+        }
+        if let Some(chain_child) = chain_child.as_deref_mut() {
+            if let Some(status) = chain_child
+                .try_wait()
+                .map_err(|err| format!("failed to query world_chain_runtime status: {err}"))?
+            {
+                return Err(format!("world_chain_runtime exited unexpectedly: {status}"));
+            }
         }
 
         match server.error_rx.try_recv() {
@@ -514,6 +629,39 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
             "--no-open-browser" => {
                 options.open_browser = false;
             }
+            "--chain-enable" => {
+                options.chain_enabled = true;
+            }
+            "--chain-disable" => {
+                options.chain_enabled = false;
+            }
+            "--chain-status-bind" => {
+                options.chain_status_bind = parse_required_value(&mut iter, "--chain-status-bind")?;
+            }
+            "--chain-node-id" => {
+                options.chain_node_id = parse_required_value(&mut iter, "--chain-node-id")?;
+            }
+            "--chain-world-id" => {
+                options.chain_world_id = Some(parse_required_value(&mut iter, "--chain-world-id")?);
+            }
+            "--chain-node-role" => {
+                let raw = parse_required_value(&mut iter, "--chain-node-role")?;
+                options.chain_node_role = parse_chain_node_role(raw.as_str())?;
+            }
+            "--chain-node-tick-ms" => {
+                let raw = parse_required_value(&mut iter, "--chain-node-tick-ms")?;
+                options.chain_node_tick_ms = raw.parse::<u64>().map_err(|_| {
+                    format!("--chain-node-tick-ms must be a positive integer, got `{raw}`")
+                })?;
+                if options.chain_node_tick_ms == 0 {
+                    return Err("--chain-node-tick-ms must be a positive integer".to_string());
+                }
+            }
+            "--chain-node-validator" => {
+                let value = parse_required_value(&mut iter, "--chain-node-validator")?;
+                validate_chain_node_validator(value.as_str())?;
+                options.chain_node_validators.push(value);
+            }
             _ => return Err(format!("unknown option: {arg}")),
         }
     }
@@ -525,6 +673,19 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
         options.viewer_port,
         "viewer host/port",
     )?;
+    if options.chain_enabled {
+        let _ = parse_host_port(options.chain_status_bind.as_str(), "--chain-status-bind")?;
+        if options.chain_node_id.trim().is_empty() {
+            return Err("--chain-node-id requires a non-empty value".to_string());
+        }
+        parse_chain_node_role(options.chain_node_role.as_str())?;
+        if options.chain_node_tick_ms == 0 {
+            return Err("--chain-node-tick-ms must be a positive integer".to_string());
+        }
+        for validator in &options.chain_node_validators {
+            validate_chain_node_validator(validator.as_str())?;
+        }
+    }
 
     Ok(options)
 }
@@ -563,6 +724,30 @@ fn parse_host_port(raw: &str, label: &str) -> Result<(String, u16), String> {
     Ok((host.trim().to_string(), port))
 }
 
+fn parse_chain_node_role(raw: &str) -> Result<String, String> {
+    let normalized = raw.trim().to_ascii_lowercase();
+    match normalized.as_str() {
+        "sequencer" | "storage" | "observer" => Ok(normalized),
+        _ => Err("--chain-node-role must be one of: sequencer, storage, observer".to_string()),
+    }
+}
+
+fn validate_chain_node_validator(raw: &str) -> Result<(), String> {
+    let (validator_id, stake) = raw.rsplit_once(':').ok_or_else(|| {
+        "--chain-node-validator must be in <validator_id:stake> format".to_string()
+    })?;
+    if validator_id.trim().is_empty() {
+        return Err("--chain-node-validator validator_id cannot be empty".to_string());
+    }
+    let stake = stake
+        .parse::<u64>()
+        .map_err(|_| "--chain-node-validator stake must be a positive integer".to_string())?;
+    if stake == 0 {
+        return Err("--chain-node-validator stake must be a positive integer".to_string());
+    }
+    Ok(())
+}
+
 fn resolve_world_viewer_live_binary() -> Result<PathBuf, String> {
     if let Ok(path) = env::var("AGENT_WORLD_WORLD_VIEWER_LIVE_BIN") {
         let candidate = PathBuf::from(path);
@@ -598,6 +783,43 @@ fn resolve_world_viewer_live_binary() -> Result<PathBuf, String> {
     }
 
     Err("failed to locate `world_viewer_live` binary; build it first or set AGENT_WORLD_WORLD_VIEWER_LIVE_BIN".to_string())
+}
+
+fn resolve_world_chain_runtime_binary() -> Result<PathBuf, String> {
+    if let Ok(path) = env::var("AGENT_WORLD_WORLD_CHAIN_RUNTIME_BIN") {
+        let candidate = PathBuf::from(path);
+        if candidate.is_file() {
+            return Ok(candidate);
+        }
+        return Err(format!(
+            "AGENT_WORLD_WORLD_CHAIN_RUNTIME_BIN is set but file does not exist: {}",
+            candidate.display()
+        ));
+    }
+
+    let mut candidates = Vec::new();
+    if let Ok(current_exe) = env::current_exe() {
+        if let Some(dir) = current_exe.parent() {
+            candidates.push(dir.join(binary_name("world_chain_runtime")));
+            candidates.push(
+                dir.join("..")
+                    .join(binary_name("world_chain_runtime"))
+                    .to_path_buf(),
+            );
+        }
+    }
+
+    if let Some(path_entry) = find_on_path(OsStr::new(&binary_name("world_chain_runtime"))) {
+        candidates.push(path_entry);
+    }
+
+    for candidate in candidates {
+        if candidate.is_file() {
+            return Ok(candidate);
+        }
+    }
+
+    Err("failed to locate `world_chain_runtime` binary; build it first or set AGENT_WORLD_WORLD_CHAIN_RUNTIME_BIN".to_string())
 }
 
 fn resolve_viewer_static_dir(raw: &str) -> Result<PathBuf, String> {
@@ -694,6 +916,7 @@ fn print_help() {
     println!(
         "Usage: world_game_launcher [options]\n\n\
 Start player stack with one command:\n\
+- start world_chain_runtime (default)\n\
 - start world_viewer_live\n\
 - start built-in static web server\n\
 - print URL and optionally open browser\n\n\
@@ -704,11 +927,20 @@ Options:\n\
   --viewer-host <host>         web viewer host (default: {DEFAULT_VIEWER_HOST})\n\
   --viewer-port <port>         web viewer port (default: {DEFAULT_VIEWER_PORT})\n\
   --viewer-static-dir <path>   prebuilt web asset dir (default: {DEFAULT_VIEWER_STATIC_DIR})\n\
+  --chain-enable               enable world_chain_runtime (default)\n\
+  --chain-disable              disable world_chain_runtime\n\
+  --chain-status-bind <addr>   world_chain_runtime status bind (default: {DEFAULT_CHAIN_STATUS_BIND})\n\
+  --chain-node-id <id>         world_chain_runtime node id (default: {DEFAULT_CHAIN_NODE_ID})\n\
+  --chain-world-id <id>        world_chain_runtime world id (default: live-<scenario>)\n\
+  --chain-node-role <role>     world_chain_runtime role (default: {DEFAULT_CHAIN_NODE_ROLE})\n\
+  --chain-node-tick-ms <n>     world_chain_runtime tick ms (default: {DEFAULT_CHAIN_NODE_TICK_MS})\n\
+  --chain-node-validator <v:s> world_chain_runtime validator (repeatable)\n\
   --with-llm                   enable llm mode\n\
   --no-open-browser            do not auto open browser\n\
   -h, --help                   show help\n\n\
 Env:\n\
-  AGENT_WORLD_WORLD_VIEWER_LIVE_BIN   explicit path of world_viewer_live binary"
+  AGENT_WORLD_WORLD_VIEWER_LIVE_BIN   explicit path of world_viewer_live binary\n\
+  AGENT_WORLD_WORLD_CHAIN_RUNTIME_BIN explicit path of world_chain_runtime binary"
     );
 }
 
@@ -721,8 +953,8 @@ mod world_game_launcher_tests {
 
     use super::{
         build_game_url, content_type_for_path, parse_host_port, parse_options,
-        resolve_static_asset_path, sanitize_relative_request_path, CliOptions, DEFAULT_LIVE_BIND,
-        DEFAULT_SCENARIO,
+        resolve_static_asset_path, sanitize_relative_request_path, CliOptions,
+        DEFAULT_CHAIN_NODE_ID, DEFAULT_CHAIN_STATUS_BIND, DEFAULT_LIVE_BIND, DEFAULT_SCENARIO,
     };
 
     #[test]
@@ -733,6 +965,10 @@ mod world_game_launcher_tests {
         assert!(!options.with_llm);
         assert!(options.open_browser);
         assert_eq!(options.viewer_static_dir, "web");
+        assert!(options.chain_enabled);
+        assert_eq!(options.chain_status_bind, DEFAULT_CHAIN_STATUS_BIND);
+        assert_eq!(options.chain_node_id, DEFAULT_CHAIN_NODE_ID);
+        assert_eq!(options.chain_node_role, "sequencer");
     }
 
     #[test]
@@ -751,6 +987,18 @@ mod world_game_launcher_tests {
                 "4777",
                 "--viewer-static-dir",
                 "dist",
+                "--chain-status-bind",
+                "127.0.0.1:6331",
+                "--chain-node-id",
+                "chain-a",
+                "--chain-world-id",
+                "live-chain-a",
+                "--chain-node-role",
+                "storage",
+                "--chain-node-tick-ms",
+                "350",
+                "--chain-node-validator",
+                "chain-a:55",
                 "--with-llm",
                 "--no-open-browser",
             ]
@@ -764,8 +1012,30 @@ mod world_game_launcher_tests {
         assert_eq!(options.viewer_host, "0.0.0.0");
         assert_eq!(options.viewer_port, 4777);
         assert_eq!(options.viewer_static_dir, "dist");
+        assert_eq!(options.chain_status_bind, "127.0.0.1:6331");
+        assert_eq!(options.chain_node_id, "chain-a");
+        assert_eq!(options.chain_world_id, Some("live-chain-a".to_string()));
+        assert_eq!(options.chain_node_role, "storage");
+        assert_eq!(options.chain_node_tick_ms, 350);
+        assert_eq!(
+            options.chain_node_validators,
+            vec!["chain-a:55".to_string()]
+        );
         assert!(options.with_llm);
         assert!(!options.open_browser);
+    }
+
+    #[test]
+    fn parse_options_accepts_chain_disable() {
+        let options = parse_options(["--chain-disable"].into_iter()).expect("parse should succeed");
+        assert!(!options.chain_enabled);
+    }
+
+    #[test]
+    fn parse_options_rejects_invalid_chain_role() {
+        let err =
+            parse_options(["--chain-node-role", "invalid"].into_iter()).expect_err("should fail");
+        assert!(err.contains("sequencer, storage, observer"));
     }
 
     #[test]
