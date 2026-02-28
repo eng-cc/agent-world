@@ -919,6 +919,52 @@ fn live_world_consensus_bridge_applies_only_committed_actions() {
 }
 
 #[test]
+fn consensus_committed_advances_world_even_when_session_paused() {
+    let node_config = NodeConfig::new(
+        "node-live-paused-commit",
+        "live-minimal",
+        NodeRole::Sequencer,
+    )
+    .expect("node config")
+    .with_tick_interval(Duration::from_millis(10))
+    .expect("node tick interval");
+    let mut node_runtime = NodeRuntime::new(node_config).with_execution_hook(TestNoopExecutionHook);
+    node_runtime.start().expect("start node runtime");
+    let shared_runtime = Arc::new(Mutex::new(node_runtime));
+
+    let config = ViewerLiveServerConfig::new(WorldScenario::Minimal)
+        .with_decision_mode(ViewerLiveDecisionMode::Script)
+        .with_consensus_runtime(Arc::clone(&shared_runtime));
+    let mut server = ViewerLiveServer::new(config).expect("init server");
+    let mut session = ViewerLiveSession::new();
+    session.playing = false;
+    let (mut writer, _peer) = test_writer_pair();
+
+    let submit = server.world.step().expect("submit step");
+    assert!(submit.event.is_none());
+    assert_eq!(server.world.kernel().time(), 0);
+
+    let mut advanced = false;
+    for _ in 0..80 {
+        thread::sleep(Duration::from_millis(20));
+        server
+            .handle_consensus_committed(&mut session, &mut writer)
+            .expect("apply committed actions while paused");
+        if server.world.kernel().time() > 0 {
+            advanced = true;
+            break;
+        }
+    }
+    assert!(
+        advanced,
+        "consensus commit should advance world while paused"
+    );
+
+    let mut locked = shared_runtime.lock().expect("lock node runtime");
+    locked.stop().expect("stop node runtime");
+}
+
+#[test]
 fn enqueue_coalesced_signal_merges_duplicate_llm_decision_requests() {
     let (tx, rx) = mpsc::sync_channel(4);
     let queued = Arc::new(AtomicBool::new(false));

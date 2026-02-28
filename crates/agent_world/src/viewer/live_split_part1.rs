@@ -157,6 +157,8 @@ enum LiveLoopIterationAction {
 }
 
 const LIVE_LOOP_QUEUE_CAPACITY: usize = 256;
+const STEP_REQUEST_CONSENSUS_RETRY_MAX_ATTEMPTS: usize = 30;
+const STEP_REQUEST_CONSENSUS_RETRY_SLEEP: Duration = Duration::from_millis(20);
 
 impl ViewerLiveServer {
     pub fn new(config: ViewerLiveServerConfig) -> Result<Self, ViewerLiveServerError> {
@@ -276,7 +278,10 @@ impl ViewerLiveServer {
                     }
                     if let Some(control) = outcome.deferred_control {
                         let ViewerLiveDeferredControl::Step { count } = control;
-                        if loop_tx.send(LiveLoopSignal::StepRequested { count }).is_ok() {
+                        if loop_tx
+                            .send(LiveLoopSignal::StepRequested { count })
+                            .is_ok()
+                        {
                             backpressure.record_enqueued(LiveLoopSignalKind::StepRequested);
                         }
                     }
@@ -401,7 +406,7 @@ impl ViewerLiveServer {
         session: &mut ViewerLiveSession,
         writer: &mut BufWriter<TcpStream>,
     ) -> Result<(), ViewerLiveServerError> {
-        if !session.should_emit_event() || !self.world.uses_consensus_bridge() {
+        if !self.world.uses_consensus_bridge() {
             return Ok(());
         }
         if !self.world.can_step_for_consensus() {
@@ -460,7 +465,21 @@ impl ViewerLiveServer {
         let steps = count.max(1);
         for _ in 0..steps {
             self.world.request_llm_decision();
-            let step = self.world.step()?;
+            let mut step = self.world.step()?;
+            if self.world.uses_consensus_bridge()
+                && step.event.is_none()
+                && step.decision_trace.is_none()
+            {
+                for _ in 0..STEP_REQUEST_CONSENSUS_RETRY_MAX_ATTEMPTS {
+                    thread::sleep(STEP_REQUEST_CONSENSUS_RETRY_SLEEP);
+                    let retry = self.world.step()?;
+                    let has_progress = retry.event.is_some() || retry.decision_trace.is_some();
+                    step = retry;
+                    if has_progress {
+                        break;
+                    }
+                }
+            }
             self.emit_step_outcome(session, writer, step, true)?;
         }
         Ok(())
