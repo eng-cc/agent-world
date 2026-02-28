@@ -29,13 +29,16 @@ Options:
   --out-dir <dir>          output root (default: output/texture_inspector/<timestamp>)
   --art-capture            enable art-review mode (director ui + source mesh + crop output)
   --automation-steps <s>   override viewer automation steps for all captures
+  --closeup-automation-steps <s>
+                           override closeup automation steps for all captures
   --crop-window <w:h:x:y>  crop window for viewer_art.png; use 'none' to disable crop
   --no-prewarm             pass --no-prewarm to all capture runs
   -h, --help               show help
 
 Outputs:
   output/texture_inspector/<timestamp>/<entity>/<variant>/
-    viewer.png viewer_art.png live_server.log viewer.log meta.txt
+    viewer.png viewer_art.png viewer_closeup.png viewer_art_closeup.png
+    live_server.log viewer.log live_server_closeup.log viewer_closeup.log meta.txt
 USAGE
 }
 
@@ -141,22 +144,56 @@ capture_status_value() {
 default_automation_steps_for_entity() {
   case "$1" in
     agent)
-      echo "mode=3d;focus=first_location;zoom=0.22;orbit=18,-28;wait=0.6"
+      echo "mode=3d;focus=first_location;zoom=1.5;orbit=18,-26;wait=0.6"
       ;;
     location)
-      echo "mode=3d;focus=first_location;zoom=0.34;orbit=14,-24;wait=0.6"
+      echo "mode=3d;focus=first_location;zoom=1.7;orbit=14,-24;wait=0.6"
       ;;
     asset)
-      echo "mode=3d;focus=first_location;zoom=0.26;orbit=18,-30;wait=0.6"
+      echo "mode=3d;focus=first_location;zoom=1.55;orbit=18,-28;wait=0.6"
       ;;
     power_plant)
-      echo "mode=3d;focus=first_location;zoom=0.24;orbit=20,-30;wait=0.6"
+      echo "mode=3d;focus=first_location;zoom=1.6;orbit=20,-30;wait=0.6"
       ;;
     power_storage)
-      echo "mode=3d;focus=first_location;zoom=0.24;orbit=20,-30;wait=0.6"
+      echo "mode=3d;focus=first_location;zoom=1.6;orbit=20,-30;wait=0.6"
       ;;
     *)
       echo "mode=3d;focus=first_location;pan=0,2,0;zoom=1.2;orbit=10,-25;select=first_location;wait=0.4"
+      ;;
+  esac
+}
+
+default_closeup_automation_steps_for_entity() {
+  case "$1" in
+    agent)
+      echo "mode=3d;focus=first_location;zoom=1.15;orbit=30,-20;wait=0.8"
+      ;;
+    location)
+      echo "mode=3d;focus=first_location;zoom=1.25;orbit=28,-20;wait=0.8"
+      ;;
+    asset)
+      echo "mode=3d;focus=first_location;zoom=1.15;orbit=32,-22;wait=0.8"
+      ;;
+    power_plant)
+      echo "mode=3d;focus=first_location;zoom=1.2;orbit=38,-20;wait=0.8"
+      ;;
+    power_storage)
+      echo "mode=3d;focus=first_location;zoom=1.2;orbit=38,-20;wait=0.8"
+      ;;
+    *)
+      echo "mode=3d;focus=first_location;zoom=0.18;orbit=30,-22;wait=0.7"
+      ;;
+  esac
+}
+
+fallback_closeup_automation_steps_for_entity() {
+  case "$1" in
+    power_plant|power_storage)
+      echo "mode=3d;focus=first_location;zoom=0.9;orbit=46,-14;wait=0.9"
+      ;;
+    *)
+      echo "mode=3d;focus=first_location;zoom=0.95;orbit=42,-16;wait=0.9"
       ;;
   esac
 }
@@ -191,6 +228,54 @@ parse_crop_window() {
   echo "${crop_w}:${crop_h}:${crop_x}:${crop_y}"
 }
 
+crop_or_copy_image() {
+  local src=$1
+  local dest=$2
+  local crop_spec=$3
+
+  if [[ "$crop_spec" == "none" ]]; then
+    cp "$src" "$dest"
+    echo "passthrough"
+    return 0
+  fi
+
+  IFS=':' read -r crop_w crop_h crop_x crop_y <<<"$crop_spec"
+  if ffmpeg -y -i "$src" -vf "crop=${crop_w}:${crop_h}:${crop_x}:${crop_y}" "$dest" >/dev/null 2>&1; then
+    echo "cropped"
+  else
+    cp "$src" "$dest"
+    echo "crop_failed_fallback"
+  fi
+}
+
+captures_are_all_present() {
+  local root=$1
+  local entity=$2
+  local variant
+  for variant in default matte glossy; do
+    if [[ ! -f "$root/$entity/$variant/viewer_art_closeup.png" ]]; then
+      return 1
+    fi
+  done
+  return 0
+}
+
+variant_hash_unique_count() {
+  local root=$1
+  local entity=$2
+  local hashes=()
+  local variant
+  for variant in default matte glossy; do
+    local path="$root/$entity/$variant/viewer_art_closeup.png"
+    if [[ ! -f "$path" ]]; then
+      echo 0
+      return 0
+    fi
+    hashes+=("$(sha256sum "$path" | awk '{print $1}')")
+  done
+  printf "%s\n" "${hashes[@]}" | sort -u | wc -l | tr -d ' '
+}
+
 preset_file="crates/agent_world_viewer/assets/themes/industrial_v1/presets/industrial_default.env"
 inspect_raw="all"
 variants_raw="all"
@@ -204,6 +289,7 @@ force_no_prewarm=0
 use_source_mesh=0
 art_capture=0
 automation_steps_override=""
+closeup_automation_steps_override=""
 crop_window_raw=""
 
 override_base_texture=""
@@ -275,6 +361,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --automation-steps)
       automation_steps_override=${2:-}
+      shift 2
+      ;;
+    --closeup-automation-steps)
+      closeup_automation_steps_override=${2:-}
       shift 2
       ;;
     --crop-window)
@@ -350,108 +440,139 @@ fi
 crop_window=$(parse_crop_window "$crop_window_raw")
 
 capture_index=0
-for entity in "${entities[@]}"; do
+capture_variant_bundle() {
+  local entity=$1
+  local variant=$2
+  local variant_dir=$3
+  local port=$4
+  local hero_steps=$5
+  local closeup_steps=$6
+  local no_prewarm_arg=$7
+  local retry_attempt=$8
+  local src_prefix
   src_prefix=$(entity_prefix "$entity")
-  entity_default_automation_steps=$(default_automation_steps_for_entity "$entity")
-  for variant in "${variants[@]}"; do
-    port=$((base_port + capture_index))
-    variant_dir="$out_dir/$entity/$variant"
-    mkdir -p "$variant_dir"
-    if [[ -n "$automation_steps_override" ]]; then
-      automation_steps="$automation_steps_override"
-    elif [[ "$art_capture" -eq 1 ]]; then
-      automation_steps="$entity_default_automation_steps"
-    else
-      automation_steps="$default_automation_steps"
+
+  mkdir -p "$variant_dir"
+
+  (
+    # Load base theme preset first, then pin variant and inspector overrides.
+    source "$preset_file"
+
+    export AGENT_WORLD_VIEWER_MATERIAL_VARIANT_PRESET="$variant"
+    export AGENT_WORLD_VIEWER_RENDER_PROFILE="$render_profile"
+    export AGENT_WORLD_VIEWER_FRAGMENT_MATERIAL_STRATEGY="$fragment_strategy"
+    export AGENT_WORLD_VIEWER_SHOW_LOCATIONS=1
+    export AGENT_WORLD_VIEWER_SHOW_AGENTS=0
+    if [[ "$art_capture" -eq 1 ]]; then
+      export AGENT_WORLD_VIEWER_EXPERIENCE_MODE="director"
+      export AGENT_WORLD_VIEWER_PANEL_MODE="observe"
+      export AGENT_WORLD_VIEWER_SHOW_OPS_NAV=0
     fi
 
-    no_prewarm_arg=""
-    if [[ "$force_no_prewarm" -eq 1 || "$capture_index" -gt 0 ]]; then
-      no_prewarm_arg="--no-prewarm"
+    src_mesh_key="AGENT_WORLD_VIEWER_${src_prefix}_MESH_ASSET"
+    src_base_key="AGENT_WORLD_VIEWER_${src_prefix}_BASE_TEXTURE_ASSET"
+    src_normal_key="AGENT_WORLD_VIEWER_${src_prefix}_NORMAL_TEXTURE_ASSET"
+    src_mr_key="AGENT_WORLD_VIEWER_${src_prefix}_METALLIC_ROUGHNESS_TEXTURE_ASSET"
+    src_emissive_key="AGENT_WORLD_VIEWER_${src_prefix}_EMISSIVE_TEXTURE_ASSET"
+
+    src_mesh="${!src_mesh_key:-}"
+    src_base="${!src_base_key:-}"
+    src_normal="${!src_normal_key:-}"
+    src_mr="${!src_mr_key:-}"
+    src_emissive="${!src_emissive_key:-}"
+
+    if [[ "$use_source_mesh" -eq 1 ]]; then
+      set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_MESH_ASSET" "$src_mesh"
     fi
 
-    (
-      # Load base theme preset first, then pin variant and inspector overrides.
-      source "$preset_file"
+    set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_BASE_TEXTURE_ASSET" "${override_base_texture:-$src_base}"
+    set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_NORMAL_TEXTURE_ASSET" "${override_normal_texture:-$src_normal}"
+    set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_METALLIC_ROUGHNESS_TEXTURE_ASSET" "${override_mr_texture:-$src_mr}"
+    set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_EMISSIVE_TEXTURE_ASSET" "${override_emissive_texture:-$src_emissive}"
 
-      export AGENT_WORLD_VIEWER_MATERIAL_VARIANT_PRESET="$variant"
-      export AGENT_WORLD_VIEWER_RENDER_PROFILE="$render_profile"
-      export AGENT_WORLD_VIEWER_FRAGMENT_MATERIAL_STRATEGY="$fragment_strategy"
-      export AGENT_WORLD_VIEWER_SHOW_LOCATIONS=1
-      export AGENT_WORLD_VIEWER_SHOW_AGENTS=0
-      if [[ "$art_capture" -eq 1 ]]; then
-        export AGENT_WORLD_VIEWER_EXPERIENCE_MODE="director"
-        export AGENT_WORLD_VIEWER_PANEL_MODE="observe"
-        export AGENT_WORLD_VIEWER_SHOW_OPS_NAV=0
+    run ./scripts/capture-viewer-frame.sh \
+      --scenario "$scenario" \
+      --addr "127.0.0.1:$port" \
+      --viewer-wait "$viewer_wait" \
+      --auto-focus-target first_location \
+      --automation-steps "$hero_steps" \
+      --keep-tmp \
+      ${no_prewarm_arg:+$no_prewarm_arg}
+
+    capture_status_file=".tmp/screens/capture_status.txt"
+    if [[ ! -s "$capture_status_file" ]]; then
+      echo "missing capture status file: $capture_status_file (entity=$entity variant=$variant)" >&2
+      exit 1
+    fi
+    capture_connection_status=$(capture_status_value "$capture_status_file" "connection_status")
+    capture_snapshot_ready=$(capture_status_value "$capture_status_file" "snapshot_ready")
+    capture_last_error=$(capture_status_value "$capture_status_file" "last_error")
+    if [[ "$capture_connection_status" != "connected" || "$capture_snapshot_ready" != "1" ]]; then
+      echo "texture inspector capture connectivity gate failed: entity=$entity variant=$variant connection_status=${capture_connection_status:-unknown} snapshot_ready=${capture_snapshot_ready:-unknown}" >&2
+      if [[ -n "$capture_last_error" ]]; then
+        echo "last_error=$capture_last_error" >&2
       fi
+      cat "$capture_status_file" >&2 || true
+      exit 1
+    fi
 
-      src_mesh_key="AGENT_WORLD_VIEWER_${src_prefix}_MESH_ASSET"
-      src_base_key="AGENT_WORLD_VIEWER_${src_prefix}_BASE_TEXTURE_ASSET"
-      src_normal_key="AGENT_WORLD_VIEWER_${src_prefix}_NORMAL_TEXTURE_ASSET"
-      src_mr_key="AGENT_WORLD_VIEWER_${src_prefix}_METALLIC_ROUGHNESS_TEXTURE_ASSET"
-      src_emissive_key="AGENT_WORLD_VIEWER_${src_prefix}_EMISSIVE_TEXTURE_ASSET"
+    cp .tmp/screens/window.png "$variant_dir/viewer.png"
+    cp .tmp/screens/live_server.log "$variant_dir/live_server.log"
+    cp .tmp/screens/viewer.log "$variant_dir/viewer.log"
+    cp "$capture_status_file" "$variant_dir/capture_status.txt"
+    viewer_art_capture_status=$(crop_or_copy_image "$variant_dir/viewer.png" "$variant_dir/viewer_art.png" "$crop_window")
+    if [[ "$viewer_art_capture_status" == "crop_failed_fallback" ]]; then
+      echo "warn: crop failed, fallback to viewer.png (entity=$entity variant=$variant crop_window=$crop_window)" >&2
+    fi
 
-      src_mesh="${!src_mesh_key:-}"
-      src_base="${!src_base_key:-}"
-      src_normal="${!src_normal_key:-}"
-      src_mr="${!src_mr_key:-}"
-      src_emissive="${!src_emissive_key:-}"
+    capture_connection_status_closeup="$capture_connection_status"
+    capture_snapshot_ready_closeup="$capture_snapshot_ready"
+    viewer_art_closeup_capture_status="passthrough"
 
-      if [[ "$use_source_mesh" -eq 1 ]]; then
-        set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_MESH_ASSET" "$src_mesh"
-      fi
-
-      set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_BASE_TEXTURE_ASSET" "${override_base_texture:-$src_base}"
-      set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_NORMAL_TEXTURE_ASSET" "${override_normal_texture:-$src_normal}"
-      set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_METALLIC_ROUGHNESS_TEXTURE_ASSET" "${override_mr_texture:-$src_mr}"
-      set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_EMISSIVE_TEXTURE_ASSET" "${override_emissive_texture:-$src_emissive}"
-
+    if [[ "$art_capture" -eq 1 ]]; then
       run ./scripts/capture-viewer-frame.sh \
         --scenario "$scenario" \
         --addr "127.0.0.1:$port" \
         --viewer-wait "$viewer_wait" \
         --auto-focus-target first_location \
-        --automation-steps "$automation_steps" \
+        --automation-steps "$closeup_steps" \
         --keep-tmp \
-        ${no_prewarm_arg:+$no_prewarm_arg}
+        --no-prewarm
 
       capture_status_file=".tmp/screens/capture_status.txt"
       if [[ ! -s "$capture_status_file" ]]; then
-        echo "missing capture status file: $capture_status_file (entity=$entity variant=$variant)" >&2
+        echo "missing capture status file: $capture_status_file (entity=$entity variant=$variant closeup=1)" >&2
         exit 1
       fi
-      capture_connection_status=$(capture_status_value "$capture_status_file" "connection_status")
-      capture_snapshot_ready=$(capture_status_value "$capture_status_file" "snapshot_ready")
-      capture_last_error=$(capture_status_value "$capture_status_file" "last_error")
-      if [[ "$capture_connection_status" != "connected" || "$capture_snapshot_ready" != "1" ]]; then
-        echo "texture inspector capture connectivity gate failed: entity=$entity variant=$variant connection_status=${capture_connection_status:-unknown} snapshot_ready=${capture_snapshot_ready:-unknown}" >&2
-        if [[ -n "$capture_last_error" ]]; then
-          echo "last_error=$capture_last_error" >&2
+      capture_connection_status_closeup=$(capture_status_value "$capture_status_file" "connection_status")
+      capture_snapshot_ready_closeup=$(capture_status_value "$capture_status_file" "snapshot_ready")
+      capture_last_error_closeup=$(capture_status_value "$capture_status_file" "last_error")
+      if [[ "$capture_connection_status_closeup" != "connected" || "$capture_snapshot_ready_closeup" != "1" ]]; then
+        echo "texture inspector closeup capture connectivity gate failed: entity=$entity variant=$variant connection_status=${capture_connection_status_closeup:-unknown} snapshot_ready=${capture_snapshot_ready_closeup:-unknown}" >&2
+        if [[ -n "$capture_last_error_closeup" ]]; then
+          echo "last_error=$capture_last_error_closeup" >&2
         fi
         cat "$capture_status_file" >&2 || true
         exit 1
       fi
 
-      cp .tmp/screens/window.png "$variant_dir/viewer.png"
-      cp .tmp/screens/live_server.log "$variant_dir/live_server.log"
-      cp .tmp/screens/viewer.log "$variant_dir/viewer.log"
-      cp "$capture_status_file" "$variant_dir/capture_status.txt"
-
-      viewer_art_capture_status="passthrough"
-      if [[ "$crop_window" == "none" ]]; then
-        cp "$variant_dir/viewer.png" "$variant_dir/viewer_art.png"
-      else
-        IFS=':' read -r crop_w crop_h crop_x crop_y <<<"$crop_window"
-        if ffmpeg -y -i "$variant_dir/viewer.png" -vf "crop=${crop_w}:${crop_h}:${crop_x}:${crop_y}" "$variant_dir/viewer_art.png" >/dev/null 2>&1; then
-          viewer_art_capture_status="cropped"
-        else
-          viewer_art_capture_status="crop_failed_fallback"
-          cp "$variant_dir/viewer.png" "$variant_dir/viewer_art.png"
-          echo "warn: crop failed, fallback to viewer.png (entity=$entity variant=$variant crop_window=$crop_window)" >&2
-        fi
+      cp .tmp/screens/window.png "$variant_dir/viewer_closeup.png"
+      cp .tmp/screens/live_server.log "$variant_dir/live_server_closeup.log"
+      cp .tmp/screens/viewer.log "$variant_dir/viewer_closeup.log"
+      cp "$capture_status_file" "$variant_dir/capture_status_closeup.txt"
+      viewer_art_closeup_capture_status=$(crop_or_copy_image "$variant_dir/viewer_closeup.png" "$variant_dir/viewer_art_closeup.png" "$crop_window")
+      if [[ "$viewer_art_closeup_capture_status" == "crop_failed_fallback" ]]; then
+        echo "warn: closeup crop failed, fallback to viewer_closeup.png (entity=$entity variant=$variant crop_window=$crop_window)" >&2
       fi
+    else
+      cp "$variant_dir/viewer.png" "$variant_dir/viewer_closeup.png"
+      cp "$variant_dir/live_server.log" "$variant_dir/live_server_closeup.log"
+      cp "$variant_dir/viewer.log" "$variant_dir/viewer_closeup.log"
+      cp "$variant_dir/capture_status.txt" "$variant_dir/capture_status_closeup.txt"
+      cp "$variant_dir/viewer_art.png" "$variant_dir/viewer_art_closeup.png"
+    fi
 
-      cat >"$variant_dir/meta.txt" <<META
+    cat >"$variant_dir/meta.txt" <<META
 preset_file=$preset_file
 scenario=$scenario
 entity=$entity
@@ -460,9 +581,12 @@ port=$port
 render_profile=$render_profile
 fragment_strategy=$fragment_strategy
 art_capture=$art_capture
-automation_steps=$automation_steps
+hero_automation_steps=$hero_steps
+closeup_automation_steps=$closeup_steps
 crop_window=$crop_window
 viewer_art_capture_status=$viewer_art_capture_status
+viewer_art_closeup_capture_status=$viewer_art_closeup_capture_status
+retry_attempt=$retry_attempt
 use_source_mesh=$use_source_mesh
 location_mesh_asset=${AGENT_WORLD_VIEWER_LOCATION_MESH_ASSET:-}
 location_base_texture_asset=${AGENT_WORLD_VIEWER_LOCATION_BASE_TEXTURE_ASSET:-}
@@ -471,11 +595,89 @@ location_metallic_roughness_texture_asset=${AGENT_WORLD_VIEWER_LOCATION_METALLIC
 location_emissive_texture_asset=${AGENT_WORLD_VIEWER_LOCATION_EMISSIVE_TEXTURE_ASSET:-}
 capture_connection_status=$capture_connection_status
 capture_snapshot_ready=$capture_snapshot_ready
+capture_connection_status_closeup=$capture_connection_status_closeup
+capture_snapshot_ready_closeup=$capture_snapshot_ready_closeup
 META
-    )
+  )
+}
 
+for entity in "${entities[@]}"; do
+  entity_default_automation_steps=$(default_automation_steps_for_entity "$entity")
+  entity_default_closeup_steps=$(default_closeup_automation_steps_for_entity "$entity")
+  entity_retry_closeup_steps=$(fallback_closeup_automation_steps_for_entity "$entity")
+
+  for variant in "${variants[@]}"; do
+    port=$((base_port + capture_index))
     capture_index=$((capture_index + 1))
+    variant_dir="$out_dir/$entity/$variant"
+
+    if [[ -n "$automation_steps_override" ]]; then
+      hero_steps="$automation_steps_override"
+    elif [[ "$art_capture" -eq 1 ]]; then
+      hero_steps="$entity_default_automation_steps"
+    else
+      hero_steps="$default_automation_steps"
+    fi
+
+    if [[ -n "$closeup_automation_steps_override" ]]; then
+      closeup_steps="$closeup_automation_steps_override"
+    elif [[ "$art_capture" -eq 1 ]]; then
+      closeup_steps="$entity_default_closeup_steps"
+    else
+      closeup_steps="$hero_steps"
+    fi
+
+    no_prewarm_arg=""
+    if [[ "$force_no_prewarm" -eq 1 || "$capture_index" -gt 1 ]]; then
+      no_prewarm_arg="--no-prewarm"
+    fi
+
+    capture_variant_bundle "$entity" "$variant" "$variant_dir" "$port" "$hero_steps" "$closeup_steps" "$no_prewarm_arg" "0"
   done
+
+  if [[ "$art_capture" -eq 1 && ( "$entity" == "power_plant" || "$entity" == "power_storage" ) ]]; then
+    if captures_are_all_present "$out_dir" "$entity"; then
+      unique_count=$(variant_hash_unique_count "$out_dir" "$entity")
+      unique_count_retry="$unique_count"
+      validation_status="passed"
+      if [[ "$unique_count" -eq 1 ]]; then
+        validation_status="retrying"
+        echo "warn: material variant validation detected identical closeup captures entity=$entity; retry with fallback closeup camera" >&2
+        for retry_variant in default matte glossy; do
+          retry_dir="$out_dir/$entity/$retry_variant"
+          if [[ ! -d "$retry_dir" ]]; then
+            continue
+          fi
+          retry_port=$((base_port + capture_index))
+          capture_index=$((capture_index + 1))
+          capture_variant_bundle "$entity" "$retry_variant" "$retry_dir" "$retry_port" "$entity_default_automation_steps" "$entity_retry_closeup_steps" "--no-prewarm" "1"
+        done
+        unique_count_retry=$(variant_hash_unique_count "$out_dir" "$entity")
+        if [[ "$unique_count_retry" -eq 1 ]]; then
+          validation_status="failed_after_retry"
+          echo "warn: material variant validation still identical after retry entity=$entity" >&2
+        else
+          validation_status="passed_after_retry"
+        fi
+      fi
+
+      cat >"$out_dir/$entity/variant_validation.txt" <<VALIDATION
+entity=$entity
+status=$validation_status
+unique_count_initial=$unique_count
+unique_count_after_retry=$unique_count_retry
+VALIDATION
+
+      for retry_variant in default matte glossy; do
+        retry_meta="$out_dir/$entity/$retry_variant/meta.txt"
+        if [[ -f "$retry_meta" ]]; then
+          echo "variant_validation=$validation_status" >>"$retry_meta"
+          echo "variant_validation_unique_count_initial=$unique_count" >>"$retry_meta"
+          echo "variant_validation_unique_count_after_retry=$unique_count_retry" >>"$retry_meta"
+        fi
+      done
+    fi
+  fi
 done
 
 echo "texture inspector artifacts: $out_dir"
