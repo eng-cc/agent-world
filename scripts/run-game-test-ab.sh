@@ -4,6 +4,9 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
+# Guardrail: this script is an automated regression sentinel for quantitative
+# probes only. Do not use it as a replacement for manual long-play evaluation
+# or final playability sign-off in doc/game-test.md.
 usage() {
   cat <<'USAGE'
 Usage: ./scripts/run-game-test-ab.sh [options] [run-game-test options...]
@@ -12,6 +15,10 @@ Run a stable A/B playability loop and emit quantitative metrics:
 - A phase: play -> observe -> pause
 - B phase: step-chain control probes (no seek)
 - Outputs TTFC / effective control hit-rate / max no-progress window
+
+Important guardrail:
+- This script is for automated regression probing only.
+- It does NOT replace manual long-play sessions or real-player card filling.
 
 Options:
   --url <url>               Use an existing viewer URL; skip stack bootstrap
@@ -608,3 +615,4 @@ echo "- artifacts: $OUT_DIR"
 echo "- metrics json: $AB_METRICS_JSON"
 echo "- metrics summary: $AB_METRICS_MD"
 echo "- card metrics snippet: $CARD_METRICS_MD"
+echo "- reminder: regression probe only; still run manual long-play before final judgment"
