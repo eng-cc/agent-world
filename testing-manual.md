@@ -264,9 +264,14 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
 ```bash
 ./scripts/p2p-longrun-soak.sh --profile soak_endurance --topologies triad_distributed --chaos-continuous-enable --chaos-continuous-interval-secs 30 --chaos-continuous-max-events 60
 ```
+- 发布门禁基线命令（2026-02-28，300s）：
+```bash
+./scripts/p2p-longrun-soak.sh --profile soak_release --topologies triad_distributed --duration-secs 300 --no-prewarm --max-stall-secs 240 --max-lag-p95 50 --max-distfs-failure-ratio 0.1 --chaos-continuous-enable --chaos-continuous-interval-secs 30 --chaos-continuous-start-sec 30 --chaos-continuous-max-events 8 --chaos-continuous-actions restart,pause --chaos-continuous-seed 1772284566 --chaos-continuous-restart-down-secs 1 --chaos-continuous-pause-duration-secs 2 --out-dir .tmp/release_gate_p2p
+```
 - 通过标准：
   - 命令返回 `rc=0`；
   - `summary.json` 中 `overall_status == "ok"` 且 `totals.topology_failed_count == 0`；
+  - `soak_release` 档位下 `topologies[].metric_gate.status` 必须为 `pass`（`insufficient_data` 会转失败）；
   - 如启用 chaos，`chaos_events.log` 与 `summary.json.totals.chaos_events_total` 一致。
 - 参考文档：`doc/testing/chain-runtime-soak-script-reactivation-2026-02-28.md`、`doc/testing/p2p-storage-consensus-longrun-online-stability-2026-02-24.md`。
 
@@ -280,9 +285,14 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
 ```bash
 ./scripts/s10-five-node-game-soak.sh
 ```
+- 发布门禁基线命令（2026-02-28，300s）：
+```bash
+./scripts/s10-five-node-game-soak.sh --duration-secs 300 --no-prewarm --max-stall-secs 240 --max-lag-p95 50 --out-dir .tmp/release_gate_s10
+```
 - 通过标准：
   - 命令返回 `rc=0`；
   - `summary.json` 中 `run.status == "ok"`，并产出 `timeline.csv`；
+  - 若 `run.metric_gate.status == "insufficient_data"`，需在 `run.notes` 中确认仅为指标数据未就绪告警（如 `distfs_metrics_unavailable`），且不得伴随 `metric_gate_failed`；
   - 若失败，必须保留 `failures.md` 作为分诊依据。
 - 参考文档：`doc/testing/chain-runtime-soak-script-reactivation-2026-02-28.md`、`doc/testing/s10-five-node-real-game-soak.md`。
 

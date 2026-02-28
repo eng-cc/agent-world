@@ -4,7 +4,7 @@
 - [x] T0 建档：设计文档 + 项目管理文档。
 - [x] T1 正向修复：`world_chain_runtime` 接入 reward runtime worker，并在 S9/S10 消费真实 reward 指标。
 - [x] T2 回归验证：语法检查 + `cargo check/test` + 复跑 S9/S10 发布门禁命令。
-- [ ] T3 文档收口：更新 `testing-manual.md`、补 devlog、项目结项。
+- [x] T3 文档收口：更新 `testing-manual.md`、补 devlog、项目结项。
 
 ## 依赖
 - `crates/agent_world/src/bin/world_chain_runtime.rs`
@@ -16,5 +16,5 @@
 - `.tmp/release_gate_p2p/20260228-225152/summary.json`
 
 ## 状态
-- 当前阶段：进行中（T0~T2 已完成，执行 T3）。
-- 当前任务：T3 文档收口。
+- 当前阶段：已完成（T0~T3）。
+- 当前任务：无。
