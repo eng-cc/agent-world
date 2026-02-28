@@ -379,6 +379,7 @@ impl World {
                 kind,
                 amount,
                 distance_km,
+                priority,
             } => {
                 if !self.state.agents.contains_key(requester_agent_id) {
                     return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
@@ -438,7 +439,10 @@ impl World {
                         },
                     }));
                 }
-                let priority = material_transit_priority_for_kind(self, kind.as_str());
+                let priority = priority
+                    .as_ref()
+                    .copied()
+                    .unwrap_or_else(|| material_transit_priority_for_kind(self, kind.as_str()));
                 let loss_bps = material_transit_loss_bps_for_kind(self, kind.as_str());
 
                 if *distance_km == 0 {

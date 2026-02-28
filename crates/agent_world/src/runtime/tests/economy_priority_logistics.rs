@@ -258,6 +258,7 @@ fn logistics_sla_metrics_and_priority_are_observable_after_transit_completion() 
         kind: "copper_wire".to_string(),
         amount: 50,
         distance_km: 100,
+        priority: None,
     });
     world.step().expect("start transit");
 
@@ -325,6 +326,7 @@ fn due_transits_prioritize_urgent_before_standard_with_same_ready_at() {
         kind: "copper_wire".to_string(),
         amount: 20,
         distance_km: 100,
+        priority: None,
     });
     world.submit_action(Action::TransferMaterial {
         requester_agent_id: "operator-a".to_string(),
@@ -333,6 +335,7 @@ fn due_transits_prioritize_urgent_before_standard_with_same_ready_at() {
         kind: "oxygen_pack".to_string(),
         amount: 20,
         distance_km: 100,
+        priority: None,
     });
     world.step().expect("start transits");
     assert_eq!(world.pending_material_transits_len(), 2);
@@ -362,6 +365,60 @@ fn due_transits_prioritize_urgent_before_standard_with_same_ready_at() {
     assert_eq!(metrics.fulfilled_transits, 2);
     assert_eq!(metrics.urgent_completed_transits, 1);
     assert_eq!(metrics.urgent_fulfilled_transits, 1);
+}
+
+#[test]
+fn due_transits_allow_explicit_priority_override_for_non_urgent_material() {
+    let mut world = World::new();
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "operator-a".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.step().expect("register operator");
+
+    world
+        .set_ledger_material_balance(MaterialLedgerId::site("site-a"), "copper_wire", 60)
+        .expect("seed source");
+
+    world.submit_action(Action::TransferMaterial {
+        requester_agent_id: "operator-a".to_string(),
+        from_ledger: MaterialLedgerId::site("site-a"),
+        to_ledger: MaterialLedgerId::site("site-b"),
+        kind: "copper_wire".to_string(),
+        amount: 20,
+        distance_km: 100,
+        priority: None,
+    });
+    world.submit_action(Action::TransferMaterial {
+        requester_agent_id: "operator-a".to_string(),
+        from_ledger: MaterialLedgerId::site("site-a"),
+        to_ledger: MaterialLedgerId::site("site-c"),
+        kind: "copper_wire".to_string(),
+        amount: 20,
+        distance_km: 100,
+        priority: Some(MaterialTransitPriority::Urgent),
+    });
+    world.step().expect("start transits");
+    assert_eq!(world.pending_material_transits_len(), 2);
+
+    let before = world.journal().events.len();
+    world.step().expect("complete transits");
+    let completion_priorities: Vec<MaterialTransitPriority> = world.journal().events[before..]
+        .iter()
+        .filter_map(|event| match &event.body {
+            WorldEventBody::Domain(DomainEvent::MaterialTransitCompleted { priority, .. }) => {
+                Some(*priority)
+            }
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        completion_priorities,
+        vec![
+            MaterialTransitPriority::Urgent,
+            MaterialTransitPriority::Standard,
+        ]
+    );
 }
 
 #[test]
@@ -395,6 +452,7 @@ fn transfer_material_uses_profile_priority_and_loss_class() {
         kind: "copper_wire".to_string(),
         amount: 20,
         distance_km: 100,
+        priority: None,
     });
     world.step().expect("start transit");
 
@@ -490,6 +548,88 @@ fn schedule_recipe_rejects_when_profile_stage_gate_exceeds_current_stage() {
     assert!(
         message.contains("stage gate denied"),
         "expected stage gate reject, got {message}"
+    );
+}
+
+#[test]
+fn schedule_recipe_rejects_when_product_unlock_stage_exceeds_current_stage() {
+    let mut world = World::new();
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "builder-a".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.step().expect("register builder");
+
+    world
+        .set_material_balance("steel_plate", 20)
+        .expect("seed build steel");
+    world
+        .set_material_balance("circuit_board", 4)
+        .expect("seed build circuits");
+    world.submit_action(Action::BuildFactory {
+        builder_agent_id: "builder-a".to_string(),
+        site_id: "site-1".to_string(),
+        spec: factory_spec("factory.unlock_stage", 1, 1),
+    });
+    world.step().expect("start build");
+    world.step().expect("factory ready");
+
+    world
+        .upsert_recipe_profile(RecipeProfileV1 {
+            recipe_id: "recipe.profile.unlock_stage".to_string(),
+            bottleneck_tags: Vec::new(),
+            stage_gate: "bootstrap".to_string(),
+            preferred_factory_tags: vec!["assembly".to_string()],
+        })
+        .expect("insert recipe profile");
+    world
+        .upsert_product_profile(ProductProfileV1 {
+            product_id: "gear".to_string(),
+            role_tag: "scale".to_string(),
+            maintenance_sink: Vec::new(),
+            tradable: true,
+            unlock_stage: "governance".to_string(),
+        })
+        .expect("insert product profile");
+    world
+        .set_ledger_material_balance(MaterialLedgerId::site("site-1"), "iron_ingot", 2)
+        .expect("seed local material");
+    world
+        .set_material_balance("iron_ingot", 2)
+        .expect("seed world material");
+    world.set_resource_balance(ResourceKind::Electricity, 10);
+
+    let plan = RecipeExecutionPlan::accepted(
+        1,
+        vec![MaterialStack::new("iron_ingot", 1)],
+        vec![MaterialStack::new("gear", 1)],
+        Vec::new(),
+        1,
+        1,
+    );
+    world.submit_action(Action::ScheduleRecipe {
+        requester_agent_id: "builder-a".to_string(),
+        factory_id: "factory.unlock_stage".to_string(),
+        recipe_id: "recipe.profile.unlock_stage".to_string(),
+        plan,
+    });
+    world
+        .step()
+        .expect("schedule blocked by product unlock stage");
+
+    let rejected = world
+        .journal()
+        .events
+        .last()
+        .and_then(|event| match &event.body {
+            WorldEventBody::Domain(DomainEvent::ActionRejected { reason, .. }) => Some(reason),
+            _ => None,
+        })
+        .expect("action rejected");
+    let message = format!("{rejected:?}");
+    assert!(
+        message.contains("product unlock_stage denied"),
+        "expected product unlock_stage reject, got {message}"
     );
 }
 
@@ -988,6 +1128,7 @@ fn industry_stage_progresses_from_bootstrap_to_scale_out_and_governance() {
             kind: "copper_wire".to_string(),
             amount: 10,
             distance_km: 100,
+            priority: None,
         });
         world.step().expect("start transit");
         world.step().expect("complete transit");

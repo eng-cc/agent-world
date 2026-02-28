@@ -573,6 +573,27 @@ impl World {
                         }));
                     }
                 }
+                for stack in &plan.produce {
+                    let Some(product_profile) = self.product_profile(stack.kind.as_str()) else {
+                        continue;
+                    };
+                    if !product_unlock_stage_allowed(
+                        self.state.industry_progress.stage,
+                        product_profile.unlock_stage.as_str(),
+                    ) {
+                        return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![format!(
+                                    "product unlock_stage denied: product={} required_stage={} current_stage={}",
+                                    product_profile.product_id,
+                                    product_profile.unlock_stage,
+                                    industry_stage_label(self.state.industry_progress.stage),
+                                )],
+                            },
+                        }));
+                    }
+                }
                 let preferred_consume_ledger = factory.input_ledger.clone();
                 let consume_ledger = self.select_material_consume_ledger_with_world_fallback(
                     preferred_consume_ledger.clone(),
@@ -896,6 +917,13 @@ fn recipe_stage_gate_allowed(
         return true;
     };
     current_stage >= required_stage
+}
+
+fn product_unlock_stage_allowed(
+    current_stage: crate::runtime::IndustryStage,
+    unlock_stage: &str,
+) -> bool {
+    recipe_stage_gate_allowed(current_stage, unlock_stage)
 }
 
 fn parse_industry_stage(raw: &str) -> Option<crate::runtime::IndustryStage> {

@@ -356,6 +356,7 @@ fn transfer_material_distance_zero_moves_immediately() {
         kind: "iron_ingot".to_string(),
         amount: 8,
         distance_km: 0,
+        priority: None,
     });
     world.step().expect("transfer material");
 
@@ -398,6 +399,7 @@ fn transfer_material_cross_site_creates_transit_and_applies_loss() {
         kind: "copper_wire".to_string(),
         amount: 100,
         distance_km: 200,
+        priority: None,
     });
     world.step().expect("start transit");
 
@@ -458,6 +460,7 @@ fn transfer_material_rejects_when_distance_exceeds_limit() {
         kind: "iron_ingot".to_string(),
         amount: 5,
         distance_km: 20_001,
+        priority: None,
     });
     world.step().expect("reject out of range");
 
@@ -494,6 +497,7 @@ fn transfer_material_rejects_when_inflight_capacity_exceeded() {
         kind: "iron_ingot".to_string(),
         amount: 10,
         distance_km: 100,
+        priority: None,
     });
     world.submit_action(Action::TransferMaterial {
         requester_agent_id: "operator-a".to_string(),
@@ -502,6 +506,7 @@ fn transfer_material_rejects_when_inflight_capacity_exceeded() {
         kind: "iron_ingot".to_string(),
         amount: 10,
         distance_km: 100,
+        priority: None,
     });
     world.submit_action(Action::TransferMaterial {
         requester_agent_id: "operator-a".to_string(),
@@ -510,6 +515,7 @@ fn transfer_material_rejects_when_inflight_capacity_exceeded() {
         kind: "iron_ingot".to_string(),
         amount: 10,
         distance_km: 100,
+        priority: None,
     });
 
     world.step().expect("process transfer actions");

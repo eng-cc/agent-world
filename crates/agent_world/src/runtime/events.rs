@@ -271,6 +271,8 @@ pub enum Action {
         kind: String,
         amount: i64,
         distance_km: i64,
+        #[serde(default)]
+        priority: Option<MaterialTransitPriority>,
     },
     FormAlliance {
         proposer_agent_id: String,
