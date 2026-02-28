@@ -1,3 +1,4 @@
+use crate::industry_graph_view_model::{IndustryGraphViewModel, IndustrySemanticZoomLevel};
 use agent_world::geometry::GeoPos;
 use agent_world::simulator::{
     chunk_bounds, AgentDecisionTrace, Asset, AssetKind, ChunkCoord, ChunkState,
@@ -1167,25 +1168,59 @@ use ui_text_activity::{
     owner_matches_agent, owner_matches_location,
 };
 
+#[allow(dead_code)]
 pub(super) fn industrial_ops_summary(
     snapshot: Option<&WorldSnapshot>,
     events: &[WorldEvent],
 ) -> Option<String> {
-    ui_text_industrial::industrial_ops_summary(snapshot, events)
+    let graph = build_industry_graph_view_model(snapshot, events);
+    industrial_ops_summary_with_zoom(&graph, IndustrySemanticZoomLevel::Node)
 }
 
+pub(super) fn industrial_ops_summary_with_zoom(
+    graph: &IndustryGraphViewModel,
+    zoom: IndustrySemanticZoomLevel,
+) -> Option<String> {
+    ui_text_industrial::industrial_ops_summary_with_zoom(graph, zoom)
+}
+
+#[allow(dead_code)]
 pub(super) fn economy_dashboard_summary(
     snapshot: Option<&WorldSnapshot>,
     events: &[WorldEvent],
 ) -> Option<String> {
-    ui_text_economy::economy_dashboard_summary(snapshot, events)
+    let graph = build_industry_graph_view_model(snapshot, events);
+    economy_dashboard_summary_with_zoom(&graph, IndustrySemanticZoomLevel::Node)
 }
 
+pub(super) fn economy_dashboard_summary_with_zoom(
+    graph: &IndustryGraphViewModel,
+    zoom: IndustrySemanticZoomLevel,
+) -> Option<String> {
+    ui_text_economy::economy_dashboard_summary_with_zoom(graph, zoom)
+}
+
+#[allow(dead_code)]
 pub(super) fn ops_navigation_alert_summary(
     snapshot: Option<&WorldSnapshot>,
     events: &[WorldEvent],
 ) -> Option<String> {
-    ui_text_ops_navigation::ops_navigation_alert_summary(snapshot, events)
+    let graph = build_industry_graph_view_model(snapshot, events);
+    ops_navigation_alert_summary_with_zoom(&graph, IndustrySemanticZoomLevel::Node)
+}
+
+pub(super) fn ops_navigation_alert_summary_with_zoom(
+    graph: &IndustryGraphViewModel,
+    zoom: IndustrySemanticZoomLevel,
+) -> Option<String> {
+    ui_text_ops_navigation::ops_navigation_alert_summary_with_zoom(graph, zoom)
+}
+
+pub(super) fn build_industry_graph_view_model(
+    snapshot: Option<&WorldSnapshot>,
+    events: &[WorldEvent],
+) -> IndustryGraphViewModel {
+    IndustryGraphViewModel::build(snapshot, events)
 }
 
 #[cfg(test)]

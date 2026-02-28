@@ -1,108 +1,37 @@
 use std::collections::BTreeMap;
 
-use agent_world::simulator::{
-    AssetKind, PowerEvent, RejectReason, ResourceKind, WorldEvent, WorldEventKind, WorldSnapshot,
-};
+use agent_world::simulator::{WorldEvent, WorldSnapshot};
 
-const ECONOMY_EVENT_WINDOW: usize = 120;
+use crate::industry_graph_view_model::{IndustryGraphViewModel, IndustrySemanticZoomLevel};
 
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
-struct EconomyRollup {
-    transfer_events: usize,
-    power_trade_events: usize,
-    refine_events: usize,
-    insufficient_rejects: usize,
-    flow_by_kind: BTreeMap<ResourceKind, i64>,
-    shortfall_by_kind: BTreeMap<ResourceKind, i64>,
-    stock_by_kind: BTreeMap<ResourceKind, i64>,
-    power_trade_settlement: i64,
-    power_loss: i64,
-    refine_electricity_cost: i64,
-}
-
+#[allow(dead_code)]
 pub(super) fn economy_dashboard_summary(
     snapshot: Option<&WorldSnapshot>,
     events: &[WorldEvent],
 ) -> Option<String> {
-    let mut rollup = EconomyRollup::default();
-    let mut has_economy_signals = false;
+    let graph = IndustryGraphViewModel::build(snapshot, events);
+    economy_dashboard_summary_with_zoom(&graph, IndustrySemanticZoomLevel::Node)
+}
 
-    for event in events.iter().rev().take(ECONOMY_EVENT_WINDOW) {
-        match &event.kind {
-            WorldEventKind::ResourceTransferred { kind, amount, .. } => {
-                has_economy_signals = true;
-                rollup.transfer_events += 1;
-                add_amount(&mut rollup.flow_by_kind, *kind, amount.abs());
-            }
-            WorldEventKind::Power(PowerEvent::PowerTransferred {
-                amount,
-                loss,
-                price_per_pu,
-                ..
-            }) => {
-                has_economy_signals = true;
-                rollup.transfer_events += 1;
-                rollup.power_trade_events += 1;
-                add_amount(
-                    &mut rollup.flow_by_kind,
-                    ResourceKind::Electricity,
-                    amount.abs(),
-                );
-                rollup.power_loss = rollup.power_loss.saturating_add((*loss).max(0));
-                let settlement = amount.abs().saturating_mul((*price_per_pu).max(0));
-                rollup.power_trade_settlement =
-                    rollup.power_trade_settlement.saturating_add(settlement);
-            }
-            WorldEventKind::CompoundRefined {
-                electricity_cost, ..
-            } => {
-                has_economy_signals = true;
-                rollup.refine_events += 1;
-                rollup.refine_electricity_cost = rollup
-                    .refine_electricity_cost
-                    .saturating_add((*electricity_cost).max(0));
-            }
-            WorldEventKind::ActionRejected {
-                reason:
-                    RejectReason::InsufficientResource {
-                        kind,
-                        requested,
-                        available,
-                        ..
-                    },
-            } => {
-                has_economy_signals = true;
-                rollup.insufficient_rejects += 1;
-                let shortfall = requested.saturating_sub(*available).max(0);
-                add_amount(&mut rollup.shortfall_by_kind, *kind, shortfall);
-            }
-            _ => {}
-        }
-    }
-
-    if !has_economy_signals {
+pub(super) fn economy_dashboard_summary_with_zoom(
+    graph: &IndustryGraphViewModel,
+    zoom: IndustrySemanticZoomLevel,
+) -> Option<String> {
+    if !graph.has_economy_signals() {
         return None;
     }
 
-    if let Some(snapshot) = snapshot {
-        collect_resource_stocks(snapshot, &mut rollup.stock_by_kind);
-    }
-
-    let electricity_flow = amount_or_zero(&rollup.flow_by_kind, ResourceKind::Electricity);
-    let data_flow = amount_or_zero(&rollup.flow_by_kind, ResourceKind::Data);
-    let outbound_value_proxy = electricity_flow.saturating_add(data_flow.saturating_mul(2));
-    let total_cost_proxy = rollup
-        .power_trade_settlement
-        .saturating_add(rollup.refine_electricity_cost)
-        .saturating_add(rollup.power_loss);
-    let margin_proxy = outbound_value_proxy.saturating_sub(total_cost_proxy);
-
     let mut lines = vec!["Economy Dashboard:".to_string()];
+    lines.push(format!("- Semantic Zoom: {}", zoom.key()));
+
     lines.push("Supply & Demand:".to_string());
-    for kind in [ResourceKind::Electricity, ResourceKind::Data] {
-        let stock = amount_or_zero(&rollup.stock_by_kind, kind);
-        let flow = amount_or_zero(&rollup.flow_by_kind, kind);
-        let shortfall = amount_or_zero(&rollup.shortfall_by_kind, kind);
+    for kind in [
+        agent_world::simulator::ResourceKind::Electricity,
+        agent_world::simulator::ResourceKind::Data,
+    ] {
+        let stock = amount_or_zero(&graph.rollup.stock_by_kind, kind);
+        let flow = amount_or_zero(&graph.rollup.flow_by_kind, kind);
+        let shortfall = amount_or_zero(&graph.rollup.shortfall_by_kind, kind);
         lines.push(format!(
             "- {:?}: stock={} flow={} shortfall={} health={}",
             kind,
@@ -114,62 +43,87 @@ pub(super) fn economy_dashboard_summary(
     }
     lines.push(format!(
         "- Insufficient Rejects(Recent): {}",
-        rollup.insufficient_rejects
+        graph.rollup.insufficient_rejects
     ));
 
     lines.push("".to_string());
     lines.push("Cost & Revenue Proxy:".to_string());
     lines.push(format!(
         "- Transfer Events(Recent): {}",
-        rollup.transfer_events
+        graph.rollup.transfer_events
     ));
     lines.push(format!(
         "- Power Trades(Recent): {}",
-        rollup.power_trade_events
+        graph.rollup.power_trade_events
     ));
     lines.push(format!(
         "- Power Trade Settlement(Recent): {}",
-        rollup.power_trade_settlement
+        graph.rollup.power_trade_settlement
     ));
     lines.push(format!(
         "- Refine Electricity Cost(Recent): {}",
-        rollup.refine_electricity_cost
+        graph.rollup.refine_electricity_cost
     ));
-    lines.push(format!("- Power Loss(Recent): {}", rollup.power_loss));
+    lines.push(format!(
+        "- Power Loss(Recent): {}",
+        graph.rollup.total_power_loss
+    ));
+
+    let electricity_flow = amount_or_zero(
+        &graph.rollup.flow_by_kind,
+        agent_world::simulator::ResourceKind::Electricity,
+    );
+    let data_flow = amount_or_zero(
+        &graph.rollup.flow_by_kind,
+        agent_world::simulator::ResourceKind::Data,
+    );
+    let outbound_value_proxy = electricity_flow.saturating_add(data_flow.saturating_mul(2));
+    let total_cost_proxy = graph
+        .rollup
+        .power_trade_settlement
+        .saturating_add(graph.rollup.refine_electricity_cost)
+        .saturating_add(graph.rollup.total_power_loss);
+    let margin_proxy = outbound_value_proxy.saturating_sub(total_cost_proxy);
+
     lines.push(format!(
         "- Outbound Value Proxy(Recent): {outbound_value_proxy}"
     ));
     lines.push(format!("- Margin Proxy(Recent): {margin_proxy}"));
 
+    if zoom != IndustrySemanticZoomLevel::World {
+        let slice = graph.graph_for_zoom(zoom);
+        lines.push("".to_string());
+        lines.push("Inventory Focus:".to_string());
+        for node in slice.nodes.into_iter().take(4) {
+            lines.push(format!(
+                "- {}: stock(E/D)={}/{} throughput={} flags(b/c/a)={}/{}/{}",
+                node.id,
+                node.stock_electricity,
+                node.stock_data,
+                node.throughput,
+                yes_no(node.status.bottleneck),
+                yes_no(node.status.congestion),
+                yes_no(node.status.alert),
+            ));
+        }
+    }
+
     Some(lines.join("\n"))
 }
 
-fn add_amount(map: &mut BTreeMap<ResourceKind, i64>, kind: ResourceKind, amount: i64) {
-    let entry = map.entry(kind).or_insert(0);
-    *entry = entry.saturating_add(amount.max(0));
+fn yes_no(value: bool) -> &'static str {
+    if value {
+        "Y"
+    } else {
+        "N"
+    }
 }
 
-fn amount_or_zero(map: &BTreeMap<ResourceKind, i64>, kind: ResourceKind) -> i64 {
+fn amount_or_zero(
+    map: &BTreeMap<agent_world::simulator::ResourceKind, i64>,
+    kind: agent_world::simulator::ResourceKind,
+) -> i64 {
     *map.get(&kind).unwrap_or(&0)
-}
-
-fn collect_resource_stocks(snapshot: &WorldSnapshot, out: &mut BTreeMap<ResourceKind, i64>) {
-    for agent in snapshot.model.agents.values() {
-        for (kind, amount) in &agent.resources.amounts {
-            add_amount(out, *kind, *amount);
-        }
-    }
-
-    for location in snapshot.model.locations.values() {
-        for (kind, amount) in &location.resources.amounts {
-            add_amount(out, *kind, *amount);
-        }
-    }
-
-    for asset in snapshot.model.assets.values() {
-        let AssetKind::Resource { kind } = asset.kind;
-        add_amount(out, kind, asset.quantity);
-    }
 }
 
 fn inventory_health_label(stock: i64, flow: i64, shortfall: i64) -> &'static str {
@@ -192,7 +146,8 @@ mod tests {
     use super::*;
     use agent_world::geometry::GeoPos;
     use agent_world::simulator::{
-        Agent, ChunkRuntimeConfig, Location, ResourceOwner, WorldConfig, WorldModel, WorldSnapshot,
+        Agent, ChunkRuntimeConfig, Location, PowerEvent, RejectReason, ResourceKind, ResourceOwner,
+        WorldConfig, WorldEvent, WorldEventKind, WorldModel, WorldSnapshot,
         CHUNK_GENERATION_SCHEMA_VERSION, SNAPSHOT_VERSION,
     };
 

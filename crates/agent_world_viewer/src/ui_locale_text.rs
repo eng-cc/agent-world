@@ -484,6 +484,7 @@ pub(super) fn localize_industrial_ops_block(text: String, locale: UiLocale) -> S
 
     let mut converted = text;
     converted = converted.replace("Industrial Ops:", "工业链路:");
+    converted = converted.replace("Semantic Zoom:", "语义缩放:");
     converted = converted.replace("Production Lines:", "生产链:");
     converted = converted.replace("Factory Visuals:", "工厂可视实体:");
     converted = converted.replace("Recipe Visuals:", "配方可视实体:");
@@ -498,6 +499,23 @@ pub(super) fn localize_industrial_ops_block(text: String, locale: UiLocale) -> S
     converted = converted.replace("Transfer Events:", "传输事件:");
     converted = converted.replace("Power Moved:", "电力传输量:");
     converted = converted.replace("Route ", "路由 ");
+    converted = converted.replace(
+        "World Lens: Hotspots & Trunk Flow",
+        "世界视角: 热区与主干流",
+    );
+    converted = converted.replace("Region Lens: Cluster Nodes", "区域视角: 集群节点");
+    converted = converted.replace(
+        "Node Lens: Recipe & Inventory State",
+        "节点视角: 配方与库存状态",
+    );
+    converted = converted.replace("Cluster Nodes:", "集群节点:");
+    converted = converted.replace("Cluster Edges:", "集群边:");
+    converted = converted.replace("Factory/Recipe:", "工厂/配方:");
+    converted = converted.replace("throughput=", "吞吐=");
+    converted = converted.replace("tier=", "层级=");
+    converted = converted.replace("stage=", "阶段=");
+    converted = converted.replace("stock(E/D)=", "库存(E/D)=");
+    converted = converted.replace("flags(b/c/a)=", "标记(瓶颈/拥塞/告警)=");
     converted = converted.replace("moves=", "次数=");
     converted = converted.replace("electricity=", "电力=");
     converted = converted.replace("hardware=", "硬件=");
@@ -515,6 +533,7 @@ pub(super) fn localize_economy_dashboard_block(text: String, locale: UiLocale) -
 
     let mut converted = text;
     converted = converted.replace("Economy Dashboard:", "经营看板:");
+    converted = converted.replace("Semantic Zoom:", "语义缩放:");
     converted = converted.replace("Supply & Demand:", "供需:");
     converted = converted.replace("Insufficient Rejects(Recent):", "近期资源不足拒绝:");
     converted = converted.replace("Cost & Revenue Proxy:", "成本与收益代理:");
@@ -525,6 +544,10 @@ pub(super) fn localize_economy_dashboard_block(text: String, locale: UiLocale) -
     converted = converted.replace("Power Loss(Recent):", "近期电力损耗:");
     converted = converted.replace("Outbound Value Proxy(Recent):", "近期外流价值代理:");
     converted = converted.replace("Margin Proxy(Recent):", "近期利润代理:");
+    converted = converted.replace("Inventory Focus:", "库存焦点:");
+    converted = converted.replace("throughput=", "吞吐=");
+    converted = converted.replace("stock(E/D)=", "库存(E/D)=");
+    converted = converted.replace("flags(b/c/a)=", "标记(瓶颈/拥塞/告警)=");
     converted = converted.replace("stock=", "库存=");
     converted = converted.replace("flow=", "流量=");
     converted = converted.replace("shortfall=", "缺口=");
@@ -542,12 +565,18 @@ pub(super) fn localize_ops_navigation_block(text: String, locale: UiLocale) -> S
 
     let mut converted = text;
     converted = converted.replace("Ops Navigator:", "运营导航:");
+    converted = converted.replace("Semantic Zoom:", "语义缩放:");
     converted = converted.replace("World:", "世界层:");
     converted = converted.replace("Activity Events(Recent):", "近期活动事件:");
     converted = converted.replace("Alert Events(Recent):", "近期告警事件:");
     converted = converted.replace("Region Hotspots:", "区域热点:");
     converted = converted.replace("Node Hotspots:", "节点热点:");
     converted = converted.replace("Alert Root Causes:", "告警根因:");
+    converted = converted.replace("Reject(", "拒绝(");
+    converted = converted.replace("Shortage(", "短缺(");
+    converted = converted.replace("Congestion(", "拥堵(");
+    converted = converted.replace("Stall(", "停摆(");
+    converted = converted.replace("target=", "跳转目标=");
     converted = converted.replace("events=", "事件=");
     converted = converted.replace("alerts=", "告警=");
     converted = converted.replace("score=", "评分=");
