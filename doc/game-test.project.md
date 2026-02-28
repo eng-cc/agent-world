@@ -32,6 +32,7 @@
 - [x] T29 按用户本轮请求补充 A/B 脚本“防误用”标注（文档 + 注释）
 - [x] T30 按用户本轮请求基于 `doc/game-test.md` 执行一轮真实玩家手动长玩（带录屏）并填写卡片
 - [x] T31 按用户反馈调整 `doc/playability_test_card.md`：主表保留玩家视角，量化与链路信息下沉附录自动回填
+- [x] T32 按用户本轮请求基于 `doc/game-test.md` 执行深夜轮次真实玩家手动长玩并填写卡片
 
 ## 依赖
 - `doc/game-test.md`
@@ -63,6 +64,7 @@
 - card_2026_02_28_19_22_20.md
 - card_2026_02_28_21_22_51.md
 - card_2026_02_28_22_47_14.md
+- card_2026_02_28_23_27_06.md
 - 录屏/截图产物：`output/playwright/playability/20260225-132109/`
 - 录屏/截图产物：`output/playwright/playability/20260225-163706/`
 - 录屏/截图产物：`output/playwright/playability/20260225225029/`
@@ -82,13 +84,14 @@
 - A/B 量化产物：`output/playwright/playability/20260228-192220/`
 - 手动长玩产物：`output/playwright/playability/20260228-212251-long/`
 - 手动长玩产物：`output/playwright/playability/20260228-224714-long/`
+- 手动长玩产物：`output/playwright/playability/20260228-231005-long/`
 - 手册改版记录：`doc/game-test.md`（2026-02-27，用户标注“你不能改这个文档”）
 - 开发排查复现：
   - `output/playwright/viewer/webgl-deferred-disable-verify2-20260225-143042/`
   - `output/playwright/viewer/webgl-panic-locate-20260225-143645/`
 
 ## 状态
-- 当前阶段：已完成玩家复测 + 开发者排查 + 默认链路复测 + 夜间追加复测 + 本轮日间追加复测 + 本轮午后追加复测 + 本轮傍晚追加复测 + 本轮追加复测 + 本轮下午追加复测 + 本轮黄昏追加复测 + 本轮傍晚新增复测 + A/B 量化脚本化复测 + 用户手册改版同步 + 文档治理白名单接入 + 首局目标清晰度加固后 A/B 实机复测 + 本轮追加 A/B 实机复测 + 本轮晚间追加 A/B 实机复测 + 本轮深夜追加 A/B 实机复测 + 本轮午夜追加 A/B 实机复测 + 本轮晚间追加 A/B 实机复测 + 按用户要求回退短测并完成手动长玩复测 + 移除 A/B 脚本 `move` 探针 + 清理 trunk 占位符 WS 噪音 + A/B 脚本防误用标注 + 本轮手动长玩复测并补齐卡片 + 按用户反馈完成卡片模板“玩家视角优先”调整（2026-02-28 23:00）
+- 当前阶段：已完成玩家复测 + 开发者排查 + 默认链路复测 + 夜间追加复测 + 本轮日间追加复测 + 本轮午后追加复测 + 本轮傍晚追加复测 + 本轮追加复测 + 本轮下午追加复测 + 本轮黄昏追加复测 + 本轮傍晚新增复测 + A/B 量化脚本化复测 + 用户手册改版同步 + 文档治理白名单接入 + 首局目标清晰度加固后 A/B 实机复测 + 本轮追加 A/B 实机复测 + 本轮晚间追加 A/B 实机复测 + 本轮深夜追加 A/B 实机复测 + 本轮午夜追加 A/B 实机复测 + 本轮晚间追加 A/B 实机复测 + 按用户要求回退短测并完成手动长玩复测 + 移除 A/B 脚本 `move` 探针 + 清理 trunk 占位符 WS 噪音 + A/B 脚本防误用标注 + 本轮手动长玩复测并补齐卡片 + 按用户反馈完成卡片模板“玩家视角优先”调整 + 本轮深夜手动长玩复测并填写卡片（2026-02-28 23:27）
 - 风险：
   - 运行前置：默认开启 LLM 后，若环境缺失可用 LLM 配置，`run-game-test.sh` 可能在启动阶段失败；可临时使用 `--no-llm` 回退脚本决策。
   - 基线问题：Web 端偶发 `copy_deferred_lighting_id_pipeline`（`wgpu` Validation Error）导致崩溃。
@@ -111,6 +114,7 @@
   - 本轮观测：在 `output/playwright/playability/20260228-192220/` 复测中，链路稳定 `connected` 且 `tick` 从 `0` 推进到 `3`（TTFC=`2285ms`，A 段 PASS）；但 B 段继续复现第二次 `step` accepted 无推进（`2` -> `2`），有效控制命中率 `2/3`、无进展窗口 `6101ms`，并伴随 `AudioContext` 与 `sendControl ignored (unsupported action: move)` 警告。
   - 本轮观测：在 `output/playwright/playability/20260228-212251-long/` 手动长玩（约 9 分钟）中，`connectionStatus=connected` 持续稳定，`tick` 从 `1` 推进到 `201`，`play/step` 均可持续推进（TTFC=`4040ms`，有效控制命中率 `5/5`，无进展窗口 `4213ms`）；`move` 仍被拒绝（`unsupported action: move`），且控制台存在大量 trunk 占位符 WS 错误（`ERR_NAME_NOT_RESOLVED`）与 `favicon 404` 噪音，易误导玩家对系统稳定性的判断。
   - 本轮观测：在 `output/playwright/playability/20260228-224714-long/` 手动长玩（约 3 分钟）中，`connectionStatus=connected` 持续稳定，`tick` 从 `4` 推进到 `61`（TTFC=`6181ms`）；但 `step_20` 复现 accepted 后 `completed_no_progress`（有效控制命中率 `3/4`，无进展窗口 `9863ms`），`step` 推进一致性问题仍未完全收敛。
+  - 本轮观测：在 `output/playwright/playability/20260228-231005-long/` 深夜手动长玩（约 16 分钟）中，`connectionStatus=connected` 持续稳定，`tick` 从 `3` 推进到 `107`（TTFC=`3497ms`）；`play/pause/step(8/20)` 均出现 `completed_advanced`（有效控制命中率 `6/6`，A/B 均 PASS），但主界面仍缺少推进节奏的直观反馈，玩家仍需依赖调试信息确认状态。
   - 本轮修正：`scripts/run-game-test-ab.sh` 已移除 `phase_b_move_probe`，A/B 默认探针仅保留 `play/pause/step`，避免测试流程主动制造 `unsupported action: move` 噪音。
   - 本轮修正：`world_game_launcher` 静态服务在返回 `index.html` 时会剥离 trunk 自动热更新脚本（`.well-known/trunk/ws`），避免发布链路持续刷 `ERR_NAME_NOT_RESOLVED`/`ERR_CONNECTION_REFUSED` 噪音。
   - 本轮修正：已在 `scripts/run-game-test-ab.sh` 与 `testing-manual.md` 增加“防误用”标注，明确 A/B 脚本是自动化回归哨兵，不替代手动长玩与真实玩家卡片结论。
