@@ -1269,11 +1269,13 @@ declare -a notes_parts=()
 if [[ "$run_notes" != "-" ]]; then
   notes_parts+=("$run_notes")
 fi
-if [[ "$analysis_gate_status" != "pass" ]]; then
+if [[ "$analysis_gate_status" == "fail" ]]; then
   notes_parts+=("metric_gate=$analysis_gate_notes")
   if [[ "$final_status" == "ok" ]]; then
     final_status="metric_gate_failed"
   fi
+elif [[ "$analysis_gate_status" == "insufficient_data" ]]; then
+  notes_parts+=("metric_data=$analysis_gate_notes")
 fi
 
 if (( ${#notes_parts[@]} == 0 )); then
