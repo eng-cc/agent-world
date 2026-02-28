@@ -302,13 +302,23 @@ async (page) => {
       },
       [action, payload],
     );
+    const feedbackId = toNumber(feedback?.id, 0) > 0 ? toNumber(feedback?.id, 0) : null;
     let after = before;
     let progressed = false;
     let firstProgressMs = null;
+    let finalFeedback = null;
     const deadline = Date.now() + timeoutMs;
     while (Date.now() < deadline) {
       await page.waitForTimeout(250);
       after = await readState();
+      const lastFeedback = after?.lastControlFeedback ?? null;
+      if (
+        lastFeedback &&
+        (feedbackId == null || toNumber(lastFeedback.id, 0) === feedbackId) &&
+        String(lastFeedback.action ?? "").toLowerCase() === String(action).toLowerCase()
+      ) {
+        finalFeedback = lastFeedback;
+      }
       const tickDelta = logicalTick(after) - baselineTick;
       const eventDelta = eventSeq(after) - baselineEventSeq;
       if (tickDelta > 0 || eventDelta > 0) {
@@ -316,16 +326,34 @@ async (page) => {
         firstProgressMs = Date.now() - startedAt;
         break;
       }
+      if (expectProgress && finalFeedback?.stage === "completed_no_progress") {
+        break;
+      }
+      if (expectProgress && finalFeedback?.stage === "blocked") {
+        break;
+      }
       if (!expectProgress && Date.now() - startedAt >= 1000) {
         break;
       }
     }
+    const accepted = feedback?.accepted === true;
+    const failCategory = !accepted
+      ? "rejected"
+      : progressed
+        ? "progressed"
+        : finalFeedback?.stage === "completed_no_progress"
+          ? "completed_no_progress"
+          : finalFeedback?.stage === "blocked"
+            ? "blocked_after_accept"
+            : after?.connectionStatus !== "connected"
+              ? "disconnected"
+              : "timeout_no_delta";
     return {
       name,
       action,
       payload,
       expectProgress,
-      accepted: feedback?.accepted === true,
+      accepted,
       reason: feedback?.reason ?? null,
       effect: feedback?.effect ?? null,
       beforeTick: baselineTick,
@@ -334,6 +362,10 @@ async (page) => {
       afterEventSeq: eventSeq(after),
       progressed,
       firstProgressMs,
+      feedbackStage: finalFeedback?.stage ?? null,
+      feedbackReason: finalFeedback?.reason ?? null,
+      feedbackHint: finalFeedback?.hint ?? null,
+      failCategory,
     };
   };
 
@@ -512,8 +544,10 @@ for item in commands:
     cmd_lines.append(
         f"- `{item.get('name')}` action=`{item.get('action')}` "
         f"accepted={item.get('accepted')} progressed={item.get('progressed')} "
+        f"category=`{item.get('failCategory')}` "
         f"tick `{item.get('beforeTick')}` -> `{item.get('afterTick')}` "
-        f"eventSeq `{item.get('beforeEventSeq')}` -> `{item.get('afterEventSeq')}`"
+        f"eventSeq `{item.get('beforeEventSeq')}` -> `{item.get('afterEventSeq')}` "
+        f"stage=`{item.get('feedbackStage')}` reason=`{item.get('feedbackReason')}`"
     )
 
 summary_lines = [
@@ -534,6 +568,8 @@ summary_lines = [
     "## A/B Verdict",
     f"- A (play/pause): `{'PASS' if phase_a_pass else 'FAIL'}`",
     f"- B (step chain): `{'PASS' if phase_b_pass else 'FAIL'}`",
+    f"- B step primary category: `{phase_b.get('stepPrimary', {}).get('failCategory')}`",
+    f"- B step followup category: `{phase_b.get('stepFollowup', {}).get('failCategory')}`",
     "",
     "## Control Probes",
 ] + cmd_lines + [""]
@@ -549,6 +585,8 @@ card_lines = [
     "- A/B 分段结论：",
     f"  - A（play/pause）：`{'PASS' if phase_a_pass else 'FAIL'}`",
     f"  - B（step链路）：`{'PASS' if phase_b_pass else 'FAIL'}`",
+    f"  - B primary 失败分类：`{phase_b.get('stepPrimary', {}).get('failCategory')}`",
+    f"  - B followup 失败分类：`{phase_b.get('stepFollowup', {}).get('failCategory')}`",
     "",
 ]
 card_path.write_text("\n".join(card_lines), encoding="utf-8")
