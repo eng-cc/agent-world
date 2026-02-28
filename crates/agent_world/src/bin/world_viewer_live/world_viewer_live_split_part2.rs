@@ -76,6 +76,7 @@ fn start_reward_runtime_worker(
         },
         initial_reserve_power_units: options.reward_initial_reserve_power_units,
         min_observer_traces: options.reward_runtime_min_observer_traces,
+        reward_runtime_epoch_duration_secs: options.reward_runtime_epoch_duration_secs,
     };
 
     let (stop_tx, stop_rx) = mpsc::channel::<()>();
@@ -112,18 +113,21 @@ fn reward_runtime_loop(
         );
     }
 
-    let mut collector = match load_reward_runtime_collector_state(config.state_path.as_path()) {
-        Ok(Some(restored)) => restored,
+    let points_config = reward_runtime_points_config(config.reward_runtime_epoch_duration_secs);
+    let mut collector = match load_reward_runtime_collector_snapshot(config.state_path.as_path()) {
+        Ok(Some(mut restored)) => {
+            if let Some(epoch_duration_secs) = config.reward_runtime_epoch_duration_secs {
+                restored.ledger.config.epoch_duration_seconds = epoch_duration_secs;
+            }
+            NodePointsRuntimeCollector::from_snapshot(restored)
+        }
         Ok(None) => NodePointsRuntimeCollector::new(
-            NodePointsConfig::default(),
+            points_config.clone(),
             NodePointsRuntimeHeuristics::default(),
         ),
         Err(err) => {
             eprintln!("reward runtime load collector state failed: {err}");
-            NodePointsRuntimeCollector::new(
-                NodePointsConfig::default(),
-                NodePointsRuntimeHeuristics::default(),
-            )
+            NodePointsRuntimeCollector::new(points_config, NodePointsRuntimeHeuristics::default())
         }
     };
     let mut distfs_probe_state =
@@ -817,6 +821,14 @@ fn reward_runtime_loop(
     }
 }
 
+fn reward_runtime_points_config(epoch_duration_secs_override: Option<u64>) -> NodePointsConfig {
+    let mut config = NodePointsConfig::default();
+    if let Some(epoch_duration_secs) = epoch_duration_secs_override {
+        config.epoch_duration_seconds = epoch_duration_secs;
+    }
+    config
+}
+
 fn rollover_reward_reserve_epoch(reward_world: &mut RuntimeWorld, epoch_index: u64) {
     let current = reward_world.protocol_power_reserve().clone();
     if current.epoch_index == epoch_index {
@@ -871,9 +883,9 @@ fn reward_invariant_status_payload(report: &RewardAssetInvariantReport) -> serde
     })
 }
 
-fn load_reward_runtime_collector_state(
+fn load_reward_runtime_collector_snapshot(
     path: &Path,
-) -> Result<Option<NodePointsRuntimeCollector>, String> {
+) -> Result<Option<NodePointsRuntimeCollectorSnapshot>, String> {
     if !path.exists() {
         return Ok(None);
     }
@@ -881,7 +893,7 @@ fn load_reward_runtime_collector_state(
         .map_err(|err| format!("read collector state {} failed: {}", path.display(), err))?;
     let snapshot: NodePointsRuntimeCollectorSnapshot = serde_json::from_slice(bytes.as_slice())
         .map_err(|err| format!("parse collector state {} failed: {}", path.display(), err))?;
-    Ok(Some(NodePointsRuntimeCollector::from_snapshot(snapshot)))
+    Ok(Some(snapshot))
 }
 
 fn persist_reward_runtime_collector_state(

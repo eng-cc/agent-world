@@ -13,6 +13,9 @@ Options:
   --scenario <name>                world_viewer_live scenario (default: llm_bootstrap)
   --llm                            enable LLM mode for world_viewer_live
   --no-llm                         disable LLM mode (default)
+  --reward-runtime-epoch-duration-secs <n>
+                                   reward settlement epoch duration seconds (default: 60)
+  --reward-points-per-credit <n>   reward points -> credit ratio (default: 100)
   --base-port <n>                  base port for node port allocation (default: 5810)
   --bind-host <host>               bind host for gossip/live/libp2p endpoints (default: 127.0.0.1)
   --out-dir <path>                 output root (default: .tmp/s10_game_longrun)
@@ -103,6 +106,8 @@ ensure_ratio_between_zero_and_one() {
 duration_secs=1800
 scenario="llm_bootstrap"
 llm_enabled=0
+reward_runtime_epoch_duration_secs=60
+reward_points_per_credit=100
 base_port=5810
 bind_host="127.0.0.1"
 out_root=".tmp/s10_game_longrun"
@@ -131,6 +136,14 @@ while [[ $# -gt 0 ]]; do
     --no-llm)
       llm_enabled=0
       shift
+      ;;
+    --reward-runtime-epoch-duration-secs)
+      reward_runtime_epoch_duration_secs=${2:-}
+      shift 2
+      ;;
+    --reward-points-per-credit)
+      reward_points_per_credit=${2:-}
+      shift 2
       ;;
     --base-port)
       base_port=${2:-}
@@ -185,6 +198,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 ensure_positive_int "--duration-secs" "$duration_secs"
+ensure_positive_int "--reward-runtime-epoch-duration-secs" "$reward_runtime_epoch_duration_secs"
+ensure_positive_int "--reward-points-per-credit" "$reward_points_per_credit"
 ensure_positive_int "--base-port" "$base_port"
 ensure_positive_int "--startup-timeout-secs" "$startup_timeout_secs"
 ensure_positive_int "--poll-interval-secs" "$poll_interval_secs"
@@ -314,6 +329,8 @@ jq -n \
   --arg out_dir "$out_root" \
   --argjson duration_secs "$duration_secs" \
   --argjson llm_enabled "$llm_enabled" \
+  --argjson reward_runtime_epoch_duration_secs "$reward_runtime_epoch_duration_secs" \
+  --argjson reward_points_per_credit "$reward_points_per_credit" \
   --argjson base_port "$base_port" \
   --argjson startup_timeout_secs "$startup_timeout_secs" \
   --argjson poll_interval_secs "$poll_interval_secs" \
@@ -327,6 +344,8 @@ jq -n \
     run_dir: $run_dir,
     scenario: $scenario,
     llm_enabled: ($llm_enabled == 1),
+    reward_runtime_epoch_duration_secs: $reward_runtime_epoch_duration_secs,
+    reward_points_per_credit: $reward_points_per_credit,
     duration_secs: $duration_secs,
     bind_host: $bind_host,
     base_port: $base_port,
@@ -349,6 +368,8 @@ jq -n \
   echo "- duration_secs: \`$duration_secs\`"
   echo "- scenario: \`$scenario\`"
   echo "- llm_enabled: \`$llm_enabled\`"
+  echo "- reward_runtime_epoch_duration_secs: \`$reward_runtime_epoch_duration_secs\`"
+  echo "- reward_points_per_credit: \`$reward_points_per_credit\`"
   echo "- max_stall_secs: \`$max_stall_secs\`"
   echo "- max_lag_p95: \`$max_lag_p95\`"
   echo "- max_distfs_failure_ratio: \`$max_distfs_failure_ratio\`"
@@ -385,6 +406,8 @@ prepare_node_command() {
     --node-id "$node_id"
     --node-role "$role"
     --reward-runtime-enable
+    --reward-runtime-epoch-duration-secs "$reward_runtime_epoch_duration_secs"
+    --reward-points-per-credit "$reward_points_per_credit"
     --reward-runtime-leader-node "${node_ids[0]}"
     --reward-runtime-report-dir "$report_dir"
     --node-gossip-bind "$(node_gossip_addr "$idx")"

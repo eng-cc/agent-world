@@ -142,6 +142,7 @@ struct RewardRuntimeLoopConfig {
     reward_asset_config: RewardAssetConfig,
     initial_reserve_power_units: i64,
     min_observer_traces: u32,
+    reward_runtime_epoch_duration_secs: Option<u64>,
 }
 
 #[derive(Debug)]

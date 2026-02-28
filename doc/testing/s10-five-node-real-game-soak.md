@@ -32,6 +32,8 @@
   - `--duration-secs <n>`：运行时长（默认 1800s）。
   - `--scenario <name>`：默认 `llm_bootstrap`。
   - `--llm` / `--no-llm`：是否启用 LLM 决策（默认 `--no-llm`，走 script fallback）。
+  - `--reward-runtime-epoch-duration-secs <n>`：奖励结算 epoch 秒数（默认 60s，用于测试与门禁加速）。
+  - `--reward-points-per-credit <n>`：积分到 credit 的换算比例（默认 100，用于短跑窗口内触发 minted records 样本）。
   - `--base-port <n>`：端口基准（默认 5810）。
   - `--out-dir <path>`：输出目录（默认 `.tmp/s10_game_longrun`）。
   - `--max-stall-secs <n>`、`--max-lag-p95 <n>`、`--max-distfs-failure-ratio <0~1>`：门禁阈值。

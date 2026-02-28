@@ -65,6 +65,7 @@ pub(super) struct CliOptions {
     pub reward_runtime_failover_enabled: bool,
     pub reward_runtime_report_dir: String,
     pub reward_runtime_min_observer_traces: u32,
+    pub reward_runtime_epoch_duration_secs: Option<u64>,
     pub reward_points_per_credit: u64,
     pub reward_credits_per_power_unit: u64,
     pub reward_max_redeem_power_per_epoch: i64,
@@ -105,6 +106,7 @@ impl Default for CliOptions {
             reward_runtime_failover_enabled: true,
             reward_runtime_report_dir: DEFAULT_REWARD_RUNTIME_REPORT_DIR.to_string(),
             reward_runtime_min_observer_traces: DEFAULT_REWARD_RUNTIME_MIN_OBSERVER_TRACES,
+            reward_runtime_epoch_duration_secs: None,
             reward_points_per_credit: RewardAssetConfig::default().points_per_credit,
             reward_credits_per_power_unit: RewardAssetConfig::default().credits_per_power_unit,
             reward_max_redeem_power_per_epoch: RewardAssetConfig::default()
@@ -466,6 +468,20 @@ pub(super) fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<C
                             .to_string()
                     })?;
             }
+            "--reward-runtime-epoch-duration-secs" => {
+                let raw = iter.next().ok_or_else(|| {
+                    "--reward-runtime-epoch-duration-secs requires a positive integer".to_string()
+                })?;
+                let value = raw
+                    .parse::<u64>()
+                    .ok()
+                    .filter(|value| *value > 0)
+                    .ok_or_else(|| {
+                        "--reward-runtime-epoch-duration-secs requires a positive integer"
+                            .to_string()
+                    })?;
+                options.reward_runtime_epoch_duration_secs = Some(value);
+            }
             "--reward-points-per-credit" => {
                 let raw = iter.next().ok_or_else(|| {
                     "--reward-points-per-credit requires a positive integer".to_string()
@@ -698,6 +714,9 @@ pub(super) fn print_help() {
     println!("  --reward-runtime-report-dir <path> Reward runtime report directory (default: output/node-reward-runtime)");
     println!(
         "  --reward-runtime-min-observer-traces <n> Minimum unique observer traces per epoch before settlement (default: 1)"
+    );
+    println!(
+        "  --reward-runtime-epoch-duration-secs <n> Override reward settlement epoch duration seconds (default: 3600)"
     );
     println!(
         "  --reward-distfs-probe-max-sample-bytes <n> DistFS probe sample size upper bound bytes (default: 65536)"

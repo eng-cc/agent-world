@@ -10,6 +10,10 @@
   - [x] `--dry-run` 与 `--help` 支持。
 - [x] T2：接入 `testing-manual.md` 的 S10 章节与触发矩阵说明。
 - [x] T3：执行脚本级验证（语法/帮助/dry-run）并收口文档状态与 devlog。
+- [x] T4：增加可控奖励 epoch 时长（测试/长跑门禁可用性修复）。
+  - [x] `world_viewer_live` 增加 `--reward-runtime-epoch-duration-secs <n>`。
+  - [x] `scripts/s10-five-node-game-soak.sh` 接线并默认使用短 epoch（60s）。
+  - [x] 执行真实短跑验证，确认稳定产生 `epoch-*.json`（`no_epoch_reports` 问题消失）。
 
 ## 依赖
 - `scripts/p2p-longrun-soak.sh`（复用指标口径与产物约定）
@@ -18,6 +22,6 @@
 - `testing-manual.md`
 
 ## 状态
-- 当前阶段：已完成（T0~T3）。
-- 阻塞项：无。
+- 当前阶段：已完成（T0~T4）。
+- 阻塞项：无（已知风险：`minted_records_empty` 门禁仍需后续专项处理）。
 - 最近更新：2026-02-28。
