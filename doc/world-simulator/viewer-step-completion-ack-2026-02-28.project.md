@@ -6,7 +6,7 @@
 - [x] T3 服务端改造：live/offline `step` 结束后回传 completion ack
 - [x] T4 Viewer 改造：透传 `request_id` 并消费 completion ack 更新反馈
 - [x] T5 测试与回归：proto/server/viewer targeted tests + A/B 验证
-- [ ] T6 文档收口：更新项目状态与 devlog
+- [x] T6 文档收口：更新项目状态与 devlog
 
 ## 依赖
 - `crates/agent_world_proto/src/viewer.rs`
@@ -19,7 +19,7 @@
 - `scripts/run-game-test-ab.sh`
 
 ## 状态
-- 当前阶段：进行中（T1~T5 完成，T6 待完成）。
+- 当前阶段：已完成（T1~T6）。
 - 当前结论：
   - 协议/服务端/Viewer 已完成 `request_id` 贯通，`step` completion ack 可明确回传 `advanced` 或 `timeout_no_progress`。
   - 回归验证显示语义稳定性已提升：`step` 不推进时可被协议明确标记，不再仅依赖帧差分推断。
