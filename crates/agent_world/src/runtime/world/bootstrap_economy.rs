@@ -1,8 +1,8 @@
 use super::super::{
     m4_builtin_module_artifact_identity, m4_builtin_wasm_module_artifact_bytes, util, Manifest,
-    MaterialDefaultPriority, MaterialProfileV1, MaterialTransportLossClass, ModuleAbiContract,
-    ModuleActivation, ModuleArtifactIdentity, ModuleChangeSet, ModuleKind, ModuleLimits,
-    ModuleManifest, ModuleRegistry, ModuleRole, ProductProfileV1, ProposalDecision,
+    MaterialDefaultPriority, MaterialProfileV1, MaterialStack, MaterialTransportLossClass,
+    ModuleAbiContract, ModuleActivation, ModuleArtifactIdentity, ModuleChangeSet, ModuleKind,
+    ModuleLimits, ModuleManifest, ModuleRegistry, ModuleRole, ProductProfileV1, ProposalDecision,
     RecipeProfileV1, WorldError, M4_ECONOMY_MODULE_VERSION, M4_FACTORY_ASSEMBLER_MODULE_ID,
     M4_FACTORY_MINER_MODULE_ID, M4_FACTORY_SMELTER_MODULE_ID, M4_PRODUCT_ALLOY_PLATE_MODULE_ID,
     M4_PRODUCT_CONTROL_CHIP_MODULE_ID, M4_PRODUCT_FACTORY_CORE_MODULE_ID,
@@ -420,12 +420,48 @@ fn material_profile(
 fn m4_default_product_profiles() -> Vec<ProductProfileV1> {
     vec![
         product_profile("iron_ingot", "scale", true, "bootstrap"),
-        product_profile("control_chip", "scale", true, "scale_out"),
-        product_profile("motor_mk1", "scale", true, "scale_out"),
-        product_profile("sensor_pack", "explore", true, "scale_out"),
-        product_profile("logistics_drone", "explore", true, "scale_out"),
-        product_profile("module_rack", "governance", true, "governance"),
-        product_profile("factory_core", "governance", false, "governance"),
+        product_profile_with_sink(
+            "control_chip",
+            "scale",
+            true,
+            "scale_out",
+            &[("hardware_part", 1)],
+        ),
+        product_profile_with_sink(
+            "motor_mk1",
+            "scale",
+            true,
+            "scale_out",
+            &[("hardware_part", 1)],
+        ),
+        product_profile_with_sink(
+            "sensor_pack",
+            "explore",
+            true,
+            "scale_out",
+            &[("hardware_part", 1)],
+        ),
+        product_profile_with_sink(
+            "logistics_drone",
+            "explore",
+            true,
+            "scale_out",
+            &[("hardware_part", 2)],
+        ),
+        product_profile_with_sink(
+            "module_rack",
+            "governance",
+            true,
+            "governance",
+            &[("hardware_part", 2)],
+        ),
+        product_profile_with_sink(
+            "factory_core",
+            "governance",
+            false,
+            "governance",
+            &[("hardware_part", 4), ("alloy_plate", 1)],
+        ),
         product_profile("field_repair_kit", "survival", true, "bootstrap"),
         product_profile("survey_probe", "explore", true, "scale_out"),
         product_profile("alloy_plate", "scale", true, "scale_out"),
@@ -438,10 +474,24 @@ fn product_profile(
     tradable: bool,
     unlock_stage: &str,
 ) -> ProductProfileV1 {
+    product_profile_with_sink(product_id, role_tag, tradable, unlock_stage, &[])
+}
+
+fn product_profile_with_sink(
+    product_id: &str,
+    role_tag: &str,
+    tradable: bool,
+    unlock_stage: &str,
+    maintenance_sink: &[(&str, i64)],
+) -> ProductProfileV1 {
     ProductProfileV1 {
         product_id: product_id.to_string(),
         role_tag: role_tag.to_string(),
-        maintenance_sink: Vec::new(),
+        maintenance_sink: maintenance_sink
+            .iter()
+            .filter(|(_, amount)| *amount > 0)
+            .map(|(kind, amount)| MaterialStack::new(*kind, *amount))
+            .collect(),
         tradable,
         unlock_stage: unlock_stage.to_string(),
     }

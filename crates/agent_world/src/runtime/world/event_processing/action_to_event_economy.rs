@@ -594,17 +594,19 @@ impl World {
                         }));
                     }
                 }
+                let effective_consume =
+                    merge_recipe_consume_with_maintenance_sink(self, &plan.consume, &plan.produce);
                 let preferred_consume_ledger = factory.input_ledger.clone();
                 let consume_ledger = self.select_material_consume_ledger_with_world_fallback(
                     preferred_consume_ledger.clone(),
-                    &plan.consume,
+                    &effective_consume,
                 );
                 let output_ledger = if consume_ledger == MaterialLedgerId::world() {
                     MaterialLedgerId::world()
                 } else {
                     factory.output_ledger.clone()
                 };
-                for stack in &plan.consume {
+                for stack in &effective_consume {
                     if stack.amount <= 0 {
                         return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
                             action_id,
@@ -649,14 +651,18 @@ impl World {
                         },
                     }));
                 }
-                let market_quotes =
-                    build_material_market_quotes(self, &preferred_consume_ledger, &plan.consume);
-                let bottleneck_tags = resolve_recipe_bottleneck_tags(recipe_profile, &plan.consume);
+                let market_quotes = build_material_market_quotes(
+                    self,
+                    &preferred_consume_ledger,
+                    &effective_consume,
+                );
+                let bottleneck_tags =
+                    resolve_recipe_bottleneck_tags(recipe_profile, &effective_consume);
                 let scarcity_delay_ticks = compute_local_scarcity_delay_ticks(
                     self,
                     &preferred_consume_ledger,
                     &consume_ledger,
-                    &plan.consume,
+                    &effective_consume,
                     &bottleneck_tags,
                 );
                 let duration_ticks = plan
@@ -670,7 +676,7 @@ impl World {
                     factory_id: factory_id.clone(),
                     recipe_id: recipe_id.clone(),
                     accepted_batches: plan.accepted_batches,
-                    consume: plan.consume.clone(),
+                    consume: effective_consume,
                     produce: plan.produce.clone(),
                     byproducts: plan.byproducts.clone(),
                     power_required: plan.power_required,
@@ -779,6 +785,41 @@ impl World {
             _ => unreachable!("action_to_event_economy received unsupported action variant"),
         }
     }
+}
+
+fn merge_recipe_consume_with_maintenance_sink(
+    world: &World,
+    consume: &[MaterialStack],
+    produce: &[MaterialStack],
+) -> Vec<MaterialStack> {
+    let mut merged: BTreeMap<String, i64> = BTreeMap::new();
+    for stack in consume {
+        let entry = merged.entry(stack.kind.clone()).or_insert(0);
+        *entry = entry.saturating_add(stack.amount);
+    }
+    for stack in produce {
+        if stack.amount <= 0 {
+            continue;
+        }
+        let Some(profile) = world.product_profile(stack.kind.as_str()) else {
+            continue;
+        };
+        for sink in &profile.maintenance_sink {
+            if sink.amount <= 0 {
+                continue;
+            }
+            let required_amount = sink.amount.saturating_mul(stack.amount);
+            if required_amount <= 0 {
+                continue;
+            }
+            let entry = merged.entry(sink.kind.clone()).or_insert(0);
+            *entry = entry.saturating_add(required_amount);
+        }
+    }
+    merged
+        .into_iter()
+        .map(|(kind, amount)| MaterialStack::new(kind, amount))
+        .collect()
 }
 
 fn infer_bottleneck_tags(consume: &[MaterialStack]) -> Vec<String> {

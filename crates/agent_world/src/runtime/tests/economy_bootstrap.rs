@@ -258,6 +258,9 @@ fn m4_economy_modules_drive_resource_to_product_chain() {
     world
         .set_material_balance("silicate_ore", 20)
         .expect("seed silicate ore");
+    world
+        .set_material_balance("hardware_part", 40)
+        .expect("seed hardware parts");
 
     world.submit_action(Action::BuildFactoryWithModule {
         builder_agent_id: "builder-a".to_string(),
@@ -414,7 +417,8 @@ fn m4_economy_modules_drive_resource_to_product_chain() {
     assert_eq!(world.material_balance("motor_mk1"), 0);
     assert_eq!(world.material_balance("control_chip"), 0);
     assert_eq!(world.material_balance("gear"), 0);
-    assert_eq!(world.material_balance("alloy_plate"), 3);
+    assert_eq!(world.material_balance("alloy_plate"), 2);
+    assert_eq!(world.material_balance("hardware_part"), 24);
     assert_eq!(world.material_balance("iron_ingot"), 10);
     assert_eq!(world.material_balance("copper_wire"), 8);
     assert_eq!(world.material_balance("slag"), 15);

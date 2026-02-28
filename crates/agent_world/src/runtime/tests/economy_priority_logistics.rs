@@ -871,6 +871,95 @@ fn due_recipe_jobs_prioritize_by_product_role_tag_before_keyword_fallback() {
 }
 
 #[test]
+fn schedule_recipe_applies_product_maintenance_sink_to_consume() {
+    let mut world = World::new();
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "builder-a".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.step().expect("register builder");
+
+    world
+        .set_material_balance("steel_plate", 20)
+        .expect("seed build steel");
+    world
+        .set_material_balance("circuit_board", 4)
+        .expect("seed build circuits");
+    world.submit_action(Action::BuildFactory {
+        builder_agent_id: "builder-a".to_string(),
+        site_id: "site-1".to_string(),
+        spec: factory_spec("factory.maintenance_sink", 1, 1),
+    });
+    world.step().expect("start build");
+    world.step().expect("factory ready");
+
+    world
+        .upsert_recipe_profile(RecipeProfileV1 {
+            recipe_id: "recipe.profile.maintenance_sink".to_string(),
+            bottleneck_tags: vec!["iron_ingot".to_string()],
+            stage_gate: "bootstrap".to_string(),
+            preferred_factory_tags: vec!["assembly".to_string()],
+        })
+        .expect("insert recipe profile");
+    world
+        .upsert_product_profile(ProductProfileV1 {
+            product_id: "durable_part".to_string(),
+            role_tag: "scale".to_string(),
+            maintenance_sink: vec![MaterialStack::new("hardware_part", 2)],
+            tradable: true,
+            unlock_stage: "bootstrap".to_string(),
+        })
+        .expect("insert product profile");
+    world
+        .set_ledger_material_balance(MaterialLedgerId::site("site-1"), "iron_ingot", 2)
+        .expect("seed local iron");
+    world
+        .set_ledger_material_balance(MaterialLedgerId::site("site-1"), "hardware_part", 4)
+        .expect("seed local hardware");
+    world
+        .set_material_balance("iron_ingot", 2)
+        .expect("seed world iron");
+    world
+        .set_material_balance("hardware_part", 4)
+        .expect("seed world hardware");
+    world.set_resource_balance(ResourceKind::Electricity, 10);
+
+    let plan = RecipeExecutionPlan::accepted(
+        1,
+        vec![MaterialStack::new("iron_ingot", 1)],
+        vec![MaterialStack::new("durable_part", 2)],
+        Vec::new(),
+        1,
+        1,
+    );
+    world.submit_action(Action::ScheduleRecipe {
+        requester_agent_id: "builder-a".to_string(),
+        factory_id: "factory.maintenance_sink".to_string(),
+        recipe_id: "recipe.profile.maintenance_sink".to_string(),
+        plan,
+    });
+    world.step().expect("schedule with maintenance sink");
+
+    let consume = world
+        .journal()
+        .events
+        .last()
+        .and_then(|event| match &event.body {
+            WorldEventBody::Domain(DomainEvent::RecipeStarted { consume, .. }) => {
+                Some(consume.clone())
+            }
+            _ => None,
+        })
+        .expect("recipe started");
+    let mut consume_map = std::collections::BTreeMap::new();
+    for stack in consume {
+        consume_map.insert(stack.kind, stack.amount);
+    }
+    assert_eq!(consume_map.get("iron_ingot"), Some(&1));
+    assert_eq!(consume_map.get("hardware_part"), Some(&4));
+}
+
+#[test]
 fn recipe_started_market_quote_reflects_governance_tax_change() {
     let mut world = World::new();
     world.submit_action(Action::RegisterAgent {
