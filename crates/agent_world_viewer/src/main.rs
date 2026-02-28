@@ -72,6 +72,7 @@ mod event_window;
 mod floating_origin;
 mod headless;
 mod i18n;
+mod industry_graph_view_model;
 mod internal_capture;
 mod label_lod;
 mod location_fragment_render;

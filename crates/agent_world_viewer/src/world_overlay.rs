@@ -1,16 +1,18 @@
-use agent_world::simulator::{
-    ChunkState, PowerEvent, ResourceKind, ResourceOwner, WorldEvent, WorldEventKind, WorldSnapshot,
-};
+use agent_world::simulator::{ChunkState, ResourceKind, WorldEvent, WorldSnapshot};
 use bevy::ecs::hierarchy::ChildSpawnerCommands;
 use bevy::prelude::*;
 use std::collections::HashMap;
 
 use crate::i18n::{locale_or_default, UiI18n, UiLocale};
+use crate::industry_graph_view_model::{
+    IndustryFlowKind, IndustryGraphNode, IndustryGraphSlice, IndustryGraphViewModel,
+    IndustryNodeKind, IndustrySemanticZoomLevel, IndustrySemanticZoomState, IndustryStage,
+    IndustryTier,
+};
 use crate::ui_locale_text::{overlay_button_label, overlay_loading, overlay_status};
 
 use super::*;
 
-const FLOW_WINDOW: usize = 28;
 const FLOW_BATCH_QUANTIZE: f32 = 32.0;
 const HEAT_BASE_HEIGHT: f32 = 0.25;
 const HEAT_MAX_HEIGHT: f32 = 1.8;
@@ -24,6 +26,10 @@ const FLOW_2D_THICKNESS_MAX: f32 = 0.24;
 const FLOW_ARROW_LENGTH_FACTOR: f32 = 3.4;
 const FLOW_ARROW_WIDTH_FACTOR: f32 = 1.85;
 const FLOW_ARROW_MIN_LENGTH: f32 = 0.08;
+const NODE_SYMBOL_OFFSET_Y: f32 = 0.24;
+const NODE_RING_HEIGHT: f32 = 0.016;
+const NODE_BADGE_SIZE: f32 = 0.056;
+const NODE_BADGE_LIFT: f32 = 0.08;
 
 #[derive(Resource, Clone, Copy, PartialEq, Eq)]
 pub(super) struct WorldOverlayConfig {
@@ -77,8 +83,9 @@ pub(super) struct WorldOverlayStatusText;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 enum FlowSegmentKind {
-    Power,
-    Trade,
+    Material,
+    Electricity,
+    Data,
 }
 
 #[derive(Debug, Clone)]
@@ -220,6 +227,7 @@ pub(super) fn update_world_overlay_status_text(
     state: Res<ViewerState>,
     viewer_3d_config: Res<Viewer3dConfig>,
     config: Res<WorldOverlayConfig>,
+    zoom_state: Res<IndustrySemanticZoomState>,
     i18n: Option<Res<UiI18n>>,
     mut ui_state: ResMut<WorldOverlayUiState>,
     mut text_query: Query<&mut Text, With<WorldOverlayStatusText>>,
@@ -244,6 +252,7 @@ pub(super) fn update_world_overlay_status_text(
         *config,
         viewer_3d_config.effective_cm_to_unit(),
         locale,
+        zoom_state.level,
     );
     ui_state.status_text = summary.clone();
 
@@ -258,6 +267,7 @@ pub(super) fn update_world_overlays_3d(
     camera_mode: Res<ViewerCameraMode>,
     viewer_3d_config: Res<Viewer3dConfig>,
     overlay_config: Res<WorldOverlayConfig>,
+    zoom_state: Res<IndustrySemanticZoomState>,
     assets: Res<Viewer3dAssets>,
     mut scene: ResMut<Viewer3dScene>,
     mut runtime: ResMut<OverlayRenderRuntime>,
@@ -355,7 +365,9 @@ pub(super) fn update_world_overlays_3d(
     }
 
     if overlay_config.show_flow_overlay {
-        let mut flow_segments = collect_flow_segments(snapshot, &state.events, origin, cm_to_unit);
+        let graph = IndustryGraphViewModel::build(Some(snapshot), &state.events);
+        let slice = graph.graph_for_zoom(zoom_state.level);
+        let mut flow_segments = collect_flow_segments_from_graph(&slice, origin, cm_to_unit);
         flow_segments = batch_flow_segments(
             flow_segments,
             viewer_3d_config
@@ -378,10 +390,7 @@ pub(super) fn update_world_overlays_3d(
             if from.distance(to) <= 0.00001 {
                 continue;
             }
-            let material = match segment.kind {
-                FlowSegmentKind::Power => assets.flow_power_material.clone(),
-                FlowSegmentKind::Trade => assets.flow_trade_material.clone(),
-            };
+            let material = flow_material_for_kind(segment.kind, &assets);
             let entity = commands
                 .spawn((
                     Mesh3d(assets.world_box_mesh.clone()),
@@ -405,6 +414,31 @@ pub(super) fn update_world_overlays_3d(
                 attach_to_scene_root(&mut commands, &scene, arrow_entity);
                 scene.flow_overlay_entities.push(arrow_entity);
             }
+        }
+
+        let mut symbol_nodes = slice.nodes;
+        symbol_nodes.sort_by(|left, right| {
+            right
+                .throughput
+                .cmp(&left.throughput)
+                .then_with(|| right.status.alert_events.cmp(&left.status.alert_events))
+                .then_with(|| left.id.cmp(&right.id))
+        });
+        symbol_nodes.truncate(
+            viewer_3d_config
+                .render_budget
+                .overlay_max_heat_markers
+                .max(1),
+        );
+        for node in symbol_nodes {
+            spawn_industry_node_symbol(
+                &mut commands,
+                scene.as_mut(),
+                &assets,
+                node,
+                origin,
+                cm_to_unit,
+            );
         }
     }
 }
@@ -432,8 +466,9 @@ fn build_overlay_status_text(
     snapshot: Option<&WorldSnapshot>,
     events: &[WorldEvent],
     config: WorldOverlayConfig,
-    cm_to_unit: f32,
+    _cm_to_unit: f32,
     locale: UiLocale,
+    zoom: IndustrySemanticZoomLevel,
 ) -> String {
     let Some(snapshot) = snapshot else {
         return overlay_status(
@@ -447,19 +482,13 @@ fn build_overlay_status_text(
         );
     };
 
+    let graph = IndustryGraphViewModel::build(Some(snapshot), events);
+    let flow_count = graph.graph_for_zoom(zoom).edges.len();
     let (unexplored, generated, exhausted) = chunk_state_counts(snapshot);
     let heat_peak = top_heat_location(snapshot)
         .map(|(id, value)| format!("{id}:{value}"))
         .unwrap_or_else(|| "-".to_string());
-    let flow_count = collect_flow_segments(
-        snapshot,
-        events,
-        space_origin(&snapshot.config.space),
-        cm_to_unit,
-    )
-    .len();
-
-    overlay_status(
+    let status = overlay_status(
         Some((unexplored, generated, exhausted)),
         Some(heat_peak),
         flow_count,
@@ -467,7 +496,8 @@ fn build_overlay_status_text(
         config.show_resource_heatmap,
         config.show_flow_overlay,
         locale,
-    )
+    );
+    format!("{status} zoom={}", zoom.key())
 }
 
 pub(super) fn overlay_status_text_public(
@@ -476,8 +506,9 @@ pub(super) fn overlay_status_text_public(
     config: WorldOverlayConfig,
     cm_to_unit: f32,
     locale: UiLocale,
+    zoom: IndustrySemanticZoomLevel,
 ) -> String {
-    build_overlay_status_text(snapshot, events, config, cm_to_unit, locale)
+    build_overlay_status_text(snapshot, events, config, cm_to_unit, locale, zoom)
 }
 
 fn chunk_state_counts(snapshot: &WorldSnapshot) -> (usize, usize, usize) {
@@ -529,57 +560,35 @@ fn collect_location_heat_points(
         .collect()
 }
 
-fn collect_flow_segments(
-    snapshot: &WorldSnapshot,
-    events: &[WorldEvent],
+fn collect_flow_segments_from_graph(
+    graph: &IndustryGraphSlice,
     origin: GeoPos,
     cm_to_unit: f32,
 ) -> Vec<FlowSegment> {
-    let mut segments = Vec::new();
-
-    for event in events.iter().rev().take(FLOW_WINDOW) {
-        match &event.kind {
-            WorldEventKind::ResourceTransferred {
-                from, to, amount, ..
-            } => {
-                let from_pos = owner_position(snapshot, from, origin, cm_to_unit);
-                let to_pos = owner_position(snapshot, to, origin, cm_to_unit);
-                if let (Some(from_pos), Some(to_pos)) = (from_pos, to_pos) {
-                    if from_pos.distance(to_pos) > 0.00001 {
-                        segments.push(FlowSegment {
-                            from: from_pos + Vec3::Y * FLOW_OFFSET_Y,
-                            to: to_pos + Vec3::Y * FLOW_OFFSET_Y,
-                            amount: amount.abs(),
-                            kind: FlowSegmentKind::Trade,
-                        });
-                    }
-                }
-            }
-            WorldEventKind::Power(PowerEvent::PowerTransferred {
-                from,
-                to,
-                amount,
-                loss,
-                ..
-            }) => {
-                let from_pos = owner_position(snapshot, from, origin, cm_to_unit);
-                let to_pos = owner_position(snapshot, to, origin, cm_to_unit);
-                if let (Some(from_pos), Some(to_pos)) = (from_pos, to_pos) {
-                    if from_pos.distance(to_pos) > 0.00001 {
-                        segments.push(FlowSegment {
-                            from: from_pos + Vec3::Y * FLOW_OFFSET_Y,
-                            to: to_pos + Vec3::Y * FLOW_OFFSET_Y,
-                            amount: amount.abs().saturating_add(loss.abs()),
-                            kind: FlowSegmentKind::Power,
-                        });
-                    }
-                }
-            }
-            _ => {}
+    let mut node_positions = HashMap::<String, Vec3>::new();
+    for node in &graph.nodes {
+        if let Some(position) = node.position {
+            node_positions.insert(node.id.clone(), geo_to_vec3(position, origin, cm_to_unit));
         }
     }
 
-    segments
+    graph
+        .edges
+        .iter()
+        .filter_map(|edge| {
+            let from = node_positions.get(edge.from.as_str())?;
+            let to = node_positions.get(edge.to.as_str())?;
+            if from.distance(*to) <= 0.00001 {
+                return None;
+            }
+            Some(FlowSegment {
+                from: *from + Vec3::Y * FLOW_OFFSET_Y,
+                to: *to + Vec3::Y * FLOW_OFFSET_Y,
+                amount: edge.throughput.abs(),
+                kind: flow_segment_kind(edge.flow_kind),
+            })
+        })
+        .collect()
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -619,23 +628,160 @@ fn quantize_vec3(value: Vec3) -> (i32, i32, i32) {
     )
 }
 
-fn owner_position(
-    snapshot: &WorldSnapshot,
-    owner: &ResourceOwner,
+fn flow_segment_kind(kind: IndustryFlowKind) -> FlowSegmentKind {
+    match kind {
+        IndustryFlowKind::Material => FlowSegmentKind::Material,
+        IndustryFlowKind::Electricity => FlowSegmentKind::Electricity,
+        IndustryFlowKind::Data => FlowSegmentKind::Data,
+    }
+}
+
+fn flow_material_for_kind(
+    kind: FlowSegmentKind,
+    assets: &Viewer3dAssets,
+) -> Handle<StandardMaterial> {
+    match kind {
+        FlowSegmentKind::Material => assets.heat_mid_material.clone(),
+        FlowSegmentKind::Electricity => assets.flow_power_material.clone(),
+        FlowSegmentKind::Data => assets.flow_trade_material.clone(),
+    }
+}
+
+fn spawn_industry_node_symbol(
+    commands: &mut Commands,
+    scene: &mut Viewer3dScene,
+    assets: &Viewer3dAssets,
+    node: IndustryGraphNode,
     origin: GeoPos,
     cm_to_unit: f32,
-) -> Option<Vec3> {
-    match owner {
-        ResourceOwner::Agent { agent_id } => snapshot
-            .model
-            .agents
-            .get(agent_id)
-            .map(|agent| geo_to_vec3(agent.pos, origin, cm_to_unit)),
-        ResourceOwner::Location { location_id } => snapshot
-            .model
-            .locations
-            .get(location_id)
-            .map(|location| geo_to_vec3(location.pos, origin, cm_to_unit)),
+) {
+    let Some(position) = node.position else {
+        return;
+    };
+
+    let anchor = geo_to_vec3(position, origin, cm_to_unit) + Vec3::Y * NODE_SYMBOL_OFFSET_Y;
+    let (shape_scale, shape_rotation) = tier_symbol_transform(node.tier);
+    let base_translation = anchor + Vec3::Y * (shape_scale.y * 0.5);
+    let base_material = node_material(node.kind, assets);
+
+    let base_entity = commands
+        .spawn((
+            Mesh3d(assets.world_box_mesh.clone()),
+            MeshMaterial3d(base_material),
+            Transform {
+                translation: base_translation,
+                rotation: shape_rotation,
+                scale: shape_scale,
+            },
+            Name::new("overlay:industry:node"),
+        ))
+        .id();
+    attach_to_scene_root(commands, scene, base_entity);
+    scene.flow_overlay_entities.push(base_entity);
+
+    let stage_material = stage_material(node.stage, assets);
+    let ring_entity = commands
+        .spawn((
+            Mesh3d(assets.world_box_mesh.clone()),
+            MeshMaterial3d(stage_material),
+            Transform::from_translation(anchor + Vec3::Y * (NODE_RING_HEIGHT * 0.5)).with_scale(
+                Vec3::new(
+                    (shape_scale.x * 1.65).max(0.08),
+                    NODE_RING_HEIGHT,
+                    (shape_scale.z * 1.65).max(0.08),
+                ),
+            ),
+            Name::new("overlay:industry:stage"),
+        ))
+        .id();
+    attach_to_scene_root(commands, scene, ring_entity);
+    scene.flow_overlay_entities.push(ring_entity);
+
+    let badge_base = anchor + Vec3::Y * (shape_scale.y + NODE_BADGE_LIFT);
+    if node.status.bottleneck {
+        let entity = spawn_status_badge(
+            commands,
+            scene,
+            assets.heat_high_material.clone(),
+            badge_base + Vec3::new(0.08, 0.0, -0.08),
+            "overlay:industry:badge:bottleneck",
+            assets,
+        );
+        scene.flow_overlay_entities.push(entity);
+    }
+    if node.status.congestion {
+        let entity = spawn_status_badge(
+            commands,
+            scene,
+            assets.heat_mid_material.clone(),
+            badge_base + Vec3::new(-0.08, 0.0, -0.08),
+            "overlay:industry:badge:congestion",
+            assets,
+        );
+        scene.flow_overlay_entities.push(entity);
+    }
+    if node.status.alert {
+        let entity = spawn_status_badge(
+            commands,
+            scene,
+            assets.flow_power_material.clone(),
+            badge_base + Vec3::new(0.0, 0.0, 0.08),
+            "overlay:industry:badge:alert",
+            assets,
+        );
+        scene.flow_overlay_entities.push(entity);
+    }
+}
+
+fn spawn_status_badge(
+    commands: &mut Commands,
+    scene: &Viewer3dScene,
+    material: Handle<StandardMaterial>,
+    translation: Vec3,
+    name: &'static str,
+    assets: &Viewer3dAssets,
+) -> Entity {
+    let entity = commands
+        .spawn((
+            Mesh3d(assets.world_box_mesh.clone()),
+            MeshMaterial3d(material),
+            Transform::from_translation(translation).with_scale(Vec3::splat(NODE_BADGE_SIZE)),
+            Name::new(name),
+        ))
+        .id();
+    attach_to_scene_root(commands, scene, entity);
+    entity
+}
+
+fn tier_symbol_transform(tier: IndustryTier) -> (Vec3, Quat) {
+    match tier {
+        IndustryTier::R1 => (
+            Vec3::new(0.14, 0.14, 0.14),
+            Quat::from_rotation_y(std::f32::consts::FRAC_PI_4),
+        ),
+        IndustryTier::R2 => (Vec3::new(0.18, 0.18, 0.18), Quat::IDENTITY),
+        IndustryTier::R3 => (Vec3::new(0.16, 0.30, 0.16), Quat::IDENTITY),
+        IndustryTier::R4 => (Vec3::new(0.30, 0.12, 0.30), Quat::IDENTITY),
+        IndustryTier::R5 => (Vec3::new(0.22, 0.36, 0.22), Quat::IDENTITY),
+        IndustryTier::Unknown => (Vec3::new(0.12, 0.12, 0.12), Quat::IDENTITY),
+    }
+}
+
+fn node_material(kind: IndustryNodeKind, assets: &Viewer3dAssets) -> Handle<StandardMaterial> {
+    match kind {
+        IndustryNodeKind::Factory => assets.heat_high_material.clone(),
+        IndustryNodeKind::Recipe => assets.heat_mid_material.clone(),
+        IndustryNodeKind::Product => assets.heat_low_material.clone(),
+        IndustryNodeKind::LogisticsStation => assets.world_grid_material.clone(),
+    }
+}
+
+fn stage_material(stage: IndustryStage, assets: &Viewer3dAssets) -> Handle<StandardMaterial> {
+    match stage {
+        IndustryStage::Bootstrap => assets.flow_power_material.clone(),
+        IndustryStage::Scale => assets.flow_trade_material.clone(),
+        IndustryStage::Governance => assets.heat_high_material.clone(),
+        IndustryStage::Unknown => assets.world_bounds_material.clone(),
     }
 }
 
@@ -691,7 +837,8 @@ mod tests {
     use super::*;
     use agent_world::geometry::GeoPos;
     use agent_world::simulator::{
-        Agent, ChunkRuntimeConfig, Location, PowerEvent, WorldConfig, WorldModel,
+        Agent, ChunkRuntimeConfig, Location, PowerEvent, ResourceOwner, WorldConfig,
+        WorldEventKind, WorldModel,
     };
 
     fn sample_snapshot() -> WorldSnapshot {
@@ -762,11 +909,13 @@ mod tests {
             WorldOverlayConfig::default(),
             0.00001,
             UiLocale::EnUs,
+            IndustrySemanticZoomLevel::Node,
         );
         assert!(text.contains("Overlay[chunk:on heat:on flow:on]"));
         assert!(text.contains("chunks(u/g/e)=0/1/0"));
         assert!(text.contains("heat_peak=loc-b:80"));
         assert!(text.contains("flows=1"));
+        assert!(text.contains("zoom=node"));
     }
 
     #[test]
@@ -807,14 +956,16 @@ mod tests {
             },
         ];
 
-        let segments = collect_flow_segments(&snapshot, &events, origin, 0.00001);
+        let graph = IndustryGraphViewModel::build(Some(&snapshot), &events);
+        let slice = graph.graph_for_zoom(IndustrySemanticZoomLevel::Node);
+        let segments = collect_flow_segments_from_graph(&slice, origin, 0.00001);
         assert_eq!(segments.len(), 2);
         assert!(segments
             .iter()
-            .any(|segment| segment.kind == FlowSegmentKind::Trade));
+            .any(|segment| segment.kind == FlowSegmentKind::Data));
         assert!(segments
             .iter()
-            .any(|segment| segment.kind == FlowSegmentKind::Power));
+            .any(|segment| segment.kind == FlowSegmentKind::Electricity));
     }
 
     #[test]
@@ -824,25 +975,25 @@ mod tests {
                 from: Vec3::new(0.0, 0.0, 0.0),
                 to: Vec3::new(1.0, 0.0, 0.0),
                 amount: 5,
-                kind: FlowSegmentKind::Trade,
+                kind: FlowSegmentKind::Data,
             },
             FlowSegment {
                 from: Vec3::new(0.0, 0.0, 0.0),
                 to: Vec3::new(1.0, 0.0, 0.0),
                 amount: 7,
-                kind: FlowSegmentKind::Trade,
+                kind: FlowSegmentKind::Data,
             },
             FlowSegment {
                 from: Vec3::new(0.0, 0.0, 0.0),
                 to: Vec3::new(0.0, 0.0, 1.0),
                 amount: 4,
-                kind: FlowSegmentKind::Power,
+                kind: FlowSegmentKind::Electricity,
             },
         ];
 
         let batched = batch_flow_segments(segments, 1);
         assert_eq!(batched.len(), 1);
-        assert_eq!(batched[0].kind, FlowSegmentKind::Trade);
+        assert_eq!(batched[0].kind, FlowSegmentKind::Data);
         assert_eq!(batched[0].amount, 12);
     }
 

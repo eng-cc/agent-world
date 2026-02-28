@@ -13,6 +13,7 @@ use crate::i18n::{
     experience_mode_label, language_toggle_label, locale_or_default, module_switches_title,
     right_panel_toggle_label, top_controls_label, top_panel_toggle_label, UiI18n,
 };
+use crate::industry_graph_view_model::{IndustrySemanticZoomLevel, IndustrySemanticZoomState};
 use crate::right_panel_module_visibility::RightPanelModuleVisibilityState;
 use crate::selection_linking::{
     jump_selection_events_action, locate_focus_event_action, quick_locate_agent_action,
@@ -31,8 +32,9 @@ use crate::ui_locale_text::{
     timeline_mode_label, timeline_status_line,
 };
 use crate::ui_text::{
-    agent_activity_summary, economy_dashboard_summary, events_summary, industrial_ops_summary,
-    ops_navigation_alert_summary, selection_details_summary, world_summary,
+    agent_activity_summary, build_industry_graph_view_model, economy_dashboard_summary_with_zoom,
+    events_summary, industrial_ops_summary_with_zoom, ops_navigation_alert_summary_with_zoom,
+    selection_details_summary, world_summary,
 };
 use crate::world_overlay::overlay_status_text_public;
 use crate::{
@@ -134,6 +136,7 @@ pub(super) struct RightPanelParams<'w, 's> {
     copyable_panel_state: ResMut<'w, CopyableTextPanelState>,
     module_visibility: ResMut<'w, RightPanelModuleVisibilityState>,
     overlay_config: ResMut<'w, WorldOverlayConfig>,
+    industry_zoom: ResMut<'w, IndustrySemanticZoomState>,
     state: Res<'w, ViewerState>,
     selection: ResMut<'w, ViewerSelection>,
     render_perf: Option<Res<'w, RenderPerfSummary>>,
@@ -170,6 +173,7 @@ pub(super) fn render_right_side_panel_egui(
         mut copyable_panel_state,
         mut module_visibility,
         mut overlay_config,
+        mut industry_zoom,
         state,
         mut selection,
         render_perf,
@@ -447,6 +451,7 @@ pub(super) fn render_right_side_panel_egui(
                     &state,
                     &viewer_3d_config,
                     overlay_config.as_mut(),
+                    industry_zoom.as_mut(),
                 );
             }
 
@@ -558,6 +563,7 @@ pub(super) fn render_right_side_panel_egui(
                         &selection,
                         timeline.as_ref(),
                         &viewer_3d_config,
+                        industry_zoom.level,
                     );
 
                     ui.separator();
@@ -876,7 +882,25 @@ fn render_overlay_section(
     state: &ViewerState,
     viewer_3d_config: &Option<Res<Viewer3dConfig>>,
     overlay_config: &mut WorldOverlayConfig,
+    industry_zoom: &mut IndustrySemanticZoomState,
 ) {
+    ui.strong(if locale.is_zh() {
+        "语义缩放"
+    } else {
+        "Semantic Zoom"
+    });
+    ui.horizontal_wrapped(|ui| {
+        for level in IndustrySemanticZoomLevel::ALL {
+            let selected = industry_zoom.level == level;
+            if ui
+                .selectable_label(selected, semantic_zoom_label(level, locale))
+                .clicked()
+            {
+                industry_zoom.level = level;
+            }
+        }
+    });
+
     ui.horizontal_wrapped(|ui| {
         if ui.button(overlay_button_label("chunk", locale)).clicked() {
             overlay_config.show_chunk_overlay = !overlay_config.show_chunk_overlay;
@@ -896,6 +920,7 @@ fn render_overlay_section(
             *overlay_config,
             config.effective_cm_to_unit(),
             locale,
+            industry_zoom.level,
         )
     } else {
         overlay_loading(locale).to_string()
@@ -1071,6 +1096,7 @@ fn render_text_sections(
     selection: &ViewerSelection,
     timeline: &TimelineUiState,
     viewer_3d_config: &Option<Res<Viewer3dConfig>>,
+    industry_zoom_level: IndustrySemanticZoomLevel,
 ) {
     let focus = if timeline.manual_override || timeline.drag_active {
         Some(timeline.target_tick)
@@ -1095,12 +1121,13 @@ fn render_text_sections(
         agent_activity_summary(state.snapshot.as_ref(), &state.events),
         locale,
     );
-    let industrial = industrial_ops_summary(state.snapshot.as_ref(), &state.events)
+    let industry_graph = build_industry_graph_view_model(state.snapshot.as_ref(), &state.events);
+    let industrial = industrial_ops_summary_with_zoom(&industry_graph, industry_zoom_level)
         .map(|text| localize_industrial_ops_block(text, locale));
-    let economy = economy_dashboard_summary(state.snapshot.as_ref(), &state.events)
+    let economy = economy_dashboard_summary_with_zoom(&industry_graph, industry_zoom_level)
         .map(|text| localize_economy_dashboard_block(text, locale));
     let ops_navigation = if is_ops_nav_panel_enabled() {
-        ops_navigation_alert_summary(state.snapshot.as_ref(), &state.events)
+        ops_navigation_alert_summary_with_zoom(&industry_graph, industry_zoom_level)
             .map(|text| localize_ops_navigation_block(text, locale))
     } else {
         None
@@ -1224,6 +1251,20 @@ fn render_text_sections(
         .wrap()
         .selectable(true),
     );
+}
+
+fn semantic_zoom_label(
+    level: IndustrySemanticZoomLevel,
+    locale: crate::i18n::UiLocale,
+) -> &'static str {
+    match (level, locale.is_zh()) {
+        (IndustrySemanticZoomLevel::World, true) => "世界",
+        (IndustrySemanticZoomLevel::Region, true) => "区域",
+        (IndustrySemanticZoomLevel::Node, true) => "节点",
+        (IndustrySemanticZoomLevel::World, false) => "World",
+        (IndustrySemanticZoomLevel::Region, false) => "Region",
+        (IndustrySemanticZoomLevel::Node, false) => "Node",
+    }
 }
 
 #[cfg(test)]

@@ -992,6 +992,7 @@ fn egui_kittest_overlay_section_renders_chunk_legend_and_width_hint() {
     let state = sample_viewer_state(crate::ConnectionStatus::Connected, Vec::new());
     let viewer_3d_config: Option<Res<crate::Viewer3dConfig>> = None;
     let mut overlay_config = crate::WorldOverlayConfig::default();
+    let mut industry_zoom = crate::industry_graph_view_model::IndustrySemanticZoomState::default();
 
     let mut harness = Harness::new_ui(move |ui| {
         render_overlay_section(
@@ -1001,6 +1002,7 @@ fn egui_kittest_overlay_section_renders_chunk_legend_and_width_hint() {
             &state,
             &viewer_3d_config,
             &mut overlay_config,
+            &mut industry_zoom,
         );
     });
 

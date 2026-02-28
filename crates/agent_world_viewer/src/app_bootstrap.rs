@@ -64,6 +64,7 @@ pub(super) fn run_ui(addr: String, offline: bool) {
         .insert_resource(ViewerSelection::default())
         .insert_resource(ChatInputFocusSignal::default())
         .insert_resource(world_overlay_config_from_env())
+        .insert_resource(crate::industry_graph_view_model::IndustrySemanticZoomState::default())
         .insert_resource(WorldOverlayUiState::default())
         .insert_resource(OverlayRenderRuntime::default())
         .insert_resource(DiagnosisState::default())
