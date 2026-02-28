@@ -38,6 +38,16 @@ const WEB_TEST_API_CONTROL_ACTIONS: [&str; 3] = ["play", "pause", "step"];
 #[cfg(target_arch = "wasm32")]
 const CONTROL_STALL_FRAME_THRESHOLD: u32 = 150;
 #[cfg(target_arch = "wasm32")]
+const CONTROL_STAGE_RECEIVED: &str = "received";
+#[cfg(target_arch = "wasm32")]
+const CONTROL_STAGE_EXECUTING: &str = "executing";
+#[cfg(target_arch = "wasm32")]
+const CONTROL_STAGE_COMPLETED_ADVANCED: &str = "completed_advanced";
+#[cfg(target_arch = "wasm32")]
+const CONTROL_STAGE_COMPLETED_NO_PROGRESS: &str = "completed_no_progress";
+#[cfg(target_arch = "wasm32")]
+const CONTROL_STAGE_BLOCKED: &str = "blocked";
+#[cfg(target_arch = "wasm32")]
 enum WebTestApiCommand {
     EnqueueSteps(Vec<crate::viewer_automation::ViewerAutomationStep>),
     SendControl {
@@ -473,11 +483,11 @@ fn build_control_feedback(
 ) -> WebTestApiControlFeedback {
     let (baseline_logical_time, baseline_event_seq) = latest_logical_time_event_seq();
     let stage = if !accepted {
-        "blocked"
+        CONTROL_STAGE_BLOCKED
     } else if awaiting_effect {
-        "received"
+        CONTROL_STAGE_RECEIVED
     } else {
-        "applied"
+        CONTROL_STAGE_COMPLETED_ADVANCED
     };
     WebTestApiControlFeedback {
         id: next_control_feedback_id(),
@@ -878,7 +888,7 @@ pub(super) fn consume_web_test_api_commands(
                     mutate_last_control_feedback(feedback_id, |feedback| {
                         feedback.accepted = false;
                         feedback.enqueued = false;
-                        feedback.stage = "blocked".to_string();
+                        feedback.stage = CONTROL_STAGE_BLOCKED.to_string();
                         feedback.reason = Some("viewer client is not available".to_string());
                         feedback.hint = Some("reconnect then retry sendControl".to_string());
                         feedback.effect = "dropped before dispatch".to_string();
@@ -894,14 +904,14 @@ pub(super) fn consume_web_test_api_commands(
                 );
                 mutate_last_control_feedback(feedback_id, |feedback| {
                     if sent {
-                        feedback.stage = "executing".to_string();
+                        feedback.stage = CONTROL_STAGE_EXECUTING.to_string();
                         feedback.enqueued = true;
                         feedback.hint =
                             Some("dispatch accepted, waiting for world delta".to_string());
                     } else {
                         feedback.accepted = false;
                         feedback.enqueued = false;
-                        feedback.stage = "blocked".to_string();
+                        feedback.stage = CONTROL_STAGE_BLOCKED.to_string();
                         feedback.reason = Some("viewer client channel send failed".to_string());
                         feedback.hint = Some("retry control after reconnect".to_string());
                         feedback.effect = "dropped before dispatch".to_string();
@@ -1013,7 +1023,7 @@ pub(super) fn publish_web_test_api_state(
                         feedback.no_progress_frames = 0;
                         match ack.status {
                             ControlCompletionStatus::Advanced => {
-                                feedback.stage = "applied".to_string();
+                                feedback.stage = CONTROL_STAGE_COMPLETED_ADVANCED.to_string();
                                 feedback.reason = None;
                                 feedback.hint = Some(
                                     "completion ack received: step advanced world".to_string(),
@@ -1024,7 +1034,7 @@ pub(super) fn publish_web_test_api_state(
                                 );
                             }
                             ControlCompletionStatus::TimeoutNoProgress => {
-                                feedback.stage = "blocked".to_string();
+                                feedback.stage = CONTROL_STAGE_COMPLETED_NO_PROGRESS.to_string();
                                 feedback.reason =
                                     Some("Cause: completion ack timeout_no_progress".to_string());
                                 feedback.hint = Some("Next: use play, then retry step".to_string());
@@ -1046,7 +1056,7 @@ pub(super) fn publish_web_test_api_state(
                     feedback.delta_logical_time = delta_logical_time;
                     feedback.delta_event_seq = delta_event_seq;
                     if delta_logical_time > 0 || delta_event_seq > 0 {
-                        feedback.stage = "applied".to_string();
+                        feedback.stage = CONTROL_STAGE_COMPLETED_ADVANCED.to_string();
                         feedback.no_progress_frames = 0;
                         feedback.effect = format!(
                             "world advanced: logicalTime +{delta_logical_time}, eventSeq +{delta_event_seq}"
@@ -1071,7 +1081,7 @@ pub(super) fn publish_web_test_api_state(
                                     CONTROL_STALL_FRAME_THRESHOLD
                                 ));
                                 if recovered {
-                                    feedback.stage = "executing".to_string();
+                                    feedback.stage = CONTROL_STAGE_EXECUTING.to_string();
                                     feedback.hint = Some(
                                         "Next: auto recovery dispatched play; if still stalled, retry step"
                                             .to_string(),
@@ -1082,7 +1092,7 @@ pub(super) fn publish_web_test_api_state(
                                     feedback.baseline_event_seq = latest_event_seq;
                                     feedback.no_progress_frames = 0;
                                 } else {
-                                    feedback.stage = "blocked".to_string();
+                                    feedback.stage = CONTROL_STAGE_COMPLETED_NO_PROGRESS.to_string();
                                     feedback.hint =
                                         Some("Next: use play, then retry step".to_string());
                                     feedback.effect =
@@ -1090,7 +1100,7 @@ pub(super) fn publish_web_test_api_state(
                                     feedback.awaiting_effect = false;
                                 }
                             } else {
-                                feedback.stage = "blocked".to_string();
+                                feedback.stage = CONTROL_STAGE_COMPLETED_NO_PROGRESS.to_string();
                                 feedback.reason =
                                     Some("Cause: no world delta observed while connected".to_string());
                                 feedback.hint =
@@ -1099,11 +1109,11 @@ pub(super) fn publish_web_test_api_state(
                                 feedback.awaiting_effect = false;
                             }
                         } else {
-                            feedback.stage = "executing".to_string();
+                            feedback.stage = CONTROL_STAGE_EXECUTING.to_string();
                             feedback.effect = "queued, waiting for next world delta".to_string();
                         }
                     } else {
-                        feedback.stage = "received".to_string();
+                        feedback.stage = CONTROL_STAGE_RECEIVED.to_string();
                         feedback.effect = "queued, waiting for world connection".to_string();
                     }
                 }

@@ -151,11 +151,23 @@ fn player_control_stage_label_maps_core_states() {
         "Received"
     );
     assert_eq!(
+        player_control_stage_label("executing", crate::i18n::UiLocale::EnUs),
+        "Executing"
+    );
+    assert_eq!(
         player_control_stage_label("blocked", crate::i18n::UiLocale::EnUs),
         "Blocked"
     );
     assert_eq!(
-        player_control_stage_label("applied", crate::i18n::UiLocale::ZhCn),
-        "已生效"
+        player_control_stage_label("completed_advanced", crate::i18n::UiLocale::ZhCn),
+        "已完成"
+    );
+    assert_eq!(
+        player_control_stage_label("completed_no_progress", crate::i18n::UiLocale::EnUs),
+        "Completed"
+    );
+    assert_eq!(
+        player_control_stage_label("applied", crate::i18n::UiLocale::EnUs),
+        "Completed"
     );
 }

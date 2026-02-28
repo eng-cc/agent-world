@@ -351,8 +351,12 @@ pub(super) fn player_control_stage_label(
         ("received", false) => "Received",
         ("executing", true) => "执行中",
         ("executing", false) => "Executing",
-        ("applied", true) => "已生效",
-        ("applied", false) => "Applied",
+        ("completed_advanced", true) | ("completed_no_progress", true) | ("applied", true) => {
+            "已完成"
+        }
+        ("completed_advanced", false) | ("completed_no_progress", false) | ("applied", false) => {
+            "Completed"
+        }
         ("blocked", true) => "已阻断",
         ("blocked", false) => "Blocked",
         (_, true) => "处理中",
@@ -1034,7 +1038,10 @@ pub(super) fn render_player_mission_hud(
                     }
                     if let Some(feedback) = control_feedback.as_ref() {
                         let stage_color = match feedback.stage.as_str() {
-                            "applied" => egui::Color32::from_rgb(78, 182, 108),
+                            "completed_advanced" | "applied" => {
+                                egui::Color32::from_rgb(78, 182, 108)
+                            }
+                            "completed_no_progress" => egui::Color32::from_rgb(224, 176, 92),
                             "blocked" => egui::Color32::from_rgb(226, 128, 98),
                             "executing" => egui::Color32::from_rgb(118, 168, 236),
                             _ => egui::Color32::from_rgb(186, 206, 238),
