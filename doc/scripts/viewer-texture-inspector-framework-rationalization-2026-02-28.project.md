@@ -5,7 +5,7 @@
 - [x] T0：输出项目管理文档（本文件）
 - [x] T1：扩展 viewer capture status 语义可观测字段并补充测试
 - [x] T2：落地 inspector 分层门禁（连接/语义/细节/差异）并写入元数据
-- [ ] T3：执行 power 场景回归矩阵并完成文档/日志结项
+- [x] T3：执行 power 场景回归矩阵并完成文档/日志结项
 
 ## 依赖
 - `crates/agent_world_viewer/src/internal_capture.rs`
@@ -14,6 +14,6 @@
 - `ffmpeg`
 
 ## 状态
-- 当前阶段：进行中（T2 已完成，执行 T3）
+- 当前阶段：已完成（T0~T3）
 - 阻塞：无
-- 下一步：执行 power 场景回归矩阵并完成文档/日志结项
+- 下一步：无

@@ -44,3 +44,18 @@
   - 缓解：保持 key-value 追加式输出，脚本按“缺省可退化”读取。
 - **回归时间成本**：分层门禁会增加重试和验证开销。
   - 缓解：仅对关键实体（power）启用严格矩阵，其他实体保留轻量路径。
+
+## T3 回归结论（2026-02-28）
+- 回归命令：
+  - `./scripts/viewer-texture-inspector.sh --inspect power_plant,power_storage --scenario power_bootstrap --art-capture --preview-mode direct_entity --material-profile art_review_v1 --semantic-gate-mode auto --detail-edge-threshold 0.35 --variant-ssim-threshold 0.9995 --no-prewarm --out-dir output/texture_inspector/framework_t2_power_scene_20260228_r2`
+- 关键产物：
+  - `output/texture_inspector/framework_t2_power_scene_20260228_r2/power_plant/variant_validation.txt`
+  - `output/texture_inspector/framework_t2_power_scene_20260228_r2/power_storage/variant_validation.txt`
+- 结果摘要：
+  - 两类实体均 `status=failed_after_retry`，`retry_reason=low_edge_energy`；
+  - `semantic_fail_count_initial/after_retry=0`，语义门禁稳定通过；
+  - `unique_count=3` 且 `min_pair_ssim < threshold(0.9995)`，差异门禁通过；
+  - `min_edge_energy≈0.136~0.137 < threshold(0.35)`，细节门禁持续失败。
+- 框架合理性评估：
+  - 结论：当前分层框架合理，能把“连接成功/目标正确”与“画面可评审”明确解耦并定位到细节层问题，避免过去仅靠 hash/SSIM 的误判。
+  - 现状问题不是“门禁失效”，而是“近景构图与材质可读性不足”；后续应针对镜头构图、局部光照与实体专属资源进行系统优化。
