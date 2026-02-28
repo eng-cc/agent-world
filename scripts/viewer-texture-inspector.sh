@@ -47,6 +47,10 @@ Options:
   --resource-pack-file <p> optional env file for entity/variant resource overrides
   --art-hide-panel         hide right panel in art capture (default: on when art_capture=1)
   --no-art-hide-panel      keep right panel visible in art capture
+  --art-selection-highlight
+                           keep selection highlight+halo (default: auto off when art_capture=1)
+  --no-art-selection-highlight
+                           disable selection highlight+halo
   --variant-ssim-threshold <f>
                            power variant validation threshold (default: 0.9995)
   --detail-edge-threshold <f>
@@ -890,6 +894,7 @@ art_lighting_mode="auto"
 lighting_profile="art_review_v2"
 resource_pack_file=""
 art_hide_panel_mode="auto"
+art_selection_highlight_mode="auto"
 variant_ssim_threshold="0.9995"
 detail_edge_threshold="0.35"
 semantic_gate_mode="auto"
@@ -1020,6 +1025,14 @@ while [[ $# -gt 0 ]]; do
       art_hide_panel_mode="off"
       shift
       ;;
+    --art-selection-highlight)
+      art_selection_highlight_mode="on"
+      shift
+      ;;
+    --no-art-selection-highlight)
+      art_selection_highlight_mode="off"
+      shift
+      ;;
     --variant-ssim-threshold)
       variant_ssim_threshold=${2:-}
       shift 2
@@ -1140,6 +1153,16 @@ case "$art_hide_panel_mode" in
     ;;
 esac
 
+case "$art_selection_highlight_mode" in
+  on|off|auto)
+    ;;
+  *)
+    echo "invalid art selection highlight mode: $art_selection_highlight_mode" >&2
+    echo "supported modes: on,off,auto" >&2
+    exit 2
+    ;;
+esac
+
 if [[ -n "$resource_pack_file" && ! -f "$resource_pack_file" ]]; then
   echo "missing --resource-pack-file: $resource_pack_file" >&2
   exit 1
@@ -1178,6 +1201,12 @@ if [[ "$art_hide_panel_mode" == "on" ]]; then
   art_panel_hidden=1
 elif [[ "$art_hide_panel_mode" == "auto" && "$art_capture" -eq 1 ]]; then
   art_panel_hidden=1
+fi
+art_selection_highlight_enabled=1
+if [[ "$art_selection_highlight_mode" == "off" ]]; then
+  art_selection_highlight_enabled=0
+elif [[ "$art_selection_highlight_mode" == "auto" && "$art_capture" -eq 1 ]]; then
+  art_selection_highlight_enabled=0
 fi
 if [[ -z "$crop_window_raw" ]]; then
   crop_window_raw="auto"
@@ -1223,14 +1252,27 @@ capture_variant_bundle() {
     export AGENT_WORLD_VIEWER_MATERIAL_VARIANT_PRESET="$material_variant_preset_for_run"
     export AGENT_WORLD_VIEWER_RENDER_PROFILE="$render_profile"
     export AGENT_WORLD_VIEWER_FRAGMENT_MATERIAL_STRATEGY="$fragment_strategy"
-    export AGENT_WORLD_VIEWER_SHOW_LOCATIONS=1
     export AGENT_WORLD_VIEWER_SHOW_AGENTS=0
+    if [[ "$art_selection_highlight_enabled" -eq 1 ]]; then
+      unset AGENT_WORLD_VIEWER_HIGHLIGHT_SELECTED || true
+    else
+      export AGENT_WORLD_VIEWER_HIGHLIGHT_SELECTED=0
+    fi
     apply_variant_material_profile "$material_profile" "$entity" "$variant"
     effective_preview_mode="$preview_mode"
     preview_mode_fallback_reason="none"
     if [[ "$preview_mode" == "direct_entity" && "$entity" == "location" ]]; then
       effective_preview_mode="scene_proxy"
       preview_mode_fallback_reason="location_direct_entity_not_applicable"
+    fi
+    if [[ "$effective_preview_mode" == "direct_entity" ]]; then
+      export AGENT_WORLD_VIEWER_SHOW_LOCATIONS=0
+    else
+      export AGENT_WORLD_VIEWER_SHOW_LOCATIONS=1
+    fi
+    capture_auto_focus_target="first_location"
+    if [[ "$effective_preview_mode" == "direct_entity" ]]; then
+      capture_auto_focus_target=$(resolve_focus_target_for_entity "$entity" "$scenario")
     fi
     location_interference_disabled=0
     if [[ "$effective_preview_mode" == "lookdev" || "$effective_preview_mode" == "direct_entity" ]]; then
@@ -1328,7 +1370,7 @@ capture_variant_bundle() {
       --scenario "$scenario" \
       --addr "127.0.0.1:$port" \
       --viewer-wait "$viewer_wait" \
-      --auto-focus-target first_location \
+      --auto-focus-target "$capture_auto_focus_target" \
       --automation-steps "$hero_steps" \
       --keep-tmp \
       ${no_prewarm_arg:+$no_prewarm_arg}
@@ -1355,6 +1397,9 @@ capture_variant_bundle() {
     cp .tmp/screens/viewer.log "$variant_dir/viewer.log"
     cp "$capture_status_file" "$variant_dir/capture_status.txt"
     effective_crop_window=$(resolve_effective_crop_window "$crop_window" "$entity" "$art_capture" "$art_panel_hidden")
+    if [[ "$crop_window" == "auto" && "$effective_preview_mode" == "direct_entity" ]]; then
+      effective_crop_window="none"
+    fi
     viewer_art_capture_status=$(crop_or_copy_image "$variant_dir/viewer.png" "$variant_dir/viewer_art.png" "$effective_crop_window")
     if [[ "$viewer_art_capture_status" == "crop_failed_fallback" ]]; then
       echo "warn: crop failed, fallback to viewer.png (entity=$entity variant=$variant crop_window=$effective_crop_window)" >&2
@@ -1381,7 +1426,7 @@ capture_variant_bundle() {
         --scenario "$scenario" \
         --addr "127.0.0.1:$port" \
         --viewer-wait "$viewer_wait" \
-        --auto-focus-target first_location \
+        --auto-focus-target "$capture_auto_focus_target" \
         --automation-steps "$closeup_steps" \
         --keep-tmp \
         --no-prewarm
@@ -1464,6 +1509,7 @@ closeup_automation_steps=$closeup_steps
 closeup_pose_label=$closeup_pose_label
 closeup_candidate_index=$closeup_candidate_index
 closeup_candidate_total=$closeup_candidate_total
+capture_auto_focus_target=$capture_auto_focus_target
 crop_window_requested=$crop_window
 crop_window_effective=$effective_crop_window
 viewer_art_capture_status=$viewer_art_capture_status
@@ -1472,6 +1518,8 @@ retry_attempt=$retry_attempt
 art_lighting_enabled=$art_lighting_enabled
 lighting_profile=$lighting_profile
 panel_hidden=$art_panel_hidden
+selection_highlight_mode=$art_selection_highlight_mode
+selection_highlight_enabled=$art_selection_highlight_enabled
 variant_ssim_threshold=$variant_ssim_threshold
 detail_edge_threshold=$detail_edge_threshold
 semantic_gate_mode=$semantic_gate_mode

@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use super::{SelectionKind, Viewer3dScene, ViewerSelection};
+use super::{SelectionKind, Viewer3dConfig, Viewer3dScene, ViewerSelection};
 
 const HALO_BASE_RADIUS: f32 = 0.65;
 const HALO_RADIUS_MULTIPLIER: f32 = 1.9;
@@ -19,6 +19,7 @@ pub(super) struct SelectionEmphasisState {
 
 pub(super) fn update_selection_emphasis(
     mut commands: Commands,
+    config: Res<Viewer3dConfig>,
     scene: Res<Viewer3dScene>,
     selection: Res<ViewerSelection>,
     time: Option<Res<Time>>,
@@ -28,6 +29,11 @@ pub(super) fn update_selection_emphasis(
     mut state: ResMut<SelectionEmphasisState>,
     mut halos: Query<(&mut Transform, &mut Visibility), With<SelectionEmphasisHalo>>,
 ) {
+    if !config.highlight_selected {
+        set_halo_visibility(&state, &mut halos, Visibility::Hidden);
+        return;
+    }
+
     let Some(selected) = selection.current.as_ref() else {
         set_halo_visibility(&state, &mut halos, Visibility::Hidden);
         return;
@@ -148,6 +154,7 @@ mod tests {
     fn selection_emphasis_hides_halo_when_selection_clears() {
         let mut app = App::new();
         app.add_systems(Update, update_selection_emphasis);
+        app.insert_resource(Viewer3dConfig::default());
         app.insert_resource(Viewer3dScene::default());
         app.insert_resource(ViewerSelection::default());
         app.insert_resource(SelectionEmphasisState::default());
@@ -199,6 +206,7 @@ mod tests {
     fn selection_emphasis_hides_halo_for_fragment_selection() {
         let mut app = App::new();
         app.add_systems(Update, update_selection_emphasis);
+        app.insert_resource(Viewer3dConfig::default());
         app.insert_resource(Viewer3dScene::default());
         app.insert_resource(ViewerSelection::default());
         app.insert_resource(SelectionEmphasisState::default());

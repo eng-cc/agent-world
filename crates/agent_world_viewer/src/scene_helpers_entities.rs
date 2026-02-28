@@ -6,6 +6,9 @@ const TWO_D_AGENT_MARKER_MIN_THICKNESS_WORLD: f32 = 0.00004;
 const TWO_D_AGENT_MARKER_MAX_THICKNESS_WORLD: f32 = 0.0016;
 const TWO_D_AGENT_MARKER_MIN_LIFT_M: f32 = 0.18;
 const TWO_D_AGENT_MARKER_MAX_LIFT_M: f32 = 0.85;
+const FACILITY_MARKER_MIN_SCALE_M: f32 = 4.8;
+const POWER_PLANT_SCALE_RATIO_TO_LOCATION_RADIUS: f32 = 0.88;
+const POWER_STORAGE_SCALE_RATIO_TO_LOCATION_RADIUS: f32 = 0.78;
 
 pub(super) fn spawn_agent_two_d_map_marker(
     parent: &mut ChildSpawnerCommands,
@@ -85,6 +88,22 @@ fn asset_translation(base: Vec3, asset_id: &str) -> Vec3 {
     let angle = id_hash_fraction(asset_id) * std::f32::consts::TAU;
     let lateral = Vec3::new(angle.cos(), 0.0, angle.sin()) * ASSET_MARKER_RING_RADIUS;
     base + lateral + Vec3::Y * ASSET_MARKER_VERTICAL_OFFSET
+}
+
+fn facility_marker_scale_for_location(
+    scene: &Viewer3dScene,
+    location_id: &str,
+    cm_to_unit: f32,
+    ratio_to_location_radius: f32,
+) -> f32 {
+    let location_radius_cm = scene
+        .location_radii_cm
+        .get(location_id)
+        .copied()
+        .unwrap_or(600);
+    let location_radius_units = location_render_radius_units(location_radius_cm, cm_to_unit);
+    let min_scale_units = world_units_per_meter(cm_to_unit) * FACILITY_MARKER_MIN_SCALE_M;
+    (location_radius_units * ratio_to_location_radius).max(min_scale_units)
 }
 
 pub(super) fn module_visual_anchor_pos_in_snapshot(
@@ -354,7 +373,7 @@ pub(super) fn spawn_module_visual_entity(
     scene.module_visual_entities.insert(visual_id, entity);
 }
 
-pub(super) fn spawn_power_plant_entity(
+pub(crate) fn spawn_power_plant_entity(
     commands: &mut Commands,
     config: &Viewer3dConfig,
     assets: &Viewer3dAssets,
@@ -364,6 +383,7 @@ pub(super) fn spawn_power_plant_entity(
     location_id: &str,
     location_pos: GeoPos,
 ) {
+    let cm_to_unit = config.effective_cm_to_unit();
     let base = geo_to_vec3(location_pos, origin, config.effective_cm_to_unit());
     let translation = base
         + Vec3::new(
@@ -371,11 +391,18 @@ pub(super) fn spawn_power_plant_entity(
             FACILITY_MARKER_VERTICAL_OFFSET,
             0.0,
         );
+    let marker_scale = Vec3::splat(facility_marker_scale_for_location(
+        scene,
+        location_id,
+        cm_to_unit,
+        POWER_PLANT_SCALE_RATIO_TO_LOCATION_RADIUS,
+    ));
 
     if let Some(entity) = scene.power_plant_entities.get(facility_id) {
-        commands
-            .entity(*entity)
-            .insert(Transform::from_translation(translation));
+        commands.entity(*entity).insert((
+            Transform::from_translation(translation).with_scale(marker_scale),
+            BaseScale(marker_scale),
+        ));
         return;
     }
 
@@ -383,12 +410,12 @@ pub(super) fn spawn_power_plant_entity(
         .spawn((
             Mesh3d(assets.power_plant_mesh.clone()),
             MeshMaterial3d(assets.power_plant_material.clone()),
-            Transform::from_translation(translation),
+            Transform::from_translation(translation).with_scale(marker_scale),
             Name::new(format!("power_plant:{facility_id}:{location_id}")),
             PowerPlantMarker {
                 id: facility_id.to_string(),
             },
-            BaseScale(Vec3::ONE),
+            BaseScale(marker_scale),
         ))
         .id();
     attach_to_scene_root(commands, scene, entity);
@@ -406,7 +433,7 @@ pub(super) fn spawn_power_plant_entity(
         .insert(facility_id.to_string(), entity);
 }
 
-pub(super) fn spawn_power_storage_entity(
+pub(crate) fn spawn_power_storage_entity(
     commands: &mut Commands,
     config: &Viewer3dConfig,
     assets: &Viewer3dAssets,
@@ -416,6 +443,7 @@ pub(super) fn spawn_power_storage_entity(
     location_id: &str,
     location_pos: GeoPos,
 ) {
+    let cm_to_unit = config.effective_cm_to_unit();
     let base = geo_to_vec3(location_pos, origin, config.effective_cm_to_unit());
     let translation = base
         + Vec3::new(
@@ -423,11 +451,18 @@ pub(super) fn spawn_power_storage_entity(
             FACILITY_MARKER_VERTICAL_OFFSET,
             FACILITY_MARKER_LATERAL_OFFSET,
         );
+    let marker_scale = Vec3::splat(facility_marker_scale_for_location(
+        scene,
+        location_id,
+        cm_to_unit,
+        POWER_STORAGE_SCALE_RATIO_TO_LOCATION_RADIUS,
+    ));
 
     if let Some(entity) = scene.power_storage_entities.get(facility_id) {
-        commands
-            .entity(*entity)
-            .insert(Transform::from_translation(translation));
+        commands.entity(*entity).insert((
+            Transform::from_translation(translation).with_scale(marker_scale),
+            BaseScale(marker_scale),
+        ));
         return;
     }
 
@@ -435,12 +470,12 @@ pub(super) fn spawn_power_storage_entity(
         .spawn((
             Mesh3d(assets.power_storage_mesh.clone()),
             MeshMaterial3d(assets.power_storage_material.clone()),
-            Transform::from_translation(translation),
+            Transform::from_translation(translation).with_scale(marker_scale),
             Name::new(format!("power_storage:{facility_id}:{location_id}")),
             PowerStorageMarker {
                 id: facility_id.to_string(),
             },
-            BaseScale(Vec3::ONE),
+            BaseScale(marker_scale),
         ))
         .id();
     attach_to_scene_root(commands, scene, entity);

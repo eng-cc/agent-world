@@ -56,6 +56,8 @@ const TARGET_KIND_POWER_PLANT: &str = "power_plant";
 const TARGET_KIND_POWER_STORAGE: &str = "power_storage";
 const TARGET_KIND_CHUNK: &str = "chunk";
 const TARGET_KIND_FRAGMENT: &str = "fragment";
+const POWER_FOCUS_RADIUS_SCALE_FROM_BASE: f32 = 3.0;
+const POWER_FOCUS_RADIUS_MIN_M: f32 = 32.0;
 
 struct TargetKindSpec<'a> {
     selection_kind: SelectionKind,
@@ -94,7 +96,7 @@ pub(super) fn run_viewer_automation(
     mut queries: ParamSet<(
         Query<(&mut OrbitCamera, &mut Transform, &mut Projection), With<Viewer3dCamera>>,
         Query<(&mut Transform, Option<&BaseScale>)>,
-        Query<&Transform>,
+        Query<(&Transform, Option<&BaseScale>)>,
     )>,
     mut location_markers: Query<&LocationMarker>,
 ) {
@@ -197,7 +199,7 @@ fn apply_step(
     queries: &mut ParamSet<(
         Query<(&mut OrbitCamera, &mut Transform, &mut Projection), With<Viewer3dCamera>>,
         Query<(&mut Transform, Option<&BaseScale>)>,
-        Query<&Transform>,
+        Query<(&Transform, Option<&BaseScale>)>,
     )>,
     location_markers: &mut Query<&LocationMarker>,
     state: &mut ViewerAutomationState,
@@ -216,16 +218,19 @@ fn apply_step(
             }
         }
         ViewerAutomationStep::Focus(target) => {
-            let Some((entity, _, _)) = resolve_target_entity(scene, &target) else {
+            let Some((entity, selection_kind, _)) = resolve_target_entity(scene, &target) else {
                 return StepResult::Pending;
             };
 
-            let target_translation = {
+            let (target_translation, target_base_scale) = {
                 let transform_query = queries.p2();
-                let Ok(target_transform) = transform_query.get(entity) else {
+                let Ok((target_transform, target_base_scale)) = transform_query.get(entity) else {
                     return StepResult::Pending;
                 };
-                target_transform.translation
+                (
+                    target_transform.translation,
+                    target_base_scale.map(|base_scale| base_scale.0),
+                )
             };
 
             let mut camera_query = queries.p0();
@@ -233,6 +238,14 @@ fn apply_step(
                 return StepResult::Pending;
             };
             orbit.focus = target_translation;
+            if let Some(target_radius) = automation_focus_radius_for_target(
+                selection_kind,
+                target_base_scale,
+                viewer_config.effective_cm_to_unit(),
+            ) {
+                let min_radius = orbit_min_radius(viewer_config.effective_cm_to_unit());
+                orbit.radius = target_radius.clamp(min_radius, ORBIT_MAX_RADIUS);
+            }
             orbit.apply_to_transform(&mut camera_transform);
             StepResult::Applied
         }
@@ -398,6 +411,31 @@ fn always_true(_id: &str) -> bool {
 
 fn is_fragment_id(id: &str) -> bool {
     id.starts_with("frag-")
+}
+
+fn automation_focus_radius_for_target(
+    selection_kind: SelectionKind,
+    base_scale: Option<Vec3>,
+    cm_to_unit: f32,
+) -> Option<f32> {
+    match selection_kind {
+        SelectionKind::PowerPlant | SelectionKind::PowerStorage => {
+            let units_per_meter = cm_to_unit.max(f32::EPSILON) * 100.0;
+            let min_radius = POWER_FOCUS_RADIUS_MIN_M * units_per_meter;
+            let scale_extent = base_scale
+                .map(|scale| {
+                    scale
+                        .x
+                        .abs()
+                        .max(scale.y.abs())
+                        .max(scale.z.abs())
+                        .max(f32::EPSILON)
+                })
+                .unwrap_or(min_radius);
+            Some((scale_extent * POWER_FOCUS_RADIUS_SCALE_FROM_BASE).max(min_radius))
+        }
+        _ => None,
+    }
 }
 
 fn config_from_values(
@@ -745,5 +783,31 @@ mod tests {
         assert_eq!(chunk_entity, Entity::from_bits(8));
         assert_eq!(chunk_kind, SelectionKind::Chunk);
         assert_eq!(chunk_id, "chunk-1");
+    }
+
+    #[test]
+    fn automation_focus_radius_for_power_target_has_reasonable_floor() {
+        let cm_to_unit = 0.0000384;
+        let radius = automation_focus_radius_for_target(
+            SelectionKind::PowerPlant,
+            Some(Vec3::splat(0.012)),
+            cm_to_unit,
+        )
+        .expect("power target radius should resolve");
+        let min_floor = POWER_FOCUS_RADIUS_MIN_M * cm_to_unit * 100.0;
+        assert!(radius >= min_floor);
+        assert!(radius > 0.0);
+    }
+
+    #[test]
+    fn automation_focus_radius_for_non_power_target_is_none() {
+        assert_eq!(
+            automation_focus_radius_for_target(
+                SelectionKind::Location,
+                Some(Vec3::splat(0.5)),
+                0.0000384
+            ),
+            None
+        );
     }
 }

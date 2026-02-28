@@ -140,6 +140,71 @@ fn spawn_location_entity_uses_linear_anchor_radius_scale() {
 }
 
 #[test]
+fn spawn_power_entities_scale_with_location_radius_units() {
+    let mut app = App::new();
+    app.add_systems(Update, spawn_power_facility_scale_test_system);
+    app.insert_resource(Viewer3dConfig::default());
+    app.insert_resource(Viewer3dScene::default());
+    app.insert_resource(test_assets());
+
+    app.update();
+
+    let world = app.world_mut();
+    let cm_to_unit = world.resource::<Viewer3dConfig>().effective_cm_to_unit();
+    let location_radius_units = 800.0_f32 * cm_to_unit;
+
+    let mut plant_query = world.query::<(&PowerPlantMarker, &BaseScale)>();
+    let plant_scale = plant_query
+        .iter(world)
+        .find(|(marker, _)| marker.id == "plant-scale")
+        .map(|(_, base)| base.0.x)
+        .expect("power plant marker exists");
+
+    let mut storage_query = world.query::<(&PowerStorageMarker, &BaseScale)>();
+    let storage_scale = storage_query
+        .iter(world)
+        .find(|(marker, _)| marker.id == "storage-scale")
+        .map(|(_, base)| base.0.x)
+        .expect("power storage marker exists");
+
+    assert!(plant_scale >= location_radius_units * 0.6);
+    assert!(plant_scale <= location_radius_units * 1.1);
+    assert!(storage_scale >= location_radius_units * 0.5);
+    assert!(storage_scale <= location_radius_units);
+    assert!(storage_scale < plant_scale);
+}
+
+#[test]
+fn spawn_power_entities_without_location_mesh_when_locations_hidden() {
+    let mut app = App::new();
+    app.add_systems(Update, spawn_power_facility_scale_test_system);
+    app.insert_resource(Viewer3dConfig {
+        show_locations: false,
+        ..Viewer3dConfig::default()
+    });
+    app.insert_resource(Viewer3dScene::default());
+    app.insert_resource(test_assets());
+
+    app.update();
+
+    let world = app.world_mut();
+    assert!(world
+        .resource::<Viewer3dScene>()
+        .location_entities
+        .is_empty());
+
+    let mut plant_query = world.query::<&PowerPlantMarker>();
+    assert!(plant_query
+        .iter(world)
+        .any(|marker| marker.id == "plant-scale"));
+
+    let mut storage_query = world.query::<&PowerStorageMarker>();
+    assert!(storage_query
+        .iter(world)
+        .any(|marker| marker.id == "storage-scale"));
+}
+
+#[test]
 fn spawn_location_entity_renders_fine_grained_ring_details() {
     let mut app = App::new();
     app.add_systems(Update, spawn_location_detail_ring_test_system);

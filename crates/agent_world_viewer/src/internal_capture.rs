@@ -210,7 +210,8 @@ fn render_status_dump(
     } else {
         0
     };
-    let (selection_kind, selection_id) = if let Some(selection) = viewer_selection.current.as_ref() {
+    let (selection_kind, selection_id) = if let Some(selection) = viewer_selection.current.as_ref()
+    {
         (
             selection_kind_label(selection.kind),
             sanitize_status_text(selection.id.as_str()),

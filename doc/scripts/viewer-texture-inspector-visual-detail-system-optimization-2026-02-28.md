@@ -38,6 +38,8 @@
 - **T1 Viewer 启动层改造**：支持 `AGENT_WORLD_VIEWER_PANEL_HIDDEN` 并补测试。
 - **T2 Inspector 系统优化落地**：构图候选策略 + 资源包 + 灯光预设。
 - **T3 回归与结项**：执行 power 回归，更新结论与日志。
+- **T4 构图稳定性修复**：设施尺度归一化 + direct_entity 隔离构图 + no-crop 策略。
+- **T5 材质差异增强**：按实体拉开 power 设施变体差异，压低跨变体 SSIM。
 
 ## 风险
 - **回归耗时增加**：多候选构图会增加重试成本。
@@ -59,5 +61,27 @@
   - 关键线索：`selection_gate_orbit_radius_closeup` 在 power 场景稳定落在 `0.023040`，明显偏小。
 
 ## 后续优化入口
-- 在 T4 引入设施实体尺度归一（按 location 半径/世界单位缩放），修复“设施尺寸与镜头半径不一致”导致的贴脸构图。
 - 回归目标从“仅阈值通过”升级为“阈值通过 + 可读性通过（至少能看清主体轮廓与纹理走向）”。
+- 在 T5 引入实体级材质参数链路（`power_plant` / `power_storage` 独立 roughness/metallic/emissive 通道）以替代 `facility` 统一参数。
+
+## T4 回归结论（2026-03-01）
+- 代码面完成：
+  - 设施实体按 location 半径做尺度归一；`Transform` 与 `BaseScale` 同步更新。
+  - `direct_entity` 预览下隐藏 location 网格干扰，但保留 location 半径与位置数据供设施缩放使用。
+  - 语义 gate 与 closeup 元数据新增 `capture_auto_focus_target`，并在 direct_entity + `--crop-window auto` 时强制 `crop_window_effective=none`。
+  - 高亮开关与 Halo 联动：`AGENT_WORLD_VIEWER_HIGHLIGHT_SELECTED=0` 时不再绘制高亮圈。
+- 证据（probe）：
+  - `output/texture_inspector/probe_focus_radius_power_default_isolated_nocrop_20260301/power_plant/default/meta.txt`
+    - `preview_mode_effective=direct_entity`
+    - `capture_auto_focus_target=first_power_plant`
+    - `crop_window_effective=none`
+    - `selection_gate_orbit_radius_closeup=0.023040`
+    - `selection_gate_pass=1`
+    - `closeup_edge_energy=0.372909`
+  - `output/texture_inspector/probe_power_storage_direct_entity_nocrop_20260301/power_storage/default/meta.txt`
+    - `capture_auto_focus_target=first_power_storage`
+    - `crop_window_effective=none`
+    - `closeup_edge_energy=0.372909`
+- 结论：
+  - T4 已解决“direct_entity 被自动裁切吃掉边缘信息”问题，细节门禁 edge 在 power 场景恢复到可用区间（>=0.35）。
+  - 当前主要阻塞转为“变体差异不足”：`min_pair_ssim` 仍接近 1（约 `0.999974`），需在 T5 做材质链路级增强。

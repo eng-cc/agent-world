@@ -659,6 +659,13 @@ pub(super) fn spawn_location_entity_with_radiation(
         .location_radii_cm
         .insert(location_id.to_string(), radius_cm.max(1));
 
+    if !config.show_locations {
+        if let Some(entity) = scene.location_entities.remove(location_id) {
+            commands.entity(entity).despawn();
+        }
+        return;
+    }
+
     let radius_world_units = location_render_radius_units(radius_cm, config.effective_cm_to_unit());
     let marker_scale = Vec3::splat(radius_world_units);
     let translation = geo_to_vec3(pos, origin, config.effective_cm_to_unit());
@@ -1272,8 +1279,9 @@ mod scene_helpers_entities;
 use scene_helpers_entities::{
     id_hash_fraction, module_visual_anchor_pos_in_scene, module_visual_anchor_pos_in_snapshot,
     spawn_agent_two_d_map_marker, spawn_asset_entity, spawn_location_shell_details,
-    spawn_module_visual_entity, spawn_power_plant_entity, spawn_power_storage_entity,
+    spawn_module_visual_entity,
 };
+pub(super) use scene_helpers_entities::{spawn_power_plant_entity, spawn_power_storage_entity};
 
 pub(super) fn spawn_chunk_entity(
     commands: &mut Commands,

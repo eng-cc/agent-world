@@ -168,6 +168,52 @@ pub(super) fn spawn_location_composite_material_detail_test_system(
     );
 }
 
+pub(super) fn spawn_power_facility_scale_test_system(
+    mut commands: Commands,
+    config: Res<Viewer3dConfig>,
+    assets: Res<Viewer3dAssets>,
+    mut scene: ResMut<Viewer3dScene>,
+) {
+    let origin = GeoPos::new(0.0, 0.0, 0.0);
+    let location_id = "loc-facility-scale";
+    let location_pos = GeoPos::new(0.0, 0.0, 0.0);
+    spawn_location_entity_with_radiation(
+        &mut commands,
+        &config,
+        &assets,
+        &mut scene,
+        origin,
+        location_id,
+        "FacilityScale",
+        location_pos,
+        MaterialKind::Metal,
+        800,
+        0,
+        None,
+    );
+
+    spawn_power_plant_entity(
+        &mut commands,
+        &config,
+        &assets,
+        &mut scene,
+        origin,
+        "plant-scale",
+        location_id,
+        location_pos,
+    );
+    spawn_power_storage_entity(
+        &mut commands,
+        &config,
+        &assets,
+        &mut scene,
+        origin,
+        "storage-scale",
+        location_id,
+        location_pos,
+    );
+}
+
 pub(super) fn spawn_agent_scale_test_system(
     mut commands: Commands,
     config: Res<Viewer3dConfig>,
