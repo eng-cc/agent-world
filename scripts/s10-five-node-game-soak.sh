@@ -9,34 +9,36 @@ usage() {
 Usage: ./scripts/s10-five-node-game-soak.sh [options]
 
 Status:
-  blocked (2026-02-28): this script depends on removed world_viewer_live embedded-node flags.
-  Use world_chain_runtime/world_game_launcher instead.
+  active (2026-02-28): this script runs a five-node soak via world_chain_runtime.
 
 Options:
   --duration-secs <n>              soak duration seconds (default: 1800)
-  --scenario <name>                world_viewer_live scenario (default: llm_bootstrap)
-  --llm                            enable LLM mode for world_viewer_live
-  --no-llm                         disable LLM mode (default)
+  --scenario <name>                scenario label used to derive world id (default: llm_bootstrap)
+  --world-id <id>                  override world id (default: s10-<scenario>)
+  --llm                            legacy compatibility flag (no effect, recorded only)
+  --no-llm                         legacy compatibility flag (default)
   --reward-runtime-epoch-duration-secs <n>
-                                   reward settlement epoch duration seconds (default: 60)
-  --reward-points-per-credit <n>   reward points -> credit ratio (default: 100)
+                                   legacy compatibility flag (no effect, recorded only)
+  --reward-points-per-credit <n>   legacy compatibility flag (no effect, recorded only)
   --base-port <n>                  base port for node port allocation (default: 5810)
-  --bind-host <host>               bind host for gossip/live/libp2p endpoints (default: 127.0.0.1)
+  --bind-host <host>               bind host for gossip/status endpoints (default: 127.0.0.1)
   --out-dir <path>                 output root (default: .tmp/s10_game_longrun)
   --startup-timeout-secs <n>       startup grace before monitor loop (default: 20)
   --poll-interval-secs <n>         monitor loop interval (default: 2)
+  --curl-timeout-secs <n>          HTTP timeout for status polling (default: 2)
+  --node-tick-ms <n>               node tick interval in milliseconds (default: 200)
   --max-stall-secs <n>             gate threshold for max no-progress window (default: 300)
   --max-lag-p95 <n>                gate threshold for p95(network_height - committed_height) (default: 12)
-  --max-distfs-failure-ratio <r>   gate threshold for DistFS failed/total ratio (0~1, default: 0.25)
+  --max-distfs-failure-ratio <r>   compatibility threshold, currently unavailable metric (default: 0.25)
   --max-settlement-apply-failure-ratio <r>
-                                   gate threshold for settlement apply failed/attempts ratio (0~1, default: 0)
+                                   compatibility threshold, currently unavailable metric (default: 0)
   --node-auto-attest-all           enable local auto-attesting all validators on all nodes
   --node-no-auto-attest-all        disable local auto-attesting all validators on all nodes
   --node-auto-attest-sequencer-only
                                    enable auto-attest only on sequencer (default)
-  --preserve-node-state            keep existing output/node-distfs/s10-* snapshot/state
+  --preserve-node-state            keep existing output/node-distfs + output/chain-runtime state
   --no-prewarm                     skip cargo build prewarm
-  --dry-run                        write config and commands only, do not start processes
+  --dry-run                        write config/commands only, do not start processes
   -h, --help                       show help
 
 Topology:
@@ -53,24 +55,8 @@ Output:
     summary.json
     summary.md
     failures.md (only when failed)
-    nodes/<node_id>/{command.txt,stdout.log,stderr.log,report/}
+    nodes/<node_id>/{command.txt,stdout.log,stderr.log}
 USAGE
-}
-
-legacy_chain_entrypoint_block() {
-  cat >&2 <<'MSG'
-error: scripts/s10-five-node-game-soak.sh is blocked.
-
-Reason:
-- world_viewer_live embedded-node path was removed on 2026-02-28.
-- legacy flags used by this script (--topology/--node-*/--reward-runtime-*) no longer work.
-
-Migration:
-1) Multi-node chain soak: migrate to world_chain_runtime orchestration.
-2) Single-stack game launch: use world_game_launcher.
-3) Details: doc/testing/launcher-chain-script-migration-2026-02-28.md
-MSG
-  exit 1
 }
 
 run() {
@@ -88,25 +74,23 @@ trim() {
 join_by() {
   local sep=$1
   shift || true
-  local out=""
   local first=1
   local item
   for item in "$@"; do
     [[ -z "$item" ]] && continue
     if [[ "$first" -eq 1 ]]; then
-      out="$item"
+      printf '%s' "$item"
       first=0
     else
-      out="${out}${sep}${item}"
+      printf '%s%s' "$sep" "$item"
     fi
   done
-  printf '%s' "$out"
 }
 
 ensure_positive_int() {
   local flag=$1
   local value=$2
-  if [[ ! "$value" =~ ^[0-9]+$ ]] || [[ "$value" -le 0 ]]; then
+  if [[ ! "$value" =~ ^[0-9]+$ ]] || (( value <= 0 )); then
     echo "invalid $flag: $value" >&2
     exit 2
   fi
@@ -130,8 +114,27 @@ ensure_ratio_between_zero_and_one() {
   fi
 }
 
+safe_int() {
+  local value=$1
+  if [[ "$value" =~ ^-?[0-9]+$ ]]; then
+    printf '%s' "$value"
+  else
+    printf '0'
+  fi
+}
+
+slugify() {
+  local raw=$1
+  local slug
+  slug=$(printf '%s' "$raw" | tr -cs '[:alnum:]_-' '-')
+  slug=${slug##-}
+  slug=${slug%%-}
+  printf '%s' "$slug"
+}
+
 duration_secs=1800
 scenario="llm_bootstrap"
+world_id_override=""
 llm_enabled=0
 reward_runtime_epoch_duration_secs=60
 reward_points_per_credit=100
@@ -140,6 +143,8 @@ bind_host="127.0.0.1"
 out_root=".tmp/s10_game_longrun"
 startup_timeout_secs=20
 poll_interval_secs=2
+curl_timeout_secs=2
+node_tick_ms=200
 max_stall_secs=300
 max_lag_p95=12
 max_distfs_failure_ratio="0.25"
@@ -157,6 +162,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --scenario)
       scenario=${2:-}
+      shift 2
+      ;;
+    --world-id)
+      world_id_override=${2:-}
       shift 2
       ;;
     --llm)
@@ -193,6 +202,14 @@ while [[ $# -gt 0 ]]; do
       ;;
     --poll-interval-secs)
       poll_interval_secs=${2:-}
+      shift 2
+      ;;
+    --curl-timeout-secs)
+      curl_timeout_secs=${2:-}
+      shift 2
+      ;;
+    --node-tick-ms)
+      node_tick_ms=${2:-}
       shift 2
       ;;
     --max-stall-secs)
@@ -247,14 +264,14 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-legacy_chain_entrypoint_block
-
 ensure_positive_int "--duration-secs" "$duration_secs"
 ensure_positive_int "--reward-runtime-epoch-duration-secs" "$reward_runtime_epoch_duration_secs"
 ensure_positive_int "--reward-points-per-credit" "$reward_points_per_credit"
 ensure_positive_int "--base-port" "$base_port"
 ensure_positive_int "--startup-timeout-secs" "$startup_timeout_secs"
 ensure_positive_int "--poll-interval-secs" "$poll_interval_secs"
+ensure_positive_int "--curl-timeout-secs" "$curl_timeout_secs"
+ensure_positive_int "--node-tick-ms" "$node_tick_ms"
 ensure_non_negative_int "--max-stall-secs" "$max_stall_secs"
 ensure_non_negative_int "--max-lag-p95" "$max_lag_p95"
 ensure_ratio_between_zero_and_one "--max-distfs-failure-ratio" "$max_distfs_failure_ratio"
@@ -266,18 +283,34 @@ if [[ -z "$scenario" ]]; then
   exit 2
 fi
 
+world_id_override=$(trim "$world_id_override")
+if [[ -n "$world_id_override" ]]; then
+  world_id="$world_id_override"
+else
+  scenario_slug=$(slugify "$scenario")
+  if [[ -z "$scenario_slug" ]]; then
+    scenario_slug="default"
+  fi
+  world_id="s10-${scenario_slug}"
+fi
+
 if ! command -v jq >/dev/null 2>&1; then
   echo "jq is required for metrics aggregation but not found in PATH" >&2
   exit 1
 fi
 
-if [[ "$prewarm" -eq 1 ]] && [[ "$dry_run" -eq 0 ]]; then
-  run env -u RUSTC_WRAPPER cargo build -p agent_world --bin world_viewer_live
+if ! command -v curl >/dev/null 2>&1; then
+  echo "curl is required for endpoint polling but not found in PATH" >&2
+  exit 1
 fi
 
-live_bin="$repo_root/target/debug/world_viewer_live"
-if [[ "$dry_run" -eq 0 ]] && [[ ! -x "$live_bin" ]]; then
-  echo "world_viewer_live binary not found: $live_bin" >&2
+if [[ "$prewarm" -eq 1 ]] && [[ "$dry_run" -eq 0 ]]; then
+  run env -u RUSTC_WRAPPER cargo build -p agent_world --bin world_chain_runtime
+fi
+
+chain_bin="$repo_root/target/debug/world_chain_runtime"
+if [[ "$dry_run" -eq 0 ]] && [[ ! -x "$chain_bin" ]]; then
+  echo "world_chain_runtime binary not found: $chain_bin" >&2
   echo "run with prewarm enabled or build it manually first" >&2
   exit 1
 fi
@@ -313,14 +346,9 @@ node_gossip_port() {
   printf '%s' $((base_port + idx + 1))
 }
 
-node_viewer_bind_port() {
+node_status_port() {
   local idx=$1
-  printf '%s' $((base_port + idx + 11))
-}
-
-node_repl_port() {
-  local idx=$1
-  printf '%s' $((base_port + idx + 31))
+  printf '%s' $((base_port + idx + 21))
 }
 
 node_gossip_addr() {
@@ -328,14 +356,24 @@ node_gossip_addr() {
   printf '%s:%s' "$bind_host" "$(node_gossip_port "$idx")"
 }
 
-node_viewer_bind_addr() {
+node_status_bind_addr() {
   local idx=$1
-  printf '%s:%s' "$bind_host" "$(node_viewer_bind_port "$idx")"
+  printf '%s:%s' "$bind_host" "$(node_status_port "$idx")"
 }
 
-node_repl_addr() {
+node_status_url() {
   local idx=$1
-  printf '/ip4/%s/tcp/%s' "$bind_host" "$(node_repl_port "$idx")"
+  printf 'http://%s/v1/chain/status' "$(node_status_bind_addr "$idx")"
+}
+
+node_balances_url() {
+  local idx=$1
+  printf 'http://%s/v1/chain/balances' "$(node_status_bind_addr "$idx")"
+}
+
+node_healthz_url() {
+  local idx=$1
+  printf 'http://%s/healthz' "$(node_status_bind_addr "$idx")"
 }
 
 run_config_json="$run_dir/run_config.json"
@@ -343,17 +381,22 @@ summary_md="$run_dir/summary.md"
 timeline_csv="$run_dir/timeline.csv"
 summary_json="$run_dir/summary.json"
 failures_md="$run_dir/failures.md"
+lag_values_file="$run_dir/.lag_values.txt"
+runtime_errors_tsv="$run_dir/.runtime_errors.tsv"
+: > "$lag_values_file"
+: > "$runtime_errors_tsv"
 
 node_table_tsv="$run_dir/.nodes.tsv"
 : > "$node_table_tsv"
 for idx in "${!node_ids[@]}"; do
-  printf '%s\t%s\t%s\t%s\t%s\t%s\n' \
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
     "${node_ids[$idx]}" \
     "${node_roles[$idx]}" \
     "${node_stakes[$idx]}" \
     "$(node_gossip_addr "$idx")" \
-    "$(node_viewer_bind_addr "$idx")" \
-    "$(node_repl_addr "$idx")" >> "$node_table_tsv"
+    "$(node_status_bind_addr "$idx")" \
+    "$(node_status_url "$idx")" \
+    "$(node_balances_url "$idx")" >> "$node_table_tsv"
 done
 
 validators_json=$(printf '%s\n' "${validator_specs[@]}" | jq -R -s '
@@ -370,28 +413,39 @@ nodes_json=$(jq -R -s '
       role: .[1],
       stake: (.[2] | tonumber),
       gossip_bind: .[3],
-      viewer_bind: .[4],
-      repl_listen: .[5]
+      status_bind: .[4],
+      status_url: .[5],
+      balances_url: .[6]
     })
 ' "$node_table_tsv")
+
+node_auto_attest_mode_label="off"
+if [[ "$node_auto_attest_mode" -eq 2 ]]; then
+  node_auto_attest_mode_label="all"
+elif [[ "$node_auto_attest_mode" -eq 1 ]]; then
+  node_auto_attest_mode_label="sequencer_only"
+fi
 
 jq -n \
   --arg run_dir "$run_dir" \
   --arg scenario "$scenario" \
+  --arg world_id "$world_id" \
   --arg bind_host "$bind_host" \
   --arg out_dir "$out_root" \
+  --arg auto_attest_mode "$node_auto_attest_mode_label" \
   --argjson duration_secs "$duration_secs" \
   --argjson llm_enabled "$llm_enabled" \
   --argjson reward_runtime_epoch_duration_secs "$reward_runtime_epoch_duration_secs" \
   --argjson reward_points_per_credit "$reward_points_per_credit" \
+  --argjson node_tick_ms "$node_tick_ms" \
   --argjson base_port "$base_port" \
   --argjson startup_timeout_secs "$startup_timeout_secs" \
   --argjson poll_interval_secs "$poll_interval_secs" \
+  --argjson curl_timeout_secs "$curl_timeout_secs" \
   --argjson max_stall_secs "$max_stall_secs" \
   --argjson max_lag_p95 "$max_lag_p95" \
   --argjson max_distfs_failure_ratio "$max_distfs_failure_ratio" \
   --argjson max_settlement_apply_failure_ratio "$max_settlement_apply_failure_ratio" \
-  --argjson node_auto_attest_mode "$node_auto_attest_mode" \
   --argjson isolate_node_state "$isolate_node_state" \
   --argjson dry_run "$dry_run" \
   --argjson validators "$validators_json" \
@@ -399,30 +453,32 @@ jq -n \
   '{
     run_dir: $run_dir,
     scenario: $scenario,
-    llm_enabled: ($llm_enabled == 1),
-    reward_runtime_epoch_duration_secs: $reward_runtime_epoch_duration_secs,
-    reward_points_per_credit: $reward_points_per_credit,
+    world_id: $world_id,
+    llm_enabled_compat: ($llm_enabled == 1),
+    reward_runtime_epoch_duration_secs_compat: $reward_runtime_epoch_duration_secs,
+    reward_points_per_credit_compat: $reward_points_per_credit,
+    node_tick_ms: $node_tick_ms,
     duration_secs: $duration_secs,
     bind_host: $bind_host,
     base_port: $base_port,
     startup_timeout_secs: $startup_timeout_secs,
     poll_interval_secs: $poll_interval_secs,
+    curl_timeout_secs: $curl_timeout_secs,
     thresholds: {
       max_stall_secs: $max_stall_secs,
       max_lag_p95: $max_lag_p95,
       max_distfs_failure_ratio: $max_distfs_failure_ratio,
       max_settlement_apply_failure_ratio: $max_settlement_apply_failure_ratio
     },
-    node_auto_attest_mode: (
-      if $node_auto_attest_mode == 2 then "all"
-      elif $node_auto_attest_mode == 1 then "sequencer_only"
-      else "off"
-      end
-    ),
+    node_auto_attest_mode: $auto_attest_mode,
     isolate_node_state: ($isolate_node_state == 1),
     dry_run: ($dry_run == 1),
     validators: $validators,
-    nodes: $nodes
+    nodes: $nodes,
+    compatibility_notes: [
+      "--llm/--no-llm are accepted but no longer affect world_chain_runtime",
+      "--reward-runtime-* options are accepted but recorded only"
+    ]
   }' > "$run_config_json"
 
 {
@@ -431,19 +487,15 @@ jq -n \
   echo "- run_dir: \`$run_dir\`"
   echo "- duration_secs: \`$duration_secs\`"
   echo "- scenario: \`$scenario\`"
-  echo "- llm_enabled: \`$llm_enabled\`"
-  echo "- reward_runtime_epoch_duration_secs: \`$reward_runtime_epoch_duration_secs\`"
-  echo "- reward_points_per_credit: \`$reward_points_per_credit\`"
+  echo "- world_id: \`$world_id\`"
+  echo "- llm_enabled_compat: \`$llm_enabled\`"
+  echo "- reward_runtime_epoch_duration_secs_compat: \`$reward_runtime_epoch_duration_secs\`"
+  echo "- reward_points_per_credit_compat: \`$reward_points_per_credit\`"
+  echo "- node_tick_ms: \`$node_tick_ms\`"
   echo "- max_stall_secs: \`$max_stall_secs\`"
   echo "- max_lag_p95: \`$max_lag_p95\`"
-  echo "- max_distfs_failure_ratio: \`$max_distfs_failure_ratio\`"
-  echo "- max_settlement_apply_failure_ratio: \`$max_settlement_apply_failure_ratio\`"
-  node_auto_attest_mode_label="off"
-  if [[ "$node_auto_attest_mode" -eq 2 ]]; then
-    node_auto_attest_mode_label="all"
-  elif [[ "$node_auto_attest_mode" -eq 1 ]]; then
-    node_auto_attest_mode_label="sequencer_only"
-  fi
+  echo "- max_distfs_failure_ratio (compat): \`$max_distfs_failure_ratio\`"
+  echo "- max_settlement_apply_failure_ratio (compat): \`$max_settlement_apply_failure_ratio\`"
   echo "- node_auto_attest_mode: \`$node_auto_attest_mode_label\`"
   echo "- isolate_node_state: \`$isolate_node_state\`"
   echo
@@ -470,33 +522,20 @@ prepare_node_command() {
   local idx=$1
   local node_id=${node_ids[$idx]}
   local role=${node_roles[$idx]}
-  local report_dir="$run_dir/nodes/$node_id/report"
   local -a cmd=(
-    "$live_bin"
-    "$scenario"
-    --topology single
-    --bind "$(node_viewer_bind_addr "$idx")"
+    "$chain_bin"
     --node-id "$node_id"
+    --world-id "$world_id"
+    --status-bind "$(node_status_bind_addr "$idx")"
     --node-role "$role"
-    --reward-runtime-enable
-    --reward-runtime-epoch-duration-secs "$reward_runtime_epoch_duration_secs"
-    --reward-points-per-credit "$reward_points_per_credit"
-    --reward-runtime-leader-node "${node_ids[0]}"
-    --reward-runtime-report-dir "$report_dir"
+    --node-tick-ms "$node_tick_ms"
     --node-gossip-bind "$(node_gossip_addr "$idx")"
-    --node-repl-libp2p-listen "$(node_repl_addr "$idx")"
   )
 
   if [[ "$node_auto_attest_mode" -eq 2 ]] || { [[ "$node_auto_attest_mode" -eq 1 ]] && [[ "$role" == "sequencer" ]]; }; then
     cmd+=(--node-auto-attest-all)
   else
     cmd+=(--node-no-auto-attest-all)
-  fi
-
-  if [[ "$llm_enabled" -eq 1 ]]; then
-    cmd+=(--llm)
-  else
-    cmd+=(--no-llm)
   fi
 
   local validator
@@ -510,7 +549,6 @@ prepare_node_command() {
       continue
     fi
     cmd+=(--node-gossip-peer "$(node_gossip_addr "$peer_idx")")
-    cmd+=(--node-repl-libp2p-peer "$(node_repl_addr "$peer_idx")")
   done
 
   prepared_cmd=("${cmd[@]}")
@@ -520,16 +558,19 @@ isolate_node_state_dirs() {
   local backup_root="$run_dir/node_state_backup"
   local node_id state_dir backup_dir
   for node_id in "${node_ids[@]}"; do
-    state_dir="$repo_root/output/node-distfs/$node_id"
-    if [[ ! -d "$state_dir" ]]; then
-      continue
-    fi
-    run mkdir -p "$backup_root"
-    backup_dir="$backup_root/${node_id}-$(date +%s)"
-    while [[ -e "$backup_dir" ]]; do
-      backup_dir="${backup_dir}-$RANDOM"
+    for state_dir in \
+      "$repo_root/output/node-distfs/$node_id" \
+      "$repo_root/output/chain-runtime/$node_id"; do
+      if [[ ! -e "$state_dir" ]]; then
+        continue
+      fi
+      run mkdir -p "$backup_root"
+      backup_dir="$backup_root/$(basename "$(dirname "$state_dir")")-${node_id}-$(date +%s)"
+      while [[ -e "$backup_dir" ]]; do
+        backup_dir="${backup_dir}-$RANDOM"
+      done
+      run mv "$state_dir" "$backup_dir"
     done
-    run mv "$state_dir" "$backup_dir"
   done
 }
 
@@ -543,9 +584,8 @@ stop_active_processes() {
   fi
   active_cleanup_done=1
 
-  local idx
-  for idx in "${!active_pids[@]}"; do
-    local pid=${active_pids[$idx]}
+  local pid
+  for pid in "${active_pids[@]}"; do
     if kill -0 "$pid" >/dev/null 2>&1; then
       kill "$pid" >/dev/null 2>&1 || true
     fi
@@ -554,7 +594,6 @@ stop_active_processes() {
   local deadline=$(( $(date +%s) + 8 ))
   while :; do
     local any_alive=0
-    local pid
     for pid in "${active_pids[@]}"; do
       if kill -0 "$pid" >/dev/null 2>&1; then
         any_alive=1
@@ -575,7 +614,6 @@ stop_active_processes() {
     sleep 1
   done
 
-  local pid
   for pid in "${active_pids[@]}"; do
     wait "$pid" >/dev/null 2>&1 || true
   done
@@ -591,13 +629,11 @@ launch_node() {
   shift
 
   local node_dir="$run_dir/nodes/$node_name"
-  local report_dir="$node_dir/report"
   local stdout_log="$node_dir/stdout.log"
   local stderr_log="$node_dir/stderr.log"
   local cmd_txt="$node_dir/command.txt"
 
-  run mkdir -p "$report_dir"
-
+  run mkdir -p "$node_dir"
   printf '%q ' "$@" > "$cmd_txt"
   printf '\n' >> "$cmd_txt"
 
@@ -608,9 +644,35 @@ launch_node() {
   active_nodes+=("$node_name")
 }
 
+wait_for_startup_ready() {
+  local deadline=$(( $(date +%s) + startup_timeout_secs ))
+  while :; do
+    local all_ready=1
+    local idx
+    for idx in "${!node_ids[@]}"; do
+      if ! kill -0 "${active_pids[$idx]}" >/dev/null 2>&1; then
+        echo "node exited before startup ready: ${active_nodes[$idx]}" >&2
+        return 1
+      fi
+      if ! curl -fsS --max-time "$curl_timeout_secs" "$(node_healthz_url "$idx")" >/dev/null 2>&1; then
+        all_ready=0
+      fi
+    done
+
+    if [[ "$all_ready" -eq 1 ]]; then
+      return 0
+    fi
+    if (( $(date +%s) >= deadline )); then
+      echo "startup timeout waiting for /healthz on all nodes" >&2
+      return 1
+    fi
+    sleep 1
+  done
+}
+
 analysis_report_count=0
 analysis_gate_status="insufficient_data"
-analysis_gate_notes="no_epoch_reports"
+analysis_gate_notes="no_samples"
 analysis_max_stall_secs_observed=0
 analysis_lag_p95=0
 analysis_distfs_failure_ratio="0.000000"
@@ -624,279 +686,252 @@ analysis_settlement_positive_samples=0
 analysis_minted_non_empty_samples=0
 analysis_monotonic_ok=true
 analysis_monotonic_violation_nodes=""
+analysis_status_samples_ok=0
+analysis_balances_samples_ok=0
+analysis_running_false_samples=0
+analysis_last_error_samples=0
+analysis_balance_load_error_samples=0
+analysis_peer_zero_samples=0
+analysis_http_failure_samples=0
 
-analyze_metrics() {
-  analysis_report_count=0
-  analysis_gate_status="insufficient_data"
-  analysis_gate_notes="no_epoch_reports"
-  analysis_max_stall_secs_observed=0
-  analysis_lag_p95=0
-  analysis_distfs_failure_ratio="0.000000"
-  analysis_distfs_total_checks=0
-  analysis_distfs_failed_checks=0
-  analysis_settlement_apply_failure_ratio="0.000000"
-  analysis_settlement_apply_attempts=0
-  analysis_settlement_apply_failures=0
-  analysis_invariant_all_ok=true
-  analysis_settlement_positive_samples=0
-  analysis_minted_non_empty_samples=0
-  analysis_monotonic_ok=true
-  analysis_monotonic_violation_nodes=""
+best_height=-1
+last_progress_epoch_sec=0
+declare -A node_prev_committed=()
+declare -A node_monotonic_violations=()
 
-  local -a report_files=()
-  if [[ -d "$run_dir/nodes" ]]; then
-    while IFS= read -r report_path; do
-      report_files+=("$report_path")
-    done < <(find "$run_dir/nodes" -mindepth 3 -maxdepth 6 -type f -name 'epoch-*.json' | sort)
+append_timeline_sample() {
+  local node_name=$1
+  local epoch_index=$2
+  local observed_at_unix_ms=$3
+  local committed_height=$4
+  local network_committed_height=$5
+  local lag=$6
+  local invariant_ok=$7
+  local total_distributed_points=$8
+  local minted_record_count=$9
+  local report_path=${10}
+
+  jq -rRn \
+    --arg node "$node_name" \
+    --arg epoch "$epoch_index" \
+    --arg observed "$observed_at_unix_ms" \
+    --arg committed "$committed_height" \
+    --arg network "$network_committed_height" \
+    --arg lag "$lag" \
+    --arg invariant "$invariant_ok" \
+    --arg points "$total_distributed_points" \
+    --arg minted "$minted_record_count" \
+    --arg report "$report_path" \
+    '[
+      $node,
+      ($epoch|tonumber),
+      ($observed|tonumber),
+      ($committed|tonumber),
+      ($network|tonumber),
+      ($lag|tonumber),
+      0,
+      0,
+      "0.000000",
+      ($invariant == "true"),
+      ($points|tonumber),
+      ($minted|tonumber),
+      0,
+      0,
+      "0.000000",
+      $report
+    ] | @csv' >> "$timeline_csv"
+}
+
+poll_node_once() {
+  local idx=$1
+  local node_name=${node_ids[$idx]}
+  local status_url
+  status_url=$(node_status_url "$idx")
+  local balances_url
+  balances_url=$(node_balances_url "$idx")
+
+  local status_json=""
+  local balances_json=""
+  local status_ok=0
+  local balances_ok=0
+
+  if status_json=$(curl -fsS --max-time "$curl_timeout_secs" "$status_url" 2>/dev/null); then
+    status_ok=1
+  fi
+  if balances_json=$(curl -fsS --max-time "$curl_timeout_secs" "$balances_url" 2>/dev/null); then
+    balances_ok=1
   fi
 
-  analysis_report_count=${#report_files[@]}
-  if (( analysis_report_count == 0 )); then
+  local observed_at_unix_ms epoch_index committed_height network_committed_height running known_peer_heads last_error
+  observed_at_unix_ms=$(( $(date +%s) * 1000 ))
+  epoch_index=0
+  committed_height=0
+  network_committed_height=0
+  running="false"
+  known_peer_heads=0
+  last_error=""
+
+  if [[ "$status_ok" -eq 1 ]]; then
+    observed_at_unix_ms=$(safe_int "$(jq -r '.observed_at_unix_ms // 0' <<< "$status_json")")
+    epoch_index=$(safe_int "$(jq -r '.consensus.epoch // 0' <<< "$status_json")")
+    committed_height=$(safe_int "$(jq -r '.consensus.committed_height // 0' <<< "$status_json")")
+    network_committed_height=$(safe_int "$(jq -r '.consensus.network_committed_height // 0' <<< "$status_json")")
+    running=$(jq -r '.running // false' <<< "$status_json")
+    known_peer_heads=$(safe_int "$(jq -r '.consensus.known_peer_heads // 0' <<< "$status_json")")
+    last_error=$(jq -r '.last_error // empty' <<< "$status_json")
+  fi
+
+  local reward_mint_record_count node_power_credit_balance node_main_token_liquid_balance balance_load_error
+  reward_mint_record_count=0
+  node_power_credit_balance=0
+  node_main_token_liquid_balance=0
+  balance_load_error=""
+  if [[ "$balances_ok" -eq 1 ]]; then
+    reward_mint_record_count=$(safe_int "$(jq -r '.reward_mint_record_count // 0' <<< "$balances_json")")
+    node_power_credit_balance=$(safe_int "$(jq -r '.node_power_credit_balance // 0' <<< "$balances_json")")
+    node_main_token_liquid_balance=$(safe_int "$(jq -r '.node_main_token_liquid_balance // 0' <<< "$balances_json")")
+    balance_load_error=$(jq -r '.load_error // empty' <<< "$balances_json")
+  fi
+
+  local lag=$((network_committed_height - committed_height))
+  if (( lag < 0 )); then
+    lag=0
+  fi
+
+  local invariant_ok="true"
+  if [[ "$running" != "true" ]] || [[ -n "$last_error" ]]; then
+    invariant_ok="false"
+  fi
+
+  append_timeline_sample \
+    "$node_name" \
+    "$epoch_index" \
+    "$observed_at_unix_ms" \
+    "$committed_height" \
+    "$network_committed_height" \
+    "$lag" \
+    "$invariant_ok" \
+    "$node_power_credit_balance" \
+    "$reward_mint_record_count" \
+    "$status_url"
+
+  analysis_report_count=$((analysis_report_count + 1))
+
+  if [[ "$status_ok" -eq 1 ]]; then
+    analysis_status_samples_ok=$((analysis_status_samples_ok + 1))
+  else
+    analysis_http_failure_samples=$((analysis_http_failure_samples + 1))
+  fi
+  if [[ "$balances_ok" -eq 1 ]]; then
+    analysis_balances_samples_ok=$((analysis_balances_samples_ok + 1))
+  else
+    analysis_http_failure_samples=$((analysis_http_failure_samples + 1))
+  fi
+
+  if [[ "$running" != "true" ]]; then
+    analysis_running_false_samples=$((analysis_running_false_samples + 1))
+  fi
+  if [[ -n "$last_error" ]]; then
+    analysis_last_error_samples=$((analysis_last_error_samples + 1))
+    printf '%s\t%s\n' "$node_name" "$last_error" >> "$runtime_errors_tsv"
+  fi
+  if [[ -n "$balance_load_error" ]]; then
+    analysis_balance_load_error_samples=$((analysis_balance_load_error_samples + 1))
+  fi
+  if (( known_peer_heads <= 0 )); then
+    analysis_peer_zero_samples=$((analysis_peer_zero_samples + 1))
+  fi
+
+  if (( reward_mint_record_count > 0 )); then
+    analysis_minted_non_empty_samples=$((analysis_minted_non_empty_samples + 1))
+  fi
+  if (( node_main_token_liquid_balance > 0 || node_power_credit_balance > 0 )); then
+    analysis_settlement_positive_samples=$((analysis_settlement_positive_samples + 1))
+  fi
+
+  echo "$lag" >> "$lag_values_file"
+
+  local now_sec
+  now_sec=$(date +%s)
+  if (( best_height < 0 )); then
+    best_height=$committed_height
+    last_progress_epoch_sec=$now_sec
+  elif (( committed_height > best_height )); then
+    best_height=$committed_height
+    last_progress_epoch_sec=$now_sec
+  fi
+  local stall=$((now_sec - last_progress_epoch_sec))
+  if (( stall > analysis_max_stall_secs_observed )); then
+    analysis_max_stall_secs_observed=$stall
+  fi
+
+  local prev_committed=${node_prev_committed[$node_name]:-}
+  if [[ -n "$prev_committed" ]] && (( committed_height < prev_committed )); then
+    node_monotonic_violations["$node_name"]=1
+  fi
+  node_prev_committed["$node_name"]=$committed_height
+}
+
+poll_all_nodes_once() {
+  local idx
+  for idx in "${!node_ids[@]}"; do
+    poll_node_once "$idx"
+  done
+}
+
+compute_lag_p95() {
+  local lag_count
+  lag_count=$(wc -l < "$lag_values_file" | tr -d ' ')
+  if [[ -z "$lag_count" ]]; then
+    lag_count=0
+  fi
+  if (( lag_count <= 0 )); then
+    analysis_lag_p95=0
     return 0
   fi
 
-  local samples_tsv="$run_dir/.metric_samples.tsv"
-  : > "$samples_tsv"
+  local sorted_lag_file="$run_dir/.lag_values.sorted.txt"
+  sort -n "$lag_values_file" > "$sorted_lag_file"
+  local p95_rank=$(( (95 * lag_count + 99) / 100 ))
+  if (( p95_rank < 1 )); then
+    p95_rank=1
+  fi
+  analysis_lag_p95=$(sed -n "${p95_rank}p" "$sorted_lag_file")
+  analysis_lag_p95=$(safe_int "$analysis_lag_p95")
+}
 
-  declare -A node_total_max=()
-  declare -A node_failed_at_max=()
-  declare -A node_settlement_attempts_max=()
-  declare -A node_settlement_failures_at_max=()
-  local invariant_failed=0
+finalize_metric_gate() {
+  compute_lag_p95
 
-  local report_file node_name metrics
-  local epoch_index observed_at committed_height network_committed_height total_checks failed_checks
-  local invariant_ok total_distributed_points minted_record_count lag ratio
-  local settlement_apply_attempts_total settlement_apply_failures_total settlement_apply_ratio
-  for report_file in "${report_files[@]}"; do
-    node_name=${report_file#"$run_dir/nodes/"}
-    node_name=${node_name%%/*}
-
-    if ! metrics=$(jq -r '[
-      (.settlement_report.epoch_index // .node_snapshot.consensus.epoch // 0),
-      (.observed_at_unix_ms // 0),
-      (.node_snapshot.consensus.committed_height // 0),
-      (.node_snapshot.consensus.network_committed_height // 0),
-      (.distfs_challenge_report.total_checks // 0),
-      (.distfs_challenge_report.failed_checks // 0),
-      ((.reward_asset_invariant_status.ok // false) | tostring),
-      ((.settlement_report.total_distributed_points // 0) | tonumber? // 0),
-      ((.minted_records // []) | length),
-      ((.reward_settlement_transport.settlement_apply_attempts_total // 0) | tonumber? // 0),
-      ((.reward_settlement_transport.settlement_apply_failures_total // 0) | tonumber? // 0)
-    ] | @tsv' "$report_file"); then
-      echo "warning: failed to parse report JSON: $report_file" >&2
-      continue
-    fi
-
-    if [[ -z "$metrics" ]]; then
-      continue
-    fi
-
-    IFS=$'\t' read -r \
-      epoch_index \
-      observed_at \
-      committed_height \
-      network_committed_height \
-      total_checks \
-      failed_checks \
-      invariant_ok \
-      total_distributed_points \
-      minted_record_count \
-      settlement_apply_attempts_total \
-      settlement_apply_failures_total <<< "$metrics"
-
-    [[ "$epoch_index" =~ ^-?[0-9]+$ ]] || epoch_index=0
-    [[ "$observed_at" =~ ^-?[0-9]+$ ]] || observed_at=0
-    [[ "$committed_height" =~ ^-?[0-9]+$ ]] || committed_height=0
-    [[ "$network_committed_height" =~ ^-?[0-9]+$ ]] || network_committed_height=0
-    [[ "$total_checks" =~ ^-?[0-9]+$ ]] || total_checks=0
-    [[ "$failed_checks" =~ ^-?[0-9]+$ ]] || failed_checks=0
-    [[ "$total_distributed_points" =~ ^-?[0-9]+$ ]] || total_distributed_points=0
-    [[ "$minted_record_count" =~ ^-?[0-9]+$ ]] || minted_record_count=0
-    [[ "$settlement_apply_attempts_total" =~ ^-?[0-9]+$ ]] || settlement_apply_attempts_total=0
-    [[ "$settlement_apply_failures_total" =~ ^-?[0-9]+$ ]] || settlement_apply_failures_total=0
-
-    if (( total_checks < 0 )); then
-      total_checks=0
-    fi
-    if (( failed_checks < 0 )); then
-      failed_checks=0
-    fi
-    if (( total_distributed_points < 0 )); then
-      total_distributed_points=0
-    fi
-    if (( minted_record_count < 0 )); then
-      minted_record_count=0
-    fi
-    if (( settlement_apply_attempts_total < 0 )); then
-      settlement_apply_attempts_total=0
-    fi
-    if (( settlement_apply_failures_total < 0 )); then
-      settlement_apply_failures_total=0
-    fi
-
-    lag=$((network_committed_height - committed_height))
-    if (( lag < 0 )); then
-      lag=0
-    fi
-
-    ratio=$(awk -v failed="$failed_checks" -v total="$total_checks" 'BEGIN { if (total > 0) printf "%.6f", failed / total; else printf "0.000000"; }')
-    settlement_apply_ratio=$(awk -v failed="$settlement_apply_failures_total" -v total="$settlement_apply_attempts_total" 'BEGIN { if (total > 0) printf "%.6f", failed / total; else printf "0.000000"; }')
-
-    printf '"%s",%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,"%s"\n' \
-      "$node_name" \
-      "$epoch_index" \
-      "$observed_at" \
-      "$committed_height" \
-      "$network_committed_height" \
-      "$lag" \
-      "$total_checks" \
-      "$failed_checks" \
-      "$ratio" \
-      "$invariant_ok" \
-      "$total_distributed_points" \
-      "$minted_record_count" \
-      "$settlement_apply_attempts_total" \
-      "$settlement_apply_failures_total" \
-      "$settlement_apply_ratio" \
-      "$report_file" >> "$timeline_csv"
-
-    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
-      "$observed_at" \
-      "$committed_height" \
-      "$lag" \
-      "$total_checks" \
-      "$failed_checks" \
-      "$invariant_ok" \
-      "$total_distributed_points" \
-      "$minted_record_count" \
-      "$settlement_apply_attempts_total" \
-      "$settlement_apply_failures_total" \
-      "$node_name" >> "$samples_tsv"
-
-    local prev_total=${node_total_max[$node_name]:--1}
-    if (( total_checks > prev_total )); then
-      node_total_max["$node_name"]=$total_checks
-      node_failed_at_max["$node_name"]=$failed_checks
-    elif (( total_checks == prev_total )); then
-      local prev_failed=${node_failed_at_max[$node_name]:-0}
-      if (( failed_checks > prev_failed )); then
-        node_failed_at_max["$node_name"]=$failed_checks
-      fi
-    fi
-
-    local prev_settlement_attempts=${node_settlement_attempts_max[$node_name]:--1}
-    if (( settlement_apply_attempts_total > prev_settlement_attempts )); then
-      node_settlement_attempts_max["$node_name"]=$settlement_apply_attempts_total
-      node_settlement_failures_at_max["$node_name"]=$settlement_apply_failures_total
-    elif (( settlement_apply_attempts_total == prev_settlement_attempts )); then
-      local prev_settlement_failures=${node_settlement_failures_at_max[$node_name]:-0}
-      if (( settlement_apply_failures_total > prev_settlement_failures )); then
-        node_settlement_failures_at_max["$node_name"]=$settlement_apply_failures_total
-      fi
-    fi
-
-    if [[ "$invariant_ok" != "true" ]]; then
-      invariant_failed=1
-    fi
-    if (( total_distributed_points > 0 )); then
-      analysis_settlement_positive_samples=$((analysis_settlement_positive_samples + 1))
-    fi
-    if (( minted_record_count > 0 )); then
-      analysis_minted_non_empty_samples=$((analysis_minted_non_empty_samples + 1))
-    fi
-  done
-
-  local node
-  for node in "${!node_total_max[@]}"; do
-    analysis_distfs_total_checks=$((analysis_distfs_total_checks + node_total_max[$node]))
-    analysis_distfs_failed_checks=$((analysis_distfs_failed_checks + ${node_failed_at_max[$node]:-0}))
-  done
-  analysis_distfs_failure_ratio=$(awk -v failed="$analysis_distfs_failed_checks" -v total="$analysis_distfs_total_checks" 'BEGIN { if (total > 0) printf "%.6f", failed / total; else printf "0.000000"; }')
-  for node in "${!node_settlement_attempts_max[@]}"; do
-    analysis_settlement_apply_attempts=$((analysis_settlement_apply_attempts + node_settlement_attempts_max[$node]))
-    analysis_settlement_apply_failures=$((analysis_settlement_apply_failures + ${node_settlement_failures_at_max[$node]:-0}))
-  done
-  analysis_settlement_apply_failure_ratio=$(awk -v failed="$analysis_settlement_apply_failures" -v total="$analysis_settlement_apply_attempts" 'BEGIN { if (total > 0) printf "%.6f", failed / total; else printf "0.000000"; }')
-
-  local sorted_samples="$run_dir/.metric_samples.sorted.tsv"
-  sort -n -k1,1 "$samples_tsv" > "$sorted_samples"
-
-  local best_height=-1
-  local last_progress_ms=0
-  local max_stall_ms=0
-  local sample_with_time=0
-  local sample_observed sample_committed
-  while IFS=$'\t' read -r sample_observed sample_committed _; do
-    [[ "$sample_observed" =~ ^-?[0-9]+$ ]] || continue
-    [[ "$sample_committed" =~ ^-?[0-9]+$ ]] || continue
-    if (( sample_observed <= 0 )); then
-      continue
-    fi
-    sample_with_time=$((sample_with_time + 1))
-    if (( best_height < 0 )); then
-      best_height=$sample_committed
-      last_progress_ms=$sample_observed
-    elif (( sample_committed > best_height )); then
-      best_height=$sample_committed
-      last_progress_ms=$sample_observed
-    fi
-    local stall_gap=$((sample_observed - last_progress_ms))
-    if (( stall_gap > max_stall_ms )); then
-      max_stall_ms=$stall_gap
-    fi
-  done < "$sorted_samples"
-  analysis_max_stall_secs_observed=$((max_stall_ms / 1000))
-
-  local sorted_by_node="$run_dir/.metric_samples.by_node.tsv"
-  sort -k11,11 -k1,1n "$samples_tsv" > "$sorted_by_node"
-  declare -A node_prev_committed=()
-  declare -A node_monotonic_violations=()
-  local line_observed line_committed line_node
-  while IFS=$'\t' read -r line_observed line_committed _ _ _ _ _ _ _ _ line_node; do
-    [[ "$line_observed" =~ ^-?[0-9]+$ ]] || continue
-    [[ "$line_committed" =~ ^-?[0-9]+$ ]] || continue
-    local prev=${node_prev_committed[$line_node]:-}
-    if [[ -n "$prev" ]] && (( line_committed < prev )); then
-      node_monotonic_violations["$line_node"]=1
-    fi
-    node_prev_committed["$line_node"]=$line_committed
-  done < "$sorted_by_node"
   if (( ${#node_monotonic_violations[@]} > 0 )); then
     analysis_monotonic_ok=false
     analysis_monotonic_violation_nodes=$(printf '%s\n' "${!node_monotonic_violations[@]}" | sort | paste -sd ',' -)
   fi
 
-  local lag_values="$run_dir/.metric_lags.txt"
-  cut -f3 "$samples_tsv" | sed '/^[[:space:]]*$/d' | sort -n > "$lag_values"
-  local lag_count
-  lag_count=$(wc -l < "$lag_values" | tr -d ' ')
-  if [[ -z "$lag_count" ]]; then
-    lag_count=0
-  fi
-  if (( lag_count > 0 )); then
-    local p95_rank=$(( (95 * lag_count + 99) / 100 ))
-    if (( p95_rank < 1 )); then
-      p95_rank=1
-    fi
-    analysis_lag_p95=$(sed -n "${p95_rank}p" "$lag_values")
-    [[ "$analysis_lag_p95" =~ ^-?[0-9]+$ ]] || analysis_lag_p95=0
-  else
-    analysis_lag_p95=0
-  fi
-
-  analysis_invariant_all_ok=true
-  if (( invariant_failed == 1 )); then
-    analysis_invariant_all_ok=false
-  fi
-
   local -a gate_failures=()
   local -a gate_warnings=()
 
-  if (( sample_with_time == 0 )); then
-    gate_warnings+=("observed_at_missing")
-  elif (( analysis_max_stall_secs_observed > max_stall_secs )); then
+  if (( analysis_report_count <= 0 )); then
+    gate_failures+=("no_samples")
+  fi
+
+  if (( analysis_status_samples_ok <= 0 )); then
+    gate_failures+=("status_endpoint_unreachable")
+  fi
+
+  if (( analysis_balances_samples_ok <= 0 )); then
+    gate_failures+=("balances_endpoint_unreachable")
+  fi
+
+  if (( analysis_running_false_samples > 0 )); then
+    gate_failures+=("running_false_samples=${analysis_running_false_samples}")
+  fi
+
+  if (( analysis_last_error_samples > 0 )); then
+    gate_failures+=("last_error_samples=${analysis_last_error_samples}")
+  fi
+
+  if (( analysis_max_stall_secs_observed > max_stall_secs )); then
     gate_failures+=("stall=${analysis_max_stall_secs_observed}s>max_${max_stall_secs}s")
   fi
 
@@ -904,40 +939,32 @@ analyze_metrics() {
     gate_failures+=("lag_p95=${analysis_lag_p95}>max_${max_lag_p95}")
   fi
 
-  if (( analysis_distfs_total_checks > 0 )); then
-    local ratio_exceeded
-    ratio_exceeded=$(awk -v ratio="$analysis_distfs_failure_ratio" -v max="$max_distfs_failure_ratio" 'BEGIN { if (ratio > max) print 1; else print 0; }')
-    if [[ "$ratio_exceeded" == "1" ]]; then
-      gate_failures+=("distfs_failure_ratio=${analysis_distfs_failure_ratio}>max_${max_distfs_failure_ratio}")
-    fi
-  else
-    gate_warnings+=("distfs_checks=0")
-  fi
-
-  if (( analysis_settlement_apply_attempts <= 0 )); then
-    gate_failures+=("settlement_apply_attempts=0")
-  else
-    local settlement_ratio_exceeded
-    settlement_ratio_exceeded=$(awk -v ratio="$analysis_settlement_apply_failure_ratio" -v max="$max_settlement_apply_failure_ratio" 'BEGIN { if (ratio > max) print 1; else print 0; }')
-    if [[ "$settlement_ratio_exceeded" == "1" ]]; then
-      gate_failures+=("settlement_apply_failure_ratio=${analysis_settlement_apply_failure_ratio}>max_${max_settlement_apply_failure_ratio}")
-    fi
-  fi
-
-  if [[ "$analysis_invariant_all_ok" != "true" ]]; then
-    gate_failures+=("reward_asset_invariant_not_ok")
-  fi
-
-  if (( analysis_settlement_positive_samples == 0 )); then
-    gate_failures+=("settlement_total_distributed_points_not_positive")
-  fi
-
-  if (( analysis_minted_non_empty_samples == 0 )); then
+  if (( analysis_minted_non_empty_samples <= 0 )); then
     gate_failures+=("minted_records_empty")
   fi
 
   if [[ "$analysis_monotonic_ok" != "true" ]]; then
     gate_failures+=("committed_height_not_monotonic nodes=${analysis_monotonic_violation_nodes}")
+  fi
+
+  analysis_distfs_total_checks=0
+  analysis_distfs_failed_checks=0
+  analysis_distfs_failure_ratio="0.000000"
+  analysis_settlement_apply_attempts=0
+  analysis_settlement_apply_failures=0
+  analysis_settlement_apply_failure_ratio="0.000000"
+
+  gate_warnings+=("distfs_metrics_unavailable")
+  gate_warnings+=("settlement_apply_metrics_unavailable")
+
+  if (( analysis_balance_load_error_samples > 0 )); then
+    gate_warnings+=("balances_load_error_samples=${analysis_balance_load_error_samples}")
+  fi
+  if (( analysis_peer_zero_samples > 0 )); then
+    gate_warnings+=("known_peer_heads_zero_samples=${analysis_peer_zero_samples}")
+  fi
+  if (( analysis_http_failure_samples > 0 )); then
+    gate_warnings+=("http_failure_samples=${analysis_http_failure_samples}")
   fi
 
   if (( ${#gate_failures[@]} > 0 )); then
@@ -969,6 +996,7 @@ write_summary_json() {
     --arg generated_at "$generated_at" \
     --arg run_dir "$run_dir" \
     --arg scenario "$scenario" \
+    --arg world_id "$world_id" \
     --arg summary_md "$summary_md" \
     --arg timeline_csv "$timeline_csv" \
     --arg run_config_json "$run_config_json" \
@@ -1000,18 +1028,26 @@ write_summary_json() {
     --argjson minted_non_empty_samples "$analysis_minted_non_empty_samples" \
     --argjson monotonic_ok "$analysis_monotonic_ok" \
     --arg monotonic_violation_nodes "$analysis_monotonic_violation_nodes" \
+    --argjson status_samples_ok "$analysis_status_samples_ok" \
+    --argjson balances_samples_ok "$analysis_balances_samples_ok" \
+    --argjson running_false_samples "$analysis_running_false_samples" \
+    --argjson last_error_samples "$analysis_last_error_samples" \
+    --argjson balance_load_error_samples "$analysis_balance_load_error_samples" \
+    --argjson peer_zero_samples "$analysis_peer_zero_samples" \
+    --argjson http_failure_samples "$analysis_http_failure_samples" \
     --argjson overall_status_code "$overall_status_code" \
     '{
       generated_at_utc: $generated_at,
       run_dir: $run_dir,
       scenario: $scenario,
-      llm_enabled: ($llm_enabled == 1),
+      world_id: $world_id,
+      llm_enabled_compat: ($llm_enabled == 1),
       duration_secs: $duration_secs,
       thresholds: {
         max_stall_secs: $max_stall_secs,
         max_lag_p95: $max_lag_p95,
-        max_distfs_failure_ratio: $max_distfs_failure_ratio,
-        max_settlement_apply_failure_ratio: $max_settlement_apply_failure_ratio
+        max_distfs_failure_ratio_compat: $max_distfs_failure_ratio,
+        max_settlement_apply_failure_ratio_compat: $max_settlement_apply_failure_ratio
       },
       artifacts: {
         run_config_json: $run_config_json,
@@ -1042,6 +1078,13 @@ write_summary_json() {
           invariant_all_ok: $invariant_all_ok,
           settlement_positive_samples: $settlement_positive_samples,
           minted_non_empty_samples: $minted_non_empty_samples,
+          status_samples_ok: $status_samples_ok,
+          balances_samples_ok: $balances_samples_ok,
+          running_false_samples: $running_false_samples,
+          last_error_samples: $last_error_samples,
+          balance_load_error_samples: $balance_load_error_samples,
+          known_peer_heads_zero_samples: $peer_zero_samples,
+          http_failure_samples: $http_failure_samples,
           committed_height_monotonic: $monotonic_ok,
           committed_height_monotonic_violation_nodes: (
             if $monotonic_violation_nodes == "" then []
@@ -1071,15 +1114,15 @@ append_summary_metrics_section() {
     echo "| metric_gate_notes | $analysis_gate_notes |"
     echo "| max_stall_secs_observed | $analysis_max_stall_secs_observed |"
     echo "| lag_p95 | $analysis_lag_p95 |"
-    echo "| distfs_failure_ratio | $analysis_distfs_failure_ratio |"
-    echo "| distfs_total_checks | $analysis_distfs_total_checks |"
-    echo "| distfs_failed_checks | $analysis_distfs_failed_checks |"
-    echo "| settlement_apply_failure_ratio | $analysis_settlement_apply_failure_ratio |"
-    echo "| settlement_apply_attempts | $analysis_settlement_apply_attempts |"
-    echo "| settlement_apply_failures | $analysis_settlement_apply_failures |"
-    echo "| invariant_all_ok | $analysis_invariant_all_ok |"
-    echo "| settlement_positive_samples | $analysis_settlement_positive_samples |"
+    echo "| status_samples_ok | $analysis_status_samples_ok |"
+    echo "| balances_samples_ok | $analysis_balances_samples_ok |"
+    echo "| running_false_samples | $analysis_running_false_samples |"
+    echo "| last_error_samples | $analysis_last_error_samples |"
+    echo "| known_peer_heads_zero_samples | $analysis_peer_zero_samples |"
     echo "| minted_non_empty_samples | $analysis_minted_non_empty_samples |"
+    echo "| settlement_positive_samples | $analysis_settlement_positive_samples |"
+    echo "| distfs_failure_ratio | $analysis_distfs_failure_ratio (unavailable) |"
+    echo "| settlement_apply_failure_ratio | $analysis_settlement_apply_failure_ratio (unavailable) |"
     echo "| committed_height_monotonic | $analysis_monotonic_ok |"
     echo "| committed_height_monotonic_violation_nodes | ${analysis_monotonic_violation_nodes:--} |"
   } >> "$summary_md"
@@ -1100,6 +1143,7 @@ write_failures_md() {
     echo "# S10 Five-Node Real Game Soak Failures"
     echo
     echo "- run_dir: \`$run_dir\`"
+    echo "- world_id: \`$world_id\`"
     echo "- scenario: \`$scenario\`"
     echo "- final_status: \`$final_status\`"
     echo "- process_status: \`$process_status\`"
@@ -1109,6 +1153,13 @@ write_failures_md() {
     echo "## Gate Notes"
     echo
     echo "- \`$analysis_gate_notes\`"
+    if [[ -s "$runtime_errors_tsv" ]]; then
+      echo
+      echo "## Runtime Errors"
+      while IFS=$'\t' read -r node err; do
+        echo "- node=\`$node\` error=\`$err\`"
+      done < "$runtime_errors_tsv"
+    fi
   } > "$failures_md"
 }
 
@@ -1116,9 +1167,8 @@ if [[ "$dry_run" -eq 1 ]]; then
   for idx in "${!node_ids[@]}"; do
     node_name=${node_ids[$idx]}
     node_dir="$run_dir/nodes/$node_name"
-    report_dir="$node_dir/report"
     cmd_txt="$node_dir/command.txt"
-    run mkdir -p "$report_dir"
+    run mkdir -p "$node_dir"
     prepare_node_command "$idx"
     printf '%q ' "${prepared_cmd[@]}" > "$cmd_txt"
     printf '\n' >> "$cmd_txt"
@@ -1129,6 +1179,7 @@ if [[ "$dry_run" -eq 1 ]]; then
   jq -n \
     --arg run_dir "$run_dir" \
     --arg scenario "$scenario" \
+    --arg world_id "$world_id" \
     --arg summary_md "$summary_md" \
     --arg summary_json "$summary_json" \
     --arg timeline_csv "$timeline_csv" \
@@ -1138,7 +1189,8 @@ if [[ "$dry_run" -eq 1 ]]; then
     '{
       run_dir: $run_dir,
       scenario: $scenario,
-      llm_enabled: ($llm_enabled == 1),
+      world_id: $world_id,
+      llm_enabled_compat: ($llm_enabled == 1),
       duration_secs: $duration_secs,
       artifacts: {
         run_config_json: $run_config_json,
@@ -1179,19 +1231,18 @@ for idx in "${!node_ids[@]}"; do
   launch_node "${node_ids[$idx]}" "${prepared_cmd[@]}"
 done
 
-sleep "$startup_timeout_secs"
-for idx in "${!active_pids[@]}"; do
-  if ! kill -0 "${active_pids[$idx]}" >/dev/null 2>&1; then
-    run_status="startup_failed"
-    run_notes="node=${active_nodes[$idx]} exited before monitor loop"
-    break
-  fi
-done
+if ! wait_for_startup_ready; then
+  run_status="startup_failed"
+  run_notes="failed to reach /healthz across all nodes"
+fi
 
 if [[ "$run_status" == "ok" ]]; then
+  last_progress_epoch_sec=$(date +%s)
   started_epoch_sec=$(date +%s)
   deadline=$((started_epoch_sec + duration_secs))
   while (( $(date +%s) < deadline )); do
+    poll_all_nodes_once
+
     for idx in "${!active_pids[@]}"; do
       if ! kill -0 "${active_pids[$idx]}" >/dev/null 2>&1; then
         run_status="process_exit"
@@ -1201,13 +1252,17 @@ if [[ "$run_status" == "ok" ]]; then
     done
     sleep "$poll_interval_secs"
   done
+
+  if [[ "$run_status" == "ok" ]]; then
+    poll_all_nodes_once
+  fi
 fi
 
 stop_active_processes
 ended_at=$(date '+%Y-%m-%d %H:%M:%S %Z')
 process_status=$run_status
 
-analyze_metrics
+finalize_metric_gate
 
 final_status=$run_status
 declare -a notes_parts=()
