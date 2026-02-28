@@ -10,7 +10,9 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use agent_world::runtime::{NodeAssetBalance, NodeRewardMintRecord, World as RuntimeWorld};
+use agent_world::runtime::{
+    NodeAssetBalance, NodeRewardMintRecord, RewardAssetConfig, World as RuntimeWorld,
+};
 use agent_world_node::{
     NodeConfig, NodePosConfig, NodeReplicationConfig, NodeRole, NodeRuntime, NodeSnapshot,
     PosConsensusStatus, PosValidator,
@@ -19,13 +21,24 @@ use ed25519_dalek::SigningKey;
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 
+#[path = "world_viewer_live/distfs_probe_runtime.rs"]
+mod distfs_probe_runtime;
 #[cfg(not(test))]
 #[allow(dead_code)]
 #[path = "world_viewer_live/execution_bridge.rs"]
 mod execution_bridge;
 #[path = "world_viewer_live/node_keypair_config.rs"]
 mod node_keypair_config;
+#[path = "world_viewer_live/reward_runtime_settlement.rs"]
+mod reward_runtime_settlement;
+#[path = "world_chain_runtime/reward_runtime_worker.rs"]
+mod reward_runtime_worker;
+use distfs_probe_runtime::{parse_distfs_probe_runtime_option, DistfsProbeRuntimeConfig};
 use execution_bridge::NodeRuntimeExecutionDriver;
+use reward_runtime_worker::{
+    init_shared_metrics, poll_worker_error, snapshot_metrics, start_reward_runtime_worker,
+    stop_reward_runtime_worker, RewardRuntimeWorkerConfig, SharedRewardRuntimeMetrics,
+};
 
 #[cfg(test)]
 mod execution_bridge {
@@ -85,6 +98,11 @@ const DEFAULT_STATUS_BIND: &str = "127.0.0.1:5121";
 const DEFAULT_CONFIG_FILE: &str = "config.toml";
 const DEFAULT_NODE_TICK_MS: u64 = 200;
 const DEFAULT_RECENT_MINT_RECORD_LIMIT: usize = 20;
+const DEFAULT_REWARD_RUNTIME_STATE_FILE: &str = "reward-runtime-state.json";
+const DEFAULT_REWARD_RUNTIME_DISTFS_PROBE_STATE_FILE: &str =
+    "reward-runtime-distfs-probe-state.json";
+const DEFAULT_REWARD_RUNTIME_REPORT_DIR: &str = "reward-runtime-report";
+const DEFAULT_REWARD_RUNTIME_RESERVE_UNITS: i64 = 100_000;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct CliOptions {
@@ -102,6 +120,13 @@ struct CliOptions {
     execution_world_dir: Option<PathBuf>,
     execution_records_dir: Option<PathBuf>,
     storage_root: Option<PathBuf>,
+    reward_runtime_enabled: bool,
+    reward_runtime_signer_node_id: Option<String>,
+    reward_runtime_epoch_duration_secs: Option<u64>,
+    reward_points_per_credit: u64,
+    reward_runtime_auto_redeem: bool,
+    reward_initial_reserve_power_units: i64,
+    reward_distfs_probe_config: DistfsProbeRuntimeConfig,
 }
 
 impl Default for CliOptions {
@@ -121,6 +146,13 @@ impl Default for CliOptions {
             execution_world_dir: None,
             execution_records_dir: None,
             storage_root: None,
+            reward_runtime_enabled: true,
+            reward_runtime_signer_node_id: None,
+            reward_runtime_epoch_duration_secs: None,
+            reward_points_per_credit: RewardAssetConfig::default().points_per_credit,
+            reward_runtime_auto_redeem: false,
+            reward_initial_reserve_power_units: DEFAULT_REWARD_RUNTIME_RESERVE_UNITS,
+            reward_distfs_probe_config: DistfsProbeRuntimeConfig::default(),
         }
     }
 }
@@ -131,6 +163,9 @@ struct RuntimePaths {
     execution_world_dir: PathBuf,
     execution_records_dir: PathBuf,
     storage_root: PathBuf,
+    reward_runtime_state_path: PathBuf,
+    reward_runtime_distfs_probe_state_path: PathBuf,
+    reward_runtime_report_dir: PathBuf,
 }
 
 #[derive(Debug)]
@@ -153,6 +188,7 @@ struct ChainStatusResponse {
     consensus: ChainConsensusStatus,
     last_error: Option<String>,
     execution_world_dir: String,
+    reward_runtime: reward_runtime_worker::RewardRuntimeMetricsSnapshot,
 }
 
 #[derive(Debug, Serialize)]
@@ -227,7 +263,11 @@ fn run_chain_runtime(options: CliOptions) -> Result<(), String> {
     } else {
         options.node_validators.clone()
     };
-    let pos_config = build_signed_pos_config(validators, &keypair)?;
+    let validator_signer_bindings =
+        build_validator_signer_public_keys(validators.as_slice(), &keypair)?;
+    let pos_config = NodePosConfig::ethereum_like(validators.clone())
+        .with_validator_signer_public_keys(validator_signer_bindings.clone())
+        .map_err(|err| format!("failed to apply validator signer bindings: {err:?}"))?;
     config = config
         .with_pos_config(pos_config)
         .map_err(|err| format!("failed to apply node pos config: {err:?}"))?;
@@ -267,6 +307,58 @@ fn run_chain_runtime(options: CliOptions) -> Result<(), String> {
         .map_err(|err| format!("failed to start node runtime: {err:?}"))?;
 
     let runtime = Arc::new(Mutex::new(runtime));
+    let signer_node_id = options
+        .reward_runtime_signer_node_id
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(ToOwned::to_owned)
+        .unwrap_or_else(|| options.node_id.clone());
+    let signer_keypair = derive_node_consensus_signer_keypair(signer_node_id.as_str(), &keypair)
+        .map_err(|err| {
+            format!("failed to derive reward runtime signer keypair for {signer_node_id}: {err}")
+        })?;
+    let mut reward_runtime_node_identity_bindings = validator_signer_bindings;
+    if !reward_runtime_node_identity_bindings.contains_key(signer_node_id.as_str()) {
+        reward_runtime_node_identity_bindings.insert(
+            signer_node_id.clone(),
+            signer_keypair.public_key_hex.clone(),
+        );
+    }
+    if !reward_runtime_node_identity_bindings.contains_key(options.node_id.as_str()) {
+        let local_keypair =
+            derive_node_consensus_signer_keypair(options.node_id.as_str(), &keypair)
+                .map_err(|err| format!("failed to derive local node signer keypair: {err}"))?;
+        reward_runtime_node_identity_bindings
+            .insert(options.node_id.clone(), local_keypair.public_key_hex);
+    }
+    let reward_runtime_config = RewardRuntimeWorkerConfig {
+        enabled: options.reward_runtime_enabled,
+        poll_interval: Duration::from_millis(options.node_tick_ms),
+        world_id: options.world_id.clone(),
+        local_node_id: options.node_id.clone(),
+        report_dir: paths.reward_runtime_report_dir.clone(),
+        state_path: paths.reward_runtime_state_path.clone(),
+        distfs_probe_state_path: paths.reward_runtime_distfs_probe_state_path.clone(),
+        storage_root: paths.storage_root.clone(),
+        signer_node_id,
+        signer_private_key_hex: signer_keypair.private_key_hex,
+        reward_runtime_epoch_duration_secs: options.reward_runtime_epoch_duration_secs,
+        reward_runtime_auto_redeem: options.reward_runtime_auto_redeem,
+        reward_asset_config: RewardAssetConfig {
+            points_per_credit: options.reward_points_per_credit,
+            ..RewardAssetConfig::default()
+        },
+        reward_initial_reserve_power_units: options.reward_initial_reserve_power_units,
+        reward_runtime_node_identity_bindings,
+        reward_distfs_probe_config: options.reward_distfs_probe_config,
+    };
+    let reward_runtime_metrics = init_shared_metrics(&reward_runtime_config);
+    let mut reward_runtime_worker = start_reward_runtime_worker(
+        Arc::clone(&runtime),
+        reward_runtime_config,
+        Arc::clone(&reward_runtime_metrics),
+    )?;
     let (status_host, status_port) =
         parse_host_port(options.status_bind.as_str(), "--status-bind")?;
     let mut status_server = start_chain_status_server(
@@ -276,6 +368,7 @@ fn run_chain_runtime(options: CliOptions) -> Result<(), String> {
         options.node_id.clone(),
         options.world_id.clone(),
         paths.execution_world_dir.clone(),
+        Arc::clone(&reward_runtime_metrics),
     )?;
 
     println!("world_chain_runtime ready.");
@@ -290,14 +383,32 @@ fn run_chain_runtime(options: CliOptions) -> Result<(), String> {
         "- balances: http://{}:{}/v1/chain/balances",
         status_host, status_port
     );
+    println!(
+        "- reward_runtime: {} ({})",
+        if options.reward_runtime_enabled {
+            "enabled"
+        } else {
+            "disabled"
+        },
+        paths.reward_runtime_report_dir.display()
+    );
     println!("Press Ctrl+C to stop.");
 
     let mut last_error = String::new();
     loop {
         if let Some(server_err) = poll_chain_status_server_error(&mut status_server)? {
             stop_chain_status_server(&mut status_server);
+            stop_reward_runtime_worker(&mut reward_runtime_worker);
             stop_runtime(&runtime);
             return Err(server_err);
+        }
+        if let Some(worker) = reward_runtime_worker.as_mut() {
+            if let Some(worker_err) = poll_worker_error(worker)? {
+                stop_chain_status_server(&mut status_server);
+                stop_reward_runtime_worker(&mut reward_runtime_worker);
+                stop_runtime(&runtime);
+                return Err(worker_err);
+            }
         }
 
         if let Ok(snapshot) = runtime.lock().map(|locked| locked.snapshot()) {
@@ -334,6 +445,10 @@ fn resolve_runtime_paths(options: &CliOptions) -> RuntimePaths {
             .storage_root
             .clone()
             .unwrap_or_else(|| root.join("store")),
+        reward_runtime_state_path: root.join(DEFAULT_REWARD_RUNTIME_STATE_FILE),
+        reward_runtime_distfs_probe_state_path: root
+            .join(DEFAULT_REWARD_RUNTIME_DISTFS_PROBE_STATE_FILE),
+        reward_runtime_report_dir: root.join(DEFAULT_REWARD_RUNTIME_REPORT_DIR),
     }
 }
 
@@ -357,6 +472,7 @@ fn start_chain_status_server(
     node_id: String,
     world_id: String,
     execution_world_dir: PathBuf,
+    reward_runtime_metrics: SharedRewardRuntimeMetrics,
 ) -> Result<ChainStatusServer, String> {
     let listener = TcpListener::bind((host, port))
         .map_err(|err| format!("failed to bind status server at {host}:{port}: {err}"))?;
@@ -375,6 +491,7 @@ fn start_chain_status_server(
             node_id,
             world_id,
             execution_world_dir,
+            reward_runtime_metrics,
         ) {
             let _ = error_tx.send(err);
         }
@@ -394,6 +511,7 @@ fn run_chain_status_server_loop(
     node_id: String,
     world_id: String,
     execution_world_dir: PathBuf,
+    reward_runtime_metrics: SharedRewardRuntimeMetrics,
 ) -> Result<(), String> {
     loop {
         match stop_rx.try_recv() {
@@ -407,6 +525,7 @@ fn run_chain_status_server_loop(
                 let node_id = node_id.clone();
                 let world_id = world_id.clone();
                 let execution_world_dir = execution_world_dir.clone();
+                let reward_runtime_metrics = Arc::clone(&reward_runtime_metrics);
                 thread::spawn(move || {
                     if let Err(err) = handle_chain_status_connection(
                         stream,
@@ -414,6 +533,7 @@ fn run_chain_status_server_loop(
                         node_id.as_str(),
                         world_id.as_str(),
                         execution_world_dir.as_path(),
+                        reward_runtime_metrics,
                     ) {
                         eprintln!("warning: chain status connection failed: {err}");
                     }
@@ -435,6 +555,7 @@ fn handle_chain_status_connection(
     node_id: &str,
     world_id: &str,
     execution_world_dir: &Path,
+    reward_runtime_metrics: SharedRewardRuntimeMetrics,
 ) -> Result<(), String> {
     stream
         .set_read_timeout(Some(Duration::from_secs(2)))
@@ -481,7 +602,11 @@ fn handle_chain_status_connection(
                 .lock()
                 .map_err(|_| "failed to read node runtime snapshot: lock poisoned".to_string())?
                 .snapshot();
-            let payload = build_chain_status_payload(snapshot, execution_world_dir);
+            let payload = build_chain_status_payload(
+                snapshot,
+                execution_world_dir,
+                snapshot_metrics(&reward_runtime_metrics),
+            );
             let body = serde_json::to_vec_pretty(&payload)
                 .map_err(|err| format!("failed to encode status payload: {err}"))?;
             write_json_response(&mut stream, 200, body.as_slice(), head_only)
@@ -506,6 +631,7 @@ fn handle_chain_status_connection(
 fn build_chain_status_payload(
     snapshot: NodeSnapshot,
     execution_world_dir: &Path,
+    reward_runtime_metrics: reward_runtime_worker::RewardRuntimeMetricsSnapshot,
 ) -> ChainStatusResponse {
     let last_status = snapshot
         .consensus
@@ -536,6 +662,7 @@ fn build_chain_status_payload(
         },
         last_error: snapshot.last_error,
         execution_world_dir: execution_world_dir.display().to_string(),
+        reward_runtime: reward_runtime_metrics,
     }
 }
 
@@ -736,7 +863,59 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
                 let raw = parse_required_value(&mut iter, "--storage-root")?;
                 options.storage_root = Some(PathBuf::from(raw));
             }
-            _ => return Err(format!("unknown option: {arg}")),
+            "--reward-runtime-enable" => {
+                options.reward_runtime_enabled = true;
+            }
+            "--reward-runtime-disable" => {
+                options.reward_runtime_enabled = false;
+            }
+            "--reward-runtime-signer-node-id" => {
+                options.reward_runtime_signer_node_id = Some(parse_required_value(
+                    &mut iter,
+                    "--reward-runtime-signer-node-id",
+                )?);
+            }
+            "--reward-runtime-epoch-duration-secs" => {
+                let raw = parse_required_value(&mut iter, "--reward-runtime-epoch-duration-secs")?;
+                let value = raw.parse::<u64>().ok().filter(|v| *v > 0).ok_or_else(|| {
+                    "--reward-runtime-epoch-duration-secs requires a positive integer".to_string()
+                })?;
+                options.reward_runtime_epoch_duration_secs = Some(value);
+            }
+            "--reward-points-per-credit" => {
+                let raw = parse_required_value(&mut iter, "--reward-points-per-credit")?;
+                options.reward_points_per_credit =
+                    raw.parse::<u64>().ok().filter(|v| *v > 0).ok_or_else(|| {
+                        "--reward-points-per-credit requires a positive integer".to_string()
+                    })?;
+            }
+            "--reward-runtime-auto-redeem" => {
+                options.reward_runtime_auto_redeem = true;
+            }
+            "--reward-runtime-no-auto-redeem" => {
+                options.reward_runtime_auto_redeem = false;
+            }
+            "--reward-initial-reserve-power-units" => {
+                let raw = parse_required_value(&mut iter, "--reward-initial-reserve-power-units")?;
+                options.reward_initial_reserve_power_units = raw
+                    .parse::<i64>()
+                    .ok()
+                    .filter(|value| *value >= 0)
+                    .ok_or_else(|| {
+                        "--reward-initial-reserve-power-units requires a non-negative integer"
+                            .to_string()
+                    })?;
+            }
+            _ => {
+                if parse_distfs_probe_runtime_option(
+                    arg,
+                    &mut iter,
+                    &mut options.reward_distfs_probe_config,
+                )? {
+                    continue;
+                }
+                return Err(format!("unknown option: {arg}"));
+            }
         }
     }
 
@@ -749,6 +928,12 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
     }
     if options.config_path.trim().is_empty() {
         return Err("--config requires a non-empty value".to_string());
+    }
+    if options.reward_points_per_credit == 0 {
+        return Err("--reward-points-per-credit requires a positive integer".to_string());
+    }
+    if options.reward_initial_reserve_power_units < 0 {
+        return Err("--reward-initial-reserve-power-units requires a non-negative integer".into());
     }
 
     if !options.node_gossip_peers.is_empty() && options.node_gossip_bind.is_none() {
@@ -878,16 +1063,6 @@ fn build_validator_signer_public_keys(
     Ok(bindings)
 }
 
-fn build_signed_pos_config(
-    validators: Vec<PosValidator>,
-    root_keypair: &node_keypair_config::NodeKeypairConfig,
-) -> Result<NodePosConfig, String> {
-    let signer_bindings = build_validator_signer_public_keys(validators.as_slice(), root_keypair)?;
-    NodePosConfig::ethereum_like(validators)
-        .with_validator_signer_public_keys(signer_bindings)
-        .map_err(|err| format!("failed to apply validator signer bindings: {err:?}"))
-}
-
 fn print_help() {
     println!(
         "Usage: world_chain_runtime [options]\n\n\
@@ -908,7 +1083,22 @@ Options:\n\
   --execution-world-dir <path>      override execution world directory\n\
   --execution-records-dir <path>    override execution records directory\n\
   --storage-root <path>             override execution CAS/storage root\n\
+  --reward-runtime-enable           enable reward runtime worker (default)\n\
+  --reward-runtime-disable          disable reward runtime worker\n\
+  --reward-runtime-signer-node-id <id>\n\
+                                    override reward runtime signer node id (default: --node-id)\n\
+  --reward-runtime-epoch-duration-secs <n>\n\
+                                    override reward settlement epoch duration seconds\n\
+  --reward-points-per-credit <n>    reward points per credit (default: {})\n\
+  --reward-runtime-auto-redeem      enable runtime auto redeem\n\
+  --reward-runtime-no-auto-redeem   disable runtime auto redeem (default)\n\
+  --reward-initial-reserve-power-units <n>\n\
+                                    reward reserve power units (default: {DEFAULT_REWARD_RUNTIME_RESERVE_UNITS})\n\
+  --reward-distfs-probe-per-tick <n>\n\
+                                    distfs challenge probes per tick (default: 1)\n\
   -h, --help                        show help"
+        ,
+        RewardAssetConfig::default().points_per_credit
     );
 }
 
@@ -955,6 +1145,8 @@ mod tests {
         assert_eq!(options.status_bind, DEFAULT_STATUS_BIND);
         assert!(!options.node_auto_attest_all_validators);
         assert!(options.node_validators.is_empty());
+        assert!(options.reward_runtime_enabled);
+        assert!(options.reward_runtime_epoch_duration_secs.is_none());
     }
 
     #[test]
@@ -978,6 +1170,13 @@ mod tests {
                 "--node-auto-attest-all",
                 "--execution-world-dir",
                 "custom/world",
+                "--reward-runtime-epoch-duration-secs",
+                "60",
+                "--reward-points-per-credit",
+                "100",
+                "--reward-runtime-auto-redeem",
+                "--reward-initial-reserve-power-units",
+                "50000",
             ]
             .into_iter(),
         )
@@ -990,6 +1189,10 @@ mod tests {
         assert_eq!(options.node_tick_ms, 350);
         assert_eq!(options.node_validators.len(), 2);
         assert!(options.node_auto_attest_all_validators);
+        assert_eq!(options.reward_runtime_epoch_duration_secs, Some(60));
+        assert_eq!(options.reward_points_per_credit, 100);
+        assert!(options.reward_runtime_auto_redeem);
+        assert_eq!(options.reward_initial_reserve_power_units, 50_000);
         assert_eq!(
             options
                 .execution_world_dir

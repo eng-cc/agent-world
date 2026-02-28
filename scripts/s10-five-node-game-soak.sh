@@ -18,8 +18,8 @@ Options:
   --llm                            legacy compatibility flag (no effect, recorded only)
   --no-llm                         legacy compatibility flag (default)
   --reward-runtime-epoch-duration-secs <n>
-                                   legacy compatibility flag (no effect, recorded only)
-  --reward-points-per-credit <n>   legacy compatibility flag (no effect, recorded only)
+                                   reward runtime epoch duration seconds (default: 60)
+  --reward-points-per-credit <n>   reward points per credit (default: 100)
   --base-port <n>                  base port for node port allocation (default: 5810)
   --bind-host <host>               bind host for gossip/status endpoints (default: 127.0.0.1)
   --out-dir <path>                 output root (default: .tmp/s10_game_longrun)
@@ -29,9 +29,9 @@ Options:
   --node-tick-ms <n>               node tick interval in milliseconds (default: 200)
   --max-stall-secs <n>             gate threshold for max no-progress window (default: 300)
   --max-lag-p95 <n>                gate threshold for p95(network_height - committed_height) (default: 12)
-  --max-distfs-failure-ratio <r>   compatibility threshold, currently unavailable metric (default: 0.25)
+  --max-distfs-failure-ratio <r>   gate threshold for distfs failure ratio (default: 0.25)
   --max-settlement-apply-failure-ratio <r>
-                                   compatibility threshold, currently unavailable metric (default: 0)
+                                   gate threshold for settlement apply failure ratio (default: 0)
   --node-auto-attest-all           enable local auto-attesting all validators on all nodes
   --node-no-auto-attest-all        disable local auto-attesting all validators on all nodes
   --node-auto-attest-sequencer-only
@@ -455,8 +455,8 @@ jq -n \
     scenario: $scenario,
     world_id: $world_id,
     llm_enabled_compat: ($llm_enabled == 1),
-    reward_runtime_epoch_duration_secs_compat: $reward_runtime_epoch_duration_secs,
-    reward_points_per_credit_compat: $reward_points_per_credit,
+    reward_runtime_epoch_duration_secs: $reward_runtime_epoch_duration_secs,
+    reward_points_per_credit: $reward_points_per_credit,
     node_tick_ms: $node_tick_ms,
     duration_secs: $duration_secs,
     bind_host: $bind_host,
@@ -476,8 +476,7 @@ jq -n \
     validators: $validators,
     nodes: $nodes,
     compatibility_notes: [
-      "--llm/--no-llm are accepted but no longer affect world_chain_runtime",
-      "--reward-runtime-* options are accepted but recorded only"
+      "--llm/--no-llm are accepted but no longer affect world_chain_runtime"
     ]
   }' > "$run_config_json"
 
@@ -489,13 +488,13 @@ jq -n \
   echo "- scenario: \`$scenario\`"
   echo "- world_id: \`$world_id\`"
   echo "- llm_enabled_compat: \`$llm_enabled\`"
-  echo "- reward_runtime_epoch_duration_secs_compat: \`$reward_runtime_epoch_duration_secs\`"
-  echo "- reward_points_per_credit_compat: \`$reward_points_per_credit\`"
+  echo "- reward_runtime_epoch_duration_secs: \`$reward_runtime_epoch_duration_secs\`"
+  echo "- reward_points_per_credit: \`$reward_points_per_credit\`"
   echo "- node_tick_ms: \`$node_tick_ms\`"
   echo "- max_stall_secs: \`$max_stall_secs\`"
   echo "- max_lag_p95: \`$max_lag_p95\`"
-  echo "- max_distfs_failure_ratio (compat): \`$max_distfs_failure_ratio\`"
-  echo "- max_settlement_apply_failure_ratio (compat): \`$max_settlement_apply_failure_ratio\`"
+  echo "- max_distfs_failure_ratio: \`$max_distfs_failure_ratio\`"
+  echo "- max_settlement_apply_failure_ratio: \`$max_settlement_apply_failure_ratio\`"
   echo "- node_auto_attest_mode: \`$node_auto_attest_mode_label\`"
   echo "- isolate_node_state: \`$isolate_node_state\`"
   echo
@@ -529,6 +528,8 @@ prepare_node_command() {
     --status-bind "$(node_status_bind_addr "$idx")"
     --node-role "$role"
     --node-tick-ms "$node_tick_ms"
+    --reward-runtime-epoch-duration-secs "$reward_runtime_epoch_duration_secs"
+    --reward-points-per-credit "$reward_points_per_credit"
     --node-gossip-bind "$(node_gossip_addr "$idx")"
   )
 
@@ -693,11 +694,17 @@ analysis_last_error_samples=0
 analysis_balance_load_error_samples=0
 analysis_peer_zero_samples=0
 analysis_http_failure_samples=0
+analysis_reward_runtime_available_samples=0
 
 best_height=-1
 last_progress_epoch_sec=0
 declare -A node_prev_committed=()
 declare -A node_monotonic_violations=()
+declare -A node_distfs_total_checks_max=()
+declare -A node_distfs_failed_checks_max=()
+declare -A node_settlement_apply_attempts_max=()
+declare -A node_settlement_apply_failures_max=()
+declare -A node_reward_minted_count_max=()
 
 append_timeline_sample() {
   local node_name=$1
@@ -770,6 +777,15 @@ poll_node_once() {
   running="false"
   known_peer_heads=0
   last_error=""
+  local rr_metrics_available="false"
+  local rr_last_error=""
+  local rr_distfs_total_checks=0
+  local rr_distfs_failed_checks=0
+  local rr_settlement_apply_attempts=0
+  local rr_settlement_apply_failures=0
+  local rr_minted_cumulative_count=0
+  local rr_invariant_ok="true"
+  local rr_total_distributed_points=0
 
   if [[ "$status_ok" -eq 1 ]]; then
     observed_at_unix_ms=$(safe_int "$(jq -r '.observed_at_unix_ms // 0' <<< "$status_json")")
@@ -779,6 +795,15 @@ poll_node_once() {
     running=$(jq -r '.running // false' <<< "$status_json")
     known_peer_heads=$(safe_int "$(jq -r '.consensus.known_peer_heads // 0' <<< "$status_json")")
     last_error=$(jq -r '.last_error // empty' <<< "$status_json")
+    rr_metrics_available=$(jq -r '.reward_runtime.metrics_available // false' <<< "$status_json")
+    rr_last_error=$(jq -r '.reward_runtime.last_error // empty' <<< "$status_json")
+    rr_distfs_total_checks=$(safe_int "$(jq -r '.reward_runtime.distfs_total_checks // 0' <<< "$status_json")")
+    rr_distfs_failed_checks=$(safe_int "$(jq -r '.reward_runtime.distfs_failed_checks // 0' <<< "$status_json")")
+    rr_settlement_apply_attempts=$(safe_int "$(jq -r '.reward_runtime.settlement_apply_attempts_total // 0' <<< "$status_json")")
+    rr_settlement_apply_failures=$(safe_int "$(jq -r '.reward_runtime.settlement_apply_failures_total // 0' <<< "$status_json")")
+    rr_minted_cumulative_count=$(safe_int "$(jq -r '.reward_runtime.cumulative_minted_record_count // 0' <<< "$status_json")")
+    rr_invariant_ok=$(jq -r '.reward_runtime.invariant_ok // true' <<< "$status_json")
+    rr_total_distributed_points=$(safe_int "$(jq -r '.reward_runtime.latest_total_distributed_points // 0' <<< "$status_json")")
   fi
 
   local reward_mint_record_count node_power_credit_balance node_main_token_liquid_balance balance_load_error
@@ -791,6 +816,10 @@ poll_node_once() {
     node_power_credit_balance=$(safe_int "$(jq -r '.node_power_credit_balance // 0' <<< "$balances_json")")
     node_main_token_liquid_balance=$(safe_int "$(jq -r '.node_main_token_liquid_balance // 0' <<< "$balances_json")")
     balance_load_error=$(jq -r '.load_error // empty' <<< "$balances_json")
+  fi
+  local effective_minted_record_count=$reward_mint_record_count
+  if (( rr_minted_cumulative_count > effective_minted_record_count )); then
+    effective_minted_record_count=$rr_minted_cumulative_count
   fi
 
   local lag=$((network_committed_height - committed_height))
@@ -811,8 +840,8 @@ poll_node_once() {
     "$network_committed_height" \
     "$lag" \
     "$invariant_ok" \
-    "$node_power_credit_balance" \
-    "$reward_mint_record_count" \
+    "$rr_total_distributed_points" \
+    "$effective_minted_record_count" \
     "$status_url"
 
   analysis_report_count=$((analysis_report_count + 1))
@@ -841,11 +870,42 @@ poll_node_once() {
   if (( known_peer_heads <= 0 )); then
     analysis_peer_zero_samples=$((analysis_peer_zero_samples + 1))
   fi
+  if [[ "$rr_metrics_available" == "true" ]]; then
+    analysis_reward_runtime_available_samples=$((analysis_reward_runtime_available_samples + 1))
+  fi
+  if [[ -n "$rr_last_error" ]]; then
+    analysis_last_error_samples=$((analysis_last_error_samples + 1))
+    printf '%s\t%s\n' "$node_name" "$rr_last_error" >> "$runtime_errors_tsv"
+  fi
+  if [[ "$rr_invariant_ok" != "true" ]]; then
+    analysis_invariant_all_ok=false
+  fi
 
-  if (( reward_mint_record_count > 0 )); then
+  local prev_distfs_total=${node_distfs_total_checks_max[$node_name]:-0}
+  if (( rr_distfs_total_checks > prev_distfs_total )); then
+    node_distfs_total_checks_max["$node_name"]=$rr_distfs_total_checks
+  fi
+  local prev_distfs_failed=${node_distfs_failed_checks_max[$node_name]:-0}
+  if (( rr_distfs_failed_checks > prev_distfs_failed )); then
+    node_distfs_failed_checks_max["$node_name"]=$rr_distfs_failed_checks
+  fi
+  local prev_settlement_attempts=${node_settlement_apply_attempts_max[$node_name]:-0}
+  if (( rr_settlement_apply_attempts > prev_settlement_attempts )); then
+    node_settlement_apply_attempts_max["$node_name"]=$rr_settlement_apply_attempts
+  fi
+  local prev_settlement_failures=${node_settlement_apply_failures_max[$node_name]:-0}
+  if (( rr_settlement_apply_failures > prev_settlement_failures )); then
+    node_settlement_apply_failures_max["$node_name"]=$rr_settlement_apply_failures
+  fi
+  local prev_reward_minted=${node_reward_minted_count_max[$node_name]:-0}
+  if (( rr_minted_cumulative_count > prev_reward_minted )); then
+    node_reward_minted_count_max["$node_name"]=$rr_minted_cumulative_count
+  fi
+
+  if (( effective_minted_record_count > 0 )); then
     analysis_minted_non_empty_samples=$((analysis_minted_non_empty_samples + 1))
   fi
-  if (( node_main_token_liquid_balance > 0 || node_power_credit_balance > 0 )); then
+  if (( node_main_token_liquid_balance > 0 || node_power_credit_balance > 0 || rr_settlement_apply_attempts > 0 )); then
     analysis_settlement_positive_samples=$((analysis_settlement_positive_samples + 1))
   fi
 
@@ -949,13 +1009,36 @@ finalize_metric_gate() {
 
   analysis_distfs_total_checks=0
   analysis_distfs_failed_checks=0
-  analysis_distfs_failure_ratio="0.000000"
   analysis_settlement_apply_attempts=0
   analysis_settlement_apply_failures=0
+  local node_name
+  for node_name in "${node_ids[@]}"; do
+    analysis_distfs_total_checks=$((analysis_distfs_total_checks + ${node_distfs_total_checks_max[$node_name]:-0}))
+    analysis_distfs_failed_checks=$((analysis_distfs_failed_checks + ${node_distfs_failed_checks_max[$node_name]:-0}))
+    analysis_settlement_apply_attempts=$((analysis_settlement_apply_attempts + ${node_settlement_apply_attempts_max[$node_name]:-0}))
+    analysis_settlement_apply_failures=$((analysis_settlement_apply_failures + ${node_settlement_apply_failures_max[$node_name]:-0}))
+  done
+  analysis_distfs_failure_ratio="0.000000"
   analysis_settlement_apply_failure_ratio="0.000000"
-
-  gate_warnings+=("distfs_metrics_unavailable")
-  gate_warnings+=("settlement_apply_metrics_unavailable")
+  if (( analysis_distfs_total_checks > 0 )); then
+    analysis_distfs_failure_ratio=$(awk -v failed="$analysis_distfs_failed_checks" -v total="$analysis_distfs_total_checks" 'BEGIN { printf "%.6f", failed / total }')
+    if awk -v ratio="$analysis_distfs_failure_ratio" -v max="$max_distfs_failure_ratio" 'BEGIN { exit !(ratio > max) }'; then
+      gate_failures+=("distfs_failure_ratio=${analysis_distfs_failure_ratio}>max_${max_distfs_failure_ratio}")
+    fi
+  else
+    gate_warnings+=("distfs_metrics_unavailable")
+  fi
+  if (( analysis_settlement_apply_attempts > 0 )); then
+    analysis_settlement_apply_failure_ratio=$(awk -v failed="$analysis_settlement_apply_failures" -v total="$analysis_settlement_apply_attempts" 'BEGIN { printf "%.6f", failed / total }')
+    if awk -v ratio="$analysis_settlement_apply_failure_ratio" -v max="$max_settlement_apply_failure_ratio" 'BEGIN { exit !(ratio > max) }'; then
+      gate_failures+=("settlement_apply_failure_ratio=${analysis_settlement_apply_failure_ratio}>max_${max_settlement_apply_failure_ratio}")
+    fi
+  else
+    gate_warnings+=("settlement_apply_metrics_unavailable")
+  fi
+  if [[ "$analysis_invariant_all_ok" != "true" ]]; then
+    gate_failures+=("reward_asset_invariant_violation")
+  fi
 
   if (( analysis_balance_load_error_samples > 0 )); then
     gate_warnings+=("balances_load_error_samples=${analysis_balance_load_error_samples}")
@@ -965,6 +1048,9 @@ finalize_metric_gate() {
   fi
   if (( analysis_http_failure_samples > 0 )); then
     gate_warnings+=("http_failure_samples=${analysis_http_failure_samples}")
+  fi
+  if (( analysis_reward_runtime_available_samples <= 0 )); then
+    gate_warnings+=("reward_runtime_metrics_not_ready")
   fi
 
   if (( ${#gate_failures[@]} > 0 )); then
@@ -1035,6 +1121,7 @@ write_summary_json() {
     --argjson balance_load_error_samples "$analysis_balance_load_error_samples" \
     --argjson peer_zero_samples "$analysis_peer_zero_samples" \
     --argjson http_failure_samples "$analysis_http_failure_samples" \
+    --argjson reward_runtime_available_samples "$analysis_reward_runtime_available_samples" \
     --argjson overall_status_code "$overall_status_code" \
     '{
       generated_at_utc: $generated_at,
@@ -1046,8 +1133,8 @@ write_summary_json() {
       thresholds: {
         max_stall_secs: $max_stall_secs,
         max_lag_p95: $max_lag_p95,
-        max_distfs_failure_ratio_compat: $max_distfs_failure_ratio,
-        max_settlement_apply_failure_ratio_compat: $max_settlement_apply_failure_ratio
+        max_distfs_failure_ratio: $max_distfs_failure_ratio,
+        max_settlement_apply_failure_ratio: $max_settlement_apply_failure_ratio
       },
       artifacts: {
         run_config_json: $run_config_json,
@@ -1085,6 +1172,7 @@ write_summary_json() {
           balance_load_error_samples: $balance_load_error_samples,
           known_peer_heads_zero_samples: $peer_zero_samples,
           http_failure_samples: $http_failure_samples,
+          reward_runtime_available_samples: $reward_runtime_available_samples,
           committed_height_monotonic: $monotonic_ok,
           committed_height_monotonic_violation_nodes: (
             if $monotonic_violation_nodes == "" then []
@@ -1121,8 +1209,9 @@ append_summary_metrics_section() {
     echo "| known_peer_heads_zero_samples | $analysis_peer_zero_samples |"
     echo "| minted_non_empty_samples | $analysis_minted_non_empty_samples |"
     echo "| settlement_positive_samples | $analysis_settlement_positive_samples |"
-    echo "| distfs_failure_ratio | $analysis_distfs_failure_ratio (unavailable) |"
-    echo "| settlement_apply_failure_ratio | $analysis_settlement_apply_failure_ratio (unavailable) |"
+    echo "| reward_runtime_available_samples | $analysis_reward_runtime_available_samples |"
+    echo "| distfs_failure_ratio | $analysis_distfs_failure_ratio |"
+    echo "| settlement_apply_failure_ratio | $analysis_settlement_apply_failure_ratio |"
     echo "| committed_height_monotonic | $analysis_monotonic_ok |"
     echo "| committed_height_monotonic_violation_nodes | ${analysis_monotonic_violation_nodes:--} |"
   } >> "$summary_md"

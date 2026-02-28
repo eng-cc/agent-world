@@ -38,9 +38,12 @@ Options:
                                    down seconds for generated restart events (default: 1)
   --chaos-continuous-pause-duration-secs <n>
                                    pause duration seconds for generated pause/disconnect events (default: 2)
+  --reward-runtime-epoch-duration-secs <n>
+                                   reward runtime epoch duration seconds (default: 60)
+  --reward-points-per-credit <n>   reward points per credit (default: 100)
   --max-stall-secs <n>             gate threshold for max no-progress window
   --max-lag-p95 <n>                gate threshold for p95(network_height - committed_height)
-  --max-distfs-failure-ratio <r>   compatibility threshold, currently unavailable metric (0~1)
+  --max-distfs-failure-ratio <r>   gate threshold for distfs failure ratio (0~1)
   --no-prewarm                     skip cargo build prewarm
   --dry-run                        render topology commands only, do not run node processes
   -h, --help                       show help
@@ -193,6 +196,8 @@ chaos_continuous_actions_csv="restart,pause"
 chaos_continuous_seed=""
 chaos_continuous_restart_down_secs=1
 chaos_continuous_pause_duration_secs=2
+reward_runtime_epoch_duration_secs=60
+reward_points_per_credit=100
 max_stall_secs=""
 max_lag_p95=""
 max_distfs_failure_ratio=""
@@ -289,6 +294,14 @@ while [[ $# -gt 0 ]]; do
       chaos_continuous_pause_duration_secs=${2:-}
       shift 2
       ;;
+    --reward-runtime-epoch-duration-secs)
+      reward_runtime_epoch_duration_secs=${2:-}
+      shift 2
+      ;;
+    --reward-points-per-credit)
+      reward_points_per_credit=${2:-}
+      shift 2
+      ;;
     --max-stall-secs)
       max_stall_secs=${2:-}
       shift 2
@@ -378,6 +391,8 @@ ensure_non_negative_int "--chaos-continuous-start-sec" "$chaos_continuous_start_
 ensure_non_negative_int "--chaos-continuous-max-events" "$chaos_continuous_max_events"
 ensure_non_negative_int "--chaos-continuous-restart-down-secs" "$chaos_continuous_restart_down_secs"
 ensure_non_negative_int "--chaos-continuous-pause-duration-secs" "$chaos_continuous_pause_duration_secs"
+ensure_positive_int "--reward-runtime-epoch-duration-secs" "$reward_runtime_epoch_duration_secs"
+ensure_positive_int "--reward-points-per-credit" "$reward_points_per_credit"
 if [[ "$chaos_continuous_enabled" -eq 1 ]]; then
   ensure_positive_int "--chaos-continuous-interval-secs" "$chaos_continuous_interval_secs"
 fi
@@ -487,6 +502,8 @@ jq -n \
   --argjson chaos_continuous_seed "$chaos_continuous_seed" \
   --argjson chaos_continuous_restart_down_secs "$chaos_continuous_restart_down_secs" \
   --argjson chaos_continuous_pause_duration_secs "$chaos_continuous_pause_duration_secs" \
+  --argjson reward_runtime_epoch_duration_secs "$reward_runtime_epoch_duration_secs" \
+  --argjson reward_points_per_credit "$reward_points_per_credit" \
   --argjson dry_run "$dry_run" \
   --argjson topologies "$(printf '%s\n' "${topologies[@]}" | jq -R -s 'split("\n") | map(select(length > 0))')" \
   '{
@@ -500,10 +517,12 @@ jq -n \
     poll_interval_secs: $poll_interval_secs,
     curl_timeout_secs: $curl_timeout_secs,
     node_tick_ms: $node_tick_ms,
+    reward_runtime_epoch_duration_secs: $reward_runtime_epoch_duration_secs,
+    reward_points_per_credit: $reward_points_per_credit,
     thresholds: {
       max_stall_secs: $max_stall_secs,
       max_lag_p95: $max_lag_p95,
-      max_distfs_failure_ratio_compat: $max_distfs_failure_ratio
+      max_distfs_failure_ratio: $max_distfs_failure_ratio
     },
     topologies: $topologies,
     topologies_csv: $topologies_csv,
@@ -534,9 +553,11 @@ jq -n \
   echo "- scenario_compat: \`$scenario\`"
   echo "- llm_enabled_compat: \`$llm_enabled\`"
   echo "- node_tick_ms: \`$node_tick_ms\`"
+  echo "- reward_runtime_epoch_duration_secs: \`$reward_runtime_epoch_duration_secs\`"
+  echo "- reward_points_per_credit: \`$reward_points_per_credit\`"
   echo "- max_stall_secs: \`$max_stall_secs\`"
   echo "- max_lag_p95: \`$max_lag_p95\`"
-  echo "- max_distfs_failure_ratio (compat): \`$max_distfs_failure_ratio\`"
+  echo "- max_distfs_failure_ratio: \`$max_distfs_failure_ratio\`"
   if [[ -n "$chaos_plan_path" ]]; then
     echo "- chaos_plan: \`$chaos_plan_path\`"
   else
@@ -824,6 +845,9 @@ analysis_lag_p95=0
 analysis_distfs_failure_ratio="0.000000"
 analysis_distfs_total_checks=0
 analysis_distfs_failed_checks=0
+analysis_settlement_apply_failure_ratio="0.000000"
+analysis_settlement_apply_attempts=0
+analysis_settlement_apply_failures=0
 analysis_invariant_all_ok=true
 analysis_chaos_exempt_secs=0
 analysis_effective_max_stall_secs=0
@@ -835,6 +859,7 @@ analysis_balance_load_error_samples=0
 analysis_peer_zero_samples=0
 analysis_http_failure_samples=0
 analysis_minted_non_empty_samples=0
+analysis_reward_runtime_available_samples=0
 analysis_monotonic_ok=true
 analysis_monotonic_violation_nodes=""
 analysis_lag_values_file=""
@@ -844,6 +869,11 @@ best_height=-1
 last_progress_epoch_sec=0
 declare -A analysis_node_prev_committed=()
 declare -A analysis_node_monotonic_violations=()
+declare -A analysis_node_distfs_total_checks_max=()
+declare -A analysis_node_distfs_failed_checks_max=()
+declare -A analysis_node_settlement_apply_attempts_max=()
+declare -A analysis_node_settlement_apply_failures_max=()
+declare -A analysis_node_reward_minted_count_max=()
 
 reset_topology_analysis() {
   local topology=$1
@@ -856,6 +886,9 @@ reset_topology_analysis() {
   analysis_distfs_failure_ratio="0.000000"
   analysis_distfs_total_checks=0
   analysis_distfs_failed_checks=0
+  analysis_settlement_apply_failure_ratio="0.000000"
+  analysis_settlement_apply_attempts=0
+  analysis_settlement_apply_failures=0
   analysis_invariant_all_ok=true
   analysis_chaos_exempt_secs=${chaos_exempt_secs_by_topology[$topology]:-0}
   analysis_effective_max_stall_secs=$((max_stall_secs + analysis_chaos_exempt_secs))
@@ -867,6 +900,7 @@ reset_topology_analysis() {
   analysis_peer_zero_samples=0
   analysis_http_failure_samples=0
   analysis_minted_non_empty_samples=0
+  analysis_reward_runtime_available_samples=0
   analysis_monotonic_ok=true
   analysis_monotonic_violation_nodes=""
   analysis_lag_values_file="$topology_dir/.lag_values.txt"
@@ -878,6 +912,11 @@ reset_topology_analysis() {
   last_progress_epoch_sec=$(date +%s)
   analysis_node_prev_committed=()
   analysis_node_monotonic_violations=()
+  analysis_node_distfs_total_checks_max=()
+  analysis_node_distfs_failed_checks_max=()
+  analysis_node_settlement_apply_attempts_max=()
+  analysis_node_settlement_apply_failures_max=()
+  analysis_node_reward_minted_count_max=()
 }
 
 append_topology_timeline_sample() {
@@ -943,6 +982,14 @@ poll_topology_node_once() {
   running="false"
   known_peer_heads=0
   last_error=""
+  local rr_metrics_available="false"
+  local rr_last_error=""
+  local rr_distfs_total_checks=0
+  local rr_distfs_failed_checks=0
+  local rr_settlement_apply_attempts=0
+  local rr_settlement_apply_failures=0
+  local rr_minted_cumulative_count=0
+  local rr_invariant_ok="true"
 
   if [[ "$status_ok" -eq 1 ]]; then
     observed_at_unix_ms=$(safe_int "$(jq -r '.observed_at_unix_ms // 0' <<< "$status_json")")
@@ -952,6 +999,14 @@ poll_topology_node_once() {
     running=$(jq -r '.running // false' <<< "$status_json")
     known_peer_heads=$(safe_int "$(jq -r '.consensus.known_peer_heads // 0' <<< "$status_json")")
     last_error=$(jq -r '.last_error // empty' <<< "$status_json")
+    rr_metrics_available=$(jq -r '.reward_runtime.metrics_available // false' <<< "$status_json")
+    rr_last_error=$(jq -r '.reward_runtime.last_error // empty' <<< "$status_json")
+    rr_distfs_total_checks=$(safe_int "$(jq -r '.reward_runtime.distfs_total_checks // 0' <<< "$status_json")")
+    rr_distfs_failed_checks=$(safe_int "$(jq -r '.reward_runtime.distfs_failed_checks // 0' <<< "$status_json")")
+    rr_settlement_apply_attempts=$(safe_int "$(jq -r '.reward_runtime.settlement_apply_attempts_total // 0' <<< "$status_json")")
+    rr_settlement_apply_failures=$(safe_int "$(jq -r '.reward_runtime.settlement_apply_failures_total // 0' <<< "$status_json")")
+    rr_minted_cumulative_count=$(safe_int "$(jq -r '.reward_runtime.cumulative_minted_record_count // 0' <<< "$status_json")")
+    rr_invariant_ok=$(jq -r '.reward_runtime.invariant_ok // true' <<< "$status_json")
   fi
 
   local reward_mint_record_count balance_load_error
@@ -960,6 +1015,10 @@ poll_topology_node_once() {
   if [[ "$balances_ok" -eq 1 ]]; then
     reward_mint_record_count=$(safe_int "$(jq -r '.reward_mint_record_count // 0' <<< "$balances_json")")
     balance_load_error=$(jq -r '.load_error // empty' <<< "$balances_json")
+  fi
+  local effective_minted_record_count=$reward_mint_record_count
+  if (( rr_minted_cumulative_count > effective_minted_record_count )); then
+    effective_minted_record_count=$rr_minted_cumulative_count
   fi
 
   local lag=$((network_committed_height - committed_height))
@@ -1009,7 +1068,37 @@ poll_topology_node_once() {
   if (( known_peer_heads <= 0 )); then
     analysis_peer_zero_samples=$((analysis_peer_zero_samples + 1))
   fi
-  if (( reward_mint_record_count > 0 )); then
+  if [[ "$rr_metrics_available" == "true" ]]; then
+    analysis_reward_runtime_available_samples=$((analysis_reward_runtime_available_samples + 1))
+  fi
+  if [[ -n "$rr_last_error" ]]; then
+    analysis_last_error_samples=$((analysis_last_error_samples + 1))
+    printf '%s\t%s\n' "$node_name" "$rr_last_error" >> "$analysis_runtime_errors_file"
+  fi
+  if [[ "$rr_invariant_ok" != "true" ]]; then
+    analysis_invariant_all_ok=false
+  fi
+  local prev_distfs_total=${analysis_node_distfs_total_checks_max[$node_name]:-0}
+  if (( rr_distfs_total_checks > prev_distfs_total )); then
+    analysis_node_distfs_total_checks_max["$node_name"]=$rr_distfs_total_checks
+  fi
+  local prev_distfs_failed=${analysis_node_distfs_failed_checks_max[$node_name]:-0}
+  if (( rr_distfs_failed_checks > prev_distfs_failed )); then
+    analysis_node_distfs_failed_checks_max["$node_name"]=$rr_distfs_failed_checks
+  fi
+  local prev_settlement_attempts=${analysis_node_settlement_apply_attempts_max[$node_name]:-0}
+  if (( rr_settlement_apply_attempts > prev_settlement_attempts )); then
+    analysis_node_settlement_apply_attempts_max["$node_name"]=$rr_settlement_apply_attempts
+  fi
+  local prev_settlement_failures=${analysis_node_settlement_apply_failures_max[$node_name]:-0}
+  if (( rr_settlement_apply_failures > prev_settlement_failures )); then
+    analysis_node_settlement_apply_failures_max["$node_name"]=$rr_settlement_apply_failures
+  fi
+  local prev_minted=${analysis_node_reward_minted_count_max[$node_name]:-0}
+  if (( rr_minted_cumulative_count > prev_minted )); then
+    analysis_node_reward_minted_count_max["$node_name"]=$rr_minted_cumulative_count
+  fi
+  if (( effective_minted_record_count > 0 )); then
     analysis_minted_non_empty_samples=$((analysis_minted_non_empty_samples + 1))
   fi
 
@@ -1075,14 +1164,26 @@ finalize_topology_metric_gate() {
 
   analysis_distfs_total_checks=0
   analysis_distfs_failed_checks=0
+  analysis_settlement_apply_attempts=0
+  analysis_settlement_apply_failures=0
   analysis_distfs_failure_ratio="0.000000"
-  analysis_invariant_all_ok=true
-  if (( analysis_running_false_samples > 0 || analysis_last_error_samples > 0 )); then
-    analysis_invariant_all_ok=false
+  analysis_settlement_apply_failure_ratio="0.000000"
+  local node_name
+  for node_name in "${active_nodes[@]}"; do
+    analysis_distfs_total_checks=$((analysis_distfs_total_checks + ${analysis_node_distfs_total_checks_max[$node_name]:-0}))
+    analysis_distfs_failed_checks=$((analysis_distfs_failed_checks + ${analysis_node_distfs_failed_checks_max[$node_name]:-0}))
+    analysis_settlement_apply_attempts=$((analysis_settlement_apply_attempts + ${analysis_node_settlement_apply_attempts_max[$node_name]:-0}))
+    analysis_settlement_apply_failures=$((analysis_settlement_apply_failures + ${analysis_node_settlement_apply_failures_max[$node_name]:-0}))
+  done
+  if (( analysis_distfs_total_checks > 0 )); then
+    analysis_distfs_failure_ratio=$(awk -v failed="$analysis_distfs_failed_checks" -v total="$analysis_distfs_total_checks" 'BEGIN { printf "%.6f", failed / total }')
   fi
-
+  if (( analysis_settlement_apply_attempts > 0 )); then
+    analysis_settlement_apply_failure_ratio=$(awk -v failed="$analysis_settlement_apply_failures" -v total="$analysis_settlement_apply_attempts" 'BEGIN { printf "%.6f", failed / total }')
+  fi
   local -a gate_failures=()
   local -a gate_warnings=()
+  local -a gate_data_warnings=()
 
   if (( analysis_report_count <= 0 )); then
     gate_failures+=("no_samples")
@@ -1109,6 +1210,9 @@ finalize_topology_metric_gate() {
   if (( analysis_lag_p95 > max_lag_p95 )); then
     gate_failures+=("lag_p95=${analysis_lag_p95}>max_${max_lag_p95}")
   fi
+  if (( analysis_distfs_total_checks > 0 )) && awk -v ratio="$analysis_distfs_failure_ratio" -v max="$max_distfs_failure_ratio" 'BEGIN { exit !(ratio > max) }'; then
+    gate_failures+=("distfs_failure_ratio=${analysis_distfs_failure_ratio}>max_${max_distfs_failure_ratio}")
+  fi
   if [[ "$analysis_monotonic_ok" != "true" ]]; then
     if (( chaos_event_count > 0 )); then
       gate_warnings+=("committed_height_not_monotonic nodes=${analysis_monotonic_violation_nodes}")
@@ -1116,8 +1220,18 @@ finalize_topology_metric_gate() {
       gate_failures+=("committed_height_not_monotonic nodes=${analysis_monotonic_violation_nodes}")
     fi
   fi
+  if [[ "$analysis_invariant_all_ok" != "true" ]]; then
+    gate_failures+=("reward_asset_invariant_violation")
+  fi
 
-  gate_warnings+=("distfs_metrics_unavailable")
+  if (( analysis_reward_runtime_available_samples <= 0 )); then
+    gate_data_warnings+=("reward_runtime_metrics_not_ready")
+  elif (( analysis_distfs_total_checks <= 0 )); then
+    gate_warnings+=("distfs_checks_zero")
+  fi
+  if (( analysis_settlement_apply_attempts <= 0 )); then
+    gate_warnings+=("settlement_apply_attempts_zero")
+  fi
   if (( analysis_balance_load_error_samples > 0 )); then
     gate_warnings+=("balances_load_error_samples=${analysis_balance_load_error_samples}")
   fi
@@ -1138,11 +1252,20 @@ finalize_topology_metric_gate() {
   if (( ${#gate_failures[@]} > 0 )); then
     analysis_gate_status="fail"
     analysis_gate_notes=$(join_by "; " "${gate_failures[@]}")
+    if (( ${#gate_data_warnings[@]} > 0 )); then
+      analysis_gate_notes="${analysis_gate_notes}; $(join_by "; " "${gate_data_warnings[@]}")"
+    fi
+    if (( ${#gate_warnings[@]} > 0 )); then
+      analysis_gate_notes="${analysis_gate_notes}; $(join_by "; " "${gate_warnings[@]}")"
+    fi
+  elif (( ${#gate_data_warnings[@]} > 0 )); then
+    analysis_gate_status="insufficient_data"
+    analysis_gate_notes=$(join_by "; " "${gate_data_warnings[@]}")
     if (( ${#gate_warnings[@]} > 0 )); then
       analysis_gate_notes="${analysis_gate_notes}; $(join_by "; " "${gate_warnings[@]}")"
     fi
   elif (( ${#gate_warnings[@]} > 0 )); then
-    analysis_gate_status="insufficient_data"
+    analysis_gate_status="pass"
     analysis_gate_notes=$(join_by "; " "${gate_warnings[@]}")
   else
     analysis_gate_status="pass"
@@ -1202,6 +1325,8 @@ run_topology() {
         --status-bind "$status_bind"
         --node-role "$role"
         --node-tick-ms "$node_tick_ms"
+        --reward-runtime-epoch-duration-secs "$reward_runtime_epoch_duration_secs"
+        --reward-points-per-credit "$reward_points_per_credit"
         --node-gossip-bind "$gossip_addr"
       )
       if [[ "$role" == "sequencer" ]]; then
@@ -1256,11 +1381,15 @@ run_topology() {
           distfs_failure_ratio: "0.000000",
           distfs_total_checks: 0,
           distfs_failed_checks: 0,
+          settlement_apply_failure_ratio: "0.000000",
+          settlement_apply_attempts: 0,
+          settlement_apply_failures: 0,
           invariant_all_ok: true,
           status_samples_ok: 0,
           balances_samples_ok: 0,
           running_false_samples: 0,
           last_error_samples: 0,
+          reward_runtime_available_samples: 0,
           minted_non_empty_samples: 0,
           committed_height_monotonic: true,
           committed_height_monotonic_violation_nodes: []
@@ -1285,6 +1414,8 @@ run_topology() {
       --status-bind "$status_bind"
       --node-role "$role"
       --node-tick-ms "$node_tick_ms"
+      --reward-runtime-epoch-duration-secs "$reward_runtime_epoch_duration_secs"
+      --reward-points-per-credit "$reward_points_per_credit"
       --node-gossip-bind "$gossip_addr"
     )
 
@@ -1573,11 +1704,15 @@ run_topology() {
     --argjson distfs_failure_ratio "$analysis_distfs_failure_ratio" \
     --argjson distfs_total_checks "$analysis_distfs_total_checks" \
     --argjson distfs_failed_checks "$analysis_distfs_failed_checks" \
+    --argjson settlement_apply_failure_ratio "$analysis_settlement_apply_failure_ratio" \
+    --argjson settlement_apply_attempts "$analysis_settlement_apply_attempts" \
+    --argjson settlement_apply_failures "$analysis_settlement_apply_failures" \
     --argjson invariant_all_ok "$analysis_invariant_all_ok" \
     --argjson status_samples_ok "$analysis_status_samples_ok" \
     --argjson balances_samples_ok "$analysis_balances_samples_ok" \
     --argjson running_false_samples "$analysis_running_false_samples" \
     --argjson last_error_samples "$analysis_last_error_samples" \
+    --argjson reward_runtime_available_samples "$analysis_reward_runtime_available_samples" \
     --argjson minted_non_empty_samples "$analysis_minted_non_empty_samples" \
     --argjson monotonic_ok "$analysis_monotonic_ok" \
     --arg monotonic_violation_nodes "$analysis_monotonic_violation_nodes" \
@@ -1604,11 +1739,15 @@ run_topology() {
         distfs_failure_ratio: $distfs_failure_ratio,
         distfs_total_checks: $distfs_total_checks,
         distfs_failed_checks: $distfs_failed_checks,
+        settlement_apply_failure_ratio: $settlement_apply_failure_ratio,
+        settlement_apply_attempts: $settlement_apply_attempts,
+        settlement_apply_failures: $settlement_apply_failures,
         invariant_all_ok: $invariant_all_ok,
         status_samples_ok: $status_samples_ok,
         balances_samples_ok: $balances_samples_ok,
         running_false_samples: $running_false_samples,
         last_error_samples: $last_error_samples,
+        reward_runtime_available_samples: $reward_runtime_available_samples,
         minted_non_empty_samples: $minted_non_empty_samples,
         committed_height_monotonic: $monotonic_ok,
         committed_height_monotonic_violation_nodes: (
@@ -1680,7 +1819,7 @@ write_summary_json() {
         thresholds: {
           max_stall_secs: $max_stall_secs,
           max_lag_p95: $max_lag_p95,
-          max_distfs_failure_ratio_compat: $max_distfs_failure_ratio
+          max_distfs_failure_ratio: $max_distfs_failure_ratio
         },
         artifacts: {
           run_config_json: $run_config_json,
@@ -1749,12 +1888,12 @@ append_summary_metrics_section() {
     echo
     echo "## Gate Metrics"
     echo
-    echo "| topology | gate | reports | chaos_plan | chaos_continuous | chaos_events | chaos_exempt_s | max_stall_s | max_stall_s_effective | lag_p95 | distfs_ratio | invariant_all_ok | minted_samples |"
-    echo "|---|---|---|---|---|---|---|---|---|---|---|---|---|"
+    echo "| topology | gate | reports | chaos_plan | chaos_continuous | chaos_events | chaos_exempt_s | max_stall_s | max_stall_s_effective | lag_p95 | distfs_ratio | settlement_apply_ratio | invariant_all_ok | reward_runtime_samples | minted_samples |"
+    echo "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"
     if [[ -f "$summary_json" ]]; then
-      while IFS=$'\t' read -r topology gate reports chaos_plan chaos_continuous chaos_events chaos_exempt stall stall_effective lag ratio invariant minted; do
-        echo "| $topology | $gate | $reports | $chaos_plan | $chaos_continuous | $chaos_events | $chaos_exempt | $stall | $stall_effective | $lag | $ratio | $invariant | $minted |"
-      done < <(jq -r '.topologies[] | [ .topology, .metric_gate.status, .report_samples, .chaos_plan_events, .chaos_continuous_events, .chaos_events, .metrics.chaos_exempt_secs, .metrics.max_stall_secs_observed, .metrics.effective_max_stall_secs, .metrics.lag_p95, .metrics.distfs_failure_ratio, .metrics.invariant_all_ok, .metrics.minted_non_empty_samples ] | @tsv' "$summary_json")
+      while IFS=$'\t' read -r topology gate reports chaos_plan chaos_continuous chaos_events chaos_exempt stall stall_effective lag ratio settlement_ratio invariant rr_samples minted; do
+        echo "| $topology | $gate | $reports | $chaos_plan | $chaos_continuous | $chaos_events | $chaos_exempt | $stall | $stall_effective | $lag | $ratio | $settlement_ratio | $invariant | $rr_samples | $minted |"
+      done < <(jq -r '.topologies[] | [ .topology, .metric_gate.status, .report_samples, .chaos_plan_events, .chaos_continuous_events, .chaos_events, .metrics.chaos_exempt_secs, .metrics.max_stall_secs_observed, .metrics.effective_max_stall_secs, .metrics.lag_p95, .metrics.distfs_failure_ratio, .metrics.settlement_apply_failure_ratio, .metrics.invariant_all_ok, .metrics.reward_runtime_available_samples, .metrics.minted_non_empty_samples ] | @tsv' "$summary_json")
     fi
   } >> "$summary_md"
 }
