@@ -2,7 +2,7 @@
 
 ## 任务拆解
 - [x] T0 建档：设计文档 + 项目管理文档。
-- [ ] T1 实现：reward worker 启动阶段补齐 distfs probe seed blob。
+- [x] T1 实现：reward worker 启动阶段补齐 distfs probe seed blob。
 - [ ] T2 验证：语法检查 + `cargo check/test` + S10 发布基线复跑。
 - [ ] T3 收口：更新手册与 devlog，项目结项。
 
@@ -13,5 +13,5 @@
 - `.tmp/release_gate_s10/20260228-222029/summary.json`
 
 ## 状态
-- 当前阶段：进行中（T0 已完成，执行 T1）。
-- 当前任务：T1 实现。
+- 当前阶段：进行中（T0~T1 已完成，执行 T2）。
+- 当前任务：T2 验证。

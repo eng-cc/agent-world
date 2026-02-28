@@ -7,10 +7,10 @@ use std::thread;
 use std::time::Duration;
 
 use agent_world::runtime::{
-    measure_directory_storage_bytes, Action as RuntimeAction, NodePointsConfig,
-    NodePointsRuntimeCollector, NodePointsRuntimeCollectorSnapshot, NodePointsRuntimeHeuristics,
-    NodePointsRuntimeObservation, ProtocolPowerReserve, RewardAssetConfig,
-    RewardSignatureGovernancePolicy, World as RuntimeWorld,
+    measure_directory_storage_bytes, Action as RuntimeAction, BlobStore, LocalCasStore,
+    NodePointsConfig, NodePointsRuntimeCollector, NodePointsRuntimeCollectorSnapshot,
+    NodePointsRuntimeHeuristics, NodePointsRuntimeObservation, ProtocolPowerReserve,
+    RewardAssetConfig, RewardSignatureGovernancePolicy, World as RuntimeWorld,
 };
 use agent_world_distfs::StorageChallengeProbeCursorState;
 use agent_world_node::{NodeRole, NodeRuntime, PosConsensusStatus};
@@ -202,6 +202,13 @@ fn reward_runtime_loop(
             err
         )
     })?;
+    if let Err(err) = ensure_distfs_probe_seed_blob(
+        config.storage_root.as_path(),
+        config.world_id.as_str(),
+        config.local_node_id.as_str(),
+    ) {
+        update_metrics_error(metrics.as_ref(), err.as_str());
+    }
 
     let points_config = reward_runtime_points_config(config.reward_runtime_epoch_duration_secs);
     let mut collector = match load_reward_runtime_collector_snapshot(config.state_path.as_path()) {
@@ -544,4 +551,61 @@ fn persist_reward_runtime_collector_state(
     let bytes = serde_json::to_vec_pretty(&snapshot)
         .map_err(|err| format!("serialize collector state failed: {}", err))?;
     super::write_bytes_atomic(path, bytes.as_slice())
+}
+
+fn ensure_distfs_probe_seed_blob(
+    storage_root: &Path,
+    world_id: &str,
+    node_id: &str,
+) -> Result<(), String> {
+    let store = LocalCasStore::new(storage_root);
+    let existing_hashes = store
+        .list_blob_hashes()
+        .map_err(|err| format!("list distfs blobs failed: {err:?}"))?;
+    if !existing_hashes.is_empty() {
+        return Ok(());
+    }
+    let seed = format!(
+        "reward-runtime-distfs-seed:v1 world_id={} node_id={}",
+        world_id, node_id
+    );
+    store
+        .put_bytes(seed.as_bytes())
+        .map(|_| ())
+        .map_err(|err| format!("write distfs seed blob failed: {err:?}"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ensure_distfs_probe_seed_blob;
+    use agent_world::runtime::LocalCasStore;
+    use std::path::PathBuf;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn temp_dir(prefix: &str) -> PathBuf {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("duration")
+            .as_nanos();
+        std::env::temp_dir().join(format!(
+            "agent-world-reward-runtime-worker-{prefix}-{unique}"
+        ))
+    }
+
+    #[test]
+    fn ensure_distfs_probe_seed_blob_populates_empty_store_once() {
+        let dir = temp_dir("seed");
+        ensure_distfs_probe_seed_blob(dir.as_path(), "world-a", "node-a")
+            .expect("seed empty store");
+        let store = LocalCasStore::new(dir.as_path());
+        let hashes_after_first = store.list_blob_hashes().expect("list after first");
+        assert_eq!(hashes_after_first.len(), 1);
+
+        ensure_distfs_probe_seed_blob(dir.as_path(), "world-a", "node-a")
+            .expect("seed non-empty store");
+        let hashes_after_second = store.list_blob_hashes().expect("list after second");
+        assert_eq!(hashes_after_second.len(), 1);
+
+        let _ = std::fs::remove_dir_all(dir);
+    }
 }

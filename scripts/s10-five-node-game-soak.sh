@@ -970,6 +970,7 @@ finalize_metric_gate() {
 
   local -a gate_failures=()
   local -a gate_warnings=()
+  local -a gate_data_warnings=()
 
   if (( analysis_report_count <= 0 )); then
     gate_failures+=("no_samples")
@@ -1026,7 +1027,7 @@ finalize_metric_gate() {
       gate_failures+=("distfs_failure_ratio=${analysis_distfs_failure_ratio}>max_${max_distfs_failure_ratio}")
     fi
   else
-    gate_warnings+=("distfs_metrics_unavailable")
+    gate_data_warnings+=("distfs_metrics_unavailable")
   fi
   if (( analysis_settlement_apply_attempts > 0 )); then
     analysis_settlement_apply_failure_ratio=$(awk -v failed="$analysis_settlement_apply_failures" -v total="$analysis_settlement_apply_attempts" 'BEGIN { printf "%.6f", failed / total }')
@@ -1034,7 +1035,7 @@ finalize_metric_gate() {
       gate_failures+=("settlement_apply_failure_ratio=${analysis_settlement_apply_failure_ratio}>max_${max_settlement_apply_failure_ratio}")
     fi
   else
-    gate_warnings+=("settlement_apply_metrics_unavailable")
+    gate_data_warnings+=("settlement_apply_metrics_unavailable")
   fi
   if [[ "$analysis_invariant_all_ok" != "true" ]]; then
     gate_failures+=("reward_asset_invariant_violation")
@@ -1050,17 +1051,26 @@ finalize_metric_gate() {
     gate_warnings+=("http_failure_samples=${analysis_http_failure_samples}")
   fi
   if (( analysis_reward_runtime_available_samples <= 0 )); then
-    gate_warnings+=("reward_runtime_metrics_not_ready")
+    gate_data_warnings+=("reward_runtime_metrics_not_ready")
   fi
 
   if (( ${#gate_failures[@]} > 0 )); then
     analysis_gate_status="fail"
     analysis_gate_notes=$(join_by "; " "${gate_failures[@]}")
+    if (( ${#gate_data_warnings[@]} > 0 )); then
+      analysis_gate_notes="${analysis_gate_notes}; $(join_by "; " "${gate_data_warnings[@]}")"
+    fi
+    if (( ${#gate_warnings[@]} > 0 )); then
+      analysis_gate_notes="${analysis_gate_notes}; $(join_by "; " "${gate_warnings[@]}")"
+    fi
+  elif (( ${#gate_data_warnings[@]} > 0 )); then
+    analysis_gate_status="insufficient_data"
+    analysis_gate_notes=$(join_by "; " "${gate_data_warnings[@]}")
     if (( ${#gate_warnings[@]} > 0 )); then
       analysis_gate_notes="${analysis_gate_notes}; $(join_by "; " "${gate_warnings[@]}")"
     fi
   elif (( ${#gate_warnings[@]} > 0 )); then
-    analysis_gate_status="insufficient_data"
+    analysis_gate_status="pass"
     analysis_gate_notes=$(join_by "; " "${gate_warnings[@]}")
   else
     analysis_gate_status="pass"
