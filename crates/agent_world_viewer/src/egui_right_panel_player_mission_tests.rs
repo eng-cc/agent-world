@@ -1,7 +1,8 @@
 use super::egui_right_panel_player_experience::PlayerGuideStep;
 use super::egui_right_panel_player_guide::{
     build_player_mission_loop_snapshot, build_player_mission_remaining_hint,
-    player_control_stage_label, player_mission_hud_anchor_y, player_mission_hud_compact_mode,
+    player_control_stage_label, player_control_stage_shows_recovery_actions,
+    player_mission_hud_anchor_y, player_mission_hud_compact_mode,
     player_mission_hud_minimap_reserved_bottom, player_mission_hud_show_command_action,
     player_mission_hud_show_minimap, PlayerGuideProgressSnapshot,
 };
@@ -170,4 +171,16 @@ fn player_control_stage_label_maps_core_states() {
         player_control_stage_label("applied", crate::i18n::UiLocale::EnUs),
         "Completed"
     );
+}
+
+#[test]
+fn player_control_stage_shows_recovery_actions_only_for_no_progress_completion() {
+    assert!(player_control_stage_shows_recovery_actions(
+        "completed_no_progress"
+    ));
+    assert!(!player_control_stage_shows_recovery_actions(
+        "completed_advanced"
+    ));
+    assert!(!player_control_stage_shows_recovery_actions("executing"));
+    assert!(!player_control_stage_shows_recovery_actions("blocked"));
 }

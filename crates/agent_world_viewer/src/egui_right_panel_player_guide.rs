@@ -364,6 +364,10 @@ pub(super) fn player_control_stage_label(
     }
 }
 
+pub(super) fn player_control_stage_shows_recovery_actions(stage: &str) -> bool {
+    matches!(stage, "completed_no_progress")
+}
+
 pub(super) fn player_cinematic_intro_alpha(status: &crate::ConnectionStatus, tick: u64) -> f32 {
     if !matches!(status, crate::ConnectionStatus::Connected)
         || tick > PLAYER_CINEMATIC_FADE_OUT_END_TICKS
@@ -946,6 +950,9 @@ pub(super) fn render_player_mission_hud(
     let mut command_clicked = false;
     let (mut recover_play_clicked, mut recover_step_clicked) = (false, false);
     let control_feedback = latest_web_test_api_control_feedback();
+    let control_feedback_needs_recovery = control_feedback.as_ref().is_some_and(|feedback| {
+        player_control_stage_shows_recovery_actions(feedback.stage.as_str())
+    });
     egui::Area::new(egui::Id::new("viewer-player-mission-hud"))
         .anchor(egui::Align2::LEFT_TOP, egui::vec2(14.0, mission_anchor_y))
         .movable(false)
@@ -1016,7 +1023,7 @@ pub(super) fn render_player_mission_hud(
                                     egui::RichText::new(stuck_hint)
                                         .color(egui::Color32::from_rgb(248, 210, 180)),
                                 );
-                                if client.is_some() {
+                                if client.is_some() && !control_feedback_needs_recovery {
                                     ui.horizontal_wrapped(|ui| {
                                         recover_play_clicked = ui
                                             .button(if locale.is_zh() {
@@ -1077,6 +1084,27 @@ pub(super) fn render_player_mission_hud(
                                         egui::RichText::new(hint.as_str())
                                             .color(egui::Color32::from_rgb(186, 206, 238)),
                                     );
+                                }
+                                if player_control_stage_shows_recovery_actions(
+                                    feedback.stage.as_str(),
+                                ) && client.is_some()
+                                {
+                                    ui.horizontal_wrapped(|ui| {
+                                        recover_play_clicked = ui
+                                            .button(if locale.is_zh() {
+                                                "恢复：play"
+                                            } else {
+                                                "Recover: play"
+                                            })
+                                            .clicked();
+                                        recover_step_clicked = ui
+                                            .button(if locale.is_zh() {
+                                                "重试：step x8"
+                                            } else {
+                                                "Retry: step x8"
+                                            })
+                                            .clicked();
+                                    });
                                 }
                             });
                     }

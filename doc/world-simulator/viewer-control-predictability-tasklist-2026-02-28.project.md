@@ -11,6 +11,11 @@
 - [x] T8 落地 P0.1：补齐控件阶段标签映射测试（含 legacy `applied` 兼容）
 - [x] T9 执行 test_tier_required 定向验证（viewer 单测 + wasm32 check）
 - [x] T10 文档收口（更新项目状态与 devlog，提交本任务）
+- [x] T11 落地 P0.2：移除 `step` 卡住后的自动 `play` 代跑，改为 `completed_no_progress` 终态
+- [x] T12 落地 P0.2：Mission HUD 控制反馈卡片增加无进展恢复 CTA（Recover play / Retry step x8）
+- [x] T13 落地 P0.2：避免 stuck hint 与 control feedback 卡片重复渲染恢复按钮
+- [x] T14 落地 P0.2：补齐恢复 CTA 判定单测
+- [x] T15 执行 test_tier_required 定向验证（viewer 单测 + wasm32 check）并文档收口
 
 ## 依赖
 - `doc/playability_test_result/card_2026_02_28_19_22_20.md`
@@ -24,10 +29,11 @@
 - `crates/agent_world_viewer/src/egui_right_panel_player_mission_tests.rs`
 
 ## 状态
-- 当前阶段：已完成（T1~T10）
+- 当前阶段：已完成（T1~T15）
 - 当前结论：
   - 已形成一份可直接落地的“控制可预期性改版”执行清单，覆盖 P0/P1/P2、量化门槛与 A/B 实验项。
   - P0.1 已落地：控制反馈阶段语义与 UI 展示完成对齐，`completed_no_progress` 不再误标为 `blocked`。
-  - 当前最高优先级转为 P0.2（无进展恢复 CTA 的交互落地与回归）。
+  - P0.2 已落地：无进展恢复 CTA 已进入玩家可操作闭环（不再自动代跑），玩家可显式触发 `play/step` 恢复动作。
+  - 当前最高优先级转为 P0.3（按 `run-game-test-ab.sh` 做 10 轮回归并验证 B 段通过率门槛）。
 - 阻塞项：无
 - 最近更新：2026-02-28

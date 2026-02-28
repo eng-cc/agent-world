@@ -38,6 +38,8 @@ const WEB_TEST_API_CONTROL_ACTIONS: [&str; 3] = ["play", "pause", "step"];
 #[cfg(target_arch = "wasm32")]
 const CONTROL_STALL_FRAME_THRESHOLD: u32 = 150;
 #[cfg(target_arch = "wasm32")]
+const CONTROL_STALL_HINT_SECS: f64 = 2.5;
+#[cfg(target_arch = "wasm32")]
 const CONTROL_STAGE_RECEIVED: &str = "received";
 #[cfg(target_arch = "wasm32")]
 const CONTROL_STAGE_EXECUTING: &str = "executing";
@@ -938,8 +940,8 @@ pub(super) fn publish_web_test_api_state(
     selection: Res<ViewerSelection>,
     camera_mode: Res<ViewerCameraMode>,
     cameras: Query<(&OrbitCamera, &Projection), With<Viewer3dCamera>>,
-    client: Option<Res<ViewerClient>>,
-    control_profile: Option<Res<ViewerControlProfileState>>,
+    _client: Option<Res<ViewerClient>>,
+    _control_profile: Option<Res<ViewerControlProfileState>>,
 ) {
     WEB_TEST_API_STATE_SNAPSHOT.with(|slot| {
         let mut snapshot = slot.borrow_mut();
@@ -1067,47 +1069,18 @@ pub(super) fn publish_web_test_api_state(
                     } else if connection_ready {
                         feedback.no_progress_frames = feedback.no_progress_frames.saturating_add(1);
                         if feedback.no_progress_frames >= CONTROL_STALL_FRAME_THRESHOLD {
-                            if feedback.action == "step" {
-                                let recovered = client.as_ref().is_some_and(|viewer_client| {
-                                    dispatch_viewer_control(
-                                        viewer_client,
-                                        control_profile.as_deref(),
-                                        ViewerControl::Play,
-                                        None,
-                                    )
-                                });
-                                feedback.reason = Some(format!(
-                                    "Cause: step accepted but no world delta within stall window ({} frames)",
-                                    CONTROL_STALL_FRAME_THRESHOLD
-                                ));
-                                if recovered {
-                                    feedback.stage = CONTROL_STAGE_EXECUTING.to_string();
-                                    feedback.hint = Some(
-                                        "Next: auto recovery dispatched play; if still stalled, retry step"
-                                            .to_string(),
-                                    );
-                                    feedback.effect = "step stalled, auto recovery play dispatched"
-                                        .to_string();
-                                    feedback.baseline_logical_time = latest_logical_time;
-                                    feedback.baseline_event_seq = latest_event_seq;
-                                    feedback.no_progress_frames = 0;
-                                } else {
-                                    feedback.stage = CONTROL_STAGE_COMPLETED_NO_PROGRESS.to_string();
-                                    feedback.hint =
-                                        Some("Next: use play, then retry step".to_string());
-                                    feedback.effect =
-                                        "accepted without observed progress".to_string();
-                                    feedback.awaiting_effect = false;
-                                }
+                            feedback.stage = CONTROL_STAGE_COMPLETED_NO_PROGRESS.to_string();
+                            feedback.reason = Some(format!(
+                                "Cause: no world delta observed for >= {:.1}s ({} frames)",
+                                CONTROL_STALL_HINT_SECS, CONTROL_STALL_FRAME_THRESHOLD
+                            ));
+                            feedback.hint = Some(if feedback.action == "step" {
+                                "Next: click Recover: play, then retry step".to_string()
                             } else {
-                                feedback.stage = CONTROL_STAGE_COMPLETED_NO_PROGRESS.to_string();
-                                feedback.reason =
-                                    Some("Cause: no world delta observed while connected".to_string());
-                                feedback.hint =
-                                    Some(control_action_hint(feedback.action.as_str(), false));
-                                feedback.effect = "accepted without observed progress".to_string();
-                                feedback.awaiting_effect = false;
-                            }
+                                control_action_hint(feedback.action.as_str(), false)
+                            });
+                            feedback.effect = "accepted without observed progress".to_string();
+                            feedback.awaiting_effect = false;
                         } else {
                             feedback.stage = CONTROL_STAGE_EXECUTING.to_string();
                             feedback.effect = "queued, waiting for next world delta".to_string();
