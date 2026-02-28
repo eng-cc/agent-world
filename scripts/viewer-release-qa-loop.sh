@@ -9,13 +9,13 @@ usage() {
 Usage: ./scripts/viewer-release-qa-loop.sh [options]
 
 Options:
-  --scenario <name>          world_viewer_live scenario (default: llm_bootstrap)
+  --scenario <name>          world_game_launcher scenario (default: llm_bootstrap)
   --live-bind <host:port>    live tcp bind (default: 127.0.0.1:5023)
   --web-bind <host:port>     web bridge bind (default: 127.0.0.1:5011)
   --viewer-host <host>       web viewer host (default: 127.0.0.1)
   --viewer-port <port>       web viewer port (default: 4173)
   --out-dir <path>           artifact output dir (default: output/playwright/viewer)
-  --with-consensus-gate      keep world_viewer_live consensus gate/topology defaults
+  --with-consensus-gate      deprecated no-op (viewer/node split removed this behavior)
   --skip-visual-baseline     skip scripts/viewer-visual-baseline.sh
   --headed                   open browser in headed mode
   -h, --help                 show this help
@@ -154,14 +154,9 @@ zoom_shot_mid="$out_dir/release-qa-zoom-mid-${stamp}.png"
 zoom_shot_far="$out_dir/release-qa-zoom-far-${stamp}.png"
 
 live_pid=""
-web_pid=""
 
 cleanup() {
   set +e
-  if [[ -n "$web_pid" ]]; then
-    kill "$web_pid" >/dev/null 2>&1 || true
-    wait "$web_pid" >/dev/null 2>&1 || true
-  fi
   if [[ -n "$live_pid" ]]; then
     kill "$live_pid" >/dev/null 2>&1 || true
     wait "$live_pid" >/dev/null 2>&1 || true
@@ -183,15 +178,21 @@ web_host=${web_bind%:*}
 web_port=${web_bind##*:}
 viewer_url="http://${viewer_host}:${viewer_port}/?ws=ws://${web_bind}&test_api=1"
 
-live_args=("$scenario" "--bind" "$live_bind" "--web-bind" "$web_bind")
-if [[ "$with_consensus_gate" -eq 0 ]]; then
-  # Release QA loop uses single topology + no gate by default to avoid
-  # triad consensus readiness from masking viewer semantic regressions.
-  live_args+=("--topology" "single" "--viewer-no-consensus-gate" "--no-node")
+if [[ "$with_consensus_gate" -eq 1 ]]; then
+  echo "warning: --with-consensus-gate is deprecated and ignored after viewer/node hard split" >&2
 fi
 
-echo "+ env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- ${live_args[*]}"
-env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- "${live_args[@]}" >"$live_log" 2>&1 &
+live_args=(
+  "--scenario" "$scenario"
+  "--live-bind" "$live_bind"
+  "--web-bind" "$web_bind"
+  "--viewer-host" "$viewer_host"
+  "--viewer-port" "$viewer_port"
+  "--no-open-browser"
+)
+
+echo "+ env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_game_launcher -- ${live_args[*]}"
+env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_game_launcher -- "${live_args[@]}" >"$live_log" 2>&1 &
 live_pid=$!
 
 echo "+ wait for bridge $web_host:$web_port"
@@ -200,9 +201,10 @@ if ! wait_for_port "$web_host" "$web_port" 90; then
   exit 1
 fi
 
-echo "+ env -u NO_COLOR ./scripts/run-viewer-web.sh --address $viewer_host --port $viewer_port"
-env -u NO_COLOR ./scripts/run-viewer-web.sh --address "$viewer_host" --port "$viewer_port" >"$web_log" 2>&1 &
-web_pid=$!
+cat <<'INFO' >"$web_log"
+run-viewer-web.sh no longer runs as a standalone process in this QA loop.
+web viewer is served by world_game_launcher built-in static server.
+INFO
 
 echo "+ wait for viewer $viewer_url"
 if ! wait_for_http "http://${viewer_host}:${viewer_port}/" 180; then

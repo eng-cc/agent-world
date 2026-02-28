@@ -14,13 +14,12 @@ usage() {
 Usage: ./scripts/run-game-test.sh [options]
 
 Start a stable web playability test stack with safe defaults:
-- world_viewer_live: llm_bootstrap --llm --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011
-- web viewer: run-viewer-web.sh --address 127.0.0.1 --port 4173
+- world_game_launcher: --scenario llm_bootstrap --live-bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011 --viewer-host 127.0.0.1 --viewer-port 4173 --no-open-browser
 
 Options:
   --viewer-host <host>     Viewer HTTP host (default: 127.0.0.1)
   --viewer-port <port>     Viewer HTTP port (default: 4173)
-  --live-bind <addr:port>  world_viewer_live TCP bind (default: 127.0.0.1:5023)
+  --live-bind <addr:port>  world_game_launcher live TCP bind (default: 127.0.0.1:5023)
   --web-bind <addr:port>   WebSocket bridge bind (default: 127.0.0.1:5011)
   --with-llm               Enable LLM mode (default: enabled)
   --no-llm                 Disable LLM mode (fallback to built-in script)
@@ -162,8 +161,10 @@ wait_for_tcp_listener_ready() {
 tail_logs_on_error() {
   echo "--- world_viewer_live.log (tail) ---" >&2
   tail -n 80 "$WORLD_LOG" >&2 || true
-  echo "--- web_viewer.log (tail) ---" >&2
-  tail -n 80 "$WEB_LOG" >&2 || true
+  if [[ -s "$WEB_LOG" ]]; then
+    echo "--- web_viewer.log (tail) ---" >&2
+    tail -n 80 "$WEB_LOG" >&2 || true
+  fi
 }
 
 check_port_free "$VIEWER_PORT"
@@ -177,57 +178,50 @@ WORLD_LOG="$OUTPUT_DIR/world_viewer_live.log"
 WEB_LOG="$OUTPUT_DIR/web_viewer.log"
 META_FILE="$OUTPUT_DIR/session.meta"
 
-WORLD_PID=""
-WEB_PID=""
+LAUNCHER_PID=""
 
 cleanup() {
   local exit_code=$?
   trap - EXIT INT TERM
 
-  if [[ -n "$WEB_PID" ]] && kill -0 "$WEB_PID" >/dev/null 2>&1; then
-    kill "$WEB_PID" >/dev/null 2>&1 || true
-  fi
-  if [[ -n "$WORLD_PID" ]] && kill -0 "$WORLD_PID" >/dev/null 2>&1; then
-    kill "$WORLD_PID" >/dev/null 2>&1 || true
+  if [[ -n "$LAUNCHER_PID" ]] && kill -0 "$LAUNCHER_PID" >/dev/null 2>&1; then
+    kill "$LAUNCHER_PID" >/dev/null 2>&1 || true
   fi
 
-  wait "$WEB_PID" >/dev/null 2>&1 || true
-  wait "$WORLD_PID" >/dev/null 2>&1 || true
+  wait "$LAUNCHER_PID" >/dev/null 2>&1 || true
 
   exit "$exit_code"
 }
 trap cleanup EXIT INT TERM
 
 WORLD_ARGS=(
-  llm_bootstrap
-  --bind "$LIVE_BIND_ADDR"
+  --scenario llm_bootstrap
+  --live-bind "$LIVE_BIND_ADDR"
   --web-bind "$WEB_BRIDGE_ADDR"
-  --topology single
-  --viewer-no-consensus-gate
+  --viewer-host "$VIEWER_HOST"
+  --viewer-port "$VIEWER_PORT"
+  --no-open-browser
 )
 if [[ "$ENABLE_LLM" == "1" ]]; then
-  WORLD_ARGS+=(--llm)
-else
-  WORLD_ARGS+=(--no-llm)
+  WORLD_ARGS+=(--with-llm)
 fi
 
 (
   cd "$ROOT_DIR"
-  env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- "${WORLD_ARGS[@]}" >"$WORLD_LOG" 2>&1
+  env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_game_launcher -- "${WORLD_ARGS[@]}" >"$WORLD_LOG" 2>&1
 ) &
-WORLD_PID=$!
-
-(
-  cd "$ROOT_DIR"
-  env -u NO_COLOR ./scripts/run-viewer-web.sh --address "$VIEWER_HOST" --port "$VIEWER_PORT" >"$WEB_LOG" 2>&1
-) &
-WEB_PID=$!
+LAUNCHER_PID=$!
+cat <<'INFO' >"$WEB_LOG"
+run-viewer-web.sh no longer runs as a standalone process in this stack.
+web viewer is served by world_game_launcher built-in static server.
+INFO
 
 {
   echo "RUN_ID=$RUN_ID"
   echo "OUTPUT_DIR=$OUTPUT_DIR"
-  echo "WORLD_PID=$WORLD_PID"
-  echo "WEB_PID=$WEB_PID"
+  echo "WORLD_PID=$LAUNCHER_PID"
+  echo "WEB_PID="
+  echo "LAUNCHER_PID=$LAUNCHER_PID"
   echo "LIVE_BIND_ADDR=$LIVE_BIND_ADDR"
   echo "WEB_BRIDGE_ADDR=$WEB_BRIDGE_ADDR"
   echo "VIEWER_HOST=$VIEWER_HOST"
@@ -266,17 +260,12 @@ Playwright example:
   PLAYWRIGHT_CLI_SESSION=game-test-open \\
   ./.codex/skills/playwright/scripts/playwright_cli.sh open "$GAME_URL" --headed
 
-Press Ctrl+C to stop both processes.
+Press Ctrl+C to stop launcher process.
 INFO
 
 while true; do
-  if ! kill -0 "$WORLD_PID" >/dev/null 2>&1; then
-    echo "error: world_viewer_live exited unexpectedly" >&2
-    tail_logs_on_error
-    exit 1
-  fi
-  if ! kill -0 "$WEB_PID" >/dev/null 2>&1; then
-    echo "error: run-viewer-web.sh exited unexpectedly" >&2
+  if ! kill -0 "$LAUNCHER_PID" >/dev/null 2>&1; then
+    echo "error: world_game_launcher exited unexpectedly" >&2
     tail_logs_on_error
     exit 1
   fi
