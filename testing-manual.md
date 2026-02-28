@@ -116,7 +116,7 @@
 - 目标：验证在长时运行/高事件量下系统退化策略和稳定性。
 - 入口：`viewer-owr4-stress.sh`、`llm-longrun-stress.sh`。
 
-## 测试套件目录（S0~S9）
+## 测试套件目录（S0~S10）
 
 ### S0：基础门禁套件（L0）
 ```bash
@@ -324,6 +324,38 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
    - `chaos_plan_events` / `chaos_continuous_events` / `chaos_events` 与 `chaos_exempt_secs`。
 5. 失败时优先看 `failures.md` + `chaos_events.log` + 对应节点 `stderr.log`。
 
+### S10：五节点真实游戏数据在线长跑套件（L5）
+- 五节点真实数据基线（`single` 五进程）：
+```bash
+./scripts/s10-five-node-game-soak.sh \
+  --duration-secs 1800 \
+  --scenario llm_bootstrap \
+  --no-llm \
+  --out-dir .tmp/s10_game_longrun
+```
+- 参数演练（不启动进程，仅渲染命令与配置）：
+```bash
+./scripts/s10-five-node-game-soak.sh \
+  --dry-run \
+  --no-prewarm \
+  --out-dir .tmp/s10_game_longrun
+```
+- 关键产物：
+  - `run_config.json`
+  - `timeline.csv`
+  - `summary.json`
+  - `summary.md`
+  - `failures.md`（失败时）
+  - `nodes/<node_id>/{command.txt,stdout.log,stderr.log,report/}`
+- 门禁口径（S10）：
+  - `stall`、`lag_p95`、`distfs_failure_ratio`、`reward_asset_invariant_status.ok`
+  - 至少一次 `settlement_report.total_distributed_points > 0`
+  - 至少一次 `minted_records` 非空
+  - `summary.json` 的 `overall_status == "ok"` 视为通过
+- 与 S9 的边界：
+  - S9：强调 P2P/存储/共识在线稳定性与 chaos 恢复能力；
+  - S10：强调真实 gameplay 数据交换、结算分发与资产不变量（当前轮次默认无 chaos）。
+
 ## 改动路径 -> 必跑套件矩阵（针对性执行）
 
 | 改动路径 | 必跑 | 推荐追加 |
@@ -332,14 +364,15 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
 | `crates/agent_world/src/simulator/**` | S0 + S1 | S2 + S3 + S7 + S8 |
 | `crates/agent_world/src/viewer/**` 或 `src/bin/world_viewer_live/**` | S0 + S1 + S6 | S2 + S3 + S5 |
 | `crates/agent_world_viewer/**` | S0 + S5 + S6 | S2 + S8 |
-| `crates/agent_world_node/**` | S0 + S4（node） | S2 + S3 + S9（soak_smoke） |
-| `crates/agent_world_net/**` | S0 + S4（net） | S2 + runtime_bridge 变体 + S9（soak_smoke） |
-| `crates/agent_world_consensus/**` | S0 + S4（consensus） | S2 + S9（soak_smoke） |
-| `crates/agent_world_distfs/**` | S0 + S4（distfs） | S2 + S8 + S9（soak_smoke） |
+| `crates/agent_world_node/**` | S0 + S4（node） | S2 + S3 + S9（soak_smoke） + S10 |
+| `crates/agent_world_net/**` | S0 + S4（net） | S2 + runtime_bridge 变体 + S9（soak_smoke） + S10 |
+| `crates/agent_world_consensus/**` | S0 + S4（consensus） | S2 + S9（soak_smoke） + S10 |
+| `crates/agent_world_distfs/**` | S0 + S4（distfs） | S2 + S8 + S9（soak_smoke） + S10 |
 | `scripts/ci-tests.sh` / `.github/workflows/rust.yml` | S0（含 `./scripts/doc-governance-check.sh`） + S1 + `./scripts/viewer-visual-baseline.sh` + （full）`./scripts/llm-baseline-fixture-smoke.sh` | S2 + S4 + S6（抽样） |
 | `scripts/ci-m1-wasm-summary.sh` / `scripts/ci-verify-m1-wasm-summaries.py` / `.github/workflows/builtin-wasm-m1-multi-runner.yml` | `S0` + `./scripts/ci-m1-wasm-summary.sh --runner-label darwin-arm64 --out output/ci/m1-wasm-summary/darwin-arm64.json` + `./scripts/ci-verify-m1-wasm-summaries.py --summary-dir output/ci/m1-wasm-summary --expected-runners darwin-arm64` | `workflow_dispatch` 触发双 runner（`linux-x86_64,darwin-arm64`）对账 |
 | `scripts/run-viewer-web.sh` / `scripts/capture-viewer-frame.sh` | S0 + S6 | S5 + S8 |
 | `scripts/p2p-longrun-soak.sh` / `doc/testing/p2p-storage-consensus-longrun-online-stability-2026-02-24*` | S0 + S4 + S9（soak_smoke） | S9（soak_endurance） |
+| `scripts/s10-five-node-game-soak.sh` / `doc/testing/s10-five-node-real-game-soak*` | S0 + S4 + S10 | S9（soak_smoke） |
 
 ## Human/AI 共用执行剧本
 
@@ -351,7 +384,7 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
 ### 阶段 B：先跑低层，后跑高层
 1. 先执行 S0。
 2. 再执行对应的 L1/L2/L3 套件（S1/S2/S3/S4/S5）。
-3. 最后执行 UI 闭环与压力（S6/S8/S9）。
+3. 最后执行 UI 闭环与压力（S6/S8/S9/S10）。
 4. 任意层失败立即停止上层，先定位并修复。
 
 ### 阶段 C：记录结论
@@ -371,7 +404,7 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
 
 ### 高风险改动（协议/共识/分布式/发布前）
 - 必须通过：S0 + S2 + S4 + S6
-- 建议通过：S8 至少一条压力脚本 + S9 至少一次 `soak_smoke`（发布前建议 `soak_endurance`）
+- 建议通过：S8 至少一条压力脚本 + S9 或 S10 至少一次在线长跑（发布前建议补 `S9 soak_endurance`）
 
 ## 证据规范
 
@@ -386,13 +419,14 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
 - `.tmp/viewer_owr4_stress/<timestamp>/`
 - `.tmp/llm_stress/`
 - `.tmp/p2p_longrun/<timestamp>/`
+- `.tmp/s10_game_longrun/<timestamp>/`
 
 ### 结果记录模板
 ```md
 - 目标变更：
 - 触发路径：
 - 执行者（Human/AI）：
-- 套件清单（S0~S9）：
+- 套件清单（S0~S10）：
   - Sx: 命令 / 结果 / 证据路径
 - 失败分诊：
   - 层级（L0~L5）：
@@ -428,7 +462,7 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
 - 风险 3：分布式子系统改动未触发对应 crate 测试。
   - 缓解：必须使用“改动路径矩阵”决策套件。
 - 风险 4：压力回归长期缺失，问题只在长跑暴露。
-  - 缓解：高风险改动或发布前至少执行一条 S8 或 S9。
+  - 缓解：高风险改动或发布前至少执行一条 S8/S9/S10。
 
 ## 里程碑
 - T1：完成基于仓库现状的分层模型与套件目录。
