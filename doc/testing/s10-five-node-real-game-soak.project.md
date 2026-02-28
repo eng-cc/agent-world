@@ -37,9 +37,15 @@
   - [x] `scripts/s10-five-node-game-soak.sh` 增加 `max_settlement_apply_failure_ratio` 阈值与门禁判定。
   - [x] `summary.json`/`summary.md` 增加结算应用失败率指标输出。
   - [x] 真实短跑验证：`20260228-181651`（`130s`）门禁通过，`settlement_apply_attempts=7`、`settlement_apply_failures=0`、`settlement_apply_failure_ratio=0`，五节点结算相关 `stderr` 告警计数为 0。
-- [ ] T10：执行连续多轮长跑稳定性验证（3x600s + 1x 更长）并收口发布结论。
-  - [ ] 连续跑测产物落盘并逐轮核验关键告警为 0。
-  - [ ] 汇总门禁结果并更新项目状态为完成。
+- [x] T10：执行连续多轮长跑稳定性验证（3x600s + 1x 更长）并收口发布结论。
+  - [x] 连续跑测产物落盘并逐轮核验关键告警为 0。
+  - [x] 汇总门禁结果并更新项目状态为完成。
+  - [x] 连续 4 轮样本：
+    - `20260228-182339`（`600s`）：`overall_status=ok`，`metric_gate=pass`，`settlement_apply_attempts=48`，`settlement_apply_failures=0`；
+    - `20260228-183422`（`600s`）：`overall_status=ok`，`metric_gate=pass`，`settlement_apply_attempts=49`，`settlement_apply_failures=0`；
+    - `20260228-184508`（`600s`）：`overall_status=ok`，`metric_gate=pass`，`settlement_apply_attempts=46`，`settlement_apply_failures=0`；
+    - `20260228-185554`（`1200s`）：`overall_status=ok`，`metric_gate=pass`，`settlement_apply_attempts=96`，`settlement_apply_failures=0`。
+  - [x] 四轮均满足关键告警清零：五节点 `stderr` 中 `reward runtime apply settlement envelope failed` / `verify settlement signature failed` / `settlement signer public key mismatch` 总计均为 0。
 
 ## 依赖
 - `scripts/p2p-longrun-soak.sh`（复用指标口径与产物约定）
@@ -48,6 +54,6 @@
 - `testing-manual.md`
 
 ## 状态
-- 当前阶段：进行中（T9 已完成，执行 T10）。
+- 当前阶段：已完成（T0~T10）。
 - 阻塞项：无。
 - 最近更新：2026-02-28。
