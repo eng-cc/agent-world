@@ -37,6 +37,7 @@ Options:
                            power variant validation threshold (default: 0.9995)
   --crop-window <w:h:x:y>  crop window for viewer_art.png; use 'none' to disable crop
   --preview-mode <mode>    scene_proxy,lookdev,direct_entity (default: scene_proxy)
+  --material-profile <id>  theme_default,art_review_v1 (default: theme_default)
   --no-prewarm             pass --no-prewarm to all capture runs
   -h, --help               show help
 
@@ -403,6 +404,101 @@ variant_pair_ssim_value() {
   echo "$value"
 }
 
+clear_material_overrides() {
+  set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_AGENT_ROUGHNESS" ""
+  set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_AGENT_METALLIC" ""
+  set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_ASSET_ROUGHNESS" ""
+  set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_ASSET_METALLIC" ""
+  set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_FACILITY_ROUGHNESS" ""
+  set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_FACILITY_METALLIC" ""
+}
+
+apply_variant_material_profile() {
+  local profile=$1
+  local entity=$2
+  local variant=$3
+
+  clear_material_overrides
+  if [[ "$profile" != "art_review_v1" ]]; then
+    return 0
+  fi
+
+  local material_group
+  case "$entity" in
+    agent)
+      material_group="agent"
+      ;;
+    asset)
+      material_group="asset"
+      ;;
+    power_plant|power_storage|location)
+      material_group="facility"
+      ;;
+    *)
+      return 0
+      ;;
+  esac
+
+  local roughness
+  local metallic
+  case "$material_group:$variant" in
+    agent:default)
+      roughness="0.38"
+      metallic="0.08"
+      ;;
+    agent:matte)
+      roughness="0.70"
+      metallic="0.03"
+      ;;
+    agent:glossy)
+      roughness="0.22"
+      metallic="0.22"
+      ;;
+    asset:default)
+      roughness="0.55"
+      metallic="0.12"
+      ;;
+    asset:matte)
+      roughness="0.78"
+      metallic="0.04"
+      ;;
+    asset:glossy)
+      roughness="0.28"
+      metallic="0.28"
+      ;;
+    facility:default)
+      roughness="0.48"
+      metallic="0.20"
+      ;;
+    facility:matte)
+      roughness="0.82"
+      metallic="0.05"
+      ;;
+    facility:glossy)
+      roughness="0.18"
+      metallic="0.42"
+      ;;
+    *)
+      return 0
+      ;;
+  esac
+
+  case "$material_group" in
+    agent)
+      set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_AGENT_ROUGHNESS" "$roughness"
+      set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_AGENT_METALLIC" "$metallic"
+      ;;
+    asset)
+      set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_ASSET_ROUGHNESS" "$roughness"
+      set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_ASSET_METALLIC" "$metallic"
+      ;;
+    facility)
+      set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_FACILITY_ROUGHNESS" "$roughness"
+      set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_FACILITY_METALLIC" "$metallic"
+      ;;
+  esac
+}
+
 variant_min_pair_ssim() {
   local root=$1
   local entity=$2
@@ -438,6 +534,7 @@ art_lighting_mode="auto"
 variant_ssim_threshold="0.9995"
 crop_window_raw=""
 preview_mode="scene_proxy"
+material_profile="theme_default"
 
 override_base_texture=""
 override_normal_texture=""
@@ -534,6 +631,10 @@ while [[ $# -gt 0 ]]; do
       preview_mode=${2:-}
       shift 2
       ;;
+    --material-profile)
+      material_profile=${2:-}
+      shift 2
+      ;;
     --no-prewarm)
       force_no_prewarm=1
       shift
@@ -590,6 +691,16 @@ case "$preview_mode" in
     ;;
 esac
 
+case "$material_profile" in
+  theme_default|art_review_v1)
+    ;;
+  *)
+    echo "invalid --material-profile: $material_profile" >&2
+    echo "supported material profiles: theme_default,art_review_v1" >&2
+    exit 2
+    ;;
+esac
+
 if [[ -z "$out_dir" ]]; then
   timestamp=$(date '+%Y%m%d_%H%M%S')
   out_dir="output/texture_inspector/$timestamp"
@@ -642,11 +753,16 @@ capture_variant_bundle() {
     # Load base theme preset first, then pin variant and inspector overrides.
     source "$preset_file"
 
-    export AGENT_WORLD_VIEWER_MATERIAL_VARIANT_PRESET="$variant"
+    material_variant_preset_for_run="$variant"
+    if [[ "$material_profile" == "art_review_v1" ]]; then
+      material_variant_preset_for_run="default"
+    fi
+    export AGENT_WORLD_VIEWER_MATERIAL_VARIANT_PRESET="$material_variant_preset_for_run"
     export AGENT_WORLD_VIEWER_RENDER_PROFILE="$render_profile"
     export AGENT_WORLD_VIEWER_FRAGMENT_MATERIAL_STRATEGY="$fragment_strategy"
     export AGENT_WORLD_VIEWER_SHOW_LOCATIONS=1
     export AGENT_WORLD_VIEWER_SHOW_AGENTS=0
+    apply_variant_material_profile "$material_profile" "$entity" "$variant"
     effective_preview_mode="$preview_mode"
     preview_mode_fallback_reason="none"
     if [[ "$preview_mode" == "direct_entity" && "$entity" == "location" ]]; then
@@ -803,6 +919,8 @@ art_capture=$art_capture
 preview_mode=$preview_mode
 preview_mode_effective=$effective_preview_mode
 preview_mode_fallback_reason=$preview_mode_fallback_reason
+material_profile=$material_profile
+material_variant_preset_for_run=$material_variant_preset_for_run
 hero_automation_steps=$hero_steps
 closeup_automation_steps=$closeup_steps
 crop_window=$crop_window
@@ -815,6 +933,12 @@ use_source_mesh=$use_source_mesh
 lookdev_location_shell_enabled=${AGENT_WORLD_VIEWER_LOCATION_SHELL_ENABLED:-}
 lookdev_location_radiation_glow=${AGENT_WORLD_VIEWER_LOCATION_RADIATION_GLOW:-}
 lookdev_location_damage_visual=${AGENT_WORLD_VIEWER_LOCATION_DAMAGE_VISUAL:-}
+material_agent_roughness_override=${AGENT_WORLD_VIEWER_MATERIAL_AGENT_ROUGHNESS:-}
+material_agent_metallic_override=${AGENT_WORLD_VIEWER_MATERIAL_AGENT_METALLIC:-}
+material_asset_roughness_override=${AGENT_WORLD_VIEWER_MATERIAL_ASSET_ROUGHNESS:-}
+material_asset_metallic_override=${AGENT_WORLD_VIEWER_MATERIAL_ASSET_METALLIC:-}
+material_facility_roughness_override=${AGENT_WORLD_VIEWER_MATERIAL_FACILITY_ROUGHNESS:-}
+material_facility_metallic_override=${AGENT_WORLD_VIEWER_MATERIAL_FACILITY_METALLIC:-}
 location_mesh_asset=${AGENT_WORLD_VIEWER_LOCATION_MESH_ASSET:-}
 location_base_texture_asset=${AGENT_WORLD_VIEWER_LOCATION_BASE_TEXTURE_ASSET:-}
 location_normal_texture_asset=${AGENT_WORLD_VIEWER_LOCATION_NORMAL_TEXTURE_ASSET:-}
