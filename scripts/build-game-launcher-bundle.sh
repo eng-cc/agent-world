@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUT_DIR=""
 PROFILE="release"
+TARGET_TRIPLE="native"
 WEB_DIST_SOURCE=""
 DRY_RUN=0
 
@@ -23,6 +24,7 @@ Build a distributable launcher bundle:
 Options:
   --out-dir <path>       output directory (default: output/release/game-launcher-<timestamp>)
   --profile <name>       cargo profile: release|dev (default: release)
+  --target-triple <id>   rust target triple (default: native)
   --web-dist <path>      use existing prebuilt web dist instead of trunk build
   --dry-run              print commands only; do not execute
   -h, --help             show this help
@@ -65,7 +67,10 @@ validate_web_dist_source() {
 
 resolve_binary_name() {
   local base="$1"
-  if [[ "$(uname -s)" == MINGW* || "$(uname -s)" == MSYS* || "$(uname -s)" == CYGWIN* ]]; then
+  local target_triple="$2"
+  if [[ "$target_triple" == *windows* ]]; then
+    echo "${base}.exe"
+  elif [[ "$(uname -s)" == MINGW* || "$(uname -s)" == MSYS* || "$(uname -s)" == CYGWIN* ]]; then
     echo "${base}.exe"
   else
     echo "$base"
@@ -80,6 +85,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --profile)
       PROFILE="${2:-}"
+      shift 2
+      ;;
+    --target-triple)
+      TARGET_TRIPLE="${2:-}"
       shift 2
       ;;
     --web-dist)
@@ -114,6 +123,10 @@ if [[ "$PROFILE" != "release" && "$PROFILE" != "dev" ]]; then
   echo "error: --profile must be release or dev" >&2
   exit 1
 fi
+if [[ -z "$TARGET_TRIPLE" ]]; then
+  echo "error: --target-triple must not be empty" >&2
+  exit 1
+fi
 
 if [[ -n "$WEB_DIST_SOURCE" && ! -d "$WEB_DIST_SOURCE" ]]; then
   echo "error: --web-dist path does not exist: $WEB_DIST_SOURCE" >&2
@@ -123,13 +136,19 @@ if [[ -n "$WEB_DIST_SOURCE" ]]; then
   validate_web_dist_source "$WEB_DIST_SOURCE"
 fi
 
-LAUNCHER_BIN_NAME="$(resolve_binary_name world_game_launcher)"
-LIVE_BIN_NAME="$(resolve_binary_name world_viewer_live)"
-CHAIN_BIN_NAME="$(resolve_binary_name world_chain_runtime)"
-CLIENT_LAUNCHER_BIN_NAME="$(resolve_binary_name agent_world_client_launcher)"
+LAUNCHER_BIN_NAME="$(resolve_binary_name world_game_launcher "$TARGET_TRIPLE")"
+LIVE_BIN_NAME="$(resolve_binary_name world_viewer_live "$TARGET_TRIPLE")"
+CHAIN_BIN_NAME="$(resolve_binary_name world_chain_runtime "$TARGET_TRIPLE")"
+CLIENT_LAUNCHER_BIN_NAME="$(resolve_binary_name agent_world_client_launcher "$TARGET_TRIPLE")"
 TARGET_SUBDIR="$PROFILE"
 if [[ "$PROFILE" == "dev" ]]; then
   TARGET_SUBDIR="debug"
+fi
+TARGET_OUTPUT_SUBDIR="$TARGET_SUBDIR"
+CARGO_TARGET_ARGS=()
+if [[ "$TARGET_TRIPLE" != "native" ]]; then
+  TARGET_OUTPUT_SUBDIR="$TARGET_TRIPLE/$TARGET_SUBDIR"
+  CARGO_TARGET_ARGS=(--target "$TARGET_TRIPLE")
 fi
 
 BUNDLE_BIN_DIR="$OUT_DIR/bin"
@@ -139,17 +158,17 @@ run mkdir -p "$BUNDLE_BIN_DIR" "$BUNDLE_WEB_DIR"
 
 # 1) Build native binaries for launcher/live/client launcher.
 if [[ "$PROFILE" == "release" ]]; then
-  run env -u RUSTC_WRAPPER cargo build --release -p agent_world --bin world_game_launcher --bin world_viewer_live --bin world_chain_runtime
-  run env -u RUSTC_WRAPPER cargo build --release -p agent_world_client_launcher
+  run env -u RUSTC_WRAPPER cargo build --release "${CARGO_TARGET_ARGS[@]}" -p agent_world --bin world_game_launcher --bin world_viewer_live --bin world_chain_runtime
+  run env -u RUSTC_WRAPPER cargo build --release "${CARGO_TARGET_ARGS[@]}" -p agent_world_client_launcher
 else
-  run env -u RUSTC_WRAPPER cargo build -p agent_world --bin world_game_launcher --bin world_viewer_live --bin world_chain_runtime
-  run env -u RUSTC_WRAPPER cargo build -p agent_world_client_launcher
+  run env -u RUSTC_WRAPPER cargo build "${CARGO_TARGET_ARGS[@]}" -p agent_world --bin world_game_launcher --bin world_viewer_live --bin world_chain_runtime
+  run env -u RUSTC_WRAPPER cargo build "${CARGO_TARGET_ARGS[@]}" -p agent_world_client_launcher
 fi
 
-LAUNCHER_SRC="$ROOT_DIR/target/$TARGET_SUBDIR/$LAUNCHER_BIN_NAME"
-LIVE_SRC="$ROOT_DIR/target/$TARGET_SUBDIR/$LIVE_BIN_NAME"
-CHAIN_SRC="$ROOT_DIR/target/$TARGET_SUBDIR/$CHAIN_BIN_NAME"
-CLIENT_LAUNCHER_SRC="$ROOT_DIR/target/$TARGET_SUBDIR/$CLIENT_LAUNCHER_BIN_NAME"
+LAUNCHER_SRC="$ROOT_DIR/target/$TARGET_OUTPUT_SUBDIR/$LAUNCHER_BIN_NAME"
+LIVE_SRC="$ROOT_DIR/target/$TARGET_OUTPUT_SUBDIR/$LIVE_BIN_NAME"
+CHAIN_SRC="$ROOT_DIR/target/$TARGET_OUTPUT_SUBDIR/$CHAIN_BIN_NAME"
+CLIENT_LAUNCHER_SRC="$ROOT_DIR/target/$TARGET_OUTPUT_SUBDIR/$CLIENT_LAUNCHER_BIN_NAME"
 
 if [[ "$DRY_RUN" != "1" ]]; then
   [[ -f "$LAUNCHER_SRC" ]] || { echo "error: launcher binary not found: $LAUNCHER_SRC" >&2; exit 1; }

@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PLATFORM=""
+TARGET_TRIPLE="native"
 WEB_DIST=""
 OUT_DIR=""
 PROFILE="release"
@@ -15,6 +16,7 @@ Prepare deterministic launcher bundle directory for CI release packaging.
 
 Options:
   --platform <id>        required: linux-x64 | macos-x64 | windows-x64
+  --target-triple <id>   optional rust target triple (default: native)
   --web-dist <path>      required: prebuilt viewer web dist directory
   --out-dir <path>       required: output root for prepared bundle directory
   --profile <name>       cargo profile: release|dev (default: release)
@@ -26,6 +28,10 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --platform)
       PLATFORM="${2:-}"
+      shift 2
+      ;;
+    --target-triple)
+      TARGET_TRIPLE="${2:-}"
       shift 2
       ;;
     --web-dist)
@@ -68,6 +74,10 @@ if [[ -z "${OUT_DIR}" ]]; then
   echo "error: --out-dir is required" >&2
   exit 1
 fi
+if [[ -z "${TARGET_TRIPLE}" ]]; then
+  echo "error: --target-triple must not be empty" >&2
+  exit 1
+fi
 if [[ "${PROFILE}" != "release" && "${PROFILE}" != "dev" ]]; then
   echo "error: --profile must be release or dev" >&2
   exit 1
@@ -92,6 +102,7 @@ mkdir -p "${OUT_DIR}"
 "${ROOT_DIR}/scripts/build-game-launcher-bundle.sh" \
   --out-dir "${BUNDLE_DIR}" \
   --profile "${PROFILE}" \
+  --target-triple "${TARGET_TRIPLE}" \
   --web-dist "${WEB_DIST}"
 
 echo "Prepared bundle directory: ${BUNDLE_DIR}"

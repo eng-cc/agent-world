@@ -28,6 +28,10 @@
 - 工作流触发：
   - `push tags: v*`
   - `workflow_dispatch`
+- 打包 runner 与目标三元组（release workflow）：
+  - linux：`ubuntu-24.04` + `native`
+  - macOS：`macos-14` + `x86_64-apple-darwin`（避免仓库不支持的 `macos-13` 配置）
+  - windows：`windows-2022` + `native`
 - 打包内容（每个平台）：
   - `bin/world_game_launcher`
   - `bin/world_viewer_live`

@@ -51,12 +51,15 @@ jobs:
           - os: ubuntu-24.04
             platform: linux-x64
             asset_name: agent-world-linux-x64.tar.gz
-          - os: macos-13
+            target_triple: native
+          - os: macos-14
             platform: macos-x64
             asset_name: agent-world-macos-x64.tar.gz
+            target_triple: x86_64-apple-darwin
           - os: windows-2022
             platform: windows-x64
             asset_name: agent-world-windows-x64.zip
+            target_triple: native
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v6
@@ -65,6 +68,9 @@ jobs:
         run: |
           rustup toolchain install "${RUST_TOOLCHAIN}" --profile default
           rustup default "${RUST_TOOLCHAIN}"
+          if [[ "${{ matrix.target_triple }}" != "native" ]]; then
+            rustup target add "${{ matrix.target_triple }}" --toolchain "${RUST_TOOLCHAIN}"
+          fi
       - name: Install Linux system dependencies
         if: runner.os == 'Linux'
         run: |
@@ -91,6 +97,7 @@ jobs:
         run: |
           ./scripts/release-prepare-bundle.sh \
             --platform "${{ matrix.platform }}" \
+            --target-triple "${{ matrix.target_triple }}" \
             --web-dist output/release/web-dist \
             --out-dir output/release/assets \
             --profile release

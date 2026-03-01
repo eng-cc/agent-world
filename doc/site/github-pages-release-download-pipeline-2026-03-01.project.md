@@ -59,12 +59,18 @@
 - [x] 手工固定 `m5_builtin_modules.sha256` 与 `m5_builtin_modules.identity.json` 的多 token 顺序集合（含 CI 报错 hash）
 - [x] 只读校验 `scripts/sync-m5-builtin-wasm-artifacts.sh --check`，确保清单一致且不再被覆盖
 
+### T3F Release Packages macOS runner 配置热修
+- [x] 复现并定位 `Release Packages` run `22545989082` / job `65309292458` 失败根因：`macos-13-us-default` 不受当前仓库支持
+- [x] 修复 `.github/workflows/release-packages.yml`：macOS 矩阵 runner 改为 `macos-14`，并显式配置 `target_triple=x86_64-apple-darwin`
+- [x] 扩展打包脚本参数链路：`release-prepare-bundle.sh` / `build-game-launcher-bundle.sh` 支持 `--target-triple` 并正确定位 `target/<triple>/<profile>` 产物
+- [x] 本地回归脚本语法与 dry-run，推送后重新触发 `Release Packages` 验证
+
 ## 依赖
 - 打包基础脚本：`scripts/build-game-launcher-bundle.sh`
 - 站点发布流程：`.github/workflows/pages.yml`
 - 站点入口文件：`site/index.html`、`site/en/index.html`
 
 ## 状态
-- 当前阶段：已完成（T0A/T0/T1/T2/T3/T3A/T3B/T3C/T3D/T3E）
-- 最近更新：完成 T3E m5 多 token 清单持久化修正（2026-03-01）
-- 下一步：push 后等待 CI 回归结果
+- 当前阶段：进行中（T0A/T0/T1/T2/T3/T3A/T3B/T3C/T3D/T3E/T3F）
+- 最近更新：完成 T3F Release Packages macOS runner 配置热修并进入 Actions 回归验证（2026-03-01）
+- 下一步：等待 `Release Packages` workflow_dispatch 回归结果；通过后收口该项
