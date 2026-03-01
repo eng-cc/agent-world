@@ -70,6 +70,23 @@ PROFILES: Dict[str, ThemeValidationProfile] = {
             "power_storage": 900,
         },
     ),
+    "v3": ThemeValidationProfile(
+        name="v3",
+        mesh_suffix="_v3",
+        preset_files=(
+            "industrial_v3_default.env",
+            "industrial_v3_matte.env",
+            "industrial_v3_glossy.env",
+        ),
+        min_texture_size=768,
+        min_vertices={
+            "agent": 300,
+            "location": 2600,
+            "asset": 150,
+            "power_plant": 160,
+            "power_storage": 1300,
+        },
+    ),
 }
 
 

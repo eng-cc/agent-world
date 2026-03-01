@@ -16,7 +16,7 @@ Purpose:
 
 Options:
   --scenario <name>             Scenario for viewer/live + gameplay gate (default: llm_bootstrap)
-  --theme-pack <name>           Theme pack: industrial_v2,industrial_v1 (default: industrial_v2)
+  --theme-pack <name>           Theme pack: industrial_v3,industrial_v2,industrial_v1 (default: industrial_v3)
   --variants <list>             Theme variants: default,matte,glossy,all (default: default,matte,glossy)
   --inspect <list>              Texture inspector entities: agent,location,asset,power_plant,power_storage,all (default: all)
   --ticks-industrial <n>        Industrial loop ticks (default: 100)
@@ -178,7 +178,7 @@ count_connected_captures() {
 }
 
 scenario="llm_bootstrap"
-theme_pack="industrial_v2"
+theme_pack="industrial_v3"
 variants_raw="default,matte,glossy"
 inspect_raw="all"
 ticks_industrial=100
@@ -313,6 +313,11 @@ theme_dir=""
 theme_profile=""
 theme_default_preset_file=""
 case "$theme_pack" in
+  industrial_v3)
+    theme_dir="crates/agent_world_viewer/assets/themes/industrial_v3"
+    theme_profile="v3"
+    theme_default_preset_file="$theme_dir/presets/industrial_v3_default.env"
+    ;;
   industrial_v2)
     theme_dir="crates/agent_world_viewer/assets/themes/industrial_v2"
     theme_profile="v2"
@@ -324,7 +329,7 @@ case "$theme_pack" in
     theme_default_preset_file="$theme_dir/presets/industrial_default.env"
     ;;
   *)
-    echo "invalid --theme-pack: $theme_pack (expected industrial_v2|industrial_v1)" >&2
+    echo "invalid --theme-pack: $theme_pack (expected industrial_v3|industrial_v2|industrial_v1)" >&2
     exit 2
     ;;
 esac

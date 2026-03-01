@@ -36,6 +36,8 @@ class QualityProfile:
 
 
 def resolve_quality_profile(quality: str) -> QualityProfile:
+    if quality == "v3":
+        return QualityProfile(quality="v3", mesh_file_suffix="_v3", texture_size=768)
     if quality == "v2":
         return QualityProfile(quality="v2", mesh_file_suffix="_v2", texture_size=512)
     return QualityProfile(quality="v1", mesh_file_suffix="", texture_size=256)
@@ -264,62 +266,184 @@ def hash_noise(x: int, y: int, seed: int) -> float:
     return (n / 0xFFFFFFFF)
 
 
-def make_base_texture(path: Path, color_a: Tuple[int, int, int], color_b: Tuple[int, int, int], seed: int, size: int = 256) -> None:
-    def pixel(x: int, y: int) -> Tuple[int, int, int]:
-        nx = x / float(size)
-        ny = y / float(size)
-        stripes = 0.5 + 0.5 * math.sin((nx * 14.0 + ny * 4.0) * math.pi)
-        rough_noise = hash_noise(x, y, seed)
-        t = clamp01(0.6 * stripes + 0.4 * rough_noise)
-        scratch = 0.18 * max(0.0, 1.0 - abs(((x + seed * 11) % 41) - 20) / 20.0)
-        r = int(clamp01((mix(color_a[0], color_b[0], t) / 255.0) + scratch) * 255.0)
-        g = int(clamp01((mix(color_a[1], color_b[1], t) / 255.0) + scratch) * 255.0)
-        b = int(clamp01((mix(color_a[2], color_b[2], t) / 255.0) + scratch) * 255.0)
-        return (r, g, b)
+def fbm_noise(nx: float, ny: float, seed: int, octaves: int = 4) -> float:
+    total = 0.0
+    amplitude = 0.5
+    frequency = 1.0
+    amplitude_sum = 0.0
+    for oct_idx in range(octaves):
+        sx = int((nx * frequency + oct_idx * 0.173) * 4096.0)
+        sy = int((ny * frequency + oct_idx * 0.297) * 4096.0)
+        sample = hash_noise(sx, sy, seed + oct_idx * 41)
+        total += ((sample * 2.0) - 1.0) * amplitude
+        amplitude_sum += amplitude
+        amplitude *= 0.5
+        frequency *= 2.0
+    if amplitude_sum <= 1e-6:
+        return 0.5
+    return clamp01(0.5 + 0.5 * (total / amplitude_sum))
+
+
+def make_base_texture(
+    path: Path,
+    color_a: Tuple[int, int, int],
+    color_b: Tuple[int, int, int],
+    seed: int,
+    size: int = 256,
+    style: str = "legacy",
+) -> None:
+    if style == "v3":
+        def pixel(x: int, y: int) -> Tuple[int, int, int]:
+            nx = x / float(size)
+            ny = y / float(size)
+            macro = fbm_noise(nx * 2.5, ny * 2.5, seed + 3, octaves=5)
+            micro = fbm_noise(nx * 18.0 + 0.13, ny * 18.0 + 0.31, seed + 9, octaves=3)
+
+            cell_u = nx * 9.5 + fbm_noise(nx * 4.2, ny * 4.2, seed + 17, octaves=2) * 0.35
+            cell_v = ny * 9.5 + fbm_noise(nx * 4.8, ny * 3.7, seed + 23, octaves=2) * 0.35
+            cell_x = math.floor(cell_u)
+            cell_y = math.floor(cell_v)
+            inner_u = cell_u - cell_x
+            inner_v = cell_v - cell_y
+            edge = min(inner_u, 1.0 - inner_u, inner_v, 1.0 - inner_v)
+            panel_edge = clamp01(1.0 - edge * 18.0)
+            cell_tint = hash_noise(int(cell_x), int(cell_y), seed + 29)
+
+            t = clamp01(0.52 * macro + 0.24 * micro + 0.24 * cell_tint)
+            wear = 0.12 * panel_edge
+            grain = (hash_noise(x * 5 + seed, y * 5 - seed, seed + 33) - 0.5) * 0.08
+
+            r = int(clamp01((mix(color_a[0], color_b[0], t) / 255.0) + wear + grain) * 255.0)
+            g = int(clamp01((mix(color_a[1], color_b[1], t) / 255.0) + wear * 0.7 + grain) * 255.0)
+            b = int(clamp01((mix(color_a[2], color_b[2], t) / 255.0) + wear * 0.45 + grain) * 255.0)
+            return (r, g, b)
+    else:
+        def pixel(x: int, y: int) -> Tuple[int, int, int]:
+            nx = x / float(size)
+            ny = y / float(size)
+            stripes = 0.5 + 0.5 * math.sin((nx * 14.0 + ny * 4.0) * math.pi)
+            rough_noise = hash_noise(x, y, seed)
+            t = clamp01(0.6 * stripes + 0.4 * rough_noise)
+            scratch = 0.18 * max(0.0, 1.0 - abs(((x + seed * 11) % 41) - 20) / 20.0)
+            r = int(clamp01((mix(color_a[0], color_b[0], t) / 255.0) + scratch) * 255.0)
+            g = int(clamp01((mix(color_a[1], color_b[1], t) / 255.0) + scratch) * 255.0)
+            b = int(clamp01((mix(color_a[2], color_b[2], t) / 255.0) + scratch) * 255.0)
+            return (r, g, b)
+    write_png(path, size, size, pixel)
+
+
+def make_normal_texture(path: Path, seed: int, size: int = 256, style: str = "legacy") -> None:
+    if style == "v3":
+        def pixel(x: int, y: int) -> Tuple[int, int, int]:
+            nx = x / float(size)
+            ny = y / float(size)
+
+            h = fbm_noise(nx * 22.0, ny * 22.0, seed + 5, octaves=4)
+            hx = fbm_noise((nx + 1.0 / size) * 22.0, ny * 22.0, seed + 5, octaves=4)
+            hy = fbm_noise(nx * 22.0, (ny + 1.0 / size) * 22.0, seed + 5, octaves=4)
+            dx = (hx - h) * 1.9
+            dy = (hy - h) * 1.9
+
+            panel_u = (nx * 9.5) % 1.0
+            panel_v = (ny * 9.5) % 1.0
+            edge = min(panel_u, 1.0 - panel_u, panel_v, 1.0 - panel_v)
+            groove = clamp01((0.035 - edge) / 0.035)
+            dx += (hash_noise(x + seed, y, seed + 41) - 0.5) * groove * 0.18
+            dy += (hash_noise(y, x - seed, seed + 53) - 0.5) * groove * 0.18
+
+            dx += (hash_noise(x * 2, y * 2, seed + 91) - 0.5) * 0.04
+            dy += (hash_noise(y * 2, x * 2, seed + 47) - 0.5) * 0.04
+            dx = max(-0.95, min(0.95, dx))
+            dy = max(-0.95, min(0.95, dy))
+            dz = math.sqrt(max(0.0, 1.0 - dx * dx - dy * dy))
+            r = int((dx * 0.5 + 0.5) * 255.0)
+            g = int((dy * 0.5 + 0.5) * 255.0)
+            b = int((dz * 0.5 + 0.5) * 255.0)
+            return (r, g, b)
+    else:
+        def pixel(x: int, y: int) -> Tuple[int, int, int]:
+            nx = x / float(size)
+            ny = y / float(size)
+            dx = 0.14 * math.sin((nx * 16.0 + seed) * math.pi)
+            dy = 0.14 * math.cos((ny * 13.0 + seed * 0.5) * math.pi)
+            dx += (hash_noise(x, y, seed + 91) - 0.5) * 0.06
+            dy += (hash_noise(y, x, seed + 47) - 0.5) * 0.06
+            dz = math.sqrt(max(0.0, 1.0 - dx * dx - dy * dy))
+            r = int((dx * 0.5 + 0.5) * 255.0)
+            g = int((dy * 0.5 + 0.5) * 255.0)
+            b = int((dz * 0.5 + 0.5) * 255.0)
+            return (r, g, b)
 
     write_png(path, size, size, pixel)
 
 
-def make_normal_texture(path: Path, seed: int, size: int = 256) -> None:
-    def pixel(x: int, y: int) -> Tuple[int, int, int]:
-        nx = x / float(size)
-        ny = y / float(size)
-        dx = 0.14 * math.sin((nx * 16.0 + seed) * math.pi)
-        dy = 0.14 * math.cos((ny * 13.0 + seed * 0.5) * math.pi)
-        dx += (hash_noise(x, y, seed + 91) - 0.5) * 0.06
-        dy += (hash_noise(y, x, seed + 47) - 0.5) * 0.06
-        dz = math.sqrt(max(0.0, 1.0 - dx * dx - dy * dy))
-        r = int((dx * 0.5 + 0.5) * 255.0)
-        g = int((dy * 0.5 + 0.5) * 255.0)
-        b = int((dz * 0.5 + 0.5) * 255.0)
-        return (r, g, b)
+def make_mr_texture(
+    path: Path,
+    metallic: float,
+    roughness: float,
+    seed: int,
+    size: int = 256,
+    style: str = "legacy",
+) -> None:
+    if style == "v3":
+        def pixel(x: int, y: int) -> Tuple[int, int, int]:
+            nx = x / float(size)
+            ny = y / float(size)
+            macro = fbm_noise(nx * 8.0, ny * 8.0, seed + 7, octaves=4)
+            micro = fbm_noise(nx * 24.0, ny * 24.0, seed + 11, octaves=2)
+            panel_u = (nx * 9.5) % 1.0
+            panel_v = (ny * 9.5) % 1.0
+            edge = min(panel_u, 1.0 - panel_u, panel_v, 1.0 - panel_v)
+            groove = clamp01((0.03 - edge) / 0.03)
+            g = int(clamp01(roughness + (macro - 0.5) * 0.18 + groove * 0.1 + (micro - 0.5) * 0.06) * 255.0)
+            b = int(clamp01(metallic + (micro - 0.5) * 0.14 - groove * 0.08) * 255.0)
+            return (255, g, b)
+    else:
+        def pixel(x: int, y: int) -> Tuple[int, int, int]:
+            n = hash_noise(x, y, seed)
+            n2 = hash_noise(x * 3, y * 3, seed + 71)
+            g = int(clamp01(roughness + (n - 0.5) * 0.12) * 255.0)  # roughness in G
+            b = int(clamp01(metallic + (n2 - 0.5) * 0.12) * 255.0)  # metallic in B
+            return (255, g, b)
 
     write_png(path, size, size, pixel)
 
 
-def make_mr_texture(path: Path, metallic: float, roughness: float, seed: int, size: int = 256) -> None:
-    def pixel(x: int, y: int) -> Tuple[int, int, int]:
-        n = hash_noise(x, y, seed)
-        n2 = hash_noise(x * 3, y * 3, seed + 71)
-        g = int(clamp01(roughness + (n - 0.5) * 0.12) * 255.0)  # roughness in G
-        b = int(clamp01(metallic + (n2 - 0.5) * 0.12) * 255.0)  # metallic in B
-        return (255, g, b)
-
-    write_png(path, size, size, pixel)
-
-
-def make_emissive_texture(path: Path, emissive_color: Tuple[int, int, int], seed: int, size: int = 256) -> None:
-    def pixel(x: int, y: int) -> Tuple[int, int, int]:
-        line = ((x + seed * 7) % 57 == 0) or ((y + seed * 13) % 83 == 0)
-        pulse = 0.5 + 0.5 * math.sin((x * 0.06 + y * 0.04 + seed) * math.pi)
-        glow = 0.0
-        if line:
-            glow = 0.35 + 0.65 * pulse
-        base = 0.03 + 0.02 * hash_noise(x, y, seed + 5)
-        r = int(clamp01(base + (emissive_color[0] / 255.0) * glow) * 255.0)
-        g = int(clamp01(base + (emissive_color[1] / 255.0) * glow) * 255.0)
-        b = int(clamp01(base + (emissive_color[2] / 255.0) * glow) * 255.0)
-        return (r, g, b)
+def make_emissive_texture(
+    path: Path,
+    emissive_color: Tuple[int, int, int],
+    seed: int,
+    size: int = 256,
+    style: str = "legacy",
+) -> None:
+    if style == "v3":
+        def pixel(x: int, y: int) -> Tuple[int, int, int]:
+            diag = abs(((x + y + seed * 5) % 89) - 44) < 2
+            cross = abs(((x * 3 + y + seed * 11) % 127) - 63) < 2
+            pulse = 0.5 + 0.5 * math.sin((x * 0.03 + y * 0.018 + seed) * math.pi)
+            node = hash_noise(x // 19, y // 19, seed + 17)
+            glow = 0.0
+            if diag or cross:
+                glow = 0.24 + 0.76 * pulse
+            if node > 0.985:
+                glow = max(glow, 0.62 + 0.38 * pulse)
+            base = 0.025 + 0.02 * hash_noise(x, y, seed + 5)
+            r = int(clamp01(base + (emissive_color[0] / 255.0) * glow) * 255.0)
+            g = int(clamp01(base + (emissive_color[1] / 255.0) * glow) * 255.0)
+            b = int(clamp01(base + (emissive_color[2] / 255.0) * glow) * 255.0)
+            return (r, g, b)
+    else:
+        def pixel(x: int, y: int) -> Tuple[int, int, int]:
+            line = ((x + seed * 7) % 57 == 0) or ((y + seed * 13) % 83 == 0)
+            pulse = 0.5 + 0.5 * math.sin((x * 0.06 + y * 0.04 + seed) * math.pi)
+            glow = 0.0
+            if line:
+                glow = 0.35 + 0.65 * pulse
+            base = 0.03 + 0.02 * hash_noise(x, y, seed + 5)
+            r = int(clamp01(base + (emissive_color[0] / 255.0) * glow) * 255.0)
+            g = int(clamp01(base + (emissive_color[1] / 255.0) * glow) * 255.0)
+            b = int(clamp01(base + (emissive_color[2] / 255.0) * glow) * 255.0)
+            return (r, g, b)
 
     write_png(path, size, size, pixel)
 
@@ -424,7 +548,63 @@ def _mesh_file_name(entity: str, profile: QualityProfile) -> str:
 
 
 def generate_meshes(mesh_dir: Path, profile: QualityProfile) -> None:
-    if profile.quality == "v2":
+    if profile.quality == "v3":
+        agent = merge_meshes(
+            [
+                build_uv_sphere(0.4, 18, 12),
+                transform_mesh(build_prism(0.11, 0.78, 12), translate=(0.0, 0.62, 0.0)),
+                transform_mesh(build_prism(0.08, 0.42, 10), translate=(0.31, 0.16, 0.0)),
+                transform_mesh(build_prism(0.08, 0.42, 10), translate=(-0.31, 0.16, 0.0)),
+                transform_mesh(build_box((0.44, 0.14, 0.28)), translate=(0.0, 0.08, -0.24)),
+                transform_mesh(build_prism(0.19, 0.16, 16), translate=(0.0, -0.18, 0.18)),
+            ]
+        )
+        location = merge_meshes(
+            [
+                build_uv_sphere(1.08, 56, 36),
+                transform_mesh(build_prism(1.16, 0.12, 48), scale=(1.0, 0.22, 1.0)),
+                transform_mesh(build_prism(0.97, 0.12, 40), scale=(1.0, 0.18, 1.0), translate=(0.0, 0.22, 0.0)),
+                transform_mesh(build_uv_sphere(0.22, 18, 14), translate=(0.0, 1.02, 0.0)),
+                transform_mesh(build_uv_sphere(0.22, 18, 14), translate=(0.0, -1.02, 0.0)),
+                transform_mesh(build_prism(0.09, 1.88, 12), translate=(0.94, 0.0, 0.0)),
+                transform_mesh(build_prism(0.09, 1.88, 12), translate=(-0.94, 0.0, 0.0)),
+            ]
+        )
+        asset = merge_meshes(
+            [
+                build_box((1.02, 0.56, 1.02)),
+                transform_mesh(build_box((0.88, 0.2, 0.88)), translate=(0.0, 0.38, 0.0)),
+                transform_mesh(build_box((0.62, 0.16, 0.62)), translate=(0.0, 0.54, 0.0)),
+                transform_mesh(build_prism(0.1, 0.94, 10), translate=(0.4, 0.0, 0.4)),
+                transform_mesh(build_prism(0.1, 0.94, 10), translate=(-0.4, 0.0, 0.4)),
+                transform_mesh(build_prism(0.1, 0.94, 10), translate=(0.4, 0.0, -0.4)),
+                transform_mesh(build_prism(0.1, 0.94, 10), translate=(-0.4, 0.0, -0.4)),
+                transform_mesh(build_prism(0.24, 0.24, 16), translate=(0.0, 0.66, 0.0)),
+                transform_mesh(build_prism(0.14, 0.56, 10), translate=(0.0, 0.88, 0.0)),
+            ]
+        )
+        power_plant = merge_meshes(
+            [
+                build_prism(0.6, 1.24, 16),
+                transform_mesh(build_prism(0.27, 1.02, 20), translate=(0.0, 0.82, 0.0)),
+                transform_mesh(build_prism(0.18, 0.72, 14), translate=(0.0, 1.58, 0.0)),
+                transform_mesh(build_box((1.08, 0.11, 0.22)), translate=(0.0, 0.3, 0.0)),
+                transform_mesh(build_box((0.22, 0.11, 1.08)), translate=(0.0, 0.3, 0.0)),
+                transform_mesh(build_prism(0.09, 0.72, 12), translate=(0.55, 0.72, 0.0)),
+                transform_mesh(build_prism(0.09, 0.72, 12), translate=(-0.55, 0.72, 0.0)),
+            ]
+        )
+        power_storage = merge_meshes(
+            [
+                build_prism(0.47, 1.36, 36),
+                transform_mesh(build_uv_sphere(0.46, 30, 18), scale=(1.0, 0.44, 1.0), translate=(0.0, 0.69, 0.0)),
+                transform_mesh(build_uv_sphere(0.46, 30, 18), scale=(1.0, 0.44, 1.0), translate=(0.0, -0.69, 0.0)),
+                transform_mesh(build_prism(0.56, 0.08, 36), translate=(0.0, 0.26, 0.0)),
+                transform_mesh(build_prism(0.56, 0.08, 36), translate=(0.0, -0.26, 0.0)),
+                transform_mesh(build_prism(0.4, 0.1, 18), translate=(0.0, 0.0, 0.0)),
+            ]
+        )
+    elif profile.quality == "v2":
         agent = merge_meshes(
             [
                 build_octahedron(0.52),
@@ -540,7 +720,52 @@ def generate_meshes(mesh_dir: Path, profile: QualityProfile) -> None:
 
 
 def generate_textures(texture_dir: Path, profile: QualityProfile) -> None:
-    if profile.quality == "v2":
+    texture_style = "legacy"
+    if profile.quality == "v3":
+        texture_style = "v3"
+        palette = {
+            "agent": {
+                "base_a": (62, 90, 118),
+                "base_b": (198, 236, 255),
+                "emissive": (112, 222, 255),
+                "metallic": 0.69,
+                "roughness": 0.34,
+                "seed": 211,
+            },
+            "location": {
+                "base_a": (38, 50, 64),
+                "base_b": (152, 190, 215),
+                "emissive": (92, 198, 236),
+                "metallic": 0.46,
+                "roughness": 0.49,
+                "seed": 223,
+            },
+            "asset": {
+                "base_a": (96, 110, 84),
+                "base_b": (214, 188, 124),
+                "emissive": (236, 182, 72),
+                "metallic": 0.82,
+                "roughness": 0.27,
+                "seed": 231,
+            },
+            "power_plant": {
+                "base_a": (104, 68, 58),
+                "base_b": (222, 138, 88),
+                "emissive": (255, 164, 78),
+                "metallic": 0.76,
+                "roughness": 0.23,
+                "seed": 247,
+            },
+            "power_storage": {
+                "base_a": (42, 58, 84),
+                "base_b": (134, 172, 224),
+                "emissive": (128, 206, 255),
+                "metallic": 0.66,
+                "roughness": 0.26,
+                "seed": 259,
+            },
+        }
+    elif profile.quality == "v2":
         palette = {
             "agent": {
                 "base_a": (72, 98, 126),
@@ -634,11 +859,13 @@ def generate_textures(texture_dir: Path, profile: QualityProfile) -> None:
             config["base_b"],
             config["seed"],
             size=profile.texture_size,
+            style=texture_style,
         )
         make_normal_texture(
             texture_dir / f"{entity}_normal.png",
             config["seed"] + 5,
             size=profile.texture_size,
+            style=texture_style,
         )
         make_mr_texture(
             texture_dir / f"{entity}_metallic_roughness.png",
@@ -646,12 +873,14 @@ def generate_textures(texture_dir: Path, profile: QualityProfile) -> None:
             config["roughness"],
             config["seed"] + 9,
             size=profile.texture_size,
+            style=texture_style,
         )
         make_emissive_texture(
             texture_dir / f"{entity}_emissive.png",
             config["emissive"],
             config["seed"] + 13,
             size=profile.texture_size,
+            style=texture_style,
         )
 
 
@@ -659,7 +888,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Generate industrial viewer theme assets.")
     parser.add_argument(
         "--quality",
-        choices=("v1", "v2"),
+        choices=("v1", "v2", "v3"),
         default="v1",
         help="Theme quality profile to generate.",
     )

@@ -10,7 +10,7 @@ Usage: ./scripts/viewer-theme-pack-preview.sh [options]
 
 Options:
   --scenario <name>        world_viewer_live scenario (default: llm_bootstrap)
-  --theme-pack <name>      theme pack: industrial_v2,industrial_v1 (default: industrial_v2)
+  --theme-pack <name>      theme pack: industrial_v3,industrial_v2,industrial_v1 (default: industrial_v3)
   --base-port <port>       starting port for per-variant capture (default: 5423)
   --viewer-wait <sec>      viewer wait before capture (default: 10)
   --variants <list>        comma-separated variants: default,matte,glossy,all (default: all)
@@ -63,7 +63,7 @@ resolve_variants() {
 }
 
 scenario="llm_bootstrap"
-theme_pack="industrial_v2"
+theme_pack="industrial_v3"
 base_port=5423
 viewer_wait=10
 variants_raw="all"
@@ -136,6 +136,10 @@ variants=($(resolve_variants "$variants_raw"))
 mkdir -p "$out_dir"
 
 case "$theme_pack" in
+  industrial_v3)
+    preset_dir="crates/agent_world_viewer/assets/themes/industrial_v3/presets"
+    preset_prefix="industrial_v3"
+    ;;
   industrial_v2)
     preset_dir="crates/agent_world_viewer/assets/themes/industrial_v2/presets"
     preset_prefix="industrial_v2"
@@ -146,7 +150,7 @@ case "$theme_pack" in
     ;;
   *)
     echo "invalid --theme-pack: $theme_pack" >&2
-    echo "supported theme packs: industrial_v2,industrial_v1" >&2
+    echo "supported theme packs: industrial_v3,industrial_v2,industrial_v1" >&2
     exit 2
     ;;
 esac

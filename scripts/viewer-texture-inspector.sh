@@ -13,7 +13,7 @@ Purpose:
   Texture sources can be selected from theme preset entity slots.
 
 Options:
-  --preset-file <path>     preset env file (default: industrial_v2_default.env)
+  --preset-file <path>     preset env file (default: industrial_v3_default.env)
   --inspect <list>         entity source list: agent,location,asset,power_plant,power_storage,all (default: all)
   --variants <list>        default,matte,glossy,all (default: all)
   --scenario <name>        world_viewer_live scenario (default: llm_bootstrap)
@@ -999,7 +999,7 @@ variant_semantic_fail_count() {
   echo "$fail_count"
 }
 
-preset_file="crates/agent_world_viewer/assets/themes/industrial_v2/presets/industrial_v2_default.env"
+preset_file="crates/agent_world_viewer/assets/themes/industrial_v3/presets/industrial_v3_default.env"
 inspect_raw="all"
 variants_raw="all"
 scenario="llm_bootstrap"
