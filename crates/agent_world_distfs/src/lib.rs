@@ -16,11 +16,13 @@ const FILE_INDEX_VERSION: u64 = 1;
 
 mod challenge;
 mod challenge_scheduler;
+mod feedback;
 mod manifest;
 mod replication;
 
 pub use challenge::*;
 pub use challenge_scheduler::*;
+pub use feedback::*;
 pub use manifest::*;
 pub use replication::*;
 

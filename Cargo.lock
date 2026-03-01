@@ -191,6 +191,8 @@ version = "0.1.0"
 dependencies = [
  "agent_world_proto",
  "blake3",
+ "ed25519-dalek",
+ "hex",
  "serde",
  "serde_cbor",
  "serde_json",
