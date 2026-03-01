@@ -20,11 +20,11 @@
 - [x] 任务测试与提交
 
 ### T2 页面下载入口接入
-- [ ] 更新 `site/index.html`、`site/en/index.html` 增加下载区块与入口锚点
-- [ ] 更新 `site/assets/styles.css` 下载区块样式
-- [ ] 更新 `site/assets/app.js` 拉取 latest tag 进行页面展示（失败时回退）
-- [ ] 新增/更新下载入口校验脚本并接入 CI
-- [ ] 任务测试与提交
+- [x] 更新 `site/index.html`、`site/en/index.html` 增加下载区块与入口锚点
+- [x] 更新 `site/assets/styles.css` 下载区块样式
+- [x] 更新 `site/assets/app.js` 拉取 latest tag 进行页面展示（失败时回退）
+- [x] 新增/更新下载入口校验脚本并接入 CI
+- [x] 任务测试与提交
 
 ### T3 回归验证与文档收口
 - [ ] 执行脚本回归与基础构建校验
@@ -38,6 +38,6 @@
 - 站点入口文件：`site/index.html`、`site/en/index.html`
 
 ## 状态
-- 当前阶段：进行中（T0A/T0/T1 已完成，执行 T2）
-- 最近更新：完成 T1 发布流水线实现（2026-03-01）
-- 下一步：接入 Pages 下载入口与校验门禁
+- 当前阶段：进行中（T0A/T0/T1/T2 已完成，执行 T3）
+- 最近更新：完成 T2 页面下载入口接入（2026-03-01）
+- 下一步：执行回归验证与文档收口

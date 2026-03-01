@@ -7,6 +7,7 @@ on:
       - "site/**"
       - "scripts/site-link-check.sh"
       - "scripts/site-manual-sync-check.sh"
+      - "scripts/site-download-check.sh"
       - "doc/viewer-manual.md"
       - ".github/workflows/pages.yml"
       - "README.md"
@@ -35,6 +36,7 @@ jobs:
         run: |
           ./scripts/site-link-check.sh
           ./scripts/site-manual-sync-check.sh
+          ./scripts/site-download-check.sh
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

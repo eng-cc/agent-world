@@ -673,6 +673,88 @@
     applyTab("minimal");
   };
 
+  const bindLatestReleaseMeta = () => {
+    const tagNodes = Array.from(document.querySelectorAll("[data-release-tag]"));
+    const dateNodes = Array.from(document.querySelectorAll("[data-release-date]"));
+    const notesLinks = Array.from(document.querySelectorAll("[data-release-notes-link]"));
+    if (!tagNodes.length && !dateNodes.length && !notesLinks.length) {
+      return;
+    }
+    if (typeof window.fetch !== "function") {
+      return;
+    }
+
+    const apiUrl = "https://api.github.com/repos/eng-cc/agent-world/releases/latest";
+    const controller = typeof AbortController === "function" ? new AbortController() : null;
+    let timeoutId = 0;
+    if (controller) {
+      timeoutId = window.setTimeout(() => {
+        controller.abort();
+      }, 4500);
+    }
+
+    const requestOptions = {
+      headers: {
+        Accept: "application/vnd.github+json",
+      },
+    };
+    if (controller) {
+      requestOptions.signal = controller.signal;
+    }
+
+    window
+      .fetch(apiUrl, requestOptions)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`release lookup failed: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then((release) => {
+        const tagName =
+          typeof release.tag_name === "string" && release.tag_name.trim().length > 0
+            ? release.tag_name.trim()
+            : "latest";
+        tagNodes.forEach((node) => {
+          node.textContent = tagName;
+        });
+
+        const releaseUrl =
+          typeof release.html_url === "string" && release.html_url.trim().length > 0
+            ? release.html_url.trim()
+            : "https://github.com/eng-cc/agent-world/releases/latest";
+        notesLinks.forEach((node) => {
+          node.setAttribute("href", releaseUrl);
+        });
+
+        const publishedAt = Date.parse(String(release.published_at || ""));
+        if (!Number.isFinite(publishedAt)) {
+          return;
+        }
+
+        const pageLang = String(document.documentElement.lang || "").toLowerCase();
+        const locale = pageLang.startsWith("zh") ? "zh-CN" : "en-US";
+        const formattedDate = new Intl.DateTimeFormat(locale, {
+          year: "numeric",
+          month: "short",
+          day: "2-digit",
+        }).format(new Date(publishedAt));
+
+        dateNodes.forEach((node) => {
+          const prefix = String(node.getAttribute("data-release-date-prefix") || "").trim();
+          node.textContent = prefix ? `${prefix}: ${formattedDate}` : formattedDate;
+        });
+      })
+      .catch(() => {
+        // Keep static fallback text when request fails.
+      })
+      .finally(() => {
+        if (timeoutId) {
+          window.clearTimeout(timeoutId);
+        }
+      });
+  };
+
   maybeRedirectByLanguageOnFirstVisit();
   bindLanguageChoicePersistence();
 
@@ -806,4 +888,5 @@
   bindTimelineFilters();
   bindStoryPathHighlight();
   bindProofSwitcher();
+  bindLatestReleaseMeta();
 })();

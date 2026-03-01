@@ -705,6 +705,61 @@ h3 {
   margin-top: 0.75rem;
 }
 
+.release-meta {
+  margin: 0 0 0.72rem;
+  color: var(--text-soft);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.42rem;
+}
+
+.release-meta strong {
+  color: #f3fffe;
+}
+
+.release-meta a {
+  font-size: 0.84rem;
+}
+
+.download-grid {
+  display: grid;
+  gap: 0.7rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.download-card {
+  display: block;
+  border: 1px solid rgba(131, 188, 220, 0.24);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(145deg, rgba(9, 25, 37, 0.92), rgba(7, 18, 30, 0.88));
+  padding: 0.92rem;
+  color: inherit;
+  text-decoration: none;
+  transition: transform 130ms ease, border-color 130ms ease, box-shadow 130ms ease;
+}
+
+.download-card h3 {
+  margin: 0 0 0.34rem;
+}
+
+.download-card p {
+  margin: 0;
+  color: var(--text-soft);
+}
+
+.download-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(67, 239, 187, 0.48);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.26);
+  text-decoration: none;
+}
+
+.download-note {
+  margin: 0.72rem 0 0;
+  color: var(--text-soft);
+}
+
 pre {
   margin: 0.64rem 0 0;
   max-width: 100%;
@@ -1132,7 +1187,8 @@ code {
   .proof-grid,
   .proof-timeline,
   .screens-grid,
-  .game-lattice {
+  .game-lattice,
+  .download-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -1158,6 +1214,7 @@ code {
   .proof-timeline,
   .screens-grid,
   .game-lattice,
+  .download-grid,
   .docs-grid,
   .hero-stats {
     grid-template-columns: 1fr;
