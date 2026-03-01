@@ -15,6 +15,7 @@ Options:
   --viewer-wait <sec>      viewer wait before capture (default: 10)
   --variants <list>        comma-separated variants: default,matte,glossy,all (default: all)
   --out-dir <dir>          output root (default: output/theme_preview/<timestamp>)
+  --ui-profile-file <path> optional UI profile env file (default: scripts/viewer-release-ui-profile.env)
   --no-prewarm             pass --no-prewarm to all capture runs
   -h, --help               show help
 
@@ -68,6 +69,7 @@ viewer_wait=10
 variants_raw="all"
 out_dir=""
 force_no_prewarm=0
+ui_profile_file="scripts/viewer-release-ui-profile.env"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -95,6 +97,10 @@ while [[ $# -gt 0 ]]; do
       out_dir=${2:-}
       shift 2
       ;;
+    --ui-profile-file)
+      ui_profile_file=${2:-}
+      shift 2
+      ;;
     --no-prewarm)
       force_no_prewarm=1
       shift
@@ -110,6 +116,11 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+if [[ -n "$ui_profile_file" && ! -f "$ui_profile_file" ]]; then
+  echo "missing --ui-profile-file: $ui_profile_file" >&2
+  exit 1
+fi
 
 if [[ -z "$out_dir" ]]; then
   timestamp=$(date '+%Y%m%d_%H%M%S')
@@ -161,6 +172,9 @@ for variant in "${variants[@]}"; do
 
   (
     source "$preset_file"
+    if [[ -n "$ui_profile_file" ]]; then
+      source "$ui_profile_file"
+    fi
     run ./scripts/capture-viewer-frame.sh \
       --scenario "$scenario" \
       --addr "127.0.0.1:$port" \
@@ -199,6 +213,7 @@ port=$port
 viewer_wait=$viewer_wait
 theme_pack=$theme_pack
 preset_file=$preset_file
+ui_profile_file=$ui_profile_file
 capture_connection_status=$capture_connection_status
 capture_snapshot_ready=$capture_snapshot_ready
 META

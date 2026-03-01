@@ -21,6 +21,7 @@ Options:
   --inspect <list>              Texture inspector entities: agent,location,asset,power_plant,power_storage,all (default: all)
   --ticks-industrial <n>        Industrial loop ticks (default: 100)
   --base-port <port>            Base port for native capture scripts (default: 6423)
+  --ui-profile-file <path>      UI profile env for native visual captures (default: scripts/viewer-release-ui-profile.env)
   --out-dir <path>              Output root (default: output/playwright/viewer/release_full/<timestamp>)
   --quick                       Quick mode: smaller samples and shorter ticks for smoke checks
   --headed                      Run web browser in headed mode for web gate
@@ -192,6 +193,7 @@ skip_texture_inspector=0
 skip_gameplay=0
 no_prewarm=0
 keep_out_dir=0
+ui_profile_file="scripts/viewer-release-ui-profile.env"
 
 user_set_variants=0
 user_set_inspect=0
@@ -223,6 +225,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --base-port)
       base_port=${2:-}
+      shift 2
+      ;;
+    --ui-profile-file)
+      ui_profile_file=${2:-}
       shift 2
       ;;
     --out-dir)
@@ -279,6 +285,11 @@ done
 
 ensure_positive_int "--ticks-industrial" "$ticks_industrial"
 ensure_positive_int "--base-port" "$base_port"
+
+if [[ -n "$ui_profile_file" && ! -f "$ui_profile_file" ]]; then
+  echo "missing --ui-profile-file: $ui_profile_file" >&2
+  exit 1
+fi
 
 if (( quick == 1 )); then
   if (( user_set_variants == 0 )); then
@@ -398,6 +409,7 @@ if (( skip_theme_preview == 0 )); then
     --variants "$variants_raw"
     --base-port "$base_port"
     --out-dir "$theme_preview_out"
+    --ui-profile-file "$ui_profile_file"
   )
   if (( no_prewarm == 1 )); then
     preview_cmd+=(--no-prewarm)
@@ -434,6 +446,7 @@ if (( skip_texture_inspector == 0 )); then
     --scenario "$scenario"
     --base-port "$texture_base_port"
     --out-dir "$texture_out"
+    --ui-profile-file "$ui_profile_file"
   )
   if (( no_prewarm == 1 )); then
     texture_cmd+=(--no-prewarm)
@@ -506,6 +519,7 @@ summary_path="$out_dir/release-full-summary-${timestamp}.md"
   echo "- Timestamp: $(date '+%Y-%m-%d %H:%M:%S %Z')"
   echo "- Scenario: \`$scenario\`"
   echo "- Theme pack: \`$theme_pack\`"
+  echo "- UI profile: \`${ui_profile_file:-none}\`"
   echo "- Variants: \`$variants_raw\`"
   echo "- Inspect entities: \`$inspect_raw\`"
   echo "- Overall: $overall_label"

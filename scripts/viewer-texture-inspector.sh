@@ -45,6 +45,7 @@ Options:
   --no-art-lighting        disable art-review lighting preset
   --lighting-profile <id>  art_review_v1,art_review_v2 (default: art_review_v2)
   --resource-pack-file <p> optional env file for entity/variant mesh/texture/material overrides
+  --ui-profile-file <path> optional UI profile env file (default: scripts/viewer-release-ui-profile.env)
   --art-hide-panel         hide right panel in art capture (default: on when art_capture=1)
   --no-art-hide-panel      keep right panel visible in art capture
   --art-selection-highlight
@@ -1016,6 +1017,7 @@ composition_profile="art_review_v2"
 art_lighting_mode="auto"
 lighting_profile="art_review_v2"
 resource_pack_file=""
+ui_profile_file="scripts/viewer-release-ui-profile.env"
 art_hide_panel_mode="auto"
 art_selection_highlight_mode="auto"
 variant_ssim_threshold="0.9995"
@@ -1140,6 +1142,10 @@ while [[ $# -gt 0 ]]; do
       resource_pack_file=${2:-}
       shift 2
       ;;
+    --ui-profile-file)
+      ui_profile_file=${2:-}
+      shift 2
+      ;;
     --art-hide-panel)
       art_hide_panel_mode="on"
       shift
@@ -1195,6 +1201,14 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+case "$(echo "${ui_profile_file:-}" | tr '[:upper:]' '[:lower:]')" in
+  none|off|disable)
+    ui_profile_file=""
+    ;;
+  *)
+    ;;
+esac
 
 if [[ ! -f "$preset_file" ]]; then
   echo "missing preset file: $preset_file" >&2
@@ -1291,6 +1305,11 @@ if [[ -n "$resource_pack_file" && ! -f "$resource_pack_file" ]]; then
   exit 1
 fi
 
+if [[ -n "$ui_profile_file" && ! -f "$ui_profile_file" ]]; then
+  echo "missing --ui-profile-file: $ui_profile_file" >&2
+  exit 1
+fi
+
 if [[ -z "$out_dir" ]]; then
   timestamp=$(date '+%Y%m%d_%H%M%S')
   out_dir="output/texture_inspector/$timestamp"
@@ -1367,6 +1386,9 @@ capture_variant_bundle() {
   (
     # Load base theme preset first, then pin variant and inspector overrides.
     source "$preset_file"
+    if [[ -n "$ui_profile_file" ]]; then
+      source "$ui_profile_file"
+    fi
     if [[ -n "$resource_pack_file" ]]; then
       source "$resource_pack_file"
     fi
@@ -1707,6 +1729,7 @@ capture_variant_bundle() {
 
     cat >"$variant_dir/meta.txt" <<META
 preset_file=$preset_file
+ui_profile_file=$ui_profile_file
 scenario=$capture_scenario
 entity=$entity
 variant=$variant
