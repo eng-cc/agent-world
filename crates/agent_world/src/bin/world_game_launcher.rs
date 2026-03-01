@@ -1087,4 +1087,5 @@ Env:\n\
 }
 
 #[cfg(test)]
+#[path = "world_game_launcher/world_game_launcher_tests.rs"]
 mod world_game_launcher_tests;

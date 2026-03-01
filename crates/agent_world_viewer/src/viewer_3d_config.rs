@@ -1,8 +1,9 @@
 use bevy::prelude::Resource;
 use viewer_3d_config_parsing::{
-    parse_agent_variant_palette, parse_bool, parse_f32, parse_f64, parse_fragment_material_strategy,
-    parse_geometry_tier, parse_hex_srgb_color, parse_non_empty_string, parse_render_profile,
-    parse_tonemapping_mode, parse_u64, parse_usize, parse_visual_effects_level,
+    parse_agent_variant_palette, parse_bool, parse_f32, parse_f64,
+    parse_fragment_material_strategy, parse_geometry_tier, parse_hex_srgb_color,
+    parse_non_empty_string, parse_render_profile, parse_tonemapping_mode, parse_u64, parse_usize,
+    parse_visual_effects_level,
 };
 
 #[path = "viewer_3d_config_parsing.rs"]

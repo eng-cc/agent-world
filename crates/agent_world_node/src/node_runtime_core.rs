@@ -9,11 +9,11 @@ use agent_world_distfs::{
 use agent_world_proto::distributed_dht as proto_dht;
 use agent_world_proto::world_error::WorldError as ProtoWorldError;
 
+use crate::runtime_util::now_unix_ms;
 use crate::{
     NodeCommittedActionBatch, NodeCommittedActionBatchesHandle, NodeConfig, NodeConsensusAction,
     NodeConsensusSnapshot, NodeError, NodeExecutionHook, NodeReplicationNetworkHandle, NodeRuntime,
 };
-use crate::runtime_util::now_unix_ms;
 
 #[derive(Debug, Clone)]
 pub(super) struct RuntimeState {
@@ -172,7 +172,9 @@ impl NodeRuntime {
         request: FeedbackCreateRequest,
     ) -> Result<FeedbackMutationReceipt, NodeError> {
         let store = self.require_feedback_store()?;
-        let receipt = store.submit_feedback(request).map_err(node_feedback_error)?;
+        let receipt = store
+            .submit_feedback(request)
+            .map_err(node_feedback_error)?;
         self.enqueue_feedback_announce(store, &receipt)?;
         Ok(receipt)
     }
@@ -182,7 +184,9 @@ impl NodeRuntime {
         request: FeedbackAppendRequest,
     ) -> Result<FeedbackMutationReceipt, NodeError> {
         let store = self.require_feedback_store()?;
-        let receipt = store.append_feedback(request).map_err(node_feedback_error)?;
+        let receipt = store
+            .append_feedback(request)
+            .map_err(node_feedback_error)?;
         self.enqueue_feedback_announce(store, &receipt)?;
         Ok(receipt)
     }
@@ -192,7 +196,9 @@ impl NodeRuntime {
         request: FeedbackTombstoneRequest,
     ) -> Result<FeedbackMutationReceipt, NodeError> {
         let store = self.require_feedback_store()?;
-        let receipt = store.tombstone_feedback(request).map_err(node_feedback_error)?;
+        let receipt = store
+            .tombstone_feedback(request)
+            .map_err(node_feedback_error)?;
         self.enqueue_feedback_announce(store, &receipt)?;
         Ok(receipt)
     }
@@ -212,9 +218,11 @@ impl NodeRuntime {
     }
 
     fn require_feedback_store(&self) -> Result<&Arc<FeedbackStore>, NodeError> {
-        self.feedback_store.as_ref().ok_or_else(|| NodeError::Replication {
-            reason: "feedback_p2p is not configured".to_string(),
-        })
+        self.feedback_store
+            .as_ref()
+            .ok_or_else(|| NodeError::Replication {
+                reason: "feedback_p2p is not configured".to_string(),
+            })
     }
 
     fn enqueue_feedback_announce(
@@ -234,7 +242,12 @@ impl NodeRuntime {
             .config
             .feedback_p2p
             .as_ref()
-            .map(|config| config.max_outgoing_announces_per_tick.max(1).saturating_mul(64))
+            .map(|config| {
+                config
+                    .max_outgoing_announces_per_tick
+                    .max(1)
+                    .saturating_mul(64)
+            })
             .unwrap_or(64);
         let mut pending = self
             .pending_feedback_announces

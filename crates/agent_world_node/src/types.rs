@@ -214,8 +214,7 @@ impl NodeFeedbackP2pConfig {
     ) -> Result<Self, NodeError> {
         if max_incoming_announces_per_tick == 0 {
             return Err(NodeError::InvalidConfig {
-                reason: "feedback_p2p.max_incoming_announces_per_tick must be positive"
-                    .to_string(),
+                reason: "feedback_p2p.max_incoming_announces_per_tick must be positive".to_string(),
             });
         }
         self.max_incoming_announces_per_tick = max_incoming_announces_per_tick;
@@ -228,8 +227,7 @@ impl NodeFeedbackP2pConfig {
     ) -> Result<Self, NodeError> {
         if max_outgoing_announces_per_tick == 0 {
             return Err(NodeError::InvalidConfig {
-                reason: "feedback_p2p.max_outgoing_announces_per_tick must be positive"
-                    .to_string(),
+                reason: "feedback_p2p.max_outgoing_announces_per_tick must be positive".to_string(),
             });
         }
         self.max_outgoing_announces_per_tick = max_outgoing_announces_per_tick;
@@ -467,14 +465,12 @@ impl NodeConfig {
     ) -> Result<Self, NodeError> {
         if feedback_p2p.max_incoming_announces_per_tick == 0 {
             return Err(NodeError::InvalidConfig {
-                reason: "feedback_p2p.max_incoming_announces_per_tick must be positive"
-                    .to_string(),
+                reason: "feedback_p2p.max_incoming_announces_per_tick must be positive".to_string(),
             });
         }
         if feedback_p2p.max_outgoing_announces_per_tick == 0 {
             return Err(NodeError::InvalidConfig {
-                reason: "feedback_p2p.max_outgoing_announces_per_tick must be positive"
-                    .to_string(),
+                reason: "feedback_p2p.max_outgoing_announces_per_tick must be positive".to_string(),
             });
         }
         self.feedback_p2p = Some(feedback_p2p);

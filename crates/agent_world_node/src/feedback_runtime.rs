@@ -7,7 +7,9 @@ use agent_world_distfs::{
 use agent_world_proto::world_error::WorldError as ProtoWorldError;
 
 use crate::network_bridge::ReplicationNetworkEndpoint;
-use crate::replication::{FetchBlobRequest, FetchBlobResponse, ReplicationRuntime, REPLICATION_FETCH_BLOB_PROTOCOL};
+use crate::replication::{
+    FetchBlobRequest, FetchBlobResponse, ReplicationRuntime, REPLICATION_FETCH_BLOB_PROTOCOL,
+};
 use crate::{NodeError, NodeFeedbackP2pConfig};
 
 pub(crate) fn maybe_publish_runtime_feedback_announces(
@@ -111,9 +113,14 @@ pub(crate) fn maybe_ingest_runtime_feedback_announces(
                 continue;
             }
         };
-        let ingest_result = ingest_feedback_announce_with_fetcher(store, &announce, |content_hash| {
-            fetch_feedback_blob_from_replication_network(content_hash, replication, replication_network)
-        });
+        let ingest_result =
+            ingest_feedback_announce_with_fetcher(store, &announce, |content_hash| {
+                fetch_feedback_blob_from_replication_network(
+                    content_hash,
+                    replication,
+                    replication_network,
+                )
+            });
         if let Err(err) = ingest_result {
             failures.push(format!(
                 "feedback_id={} event_id={} err={:?}",
@@ -143,7 +150,10 @@ fn fetch_feedback_blob_from_replication_network(
         .build_fetch_blob_request(content_hash)
         .map_err(node_error_to_feedback_world_error)?;
     let response = replication_network
-        .request_json::<FetchBlobRequest, FetchBlobResponse>(REPLICATION_FETCH_BLOB_PROTOCOL, &request)
+        .request_json::<FetchBlobRequest, FetchBlobResponse>(
+            REPLICATION_FETCH_BLOB_PROTOCOL,
+            &request,
+        )
         .map_err(node_error_to_feedback_world_error)?;
     if !response.found {
         return Err(ProtoWorldError::BlobNotFound {

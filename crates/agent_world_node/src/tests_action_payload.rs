@@ -4,10 +4,10 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+use super::*;
 use agent_world_distfs::{
     public_key_hex_from_signing_key_hex, sign_feedback_create_request, FeedbackCreateRequest,
 };
-use super::*;
 
 #[derive(Clone)]
 struct RecordingExecutionHook {
@@ -326,8 +326,12 @@ fn submit_consensus_action_payload_rejects_queue_saturation() {
 #[test]
 fn submit_feedback_rejects_when_feedback_p2p_not_configured() {
     let runtime = NodeRuntime::new(
-        NodeConfig::new("node-feedback-off", "world-feedback-off", NodeRole::Observer)
-            .expect("config"),
+        NodeConfig::new(
+            "node-feedback-off",
+            "world-feedback-off",
+            NodeRole::Observer,
+        )
+        .expect("config"),
     );
     let signing_key_hex =
         "1212121212121212121212121212121212121212121212121212121212121212".to_string();

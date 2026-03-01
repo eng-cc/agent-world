@@ -2,6 +2,12 @@
 
 ## 任务拆解
 
+### T0A CI 阻塞修复（先行）
+- [x] 修复 `cargo fmt --all -- --check` 基线（提交仓库内遗留格式化差异）
+- [x] 修复 `world_game_launcher_tests` 被误识别为独立 bin 导致的 `cargo test` 失败
+- [x] 修复 `agent_world_viewer --target wasm32-unknown-unknown` 的 `ctrlc` 目标兼容问题
+- [x] 回归 `./scripts/ci-tests.sh required` 并确认通过
+
 ### T0 建档与基线
 - [x] 新建设计文档：`doc/site/github-pages-release-download-pipeline-2026-03-01.md`
 - [x] 新建项目管理文档：`doc/site/github-pages-release-download-pipeline-2026-03-01.project.md`
@@ -32,6 +38,6 @@
 - 站点入口文件：`site/index.html`、`site/en/index.html`
 
 ## 状态
-- 当前阶段：进行中（T0 已完成，执行 T1）
-- 最近更新：完成 T0 建档（2026-03-01）
+- 当前阶段：进行中（T0A/T0 已完成，执行 T1）
+- 最近更新：完成 T0A CI 阻塞修复（2026-03-01）
 - 下一步：实现 Release 发布流水线与打包资产上传

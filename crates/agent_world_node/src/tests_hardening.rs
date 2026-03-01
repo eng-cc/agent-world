@@ -166,7 +166,9 @@ struct TestInMemoryNetwork {
     retained: Arc<Mutex<HashMap<String, Vec<Vec<u8>>>>>,
     subscribers: Arc<Mutex<Vec<TestNetworkInbox>>>,
     handlers: Arc<
-        Mutex<HashMap<String, Vec<Arc<dyn Fn(&[u8]) -> Result<Vec<u8>, WorldError> + Send + Sync>>>>,
+        Mutex<
+            HashMap<String, Vec<Arc<dyn Fn(&[u8]) -> Result<Vec<u8>, WorldError> + Send + Sync>>>,
+        >,
     >,
 }
 
@@ -221,9 +223,11 @@ impl agent_world_proto::distributed_net::DistributedNetwork<WorldError> for Test
                 Err(err) => last_error = Some(err),
             }
         }
-        Err(last_error.unwrap_or(WorldError::NetworkProtocolUnavailable {
-            protocol: protocol.to_string(),
-        }))
+        Err(
+            last_error.unwrap_or(WorldError::NetworkProtocolUnavailable {
+                protocol: protocol.to_string(),
+            }),
+        )
     }
 
     fn register_handler(
@@ -793,7 +797,11 @@ fn runtime_feedback_submit_publishes_and_peer_ingests() {
     let duplicate_ok = wait_until(Instant::now() + Duration::from_secs(2), || {
         follower_store
             .read_feedback_public(feedback_id)
-            .map(|view| view.map(|entry| entry.append_events.len()).unwrap_or_default() == 0)
+            .map(|view| {
+                view.map(|entry| entry.append_events.len())
+                    .unwrap_or_default()
+                    == 0
+            })
             .unwrap_or(false)
     });
     assert!(duplicate_ok, "duplicate announce should remain idempotent");

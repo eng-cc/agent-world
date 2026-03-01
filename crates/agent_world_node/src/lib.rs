@@ -80,6 +80,9 @@ pub use types::{
     NodeReplicaMaintenanceConfig, NodeRole, NodeSnapshot, PosConsensusStatus, PosValidator,
 };
 
+use feedback_runtime::{
+    maybe_ingest_runtime_feedback_announces, maybe_publish_runtime_feedback_announces,
+};
 use network_bridge::{ConsensusNetworkEndpoint, ReplicationNetworkEndpoint};
 use node_runtime_core::RuntimeState;
 use pos_state_store::PosNodeStateStore;
@@ -90,9 +93,6 @@ use replication::{
     REPLICATION_FETCH_COMMIT_PROTOCOL,
 };
 use runtime_util::{lock_state, now_unix_ms};
-use feedback_runtime::{
-    maybe_ingest_runtime_feedback_announces, maybe_publish_runtime_feedback_announces,
-};
 
 const STORAGE_GATE_NETWORK_SAMPLES_PER_CHECK: usize = 3;
 const STORAGE_GATE_NETWORK_MIN_MATCHES_CAP: usize = 2;
@@ -446,13 +446,18 @@ impl NodeRuntime {
                     reason: "feedback_p2p requires replication network".to_string(),
                 });
             };
-            match FeedbackAnnounceBridge::new(self.config.world_id.as_str(), network.clone_network())
-            {
+            match FeedbackAnnounceBridge::new(
+                self.config.world_id.as_str(),
+                network.clone_network(),
+            ) {
                 Ok(bridge) => Some(bridge),
                 Err(err) => {
                     self.running.store(false, Ordering::SeqCst);
                     return Err(NodeError::Replication {
-                        reason: format!("feedback announce bridge initialization failed: {:?}", err),
+                        reason: format!(
+                            "feedback announce bridge initialization failed: {:?}",
+                            err
+                        ),
                     });
                 }
             }

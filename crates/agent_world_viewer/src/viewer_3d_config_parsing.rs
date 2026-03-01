@@ -41,7 +41,10 @@ where
     })
 }
 
-pub(super) fn parse_visual_effects_level<F>(lookup: &F, key: &str) -> Option<ViewerVisualEffectsLevel>
+pub(super) fn parse_visual_effects_level<F>(
+    lookup: &F,
+    key: &str,
+) -> Option<ViewerVisualEffectsLevel>
 where
     F: Fn(&str) -> Option<String>,
 {
