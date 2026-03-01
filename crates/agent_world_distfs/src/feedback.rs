@@ -16,6 +16,12 @@ const FEEDBACK_AUDIT_DIR: &str = "audit";
 const FEEDBACK_SIGNATURE_PAYLOAD_VERSION: u8 = 1;
 const MAX_TOKEN_LEN: usize = 128;
 
+mod signing;
+pub use signing::{
+    public_key_hex_from_signing_key_hex, sign_feedback_append_request,
+    sign_feedback_create_request, sign_feedback_tombstone_request,
+};
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FeedbackAttachment {
     pub content_hash: String,
