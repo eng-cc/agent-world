@@ -44,9 +44,9 @@
 - [x] 本地回归：正常 PATH + 无 `rg` PATH 双路径校验
 
 ### T3C Builtin Wasm m1 identity 清单回收敛
-- [ ] 复现并定位 `Builtin Wasm m1 Multi Runner` 失败根因：`m1.body.core` source_hash 失配
-- [ ] 执行 `scripts/sync-m1-builtin-wasm-artifacts.sh` 更新 hash/identity manifest
-- [ ] 本地回归 `scripts/ci-m1-wasm-summary.sh`（至少当前平台）并确认通过
+- [x] 复现并定位 `Builtin Wasm m1 Multi Runner` 失败根因：`m1.body.core` source_hash 失配
+- [x] 执行 `scripts/sync-m1-builtin-wasm-artifacts.sh` 更新 hash/identity manifest
+- [x] 本地回归 `scripts/ci-m1-wasm-summary.sh`（至少当前平台）并确认通过
 
 ## 依赖
 - 打包基础脚本：`scripts/build-game-launcher-bundle.sh`
@@ -54,6 +54,6 @@
 - 站点入口文件：`site/index.html`、`site/en/index.html`
 
 ## 状态
-- 当前阶段：进行中（T0A/T0/T1/T2/T3/T3A/T3B 已完成，执行 T3C）
-- 最近更新：完成 T3B Rust required gate 兼容性热修复（2026-03-01）
-- 下一步：完成 T3C Builtin Wasm m1 identity 清单回收敛并等待 CI 回归
+- 当前阶段：已完成（T0A/T0/T1/T2/T3/T3A/T3B/T3C）
+- 最近更新：完成 T3C Builtin Wasm m1 identity 清单回收敛（2026-03-01）
+- 下一步：push 后等待 CI 回归结果
