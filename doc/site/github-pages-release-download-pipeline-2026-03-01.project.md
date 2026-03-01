@@ -32,12 +32,18 @@
 - [x] 写任务日志：`doc/devlog/2026-03-01.md`
 - [x] 任务测试与提交
 
+### T3A Pages 门禁兼容性热修复（GitHub runner 无 rg）
+- [x] 复现并定位 Actions run `22474048679` / job `65097149123` 失败原因
+- [x] 修复 `scripts/site-manual-sync-check.sh`：`rg` 不可用时回退 `grep -F`
+- [x] 修复 `scripts/site-download-check.sh`：同样支持 `grep -F` 回退
+- [x] 本地回归：正常 PATH + 无 `rg` PATH 双路径校验
+
 ## 依赖
 - 打包基础脚本：`scripts/build-game-launcher-bundle.sh`
 - 站点发布流程：`.github/workflows/pages.yml`
 - 站点入口文件：`site/index.html`、`site/en/index.html`
 
 ## 状态
-- 当前阶段：已完成（T0A/T0/T1/T2/T3）
-- 最近更新：完成 T3 回归验证与文档收口（2026-03-01）
+- 当前阶段：已完成（T0A/T0/T1/T2/T3/T3A）
+- 最近更新：完成 T3A Pages 门禁兼容性热修复（2026-03-01）
 - 下一步：无（本项目结项）

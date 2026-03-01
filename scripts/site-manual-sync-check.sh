@@ -21,11 +21,21 @@ FORBIDDEN_PATTERNS=(
   '$CODEX_HOME/skills/playwright/scripts/playwright_cli.sh'
 )
 
+contains_fixed_pattern() {
+  local pattern="$1"
+  local file_path="$2"
+  if command -v rg >/dev/null 2>&1; then
+    rg -Fq -- "$pattern" "$file_path"
+    return $?
+  fi
+  grep -Fq -- "$pattern" "$file_path"
+}
+
 check_required_patterns() {
   local file_path="$1"
   local pattern
   for pattern in "${REQUIRED_PATTERNS[@]}"; do
-    if ! rg -Fq -- "$pattern" "$file_path"; then
+    if ! contains_fixed_pattern "$pattern" "$file_path"; then
       echo "error: missing required pattern in ${file_path}: ${pattern}" >&2
       return 1
     fi
@@ -36,7 +46,7 @@ check_forbidden_patterns() {
   local file_path="$1"
   local pattern
   for pattern in "${FORBIDDEN_PATTERNS[@]}"; do
-    if rg -Fq -- "$pattern" "$file_path"; then
+    if contains_fixed_pattern "$pattern" "$file_path"; then
       echo "error: found deprecated pattern in ${file_path}: ${pattern}" >&2
       return 1
     fi
