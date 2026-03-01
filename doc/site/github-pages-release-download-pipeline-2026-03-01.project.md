@@ -38,12 +38,22 @@
 - [x] 修复 `scripts/site-download-check.sh`：同样支持 `grep -F` 回退
 - [x] 本地回归：正常 PATH + 无 `rg` PATH 双路径校验
 
+### T3B Rust required gate 兼容性热修复（GitHub runner 无 rg）
+- [x] 复现并定位 `Rust` workflow 失败根因：`scripts/doc-governance-check.sh` 直接依赖 `rg`
+- [x] 修复 `scripts/doc-governance-check.sh`：标题检测与绝对路径检测在 `rg` 不可用时回退 `grep -E`
+- [x] 本地回归：正常 PATH + 无 `rg` PATH 双路径校验
+
+### T3C Builtin Wasm m1 identity 清单回收敛
+- [ ] 复现并定位 `Builtin Wasm m1 Multi Runner` 失败根因：`m1.body.core` source_hash 失配
+- [ ] 执行 `scripts/sync-m1-builtin-wasm-artifacts.sh` 更新 hash/identity manifest
+- [ ] 本地回归 `scripts/ci-m1-wasm-summary.sh`（至少当前平台）并确认通过
+
 ## 依赖
 - 打包基础脚本：`scripts/build-game-launcher-bundle.sh`
 - 站点发布流程：`.github/workflows/pages.yml`
 - 站点入口文件：`site/index.html`、`site/en/index.html`
 
 ## 状态
-- 当前阶段：已完成（T0A/T0/T1/T2/T3/T3A）
-- 最近更新：完成 T3A Pages 门禁兼容性热修复（2026-03-01）
-- 下一步：无（本项目结项）
+- 当前阶段：进行中（T0A/T0/T1/T2/T3/T3A/T3B 已完成，执行 T3C）
+- 最近更新：完成 T3B Rust required gate 兼容性热修复（2026-03-01）
+- 下一步：完成 T3C Builtin Wasm m1 identity 清单回收敛并等待 CI 回归

@@ -42,10 +42,30 @@ fail() {
   failures=$((failures + 1))
 }
 
+regex_match_file() {
+  local regex="$1"
+  local file="$2"
+  if command -v rg >/dev/null 2>&1; then
+    rg -q -e "$regex" "$file"
+    return $?
+  fi
+  grep -Eq -- "$regex" "$file"
+}
+
+regex_match_with_line_numbers() {
+  local regex="$1"
+  shift
+  if command -v rg >/dev/null 2>&1; then
+    rg -n -e "$regex" "$@"
+    return $?
+  fi
+  grep -nE -- "$regex" "$@"
+}
+
 has_heading() {
   local file="$1"
   local pattern="$2"
-  rg -q -e "^#{1,6}[[:space:]]*([0-9]+([.][0-9]+)*[[:space:]]*)?${pattern}.*$" "$file"
+  regex_match_file "^#{1,6}[[:space:]]*([0-9]+([.][0-9]+)*[[:space:]]*)?${pattern}.*$" "$file"
 }
 
 check_required_sections() {
@@ -86,7 +106,7 @@ if [[ ${#project_docs[@]} -eq 0 ]]; then
 fi
 
 # 1) absolute path check
-if abs_hits=$(rg -n -e '/(Users|home)/[^[:space:]]+' "${all_doc_files[@]}"); then
+if abs_hits=$(regex_match_with_line_numbers '/(Users|home)/[^[:space:]]+' "${all_doc_files[@]}"); then
   echo "doc-governance-check: absolute path hits:"
   echo "$abs_hits"
   fail "absolute user-home paths found in non-archive docs"
