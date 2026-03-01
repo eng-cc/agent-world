@@ -350,3 +350,187 @@ fn feedback_rate_limit_blocks_excessive_submissions() {
 
     let _ = fs::remove_dir_all(dir);
 }
+
+#[test]
+fn feedback_replicated_ingest_is_idempotent_for_root_and_event() {
+    let source_dir = temp_dir("replicated-source");
+    let target_dir = temp_dir("replicated-target");
+    let source = FeedbackStore::new(
+        LocalCasStore::new(&source_dir),
+        FeedbackStoreConfig::default(),
+    );
+    let target = FeedbackStore::new(
+        LocalCasStore::new(&target_dir),
+        FeedbackStoreConfig::default(),
+    );
+    let author = signing_key(31);
+    let author_pubkey = public_key_hex(&author);
+    let create_ts = now_plus(0);
+    let create_expire = now_plus(60_000);
+    let mut create_request = FeedbackCreateRequest {
+        feedback_id: "fb-repl-1".to_string(),
+        author_public_key_hex: author_pubkey.clone(),
+        submit_ip: "127.0.0.8".to_string(),
+        category: "bug".to_string(),
+        platform: "web".to_string(),
+        game_version: "0.3.0".to_string(),
+        content: "root payload".to_string(),
+        attachments: vec![],
+        nonce: "n-repl-root".to_string(),
+        timestamp_ms: create_ts,
+        expires_at_ms: create_expire,
+        signature_hex: String::new(),
+    };
+    create_request.signature_hex =
+        sign_feedback_create_request(&create_request, &hex::encode(author.to_bytes()))
+            .expect("sign create");
+    let create_receipt = source.submit_feedback(create_request).expect("submit");
+    let root_blob = source
+        .blob_ref_for_receipt(&create_receipt)
+        .expect("root blob ref")
+        .expect("root blob");
+    let root_bytes = source
+        .store
+        .read_file(root_blob.path.as_str())
+        .expect("read root blob");
+    let root_record: FeedbackRootRecord = serde_json::from_slice(&root_bytes).expect("root record");
+    target
+        .ingest_replicated_root_record(root_record.clone())
+        .expect("ingest root");
+    target
+        .ingest_replicated_root_record(root_record)
+        .expect("ingest root idempotent");
+
+    let append_ts = now_plus(20);
+    let append_expire = now_plus(60_000);
+    let mut append_request = FeedbackAppendRequest {
+        feedback_id: "fb-repl-1".to_string(),
+        actor_public_key_hex: author_pubkey,
+        submit_ip: "127.0.0.8".to_string(),
+        content: "append payload".to_string(),
+        nonce: "n-repl-append".to_string(),
+        timestamp_ms: append_ts,
+        expires_at_ms: append_expire,
+        signature_hex: String::new(),
+    };
+    append_request.signature_hex =
+        sign_feedback_append_request(&append_request, &hex::encode(author.to_bytes()))
+            .expect("sign append");
+    let append_receipt = source.append_feedback(append_request).expect("append");
+    let append_blob = source
+        .blob_ref_for_receipt(&append_receipt)
+        .expect("append blob ref")
+        .expect("append blob");
+    let append_bytes = source
+        .store
+        .read_file(append_blob.path.as_str())
+        .expect("read append blob");
+    let append_record: FeedbackEventRecord =
+        serde_json::from_slice(&append_bytes).expect("append record");
+    target
+        .ingest_replicated_event_record(append_record.clone())
+        .expect("ingest append");
+    target
+        .ingest_replicated_event_record(append_record)
+        .expect("ingest append idempotent");
+
+    let view = target
+        .read_feedback_public("fb-repl-1")
+        .expect("read target")
+        .expect("target view");
+    assert_eq!(view.append_events.len(), 1);
+    assert_eq!(view.append_events[0].content, "append payload");
+
+    let _ = fs::remove_dir_all(source_dir);
+    let _ = fs::remove_dir_all(target_dir);
+}
+
+#[test]
+fn feedback_replicated_ingest_rejects_event_id_conflict() {
+    let source_dir = temp_dir("replicated-conflict-source");
+    let target_dir = temp_dir("replicated-conflict-target");
+    let source = FeedbackStore::new(
+        LocalCasStore::new(&source_dir),
+        FeedbackStoreConfig::default(),
+    );
+    let target = FeedbackStore::new(
+        LocalCasStore::new(&target_dir),
+        FeedbackStoreConfig::default(),
+    );
+    let author = signing_key(33);
+    let author_pubkey = public_key_hex(&author);
+
+    let mut create_request = FeedbackCreateRequest {
+        feedback_id: "fb-repl-2".to_string(),
+        author_public_key_hex: author_pubkey.clone(),
+        submit_ip: "127.0.0.9".to_string(),
+        category: "bug".to_string(),
+        platform: "web".to_string(),
+        game_version: "0.3.1".to_string(),
+        content: "root".to_string(),
+        attachments: vec![],
+        nonce: "n-repl2-root".to_string(),
+        timestamp_ms: now_plus(0),
+        expires_at_ms: now_plus(60_000),
+        signature_hex: String::new(),
+    };
+    create_request.signature_hex =
+        sign_feedback_create_request(&create_request, &hex::encode(author.to_bytes()))
+            .expect("sign create");
+    let create_receipt = source.submit_feedback(create_request).expect("submit");
+    let root_blob = source
+        .blob_ref_for_receipt(&create_receipt)
+        .expect("root blob ref")
+        .expect("root blob");
+    let root_record: FeedbackRootRecord = serde_json::from_slice(
+        source
+            .store
+            .read_file(root_blob.path.as_str())
+            .expect("read root blob")
+            .as_slice(),
+    )
+    .expect("root record");
+    target
+        .ingest_replicated_root_record(root_record)
+        .expect("ingest root");
+
+    let mut append_request = FeedbackAppendRequest {
+        feedback_id: "fb-repl-2".to_string(),
+        actor_public_key_hex: author_pubkey,
+        submit_ip: "127.0.0.9".to_string(),
+        content: "append one".to_string(),
+        nonce: "n-repl2-append".to_string(),
+        timestamp_ms: now_plus(10),
+        expires_at_ms: now_plus(60_000),
+        signature_hex: String::new(),
+    };
+    append_request.signature_hex =
+        sign_feedback_append_request(&append_request, &hex::encode(author.to_bytes()))
+            .expect("sign append");
+    let append_receipt = source.append_feedback(append_request).expect("append");
+    let append_blob = source
+        .blob_ref_for_receipt(&append_receipt)
+        .expect("append blob ref")
+        .expect("append blob");
+    let mut append_record: FeedbackEventRecord = serde_json::from_slice(
+        source
+            .store
+            .read_file(append_blob.path.as_str())
+            .expect("read append blob")
+            .as_slice(),
+    )
+    .expect("append record");
+    target
+        .ingest_replicated_event_record(append_record.clone())
+        .expect("ingest append");
+
+    append_record.content = Some("tampered".to_string());
+    let conflict = target.ingest_replicated_event_record(append_record);
+    assert!(matches!(
+        conflict,
+        Err(WorldError::DistributedValidationFailed { .. })
+    ));
+
+    let _ = fs::remove_dir_all(source_dir);
+    let _ = fs::remove_dir_all(target_dir);
+}

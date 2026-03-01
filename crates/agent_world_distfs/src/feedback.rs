@@ -21,6 +21,8 @@ pub use signing::{
     public_key_hex_from_signing_key_hex, sign_feedback_append_request,
     sign_feedback_create_request, sign_feedback_tombstone_request,
 };
+mod replication;
+pub use replication::FeedbackBlobRef;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FeedbackAttachment {
