@@ -2,6 +2,10 @@ use std::fmt;
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, Condvar, Mutex};
 
+use agent_world_distfs::{
+    build_feedback_announce_from_receipt, FeedbackAppendRequest, FeedbackCreateRequest,
+    FeedbackMutationReceipt, FeedbackStore, FeedbackTombstoneRequest, LocalCasStore,
+};
 use agent_world_proto::distributed_dht as proto_dht;
 use agent_world_proto::world_error::WorldError as ProtoWorldError;
 
@@ -9,6 +13,7 @@ use crate::{
     NodeCommittedActionBatch, NodeCommittedActionBatchesHandle, NodeConfig, NodeConsensusAction,
     NodeConsensusSnapshot, NodeError, NodeExecutionHook, NodeReplicationNetworkHandle, NodeRuntime,
 };
+use crate::runtime_util::now_unix_ms;
 
 #[derive(Debug, Clone)]
 pub(super) struct RuntimeState {
@@ -39,6 +44,7 @@ impl fmt::Debug for NodeRuntime {
                 "has_replication_network",
                 &self.replication_network.is_some(),
             )
+            .field("has_feedback_store", &self.feedback_store.is_some())
             .field("has_execution_hook", &self.execution_hook.is_some())
             .field("running", &self.running.load(Ordering::SeqCst))
             .finish()
@@ -47,9 +53,19 @@ impl fmt::Debug for NodeRuntime {
 
 impl NodeRuntime {
     pub fn new(config: NodeConfig) -> Self {
+        let feedback_store = config.feedback_p2p.as_ref().and_then(|feedback_config| {
+            config.replication.as_ref().map(|replication_config| {
+                Arc::new(FeedbackStore::new(
+                    LocalCasStore::new(replication_config.root_dir.join("store")),
+                    feedback_config.store.clone(),
+                ))
+            })
+        });
         Self {
             config,
             replication_network: None,
+            feedback_store,
+            pending_feedback_announces: Arc::new(Mutex::new(Vec::new())),
             execution_hook: None,
             pending_consensus_actions: Arc::new(Mutex::new(Vec::new())),
             committed_action_batches: Arc::new((Mutex::new(Vec::new()), Condvar::new())),
@@ -151,6 +167,36 @@ impl NodeRuntime {
         Ok(())
     }
 
+    pub fn submit_feedback(
+        &self,
+        request: FeedbackCreateRequest,
+    ) -> Result<FeedbackMutationReceipt, NodeError> {
+        let store = self.require_feedback_store()?;
+        let receipt = store.submit_feedback(request).map_err(node_feedback_error)?;
+        self.enqueue_feedback_announce(store, &receipt)?;
+        Ok(receipt)
+    }
+
+    pub fn append_feedback(
+        &self,
+        request: FeedbackAppendRequest,
+    ) -> Result<FeedbackMutationReceipt, NodeError> {
+        let store = self.require_feedback_store()?;
+        let receipt = store.append_feedback(request).map_err(node_feedback_error)?;
+        self.enqueue_feedback_announce(store, &receipt)?;
+        Ok(receipt)
+    }
+
+    pub fn tombstone_feedback(
+        &self,
+        request: FeedbackTombstoneRequest,
+    ) -> Result<FeedbackMutationReceipt, NodeError> {
+        let store = self.require_feedback_store()?;
+        let receipt = store.tombstone_feedback(request).map_err(node_feedback_error)?;
+        self.enqueue_feedback_announce(store, &receipt)?;
+        Ok(receipt)
+    }
+
     pub fn drain_committed_action_batches(&self) -> Vec<NodeCommittedActionBatch> {
         let (committed_lock, _) = &*self.committed_action_batches;
         let mut committed = committed_lock
@@ -163,5 +209,53 @@ impl NodeRuntime {
         NodeCommittedActionBatchesHandle {
             state: Arc::clone(&self.committed_action_batches),
         }
+    }
+
+    fn require_feedback_store(&self) -> Result<&Arc<FeedbackStore>, NodeError> {
+        self.feedback_store.as_ref().ok_or_else(|| NodeError::Replication {
+            reason: "feedback_p2p is not configured".to_string(),
+        })
+    }
+
+    fn enqueue_feedback_announce(
+        &self,
+        store: &FeedbackStore,
+        receipt: &FeedbackMutationReceipt,
+    ) -> Result<(), NodeError> {
+        let now_ms = now_unix_ms();
+        let announce = build_feedback_announce_from_receipt(
+            store,
+            self.config.world_id.as_str(),
+            receipt,
+            now_ms,
+        )
+        .map_err(node_feedback_error)?;
+        let max_pending = self
+            .config
+            .feedback_p2p
+            .as_ref()
+            .map(|config| config.max_outgoing_announces_per_tick.max(1).saturating_mul(64))
+            .unwrap_or(64);
+        let mut pending = self
+            .pending_feedback_announces
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        if pending.len() >= max_pending {
+            return Err(NodeError::Replication {
+                reason: format!(
+                    "feedback announce queue saturated: len={} limit={}",
+                    pending.len(),
+                    max_pending
+                ),
+            });
+        }
+        pending.push(announce);
+        Ok(())
+    }
+}
+
+fn node_feedback_error(err: ProtoWorldError) -> NodeError {
+    NodeError::Replication {
+        reason: format!("feedback operation failed: {err:?}"),
     }
 }

@@ -28,8 +28,8 @@ use agent_world_consensus::node_pos::{
     NodePosDecision, NodePosError, NodePosPendingProposal, NodePosStatusAdapter,
 };
 use agent_world_distfs::{
-    blake3_hex, ingest_feedback_announce_with_fetcher, FeedbackAnnounceBridge, FeedbackStore,
-    LocalCasStore,
+    blake3_hex, ingest_feedback_announce_with_fetcher, FeedbackAnnounce, FeedbackAnnounceBridge,
+    FeedbackStore, LocalCasStore,
 };
 #[cfg(not(target_arch = "wasm32"))]
 use agent_world_net::{
@@ -267,6 +267,8 @@ enum GapSyncHeightOutcome {
 pub struct NodeRuntime {
     config: NodeConfig,
     replication_network: Option<NodeReplicationNetworkHandle>,
+    feedback_store: Option<Arc<FeedbackStore>>,
+    pending_feedback_announces: Arc<Mutex<Vec<FeedbackAnnounce>>>,
     execution_hook: Option<std::sync::Arc<std::sync::Mutex<Box<dyn NodeExecutionHook>>>>,
     replica_maintenance_dht:
         Option<Arc<dyn proto_dht::DistributedDht<ProtoWorldError> + Send + Sync>>,
@@ -432,6 +434,8 @@ impl NodeRuntime {
         } else {
             None
         };
+        let feedback_store = feedback_store.map(Arc::new);
+        self.feedback_store = feedback_store.clone();
         let feedback_bridge = if feedback_p2p.is_some() {
             let Some(network) = &self.replication_network else {
                 self.running.store(false, Ordering::SeqCst);
@@ -460,6 +464,7 @@ impl NodeRuntime {
         let replica_maintenance = self.config.replica_maintenance;
         let replica_maintenance_dht = self.replica_maintenance_dht.clone();
         let pending_consensus_actions = Arc::clone(&self.pending_consensus_actions);
+        let pending_feedback_announces = Arc::clone(&self.pending_feedback_announces);
         let committed_action_batches = Arc::clone(&self.committed_action_batches);
         let node_id = self.config.node_id.clone();
         let world_id = self.config.world_id.clone();
@@ -490,9 +495,14 @@ impl NodeRuntime {
                                     engine.pending_consensus_action_capacity(),
                                 )
                             };
+                            let feedback_publish_result = maybe_publish_runtime_feedback_announces(
+                                feedback_p2p.as_ref(),
+                                pending_feedback_announces.as_ref(),
+                                feedback_bridge.as_ref(),
+                            );
                             let feedback_ingest_result = maybe_ingest_runtime_feedback_announces(
                                 feedback_p2p.as_ref(),
-                                feedback_store.as_ref(),
+                                feedback_store.as_deref(),
                                 feedback_bridge.as_ref(),
                                 replication.as_ref(),
                                 replication_network.as_ref(),
@@ -549,8 +559,13 @@ impl NodeRuntime {
                                 Ok(tick) => {
                                     current.consensus = tick.consensus_snapshot;
                                     current.last_error = None;
-                                    if let Err(err) = feedback_ingest_result.as_ref() {
+                                    if let Err(err) = feedback_publish_result.as_ref() {
                                         current.last_error = Some(err.to_string());
+                                    }
+                                    if let Err(err) = feedback_ingest_result.as_ref() {
+                                        if current.last_error.is_none() {
+                                            current.last_error = Some(err.to_string());
+                                        }
                                     }
                                     match maintenance_result {
                                         Ok(polled_at_ms) => {
@@ -758,6 +773,63 @@ fn network_replication_error(err: ProtoWorldError) -> NodeError {
     NodeError::Replication {
         reason: format!("replication network error: {err:?}"),
     }
+}
+
+fn maybe_publish_runtime_feedback_announces(
+    config: Option<&NodeFeedbackP2pConfig>,
+    pending_feedback_announces: &Mutex<Vec<FeedbackAnnounce>>,
+    bridge: Option<&FeedbackAnnounceBridge>,
+) -> Result<(), NodeError> {
+    let Some(config) = config else {
+        return Ok(());
+    };
+    let Some(bridge) = bridge else {
+        return Err(NodeError::InvalidConfig {
+            reason: "feedback_p2p announce bridge is unavailable".to_string(),
+        });
+    };
+
+    let to_publish = {
+        let mut pending = pending_feedback_announces
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let drain_count = pending
+            .len()
+            .min(config.max_outgoing_announces_per_tick.max(1));
+        if drain_count == 0 {
+            Vec::new()
+        } else {
+            pending.drain(..drain_count).collect::<Vec<_>>()
+        }
+    };
+    if to_publish.is_empty() {
+        return Ok(());
+    }
+
+    let mut failed_announces = Vec::new();
+    let mut failures = Vec::new();
+    for announce in to_publish {
+        if let Err(err) = bridge.publish(&announce) {
+            failed_announces.push(announce);
+            failures.push(format!("publish failed: {:?}", err));
+        }
+    }
+    if failed_announces.is_empty() {
+        return Ok(());
+    }
+
+    let mut pending = pending_feedback_announces
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    failed_announces.append(&mut *pending);
+    *pending = failed_announces;
+    Err(NodeError::Replication {
+        reason: format!(
+            "feedback announce publish failures: count={} first={}",
+            failures.len(),
+            failures[0]
+        ),
+    })
 }
 
 fn maybe_ingest_runtime_feedback_announces(

@@ -3,7 +3,11 @@ use super::*;
 use agent_world_consensus::node_consensus_signature::{
     sign_proposal_message, NodeConsensusMessageSigner as ConsensusMessageSigner,
 };
-use agent_world_distfs::{blake3_hex, build_replication_record_with_epoch, FileReplicationRecord};
+use agent_world_distfs::{
+    blake3_hex, build_replication_record_with_epoch, feedback_announce_topic,
+    public_key_hex_from_signing_key_hex, sign_feedback_create_request, FeedbackCreateRequest,
+    FeedbackStore, FeedbackStoreConfig, FileReplicationRecord, LocalCasStore,
+};
 use agent_world_proto::distributed::DistributedErrorCode;
 use agent_world_proto::distributed_net::NetworkSubscription;
 use agent_world_proto::world_error::WorldError;
@@ -162,7 +166,7 @@ struct TestInMemoryNetwork {
     retained: Arc<Mutex<HashMap<String, Vec<Vec<u8>>>>>,
     subscribers: Arc<Mutex<Vec<TestNetworkInbox>>>,
     handlers: Arc<
-        Mutex<HashMap<String, Arc<dyn Fn(&[u8]) -> Result<Vec<u8>, WorldError> + Send + Sync>>>,
+        Mutex<HashMap<String, Vec<Arc<dyn Fn(&[u8]) -> Result<Vec<u8>, WorldError> + Send + Sync>>>>,
     >,
 }
 
@@ -205,12 +209,21 @@ impl agent_world_proto::distributed_net::DistributedNetwork<WorldError> for Test
 
     fn request(&self, protocol: &str, payload: &[u8]) -> Result<Vec<u8>, WorldError> {
         let handlers = self.handlers.lock().expect("lock handlers");
-        let Some(handler) = handlers.get(protocol) else {
+        let Some(protocol_handlers) = handlers.get(protocol) else {
             return Err(WorldError::NetworkProtocolUnavailable {
                 protocol: protocol.to_string(),
             });
         };
-        handler(payload)
+        let mut last_error = None;
+        for handler in protocol_handlers {
+            match handler(payload) {
+                Ok(response) => return Ok(response),
+                Err(err) => last_error = Some(err),
+            }
+        }
+        Err(last_error.unwrap_or(WorldError::NetworkProtocolUnavailable {
+            protocol: protocol.to_string(),
+        }))
     }
 
     fn register_handler(
@@ -221,7 +234,9 @@ impl agent_world_proto::distributed_net::DistributedNetwork<WorldError> for Test
         self.handlers
             .lock()
             .expect("lock handlers")
-            .insert(protocol.to_string(), Arc::from(handler));
+            .entry(protocol.to_string())
+            .or_default()
+            .push(Arc::from(handler));
         Ok(())
     }
 }
@@ -654,4 +669,142 @@ fn runtime_fetch_handlers_reject_unsigned_fetch_request_in_signed_mode() {
 
     runtime.stop().expect("stop");
     let _ = fs::remove_dir_all(dir);
+}
+
+#[test]
+fn runtime_feedback_submit_publishes_and_peer_ingests() {
+    let world_id = "world-feedback-runtime-sync";
+    let dir_a = temp_dir("feedback-sync-a");
+    let dir_b = temp_dir("feedback-sync-b");
+    let validators = vec![
+        PosValidator {
+            validator_id: "node-a".to_string(),
+            stake: 60,
+        },
+        PosValidator {
+            validator_id: "node-b".to_string(),
+            stake: 40,
+        },
+    ];
+    let pos_config =
+        signed_pos_config_with_signer_seeds(validators, &[("node-a", 131), ("node-b", 132)]);
+    let feedback_config = NodeFeedbackP2pConfig::default()
+        .with_max_incoming_announces_per_tick(32)
+        .expect("incoming limit")
+        .with_max_outgoing_announces_per_tick(32)
+        .expect("outgoing limit");
+
+    let network_impl = Arc::new(TestInMemoryNetwork::default());
+    let network: Arc<
+        dyn agent_world_proto::distributed_net::DistributedNetwork<WorldError> + Send + Sync,
+    > = network_impl.clone();
+
+    let config_a = NodeConfig::new("node-a", world_id, NodeRole::Observer)
+        .expect("config a")
+        .with_tick_interval(Duration::from_millis(10))
+        .expect("tick a")
+        .with_pos_config(pos_config.clone())
+        .expect("pos config a")
+        .with_replication(signed_replication_config(dir_a.clone(), 131))
+        .with_feedback_p2p(feedback_config.clone())
+        .expect("feedback config a");
+    let config_b = NodeConfig::new("node-b", world_id, NodeRole::Observer)
+        .expect("config b")
+        .with_tick_interval(Duration::from_millis(10))
+        .expect("tick b")
+        .with_pos_config(pos_config)
+        .expect("pos config b")
+        .with_replication(signed_replication_config(dir_b.clone(), 132))
+        .with_feedback_p2p(feedback_config)
+        .expect("feedback config b");
+
+    let mut runtime_a = NodeRuntime::new(config_a)
+        .with_replication_network(NodeReplicationNetworkHandle::new(Arc::clone(&network)));
+    let mut runtime_b = NodeRuntime::new(config_b)
+        .with_replication_network(NodeReplicationNetworkHandle::new(Arc::clone(&network)));
+    runtime_a.start().expect("start node a");
+    runtime_b.start().expect("start node b");
+
+    let feedback_id = "fb-runtime-sync-1";
+    let signing_key_hex =
+        "3131313131313131313131313131313131313131313131313131313131313131".to_string();
+    let author_public_key_hex =
+        public_key_hex_from_signing_key_hex(signing_key_hex.as_str()).expect("derive pubkey");
+    let now_ms = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("duration")
+        .as_millis() as i64;
+    let mut request = FeedbackCreateRequest {
+        feedback_id: feedback_id.to_string(),
+        author_public_key_hex,
+        submit_ip: "127.0.0.10".to_string(),
+        category: "bug".to_string(),
+        platform: "web".to_string(),
+        game_version: "0.9.0".to_string(),
+        content: "runtime feedback payload".to_string(),
+        attachments: vec![],
+        nonce: "fb-runtime-sync-nonce-1".to_string(),
+        timestamp_ms: now_ms,
+        expires_at_ms: now_ms + 120_000,
+        signature_hex: String::new(),
+    };
+    request.signature_hex =
+        sign_feedback_create_request(&request, signing_key_hex.as_str()).expect("sign feedback");
+    runtime_a
+        .submit_feedback(request)
+        .expect("submit feedback from node a");
+
+    let follower_store = FeedbackStore::new(
+        LocalCasStore::new(dir_b.join("store")),
+        FeedbackStoreConfig::default(),
+    );
+    let replicated = wait_until(Instant::now() + Duration::from_secs(3), || {
+        follower_store
+            .read_feedback_public(feedback_id)
+            .map(|view| view.is_some())
+            .unwrap_or(false)
+    });
+    assert!(replicated, "node b did not ingest feedback announce");
+
+    let view = follower_store
+        .read_feedback_public(feedback_id)
+        .expect("read feedback")
+        .expect("feedback exists");
+    assert_eq!(view.content, "runtime feedback payload");
+    assert_eq!(view.append_events.len(), 0);
+    assert!(!view.tombstoned);
+
+    let announce_topic = feedback_announce_topic(world_id);
+    let payloads = network_impl
+        .retained
+        .lock()
+        .expect("lock retained")
+        .get(announce_topic.as_str())
+        .cloned()
+        .unwrap_or_default();
+    assert!(
+        !payloads.is_empty(),
+        "feedback announce topic should have retained payloads"
+    );
+    network
+        .publish(announce_topic.as_str(), payloads[0].as_slice())
+        .expect("republish announce");
+
+    let duplicate_ok = wait_until(Instant::now() + Duration::from_secs(2), || {
+        follower_store
+            .read_feedback_public(feedback_id)
+            .map(|view| view.map(|entry| entry.append_events.len()).unwrap_or_default() == 0)
+            .unwrap_or(false)
+    });
+    assert!(duplicate_ok, "duplicate announce should remain idempotent");
+    assert!(
+        runtime_b.snapshot().last_error.is_none(),
+        "duplicate announce should not raise runtime error: {:?}",
+        runtime_b.snapshot().last_error
+    );
+
+    runtime_b.stop().expect("stop node b");
+    runtime_a.stop().expect("stop node a");
+    let _ = fs::remove_dir_all(dir_a);
+    let _ = fs::remove_dir_all(dir_b);
 }

@@ -2,8 +2,11 @@ use std::collections::BTreeMap;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+use agent_world_distfs::{
+    public_key_hex_from_signing_key_hex, sign_feedback_create_request, FeedbackCreateRequest,
+};
 use super::*;
 
 #[derive(Clone)]
@@ -316,6 +319,47 @@ fn submit_consensus_action_payload_rejects_queue_saturation() {
     assert!(matches!(err, NodeError::Consensus { .. }));
     assert!(
         err.to_string().contains("queue saturated"),
+        "unexpected error: {err}"
+    );
+}
+
+#[test]
+fn submit_feedback_rejects_when_feedback_p2p_not_configured() {
+    let runtime = NodeRuntime::new(
+        NodeConfig::new("node-feedback-off", "world-feedback-off", NodeRole::Observer)
+            .expect("config"),
+    );
+    let signing_key_hex =
+        "1212121212121212121212121212121212121212121212121212121212121212".to_string();
+    let author_public_key_hex =
+        public_key_hex_from_signing_key_hex(signing_key_hex.as_str()).expect("derive pubkey");
+    let now_ms = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("duration")
+        .as_millis() as i64;
+    let mut request = FeedbackCreateRequest {
+        feedback_id: "fb-node-runtime-off".to_string(),
+        author_public_key_hex,
+        submit_ip: "127.0.0.1".to_string(),
+        category: "bug".to_string(),
+        platform: "web".to_string(),
+        game_version: "0.1.0".to_string(),
+        content: "feedback disabled".to_string(),
+        attachments: vec![],
+        nonce: "nonce-feedback-off".to_string(),
+        timestamp_ms: now_ms,
+        expires_at_ms: now_ms + 120_000,
+        signature_hex: String::new(),
+    };
+    request.signature_hex =
+        sign_feedback_create_request(&request, signing_key_hex.as_str()).expect("sign request");
+
+    let err = runtime
+        .submit_feedback(request)
+        .expect_err("feedback submit should fail when feedback_p2p is not configured");
+    assert!(matches!(err, NodeError::Replication { .. }));
+    assert!(
+        err.to_string().contains("feedback_p2p is not configured"),
         "unexpected error: {err}"
     );
 }
