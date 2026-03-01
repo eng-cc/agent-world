@@ -337,6 +337,37 @@ fn config_rejects_invalid_pos_config() {
 }
 
 #[test]
+fn feedback_p2p_config_rejects_zero_limits() {
+    let err = NodeFeedbackP2pConfig::default()
+        .with_max_incoming_announces_per_tick(0)
+        .expect_err("incoming announce limit must reject zero");
+    assert!(matches!(err, NodeError::InvalidConfig { .. }));
+
+    let err = NodeFeedbackP2pConfig::default()
+        .with_max_outgoing_announces_per_tick(0)
+        .expect_err("outgoing announce limit must reject zero");
+    assert!(matches!(err, NodeError::InvalidConfig { .. }));
+}
+
+#[test]
+fn runtime_start_rejects_feedback_p2p_without_replication_config() {
+    let config = NodeConfig::new("node-feedback", "world-feedback", NodeRole::Observer)
+        .expect("config")
+        .with_feedback_p2p(NodeFeedbackP2pConfig::default())
+        .expect("feedback p2p config");
+    let mut runtime = NodeRuntime::new(config);
+    let err = runtime
+        .start()
+        .expect_err("feedback p2p without replication should fail");
+    assert!(matches!(err, NodeError::InvalidConfig { .. }));
+    assert!(
+        err.to_string()
+            .contains("feedback_p2p requires replication config"),
+        "unexpected error: {err}"
+    );
+}
+
+#[test]
 fn config_accepts_extreme_supermajority_ratio_just_above_half() {
     let denominator = u64::MAX;
     let numerator = denominator / 2 + 1;

@@ -11,7 +11,6 @@
 
 ### In Scope
 - `crates/agent_world_node` 新增 feedback p2p 配置：
-  - feedback 本地存储根目录。
   - feedback store 限流/大小限制配置（复用 `FeedbackStoreConfig`）。
   - 每 tick 的 announce drain/publish 上限。
 - `NodeRuntime` 内接入 feedback driver：
@@ -36,12 +35,13 @@
 ### Node 配置（草案）
 ```rust
 NodeFeedbackP2pConfig {
-  root_dir: PathBuf,
   store: FeedbackStoreConfig,
   max_incoming_announces_per_tick: usize,
   max_outgoing_announces_per_tick: usize,
 }
 ```
+
+- feedback store 实际落盘路径复用 replication 本地 store：`<replication.root_dir>/store`。
 
 ### NodeRuntime 新增行为
 - 启动阶段（`start`）：

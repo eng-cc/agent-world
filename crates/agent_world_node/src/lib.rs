@@ -27,7 +27,10 @@ use agent_world_consensus::node_pos::{
     insert_attestation as core_insert_attestation, propose_next_head as core_propose_next_head,
     NodePosDecision, NodePosError, NodePosPendingProposal, NodePosStatusAdapter,
 };
-use agent_world_distfs::blake3_hex;
+use agent_world_distfs::{
+    blake3_hex, ingest_feedback_announce_with_fetcher, FeedbackAnnounceBridge, FeedbackStore,
+    LocalCasStore,
+};
 #[cfg(not(target_arch = "wasm32"))]
 use agent_world_net::{
     run_replica_maintenance_poll, ReplicaMaintenancePolicy, ReplicaMaintenancePollingPolicy,
@@ -73,8 +76,8 @@ pub use network_bridge::NodeReplicationNetworkHandle;
 pub use replication::NodeReplicationConfig;
 pub use types::{
     NodeCommittedActionBatch, NodeConfig, NodeConsensusMode, NodeConsensusSnapshot,
-    NodeGossipConfig, NodePeerCommittedHead, NodePosConfig, NodeReplicaMaintenanceConfig, NodeRole,
-    NodeSnapshot, PosConsensusStatus, PosValidator,
+    NodeFeedbackP2pConfig, NodeGossipConfig, NodePeerCommittedHead, NodePosConfig,
+    NodeReplicaMaintenanceConfig, NodeRole, NodeSnapshot, PosConsensusStatus, PosValidator,
 };
 
 use network_bridge::{ConsensusNetworkEndpoint, ReplicationNetworkEndpoint};
@@ -414,6 +417,41 @@ impl NodeRuntime {
         } else {
             None
         };
+        let feedback_p2p = self.config.feedback_p2p.clone();
+        let feedback_store = if let Some(feedback_config) = feedback_p2p.as_ref() {
+            let Some(replication_config) = effective_replication_config.as_ref() else {
+                self.running.store(false, Ordering::SeqCst);
+                return Err(NodeError::InvalidConfig {
+                    reason: "feedback_p2p requires replication config".to_string(),
+                });
+            };
+            Some(FeedbackStore::new(
+                LocalCasStore::new(replication_config.root_dir.join("store")),
+                feedback_config.store.clone(),
+            ))
+        } else {
+            None
+        };
+        let feedback_bridge = if feedback_p2p.is_some() {
+            let Some(network) = &self.replication_network else {
+                self.running.store(false, Ordering::SeqCst);
+                return Err(NodeError::InvalidConfig {
+                    reason: "feedback_p2p requires replication network".to_string(),
+                });
+            };
+            match FeedbackAnnounceBridge::new(self.config.world_id.as_str(), network.clone_network())
+            {
+                Ok(bridge) => Some(bridge),
+                Err(err) => {
+                    self.running.store(false, Ordering::SeqCst);
+                    return Err(NodeError::Replication {
+                        reason: format!("feedback announce bridge initialization failed: {:?}", err),
+                    });
+                }
+            }
+        } else {
+            None
+        };
         let tick_interval = self.config.tick_interval;
         let worker_name = format!("aw-node-{}", self.config.node_id);
         let running = Arc::clone(&self.running);
@@ -452,6 +490,13 @@ impl NodeRuntime {
                                     engine.pending_consensus_action_capacity(),
                                 )
                             };
+                            let feedback_ingest_result = maybe_ingest_runtime_feedback_announces(
+                                feedback_p2p.as_ref(),
+                                feedback_store.as_ref(),
+                                feedback_bridge.as_ref(),
+                                replication.as_ref(),
+                                replication_network.as_ref(),
+                            );
 
                             let tick_result = if let Some(execution_hook) = execution_hook.as_ref()
                             {
@@ -504,13 +549,18 @@ impl NodeRuntime {
                                 Ok(tick) => {
                                     current.consensus = tick.consensus_snapshot;
                                     current.last_error = None;
+                                    if let Err(err) = feedback_ingest_result.as_ref() {
+                                        current.last_error = Some(err.to_string());
+                                    }
                                     match maintenance_result {
                                         Ok(polled_at_ms) => {
                                             current.replica_maintenance_last_polled_at_ms =
                                                 polled_at_ms;
                                         }
                                         Err(err) => {
-                                            current.last_error = Some(err.to_string());
+                                            if current.last_error.is_none() {
+                                                current.last_error = Some(err.to_string());
+                                            }
                                         }
                                     }
                                     if let Some(batch) = tick.committed_action_batch {
@@ -529,7 +579,9 @@ impl NodeRuntime {
                                     }
                                     if let Some(store) = pos_state_store.as_ref() {
                                         if let Err(err) = store.save_engine_state(&engine) {
-                                            current.last_error = Some(err.to_string());
+                                            if current.last_error.is_none() {
+                                                current.last_error = Some(err.to_string());
+                                            }
                                         }
                                     }
                                 }
@@ -705,6 +757,113 @@ fn network_internal_error(err: NodeError) -> ProtoWorldError {
 fn network_replication_error(err: ProtoWorldError) -> NodeError {
     NodeError::Replication {
         reason: format!("replication network error: {err:?}"),
+    }
+}
+
+fn maybe_ingest_runtime_feedback_announces(
+    config: Option<&NodeFeedbackP2pConfig>,
+    store: Option<&FeedbackStore>,
+    bridge: Option<&FeedbackAnnounceBridge>,
+    replication: Option<&ReplicationRuntime>,
+    replication_network: Option<&ReplicationNetworkEndpoint>,
+) -> Result<(), NodeError> {
+    let Some(config) = config else {
+        return Ok(());
+    };
+    let Some(store) = store else {
+        return Err(NodeError::InvalidConfig {
+            reason: "feedback_p2p store is unavailable".to_string(),
+        });
+    };
+    let Some(bridge) = bridge else {
+        return Err(NodeError::InvalidConfig {
+            reason: "feedback_p2p announce bridge is unavailable".to_string(),
+        });
+    };
+    let Some(replication) = replication else {
+        return Err(NodeError::InvalidConfig {
+            reason: "feedback_p2p requires replication runtime".to_string(),
+        });
+    };
+    let Some(replication_network) = replication_network else {
+        return Err(NodeError::InvalidConfig {
+            reason: "feedback_p2p requires replication network endpoint".to_string(),
+        });
+    };
+
+    let mut failures = Vec::new();
+    for announce in bridge
+        .drain()
+        .into_iter()
+        .take(config.max_incoming_announces_per_tick.max(1))
+    {
+        let announce = match announce {
+            Ok(announce) => announce,
+            Err(err) => {
+                failures.push(format!("decode announce failed: {:?}", err));
+                continue;
+            }
+        };
+        let ingest_result = ingest_feedback_announce_with_fetcher(store, &announce, |content_hash| {
+            fetch_feedback_blob_from_replication_network(content_hash, replication, replication_network)
+        });
+        if let Err(err) = ingest_result {
+            failures.push(format!(
+                "feedback_id={} event_id={} err={:?}",
+                announce.feedback_id, announce.event_id, err
+            ));
+        }
+    }
+
+    if failures.is_empty() {
+        return Ok(());
+    }
+    Err(NodeError::Replication {
+        reason: format!(
+            "feedback announce ingest failures: count={} first={}",
+            failures.len(),
+            failures[0]
+        ),
+    })
+}
+
+fn fetch_feedback_blob_from_replication_network(
+    content_hash: &str,
+    replication: &ReplicationRuntime,
+    replication_network: &ReplicationNetworkEndpoint,
+) -> Result<Vec<u8>, ProtoWorldError> {
+    let request = replication
+        .build_fetch_blob_request(content_hash)
+        .map_err(node_error_to_feedback_world_error)?;
+    let response = replication_network
+        .request_json::<FetchBlobRequest, FetchBlobResponse>(REPLICATION_FETCH_BLOB_PROTOCOL, &request)
+        .map_err(node_error_to_feedback_world_error)?;
+    if !response.found {
+        return Err(ProtoWorldError::BlobNotFound {
+            content_hash: content_hash.to_string(),
+        });
+    }
+    let blob = response
+        .blob
+        .ok_or_else(|| ProtoWorldError::DistributedValidationFailed {
+            reason: format!(
+                "feedback fetch-blob response missing blob payload for hash={}",
+                content_hash
+            ),
+        })?;
+    let actual_hash = blake3_hex(blob.as_slice());
+    if actual_hash != content_hash {
+        return Err(ProtoWorldError::BlobHashMismatch {
+            expected: content_hash.to_string(),
+            actual: actual_hash,
+        });
+    }
+    Ok(blob)
+}
+
+fn node_error_to_feedback_world_error(err: NodeError) -> ProtoWorldError {
+    ProtoWorldError::DistributedValidationFailed {
+        reason: err.to_string(),
     }
 }
 

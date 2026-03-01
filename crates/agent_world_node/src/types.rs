@@ -5,6 +5,8 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::Duration;
 
+use agent_world_distfs::FeedbackStoreConfig;
+
 use crate::pos_validation::validate_pos_config;
 use crate::{NodeConsensusAction, NodeError, NodeReplicationConfig};
 
@@ -16,6 +18,8 @@ const DEFAULT_MAX_DYNAMIC_GOSSIP_PEERS: usize = 1024;
 const DEFAULT_DYNAMIC_GOSSIP_PEER_TTL_MS: i64 = 10 * 60 * 1000;
 const DEFAULT_REPLICA_MAINTENANCE_MAX_CONTENT_HASH_SAMPLES: usize = 128;
 const DEFAULT_REPLICA_MAINTENANCE_POLL_INTERVAL_MS: i64 = 60_000;
+const DEFAULT_FEEDBACK_P2P_MAX_INCOMING_ANNOUNCES_PER_TICK: usize = 128;
+const DEFAULT_FEEDBACK_P2P_MAX_OUTGOING_ANNOUNCES_PER_TICK: usize = 128;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NodeRole {
@@ -142,6 +146,7 @@ pub struct NodeConfig {
     pub replica_maintenance: Option<NodeReplicaMaintenanceConfig>,
     pub gossip: Option<NodeGossipConfig>,
     pub replication: Option<NodeReplicationConfig>,
+    pub feedback_p2p: Option<NodeFeedbackP2pConfig>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -178,6 +183,58 @@ pub struct NodeGossipConfig {
     pub peers: Vec<SocketAddr>,
     pub max_dynamic_peers: usize,
     pub dynamic_peer_ttl_ms: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NodeFeedbackP2pConfig {
+    pub store: FeedbackStoreConfig,
+    pub max_incoming_announces_per_tick: usize,
+    pub max_outgoing_announces_per_tick: usize,
+}
+
+impl Default for NodeFeedbackP2pConfig {
+    fn default() -> Self {
+        Self {
+            store: FeedbackStoreConfig::default(),
+            max_incoming_announces_per_tick: DEFAULT_FEEDBACK_P2P_MAX_INCOMING_ANNOUNCES_PER_TICK,
+            max_outgoing_announces_per_tick: DEFAULT_FEEDBACK_P2P_MAX_OUTGOING_ANNOUNCES_PER_TICK,
+        }
+    }
+}
+
+impl NodeFeedbackP2pConfig {
+    pub fn with_store(mut self, store: FeedbackStoreConfig) -> Self {
+        self.store = store;
+        self
+    }
+
+    pub fn with_max_incoming_announces_per_tick(
+        mut self,
+        max_incoming_announces_per_tick: usize,
+    ) -> Result<Self, NodeError> {
+        if max_incoming_announces_per_tick == 0 {
+            return Err(NodeError::InvalidConfig {
+                reason: "feedback_p2p.max_incoming_announces_per_tick must be positive"
+                    .to_string(),
+            });
+        }
+        self.max_incoming_announces_per_tick = max_incoming_announces_per_tick;
+        Ok(self)
+    }
+
+    pub fn with_max_outgoing_announces_per_tick(
+        mut self,
+        max_outgoing_announces_per_tick: usize,
+    ) -> Result<Self, NodeError> {
+        if max_outgoing_announces_per_tick == 0 {
+            return Err(NodeError::InvalidConfig {
+                reason: "feedback_p2p.max_outgoing_announces_per_tick must be positive"
+                    .to_string(),
+            });
+        }
+        self.max_outgoing_announces_per_tick = max_outgoing_announces_per_tick;
+        Ok(self)
+    }
 }
 
 impl NodeConfig {
@@ -224,6 +281,7 @@ impl NodeConfig {
             replica_maintenance: None,
             gossip: None,
             replication: None,
+            feedback_p2p: None,
         })
     }
 
@@ -401,6 +459,26 @@ impl NodeConfig {
     pub fn with_replication(mut self, replication: NodeReplicationConfig) -> Self {
         self.replication = Some(replication);
         self
+    }
+
+    pub fn with_feedback_p2p(
+        mut self,
+        feedback_p2p: NodeFeedbackP2pConfig,
+    ) -> Result<Self, NodeError> {
+        if feedback_p2p.max_incoming_announces_per_tick == 0 {
+            return Err(NodeError::InvalidConfig {
+                reason: "feedback_p2p.max_incoming_announces_per_tick must be positive"
+                    .to_string(),
+            });
+        }
+        if feedback_p2p.max_outgoing_announces_per_tick == 0 {
+            return Err(NodeError::InvalidConfig {
+                reason: "feedback_p2p.max_outgoing_announces_per_tick must be positive"
+                    .to_string(),
+            });
+        }
+        self.feedback_p2p = Some(feedback_p2p);
+        Ok(self)
     }
 
     pub fn with_replica_maintenance(
