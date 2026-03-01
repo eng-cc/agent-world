@@ -828,15 +828,15 @@ fn apply_material_variant_to_scene_materials(
     apply_material_variant_to_material(
         materials,
         &assets.power_plant_material,
-        config.materials.facility.roughness,
-        config.materials.facility.metallic,
+        config.materials.power_plant.roughness,
+        config.materials.power_plant.metallic,
         preset,
     );
     apply_material_variant_to_material(
         materials,
         &assets.power_storage_material,
-        config.materials.facility.roughness,
-        config.materials.facility.metallic,
+        config.materials.power_storage.roughness,
+        config.materials.power_storage.metallic,
         preset,
     );
 }

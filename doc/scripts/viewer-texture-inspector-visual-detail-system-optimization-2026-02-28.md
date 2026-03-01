@@ -85,3 +85,38 @@
 - 结论：
   - T4 已解决“direct_entity 被自动裁切吃掉边缘信息”问题，细节门禁 edge 在 power 场景恢复到可用区间（>=0.35）。
   - 当前主要阻塞转为“变体差异不足”：`min_pair_ssim` 仍接近 1（约 `0.999974`），需在 T5 做材质链路级增强。
+
+## T5 回归结论（2026-03-01）
+- 代码面完成：
+  - Rust 材质链路拆分完成：
+    - `ViewerMaterialConfig` 新增 `materials.power_plant` / `materials.power_storage`，支持独立 `roughness/metallic/emissive_boost`。
+    - 新增环境变量：
+      - `AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_{ROUGHNESS,METALLIC,EMISSIVE_BOOST}`
+      - `AGENT_WORLD_VIEWER_MATERIAL_POWER_STORAGE_{ROUGHNESS,METALLIC,EMISSIVE_BOOST}`
+    - `main.rs` / `main_ui_runtime.rs` / `theme_runtime.rs` 已切换为 power 实体独立材质通道。
+    - `viewer_3d_config_profile_tests.rs` 补充 env override 与 invalid fallback 单测覆盖。
+  - Inspector 框架级构图修正完成（非阈值补丁）：
+    - `scripts/viewer-texture-inspector.sh` 中 power direct_entity 的 hero/closeup/fallback/retry 镜头从“近距”切换到“安全半径”策略（`zoom≈3.x`），避免相机落入模型内部导致空画面。
+    - 保持材质 profile 与资源包链路，继续支持 power 的独立 roughness/metallic/emissive/base_color/emissive_color 覆盖。
+- 根因复盘：
+  - 先前 SSIM 高并非仅“材质差异不够”，而是 closeup 构图在 power direct_entity 下常进入模型内部，导致画面主体缺失、背景占比过高，差异指标被稀释。
+  - T5 将“材质链路拆分”和“构图半径策略”同时落地，恢复了框架层的可评审性。
+- 证据（正式回归）：
+  - 回归目录：`output/texture_inspector/framework_t5_power_material_split_zoom_profile_20260301`
+  - `power_plant/variant_validation.txt`：
+    - `status=passed`
+    - `min_pair_ssim_initial=0.994287`（阈值 `0.9995`）
+    - `min_edge_energy_initial=0.470741`
+    - `retry_candidates_attempted=0`
+  - `power_storage/variant_validation.txt`：
+    - `status=passed`
+    - `min_pair_ssim_initial=0.994574`（阈值 `0.9995`）
+    - `min_edge_energy_initial=0.453686`
+    - `retry_candidates_attempted=0`
+  - `meta.txt` 关键值（power 两实体一致）：
+    - `selection_gate_orbit_radius_closeup=0.102400`
+    - `viewer_art_closeup_ssim_capture_status=cropped`
+    - `ssim_metric_crop_window=760:760:220:20`
+- 结论：
+  - T5 已完成：power_plant / power_storage 的实体级材质差异链路可用，且在 direct_entity 构图稳定前提下通过 SSIM 与 edge 双门禁。
+  - 当前这条链路具备可复用性：后续新增实体可沿同一框架接入“实体级材质通道 + 安全半径构图 profile”。

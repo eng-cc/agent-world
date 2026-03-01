@@ -44,7 +44,7 @@ Options:
   --art-lighting           enable art-review lighting preset
   --no-art-lighting        disable art-review lighting preset
   --lighting-profile <id>  art_review_v1,art_review_v2 (default: art_review_v2)
-  --resource-pack-file <p> optional env file for entity/variant resource overrides
+  --resource-pack-file <p> optional env file for entity/variant mesh/texture/material overrides
   --art-hide-panel         hide right panel in art capture (default: on when art_capture=1)
   --no-art-hide-panel      keep right panel visible in art capture
   --art-selection-highlight
@@ -233,14 +233,15 @@ resolve_power_closeup_pose() {
         # Wider baseline closeup keeps giant proxy meshes readable.
         echo "pan=0.45,0,0;zoom=1.75;orbit=24,-24;wait=0.9"
       else
-        echo "zoom=0.72;orbit=44,-18;wait=0.9"
+        # direct_entity power meshes need a safer radius to avoid clipping inside geometry.
+        echo "zoom=3.2;orbit=36,-18;wait=0.9"
       fi
       ;;
     *)
       if [[ "$focus_target" == "first_location" ]]; then
         echo "pan=0.6,0,0;zoom=2.2;orbit=20,-30;wait=0.8"
       else
-        echo "zoom=1.2;orbit=38,-20;wait=0.8"
+        echo "zoom=3.0;orbit=34,-20;wait=0.8"
       fi
       ;;
   esac
@@ -254,14 +255,14 @@ resolve_power_fallback_closeup_pose() {
       if [[ "$focus_target" == "first_location" ]]; then
         echo "pan=0.5,0,0;zoom=1.95;orbit=30,-20;wait=1.0"
       else
-        echo "zoom=0.6;orbit=54,-12;wait=1.0"
+        echo "zoom=3.6;orbit=42,-16;wait=1.0"
       fi
       ;;
     *)
       if [[ "$focus_target" == "first_location" ]]; then
         echo "pan=0.6,0,0;zoom=2.6;orbit=20,-30;wait=0.9"
       else
-        echo "zoom=0.9;orbit=46,-14;wait=0.9"
+        echo "zoom=3.3;orbit=40,-16;wait=0.9"
       fi
       ;;
   esac
@@ -275,14 +276,14 @@ resolve_power_hero_pose() {
       if [[ "$focus_target" == "first_location" ]]; then
         echo "pan=0.3,0,0;zoom=1.4;orbit=18,-28;wait=0.7"
       else
-        echo "zoom=1.25;orbit=18,-28;wait=0.7"
+        echo "zoom=3.2;orbit=18,-28;wait=0.7"
       fi
       ;;
     *)
       if [[ "$focus_target" == "first_location" ]]; then
         echo "pan=0.4,0,0;zoom=1.6;orbit=20,-30;wait=0.6"
       else
-        echo "zoom=1.6;orbit=20,-30;wait=0.6"
+        echo "zoom=3.0;orbit=20,-30;wait=0.6"
       fi
       ;;
   esac
@@ -376,9 +377,9 @@ retry_closeup_candidate_specs_for_entity() {
             echo "wide_b|mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};pan=0.36,0,0;zoom=1.85;orbit=34,-18;wait=1.0"
             echo "silhouette|mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};pan=0.28,0,0;zoom=1.65;orbit=48,-14;wait=1.1"
           else
-            echo "wide_a|mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};zoom=0.60;orbit=54,-12;wait=1.0"
-            echo "three_quarter|mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};pan=0.14,0,0;zoom=0.52;orbit=32,-14;wait=1.0"
-            echo "silhouette|mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};zoom=0.48;orbit=68,-10;wait=1.1"
+            echo "wide_a|mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};zoom=3.6;orbit=28,-22;wait=1.0"
+            echo "three_quarter|mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};pan=0.08,0,0;zoom=3.2;orbit=42,-18;wait=1.0"
+            echo "silhouette|mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};zoom=3.9;orbit=58,-12;wait=1.1"
           fi
           ;;
         *)
@@ -630,8 +631,14 @@ variant_pair_ssim_value() {
   local entity=$2
   local a=$3
   local b=$4
-  local path_a="$root/$entity/$a/viewer_art_closeup.png"
-  local path_b="$root/$entity/$b/viewer_art_closeup.png"
+  local path_a="$root/$entity/$a/viewer_art_closeup_ssim.png"
+  local path_b="$root/$entity/$b/viewer_art_closeup_ssim.png"
+  if [[ ! -f "$path_a" ]]; then
+    path_a="$root/$entity/$a/viewer_art_closeup.png"
+  fi
+  if [[ ! -f "$path_b" ]]; then
+    path_b="$root/$entity/$b/viewer_art_closeup.png"
+  fi
 
   if [[ ! -f "$path_a" || ! -f "$path_b" ]]; then
     echo "1"
@@ -662,6 +669,16 @@ clear_material_overrides() {
   set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_ASSET_METALLIC" ""
   set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_FACILITY_ROUGHNESS" ""
   set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_FACILITY_METALLIC" ""
+  set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_ROUGHNESS" ""
+  set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_METALLIC" ""
+  set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_EMISSIVE_BOOST" ""
+  set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_POWER_STORAGE_ROUGHNESS" ""
+  set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_POWER_STORAGE_METALLIC" ""
+  set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_POWER_STORAGE_EMISSIVE_BOOST" ""
+  set_or_unset_env "AGENT_WORLD_VIEWER_POWER_PLANT_BASE_COLOR" ""
+  set_or_unset_env "AGENT_WORLD_VIEWER_POWER_PLANT_EMISSIVE_COLOR" ""
+  set_or_unset_env "AGENT_WORLD_VIEWER_POWER_STORAGE_BASE_COLOR" ""
+  set_or_unset_env "AGENT_WORLD_VIEWER_POWER_STORAGE_EMISSIVE_COLOR" ""
 }
 
 apply_variant_material_profile() {
@@ -674,6 +691,88 @@ apply_variant_material_profile() {
     return 0
   fi
 
+  if [[ "$entity" == "power_plant" ]]; then
+    local roughness
+    local metallic
+    local emissive_boost
+    local base_color
+    local emissive_color
+    case "$variant" in
+      default)
+        roughness="0.45"
+        metallic="0.28"
+        emissive_boost="0.10"
+        base_color="#F36934"
+        emissive_color="#FF7F4A"
+        ;;
+      matte)
+        roughness="1.00"
+        metallic="0.00"
+        emissive_boost="0.00"
+        base_color="#140F0A"
+        emissive_color="#000000"
+        ;;
+      glossy)
+        roughness="0.00"
+        metallic="1.00"
+        emissive_boost="1.20"
+        base_color="#FFF5DD"
+        emissive_color="#FFFFFF"
+        ;;
+      *)
+        return 0
+        ;;
+    esac
+
+    set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_ROUGHNESS" "$roughness"
+    set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_METALLIC" "$metallic"
+    set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_EMISSIVE_BOOST" "$emissive_boost"
+    set_or_unset_env "AGENT_WORLD_VIEWER_POWER_PLANT_BASE_COLOR" "$base_color"
+    set_or_unset_env "AGENT_WORLD_VIEWER_POWER_PLANT_EMISSIVE_COLOR" "$emissive_color"
+    return 0
+  fi
+
+  if [[ "$entity" == "power_storage" ]]; then
+    local roughness
+    local metallic
+    local emissive_boost
+    local base_color
+    local emissive_color
+    case "$variant" in
+      default)
+        roughness="0.50"
+        metallic="0.22"
+        emissive_boost="0.10"
+        base_color="#37CC77"
+        emissive_color="#6CFFD1"
+        ;;
+      matte)
+        roughness="1.00"
+        metallic="0.00"
+        emissive_boost="0.00"
+        base_color="#102018"
+        emissive_color="#000000"
+        ;;
+      glossy)
+        roughness="0.00"
+        metallic="1.00"
+        emissive_boost="1.20"
+        base_color="#D8FFF7"
+        emissive_color="#FFFFFF"
+        ;;
+      *)
+        return 0
+        ;;
+    esac
+
+    set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_POWER_STORAGE_ROUGHNESS" "$roughness"
+    set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_POWER_STORAGE_METALLIC" "$metallic"
+    set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_POWER_STORAGE_EMISSIVE_BOOST" "$emissive_boost"
+    set_or_unset_env "AGENT_WORLD_VIEWER_POWER_STORAGE_BASE_COLOR" "$base_color"
+    set_or_unset_env "AGENT_WORLD_VIEWER_POWER_STORAGE_EMISSIVE_COLOR" "$emissive_color"
+    return 0
+  fi
+
   local material_group
   case "$entity" in
     agent)
@@ -682,7 +781,7 @@ apply_variant_material_profile() {
     asset)
       material_group="asset"
       ;;
-    power_plant|power_storage|location)
+    location)
       material_group="facility"
       ;;
     *)
@@ -1315,13 +1414,23 @@ capture_variant_bundle() {
     pack_normal_texture_override=$(resource_pack_value "$entity" "$variant" "NORMAL_TEXTURE_ASSET")
     pack_mr_texture_override=$(resource_pack_value "$entity" "$variant" "METALLIC_ROUGHNESS_TEXTURE_ASSET")
     pack_emissive_texture_override=$(resource_pack_value "$entity" "$variant" "EMISSIVE_TEXTURE_ASSET")
+    pack_roughness_override=$(resource_pack_value "$entity" "$variant" "ROUGHNESS")
+    pack_metallic_override=$(resource_pack_value "$entity" "$variant" "METALLIC")
+    pack_emissive_boost_override=$(resource_pack_value "$entity" "$variant" "EMISSIVE_BOOST")
+    pack_base_color_override=$(resource_pack_value "$entity" "$variant" "BASE_COLOR")
+    pack_emissive_color_override=$(resource_pack_value "$entity" "$variant" "EMISSIVE_COLOR")
     resource_pack_override_hits=0
     for raw_override in \
       "$pack_mesh_override" \
       "$pack_base_texture_override" \
       "$pack_normal_texture_override" \
       "$pack_mr_texture_override" \
-      "$pack_emissive_texture_override"; do
+      "$pack_emissive_texture_override" \
+      "$pack_roughness_override" \
+      "$pack_metallic_override" \
+      "$pack_emissive_boost_override" \
+      "$pack_base_color_override" \
+      "$pack_emissive_color_override"; do
       if [[ -n "$raw_override" ]]; then
         resource_pack_override_hits=$((resource_pack_override_hits + 1))
       fi
@@ -1335,6 +1444,25 @@ capture_variant_bundle() {
     effective_normal_texture_asset="${variant_normal_texture_override:-${pack_normal_texture_override:-$src_normal}}"
     effective_mr_texture_asset="${variant_mr_texture_override:-${pack_mr_texture_override:-$src_mr}}"
     effective_emissive_texture_asset="${variant_emissive_texture_override:-${pack_emissive_texture_override:-$src_emissive}}"
+
+    if [[ "$material_profile" == "art_review_v1" ]]; then
+      case "$entity:$variant" in
+        power_plant:matte|power_storage:matte)
+          effective_base_texture_asset=""
+          effective_normal_texture_asset=""
+          effective_mr_texture_asset=""
+          effective_emissive_texture_asset=""
+          ;;
+        power_plant:glossy|power_storage:glossy)
+          effective_base_texture_asset=""
+          effective_normal_texture_asset=""
+          effective_mr_texture_asset=""
+          effective_emissive_texture_asset=""
+          ;;
+        *)
+          ;;
+      esac
+    fi
 
     if [[ "$effective_preview_mode" == "direct_entity" ]]; then
       if [[ "$use_source_mesh" -eq 1 ]]; then
@@ -1353,6 +1481,40 @@ capture_variant_bundle() {
       set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_NORMAL_TEXTURE_ASSET" "$effective_normal_texture_asset"
       set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_METALLIC_ROUGHNESS_TEXTURE_ASSET" "$effective_mr_texture_asset"
       set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_EMISSIVE_TEXTURE_ASSET" "$effective_emissive_texture_asset"
+    fi
+
+    if [[ "$entity" == "power_plant" ]]; then
+      if [[ -n "$pack_roughness_override" ]]; then
+        set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_ROUGHNESS" "$pack_roughness_override"
+      fi
+      if [[ -n "$pack_metallic_override" ]]; then
+        set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_METALLIC" "$pack_metallic_override"
+      fi
+      if [[ -n "$pack_emissive_boost_override" ]]; then
+        set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_EMISSIVE_BOOST" "$pack_emissive_boost_override"
+      fi
+      if [[ -n "$pack_base_color_override" ]]; then
+        set_or_unset_env "AGENT_WORLD_VIEWER_POWER_PLANT_BASE_COLOR" "$pack_base_color_override"
+      fi
+      if [[ -n "$pack_emissive_color_override" ]]; then
+        set_or_unset_env "AGENT_WORLD_VIEWER_POWER_PLANT_EMISSIVE_COLOR" "$pack_emissive_color_override"
+      fi
+    elif [[ "$entity" == "power_storage" ]]; then
+      if [[ -n "$pack_roughness_override" ]]; then
+        set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_POWER_STORAGE_ROUGHNESS" "$pack_roughness_override"
+      fi
+      if [[ -n "$pack_metallic_override" ]]; then
+        set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_POWER_STORAGE_METALLIC" "$pack_metallic_override"
+      fi
+      if [[ -n "$pack_emissive_boost_override" ]]; then
+        set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_POWER_STORAGE_EMISSIVE_BOOST" "$pack_emissive_boost_override"
+      fi
+      if [[ -n "$pack_base_color_override" ]]; then
+        set_or_unset_env "AGENT_WORLD_VIEWER_POWER_STORAGE_BASE_COLOR" "$pack_base_color_override"
+      fi
+      if [[ -n "$pack_emissive_color_override" ]]; then
+        set_or_unset_env "AGENT_WORLD_VIEWER_POWER_STORAGE_EMISSIVE_COLOR" "$pack_emissive_color_override"
+      fi
     fi
 
     direct_entity_mesh_key="AGENT_WORLD_VIEWER_${src_prefix}_MESH_ASSET"
@@ -1408,6 +1570,8 @@ capture_variant_bundle() {
     capture_connection_status_closeup="$capture_connection_status"
     capture_snapshot_ready_closeup="$capture_snapshot_ready"
     viewer_art_closeup_capture_status="passthrough"
+    viewer_art_closeup_ssim_capture_status="passthrough"
+    ssim_metric_crop_window="none"
     selection_kind_closeup=$(capture_status_value "$capture_status_file" "selection_kind")
     selection_id_closeup=$(capture_status_value "$capture_status_file" "selection_id")
     camera_mode_closeup=$(capture_status_value "$capture_status_file" "camera_mode")
@@ -1472,6 +1636,17 @@ capture_variant_bundle() {
       closeup_edge_energy=$(image_edge_energy "$variant_dir/viewer_art_closeup.png")
     fi
 
+    if [[ "$effective_preview_mode" == "direct_entity" && ( "$entity" == "power_plant" || "$entity" == "power_storage" ) ]]; then
+      ssim_metric_crop_window="760:760:220:20"
+    fi
+    viewer_art_closeup_ssim_capture_status=$(crop_or_copy_image \
+      "$variant_dir/viewer_art_closeup.png" \
+      "$variant_dir/viewer_art_closeup_ssim.png" \
+      "$ssim_metric_crop_window")
+    if [[ "$viewer_art_closeup_ssim_capture_status" == "crop_failed_fallback" ]]; then
+      echo "warn: ssim metric crop failed, fallback to viewer_art_closeup.png (entity=$entity variant=$variant crop_window=$ssim_metric_crop_window)" >&2
+    fi
+
     if semantic_gate_enforced_for_entity "$entity" "$semantic_gate_mode" "$art_capture" "$effective_preview_mode"; then
       selection_gate_enforced=1
       if [[ -z "$selection_gate_expected_kind" ]]; then
@@ -1514,6 +1689,8 @@ crop_window_requested=$crop_window
 crop_window_effective=$effective_crop_window
 viewer_art_capture_status=$viewer_art_capture_status
 viewer_art_closeup_capture_status=$viewer_art_closeup_capture_status
+viewer_art_closeup_ssim_capture_status=$viewer_art_closeup_ssim_capture_status
+ssim_metric_crop_window=$ssim_metric_crop_window
 retry_attempt=$retry_attempt
 art_lighting_enabled=$art_lighting_enabled
 lighting_profile=$lighting_profile
@@ -1531,6 +1708,11 @@ resource_pack_base_texture_override=$pack_base_texture_override
 resource_pack_normal_texture_override=$pack_normal_texture_override
 resource_pack_mr_texture_override=$pack_mr_texture_override
 resource_pack_emissive_texture_override=$pack_emissive_texture_override
+resource_pack_roughness_override=$pack_roughness_override
+resource_pack_metallic_override=$pack_metallic_override
+resource_pack_emissive_boost_override=$pack_emissive_boost_override
+resource_pack_base_color_override=$pack_base_color_override
+resource_pack_emissive_color_override=$pack_emissive_color_override
 lighting_tonemapping=${AGENT_WORLD_VIEWER_TONEMAPPING:-}
 lighting_bloom_enabled=${AGENT_WORLD_VIEWER_BLOOM_ENABLED:-}
 lighting_bloom_intensity=${AGENT_WORLD_VIEWER_BLOOM_INTENSITY:-}
@@ -1549,6 +1731,16 @@ material_asset_roughness_override=${AGENT_WORLD_VIEWER_MATERIAL_ASSET_ROUGHNESS:
 material_asset_metallic_override=${AGENT_WORLD_VIEWER_MATERIAL_ASSET_METALLIC:-}
 material_facility_roughness_override=${AGENT_WORLD_VIEWER_MATERIAL_FACILITY_ROUGHNESS:-}
 material_facility_metallic_override=${AGENT_WORLD_VIEWER_MATERIAL_FACILITY_METALLIC:-}
+material_power_plant_roughness_override=${AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_ROUGHNESS:-}
+material_power_plant_metallic_override=${AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_METALLIC:-}
+material_power_plant_emissive_boost_override=${AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_EMISSIVE_BOOST:-}
+material_power_storage_roughness_override=${AGENT_WORLD_VIEWER_MATERIAL_POWER_STORAGE_ROUGHNESS:-}
+material_power_storage_metallic_override=${AGENT_WORLD_VIEWER_MATERIAL_POWER_STORAGE_METALLIC:-}
+material_power_storage_emissive_boost_override=${AGENT_WORLD_VIEWER_MATERIAL_POWER_STORAGE_EMISSIVE_BOOST:-}
+material_power_plant_base_color_override=${AGENT_WORLD_VIEWER_POWER_PLANT_BASE_COLOR:-}
+material_power_plant_emissive_color_override=${AGENT_WORLD_VIEWER_POWER_PLANT_EMISSIVE_COLOR:-}
+material_power_storage_base_color_override=${AGENT_WORLD_VIEWER_POWER_STORAGE_BASE_COLOR:-}
+material_power_storage_emissive_color_override=${AGENT_WORLD_VIEWER_POWER_STORAGE_EMISSIVE_COLOR:-}
 base_texture_template_override=$override_base_texture_template
 normal_texture_template_override=$override_normal_texture_template
 mr_texture_template_override=$override_mr_texture_template

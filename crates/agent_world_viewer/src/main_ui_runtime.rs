@@ -89,6 +89,22 @@ pub(super) fn setup_3d_scene(
         config.materials.facility.metallic,
         variant_scalars.metallic_scale,
     );
+    let power_plant_roughness = apply_material_variant_scalar(
+        config.materials.power_plant.roughness,
+        variant_scalars.roughness_scale,
+    );
+    let power_plant_metallic = apply_material_variant_scalar(
+        config.materials.power_plant.metallic,
+        variant_scalars.metallic_scale,
+    );
+    let power_storage_roughness = apply_material_variant_scalar(
+        config.materials.power_storage.roughness,
+        variant_scalars.roughness_scale,
+    );
+    let power_storage_metallic = apply_material_variant_scalar(
+        config.materials.power_storage.metallic,
+        variant_scalars.metallic_scale,
+    );
     let agent_base_color =
         resolve_srgb_slot_color([1.0, 0.42, 0.22], external_material.agent.base_color_srgb);
     let agent_emissive_color = resolve_srgb_slot_color(
@@ -155,11 +171,11 @@ pub(super) fn setup_3d_scene(
         normal_map_texture: power_plant_texture.normal_map_texture,
         metallic_roughness_texture: power_plant_texture.metallic_roughness_texture,
         emissive_texture: power_plant_texture.emissive_texture,
-        perceptual_roughness: facility_roughness,
-        metallic: facility_metallic,
+        perceptual_roughness: power_plant_roughness,
+        metallic: power_plant_metallic,
         emissive: emissive_from_srgb_with_boost(
             power_plant_emissive_color,
-            config.materials.facility.emissive_boost,
+            config.materials.power_plant.emissive_boost,
         ),
         ..default()
     });
@@ -177,11 +193,11 @@ pub(super) fn setup_3d_scene(
         normal_map_texture: power_storage_texture.normal_map_texture,
         metallic_roughness_texture: power_storage_texture.metallic_roughness_texture,
         emissive_texture: power_storage_texture.emissive_texture,
-        perceptual_roughness: facility_roughness,
-        metallic: facility_metallic,
+        perceptual_roughness: power_storage_roughness,
+        metallic: power_storage_metallic,
         emissive: emissive_from_srgb_with_boost(
             power_storage_emissive_color,
-            config.materials.facility.emissive_boost,
+            config.materials.power_storage.emissive_boost,
         ),
         ..default()
     });

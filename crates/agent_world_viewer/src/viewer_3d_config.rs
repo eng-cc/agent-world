@@ -37,6 +37,12 @@ const DEFAULT_MATERIAL_ASSET_EMISSIVE_BOOST: f32 = 0.02;
 const DEFAULT_MATERIAL_FACILITY_ROUGHNESS: f32 = 0.48;
 const DEFAULT_MATERIAL_FACILITY_METALLIC: f32 = 0.20;
 const DEFAULT_MATERIAL_FACILITY_EMISSIVE_BOOST: f32 = 0.08;
+const DEFAULT_MATERIAL_POWER_PLANT_ROUGHNESS: f32 = 0.48;
+const DEFAULT_MATERIAL_POWER_PLANT_METALLIC: f32 = 0.20;
+const DEFAULT_MATERIAL_POWER_PLANT_EMISSIVE_BOOST: f32 = 0.08;
+const DEFAULT_MATERIAL_POWER_STORAGE_ROUGHNESS: f32 = 0.48;
+const DEFAULT_MATERIAL_POWER_STORAGE_METALLIC: f32 = 0.20;
+const DEFAULT_MATERIAL_POWER_STORAGE_EMISSIVE_BOOST: f32 = 0.08;
 const DEFAULT_FRAGMENT_UNLIT: bool = true;
 const DEFAULT_FRAGMENT_ALPHA: f32 = 0.92;
 const DEFAULT_FRAGMENT_EMISSIVE_BOOST: f32 = 0.24;
@@ -418,6 +424,8 @@ pub(super) struct ViewerMaterialConfig {
     pub agent: ViewerPbrMaterialConfig,
     pub asset: ViewerPbrMaterialConfig,
     pub facility: ViewerPbrMaterialConfig,
+    pub power_plant: ViewerPbrMaterialConfig,
+    pub power_storage: ViewerPbrMaterialConfig,
     pub fragment: ViewerFragmentMaterialConfig,
 }
 
@@ -438,6 +446,16 @@ impl Default for ViewerMaterialConfig {
                 roughness: DEFAULT_MATERIAL_FACILITY_ROUGHNESS,
                 metallic: DEFAULT_MATERIAL_FACILITY_METALLIC,
                 emissive_boost: DEFAULT_MATERIAL_FACILITY_EMISSIVE_BOOST,
+            },
+            power_plant: ViewerPbrMaterialConfig {
+                roughness: DEFAULT_MATERIAL_POWER_PLANT_ROUGHNESS,
+                metallic: DEFAULT_MATERIAL_POWER_PLANT_METALLIC,
+                emissive_boost: DEFAULT_MATERIAL_POWER_PLANT_EMISSIVE_BOOST,
+            },
+            power_storage: ViewerPbrMaterialConfig {
+                roughness: DEFAULT_MATERIAL_POWER_STORAGE_ROUGHNESS,
+                metallic: DEFAULT_MATERIAL_POWER_STORAGE_METALLIC,
+                emissive_boost: DEFAULT_MATERIAL_POWER_STORAGE_EMISSIVE_BOOST,
             },
             fragment: ViewerFragmentMaterialConfig::default(),
         }
@@ -861,6 +879,48 @@ where
     ) {
         if value.is_finite() && value >= 0.0 {
             config.materials.facility.emissive_boost = value;
+        }
+    }
+    if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_ROUGHNESS") {
+        if value.is_finite() && (0.0..=1.0).contains(&value) {
+            config.materials.power_plant.roughness = value;
+        }
+    }
+    if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_METALLIC") {
+        if value.is_finite() && (0.0..=1.0).contains(&value) {
+            config.materials.power_plant.metallic = value;
+        }
+    }
+    if let Some(value) = parse_f32(
+        &lookup,
+        "AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_EMISSIVE_BOOST",
+    ) {
+        if value.is_finite() && value >= 0.0 {
+            config.materials.power_plant.emissive_boost = value;
+        }
+    }
+    if let Some(value) = parse_f32(
+        &lookup,
+        "AGENT_WORLD_VIEWER_MATERIAL_POWER_STORAGE_ROUGHNESS",
+    ) {
+        if value.is_finite() && (0.0..=1.0).contains(&value) {
+            config.materials.power_storage.roughness = value;
+        }
+    }
+    if let Some(value) = parse_f32(
+        &lookup,
+        "AGENT_WORLD_VIEWER_MATERIAL_POWER_STORAGE_METALLIC",
+    ) {
+        if value.is_finite() && (0.0..=1.0).contains(&value) {
+            config.materials.power_storage.metallic = value;
+        }
+    }
+    if let Some(value) = parse_f32(
+        &lookup,
+        "AGENT_WORLD_VIEWER_MATERIAL_POWER_STORAGE_EMISSIVE_BOOST",
+    ) {
+        if value.is_finite() && value >= 0.0 {
+            config.materials.power_storage.emissive_boost = value;
         }
     }
     if let Some(value) = parse_tonemapping_mode(&lookup, "AGENT_WORLD_VIEWER_TONEMAPPING") {

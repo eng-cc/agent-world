@@ -150,6 +150,21 @@ fn load_viewer_3d_config_applies_env_overrides() {
         ("AGENT_WORLD_VIEWER_MATERIAL_ASSET_METALLIC", "0.33"),
         ("AGENT_WORLD_VIEWER_MATERIAL_FACILITY_ROUGHNESS", "0.53"),
         ("AGENT_WORLD_VIEWER_MATERIAL_FACILITY_METALLIC", "0.47"),
+        ("AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_ROUGHNESS", "0.29"),
+        ("AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_METALLIC", "0.74"),
+        (
+            "AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_EMISSIVE_BOOST",
+            "0.12",
+        ),
+        (
+            "AGENT_WORLD_VIEWER_MATERIAL_POWER_STORAGE_ROUGHNESS",
+            "0.67",
+        ),
+        ("AGENT_WORLD_VIEWER_MATERIAL_POWER_STORAGE_METALLIC", "0.16"),
+        (
+            "AGENT_WORLD_VIEWER_MATERIAL_POWER_STORAGE_EMISSIVE_BOOST",
+            "0.18",
+        ),
         ("AGENT_WORLD_VIEWER_TONEMAPPING", "aces"),
         ("AGENT_WORLD_VIEWER_DEBAND_DITHER_ENABLED", "true"),
         ("AGENT_WORLD_VIEWER_BLOOM_ENABLED", "false"),
@@ -218,6 +233,12 @@ fn load_viewer_3d_config_applies_env_overrides() {
     assert!((config.materials.asset.metallic - 0.33).abs() < f32::EPSILON);
     assert!((config.materials.facility.roughness - 0.53).abs() < f32::EPSILON);
     assert!((config.materials.facility.metallic - 0.47).abs() < f32::EPSILON);
+    assert!((config.materials.power_plant.roughness - 0.29).abs() < f32::EPSILON);
+    assert!((config.materials.power_plant.metallic - 0.74).abs() < f32::EPSILON);
+    assert!((config.materials.power_plant.emissive_boost - 0.12).abs() < f32::EPSILON);
+    assert!((config.materials.power_storage.roughness - 0.67).abs() < f32::EPSILON);
+    assert!((config.materials.power_storage.metallic - 0.16).abs() < f32::EPSILON);
+    assert!((config.materials.power_storage.emissive_boost - 0.18).abs() < f32::EPSILON);
     assert_eq!(
         config.post_process.tonemapping,
         ViewerTonemappingMode::AcesFitted
@@ -453,6 +474,18 @@ fn load_viewer_3d_config_ignores_invalid_values() {
         ("AGENT_WORLD_VIEWER_FRAGMENT_EMISSIVE_BOOST", "-1"),
         ("AGENT_WORLD_VIEWER_MATERIAL_AGENT_ROUGHNESS", "4"),
         ("AGENT_WORLD_VIEWER_MATERIAL_AGENT_METALLIC", "-3"),
+        ("AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_ROUGHNESS", "-0.2"),
+        ("AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_METALLIC", "2"),
+        (
+            "AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_EMISSIVE_BOOST",
+            "-1",
+        ),
+        ("AGENT_WORLD_VIEWER_MATERIAL_POWER_STORAGE_ROUGHNESS", "10"),
+        ("AGENT_WORLD_VIEWER_MATERIAL_POWER_STORAGE_METALLIC", "-9"),
+        (
+            "AGENT_WORLD_VIEWER_MATERIAL_POWER_STORAGE_EMISSIVE_BOOST",
+            "nan",
+        ),
         ("AGENT_WORLD_VIEWER_TONEMAPPING", "ultra-hdr"),
         ("AGENT_WORLD_VIEWER_DEBAND_DITHER_ENABLED", "???"),
         ("AGENT_WORLD_VIEWER_BLOOM_ENABLED", "???"),
@@ -527,6 +560,33 @@ fn load_viewer_3d_config_ignores_invalid_values() {
     );
     assert!(
         (config.materials.agent.metallic - DEFAULT_MATERIAL_AGENT_METALLIC).abs() < f32::EPSILON
+    );
+    assert!(
+        (config.materials.power_plant.roughness - DEFAULT_MATERIAL_POWER_PLANT_ROUGHNESS).abs()
+            < f32::EPSILON
+    );
+    assert!(
+        (config.materials.power_plant.metallic - DEFAULT_MATERIAL_POWER_PLANT_METALLIC).abs()
+            < f32::EPSILON
+    );
+    assert!(
+        (config.materials.power_plant.emissive_boost - DEFAULT_MATERIAL_POWER_PLANT_EMISSIVE_BOOST)
+            .abs()
+            < f32::EPSILON
+    );
+    assert!(
+        (config.materials.power_storage.roughness - DEFAULT_MATERIAL_POWER_STORAGE_ROUGHNESS).abs()
+            < f32::EPSILON
+    );
+    assert!(
+        (config.materials.power_storage.metallic - DEFAULT_MATERIAL_POWER_STORAGE_METALLIC).abs()
+            < f32::EPSILON
+    );
+    assert!(
+        (config.materials.power_storage.emissive_boost
+            - DEFAULT_MATERIAL_POWER_STORAGE_EMISSIVE_BOOST)
+            .abs()
+            < f32::EPSILON
     );
     assert_eq!(
         config.post_process.tonemapping,
