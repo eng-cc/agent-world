@@ -5,8 +5,9 @@ use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
 use std::process::{self, Child, Command};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -20,6 +21,8 @@ const DEFAULT_CHAIN_STATUS_BIND: &str = "127.0.0.1:5121";
 const DEFAULT_CHAIN_NODE_ID: &str = "viewer-live-node";
 const DEFAULT_CHAIN_NODE_ROLE: &str = "sequencer";
 const DEFAULT_CHAIN_NODE_TICK_MS: u64 = 200;
+static TERMINATION_REQUESTED: AtomicBool = AtomicBool::new(false);
+static SIGNAL_HANDLER_INSTALL: OnceLock<Result<(), String>> = OnceLock::new();
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct CliOptions {
@@ -92,6 +95,9 @@ fn main() {
 }
 
 fn run_launcher(options: &CliOptions) -> Result<(), String> {
+    install_signal_handler()?;
+    TERMINATION_REQUESTED.store(false, Ordering::SeqCst);
+
     let world_viewer_live_bin = resolve_world_viewer_live_binary()?;
     let world_chain_runtime_bin = if options.chain_enabled {
         Some(resolve_world_chain_runtime_binary()?)
@@ -114,13 +120,22 @@ fn run_launcher(options: &CliOptions) -> Result<(), String> {
             return Err(err);
         }
     };
-    let mut server = start_static_http_server(
+    let mut server = match start_static_http_server(
         options.viewer_host.as_str(),
         options.viewer_port,
         viewer_static_dir.as_path(),
-    )?;
+    ) {
+        Ok(server) => server,
+        Err(err) => {
+            terminate_child(&mut world_child);
+            if let Some(child) = chain_child.as_mut() {
+                terminate_child(child);
+            }
+            return Err(err);
+        }
+    };
 
-    let ready_result = wait_until_ready(options);
+    let ready_result = wait_until_ready(options, &mut world_child, chain_child.as_mut());
     if let Err(err) = ready_result {
         stop_static_http_server(&mut server);
         terminate_child(&mut world_child);
@@ -161,6 +176,17 @@ fn run_launcher(options: &CliOptions) -> Result<(), String> {
         terminate_child(child);
     }
     monitor_result
+}
+
+fn install_signal_handler() -> Result<(), String> {
+    SIGNAL_HANDLER_INSTALL
+        .get_or_init(|| {
+            ctrlc::set_handler(|| {
+                TERMINATION_REQUESTED.store(true, Ordering::SeqCst);
+            })
+            .map_err(|err| format!("failed to install signal handler: {err}"))
+        })
+        .clone()
 }
 
 fn spawn_world_viewer_live(path: &Path, options: &CliOptions) -> Result<Child, String> {
@@ -462,33 +488,52 @@ fn write_http_response(
     Ok(())
 }
 
-fn wait_until_ready(options: &CliOptions) -> Result<(), String> {
+fn wait_until_ready(
+    options: &CliOptions,
+    world_child: &mut Child,
+    mut chain_child: Option<&mut Child>,
+) -> Result<(), String> {
     let (viewer_host, viewer_port) = normalize_http_target(
         options.viewer_host.as_str(),
         options.viewer_port,
         "viewer host/port",
     )?;
-    wait_for_http_ready(viewer_host.as_str(), viewer_port, Duration::from_secs(30)).map_err(
-        |err| format!("viewer HTTP did not become ready at {viewer_host}:{viewer_port}: {err}"),
-    )?;
+    poll_startup_health(world_child, chain_child.as_deref_mut())?;
+    wait_for_http_ready(
+        viewer_host.as_str(),
+        viewer_port,
+        Duration::from_secs(30),
+        world_child,
+        chain_child.as_deref_mut(),
+    )
+    .map_err(|err| {
+        format!("viewer HTTP did not become ready at {viewer_host}:{viewer_port}: {err}")
+    })?;
+    poll_startup_health(world_child, chain_child.as_deref_mut())?;
 
     let (bridge_host, bridge_port) = parse_host_port(options.web_bind.as_str(), "--web-bind")?;
-    wait_for_tcp_ready(bridge_host.as_str(), bridge_port, Duration::from_secs(60)).map_err(
-        |err| format!("web bridge did not become ready at {bridge_host}:{bridge_port}: {err}"),
-    )?;
+    wait_for_tcp_ready(
+        bridge_host.as_str(),
+        bridge_port,
+        Duration::from_secs(60),
+        world_child,
+        chain_child.as_deref_mut(),
+    )
+    .map_err(|err| {
+        format!("web bridge did not become ready at {bridge_host}:{bridge_port}: {err}")
+    })?;
+    poll_startup_health(world_child, chain_child.as_deref_mut())?;
 
     if options.chain_enabled {
         let (chain_status_host, chain_status_port) =
             parse_host_port(options.chain_status_bind.as_str(), "--chain-status-bind")?;
-        let chain_status_host = if chain_status_host == "0.0.0.0" {
-            "127.0.0.1".to_string()
-        } else {
-            chain_status_host
-        };
+        let chain_status_host = normalize_bind_host_for_local_access(chain_status_host.as_str());
         wait_for_http_ready(
             chain_status_host.as_str(),
             chain_status_port,
             Duration::from_secs(30),
+            world_child,
+            chain_child.as_deref_mut(),
         )
         .map_err(|err| {
             format!(
@@ -506,6 +551,9 @@ fn monitor_world_chain_and_server(
     server: &mut StaticHttpServer,
 ) -> Result<(), String> {
     loop {
+        if TERMINATION_REQUESTED.load(Ordering::SeqCst) {
+            return Ok(());
+        }
         if let Some(status) = world_child
             .try_wait()
             .map_err(|err| format!("failed to query world_viewer_live status: {err}"))?
@@ -553,50 +601,94 @@ fn terminate_child(child: &mut Child) {
     }
 }
 
-fn wait_for_tcp_ready(host: &str, port: u16, timeout: Duration) -> Result<(), String> {
+fn wait_for_tcp_ready(
+    host: &str,
+    port: u16,
+    timeout: Duration,
+    world_child: &mut Child,
+    mut chain_child: Option<&mut Child>,
+) -> Result<(), String> {
     let deadline = Instant::now() + timeout;
     while Instant::now() < deadline {
+        poll_startup_health(world_child, chain_child.as_deref_mut())?;
         match TcpStream::connect((host, port)) {
-            Ok(_) => return Ok(()),
+            Ok(_) => {
+                poll_startup_health(world_child, chain_child.as_deref_mut())?;
+                return Ok(());
+            }
             Err(_) => thread::sleep(Duration::from_millis(200)),
         }
     }
+    poll_startup_health(world_child, chain_child.as_deref_mut())?;
     Err(format!("timeout after {}s", timeout.as_secs()))
 }
 
-fn wait_for_http_ready(host: &str, port: u16, timeout: Duration) -> Result<(), String> {
+fn wait_for_http_ready(
+    host: &str,
+    port: u16,
+    timeout: Duration,
+    world_child: &mut Child,
+    mut chain_child: Option<&mut Child>,
+) -> Result<(), String> {
     let deadline = Instant::now() + timeout;
     let request = format!("GET / HTTP/1.1\r\nHost: {host}:{port}\r\nConnection: close\r\n\r\n");
 
     while Instant::now() < deadline {
+        poll_startup_health(world_child, chain_child.as_deref_mut())?;
         if let Ok(mut stream) = TcpStream::connect((host, port)) {
             let _ = stream.write_all(request.as_bytes());
             let mut buf = [0u8; 256];
             match stream.read(&mut buf) {
                 Ok(0) => {}
-                Ok(_) => return Ok(()),
+                Ok(bytes) => {
+                    let response = String::from_utf8_lossy(&buf[..bytes]);
+                    if response.starts_with("HTTP/") {
+                        poll_startup_health(world_child, chain_child.as_deref_mut())?;
+                        return Ok(());
+                    }
+                }
                 Err(_) => {}
             }
         }
         thread::sleep(Duration::from_millis(200));
     }
 
+    poll_startup_health(world_child, chain_child.as_deref_mut())?;
     Err(format!("timeout after {}s", timeout.as_secs()))
 }
 
+fn poll_startup_health(
+    world_child: &mut Child,
+    chain_child: Option<&mut Child>,
+) -> Result<(), String> {
+    if TERMINATION_REQUESTED.load(Ordering::SeqCst) {
+        return Err("termination requested".to_string());
+    }
+    if let Some(status) = world_child
+        .try_wait()
+        .map_err(|err| format!("failed to query world_viewer_live status during startup: {err}"))?
+    {
+        return Err(format!("world_viewer_live exited during startup: {status}"));
+    }
+    if let Some(chain_child) = chain_child {
+        if let Some(status) = chain_child.try_wait().map_err(|err| {
+            format!("failed to query world_chain_runtime status during startup: {err}")
+        })? {
+            return Err(format!(
+                "world_chain_runtime exited during startup: {status}"
+            ));
+        }
+    }
+    Ok(())
+}
+
 fn build_game_url(options: &CliOptions) -> String {
-    let viewer_host = if options.viewer_host == "0.0.0.0" {
-        "127.0.0.1"
-    } else {
-        options.viewer_host.as_str()
-    };
+    let viewer_host = normalize_bind_host_for_local_access(options.viewer_host.as_str());
+    let viewer_host = host_for_url(viewer_host.as_str());
     let (bridge_host, bridge_port) = parse_host_port(options.web_bind.as_str(), "--web-bind")
         .unwrap_or_else(|_| ("127.0.0.1".to_string(), 5011));
-    let bridge_host = if bridge_host == "0.0.0.0" {
-        "127.0.0.1".to_string()
-    } else {
-        bridge_host
-    };
+    let bridge_host = normalize_bind_host_for_local_access(bridge_host.as_str());
+    let bridge_host = host_for_url(bridge_host.as_str());
     format!(
         "http://{viewer_host}:{}/?ws=ws://{bridge_host}:{bridge_port}",
         options.viewer_port
@@ -604,17 +696,28 @@ fn build_game_url(options: &CliOptions) -> String {
 }
 
 fn normalize_http_target(host: &str, port: u16, label: &str) -> Result<(String, u16), String> {
-    if host.trim().is_empty() {
+    let normalized = normalize_bind_host_for_local_access(host);
+    if normalized.trim().is_empty() {
         return Err(format!("{label} host cannot be empty"));
     }
-    Ok((
-        if host == "0.0.0.0" {
-            "127.0.0.1".to_string()
-        } else {
-            host.to_string()
-        },
-        port,
-    ))
+    Ok((normalized, port))
+}
+
+fn normalize_bind_host_for_local_access(host: &str) -> String {
+    let trimmed = host.trim();
+    if trimmed == "0.0.0.0" || trimmed == "::" || trimmed == "[::]" {
+        "127.0.0.1".to_string()
+    } else {
+        trimmed.to_string()
+    }
+}
+
+fn host_for_url(host: &str) -> String {
+    if host.contains(':') && !host.starts_with('[') && !host.ends_with(']') {
+        format!("[{host}]")
+    } else {
+        host.to_string()
+    }
 }
 
 fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, String> {
@@ -733,9 +836,24 @@ where
 
 fn parse_host_port(raw: &str, label: &str) -> Result<(String, u16), String> {
     let trimmed = raw.trim();
-    let (host, port_text) = trimmed
-        .rsplit_once(':')
-        .ok_or_else(|| format!("{label} must be in <host:port> format"))?;
+    let (host_raw, port_text) = if let Some(rest) = trimmed.strip_prefix('[') {
+        let (host, remainder) = rest
+            .split_once(']')
+            .ok_or_else(|| format!("{label} IPv6 host must be in [addr]:port format"))?;
+        let port_text = remainder
+            .strip_prefix(':')
+            .ok_or_else(|| format!("{label} must be in <host:port> format"))?;
+        (host, port_text)
+    } else {
+        let (host, port_text) = trimmed
+            .rsplit_once(':')
+            .ok_or_else(|| format!("{label} must be in <host:port> format"))?;
+        if host.contains(':') {
+            return Err(format!("{label} IPv6 host must be wrapped in []"));
+        }
+        (host, port_text)
+    };
+    let host = host_raw.trim();
     if host.trim().is_empty() {
         return Err(format!("{label} host cannot be empty"));
     }
@@ -1095,6 +1213,19 @@ mod world_game_launcher_tests {
     }
 
     #[test]
+    fn parse_host_port_accepts_bracketed_ipv6() {
+        let (host, port) = parse_host_port("[::1]:5011", "--web-bind").expect("ok");
+        assert_eq!(host, "::1");
+        assert_eq!(port, 5011);
+    }
+
+    #[test]
+    fn parse_host_port_rejects_unbracketed_ipv6() {
+        let err = parse_host_port("::1:5011", "--web-bind").expect_err("should fail");
+        assert!(err.contains("wrapped in []"));
+    }
+
+    #[test]
     fn parse_host_port_rejects_zero_port() {
         let err = parse_host_port("127.0.0.1:0", "--web-bind").expect_err("should fail");
         assert!(err.contains("1..=65535"));
@@ -1110,6 +1241,18 @@ mod world_game_launcher_tests {
         };
         let url = build_game_url(&options);
         assert_eq!(url, "http://127.0.0.1:4173/?ws=ws://127.0.0.1:5011");
+    }
+
+    #[test]
+    fn build_game_url_brackets_ipv6_hosts() {
+        let options = CliOptions {
+            viewer_host: "::1".to_string(),
+            viewer_port: 4173,
+            web_bind: "[::1]:5011".to_string(),
+            ..CliOptions::default()
+        };
+        let url = build_game_url(&options);
+        assert_eq!(url, "http://[::1]:4173/?ws=ws://[::1]:5011");
     }
 
     #[test]
