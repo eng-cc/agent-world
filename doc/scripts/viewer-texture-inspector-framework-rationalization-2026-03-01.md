@@ -35,3 +35,14 @@
   - 缓解：运行 `viewer_3d_config_profile_tests` 的 override/invalid 两组用例。
 - **构图漂移风险**：统一函数可能引入参数误差。
   - 缓解：保持原参数字面值，回归 power 场景最小链路并比对关键 meta 字段。
+
+## 执行结论（2026-03-01）
+- **T1 完成**：`viewer_3d_config` 解析函数已拆分到 `viewer_3d_config_parsing.rs`，主文件回落至 1089 行，满足单文件约束。
+- **T2 完成**：`viewer-texture-inspector.sh` 的 power hero/closeup/fallback 三路 pose 已统一到 `resolve_power_pose`，retry 候选改为统一入口 `emit_power_retry_closeup_candidates`。
+- **回归结果**：
+  - `output/texture_inspector/framework_t2_pose_unify_power_plant_variants_20260301/power_plant/variant_validation.txt`
+    - `status=passed`
+    - `min_pair_ssim_initial=0.994289`
+    - `min_edge_energy_initial=0.470741`
+    - `retry_candidates_attempted=0`
+  - `meta.txt` 关键字段保持：`selection_gate_orbit_radius_closeup=0.102400`、`composition_profile=art_review_v2`。

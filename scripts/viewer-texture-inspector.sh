@@ -224,69 +224,77 @@ resolve_focus_target_for_entity() {
   esac
 }
 
-resolve_power_closeup_pose() {
-  local focus_target=$1
-  local profile=${2:-legacy}
-  case "$profile" in
-    art_review_v2)
-      if [[ "$focus_target" == "first_location" ]]; then
-        # Wider baseline closeup keeps giant proxy meshes readable.
-        echo "pan=0.45,0,0;zoom=1.75;orbit=24,-24;wait=0.9"
-      else
-        # direct_entity power meshes need a safer radius to avoid clipping inside geometry.
-        echo "zoom=3.2;orbit=36,-18;wait=0.9"
-      fi
+resolve_power_pose() {
+  local pose_kind=$1
+  local focus_target=$2
+  local profile=${3:-legacy}
+  local focus_bucket="entity"
+  if [[ "$focus_target" == "first_location" ]]; then
+    focus_bucket="location"
+  fi
+
+  case "${profile}:${pose_kind}:${focus_bucket}" in
+    art_review_v2:hero:location)
+      echo "pan=0.3,0,0;zoom=1.4;orbit=18,-28;wait=0.7"
+      ;;
+    art_review_v2:hero:entity)
+      echo "zoom=3.2;orbit=18,-28;wait=0.7"
+      ;;
+    art_review_v2:closeup:location)
+      # Wider baseline closeup keeps giant proxy meshes readable.
+      echo "pan=0.45,0,0;zoom=1.75;orbit=24,-24;wait=0.9"
+      ;;
+    art_review_v2:closeup:entity)
+      # direct_entity power meshes need a safer radius to avoid clipping inside geometry.
+      echo "zoom=3.2;orbit=36,-18;wait=0.9"
+      ;;
+    art_review_v2:fallback:location)
+      echo "pan=0.5,0,0;zoom=1.95;orbit=30,-20;wait=1.0"
+      ;;
+    art_review_v2:fallback:entity)
+      echo "zoom=3.6;orbit=42,-16;wait=1.0"
+      ;;
+    *:hero:location)
+      echo "pan=0.4,0,0;zoom=1.6;orbit=20,-30;wait=0.6"
+      ;;
+    *:hero:entity)
+      echo "zoom=3.0;orbit=20,-30;wait=0.6"
+      ;;
+    *:closeup:location)
+      echo "pan=0.6,0,0;zoom=2.2;orbit=20,-30;wait=0.8"
+      ;;
+    *:closeup:entity)
+      echo "zoom=3.0;orbit=34,-20;wait=0.8"
+      ;;
+    *:fallback:location)
+      echo "pan=0.6,0,0;zoom=2.6;orbit=20,-30;wait=0.9"
+      ;;
+    *:fallback:entity)
+      echo "zoom=3.3;orbit=40,-16;wait=0.9"
       ;;
     *)
-      if [[ "$focus_target" == "first_location" ]]; then
-        echo "pan=0.6,0,0;zoom=2.2;orbit=20,-30;wait=0.8"
-      else
-        echo "zoom=3.0;orbit=34,-20;wait=0.8"
-      fi
+      echo "zoom=3.0;orbit=34,-20;wait=0.8"
       ;;
   esac
 }
 
-resolve_power_fallback_closeup_pose() {
+emit_power_retry_closeup_candidates() {
   local focus_target=$1
   local profile=${2:-legacy}
-  case "$profile" in
-    art_review_v2)
-      if [[ "$focus_target" == "first_location" ]]; then
-        echo "pan=0.5,0,0;zoom=1.95;orbit=30,-20;wait=1.0"
-      else
-        echo "zoom=3.6;orbit=42,-16;wait=1.0"
-      fi
-      ;;
-    *)
-      if [[ "$focus_target" == "first_location" ]]; then
-        echo "pan=0.6,0,0;zoom=2.6;orbit=20,-30;wait=0.9"
-      else
-        echo "zoom=3.3;orbit=40,-16;wait=0.9"
-      fi
-      ;;
-  esac
-}
+  if [[ "$profile" != "art_review_v2" ]]; then
+    echo "fallback|mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};$(resolve_power_pose fallback "$focus_target" "$profile")"
+    return 0
+  fi
 
-resolve_power_hero_pose() {
-  local focus_target=$1
-  local profile=${2:-legacy}
-  case "$profile" in
-    art_review_v2)
-      if [[ "$focus_target" == "first_location" ]]; then
-        echo "pan=0.3,0,0;zoom=1.4;orbit=18,-28;wait=0.7"
-      else
-        echo "zoom=3.2;orbit=18,-28;wait=0.7"
-      fi
-      ;;
-    *)
-      if [[ "$focus_target" == "first_location" ]]; then
-        echo "pan=0.4,0,0;zoom=1.6;orbit=20,-30;wait=0.6"
-      else
-        echo "zoom=3.0;orbit=20,-30;wait=0.6"
-      fi
-      ;;
-  esac
+  if [[ "$focus_target" == "first_location" ]]; then
+    echo "wide_a|mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};pan=0.52,0,0;zoom=2.05;orbit=22,-24;wait=1.0"
+    echo "wide_b|mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};pan=0.36,0,0;zoom=1.85;orbit=34,-18;wait=1.0"
+    echo "silhouette|mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};pan=0.28,0,0;zoom=1.65;orbit=48,-14;wait=1.1"
+  else
+    echo "wide_a|mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};zoom=3.6;orbit=28,-22;wait=1.0"
+    echo "three_quarter|mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};pan=0.08,0,0;zoom=3.2;orbit=42,-18;wait=1.0"
+    echo "silhouette|mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};zoom=3.9;orbit=58,-12;wait=1.1"
+  fi
 }
 
 default_automation_steps_for_entity() {
@@ -294,7 +302,7 @@ default_automation_steps_for_entity() {
   local focus_target
   focus_target=$(resolve_focus_target_for_entity "$entity" "$scenario")
   local power_hero_pose
-  power_hero_pose=$(resolve_power_hero_pose "$focus_target" "$composition_profile")
+  power_hero_pose=$(resolve_power_pose hero "$focus_target" "$composition_profile")
   case "$1" in
     agent)
       echo "mode=3d;focus=first_location;zoom=1.5;orbit=18,-26;wait=0.6"
@@ -322,7 +330,7 @@ default_closeup_automation_steps_for_entity() {
   local focus_target
   focus_target=$(resolve_focus_target_for_entity "$entity" "$scenario")
   local power_closeup_pose
-  power_closeup_pose=$(resolve_power_closeup_pose "$focus_target" "$composition_profile")
+  power_closeup_pose=$(resolve_power_pose closeup "$focus_target" "$composition_profile")
   case "$1" in
     agent)
       echo "mode=3d;focus=first_location;zoom=1.15;orbit=30,-20;wait=0.8"
@@ -350,7 +358,7 @@ fallback_closeup_automation_steps_for_entity() {
   local focus_target
   focus_target=$(resolve_focus_target_for_entity "$entity" "$scenario")
   local power_fallback_pose
-  power_fallback_pose=$(resolve_power_fallback_closeup_pose "$focus_target" "$composition_profile")
+  power_fallback_pose=$(resolve_power_pose fallback "$focus_target" "$composition_profile")
   case "$1" in
     power_plant)
       echo "mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};${power_fallback_pose}"
@@ -370,22 +378,7 @@ retry_closeup_candidate_specs_for_entity() {
   focus_target=$(resolve_focus_target_for_entity "$entity" "$scenario")
   case "$entity" in
     power_plant|power_storage)
-      case "$composition_profile" in
-        art_review_v2)
-          if [[ "$focus_target" == "first_location" ]]; then
-            echo "wide_a|mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};pan=0.52,0,0;zoom=2.05;orbit=22,-24;wait=1.0"
-            echo "wide_b|mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};pan=0.36,0,0;zoom=1.85;orbit=34,-18;wait=1.0"
-            echo "silhouette|mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};pan=0.28,0,0;zoom=1.65;orbit=48,-14;wait=1.1"
-          else
-            echo "wide_a|mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};zoom=3.6;orbit=28,-22;wait=1.0"
-            echo "three_quarter|mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};pan=0.08,0,0;zoom=3.2;orbit=42,-18;wait=1.0"
-            echo "silhouette|mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};zoom=3.9;orbit=58,-12;wait=1.1"
-          fi
-          ;;
-        *)
-          echo "fallback|$(fallback_closeup_automation_steps_for_entity "$entity")"
-          ;;
-      esac
+      emit_power_retry_closeup_candidates "$focus_target" "$composition_profile"
       ;;
     *)
       echo "fallback|$(fallback_closeup_automation_steps_for_entity "$entity")"
