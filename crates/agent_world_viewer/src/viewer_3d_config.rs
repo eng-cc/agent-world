@@ -1,4 +1,12 @@
 use bevy::prelude::Resource;
+use viewer_3d_config_parsing::{
+    parse_agent_variant_palette, parse_bool, parse_f32, parse_f64, parse_fragment_material_strategy,
+    parse_geometry_tier, parse_hex_srgb_color, parse_non_empty_string, parse_render_profile,
+    parse_tonemapping_mode, parse_u64, parse_usize, parse_visual_effects_level,
+};
+
+#[path = "viewer_3d_config_parsing.rs"]
+mod viewer_3d_config_parsing;
 
 const DEFAULT_CM_TO_UNIT: f32 = 0.00001;
 const DEFAULT_PHYSICAL_ENABLED: bool = false;
@@ -1070,179 +1078,6 @@ where
 
     config.physical = physical;
     config
-}
-
-fn parse_bool<F>(lookup: &F, key: &str) -> Option<bool>
-where
-    F: Fn(&str) -> Option<String>,
-{
-    lookup(key).and_then(|raw| {
-        let normalized = raw.trim().to_ascii_lowercase();
-        match normalized.as_str() {
-            "1" | "true" | "yes" | "on" => Some(true),
-            "0" | "false" | "no" | "off" => Some(false),
-            _ => None,
-        }
-    })
-}
-
-fn parse_render_profile<F>(lookup: &F, key: &str) -> Option<ViewerRenderProfile>
-where
-    F: Fn(&str) -> Option<String>,
-{
-    lookup(key).and_then(|raw| match raw.trim().to_ascii_lowercase().as_str() {
-        "debug" | "dbg" => Some(ViewerRenderProfile::Debug),
-        "balanced" | "balance" | "default" => Some(ViewerRenderProfile::Balanced),
-        "cinematic" | "cinema" | "quality" => Some(ViewerRenderProfile::Cinematic),
-        _ => None,
-    })
-}
-
-fn parse_geometry_tier<F>(lookup: &F, key: &str) -> Option<ViewerGeometryTier>
-where
-    F: Fn(&str) -> Option<String>,
-{
-    lookup(key).and_then(|raw| match raw.trim().to_ascii_lowercase().as_str() {
-        "debug" | "low" => Some(ViewerGeometryTier::Debug),
-        "balanced" | "medium" => Some(ViewerGeometryTier::Balanced),
-        "cinematic" | "high" => Some(ViewerGeometryTier::Cinematic),
-        _ => None,
-    })
-}
-
-fn parse_visual_effects_level<F>(lookup: &F, key: &str) -> Option<ViewerVisualEffectsLevel>
-where
-    F: Fn(&str) -> Option<String>,
-{
-    lookup(key).and_then(|raw| match raw.trim().to_ascii_lowercase().as_str() {
-        "minimal" | "min" | "low" => Some(ViewerVisualEffectsLevel::Minimal),
-        "standard" | "std" | "default" => Some(ViewerVisualEffectsLevel::Standard),
-        "enhanced" | "enhance" | "high" => Some(ViewerVisualEffectsLevel::Enhanced),
-        _ => None,
-    })
-}
-
-fn parse_fragment_material_strategy<F>(
-    lookup: &F,
-    key: &str,
-) -> Option<ViewerFragmentMaterialStrategy>
-where
-    F: Fn(&str) -> Option<String>,
-{
-    lookup(key).and_then(|raw| match raw.trim().to_ascii_lowercase().as_str() {
-        "readability" | "readable" | "clarity" => Some(ViewerFragmentMaterialStrategy::Readability),
-        "fidelity" | "quality" | "realistic" => Some(ViewerFragmentMaterialStrategy::Fidelity),
-        _ => None,
-    })
-}
-
-fn parse_tonemapping_mode<F>(lookup: &F, key: &str) -> Option<ViewerTonemappingMode>
-where
-    F: Fn(&str) -> Option<String>,
-{
-    lookup(key).and_then(|raw| match raw.trim().to_ascii_lowercase().as_str() {
-        "none" | "off" => Some(ViewerTonemappingMode::None),
-        "reinhard" => Some(ViewerTonemappingMode::Reinhard),
-        "reinhard_luminance" | "reinhard-luminance" | "reinhardluminance" => {
-            Some(ViewerTonemappingMode::ReinhardLuminance)
-        }
-        "aces" | "acesfitted" | "aces_fitted" | "aces-fitted" => {
-            Some(ViewerTonemappingMode::AcesFitted)
-        }
-        "agx" => Some(ViewerTonemappingMode::AgX),
-        "somewhat_boring_display_transform"
-        | "somewhat-boring-display-transform"
-        | "somewhatboringdisplaytransform"
-        | "sbdt" => Some(ViewerTonemappingMode::SomewhatBoringDisplayTransform),
-        "tony_mc_mapface" | "tony-mc-mapface" | "tonymcmapface" | "tony" | "default" => {
-            Some(ViewerTonemappingMode::TonyMcMapface)
-        }
-        "blender_filmic" | "blender-filmic" | "blenderfilmic" | "filmic" => {
-            Some(ViewerTonemappingMode::BlenderFilmic)
-        }
-        _ => None,
-    })
-}
-
-fn parse_f32<F>(lookup: &F, key: &str) -> Option<f32>
-where
-    F: Fn(&str) -> Option<String>,
-{
-    lookup(key).and_then(|raw| raw.trim().parse::<f32>().ok())
-}
-
-fn parse_f64<F>(lookup: &F, key: &str) -> Option<f64>
-where
-    F: Fn(&str) -> Option<String>,
-{
-    lookup(key).and_then(|raw| raw.trim().parse::<f64>().ok())
-}
-
-fn parse_non_empty_string<F>(lookup: &F, key: &str) -> Option<String>
-where
-    F: Fn(&str) -> Option<String>,
-{
-    lookup(key).and_then(|raw| {
-        let trimmed = raw.trim();
-        if trimmed.is_empty() {
-            None
-        } else {
-            Some(trimmed.to_string())
-        }
-    })
-}
-
-fn parse_hex_srgb_color<F>(lookup: &F, key: &str) -> Option<[f32; 3]>
-where
-    F: Fn(&str) -> Option<String>,
-{
-    lookup(key).and_then(|raw| parse_hex_srgb_literal(raw.trim()))
-}
-
-fn parse_hex_srgb_literal(raw: &str) -> Option<[f32; 3]> {
-    let color_hex = raw.strip_prefix('#')?;
-    if color_hex.len() != 6 {
-        return None;
-    }
-    let r = u8::from_str_radix(&color_hex[0..2], 16).ok()?;
-    let g = u8::from_str_radix(&color_hex[2..4], 16).ok()?;
-    let b = u8::from_str_radix(&color_hex[4..6], 16).ok()?;
-    Some([r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0])
-}
-
-fn parse_agent_variant_palette<F>(lookup: &F, key: &str) -> Option<[[f32; 3]; 4]>
-where
-    F: Fn(&str) -> Option<String>,
-{
-    let raw = lookup(key)?;
-    let mut palette = [[0.0; 3]; 4];
-    let mut count = 0usize;
-    for color in raw.split(',').map(str::trim) {
-        if color.is_empty() || count >= palette.len() {
-            return None;
-        }
-        palette[count] = parse_hex_srgb_literal(color)?;
-        count += 1;
-    }
-    if count == palette.len() {
-        Some(palette)
-    } else {
-        None
-    }
-}
-
-fn parse_usize<F>(lookup: &F, key: &str) -> Option<usize>
-where
-    F: Fn(&str) -> Option<String>,
-{
-    lookup(key).and_then(|raw| raw.trim().parse::<usize>().ok())
-}
-
-fn parse_u64<F>(lookup: &F, key: &str) -> Option<u64>
-where
-    F: Fn(&str) -> Option<String>,
-{
-    lookup(key).and_then(|raw| raw.trim().parse::<u64>().ok())
 }
 
 #[cfg(test)]

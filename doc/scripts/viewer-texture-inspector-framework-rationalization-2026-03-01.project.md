@@ -3,7 +3,7 @@
 ## 任务拆解
 - [x] T0：输出设计文档 `doc/scripts/viewer-texture-inspector-framework-rationalization-2026-03-01.md`
 - [x] T0：输出项目管理文档（本文件）
-- [ ] T1：Rust 配置解析模块化（拆分 parsing 模块并控制 `viewer_3d_config.rs` 行数）
+- [x] T1：Rust 配置解析模块化（拆分 parsing 模块并控制 `viewer_3d_config.rs` 行数）
 - [ ] T2：Shell 构图策略结构化（power pose 统一解析入口）
 
 ## 依赖
@@ -13,6 +13,6 @@
 - `scripts/capture-viewer-frame.sh`
 
 ## 状态
-- 当前阶段：T0 已完成，T1 进行中
+- 当前阶段：T1 已完成，T2 进行中
 - 阻塞：无
-- 下一步：完成 T1 代码与验证并提交
+- 下一步：完成 T2 代码与验证并结项
