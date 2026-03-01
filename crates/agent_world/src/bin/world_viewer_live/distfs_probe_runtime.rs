@@ -217,24 +217,6 @@ pub(super) fn persist_reward_runtime_distfs_probe_state(
     super::write_bytes_atomic(path, bytes.as_slice())
 }
 
-#[cfg(test)]
-pub(super) fn collect_distfs_challenge_report(
-    storage_root: &Path,
-    world_id: &str,
-    node_id: &str,
-    observed_at_unix_ms: i64,
-    state: &mut StorageChallengeProbeCursorState,
-) -> Result<StorageChallengeProbeReport, String> {
-    collect_distfs_challenge_report_with_config(
-        storage_root,
-        world_id,
-        node_id,
-        observed_at_unix_ms,
-        state,
-        &DistfsProbeRuntimeConfig::default(),
-    )
-}
-
 pub(super) fn collect_distfs_challenge_report_with_config(
     storage_root: &Path,
     world_id: &str,

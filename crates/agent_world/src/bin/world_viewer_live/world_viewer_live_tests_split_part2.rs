@@ -141,9 +141,15 @@ fn ensure_reward_runtime_settlement_node_identity_bindings_rejects_missing_bindi
 fn collect_distfs_challenge_report_returns_zero_for_empty_store() {
     let dir = temp_dir("distfs-probe-empty");
     let mut state = StorageChallengeProbeCursorState::default();
-    let report =
-        collect_distfs_challenge_report(dir.as_path(), "world-1", "node-a", 1_000, &mut state)
-            .expect("collect challenge report");
+    let report = collect_distfs_challenge_report_with_config(
+        dir.as_path(),
+        "world-1",
+        "node-a",
+        1_000,
+        &mut state,
+        &DistfsProbeRuntimeConfig::default(),
+    )
+    .expect("collect challenge report");
     assert_eq!(report.total_checks, 0);
     assert_eq!(report.passed_checks, 0);
     assert_eq!(report.failed_checks, 0);
@@ -162,9 +168,15 @@ fn collect_distfs_challenge_report_detects_hash_mismatch() {
     fs::write(blob_path, b"tampered").expect("tamper");
 
     let mut state = StorageChallengeProbeCursorState::default();
-    let report =
-        collect_distfs_challenge_report(dir.as_path(), "world-1", "node-b", 2_000, &mut state)
-            .expect("collect challenge report");
+    let report = collect_distfs_challenge_report_with_config(
+        dir.as_path(),
+        "world-1",
+        "node-b",
+        2_000,
+        &mut state,
+        &DistfsProbeRuntimeConfig::default(),
+    )
+    .expect("collect challenge report");
     assert_eq!(report.total_checks, 1);
     assert_eq!(report.passed_checks, 0);
     assert_eq!(report.failed_checks, 1);

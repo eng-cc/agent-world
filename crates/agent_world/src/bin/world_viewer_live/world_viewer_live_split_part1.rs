@@ -34,12 +34,10 @@ use agent_world_proto::world_error::WorldError as ProtoWorldError;
 use agent_world_wasm_executor::{WasmExecutor, WasmExecutorConfig};
 #[path = "cli.rs"]
 mod cli;
-#[path = "distfs_probe_runtime.rs"]
-mod distfs_probe_runtime;
-#[cfg(test)]
-use distfs_probe_runtime::collect_distfs_challenge_report;
 #[path = "distfs_challenge_network.rs"]
 mod distfs_challenge_network;
+#[path = "distfs_probe_runtime.rs"]
+mod distfs_probe_runtime;
 #[path = "execution_bridge.rs"]
 mod execution_bridge;
 #[path = "node_keypair_config.rs"]
