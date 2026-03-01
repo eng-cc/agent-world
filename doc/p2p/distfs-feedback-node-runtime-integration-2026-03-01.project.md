@@ -5,6 +5,7 @@
 - [x] T1：扩展 NodeConfig 与 runtime feedback p2p driver（drain + ingest）。
 - [x] T2：新增 feedback 提交接口与 announce 自动发布闭环。
 - [x] T3：测试回归、文档/devlog 收口并结项。
+- [x] T4：按工程约束拆分 `node/lib.rs`（feedback runtime helper 模块化）并复测。
 
 ## 依赖
 - `crates/agent_world_node/src/types.rs`
@@ -16,6 +17,6 @@
 - `doc/p2p/distfs-feedback-node-runtime-integration-2026-03-01.md`
 
 ## 状态
-- 当前阶段：已完成（T0~T3）。
+- 当前阶段：已完成（T0~T4）。
 - 阻塞项：无。
 - 最近更新：2026-03-01。
