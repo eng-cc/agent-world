@@ -8,21 +8,21 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
-
 const BLOBS_DIR: &str = "blobs";
 const PINS_FILE: &str = "pins.json";
 const FILES_INDEX_FILE: &str = "files_index.json";
 const FILE_INDEX_VERSION: u64 = 1;
-
 mod challenge;
 mod challenge_scheduler;
 mod feedback;
+mod feedback_p2p;
 mod manifest;
 mod replication;
 
 pub use challenge::*;
 pub use challenge_scheduler::*;
 pub use feedback::*;
+pub use feedback_p2p::*;
 pub use manifest::*;
 pub use replication::*;
 

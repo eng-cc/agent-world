@@ -3,7 +3,7 @@
 ## 任务拆解
 - [x] T0：完成设计文档与项目管理文档。
 - [x] T1：扩展 FeedbackStore 复制入库接口（root/event ingest + 幂等）。
-- [ ] T2：实现 feedback announce + blob pull ingest 桥接模块与测试。
+- [x] T2：实现 feedback announce + blob pull ingest 桥接模块与测试。
 - [ ] T3：回归测试、文档状态回写与 devlog 收口。
 
 ## 依赖
@@ -13,6 +13,6 @@
 - `doc/p2p/distfs-feedback-p2p-bridge-2026-03-01.md`
 
 ## 状态
-- 当前阶段：进行中（T0~T1 完成，执行 T2）。
+- 当前阶段：进行中（T0~T2 完成，执行 T3）。
 - 阻塞项：无。
 - 最近更新：2026-03-01。

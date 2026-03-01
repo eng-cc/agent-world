@@ -8,6 +8,7 @@ pub struct FeedbackBlobRef {
     pub path: String,
     pub content_hash: String,
     pub size_bytes: u64,
+    pub actor_public_key_hex: String,
 }
 
 impl FeedbackStore {
@@ -54,14 +55,31 @@ impl FeedbackStore {
         match receipt.action {
             FeedbackActionKind::Create => {
                 let path = feedback_root_path(receipt.feedback_id.as_str());
-                map_metadata_to_blob_ref(Some(path.as_str()), self.store.stat_file(path.as_str())?)
+                let Some(metadata) = self.store.stat_file(path.as_str())? else {
+                    return Ok(None);
+                };
+                let root = self.read_feedback_root(receipt.feedback_id.as_str())?;
+                Ok(Some(FeedbackBlobRef {
+                    path,
+                    content_hash: metadata.content_hash,
+                    size_bytes: metadata.size_bytes,
+                    actor_public_key_hex: root.author_public_key_hex,
+                }))
             }
             FeedbackActionKind::Append | FeedbackActionKind::Tombstone => {
-                let metadata = self.find_event_file_metadata(
+                let metadata = self.find_event_file_metadata_with_record(
                     receipt.feedback_id.as_str(),
                     receipt.event_id.as_str(),
                 )?;
-                map_metadata_to_blob_ref(None, metadata)
+                let Some((metadata, event_record)) = metadata else {
+                    return Ok(None);
+                };
+                Ok(Some(FeedbackBlobRef {
+                    path: metadata.path,
+                    content_hash: metadata.content_hash,
+                    size_bytes: metadata.size_bytes,
+                    actor_public_key_hex: event_record.actor_public_key_hex,
+                }))
             }
         }
     }
@@ -243,11 +261,11 @@ impl FeedbackStore {
         })
     }
 
-    pub(crate) fn find_event_file_metadata(
+    pub(crate) fn find_event_file_metadata_with_record(
         &self,
         feedback_id: &str,
         event_id: &str,
-    ) -> Result<Option<FileMetadata>, WorldError> {
+    ) -> Result<Option<(FileMetadata, FeedbackEventRecord)>, WorldError> {
         let files = self.store.list_files()?;
         let prefix = feedback_events_prefix(feedback_id);
         for file in files {
@@ -257,7 +275,7 @@ impl FeedbackStore {
             let bytes = self.store.read_file(file.path.as_str())?;
             let event: FeedbackEventRecord = serde_json::from_slice(&bytes)?;
             if event.event_id == event_id {
-                return Ok(Some(file));
+                return Ok(Some((file, event)));
             }
         }
         Ok(None)
@@ -380,22 +398,4 @@ fn compute_feedback_event_id(event: &FeedbackEventRecord) -> Result<String, Worl
     };
     let bytes = to_canonical_cbor(&payload)?;
     Ok(blake3_hex(bytes.as_slice()))
-}
-
-fn map_metadata_to_blob_ref(
-    path_override: Option<&str>,
-    metadata: Option<FileMetadata>,
-) -> Result<Option<FeedbackBlobRef>, WorldError> {
-    let Some(metadata) = metadata else {
-        return Ok(None);
-    };
-    let resolved_path = match path_override {
-        Some(path) => path.to_string(),
-        None => metadata.path.clone(),
-    };
-    Ok(Some(FeedbackBlobRef {
-        path: resolved_path,
-        content_hash: metadata.content_hash,
-        size_bytes: metadata.size_bytes,
-    }))
 }
