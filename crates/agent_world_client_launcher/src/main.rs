@@ -447,18 +447,28 @@ fn build_launcher_args(config: &LaunchConfig) -> Result<Vec<String>, String> {
 
 fn build_game_url(config: &LaunchConfig) -> String {
     let viewer_host = normalize_host_for_url(config.viewer_host.as_str());
+    let viewer_host = host_for_url(viewer_host.as_str());
     let viewer_port = parse_port(config.viewer_port.as_str(), "viewer port").unwrap_or(4173);
     let (web_host, web_port) = parse_host_port(config.web_bind.as_str(), "web bind")
         .unwrap_or(("127.0.0.1".to_string(), 5011));
     let web_host = normalize_host_for_url(web_host.as_str());
+    let web_host = host_for_url(web_host.as_str());
 
     format!("http://{viewer_host}:{viewer_port}/?ws=ws://{web_host}:{web_port}")
 }
 
 fn normalize_host_for_url(host: &str) -> String {
     let host = host.trim();
-    if host == "0.0.0.0" || host.is_empty() {
+    if host == "0.0.0.0" || host == "::" || host == "[::]" || host.is_empty() {
         "127.0.0.1".to_string()
+    } else {
+        host.to_string()
+    }
+}
+
+fn host_for_url(host: &str) -> String {
+    if host.contains(':') && !host.starts_with('[') && !host.ends_with(']') {
+        format!("[{host}]")
     } else {
         host.to_string()
     }
@@ -477,9 +487,24 @@ fn parse_port(raw: &str, label: &str) -> Result<u16, String> {
 
 fn parse_host_port(raw: &str, label: &str) -> Result<(String, u16), String> {
     let value = raw.trim();
-    let (host, port_raw) = value
-        .rsplit_once(':')
-        .ok_or_else(|| format!("{label} must be in <host:port> format"))?;
+    let (host_raw, port_raw) = if let Some(rest) = value.strip_prefix('[') {
+        let (host, remainder) = rest
+            .split_once(']')
+            .ok_or_else(|| format!("{label} IPv6 host must be in [addr]:port format"))?;
+        let port_raw = remainder
+            .strip_prefix(':')
+            .ok_or_else(|| format!("{label} must be in <host:port> format"))?;
+        (host, port_raw)
+    } else {
+        let (host, port_raw) = value
+            .rsplit_once(':')
+            .ok_or_else(|| format!("{label} must be in <host:port> format"))?;
+        if host.contains(':') {
+            return Err(format!("{label} IPv6 host must be wrapped in []"));
+        }
+        (host, port_raw)
+    };
+    let host = host_raw.trim();
     if host.trim().is_empty() {
         return Err(format!("{label} host cannot be empty"));
     }
@@ -665,6 +690,19 @@ mod tests {
     }
 
     #[test]
+    fn parse_host_port_accepts_bracketed_ipv6() {
+        let (host, port) = parse_host_port("[::1]:5011", "web bind").expect("ok");
+        assert_eq!(host, "::1");
+        assert_eq!(port, 5011);
+    }
+
+    #[test]
+    fn parse_host_port_rejects_unbracketed_ipv6() {
+        let err = parse_host_port("::1:5011", "web bind").expect_err("should fail");
+        assert!(err.contains("wrapped in []"));
+    }
+
+    #[test]
     fn build_launcher_args_contains_llm_and_no_open_switches() {
         let config = LaunchConfig {
             llm_enabled: true,
@@ -699,6 +737,18 @@ mod tests {
         };
         let url = build_game_url(&config);
         assert_eq!(url, "http://127.0.0.1:4173/?ws=ws://127.0.0.1:5011");
+    }
+
+    #[test]
+    fn build_game_url_brackets_ipv6_hosts() {
+        let config = LaunchConfig {
+            viewer_host: "::1".to_string(),
+            viewer_port: "4173".to_string(),
+            web_bind: "[::1]:5011".to_string(),
+            ..LaunchConfig::default()
+        };
+        let url = build_game_url(&config);
+        assert_eq!(url, "http://[::1]:4173/?ws=ws://[::1]:5011");
     }
 
     #[test]

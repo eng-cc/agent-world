@@ -1,0 +1,242 @@
+use std::env;
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::time::{SystemTime, UNIX_EPOCH};
+
+use super::{
+    build_game_url, content_type_for_path, parse_host_port, parse_options,
+    resolve_static_asset_path, sanitize_index_html_for_embedded_server,
+    sanitize_relative_request_path, CliOptions, DEFAULT_CHAIN_NODE_ID, DEFAULT_CHAIN_STATUS_BIND,
+    DEFAULT_LIVE_BIND, DEFAULT_SCENARIO,
+};
+
+#[test]
+fn parse_options_defaults() {
+    let options = parse_options(std::iter::empty()).expect("parse should succeed");
+    assert_eq!(options.scenario, DEFAULT_SCENARIO);
+    assert_eq!(options.live_bind, DEFAULT_LIVE_BIND);
+    assert!(!options.with_llm);
+    assert!(options.open_browser);
+    assert_eq!(options.viewer_static_dir, "web");
+    assert!(options.chain_enabled);
+    assert_eq!(options.chain_status_bind, DEFAULT_CHAIN_STATUS_BIND);
+    assert_eq!(options.chain_node_id, DEFAULT_CHAIN_NODE_ID);
+    assert_eq!(options.chain_node_role, "sequencer");
+}
+
+#[test]
+fn parse_options_accepts_overrides() {
+    let options = parse_options(
+        [
+            "--scenario",
+            "twin_region_bootstrap",
+            "--live-bind",
+            "127.0.0.1:6200",
+            "--web-bind",
+            "127.0.0.1:6201",
+            "--viewer-host",
+            "0.0.0.0",
+            "--viewer-port",
+            "4777",
+            "--viewer-static-dir",
+            "dist",
+            "--chain-status-bind",
+            "127.0.0.1:6331",
+            "--chain-node-id",
+            "chain-a",
+            "--chain-world-id",
+            "live-chain-a",
+            "--chain-node-role",
+            "storage",
+            "--chain-node-tick-ms",
+            "350",
+            "--chain-node-validator",
+            "chain-a:55",
+            "--with-llm",
+            "--no-open-browser",
+        ]
+        .into_iter(),
+    )
+    .expect("parse should succeed");
+
+    assert_eq!(options.scenario, "twin_region_bootstrap");
+    assert_eq!(options.live_bind, "127.0.0.1:6200");
+    assert_eq!(options.web_bind, "127.0.0.1:6201");
+    assert_eq!(options.viewer_host, "0.0.0.0");
+    assert_eq!(options.viewer_port, 4777);
+    assert_eq!(options.viewer_static_dir, "dist");
+    assert_eq!(options.chain_status_bind, "127.0.0.1:6331");
+    assert_eq!(options.chain_node_id, "chain-a");
+    assert_eq!(options.chain_world_id, Some("live-chain-a".to_string()));
+    assert_eq!(options.chain_node_role, "storage");
+    assert_eq!(options.chain_node_tick_ms, 350);
+    assert_eq!(
+        options.chain_node_validators,
+        vec!["chain-a:55".to_string()]
+    );
+    assert!(options.with_llm);
+    assert!(!options.open_browser);
+}
+
+#[test]
+fn parse_options_accepts_chain_disable() {
+    let options = parse_options(["--chain-disable"].into_iter()).expect("parse should succeed");
+    assert!(!options.chain_enabled);
+}
+
+#[test]
+fn parse_options_rejects_invalid_chain_role() {
+    let err = parse_options(["--chain-node-role", "invalid"].into_iter()).expect_err("should fail");
+    assert!(err.contains("sequencer, storage, observer"));
+}
+
+#[test]
+fn parse_options_rejects_unknown_option() {
+    let err = parse_options(["--unknown"].into_iter()).expect_err("should fail");
+    assert!(err.contains("unknown option"));
+}
+
+#[test]
+fn parse_options_rejects_missing_value() {
+    let err = parse_options(["--viewer-port"].into_iter()).expect_err("should fail");
+    assert!(err.contains("requires a value"));
+}
+
+#[test]
+fn parse_options_rejects_invalid_port() {
+    let err = parse_options(["--viewer-port", "70000"].into_iter()).expect_err("should fail");
+    assert!(err.contains("integer"));
+}
+
+#[test]
+fn parse_options_rejects_invalid_bind_format() {
+    let err = parse_options(["--live-bind", "127.0.0.1"].into_iter()).expect_err("should fail");
+    assert!(err.contains("<host:port>"));
+}
+
+#[test]
+fn parse_host_port_parses_valid_value() {
+    let (host, port) = parse_host_port("127.0.0.1:5011", "--web-bind").expect("ok");
+    assert_eq!(host, "127.0.0.1");
+    assert_eq!(port, 5011);
+}
+
+#[test]
+fn parse_host_port_accepts_bracketed_ipv6() {
+    let (host, port) = parse_host_port("[::1]:5011", "--web-bind").expect("ok");
+    assert_eq!(host, "::1");
+    assert_eq!(port, 5011);
+}
+
+#[test]
+fn parse_host_port_rejects_unbracketed_ipv6() {
+    let err = parse_host_port("::1:5011", "--web-bind").expect_err("should fail");
+    assert!(err.contains("wrapped in []"));
+}
+
+#[test]
+fn parse_host_port_rejects_zero_port() {
+    let err = parse_host_port("127.0.0.1:0", "--web-bind").expect_err("should fail");
+    assert!(err.contains("1..=65535"));
+}
+
+#[test]
+fn build_game_url_rewrites_zero_bind_host_to_loopback() {
+    let options = CliOptions {
+        viewer_host: "0.0.0.0".to_string(),
+        viewer_port: 4173,
+        web_bind: "0.0.0.0:5011".to_string(),
+        ..CliOptions::default()
+    };
+    let url = build_game_url(&options);
+    assert_eq!(url, "http://127.0.0.1:4173/?ws=ws://127.0.0.1:5011");
+}
+
+#[test]
+fn build_game_url_brackets_ipv6_hosts() {
+    let options = CliOptions {
+        viewer_host: "::1".to_string(),
+        viewer_port: 4173,
+        web_bind: "[::1]:5011".to_string(),
+        ..CliOptions::default()
+    };
+    let url = build_game_url(&options);
+    assert_eq!(url, "http://[::1]:4173/?ws=ws://[::1]:5011");
+}
+
+#[test]
+fn sanitize_relative_request_path_rejects_traversal() {
+    let err = sanitize_relative_request_path("/../etc/passwd").expect_err("should fail");
+    assert!(err.contains("traversal"));
+}
+
+#[test]
+fn resolve_static_asset_path_supports_spa_fallback() {
+    let temp_dir = make_temp_dir("spa_fallback");
+    fs::write(temp_dir.join("index.html"), "<html>ok</html>").expect("write index");
+    let resolved = resolve_static_asset_path(temp_dir.as_path(), "/app/route?x=1")
+        .expect("resolve should succeed")
+        .expect("should fallback to index");
+    assert_eq!(resolved, temp_dir.join("index.html"));
+    let _ = fs::remove_dir_all(temp_dir);
+}
+
+#[test]
+fn resolve_static_asset_path_returns_none_for_missing_static_asset() {
+    let temp_dir = make_temp_dir("missing_asset");
+    fs::write(temp_dir.join("index.html"), "<html>ok</html>").expect("write index");
+    let resolved = resolve_static_asset_path(temp_dir.as_path(), "/assets/missing.js")
+        .expect("resolve should succeed");
+    assert!(resolved.is_none());
+    let _ = fs::remove_dir_all(temp_dir);
+}
+
+#[test]
+fn content_type_for_path_covers_wasm_and_js() {
+    assert_eq!(
+        content_type_for_path(Path::new("a.wasm")),
+        "application/wasm"
+    );
+    assert_eq!(
+        content_type_for_path(Path::new("a.js")),
+        "text/javascript; charset=utf-8"
+    );
+}
+
+#[test]
+fn sanitize_index_html_for_embedded_server_removes_trunk_reload_script() {
+    let html = concat!(
+        "<html><body>",
+        "<script>window.bootstrap = true;</script>",
+        "<script>const url = 'ws://{{__TRUNK_ADDRESS__}}{{__TRUNK_WS_BASE__}}.well-known/trunk/ws';</script>",
+        "</body></html>"
+    );
+    let sanitized =
+        sanitize_index_html_for_embedded_server(Path::new("index.html"), html.as_bytes());
+    let sanitized = String::from_utf8(sanitized).expect("utf-8");
+    assert!(sanitized.contains("window.bootstrap = true"));
+    assert!(!sanitized.contains(".well-known/trunk/ws"));
+    assert!(!sanitized.contains("__TRUNK_ADDRESS__"));
+}
+
+#[test]
+fn sanitize_index_html_for_embedded_server_keeps_non_index_files_unchanged() {
+    let body = b"<script>.well-known/trunk/ws</script>";
+    let sanitized = sanitize_index_html_for_embedded_server(Path::new("app.js"), body);
+    assert_eq!(sanitized, body);
+}
+
+fn make_temp_dir(label: &str) -> PathBuf {
+    let mut path = env::temp_dir();
+    let stamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("time")
+        .as_nanos();
+    path.push(format!(
+        "agent_world_launcher_test_{label}_{}_{}",
+        std::process::id(),
+        stamp
+    ));
+    fs::create_dir_all(&path).expect("create temp dir");
+    path
+}
