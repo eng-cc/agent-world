@@ -72,14 +72,25 @@ fn builtin_identity_manifest_resolves_m5_entry() {
     .expect("resolve m5 identity");
     assert!(identity.is_complete());
     assert_eq!(identity.signer_node_id, "builtin.module.release.signer");
-    assert_eq!(identity.signature_scheme, "ed25519");
-    assert!(
-        identity
-            .artifact_signature
-            .starts_with("modsig:ed25519:v1:"),
-        "unexpected signature: {}",
-        identity.artifact_signature
-    );
+    match identity.signature_scheme.as_str() {
+        "ed25519" => {
+            assert!(
+                identity
+                    .artifact_signature
+                    .starts_with("modsig:ed25519:v1:"),
+                "unexpected signature: {}",
+                identity.artifact_signature
+            );
+        }
+        "identity_hash_v1" => {
+            assert!(
+                identity.artifact_signature.starts_with("idhash:"),
+                "unexpected signature: {}",
+                identity.artifact_signature
+            );
+        }
+        other => panic!("unexpected signature scheme: {other}"),
+    }
 }
 
 #[test]

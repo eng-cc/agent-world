@@ -48,12 +48,18 @@
 - [x] 执行 `scripts/sync-m1-builtin-wasm-artifacts.sh` 更新 hash/identity manifest
 - [x] 本地回归 `scripts/ci-m1-wasm-summary.sh`（至少当前平台）并确认通过
 
+### T3D Rust required gate m5 identity/hash 清单热修
+- [x] 复现并定位 `Rust` workflow 新失败根因：`m5.gameplay.crisis.cycle` wasm hash 不在 identity/hash token 列表
+- [x] 同步 `m5` builtin wasm 清单，并为 hash token 增加兼容候选集合（覆盖 runner 变体）
+- [x] 调整 `builtin_wasm_identity` m5 用例，兼容 `identity_hash_v1` 签名方案
+- [x] 本地回归 `scripts/sync-m5-builtin-wasm-artifacts.sh --check` 与失败定向测试
+
 ## 依赖
 - 打包基础脚本：`scripts/build-game-launcher-bundle.sh`
 - 站点发布流程：`.github/workflows/pages.yml`
 - 站点入口文件：`site/index.html`、`site/en/index.html`
 
 ## 状态
-- 当前阶段：已完成（T0A/T0/T1/T2/T3/T3A/T3B/T3C）
-- 最近更新：完成 T3C Builtin Wasm m1 identity 清单回收敛（2026-03-01）
+- 当前阶段：已完成（T0A/T0/T1/T2/T3/T3A/T3B/T3C/T3D）
+- 最近更新：完成 T3D Rust required gate m5 identity/hash 清单热修（2026-03-01）
 - 下一步：push 后等待 CI 回归结果
