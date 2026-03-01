@@ -13,7 +13,7 @@ Purpose:
   Texture sources can be selected from theme preset entity slots.
 
 Options:
-  --preset-file <path>     preset env file (default: industrial_default.env)
+  --preset-file <path>     preset env file (default: industrial_v2_default.env)
   --inspect <list>         entity source list: agent,location,asset,power_plant,power_storage,all (default: all)
   --variants <list>        default,matte,glossy,all (default: all)
   --scenario <name>        world_viewer_live scenario (default: llm_bootstrap)
@@ -55,7 +55,7 @@ Options:
                            power variant validation threshold (default: 0.9995)
   --detail-edge-threshold <f>
                            closeup detail edge threshold (default: 0.35)
-  --semantic-gate-mode <m> off,auto,strict (default: auto)
+  --semantic-gate-mode <m> off,auto,strict (default: strict)
   --crop-window <w:h:x:y>  crop window for viewer_art.png; use 'none' or 'auto'
   --preview-mode <mode>    scene_proxy,lookdev,direct_entity (default: scene_proxy)
   --material-profile <id>  theme_default,art_review_v1 (default: theme_default)
@@ -204,6 +204,15 @@ resolve_focus_target_for_entity() {
   local entity=$1
   local scenario_name=${2:-}
   case "$entity" in
+    agent)
+      echo "first_agent"
+      ;;
+    asset)
+      echo "first_asset"
+      ;;
+    location)
+      echo "first_location"
+      ;;
     power_plant)
       if [[ "$scenario_name" == *power* ]]; then
         echo "first_power_plant"
@@ -222,6 +231,17 @@ resolve_focus_target_for_entity() {
       echo "first_location"
       ;;
   esac
+}
+
+resolve_capture_scenario_for_entity() {
+  local entity=$1
+  local scenario_name=${2:-llm_bootstrap}
+  local preview_mode_effective=${3:-scene_proxy}
+  if [[ "$preview_mode_effective" == "direct_entity" && ( "$entity" == "power_plant" || "$entity" == "power_storage" ) && "$scenario_name" != *power* ]]; then
+    echo "power_bootstrap"
+    return 0
+  fi
+  echo "$scenario_name"
 }
 
 resolve_power_pose() {
@@ -299,19 +319,20 @@ emit_power_retry_closeup_candidates() {
 
 default_automation_steps_for_entity() {
   local entity=$1
+  local scenario_name=${2:-$scenario}
   local focus_target
-  focus_target=$(resolve_focus_target_for_entity "$entity" "$scenario")
+  focus_target=$(resolve_focus_target_for_entity "$entity" "$scenario_name")
   local power_hero_pose
   power_hero_pose=$(resolve_power_pose hero "$focus_target" "$composition_profile")
   case "$1" in
     agent)
-      echo "mode=3d;focus=first_location;zoom=1.5;orbit=18,-26;wait=0.6"
+      echo "mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};zoom=3.1;orbit=24,-22;wait=0.7"
       ;;
     location)
-      echo "mode=3d;focus=first_location;zoom=1.7;orbit=14,-24;wait=0.6"
+      echo "mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};zoom=1.7;orbit=14,-24;wait=0.6"
       ;;
     asset)
-      echo "mode=3d;focus=first_location;zoom=1.55;orbit=18,-28;wait=0.6"
+      echo "mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};zoom=3.0;orbit=22,-24;wait=0.7"
       ;;
     power_plant)
       echo "mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};${power_hero_pose}"
@@ -327,19 +348,20 @@ default_automation_steps_for_entity() {
 
 default_closeup_automation_steps_for_entity() {
   local entity=$1
+  local scenario_name=${2:-$scenario}
   local focus_target
-  focus_target=$(resolve_focus_target_for_entity "$entity" "$scenario")
+  focus_target=$(resolve_focus_target_for_entity "$entity" "$scenario_name")
   local power_closeup_pose
   power_closeup_pose=$(resolve_power_pose closeup "$focus_target" "$composition_profile")
   case "$1" in
     agent)
-      echo "mode=3d;focus=first_location;zoom=1.15;orbit=30,-20;wait=0.8"
+      echo "mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};zoom=3.6;orbit=36,-16;wait=0.9"
       ;;
     location)
-      echo "mode=3d;focus=first_location;zoom=1.25;orbit=28,-20;wait=0.8"
+      echo "mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};zoom=1.25;orbit=28,-20;wait=0.8"
       ;;
     asset)
-      echo "mode=3d;focus=first_location;zoom=1.15;orbit=32,-22;wait=0.8"
+      echo "mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};zoom=3.4;orbit=34,-18;wait=0.9"
       ;;
     power_plant)
       echo "mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};${power_closeup_pose}"
@@ -355,8 +377,9 @@ default_closeup_automation_steps_for_entity() {
 
 fallback_closeup_automation_steps_for_entity() {
   local entity=$1
+  local scenario_name=${2:-$scenario}
   local focus_target
-  focus_target=$(resolve_focus_target_for_entity "$entity" "$scenario")
+  focus_target=$(resolve_focus_target_for_entity "$entity" "$scenario_name")
   local power_fallback_pose
   power_fallback_pose=$(resolve_power_pose fallback "$focus_target" "$composition_profile")
   case "$1" in
@@ -367,27 +390,33 @@ fallback_closeup_automation_steps_for_entity() {
       echo "mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};${power_fallback_pose}"
       ;;
     *)
-      echo "mode=3d;focus=first_location;zoom=0.95;orbit=42,-16;wait=0.9"
+      echo "mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};zoom=0.95;orbit=42,-16;wait=0.9"
       ;;
   esac
 }
 
 retry_closeup_candidate_specs_for_entity() {
   local entity=$1
+  local scenario_name=${2:-$scenario}
   local focus_target
-  focus_target=$(resolve_focus_target_for_entity "$entity" "$scenario")
+  focus_target=$(resolve_focus_target_for_entity "$entity" "$scenario_name")
   case "$entity" in
     power_plant|power_storage)
       emit_power_retry_closeup_candidates "$focus_target" "$composition_profile"
       ;;
     *)
-      echo "fallback|$(fallback_closeup_automation_steps_for_entity "$entity")"
+      echo "fallback|$(fallback_closeup_automation_steps_for_entity "$entity" "$scenario_name")"
       ;;
   esac
 }
 
 expected_selection_kind_for_entity() {
   local entity=$1
+  local preview_mode_effective=$2
+  if [[ "$preview_mode_effective" != "direct_entity" ]]; then
+    echo "location"
+    return 0
+  fi
   case "$entity" in
     power_plant)
       echo "power_plant"
@@ -415,6 +444,8 @@ semantic_gate_enforced_for_entity() {
   local mode=$2
   local art_capture_flag=$3
   local preview_mode_effective=$4
+  local _unused=$entity
+  local _unused_preview=$preview_mode_effective
   case "$mode" in
     off)
       return 1
@@ -423,7 +454,7 @@ semantic_gate_enforced_for_entity() {
       return 0
       ;;
     auto)
-      if [[ "$art_capture_flag" -eq 1 && "$preview_mode_effective" == "direct_entity" && ( "$entity" == "power_plant" || "$entity" == "power_storage" ) ]]; then
+      if [[ "$art_capture_flag" -eq 1 ]]; then
         return 0
       fi
       return 1
@@ -967,7 +998,7 @@ variant_semantic_fail_count() {
   echo "$fail_count"
 }
 
-preset_file="crates/agent_world_viewer/assets/themes/industrial_v1/presets/industrial_default.env"
+preset_file="crates/agent_world_viewer/assets/themes/industrial_v2/presets/industrial_v2_default.env"
 inspect_raw="all"
 variants_raw="all"
 scenario="llm_bootstrap"
@@ -989,7 +1020,7 @@ art_hide_panel_mode="auto"
 art_selection_highlight_mode="auto"
 variant_ssim_threshold="0.9995"
 detail_edge_threshold="0.35"
-semantic_gate_mode="auto"
+semantic_gate_mode="strict"
 crop_window_raw=""
 preview_mode="scene_proxy"
 material_profile="theme_default"
@@ -1325,6 +1356,9 @@ capture_variant_bundle() {
   local closeup_candidate_index=${9:-0}
   local closeup_candidate_total=${10:-1}
   local closeup_pose_label=${11:-initial}
+  local capture_scenario="$scenario"
+  local hero_steps_effective="$hero_steps"
+  local closeup_steps_effective="$closeup_steps"
   local src_prefix
   src_prefix=$(entity_prefix "$entity")
 
@@ -1344,7 +1378,6 @@ capture_variant_bundle() {
     export AGENT_WORLD_VIEWER_MATERIAL_VARIANT_PRESET="$material_variant_preset_for_run"
     export AGENT_WORLD_VIEWER_RENDER_PROFILE="$render_profile"
     export AGENT_WORLD_VIEWER_FRAGMENT_MATERIAL_STRATEGY="$fragment_strategy"
-    export AGENT_WORLD_VIEWER_SHOW_AGENTS=0
     if [[ "$art_selection_highlight_enabled" -eq 1 ]]; then
       unset AGENT_WORLD_VIEWER_HIGHLIGHT_SELECTED || true
     else
@@ -1357,14 +1390,26 @@ capture_variant_bundle() {
       effective_preview_mode="scene_proxy"
       preview_mode_fallback_reason="location_direct_entity_not_applicable"
     fi
+    capture_scenario=$(resolve_capture_scenario_for_entity "$entity" "$scenario" "$effective_preview_mode")
+    if [[ -z "$automation_steps_override" ]]; then
+      hero_steps_effective=$(default_automation_steps_for_entity "$entity" "$capture_scenario")
+    fi
+    if [[ -z "$closeup_automation_steps_override" && "$retry_attempt" -eq 0 ]]; then
+      closeup_steps_effective=$(default_closeup_automation_steps_for_entity "$entity" "$capture_scenario")
+    fi
     if [[ "$effective_preview_mode" == "direct_entity" ]]; then
       export AGENT_WORLD_VIEWER_SHOW_LOCATIONS=0
     else
       export AGENT_WORLD_VIEWER_SHOW_LOCATIONS=1
     fi
+    if [[ "$effective_preview_mode" == "direct_entity" && "$entity" == "agent" ]]; then
+      export AGENT_WORLD_VIEWER_SHOW_AGENTS=1
+    else
+      export AGENT_WORLD_VIEWER_SHOW_AGENTS=0
+    fi
     capture_auto_focus_target="first_location"
     if [[ "$effective_preview_mode" == "direct_entity" ]]; then
-      capture_auto_focus_target=$(resolve_focus_target_for_entity "$entity" "$scenario")
+      capture_auto_focus_target=$(resolve_focus_target_for_entity "$entity" "$capture_scenario")
     fi
     location_interference_disabled=0
     if [[ "$effective_preview_mode" == "lookdev" || "$effective_preview_mode" == "direct_entity" ]]; then
@@ -1522,11 +1567,11 @@ capture_variant_bundle() {
     direct_entity_emissive_texture_asset="${!direct_entity_emissive_key:-}"
 
     run ./scripts/capture-viewer-frame.sh \
-      --scenario "$scenario" \
+      --scenario "$capture_scenario" \
       --addr "127.0.0.1:$port" \
       --viewer-wait "$viewer_wait" \
       --auto-focus-target "$capture_auto_focus_target" \
-      --automation-steps "$hero_steps" \
+      --automation-steps "$hero_steps_effective" \
       --keep-tmp \
       ${no_prewarm_arg:+$no_prewarm_arg}
 
@@ -1571,7 +1616,7 @@ capture_variant_bundle() {
     orbit_radius_closeup=$(capture_status_value "$capture_status_file" "orbit_radius")
     scene_power_plant_count_closeup=$(capture_status_value "$capture_status_file" "scene_power_plant_count")
     scene_power_storage_count_closeup=$(capture_status_value "$capture_status_file" "scene_power_storage_count")
-    selection_gate_expected_kind=$(expected_selection_kind_for_entity "$entity")
+    selection_gate_expected_kind=$(expected_selection_kind_for_entity "$entity" "$effective_preview_mode")
     selection_gate_mode_effective="$semantic_gate_mode"
     selection_gate_enforced=0
     selection_gate_pass=1
@@ -1580,11 +1625,11 @@ capture_variant_bundle() {
 
     if [[ "$art_capture" -eq 1 ]]; then
       run ./scripts/capture-viewer-frame.sh \
-        --scenario "$scenario" \
+        --scenario "$capture_scenario" \
         --addr "127.0.0.1:$port" \
         --viewer-wait "$viewer_wait" \
         --auto-focus-target "$capture_auto_focus_target" \
-        --automation-steps "$closeup_steps" \
+        --automation-steps "$closeup_steps_effective" \
         --keep-tmp \
         --no-prewarm
 
@@ -1651,6 +1696,9 @@ capture_variant_bundle() {
       elif [[ "$camera_mode_closeup" != "3d" ]]; then
         selection_gate_pass=0
         selection_gate_reason="camera_mode_not_3d:${camera_mode_closeup:-unknown}"
+      elif [[ "$effective_preview_mode" == "direct_entity" && -n "$orbit_radius_closeup" ]] && float_ge "$orbit_radius_closeup" "40"; then
+        selection_gate_pass=0
+        selection_gate_reason="orbit_radius_too_large:${orbit_radius_closeup}"
       else
         selection_gate_pass=1
         selection_gate_reason="matched"
@@ -1659,7 +1707,7 @@ capture_variant_bundle() {
 
     cat >"$variant_dir/meta.txt" <<META
 preset_file=$preset_file
-scenario=$scenario
+scenario=$capture_scenario
 entity=$entity
 variant=$variant
 port=$port
@@ -1672,8 +1720,8 @@ preview_mode_fallback_reason=$preview_mode_fallback_reason
 composition_profile=$composition_profile
 material_profile=$material_profile
 material_variant_preset_for_run=$material_variant_preset_for_run
-hero_automation_steps=$hero_steps
-closeup_automation_steps=$closeup_steps
+hero_automation_steps=$hero_steps_effective
+closeup_automation_steps=$closeup_steps_effective
 closeup_pose_label=$closeup_pose_label
 closeup_candidate_index=$closeup_candidate_index
 closeup_candidate_total=$closeup_candidate_total
@@ -1835,6 +1883,7 @@ for entity in "${entities[@]}"; do
         initial_low_edge=1
       fi
       if [[ "$unique_count" -eq 1 || "$initial_high_ssim" -eq 1 || "$initial_low_edge" -eq 1 || "$semantic_fail_count" -gt 0 ]]; then
+        validation_capture_scenario=$(resolve_capture_scenario_for_entity "$entity" "$scenario" "direct_entity")
         if [[ "$unique_count" -eq 1 && "$initial_high_ssim" -eq 1 ]]; then
           validation_retry_reason="identical_hash_and_high_ssim"
         elif [[ "$unique_count" -eq 1 ]]; then
@@ -1847,10 +1896,10 @@ for entity in "${entities[@]}"; do
           validation_retry_reason="high_ssim"
         fi
         validation_status="retrying"
-        mapfile -t retry_candidates < <(retry_closeup_candidate_specs_for_entity "$entity")
+        mapfile -t retry_candidates < <(retry_closeup_candidate_specs_for_entity "$entity" "$validation_capture_scenario")
         retry_candidates_total=${#retry_candidates[@]}
         if [[ "$retry_candidates_total" -eq 0 ]]; then
-          retry_candidates=("fallback|$(fallback_closeup_automation_steps_for_entity "$entity")")
+          retry_candidates=("fallback|$(fallback_closeup_automation_steps_for_entity "$entity" "$validation_capture_scenario")")
           retry_candidates_total=1
         fi
         echo "warn: material variant validation triggered entity=$entity reason=$validation_retry_reason unique_count=$unique_count min_ssim=$min_ssim min_edge=$min_edge_energy semantic_fail_count=$semantic_fail_count threshold=$variant_ssim_threshold edge_threshold=$detail_edge_threshold; retry with closeup candidates=$retry_candidates_total" >&2
