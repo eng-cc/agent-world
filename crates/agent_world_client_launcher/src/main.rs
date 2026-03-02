@@ -12,10 +12,12 @@ use feedback_entry::{
     collect_recent_logs, submit_feedback_with_fallback, validate_feedback_draft, FeedbackDraft,
     FeedbackDraftIssue, FeedbackKind, FeedbackSubmitResult,
 };
+use llm_settings::LlmSettingsPanel;
 use platform_ops::{open_browser, resolve_launcher_binary_path, resolve_static_dir_path};
 use serde::Serialize;
 
 mod feedback_entry;
+mod llm_settings;
 mod platform_ops;
 
 const DEFAULT_SCENARIO: &str = "llm_bootstrap";
@@ -323,6 +325,7 @@ enum FeedbackSubmitState {
 #[derive(Debug)]
 struct ClientLauncherApp {
     config: LaunchConfig,
+    llm_settings_panel: LlmSettingsPanel,
     ui_language: UiLanguage,
     status: LauncherStatus,
     running: Option<RunningProcess>,
@@ -335,6 +338,7 @@ impl Default for ClientLauncherApp {
     fn default() -> Self {
         Self {
             config: LaunchConfig::default(),
+            llm_settings_panel: LlmSettingsPanel::new(LlmSettingsPanel::default_path()),
             ui_language: UiLanguage::detect_from_env(),
             status: LauncherStatus::Idle,
             running: None,
@@ -737,6 +741,9 @@ impl eframe::App for ClientLauncherApp {
                         self.append_log(format!("open browser: {url}"));
                     }
                 }
+                if ui.button(self.tr("设置", "Settings")).clicked() {
+                    self.llm_settings_panel.open();
+                }
                 if ui.button(self.tr("清空日志", "Clear Logs")).clicked() {
                     self.logs.clear();
                 }
@@ -824,6 +831,7 @@ impl eframe::App for ClientLauncherApp {
                 });
         });
 
+        self.llm_settings_panel.show(ctx, self.ui_language);
         ctx.request_repaint_after(Duration::from_millis(120));
     }
 }
