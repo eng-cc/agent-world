@@ -23,6 +23,7 @@ const EGUI_CJK_FONT_NAME: &str = "agent-world-cjk";
 const EGUI_CJK_FONT_BYTES: &[u8] =
     include_bytes!("../../agent_world_viewer/assets/fonts/ms-yahei.ttf");
 const CLIENT_LAUNCHER_FONT_ENV: &str = "AGENT_WORLD_CLIENT_LAUNCHER_FONT";
+const CLIENT_LAUNCHER_LANG_ENV: &str = "AGENT_WORLD_CLIENT_LAUNCHER_LANG";
 
 fn main() -> eframe::Result<()> {
     let native_options = eframe::NativeOptions {
@@ -96,6 +97,45 @@ fn install_cjk_font(
         .push(font_name);
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum UiLanguage {
+    ZhCn,
+    EnUs,
+}
+
+impl UiLanguage {
+    fn from_tag(raw: &str) -> Option<Self> {
+        match raw.trim().to_ascii_lowercase().as_str() {
+            "zh" | "zh-cn" | "zh_hans" | "zh-hans" | "cn" => Some(Self::ZhCn),
+            "en" | "en-us" | "en_us" | "english" => Some(Self::EnUs),
+            _ => None,
+        }
+    }
+
+    fn detect_from_env() -> Self {
+        if let Ok(raw) = env::var(CLIENT_LAUNCHER_LANG_ENV) {
+            if let Some(language) = Self::from_tag(raw.as_str()) {
+                return language;
+            }
+        }
+
+        if let Ok(raw) = env::var("LANG") {
+            if let Some(language) = Self::from_tag(raw.as_str()) {
+                return language;
+            }
+        }
+
+        Self::ZhCn
+    }
+
+    fn display_name(self) -> &'static str {
+        match self {
+            Self::ZhCn => "中文",
+            Self::EnUs => "English",
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct LaunchConfig {
     scenario: String,
@@ -148,10 +188,46 @@ struct RunningProcess {
     log_rx: Receiver<String>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum LauncherStatus {
+    Idle,
+    Running,
+    Stopped,
+    InvalidArgs,
+    StartFailed,
+    StopFailed,
+    QueryFailed,
+    Exited(String),
+}
+
+impl LauncherStatus {
+    fn text(&self, language: UiLanguage) -> String {
+        match (self, language) {
+            (Self::Idle, UiLanguage::ZhCn) => "未启动".to_string(),
+            (Self::Idle, UiLanguage::EnUs) => "Not Started".to_string(),
+            (Self::Running, UiLanguage::ZhCn) => "运行中".to_string(),
+            (Self::Running, UiLanguage::EnUs) => "Running".to_string(),
+            (Self::Stopped, UiLanguage::ZhCn) => "已停止".to_string(),
+            (Self::Stopped, UiLanguage::EnUs) => "Stopped".to_string(),
+            (Self::InvalidArgs, UiLanguage::ZhCn) => "参数非法".to_string(),
+            (Self::InvalidArgs, UiLanguage::EnUs) => "Invalid Config".to_string(),
+            (Self::StartFailed, UiLanguage::ZhCn) => "启动失败".to_string(),
+            (Self::StartFailed, UiLanguage::EnUs) => "Start Failed".to_string(),
+            (Self::StopFailed, UiLanguage::ZhCn) => "停止失败".to_string(),
+            (Self::StopFailed, UiLanguage::EnUs) => "Stop Failed".to_string(),
+            (Self::QueryFailed, UiLanguage::ZhCn) => "状态查询失败".to_string(),
+            (Self::QueryFailed, UiLanguage::EnUs) => "Status Query Failed".to_string(),
+            (Self::Exited(reason), UiLanguage::ZhCn) => format!("已退出: {reason}"),
+            (Self::Exited(reason), UiLanguage::EnUs) => format!("Exited: {reason}"),
+        }
+    }
+}
+
 #[derive(Debug)]
 struct ClientLauncherApp {
     config: LaunchConfig,
-    status_text: String,
+    ui_language: UiLanguage,
+    status: LauncherStatus,
     running: Option<RunningProcess>,
     logs: VecDeque<String>,
 }
@@ -160,7 +236,8 @@ impl Default for ClientLauncherApp {
     fn default() -> Self {
         Self {
             config: LaunchConfig::default(),
-            status_text: "未启动".to_string(),
+            ui_language: UiLanguage::detect_from_env(),
+            status: LauncherStatus::Idle,
             running: None,
             logs: VecDeque::new(),
         }
@@ -168,6 +245,13 @@ impl Default for ClientLauncherApp {
 }
 
 impl ClientLauncherApp {
+    fn tr<'a>(&self, zh: &'a str, en: &'a str) -> &'a str {
+        match self.ui_language {
+            UiLanguage::ZhCn => zh,
+            UiLanguage::EnUs => en,
+        }
+    }
+
     fn append_log<S: Into<String>>(&mut self, line: S) {
         self.logs.push_back(line.into());
         while self.logs.len() > MAX_LOG_LINES {
@@ -195,7 +279,7 @@ impl ClientLauncherApp {
 
         match running.child.try_wait() {
             Ok(Some(status)) => {
-                self.status_text = format!("已退出: {status}");
+                self.status = LauncherStatus::Exited(status.to_string());
                 self.append_log(format!("launcher exited: {status}"));
                 self.running = None;
             }
@@ -203,7 +287,7 @@ impl ClientLauncherApp {
                 self.running = Some(running);
             }
             Err(err) => {
-                self.status_text = "状态查询失败".to_string();
+                self.status = LauncherStatus::QueryFailed;
                 self.append_log(format!("query child status failed: {err}"));
                 self.running = None;
             }
@@ -214,18 +298,21 @@ impl ClientLauncherApp {
         let mut running = match self.running.take() {
             Some(process) => process,
             None => {
-                self.append_log("无需停止：当前未运行");
+                let message = self
+                    .tr("无需停止：当前未运行", "no running process to stop")
+                    .to_string();
+                self.append_log(message);
                 return;
             }
         };
 
         match stop_child_process(&mut running.child) {
             Ok(()) => {
-                self.status_text = "已停止".to_string();
+                self.status = LauncherStatus::Stopped;
                 self.append_log("launcher stopped");
             }
             Err(err) => {
-                self.status_text = "停止失败".to_string();
+                self.status = LauncherStatus::StopFailed;
                 self.append_log(format!("launcher stop failed: {err}"));
             }
         }
@@ -233,14 +320,20 @@ impl ClientLauncherApp {
 
     fn start_process(&mut self) {
         if self.running.is_some() {
-            self.append_log("启动忽略：进程已运行");
+            let message = self
+                .tr(
+                    "启动忽略：进程已运行",
+                    "skip start: process already running",
+                )
+                .to_string();
+            self.append_log(message);
             return;
         }
 
         let launch_args = match build_launcher_args(&self.config) {
             Ok(args) => args,
             Err(err) => {
-                self.status_text = "参数非法".to_string();
+                self.status = LauncherStatus::InvalidArgs;
                 self.append_log(format!("invalid launcher args: {err}"));
                 return;
             }
@@ -248,12 +341,12 @@ impl ClientLauncherApp {
 
         match spawn_launcher_process(self.config.launcher_bin.as_str(), launch_args.as_slice()) {
             Ok(process) => {
-                self.status_text = "运行中".to_string();
+                self.status = LauncherStatus::Running;
                 self.append_log("launcher started");
                 self.running = Some(process);
             }
             Err(err) => {
-                self.status_text = "启动失败".to_string();
+                self.status = LauncherStatus::StartFailed;
                 self.append_log(format!("launcher start failed: {err}"));
             }
         }
@@ -274,56 +367,82 @@ impl eframe::App for ClientLauncherApp {
 
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             ui.horizontal(|ui| {
-                ui.heading("Agent World 客户端启动器");
+                ui.heading(self.tr("Agent World 客户端启动器", "Agent World Client Launcher"));
                 ui.separator();
-                ui.label(format!("状态: {}", self.status_text));
+                ui.label(format!(
+                    "{}: {}",
+                    self.tr("状态", "Status"),
+                    self.status.text(self.ui_language)
+                ));
+                ui.separator();
+                ui.label(self.tr("语言", "Language"));
+                egui::ComboBox::from_id_salt("launcher_language")
+                    .selected_text(self.ui_language.display_name())
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(
+                            &mut self.ui_language,
+                            UiLanguage::ZhCn,
+                            UiLanguage::ZhCn.display_name(),
+                        );
+                        ui.selectable_value(
+                            &mut self.ui_language,
+                            UiLanguage::EnUs,
+                            UiLanguage::EnUs.display_name(),
+                        );
+                    });
             });
         });
 
         egui::CentralPanel::default().show(ctx, |ui| {
+            let llm_label = self.tr("启用 LLM", "Enable LLM").to_string();
+            let chain_runtime_label = self.tr("启用链运行时", "Enable Chain Runtime").to_string();
+            let auto_open_browser_label = self
+                .tr("自动打开浏览器", "Open Browser Automatically")
+                .to_string();
+
             ui.horizontal_wrapped(|ui| {
-                ui.label("scenario");
+                ui.label(self.tr("场景", "Scenario"));
                 ui.text_edit_singleline(&mut self.config.scenario);
-                ui.label("live bind");
+                ui.label(self.tr("实时服务绑定", "Live Bind"));
                 ui.text_edit_singleline(&mut self.config.live_bind);
-                ui.label("web bind");
+                ui.label(self.tr("WebSocket 绑定", "Web Bind"));
                 ui.text_edit_singleline(&mut self.config.web_bind);
             });
 
             ui.horizontal_wrapped(|ui| {
-                ui.label("viewer host");
+                ui.label(self.tr("游戏页面主机", "Viewer Host"));
                 ui.text_edit_singleline(&mut self.config.viewer_host);
-                ui.label("viewer port");
+                ui.label(self.tr("游戏页面端口", "Viewer Port"));
                 ui.text_edit_singleline(&mut self.config.viewer_port);
-                ui.checkbox(&mut self.config.llm_enabled, "启用 LLM");
-                ui.checkbox(&mut self.config.chain_enabled, "启用链运行时");
-                ui.checkbox(&mut self.config.auto_open_browser, "自动打开浏览器");
+                ui.checkbox(&mut self.config.llm_enabled, llm_label);
+                ui.checkbox(&mut self.config.chain_enabled, chain_runtime_label);
+                ui.checkbox(&mut self.config.auto_open_browser, auto_open_browser_label);
             });
 
             ui.horizontal_wrapped(|ui| {
-                ui.label("chain status bind");
+                ui.label(self.tr("链状态服务绑定", "Chain Status Bind"));
                 ui.text_edit_singleline(&mut self.config.chain_status_bind);
-                ui.label("chain node id");
+                ui.label(self.tr("链节点 ID", "Chain Node ID"));
                 ui.text_edit_singleline(&mut self.config.chain_node_id);
-                ui.label("chain world id");
+                ui.label(self.tr("链世界 ID", "Chain World ID"));
                 ui.text_edit_singleline(&mut self.config.chain_world_id);
             });
 
             ui.horizontal_wrapped(|ui| {
-                ui.label("chain role");
+                ui.label(self.tr("链节点角色", "Chain Role"));
                 ui.text_edit_singleline(&mut self.config.chain_node_role);
-                ui.label("chain tick ms");
+                ui.label(self.tr("链 Tick 毫秒", "Chain Tick Milliseconds"));
                 ui.text_edit_singleline(&mut self.config.chain_node_tick_ms);
-                ui.label("chain validators");
+                ui.label(self.tr("链验证者", "Chain Validators"));
                 ui.text_edit_singleline(&mut self.config.chain_node_validators);
             });
 
             ui.horizontal_wrapped(|ui| {
-                ui.label("launcher bin");
+                ui.label(self.tr("启动器二进制路径", "Launcher Binary"));
                 ui.text_edit_singleline(&mut self.config.launcher_bin);
             });
             ui.horizontal_wrapped(|ui| {
-                ui.label("viewer static dir");
+                ui.label(self.tr("前端静态资源目录", "Viewer Static Directory"));
                 ui.text_edit_singleline(&mut self.config.viewer_static_dir);
             });
 
@@ -331,18 +450,24 @@ impl eframe::App for ClientLauncherApp {
 
             ui.horizontal(|ui| {
                 if ui
-                    .add_enabled(self.running.is_none(), egui::Button::new("启动"))
+                    .add_enabled(
+                        self.running.is_none(),
+                        egui::Button::new(self.tr("启动", "Start")),
+                    )
                     .clicked()
                 {
                     self.start_process();
                 }
                 if ui
-                    .add_enabled(self.running.is_some(), egui::Button::new("停止"))
+                    .add_enabled(
+                        self.running.is_some(),
+                        egui::Button::new(self.tr("停止", "Stop")),
+                    )
                     .clicked()
                 {
                     self.stop_process();
                 }
-                if ui.button("打开游戏页").clicked() {
+                if ui.button(self.tr("打开游戏页", "Open Game Page")).clicked() {
                     let url = self.current_game_url();
                     if let Err(err) = open_browser(url.as_str()) {
                         self.append_log(format!("open browser failed: {err}"));
@@ -350,16 +475,16 @@ impl eframe::App for ClientLauncherApp {
                         self.append_log(format!("open browser: {url}"));
                     }
                 }
-                if ui.button("清空日志").clicked() {
+                if ui.button(self.tr("清空日志", "Clear Logs")).clicked() {
                     self.logs.clear();
                 }
             });
 
             let url = self.current_game_url();
-            ui.label(format!("游戏地址: {url}"));
+            ui.label(format!("{}: {url}", self.tr("游戏地址", "Game URL")));
 
             ui.separator();
-            ui.label("日志（stdout/stderr）");
+            ui.label(self.tr("日志（stdout/stderr）", "Logs (stdout/stderr)"));
 
             egui::ScrollArea::vertical()
                 .auto_shrink([false, false])
@@ -673,7 +798,7 @@ mod tests {
     use super::{
         build_game_url, build_launcher_args, install_cjk_font, normalize_host_for_url,
         parse_chain_role, parse_chain_validators, parse_host_port, parse_port, LaunchConfig,
-        EGUI_CJK_FONT_NAME,
+        LauncherStatus, UiLanguage, EGUI_CJK_FONT_NAME,
     };
     use eframe::egui;
 
@@ -831,5 +956,20 @@ mod tests {
             .get(&egui::FontFamily::Monospace)
             .expect("monospace family");
         assert!(monospace.iter().any(|name| name == EGUI_CJK_FONT_NAME));
+    }
+
+    #[test]
+    fn parse_ui_language_supports_zh_and_en_aliases() {
+        assert_eq!(UiLanguage::from_tag("zh"), Some(UiLanguage::ZhCn));
+        assert_eq!(UiLanguage::from_tag("zh-CN"), Some(UiLanguage::ZhCn));
+        assert_eq!(UiLanguage::from_tag("en"), Some(UiLanguage::EnUs));
+        assert_eq!(UiLanguage::from_tag("EN_us"), Some(UiLanguage::EnUs));
+        assert_eq!(UiLanguage::from_tag("ja"), None);
+    }
+
+    #[test]
+    fn launcher_status_text_is_localized() {
+        assert_eq!(LauncherStatus::Idle.text(UiLanguage::ZhCn), "未启动");
+        assert_eq!(LauncherStatus::Idle.text(UiLanguage::EnUs), "Not Started");
     }
 }
