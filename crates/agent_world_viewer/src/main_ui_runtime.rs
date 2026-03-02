@@ -11,7 +11,6 @@ pub(super) fn setup_3d_scene(
     mut scene: ResMut<Viewer3dScene>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    mut fonts: ResMut<Assets<Font>>,
     asset_server: Res<AssetServer>,
 ) {
     let geometry_tier = config.assets.geometry_tier;
@@ -25,7 +24,7 @@ pub(super) fn setup_3d_scene(
         .id();
     scene.root_entity = Some(root_entity);
 
-    let label_font = load_embedded_cjk_font(&mut fonts);
+    let label_font = load_runtime_cjk_font(&asset_server);
     let agent_mesh = resolve_mesh_handle(
         &asset_server,
         &mut meshes,
@@ -423,11 +422,10 @@ pub(super) fn setup_3d_scene(
 #[allow(dead_code)]
 pub(super) fn setup_ui(
     mut commands: Commands,
-    mut fonts: ResMut<Assets<Font>>,
-    _asset_server: Res<AssetServer>,
+    asset_server: Res<AssetServer>,
     copyable_panel_state: Option<Res<CopyableTextPanelState>>,
 ) {
-    let font = load_embedded_cjk_font(&mut fonts);
+    let font = load_runtime_cjk_font(&asset_server);
     let i18n = UiI18n::default();
     let locale = i18n.locale;
     let copyable_panel_visible = copyable_panel_state

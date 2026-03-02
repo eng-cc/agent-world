@@ -141,6 +141,8 @@ pub(super) struct RightPanelParams<'w, 's> {
     selection: ResMut<'w, ViewerSelection>,
     render_perf: Option<Res<'w, RenderPerfSummary>>,
     viewer_3d_config: Option<Res<'w, Viewer3dConfig>>,
+    viewer_3d_assets: Option<Res<'w, crate::Viewer3dAssets>>,
+    font_assets: Res<'w, Assets<Font>>,
     loading: ResMut<'w, StepControlLoadingState>,
     client: Option<Res<'w, ViewerClient>>,
     control_profile: Option<Res<'w, ViewerControlProfileState>>,
@@ -178,6 +180,8 @@ pub(super) fn render_right_side_panel_egui(
         mut selection,
         render_perf,
         viewer_3d_config,
+        viewer_3d_assets,
+        font_assets,
         mut loading,
         client,
         control_profile,
@@ -196,7 +200,14 @@ pub(super) fn render_right_side_panel_egui(
     let Ok(context) = contexts.ctx_mut() else {
         return;
     };
-    ensure_egui_cjk_font(context, &mut cjk_font_initialized);
+    if let Some(viewer_3d_assets) = viewer_3d_assets.as_deref() {
+        ensure_egui_cjk_font(
+            context,
+            &mut cjk_font_initialized,
+            &font_assets,
+            &viewer_3d_assets.label_font,
+        );
+    }
     let now_secs = context.input(|input| input.time);
     let player_mode_enabled = *experience_mode == ViewerExperienceMode::Player;
     if player_mode_enabled {

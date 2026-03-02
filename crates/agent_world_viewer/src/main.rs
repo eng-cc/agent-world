@@ -113,7 +113,7 @@ use camera_controls::{
     sync_2d_zoom_projection, sync_camera_mode, sync_world_background_visibility,
     update_grid_line_lod_visibility, OrbitDragState, TwoDZoomTier,
 };
-use copyable_text::{load_embedded_cjk_font, CopyableTextPanelState};
+use copyable_text::{load_runtime_cjk_font, CopyableTextPanelState};
 use diagnosis::{spawn_diagnosis_panel, update_diagnosis_panel, DiagnosisState};
 use egui_right_panel::render_right_side_panel_egui;
 use event_click_list::{

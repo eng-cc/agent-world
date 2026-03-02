@@ -8,7 +8,7 @@ pub(super) struct CopyableTextPanelState {
 }
 
 const EGUI_CJK_FONT_NAME: &str = "ms-yahei-cjk";
-const EGUI_CJK_FONT_BYTES: &[u8] = include_bytes!("../assets/fonts/ms-yahei.ttf");
+const CJK_FONT_ASSET_PATH: &str = "fonts/ms-yahei.ttf";
 
 impl Default for CopyableTextPanelState {
     fn default() -> Self {
@@ -32,27 +32,33 @@ pub(super) fn copy_panel_hint(locale: crate::i18n::UiLocale) -> &'static str {
     }
 }
 
-pub(super) fn ensure_egui_cjk_font(context: &egui::Context, initialized: &mut bool) {
+pub(super) fn ensure_egui_cjk_font(
+    context: &egui::Context,
+    initialized: &mut bool,
+    font_assets: &Assets<Font>,
+    cjk_font: &Handle<Font>,
+) {
     if *initialized {
         return;
     }
 
+    let Some(font) = font_assets.get(cjk_font) else {
+        return;
+    };
     let mut fonts = egui::FontDefinitions::default();
-    install_cjk_font(&mut fonts);
+    install_cjk_font(&mut fonts, font.data.as_ref().as_slice());
     context.set_fonts(fonts);
     *initialized = true;
 }
 
-pub(super) fn load_embedded_cjk_font(font_assets: &mut Assets<Font>) -> Handle<Font> {
-    let font = Font::try_from_bytes(EGUI_CJK_FONT_BYTES.to_vec())
-        .expect("embedded CJK font bytes must be valid");
-    font_assets.add(font)
+pub(super) fn load_runtime_cjk_font(asset_server: &AssetServer) -> Handle<Font> {
+    asset_server.load(CJK_FONT_ASSET_PATH)
 }
 
-fn install_cjk_font(fonts: &mut egui::FontDefinitions) {
+fn install_cjk_font(fonts: &mut egui::FontDefinitions, font_bytes: &[u8]) {
     fonts.font_data.insert(
         EGUI_CJK_FONT_NAME.to_string(),
-        Arc::new(egui::FontData::from_static(EGUI_CJK_FONT_BYTES)),
+        Arc::new(egui::FontData::from_owned(font_bytes.to_vec())),
     );
 
     fonts
@@ -75,7 +81,7 @@ mod tests {
     #[test]
     fn install_cjk_font_registers_font_and_priority() {
         let mut fonts = egui::FontDefinitions::default();
-        install_cjk_font(&mut fonts);
+        install_cjk_font(&mut fonts, b"fake-font-bytes");
 
         assert!(fonts.font_data.contains_key(EGUI_CJK_FONT_NAME));
 
@@ -93,6 +99,11 @@ mod tests {
             .get(&egui::FontFamily::Monospace)
             .expect("monospace family");
         assert!(monospace.iter().any(|name| name == EGUI_CJK_FONT_NAME));
+    }
+
+    #[test]
+    fn load_runtime_cjk_font_uses_expected_asset_path() {
+        assert_eq!(CJK_FONT_ASSET_PATH, "fonts/ms-yahei.ttf");
     }
 
     #[test]

@@ -3,7 +3,7 @@
 ## 任务拆解
 - [x] T0 建档：设计文档与项目管理文档
 - [x] T1 代码改造：`bevy` feature 精细化并跑编译回归
-- [ ] T2 代码改造：字体改为运行时资源加载并跑编译回归
+- [x] T2 代码改造：字体改为运行时资源加载并跑编译回归
 - [ ] T3 体积验证与收口：trunk release 对比 + 文档/日志更新
 
 ## 依赖
@@ -12,6 +12,7 @@
 - `crates/agent_world_viewer/src/copyable_text.rs`
 - `crates/agent_world_viewer/src/main_ui_runtime.rs`
 - `crates/agent_world_viewer/src/main.rs`
+- `crates/agent_world_viewer/src/egui_right_panel.rs`
 
 ## 状态
-- 当前阶段：进行中（T0~T1 已完成，执行 T2）
+- 当前阶段：进行中（T0~T2 已完成，执行 T3）
