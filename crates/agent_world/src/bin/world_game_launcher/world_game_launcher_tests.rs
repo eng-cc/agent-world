@@ -4,10 +4,12 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::{
-    build_game_url, content_type_for_path, parse_host_port, parse_options,
-    resolve_static_asset_path, sanitize_index_html_for_embedded_server,
-    sanitize_relative_request_path, CliOptions, DEFAULT_CHAIN_NODE_ID, DEFAULT_CHAIN_STATUS_BIND,
-    DEFAULT_LIVE_BIND, DEFAULT_SCENARIO,
+    build_game_url, build_viewer_auth_bootstrap_script, content_type_for_path, parse_host_port,
+    parse_options, resolve_static_asset_path, resolve_viewer_auth_bootstrap_from_path,
+    sanitize_index_html_for_embedded_server, sanitize_relative_request_path, CliOptions,
+    ViewerAuthBootstrap, DEFAULT_CHAIN_NODE_ID, DEFAULT_CHAIN_STATUS_BIND, DEFAULT_LIVE_BIND,
+    DEFAULT_SCENARIO, VIEWER_AUTH_BOOTSTRAP_OBJECT, VIEWER_AUTH_PRIVATE_KEY_ENV,
+    VIEWER_AUTH_PUBLIC_KEY_ENV, VIEWER_PLAYER_ID_ENV,
 };
 
 #[test]
@@ -212,7 +214,7 @@ fn sanitize_index_html_for_embedded_server_removes_trunk_reload_script() {
         "</body></html>"
     );
     let sanitized =
-        sanitize_index_html_for_embedded_server(Path::new("index.html"), html.as_bytes());
+        sanitize_index_html_for_embedded_server(Path::new("index.html"), html.as_bytes(), None);
     let sanitized = String::from_utf8(sanitized).expect("utf-8");
     assert!(sanitized.contains("window.bootstrap = true"));
     assert!(!sanitized.contains(".well-known/trunk/ws"));
@@ -222,8 +224,64 @@ fn sanitize_index_html_for_embedded_server_removes_trunk_reload_script() {
 #[test]
 fn sanitize_index_html_for_embedded_server_keeps_non_index_files_unchanged() {
     let body = b"<script>.well-known/trunk/ws</script>";
-    let sanitized = sanitize_index_html_for_embedded_server(Path::new("app.js"), body);
+    let sanitized = sanitize_index_html_for_embedded_server(Path::new("app.js"), body, None);
     assert_eq!(sanitized, body);
+}
+
+#[test]
+fn sanitize_index_html_for_embedded_server_injects_viewer_auth_bootstrap() {
+    let html = "<html><head></head><body><div id=\"app\"></div></body></html>";
+    let auth = ViewerAuthBootstrap {
+        player_id: "viewer-player".to_string(),
+        public_key: "pub-hex".to_string(),
+        private_key: "priv-hex".to_string(),
+    };
+    let sanitized = sanitize_index_html_for_embedded_server(
+        Path::new("index.html"),
+        html.as_bytes(),
+        Some(&auth),
+    );
+    let sanitized = String::from_utf8(sanitized).expect("utf-8");
+    assert!(sanitized.contains(VIEWER_AUTH_BOOTSTRAP_OBJECT));
+    assert!(sanitized.contains(VIEWER_PLAYER_ID_ENV));
+    assert!(sanitized.contains(VIEWER_AUTH_PUBLIC_KEY_ENV));
+    assert!(sanitized.contains(VIEWER_AUTH_PRIVATE_KEY_ENV));
+    assert!(sanitized.contains("viewer-player"));
+    assert!(sanitized.contains("pub-hex"));
+    assert!(sanitized.contains("priv-hex"));
+}
+
+#[test]
+fn build_viewer_auth_bootstrap_script_contains_expected_window_object() {
+    let auth = ViewerAuthBootstrap {
+        player_id: "viewer-player".to_string(),
+        public_key: "public".to_string(),
+        private_key: "private".to_string(),
+    };
+    let script = build_viewer_auth_bootstrap_script(&auth);
+    assert!(script.contains("window."));
+    assert!(script.contains(VIEWER_AUTH_BOOTSTRAP_OBJECT));
+    assert!(script.contains(VIEWER_PLAYER_ID_ENV));
+    assert!(script.contains(VIEWER_AUTH_PUBLIC_KEY_ENV));
+    assert!(script.contains(VIEWER_AUTH_PRIVATE_KEY_ENV));
+}
+
+#[test]
+fn resolve_viewer_auth_bootstrap_from_path_reads_node_keypair() {
+    let temp_dir = make_temp_dir("viewer_auth_bootstrap");
+    let config_path = temp_dir.join("config.toml");
+    fs::write(
+        &config_path,
+        "[node]\nprivate_key = \"private-key-hex\"\npublic_key = \"public-key-hex\"\n",
+    )
+    .expect("write config");
+
+    let auth =
+        resolve_viewer_auth_bootstrap_from_path(config_path.as_path()).expect("resolve auth");
+    assert_eq!(auth.public_key, "public-key-hex");
+    assert_eq!(auth.private_key, "private-key-hex");
+    assert!(!auth.player_id.trim().is_empty());
+    let _ = fs::remove_dir_all(temp_dir);
 }
 
 fn make_temp_dir(label: &str) -> PathBuf {

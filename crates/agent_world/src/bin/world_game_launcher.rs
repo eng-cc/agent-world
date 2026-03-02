@@ -17,12 +17,28 @@ const DEFAULT_WEB_BIND: &str = "127.0.0.1:5011";
 const DEFAULT_VIEWER_HOST: &str = "127.0.0.1";
 const DEFAULT_VIEWER_PORT: u16 = 4173;
 const DEFAULT_VIEWER_STATIC_DIR: &str = "web";
+const DEFAULT_VIEWER_PLAYER_ID: &str = "viewer-player";
 const DEFAULT_CHAIN_STATUS_BIND: &str = "127.0.0.1:5121";
 const DEFAULT_CHAIN_NODE_ID: &str = "viewer-live-node";
 const DEFAULT_CHAIN_NODE_ROLE: &str = "sequencer";
 const DEFAULT_CHAIN_NODE_TICK_MS: u64 = 200;
+const VIEWER_PLAYER_ID_ENV: &str = "AGENT_WORLD_VIEWER_PLAYER_ID";
+const VIEWER_AUTH_PUBLIC_KEY_ENV: &str = "AGENT_WORLD_VIEWER_AUTH_PUBLIC_KEY";
+const VIEWER_AUTH_PRIVATE_KEY_ENV: &str = "AGENT_WORLD_VIEWER_AUTH_PRIVATE_KEY";
+const VIEWER_AUTH_BOOTSTRAP_OBJECT: &str = "__AGENT_WORLD_VIEWER_AUTH_ENV";
+const NODE_CONFIG_FILE_NAME: &str = "config.toml";
+const NODE_TABLE_KEY: &str = "node";
+const NODE_PRIVATE_KEY_FIELD: &str = "private_key";
+const NODE_PUBLIC_KEY_FIELD: &str = "public_key";
 static TERMINATION_REQUESTED: AtomicBool = AtomicBool::new(false);
 static SIGNAL_HANDLER_INSTALL: OnceLock<Result<(), String>> = OnceLock::new();
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ViewerAuthBootstrap {
+    player_id: String,
+    public_key: String,
+    private_key: String,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct CliOptions {
@@ -343,7 +359,13 @@ fn handle_http_connection(mut stream: TcpStream, root_dir: &Path) -> Result<(), 
             let body = fs::read(&path).map_err(|err| {
                 format!("failed to read static asset `{}`: {err}", path.display())
             })?;
-            let body = sanitize_index_html_for_embedded_server(path.as_path(), body.as_slice());
+            let viewer_auth_bootstrap =
+                resolve_viewer_auth_bootstrap_from_path(Path::new(NODE_CONFIG_FILE_NAME)).ok();
+            let body = sanitize_index_html_for_embedded_server(
+                path.as_path(),
+                body.as_slice(),
+                viewer_auth_bootstrap.as_ref(),
+            );
             write_http_response(
                 &mut stream,
                 200,
@@ -435,11 +457,20 @@ fn content_type_for_path(path: &Path) -> &'static str {
     }
 }
 
-fn sanitize_index_html_for_embedded_server(path: &Path, body: &[u8]) -> Vec<u8> {
+fn sanitize_index_html_for_embedded_server(
+    path: &Path,
+    body: &[u8],
+    viewer_auth_bootstrap: Option<&ViewerAuthBootstrap>,
+) -> Vec<u8> {
     if path.file_name() != Some(OsStr::new("index.html")) {
         return body.to_vec();
     }
-    strip_trunk_autoreload_script(body)
+    let sanitized = strip_trunk_autoreload_script(body);
+    if let Some(viewer_auth_bootstrap) = viewer_auth_bootstrap {
+        inject_viewer_auth_bootstrap_script(sanitized.as_slice(), viewer_auth_bootstrap)
+    } else {
+        sanitized
+    }
 }
 
 fn strip_trunk_autoreload_script(body: &[u8]) -> Vec<u8> {
@@ -460,6 +491,68 @@ fn strip_trunk_autoreload_script(body: &[u8]) -> Vec<u8> {
     sanitized.push_str(&html[..script_start]);
     sanitized.push_str(&html[script_end..]);
     sanitized.into_bytes()
+}
+
+fn inject_viewer_auth_bootstrap_script(body: &[u8], auth: &ViewerAuthBootstrap) -> Vec<u8> {
+    let html = String::from_utf8_lossy(body);
+    let script = build_viewer_auth_bootstrap_script(auth);
+    let insert_at = html
+        .rfind("</head>")
+        .or_else(|| html.rfind("</body>"))
+        .unwrap_or(html.len());
+    let mut injected = String::with_capacity(html.len() + script.len() + 1);
+    injected.push_str(&html[..insert_at]);
+    injected.push_str(script.as_str());
+    injected.push_str(&html[insert_at..]);
+    injected.into_bytes()
+}
+
+fn build_viewer_auth_bootstrap_script(auth: &ViewerAuthBootstrap) -> String {
+    let payload = serde_json::json!({
+        VIEWER_PLAYER_ID_ENV: auth.player_id,
+        VIEWER_AUTH_PUBLIC_KEY_ENV: auth.public_key,
+        VIEWER_AUTH_PRIVATE_KEY_ENV: auth.private_key,
+    });
+    let payload = serde_json::to_string(&payload).unwrap_or_else(|_| "{}".to_string());
+    format!("<script>window.{VIEWER_AUTH_BOOTSTRAP_OBJECT}=Object.freeze({payload});</script>")
+}
+
+fn resolve_viewer_auth_bootstrap_from_path(path: &Path) -> Result<ViewerAuthBootstrap, String> {
+    let content =
+        fs::read_to_string(path).map_err(|err| format!("read {} failed: {err}", path.display()))?;
+    let value: toml::Value = toml::from_str(content.as_str())
+        .map_err(|err| format!("parse {} failed: {err}", path.display()))?;
+    let node = value
+        .get(NODE_TABLE_KEY)
+        .and_then(toml::Value::as_table)
+        .ok_or_else(|| format!("{NODE_TABLE_KEY} table is missing in {}", path.display()))?;
+    let private_key =
+        resolve_required_toml_string(node, NODE_PRIVATE_KEY_FIELD, "node.private_key")?;
+    let public_key = resolve_required_toml_string(node, NODE_PUBLIC_KEY_FIELD, "node.public_key")?;
+    let player_id = env::var(VIEWER_PLAYER_ID_ENV)
+        .ok()
+        .map(|raw| raw.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| DEFAULT_VIEWER_PLAYER_ID.to_string());
+    Ok(ViewerAuthBootstrap {
+        player_id,
+        public_key,
+        private_key,
+    })
+}
+
+fn resolve_required_toml_string(
+    table: &toml::value::Table,
+    key: &str,
+    label: &str,
+) -> Result<String, String> {
+    let value = table
+        .get(key)
+        .and_then(toml::Value::as_str)
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| format!("{label} is missing or empty"))?;
+    Ok(value.to_string())
 }
 
 fn write_http_response(
