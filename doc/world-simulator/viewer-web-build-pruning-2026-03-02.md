@@ -39,3 +39,17 @@
   - 通过 wasm 下显式拒绝分支替代 runtime 调用，避免编译失败或运行期不确定行为。
 - 仅做模块裁剪后，若体积下降不达预期：
   - 记录下一阶段候选（如字体资产策略、Bevy feature 细化）。
+
+## 完成态（2026-03-02）
+- 已完成 wasm 路径裁剪：
+  - `agent_world` 在 wasm 目标下不再编译 `runtime`、`consensus_action_payload`、`viewer` 的 live/server/web_bridge 分支。
+  - `simulator` 在 wasm 下对 `compile_module_artifact_from_source` 返回明确拒绝，避免 runtime 依赖回流。
+  - native-only 依赖已迁移到 `cfg(not(target_arch = "wasm32"))`。
+- 依赖树收敛：
+  - `cargo tree -p agent_world_viewer --target wasm32-unknown-unknown` 行数从 `1838` 降到 `1375`。
+  - 已不再出现 `agent_world_node/libp2p/async-openai/reqwest/tokio/tungstenite` 于 wasm viewer 依赖树。
+- 体积结果：
+  - baseline wasm：`70,761,540` bytes
+  - pruned wasm：`70,754,079` bytes
+  - 下降：`7,461` bytes（`0.0105%`）
+- 结论：当前 wasm 产物大头不在本轮被剥离模块，下一阶段应优先关注字体嵌入与 Bevy feature 精细化。

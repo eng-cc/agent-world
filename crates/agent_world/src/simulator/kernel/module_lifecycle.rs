@@ -2,7 +2,6 @@ use super::super::world_model::{InstalledModuleState, ModuleArtifactState};
 use super::super::ModuleInstallTarget;
 use super::types::{RejectReason, WorldEventKind};
 use super::WorldKernel;
-use crate::runtime::{compile_module_artifact_from_source, ModuleSourcePackage};
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
 
@@ -54,17 +53,13 @@ impl WorldKernel {
             };
         }
 
-        let source_package = ModuleSourcePackage {
-            manifest_path,
-            files: source_files,
-        };
         let compiled_bytes =
-            match compile_module_artifact_from_source(module_id.as_str(), &source_package) {
+            match compile_module_source_artifact(module_id.as_str(), manifest_path, source_files) {
                 Ok(bytes) => bytes,
-                Err(err) => {
+                Err(message) => {
                     return WorldEventKind::ActionRejected {
                         reason: RejectReason::RuleDenied {
-                            notes: vec![format!("compile module source rejected: {err:?}")],
+                            notes: vec![format!("compile module source rejected: {message}")],
                         },
                     };
                 }
@@ -337,6 +332,29 @@ impl WorldKernel {
             module_id_hint,
         }
     }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn compile_module_source_artifact(
+    module_id: &str,
+    manifest_path: String,
+    source_files: BTreeMap<String, Vec<u8>>,
+) -> Result<Vec<u8>, String> {
+    let source_package = crate::runtime::ModuleSourcePackage {
+        manifest_path,
+        files: source_files,
+    };
+    crate::runtime::compile_module_artifact_from_source(module_id, &source_package)
+        .map_err(|err| format!("{err:?}"))
+}
+
+#[cfg(target_arch = "wasm32")]
+fn compile_module_source_artifact(
+    _module_id: &str,
+    _manifest_path: String,
+    _source_files: BTreeMap<String, Vec<u8>>,
+) -> Result<Vec<u8>, String> {
+    Err("source compilation is unavailable on wasm32 target".to_string())
 }
 
 fn sha256_hex(bytes: &[u8]) -> String {

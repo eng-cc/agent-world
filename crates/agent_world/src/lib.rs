@@ -1,8 +1,10 @@
 extern crate self as agent_world;
 
+#[cfg(not(target_arch = "wasm32"))]
 pub mod consensus_action_payload;
 pub mod geometry;
 pub mod models;
+#[cfg(not(target_arch = "wasm32"))]
 pub mod runtime;
 pub mod simulator;
 pub mod viewer;

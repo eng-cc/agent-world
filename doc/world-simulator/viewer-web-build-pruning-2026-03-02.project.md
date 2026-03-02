@@ -2,9 +2,9 @@
 
 ## 任务拆解
 - [x] T0 建档：设计文档与项目管理文档
-- [ ] T1 代码裁剪：wasm 路径剥离 non-web 模块与 native-only 依赖
-- [ ] T2 回归验证：wasm check + trunk release 构建 + 体积对比
-- [ ] T3 收口：更新文档状态与当日日志
+- [x] T1 代码裁剪：wasm 路径剥离 non-web 模块与 native-only 依赖
+- [x] T2 回归验证：wasm check + trunk release 构建 + 体积对比
+- [x] T3 收口：更新文档状态与当日日志
 
 ## 依赖
 - `doc/world-simulator/viewer-web-build-pruning-2026-03-02.md`
@@ -16,4 +16,4 @@
 - `crates/agent_world/Cargo.toml`
 
 ## 状态
-- 当前阶段：进行中（T0 已完成，执行 T1）
+- 当前阶段：已完成（T0~T3）
