@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 use std::env;
 use std::io::{BufRead, BufReader, Read};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 use std::sync::Arc;
@@ -223,6 +223,85 @@ impl LauncherStatus {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ConfigIssue {
+    ScenarioRequired,
+    LiveBindInvalid,
+    WebBindInvalid,
+    ViewerHostRequired,
+    ViewerPortInvalid,
+    ViewerStaticDirRequired,
+    ViewerStaticDirMissing,
+    LauncherBinRequired,
+    LauncherBinMissing,
+    ChainStatusBindInvalid,
+    ChainNodeIdRequired,
+    ChainRoleInvalid,
+    ChainTickMsInvalid,
+    ChainValidatorsInvalid,
+}
+
+impl ConfigIssue {
+    fn text(self, language: UiLanguage) -> &'static str {
+        match (self, language) {
+            (Self::ScenarioRequired, UiLanguage::ZhCn) => "场景（scenario）是必填项",
+            (Self::ScenarioRequired, UiLanguage::EnUs) => "Scenario is required",
+            (Self::LiveBindInvalid, UiLanguage::ZhCn) => "实时服务绑定必须是 <host:port>",
+            (Self::LiveBindInvalid, UiLanguage::EnUs) => "Live bind must be in <host:port> format",
+            (Self::WebBindInvalid, UiLanguage::ZhCn) => "WebSocket 绑定必须是 <host:port>",
+            (Self::WebBindInvalid, UiLanguage::EnUs) => "Web bind must be in <host:port> format",
+            (Self::ViewerHostRequired, UiLanguage::ZhCn) => "游戏页面主机（viewer host）是必填项",
+            (Self::ViewerHostRequired, UiLanguage::EnUs) => "Viewer host is required",
+            (Self::ViewerPortInvalid, UiLanguage::ZhCn) => {
+                "游戏页面端口（viewer port）必须在 1..=65535"
+            }
+            (Self::ViewerPortInvalid, UiLanguage::EnUs) => {
+                "Viewer port must be an integer in 1..=65535"
+            }
+            (Self::ViewerStaticDirRequired, UiLanguage::ZhCn) => {
+                "前端静态资源目录（viewer static dir）是必填项"
+            }
+            (Self::ViewerStaticDirRequired, UiLanguage::EnUs) => {
+                "Viewer static directory is required"
+            }
+            (Self::ViewerStaticDirMissing, UiLanguage::ZhCn) => "前端静态资源目录不存在或不是目录",
+            (Self::ViewerStaticDirMissing, UiLanguage::EnUs) => {
+                "Viewer static directory does not exist or is not a directory"
+            }
+            (Self::LauncherBinRequired, UiLanguage::ZhCn) => {
+                "启动器二进制路径（launcher bin）是必填项"
+            }
+            (Self::LauncherBinRequired, UiLanguage::EnUs) => "Launcher binary path is required",
+            (Self::LauncherBinMissing, UiLanguage::ZhCn) => "启动器二进制文件不存在",
+            (Self::LauncherBinMissing, UiLanguage::EnUs) => "Launcher binary file does not exist",
+            (Self::ChainStatusBindInvalid, UiLanguage::ZhCn) => "链状态服务绑定必须是 <host:port>",
+            (Self::ChainStatusBindInvalid, UiLanguage::EnUs) => {
+                "Chain status bind must be in <host:port> format"
+            }
+            (Self::ChainNodeIdRequired, UiLanguage::ZhCn) => "链节点 ID（chain node id）是必填项",
+            (Self::ChainNodeIdRequired, UiLanguage::EnUs) => "Chain node id is required",
+            (Self::ChainRoleInvalid, UiLanguage::ZhCn) => {
+                "链节点角色必须是 sequencer/storage/observer"
+            }
+            (Self::ChainRoleInvalid, UiLanguage::EnUs) => {
+                "Chain role must be one of: sequencer/storage/observer"
+            }
+            (Self::ChainTickMsInvalid, UiLanguage::ZhCn) => {
+                "链 Tick 毫秒（chain tick ms）必须是正整数"
+            }
+            (Self::ChainTickMsInvalid, UiLanguage::EnUs) => {
+                "Chain tick milliseconds must be a positive integer"
+            }
+            (Self::ChainValidatorsInvalid, UiLanguage::ZhCn) => {
+                "链验证者（chain validators）格式必须是 <validator_id:stake>"
+            }
+            (Self::ChainValidatorsInvalid, UiLanguage::EnUs) => {
+                "Chain validators must be in <validator_id:stake> format"
+            }
+        }
+    }
+}
+
 #[derive(Debug)]
 struct ClientLauncherApp {
     config: LaunchConfig,
@@ -330,6 +409,22 @@ impl ClientLauncherApp {
             return;
         }
 
+        let config_issues = collect_required_config_issues(&self.config);
+        if !config_issues.is_empty() {
+            self.status = LauncherStatus::InvalidArgs;
+            let message = self
+                .tr(
+                    "启动前校验失败：请先修复必填配置项",
+                    "preflight validation failed: fix required configuration issues first",
+                )
+                .to_string();
+            self.append_log(message);
+            for issue in config_issues {
+                self.append_log(format!("- {}", issue.text(self.ui_language)));
+            }
+            return;
+        }
+
         let launch_args = match build_launcher_args(&self.config) {
             Ok(args) => args,
             Err(err) => {
@@ -399,6 +494,8 @@ impl eframe::App for ClientLauncherApp {
             let auto_open_browser_label = self
                 .tr("自动打开浏览器", "Open Browser Automatically")
                 .to_string();
+            let required_issues = collect_required_config_issues(&self.config);
+            let can_start = self.running.is_none() && required_issues.is_empty();
 
             ui.horizontal_wrapped(|ui| {
                 ui.label(self.tr("场景", "Scenario"));
@@ -446,14 +543,34 @@ impl eframe::App for ClientLauncherApp {
                 ui.text_edit_singleline(&mut self.config.viewer_static_dir);
             });
 
+            if required_issues.is_empty() {
+                ui.colored_label(
+                    egui::Color32::from_rgb(36, 130, 78),
+                    self.tr(
+                        "必填配置项已通过校验，可启动游戏",
+                        "Required configuration check passed; launcher can start",
+                    ),
+                );
+            } else {
+                ui.group(|ui| {
+                    ui.colored_label(
+                        egui::Color32::from_rgb(188, 60, 60),
+                        self.tr(
+                            "启动前请先修复以下必填配置项：",
+                            "Fix the required configuration issues before starting:",
+                        ),
+                    );
+                    for issue in &required_issues {
+                        ui.label(format!("- {}", issue.text(self.ui_language)));
+                    }
+                });
+            }
+
             ui.separator();
 
             ui.horizontal(|ui| {
                 if ui
-                    .add_enabled(
-                        self.running.is_none(),
-                        egui::Button::new(self.tr("启动", "Start")),
-                    )
+                    .add_enabled(can_start, egui::Button::new(self.tr("启动", "Start")))
                     .clicked()
                 {
                     self.start_process();
@@ -498,6 +615,60 @@ impl eframe::App for ClientLauncherApp {
 
         ctx.request_repaint_after(Duration::from_millis(120));
     }
+}
+
+fn collect_required_config_issues(config: &LaunchConfig) -> Vec<ConfigIssue> {
+    let mut issues = Vec::new();
+
+    if config.scenario.trim().is_empty() {
+        issues.push(ConfigIssue::ScenarioRequired);
+    }
+    if parse_host_port(config.live_bind.as_str(), "live bind").is_err() {
+        issues.push(ConfigIssue::LiveBindInvalid);
+    }
+    if parse_host_port(config.web_bind.as_str(), "web bind").is_err() {
+        issues.push(ConfigIssue::WebBindInvalid);
+    }
+    if config.viewer_host.trim().is_empty() {
+        issues.push(ConfigIssue::ViewerHostRequired);
+    }
+    if parse_port(config.viewer_port.as_str(), "viewer port").is_err() {
+        issues.push(ConfigIssue::ViewerPortInvalid);
+    }
+
+    let viewer_static_dir = config.viewer_static_dir.trim();
+    if viewer_static_dir.is_empty() {
+        issues.push(ConfigIssue::ViewerStaticDirRequired);
+    } else if !Path::new(viewer_static_dir).is_dir() {
+        issues.push(ConfigIssue::ViewerStaticDirMissing);
+    }
+
+    let launcher_bin = config.launcher_bin.trim();
+    if launcher_bin.is_empty() {
+        issues.push(ConfigIssue::LauncherBinRequired);
+    } else if !Path::new(launcher_bin).is_file() {
+        issues.push(ConfigIssue::LauncherBinMissing);
+    }
+
+    if config.chain_enabled {
+        if parse_host_port(config.chain_status_bind.as_str(), "chain status bind").is_err() {
+            issues.push(ConfigIssue::ChainStatusBindInvalid);
+        }
+        if config.chain_node_id.trim().is_empty() {
+            issues.push(ConfigIssue::ChainNodeIdRequired);
+        }
+        if parse_chain_role(config.chain_node_role.as_str()).is_err() {
+            issues.push(ConfigIssue::ChainRoleInvalid);
+        }
+        if parse_port(config.chain_node_tick_ms.as_str(), "chain tick ms").is_err() {
+            issues.push(ConfigIssue::ChainTickMsInvalid);
+        }
+        if parse_chain_validators(config.chain_node_validators.as_str()).is_err() {
+            issues.push(ConfigIssue::ChainValidatorsInvalid);
+        }
+    }
+
+    issues
 }
 
 fn build_launcher_args(config: &LaunchConfig) -> Result<Vec<String>, String> {
@@ -796,37 +967,32 @@ fn open_browser(url: &str) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::{
-        build_game_url, build_launcher_args, install_cjk_font, normalize_host_for_url,
-        parse_chain_role, parse_chain_validators, parse_host_port, parse_port, LaunchConfig,
-        LauncherStatus, UiLanguage, EGUI_CJK_FONT_NAME,
+        build_game_url, build_launcher_args, collect_required_config_issues, install_cjk_font,
+        normalize_host_for_url, parse_chain_role, parse_chain_validators, parse_host_port,
+        parse_port, ConfigIssue, LaunchConfig, LauncherStatus, UiLanguage, EGUI_CJK_FONT_NAME,
     };
     use eframe::egui;
-
     #[test]
     fn parse_port_rejects_zero() {
         let err = parse_port("0", "viewer port").expect_err("should fail");
         assert!(err.contains("1..=65535"));
     }
-
     #[test]
     fn parse_host_port_requires_colon() {
         let err = parse_host_port("127.0.0.1", "web bind").expect_err("should fail");
         assert!(err.contains("<host:port>"));
     }
-
     #[test]
     fn parse_host_port_accepts_bracketed_ipv6() {
         let (host, port) = parse_host_port("[::1]:5011", "web bind").expect("ok");
         assert_eq!(host, "::1");
         assert_eq!(port, 5011);
     }
-
     #[test]
     fn parse_host_port_rejects_unbracketed_ipv6() {
         let err = parse_host_port("::1:5011", "web bind").expect_err("should fail");
         assert!(err.contains("wrapped in []"));
     }
-
     #[test]
     fn build_launcher_args_contains_llm_and_no_open_switches() {
         let config = LaunchConfig {
@@ -841,7 +1007,6 @@ mod tests {
         assert!(args.contains(&"--viewer-static-dir".to_string()));
         assert!(args.contains(&"--chain-disable".to_string()));
     }
-
     #[test]
     fn build_launcher_args_rejects_empty_static_dir() {
         let config = LaunchConfig {
@@ -851,7 +1016,6 @@ mod tests {
         let err = build_launcher_args(&config).expect_err("should fail");
         assert!(err.contains("static dir"));
     }
-
     #[test]
     fn build_game_url_rewrites_zero_host() {
         let config = LaunchConfig {
@@ -863,7 +1027,6 @@ mod tests {
         let url = build_game_url(&config);
         assert_eq!(url, "http://127.0.0.1:4173/?ws=ws://127.0.0.1:5011");
     }
-
     #[test]
     fn build_game_url_brackets_ipv6_hosts() {
         let config = LaunchConfig {
@@ -875,21 +1038,18 @@ mod tests {
         let url = build_game_url(&config);
         assert_eq!(url, "http://[::1]:4173/?ws=ws://[::1]:5011");
     }
-
     #[test]
     fn normalize_host_for_url_maps_empty_and_any() {
         assert_eq!(normalize_host_for_url("0.0.0.0"), "127.0.0.1");
         assert_eq!(normalize_host_for_url(""), "127.0.0.1");
         assert_eq!(normalize_host_for_url("192.168.0.2"), "192.168.0.2");
     }
-
     #[test]
     fn launch_config_defaults_enable_llm() {
         let config = LaunchConfig::default();
         assert!(config.llm_enabled);
         assert!(config.chain_enabled);
     }
-
     #[test]
     fn build_launcher_args_contains_chain_overrides_when_enabled() {
         let config = LaunchConfig {
@@ -918,19 +1078,16 @@ mod tests {
         assert!(args.contains(&"node-a:55".to_string()));
         assert!(args.contains(&"node-b:45".to_string()));
     }
-
     #[test]
     fn parse_chain_role_rejects_invalid_value() {
         let err = parse_chain_role("invalid").expect_err("should fail");
         assert!(err.contains("sequencer|storage|observer"));
     }
-
     #[test]
     fn parse_chain_validators_rejects_invalid_format() {
         let err = parse_chain_validators("node-a").expect_err("should fail");
         assert!(err.contains("<validator_id:stake>"));
     }
-
     #[test]
     fn install_cjk_font_registers_font_and_priority() {
         let mut fonts = egui::FontDefinitions::default();
@@ -957,7 +1114,6 @@ mod tests {
             .expect("monospace family");
         assert!(monospace.iter().any(|name| name == EGUI_CJK_FONT_NAME));
     }
-
     #[test]
     fn parse_ui_language_supports_zh_and_en_aliases() {
         assert_eq!(UiLanguage::from_tag("zh"), Some(UiLanguage::ZhCn));
@@ -966,10 +1122,63 @@ mod tests {
         assert_eq!(UiLanguage::from_tag("EN_us"), Some(UiLanguage::EnUs));
         assert_eq!(UiLanguage::from_tag("ja"), None);
     }
-
     #[test]
     fn launcher_status_text_is_localized() {
         assert_eq!(LauncherStatus::Idle.text(UiLanguage::ZhCn), "未启动");
         assert_eq!(LauncherStatus::Idle.text(UiLanguage::EnUs), "Not Started");
+    }
+    #[test]
+    fn collect_required_config_issues_reports_missing_required_fields() {
+        let config = LaunchConfig {
+            scenario: "".to_string(),
+            live_bind: "127.0.0.1".to_string(),
+            web_bind: "127.0.0.1".to_string(),
+            viewer_host: "".to_string(),
+            viewer_port: "0".to_string(),
+            viewer_static_dir: "".to_string(),
+            launcher_bin: "".to_string(),
+            chain_enabled: true,
+            chain_status_bind: "127.0.0.1".to_string(),
+            chain_node_id: "".to_string(),
+            chain_node_role: "invalid".to_string(),
+            chain_node_tick_ms: "0".to_string(),
+            chain_node_validators: "node-a".to_string(),
+            ..LaunchConfig::default()
+        };
+
+        let issues = collect_required_config_issues(&config);
+        assert!(issues.contains(&ConfigIssue::ScenarioRequired));
+        assert!(issues.contains(&ConfigIssue::LiveBindInvalid));
+        assert!(issues.contains(&ConfigIssue::WebBindInvalid));
+        assert!(issues.contains(&ConfigIssue::ViewerHostRequired));
+        assert!(issues.contains(&ConfigIssue::ViewerPortInvalid));
+        assert!(issues.contains(&ConfigIssue::ViewerStaticDirRequired));
+        assert!(issues.contains(&ConfigIssue::LauncherBinRequired));
+        assert!(issues.contains(&ConfigIssue::ChainStatusBindInvalid));
+        assert!(issues.contains(&ConfigIssue::ChainNodeIdRequired));
+        assert!(issues.contains(&ConfigIssue::ChainRoleInvalid));
+        assert!(issues.contains(&ConfigIssue::ChainTickMsInvalid));
+        assert!(issues.contains(&ConfigIssue::ChainValidatorsInvalid));
+    }
+    #[test]
+    fn collect_required_config_issues_accepts_valid_required_fields() {
+        let launcher_bin = std::env::current_exe()
+            .expect("current exe")
+            .to_string_lossy()
+            .to_string();
+        let config = LaunchConfig {
+            scenario: "llm_bootstrap".to_string(),
+            live_bind: "127.0.0.1:5023".to_string(),
+            web_bind: "127.0.0.1:5011".to_string(),
+            viewer_host: "127.0.0.1".to_string(),
+            viewer_port: "4173".to_string(),
+            viewer_static_dir: ".".to_string(),
+            chain_enabled: false,
+            launcher_bin,
+            ..LaunchConfig::default()
+        };
+
+        let issues = collect_required_config_issues(&config);
+        assert!(issues.is_empty());
     }
 }
