@@ -83,6 +83,31 @@ pub const ENV_LLM_HARVEST_MAX_AMOUNT_CAP: &str = "AGENT_WORLD_LLM_HARVEST_MAX_AM
 pub const ENV_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS: &str =
     "AGENT_WORLD_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS";
 pub const ENV_LLM_DEBUG_MODE: &str = "AGENT_WORLD_LLM_DEBUG_MODE";
+const TOML_LLM_TABLE: &str = "llm";
+const TOML_LLM_MODEL: &str = "model";
+const TOML_LLM_BASE_URL: &str = "base_url";
+const TOML_LLM_API_KEY: &str = "api_key";
+const TOML_LLM_TIMEOUT_MS: &str = "timeout_ms";
+const TOML_LLM_SYSTEM_PROMPT: &str = "system_prompt";
+const TOML_LLM_SHORT_TERM_GOAL: &str = "short_term_goal";
+const TOML_LLM_LONG_TERM_GOAL: &str = "long_term_goal";
+const TOML_LLM_MAX_MODULE_CALLS: &str = "max_module_calls";
+const TOML_LLM_MAX_DECISION_STEPS: &str = "max_decision_steps";
+const TOML_LLM_MAX_REPAIR_ROUNDS: &str = "max_repair_rounds";
+const TOML_LLM_PROMPT_MAX_HISTORY_ITEMS: &str = "prompt_max_history_items";
+const TOML_LLM_PROMPT_PROFILE: &str = "prompt_profile";
+const TOML_LLM_FORCE_REPLAN_AFTER_SAME_ACTION: &str = "force_replan_after_same_action";
+const TOML_LLM_HARVEST_MAX_AMOUNT_CAP: &str = "harvest_max_amount_cap";
+const TOML_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS: &str = "execute_until_auto_reenter_ticks";
+const TOML_LLM_DEBUG_MODE: &str = "debug_mode";
+const TOML_LLM_PROFILE: &str = "profile";
+const TOML_LLM_MODEL_PROVIDER: &str = "model_provider";
+const TOML_MODEL_PROVIDERS_TABLE: &str = "model_providers";
+const TOML_PROFILES_TABLE: &str = "profiles";
+const TOML_MODEL_PROVIDER_AUTH_TOKEN: &str = "auth_token";
+const TOML_LLM_AGENT_OVERRIDES_TABLE: &str = "agent_overrides";
+const ENV_LLM_SHORT_TERM_GOAL_AGENT_PREFIX: &str = "AGENT_WORLD_LLM_SHORT_TERM_GOAL_";
+const ENV_LLM_LONG_TERM_GOAL_AGENT_PREFIX: &str = "AGENT_WORLD_LLM_LONG_TERM_GOAL_";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LlmPromptProfile {
@@ -346,12 +371,7 @@ impl LlmAgentConfig {
             })?;
 
         Self::from_env_with(
-            |key| {
-                table
-                    .get(key)
-                    .and_then(toml_value_to_string)
-                    .or_else(|| std::env::var(key).ok())
-            },
+            |key| config_value_for_env_key(table, key).or_else(|| std::env::var(key).ok()),
             agent_id,
         )
     }
@@ -463,6 +483,152 @@ impl LlmAgentConfig {
 
     fn memory_selector_config(&self) -> MemorySelectorConfig {
         self.prompt_profile.memory_selector_config()
+    }
+}
+
+fn llm_table<'a>(table: &'a toml::value::Table) -> Option<&'a toml::value::Table> {
+    table.get(TOML_LLM_TABLE).and_then(toml::Value::as_table)
+}
+
+fn non_empty_toml_string(table: &toml::value::Table, key: &str) -> Option<String> {
+    table
+        .get(key)
+        .and_then(toml_value_to_string)
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+}
+
+fn selected_profile_table<'a>(table: &'a toml::value::Table) -> Option<&'a toml::value::Table> {
+    let profile_name = llm_table(table)
+        .and_then(|llm| non_empty_toml_string(llm, TOML_LLM_PROFILE))
+        .or_else(|| non_empty_toml_string(table, TOML_LLM_PROFILE))?;
+    table
+        .get(TOML_PROFILES_TABLE)
+        .and_then(toml::Value::as_table)
+        .and_then(|profiles| profiles.get(profile_name.as_str()))
+        .and_then(toml::Value::as_table)
+}
+
+fn selected_model_provider_name(table: &toml::value::Table) -> Option<String> {
+    if let Some(provider) =
+        llm_table(table).and_then(|llm| non_empty_toml_string(llm, TOML_LLM_MODEL_PROVIDER))
+    {
+        return Some(provider);
+    }
+    if let Some(provider) = selected_profile_table(table)
+        .and_then(|profile| non_empty_toml_string(profile, TOML_LLM_MODEL_PROVIDER))
+    {
+        return Some(provider);
+    }
+    if let Some(provider) = non_empty_toml_string(table, TOML_LLM_MODEL_PROVIDER) {
+        return Some(provider);
+    }
+    let providers = table
+        .get(TOML_MODEL_PROVIDERS_TABLE)
+        .and_then(toml::Value::as_table)?;
+    if providers.len() == 1 {
+        return providers.keys().next().cloned();
+    }
+    None
+}
+
+fn selected_model_provider_table<'a>(
+    table: &'a toml::value::Table,
+) -> Option<&'a toml::value::Table> {
+    let provider_name = selected_model_provider_name(table)?;
+    table
+        .get(TOML_MODEL_PROVIDERS_TABLE)
+        .and_then(toml::Value::as_table)
+        .and_then(|providers| providers.get(provider_name.as_str()))
+        .and_then(toml::Value::as_table)
+}
+
+fn resolve_model_from_config(table: &toml::value::Table) -> Option<String> {
+    llm_table(table)
+        .and_then(|llm| non_empty_toml_string(llm, TOML_LLM_MODEL))
+        .or_else(|| {
+            selected_profile_table(table)
+                .and_then(|profile| non_empty_toml_string(profile, TOML_LLM_MODEL))
+        })
+        .or_else(|| non_empty_toml_string(table, TOML_LLM_MODEL))
+}
+
+fn resolve_base_url_from_config(table: &toml::value::Table) -> Option<String> {
+    llm_table(table)
+        .and_then(|llm| non_empty_toml_string(llm, TOML_LLM_BASE_URL))
+        .or_else(|| {
+            selected_model_provider_table(table)
+                .and_then(|provider| non_empty_toml_string(provider, TOML_LLM_BASE_URL))
+        })
+}
+
+fn resolve_api_key_from_config(table: &toml::value::Table) -> Option<String> {
+    llm_table(table)
+        .and_then(|llm| non_empty_toml_string(llm, TOML_LLM_API_KEY))
+        .or_else(|| {
+            selected_model_provider_table(table).and_then(|provider| {
+                non_empty_toml_string(provider, TOML_MODEL_PROVIDER_AUTH_TOKEN)
+            })
+        })
+        .or_else(|| {
+            selected_model_provider_table(table)
+                .and_then(|provider| non_empty_toml_string(provider, TOML_LLM_API_KEY))
+        })
+}
+
+fn resolve_llm_key_from_config(table: &toml::value::Table, key: &str) -> Option<String> {
+    llm_table(table).and_then(|llm| non_empty_toml_string(llm, key))
+}
+
+fn resolve_agent_goal_override_from_config(
+    table: &toml::value::Table,
+    key: &str,
+) -> Option<String> {
+    let (normalized_agent, field) =
+        if let Some(suffix) = key.strip_prefix(ENV_LLM_SHORT_TERM_GOAL_AGENT_PREFIX) {
+            (suffix, TOML_LLM_SHORT_TERM_GOAL)
+        } else if let Some(suffix) = key.strip_prefix(ENV_LLM_LONG_TERM_GOAL_AGENT_PREFIX) {
+            (suffix, TOML_LLM_LONG_TERM_GOAL)
+        } else {
+            return None;
+        };
+    llm_table(table)
+        .and_then(|llm| llm.get(TOML_LLM_AGENT_OVERRIDES_TABLE))
+        .and_then(toml::Value::as_table)
+        .and_then(|overrides| overrides.get(normalized_agent))
+        .and_then(toml::Value::as_table)
+        .and_then(|override_entry| non_empty_toml_string(override_entry, field))
+}
+
+fn config_value_for_env_key(table: &toml::value::Table, key: &str) -> Option<String> {
+    match key {
+        ENV_LLM_MODEL => resolve_model_from_config(table),
+        ENV_LLM_BASE_URL => resolve_base_url_from_config(table),
+        ENV_LLM_API_KEY => resolve_api_key_from_config(table),
+        ENV_LLM_TIMEOUT_MS => resolve_llm_key_from_config(table, TOML_LLM_TIMEOUT_MS),
+        ENV_LLM_SYSTEM_PROMPT => resolve_llm_key_from_config(table, TOML_LLM_SYSTEM_PROMPT),
+        ENV_LLM_SHORT_TERM_GOAL => resolve_llm_key_from_config(table, TOML_LLM_SHORT_TERM_GOAL),
+        ENV_LLM_LONG_TERM_GOAL => resolve_llm_key_from_config(table, TOML_LLM_LONG_TERM_GOAL),
+        ENV_LLM_MAX_MODULE_CALLS => resolve_llm_key_from_config(table, TOML_LLM_MAX_MODULE_CALLS),
+        ENV_LLM_MAX_DECISION_STEPS => {
+            resolve_llm_key_from_config(table, TOML_LLM_MAX_DECISION_STEPS)
+        }
+        ENV_LLM_MAX_REPAIR_ROUNDS => resolve_llm_key_from_config(table, TOML_LLM_MAX_REPAIR_ROUNDS),
+        ENV_LLM_PROMPT_MAX_HISTORY_ITEMS => {
+            resolve_llm_key_from_config(table, TOML_LLM_PROMPT_MAX_HISTORY_ITEMS)
+        }
+        ENV_LLM_PROMPT_PROFILE => resolve_llm_key_from_config(table, TOML_LLM_PROMPT_PROFILE),
+        ENV_LLM_FORCE_REPLAN_AFTER_SAME_ACTION => {
+            resolve_llm_key_from_config(table, TOML_LLM_FORCE_REPLAN_AFTER_SAME_ACTION)
+        }
+        ENV_LLM_HARVEST_MAX_AMOUNT_CAP => {
+            resolve_llm_key_from_config(table, TOML_LLM_HARVEST_MAX_AMOUNT_CAP)
+        }
+        ENV_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS => {
+            resolve_llm_key_from_config(table, TOML_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS)
+        }
+        ENV_LLM_DEBUG_MODE => resolve_llm_key_from_config(table, TOML_LLM_DEBUG_MODE),
+        _ => resolve_agent_goal_override_from_config(table, key),
     }
 }
 

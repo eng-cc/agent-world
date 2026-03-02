@@ -609,10 +609,20 @@ fn llm_config_reads_from_config_file() {
     let path_buf = std::env::temp_dir().join(format!("agent-world-llm-config-{unique}.toml"));
     let path = Path::new(&path_buf);
     let content = r#"
-AGENT_WORLD_LLM_MODEL = "gpt-4o-mini"
-AGENT_WORLD_LLM_BASE_URL = "https://api.example.com/v1"
-AGENT_WORLD_LLM_API_KEY = "secret"
-AGENT_WORLD_LLM_TIMEOUT_MS = 4567
+model = "fallback-model"
+model_provider = "ark"
+profile = "default"
+
+[model_providers.ark]
+base_url = "https://api.example.com/v1"
+auth_token = "secret"
+
+[profiles.default]
+model = "gpt-4o-mini"
+model_provider = "ark"
+
+[llm]
+timeout_ms = 4567
 "#;
     std::fs::write(path, content).unwrap();
 
@@ -645,6 +655,82 @@ AGENT_WORLD_LLM_TIMEOUT_MS = 4567
         DEFAULT_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS
     );
     assert_eq!(config.llm_debug_mode, DEFAULT_LLM_DEBUG_MODE);
+}
+
+#[test]
+fn llm_config_prefers_llm_table_core_fields_over_profile_defaults() {
+    let unique = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    let path_buf = std::env::temp_dir().join(format!(
+        "agent-world-llm-config-llm-core-priority-{unique}.toml"
+    ));
+    let path = Path::new(&path_buf);
+    let content = r#"
+model_provider = "ark"
+profile = "default"
+
+[model_providers.ark]
+base_url = "https://provider.example.com/v1"
+auth_token = "provider-secret"
+
+[profiles.default]
+model = "profile-model"
+model_provider = "ark"
+
+[llm]
+model = "llm-model"
+base_url = "https://llm.example.com/v1"
+api_key = "llm-secret"
+"#;
+    std::fs::write(path, content).unwrap();
+
+    let config = LlmAgentConfig::from_config_file(path).unwrap();
+
+    std::fs::remove_file(path).ok();
+
+    assert_eq!(config.model, "llm-model");
+    assert_eq!(config.base_url, "https://llm.example.com/v1");
+    assert_eq!(config.api_key, "llm-secret");
+}
+
+#[test]
+fn llm_config_reads_agent_scoped_goal_overrides_from_llm_agent_overrides_table() {
+    let unique = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    let path_buf = std::env::temp_dir().join(format!(
+        "agent-world-llm-config-agent-goal-override-{unique}.toml"
+    ));
+    let path = Path::new(&path_buf);
+    let content = r#"
+model_provider = "ark"
+profile = "default"
+
+[model_providers.ark]
+base_url = "https://api.example.com/v1"
+auth_token = "secret"
+
+[profiles.default]
+model = "gpt-4o-mini"
+model_provider = "ark"
+
+[llm]
+short_term_goal = "global-short"
+
+[llm.agent_overrides.AGENT_1]
+short_term_goal = "agent-short"
+"#;
+    std::fs::write(path, content).unwrap();
+
+    let config = LlmAgentConfig::from_config_file_for_agent(path, "agent-1").unwrap();
+
+    std::fs::remove_file(path).ok();
+
+    assert_eq!(config.short_term_goal, "agent-short");
+    assert_eq!(config.long_term_goal, DEFAULT_LLM_LONG_TERM_GOAL);
 }
 
 #[test]
