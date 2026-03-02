@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use eframe::egui;
 
@@ -24,6 +24,8 @@ const EGUI_CJK_FONT_BYTES: &[u8] =
     include_bytes!("../../agent_world_viewer/assets/fonts/ms-yahei.ttf");
 const CLIENT_LAUNCHER_FONT_ENV: &str = "AGENT_WORLD_CLIENT_LAUNCHER_FONT";
 const CLIENT_LAUNCHER_LANG_ENV: &str = "AGENT_WORLD_CLIENT_LAUNCHER_LANG";
+const GRACEFUL_STOP_TIMEOUT_MS: u64 = 4000;
+const STOP_POLL_INTERVAL_MS: u64 = 80;
 
 fn main() -> eframe::Result<()> {
     let native_options = eframe::NativeOptions {
@@ -876,6 +878,30 @@ fn spawn_log_reader<R: Read + Send + 'static>(reader: R, source: &'static str, t
 }
 
 fn stop_child_process(child: &mut Child) -> Result<(), String> {
+    if child
+        .try_wait()
+        .map_err(|err| format!("query child status failed: {err}"))?
+        .is_some()
+    {
+        return Ok(());
+    }
+
+    if let Err(err) = send_interrupt_signal(child) {
+        eprintln!("warning: failed to request graceful launcher stop: {err}");
+    } else {
+        let deadline = Instant::now() + Duration::from_millis(GRACEFUL_STOP_TIMEOUT_MS);
+        while Instant::now() < deadline {
+            if child
+                .try_wait()
+                .map_err(|err| format!("query child status failed: {err}"))?
+                .is_some()
+            {
+                return Ok(());
+            }
+            std::thread::sleep(Duration::from_millis(STOP_POLL_INTERVAL_MS));
+        }
+    }
+
     if let Ok(None) = child.try_wait() {
         child
             .kill()
@@ -885,6 +911,28 @@ fn stop_child_process(child: &mut Child) -> Result<(), String> {
         .wait()
         .map_err(|err| format!("wait child failed: {err}"))?;
     Ok(())
+}
+
+fn send_interrupt_signal(child: &Child) -> Result<(), String> {
+    #[cfg(unix)]
+    {
+        let pid = child.id() as i32;
+        // SAFETY: libc::kill is called with a pid from std::process::Child.
+        let rc = unsafe { libc::kill(pid, libc::SIGINT) };
+        if rc == 0 {
+            return Ok(());
+        }
+        return Err(format!(
+            "send SIGINT failed: {}",
+            std::io::Error::last_os_error()
+        ));
+    }
+
+    #[cfg(not(unix))]
+    {
+        let _ = child;
+        Ok(())
+    }
 }
 
 fn resolve_launcher_binary_path() -> PathBuf {
