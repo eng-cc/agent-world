@@ -49,3 +49,18 @@
   - 缓解：在 UI 中展示保存/读取错误并保留内存编辑值。
 - 风险：用户清空字段后以为值仍生效。
   - 缓解：空字符串保存时删除键，提示“已清空并移除配置键”。
+
+## 完成态（2026-03-02）
+- 启动器操作区已新增“设置 / Settings”按钮，点击后可打开 LLM 设置窗口。
+- 设置窗口已支持配置并保存以下字段到 `config.toml` 小写 TOML 键：
+  - `llm.api_key`
+  - `llm.base_url`
+  - `llm.model`
+- 配置读写逻辑已支持：
+  - 启动/打开设置时从文件读取当前值；
+  - 保存时仅更新 `[llm]` 三个键；
+  - 空字符串保存时移除对应键；
+  - 其余 TOML 表（如 `[node]`）保持不变。
+- 单元测试与编译回归通过：
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher`
+  - `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher`
