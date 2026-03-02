@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 use std::env;
 use std::io::{BufRead, BufReader, Read};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::{Child, Command, Stdio};
 use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 use std::sync::Arc;
@@ -9,12 +9,14 @@ use std::time::{Duration, Instant};
 
 use eframe::egui;
 use feedback_entry::{
-    collect_recent_logs, submit_feedback_report, validate_feedback_draft, FeedbackDraft,
-    FeedbackDraftIssue, FeedbackKind,
+    collect_recent_logs, submit_feedback_with_fallback, validate_feedback_draft, FeedbackDraft,
+    FeedbackDraftIssue, FeedbackKind, FeedbackSubmitResult,
 };
+use platform_ops::{open_browser, resolve_launcher_binary_path, resolve_static_dir_path};
 use serde::Serialize;
 
 mod feedback_entry;
+mod platform_ops;
 
 const DEFAULT_SCENARIO: &str = "llm_bootstrap";
 const DEFAULT_LIVE_BIND: &str = "127.0.0.1:5023";
@@ -421,11 +423,44 @@ impl ClientLauncherApp {
             }
         };
         let recent_logs = collect_recent_logs(&self.logs);
-        match submit_feedback_report(&self.feedback_draft, config_snapshot, recent_logs) {
-            Ok(path) => {
+        match submit_feedback_with_fallback(
+            &self.feedback_draft,
+            config_snapshot,
+            recent_logs,
+            self.config.chain_enabled,
+            self.config.chain_status_bind.as_str(),
+        ) {
+            Ok(FeedbackSubmitResult::Distributed {
+                feedback_id,
+                event_id,
+            }) => {
+                let message = format!(
+                    "{}: feedback_id={feedback_id}, event_id={event_id}",
+                    self.tr(
+                        "反馈已提交到分布式网络",
+                        "Feedback submitted to distributed network",
+                    )
+                );
+                self.append_log(message.clone());
+                self.feedback_submit_state = FeedbackSubmitState::Success(message);
+            }
+            Ok(FeedbackSubmitResult::Local { path, remote_error }) => {
+                let fallback = remote_error.is_some();
+                if let Some(remote_error) = remote_error {
+                    self.append_log(format!(
+                        "distributed feedback submit failed, fallback to local file: {remote_error}"
+                    ));
+                }
                 let message = format!(
                     "{}: {}",
-                    self.tr("反馈已保存", "Feedback saved"),
+                    if fallback {
+                        self.tr(
+                            "分布式提交失败，已本地保存",
+                            "Distributed submit failed; saved locally",
+                        )
+                    } else {
+                        self.tr("反馈已保存", "Feedback saved")
+                    },
                     path.display()
                 );
                 self.append_log(message.clone());
@@ -1106,83 +1141,6 @@ fn send_interrupt_signal(child: &Child) -> Result<(), String> {
     {
         let _ = child;
         Ok(())
-    }
-}
-
-fn resolve_launcher_binary_path() -> PathBuf {
-    if let Ok(path) = env::var("AGENT_WORLD_GAME_LAUNCHER_BIN") {
-        return PathBuf::from(path);
-    }
-
-    if let Ok(current_exe) = env::current_exe() {
-        if let Some(bin_dir) = current_exe.parent() {
-            return bin_dir.join(binary_name("world_game_launcher"));
-        }
-    }
-
-    PathBuf::from(binary_name("world_game_launcher"))
-}
-
-fn resolve_static_dir_path() -> PathBuf {
-    if let Ok(path) = env::var("AGENT_WORLD_GAME_STATIC_DIR") {
-        return PathBuf::from(path);
-    }
-
-    if let Ok(current_exe) = env::current_exe() {
-        if let Some(bin_dir) = current_exe.parent() {
-            return bin_dir.join("..").join("web");
-        }
-    }
-
-    PathBuf::from("web")
-}
-
-fn binary_name(base: &str) -> String {
-    if cfg!(windows) {
-        format!("{base}.exe")
-    } else {
-        base.to_string()
-    }
-}
-
-fn open_browser(url: &str) -> Result<(), String> {
-    #[cfg(target_os = "macos")]
-    {
-        let status = Command::new("open")
-            .arg(url)
-            .status()
-            .map_err(|err| format!("run open failed: {err}"))?;
-        if status.success() {
-            return Ok(());
-        }
-        return Err(format!("open exited with {status}"));
-    }
-
-    #[cfg(target_os = "windows")]
-    {
-        let status = Command::new("cmd")
-            .arg("/C")
-            .arg("start")
-            .arg("")
-            .arg(url)
-            .status()
-            .map_err(|err| format!("run cmd /C start failed: {err}"))?;
-        if status.success() {
-            return Ok(());
-        }
-        return Err(format!("cmd /C start exited with {status}"));
-    }
-
-    #[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
-    {
-        let status = Command::new("xdg-open")
-            .arg(url)
-            .status()
-            .map_err(|err| format!("run xdg-open failed: {err}"))?;
-        if status.success() {
-            return Ok(());
-        }
-        Err(format!("xdg-open exited with {status}"))
     }
 }
 

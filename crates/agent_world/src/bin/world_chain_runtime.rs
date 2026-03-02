@@ -10,31 +10,40 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use agent_world::runtime::{
-    NodeAssetBalance, NodeRewardMintRecord, RewardAssetConfig, World as RuntimeWorld,
-};
+use agent_world::runtime::{NodeAssetBalance, NodeRewardMintRecord, RewardAssetConfig};
 use agent_world_node::{
-    NodeConfig, NodePosConfig, NodeReplicationConfig, NodeRole, NodeRuntime, NodeSnapshot,
-    PosConsensusStatus, PosValidator,
+    NodeConfig, NodeFeedbackP2pConfig, NodePosConfig, NodeReplicationConfig, NodeRole, NodeRuntime,
+    NodeSnapshot, PosConsensusStatus, PosValidator,
 };
 use ed25519_dalek::SigningKey;
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 
+#[path = "world_chain_runtime/balances_api.rs"]
+mod balances_api;
 #[path = "world_viewer_live/distfs_probe_runtime.rs"]
 mod distfs_probe_runtime;
 #[cfg(not(test))]
 #[allow(dead_code)]
 #[path = "world_viewer_live/execution_bridge.rs"]
 mod execution_bridge;
+#[path = "world_chain_runtime/feedback_submit_api.rs"]
+mod feedback_submit_api;
 #[path = "world_viewer_live/node_keypair_config.rs"]
 mod node_keypair_config;
 #[path = "world_viewer_live/reward_runtime_settlement.rs"]
 mod reward_runtime_settlement;
 #[path = "world_chain_runtime/reward_runtime_worker.rs"]
 mod reward_runtime_worker;
+use balances_api::build_chain_balances_payload;
+#[cfg(test)]
+use balances_api::build_chain_balances_payload_from_world;
 use distfs_probe_runtime::{parse_distfs_probe_runtime_option, DistfsProbeRuntimeConfig};
 use execution_bridge::NodeRuntimeExecutionDriver;
+use feedback_submit_api::{
+    build_feedback_create_request, extract_http_json_body, parse_feedback_submit_request,
+    ChainFeedbackSubmitResponse, FeedbackSubmitSigner,
+};
 use reward_runtime_worker::{
     init_shared_metrics, poll_worker_error, snapshot_metrics, start_reward_runtime_worker,
     stop_reward_runtime_worker, RewardRuntimeWorkerConfig, SharedRewardRuntimeMetrics,
@@ -289,6 +298,9 @@ fn run_chain_runtime(options: CliOptions) -> Result<(), String> {
         options.node_id.as_str(),
         &keypair,
     )?);
+    config = config
+        .with_feedback_p2p(NodeFeedbackP2pConfig::default())
+        .map_err(|err| format!("failed to enable node feedback p2p: {err:?}"))?;
 
     let mut runtime = NodeRuntime::new(config);
     if require_execution {
@@ -359,6 +371,7 @@ fn run_chain_runtime(options: CliOptions) -> Result<(), String> {
         reward_runtime_config,
         Arc::clone(&reward_runtime_metrics),
     )?;
+    let feedback_submit_signer = build_feedback_submit_signer(options.node_id.as_str(), &keypair)?;
     let (status_host, status_port) =
         parse_host_port(options.status_bind.as_str(), "--status-bind")?;
     let mut status_server = start_chain_status_server(
@@ -369,6 +382,7 @@ fn run_chain_runtime(options: CliOptions) -> Result<(), String> {
         options.world_id.clone(),
         paths.execution_world_dir.clone(),
         Arc::clone(&reward_runtime_metrics),
+        feedback_submit_signer,
     )?;
 
     println!("world_chain_runtime ready.");
@@ -381,6 +395,10 @@ fn run_chain_runtime(options: CliOptions) -> Result<(), String> {
     );
     println!(
         "- balances: http://{}:{}/v1/chain/balances",
+        status_host, status_port
+    );
+    println!(
+        "- feedback_submit: http://{}:{}/v1/chain/feedback/submit",
         status_host, status_port
     );
     println!(
@@ -473,6 +491,7 @@ fn start_chain_status_server(
     world_id: String,
     execution_world_dir: PathBuf,
     reward_runtime_metrics: SharedRewardRuntimeMetrics,
+    feedback_submit_signer: FeedbackSubmitSigner,
 ) -> Result<ChainStatusServer, String> {
     let listener = TcpListener::bind((host, port))
         .map_err(|err| format!("failed to bind status server at {host}:{port}: {err}"))?;
@@ -492,6 +511,7 @@ fn start_chain_status_server(
             world_id,
             execution_world_dir,
             reward_runtime_metrics,
+            feedback_submit_signer,
         ) {
             let _ = error_tx.send(err);
         }
@@ -512,6 +532,7 @@ fn run_chain_status_server_loop(
     world_id: String,
     execution_world_dir: PathBuf,
     reward_runtime_metrics: SharedRewardRuntimeMetrics,
+    feedback_submit_signer: FeedbackSubmitSigner,
 ) -> Result<(), String> {
     loop {
         match stop_rx.try_recv() {
@@ -526,6 +547,7 @@ fn run_chain_status_server_loop(
                 let world_id = world_id.clone();
                 let execution_world_dir = execution_world_dir.clone();
                 let reward_runtime_metrics = Arc::clone(&reward_runtime_metrics);
+                let feedback_submit_signer = feedback_submit_signer.clone();
                 thread::spawn(move || {
                     if let Err(err) = handle_chain_status_connection(
                         stream,
@@ -534,6 +556,7 @@ fn run_chain_status_server_loop(
                         world_id.as_str(),
                         execution_world_dir.as_path(),
                         reward_runtime_metrics,
+                        &feedback_submit_signer,
                     ) {
                         eprintln!("warning: chain status connection failed: {err}");
                     }
@@ -556,12 +579,13 @@ fn handle_chain_status_connection(
     world_id: &str,
     execution_world_dir: &Path,
     reward_runtime_metrics: SharedRewardRuntimeMetrics,
+    feedback_submit_signer: &FeedbackSubmitSigner,
 ) -> Result<(), String> {
     stream
         .set_read_timeout(Some(Duration::from_secs(2)))
         .map_err(|err| format!("failed to set read timeout: {err}"))?;
 
-    let mut buffer = [0_u8; 8192];
+    let mut buffer = [0_u8; 65_536];
     let bytes = stream
         .read(&mut buffer)
         .map_err(|err| format!("failed to read request: {err}"))?;
@@ -579,7 +603,63 @@ fn handle_chain_status_connection(
     let mut parts = line.split_whitespace();
     let method = parts.next().unwrap_or_default();
     let target = parts.next().unwrap_or_default();
+    let path = target.split('?').next().unwrap_or(target);
     let head_only = method.eq_ignore_ascii_case("HEAD");
+
+    if method.eq_ignore_ascii_case("POST") && path == "/v1/chain/feedback/submit" {
+        let body = match extract_http_json_body(&buffer[..bytes]) {
+            Ok(body) => body,
+            Err(err) => {
+                write_feedback_submit_error(&mut stream, 400, err.as_str())?;
+                return Ok(());
+            }
+        };
+        let submit_request = match parse_feedback_submit_request(body) {
+            Ok(request) => request,
+            Err(err) => {
+                write_feedback_submit_error(&mut stream, 400, err.as_str())?;
+                return Ok(());
+            }
+        };
+        let submit_ip = stream
+            .peer_addr()
+            .map(|addr| addr.ip().to_string())
+            .unwrap_or_else(|_| "127.0.0.1".to_string());
+        let create_request = match build_feedback_create_request(
+            submit_request,
+            feedback_submit_signer,
+            node_id,
+            submit_ip.as_str(),
+            now_unix_ms(),
+        ) {
+            Ok(request) => request,
+            Err(err) => {
+                write_feedback_submit_error(&mut stream, 400, err.as_str())?;
+                return Ok(());
+            }
+        };
+        let receipt = match runtime
+            .lock()
+            .map_err(|_| "failed to lock node runtime for feedback submit".to_string())?
+            .submit_feedback(create_request)
+        {
+            Ok(receipt) => receipt,
+            Err(err) => {
+                write_feedback_submit_error(
+                    &mut stream,
+                    502,
+                    format!("feedback submit failed: {err}").as_str(),
+                )?;
+                return Ok(());
+            }
+        };
+        let response = ChainFeedbackSubmitResponse::success(&receipt);
+        let body = serde_json::to_vec_pretty(&response)
+            .map_err(|err| format!("failed to encode feedback submit response: {err}"))?;
+        write_json_response(&mut stream, 200, body.as_slice(), false)
+            .map_err(|err| format!("failed to write /v1/chain/feedback/submit response: {err}"))?;
+        return Ok(());
+    }
 
     if !method.eq_ignore_ascii_case("GET") && !head_only {
         write_json_response(
@@ -592,7 +672,7 @@ fn handle_chain_status_connection(
         return Ok(());
     }
 
-    match target.split('?').next().unwrap_or(target) {
+    match path {
         "/healthz" => {
             write_json_response(&mut stream, 200, b"{\"ok\":true}", head_only)
                 .map_err(|err| format!("failed to write /healthz response: {err}"))?;
@@ -626,6 +706,18 @@ fn handle_chain_status_connection(
     }
 
     Ok(())
+}
+
+fn write_feedback_submit_error(
+    stream: &mut TcpStream,
+    status_code: u16,
+    error: &str,
+) -> Result<(), String> {
+    let payload = ChainFeedbackSubmitResponse::error(error);
+    let body = serde_json::to_vec_pretty(&payload)
+        .map_err(|err| format!("failed to encode feedback submit error payload: {err}"))?;
+    write_json_response(stream, status_code, body.as_slice(), false)
+        .map_err(|err| format!("failed to write feedback submit error response: {err}"))
 }
 
 fn build_chain_status_payload(
@@ -666,73 +758,6 @@ fn build_chain_status_payload(
     }
 }
 
-fn build_chain_balances_payload(
-    node_id: &str,
-    world_id: &str,
-    execution_world_dir: &Path,
-) -> ChainBalancesResponse {
-    match execution_bridge::load_execution_world(execution_world_dir) {
-        Ok(world) => {
-            build_chain_balances_payload_from_world(node_id, world_id, execution_world_dir, &world)
-        }
-        Err(err) => ChainBalancesResponse {
-            ok: true,
-            observed_at_unix_ms: now_unix_ms(),
-            node_id: node_id.to_string(),
-            world_id: world_id.to_string(),
-            execution_world_dir: execution_world_dir.display().to_string(),
-            load_error: Some(err),
-            node_asset_balance: None,
-            node_power_credit_balance: 0,
-            node_main_token_account: None,
-            node_main_token_liquid_balance: 0,
-            reward_mint_record_count: 0,
-            recent_reward_mint_records: Vec::new(),
-        },
-    }
-}
-
-fn build_chain_balances_payload_from_world(
-    node_id: &str,
-    world_id: &str,
-    execution_world_dir: &Path,
-    world: &RuntimeWorld,
-) -> ChainBalancesResponse {
-    let node_asset_balance = world.node_asset_balance(node_id).cloned();
-    let node_power_credit_balance = world.node_power_credit_balance(node_id);
-    let node_main_token_account = world
-        .node_main_token_account(node_id)
-        .map(|value| value.to_string());
-    let node_main_token_liquid_balance = node_main_token_account
-        .as_deref()
-        .map(|account_id| world.main_token_liquid_balance(account_id))
-        .unwrap_or(0);
-
-    let all_records = world.reward_mint_records();
-    let record_count = all_records.len();
-    let keep = record_count.min(DEFAULT_RECENT_MINT_RECORD_LIMIT);
-    let recent_reward_mint_records = all_records
-        .iter()
-        .skip(record_count.saturating_sub(keep))
-        .cloned()
-        .collect::<Vec<_>>();
-
-    ChainBalancesResponse {
-        ok: true,
-        observed_at_unix_ms: now_unix_ms(),
-        node_id: node_id.to_string(),
-        world_id: world_id.to_string(),
-        execution_world_dir: execution_world_dir.display().to_string(),
-        load_error: None,
-        node_asset_balance,
-        node_power_credit_balance,
-        node_main_token_account,
-        node_main_token_liquid_balance,
-        reward_mint_record_count: record_count,
-        recent_reward_mint_records,
-    }
-}
-
 fn poll_chain_status_server_error(
     server: &mut ChainStatusServer,
 ) -> Result<Option<String>, String> {
@@ -770,6 +795,7 @@ fn write_json_response(
         400 => "Bad Request",
         404 => "Not Found",
         405 => "Method Not Allowed",
+        502 => "Bad Gateway",
         _ => "Internal Server Error",
     };
     let headers = format!(
@@ -1017,6 +1043,18 @@ fn build_node_replication_config(
         .map_err(|err| format!("failed to build node replication config: {err:?}"))
 }
 
+fn build_feedback_submit_signer(
+    node_id: &str,
+    root_keypair: &node_keypair_config::NodeKeypairConfig,
+) -> Result<FeedbackSubmitSigner, String> {
+    let feedback_signer_id = format!("{node_id}-feedback-submit");
+    let signer = derive_node_consensus_signer_keypair(feedback_signer_id.as_str(), root_keypair)?;
+    Ok(FeedbackSubmitSigner {
+        private_key_hex: signer.private_key_hex,
+        public_key_hex: signer.public_key_hex,
+    })
+}
+
 fn derive_node_consensus_signer_keypair(
     node_id: &str,
     root_keypair: &node_keypair_config::NodeKeypairConfig,
@@ -1131,129 +1169,5 @@ fn now_unix_ms() -> i64 {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::{
-        build_chain_balances_payload_from_world, parse_options, parse_validator_spec, CliOptions,
-        DEFAULT_NODE_ID, DEFAULT_STATUS_BIND,
-    };
-    use agent_world::runtime::World as RuntimeWorld;
-
-    #[test]
-    fn parse_options_defaults() {
-        let options = parse_options(std::iter::empty()).expect("parse should succeed");
-        assert_eq!(options.node_id, DEFAULT_NODE_ID);
-        assert_eq!(options.status_bind, DEFAULT_STATUS_BIND);
-        assert!(!options.node_auto_attest_all_validators);
-        assert!(options.node_validators.is_empty());
-        assert!(options.reward_runtime_enabled);
-        assert!(options.reward_runtime_epoch_duration_secs.is_none());
-    }
-
-    #[test]
-    fn parse_options_reads_custom_values() {
-        let options = parse_options(
-            [
-                "--node-id",
-                "node-a",
-                "--world-id",
-                "live-foo",
-                "--status-bind",
-                "127.0.0.1:6221",
-                "--node-role",
-                "storage",
-                "--node-tick-ms",
-                "350",
-                "--node-validator",
-                "node-a:55",
-                "--node-validator",
-                "node-b:45",
-                "--node-auto-attest-all",
-                "--execution-world-dir",
-                "custom/world",
-                "--reward-runtime-epoch-duration-secs",
-                "60",
-                "--reward-points-per-credit",
-                "100",
-                "--reward-runtime-auto-redeem",
-                "--reward-initial-reserve-power-units",
-                "50000",
-            ]
-            .into_iter(),
-        )
-        .expect("parse should succeed");
-
-        assert_eq!(options.node_id, "node-a");
-        assert_eq!(options.world_id, "live-foo");
-        assert_eq!(options.status_bind, "127.0.0.1:6221");
-        assert_eq!(options.node_role.as_str(), "storage");
-        assert_eq!(options.node_tick_ms, 350);
-        assert_eq!(options.node_validators.len(), 2);
-        assert!(options.node_auto_attest_all_validators);
-        assert_eq!(options.reward_runtime_epoch_duration_secs, Some(60));
-        assert_eq!(options.reward_points_per_credit, 100);
-        assert!(options.reward_runtime_auto_redeem);
-        assert_eq!(options.reward_initial_reserve_power_units, 50_000);
-        assert_eq!(
-            options
-                .execution_world_dir
-                .as_ref()
-                .map(|p| p.to_string_lossy().to_string()),
-            Some("custom/world".to_string())
-        );
-    }
-
-    #[test]
-    fn parse_options_rejects_invalid_status_bind() {
-        let err = parse_options(["--status-bind", "127.0.0.1"].into_iter())
-            .expect_err("should reject invalid bind");
-        assert!(err.contains("<host:port>"));
-    }
-
-    #[test]
-    fn parse_options_rejects_peer_without_bind() {
-        let err = parse_options(["--node-gossip-peer", "127.0.0.1:9001"].into_iter())
-            .expect_err("should reject peer without bind");
-        assert!(err.contains("requires --node-gossip-bind"));
-    }
-
-    #[test]
-    fn parse_validator_spec_rejects_zero_stake() {
-        let err = parse_validator_spec("node-a:0").expect_err("should reject");
-        assert!(err.contains("positive integer"));
-    }
-
-    #[test]
-    fn balances_payload_reports_empty_world_without_error() {
-        let world = RuntimeWorld::new();
-        let payload = build_chain_balances_payload_from_world(
-            "node-a",
-            "live-a",
-            std::path::Path::new("/tmp/empty"),
-            &world,
-        );
-        assert!(payload.ok);
-        assert!(payload.load_error.is_none());
-        assert_eq!(payload.node_power_credit_balance, 0);
-        assert_eq!(payload.reward_mint_record_count, 0);
-        assert!(payload.recent_reward_mint_records.is_empty());
-    }
-
-    #[test]
-    fn parse_options_rejects_unknown_option() {
-        let err = parse_options(["--unknown"].into_iter()).expect_err("should fail");
-        assert!(err.contains("unknown option"));
-    }
-
-    #[test]
-    fn default_runtime_paths_depend_on_node_id() {
-        let options = CliOptions {
-            node_id: "node-z".to_string(),
-            ..CliOptions::default()
-        };
-        let paths = super::resolve_runtime_paths(&options);
-        assert!(paths
-            .execution_world_dir
-            .to_string_lossy()
-            .contains("output/chain-runtime/node-z"));
-    }
-}
+#[path = "world_chain_runtime/world_chain_runtime_tests.rs"]
+mod tests;

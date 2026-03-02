@@ -2,11 +2,16 @@ use serde::Serialize;
 use serde_json::Value;
 use std::collections::VecDeque;
 use std::fs;
+use std::io::{Read, Write};
+use std::net::TcpStream;
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub(crate) const DEFAULT_FEEDBACK_DIR: &str = "feedback";
 const FEEDBACK_LOG_SNAPSHOT_LIMIT: usize = 200;
+const CHAIN_FEEDBACK_SUBMIT_PATH: &str = "/v1/chain/feedback/submit";
+const HTTP_TIMEOUT_MS: u64 = 3_000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -58,6 +63,35 @@ struct FeedbackReport {
     created_at: String,
     launcher_config: Value,
     recent_logs: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum FeedbackSubmitResult {
+    Distributed {
+        feedback_id: String,
+        event_id: String,
+    },
+    Local {
+        path: PathBuf,
+        remote_error: Option<String>,
+    },
+}
+
+#[derive(Debug, Serialize)]
+struct RemoteFeedbackSubmitRequest {
+    category: &'static str,
+    title: String,
+    description: String,
+    platform: &'static str,
+    game_version: &'static str,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct RemoteFeedbackSubmitResponse {
+    ok: bool,
+    feedback_id: Option<String>,
+    event_id: Option<String>,
+    error: Option<String>,
 }
 
 pub(crate) fn validate_feedback_draft(draft: &FeedbackDraft) -> Vec<FeedbackDraftIssue> {
@@ -120,6 +154,195 @@ pub(crate) fn submit_feedback_report(
     Ok(file_path)
 }
 
+pub(crate) fn submit_feedback_with_fallback(
+    draft: &FeedbackDraft,
+    launcher_config: Value,
+    recent_logs: Vec<String>,
+    chain_enabled: bool,
+    chain_status_bind: &str,
+) -> Result<FeedbackSubmitResult, String> {
+    if chain_enabled {
+        match submit_feedback_remote(draft, chain_status_bind) {
+            Ok((feedback_id, event_id)) => {
+                return Ok(FeedbackSubmitResult::Distributed {
+                    feedback_id,
+                    event_id,
+                });
+            }
+            Err(remote_error) => {
+                let path = submit_feedback_report(draft, launcher_config, recent_logs)?;
+                return Ok(FeedbackSubmitResult::Local {
+                    path,
+                    remote_error: Some(remote_error),
+                });
+            }
+        }
+    }
+
+    let path = submit_feedback_report(draft, launcher_config, recent_logs)?;
+    Ok(FeedbackSubmitResult::Local {
+        path,
+        remote_error: None,
+    })
+}
+
+fn submit_feedback_remote(
+    draft: &FeedbackDraft,
+    chain_status_bind: &str,
+) -> Result<(String, String), String> {
+    let request = RemoteFeedbackSubmitRequest {
+        category: draft.kind.slug(),
+        title: draft.title.trim().to_string(),
+        description: draft.description.trim().to_string(),
+        platform: "client_launcher",
+        game_version: "unknown",
+    };
+    let payload = serde_json::to_vec(&request)
+        .map_err(|err| format!("serialize remote feedback request failed: {err}"))?;
+    let response = post_json_request(chain_status_bind, CHAIN_FEEDBACK_SUBMIT_PATH, &payload)?;
+    if !response.ok {
+        return Err(response
+            .error
+            .unwrap_or_else(|| "remote feedback submit rejected".to_string()));
+    }
+    let feedback_id = response
+        .feedback_id
+        .ok_or_else(|| "remote feedback submit missing feedback_id".to_string())?;
+    let event_id = response
+        .event_id
+        .ok_or_else(|| "remote feedback submit missing event_id".to_string())?;
+    Ok((feedback_id, event_id))
+}
+
+fn post_json_request(
+    bind: &str,
+    path: &str,
+    payload: &[u8],
+) -> Result<RemoteFeedbackSubmitResponse, String> {
+    let (host, port) = parse_host_port(bind, "chain status bind")?;
+    let host = normalize_connect_host(host.as_str());
+    let socket_host = host_for_socket(host.as_str());
+    let mut stream = TcpStream::connect(format!("{socket_host}:{port}"))
+        .map_err(|err| format!("connect chain status server failed: {err}"))?;
+    let timeout = Some(Duration::from_millis(HTTP_TIMEOUT_MS));
+    let _ = stream.set_read_timeout(timeout);
+    let _ = stream.set_write_timeout(timeout);
+
+    let host_header = host_for_http(host.as_str());
+    let mut request_head = String::new();
+    request_head.push_str(&format!("POST {path} HTTP/1.1\r\n"));
+    request_head.push_str(&format!("Host: {host_header}:{port}\r\n"));
+    request_head.push_str("Content-Type: application/json\r\n");
+    request_head.push_str(&format!("Content-Length: {}\r\n", payload.len()));
+    request_head.push_str("Connection: close\r\n\r\n");
+
+    stream
+        .write_all(request_head.as_bytes())
+        .map_err(|err| format!("write request header failed: {err}"))?;
+    stream
+        .write_all(payload)
+        .map_err(|err| format!("write request body failed: {err}"))?;
+    stream
+        .flush()
+        .map_err(|err| format!("flush request failed: {err}"))?;
+
+    let mut response_bytes = Vec::new();
+    stream
+        .read_to_end(&mut response_bytes)
+        .map_err(|err| format!("read response failed: {err}"))?;
+    parse_http_json_response(&response_bytes)
+}
+
+fn parse_http_json_response(bytes: &[u8]) -> Result<RemoteFeedbackSubmitResponse, String> {
+    let Some(boundary) = bytes.windows(4).position(|window| window == b"\r\n\r\n") else {
+        return Err("invalid HTTP response: missing header terminator".to_string());
+    };
+    let header = std::str::from_utf8(&bytes[..boundary])
+        .map_err(|_| "invalid HTTP response: header is not UTF-8".to_string())?;
+    let body = &bytes[(boundary + 4)..];
+    let status_code = parse_http_status_code(header)?;
+    let response: RemoteFeedbackSubmitResponse =
+        serde_json::from_slice(body).map_err(|err| format!("parse response json failed: {err}"))?;
+
+    if !(200..=299).contains(&status_code) {
+        return Err(response
+            .error
+            .unwrap_or_else(|| format!("remote feedback submit failed with HTTP {status_code}")));
+    }
+    Ok(response)
+}
+
+fn parse_http_status_code(header: &str) -> Result<u16, String> {
+    let Some(status_line) = header.lines().next() else {
+        return Err("invalid HTTP response: missing status line".to_string());
+    };
+    let Some(code) = status_line
+        .split_whitespace()
+        .nth(1)
+        .and_then(|token| token.parse::<u16>().ok())
+    else {
+        return Err(format!("invalid HTTP response status line: {status_line}"));
+    };
+    Ok(code)
+}
+
+fn parse_host_port(raw: &str, label: &str) -> Result<(String, u16), String> {
+    let value = raw.trim();
+    let (host_raw, port_raw) = if let Some(rest) = value.strip_prefix('[') {
+        let (host, remainder) = rest
+            .split_once(']')
+            .ok_or_else(|| format!("{label} IPv6 host must be in [addr]:port format"))?;
+        let port_raw = remainder
+            .strip_prefix(':')
+            .ok_or_else(|| format!("{label} must be in <host:port> format"))?;
+        (host, port_raw)
+    } else {
+        let (host, port_raw) = value
+            .rsplit_once(':')
+            .ok_or_else(|| format!("{label} must be in <host:port> format"))?;
+        if host.contains(':') {
+            return Err(format!("{label} IPv6 host must be wrapped in []"));
+        }
+        (host, port_raw)
+    };
+    let host = host_raw.trim();
+    if host.is_empty() {
+        return Err(format!("{label} host cannot be empty"));
+    }
+    let port = port_raw
+        .trim()
+        .parse::<u16>()
+        .map_err(|_| format!("{label} port must be in 1..=65535"))?;
+    if port == 0 {
+        return Err(format!("{label} port must be in 1..=65535"));
+    }
+    Ok((host.to_string(), port))
+}
+
+fn host_for_socket(host: &str) -> String {
+    if host.contains(':') && !host.starts_with('[') && !host.ends_with(']') {
+        format!("[{host}]")
+    } else {
+        host.to_string()
+    }
+}
+
+fn host_for_http(host: &str) -> String {
+    if host.contains(':') && !host.starts_with('[') && !host.ends_with(']') {
+        format!("[{host}]")
+    } else {
+        host.to_string()
+    }
+}
+
+fn normalize_connect_host(host: &str) -> String {
+    match host.trim() {
+        "0.0.0.0" => "127.0.0.1".to_string(),
+        "::" | "[::]" => "::1".to_string(),
+        value => value.to_string(),
+    }
+}
+
 fn unix_seconds(now: SystemTime) -> i64 {
     match now.duration_since(UNIX_EPOCH) {
         Ok(duration) => duration.as_secs().min(i64::MAX as u64) as i64,
@@ -167,8 +390,9 @@ fn civil_from_days(days_since_unix_epoch: i64) -> (i32, u32, u32) {
 #[cfg(test)]
 mod tests {
     use super::{
-        collect_recent_logs, format_filename_timestamp, submit_feedback_report,
-        validate_feedback_draft, FeedbackDraft, FeedbackDraftIssue, FeedbackKind,
+        collect_recent_logs, format_filename_timestamp, parse_host_port, parse_http_json_response,
+        submit_feedback_report, submit_feedback_with_fallback, validate_feedback_draft,
+        FeedbackDraft, FeedbackDraftIssue, FeedbackKind, FeedbackSubmitResult,
     };
     use std::collections::VecDeque;
     use std::time::{Duration, UNIX_EPOCH};
@@ -235,5 +459,58 @@ mod tests {
         assert_eq!(timestamp.len(), 16);
         assert!(timestamp.ends_with('Z'));
         assert!(timestamp.contains('T'));
+    }
+
+    #[test]
+    fn parse_host_port_accepts_bracketed_ipv6() {
+        let (host, port) = parse_host_port("[::1]:5121", "chain status bind").expect("valid");
+        assert_eq!(host, "::1");
+        assert_eq!(port, 5121);
+    }
+
+    #[test]
+    fn parse_http_json_response_reads_success_payload() {
+        let raw = b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n{\"ok\":true,\"feedback_id\":\"fb-1\",\"event_id\":\"ev-1\"}";
+        let response = parse_http_json_response(raw).expect("parse response");
+        assert!(response.ok);
+        assert_eq!(response.feedback_id.as_deref(), Some("fb-1"));
+        assert_eq!(response.event_id.as_deref(), Some("ev-1"));
+    }
+
+    #[test]
+    fn submit_feedback_with_fallback_writes_local_on_remote_failure() {
+        let temp_dir = std::env::temp_dir().join(format!(
+            "agent-world-feedback-fallback-test-{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&temp_dir);
+
+        let draft = FeedbackDraft {
+            kind: FeedbackKind::Bug,
+            title: "viewer bug".to_string(),
+            description: "viewer freeze on zoom".to_string(),
+            output_dir: temp_dir.to_string_lossy().to_string(),
+        };
+
+        let outcome = submit_feedback_with_fallback(
+            &draft,
+            serde_json::json!({"scenario": "llm_bootstrap"}),
+            vec!["[stderr] test".to_string()],
+            true,
+            "127.0.0.1:1",
+        )
+        .expect("fallback should save local report");
+
+        match outcome {
+            FeedbackSubmitResult::Distributed { .. } => {
+                panic!("remote submit should fail for unavailable local port")
+            }
+            FeedbackSubmitResult::Local { path, remote_error } => {
+                assert!(path.is_file());
+                assert!(remote_error.is_some());
+            }
+        }
+
+        let _ = std::fs::remove_dir_all(&temp_dir);
     }
 }
