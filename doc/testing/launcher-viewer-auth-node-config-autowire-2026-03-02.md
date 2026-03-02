@@ -45,3 +45,10 @@
 - 配置一致性风险：`config.toml` 缺失或损坏时仍会回退失败。
   - 缓解：保留环境变量覆盖路径，报错信息明确包含回退失败原因。
 
+## 完成态（2026-03-02）
+- 状态：已完成
+- 里程碑：M1/M2/M3/M4 均已完成
+- 结果摘要：
+  - 启动器链路：Web Viewer 已可自动继承 `config.toml [node]` 鉴权 keypair。
+  - Viewer 链路：wasm 已支持读取启动器注入配置；native 已支持 `config.toml [node]` 回退。
+  - 兼容性：保留 `AGENT_WORLD_VIEWER_*` 环境变量覆盖优先级。
