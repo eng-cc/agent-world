@@ -39,3 +39,14 @@
   - 缓解：草稿状态驻留内存，除非手动修改/重启应用不会丢失。
 - 风险：UI 拆分后引入 borrow 冲突导致编译失败。
   - 缓解：将窗口渲染逻辑收敛为独立方法，先构建文案副本再渲染。
+
+## 完成态（2026-03-02）
+- 启动器主面板已移除内嵌反馈表单，操作区新增“反馈 / Feedback”按钮。
+- 点击“反馈 / Feedback”后会打开独立反馈窗口，窗口内保留原有能力：
+  - 类型、标题、描述、反馈目录编辑
+  - 必填校验提示
+  - 提交结果提示
+  - `submit_feedback_with_fallback` 提交流程（远端优先，失败回落本地）不变
+- 回归验证通过：
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher`
+  - `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher`
