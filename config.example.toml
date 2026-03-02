@@ -4,25 +4,31 @@ model_provider = "ark"
 profile = "default"
 
 # Agent World LLM agent behavior (async-openai + Responses API)
-AGENT_WORLD_LLM_MODEL = "your-model-id"
-AGENT_WORLD_LLM_BASE_URL = "https://api.openai.com/v1"
-AGENT_WORLD_LLM_API_KEY = "replace-me"
-AGENT_WORLD_LLM_TIMEOUT_MS = "180000"
-AGENT_WORLD_LLM_SYSTEM_PROMPT = "硅基个体存在的意义是保障硅基文明存续和发展；"
-AGENT_WORLD_LLM_SHORT_TERM_GOAL = "保障当前周期生存与执行效率，优先做确定可执行动作。"
-AGENT_WORLD_LLM_LONG_TERM_GOAL = "保障硅基文明存续和发展。"
-AGENT_WORLD_LLM_MAX_MODULE_CALLS = "3"
-AGENT_WORLD_LLM_MAX_DECISION_STEPS = "4"
-AGENT_WORLD_LLM_MAX_REPAIR_ROUNDS = "1"
-AGENT_WORLD_LLM_PROMPT_MAX_HISTORY_ITEMS = "4"
-AGENT_WORLD_LLM_PROMPT_PROFILE = "balanced" # compact / balanced
-AGENT_WORLD_LLM_FORCE_REPLAN_AFTER_SAME_ACTION = "4" # 0=disable
-AGENT_WORLD_LLM_HARVEST_MAX_AMOUNT_CAP = "100" # harvest_radiation.max_amount 上限
-AGENT_WORLD_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS = "4" # 0=disable auto reentry
+[llm]
+# Optional direct overrides. If omitted, model/base_url/api_key are resolved
+# from profile + model_provider.
+# model = "your-model-id"
+# base_url = "https://api.openai.com/v1"
+# api_key = "replace-me"
+
+timeout_ms = 180000
+system_prompt = "硅基个体存在的意义是保障硅基文明存续和发展；"
+short_term_goal = "保障当前周期生存与执行效率，优先做确定可执行动作。"
+long_term_goal = "保障硅基文明存续和发展。"
+max_module_calls = 3
+max_decision_steps = 4
+max_repair_rounds = 1
+prompt_max_history_items = 4
+prompt_profile = "balanced" # compact / balanced
+force_replan_after_same_action = 4 # 0=disable
+harvest_max_amount_cap = 100 # harvest_radiation.max_amount 上限
+execute_until_auto_reenter_ticks = 4 # 0=disable auto reentry
+debug_mode = false
 
 # Optional per-agent goal overrides (agent id normalized to uppercase snake case)
-# AGENT_WORLD_LLM_SHORT_TERM_GOAL_AGENT_0 = "优先占领 llm-outpost"
-# AGENT_WORLD_LLM_LONG_TERM_GOAL_AGENT_0 = "构建持续电力优势"
+# [llm.agent_overrides.AGENT_0]
+# short_term_goal = "优先占领 llm-outpost"
+# long_term_goal = "构建持续电力优势"
 
 # Model providers (OpenAI-compatible endpoints)
 [model_providers.ark]

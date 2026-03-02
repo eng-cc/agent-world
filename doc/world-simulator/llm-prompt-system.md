@@ -30,20 +30,24 @@
 ## 接口 / 数据
 
 ### 配置项（`config.toml` 或同名环境变量）
-- 已有：
-  - `AGENT_WORLD_LLM_MODEL`
-  - `AGENT_WORLD_LLM_BASE_URL`
-  - `AGENT_WORLD_LLM_API_KEY`
-  - `AGENT_WORLD_LLM_TIMEOUT_MS`
-  - `AGENT_WORLD_LLM_SYSTEM_PROMPT`
-- 新增：
-  - `AGENT_WORLD_LLM_SHORT_TERM_GOAL`
-  - `AGENT_WORLD_LLM_LONG_TERM_GOAL`
-  - `AGENT_WORLD_LLM_MAX_MODULE_CALLS`（每次决策最大模块调用轮次）
-- Agent 级覆盖（可选）：
-  - `AGENT_WORLD_LLM_SHORT_TERM_GOAL_<AGENT_ID_NORMALIZED>`
-  - `AGENT_WORLD_LLM_LONG_TERM_GOAL_<AGENT_ID_NORMALIZED>`
-  - 其中 `AGENT_ID_NORMALIZED` 为大写+非字母数字转下划线（如 `agent-1` → `AGENT_1`）。
+- 文件内（推荐）：
+  - 根级选择项：`model` / `model_provider` / `profile`
+  - `[model_providers.<name>]`：`base_url` / `auth_token`
+  - `[profiles.<name>]`：`model` / `model_provider`
+  - `[llm]`：
+    - `timeout_ms` / `system_prompt`
+    - `short_term_goal` / `long_term_goal`
+    - `max_module_calls`（每次决策最大模块调用轮次）
+    - `max_decision_steps` / `max_repair_rounds`
+    - `prompt_max_history_items` / `prompt_profile`
+    - `force_replan_after_same_action` / `harvest_max_amount_cap`
+    - `execute_until_auto_reenter_ticks` / `debug_mode`
+  - Agent 级覆盖（可选）：
+    - `[llm.agent_overrides.<AGENT_ID_NORMALIZED>]`
+    - `short_term_goal` / `long_term_goal`
+    - `AGENT_ID_NORMALIZED` 为大写+非字母数字转下划线（如 `agent-1` -> `AGENT_1`）。
+- 环境变量（回退/注入）：
+  - 仍支持 `AGENT_WORLD_LLM_*` 与 `AGENT_WORLD_LLM_*_<AGENT_ID_NORMALIZED>`。
 
 ### Prompt 交互协议（JSON）
 - 模块调用：

@@ -26,21 +26,23 @@
 ## 接口 / 数据
 
 ### 配置文件项（`config.toml`）
-- `AGENT_WORLD_LLM_MODEL`
-- `AGENT_WORLD_LLM_BASE_URL`
-  - 支持三种写法：
-    - 根端点（推荐）：`https://ark.cn-beijing.volces.com/api/v3`
-    - 完整补全端点：`https://ark.cn-beijing.volces.com/api/v3/chat/completions`
-    - Responses 端点：`https://ark.cn-beijing.volces.com/api/v3/responses`
-- `AGENT_WORLD_LLM_API_KEY`
-- `AGENT_WORLD_LLM_TIMEOUT_MS`（可选，默认 30_000）
-- `AGENT_WORLD_LLM_SYSTEM_PROMPT`
-  - 可选；缺省时使用默认 system prompt：
-    - `硅基个体存在的意义是保障硅基文明存续和发展；`
+- 根级选择项：
+  - `model` / `model_provider` / `profile`
+- Provider 与 Profile：
+  - `[model_providers.<name>]`：`base_url` / `auth_token`
+  - `[profiles.<name>]`：`model` / `model_provider`
+- LLM 行为参数（`[llm]`）：
+  - `timeout_ms`（可选，默认 `180000`）
+  - `system_prompt`（可选；缺省回退默认 system prompt）
+  - `short_term_goal` / `long_term_goal`
+  - `max_module_calls` / `max_decision_steps` / `max_repair_rounds`
+  - `prompt_max_history_items` / `prompt_profile`
+  - `force_replan_after_same_action` / `harvest_max_amount_cap`
+  - `execute_until_auto_reenter_ticks` / `debug_mode`
 
-超时策略说明：当 `AGENT_WORLD_LLM_TIMEOUT_MS` 配置小于 `30_000` 且首次请求超时，会自动使用 `30_000ms` 进行一次重试，以降低弱网和冷启动导致的误降级概率。
+超时策略说明：当 `[llm].timeout_ms` 配置小于 `30_000` 且首次请求超时，会自动使用 `30_000ms` 进行一次重试，以降低弱网和冷启动导致的误降级概率。
 
-说明：键名沿用 `AGENT_WORLD_*` 前缀以保持兼容语义，但项目约定通过 `config.toml` 作为主配置入口。
+说明：`config.toml` 使用小写 TOML 字段；环境变量 `AGENT_WORLD_LLM_*` 保留为回退与运行时注入通道。
 
 ### 配置加载优先级
 1. 若项目根目录存在 `config.toml`，优先读取该文件。
