@@ -48,3 +48,11 @@
   - 缓解：在设计文档与示例中明确优先级。
 - 兼容性风险：配置值类型（字符串/整数）差异导致解析失败。
   - 缓解：沿用现有 `toml_value_to_string` 转换与原有参数校验。
+
+## 完成态（2026-03-02）
+- 已完成 `LlmAgentConfig::from_config_file*` 的小写 TOML 解析重构，文件内配置统一走 `[llm]` / `[profiles.*]` / `[model_providers.*]`。
+- 已迁移示例配置与文档说明，`config.example.toml` 不再使用 `AGENT_WORLD_LLM_*` 顶层键；agent 级目标覆盖改为 `[llm.agent_overrides.<AGENT_ID_NORMALIZED>]`。
+- 已保留环境变量回退能力，明确“文件内 TOML 风格、环境中 ENV 风格”的边界，确保兼容运行时注入场景。
+- 回归验证通过：
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world simulator::llm_agent::tests::llm_config_ -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo check -p agent_world`
