@@ -266,6 +266,10 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
 ```bash
 ./scripts/p2p-longrun-soak.sh --profile soak_endurance --topologies triad_distributed --chaos-continuous-enable --chaos-continuous-interval-secs 30 --chaos-continuous-max-events 60
 ```
+- 建议命令（endurance + chaos + feedback）：
+```bash
+./scripts/p2p-longrun-soak.sh --profile soak_endurance --topologies triad_distributed --duration-secs 900 --chaos-continuous-enable --chaos-continuous-interval-secs 30 --chaos-continuous-max-events 30 --feedback-events-enable --feedback-events-start-sec 30 --feedback-events-interval-secs 60 --feedback-events-max-events 12
+```
 - 发布门禁基线命令（2026-02-28，300s）：
 ```bash
 ./scripts/p2p-longrun-soak.sh --profile soak_release --topologies triad_distributed --duration-secs 300 --no-prewarm --max-stall-secs 240 --max-lag-p95 50 --max-distfs-failure-ratio 0.1 --chaos-continuous-enable --chaos-continuous-interval-secs 30 --chaos-continuous-start-sec 30 --chaos-continuous-max-events 8 --chaos-continuous-actions restart,pause --chaos-continuous-seed 1772284566 --chaos-continuous-restart-down-secs 1 --chaos-continuous-pause-duration-secs 2 --out-dir .tmp/release_gate_p2p
@@ -275,6 +279,7 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
   - `summary.json` 中 `overall_status == "ok"` 且 `totals.topology_failed_count == 0`；
   - `soak_release` 档位下 `topologies[].metric_gate.status` 必须为 `pass`（`insufficient_data` 会转失败）；
   - 如启用 chaos，`chaos_events.log` 与 `summary.json.totals.chaos_events_total` 一致。
+  - 如启用 feedback events，`summary.json.totals.feedback_events_total == summary.json.totals.feedback_events_success_total + summary.json.totals.feedback_events_failed_total`，且 `feedback_events.log` 中 `phase=completed/failed` 事件数量与 `feedback_events_total` 一致。
 - 参考文档：`doc/testing/chain-runtime-soak-script-reactivation-2026-02-28.md`、`doc/testing/p2p-storage-consensus-longrun-online-stability-2026-02-24.md`。
 
 ### S10：五节点真实游戏数据在线长跑套件（L5）

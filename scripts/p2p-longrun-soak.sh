@@ -41,6 +41,12 @@ Options:
   --reward-runtime-epoch-duration-secs <n>
                                    reward runtime epoch duration seconds (default: 60)
   --reward-points-per-credit <n>   reward points per credit (default: 100)
+  --feedback-events-enable          continuously inject feedback submit events during soak
+  --feedback-events-interval-secs <n>
+                                   interval seconds between feedback submissions (default: 60)
+  --feedback-events-start-sec <n>   start second offset for feedback submissions (default: 30)
+  --feedback-events-max-events <n>
+                                   max feedback events per topology, 0 = unlimited (default: 0)
   --max-stall-secs <n>             gate threshold for max no-progress window
   --max-lag-p95 <n>                gate threshold for p95(network_height - committed_height)
   --max-distfs-failure-ratio <r>   gate threshold for distfs failure ratio (0~1)
@@ -61,6 +67,7 @@ Output:
     summary.md
     failures.md (only when failed)
     chaos_events.log
+    feedback_events.log
     <topology>/nodes/<node_label>/{stdout.log,stderr.log,command.txt}
 USAGE
 }
@@ -198,6 +205,10 @@ chaos_continuous_restart_down_secs=1
 chaos_continuous_pause_duration_secs=2
 reward_runtime_epoch_duration_secs=60
 reward_points_per_credit=100
+feedback_events_enabled=0
+feedback_events_interval_secs=60
+feedback_events_start_sec=30
+feedback_events_max_events=0
 max_stall_secs=""
 max_lag_p95=""
 max_distfs_failure_ratio=""
@@ -302,6 +313,22 @@ while [[ $# -gt 0 ]]; do
       reward_points_per_credit=${2:-}
       shift 2
       ;;
+    --feedback-events-enable)
+      feedback_events_enabled=1
+      shift
+      ;;
+    --feedback-events-interval-secs)
+      feedback_events_interval_secs=${2:-}
+      shift 2
+      ;;
+    --feedback-events-start-sec)
+      feedback_events_start_sec=${2:-}
+      shift 2
+      ;;
+    --feedback-events-max-events)
+      feedback_events_max_events=${2:-}
+      shift 2
+      ;;
     --max-stall-secs)
       max_stall_secs=${2:-}
       shift 2
@@ -393,8 +420,13 @@ ensure_non_negative_int "--chaos-continuous-restart-down-secs" "$chaos_continuou
 ensure_non_negative_int "--chaos-continuous-pause-duration-secs" "$chaos_continuous_pause_duration_secs"
 ensure_positive_int "--reward-runtime-epoch-duration-secs" "$reward_runtime_epoch_duration_secs"
 ensure_positive_int "--reward-points-per-credit" "$reward_points_per_credit"
+ensure_non_negative_int "--feedback-events-start-sec" "$feedback_events_start_sec"
+ensure_non_negative_int "--feedback-events-max-events" "$feedback_events_max_events"
 if [[ "$chaos_continuous_enabled" -eq 1 ]]; then
   ensure_positive_int "--chaos-continuous-interval-secs" "$chaos_continuous_interval_secs"
+fi
+if [[ "$feedback_events_enabled" -eq 1 ]]; then
+  ensure_positive_int "--feedback-events-interval-secs" "$feedback_events_interval_secs"
 fi
 
 scenario=$(trim "$scenario")
@@ -475,6 +507,7 @@ timeline_csv="$run_dir/timeline.csv"
 summary_json="$run_dir/summary.json"
 failures_md="$run_dir/failures.md"
 chaos_events_log="$run_dir/chaos_events.log"
+feedback_events_log="$run_dir/feedback_events.log"
 topology_summary_ndjson="$run_dir/.topology_summary.ndjson"
 
 jq -n \
@@ -504,6 +537,10 @@ jq -n \
   --argjson chaos_continuous_pause_duration_secs "$chaos_continuous_pause_duration_secs" \
   --argjson reward_runtime_epoch_duration_secs "$reward_runtime_epoch_duration_secs" \
   --argjson reward_points_per_credit "$reward_points_per_credit" \
+  --argjson feedback_events_enabled "$feedback_events_enabled" \
+  --argjson feedback_events_interval_secs "$feedback_events_interval_secs" \
+  --argjson feedback_events_start_sec "$feedback_events_start_sec" \
+  --argjson feedback_events_max_events "$feedback_events_max_events" \
   --argjson dry_run "$dry_run" \
   --argjson topologies "$(printf '%s\n' "${topologies[@]}" | jq -R -s 'split("\n") | map(select(length > 0))')" \
   '{
@@ -519,6 +556,12 @@ jq -n \
     node_tick_ms: $node_tick_ms,
     reward_runtime_epoch_duration_secs: $reward_runtime_epoch_duration_secs,
     reward_points_per_credit: $reward_points_per_credit,
+    feedback_events: {
+      enabled: ($feedback_events_enabled == 1),
+      interval_secs: $feedback_events_interval_secs,
+      start_sec: $feedback_events_start_sec,
+      max_events: $feedback_events_max_events
+    },
     thresholds: {
       max_stall_secs: $max_stall_secs,
       max_lag_p95: $max_lag_p95,
@@ -555,6 +598,11 @@ jq -n \
   echo "- node_tick_ms: \`$node_tick_ms\`"
   echo "- reward_runtime_epoch_duration_secs: \`$reward_runtime_epoch_duration_secs\`"
   echo "- reward_points_per_credit: \`$reward_points_per_credit\`"
+  if [[ "$feedback_events_enabled" -eq 1 ]]; then
+    echo "- feedback_events: \`enabled\` (interval=${feedback_events_interval_secs}s, start=${feedback_events_start_sec}s, max_events=${feedback_events_max_events})"
+  else
+    echo "- feedback_events: \`disabled\`"
+  fi
   echo "- max_stall_secs: \`$max_stall_secs\`"
   echo "- max_lag_p95: \`$max_lag_p95\`"
   echo "- max_distfs_failure_ratio: \`$max_distfs_failure_ratio\`"
@@ -577,6 +625,7 @@ jq -n \
 echo "topology,node,epoch_index,observed_at_unix_ms,committed_height,network_committed_height,lag,total_checks,failed_checks,distfs_failure_ratio,invariant_ok,report_path" > "$timeline_csv"
 : > "$topology_summary_ndjson"
 echo "timestamp|topology|event_id|phase|action|node|detail" > "$chaos_events_log"
+echo "timestamp|topology|event_id|phase|node|category|detail" > "$feedback_events_log"
 
 append_summary_row() {
   local topology=$1
@@ -604,6 +653,9 @@ declare -A chaos_exempt_secs_by_topology=()
 declare -A chaos_events_executed_by_topology=()
 declare -A chaos_plan_events_executed_by_topology=()
 declare -A chaos_continuous_events_executed_by_topology=()
+declare -A feedback_events_executed_by_topology=()
+declare -A feedback_events_success_by_topology=()
+declare -A feedback_events_failed_by_topology=()
 
 stop_active_processes() {
   if [[ "$active_cleanup_done" -eq 1 ]]; then
@@ -685,6 +737,80 @@ log_chaos_event() {
   local ts
   ts=$(date '+%Y-%m-%d %H:%M:%S %Z')
   echo "$ts|$topology|$event_id|$phase|$action|$node|$detail" >> "$chaos_events_log"
+}
+
+log_feedback_event() {
+  local topology=$1
+  local event_id=$2
+  local phase=$3
+  local node=$4
+  local category=$5
+  local detail=$6
+  local ts
+  ts=$(date '+%Y-%m-%d %H:%M:%S %Z')
+  echo "$ts|$topology|$event_id|$phase|$node|$category|$detail" >> "$feedback_events_log"
+}
+
+execute_feedback_submit_event() {
+  local topology=$1
+  local event_id=$2
+  local node_name=$3
+  local category=$4
+  local at_sec=$5
+  local status_url=${node_status_url_by_name[$node_name]:-}
+  local submit_url payload response_with_code response_code response_body
+  local response_ok feedback_id response_event_id error_text
+
+  if [[ -z "$status_url" ]]; then
+    log_feedback_event "$topology" "$event_id" "failed" "$node_name" "$category" "status_url_not_found"
+    return 1
+  fi
+  submit_url="${status_url%/v1/chain/status}/v1/chain/feedback/submit"
+  payload=$(jq -cn \
+    --arg category "$category" \
+    --arg title "soak-feedback-${topology}-${event_id}" \
+    --arg description "p2p-longrun feedback event topology=${topology} node=${node_name} at_sec=${at_sec}" \
+    --arg platform "p2p_longrun_soak" \
+    --arg game_version "soak" \
+    '{category: $category, title: $title, description: $description, platform: $platform, game_version: $game_version}')
+
+  log_feedback_event "$topology" "$event_id" "start" "$node_name" "$category" "at_sec=$at_sec,url=$submit_url"
+
+  response_with_code=$(curl -sS --max-time "$curl_timeout_secs" \
+    -X POST "$submit_url" \
+    -H 'Content-Type: application/json' \
+    --data "$payload" \
+    -w $'\n%{http_code}' 2>/dev/null || true)
+  if [[ -z "$response_with_code" ]]; then
+    log_feedback_event "$topology" "$event_id" "failed" "$node_name" "$category" "empty_http_response"
+    return 1
+  fi
+
+  response_code=${response_with_code##*$'\n'}
+  response_body=${response_with_code%$'\n'*}
+  response_ok=$(jq -r '.ok // false' <<< "$response_body" 2>/dev/null || echo "false")
+  if [[ "$response_code" =~ ^2[0-9][0-9]$ ]] && [[ "$response_ok" == "true" ]]; then
+    feedback_id=$(jq -r '.feedback_id // empty' <<< "$response_body" 2>/dev/null || true)
+    response_event_id=$(jq -r '.event_id // empty' <<< "$response_body" 2>/dev/null || true)
+    log_feedback_event \
+      "$topology" \
+      "$event_id" \
+      "completed" \
+      "$node_name" \
+      "$category" \
+      "http=${response_code},feedback_id=${feedback_id:-none},event_id=${response_event_id:-none}"
+    return 0
+  fi
+
+  error_text=$(jq -r '.error // empty' <<< "$response_body" 2>/dev/null || true)
+  log_feedback_event \
+    "$topology" \
+    "$event_id" \
+    "failed" \
+    "$node_name" \
+    "$category" \
+    "http=${response_code},error=${error_text:-unknown}"
+  return 1
 }
 
 relaunch_node_from_saved_command() {
@@ -1369,6 +1495,9 @@ run_topology() {
         chaos_events: 0,
         chaos_plan_events: 0,
         chaos_continuous_events: 0,
+        feedback_events: 0,
+        feedback_events_success: 0,
+        feedback_events_failed: 0,
         metric_gate: {
           status: "dry_run",
           notes: "commands_rendered_only"
@@ -1451,6 +1580,10 @@ run_topology() {
   local continuous_enabled=0
   local continuous_next_at_sec=0
   local continuous_generated=0
+  local feedback_enabled=0
+  local feedback_next_at_sec=0
+  local feedback_generated=0
+  local feedback_node_cursor=0
 
   if [[ -n "$chaos_plan_path" ]]; then
     local event_id at_sec node action down_secs event_duration_secs_raw
@@ -1516,6 +1649,10 @@ run_topology() {
     continuous_enabled=1
     continuous_next_at_sec=$chaos_continuous_start_sec
     chaos_rng_seed $((chaos_continuous_seed + (index + 1) * 104729))
+  fi
+  if [[ "$feedback_events_enabled" -eq 1 ]]; then
+    feedback_enabled=1
+    feedback_next_at_sec=$feedback_events_start_sec
   fi
 
   if ! wait_for_topology_ready; then
@@ -1617,6 +1754,35 @@ run_topology() {
         done
       fi
 
+      if [[ "$feedback_enabled" -eq 1 ]]; then
+        while (( elapsed_sec >= feedback_next_at_sec )); do
+          if (( feedback_events_max_events > 0 && feedback_generated >= feedback_events_max_events )); then
+            feedback_enabled=0
+            break
+          fi
+
+          local feedback_node feedback_category feedback_event_id
+          feedback_node=${active_nodes[$feedback_node_cursor]}
+          if (( feedback_generated % 2 == 0 )); then
+            feedback_category="bug"
+          else
+            feedback_category="suggestion"
+          fi
+          feedback_event_id="feedback-${topology}-${feedback_generated}"
+
+          feedback_events_executed_by_topology["$topology"]=$(( ${feedback_events_executed_by_topology[$topology]:-0} + 1 ))
+          if execute_feedback_submit_event "$topology" "$feedback_event_id" "$feedback_node" "$feedback_category" "$feedback_next_at_sec"; then
+            feedback_events_success_by_topology["$topology"]=$(( ${feedback_events_success_by_topology[$topology]:-0} + 1 ))
+          else
+            feedback_events_failed_by_topology["$topology"]=$(( ${feedback_events_failed_by_topology[$topology]:-0} + 1 ))
+          fi
+
+          feedback_generated=$((feedback_generated + 1))
+          feedback_node_cursor=$(( (feedback_node_cursor + 1) % ${#active_nodes[@]} ))
+          feedback_next_at_sec=$((feedback_next_at_sec + feedback_events_interval_secs))
+        done
+      fi
+
       poll_topology_all_nodes "$topology"
 
       local idx
@@ -1642,6 +1808,9 @@ run_topology() {
   local chaos_plan_event_count=${chaos_plan_events_executed_by_topology[$topology]:-0}
   local chaos_continuous_event_count=${chaos_continuous_events_executed_by_topology[$topology]:-0}
   local chaos_exempt_secs=${chaos_exempt_secs_by_topology[$topology]:-0}
+  local feedback_event_count=${feedback_events_executed_by_topology[$topology]:-0}
+  local feedback_event_success_count=${feedback_events_success_by_topology[$topology]:-0}
+  local feedback_event_failed_count=${feedback_events_failed_by_topology[$topology]:-0}
 
   analysis_chaos_exempt_secs=$chaos_exempt_secs
   analysis_effective_max_stall_secs=$((max_stall_secs + analysis_chaos_exempt_secs))
@@ -1658,6 +1827,11 @@ run_topology() {
     notes_parts+=("chaos_plan_events=${chaos_plan_event_count}")
     notes_parts+=("chaos_continuous_events=${chaos_continuous_event_count}")
     notes_parts+=("chaos_exempt_secs=${chaos_exempt_secs}")
+  fi
+  if (( feedback_event_count > 0 )); then
+    notes_parts+=("feedback_events=${feedback_event_count}")
+    notes_parts+=("feedback_success=${feedback_event_success_count}")
+    notes_parts+=("feedback_failed=${feedback_event_failed_count}")
   fi
 
   if [[ "$analysis_gate_status" == "fail" ]]; then
@@ -1697,6 +1871,9 @@ run_topology() {
     --argjson chaos_events "$chaos_event_count" \
     --argjson chaos_plan_events "$chaos_plan_event_count" \
     --argjson chaos_continuous_events "$chaos_continuous_event_count" \
+    --argjson feedback_events "$feedback_event_count" \
+    --argjson feedback_events_success "$feedback_event_success_count" \
+    --argjson feedback_events_failed "$feedback_event_failed_count" \
     --argjson max_stall_secs_observed "$analysis_max_stall_secs_observed" \
     --argjson chaos_exempt_secs "$analysis_chaos_exempt_secs" \
     --argjson effective_max_stall_secs "$analysis_effective_max_stall_secs" \
@@ -1727,6 +1904,9 @@ run_topology() {
       chaos_events: $chaos_events,
       chaos_plan_events: $chaos_plan_events,
       chaos_continuous_events: $chaos_continuous_events,
+      feedback_events: $feedback_events,
+      feedback_events_success: $feedback_events_success,
+      feedback_events_failed: $feedback_events_failed,
       metric_gate: {
         status: $gate_status,
         notes: $gate_notes
@@ -1793,7 +1973,12 @@ write_summary_json() {
     --arg timeline_csv "$timeline_csv" \
     --arg summary_md "$summary_md" \
     --arg chaos_events_log "$chaos_events_log" \
+    --arg feedback_events_log "$feedback_events_log" \
     --arg run_config_json "$run_config_json" \
+    --argjson feedback_events_enabled "$feedback_events_enabled" \
+    --argjson feedback_events_interval_secs "$feedback_events_interval_secs" \
+    --argjson feedback_events_start_sec "$feedback_events_start_sec" \
+    --argjson feedback_events_max_events "$feedback_events_max_events" \
     --argjson overall_status_code "$overall_status_code" \
     '
       . as $topologies |
@@ -1814,6 +1999,12 @@ write_summary_json() {
           restart_down_secs: $chaos_continuous_restart_down_secs,
           pause_duration_secs: $chaos_continuous_pause_duration_secs
         },
+        feedback_events: {
+          enabled: ($feedback_events_enabled == 1),
+          interval_secs: $feedback_events_interval_secs,
+          start_sec: $feedback_events_start_sec,
+          max_events: $feedback_events_max_events
+        },
         dry_run: ($dry_run == 1),
         duration_secs_per_topology: $duration_secs,
         thresholds: {
@@ -1825,7 +2016,8 @@ write_summary_json() {
           run_config_json: $run_config_json,
           timeline_csv: $timeline_csv,
           summary_md: $summary_md,
-          chaos_events_log: $chaos_events_log
+          chaos_events_log: $chaos_events_log,
+          feedback_events_log: $feedback_events_log
         },
         totals: {
           topology_count: ($topologies | length),
@@ -1834,7 +2026,10 @@ write_summary_json() {
           report_samples_total: ($topologies | map(.report_samples) | add // 0),
           chaos_plan_events_total: ($topologies | map(.chaos_plan_events) | add // 0),
           chaos_continuous_events_total: ($topologies | map(.chaos_continuous_events) | add // 0),
-          chaos_events_total: ($topologies | map(.chaos_events) | add // 0)
+          chaos_events_total: ($topologies | map(.chaos_events) | add // 0),
+          feedback_events_total: ($topologies | map(.feedback_events) | add // 0),
+          feedback_events_success_total: ($topologies | map(.feedback_events_success) | add // 0),
+          feedback_events_failed_total: ($topologies | map(.feedback_events_failed) | add // 0)
         },
         gate_failures: (
           $topologies
@@ -1862,6 +2057,9 @@ append_summary_metrics_section() {
   local chaos_plan_events_total=0
   local chaos_continuous_events_total=0
   local chaos_events_total=0
+  local feedback_events_total=0
+  local feedback_events_success_total=0
+  local feedback_events_failed_total=0
 
   if [[ -f "$summary_json" ]]; then
     topology_count=$(jq -r '.totals.topology_count // 0' "$summary_json")
@@ -1871,6 +2069,9 @@ append_summary_metrics_section() {
     chaos_plan_events_total=$(jq -r '.totals.chaos_plan_events_total // 0' "$summary_json")
     chaos_continuous_events_total=$(jq -r '.totals.chaos_continuous_events_total // 0' "$summary_json")
     chaos_events_total=$(jq -r '.totals.chaos_events_total // 0' "$summary_json")
+    feedback_events_total=$(jq -r '.totals.feedback_events_total // 0' "$summary_json")
+    feedback_events_success_total=$(jq -r '.totals.feedback_events_success_total // 0' "$summary_json")
+    feedback_events_failed_total=$(jq -r '.totals.feedback_events_failed_total // 0' "$summary_json")
   fi
 
   {
@@ -1880,20 +2081,22 @@ append_summary_metrics_section() {
     echo "- timeline_csv: \`$timeline_csv\`"
     echo "- summary_json: \`$summary_json\`"
     echo "- chaos_events_log: \`$chaos_events_log\`"
+    echo "- feedback_events_log: \`$feedback_events_log\`"
     echo "- topology_count: \`$topology_count\` (ok=\`$topology_ok_count\`, failed=\`$topology_failed_count\`)"
     echo "- report_samples_total: \`$report_samples_total\`"
     echo "- chaos_plan_events_total: \`$chaos_plan_events_total\`"
     echo "- chaos_continuous_events_total: \`$chaos_continuous_events_total\`"
     echo "- chaos_events_total: \`$chaos_events_total\`"
+    echo "- feedback_events_total: \`$feedback_events_total\` (success=\`$feedback_events_success_total\`, failed=\`$feedback_events_failed_total\`)"
     echo
     echo "## Gate Metrics"
     echo
-    echo "| topology | gate | reports | chaos_plan | chaos_continuous | chaos_events | chaos_exempt_s | max_stall_s | max_stall_s_effective | lag_p95 | distfs_ratio | settlement_apply_ratio | invariant_all_ok | reward_runtime_samples | minted_samples |"
-    echo "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"
+    echo "| topology | gate | reports | chaos_plan | chaos_continuous | chaos_events | feedback_events | feedback_success | feedback_failed | chaos_exempt_s | max_stall_s | max_stall_s_effective | lag_p95 | distfs_ratio | settlement_apply_ratio | invariant_all_ok | reward_runtime_samples | minted_samples |"
+    echo "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"
     if [[ -f "$summary_json" ]]; then
-      while IFS=$'\t' read -r topology gate reports chaos_plan chaos_continuous chaos_events chaos_exempt stall stall_effective lag ratio settlement_ratio invariant rr_samples minted; do
-        echo "| $topology | $gate | $reports | $chaos_plan | $chaos_continuous | $chaos_events | $chaos_exempt | $stall | $stall_effective | $lag | $ratio | $settlement_ratio | $invariant | $rr_samples | $minted |"
-      done < <(jq -r '.topologies[] | [ .topology, .metric_gate.status, .report_samples, .chaos_plan_events, .chaos_continuous_events, .chaos_events, .metrics.chaos_exempt_secs, .metrics.max_stall_secs_observed, .metrics.effective_max_stall_secs, .metrics.lag_p95, .metrics.distfs_failure_ratio, .metrics.settlement_apply_failure_ratio, .metrics.invariant_all_ok, .metrics.reward_runtime_available_samples, .metrics.minted_non_empty_samples ] | @tsv' "$summary_json")
+      while IFS=$'\t' read -r topology gate reports chaos_plan chaos_continuous chaos_events feedback_events feedback_success feedback_failed chaos_exempt stall stall_effective lag ratio settlement_ratio invariant rr_samples minted; do
+        echo "| $topology | $gate | $reports | $chaos_plan | $chaos_continuous | $chaos_events | $feedback_events | $feedback_success | $feedback_failed | $chaos_exempt | $stall | $stall_effective | $lag | $ratio | $settlement_ratio | $invariant | $rr_samples | $minted |"
+      done < <(jq -r '.topologies[] | [ .topology, .metric_gate.status, .report_samples, .chaos_plan_events, .chaos_continuous_events, .chaos_events, .feedback_events, .feedback_events_success, .feedback_events_failed, .metrics.chaos_exempt_secs, .metrics.max_stall_secs_observed, .metrics.effective_max_stall_secs, .metrics.lag_p95, .metrics.distfs_failure_ratio, .metrics.settlement_apply_failure_ratio, .metrics.invariant_all_ok, .metrics.reward_runtime_available_samples, .metrics.minted_non_empty_samples ] | @tsv' "$summary_json")
     fi
   } >> "$summary_md"
 }
@@ -1939,6 +2142,7 @@ echo "  summary: $summary_md"
 echo "  summary_json: $summary_json"
 echo "  timeline_csv: $timeline_csv"
 echo "  chaos_events_log: $chaos_events_log"
+echo "  feedback_events_log: $feedback_events_log"
 if [[ -f "$failures_md" ]]; then
   echo "  failures: $failures_md"
 fi
