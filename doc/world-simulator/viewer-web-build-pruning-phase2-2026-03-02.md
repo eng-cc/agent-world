@@ -36,3 +36,16 @@
   - 保留默认字体兜底，中文字体加载失败时不阻塞主流程。
 - wasm 缩小但 dist 总体积不降：
   - 同时统计 wasm 与 dist，明确“缩 wasm / 移体积”两类收益差异。
+
+## 完成态（2026-03-02）
+- M0~M3 全部完成，`agent_world_viewer` wasm 构建链路保持通过。
+- wasm 主体体积：
+  - baseline：`70,761,540` bytes
+  - phase1(pruned)：`70,754,079` bytes
+  - phase2：`48,934,067` bytes（较 phase1 减少 `21,820,012` bytes，`-30.8392%`）
+- dist 口径（以 phase1/pruned 与 phase2 可比目录为准）：
+  - phase1(pruned)：`70,881,376` bytes
+  - phase2：`64,104,437` bytes（减少 `6,776,939` bytes，`-9.5610%`）
+- 字体资源策略：
+  - `ms-yahei.ttf` 不再内联进 wasm，改为运行时加载。
+  - `index.html` 增加 trunk `copy-file`，只拷贝 `assets/fonts/ms-yahei.ttf`（`15,044,440` bytes）到 dist，避免回退为整包 `assets` 拷贝。
