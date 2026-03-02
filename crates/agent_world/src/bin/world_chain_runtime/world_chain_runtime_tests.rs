@@ -1,6 +1,7 @@
 use super::{
-    build_chain_balances_payload_from_world, parse_options, parse_validator_spec, CliOptions,
-    DEFAULT_NODE_ID, DEFAULT_STATUS_BIND,
+    build_chain_balances_payload_from_world, build_default_replication_network_config,
+    parse_options, parse_validator_spec, CliOptions, DEFAULT_NODE_ID,
+    DEFAULT_REPLICATION_NETWORK_LISTEN, DEFAULT_STATUS_BIND,
 };
 use agent_world::runtime::World as RuntimeWorld;
 
@@ -121,4 +122,17 @@ fn default_runtime_paths_depend_on_node_id() {
         .execution_world_dir
         .to_string_lossy()
         .contains("output/chain-runtime/node-z"));
+}
+
+#[test]
+fn default_replication_network_config_uses_loopback_ephemeral_listen() {
+    let config = build_default_replication_network_config()
+        .expect("default replication network config should build");
+    assert_eq!(config.listen_addrs.len(), 1);
+    assert_eq!(
+        config.listen_addrs[0].to_string(),
+        DEFAULT_REPLICATION_NETWORK_LISTEN
+    );
+    assert!(config.bootstrap_peers.is_empty());
+    assert!(!config.allow_local_handler_fallback_when_no_peers);
 }

@@ -12,7 +12,8 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use agent_world::runtime::{NodeAssetBalance, NodeRewardMintRecord, RewardAssetConfig};
 use agent_world_node::{
-    NodeConfig, NodeFeedbackP2pConfig, NodePosConfig, NodeReplicationConfig, NodeRole, NodeRuntime,
+    Libp2pReplicationNetwork, Libp2pReplicationNetworkConfig, NodeConfig, NodeFeedbackP2pConfig,
+    NodePosConfig, NodeReplicationConfig, NodeReplicationNetworkHandle, NodeRole, NodeRuntime,
     NodeSnapshot, PosConsensusStatus, PosValidator,
 };
 use ed25519_dalek::SigningKey;
@@ -105,6 +106,7 @@ const DEFAULT_NODE_ID: &str = "viewer-live-node";
 const DEFAULT_WORLD_ID: &str = "live-llm_bootstrap";
 const DEFAULT_STATUS_BIND: &str = "127.0.0.1:5121";
 const DEFAULT_CONFIG_FILE: &str = "config.toml";
+const DEFAULT_REPLICATION_NETWORK_LISTEN: &str = "/ip4/127.0.0.1/tcp/0";
 const DEFAULT_NODE_TICK_MS: u64 = 200;
 const DEFAULT_RECENT_MINT_RECORD_LIMIT: usize = 20;
 const DEFAULT_REWARD_RUNTIME_STATE_FILE: &str = "reward-runtime-state.json";
@@ -313,6 +315,7 @@ fn run_chain_runtime(options: CliOptions) -> Result<(), String> {
         .map_err(|err| format!("failed to initialize execution driver: {err}"))?;
         runtime = runtime.with_execution_hook(execution_driver);
     }
+    runtime = attach_default_replication_network(runtime)?;
 
     runtime
         .start()
@@ -1041,6 +1044,26 @@ fn build_node_replication_config(
             )
         })
         .map_err(|err| format!("failed to build node replication config: {err:?}"))
+}
+
+fn attach_default_replication_network(runtime: NodeRuntime) -> Result<NodeRuntime, String> {
+    let mut network_config = build_default_replication_network_config()?;
+    network_config.allow_local_handler_fallback_when_no_peers = true;
+    let network = Arc::new(Libp2pReplicationNetwork::new(network_config));
+    Ok(runtime.with_replication_network(NodeReplicationNetworkHandle::new(network)))
+}
+
+fn build_default_replication_network_config() -> Result<Libp2pReplicationNetworkConfig, String> {
+    let mut config = Libp2pReplicationNetworkConfig::default();
+    config
+        .listen_addrs
+        .push(DEFAULT_REPLICATION_NETWORK_LISTEN.parse().map_err(|err| {
+            format!(
+                "failed to parse default replication listen address {}: {err}",
+                DEFAULT_REPLICATION_NETWORK_LISTEN
+            )
+        })?);
+    Ok(config)
 }
 
 fn build_feedback_submit_signer(
