@@ -259,9 +259,11 @@ dependencies = [
  "gloo-timers",
  "hex",
  "image",
+ "js-sys",
  "pollster",
  "serde",
  "serde_json",
+ "toml 0.8.23",
  "wasm-bindgen",
  "web-sys",
 ]

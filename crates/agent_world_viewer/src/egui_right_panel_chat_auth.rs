@@ -1,4 +1,17 @@
 use super::*;
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::JsValue;
+
+#[cfg(target_arch = "wasm32")]
+const VIEWER_AUTH_BOOTSTRAP_OBJECT: &str = "__AGENT_WORLD_VIEWER_AUTH_ENV";
+#[cfg(not(target_arch = "wasm32"))]
+const NODE_CONFIG_FILE_NAME: &str = "config.toml";
+#[cfg(not(target_arch = "wasm32"))]
+const NODE_TABLE_KEY: &str = "node";
+#[cfg(not(target_arch = "wasm32"))]
+const NODE_PRIVATE_KEY_FIELD: &str = "private_key";
+#[cfg(not(target_arch = "wasm32"))]
+const NODE_PUBLIC_KEY_FIELD: &str = "public_key";
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) struct ViewerAuthSigner {
@@ -53,7 +66,96 @@ where
 }
 
 pub(super) fn resolve_viewer_auth_signer() -> Result<ViewerAuthSigner, String> {
-    resolve_viewer_auth_signer_from(|key| std::env::var(key).ok())
+    let runtime_result = resolve_viewer_auth_signer_from(runtime_auth_value);
+    match runtime_result {
+        Ok(signer) => Ok(signer),
+        Err(runtime_err) => {
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                match resolve_viewer_auth_signer_from_node_config(std::path::Path::new(
+                    NODE_CONFIG_FILE_NAME,
+                )) {
+                    Ok(signer) => return Ok(signer),
+                    Err(config_err) => {
+                        return Err(format!(
+                            "{runtime_err}; fallback {NODE_CONFIG_FILE_NAME} failed: {config_err}"
+                        ))
+                    }
+                }
+            }
+            #[cfg(target_arch = "wasm32")]
+            {
+                Err(runtime_err)
+            }
+        }
+    }
+}
+
+fn runtime_auth_value(key: &str) -> Option<String> {
+    #[cfg(target_arch = "wasm32")]
+    if let Some(value) = resolve_wasm_viewer_auth_value(key) {
+        return Some(value);
+    }
+    std::env::var(key).ok()
+}
+
+#[cfg(target_arch = "wasm32")]
+fn resolve_wasm_viewer_auth_value(key: &str) -> Option<String> {
+    let window = web_sys::window()?;
+    let store = js_sys::Reflect::get(
+        window.as_ref(),
+        &JsValue::from_str(VIEWER_AUTH_BOOTSTRAP_OBJECT),
+    )
+    .ok()?;
+    if store.is_null() || store.is_undefined() {
+        return None;
+    }
+    let value = js_sys::Reflect::get(&store, &JsValue::from_str(key)).ok()?;
+    value
+        .as_string()
+        .map(|raw| raw.trim().to_string())
+        .filter(|value| !value.is_empty())
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub(super) fn resolve_viewer_auth_signer_from_node_config(
+    path: &std::path::Path,
+) -> Result<ViewerAuthSigner, String> {
+    let content = std::fs::read_to_string(path)
+        .map_err(|err| format!("read {} failed: {err}", path.display()))?;
+    let value: toml::Value = toml::from_str(content.as_str())
+        .map_err(|err| format!("parse {} failed: {err}", path.display()))?;
+    let table = value
+        .as_table()
+        .ok_or_else(|| format!("{} root must be a table", path.display()))?;
+    let node = table
+        .get(NODE_TABLE_KEY)
+        .and_then(toml::Value::as_table)
+        .ok_or_else(|| format!("{NODE_TABLE_KEY} table is missing in {}", path.display()))?;
+    let private_key =
+        resolve_required_toml_string(node, NODE_PRIVATE_KEY_FIELD, "node.private_key")?;
+    let public_key = resolve_required_toml_string(node, NODE_PUBLIC_KEY_FIELD, "node.public_key")?;
+    let player_id = resolve_viewer_player_id_from(&runtime_auth_value)?;
+    Ok(ViewerAuthSigner {
+        player_id,
+        public_key,
+        private_key,
+    })
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn resolve_required_toml_string(
+    table: &toml::value::Table,
+    key: &str,
+    label: &str,
+) -> Result<String, String> {
+    let value = table
+        .get(key)
+        .and_then(toml::Value::as_str)
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| format!("{label} is missing or empty"))?;
+    Ok(value.to_string())
 }
 
 pub(super) fn next_viewer_auth_nonce() -> Result<u64, String> {
@@ -121,7 +223,7 @@ pub(super) fn sign_agent_chat_request(
 }
 
 pub(super) fn sync_viewer_auth_nonce_from_state(state: &ViewerState) {
-    let Ok(player_id) = resolve_viewer_player_id_from(&|key| std::env::var(key).ok()) else {
+    let Ok(player_id) = resolve_viewer_player_id_from(&runtime_auth_value) else {
         return;
     };
     let Some(snapshot) = state.snapshot.as_ref() else {

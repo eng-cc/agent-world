@@ -3,7 +3,7 @@
 ## 任务拆解
 - [x] T0 建档：新增设计文档与项目管理文档。
 - [x] T1 启动器注入：`world_game_launcher` 在 Web `index.html` 注入 Viewer 鉴权配置（来自 `config.toml [node]`），补单测。
-- [ ] T2 Viewer 回退：`agent_world_viewer` 增加 wasm 注入读取与 native `config.toml` 回退，补单测。
+- [x] T2 Viewer 回退：`agent_world_viewer` 增加 wasm 注入读取与 native `config.toml` 回退，补单测。
 - [ ] T3 回归与收口：执行定向测试、更新项目状态与 devlog。
 
 ## 依赖
@@ -16,5 +16,5 @@
 
 ## 状态
 - 当前阶段：进行中
-- 当前任务：T2 Viewer 回退
-- 进度：T0/T1 已完成，T2/T3 未完成
+- 当前任务：T3 回归与收口
+- 进度：T0/T1/T2 已完成，T3 未完成

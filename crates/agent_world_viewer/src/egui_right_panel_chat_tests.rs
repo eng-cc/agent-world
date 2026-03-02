@@ -4,6 +4,12 @@ use agent_world::simulator::{
     WorldEvent, WorldInitConfig, WorldScenario,
 };
 use ed25519_dalek::SigningKey;
+#[cfg(not(target_arch = "wasm32"))]
+use std::fs;
+#[cfg(not(target_arch = "wasm32"))]
+use std::path::PathBuf;
+#[cfg(not(target_arch = "wasm32"))]
+use std::time::{SystemTime, UNIX_EPOCH};
 
 fn message(agent_id: &str, time: u64, role: LlmChatRole, content: &str) -> LlmChatMessageTrace {
     LlmChatMessageTrace {
@@ -471,4 +477,58 @@ fn prompt_apply_request_has_patch_returns_false_for_noop_request() {
         long_term_goal_override: None,
     };
     assert!(!prompt_apply_request_has_patch(&request));
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[test]
+fn resolve_viewer_auth_signer_from_node_config_reads_node_keypair() {
+    let signer = test_signer(41);
+    let temp_dir = make_temp_dir("viewer_auth_from_node_config");
+    let config_path = temp_dir.join("config.toml");
+    fs::write(
+        config_path.as_path(),
+        format!(
+            "[node]\nprivate_key = \"{}\"\npublic_key = \"{}\"\n",
+            signer.private_key, signer.public_key
+        ),
+    )
+    .expect("write config");
+
+    let resolved =
+        resolve_viewer_auth_signer_from_node_config(config_path.as_path()).expect("resolve signer");
+    assert_eq!(resolved.public_key, signer.public_key);
+    assert_eq!(resolved.private_key, signer.private_key);
+    assert!(!resolved.player_id.trim().is_empty());
+
+    let _ = fs::remove_dir_all(temp_dir);
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[test]
+fn resolve_viewer_auth_signer_from_node_config_rejects_missing_node_table() {
+    let temp_dir = make_temp_dir("viewer_auth_missing_node_table");
+    let config_path = temp_dir.join("config.toml");
+    fs::write(config_path.as_path(), "[not_node]\nfoo = \"bar\"\n").expect("write config");
+
+    let err = resolve_viewer_auth_signer_from_node_config(config_path.as_path())
+        .expect_err("missing node table should fail");
+    assert!(err.contains("node table"));
+
+    let _ = fs::remove_dir_all(temp_dir);
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn make_temp_dir(label: &str) -> PathBuf {
+    let mut path = std::env::temp_dir();
+    let stamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("time")
+        .as_nanos();
+    path.push(format!(
+        "agent_world_viewer_chat_auth_{label}_{}_{}",
+        std::process::id(),
+        stamp
+    ));
+    fs::create_dir_all(path.as_path()).expect("create temp dir");
+    path
 }
