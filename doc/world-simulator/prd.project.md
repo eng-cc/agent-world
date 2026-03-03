@@ -22,7 +22,7 @@
 - [x] TASK-WORLD_SIMULATOR-019 (PRD-WORLD_SIMULATOR-008): 完成“viewer native 粉紫屏回归”PRD 建模与任务拆解（含 Web+native 验收口径）。
 - [x] TASK-WORLD_SIMULATOR-020 (PRD-WORLD_SIMULATOR-008): 修复 `agent_world_viewer` 默认 tonemapping 在 native 链路的 feature 缺失回归，并补齐回归测试与抓帧验证。
 - [x] TASK-WORLD_SIMULATOR-021 (PRD-WORLD_SIMULATOR-009): 完成“launcher bundle 运行中二进制覆写失败（Text file busy）”PRD 建模与任务拆解。
-- [ ] TASK-WORLD_SIMULATOR-022 (PRD-WORLD_SIMULATOR-009): 修复 `build-game-launcher-bundle.sh` 二进制复制阶段的占用冲突，验证重复打包不再出现 `Text file busy`。
+- [x] TASK-WORLD_SIMULATOR-022 (PRD-WORLD_SIMULATOR-009): 修复 `build-game-launcher-bundle.sh` 二进制复制阶段的占用冲突，验证重复打包不再出现 `Text file busy`。
 
 ## 专题任务映射（2026-03-02 批次）
 - [x] SUBTASK-WORLD_SIMULATOR-20260302-001 (PRD-WORLD_SIMULATOR-001/002/003): `doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.project.md`
@@ -64,8 +64,8 @@
 
 ## 状态
 - 更新日期: 2026-03-03
-- 当前状态: active（`TASK-WORLD_SIMULATOR-022` 执行中）
-- 当前优先任务: `TASK-WORLD_SIMULATOR-022`
+- 当前状态: active（当前任务清单已完成，等待新增需求）
+- 当前优先任务: 无（待新增任务）
 - 并行待办: 无
 - 专题映射状态: 2026-03-02 批次 9/9、2026-03-03 批次 4/4 已纳入模块项目管理文档。
 - 手册入口状态: `doc/world-simulator/viewer/viewer-manual.md` 为唯一活跃手册入口。

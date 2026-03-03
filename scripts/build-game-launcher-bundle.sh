@@ -39,6 +39,14 @@ run() {
   "$@"
 }
 
+replace_file() {
+  local src="$1"
+  local dest="$2"
+  # Remove destination first so running binaries don't trigger ETXTBSY on overwrite.
+  run rm -f "$dest"
+  run cp "$src" "$dest"
+}
+
 ensure_command() {
   local cmd="$1"
   if ! command -v "$cmd" >/dev/null 2>&1; then
@@ -177,10 +185,10 @@ if [[ "$DRY_RUN" != "1" ]]; then
   [[ -f "$CLIENT_LAUNCHER_SRC" ]] || { echo "error: client launcher binary not found: $CLIENT_LAUNCHER_SRC" >&2; exit 1; }
 fi
 
-run cp "$LAUNCHER_SRC" "$BUNDLE_BIN_DIR/$LAUNCHER_BIN_NAME"
-run cp "$LIVE_SRC" "$BUNDLE_BIN_DIR/$LIVE_BIN_NAME"
-run cp "$CHAIN_SRC" "$BUNDLE_BIN_DIR/$CHAIN_BIN_NAME"
-run cp "$CLIENT_LAUNCHER_SRC" "$BUNDLE_BIN_DIR/$CLIENT_LAUNCHER_BIN_NAME"
+replace_file "$LAUNCHER_SRC" "$BUNDLE_BIN_DIR/$LAUNCHER_BIN_NAME"
+replace_file "$LIVE_SRC" "$BUNDLE_BIN_DIR/$LIVE_BIN_NAME"
+replace_file "$CHAIN_SRC" "$BUNDLE_BIN_DIR/$CHAIN_BIN_NAME"
+replace_file "$CLIENT_LAUNCHER_SRC" "$BUNDLE_BIN_DIR/$CLIENT_LAUNCHER_BIN_NAME"
 
 # 2) Prepare web dist (trunk build by default).
 if [[ -n "$WEB_DIST_SOURCE" ]]; then
