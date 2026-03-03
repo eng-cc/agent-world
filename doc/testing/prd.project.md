@@ -32,6 +32,7 @@
 - [x] TASK-TESTING-029 (PRD-TESTING-004): 完成 `runtime-performance-observability-foundation-2026-02-25` 专题文档逐篇人工迁移到 strict schema，并统一 `.prd` 命名。
 - [x] TASK-TESTING-030 (PRD-TESTING-004): 完成 `runtime-performance-observability-llm-api-decoupling-2026-02-25` 专题文档逐篇人工迁移到 strict schema，并统一 `.prd` 命名。
 - [x] TASK-TESTING-031 (PRD-TESTING-004): 完成 `viewer-perf-bottleneck-observability-2026-02-25` 专题文档逐篇人工迁移到 strict schema，并统一 `.prd` 命名。
+- [x] TASK-TESTING-032 (PRD-TESTING-004): 完成 `viewer-performance-methodology-closure-2026-02-25` 专题文档逐篇人工迁移到 strict schema，并统一 `.prd` 命名。
 
 ## 专题任务映射（2026-03-02 批次）
 - [x] SUBTASK-TESTING-20260302-001 (PRD-TESTING-002/003): `doc/testing/longrun/chain-runtime-feedback-replication-network-autowire-2026-03-02.prd.project.md`
@@ -63,6 +64,7 @@
 - [x] SUBTASK-TESTING-20260303-022 (PRD-TESTING-004): `doc/testing/performance/runtime-performance-observability-foundation-2026-02-25.prd.project.md`
 - [x] SUBTASK-TESTING-20260303-023 (PRD-TESTING-004): `doc/testing/performance/runtime-performance-observability-llm-api-decoupling-2026-02-25.prd.project.md`
 - [x] SUBTASK-TESTING-20260303-024 (PRD-TESTING-004): `doc/testing/performance/viewer-perf-bottleneck-observability-2026-02-25.prd.project.md`
+- [x] SUBTASK-TESTING-20260303-025 (PRD-TESTING-004): `doc/testing/performance/viewer-performance-methodology-closure-2026-02-25.prd.project.md`
 
 ## 依赖
 - `testing-manual.md`
