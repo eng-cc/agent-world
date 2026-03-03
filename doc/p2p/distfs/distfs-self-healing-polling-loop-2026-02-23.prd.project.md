@@ -1,0 +1,27 @@
+# Agent World Runtime：分布式存储自愈定时轮询（项目管理）（项目管理文档）
+
+## 任务拆解（含 PRD-ID 映射）
+### T0 建档
+- [x] 设计文档 (PRD-P2P-MIG-078)：`doc/p2p/distfs/distfs-self-healing-polling-loop-2026-02-23.prd.md`
+- [x] 项目文档 (PRD-P2P-MIG-078)：`doc/p2p/distfs/distfs-self-healing-polling-loop-2026-02-23.prd.project.md`
+
+### T1 轮询能力实现
+- [x] 新增轮询策略/状态/结果模型 (PRD-P2P-MIG-078)
+- [x] 实现按间隔触发的轮询入口（到期执行 plan+execute） (PRD-P2P-MIG-078)
+- [x] 补齐单测 (PRD-P2P-MIG-078)：首轮执行/间隔未到跳过/非法策略
+
+### T2 收口
+- [x] 回归 (PRD-P2P-MIG-078)：`agent_world_net`、`agent_world_distfs`、`agent_world_consensus`、`agent_world_node`
+- [x] 更新设计/项目文档状态 (PRD-P2P-MIG-078)
+- [x] 追加 `doc/devlog/2026-02-23.md` 任务日志 (PRD-P2P-MIG-078)
+
+## 依赖
+- `crates/agent_world_net/src/replica_maintenance.rs`
+- `crates/agent_world_net/src/lib.rs`
+
+## 状态
+- 当前状态：`已完成`
+- 已完成：T0、T1、T2
+- 进行中：无
+- 未开始：无
+- 阻塞项：无

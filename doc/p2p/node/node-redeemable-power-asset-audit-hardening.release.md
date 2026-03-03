@@ -2,8 +2,8 @@
 
 ## 发布范围
 - 设计/项目文档：
-  - `doc/p2p/node/node-redeemable-power-asset-audit-hardening.md`
-  - `doc/p2p/node/node-redeemable-power-asset-audit-hardening.project.md`
+  - `doc/p2p/node/node-redeemable-power-asset-audit-hardening.prd.md`
+  - `doc/p2p/node/node-redeemable-power-asset-audit-hardening.prd.project.md`
 - 代码主线：
   - `crates/agent_world/src/runtime/reward_asset.rs`
   - `crates/agent_world/src/runtime/world/resources.rs`

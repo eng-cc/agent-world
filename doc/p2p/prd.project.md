@@ -8,8 +8,8 @@
 - [x] TASK-P2P-005 (PRD-P2P-001/002/003): 对齐 strict PRD schema，补齐关键流程/规格矩阵/边界异常/NFR/验证与决策记录。
 
 ## 依赖
-- `doc/p2p/blockchain/production-grade-blockchain-p2pfs-roadmap.md`
-- `doc/p2p/distributed/distributed-hard-split-phase7.md`
+- `doc/p2p/blockchain/production-grade-blockchain-p2pfs-roadmap.prd.md`
+- `doc/p2p/distributed/distributed-hard-split-phase7.prd.md`
 - `testing-manual.md`
 - `.agents/skills/prd/check.md`
 

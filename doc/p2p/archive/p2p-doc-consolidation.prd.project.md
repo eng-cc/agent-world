@@ -1,0 +1,17 @@
+# P2P 文档集中治理与过期归档（项目管理文档）
+
+## 任务拆解（含 PRD-ID 映射）
+- [x] PDC-1 (PRD-P2P-MIG-043)：输出设计文档与项目管理文档。
+- [x] PDC-2 (PRD-P2P-MIG-043)：识别并迁移 P2P/区块链/共识/DistFS 相关文档到 `doc/p2p`。
+- [x] PDC-3 (PRD-P2P-MIG-043)：识别过期文档，迁移到 `doc/p2p/archive` 并标注“已过期”。
+- [x] PDC-4 (PRD-P2P-MIG-043)：更新引用路径，补充迁移映射清单并执行回归检查。
+- [x] PDC-5 (PRD-P2P-MIG-043)：执行二轮“文档-代码”对照核查，按已删除代码路径口径追加归档。
+
+## 依赖
+- `doc/world-runtime/*.md`、`doc/world-runtime/*.project.md`（迁移前源目录）
+- `doc/p2p/*.md`、`doc/p2p/archive/*.md`（迁移后目标目录）
+- 仓库内对上述文档路径的交叉引用
+
+## 状态
+- 当前阶段：PDC-1 ~ PDC-5 全部完成。
+- 最近更新：2026-02-16。

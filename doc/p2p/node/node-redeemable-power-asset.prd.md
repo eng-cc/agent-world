@@ -1,0 +1,173 @@
+# Agent World Runtime：可兑现节点资产与电力兑换闭环
+
+## 1. Executive Summary
+- Problem Statement: 将现有 Node Points 从“统计积分”升级为“可兑现协议资产”，使算力/存储节点可将收益兑换为 Agent 电力。
+- Proposed Solution: 在不破坏现有 PoS + DistFS 能力的前提下，补齐“结算上链、兑换执行、守恒风控、可审计回放”最小经济闭环。
+- Success Criteria:
+  - SC-1: 用最小可运行方案覆盖前序评估的 8 个关键缺口：
+  - SC-2: 资产层缺失；
+  - SC-3: 结算未上链；
+
+## 2. User Experience & Functionality
+- User Personas: 协议维护者、任务执行者、质量复核者。
+- User Scenarios & Frequency: 每次专题改动前后执行需求核对、测试回归与状态回写。
+- User Stories: As a 维护者, I want Agent World Runtime：可兑现节点资产与电力兑换闭环 的需求结构化, so that implementation is auditable.
+- Critical User Flows: `阅读旧文档 -> 重写为 strict PRD -> 回写项目文档 -> 校验提交`。
+- Functional Specification Matrix:
+| 功能点 | 字段定义 | 动作行为 | 状态转换 | 计算规则 | 权限逻辑 |
+| --- | --- | --- | --- | --- | --- |
+| 专题迁移 | 需求/任务/依赖/状态/测试层级 | 逐篇重写并校验 | `draft -> active -> done` | 以原文约束点映射为主线 | 维护者写入，复核者抽检 |
+- Acceptance Criteria:
+  - AC-1: **RPA-1：可兑现资产层（PowerCredit）**
+  - AC-2: 新增协议资产 `PowerCredit`（不可直接转账，先支持系统铸造与兑换燃烧）。
+  - AC-3: 资产账本按 `node_id` 维护余额与累计统计（mint/burn/redeem）。
+  - AC-4: **RPA-2：Node Points 结算上链**
+  - AC-5: 将 `EpochSettlementReport` 产出的奖励从“内存结果”写入链状态。
+  - AC-6: 增加结算记录结构（epoch -> node mint 明细）并纳入状态快照/回放。
+- Non-Goals:
+  - 可自由转账的通用代币经济系统（交易市场、AMM、税率、复杂货币政策）。
+  - 完整 PoRep/PoSt/VRF 网络协议与多观察点拜占庭证明。
+  - 完整链上仲裁与法律化争议处理流程。
+  - 全量生产级存储安全能力（ACL、全链路加密、跨地域复制策略）。
+
+## 3. AI System Requirements (If Applicable)
+- Tool Requirements: 不适用（本专题不涉及 AI 模型能力改造）。
+- Evaluation Strategy: 不适用。
+
+## 4. Technical Specifications
+- Architecture Overview: 保持原文技术边界，按 strict PRD 结构重排。
+- Integration Points:
+  - `doc/p2p/node/node-redeemable-power-asset.prd.md`
+  - `doc/p2p/node/node-redeemable-power-asset.prd.project.md`
+  - `testing-manual.md`
+- Edge Cases & Error Handling: 命名不一致、章节缺失、引用断链需在同提交修复。
+- Non-Functional Requirements: 非 archive 文档 <=500 行；PRD-ID/任务映射完整；治理检查通过。
+- Security & Privacy: 不引入敏感信息与本地绝对路径。
+
+### 原文技术约束（保真）
+#### 接口 / 数据
+### 1) 资产与储备账本（草案）
+```rust
+RewardAssetConfig {
+  // NodePoints -> PowerCredit 转换比例
+  points_per_credit: u64,
+  // PowerCredit -> 电力单位转换比例
+  credits_per_power_unit: u64,
+  // 每 epoch 最多可兑付电力
+  max_redeem_power_per_epoch: i64,
+  // 最小兑换电力单位
+  min_redeem_power_unit: i64,
+}
+
+NodeAssetBalance {
+  node_id: String,
+  power_credit_balance: u64,
+  total_minted_credits: u64,
+  total_burned_credits: u64,
+}
+
+ProtocolPowerReserve {
+  epoch_index: u64,
+  available_power_units: i64,
+  redeemed_power_units: i64,
+}
+```
+
+### 2) 结算上链记录（草案）
+```rust
+NodeRewardMintRecord {
+  epoch_index: u64,
+  node_id: String,
+  source_awarded_points: u64,
+  minted_power_credits: u64,
+  settlement_hash: String,
+  signer_node_id: String,
+  signature: String,
+}
+```
+
+### 3) 兑换动作与事件（草案）
+```rust
+Action::RedeemPower {
+  node_id: String,
+  target_agent_id: String,
+  redeem_credits: u64,
+  nonce: u64,
+}
+
+DomainEvent::PowerRedeemed {
+  node_id: String,
+  target_agent_id: String,
+  burned_credits: u64,
+  granted_power_units: i64,
+  reserve_remaining: i64,
+}
+
+DomainEvent::PowerRedeemRejected {
+  node_id: String,
+  target_agent_id: String,
+  redeem_credits: u64,
+  reason: String,
+}
+```
+
+### 4) 关键规则
+- `minted_power_credits = floor(awarded_points / points_per_credit)`。
+- 兑换前检查：
+  - `redeem_credits > 0`；
+  - 节点余额充足；
+  - `nonce` 严格单调；
+  - `granted_power_units >= min_redeem_power_unit`；
+  - 目标 epoch 储备池与上限允许。
+- 兑换执行：
+  - `NodeAssetBalance.power_credit_balance -= redeem_credits`；
+  - `ProtocolPowerReserve.available_power_units -= granted_power_units`；
+  - `Agent.resource.electricity += granted_power_units`。
+
+### 5) 状态与回放一致性
+- 将 `NodeAssetBalance`、`ProtocolPowerReserve`、`NodeRewardMintRecord` 纳入快照。
+- 事件重放必须重建相同余额与储备结果；不一致视为状态错误。
+
+#### 测试策略
+- `test_tier_required`：
+  - 资产铸造守恒（points -> credits）；
+  - 兑换扣账与电力增加一致；
+  - 储备池不足拒绝；
+  - nonce 重放拒绝；
+  - 快照恢复后余额一致。
+- `test_tier_full`：
+  - 多节点多 epoch 结算与兑换压力场景；
+  - 节点重启 + 回放一致性；
+  - libp2p 复制下的资产状态一致性抽样。
+
+## 5. Risks & Roadmap
+- Phased Rollout:
+  - **RPA-M0**：设计文档与项目管理文档。
+  - **RPA-M1**：资产账本 + 配置 + 快照持久化。
+  - **RPA-M2**：Node Points 结算上链铸造接线。
+  - **RPA-M3**：`RedeemPower` 动作与事件闭环。
+  - **RPA-M4**：守恒与风控（储备池、额度、nonce）。
+  - **RPA-M5**：运行时接线（含 `world_viewer_live` 开关）。
+  - **RPA-M6**：最小需求侧支付入口与回归。
+  - **RPA-M7**：身份签名治理最小收口。
+  - **RPA-M8**：DistFS 证明字段增强与文档/devlog 收口。
+- Technical Risks:
+  - 参数配置风险：`points_per_credit` 与 `credits_per_power_unit` 配置不当会导致通胀或激励不足。
+  - 守恒风险：若储备池更新与兑换动作不是原子处理，可能出现短时超发。
+  - 治理风险：身份绑定策略未完全统一前，需默认严格校验签名与 node_id 映射。
+  - 演进风险：MVP 需求侧支付入口仍偏系统计划分配，后续需逐步演进到真实订单市场。
+
+## 6. Validation & Decision Record
+- Test Plan & Traceability:
+| PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |
+| --- | --- | --- | --- | --- |
+| PRD-P2P-MIG-098-001 | T0~Tn | `test_tier_required` | 文档治理检查 + 章节完整性核验 | 专题文档可维护性 |
+- Decision Log:
+| 决策ID | 选定方案 | 备选方案（否决） | 依据 |
+| --- | --- | --- | --- |
+| DEC-PRD-P2P-MIG-098-001 | 逐篇阅读后人工重写 | 直接重命名 | 保证语义保真和可审计性。 |
+
+## 原文约束点映射（内容保真）
+- 原“目标” -> 第 1 章。
+- 原“范围” -> 第 2 章。
+- 原“接口/数据、里程碑、风险” -> 第 4~6 章。

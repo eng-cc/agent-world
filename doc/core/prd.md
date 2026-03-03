@@ -108,7 +108,7 @@
 - WASM 接口与执行: `doc/world-runtime/wasm/wasm-interface.md`, `doc/world-runtime/wasm/wasm-executor.md`
 - 场景矩阵: `doc/world-simulator/scenario/scenario-files.md`
 - Web 闭环测试策略: `doc/world-simulator/viewer/viewer-web-closure-testing-policy.md`
-- 分布式路线图: `doc/p2p/blockchain/production-grade-blockchain-p2pfs-roadmap.md`
+- 分布式路线图: `doc/p2p/blockchain/production-grade-blockchain-p2pfs-roadmap.prd.md`
 - 系统性测试手册: `testing-manual.md`
 
 ### 全局术语（Glossary）

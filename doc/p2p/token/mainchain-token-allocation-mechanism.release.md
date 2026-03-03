@@ -2,8 +2,8 @@
 
 ## 发布范围
 - 设计/项目文档：
-  - `doc/p2p/token/mainchain-token-allocation-mechanism.md`
-  - `doc/p2p/token/mainchain-token-allocation-mechanism.project.md`
+  - `doc/p2p/token/mainchain-token-allocation-mechanism.prd.md`
+  - `doc/p2p/token/mainchain-token-allocation-mechanism.prd.project.md`
 - 代码主线：
   - `crates/agent_world/src/runtime/main_token.rs`
   - `crates/agent_world/src/runtime/events.rs`
@@ -63,7 +63,7 @@
 ```
 
 ## 运行手册要点
-- 发行配置与参数边界：参考 `doc/p2p/token/mainchain-token-allocation-mechanism.md`。
+- 发行配置与参数边界：参考 `doc/p2p/token/mainchain-token-allocation-mechanism.prd.md`。
 - 系统测试矩阵与分层执行：参考 `testing-manual.md` S3 “主链 Token / NodePoints 桥接定向回归（required/full）”。
 - 审计排查优先读取：
   - `main_token_epoch_issuance_record(epoch)`

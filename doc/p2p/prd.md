@@ -59,7 +59,7 @@
 - Acceptance Criteria:
   - AC-1: p2p PRD 覆盖网络、共识、存储、激励四条主线。
   - AC-2: p2p project 文档任务项明确映射 PRD-P2P-ID。
-  - AC-3: 与 `doc/p2p/blockchain/production-grade-blockchain-p2pfs-roadmap.md` 等设计文档口径一致。
+  - AC-3: 与 `doc/p2p/blockchain/production-grade-blockchain-p2pfs-roadmap.prd.md` 等设计文档口径一致。
   - AC-4: S9/S10 相关测试套件在 testing 手册中有对应条目。
 - Non-Goals:
   - 不在本 PRD 细化 viewer UI 交互。
@@ -72,9 +72,9 @@
 ## 4. Technical Specifications
 - Architecture Overview: p2p 模块负责 `agent_world_net`/`agent_world_consensus`/`agent_world_distfs` 与 node 侧分布式运行协同，强调一致性与故障恢复。
 - Integration Points:
-  - `doc/p2p/blockchain/production-grade-blockchain-p2pfs-roadmap.md`
-  - `doc/p2p/distributed/distributed-hard-split-phase7.md`
-  - `doc/p2p/token/mainchain-token-allocation-mechanism-phase2-governance-bridge-distribution-2026-02-26.md`
+  - `doc/p2p/blockchain/production-grade-blockchain-p2pfs-roadmap.prd.md`
+  - `doc/p2p/distributed/distributed-hard-split-phase7.prd.md`
+  - `doc/p2p/token/mainchain-token-allocation-mechanism-phase2-governance-bridge-distribution-2026-02-26.prd.md`
   - `testing-manual.md`
 - Edge Cases & Error Handling:
   - 节点掉线：共识链路需在节点恢复后自动重同步并验证状态。

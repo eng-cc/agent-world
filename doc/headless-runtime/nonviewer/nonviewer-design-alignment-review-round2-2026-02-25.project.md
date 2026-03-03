@@ -10,7 +10,7 @@
 ### T1 第二轮审查（非 Viewer 活跃分册）
 - [x] 核对 `doc/testing/performance/runtime-performance-observability-foundation-2026-02-25.prd.md`
 - [x] 核对 `doc/testing/performance/runtime-performance-observability-llm-api-decoupling-2026-02-25.prd.md`
-- [x] 核对 `doc/p2p/blockchain/p2p-blockchain-security-hardening-2026-02-23.md`
+- [x] 核对 `doc/p2p/blockchain/p2p-blockchain-security-hardening-2026-02-23.prd.md`
 - [x] 输出第二轮问题清单（含严重级别与定位）
 
 ### T2 批量优化

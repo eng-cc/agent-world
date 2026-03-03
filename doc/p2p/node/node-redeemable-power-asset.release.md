@@ -2,8 +2,8 @@
 
 ## 发布范围
 - 设计/项目文档：
-  - `doc/p2p/node/node-redeemable-power-asset.md`
-  - `doc/p2p/node/node-redeemable-power-asset.project.md`
+  - `doc/p2p/node/node-redeemable-power-asset.prd.md`
+  - `doc/p2p/node/node-redeemable-power-asset.prd.project.md`
 - 代码主线：`crates/agent_world/src/runtime/*`、`crates/agent_world/src/bin/world_viewer_live.rs`
 - 协议语义扩展：`crates/agent_world_proto/src/distributed.rs`
 
