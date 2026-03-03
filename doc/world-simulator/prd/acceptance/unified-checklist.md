@@ -41,6 +41,7 @@
 
 ## 证据模板入口
 - Web-first 与 LLM 统一证据卡模板：`doc/world-simulator/prd/acceptance/web-llm-evidence-template.md`
+- 体验质量趋势跟踪入口：`doc/world-simulator/prd/quality/experience-trend-tracking.md`
 
 ## 证据记录模板
 ```md

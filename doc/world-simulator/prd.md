@@ -19,6 +19,7 @@
 - 分册索引:
   - `doc/world-simulator/prd/acceptance/unified-checklist.md`（PRD-WORLD_SIMULATOR-001/002）
   - `doc/world-simulator/prd/acceptance/web-llm-evidence-template.md`（PRD-WORLD_SIMULATOR-002/003）
+  - `doc/world-simulator/prd/quality/experience-trend-tracking.md`（PRD-WORLD_SIMULATOR-003）
   - `doc/world-simulator/prd/launcher/blockchain-transfer.md`（PRD-WORLD_SIMULATOR-004/005）
 
 ## 里程碑
@@ -43,6 +44,7 @@
   - SC-6: 分册变更后主 PRD 仍可作为唯一入口完成导航与验收追踪。
   - SC-7: 场景系统、Viewer、启动器验收口径统一到同一 checklist，并可直接映射到测试证据。
   - SC-8: Web-first 闭环与 LLM 链路具备统一证据模板，支持发布前快速复核。
+  - SC-9: simulator 体验质量指标形成趋势跟踪，支持按周判定退化风险。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -64,6 +66,7 @@
   - AC-5: 分册内专题条款（接口/安全/测试）在主 PRD 中可定位、在项目文档中可执行。
   - AC-6: 统一验收清单覆盖场景、Viewer Web 闭环、启动器入口与证据模板，并与 `testing-manual.md` 一致。
   - AC-7: Web-first 与 LLM 证据模板可直接用于 S6/S8，且必填字段包含命令、产物路径、指标、结论。
+  - AC-8: 体验质量趋势文档定义指标、采集节奏、归档路径与记录模板，并可落地执行。
 - Non-Goals:
   - 不在本 PRD 中详细列出每个 UI 像素级规范。
   - 不替代 world-runtime/p2p 的底层协议设计。
@@ -81,6 +84,7 @@
   - `doc/world-simulator/launcher/game-unified-launcher-2026-02-27.md`
   - `doc/world-simulator/prd/acceptance/unified-checklist.md`
   - `doc/world-simulator/prd/acceptance/web-llm-evidence-template.md`
+  - `doc/world-simulator/prd/quality/experience-trend-tracking.md`
   - `doc/world-simulator/prd/launcher/blockchain-transfer.md`
   - `testing-manual.md`
 - Security & Privacy:
