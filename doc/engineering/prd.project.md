@@ -14,7 +14,7 @@
 - [ ] TASK-ENGINEERING-011 (PRD-ENGINEERING-006): Owner-A 迁移 `doc/world-simulator/**` 待迁移文档（161 篇）。
 - [x] TASK-ENGINEERING-012 (PRD-ENGINEERING-006): Owner-B 迁移 `doc/p2p/**` 待迁移文档（115 篇）。
 - [ ] TASK-ENGINEERING-013 (PRD-ENGINEERING-006): Owner-C 迁移 `doc/world-runtime/**`、`doc/headless-runtime/**`、`doc/archive/root-history/**` 待迁移文档（52 篇）。
-- [ ] TASK-ENGINEERING-013A (PRD-ENGINEERING-006): Owner-C Batch-C1 迁移 `doc/archive/root-history/**` 待迁移文档（7 篇）。
+- [x] TASK-ENGINEERING-013A (PRD-ENGINEERING-006): Owner-C Batch-C1 迁移 `doc/archive/root-history/**` 待迁移文档（7 篇）。
 - [ ] TASK-ENGINEERING-013B (PRD-ENGINEERING-006): Owner-C Batch-C2 迁移 `doc/headless-runtime/**` 待迁移文档（6 篇）。
 - [ ] TASK-ENGINEERING-013C (PRD-ENGINEERING-006): Owner-C Batch-C3 迁移 `doc/world-runtime/archive/**`、`doc/world-runtime/governance/**`、`doc/world-runtime/module/**`、`doc/world-runtime/wasm/**` 待迁移文档（23 篇）。
 - [ ] TASK-ENGINEERING-013D (PRD-ENGINEERING-006): Owner-C Batch-C4 迁移 `doc/world-runtime/runtime/**` 待迁移文档（16 篇）。
@@ -36,7 +36,7 @@
 ## 状态
 - 更新日期: 2026-03-03
 - 当前状态: active
-- 下一任务: TASK-ENGINEERING-011 / TASK-ENGINEERING-013A / TASK-ENGINEERING-014
+- 下一任务: TASK-ENGINEERING-011 / TASK-ENGINEERING-013B / TASK-ENGINEERING-014
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - 并行迁移状态: 分工与快照已冻结（TASK-ENGINEERING-010 完成）；Owner-B 已完成 `doc/p2p/**`（115/115），Owner-A/C/D 继续并行执行。
 - 说明: 本文档仅维护 engineering 设计执行状态；过程记录在 `doc/devlog/2026-03-03.md`。

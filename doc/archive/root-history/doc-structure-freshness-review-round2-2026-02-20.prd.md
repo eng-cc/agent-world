@@ -1,12 +1,11 @@
 # Doc 目录结构与内容时效复核（Round 2，2026-02-20）设计文档
 
-## 目标
+## 1. Executive Summary
 - 对 `doc/` 下全部文档执行第二轮完整复核，确认目录分层是否仍合理、文档内容是否过时。
 - 基于“文档内容 + 关联文档 + 当前代码实现”三方一致性，输出每篇文档的结论：`保留` / `保留并修正` / `归档`。
 - 若发现过时文档，迁移到对应主题 `archive/` 目录并修复活跃文档引用。
 
-## 范围
-
+## 2. User Experience & Functionality
 ### In Scope
 - 全量对象：`doc/**/*.md`（包含 `doc/devlog/**`，但 devlog 仅做结构与可追溯性检查，不做历史内容改写）。
 - 复核维度：
@@ -22,7 +21,12 @@
 - 不改动 `third_party/`。
 - 不做业务功能新增，仅做文档治理。
 
-## 接口 / 数据
+
+## 3. AI System Requirements (If Applicable)
+- Tool Requirements: 不适用（文档迁移任务）。
+- Evaluation Strategy: 通过文档治理校验、引用扫描与任务日志检查验证迁移质量。
+
+## 4. Technical Specifications
 - 结果文档：`doc/archive/root-history/doc-structure-freshness-review-round2-2026-02-20.result.md`
 - 机器清单：`output/doc-structure-freshness-review-round2-2026-02-20.json`
 - 归档目标目录（按主题）：
@@ -32,14 +36,30 @@
   - `doc/p2p/archive/`
   - `doc/scripts/archive/`
 
-## 里程碑
+## 5. Risks & Roadmap
 - R0：建档并冻结 round2 判定标准。
 - R1：全量文档读取与机器扫描（结构、引用、代码路径一致性）。
 - R2：人工复核与归档/修正落地。
 - R3：结果发布、项目文档回写、测试与 devlog 收口。
 
-## 风险
+### Technical Risks
 - 风险：把“仍为有效基线”的文档误判为过时。
   - 缓解：必须满足“被后续基线替代 + 当前实现不再匹配”才归档；边界场景优先 `保留并修正`。
 - 风险：批量迁移导致链接断裂。
   - 缓解：迁移后执行全量引用扫描，仅修复非 devlog 引用，并在结果文档列出变更。
+
+## 6. Validation & Decision Record
+- Test Plan & Traceability:
+| PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |
+| --- | --- | --- | --- | --- |
+| PRD-ENGINEERING-006 | 文档内既有任务条目 | `test_tier_required` | `./scripts/doc-governance-check.sh` + 引用可达性扫描 | 迁移文档命名一致性与可追溯性 |
+- Decision Log:
+| 决策ID | 选定方案 | 备选方案（否决） | 依据 |
+| --- | --- | --- | --- |
+| DEC-DOC-MIG-20260303 | 逐篇阅读后人工重写为 `.prd` 命名 | 仅批量重命名 | 保证语义保真与审计可追溯。 |
+
+## 原文约束点映射（内容保真）
+- 原“目标” -> 第 1 章 Executive Summary。
+- 原“范围” -> 第 2 章 User Experience & Functionality。
+- 原“接口 / 数据” -> 第 4 章 Technical Specifications。
+- 原“里程碑/风险” -> 第 5 章 Risks & Roadmap。

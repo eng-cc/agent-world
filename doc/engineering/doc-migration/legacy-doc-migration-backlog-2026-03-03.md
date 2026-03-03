@@ -292,13 +292,13 @@
 - `doc/p2p/viewer-live/world-viewer-live-release-locked-launch-2026-02-23.project.md`
 
 ## Owner-C 清单（52）
-- `doc/archive/root-history/doc-archive-audit-2026-02-20.project.md`
-- `doc/archive/root-history/doc-structure-cleanup-2026-02-20.project.md`
-- `doc/archive/root-history/doc-structure-freshness-review-round2-2026-02-20.project.md`
-- `doc/archive/root-history/doc-structure-freshness-review-round3-2026-02-24.project.md`
-- `doc/archive/root-history/game-test-archive-cleanup-2026-02-28.project.md`
-- `doc/archive/root-history/world-runtime-root-entry-legacy-2026-03-03.project.md`
-- `doc/archive/root-history/world-simulator-root-entry-legacy-2026-03-03.project.md`
+- `doc/archive/root-history/doc-archive-audit-2026-02-20.prd.project.md`
+- `doc/archive/root-history/doc-structure-cleanup-2026-02-20.prd.project.md`
+- `doc/archive/root-history/doc-structure-freshness-review-round2-2026-02-20.prd.project.md`
+- `doc/archive/root-history/doc-structure-freshness-review-round3-2026-02-24.prd.project.md`
+- `doc/archive/root-history/game-test-archive-cleanup-2026-02-28.prd.project.md`
+- `doc/archive/root-history/world-runtime-root-entry-legacy-2026-03-03.prd.project.md`
+- `doc/archive/root-history/world-simulator-root-entry-legacy-2026-03-03.prd.project.md`
 - `doc/headless-runtime/archive/nonviewer-longrun-memory-safety-traceability-2026-02-23.project.md`
 - `doc/headless-runtime/archive/nonviewer-release-readiness-hardening.project.md`
 - `doc/headless-runtime/nonviewer/nonviewer-design-alignment-fixes-2026-02-25.project.md`

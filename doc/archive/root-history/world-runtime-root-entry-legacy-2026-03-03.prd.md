@@ -2,7 +2,7 @@
 
 > 状态：本文件为历史总览入口（legacy）。当前模块主入口为 `doc/world-runtime/prd.md` 与 `doc/world-runtime/prd.project.md`。
 
-## 目标
+## 1. Executive Summary
 - 在现有 `agent-world` 中实现一套 **world+agent 运行时**，借鉴 AgentOS 的关键优势：确定性、可审计、可回放、能力/政策边界、显式副作用与收据、受控升级；以**自由沙盒 + WASM 动态模块**作为基础能力。
 - 让世界成为第一性：所有状态改变必须经由 **事件 → 规则校验 → 状态演化** 的统一路径，可追溯、可重放。
 - 为后续规模化（多 Agent、高并发交互、长期运行）打下可演化的运行时基座。
@@ -18,8 +18,7 @@
 - **Shadow → Approve → Apply**：受控升级流程作为系统演化的基本机制。
 - **Minimal trusted base**：内核保持最小可信边界，复杂性外置到模块/适配器。
 
-## 范围
-
+## 2. User Experience & Functionality
 ### In Scope（V1）
 - **确定性内核**：单线程 stepper，固定顺序处理事件，避免不可控并发。
 - **事件溯源**：事件日志 + 快照；世界状态由事件重放导出。
@@ -45,8 +44,12 @@
 - 复杂并行执行（保持单线程确定性）。
 - 完整 UI/可视化工具链（仅保留 CLI/日志接口）。
 
-## 接口 / 数据
 
+## 3. AI System Requirements (If Applicable)
+- Tool Requirements: 不适用（文档迁移任务）。
+- Evaluation Strategy: 通过文档治理校验、引用扫描与任务日志检查验证迁移质量。
+
+## 4. Technical Specifications
 ### 核心概念
 - **World**：事件日志 + 快照 + manifest + reducer 状态集合。
 - **Agent Cell**：同一 reducer 的 keyed 实例（`agent_id` 为 key）。
@@ -80,7 +83,7 @@
 - `doc/p2p/distributed/distributed-hard-split-phase7.md`：分布式能力彻底拆分（distfs + runtime distributed 清理 + viewer 协议下沉 + ABI 边界收敛）
 - `doc/world-runtime/archive/wasm-runtime-crate-split-phase8.md`：WASM 运行时边界收敛（移除 runtime sandbox 门面，调用方直连 ABI/Executor）
 
-## 里程碑
+## 5. Risks & Roadmap
 - **M0**：方案与接口冻结（本设计 + 项目管理文档）
 - **M1**：确定性 world kernel + 事件日志 + 最小快照
 - **M2**：Effect/Receipt 路径 + capability + policy gate
@@ -97,8 +100,24 @@
 - **M13**：分布式能力彻底拆分（R7-1~R7-6）
 - **M14**：WASM 运行时边界收敛（R8-0~R8-2）
 
-## 风险
+### Technical Risks
 - **“所有优点”带来的复杂度**：治理、收据、能力边界会显著增加实现成本。
 - **确定性与性能冲突**：单线程+事件重放可能成为瓶颈。
 - **持久化膨胀**：日志与收据增长快，需要快照与归档策略。
 - **治理摩擦**：过严的审批/策略可能降低迭代速度。
+
+## 6. Validation & Decision Record
+- Test Plan & Traceability:
+| PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |
+| --- | --- | --- | --- | --- |
+| PRD-ENGINEERING-006 | 文档内既有任务条目 | `test_tier_required` | `./scripts/doc-governance-check.sh` + 引用可达性扫描 | 迁移文档命名一致性与可追溯性 |
+- Decision Log:
+| 决策ID | 选定方案 | 备选方案（否决） | 依据 |
+| --- | --- | --- | --- |
+| DEC-DOC-MIG-20260303 | 逐篇阅读后人工重写为 `.prd` 命名 | 仅批量重命名 | 保证语义保真与审计可追溯。 |
+
+## 原文约束点映射（内容保真）
+- 原“目标” -> 第 1 章 Executive Summary。
+- 原“范围” -> 第 2 章 User Experience & Functionality。
+- 原“接口 / 数据” -> 第 4 章 Technical Specifications。
+- 原“里程碑/风险” -> 第 5 章 Risks & Roadmap。

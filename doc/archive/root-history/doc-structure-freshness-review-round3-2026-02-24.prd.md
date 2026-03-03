@@ -1,12 +1,11 @@
 # Doc 目录结构与内容时效复核（Round 3，2026-02-24）设计文档
 
-## 目标
+## 1. Executive Summary
 - 全量复核 `doc/` 目录文档，确保主题文档按目录聚类，降低顶层混放成本。
 - 将已完成且被后续轮次替代的治理文档迁移到对应 `archive/` 目录。
 - 维持“活跃基线文档可达、历史文档可追溯”的双层结构。
 
-## 范围
-
+## 2. User Experience & Functionality
 ### In Scope
 - 全量读取 `doc/**/*.md`，重点复核顶层文档与新增专题文档。
 - 新增目录并迁移文档：
@@ -22,7 +21,12 @@
 - 不改动业务代码语义。
 - 不处理 `third_party/` 文档内容。
 
-## 接口 / 数据
+
+## 3. AI System Requirements (If Applicable)
+- Tool Requirements: 不适用（文档迁移任务）。
+- Evaluation Strategy: 通过文档治理校验、引用扫描与任务日志检查验证迁移质量。
+
+## 4. Technical Specifications
 - 新目录：
   - `doc/nonviewer/`
   - `doc/nonviewer/archive/`
@@ -37,16 +41,32 @@
   - `> 该文档已归档，仅供历史追溯，不再作为当前实现依据。`
   - `> 归档日期：2026-02-24`
 
-## 里程碑
+## 5. Risks & Roadmap
 - R3-0：输出 round3 设计/项目管理文档，冻结迁移与归档标准。
 - R3-1：完成目录新增与文档迁移。
 - R3-2：完成老旧文档归档与告警标注。
 - R3-3：完成引用修复、目录索引更新、回归校验与 devlog 收口。
 
-## 风险
+### Technical Risks
 - 风险：误归档仍可作为当前实施依据的文档。
   - 缓解：仅归档“被后续轮次替代且任务已收口”的文档；边界场景优先保留。
 - 风险：路径迁移导致文档断链。
   - 缓解：迁移后执行全量路径扫描，修复非 `doc/devlog` 文档链接。
 - 风险：目录迁移后入口不清晰。
   - 缓解：同步更新 `doc/README.md`，新增目录分层与专题入口说明。
+
+## 6. Validation & Decision Record
+- Test Plan & Traceability:
+| PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |
+| --- | --- | --- | --- | --- |
+| PRD-ENGINEERING-006 | 文档内既有任务条目 | `test_tier_required` | `./scripts/doc-governance-check.sh` + 引用可达性扫描 | 迁移文档命名一致性与可追溯性 |
+- Decision Log:
+| 决策ID | 选定方案 | 备选方案（否决） | 依据 |
+| --- | --- | --- | --- |
+| DEC-DOC-MIG-20260303 | 逐篇阅读后人工重写为 `.prd` 命名 | 仅批量重命名 | 保证语义保真与审计可追溯。 |
+
+## 原文约束点映射（内容保真）
+- 原“目标” -> 第 1 章 Executive Summary。
+- 原“范围” -> 第 2 章 User Experience & Functionality。
+- 原“接口 / 数据” -> 第 4 章 Technical Specifications。
+- 原“里程碑/风险” -> 第 5 章 Risks & Roadmap。

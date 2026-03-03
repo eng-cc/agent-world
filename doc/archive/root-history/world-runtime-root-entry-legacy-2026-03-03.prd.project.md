@@ -2,7 +2,8 @@
 
 > 状态：本文件为历史总览入口（legacy）。当前模块主入口为 `doc/world-runtime/prd.md` 与 `doc/world-runtime/prd.project.md`。
 
-## 任务拆解
+## 任务拆解（含 PRD-ID 映射）
+- [x] T-MIG-20260303 (PRD-ENGINEERING-006): 逐篇阅读旧文档并完成人工重写迁移到 `.prd` 命名。
 ### 0. 对齐与准备
 - [x] 输出设计文档（`doc/world-runtime.md`）
 - [x] 输出项目管理文档（本文件）

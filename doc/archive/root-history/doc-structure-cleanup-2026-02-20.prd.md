@@ -1,12 +1,11 @@
 # Doc 目录分层整理（2026-02-20）设计文档
 
-## 目标
+## 1. Executive Summary
 - 整理 `doc/` 顶层混放文件，降低查找成本与后续维护成本。
 - 将同主题文档按目录聚合，保持“设计文档 + 项目管理文档”成对放置。
 - 在不修改技术方案语义的前提下，完成路径迁移与引用修复。
 
-## 范围
-
+## 2. User Experience & Functionality
 ### In Scope
 - 新增并使用以下目录分层：
   - `doc/readme/`：承接 `readme-*` 设计与项目管理文档。
@@ -20,7 +19,12 @@
 - 不调整 `third_party/` 与业务代码逻辑。
 - 不对文档技术结论做语义重写，仅做结构与路径治理。
 
-## 接口 / 数据
+
+## 3. AI System Requirements (If Applicable)
+- Tool Requirements: 不适用（文档迁移任务）。
+- Evaluation Strategy: 通过文档治理校验、引用扫描与任务日志检查验证迁移质量。
+
+## 4. Technical Specifications
 - 新目录：
   - `doc/readme/`
   - `doc/site/`
@@ -38,13 +42,29 @@
   - `doc/README.md`（新增）
   - `doc/viewer-manual.md`、`doc/world-runtime.md`、`doc/world-simulator.md`（保留顶层入口）
 
-## 里程碑
+## 5. Risks & Roadmap
 - M1：完成治理文档（设计 + 项目管理）并冻结迁移边界。
 - M2：完成文件迁移与路径引用修复。
 - M3：完成目录入口文档、校验与项目状态收口。
 
-## 风险
+### Technical Risks
 - 风险：路径批量迁移可能遗漏引用，导致跳转失效。
   - 缓解：迁移后执行全仓 `rg` 路径扫描，重点检查非 `doc/devlog` 文档。
 - 风险：历史日志中的旧路径与新路径不一致。
   - 缓解：明确 devlog 保持历史快照，不做追溯性改写；新增入口文档说明当前目录基线。
+
+## 6. Validation & Decision Record
+- Test Plan & Traceability:
+| PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |
+| --- | --- | --- | --- | --- |
+| PRD-ENGINEERING-006 | 文档内既有任务条目 | `test_tier_required` | `./scripts/doc-governance-check.sh` + 引用可达性扫描 | 迁移文档命名一致性与可追溯性 |
+- Decision Log:
+| 决策ID | 选定方案 | 备选方案（否决） | 依据 |
+| --- | --- | --- | --- |
+| DEC-DOC-MIG-20260303 | 逐篇阅读后人工重写为 `.prd` 命名 | 仅批量重命名 | 保证语义保真与审计可追溯。 |
+
+## 原文约束点映射（内容保真）
+- 原“目标” -> 第 1 章 Executive Summary。
+- 原“范围” -> 第 2 章 User Experience & Functionality。
+- 原“接口 / 数据” -> 第 4 章 Technical Specifications。
+- 原“里程碑/风险” -> 第 5 章 Risks & Roadmap。

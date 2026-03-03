@@ -20,7 +20,7 @@
 ## 根目录 legacy
 - `doc/world-runtime.md`
 - `doc/world-runtime.project.md`
-- 历史完整总览归档：`doc/archive/root-history/world-runtime-root-entry-legacy-2026-03-03.md`
-- 历史完整项目归档：`doc/archive/root-history/world-runtime-root-entry-legacy-2026-03-03.project.md`
+- 历史完整总览归档：`doc/archive/root-history/world-runtime-root-entry-legacy-2026-03-03.prd.md`
+- 历史完整项目归档：`doc/archive/root-history/world-runtime-root-entry-legacy-2026-03-03.prd.project.md`
 
 上述两个根目录文件仅保留为兼容跳转入口；当前主入口以本目录 `prd.md`/`prd.project.md` 为准。

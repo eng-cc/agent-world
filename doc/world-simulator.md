@@ -7,4 +7,4 @@
 - `doc/world-simulator/prd.project.md`
 
 历史完整总览（归档）：
-- `doc/archive/root-history/world-simulator-root-entry-legacy-2026-03-03.md`
+- `doc/archive/root-history/world-simulator-root-entry-legacy-2026-03-03.prd.md`
