@@ -204,13 +204,61 @@ fn write_transfer_submit_error(
 #[cfg(test)]
 mod tests {
     use super::{
-        build_transfer_submit_action_payload, parse_transfer_submit_request,
-        ChainTransferSubmitResponse,
+        build_transfer_submit_action_payload, maybe_handle_transfer_submit_request,
+        parse_transfer_submit_request, ChainTransferSubmitResponse,
     };
     use agent_world::consensus_action_payload::{
         decode_consensus_action_payload, ConsensusActionPayloadBody,
     };
     use agent_world::runtime::Action;
+    use agent_world_node::{
+        NodeConfig, NodeExecutionCommitContext, NodeExecutionCommitResult, NodeExecutionHook,
+        NodeRole, NodeRuntime,
+    };
+    use std::io::Read;
+    use std::net::{TcpListener, TcpStream};
+    use std::sync::{Arc, Mutex};
+    use std::time::{Duration, Instant};
+
+    fn tcp_stream_pair() -> (TcpStream, TcpStream) {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("bind loopback listener");
+        let bind = listener.local_addr().expect("read local addr");
+        let client = TcpStream::connect(bind).expect("connect loopback client");
+        let (server, _) = listener.accept().expect("accept loopback connection");
+        (server, client)
+    }
+
+    #[derive(Debug)]
+    struct NoopExecutionHook;
+
+    impl NodeExecutionHook for NoopExecutionHook {
+        fn on_commit(
+            &mut self,
+            context: NodeExecutionCommitContext,
+        ) -> Result<NodeExecutionCommitResult, String> {
+            Ok(NodeExecutionCommitResult {
+                execution_height: context.height,
+                execution_block_hash: format!("noop-block-{}", context.height),
+                execution_state_root: format!("noop-root-{}", context.height),
+            })
+        }
+    }
+
+    fn decode_http_json_response<T: serde::de::DeserializeOwned>(bytes: &[u8]) -> (u16, T) {
+        let boundary = bytes
+            .windows(4)
+            .position(|window| window == b"\r\n\r\n")
+            .expect("response must include HTTP body separator");
+        let header = std::str::from_utf8(&bytes[..boundary]).expect("response header utf-8");
+        let status = header
+            .split_whitespace()
+            .nth(1)
+            .and_then(|token| token.parse::<u16>().ok())
+            .expect("response status code");
+        let payload =
+            serde_json::from_slice::<T>(&bytes[(boundary + 4)..]).expect("response json payload");
+        (status, payload)
+    }
 
     #[test]
     fn parse_transfer_submit_request_rejects_same_account() {
@@ -277,5 +325,145 @@ mod tests {
         assert!(response.action_id.is_none());
         assert_eq!(response.error_code.as_deref(), Some("invalid_request"));
         assert_eq!(response.error.as_deref(), Some("failed"));
+    }
+
+    #[test]
+    fn transfer_submit_handler_enqueues_runtime_action_and_returns_ok() {
+        let config = NodeConfig::new(
+            "node-transfer-submit-ok",
+            "world-transfer-submit-ok",
+            NodeRole::Sequencer,
+        )
+        .expect("node config")
+        .with_tick_interval(Duration::from_millis(10))
+        .expect("tick interval");
+        let mut node_runtime = NodeRuntime::new(config).with_execution_hook(NoopExecutionHook);
+        let committed_batches = node_runtime.committed_action_batches_handle();
+        node_runtime.start().expect("start node runtime");
+        let runtime = Arc::new(Mutex::new(node_runtime));
+
+        let (mut server_stream, mut client_stream) = tcp_stream_pair();
+        let body = r#"{"from_account_id":"player:alice","to_account_id":"player:bob","amount":7,"nonce":2}"#;
+        let request = format!(
+            "POST /v1/chain/transfer/submit HTTP/1.1\r\nHost: 127.0.0.1:5121\r\nContent-Length: {}\r\n\r\n{}",
+            body.len(),
+            body
+        );
+        let handled = maybe_handle_transfer_submit_request(
+            &mut server_stream,
+            request.as_bytes(),
+            &runtime,
+            "POST",
+            "/v1/chain/transfer/submit",
+        )
+        .expect("handler should process request");
+        assert!(handled);
+        drop(server_stream);
+
+        client_stream
+            .set_read_timeout(Some(Duration::from_secs(2)))
+            .expect("set client timeout");
+        let mut response_bytes = Vec::new();
+        client_stream
+            .read_to_end(&mut response_bytes)
+            .expect("read handler response");
+        let (status, response): (u16, ChainTransferSubmitResponse) =
+            decode_http_json_response(&response_bytes);
+        assert_eq!(status, 200);
+        assert!(response.ok);
+        let action_id = response
+            .action_id
+            .expect("successful response should carry action_id");
+
+        let deadline = Instant::now() + Duration::from_secs(2);
+        let mut committed_payload = None;
+        while Instant::now() < deadline {
+            let _ = committed_batches.wait_for_batches(Duration::from_millis(100));
+            let batches = runtime
+                .lock()
+                .expect("lock runtime")
+                .drain_committed_action_batches();
+            committed_payload = batches
+                .iter()
+                .flat_map(|batch| batch.actions.iter())
+                .find(|action| action.action_id == action_id)
+                .map(|action| action.payload_cbor.clone());
+            if committed_payload.is_some() {
+                break;
+            }
+        }
+        let payload_cbor = committed_payload.expect("transfer action should be committed");
+        let decoded = decode_consensus_action_payload(payload_cbor.as_slice())
+            .expect("decode committed payload");
+        match decoded {
+            ConsensusActionPayloadBody::RuntimeAction { action } => match action {
+                Action::TransferMainToken {
+                    from_account_id,
+                    to_account_id,
+                    amount,
+                    nonce,
+                } => {
+                    assert_eq!(from_account_id, "player:alice");
+                    assert_eq!(to_account_id, "player:bob");
+                    assert_eq!(amount, 7);
+                    assert_eq!(nonce, 2);
+                }
+                other => panic!("expected TransferMainToken action, got {other:?}"),
+            },
+            other => panic!("expected runtime action payload, got {other:?}"),
+        }
+
+        runtime
+            .lock()
+            .expect("lock runtime for stop")
+            .stop()
+            .expect("stop node runtime");
+    }
+
+    #[test]
+    fn transfer_submit_handler_returns_invalid_request_for_bad_payload() {
+        let runtime = Arc::new(Mutex::new(NodeRuntime::new(
+            NodeConfig::new(
+                "node-transfer-submit-bad",
+                "world-transfer-submit-bad",
+                NodeRole::Sequencer,
+            )
+            .expect("node config"),
+        )));
+        let (mut server_stream, mut client_stream) = tcp_stream_pair();
+        let body = r#"{"from_account_id":"player:alice","to_account_id":"player:alice","amount":7,"nonce":2}"#;
+        let request = format!(
+            "POST /v1/chain/transfer/submit HTTP/1.1\r\nHost: 127.0.0.1:5121\r\nContent-Length: {}\r\n\r\n{}",
+            body.len(),
+            body
+        );
+        let handled = maybe_handle_transfer_submit_request(
+            &mut server_stream,
+            request.as_bytes(),
+            &runtime,
+            "POST",
+            "/v1/chain/transfer/submit",
+        )
+        .expect("handler should process request");
+        assert!(handled);
+        drop(server_stream);
+
+        client_stream
+            .set_read_timeout(Some(Duration::from_secs(2)))
+            .expect("set client timeout");
+        let mut response_bytes = Vec::new();
+        client_stream
+            .read_to_end(&mut response_bytes)
+            .expect("read handler response");
+        let (status, response): (u16, ChainTransferSubmitResponse) =
+            decode_http_json_response(&response_bytes);
+        assert_eq!(status, 400);
+        assert!(!response.ok);
+        assert_eq!(response.error_code.as_deref(), Some("invalid_request"));
+        assert!(response
+            .error
+            .as_deref()
+            .unwrap_or_default()
+            .contains("cannot be the same"));
     }
 }

@@ -31,7 +31,15 @@
 - 已完成：`world_chain_runtime` 新增 `POST /v1/chain/transfer/submit`，覆盖请求校验、结构化响应与单元测试（对应 `TASK-WORLD_SIMULATOR-006`）。
 - 已完成：runtime 主 token 转账动作/事件/状态更新已落地，包含余额约束与 nonce anti-replay（对应 `TASK-WORLD_SIMULATOR-007`）。
 - 已完成：启动器新增转账窗口与提交流程（输入校验、状态提示、错误展示，`TASK-WORLD_SIMULATOR-008`）。
-- 待完成：启动器-链运行时转账端到端闭环测试与证据沉淀（`TASK-WORLD_SIMULATOR-009`）。
+- 已完成：启动器-链运行时转账闭环测试已进入 `test_tier_required`，覆盖启动器请求提交、链运行时接口联动、runtime 转账失败路径（余额不足/nonce 回放）并沉淀执行证据（`TASK-WORLD_SIMULATOR-009`）。
+
+## 闭环测试证据（2026-03-03）
+- test_tier_required：`env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher transfer_entry::tests:: -- --nocapture`
+  - 覆盖启动器提交路径：请求序列化、`/v1/chain/transfer/submit` 路径命中、成功/失败结构化响应解析。
+- test_tier_required：`env -u RUSTC_WRAPPER cargo test -p agent_world --tests --features test_tier_required transfer_submit_api::tests:: -- --nocapture`
+  - 覆盖链运行时提交接口联动：HTTP 处理、动作 payload 编码、runtime 接收并提交共识动作、错误请求拒绝。
+- test_tier_required：`env -u RUSTC_WRAPPER cargo test -p agent_world --tests --features test_tier_required main_token_transfer_action_ -- --nocapture`
+  - 覆盖 runtime 转账语义：成功转账、余额不足拒绝、nonce 重放拒绝。
 
 ## 风险
 - nonce 与状态不同步可能导致重复提交或误拒绝。

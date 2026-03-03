@@ -244,9 +244,55 @@ fn normalize_connect_host(host: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        build_transfer_submit_request, parse_http_json_response, validate_transfer_draft,
-        TransferDraft, TransferDraftIssue,
+        build_transfer_submit_request, parse_http_json_response, submit_transfer_remote,
+        validate_transfer_draft, TransferDraft, TransferDraftIssue,
     };
+    use std::io::{Read, Write};
+    use std::net::TcpListener;
+    use std::time::Duration;
+
+    fn read_http_request(stream: &mut std::net::TcpStream) -> Vec<u8> {
+        stream
+            .set_read_timeout(Some(Duration::from_secs(2)))
+            .expect("set timeout");
+        let mut bytes = Vec::new();
+        let mut buffer = [0_u8; 1024];
+
+        loop {
+            let read = stream.read(&mut buffer).expect("read request");
+            if read == 0 {
+                break;
+            }
+            bytes.extend_from_slice(&buffer[..read]);
+
+            let Some(boundary) = bytes.windows(4).position(|window| window == b"\r\n\r\n") else {
+                continue;
+            };
+            let header =
+                std::str::from_utf8(&bytes[..boundary]).expect("request header should be UTF-8");
+            let content_length = header
+                .lines()
+                .find_map(|line| line.strip_prefix("Content-Length:"))
+                .and_then(|value| value.trim().parse::<usize>().ok())
+                .unwrap_or(0);
+            if bytes.len() >= boundary + 4 + content_length {
+                break;
+            }
+        }
+
+        bytes
+    }
+
+    fn write_http_json_response(stream: &mut std::net::TcpStream, status: &str, body: &str) {
+        let response = format!(
+            "HTTP/1.1 {status}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+            body.len(),
+            body
+        );
+        stream
+            .write_all(response.as_bytes())
+            .expect("write response should succeed");
+    }
 
     #[test]
     fn validate_transfer_draft_reports_missing_and_invalid_fields() {
@@ -305,5 +351,70 @@ mod tests {
         let err = parse_http_json_response(raw).expect_err("non-2xx should fail");
         assert!(err.contains("HTTP 400"));
         assert!(err.contains("bad payload"));
+    }
+
+    #[test]
+    fn submit_transfer_remote_posts_expected_payload_and_reads_success() {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("bind mock chain server");
+        let bind = listener.local_addr().expect("read local addr");
+        let server = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().expect("accept launcher request");
+            let request = read_http_request(&mut stream);
+            let request_text = String::from_utf8_lossy(&request);
+            assert!(request_text.starts_with("POST /v1/chain/transfer/submit HTTP/1.1"));
+            assert!(request_text.contains("\"from_account_id\":\"player:alice\""));
+            assert!(request_text.contains("\"to_account_id\":\"player:bob\""));
+            assert!(request_text.contains("\"amount\":7"));
+            assert!(request_text.contains("\"nonce\":9"));
+
+            write_http_json_response(
+                &mut stream,
+                "200 OK",
+                "{\"ok\":true,\"action_id\":17,\"submitted_at_unix_ms\":123}",
+            );
+        });
+
+        let draft = TransferDraft {
+            from_account_id: "player:alice".to_string(),
+            to_account_id: "player:bob".to_string(),
+            amount: "7".to_string(),
+            nonce: "9".to_string(),
+        };
+        let response =
+            submit_transfer_remote(&draft, format!("127.0.0.1:{}", bind.port()).as_str())
+                .expect("submit transfer should succeed");
+        assert!(response.ok);
+        assert_eq!(response.action_id, Some(17));
+        assert_eq!(response.submitted_at_unix_ms, Some(123));
+
+        server.join().expect("mock chain server should finish");
+    }
+
+    #[test]
+    fn submit_transfer_remote_returns_error_for_rejected_response() {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("bind mock chain server");
+        let bind = listener.local_addr().expect("read local addr");
+        let server = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().expect("accept launcher request");
+            let _request = read_http_request(&mut stream);
+            write_http_json_response(
+                &mut stream,
+                "400 Bad Request",
+                "{\"ok\":false,\"error_code\":\"invalid_request\",\"error\":\"nonce replay\"}",
+            );
+        });
+
+        let draft = TransferDraft {
+            from_account_id: "player:alice".to_string(),
+            to_account_id: "player:bob".to_string(),
+            amount: "7".to_string(),
+            nonce: "9".to_string(),
+        };
+        let err = submit_transfer_remote(&draft, format!("127.0.0.1:{}", bind.port()).as_str())
+            .expect_err("submit should return structured remote rejection");
+        assert!(err.contains("HTTP 400"));
+        assert!(err.contains("nonce replay"));
+
+        server.join().expect("mock chain server should finish");
     }
 }
