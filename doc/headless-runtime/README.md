@@ -9,20 +9,20 @@
 - 项目管理: `doc/headless-runtime/prd.project.md`
 
 ## 活跃文档
-- `doc/headless-runtime/nonviewer/nonviewer-onchain-auth-protocol-hardening.md`
-- `doc/headless-runtime/nonviewer/nonviewer-onchain-auth-protocol-hardening.project.md`
-- `doc/headless-runtime/nonviewer/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.md`
-- `doc/headless-runtime/nonviewer/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.project.md`
-- `doc/headless-runtime/nonviewer/nonviewer-design-alignment-fixes-2026-02-25.md`
-- `doc/headless-runtime/nonviewer/nonviewer-design-alignment-fixes-2026-02-25.project.md`
-- `doc/headless-runtime/nonviewer/nonviewer-design-alignment-review-round2-2026-02-25.md`
-- `doc/headless-runtime/nonviewer/nonviewer-design-alignment-review-round2-2026-02-25.project.md`
+- `doc/headless-runtime/nonviewer/nonviewer-onchain-auth-protocol-hardening.prd.md`
+- `doc/headless-runtime/nonviewer/nonviewer-onchain-auth-protocol-hardening.prd.project.md`
+- `doc/headless-runtime/nonviewer/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.prd.md`
+- `doc/headless-runtime/nonviewer/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.prd.project.md`
+- `doc/headless-runtime/nonviewer/nonviewer-design-alignment-fixes-2026-02-25.prd.md`
+- `doc/headless-runtime/nonviewer/nonviewer-design-alignment-fixes-2026-02-25.prd.project.md`
+- `doc/headless-runtime/nonviewer/nonviewer-design-alignment-review-round2-2026-02-25.prd.md`
+- `doc/headless-runtime/nonviewer/nonviewer-design-alignment-review-round2-2026-02-25.prd.project.md`
 
 ## 归档文档
-- `doc/headless-runtime/archive/nonviewer-release-readiness-hardening.md`
-- `doc/headless-runtime/archive/nonviewer-release-readiness-hardening.project.md`
-- `doc/headless-runtime/archive/nonviewer-longrun-memory-safety-traceability-2026-02-23.md`
-- `doc/headless-runtime/archive/nonviewer-longrun-memory-safety-traceability-2026-02-23.project.md`
+- `doc/headless-runtime/archive/nonviewer-release-readiness-hardening.prd.md`
+- `doc/headless-runtime/archive/nonviewer-release-readiness-hardening.prd.project.md`
+- `doc/headless-runtime/archive/nonviewer-longrun-memory-safety-traceability-2026-02-23.prd.md`
+- `doc/headless-runtime/archive/nonviewer-longrun-memory-safety-traceability-2026-02-23.prd.project.md`
 
 ## 维护约定
 - 无界面运行链路行为变更，优先回写 `prd.md` 与 `prd.project.md`。

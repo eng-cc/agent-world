@@ -1,10 +1,10 @@
 # Non-Viewer 设计一致性审查 Round2（项目管理）
 
-## 任务拆解
-
+## 任务拆解（含 PRD-ID 映射）
+- [x] T-MIG-20260303 (PRD-ENGINEERING-006): 逐篇阅读旧文档并完成人工重写迁移到 `.prd` 命名。
 ### T0 建档与问题登记
-- [x] 新建设计文档：`doc/headless-runtime/nonviewer/nonviewer-design-alignment-review-round2-2026-02-25.md`
-- [x] 新建项目管理文档：`doc/headless-runtime/nonviewer/nonviewer-design-alignment-review-round2-2026-02-25.project.md`
+- [x] 新建设计文档：`doc/headless-runtime/nonviewer/nonviewer-design-alignment-review-round2-2026-02-25.prd.md`
+- [x] 新建项目管理文档：`doc/headless-runtime/nonviewer/nonviewer-design-alignment-review-round2-2026-02-25.prd.project.md`
 - [x] 记录已发现问题：non-viewer Rust 单文件超过 1200 行
 
 ### T1 第二轮审查（非 Viewer 活跃分册）

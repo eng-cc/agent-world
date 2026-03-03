@@ -8,8 +8,8 @@
 - [x] TASK-NONVIEWER-005 (PRD-NONVIEWER-001/002/003): 对齐 strict PRD schema，补齐关键流程/规格矩阵/边界异常/NFR/验证与决策记录。
 
 ## 依赖
-- `doc/headless-runtime/nonviewer/nonviewer-onchain-auth-protocol-hardening.md`
-- `doc/headless-runtime/nonviewer/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.md`
+- `doc/headless-runtime/nonviewer/nonviewer-onchain-auth-protocol-hardening.prd.md`
+- `doc/headless-runtime/nonviewer/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.prd.md`
 - `testing-manual.md`
 - `.agents/skills/prd/check.md`
 

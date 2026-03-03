@@ -63,7 +63,7 @@
 - Acceptance Criteria:
   - AC-1: headless-runtime PRD 定义生命周期、鉴权、归档三条主线。
   - AC-2: headless-runtime project 文档维护对应任务拆解与状态。
-  - AC-3: 与 `doc/headless-runtime/nonviewer/nonviewer-onchain-auth-protocol-hardening.md` 等专题文档一致。
+  - AC-3: 与 `doc/headless-runtime/nonviewer/nonviewer-onchain-auth-protocol-hardening.prd.md` 等专题文档一致。
   - AC-4: 对外行为变更时同步补齐测试与 devlog 记录。
 - Non-Goals:
   - 不在本 PRD 中重写 viewer UI 行为。
@@ -76,8 +76,8 @@
 ## 4. Technical Specifications
 - Architecture Overview: headless-runtime 作为无界面运行链路，连接 runtime/p2p 能力并提供生产可运维能力，强调协议一致性与可恢复性。
 - Integration Points:
-  - `doc/headless-runtime/nonviewer/nonviewer-onchain-auth-protocol-hardening.md`
-  - `doc/headless-runtime/nonviewer/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.md`
+  - `doc/headless-runtime/nonviewer/nonviewer-onchain-auth-protocol-hardening.prd.md`
+  - `doc/headless-runtime/nonviewer/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.prd.md`
   - `testing-manual.md`
 - Edge Cases & Error Handling:
   - 网络中断：连接断开时进入可重连状态并保留会话诊断。

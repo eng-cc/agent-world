@@ -1,10 +1,10 @@
 # Non-Viewer 长稳运行内存安全与可追溯冷归档硬化（项目管理）
 
-## 任务拆解
-
+## 任务拆解（含 PRD-ID 映射）
+- [x] T-MIG-20260303 (PRD-ENGINEERING-006): 逐篇阅读旧文档并完成人工重写迁移到 `.prd` 命名。
 ### T0 建档
-- [x] 设计文档：`doc/headless-runtime/nonviewer/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.md`
-- [x] 项目文档：`doc/headless-runtime/nonviewer/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.project.md`
+- [x] 设计文档：`doc/headless-runtime/nonviewer/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.prd.md`
+- [x] 项目文档：`doc/headless-runtime/nonviewer/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.prd.project.md`
 
 ### T1 Node 内存边界治理（1/2/3）
 - [x] `agent_world_node`：引擎 pending actions 有界化（不丢追溯）

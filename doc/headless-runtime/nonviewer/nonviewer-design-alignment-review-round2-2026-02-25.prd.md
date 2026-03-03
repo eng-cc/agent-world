@@ -1,12 +1,11 @@
 # Non-Viewer 设计一致性审查 Round2（2026-02-25）
 
-## 目标
-- 在已完成 `doc/headless-runtime/nonviewer/nonviewer-design-alignment-fixes-2026-02-25.md` 的基础上，继续执行第二轮 non-viewer 设计一致性审查。
+## 1. Executive Summary
+- 在已完成 `doc/headless-runtime/nonviewer/nonviewer-design-alignment-fixes-2026-02-25.prd.md` 的基础上，继续执行第二轮 non-viewer 设计一致性审查。
 - 覆盖非 Viewer 的活跃设计分册（优先 `testing` / `p2p` / `world-runtime`），识别“设计要求与实现行为不一致”项。
 - 对确认问题统一收敛优化，并同步文档与任务日志。
 
-## 范围
-
+## 2. User Experience & Functionality
 ### In Scope
 - 新增并维护第二轮审查记录：问题台账、核对范围、结论。
 - 记录并跟踪已发现问题：non-viewer Rust 单文件超过 1200 行的工程约束偏差。
@@ -17,7 +16,12 @@
 - `crates/agent_world_viewer` 及 Viewer UI/Web 交互代码。
 - 仅归档文档的历史一致性回溯重审。
 
-## 接口 / 数据
+
+## 3. AI System Requirements (If Applicable)
+- Tool Requirements: 不适用（文档迁移任务）。
+- Evaluation Strategy: 通过文档治理校验、引用扫描与任务日志检查验证迁移质量。
+
+## 4. Technical Specifications
 - 问题台账字段：`id` / `scope` / `design_source` / `implementation` / `status` / `notes`。
 - 约束项：
   - Rust 文件行数上限：1200（以仓库工作流约束为准）。
@@ -26,13 +30,13 @@
   - 本设计文档与项目管理文档状态更新。
   - 任务日志（`doc/devlog/2026-02-25.md`）。
 
-## 里程碑
+## 5. Risks & Roadmap
 - M0：建档并记录已发现问题。
 - M1：完成第二轮审查（testing/p2p/world-runtime 优先路径）。
 - M2：完成批量优化与回归测试。
 - M3：回写文档状态与 devlog 收口。
 
-## 风险
+### Technical Risks
 - 审查范围较大，存在漏检风险。
   - 缓解：优先活跃分册与近期变更路径，按“文档 -> 代码 -> 测试”闭环核对。
 - 批量优化可能引入回归。
@@ -61,3 +65,19 @@
 - 已完成：M0、M1、M2、M3
 - 进行中：无
 - 阻塞项：无
+
+## 6. Validation & Decision Record
+- Test Plan & Traceability:
+| PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |
+| --- | --- | --- | --- | --- |
+| PRD-ENGINEERING-006 | 文档内既有任务条目 | `test_tier_required` | `./scripts/doc-governance-check.sh` + 引用可达性扫描 | 迁移文档命名一致性与可追溯性 |
+- Decision Log:
+| 决策ID | 选定方案 | 备选方案（否决） | 依据 |
+| --- | --- | --- | --- |
+| DEC-DOC-MIG-20260303 | 逐篇阅读后人工重写为 `.prd` 命名 | 仅批量重命名 | 保证语义保真与审计可追溯。 |
+
+## 原文约束点映射（内容保真）
+- 原“目标” -> 第 1 章 Executive Summary。
+- 原“范围” -> 第 2 章 User Experience & Functionality。
+- 原“接口 / 数据” -> 第 4 章 Technical Specifications。
+- 原“里程碑/风险” -> 第 5 章 Risks & Roadmap。

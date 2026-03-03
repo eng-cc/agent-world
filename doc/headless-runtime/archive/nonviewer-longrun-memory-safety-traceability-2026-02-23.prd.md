@@ -4,7 +4,7 @@
 
 # Non-Viewer 长稳运行内存安全与可追溯治理（2026-02-23）
 
-## 目标
+## 1. Executive Summary
 - 对 non-viewer 运行链路完成 6 项长稳风险治理：
   - 1) 网络命令/诊断无界内存风险。
   - 2) 节点共识动作入口无界负载风险。
@@ -16,8 +16,7 @@
   - 运行态采用有界内存；
   - 历史数据通过可持久化与分段归档元数据保留追溯能力，避免仅依赖单机常驻内存。
 
-## 范围
-
+## 2. User Experience & Functionality
 ### In Scope
 - `agent_world_net`:
   - libp2p 命令通道改为有界背压；
@@ -42,7 +41,12 @@
 - 分布式协议重构（链上鉴权或共识协议大改）。
 - 业务规则数值调优。
 
-## 接口/数据
+
+## 3. AI System Requirements (If Applicable)
+- Tool Requirements: 不适用（文档迁移任务）。
+- Evaluation Strategy: 通过文档治理校验、引用扫描与任务日志检查验证迁移质量。
+
+## 4. Technical Specifications
 - 网络配置新增（`Libp2pNetworkConfig`）：
   - `command_buffer_capacity`（有界命令队列容量）。
   - `max_published_messages`、`max_error_messages`、`max_listening_addrs`（诊断窗口）。
@@ -57,14 +61,14 @@
 - WasmExecutor 配置收敛：
   - 磁盘缓存路径继续可用，但只走安全可验证加载路径。
 
-## 里程碑
+## 5. Risks & Roadmap
 - M0：建档 + 任务拆解。
 - M1：完成 1/2（入口背压与队列上限）。
 - M2：完成 3/4（共识/运行时内存治理）。
 - M3：完成 5/6（dead-letter 与 wasm cache 安全）。
 - M4：回归测试 + 文档收口。
 
-## 风险
+### Technical Risks
 - 有界策略可能引入拒绝/丢弃行为。
   - 缓解：返回明确错误、保留计数器与追溯元信息。
 - 历史裁剪可能影响某些依赖“全量内存历史”的路径。
@@ -79,3 +83,19 @@
 - 已完成：M0、M1、M2、M3、M4
 - 进行中：无
 - 未开始：无
+
+## 6. Validation & Decision Record
+- Test Plan & Traceability:
+| PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |
+| --- | --- | --- | --- | --- |
+| PRD-ENGINEERING-006 | 文档内既有任务条目 | `test_tier_required` | `./scripts/doc-governance-check.sh` + 引用可达性扫描 | 迁移文档命名一致性与可追溯性 |
+- Decision Log:
+| 决策ID | 选定方案 | 备选方案（否决） | 依据 |
+| --- | --- | --- | --- |
+| DEC-DOC-MIG-20260303 | 逐篇阅读后人工重写为 `.prd` 命名 | 仅批量重命名 | 保证语义保真与审计可追溯。 |
+
+## 原文约束点映射（内容保真）
+- 原“目标” -> 第 1 章 Executive Summary。
+- 原“范围” -> 第 2 章 User Experience & Functionality。
+- 原“接口 / 数据” -> 第 4 章 Technical Specifications。
+- 原“里程碑/风险” -> 第 5 章 Risks & Roadmap。

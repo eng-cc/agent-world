@@ -4,13 +4,12 @@
 
 # Non-Viewer 发行准备加固（测试覆盖 + Agent/PublicKey 绑定）
 
-## 目标
+## 1. Executive Summary
 - 补齐 non-viewer 发布门禁测试覆盖，避免 `node/consensus/distfs` 回归漏检。
 - 将 Agent 控制绑定从“仅 player_id”提升为“player_id + public_key”，收敛控制身份边界。
 - 保持现有 `test_tier_required` / `test_tier_full` 与协议兼容，优先增量改造。
 
-## 范围
-
+## 2. User Experience & Functionality
 ### In Scope
 - 更新 `scripts/ci-tests.sh`：
   - 在默认门禁中补齐 `agent_world_node`、`agent_world_consensus`、`agent_world_distfs`（以及 net 基础库测试）执行。
@@ -28,7 +27,12 @@
 - 新增链上鉴权协议或网络签名协议重构。
 - LLM 策略和 gameplay 数值平衡重做。
 
-## 接口/数据
+
+## 3. AI System Requirements (If Applicable)
+- Tool Requirements: 不适用（文档迁移任务）。
+- Evaluation Strategy: 通过文档治理校验、引用扫描与任务日志检查验证迁移质量。
+
+## 4. Technical Specifications
 - Viewer 协议请求字段（新增）：
   - `PromptControlApplyRequest.public_key: Option<String>`
   - `PromptControlRollbackRequest.public_key: Option<String>`
@@ -40,13 +44,13 @@
 - Kernel 接口扩展：
   - 提供按 `public_key` 的绑定与查询入口。
 
-## 里程碑
+## 5. Risks & Roadmap
 - M0：建档并冻结任务拆解。
 - M1：测试门禁覆盖补齐并通过 required 回归。
 - M2：Agent/PublicKey 绑定实现与协议测试通过。
 - M3：文档与 devlog 收口。
 
-## 风险
+### Technical Risks
 - required 门禁耗时上升。
   - 缓解：先纳入 `--lib` 级测试，必要时再分层并行化。
 - 绑定规则增强可能影响旧客户端。
@@ -60,3 +64,19 @@
   - CI `required/full` 分层口径更新并落地到脚本与测试手册。
   - Agent 控制绑定升级为 `player_id + public_key`（含 legacy 升级与兼容）。
   - 协议、live 控制链路、persist/replay 路径测试通过。
+
+## 6. Validation & Decision Record
+- Test Plan & Traceability:
+| PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |
+| --- | --- | --- | --- | --- |
+| PRD-ENGINEERING-006 | 文档内既有任务条目 | `test_tier_required` | `./scripts/doc-governance-check.sh` + 引用可达性扫描 | 迁移文档命名一致性与可追溯性 |
+- Decision Log:
+| 决策ID | 选定方案 | 备选方案（否决） | 依据 |
+| --- | --- | --- | --- |
+| DEC-DOC-MIG-20260303 | 逐篇阅读后人工重写为 `.prd` 命名 | 仅批量重命名 | 保证语义保真与审计可追溯。 |
+
+## 原文约束点映射（内容保真）
+- 原“目标” -> 第 1 章 Executive Summary。
+- 原“范围” -> 第 2 章 User Experience & Functionality。
+- 原“接口 / 数据” -> 第 4 章 Technical Specifications。
+- 原“里程碑/风险” -> 第 5 章 Risks & Roadmap。

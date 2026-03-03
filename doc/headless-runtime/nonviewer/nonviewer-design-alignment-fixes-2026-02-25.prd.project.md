@@ -1,10 +1,10 @@
 # Non-Viewer 设计一致性修复（项目管理）
 
-## 任务拆解
-
+## 任务拆解（含 PRD-ID 映射）
+- [x] T-MIG-20260303 (PRD-ENGINEERING-006): 逐篇阅读旧文档并完成人工重写迁移到 `.prd` 命名。
 ### T0 建档
-- [x] 新建设计文档：`doc/headless-runtime/nonviewer/nonviewer-design-alignment-fixes-2026-02-25.md`
-- [x] 新建项目管理文档：`doc/headless-runtime/nonviewer/nonviewer-design-alignment-fixes-2026-02-25.project.md`
+- [x] 新建设计文档：`doc/headless-runtime/nonviewer/nonviewer-design-alignment-fixes-2026-02-25.prd.md`
+- [x] 新建项目管理文档：`doc/headless-runtime/nonviewer/nonviewer-design-alignment-fixes-2026-02-25.prd.project.md`
 
 ### T1 修复 rejected 分支静默丢失
 - [x] `PosNodeEngine::apply_decision` rejected 分支回灌失败改为显式报错

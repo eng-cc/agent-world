@@ -1,13 +1,12 @@
 # Non-Viewer 设计一致性修复（2026-02-25）
 
-## 目标
+## 1. Executive Summary
 - 修复 non-viewer 两处“实现偏离设计语义”的问题，确保线上行为与文档约束一致：
   - 共识 rejected 分支不再静默丢弃回灌失败的 action。
   - dead-letter file store 在冷热分层后仍可通过统一接口回放完整记录。
 - 保持既有内存边界、冷归档策略与兼容性，不引入 Viewer 相关变更。
 
-## 范围
-
+## 2. User Experience & Functionality
 ### In Scope
 - `crates/agent_world_node`
   - `PosNodeEngine::apply_decision` 的 rejected 回灌错误处理。
@@ -23,8 +22,12 @@
 - Viewer 代码、Web/UI 交互路径。
 - dead-letter replay 策略参数调优。
 
-## 接口 / 数据
 
+## 3. AI System Requirements (If Applicable)
+- Tool Requirements: 不适用（文档迁移任务）。
+- Evaluation Strategy: 通过文档治理校验、引用扫描与任务日志检查验证迁移质量。
+
+## 4. Technical Specifications
 ### 1) Rejected action 回灌
 - 行为变更：`PosNodeEngine` 在 rejected 分支回灌失败时返回显式 `NodeError::Consensus`，不再吞错。
 - 容量语义：`pending_consensus_action_capacity` 计算时预留 `pending proposal committed_actions.len()` 的回灌空间。
@@ -37,13 +40,13 @@
 - `FileMembershipRevocationAlertDeadLetterStore::replace`
   - 写入剩余记录前清理历史 archive refs，再按 retention 重建冷热分层。
 
-## 里程碑
+## 5. Risks & Roadmap
 - M0：建档（设计 + 项管）完成。
 - M1：Node rejected 回灌安全修复 + 回归测试通过。
 - M2：Dead-letter 冷热回放与 replace 修复 + 回归测试通过。
 - M3：文档/devlog 收口。
 
-## 风险
+### Technical Risks
 - 冷热聚合读取会比仅热读取成本更高。
   - 缓解：保留 retention 与冷段分片，避免单文件无限增长。
 - replace 重建 archive refs 后会留下不可达 CAS 旧 blob。
@@ -53,3 +56,19 @@
 - 状态：已完成（2026-02-25）
 - 已完成：M0、M1、M2、M3
 - 阻塞项：无
+
+## 6. Validation & Decision Record
+- Test Plan & Traceability:
+| PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |
+| --- | --- | --- | --- | --- |
+| PRD-ENGINEERING-006 | 文档内既有任务条目 | `test_tier_required` | `./scripts/doc-governance-check.sh` + 引用可达性扫描 | 迁移文档命名一致性与可追溯性 |
+- Decision Log:
+| 决策ID | 选定方案 | 备选方案（否决） | 依据 |
+| --- | --- | --- | --- |
+| DEC-DOC-MIG-20260303 | 逐篇阅读后人工重写为 `.prd` 命名 | 仅批量重命名 | 保证语义保真与审计可追溯。 |
+
+## 原文约束点映射（内容保真）
+- 原“目标” -> 第 1 章 Executive Summary。
+- 原“范围” -> 第 2 章 User Experience & Functionality。
+- 原“接口 / 数据” -> 第 4 章 Technical Specifications。
+- 原“里程碑/风险” -> 第 5 章 Risks & Roadmap。

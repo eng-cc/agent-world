@@ -1,6 +1,6 @@
 # Non-Viewer 长稳运行内存安全与可追溯冷归档硬化（2026-02-23）
 
-## 目标
+## 1. Executive Summary
 - 针对 non-viewer 代码路径的 6 个长稳风险点完成治理：
   - 1) `PosNodeEngine.pending_consensus_actions` 长期增长风险。
   - 2) Gossip 动态 peer 集合无界增长与广播放大风险。
@@ -13,8 +13,7 @@
   - 历史信息不可丢失，必须可追溯。
   - 冷数据优先以分布式内容寻址存储（CAS）承载，单机仅保留热窗口与索引引用。
 
-## 范围
-
+## 2. User Experience & Functionality
 ### In Scope
 - `crates/agent_world_node`：
   - 共识动作队列与引擎缓存双层有界化。
@@ -34,7 +33,12 @@
 - 共识协议语义改造。
 - 业务规则参数调优。
 
-## 接口/数据
+
+## 3. AI System Requirements (If Applicable)
+- Tool Requirements: 不适用（文档迁移任务）。
+- Evaluation Strategy: 通过文档治理校验、引用扫描与任务日志检查验证迁移质量。
+
+## 4. Technical Specifications
 - NodeConfig 新增内存边界参数：
   - `max_engine_pending_consensus_actions`
   - `max_committed_action_batches`
@@ -49,14 +53,14 @@
   - 新增热窗口保留策略（按高度数量）。
   - 冷数据 commit 以 CAS blob 存储，并通过 height->hash refs 可回放读取。
 
-## 里程碑
+## 5. Risks & Roadmap
 - M0：建档与任务拆解。
 - M1：Node 内存边界治理（1/2/3）+ 测试。
 - M2：Consensus 日志热窗口与 dead-letter CAS 归档（4/5）+ 测试。
 - M3：Replication commit message 热冷分层与 CAS 归档（6）+ 测试。
 - M4：required-tier 回归 + 文档收口。
 
-## 风险
+### Technical Risks
 - 有界策略会引入“拒绝/跳过/淘汰”行为。
   - 缓解：保留计数、错误原因、冷归档 refs，确保可追溯。
 - 冷归档读取链路更长。
@@ -69,3 +73,19 @@
 - 进行中：无
 - 已完成：M0、M1、M2、M3、M4
 - 未开始：无
+
+## 6. Validation & Decision Record
+- Test Plan & Traceability:
+| PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |
+| --- | --- | --- | --- | --- |
+| PRD-ENGINEERING-006 | 文档内既有任务条目 | `test_tier_required` | `./scripts/doc-governance-check.sh` + 引用可达性扫描 | 迁移文档命名一致性与可追溯性 |
+- Decision Log:
+| 决策ID | 选定方案 | 备选方案（否决） | 依据 |
+| --- | --- | --- | --- |
+| DEC-DOC-MIG-20260303 | 逐篇阅读后人工重写为 `.prd` 命名 | 仅批量重命名 | 保证语义保真与审计可追溯。 |
+
+## 原文约束点映射（内容保真）
+- 原“目标” -> 第 1 章 Executive Summary。
+- 原“范围” -> 第 2 章 User Experience & Functionality。
+- 原“接口 / 数据” -> 第 4 章 Technical Specifications。
+- 原“里程碑/风险” -> 第 5 章 Risks & Roadmap。

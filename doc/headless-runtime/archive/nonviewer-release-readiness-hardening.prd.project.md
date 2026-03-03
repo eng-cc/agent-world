@@ -4,11 +4,11 @@
 
 # Non-Viewer 发行准备加固（项目管理文档）
 
-## 任务拆解
-
+## 任务拆解（含 PRD-ID 映射）
+- [x] T-MIG-20260303 (PRD-ENGINEERING-006): 逐篇阅读旧文档并完成人工重写迁移到 `.prd` 命名。
 ### T0 建档
-- [x] 新建设计文档：`doc/headless-runtime/archive/nonviewer-release-readiness-hardening.md`
-- [x] 新建项目管理文档：`doc/headless-runtime/archive/nonviewer-release-readiness-hardening.project.md`
+- [x] 新建设计文档：`doc/headless-runtime/archive/nonviewer-release-readiness-hardening.prd.md`
+- [x] 新建项目管理文档：`doc/headless-runtime/archive/nonviewer-release-readiness-hardening.prd.project.md`
 
 ### T1 测试覆盖补齐
 - [x] 更新 `scripts/ci-tests.sh`，补齐 `node/consensus/distfs/net` 的 non-viewer 测试门禁覆盖

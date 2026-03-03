@@ -1,10 +1,10 @@
 # Non-Viewer 链上鉴权协议重构（项目管理文档）
 
-## 任务拆解
-
+## 任务拆解（含 PRD-ID 映射）
+- [x] T-MIG-20260303 (PRD-ENGINEERING-006): 逐篇阅读旧文档并完成人工重写迁移到 `.prd` 命名。
 ### T0 建档
-- [x] 新建设计文档：`doc/headless-runtime/nonviewer/nonviewer-onchain-auth-protocol-hardening.md`
-- [x] 新建项目管理文档：`doc/headless-runtime/nonviewer/nonviewer-onchain-auth-protocol-hardening.project.md`
+- [x] 新建设计文档：`doc/headless-runtime/nonviewer/nonviewer-onchain-auth-protocol-hardening.prd.md`
+- [x] 新建项目管理文档：`doc/headless-runtime/nonviewer/nonviewer-onchain-auth-protocol-hardening.prd.project.md`
 
 ### T1 协议与鉴权内核
 - [x] 扩展 `agent_world_proto::viewer` 请求结构，新增 `PlayerAuthProof`
