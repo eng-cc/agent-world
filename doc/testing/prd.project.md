@@ -28,6 +28,7 @@
 - [x] TASK-TESTING-025 (PRD-TESTING-004): 完成 `p2p-storage-consensus-longrun-online-stability-2026-02-24` 专题文档逐篇人工迁移到 strict schema，并统一 `.prd` 命名。
 - [x] TASK-TESTING-026 (PRD-TESTING-004): 完成 `p2p-longrun-feedback-event-injection-2026-03-02` 专题文档逐篇人工迁移到 strict schema，并统一 `.prd` 命名。
 - [x] TASK-TESTING-027 (PRD-TESTING-004): 完成 `s10-distfs-probe-bootstrap-2026-02-28` 专题文档逐篇人工迁移到 strict schema，并统一 `.prd` 命名。
+- [x] TASK-TESTING-028 (PRD-TESTING-004): 完成 `s10-five-node-real-game-soak` 专题文档逐篇人工迁移到 strict schema，并统一 `.prd` 命名。
 
 ## 专题任务映射（2026-03-02 批次）
 - [x] SUBTASK-TESTING-20260302-001 (PRD-TESTING-002/003): `doc/testing/longrun/chain-runtime-feedback-replication-network-autowire-2026-03-02.prd.project.md`
@@ -55,6 +56,7 @@
 - [x] SUBTASK-TESTING-20260303-018 (PRD-TESTING-004): `doc/testing/longrun/p2p-storage-consensus-longrun-online-stability-2026-02-24.prd.project.md`
 - [x] SUBTASK-TESTING-20260303-019 (PRD-TESTING-004): `doc/testing/longrun/p2p-longrun-feedback-event-injection-2026-03-02.prd.project.md`
 - [x] SUBTASK-TESTING-20260303-020 (PRD-TESTING-004): `doc/testing/longrun/s10-distfs-probe-bootstrap-2026-02-28.prd.project.md`
+- [x] SUBTASK-TESTING-20260303-021 (PRD-TESTING-004): `doc/testing/longrun/s10-five-node-real-game-soak.prd.project.md`
 
 ## 依赖
 - `testing-manual.md`

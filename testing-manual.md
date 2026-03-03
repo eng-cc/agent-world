@@ -302,7 +302,7 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
   - `summary.json` 中 `run.status == "ok"`，并产出 `timeline.csv`；
   - `summary.json` 中 `run.metric_gate.status == "pass"`（一般告警通过 `run.metric_gate.notes` 留痕，不应降级为 `insufficient_data`）；
   - 若失败，必须保留 `failures.md` 作为分诊依据。
-- 参考文档：`doc/testing/longrun/chain-runtime-soak-script-reactivation-2026-02-28.prd.md`、`doc/testing/longrun/s10-five-node-real-game-soak.md`。
+- 参考文档：`doc/testing/longrun/chain-runtime-soak-script-reactivation-2026-02-28.prd.md`、`doc/testing/longrun/s10-five-node-real-game-soak.prd.md`。
 
 ## 改动路径 -> 必跑套件矩阵（针对性执行）
 
