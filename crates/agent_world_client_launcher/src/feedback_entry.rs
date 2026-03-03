@@ -507,7 +507,14 @@ mod tests {
             }
             FeedbackSubmitResult::Local { path, remote_error } => {
                 assert!(path.is_file());
-                assert!(remote_error.is_some());
+                let remote_error = remote_error
+                    .as_deref()
+                    .expect("remote submit failure should preserve remote_error");
+                assert!(remote_error.contains("connect chain status server failed"));
+                assert!(
+                    remote_error.to_ascii_lowercase().contains("refused"),
+                    "expected connection refused signature, got: {remote_error}"
+                );
             }
         }
 
