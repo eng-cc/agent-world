@@ -8,13 +8,13 @@
 - [x] TASK-TESTING-005 (PRD-TESTING-002/003): 建立模块级专题任务映射索引（2026-03-02 批次）。
 
 ## 专题任务映射（2026-03-02 批次）
-- [x] SUBTASK-TESTING-20260302-001 (PRD-TESTING-002/003): `doc/testing/chain-runtime-feedback-replication-network-autowire-2026-03-02.project.md`
-- [x] SUBTASK-TESTING-20260302-002 (PRD-TESTING-002/003): `doc/testing/launcher-viewer-auth-node-config-autowire-2026-03-02.project.md`
-- [x] SUBTASK-TESTING-20260302-003 (PRD-TESTING-002/003): `doc/testing/p2p-longrun-feedback-event-injection-2026-03-02.project.md`
+- [x] SUBTASK-TESTING-20260302-001 (PRD-TESTING-002/003): `doc/testing/longrun/chain-runtime-feedback-replication-network-autowire-2026-03-02.project.md`
+- [x] SUBTASK-TESTING-20260302-002 (PRD-TESTING-002/003): `doc/testing/launcher/launcher-viewer-auth-node-config-autowire-2026-03-02.project.md`
+- [x] SUBTASK-TESTING-20260302-003 (PRD-TESTING-002/003): `doc/testing/longrun/p2p-longrun-feedback-event-injection-2026-03-02.project.md`
 
 ## 依赖
 - `testing-manual.md`
-- `doc/testing/web-ui-playwright-closure-manual.md`
+- `doc/testing/manual/web-ui-playwright-closure-manual.md`
 - `scripts/ci-tests.sh`
 - `.github/workflows/*`
 

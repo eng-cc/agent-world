@@ -20,8 +20,8 @@
 ## 依赖
 - `AGENTS.md`
 - `doc/world-simulator/viewer/viewer-manual.md`
-- `doc/scripts/capture-viewer-frame.md`
-- `doc/scripts/capture-viewer-frame.project.md`
+- `doc/scripts/viewer-tools/capture-viewer-frame.md`
+- `doc/scripts/viewer-tools/capture-viewer-frame.project.md`
 - `doc/world-simulator/viewer/viewer-bevy-web-runtime.md`
 - `doc/world-simulator/viewer/viewer-bevy-web-runtime.project.md`
 - `doc/world-simulator.project.md`

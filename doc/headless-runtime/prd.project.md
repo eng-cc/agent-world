@@ -7,8 +7,8 @@
 - [ ] TASK-NONVIEWER-004 (PRD-NONVIEWER-003): 联动 testing 模块完善 headless-runtime 长稳门禁。
 
 ## 依赖
-- `doc/headless-runtime/nonviewer-onchain-auth-protocol-hardening.md`
-- `doc/headless-runtime/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.md`
+- `doc/headless-runtime/nonviewer/nonviewer-onchain-auth-protocol-hardening.md`
+- `doc/headless-runtime/nonviewer/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.md`
 - `testing-manual.md`
 
 ## 状态

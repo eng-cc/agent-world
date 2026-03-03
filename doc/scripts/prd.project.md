@@ -8,7 +8,7 @@
 
 ## 依赖
 - `scripts/`
-- `doc/scripts/pre-commit.md`
+- `doc/scripts/precommit/pre-commit.md`
 - `testing-manual.md`
 
 ## 状态

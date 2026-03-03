@@ -5,7 +5,7 @@
 - 为 `TASK-WORLD_SIMULATOR-003` 提供可直接复制的结果卡片格式。
 
 ## 适用范围
-- Web-first 闭环：`doc/testing/web-ui-playwright-closure-manual.md`
+- Web-first 闭环：`doc/testing/manual/web-ui-playwright-closure-manual.md`
 - LLM 链路压力/覆盖：`testing-manual.md` 的 S8（`scripts/llm-longrun-stress.sh`）
 
 ## 模板 A：Web-first 闭环证据卡（S6）

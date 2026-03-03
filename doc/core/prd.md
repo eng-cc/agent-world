@@ -89,8 +89,8 @@
 `PRD-ID Task -> test_tier_required/full -> Web闭环/长跑 -> Evidence Bundle -> Release Decision`
 
 ### 关键分册导航（只读总览后优先下钻）
-- 运行时内核: `doc/world-runtime/runtime-integration.md`
-- WASM 接口与执行: `doc/world-runtime/wasm-interface.md`, `doc/world-runtime/wasm-executor.md`
+- 运行时内核: `doc/world-runtime/runtime/runtime-integration.md`
+- WASM 接口与执行: `doc/world-runtime/wasm/wasm-interface.md`, `doc/world-runtime/wasm/wasm-executor.md`
 - 场景矩阵: `doc/world-simulator/scenario/scenario-files.md`
 - Web 闭环测试策略: `doc/world-simulator/viewer/viewer-web-closure-testing-policy.md`
 - 分布式路线图: `doc/p2p/blockchain/production-grade-blockchain-p2pfs-roadmap.md`

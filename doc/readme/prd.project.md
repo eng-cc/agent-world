@@ -10,7 +10,9 @@
 - `README.md`
 - `world-rule.md`
 - `testing-manual.md`
-- `doc/readme/*.md`
+- `doc/readme/gap/`
+- `doc/readme/production/`
+- `doc/readme/governance/`
 
 ## 状态
 - 更新日期: 2026-03-03

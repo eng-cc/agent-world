@@ -5,7 +5,11 @@
 - 项目管理: `doc/game/prd.project.md`
 
 ## 主题文档
-- `gameplay-*`：玩法、经济、治理、战争与发布闭环。
+- `gameplay/`：玩法、经济、治理、战争与发布闭环专题。
+
+## 根目录收口
+- 模块根目录仅保留：`README.md`、`prd.md`、`prd.project.md`。
+- 其余专题文档按主题下沉到 `gameplay/`。
 
 ## 维护约定
 - 新玩法需求先落 PRD，再拆到项目管理文档。

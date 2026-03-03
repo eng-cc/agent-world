@@ -44,7 +44,7 @@
 - Acceptance Criteria:
   - AC-1: world-runtime PRD 覆盖内核、WASM、治理、安全四条主线。
   - AC-2: world-runtime project 文档任务映射 PRD-ID 并维护状态。
-  - AC-3: 与 `doc/world-runtime/runtime-integration.md`、`wasm-interface.md` 等分册一致。
+  - AC-3: 与 `doc/world-runtime/runtime/runtime-integration.md`、`doc/world-runtime/wasm/wasm-interface.md` 等分册一致。
   - AC-4: 关键行为变更同步更新测试方案与执行记录。
 - Non-Goals:
   - 不在本 PRD 中展开每个阶段的实现代码细节。
@@ -57,11 +57,11 @@
 ## 4. Technical Specifications
 - Architecture Overview: world-runtime 模块是系统可信执行基座，负责世界状态演化、模块扩展执行与治理审计，向上游 simulator/game 与下游 p2p 提供稳定语义。
 - Integration Points:
-  - `doc/world-runtime/runtime-integration.md`
-  - `doc/world-runtime/wasm-interface.md`
-  - `doc/world-runtime/wasm-executor.md`
-  - `doc/world-runtime/governance-events.md`
-  - `doc/world-runtime/testing.md`
+  - `doc/world-runtime/runtime/runtime-integration.md`
+  - `doc/world-runtime/wasm/wasm-interface.md`
+  - `doc/world-runtime/wasm/wasm-executor.md`
+  - `doc/world-runtime/governance/governance-events.md`
+  - `doc/world-runtime/testing/testing.md`
 - Security & Privacy: 强制最小权限、签名校验、审计留痕；禁止未授权模块绕过规则层直接修改世界状态。
 
 ## 5. Risks & Roadmap

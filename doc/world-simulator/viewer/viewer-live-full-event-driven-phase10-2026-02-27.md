@@ -48,7 +48,7 @@
   - `doc/world-simulator/viewer/viewer-i18n.md`
   - `doc/world-simulator/viewer/viewer-open-world-sandbox-readiness.md`
   - `doc/world-simulator/viewer/viewer-open-world-sandbox-readiness.stress-report.template.md`
-  - `doc/testing/p2p-storage-consensus-longrun-online-stability-2026-02-24.md`
+  - `doc/testing/longrun/p2p-storage-consensus-longrun-online-stability-2026-02-24.md`
 - 删除 legacy `--tick-ms` 拒绝断言测试，避免保留旧参数语义噪音：
   - `crates/agent_world/src/bin/world_viewer_live/world_viewer_live_tests_split_part1.rs`
 

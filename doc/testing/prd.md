@@ -58,7 +58,7 @@
 - Architecture Overview: testing 模块是仓库级验证层，负责连接代码改动、测试触发、证据产物与发布门禁。
 - Integration Points:
   - `testing-manual.md`
-  - `doc/testing/web-ui-playwright-closure-manual.md`
+  - `doc/testing/manual/web-ui-playwright-closure-manual.md`
   - `scripts/ci-tests.sh`
   - `.github/workflows/*`
 - Security & Privacy: 测试日志与产物需避免泄露凭据；外部 API 测试使用最小化数据并执行脱敏。

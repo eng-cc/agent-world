@@ -7,8 +7,8 @@
 - [ ] TASK-GAME-004 (PRD-GAME-003): 对接发布前可玩性门禁与回归节奏。
 
 ## 依赖
-- `doc/game/gameplay-top-level-design.md`
-- `doc/game/gameplay-engineering-architecture.md`
+- `doc/game/gameplay/gameplay-top-level-design.md`
+- `doc/game/gameplay/gameplay-engineering-architecture.md`
 - `doc/playability_test_result/prd.md`
 - `testing-manual.md`
 

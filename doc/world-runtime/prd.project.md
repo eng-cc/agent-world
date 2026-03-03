@@ -7,9 +7,9 @@
 - [ ] TASK-WORLD_RUNTIME-004 (PRD-WORLD_RUNTIME-003): 对接跨模块发布门禁中的 runtime 质量指标。
 
 ## 依赖
-- `doc/world-runtime/runtime-integration.md`
-- `doc/world-runtime/wasm-interface.md`
-- `doc/world-runtime/governance-events.md`
+- `doc/world-runtime/runtime/runtime-integration.md`
+- `doc/world-runtime/wasm/wasm-interface.md`
+- `doc/world-runtime/governance/governance-events.md`
 - `testing-manual.md`
 
 ## 状态

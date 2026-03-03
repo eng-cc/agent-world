@@ -85,8 +85,8 @@
 ## 依赖
 
 - `crates/agent_world_wasm_abi`：模块 ABI 与共享契约定义。
-- `doc/world-runtime/wasm-interface.md`：底层 wasm-1 接口约束。
-- `doc/world-runtime/module-lifecycle.md`：治理流程与生命周期约束。
+- `doc/world-runtime/wasm/wasm-interface.md`：底层 wasm-1 接口约束。
+- `doc/world-runtime/module/module-lifecycle.md`：治理流程与生命周期约束。
 
 ## 状态
 

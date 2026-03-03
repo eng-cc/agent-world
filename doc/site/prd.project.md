@@ -9,7 +9,9 @@
 ## 依赖
 - `site/`
 - `site/doc/`
-- `doc/site/*.md`
+- `doc/site/github-pages/`
+- `doc/site/manual/`
+- `doc/site/archive/`
 - `doc/readme/prd.md`
 
 ## 状态

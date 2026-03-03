@@ -44,7 +44,7 @@
 - Acceptance Criteria:
   - AC-1: scripts PRD 明确脚本分类、入口、约束。
   - AC-2: scripts project 文档维护脚本治理任务。
-  - AC-3: 与 `doc/scripts/pre-commit.md`、`testing-manual.md` 口径一致。
+  - AC-3: 与 `doc/scripts/precommit/pre-commit.md`、`testing-manual.md` 口径一致。
   - AC-4: `capture-viewer-frame.sh` 被明确为 fallback 链路使用。
 - Non-Goals:
   - 不在 scripts PRD 中替代业务功能设计。
@@ -58,7 +58,10 @@
 - Architecture Overview: scripts 模块是工程自动化执行层，向开发、测试、发布提供可组合命令入口，强调“单一职责 + 明确输出”。
 - Integration Points:
   - `scripts/`
-  - `doc/scripts/*.md`
+  - `doc/scripts/precommit/`
+  - `doc/scripts/viewer-tools/`
+  - `doc/scripts/wasm/`
+  - `doc/scripts/archive/`
   - `testing-manual.md`
   - `.github/workflows/*`
 - Security & Privacy: 脚本不得在默认输出中泄漏密钥；涉及网络调用时需要显式参数与最小权限。

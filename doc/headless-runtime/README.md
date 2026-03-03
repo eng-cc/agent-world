@@ -9,14 +9,14 @@
 - 项目管理: `doc/headless-runtime/prd.project.md`
 
 ## 活跃文档
-- `doc/headless-runtime/nonviewer-onchain-auth-protocol-hardening.md`
-- `doc/headless-runtime/nonviewer-onchain-auth-protocol-hardening.project.md`
-- `doc/headless-runtime/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.md`
-- `doc/headless-runtime/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.project.md`
-- `doc/headless-runtime/nonviewer-design-alignment-fixes-2026-02-25.md`
-- `doc/headless-runtime/nonviewer-design-alignment-fixes-2026-02-25.project.md`
-- `doc/headless-runtime/nonviewer-design-alignment-review-round2-2026-02-25.md`
-- `doc/headless-runtime/nonviewer-design-alignment-review-round2-2026-02-25.project.md`
+- `doc/headless-runtime/nonviewer/nonviewer-onchain-auth-protocol-hardening.md`
+- `doc/headless-runtime/nonviewer/nonviewer-onchain-auth-protocol-hardening.project.md`
+- `doc/headless-runtime/nonviewer/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.md`
+- `doc/headless-runtime/nonviewer/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.project.md`
+- `doc/headless-runtime/nonviewer/nonviewer-design-alignment-fixes-2026-02-25.md`
+- `doc/headless-runtime/nonviewer/nonviewer-design-alignment-fixes-2026-02-25.project.md`
+- `doc/headless-runtime/nonviewer/nonviewer-design-alignment-review-round2-2026-02-25.md`
+- `doc/headless-runtime/nonviewer/nonviewer-design-alignment-review-round2-2026-02-25.project.md`
 
 ## 归档文档
 - `doc/headless-runtime/archive/nonviewer-release-readiness-hardening.md`

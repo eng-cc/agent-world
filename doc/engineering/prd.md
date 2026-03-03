@@ -32,7 +32,7 @@
   - SC-3: `scripts/doc-governance-check.sh` 在 required gate 连续通过。
   - SC-4: 工程类任务 100% 映射到 PRD-ENGINEERING-ID。
   - SC-5: `doc/` 根目录与模块根目录平铺文档新增违规数为 0（allowlist 冻结机制）。
-  - SC-6: 重点模块（world-simulator/p2p）根目录平铺专题文档迁移完成并保持引用闭环。
+  - SC-6: 重点模块（world-simulator/p2p/world-runtime/testing/site/readme/scripts/game/headless-runtime）根目录平铺专题文档迁移完成并保持引用闭环。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -46,10 +46,10 @@
 - Acceptance Criteria:
   - AC-1: engineering PRD 明确文件约束、脚本约束、测试分层约束。
   - AC-2: engineering project 文档维护任务拆解与状态。
-  - AC-3: 与 `scripts/pre-commit.md`、`testing-manual.md` 的口径一致。
+  - AC-3: 与 `doc/scripts/precommit/pre-commit.md`、`testing-manual.md` 的口径一致。
   - AC-4: 每次工程规范变更有对应 devlog 记录。
   - AC-5: 文档治理脚本校验 `doc/.governance/*-allowlist.txt`，可拦截 `doc/*.md` 与 `doc/<module>/*.md` 的非预期新增。
-  - AC-6: `doc/world-simulator` 与 `doc/p2p` 模块根目录仅保留 `README.md` / `prd.md` / `prd.project.md`。
+  - AC-6: `doc/world-simulator`、`doc/p2p`、`doc/world-runtime`、`doc/testing`、`doc/site`、`doc/readme`、`doc/scripts`、`doc/game`、`doc/headless-runtime` 模块根目录仅保留 `README.md` / `prd.md` / `prd.project.md`。
 - Non-Goals:
   - 不定义 gameplay/p2p/runtime 业务规则。
   - 不替代模块内部测试策略。
@@ -62,8 +62,8 @@
 - Architecture Overview: engineering 模块聚焦工程流程与规范，不承载业务逻辑；通过脚本与门禁把规范落地到提交链路。
 - Integration Points:
   - `scripts/doc-governance-check.sh`
-  - `scripts/pre-commit.md`
-  - `scripts/fix-precommit.md`
+  - `doc/scripts/precommit/pre-commit.md`
+  - `doc/scripts/precommit/fix-precommit.md`
   - `doc/.governance/doc-root-md-allowlist.txt`
   - `doc/.governance/module-root-md-allowlist.txt`
   - `testing-manual.md`

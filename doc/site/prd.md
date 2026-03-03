@@ -59,7 +59,9 @@
 - Integration Points:
   - `site/`
   - `site/doc/`
-  - `doc/site/*.md`
+  - `doc/site/github-pages/`
+  - `doc/site/manual/`
+  - `doc/site/archive/`
   - `doc/readme/prd.md`
 - Security & Privacy: 站点不得暴露内部凭据与敏感配置；下载链路需具备来源可验证性。
 

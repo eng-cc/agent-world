@@ -489,7 +489,7 @@ bash "$PWCLI" close
 - `doc/world-simulator/viewer/viewer-overview-map-zoom.md`
 - `doc/world-simulator/viewer/viewer-agent-quick-locate.md`
 - `doc/world-simulator/viewer/viewer-copyable-text.md`
-- `doc/scripts/capture-viewer-frame.md`（native fallback）
+- `doc/scripts/viewer-tools/capture-viewer-frame.md`（native fallback）
 
 ## Fragment 元素分块渲染（默认开启）
 - 目标：把 location 的 fragment 分块默认显示出来，并按主导元素显示不同颜色。
