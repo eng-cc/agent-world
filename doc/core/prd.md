@@ -90,7 +90,7 @@
 | scripts | 自动化脚本能力与执行约束 | `scripts/*`, `doc/scripts/*` |
 | site | 站点信息架构、发布内容、SEO | `site/*`, `doc/site/*` |
 | readme | 对外文档入口口径统一 | `README.md`, `doc/readme/*` |
-| playability_test_result | 可玩性反馈证据与发布引用 | `doc/playability_test_result/*`, `doc/playability_test_result/game-test.md` |
+| playability_test_result | 可玩性反馈证据与发布引用 | `doc/playability_test_result/*`, `doc/playability_test_result/game-test.prd.md` |
 
 ### 关键端到端链路（E2E Chains）
 1. 玩家交互链路:

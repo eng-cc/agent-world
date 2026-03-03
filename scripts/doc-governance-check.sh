@@ -25,6 +25,8 @@ Checks:
      doc/<module>/prd*.md) must contain bidirectional references:
        - topic design doc (*.prd.md) includes its *.prd.project.md path
        - topic project doc (*.prd.project.md) includes its *.prd.md path
+  8. Non-archive/non-devlog markdown files must not reference missing markdown
+     paths under doc/ (wildcards/templates and explicit exemption docs excluded).
 USAGE
 }
 
@@ -44,6 +46,9 @@ failures=0
 # Whitelist is keyed by project doc path to keep exemptions explicit and reviewable.
 readonly DESIGN_SECTION_EXEMPT_PROJECT_DOCS=(
   "doc/playability_test_result/game-test.prd.project.md"
+)
+readonly REFERENCE_EXISTENCE_EXEMPT_DOCS=(
+  "doc/engineering/doc-migration/legacy-doc-migration-backlog-2026-03-03.md"
 )
 readonly DOC_ROOT_MD_ALLOWLIST_FILE="doc/.governance/doc-root-md-allowlist.txt"
 readonly MODULE_ROOT_MD_ALLOWLIST_FILE="doc/.governance/module-root-md-allowlist.txt"
@@ -165,6 +170,47 @@ is_topic_project_doc() {
   [[ ! "$project_doc" =~ ^doc/[^/]+/prd\.project\.md$ ]]
 }
 
+is_reference_exempt_doc() {
+  local doc_file="$1"
+  local exempt
+  for exempt in "${REFERENCE_EXISTENCE_EXEMPT_DOCS[@]}"; do
+    if [[ "$doc_file" == "$exempt" ]]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+extract_doc_markdown_references() {
+  local file="$1"
+  if command -v rg >/dev/null 2>&1; then
+    rg -o --no-filename 'doc/[A-Za-z0-9_./-]+\.md' "$file" | sort -u
+    return
+  fi
+  grep -oE 'doc/[A-Za-z0-9_./-]+\.md' "$file" | sort -u
+}
+
+check_doc_path_references() {
+  local file="$1"
+  local ref_path
+
+  if is_reference_exempt_doc "$file"; then
+    return
+  fi
+
+  while IFS= read -r ref_path; do
+    [[ -z "$ref_path" ]] && continue
+    case "$ref_path" in
+      *'*'*|*'?'*|*'['*|*']'*|*'{'*|*'}'*|*'YYYY-MM-DD'*)
+        continue
+        ;;
+    esac
+    if [[ ! -f "$ref_path" ]]; then
+      fail "$file references missing markdown path: $ref_path"
+    fi
+  done < <(extract_doc_markdown_references "$file")
+}
+
 mapfile -t all_doc_files < <(find doc -type f -name '*.md' ! -path 'doc/devlog/*' ! -path '*/archive/*' | sort)
 mapfile -t project_docs < <(find doc -type f -name '*.project.md' ! -path '*/archive/*' | sort)
 
@@ -225,6 +271,11 @@ for project_doc in "${project_docs[@]}"; do
   else
     check_required_sections "$design_doc" "目标" "范围" "接口[[:space:]]*/[[:space:]]*数据" "里程碑" "风险"
   fi
+done
+
+# 4) markdown doc path references must exist (except explicit exemptions)
+for file in "${all_doc_files[@]}"; do
+  check_doc_path_references "$file"
 done
 
 doc_root_actual_tmp=$(mktemp)

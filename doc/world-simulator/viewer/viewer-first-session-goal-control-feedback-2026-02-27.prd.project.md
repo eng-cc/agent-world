@@ -9,7 +9,7 @@
 
 ## 依赖
 - doc/world-simulator/viewer/viewer-first-session-goal-control-feedback-2026-02-27.prd.md
-- `doc/playability_test_result/game-test.md`
+- `doc/playability_test_result/game-test.prd.md`
 - `doc/playability_test_result/archive/2026-02/card_2026_02_27_15_05_28.md`
 - `crates/agent_world_viewer/src/egui_right_panel_player_guide.rs`
 - `crates/agent_world_viewer/src/egui_right_panel_player_experience.rs`

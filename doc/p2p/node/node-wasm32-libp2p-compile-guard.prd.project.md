@@ -11,7 +11,7 @@
 - `crates/agent_world_node/src/libp2p_replication_network.rs`
 - `crates/agent_world_node/src/libp2p_replication_network_wasm.rs`
 - `crates/agent_world/src/viewer/web_bridge.rs`
-- `doc/scripts/precommit/pre-commit.md`
+- `doc/scripts/precommit/pre-commit.prd.md`
 
 ## 状态
 - 当前阶段：已完成（NWC-1 ~ NWC-3 全部完成）。
