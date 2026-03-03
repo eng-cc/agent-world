@@ -8,7 +8,7 @@
 - [x] TASK-TESTING-005 (PRD-TESTING-002/003): 建立模块级专题任务映射索引（2026-03-02 批次）。
 - [x] TASK-TESTING-006 (PRD-TESTING-001/002/003): 对齐 strict PRD schema，补齐关键流程/规格矩阵/边界异常/NFR/验证与决策记录。
 - [x] TASK-TESTING-007 (PRD-TESTING-004): 完成 `ci-wasm32-target-install` 专题文档逐篇人工迁移到 strict schema，并统一 `.prd` 命名。
-- [ ] TASK-TESTING-008 (PRD-TESTING-004): 继续按批次迁移 testing 活跃 legacy 专题文档（优先 `governance/launcher/longrun/performance/manual`）。
+- [x] TASK-TESTING-008 (PRD-TESTING-004): 继续按批次迁移 testing 活跃 legacy 专题文档（优先 `governance/launcher/longrun/performance/manual`）。
 - [x] TASK-TESTING-009 (PRD-TESTING-004): 完成 `ci-testcase-tiering` 专题文档逐篇人工迁移到 strict schema，并统一 `.prd` 命名。
 - [x] TASK-TESTING-010 (PRD-TESTING-004): 完成 `ci-tiered-execution` 专题文档逐篇人工迁移到 strict schema，并统一 `.prd` 命名。
 - [x] TASK-TESTING-011 (PRD-TESTING-004): 完成 `ci-test-coverage` 专题文档逐篇人工迁移到 strict schema，并统一 `.prd` 命名。
@@ -36,6 +36,7 @@
 - [x] TASK-TESTING-033 (PRD-TESTING-004): 完成 `systematic-application-testing-manual` 专题文档逐篇人工迁移到 strict schema，并统一 `.prd` 命名。
 - [x] TASK-TESTING-034 (PRD-TESTING-004): 完成 `web-ui-playwright-closure-manual` 专题文档逐篇人工迁移到 strict schema，并补齐 `.prd.project.md` 管理文档。
 - [x] TASK-TESTING-035 (PRD-TESTING-004): 完成 archive 专题 `ci-required-m1-wasm-hash-check` 文档迁移到 strict schema，并统一 `.prd` 命名。
+- [x] TASK-TESTING-036 (PRD-TESTING-004): 完成 archive 专题 `wasm-platform-canonical-hash-manifest` 文档迁移到 strict schema，并统一 `.prd` 命名。
 
 ## 专题任务映射（2026-03-02 批次）
 - [x] SUBTASK-TESTING-20260302-001 (PRD-TESTING-002/003): `doc/testing/longrun/chain-runtime-feedback-replication-network-autowire-2026-03-02.prd.project.md`
@@ -71,6 +72,7 @@
 - [x] SUBTASK-TESTING-20260303-026 (PRD-TESTING-004): `doc/testing/manual/systematic-application-testing-manual.prd.project.md`
 - [x] SUBTASK-TESTING-20260303-027 (PRD-TESTING-004): `doc/testing/manual/web-ui-playwright-closure-manual.prd.project.md`
 - [x] SUBTASK-TESTING-20260303-028 (PRD-TESTING-004): `doc/testing/archive/ci-required-m1-wasm-hash-check.prd.project.md`
+- [x] SUBTASK-TESTING-20260303-029 (PRD-TESTING-004): `doc/testing/archive/wasm-platform-canonical-hash-manifest.prd.project.md`
 
 ## 依赖
 - `testing-manual.md`
@@ -82,7 +84,7 @@
 ## 状态
 - 更新日期: 2026-03-03
 - 当前状态: active
-- 下一任务: TASK-TESTING-008
+- 下一任务: TASK-TESTING-002
 - 专题映射状态: 2026-03-02 批次 3/3 已纳入模块项目管理文档。
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - 说明: 本文档仅维护 testing 模块设计执行状态；过程记录在 `doc/devlog/2026-03-03.md`。
