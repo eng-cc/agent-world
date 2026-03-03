@@ -12,6 +12,7 @@
 - [x] TASK-TESTING-009 (PRD-TESTING-004): 完成 `ci-testcase-tiering` 专题文档逐篇人工迁移到 strict schema，并统一 `.prd` 命名。
 - [x] TASK-TESTING-010 (PRD-TESTING-004): 完成 `ci-tiered-execution` 专题文档逐篇人工迁移到 strict schema，并统一 `.prd` 命名。
 - [x] TASK-TESTING-011 (PRD-TESTING-004): 完成 `ci-test-coverage` 专题文档逐篇人工迁移到 strict schema，并统一 `.prd` 命名。
+- [x] TASK-TESTING-012 (PRD-TESTING-004): 完成 `ci-builtin-wasm-m1-multi-runner` 专题文档逐篇人工迁移到 strict schema，并统一 `.prd` 命名。
 
 ## 专题任务映射（2026-03-02 批次）
 - [x] SUBTASK-TESTING-20260302-001 (PRD-TESTING-002/003): `doc/testing/longrun/chain-runtime-feedback-replication-network-autowire-2026-03-02.project.md`
@@ -23,6 +24,7 @@
 - [x] SUBTASK-TESTING-20260303-002 (PRD-TESTING-004): `doc/testing/ci/ci-testcase-tiering.prd.project.md`
 - [x] SUBTASK-TESTING-20260303-003 (PRD-TESTING-004): `doc/testing/ci/ci-tiered-execution.prd.project.md`
 - [x] SUBTASK-TESTING-20260303-004 (PRD-TESTING-004): `doc/testing/ci/ci-test-coverage.prd.project.md`
+- [x] SUBTASK-TESTING-20260303-005 (PRD-TESTING-004): `doc/testing/ci/ci-builtin-wasm-m1-multi-runner.prd.project.md`
 
 ## 依赖
 - `testing-manual.md`
