@@ -246,6 +246,12 @@ pub enum Action {
         beneficiary: String,
         nonce: u64,
     },
+    TransferMainToken {
+        from_account_id: String,
+        to_account_id: String,
+        amount: u64,
+        nonce: u64,
+    },
     ApplyMainTokenEpochIssuance {
         epoch_index: u64,
         actual_stake_ratio_bps: u32,

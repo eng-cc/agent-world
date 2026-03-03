@@ -143,6 +143,7 @@ pub(super) fn action_kind_label(action: &Action) -> &'static str {
         }
         Action::InitializeMainTokenGenesis { .. } => "action.main_token.initialize_genesis",
         Action::ClaimMainTokenVesting { .. } => "action.main_token.claim_vesting",
+        Action::TransferMainToken { .. } => "action.main_token.transfer",
         Action::ApplyMainTokenEpochIssuance { .. } => "action.main_token.apply_epoch_issuance",
         Action::SettleMainTokenFee { .. } => "action.main_token.settle_fee",
         Action::UpdateMainTokenPolicy { .. } => "action.main_token.update_policy",

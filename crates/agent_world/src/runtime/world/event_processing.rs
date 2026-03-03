@@ -143,6 +143,7 @@ impl World {
             | Action::ApplyNodePointsSettlementSigned { .. }
             | Action::InitializeMainTokenGenesis { .. }
             | Action::ClaimMainTokenVesting { .. }
+            | Action::TransferMainToken { .. }
             | Action::ApplyMainTokenEpochIssuance { .. }
             | Action::SettleMainTokenFee { .. }
             | Action::UpdateMainTokenPolicy { .. }

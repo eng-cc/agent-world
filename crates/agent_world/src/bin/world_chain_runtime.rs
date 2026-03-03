@@ -19,7 +19,6 @@ use agent_world_node::{
 use ed25519_dalek::SigningKey;
 use serde::Serialize;
 use sha2::{Digest, Sha256};
-
 #[path = "world_chain_runtime/balances_api.rs"]
 mod balances_api;
 #[path = "world_viewer_live/distfs_probe_runtime.rs"]
@@ -36,6 +35,8 @@ mod node_keypair_config;
 mod reward_runtime_settlement;
 #[path = "world_chain_runtime/reward_runtime_worker.rs"]
 mod reward_runtime_worker;
+#[path = "world_chain_runtime/transfer_submit_api.rs"]
+mod transfer_submit_api;
 use balances_api::build_chain_balances_payload;
 #[cfg(test)]
 use balances_api::build_chain_balances_payload_from_world;
@@ -49,7 +50,6 @@ use reward_runtime_worker::{
     init_shared_metrics, poll_worker_error, snapshot_metrics, start_reward_runtime_worker,
     stop_reward_runtime_worker, RewardRuntimeWorkerConfig, SharedRewardRuntimeMetrics,
 };
-
 #[cfg(test)]
 mod execution_bridge {
     use std::path::Path;
@@ -608,6 +608,16 @@ fn handle_chain_status_connection(
     let target = parts.next().unwrap_or_default();
     let path = target.split('?').next().unwrap_or(target);
     let head_only = method.eq_ignore_ascii_case("HEAD");
+
+    if transfer_submit_api::maybe_handle_transfer_submit_request(
+        &mut stream,
+        &buffer[..bytes],
+        &runtime,
+        method,
+        path,
+    )? {
+        return Ok(());
+    }
 
     if method.eq_ignore_ascii_case("POST") && path == "/v1/chain/feedback/submit" {
         let body = match extract_http_json_body(&buffer[..bytes]) {

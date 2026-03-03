@@ -342,6 +342,14 @@ impl World {
                     *nonce,
                 ),
             )),
+            Action::TransferMainToken { .. } => {
+                Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::RuleDenied {
+                        notes: vec!["main token transfer is not enabled yet".to_string()],
+                    },
+                }))
+            }
             Action::ApplyMainTokenEpochIssuance {
                 epoch_index,
                 actual_stake_ratio_bps,
