@@ -9,6 +9,7 @@
 - [x] TASK-TESTING-006 (PRD-TESTING-001/002/003): 对齐 strict PRD schema，补齐关键流程/规格矩阵/边界异常/NFR/验证与决策记录。
 - [x] TASK-TESTING-007 (PRD-TESTING-004): 完成 `ci-wasm32-target-install` 专题文档逐篇人工迁移到 strict schema，并统一 `.prd` 命名。
 - [ ] TASK-TESTING-008 (PRD-TESTING-004): 继续按批次迁移 testing 活跃 legacy 专题文档（优先 `ci/` 目录）。
+- [x] TASK-TESTING-009 (PRD-TESTING-004): 完成 `ci-testcase-tiering` 专题文档逐篇人工迁移到 strict schema，并统一 `.prd` 命名。
 
 ## 专题任务映射（2026-03-02 批次）
 - [x] SUBTASK-TESTING-20260302-001 (PRD-TESTING-002/003): `doc/testing/longrun/chain-runtime-feedback-replication-network-autowire-2026-03-02.project.md`
@@ -17,6 +18,7 @@
 
 ## 专题任务映射（2026-03-03 批次）
 - [x] SUBTASK-TESTING-20260303-001 (PRD-TESTING-004): `doc/testing/ci/ci-wasm32-target-install.prd.project.md`
+- [x] SUBTASK-TESTING-20260303-002 (PRD-TESTING-004): `doc/testing/ci/ci-testcase-tiering.prd.project.md`
 
 ## 依赖
 - `testing-manual.md`

@@ -29,7 +29,7 @@
 - `doc/world-simulator/viewer/viewer-manual.md`
 - `doc/world-simulator/scenario/scenario-files.md`
 - `doc/testing/ci/ci-tiered-execution.md`
-- `doc/testing/ci/ci-testcase-tiering.md`
+- `doc/testing/ci/ci-testcase-tiering.prd.md`
 - `doc/testing/ci/ci-test-coverage.md`
 
 ## 状态
