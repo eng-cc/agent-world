@@ -142,7 +142,7 @@
 ## 依赖
 - `doc/world-runtime.md`
 - `doc/world-runtime/runtime/runtime-integration.md`
-- `doc/world-runtime/module/module-storage.md`
+- `doc/world-runtime/module/module-storage.prd.md`
 - libp2p 协议栈与实现
 
 ## 状态

@@ -1,0 +1,390 @@
+> [!WARNING]
+> 该文档已归档，仅供历史追溯，不再作为当前实现依据。
+> 归档日期：2026-02-20
+
+# Agent World Runtime：Builtin 模块独立 Crate 化（BMS）
+
+## 1. Executive Summary
+- 将当前 `agent_world` 内部的 builtin 模块源码拆分到独立 crate，作为“Rust 源码形态的 wasm 模块仓”。
+- 与已完成的 Rust->Wasm 构建套件对接，形成可重复的一键构建路径。
+- 在不破坏现有 runtime 闭环的前提下，分阶段完成：
+  - 阶段 1：`源码分仓 + 产物构建`（BMS-0~BMS-31，已完成）。
+  - 阶段 2：runtime 装载切换（外部 wasm 产物优先，builtin 仅兜底，逐步删除 builtin 注册）。
+  - 阶段 3：逐域删除 runtime builtin fallback 与实现（以 wasm-only 运行为目标）。
+  - 阶段 4：产物接入收敛、文档去陈旧与工件策略决策（BMS-50~BMS-55，已完成）。
+  - 阶段 5：多模块独立 wasm 工件实施（BMS-56+，进行中）。
+
+## 2. User Experience & Functionality
+### In Scope
+- 新增独立 crate（workspace 成员）承载 builtin wasm 模块源码。
+- 首批迁移 `m1.rule.move` 到独立 crate（保守增量）。
+- 继续迁移规则模块 `m1.rule.visibility`、`m1.rule.transfer` 到独立 crate。
+- 继续迁移 `m1.body.core` 到独立 crate。
+- 继续迁移 `m1.sensor.basic` 到独立 crate。
+- 继续迁移 `m1.mobility.basic` 到独立 crate。
+- 继续迁移 `m1.memory.core` 到独立 crate。
+- 继续迁移 `m1.storage.cargo` 到独立 crate。
+- 继续迁移 `m1.power.radiation_harvest` 到独立 crate。
+- 继续迁移 `m1.power.storage` 到独立 crate。
+- 新增脚本封装，基于 `scripts/build-wasm-module.sh` 构建该 crate 产物。
+- 补充最小测试与回归命令，确保 crate 可编译、脚本可执行、产物可生成。
+- 补充 `agent_world_builtin_wasm` 闭环场景联测，覆盖规则/身体/默认模块/状态模块的协作行为。
+- 新增 runtime cutover 路径：
+  - 在模块执行链路中接入“WASM 优先 + builtin fallback”。
+  - 在测试/示例安装入口逐步下线 builtin 注册，改为安装 wasm 模块工件。
+  - 保持灰度期兼容，最终移除 builtin-only 执行路径。
+
+### Out of Scope
+- 不在单一任务内一次性删除所有 builtin（仅按批次渐进删除）。
+- 不引入额外模块语义变更（只做执行载体切换，不改变规则语义）。
+
+
+## 3. AI System Requirements (If Applicable)
+- Tool Requirements: 不适用（文档迁移任务）。
+- Evaluation Strategy: 通过文档治理校验、引用扫描与任务日志检查验证迁移质量。
+
+## 4. Technical Specifications
+- 新增 crate（草案）：
+  - `crates/agent_world_builtin_wasm`
+  - 导出 wasm-1 ABI 入口：`alloc` + `reduce`（必要时兼容 `call`）
+- 新增构建脚本（草案）：
+  - `scripts/build-builtin-wasm-modules.sh`
+  - 默认构建模块：`m1.rule.move`、`m1.rule.visibility`、`m1.rule.transfer`、`m1.body.core`、`m1.sensor.basic`、`m1.mobility.basic`、`m1.memory.core`、`m1.storage.cargo`、`m1.power.radiation_harvest`、`m1.power.storage`
+  - 调用链路：`build-builtin-wasm-modules.sh -> build-wasm-module.sh -> wasm_build_suite`
+- 产物目录（草案）：
+  - `.tmp/builtin-wasm/<module-id>.wasm`
+  - `.tmp/builtin-wasm/<module-id>.metadata.json`
+- runtime 装载接口（阶段三现状）：
+  - `BuiltinModuleSandbox` 兼容层已在 BMS-45 删除。
+  - 默认执行链路为 wasm 工件路径（`WasmExecutor`）。
+  - `runtime` 侧 builtin 常量兼容层已在 BMS-48 删除，常量统一来自 `agent_world_builtin_wasm`。
+- 阶段四工件同步机制（BMS-52，2026-02-13）：
+  - 新增同步脚本：`scripts/sync-m1-builtin-wasm-artifact.sh`。
+  - 支持两类模式：
+    - `sync`：构建 wasm -> 回填 `crates/agent_world/src/runtime/world/artifacts/m1_builtin_modules.wasm` -> 刷新 `m1_builtin_modules.wasm.sha256`。
+    - `check`：重建并校验“源码构建产物 hash == runtime 内嵌工件 hash == sha256 清单 hash”。
+  - CI 接入：`scripts/ci-tests.sh` 新增 `./scripts/sync-m1-builtin-wasm-artifact.sh --check`，用于预提交防漂移。
+- 阶段四工件引用收敛（BMS-53，2026-02-13）：
+  - 新增统一入口：`crates/agent_world/src/runtime/m1_builtin_wasm_artifact.rs`，集中维护：
+    - `m1_builtin_modules.wasm` 字节常量引用。
+    - `m1_builtin_modules.wasm.sha256` 清单常量引用。
+    - tests 安装夹具复用的工件注册辅助函数。
+  - `bootstrap/tests` 全部改为通过统一入口访问工件，去除分散 `include_bytes!/include_str!` 硬编码。
+- 阶段四工件策略决策（BMS-54，2026-02-13）：
+  - 备选方案：
+    - 方案 A：保持“单聚合 wasm 工件”（`m1_builtin_modules.wasm`）长期不变。
+    - 方案 B：迁移为“多模块独立 wasm 工件”（按 `module_id` 产物切分）。
+  - 评估结论：
+    - 在治理/审计粒度、变更影响面、缓存命中与回滚精度上，方案 B 明显优于方案 A。
+    - 方案 A 仅在短期实现复杂度更低，但会长期放大“任一模块改动导致整包 hash 变更”的运营成本。
+  - 最终决策：
+    - 目标形态选择方案 B（多模块独立 wasm 工件）。
+    - 保留当前单聚合工件作为过渡兼容层，分批迁移完成后再移除。
+  - 分批迁移顺序（草案）：
+    - 批次 1（规则域，低状态耦合）：`m1.rule.move` / `m1.rule.visibility` / `m1.rule.transfer`
+    - 批次 2（动作接口域）：`m1.body.core` / `m1.sensor.basic` / `m1.mobility.basic`
+    - 批次 3（状态与账本域）：`m1.memory.core` / `m1.storage.cargo`
+    - 批次 4（能量域与收尾）：`m1.power.radiation_harvest` / `m1.power.storage`，并下线单聚合工件入口
+  - 验收门槛：
+    - 每批次均具备“独立构建、独立 hash 清单、独立 bootstrap/test 装载”能力。
+    - `scripts/ci-tests.sh` 能覆盖“独立工件漂移检查”并维持现有回归通过。
+- 阶段四回归收口（BMS-55，2026-02-13）：
+  - 已完成阶段四收口回归：
+    - `./scripts/sync-m1-builtin-wasm-artifact.sh --check`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world_builtin_wasm`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::rules::`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::body::`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::power_bootstrap::`
+  - 阶段四结论：
+    - 单工件同步与漂移校验机制可用。
+    - bootstrap/tests 工件入口已收敛。
+    - 后续工作可进入“多模块独立工件”实施阶段。
+- 阶段五实施拆解（BMS-56，2026-02-13）：
+  - 新增实施约束：
+    - 保持单聚合工件入口可用，直到分批迁移全部完成后再删除。
+    - 先收敛“模块清单单一来源”，再切 `bootstrap/runtime` 的按模块装载。
+    - 每一批迁移都要求“构建同步 + 哈希校验 + 回归测试”成组落地。
+  - 新增目标接口：
+    - 模块清单单一来源（供 `scripts/*` 与 runtime 共享模块 ID 列表）。
+    - 独立工件目录：`crates/agent_world/src/runtime/world/artifacts/m1_builtin_modules/`。
+    - 独立 hash 清单：`crates/agent_world/src/runtime/world/artifacts/m1_builtin_modules.sha256`（一行一个模块工件）。
+  - 分批实施节奏（阶段五首轮）：
+    - BMS-57：收敛模块清单来源并补充一致性校验。
+    - BMS-58：落地独立工件同步脚本与 hash 清单，保留单聚合兼容入口。
+    - BMS-59：将 `bootstrap/runtime` 首批切到“按 module_id 装载独立工件”（规则域优先）。
+    - BMS-60：阶段五首轮回归收口（rules/body/power/bootstrap + 同步校验）。
+- 阶段五模块清单收敛（BMS-57，2026-02-13）：
+  - 新增模块清单单一来源文件：
+    - `crates/agent_world/src/runtime/world/artifacts/m1_builtin_module_ids.txt`
+  - 构建脚本收敛：
+    - `scripts/build-builtin-wasm-modules.sh` 改为直接读取该清单文件，移除脚本内重复硬编码列表。
+  - runtime 一致性校验：
+    - `runtime` tests 新增 `m1_builtin_module_ids_manifest_matches_runtime_constants`，校验清单与模块常量一致。
+- 阶段五独立工件同步（BMS-58，2026-02-13）：
+  - 新增脚本：`scripts/sync-m1-builtin-wasm-artifacts.sh`
+    - `sync`：构建并回填 `runtime/world/artifacts/m1_builtin_modules/*.wasm` + `m1_builtin_modules.sha256`。
+    - `check`：校验“源码构建产物 hash == 独立工件 hash == 独立 hash 清单”。
+  - CI 接入：
+    - `scripts/ci-tests.sh` 新增 `./scripts/sync-m1-builtin-wasm-artifacts.sh --check`。
+  - 当前过渡状态：
+    - 单聚合工件与多工件目录并存，供后续 BMS-59 执行 runtime/bootstrap 装载切换。
+- 阶段五规则域装载切换（BMS-59，2026-02-13）：
+  - `rules` 域安装链路改为按 `module_id` 注册独立工件：
+    - `m1.rule.move`
+    - `m1.rule.visibility`
+    - `m1.rule.transfer`
+  - 新增 runtime 测试辅助：
+    - `m1_builtin_wasm_module_artifact_bytes(module_id)`
+    - `register_m1_builtin_wasm_module_artifact(world, module_id)`
+  - 当前范围说明：
+    - 本任务仅切换规则域（`runtime::tests::rules`）到独立工件装载；
+    - 保持 bootstrap 与其他域先继续使用既有入口，待后续批次迁移。
+- 阶段五首轮回归收口（BMS-60，2026-02-13）：
+  - 已完成“rules/body/power/bootstrap + 同步校验”首轮回归：
+    - `./scripts/sync-m1-builtin-wasm-artifacts.sh --check`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::rules::`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::body::`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::power_bootstrap::`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::agent_default_modules::`
+  - 首轮结论：
+    - 规则域切换到按 `module_id` 独立工件后，核心规则/身体/默认模块 bootstrap 路径回归通过。
+    - 独立工件目录与 hash 清单仍与源码构建产物保持一致。
+- 阶段五第二轮装载切换（BMS-62，2026-02-13）：
+  - `body` 与默认模块 bootstrap（`sensor/mobility`）安装链路改为按 `module_id` 选取独立工件：
+    - `m1.body.core`
+    - `m1.sensor.basic`
+    - `m1.mobility.basic`
+  - 切换入口：
+    - `runtime::tests::body` 的 `install_m1_body_module` 改为按 `module_id` 注册独立工件。
+    - `install_m1_agent_default_modules` 中 `sensor/mobility` 改为按 `module_id` 装载独立工件；`memory/storage_cargo` 与 power 域保持现状。
+  - 当前范围说明：
+    - 本任务仅覆盖 `body/sensor/mobility` 装载切换，不包含 `memory/storage_cargo` 与 power 域迁移。
+- 阶段五第二轮回归收口（BMS-63，2026-02-13）：
+  - 已完成第二轮收口回归：
+    - `./scripts/sync-m1-builtin-wasm-artifacts.sh --check`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::rules::`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::body::`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::agent_default_modules::`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::power_bootstrap::`
+  - 第二轮结论：
+    - `rules` 与新增切换的 `body/sensor/mobility` 路径回归通过，`scenario/default bootstrap` 行为保持稳定。
+    - 独立工件目录与 hash 清单继续与源码构建产物保持一致。
+- 阶段三下线路线（2026-02-13）：
+  - BMS-40：补充阶段三任务拆解，明确“先删实现、后删接口、最后收口”节奏。
+  - BMS-41：物理删除 `runtime/builtin_modules/` 下 `rule/body/default/power` native 实现文件，仅保留模块 ID/版本/参数常量。
+  - BMS-42：下线 `BuiltinModuleSandbox` 的 builtin 注册兜底能力，收敛到 wasm-only 执行链路。
+  - BMS-43：执行阶段三首轮回归收口，更新文档与 devlog。
+- 阶段三第二轮下线路线（2026-02-13）：
+  - BMS-44：扩展任务拆解，明确移除 `BuiltinModuleSandbox` 兼容层与导出的顺序。
+  - BMS-45：移除 `BuiltinModuleSandbox` 类型与 `runtime` 对外导出，仅保留模块常量导出。
+  - BMS-46：执行第二轮回归收口，更新文档与 devlog。
+- 阶段三第三轮下线路线（2026-02-13）：
+  - BMS-47：扩展任务拆解，明确“删除 runtime builtin 常量兼容层并统一常量来源”的执行顺序。
+  - BMS-48：移除 `runtime/builtin_modules.rs`，将常量来源统一到 `agent_world_builtin_wasm` crate。
+  - BMS-49：执行第三轮回归收口，更新文档与 devlog。
+- 阶段四收尾路线（2026-02-13）：
+  - BMS-50：扩展任务拆解，明确“产物接入收敛 + 文档去陈旧 + 渐进工件策略”的执行顺序。
+  - BMS-51：清理过时文档描述（`BuiltinModuleSandbox`/`runtime/builtin_modules.rs` 等），统一到当前 wasm-only 事实。
+  - BMS-52：补齐 runtime 内嵌 wasm 工件同步机制（构建 -> 回填 -> 哈希校验），避免源码与工件漂移。
+  - BMS-53：收敛 bootstrap/tests 的工件引用入口，减少 `include_bytes!(m1_builtin_modules.wasm)` 分散硬编码（已完成：统一入口为 `runtime/m1_builtin_wasm_artifact.rs`）。
+  - BMS-54：评估并决策“单聚合 wasm 工件 vs 多模块独立 wasm 工件”，输出迁移方案与分批落地顺序（已完成：决策采用多模块独立工件，单聚合作为过渡兼容层）。
+  - BMS-55：执行阶段四回归收口，更新文档与 devlog（已完成：阶段四任务全部收口）。
+- 阶段五首轮路线（2026-02-13）：
+  - BMS-56：扩展设计与任务拆解（阶段五启动：多模块独立 wasm 工件实施）（已完成）。
+  - BMS-57：收敛内置模块清单来源（脚本/runtime 共用）并补充一致性校验（已完成）。
+  - BMS-58：新增独立工件同步脚本与 hash 清单（保留单聚合兼容入口）（已完成）。
+  - BMS-59：`bootstrap/runtime` 切换到“按 module_id 选择独立工件”（先规则域）（已完成规则域切换）。
+  - BMS-60：执行阶段五首轮回归收口，更新文档与 devlog（已完成）。
+- 阶段五第二轮路线（2026-02-13）：
+  - BMS-61：扩展设计与任务拆解（`body/sensor/mobility` 按 `module_id` 独立工件装载）（已完成）。
+  - BMS-62：`bootstrap/runtime` 切换到“按 module_id 选择独立工件”（`body/sensor/mobility`）（已完成）。
+  - BMS-63：执行阶段五第二轮回归收口，更新文档与 devlog（已完成）。
+  - 本轮实施约束：
+    - 保持 `m1.memory.core` / `m1.storage.cargo` / power 域仍走既有入口，避免跨批次混改。
+    - 第二轮仅涉及 `runtime::tests::body` 与 `install_m1_agent_default_modules` 的装载切换。
+    - 回归最小覆盖需包含 `body`、`agent_default_modules`、`power_bootstrap` 与独立工件同步校验。
+- 阶段五第三轮路线（2026-02-13）：
+  - BMS-64：扩展设计与任务拆解（`memory/storage_cargo + power` 按 `module_id` 独立工件装载）（已完成）。
+  - BMS-65：`bootstrap/runtime` 切换到“按 module_id 选择独立工件”（`memory/storage_cargo + power`）（已完成）。
+  - BMS-66：执行阶段五第三轮回归收口，更新文档与 devlog（已完成）。
+  - 本轮实施约束：
+    - 优先切 `install_m1_power_bootstrap_modules` 与 `install_m1_agent_default_modules` 中 remaining 模块（`memory/storage_cargo`）。
+    - 单聚合工件 hash 校验入口先保留，避免与“删除聚合工件入口”任务耦合。
+    - 回归最小覆盖需包含 `rules/body/agent_default_modules/power_bootstrap` 与独立工件同步校验。
+- 阶段五第三轮装载切换（BMS-65，2026-02-13）：
+  - `install_m1_power_bootstrap_modules` 改为按 `module_id` 选择独立工件装载：
+    - `m1.power.radiation_harvest`
+    - `m1.power.storage`
+  - `install_m1_agent_default_modules` 中 remaining 模块改为按 `module_id` 选择独立工件装载：
+    - `m1.memory.core`
+    - `m1.storage.cargo`
+  - 保持单聚合工件 hash 校验入口不变，避免与下线聚合入口任务耦合。
+  - 验证通过：
+    - `./scripts/sync-m1-builtin-wasm-artifacts.sh --check`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::power_bootstrap::`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::agent_default_modules::`
+- 阶段五第三轮回归收口（BMS-66，2026-02-13）：
+  - 回归与校验通过：
+    - `./scripts/sync-m1-builtin-wasm-artifacts.sh --check`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::rules::`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::body::`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::agent_default_modules::`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::power_bootstrap::`
+  - 第三轮结论：
+    - `memory/storage_cargo + power` 完成按 `module_id` 独立工件装载后，`rules/body/default/power` 路径回归通过。
+    - 独立工件目录与 hash 清单继续与源码构建产物保持一致。
+- 阶段五第四轮路线（2026-02-13）：
+  - BMS-67：扩展设计与任务拆解（下线单聚合工件兼容入口与同步脚本）（已完成）。
+  - BMS-68：删除单聚合工件兼容入口（runtime/脚本/校验路径切换到 per-module-only）（已完成）。
+  - BMS-69：执行阶段五第四轮回归收口，更新文档与 devlog（已完成）。
+  - 本轮实施约束：
+    - 保持按 `module_id` 的独立工件目录与 hash 清单为唯一工件真相来源。
+    - 删除 `m1_builtin_modules.wasm` 相关运行时入口与 `sync-m1-builtin-wasm-artifact.sh`，避免双轨维护。
+    - 回归最小覆盖需包含 `rules/body/agent_default_modules/power_bootstrap` 与独立工件同步校验。
+- 阶段五第四轮兼容入口下线（BMS-68，2026-02-13）：
+  - runtime 清理：
+    - 删除 `m1_builtin_modules.wasm` 单聚合工件常量入口与 hash 校验路径。
+    - `install_m1_power_bootstrap_modules` / `install_m1_agent_default_modules` 保留按 `module_id` 独立工件装载。
+    - `runtime::tests::power_bootstrap` 删除单聚合工件 hash 对齐测试，保留模块清单一致性与 bootstrap 行为测试。
+  - 脚本与工件清理：
+    - 删除脚本：`scripts/sync-m1-builtin-wasm-artifact.sh`。
+    - `scripts/ci-tests.sh` 删除对上述脚本的 `--check` 调用，统一走 `sync-m1-builtin-wasm-artifacts.sh --check`。
+    - 删除单聚合工件文件：`runtime/world/artifacts/m1_builtin_modules.wasm` 与 `.sha256`。
+  - 验证通过：
+    - `./scripts/sync-m1-builtin-wasm-artifacts.sh --check`
+    - `./scripts/check-include-warning-baseline.sh`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::power_bootstrap::`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::agent_default_modules::`
+- 阶段五第四轮回归收口（BMS-69，2026-02-13）：
+  - 回归与校验通过：
+    - `./scripts/sync-m1-builtin-wasm-artifacts.sh --check`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::rules::`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::body::`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::agent_default_modules::`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::power_bootstrap::`
+  - 第四轮结论：
+    - 阶段五第四轮（BMS-67~BMS-69）已完成，单聚合工件兼容入口下线后回归保持通过。
+    - 独立工件目录与 hash 清单继续与源码构建产物保持一致，per-module-only 路径稳定。
+- 阶段六闭环联测路线（2026-02-13）：
+  - BMS-70：扩展设计与任务拆解（`agent_world_builtin_wasm` 闭环场景联测）（已完成）。
+  - BMS-71：新增闭环场景测试（单场景覆盖 `rule/body/sensor/mobility/memory/storage/power` 协作）（已完成）。
+  - BMS-72：执行回归验证与文档/devlog 收口（已完成）。
+  - 本轮实施约束：
+    - 测试落在 `agent_world_builtin_wasm` crate 内，直接验证 wasm ABI 输入输出闭环，不引入跨 crate 依赖。
+    - 场景至少包含：注册、移动、观测、转移、身体动作、存储扩容、能量更新等关键路径。
+    - 回归最小覆盖包含：新闭环测试 + `agent_world_builtin_wasm` 包全量测试。
+- 阶段六闭环场景测试落地（BMS-71，2026-02-13）：
+  - 新增测试文件：`crates/agent_world_builtin_wasm/src/closed_loop_tests.rs`。
+  - 新增测试用例：`wasm_builtin_modules_support_closed_loop_world_scenario`，在单场景内串联：
+    - `AgentRegistered` / `AgentMoved` 事件驱动的位置与能量状态更新；
+    - `MoveAgent` / `QueryObservation` / `TransferResource` / `BodyAction` 动作链路；
+    - `BodyInterfaceExpanded`、`Observation`、`ResourceTransferred`、`BodyAttributesUpdated` 事件回灌；
+    - `m1.rule.*`、`m1.body.core`、`m1.sensor.basic`、`m1.mobility.basic`、`m1.memory.core`、`m1.storage.cargo`、`m1.power.*` 模块协作断言。
+  - 验证通过：
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world_builtin_wasm closed_loop_tests::wasm_builtin_modules_support_closed_loop_world_scenario`
+- 阶段六回归收口（BMS-72，2026-02-13）：
+  - 回归与校验通过：
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world_builtin_wasm`
+    - `env -u RUSTC_WRAPPER cargo check -p agent_world_builtin_wasm --target wasm32-unknown-unknown`
+  - 阶段六结论：
+    - `agent_world_builtin_wasm` 现已具备“单场景跨模块闭环联测 + 包级回归”双层验证。
+    - 规则/身体/默认模块/状态模块在 wasm 模块形态下的协作路径保持可用。
+- 阶段七运行时闭环联测路线（2026-02-13）：
+  - BMS-73：扩展设计与任务拆解（`agent_world` 运行时 wasmtime 闭环联测）（已完成）。
+  - BMS-74：新增运行时闭环场景测试（`World + WasmExecutor + builtin wasm` 端到端链路）（已完成）。
+  - BMS-75：执行回归验证与文档/devlog 收口（已完成）。
+  - 本轮实施约束：
+    - 测试落在 `runtime::tests`，以 `feature=wasmtime` 执行，覆盖真实 wasm 执行链路而非纯函数直调。
+    - 场景至少覆盖：注册、移动、观测、转移、身体动作、接口扩容、memory/state 回灌。
+    - 验收至少包含：新增运行时闭环测试通过 + `runtime::tests::agent_default_modules::` 回归通过。
+- 阶段七运行时闭环场景落地（BMS-74，2026-02-13）：
+  - 新增测试用例：
+    - `runtime::tests::agent_default_modules::scenario_modules_with_transfer_and_body_keep_wasm_closed_loop_consistent`
+  - 关键实现：
+    - 在 `agent_default_modules` 测试夹具新增 builtin wasm 模块安装辅助，支持按治理链路安装 `m1.rule.transfer` 与 `m1.body.core`。
+    - 闭环场景串联 `register/query/transfer/move/expand/body_action`，并断言 memory/storage/power 模块状态回灌结果。
+  - 验证通过：
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::agent_default_modules::scenario_modules_with_transfer_and_body_keep_wasm_closed_loop_consistent`
+- 阶段七回归收口（BMS-75，2026-02-13）：
+  - 回归与校验通过：
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::agent_default_modules::`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world_builtin_wasm`
+  - 阶段七结论：
+    - 运行时层面已具备“wasmtime 执行链路 + builtin wasm 模块协作”的单场景闭环验证。
+    - `agent_world_builtin_wasm` 与 `agent_world runtime::tests` 两层闭环联测均保持通过，builtin wasm 回归口径形成闭环。
+
+## 5. Risks & Roadmap
+- M1：完成 BMS-1（独立 crate 初始化与 `m1.rule.move` wasm 模块样板）。
+- M2：完成 BMS-2（构建脚本接入与验证）。
+- M3：完成 BMS-3（回归验证、文档和 devlog 收口）。
+- M4：完成 BMS-4~BMS-7（规则模块 `visibility/transfer` 迁移与回归收口）。
+- M5：完成 BMS-8~BMS-11（`m1.body.core` 迁移与回归收口）。
+- M6：完成 BMS-12~BMS-15（`m1.sensor.basic` 迁移与回归收口）。
+- M7：完成 BMS-16~BMS-19（`m1.mobility.basic` 迁移与回归收口）。
+- M8：完成 BMS-20~BMS-23（`m1.memory.core` 迁移与回归收口）。
+- M9：完成 BMS-24~BMS-27（`m1.storage.cargo` 迁移与回归收口）。
+- M10：完成 BMS-28~BMS-31（`m1.power.radiation_harvest` / `m1.power.storage` 迁移与回归收口）。
+- M11：完成 BMS-32（runtime cutover 设计与任务拆解扩展）。
+- M12：完成 BMS-33（接入 WASM 优先 + builtin fallback 执行路径）。
+- M13：完成 BMS-34（逐步缩减一批 builtin 注册点，保持回归通过）。
+- M14：完成 BMS-35（cutover 阶段回归收口与文档闭环）。
+- M15：完成 BMS-36（cutover 阶段二设计扩展与任务拆解）。
+- M16：完成 BMS-37~BMS-39（按模块域逐步删除 builtin fallback 与实现）。
+- M17：完成 BMS-40~BMS-43（阶段三首轮：物理删除 native builtin 老代码并收口接口）。
+- M18：完成 BMS-44~BMS-46（阶段三第二轮：删除兼容 sandbox 层并收口导出）。
+- M19：完成 BMS-47~BMS-49（阶段三第三轮：删除 runtime builtin 常量兼容层并统一常量来源）。
+- M20：完成 BMS-50~BMS-55（阶段四：产物接入收敛、文档去陈旧与后续工件迁移决策）。
+- M21：完成 BMS-56（阶段五启动：实施方案与任务拆解）。
+- M22：完成 BMS-57（模块清单单一来源收敛与一致性校验）。
+- M23：完成 BMS-58（独立工件同步脚本与 hash 清单接入）。
+- M24：完成 BMS-59（规则域按 module_id 独立工件装载切换）。
+- M25：完成 BMS-61（阶段五第二轮任务拆解）。
+- M26：完成 BMS-62（`body/sensor/mobility` 按 module_id 独立工件装载切换）。
+- M27：完成 BMS-63（阶段五第二轮回归收口）。
+- M28：完成 BMS-64（阶段五第三轮任务拆解）。
+- M29：完成 BMS-65（`memory/storage_cargo + power` 按 module_id 独立工件装载切换）。
+- M30：完成 BMS-66（阶段五第三轮回归收口）。
+- M31：完成 BMS-67（阶段五第四轮任务拆解）。
+- M32：完成 BMS-68（阶段五第四轮单聚合兼容入口下线）。
+- M33：完成 BMS-69（阶段五第四轮回归收口）。
+- M34：完成 BMS-70（阶段六闭环联测任务拆解）。
+- M35：完成 BMS-71（闭环场景测试落地）。
+- M36：完成 BMS-72（阶段六回归收口）。
+- M37：完成 BMS-73（阶段七运行时闭环联测任务拆解）。
+- M38：完成 BMS-74（运行时闭环场景测试落地）。
+- M39：完成 BMS-75（阶段七回归收口）。
+
+### Technical Risks
+- Rust 侧 wasm ABI 与 runtime 执行器签名（`(i32, i32) -> (i32, i32)`）存在兼容细节：通过定向测试覆盖。
+- 独立 crate 与现有 builtin sandbox 会短期并行：需要在文档中明确“以 wasm 构建链路为先，运行时切换后续推进”。
+- 后续批量迁移模块时会出现模块 ID 与版本治理一致性问题：本阶段先用单模块样板固化流程。
+- 默认模块封装层（如 `m1.mobility.basic`）复用底层规则模块时，存在行为漂移风险：通过并行单测对齐 native 与 wasm 输出。
+- 状态型模块（如 `m1.memory.core`）依赖事件解析与窗口裁剪，存在状态编码兼容风险：通过状态 round-trip 与事件序列单测覆盖。
+- 账本型模块（如 `m1.storage.cargo`）依赖多类领域事件聚合与饱和计数，存在事件映射遗漏风险：通过成功/拒绝路径和状态增量单测覆盖。
+- 资源型模块（如 `m1.power.radiation_harvest` / `m1.power.storage`）依赖“采集-扣费-位置更新”复合路径，存在动作与事件双入口行为偏差风险：通过动作驱动与事件驱动并行测试覆盖。
+- runtime 双路径（wasm + builtin fallback）短期并行时，存在“同模块不同执行器”导致行为漂移风险：通过同输入对比测试与回放一致性测试覆盖。
+- 逐步删除 builtin 注册点过程中，存在测试夹具未同步导致模块缺失风险：先在测试入口灰度切换，保留 fallback 并补充缺失报错断言。
+- 删除 runtime 内 builtin 实现时，存在“无 wasmtime 构建路径”兼容风险：通过 feature 门控分阶段下线，并在每批任务执行双路径回归（with/without wasmtime）。
+- 物理删除 `runtime/builtin_modules/*` 旧实现后，存在隐藏引用或常量来源漂移风险：通过 `rg` 全量扫描 + 定向编译测试 + bootstrap/power 回归覆盖。
+- 下线 builtin 注册 API 时，存在测试夹具未同步导致不可执行风险：阶段三保持“每删一层就补对应测试迁移”的原子任务提交。
+- 删除 `BuiltinModuleSandbox` 导出后，存在下游调用方编译失败风险：先 `rg` 扫描确认无代码引用，再执行 wasm 路径回归。
+- 删除 `runtime/builtin_modules.rs` 后，存在常量可见性与依赖方向变化风险：先在 wasm crate 补齐 `pub const` 导出，再执行 bootstrap/rules/power 路径回归。
+- 旧工具链若继续引用 `m1_builtin_modules.wasm` 单工件，会在入口下线后失效：通过统一 `sync-m1-builtin-wasm-artifacts.sh` 与 per-module 清单降低迁移风险。
+- 若切到多模块独立 wasm 工件，存在“加载入口与模块治理流程复杂度上升”风险：先做决策文档与 PoC，再按域分批迁移。
+- 多模块独立工件与单聚合工件并行期，存在“同模块双来源”误装载风险：通过模块清单单一来源与 hash 清单校验降低漂移概率。
+
+## 6. Validation & Decision Record
+- Test Plan & Traceability:
+| PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |
+| --- | --- | --- | --- | --- |
+| PRD-ENGINEERING-006 | 文档内既有任务条目 | `test_tier_required` | `./scripts/doc-governance-check.sh` + 引用可达性扫描 | 迁移文档命名一致性与可追溯性 |
+- Decision Log:
+| 决策ID | 选定方案 | 备选方案（否决） | 依据 |
+| --- | --- | --- | --- |
+| DEC-DOC-MIG-20260303 | 逐篇阅读后人工重写为 `.prd` 命名 | 仅批量重命名 | 保证语义保真与审计可追溯。 |
+
+## 原文约束点映射（内容保真）
+- 原“目标” -> 第 1 章 Executive Summary。
+- 原“范围” -> 第 2 章 User Experience & Functionality。
+- 原“接口 / 数据” -> 第 4 章 Technical Specifications。
+- 原“里程碑/风险” -> 第 5 章 Risks & Roadmap。

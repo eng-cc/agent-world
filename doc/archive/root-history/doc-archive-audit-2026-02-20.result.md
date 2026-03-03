@@ -23,16 +23,16 @@
 ## 本轮新增归档
 
 ### world-runtime（迁移阶段已收口，保留历史追溯）
-- `doc/world-runtime/archive/builtin-wasm-crate-split.md`
-- `doc/world-runtime/archive/builtin-wasm-crate-split.project.md`
-- `doc/world-runtime/archive/builtin-wasm-independent-module-crates.md`
-- `doc/world-runtime/archive/builtin-wasm-independent-module-crates.project.md`
-- `doc/world-runtime/archive/builtin-wasm-lifecycle-sdk.md`
-- `doc/world-runtime/archive/builtin-wasm-lifecycle-sdk.project.md`
-- `doc/world-runtime/archive/builtin-wasm-runtime-core-replacement.md`
-- `doc/world-runtime/archive/builtin-wasm-runtime-core-replacement.project.md`
-- `doc/world-runtime/archive/builtin-wasm-module-business-logic-migration.md`
-- `doc/world-runtime/archive/builtin-wasm-module-business-logic-migration.project.md`
+- `doc/world-runtime/archive/builtin-wasm-crate-split.prd.md`
+- `doc/world-runtime/archive/builtin-wasm-crate-split.prd.project.md`
+- `doc/world-runtime/archive/builtin-wasm-independent-module-crates.prd.md`
+- `doc/world-runtime/archive/builtin-wasm-independent-module-crates.prd.project.md`
+- `doc/world-runtime/archive/builtin-wasm-lifecycle-sdk.prd.md`
+- `doc/world-runtime/archive/builtin-wasm-lifecycle-sdk.prd.project.md`
+- `doc/world-runtime/archive/builtin-wasm-runtime-core-replacement.prd.md`
+- `doc/world-runtime/archive/builtin-wasm-runtime-core-replacement.prd.project.md`
+- `doc/world-runtime/archive/builtin-wasm-module-business-logic-migration.prd.md`
+- `doc/world-runtime/archive/builtin-wasm-module-business-logic-migration.prd.project.md`
 
 ### site（发布阶段文档，已被后续站点现状替代）
 - `doc/site/archive/github-pages-wow-polish.md`

@@ -16,7 +16,7 @@
 - [ ] TASK-ENGINEERING-013 (PRD-ENGINEERING-006): Owner-C 迁移 `doc/world-runtime/**`、`doc/headless-runtime/**`、`doc/archive/root-history/**` 待迁移文档（52 篇）。
 - [x] TASK-ENGINEERING-013A (PRD-ENGINEERING-006): Owner-C Batch-C1 迁移 `doc/archive/root-history/**` 待迁移文档（7 篇）。
 - [x] TASK-ENGINEERING-013B (PRD-ENGINEERING-006): Owner-C Batch-C2 迁移 `doc/headless-runtime/**` 待迁移文档（6 篇）。
-- [ ] TASK-ENGINEERING-013C (PRD-ENGINEERING-006): Owner-C Batch-C3 迁移 `doc/world-runtime/archive/**`、`doc/world-runtime/governance/**`、`doc/world-runtime/module/**`、`doc/world-runtime/wasm/**` 待迁移文档（23 篇）。
+- [x] TASK-ENGINEERING-013C (PRD-ENGINEERING-006): Owner-C Batch-C3 迁移 `doc/world-runtime/archive/**`、`doc/world-runtime/governance/**`、`doc/world-runtime/module/**`、`doc/world-runtime/wasm/**` 待迁移文档（23 篇）。
 - [ ] TASK-ENGINEERING-013D (PRD-ENGINEERING-006): Owner-C Batch-C4 迁移 `doc/world-runtime/runtime/**` 待迁移文档（16 篇）。
 - [ ] TASK-ENGINEERING-014 (PRD-ENGINEERING-006): Owner-D 迁移 `doc/site/**`、`doc/readme/**`、`doc/scripts/**`、`doc/game/**`、`doc/engineering/**` 与根入口遗留文档（63 篇）。
 - [ ] TASK-ENGINEERING-015 (PRD-ENGINEERING-007): 执行全量迁移收口复核（命名一致性、引用可达、模块追踪同步、燃尽归零）。
@@ -36,7 +36,7 @@
 ## 状态
 - 更新日期: 2026-03-03
 - 当前状态: active
-- 下一任务: TASK-ENGINEERING-011 / TASK-ENGINEERING-013C / TASK-ENGINEERING-014
+- 下一任务: TASK-ENGINEERING-011 / TASK-ENGINEERING-013D / TASK-ENGINEERING-014
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - 并行迁移状态: 分工与快照已冻结（TASK-ENGINEERING-010 完成）；Owner-B 已完成 `doc/p2p/**`（115/115），Owner-A/C/D 继续并行执行。
 - 说明: 本文档仅维护 engineering 设计执行状态；过程记录在 `doc/devlog/2026-03-03.md`。

@@ -74,7 +74,7 @@
 - Integration Points:
   - `doc/world-runtime/runtime/runtime-integration.md`
   - `doc/world-runtime/wasm/wasm-interface.md`
-  - `doc/world-runtime/wasm/wasm-executor.md`
+  - `doc/world-runtime/wasm/wasm-executor.prd.md`
   - `doc/world-runtime/governance/governance-events.md`
   - `doc/world-runtime/testing/testing.md`
 - Edge Cases & Error Handling:

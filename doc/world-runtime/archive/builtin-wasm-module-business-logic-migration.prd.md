@@ -1,0 +1,60 @@
+> [!WARNING]
+> 该文档已归档，仅供历史追溯，不再作为当前实现依据。
+> 归档日期：2026-02-20
+
+# Agent World Runtime：Builtin WASM 业务逻辑下沉到模块工程设计
+
+## 1. Executive Summary
+- 将 builtin wasm 的业务逻辑从 `crates/agent_world_builtin_wasm_runtime` 迁移到 `crates/agent_world_builtin_wasm_modules/*` 各模块 crate。
+- 保持 wasm ABI（`alloc/reduce/call`）与模块 ID/版本常量不变，确保 runtime 集成层无感升级。
+- 让每个模块 crate 成为独立闭环工程：入口、生命周期、业务逻辑在同一 crate 内。
+- 模块 crate 依赖面收敛到 `agent_world_wasm_sdk`（外加序列化库），不再依赖 runtime 业务分发 crate。
+
+## 2. User Experience & Functionality
+### In Scope
+- 改造 23 个模块 crate：移除对 `agent_world_builtin_wasm_runtime::{reduce_for_module, call_for_module}` 的依赖方式，改为本地实现业务逻辑。
+- 将 runtime 侧常量统一收敛到 `crates/agent_world_wasm_store`，并删除 `agent_world_builtin_wasm_runtime` crate。
+- 更新模块构建与回归校验链路，确保 m1/m4 构建产物与 hash/DistFS 同步闭环。
+
+### Out of Scope
+- 不变更模块 ID、版本号、治理安装流程。
+- 不变更 `agent_world` runtime 的模块治理接口。
+- 不引入新的领域行为规则，仅做逻辑承载位置迁移。
+
+
+## 3. AI System Requirements (If Applicable)
+- Tool Requirements: 不适用（文档迁移任务）。
+- Evaluation Strategy: 通过文档治理校验、引用扫描与任务日志检查验证迁移质量。
+
+## 4. Technical Specifications
+- 模块入口仍为 `alloc/reduce/call`（由 `agent_world_wasm_sdk` 生命周期 trait + 宏导出）。
+- runtime 常量来源为 `agent_world_wasm_store`（供 world/bootstrap 与测试复用）。
+- 业务输出协议（module input/output CBOR + emits/effects/new_state）保持兼容。
+
+## 5. Risks & Roadmap
+- MBM-1：设计文档 + 项目管理文档落地。
+- MBM-2：代码迁移（23 模块业务逻辑下沉 + runtime 去业务分发）与回归收口。
+
+### Technical Risks
+- 风险：迁移后模块行为出现细微漂移（决策 notes/cost、状态编码边界）。
+  - 缓解：复用原逻辑实现，执行 m1/m4 同步 check 与 required-tier 编译回归。
+- 风险：模块依赖扩展导致 wasm 构建不稳定。
+  - 缓解：统一依赖版本并跑 `build-builtin-wasm-modules` + sync 校验。
+- 风险：runtime 侧或脚本侧遗留旧 crate 误引用，导致迁移不彻底。
+  - 缓解：迁移完成后全仓 `rg` 清理 `agent_world_builtin_wasm_runtime`、`reduce_for_module/call_for_module` 引用。
+
+## 6. Validation & Decision Record
+- Test Plan & Traceability:
+| PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |
+| --- | --- | --- | --- | --- |
+| PRD-ENGINEERING-006 | 文档内既有任务条目 | `test_tier_required` | `./scripts/doc-governance-check.sh` + 引用可达性扫描 | 迁移文档命名一致性与可追溯性 |
+- Decision Log:
+| 决策ID | 选定方案 | 备选方案（否决） | 依据 |
+| --- | --- | --- | --- |
+| DEC-DOC-MIG-20260303 | 逐篇阅读后人工重写为 `.prd` 命名 | 仅批量重命名 | 保证语义保真与审计可追溯。 |
+
+## 原文约束点映射（内容保真）
+- 原“目标” -> 第 1 章 Executive Summary。
+- 原“范围” -> 第 2 章 User Experience & Functionality。
+- 原“接口 / 数据” -> 第 4 章 Technical Specifications。
+- 原“里程碑/风险” -> 第 5 章 Risks & Roadmap。
