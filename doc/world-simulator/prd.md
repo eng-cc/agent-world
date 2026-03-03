@@ -46,6 +46,7 @@
   - SC-8: Web-first 闭环与 LLM 链路具备统一证据模板，支持发布前快速复核。
   - SC-9: simulator 体验质量指标形成趋势跟踪，支持按周判定退化风险。
   - SC-10: 启动器支持“游戏进程 / 区块链进程”独立编排，且反馈入口严格受链就绪状态门控。
+  - SC-11: 启动器“设置”入口升级为完整设置中心，覆盖游戏/区块链/LLM 配置并提供统一可见性。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -60,6 +61,7 @@
   - PRD-WORLD_SIMULATOR-004: As a 启动器玩家, I want to submit a blockchain transfer in launcher, so that I can move main token balances without external tools.（详见分册）
   - PRD-WORLD_SIMULATOR-005: As a 链路开发者, I want transfer requests to be replay-safe and traceable, so that transfer execution is secure and auditable.（详见分册）
   - PRD-WORLD_SIMULATOR-006: As a 启动器玩家, I want separate controls for blockchain/game startup and feedback gated by chain readiness, so that startup behavior is predictable and feedback availability is explicit.
+  - PRD-WORLD_SIMULATOR-007: As a 启动器玩家, I want a complete settings center for game/blockchain/LLM, so that all launch-related configuration can be managed from one place.
 - Acceptance Criteria:
   - AC-1: world-simulator PRD 覆盖场景、Viewer、LLM、启动器四条主线。
   - AC-2: world-simulator project 文档维护任务拆解与状态。
@@ -73,6 +75,8 @@
   - AC-10: 启动器顶部必须可视化区块链启动状态（含禁用/未启动/启动中/已就绪/不可达），用于玩家快速判定链能力是否可用。
   - AC-11: 客户端启动器必须将“区块链启动/停止”与“游戏启动/停止”拆分为独立按钮；打开启动器后默认自动拉起区块链进程；游戏启动链路不再隐式托管区块链进程。
   - AC-12: 仅当区块链处于“已就绪”状态时，反馈按钮可用并允许打开反馈窗口；区块链未启动/启动中/不可达时反馈入口需明确禁用。
+  - AC-13: 设置窗口必须提供完整配置分区（游戏、区块链、LLM），并覆盖启动器运行所需的核心参数编辑入口。
+  - AC-14: 设置中心内的 LLM 配置（`llm.api_key/base_url/model`）必须支持文件重载与保存；游戏/区块链配置变更应即时作用于启动器内存配置。
 - Non-Goals:
   - 不在本 PRD 中详细列出每个 UI 像素级规范。
   - 不替代 world-runtime/p2p 的底层协议设计。

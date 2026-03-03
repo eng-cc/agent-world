@@ -16,6 +16,8 @@
 - [x] TASK-WORLD_SIMULATOR-013 (PRD-WORLD_SIMULATOR-002/003): 在 `agent_world_client_launcher` 顶部新增区块链启动状态可视化与探针回归测试（禁用/未启动/启动中/已就绪/不可达）。
 - [x] TASK-WORLD_SIMULATOR-014 (PRD-WORLD_SIMULATOR-006): 完成“启动器链/游戏独立启动 + 反馈链就绪门控”需求建模与任务拆解。
 - [x] TASK-WORLD_SIMULATOR-015 (PRD-WORLD_SIMULATOR-006): 在 `agent_world_client_launcher` 落地链/游戏独立启动按钮、启动器打开默认拉起链、反馈入口链就绪门控，并补齐回归测试。
+- [x] TASK-WORLD_SIMULATOR-016 (PRD-WORLD_SIMULATOR-007): 完成“启动器完整设置中心”需求建模与任务拆解。
+- [ ] TASK-WORLD_SIMULATOR-017 (PRD-WORLD_SIMULATOR-007): 在 `agent_world_client_launcher` 落地完整设置中心（游戏/区块链/LLM 一体化配置入口）并补齐回归测试。
 
 ## 专题任务映射（2026-03-02 批次）
 - [x] SUBTASK-WORLD_SIMULATOR-20260302-001 (PRD-WORLD_SIMULATOR-001/002/003): `doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.project.md`
@@ -51,8 +53,8 @@
 
 ## 状态
 - 更新日期: 2026-03-03
-- 当前状态: active（当前任务清单已完成，等待新增需求）
-- 当前优先任务: 无（待新增任务）
+- 当前状态: active（TASK-WORLD_SIMULATOR-017 进行中）
+- 当前优先任务: TASK-WORLD_SIMULATOR-017（启动器完整设置中心）
 - 并行待办: 无
 - 专题映射状态: 2026-03-02 批次 9/9、2026-03-03 批次 3/3 已纳入模块项目管理文档。
 - 手册入口状态: `doc/world-simulator/viewer/viewer-manual.md` 为唯一活跃手册入口。
