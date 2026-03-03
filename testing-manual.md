@@ -36,7 +36,7 @@
   - UI/相机/事件联动等单测散布在 `src/*.rs` 与 `src/tests_*.rs`
   - 快照基线：`crates/agent_world_viewer/tests/snapshots/*.png`
   - Web 启动入口：`world_game_launcher`（内置静态服务，`run-viewer-web.sh` 仅保留为兼容/排障工具）
-  - Web 闭环采样：Playwright CLI（详见 `doc/testing/manual/web-ui-playwright-closure-manual.md`）
+  - Web 闭环采样：Playwright CLI（详见 `doc/testing/manual/web-ui-playwright-closure-manual.prd.md`）
 
 ### 分布式与共识子系统
 - Node：`crates/agent_world_node`
@@ -203,7 +203,7 @@ env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-u
 
 ### S6：Web UI 闭环 smoke 套件（L4）
 - S6 详细执行步骤、Playwright 命令、发布门禁与补充约定已拆分到：
-  - `doc/testing/manual/web-ui-playwright-closure-manual.md`
+  - `doc/testing/manual/web-ui-playwright-closure-manual.prd.md`
 - 本手册仅保留分层与触发矩阵，执行时按上述文档操作。
 - 防误用约束：
   - `scripts/run-game-test-ab.sh` 仅用于自动化回归哨兵（TTFC/命中率/无进展窗口），不等价于“真实玩家长玩评测”。

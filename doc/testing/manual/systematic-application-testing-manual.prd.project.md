@@ -9,7 +9,7 @@
 
 ## 依赖
 - `testing-manual.md`
-- `doc/testing/manual/web-ui-playwright-closure-manual.md`
+- `doc/testing/manual/web-ui-playwright-closure-manual.prd.md`
 - `scripts/ci-tests.sh`
 - `scripts/viewer-release-qa-loop.sh`
 - `scripts/viewer-release-full-coverage.sh`
@@ -20,4 +20,4 @@
 - 更新日期：2026-03-03
 - 当前阶段：已完成
 - 阻塞项：无
-- 下一步：继续迁移 `doc/testing/manual/web-ui-playwright-closure-manual.md`
+- 下一步：无（manual 批次迁移已收口）
