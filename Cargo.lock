@@ -1339,6 +1339,7 @@ dependencies = [
  "guillotiere",
  "half 2.7.1",
  "image",
+ "ktx2",
  "rectangle-pack",
  "ruzstd",
  "serde",
@@ -4808,6 +4809,15 @@ dependencies = [
  "accesskit",
  "accesskit_consumer 0.30.1",
  "parking_lot",
+]
+
+[[package]]
+name = "ktx2"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ff7f53bdf698e7aa7ec916411bbdc8078135da11b66db5182675b2227f6c0d07"
+dependencies = [
+ "bitflags 2.10.0",
 ]
 
 [[package]]
