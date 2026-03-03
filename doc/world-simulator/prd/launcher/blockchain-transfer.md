@@ -29,7 +29,7 @@
 
 ## 当前实现状态（2026-03-03）
 - 已完成：`world_chain_runtime` 新增 `POST /v1/chain/transfer/submit`，覆盖请求校验、结构化响应与单元测试（对应 `TASK-WORLD_SIMULATOR-006`）。
-- 进行中：runtime 主 token 转账账本语义（余额约束与 nonce anti-replay）待 `TASK-WORLD_SIMULATOR-007` 完成。
+- 已完成：runtime 主 token 转账动作/事件/状态更新已落地，包含余额约束与 nonce anti-replay（对应 `TASK-WORLD_SIMULATOR-007`）。
 - 待完成：启动器 UI 流程与端到端闭环测试（`TASK-WORLD_SIMULATOR-008/009`）。
 
 ## 风险

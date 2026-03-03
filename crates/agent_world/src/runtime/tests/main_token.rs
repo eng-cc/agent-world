@@ -258,6 +258,162 @@ fn main_token_claim_vesting_action_releases_unlocked_balance_and_rejects_nonce_r
 }
 
 #[test]
+fn main_token_transfer_action_moves_liquid_balance_and_updates_nonce() {
+    let mut world = World::new();
+    world.set_main_token_config(MainTokenConfig {
+        initial_supply: 1_000,
+        ..MainTokenConfig::default()
+    });
+    world.set_main_token_supply(MainTokenSupplyState {
+        total_supply: 1_000,
+        circulating_supply: 1_000,
+        total_issued: 0,
+        total_burned: 0,
+    });
+    world
+        .set_main_token_account_balance("player:alice", 900, 0)
+        .expect("seed alice");
+    world
+        .set_main_token_account_balance("player:bob", 100, 0)
+        .expect("seed bob");
+
+    world.submit_action(Action::TransferMainToken {
+        from_account_id: "player:alice".to_string(),
+        to_account_id: "player:bob".to_string(),
+        amount: 250,
+        nonce: 1,
+    });
+    world.step().expect("transfer main token");
+
+    assert_eq!(world.main_token_liquid_balance("player:alice"), 650);
+    assert_eq!(world.main_token_liquid_balance("player:bob"), 350);
+    assert_eq!(
+        world.main_token_last_transfer_nonce("player:alice"),
+        Some(1)
+    );
+    assert_eq!(world.main_token_supply().total_supply, 1_000);
+    assert_eq!(world.main_token_supply().circulating_supply, 1_000);
+
+    match &world.journal().events.last().expect("event").body {
+        WorldEventBody::Domain(DomainEvent::MainTokenTransferred {
+            from_account_id,
+            to_account_id,
+            amount,
+            nonce,
+        }) => {
+            assert_eq!(from_account_id, "player:alice");
+            assert_eq!(to_account_id, "player:bob");
+            assert_eq!(*amount, 250);
+            assert_eq!(*nonce, 1);
+        }
+        other => panic!("expected MainTokenTransferred, got {other:?}"),
+    }
+}
+
+#[test]
+fn main_token_transfer_action_rejects_insufficient_balance_without_mutation() {
+    let mut world = World::new();
+    world.set_main_token_config(MainTokenConfig {
+        initial_supply: 100,
+        ..MainTokenConfig::default()
+    });
+    world.set_main_token_supply(MainTokenSupplyState {
+        total_supply: 100,
+        circulating_supply: 100,
+        total_issued: 0,
+        total_burned: 0,
+    });
+    world
+        .set_main_token_account_balance("player:alice", 10, 0)
+        .expect("seed alice");
+    world
+        .set_main_token_account_balance("player:bob", 0, 0)
+        .expect("seed bob");
+
+    world.submit_action(Action::TransferMainToken {
+        from_account_id: "player:alice".to_string(),
+        to_account_id: "player:bob".to_string(),
+        amount: 11,
+        nonce: 1,
+    });
+    world
+        .step()
+        .expect("insufficient transfer should be rejected");
+
+    assert_eq!(world.main_token_liquid_balance("player:alice"), 10);
+    assert_eq!(world.main_token_liquid_balance("player:bob"), 0);
+    assert_eq!(world.main_token_last_transfer_nonce("player:alice"), None);
+
+    match &world.journal().events.last().expect("event").body {
+        WorldEventBody::Domain(DomainEvent::ActionRejected { reason, .. }) => match reason {
+            RejectReason::RuleDenied { notes } => {
+                assert!(notes.iter().any(|note| note.contains("insufficient")));
+            }
+            other => panic!("expected RuleDenied, got {other:?}"),
+        },
+        other => panic!("expected ActionRejected, got {other:?}"),
+    }
+}
+
+#[test]
+fn main_token_transfer_action_rejects_nonce_replay() {
+    let mut world = World::new();
+    world.set_main_token_config(MainTokenConfig {
+        initial_supply: 100,
+        ..MainTokenConfig::default()
+    });
+    world.set_main_token_supply(MainTokenSupplyState {
+        total_supply: 100,
+        circulating_supply: 100,
+        total_issued: 0,
+        total_burned: 0,
+    });
+    world
+        .set_main_token_account_balance("player:alice", 100, 0)
+        .expect("seed alice");
+    world
+        .set_main_token_account_balance("player:bob", 0, 0)
+        .expect("seed bob");
+
+    world.submit_action(Action::TransferMainToken {
+        from_account_id: "player:alice".to_string(),
+        to_account_id: "player:bob".to_string(),
+        amount: 30,
+        nonce: 1,
+    });
+    world.step().expect("first transfer");
+    assert_eq!(
+        world.main_token_last_transfer_nonce("player:alice"),
+        Some(1)
+    );
+
+    world.submit_action(Action::TransferMainToken {
+        from_account_id: "player:alice".to_string(),
+        to_account_id: "player:bob".to_string(),
+        amount: 10,
+        nonce: 1,
+    });
+    world.step().expect("replay transfer should be rejected");
+
+    assert_eq!(world.main_token_liquid_balance("player:alice"), 70);
+    assert_eq!(world.main_token_liquid_balance("player:bob"), 30);
+    assert_eq!(
+        world.main_token_last_transfer_nonce("player:alice"),
+        Some(1)
+    );
+
+    match &world.journal().events.last().expect("event").body {
+        WorldEventBody::Domain(DomainEvent::ActionRejected { reason, .. }) => match reason {
+            RejectReason::RuleDenied { notes } => {
+                assert!(notes.iter().any(|note| note.contains("nonce replay")));
+            }
+            other => panic!("expected RuleDenied, got {other:?}"),
+        },
+        other => panic!("expected ActionRejected, got {other:?}"),
+    }
+}
+
+#[test]
 fn main_token_epoch_issuance_applies_formula_clamp_split_and_rejects_duplicate_epoch() {
     let mut world = World::new();
     world.set_main_token_config(MainTokenConfig {

@@ -342,14 +342,20 @@ impl World {
                     *nonce,
                 ),
             )),
-            Action::TransferMainToken { .. } => {
-                Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+            Action::TransferMainToken {
+                from_account_id,
+                to_account_id,
+                amount,
+                nonce,
+            } => Ok(WorldEventBody::Domain(
+                self.evaluate_transfer_main_token_action(
                     action_id,
-                    reason: RejectReason::RuleDenied {
-                        notes: vec!["main token transfer is not enabled yet".to_string()],
-                    },
-                }))
-            }
+                    from_account_id.as_str(),
+                    to_account_id.as_str(),
+                    *amount,
+                    *nonce,
+                ),
+            )),
             Action::ApplyMainTokenEpochIssuance {
                 epoch_index,
                 actual_stake_ratio_bps,
@@ -496,6 +502,75 @@ impl World {
             }
             _ => unreachable!("action_to_event_core received unsupported action variant"),
         }
+    }
+
+    fn evaluate_transfer_main_token_action(
+        &self,
+        action_id: ActionId,
+        from_account_id: &str,
+        to_account_id: &str,
+        amount: u64,
+        nonce: u64,
+    ) -> DomainEvent {
+        let from_account_id = from_account_id.trim();
+        let to_account_id = to_account_id.trim();
+        if from_account_id.is_empty() {
+            return DomainEvent::ActionRejected {
+                action_id,
+                reason: RejectReason::RuleDenied {
+                    notes: vec!["from_account_id cannot be empty".to_string()],
+                },
+            };
+        }
+        if to_account_id.is_empty() {
+            return DomainEvent::ActionRejected {
+                action_id,
+                reason: RejectReason::RuleDenied {
+                    notes: vec!["to_account_id cannot be empty".to_string()],
+                },
+            };
+        }
+        if from_account_id == to_account_id {
+            return DomainEvent::ActionRejected {
+                action_id,
+                reason: RejectReason::RuleDenied {
+                    notes: vec!["from_account_id and to_account_id cannot be the same".to_string()],
+                },
+            };
+        }
+        if amount == 0 {
+            return DomainEvent::ActionRejected {
+                action_id,
+                reason: RejectReason::RuleDenied {
+                    notes: vec!["amount must be > 0".to_string()],
+                },
+            };
+        }
+        if nonce == 0 {
+            return DomainEvent::ActionRejected {
+                action_id,
+                reason: RejectReason::RuleDenied {
+                    notes: vec!["nonce must be > 0".to_string()],
+                },
+            };
+        }
+
+        let event = DomainEvent::MainTokenTransferred {
+            from_account_id: from_account_id.to_string(),
+            to_account_id: to_account_id.to_string(),
+            amount,
+            nonce,
+        };
+        let mut preview_state = self.state.clone();
+        if let Err(err) = preview_state.apply_domain_event(&event, self.state.time) {
+            return DomainEvent::ActionRejected {
+                action_id,
+                reason: RejectReason::RuleDenied {
+                    notes: vec![format!("main token transfer rejected: {err:?}")],
+                },
+            };
+        }
+        event
     }
 
     fn evaluate_distribute_main_token_treasury_action(

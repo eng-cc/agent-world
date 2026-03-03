@@ -44,7 +44,7 @@ use distfs_probe_runtime::{parse_distfs_probe_runtime_option, DistfsProbeRuntime
 use execution_bridge::NodeRuntimeExecutionDriver;
 use feedback_submit_api::{
     build_feedback_create_request, extract_http_json_body, parse_feedback_submit_request,
-    ChainFeedbackSubmitResponse, FeedbackSubmitSigner,
+    write_feedback_submit_error, ChainFeedbackSubmitResponse, FeedbackSubmitSigner,
 };
 use reward_runtime_worker::{
     init_shared_metrics, poll_worker_error, snapshot_metrics, start_reward_runtime_worker,
@@ -719,18 +719,6 @@ fn handle_chain_status_connection(
     }
 
     Ok(())
-}
-
-fn write_feedback_submit_error(
-    stream: &mut TcpStream,
-    status_code: u16,
-    error: &str,
-) -> Result<(), String> {
-    let payload = ChainFeedbackSubmitResponse::error(error);
-    let body = serde_json::to_vec_pretty(&payload)
-        .map_err(|err| format!("failed to encode feedback submit error payload: {err}"))?;
-    write_json_response(stream, status_code, body.as_slice(), false)
-        .map_err(|err| format!("failed to write feedback submit error response: {err}"))
 }
 
 fn build_chain_status_payload(

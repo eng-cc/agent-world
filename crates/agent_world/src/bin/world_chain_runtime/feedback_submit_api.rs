@@ -1,3 +1,5 @@
+use std::net::TcpStream;
+
 use agent_world_distfs::{
     blake3_hex, sign_feedback_create_request, FeedbackCreateRequest, FeedbackMutationReceipt,
 };
@@ -167,6 +169,18 @@ pub(super) fn extract_http_json_body(request_bytes: &[u8]) -> Result<&[u8], Stri
     }
 
     Ok(&body_bytes[..content_length])
+}
+
+pub(super) fn write_feedback_submit_error(
+    stream: &mut TcpStream,
+    status_code: u16,
+    error: &str,
+) -> Result<(), String> {
+    let payload = ChainFeedbackSubmitResponse::error(error);
+    let body = serde_json::to_vec_pretty(&payload)
+        .map_err(|err| format!("failed to encode feedback submit error payload: {err}"))?;
+    super::write_json_response(stream, status_code, body.as_slice(), false)
+        .map_err(|err| format!("failed to write feedback submit error response: {err}"))
 }
 
 fn build_feedback_id(

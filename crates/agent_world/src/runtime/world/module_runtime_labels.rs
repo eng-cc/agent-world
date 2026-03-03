@@ -39,6 +39,7 @@ pub(super) fn event_kind_label(body: &WorldEventBody) -> &'static str {
                 "domain.main_token.genesis_initialized"
             }
             DomainEvent::MainTokenVestingClaimed { .. } => "domain.main_token.vesting_claimed",
+            DomainEvent::MainTokenTransferred { .. } => "domain.main_token.transferred",
             DomainEvent::MainTokenEpochIssued { .. } => "domain.main_token.epoch_issued",
             DomainEvent::MainTokenFeeSettled { .. } => "domain.main_token.fee_settled",
             DomainEvent::MainTokenPolicyUpdateScheduled { .. } => {

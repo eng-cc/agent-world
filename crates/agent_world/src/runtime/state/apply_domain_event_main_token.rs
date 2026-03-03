@@ -38,6 +38,7 @@ impl WorldState {
                 if !self.main_token_balances.is_empty()
                     || !self.main_token_treasury_balances.is_empty()
                     || !self.main_token_claim_nonces.is_empty()
+                    || !self.main_token_transfer_nonces.is_empty()
                 {
                     return Err(WorldError::ResourceBalanceInvalid {
                         reason: "main token ledger is not empty during genesis initialization"
@@ -276,6 +277,127 @@ impl WorldState {
                 }
                 self.main_token_claim_nonces
                     .insert(beneficiary.clone(), *nonce);
+            }
+            DomainEvent::MainTokenTransferred {
+                from_account_id,
+                to_account_id,
+                amount,
+                nonce,
+            } => {
+                let from_account_id = from_account_id.trim();
+                let to_account_id = to_account_id.trim();
+                if from_account_id.is_empty() {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: "main token transfer from_account_id cannot be empty".to_string(),
+                    });
+                }
+                if to_account_id.is_empty() {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: "main token transfer to_account_id cannot be empty".to_string(),
+                    });
+                }
+                if from_account_id == to_account_id {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "main token transfer from_account_id and to_account_id cannot be the same: {}",
+                            from_account_id
+                        ),
+                    });
+                }
+                if *amount == 0 {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: "main token transfer amount must be > 0".to_string(),
+                    });
+                }
+                if *nonce == 0 {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: "main token transfer nonce must be > 0".to_string(),
+                    });
+                }
+                if let Some(last_nonce) = self.main_token_transfer_nonces.get(from_account_id) {
+                    if *nonce <= *last_nonce {
+                        return Err(WorldError::ResourceBalanceInvalid {
+                            reason: format!(
+                                "main token transfer nonce replay: from_account_id={} nonce={} last_nonce={}",
+                                from_account_id, nonce, last_nonce
+                            ),
+                        });
+                    }
+                }
+
+                let from_before = self
+                    .main_token_balances
+                    .get(from_account_id)
+                    .cloned()
+                    .ok_or_else(|| WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "main token transfer source account not found: {}",
+                            from_account_id
+                        ),
+                    })?;
+                if from_before.account_id != from_account_id {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "main token transfer source account key mismatch: key={} value={}",
+                            from_account_id, from_before.account_id
+                        ),
+                    });
+                }
+                if from_before.liquid_balance < *amount {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "main token transfer source balance insufficient: from_account_id={} balance={} amount={}",
+                            from_account_id, from_before.liquid_balance, amount
+                        ),
+                    });
+                }
+
+                let to_before = self.main_token_balances.get(to_account_id).cloned();
+                if let Some(account) = to_before.as_ref() {
+                    if account.account_id != to_account_id {
+                        return Err(WorldError::ResourceBalanceInvalid {
+                            reason: format!(
+                                "main token transfer target account key mismatch: key={} value={}",
+                                to_account_id, account.account_id
+                            ),
+                        });
+                    }
+                }
+
+                let next_from_liquid = from_before.liquid_balance - *amount;
+                let next_to_liquid = to_before
+                    .as_ref()
+                    .map(|account| account.liquid_balance)
+                    .unwrap_or(0)
+                    .checked_add(*amount)
+                    .ok_or_else(|| WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "main token transfer target balance overflow: to_account_id={} amount={}",
+                            to_account_id, amount
+                        ),
+                    })?;
+
+                let from_account = self
+                    .main_token_balances
+                    .get_mut(from_account_id)
+                    .ok_or_else(|| WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "main token transfer source account not found: {}",
+                            from_account_id
+                        ),
+                    })?;
+                from_account.liquid_balance = next_from_liquid;
+
+                let to_account = self
+                    .main_token_balances
+                    .entry(to_account_id.to_string())
+                    .or_insert_with(|| MainTokenAccountBalance {
+                        account_id: to_account_id.to_string(),
+                        ..MainTokenAccountBalance::default()
+                    });
+                to_account.liquid_balance = next_to_liquid;
+                self.main_token_transfer_nonces
+                    .insert(from_account_id.to_string(), *nonce);
             }
             DomainEvent::MainTokenEpochIssued {
                 epoch_index,

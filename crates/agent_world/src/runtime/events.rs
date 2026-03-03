@@ -623,6 +623,12 @@ pub enum DomainEvent {
         amount: u64,
         nonce: u64,
     },
+    MainTokenTransferred {
+        from_account_id: String,
+        to_account_id: String,
+        amount: u64,
+        nonce: u64,
+    },
     MainTokenEpochIssued {
         epoch_index: u64,
         inflation_rate_bps: u32,
@@ -957,6 +963,9 @@ impl DomainEvent {
             DomainEvent::NodePointsSettlementApplied { .. } => None,
             DomainEvent::MainTokenGenesisInitialized { .. } => None,
             DomainEvent::MainTokenVestingClaimed { beneficiary, .. } => Some(beneficiary.as_str()),
+            DomainEvent::MainTokenTransferred {
+                from_account_id, ..
+            } => Some(from_account_id.as_str()),
             DomainEvent::MainTokenEpochIssued { .. } => None,
             DomainEvent::MainTokenFeeSettled { .. } => None,
             DomainEvent::MainTokenPolicyUpdateScheduled { .. } => None,

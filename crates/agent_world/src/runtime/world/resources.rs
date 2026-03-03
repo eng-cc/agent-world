@@ -130,6 +130,13 @@ impl World {
         self.state.main_token_claim_nonces.get(beneficiary).copied()
     }
 
+    pub fn main_token_last_transfer_nonce(&self, from_account_id: &str) -> Option<u64> {
+        self.state
+            .main_token_transfer_nonces
+            .get(from_account_id)
+            .copied()
+    }
+
     pub fn main_token_scheduled_policy_update(
         &self,
         effective_epoch: u64,

@@ -272,6 +272,8 @@ pub struct WorldState {
     #[serde(default)]
     pub main_token_claim_nonces: BTreeMap<String, u64>,
     #[serde(default)]
+    pub main_token_transfer_nonces: BTreeMap<String, u64>,
+    #[serde(default)]
     pub main_token_scheduled_policy_updates: BTreeMap<u64, MainTokenScheduledPolicyUpdate>,
     #[serde(default)]
     pub main_token_node_points_bridge_records: BTreeMap<u64, MainTokenNodePointsBridgeEpochRecord>,
@@ -343,6 +345,7 @@ impl Default for WorldState {
             main_token_epoch_issuance_records: BTreeMap::new(),
             main_token_treasury_balances: BTreeMap::new(),
             main_token_claim_nonces: BTreeMap::new(),
+            main_token_transfer_nonces: BTreeMap::new(),
             main_token_scheduled_policy_updates: BTreeMap::new(),
             main_token_node_points_bridge_records: BTreeMap::new(),
             main_token_treasury_distribution_records: BTreeMap::new(),
@@ -547,6 +550,7 @@ impl WorldState {
             | DomainEvent::NodePointsSettlementApplied { .. }
             | DomainEvent::MainTokenGenesisInitialized { .. }
             | DomainEvent::MainTokenVestingClaimed { .. }
+            | DomainEvent::MainTokenTransferred { .. }
             | DomainEvent::MainTokenEpochIssued { .. }
             | DomainEvent::MainTokenFeeSettled { .. }
             | DomainEvent::MainTokenPolicyUpdateScheduled { .. }
