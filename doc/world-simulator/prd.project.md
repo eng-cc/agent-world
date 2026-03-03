@@ -1,45 +1,45 @@
 # world-simulator PRD Project
 
 ## 任务拆解（含 PRD-ID 映射）
-- [x] TASK-WORLD_SIMULATOR-001 (PRD-WORLD_SIMULATOR-001): 完成 world-simulator PRD 改写，建立模拟层设计主入口。
-- [x] TASK-WORLD_SIMULATOR-002 (PRD-WORLD_SIMULATOR-001/002): 对齐场景系统、Viewer、启动器的统一验收清单。
-- [x] TASK-WORLD_SIMULATOR-003 (PRD-WORLD_SIMULATOR-002/003): 固化 Web-first 闭环与 LLM 链路的测试证据模板。
-- [x] TASK-WORLD_SIMULATOR-004 (PRD-WORLD_SIMULATOR-003): 建立 simulator 体验质量趋势跟踪。
-- [x] TASK-WORLD_SIMULATOR-005 (PRD-WORLD_SIMULATOR-004/005): 完成“启动器链上转账”PRD 条款建模与验收标准冻结（接口、安全、测试口径）。
-- [x] TASK-WORLD_SIMULATOR-006 (PRD-WORLD_SIMULATOR-004): `world_chain_runtime` 新增转账提交接口（含请求校验、结构化响应、单元测试）。
-- [x] TASK-WORLD_SIMULATOR-007 (PRD-WORLD_SIMULATOR-005): runtime 新增主 token 账户转账动作/事件/状态更新（含 nonce anti-replay、余额约束、回归测试）。
-- [x] TASK-WORLD_SIMULATOR-008 (PRD-WORLD_SIMULATOR-004): `agent_world_client_launcher` 新增转账 UI 与提交流程（含输入校验、状态提示、错误展示）。
-- [x] TASK-WORLD_SIMULATOR-009 (PRD-WORLD_SIMULATOR-004/005): 完成启动器-链运行时转账闭环测试（`test_tier_required`）与测试证据沉淀。
-- [x] TASK-WORLD_SIMULATOR-010 (PRD-WORLD_SIMULATOR-001/002/003): 建立模块级专题任务映射索引（2026-03-02 批次）。
-- [x] TASK-WORLD_SIMULATOR-011 (PRD-WORLD_SIMULATOR-001/002): 将 Viewer 使用手册迁入 `viewer/` 主题目录并保留根目录兼容跳转。
-- [x] TASK-WORLD_SIMULATOR-012 (PRD-WORLD_SIMULATOR-002/003): 为启动器反馈“分布式提交失败回落本地”补充 `Connection refused` 回归约束测试，锁定错误签名可诊断性。
-- [x] TASK-WORLD_SIMULATOR-013 (PRD-WORLD_SIMULATOR-002/003): 在 `agent_world_client_launcher` 顶部新增区块链启动状态可视化与探针回归测试（禁用/未启动/启动中/已就绪/不可达）。
-- [x] TASK-WORLD_SIMULATOR-014 (PRD-WORLD_SIMULATOR-006): 完成“启动器链/游戏独立启动 + 反馈链就绪门控”需求建模与任务拆解。
-- [x] TASK-WORLD_SIMULATOR-015 (PRD-WORLD_SIMULATOR-006): 在 `agent_world_client_launcher` 落地链/游戏独立启动按钮、启动器打开默认拉起链、反馈入口链就绪门控，并补齐回归测试。
-- [x] TASK-WORLD_SIMULATOR-016 (PRD-WORLD_SIMULATOR-007): 完成“启动器完整设置中心”需求建模与任务拆解。
-- [x] TASK-WORLD_SIMULATOR-017 (PRD-WORLD_SIMULATOR-007): 在 `agent_world_client_launcher` 落地完整设置中心（游戏/区块链/LLM 一体化配置入口）并补齐回归测试。
-- [x] TASK-WORLD_SIMULATOR-018 (PRD-WORLD_SIMULATOR-001/002/003/004/005): 对齐 strict PRD schema，补齐 Critical User Flows、Functional Specification Matrix、Edge Cases、NFR、Validation & Decision Record。
-- [x] TASK-WORLD_SIMULATOR-019 (PRD-WORLD_SIMULATOR-008): 完成“viewer native 粉紫屏回归”PRD 建模与任务拆解（含 Web+native 验收口径）。
-- [x] TASK-WORLD_SIMULATOR-020 (PRD-WORLD_SIMULATOR-008): 修复 `agent_world_viewer` 默认 tonemapping 在 native 链路的 feature 缺失回归，并补齐回归测试与抓帧验证。
-- [x] TASK-WORLD_SIMULATOR-021 (PRD-WORLD_SIMULATOR-009): 完成“launcher bundle 运行中二进制覆写失败（Text file busy）”PRD 建模与任务拆解。
-- [x] TASK-WORLD_SIMULATOR-022 (PRD-WORLD_SIMULATOR-009): 修复 `build-game-launcher-bundle.sh` 二进制复制阶段的占用冲突，验证重复打包不再出现 `Text file busy`。
+- [x] TASK-WORLD_SIMULATOR-001 (PRD-WORLD_SIMULATOR-001) [test_tier_required]: 完成 world-simulator PRD 改写，建立模拟层设计主入口。
+- [x] TASK-WORLD_SIMULATOR-002 (PRD-WORLD_SIMULATOR-001/002) [test_tier_required]: 对齐场景系统、Viewer、启动器的统一验收清单。
+- [x] TASK-WORLD_SIMULATOR-003 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 固化 Web-first 闭环与 LLM 链路的测试证据模板。
+- [x] TASK-WORLD_SIMULATOR-004 (PRD-WORLD_SIMULATOR-003) [test_tier_required]: 建立 simulator 体验质量趋势跟踪。
+- [x] TASK-WORLD_SIMULATOR-005 (PRD-WORLD_SIMULATOR-004/005) [test_tier_required]: 完成“启动器链上转账”PRD 条款建模与验收标准冻结（接口、安全、测试口径）。
+- [x] TASK-WORLD_SIMULATOR-006 (PRD-WORLD_SIMULATOR-004) [test_tier_required]: `world_chain_runtime` 新增转账提交接口（含请求校验、结构化响应、单元测试）。
+- [x] TASK-WORLD_SIMULATOR-007 (PRD-WORLD_SIMULATOR-005) [test_tier_required]: runtime 新增主 token 账户转账动作/事件/状态更新（含 nonce anti-replay、余额约束、回归测试）。
+- [x] TASK-WORLD_SIMULATOR-008 (PRD-WORLD_SIMULATOR-004) [test_tier_required]: `agent_world_client_launcher` 新增转账 UI 与提交流程（含输入校验、状态提示、错误展示）。
+- [x] TASK-WORLD_SIMULATOR-009 (PRD-WORLD_SIMULATOR-004/005) [test_tier_required]: 完成启动器-链运行时转账闭环测试（`test_tier_required`）与测试证据沉淀。
+- [x] TASK-WORLD_SIMULATOR-010 (PRD-WORLD_SIMULATOR-001/002/003) [test_tier_required]: 建立模块级专题任务映射索引（2026-03-02 批次）。
+- [x] TASK-WORLD_SIMULATOR-011 (PRD-WORLD_SIMULATOR-001/002) [test_tier_required]: 将 Viewer 使用手册迁入 `viewer/` 主题目录并保留根目录兼容跳转。
+- [x] TASK-WORLD_SIMULATOR-012 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 为启动器反馈“分布式提交失败回落本地”补充 `Connection refused` 回归约束测试，锁定错误签名可诊断性。
+- [x] TASK-WORLD_SIMULATOR-013 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 在 `agent_world_client_launcher` 顶部新增区块链启动状态可视化与探针回归测试（禁用/未启动/启动中/已就绪/不可达）。
+- [x] TASK-WORLD_SIMULATOR-014 (PRD-WORLD_SIMULATOR-006) [test_tier_required]: 完成“启动器链/游戏独立启动 + 反馈链就绪门控”需求建模与任务拆解。
+- [x] TASK-WORLD_SIMULATOR-015 (PRD-WORLD_SIMULATOR-006) [test_tier_required]: 在 `agent_world_client_launcher` 落地链/游戏独立启动按钮、启动器打开默认拉起链、反馈入口链就绪门控，并补齐回归测试。
+- [x] TASK-WORLD_SIMULATOR-016 (PRD-WORLD_SIMULATOR-007) [test_tier_required]: 完成“启动器完整设置中心”需求建模与任务拆解。
+- [x] TASK-WORLD_SIMULATOR-017 (PRD-WORLD_SIMULATOR-007) [test_tier_required]: 在 `agent_world_client_launcher` 落地完整设置中心（游戏/区块链/LLM 一体化配置入口）并补齐回归测试。
+- [x] TASK-WORLD_SIMULATOR-018 (PRD-WORLD_SIMULATOR-001/002/003/004/005) [test_tier_required]: 对齐 strict PRD schema，补齐 Critical User Flows、Functional Specification Matrix、Edge Cases、NFR、Validation & Decision Record。
+- [x] TASK-WORLD_SIMULATOR-019 (PRD-WORLD_SIMULATOR-008) [test_tier_required]: 完成“viewer native 粉紫屏回归”PRD 建模与任务拆解（含 Web+native 验收口径）。
+- [x] TASK-WORLD_SIMULATOR-020 (PRD-WORLD_SIMULATOR-008) [test_tier_required]: 修复 `agent_world_viewer` 默认 tonemapping 在 native 链路的 feature 缺失回归，并补齐回归测试与抓帧验证。
+- [x] TASK-WORLD_SIMULATOR-021 (PRD-WORLD_SIMULATOR-009) [test_tier_required]: 完成“launcher bundle 运行中二进制覆写失败（Text file busy）”PRD 建模与任务拆解。
+- [x] TASK-WORLD_SIMULATOR-022 (PRD-WORLD_SIMULATOR-009) [test_tier_required]: 修复 `build-game-launcher-bundle.sh` 二进制复制阶段的占用冲突，验证重复打包不再出现 `Text file busy`。
 
 ## 专题任务映射（2026-03-02 批次）
-- [x] SUBTASK-WORLD_SIMULATOR-20260302-001 (PRD-WORLD_SIMULATOR-001/002/003): `doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.prd.project.md`
-- [x] SUBTASK-WORLD_SIMULATOR-20260302-002 (PRD-WORLD_SIMULATOR-002/003): `doc/world-simulator/launcher/game-client-launcher-feedback-entry-2026-03-02.prd.project.md`
-- [x] SUBTASK-WORLD_SIMULATOR-20260302-003 (PRD-WORLD_SIMULATOR-002/003): `doc/world-simulator/launcher/game-client-launcher-feedback-window-2026-03-02.prd.project.md`
-- [x] SUBTASK-WORLD_SIMULATOR-20260302-004 (PRD-WORLD_SIMULATOR-002/003): `doc/world-simulator/launcher/game-client-launcher-graceful-stop-2026-03-02.prd.project.md`
-- [x] SUBTASK-WORLD_SIMULATOR-20260302-005 (PRD-WORLD_SIMULATOR-002/003): `doc/world-simulator/launcher/game-client-launcher-i18n-required-config-2026-03-02.prd.project.md`
-- [x] SUBTASK-WORLD_SIMULATOR-20260302-006 (PRD-WORLD_SIMULATOR-002/003): `doc/world-simulator/launcher/game-client-launcher-llm-settings-panel-2026-03-02.prd.project.md`
-- [x] SUBTASK-WORLD_SIMULATOR-20260302-007 (PRD-WORLD_SIMULATOR-001/002/003): `doc/world-simulator/llm/llm-config-toml-style-unification-2026-03-02.prd.project.md`
-- [x] SUBTASK-WORLD_SIMULATOR-20260302-008 (PRD-WORLD_SIMULATOR-002/003): `doc/world-simulator/viewer/viewer-web-build-pruning-2026-03-02.prd.project.md`
-- [x] SUBTASK-WORLD_SIMULATOR-20260302-009 (PRD-WORLD_SIMULATOR-002/003): `doc/world-simulator/viewer/viewer-web-build-pruning-phase2-2026-03-02.prd.project.md`
+- [x] SUBTASK-WORLD_SIMULATOR-20260302-001 (PRD-WORLD_SIMULATOR-001/002/003) [test_tier_required]: `doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.prd.project.md`
+- [x] SUBTASK-WORLD_SIMULATOR-20260302-002 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: `doc/world-simulator/launcher/game-client-launcher-feedback-entry-2026-03-02.prd.project.md`
+- [x] SUBTASK-WORLD_SIMULATOR-20260302-003 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: `doc/world-simulator/launcher/game-client-launcher-feedback-window-2026-03-02.prd.project.md`
+- [x] SUBTASK-WORLD_SIMULATOR-20260302-004 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: `doc/world-simulator/launcher/game-client-launcher-graceful-stop-2026-03-02.prd.project.md`
+- [x] SUBTASK-WORLD_SIMULATOR-20260302-005 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: `doc/world-simulator/launcher/game-client-launcher-i18n-required-config-2026-03-02.prd.project.md`
+- [x] SUBTASK-WORLD_SIMULATOR-20260302-006 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: `doc/world-simulator/launcher/game-client-launcher-llm-settings-panel-2026-03-02.prd.project.md`
+- [x] SUBTASK-WORLD_SIMULATOR-20260302-007 (PRD-WORLD_SIMULATOR-001/002/003) [test_tier_required]: `doc/world-simulator/llm/llm-config-toml-style-unification-2026-03-02.prd.project.md`
+- [x] SUBTASK-WORLD_SIMULATOR-20260302-008 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: `doc/world-simulator/viewer/viewer-web-build-pruning-2026-03-02.prd.project.md`
+- [x] SUBTASK-WORLD_SIMULATOR-20260302-009 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: `doc/world-simulator/viewer/viewer-web-build-pruning-phase2-2026-03-02.prd.project.md`
 
 ## 专题任务映射（2026-03-03 批次）
-- [x] SUBTASK-WORLD_SIMULATOR-20260303-001 (PRD-WORLD_SIMULATOR-002/003): `doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.prd.project.md`
-- [x] SUBTASK-WORLD_SIMULATOR-20260303-002 (PRD-WORLD_SIMULATOR-002/003): `doc/world-simulator/launcher/game-client-launcher-desktop-2026-02-27.prd.project.md`
-- [x] SUBTASK-WORLD_SIMULATOR-20260303-003 (PRD-WORLD_SIMULATOR-006): `doc/world-simulator/launcher/game-client-launcher-desktop-2026-02-27.prd.project.md`
-- [x] SUBTASK-WORLD_SIMULATOR-20260303-004 (PRD-WORLD_SIMULATOR-007): `doc/world-simulator/launcher/game-client-launcher-llm-settings-panel-2026-03-02.prd.project.md`
+- [x] SUBTASK-WORLD_SIMULATOR-20260303-001 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: `doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.prd.project.md`
+- [x] SUBTASK-WORLD_SIMULATOR-20260303-002 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: `doc/world-simulator/launcher/game-client-launcher-desktop-2026-02-27.prd.project.md`
+- [x] SUBTASK-WORLD_SIMULATOR-20260303-003 (PRD-WORLD_SIMULATOR-006) [test_tier_required]: `doc/world-simulator/launcher/game-client-launcher-desktop-2026-02-27.prd.project.md`
+- [x] SUBTASK-WORLD_SIMULATOR-20260303-004 (PRD-WORLD_SIMULATOR-007) [test_tier_required]: `doc/world-simulator/launcher/game-client-launcher-llm-settings-panel-2026-03-02.prd.project.md`
 
 ## 依赖
 - doc/world-simulator/prd.index.md

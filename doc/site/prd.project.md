@@ -1,11 +1,11 @@
 # site PRD Project
 
 ## 任务拆解（含 PRD-ID 映射）
-- [x] TASK-SITE-001 (PRD-SITE-001): 完成 site PRD 改写，建立站点设计主入口。
-- [ ] TASK-SITE-002 (PRD-SITE-001/002): 固化站点信息架构与内容同步校验清单。
-- [ ] TASK-SITE-003 (PRD-SITE-002/003): 补齐发布下载链路与SEO质量门禁说明。
-- [ ] TASK-SITE-004 (PRD-SITE-003): 建立站点发布后质量回归节奏。
-- [x] TASK-SITE-005 (PRD-SITE-001/002/003): 对齐 strict PRD schema，补齐关键流程/规格矩阵/边界异常/NFR/验证与决策记录。
+- [x] TASK-SITE-001 (PRD-SITE-001) [test_tier_required]: 完成 site PRD 改写，建立站点设计主入口。
+- [ ] TASK-SITE-002 (PRD-SITE-001/002) [test_tier_required]: 固化站点信息架构与内容同步校验清单。
+- [ ] TASK-SITE-003 (PRD-SITE-002/003) [test_tier_required]: 补齐发布下载链路与SEO质量门禁说明。
+- [ ] TASK-SITE-004 (PRD-SITE-003) [test_tier_required]: 建立站点发布后质量回归节奏。
+- [x] TASK-SITE-005 (PRD-SITE-001/002/003) [test_tier_required]: 对齐 strict PRD schema，补齐关键流程/规格矩阵/边界异常/NFR/验证与决策记录。
 
 ## 依赖
 - doc/site/prd.index.md
