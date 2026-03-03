@@ -1,8 +1,9 @@
 use super::{
-    build_game_url, build_launcher_args, collect_required_config_issues, install_cjk_font,
+    build_chain_runtime_args, build_game_url, build_launcher_args,
+    collect_chain_required_config_issues, collect_required_config_issues, install_cjk_font,
     normalize_host_for_url, parse_chain_role, parse_chain_validators, parse_host_port, parse_port,
-    probe_chain_status_endpoint, ChainRuntimeStatus, ConfigIssue, LaunchConfig, LauncherStatus,
-    UiLanguage, EGUI_CJK_FONT_NAME,
+    probe_chain_status_endpoint, ChainRuntimeStatus, ClientLauncherApp, ConfigIssue, LaunchConfig,
+    LauncherStatus, UiLanguage, EGUI_CJK_FONT_NAME,
 };
 use eframe::egui;
 use std::io::{Read, Write};
@@ -86,7 +87,7 @@ fn launch_config_defaults_enable_llm() {
     assert!(config.chain_enabled);
 }
 #[test]
-fn build_launcher_args_contains_chain_overrides_when_enabled() {
+fn build_launcher_args_keeps_chain_disabled_even_when_chain_config_is_set() {
     let config = LaunchConfig {
         chain_enabled: true,
         chain_status_bind: "127.0.0.1:6121".to_string(),
@@ -98,18 +99,36 @@ fn build_launcher_args_contains_chain_overrides_when_enabled() {
         ..LaunchConfig::default()
     };
     let args = build_launcher_args(&config).expect("args should build");
-    assert!(args.contains(&"--chain-enable".to_string()));
-    assert!(args.contains(&"--chain-status-bind".to_string()));
-    assert!(args.contains(&"127.0.0.1:6121".to_string()));
-    assert!(args.contains(&"--chain-node-id".to_string()));
+    assert!(args.contains(&"--chain-disable".to_string()));
+    assert!(!args.contains(&"--chain-enable".to_string()));
+    assert!(!args.contains(&"--chain-status-bind".to_string()));
+}
+
+#[test]
+fn build_chain_runtime_args_contains_chain_overrides_when_enabled() {
+    let config = LaunchConfig {
+        chain_enabled: true,
+        chain_status_bind: "127.0.0.1:6121".to_string(),
+        chain_node_id: "chain-node-a".to_string(),
+        chain_world_id: "live-chain-a".to_string(),
+        chain_node_role: "storage".to_string(),
+        chain_node_tick_ms: "350".to_string(),
+        chain_node_validators: "node-a:55,node-b:45".to_string(),
+        chain_runtime_bin: "/tmp/world_chain_runtime".to_string(),
+        ..LaunchConfig::default()
+    };
+    let args = build_chain_runtime_args(&config).expect("args should build");
+    assert!(args.contains(&"--node-id".to_string()));
     assert!(args.contains(&"chain-node-a".to_string()));
-    assert!(args.contains(&"--chain-world-id".to_string()));
+    assert!(args.contains(&"--world-id".to_string()));
     assert!(args.contains(&"live-chain-a".to_string()));
-    assert!(args.contains(&"--chain-node-role".to_string()));
+    assert!(args.contains(&"--status-bind".to_string()));
+    assert!(args.contains(&"127.0.0.1:6121".to_string()));
+    assert!(args.contains(&"--node-role".to_string()));
     assert!(args.contains(&"storage".to_string()));
-    assert!(args.contains(&"--chain-node-tick-ms".to_string()));
+    assert!(args.contains(&"--node-tick-ms".to_string()));
     assert!(args.contains(&"350".to_string()));
-    assert!(args.contains(&"--chain-node-validator".to_string()));
+    assert!(args.contains(&"--node-validator".to_string()));
     assert!(args.contains(&"node-a:55".to_string()));
     assert!(args.contains(&"node-b:45".to_string()));
 }
@@ -173,6 +192,21 @@ fn chain_runtime_status_text_is_localized() {
 }
 
 #[test]
+fn feedback_availability_requires_chain_ready() {
+    let mut app = ClientLauncherApp::default();
+    app.config.chain_enabled = true;
+    app.chain_runtime_status = ChainRuntimeStatus::Ready;
+    assert!(app.is_feedback_available());
+
+    app.chain_runtime_status = ChainRuntimeStatus::Starting;
+    assert!(!app.is_feedback_available());
+
+    app.chain_runtime_status = ChainRuntimeStatus::Ready;
+    app.config.chain_enabled = false;
+    assert!(!app.is_feedback_available());
+}
+
+#[test]
 fn probe_chain_status_endpoint_accepts_http_200_response() {
     let listener = TcpListener::bind("127.0.0.1:0").expect("bind test listener");
     let bind = listener.local_addr().expect("listener addr");
@@ -214,6 +248,7 @@ fn collect_required_config_issues_reports_missing_required_fields() {
         chain_node_role: "invalid".to_string(),
         chain_node_tick_ms: "0".to_string(),
         chain_node_validators: "node-a".to_string(),
+        chain_runtime_bin: "".to_string(),
         ..LaunchConfig::default()
     };
 
@@ -225,6 +260,23 @@ fn collect_required_config_issues_reports_missing_required_fields() {
     assert!(issues.contains(&ConfigIssue::ViewerPortInvalid));
     assert!(issues.contains(&ConfigIssue::ViewerStaticDirRequired));
     assert!(issues.contains(&ConfigIssue::LauncherBinRequired));
+}
+
+#[test]
+fn collect_chain_required_config_issues_reports_missing_required_fields() {
+    let config = LaunchConfig {
+        chain_enabled: true,
+        chain_runtime_bin: "".to_string(),
+        chain_status_bind: "127.0.0.1".to_string(),
+        chain_node_id: "".to_string(),
+        chain_node_role: "invalid".to_string(),
+        chain_node_tick_ms: "0".to_string(),
+        chain_node_validators: "node-a".to_string(),
+        ..LaunchConfig::default()
+    };
+
+    let issues = collect_chain_required_config_issues(&config);
+    assert!(issues.contains(&ConfigIssue::ChainRuntimeBinRequired));
     assert!(issues.contains(&ConfigIssue::ChainStatusBindInvalid));
     assert!(issues.contains(&ConfigIssue::ChainNodeIdRequired));
     assert!(issues.contains(&ConfigIssue::ChainRoleInvalid));
@@ -250,5 +302,27 @@ fn collect_required_config_issues_accepts_valid_required_fields() {
     };
 
     let issues = collect_required_config_issues(&config);
+    assert!(issues.is_empty());
+}
+
+#[test]
+fn collect_chain_required_config_issues_accepts_valid_required_fields() {
+    let chain_runtime_bin = std::env::current_exe()
+        .expect("current exe")
+        .to_string_lossy()
+        .to_string();
+    let config = LaunchConfig {
+        chain_enabled: true,
+        chain_runtime_bin,
+        chain_status_bind: "127.0.0.1:6121".to_string(),
+        chain_node_id: "chain-node-a".to_string(),
+        chain_world_id: "live-chain-a".to_string(),
+        chain_node_role: "sequencer".to_string(),
+        chain_node_tick_ms: "200".to_string(),
+        chain_node_validators: "node-a:100".to_string(),
+        ..LaunchConfig::default()
+    };
+
+    let issues = collect_chain_required_config_issues(&config);
     assert!(issues.is_empty());
 }

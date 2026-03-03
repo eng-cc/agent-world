@@ -21,7 +21,10 @@
 
 ## 接口/数据
 ### 桌面启动器行为
-- 子进程：调用 `world_game_launcher`（并透传 GUI 参数）
+- 子进程：分别调用 `world_game_launcher`（游戏）与 `world_chain_runtime`（区块链）
+- 启动策略：
+  - 启动器打开后默认自动拉起 `world_chain_runtime`。
+  - 游戏启动/停止与区块链启动/停止由独立按钮控制，互不隐式托管。
 - 默认参数：
   - scenario: `llm_bootstrap`
   - live bind: `127.0.0.1:5023`
@@ -62,6 +65,7 @@
 - M2 完成：打包脚本已纳入 `agent_world_client_launcher` 并生成 `run-client.sh`。
 - M3 完成：已补齐手册入口与验收记录，形成“桌面 GUI + CLI fallback”的可分发启动路径。
 - 补充增强：顶部状态栏新增“区块链状态”可视化（已禁用/未启动/启动中/已就绪/不可达），并通过链状态探针展示链能力可用性。
+- 补充增强：区块链与游戏进程编排已拆分为独立按钮；启动器默认自动拉起区块链；反馈入口仅在区块链“已就绪”时可用。
 - 补充修复：客户端启动器接入 CJK 字体 fallback，默认内置中文字体，支持 `AGENT_WORLD_CLIENT_LAUNCHER_FONT` 覆盖字体路径，修复中文乱码问题。
 - 补充修复：`build-game-launcher-bundle.sh` 的 release 构建改为分步构建，避免多包 `--bin` 过滤导致 `agent_world_client_launcher` 未产出。
 - 补充修复：打包脚本新增 `--web-dist` 防误用校验（拒绝 `site/` 文档站目录），并修复 `trunk build` 在 `NO_COLOR=1` 环境报错与相对 `--dist` 路径写入错误目录的问题。

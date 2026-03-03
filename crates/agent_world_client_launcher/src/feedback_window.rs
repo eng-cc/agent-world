@@ -32,6 +32,18 @@ impl ClientLauncherApp {
     }
 
     pub(super) fn submit_feedback(&mut self) {
+        if !self.is_feedback_available() {
+            let message = self
+                .tr(
+                    "反馈提交失败：区块链未就绪",
+                    "Feedback submit failed: blockchain is not ready",
+                )
+                .to_string();
+            self.append_log(message.clone());
+            self.feedback_submit_state = FeedbackSubmitState::Failed(message);
+            return;
+        }
+
         let issues = validate_feedback_draft(&self.feedback_draft);
         if !issues.is_empty() {
             for issue in issues {

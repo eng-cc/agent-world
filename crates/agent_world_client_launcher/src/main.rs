@@ -11,10 +11,14 @@ use std::time::{Duration, Instant};
 use eframe::egui;
 use feedback_entry::FeedbackDraft;
 use llm_settings::LlmSettingsPanel;
-use platform_ops::{open_browser, resolve_launcher_binary_path, resolve_static_dir_path};
+use platform_ops::{
+    open_browser, resolve_chain_runtime_binary_path, resolve_launcher_binary_path,
+    resolve_static_dir_path,
+};
 use serde::Serialize;
 use transfer_entry::TransferDraft;
 
+mod app_process;
 mod feedback_entry;
 mod feedback_window;
 mod llm_settings;
@@ -172,11 +176,15 @@ struct LaunchConfig {
     chain_node_validators: String,
     auto_open_browser: bool,
     launcher_bin: String,
+    chain_runtime_bin: String,
 }
 
 impl Default for LaunchConfig {
     fn default() -> Self {
         let launcher_bin = resolve_launcher_binary_path().to_string_lossy().to_string();
+        let chain_runtime_bin = resolve_chain_runtime_binary_path()
+            .to_string_lossy()
+            .to_string();
         let viewer_static_dir = resolve_static_dir_path().to_string_lossy().to_string();
 
         Self {
@@ -196,6 +204,7 @@ impl Default for LaunchConfig {
             chain_node_validators: String::new(),
             auto_open_browser: true,
             launcher_bin,
+            chain_runtime_bin,
         }
     }
 }
@@ -297,6 +306,8 @@ enum ConfigIssue {
     ViewerStaticDirMissing,
     LauncherBinRequired,
     LauncherBinMissing,
+    ChainRuntimeBinRequired,
+    ChainRuntimeBinMissing,
     ChainStatusBindInvalid,
     ChainNodeIdRequired,
     ChainRoleInvalid,
@@ -337,6 +348,16 @@ impl ConfigIssue {
             (Self::LauncherBinRequired, UiLanguage::EnUs) => "Launcher binary path is required",
             (Self::LauncherBinMissing, UiLanguage::ZhCn) => "启动器二进制文件不存在",
             (Self::LauncherBinMissing, UiLanguage::EnUs) => "Launcher binary file does not exist",
+            (Self::ChainRuntimeBinRequired, UiLanguage::ZhCn) => {
+                "链运行时二进制路径（chain runtime bin）是必填项"
+            }
+            (Self::ChainRuntimeBinRequired, UiLanguage::EnUs) => {
+                "Chain runtime binary path is required"
+            }
+            (Self::ChainRuntimeBinMissing, UiLanguage::ZhCn) => "链运行时二进制文件不存在",
+            (Self::ChainRuntimeBinMissing, UiLanguage::EnUs) => {
+                "Chain runtime binary file does not exist"
+            }
             (Self::ChainStatusBindInvalid, UiLanguage::ZhCn) => "链状态服务绑定必须是 <host:port>",
             (Self::ChainStatusBindInvalid, UiLanguage::EnUs) => {
                 "Chain status bind must be in <host:port> format"
@@ -387,8 +408,11 @@ struct ClientLauncherApp {
     status: LauncherStatus,
     chain_runtime_status: ChainRuntimeStatus,
     launcher_started_at: Option<Instant>,
+    chain_started_at: Option<Instant>,
     last_chain_probe_at: Option<Instant>,
     running: Option<RunningProcess>,
+    chain_running: Option<RunningProcess>,
+    chain_auto_start_attempted: bool,
     logs: VecDeque<String>,
     feedback_draft: FeedbackDraft,
     feedback_submit_state: FeedbackSubmitState,
@@ -413,8 +437,11 @@ impl Default for ClientLauncherApp {
             status: LauncherStatus::Idle,
             chain_runtime_status,
             launcher_started_at: None,
+            chain_started_at: None,
             last_chain_probe_at: None,
             running: None,
+            chain_running: None,
+            chain_auto_start_attempted: false,
             logs: VecDeque::new(),
             feedback_draft: FeedbackDraft::default(),
             feedback_submit_state: FeedbackSubmitState::None,
@@ -440,174 +467,14 @@ impl ClientLauncherApp {
             self.logs.pop_front();
         }
     }
-
-    fn current_game_url(&self) -> String {
-        build_game_url(&self.config)
-    }
-
-    fn update_chain_runtime_status(&mut self) {
-        if !self.config.chain_enabled {
-            self.chain_runtime_status = ChainRuntimeStatus::Disabled;
-            self.last_chain_probe_at = None;
-            return;
-        }
-
-        if self.running.is_none() || !matches!(self.status, LauncherStatus::Running) {
-            self.chain_runtime_status = ChainRuntimeStatus::NotStarted;
-            self.last_chain_probe_at = None;
-            return;
-        }
-
-        let now = Instant::now();
-        let should_probe = self.last_chain_probe_at.is_none_or(|last| {
-            now.duration_since(last) >= Duration::from_millis(CHAIN_STATUS_PROBE_INTERVAL_MS)
-        });
-        if !should_probe {
-            return;
-        }
-
-        self.last_chain_probe_at = Some(now);
-        match probe_chain_status_endpoint(self.config.chain_status_bind.as_str()) {
-            Ok(()) => {
-                self.chain_runtime_status = ChainRuntimeStatus::Ready;
-            }
-            Err(err) => {
-                let within_grace = self.launcher_started_at.is_some_and(|started_at| {
-                    now.duration_since(started_at)
-                        < Duration::from_secs(CHAIN_STATUS_STARTING_GRACE_SECS)
-                });
-                if within_grace {
-                    self.chain_runtime_status = ChainRuntimeStatus::Starting;
-                } else if err.contains("chain status bind") {
-                    self.chain_runtime_status = ChainRuntimeStatus::ConfigError(err);
-                } else {
-                    self.chain_runtime_status = ChainRuntimeStatus::Unreachable(err);
-                }
-            }
-        }
-    }
-
-    fn poll_process(&mut self) {
-        let mut running = match self.running.take() {
-            Some(process) => process,
-            None => return,
-        };
-
-        loop {
-            match running.log_rx.try_recv() {
-                Ok(line) => self.append_log(line),
-                Err(TryRecvError::Empty) => break,
-                Err(TryRecvError::Disconnected) => break,
-            }
-        }
-
-        match running.child.try_wait() {
-            Ok(Some(status)) => {
-                self.status = LauncherStatus::Exited(status.to_string());
-                self.launcher_started_at = None;
-                self.append_log(format!("launcher exited: {status}"));
-                self.running = None;
-            }
-            Ok(None) => {
-                self.running = Some(running);
-            }
-            Err(err) => {
-                self.status = LauncherStatus::QueryFailed;
-                self.launcher_started_at = None;
-                self.append_log(format!("query child status failed: {err}"));
-                self.running = None;
-            }
-        }
-    }
-
-    fn stop_process(&mut self) {
-        let mut running = match self.running.take() {
-            Some(process) => process,
-            None => {
-                let message = self
-                    .tr("无需停止：当前未运行", "no running process to stop")
-                    .to_string();
-                self.append_log(message);
-                return;
-            }
-        };
-
-        match stop_child_process(&mut running.child) {
-            Ok(()) => {
-                self.status = LauncherStatus::Stopped;
-                self.launcher_started_at = None;
-                self.last_chain_probe_at = None;
-                self.append_log("launcher stopped");
-            }
-            Err(err) => {
-                self.status = LauncherStatus::StopFailed;
-                self.append_log(format!("launcher stop failed: {err}"));
-            }
-        }
-    }
-
-    fn start_process(&mut self) {
-        if self.running.is_some() {
-            let message = self
-                .tr(
-                    "启动忽略：进程已运行",
-                    "skip start: process already running",
-                )
-                .to_string();
-            self.append_log(message);
-            return;
-        }
-
-        let config_issues = collect_required_config_issues(&self.config);
-        if !config_issues.is_empty() {
-            self.status = LauncherStatus::InvalidArgs;
-            let message = self
-                .tr(
-                    "启动前校验失败：请先修复必填配置项",
-                    "preflight validation failed: fix required configuration issues first",
-                )
-                .to_string();
-            self.append_log(message);
-            for issue in config_issues {
-                self.append_log(format!("- {}", issue.text(self.ui_language)));
-            }
-            return;
-        }
-
-        let launch_args = match build_launcher_args(&self.config) {
-            Ok(args) => args,
-            Err(err) => {
-                self.status = LauncherStatus::InvalidArgs;
-                self.append_log(format!("invalid launcher args: {err}"));
-                return;
-            }
-        };
-
-        match spawn_launcher_process(self.config.launcher_bin.as_str(), launch_args.as_slice()) {
-            Ok(process) => {
-                self.status = LauncherStatus::Running;
-                self.launcher_started_at = Some(Instant::now());
-                self.last_chain_probe_at = None;
-                self.chain_runtime_status = if self.config.chain_enabled {
-                    ChainRuntimeStatus::Starting
-                } else {
-                    ChainRuntimeStatus::Disabled
-                };
-                self.append_log("launcher started");
-                self.running = Some(process);
-            }
-            Err(err) => {
-                self.status = LauncherStatus::StartFailed;
-                self.launcher_started_at = None;
-                self.append_log(format!("launcher start failed: {err}"));
-            }
-        }
-    }
 }
 
 impl Drop for ClientLauncherApp {
     fn drop(&mut self) {
         if let Some(mut running) = self.running.take() {
+            let _ = stop_child_process(&mut running.child);
+        }
+        if let Some(mut running) = self.chain_running.take() {
             let _ = stop_child_process(&mut running.child);
         }
     }
@@ -616,7 +483,15 @@ impl Drop for ClientLauncherApp {
 impl eframe::App for ClientLauncherApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.poll_process();
+        self.poll_chain_process();
+        if !self.config.chain_enabled && self.chain_running.is_some() {
+            self.stop_chain_process();
+        }
+        self.maybe_auto_start_chain();
         self.update_chain_runtime_status();
+        if !self.is_feedback_available() {
+            self.feedback_window_open = false;
+        }
 
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             ui.horizontal(|ui| {
@@ -624,7 +499,7 @@ impl eframe::App for ClientLauncherApp {
                 ui.separator();
                 ui.label(format!(
                     "{}: {}",
-                    self.tr("状态", "Status"),
+                    self.tr("游戏", "Game"),
                     self.status.text(self.ui_language)
                 ));
                 ui.separator();
@@ -663,8 +538,12 @@ impl eframe::App for ClientLauncherApp {
             let auto_open_browser_label = self
                 .tr("自动打开浏览器", "Open Browser Automatically")
                 .to_string();
-            let required_issues = collect_required_config_issues(&self.config);
-            let can_start = self.running.is_none() && required_issues.is_empty();
+            let game_required_issues = collect_required_config_issues(&self.config);
+            let chain_required_issues = collect_chain_required_config_issues(&self.config);
+            let can_start_game = self.running.is_none() && game_required_issues.is_empty();
+            let can_start_chain = self.config.chain_enabled
+                && self.chain_running.is_none()
+                && chain_required_issues.is_empty();
 
             ui.horizontal_wrapped(|ui| {
                 ui.label(self.tr("场景", "Scenario"));
@@ -706,18 +585,20 @@ impl eframe::App for ClientLauncherApp {
             ui.horizontal_wrapped(|ui| {
                 ui.label(self.tr("启动器二进制路径", "Launcher Binary"));
                 ui.text_edit_singleline(&mut self.config.launcher_bin);
+                ui.label(self.tr("链运行时二进制路径", "Chain Runtime Binary"));
+                ui.text_edit_singleline(&mut self.config.chain_runtime_bin);
             });
             ui.horizontal_wrapped(|ui| {
                 ui.label(self.tr("前端静态资源目录", "Viewer Static Directory"));
                 ui.text_edit_singleline(&mut self.config.viewer_static_dir);
             });
 
-            if required_issues.is_empty() {
+            if game_required_issues.is_empty() {
                 ui.colored_label(
                     egui::Color32::from_rgb(36, 130, 78),
                     self.tr(
                         "必填配置项已通过校验，可启动游戏",
-                        "Required configuration check passed; launcher can start",
+                        "Required configuration check passed; game can start",
                     ),
                 );
             } else {
@@ -725,11 +606,26 @@ impl eframe::App for ClientLauncherApp {
                     ui.colored_label(
                         egui::Color32::from_rgb(188, 60, 60),
                         self.tr(
-                            "启动前请先修复以下必填配置项：",
-                            "Fix the required configuration issues before starting:",
+                            "游戏启动前请先修复以下必填配置项：",
+                            "Fix the required game configuration issues before starting:",
                         ),
                     );
-                    for issue in &required_issues {
+                    for issue in &game_required_issues {
+                        ui.label(format!("- {}", issue.text(self.ui_language)));
+                    }
+                });
+            }
+
+            if self.config.chain_enabled && !chain_required_issues.is_empty() {
+                ui.group(|ui| {
+                    ui.colored_label(
+                        egui::Color32::from_rgb(188, 60, 60),
+                        self.tr(
+                            "区块链启动前请先修复以下配置项：",
+                            "Fix the blockchain configuration issues before starting:",
+                        ),
+                    );
+                    for issue in &chain_required_issues {
                         ui.label(format!("- {}", issue.text(self.ui_language)));
                     }
                 });
@@ -739,7 +635,10 @@ impl eframe::App for ClientLauncherApp {
 
             ui.horizontal(|ui| {
                 if ui
-                    .add_enabled(can_start, egui::Button::new(self.tr("启动", "Start")))
+                    .add_enabled(
+                        can_start_game,
+                        egui::Button::new(self.tr("启动游戏", "Start Game")),
+                    )
                     .clicked()
                 {
                     self.start_process();
@@ -747,11 +646,29 @@ impl eframe::App for ClientLauncherApp {
                 if ui
                     .add_enabled(
                         self.running.is_some(),
-                        egui::Button::new(self.tr("停止", "Stop")),
+                        egui::Button::new(self.tr("停止游戏", "Stop Game")),
                     )
                     .clicked()
                 {
                     self.stop_process();
+                }
+                if ui
+                    .add_enabled(
+                        can_start_chain,
+                        egui::Button::new(self.tr("启动区块链", "Start Blockchain")),
+                    )
+                    .clicked()
+                {
+                    self.start_chain_process();
+                }
+                if ui
+                    .add_enabled(
+                        self.chain_running.is_some(),
+                        egui::Button::new(self.tr("停止区块链", "Stop Blockchain")),
+                    )
+                    .clicked()
+                {
+                    self.stop_chain_process();
                 }
                 if ui.button(self.tr("打开游戏页", "Open Game Page")).clicked() {
                     let url = self.current_game_url();
@@ -764,7 +681,13 @@ impl eframe::App for ClientLauncherApp {
                 if ui.button(self.tr("设置", "Settings")).clicked() {
                     self.llm_settings_panel.open();
                 }
-                if ui.button(self.tr("反馈", "Feedback")).clicked() {
+                if ui
+                    .add_enabled(
+                        self.is_feedback_available(),
+                        egui::Button::new(self.tr("反馈", "Feedback")),
+                    )
+                    .clicked()
+                {
                     self.feedback_window_open = true;
                 }
                 if ui.button(self.tr("转账", "Transfer")).clicked() {
@@ -774,6 +697,15 @@ impl eframe::App for ClientLauncherApp {
                     self.logs.clear();
                 }
             });
+            if !self.is_feedback_available() {
+                ui.small(
+                    egui::RichText::new(self.tr(
+                        "反馈功能仅在区块链已就绪时可用",
+                        "Feedback is available only when blockchain is ready",
+                    ))
+                    .color(egui::Color32::from_rgb(158, 134, 76)),
+                );
+            }
 
             let url = self.current_game_url();
             ui.label(format!("{}: {url}", self.tr("游戏地址", "Game URL")));
@@ -831,24 +763,37 @@ fn collect_required_config_issues(config: &LaunchConfig) -> Vec<ConfigIssue> {
         issues.push(ConfigIssue::LauncherBinMissing);
     }
 
-    if config.chain_enabled {
-        if parse_host_port(config.chain_status_bind.as_str(), "chain status bind").is_err() {
-            issues.push(ConfigIssue::ChainStatusBindInvalid);
-        }
-        if config.chain_node_id.trim().is_empty() {
-            issues.push(ConfigIssue::ChainNodeIdRequired);
-        }
-        if parse_chain_role(config.chain_node_role.as_str()).is_err() {
-            issues.push(ConfigIssue::ChainRoleInvalid);
-        }
-        if parse_port(config.chain_node_tick_ms.as_str(), "chain tick ms").is_err() {
-            issues.push(ConfigIssue::ChainTickMsInvalid);
-        }
-        if parse_chain_validators(config.chain_node_validators.as_str()).is_err() {
-            issues.push(ConfigIssue::ChainValidatorsInvalid);
-        }
+    issues
+}
+
+fn collect_chain_required_config_issues(config: &LaunchConfig) -> Vec<ConfigIssue> {
+    let mut issues = Vec::new();
+    if !config.chain_enabled {
+        return issues;
     }
 
+    let chain_runtime_bin = config.chain_runtime_bin.trim();
+    if chain_runtime_bin.is_empty() {
+        issues.push(ConfigIssue::ChainRuntimeBinRequired);
+    } else if !Path::new(chain_runtime_bin).is_file() {
+        issues.push(ConfigIssue::ChainRuntimeBinMissing);
+    }
+
+    if parse_host_port(config.chain_status_bind.as_str(), "chain status bind").is_err() {
+        issues.push(ConfigIssue::ChainStatusBindInvalid);
+    }
+    if config.chain_node_id.trim().is_empty() {
+        issues.push(ConfigIssue::ChainNodeIdRequired);
+    }
+    if parse_chain_role(config.chain_node_role.as_str()).is_err() {
+        issues.push(ConfigIssue::ChainRoleInvalid);
+    }
+    if parse_port(config.chain_node_tick_ms.as_str(), "chain tick ms").is_err() {
+        issues.push(ConfigIssue::ChainTickMsInvalid);
+    }
+    if parse_chain_validators(config.chain_node_validators.as_str()).is_err() {
+        issues.push(ConfigIssue::ChainValidatorsInvalid);
+    }
     issues
 }
 
@@ -865,15 +810,6 @@ fn build_launcher_args(config: &LaunchConfig) -> Result<Vec<String>, String> {
     if config.viewer_static_dir.trim().is_empty() {
         return Err("viewer static dir cannot be empty".to_string());
     }
-    if config.chain_enabled {
-        parse_host_port(config.chain_status_bind.as_str(), "chain status bind")?;
-        if config.chain_node_id.trim().is_empty() {
-            return Err("chain node id cannot be empty".to_string());
-        }
-        parse_chain_role(config.chain_node_role.as_str())?;
-        parse_port(config.chain_node_tick_ms.as_str(), "chain tick ms")?;
-        let _ = parse_chain_validators(config.chain_node_validators.as_str())?;
-    }
 
     let mut args = vec![
         "--scenario".to_string(),
@@ -888,29 +824,8 @@ fn build_launcher_args(config: &LaunchConfig) -> Result<Vec<String>, String> {
         viewer_port.to_string(),
         "--viewer-static-dir".to_string(),
         config.viewer_static_dir.trim().to_string(),
+        "--chain-disable".to_string(),
     ];
-
-    if config.chain_enabled {
-        args.push("--chain-enable".to_string());
-        args.push("--chain-status-bind".to_string());
-        args.push(config.chain_status_bind.trim().to_string());
-        args.push("--chain-node-id".to_string());
-        args.push(config.chain_node_id.trim().to_string());
-        if !config.chain_world_id.trim().is_empty() {
-            args.push("--chain-world-id".to_string());
-            args.push(config.chain_world_id.trim().to_string());
-        }
-        args.push("--chain-node-role".to_string());
-        args.push(parse_chain_role(config.chain_node_role.as_str())?);
-        args.push("--chain-node-tick-ms".to_string());
-        args.push(parse_port(config.chain_node_tick_ms.as_str(), "chain tick ms")?.to_string());
-        for validator in parse_chain_validators(config.chain_node_validators.as_str())? {
-            args.push("--chain-node-validator".to_string());
-            args.push(validator);
-        }
-    } else {
-        args.push("--chain-disable".to_string());
-    }
 
     if config.llm_enabled {
         args.push("--with-llm".to_string());
@@ -919,6 +834,49 @@ fn build_launcher_args(config: &LaunchConfig) -> Result<Vec<String>, String> {
         args.push("--no-open-browser".to_string());
     }
 
+    Ok(args)
+}
+
+fn build_chain_runtime_args(config: &LaunchConfig) -> Result<Vec<String>, String> {
+    let chain_runtime_bin = config.chain_runtime_bin.trim();
+    if chain_runtime_bin.is_empty() {
+        return Err("chain runtime bin cannot be empty".to_string());
+    }
+    parse_host_port(config.chain_status_bind.as_str(), "chain status bind")?;
+    if config.chain_node_id.trim().is_empty() {
+        return Err("chain node id cannot be empty".to_string());
+    }
+    let chain_role = parse_chain_role(config.chain_node_role.as_str())?;
+    let chain_tick_ms = parse_port(config.chain_node_tick_ms.as_str(), "chain tick ms")?;
+    let validators = parse_chain_validators(config.chain_node_validators.as_str())?;
+    let scenario = config.scenario.trim();
+    let default_world_id = if scenario.is_empty() {
+        format!("live-{DEFAULT_SCENARIO}")
+    } else {
+        format!("live-{scenario}")
+    };
+    let chain_world_id = if config.chain_world_id.trim().is_empty() {
+        default_world_id
+    } else {
+        config.chain_world_id.trim().to_string()
+    };
+
+    let mut args = vec![
+        "--node-id".to_string(),
+        config.chain_node_id.trim().to_string(),
+        "--world-id".to_string(),
+        chain_world_id,
+        "--status-bind".to_string(),
+        config.chain_status_bind.trim().to_string(),
+        "--node-role".to_string(),
+        chain_role,
+        "--node-tick-ms".to_string(),
+        chain_tick_ms.to_string(),
+    ];
+    for validator in validators {
+        args.push("--node-validator".to_string());
+        args.push(validator);
+    }
     Ok(args)
 }
 
@@ -1080,35 +1038,45 @@ fn parse_chain_validators(raw: &str) -> Result<Vec<String>, String> {
     Ok(validators)
 }
 
-fn spawn_launcher_process(bin: &str, args: &[String]) -> Result<RunningProcess, String> {
+fn spawn_child_process(
+    bin: &str,
+    args: &[String],
+    process_label: &str,
+) -> Result<RunningProcess, String> {
     let mut child = Command::new(bin)
         .args(args)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .map_err(|err| format!("spawn launcher `{bin}` failed: {err}"))?;
+        .map_err(|err| format!("spawn process `{bin}` failed: {err}"))?;
 
     let (log_tx, log_rx) = mpsc::channel::<String>();
     if let Some(stdout) = child.stdout.take() {
-        spawn_log_reader(stdout, "stdout", log_tx.clone());
+        spawn_log_reader(stdout, process_label, "stdout", log_tx.clone());
     }
     if let Some(stderr) = child.stderr.take() {
-        spawn_log_reader(stderr, "stderr", log_tx.clone());
+        spawn_log_reader(stderr, process_label, "stderr", log_tx.clone());
     }
 
     Ok(RunningProcess { child, log_rx })
 }
 
-fn spawn_log_reader<R: Read + Send + 'static>(reader: R, source: &'static str, tx: Sender<String>) {
+fn spawn_log_reader<R: Read + Send + 'static>(
+    reader: R,
+    process_label: &str,
+    source: &'static str,
+    tx: Sender<String>,
+) {
+    let process_label = process_label.to_string();
     std::thread::spawn(move || {
         let buffered = BufReader::new(reader);
         for line in buffered.lines() {
             match line {
                 Ok(content) => {
-                    let _ = tx.send(format!("[{source}] {content}"));
+                    let _ = tx.send(format!("[{process_label} {source}] {content}"));
                 }
                 Err(err) => {
-                    let _ = tx.send(format!("[{source}] <read error: {err}>"));
+                    let _ = tx.send(format!("[{process_label} {source}] <read error: {err}>"));
                     break;
                 }
             }
@@ -1126,7 +1094,7 @@ fn stop_child_process(child: &mut Child) -> Result<(), String> {
     }
 
     if let Err(err) = send_interrupt_signal(child) {
-        eprintln!("warning: failed to request graceful launcher stop: {err}");
+        eprintln!("warning: failed to request graceful process stop: {err}");
     } else {
         let deadline = Instant::now() + Duration::from_millis(GRACEFUL_STOP_TIMEOUT_MS);
         while Instant::now() < deadline {
