@@ -32,6 +32,7 @@
 - 模块边界演进快，文档同步可能滞后。
 - 指标口径不稳定会降低验收一致性。
 - 分册与主入口不同步会导致需求追踪断裂。
+
 ## 1. Executive Summary
 - Problem Statement: world-simulator 涵盖场景、viewer、LLM 与 launcher 多条链路，需求持续增长时若全部堆叠在单文档，会降低可维护性并影响变更追踪效率。
 - Proposed Solution: 主 PRD 保持模块级边界与验收总口径，专题能力迁移到分册；启动器链上转账作为首个分册能力，维护完整细节。
@@ -54,6 +55,12 @@
   - Viewer 体验开发者：需要明确 Web/Native 行为边界与验收标准。
   - 发布与测试人员：需要可执行的闭环测试与证据产物。
   - 启动器玩家：需要在同一入口内完成资产查询与转账，无需命令行。
+- User Scenarios & Frequency:
+  - 场景开发与调试（模拟层开发者）：日常开发日均多次，变更后即时验证场景初始化、事件推进与资源变更。
+  - Viewer Web 闭环验收（Viewer 体验开发者/测试人员）：每个功能分支至少 1 次，发布前按 `test_tier_required` 执行。
+  - LLM 链路核验（测试人员）：每周例行 + 发布前专项，聚焦可用性、回退策略与错误签名。
+  - 启动器转账操作（启动器玩家）：按需触发，典型为启动后 1~3 次余额查询与转账提交。
+  - 发布复核（发布负责人）：每个版本候选至少 1 次，汇总 checklist、证据模板与回归结论。
 - User Stories:
   - PRD-WORLD_SIMULATOR-001: As a 模拟层开发者, I want unified world-simulator contracts, so that scenario evolution is stable.
   - PRD-WORLD_SIMULATOR-002: As a Viewer 开发者, I want consistent web-first UX rules, so that user paths remain predictable.
@@ -62,6 +69,25 @@
   - PRD-WORLD_SIMULATOR-005: As a 链路开发者, I want transfer requests to be replay-safe and traceable, so that transfer execution is secure and auditable.（详见分册）
   - PRD-WORLD_SIMULATOR-006: As a 启动器玩家, I want separate controls for blockchain/game startup and feedback gated by chain readiness, so that startup behavior is predictable and feedback availability is explicit.
   - PRD-WORLD_SIMULATOR-007: As a 启动器玩家, I want a complete settings center for game/blockchain/LLM, so that all launch-related configuration can be managed from one place.
+- Critical User Flows:
+  1. Flow-WS-001（Web-first 闭环）:
+     `选择场景 -> 启动 Viewer Web -> 执行关键交互 -> 采集日志/截图/指标 -> 产出 test_tier_required 结论`
+  2. Flow-WS-002（LLM 链路验证）:
+     `启动链路 -> 触发 LLM 交互 -> 验证响应时延/错误处理 -> 故障时走降级路径 -> 归档证据`
+  3. Flow-WS-003（启动器转账成功）:
+     `启动器加载 -> 填写 from/to/amount/nonce -> 提交 -> runtime 接收并生成事件 -> UI 展示成功`
+  4. Flow-WS-004（启动器转账失败）:
+     `提交转账 -> 余额不足/nonce 重放/参数非法 -> API 返回结构化错误 -> UI 保留可诊断错误签名`
+  5. Flow-WS-005（反馈分布式提交回退）:
+     `提交反馈 -> 链状态服务 Connection refused -> 回落本地落盘 -> 展示失败原因并保留远端错误`
+- Functional Specification Matrix:
+| 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
+| --- | --- | --- | --- | --- | --- |
+| 启动器转账提交 | `from_account`、`to_account`、`amount`、`nonce`；`amount` > 0；`nonce` 为非负整数 | 点击“提交转账”触发请求；非法输入阻止提交并显示错误 | `idle -> validating -> submitting -> success/failed` | 余额与 nonce 校验在 runtime 执行；`nonce` 必须严格递增 | 仅在区块链功能可用且配置合法时允许提交 |
+| 顶部区块链状态指示 | `disabled/not_started/booting/ready/unreachable/config_error` | 启动后自动探针；状态变化实时刷新；错误支持 hover 详情 | `booting -> ready/unreachable/config_error` | 默认 1s 周期探测；短超时避免阻塞 UI | 状态读取只读，无写权限 |
+| Viewer Web 闭环入口 | 场景标识、测试命令、产物路径、结论 | 执行 Web-first 流程并输出证据模板 | `planned -> running -> evidence_ready -> reviewed` | 按场景优先级与风险等级执行 | required gate 为默认必经路径 |
+| LLM 链路验证 | 模型配置、提示模板、超时阈值、降级开关 | 触发交互与降级；记录成功/失败信号 | `ready -> invoking -> fallback(optional) -> completed` | 统计成功率、超时率、回退率 | 仅测试环境允许注入调试配置 |
+| 反馈分布式提交 | 反馈文本、会话标识、链状态地址 | 远端失败时自动写本地文件，不丢失原始错误 | `submitting -> remote_failed -> local_saved -> reported` | 本地落盘路径按日期归档；错误签名保留用于回归 | 仅本地授权实例可写入反馈归档目录 |
 - Acceptance Criteria:
   - AC-1: world-simulator PRD 覆盖场景、Viewer、LLM、启动器四条主线。
   - AC-2: world-simulator project 文档维护任务拆解与状态。
@@ -97,6 +123,27 @@
   - `doc/world-simulator/prd/quality/experience-trend-tracking.md`
   - `doc/world-simulator/prd/launcher/blockchain-transfer.md`
   - `testing-manual.md`
+- Edge Cases & Error Handling:
+  - 网络异常：链状态探针或转账提交失败时，返回结构化错误并在 UI 展示可诊断提示。
+  - 接口超时：请求超时后不得阻塞主线程，状态回落 `unreachable` 并保留超时上下文。
+  - 空数据：余额/场景列表为空时展示空态，不允许进入依赖数据的后续动作。
+  - 权限不足：未启用链能力或配置不合法时，禁用转账入口并提示原因。
+  - 并发冲突：同账户并发转账以 nonce 作为幂等与反重放边界，不满足递增规则即拒绝。
+  - 数据异常：收到非预期响应结构时转为“失败且可重试”状态，并写入诊断日志。
+  - 远端不可达回退：反馈提交流程在 `Connection refused` 时必须本地落盘，保证证据不丢失。
+- Non-Functional Requirements:
+  - 性能目标:
+    - NFR-1: 启动器链状态探针刷新周期 <= 1s，状态可见延迟 <= 2s。
+    - NFR-2: 本地链路下转账提交 API `p95` 响应时间 <= 500ms。
+  - 兼容性目标:
+    - NFR-3: Launcher/Web 闭环流程在 Linux/macOS 开发环境可执行并产出一致证据结构。
+  - 安全与隐私目标:
+    - NFR-4: 日志与证据中不得输出私钥、口令、完整凭据；敏感字段需脱敏。
+    - NFR-5: 转账请求必须经过 nonce anti-replay 与余额约束校验。
+  - 数据规模目标:
+    - NFR-6: 场景清单规模 200 条时，场景选择与启动流程仍可在可接受等待时间内完成（< 3s 首屏可操作）。
+  - 可扩展性目标:
+    - NFR-7: 新增 launcher 链上动作时，不破坏既有转账请求结构与验收模板字段。
 - Security & Privacy:
   - Viewer/launcher 链路涉及配置与鉴权注入时必须最小暴露。
   - 调试接口需受限并可审计。
@@ -111,3 +158,24 @@
   - 风险-1: 前端体验迭代快导致行为回归频发。
   - 风险-2: LLM 外部依赖波动影响端到端稳定性。
   - 风险-3: 分册索引维护缺失导致需求追踪断链。
+
+## 6. Validation & Decision Record
+- Test Plan & Traceability:
+
+| PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |
+| --- | --- | --- | --- | --- |
+| PRD-WORLD_SIMULATOR-001 | TASK-WORLD_SIMULATOR-001/002/010/011/018 | `test_tier_required` | 文档结构校验、统一验收清单覆盖检查、关键入口引用可达检查 | 场景系统基线、模块导航与入口一致性 |
+| PRD-WORLD_SIMULATOR-002 | TASK-WORLD_SIMULATOR-002/003/012/013/018 | `test_tier_required` | Playwright Web 闭环、反馈回退回归、链状态探针单测 | Viewer 交互、Launcher 状态提示、故障诊断可见性 |
+| PRD-WORLD_SIMULATOR-003 | TASK-WORLD_SIMULATOR-003/004/010/018 | `test_tier_required` + `test_tier_full` | LLM 证据模板审查、趋势指标周报抽样、长稳回归 | LLM 链路稳定性、发布证据完整性 |
+| PRD-WORLD_SIMULATOR-004 | TASK-WORLD_SIMULATOR-005/006/008/009/018 | `test_tier_required` | 转账 API 单测、启动器转账提交流程测试、闭环证据归档 | Launcher 转账入口、runtime API 契约 |
+| PRD-WORLD_SIMULATOR-005 | TASK-WORLD_SIMULATOR-005/007/009/018 | `test_tier_required` + `test_tier_full` | runtime main token 转账语义测试（余额/nonce anti-replay）、多轮回归 | 账本一致性、反重放策略、发布前链路风险 |
+| PRD-WORLD_SIMULATOR-006 | TASK-WORLD_SIMULATOR-014/015 | `test_tier_required` | 启动器链/游戏独立启动与反馈门控回归测试 | 启动链路可预测性与反馈可用性 |
+| PRD-WORLD_SIMULATOR-007 | TASK-WORLD_SIMULATOR-016/017 | `test_tier_required` | 设置中心分区配置读写与生效验证 | 启动器配置可用性与一致性 |
+
+- Decision Log:
+
+| 决策ID | 选定方案 | 备选方案（否决） | 依据 |
+| --- | --- | --- | --- |
+| DEC-WS-001 | 采用 Web-first 作为默认 UI 闭环链路，native 抓帧仅 fallback | 以 native 图形链路为默认 | 与 `testing-manual.md` 的 S6 约束一致，能提升复现稳定性与自动化覆盖。 |
+| DEC-WS-002 | 主 PRD 保持总览，专题细节下沉到 `doc/world-simulator/prd/*` 分册 | 所有条款继续堆叠在主 PRD | 主入口可读性和变更追踪效率更高，且满足单文档长度约束。 |
+| DEC-WS-003 | 反馈分布式提交在 `Connection refused` 时强制本地回落并保留错误签名 | 远端失败直接报错终止，不落盘 | 可确保证据不丢失，便于回归和线上诊断；已被 `TASK-WORLD_SIMULATOR-012` 验证。 |
