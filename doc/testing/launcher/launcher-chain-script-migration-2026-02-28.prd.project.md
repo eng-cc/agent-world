@@ -1,0 +1,25 @@
+# Agent World: 启动链路脚本迁移（2026-02-28）（项目管理）
+
+## 任务拆解（含 PRD-ID 映射）
+- [x] LAUNCHMIG-1 (PRD-TESTING-LAUNCHER-SCRIPT-001/003): 完成专题设计文档与项目管理文档建档。
+- [x] LAUNCHMIG-2 (PRD-TESTING-LAUNCHER-SCRIPT-001/002): 迁移 `run-game-test.sh`、`viewer-release-qa-loop.sh` 到 `world_game_launcher`。
+- [x] LAUNCHMIG-3 (PRD-TESTING-LAUNCHER-SCRIPT-002/003): 为 `s10-five-node-game-soak.sh`、`p2p-longrun-soak.sh` 添加显式阻断与迁移提示。
+- [x] LAUNCHMIG-4 (PRD-TESTING-LAUNCHER-SCRIPT-003): 完成手册口径同步、项目状态更新与任务日志收口。
+- [x] LAUNCHMIG-5 (PRD-TESTING-004): 专题文档按 strict schema 人工重写，并切换命名到 `.prd.md/.prd.project.md`。
+
+## 依赖
+- `scripts/run-game-test.sh`
+- `scripts/viewer-release-qa-loop.sh`
+- `scripts/s10-five-node-game-soak.sh`
+- `scripts/p2p-longrun-soak.sh`
+- `crates/agent_world/src/bin/world_game_launcher.rs`
+- `crates/agent_world/src/bin/world_chain_runtime.rs`
+- `testing-manual.md`
+- `doc/testing/prd.md`
+- `doc/testing/prd.project.md`
+
+## 状态
+- 更新日期：2026-03-03
+- 当前阶段：已完成
+- 阻塞项：无
+- 下一步：无（当前专题已收口）
