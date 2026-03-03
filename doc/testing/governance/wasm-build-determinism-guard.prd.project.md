@@ -7,6 +7,7 @@
 - [x] WASMDET-4 (PRD-TESTING-004): 专题文档按 strict schema 人工重写，并切换命名到 `.prd.md/.prd.project.md`。
 
 ## 依赖
+- doc/testing/governance/wasm-build-determinism-guard.prd.md
 - wasm 构建入口：`scripts/build-wasm-module.sh`
 - wasm 构建工具：`tools/wasm_build_suite/src/lib.rs`
 - required 门禁入口：`scripts/ci-tests.sh`

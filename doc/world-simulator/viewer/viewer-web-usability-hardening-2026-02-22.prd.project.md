@@ -9,6 +9,7 @@
 - [x] VWU5：回顾设计文档与项目文档，更新状态并收口。
 
 ## 依赖
+- doc/world-simulator/viewer/viewer-web-usability-hardening-2026-02-22.prd.md
 - `crates/agent_world_viewer/src/egui_right_panel.rs`
 - `crates/agent_world_viewer/src/egui_right_panel_tests.rs`
 - `crates/agent_world_viewer/src/main.rs`

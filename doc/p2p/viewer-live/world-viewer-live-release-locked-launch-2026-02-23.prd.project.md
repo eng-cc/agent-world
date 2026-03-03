@@ -7,6 +7,7 @@
 - [x] T3 (PRD-P2P-MIG-115)：补发行配置样例与手册说明，执行 `world_viewer_live` 定向回归并回写文档/devlog 状态。
 
 ## 依赖
+- doc/p2p/viewer-live/world-viewer-live-release-locked-launch-2026-02-23.prd.md
 - T1 依赖 T0（接口与语义冻结后实现）。
 - T2 依赖 T1（白名单约束建立在锁定加载路径之上）。
 - T3 依赖 T1/T2（样例与手册需对齐最终 CLI 行为）。

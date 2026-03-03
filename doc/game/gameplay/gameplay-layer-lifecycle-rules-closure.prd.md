@@ -1,5 +1,7 @@
 # Gameplay Layer Lifecycle Rules Closure（生产级设计）
 
+- 对应项目管理文档: doc/game/gameplay/gameplay-layer-lifecycle-rules-closure.prd.project.md
+
 ## 目标
 - 在已完成“基础层 / WASM 游戏层拆分”和“玩法原语补齐”的基础上，补齐可持续运行的玩法生命周期规则。
 - 让战争、治理、危机、元进度从“单次动作”提升为“可推进、可收敛、可审计”的完整回路。

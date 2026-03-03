@@ -6,6 +6,7 @@
 - [x] WIRESDK-2 代码迁移：SDK 增加通用 wire 类型与 helper，23 模块改为复用 SDK。
 
 ## 依赖
+- doc/world-runtime/wasm/wasm-sdk-wire-types-dedup.prd.md
 - `crates/agent_world_wasm_sdk`
 - `crates/agent_world_builtin_wasm_modules/*`
 - `scripts/sync-m1-builtin-wasm-artifacts.sh`

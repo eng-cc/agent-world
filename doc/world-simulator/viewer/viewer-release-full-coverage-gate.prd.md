@@ -1,5 +1,7 @@
 # Viewer 发行全覆盖验收 Gate（可用性 + 视觉 + 玩法环节）
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-release-full-coverage-gate.prd.project.md
+
 ## 1. Executive Summary
 - 在现有 `viewer-release-qa-loop.sh` 可用性门禁基础上，新增“发行级全覆盖验收”入口，避免只验证“能跑”而忽略视觉资产与关键玩法环节。
 - 覆盖三类核心风险：

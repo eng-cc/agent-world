@@ -8,6 +8,7 @@
 - [x] FER5：更新说明书与 devlog 收口
 
 ## 依赖
+- doc/world-simulator/viewer/viewer-fragment-element-rendering.prd.md
 - `crates/agent_world_viewer/src/material_library.rs`
 - `crates/agent_world_viewer/src/location_fragment_render.rs`
 - `crates/agent_world_viewer/src/scene_helpers.rs`

@@ -16,6 +16,7 @@
 - [x] FRB4.6 回写总项目文档与 devlog，完成收口
 
 ## 依赖
+- doc/world-simulator/scenario/frag-resource-balance-onboarding.prd.md
 - `crates/agent_world/src/simulator/world_model.rs`
 - `crates/agent_world/src/simulator/asteroid_fragment.rs`
 - `crates/agent_world/src/simulator/kernel/*`

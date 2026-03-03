@@ -1,5 +1,7 @@
 # Agent World Runtime：Governance Drill/Retention 时间算术数值语义硬化（15 点清单第九阶段）
 
+- 对应项目管理文档: doc/world-runtime/runtime/runtime-numeric-correctness-phase9.prd.project.md
+
 ## 1. Executive Summary
 - 收口 `membership_recovery/replay_archive` 中治理审计保留与恢复演练调度的时间算术饱和语义。
 - 将 `scheduled_at_ms +/- interval` 与 `now_ms - audited_at_ms` 从“静默饱和”改为“显式失败”，避免极端时间边界下误调度或误保留。

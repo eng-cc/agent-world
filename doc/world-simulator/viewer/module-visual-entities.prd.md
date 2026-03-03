@@ -1,5 +1,7 @@
 # Agent World Simulator：WASM 模块驱动新事物的通用可视实体机制
 
+- 对应项目管理文档: doc/world-simulator/viewer/module-visual-entities.prd.project.md
+
 ## 1. Executive Summary
 
 - 为“模块驱动的新生事物”提供统一承载，避免每新增一种模块能力就新增一套专用 simulator 实体与 viewer 渲染分支。

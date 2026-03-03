@@ -1,5 +1,7 @@
 # Viewer Web 构建体积裁剪（2026-03-02）
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-web-build-pruning-2026-03-02.prd.project.md
+
 ## 1. Executive Summary
 - 降低 `agent_world_viewer` 的 wasm 构建产物体积，优先移除 web 端不需要参与编译的模块。
 - 在不改变 native 运行行为的前提下，收敛 wasm 目标的依赖图，减少无效编译与无效链接。

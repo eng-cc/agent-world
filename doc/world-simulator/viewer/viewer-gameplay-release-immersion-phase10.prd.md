@@ -1,5 +1,7 @@
 # Viewer 发行体验改造（第十阶段：新手流程闭环与认知减负）
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase10.prd.project.md
+
 ## 1. Executive Summary
 - 修复新手流程中的“进度跳步”问题，确保教程按真实行为推进，不再出现 2/4 直接到 4/4。
 - 把第 4 步操作提示从抽象描述改成可执行动作提示，让玩家明确“下一步点哪里”。

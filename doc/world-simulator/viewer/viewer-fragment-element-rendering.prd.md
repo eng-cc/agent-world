@@ -1,5 +1,7 @@
 # Agent World Simulator：Viewer Fragment 元素材质渲染与开关（设计文档）
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-fragment-element-rendering.prd.project.md
+
 ## 1. Executive Summary
 - 在 Viewer 中把 `location.fragment_profile.blocks` 的分块全部渲染出来，避免只看 location 外球体导致信息丢失。
 - 按碎片主导元素显示不同颜色，提升“不同元素分布”可读性，支撑人工巡检与截图对比。

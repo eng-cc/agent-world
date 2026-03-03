@@ -1,5 +1,7 @@
 # Agent World Viewer：Web Chat 面板锁重入与回车发送闭环修复（设计文档）
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-chat-web-deadlock-fix.prd.project.md
+
 ## 1. Executive Summary
 - 修复 Viewer Web 模式在 Chat 面板渲染时出现的 `parking_lot` panic（页面卡死）。
 - 保证 Chat 输入在 Web 模式下可稳定发送消息到 Agent。

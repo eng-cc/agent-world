@@ -6,6 +6,7 @@
 - [x] NSDK-2 代码迁移：`agent_world_wasm_sdk` no_std 化与回归验证。
 
 ## 依赖
+- doc/world-runtime/wasm/wasm-sdk-no-std.prd.md
 - `crates/agent_world_wasm_sdk`
 - `crates/agent_world_builtin_wasm_modules/*`
 - `crates/agent_world/src/runtime/*`

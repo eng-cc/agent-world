@@ -8,6 +8,7 @@
 - [x] T5 执行 A/B 实机复测并记录结果
 
 ## 依赖
+- doc/world-simulator/viewer/viewer-live-step-control-progress-stability-2026-02-28.prd.md
 - `scripts/run-game-test-ab.sh`
 - `scripts/run-game-test.sh`
 - `crates/agent_world/src/viewer/live_split_part1.rs`

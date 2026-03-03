@@ -1,5 +1,7 @@
 # Agent World Simulator：LLM 用户文本输出与工具调用分区可视化（设计文档）
 
+- 对应项目管理文档: doc/world-simulator/llm/llm-chat-user-message-tool-visualization.prd.project.md
+
 ## 1. Executive Summary
 - 改造 LLM 决策流程，使 Agent 能在决策 JSON 中携带面向用户的文本信息，并进入会话消息链路。
 - 改造 Viewer Chat 可视化，把“信息流（玩家/Agent/系统）”与“基础工具调用流（module call）”分开展示。

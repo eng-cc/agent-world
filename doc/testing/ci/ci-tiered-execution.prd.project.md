@@ -9,6 +9,7 @@
 - [x] T5 (PRD-TESTING-004): 专题文档人工迁移到 strict schema，并切换命名为 `.prd.md/.prd.project.md`。
 
 ## 依赖
+- doc/testing/ci/ci-tiered-execution.prd.md
 - 统一测试入口：`scripts/ci-tests.sh`
 - 本地提交入口：`scripts/pre-commit.sh`
 - GitHub Actions workflow：`.github/workflows/rust.yml`

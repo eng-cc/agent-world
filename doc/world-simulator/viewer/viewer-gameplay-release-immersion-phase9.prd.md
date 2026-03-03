@@ -1,5 +1,7 @@
 # Viewer 发行体验改造（第九阶段：指挥链路前置与顶层减噪）
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase9.prd.project.md
+
 ## 1. Executive Summary
 - 继续降低 Player 首屏 UI 压力，消除顶部叠层竞争，让世界画面保持第一视觉焦点。
 - 保证“玩家随时可指挥 Agent”是隐藏态下的一步操作，不需要先进入中间层再找 Chat。

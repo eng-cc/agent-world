@@ -1,5 +1,7 @@
 # Agent World: 发布门禁指标策略对齐（2026-02-28）
 
+- 对应项目管理文档: doc/testing/governance/release-gate-metric-policy-alignment-2026-02-28.prd.project.md
+
 ## 1. Executive Summary
 - Problem Statement: S9/S10 在 `world_chain_runtime` 路径下存在“闭环已运行但指标缺失”的门禁误判，导致发布风险评估失真。
 - Proposed Solution: 让发布门禁直接消费 reward runtime 真实指标（mint/distfs/settlement/invariant），并同步脚本与手册口径，避免兼容字段导致的偏差。

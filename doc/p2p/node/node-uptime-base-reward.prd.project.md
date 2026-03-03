@@ -7,6 +7,7 @@
 - [x] UBR-4 (PRD-P2P-MIG-103)：执行 `test_tier_required` 回归，更新状态与 devlog 收口。
 
 ## 依赖
+- doc/p2p/node/node-uptime-base-reward.prd.md
 - `crates/agent_world/src/runtime/node_points.rs`
 - `crates/agent_world/src/runtime/node_points_runtime.rs`
 - `crates/agent_world/src/runtime/mod.rs`

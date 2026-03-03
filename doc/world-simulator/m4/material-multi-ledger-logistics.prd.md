@@ -1,5 +1,7 @@
 # M4 材料多账本与物流约束（设计文档）
 
+- 对应项目管理文档: doc/world-simulator/m4/material-multi-ledger-logistics.prd.project.md
+
 ## 1. Executive Summary
 - 将 runtime 现有 world 级共享材料账本升级为多账本模型，支持 owner/site/factory 维度隔离。
 - 在不破坏现有 M4 经济闭环与 WASM 模块执行路径的前提下，增加材料物流约束（距离、损耗、在途延迟、吞吐上限）。

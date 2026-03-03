@@ -1,5 +1,7 @@
 # Viewer Live `step` 控制推进稳定性修复（2026-02-28）
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-live-step-control-progress-stability-2026-02-28.prd.project.md
+
 ## 1. Executive Summary
 - 复现并收敛 Web 可玩性测试中 `step` 控制“accepted 但无推进”的不稳定问题。
 - 在不改协议的前提下，提升 live + consensus 路径下 `step` 的可兑现性，降低玩家黑盒感。

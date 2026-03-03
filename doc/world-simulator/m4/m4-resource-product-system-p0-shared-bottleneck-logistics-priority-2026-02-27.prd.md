@@ -1,5 +1,7 @@
 # M4 资源与产品系统 P0：共享中间件竞争 + 运输优先级（2026-02-27）
 
+- 对应项目管理文档: doc/world-simulator/m4/m4-resource-product-system-p0-shared-bottleneck-logistics-priority-2026-02-27.prd.project.md
+
 ## 1. Executive Summary
 - 在不破坏现有 runtime 主流程的前提下，实现 P0 两个可玩性增强点：
   - 共享中间件竞争：排产队列对关键中间件短缺更敏感。

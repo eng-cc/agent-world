@@ -140,6 +140,7 @@
 - [x] 单元测试与分布式回归 (PRD-P2P-MIG-083)
 
 ## 依赖
+- doc/p2p/distributed/distributed-runtime.prd.md
 - `doc/world-runtime.prd.md`
 - `doc/world-runtime/runtime/runtime-integration.md`
 - `doc/world-runtime/module/module-storage.prd.md`

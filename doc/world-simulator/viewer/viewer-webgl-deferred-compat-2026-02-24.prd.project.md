@@ -7,6 +7,7 @@
 - [x] T3：回写文档状态与 devlog，完成收口。
 
 ## 依赖
+- doc/world-simulator/viewer/viewer-webgl-deferred-compat-2026-02-24.prd.md
 - T1 依赖 T0。
 - T2 依赖 T1。
 - T3 依赖 T2。

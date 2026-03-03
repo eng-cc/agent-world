@@ -6,6 +6,7 @@
 - [x] T2 (PRD-WORLD_SIMULATOR-003)：收口（更新完成态、devlog、提交结项）。
 
 ## 依赖
+- doc/world-simulator/launcher/game-client-launcher-feedback-window-2026-03-02.prd.md
 - `crates/agent_world_client_launcher/src/main.rs`
 - `crates/agent_world_client_launcher/src/feedback_entry.rs`
 - `doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.prd.md`

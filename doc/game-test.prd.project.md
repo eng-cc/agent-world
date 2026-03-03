@@ -4,6 +4,7 @@
 - [x] REDIRECT-001: 根目录 `game-test` / `game-test.project` 已迁移为 `.prd` 命名 redirect 入口。
 
 ## 依赖
+- doc/game-test.prd.md
 - 主入口：`doc/playability_test_result/game-test.prd.md`
 - 对应项目管理：`doc/playability_test_result/game-test.prd.project.md`
 

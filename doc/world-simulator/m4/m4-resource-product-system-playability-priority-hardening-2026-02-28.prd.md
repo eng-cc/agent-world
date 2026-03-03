@@ -1,5 +1,7 @@
 # M4 资源产业链可玩性优先强化（2026-02-28）
 
+- 对应项目管理文档: doc/world-simulator/m4/m4-resource-product-system-playability-priority-hardening-2026-02-28.prd.project.md
+
 ## 1. Executive Summary
 - 以“可玩性优先”为原则，优先消除当前资源产业链的断链点和低决策密度问题。
 - 在保持现有 runtime 兼容前提下，提升玩家在物流调度、阶段推进、长期经营上的策略空间。

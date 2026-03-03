@@ -6,6 +6,7 @@
 - [x] NWC-3 (PRD-P2P-MIG-104)：稳定 `viewer::web_bridge` 重连测试并执行回归检查，回写文档/devlog。
 
 ## 依赖
+- doc/p2p/node/node-wasm32-libp2p-compile-guard.prd.md
 - `crates/agent_world_node/src/lib.rs`
 - `crates/agent_world_node/src/libp2p_replication_network.rs`
 - `crates/agent_world_node/src/libp2p_replication_network_wasm.rs`

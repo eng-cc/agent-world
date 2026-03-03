@@ -9,6 +9,7 @@
 - [x] T5 回归验证、项目文档状态收口、补齐当日 devlog
 
 ## 依赖
+- doc/engineering/documentation-governance-engineering-closure-2026-02-27.prd.md
 - `scripts/ci-tests.sh`
 - `testing-manual.md`
 - `doc/**/*.project.md`（非 archive）

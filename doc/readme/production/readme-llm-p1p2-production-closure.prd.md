@@ -1,5 +1,7 @@
 # README 口径对齐：LLM P1/P2 生产级收口（设计文档）
 
+- 对应项目管理文档: doc/readme/production/readme-llm-p1p2-production-closure.prd.project.md
+
 ## 目标
 - 收口 P1：修复 LLM 工具协议与实现不一致问题，确保提示词、OpenAI tool 注册、解析与执行路径一致。
 - 收口 P1：将 `module.lifecycle.status` 从“行为本地缓存视角”升级为“世界模型快照视角”，避免多主体下状态漂移。

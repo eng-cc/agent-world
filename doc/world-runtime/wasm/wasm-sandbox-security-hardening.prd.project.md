@@ -8,6 +8,7 @@
 - [x] T3 测试补强、文档回写与收口
 
 ## 依赖
+- doc/world-runtime/wasm/wasm-sandbox-security-hardening.prd.md
 - `doc/world-runtime/wasm/wasm-executor.prd.md`
 - `doc/world-runtime/module/module-storage.prd.md`
 - `crates/agent_world_wasm_executor/src/lib.rs`

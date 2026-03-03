@@ -1,5 +1,7 @@
 # Viewer Live 完全事件驱动改造 Phase 9（2026-02-27）
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-live-full-event-driven-phase9-2026-02-27.prd.project.md
+
 ## 1. Executive Summary
 - 彻底移除 `world_viewer_live` 与外围脚本中的旧 `--tick-ms` 入口，只保留 event-driven live 链路。
 - 清理 viewer live 路径对“tick 驱动”参数的传递和使用，避免空跑配置继续暴露。

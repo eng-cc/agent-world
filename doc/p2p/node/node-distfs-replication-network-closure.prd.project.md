@@ -7,6 +7,7 @@
 - [x] NRX-3 (PRD-P2P-MIG-092)：补齐多节点复制与重启恢复测试，完成收口。
 
 ## 依赖
+- doc/p2p/node/node-distfs-replication-network-closure.prd.md
 - `crates/agent_world_node`
 - `crates/agent_world_distfs`
 - `crates/agent_world/src/bin/world_viewer_live.rs`

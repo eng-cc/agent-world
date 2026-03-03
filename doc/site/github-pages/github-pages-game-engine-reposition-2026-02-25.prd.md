@@ -1,5 +1,7 @@
 # GitHub Pages 游戏+引擎定位重写（2026-02-25）设计文档
 
+- 对应项目管理文档: doc/site/github-pages/github-pages-game-engine-reposition-2026-02-25.prd.project.md
+
 ## 目标
 - 将 GitHub Pages 从“世界模拟器”单一叙事，重写为“游戏 + 游戏引擎”双定位叙事。
 - 保留现有页面视觉设计优点：深色科技基调、Hero 动态网格、分层卡片、证据切换与滚动 reveal 动效。

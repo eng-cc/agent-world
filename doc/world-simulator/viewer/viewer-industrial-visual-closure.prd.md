@@ -1,5 +1,7 @@
 # Viewer 工业风可视化缺口收敛（对标《异星工厂》《工业巨头》）
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-industrial-visual-closure.prd.project.md
+
 ## 1. Executive Summary
 - 在不破坏现有调试可视化能力的前提下，补齐“工业经营可读性”。
 - 按四个任务组分阶段推进：

@@ -8,6 +8,7 @@
 - [x] T4 回归与收口：required 测试、项目状态与文档更新。
 
 ## 依赖
+- doc/world-simulator/launcher/launcher-chain-runtime-decouple-2026-02-28.prd.md
 - `agent_world_node`（NodeRuntime/PoS/P2P）
 - `agent_world::runtime::World`（execution world 读取余额）
 - 现有 `world_game_launcher` 与 `agent_world_client_launcher`

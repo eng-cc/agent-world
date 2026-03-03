@@ -1,5 +1,7 @@
 # Non-Viewer 设计一致性修复（2026-02-25）
 
+- 对应项目管理文档: doc/headless-runtime/nonviewer/nonviewer-design-alignment-fixes-2026-02-25.prd.project.md
+
 ## 1. Executive Summary
 - 修复 non-viewer 两处“实现偏离设计语义”的问题，确保线上行为与文档约束一致：
   - 共识 rejected 分支不再静默丢弃回灌失败的 action。

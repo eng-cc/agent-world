@@ -1,5 +1,7 @@
 # Viewer Live 逻辑时间与事件游标接口改造 Phase 11（2026-02-27）
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-live-logical-time-interface-phase11-2026-02-27.prd.project.md
+
 ## 1. Executive Summary
 - 在保持 viewer live 事件驱动调度不回退的前提下，将对外交互从“直接依赖 tick”迁移到“事件游标 + 逻辑时间”双语义。
 - 保留 runtime 内部逻辑时间（当前 tick）作为领域一致性锚点，不做错误的“去时间轴”改造。

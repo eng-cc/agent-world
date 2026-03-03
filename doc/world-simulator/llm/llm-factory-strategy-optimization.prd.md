@@ -1,5 +1,7 @@
 # LLM 工厂闭环策略稳定性优化（llm_bootstrap）
 
+- 对应项目管理文档: doc/world-simulator/llm/llm-factory-strategy-optimization.prd.project.md
+
 ## 1. Executive Summary
 - 在 `llm_bootstrap`（20 tick 默认口径）下，将“可建厂但未稳定排产”的问题从能力缺口转为可度量、可回归的策略问题。
 - 引入“失败原因 -> 下一动作”强规则，减少无效重复 `harvest_radiation`，推动动作链路稳定收敛到 `refine_compound -> build_factory -> schedule_recipe`。

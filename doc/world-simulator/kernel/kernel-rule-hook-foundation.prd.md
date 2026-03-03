@@ -1,5 +1,7 @@
 # Agent World Simulator：内核不变量回归与规则 Hook 基座（设计文档）
 
+- 对应项目管理文档: doc/world-simulator/kernel/kernel-rule-hook-foundation.prd.project.md
+
 ## 1. Executive Summary
 - 固化 `WorldKernel` 当前动作语义边界，先保证“现有行为不变”。
 - 为后续规则模块化迁移提供最小接入点：`pre_action` / `post_action` 规则 Hook。

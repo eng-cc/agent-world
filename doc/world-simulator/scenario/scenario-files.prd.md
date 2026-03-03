@@ -1,5 +1,7 @@
 # Agent World Simulator：场景文件化（设计文档）
 
+- 对应项目管理文档: doc/world-simulator/scenario/scenario-files.prd.project.md
+
 本分册描述将 `WorldScenario` 的内置定义迁移为**场景文件**，用于提升可维护性与可扩展性。
 
 ## 1. Executive Summary

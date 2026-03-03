@@ -6,6 +6,7 @@
 - [x] HP7-2 (PRD-P2P-MIG-051)：补齐 sequencer allowlist 单测并执行回归，回写文档状态与 devlog。
 
 ## 依赖
+- doc/p2p/blockchain/blockchain-p2pfs-hardening-phase7.prd.md
 - `crates/agent_world_consensus/src/sequencer_mainloop.rs`
 - `doc/devlog/2026-02-17.md`
 

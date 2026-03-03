@@ -7,6 +7,7 @@
 - [x] T3 (PRD-P2P-MIG-114)：回写设计/项目文档状态与 devlog，完成收口。
 
 ## 依赖
+- doc/p2p/viewer-live/world-viewer-live-no-llm-flag-2026-02-23.prd.md
 - T1 依赖 T0（接口语义冻结后实现）。
 - T2 依赖 T1（手册需与最终 CLI 行为一致）。
 - T3 依赖 T2（回归后收口状态）。

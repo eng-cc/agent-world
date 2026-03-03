@@ -1,5 +1,7 @@
 # Viewer 全览图缩放切换（设计文档）
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-overview-map-zoom.prd.project.md
+
 ## 1. Executive Summary
 - 参考 Factorio 的双层可视化思路，在 2D 视图引入“近景细节态 / 全览图态”自动切换机制。
 - 默认使用更高放大系数（更近视角），优先保证 Agent 及其关联内容可读。

@@ -1,5 +1,7 @@
 # 社会系统生产级方案：事实账本 + 声明式关系层（设计文档）
 
+- 对应项目管理文档: doc/world-simulator/kernel/social-fact-ledger-declarative-reputation.prd.project.md
+
 ## 1. Executive Summary
 - 在不预设单一“正确声誉模型”的前提下，为世界提供生产级社会系统底座。
 - 将“信任/声誉/关系”从硬编码规则改为可组合的事实与声明机制，保障高自由度。

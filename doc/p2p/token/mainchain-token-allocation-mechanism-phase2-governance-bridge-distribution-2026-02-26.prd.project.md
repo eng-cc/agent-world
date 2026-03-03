@@ -8,6 +8,7 @@
 - [x] T4 (PRD-P2P-MIG-111)：补齐测试、回归脚本验证与文档回写收口。
 
 ## 依赖
+- doc/p2p/token/mainchain-token-allocation-mechanism-phase2-governance-bridge-distribution-2026-02-26.prd.md
 - `doc/p2p/token/mainchain-token-allocation-mechanism.prd.md`
 - `doc/p2p/token/mainchain-token-allocation-mechanism.prd.project.md`
 - `crates/agent_world/src/runtime/main_token.rs`

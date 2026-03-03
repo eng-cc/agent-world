@@ -1,5 +1,7 @@
 # M4 市场/硬件/数据/治理闭环收口（2026-02-26）
 
+- 对应项目管理文档: doc/world-simulator/m4/m4-market-hardware-data-governance-closure-2026-02-26.prd.project.md
+
 ## 1. Executive Summary
 - 完成 P0-01~P0-08 的最小可用闭环：
   - 电价模型定义与动态计算落地。

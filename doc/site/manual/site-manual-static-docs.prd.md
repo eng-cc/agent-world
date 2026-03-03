@@ -1,5 +1,7 @@
 # Site 使用手册静态化（CN/EN）设计文档
 
+- 对应项目管理文档: doc/site/manual/site-manual-static-docs.prd.project.md
+
 ## 目标
 - 在 `site/doc/cn` 与 `site/doc/en` 下建立可直接发布到 GitHub Pages 的手册站框架。
 - 将现有 Viewer 用户手册整理为站内可访问内容，形成“首页 -> 文档目录 -> 手册正文”的闭环。

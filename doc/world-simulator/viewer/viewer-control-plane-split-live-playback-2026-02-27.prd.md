@@ -1,5 +1,7 @@
 # Viewer 控制面拆分：回放/Live 分离（2026-02-27）
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-control-plane-split-live-playback-2026-02-27.prd.project.md
+
 ## 1. Executive Summary
 - 将 viewer 协议中的控制语义从“单一 `Control`”拆分为“回放控制 + live 控制”两条独立控制面。
 - 从类型层面避免 live 模式误用 `seek`（回放专属），降低回归风险。

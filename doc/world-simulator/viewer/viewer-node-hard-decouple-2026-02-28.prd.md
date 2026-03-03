@@ -1,5 +1,7 @@
 # Viewer 与节点彻底拆分（2026-02-28）
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-node-hard-decouple-2026-02-28.prd.project.md
+
 ## 1. Executive Summary
 - 将 `world_viewer_live` 从“可内嵌节点运行时”的混合进程，重构为纯 Viewer/游戏服务进程。
 - 明确节点运行时唯一入口为 `world_chain_runtime`，避免双路径并存导致的配置歧义。

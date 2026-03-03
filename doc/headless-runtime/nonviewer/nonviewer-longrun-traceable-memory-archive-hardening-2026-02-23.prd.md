@@ -1,5 +1,7 @@
 # Non-Viewer 长稳运行内存安全与可追溯冷归档硬化（2026-02-23）
 
+- 对应项目管理文档: doc/headless-runtime/nonviewer/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.prd.project.md
+
 ## 1. Executive Summary
 - 针对 non-viewer 代码路径的 6 个长稳风险点完成治理：
   - 1) `PosNodeEngine.pending_consensus_actions` 长期增长风险。

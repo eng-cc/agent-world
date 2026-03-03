@@ -1,5 +1,7 @@
 # Agent World Simulator：Location 电力资源池下线与 Agent 辐射电厂建造
 
+- 对应项目管理文档: doc/world-simulator/kernel/location-electricity-pool-removal-and-radiation-plant.prd.project.md
+
 ## 1. Executive Summary
 
 - 删除 Location 侧 `electricity` 资源池语义，统一电力资源归属到 Agent（或明确 owner 的可持有实体）侧。

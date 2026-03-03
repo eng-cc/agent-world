@@ -7,6 +7,7 @@
 - [x] AUTONET-4 (PRD-TESTING-004): 专题文档按 strict schema 人工重写，并切换命名到 `.prd.md/.prd.project.md`。
 
 ## 依赖
+- doc/testing/longrun/chain-runtime-feedback-replication-network-autowire-2026-03-02.prd.md
 - `crates/agent_world/src/bin/world_chain_runtime.rs`
 - `crates/agent_world/src/bin/world_chain_runtime/world_chain_runtime_tests.rs`
 - `doc/testing/prd.md`

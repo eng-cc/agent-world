@@ -1,5 +1,7 @@
 # Gameplay Base Runtime / WASM Layer Split（设计文档）
 
+- 对应项目管理文档: doc/game/gameplay/gameplay-base-runtime-wasm-layer-split.prd.project.md
+
 ## 目标
 - 将 `agent_world` runtime 的模块治理与执行架构拆分为两个明确边界：
   - 基础层（Base Runtime Layer）：世界不变量、模块通用校验、资源/权限约束。

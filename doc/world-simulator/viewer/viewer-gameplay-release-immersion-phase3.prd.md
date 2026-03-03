@@ -1,5 +1,7 @@
 # Viewer 发行体验改造（第三阶段：情绪闭环与世界活性）
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase3.prd.project.md
+
 ## 1. Executive Summary
 - 在第二阶段“反馈/引导/HUD”基础上，继续提升可玩性与情绪价值：
   - 增加里程碑成就反馈，强化“我做成了什么”的即时满足。

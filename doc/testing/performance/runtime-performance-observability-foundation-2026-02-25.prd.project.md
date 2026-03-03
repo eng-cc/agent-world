@@ -11,6 +11,7 @@
 - [x] RPOF-8 (PRD-TESTING-004): 专题文档按 strict schema 人工迁移并统一 `.prd.md/.prd.project.md` 命名。
 
 ## 依赖
+- doc/testing/performance/runtime-performance-observability-foundation-2026-02-25.prd.md
 - `crates/agent_world/src/simulator/runner.rs`
 - `crates/agent_world/src/bin/world_llm_agent_demo/*`
 - `crates/agent_world/src/viewer/live_*`

@@ -1,5 +1,7 @@
 # Agent World Runtime：Governance Tiered Offload 与 Rollback Audit 算术语义硬化（15 点清单第十阶段）
 
+- 对应项目管理文档: doc/world-runtime/runtime/runtime-numeric-correctness-phase10.prd.project.md
+
 ## 1. Executive Summary
 - 收口 `membership_recovery/replay_archive_tiered` 与 `membership_recovery/replay_audit` 中剩余的高风险饱和算术，避免长期运行下的静默数值失真。
 - 将治理归档与告警窗口中的时间差计算从“饱和继续”改为“受检失败”，在时间回拨/边界异常时返回显式错误。

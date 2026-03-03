@@ -1,5 +1,7 @@
 # GitHub Pages 视觉细节打磨 V2（2026-02-12）设计文档
 
+- 对应项目管理文档: doc/site/github-pages/github-pages-visual-polish-v2-2026-02-12.prd.project.md
+
 ## 目标
 - 在不重做结构的前提下，继续降低页面阅读负担，重点改善移动端信息密度。
 - 强化 Hero 指标区与证据条的层级对比，让关键信息“先看懂、再细读”。

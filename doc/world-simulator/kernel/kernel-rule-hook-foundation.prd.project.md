@@ -7,6 +7,7 @@
 - [x] KRH-4 回归验证、文档与 devlog 回写。
 
 ## 依赖
+- doc/world-simulator/kernel/kernel-rule-hook-foundation.prd.md
 - `crates/agent_world/src/simulator/kernel/actions.rs`
 - `crates/agent_world/src/simulator/kernel/step.rs`
 - `crates/agent_world/src/simulator/kernel/types.rs`

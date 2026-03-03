@@ -31,6 +31,7 @@
 - [x] E11 执行 `--features wasmtime` 编译与执行器回归测试
 
 ## 依赖
+- doc/world-runtime/wasm/wasm-executor.prd.md
 - `ModuleSandbox` 接口与模块 ABI 文档（`doc/world-runtime/wasm/wasm-interface.md`）
 - 模块加载缓存与存储实现（`doc/world-runtime/module/module-storage.prd.md`）
 

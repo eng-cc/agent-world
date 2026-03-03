@@ -1,5 +1,7 @@
 # Agent World: Builtin Wasm 构建确定性护栏
 
+- 对应项目管理文档: doc/testing/governance/wasm-build-determinism-guard.prd.project.md
+
 ## 1. Executive Summary
 - Problem Statement: builtin wasm 在不同执行环境下可能因构建输入不一致产生 hash 漂移，导致本地与 CI 结果不一致且难以定位。
 - Proposed Solution: 在 wasm 构建入口与构建工具层引入确定性护栏，统一关键输入、限制污染环境变量，并在 workspace 级阻断高风险编译期目标。

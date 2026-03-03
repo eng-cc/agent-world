@@ -1,5 +1,7 @@
 # Agent World：M5 可视化与调试（Bevy）
 
+- 对应项目管理文档: doc/world-simulator/viewer/visualization.prd.project.md
+
 ## 1. Executive Summary
 - 提供一个独立的可视化客户端（Bevy），通过网络连接世界数据源。
 - 支持最小调试闭环：世界状态面板、事件浏览、回放控制。

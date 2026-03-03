@@ -1,5 +1,7 @@
 # Agent World Simulator：Chat Panel Agent Prompt 默认值预填充输入框（设计文档）
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-chat-agent-prompt-default-values-prefill.prd.project.md
+
 ## 1. Executive Summary
 - 在 Chat Panel 的 `Agent Prompt Draft` 中，`system prompt`、`短期目标`、`长期目标` 输入框默认直接填入当前生效值（无 override 时填系统默认值）。
 - 让用户进入后可直接编辑文本，不需要先从占位复制。

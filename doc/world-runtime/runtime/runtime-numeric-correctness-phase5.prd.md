@@ -1,5 +1,7 @@
 # Agent World Runtime：Sequencer 主循环与 Lease 递进数值语义硬化（15 点清单第五阶段）
 
+- 对应项目管理文档: doc/world-runtime/runtime/runtime-numeric-correctness-phase5.prd.project.md
+
 ## 1. Executive Summary
 - 收口 `agent_world_consensus` 中仍位于主链路的饱和递进语义，避免长期运行时出现静默夹逼后继续执行。
 - 将 sequencer 的 `next_slot/next_height` 与 lease 的 `term/expires_at` 递进统一改为显式溢出失败。

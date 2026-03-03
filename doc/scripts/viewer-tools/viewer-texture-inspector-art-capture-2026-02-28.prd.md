@@ -1,5 +1,7 @@
 # Viewer Texture Inspector Art Capture 优化（2026-02-28）
 
+- 对应项目管理文档: doc/scripts/viewer-tools/viewer-texture-inspector-art-capture-2026-02-28.prd.project.md
+
 ## 目标
 - 让 `viewer-texture-inspector` 产出的截图可直接用于美术评审，而不是仅用于“链路联通确认”。
 - 在不同资源类型（`agent/location/asset/power_plant/power_storage`）之间提供更稳定的主体构图。

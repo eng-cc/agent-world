@@ -7,6 +7,7 @@
 - [x] T3 (PRD-ENGINEERING-RSPLIT-003): 回写文档/devlog 并完成阶段收口。
 
 ## 依赖
+- doc/engineering/oversized-rust-file-splitting-round3-2026-02-23.prd.md
 - T1 依赖稳定可重复的拆分策略（优先 `include!` 分段，必要时补充模块拆分）。
 - T2 依赖 T1 全部落地并通过基础编译。
 - T3 依赖 T2 结论明确且无阻塞。

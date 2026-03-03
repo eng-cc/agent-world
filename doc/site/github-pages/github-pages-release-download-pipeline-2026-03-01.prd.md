@@ -1,5 +1,7 @@
 # GitHub Pages 发布入口 + Release 安装包流水线（2026-03-01）设计文档
 
+- 对应项目管理文档: doc/site/github-pages/github-pages-release-download-pipeline-2026-03-01.prd.project.md
+
 ## 目标
 - 建立可直接上线的发布系统：GitHub Pages 作为发行入口页，GitHub Releases 作为安装包分发源。
 - 支持用户在官网页面“一键下载”最新安装包（Windows/macOS/Linux）。

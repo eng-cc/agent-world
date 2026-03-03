@@ -1,5 +1,7 @@
 # 可发行客户端启动器（Desktop）设计文档（2026-02-27）
 
+- 对应项目管理文档: doc/world-simulator/launcher/game-client-launcher-desktop-2026-02-27.prd.project.md
+
 ## 1. Executive Summary
 - 提供面向玩家的“客户端启动器”桌面应用，减少命令行操作门槛。
 - 玩家可通过 GUI 完成：启动/停止游戏栈、查看当前连接地址、一键打开游戏页面。

@@ -1,5 +1,7 @@
 # GitHub Pages 精简科技感升级（四期）设计文档
 
+- 对应项目管理文档: doc/site/github-pages/github-pages-lean-tech-refresh.prd.project.md
+
 ## 目标
 - 解决当前展示站“文字密度偏高、页面过长、科技感辨识度一般”的问题。
 - 将首页压缩为“6 屏内可读”的叙事结构：先价值主张，再能力与证据，最后给出行动入口。

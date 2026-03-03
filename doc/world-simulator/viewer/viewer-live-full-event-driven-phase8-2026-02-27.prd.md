@@ -1,5 +1,7 @@
 # Viewer Live 完全事件驱动改造 Phase 8（2026-02-27）
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-live-full-event-driven-phase8-2026-02-27.prd.project.md
+
 ## 1. Executive Summary
 - 将 script 路径默认且唯一节拍收敛为 `event_drive`，不再保留 `timer_pulse` 回退模式。
 - 清理 script 回退链路代码（配置开关、分支判断、定时脉冲信号与线程）。

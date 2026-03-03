@@ -8,6 +8,7 @@
 - [x] T4 文档收口与验收记录（手册入口/测试命令/状态更新）。
 
 ## 依赖
+- doc/world-simulator/launcher/game-unified-launcher-2026-02-27.prd.md
 - `world_viewer_live` 可执行文件（同 workspace 构建产物）。
 - `crates/agent_world_viewer` 的 trunk 构建产物（web dist）。
 - 运行平台需支持浏览器拉起命令（Linux/macOS/Windows）。

@@ -1,5 +1,7 @@
 # README 缺口 3 收口：模块安装目标语义（自身 / 基础设施）（设计文档）
 
+- 对应项目管理文档: doc/readme/gap/readme-gap3-install-target-infrastructure.prd.project.md
+
 ## 目标
 - 收口 README 中“模块可安装至自身或基础设施”的实现缺口。
 - 在不破坏现有 `install_module_from_artifact` 行为的前提下，引入显式安装目标语义。

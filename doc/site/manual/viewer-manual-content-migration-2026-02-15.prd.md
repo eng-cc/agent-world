@@ -1,5 +1,7 @@
 # Viewer 使用手册内容搬迁（2026-02-15）设计文档
 
+- 对应项目管理文档: doc/site/manual/viewer-manual-content-migration-2026-02-15.prd.project.md
+
 ## 目标
 - 将分散在 `doc/world-simulator/viewer/viewer-*` 与 `doc/scripts/viewer-tools/capture-viewer-frame.prd.md` 的“用户可操作内容”并入 Viewer 使用手册。
 - 形成单一入口：`doc/world-simulator/viewer/viewer-manual.md`（中文基线）与 `site/doc/cn|en/viewer-manual.html`（站点发布版）。

@@ -7,6 +7,7 @@
 - [x] T3 (PRD-WORLD_SIMULATOR-003)：回归测试、文档收口与任务日志更新。
 
 ## 依赖
+- doc/world-simulator/launcher/game-client-launcher-graceful-stop-2026-03-02.prd.md
 - `crates/agent_world_client_launcher` 现有进程托管逻辑。
 - `crates/agent_world/src/bin/world_game_launcher.rs` 的 signal 退出处理。
 - `testing-manual.md` 测试分层规范。

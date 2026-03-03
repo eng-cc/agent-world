@@ -1,5 +1,7 @@
 # Viewer 产业链图谱化与分层符号化（2026-02-28）
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-industry-graph-layered-symbolic-zoom-2026-02-28.prd.project.md
+
 ## 1. Executive Summary
 - 将工业/经营/运营导航从“分散文本聚合”升级为统一 `IndustryGraphViewModel` 中间层。
 - 在 3D 覆盖层落地“产业链主图层”：节点（工厂/配方/产品/物流站）、边（物料/电力/数据流）、线宽按吞吐、颜色按流类型。

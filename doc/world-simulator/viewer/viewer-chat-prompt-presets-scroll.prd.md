@@ -1,5 +1,7 @@
 # Chat Panel 预设 Prompt 展开区滚动改造
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-chat-prompt-presets-scroll.prd.project.md
+
 ## 1. Executive Summary
 - 解决最右侧 Chat 面板在展开“预设 Prompt”后内容过高、超出可视区域的问题。
 - 保证在小窗口或低分辨率下，预设编辑区与 Agent Prompt 字段可通过内部滚动完整访问。

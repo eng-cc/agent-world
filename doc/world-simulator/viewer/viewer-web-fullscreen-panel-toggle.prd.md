@@ -1,5 +1,7 @@
 # Viewer Web 全屏自适应与右侧面板整体显隐设计
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-web-fullscreen-panel-toggle.prd.project.md
+
 ## 1. Executive Summary
 - 让 `agent_world_viewer` 在 Web 端默认占满浏览器可用区域，避免固定窗口尺寸导致的显示受限。
 - 让右侧综合面板支持“一键整体隐藏/显示”，隐藏后让 3D 视口可用区域最大化。

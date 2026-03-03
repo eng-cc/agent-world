@@ -1,5 +1,7 @@
 # Viewer Live 旧 Tick 驱动文档归档（2026-02-27）
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-live-tick-driven-doc-archive-2026-02-27.prd.project.md
+
 ## 1. Executive Summary
 - 将已下线的 Viewer Live 旧 tick 驱动（TimerPulse / tick-driven 兼容阶段）设计与项目管理文档归档。
 - 保持 `doc/world-simulator/` 下仅保留当前有效的 event_drive 收口阶段文档，降低误读成本。

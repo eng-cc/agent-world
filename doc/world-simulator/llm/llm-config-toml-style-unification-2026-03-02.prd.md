@@ -1,5 +1,7 @@
 # LLM 配置 TOML 风格统一（2026-03-02）
 
+- 对应项目管理文档: doc/world-simulator/llm/llm-config-toml-style-unification-2026-03-02.prd.project.md
+
 ## 1. Executive Summary
 - 将 `config.toml` 中 LLM 配置从 `AGENT_WORLD_LLM_*` 形态统一为小写、结构化 TOML 字段。
 - 保持运行行为不退化：`LlmAgentConfig` 仍可从 `config.toml` 读取完整配置，并在缺失时回退环境变量。

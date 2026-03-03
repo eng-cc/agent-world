@@ -9,6 +9,7 @@
 - [x] F6 新增 `llm_bootstrap` 场景并接入枚举/解析/矩阵/测试
 
 ## 依赖
+- doc/world-simulator/scenario/scenario-files.prd.md
 - `WorldScenario` / `WorldInitConfig`
 - `serde_json` 场景解析
 

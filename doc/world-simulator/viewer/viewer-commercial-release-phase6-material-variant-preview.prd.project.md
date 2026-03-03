@@ -6,6 +6,7 @@
 - [x] VCR6-2 更新手册/项目状态/devlog 并收口
 
 ## 依赖
+- doc/world-simulator/viewer/viewer-commercial-release-phase6-material-variant-preview.prd.md
 - `crates/agent_world_viewer/src/main.rs`
 - `crates/agent_world_viewer/src/app_bootstrap.rs`
 - `crates/agent_world_viewer/src/tests.rs`

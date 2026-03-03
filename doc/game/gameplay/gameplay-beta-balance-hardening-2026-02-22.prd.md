@@ -1,5 +1,7 @@
 # Gameplay 内测数值加固（治理票权 + 策略授权 + 合约声誉去通胀）
 
+- 对应项目管理文档: doc/game/gameplay/gameplay-beta-balance-hardening-2026-02-22.prd.project.md
+
 ## 目标
 - 收敛当前内测前的三类高风险数值/规则问题：
   - 治理投票 `weight` 可被任意放大。

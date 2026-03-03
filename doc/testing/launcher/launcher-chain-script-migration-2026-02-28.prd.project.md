@@ -8,6 +8,7 @@
 - [x] LAUNCHMIG-5 (PRD-TESTING-004): 专题文档按 strict schema 人工重写，并切换命名到 `.prd.md/.prd.project.md`。
 
 ## 依赖
+- doc/testing/launcher/launcher-chain-script-migration-2026-02-28.prd.md
 - `scripts/run-game-test.sh`
 - `scripts/viewer-release-qa-loop.sh`
 - `scripts/s10-five-node-game-soak.sh`

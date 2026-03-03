@@ -1,5 +1,7 @@
 # Viewer Agent 渲染改造：模块可见 + 体积尺寸匹配
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-agent-module-rendering.prd.project.md
+
 ## 1. Executive Summary
 - 将 Agent 从“单球体”改为更接近机器人形态的渲染方式，提升 3D 场景可读性。
 - 尽量直接体现 Agent 的模块数量，让观察者无需展开右侧详情即可判断“模块密度”。

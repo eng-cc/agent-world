@@ -8,6 +8,7 @@
 - [x] T4：补齐测试与回归，回写文档状态和 devlog 收口。
 
 ## 依赖
+- doc/world-simulator/m4/m4-resource-product-system-playability-priority-hardening-2026-02-28.prd.md
 - `doc/world-simulator/m4/m4-resource-product-system-playability-2026-02-27.prd.md`
 - `doc/world-simulator/m4/m4-resource-product-system-p3-layer-profile-chain-expansion-2026-02-27.prd.md`
 - `crates/agent_world/src/runtime/world/bootstrap_economy.rs`

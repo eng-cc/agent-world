@@ -6,6 +6,7 @@
 - [x] HP8-2 (PRD-P2P-MIG-052)：补齐共享工具单测并执行回归，回写文档状态与 devlog。
 
 ## 依赖
+- doc/p2p/blockchain/blockchain-p2pfs-hardening-phase8.prd.md
 - `crates/agent_world_consensus/src/lib.rs`
 - `crates/agent_world_consensus/src/signature.rs`
 - `crates/agent_world_consensus/src/membership_logic.rs`

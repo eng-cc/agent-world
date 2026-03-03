@@ -9,6 +9,7 @@
 - [x] CHAOSCNT-6 (PRD-TESTING-004): 专题文档按 strict schema 人工重写，并切换命名到 `.prd.md/.prd.project.md`。
 
 ## 依赖
+- doc/testing/longrun/p2p-longrun-continuous-chaos-injection-2026-02-24.prd.md
 - `scripts/p2p-longrun-soak.sh`
 - `testing-manual.md`
 - `doc/testing/longrun/p2p-storage-consensus-longrun-online-stability-2026-02-24.prd.md`

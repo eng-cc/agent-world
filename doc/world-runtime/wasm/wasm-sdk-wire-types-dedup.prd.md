@@ -1,5 +1,7 @@
 # Agent World Runtime：WASM SDK Wire 类型收敛设计
 
+- 对应项目管理文档: doc/world-runtime/wasm/wasm-sdk-wire-types-dedup.prd.project.md
+
 ## 1. Executive Summary
 - 将 builtin wasm 模块中重复定义的 `ModuleCallInput/ModuleContext/ModuleOutput` 等协议结构收敛到 `agent_world_wasm_sdk`。
 - 让各模块仅保留领域业务结构，减少样板代码与协议漂移风险。

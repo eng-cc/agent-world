@@ -1,5 +1,7 @@
 # Viewer 视觉升级设计文档（Phase 10 后增量强化）
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-visual-upgrade.prd.project.md
+
 ## 背景
 - 截至 Phase 10，Viewer 的新手体验、Theme Runtime、industrial_v2 主题包与发布回归链路已经闭环，当前工程状态不是“从 0 到 1 的可玩化”，而是“已可发行基线上的增量强化”。
 - 当前渲染层已具备可扩展能力（render profile、主题包、材质参数、运行中切换），但部分视觉目标仍缺少模拟层直连数据，例如 Agent 速度与运动耗时语义。

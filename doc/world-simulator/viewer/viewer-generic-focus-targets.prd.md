@@ -1,5 +1,7 @@
 # Viewer 通用聚焦目标（可扩展实体）
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-generic-focus-targets.prd.project.md
+
 ## 1. Executive Summary
 - 为 viewer 自动化聚焦/选中能力提供统一 target 语法，避免仅支持 `agent/location`。
 - 支持在 Web 闭环与本地自动化脚本中稳定聚焦到更多实体（如 `asset/power/chunk/fragment/module_visual`）。

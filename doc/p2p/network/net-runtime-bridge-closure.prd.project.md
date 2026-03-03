@@ -7,6 +7,7 @@
 - [x] RB4 (PRD-P2P-MIG-085)：回写总文档状态与当日 devlog。
 
 ## 依赖
+- doc/p2p/network/net-runtime-bridge-closure.prd.md
 - `doc/p2p/archive/distributed-crate-split-net-consensus.prd.project.md`
 - `crates/agent_world_net`
 - `crates/agent_world_distfs`

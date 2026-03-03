@@ -7,6 +7,7 @@
 - [x] OSRM-4 (PRD-P2P-MIG-108)：回写状态文档与 devlog。
 
 ## 依赖
+- doc/p2p/observer/observer-sync-mode-runtime-metrics.prd.md
 - `crates/agent_world_net/src/observer.rs`
 - `crates/agent_world_net/src/lib.rs`
 - `doc/p2p/observer/observer-sync-mode-observability.prd.md`

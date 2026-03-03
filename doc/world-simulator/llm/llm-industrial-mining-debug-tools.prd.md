@@ -1,5 +1,7 @@
 # LLM 工业采矿闭环与调试补给工具（设计文档）
 
+- 对应项目管理文档: doc/world-simulator/llm/llm-industrial-mining-debug-tools.prd.project.md
+
 ## 1. Executive Summary
 - 将 simulator 的工业链路从“可直接精炼硬件”升级为“先采矿再精炼再建厂/排产”的正确机制，避免开局直接进入建厂生产。
 - 在 `llm_bootstrap` 中形成更真实的前置阶段：需要采矿与跨地点移动后，才能稳定进入工厂生产。

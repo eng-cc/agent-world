@@ -1,5 +1,7 @@
 # Viewer 发行体验改造（第六阶段：任务驱动与电影化首屏）
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase6.prd.project.md
+
 ## 1. Executive Summary
 - 继续将 Viewer 的 Player 体验从“可操作”推进到“可发行游戏体验”：
   - 首次进入 10 秒内建立世界氛围与行动动机，避免“工具界面直出”。

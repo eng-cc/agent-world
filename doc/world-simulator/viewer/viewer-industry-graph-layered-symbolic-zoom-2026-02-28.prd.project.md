@@ -32,6 +32,7 @@
 - [x] T6.3 更新项目状态与 devlog
 
 ## 依赖
+- doc/world-simulator/viewer/viewer-industry-graph-layered-symbolic-zoom-2026-02-28.prd.md
 - `crates/agent_world_viewer/src/ui_text_industrial.rs`
 - `crates/agent_world_viewer/src/ui_text_economy.rs`
 - `crates/agent_world_viewer/src/ui_text_ops_navigation.rs`

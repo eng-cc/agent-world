@@ -1,5 +1,7 @@
 # M4 资源与产品系统 P2：阶段引导与市场-治理联动观测（2026-02-27）
 
+- 对应项目管理文档: doc/world-simulator/m4/m4-resource-product-system-p2-stage-guidance-market-governance-linkage-2026-02-27.prd.project.md
+
 ## 1. Executive Summary
 - 在不改动作 ABI 的前提下，为工业链补齐“可解释的市场观测”和“阶段化进度”能力。
 - 让配方排产在事件层可直接观察到材料侧成本信号，并显式体现治理税率的影响。

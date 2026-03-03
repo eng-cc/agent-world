@@ -1,5 +1,7 @@
 # README 高优先级缺口收口：模块交易 + 动态电价（设计文档）
 
+- 对应项目管理文档: doc/readme/gap/readme-gap12-market-closure.prd.project.md
+
 ## 目标
 - 收口 README 高优先级缺口 1：在现有 `DeployModuleArtifact/InstallModuleFromArtifact` 基础上补齐“模块可交易”最小闭环。
 - 收口 README 高优先级缺口 2：为 `BuyPower/SellPower` 补齐动态电价机制，让市场价格随供需/距离变化并可审计。

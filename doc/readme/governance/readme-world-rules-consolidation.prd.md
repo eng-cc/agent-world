@@ -1,5 +1,7 @@
 # README 世界规则文档收敛整合（设计文档）
 
+- 对应项目管理文档: doc/readme/governance/readme-world-rules-consolidation.prd.project.md
+
 ## 目标
 
 - 将本轮未提交的 README 文档治理任务合并为一个统一设计文档，避免多个小文档并行维护。

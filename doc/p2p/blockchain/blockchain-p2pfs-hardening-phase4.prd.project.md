@@ -7,6 +7,7 @@
 - [x] HP4-3 (PRD-P2P-MIG-048)：补齐测试，执行回归，回写文档状态与 devlog。
 
 ## 依赖
+- doc/p2p/blockchain/blockchain-p2pfs-hardening-phase4.prd.md
 - `crates/agent_world_consensus/src/membership.rs`
 - `crates/agent_world_consensus/src/membership_logic.rs`
 - `crates/agent_world_consensus/src/membership_tests.rs`

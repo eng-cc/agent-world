@@ -9,6 +9,7 @@
 - [x] VFL5：回写文档状态、更新 devlog、给出可操作性对比结论并收口。
 
 ## 依赖
+- doc/world-simulator/viewer/viewer-rust-file-line-cap-refactor-and-web-qa-2026-02-22.prd.md
 - `crates/agent_world_viewer/src/main.rs`
 - `crates/agent_world_viewer/src/egui_right_panel_chat.rs`
 - `crates/agent_world_viewer/src/tests.rs`

@@ -1,5 +1,7 @@
 # README WASM 主链路收口：Live 模块执行 + 默认持久化模块仓库 + 模块实例化 + 升级动作（设计文档）
 
+- 对应项目管理文档: doc/readme/gap/readme-gap-wasm-live-persistence-instance-upgrade.prd.project.md
+
 ## 目标
 - 收口 README 中 WASM 主链路承诺与工程实现差距，覆盖以下四项：
   - live/bridge 主循环切换到 `step_with_modules`（或等价模块执行管线）。

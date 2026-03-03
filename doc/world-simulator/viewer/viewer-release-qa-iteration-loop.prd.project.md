@@ -10,6 +10,7 @@
 - [x] VRQ-6 发行缺口收敛：修复“zoom 生效但画面近远差异过小”问题并达成全 PASS
 
 ## 依赖
+- doc/world-simulator/viewer/viewer-release-qa-iteration-loop.prd.md
 - `testing-manual.md`
 - `scripts/viewer-visual-baseline.sh`
 - `scripts/run-viewer-web.sh`

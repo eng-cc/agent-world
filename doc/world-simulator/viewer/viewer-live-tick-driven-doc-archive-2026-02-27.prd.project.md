@@ -6,6 +6,7 @@
 - [x] T2 收口：更新 archive 索引与当日日志
 
 ## 依赖
+- doc/world-simulator/viewer/viewer-live-tick-driven-doc-archive-2026-02-27.prd.md
 - `doc/world-simulator/archive/viewer-live-full-event-driven-phase1-2026-02-26.prd.md`
 - `doc/world-simulator/archive/viewer-live-full-event-driven-phase1-2026-02-26.prd.project.md`
 - `doc/world-simulator/archive/viewer-live-full-event-driven-phase2-2026-02-26.prd.md`

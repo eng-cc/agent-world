@@ -1,5 +1,7 @@
 # Viewer 文本可选中与复制能力设计
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-copyable-text.prd.project.md
+
 ## 1. Executive Summary
 - 让 `agent_world_viewer` 中关键信息文本支持“鼠标选中 + 系统复制快捷键（Cmd/Ctrl+C）”。
 - 在不破坏既有 Bevy UI 布局和交互（时间轴、控制按钮、选中联动）的前提下，提供稳定可复制入口。

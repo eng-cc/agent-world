@@ -12,6 +12,7 @@
 - [x] T8 回归与收口（文档、devlog、测试）
 
 ## 依赖
+- doc/world-simulator/m4/m4-market-hardware-data-governance-closure-2026-02-26.prd.md
 - `doc/world-simulator/m4/m4-power-system.prd.md`
 - `crates/agent_world/src/simulator/*`
 - `crates/agent_world/src/runtime/*`

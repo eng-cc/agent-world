@@ -6,6 +6,7 @@
 - [x] VTI-2 测试与收口：手册、devlog、状态回写
 
 ## 依赖
+- doc/world-simulator/viewer/viewer-texture-inspector.prd.md
 - `scripts/capture-viewer-frame.sh`
 - `scripts/viewer-theme-pack-preview.sh`
 - `crates/agent_world_viewer/assets/themes/industrial_v1/presets/`

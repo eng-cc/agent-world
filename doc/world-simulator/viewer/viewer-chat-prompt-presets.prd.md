@@ -1,5 +1,7 @@
 # Agent World Simulator：Viewer Chat 预设 Prompt 编辑区（设计文档）
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-chat-prompt-presets.prd.project.md
+
 ## 1. Executive Summary
 - 删除现有 `Prompt Ops` 运营模块入口，避免与聊天链路并行维护两套 Prompt 交互面板。
 - 在最右侧 Chat Panel 内新增一个“可展开的小区域”，用于编辑和维护预设 prompt。

@@ -23,6 +23,7 @@
 - [ ] T18.2b 进入 P0.4：修复 `play` 持续推进与 `step` followup 一致性，收敛 B 段与 stall 指标
 
 ## 依赖
+- doc/world-simulator/viewer/viewer-control-predictability-tasklist-2026-02-28.prd.md
 - `doc/playability_test_result/card_2026_02_28_19_22_20.md`
 - `doc/playability_test_result/archive/2026-02/card_2026_02_27_23_21_00.md`
 - `doc/playability_test_result/archive/2026-02/card_2026_02_27_21_04_46.md`

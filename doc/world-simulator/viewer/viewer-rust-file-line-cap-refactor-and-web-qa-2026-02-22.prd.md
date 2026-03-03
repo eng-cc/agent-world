@@ -1,5 +1,7 @@
 # Viewer Rust 文件行数上限重构与 Web 闭环对比（2026-02-22）
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-rust-file-line-cap-refactor-and-web-qa-2026-02-22.prd.project.md
+
 ## 1. Executive Summary
 - 将 `crates/agent_world_viewer/src` 中超过 1200 行的 Rust 文件拆分到不超过 1200 行，且行为不变。
 - 在重构后执行一轮 Web Playwright 闭环（S6）验证，输出可操作性对比结论（重构前基线 vs 重构后实测）。

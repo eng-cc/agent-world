@@ -1,5 +1,7 @@
 # Agent World Simulator：Rust 到 Wasm 编译套件（KWT）设计文档
 
+- 对应项目管理文档: doc/world-simulator/kernel/rust-wasm-build-suite.prd.project.md
+
 ## 1. Executive Summary
 - 提供一套可复用的“Rust 源码 -> wasm 模块产物”构建流程，降低模块开发与交付门槛。
 - 将构建结果标准化为 `wasm` 文件 + 元数据清单（hash、大小、来源、目标平台），便于后续装载治理与分发。

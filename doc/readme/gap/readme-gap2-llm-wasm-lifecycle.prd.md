@@ -1,5 +1,7 @@
 # README 缺口 2 收口：LLM 直连 WASM 生命周期（设计文档）
 
+- 对应项目管理文档: doc/readme/gap/readme-gap2-llm-wasm-lifecycle.prd.project.md
+
 ## 目标
 - 收口 README 中“Agent 可编写/编译/部署/安装 WASM 模块”的主链路缺口。
 - 让 `simulator` 场景下的 LLM Agent 可直接通过 `agent_submit_decision` 触发 WASM 生命周期动作：

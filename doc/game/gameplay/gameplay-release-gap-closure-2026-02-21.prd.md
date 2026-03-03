@@ -1,5 +1,7 @@
 # Gameplay 发行差距收口（Prompt 触发 + Gate 覆盖 + 经济动作 + 规则深度）
 
+- 对应项目管理文档: doc/game/gameplay/gameplay-release-gap-closure-2026-02-21.prd.project.md
+
 ## 目标
 - 修复当前“游戏性可发行（非 viewer）”的 5 个关键差距：
   - 默认 LLM prompt 难以触发多类玩法事件。

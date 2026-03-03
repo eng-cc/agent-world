@@ -4,6 +4,7 @@
 - [x] O1 扩展场景 asteroid_fragment 覆盖字段（min_fragment_spacing_cm）并更新测试与文档
 
 ## 依赖
+- doc/world-simulator/scenario/scenario-asteroid-fragment-overrides.prd.md
 - `AsteroidFragmentInitConfig`
 - `generate_fragments`
 - 场景文件加载（WorldScenarioSpec）

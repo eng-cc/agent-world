@@ -1,5 +1,7 @@
 # README 生产级收口：LLM 制度动作 + DistFS 状态主路径 + 去中心化默认拓扑（设计文档）
 
+- 对应项目管理文档: doc/readme/production/readme-prod-closure-llm-distfs-consensus.prd.project.md
+
 ## 目标
 - 收口差距 1：将 LLM 主决策链路扩展为可直接使用市场/制度相关动作，避免仅限工业闭环动作。
 - 收口差距 2：将世界状态持久化升级为 DistFS 默认写入与优先恢复路径，保留 JSON 兼容兜底。

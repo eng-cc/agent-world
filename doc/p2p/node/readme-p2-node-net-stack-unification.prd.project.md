@@ -7,6 +7,7 @@
 - [x] NUS-3 (PRD-P2P-MIG-105)：执行回归测试、更新文档与 devlog 并收口。
 
 ## 依赖
+- doc/p2p/node/readme-p2-node-net-stack-unification.prd.md
 - NUS-1 依赖 NUS-0（先冻结设计边界再改实现）。
 - NUS-2 依赖 NUS-1（实现稳定后再做行为回归验证）。
 - NUS-3 依赖 NUS-1/NUS-2 完成。

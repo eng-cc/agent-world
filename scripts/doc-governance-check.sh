@@ -21,6 +21,10 @@ Checks:
   5. Root-level markdown files under doc/ must match the tracked allowlist.
   6. Root-level markdown files under each module (doc/<module>/*.md) must match
      the tracked allowlist (archive/devlog/.governance excluded).
+  7. Active topic PRD pairs (non-archive, non-devlog, excluding module main
+     doc/<module>/prd*.md) must contain bidirectional references:
+       - topic design doc (*.prd.md) includes its *.prd.project.md path
+       - topic project doc (*.prd.project.md) includes its *.prd.md path
 USAGE
 }
 
@@ -67,6 +71,16 @@ regex_match_with_line_numbers() {
     return $?
   fi
   grep -nE -- "$regex" "$@"
+}
+
+contains_literal() {
+  local needle="$1"
+  local file="$2"
+  if command -v rg >/dev/null 2>&1; then
+    rg -Fq -- "$needle" "$file"
+    return $?
+  fi
+  grep -Fq -- "$needle" "$file"
 }
 
 has_heading() {
@@ -146,6 +160,11 @@ is_design_section_exempt_project_doc() {
   return 1
 }
 
+is_topic_project_doc() {
+  local project_doc="$1"
+  [[ ! "$project_doc" =~ ^doc/[^/]+/prd\.project\.md$ ]]
+}
+
 mapfile -t all_doc_files < <(find doc -type f -name '*.md' ! -path 'doc/devlog/*' ! -path '*/archive/*' | sort)
 mapfile -t project_docs < <(find doc -type f -name '*.project.md' ! -path '*/archive/*' | sort)
 
@@ -180,6 +199,15 @@ for project_doc in "${project_docs[@]}"; do
   if [[ ! -f "$design_doc" ]]; then
     fail "$project_doc has no paired design doc: $design_doc"
     continue
+  fi
+
+  if is_topic_project_doc "$project_doc"; then
+    if ! contains_literal "$project_doc" "$design_doc"; then
+      fail "$design_doc missing bidirectional link to paired project doc: $project_doc"
+    fi
+    if ! contains_literal "$design_doc" "$project_doc"; then
+      fail "$project_doc missing bidirectional link to paired design doc: $design_doc"
+    fi
   fi
 
   if is_design_section_exempt_project_doc "$project_doc"; then

@@ -9,6 +9,7 @@
 - [x] VCR8-5 手册、状态回写、devlog 与测试收口
 
 ## 依赖
+- doc/world-simulator/viewer/viewer-commercial-release-phase8-runtime-theme-hot-reload-and-asset-v2.prd.md
 - `crates/agent_world_viewer/src/app_bootstrap.rs`
 - `crates/agent_world_viewer/src/egui_right_panel.rs`
 - `crates/agent_world_viewer/src/main.rs`

@@ -1,5 +1,7 @@
 # Agent World: CI 拆分 Builtin Wasm m1 多 Runner 校验
 
+- 对应项目管理文档: doc/testing/ci/ci-builtin-wasm-m1-multi-runner.prd.project.md
+
 ## 1. Executive Summary
 - Problem Statement: builtin wasm 的 `m1` 校验原先耦合在主测试流中，难以独立观察多平台差异与定位构建不一致问题。
 - Proposed Solution: 新增独立多 runner workflow，在 `ubuntu-latest` 和 `macos-14` 上并行执行 `m1 --check` 并统一摘要对账。

@@ -1,5 +1,7 @@
 # GitHub Pages 首页转化文案与中英一致性收敛 + UI 截图刷新（2026-02-26）设计文档
 
+- 对应项目管理文档: doc/site/github-pages/github-pages-home-conversion-i18n-screenshot-refresh-2026-02-26.prd.project.md
+
 ## 目标
 - 收敛首页首屏转化承诺，确保“点击预期”与真实上手门槛一致，降低新用户落差。
 - 校准首页中英文表达一致性，避免中文页混入过多英文术语导致认知断层。

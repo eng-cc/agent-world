@@ -28,6 +28,7 @@
 - [x] 任务日志与 commit
 
 ## 依赖
+- doc/world-simulator/m4/material-multi-ledger-logistics.prd.md
 - `crates/agent_world/src/runtime/state.rs`
 - `crates/agent_world/src/runtime/world/event_processing.rs`
 - `crates/agent_world/src/runtime/world/economy.rs`

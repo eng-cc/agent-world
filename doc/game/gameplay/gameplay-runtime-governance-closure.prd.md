@@ -1,5 +1,7 @@
 # Gameplay Runtime Governance Closure（生产级设计）
 
+- 对应项目管理文档: doc/game/gameplay/gameplay-runtime-governance-closure.prd.project.md
+
 ## 目标
 - 将 `doc/game/gameplay/gameplay-engineering-architecture.md` 中“Gameplay Layer 只通过受限接口接入运行时”的要求落到可执行代码，而不是停留在文档层。
 - 为 War/Governance/Crisis/Economic/Meta 五类玩法模块提供统一、可审计、可治理的生产级接入约束。

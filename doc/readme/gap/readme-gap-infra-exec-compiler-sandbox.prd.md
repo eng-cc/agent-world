@@ -1,5 +1,7 @@
 # README 收口：基础设施模块执行引擎 + 编译 Sandbox 隔离（设计文档）
 
+- 对应项目管理文档: doc/readme/gap/readme-gap-infra-exec-compiler-sandbox.prd.project.md
+
 ## 目标
 - 收口 README 中“模块可安装至基础设施”的运行时差距：不仅记录安装目标，还要在 runtime tick 中形成可执行语义。
 - 收口 README 中“世界内编译”链路的隔离差距：对源码编译入口增加 sandbox 化约束，降低环境漂移和宿主污染风险。

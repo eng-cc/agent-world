@@ -7,6 +7,7 @@
 - [x] DFIO-4 (PRD-P2P-MIG-080)：回写状态文档与 devlog。
 
 ## 依赖
+- doc/p2p/distfs/distfs-standard-file-io.prd.md
 - `crates/agent_world_distfs`
 - `doc/p2p/distributed/distributed-runtime.prd.md`
 - `README.md`（crate 分工）

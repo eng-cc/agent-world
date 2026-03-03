@@ -4,6 +4,7 @@
 - [x] UDC-0：完成玩家模式浮层去拥挤改造（顶部 toast/成就重排、右下角 chatter 与小地图解耦、右侧面板展开时小地图抑制）并完成回归验证。
 
 ## 依赖
+- doc/world-simulator/viewer/viewer-player-ui-declutter-2026-02-24.prd.md
 - UDC-0 依赖现有 Player experience 渲染层与 `__AW_TEST__` 闭环能力（已具备）。
 
 ## 状态

@@ -9,6 +9,7 @@
 - [x] VGRO5：回顾设计文档与项目文档，更新状态并收口。
 
 ## 依赖
+- doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.md
 - `crates/agent_world_viewer/src/app_bootstrap.rs`
 - `crates/agent_world_viewer/src/egui_right_panel.rs`
 - `crates/agent_world_viewer/src/right_panel_module_visibility.rs`

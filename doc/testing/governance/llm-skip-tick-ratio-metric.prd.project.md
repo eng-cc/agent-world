@@ -8,6 +8,7 @@
 - [x] LLMSKIP-5 (PRD-TESTING-004): 专题文档按 strict schema 人工重写，并切换命名到 `.prd.md/.prd.project.md`。
 
 ## 依赖
+- doc/testing/governance/llm-skip-tick-ratio-metric.prd.md
 - `crates/agent_world/src/bin/world_llm_agent_demo.rs`
 - `crates/agent_world/src/bin/world_llm_agent_demo/tests.rs`
 - `scripts/llm-longrun-stress.sh`

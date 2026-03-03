@@ -1,5 +1,7 @@
 # Viewer Bevy 浏览器运行路径设计
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-bevy-web-runtime.prd.project.md
+
 ## 1. Executive Summary
 - 为 `agent_world_viewer` 增加一条可执行的浏览器运行路径（`wasm32-unknown-unknown`），让 Viewer 支持在浏览器中启动与渲染。
 - 保持现有桌面运行方式不受影响：桌面仍支持在线 TCP 连接 `world_viewer_live`。

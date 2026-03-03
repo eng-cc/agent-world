@@ -1,5 +1,7 @@
 # README 高优先级缺口收口（三期）：世界内编译 + 共识动作载荷 + WASM 运行计费（设计文档）
 
+- 对应项目管理文档: doc/readme/gap/readme-gap123-runtime-consensus-metering.prd.project.md
+
 ## 目标
 - 收口缺口 1：补齐世界内 Rust -> WASM 编译闭环，不再只支持“链下编译后直接部署字节”。
 - 收口缺口 2：让共识提交携带“有序动作载荷”，并驱动执行层按提交动作重放，而不是仅按高度空转 `step()`。

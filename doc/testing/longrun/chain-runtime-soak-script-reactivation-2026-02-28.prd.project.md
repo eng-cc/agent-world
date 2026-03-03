@@ -8,6 +8,7 @@
 - [x] SOAKREACT-5 (PRD-TESTING-004): 专题文档按 strict schema 人工重写，并切换命名到 `.prd.md/.prd.project.md`。
 
 ## 依赖
+- doc/testing/longrun/chain-runtime-soak-script-reactivation-2026-02-28.prd.md
 - `scripts/s10-five-node-game-soak.sh`
 - `scripts/p2p-longrun-soak.sh`
 - `crates/agent_world/src/bin/world_chain_runtime.rs`

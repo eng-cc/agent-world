@@ -8,6 +8,7 @@
 - [x] TMAN-5 (PRD-TESTING-004): 专题文档人工迁移到 strict schema 并统一 `.prd.md/.prd.project.md` 命名。
 
 ## 依赖
+- doc/testing/manual/systematic-application-testing-manual.prd.md
 - `testing-manual.md`
 - `doc/testing/manual/web-ui-playwright-closure-manual.prd.md`
 - `scripts/ci-tests.sh`

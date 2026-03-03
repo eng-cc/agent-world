@@ -1,5 +1,7 @@
 # Agent World: CI 测试分级细化到 Test Case
 
+- 对应项目管理文档: doc/testing/ci/ci-testcase-tiering.prd.project.md
+
 ## 1. Executive Summary
 - Problem Statement: 仅以“整套 `cargo test`”作为门禁粒度会拉长反馈链路，难以在 required 阶段快速定位关键回归。
 - Proposed Solution: 将 CI 分层细化到 test case 级别，使用 `test_tier_required`/`test_tier_full` 标签驱动 required/full 执行路径。

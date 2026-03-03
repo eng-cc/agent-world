@@ -7,6 +7,7 @@
 - [x] OSMB-4 (PRD-P2P-MIG-106)：回写状态文档与 devlog。
 
 ## 依赖
+- doc/p2p/observer/observer-sync-mode-metrics-runtime-bridge.prd.md
 - `crates/agent_world_net/src/observer.rs`
 - `crates/agent_world_net/src/observer_metrics.rs`
 - `crates/agent_world_net/src/lib.rs`

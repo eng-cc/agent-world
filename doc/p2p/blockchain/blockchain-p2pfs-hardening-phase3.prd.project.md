@@ -7,6 +7,7 @@
 - [x] HP3-3 (PRD-P2P-MIG-047)：补齐测试并执行 `test_tier_required` 回归，回写文档状态与 devlog。
 
 ## 依赖
+- doc/p2p/blockchain/blockchain-p2pfs-hardening-phase3.prd.md
 - `crates/agent_world_consensus/src/signature.rs`
 - `crates/agent_world_consensus/src/sequencer_mainloop.rs`
 - `crates/agent_world_consensus/src/lib.rs`

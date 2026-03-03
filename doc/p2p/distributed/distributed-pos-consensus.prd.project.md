@@ -6,6 +6,7 @@
 - [x] POS-3 (PRD-P2P-MIG-082)：执行回归测试，回写文档状态与 devlog 收口。
 
 ## 依赖
+- doc/p2p/distributed/distributed-pos-consensus.prd.md
 - `crates/agent_world_consensus/src/quorum.rs`
 - `crates/agent_world_consensus/src/lib.rs`
 - `crates/agent_world_proto/src/distributed_consensus.rs`

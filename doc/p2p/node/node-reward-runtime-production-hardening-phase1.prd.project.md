@@ -8,6 +8,7 @@
 - [x] PRH1-5 (PRD-P2P-MIG-100)：补齐/更新测试，执行 `test_tier_required` 回归，回写文档状态与 devlog。
 
 ## 依赖
+- doc/p2p/node/node-reward-runtime-production-hardening-phase1.prd.md
 - `crates/agent_world/src/runtime/node_points.rs`
 - `crates/agent_world/src/runtime/node_points_runtime.rs`
 - `crates/agent_world/src/runtime/reward_asset.rs`

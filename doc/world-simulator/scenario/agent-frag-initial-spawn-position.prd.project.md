@@ -7,6 +7,7 @@
 - [x] FSP4 2D 遮挡修复（严格正上方出生 + Viewer 保留 standoff 渲染）
 
 ## 依赖
+- doc/world-simulator/scenario/agent-frag-initial-spawn-position.prd.md
 - `crates/agent_world/src/simulator/init.rs`
 - `crates/agent_world/src/simulator/tests/mod.rs`
 - `crates/agent_world/src/simulator/tests/*`

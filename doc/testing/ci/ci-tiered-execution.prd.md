@@ -1,5 +1,7 @@
 # Agent World: CI 与提交钩子测试分级
 
+- 对应项目管理文档: doc/testing/ci/ci-tiered-execution.prd.project.md
+
 ## 1. Executive Summary
 - Problem Statement: 本地 `pre-commit` 与 PR 门禁若默认跑全量测试，会显著拉长反馈周期并影响开发迭代效率。
 - Proposed Solution: 建立 required/full 分级执行模型，提交路径跑 required，每日定时跑 full，保持“快反馈 + 全覆盖”平衡。

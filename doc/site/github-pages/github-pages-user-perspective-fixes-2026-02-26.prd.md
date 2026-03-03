@@ -1,5 +1,7 @@
 # GitHub Pages 用户视角问题修复（2026-02-26）设计文档
 
+- 对应项目管理文档: doc/site/github-pages/github-pages-user-perspective-fixes-2026-02-26.prd.project.md
+
 ## 目标
 - 修复首页顶部导航在长页面滚动时失效的问题，保证用户在任意位置都能快速导航与切换语言。
 - 修复语言自动跳转状态写入时机，避免英文用户先访问文档页后被锁定在中文首页。

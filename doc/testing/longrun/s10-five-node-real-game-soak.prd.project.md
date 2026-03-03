@@ -15,6 +15,7 @@
 - [x] S10REAL-11 (PRD-TESTING-004): 专题文档按 strict schema 人工迁移并统一 `.prd.md/.prd.project.md` 命名。
 
 ## 依赖
+- doc/testing/longrun/s10-five-node-real-game-soak.prd.md
 - `scripts/s10-five-node-game-soak.sh`
 - `scripts/p2p-longrun-soak.sh`
 - `crates/agent_world/src/bin/world_viewer_live/cli.rs`

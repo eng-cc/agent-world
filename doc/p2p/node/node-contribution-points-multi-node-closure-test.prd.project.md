@@ -6,6 +6,7 @@
 - [x] NCPM-3 (PRD-P2P-MIG-089)：执行 test_tier_required 回归，回写文档与 devlog 收口。
 
 ## 依赖
+- doc/p2p/node/node-contribution-points-multi-node-closure-test.prd.md
 - `crates/agent_world/src/runtime/node_points.rs`
 - `doc/p2p/node/node-contribution-points.prd.md`
 - `doc/p2p/node/node-contribution-points.prd.project.md`

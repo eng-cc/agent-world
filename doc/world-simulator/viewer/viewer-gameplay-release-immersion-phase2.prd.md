@@ -1,5 +1,7 @@
 # Viewer 发行体验改造（第二阶段：沉浸与引导）
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase2.prd.project.md
+
 ## 1. Executive Summary
 - 在已完成的 Player 默认降噪基础上，继续提升“可玩感”：
   - 关键动作可感知（情绪反馈）

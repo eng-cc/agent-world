@@ -1,5 +1,7 @@
 # Gameplay Layer War/Governance/Crisis/Meta Closure（生产级设计）
 
+- 对应项目管理文档: doc/game/gameplay/gameplay-layer-war-governance-crisis-meta-closure.prd.project.md
+
 ## 目标
 - 补齐 `README.md` 与 `doc/game/gameplay/gameplay-engineering-architecture.md` 对完整玩法层的最低要求：战争、政治治理、危机、经济覆盖、元进度五类玩法都具备可启动模块与可审计协议原语。
 - 在“基础层 / WASM 游戏层”已拆分的前提下，将玩法原语落到 runtime 动作/事件协议、状态机与内建模块启动闭环，形成可测试的最小可玩实现。

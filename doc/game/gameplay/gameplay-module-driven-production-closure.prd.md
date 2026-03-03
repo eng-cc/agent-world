@@ -1,5 +1,7 @@
 # Gameplay Module-Driven Production Closure（生产级设计）
 
+- 对应项目管理文档: doc/game/gameplay/gameplay-module-driven-production-closure.prd.project.md
+
 ## 目标
 - 把 Gameplay 层从“runtime 硬编码推进”切换为“WASM gameplay 模块驱动推进”，让战争/治理/危机/元进度具备可替换、可演进实现。
 - 将 m5 内建模块从占位实现升级为可执行规则模块，确保输出稳定协议（directive emit）并可由 runtime 消费。

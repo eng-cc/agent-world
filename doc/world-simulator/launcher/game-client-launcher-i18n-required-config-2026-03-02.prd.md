@@ -1,5 +1,7 @@
 # 客户端启动器中英文切换与必填配置校验（2026-03-02）
 
+- 对应项目管理文档: doc/world-simulator/launcher/game-client-launcher-i18n-required-config-2026-03-02.prd.project.md
+
 ## 1. Executive Summary
 - 让打包后的桌面启动器支持中文/英文界面切换，降低不同语言用户的使用门槛。
 - 在点击启动前提示必填配置项缺失或格式错误，避免启动流程在子进程阶段才失败。

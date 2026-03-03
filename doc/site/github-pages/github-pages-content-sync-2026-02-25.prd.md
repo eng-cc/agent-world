@@ -1,5 +1,7 @@
 # GitHub Pages 内容状态同步（2026-02-25）设计文档
 
+- 对应项目管理文档: doc/site/github-pages/github-pages-content-sync-2026-02-25.prd.project.md
+
 ## 目标
 - 基于当前仓库文档与代码现状，修正 GitHub Pages 中已过时的信息口径。
 - 保持中英文页面同构，确保首页与手册页对同一能力结论一致。

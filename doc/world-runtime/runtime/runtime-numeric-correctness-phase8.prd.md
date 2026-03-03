@@ -1,5 +1,7 @@
 # Agent World Runtime：Membership Dead-Letter Replay 重试计数与比率阈值数值语义硬化（15 点清单第八阶段）
 
+- 对应项目管理文档: doc/world-runtime/runtime/runtime-numeric-correctness-phase8.prd.project.md
+
 ## 1. Executive Summary
 - 收口 `membership_recovery` 主链路中仍存在的 `saturating_*` 数值语义，避免长期运行下出现“静默夹逼后继续执行”。
 - 对重试失败路径中的 `attempt + 1` 与 `now_ms + retry_backoff_ms` 采用显式受检语义，越界时返回可观测错误并保持状态不被部分写入。

@@ -1,5 +1,7 @@
 # Viewer 首局目标清晰度加固（2026-02-27）
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-first-session-goal-clarity-hardening-2026-02-27.prd.project.md
+
 ## 1. Executive Summary
 - 将首局目标提示从“描述性文案”升级为“动作句 + 完成条件 + 预计耗时”，让玩家在 60 秒内明确第一步。
 - 将首局信息架构改为“主任务优先、次任务折叠”，降低首次认知负担。

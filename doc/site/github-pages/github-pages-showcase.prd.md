@@ -1,5 +1,7 @@
 # GitHub Pages 对外展示站点设计
 
+- 对应项目管理文档: doc/site/github-pages/github-pages-showcase.prd.project.md
+
 ## 目标
 - 在仓库内新增一个可公开访问的 GitHub Pages 站点，用于对外介绍 `agent-world`。
 - 让外部访客在 1 分钟内理解项目定位、核心能力、演示入口与参与方式。

@@ -8,6 +8,7 @@
 - [x] T4：完成 required/full 回归，回写文档状态与 devlog 收口。
 
 ## 依赖
+- doc/world-simulator/m4/m4-resource-product-system-p3-layer-profile-chain-expansion-2026-02-27.prd.md
 - `doc/world-simulator/m4/m4-resource-product-system-playability-2026-02-27.prd.md`
 - `doc/world-simulator/m4/m4-resource-product-system-p2-stage-guidance-market-governance-linkage-2026-02-27.prd.md`
 - `crates/agent_world_wasm_abi/src/economy.rs`

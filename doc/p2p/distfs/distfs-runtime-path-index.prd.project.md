@@ -7,6 +7,7 @@
 - [x] DPRI-4 (PRD-P2P-MIG-076)：回写状态文档与 devlog。
 
 ## 依赖
+- doc/p2p/distfs/distfs-runtime-path-index.prd.md
 - `crates/agent_world_net/src/execution_storage.rs`
 - `crates/agent_world_net/src/lib.rs`
 - `crates/agent_world_distfs/src/lib.rs`

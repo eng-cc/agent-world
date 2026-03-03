@@ -43,6 +43,7 @@
 - [x] I32 文档更新：世界观调整为破碎小行星带
 
 ## 依赖
+- doc/world-simulator/scenario/world-initialization.prd.md
 - `generate_fragments`（小行星带碎片生成器）
 - `WorldKernel` / `WorldModel` 基础结构
 

@@ -1,5 +1,7 @@
 # 客户端启动器优雅退出与级联进程关闭（2026-03-02）
 
+- 对应项目管理文档: doc/world-simulator/launcher/game-client-launcher-graceful-stop-2026-03-02.prd.project.md
+
 ## 1. Executive Summary
 - 在桌面启动器点击“停止”或直接关闭窗口时，优先让 `world_game_launcher` 走优雅退出路径。
 - 提升“启动器退出后残留子进程”问题的可控性，尽量确保 `world_viewer_live` 与 `world_chain_runtime` 被一并清理。

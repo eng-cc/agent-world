@@ -1,5 +1,7 @@
 # Agent World Runtime：Membership Replay 调度/冷却时间门控算术语义硬化（15 点清单第十一阶段）
 
+- 对应项目管理文档: doc/world-runtime/runtime/runtime-numeric-correctness-phase11.prd.project.md
+
 ## 1. Executive Summary
 - 收口 `membership_recovery/replay.rs` 中调度间隔、策略冷却、rollback 冷却三条时间门控的饱和减法语义。
 - 在极端时间边界（如 `i64::MIN` 历史时间戳）下，从“静默饱和并继续执行”切换为“显式失败并阻断状态写入”。

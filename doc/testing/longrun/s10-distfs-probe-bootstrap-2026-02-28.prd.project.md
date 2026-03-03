@@ -8,6 +8,7 @@
 - [x] S10DISTFS-5 (PRD-TESTING-004): 文档按 strict schema 人工迁移并改名为 `.prd.md/.prd.project.md`。
 
 ## 依赖
+- doc/testing/longrun/s10-distfs-probe-bootstrap-2026-02-28.prd.md
 - `crates/agent_world/src/bin/world_chain_runtime/reward_runtime_worker.rs`
 - `scripts/s10-five-node-game-soak.sh`
 - `.tmp/release_gate_s10/20260301-001957/summary.json`

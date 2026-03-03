@@ -1,5 +1,7 @@
 # Agent World Simulator：Chat Panel 预设区扩展 Agent Prompt 字段编辑（设计文档）
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-chat-prompt-presets-profile-editing.prd.project.md
+
 ## 1. Executive Summary
 - 在现有最右侧 Chat Panel 的“预设 Prompt”区域内，直接提供 `system prompt`、`短期目标`、`长期目标` 的可编辑能力。
 - 保持“一个入口完成聊天预设与 Agent Prompt 配置编辑”，避免回到独立 Prompt Ops 面板。

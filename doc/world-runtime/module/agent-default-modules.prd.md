@@ -1,5 +1,7 @@
 # Agent World Runtime：Agent 默认模块体系（Body/Power/Sense/Move/Memory/Storage）
 
+- 对应项目管理文档: doc/world-runtime/module/agent-default-modules.prd.project.md
+
 ## 1. Executive Summary
 - 定义 Agent 的 **默认模块包（Default Module Package v1）**，保证个体在无外部工业设施时可最小生存与行动。
 - 将“机体接口数量可配置、可扩容”落到统一规则：扩容必须消耗“接口模块”，扩容行为可审计、可回放。

@@ -1,5 +1,7 @@
 # Viewer 控制可预期性改版任务清单（2026-02-28）
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-control-predictability-tasklist-2026-02-28.prd.project.md
+
 ## 1. Executive Summary
 - 以“玩家控制代理感”为第一目标，修复 `accepted` 但无推进造成的失控感。
 - 将最近多轮卡片中的 B 段不稳定问题（`step` 二次调用不推进）收敛为可解释、可恢复、可量化。

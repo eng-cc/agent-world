@@ -1,5 +1,7 @@
 # Viewer 双视角（2D/3D）切换设计
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-dual-view-2d-3d.prd.project.md
+
 ## 1. Executive Summary
 - 在 `agent_world_viewer` 中提供 **2D 全局视角** 与 **3D 透视视角** 的一键切换。
 - 默认进入 2D 视角，优先保障“开箱即看全局态势”的可观察性。

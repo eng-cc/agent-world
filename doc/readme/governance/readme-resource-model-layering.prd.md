@@ -1,5 +1,7 @@
 # README 资源模型口径修订：内建最小资源 + 模块扩展资源（设计文档）
 
+- 对应项目管理文档: doc/readme/governance/readme-resource-model-layering.prd.project.md
+
 ## 目标
 - 修订 `README.md` 的资源描述，使其与当前工程实现一致，避免“文档承诺资源维度”与“代码内建资源枚举”产生歧义。
 - 明确 Agent World 的资源分层：

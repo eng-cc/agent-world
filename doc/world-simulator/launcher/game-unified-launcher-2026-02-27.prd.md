@@ -1,5 +1,7 @@
 # 可发行统一启动器（Launcher）设计文档（2026-02-27）
 
+- 对应项目管理文档: doc/world-simulator/launcher/game-unified-launcher-2026-02-27.prd.project.md
+
 ## 1. Executive Summary
 - 提供一个面向玩家的统一启动入口，不再要求玩家手动分别启动后端与 Web 前端。
 - 启动器在一次命令内完成：启动 `world_viewer_live`、提供 Web Viewer 静态资源服务、拼接连接 URL 并自动打开浏览器。

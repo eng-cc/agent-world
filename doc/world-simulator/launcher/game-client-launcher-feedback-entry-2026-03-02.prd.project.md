@@ -6,6 +6,7 @@
 - [x] T2 (PRD-WORLD_SIMULATOR-003)：测试与收口（更新设计文档完成态、项目状态、devlog）。
 
 ## 依赖
+- doc/world-simulator/launcher/game-client-launcher-feedback-entry-2026-03-02.prd.md
 - 依赖现有 `agent_world_client_launcher` UI 与日志缓存能力。
 - 依赖本地文件系统可写权限用于创建反馈目录与 JSON 文件。
 

@@ -1,5 +1,7 @@
 # Agent World: LLM 跳过 Tick 占比指标
 
+- 对应项目管理文档: doc/testing/governance/llm-skip-tick-ratio-metric.prd.project.md
+
 ## 1. Executive Summary
 - Problem Statement: 当前 LLM 运行链路缺少“跳过 LLM 调用 tick 占比”这一统一指标，无法量化 `execute_until` 等机制带来的调用节省效果。
 - Proposed Solution: 在 demo、report 与长跑汇总脚本中统一输出 `llm_skipped_ticks` 与 `llm_skipped_tick_ratio_ppm`，并通过稳定口径与单测保障可消费性。

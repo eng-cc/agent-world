@@ -8,6 +8,7 @@
 - [x] T5 (PRD-TESTING-004): 专题文档人工迁移到 strict schema，并切换命名为 `.prd.md/.prd.project.md`。
 
 ## 依赖
+- doc/testing/ci/ci-builtin-wasm-m1-multi-runner.prd.md
 - `.github/workflows/rust.yml`
 - `scripts/sync-m1-builtin-wasm-artifacts.sh`
 - `scripts/build-builtin-wasm-modules.sh`

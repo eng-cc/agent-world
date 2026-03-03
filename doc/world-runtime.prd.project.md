@@ -4,6 +4,7 @@
 - [x] REDIRECT-001: 根目录 `world-runtime` / `world-runtime.project` 已迁移为 `.prd` 命名 redirect 入口。
 
 ## 依赖
+- doc/world-runtime.prd.md
 - 主入口：`doc/world-runtime/prd.md`
 - 项目管理：`doc/world-runtime/prd.project.md`
 - 历史归档：`doc/archive/root-history/world-runtime-root-entry-legacy-2026-03-03.prd.project.md`

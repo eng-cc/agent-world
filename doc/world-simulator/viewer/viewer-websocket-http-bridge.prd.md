@@ -1,5 +1,7 @@
 # Viewer WebSocket/HTTP Bridge 设计文档
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-websocket-http-bridge.prd.project.md
+
 ## 1. Executive Summary
 - 为 `agent_world_viewer` 的 Web 端补齐在线连接能力，使浏览器可以观察 `world_viewer_live` 的实时世界演化（含 `llm_bootstrap`）。
 - 在不破坏现有 TCP viewer 协议的前提下，增加一条浏览器可用的桥接通道（WebSocket over HTTP Upgrade）。

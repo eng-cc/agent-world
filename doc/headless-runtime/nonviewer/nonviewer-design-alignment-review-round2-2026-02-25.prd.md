@@ -1,5 +1,7 @@
 # Non-Viewer 设计一致性审查 Round2（2026-02-25）
 
+- 对应项目管理文档: doc/headless-runtime/nonviewer/nonviewer-design-alignment-review-round2-2026-02-25.prd.project.md
+
 ## 1. Executive Summary
 - 在已完成 `doc/headless-runtime/nonviewer/nonviewer-design-alignment-fixes-2026-02-25.prd.md` 的基础上，继续执行第二轮 non-viewer 设计一致性审查。
 - 覆盖非 Viewer 的活跃设计分册（优先 `testing` / `p2p` / `world-runtime`），识别“设计要求与实现行为不一致”项。

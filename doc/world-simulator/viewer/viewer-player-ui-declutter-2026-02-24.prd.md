@@ -1,5 +1,7 @@
 # Viewer 玩家模式 UI 去拥挤优化（2026-02-24）
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-player-ui-declutter-2026-02-24.prd.project.md
+
 ## 1. Executive Summary
 - 降低玩家模式下 HUD/引导层在同屏并发时的视觉拥挤与互相覆盖。
 - 优先修复已观测到的三类冲突：

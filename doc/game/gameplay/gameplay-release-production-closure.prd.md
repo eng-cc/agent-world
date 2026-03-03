@@ -1,5 +1,7 @@
 # Gameplay 发行收口（社会经济治理 + 压测门禁 + 联盟战争生命周期）
 
+- 对应项目管理文档: doc/game/gameplay/gameplay-release-production-closure.prd.project.md
+
 ## 目标
 - 将当前 Gameplay 从“协议可运行”推进到“可发行的生产级闭环”，聚焦非 viewer 路径。
 - 落地三项发行缺口：

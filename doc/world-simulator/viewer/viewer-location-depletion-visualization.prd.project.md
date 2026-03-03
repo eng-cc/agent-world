@@ -8,6 +8,7 @@
 - [x] LDV5：更新说明书与 devlog 收口
 
 ## 依赖
+- doc/world-simulator/viewer/viewer-location-depletion-visualization.prd.md
 - `crates/agent_world_viewer/src/scene_helpers.rs`
 - `crates/agent_world_viewer/src/ui_text.rs`
 - `crates/agent_world_viewer/src/tests.rs`

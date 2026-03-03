@@ -1,5 +1,7 @@
 # GitHub Pages 首屏 CTA 收敛与文案校准（2026-02-26）设计文档
 
+- 对应项目管理文档: doc/site/github-pages/github-pages-hero-cta-simplify-2026-02-26.prd.project.md
+
 ## 目标
 - 将首页 Hero 区 CTA 从 4 个收敛为 2 个，降低首次访问决策成本。
 - 主按钮改为“试玩/观看演示”语义，避免“30 秒进入首局”带来的预期落差。

@@ -9,6 +9,7 @@
 - [x] AOSA-6 `WasmExecutor` 磁盘编译缓存（wasmtime serialized module）。
 
 ## 依赖
+- doc/world-runtime/wasm/wasm-agent-os-alignment-hardening.prd.md
 - 现有 wasm ABI：`crates/agent_world_wasm_abi/src/lib.rs`
 - 现有 runtime 模块执行链路：`crates/agent_world/src/runtime/world/module_runtime.rs`
 - 执行器实现：`crates/agent_world_wasm_executor/src/lib.rs`

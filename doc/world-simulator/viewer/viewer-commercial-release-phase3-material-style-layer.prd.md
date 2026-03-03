@@ -1,5 +1,7 @@
 # Viewer 商业化发行缺口收敛 Phase 3：材质风格覆盖层
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-commercial-release-phase3-material-style-layer.prd.project.md
+
 ## 1. Executive Summary
 - 在已有“外部 mesh 可替换”能力之上，补齐“材质风格可配置”能力，减少导入真实美术后出现的风格割裂。
 - 允许按实体类别覆盖基础色与自发光色，提升 Viewer 在不同发行主题（工业风、冷色科幻、沙盒写实）下的快速调优能力。

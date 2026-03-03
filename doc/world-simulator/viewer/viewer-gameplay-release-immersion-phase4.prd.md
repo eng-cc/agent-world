@@ -1,5 +1,7 @@
 # Viewer 发行体验改造（第四阶段：场景活化与交互动效）
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase4.prd.project.md
+
 ## 1. Executive Summary
 - 在第三阶段“成就/气泡反馈”基础上，继续提升玩家沉浸感与舒适度：
   - 增强主场景氛围层，降低“纯工具画面”感。

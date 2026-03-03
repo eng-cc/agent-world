@@ -8,6 +8,7 @@
 - [x] T4 回归测试：验证空结果下不会重复累加空决策 tick
 
 ## 依赖
+- doc/world-simulator/viewer/viewer-live-llm-event-driven-trigger-2026-02-26.prd.md
 - `crates/agent_world/src/viewer/live_split_part1.rs`
 - `crates/agent_world/src/viewer/live_split_part2.rs`
 - `crates/agent_world/src/viewer/live/consensus_bridge.rs`

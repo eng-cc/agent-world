@@ -1,5 +1,7 @@
 # GitHub Pages Hero 指针微交互（四期增量）设计文档
 
+- 对应项目管理文档: doc/site/github-pages/github-pages-hero-pointer-interaction.prd.project.md
+
 ## 目标
 - 在现有 Hero 动态背景层上增加鼠标/触摸微交互联动，增强“可感知科技感”。
 - 交互反馈保持克制：只对局部节点和光束产生轻微响应，不影响文本可读与操作。

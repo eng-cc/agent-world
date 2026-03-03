@@ -1,5 +1,7 @@
 # Viewer Texture Inspector 框架合理性优化（2026-03-01）
 
+- 对应项目管理文档: doc/scripts/viewer-tools/viewer-texture-inspector-framework-rationalization-2026-03-01.prd.project.md
+
 ## 目标
 - 在 T5 已达成视觉差异门禁通过的基础上，继续降低可视化层的“补丁式”维护成本。
 - 将关键能力从“零散分支逻辑”收敛为“可扩展结构”：

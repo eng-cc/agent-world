@@ -1,5 +1,7 @@
 # Agent World: Minimal System Run (Viewer Demo)
 
+- 对应项目管理文档: doc/world-simulator/viewer/minimal-system.prd.project.md
+
 ## 1. Executive Summary
 - Provide a deterministic, low-friction way to generate `snapshot.json` + `journal.json` for the viewer.
 - Enable a minimal end-to-end run: generate demo data -> start viewer server -> open UI client.

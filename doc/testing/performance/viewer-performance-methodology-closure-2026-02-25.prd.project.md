@@ -8,6 +8,7 @@
 - [x] VPMC-5 (PRD-TESTING-004): 专题文档按 strict schema 人工迁移并统一 `.prd.md/.prd.project.md` 命名。
 
 ## 依赖
+- doc/testing/performance/viewer-performance-methodology-closure-2026-02-25.prd.md
 - `scripts/viewer-owr4-stress.sh`
 - `crates/agent_world_viewer/src/perf_probe.rs`
 - `testing-manual.md`

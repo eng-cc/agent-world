@@ -1,5 +1,7 @@
 # Viewer `step` Completion Ack（2026-02-28）
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-step-completion-ack-2026-02-28.prd.project.md
+
 ## 1. Executive Summary
 - 为 `step` 控制增加 completion ack：服务端按 `request_id` 回传“已推进/超时无推进”。
 - 将 `step accepted`（入队）与 `step completed`（结果）语义分离，降低控制黑盒感。

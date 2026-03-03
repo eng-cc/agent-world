@@ -7,6 +7,7 @@
 - [x] T3：回写文档状态与 devlog，完成收口。
 
 ## 依赖
+- doc/world-simulator/m4/m4-resource-product-system-p1-maintenance-scarcity-pressure-2026-02-27.prd.md
 - `doc/world-simulator/m4/m4-resource-product-system-playability-2026-02-27.prd.md`
 - `doc/world-simulator/m4/m4-resource-product-system-p0-shared-bottleneck-logistics-priority-2026-02-27.prd.md`
 - `crates/agent_world/src/runtime/world/economy.rs`

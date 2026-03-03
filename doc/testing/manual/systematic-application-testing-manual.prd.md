@@ -1,5 +1,7 @@
 # Agent World：系统性应用测试手册工程化收口（2026-02-26）
 
+- 对应项目管理文档: doc/testing/manual/systematic-application-testing-manual.prd.project.md
+
 ## 1. Executive Summary
 - Problem Statement: 测试分层模型、触发矩阵与证据标准若分散在多处文档/脚本，容易出现执行口径漂移，导致“通过门禁但风险未覆盖”。
 - Proposed Solution: 以 `testing-manual.md` 作为统一入口，配套 Web 闭环分册与脚本入口，固化 Human/AI 共用的可审计测试流程。

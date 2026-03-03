@@ -11,6 +11,7 @@
 - [x] WTA-7 `getState()` 增补相机语义字段（`cameraMode/cameraRadius/cameraOrthoScale`）
 
 ## 依赖
+- doc/world-simulator/viewer/viewer-web-semantic-test-api.prd.md
 - `crates/agent_world_viewer/src/viewer_automation.rs`
 - `crates/agent_world_viewer/src/app_bootstrap.rs`
 - `crates/agent_world_viewer/src/main.rs`

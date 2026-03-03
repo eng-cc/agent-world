@@ -4,6 +4,7 @@
 - [x] WDF1 完成 Web Chat 卡死修复、回车发送修复、闭环验证与文档收口
 
 ## 依赖
+- doc/world-simulator/viewer/viewer-chat-web-deadlock-fix.prd.md
 - `Cargo.toml`
 - `crates/agent_world_viewer/src/egui_right_panel_chat.rs`
 - `crates/agent_world_viewer/src/app_bootstrap.rs`

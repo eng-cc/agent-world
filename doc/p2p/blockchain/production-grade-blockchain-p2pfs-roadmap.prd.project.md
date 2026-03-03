@@ -7,6 +7,7 @@
 - [x] PRG-4 (PRD-P2P-MIG-056)：补齐测试并执行 `test_tier_required` 回归，回写文档与 devlog。
 
 ## 依赖
+- doc/p2p/blockchain/production-grade-blockchain-p2pfs-roadmap.prd.md
 - `crates/agent_world_node/src/lib.rs`
 - `crates/agent_world_node/src/pos_state_store.rs`
 - `crates/agent_world/src/bin/world_viewer_live.rs`

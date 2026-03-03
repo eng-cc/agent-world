@@ -5,6 +5,7 @@
 - [x] S2 扩展 AsteroidFragmentConfig 最小间距字段并接入生成器约束，补充测试与文档同步
 
 ## 依赖
+- doc/world-simulator/scenario/fragment-spacing.prd.md
 - `generate_fragments`（小行星带碎片生成器）
 - `AsteroidFragmentConfig`（WorldConfig 的碎片生成配置）
 

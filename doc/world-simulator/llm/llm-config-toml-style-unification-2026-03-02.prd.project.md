@@ -7,6 +7,7 @@
 - [x] T3 (PRD-WORLD_SIMULATOR-003)：回归与收口（执行回归测试，更新文档完成态与任务日志）。
 
 ## 依赖
+- doc/world-simulator/llm/llm-config-toml-style-unification-2026-03-02.prd.md
 - `crates/agent_world/src/simulator/llm_agent.rs` 配置加载入口。
 - `crates/agent_world/src/simulator/llm_agent/tests_split_part1.rs` 现有配置解析测试。
 - `config.toml` 与 `config.example.toml` 配置样例。

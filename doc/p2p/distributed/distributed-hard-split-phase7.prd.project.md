@@ -9,6 +9,7 @@
 - [x] R7-6 (PRD-P2P-MIG-081)：拆分所有超 1200 行 Rust 文件并完成回归。
 
 ## 依赖
+- doc/p2p/distributed/distributed-hard-split-phase7.prd.md
 - `crates/agent_world`
 - `crates/agent_world_net`
 - `crates/agent_world_consensus`

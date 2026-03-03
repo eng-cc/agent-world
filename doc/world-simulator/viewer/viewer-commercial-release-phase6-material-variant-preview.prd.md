@@ -1,5 +1,7 @@
 # Viewer 商业化发行缺口收敛 Phase 6：材质变体快速预览
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-commercial-release-phase6-material-variant-preview.prd.project.md
+
 ## 1. Executive Summary
 - 在不改动模拟协议与资源管线的前提下，提供运行时“材质变体快速预览”能力，缩短美术调参与观感对比回路。
 - 支持在 Viewer 内快速切换预设（`default` / `matte` / `glossy`），覆盖核心实体材质的 roughness/metallic 表现。

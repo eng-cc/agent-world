@@ -1,5 +1,7 @@
 # GitHub Pages 首页激进改造（2026-02-26）设计文档
 
+- 对应项目管理文档: doc/site/github-pages/github-pages-home-radical-redesign-2026-02-26.prd.project.md
+
 ## 目标
 - 对 `site/` 首页执行“大刀阔斧”改造，在不破坏现有交互闭环的前提下，显著提升视觉记忆点与信息冲击力。
 - 保持“游戏优先、引擎后置”的产品叙事：上半页强调可玩性与玩家价值，下半页再进入引擎架构。

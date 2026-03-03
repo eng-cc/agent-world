@@ -1,5 +1,7 @@
 # GitHub Pages Hero 动态背景层（四期增量）设计文档
 
+- 对应项目管理文档: doc/site/github-pages/github-pages-hero-motion-layer.prd.project.md
+
 ## 目标
 - 在当前四期精简版基础上，为首屏增加轻量动态背景层，提升科技感辨识度。
 - 动效应服务叙事而非喧宾夺主：不降低文案可读性，不影响核心 CTA。

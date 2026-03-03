@@ -1,5 +1,7 @@
 # README 缺口 1/2 收口：Live 共识提交主路径 + LLM/Simulator 模块市场生命周期（设计文档）
 
+- 对应项目管理文档: doc/readme/gap/readme-gap12-consensus-market-lifecycle-closure.prd.project.md
+
 ## 目标
 - 收口缺口 1：`world_viewer_live` 主链路从“本地 kernel 直接推进”切换到“先提交 node 共识，再仅回放已提交动作推进状态”。
 - 收口缺口 2：补齐 LLM/Simulator 的模块市场/生命周期动作入口，支持上架/购买/下架/销毁/出价/撤单完整可执行闭环。

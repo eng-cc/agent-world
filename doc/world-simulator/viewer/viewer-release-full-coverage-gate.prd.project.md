@@ -9,6 +9,7 @@
 - [x] RFCG-5 修复视觉门禁假阳性：主题/纹理 gate 强制 `connected + snapshot_ready`，并补抓帧端口就绪等待
 
 ## 依赖
+- doc/world-simulator/viewer/viewer-release-full-coverage-gate.prd.md
 - `scripts/viewer-release-qa-loop.sh`
 - `scripts/viewer-theme-pack-preview.sh`
 - `scripts/viewer-texture-inspector.sh`

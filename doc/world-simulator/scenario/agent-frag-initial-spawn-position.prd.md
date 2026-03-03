@@ -1,5 +1,7 @@
 # Agent World Simulator：Agent Frag 初始站位优化（设计文档）
 
+- 对应项目管理文档: doc/world-simulator/scenario/agent-frag-initial-spawn-position.prd.project.md
+
 ## 1. Executive Summary
 - Agent 初始位置优先生成在 `frag` 附近，缩短开局采矿路径。
 - Agent 初始坐标在数据初始化阶段直接生成于 `frag` 上方，并与 `frag` 表面保持约 50m 间距。

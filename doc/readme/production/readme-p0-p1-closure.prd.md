@@ -1,5 +1,7 @@
 # README 对齐收口：P0/P1 设计文档
 
+- 对应项目管理文档: doc/readme/production/readme-p0-p1-closure.prd.project.md
+
 ## 目标
 - 对齐 `README.md` 的三条核心承诺：
   - 共识提交与执行状态可验证绑定。

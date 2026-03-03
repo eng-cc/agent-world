@@ -1,5 +1,7 @@
 # Viewer WebGL Deferred 兼容降级（2026-02-24）
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-webgl-deferred-compat-2026-02-24.prd.project.md
+
 ## 1. Executive Summary
 - 解决 Web 3D 路径在当前环境（WebGL2 + SwiftShader）偶发的致命崩溃：
   - `wgpu error: Validation Error`

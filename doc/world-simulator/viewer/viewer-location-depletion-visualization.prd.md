@@ -1,5 +1,7 @@
 # Agent World Simulator：Viewer Location 开采损耗可视化（设计文档）
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-location-depletion-visualization.prd.project.md
+
 ## 1. Executive Summary
 - 在 Viewer 中让“location 被开采后体量下降”可被直观看到，而不只停留在数值面板。
 - 对 `asteroid fragment` 场景提供稳定的损耗反馈，便于人工观察与截图回归。

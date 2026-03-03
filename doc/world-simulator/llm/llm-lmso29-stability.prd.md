@@ -1,5 +1,7 @@
 # Agent World Simulator：LMSO29 可用性与稳定性收敛（设计文档）
 
+- 对应项目管理文档: doc/world-simulator/llm/llm-lmso29-stability.prd.project.md
+
 ## 1. Executive Summary
 - 在保持链路可用（`llm_errors=0`、`parse_errors=0`）前提下，回收 LMSO28 后的策略稳定性波动。
 - 允许适度放宽 token 预算限制，减少过度压缩导致的动作决策信息不足。

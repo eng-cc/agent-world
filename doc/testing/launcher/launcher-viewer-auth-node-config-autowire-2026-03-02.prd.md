@@ -1,5 +1,7 @@
 # Agent World: 启动器 Viewer 鉴权自动继承 Node 配置（2026-03-02）
 
+- 对应项目管理文档: doc/testing/launcher/launcher-viewer-auth-node-config-autowire-2026-03-02.prd.project.md
+
 ## 1. Executive Summary
 - Problem Statement: 通过启动器打开 Web Viewer 时，聊天与 Prompt 控制鉴权依赖手工设置 `AGENT_WORLD_VIEWER_AUTH_PUBLIC_KEY/PRIVATE_KEY`，导致易错且与节点配置割裂。
 - Proposed Solution: 将 Viewer 鉴权默认口径收敛到 `config.toml [node]` keypair，并在启动器注入/Viewer 回退链路中统一读取，同时保留环境变量覆盖能力。

@@ -1,5 +1,7 @@
 # Agent World Simulator：Viewer Chat 独立最右侧 Panel（设计文档）
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-chat-dedicated-right-panel.prd.project.md
+
 ## 1. Executive Summary
 - 将聊天相关能力从当前综合右侧面板中拆分，迁移为独立 Chat Panel。
 - Chat Panel 固定在界面最右侧，避免与观察/控制模块混排。

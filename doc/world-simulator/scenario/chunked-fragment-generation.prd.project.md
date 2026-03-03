@@ -34,6 +34,7 @@
 - [x] CG10.3 回顾并更新设计文档/项目文档/任务日志，运行测试并提交 git
 
 ## 依赖
+- doc/world-simulator/scenario/chunked-fragment-generation.prd.md
 - `crates/agent_world/src/simulator/chunking.rs`
 - `crates/agent_world/src/simulator/asteroid_fragment.rs`
 - `crates/agent_world/src/simulator/init.rs`

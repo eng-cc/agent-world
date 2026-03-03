@@ -7,6 +7,7 @@
 - [x] NCP-4 (PRD-P2P-MIG-091)：回写项目状态与 devlog，完成收口。
 
 ## 依赖
+- doc/p2p/node/node-contribution-points.prd.md
 - `crates/agent_world/src/runtime/mod.rs`
 - `crates/agent_world/src/runtime`（新增节点积分模块）
 - `doc/p2p/distributed/distributed-runtime.prd.md`

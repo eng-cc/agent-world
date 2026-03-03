@@ -7,6 +7,7 @@
 - [x] NCPR-4 (PRD-P2P-MIG-090)：执行 test_tier_required 回归，回写文档与 devlog 收口。
 
 ## 依赖
+- doc/p2p/node/node-contribution-points-runtime-closure.prd.md
 - `crates/agent_world/src/runtime/node_points.rs`
 - `crates/agent_world/src/runtime/mod.rs`
 - `crates/agent_world_node/src/lib.rs`（`NodeSnapshot`）

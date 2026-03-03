@@ -1,5 +1,7 @@
 # Agent World: 测试覆盖与 CI 扩展
 
+- 对应项目管理文档: doc/testing/ci/ci-test-coverage.prd.project.md
+
 ## 1. Executive Summary
 - Problem Statement: 关键链路（viewer 离线回放、wasmtime、在线联测）若未在 CI 中显式覆盖，容易在特性分支阶段漏检回归。
 - Proposed Solution: 在统一测试脚本下扩展 required/full 覆盖项，引入离线回放联测和 wasmtime 路径，并让 `egui` snapshot 在无 `wgpu` 环境可安全降级。

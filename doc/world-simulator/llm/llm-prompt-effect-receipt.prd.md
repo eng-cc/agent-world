@@ -1,5 +1,7 @@
 # Agent World Simulator：LLM Prompt ModuleCall Effect/Receipt 可回放链路（设计文档）
 
+- 对应项目管理文档: doc/world-simulator/llm/llm-prompt-effect-receipt.prd.project.md
+
 ## 1. Executive Summary
 - 将 LLM `module_call` 交互轨迹从“仅调试文本”升级为结构化的 `effect/receipt` 事件链。
 - 让每次模块调用在 simulator `journal` 中可审计、可回放、可复盘。

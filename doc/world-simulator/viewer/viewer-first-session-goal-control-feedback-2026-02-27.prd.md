@@ -1,5 +1,7 @@
 # Viewer 首局目标与控制语义可解释反馈优化（2026-02-27）
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-first-session-goal-control-feedback-2026-02-27.prd.project.md
+
 ## 1. Executive Summary
 - 提升首局可理解性：首屏/首阶段明确展示 `1 个主目标 + 2 个短目标`，降低“目标模糊”。
 - 提升控制可发现性：为 `sendControl` 提供内置动作字典、payload 示例和可直接填充入口，降低“盲试协议”。

@@ -1,5 +1,7 @@
 # Agent World Runtime：WASM 沙箱安全补强（设计文档）
 
+- 对应项目管理文档: doc/world-runtime/wasm/wasm-sandbox-security-hardening.prd.project.md
+
 ## 1. Executive Summary
 - 修补 WASM 沙箱在执行可抢占性与资源强约束上的关键缺口。
 - 提高模块工件加载路径的完整性校验强度，降低磁盘工件被篡改后静默加载风险。

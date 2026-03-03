@@ -11,6 +11,7 @@
 - [x] T6：将未提交的 3 组设计/项目文档合并为 1 组统一文档。
 
 ## 依赖
+- doc/readme/governance/readme-world-rules-consolidation.prd.md
 
 - T1 依赖 T0：先定义 README 与细则文档分工。
 - T2 依赖 T1：先建立 `一` 的收敛模式，再扩展到 `二/三/五`。

@@ -8,6 +8,7 @@
 - [x] LFR5：回归测试、文档收口、devlog 更新
 
 ## 依赖
+- doc/world-simulator/viewer/viewer-location-fine-grained-rendering.prd.md
 - `crates/agent_world_viewer/src/scene_helpers.rs`
 - `crates/agent_world/src/simulator/scenario.rs`
 - `crates/agent_world/scenarios/*.json`

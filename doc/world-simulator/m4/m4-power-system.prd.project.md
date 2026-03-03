@@ -49,6 +49,7 @@
 - [ ] 预留市场演化扩展点（WASM 规则模块接入）
 
 ## 依赖
+- doc/world-simulator/m4/m4-power-system.prd.md
 
 - simulator 模块中的 ResourceStock, WorldKernel, Agent 等类型
 - 已有的 Action/Event 处理框架

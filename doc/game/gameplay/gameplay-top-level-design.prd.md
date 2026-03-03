@@ -1,4 +1,6 @@
 # 游戏可玩性设计总纲 v0.1  
+
+- 对应项目管理文档: doc/game/gameplay/gameplay-top-level-design.prd.project.md
 ## —— 让玩家快乐，并愿意长期沉浸的系统设计
 
 > 本文档目标：  

@@ -6,6 +6,7 @@
 - [x] R2 文档命名替换与校对（含示例与说明）
 
 ## 依赖
+- doc/world-simulator/scenario/asteroid-fragment-renaming.prd.md
 - 场景文件加载与初始化流程
 - 生成器与配置结构（WorldConfig/WorldInitConfig）
 

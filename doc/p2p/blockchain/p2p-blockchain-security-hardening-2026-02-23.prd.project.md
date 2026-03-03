@@ -10,6 +10,7 @@
 - [x] T6 (PRD-P2P-MIG-053)：补齐定向/回归测试，回写文档状态与 devlog。
 
 ## 依赖
+- doc/p2p/blockchain/p2p-blockchain-security-hardening-2026-02-23.prd.md
 - T2 依赖 T1（先稳定 replication 基础状态语义，再收紧身份校验链路）。
 - T3 依赖 T2（writer 授权依赖 signer 绑定与键值规范）。
 - T4 依赖 T3（fetch 鉴权复用 writer/signer 授权语义）。

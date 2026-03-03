@@ -7,6 +7,7 @@
 - [x] HP2-3 (PRD-P2P-MIG-046)：执行回归测试，更新文档状态与 devlog 收口。
 
 ## 依赖
+- doc/p2p/blockchain/blockchain-p2pfs-hardening-phase2.prd.md
 - `crates/agent_world_node`
 - `crates/agent_world/src/bin/world_viewer_live.rs`
 - `doc/p2p/archive/blockchain-p2pfs-hardening-phase1.prd.md`

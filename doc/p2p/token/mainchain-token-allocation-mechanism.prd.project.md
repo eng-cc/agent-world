@@ -12,6 +12,7 @@
 - [x] TAM-8 (PRD-P2P-MIG-112)：文档回写、发布说明与运行手册补充。
 
 ## 依赖
+- doc/p2p/token/mainchain-token-allocation-mechanism.prd.md
 - `world-rule.md`
 - `doc/p2p/node/node-redeemable-power-asset.prd.md`
 - `doc/p2p/node/node-reward-settlement-native-transaction.prd.md`

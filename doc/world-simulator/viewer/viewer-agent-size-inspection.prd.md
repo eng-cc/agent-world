@@ -1,5 +1,7 @@
 # Viewer Agent 尺寸可观测与比例校验
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-agent-size-inspection.prd.project.md
+
 ## 1. Executive Summary
 - 回答并可视化验证「Agent 与 Location 的比例是否符合数据口径」。
 - 在右侧选中详情中，点击 Agent 时直接显示其尺寸信息，减少来回查代码/查快照。

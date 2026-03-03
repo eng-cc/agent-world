@@ -1,5 +1,7 @@
 # Agent World Runtime：Membership Reconciliation 调度门控与对账计数算术语义硬化（15 点清单第十三阶段）
 
+- 对应项目管理文档: doc/world-runtime/runtime/runtime-numeric-correctness-phase13.prd.project.md
+
 ## 1. Executive Summary
 - 收口 `membership_reconciliation.rs` 中剩余的高风险时间门控与报告计数饱和算术。
 - 在极端时间边界下，将“静默饱和继续执行”升级为“显式失败且不污染状态”。

@@ -7,6 +7,7 @@
 - [x] OSSM-4 (PRD-P2P-MIG-110)：回写状态文档与 devlog。
 
 ## 依赖
+- doc/p2p/observer/observer-sync-source-mode.prd.md
 - `crates/agent_world_net/src/observer.rs`
 - `crates/agent_world_net/src/head_follow.rs`
 - `crates/agent_world_net/src/lib.rs`

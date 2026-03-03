@@ -1,5 +1,7 @@
 # M4 电力子系统设计文档
 
+- 对应项目管理文档: doc/world-simulator/m4/m4-power-system.prd.project.md
+
 ## 1. Executive Summary
 
 为硅基文明构建一个真实、可演化的电力系统：

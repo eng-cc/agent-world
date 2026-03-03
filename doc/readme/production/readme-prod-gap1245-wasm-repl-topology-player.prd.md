@@ -1,5 +1,7 @@
 # README 生产级缺口收口（二次）：默认 WASM 执行 + Replication RR + 分布式 Triad + 玩家节点身份（设计文档）
 
+- 对应项目管理文档: doc/readme/production/readme-prod-gap1245-wasm-repl-topology-player.prd.project.md
+
 ## 目标
 - 收口缺口 1：默认构建启用真实 WASM 执行路径（`wasmtime`），避免默认环境下模块执行退化为 `SandboxUnavailable`。
 - 收口缺口 2：补齐 `agent_world_node` libp2p replication 的 request/handler 通道，实现双向请求-响应能力。

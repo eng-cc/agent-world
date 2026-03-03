@@ -1,5 +1,7 @@
 # Viewer 2D/3D 可视化清晰度修复设计
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-2d-3d-clarity-fix.prd.project.md
+
 ## 1. Executive Summary
 - 修复当前 Viewer 在 `llm_bootstrap` 等场景中出现的“2D 大块遮屏、3D 首屏不可读”问题。
 - 统一场景实体的尺寸单位语义，避免“位置按 world unit、尺寸按米”的比例错位。

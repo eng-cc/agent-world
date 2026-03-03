@@ -1,5 +1,7 @@
 # 客户端启动器反馈入口（2026-03-02）
 
+- 对应项目管理文档: doc/world-simulator/launcher/game-client-launcher-feedback-entry-2026-03-02.prd.project.md
+
 ## 1. Executive Summary
 - 在桌面客户端启动器中提供面向玩家的“提交反馈”入口，覆盖 `Bug` 与`建议`两类反馈。
 - 反馈提交时自动附带最小可复现上下文（启动器配置快照 + 最近日志），降低研发排查成本。

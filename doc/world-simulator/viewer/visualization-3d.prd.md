@@ -1,5 +1,7 @@
 # Agent World：M6 3D 可视化（Bevy）
 
+- 对应项目管理文档: doc/world-simulator/viewer/visualization-3d.prd.project.md
+
 ## 1. Executive Summary
 - **大目标**：以 3D 场景观测所有 Agent 的活动，可直观查看世界状态（位置、移动、关键事件）。
 - **小目标**：三节点场景（`triad_p2p_bootstrap`）在 3D viewer 中可跑通（可见 3 个节点与 3 个 Agent 的位置与移动）。

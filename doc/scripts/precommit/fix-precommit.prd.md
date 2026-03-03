@@ -1,5 +1,7 @@
 # Fix Pre-commit（预提交失败修复脚本）
 
+- 对应项目管理文档: doc/scripts/precommit/fix-precommit.prd.project.md
+
 ## 目标
 - 提供一个一键修复入口，处理本地 `pre-commit` 常见失败（重点是 Rust 格式化不一致）。
 - 将“修复 + 复检”流程标准化，减少重复手工命令。

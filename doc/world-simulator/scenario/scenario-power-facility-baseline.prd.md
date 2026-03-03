@@ -1,5 +1,7 @@
 # Agent World Simulator：默认电力设施语义下沉为场景配置
 
+- 对应项目管理文档: doc/world-simulator/scenario/scenario-power-facility-baseline.prd.project.md
+
 ## 1. Executive Summary
 
 - 避免 simulator 与 runtime 出现“双轨默认供能语义”：

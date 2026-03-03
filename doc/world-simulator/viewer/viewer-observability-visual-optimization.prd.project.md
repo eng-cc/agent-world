@@ -14,6 +14,7 @@
 - [x] VO11：接入视觉回归快照并正向解决版本冲突
 
 ## 依赖
+- doc/world-simulator/viewer/viewer-observability-visual-optimization.prd.md
 - `scripts/capture-viewer-frame.sh`
 - `crates/agent_world_viewer/Cargo.toml`
 - `crates/agent_world_viewer/src/main.rs`

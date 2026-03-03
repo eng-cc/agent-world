@@ -1,5 +1,7 @@
 # Viewer Texture Inspector 框架合理性治理（2026-02-28）
 
+- 对应项目管理文档: doc/scripts/viewer-tools/viewer-texture-inspector-framework-rationalization-2026-02-28.prd.project.md
+
 ## 目标
 - 从“参数可调”升级为“框架可验证”：将截图链路拆为可观测、可门禁、可回退三层。
 - 解决当前“连通但画面不可评审”的盲点：连接成功不代表选中正确目标，也不代表画面有足够材质/造型信息。

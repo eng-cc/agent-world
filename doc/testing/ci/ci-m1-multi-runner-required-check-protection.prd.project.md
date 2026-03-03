@@ -8,6 +8,7 @@
 - [x] T5 (PRD-TESTING-004): 专题文档人工迁移到 strict schema，并切换命名为 `.prd.md/.prd.project.md`。
 
 ## 依赖
+- doc/testing/ci/ci-m1-multi-runner-required-check-protection.prd.md
 - `.github/workflows/builtin-wasm-m1-multi-runner.yml`
 - `scripts/ci-m1-wasm-summary.sh`
 - `scripts/ci-verify-m1-wasm-summaries.py`

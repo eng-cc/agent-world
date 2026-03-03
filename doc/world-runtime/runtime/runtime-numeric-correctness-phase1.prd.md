@@ -1,5 +1,7 @@
 # Agent World Runtime：共识数值语义与原子状态转移硬化（15 点清单第一阶段）
 
+- 对应项目管理文档: doc/world-runtime/runtime/runtime-numeric-correctness-phase1.prd.project.md
+
 ## 1. Executive Summary
 - 以“正确性优先”为原则落地数值安全与状态一致性治理，作为 15 点长期清单的第一阶段。
 - 消除链上状态转移中的静默饱和与半提交风险，确保错误发生时显式失败且不污染状态。

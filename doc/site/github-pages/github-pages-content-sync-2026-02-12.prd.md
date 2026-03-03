@@ -1,5 +1,7 @@
 # GitHub Pages 内容状态同步（2026-02-12）设计文档
 
+- 对应项目管理文档: doc/site/github-pages/github-pages-content-sync-2026-02-12.prd.project.md
+
 ## 目标
 - 让展示站文案与当前代码/项目阶段保持一致，避免“路线图与实际进度不一致”。
 - 同步中英文页面关键状态信息，确保对外表达统一。

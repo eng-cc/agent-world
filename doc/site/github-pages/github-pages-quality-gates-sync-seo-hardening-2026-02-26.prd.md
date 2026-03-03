@@ -1,5 +1,7 @@
 # GitHub Pages 质量门禁 + 文档镜像同步 + SEO 元信息加固（2026-02-26）设计文档
 
+- 对应项目管理文档: doc/site/github-pages/github-pages-quality-gates-sync-seo-hardening-2026-02-26.prd.project.md
+
 ## 目标
 - 建立 GitHub Pages 发布前的最小质量门禁，避免“改了就发”导致线上回归。
 - 消除 `doc/world-simulator/viewer/viewer-manual.md` 与 `site/doc/cn|en/viewer-manual.html` 的关键命令路径漂移。

@@ -8,6 +8,7 @@
 - [x] VVRH-4 外发样张基线：样张脚本、产物留痕、手册与状态收口
 
 ## 依赖
+- doc/world-simulator/viewer/viewer-visual-release-readiness-hardening-2026-03-01.prd.md
 - `scripts/viewer-texture-inspector.sh`
 - `scripts/viewer-theme-pack-preview.sh`
 - `scripts/validate-viewer-theme-pack.py`

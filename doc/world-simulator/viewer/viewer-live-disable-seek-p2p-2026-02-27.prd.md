@@ -1,5 +1,7 @@
 # Viewer Live 禁用 Seek（P2P 不可回退）2026-02-27
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-live-disable-seek-p2p-2026-02-27.prd.project.md
+
 ## 1. Executive Summary
 - 在 viewer live 模式中禁用 `seek` 控制，确保 P2P 实时链路不存在“回退/跳时”语义。
 - 保持世界演化单调前进，避免“测试接口可 seek”与“P2P 共识不可回退”之间的行为冲突。

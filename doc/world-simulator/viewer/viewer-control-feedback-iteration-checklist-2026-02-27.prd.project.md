@@ -10,6 +10,7 @@
 - [x] T7 执行 test_tier_required 定向测试并更新风险口径
 
 ## 依赖
+- doc/world-simulator/viewer/viewer-control-feedback-iteration-checklist-2026-02-27.prd.md
 - `doc/playability_test_result/archive/2026-02/card_2026_02_27_19_47_08.md`
 - `doc/world-simulator/viewer/viewer-first-session-goal-clarity-hardening-2026-02-27.prd.md`
 - `scripts/run-game-test-ab.sh`

@@ -7,6 +7,7 @@
 - [x] SBR-4 (PRD-P2P-MIG-102)：执行 `test_tier_required` 回归，回写文档与 devlog 收口。
 
 ## 依赖
+- doc/p2p/node/node-storage-system-reward-pool.prd.md
 - `crates/agent_world/src/runtime/node_points.rs`
 - `crates/agent_world/src/runtime/node_points_runtime.rs`
 - `crates/agent_world/src/runtime/mod.rs`

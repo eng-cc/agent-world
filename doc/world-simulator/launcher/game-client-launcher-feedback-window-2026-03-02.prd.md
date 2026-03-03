@@ -1,5 +1,7 @@
 # 客户端启动器反馈窗口化（2026-03-02）
 
+- 对应项目管理文档: doc/world-simulator/launcher/game-client-launcher-feedback-window-2026-03-02.prd.project.md
+
 ## 1. Executive Summary
 - 将启动器内嵌的反馈表单改为“按钮入口 + 弹窗窗口”交互。
 - 与“设置”入口保持一致的操作模式，降低主面板信息密度。

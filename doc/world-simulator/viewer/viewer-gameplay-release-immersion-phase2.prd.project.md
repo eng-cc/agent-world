@@ -8,6 +8,7 @@
 - [x] VRI4：补充测试并执行 Web 闭环回归，完成收口。
 
 ## 依赖
+- doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase2.prd.md
 - `crates/agent_world_viewer/src/egui_right_panel.rs`
 - `crates/agent_world_viewer/src/egui_right_panel_tests.rs`
 - `crates/agent_world_viewer/src/i18n.rs`

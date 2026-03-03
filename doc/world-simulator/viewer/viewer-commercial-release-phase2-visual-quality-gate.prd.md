@@ -1,5 +1,7 @@
 # Viewer 商业化发行缺口收敛 Phase 2：视觉验收基线与门禁
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-commercial-release-phase2-visual-quality-gate.prd.project.md
+
 ## 1. Executive Summary
 - 建立可执行、可追溯的 Viewer 视觉验收基线，减少“主观观感回归”在发布前才暴露的风险。
 - 将 Viewer 自身测试（单测 + wasm 编译）纳入统一 CI 流程，补齐当前核心门禁缺口。

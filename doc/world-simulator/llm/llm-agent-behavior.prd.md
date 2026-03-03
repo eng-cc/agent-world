@@ -1,5 +1,7 @@
 # Agent World Simulator：LLM 驱动 Agent 行为落地（设计文档）
 
+- 对应项目管理文档: doc/world-simulator/llm/llm-agent-behavior.prd.project.md
+
 ## 1. Executive Summary
 - 在现有 `AgentBehavior` 抽象上落地一套可运行的 **LLM Agent 行为实现**，用于替代纯规则型 `decide` 逻辑。
 - 采用 **OpenAI 兼容 API** 完成推理调用，支持以 `config.toml` 注入关键配置。

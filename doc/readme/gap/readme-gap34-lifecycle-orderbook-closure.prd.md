@@ -1,5 +1,7 @@
 # README 高优先级差距收口（二期）：模块生命周期 + 单一订单簿撮合（设计文档）
 
+- 对应项目管理文档: doc/readme/gap/readme-gap34-lifecycle-orderbook-closure.prd.project.md
+
 ## 目标
 - 收口差距 A：补齐模块生命周期管理，支持上架撤销（delist）与工件销毁（destroy），并引入可审计成本模型。
 - 收口差距 B：落地最小可用单一订单簿（single orderbook）撮合能力，覆盖模块交易与电力交易的挂单/撤单/撮合闭环。

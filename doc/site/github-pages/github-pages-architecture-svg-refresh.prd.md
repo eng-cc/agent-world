@@ -1,5 +1,7 @@
 # GitHub Pages 架构图 SVG 精修（四期增量）设计文档
 
+- 对应项目管理文档: doc/site/github-pages/github-pages-architecture-svg-refresh.prd.project.md
+
 ## 目标
 - 提升首页架构图 `architecture-flow.svg` 的科技感与信息层次，让用户一眼看懂系统闭环。
 - 在不增加图片体积负担的前提下，保持 SVG 的清晰缩放与静态部署友好性。

@@ -1,5 +1,7 @@
 # viewer-web-playability-unblock-2026-02-26
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-web-playability-unblock-2026-02-26.prd.project.md
+
 ## 1. Executive Summary
 - 修复 Web 玩家链路中“已连接但无法正常游玩”的主阻塞问题。
 - 消除 `__AW_TEST__.runSteps(20)` 触发 wasm panic 的不稳定行为。

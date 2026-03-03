@@ -8,6 +8,7 @@
 - [x] T4 回归与结项：required 测试 + 阶段文档收口
 
 ## 依赖
+- doc/world-simulator/viewer/viewer-live-full-event-driven-phase10-2026-02-27.prd.md
 - `crates/agent_world/src/viewer/server.rs`
 - `crates/agent_world/src/viewer/web_bridge.rs`
 - `crates/agent_world/tests/viewer_offline_integration.rs`

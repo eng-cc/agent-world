@@ -1,5 +1,7 @@
 # Agent World Simulator：规则 Wasm 执行接线基础（第三阶段）设计文档
 
+- 对应项目管理文档: doc/world-simulator/kernel/kernel-rule-wasm-executor-foundation.prd.project.md
+
 ## 1. Executive Summary
 - 在不改变当前规则语义（deny/modify/allow merge）的前提下，为模拟器内核接入 wasm 规则执行器建立最小接线层。
 - 定义稳定的“规则模块输入/输出”数据契约，便于后续把真实 wasm sandbox 调用替换进来。

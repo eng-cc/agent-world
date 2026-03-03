@@ -1,5 +1,7 @@
 # Rust 超限文件拆分（第三轮，2026-02-23）
 
+- 对应项目管理文档: doc/engineering/oversized-rust-file-splitting-round3-2026-02-23.prd.project.md
+
 ## 1. Executive Summary
 - Problem Statement: 仓库存在 22 个 Rust 文件超过单文件 1200 行约束，导致可维护性下降并增加评审与回归风险。
 - Proposed Solution: 在不改变行为和对外接口的前提下，采用结构拆分（`include!` 分段或子模块拆分）将全部超限文件收口到阈值内。

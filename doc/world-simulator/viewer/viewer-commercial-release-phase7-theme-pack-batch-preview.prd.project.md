@@ -8,6 +8,7 @@
 - [x] VCR7-4 预览镜头构图修复（避免产出“纯背景”截图）
 
 ## 依赖
+- doc/world-simulator/viewer/viewer-commercial-release-phase7-theme-pack-batch-preview.prd.md
 - `crates/agent_world_viewer/assets/`
 - `scripts/capture-viewer-frame.sh`
 - `doc/world-simulator/viewer/viewer-manual.md`

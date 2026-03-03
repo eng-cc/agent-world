@@ -9,6 +9,7 @@
 - [x] T6 文档收口：更新项目状态与 devlog
 
 ## 依赖
+- doc/world-simulator/viewer/viewer-step-completion-ack-2026-02-28.prd.md
 - `crates/agent_world_proto/src/viewer.rs`
 - `crates/agent_world/src/viewer/live_split_part1.rs`
 - `crates/agent_world/src/viewer/live_split_part2.rs`

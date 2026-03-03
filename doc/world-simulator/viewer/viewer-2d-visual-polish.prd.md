@@ -1,5 +1,7 @@
 # Viewer 2D 可视化精修（地图可读性增强）
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-2d-visual-polish.prd.project.md
+
 ## 1. Executive Summary
 - 解决当前 2D 观察态“信息点不突出、层次弱、第一眼过于空”的问题。
 - 保持现有 3D 视角表达与交互不退化，精修仅针对 2D 可读性。

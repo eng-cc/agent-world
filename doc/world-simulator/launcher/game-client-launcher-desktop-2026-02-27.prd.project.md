@@ -13,6 +13,7 @@
 - [x] T9 启动链路拆分：区块链与游戏启动/停止按钮独立，启动器打开默认拉起区块链，反馈入口仅链就绪可用。
 
 ## 依赖
+- doc/world-simulator/launcher/game-client-launcher-desktop-2026-02-27.prd.md
 - 复用 `world_game_launcher` 作为核心编排执行器。
 - 依赖 Web 预构建目录 `web/`（或自定义 `--viewer-static-dir`）。
 - 桌面环境需具备图形会话以运行 GUI 启动器。

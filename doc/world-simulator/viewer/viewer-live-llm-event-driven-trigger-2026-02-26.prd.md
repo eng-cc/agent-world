@@ -1,5 +1,7 @@
 # Viewer Live LLM 事件触发决策门控（2026-02-26）
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-live-llm-event-driven-trigger-2026-02-26.prd.project.md
+
 ## 1. Executive Summary
 - 降低 `world_viewer_live` 在 LLM 模式下的空转决策循环。
 - 将 LLM 决策推进从“纯定时轮询”收敛为“有触发才推进”的事件触发门控。

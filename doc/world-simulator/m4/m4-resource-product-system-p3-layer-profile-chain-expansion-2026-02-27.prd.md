@@ -1,5 +1,7 @@
 # M4 资源与产品系统 P3：分层档案化与链路扩展实现（2026-02-27）
 
+- 对应项目管理文档: doc/world-simulator/m4/m4-resource-product-system-p3-layer-profile-chain-expansion-2026-02-27.prd.project.md
+
 ## 1. Executive Summary
 - 将“资源与产品分层”从设计建议提升为可执行数据契约，覆盖 R1~R5。
 - 在不破坏现有动作主路径的前提下，把关键工业行为改为“Profile 优先 + 旧逻辑兜底”。

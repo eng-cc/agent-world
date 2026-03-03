@@ -8,6 +8,7 @@
 - [x] T4 (PRD-WORLD_SIMULATOR-002/003)：补充“连接链状态服务被拒绝（Connection refused）”回归测试，约束回落路径保留远端错误签名。
 
 ## 依赖
+- doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.prd.md
 - `crates/agent_world/src/bin/world_chain_runtime.rs`
 - `crates/agent_world_client_launcher/src/main.rs`
 - `crates/agent_world_client_launcher/src/feedback_entry.rs`

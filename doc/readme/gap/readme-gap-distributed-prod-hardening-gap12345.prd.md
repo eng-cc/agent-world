@@ -1,5 +1,7 @@
 # README 分布式计算与存储生产级收口（Gap 1/2/3/4/5）设计文档
 
+- 对应项目管理文档: doc/readme/gap/readme-gap-distributed-prod-hardening-gap12345.prd.project.md
+
 ## 目标
 - 收口 Gap 1：将 `agent_world_node` 的 PoS 主循环关键算法与阈值判定下沉到 `agent_world_consensus`，避免双轨共识语义漂移。
 - 收口 Gap 2：将存储挑战共识门控从“单点网络比对”升级为“多样本网络挑战 + 匹配阈值”模型，提升抗网络抖动与抗单点异常能力。

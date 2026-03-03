@@ -1,5 +1,7 @@
 # Agent World Runtime：Membership Recovery 调度门控与计数聚合算术语义硬化（15 点清单第十二阶段）
 
+- 对应项目管理文档: doc/world-runtime/runtime/runtime-numeric-correctness-phase12.prd.project.md
+
 ## 1. Executive Summary
 - 收口 `membership_recovery/mod.rs` 中仍使用饱和算术的调度门控与关键计数聚合路径。
 - 在极端时间边界与计数边界下，将“静默饱和继续执行”升级为“显式失败且不污染状态”。

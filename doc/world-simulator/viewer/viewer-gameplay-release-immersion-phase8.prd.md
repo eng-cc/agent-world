@@ -1,5 +1,7 @@
 # Viewer 发行体验改造（第八阶段：信息分层减负与焦点收敛）
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase8.prd.project.md
+
 ## 1. Executive Summary
 - 在保持“可随时指挥 Agent”前提下，进一步降低 Player 首屏的信息密度，避免左侧引导卡片重复表达同一目标。
 - 让玩家在隐藏态与展开态都能快速识别“当前应该做什么”，减少任务文案和引导文案的视觉竞争。

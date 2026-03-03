@@ -7,6 +7,7 @@
 - [x] WASMCI-4 (PRD-TESTING-004): 专题文档人工迁移到 strict schema，并切换命名为 `.prd.md/.prd.project.md`。
 
 ## 依赖
+- doc/testing/ci/ci-wasm32-target-install.prd.md
 - GitHub Actions workflow：`.github/workflows/rust.yml`
 - 统一 CI 脚本：`scripts/ci-tests.sh`
 - builtin wasm 工件校验脚本：

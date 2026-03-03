@@ -7,6 +7,7 @@
 - [x] VRI4P3：执行回归与 Web 闭环验收并完成文档收口。
 
 ## 依赖
+- doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase4.prd.md
 - `crates/agent_world_viewer/src/egui_right_panel_player_experience.rs`
 - `crates/agent_world_viewer/src/egui_right_panel_player_card_motion.rs`
 - `crates/agent_world_viewer/src/egui_right_panel_tests.rs`

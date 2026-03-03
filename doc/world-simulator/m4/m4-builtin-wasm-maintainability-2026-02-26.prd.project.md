@@ -7,6 +7,7 @@
 - [x] T3 回归收口（文档、devlog、验证）
 
 ## 依赖
+- doc/world-simulator/m4/m4-builtin-wasm-maintainability-2026-02-26.prd.md
 - `doc/world-simulator/m4/m4-industrial-economy-wasm.prd.md`
 - `doc/world-simulator/m4/m4-industrial-economy-wasm.prd.project.md`
 - `crates/agent_world_builtin_wasm_modules/m4_*`

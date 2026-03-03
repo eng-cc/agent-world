@@ -6,6 +6,7 @@
 - [x] M2 Add `world_viewer_demo` binary + update docs (README / visualization quick start)
 
 ## 依赖
+- doc/world-simulator/viewer/minimal-system.prd.md
 - `WorldInitConfig` / `WorldScenario` / `initialize_kernel`
 - `WorldKernel` persistence (`snapshot.json` / `journal.json`)
 - Viewer server (`world_viewer_server`) and viewer client (`agent_world_viewer`)

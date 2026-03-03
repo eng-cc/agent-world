@@ -1,5 +1,7 @@
 # 客户端启动器反馈分布式提交迁移（2026-03-02）
 
+- 对应项目管理文档: doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.prd.project.md
+
 ## 1. Executive Summary
 - 将“给团队提 Bug/建议”能力从“仅本地 JSON 落盘”升级为“启动器优先提交到分布式反馈网络”。
 - 复用已有 `agent_world_node` + `agent_world_distfs` 反馈链路，确保反馈进入 `feedback` append-only 存储并触发 P2P 广播。

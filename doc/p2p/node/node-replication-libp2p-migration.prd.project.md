@@ -8,6 +8,7 @@
 - [x] NRM-4 (PRD-P2P-MIG-099)：统一 crate 目录路径为 `crates/agent_world_node`，消除路径歧义。
 
 ## 依赖
+- doc/p2p/node/node-replication-libp2p-migration.prd.md
 - `crates/agent_world_node`
 - `crates/agent_world_proto`
 - `doc/p2p/node/node-distfs-replication-network-closure.prd.md`

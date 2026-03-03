@@ -1,5 +1,7 @@
 # Viewer 选中对象详情面板（含 LLM 决策 I/O）
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-selection-details.prd.project.md
+
 ## 1. Executive Summary
 - 在 viewer 中新增“选中对象详情”面板：点击对象后显示尽量详细的信息。
 - 对 Agent 详情补充 LLM 决策调试信息，至少包含最近决策的 LLM 输入（prompt）与输出（completion/错误）。

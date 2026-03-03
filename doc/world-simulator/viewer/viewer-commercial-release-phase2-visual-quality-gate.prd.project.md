@@ -7,6 +7,7 @@
 - [x] VCR2-3 更新测试手册与项目状态，补 devlog 收口
 
 ## 依赖
+- doc/world-simulator/viewer/viewer-commercial-release-phase2-visual-quality-gate.prd.md
 - `scripts/viewer-visual-baseline.sh`
 - `scripts/ci-tests.sh`
 - `.github/workflows/rust.yml`

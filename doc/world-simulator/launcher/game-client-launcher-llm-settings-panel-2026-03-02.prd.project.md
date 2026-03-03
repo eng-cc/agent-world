@@ -7,6 +7,7 @@
 - [x] T3 (PRD-WORLD_SIMULATOR-007)：设置窗口升级为完整设置中心（游戏/区块链/LLM 一体化配置入口）。
 
 ## 依赖
+- doc/world-simulator/launcher/game-client-launcher-llm-settings-panel-2026-03-02.prd.md
 - `crates/agent_world_client_launcher/src/main.rs`
 - `crates/agent_world_client_launcher/src/tests.rs`
 - `config.toml` 小写 TOML 结构约定（`[llm]`）

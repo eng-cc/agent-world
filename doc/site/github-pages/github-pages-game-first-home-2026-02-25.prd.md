@@ -1,5 +1,7 @@
 # GitHub Pages 首页“游戏优先”分层重构（2026-02-25）设计文档
 
+- 对应项目管理文档: doc/site/github-pages/github-pages-game-first-home-2026-02-25.prd.project.md
+
 ## 目标
 - 将首页叙事重构为“游戏优先，引擎后置”：前半屏主要讲玩家体验与玩法闭环，底部几屏再讲引擎架构与工程扩展。
 - 保留现有视觉优点与交互资产：深色科技风、Hero 动效、cards 栅格、proof switcher、scroll reveal。

@@ -1,5 +1,7 @@
 # Viewer 发行体验改造（游戏化优先）
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.project.md
+
 ## 1. Executive Summary
 - 将 `agent_world_viewer` 默认体验从“调试工具”切换为“可发行游戏前端”。
 - 保持世界画面为第一视觉焦点，隐藏技术细节并改为按需显式唤出。

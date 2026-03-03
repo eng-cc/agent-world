@@ -14,6 +14,7 @@
 - [x] DV11：3D 视角同步隐藏 world floor/bounds（两种视角均无蓝黑底色）
 
 ## 依赖
+- doc/world-simulator/viewer/viewer-dual-view-2d-3d.prd.md
 - `crates/agent_world_viewer/src/main.rs`
 - `crates/agent_world_viewer/src/camera_controls.rs`
 - `crates/agent_world_viewer/src/egui_right_panel.rs`

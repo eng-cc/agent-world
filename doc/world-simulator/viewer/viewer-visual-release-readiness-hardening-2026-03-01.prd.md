@@ -1,5 +1,7 @@
 # Viewer 视觉外发就绪硬化（2026-03-01）
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-visual-release-readiness-hardening-2026-03-01.prd.project.md
+
 ## 1. Executive Summary
 - 把当前 Viewer 从“技术演示可看”推进到“可对外展示可控”的视觉验收状态。
 - 消除视觉验收链路中的假通过：空画面、未选中目标、错误场景仍被判定通过。

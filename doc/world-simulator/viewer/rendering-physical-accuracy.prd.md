@@ -1,5 +1,7 @@
 # Agent World：3D 渲染物理准确性设计（尺寸对齐真实物理数据）
 
+- 对应项目管理文档: doc/world-simulator/viewer/rendering-physical-accuracy.prd.project.md
+
 ## 1. Executive Summary
 - 建立一套可落地的 3D 渲染物理口径，使 viewer 中的**尺寸、距离、光照、材质响应**与世界模拟参数保持一致。
 - 保证核心对象（世界空间、碎片、Agent）在渲染层按真实量纲显示，避免“视觉尺寸正确但物理量纲漂移”。

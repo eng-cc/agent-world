@@ -11,6 +11,7 @@
 - [x] T7 P2 威胁热图：基于战争/危机计算风险指数
 
 ## 依赖
+- doc/world-simulator/kernel/intent-distributed-runtime-closure-2026-02-27.prd.md
 - T2 依赖 T1 的 Intent 批次语义（批次哈希来源）。
 - T4 依赖 T3 的队列调度稳定序。
 - T6 依赖 T2 的 zone 字段与批次聚合。

@@ -1,5 +1,7 @@
 # Viewer 商业化发行缺口收敛 Phase 5：高级贴图通道覆盖层
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-commercial-release-phase5-advanced-texture-maps.prd.project.md
+
 ## 1. Executive Summary
 - 在 Phase 4 基础贴图覆盖基础上，补齐商业化质感所需的高级贴图通道覆盖能力。
 - 支持按实体类别覆盖 `normal`、`metallic_roughness`、`emissive` 三类贴图，降低“只有 albedo”造成的塑料感与层次不足。

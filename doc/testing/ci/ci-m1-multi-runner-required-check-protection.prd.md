@@ -1,5 +1,7 @@
 # Agent World: m1 多 Runner CI Required Check 保护
 
+- 对应项目管理文档: doc/testing/ci/ci-m1-multi-runner-required-check-protection.prd.project.md
+
 ## 1. Executive Summary
 - Problem Statement: `Builtin Wasm m1 Multi Runner / verify-m1-multi-runner-summary` 若未被固化为 required check，会导致分支保护配置依赖手工操作并产生漂移风险。
 - Proposed Solution: 提供基于 `gh api` 的自动化脚本，增量维护 `main` 分支 required checks，兼容“已保护/未保护”两种状态。

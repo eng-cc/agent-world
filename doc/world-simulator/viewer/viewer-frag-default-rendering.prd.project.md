@@ -9,6 +9,7 @@
 - [x] FDR6：清理 viewer 既有编译告警（移除 location detail 遗留代码与未使用依赖链）
 
 ## 依赖
+- doc/world-simulator/viewer/viewer-frag-default-rendering.prd.md
 - `crates/agent_world_viewer/src/scene_helpers.rs`
 - `crates/agent_world_viewer/src/scene_dirty_refresh.rs`
 - `crates/agent_world_viewer/src/world_overlay.rs`

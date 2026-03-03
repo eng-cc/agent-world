@@ -1,5 +1,7 @@
 # Viewer Web Test API `step` 控制补齐（2026-02-24）
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-web-test-api-step-control-2026-02-24.prd.project.md
+
 ## 1. Executive Summary
 - 修复 Web 语义测试 API `window.__AW_TEST__.sendControl("step")` 无效的问题。
 - 保障 Playwright 可按“逐步操作（step-by-step）”模拟用户流程，而不是只能依赖 `play/pause/seek`。

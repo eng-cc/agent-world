@@ -1,5 +1,7 @@
 # Agent World Simulator：Frag 资源平衡与新手友好生成（设计文档）
 
+- 对应项目管理文档: doc/world-simulator/scenario/frag-resource-balance-onboarding.prd.project.md
+
 本分册定义一版可落地的 frag 资源生成改造，目标是同时满足两点：
 1) 资源产出不出现明显“前期断供/后期通胀”；
 2) 新手开局在默认场景下更稳定地获得可采集 frag。

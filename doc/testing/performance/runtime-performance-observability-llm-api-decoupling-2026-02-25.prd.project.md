@@ -8,6 +8,7 @@
 - [x] RPOF-L5 (PRD-TESTING-004): 专题文档按 strict schema 人工迁移并统一 `.prd.md/.prd.project.md` 命名。
 
 ## 依赖
+- doc/testing/performance/runtime-performance-observability-llm-api-decoupling-2026-02-25.prd.md
 - `crates/agent_world/src/simulator/runtime_perf.rs`
 - `crates/agent_world/src/simulator/runner.rs`
 - `crates/agent_world/src/simulator/tests/runner.rs`

@@ -7,6 +7,7 @@
 - [x] T3：完成设计文档收口，补充里程碑、风险与推荐验收口径。
 
 ## 依赖
+- doc/world-simulator/m4/m4-industrial-benchmark-current-state-2026-02-27.prd.md
 - `doc/world-simulator/m4/m4-industrial-economy-wasm.prd.md`
 - `doc/world-simulator/m4/material-multi-ledger-logistics.prd.md`
 - `doc/world-simulator/m4/m4-market-hardware-data-governance-closure-2026-02-26.prd.md`

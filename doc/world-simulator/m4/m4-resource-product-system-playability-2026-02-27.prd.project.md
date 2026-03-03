@@ -7,6 +7,7 @@
 - [x] T3：回写项目状态与当日日志，准备后续立项。
 
 ## 依赖
+- doc/world-simulator/m4/m4-resource-product-system-playability-2026-02-27.prd.md
 - `README.md`（最小内建资源口径）
 - `doc/world-simulator/m4/m4-industrial-economy-wasm.prd.md`
 - `doc/world-simulator/m4/material-multi-ledger-logistics.prd.md`

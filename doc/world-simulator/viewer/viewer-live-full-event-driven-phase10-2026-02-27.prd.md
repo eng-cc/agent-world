@@ -1,5 +1,7 @@
 # Viewer Live 完全事件驱动改造 Phase 10（2026-02-27）
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-live-full-event-driven-phase10-2026-02-27.prd.project.md
+
 ## 1. Executive Summary
 - 清理 `agent_world::viewer` 活跃运行链路中残留的 tick 轮询逻辑，统一为事件驱动推进。
 - 删除离线 viewer server 的定时回放推进（`tick_interval`），避免播放过程空 tick 空跑。

@@ -1,5 +1,7 @@
 # Viewer 控制反馈 P0：Step 卡住恢复与强反馈（2026-02-27）
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-control-feedback-step-recovery-p0-2026-02-27.prd.project.md
+
 ## 1. Executive Summary
 - 修复 `step` 出现 `accepted` 但无推进（`tick/eventSeq` 不变）时的玩家失控感。
 - 将“未推进原因 + 下一步建议”升级为玩家可见、可执行的强反馈，不依赖日志。

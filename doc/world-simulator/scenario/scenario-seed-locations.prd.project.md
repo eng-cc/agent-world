@@ -13,6 +13,7 @@
 - [x] SL3.3 回顾并更新设计文档、项目文档、开发日志
 
 ## 依赖
+- doc/world-simulator/scenario/scenario-seed-locations.prd.md
 - `crates/agent_world/src/simulator/scenario.rs`
 - `crates/agent_world/src/simulator/init.rs`
 - `crates/agent_world/src/simulator/tests/init.rs`

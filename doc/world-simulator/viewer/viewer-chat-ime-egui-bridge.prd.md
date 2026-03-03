@@ -1,5 +1,7 @@
 # Agent World Simulator：Viewer Chat Web IME EGUI 输入桥接（设计文档）
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-chat-ime-egui-bridge.prd.project.md
+
 ## 1. Executive Summary
 - 解决 Web Viewer 中“可粘贴中文但无法直接输入中文”的问题。
 - 在 wasm 桌面浏览器下，为 EGUI 文本输入单独接入 IME 组合事件桥接。

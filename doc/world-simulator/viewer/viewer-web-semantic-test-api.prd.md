@@ -1,5 +1,7 @@
 # Viewer Web 语义化测试 API（Phase 9 发行验收支撑）
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-web-semantic-test-api.prd.project.md
+
 ## 1. Executive Summary
 - 为 Web 端 `agent_world_viewer` 注入一套稳定的语义化测试 API，降低 Playwright 对像素坐标点击的依赖。
 - 复用现有 `viewer_automation` 步骤执行器，统一测试动作语义（`mode/focus/select/zoom/orbit/wait`）。

@@ -1,5 +1,7 @@
 # Viewer 可视化观察体验优化设计
 
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-observability-visual-optimization.prd.project.md
+
 ## 1. Executive Summary
 - 将右侧面板从“复制导向”调整为“观察导向”，减少外部复制分析依赖。
 - 提升状态可见性：尽量在一个视图里直接看到关键运行情况，而不是反复折叠展开。

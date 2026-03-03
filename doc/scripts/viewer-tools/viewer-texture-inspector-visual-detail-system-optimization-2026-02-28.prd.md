@@ -1,5 +1,7 @@
 # Viewer Texture Inspector 视觉细节系统优化（2026-02-28）
 
+- 对应项目管理文档: doc/scripts/viewer-tools/viewer-texture-inspector-visual-detail-system-optimization-2026-02-28.prd.project.md
+
 ## 目标
 - 将“细节不足”从一次性参数调整升级为可复用的系统能力。
 - 建立三段式优化链路：镜头构图策略、实体级资源映射、评审灯光预设。
