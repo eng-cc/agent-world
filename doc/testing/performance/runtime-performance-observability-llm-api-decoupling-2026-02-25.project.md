@@ -18,7 +18,7 @@
 
 ## 依赖
 - 设计文档：`doc/testing/performance/runtime-performance-observability-llm-api-decoupling-2026-02-25.md`
-- 已有 runtime perf 基础：`doc/testing/performance/runtime-performance-observability-foundation-2026-02-25.md`
+- 已有 runtime perf 基础：`doc/testing/performance/runtime-performance-observability-foundation-2026-02-25.prd.md`
 - 测试手册：`testing-manual.md`
 - 关键代码：
   - `crates/agent_world/src/simulator/runtime_perf.rs`
