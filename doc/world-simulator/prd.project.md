@@ -19,6 +19,8 @@
 - [x] TASK-WORLD_SIMULATOR-016 (PRD-WORLD_SIMULATOR-007): 完成“启动器完整设置中心”需求建模与任务拆解。
 - [x] TASK-WORLD_SIMULATOR-017 (PRD-WORLD_SIMULATOR-007): 在 `agent_world_client_launcher` 落地完整设置中心（游戏/区块链/LLM 一体化配置入口）并补齐回归测试。
 - [x] TASK-WORLD_SIMULATOR-018 (PRD-WORLD_SIMULATOR-001/002/003/004/005): 对齐 strict PRD schema，补齐 Critical User Flows、Functional Specification Matrix、Edge Cases、NFR、Validation & Decision Record。
+- [x] TASK-WORLD_SIMULATOR-019 (PRD-WORLD_SIMULATOR-008): 完成“viewer native 粉紫屏回归”PRD 建模与任务拆解（含 Web+native 验收口径）。
+- [ ] TASK-WORLD_SIMULATOR-020 (PRD-WORLD_SIMULATOR-008): 修复 `agent_world_viewer` 默认 tonemapping 在 native 链路的 feature 缺失回归，并补齐回归测试与抓帧验证。
 
 ## 专题任务映射（2026-03-02 批次）
 - [x] SUBTASK-WORLD_SIMULATOR-20260302-001 (PRD-WORLD_SIMULATOR-001/002/003): `doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.project.md`
@@ -52,13 +54,16 @@
 - `crates/agent_world/src/bin/world_chain_runtime.rs`
 - `crates/agent_world_client_launcher/src/main.rs`
 - `crates/agent_world/src/runtime/world/event_processing/action_to_event_core.rs`
+- `crates/agent_world_viewer/Cargo.toml`
+- `crates/agent_world_viewer/src/main.rs`
+- `scripts/capture-viewer-frame.sh`
 - `testing-manual.md`
 
 ## 状态
 - 更新日期: 2026-03-03
-- 当前状态: active（当前任务清单已完成，等待新增需求）
-- 当前优先任务: 无（待新增任务）
-- 并行待办: 无
+- 当前状态: active（存在进行中需求任务）
+- 当前优先任务: `TASK-WORLD_SIMULATOR-020`
+- 并行待办: 无（先完成 viewer 渲染回归修复）
 - 专题映射状态: 2026-03-02 批次 9/9、2026-03-03 批次 4/4 已纳入模块项目管理文档。
 - 手册入口状态: `doc/world-simulator/viewer/viewer-manual.md` 为唯一活跃手册入口。
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
