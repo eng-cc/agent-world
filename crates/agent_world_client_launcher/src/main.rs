@@ -723,7 +723,8 @@ impl eframe::App for ClientLauncherApp {
                 });
         });
 
-        self.llm_settings_panel.show(ctx, self.ui_language);
+        self.llm_settings_panel
+            .show(ctx, self.ui_language, &mut self.config);
         self.show_feedback_window(ctx);
         self.show_transfer_window(ctx);
         ctx.request_repaint_after(Duration::from_millis(120));

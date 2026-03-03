@@ -1,8 +1,8 @@
-# 客户端启动器 LLM 设置入口（2026-03-02）
+# 客户端启动器设置中心（含 LLM）（2026-03-02）
 
 ## 目标
-- 在客户端启动器中新增“设置”按钮，点击后打开设置窗口。
-- 在设置窗口中可编辑并保存以下 LLM 核心字段：
+- 在客户端启动器中提供“完整设置中心”，统一承载游戏、区块链与 LLM 配置入口。
+- 在设置中心中可编辑并保存以下 LLM 核心字段：
   - `llm.api_key`
   - `llm.base_url`
   - `llm.model`
@@ -11,7 +11,8 @@
 ## 范围
 ### In Scope
 - `crates/agent_world_client_launcher/src/main.rs`
-  - 增加设置入口按钮与设置窗口 UI。
+  - 增加设置入口按钮与设置中心窗口 UI。
+  - 设置中心覆盖游戏与区块链核心配置（场景、bind、二进制路径、链参数等）。
   - 增加 LLM 设置状态、保存结果提示。
   - 增加 `config.toml` 的 LLM 字段读取/写回逻辑。
 - `crates/agent_world_client_launcher` 单元测试补充：
@@ -64,3 +65,10 @@
 - 单元测试与编译回归通过：
   - `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher`
   - `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher`
+
+## 增量完成态（2026-03-03）
+- “设置 / Settings”窗口已升级为完整设置中心：
+  - 游戏与显示配置：`scenario/live_bind/web_bind/viewer_host/viewer_port/viewer_static_dir/launcher_bin` 与 `llm_enabled/auto_open_browser`。
+  - 区块链运行时配置：`chain_enabled/chain_runtime_bin/chain_status_bind/chain_node_id/chain_world_id/chain_node_role/chain_node_tick_ms/chain_node_validators`。
+  - LLM 连接配置：保留 `llm.api_key/base_url/model` 文件重载与保存能力。
+- 设置中心内游戏/区块链配置改动即时作用于启动器内存配置（无需额外保存按钮）；LLM 配置保持显式“保存到 config.toml / 从文件重载”流程。

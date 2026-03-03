@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use eframe::egui;
 
-use crate::UiLanguage;
+use super::{LaunchConfig, UiLanguage};
 
 const DEFAULT_CONFIG_PATH: &str = "config.toml";
 
@@ -51,7 +51,12 @@ impl LlmSettingsPanel {
         self.reload_from_file();
     }
 
-    pub(crate) fn show(&mut self, ctx: &egui::Context, language: UiLanguage) {
+    pub(crate) fn show(
+        &mut self,
+        ctx: &egui::Context,
+        language: UiLanguage,
+        config: &mut LaunchConfig,
+    ) {
         if !self.open {
             return;
         }
@@ -60,10 +65,85 @@ impl LlmSettingsPanel {
         let mut save_clicked = false;
         let mut reload_clicked = false;
 
-        egui::Window::new(tr(language, "LLM 设置", "LLM Settings"))
+        egui::Window::new(tr(language, "设置中心", "Settings Center"))
             .open(&mut open)
             .resizable(true)
             .show(ctx, |ui| {
+                ui.heading(tr(language, "启动器配置", "Launcher Configuration"));
+                ui.separator();
+
+                ui.collapsing(tr(language, "游戏与显示", "Game & Viewer"), |ui| {
+                    ui.horizontal_wrapped(|ui| {
+                        ui.label(tr(language, "场景", "Scenario"));
+                        ui.text_edit_singleline(&mut config.scenario);
+                        ui.label(tr(language, "实时服务绑定", "Live Bind"));
+                        ui.text_edit_singleline(&mut config.live_bind);
+                    });
+                    ui.horizontal_wrapped(|ui| {
+                        ui.label(tr(language, "WebSocket 绑定", "Web Bind"));
+                        ui.text_edit_singleline(&mut config.web_bind);
+                        ui.label(tr(language, "游戏页面主机", "Viewer Host"));
+                        ui.text_edit_singleline(&mut config.viewer_host);
+                    });
+                    ui.horizontal_wrapped(|ui| {
+                        ui.label(tr(language, "游戏页面端口", "Viewer Port"));
+                        ui.text_edit_singleline(&mut config.viewer_port);
+                        ui.label(tr(language, "前端静态资源目录", "Viewer Static Directory"));
+                        ui.text_edit_singleline(&mut config.viewer_static_dir);
+                    });
+                    ui.horizontal_wrapped(|ui| {
+                        ui.checkbox(
+                            &mut config.llm_enabled,
+                            tr(language, "启用 LLM", "Enable LLM"),
+                        );
+                        ui.checkbox(
+                            &mut config.auto_open_browser,
+                            tr(language, "自动打开浏览器", "Open Browser Automatically"),
+                        );
+                    });
+                    ui.horizontal_wrapped(|ui| {
+                        ui.label(tr(language, "启动器二进制路径", "Launcher Binary"));
+                        ui.text_edit_singleline(&mut config.launcher_bin);
+                    });
+                });
+
+                ui.separator();
+                ui.collapsing(
+                    tr(language, "区块链运行时", "Blockchain Runtime"),
+                    |ui| {
+                        ui.horizontal_wrapped(|ui| {
+                            ui.checkbox(
+                                &mut config.chain_enabled,
+                                tr(language, "启用链运行时", "Enable Chain Runtime"),
+                            );
+                            ui.label(tr(language, "链状态服务绑定", "Chain Status Bind"));
+                            ui.text_edit_singleline(&mut config.chain_status_bind);
+                        });
+                        ui.horizontal_wrapped(|ui| {
+                            ui.label(tr(language, "链节点 ID", "Chain Node ID"));
+                            ui.text_edit_singleline(&mut config.chain_node_id);
+                            ui.label(tr(language, "链世界 ID", "Chain World ID"));
+                            ui.text_edit_singleline(&mut config.chain_world_id);
+                        });
+                        ui.horizontal_wrapped(|ui| {
+                            ui.label(tr(language, "链节点角色", "Chain Role"));
+                            ui.text_edit_singleline(&mut config.chain_node_role);
+                            ui.label(tr(language, "链 Tick 毫秒", "Chain Tick Milliseconds"));
+                            ui.text_edit_singleline(&mut config.chain_node_tick_ms);
+                        });
+                        ui.horizontal_wrapped(|ui| {
+                            ui.label(tr(language, "链验证者", "Chain Validators"));
+                            ui.text_edit_singleline(&mut config.chain_node_validators);
+                        });
+                        ui.horizontal_wrapped(|ui| {
+                            ui.label(tr(language, "链运行时二进制路径", "Chain Runtime Binary"));
+                            ui.text_edit_singleline(&mut config.chain_runtime_bin);
+                        });
+                    },
+                );
+
+                ui.separator();
+                ui.heading(tr(language, "LLM 连接配置", "LLM Connection"));
                 ui.label(format!(
                     "{}: {}",
                     tr(language, "配置文件", "Config File"),
