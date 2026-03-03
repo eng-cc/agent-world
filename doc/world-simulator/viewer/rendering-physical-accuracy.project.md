@@ -1,7 +1,7 @@
 # Agent World：3D 渲染物理准确性（项目管理文档）
 
 ## 任务拆解
-- [x] 输出设计文档（`doc/world-simulator/rendering-physical-accuracy.md`）
+- [x] 输出设计文档（`doc/world-simulator/viewer/rendering-physical-accuracy.md`）
 - [x] 输出项目管理文档（本文件）
 - [x] RPA-1：viewer 物理渲染配置结构落地（单位、光照、曝光、精度）
 - [x] RPA-2：尺寸映射链路落地（cm→m、Agent/Location 尺寸统一）

@@ -7,7 +7,7 @@
 - [ ] TASK-P2P-004 (PRD-P2P-003): 对接发行门禁中的分布式质量指标。
 
 ## 依赖
-- `doc/p2p/production-grade-blockchain-p2pfs-roadmap.md`
+- `doc/p2p/blockchain/production-grade-blockchain-p2pfs-roadmap.md`
 - `doc/p2p/distributed/distributed-hard-split-phase7.md`
 - `testing-manual.md`
 

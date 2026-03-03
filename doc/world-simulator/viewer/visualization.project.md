@@ -1,7 +1,7 @@
 # Agent World：M5 可视化与调试（项目管理文档）
 
 ## 任务拆解
-- [x] 输出设计文档（`doc/world-simulator/visualization.md`）
+- [x] 输出设计文档（`doc/world-simulator/viewer/visualization.md`）
 - [x] 输出项目管理文档（本文件）
 - [x] 定义 viewer 协议与消息结构（hello/subscribe/snapshot/event/control）
 - [x] 实现 viewer server（离线回放：snapshot/journal → 事件流）

@@ -51,7 +51,7 @@
     - `actions_impl_part1.rs` 将 `BuildFactory`/`ScheduleRecipe` 分支下沉为 `part2` 私有方法。
     - `quorum.rs` 测试模块拆分至 `quorum/tests.rs`。
 - R2-02（设计一致性，high）
-  - design_source：`doc/p2p/p2p-blockchain-security-hardening-2026-02-23.md`（订阅队列有界）。
+  - design_source：`doc/p2p/blockchain/p2p-blockchain-security-hardening-2026-02-23.md`（订阅队列有界）。
   - implementation：`crates/agent_world_consensus/src/network.rs` 在 `publish` 中直接向 `Vec` 追加，存在无界增长风险。
   - status：已修复
   - notes：改为复用 `agent_world_proto::distributed_net::push_bounded_inbox_message`，并新增超限淘汰最旧消息单测。

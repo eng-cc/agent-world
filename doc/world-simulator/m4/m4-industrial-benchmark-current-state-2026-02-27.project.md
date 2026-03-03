@@ -8,7 +8,7 @@
 
 ## 依赖
 - `doc/world-simulator/m4/m4-industrial-economy-wasm.md`
-- `doc/world-simulator/material-multi-ledger-logistics.md`
+- `doc/world-simulator/m4/material-multi-ledger-logistics.md`
 - `doc/world-simulator/m4/m4-market-hardware-data-governance-closure-2026-02-26.md`
 - `README.md`（资源分层口径）
 - `crates/agent_world/src/runtime/*` 与 `crates/agent_world/src/simulator/*` 当前实现

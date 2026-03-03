@@ -44,7 +44,7 @@
   - 删除 `thread::sleep` 轮询，改为 socket 超时读 + 事件转发。
 - 活跃入口与文档已清理旧 `--tick-ms` 示例：
   - `site/index.html`、`site/en/index.html`
-  - `doc/world-simulator/visualization.md`
+  - `doc/world-simulator/viewer/visualization.md`
   - `doc/world-simulator/viewer/viewer-i18n.md`
   - `doc/world-simulator/viewer/viewer-open-world-sandbox-readiness.md`
   - `doc/world-simulator/viewer/viewer-open-world-sandbox-readiness.stress-report.template.md`

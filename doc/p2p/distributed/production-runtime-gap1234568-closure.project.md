@@ -1,7 +1,7 @@
 # Agent World Runtime：生产级收口（Gap 1/2/3/4/5/6/8）项目管理文档
 
 ## 任务拆解
-- [x] T0：输出设计文档（`doc/p2p/production-runtime-gap1234568-closure.md`）
+- [x] T0：输出设计文档（`doc/p2p/distributed/production-runtime-gap1234568-closure.md`）
 - [x] T0：输出项目管理文档（本文件）
 - [x] T1：共识提交-执行强绑定 + 默认投票策略收口（Gap 3/4）
 - [x] T2：writer epoch failover（Gap 5）

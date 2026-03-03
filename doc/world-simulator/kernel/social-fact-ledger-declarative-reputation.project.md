@@ -1,7 +1,7 @@
 # 社会系统生产级方案：事实账本 + 声明式关系层（项目管理文档）
 
 ## 任务拆解
-- [x] T0：输出设计文档（`doc/world-simulator/social-fact-ledger-declarative-reputation.md`）
+- [x] T0：输出设计文档（`doc/world-simulator/kernel/social-fact-ledger-declarative-reputation.md`）
 - [x] T0：输出项目管理文档（本文件）
 - [x] T1：扩展 simulator 数据结构与协议类型（Action/Event/WorldModel）
 - [x] T2：实现 kernel 动作处理（发布/质疑/仲裁/撤销/声明）

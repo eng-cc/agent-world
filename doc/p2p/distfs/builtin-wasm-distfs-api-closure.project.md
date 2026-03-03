@@ -1,7 +1,7 @@
 # World Runtime：Builtin Wasm DistFS API 闭环（项目管理文档）
 
 ## 任务拆解
-- [x] DAC-1 输出设计文档（`doc/p2p/builtin-wasm-distfs-api-closure.md`）与项目管理文档（本文件）。
+- [x] DAC-1 输出设计文档（`doc/p2p/distfs/builtin-wasm-distfs-api-closure.md`）与项目管理文档（本文件）。
 - [x] DAC-2 扩展 `agent_world_distfs`：支持可选 hash 算法（sha256）并补充测试。
 - [x] DAC-3 新增 DistFS hydrate 工具并接入 `sync-m1/m4` 脚本写入路径。
 - [x] DAC-4 runtime builtin wasm 读取切到 `agent_world_distfs` API。

@@ -3,7 +3,7 @@
 ## 任务拆解
 
 ### S1 文档与任务拆解
-- [x] 输出设计文档（`doc/world-simulator/module-visual-entities.md`）
+- [x] 输出设计文档（`doc/world-simulator/viewer/module-visual-entities.md`）
 - [x] 输出项目管理文档（本文件）
 
 ### S2 Simulator 通用实体链路

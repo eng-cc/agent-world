@@ -9,7 +9,7 @@
 ## 依赖
 - `README.md`（最小内建资源口径）
 - `doc/world-simulator/m4/m4-industrial-economy-wasm.md`
-- `doc/world-simulator/material-multi-ledger-logistics.md`
+- `doc/world-simulator/m4/material-multi-ledger-logistics.md`
 - `doc/world-simulator/m4/m4-market-hardware-data-governance-closure-2026-02-26.md`
 - `crates/agent_world/src/runtime/*` 当前工业与物流实现
 

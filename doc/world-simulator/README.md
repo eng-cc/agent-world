@@ -13,6 +13,10 @@
 - `archive/`: 历史归档文档。
 - `m4/`: M4 专题文档。
 
+## 根目录收口
+- 模块根目录仅保留：`README.md`、`prd.md`、`prd.project.md`。
+- 其余专题文档已迁移到对应主题目录（`viewer/llm/launcher/scenario/kernel/m4`）。
+
 ## 专项手册
 - Viewer 使用手册：`doc/world-simulator/viewer/viewer-manual.md`
 

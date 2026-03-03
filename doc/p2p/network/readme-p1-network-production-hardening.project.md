@@ -1,7 +1,7 @@
 # README P1 缺口收口：分布式网络主路径生产化（项目管理文档）
 
 ## 任务拆解
-- [x] T0：输出设计文档（`doc/p2p/readme-p1-network-production-hardening.md`）与项目管理文档（本文件）。
+- [x] T0：输出设计文档（`doc/p2p/network/readme-p1-network-production-hardening.md`）与项目管理文档（本文件）。
 - [x] T1：实现 libp2p request 多 peer 轮换重试 + 无 peer 可控回退策略，并补测试。
 - [x] T2：实现 node 共识消息 libp2p pubsub 主路径（ingest/broadcast）并补测试。
 - [x] T3：执行 `env -u RUSTC_WRAPPER cargo test -p agent_world_node` + `env -u RUSTC_WRAPPER cargo check`，回写文档/devlog 收口。

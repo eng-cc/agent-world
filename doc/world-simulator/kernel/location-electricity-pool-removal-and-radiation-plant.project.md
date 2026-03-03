@@ -3,7 +3,7 @@
 ## 任务拆解
 
 ### R1 文档
-- [x] 输出设计文档（`doc/world-simulator/location-electricity-pool-removal-and-radiation-plant.md`）
+- [x] 输出设计文档（`doc/world-simulator/kernel/location-electricity-pool-removal-and-radiation-plant.md`）
 - [x] 输出项目管理文档（本文件）
 
 ### R2 Location 电力池下线

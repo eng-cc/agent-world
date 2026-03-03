@@ -1,7 +1,7 @@
 # World Runtime：Builtin Wasm 先拉取后编译回退（项目管理文档）
 
 ## 任务拆解
-- [x] BFC-1 设计文档落地（`doc/p2p/builtin-wasm-fetch-fallback-compile.md`）
+- [x] BFC-1 设计文档落地（`doc/p2p/node/builtin-wasm-fetch-fallback-compile.md`）
 - [x] BFC-1 项目管理文档落地（本文件）
 - [x] BFC-2 实现 runtime builtin wasm 装载链路：本地命中 -> 网络拉取 -> 本地编译回退
 - [x] BFC-3 增加 `test_tier_full` 闭环测试（拉取失败回退编译）

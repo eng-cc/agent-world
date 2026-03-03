@@ -7,8 +7,8 @@
 - [x] PRG-C4：补齐测试并执行 `test_tier_required` 回归，回写文档与 devlog。
 
 ## 依赖
-- `doc/p2p/production-grade-blockchain-p2pfs-roadmap.md`
-- `doc/p2p/production-grade-blockchain-p2pfs-phasec-distfs-proof-network.md`
+- `doc/p2p/blockchain/production-grade-blockchain-p2pfs-roadmap.md`
+- `doc/p2p/blockchain/production-grade-blockchain-p2pfs-phasec-distfs-proof-network.md`
 - `crates/agent_world/src/bin/world_viewer_live.rs`
 - `crates/agent_world/src/bin/world_viewer_live/distfs_challenge_network.rs`
 - `crates/agent_world/src/bin/world_viewer_live/observation_trace_runtime.rs`

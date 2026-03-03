@@ -1,7 +1,7 @@
 # Agent World：M6 3D 可视化（项目管理文档）
 
 ## 任务拆解
-- [x] 输出 3D 可视化设计文档与项目管理文档（`doc/world-simulator/visualization-3d.md`）
+- [x] 输出 3D 可视化设计文档与项目管理文档（`doc/world-simulator/viewer/visualization-3d.md`）
 - [x] 3D viewer 最小闭环：Snapshot 初始化 + 事件更新 + 三节点场景可跑通
 - [x] 相机控制：旋转 / 平移 / 缩放
 - [x] 基础拾取：点击选中 Agent/Location 并在 UI 显示
