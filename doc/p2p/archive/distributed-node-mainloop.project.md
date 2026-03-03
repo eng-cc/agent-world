@@ -13,7 +13,7 @@
 ## 依赖
 - `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/bin/world_viewer_live.rs`
 - `/Users/scc/.codex/worktrees/ee97/agent-world/Cargo.toml`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/doc/p2p/distributed-runtime.md`
+- `/Users/scc/.codex/worktrees/ee97/agent-world/doc/p2p/distributed/distributed-runtime.md`
 
 ## 状态
 - 当前阶段：Node 主循环基础模块阶段完成（DNM-1~DNM-4 全部完成）。

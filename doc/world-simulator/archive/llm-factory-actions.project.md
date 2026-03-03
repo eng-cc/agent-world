@@ -7,7 +7,7 @@
 ## 任务拆解
 
 ### LFA0 文档立项
-- [x] LFA0.1 输出设计文档（`doc/world-simulator/llm-factory-actions.md`）
+- [x] LFA0.1 输出设计文档（`doc/world-simulator/llm/llm-factory-actions.md`）
 - [x] LFA0.2 输出项目管理文档（本文件）
 
 ### LFA1 simulator 动作与状态
@@ -55,5 +55,5 @@
 
 ## 状态
 - 当前阶段：LFA0-LFA3 全部完成。
-- 下一步：按 TODO-1~TODO-3 进入策略与可观测性优化迭代（见 `doc/world-simulator/llm-factory-strategy-optimization.md` 与 `doc/world-simulator/llm-factory-strategy-optimization.project.md`）。
+- 下一步：按 TODO-1~TODO-3 进入策略与可观测性优化迭代（见 `doc/world-simulator/llm/llm-factory-strategy-optimization.md` 与 `doc/world-simulator/llm/llm-factory-strategy-optimization.project.md`）。
 - 最近更新：2026-02-16（完成 LFA3 收口并迁移后续任务到 LFO 文档）。

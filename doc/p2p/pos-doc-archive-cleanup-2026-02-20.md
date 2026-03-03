@@ -28,8 +28,8 @@
   - `> 该文档已过期，仅供历史追溯，不再作为当前实现依据。`
   - `> 归档日期：2026-02-20`
 - 当前 PoS 基线文档：
-  - `doc/p2p/consensus-code-consolidation-to-agent-world-consensus.md`
-  - `doc/p2p/consensus-code-consolidation-to-agent-world-consensus.project.md`
+  - `doc/p2p/consensus/consensus-code-consolidation-to-agent-world-consensus.md`
+  - `doc/p2p/consensus/consensus-code-consolidation-to-agent-world-consensus.project.md`
 
 ## 里程碑
 - PDA-1：新增归档收口设计/项目管理文档。

@@ -14,8 +14,8 @@
 - `crates/agent_world_consensus`
 - `crates/agent_world_net`
 - `crates/agent_world_distfs`
-- `doc/p2p/distributed-runtime.md`
-- `doc/p2p/distributed-pos-consensus.md`
+- `doc/p2p/distributed/distributed-runtime.md`
+- `doc/p2p/distributed/distributed-pos-consensus.md`
 
 ## 状态
 - 当前阶段：BPFS-1 ~ BPFS-3 全部完成。

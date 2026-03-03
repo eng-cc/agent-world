@@ -7,7 +7,7 @@
 
 ## 依赖
 - `doc/p2p/pos-doc-archive-cleanup-2026-02-20.md`
-- `doc/p2p/consensus-code-consolidation-to-agent-world-consensus.md`
+- `doc/p2p/consensus/consensus-code-consolidation-to-agent-world-consensus.md`
 - `doc/p2p/archive/`
 - `doc/devlog/2026-02-20.md`
 

@@ -5,7 +5,7 @@
 # Agent World Runtime：成员目录吊销来源鉴权与审计落盘归档（项目管理文档）
 
 ## 任务拆解
-- [x] 输出设计文档（`doc/p2p/distributed-consensus-membership-revocation-auth-archive.md`）
+- [x] 输出设计文档（`doc/p2p/distributed/distributed-consensus-membership-revocation-auth-archive.md`）
 - [x] 输出项目管理文档（本文件）
 - [x] 扩展吊销消息结构（signature_key_id/signature）
 - [x] 实现吊销消息签名/验签能力（signer + keyring）
@@ -14,7 +14,7 @@
 - [x] 补充单元测试与回归验证
 
 ## 依赖
-- `doc/p2p/distributed-consensus-membership-audit-revocation.md`
+- `doc/p2p/distributed/distributed-consensus-membership-audit-revocation.md`
 - `crates/agent_world/src/runtime/distributed_membership_sync.rs`
 - `crates/agent_world/src/runtime/distributed_membership_sync/tests.rs`
 

@@ -8,7 +8,7 @@
 
 ## 依赖
 - `doc/p2p/production-grade-blockchain-p2pfs-roadmap.md`
-- `doc/p2p/distributed-hard-split-phase7.md`
+- `doc/p2p/distributed/distributed-hard-split-phase7.md`
 - `testing-manual.md`
 
 ## 状态

@@ -5,7 +5,7 @@
 # Agent World Runtime：分布式成员目录 DHT 快照与恢复（项目管理文档）
 
 ## 任务拆解
-- [x] 输出设计文档（`doc/p2p/distributed-consensus-membership-dht.md`）
+- [x] 输出设计文档（`doc/p2p/distributed/distributed-consensus-membership-dht.md`）
 - [x] 扩展 DHT 抽象与实现（InMemory/Cached/libp2p）支持成员目录快照
 - [x] 增加成员目录 DHT key helper 并补充协议测试
 - [x] 实现 `MembershipSyncClient` 的 DHT 联动发布与恢复接口
@@ -13,8 +13,8 @@
 - [x] 运行验证并记录结果
 
 ## 依赖
-- `doc/p2p/distributed-consensus-sync.md`
-- `doc/p2p/distributed-consensus-membership.md`
+- `doc/p2p/distributed/distributed-consensus-sync.md`
+- `doc/p2p/distributed/distributed-consensus-membership.md`
 - `crates/agent_world/src/runtime/distributed_dht.rs`
 - `crates/agent_world/src/runtime/distributed_membership_sync.rs`
 - `crates/agent_world/src/runtime/libp2p_net.rs`

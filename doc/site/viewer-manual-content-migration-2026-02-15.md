@@ -1,7 +1,7 @@
 # Viewer 使用手册内容搬迁（2026-02-15）设计文档
 
 ## 目标
-- 将分散在 `doc/world-simulator/viewer-*` 与 `doc/scripts/capture-viewer-frame.md` 的“用户可操作内容”并入 Viewer 使用手册。
+- 将分散在 `doc/world-simulator/viewer/viewer-*` 与 `doc/scripts/capture-viewer-frame.md` 的“用户可操作内容”并入 Viewer 使用手册。
 - 形成单一入口：`doc/viewer-manual.md`（中文基线）与 `site/doc/cn|en/viewer-manual.html`（站点发布版）。
 - 保持现有“Web 默认、native fallback”的闭环策略不变。
 
@@ -25,13 +25,13 @@
 - 输入文档
   - `doc/viewer-manual.md`
   - `doc/scripts/capture-viewer-frame.md`
-  - `doc/world-simulator/viewer-auto-select-capture.md`
-  - `doc/world-simulator/viewer-right-panel-module-visibility.md`
-  - `doc/world-simulator/viewer-selection-details.md`
-  - `doc/world-simulator/viewer-agent-quick-locate.md`
-  - `doc/world-simulator/viewer-overview-map-zoom.md`
-  - `doc/world-simulator/viewer-copyable-text.md`
-  - `doc/world-simulator/viewer-i18n.md`
+  - `doc/world-simulator/viewer/viewer-auto-select-capture.md`
+  - `doc/world-simulator/viewer/viewer-right-panel-module-visibility.md`
+  - `doc/world-simulator/viewer/viewer-selection-details.md`
+  - `doc/world-simulator/viewer/viewer-agent-quick-locate.md`
+  - `doc/world-simulator/viewer/viewer-overview-map-zoom.md`
+  - `doc/world-simulator/viewer/viewer-copyable-text.md`
+  - `doc/world-simulator/viewer/viewer-i18n.md`
 - 输出文件
   - `doc/viewer-manual.md`
   - `site/doc/cn/viewer-manual.html`

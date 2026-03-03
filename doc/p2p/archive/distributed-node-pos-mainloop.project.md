@@ -14,7 +14,7 @@
 - `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world_node/src/lib.rs`
 - `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/bin/world_viewer_live.rs`
 - `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world_consensus/src/pos.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/doc/p2p/distributed-pos-consensus.md`
+- `/Users/scc/.codex/worktrees/ee97/agent-world/doc/p2p/distributed/distributed-pos-consensus.md`
 
 ## 状态
 - 当前阶段：NPOS-4 完成，Node PoS 主循环接入已收口。

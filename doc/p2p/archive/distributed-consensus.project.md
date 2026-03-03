@@ -5,7 +5,7 @@
 # Agent World Runtime：分布式 Head 共识层（项目管理文档）
 
 ## 任务拆解
-- [x] 输出设计文档（`doc/p2p/distributed-consensus.md`）
+- [x] 输出设计文档（`doc/p2p/distributed/distributed-consensus.md`）
 - [x] 新增 quorum 共识模块（`crates/agent_world/src/runtime/distributed_consensus.rs`）
 - [x] 实现提案/投票状态机（Pending/Committed/Rejected）
 - [x] 实现冲突提案与陈旧提案保护
@@ -14,7 +14,7 @@
 - [x] 运行共识与分布式回归测试并记录结果
 
 ## 依赖
-- `doc/p2p/distributed-runtime.md`
+- `doc/p2p/distributed/distributed-runtime.md`
 - `crates/agent_world/src/runtime/distributed.rs`
 - `crates/agent_world/src/runtime/distributed_dht.rs`
 - `crates/agent_world/src/runtime/distributed_index.rs`

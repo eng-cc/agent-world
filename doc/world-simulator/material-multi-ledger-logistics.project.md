@@ -32,7 +32,7 @@
 - `crates/agent_world/src/runtime/world/event_processing.rs`
 - `crates/agent_world/src/runtime/world/economy.rs`
 - `crates/agent_world_wasm_abi/src/economy.rs`
-- `doc/world-simulator/scenario-files.md`
+- `doc/world-simulator/scenario/scenario-files.md`
 
 ## 状态
 - 当前阶段：任务1/2/3 全部完成

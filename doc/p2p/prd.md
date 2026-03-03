@@ -58,8 +58,8 @@
 - Architecture Overview: p2p 模块负责 `agent_world_net`/`agent_world_consensus`/`agent_world_distfs` 与 node 侧分布式运行协同，强调一致性与故障恢复。
 - Integration Points:
   - `doc/p2p/production-grade-blockchain-p2pfs-roadmap.md`
-  - `doc/p2p/distributed-hard-split-phase7.md`
-  - `doc/p2p/mainchain-token-allocation-mechanism-phase2-governance-bridge-distribution-2026-02-26.md`
+  - `doc/p2p/distributed/distributed-hard-split-phase7.md`
+  - `doc/p2p/token/mainchain-token-allocation-mechanism-phase2-governance-bridge-distribution-2026-02-26.md`
   - `testing-manual.md`
 - Security & Privacy: 需保证节点身份、签名、账本与反馈数据链路的完整性；所有关键动作必须具备可审计记录。
 

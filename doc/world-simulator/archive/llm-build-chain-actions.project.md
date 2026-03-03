@@ -7,7 +7,7 @@
 ## 任务拆解
 
 ### LBA0 文档建模
-- [x] LBA0.1 输出设计文档（`doc/world-simulator/llm-build-chain-actions.md`）
+- [x] LBA0.1 输出设计文档（`doc/world-simulator/llm/llm-build-chain-actions.md`）
 - [x] LBA0.2 输出项目管理文档（本文件）
 - [x] LBA0.3 在总项目文档挂载任务入口
 
@@ -52,7 +52,7 @@
 - `crates/agent_world/src/simulator/llm_agent/prompt_assembly.rs`
 - `crates/agent_world/src/simulator/llm_agent/tests.rs`
 - `crates/agent_world/src/simulator/llm_agent/tests_part2.rs`
-- `doc/world-simulator/viewer-web-closure-testing-policy.md`
+- `doc/world-simulator/viewer/viewer-web-closure-testing-policy.md`
 
 ## 状态
 - 当前阶段：LBA0~LBA5 全部完成。

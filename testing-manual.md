@@ -47,7 +47,7 @@
 
 ### 场景系统
 - 场景定义：`crates/agent_world/src/simulator/scenario.rs`
-- 场景矩阵设计：`doc/world-simulator/scenario-files.md`
+- 场景矩阵设计：`doc/world-simulator/scenario/scenario-files.md`
 - 场景是 UI 闭环、协议闭环、压力回归的统一输入源。
 
 ## CI 现状与缺口（事实口径）
@@ -173,8 +173,8 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_full simulat
 ./scripts/main-token-regression.sh full
 ```
 - 运行与审计口径补充：
-  - 设计与运行要点：`doc/p2p/mainchain-token-allocation-mechanism.md`
-  - 发布说明：`doc/p2p/mainchain-token-allocation-mechanism.release.md`
+  - 设计与运行要点：`doc/p2p/token/mainchain-token-allocation-mechanism.md`
+  - 发布说明：`doc/p2p/token/mainchain-token-allocation-mechanism.release.md`
 - 用途：
   - 快速定位 `agent_world` 内部模块回归，不必每次跑全套 full。
 
@@ -222,7 +222,7 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required sce
 env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required scenarios_are_stable -- --nocapture
 env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required world_init_demo_runs_ -- --nocapture
 ```
-- 配套文档：`doc/world-simulator/scenario-files.md` 的“场景测试覆盖矩阵”。
+- 配套文档：`doc/world-simulator/scenario/scenario-files.md` 的“场景测试覆盖矩阵”。
 
 ### S8：长稳与压力套件（L5）
 - Viewer 压测：

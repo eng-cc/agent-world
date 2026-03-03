@@ -5,7 +5,7 @@
 # Agent World Runtime：成员目录吊销授权治理与跨节点对账（项目管理文档）
 
 ## 任务拆解
-- [x] 输出设计文档（`doc/p2p/distributed-consensus-membership-revocation-governance-reconcile.md`）
+- [x] 输出设计文档（`doc/p2p/distributed/distributed-consensus-membership-revocation-governance-reconcile.md`）
 - [x] 输出项目管理文档（本文件）
 - [x] 扩展吊销同步授权策略（`authorized_requesters`）
 - [x] 实现对账 topic 与 checkpoint 消息
@@ -13,7 +13,7 @@
 - [x] 补充单元测试与回归验证
 
 ## 依赖
-- `doc/p2p/distributed-consensus-membership-revocation-auth-archive.md`
+- `doc/p2p/distributed/distributed-consensus-membership-revocation-auth-archive.md`
 - `crates/agent_world/src/runtime/distributed_membership_sync.rs`
 - `crates/agent_world/src/runtime/distributed_membership_sync/logic.rs`
 - `crates/agent_world/src/runtime/distributed_membership_sync/tests.rs`

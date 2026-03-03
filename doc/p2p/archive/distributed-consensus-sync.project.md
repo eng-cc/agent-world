@@ -5,7 +5,7 @@
 # Agent World Runtime：分布式成员目录同步与变更广播（项目管理文档）
 
 ## 任务拆解
-- [x] 输出设计文档（`doc/p2p/distributed-consensus-sync.md`）
+- [x] 输出设计文档（`doc/p2p/distributed/distributed-consensus-sync.md`）
 - [x] 新增成员目录 topic 与 helper
 - [x] 实现成员目录广播消息结构
 - [x] 实现发布/订阅/同步客户端（`MembershipSyncClient`）
@@ -13,7 +13,7 @@
 - [x] 运行单元测试与分布式回归验证并记录结果
 
 ## 依赖
-- `doc/p2p/distributed-consensus-membership.md`
+- `doc/p2p/distributed/distributed-consensus-membership.md`
 - `crates/agent_world/src/runtime/distributed.rs`
 - `crates/agent_world/src/runtime/distributed_membership_sync.rs`
 - `crates/agent_world/src/runtime/distributed_consensus.rs`

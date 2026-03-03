@@ -7,9 +7,9 @@
 - [ ] TASK-WORLD_SIMULATOR-004 (PRD-WORLD_SIMULATOR-003): 建立 simulator 体验质量趋势跟踪。
 
 ## 依赖
-- `doc/world-simulator/scenario-files.md`
-- `doc/world-simulator/viewer-web-closure-testing-policy.md`
-- `doc/world-simulator/game-unified-launcher-2026-02-27.md`
+- `doc/world-simulator/scenario/scenario-files.md`
+- `doc/world-simulator/viewer/viewer-web-closure-testing-policy.md`
+- `doc/world-simulator/launcher/game-unified-launcher-2026-02-27.md`
 - `testing-manual.md`
 
 ## 状态

@@ -14,7 +14,7 @@
 - `crates/agent_world`
 - `crates/agent_world_node`
 - `crates/agent_world_net`
-- `doc/p2p/node-replication-libp2p-migration.md`
+- `doc/p2p/node/node-replication-libp2p-migration.md`
 - `doc/p2p/archive/distributed-node-pos-gossip.md`
 
 ## 状态

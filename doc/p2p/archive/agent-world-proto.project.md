@@ -12,7 +12,7 @@
 - [x] T5：迁移共识成员变更协议类型到 `agent_world_proto` 并完成 `agent_world` 侧适配回归。
 
 ## 依赖
-- `doc/p2p/distributed-runtime.md`
+- `doc/p2p/distributed/distributed-runtime.md`
 - `crates/agent_world/src/runtime/distributed.rs`
 - `crates/agent_world/src/runtime/distributed_net.rs`
 - `crates/agent_world/src/runtime/distributed_dht.rs`

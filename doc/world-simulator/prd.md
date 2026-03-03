@@ -44,7 +44,7 @@
 - Acceptance Criteria:
   - AC-1: world-simulator PRD 覆盖场景、Viewer、LLM、启动器四条主线。
   - AC-2: world-simulator project 文档维护任务拆解与状态。
-  - AC-3: 与 `doc/world-simulator/scenario-files.md`、`viewer-web-closure-testing-policy.md` 等专题文档一致。
+  - AC-3: 与 `doc/world-simulator/scenario/scenario-files.md`、`doc/world-simulator/viewer/viewer-web-closure-testing-policy.md` 等专题文档一致。
   - AC-4: 关键交互变更同步更新 testing 手册与测试记录。
 - Non-Goals:
   - 不在本 PRD 中详细列出每个 UI 像素级规范。
@@ -57,9 +57,9 @@
 ## 4. Technical Specifications
 - Architecture Overview: world-simulator 连接 runtime 与 viewer，负责把世界状态转化为可交互体验，并通过场景系统与启动器提供可复现实验环境。
 - Integration Points:
-  - `doc/world-simulator/scenario-files.md`
-  - `doc/world-simulator/viewer-web-closure-testing-policy.md`
-  - `doc/world-simulator/game-unified-launcher-2026-02-27.md`
+  - `doc/world-simulator/scenario/scenario-files.md`
+  - `doc/world-simulator/viewer/viewer-web-closure-testing-policy.md`
+  - `doc/world-simulator/launcher/game-unified-launcher-2026-02-27.md`
   - `testing-manual.md`
 - Security & Privacy: Viewer/launcher 链路涉及配置与鉴权注入时必须最小暴露；调试接口需受限并可审计。
 

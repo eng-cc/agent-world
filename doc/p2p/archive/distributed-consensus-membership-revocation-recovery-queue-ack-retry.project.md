@@ -5,7 +5,7 @@
 # Agent World Runtime：成员目录吊销恢复队列容量治理与告警 ACK 重试（项目管理文档）
 
 ## 任务拆解
-- [x] 输出设计文档（`doc/p2p/distributed-consensus-membership-revocation-recovery-queue-ack-retry.md`）
+- [x] 输出设计文档（`doc/p2p/distributed/distributed-consensus-membership-revocation-recovery-queue-ack-retry.md`）
 - [x] 输出项目管理文档（本文件）
 - [x] 定义恢复队列元素结构与 ACK 重试策略
 - [x] 升级 recovery store（内存/文件）持久化格式并兼容旧格式
@@ -14,7 +14,7 @@
 - [x] 扩展恢复报告字段并补充单元测试
 
 ## 依赖
-- `doc/p2p/distributed-consensus-membership-revocation-coordinator-state-alert-recovery.md`
+- `doc/p2p/distributed/distributed-consensus-membership-revocation-coordinator-state-alert-recovery.md`
 - `crates/agent_world/src/runtime/distributed_membership_sync/recovery.rs`
 - `crates/agent_world/src/runtime/distributed_membership_sync/recovery_tests.rs`
 

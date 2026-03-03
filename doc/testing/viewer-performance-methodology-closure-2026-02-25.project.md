@@ -11,7 +11,7 @@
 - `crates/agent_world_viewer/src/perf_probe.rs`
 - `doc/testing/viewer-performance-methodology-closure-2026-02-25.md`
 - `testing-manual.md`
-- `doc/performance_testing_manual(viewer).md`
+- `doc/archive/root-history/performance_testing_manual(viewer).md`
 - `doc/devlog/2026-02-25.md`
 
 ## 状态

@@ -5,7 +5,7 @@
 # Agent World Runtime：成员目录吊销告警恢复死信归档与投递指标（项目管理文档）
 
 ## 任务拆解
-- [x] 输出设计文档（`doc/p2p/distributed-consensus-membership-revocation-dead-letter-metrics.md`）
+- [x] 输出设计文档（`doc/p2p/distributed/distributed-consensus-membership-revocation-dead-letter-metrics.md`）
 - [x] 输出项目管理文档（本文件）
 - [x] 新增死信归档模型与存储抽象（内存/文件）
 - [x] 扩展恢复报告投递指标结构
@@ -14,7 +14,7 @@
 - [x] 单元测试与分布式回归验证
 
 ## 依赖
-- `doc/p2p/distributed-consensus-membership-revocation-recovery-queue-ack-retry.md`
+- `doc/p2p/distributed/distributed-consensus-membership-revocation-recovery-queue-ack-retry.md`
 - `crates/agent_world/src/runtime/distributed_membership_sync/recovery.rs`
 - `crates/agent_world/src/runtime/distributed_membership_sync/recovery_tests.rs`
 

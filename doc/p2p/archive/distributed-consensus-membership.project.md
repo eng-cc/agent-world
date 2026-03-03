@@ -5,7 +5,7 @@
 # Agent World Runtime：分布式 Head 共识成员治理与租约联动（项目管理文档）
 
 ## 任务拆解
-- [x] 输出设计文档（`doc/p2p/distributed-consensus-membership.md`）
+- [x] 输出设计文档（`doc/p2p/distributed/distributed-consensus-membership.md`）
 - [x] 定义成员变更请求/结果结构
 - [x] 实现成员增减/替换接口
 - [x] 实现进行中提案保护（Pending 阻断）
@@ -14,8 +14,8 @@
 - [x] 运行单元测试与分布式回归验证并记录结果
 
 ## 依赖
-- `doc/p2p/distributed-consensus.md`
-- `doc/p2p/distributed-consensus-persistence.md`
+- `doc/p2p/distributed/distributed-consensus.md`
+- `doc/p2p/distributed/distributed-consensus-persistence.md`
 - `crates/agent_world/src/runtime/distributed_consensus.rs`
 - `crates/agent_world/src/runtime/distributed_lease.rs`
 

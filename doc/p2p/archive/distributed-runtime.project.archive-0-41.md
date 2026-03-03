@@ -10,7 +10,7 @@
 
 ## 任务拆解（历史）
 ### 0. 对齐与准备
-- [x] 输出设计文档（`doc/p2p/distributed-runtime.md`）
+- [x] 输出设计文档（`doc/p2p/distributed/distributed-runtime.md`）
 - [x] 输出项目管理文档（本文件）
 - [x] 与 runtime 分册术语对齐（事件/快照/模块存储）
 

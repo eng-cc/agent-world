@@ -5,7 +5,7 @@
 # Agent World Runtime：成员目录快照密钥轮换与审计（项目管理文档）
 
 ## 任务拆解
-- [x] 输出设计文档（`doc/p2p/distributed-consensus-membership-rotation-audit.md`）
+- [x] 输出设计文档（`doc/p2p/distributed/distributed-consensus-membership-rotation-audit.md`）
 - [x] 增加 `signature_key_id` 并保持序列化兼容
 - [x] 实现 `MembershipDirectorySignerKeyring` 多密钥签名/验签
 - [x] 实现 key_id 轮换发布入口（active key）
@@ -14,7 +14,7 @@
 - [x] 补充单元测试并执行分布式回归
 
 ## 依赖
-- `doc/p2p/distributed-consensus-membership-auth.md`
+- `doc/p2p/distributed/distributed-consensus-membership-auth.md`
 - `crates/agent_world/src/runtime/distributed_membership_sync.rs`
 - `crates/agent_world/src/runtime/distributed_dht.rs`
 

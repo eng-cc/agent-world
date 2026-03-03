@@ -27,7 +27,7 @@
 - `testing-manual.md`
 - `doc/testing/web-ui-playwright-closure-manual.md`
 - `doc/viewer-manual.md`
-- `doc/world-simulator/scenario-files.md`
+- `doc/world-simulator/scenario/scenario-files.md`
 - `doc/testing/ci-tiered-execution.md`
 - `doc/testing/ci-testcase-tiering.md`
 - `doc/testing/ci-test-coverage.md`

@@ -12,7 +12,7 @@
 - `crates/agent_world_viewer/src/egui_right_panel.rs`
 - `scripts/viewer-owr4-stress.sh`
 - `testing-manual.md`
-- `doc/performance_testing_manual(viewer).md`
+- `doc/archive/root-history/performance_testing_manual(viewer).md`
 - `doc/devlog/2026-02-25.md`
 
 ## 状态

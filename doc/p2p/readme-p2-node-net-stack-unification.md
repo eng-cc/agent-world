@@ -24,7 +24,7 @@
     - 增加注释，明确 wasm32 非 full node。
   - 文档
     - `doc/p2p/readme-p2-node-net-stack-unification.project.md`
-    - `doc/p2p/node-wasm32-libp2p-compile-guard.md`（补充 wasm32 定位）
+    - `doc/p2p/node/node-wasm32-libp2p-compile-guard.md`（补充 wasm32 定位）
 - Out of scope
   - wasm32 端完整 libp2p full node（包含 TCP/Noise/Yamux 与 DHT/自动发现等）。
   - `agent_world_net` 的 DHT/索引语义重构。
