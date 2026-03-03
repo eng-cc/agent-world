@@ -9,7 +9,7 @@
 ## 依赖
 - `scripts/p2p-longrun-soak.sh`
 - `testing-manual.md`
-- `doc/testing/longrun/chain-runtime-soak-script-reactivation-2026-02-28.md`
+- `doc/testing/longrun/chain-runtime-soak-script-reactivation-2026-02-28.prd.md`
 
 ## 状态
 - 当前阶段：已完成（F0~F3）。
