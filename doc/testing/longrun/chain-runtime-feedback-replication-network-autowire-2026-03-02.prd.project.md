@@ -1,0 +1,21 @@
+# Agent World: Chain Runtime 反馈网络复制层自动挂载修复（2026-03-02）（项目管理）
+
+## 任务拆解（含 PRD-ID 映射）
+- [x] AUTONET-1 (PRD-TESTING-LONGRUN-AUTONET-001/003): 完成专题设计文档与项目管理文档建档。
+- [x] AUTONET-2 (PRD-TESTING-LONGRUN-AUTONET-001/002): 修复 `world_chain_runtime` 启动前自动挂载默认 replication network，并启用 no-peer 本地 fallback。
+- [x] AUTONET-3 (PRD-TESTING-LONGRUN-AUTONET-002/003): 完成单测、`cargo check`、启动烟测与 devlog 收口。
+- [x] AUTONET-4 (PRD-TESTING-004): 专题文档按 strict schema 人工重写，并切换命名到 `.prd.md/.prd.project.md`。
+
+## 依赖
+- `crates/agent_world/src/bin/world_chain_runtime.rs`
+- `crates/agent_world/src/bin/world_chain_runtime/world_chain_runtime_tests.rs`
+- `doc/testing/prd.md`
+- `doc/testing/prd.project.md`
+- `doc/devlog/2026-03-02.md`
+- `doc/devlog/2026-03-03.md`
+
+## 状态
+- 更新日期：2026-03-03
+- 当前阶段：已完成
+- 阻塞项：无
+- 下一步：无（当前专题已收口）
