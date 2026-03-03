@@ -138,7 +138,7 @@
 | PRD-ENGINEERING-003 | TASK-ENGINEERING-003/004/007 | `test_tier_required` | 趋势统计与审查模板抽样检查 | 工程治理可审计性与长期演进 |
 | PRD-ENGINEERING-004 | TASK-ENGINEERING-008/009 | `test_tier_required` | 原文约束点对照、迁移后治理脚本与引用扫描 | 文档格式一致性与内容保真 |
 | PRD-ENGINEERING-005 | TASK-ENGINEERING-010 | `test_tier_required` | 协作主文档结构与分工边界校验 | 并行迁移入口一致性 |
-| PRD-ENGINEERING-006 | TASK-ENGINEERING-011/012/013/014 | `test_tier_required` | 按 Owner 责任域抽样检查迁移提交 | 并行效率与冲突控制 |
+| PRD-ENGINEERING-006 | TASK-ENGINEERING-011/012/013/013A/013B/013C/013D/014 | `test_tier_required` | 按 Owner 责任域抽样检查迁移提交 | 并行效率与冲突控制 |
 | PRD-ENGINEERING-007 | TASK-ENGINEERING-015 | `test_tier_required` + `test_tier_full` | 全量迁移收尾扫描、命名与引用一致性验证 | 全仓文档治理收口质量 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |

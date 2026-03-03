@@ -62,6 +62,11 @@
   - 待迁移清单快照：`doc/engineering/doc-migration/legacy-doc-migration-backlog-2026-03-03.md`
   - 模块追踪：`doc/engineering/prd.md`、`doc/engineering/prd.project.md`
   - 任务日志：`doc/devlog/2026-03-03.md`
+- Owner-C 执行分批（TASK-ENGINEERING-013）：
+  - Batch-C1: `doc/archive/root-history/**`（7 篇）
+  - Batch-C2: `doc/headless-runtime/**`（6 篇）
+  - Batch-C3: `doc/world-runtime/archive/**` + `doc/world-runtime/governance/**` + `doc/world-runtime/module/**` + `doc/world-runtime/wasm/**`（23 篇）
+  - Batch-C4: `doc/world-runtime/runtime/**`（16 篇）
 - Edge Cases & Error Handling:
   - 分工冲突：若同一文档被多人认领，以协作项目文档登记的 Owner 为唯一执行者，其余回退。
   - 内容不保真：复核发现约束缺失时，任务状态回退为 `in_progress`，不得合并。
