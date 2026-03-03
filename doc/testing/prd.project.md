@@ -8,13 +8,14 @@
 - [x] TASK-TESTING-005 (PRD-TESTING-002/003): 建立模块级专题任务映射索引（2026-03-02 批次）。
 - [x] TASK-TESTING-006 (PRD-TESTING-001/002/003): 对齐 strict PRD schema，补齐关键流程/规格矩阵/边界异常/NFR/验证与决策记录。
 - [x] TASK-TESTING-007 (PRD-TESTING-004): 完成 `ci-wasm32-target-install` 专题文档逐篇人工迁移到 strict schema，并统一 `.prd` 命名。
-- [ ] TASK-TESTING-008 (PRD-TESTING-004): 继续按批次迁移 testing 活跃 legacy 专题文档（优先 `ci/` 目录）。
+- [ ] TASK-TESTING-008 (PRD-TESTING-004): 继续按批次迁移 testing 活跃 legacy 专题文档（优先 `governance/launcher/longrun/performance/manual`）。
 - [x] TASK-TESTING-009 (PRD-TESTING-004): 完成 `ci-testcase-tiering` 专题文档逐篇人工迁移到 strict schema，并统一 `.prd` 命名。
 - [x] TASK-TESTING-010 (PRD-TESTING-004): 完成 `ci-tiered-execution` 专题文档逐篇人工迁移到 strict schema，并统一 `.prd` 命名。
 - [x] TASK-TESTING-011 (PRD-TESTING-004): 完成 `ci-test-coverage` 专题文档逐篇人工迁移到 strict schema，并统一 `.prd` 命名。
 - [x] TASK-TESTING-012 (PRD-TESTING-004): 完成 `ci-builtin-wasm-m1-multi-runner` 专题文档逐篇人工迁移到 strict schema，并统一 `.prd` 命名。
 - [x] TASK-TESTING-013 (PRD-TESTING-004): 完成 `ci-m1-multi-runner-required-check-protection` 专题文档逐篇人工迁移到 strict schema，并统一 `.prd` 命名。
 - [x] TASK-TESTING-014 (PRD-TESTING-004): 完成 `ci-remove-builtin-wasm-hash-checks-from-base-gate` 专题文档逐篇人工迁移到 strict schema，并统一 `.prd` 命名。
+- [x] TASK-TESTING-015 (PRD-TESTING-004): 完成 `wasm-build-determinism-guard` 专题文档逐篇人工迁移到 strict schema，并统一 `.prd` 命名。
 
 ## 专题任务映射（2026-03-02 批次）
 - [x] SUBTASK-TESTING-20260302-001 (PRD-TESTING-002/003): `doc/testing/longrun/chain-runtime-feedback-replication-network-autowire-2026-03-02.project.md`
@@ -29,6 +30,7 @@
 - [x] SUBTASK-TESTING-20260303-005 (PRD-TESTING-004): `doc/testing/ci/ci-builtin-wasm-m1-multi-runner.prd.project.md`
 - [x] SUBTASK-TESTING-20260303-006 (PRD-TESTING-004): `doc/testing/ci/ci-m1-multi-runner-required-check-protection.prd.project.md`
 - [x] SUBTASK-TESTING-20260303-007 (PRD-TESTING-004): `doc/testing/ci/ci-remove-builtin-wasm-hash-checks-from-base-gate.prd.project.md`
+- [x] SUBTASK-TESTING-20260303-008 (PRD-TESTING-004): `doc/testing/governance/wasm-build-determinism-guard.prd.project.md`
 
 ## 依赖
 - `testing-manual.md`
