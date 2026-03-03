@@ -39,6 +39,9 @@
   - G2（Web-first Viewer 闭环）
   - G5（文档与流程一致性）
 
+## 证据模板入口
+- Web-first 与 LLM 统一证据卡模板：`doc/world-simulator/prd/acceptance/web-llm-evidence-template.md`
+
 ## 证据记录模板
 ```md
 - Gate-ID:
