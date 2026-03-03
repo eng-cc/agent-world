@@ -54,7 +54,7 @@
 - Integration Points:
   - `scripts/p2p-longrun-soak.sh`
   - `testing-manual.md`（S9）
-  - `doc/testing/longrun/p2p-storage-consensus-longrun-online-stability-2026-02-24.md`
+  - `doc/testing/longrun/p2p-storage-consensus-longrun-online-stability-2026-02-24.prd.md`
   - `doc/testing/longrun/p2p-longrun-continuous-chaos-injection-2026-02-24.prd.project.md`
 - Edge Cases & Error Handling:
   - 过度注入：默认保守参数，支持上限控制防止“人为打爆”。

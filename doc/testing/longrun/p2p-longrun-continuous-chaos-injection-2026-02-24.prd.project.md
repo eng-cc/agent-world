@@ -11,7 +11,7 @@
 ## 依赖
 - `scripts/p2p-longrun-soak.sh`
 - `testing-manual.md`
-- `doc/testing/longrun/p2p-storage-consensus-longrun-online-stability-2026-02-24.md`
+- `doc/testing/longrun/p2p-storage-consensus-longrun-online-stability-2026-02-24.prd.md`
 - `doc/testing/prd.md`
 - `doc/testing/prd.project.md`
 
