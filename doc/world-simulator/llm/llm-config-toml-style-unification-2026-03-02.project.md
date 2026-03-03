@@ -1,10 +1,10 @@
 # LLM 配置 TOML 风格统一（2026-03-02）项目管理
 
 ## 任务拆解
-- [x] T0 建档：设计文档 + 项目管理文档。
-- [x] T1 代码重构：`LlmAgentConfig` 从小写 TOML 结构读取，补充解析测试。
-- [x] T2 配置与文档迁移：更新 `config.toml` / `config.example.toml` 与说明文档。
-- [x] T3 回归与收口：执行回归测试，更新文档完成态与任务日志。
+- [x] T0 (PRD-WORLD_SIMULATOR-001)：建档（设计文档 + 项目管理文档）。
+- [x] T1 (PRD-WORLD_SIMULATOR-001/002)：代码重构（`LlmAgentConfig` 从小写 TOML 结构读取，补充解析测试）。
+- [x] T2 (PRD-WORLD_SIMULATOR-002)：配置与文档迁移（更新 `config.toml` / `config.example.toml` 与说明文档）。
+- [x] T3 (PRD-WORLD_SIMULATOR-003)：回归与收口（执行回归测试，更新文档完成态与任务日志）。
 
 ## 依赖
 - `crates/agent_world/src/simulator/llm_agent.rs` 配置加载入口。

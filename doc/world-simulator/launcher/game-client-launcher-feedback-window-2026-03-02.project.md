@@ -1,9 +1,9 @@
 # 客户端启动器反馈窗口化（2026-03-02）项目管理
 
 ## 任务拆解
-- [x] T0 建档：设计文档 + 项目管理文档。
-- [x] T1 改造实现：反馈入口按钮 + 反馈弹窗，移除主面板内嵌反馈区域，完成回归测试。
-- [x] T2 收口：更新完成态、devlog、提交结项。
+- [x] T0 (PRD-WORLD_SIMULATOR-001)：建档（设计文档 + 项目管理文档）。
+- [x] T1 (PRD-WORLD_SIMULATOR-002)：改造实现（反馈入口按钮 + 反馈弹窗，移除主面板内嵌反馈区域，完成回归测试）。
+- [x] T2 (PRD-WORLD_SIMULATOR-003)：收口（更新完成态、devlog、提交结项）。
 
 ## 依赖
 - `crates/agent_world_client_launcher/src/main.rs`

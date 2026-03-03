@@ -1,10 +1,10 @@
 # Viewer Web 构建体积裁剪（2026-03-02）项目管理
 
 ## 任务拆解
-- [x] T0 建档：设计文档与项目管理文档
-- [x] T1 代码裁剪：wasm 路径剥离 non-web 模块与 native-only 依赖
-- [x] T2 回归验证：wasm check + trunk release 构建 + 体积对比
-- [x] T3 收口：更新文档状态与当日日志
+- [x] T0 (PRD-WORLD_SIMULATOR-001)：建档（设计文档与项目管理文档）
+- [x] T1 (PRD-WORLD_SIMULATOR-002)：代码裁剪（wasm 路径剥离 non-web 模块与 native-only 依赖）
+- [x] T2 (PRD-WORLD_SIMULATOR-003)：回归验证（wasm check + trunk release 构建 + 体积对比）
+- [x] T3 (PRD-WORLD_SIMULATOR-003)：收口（更新文档状态与当日日志）
 
 ## 依赖
 - `doc/world-simulator/viewer/viewer-web-build-pruning-2026-03-02.md`
