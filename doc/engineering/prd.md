@@ -31,6 +31,7 @@
   - SC-2: Markdown 单文件超 500 行新增违规数为 0。
   - SC-3: `scripts/doc-governance-check.sh` 在 required gate 连续通过。
   - SC-4: 工程类任务 100% 映射到 PRD-ENGINEERING-ID。
+  - SC-5: `doc/` 根目录与模块根目录平铺文档新增违规数为 0（allowlist 冻结机制）。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -46,6 +47,7 @@
   - AC-2: engineering project 文档维护任务拆解与状态。
   - AC-3: 与 `scripts/pre-commit.md`、`testing-manual.md` 的口径一致。
   - AC-4: 每次工程规范变更有对应 devlog 记录。
+  - AC-5: 文档治理脚本校验 `doc/.governance/*-allowlist.txt`，可拦截 `doc/*.md` 与 `doc/<module>/*.md` 的非预期新增。
 - Non-Goals:
   - 不定义 gameplay/p2p/runtime 业务规则。
   - 不替代模块内部测试策略。
@@ -57,8 +59,11 @@
 ## 4. Technical Specifications
 - Architecture Overview: engineering 模块聚焦工程流程与规范，不承载业务逻辑；通过脚本与门禁把规范落地到提交链路。
 - Integration Points:
+  - `scripts/doc-governance-check.sh`
   - `scripts/pre-commit.md`
   - `scripts/fix-precommit.md`
+  - `doc/.governance/doc-root-md-allowlist.txt`
+  - `doc/.governance/module-root-md-allowlist.txt`
   - `testing-manual.md`
   - `.github/workflows/*`
 - Security & Privacy: 仅涉及工程流程元信息；涉及凭据的自动化流程必须遵守最小暴露原则并避免日志泄漏。

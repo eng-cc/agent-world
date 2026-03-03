@@ -16,6 +16,9 @@ Checks:
   4. Each non-archive project doc must have a paired design doc and that design doc
      must include sections: 目标 / 范围 / 接口/数据 / 里程碑 / 风险
      (except whitelisted project docs).
+  5. Root-level markdown files under doc/ must match the tracked allowlist.
+  6. Root-level markdown files under each module (doc/<module>/*.md) must match
+     the tracked allowlist (archive/devlog/.governance excluded).
 USAGE
 }
 
@@ -35,8 +38,12 @@ failures=0
 # Whitelist is keyed by project doc path to keep exemptions explicit and reviewable.
 readonly DESIGN_SECTION_EXEMPT_PROJECT_DOCS=(
   "doc/game-test.project.md"
+  "doc/world-runtime.project.md"
+  "doc/world-simulator.project.md"
   "doc/playability_test_result/game-test.project.md"
 )
+readonly DOC_ROOT_MD_ALLOWLIST_FILE="doc/.governance/doc-root-md-allowlist.txt"
+readonly MODULE_ROOT_MD_ALLOWLIST_FILE="doc/.governance/module-root-md-allowlist.txt"
 
 fail() {
   echo "doc-governance-check: FAIL: $*"
@@ -82,6 +89,41 @@ check_required_sections() {
   if [[ ${#missing[@]} -gt 0 ]]; then
     fail "$file missing sections: ${missing[*]}"
   fi
+}
+
+check_allowlist_match() {
+  local label="$1"
+  local allowlist_file="$2"
+  local actual_file="$3"
+  local allowlist_tmp
+  allowlist_tmp=$(mktemp)
+
+  if [[ ! -f "$allowlist_file" ]]; then
+    fail "${label} allowlist file missing: ${allowlist_file}"
+    rm -f "$allowlist_tmp"
+    return
+  fi
+
+  grep -Ev '^[[:space:]]*($|#)' "$allowlist_file" | sort -u > "$allowlist_tmp"
+  sort -u -o "$actual_file" "$actual_file"
+
+  local unexpected missing
+  unexpected=$(comm -23 "$actual_file" "$allowlist_tmp" || true)
+  missing=$(comm -13 "$actual_file" "$allowlist_tmp" || true)
+
+  if [[ -n "$unexpected" ]]; then
+    echo "doc-governance-check: ${label} unexpected entries:"
+    echo "$unexpected"
+    fail "${label} contains paths not tracked in allowlist"
+  fi
+
+  if [[ -n "$missing" ]]; then
+    echo "doc-governance-check: ${label} missing entries (stale allowlist):"
+    echo "$missing"
+    fail "${label} allowlist contains paths that no longer exist"
+  fi
+
+  rm -f "$allowlist_tmp"
 }
 
 is_design_section_exempt_project_doc() {
@@ -137,6 +179,21 @@ for project_doc in "${project_docs[@]}"; do
 
   check_required_sections "$design_doc" "目标" "范围" "接口[[:space:]]*/[[:space:]]*数据" "里程碑" "风险"
 done
+
+doc_root_actual_tmp=$(mktemp)
+module_root_actual_tmp=$(mktemp)
+
+find doc -mindepth 1 -maxdepth 1 -type f -name '*.md' | sort > "$doc_root_actual_tmp"
+find doc -mindepth 2 -maxdepth 2 -type f -name '*.md' \
+  ! -path 'doc/archive/*' \
+  ! -path 'doc/devlog/*' \
+  ! -path 'doc/.governance/*' \
+  | sort > "$module_root_actual_tmp"
+
+check_allowlist_match "doc root markdown set" "$DOC_ROOT_MD_ALLOWLIST_FILE" "$doc_root_actual_tmp"
+check_allowlist_match "module root markdown set" "$MODULE_ROOT_MD_ALLOWLIST_FILE" "$module_root_actual_tmp"
+
+rm -f "$doc_root_actual_tmp" "$module_root_actual_tmp"
 
 if ((failures > 0)); then
   echo "doc-governance-check: failed with ${failures} issue(s)"

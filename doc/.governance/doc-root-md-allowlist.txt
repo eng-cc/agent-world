@@ -1,0 +1,12 @@
+# Tracked doc/ root-level markdown files.
+# Update only when intentionally adding/removing root entry files.
+doc/README.md
+doc/game-test.md
+doc/game-test.project.md
+doc/playability_test_card.md
+doc/playability_test_manual.md
+doc/viewer-manual.md
+doc/world-runtime.md
+doc/world-runtime.project.md
+doc/world-simulator.md
+doc/world-simulator.project.md

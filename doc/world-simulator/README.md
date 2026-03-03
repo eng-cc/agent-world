@@ -16,6 +16,12 @@
 ## 专项手册
 - Viewer 使用手册：`doc/world-simulator/viewer/viewer-manual.md`
 
+## 根目录 legacy
+- `doc/world-simulator.md`
+- `doc/world-simulator.project.md`
+- 历史完整总览归档：`doc/archive/root-history/world-simulator-root-entry-legacy-2026-03-03.md`
+- 历史完整项目归档：`doc/archive/root-history/world-simulator-root-entry-legacy-2026-03-03.project.md`
+
 ## 维护约定
 - 新文档按主题目录落位，不再默认平铺在模块根目录。
 - 模块行为变更需同步更新 `prd.md` 与 `prd.project.md`。

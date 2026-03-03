@@ -14,8 +14,8 @@
 7. 回溯过程记录：`doc/devlog/YYYY-MM-DD.md`。
 
 ## 根目录入口说明
-- `doc/world-runtime.md` 与 `doc/world-runtime.project.md`：历史总览入口（legacy），当前模块主入口以 `doc/world-runtime/prd.md` 与 `doc/world-runtime/prd.project.md` 为准。
-- `doc/world-simulator.md` 与 `doc/world-simulator.project.md`：历史总览入口（legacy），当前模块主入口以 `doc/world-simulator/prd.md` 与 `doc/world-simulator/prd.project.md` 为准。
+- `doc/world-runtime.md` 与 `doc/world-runtime.project.md`：兼容跳转入口（legacy redirect），历史完整总览已归档到 `doc/archive/root-history/world-runtime-root-entry-legacy-2026-03-03*.md`，当前模块主入口以 `doc/world-runtime/prd.md` 与 `doc/world-runtime/prd.project.md` 为准。
+- `doc/world-simulator.md` 与 `doc/world-simulator.project.md`：兼容跳转入口（legacy redirect），历史完整总览已归档到 `doc/archive/root-history/world-simulator-root-entry-legacy-2026-03-03*.md`，当前模块主入口以 `doc/world-simulator/prd.md` 与 `doc/world-simulator/prd.project.md` 为准。
 - 以下文件为兼容跳转入口（legacy redirect），正文已迁移到模块目录：
   - `doc/viewer-manual.md` -> `doc/world-simulator/viewer/viewer-manual.md`
   - `doc/game-test.md` -> `doc/playability_test_result/game-test.md`
@@ -46,8 +46,10 @@
 - `doc/<module>/README.md`：模块目录索引（按主题子目录导航）。
 - `doc/archive/root-history/`：`doc/` 根目录历史治理文档归档。
 - `doc/devlog/`：按日任务日志（时刻、完成内容、遗留事项）。
+- `doc/.governance/*-allowlist.txt`：文档组织门禁基线（根目录与模块根目录平铺文件冻结清单）。
 
 ## 维护约定（摘要）
 - 新功能或行为变更必须先更新模块 `prd.md`，再更新 `prd.project.md`，最后实现与测试。
 - 代码、测试、文档任务必须可追溯到 PRD-ID。
 - 单个 Markdown 文档不超过 500 行；`prd.md` 超限时拆分为 `doc/<module>/prd/*.md`，并保留 `prd.md` 作为总览入口。
+- 非白名单场景禁止新增 `doc/*.md` 与 `doc/<module>/*.md` 平铺文档；需优先落位到模块子目录并更新模块 `README.md` 索引。
