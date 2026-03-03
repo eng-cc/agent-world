@@ -8,7 +8,7 @@
 - [x] TASK-WORLD_SIMULATOR-005 (PRD-WORLD_SIMULATOR-004/005): 完成“启动器链上转账”PRD 条款建模与验收标准冻结（接口、安全、测试口径）。
 - [x] TASK-WORLD_SIMULATOR-006 (PRD-WORLD_SIMULATOR-004): `world_chain_runtime` 新增转账提交接口（含请求校验、结构化响应、单元测试）。
 - [x] TASK-WORLD_SIMULATOR-007 (PRD-WORLD_SIMULATOR-005): runtime 新增主 token 账户转账动作/事件/状态更新（含 nonce anti-replay、余额约束、回归测试）。
-- [ ] TASK-WORLD_SIMULATOR-008 (PRD-WORLD_SIMULATOR-004): `agent_world_client_launcher` 新增转账 UI 与提交流程（含输入校验、状态提示、错误展示）。
+- [x] TASK-WORLD_SIMULATOR-008 (PRD-WORLD_SIMULATOR-004): `agent_world_client_launcher` 新增转账 UI 与提交流程（含输入校验、状态提示、错误展示）。
 - [ ] TASK-WORLD_SIMULATOR-009 (PRD-WORLD_SIMULATOR-004/005): 完成启动器-链运行时转账闭环测试（`test_tier_required`）与测试证据沉淀。
 
 ## 依赖
@@ -27,6 +27,6 @@
 ## 状态
 - 更新日期: 2026-03-03
 - 当前状态: active
-- 当前优先任务: TASK-WORLD_SIMULATOR-008
+- 当前优先任务: TASK-WORLD_SIMULATOR-009
 - 并行待办: TASK-WORLD_SIMULATOR-002 / TASK-WORLD_SIMULATOR-003 / TASK-WORLD_SIMULATOR-004
 - 说明: 本文档仅维护 world-simulator 模块设计执行状态；过程记录在 `doc/devlog/2026-03-03.md`。
