@@ -33,7 +33,7 @@
 - `crates/agent_world_viewer/index.html`
 - `scripts/run-viewer-web.sh`
 - `doc/world-simulator/viewer/viewer-manual.md`
-- `doc/world-simulator.project.md`
+- `doc/world-simulator.prd.project.md`
 
 ## 状态
 - 当前阶段：WBR1~WBR5 全部完成。

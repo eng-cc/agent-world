@@ -107,7 +107,7 @@
   - 历史文档例外：仅允许 archive/devlog 例外，不得扩散到活跃目录。
   - 新旧格式并存：迁移中允许 legacy 与 strict 共存，但每个迁移批次必须标注边界并回写追踪状态。
   - 批量迁移回归风险：结构改写可能造成引用断链，需附带路径扫描与脚本复核。
-  - 根入口重定向例外：`doc/game-test.project.md`、`doc/world-runtime.project.md`、`doc/world-simulator.project.md` 如已转为 legacy redirect，可在 Owner-D 任务中按子阶段暂缓，先完成非根入口批次并在项目文档显式记录剩余项。
+  - 根入口重定向迁移：`doc/game-test.prd.project.md`、`doc/world-runtime.prd.project.md`、`doc/world-simulator.prd.project.md` 在 D2 阶段已完成收口；后续变更仅允许在 redirect 语义内维护，不恢复为业务正文入口。
 - Non-Functional Requirements:
   - NFR-ENG-1: required 门禁平均执行时长 <= 10 分钟。
   - NFR-ENG-2: 文档治理误报率 <= 5%（按周统计）。
@@ -150,3 +150,4 @@
 | DEC-ENG-004 | 老格式文档按批次渐进迁移并采用逐篇人工重写 | 一次性全量改写或自动脚本改写 | 人工重写更利于保留语义细节并控制内容质量。 |
 | DEC-ENG-005 | 采用四人并行、目录前缀互斥分工推进大规模迁移 | 单人串行推进或随机切片 | 可兼顾迁移速度、冲突控制与审阅可追溯性。 |
 | DEC-ENG-006 | Owner-D 先完成非根入口 60 篇，再单独收口 3 份根入口 redirect project 文档 | 在同一批次混合推进所有 63 篇 | 可减少根入口语义争议导致的回退频次，同时保持可追溯燃尽。 |
+| DEC-ENG-007 | D2 完成后保留根入口 `.prd` redirect 并统一引用到新命名 | 恢复旧命名入口或删除 root redirect | 兼顾迁移收口一致性与历史入口兼容性。 |

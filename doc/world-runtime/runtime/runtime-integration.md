@@ -1,6 +1,6 @@
 # Agent World Runtime：运行时集成要点（设计分册）
 
-本分册为 `doc/world-runtime.md` 的详细展开。
+本分册为 `doc/world-runtime.prd.md` 的详细展开。
 
 ## 模块加载与缓存（草案）
 

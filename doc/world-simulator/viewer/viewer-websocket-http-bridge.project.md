@@ -37,7 +37,7 @@
 - `doc/world-simulator/viewer/viewer-manual.md`
 - `AGENTS.md`
 - `doc/world-simulator/viewer/viewer-bevy-web-runtime.md`
-- `doc/world-simulator.project.md`
+- `doc/world-simulator.prd.project.md`
 
 ## 状态
 - 当前阶段：WLB1~WLB6 全部完成。

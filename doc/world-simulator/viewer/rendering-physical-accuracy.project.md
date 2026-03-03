@@ -16,7 +16,7 @@
 ## 依赖
 - `WorldSnapshot` / `WorldEvent` / `WorldConfig`（`crates/agent_world`）
 - `agent_world_viewer` 3D 渲染与 UI 管线（`crates/agent_world_viewer`）
-- 现有物理参数约束（`doc/world-simulator.md`，C9 参数表）
+- 现有物理参数约束（`doc/world-simulator.prd.md`，C9 参数表）
 - 截图闭环脚本（`scripts/capture-viewer-frame.sh`）
 
 ## 状态

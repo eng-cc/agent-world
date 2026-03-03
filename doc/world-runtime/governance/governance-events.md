@@ -1,6 +1,6 @@
 # Agent World Runtime：治理事件与 Shadow 报告（设计分册）
 
-本分册为 `doc/world-runtime.md` 的详细展开。
+本分册为 `doc/world-runtime.prd.md` 的详细展开。
 
 ## 模块失败事件的审计关联（草案）
 

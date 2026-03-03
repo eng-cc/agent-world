@@ -24,7 +24,7 @@
 - `doc/scripts/viewer-tools/capture-viewer-frame.project.md`
 - `doc/world-simulator/viewer/viewer-bevy-web-runtime.md`
 - `doc/world-simulator/viewer/viewer-bevy-web-runtime.project.md`
-- `doc/world-simulator.project.md`
+- `doc/world-simulator.prd.project.md`
 
 ## 状态
 - 当前阶段：WCT1~WCT3 全部完成。

@@ -25,7 +25,7 @@
 - `crates/agent_world_viewer/src/camera_controls.rs`
 - `crates/agent_world_viewer/src/app_bootstrap.rs`
 - `doc/world-simulator/viewer/viewer-manual.md`
-- `doc/world-simulator.project.md`
+- `doc/world-simulator.prd.project.md`
 
 ## 状态
 - 当前阶段：WCM1~WCM4 全部完成。

@@ -1,6 +1,6 @@
 # Agent World Runtime：模块治理与生命周期（设计分册）
 
-本分册为 `doc/world-runtime.md` 的详细展开。
+本分册为 `doc/world-runtime.prd.md` 的详细展开。
 
 ## 模块治理与兼容性（草案）
 - **版本与兼容**：`interface_version` 由内核维护；模块声明兼容范围，若不兼容则拒绝加载。

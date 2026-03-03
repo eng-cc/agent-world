@@ -22,7 +22,7 @@
 ## 接口/数据
 - 输入基线
   - `doc/world-simulator/viewer/viewer-manual.md`
-  - `doc/world-simulator.project.md`
+  - `doc/world-simulator.prd.project.md`
   - `doc/world-simulator/viewer/viewer-generic-focus-targets.md`
   - `doc/world-simulator/viewer/viewer-web-test-api-step-control-2026-02-24.md`
   - `crates/agent_world/src/bin/world_viewer_live/cli.rs`

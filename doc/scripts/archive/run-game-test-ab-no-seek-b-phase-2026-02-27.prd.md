@@ -14,7 +14,7 @@
 - 保持产物结构与 JSON 主体结构稳定（`ab_metrics.json/md`、`card_quant_metrics.md`）。
 
 ### Out of Scope
-- 不改 `doc/game-test.md`（用户锁定文档）。
+- 不改 `doc/game-test.prd.md`（用户锁定文档）。
 - 不追溯修改历史卡片与历史产物。
 - 不改 `run-game-test.sh` 启停链路。
 

@@ -1,6 +1,6 @@
 # Agent World Runtime：审计导出规范（设计分册）
 
-本分册为 `doc/world-runtime.md` 的详细展开。
+本分册为 `doc/world-runtime.prd.md` 的详细展开。
 
 ## 审计导出统一记录格式（草案）
 

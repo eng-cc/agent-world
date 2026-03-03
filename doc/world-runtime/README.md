@@ -18,8 +18,8 @@
 - 其余专题文档按主题下沉到 `runtime/wasm/module/governance/integration/testing`。
 
 ## 根目录 legacy
-- `doc/world-runtime.md`
-- `doc/world-runtime.project.md`
+- `doc/world-runtime.prd.md`
+- `doc/world-runtime.prd.project.md`
 - 历史完整总览归档：`doc/archive/root-history/world-runtime-root-entry-legacy-2026-03-03.prd.md`
 - 历史完整项目归档：`doc/archive/root-history/world-runtime-root-entry-legacy-2026-03-03.prd.project.md`
 

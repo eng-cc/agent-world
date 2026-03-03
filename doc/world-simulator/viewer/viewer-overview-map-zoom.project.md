@@ -17,7 +17,7 @@
 - `crates/agent_world_viewer/src/scene_helpers.rs`
 - `crates/agent_world_viewer/src/location_fragment_render.rs`
 - `crates/agent_world_viewer/src/app_bootstrap.rs`
-- `doc/world-simulator.project.md`
+- `doc/world-simulator.prd.project.md`
 
 ## 状态
 - 当前阶段：OVZ1~OVZ4 已完成。

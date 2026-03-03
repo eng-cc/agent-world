@@ -21,8 +21,8 @@
 - Viewer 使用手册：`doc/world-simulator/viewer/viewer-manual.md`
 
 ## 根目录 legacy
-- `doc/world-simulator.md`
-- `doc/world-simulator.project.md`
+- `doc/world-simulator.prd.md`
+- `doc/world-simulator.prd.project.md`
 - 历史完整总览归档：`doc/archive/root-history/world-simulator-root-entry-legacy-2026-03-03.prd.md`
 - 历史完整项目归档：`doc/archive/root-history/world-simulator-root-entry-legacy-2026-03-03.prd.project.md`
 

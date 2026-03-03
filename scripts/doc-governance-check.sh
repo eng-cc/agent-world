@@ -39,10 +39,6 @@ failures=0
 # Some handbooks are intentionally concise and do not follow design-doc section template.
 # Whitelist is keyed by project doc path to keep exemptions explicit and reviewable.
 readonly DESIGN_SECTION_EXEMPT_PROJECT_DOCS=(
-  "doc/game-test.project.md"
-  "doc/world-runtime.project.md"
-  "doc/world-simulator.project.md"
-  "doc/playability_test_result/game-test.project.md"
   "doc/playability_test_result/game-test.prd.project.md"
 )
 readonly DOC_ROOT_MD_ALLOWLIST_FILE="doc/.governance/doc-root-md-allowlist.txt"

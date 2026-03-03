@@ -12,7 +12,7 @@
 - `crates/agent_world_viewer/src/selection_linking/tests.rs`
 - `crates/agent_world_viewer/src/egui_right_panel.rs`
 - `crates/agent_world_viewer/src/ui_locale_text.rs`
-- `doc/world-simulator.project.md`
+- `doc/world-simulator.prd.project.md`
 - `doc/devlog/2026-02-15.md`
 
 ## 状态

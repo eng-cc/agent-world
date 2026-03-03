@@ -14,12 +14,12 @@
 7. 回溯过程记录：`doc/devlog/YYYY-MM-DD.md`。
 
 ## 根目录入口说明
-- `doc/world-runtime.md` 与 `doc/world-runtime.project.md`：兼容跳转入口（legacy redirect），历史完整总览已归档到 `doc/archive/root-history/world-runtime-root-entry-legacy-2026-03-03*.md`，当前模块主入口以 `doc/world-runtime/prd.md` 与 `doc/world-runtime/prd.project.md` 为准。
-- `doc/world-simulator.md` 与 `doc/world-simulator.project.md`：兼容跳转入口（legacy redirect），历史完整总览已归档到 `doc/archive/root-history/world-simulator-root-entry-legacy-2026-03-03*.md`，当前模块主入口以 `doc/world-simulator/prd.md` 与 `doc/world-simulator/prd.project.md` 为准。
+- `doc/world-runtime.prd.md` 与 `doc/world-runtime.prd.project.md`：兼容跳转入口（legacy redirect），历史完整总览已归档到 `doc/archive/root-history/world-runtime-root-entry-legacy-2026-03-03*.md`，当前模块主入口以 `doc/world-runtime/prd.md` 与 `doc/world-runtime/prd.project.md` 为准。
+- `doc/world-simulator.prd.md` 与 `doc/world-simulator.prd.project.md`：兼容跳转入口（legacy redirect），历史完整总览已归档到 `doc/archive/root-history/world-simulator-root-entry-legacy-2026-03-03*.md`，当前模块主入口以 `doc/world-simulator/prd.md` 与 `doc/world-simulator/prd.project.md` 为准。
 - 以下文件为兼容跳转入口（legacy redirect），正文已迁移到模块目录：
   - `doc/viewer-manual.md` -> `doc/world-simulator/viewer/viewer-manual.md`
-  - `doc/game-test.md` -> `doc/playability_test_result/game-test.prd.md`
-  - `doc/game-test.project.md` -> `doc/playability_test_result/game-test.prd.project.md`
+  - `doc/game-test.prd.md` -> `doc/playability_test_result/game-test.prd.md`
+  - `doc/game-test.prd.project.md` -> `doc/playability_test_result/game-test.prd.project.md`
   - `doc/playability_test_card.md` -> `doc/playability_test_result/playability_test_card.md`
   - `doc/playability_test_manual.md` -> `doc/playability_test_result/playability_test_manual.md`
 

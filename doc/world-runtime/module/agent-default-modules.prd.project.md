@@ -26,7 +26,7 @@
 ### ADM-S5 测试与收口
 - [x] 单元测试：槽位扩容、模块安装/卸载、实体存储增删
 - [x] 集成测试：低电降级顺序、默认模块协同、回放一致性
-- [x] 文档回写：`doc/world-runtime.md` / 本项目管理文档 / 当日 devlog
+- [x] 文档回写：`doc/world-runtime.prd.md` / 本项目管理文档 / 当日 devlog
 
 ## 依赖
 - 现有模块治理链路（`propose -> shadow -> approve -> apply`）
