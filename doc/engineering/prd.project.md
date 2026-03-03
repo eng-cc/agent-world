@@ -10,6 +10,12 @@
 - [x] TASK-ENGINEERING-007 (PRD-ENGINEERING-001/002/003): 对齐 strict PRD schema，补齐关键流程/规格矩阵/边界异常/NFR/验证与决策记录。
 - [x] TASK-ENGINEERING-008 (PRD-ENGINEERING-004): 按“逐篇阅读 + 人工重写”完成老格式文档迁移试点（`oversized-rust-file-splitting-round3-2026-02-23`）并补齐内容保真映射。
 - [ ] TASK-ENGINEERING-009 (PRD-ENGINEERING-004): 按模块分批推进活跃老格式文档逐篇人工迁移并持续回写 PRD-ID / project / devlog。
+- [x] TASK-ENGINEERING-010 (PRD-ENGINEERING-005/006/007): 产出四人并行迁移协作方案与 2026-03-03 待迁移清单快照，冻结迁移原则和目录责任域。
+- [ ] TASK-ENGINEERING-011 (PRD-ENGINEERING-006): Owner-A 迁移 `doc/world-simulator/**` 待迁移文档（161 篇）。
+- [ ] TASK-ENGINEERING-012 (PRD-ENGINEERING-006): Owner-B 迁移 `doc/p2p/**` 待迁移文档（115 篇）。
+- [ ] TASK-ENGINEERING-013 (PRD-ENGINEERING-006): Owner-C 迁移 `doc/world-runtime/**`、`doc/headless-runtime/**`、`doc/archive/root-history/**` 待迁移文档（52 篇）。
+- [ ] TASK-ENGINEERING-014 (PRD-ENGINEERING-006): Owner-D 迁移 `doc/site/**`、`doc/readme/**`、`doc/scripts/**`、`doc/game/**`、`doc/engineering/**` 与根入口遗留文档（63 篇）。
+- [ ] TASK-ENGINEERING-015 (PRD-ENGINEERING-007): 执行全量迁移收口复核（命名一致性、引用可达、模块追踪同步、燃尽归零）。
 
 ## 依赖
 - `AGENTS.md`
@@ -19,10 +25,14 @@
 - `doc/engineering/*.md`
 - `doc/engineering/oversized-rust-file-splitting-round3-2026-02-23.prd.md`
 - `doc/engineering/oversized-rust-file-splitting-round3-2026-02-23.prd.project.md`
+- `doc/engineering/doc-migration/legacy-doc-migration-collaboration-2026-03-03.prd.md`
+- `doc/engineering/doc-migration/legacy-doc-migration-collaboration-2026-03-03.prd.project.md`
+- `doc/engineering/doc-migration/legacy-doc-migration-backlog-2026-03-03.md`
 
 ## 状态
 - 更新日期: 2026-03-03
 - 当前状态: active
-- 下一任务: TASK-ENGINEERING-009
+- 下一任务: TASK-ENGINEERING-011
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
+- 并行迁移状态: 分工与快照已冻结（TASK-ENGINEERING-010 完成），进入 Owner-A/B/C/D 并行执行阶段。
 - 说明: 本文档仅维护 engineering 设计执行状态；过程记录在 `doc/devlog/2026-03-03.md`。
