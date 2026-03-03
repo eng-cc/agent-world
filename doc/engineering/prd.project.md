@@ -25,6 +25,7 @@
 - [x] TASK-ENGINEERING-016 (PRD-ENGINEERING-008) [test_tier_required]: 为 12 个模块补齐文件级 PRD 索引，并从模块入口文档建立可达引用。
 - [x] TASK-ENGINEERING-017 (PRD-ENGINEERING-009) [test_tier_required]: 在 `scripts/doc-governance-check.sh` 新增专题 `*.prd.md <-> *.prd.project.md` 双向互链门禁。
 - [x] TASK-ENGINEERING-018 (PRD-ENGINEERING-010) [test_tier_required]: 在 12 个模块 `prd.project.md` 的任务项显式标注 `test_tier_required/full`。
+- [ ] TASK-ENGINEERING-019 (PRD-ENGINEERING-011) [test_tier_required]: 新增活跃文档引用路径可达性门禁并修复现存断链。
 
 ## 依赖
 - doc/engineering/prd.index.md
@@ -44,7 +45,7 @@
 ## 状态
 - 更新日期: 2026-03-03
 - 当前状态: active
-- 下一任务: TASK-ENGINEERING-015（全量迁移收口复核）
+- 下一任务: TASK-ENGINEERING-019（活跃文档引用路径可达性门禁与断链修复）
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - 并行迁移状态: 分工与快照已冻结（TASK-ENGINEERING-010 完成）；Owner-A 已完成 `doc/world-simulator/**`（161/161），Owner-B 已完成 `doc/p2p/**`（115/115），Owner-C 已完成 `doc/world-runtime/**`、`doc/headless-runtime/**`、`doc/archive/root-history/**`（52/52），Owner-D 责任域 63 篇已全部完成（D1/D2 结项）。
 - 当前整改批次: R1（索引闭环 / 互链门禁 / 任务 tier 显式）已完成（016/017/018）。
