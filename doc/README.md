@@ -5,17 +5,18 @@
 本文件用于导航各模块设计文档与执行文档。所有新需求与在研需求均以模块 PRD 为唯一入口。
 
 ## 快速阅读路径（推荐）
-1. 先读本文件，定位目标模块。
-2. 阅读 `doc/<module>/prd.md`，确认问题定义、方案、验收标准与技术边界。
-3. 阅读 `doc/<module>/prd.project.md`，确认任务拆解、PRD-ID 映射、依赖与状态。
-4. 按需下钻模块子文档（`doc/<module>/**/*.md`，含 `archive/`）。
-5. 对照系统测试策略：`testing-manual.md` 与 `doc/testing/prd.md`。
-6. 回溯过程记录：`doc/devlog/YYYY-MM-DD.md`。
+1. 先读本文件，获取导航。
+2. 读 `doc/core/prd.md`，获取项目全局设计总览（模块地图、关键链路、关键分册）。
+3. 进入目标模块 `doc/<module>/prd.md`，确认问题定义、方案、验收标准与技术边界。
+4. 继续读 `doc/<module>/prd.project.md`，确认任务拆解、PRD-ID 映射、依赖与状态。
+5. 按需下钻模块子文档（`doc/<module>/**/*.md`，含 `archive/`）。
+6. 对照系统测试策略：`testing-manual.md` 与 `doc/testing/prd.md`。
+7. 回溯过程记录：`doc/devlog/YYYY-MM-DD.md`。
 
 ## 模块入口矩阵
 | 模块 | PRD 主文档 | 项目管理文档 | 设计关注点 |
 | --- | --- | --- | --- |
-| core | `doc/core/prd.md` | `doc/core/prd.project.md` | 跨模块架构基线与治理约束 |
+| core | `doc/core/prd.md` | `doc/core/prd.project.md` | 项目全局总览与跨模块治理基线 |
 | engineering | `doc/engineering/prd.md` | `doc/engineering/prd.project.md` | 工程规范、质量门禁、文件治理 |
 | game | `doc/game/prd.md` | `doc/game/prd.project.md` | 玩法循环、规则层、发行可玩性 |
 | nonviewer | `doc/nonviewer/prd.md` | `doc/nonviewer/prd.project.md` | 无界面运行链路与生产稳定性 |
