@@ -1,0 +1,23 @@
+# Agent World: CI 与提交钩子测试分级（项目管理）
+
+## 任务拆解（含 PRD-ID 映射）
+- [x] T1 (PRD-TESTING-CI-TIERED-001/002): 输出设计文档与项目管理文档。
+- [x] T2 (PRD-TESTING-CI-TIERED-001/002): 改造 `scripts/ci-tests.sh` 支持 `required/full`。
+- [x] T2.1 (PRD-TESTING-CI-TIERED-001): 调整 `scripts/pre-commit.sh` 默认跑 `required`。
+- [x] T3 (PRD-TESTING-CI-TIERED-002/003): 调整 `.github/workflows/rust.yml`，push/PR 跑 `required`，每日定时跑 `full`。
+- [x] T4 (PRD-TESTING-CI-TIERED-002/003): 文档回写、任务日志更新、验证并提交。
+- [x] T5 (PRD-TESTING-004): 专题文档人工迁移到 strict schema，并切换命名为 `.prd.md/.prd.project.md`。
+
+## 依赖
+- 统一测试入口：`scripts/ci-tests.sh`
+- 本地提交入口：`scripts/pre-commit.sh`
+- GitHub Actions workflow：`.github/workflows/rust.yml`
+- 模块主追踪文档：
+  - `doc/testing/prd.md`
+  - `doc/testing/prd.project.md`
+
+## 状态
+- 更新日期：2026-03-03
+- 当前阶段：已完成
+- 阻塞项：无
+- 下一步：无（当前专题已收口）
