@@ -9,7 +9,7 @@
 
 ## 依赖
 - `scripts/`
-- `doc/scripts/precommit/pre-commit.md`
+- `doc/scripts/precommit/pre-commit.prd.md`
 - `testing-manual.md`
 - `.agents/skills/prd/check.md`
 

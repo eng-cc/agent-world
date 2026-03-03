@@ -207,7 +207,7 @@ env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-u
 - 本手册仅保留分层与触发矩阵，执行时按上述文档操作。
 - 防误用约束：
   - `scripts/run-game-test-ab.sh` 仅用于自动化回归哨兵（TTFC/命中率/无进展窗口），不等价于“真实玩家长玩评测”。
-  - 发布前结论仍需补充手动长玩与卡片填写（按 `doc/playability_test_result/game-test.md` 执行）。
+  - 发布前结论仍需补充手动长玩与卡片填写（按 `doc/playability_test_result/game-test.prd.md` 执行）。
   - 对外样张链路需使用 strict 语义门禁，不得以 `off` / `soft` 结果作为发布判定证据。
 - 快速入口：
 ```bash

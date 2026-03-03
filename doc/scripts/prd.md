@@ -59,7 +59,7 @@
 - Acceptance Criteria:
   - AC-1: scripts PRD 明确脚本分类、入口、约束。
   - AC-2: scripts project 文档维护脚本治理任务。
-  - AC-3: 与 `doc/scripts/precommit/pre-commit.md`、`testing-manual.md` 口径一致。
+  - AC-3: 与 `doc/scripts/precommit/pre-commit.prd.md`、`testing-manual.md` 口径一致。
   - AC-4: `capture-viewer-frame.sh` 被明确为 fallback 链路使用。
 - Non-Goals:
   - 不在 scripts PRD 中替代业务功能设计。

@@ -8,7 +8,7 @@
 - `doc/engineering/doc-migration/legacy-doc-migration-backlog-2026-03-03.md`
 
 ## 归档文档
-- `doc/engineering/archive/oversized-rust-file-splitting.md`
-- `doc/engineering/archive/oversized-rust-file-splitting.project.md`
-- `doc/engineering/archive/oversized-rust-file-splitting-round2-2026-02-23.md`
-- `doc/engineering/archive/oversized-rust-file-splitting-round2-2026-02-23.project.md`
+- `doc/engineering/archive/oversized-rust-file-splitting.prd.md`
+- `doc/engineering/archive/oversized-rust-file-splitting.prd.project.md`
+- `doc/engineering/archive/oversized-rust-file-splitting-round2-2026-02-23.prd.md`
+- `doc/engineering/archive/oversized-rust-file-splitting-round2-2026-02-23.prd.project.md`

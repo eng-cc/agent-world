@@ -71,7 +71,7 @@
 - Acceptance Criteria:
   - AC-1: engineering PRD 明确文件约束、脚本约束、测试分层约束。
   - AC-2: engineering project 文档维护任务拆解与状态。
-  - AC-3: 与 `doc/scripts/precommit/pre-commit.md`、`testing-manual.md` 的口径一致。
+  - AC-3: 与 `doc/scripts/precommit/pre-commit.prd.md`、`testing-manual.md` 的口径一致。
   - AC-4: 每次工程规范变更有对应 devlog 记录。
   - AC-5: 文档治理脚本校验 `doc/.governance/*-allowlist.txt`，可拦截 `doc/*.md` 与 `doc/<module>/*.md` 的非预期新增。
   - AC-6: `doc/world-simulator`、`doc/p2p`、`doc/world-runtime`、`doc/testing`、`doc/site`、`doc/readme`、`doc/scripts`、`doc/game`、`doc/headless-runtime` 模块根目录仅保留 `README.md` / `prd.md` / `prd.project.md`。
@@ -89,8 +89,8 @@
 - Architecture Overview: engineering 模块聚焦工程流程与规范，不承载业务逻辑；通过脚本与门禁把规范落地到提交链路。
 - Integration Points:
   - `scripts/doc-governance-check.sh`
-  - `doc/scripts/precommit/pre-commit.md`
-  - `doc/scripts/precommit/fix-precommit.md`
+  - `doc/scripts/precommit/pre-commit.prd.md`
+  - `doc/scripts/precommit/fix-precommit.prd.md`
   - `doc/.governance/doc-root-md-allowlist.txt`
   - `doc/.governance/module-root-md-allowlist.txt`
   - `doc/engineering/doc-migration/legacy-doc-migration-collaboration-2026-03-03.prd.md`

@@ -9,7 +9,7 @@
 - [x] TASK-PLAYABILITY_TEST_RESULT-006 (PRD-PLAYABILITY_TEST_RESULT-001/002/003): 对齐 strict PRD schema，补齐关键流程/规格矩阵/边界异常/NFR/验证与决策记录。
 
 ## 依赖
-- `doc/playability_test_result/game-test.md`
+- `doc/playability_test_result/game-test.prd.md`
 - `doc/playability_test_result/*.md`
 - `testing-manual.md`
 - `.agents/skills/prd/check.md`

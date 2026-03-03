@@ -19,11 +19,13 @@
 - [x] TASK-ENGINEERING-013C (PRD-ENGINEERING-006): Owner-C Batch-C3 迁移 `doc/world-runtime/archive/**`、`doc/world-runtime/governance/**`、`doc/world-runtime/module/**`、`doc/world-runtime/wasm/**` 待迁移文档（23 篇）。
 - [x] TASK-ENGINEERING-013D (PRD-ENGINEERING-006): Owner-C Batch-C4 迁移 `doc/world-runtime/runtime/**` 待迁移文档（16 篇）。
 - [ ] TASK-ENGINEERING-014 (PRD-ENGINEERING-006): Owner-D 迁移 `doc/site/**`、`doc/readme/**`、`doc/scripts/**`、`doc/game/**`、`doc/engineering/**` 与根入口遗留文档（63 篇，分两段执行：先完成非根入口 60 篇，再收口 3 份根入口 redirect project 文档）。
+- [x] TASK-ENGINEERING-014-D1 (PRD-ENGINEERING-006): Owner-D 已完成非根入口 60 篇 legacy 迁移（`*.md/*.project.md -> *.prd.md/*.prd.project.md`）。
+- [ ] TASK-ENGINEERING-014-D2 (PRD-ENGINEERING-006): 仅剩 3 份根入口 redirect project 文档待收口（`doc/game-test.project.md`、`doc/world-runtime.project.md`、`doc/world-simulator.project.md`）。
 - [ ] TASK-ENGINEERING-015 (PRD-ENGINEERING-007): 执行全量迁移收口复核（命名一致性、引用可达、模块追踪同步、燃尽归零）。
 
 ## 依赖
 - `AGENTS.md`
-- `doc/scripts/precommit/pre-commit.md`
+- `doc/scripts/precommit/pre-commit.prd.md`
 - `testing-manual.md`
 - `.agents/skills/prd/check.md`
 - `doc/engineering/*.md`
@@ -36,7 +38,7 @@
 ## 状态
 - 更新日期: 2026-03-03
 - 当前状态: active
-- 下一任务: TASK-ENGINEERING-011（并行）/ TASK-ENGINEERING-014-D1（Owner-D 非根入口 60 篇）/ TASK-ENGINEERING-015（收口复核）
+- 下一任务: TASK-ENGINEERING-011（并行）/ TASK-ENGINEERING-014-D2（3 份根入口 redirect project 文档）/ TASK-ENGINEERING-015（收口复核）
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
-- 并行迁移状态: 分工与快照已冻结（TASK-ENGINEERING-010 完成）；Owner-B 已完成 `doc/p2p/**`（115/115），Owner-C 已完成 `doc/world-runtime/**`、`doc/headless-runtime/**`、`doc/archive/root-history/**`（52/52），Owner-A/D 继续并行执行。
+- 并行迁移状态: 分工与快照已冻结（TASK-ENGINEERING-010 完成）；Owner-B 已完成 `doc/p2p/**`（115/115），Owner-C 已完成 `doc/world-runtime/**`、`doc/headless-runtime/**`、`doc/archive/root-history/**`（52/52），Owner-D 已完成 D1（60/63），剩余 D2 三份根入口 redirect project 文档。
 - 说明: 本文档仅维护 engineering 设计执行状态；过程记录在 `doc/devlog/2026-03-03.md`。

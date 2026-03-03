@@ -5,8 +5,8 @@ doc/core/README.md
 doc/core/prd.md
 doc/core/prd.project.md
 doc/engineering/README.md
-doc/engineering/documentation-governance-engineering-closure-2026-02-27.md
-doc/engineering/documentation-governance-engineering-closure-2026-02-27.project.md
+doc/engineering/documentation-governance-engineering-closure-2026-02-27.prd.md
+doc/engineering/documentation-governance-engineering-closure-2026-02-27.prd.project.md
 doc/engineering/oversized-rust-file-splitting-round3-2026-02-23.prd.md
 doc/engineering/oversized-rust-file-splitting-round3-2026-02-23.prd.project.md
 doc/engineering/prd.md
@@ -26,8 +26,8 @@ doc/playability_test_result/card_2026_02_28_21_22_51.md
 doc/playability_test_result/card_2026_02_28_22_47_14.md
 doc/playability_test_result/card_2026_02_28_23_27_06.md
 doc/playability_test_result/card_2026_03_01_00_20_13.md
-doc/playability_test_result/game-test.md
-doc/playability_test_result/game-test.project.md
+doc/playability_test_result/game-test.prd.md
+doc/playability_test_result/game-test.prd.project.md
 doc/playability_test_result/playability_test_card.md
 doc/playability_test_result/playability_test_manual.md
 doc/playability_test_result/prd.md

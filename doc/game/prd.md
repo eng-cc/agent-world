@@ -59,7 +59,7 @@
 - Acceptance Criteria:
   - AC-1: game PRD 覆盖核心玩法循环、治理机制、测试口径。
   - AC-2: game project 文档任务项可映射到 PRD-GAME-001/002/003。
-  - AC-3: 与 `doc/game/gameplay/gameplay-top-level-design.md`、`doc/game/gameplay/gameplay-engineering-architecture.md` 口径一致。
+  - AC-3: 与 `doc/game/gameplay/gameplay-top-level-design.prd.md`、`doc/game/gameplay/gameplay-engineering-architecture.md` 口径一致。
   - AC-4: 发行前可玩性回归必须在 testing 手册与测试结果中可追溯。
 - Non-Goals:
   - 不在本 PRD 中给出逐条数值参数表。
@@ -72,7 +72,7 @@
 ## 4. Technical Specifications
 - Architecture Overview: game 模块定义玩法层抽象，依赖 world-runtime 提供规则执行与资源约束，依赖 world-simulator 与 testing 模块提供可观测与验收。
 - Integration Points:
-  - `doc/game/gameplay/gameplay-top-level-design.md`
+  - `doc/game/gameplay/gameplay-top-level-design.prd.md`
   - `doc/game/gameplay/gameplay-engineering-architecture.md`
   - `doc/playability_test_result/prd.md`
   - `testing-manual.md`

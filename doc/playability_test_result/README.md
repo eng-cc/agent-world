@@ -3,8 +3,8 @@
 - 主目录仅保留当前活跃轮次（当前策略：保留最近一天样本，便于真实玩家最新口径复核）。
 - 历史卡片已归档到：`archive/2026-02/`。
 - 当前执行入口：
-  - `doc/playability_test_result/game-test.md`
-  - `doc/playability_test_result/game-test.project.md`
+  - `doc/playability_test_result/game-test.prd.md`
+  - `doc/playability_test_result/game-test.prd.project.md`
   - `doc/playability_test_result/playability_test_card.md`
   - `doc/playability_test_result/playability_test_manual.md`
 

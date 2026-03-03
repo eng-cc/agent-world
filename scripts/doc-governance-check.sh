@@ -43,6 +43,7 @@ readonly DESIGN_SECTION_EXEMPT_PROJECT_DOCS=(
   "doc/world-runtime.project.md"
   "doc/world-simulator.project.md"
   "doc/playability_test_result/game-test.project.md"
+  "doc/playability_test_result/game-test.prd.project.md"
 )
 readonly DOC_ROOT_MD_ALLOWLIST_FILE="doc/.governance/doc-root-md-allowlist.txt"
 readonly MODULE_ROOT_MD_ALLOWLIST_FILE="doc/.governance/module-root-md-allowlist.txt"
