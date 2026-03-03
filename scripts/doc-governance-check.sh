@@ -14,7 +14,9 @@ Checks:
   3. Each non-archive project doc (*.project.md) must include sections:
      任务拆解 / 依赖 / 状态.
   4. Each non-archive project doc must have a paired design doc and that design doc
-     must include sections: 目标 / 范围 / 接口/数据 / 里程碑 / 风险
+     must include either:
+       - Legacy sections: 目标 / 范围 / 接口/数据 / 里程碑 / 风险
+       - Strict PRD sections: 1..6 chapter structure
      (except whitelisted project docs).
   5. Root-level markdown files under doc/ must match the tracked allowlist.
   6. Root-level markdown files under each module (doc/<module>/*.md) must match
@@ -73,7 +75,7 @@ regex_match_with_line_numbers() {
 has_heading() {
   local file="$1"
   local pattern="$2"
-  regex_match_file "^#{1,6}[[:space:]]*([0-9]+([.][0-9]+)*[[:space:]]*)?${pattern}.*$" "$file"
+  regex_match_file "^#{1,6}[[:space:]]*([0-9]+([.][0-9]+)*[.]?[[:space:]]*)?${pattern}.*$" "$file"
 }
 
 check_required_sections() {
@@ -89,6 +91,16 @@ check_required_sections() {
   if [[ ${#missing[@]} -gt 0 ]]; then
     fail "$file missing sections: ${missing[*]}"
   fi
+}
+
+has_strict_prd_sections() {
+  local file="$1"
+  has_heading "$file" "Executive Summary" \
+    && has_heading "$file" "User Experience[[:space:]]*&[[:space:]]*Functionality" \
+    && has_heading "$file" "AI System Requirements[[:space:]]*\\(If Applicable\\)" \
+    && has_heading "$file" "Technical Specifications" \
+    && has_heading "$file" "Risks[[:space:]]*&[[:space:]]*Roadmap" \
+    && has_heading "$file" "Validation[[:space:]]*&[[:space:]]*Decision Record"
 }
 
 check_allowlist_match() {
@@ -177,7 +189,17 @@ for project_doc in "${project_docs[@]}"; do
     continue
   fi
 
-  check_required_sections "$design_doc" "目标" "范围" "接口[[:space:]]*/[[:space:]]*数据" "里程碑" "风险"
+  if has_strict_prd_sections "$design_doc"; then
+    check_required_sections "$design_doc" \
+      "Executive Summary" \
+      "User Experience[[:space:]]*&[[:space:]]*Functionality" \
+      "AI System Requirements[[:space:]]*\\(If Applicable\\)" \
+      "Technical Specifications" \
+      "Risks[[:space:]]*&[[:space:]]*Roadmap" \
+      "Validation[[:space:]]*&[[:space:]]*Decision Record"
+  else
+    check_required_sections "$design_doc" "目标" "范围" "接口[[:space:]]*/[[:space:]]*数据" "里程碑" "风险"
+  fi
 done
 
 doc_root_actual_tmp=$(mktemp)

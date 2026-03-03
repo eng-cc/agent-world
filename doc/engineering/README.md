@@ -1,8 +1,8 @@
 # Engineering 文档索引
 
 ## 活跃文档
-- `doc/engineering/oversized-rust-file-splitting-round3-2026-02-23.md`
-- `doc/engineering/oversized-rust-file-splitting-round3-2026-02-23.project.md`
+- `doc/engineering/oversized-rust-file-splitting-round3-2026-02-23.prd.md`
+- `doc/engineering/oversized-rust-file-splitting-round3-2026-02-23.prd.project.md`
 
 ## 归档文档
 - `doc/engineering/archive/oversized-rust-file-splitting.md`

@@ -33,6 +33,7 @@
   - SC-4: 工程类任务 100% 映射到 PRD-ENGINEERING-ID。
   - SC-5: `doc/` 根目录与模块根目录平铺文档新增违规数为 0（allowlist 冻结机制）。
   - SC-6: 重点模块（world-simulator/p2p/world-runtime/testing/site/readme/scripts/game/headless-runtime）根目录平铺专题文档迁移完成并保持引用闭环。
+  - SC-7: 活跃设计文档（非 archive/devlog）中 strict schema 覆盖率按周提升，并保留逐篇人工迁移记录。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -48,16 +49,19 @@
   - PRD-ENGINEERING-001: As an 工程维护者, I want enforceable file-size and structure limits, so that maintenance cost stays bounded.
   - PRD-ENGINEERING-002: As a 开发者, I want deterministic pre-commit checks, so that regressions are caught before CI.
   - PRD-ENGINEERING-003: As a 评审者, I want auditable governance evidence, so that review decisions are defensible.
+  - PRD-ENGINEERING-004: As a 文档维护者, I want legacy docs migrated with per-doc manual review, so that content intent is preserved while converging to strict schema.
 - Critical User Flows:
   1. Flow-ENG-001: `提交前执行脚本 -> 发现违规 -> 修复并复测 -> 进入 CI`
   2. Flow-ENG-002: `CI 失败 -> 定位规则来源 -> 判断误报/真实问题 -> 更新脚本或文档`
   3. Flow-ENG-003: `季度复盘 -> 汇总违规趋势 -> 调整门禁阈值 -> 发布新治理基线`
+  4. Flow-ENG-004: `逐篇阅读旧文档 -> 按 strict schema 重写 -> 内容保真复核 -> 更新任务与devlog追踪`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
 | 文档治理检查 | allowlist、模块根目录规则、根目录规则 | 执行 `doc-governance-check.sh` | `pass/fail` | 按违规严重度输出 | 所有人可执行，治理维护者可更新基线 |
 | 提交前检查 | 格式、静态检查、测试分层触发 | pre-commit 自动执行 | `pending -> running -> blocked/passed` | 先 required 后 full | 贡献者可触发，CI 负责人可调整策略 |
 | 工程趋势统计 | 违规率、修复时长、回归率 | 周期性生成报表并复盘 | `collecting -> reported -> actioned` | 按模块与时间排序 | 评审者与维护者可读写 |
+| PRD 格式迁移 | 文档路径、迁移批次ID、原文关键约束点 | 人工阅读原文后按 strict schema 重写并复核 | `inventory -> migrated -> verified` | 默认按活跃文档优先、按模块分批 | 治理维护者可冻结批次，贡献者可提交迁移 |
 - Acceptance Criteria:
   - AC-1: engineering PRD 明确文件约束、脚本约束、测试分层约束。
   - AC-2: engineering project 文档维护任务拆解与状态。
@@ -65,6 +69,7 @@
   - AC-4: 每次工程规范变更有对应 devlog 记录。
   - AC-5: 文档治理脚本校验 `doc/.governance/*-allowlist.txt`，可拦截 `doc/*.md` 与 `doc/<module>/*.md` 的非预期新增。
   - AC-6: `doc/world-simulator`、`doc/p2p`、`doc/world-runtime`、`doc/testing`、`doc/site`、`doc/readme`、`doc/scripts`、`doc/game`、`doc/headless-runtime` 模块根目录仅保留 `README.md` / `prd.md` / `prd.project.md`。
+  - AC-7: 每次迁移任务需附“原文关键约束点 -> 新文档章节”对照，确保内容不丢失。
 - Non-Goals:
   - 不定义 gameplay/p2p/runtime 业务规则。
   - 不替代模块内部测试策略。
@@ -90,12 +95,15 @@
   - 脚本不可执行：缺依赖时给出明确安装建议与最小复现命令。
   - 并发修改冲突：同一规则多分支更新时以最新主干基线重放验证。
   - 历史文档例外：仅允许 archive/devlog 例外，不得扩散到活跃目录。
+  - 新旧格式并存：迁移中允许 legacy 与 strict 共存，但每个迁移批次必须标注边界并回写追踪状态。
+  - 批量迁移回归风险：结构改写可能造成引用断链，需附带路径扫描与脚本复核。
 - Non-Functional Requirements:
   - NFR-ENG-1: required 门禁平均执行时长 <= 10 分钟。
   - NFR-ENG-2: 文档治理误报率 <= 5%（按周统计）。
   - NFR-ENG-3: 新增工程任务 PRD-ID 映射覆盖率 100%。
   - NFR-ENG-4: 工程治理脚本在 Linux/macOS 环境均可执行。
   - NFR-ENG-5: 规则变更需附带可追溯说明与回归证据。
+  - NFR-ENG-6: 活跃文档迁移任务必须包含“原文约束点清单 + 新文档章节映射 + 回归验证结果”三件套证据。
 - Security & Privacy: 仅涉及工程流程元信息；涉及凭据的自动化流程必须遵守最小暴露原则并避免日志泄漏。
 
 ## 5. Risks & Roadmap
@@ -106,6 +114,7 @@
 - Technical Risks:
   - 风险-1: 规范过严导致迭代效率下降。
   - 风险-2: 新脚本引入误报造成 CI 噪声。
+  - 风险-3: 老文档迁移批次过大导致评审负担与引用回归风险提升。
 
 ## 6. Validation & Decision Record
 - Test Plan & Traceability:
@@ -114,9 +123,11 @@
 | PRD-ENGINEERING-001 | TASK-ENGINEERING-001/005/006/007 | `test_tier_required` | 文档结构检查、平铺治理脚本执行 | 文档组织一致性、工程可维护性 |
 | PRD-ENGINEERING-002 | TASK-ENGINEERING-002/003/007 | `test_tier_required` + `test_tier_full` | pre-commit/CI 门禁联动校验 | 提交流程稳定性、回归拦截能力 |
 | PRD-ENGINEERING-003 | TASK-ENGINEERING-003/004/007 | `test_tier_required` | 趋势统计与审查模板抽样检查 | 工程治理可审计性与长期演进 |
+| PRD-ENGINEERING-004 | TASK-ENGINEERING-008/009 | `test_tier_required` | 原文约束点对照、迁移后治理脚本与引用扫描 | 文档格式一致性与内容保真 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |
 | DEC-ENG-001 | 以脚本门禁落实规范 | 仅依赖人工评审 | 自动化一致性更高且可复现。 |
 | DEC-ENG-002 | 保留 allowlist 冻结机制 | 完全开放文档新增 | 可控制结构漂移和历史债扩散。 |
 | DEC-ENG-003 | required/full 分层验证 | 单层测试策略 | 兼顾效率与风险覆盖。 |
+| DEC-ENG-004 | 老格式文档按批次渐进迁移并采用逐篇人工重写 | 一次性全量改写或自动脚本改写 | 人工重写更利于保留语义细节并控制内容质量。 |
