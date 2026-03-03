@@ -45,6 +45,7 @@
   - SC-7: 场景系统、Viewer、启动器验收口径统一到同一 checklist，并可直接映射到测试证据。
   - SC-8: Web-first 闭环与 LLM 链路具备统一证据模板，支持发布前快速复核。
   - SC-9: simulator 体验质量指标形成趋势跟踪，支持按周判定退化风险。
+  - SC-10: 启动器支持“游戏进程 / 区块链进程”独立编排，且反馈入口严格受链就绪状态门控。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -58,6 +59,7 @@
   - PRD-WORLD_SIMULATOR-003: As a 发布人员, I want reproducible simulator closure tests, so that releases are verifiable.
   - PRD-WORLD_SIMULATOR-004: As a 启动器玩家, I want to submit a blockchain transfer in launcher, so that I can move main token balances without external tools.（详见分册）
   - PRD-WORLD_SIMULATOR-005: As a 链路开发者, I want transfer requests to be replay-safe and traceable, so that transfer execution is secure and auditable.（详见分册）
+  - PRD-WORLD_SIMULATOR-006: As a 启动器玩家, I want separate controls for blockchain/game startup and feedback gated by chain readiness, so that startup behavior is predictable and feedback availability is explicit.
 - Acceptance Criteria:
   - AC-1: world-simulator PRD 覆盖场景、Viewer、LLM、启动器四条主线。
   - AC-2: world-simulator project 文档维护任务拆解与状态。
@@ -69,6 +71,8 @@
   - AC-8: 体验质量趋势文档定义指标、采集节奏、归档路径与记录模板，并可落地执行。
   - AC-9: 启动器反馈分布式提交流程在链状态服务 `Connection refused` 时必须回落本地落盘，并保留远端连接失败错误签名用于诊断与回归测试。
   - AC-10: 启动器顶部必须可视化区块链启动状态（含禁用/未启动/启动中/已就绪/不可达），用于玩家快速判定链能力是否可用。
+  - AC-11: 客户端启动器必须将“区块链启动/停止”与“游戏启动/停止”拆分为独立按钮；打开启动器后默认自动拉起区块链进程；游戏启动链路不再隐式托管区块链进程。
+  - AC-12: 仅当区块链处于“已就绪”状态时，反馈按钮可用并允许打开反馈窗口；区块链未启动/启动中/不可达时反馈入口需明确禁用。
 - Non-Goals:
   - 不在本 PRD 中详细列出每个 UI 像素级规范。
   - 不替代 world-runtime/p2p 的底层协议设计。
