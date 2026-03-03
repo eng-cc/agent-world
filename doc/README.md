@@ -13,13 +13,17 @@
 6. 对照系统测试策略：`testing-manual.md` 与 `doc/testing/prd.md`。
 7. 回溯过程记录：`doc/devlog/YYYY-MM-DD.md`。
 
+## 根目录入口说明
+- `doc/world-runtime.md` 与 `doc/world-runtime.project.md`：历史总览入口（legacy），当前模块主入口以 `doc/world-runtime/prd.md` 与 `doc/world-runtime/prd.project.md` 为准。
+- `doc/world-simulator.md` 与 `doc/world-simulator.project.md`：历史总览入口（legacy），当前模块主入口以 `doc/world-simulator/prd.md` 与 `doc/world-simulator/prd.project.md` 为准。
+
 ## 模块入口矩阵
 | 模块 | PRD 主文档 | 项目管理文档 | 设计关注点 |
 | --- | --- | --- | --- |
 | core | `doc/core/prd.md` | `doc/core/prd.project.md` | 项目全局总览与跨模块治理基线 |
 | engineering | `doc/engineering/prd.md` | `doc/engineering/prd.project.md` | 工程规范、质量门禁、文件治理 |
 | game | `doc/game/prd.md` | `doc/game/prd.project.md` | 玩法循环、规则层、发行可玩性 |
-| nonviewer | `doc/nonviewer/prd.md` | `doc/nonviewer/prd.project.md` | 无界面运行链路与生产稳定性 |
+| headless-runtime | `doc/headless-runtime/prd.md` | `doc/headless-runtime/prd.project.md` | 无界面运行链路与生产稳定性 |
 | p2p | `doc/p2p/prd.md` | `doc/p2p/prd.project.md` | 网络、共识、分布式存储 |
 | playability_test_result | `doc/playability_test_result/prd.md` | `doc/playability_test_result/prd.project.md` | 可玩性测试数据与收口闭环 |
 | readme | `doc/readme/prd.md` | `doc/readme/prd.project.md` | 对外口径与文档入口一致性 |

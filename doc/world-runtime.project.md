@@ -1,5 +1,7 @@
 # Agent World Runtime：AOS 风格 world+agent 运行时（项目管理文档）
 
+> 状态：本文件为历史总览入口（legacy）。当前模块主入口为 `doc/world-runtime/prd.md` 与 `doc/world-runtime/prd.project.md`。
+
 ## 任务拆解
 ### 0. 对齐与准备
 - [x] 输出设计文档（`doc/world-runtime.md`）

@@ -3,8 +3,8 @@
 ## 任务拆解
 
 ### T0 建档
-- [x] 新建设计文档：`doc/nonviewer/nonviewer-design-alignment-fixes-2026-02-25.md`
-- [x] 新建项目管理文档：`doc/nonviewer/nonviewer-design-alignment-fixes-2026-02-25.project.md`
+- [x] 新建设计文档：`doc/headless-runtime/nonviewer-design-alignment-fixes-2026-02-25.md`
+- [x] 新建项目管理文档：`doc/headless-runtime/nonviewer-design-alignment-fixes-2026-02-25.project.md`
 
 ### T1 修复 rejected 分支静默丢失
 - [x] `PosNodeEngine::apply_decision` rejected 分支回灌失败改为显式报错
@@ -18,7 +18,7 @@
 - [x] `agent_world_consensus` 定向回归测试通过
 
 ### T3 收口
-- [x] 回写 `doc/nonviewer/README.md` 活跃文档索引
+- [x] 回写 `doc/headless-runtime/README.md` 活跃文档索引
 - [x] 追加 `doc/devlog/2026-02-25.md` 任务日志
 
 ## 依赖

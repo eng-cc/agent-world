@@ -3,8 +3,8 @@
 ## 任务拆解
 
 ### T0 建档与问题登记
-- [x] 新建设计文档：`doc/nonviewer/nonviewer-design-alignment-review-round2-2026-02-25.md`
-- [x] 新建项目管理文档：`doc/nonviewer/nonviewer-design-alignment-review-round2-2026-02-25.project.md`
+- [x] 新建设计文档：`doc/headless-runtime/nonviewer-design-alignment-review-round2-2026-02-25.md`
+- [x] 新建项目管理文档：`doc/headless-runtime/nonviewer-design-alignment-review-round2-2026-02-25.project.md`
 - [x] 记录已发现问题：non-viewer Rust 单文件超过 1200 行
 
 ### T1 第二轮审查（非 Viewer 活跃分册）
@@ -18,7 +18,7 @@
 - [x] 运行定向回归（`test_tier_required` 覆盖）
 
 ### T3 收口
-- [x] 更新 `doc/nonviewer/README.md` 活跃文档索引
+- [x] 更新 `doc/headless-runtime/README.md` 活跃文档索引
 - [x] 更新本项目状态
 - [x] 追加 `doc/devlog/2026-02-25.md` 任务日志
 

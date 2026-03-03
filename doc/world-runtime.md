@@ -1,5 +1,7 @@
 # Agent World Runtime：AOS 风格 world+agent 运行时（设计文档）
 
+> 状态：本文件为历史总览入口（legacy）。当前模块主入口为 `doc/world-runtime/prd.md` 与 `doc/world-runtime/prd.project.md`。
+
 ## 目标
 - 在现有 `agent-world` 中实现一套 **world+agent 运行时**，借鉴 AgentOS 的关键优势：确定性、可审计、可回放、能力/政策边界、显式副作用与收据、受控升级；以**自由沙盒 + WASM 动态模块**作为基础能力。
 - 让世界成为第一性：所有状态改变必须经由 **事件 → 规则校验 → 状态演化** 的统一路径，可追溯、可重放。

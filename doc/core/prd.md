@@ -69,7 +69,7 @@
 | world-runtime | 世界内核、事件溯源、WASM执行与治理 | `doc/world-runtime/*`, `crates/agent_world`, `crates/agent_world_wasm_*` |
 | world-simulator | 场景系统、Viewer/Launcher、LLM交互链路 | `doc/world-simulator/*`, `crates/agent_world_viewer`, `crates/agent_world_client_launcher` |
 | p2p | 网络、共识、DistFS、多节点运行 | `doc/p2p/*`, `crates/agent_world_net`, `crates/agent_world_consensus`, `crates/agent_world_distfs`, `crates/agent_world_node` |
-| nonviewer | 无界面运行链路、鉴权、长稳运维能力 | `doc/nonviewer/*`, `crates/agent_world/src/bin/*` |
+| headless-runtime | 无界面运行链路、鉴权、长稳运维能力 | `doc/headless-runtime/*`, `crates/agent_world/src/bin/*` |
 | testing | 分层测试体系与发布门禁 | `doc/testing/*`, `testing-manual.md`, `scripts/ci-tests.sh` |
 | scripts | 自动化脚本能力与执行约束 | `scripts/*`, `doc/scripts/*` |
 | site | 站点信息架构、发布内容、SEO | `site/*`, `doc/site/*` |

@@ -1,5 +1,7 @@
 # Agent World：足够真实且持久的世界模拟器（项目管理文档）
 
+> 状态：本文件为历史总览入口（legacy）。当前模块主入口为 `doc/world-simulator/prd.md` 与 `doc/world-simulator/prd.project.md`。
+
 ## 任务拆解
 ### 0. 对齐与准备
 - [x] 输出设计文档（`doc/world-simulator.md`）

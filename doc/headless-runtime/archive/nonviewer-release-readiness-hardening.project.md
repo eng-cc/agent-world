@@ -7,8 +7,8 @@
 ## 任务拆解
 
 ### T0 建档
-- [x] 新建设计文档：`doc/nonviewer/archive/nonviewer-release-readiness-hardening.md`
-- [x] 新建项目管理文档：`doc/nonviewer/archive/nonviewer-release-readiness-hardening.project.md`
+- [x] 新建设计文档：`doc/headless-runtime/archive/nonviewer-release-readiness-hardening.md`
+- [x] 新建项目管理文档：`doc/headless-runtime/archive/nonviewer-release-readiness-hardening.project.md`
 
 ### T1 测试覆盖补齐
 - [x] 更新 `scripts/ci-tests.sh`，补齐 `node/consensus/distfs/net` 的 non-viewer 测试门禁覆盖

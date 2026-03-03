@@ -7,8 +7,8 @@
 ## 任务拆解
 
 ### T0 建档
-- [x] 设计文档：`doc/nonviewer/archive/nonviewer-longrun-memory-safety-traceability-2026-02-23.md`
-- [x] 项目文档：`doc/nonviewer/archive/nonviewer-longrun-memory-safety-traceability-2026-02-23.project.md`
+- [x] 设计文档：`doc/headless-runtime/archive/nonviewer-longrun-memory-safety-traceability-2026-02-23.md`
+- [x] 项目文档：`doc/headless-runtime/archive/nonviewer-longrun-memory-safety-traceability-2026-02-23.project.md`
 
 ### T1 网络与入口背压（对应 1/2）
 - [x] `agent_world_net/libp2p_net`：命令通道有界化 + 诊断缓存有界化
