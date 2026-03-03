@@ -7,15 +7,18 @@
 - [x] TASK-ENGINEERING-006 (PRD-ENGINEERING-001/002): 执行文档平铺存量迁移批次（world-runtime/testing/site/readme/scripts/game/headless-runtime），并更新 allowlist 与引用路径。
 - [ ] TASK-ENGINEERING-003 (PRD-ENGINEERING-002/003): 建立工程门禁趋势统计（违规率、修复时长）。
 - [ ] TASK-ENGINEERING-004 (PRD-ENGINEERING-003): 增加工程规范季度审查流程与记录模板。
+- [x] TASK-ENGINEERING-007 (PRD-ENGINEERING-001/002/003): 对齐 strict PRD schema，补齐关键流程/规格矩阵/边界异常/NFR/验证与决策记录。
 
 ## 依赖
 - `AGENTS.md`
 - `doc/scripts/precommit/pre-commit.md`
 - `testing-manual.md`
+- `.agents/skills/prd/check.md`
 - `doc/engineering/*.md`
 
 ## 状态
 - 更新日期: 2026-03-03
 - 当前状态: active
 - 下一任务: TASK-ENGINEERING-003
+- PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - 说明: 本文档仅维护 engineering 设计执行状态；过程记录在 `doc/devlog/2026-03-03.md`。

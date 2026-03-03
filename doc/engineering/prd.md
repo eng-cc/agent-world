@@ -39,10 +39,25 @@
   - 工程维护者：需要稳定规则来控制技术债。
   - 贡献开发者：需要清晰门槛和提交前检查路径。
   - 评审者：需要可量化判断变更是否合规。
+- User Scenarios & Frequency:
+  - 日常提交前检查：每次提交前执行，确认格式、结构与门禁符合要求。
+  - CI 失败排查：每个异常流水线触发后执行，定位脚本与规则来源。
+  - 规范迭代评审：每周至少 1 次，评估误报率和治理收益。
+  - 季度治理复盘：每季度 1 次，回看违规趋势与修复效率。
 - User Stories:
   - PRD-ENGINEERING-001: As an 工程维护者, I want enforceable file-size and structure limits, so that maintenance cost stays bounded.
   - PRD-ENGINEERING-002: As a 开发者, I want deterministic pre-commit checks, so that regressions are caught before CI.
   - PRD-ENGINEERING-003: As a 评审者, I want auditable governance evidence, so that review decisions are defensible.
+- Critical User Flows:
+  1. Flow-ENG-001: `提交前执行脚本 -> 发现违规 -> 修复并复测 -> 进入 CI`
+  2. Flow-ENG-002: `CI 失败 -> 定位规则来源 -> 判断误报/真实问题 -> 更新脚本或文档`
+  3. Flow-ENG-003: `季度复盘 -> 汇总违规趋势 -> 调整门禁阈值 -> 发布新治理基线`
+- Functional Specification Matrix:
+| 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
+| --- | --- | --- | --- | --- | --- |
+| 文档治理检查 | allowlist、模块根目录规则、根目录规则 | 执行 `doc-governance-check.sh` | `pass/fail` | 按违规严重度输出 | 所有人可执行，治理维护者可更新基线 |
+| 提交前检查 | 格式、静态检查、测试分层触发 | pre-commit 自动执行 | `pending -> running -> blocked/passed` | 先 required 后 full | 贡献者可触发，CI 负责人可调整策略 |
+| 工程趋势统计 | 违规率、修复时长、回归率 | 周期性生成报表并复盘 | `collecting -> reported -> actioned` | 按模块与时间排序 | 评审者与维护者可读写 |
 - Acceptance Criteria:
   - AC-1: engineering PRD 明确文件约束、脚本约束、测试分层约束。
   - AC-2: engineering project 文档维护任务拆解与状态。
@@ -68,6 +83,19 @@
   - `doc/.governance/module-root-md-allowlist.txt`
   - `testing-manual.md`
   - `.github/workflows/*`
+- Edge Cases & Error Handling:
+  - allowlist 漂移：检测到未登记新增时直接失败并提示最小修复路径。
+  - 误报场景：规则误伤时保留失败证据并通过任务流程修订规则，不直接绕过。
+  - 本地/CI 不一致：本地通过但 CI 失败时以 CI 结果为准并补环境对齐说明。
+  - 脚本不可执行：缺依赖时给出明确安装建议与最小复现命令。
+  - 并发修改冲突：同一规则多分支更新时以最新主干基线重放验证。
+  - 历史文档例外：仅允许 archive/devlog 例外，不得扩散到活跃目录。
+- Non-Functional Requirements:
+  - NFR-ENG-1: required 门禁平均执行时长 <= 10 分钟。
+  - NFR-ENG-2: 文档治理误报率 <= 5%（按周统计）。
+  - NFR-ENG-3: 新增工程任务 PRD-ID 映射覆盖率 100%。
+  - NFR-ENG-4: 工程治理脚本在 Linux/macOS 环境均可执行。
+  - NFR-ENG-5: 规则变更需附带可追溯说明与回归证据。
 - Security & Privacy: 仅涉及工程流程元信息；涉及凭据的自动化流程必须遵守最小暴露原则并避免日志泄漏。
 
 ## 5. Risks & Roadmap
@@ -78,3 +106,17 @@
 - Technical Risks:
   - 风险-1: 规范过严导致迭代效率下降。
   - 风险-2: 新脚本引入误报造成 CI 噪声。
+
+## 6. Validation & Decision Record
+- Test Plan & Traceability:
+| PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |
+| --- | --- | --- | --- | --- |
+| PRD-ENGINEERING-001 | TASK-ENGINEERING-001/005/006/007 | `test_tier_required` | 文档结构检查、平铺治理脚本执行 | 文档组织一致性、工程可维护性 |
+| PRD-ENGINEERING-002 | TASK-ENGINEERING-002/003/007 | `test_tier_required` + `test_tier_full` | pre-commit/CI 门禁联动校验 | 提交流程稳定性、回归拦截能力 |
+| PRD-ENGINEERING-003 | TASK-ENGINEERING-003/004/007 | `test_tier_required` | 趋势统计与审查模板抽样检查 | 工程治理可审计性与长期演进 |
+- Decision Log:
+| 决策ID | 选定方案 | 备选方案（否决） | 依据 |
+| --- | --- | --- | --- |
+| DEC-ENG-001 | 以脚本门禁落实规范 | 仅依赖人工评审 | 自动化一致性更高且可复现。 |
+| DEC-ENG-002 | 保留 allowlist 冻结机制 | 完全开放文档新增 | 可控制结构漂移和历史债扩散。 |
+| DEC-ENG-003 | required/full 分层验证 | 单层测试策略 | 兼顾效率与风险覆盖。 |

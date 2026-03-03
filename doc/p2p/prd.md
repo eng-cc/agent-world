@@ -37,10 +37,25 @@
   - 协议工程师：需要明确网络与共识边界。
   - 节点运营者：需要稳定部署和可观测运行信号。
   - 安全评审者：需要签名、治理、资产流转的可审计证据。
+- User Scenarios & Frequency:
+  - 协议演进评审：每次共识或网络协议改动前执行。
+  - 多节点长跑：按周执行并记录稳定性与恢复结果。
+  - 发行前联合验收：每个候选版本执行一次三线联测。
+  - 安全审计复核：关键资产链路改动后立即触发。
 - User Stories:
   - PRD-P2P-001: As a 协议工程师, I want explicit protocol boundaries, so that multi-crate changes remain coherent.
   - PRD-P2P-002: As a 节点运营者, I want reliable longrun validation, so that production confidence increases.
   - PRD-P2P-003: As a 安全评审者, I want auditable cryptographic and governance flows, so that risk is controlled.
+- Critical User Flows:
+  1. Flow-P2P-001: `网络拓扑变更 -> 共识联调 -> DistFS 同步 -> 节点状态一致性验证`
+  2. Flow-P2P-002: `执行 S9/S10 长跑 -> 采集故障与恢复数据 -> 输出收敛报告`
+  3. Flow-P2P-003: `资产/签名链路变更 -> 审计检查 -> 安全门禁 -> 发布判定`
+- Functional Specification Matrix:
+| 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
+| --- | --- | --- | --- | --- | --- |
+| 网络与共识协同 | 节点ID、轮次、提交高度、延迟 | 启动联测并比对共识结果 | `joining -> syncing -> committed` | 高度/轮次单调递增 | 仅授权节点参与共识 |
+| DistFS 复制 | 文件ID、副本状态、同步延迟 | 触发复制并校验完整性 | `queued -> replicating -> verified` | 优先关键数据副本 | 节点需满足存储策略 |
+| 长跑与恢复 | 失败类型、恢复动作、恢复时长 | 注入故障并执行恢复流程 | `stable -> degraded -> recovered` | 按故障等级排序处理 | 运维/评审可操作恢复流程 |
 - Acceptance Criteria:
   - AC-1: p2p PRD 覆盖网络、共识、存储、激励四条主线。
   - AC-2: p2p project 文档任务项明确映射 PRD-P2P-ID。
@@ -61,6 +76,19 @@
   - `doc/p2p/distributed/distributed-hard-split-phase7.md`
   - `doc/p2p/token/mainchain-token-allocation-mechanism-phase2-governance-bridge-distribution-2026-02-26.md`
   - `testing-manual.md`
+- Edge Cases & Error Handling:
+  - 节点掉线：共识链路需在节点恢复后自动重同步并验证状态。
+  - 网络分区：检测分区后阻断不安全提交并等待合并恢复。
+  - 空副本：DistFS 副本不足时触发补副本任务并记录告警。
+  - 超时：共识轮次超时后执行回退/重试策略。
+  - 并发冲突：同高度多提交候选按共识规则拒绝冲突分支。
+  - 数据损坏：校验失败副本立即隔离并重建。
+- Non-Functional Requirements:
+  - NFR-P2P-1: 多节点长跑稳定性指标持续达标并可追溯。
+  - NFR-P2P-2: 共识提交与复制链路关键失败模式覆盖率 100%。
+  - NFR-P2P-3: 节点异常恢复流程具备标准化操作与证据产物。
+  - NFR-P2P-4: 资产与签名链路审计记录完整率 100%。
+  - NFR-P2P-5: 协议演进不得破坏既有网络兼容性基线。
 - Security & Privacy: 需保证节点身份、签名、账本与反馈数据链路的完整性；所有关键动作必须具备可审计记录。
 
 ## 5. Risks & Roadmap
@@ -71,3 +99,17 @@
 - Technical Risks:
   - 风险-1: 多子系统并行演进带来接口漂移。
   - 风险-2: 长跑测试覆盖不足导致线上异常暴露滞后。
+
+## 6. Validation & Decision Record
+- Test Plan & Traceability:
+| PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |
+| --- | --- | --- | --- | --- |
+| PRD-P2P-001 | TASK-P2P-001/002/005 | `test_tier_required` | 网络/共识/存储联合验收清单检查 | 协议边界与跨 crate 兼容 |
+| PRD-P2P-002 | TASK-P2P-002/003/005 | `test_tier_required` + `test_tier_full` | S9/S10 长跑与恢复演练 | 多节点稳定性与故障恢复 |
+| PRD-P2P-003 | TASK-P2P-003/004/005 | `test_tier_full` | 签名与治理链路审计检查 | 资产安全与发布风险控制 |
+- Decision Log:
+| 决策ID | 选定方案 | 备选方案（否决） | 依据 |
+| --- | --- | --- | --- |
+| DEC-P2P-001 | 网络/共识/DistFS 统一验收 | 子系统独立验收 | 可降低跨链路隐性回归风险。 |
+| DEC-P2P-002 | 长跑结果进入发布门禁 | 仅开发阶段抽样运行 | 发布质量依赖真实长稳证据。 |
+| DEC-P2P-003 | 关键动作全链路审计 | 仅关键节点日志 | 审计深度不足会放大安全风险。 |

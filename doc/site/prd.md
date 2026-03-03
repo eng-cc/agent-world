@@ -37,10 +37,25 @@
   - 新访问者：需要快速理解项目价值与安装入口。
   - 技术用户：需要稳定访问文档与发布资产。
   - 站点维护者：需要统一发布与验收标准。
+- User Scenarios & Frequency:
+  - 首页信息浏览：每位新访问者首次访问执行。
+  - 文档与下载访问：技术用户按需高频访问。
+  - 发布前巡检：每次版本发布前执行一次完整检查。
+  - 发布后回归：每次发布后执行稳定性与断链复核。
 - User Stories:
   - PRD-SITE-001: As a 新访问者, I want a clear homepage narrative, so that I can understand the product quickly.
   - PRD-SITE-002: As a 技术用户, I want trustworthy download and docs links, so that I can install and verify efficiently.
   - PRD-SITE-003: As a 维护者, I want measurable quality gates, so that releases are predictable.
+- Critical User Flows:
+  1. Flow-SITE-001: `访问首页 -> 理解价值与入口 -> 跳转安装/文档`
+  2. Flow-SITE-002: `发布前执行链接检查 -> 处理断链 -> 复测通过`
+  3. Flow-SITE-003: `发布后监控质量指标 -> 发现退化 -> 回滚或修复`
+- Functional Specification Matrix:
+| 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
+| --- | --- | --- | --- | --- | --- |
+| 首页信息架构 | 版块标题、入口链接、版本信息 | 点击跳转安装/文档/下载 | `draft -> published -> revised` | 关键信息优先上屏 | 站点维护者可修改 |
+| 发布下载链路 | 版本号、资产地址、校验信息 | 发布后自动校验可用性 | `prepared -> published -> verified` | 最新版本优先展示 | 发布负责人审批上线 |
+| 质量门禁巡检 | 链接状态、性能指标、可访问性结果 | 巡检失败阻断发布 | `checking -> passed/blocked` | 严重问题优先修复 | 维护者可解阻断（需说明） |
 - Acceptance Criteria:
   - AC-1: site PRD 定义页面层级、内容同步和发布链路。
   - AC-2: site project 文档任务映射 PRD-SITE-ID。
@@ -63,6 +78,19 @@
   - `doc/site/manual/`
   - `doc/site/archive/`
   - `doc/readme/prd.md`
+- Edge Cases & Error Handling:
+  - 断链：发现下载或文档断链时阻断发布并进入修复流程。
+  - 空页面：关键页面内容缺失时展示维护提示并记录异常。
+  - 权限不足：发布权限缺失时拒绝上线并提示责任人。
+  - 超时：构建/巡检超时时输出中间结果并允许重试。
+  - 并发发布：同版本并发发布时只允许一个发布会话生效。
+  - 数据异常：版本元数据错误时不展示到公开页面。
+- Non-Functional Requirements:
+  - NFR-SITE-1: 发布后关键链接可用率 100%。
+  - NFR-SITE-2: 核心页面性能与可访问性指标达到门禁阈值。
+  - NFR-SITE-3: 多语言内容口径一致并可追溯。
+  - NFR-SITE-4: 发布回滚流程可在限定时间内执行。
+  - NFR-SITE-5: 站点输出不得暴露内部敏感配置。
 - Security & Privacy: 站点不得暴露内部凭据与敏感配置；下载链路需具备来源可验证性。
 
 ## 5. Risks & Roadmap
@@ -73,3 +101,17 @@
 - Technical Risks:
   - 风险-1: 内容更新频率高导致页面口径漂移。
   - 风险-2: 发布资产链接策略变化引入断链风险。
+
+## 6. Validation & Decision Record
+- Test Plan & Traceability:
+| PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |
+| --- | --- | --- | --- | --- |
+| PRD-SITE-001 | TASK-SITE-001/002/005 | `test_tier_required` | 首页结构与导航检查 | 用户首次访问体验 |
+| PRD-SITE-002 | TASK-SITE-002/003/005 | `test_tier_required` | 下载与文档链接巡检 | 安装与文档可用性 |
+| PRD-SITE-003 | TASK-SITE-003/004/005 | `test_tier_required` + `test_tier_full` | 发布门禁与回归节奏复核 | 发布稳定性与回滚能力 |
+- Decision Log:
+| 决策ID | 选定方案 | 备选方案（否决） | 依据 |
+| --- | --- | --- | --- |
+| DEC-SITE-001 | 发布前强制执行质量巡检 | 发布后补检查 | 可提前发现阻断问题。 |
+| DEC-SITE-002 | 下载链路绑定版本与校验信息 | 仅展示下载地址 | 可提升来源可信度。 |
+| DEC-SITE-003 | 站点口径与 readme 联动维护 | 独立维护站点文案 | 可降低对外口径漂移。 |

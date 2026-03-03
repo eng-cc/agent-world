@@ -41,10 +41,25 @@
   - 运行链路维护者：需要稳定的 headless-runtime 生命周期定义。
   - 协议开发者：需要明确鉴权与状态同步边界。
   - 运维/发布人员：需要故障可追溯与可回滚策略。
+- User Scenarios & Frequency:
+  - 生命周期维护：每次启动流程改动前后各执行 1 次核验。
+  - 协议兼容检查：每次鉴权协议变更执行回归。
+  - 长稳巡检：按周执行长稳与归档链路检查。
+  - 线上事故复盘：每个高优事故后回补追溯证据。
 - User Stories:
   - PRD-NONVIEWER-001: As a 维护者, I want a deterministic headless-runtime lifecycle, so that online stability improves.
   - PRD-NONVIEWER-002: As a 协议开发者, I want explicit auth and transport contracts, so that client/server evolution stays compatible.
   - PRD-NONVIEWER-003: As an 运维人员, I want traceable archive and incident evidence, so that postmortems are efficient.
+- Critical User Flows:
+  1. Flow-NV-001: `启动 headless-runtime -> 完成鉴权 -> 进入稳定运行 -> 周期归档`
+  2. Flow-NV-002: `协议变更 -> 执行兼容回归 -> 校验连接与鉴权结果 -> 放行`
+  3. Flow-NV-003: `线上异常 -> 回放归档证据 -> 定位阶段 -> 输出修复动作`
+- Functional Specification Matrix:
+| 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
+| --- | --- | --- | --- | --- | --- |
+| 生命周期管理 | 启动参数、鉴权状态、运行阶段、归档标记 | 启动/停止/重连 | `init -> auth -> running -> archived` | 阶段按时序推进，不允许跳级 | 运维可执行，开发可观测 |
+| 协议鉴权链路 | 节点身份、签名、令牌、超时阈值 | 发起鉴权并返回结构化结果 | `pending -> accepted/rejected` | 失败按错误类型分类 | 未授权节点拒绝接入 |
+| 归档追溯 | 时间戳、链路ID、错误签名、恢复动作 | 失败时自动归档并可检索 | `captured -> indexed -> replayed` | 按事故等级优先检索 | 仅授权人员可读取完整归档 |
 - Acceptance Criteria:
   - AC-1: headless-runtime PRD 定义生命周期、鉴权、归档三条主线。
   - AC-2: headless-runtime project 文档维护对应任务拆解与状态。
@@ -64,6 +79,19 @@
   - `doc/headless-runtime/nonviewer/nonviewer-onchain-auth-protocol-hardening.md`
   - `doc/headless-runtime/nonviewer/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.md`
   - `testing-manual.md`
+- Edge Cases & Error Handling:
+  - 网络中断：连接断开时进入可重连状态并保留会话诊断。
+  - 鉴权失败：返回明确拒绝原因，不允许进入运行态。
+  - 空归档：归档写入失败时需保底本地落盘并告警。
+  - 超时：协议握手超时后自动释放资源并记录失败签名。
+  - 并发冲突：重复启动请求必须幂等处理，避免多实例争用。
+  - 数据损坏：归档校验失败时阻止回放并输出修复建议。
+- Non-Functional Requirements:
+  - NFR-NV-1: 长稳运行路径可持续执行并周期产出归档证据。
+  - NFR-NV-2: 鉴权失败场景可在 5 分钟内完成初步定位。
+  - NFR-NV-3: 协议变更兼容回归覆盖率 100%。
+  - NFR-NV-4: 归档证据不得泄露敏感凭据字段。
+  - NFR-NV-5: 关键异常恢复路径需具备可重复演练能力。
 - Security & Privacy: 非 viewer 链路涉及鉴权密钥与节点身份，必须执行最小权限、日志脱敏、签名校验和审计留痕。
 
 ## 5. Risks & Roadmap
@@ -74,3 +102,17 @@
 - Technical Risks:
   - 风险-1: 协议版本演进导致兼容性回归。
   - 风险-2: 归档链路异常时影响问题追溯完整性。
+
+## 6. Validation & Decision Record
+- Test Plan & Traceability:
+| PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |
+| --- | --- | --- | --- | --- |
+| PRD-NONVIEWER-001 | TASK-NONVIEWER-001/002/005 | `test_tier_required` | 生命周期阶段校验、长稳抽样回归 | 运行稳定性与阶段一致性 |
+| PRD-NONVIEWER-002 | TASK-NONVIEWER-002/003/005 | `test_tier_required` + `test_tier_full` | 协议兼容测试、鉴权失败分支覆盖 | 协议兼容性与接入安全 |
+| PRD-NONVIEWER-003 | TASK-NONVIEWER-003/004/005 | `test_tier_full` | 归档追溯演练、事故复盘模板检查 | 故障定位效率与审计完整性 |
+- Decision Log:
+| 决策ID | 选定方案 | 备选方案（否决） | 依据 |
+| --- | --- | --- | --- |
+| DEC-NV-001 | headless-runtime 维持独立生命周期定义 | 复用 viewer 生命周期 | 生产链路目标不同，需独立约束。 |
+| DEC-NV-002 | 鉴权失败必须结构化返回 | 仅写日志 | 结构化信息更利于自动化回归。 |
+| DEC-NV-003 | 归档链路失败时保底落盘 | 失败即丢弃 | 保障线上事故可追溯性。 |

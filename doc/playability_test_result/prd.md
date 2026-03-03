@@ -37,10 +37,25 @@
   - 体验评测者：需要标准模板快速记录体验。
   - 玩法负责人：需要按问题等级追踪修复进度。
   - 发布负责人：需要可直接引用的可玩性门禁证据。
+- User Scenarios & Frequency:
+  - 日常体验记录：每次体验会话结束后立即填写卡片。
+  - 版本对比：每个候选版本至少一次横向对比。
+  - 缺陷闭环复核：高优先级问题修复后必须复测。
+  - 发布门禁引用：发布评审阶段统一引用同一证据包。
 - User Stories:
   - PRD-PLAYABILITY_TEST_RESULT-001: As an 评测者, I want a normalized feedback template, so that results are comparable across sessions.
   - PRD-PLAYABILITY_TEST_RESULT-002: As a 玩法负责人, I want issue severity and ownership, so that follow-up is actionable.
   - PRD-PLAYABILITY_TEST_RESULT-003: As a 发布负责人, I want traceable evidence packages, so that release decisions are auditable.
+- Critical User Flows:
+  1. Flow-PLY-001: `启动体验会话 -> 填写标准卡片 -> 提交归档 -> 进入问题池`
+  2. Flow-PLY-002: `对比多版本卡片 -> 提取高频问题 -> 指派修复 -> 回填结果`
+  3. Flow-PLY-003: `汇总证据包 -> 绑定发布候选 -> 输出可玩性放行结论`
+- Functional Specification Matrix:
+| 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
+| --- | --- | --- | --- | --- | --- |
+| 反馈卡片采集 | 场景、步骤、问题描述、截图、等级 | 提交卡片并自动归档 | `draft -> submitted -> archived` | 按版本与时间排序 | 评测者可创建，负责人可编辑等级 |
+| 问题闭环追踪 | 问题ID、责任人、修复提交、复测结论 | 更新状态并写入闭环记录 | `opened -> fixing -> verified -> closed` | 高严重级优先处理 | 玩法负责人可变更状态 |
+| 发布证据包 | 卡片集合、缺陷清单、结论 | 生成证据包供发布引用 | `collecting -> bundled -> approved` | 按候选版本唯一绑定 | 发布负责人审批 |
 - Acceptance Criteria:
   - AC-1: PRD 明确卡片字段、评分口径、问题分级标准。
   - AC-2: project 文档定义采集、汇总、复盘三类任务。
@@ -60,6 +75,19 @@
   - `doc/playability_test_result/README.md`
   - `doc/playability_test_result/game-test.md`
   - `testing-manual.md`
+- Edge Cases & Error Handling:
+  - 空卡片：缺关键字段时禁止提交并提示必填项。
+  - 证据缺失：无截图/日志的高优问题不得进入发布结论。
+  - 权限不足：非负责人不得关闭高优先级问题。
+  - 并发更新：同问题并发修改时保留最近版本并记录冲突。
+  - 数据异常：历史卡片格式不兼容时标记迁移需求并隔离展示。
+  - 回归超时：复测未完成不得标记闭环。
+- Non-Functional Requirements:
+  - NFR-PLY-1: 版本可玩性证据包覆盖率 100%。
+  - NFR-PLY-2: 高优先级问题闭环前必须有复测记录。
+  - NFR-PLY-3: 卡片模板字段口径与 testing 手册一致率 100%。
+  - NFR-PLY-4: 历史卡片检索延迟保持在可接受范围内。
+  - NFR-PLY-5: 敏感信息脱敏合规率 100%。
 - Security & Privacy: 反馈内容应避免记录敏感凭据；截图与日志需遵守最小化采集原则。
 
 ## 5. Risks & Roadmap
@@ -70,3 +98,17 @@
 - Technical Risks:
   - 风险-1: 主观反馈标准不一致导致结果不可比较。
   - 风险-2: 卡片填写不完整导致问题复现困难。
+
+## 6. Validation & Decision Record
+- Test Plan & Traceability:
+| PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |
+| --- | --- | --- | --- | --- |
+| PRD-PLAYABILITY_TEST_RESULT-001 | TASK-PLAYABILITY_TEST_RESULT-001/002/006 | `test_tier_required` | 模板字段与评分口径检查 | 反馈采集一致性 |
+| PRD-PLAYABILITY_TEST_RESULT-002 | TASK-PLAYABILITY_TEST_RESULT-002/003/006 | `test_tier_required` | 问题分级与闭环状态抽样复核 | 缺陷收敛效率 |
+| PRD-PLAYABILITY_TEST_RESULT-003 | TASK-PLAYABILITY_TEST_RESULT-003/004/006 | `test_tier_required` + `test_tier_full` | 发布证据包完整性与可追溯检查 | 发布可玩性风险控制 |
+- Decision Log:
+| 决策ID | 选定方案 | 备选方案（否决） | 依据 |
+| --- | --- | --- | --- |
+| DEC-PLY-001 | 标准化卡片模板统一采集 | 自由文本记录 | 可比性和复现性更高。 |
+| DEC-PLY-002 | 高优问题必须闭环或豁免登记 | 发布时统一兜底 | 可提前暴露体验风险。 |
+| DEC-PLY-003 | 版本证据包作为发布输入 | 分散引用历史记录 | 统一证据包更易审计。 |

@@ -37,10 +37,25 @@
   - 玩法设计者：需要统一管理玩法目标与平衡约束。
   - 玩法开发者：需要规则层与实现层的映射边界。
   - 发行评审者：需要可度量的可玩性验收标准。
+- User Scenarios & Frequency:
+  - 玩法规则迭代：每个玩法改动周期至少 1 次规则审阅。
+  - 核心循环回归：每周执行，覆盖新手/经济/战争路径。
+  - 发布前可玩性评估：每个候选版本至少 1 次。
+  - 缺陷复盘与再平衡：高优先级问题关闭前必须复测。
 - User Stories:
   - PRD-GAME-001: As a 玩法设计者, I want a canonical gameplay blueprint, so that feature decisions are coherent.
   - PRD-GAME-002: As a 玩法开发者, I want clear rule-layer boundaries, so that runtime and gameplay modules evolve safely.
   - PRD-GAME-003: As a 发行评审者, I want measurable playability gates, so that release readiness is objective.
+- Critical User Flows:
+  1. Flow-GAME-001: `玩法需求提出 -> 规则层建模 -> 映射实现边界 -> 进入开发`
+  2. Flow-GAME-002: `执行核心循环回归 -> 记录可玩性问题 -> 分级 -> 回填修复任务`
+  3. Flow-GAME-003: `发布前汇总可玩性证据 -> 对照门禁 -> 输出放行结论`
+- Functional Specification Matrix:
+| 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
+| --- | --- | --- | --- | --- | --- |
+| 核心玩法循环 | 场景、动作、资源、结果 | 执行循环并记录关键指标 | `designed -> implemented -> validated` | 先主循环后扩展循环 | 玩法负责人审核变更 |
+| 可玩性问题分级 | 问题描述、严重级、复现步骤、责任人 | 提交后自动进入待修复队列 | `opened -> triaged -> fixed -> verified` | 高严重级优先 | 评审者可调整级别 |
+| 发行门禁评审 | 证据包、风险等级、放行建议 | 审查后给出 go/no-go | `pending -> reviewed -> released/blocked` | 风险优先级驱动结论 | 发布负责人最终决策 |
 - Acceptance Criteria:
   - AC-1: game PRD 覆盖核心玩法循环、治理机制、测试口径。
   - AC-2: game project 文档任务项可映射到 PRD-GAME-001/002/003。
@@ -61,6 +76,19 @@
   - `doc/game/gameplay/gameplay-engineering-architecture.md`
   - `doc/playability_test_result/prd.md`
   - `testing-manual.md`
+- Edge Cases & Error Handling:
+  - 空场景配置：缺少关键玩法配置时禁止进入验收并给出缺失项。
+  - 数据异常：数值配置越界时阻断合入并输出规则冲突说明。
+  - 权限不足：非玩法负责人不得直接修改核心门禁阈值。
+  - 并发冲突：同一玩法规则并行修改时需合并评审再落库。
+  - 反馈缺失：无可玩性证据时不得进入发布评审。
+  - 回归超时：关键循环回归超时需保留中间产物并重试。
+- Non-Functional Requirements:
+  - NFR-GAME-1: 关键玩法回归覆盖率 100%（新手/经济/战争）。
+  - NFR-GAME-2: 高优先级可玩性问题发布前闭环率 >= 95%。
+  - NFR-GAME-3: 玩法门禁结论具备完整证据链（命令/日志/结论）。
+  - NFR-GAME-4: 玩法规则口径在模块文档中 1 个工作日内同步。
+  - NFR-GAME-5: 玩法改动必须可追溯到 PRD-ID。
 - Security & Privacy: gameplay 不直接处理密钥；涉及玩家反馈与行为数据时遵循最小化采集与脱敏记录。
 
 ## 5. Risks & Roadmap
@@ -71,3 +99,17 @@
 - Technical Risks:
   - 风险-1: 玩法复杂度上升导致规则冲突。
   - 风险-2: 只看技术测试通过而忽略真实可玩性退化。
+
+## 6. Validation & Decision Record
+- Test Plan & Traceability:
+| PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |
+| --- | --- | --- | --- | --- |
+| PRD-GAME-001 | TASK-GAME-001/002/005 | `test_tier_required` | 核心循环验收矩阵检查 | 玩法主循环一致性 |
+| PRD-GAME-002 | TASK-GAME-002/003/005 | `test_tier_required` + `test_tier_full` | 规则层边界回归、跨模块联动抽样 | gameplay/runtime 协同稳定性 |
+| PRD-GAME-003 | TASK-GAME-003/004/005 | `test_tier_required` | 可玩性证据与发布门禁核验 | 发布质量与玩家体验风险 |
+- Decision Log:
+| 决策ID | 选定方案 | 备选方案（否决） | 依据 |
+| --- | --- | --- | --- |
+| DEC-GAME-001 | 以玩法循环为需求主轴组织验收 | 以功能列表平铺验收 | 循环视角更贴近真实体验链路。 |
+| DEC-GAME-002 | 引入问题分级与闭环模板 | 缺陷统一平级处理 | 可优化修复优先级与发布节奏。 |
+| DEC-GAME-003 | 发布评审绑定可玩性证据 | 仅依赖技术测试 | 能降低“可运行但不好玩”的发布风险。 |

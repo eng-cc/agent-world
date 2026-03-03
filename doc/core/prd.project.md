@@ -7,15 +7,18 @@
 - [ ] TASK-CORE-004 (PRD-CORE-002/003): 建立仓库级 PRD-ID 到测试证据映射模板。
 - [ ] TASK-CORE-005 (PRD-CORE-003): 对模块 PRD 进行季度一致性审查并形成审查记录。
 - [x] TASK-CORE-006 (PRD-CORE-001/002): 收敛 `doc/` 根目录 legacy redirect 入口并更新总导航。
+- [x] TASK-CORE-007 (PRD-CORE-001/002/003): 对齐 strict PRD schema，补齐关键流程/规格矩阵/边界异常/NFR/验证与决策记录。
 
 ## 依赖
 - `AGENTS.md`
 - `doc/README.md`
 - `testing-manual.md`
+- `.agents/skills/prd/check.md`
 - 各模块 `doc/<module>/prd.md` 与 `doc/<module>/prd.project.md`
 
 ## 状态
 - 更新日期: 2026-03-03
 - 当前状态: active
 - 下一任务: TASK-CORE-003
+- PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - 说明: 本文档仅维护 core 设计执行状态；过程记录在 `doc/devlog/2026-03-03.md`。
