@@ -1,6 +1,7 @@
 use std::collections::VecDeque;
 use std::env;
-use std::io::{BufRead, BufReader, Read};
+use std::io::{BufRead, BufReader, Read, Write};
+use std::net::{TcpStream, ToSocketAddrs};
 use std::path::Path;
 use std::process::{Child, Command, Stdio};
 use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
@@ -38,6 +39,9 @@ const CLIENT_LAUNCHER_FONT_ENV: &str = "AGENT_WORLD_CLIENT_LAUNCHER_FONT";
 const CLIENT_LAUNCHER_LANG_ENV: &str = "AGENT_WORLD_CLIENT_LAUNCHER_LANG";
 const GRACEFUL_STOP_TIMEOUT_MS: u64 = 4000;
 const STOP_POLL_INTERVAL_MS: u64 = 80;
+const CHAIN_STATUS_PROBE_INTERVAL_MS: u64 = 1000;
+const CHAIN_STATUS_PROBE_TIMEOUT_MS: u64 = 300;
+const CHAIN_STATUS_STARTING_GRACE_SECS: u64 = 8;
 
 fn main() -> eframe::Result<()> {
     let native_options = eframe::NativeOptions {
@@ -237,6 +241,51 @@ impl LauncherStatus {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum ChainRuntimeStatus {
+    Disabled,
+    NotStarted,
+    Starting,
+    Ready,
+    Unreachable(String),
+    ConfigError(String),
+}
+
+impl ChainRuntimeStatus {
+    fn text(&self, language: UiLanguage) -> &'static str {
+        match (self, language) {
+            (Self::Disabled, UiLanguage::ZhCn) => "已禁用",
+            (Self::Disabled, UiLanguage::EnUs) => "Disabled",
+            (Self::NotStarted, UiLanguage::ZhCn) => "未启动",
+            (Self::NotStarted, UiLanguage::EnUs) => "Not Started",
+            (Self::Starting, UiLanguage::ZhCn) => "启动中",
+            (Self::Starting, UiLanguage::EnUs) => "Starting",
+            (Self::Ready, UiLanguage::ZhCn) => "已就绪",
+            (Self::Ready, UiLanguage::EnUs) => "Ready",
+            (Self::Unreachable(_), UiLanguage::ZhCn) => "不可达",
+            (Self::Unreachable(_), UiLanguage::EnUs) => "Unreachable",
+            (Self::ConfigError(_), UiLanguage::ZhCn) => "配置错误",
+            (Self::ConfigError(_), UiLanguage::EnUs) => "Config Error",
+        }
+    }
+
+    fn color(&self) -> egui::Color32 {
+        match self {
+            Self::Disabled | Self::NotStarted => egui::Color32::from_rgb(130, 130, 130),
+            Self::Starting => egui::Color32::from_rgb(201, 146, 44),
+            Self::Ready => egui::Color32::from_rgb(62, 152, 92),
+            Self::Unreachable(_) | Self::ConfigError(_) => egui::Color32::from_rgb(196, 84, 84),
+        }
+    }
+
+    fn detail(&self) -> Option<&str> {
+        match self {
+            Self::Unreachable(detail) | Self::ConfigError(detail) => Some(detail.as_str()),
+            Self::Disabled | Self::NotStarted | Self::Starting | Self::Ready => None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ConfigIssue {
     ScenarioRequired,
@@ -336,6 +385,9 @@ struct ClientLauncherApp {
     llm_settings_panel: LlmSettingsPanel,
     ui_language: UiLanguage,
     status: LauncherStatus,
+    chain_runtime_status: ChainRuntimeStatus,
+    launcher_started_at: Option<Instant>,
+    last_chain_probe_at: Option<Instant>,
     running: Option<RunningProcess>,
     logs: VecDeque<String>,
     feedback_draft: FeedbackDraft,
@@ -348,11 +400,20 @@ struct ClientLauncherApp {
 
 impl Default for ClientLauncherApp {
     fn default() -> Self {
+        let config = LaunchConfig::default();
+        let chain_runtime_status = if config.chain_enabled {
+            ChainRuntimeStatus::NotStarted
+        } else {
+            ChainRuntimeStatus::Disabled
+        };
         Self {
-            config: LaunchConfig::default(),
+            config,
             llm_settings_panel: LlmSettingsPanel::new(LlmSettingsPanel::default_path()),
             ui_language: UiLanguage::detect_from_env(),
             status: LauncherStatus::Idle,
+            chain_runtime_status,
+            launcher_started_at: None,
+            last_chain_probe_at: None,
             running: None,
             logs: VecDeque::new(),
             feedback_draft: FeedbackDraft::default(),
@@ -384,6 +445,48 @@ impl ClientLauncherApp {
         build_game_url(&self.config)
     }
 
+    fn update_chain_runtime_status(&mut self) {
+        if !self.config.chain_enabled {
+            self.chain_runtime_status = ChainRuntimeStatus::Disabled;
+            self.last_chain_probe_at = None;
+            return;
+        }
+
+        if self.running.is_none() || !matches!(self.status, LauncherStatus::Running) {
+            self.chain_runtime_status = ChainRuntimeStatus::NotStarted;
+            self.last_chain_probe_at = None;
+            return;
+        }
+
+        let now = Instant::now();
+        let should_probe = self.last_chain_probe_at.is_none_or(|last| {
+            now.duration_since(last) >= Duration::from_millis(CHAIN_STATUS_PROBE_INTERVAL_MS)
+        });
+        if !should_probe {
+            return;
+        }
+
+        self.last_chain_probe_at = Some(now);
+        match probe_chain_status_endpoint(self.config.chain_status_bind.as_str()) {
+            Ok(()) => {
+                self.chain_runtime_status = ChainRuntimeStatus::Ready;
+            }
+            Err(err) => {
+                let within_grace = self.launcher_started_at.is_some_and(|started_at| {
+                    now.duration_since(started_at)
+                        < Duration::from_secs(CHAIN_STATUS_STARTING_GRACE_SECS)
+                });
+                if within_grace {
+                    self.chain_runtime_status = ChainRuntimeStatus::Starting;
+                } else if err.contains("chain status bind") {
+                    self.chain_runtime_status = ChainRuntimeStatus::ConfigError(err);
+                } else {
+                    self.chain_runtime_status = ChainRuntimeStatus::Unreachable(err);
+                }
+            }
+        }
+    }
+
     fn poll_process(&mut self) {
         let mut running = match self.running.take() {
             Some(process) => process,
@@ -401,6 +504,7 @@ impl ClientLauncherApp {
         match running.child.try_wait() {
             Ok(Some(status)) => {
                 self.status = LauncherStatus::Exited(status.to_string());
+                self.launcher_started_at = None;
                 self.append_log(format!("launcher exited: {status}"));
                 self.running = None;
             }
@@ -409,6 +513,7 @@ impl ClientLauncherApp {
             }
             Err(err) => {
                 self.status = LauncherStatus::QueryFailed;
+                self.launcher_started_at = None;
                 self.append_log(format!("query child status failed: {err}"));
                 self.running = None;
             }
@@ -430,6 +535,8 @@ impl ClientLauncherApp {
         match stop_child_process(&mut running.child) {
             Ok(()) => {
                 self.status = LauncherStatus::Stopped;
+                self.launcher_started_at = None;
+                self.last_chain_probe_at = None;
                 self.append_log("launcher stopped");
             }
             Err(err) => {
@@ -479,11 +586,19 @@ impl ClientLauncherApp {
         match spawn_launcher_process(self.config.launcher_bin.as_str(), launch_args.as_slice()) {
             Ok(process) => {
                 self.status = LauncherStatus::Running;
+                self.launcher_started_at = Some(Instant::now());
+                self.last_chain_probe_at = None;
+                self.chain_runtime_status = if self.config.chain_enabled {
+                    ChainRuntimeStatus::Starting
+                } else {
+                    ChainRuntimeStatus::Disabled
+                };
                 self.append_log("launcher started");
                 self.running = Some(process);
             }
             Err(err) => {
                 self.status = LauncherStatus::StartFailed;
+                self.launcher_started_at = None;
                 self.append_log(format!("launcher start failed: {err}"));
             }
         }
@@ -501,6 +616,7 @@ impl Drop for ClientLauncherApp {
 impl eframe::App for ClientLauncherApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.poll_process();
+        self.update_chain_runtime_status();
 
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             ui.horizontal(|ui| {
@@ -511,6 +627,17 @@ impl eframe::App for ClientLauncherApp {
                     self.tr("状态", "Status"),
                     self.status.text(self.ui_language)
                 ));
+                ui.separator();
+                let chain_status = format!(
+                    "{}: {}",
+                    self.tr("区块链", "Blockchain"),
+                    self.chain_runtime_status.text(self.ui_language)
+                );
+                let response =
+                    ui.colored_label(self.chain_runtime_status.color(), chain_status.as_str());
+                if let Some(detail) = self.chain_runtime_status.detail() {
+                    response.on_hover_text(detail);
+                }
                 ui.separator();
                 ui.label(self.tr("语言", "Language"));
                 egui::ComboBox::from_id_salt("launcher_language")
@@ -805,6 +932,66 @@ fn build_game_url(config: &LaunchConfig) -> String {
     let web_host = host_for_url(web_host.as_str());
 
     format!("http://{viewer_host}:{viewer_port}/?ws=ws://{web_host}:{web_port}")
+}
+
+fn probe_chain_status_endpoint(bind: &str) -> Result<(), String> {
+    let (host, port) = parse_host_port(bind, "chain status bind")?;
+    let host = normalize_host_for_connect(host.as_str());
+    let socket_addr = (host.as_str(), port)
+        .to_socket_addrs()
+        .map_err(|err| format!("resolve chain status server failed: {err}"))?
+        .next()
+        .ok_or_else(|| "resolve chain status server failed: no socket address".to_string())?;
+
+    let mut stream = TcpStream::connect_timeout(
+        &socket_addr,
+        Duration::from_millis(CHAIN_STATUS_PROBE_TIMEOUT_MS),
+    )
+    .map_err(|err| format!("connect chain status server failed: {err}"))?;
+    let timeout = Some(Duration::from_millis(CHAIN_STATUS_PROBE_TIMEOUT_MS));
+    let _ = stream.set_read_timeout(timeout);
+    let _ = stream.set_write_timeout(timeout);
+
+    let host_header = host_for_url(host.as_str());
+    let request = format!(
+        "GET /v1/chain/status HTTP/1.1\r\nHost: {host_header}:{port}\r\nConnection: close\r\n\r\n"
+    );
+    stream
+        .write_all(request.as_bytes())
+        .map_err(|err| format!("write chain status probe failed: {err}"))?;
+
+    let mut buffer = [0_u8; 256];
+    let bytes = stream
+        .read(&mut buffer)
+        .map_err(|err| format!("read chain status probe failed: {err}"))?;
+    if bytes == 0 {
+        return Err("chain status probe returned empty response".to_string());
+    }
+    let response = String::from_utf8_lossy(&buffer[..bytes]);
+    let status_line = response.lines().next().unwrap_or_default();
+    if !status_line.starts_with("HTTP/") {
+        return Err("chain status probe received non-HTTP response".to_string());
+    }
+    let status_code = status_line
+        .split_whitespace()
+        .nth(1)
+        .and_then(|token| token.parse::<u16>().ok())
+        .ok_or_else(|| format!("invalid chain status probe status line: {status_line}"))?;
+    if !(200..=299).contains(&status_code) {
+        return Err(format!("chain status probe returned HTTP {status_code}"));
+    }
+    Ok(())
+}
+
+fn normalize_host_for_connect(host: &str) -> String {
+    let host = host.trim();
+    if host == "0.0.0.0" {
+        "127.0.0.1".to_string()
+    } else if host == "::" || host == "[::]" {
+        "::1".to_string()
+    } else {
+        host.to_string()
+    }
 }
 
 fn normalize_host_for_url(host: &str) -> String {

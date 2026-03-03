@@ -13,6 +13,7 @@
 - [x] TASK-WORLD_SIMULATOR-010 (PRD-WORLD_SIMULATOR-001/002/003): 建立模块级专题任务映射索引（2026-03-02 批次）。
 - [x] TASK-WORLD_SIMULATOR-011 (PRD-WORLD_SIMULATOR-001/002): 将 Viewer 使用手册迁入 `viewer/` 主题目录并保留根目录兼容跳转。
 - [x] TASK-WORLD_SIMULATOR-012 (PRD-WORLD_SIMULATOR-002/003): 为启动器反馈“分布式提交失败回落本地”补充 `Connection refused` 回归约束测试，锁定错误签名可诊断性。
+- [x] TASK-WORLD_SIMULATOR-013 (PRD-WORLD_SIMULATOR-002/003): 在 `agent_world_client_launcher` 顶部新增区块链启动状态可视化与探针回归测试（禁用/未启动/启动中/已就绪/不可达）。
 
 ## 专题任务映射（2026-03-02 批次）
 - [x] SUBTASK-WORLD_SIMULATOR-20260302-001 (PRD-WORLD_SIMULATOR-001/002/003): `doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.project.md`
@@ -27,6 +28,7 @@
 
 ## 专题任务映射（2026-03-03 批次）
 - [x] SUBTASK-WORLD_SIMULATOR-20260303-001 (PRD-WORLD_SIMULATOR-002/003): `doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.project.md`
+- [x] SUBTASK-WORLD_SIMULATOR-20260303-002 (PRD-WORLD_SIMULATOR-002/003): `doc/world-simulator/launcher/game-client-launcher-desktop-2026-02-27.project.md`
 
 ## 依赖
 - `doc/world-simulator/scenario/scenario-files.md`
@@ -49,6 +51,6 @@
 - 当前状态: active（当前任务清单已完成，等待新增需求）
 - 当前优先任务: 无（待新增任务）
 - 并行待办: 无
-- 专题映射状态: 2026-03-02 批次 9/9、2026-03-03 批次 1/1 已纳入模块项目管理文档。
+- 专题映射状态: 2026-03-02 批次 9/9、2026-03-03 批次 2/2 已纳入模块项目管理文档。
 - 手册入口状态: `doc/world-simulator/viewer/viewer-manual.md` 为唯一活跃手册入口。
 - 说明: 本文档仅维护 world-simulator 模块设计执行状态；过程记录在 `doc/devlog/2026-03-03.md`。

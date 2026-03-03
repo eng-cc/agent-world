@@ -1,9 +1,12 @@
 use super::{
     build_game_url, build_launcher_args, collect_required_config_issues, install_cjk_font,
     normalize_host_for_url, parse_chain_role, parse_chain_validators, parse_host_port, parse_port,
-    ConfigIssue, LaunchConfig, LauncherStatus, UiLanguage, EGUI_CJK_FONT_NAME,
+    probe_chain_status_endpoint, ChainRuntimeStatus, ConfigIssue, LaunchConfig, LauncherStatus,
+    UiLanguage, EGUI_CJK_FONT_NAME,
 };
 use eframe::egui;
+use std::io::{Read, Write};
+use std::net::TcpListener;
 #[test]
 fn parse_port_rejects_zero() {
     let err = parse_port("0", "viewer port").expect_err("should fail");
@@ -158,6 +161,42 @@ fn parse_ui_language_supports_zh_and_en_aliases() {
 fn launcher_status_text_is_localized() {
     assert_eq!(LauncherStatus::Idle.text(UiLanguage::ZhCn), "未启动");
     assert_eq!(LauncherStatus::Idle.text(UiLanguage::EnUs), "Not Started");
+}
+
+#[test]
+fn chain_runtime_status_text_is_localized() {
+    assert_eq!(ChainRuntimeStatus::Ready.text(UiLanguage::ZhCn), "已就绪");
+    assert_eq!(
+        ChainRuntimeStatus::Unreachable("x".to_string()).text(UiLanguage::EnUs),
+        "Unreachable"
+    );
+}
+
+#[test]
+fn probe_chain_status_endpoint_accepts_http_200_response() {
+    let listener = TcpListener::bind("127.0.0.1:0").expect("bind test listener");
+    let bind = listener.local_addr().expect("listener addr");
+    let serve = std::thread::spawn(move || {
+        let (mut stream, _) = listener.accept().expect("accept probe connection");
+        let mut request = [0_u8; 512];
+        let _ = stream.read(&mut request);
+        let _ = stream.write_all(
+            b"HTTP/1.1 200 OK\r\nContent-Length: 11\r\nConnection: close\r\n\r\n{\"ok\":true}",
+        );
+    });
+
+    probe_chain_status_endpoint(bind.to_string().as_str()).expect("probe should pass");
+    serve.join().expect("server thread should finish");
+}
+
+#[test]
+fn probe_chain_status_endpoint_reports_connect_failure() {
+    let listener = TcpListener::bind("127.0.0.1:0").expect("bind temp listener");
+    let bind = listener.local_addr().expect("listener addr").to_string();
+    drop(listener);
+
+    let err = probe_chain_status_endpoint(bind.as_str()).expect_err("probe should fail");
+    assert!(err.contains("connect chain status server failed"));
 }
 #[test]
 fn collect_required_config_issues_reports_missing_required_fields() {
