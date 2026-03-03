@@ -1,0 +1,96 @@
+# Agent World: 测试覆盖与 CI 扩展
+
+## 1. Executive Summary
+- Problem Statement: 关键链路（viewer 离线回放、wasmtime、在线联测）若未在 CI 中显式覆盖，容易在特性分支阶段漏检回归。
+- Proposed Solution: 在统一测试脚本下扩展 required/full 覆盖项，引入离线回放联测和 wasmtime 路径，并让 `egui` snapshot 在无 `wgpu` 环境可安全降级。
+- Success Criteria:
+  - SC-1: CI 明确执行 viewer 离线回放联测与 wasmtime 特性测试。
+  - SC-2: required/full 清单在 `scripts/ci-tests.sh` 保持统一管理。
+  - SC-3: `egui_kittest` 在无 `wgpu` 环境不阻断流水线，且输出可诊断 skip 原因。
+  - SC-4: 文档、任务、验证结果可追溯到同一专题闭环。
+
+## 2. User Experience & Functionality
+- User Personas:
+  - CI 维护者：需要可控且可复现的覆盖清单。
+  - 开发者：需要稳定的门禁反馈，不被环境抖动误伤。
+  - 发布负责人：需要确认关键链路在发布前被充分验证。
+- User Scenarios & Frequency:
+  - PR 门禁：默认执行 required，验证核心路径。
+  - 每日全量：执行 full，覆盖重型特性与联测。
+  - 环境受限 runner：无 `wgpu` 时执行 snapshot 降级路径。
+- User Stories:
+  - PRD-TESTING-CI-COVER-001: As a CI 维护者, I want key integration paths explicitly covered, so that regressions are visible earlier.
+  - PRD-TESTING-CI-COVER-002: As a 开发者, I want viewer offline integration to run headless and stable, so that tests do not depend on external UI resources.
+  - PRD-TESTING-CI-COVER-003: As a 发布负责人, I want full-tier feature tests retained, so that release risk is bounded.
+- Critical User Flows:
+  1. Flow-COVER-001: `生成 snapshot/journal -> 运行 viewer_offline_integration -> 校验协议消息链路`
+  2. Flow-COVER-002: `执行 full -> 运行 wasmtime/libp2p/viewer 联测 -> 汇总回归结果`
+  3. Flow-COVER-003: `snapshot 测试初始化 wgpu 失败 -> 输出 skip 原因 -> 继续执行其他用例`
+- Functional Specification Matrix:
+| 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
+| --- | --- | --- | --- | --- | --- |
+| 离线回放联测 | snapshot/journal 输入、协议输出断言 | 运行 `viewer_offline_integration` | `prepared -> replaying -> passed/failed` | 优先验证 `HelloAck/Snapshot/Event` | CI 自动执行 |
+| full 扩展覆盖 | wasmtime/libp2p/viewer_live 特性组合 | `scripts/ci-tests.sh full` 统一触发 | `queued -> running -> passed/failed` | full 在 required 之上追加 | 发布前必须通过 |
+| snapshot 降级保护 | wgpu 初始化结果、skip 原因 | 初始化失败时记录并跳过相关快照测试 | `init -> skip/report` 或 `init -> run` | 保证主流水线不被环境阻断 | 测试框架内部控制 |
+- Acceptance Criteria:
+  - AC-1: required/full 覆盖清单在文档和脚本一致。
+  - AC-2: 离线回放联测可稳定完成并验证关键消息。
+  - AC-3: `wasmtime` 路径纳入 CI 覆盖。
+  - AC-4: `egui` snapshot 在无 `wgpu` runner 下可降级并留痕。
+- Non-Goals:
+  - 不做 CI 缓存优化与并行矩阵调优。
+  - 不引入 UI 真实渲染端到端依赖。
+
+## 3. AI System Requirements (If Applicable)
+- Tool Requirements: 不适用（本任务为测试覆盖治理）。
+- Evaluation Strategy: 不适用。
+
+## 4. Technical Specifications
+- Architecture Overview: 通过统一测试脚本接入 required/full 覆盖项，把联测输入输出和环境降级策略集中到同一门禁链路。
+- Integration Points:
+  - `scripts/ci-tests.sh`
+  - `.github/workflows/rust.yml`
+  - `world_viewer_demo`（`snapshot.json` / `journal.json`）
+  - `viewer_offline_integration`
+  - `agent_world_viewer` `egui_kittest` snapshot
+- Edge Cases & Error Handling:
+  - wasmtime 依赖体积增长：执行耗时上升，需要保留分级策略平衡成本。
+  - socket 端口竞争：联测必须使用随机端口与超时保护。
+  - 无 `wgpu` 环境：snapshot 测试输出 skip 原因，不阻断其他测试。
+  - skip 覆盖盲区：在有图形能力环境保留一次完整视觉快照校验。
+- Non-Functional Requirements:
+  - NFR-COVER-1: required 门禁持续稳定并保持较低执行开销。
+  - NFR-COVER-2: full 门禁覆盖 wasmtime/libp2p/viewer 核心路径。
+  - NFR-COVER-3: 降级行为可审计（有明确日志）。
+- Security & Privacy: 测试数据来自本地回放产物，不涉及新增敏感信息采集。
+
+## 5. Risks & Roadmap
+- Phased Rollout:
+  - MVP (T1): 新增离线回放联测并保证稳定退出。
+  - v1.1 (T2): CI 增加 wasmtime 特性测试步骤。
+  - v2.0 (T3/T4): 文档回写、任务日志收口、snapshot 无 `wgpu` 降级。
+- Technical Risks:
+  - 风险-1: wasmtime 路径增加执行时长与依赖负担。
+  - 风险-2: 联测端口冲突影响稳定性。
+  - 风险-3: 无 `wgpu` 环境 skip 导致该环境视觉覆盖下降。
+
+## 6. Validation & Decision Record
+- Test Plan & Traceability:
+| PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |
+| --- | --- | --- | --- | --- |
+| PRD-TESTING-CI-COVER-001 | T1/T2/T5/T6 | `test_tier_required` | required/full 清单与脚本接线验证 | CI 基础覆盖能力 |
+| PRD-TESTING-CI-COVER-002 | T1/T3 | `test_tier_required` | viewer 离线回放联测结果检查 | viewer 协议链路稳定性 |
+| PRD-TESTING-CI-COVER-003 | T2/T4/T8/T9 | `test_tier_full` | wasmtime/full 路径与 snapshot 降级验证 | 发布前深度回归保障 |
+- Decision Log:
+| 决策ID | 选定方案 | 备选方案（否决） | 依据 |
+| --- | --- | --- | --- |
+| DEC-COVER-001 | 统一脚本维护 required/full 覆盖 | 分散到多脚本维护 | 集中维护可减少漂移。 |
+| DEC-COVER-002 | 离线回放使用 headless 协议联测 | 依赖真实 UI 渲染联测 | headless 更稳定且更适合 CI。 |
+| DEC-COVER-003 | 无 `wgpu` 环境下 snapshot 自动 skip | 直接失败阻断流水线 | 可避免环境噪声导致整体门禁失效。 |
+
+## 原文约束点映射（内容保真）
+- 原“目标（覆盖补齐 + CI 显式执行 + snapshot 降级）” -> 第 1 章与第 2 章 AC。
+- 原“In/Out of Scope” -> 第 2 章 AC 与 Non-Goals。
+- 原“接口/数据（输入/输出/CI 清单）” -> 第 4 章 Integration Points 与功能矩阵。
+- 原“里程碑 T1~T4” -> 第 5 章 Phased Rollout。
+- 原“风险（耗时、端口竞争、skip 覆盖）” -> 第 4 章 Edge Cases + 第 5 章 Risks。

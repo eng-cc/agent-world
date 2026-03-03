@@ -53,7 +53,7 @@
   - `scripts/pre-commit.sh`
   - `.github/workflows/rust.yml`
   - `doc/scripts/precommit/pre-commit.md`
-  - `doc/testing/ci/ci-test-coverage.md`
+  - `doc/testing/ci/ci-test-coverage.prd.md`
 - Edge Cases & Error Handling:
   - required 覆盖过窄：可能延后发现问题，需结合每日 full 和缺陷复盘补齐。
   - full 仅定时执行：发现延迟增加，需保留手动触发路径。

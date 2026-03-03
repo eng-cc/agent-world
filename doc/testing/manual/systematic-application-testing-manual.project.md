@@ -30,7 +30,7 @@
 - `doc/world-simulator/scenario/scenario-files.md`
 - `doc/testing/ci/ci-tiered-execution.prd.md`
 - `doc/testing/ci/ci-testcase-tiering.prd.md`
-- `doc/testing/ci/ci-test-coverage.md`
+- `doc/testing/ci/ci-test-coverage.prd.md`
 
 ## 状态
 - 当前阶段：已完成（`AGENTS.md` 与 `testing-manual.md` 已完成“迁移 + 引用”分工）
