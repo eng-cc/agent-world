@@ -12,6 +12,7 @@
 ## 接口 / 数据
 - PRD 主入口: `doc/engineering/prd.md`
 - 项目管理入口: `doc/engineering/prd.project.md`
+- 文件级索引: doc/engineering/prd.index.md
 - 追踪主键: `PRD-ENGINEERING-xxx`
 - 测试与发布参考: `testing-manual.md`
 
@@ -80,7 +81,7 @@
   - AC-3: 与 `doc/scripts/precommit/pre-commit.prd.md`、`testing-manual.md` 的口径一致。
   - AC-4: 每次工程规范变更有对应 devlog 记录。
   - AC-5: 文档治理脚本校验 `doc/.governance/*-allowlist.txt`，可拦截 `doc/*.md` 与 `doc/<module>/*.md` 的非预期新增。
-  - AC-6: `doc/world-simulator`、`doc/p2p`、`doc/world-runtime`、`doc/testing`、`doc/site`、`doc/readme`、`doc/scripts`、`doc/game`、`doc/headless-runtime` 模块根目录仅保留 `README.md` / `prd.md` / `prd.project.md`。
+  - AC-6: `doc/core`、`doc/engineering`、`doc/game`、`doc/headless-runtime`、`doc/p2p`、`doc/playability_test_result`、`doc/readme`、`doc/scripts`、`doc/site`、`doc/testing`、`doc/world-runtime`、`doc/world-simulator` 模块根目录仅保留 `README.md` / `prd.md` / `prd.project.md` / `prd.index.md` 与模块当前允许的活跃卡片文件。
   - AC-7: 每次迁移任务需附“原文关键约束点 -> 新文档章节”对照，确保内容不丢失。
   - AC-8: 并行迁移必须有公开分工表、待迁移快照和每日燃尽更新机制。
   - AC-9: 每个模块提供文件级 PRD 索引并在主入口可达，覆盖活跃专题 `*.prd.md/*.prd.project.md`。

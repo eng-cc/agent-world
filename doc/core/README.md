@@ -3,6 +3,7 @@
 ## 入口
 - PRD: `doc/core/prd.md`
 - 项目管理: `doc/core/prd.project.md`
+- 文件级索引: doc/core/prd.index.md
 
 ## 模块职责
 - 提供项目级设计总览（模块地图、关键链路、术语口径）。

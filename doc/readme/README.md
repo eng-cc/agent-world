@@ -3,6 +3,7 @@
 ## 入口
 - PRD: `doc/readme/prd.md`
 - 项目管理: `doc/readme/prd.project.md`
+- 文件级索引: doc/readme/prd.index.md
 
 ## 模块职责
 - 统一仓库对外说明口径与文档入口。
@@ -14,7 +15,7 @@
 - `governance/`：规则层与资源模型治理专题。
 
 ## 根目录收口
-- 模块根目录仅保留：`README.md`、`prd.md`、`prd.project.md`。
+- 模块根目录仅保留：`README.md`、`prd.md`、`prd.project.md`、`prd.index.md`。
 - 其余专题文档按主题下沉到 `gap/production/governance`。
 
 ## 维护约定

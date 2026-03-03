@@ -8,6 +8,7 @@
 - [x] TASK-WORLD_RUNTIME-005 (PRD-WORLD_RUNTIME-001/002/003): 对齐 strict PRD schema，补齐关键流程/规格矩阵/边界异常/NFR/验证与决策记录。
 
 ## 依赖
+- doc/world-runtime/prd.index.md
 - `doc/world-runtime/runtime/runtime-integration.md`
 - `doc/world-runtime/wasm/wasm-interface.md`
 - `doc/world-runtime/governance/governance-events.md`

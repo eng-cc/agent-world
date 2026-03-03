@@ -12,6 +12,7 @@
 ## 接口 / 数据
 - PRD 主入口: `doc/site/prd.md`
 - 项目管理入口: `doc/site/prd.project.md`
+- 文件级索引: doc/site/prd.index.md
 - 追踪主键: `PRD-SITE-xxx`
 - 测试与发布参考: `testing-manual.md`
 

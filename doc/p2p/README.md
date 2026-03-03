@@ -3,6 +3,7 @@
 ## 入口
 - PRD: `doc/p2p/prd.md`
 - 项目管理: `doc/p2p/prd.project.md`
+- 文件级索引: doc/p2p/prd.index.md
 
 ## 主题目录
 - `distfs/`: DistFS 设计与稳定性加固。
@@ -17,7 +18,7 @@
 - `archive/`: 历史归档文档。
 
 ## 根目录收口
-- 模块根目录仅保留：`README.md`、`prd.md`、`prd.project.md`。
+- 模块根目录仅保留：`README.md`、`prd.md`、`prd.project.md`、`prd.index.md`。
 - 其余专题文档已迁移到主题目录（`distfs/node/blockchain/consensus/distributed/network`）或 `archive/`。
 
 ## 维护约定

@@ -7,6 +7,7 @@
 ## 入口
 - PRD: `doc/headless-runtime/prd.md`
 - 项目管理: `doc/headless-runtime/prd.project.md`
+- 文件级索引: doc/headless-runtime/prd.index.md
 
 ## 活跃文档
 - `doc/headless-runtime/nonviewer/nonviewer-onchain-auth-protocol-hardening.prd.md`

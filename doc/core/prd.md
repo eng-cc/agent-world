@@ -13,6 +13,7 @@
 ## 接口 / 数据
 - 项目级 PRD 入口: `doc/core/prd.md`
 - 项目管理入口: `doc/core/prd.project.md`
+- 文件级索引: doc/core/prd.index.md
 - 追踪主键: `PRD-CORE-xxx`
 - 模块入口总览: `doc/README.md`
 - 测试与发布参考: `testing-manual.md`

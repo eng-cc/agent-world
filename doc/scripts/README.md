@@ -3,6 +3,7 @@
 ## 入口
 - PRD: `doc/scripts/prd.md`
 - 项目管理: `doc/scripts/prd.project.md`
+- 文件级索引: doc/scripts/prd.index.md
 
 ## 主题文档
 - `precommit/`：提交前检查与门禁策略。
@@ -11,7 +12,7 @@
 - `archive/`：历史脚本治理文档。
 
 ## 根目录收口
-- 模块根目录仅保留：`README.md`、`prd.md`、`prd.project.md`。
+- 模块根目录仅保留：`README.md`、`prd.md`、`prd.project.md`、`prd.index.md`。
 - 其余专题文档按主题下沉到 `precommit/viewer-tools/wasm`。
 
 ## 维护约定

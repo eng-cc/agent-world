@@ -12,6 +12,7 @@
 ## 接口 / 数据
 - PRD 主入口: `doc/readme/prd.md`
 - 项目管理入口: `doc/readme/prd.project.md`
+- 文件级索引: doc/readme/prd.index.md
 - 追踪主键: `PRD-README-xxx`
 - 测试与发布参考: `testing-manual.md`
 

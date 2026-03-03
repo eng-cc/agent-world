@@ -8,6 +8,7 @@
 - [x] TASK-GAME-005 (PRD-GAME-001/002/003): 对齐 strict PRD schema，补齐关键流程/规格矩阵/边界异常/NFR/验证与决策记录。
 
 ## 依赖
+- doc/game/prd.index.md
 - `doc/game/gameplay/gameplay-top-level-design.prd.md`
 - `doc/game/gameplay/gameplay-engineering-architecture.md`
 - `doc/playability_test_result/prd.md`

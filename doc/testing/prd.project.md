@@ -75,6 +75,7 @@
 - [x] SUBTASK-TESTING-20260303-029 (PRD-TESTING-004): `doc/testing/archive/wasm-platform-canonical-hash-manifest.prd.project.md`
 
 ## 依赖
+- doc/testing/prd.index.md
 - `testing-manual.md`
 - `doc/testing/manual/web-ui-playwright-closure-manual.prd.md`
 - `scripts/ci-tests.sh`

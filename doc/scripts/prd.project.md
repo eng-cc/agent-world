@@ -8,6 +8,7 @@
 - [x] TASK-SCRIPTS-005 (PRD-SCRIPTS-001/002/003): 对齐 strict PRD schema，补齐关键流程/规格矩阵/边界异常/NFR/验证与决策记录。
 
 ## 依赖
+- doc/scripts/prd.index.md
 - `scripts/`
 - `doc/scripts/precommit/pre-commit.prd.md`
 - `testing-manual.md`

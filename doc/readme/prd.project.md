@@ -8,6 +8,7 @@
 - [x] TASK-README-005 (PRD-README-001/002/003): 对齐 strict PRD schema，补齐关键流程/规格矩阵/边界异常/NFR/验证与决策记录。
 
 ## 依赖
+- doc/readme/prd.index.md
 - `README.md`
 - `world-rule.md`
 - `testing-manual.md`

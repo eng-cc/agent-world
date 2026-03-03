@@ -14,6 +14,7 @@
 ## 接口 / 数据
 - PRD 主入口: `doc/world-simulator/prd.md`
 - 项目管理入口: `doc/world-simulator/prd.project.md`
+- 文件级索引: doc/world-simulator/prd.index.md
 - 追踪主键: `PRD-WORLD_SIMULATOR-xxx`
 - 测试与发布参考: `testing-manual.md`
 - 分册索引:

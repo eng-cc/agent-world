@@ -42,6 +42,7 @@
 - [x] SUBTASK-WORLD_SIMULATOR-20260303-004 (PRD-WORLD_SIMULATOR-007): `doc/world-simulator/launcher/game-client-launcher-llm-settings-panel-2026-03-02.prd.project.md`
 
 ## 依赖
+- doc/world-simulator/prd.index.md
 - `doc/world-simulator/scenario/scenario-files.prd.md`
 - `doc/world-simulator/viewer/viewer-web-closure-testing-policy.prd.md`
 - `doc/world-simulator/launcher/game-unified-launcher-2026-02-27.prd.md`

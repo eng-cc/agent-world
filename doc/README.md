@@ -42,6 +42,7 @@
 ## 目录结构说明
 - `doc/<module>/prd.md`：模块设计主文档（唯一 PRD 入口）。
 - `doc/<module>/prd.project.md`：模块任务拆解与执行状态。
+- `doc/<module>/prd.index.md`：模块文件级 PRD 索引（活跃专题文档可达入口）。
 - `doc/<module>/**/*.md`：专题设计、实现方案、复盘与归档。
 - `doc/<module>/README.md`：模块目录索引（按主题子目录导航）。
 - `doc/archive/root-history/`：`doc/` 根目录历史治理文档归档。

@@ -1,5 +1,10 @@
 # playability_test_result 目录说明
 
+## 入口
+- `doc/playability_test_result/prd.md`
+- `doc/playability_test_result/prd.project.md`
+- `doc/playability_test_result/prd.index.md`
+
 - 主目录仅保留当前活跃轮次（当前策略：保留最近一天样本，便于真实玩家最新口径复核）。
 - 历史卡片已归档到：`archive/2026-02/`。
 - 当前执行入口：

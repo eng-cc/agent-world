@@ -1,0 +1,16 @@
+# playability_test_result PRD 文件级索引
+
+更新时间：2026-03-03
+
+## 入口
+- 模块 PRD：`doc/playability_test_result/prd.md`
+- 模块项目管理：`doc/playability_test_result/prd.project.md`
+
+## 活跃专题文档（非 archive/devlog）
+| 专题 PRD | 专题项目文档 |
+| --- | --- |
+| `doc/playability_test_result/game-test.prd.md` | `doc/playability_test_result/game-test.prd.project.md` |
+
+## 说明
+- 本索引用于保证模块专题文档在根入口文档树中可达。
+- 文档配对规则：`*.prd.md` 与同名 `*.prd.project.md`。

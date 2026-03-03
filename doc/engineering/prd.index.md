@@ -1,0 +1,18 @@
+# engineering PRD 文件级索引
+
+更新时间：2026-03-03
+
+## 入口
+- 模块 PRD：`doc/engineering/prd.md`
+- 模块项目管理：`doc/engineering/prd.project.md`
+
+## 活跃专题文档（非 archive/devlog）
+| 专题 PRD | 专题项目文档 |
+| --- | --- |
+| `doc/engineering/doc-migration/legacy-doc-migration-collaboration-2026-03-03.prd.md` | `doc/engineering/doc-migration/legacy-doc-migration-collaboration-2026-03-03.prd.project.md` |
+| `doc/engineering/documentation-governance-engineering-closure-2026-02-27.prd.md` | `doc/engineering/documentation-governance-engineering-closure-2026-02-27.prd.project.md` |
+| `doc/engineering/oversized-rust-file-splitting-round3-2026-02-23.prd.md` | `doc/engineering/oversized-rust-file-splitting-round3-2026-02-23.prd.project.md` |
+
+## 说明
+- 本索引用于保证模块专题文档在根入口文档树中可达。
+- 文档配对规则：`*.prd.md` 与同名 `*.prd.project.md`。

@@ -3,6 +3,7 @@
 ## 入口
 - PRD: `doc/world-runtime/prd.md`
 - 项目管理: `doc/world-runtime/prd.project.md`
+- 文件级索引: doc/world-runtime/prd.index.md
 
 ## 主题文档
 - `runtime/`：运行时主链路与数值/稳定性专题。
@@ -14,7 +15,7 @@
 - `archive/`：历史运行时演进文档。
 
 ## 根目录收口
-- 模块根目录仅保留：`README.md`、`prd.md`、`prd.project.md`。
+- 模块根目录仅保留：`README.md`、`prd.md`、`prd.project.md`、`prd.index.md`。
 - 其余专题文档按主题下沉到 `runtime/wasm/module/governance/integration/testing`。
 
 ## 根目录 legacy
