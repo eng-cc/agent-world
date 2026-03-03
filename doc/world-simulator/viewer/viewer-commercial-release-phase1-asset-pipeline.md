@@ -12,7 +12,7 @@
 - 新增环境变量入口，支持在运行时指定外部 mesh 资源路径。
 - 启动场景时优先使用外部 mesh，缺省回退到现有程序化几何。
 - 补齐 `agent_world_viewer` 配置解析与回归测试。
-- 更新 `doc/viewer-manual.md` 的资产管线使用说明。
+- 更新 `doc/world-simulator/viewer/viewer-manual.md` 的资产管线使用说明。
 
 ### Out of Scope
 - 本阶段不引入完整 DCC 资产生产流程（建模、烘焙、贴图自动化导入）。

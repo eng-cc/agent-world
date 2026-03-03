@@ -44,7 +44,7 @@
 - Acceptance Criteria:
   - AC-1: PRD 明确卡片字段、评分口径、问题分级标准。
   - AC-2: project 文档定义采集、汇总、复盘三类任务。
-  - AC-3: 与 `doc/game-test.md`、`testing-manual.md` 口径一致。
+  - AC-3: 与 `doc/playability_test_result/game-test.md`、`testing-manual.md` 口径一致。
   - AC-4: 历史卡片可按版本进行检索与对比。
 - Non-Goals:
   - 不在本 PRD 中定义玩法实现细节。
@@ -58,7 +58,7 @@
 - Architecture Overview: playability_test_result 作为发布证据层，对接 game/testing 模块，负责收集和沉淀面向玩家体验的定性与定量证据。
 - Integration Points:
   - `doc/playability_test_result/README.md`
-  - `doc/game-test.md`
+  - `doc/playability_test_result/game-test.md`
   - `testing-manual.md`
 - Security & Privacy: 反馈内容应避免记录敏感凭据；截图与日志需遵守最小化采集原则。
 

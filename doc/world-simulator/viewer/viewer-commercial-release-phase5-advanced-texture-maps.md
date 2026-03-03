@@ -16,7 +16,7 @@
   - `emissive_texture`
 - location 专用 core/halo 材质分支支持高级贴图覆盖。
 - 补配置解析测试与关键辅助逻辑测试。
-- 更新 `doc/viewer-manual.md` 高级贴图覆盖说明。
+- 更新 `doc/world-simulator/viewer/viewer-manual.md` 高级贴图覆盖说明。
 
 ### Out of Scope
 - 本阶段不引入 AO/height/parallax/clearcoat 通道。

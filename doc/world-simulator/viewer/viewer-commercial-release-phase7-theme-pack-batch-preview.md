@@ -15,7 +15,7 @@
 - 新增批量预览脚本：
   - 一次执行完成多材质变体（`default/matte/glossy`）截图输出；
   - 每次运行生成独立输出目录，便于版本对比与留痕。
-- 更新 `doc/viewer-manual.md`、项目状态与 `doc/devlog/YYYY-MM-DD.md`。
+- 更新 `doc/world-simulator/viewer/viewer-manual.md`、项目状态与 `doc/devlog/YYYY-MM-DD.md`。
 
 ### Out of Scope
 - 不引入 DCC 全流程（建模软件工程、自动烘焙流水线、骨骼动画导出）。

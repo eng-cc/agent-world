@@ -12,7 +12,7 @@
 - `scripts/run-game-test.sh`
 - `crates/agent_world/src/viewer/live_split_part1.rs`
 - `crates/agent_world/src/viewer/live/tests.rs`
-- `doc/game-test.md`
+- `doc/playability_test_result/game-test.md`
 
 ## 状态
 - 当前阶段：已完成（T1~T5）

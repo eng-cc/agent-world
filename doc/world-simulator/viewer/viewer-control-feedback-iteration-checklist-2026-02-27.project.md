@@ -13,7 +13,7 @@
 - `doc/playability_test_result/archive/2026-02/card_2026_02_27_19_47_08.md`
 - `doc/world-simulator/viewer/viewer-first-session-goal-clarity-hardening-2026-02-27.md`
 - `scripts/run-game-test-ab.sh`
-- `doc/playability_test_card.md`
+- `doc/playability_test_result/playability_test_card.md`
 
 ## 状态
 - 当前阶段：已完成（T1~T7）

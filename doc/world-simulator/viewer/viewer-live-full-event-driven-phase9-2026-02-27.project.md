@@ -19,7 +19,7 @@
 - `scripts/viewer-release-qa-loop.sh`
 - `scripts/viewer-texture-inspector.sh`
 - `testing-manual.md`
-- `doc/viewer-manual.md`
+- `doc/world-simulator/viewer/viewer-manual.md`
 
 ## 状态
 - 当前阶段：已完成（T0~T4）

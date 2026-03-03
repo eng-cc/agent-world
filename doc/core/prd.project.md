@@ -6,6 +6,7 @@
 - [ ] TASK-CORE-003 (PRD-CORE-001/002): 建立跨模块变更影响检查清单（设计/代码/测试/发布）。
 - [ ] TASK-CORE-004 (PRD-CORE-002/003): 建立仓库级 PRD-ID 到测试证据映射模板。
 - [ ] TASK-CORE-005 (PRD-CORE-003): 对模块 PRD 进行季度一致性审查并形成审查记录。
+- [x] TASK-CORE-006 (PRD-CORE-001/002): 收敛 `doc/` 根目录 legacy redirect 入口并更新总导航。
 
 ## 依赖
 - `AGENTS.md`

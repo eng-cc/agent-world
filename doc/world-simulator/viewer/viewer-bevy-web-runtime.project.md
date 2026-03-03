@@ -15,7 +15,7 @@
 ### WBR3 Web 入口与手册
 - [x] WBR3.1 新增 `trunk` 页面入口（`crates/agent_world_viewer/index.html`）
 - [x] WBR3.2 新增 Web 启动脚本（`scripts/run-viewer-web.sh`）
-- [x] WBR3.3 更新 `doc/viewer-manual.md` Web 运行说明
+- [x] WBR3.3 更新 `doc/world-simulator/viewer/viewer-manual.md` Web 运行说明
 
 ### WBR4 回归与收口
 - [x] WBR4.1 执行 `test_tier_required` 最小回归（至少 viewer 相关 check/test）
@@ -32,7 +32,7 @@
 - `crates/agent_world_viewer/src/app_bootstrap.rs`
 - `crates/agent_world_viewer/index.html`
 - `scripts/run-viewer-web.sh`
-- `doc/viewer-manual.md`
+- `doc/world-simulator/viewer/viewer-manual.md`
 - `doc/world-simulator.project.md`
 
 ## 状态

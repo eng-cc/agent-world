@@ -8,7 +8,7 @@
 - [x] 明确搬迁来源清单（viewer-* + capture 脚本文档）
 
 ### 1. 中文基线手册搬迁
-- [x] 更新 `doc/viewer-manual.md`（新增操作章节）
+- [x] 更新 `doc/world-simulator/viewer/viewer-manual.md`（新增操作章节）
 - [x] 清理冲突口径（保持 Web 默认 / native fallback）
 - [x] 自检章节结构与命令可复制性
 
@@ -23,7 +23,7 @@
 - [x] 写任务日志（`doc/devlog/2026-02-15.md`）
 
 ## 依赖
-- 以 `doc/viewer-manual.md` 为中文基线。
+- 以 `doc/world-simulator/viewer/viewer-manual.md` 为中文基线。
 - 站点发布页面位于 `site/doc/cn|en/viewer-manual.html`。
 
 ## 状态

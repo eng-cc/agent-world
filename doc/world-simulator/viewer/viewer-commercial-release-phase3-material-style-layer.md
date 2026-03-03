@@ -12,7 +12,7 @@
 - 新增环境变量入口，支持通过十六进制颜色字符串（`#RRGGBB`）覆盖基础色与自发光色。
 - `setup_3d_scene` 接入覆盖逻辑（覆盖值优先、默认值兜底）。
 - 补齐配置解析测试与关键材质构建逻辑测试。
-- 更新 `doc/viewer-manual.md` 的材质风格配置说明。
+- 更新 `doc/world-simulator/viewer/viewer-manual.md` 的材质风格配置说明。
 
 ### Out of Scope
 - 本阶段不引入纹理贴图（albedo/normal/orm）自动装载管线。

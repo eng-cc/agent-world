@@ -13,7 +13,7 @@
 - `crates/agent_world/tests/viewer_offline_integration.rs`
 - `site/index.html`
 - `site/en/index.html`
-- `testing-manual.md` / `doc/viewer-manual.md`（如需）
+- `testing-manual.md` / `doc/world-simulator/viewer/viewer-manual.md`（如需）
 
 ## 状态
 - 当前阶段：已完成（T0~T4）

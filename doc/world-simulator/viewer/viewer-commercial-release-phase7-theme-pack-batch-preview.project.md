@@ -10,7 +10,7 @@
 ## 依赖
 - `crates/agent_world_viewer/assets/`
 - `scripts/capture-viewer-frame.sh`
-- `doc/viewer-manual.md`
+- `doc/world-simulator/viewer/viewer-manual.md`
 - `testing-manual.md`
 
 ## 状态

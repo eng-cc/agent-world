@@ -13,7 +13,7 @@
 - `crates/agent_world_viewer/src/egui_right_panel.rs`
 - `crates/agent_world_viewer/src/main.rs`
 - `scripts/generate-viewer-industrial-theme-assets.py`
-- `doc/viewer-manual.md`
+- `doc/world-simulator/viewer/viewer-manual.md`
 
 ## 状态
 - 当前阶段：Phase 8 全部完成。

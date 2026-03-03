@@ -23,7 +23,7 @@
   - `README.md`
   - `doc/game/gameplay-top-level-design.md`
   - `doc/game/gameplay-engineering-architecture.md`
-  - `doc/viewer-manual.md`
+  - `doc/world-simulator/viewer/viewer-manual.md`
 
 ## 里程碑
 - M0：建档与任务拆解。

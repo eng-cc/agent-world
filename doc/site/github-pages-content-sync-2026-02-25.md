@@ -21,7 +21,7 @@
 
 ## 接口/数据
 - 输入基线
-  - `doc/viewer-manual.md`
+  - `doc/world-simulator/viewer/viewer-manual.md`
   - `doc/world-simulator.project.md`
   - `doc/world-simulator/viewer/viewer-generic-focus-targets.md`
   - `doc/world-simulator/viewer/viewer-web-test-api-step-control-2026-02-24.md`
@@ -50,4 +50,4 @@
 - 风险：手册页超出当前可维护密度。
   - 缓解：仅同步能力口径，不扩展新章节结构。
 - 风险：代码能力继续演进导致页面再次过时。
-  - 缓解：以 `doc/viewer-manual.md` 作为后续同步基线，滚动更新。
+  - 缓解：以 `doc/world-simulator/viewer/viewer-manual.md` 作为后续同步基线，滚动更新。

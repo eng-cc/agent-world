@@ -9,7 +9,7 @@
 - `crates/agent_world_viewer/src/main.rs`
 - `crates/agent_world_viewer/src/app_bootstrap.rs`
 - `crates/agent_world_viewer/src/tests.rs`
-- `doc/viewer-manual.md`
+- `doc/world-simulator/viewer/viewer-manual.md`
 
 ## 状态
 - 当前阶段：VCR6 全部任务已完成（VCR6-0 ~ VCR6-2）。

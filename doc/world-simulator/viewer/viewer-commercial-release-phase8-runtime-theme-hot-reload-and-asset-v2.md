@@ -12,7 +12,7 @@
 - 新增右侧面板主题控制区（预设选择、自定义 preset 路径、应用按钮、热重载开关）。
 - 新增 `industrial_v2` 主题包（mesh + base/normal/metallic_roughness/emissive）。
 - 新增主题资产校验脚本（结构完整性、贴图尺寸、mesh 顶点阈值）。
-- 更新 `doc/viewer-manual.md`、项目管理文档与 `doc/devlog/2026-02-21.md`。
+- 更新 `doc/world-simulator/viewer/viewer-manual.md`、项目管理文档与 `doc/devlog/2026-02-21.md`。
 
 ### Out of Scope
 - 不引入骨骼动画、角色状态机动画、VFX 粒子系统。

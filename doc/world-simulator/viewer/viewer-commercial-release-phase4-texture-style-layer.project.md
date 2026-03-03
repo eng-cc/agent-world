@@ -11,7 +11,7 @@
 - `crates/agent_world_viewer/src/app_bootstrap.rs`
 - `crates/agent_world_viewer/src/main.rs`
 - `crates/agent_world_viewer/src/viewer_3d_config_profile_tests.rs`
-- `doc/viewer-manual.md`
+- `doc/world-simulator/viewer/viewer-manual.md`
 
 ## 状态
 - 当前阶段：VCR4-0 ~ VCR4-3 全部完成，Phase 4 已收口。

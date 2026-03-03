@@ -9,7 +9,7 @@
 
 ## 依赖
 - `crates/agent_world_viewer/src/egui_right_panel_chat.rs`
-- `doc/viewer-manual.md`
+- `doc/world-simulator/viewer/viewer-manual.md`
 - `doc/world-simulator/viewer/viewer-chat-prompt-presets-scroll.md`
 
 ## 状态

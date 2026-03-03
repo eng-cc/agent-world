@@ -12,7 +12,7 @@
 - 新增环境变量入口，支持传入贴图资源路径（`<path#label>`）。
 - `setup_3d_scene` 接入 `base_color_texture` 覆盖逻辑（有配置加载贴图，无配置保持默认）。
 - 补齐配置解析测试与关键辅助逻辑测试。
-- 更新 `doc/viewer-manual.md` 的贴图覆盖说明。
+- 更新 `doc/world-simulator/viewer/viewer-manual.md` 的贴图覆盖说明。
 
 ### Out of Scope
 - 本阶段不引入 normal/ORM/emissive 贴图自动装载。

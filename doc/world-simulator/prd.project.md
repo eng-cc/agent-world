@@ -11,6 +11,7 @@
 - [x] TASK-WORLD_SIMULATOR-008 (PRD-WORLD_SIMULATOR-004): `agent_world_client_launcher` 新增转账 UI 与提交流程（含输入校验、状态提示、错误展示）。
 - [x] TASK-WORLD_SIMULATOR-009 (PRD-WORLD_SIMULATOR-004/005): 完成启动器-链运行时转账闭环测试（`test_tier_required`）与测试证据沉淀。
 - [x] TASK-WORLD_SIMULATOR-010 (PRD-WORLD_SIMULATOR-001/002/003): 建立模块级专题任务映射索引（2026-03-02 批次）。
+- [x] TASK-WORLD_SIMULATOR-011 (PRD-WORLD_SIMULATOR-001/002): 将 Viewer 使用手册迁入 `viewer/` 主题目录并保留根目录兼容跳转。
 
 ## 专题任务映射（2026-03-02 批次）
 - [x] SUBTASK-WORLD_SIMULATOR-20260302-001 (PRD-WORLD_SIMULATOR-001/002/003): `doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.project.md`
@@ -45,4 +46,5 @@
 - 当前优先任务: 无（待新增任务）
 - 并行待办: 无
 - 专题映射状态: 2026-03-02 批次 9/9 已纳入模块项目管理文档。
+- 手册入口状态: `doc/world-simulator/viewer/viewer-manual.md` 为唯一活跃手册入口。
 - 说明: 本文档仅维护 world-simulator 模块设计执行状态；过程记录在 `doc/devlog/2026-03-03.md`。

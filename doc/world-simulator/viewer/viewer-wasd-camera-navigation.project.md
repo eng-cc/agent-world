@@ -18,13 +18,13 @@
 - [x] WCM3.3 执行 `test_tier_required` 最小回归（camera_controls + `cargo check`）
 
 ### WCM4 收口
-- [x] WCM4.1 更新 `doc/viewer-manual.md` 交互说明
+- [x] WCM4.1 更新 `doc/world-simulator/viewer/viewer-manual.md` 交互说明
 - [x] WCM4.2 更新项目文档状态与开发日志
 
 ## 依赖
 - `crates/agent_world_viewer/src/camera_controls.rs`
 - `crates/agent_world_viewer/src/app_bootstrap.rs`
-- `doc/viewer-manual.md`
+- `doc/world-simulator/viewer/viewer-manual.md`
 - `doc/world-simulator.project.md`
 
 ## 状态

@@ -5,7 +5,7 @@
 ### 0. 文档与基线
 - [x] 新增设计文档（`doc/site/site-manual-static-docs.md`）
 - [x] 新增项目管理文档（本文件）
-- [x] 明确内容基线（`doc/viewer-manual.md`）
+- [x] 明确内容基线（`doc/world-simulator/viewer/viewer-manual.md`）
 
 ### 1. 任务一：静态文档框架
 - [x] 新增 `site/doc/cn/index.html` 与 `site/doc/en/index.html`
@@ -27,9 +27,9 @@
 
 ## 依赖
 - 沿用现有 `site/` 静态部署与 `.github/workflows/pages.yml`。
-- 以 `doc/viewer-manual.md` 作为用户手册内容基线。
+- 以 `doc/world-simulator/viewer/viewer-manual.md` 作为用户手册内容基线。
 
 ## 状态
 - 当前阶段：已完成
 - 最近更新：完成 Viewer 手册中英文正文整理并发布到 `site/doc/cn|en`（2026-02-15）
-- 下一步：后续按 `doc/viewer-manual.md` 变更滚动同步站内手册正文。
+- 下一步：后续按 `doc/world-simulator/viewer/viewer-manual.md` 变更滚动同步站内手册正文。

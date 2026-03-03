@@ -8,7 +8,7 @@
 - [x] T4 测试与收口：补充/更新测试、回写文档状态、沉淀任务日志
 
 ## 依赖
-- `doc/game-test.md`
+- `doc/playability_test_result/game-test.md`
 - `doc/playability_test_result/archive/2026-02/card_2026_02_27_15_05_28.md`
 - `crates/agent_world_viewer/src/egui_right_panel_player_guide.rs`
 - `crates/agent_world_viewer/src/egui_right_panel_player_experience.rs`

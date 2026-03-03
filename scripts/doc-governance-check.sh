@@ -35,6 +35,7 @@ failures=0
 # Whitelist is keyed by project doc path to keep exemptions explicit and reviewable.
 readonly DESIGN_SECTION_EXEMPT_PROJECT_DOCS=(
   "doc/game-test.project.md"
+  "doc/playability_test_result/game-test.project.md"
 )
 
 fail() {

@@ -13,7 +13,7 @@
 - `crates/agent_world_viewer/src/scene_helpers.rs`
 - `crates/agent_world_viewer/src/world_overlay.rs`
 - `crates/agent_world_viewer/src/egui_right_panel.rs`
-- `doc/viewer-manual.md`
+- `doc/world-simulator/viewer/viewer-manual.md`
 
 ## 状态
 - 当前阶段：已完成

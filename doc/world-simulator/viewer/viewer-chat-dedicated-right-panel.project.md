@@ -14,7 +14,7 @@
 - `crates/agent_world_viewer/src/camera_controls.rs`
 - `crates/agent_world_viewer/src/selection_linking.rs`
 - `crates/agent_world_viewer/src/egui_right_panel_tests.rs`
-- `doc/viewer-manual.md`
+- `doc/world-simulator/viewer/viewer-manual.md`
 
 ## 状态
 - 当前阶段：DCR1-DCR5 已全部完成。

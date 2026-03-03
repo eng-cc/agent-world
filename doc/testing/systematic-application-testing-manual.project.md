@@ -26,7 +26,7 @@
 - `scripts/llm-longrun-stress.sh`
 - `testing-manual.md`
 - `doc/testing/web-ui-playwright-closure-manual.md`
-- `doc/viewer-manual.md`
+- `doc/world-simulator/viewer/viewer-manual.md`
 - `doc/world-simulator/scenario/scenario-files.md`
 - `doc/testing/ci-tiered-execution.md`
 - `doc/testing/ci-testcase-tiering.md`

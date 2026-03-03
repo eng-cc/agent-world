@@ -15,7 +15,7 @@
 - `crates/agent_world_viewer/src/i18n.rs`
 - `crates/agent_world_viewer/src/panel_layout.rs`
 - `crates/agent_world_viewer/src/egui_right_panel_tests.rs`
-- `doc/viewer-manual.md`
+- `doc/world-simulator/viewer/viewer-manual.md`
 - `doc/devlog/2026-02-21.md`
 
 ## 状态

@@ -6,7 +6,7 @@ cd "$ROOT_DIR"
 
 # Guardrail: this script is an automated regression sentinel for quantitative
 # probes only. Do not use it as a replacement for manual long-play evaluation
-# or final playability sign-off in doc/game-test.md.
+# or final playability sign-off in doc/playability_test_result/game-test.md.
 usage() {
   cat <<'USAGE'
 Usage: ./scripts/run-game-test-ab.sh [options] [run-game-test options...]

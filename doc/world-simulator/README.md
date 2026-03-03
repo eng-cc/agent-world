@@ -13,6 +13,9 @@
 - `archive/`: 历史归档文档。
 - `m4/`: M4 专题文档。
 
+## 专项手册
+- Viewer 使用手册：`doc/world-simulator/viewer/viewer-manual.md`
+
 ## 维护约定
 - 新文档按主题目录落位，不再默认平铺在模块根目录。
 - 模块行为变更需同步更新 `prd.md` 与 `prd.project.md`。

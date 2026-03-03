@@ -9,7 +9,7 @@
 
 ### WCT2 规范迁移
 - [x] WCT2.1 更新 `AGENTS.md` 闭环流程为 Web 默认
-- [x] WCT2.2 更新 `doc/viewer-manual.md` 闭环章节为 Web 默认
+- [x] WCT2.2 更新 `doc/world-simulator/viewer/viewer-manual.md` 闭环章节为 Web 默认
 - [x] WCT2.3 更新 `doc/scripts/capture-viewer-frame*.md` 为 fallback 口径
 - [x] WCT2.4 更新 `doc/world-simulator/viewer/viewer-bevy-web-runtime*.md` 增补策略约束
 
@@ -19,7 +19,7 @@
 
 ## 依赖
 - `AGENTS.md`
-- `doc/viewer-manual.md`
+- `doc/world-simulator/viewer/viewer-manual.md`
 - `doc/scripts/capture-viewer-frame.md`
 - `doc/scripts/capture-viewer-frame.project.md`
 - `doc/world-simulator/viewer/viewer-bevy-web-runtime.md`

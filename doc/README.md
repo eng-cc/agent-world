@@ -16,6 +16,12 @@
 ## 根目录入口说明
 - `doc/world-runtime.md` 与 `doc/world-runtime.project.md`：历史总览入口（legacy），当前模块主入口以 `doc/world-runtime/prd.md` 与 `doc/world-runtime/prd.project.md` 为准。
 - `doc/world-simulator.md` 与 `doc/world-simulator.project.md`：历史总览入口（legacy），当前模块主入口以 `doc/world-simulator/prd.md` 与 `doc/world-simulator/prd.project.md` 为准。
+- 以下文件为兼容跳转入口（legacy redirect），正文已迁移到模块目录：
+  - `doc/viewer-manual.md` -> `doc/world-simulator/viewer/viewer-manual.md`
+  - `doc/game-test.md` -> `doc/playability_test_result/game-test.md`
+  - `doc/game-test.project.md` -> `doc/playability_test_result/game-test.project.md`
+  - `doc/playability_test_card.md` -> `doc/playability_test_result/playability_test_card.md`
+  - `doc/playability_test_manual.md` -> `doc/playability_test_result/playability_test_manual.md`
 
 ## 模块入口矩阵
 | 模块 | PRD 主文档 | 项目管理文档 | 设计关注点 |

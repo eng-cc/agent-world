@@ -6,7 +6,7 @@
 
 ## 范围
 - `crates/agent_world_viewer/src/egui_right_panel_chat.rs` 的预设 Prompt 展开区域布局。
-- `doc/viewer-manual.md` 的交互说明补充。
+- `doc/world-simulator/viewer/viewer-manual.md` 的交互说明补充。
 - 不改动 Prompt 语义、apply 逻辑、消息发送逻辑。
 
 ## 接口/数据

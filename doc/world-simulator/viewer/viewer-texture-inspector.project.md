@@ -9,7 +9,7 @@
 - `scripts/capture-viewer-frame.sh`
 - `scripts/viewer-theme-pack-preview.sh`
 - `crates/agent_world_viewer/assets/themes/industrial_v1/presets/`
-- `doc/viewer-manual.md`
+- `doc/world-simulator/viewer/viewer-manual.md`
 - `testing-manual.md`
 
 ## 状态

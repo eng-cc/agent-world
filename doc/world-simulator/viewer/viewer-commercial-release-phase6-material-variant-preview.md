@@ -13,7 +13,7 @@
 - 新增运行时热切换快捷键（`F8`）用于循环切换预设。
 - 将预设系数应用到核心实体材质（agent/asset/power_plant/power_storage）的 roughness/metallic。
 - 补充单元测试，覆盖预设解析、切换顺序、系数与 clamp 行为。
-- 更新 `doc/viewer-manual.md` 与项目状态文档。
+- 更新 `doc/world-simulator/viewer/viewer-manual.md` 与项目状态文档。
 
 ### Out of Scope
 - 本阶段不引入运行中贴图资源热重载（文件监听/实时替换）。

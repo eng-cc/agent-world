@@ -10,7 +10,7 @@
 - `crates/agent_world_viewer/src/viewer_3d_config.rs`
 - `crates/agent_world_viewer/src/viewer_3d_config_profile_tests.rs`
 - `crates/agent_world_viewer/src/main.rs`
-- `doc/viewer-manual.md`
+- `doc/world-simulator/viewer/viewer-manual.md`
 
 ## 状态
 - 当前阶段：VCR1-0 ~ VCR1-3 全部完成。

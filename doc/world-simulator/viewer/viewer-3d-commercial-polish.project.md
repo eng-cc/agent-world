@@ -27,7 +27,7 @@
 - [x] C3D4.3 补齐后处理配置与回归测试
 
 ### C3D-5 收口
-- [x] C3D5.1 更新 `doc/viewer-manual.md` 商业化 3D 配置说明
+- [x] C3D5.1 更新 `doc/world-simulator/viewer/viewer-manual.md` 商业化 3D 配置说明
 - [x] C3D5.2 更新项目状态与 `doc/devlog/2026-02-20.md`
 - [x] C3D5.3 执行测试：`env -u RUSTC_WRAPPER cargo test -p agent_world_viewer`
 
@@ -36,7 +36,7 @@
 - `crates/agent_world_viewer/src/main.rs`
 - `crates/agent_world_viewer/src/scene_helpers.rs`
 - `crates/agent_world_viewer/src/material_library.rs`
-- `doc/viewer-manual.md`
+- `doc/world-simulator/viewer/viewer-manual.md`
 
 ## 状态
 - 当前阶段：C3D-0 ~ C3D-5 全部完成。
