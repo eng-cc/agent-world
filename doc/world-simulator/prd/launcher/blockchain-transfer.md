@@ -14,7 +14,7 @@
 - 项目管理：`doc/world-simulator/prd.project.md`
 - 追踪主键：`PRD-WORLD_SIMULATOR-004`、`PRD-WORLD_SIMULATOR-005`
 - 关键集成点：
-  - `doc/world-simulator/launcher/launcher-chain-runtime-decouple-2026-02-28.md`
+  - `doc/world-simulator/launcher/launcher-chain-runtime-decouple-2026-02-28.prd.md`
   - `crates/agent_world/src/bin/world_chain_runtime.rs`
   - `crates/agent_world_client_launcher/src/main.rs`
   - `crates/agent_world/src/runtime/world/event_processing/action_to_event_core.rs`

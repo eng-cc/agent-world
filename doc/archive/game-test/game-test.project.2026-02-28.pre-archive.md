@@ -43,7 +43,7 @@
 - `scripts/run-game-test-ab.sh`
 - `scripts/run-viewer-web.sh`
 - `world_viewer_live` (`cargo run -p agent_world --bin world_viewer_live`)
-- `doc/world-simulator/viewer/viewer-webgl-deferred-compat-2026-02-24.md`
+- `doc/world-simulator/viewer/viewer-webgl-deferred-compat-2026-02-24.prd.md`
 
 ## 测试记录
 - card_2026_02_25_12_20_02.md

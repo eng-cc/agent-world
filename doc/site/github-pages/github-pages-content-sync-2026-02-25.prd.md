@@ -23,8 +23,8 @@
 - 输入基线
   - `doc/world-simulator/viewer/viewer-manual.md`
   - `doc/world-simulator.prd.project.md`
-  - `doc/world-simulator/viewer/viewer-generic-focus-targets.md`
-  - `doc/world-simulator/viewer/viewer-web-test-api-step-control-2026-02-24.md`
+  - `doc/world-simulator/viewer/viewer-generic-focus-targets.prd.md`
+  - `doc/world-simulator/viewer/viewer-web-test-api-step-control-2026-02-24.prd.md`
   - `crates/agent_world/src/bin/world_viewer_live/cli.rs`
   - `crates/agent_world_viewer/src/web_test_api.rs`
   - `crates/agent_world_viewer/src/viewer_automation.rs`

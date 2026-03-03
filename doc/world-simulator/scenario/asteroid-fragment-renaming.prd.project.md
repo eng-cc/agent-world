@@ -1,0 +1,13 @@
+# Agent World Simulator：Asteroid Fragment 命名替换（项目管理文档）
+
+## 任务拆解（含 PRD-ID 映射）
+- [x] R0 输出设计文档与项目管理文档
+- [x] R1 代码/场景/工具/测试命名替换（统一为 asteroid_fragment）
+- [x] R2 文档命名替换与校对（含示例与说明）
+
+## 依赖
+- 场景文件加载与初始化流程
+- 生成器与配置结构（WorldConfig/WorldInitConfig）
+
+## 状态
+- 当前阶段：R2（已完成）

@@ -101,7 +101,7 @@
 - Acceptance Criteria:
   - AC-1: world-simulator PRD 覆盖场景、Viewer、LLM、启动器四条主线。
   - AC-2: world-simulator project 文档维护任务拆解与状态。
-  - AC-3: 与 `doc/world-simulator/scenario/scenario-files.md`、`doc/world-simulator/viewer/viewer-web-closure-testing-policy.md` 等专题文档一致。
+  - AC-3: 与 `doc/world-simulator/scenario/scenario-files.prd.md`、`doc/world-simulator/viewer/viewer-web-closure-testing-policy.prd.md` 等专题文档一致。
   - AC-4: 关键交互变更同步更新 testing 手册与测试记录。
   - AC-5: 分册内专题条款（接口/安全/测试）在主 PRD 中可定位、在项目文档中可执行。
   - AC-6: 统一验收清单覆盖场景、Viewer Web 闭环、启动器入口与证据模板，并与 `testing-manual.md` 一致。
@@ -127,9 +127,9 @@
 ## 4. Technical Specifications
 - Architecture Overview: world-simulator 连接 runtime 与 viewer，负责把世界状态转化为可交互体验，并通过场景系统与启动器提供可复现实验环境。专题能力通过分册文档按域维护。
 - Integration Points:
-  - `doc/world-simulator/scenario/scenario-files.md`
-  - `doc/world-simulator/viewer/viewer-web-closure-testing-policy.md`
-  - `doc/world-simulator/launcher/game-unified-launcher-2026-02-27.md`
+  - `doc/world-simulator/scenario/scenario-files.prd.md`
+  - `doc/world-simulator/viewer/viewer-web-closure-testing-policy.prd.md`
+  - `doc/world-simulator/launcher/game-unified-launcher-2026-02-27.prd.md`
   - `doc/world-simulator/prd/acceptance/unified-checklist.md`
   - `doc/world-simulator/prd/acceptance/web-llm-evidence-template.md`
   - `doc/world-simulator/prd/quality/experience-trend-tracking.md`

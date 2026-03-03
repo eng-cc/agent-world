@@ -16,14 +16,14 @@
   - 统计目录分布、活跃/归档/日志分层占比、超行数文件
 - 人工复核（重点样本）：
   - 逐篇复核阶段性 LLM 文档及其后续替代文档：
-    - `doc/world-simulator/archive/llm-build-chain-actions.md`
-    - `doc/world-simulator/archive/llm-build-chain-actions.project.md`
-    - `doc/world-simulator/archive/llm-factory-actions.md`
-    - `doc/world-simulator/archive/llm-factory-actions.project.md`
-    - `doc/world-simulator/llm/llm-factory-strategy-optimization.md`
-    - `doc/world-simulator/llm/llm-factory-strategy-optimization.project.md`
-    - `doc/world-simulator/llm/llm-industrial-mining-debug-tools.md`
-    - `doc/world-simulator/llm/llm-industrial-mining-debug-tools.project.md`
+    - `doc/world-simulator/archive/llm-build-chain-actions.prd.md`
+    - `doc/world-simulator/archive/llm-build-chain-actions.prd.project.md`
+    - `doc/world-simulator/archive/llm-factory-actions.prd.md`
+    - `doc/world-simulator/archive/llm-factory-actions.prd.project.md`
+    - `doc/world-simulator/llm/llm-factory-strategy-optimization.prd.md`
+    - `doc/world-simulator/llm/llm-factory-strategy-optimization.prd.project.md`
+    - `doc/world-simulator/llm/llm-industrial-mining-debug-tools.prd.md`
+    - `doc/world-simulator/llm/llm-industrial-mining-debug-tools.prd.project.md`
   - 对照当前实现：
     - `crates/agent_world/src/simulator/llm_agent/decision_flow.rs`
     - `crates/agent_world/src/simulator/llm_agent/prompt_assembly.rs`
@@ -44,10 +44,10 @@
   - 活跃文档 markdown 断链：`0`
   - 活跃文档高风险引用：集中在阶段性历史产物路径（`output/*`），不影响当前代码实现口径
 - 新增归档（本轮）：
-  - `doc/world-simulator/archive/llm-build-chain-actions.md`
-  - `doc/world-simulator/archive/llm-build-chain-actions.project.md`
-  - `doc/world-simulator/archive/llm-factory-actions.md`
-  - `doc/world-simulator/archive/llm-factory-actions.project.md`
+  - `doc/world-simulator/archive/llm-build-chain-actions.prd.md`
+  - `doc/world-simulator/archive/llm-build-chain-actions.prd.project.md`
+  - `doc/world-simulator/archive/llm-factory-actions.prd.md`
+  - `doc/world-simulator/archive/llm-factory-actions.prd.project.md`
 - 归档理由：
   - 上述文档覆盖的是早期“动作接入/建造链路”阶段目标，已被后续 LFO/MMD 文档与当前实现替代。
   - 文档中“Out of Scope”与当前实现状态存在阶段性偏差（例如后续已完成更深层闭环与 guardrail 收敛）。

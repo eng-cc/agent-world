@@ -480,15 +480,15 @@ bash "$PWCLI" close
 - 连接失败：检查 `world_viewer_live` 是否运行、端口与 viewer 地址是否一致。
 
 ## 参考文档
-- `doc/world-simulator/viewer/viewer-location-fine-grained-rendering.md`
-- `doc/world-simulator/viewer/viewer-auto-focus-capture.md`
-- `doc/world-simulator/viewer/viewer-web-closure-testing-policy.md`
-- `doc/world-simulator/viewer/viewer-selection-details.md`
-- `doc/world-simulator/viewer/viewer-right-panel-module-visibility.md`
-- `doc/world-simulator/viewer/viewer-web-fullscreen-panel-toggle.md`
-- `doc/world-simulator/viewer/viewer-overview-map-zoom.md`
-- `doc/world-simulator/viewer/viewer-agent-quick-locate.md`
-- `doc/world-simulator/viewer/viewer-copyable-text.md`
+- `doc/world-simulator/viewer/viewer-location-fine-grained-rendering.prd.md`
+- `doc/world-simulator/viewer/viewer-auto-focus-capture.prd.md`
+- `doc/world-simulator/viewer/viewer-web-closure-testing-policy.prd.md`
+- `doc/world-simulator/viewer/viewer-selection-details.prd.md`
+- `doc/world-simulator/viewer/viewer-right-panel-module-visibility.prd.md`
+- `doc/world-simulator/viewer/viewer-web-fullscreen-panel-toggle.prd.md`
+- `doc/world-simulator/viewer/viewer-overview-map-zoom.prd.md`
+- `doc/world-simulator/viewer/viewer-agent-quick-locate.prd.md`
+- `doc/world-simulator/viewer/viewer-copyable-text.prd.md`
 - `doc/scripts/viewer-tools/capture-viewer-frame.md`（native fallback）
 
 ## Fragment 元素分块渲染（默认开启）

@@ -51,7 +51,7 @@
 
 ### 4. 社会系统（电力/硬件/数据）
 - [ ] 电力供给/存储/消耗闭环（峰谷、停电、迁移成本；M4.1~M4.3 已在 `doc/world-simulator/m4/m4-power-system*.md` 完成，后续聚焦 M4.4）
-- [x] 输出 M4 工业生产链与 Recipe/Product/Factory WASM 接口分册（`doc/world-simulator/m4/m4-industrial-economy-wasm.md`、`doc/world-simulator/m4/m4-industrial-economy-wasm.project.md`）
+- [x] 输出 M4 工业生产链与 Recipe/Product/Factory WASM 接口分册（`doc/world-simulator/m4/m4-industrial-economy-wasm.prd.md`、`doc/world-simulator/m4/m4-industrial-economy-wasm.prd.project.md`）
 - [x] 接入 M4 内置工业模块包（factory/recipe/product）与治理安装入口（`install_m4_economy_bootstrap_modules`）
 - [x] 接入 Product 模块在线校验动作（`ValidateProductWithModule` -> `ValidateProduct` + `ProductValidated`）
 - [x] 接入配方完工自动 Product 校验与入账门禁（校验失败阻断产物/副产物入库）
@@ -70,15 +70,15 @@
 - [x] 任务分册：3D 渲染物理准确性（`doc/world-simulator/rendering-physical-accuracy.project.md`，RPA-1 已完成）
 - [x] Viewer 可观测性增强：Agent 活动面板与世界背景参照（边界盒 + 地板网格）
 - [x] 修复 viewer 多相机渲染歧义（Camera order）并恢复 3D 交互
-- [x] 输出 viewer 选中详情设计文档（`doc/world-simulator/viewer/viewer-selection-details.md`）
-- [x] 输出 viewer 选中详情项目管理文档（`doc/world-simulator/viewer/viewer-selection-details.project.md`）
+- [x] 输出 viewer 选中详情设计文档（`doc/world-simulator/viewer/viewer-selection-details.prd.md`）
+- [x] 输出 viewer 选中详情项目管理文档（`doc/world-simulator/viewer/viewer-selection-details.prd.project.md`）
 - [x] Viewer 选中对象详情面板（Agent/Location）+ LLM 输入输出展示
 - [x] Viewer 选中对象详情扩展（Asset/PowerPlant/PowerStorage/Chunk）
-- [x] 输出 Viewer Agent 尺寸可观测与比例校验设计文档（`doc/world-simulator/viewer/viewer-agent-size-inspection.md`）
-- [x] 输出 Viewer Agent 尺寸可观测与比例校验项目管理文档（`doc/world-simulator/viewer/viewer-agent-size-inspection.project.md`）
+- [x] 输出 Viewer Agent 尺寸可观测与比例校验设计文档（`doc/world-simulator/viewer/viewer-agent-size-inspection.prd.md`）
+- [x] 输出 Viewer Agent 尺寸可观测与比例校验项目管理文档（`doc/world-simulator/viewer/viewer-agent-size-inspection.prd.project.md`）
 - [x] Viewer 选中 Agent 详情新增尺寸字段（身高/Location 半径/比例）
-- [x] 输出 Viewer 启动自动化步骤设计文档（`doc/world-simulator/viewer/viewer-auto-select-capture.md`）
-- [x] 输出 Viewer 启动自动化步骤项目管理文档（`doc/world-simulator/viewer/viewer-auto-select-capture.project.md`）
+- [x] 输出 Viewer 启动自动化步骤设计文档（`doc/world-simulator/viewer/viewer-auto-select-capture.prd.md`）
+- [x] 输出 Viewer 启动自动化步骤项目管理文档（`doc/world-simulator/viewer/viewer-auto-select-capture.prd.project.md`）
 - [x] Viewer 启动自动化步骤（mode/focus/pan/zoom/orbit/select）+ 脚本透传，支持无人工闭环验证
 - [x] 可视化设计文档补充“信息直达”原则并盘点现状缺口
 - [x] 在线模式支持任意 tick seek（reset+replay，含不可达保护）
@@ -104,54 +104,54 @@
 - [x] 控制按钮 hover/pressed 可点击反馈
 - [x] Step 等待态 loading（`Step ...`）与 pending 去重
 - [x] 右侧滚轮命中改为按 UI 实际边界（ComputedNode）判定，修复上下半区随机串滚
-- [x] 输出 Viewer UI 多语言支持设计文档（`doc/world-simulator/viewer/viewer-i18n.md`）
-- [x] 输出 Viewer UI 多语言支持项目管理文档（`doc/world-simulator/viewer/viewer-i18n.project.md`）
+- [x] 输出 Viewer UI 多语言支持设计文档（`doc/world-simulator/viewer/viewer-i18n.prd.md`）
+- [x] 输出 Viewer UI 多语言支持项目管理文档（`doc/world-simulator/viewer/viewer-i18n.prd.project.md`）
 - [x] Viewer UI 多语言落地：默认中文 + 顶部语言切换（中文/English）
 - [x] Viewer UI 多语言文案迁移（status/selection/timeline/diagnosis/overlay/link/details）
 - [x] Viewer UI 多语言回归测试通过（`cargo test -p agent_world_viewer`）
 - [x] Viewer 中文字体渲染修复（引入 `ms-yahei.ttf`，解决方块字）
-- [x] 输出 Viewer 面向开放世界沙盒可玩化准备设计文档（`doc/world-simulator/viewer/viewer-open-world-sandbox-readiness.md`）
-- [x] 输出 Viewer 面向开放世界沙盒可玩化准备项目管理文档（`doc/world-simulator/viewer/viewer-open-world-sandbox-readiness.project.md`）
+- [x] 输出 Viewer 面向开放世界沙盒可玩化准备设计文档（`doc/world-simulator/viewer/viewer-open-world-sandbox-readiness.prd.md`）
+- [x] 输出 Viewer 面向开放世界沙盒可玩化准备项目管理文档（`doc/world-simulator/viewer/viewer-open-world-sandbox-readiness.prd.project.md`）
 - [x] 可玩化准备主线：OWR1~OWR4（观察态/Prompt Ops/3D 表达优化/规模化稳定性）【已完成：OWR1~OWR4 全链路收口，含稳定性基线】
-- [x] 输出 Viewer 工业风可视化缺口收敛设计文档（`doc/world-simulator/viewer/viewer-industrial-visual-closure.md`）
-- [x] 输出 Viewer 工业风可视化缺口收敛项目管理文档（`doc/world-simulator/viewer/viewer-industrial-visual-closure.project.md`）
+- [x] 输出 Viewer 工业风可视化缺口收敛设计文档（`doc/world-simulator/viewer/viewer-industrial-visual-closure.prd.md`）
+- [x] 输出 Viewer 工业风可视化缺口收敛项目管理文档（`doc/world-simulator/viewer/viewer-industrial-visual-closure.prd.project.md`）
 - [x] 工业风缺口收敛任务 A（产线 + 物流可视化）
 - [x] 工业风缺口收敛任务 B（经营面板）
 - [x] 工业风缺口收敛任务 C（多尺度导航 + 告警根因）
 - [x] 工业风缺口收敛任务 D（产品化表现层）
-- [x] 输出 Viewer 2D 可视化精修设计文档（`doc/world-simulator/viewer/viewer-2d-visual-polish.md`）
-- [x] 输出 Viewer 2D 可视化精修项目管理文档（`doc/world-simulator/viewer/viewer-2d-visual-polish.project.md`）
+- [x] 输出 Viewer 2D 可视化精修设计文档（`doc/world-simulator/viewer/viewer-2d-visual-polish.prd.md`）
+- [x] 输出 Viewer 2D 可视化精修项目管理文档（`doc/world-simulator/viewer/viewer-2d-visual-polish.prd.project.md`）
 - [x] Viewer 2D 可视化精修任务 1（地图符号层）
 - [x] Viewer 2D 可视化精修任务 2（标签可读性增强）
 - [x] Viewer 2D 可视化精修任务 3（流向层工业化表达）
-- [x] Viewer 事件联动新增“快速定位 Agent”按钮（`doc/world-simulator/viewer/viewer-agent-quick-locate.project.md`）
-- [x] 输出 Viewer 2D/3D 可视化清晰度修复设计文档（`doc/world-simulator/viewer/viewer-2d-3d-clarity-fix.md`）
-- [x] 输出 Viewer 2D/3D 可视化清晰度修复项目管理文档（`doc/world-simulator/viewer/viewer-2d-3d-clarity-fix.project.md`）
+- [x] Viewer 事件联动新增“快速定位 Agent”按钮（`doc/world-simulator/viewer/viewer-agent-quick-locate.prd.project.md`）
+- [x] 输出 Viewer 2D/3D 可视化清晰度修复设计文档（`doc/world-simulator/viewer/viewer-2d-3d-clarity-fix.prd.md`）
+- [x] 输出 Viewer 2D/3D 可视化清晰度修复项目管理文档（`doc/world-simulator/viewer/viewer-2d-3d-clarity-fix.prd.project.md`）
 - [x] Viewer 2D/3D 可视化清晰度修复任务 1（Location 尺度映射修复）
 - [x] Viewer 2D/3D 可视化清晰度修复任务 2（2D 自动聚焦缩放同步）
 - [x] Viewer 2D/3D 可视化清晰度修复任务 3（默认信息密度收敛与回归）
 - [x] Viewer 编译告警清理（移除 `agent_world_viewer` 中 location detail 遗留 dead code 与未使用依赖）
-- [x] 输出 Viewer Frag 实际比例与选中显示修复设计文档（`doc/world-simulator/viewer/viewer-frag-scale-selection-fix.md`）
-- [x] 输出 Viewer Frag 实际比例与选中显示修复项目管理文档（`doc/world-simulator/viewer/viewer-frag-scale-selection-fix.project.md`）
+- [x] 输出 Viewer Frag 实际比例与选中显示修复设计文档（`doc/world-simulator/viewer/viewer-frag-scale-selection-fix.prd.md`）
+- [x] 输出 Viewer Frag 实际比例与选中显示修复项目管理文档（`doc/world-simulator/viewer/viewer-frag-scale-selection-fix.prd.project.md`）
 - [x] Viewer Frag 实际比例修复（尺寸按数据口径线性映射）
 - [x] Viewer Frag 选中显示修复（选中/取消选中保持原始比例）
 - [x] Viewer Frag 二次修复（避免点击误选不可见 location 锚点；frag 选中不再缩放）
 - [x] Viewer Frag 三次修复（移除 frag 选中黄色 halo；修正 Agent 尺度量纲）
 - [x] Viewer Frag 四次修复（相机 near/far 与缩放下限按世界单位映射，恢复 Agent 放大可见性）
-- [x] 输出 Viewer 全览图缩放切换设计文档（`doc/world-simulator/viewer/viewer-overview-map-zoom.md`）
-- [x] 输出 Viewer 全览图缩放切换项目管理文档（`doc/world-simulator/viewer/viewer-overview-map-zoom.project.md`）
+- [x] 输出 Viewer 全览图缩放切换设计文档（`doc/world-simulator/viewer/viewer-overview-map-zoom.prd.md`）
+- [x] 输出 Viewer 全览图缩放切换项目管理文档（`doc/world-simulator/viewer/viewer-overview-map-zoom.prd.project.md`）
 - [x] Viewer 全览图缩放切换（默认近景倍率 + 缩放阈值自动切换全览图）
-- [x] 输出 Viewer 2D/3D WASD 相机移动设计文档（`doc/world-simulator/viewer/viewer-wasd-camera-navigation.md`）
-- [x] 输出 Viewer 2D/3D WASD 相机移动项目管理文档（`doc/world-simulator/viewer/viewer-wasd-camera-navigation.project.md`）
+- [x] 输出 Viewer 2D/3D WASD 相机移动设计文档（`doc/world-simulator/viewer/viewer-wasd-camera-navigation.prd.md`）
+- [x] 输出 Viewer 2D/3D WASD 相机移动项目管理文档（`doc/world-simulator/viewer/viewer-wasd-camera-navigation.prd.project.md`）
 - [x] Viewer 2D/3D 交互新增 WASD 相机移动（含测试回归）
-- [x] 输出 Viewer Bevy 浏览器运行路径设计文档（`doc/world-simulator/viewer/viewer-bevy-web-runtime.md`）
-- [x] 输出 Viewer Bevy 浏览器运行路径项目管理文档（`doc/world-simulator/viewer/viewer-bevy-web-runtime.project.md`）
+- [x] 输出 Viewer Bevy 浏览器运行路径设计文档（`doc/world-simulator/viewer/viewer-bevy-web-runtime.prd.md`）
+- [x] 输出 Viewer Bevy 浏览器运行路径项目管理文档（`doc/world-simulator/viewer/viewer-bevy-web-runtime.prd.project.md`）
 - [x] Viewer 浏览器运行路径接入（wasm 编译兼容 + trunk 启动入口）
-- [x] 输出 Viewer Web 端闭环测试策略设计文档（`doc/world-simulator/viewer/viewer-web-closure-testing-policy.md`）
-- [x] 输出 Viewer Web 端闭环测试策略项目管理文档（`doc/world-simulator/viewer/viewer-web-closure-testing-policy.project.md`）
+- [x] 输出 Viewer Web 端闭环测试策略设计文档（`doc/world-simulator/viewer/viewer-web-closure-testing-policy.prd.md`）
+- [x] 输出 Viewer Web 端闭环测试策略项目管理文档（`doc/world-simulator/viewer/viewer-web-closure-testing-policy.prd.project.md`）
 - [x] Viewer 闭环测试默认切换到 Web 端（Playwright）
-- [x] 输出 Viewer WebSocket/HTTP bridge 设计文档（`doc/world-simulator/viewer/viewer-websocket-http-bridge.md`）
-- [x] 输出 Viewer WebSocket/HTTP bridge 项目管理文档（`doc/world-simulator/viewer/viewer-websocket-http-bridge.project.md`）
+- [x] 输出 Viewer WebSocket/HTTP bridge 设计文档（`doc/world-simulator/viewer/viewer-websocket-http-bridge.prd.md`）
+- [x] 输出 Viewer WebSocket/HTTP bridge 项目管理文档（`doc/world-simulator/viewer/viewer-websocket-http-bridge.prd.project.md`）
 - [x] Viewer Web 在线 bridge 接入（WebSocket/HTTP -> live TCP）
 - [x] Viewer Web bridge 刷新重连稳定性修复（断连回收 upstream + 重连回归测试）
 
@@ -180,8 +180,8 @@
 - [x] 补充分块生成回放一致性与性能回归测试（CG10）
 
 ### 8. LLM Agent 行为落地
-- [x] 输出 LLM Agent 落地设计文档（`doc/world-simulator/llm/llm-agent-behavior.md`）
-- [x] 输出对应项目管理文档（`doc/world-simulator/llm/llm-agent-behavior.project.md`）
+- [x] 输出 LLM Agent 落地设计文档（`doc/world-simulator/llm/llm-agent-behavior.prd.md`）
+- [x] 输出对应项目管理文档（`doc/world-simulator/llm/llm-agent-behavior.prd.project.md`）
 - [x] 新增 `LlmAgentBehavior`（OpenAI 兼容 chat/completions）
 - [x] 新增 `config.toml` 配置读取与 `AGENT_WORLD_LLM_SYSTEM_PROMPT` 默认值
 - [x] 新增 LLM 决策解析与失败降级（`Wait`）
@@ -189,15 +189,15 @@
 - [x] 新增可运行 LLM demo：`world_llm_agent_demo`（`AgentRunner + LlmAgentBehavior`）
 - [x] 在线 viewer 支持 LLM 决策驱动（`world_viewer_live --llm`）
 - [x] 修复 viewer 3D 相机拖拽输入兼容性（支持触控板/Shift+左键平移）
-- [x] 输出 LLM Prompt 组装重构与多步机制设计文档（`doc/world-simulator/llm/llm-prompt-multi-step-orchestration.md`）
-- [x] 输出对应项目管理文档（`doc/world-simulator/llm/llm-prompt-multi-step-orchestration.project.md`）
-- [x] 输出 LLM 建造链路动作扩展设计文档（已归档：`doc/world-simulator/archive/llm-build-chain-actions.md`）
-- [x] 输出对应项目管理文档（已归档：`doc/world-simulator/archive/llm-build-chain-actions.project.md`）
+- [x] 输出 LLM Prompt 组装重构与多步机制设计文档（`doc/world-simulator/llm/llm-prompt-multi-step-orchestration.prd.md`）
+- [x] 输出对应项目管理文档（`doc/world-simulator/llm/llm-prompt-multi-step-orchestration.prd.project.md`）
+- [x] 输出 LLM 建造链路动作扩展设计文档（已归档：`doc/world-simulator/archive/llm-build-chain-actions.prd.md`）
+- [x] 输出对应项目管理文档（已归档：`doc/world-simulator/archive/llm-build-chain-actions.prd.project.md`）
 - [x] 扩展 LLM 决策动作到建造链路 V1（`transfer_resource` / `refine_compound`）并完成 Web 闭环验收
 
 ### 9. 场景测试覆盖矩阵
-- [x] 在 `doc/world-simulator/scenario/scenario-files.md` 补充“场景 → 测试目标”矩阵
-- [x] 在 `doc/world-simulator/scenario/scenario-files.project.md` 记录矩阵任务与状态
+- [x] 在 `doc/world-simulator/scenario/scenario-files.prd.md` 补充“场景 → 测试目标”矩阵
+- [x] 在 `doc/world-simulator/scenario/scenario-files.prd.project.md` 记录矩阵任务与状态
 - [x] 新增 `llm_bootstrap` 场景并接入 scenario 枚举/解析/测试矩阵
 
 ### 9. 背景故事物理一致性修订
@@ -217,37 +217,37 @@
 - [x] T4 边界测试（极端参数下稳定性）
 
 ### 10. 规则模块化迁移准备（KRH）
-- [x] 输出 KRH 设计文档（`doc/world-simulator/kernel/kernel-rule-hook-foundation.md`）
-- [x] 输出 KRH 项目管理文档（`doc/world-simulator/kernel/kernel-rule-hook-foundation.project.md`）
+- [x] 输出 KRH 设计文档（`doc/world-simulator/kernel/kernel-rule-hook-foundation.prd.md`）
+- [x] 输出 KRH 项目管理文档（`doc/world-simulator/kernel/kernel-rule-hook-foundation.prd.project.md`）
 - [x] KRH-1 内核动作行为基线回归测试（`kernel_action_behavior_snapshot_stays_stable`）
 - [x] KRH-2 `WorldKernel::step` 接入 pre/post Hook（默认 no-op）
 - [x] KRH-3 规则决策结构与合并（deny/modify/allow + merge）
 - [x] KRH-4 回归验证与文档收口（`cargo test -p agent_world`）
 
 ### 11. 规则 Wasm 化就绪（KWR）
-- [x] 输出 KWR 设计文档（`doc/world-simulator/kernel/kernel-rule-wasm-readiness.md`）
-- [x] 输出 KWR 项目管理文档（`doc/world-simulator/kernel/kernel-rule-wasm-readiness.project.md`）
+- [x] 输出 KWR 设计文档（`doc/world-simulator/kernel/kernel-rule-wasm-readiness.prd.md`）
+- [x] 输出 KWR 项目管理文档（`doc/world-simulator/kernel/kernel-rule-wasm-readiness.prd.project.md`）
 - [x] KWR-1 pre-action hook 接口扩展为可读取 `&WorldKernel` 上下文
 - [x] KWR-2 基于上下文的规则测试与兼容回归
 - [x] KWR-3 回归验证与文档收口
 
 ### 12. 规则 Wasm 执行接线基础（KWE）
-- [x] 输出 KWE 设计文档（`doc/world-simulator/kernel/kernel-rule-wasm-executor-foundation.md`）
-- [x] 输出 KWE 项目管理文档（`doc/world-simulator/kernel/kernel-rule-wasm-executor-foundation.project.md`）
+- [x] 输出 KWE 设计文档（`doc/world-simulator/kernel/kernel-rule-wasm-executor-foundation.prd.md`）
+- [x] 输出 KWE 项目管理文档（`doc/world-simulator/kernel/kernel-rule-wasm-executor-foundation.prd.project.md`）
 - [x] KWE-1 规则 wasm 输入/输出契约与可选 pre-action 评估入口
 - [x] KWE-2 wasm 接线测试（allow/deny/modify/错误兜底）
 - [x] KWE-3 回归验证与文档收口
 
 ### 13. 规则 Wasm Sandbox 桥接（KWS）
-- [x] 输出 KWS 设计文档（`doc/world-simulator/kernel/kernel-rule-wasm-sandbox-bridge.md`）
-- [x] 输出 KWS 项目管理文档（`doc/world-simulator/kernel/kernel-rule-wasm-sandbox-bridge.project.md`）
+- [x] 输出 KWS 设计文档（`doc/world-simulator/kernel/kernel-rule-wasm-sandbox-bridge.prd.md`）
+- [x] 输出 KWS 项目管理文档（`doc/world-simulator/kernel/kernel-rule-wasm-sandbox-bridge.prd.project.md`）
 - [x] KWS-1 基于 `ModuleSandbox` 的 pre-action wasm 桥接 API 与输入/输出转换
 - [x] KWS-2 sandbox 桥接测试（请求编码、allow/deny/modify、失败兜底）
 - [x] KWS-3 回归验证与文档收口
 
 ### 14. 规则 Wasm 模块装载治理（KWM）
-- [x] 输出 KWM 设计文档（`doc/world-simulator/kernel/kernel-rule-wasm-module-governance.md`）
-- [x] 输出 KWM 项目管理文档（`doc/world-simulator/kernel/kernel-rule-wasm-module-governance.project.md`）
+- [x] 输出 KWM 设计文档（`doc/world-simulator/kernel/kernel-rule-wasm-module-governance.prd.md`）
+- [x] 输出 KWM 项目管理文档（`doc/world-simulator/kernel/kernel-rule-wasm-module-governance.prd.project.md`）
 - [x] KWM-1 wasm rule artifact 注册表与按 hash 激活 API
 - [x] KWM-2 装载治理测试（missing hash / 冲突注册 / 激活成功路径）
 - [x] KWM-3 回归验证与文档收口

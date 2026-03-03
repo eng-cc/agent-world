@@ -53,10 +53,10 @@
 - `doc/p2p/p2p-doc-consolidation.md`：迁移清单链接改为 `doc/p2p/archive/migration-map.md`。
 - `doc/site/site-manual-static-docs.project.md`：任务日志路径统一为 `doc/devlog/2026-02-15.md`。
 - `doc/site/viewer-manual-content-migration-2026-02-15.project.md`：任务日志路径统一为 `doc/devlog/2026-02-15.md`。
-- `doc/world-simulator/kernel/kernel-rule-wasm-sandbox-bridge.project.md`：依赖路径改为 `crates/agent_world_wasm_executor/src/lib.rs`。
+- `doc/world-simulator/kernel/kernel-rule-wasm-sandbox-bridge.prd.project.md`：依赖路径改为 `crates/agent_world_wasm_executor/src/lib.rs`。
 - `doc/world-simulator/rust-wasm-build-suite.project.md`：依赖路径改为 `crates/agent_world_wasm_executor/src/lib.rs`。
-- `doc/world-simulator/llm/llm-factory-strategy-optimization.md`：移除已失效测试文件路径，改为现有测试文件组织描述。
-- `doc/world-simulator/llm/llm-prompt-multi-step-orchestration.md`：将 tools/tool_calls 调整为术语描述，避免误导为仓库路径。
+- `doc/world-simulator/llm/llm-factory-strategy-optimization.prd.md`：移除已失效测试文件路径，改为现有测试文件组织描述。
+- `doc/world-simulator/llm/llm-prompt-multi-step-orchestration.prd.md`：将 tools/tool_calls 调整为术语描述，避免误导为仓库路径。
 
 ## 结论
 - 本轮归档判定已完成，文档树中“历史迁移/发布阶段文档”已转入对应 `archive/`。

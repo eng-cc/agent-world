@@ -25,13 +25,13 @@
 - 输入文档
   - `doc/world-simulator/viewer/viewer-manual.md`
   - `doc/scripts/viewer-tools/capture-viewer-frame.prd.md`
-  - `doc/world-simulator/viewer/viewer-auto-select-capture.md`
-  - `doc/world-simulator/viewer/viewer-right-panel-module-visibility.md`
-  - `doc/world-simulator/viewer/viewer-selection-details.md`
-  - `doc/world-simulator/viewer/viewer-agent-quick-locate.md`
-  - `doc/world-simulator/viewer/viewer-overview-map-zoom.md`
-  - `doc/world-simulator/viewer/viewer-copyable-text.md`
-  - `doc/world-simulator/viewer/viewer-i18n.md`
+  - `doc/world-simulator/viewer/viewer-auto-select-capture.prd.md`
+  - `doc/world-simulator/viewer/viewer-right-panel-module-visibility.prd.md`
+  - `doc/world-simulator/viewer/viewer-selection-details.prd.md`
+  - `doc/world-simulator/viewer/viewer-agent-quick-locate.prd.md`
+  - `doc/world-simulator/viewer/viewer-overview-map-zoom.prd.md`
+  - `doc/world-simulator/viewer/viewer-copyable-text.prd.md`
+  - `doc/world-simulator/viewer/viewer-i18n.prd.md`
 - 输出文件
   - `doc/world-simulator/viewer/viewer-manual.md`
   - `site/doc/cn/viewer-manual.html`

@@ -11,7 +11,7 @@
 - [x] TASK-ENGINEERING-008 (PRD-ENGINEERING-004): 按“逐篇阅读 + 人工重写”完成老格式文档迁移试点（`oversized-rust-file-splitting-round3-2026-02-23`）并补齐内容保真映射。
 - [ ] TASK-ENGINEERING-009 (PRD-ENGINEERING-004): 按模块分批推进活跃老格式文档逐篇人工迁移并持续回写 PRD-ID / project / devlog。
 - [x] TASK-ENGINEERING-010 (PRD-ENGINEERING-005/006/007): 产出四人并行迁移协作方案与 2026-03-03 待迁移清单快照，冻结迁移原则和目录责任域。
-- [ ] TASK-ENGINEERING-011 (PRD-ENGINEERING-006): Owner-A 迁移 `doc/world-simulator/**` 待迁移文档（161 篇）。
+- [x] TASK-ENGINEERING-011 (PRD-ENGINEERING-006): Owner-A 迁移 `doc/world-simulator/**` 待迁移文档（161 篇）。
 - [x] TASK-ENGINEERING-012 (PRD-ENGINEERING-006): Owner-B 迁移 `doc/p2p/**` 待迁移文档（115 篇）。
 - [x] TASK-ENGINEERING-013 (PRD-ENGINEERING-006): Owner-C 迁移 `doc/world-runtime/**`、`doc/headless-runtime/**`、`doc/archive/root-history/**` 待迁移文档（52 篇）。
 - [x] TASK-ENGINEERING-013A (PRD-ENGINEERING-006): Owner-C Batch-C1 迁移 `doc/archive/root-history/**` 待迁移文档（7 篇）。
@@ -38,7 +38,7 @@
 ## 状态
 - 更新日期: 2026-03-03
 - 当前状态: active
-- 下一任务: TASK-ENGINEERING-011（并行）/ TASK-ENGINEERING-015（收口复核）
+- 下一任务: TASK-ENGINEERING-015（收口复核）
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
-- 并行迁移状态: 分工与快照已冻结（TASK-ENGINEERING-010 完成）；Owner-B 已完成 `doc/p2p/**`（115/115），Owner-C 已完成 `doc/world-runtime/**`、`doc/headless-runtime/**`、`doc/archive/root-history/**`（52/52），Owner-D 责任域 63 篇已全部完成（D1/D2 结项）。
+- 并行迁移状态: 分工与快照已冻结（TASK-ENGINEERING-010 完成）；Owner-A 已完成 `doc/world-simulator/**`（161/161），Owner-B 已完成 `doc/p2p/**`（115/115），Owner-C 已完成 `doc/world-runtime/**`、`doc/headless-runtime/**`、`doc/archive/root-history/**`（52/52），Owner-D 责任域 63 篇已全部完成（D1/D2 结项）。
 - 说明: 本文档仅维护 engineering 设计执行状态；过程记录在 `doc/devlog/2026-03-03.md`。

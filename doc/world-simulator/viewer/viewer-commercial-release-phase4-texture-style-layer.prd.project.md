@@ -1,0 +1,19 @@
+# Viewer 商业化发行缺口收敛 Phase 4（项目管理）
+
+## 任务拆解（含 PRD-ID 映射）
+- [x] VCR4-0 文档建档：设计文档 + 项目管理文档
+- [x] VCR4-1 新增贴图风格覆盖配置（环境变量解析）
+- [x] VCR4-2 接入 3D 场景材质贴图逻辑并补测试
+- [x] VCR4-3 更新手册/项目状态/devlog 并收口
+
+## 依赖
+- `crates/agent_world_viewer/src/viewer_3d_config.rs`
+- `crates/agent_world_viewer/src/app_bootstrap.rs`
+- `crates/agent_world_viewer/src/main.rs`
+- `crates/agent_world_viewer/src/viewer_3d_config_profile_tests.rs`
+- `doc/world-simulator/viewer/viewer-manual.md`
+
+## 状态
+- 当前阶段：VCR4-0 ~ VCR4-3 全部完成，Phase 4 已收口。
+- 下一步：可进入下一阶段（normal/ORM/emissive 贴图、材质实例热切换与资产包流程）设计与任务拆解。
+- 最近更新：2026-02-21。

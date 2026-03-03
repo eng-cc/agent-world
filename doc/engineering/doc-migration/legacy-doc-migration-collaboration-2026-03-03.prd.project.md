@@ -2,7 +2,7 @@
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] TASK-ENGINEERING-010 (PRD-ENGINEERING-005): 冻结四人并行迁移原则、目录边界与执行流程，并产出协作主文档。
-- [ ] TASK-ENGINEERING-011 (PRD-ENGINEERING-006): Owner-A 迁移 `doc/world-simulator/**` 待迁移文档（161 篇）。
+- [x] TASK-ENGINEERING-011 (PRD-ENGINEERING-006): Owner-A 迁移 `doc/world-simulator/**` 待迁移文档（161 篇）。
 - [x] TASK-ENGINEERING-012 (PRD-ENGINEERING-006): Owner-B 迁移 `doc/p2p/**` 待迁移文档（115 篇）。
 - [x] TASK-ENGINEERING-013 (PRD-ENGINEERING-006): Owner-C 迁移 `doc/world-runtime/**`、`doc/headless-runtime/**`、`doc/archive/root-history/**` 待迁移文档（52 篇）。
 - [x] TASK-ENGINEERING-013A (PRD-ENGINEERING-006): Owner-C Batch-C1 迁移 `doc/archive/root-history/**` 待迁移文档（7 篇）。
@@ -25,6 +25,6 @@
 ## 状态
 - 更新日期: 2026-03-03
 - 当前状态: active
-- 当前完成: 10 / 12（完成协作入口冻结 + Owner-B 目录迁移 + Owner-C 全批次迁移收口 + Owner-D D1/D2 与总任务收口）
-- 下一任务: TASK-ENGINEERING-011 / TASK-ENGINEERING-015（Owner-A 并行迁移后执行全量收口）
+- 当前完成: 11 / 12（完成协作入口冻结 + Owner-A/B 目录迁移 + Owner-C 全批次迁移收口 + Owner-D D1/D2 与总任务收口）
+- 下一任务: TASK-ENGINEERING-015（执行全量收口复核）
 - 风险备注: 大目录迁移期间需每日同步燃尽，防止 Owner 负载失衡。

@@ -25,33 +25,33 @@
 - [x] TASK-WORLD_SIMULATOR-022 (PRD-WORLD_SIMULATOR-009): 修复 `build-game-launcher-bundle.sh` 二进制复制阶段的占用冲突，验证重复打包不再出现 `Text file busy`。
 
 ## 专题任务映射（2026-03-02 批次）
-- [x] SUBTASK-WORLD_SIMULATOR-20260302-001 (PRD-WORLD_SIMULATOR-001/002/003): `doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.project.md`
-- [x] SUBTASK-WORLD_SIMULATOR-20260302-002 (PRD-WORLD_SIMULATOR-002/003): `doc/world-simulator/launcher/game-client-launcher-feedback-entry-2026-03-02.project.md`
-- [x] SUBTASK-WORLD_SIMULATOR-20260302-003 (PRD-WORLD_SIMULATOR-002/003): `doc/world-simulator/launcher/game-client-launcher-feedback-window-2026-03-02.project.md`
-- [x] SUBTASK-WORLD_SIMULATOR-20260302-004 (PRD-WORLD_SIMULATOR-002/003): `doc/world-simulator/launcher/game-client-launcher-graceful-stop-2026-03-02.project.md`
-- [x] SUBTASK-WORLD_SIMULATOR-20260302-005 (PRD-WORLD_SIMULATOR-002/003): `doc/world-simulator/launcher/game-client-launcher-i18n-required-config-2026-03-02.project.md`
-- [x] SUBTASK-WORLD_SIMULATOR-20260302-006 (PRD-WORLD_SIMULATOR-002/003): `doc/world-simulator/launcher/game-client-launcher-llm-settings-panel-2026-03-02.project.md`
-- [x] SUBTASK-WORLD_SIMULATOR-20260302-007 (PRD-WORLD_SIMULATOR-001/002/003): `doc/world-simulator/llm/llm-config-toml-style-unification-2026-03-02.project.md`
-- [x] SUBTASK-WORLD_SIMULATOR-20260302-008 (PRD-WORLD_SIMULATOR-002/003): `doc/world-simulator/viewer/viewer-web-build-pruning-2026-03-02.project.md`
-- [x] SUBTASK-WORLD_SIMULATOR-20260302-009 (PRD-WORLD_SIMULATOR-002/003): `doc/world-simulator/viewer/viewer-web-build-pruning-phase2-2026-03-02.project.md`
+- [x] SUBTASK-WORLD_SIMULATOR-20260302-001 (PRD-WORLD_SIMULATOR-001/002/003): `doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.prd.project.md`
+- [x] SUBTASK-WORLD_SIMULATOR-20260302-002 (PRD-WORLD_SIMULATOR-002/003): `doc/world-simulator/launcher/game-client-launcher-feedback-entry-2026-03-02.prd.project.md`
+- [x] SUBTASK-WORLD_SIMULATOR-20260302-003 (PRD-WORLD_SIMULATOR-002/003): `doc/world-simulator/launcher/game-client-launcher-feedback-window-2026-03-02.prd.project.md`
+- [x] SUBTASK-WORLD_SIMULATOR-20260302-004 (PRD-WORLD_SIMULATOR-002/003): `doc/world-simulator/launcher/game-client-launcher-graceful-stop-2026-03-02.prd.project.md`
+- [x] SUBTASK-WORLD_SIMULATOR-20260302-005 (PRD-WORLD_SIMULATOR-002/003): `doc/world-simulator/launcher/game-client-launcher-i18n-required-config-2026-03-02.prd.project.md`
+- [x] SUBTASK-WORLD_SIMULATOR-20260302-006 (PRD-WORLD_SIMULATOR-002/003): `doc/world-simulator/launcher/game-client-launcher-llm-settings-panel-2026-03-02.prd.project.md`
+- [x] SUBTASK-WORLD_SIMULATOR-20260302-007 (PRD-WORLD_SIMULATOR-001/002/003): `doc/world-simulator/llm/llm-config-toml-style-unification-2026-03-02.prd.project.md`
+- [x] SUBTASK-WORLD_SIMULATOR-20260302-008 (PRD-WORLD_SIMULATOR-002/003): `doc/world-simulator/viewer/viewer-web-build-pruning-2026-03-02.prd.project.md`
+- [x] SUBTASK-WORLD_SIMULATOR-20260302-009 (PRD-WORLD_SIMULATOR-002/003): `doc/world-simulator/viewer/viewer-web-build-pruning-phase2-2026-03-02.prd.project.md`
 
 ## 专题任务映射（2026-03-03 批次）
-- [x] SUBTASK-WORLD_SIMULATOR-20260303-001 (PRD-WORLD_SIMULATOR-002/003): `doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.project.md`
-- [x] SUBTASK-WORLD_SIMULATOR-20260303-002 (PRD-WORLD_SIMULATOR-002/003): `doc/world-simulator/launcher/game-client-launcher-desktop-2026-02-27.project.md`
-- [x] SUBTASK-WORLD_SIMULATOR-20260303-003 (PRD-WORLD_SIMULATOR-006): `doc/world-simulator/launcher/game-client-launcher-desktop-2026-02-27.project.md`
-- [x] SUBTASK-WORLD_SIMULATOR-20260303-004 (PRD-WORLD_SIMULATOR-007): `doc/world-simulator/launcher/game-client-launcher-llm-settings-panel-2026-03-02.project.md`
+- [x] SUBTASK-WORLD_SIMULATOR-20260303-001 (PRD-WORLD_SIMULATOR-002/003): `doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.prd.project.md`
+- [x] SUBTASK-WORLD_SIMULATOR-20260303-002 (PRD-WORLD_SIMULATOR-002/003): `doc/world-simulator/launcher/game-client-launcher-desktop-2026-02-27.prd.project.md`
+- [x] SUBTASK-WORLD_SIMULATOR-20260303-003 (PRD-WORLD_SIMULATOR-006): `doc/world-simulator/launcher/game-client-launcher-desktop-2026-02-27.prd.project.md`
+- [x] SUBTASK-WORLD_SIMULATOR-20260303-004 (PRD-WORLD_SIMULATOR-007): `doc/world-simulator/launcher/game-client-launcher-llm-settings-panel-2026-03-02.prd.project.md`
 
 ## 依赖
-- `doc/world-simulator/scenario/scenario-files.md`
-- `doc/world-simulator/viewer/viewer-web-closure-testing-policy.md`
-- `doc/world-simulator/launcher/game-unified-launcher-2026-02-27.md`
-- `doc/world-simulator/launcher/launcher-chain-runtime-decouple-2026-02-28.md`
+- `doc/world-simulator/scenario/scenario-files.prd.md`
+- `doc/world-simulator/viewer/viewer-web-closure-testing-policy.prd.md`
+- `doc/world-simulator/launcher/game-unified-launcher-2026-02-27.prd.md`
+- `doc/world-simulator/launcher/launcher-chain-runtime-decouple-2026-02-28.prd.md`
 - `doc/world-simulator/prd/acceptance/unified-checklist.md`
 - `doc/world-simulator/prd/acceptance/web-llm-evidence-template.md`
 - `doc/world-simulator/prd/quality/experience-trend-tracking.md`
 - `doc/world-simulator/prd/launcher/blockchain-transfer.md`
-- `doc/world-simulator/launcher/game-client-launcher-i18n-required-config-2026-03-02.md`
-- `doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.md`
+- `doc/world-simulator/launcher/game-client-launcher-i18n-required-config-2026-03-02.prd.md`
+- `doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.prd.md`
 - `.agents/skills/prd/check.md`
 - `crates/agent_world/src/bin/world_chain_runtime.rs`
 - `crates/agent_world_client_launcher/src/main.rs`
