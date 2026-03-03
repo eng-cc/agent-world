@@ -114,7 +114,7 @@
 | PRD-TESTING-001 | TASK-TESTING-001/002/005/006 | `test_tier_required` | S0~S10 触发矩阵核验、手册一致性检查 | 分层测试入口与执行标准 |
 | PRD-TESTING-002 | TASK-TESTING-002/003/006 | `test_tier_required` + `test_tier_full` | 证据模板抽样、发布前必填字段检查 | 发布链路可信性与可复现性 |
 | PRD-TESTING-003 | TASK-TESTING-003/004/006 | `test_tier_full` | 趋势指标回顾、缺陷逃逸复盘 | 长期质量治理与发布风险控制 |
-| PRD-TESTING-004 | TASK-TESTING-007/008/009/010/011/012/013/014/015/016 | `test_tier_required` | 原文约束点映射审查、命名与引用回归检查 | 专题文档可维护性与追溯一致性 |
+| PRD-TESTING-004 | TASK-TESTING-007/008/009/010/011/012/013/014/015/016/017 | `test_tier_required` | 原文约束点映射审查、命名与引用回归检查 | 专题文档可维护性与追溯一致性 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |

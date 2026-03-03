@@ -17,6 +17,7 @@
 - [x] TASK-TESTING-014 (PRD-TESTING-004): 完成 `ci-remove-builtin-wasm-hash-checks-from-base-gate` 专题文档逐篇人工迁移到 strict schema，并统一 `.prd` 命名。
 - [x] TASK-TESTING-015 (PRD-TESTING-004): 完成 `wasm-build-determinism-guard` 专题文档逐篇人工迁移到 strict schema，并统一 `.prd` 命名。
 - [x] TASK-TESTING-016 (PRD-TESTING-004): 完成 `release-gate-metric-policy-alignment-2026-02-28` 专题文档逐篇人工迁移到 strict schema，并统一 `.prd` 命名。
+- [x] TASK-TESTING-017 (PRD-TESTING-004): 完成 `llm-skip-tick-ratio-metric` 专题文档逐篇人工迁移到 strict schema，并统一 `.prd` 命名。
 
 ## 专题任务映射（2026-03-02 批次）
 - [x] SUBTASK-TESTING-20260302-001 (PRD-TESTING-002/003): `doc/testing/longrun/chain-runtime-feedback-replication-network-autowire-2026-03-02.project.md`
@@ -33,6 +34,7 @@
 - [x] SUBTASK-TESTING-20260303-007 (PRD-TESTING-004): `doc/testing/ci/ci-remove-builtin-wasm-hash-checks-from-base-gate.prd.project.md`
 - [x] SUBTASK-TESTING-20260303-008 (PRD-TESTING-004): `doc/testing/governance/wasm-build-determinism-guard.prd.project.md`
 - [x] SUBTASK-TESTING-20260303-009 (PRD-TESTING-004): `doc/testing/governance/release-gate-metric-policy-alignment-2026-02-28.prd.project.md`
+- [x] SUBTASK-TESTING-20260303-010 (PRD-TESTING-004): `doc/testing/governance/llm-skip-tick-ratio-metric.prd.project.md`
 
 ## 依赖
 - `testing-manual.md`
