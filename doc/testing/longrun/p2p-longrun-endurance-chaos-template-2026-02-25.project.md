@@ -17,7 +17,7 @@
 ## 依赖
 - `scripts/p2p-longrun-soak.sh`
 - `testing-manual.md`
-- `doc/testing/longrun/p2p-longrun-continuous-chaos-injection-2026-02-24.md`
+- `doc/testing/longrun/p2p-longrun-continuous-chaos-injection-2026-02-24.prd.md`
 
 ## 状态
 - 当前阶段：C0/C1/C2/C3 全部完成。
