@@ -15,12 +15,20 @@
 
 - **资源限额**：`max_mem_bytes`、`max_gas`、`max_call_rate`、`max_output_bytes`。
 - **隔离**：模块不可直接访问 I/O，仅能产生 `EffectIntent`；沙盒不做语义/策略限制，仅负责隔离与计量。
-- **超限处理**：超限触发 `ModuleCallFailed`（code=TIMEOUT/OUTPUT_TOO_LARGE/EFFECT_LIMIT_EXCEEDED）。
+- **失败处理**：执行失败统一触发 `ModuleCallFailed`；错误码使用 `ModuleCallErrorCode`（如 `Trap`、`Timeout`、`OutOfFuel`、`Interrupted`、`OutputTooLarge`、`EffectLimitExceeded`、`EmitLimitExceeded`、`CapsDenied`、`PolicyDenied`、`SandboxUnavailable`、`InvalidOutput`）。
 - **执行入口**：`World::execute_module_call` 通过沙箱接口执行模块并返回 `ModuleOutput`。
 - **最小执行 ABI**：导出 `memory`/`alloc`/`reduce|call`，`reduce/call(i32, i32) -> (i32, i32)` 返回输出指针与长度（入口取决于 ModuleKind，输出使用 Canonical CBOR 反序列化）。
 - **输入编码**：事件/动作输入使用 Canonical CBOR 编码，封装在 `ModuleCallInput { ctx, event|action }` 中，确保可回放与确定性。
 - **配置哈希**：`ModuleContext.world_config_hash` 采用当前 manifest 哈希，便于模块检测配置变更。
 - **模块状态**：reducer 调用会携带 `state`（空字节串代表无历史状态）；`new_state` 会触发 `ModuleStateUpdated` 事件并写回状态，确保回放一致；pure 模块返回 `new_state` 视为 InvalidOutput。
+
+### ModuleCallFailed 错误码映射（当前实现）
+- `SandboxUnavailable`：加载工件或沙箱不可用（如按 `wasm_hash` 加载失败）。
+- `Trap` / `Timeout` / `OutOfFuel` / `Interrupted`：沙箱调用层透传失败。
+- `OutputTooLarge` / `EffectLimitExceeded` / `EmitLimitExceeded`：`ModuleOutput` 校验超限。
+- `CapsDenied`：`cap_ref/cap_slot/required_caps` 校验失败。
+- `PolicyDenied`：策略模块拒绝或策略 hook 执行失败。
+- `InvalidOutput`：输出编码/结构非法，或 pure 模块返回 `new_state`。
 
 ## LLM 驱动与 Agent 内部模块（设计补充）
 
@@ -39,6 +47,7 @@
 
 - **订阅来源**：`ModuleManifest.subscriptions` 指定 event/action kinds。
 - **路由顺序**：按 `instance_id` 字典序调用，保证确定性。
+- **调度主键**：模块状态读写与 trace key 以 `instance_id` 为主；仅在 legacy 模块无实例记录时回退到 `module_id`。
 - **Action 路由**：`action.*` 订阅支持 `pre_action/post_action` 阶段：
   - `pre_action`：规则模块先行校验/计费/覆盖动作参数。
   - `post_action`：动作应用后派发衍生事件或效果。
@@ -90,7 +99,8 @@
 
 ## 代码结构调整（草案）
 
-- `Manifest` 结构体新增 `module_changes: Option<ModuleChangeSet>`
+- `Manifest` 当前结构为 `{ version, content }`；`module_changes` 作为 `content` 下可选键（而非顶层强类型字段）。
 - `ManifestPatch` 允许 `"/module_changes"` set/remove
-- `GovernanceEvent::Applied` 增加 `module_changes` 字段（可选）
+- `GovernanceEvent::Applied` 当前字段为 `manifest_hash`/`consensus_height`/`threshold`/`signer_node_ids`（不含 `module_changes`）。
+- `module_changes` 在提案应用时通过 `ModuleEvent` 序列落盘，再由 `ManifestUpdated` 写入去除 `module_changes` 的目标 manifest。
 - 审计导出支持 `module_call_failed` 与 `governance` 记录
