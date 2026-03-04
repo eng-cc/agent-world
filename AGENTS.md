@@ -3,6 +3,11 @@
   1.1 每个模块固定维护一个 PRD 主文档: `doc/<module>/prd.md`；书写PRD需要使用prd skill(.agents/skills/prd)
   1.2 doc下面的PRD文档通过引用关系组成一棵大树，能通过这个文档树承载项目的全貌
   1.3 每个PRD文档维护一个主项目管理文档: `doc/<module>/prd.project.md`；`prd.project.md` 过长时可拆分为 `doc/<module>/prd.project/*.md`（可多层嵌套），并由主文档统一索引与汇总；项目管理文档至少包含:任务拆解(含 PRD-ID 映射)、依赖、状态（可简要）
+  1.4 PRD / project / devlog 分工（原则）：
+    - PRD（`doc/<module>/prd.md`、`doc/**/**.prd.md`）：只写目标态规格（Why/What/Done）。
+    - 项目管理（`doc/**/**.prd.project.md`）：只写执行计划（How/When/Who）。
+    - 任务日志（`doc/devlog/YYYY-MM-DD.md`）：只写当天过程（时刻、完成内容、遗留事项），后续不改。
+    - 详细写作约束与审查门禁以 `.agents/skills/prd/SKILL.md` 与 `.agents/skills/prd/check.md` 为准。
 2. 必须先创建/补齐/修改对应模块的 `prd.md`，再根据 PRD 拆解 `prd.project.md`(拆成具体任务),作为一个commit提交
 3. 根据拆解好的任务写代码、跑测试，每次完成一个任务
   3.1 所有代码和功能(包括UI)应该都是可以被测试的，单元测试或者模拟闭环测试都可以

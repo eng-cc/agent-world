@@ -76,6 +76,27 @@ You MUST explicitly cover:
 - **Testability**: acceptance criteria, done definition, validation method, regression impact scope, and PRD-ID -> Task -> Test traceability.
 - **Decision Record**: chosen approach, rejected alternatives, and evidence/rationale.
 
+### Document Boundary (PRD vs Project vs Devlog)
+
+Use the following split and avoid duplicate definitions:
+
+| Doc | Focus | Must Not Include |
+| --- | --- | --- |
+| PRD (`doc/<module>/prd.md`, `doc/**/**.prd.md`) | `Why/What/Done` (scope, behavior, acceptance, NFR, risks, decisions) | task breakdown, daily progress |
+| Project (`doc/**/**.prd.project.md`) | `How/When/Who` (tasks, dependency, owner, status, execution plan) | rewriting target-state requirements |
+| Devlog (`doc/devlog/YYYY-MM-DD.md`) | immutable daily record (timestamp, done, pending, blockers) | requirement definitions |
+
+Guardrails:
+- `Critical User Flows` describe system/user/operator runtime behavior, not "rewrite/migrate docs" steps.
+- `Acceptance Criteria` describe verifiable outcomes (behavior/invariants/metrics/tests), not file existence.
+- `Roadmap/Milestones` describe shipped capability phases (MVP/v1.1/v2.0), not daily to-do updates.
+
+Quick contrast:
+- Bad: `Critical User Flows: read old doc -> rewrite -> update project doc -> verify commit`
+- Good: `Critical User Flows: user triggers X -> system validates -> state transitions -> user sees Y`
+
+For review gate items and veto conditions, use `check.md` as the canonical checklist.
+
 ---
 
 ## Strict PRD Schema
