@@ -54,7 +54,7 @@
   - 不在本专题扩展非 Web 场景测试规范。
 
 ## 3. AI System Requirements (If Applicable)
-- Tool Requirements: Playwright CLI 包装脚本（`$REPO_ROOT/.codex/skills/playwright/scripts/playwright_cli.sh`）用于浏览器自动化；其余为测试脚本与终端命令。
+- Tool Requirements: Playwright CLI 包装脚本（`$CODEX_HOME/skills/playwright/scripts/playwright_cli.sh`，默认 `~/.codex/skills/playwright/scripts/playwright_cli.sh`）用于浏览器自动化；仓库内开发副本路径为 `.agents/skills/playwright/scripts/playwright_cli.sh`。
 - Evaluation Strategy: 通过语义动作成功率（`__AW_TEST__` 可用性）、门禁通过率和故障分级命中率评估闭环质量。
 
 ## 4. Technical Specifications
@@ -64,7 +64,7 @@
   - `scripts/run-viewer-web.sh`
   - `scripts/viewer-release-qa-loop.sh`
   - `scripts/viewer-release-full-coverage.sh`
-  - `.codex/skills/playwright/scripts/playwright_cli.sh`
+  - `$CODEX_HOME/skills/playwright/scripts/playwright_cli.sh`（默认 `~/.codex/...`；仓库开发副本 `.agents/skills/playwright/scripts/playwright_cli.sh`）
   - `window.__AW_TEST__`（`runSteps/setMode/focus/select/sendControl/getState`）
 - Edge Cases & Error Handling:
   - F1 `ERR_CONNECTION_REFUSED`: launcher 未就绪或已退出；先确认端口监听再重试。

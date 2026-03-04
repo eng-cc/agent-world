@@ -13,7 +13,7 @@
 - `scripts/run-viewer-web.sh`
 - `scripts/viewer-release-qa-loop.sh`
 - `scripts/viewer-release-full-coverage.sh`
-- `.codex/skills/playwright/scripts/playwright_cli.sh`
+- `$CODEX_HOME/skills/playwright/scripts/playwright_cli.sh`（默认 `~/.codex/...`；仓库开发副本 `.agents/skills/playwright/scripts/playwright_cli.sh`）
 - `doc/testing/manual/systematic-application-testing-manual.prd.md`
 - `doc/testing/prd.md`
 - `doc/testing/prd.project.md`

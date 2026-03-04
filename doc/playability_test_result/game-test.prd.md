@@ -22,5 +22,5 @@
 ## Playwright 进入游戏
 ```bash
 PLAYWRIGHT_CLI_SESSION=game-test-open \
-./.codex/skills/playwright/scripts/playwright_cli.sh open "http://127.0.0.1:4173/?ws=ws://127.0.0.1:5011&test_api=1" --headed
+"${CODEX_HOME:-$HOME/.codex}/skills/playwright/scripts/playwright_cli.sh" open "http://127.0.0.1:4173/?ws=ws://127.0.0.1:5011&test_api=1" --headed
 ```
