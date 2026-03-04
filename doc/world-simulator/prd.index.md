@@ -19,7 +19,6 @@
 | `doc/world-simulator/kernel/resource-kind-compound-hardware-hard-migration.prd.md` | `doc/world-simulator/kernel/resource-kind-compound-hardware-hard-migration.prd.project.md` |
 | `doc/world-simulator/kernel/rust-wasm-build-suite.prd.md` | `doc/world-simulator/kernel/rust-wasm-build-suite.prd.project.md` |
 | `doc/world-simulator/kernel/social-fact-ledger-declarative-reputation.prd.md` | `doc/world-simulator/kernel/social-fact-ledger-declarative-reputation.prd.project.md` |
-| `doc/world-simulator/launcher/game-client-launcher-desktop-2026-02-27.prd.md` | `doc/world-simulator/launcher/game-client-launcher-desktop-2026-02-27.prd.project.md` |
 | `doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.prd.md` | `doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.prd.project.md` |
 | `doc/world-simulator/launcher/game-client-launcher-feedback-entry-2026-03-02.prd.md` | `doc/world-simulator/launcher/game-client-launcher-feedback-entry-2026-03-02.prd.project.md` |
 | `doc/world-simulator/launcher/game-client-launcher-feedback-window-2026-03-02.prd.md` | `doc/world-simulator/launcher/game-client-launcher-feedback-window-2026-03-02.prd.project.md` |
@@ -32,7 +31,6 @@
 | `doc/world-simulator/launcher/game-client-launcher-native-web-control-plane-unification-2026-03-04.prd.md` | `doc/world-simulator/launcher/game-client-launcher-native-web-control-plane-unification-2026-03-04.prd.project.md` |
 | `doc/world-simulator/launcher/game-client-launcher-ui-schema-share-2026-03-04.prd.md` | `doc/world-simulator/launcher/game-client-launcher-ui-schema-share-2026-03-04.prd.project.md` |
 | `doc/world-simulator/launcher/game-client-launcher-web-console-2026-03-04.prd.md` | `doc/world-simulator/launcher/game-client-launcher-web-console-2026-03-04.prd.project.md` |
-| `doc/world-simulator/launcher/game-unified-launcher-2026-02-27.prd.md` | `doc/world-simulator/launcher/game-unified-launcher-2026-02-27.prd.project.md` |
 | `doc/world-simulator/launcher/launcher-chain-runtime-decouple-2026-02-28.prd.md` | `doc/world-simulator/launcher/launcher-chain-runtime-decouple-2026-02-28.prd.project.md` |
 | `doc/world-simulator/llm/indirect-control-tick-lifecycle-long-term-memory.prd.md` | `doc/world-simulator/llm/indirect-control-tick-lifecycle-long-term-memory.prd.project.md` |
 | `doc/world-simulator/llm/llm-agent-behavior.prd.md` | `doc/world-simulator/llm/llm-agent-behavior.prd.project.md` |
@@ -168,6 +166,12 @@
 | `doc/world-simulator/viewer/viewer-websocket-http-bridge.prd.md` | `doc/world-simulator/viewer/viewer-websocket-http-bridge.prd.project.md` |
 | `doc/world-simulator/viewer/visualization-3d.prd.md` | `doc/world-simulator/viewer/visualization-3d.prd.project.md` |
 | `doc/world-simulator/viewer/visualization.prd.md` | `doc/world-simulator/viewer/visualization.prd.project.md` |
+
+## 历史专题（保留追溯，不作为当前实现依据）
+| 专题 PRD | 专题项目文档 | 当前替代入口 |
+| --- | --- | --- |
+| `doc/world-simulator/launcher/game-client-launcher-desktop-2026-02-27.prd.md` | `doc/world-simulator/launcher/game-client-launcher-desktop-2026-02-27.prd.project.md` | `doc/world-simulator/launcher/game-client-launcher-native-web-control-plane-unification-2026-03-04.prd.md` |
+| `doc/world-simulator/launcher/game-unified-launcher-2026-02-27.prd.md` | `doc/world-simulator/launcher/game-unified-launcher-2026-02-27.prd.project.md` | `doc/world-simulator/launcher/game-client-launcher-native-web-control-plane-unification-2026-03-04.prd.md` |
 
 ## 说明
 - 本索引用于保证模块专题文档在根入口文档树中可达。

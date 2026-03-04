@@ -51,8 +51,8 @@
   - 重构前：`agent_world_viewer` 存在 7 个超限文件（最大 `main.rs = 2231` 行，`egui_right_panel_chat.rs = 1904` 行）。
   - 2026-02-22 收口时：超限文件清零，关键文件降至 `main.rs = 915`、`egui_right_panel_chat.rs = 935`，其余均 `<= 1200`。
 - 当前漂移检查（2026-03-04）：
-  - 已重新出现 >1200 行文件：`industry_graph_view_model.rs (1673)`、`egui_right_panel_player_experience.rs (1417)`、`scene_helpers.rs (1376)`、`egui_right_panel.rs (1283)`、`egui_right_panel_player_guide.rs (1229)`、`ui_text.rs (1228)`、`egui_right_panel_tests.rs (1214)`。
-  - 建议持续巡检命令：`wc -l crates/agent_world_viewer/src/*.rs | sort -nr | head`。
+  - 已重新出现 >1200 行文件（共 8 个）：`industry_graph_view_model.rs (1673)`、`timeline_controls.rs (1426)`、`egui_right_panel_player_experience.rs (1417)`、`scene_helpers.rs (1376)`、`egui_right_panel.rs (1283)`、`egui_right_panel_player_guide.rs (1242)`、`ui_text.rs (1228)`、`egui_right_panel_tests.rs (1214)`。
+  - 建议持续巡检命令：`find crates/agent_world_viewer/src -type f -name '*.rs' | while read -r f; do n=$(wc -l < "$f"); if [ "$n" -gt 1200 ]; then printf '%5d %s\n' "$n" "$f"; fi; done | sort -nr`。
 - Web 闭环可操作性：
   - 重构前基线（语义目标）：需要保持此前已修复的窄屏可操作、连接容错与聊天链路行为不回退。
   - 重构后实测（Playwright）：

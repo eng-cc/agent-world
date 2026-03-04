@@ -23,3 +23,4 @@
 ## 状态
 - 当前阶段：已完成（T0~T9）。
 - 当前任务：无（已结项）。
+- 审计备注（2026-03-04）：该专题作为历史记录保留；当前实现以 `game-client-launcher-native-web-control-plane-unification-2026-03-04` 与 `game-client-launcher-web-console-2026-03-04` 为准。

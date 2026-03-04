@@ -25,4 +25,4 @@
 - 当前阶段：VFL0~VFL5 全部完成（已收口）。
 - 阻塞项：无。
 - 最近更新：2026-02-22 22:47 CST。
-- 备注（2026-03-04 审计）：`agent_world_viewer` 已再次出现多处 >1200 行文件，需新立项收敛，不回退本专题历史完成结论。
+- 备注（2026-03-04 审计）：`agent_world_viewer` 已再次出现 8 个 >1200 行文件（含 `timeline_controls.rs`），建议用以下命令持续巡检并新立项收敛：`find crates/agent_world_viewer/src -type f -name '*.rs' | while read -r f; do n=$(wc -l < "$f"); if [ "$n" -gt 1200 ]; then printf '%5d %s\n' "$n" "$f"; fi; done | sort -nr`。

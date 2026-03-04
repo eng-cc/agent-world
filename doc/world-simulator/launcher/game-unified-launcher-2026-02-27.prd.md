@@ -1,6 +1,14 @@
 # 可发行统一启动器（Launcher）设计文档（2026-02-27）
 
+审计轮次: 1
+
 - 对应项目管理文档: doc/world-simulator/launcher/game-unified-launcher-2026-02-27.prd.project.md
+
+## 历史状态（2026-03-04 审计）
+- 本专题保留为 2026-02 阶段实现记录，不再作为当前启动器实现依据。
+- 当前权威入口已切换为：
+  - `doc/world-simulator/launcher/game-client-launcher-native-web-control-plane-unification-2026-03-04.prd.md`
+  - `doc/world-simulator/launcher/game-client-launcher-web-console-2026-03-04.prd.md`
 
 ## 1. Executive Summary
 - 提供一个面向玩家的统一启动入口，不再要求玩家手动分别启动后端与 Web 前端。

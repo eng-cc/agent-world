@@ -130,8 +130,8 @@ rg -n "审计轮次:[[:space:]]*[1-9][0-9]*" doc/*/prd*.md doc/*/**/*.prd*.md
 | A-004 | 修正 `pre-commit` required/full 套件描述，使其与 `scripts/ci-tests.sh` 当前行为一致 | scripts + testing/ci 维护者 | 2026-03-08 | open |
 | A-005 | world-runtime 治理/审计口径对齐：`ShadowReport`、事件枚举、失败类型、导出 API 一次性统一（文档回写或代码补齐需二选一明确） | world-runtime 维护者 | 2026-03-10 | done |
 | A-006 | world-runtime 基础语义对齐：生命周期状态机、`module_id/instance_id` 调度说明、Trap 映射、WASM 枚举（`Gameplay`/`Tick`） | world-runtime 维护者 | 2026-03-10 | done |
-| A-007 | world-simulator launcher 文档收口：旧 desktop/unified 口径标记历史或归档，web-console 状态机回写到现状枚举 | world-simulator 维护者 | 2026-03-09 | open |
-| A-008 | viewer 行数约束文档与现状对齐：更新“超限清单”并补持续审计命令 | world-simulator/viewer 维护者 | 2026-03-09 | open |
+| A-007 | world-simulator launcher 文档收口：旧 desktop/unified 口径标记历史或归档，web-console 状态机回写到现状枚举 | world-simulator 维护者 | 2026-03-09 | done |
+| A-008 | viewer 行数约束文档与现状对齐：更新“超限清单”并补持续审计命令 | world-simulator/viewer 维护者 | 2026-03-09 | done |
 | A-009 | p2p 分布式文档对齐：修复旧路径引用，phase7 增加“当前四 crate 正向验收锚点”，并处理 `release.md` 可达性 | p2p 维护者 | 2026-03-09 | open |
 | A-010 | 修复站点 404 链接与 game-test 启动链路描述，保证文档步骤与 `scripts/run-game-test*.sh` 一致 | site + playability 维护者 | 2026-03-07 | done |
 | A-011 | 对齐资源/计费语义：`readme-resource-model-layering` 与 `gameplay-engineering-architecture` 统一为当前 runtime 实现口径 | readme + game 维护者 | 2026-03-09 | open |
