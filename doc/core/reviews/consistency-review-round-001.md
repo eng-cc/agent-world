@@ -113,10 +113,10 @@ rg -n "审计轮次:[[:space:]]*[1-9][0-9]*" doc/*/prd*.md doc/*/**/*.prd*.md
 | --- | --- | --- | --- | --- |
 | R-001 | `doc/headless-runtime/nonviewer/nonviewer-design-alignment-fixes-2026-02-25.prd.md`、`doc/headless-runtime/nonviewer/nonviewer-design-alignment-review-round2-2026-02-25.prd.md` | 一次性设计对齐收口文档，项目状态已完成 | `doc/headless-runtime/prd.md` + `doc/core/reviews/consistency-review-round-001.md` | proposed |
 | R-002 | `doc/world-runtime/runtime/runtime-numeric-correctness-phase1~15*.prd*.md`、`runtime-infinite-sequence-rollover.prd.md` | 阶段性里程碑文档大量保留在活跃区，维护噪声高 | `doc/world-runtime/prd.md`（建议补一份汇总页） | proposed |
-| R-003 | `doc/world-simulator/launcher/game-client-launcher-desktop-2026-02-27.prd*.md`、`game-unified-launcher-2026-02-27.prd*.md` | 已被 2026-03-04 控制面统一系列文档替代 | `game-client-launcher-native-web-control-plane-unification-2026-03-04.prd.md` | proposed |
-| R-004 | `doc/world-simulator/viewer/viewer-rust-file-line-cap-refactor-and-web-qa-2026-02-22.prd*.md` | 历史收口结论与当前代码状态漂移 | `viewer-release-full-coverage-gate.prd.md` + `doc/devlog/2026-02-22.md` | proposed |
+| R-003 | `doc/world-simulator/launcher/game-client-launcher-desktop-2026-02-27.prd*.md`、`game-unified-launcher-2026-02-27.prd*.md` | 已被 2026-03-04 控制面统一系列文档替代 | `game-client-launcher-native-web-control-plane-unification-2026-03-04.prd.md` | first_batch_done |
+| R-004 | `doc/world-simulator/viewer/viewer-rust-file-line-cap-refactor-and-web-qa-2026-02-22.prd*.md` | 历史收口结论与当前代码状态漂移 | `viewer-release-full-coverage-gate.prd.md` + `doc/devlog/2026-02-22.md` | first_batch_done |
 | R-005 | `doc/p2p/distributed/distributed-hard-split-phase7.prd*.md`、`doc/p2p/observer/observer-sync-*.prd*.md`（前序阶段） | 历史拆分/阶段文档已完成，信息可并入现行主线 | `doc/p2p/distributed/distributed-runtime.prd.md` + 最新 observer 桥接文档 | proposed |
-| R-006 | `doc/p2p/*/*.release.md` | 与 PRD 树索引机制不一致，链路不可达 | 对应 `*.prd.md` + `*.prd.project.md` 的状态段 | proposed |
+| R-006 | `doc/p2p/*/*.release.md` | 与 PRD 树索引机制不一致，链路不可达 | 对应 `*.prd.md` + `*.prd.project.md` 的状态段 | kept_with_index |
 | R-007 | `doc/engineering/prd-review/checklists/*.md` | 旧快照法与“审计轮次 + ROUND 状态”方法重复，且存在结论漂移 | `doc/core/reviews/consistency-review-round-001.md` + 文档头 `审计轮次` | proposed |
 | R-008 | `doc/site/github-pages/*.prd*.md`、`doc/site/manual/*.prd*.md` 中已完成且下一步为空的日期专题 | 大量已收口专题长期活跃化，降低主索引可读性 | `doc/site/prd.md`、`doc/site/prd.project.md`、`site/doc/*/index.html` | proposed |
 | R-009 | `doc/readme/gap|production|governance` 与 `doc/game/gameplay` 中“已完成+无后续”的日期专题 | 与主 PRD 重复，后续很少回写 | `doc/readme/prd.md`、`doc/game/prd.md`、`README.md` | proposed |
@@ -135,7 +135,7 @@ rg -n "审计轮次:[[:space:]]*[1-9][0-9]*" doc/*/prd*.md doc/*/**/*.prd*.md
 | A-009 | p2p 分布式文档对齐：修复旧路径引用，phase7 增加“当前四 crate 正向验收锚点”，并处理 `release.md` 可达性 | p2p 维护者 | 2026-03-09 | done |
 | A-010 | 修复站点 404 链接与 game-test 启动链路描述，保证文档步骤与 `scripts/run-game-test*.sh` 一致 | site + playability 维护者 | 2026-03-07 | done |
 | A-011 | 对齐资源/计费语义：`readme-resource-model-layering` 与 `gameplay-engineering-architecture` 统一为当前 runtime 实现口径 | readme + game 维护者 | 2026-03-09 | open |
-| A-012 | 归档候选批次化执行：为 `R-001~R-009` 输出“保留文档 + 替代链 + 索引回写 + redirect”清单，并实施首批迁移 | core + 各模块维护者 | 2026-03-12 | open |
+| A-012 | 归档候选批次化执行：为 `R-001~R-009` 输出“保留文档 + 替代链 + 索引回写 + redirect”清单，并实施首批迁移（见 `doc/core/reviews/round-001-archive-migration-plan.md`） | core + 各模块维护者 | 2026-03-12 | done |
 | A-013 | 对已完成本轮审读的文档回写 `审计轮次: 1`（缺省=0 保留），并以 `S_round001` 清单作为统计分母；执行要求为“单文档审计完成即同提交回写（与是否整改解耦）” | 各模块维护者 | 2026-03-12 | in_progress |
 | A-014 | 修复 `site/doc/*/viewer-manual.html` 对 GitHub 文档外链的路径漂移（统一 `/viewer/*.prd.md` 与 `capture-viewer-frame.prd.md`），并将该项加入 `site-manual-sync-check.sh` 阻断校验 | site + world-simulator/viewer 维护者 | 2026-03-07 | done |
 

@@ -147,7 +147,6 @@
 | `doc/world-simulator/viewer/viewer-release-full-coverage-gate.prd.md` | `doc/world-simulator/viewer/viewer-release-full-coverage-gate.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-release-qa-iteration-loop.prd.md` | `doc/world-simulator/viewer/viewer-release-qa-iteration-loop.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-right-panel-module-visibility.prd.md` | `doc/world-simulator/viewer/viewer-right-panel-module-visibility.prd.project.md` |
-| `doc/world-simulator/viewer/viewer-rust-file-line-cap-refactor-and-web-qa-2026-02-22.prd.md` | `doc/world-simulator/viewer/viewer-rust-file-line-cap-refactor-and-web-qa-2026-02-22.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-selection-details.prd.md` | `doc/world-simulator/viewer/viewer-selection-details.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-step-completion-ack-2026-02-28.prd.md` | `doc/world-simulator/viewer/viewer-step-completion-ack-2026-02-28.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-texture-inspector.prd.md` | `doc/world-simulator/viewer/viewer-texture-inspector.prd.project.md` |
@@ -172,6 +171,7 @@
 | --- | --- | --- |
 | `doc/world-simulator/launcher/game-client-launcher-desktop-2026-02-27.prd.md` | `doc/world-simulator/launcher/game-client-launcher-desktop-2026-02-27.prd.project.md` | `doc/world-simulator/launcher/game-client-launcher-native-web-control-plane-unification-2026-03-04.prd.md` |
 | `doc/world-simulator/launcher/game-unified-launcher-2026-02-27.prd.md` | `doc/world-simulator/launcher/game-unified-launcher-2026-02-27.prd.project.md` | `doc/world-simulator/launcher/game-client-launcher-native-web-control-plane-unification-2026-03-04.prd.md` |
+| `doc/world-simulator/viewer/viewer-rust-file-line-cap-refactor-and-web-qa-2026-02-22.prd.md` | `doc/world-simulator/viewer/viewer-rust-file-line-cap-refactor-and-web-qa-2026-02-22.prd.project.md` | `doc/world-simulator/viewer/viewer-release-full-coverage-gate.prd.md` |
 
 ## 说明
 - 本索引用于保证模块专题文档在根入口文档树中可达。

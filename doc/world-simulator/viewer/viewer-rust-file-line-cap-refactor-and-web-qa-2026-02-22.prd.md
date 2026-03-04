@@ -4,6 +4,13 @@
 
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-rust-file-line-cap-refactor-and-web-qa-2026-02-22.prd.project.md
 
+## 历史状态（2026-03-05 审计）
+- 本专题保留为 2026-02 一次性“行数收敛 + Web 闭环”收口记录，不再作为当前行数约束现状依据。
+- 当前替代入口：
+  - `doc/world-simulator/viewer/viewer-release-full-coverage-gate.prd.md`
+  - `doc/world-simulator/viewer/viewer-visual-release-readiness-hardening-2026-03-01.prd.md`
+- 当前行数现状以本专题“当前漂移检查（2026-03-04）”和巡检命令为准，后续整改需新立项追踪。
+
 ## 1. Executive Summary
 - 将 `crates/agent_world_viewer/src` 中超过 1200 行的 Rust 文件拆分到不超过 1200 行，且行为不变。
 - 在重构后执行一轮 Web Playwright 闭环（S6）验证，输出可操作性对比结论（重构前基线 vs 重构后实测）。
