@@ -29,6 +29,7 @@
 | `doc/world-simulator/launcher/game-client-launcher-egui-web-unification-2026-03-04.prd.md` | `doc/world-simulator/launcher/game-client-launcher-egui-web-unification-2026-03-04.prd.project.md` |
 | `doc/world-simulator/launcher/game-client-launcher-web-wasm-time-compat-2026-03-04.prd.md` | `doc/world-simulator/launcher/game-client-launcher-web-wasm-time-compat-2026-03-04.prd.project.md` |
 | `doc/world-simulator/launcher/game-client-launcher-web-required-config-gating-2026-03-04.prd.md` | `doc/world-simulator/launcher/game-client-launcher-web-required-config-gating-2026-03-04.prd.project.md` |
+| `doc/world-simulator/launcher/game-client-launcher-native-web-control-plane-unification-2026-03-04.prd.md` | `doc/world-simulator/launcher/game-client-launcher-native-web-control-plane-unification-2026-03-04.prd.project.md` |
 | `doc/world-simulator/launcher/game-client-launcher-ui-schema-share-2026-03-04.prd.md` | `doc/world-simulator/launcher/game-client-launcher-ui-schema-share-2026-03-04.prd.project.md` |
 | `doc/world-simulator/launcher/game-client-launcher-web-console-2026-03-04.prd.md` | `doc/world-simulator/launcher/game-client-launcher-web-console-2026-03-04.prd.project.md` |
 | `doc/world-simulator/launcher/game-unified-launcher-2026-02-27.prd.md` | `doc/world-simulator/launcher/game-unified-launcher-2026-02-27.prd.project.md` |
