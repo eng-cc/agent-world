@@ -1,0 +1,72 @@
+# ROUND-001 已审读文档清单（S_round001）
+
+- 生成时间: 2026-03-04 23:57:04 CST
+- 生成规则: `rg -l "^审计轮次:\s*1$" doc --glob '*.md' | sort`
+- 当前已审读文档数: 65
+
+## 文件列表
+- `doc/game/gameplay/gameplay-engineering-architecture.md`
+- `doc/game/gameplay/gameplay-top-level-design.prd.md`
+- `doc/game/prd.md`
+- `doc/game/prd.project.md`
+- `doc/headless-runtime/README.md`
+- `doc/headless-runtime/nonviewer/nonviewer-design-alignment-fixes-2026-02-25.prd.md`
+- `doc/headless-runtime/nonviewer/nonviewer-design-alignment-review-round2-2026-02-25.prd.md`
+- `doc/headless-runtime/nonviewer/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.prd.md`
+- `doc/headless-runtime/nonviewer/nonviewer-onchain-auth-protocol-hardening.prd.md`
+- `doc/headless-runtime/prd.index.md`
+- `doc/headless-runtime/prd.md`
+- `doc/headless-runtime/prd.project.md`
+- `doc/p2p/consensus/consensus-code-consolidation-to-agent-world-consensus.prd.md`
+- `doc/p2p/distfs/distfs-feedback-node-runtime-integration-2026-03-01.prd.md`
+- `doc/p2p/distfs/distfs-feedback-node-runtime-integration-2026-03-01.prd.project.md`
+- `doc/p2p/distributed/distributed-hard-split-phase7.prd.md`
+- `doc/p2p/distributed/distributed-hard-split-phase7.prd.project.md`
+- `doc/p2p/distributed/distributed-pos-consensus.prd.md`
+- `doc/p2p/distributed/distributed-runtime.prd.md`
+- `doc/p2p/network/net-runtime-bridge-closure.prd.md`
+- `doc/p2p/observer/observer-sync-source-dht-mode.prd.md`
+- `doc/p2p/observer/observer-sync-source-dht-mode.prd.project.md`
+- `doc/p2p/prd.index.md`
+- `doc/p2p/prd.md`
+- `doc/p2p/prd.project.md`
+- `doc/playability_test_result/game-test.prd.md`
+- `doc/playability_test_result/game-test.prd.project.md`
+- `doc/playability_test_result/prd.md`
+- `doc/playability_test_result/prd.project.md`
+- `doc/readme/governance/readme-resource-model-layering.prd.md`
+- `doc/readme/prd.md`
+- `doc/readme/prd.project.md`
+- `doc/scripts/precommit/pre-commit.prd.md`
+- `doc/scripts/precommit/pre-commit.prd.project.md`
+- `doc/site/prd.md`
+- `doc/site/prd.project.md`
+- `doc/testing/ci/ci-builtin-wasm-m1-multi-runner.prd.md`
+- `doc/testing/ci/ci-m1-multi-runner-required-check-protection.prd.md`
+- `doc/testing/ci/ci-remove-builtin-wasm-hash-checks-from-base-gate.prd.md`
+- `doc/testing/launcher/launcher-lifecycle-hardening-2026-03-01.prd.md`
+- `doc/testing/launcher/launcher-lifecycle-hardening-2026-03-01.prd.project.md`
+- `doc/testing/manual/web-ui-playwright-closure-manual.prd.md`
+- `doc/testing/manual/web-ui-playwright-closure-manual.prd.project.md`
+- `doc/world-runtime/governance/audit-export.md`
+- `doc/world-runtime/governance/governance-events.md`
+- `doc/world-runtime/module/module-lifecycle.md`
+- `doc/world-runtime/module/module-storage.prd.md`
+- `doc/world-runtime/module/module-subscription-filters.prd.md`
+- `doc/world-runtime/prd.index.md`
+- `doc/world-runtime/prd.md`
+- `doc/world-runtime/prd.project.md`
+- `doc/world-runtime/runtime/runtime-integration.md`
+- `doc/world-runtime/testing/testing.md`
+- `doc/world-runtime/wasm/wasm-executor.prd.md`
+- `doc/world-runtime/wasm/wasm-interface.md`
+- `doc/world-runtime/wasm/wasm-sandbox-security-hardening.prd.md`
+- `doc/world-simulator/launcher/game-client-launcher-desktop-2026-02-27.prd.md`
+- `doc/world-simulator/launcher/game-client-launcher-desktop-2026-02-27.prd.project.md`
+- `doc/world-simulator/launcher/game-client-launcher-egui-web-unification-2026-03-04.prd.md`
+- `doc/world-simulator/launcher/game-client-launcher-native-web-control-plane-unification-2026-03-04.prd.md`
+- `doc/world-simulator/launcher/game-client-launcher-ui-schema-share-2026-03-04.prd.md`
+- `doc/world-simulator/launcher/game-client-launcher-web-console-2026-03-04.prd.md`
+- `doc/world-simulator/launcher/game-client-launcher-web-required-config-gating-2026-03-04.prd.md`
+- `doc/world-simulator/viewer/viewer-rust-file-line-cap-refactor-and-web-qa-2026-02-22.prd.md`
+- `doc/world-simulator/viewer/viewer-rust-file-line-cap-refactor-and-web-qa-2026-02-22.prd.project.md`

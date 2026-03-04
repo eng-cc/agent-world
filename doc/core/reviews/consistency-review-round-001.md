@@ -78,6 +78,16 @@ rg -n "审计轮次:[[:space:]]*[1-9][0-9]*" doc/*/prd*.md doc/*/**/*.prd*.md
   - `doc/game/gameplay/gameplay-engineering-architecture.md`
 - 抽样时间：2026-03-04 21:25 ~ 21:56 CST（并行分片）
 
+## 受审文件清单（S_round001）
+- 清单文件：`doc/core/reviews/round-001-reviewed-files.md`
+- 生成规则：`rg -l "^审计轮次:\\s*1$" doc --glob '*.md' | sort`
+- 当前基线（2026-03-04 23:57 CST）：`65` 份文档
+- 用途：作为 `A-013` 的统计分母（仅对纳入本轮清单的文档判定“已审读/未审读”）。
+- 验收命令：
+  - `test -f doc/core/reviews/round-001-reviewed-files.md`
+  - `rg -n "^审计轮次:\\s*1$" doc --glob '*.md' | wc -l`
+  - `./scripts/doc-governance-check.sh`
+
 ## 一致性问题
 | 编号 | 问题描述 | 影响范围 | 严重度 |
 | --- | --- | --- | --- |
@@ -125,7 +135,7 @@ rg -n "审计轮次:[[:space:]]*[1-9][0-9]*" doc/*/prd*.md doc/*/**/*.prd*.md
 | A-010 | 修复站点 404 链接与 game-test 启动链路描述，保证文档步骤与 `scripts/run-game-test*.sh` 一致 | site + playability 维护者 | 2026-03-07 | open |
 | A-011 | 对齐资源/计费语义：`readme-resource-model-layering` 与 `gameplay-engineering-architecture` 统一为当前 runtime 实现口径 | readme + game 维护者 | 2026-03-09 | open |
 | A-012 | 归档候选批次化执行：为 `R-001~R-009` 输出“保留文档 + 替代链 + 索引回写 + redirect”清单，并实施首批迁移 | core + 各模块维护者 | 2026-03-12 | open |
-| A-013 | 对已完成本轮审读的文档回写 `审计轮次: 1`（缺省=0 保留），形成可统计清单；执行要求为“单文档审计完成即同提交回写（与是否整改解耦）” | 各模块维护者 | 2026-03-12 | in_progress |
+| A-013 | 对已完成本轮审读的文档回写 `审计轮次: 1`（缺省=0 保留），并以 `S_round001` 清单作为统计分母；执行要求为“单文档审计完成即同提交回写（与是否整改解耦）” | 各模块维护者 | 2026-03-12 | in_progress |
 
 ## 特殊情况备注（仅在无需整改时填写）
 | 编号 | 原因 | 风险 | 临时缓解 | 复审日期 | 评审人 |
