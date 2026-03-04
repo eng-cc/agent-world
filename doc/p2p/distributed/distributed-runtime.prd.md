@@ -365,7 +365,7 @@ ErrorResponse { code: String, message: String, retryable: bool }
 - **授权校验**：吊销同步策略支持 requester 信任与签名策略组合校验，拒绝伪造来源。
 - **落盘实现**：新增 `FileMembershipAuditStore`（JSONL），支持按 world_id 的 append/list 归档查询。
 - **接口扩展**：支持 `publish_key_revocation_signed(_by_key_id/_with_keyring)` 多签发入口。
-- **可维护性**：成员目录校验辅助逻辑拆分到 `distributed_membership_sync/logic.rs`，保持主文件规模可维护。
+- **可维护性**：成员目录校验辅助逻辑已拆分到 `crates/agent_world_consensus/src/membership_logic.rs`，保持主文件规模可维护。
 #### 成员目录吊销授权治理与跨节点对账（草案）
 - **授权治理**：`MembershipRevocationSyncPolicy` 新增 `authorized_requesters`，在 trusted 之外提供治理授权白名单。
 - **对账通道**：新增 gossipsub topic `aw.<world_id>.membership.reconcile`，用于广播 revoked key 集 checkpoint。

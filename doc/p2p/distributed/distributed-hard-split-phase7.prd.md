@@ -19,7 +19,8 @@
 | 专题迁移 | 需求/任务/依赖/状态/测试层级 | 逐篇重写并校验 | `draft -> active -> done` | 以原文约束点映射为主线 | 维护者写入，复核者抽检 |
 - Acceptance Criteria:
   - AC-1: 新增 `agent_world_distfs` crate，并迁移分布式文件能力：CAS、分片、组装校验。
-  - AC-2: 分布式彻底拆分：删除 `crates/agent_world/src/runtime/distributed*`、`libp2p_net.rs` 及相关分布式路径代码。
+  - AC-2: 分布式彻底拆分（历史里程碑）：删除 `crates/agent_world/src/runtime/distributed*`、`libp2p_net.rs` 及相关分布式路径代码。
+  - AC-2b: 当前实现锚点：分布式主线由 `agent_world_net/agent_world_consensus/agent_world_distfs` 承载，`agent_world` 不再承载分布式核心实现。
   - AC-3: `agent_world` facade 收敛：移除分布式导出，按领域划分导出边界。
   - AC-4: Viewer 协议迁移到 `agent_world_proto` 并完成 server/viewer 双端适配。
   - AC-5: WASM ABI 边界调整：消除 `agent_world_net` 内重复 `ModuleManifest`，统一到 ABI/proto。
@@ -37,6 +38,9 @@
 - Integration Points:
   - `doc/p2p/distributed/distributed-hard-split-phase7.prd.md`
   - `doc/p2p/distributed/distributed-hard-split-phase7.prd.project.md`
+  - `crates/agent_world_net/src/lib.rs`
+  - `crates/agent_world_consensus/src/lib.rs`
+  - `crates/agent_world_distfs/src/lib.rs`
   - `testing-manual.md`
 - Edge Cases & Error Handling: 命名不一致、章节缺失、引用断链需在同提交修复。
 - Non-Functional Requirements: PRD-ID/任务映射完整；治理检查通过。

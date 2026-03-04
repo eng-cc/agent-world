@@ -16,7 +16,7 @@
 - `crates/agent_world_proto`
 - `crates/agent_world_viewer`
 - `crates/agent_world_wasm_abi`
-- `doc/world-runtime.prd.project.md`
+- `doc/world-runtime/prd.project.md`
 
 ## 状态
 - 当前阶段：R7 全部任务已完成（R7-1 ~ R7-6）。
