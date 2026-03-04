@@ -9,7 +9,7 @@ use agent_world_wasm_sdk::{
     LifecycleStage, WasmModuleLifecycle,
 };
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 const MODULE_ID: &str = "m5.gameplay.economic.overlay";
 const DIRECTIVE_EMIT_KIND: &str = "gameplay.lifecycle.directives";
@@ -35,6 +35,8 @@ struct EconomicOverlayState {
     pending_meta_grants: Vec<MetaGrantDirective>,
     #[serde(default)]
     contract_success_streak: BTreeMap<String, u32>,
+    #[serde(default)]
+    processed_contract_ids: BTreeSet<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -65,6 +67,7 @@ struct EconomicContractSettledData {
 
 #[derive(Debug, Clone, Deserialize)]
 struct EconomicContractExpiredData {
+    contract_id: String,
     creator_agent_id: String,
     counterparty_agent_id: String,
     creator_reputation_delta: i64,
@@ -133,6 +136,12 @@ fn apply_domain_event(state: &mut EconomicOverlayState, event: DomainEventEnvelo
             let Ok(data) = serde_json::from_value::<EconomicContractSettledData>(event.data) else {
                 return;
             };
+            if !state
+                .processed_contract_ids
+                .insert(data.contract_id.clone())
+            {
+                return;
+            }
             if data.success {
                 let operator_points = (data.transfer_amount / 12)
                     .saturating_add(data.tax_amount / 4)
@@ -193,12 +202,17 @@ fn apply_domain_event(state: &mut EconomicOverlayState, event: DomainEventEnvelo
                     None,
                 );
             }
-            let _ = data.contract_id;
         }
         "EconomicContractExpired" => {
             let Ok(data) = serde_json::from_value::<EconomicContractExpiredData>(event.data) else {
                 return;
             };
+            if !state
+                .processed_contract_ids
+                .insert(data.contract_id.clone())
+            {
+                return;
+            }
             state
                 .contract_success_streak
                 .insert(data.creator_agent_id.clone(), 0);
@@ -421,6 +435,7 @@ mod tests {
             DomainEventEnvelope {
                 event_type: "EconomicContractExpired".to_string(),
                 data: serde_json::json!({
+                    "contract_id": "contract.expired.1",
                     "creator_agent_id": "agent-1",
                     "counterparty_agent_id": "agent-2",
                     "creator_reputation_delta": -4,
@@ -440,6 +455,68 @@ mod tests {
                 } if target_agent_id == "agent-1" && *points < 0
             )
         }));
+    }
+
+    #[test]
+    fn duplicate_contract_settlement_is_deduplicated() {
+        let mut state = EconomicOverlayState::default();
+        let event = DomainEventEnvelope {
+            event_type: "EconomicContractSettled".to_string(),
+            data: serde_json::json!({
+                "operator_agent_id": "agent-1",
+                "contract_id": "contract.dedupe.1",
+                "success": true,
+                "transfer_amount": 24,
+                "tax_amount": 4,
+                "creator_reputation_delta": 2,
+                "counterparty_reputation_delta": 1,
+            }),
+        };
+
+        apply_domain_event(&mut state, event.clone());
+        apply_domain_event(&mut state, event);
+
+        let directives = run_tick(&mut state);
+        let grant_points: i64 = directives
+            .iter()
+            .filter_map(|directive| match directive {
+                LifecycleDirective::MetaGrant { points, .. } => Some(*points),
+            })
+            .sum();
+
+        assert_eq!(grant_points, 5);
+        assert_eq!(
+            state.contract_success_streak.get("agent-1").copied(),
+            Some(1)
+        );
+    }
+
+    #[test]
+    fn duplicate_contract_expiry_is_deduplicated() {
+        let mut state = EconomicOverlayState::default();
+        let event = DomainEventEnvelope {
+            event_type: "EconomicContractExpired".to_string(),
+            data: serde_json::json!({
+                "contract_id": "contract.dedupe.expired.1",
+                "creator_agent_id": "agent-1",
+                "counterparty_agent_id": "agent-2",
+                "creator_reputation_delta": -4,
+                "counterparty_reputation_delta": -2,
+            }),
+        };
+
+        apply_domain_event(&mut state, event.clone());
+        apply_domain_event(&mut state, event);
+
+        let directives = run_tick(&mut state);
+        let grant_points: i64 = directives
+            .iter()
+            .filter_map(|directive| match directive {
+                LifecycleDirective::MetaGrant { points, .. } => Some(*points),
+            })
+            .sum();
+
+        assert_eq!(grant_points, -6);
     }
 }
 
