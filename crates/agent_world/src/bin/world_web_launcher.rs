@@ -1,11 +1,10 @@
 use std::collections::VecDeque;
 use std::env;
-use std::io::{BufRead, BufReader, Read, Write};
 use std::net::{TcpListener, TcpStream};
-use std::path::{Path, PathBuf};
-use std::process::{self, Child, Command, Stdio};
+use std::path::PathBuf;
+use std::process::{self, Child};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
+use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex, OnceLock};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -13,11 +12,22 @@ use std::time::{Duration, Instant};
 use agent_world_launcher_ui::launcher_ui_fields_for_web;
 use serde::{Deserialize, Serialize};
 
+#[path = "world_web_launcher/control_plane.rs"]
+mod control_plane;
+#[path = "world_web_launcher/http_codec.rs"]
+mod http_codec;
+#[path = "world_web_launcher/parse_utils.rs"]
+mod parse_utils;
 #[path = "world_web_launcher/runtime_paths.rs"]
 mod runtime_paths;
 #[path = "world_web_launcher/static_files.rs"]
 mod static_files;
 
+use control_plane::*;
+use http_codec::{read_http_request, write_http_response, write_json_response};
+use parse_utils::{
+    next_value, parse_chain_role, parse_chain_validators, parse_host_port, parse_port,
+};
 use runtime_paths::{
     normalize_bind_host_for_local_access, now_unix_ms, resolve_console_static_dir_path,
     resolve_static_dir_path, resolve_world_game_launcher_binary,
@@ -38,14 +48,15 @@ const DEFAULT_CHAIN_NODE_TICK_MS: u64 = 200;
 const MAX_LOG_LINES: usize = 2000;
 const GRACEFUL_STOP_TIMEOUT_MS: u64 = 4000;
 const STOP_POLL_INTERVAL_MS: u64 = 80;
-const HTTP_READ_TIMEOUT_SECS: u64 = 3;
-const MAX_HTTP_HEADER_BYTES: usize = 32 * 1024;
-const MAX_HTTP_BODY_BYTES: usize = 1024 * 1024;
+const CHAIN_STATUS_PROBE_INTERVAL_MS: u64 = 1000;
+const CHAIN_STATUS_PROBE_TIMEOUT_MS: u64 = 300;
+const CHAIN_STATUS_STARTING_GRACE_SECS: u64 = 8;
 
 static TERMINATION_REQUESTED: AtomicBool = AtomicBool::new(false);
 static SIGNAL_HANDLER_INSTALL: OnceLock<Result<(), String>> = OnceLock::new();
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
 struct LauncherConfig {
     scenario: String,
     live_bind: String,
@@ -62,6 +73,8 @@ struct LauncherConfig {
     chain_node_tick_ms: String,
     chain_node_validators: String,
     auto_open_browser: bool,
+    launcher_bin: String,
+    chain_runtime_bin: String,
 }
 
 impl Default for LauncherConfig {
@@ -84,6 +97,8 @@ impl Default for LauncherConfig {
             chain_node_tick_ms: DEFAULT_CHAIN_NODE_TICK_MS.to_string(),
             chain_node_validators: String::new(),
             auto_open_browser: false,
+            launcher_bin: String::new(),
+            chain_runtime_bin: String::new(),
         }
     }
 }
@@ -92,6 +107,7 @@ impl Default for LauncherConfig {
 struct CliOptions {
     listen_bind: String,
     launcher_bin: String,
+    chain_runtime_bin: String,
     console_static_dir: PathBuf,
     initial_config: LauncherConfig,
 }
@@ -101,6 +117,9 @@ impl Default for CliOptions {
         Self {
             listen_bind: DEFAULT_LISTEN_BIND.to_string(),
             launcher_bin: resolve_world_game_launcher_binary()
+                .to_string_lossy()
+                .to_string(),
+            chain_runtime_bin: runtime_paths::resolve_world_chain_runtime_binary()
                 .to_string_lossy()
                 .to_string(),
             console_static_dir: resolve_console_static_dir_path(),
@@ -162,25 +181,75 @@ impl ProcessState {
     }
 }
 
+#[derive(Debug, Clone)]
+enum ChainRuntimeStatus {
+    Disabled,
+    NotStarted,
+    Starting,
+    Ready,
+    Unreachable(String),
+    ConfigError(String),
+}
+
+impl ChainRuntimeStatus {
+    fn code(&self) -> &'static str {
+        match self {
+            Self::Disabled => "disabled",
+            Self::NotStarted => "not_started",
+            Self::Starting => "starting",
+            Self::Ready => "ready",
+            Self::Unreachable(_) => "unreachable",
+            Self::ConfigError(_) => "config_error",
+        }
+    }
+
+    fn detail(&self) -> Option<String> {
+        match self {
+            Self::Unreachable(detail) | Self::ConfigError(detail) => Some(detail.clone()),
+            Self::Disabled | Self::NotStarted | Self::Starting | Self::Ready => None,
+        }
+    }
+}
+
 #[derive(Debug)]
 struct ServiceState {
     launcher_bin: String,
+    chain_runtime_bin: String,
     console_static_dir: PathBuf,
     config: LauncherConfig,
     process_state: ProcessState,
     running: Option<RunningProcess>,
+    chain_runtime_status: ChainRuntimeStatus,
+    chain_running: Option<RunningProcess>,
+    chain_started_at: Option<Instant>,
+    last_chain_probe_at: Option<Instant>,
     logs: VecDeque<String>,
     updated_at_unix_ms: u64,
 }
 
 impl ServiceState {
-    fn new(launcher_bin: String, console_static_dir: PathBuf, config: LauncherConfig) -> Self {
+    fn new(
+        launcher_bin: String,
+        chain_runtime_bin: String,
+        console_static_dir: PathBuf,
+        config: LauncherConfig,
+    ) -> Self {
+        let chain_runtime_status = if config.chain_enabled {
+            ChainRuntimeStatus::NotStarted
+        } else {
+            ChainRuntimeStatus::Disabled
+        };
         Self {
             launcher_bin,
+            chain_runtime_bin,
             console_static_dir,
             config,
             process_state: ProcessState::Idle,
             running: None,
+            chain_runtime_status,
+            chain_running: None,
+            chain_started_at: None,
+            last_chain_probe_at: None,
             logs: VecDeque::new(),
             updated_at_unix_ms: now_unix_ms(),
         }
@@ -198,14 +267,6 @@ impl ServiceState {
     }
 }
 
-#[derive(Debug)]
-struct HttpRequest {
-    method: String,
-    path: String,
-    headers: Vec<(String, String)>,
-    body: Vec<u8>,
-}
-
 #[derive(Debug, Serialize)]
 struct StateSnapshot {
     status: String,
@@ -213,6 +274,11 @@ struct StateSnapshot {
     pid: Option<u32>,
     running: bool,
     launcher_bin: String,
+    chain_status: String,
+    chain_detail: Option<String>,
+    chain_pid: Option<u32>,
+    chain_running: bool,
+    chain_runtime_bin: String,
     game_url: String,
     config: LauncherConfig,
     logs: Vec<String>,
@@ -254,6 +320,7 @@ fn print_help() {
 Options:\n\
   --listen-bind <host:port>       web console listen bind (default: {DEFAULT_LISTEN_BIND})\n\
   --launcher-bin <path>           world_game_launcher binary path\n\
+  --chain-runtime-bin <path>      world_chain_runtime binary path\n\
   --console-static-dir <path>     launcher web static directory (default: ../web-launcher)\n\
   --scenario <name>               default scenario for web form\n\
   --live-bind <host:port>         default --live-bind for world_game_launcher\n\
@@ -292,6 +359,7 @@ fn run_server(options: CliOptions) -> Result<(), String> {
 
     let state = Arc::new(Mutex::new(ServiceState::new(
         options.launcher_bin,
+        options.chain_runtime_bin,
         options.console_static_dir,
         options.initial_config,
     )));
@@ -331,7 +399,9 @@ fn run_server(options: CliOptions) -> Result<(), String> {
     }
 
     let mut state_guard = lock_state(&state);
+    poll_service_state(&mut state_guard);
     let _ = stop_process(&mut state_guard);
+    let _ = stop_chain_process(&mut state_guard);
     Ok(())
 }
 
@@ -361,7 +431,7 @@ fn handle_connection(
         ("GET", "/api/state") => {
             let request_host = extract_host_header(request.headers.as_slice());
             let mut state = lock_state(&shared_state);
-            poll_process_state(&mut state);
+            poll_service_state(&mut state);
             let snapshot = snapshot_from_state(&state, request_host.as_deref());
             write_json_response(&mut stream, 200, &snapshot)
         }
@@ -371,10 +441,9 @@ fn handle_connection(
         }
         ("POST", "/api/start") => {
             let request_host = extract_host_header(request.headers.as_slice());
-            let config: LauncherConfig = serde_json::from_slice(request.body.as_slice())
-                .map_err(|err| format!("parse start request JSON failed: {err}"))?;
+            let config = parse_config_request(request.body.as_slice(), "start")?;
             let mut state = lock_state(&shared_state);
-            poll_process_state(&mut state);
+            poll_service_state(&mut state);
             let outcome = start_process(&mut state, config);
             let snapshot = snapshot_from_state(&state, request_host.as_deref());
             let response = ApiResponse {
@@ -387,8 +456,38 @@ fn handle_connection(
         ("POST", "/api/stop") => {
             let request_host = extract_host_header(request.headers.as_slice());
             let mut state = lock_state(&shared_state);
-            poll_process_state(&mut state);
+            poll_service_state(&mut state);
             let outcome = stop_process(&mut state);
+            poll_service_state(&mut state);
+            let snapshot = snapshot_from_state(&state, request_host.as_deref());
+            let response = ApiResponse {
+                ok: outcome.is_ok(),
+                error: outcome.err(),
+                state: snapshot,
+            };
+            write_json_response(&mut stream, 200, &response)
+        }
+        ("POST", "/api/chain/start") => {
+            let request_host = extract_host_header(request.headers.as_slice());
+            let config = parse_config_request(request.body.as_slice(), "chain start")?;
+            let mut state = lock_state(&shared_state);
+            poll_service_state(&mut state);
+            let outcome = start_chain_process(&mut state, config);
+            poll_service_state(&mut state);
+            let snapshot = snapshot_from_state(&state, request_host.as_deref());
+            let response = ApiResponse {
+                ok: outcome.is_ok(),
+                error: outcome.err(),
+                state: snapshot,
+            };
+            write_json_response(&mut stream, 200, &response)
+        }
+        ("POST", "/api/chain/stop") => {
+            let request_host = extract_host_header(request.headers.as_slice());
+            let mut state = lock_state(&shared_state);
+            poll_service_state(&mut state);
+            let outcome = stop_chain_process(&mut state);
+            poll_service_state(&mut state);
             let snapshot = snapshot_from_state(&state, request_host.as_deref());
             let response = ApiResponse {
                 ok: outcome.is_ok(),
@@ -404,7 +503,11 @@ fn handle_connection(
         ("GET", request_path) if !request_path.starts_with("/api/") => {
             serve_console_static_request(&mut stream, request_path, &shared_state)
         }
-        (method, "/api/state") | (method, "/api/start") | (method, "/api/stop")
+        (method, "/api/state")
+        | (method, "/api/start")
+        | (method, "/api/stop")
+        | (method, "/api/chain/start")
+        | (method, "/api/chain/stop")
             if method != "GET" && method != "POST" =>
         {
             write_http_response(
@@ -466,93 +569,6 @@ fn serve_console_static_request(
     }
 }
 
-fn read_http_request(stream: &mut TcpStream) -> Result<HttpRequest, String> {
-    stream
-        .set_read_timeout(Some(Duration::from_secs(HTTP_READ_TIMEOUT_SECS)))
-        .map_err(|err| format!("set read timeout failed: {err}"))?;
-
-    let mut buffer = Vec::with_capacity(1024);
-    let header_end = loop {
-        if buffer.len() > MAX_HTTP_HEADER_BYTES {
-            return Err("HTTP header is too large".to_string());
-        }
-        let mut chunk = [0_u8; 1024];
-        let bytes = stream
-            .read(&mut chunk)
-            .map_err(|err| format!("read request failed: {err}"))?;
-        if bytes == 0 {
-            return Err("empty request".to_string());
-        }
-        buffer.extend_from_slice(&chunk[..bytes]);
-        if let Some(end) = find_header_end(buffer.as_slice()) {
-            break end;
-        }
-    };
-
-    let header_bytes = &buffer[..header_end];
-    let header_text = String::from_utf8_lossy(header_bytes);
-    let mut lines = header_text.split("\r\n");
-    let request_line = lines
-        .next()
-        .ok_or_else(|| "missing request line".to_string())?;
-    let mut request_parts = request_line.split_whitespace();
-    let method = request_parts
-        .next()
-        .ok_or_else(|| "missing request method".to_string())?
-        .to_ascii_uppercase();
-    let path = request_parts
-        .next()
-        .ok_or_else(|| "missing request target".to_string())?
-        .to_string();
-
-    let mut headers = Vec::new();
-    let mut content_length = 0usize;
-    for line in lines {
-        if line.is_empty() {
-            continue;
-        }
-        let (name, value) = line
-            .split_once(':')
-            .ok_or_else(|| format!("invalid header line: {line}"))?;
-        let name = name.trim().to_ascii_lowercase();
-        let value = value.trim().to_string();
-        if name == "content-length" {
-            content_length = value
-                .parse::<usize>()
-                .map_err(|_| format!("invalid content-length: {value}"))?;
-            if content_length > MAX_HTTP_BODY_BYTES {
-                return Err("HTTP body is too large".to_string());
-            }
-        }
-        headers.push((name, value));
-    }
-
-    let mut body = buffer[(header_end + 4)..].to_vec();
-    while body.len() < content_length {
-        let remaining = content_length - body.len();
-        let mut chunk = vec![0_u8; remaining.min(4096)];
-        let bytes = stream
-            .read(chunk.as_mut_slice())
-            .map_err(|err| format!("read request body failed: {err}"))?;
-        if bytes == 0 {
-            return Err("unexpected EOF while reading request body".to_string());
-        }
-        body.extend_from_slice(&chunk[..bytes]);
-    }
-    body.truncate(content_length);
-
-    Ok(HttpRequest {
-        method,
-        path,
-        headers,
-        body,
-    })
-}
-
-fn find_header_end(bytes: &[u8]) -> Option<usize> {
-    bytes.windows(4).position(|window| window == b"\r\n\r\n")
-}
-
 fn strip_query(path: &str) -> &str {
     path.split('?').next().unwrap_or(path)
 }
@@ -581,416 +597,6 @@ fn normalize_host_header(raw: &str) -> String {
     value.to_string()
 }
 
-fn write_json_response<T: Serialize>(
-    stream: &mut TcpStream,
-    status_code: u16,
-    payload: &T,
-) -> Result<(), String> {
-    let body =
-        serde_json::to_vec(payload).map_err(|err| format!("serialize JSON failed: {err}"))?;
-    write_http_response(
-        stream,
-        status_code,
-        "application/json; charset=utf-8",
-        body.as_slice(),
-        false,
-    )
-}
-
-fn write_http_response(
-    stream: &mut TcpStream,
-    status_code: u16,
-    content_type: &str,
-    body: &[u8],
-    head_only: bool,
-) -> Result<(), String> {
-    let status_text = match status_code {
-        200 => "OK",
-        204 => "No Content",
-        400 => "Bad Request",
-        404 => "Not Found",
-        405 => "Method Not Allowed",
-        _ => "Internal Server Error",
-    };
-    let headers = format!(
-        "HTTP/1.1 {status_code} {status_text}\r\nContent-Type: {content_type}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
-        body.len()
-    );
-    stream
-        .write_all(headers.as_bytes())
-        .map_err(|err| format!("write response header failed: {err}"))?;
-    if !head_only {
-        stream
-            .write_all(body)
-            .map_err(|err| format!("write response body failed: {err}"))?;
-    }
-    stream
-        .flush()
-        .map_err(|err| format!("flush response failed: {err}"))?;
-    Ok(())
-}
-
-fn poll_process_state(state: &mut ServiceState) {
-    let Some(mut running) = state.running.take() else {
-        return;
-    };
-
-    loop {
-        match running.log_rx.try_recv() {
-            Ok(line) => state.append_log(line),
-            Err(TryRecvError::Empty) | Err(TryRecvError::Disconnected) => break,
-        }
-    }
-
-    match running.child.try_wait() {
-        Ok(Some(status)) => {
-            state.process_state = ProcessState::Exited(status.to_string());
-            state.append_log(format!("world_game_launcher exited: {status}"));
-            state.mark_updated();
-        }
-        Ok(None) => {
-            state.running = Some(running);
-        }
-        Err(err) => {
-            state.process_state =
-                ProcessState::Exited(format!("query process status failed: {err}"));
-            state.append_log(format!("query process status failed: {err}"));
-            state.mark_updated();
-        }
-    }
-}
-
-fn start_process(state: &mut ServiceState, config: LauncherConfig) -> Result<(), String> {
-    if state.running.is_some() {
-        return Err("world_game_launcher is already running".to_string());
-    }
-
-    let issues = validate_config(&config);
-    if !issues.is_empty() {
-        let detail = issues.join("; ");
-        state.process_state = ProcessState::InvalidConfig(detail.clone());
-        state.append_log(format!("config validation failed: {detail}"));
-        state.mark_updated();
-        return Err(detail);
-    }
-
-    let args = match build_launcher_args(&config) {
-        Ok(args) => args,
-        Err(err) => {
-            state.process_state = ProcessState::InvalidConfig(err.clone());
-            state.append_log(format!("invalid launch args: {err}"));
-            state.mark_updated();
-            return Err(err);
-        }
-    };
-
-    match spawn_child_process(state.launcher_bin.as_str(), args.as_slice()) {
-        Ok(process) => {
-            let pid = process.child.id();
-            state.running = Some(process);
-            state.config = config;
-            state.process_state = ProcessState::Running { pid };
-            state.append_log(format!("world_game_launcher started (pid={pid})"));
-            state.mark_updated();
-            Ok(())
-        }
-        Err(err) => {
-            state.process_state = ProcessState::StartFailed(err.clone());
-            state.append_log(format!("start failed: {err}"));
-            state.mark_updated();
-            Err(err)
-        }
-    }
-}
-
-fn stop_process(state: &mut ServiceState) -> Result<(), String> {
-    let Some(mut running) = state.running.take() else {
-        state.process_state = ProcessState::Stopped;
-        state.append_log("world_game_launcher stop requested but process is not running");
-        state.mark_updated();
-        return Ok(());
-    };
-
-    match stop_child_process(&mut running.child) {
-        Ok(()) => {
-            state.process_state = ProcessState::Stopped;
-            state.append_log("world_game_launcher stopped");
-            state.mark_updated();
-            Ok(())
-        }
-        Err(err) => {
-            state.process_state = ProcessState::StopFailed(err.clone());
-            state.append_log(format!("stop failed: {err}"));
-            state.mark_updated();
-            Err(err)
-        }
-    }
-}
-
-fn snapshot_from_state(state: &ServiceState, request_host: Option<&str>) -> StateSnapshot {
-    let game_url = build_game_url(&state.config, request_host);
-    StateSnapshot {
-        status: state.process_state.code().to_string(),
-        detail: state.process_state.detail(),
-        pid: state.process_state.pid(),
-        running: matches!(state.process_state, ProcessState::Running { .. }),
-        launcher_bin: state.launcher_bin.clone(),
-        game_url,
-        config: state.config.clone(),
-        logs: state.logs.iter().cloned().collect(),
-        updated_at_unix_ms: state.updated_at_unix_ms,
-    }
-}
-
-fn build_game_url(config: &LauncherConfig, request_host: Option<&str>) -> String {
-    let viewer_host = resolve_runtime_host(config.viewer_host.as_str(), request_host);
-    let viewer_port =
-        parse_port(config.viewer_port.as_str(), "viewer port").unwrap_or(DEFAULT_VIEWER_PORT);
-    let (web_host, web_port) = parse_host_port(config.web_bind.as_str(), "web bind")
-        .unwrap_or((DEFAULT_VIEWER_HOST.to_string(), 5011));
-    let web_host = resolve_runtime_host(web_host.as_str(), request_host);
-    let viewer_host = host_for_url(viewer_host.as_str());
-    let web_host = host_for_url(web_host.as_str());
-    format!("http://{viewer_host}:{viewer_port}/?ws=ws://{web_host}:{web_port}")
-}
-
-fn resolve_runtime_host(config_host: &str, request_host: Option<&str>) -> String {
-    let config_host = config_host.trim();
-    if config_host.is_empty()
-        || config_host == "0.0.0.0"
-        || config_host == "::"
-        || config_host == "[::]"
-        || config_host == "127.0.0.1"
-        || config_host == "localhost"
-    {
-        if let Some(request_host) = request_host {
-            let request_host = request_host.trim();
-            if !request_host.is_empty() {
-                return request_host.to_string();
-            }
-        }
-        return "127.0.0.1".to_string();
-    }
-    config_host.to_string()
-}
-
-fn host_for_url(host: &str) -> String {
-    if host.contains(':') && !host.starts_with('[') && !host.ends_with(']') {
-        format!("[{host}]")
-    } else {
-        host.to_string()
-    }
-}
-
-fn validate_config(config: &LauncherConfig) -> Vec<String> {
-    let mut issues = Vec::new();
-    if config.scenario.trim().is_empty() {
-        issues.push("scenario is required".to_string());
-    }
-    if parse_host_port(config.live_bind.as_str(), "live bind").is_err() {
-        issues.push("live bind must be in <host:port> format".to_string());
-    }
-    if parse_host_port(config.web_bind.as_str(), "web bind").is_err() {
-        issues.push("web bind must be in <host:port> format".to_string());
-    }
-    if config.viewer_host.trim().is_empty() {
-        issues.push("viewer host is required".to_string());
-    }
-    if parse_port(config.viewer_port.as_str(), "viewer port").is_err() {
-        issues.push("viewer port must be integer in 1..=65535".to_string());
-    }
-
-    let viewer_static_dir = config.viewer_static_dir.trim();
-    if viewer_static_dir.is_empty() {
-        issues.push("viewer static directory is required".to_string());
-    } else if !Path::new(viewer_static_dir).is_dir() {
-        issues.push(format!(
-            "viewer static directory does not exist or is not a directory: {viewer_static_dir}"
-        ));
-    }
-
-    if config.chain_enabled {
-        if parse_host_port(config.chain_status_bind.as_str(), "chain status bind").is_err() {
-            issues.push("chain status bind must be in <host:port> format".to_string());
-        }
-        if config.chain_node_id.trim().is_empty() {
-            issues.push("chain node id is required".to_string());
-        }
-        if parse_chain_role(config.chain_node_role.as_str()).is_err() {
-            issues.push("chain role must be one of: sequencer|storage|observer".to_string());
-        }
-        if parse_port(config.chain_node_tick_ms.as_str(), "chain node tick ms").is_err() {
-            issues.push("chain node tick ms must be integer in 1..=65535".to_string());
-        }
-        if parse_chain_validators(config.chain_node_validators.as_str()).is_err() {
-            issues.push("chain validators must be in <validator_id:stake> format".to_string());
-        }
-    }
-
-    issues
-}
-
-fn build_launcher_args(config: &LauncherConfig) -> Result<Vec<String>, String> {
-    if config.scenario.trim().is_empty() {
-        return Err("scenario cannot be empty".to_string());
-    }
-    parse_host_port(config.live_bind.as_str(), "live bind")?;
-    parse_host_port(config.web_bind.as_str(), "web bind")?;
-    let viewer_port = parse_port(config.viewer_port.as_str(), "viewer port")?;
-    if config.viewer_host.trim().is_empty() {
-        return Err("viewer host cannot be empty".to_string());
-    }
-    if config.viewer_static_dir.trim().is_empty() {
-        return Err("viewer static dir cannot be empty".to_string());
-    }
-
-    let mut args = vec![
-        "--scenario".to_string(),
-        config.scenario.trim().to_string(),
-        "--live-bind".to_string(),
-        config.live_bind.trim().to_string(),
-        "--web-bind".to_string(),
-        config.web_bind.trim().to_string(),
-        "--viewer-host".to_string(),
-        config.viewer_host.trim().to_string(),
-        "--viewer-port".to_string(),
-        viewer_port.to_string(),
-        "--viewer-static-dir".to_string(),
-        config.viewer_static_dir.trim().to_string(),
-    ];
-
-    if config.llm_enabled {
-        args.push("--with-llm".to_string());
-    } else {
-        args.push("--no-llm".to_string());
-    }
-    if !config.auto_open_browser {
-        args.push("--no-open-browser".to_string());
-    }
-
-    if config.chain_enabled {
-        parse_host_port(config.chain_status_bind.as_str(), "chain status bind")?;
-        let chain_role = parse_chain_role(config.chain_node_role.as_str())?;
-        let chain_tick_ms = parse_port(config.chain_node_tick_ms.as_str(), "chain node tick ms")?;
-        let validators = parse_chain_validators(config.chain_node_validators.as_str())?;
-        args.push("--chain-enable".to_string());
-        args.push("--chain-status-bind".to_string());
-        args.push(config.chain_status_bind.trim().to_string());
-        args.push("--chain-node-id".to_string());
-        args.push(config.chain_node_id.trim().to_string());
-        if !config.chain_world_id.trim().is_empty() {
-            args.push("--chain-world-id".to_string());
-            args.push(config.chain_world_id.trim().to_string());
-        }
-        args.push("--chain-node-role".to_string());
-        args.push(chain_role);
-        args.push("--chain-node-tick-ms".to_string());
-        args.push(chain_tick_ms.to_string());
-        for validator in validators {
-            args.push("--chain-node-validator".to_string());
-            args.push(validator);
-        }
-    } else {
-        args.push("--chain-disable".to_string());
-    }
-
-    Ok(args)
-}
-
-fn spawn_child_process(bin: &str, args: &[String]) -> Result<RunningProcess, String> {
-    let mut child = Command::new(bin)
-        .args(args)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .map_err(|err| format!("spawn process `{bin}` failed: {err}"))?;
-
-    let (log_tx, log_rx) = mpsc::channel::<String>();
-    if let Some(stdout) = child.stdout.take() {
-        spawn_log_reader(stdout, "stdout", log_tx.clone());
-    }
-    if let Some(stderr) = child.stderr.take() {
-        spawn_log_reader(stderr, "stderr", log_tx.clone());
-    }
-
-    Ok(RunningProcess { child, log_rx })
-}
-
-fn spawn_log_reader<R: Read + Send + 'static>(reader: R, source: &'static str, tx: Sender<String>) {
-    thread::spawn(move || {
-        let buffered = BufReader::new(reader);
-        for line in buffered.lines() {
-            match line {
-                Ok(content) => {
-                    let _ = tx.send(format!("[launcher {source}] {content}"));
-                }
-                Err(err) => {
-                    let _ = tx.send(format!("[launcher {source}] <read error: {err}>"));
-                    break;
-                }
-            }
-        }
-    });
-}
-
-fn stop_child_process(child: &mut Child) -> Result<(), String> {
-    if child
-        .try_wait()
-        .map_err(|err| format!("query child status failed: {err}"))?
-        .is_some()
-    {
-        return Ok(());
-    }
-
-    if let Err(err) = send_interrupt_signal(child) {
-        eprintln!("warning: failed to request graceful process stop: {err}");
-    } else {
-        let deadline = Instant::now() + Duration::from_millis(GRACEFUL_STOP_TIMEOUT_MS);
-        while Instant::now() < deadline {
-            if child
-                .try_wait()
-                .map_err(|err| format!("query child status failed: {err}"))?
-                .is_some()
-            {
-                return Ok(());
-            }
-            thread::sleep(Duration::from_millis(STOP_POLL_INTERVAL_MS));
-        }
-    }
-
-    if let Ok(None) = child.try_wait() {
-        child
-            .kill()
-            .map_err(|err| format!("kill child failed: {err}"))?;
-    }
-    child
-        .wait()
-        .map_err(|err| format!("wait child failed: {err}"))?;
-    Ok(())
-}
-
-fn send_interrupt_signal(child: &Child) -> Result<(), String> {
-    #[cfg(unix)]
-    {
-        let pid = child.id().to_string();
-        let status = Command::new("kill")
-            .arg("-INT")
-            .arg(pid.as_str())
-            .status()
-            .map_err(|err| format!("run kill -INT failed: {err}"))?;
-        if status.success() {
-            return Ok(());
-        }
-        return Err(format!("kill -INT exited with {status}"));
-    }
-
-    #[cfg(not(unix))]
-    {
-        let _ = child;
-        Ok(())
-    }
-}
-
 fn parse_options<'a, I>(args: I) -> Result<CliOptions, String>
 where
     I: IntoIterator<Item = &'a str>,
@@ -1006,6 +612,9 @@ where
             }
             "--launcher-bin" => {
                 options.launcher_bin = next_value(&mut iter, "--launcher-bin")?;
+            }
+            "--chain-runtime-bin" => {
+                options.chain_runtime_bin = next_value(&mut iter, "--chain-runtime-bin")?;
             }
             "--console-static-dir" => {
                 options.console_static_dir =
@@ -1078,6 +687,8 @@ where
     if !validators.is_empty() {
         options.initial_config.chain_node_validators = validators.join(",");
     }
+    options.initial_config.launcher_bin = options.launcher_bin.trim().to_string();
+    options.initial_config.chain_runtime_bin = options.chain_runtime_bin.trim().to_string();
 
     parse_host_port(options.listen_bind.as_str(), "--listen-bind")?;
     parse_port(options.initial_config.viewer_port.as_str(), "--viewer-port")?;
@@ -1098,90 +709,14 @@ where
     if options.launcher_bin.trim().is_empty() {
         return Err("--launcher-bin must not be empty".to_string());
     }
+    if options.chain_runtime_bin.trim().is_empty() {
+        return Err("--chain-runtime-bin must not be empty".to_string());
+    }
     if options.console_static_dir.as_os_str().is_empty() {
         return Err("--console-static-dir must not be empty".to_string());
     }
 
     Ok(options)
-}
-
-fn next_value<'a, I>(iter: &mut std::iter::Peekable<I>, flag: &str) -> Result<String, String>
-where
-    I: Iterator<Item = &'a str>,
-{
-    iter.next()
-        .map(str::to_string)
-        .ok_or_else(|| format!("{flag} requires a value"))
-}
-
-fn parse_port(raw: &str, label: &str) -> Result<u16, String> {
-    let value = raw.trim();
-    let port = value
-        .parse::<u16>()
-        .map_err(|_| format!("{label} must be integer in 1..=65535"))?;
-    if port == 0 {
-        return Err(format!("{label} must be in 1..=65535"));
-    }
-    Ok(port)
-}
-
-fn parse_host_port(raw: &str, label: &str) -> Result<(String, u16), String> {
-    let value = raw.trim();
-    let (host_raw, port_raw) = if let Some(rest) = value.strip_prefix('[') {
-        let (host, remainder) = rest
-            .split_once(']')
-            .ok_or_else(|| format!("{label} IPv6 host must be in [addr]:port format"))?;
-        let port_raw = remainder
-            .strip_prefix(':')
-            .ok_or_else(|| format!("{label} must be in <host:port> format"))?;
-        (host, port_raw)
-    } else {
-        let (host, port_raw) = value
-            .rsplit_once(':')
-            .ok_or_else(|| format!("{label} must be in <host:port> format"))?;
-        if host.contains(':') {
-            return Err(format!("{label} IPv6 host must be wrapped in []"));
-        }
-        (host, port_raw)
-    };
-
-    let host = host_raw.trim();
-    if host.is_empty() {
-        return Err(format!("{label} host cannot be empty"));
-    }
-    let port = parse_port(port_raw, label)?;
-    Ok((host.to_string(), port))
-}
-
-fn parse_chain_role(raw: &str) -> Result<String, String> {
-    let role = raw.trim().to_ascii_lowercase();
-    match role.as_str() {
-        "sequencer" | "storage" | "observer" => Ok(role),
-        _ => Err("chain role must be one of: sequencer|storage|observer".to_string()),
-    }
-}
-
-fn parse_chain_validators(raw: &str) -> Result<Vec<String>, String> {
-    let mut validators = Vec::new();
-    for token in raw.split([',', ';', ' ']) {
-        let token = token.trim();
-        if token.is_empty() {
-            continue;
-        }
-        let (validator_id, stake) = token
-            .rsplit_once(':')
-            .ok_or_else(|| "chain validators must be <validator_id:stake>".to_string())?;
-        if validator_id.trim().is_empty() {
-            return Err("chain validators cannot contain empty validator_id".to_string());
-        }
-        let stake = stake
-            .parse::<u64>()
-            .ok()
-            .filter(|value| *value > 0)
-            .ok_or_else(|| "chain validator stake must be positive integer".to_string())?;
-        validators.push(format!("{}:{}", validator_id.trim(), stake));
-    }
-    Ok(validators)
 }
 
 #[cfg(test)]

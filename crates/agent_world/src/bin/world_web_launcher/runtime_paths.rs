@@ -18,6 +18,20 @@ pub(super) fn resolve_world_game_launcher_binary() -> PathBuf {
     PathBuf::from(binary_name("world_game_launcher"))
 }
 
+pub(super) fn resolve_world_chain_runtime_binary() -> PathBuf {
+    if let Ok(path) = env::var("AGENT_WORLD_WORLD_CHAIN_RUNTIME_BIN") {
+        return PathBuf::from(path);
+    }
+
+    if let Ok(current_exe) = env::current_exe() {
+        if let Some(bin_dir) = current_exe.parent() {
+            return bin_dir.join(binary_name("world_chain_runtime"));
+        }
+    }
+
+    PathBuf::from(binary_name("world_chain_runtime"))
+}
+
 pub(super) fn resolve_static_dir_path(default_viewer_static_dir: &str) -> PathBuf {
     if let Ok(path) = env::var("AGENT_WORLD_GAME_STATIC_DIR") {
         return PathBuf::from(path);

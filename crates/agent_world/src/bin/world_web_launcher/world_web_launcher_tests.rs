@@ -4,9 +4,9 @@ use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::{
-    build_game_url, build_launcher_args, parse_chain_validators, parse_host_port, parse_options,
-    parse_port, validate_config, CliOptions, LauncherConfig, DEFAULT_CHAIN_STATUS_BIND,
-    DEFAULT_LISTEN_BIND, DEFAULT_SCENARIO,
+    build_chain_runtime_args, build_game_url, build_launcher_args, parse_chain_validators,
+    parse_host_port, parse_options, parse_port, validate_chain_config, validate_game_config,
+    CliOptions, LauncherConfig, DEFAULT_CHAIN_STATUS_BIND, DEFAULT_LISTEN_BIND, DEFAULT_SCENARIO,
 };
 
 #[test]
@@ -31,6 +31,8 @@ fn parse_options_accepts_overrides() {
             "127.0.0.1:7510",
             "--launcher-bin",
             "/tmp/world_game_launcher",
+            "--chain-runtime-bin",
+            "/tmp/world_chain_runtime",
             "--console-static-dir",
             "/tmp/web-launcher-dist",
             "--scenario",
@@ -55,6 +57,7 @@ fn parse_options_accepts_overrides() {
 
     assert_eq!(options.listen_bind, "127.0.0.1:7510");
     assert_eq!(options.launcher_bin, "/tmp/world_game_launcher");
+    assert_eq!(options.chain_runtime_bin, "/tmp/world_chain_runtime");
     assert_eq!(
         options.console_static_dir,
         PathBuf::from("/tmp/web-launcher-dist")
@@ -64,6 +67,14 @@ fn parse_options_accepts_overrides() {
     assert_eq!(options.initial_config.web_bind, "127.0.0.1:6201");
     assert_eq!(options.initial_config.viewer_host, "127.0.0.1");
     assert_eq!(options.initial_config.viewer_port, "4777");
+    assert_eq!(
+        options.initial_config.launcher_bin,
+        "/tmp/world_game_launcher"
+    );
+    assert_eq!(
+        options.initial_config.chain_runtime_bin,
+        "/tmp/world_chain_runtime"
+    );
     assert!(options.initial_config.llm_enabled);
     assert!(!options.initial_config.chain_enabled);
     assert!(options.initial_config.auto_open_browser);
@@ -133,7 +144,7 @@ fn build_launcher_args_includes_chain_disable_when_off() {
 }
 
 #[test]
-fn build_launcher_args_includes_chain_overrides_when_on() {
+fn build_launcher_args_keeps_chain_disabled_even_when_chain_config_is_on() {
     let config = LauncherConfig {
         viewer_static_dir: ".".to_string(),
         chain_enabled: true,
@@ -146,10 +157,29 @@ fn build_launcher_args_includes_chain_overrides_when_on() {
         ..LauncherConfig::default()
     };
     let args = build_launcher_args(&config).expect("args");
-    assert!(args.contains(&"--chain-enable".to_string()));
-    assert!(args.contains(&"--chain-status-bind".to_string()));
+    assert!(args.contains(&"--chain-disable".to_string()));
+    assert!(!args.contains(&"--chain-enable".to_string()));
+}
+
+#[test]
+fn build_chain_runtime_args_includes_chain_overrides_when_on() {
+    let config = LauncherConfig {
+        viewer_static_dir: ".".to_string(),
+        chain_enabled: true,
+        chain_status_bind: "127.0.0.1:6121".to_string(),
+        chain_node_id: "chain-a".to_string(),
+        chain_world_id: "live-chain-a".to_string(),
+        chain_node_role: "storage".to_string(),
+        chain_node_tick_ms: "300".to_string(),
+        chain_node_validators: "chain-a:55,chain-b:45".to_string(),
+        ..LauncherConfig::default()
+    };
+    let args = build_chain_runtime_args(&config).expect("args");
+    assert!(args.contains(&"--status-bind".to_string()));
     assert!(args.contains(&"127.0.0.1:6121".to_string()));
-    assert!(args.contains(&"--chain-node-validator".to_string()));
+    assert!(args.contains(&"--node-id".to_string()));
+    assert!(args.contains(&"chain-a".to_string()));
+    assert!(args.contains(&"--node-validator".to_string()));
     assert!(args.contains(&"chain-a:55".to_string()));
     assert!(args.contains(&"chain-b:45".to_string()));
 }
@@ -167,7 +197,7 @@ fn build_game_url_uses_request_host_for_wildcard_bindings() {
 }
 
 #[test]
-fn validate_config_reports_missing_required_fields() {
+fn validate_game_config_reports_missing_required_fields() {
     let config = LauncherConfig {
         scenario: "".to_string(),
         live_bind: "127.0.0.1".to_string(),
@@ -183,7 +213,7 @@ fn validate_config_reports_missing_required_fields() {
         chain_node_validators: "node-a".to_string(),
         ..LauncherConfig::default()
     };
-    let issues = validate_config(&config);
+    let issues = validate_game_config(&config);
     assert!(!issues.is_empty());
     assert!(issues.iter().any(|item| item.contains("scenario")));
     assert!(issues.iter().any(|item| item.contains("live bind")));
@@ -194,22 +224,40 @@ fn validate_config_reports_missing_required_fields() {
 }
 
 #[test]
-fn validate_config_accepts_minimal_valid_setup() {
+fn validate_game_config_accepts_minimal_valid_setup() {
     let static_dir = make_temp_dir("world_web_launcher_valid");
     let config = LauncherConfig {
         viewer_static_dir: static_dir.to_string_lossy().to_string(),
         chain_enabled: false,
         ..LauncherConfig::default()
     };
-    let issues = validate_config(&config);
+    let issues = validate_game_config(&config);
     assert!(issues.is_empty());
     let _ = fs::remove_dir_all(static_dir);
+}
+
+#[test]
+fn validate_chain_config_reports_missing_required_fields() {
+    let config = LauncherConfig {
+        chain_enabled: true,
+        chain_status_bind: "127.0.0.1".to_string(),
+        chain_node_id: "".to_string(),
+        chain_node_role: "invalid".to_string(),
+        chain_node_tick_ms: "0".to_string(),
+        chain_node_validators: "node-a".to_string(),
+        ..LauncherConfig::default()
+    };
+    let issues = validate_chain_config(&config);
+    assert!(!issues.is_empty());
+    assert!(issues.iter().any(|item| item.contains("chain status bind")));
+    assert!(issues.iter().any(|item| item.contains("chain node id")));
 }
 
 #[test]
 fn cli_options_default_launcher_bin_is_not_empty() {
     let options = CliOptions::default();
     assert!(!options.launcher_bin.trim().is_empty());
+    assert!(!options.chain_runtime_bin.trim().is_empty());
 }
 
 fn make_temp_dir(label: &str) -> PathBuf {

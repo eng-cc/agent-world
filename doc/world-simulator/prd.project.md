@@ -34,7 +34,7 @@
 - [x] TASK-WORLD_SIMULATOR-031 (PRD-WORLD_SIMULATOR-014) [test_tier_required]: 完成“启动器 Web 必填校验分流修复”PRD 建模与任务拆解。
 - [x] TASK-WORLD_SIMULATOR-032 (PRD-WORLD_SIMULATOR-014) [test_tier_required]: 修复 Web 端 native-only 必填项误报（launcher/chain runtime bin）并完成 Playwright 回归。
 - [x] TASK-WORLD_SIMULATOR-033 (PRD-WORLD_SIMULATOR-015) [test_tier_required]: 完成“启动器 native/web 同控制面 + native 客户端服务端分离”PRD 建模与任务拆解。
-- [ ] TASK-WORLD_SIMULATOR-034 (PRD-WORLD_SIMULATOR-015) [test_tier_required]: 升级 `world_web_launcher` 为游戏/区块链独立编排控制面，新增链独立启停 API 与状态快照。
+- [x] TASK-WORLD_SIMULATOR-034 (PRD-WORLD_SIMULATOR-015) [test_tier_required]: 升级 `world_web_launcher` 为游戏/区块链独立编排控制面，新增链独立启停 API 与状态快照。
 - [ ] TASK-WORLD_SIMULATOR-035 (PRD-WORLD_SIMULATOR-015) [test_tier_required]: `agent_world_client_launcher` native 改为客户端-服务端分离并复用同一 API 控制链路，恢复 web 端链启停与状态对齐并完成 Playwright 回归。
 
 ## 专题任务映射（2026-03-02 批次）
@@ -96,8 +96,8 @@
 ## 状态
 - 更新日期: 2026-03-04
 - 当前状态: in_progress（执行 PRD-WORLD_SIMULATOR-015）
-- 当前优先任务: TASK-WORLD_SIMULATOR-034
-- 并行待办: TASK-WORLD_SIMULATOR-035
+- 当前优先任务: TASK-WORLD_SIMULATOR-035
+- 并行待办: 无
 - 专题映射状态: 2026-03-02 批次 9/9、2026-03-03 批次 4/4、2026-03-04 批次 6/6 已纳入模块项目管理文档。
 - 手册入口状态: `doc/world-simulator/viewer/viewer-manual.md` 为唯一活跃手册入口。
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
