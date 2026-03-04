@@ -21,6 +21,30 @@ FORBIDDEN_PATTERNS=(
   './.codex/skills/playwright/scripts/playwright_cli.sh'
 )
 
+SOURCE_REFERENCE_REQUIRED_PATTERNS=(
+  'doc/world-simulator/viewer/viewer-location-fine-grained-rendering.prd.md'
+  'doc/scripts/viewer-tools/capture-viewer-frame.prd.md'
+)
+
+MIRROR_REFERENCE_REQUIRED_PATTERNS=(
+  'https://github.com/eng-cc/agent-world/blob/main/doc/world-simulator/viewer/viewer-location-fine-grained-rendering.prd.md'
+  'https://github.com/eng-cc/agent-world/blob/main/doc/scripts/viewer-tools/capture-viewer-frame.prd.md'
+)
+
+MIRROR_REFERENCE_FORBIDDEN_PATTERNS=(
+  'doc/world-simulator/viewer-location-fine-grained-rendering.md'
+  'doc/world-simulator/viewer-auto-focus-capture.md'
+  'doc/world-simulator/viewer-web-closure-testing-policy.md'
+  'doc/world-simulator/viewer-selection-details.md'
+  'doc/world-simulator/viewer-right-panel-module-visibility.md'
+  'doc/world-simulator/viewer-overview-map-zoom.md'
+  'doc/world-simulator/viewer-agent-quick-locate.md'
+  'doc/world-simulator/viewer-copyable-text.md'
+  'doc/world-simulator/viewer-generic-focus-targets.md'
+  'doc/world-simulator/viewer-web-test-api-step-control-2026-02-24.md'
+  'doc/scripts/viewer-tools/capture-viewer-frame.md'
+)
+
 contains_fixed_pattern() {
   local pattern="$1"
   local file_path="$2"
@@ -33,8 +57,9 @@ contains_fixed_pattern() {
 
 check_required_patterns() {
   local file_path="$1"
+  shift
   local pattern
-  for pattern in "${REQUIRED_PATTERNS[@]}"; do
+  for pattern in "$@"; do
     if ! contains_fixed_pattern "$pattern" "$file_path"; then
       echo "error: missing required pattern in ${file_path}: ${pattern}" >&2
       return 1
@@ -44,8 +69,9 @@ check_required_patterns() {
 
 check_forbidden_patterns() {
   local file_path="$1"
+  shift
   local pattern
-  for pattern in "${FORBIDDEN_PATTERNS[@]}"; do
+  for pattern in "$@"; do
     if contains_fixed_pattern "$pattern" "$file_path"; then
       echo "error: found deprecated pattern in ${file_path}: ${pattern}" >&2
       return 1
@@ -53,12 +79,15 @@ check_forbidden_patterns() {
   done
 }
 
-check_required_patterns "${SOURCE_MANUAL}"
-check_forbidden_patterns "${SOURCE_MANUAL}"
+check_required_patterns "${SOURCE_MANUAL}" "${REQUIRED_PATTERNS[@]}"
+check_forbidden_patterns "${SOURCE_MANUAL}" "${FORBIDDEN_PATTERNS[@]}"
+check_required_patterns "${SOURCE_MANUAL}" "${SOURCE_REFERENCE_REQUIRED_PATTERNS[@]}"
 
 for mirror in "${MIRROR_MANUALS[@]}"; do
-  check_required_patterns "${mirror}"
-  check_forbidden_patterns "${mirror}"
+  check_required_patterns "${mirror}" "${REQUIRED_PATTERNS[@]}"
+  check_forbidden_patterns "${mirror}" "${FORBIDDEN_PATTERNS[@]}"
+  check_required_patterns "${mirror}" "${MIRROR_REFERENCE_REQUIRED_PATTERNS[@]}"
+  check_forbidden_patterns "${mirror}" "${MIRROR_REFERENCE_FORBIDDEN_PATTERNS[@]}"
 done
 
-echo "ok: viewer manual static mirrors are synced with Playwright path baseline"
+echo "ok: viewer manual static mirrors are synced with Playwright path and reference link baseline"

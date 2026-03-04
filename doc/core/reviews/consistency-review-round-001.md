@@ -106,6 +106,7 @@ rg -n "审计轮次:[[:space:]]*[1-9][0-9]*" doc/*/prd*.md doc/*/**/*.prd*.md
 | I-013 | `game-test` 文档启动链路仍写 `world_viewer_live + run-viewer-web.sh`，与现有 `world_game_launcher` 流程不一致。 | `doc/playability_test_result/game-test.prd.md` | high |
 | I-014 | 资源/计费口径在文档间不一致（`Compound/Hardware`、`Token Gas` 与实现 `Electricity/Data` 计费不一致）。 | `doc/readme/governance/*`、`doc/game/gameplay/*` | medium |
 | I-015 | `release.md` 类型文档未纳入 `prd.index` 树，可追溯性不足。 | `doc/p2p/*/*.release.md` | medium |
+| I-016 | `site/doc/*/viewer-manual.html` 外链仍指向历史 `.md` 路径（缺少 `/viewer/` 目录与 `.prd.md` 后缀），导致 GitHub 404。 | `site/doc/cn/viewer-manual.html`、`site/doc/en/viewer-manual.html` | high |
 
 ## 归档候选
 | 编号 | 候选文档（簇） | 归档理由 | 替代入口 | 状态 |
@@ -136,6 +137,7 @@ rg -n "审计轮次:[[:space:]]*[1-9][0-9]*" doc/*/prd*.md doc/*/**/*.prd*.md
 | A-011 | 对齐资源/计费语义：`readme-resource-model-layering` 与 `gameplay-engineering-architecture` 统一为当前 runtime 实现口径 | readme + game 维护者 | 2026-03-09 | open |
 | A-012 | 归档候选批次化执行：为 `R-001~R-009` 输出“保留文档 + 替代链 + 索引回写 + redirect”清单，并实施首批迁移 | core + 各模块维护者 | 2026-03-12 | open |
 | A-013 | 对已完成本轮审读的文档回写 `审计轮次: 1`（缺省=0 保留），并以 `S_round001` 清单作为统计分母；执行要求为“单文档审计完成即同提交回写（与是否整改解耦）” | 各模块维护者 | 2026-03-12 | in_progress |
+| A-014 | 修复 `site/doc/*/viewer-manual.html` 对 GitHub 文档外链的路径漂移（统一 `/viewer/*.prd.md` 与 `capture-viewer-frame.prd.md`），并将该项加入 `site-manual-sync-check.sh` 阻断校验 | site + world-simulator/viewer 维护者 | 2026-03-07 | done |
 
 ## 特殊情况备注（仅在无需整改时填写）
 | 编号 | 原因 | 风险 | 临时缓解 | 复审日期 | 评审人 |
