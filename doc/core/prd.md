@@ -153,8 +153,8 @@
 | PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |
 | --- | --- | --- | --- | --- |
 | PRD-CORE-001 | TASK-CORE-001/002/006/007 | `test_tier_required` | 入口完整性扫描、模块地图与导航可达检查 | 全项目入口与架构总览一致性 |
-| PRD-CORE-002 | TASK-CORE-002/003/004/007 | `test_tier_required` + `test_tier_full` | 关键链路映射核验、跨模块依赖抽样复核 | 跨模块设计兼容性与发布评审效率 |
-| PRD-CORE-003 | TASK-CORE-004/005/007 | `test_tier_required` + `test_tier_full` | 发布门禁证据映射校验、季度一致性审查记录检查 | 发布决策可审计性与长期治理稳定性 |
+| PRD-CORE-002 | TASK-CORE-002/003/004/007 | `test_tier_required` | 关键链路映射核验、跨模块依赖抽样复核 | 跨模块设计兼容性与发布评审效率 |
+| PRD-CORE-003 | TASK-CORE-004/005/007 | `test_tier_required` | 发布门禁证据映射校验、季度一致性审查记录检查 | 发布决策可审计性与长期治理稳定性 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |
