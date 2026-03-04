@@ -13,13 +13,13 @@
 - [x] CI 增加格式化检查（`cargo fmt --all -- --check`）
 - [x] 文档补充：新仓库需重新注册 pre-commit hook（2026-02-07）
 - [x] 移除默认 pre-commit/CI 的 builtin wasm hash 校验（改为手动按需执行，2026-02-14）
-- [x] pre-commit 重新启用 builtin wasm hash 校验并落盘 DistFS（2026-02-15）
+- [x] 历史方案变更：不再将 builtin wasm hash 校验放在 required 基础门禁（以 `scripts/ci-tests.sh` 当前行为为准）
 - [x] pre-commit 增加 viewer wasm32 编译检查（`cargo check -p agent_world_viewer --target wasm32-unknown-unknown`，2026-02-15）
 - [x] 修复提交钩子 `fmt` 失败并恢复全链路通过（`cargo fmt --all` + 补齐 `selection_linking` 新事件分支，2026-02-16）
 - [x] 修复提交钩子 `fmt` 失败并恢复全链路通过（`cargo fmt --all` 修复 `node_points` / `node_points_runtime` 格式漂移，2026-02-16）
 - [x] 修复 CI `cargo fmt --check` 漂移并恢复门禁通过（`world_viewer_live*` / `agent_world_node*`，2026-02-17）
 - [x] 清理 required 门禁 warning（`world_viewer_live*` DistFS/Node 导入与测试辅助函数，2026-02-17）
-- [x] required 门禁升级到 m1/m4/m5 builtin wasm 校验并同步文档口径（2026-02-20）
+- [x] required 门禁口径同步到当前实现：`doc-governance + fmt + required tier + consensus/distfs/viewer + viewer wasm check`（2026-03-04）
 
 ## 依赖
 - `rustfmt`（staged `.rs`）/ `cargo fmt -- --check`
@@ -28,7 +28,7 @@
 
 ## 状态
 - 当前阶段：已提交
-- 最近更新：required 门禁升级为 `m1/m4/m5` builtin wasm 全量校验，并同步 pre-commit 文档口径（2026-02-20）
+- 最近更新：required 门禁文档回写到 `scripts/ci-tests.sh` 当前口径（2026-03-04）
 
 ## 迁移记录（2026-03-03）
 - 已按 `TASK-ENGINEERING-014-D1 (PRD-ENGINEERING-006)` 从 legacy 命名迁移为 `.prd.md/.prd.project.md`。

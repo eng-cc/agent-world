@@ -7,7 +7,7 @@
 - 以单一脚本形式减少重复维护，降低遗漏风险。
 
 ## 范围
-- **范围内**：执行本地提交前格式化（仅格式化已暂存 Rust 文件）、`required` 级别测试（格式化校验、工件一致性、feature 标签驱动的 smoke case）以及 viewer 的 `wasm32` 编译检查。
+- **范围内**：执行本地提交前格式化（仅格式化已暂存 Rust 文件）、`required` 级别测试（文档治理 + 格式校验 + required 测试套件）以及 viewer 的 `wasm32` 编译检查。
 - **范围外**：lint 或其它包的静态检查。
 - **范围外**：`libp2p`/`wasmtime` 特性回归与 viewer 在线/离线联测（由 `full` 级别承担）。
 
@@ -17,11 +17,12 @@
 - 执行内容：
   - 先格式化已暂存的 Rust 文件：`env -u RUSTC_WRAPPER rustfmt --edition 2021 <staged .rs files>`，并自动 `git add` 回暂存区。
   - 调用统一测试清单脚本：`./scripts/ci-tests.sh required`，其中 required 会执行：
-    - `cargo fmt --check`
-    - `./scripts/sync-m1-builtin-wasm-artifacts.sh --check`
-    - `./scripts/sync-m4-builtin-wasm-artifacts.sh --check`
-    - `./scripts/sync-m5-builtin-wasm-artifacts.sh --check`
+    - `./scripts/doc-governance-check.sh`
+    - `cargo fmt --all -- --check`
     - `cargo test -p agent_world --tests --features test_tier_required`
+    - `cargo test -p agent_world_consensus --lib`
+    - `cargo test -p agent_world_distfs --lib`
+    - `cargo test -p agent_world_viewer`
   - 执行 viewer wasm 编译门禁：`env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-unknown`。
 - 用例分级标签：
   - `test_tier_required`：本地提交与 PR 必跑 case。
