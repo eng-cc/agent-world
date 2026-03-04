@@ -134,6 +134,7 @@
 | `doc/world-simulator/viewer/viewer-live-full-event-driven-phase9-2026-02-27.prd.md` | `doc/world-simulator/viewer/viewer-live-full-event-driven-phase9-2026-02-27.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-live-llm-event-driven-trigger-2026-02-26.prd.md` | `doc/world-simulator/viewer/viewer-live-llm-event-driven-trigger-2026-02-26.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-live-logical-time-interface-phase11-2026-02-27.prd.md` | `doc/world-simulator/viewer/viewer-live-logical-time-interface-phase11-2026-02-27.prd.project.md` |
+| `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase1-2026-03-04.prd.md` | `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase1-2026-03-04.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-live-step-control-progress-stability-2026-02-28.prd.md` | `doc/world-simulator/viewer/viewer-live-step-control-progress-stability-2026-02-28.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-live-tick-driven-doc-archive-2026-02-27.prd.md` | `doc/world-simulator/viewer/viewer-live-tick-driven-doc-archive-2026-02-27.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-location-depletion-visualization.prd.md` | `doc/world-simulator/viewer/viewer-location-depletion-visualization.prd.project.md` |

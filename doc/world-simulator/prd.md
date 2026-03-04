@@ -28,6 +28,7 @@
   - `doc/world-simulator/launcher/game-client-launcher-web-wasm-time-compat-2026-03-04.prd.md`（PRD-WORLD_SIMULATOR-013）
   - `doc/world-simulator/launcher/game-client-launcher-web-required-config-gating-2026-03-04.prd.md`（PRD-WORLD_SIMULATOR-014）
   - `doc/world-simulator/launcher/game-client-launcher-native-web-control-plane-unification-2026-03-04.prd.md`（PRD-WORLD_SIMULATOR-015）
+  - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase1-2026-03-04.prd.md`（PRD-WORLD_SIMULATOR-016）
 
 ## 里程碑
 - M1 (2026-03-03): 完成模块设计 PRD 主体重写与任务改造。
@@ -65,6 +66,7 @@
   - SC-17: 启动器 wasm 页面初始化不得触发 `time not implemented` 崩溃，Playwright headed 闭环必须可稳定采证。
   - SC-18: 启动器 Web 端不得要求 native-only 二进制路径必填，且 native 端仍保持对应必填校验。
   - SC-19: 启动器 native 与 web 必须通过同一控制面 API 编排游戏/区块链进程，并保持状态与按钮行为一致。
+  - SC-20: `world_viewer_live` 必须支持 runtime/world 驱动模式，并在不改 viewer 协议前提下输出可消费的 live 快照与事件。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -94,6 +96,7 @@
   - PRD-WORLD_SIMULATOR-013: As a 启动器开发者, I want launcher wasm to use web-compatible time primitives, so that web UI startup does not panic in browser runtime.
   - PRD-WORLD_SIMULATOR-014: As an 运维人员, I want web launcher required checks to ignore native-only binaries, so that browser startup is not blocked by irrelevant fields.
   - PRD-WORLD_SIMULATOR-015: As a 启动器玩家, I want native/web launcher to share the same control-plane API, so that game/blockchain control behavior remains fully aligned across platforms.
+  - PRD-WORLD_SIMULATOR-016: As a 玩法架构开发者, I want world_viewer_live to run on runtime/world with protocol compatibility, so that live behavior aligns with runtime semantics without immediate viewer model rewrite.
 - Critical User Flows:
   1. Flow-WS-001（Web-first 闭环）:
      `选择场景 -> 启动 Viewer Web -> 执行关键交互 -> 采集日志/截图/指标 -> 产出 test_tier_required 结论`
@@ -121,6 +124,8 @@
      `浏览器加载配置 -> 必填校验 -> 不再提示 launcher/chain runtime bin 必填 -> 继续启动流程`
   13. Flow-WS-013（Launcher native/web 同控制面）:
      `启动 world_web_launcher -> native/wasm 客户端轮询 /api/state -> 分别触发 /api/start|stop 与 /api/chain/start|stop -> 状态一致反馈`
+  14. Flow-WS-014（Viewer live runtime 接管 Phase 1）:
+     `world_viewer_live --runtime-world -> runtime::World 驱动 step -> 适配为 simulator 协议快照/事件 -> agent_world_viewer 消费`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
@@ -137,6 +142,7 @@
 | Launcher wasm 时间兼容 | `WEB_POLL_INTERVAL_MS`、`last_web_poll_at`、web time primitive | 页面轮询 `/api/state` 且不触发 wasm 时间平台 panic | `interactive -> polling -> synced` | 轮询基于单调时钟差值，防并发请求堆积 | 浏览器会话可读，接口由受信网络控制 |
 | Launcher Web 必填分流 | `launcher_bin`、`chain_runtime_bin`（native-only） | Web 端校验排除 native-only 必填，native 端保持阻断 | `config_loaded -> validated` | 按 `target_arch` 分流 | 平台边界一致 |
 | Launcher native/web 同控制面 | `/api/state`、`/api/start`、`/api/stop`、`/api/chain/start`、`/api/chain/stop` | native 与 web 端统一走 API 触发游戏/区块链独立启停 | `service_ready -> game_running/stopped + chain_starting/ready/stopped` | 状态以服务端快照为准，客户端仅做展示与轮询 | 控制面部署在受信网络，客户端仅消费授权 API |
+| Viewer live runtime 接管 | `--runtime-world`、runtime `DomainEvent`、兼容 `WorldSnapshot/WorldEvent` | 启动 runtime 模式后按 Play/Step 推进 runtime，并推送兼容快照/事件 | `simulator_mode/runtime_mode`（启动参数决定） | 事件序列保持单调；至少映射注册/移动/转移/拒绝四类事件 | 本地开发链路，默认不开放远程写接口 |
 - Acceptance Criteria:
   - AC-1: world-simulator PRD 覆盖场景、Viewer、LLM、启动器四条主线。
   - AC-2: world-simulator project 文档维护任务拆解与状态。
@@ -160,6 +166,7 @@
   - AC-20: 启动器 wasm 页面在 Playwright headed 打开后不得出现 `time not implemented on this platform` 或 `RuntimeError: unreachable`，并需输出 snapshot/console/screenshot 证据。
   - AC-21: 启动器 Web 端不得再提示 `launcher bin` 与 `chain runtime bin` 必填；native 端保留对应必填校验。
   - AC-22: 启动器 native 与 web 必须统一消费 `world_web_launcher` 控制面 API，并支持链/游戏独立启停及一致状态展示。
+  - AC-23: `world_viewer_live --runtime-world` 可启动 runtime 驱动 live server，并保持现有 viewer 协议兼容（`WorldSnapshot/WorldEvent`）。
 - Non-Goals:
   - 不在本 PRD 中详细列出每个 UI 像素级规范。
   - 不替代 world-runtime/p2p 的底层协议设计。
@@ -185,6 +192,7 @@
   - `doc/world-simulator/launcher/game-client-launcher-web-wasm-time-compat-2026-03-04.prd.md`
   - `doc/world-simulator/launcher/game-client-launcher-web-required-config-gating-2026-03-04.prd.md`
   - `doc/world-simulator/launcher/game-client-launcher-native-web-control-plane-unification-2026-03-04.prd.md`
+  - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase1-2026-03-04.prd.md`
   - `crates/agent_world_launcher_ui/src/lib.rs`
   - `crates/agent_world_client_launcher/src/main.rs`
   - `crates/agent_world_client_launcher/src/app_process.rs`
@@ -192,6 +200,8 @@
   - `crates/agent_world_client_launcher/src/launcher_core.rs`
   - `crates/agent_world_client_launcher/Cargo.toml`
   - `crates/agent_world/src/bin/world_web_launcher.rs`
+  - `crates/agent_world/src/bin/world_viewer_live.rs`
+  - `crates/agent_world/src/viewer/runtime_live.rs`
   - `crates/agent_world_client_launcher/index.html`
   - `scripts/build-game-launcher-bundle.sh`
   - `testing-manual.md`
@@ -209,6 +219,7 @@
   - wasm 时间兼容：浏览器运行路径不得使用不支持的平台时间实现，避免页面初始化阶段 panic 直接阻断闭环。
   - Web 必填误判：Web API 配置不含 native-only 字段时，必填校验必须按平台分流，防止误报阻断。
   - 控制面分离回归：native 若无法拉起本地 `world_web_launcher`，必须回传可诊断错误且禁止误导性“运行中”状态。
+  - runtime 映射覆盖不足：runtime `DomainEvent` 未全量映射时，需降级输出可诊断事件并保留序列一致性。
 - Non-Functional Requirements:
   - 性能目标:
     - NFR-1: 启动器链状态探针刷新周期 <= 1s，状态可见延迟 <= 2s。
@@ -223,6 +234,7 @@
     - NFR-13: launcher wasm 在 headed 浏览器启动后 `console error` 不得包含 `time not implemented on this platform`，且不出现 `RuntimeError: unreachable`。
     - NFR-14: Web 必填校验分流后不得新增 native 校验退化，`launcher_bin`/`chain_runtime_bin` 在 native 仍为必填。
     - NFR-15: native 与 web 客户端状态刷新节奏一致（默认 1s），不得出现持续状态漂移（>2 个轮询周期）。
+    - NFR-16: runtime live 模式下，`Step` 控制请求本地执行延迟 `p95 <= 100ms`（默认场景、无外部依赖）。
   - 安全与隐私目标:
     - NFR-4: 日志与证据中不得输出私钥、口令、完整凭据；敏感字段需脱敏。
     - NFR-5: 转账请求必须经过 nonce anti-replay 与余额约束校验。
@@ -265,6 +277,7 @@
 | PRD-WORLD_SIMULATOR-013 | TASK-WORLD_SIMULATOR-029/030 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown` + headed Playwright 打开 `world_web_launcher` 控制台并校验 `console error` 无 `time not implemented` + 归档 screenshot/console/snapshot 证据 | 启动器 Web 端可用性、wasm 运行时兼容稳定性 |
 | PRD-WORLD_SIMULATOR-014 | TASK-WORLD_SIMULATOR-031/032 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher` + `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown` + headed Playwright 打开 launcher web 并回归 `/api/start` `/api/stop`，验证 Web 端不再受 native-only 必填项阻断 | 启动器 Web 配置校验准确性、跨端校验边界一致性 |
 | PRD-WORLD_SIMULATOR-015 | TASK-WORLD_SIMULATOR-033/034/035 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher` + `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher` + `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown` + headed Playwright 覆盖链/游戏独立启停 | 启动器 native/web 控制面一致性、链路维护成本与回归稳定性 |
+| PRD-WORLD_SIMULATOR-016 | TASK-WORLD_SIMULATOR-036/037 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_viewer_live` + `env -u RUSTC_WRAPPER cargo check -p agent_world --bin world_viewer_live`，验证 runtime 驱动 live 链路与协议兼容适配 | viewer live runtime/simulator 双模式一致性与迁移风险可控 |
 
 - Decision Log:
 
@@ -281,3 +294,4 @@
 | DEC-WS-009 | launcher wasm 轮询计时切换到 Web 兼容时间实现，并将 Playwright headed 闭环作为回归门禁 | 接受已知 panic 并仅做文档告警 | 该问题会直接导致 Web UI 不可用，必须通过代码修复 + 自动化采证闭环防止回归；由 `TASK-WORLD_SIMULATOR-030` 落地。 |
 | DEC-WS-010 | 启动器必填校验按平台分流（Web 排除 native-only binary 必填；native 保持阻断） | 在 Web 端注入伪二进制路径默认值 | 分流更符合字段语义边界，避免伪配置污染与误导；由 `TASK-WORLD_SIMULATOR-032` 落地。 |
 | DEC-WS-011 | native 客户端改为“客户端 + 本地 world_web_launcher 服务端”，与 web 客户端共用同一控制面 API | 继续维护 native 直连本地进程 + web API 双路径 | 单一控制面可保证行为一致并降低并行回归成本；由 `TASK-WORLD_SIMULATOR-035` 落地。 |
+| DEC-WS-012 | viewer live 采用“runtime 驱动 + simulator 协议兼容适配”的 Phase 1 迁移 | 一次性替换 viewer 协议与前端模型 | 先切 runtime 主驱动可快速降低双轨风险，同时控制改动面与回归成本；由 `TASK-WORLD_SIMULATOR-037` 落地。 |

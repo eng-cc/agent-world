@@ -36,6 +36,8 @@
 - [x] TASK-WORLD_SIMULATOR-033 (PRD-WORLD_SIMULATOR-015) [test_tier_required]: 完成“启动器 native/web 同控制面 + native 客户端服务端分离”PRD 建模与任务拆解。
 - [x] TASK-WORLD_SIMULATOR-034 (PRD-WORLD_SIMULATOR-015) [test_tier_required]: 升级 `world_web_launcher` 为游戏/区块链独立编排控制面，新增链独立启停 API 与状态快照。
 - [x] TASK-WORLD_SIMULATOR-035 (PRD-WORLD_SIMULATOR-015) [test_tier_required]: `agent_world_client_launcher` native 改为客户端-服务端分离并复用同一 API 控制链路，恢复 web 端链启停与状态对齐并完成 Playwright 回归。
+- [x] TASK-WORLD_SIMULATOR-036 (PRD-WORLD_SIMULATOR-016) [test_tier_required]: 完成“viewer live runtime/world 接管 Phase 1”PRD 建模与任务拆解。
+- [ ] TASK-WORLD_SIMULATOR-037 (PRD-WORLD_SIMULATOR-016) [test_tier_required]: 落地 `world_viewer_live --runtime-world`、runtime live 兼容适配与 required 回归收口。
 
 ## 专题任务映射（2026-03-02 批次）
 - [x] SUBTASK-WORLD_SIMULATOR-20260302-001 (PRD-WORLD_SIMULATOR-001/002/003) [test_tier_required]: `doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.prd.project.md`
@@ -61,6 +63,7 @@
 - [x] SUBTASK-WORLD_SIMULATOR-20260304-004 (PRD-WORLD_SIMULATOR-013) [test_tier_required]: `doc/world-simulator/launcher/game-client-launcher-web-wasm-time-compat-2026-03-04.prd.project.md`
 - [x] SUBTASK-WORLD_SIMULATOR-20260304-005 (PRD-WORLD_SIMULATOR-014) [test_tier_required]: `doc/world-simulator/launcher/game-client-launcher-web-required-config-gating-2026-03-04.prd.project.md`
 - [x] SUBTASK-WORLD_SIMULATOR-20260304-006 (PRD-WORLD_SIMULATOR-015) [test_tier_required]: `doc/world-simulator/launcher/game-client-launcher-native-web-control-plane-unification-2026-03-04.prd.project.md`
+- [x] SUBTASK-WORLD_SIMULATOR-20260304-007 (PRD-WORLD_SIMULATOR-016) [test_tier_required]: `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase1-2026-03-04.prd.project.md`
 
 ## 依赖
 - doc/world-simulator/prd.index.md
@@ -78,6 +81,7 @@
 - `doc/world-simulator/launcher/game-client-launcher-web-wasm-time-compat-2026-03-04.prd.md`
 - `doc/world-simulator/launcher/game-client-launcher-web-required-config-gating-2026-03-04.prd.md`
 - `doc/world-simulator/launcher/game-client-launcher-native-web-control-plane-unification-2026-03-04.prd.md`
+- `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase1-2026-03-04.prd.md`
 - `doc/world-simulator/launcher/game-client-launcher-i18n-required-config-2026-03-02.prd.md`
 - `doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.prd.md`
 - `.agents/skills/prd/check.md`
@@ -95,10 +99,10 @@
 
 ## 状态
 - 更新日期: 2026-03-04
-- 当前状态: completed
-- 当前优先任务: 无
+- 当前状态: active
+- 当前优先任务: TASK-WORLD_SIMULATOR-037
 - 并行待办: 无
-- 专题映射状态: 2026-03-02 批次 9/9、2026-03-03 批次 4/4、2026-03-04 批次 6/6 已纳入模块项目管理文档。
+- 专题映射状态: 2026-03-02 批次 9/9、2026-03-03 批次 4/4、2026-03-04 批次 7/7 已纳入模块项目管理文档。
 - 手册入口状态: `doc/world-simulator/viewer/viewer-manual.md` 为唯一活跃手册入口。
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - 说明: 本文档仅维护 world-simulator 模块设计执行状态；过程记录在 `doc/devlog/2026-03-04.md`。
