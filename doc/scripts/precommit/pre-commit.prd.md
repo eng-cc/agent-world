@@ -34,6 +34,11 @@
   - `full`：每日定时与手动触发全量回归。
 - CI 格式化校验仍由 `scripts/ci-tests.sh` 统一执行 `env -u RUSTC_WRAPPER cargo fmt --all -- --check`。
 
+## 最小验收命令
+- `./scripts/ci-tests.sh required`
+- `./scripts/ci-tests.sh full`
+- `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-unknown`
+
 ## Git Hook
 - **注意**：Git hooks 不会随仓库内容一并版本化；克隆到新仓库（或重新初始化 `.git`）后，默认不会自动带上 `pre-commit` hook，需要手动重新注册。
 - 在仓库根目录重新注册：

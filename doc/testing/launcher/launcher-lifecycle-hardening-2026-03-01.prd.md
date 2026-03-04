@@ -92,6 +92,11 @@
 | PRD-TESTING-LAUNCHER-HARDEN-001 | LCH-1/2 | `test_tier_required` | 信号清理与失败回滚定向测试 | 启动器生命周期稳定性 |
 | PRD-TESTING-LAUNCHER-HARDEN-002 | LCH-2/3 | `test_tier_required` | ready 探针合法响应与进程存活联动校验 | 发布门禁 ready 可信度 |
 | PRD-TESTING-LAUNCHER-HARDEN-003 | LCH-3/4 | `test_tier_required` | IPv6 解析/URL 规则单测与文档一致性检查 | CLI/GUI 联调与地址兼容 |
+
+### 最小验收命令
+- `test -f crates/agent_world/src/bin/world_game_launcher/world_game_launcher_tests.rs`
+- `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_game_launcher`
+- `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher`
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |

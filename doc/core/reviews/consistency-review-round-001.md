@@ -125,19 +125,25 @@ rg -n "审计轮次:[[:space:]]*[1-9][0-9]*" doc/*/prd*.md doc/*/**/*.prd*.md
 | 编号 | 整改动作 | 责任人 | 截止时间 | 状态 |
 | --- | --- | --- | --- | --- |
 | A-001 | 统一 Playwright wrapper 口径（文档与脚本统一使用 `$CODEX_HOME/skills/playwright/scripts/playwright_cli.sh`，并注明仓库开发副本 `.agents/...`） | testing + scripts + site 维护者 | 2026-03-07 | done |
-| A-002 | 回写所有 `scripts/viewer-tools/*.prd.md`、`scripts/precommit/*.prd.md` 等旧路径为 `doc/scripts/...` | core + engineering 维护者 | 2026-03-07 | open |
-| A-003 | 修正 launcher 生命周期专题测试路径（`world_game_launcher/tests.rs` -> 当前真实测试文件）并补最小验收命令 | testing/launcher 维护者 | 2026-03-07 | open |
-| A-004 | 修正 `pre-commit` required/full 套件描述，使其与 `scripts/ci-tests.sh` 当前行为一致 | scripts + testing/ci 维护者 | 2026-03-08 | open |
+| A-002 | 回写所有 `scripts/viewer-tools/*.prd.md`、`scripts/precommit/*.prd.md` 等旧路径为 `doc/scripts/...` | core + engineering 维护者 | 2026-03-07 | done |
+| A-003 | 修正 launcher 生命周期专题测试路径（`world_game_launcher/tests.rs` -> 当前真实测试文件）并补最小验收命令 | testing/launcher 维护者 | 2026-03-07 | done |
+| A-004 | 修正 `pre-commit` required/full 套件描述，使其与 `scripts/ci-tests.sh` 当前行为一致 | scripts + testing/ci 维护者 | 2026-03-08 | done |
 | A-005 | world-runtime 治理/审计口径对齐：`ShadowReport`、事件枚举、失败类型、导出 API 一次性统一（文档回写或代码补齐需二选一明确） | world-runtime 维护者 | 2026-03-10 | done |
 | A-006 | world-runtime 基础语义对齐：生命周期状态机、`module_id/instance_id` 调度说明、Trap 映射、WASM 枚举（`Gameplay`/`Tick`） | world-runtime 维护者 | 2026-03-10 | done |
 | A-007 | world-simulator launcher 文档收口：旧 desktop/unified 口径标记历史或归档，web-console 状态机回写到现状枚举 | world-simulator 维护者 | 2026-03-09 | done |
 | A-008 | viewer 行数约束文档与现状对齐：更新“超限清单”并补持续审计命令 | world-simulator/viewer 维护者 | 2026-03-09 | done |
 | A-009 | p2p 分布式文档对齐：修复旧路径引用，phase7 增加“当前四 crate 正向验收锚点”，并处理 `release.md` 可达性 | p2p 维护者 | 2026-03-09 | done |
 | A-010 | 修复站点 404 链接与 game-test 启动链路描述，保证文档步骤与 `scripts/run-game-test*.sh` 一致 | site + playability 维护者 | 2026-03-07 | done |
-| A-011 | 对齐资源/计费语义：`readme-resource-model-layering` 与 `gameplay-engineering-architecture` 统一为当前 runtime 实现口径 | readme + game 维护者 | 2026-03-09 | open |
+| A-011 | 对齐资源/计费语义：`readme-resource-model-layering` 与 `gameplay-engineering-architecture` 统一为当前 runtime 实现口径 | readme + game 维护者 | 2026-03-09 | done |
 | A-012 | 归档候选批次化执行：为 `R-001~R-009` 输出“保留文档 + 替代链 + 索引回写 + redirect”清单，并实施首批迁移（见 `doc/core/reviews/round-001-archive-migration-plan.md`） | core + 各模块维护者 | 2026-03-12 | done |
 | A-013 | 对已完成本轮审读的文档回写 `审计轮次: 1`（缺省=0 保留），并以 `S_round001` 清单作为统计分母；执行要求为“单文档审计完成即同提交回写（与是否整改解耦）” | 各模块维护者 | 2026-03-12 | in_progress |
 | A-014 | 修复 `site/doc/*/viewer-manual.html` 对 GitHub 文档外链的路径漂移（统一 `/viewer/*.prd.md` 与 `capture-viewer-frame.prd.md`），并将该项加入 `site-manual-sync-check.sh` 阻断校验 | site + world-simulator/viewer 维护者 | 2026-03-07 | done |
+
+## 整改验证快照（2026-03-05）
+- A-002：`rg -n "scripts/(precommit|viewer-tools)/.*\\.prd(\\.project)?\\.md" doc --glob '*.md' | grep -v 'doc/scripts/'` 无命中。
+- A-003：`test -f crates/agent_world/src/bin/world_game_launcher/world_game_launcher_tests.rs`；文档已补“最小验收命令”。
+- A-004：`doc/scripts/precommit/pre-commit.prd.md` 已与 `scripts/ci-tests.sh` required/full 行为对齐并补验收命令。
+- A-011：`readme-resource-model-layering` 与 `gameplay-engineering-architecture` 已统一为 `Electricity`/`Data` 计费口径。
 
 ## 特殊情况备注（仅在无需整改时填写）
 | 编号 | 原因 | 风险 | 临时缓解 | 复审日期 | 评审人 |
