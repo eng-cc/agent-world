@@ -1,8 +1,8 @@
 # ROUND-001 已审读文档清单（S_round001）
 
-- 生成时间: 2026-03-04 23:57:04 CST
+- 生成时间: 2026-03-05 00:31:30 CST
 - 生成规则: `rg -l "^审计轮次:\s*1$" doc --glob '*.md' | sort`
-- 当前已审读文档数: 65
+- 当前已审读文档数: 67
 
 ## 文件列表
 - `doc/game/gameplay/gameplay-engineering-architecture.md`
@@ -68,5 +68,7 @@
 - `doc/world-simulator/launcher/game-client-launcher-ui-schema-share-2026-03-04.prd.md`
 - `doc/world-simulator/launcher/game-client-launcher-web-console-2026-03-04.prd.md`
 - `doc/world-simulator/launcher/game-client-launcher-web-required-config-gating-2026-03-04.prd.md`
+- `doc/world-simulator/launcher/game-unified-launcher-2026-02-27.prd.md`
+- `doc/world-simulator/launcher/game-unified-launcher-2026-02-27.prd.project.md`
 - `doc/world-simulator/viewer/viewer-rust-file-line-cap-refactor-and-web-qa-2026-02-22.prd.md`
 - `doc/world-simulator/viewer/viewer-rust-file-line-cap-refactor-and-web-qa-2026-02-22.prd.project.md`

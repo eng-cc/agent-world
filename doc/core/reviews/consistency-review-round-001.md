@@ -7,8 +7,8 @@
 
 ## 轮次信息
 - 轮次编号: `ROUND-001`
-- 轮次状态: `in_progress` (`not_started` | `in_progress` | `completed`)
-- 审查时间窗: 2026-03-04 ~ 进行中
+- 轮次状态: `completed` (`not_started` | `in_progress` | `completed`)
+- 审查时间窗: 2026-03-04 ~ 2026-03-05
 - 审查负责人: qcraft / codex
 
 状态判定：
@@ -81,7 +81,7 @@ rg -n "审计轮次:[[:space:]]*[1-9][0-9]*" doc/*/prd*.md doc/*/**/*.prd*.md
 ## 受审文件清单（S_round001）
 - 清单文件：`doc/core/reviews/round-001-reviewed-files.md`
 - 生成规则：`rg -l "^审计轮次:\\s*1$" doc --glob '*.md' | sort`
-- 当前基线（2026-03-04 23:57 CST）：`65` 份文档
+- 当前基线（2026-03-05 00:33 CST）：`67` 份文档
 - 用途：作为 `A-013` 的统计分母（仅对纳入本轮清单的文档判定“已审读/未审读”）。
 - 验收命令：
   - `test -f doc/core/reviews/round-001-reviewed-files.md`
@@ -136,7 +136,7 @@ rg -n "审计轮次:[[:space:]]*[1-9][0-9]*" doc/*/prd*.md doc/*/**/*.prd*.md
 | A-010 | 修复站点 404 链接与 game-test 启动链路描述，保证文档步骤与 `scripts/run-game-test*.sh` 一致 | site + playability 维护者 | 2026-03-07 | done |
 | A-011 | 对齐资源/计费语义：`readme-resource-model-layering` 与 `gameplay-engineering-architecture` 统一为当前 runtime 实现口径 | readme + game 维护者 | 2026-03-09 | done |
 | A-012 | 归档候选批次化执行：为 `R-001~R-009` 输出“保留文档 + 替代链 + 索引回写 + redirect”清单，并实施首批迁移（见 `doc/core/reviews/round-001-archive-migration-plan.md`） | core + 各模块维护者 | 2026-03-12 | done |
-| A-013 | 对已完成本轮审读的文档回写 `审计轮次: 1`（缺省=0 保留），并以 `S_round001` 清单作为统计分母；执行要求为“单文档审计完成即同提交回写（与是否整改解耦）” | 各模块维护者 | 2026-03-12 | in_progress |
+| A-013 | 对已完成本轮审读的文档回写 `审计轮次: 1`（缺省=0 保留），并以 `S_round001` 清单作为统计分母；执行要求为“单文档审计完成即同提交回写（与是否整改解耦）” | 各模块维护者 | 2026-03-12 | done |
 | A-014 | 修复 `site/doc/*/viewer-manual.html` 对 GitHub 文档外链的路径漂移（统一 `/viewer/*.prd.md` 与 `capture-viewer-frame.prd.md`），并将该项加入 `site-manual-sync-check.sh` 阻断校验 | site + world-simulator/viewer 维护者 | 2026-03-07 | done |
 
 ## 整改验证快照（2026-03-05）
@@ -144,6 +144,7 @@ rg -n "审计轮次:[[:space:]]*[1-9][0-9]*" doc/*/prd*.md doc/*/**/*.prd*.md
 - A-003：`test -f crates/agent_world/src/bin/world_game_launcher/world_game_launcher_tests.rs`；文档已补“最小验收命令”。
 - A-004：`doc/scripts/precommit/pre-commit.prd.md` 已与 `scripts/ci-tests.sh` required/full 行为对齐并补验收命令。
 - A-011：`readme-resource-model-layering` 与 `gameplay-engineering-architecture` 已统一为 `Electricity`/`Data` 计费口径。
+- A-013：`S_round001` 已按 `审计轮次: 1` 规则重生成，统计基线更新为 67 份。
 
 ## 特殊情况备注（仅在无需整改时填写）
 | 编号 | 原因 | 风险 | 临时缓解 | 复审日期 | 评审人 |
@@ -152,5 +153,5 @@ rg -n "审计轮次:[[:space:]]*[1-9][0-9]*" doc/*/prd*.md doc/*/**/*.prd*.md
 | S-002 | `doc/engineering/prd-review/checklists/*` 仍承担 ROUND-001 执行期临时跟踪作用 | 与新方法并存造成重复维护 | ROUND-001 收口前只增量更新；收口后统一迁移或归档 | 2026-03-12 | qcraft/codex |
 
 ## 复审结果
-- 复审时间：
-- 复审结论：
+- 复审时间：2026-03-05 00:33 CST
+- 复审结论：ROUND-001 两条主线均已完成。代码对齐整改项 `A-001~A-014` 全部关闭；文档治理侧已产出 `R-001~R-009` 批次化迁移清单并完成首批迁移（R-003/R-004），`R-002` 与 `R-007` 按 `S-001/S-002` 批准延期处理。轮次状态由 `in_progress` 收口为 `completed`。
