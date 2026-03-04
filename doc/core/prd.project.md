@@ -4,8 +4,23 @@
 - [x] TASK-CORE-001 (PRD-CORE-001) [test_tier_required]: 完成 core PRD 改写，固化跨模块治理基线。
 - [x] TASK-CORE-002 (PRD-CORE-001/002/003) [test_tier_required]: 将 core PRD 扩展为项目全局总览入口（模块地图/关键链路/关键分册导航）。
 - [ ] TASK-CORE-003 (PRD-CORE-001/002) [test_tier_required]: 建立跨模块变更影响检查清单（设计/代码/测试/发布）。
+  - 产物文件: `doc/core/checklists/cross-module-impact-checklist.md`
+  - 验收命令 (`test_tier_required`):
+    - `test -f doc/core/checklists/cross-module-impact-checklist.md`
+    - `rg -n "适用范围|输入|检查项|阻断条件|回滚策略" doc/core/checklists/cross-module-impact-checklist.md`
+    - `./scripts/doc-governance-check.sh`
 - [ ] TASK-CORE-004 (PRD-CORE-002/003) [test_tier_required]: 建立仓库级 PRD-ID 到测试证据映射模板。
+  - 产物文件: `doc/core/templates/prd-id-test-evidence-mapping.md`
+  - 验收命令 (`test_tier_required`):
+    - `test -f doc/core/templates/prd-id-test-evidence-mapping.md`
+    - `rg -n "PRD-ID|任务ID|测试层级|命令|证据路径|结论" doc/core/templates/prd-id-test-evidence-mapping.md`
+    - `./scripts/doc-governance-check.sh`
 - [ ] TASK-CORE-005 (PRD-CORE-003) [test_tier_required]: 对模块 PRD 进行季度一致性审查并形成审查记录。
+  - 产物文件: `doc/core/reviews/quarterly-consistency-YYYYQX.md`
+  - 验收命令 (`test_tier_required`):
+    - `ls doc/core/reviews/quarterly-consistency-*.md`
+    - `rg -n "抽样范围|一致性问题|整改项|责任人|截止时间|复审结果" doc/core/reviews/quarterly-consistency-*.md`
+    - `./scripts/doc-governance-check.sh`
 - [x] TASK-CORE-006 (PRD-CORE-001/002) [test_tier_required]: 收敛 `doc/` 根目录 legacy redirect 入口并更新总导航。
 - [x] TASK-CORE-007 (PRD-CORE-001/002/003) [test_tier_required]: 对齐 strict PRD schema，补齐关键流程/规格矩阵/边界异常/NFR/验证与决策记录。
 

@@ -102,7 +102,7 @@
 4. 分布式一致性链路:
 `Node/Net -> Consensus Commit -> DistFS/State Replication -> Runtime Apply -> Viewer Observe`
 5. 发布验证链路:
-`PRD-ID Task -> test_tier_required/full -> Web闭环/长跑 -> Evidence Bundle -> Release Decision`
+`PRD-ID Task -> core治理(test_tier_required) -> 模块专项(required/full) -> Web闭环/长跑 -> Evidence Bundle -> Release Decision`
 
 ### 关键分册导航（只读总览后优先下钻）
 - 运行时内核: `doc/world-runtime/runtime/runtime-integration.md`
@@ -160,4 +160,4 @@
 | --- | --- | --- | --- |
 | DEC-CORE-001 | 将 core 固化为项目全局唯一总览入口 | 各模块独立维护无全局入口 | 降低跨模块认知成本并提升评审效率。 |
 | DEC-CORE-002 | 使用 PRD-ID 作为跨文档追踪主键 | 使用任务编号作为唯一主键 | PRD-ID 可跨任务周期稳定复用并支持审计。 |
-| DEC-CORE-003 | 发布评审需绑定 required/full 测试证据 | 仅凭人工结论放行 | 可追溯性与一致性显著更高。 |
+| DEC-CORE-003 | core 文档治理任务默认绑定 `test_tier_required`；跨模块发布结论引用 testing 定义的 required/full 证据 | core 任务直接强制 required/full | 区分治理层与专项回归层，保持口径一致且可执行。 |
