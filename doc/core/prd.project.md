@@ -3,7 +3,7 @@
 ## 任务拆解（含 PRD-ID 映射）
 - [x] TASK-CORE-001 (PRD-CORE-001) [test_tier_required]: 完成 core PRD 改写，固化跨模块治理基线。
 - [x] TASK-CORE-002 (PRD-CORE-001/002/003) [test_tier_required]: 将 core PRD 扩展为项目全局总览入口（模块地图/关键链路/关键分册导航）。
-- [ ] TASK-CORE-003 (PRD-CORE-001/002) [test_tier_required]: 建立跨模块变更影响检查清单（设计/代码/测试/发布）。
+- [x] TASK-CORE-003 (PRD-CORE-001/002) [test_tier_required]: 建立跨模块变更影响检查清单（设计/代码/测试/发布），并固化 N/A、整改项与特殊备注机制。
   - 产物文件: `doc/core/checklists/cross-module-impact-checklist.md`
   - 验收命令 (`test_tier_required`):
     - `test -f doc/core/checklists/cross-module-impact-checklist.md`
@@ -33,8 +33,8 @@
 - 各模块 `doc/<module>/prd.md` 与 `doc/<module>/prd.project.md`
 
 ## 状态
-- 更新日期: 2026-03-03
+- 更新日期: 2026-03-04
 - 当前状态: active
-- 下一任务: TASK-CORE-003
+- 下一任务: TASK-CORE-004
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
-- 说明: 本文档仅维护 core 设计执行状态；过程记录在 `doc/devlog/2026-03-03.md`。
+- 说明: 本文档仅维护 core 设计执行状态；过程记录在 `doc/devlog/2026-03-04.md`。
