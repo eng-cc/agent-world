@@ -26,6 +26,7 @@
 | `doc/world-simulator/launcher/game-client-launcher-graceful-stop-2026-03-02.prd.md` | `doc/world-simulator/launcher/game-client-launcher-graceful-stop-2026-03-02.prd.project.md` |
 | `doc/world-simulator/launcher/game-client-launcher-i18n-required-config-2026-03-02.prd.md` | `doc/world-simulator/launcher/game-client-launcher-i18n-required-config-2026-03-02.prd.project.md` |
 | `doc/world-simulator/launcher/game-client-launcher-llm-settings-panel-2026-03-02.prd.md` | `doc/world-simulator/launcher/game-client-launcher-llm-settings-panel-2026-03-02.prd.project.md` |
+| `doc/world-simulator/launcher/game-client-launcher-egui-web-unification-2026-03-04.prd.md` | `doc/world-simulator/launcher/game-client-launcher-egui-web-unification-2026-03-04.prd.project.md` |
 | `doc/world-simulator/launcher/game-client-launcher-ui-schema-share-2026-03-04.prd.md` | `doc/world-simulator/launcher/game-client-launcher-ui-schema-share-2026-03-04.prd.project.md` |
 | `doc/world-simulator/launcher/game-client-launcher-web-console-2026-03-04.prd.md` | `doc/world-simulator/launcher/game-client-launcher-web-console-2026-03-04.prd.project.md` |
 | `doc/world-simulator/launcher/game-unified-launcher-2026-02-27.prd.md` | `doc/world-simulator/launcher/game-unified-launcher-2026-02-27.prd.project.md` |
