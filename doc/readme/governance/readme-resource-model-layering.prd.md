@@ -15,7 +15,7 @@
 - 不修改 `ResourceKind` 枚举，不调整 runtime/simulator 序列化结构，不新增兼容迁移。
 
 ## 接口/数据
-- 现有内建资源类型（代码事实）：`Electricity` / `Compound` / `Hardware` / `Data`。
+- 现有内建资源类型（代码事实）：`Electricity` / `Data`。
 - 资源分层策略：
   - 内建资源：保留为最小可验证经济底座，用于全局守恒、跨模块结算、运行时计费。
   - 模块扩展资源：通过 WASM 模块状态、事件和治理动作定义，不进入内建枚举。

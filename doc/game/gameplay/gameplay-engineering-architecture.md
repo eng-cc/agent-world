@@ -283,7 +283,7 @@ Game Mode 在世界创建时声明：
 所有 WASM 执行必须：
 
 * 消耗 Gas
-* Gas 由代币支付
+* Gas 由内建资源 `Data` + `Electricity` 计费
 * 超出上限立即终止
 
 目的：
