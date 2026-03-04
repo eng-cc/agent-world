@@ -17,12 +17,18 @@
 ```bash
 env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011
 ```
-`world_viewer_live` 默认使用 LLM 决策（仍需先配置 LLM key）；`--llm` 可保留用于显式声明。
-如需临时回退到内置脚本决策，可显式传 `--no-llm`。
+`world_viewer_live` 默认使用内置脚本决策；如需 LLM 决策可显式传 `--llm`（需先配置 LLM key）。
 
 ```bash
 env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --no-llm --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011
 ```
+
+runtime/world Phase 1 链路（协议兼容模式）：
+```bash
+env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --runtime-world --no-llm --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011
+```
+- `--runtime-world` 启用 runtime 驱动 live server，Viewer 协议保持 `WorldSnapshot/WorldEvent` 兼容输出。
+- Phase 1 下 `--runtime-world` 不支持 `--llm` 同时启用（会直接报错退出）。
 
 ### 2）启动 viewer
 ```bash

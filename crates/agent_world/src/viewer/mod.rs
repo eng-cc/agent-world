@@ -5,6 +5,8 @@ mod demo;
 mod live;
 mod protocol;
 #[cfg(not(target_arch = "wasm32"))]
+mod runtime_live;
+#[cfg(not(target_arch = "wasm32"))]
 mod server;
 #[cfg(not(target_arch = "wasm32"))]
 mod web_bridge;
@@ -27,6 +29,10 @@ pub use protocol::{
     PromptControlApplyRequest, PromptControlCommand, PromptControlError, PromptControlOperation,
     PromptControlRollbackRequest, ViewerControl, ViewerControlProfile, ViewerRequest,
     ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
+};
+#[cfg(not(target_arch = "wasm32"))]
+pub use runtime_live::{
+    ViewerRuntimeLiveServer, ViewerRuntimeLiveServerConfig, ViewerRuntimeLiveServerError,
 };
 #[cfg(not(target_arch = "wasm32"))]
 pub use server::{ViewerServer, ViewerServerConfig, ViewerServerError};

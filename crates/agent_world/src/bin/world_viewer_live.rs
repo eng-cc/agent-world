@@ -4,8 +4,8 @@ use std::thread;
 
 use agent_world::simulator::WorldScenario;
 use agent_world::viewer::{
-    ViewerLiveDecisionMode, ViewerLiveServer, ViewerLiveServerConfig, ViewerWebBridge,
-    ViewerWebBridgeConfig,
+    ViewerLiveDecisionMode, ViewerLiveServer, ViewerLiveServerConfig, ViewerRuntimeLiveServer,
+    ViewerRuntimeLiveServerConfig, ViewerWebBridge, ViewerWebBridgeConfig,
 };
 
 const DEFAULT_SCENARIO: &str = "llm_bootstrap";
@@ -20,6 +20,7 @@ struct CliOptions {
     bind_addr: String,
     web_bind_addr: Option<String>,
     llm_mode: bool,
+    runtime_world: bool,
 }
 
 impl Default for CliOptions {
@@ -29,6 +30,7 @@ impl Default for CliOptions {
             bind_addr: DEFAULT_BIND.to_string(),
             web_bind_addr: Some(DEFAULT_WEB_BIND.to_string()),
             llm_mode: false,
+            runtime_world: false,
         }
     }
 }
@@ -56,6 +58,13 @@ fn main() {
 }
 
 fn run_viewer(options: CliOptions) -> Result<(), String> {
+    if options.runtime_world && options.llm_mode {
+        return Err(
+            "--runtime-world is not compatible with --llm in phase1 (runtime live only supports script mode)"
+                .to_string(),
+        );
+    }
+
     if let Some(web_bind_addr) = options.web_bind_addr.clone() {
         let upstream_addr = options.bind_addr.clone();
         thread::spawn(move || {
@@ -69,18 +78,28 @@ fn run_viewer(options: CliOptions) -> Result<(), String> {
         });
     }
 
-    let config = ViewerLiveServerConfig::new(options.scenario)
-        .with_bind_addr(options.bind_addr)
-        .with_decision_mode(if options.llm_mode {
-            ViewerLiveDecisionMode::Llm
-        } else {
-            ViewerLiveDecisionMode::Script
-        });
-    let mut server = ViewerLiveServer::new(config)
-        .map_err(|err| format!("failed to create viewer server: {err:?}"))?;
-    server
-        .run()
-        .map_err(|err| format!("viewer server exited with error: {err:?}"))
+    if options.runtime_world {
+        let config =
+            ViewerRuntimeLiveServerConfig::new(options.scenario).with_bind_addr(options.bind_addr);
+        let mut server = ViewerRuntimeLiveServer::new(config)
+            .map_err(|err| format!("failed to create runtime viewer server: {err:?}"))?;
+        server
+            .run()
+            .map_err(|err| format!("runtime viewer server exited with error: {err:?}"))
+    } else {
+        let config = ViewerLiveServerConfig::new(options.scenario)
+            .with_bind_addr(options.bind_addr)
+            .with_decision_mode(if options.llm_mode {
+                ViewerLiveDecisionMode::Llm
+            } else {
+                ViewerLiveDecisionMode::Script
+            });
+        let mut server = ViewerLiveServer::new(config)
+            .map_err(|err| format!("failed to create viewer server: {err:?}"))?;
+        server
+            .run()
+            .map_err(|err| format!("viewer server exited with error: {err:?}"))
+    }
 }
 
 fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, String> {
@@ -113,6 +132,12 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
             }
             "--no-llm" => {
                 options.llm_mode = false;
+            }
+            "--runtime-world" => {
+                options.runtime_world = true;
+            }
+            "--no-runtime-world" => {
+                options.runtime_world = false;
             }
             "--topology" | "--no-node" | "--viewer-no-consensus-gate" => {
                 return Err(format!("`{arg}` is no longer supported: {REMOVAL_HINT}"));
@@ -181,6 +206,8 @@ Options:\n\
   --bind <host:port>        viewer live server bind (default: {DEFAULT_BIND})\n\
   --web-bind <host:port>    websocket bridge bind (default: {DEFAULT_WEB_BIND})\n\
   --no-web-bind             disable websocket bridge\n\
+  --runtime-world           run live server on runtime/world (phase1)\n\
+  --no-runtime-world        force simulator live server (default)\n\
   --llm                     enable llm mode\n\
   --no-llm                  disable llm mode (default)\n\
   -h, --help                show help\n\n\
@@ -201,6 +228,7 @@ mod tests {
         assert_eq!(options.bind_addr, DEFAULT_BIND);
         assert_eq!(options.web_bind_addr.as_deref(), Some(DEFAULT_WEB_BIND));
         assert!(!options.llm_mode);
+        assert!(!options.runtime_world);
     }
 
     #[test]
@@ -221,6 +249,7 @@ mod tests {
         assert_eq!(options.bind_addr, "127.0.0.1:6200");
         assert_eq!(options.web_bind_addr.as_deref(), Some("127.0.0.1:6300"));
         assert!(options.llm_mode);
+        assert!(!options.runtime_world);
     }
 
     #[test]
@@ -259,5 +288,24 @@ mod tests {
     fn parse_options_rejects_unknown_scenario() {
         let err = parse_options(["wat"].into_iter()).expect_err("unknown scenario");
         assert!(err.contains("unknown scenario"));
+    }
+
+    #[test]
+    fn parse_options_supports_runtime_world_flag() {
+        let options = parse_options(["--runtime-world"].into_iter()).expect("runtime world flag");
+        assert!(options.runtime_world);
+    }
+
+    #[test]
+    fn run_viewer_rejects_runtime_world_with_llm() {
+        let err = run_viewer(CliOptions {
+            scenario: WorldScenario::LlmBootstrap,
+            bind_addr: "127.0.0.1:0".to_string(),
+            web_bind_addr: None,
+            llm_mode: true,
+            runtime_world: true,
+        })
+        .expect_err("runtime world + llm should fail");
+        assert!(err.contains("--runtime-world"));
     }
 }

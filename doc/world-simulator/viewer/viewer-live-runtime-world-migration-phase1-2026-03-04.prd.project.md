@@ -4,8 +4,8 @@
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0 (PRD-WORLD_SIMULATOR-016) [test_tier_required]: 完成专题 PRD 建模、验收标准冻结与模块文档树回写。
-- [ ] T1 (PRD-WORLD_SIMULATOR-016) [test_tier_required]: 新增 runtime live server，实现 runtime->simulator 协议兼容适配并接入 `world_viewer_live --runtime-world`。
-- [ ] T2 (PRD-WORLD_SIMULATOR-016) [test_tier_required]: 执行 `cargo test/check` 回归、更新 viewer 手册与模块项目状态，完成 devlog 收口。
+- [x] T1 (PRD-WORLD_SIMULATOR-016) [test_tier_required]: 新增 runtime live server，实现 runtime->simulator 协议兼容适配并接入 `world_viewer_live --runtime-world`。
+- [x] T2 (PRD-WORLD_SIMULATOR-016) [test_tier_required]: 执行 `cargo test/check` 回归、更新 viewer 手册与模块项目状态，完成 devlog 收口。
 
 ## 依赖
 - `doc/world-simulator/prd.md`
@@ -18,6 +18,6 @@
 - `doc/world-simulator/viewer/viewer-manual.md`
 
 ## 状态
-- 当前阶段: active
-- 当前任务: T1
-- 备注: Phase 1 聚焦“runtime 驱动 + 协议兼容适配”，不在本轮移除 simulator 路径。
+- 当前阶段: completed
+- 当前任务: none
+- 备注: Phase 1 已完成“runtime 驱动 + 协议兼容适配 + required 回归”，simulator 默认路径保持不变。
