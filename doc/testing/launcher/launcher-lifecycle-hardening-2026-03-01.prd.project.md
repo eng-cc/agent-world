@@ -11,7 +11,7 @@
 ## 依赖
 - doc/testing/launcher/launcher-lifecycle-hardening-2026-03-01.prd.md
 - `crates/agent_world/src/bin/world_game_launcher.rs`
-- `crates/agent_world/src/bin/world_game_launcher/tests.rs`
+- `crates/agent_world/src/bin/world_game_launcher/world_game_launcher_tests.rs`
 - `crates/agent_world/src/bin/world_viewer_live/distfs_probe_runtime.rs`
 - `crates/agent_world/src/bin/world_viewer_live/world_viewer_live_tests_split_part2.rs`
 - `crates/agent_world_client_launcher/src/main.rs`
