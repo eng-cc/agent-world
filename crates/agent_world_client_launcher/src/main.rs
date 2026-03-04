@@ -12,7 +12,9 @@ use std::process::{Child, Command, Stdio};
 use std::sync::mpsc::TryRecvError;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
+#[cfg(not(target_arch = "wasm32"))]
+use std::time::Instant;
 
 use agent_world_launcher_ui::{
     launcher_ui_fields_for_native, LauncherUiField, LauncherUiFieldKind,
@@ -36,6 +38,8 @@ use wasm_bindgen_futures::spawn_local;
 use web_sys::wasm_bindgen::JsCast;
 #[cfg(target_arch = "wasm32")]
 use web_sys::HtmlCanvasElement;
+#[cfg(target_arch = "wasm32")]
+use web_time::Instant;
 
 #[cfg(not(target_arch = "wasm32"))]
 mod app_process;

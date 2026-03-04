@@ -178,6 +178,7 @@ dependencies = [
  "toml 0.8.23",
  "wasm-bindgen-futures",
  "web-sys",
+ "web-time",
 ]
 
 [[package]]
