@@ -8,10 +8,21 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::thread;
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant};
 
 use agent_world_launcher_ui::launcher_ui_fields_for_web;
 use serde::{Deserialize, Serialize};
+
+#[path = "world_web_launcher/runtime_paths.rs"]
+mod runtime_paths;
+#[path = "world_web_launcher/static_files.rs"]
+mod static_files;
+
+use runtime_paths::{
+    normalize_bind_host_for_local_access, now_unix_ms, resolve_console_static_dir_path,
+    resolve_static_dir_path, resolve_world_game_launcher_binary,
+};
+use static_files::{load_console_static_asset, StaticAsset};
 
 const DEFAULT_LISTEN_BIND: &str = "0.0.0.0:5410";
 const DEFAULT_SCENARIO: &str = "llm_bootstrap";
@@ -61,7 +72,9 @@ impl Default for LauncherConfig {
             web_bind: DEFAULT_WEB_BIND.to_string(),
             viewer_host: DEFAULT_VIEWER_HOST.to_string(),
             viewer_port: DEFAULT_VIEWER_PORT.to_string(),
-            viewer_static_dir: resolve_static_dir_path().to_string_lossy().to_string(),
+            viewer_static_dir: resolve_static_dir_path(DEFAULT_VIEWER_STATIC_DIR)
+                .to_string_lossy()
+                .to_string(),
             llm_enabled: false,
             chain_enabled: true,
             chain_status_bind: DEFAULT_CHAIN_STATUS_BIND.to_string(),
@@ -79,6 +92,7 @@ impl Default for LauncherConfig {
 struct CliOptions {
     listen_bind: String,
     launcher_bin: String,
+    console_static_dir: PathBuf,
     initial_config: LauncherConfig,
 }
 
@@ -89,6 +103,7 @@ impl Default for CliOptions {
             launcher_bin: resolve_world_game_launcher_binary()
                 .to_string_lossy()
                 .to_string(),
+            console_static_dir: resolve_console_static_dir_path(),
             initial_config: LauncherConfig::default(),
         }
     }
@@ -150,6 +165,7 @@ impl ProcessState {
 #[derive(Debug)]
 struct ServiceState {
     launcher_bin: String,
+    console_static_dir: PathBuf,
     config: LauncherConfig,
     process_state: ProcessState,
     running: Option<RunningProcess>,
@@ -158,9 +174,10 @@ struct ServiceState {
 }
 
 impl ServiceState {
-    fn new(launcher_bin: String, config: LauncherConfig) -> Self {
+    fn new(launcher_bin: String, console_static_dir: PathBuf, config: LauncherConfig) -> Self {
         Self {
             launcher_bin,
+            console_static_dir,
             config,
             process_state: ProcessState::Idle,
             running: None,
@@ -237,6 +254,7 @@ fn print_help() {
 Options:\n\
   --listen-bind <host:port>       web console listen bind (default: {DEFAULT_LISTEN_BIND})\n\
   --launcher-bin <path>           world_game_launcher binary path\n\
+  --console-static-dir <path>     launcher web static directory (default: ../web-launcher)\n\
   --scenario <name>               default scenario for web form\n\
   --live-bind <host:port>         default --live-bind for world_game_launcher\n\
   --web-bind <host:port>          default --web-bind for world_game_launcher\n\
@@ -274,6 +292,7 @@ fn run_server(options: CliOptions) -> Result<(), String> {
 
     let state = Arc::new(Mutex::new(ServiceState::new(
         options.launcher_bin,
+        options.console_static_dir,
         options.initial_config,
     )));
 
@@ -284,6 +303,10 @@ fn run_server(options: CliOptions) -> Result<(), String> {
         listen_port
     );
     println!("- listen bind: {listen_host}:{listen_port}");
+    println!(
+        "- console static dir: {}",
+        lock_state(&state).console_static_dir.display()
+    );
     println!("Press Ctrl+C to stop.");
 
     loop {
@@ -331,16 +354,6 @@ fn handle_connection(
     let path = strip_query(request.path.as_str());
 
     match (request.method.as_str(), path) {
-        ("GET", "/") => {
-            write_http_response(
-                &mut stream,
-                200,
-                "text/html; charset=utf-8",
-                WEB_CONSOLE_HTML.as_bytes(),
-                false,
-            )?;
-            Ok(())
-        }
         ("GET", "/healthz") => {
             write_http_response(&mut stream, 200, "text/plain; charset=utf-8", b"ok", false)?;
             Ok(())
@@ -388,6 +401,9 @@ fn handle_connection(
             write_http_response(&mut stream, 204, "text/plain", b"", false)?;
             Ok(())
         }
+        ("GET", request_path) if !request_path.starts_with("/api/") => {
+            serve_console_static_request(&mut stream, request_path, &shared_state)
+        }
         (method, "/api/state") | (method, "/api/start") | (method, "/api/stop")
             if method != "GET" && method != "POST" =>
         {
@@ -417,6 +433,37 @@ fn lock_state(shared: &Arc<Mutex<ServiceState>>) -> std::sync::MutexGuard<'_, Se
     shared
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
+}
+
+fn serve_console_static_request(
+    stream: &mut TcpStream,
+    request_path: &str,
+    shared_state: &Arc<Mutex<ServiceState>>,
+) -> Result<(), String> {
+    let console_static_dir = {
+        let state = lock_state(shared_state);
+        state.console_static_dir.clone()
+    };
+
+    match load_console_static_asset(console_static_dir.as_path(), request_path) {
+        StaticAsset::Ok { content_type, body } => {
+            write_http_response(stream, 200, content_type, body.as_slice(), false)
+        }
+        StaticAsset::NotFound => write_http_response(
+            stream,
+            404,
+            "text/plain; charset=utf-8",
+            b"Not Found",
+            false,
+        ),
+        StaticAsset::InvalidPath => write_http_response(
+            stream,
+            400,
+            "text/plain; charset=utf-8",
+            b"Bad Request",
+            false,
+        ),
+    }
 }
 
 fn read_http_request(stream: &mut TcpStream) -> Result<HttpRequest, String> {
@@ -960,6 +1007,10 @@ where
             "--launcher-bin" => {
                 options.launcher_bin = next_value(&mut iter, "--launcher-bin")?;
             }
+            "--console-static-dir" => {
+                options.console_static_dir =
+                    PathBuf::from(next_value(&mut iter, "--console-static-dir")?);
+            }
             "--scenario" => {
                 options.initial_config.scenario = next_value(&mut iter, "--scenario")?;
             }
@@ -1047,6 +1098,9 @@ where
     if options.launcher_bin.trim().is_empty() {
         return Err("--launcher-bin must not be empty".to_string());
     }
+    if options.console_static_dir.as_os_str().is_empty() {
+        return Err("--console-static-dir must not be empty".to_string());
+    }
 
     Ok(options)
 }
@@ -1129,60 +1183,6 @@ fn parse_chain_validators(raw: &str) -> Result<Vec<String>, String> {
     }
     Ok(validators)
 }
-
-fn resolve_world_game_launcher_binary() -> PathBuf {
-    if let Ok(path) = env::var("AGENT_WORLD_GAME_LAUNCHER_BIN") {
-        return PathBuf::from(path);
-    }
-
-    if let Ok(current_exe) = env::current_exe() {
-        if let Some(bin_dir) = current_exe.parent() {
-            return bin_dir.join(binary_name("world_game_launcher"));
-        }
-    }
-
-    PathBuf::from(binary_name("world_game_launcher"))
-}
-
-fn resolve_static_dir_path() -> PathBuf {
-    if let Ok(path) = env::var("AGENT_WORLD_GAME_STATIC_DIR") {
-        return PathBuf::from(path);
-    }
-
-    if let Ok(current_exe) = env::current_exe() {
-        if let Some(bin_dir) = current_exe.parent() {
-            return bin_dir.join("..").join("web");
-        }
-    }
-
-    PathBuf::from(DEFAULT_VIEWER_STATIC_DIR)
-}
-
-fn binary_name(base: &str) -> String {
-    if cfg!(windows) {
-        format!("{base}.exe")
-    } else {
-        base.to_string()
-    }
-}
-
-fn normalize_bind_host_for_local_access(host: &str) -> String {
-    let host = host.trim();
-    if host == "0.0.0.0" || host == "::" || host == "[::]" {
-        "127.0.0.1".to_string()
-    } else {
-        host.to_string()
-    }
-}
-
-fn now_unix_ms() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|duration| duration.as_millis() as u64)
-        .unwrap_or(0)
-}
-
-const WEB_CONSOLE_HTML: &str = include_str!("world_web_launcher/web_console.html");
 
 #[cfg(test)]
 #[path = "world_web_launcher/world_web_launcher_tests.rs"]

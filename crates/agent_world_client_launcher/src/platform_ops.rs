@@ -1,7 +1,10 @@
+#[cfg(not(target_arch = "wasm32"))]
 use std::env;
 use std::path::PathBuf;
+#[cfg(not(target_arch = "wasm32"))]
 use std::process::Command;
 
+#[cfg(not(target_arch = "wasm32"))]
 pub(crate) fn resolve_launcher_binary_path() -> PathBuf {
     if let Ok(path) = env::var("AGENT_WORLD_GAME_LAUNCHER_BIN") {
         return PathBuf::from(path);
@@ -16,6 +19,12 @@ pub(crate) fn resolve_launcher_binary_path() -> PathBuf {
     PathBuf::from(binary_name("world_game_launcher"))
 }
 
+#[cfg(target_arch = "wasm32")]
+pub(crate) fn resolve_launcher_binary_path() -> PathBuf {
+    PathBuf::from(binary_name("world_game_launcher"))
+}
+
+#[cfg(not(target_arch = "wasm32"))]
 pub(crate) fn resolve_chain_runtime_binary_path() -> PathBuf {
     if let Ok(path) = env::var("AGENT_WORLD_WORLD_CHAIN_RUNTIME_BIN") {
         return PathBuf::from(path);
@@ -30,6 +39,12 @@ pub(crate) fn resolve_chain_runtime_binary_path() -> PathBuf {
     PathBuf::from(binary_name("world_chain_runtime"))
 }
 
+#[cfg(target_arch = "wasm32")]
+pub(crate) fn resolve_chain_runtime_binary_path() -> PathBuf {
+    PathBuf::from(binary_name("world_chain_runtime"))
+}
+
+#[cfg(not(target_arch = "wasm32"))]
 pub(crate) fn resolve_static_dir_path() -> PathBuf {
     if let Ok(path) = env::var("AGENT_WORLD_GAME_STATIC_DIR") {
         return PathBuf::from(path);
@@ -44,7 +59,21 @@ pub(crate) fn resolve_static_dir_path() -> PathBuf {
     PathBuf::from("web")
 }
 
+#[cfg(target_arch = "wasm32")]
+pub(crate) fn resolve_static_dir_path() -> PathBuf {
+    PathBuf::from("web")
+}
+
 pub(crate) fn open_browser(url: &str) -> Result<(), String> {
+    #[cfg(target_arch = "wasm32")]
+    {
+        let window = web_sys::window().ok_or_else(|| "window is not available".to_string())?;
+        window
+            .open_with_url(url)
+            .map_err(|err| format!("window.open failed: {err:?}"))?;
+        return Ok(());
+    }
+
     #[cfg(target_os = "macos")]
     {
         let status = Command::new("open")
@@ -72,7 +101,11 @@ pub(crate) fn open_browser(url: &str) -> Result<(), String> {
         return Err(format!("cmd /C start exited with {status}"));
     }
 
-    #[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
+    #[cfg(all(
+        not(target_arch = "wasm32"),
+        not(target_os = "windows"),
+        not(target_os = "macos")
+    ))]
     {
         let status = Command::new("xdg-open")
             .arg(url)

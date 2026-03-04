@@ -28,7 +28,7 @@
 - [x] TASK-WORLD_SIMULATOR-025 (PRD-WORLD_SIMULATOR-011) [test_tier_required]: 完成“启动器 UI schema 共享（native/web）”PRD 建模与任务拆解。
 - [x] TASK-WORLD_SIMULATOR-026 (PRD-WORLD_SIMULATOR-011) [test_tier_required]: 落地共享 launcher UI schema crate，接入 native/web 渲染并补齐回归测试。
 - [x] TASK-WORLD_SIMULATOR-027 (PRD-WORLD_SIMULATOR-012) [test_tier_required]: 完成“启动器 egui Web 同层复用与静态资源服务”PRD 建模与任务拆解。
-- [ ] TASK-WORLD_SIMULATOR-028 (PRD-WORLD_SIMULATOR-012) [test_tier_required]: 落地 launcher egui wasm 复用、`world_web_launcher` 静态托管与 bundle `web-launcher/` 打包链路。
+- [x] TASK-WORLD_SIMULATOR-028 (PRD-WORLD_SIMULATOR-012) [test_tier_required]: 落地 launcher egui wasm 复用、`world_web_launcher` 静态托管与 bundle `web-launcher/` 打包链路。
 
 ## 专题任务映射（2026-03-02 批次）
 - [x] SUBTASK-WORLD_SIMULATOR-20260302-001 (PRD-WORLD_SIMULATOR-001/002/003) [test_tier_required]: `doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.prd.project.md`
@@ -82,8 +82,8 @@
 
 ## 状态
 - 更新日期: 2026-03-04
-- 当前状态: active（存在进行中任务）
-- 当前优先任务: TASK-WORLD_SIMULATOR-028
+- 当前状态: completed（任务列表已完成，等待新需求）
+- 当前优先任务: 无
 - 并行待办: 无
 - 专题映射状态: 2026-03-02 批次 9/9、2026-03-03 批次 4/4、2026-03-04 批次 3/3 已纳入模块项目管理文档。
 - 手册入口状态: `doc/world-simulator/viewer/viewer-manual.md` 为唯一活跃手册入口。

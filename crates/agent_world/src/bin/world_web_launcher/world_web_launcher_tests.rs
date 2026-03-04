@@ -31,6 +31,8 @@ fn parse_options_accepts_overrides() {
             "127.0.0.1:7510",
             "--launcher-bin",
             "/tmp/world_game_launcher",
+            "--console-static-dir",
+            "/tmp/web-launcher-dist",
             "--scenario",
             "sandbox",
             "--live-bind",
@@ -53,6 +55,10 @@ fn parse_options_accepts_overrides() {
 
     assert_eq!(options.listen_bind, "127.0.0.1:7510");
     assert_eq!(options.launcher_bin, "/tmp/world_game_launcher");
+    assert_eq!(
+        options.console_static_dir,
+        PathBuf::from("/tmp/web-launcher-dist")
+    );
     assert_eq!(options.initial_config.scenario, "sandbox");
     assert_eq!(options.initial_config.live_bind, "127.0.0.1:6200");
     assert_eq!(options.initial_config.web_bind, "127.0.0.1:6201");

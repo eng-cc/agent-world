@@ -19,6 +19,7 @@ Build a distributable launcher bundle:
 - bin/world_viewer_live
 - bin/world_chain_runtime
 - web/ (prebuilt viewer static assets)
+- web-launcher/ (prebuilt launcher web static assets)
 - run-client.sh (desktop client launcher entry)
 - run-web-launcher.sh (headless web console launcher entry)
 - run-game.sh (one-command entry)
@@ -164,8 +165,9 @@ fi
 
 BUNDLE_BIN_DIR="$OUT_DIR/bin"
 BUNDLE_WEB_DIR="$OUT_DIR/web"
+BUNDLE_WEB_LAUNCHER_DIR="$OUT_DIR/web-launcher"
 
-run mkdir -p "$BUNDLE_BIN_DIR" "$BUNDLE_WEB_DIR"
+run mkdir -p "$BUNDLE_BIN_DIR" "$BUNDLE_WEB_DIR" "$BUNDLE_WEB_LAUNCHER_DIR"
 
 # 1) Build native binaries for launcher/live/client launcher.
 if [[ "$PROFILE" == "release" ]]; then
@@ -196,7 +198,7 @@ replace_file "$LIVE_SRC" "$BUNDLE_BIN_DIR/$LIVE_BIN_NAME"
 replace_file "$CHAIN_SRC" "$BUNDLE_BIN_DIR/$CHAIN_BIN_NAME"
 replace_file "$CLIENT_LAUNCHER_SRC" "$BUNDLE_BIN_DIR/$CLIENT_LAUNCHER_BIN_NAME"
 
-# 2) Prepare web dist (trunk build by default).
+# 2) Prepare viewer web dist (trunk build by default).
 if [[ -n "$WEB_DIST_SOURCE" ]]; then
   run rm -rf "$BUNDLE_WEB_DIR"
   run mkdir -p "$BUNDLE_WEB_DIR"
@@ -222,7 +224,27 @@ else
   fi
 fi
 
-# 3) Generate desktop client wrapper + one-command CLI wrapper and readme.
+# 3) Prepare launcher web dist (always built from agent_world_client_launcher).
+ensure_command trunk
+if [[ "$DRY_RUN" == "1" ]]; then
+  echo "+ rustup target list --installed | rg -x 'wasm32-unknown-unknown'"
+else
+  if ! rustup target list --installed | rg -x "wasm32-unknown-unknown" >/dev/null 2>&1; then
+    echo "error: rust target wasm32-unknown-unknown is not installed" >&2
+    echo "hint: rustup target add wasm32-unknown-unknown" >&2
+    exit 1
+  fi
+fi
+
+run rm -rf "$BUNDLE_WEB_LAUNCHER_DIR"
+run mkdir -p "$BUNDLE_WEB_LAUNCHER_DIR"
+if [[ "$PROFILE" == "release" ]]; then
+  run bash -lc "cd '$ROOT_DIR/crates/agent_world_client_launcher' && env -u NO_COLOR trunk build --release --dist '$BUNDLE_WEB_LAUNCHER_DIR'"
+else
+  run bash -lc "cd '$ROOT_DIR/crates/agent_world_client_launcher' && env -u NO_COLOR trunk build --dist '$BUNDLE_WEB_LAUNCHER_DIR'"
+fi
+
+# 4) Generate desktop client wrapper + one-command CLI wrapper and readme.
 run bash -lc "cat > '$OUT_DIR/run-client.sh' <<'LAUNCH'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -240,6 +262,7 @@ set -euo pipefail
 ROOT_DIR=\"\$(cd \"\$(dirname \"\${BASH_SOURCE[0]}\")\" && pwd)\"
 AGENT_WORLD_GAME_LAUNCHER_BIN=\"\$ROOT_DIR/bin/$LAUNCHER_BIN_NAME\" \
 AGENT_WORLD_GAME_STATIC_DIR=\"\$ROOT_DIR/web\" \
+AGENT_WORLD_WEB_LAUNCHER_STATIC_DIR=\"\$ROOT_DIR/web-launcher\" \
 \"\$ROOT_DIR/bin/$WEB_LAUNCHER_BIN_NAME\" \"\$@\"
 LAUNCH"
 run chmod +x "$OUT_DIR/run-web-launcher.sh"
@@ -274,6 +297,7 @@ Bundle layout:
 - bin/world_viewer_live
 - bin/world_chain_runtime
 - web/
+- web-launcher/
 - run-client.sh
 - run-web-launcher.sh
 - run-game.sh
@@ -287,5 +311,6 @@ Bundle ready: $OUT_DIR
 - live:            $BUNDLE_BIN_DIR/$LIVE_BIN_NAME
 - chain runtime:   $BUNDLE_BIN_DIR/$CHAIN_BIN_NAME
 - web:             $BUNDLE_WEB_DIR
+- web launcher:    $BUNDLE_WEB_LAUNCHER_DIR
 - entries:         $OUT_DIR/run-client.sh, $OUT_DIR/run-web-launcher.sh, $OUT_DIR/run-game.sh
 INFO
