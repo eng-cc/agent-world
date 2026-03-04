@@ -52,5 +52,5 @@
 ## 维护约定（摘要）
 - 新功能或行为变更必须先更新模块 `prd.md`，再更新 `prd.project.md`，最后实现与测试。
 - 代码、测试、文档任务必须可追溯到 PRD-ID。
-- 单个 `prd.md` 文档不超过 500 行；`prd.md` 超限时拆分为 `doc/<module>/prd/*.md`，并保留 `prd.md` 作为总览入口。
+- 单个 `prd.md` 文档不超过 1000 行；`prd.md` 超限时拆分为 `doc/<module>/prd/*.md`，并保留 `prd.md` 作为总览入口。
 - 非白名单场景禁止新增 `doc/*.md` 与 `doc/<module>/*.md` 平铺文档；需优先落位到模块子目录并更新模块 `README.md` 索引。

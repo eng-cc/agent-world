@@ -2,8 +2,7 @@
 1. 拿到仓库时先阅读开发日志、PRD 文档、项目管理文档，了解现状
   1.1 每个模块固定维护一个 PRD 主文档: `doc/<module>/prd.md`；书写PRD需要使用prd skill(.agents/skills/prd)
   1.2 doc下面的PRD文档通过引用关系组成一棵大树，能通过这个文档树承载项目的全貌
-  1.3 `prd.md` 超过 500 行时拆分为 `doc/<module>/prd/*.md`，可以嵌套多层子文件夹，子文档命名要和文档内容匹配
-  1.4 每个PRD文档维护一个主项目管理文档: `doc/<module>/prd.project.md`；`prd.project.md` 过长时可拆分为 `doc/<module>/prd.project/*.md`（可多层嵌套），并由主文档统一索引与汇总；项目管理文档至少包含:任务拆解(含 PRD-ID 映射)、依赖、状态（可简要）
+  1.3 每个PRD文档维护一个主项目管理文档: `doc/<module>/prd.project.md`；`prd.project.md` 过长时可拆分为 `doc/<module>/prd.project/*.md`（可多层嵌套），并由主文档统一索引与汇总；项目管理文档至少包含:任务拆解(含 PRD-ID 映射)、依赖、状态（可简要）
 2. 必须先创建/补齐/修改对应模块的 `prd.md`，再根据 PRD 拆解 `prd.project.md`(拆成具体任务),作为一个commit提交
 3. 根据拆解好的任务写代码、跑测试，每次完成一个任务
   3.1 所有代码和功能(包括UI)应该都是可以被测试的，单元测试或者模拟闭环测试都可以

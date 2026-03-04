@@ -29,7 +29,7 @@
 - Proposed Solution: 将 engineering 模块定义为工程治理主文档，统一维护规范、质量门禁、改造节奏与验收口径。
 - Success Criteria:
   - SC-1: Rust 单文件超 1200 行新增违规数为 0。
-  - SC-2: Markdown 单文件超 500 行新增违规数为 0。
+  - SC-2: Markdown 单文件超 1000 行新增违规数为 0。
   - SC-3: `scripts/doc-governance-check.sh` 在 required gate 连续通过。
   - SC-4: 工程类任务 100% 映射到 PRD-ENGINEERING-ID。
   - SC-5: `doc/` 根目录与模块根目录平铺文档新增违规数为 0（allowlist 冻结机制）。

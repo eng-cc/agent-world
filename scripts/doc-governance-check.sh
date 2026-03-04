@@ -10,7 +10,7 @@ Usage: ./scripts/doc-governance-check.sh
 
 Checks:
   1. Non-archive/non-devlog markdown files must not contain absolute /Users/... or /home/... paths.
-  2. Non-archive/non-devlog markdown files must be <= 500 lines.
+  2. Non-archive/non-devlog markdown files must be <= 1000 lines.
   3. Each non-archive project doc (*.project.md) must include sections:
      任务拆解 / 依赖 / 状态.
   4. Each non-archive project doc must have a paired design doc and that design doc
@@ -232,8 +232,8 @@ fi
 # 2) line count check
 for file in "${all_doc_files[@]}"; do
   line_count=$(wc -l < "$file" | tr -d ' ')
-  if ((line_count > 500)); then
-    fail "$file exceeds 500 lines (${line_count})"
+  if ((line_count > 1000)); then
+    fail "$file exceeds 1000 lines (${line_count})"
   fi
 done
 

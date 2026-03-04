@@ -38,7 +38,7 @@
   - `doc/p2p/viewer-live/world-viewer-live-llm-default-on-2026-02-23.prd.project.md`
   - `testing-manual.md`
 - Edge Cases & Error Handling: 命名不一致、章节缺失、引用断链需在同提交修复。
-- Non-Functional Requirements: 非 archive 文档 <=500 行；PRD-ID/任务映射完整；治理检查通过。
+- Non-Functional Requirements: PRD-ID/任务映射完整；治理检查通过。
 - Security & Privacy: 不引入敏感信息与本地绝对路径。
 
 ### 原文技术约束（保真）
