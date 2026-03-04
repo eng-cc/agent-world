@@ -7,7 +7,7 @@
 - Proposed Solution: 新增 `world_web_launcher` Web 控制台二进制，通过浏览器提供启动/停止、状态查看、日志追踪与配置编辑能力。
 - Success Criteria:
   - SC-1: 服务器仅通过命令行启动 `world_web_launcher` 后，可在浏览器完成启动/停止主链路操作。
-  - SC-2: Web 控制台可展示运行状态（idle/running/exited）与最近日志，不依赖图形桌面会话。
+  - SC-2: Web 控制台可展示运行状态（`idle/running/stopped/invalid_config/start_failed/stop_failed/exited`）与最近日志，不依赖图形桌面会话。
   - SC-3: 启动参数校验失败时，Web 控制台返回结构化错误并阻止拉起子进程。
   - SC-4: 打包产物新增 Web 控制台入口脚本，发行包内可直接运行。
 
@@ -31,8 +31,8 @@
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
-| Web 启动器控制台 | `scenario/live_bind/web_bind/viewer_host/viewer_port/viewer_static_dir/llm/chain` | 点击“启动”提交配置并拉起 `world_game_launcher` | `idle -> starting -> running -> exited/stopped` | `viewer_port`、`bind` 必须可解析；静态目录必须存在 | 默认无鉴权，仅限受信网络部署 |
-| 远程停止 | 无新增字段 | 点击“停止”优先优雅中断，超时后强杀 | `running -> stopping -> stopped` | 沿用优雅退出超时窗口与轮询策略 | 仅控制台会话可触发 |
+| Web 启动器控制台 | `scenario/live_bind/web_bind/viewer_host/viewer_port/viewer_static_dir/llm/chain` | 点击“启动”提交配置并拉起 `world_game_launcher` | `idle/stopped/exited -> running`，失败进入 `invalid_config/start_failed` | `viewer_port`、`bind` 必须可解析；静态目录必须存在 | 默认无鉴权，仅限受信网络部署 |
+| 远程停止 | 无新增字段 | 点击“停止”优先优雅中断，超时后强杀 | `running -> stopped`，失败进入 `stop_failed` | 沿用优雅退出超时窗口与轮询策略 | 仅控制台会话可触发 |
 | 状态与日志查询 | `status/pid/last_error/logs[]` | 页面轮询 `/api/state` 并刷新 UI | `polling` 常驻 | 仅保留最近 N 条日志（防止内存无限增长） | 只读 |
 - Acceptance Criteria:
   - AC-1: `world_web_launcher` 提供 `GET /` 控制台页面和 `/api/state` 状态接口。

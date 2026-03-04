@@ -14,7 +14,7 @@
 
 ## 依赖
 - doc/world-simulator/launcher/game-client-launcher-desktop-2026-02-27.prd.md
-- 复用 `world_game_launcher` 作为核心编排执行器。
+- 当前实现复用 `world_web_launcher` 作为核心控制面编排执行器（历史阶段曾直接复用 `world_game_launcher`）。
 - 依赖 Web 预构建目录 `web/`（或自定义 `--viewer-static-dir`）。
 - 桌面环境需具备图形会话以运行 GUI 启动器。
 

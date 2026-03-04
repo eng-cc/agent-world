@@ -5,7 +5,7 @@
 ## 1. Executive Summary
 - 提供面向玩家的“客户端启动器”桌面应用，减少命令行操作门槛。
 - 玩家可通过 GUI 完成：启动/停止游戏栈、查看当前连接地址、一键打开游戏页面。
-- 与现有 `world_game_launcher` 复用同一运行链路，避免复制核心启动逻辑。
+- 与现有 `world_web_launcher` / `world_game_launcher` 复用同一运行链路，避免复制核心启动逻辑。
 
 ## 2. User Experience & Functionality
 - 新增桌面客户端启动器 crate：`crates/agent_world_client_launcher`。
@@ -26,10 +26,13 @@
 
 ## 4. Technical Specifications
 ### 桌面启动器行为
-- 子进程：分别调用 `world_game_launcher`（游戏）与 `world_chain_runtime`（区块链）
-- 启动策略：
-  - 启动器打开后默认自动拉起 `world_chain_runtime`。
-  - 游戏启动/停止与区块链启动/停止由独立按钮控制，互不隐式托管。
+- 当前实现（2026-03 之后）：
+  - native 启动器先拉起本地 `world_web_launcher` 控制面；
+  - 游戏/区块链启停统一走 `/api/state`、`/api/start`、`/api/stop`、`/api/chain/start`、`/api/chain/stop`；
+  - 不再由 desktop 直接托管 `world_game_launcher` 与 `world_chain_runtime` 子进程。
+- 2026-02 历史实现（本专题原始落地口径）：
+  - 子进程：分别调用 `world_game_launcher`（游戏）与 `world_chain_runtime`（区块链）。
+  - 启动策略：启动器打开后默认自动拉起区块链；游戏启动/停止与区块链启动/停止由独立按钮控制。
 - 默认参数：
   - scenario: `llm_bootstrap`
   - live bind: `127.0.0.1:5023`
@@ -66,6 +69,7 @@
 - CLI 兜底入口：`output/release/game-launcher-local/run-game.sh`
 
 ## 完成态（2026-02-27）
+- 兼容说明（2026-03-04）：本专题已被后续“native/web 控制面统一”方案扩展，当前权威口径见 `game-client-launcher-native-web-control-plane-unification-2026-03-04.prd.md`。
 - M1 完成：`agent_world_client_launcher` 已具备参数编辑、启动/停止、日志显示与一键打开 URL。
 - M2 完成：打包脚本已纳入 `agent_world_client_launcher` 并生成 `run-client.sh`。
 - M3 完成：已补齐手册入口与验收记录，形成“桌面 GUI + CLI fallback”的可分发启动路径。
