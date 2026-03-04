@@ -8,6 +8,9 @@ use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+use agent_world_launcher_ui::{
+    launcher_ui_fields_for_native, LauncherUiField, LauncherUiFieldKind,
+};
 use eframe::egui;
 use feedback_entry::FeedbackDraft;
 use llm_settings::LlmSettingsPanel;
@@ -46,6 +49,14 @@ const STOP_POLL_INTERVAL_MS: u64 = 80;
 const CHAIN_STATUS_PROBE_INTERVAL_MS: u64 = 1000;
 const CHAIN_STATUS_PROBE_TIMEOUT_MS: u64 = 300;
 const CHAIN_STATUS_STARTING_GRACE_SECS: u64 = 8;
+const NATIVE_UI_SECTIONS: &[&str] = &[
+    "game_core",
+    "viewer_core",
+    "chain_identity",
+    "chain_runtime",
+    "binaries",
+    "static_assets",
+];
 
 fn main() -> eframe::Result<()> {
     let native_options = eframe::NativeOptions {
@@ -467,6 +478,35 @@ impl ClientLauncherApp {
             self.logs.pop_front();
         }
     }
+
+    fn ui_field_label(&self, field: &LauncherUiField) -> &'static str {
+        match self.ui_language {
+            UiLanguage::ZhCn => field.label_zh,
+            UiLanguage::EnUs => field.label_en,
+        }
+    }
+
+    fn render_config_section(&mut self, ui: &mut egui::Ui, section: &str) {
+        ui.horizontal_wrapped(|ui| {
+            for field in launcher_ui_fields_for_native().filter(|field| field.section == section) {
+                let label = self.ui_field_label(field);
+                match field.kind {
+                    LauncherUiFieldKind::Text => {
+                        if let Some(value) = launcher_text_field_mut(&mut self.config, field.id) {
+                            ui.label(label);
+                            ui.text_edit_singleline(value);
+                        }
+                    }
+                    LauncherUiFieldKind::Checkbox => {
+                        if let Some(value) = launcher_checkbox_field_mut(&mut self.config, field.id)
+                        {
+                            ui.checkbox(value, label);
+                        }
+                    }
+                }
+            }
+        });
+    }
 }
 
 impl Drop for ClientLauncherApp {
@@ -533,11 +573,6 @@ impl eframe::App for ClientLauncherApp {
         });
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            let llm_label = self.tr("启用 LLM", "Enable LLM").to_string();
-            let chain_runtime_label = self.tr("启用链运行时", "Enable Chain Runtime").to_string();
-            let auto_open_browser_label = self
-                .tr("自动打开浏览器", "Open Browser Automatically")
-                .to_string();
             let game_required_issues = collect_required_config_issues(&self.config);
             let chain_required_issues = collect_chain_required_config_issues(&self.config);
             let can_start_game = self.running.is_none() && game_required_issues.is_empty();
@@ -545,53 +580,9 @@ impl eframe::App for ClientLauncherApp {
                 && self.chain_running.is_none()
                 && chain_required_issues.is_empty();
 
-            ui.horizontal_wrapped(|ui| {
-                ui.label(self.tr("场景", "Scenario"));
-                ui.text_edit_singleline(&mut self.config.scenario);
-                ui.label(self.tr("实时服务绑定", "Live Bind"));
-                ui.text_edit_singleline(&mut self.config.live_bind);
-                ui.label(self.tr("WebSocket 绑定", "Web Bind"));
-                ui.text_edit_singleline(&mut self.config.web_bind);
-            });
-
-            ui.horizontal_wrapped(|ui| {
-                ui.label(self.tr("游戏页面主机", "Viewer Host"));
-                ui.text_edit_singleline(&mut self.config.viewer_host);
-                ui.label(self.tr("游戏页面端口", "Viewer Port"));
-                ui.text_edit_singleline(&mut self.config.viewer_port);
-                ui.checkbox(&mut self.config.llm_enabled, llm_label);
-                ui.checkbox(&mut self.config.chain_enabled, chain_runtime_label);
-                ui.checkbox(&mut self.config.auto_open_browser, auto_open_browser_label);
-            });
-
-            ui.horizontal_wrapped(|ui| {
-                ui.label(self.tr("链状态服务绑定", "Chain Status Bind"));
-                ui.text_edit_singleline(&mut self.config.chain_status_bind);
-                ui.label(self.tr("链节点 ID", "Chain Node ID"));
-                ui.text_edit_singleline(&mut self.config.chain_node_id);
-                ui.label(self.tr("链世界 ID", "Chain World ID"));
-                ui.text_edit_singleline(&mut self.config.chain_world_id);
-            });
-
-            ui.horizontal_wrapped(|ui| {
-                ui.label(self.tr("链节点角色", "Chain Role"));
-                ui.text_edit_singleline(&mut self.config.chain_node_role);
-                ui.label(self.tr("链 Tick 毫秒", "Chain Tick Milliseconds"));
-                ui.text_edit_singleline(&mut self.config.chain_node_tick_ms);
-                ui.label(self.tr("链验证者", "Chain Validators"));
-                ui.text_edit_singleline(&mut self.config.chain_node_validators);
-            });
-
-            ui.horizontal_wrapped(|ui| {
-                ui.label(self.tr("启动器二进制路径", "Launcher Binary"));
-                ui.text_edit_singleline(&mut self.config.launcher_bin);
-                ui.label(self.tr("链运行时二进制路径", "Chain Runtime Binary"));
-                ui.text_edit_singleline(&mut self.config.chain_runtime_bin);
-            });
-            ui.horizontal_wrapped(|ui| {
-                ui.label(self.tr("前端静态资源目录", "Viewer Static Directory"));
-                ui.text_edit_singleline(&mut self.config.viewer_static_dir);
-            });
+            for section in NATIVE_UI_SECTIONS {
+                self.render_config_section(ui, section);
+            }
 
             if game_required_issues.is_empty() {
                 ui.colored_label(
@@ -728,6 +719,41 @@ impl eframe::App for ClientLauncherApp {
         self.show_feedback_window(ctx);
         self.show_transfer_window(ctx);
         ctx.request_repaint_after(Duration::from_millis(120));
+    }
+}
+
+fn launcher_text_field_mut<'a>(
+    config: &'a mut LaunchConfig,
+    field_id: &str,
+) -> Option<&'a mut String> {
+    match field_id {
+        "scenario" => Some(&mut config.scenario),
+        "live_bind" => Some(&mut config.live_bind),
+        "web_bind" => Some(&mut config.web_bind),
+        "viewer_host" => Some(&mut config.viewer_host),
+        "viewer_port" => Some(&mut config.viewer_port),
+        "chain_status_bind" => Some(&mut config.chain_status_bind),
+        "chain_node_id" => Some(&mut config.chain_node_id),
+        "chain_world_id" => Some(&mut config.chain_world_id),
+        "chain_node_role" => Some(&mut config.chain_node_role),
+        "chain_node_tick_ms" => Some(&mut config.chain_node_tick_ms),
+        "chain_node_validators" => Some(&mut config.chain_node_validators),
+        "launcher_bin" => Some(&mut config.launcher_bin),
+        "chain_runtime_bin" => Some(&mut config.chain_runtime_bin),
+        "viewer_static_dir" => Some(&mut config.viewer_static_dir),
+        _ => None,
+    }
+}
+
+fn launcher_checkbox_field_mut<'a>(
+    config: &'a mut LaunchConfig,
+    field_id: &str,
+) -> Option<&'a mut bool> {
+    match field_id {
+        "llm_enabled" => Some(&mut config.llm_enabled),
+        "chain_enabled" => Some(&mut config.chain_enabled),
+        "auto_open_browser" => Some(&mut config.auto_open_browser),
+        _ => None,
     }
 }
 

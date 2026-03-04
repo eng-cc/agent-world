@@ -140,6 +140,7 @@ name = "agent_world"
 version = "0.1.0"
 dependencies = [
  "agent_world_distfs",
+ "agent_world_launcher_ui",
  "agent_world_node",
  "agent_world_proto",
  "agent_world_wasm_abi",
@@ -168,6 +169,7 @@ dependencies = [
 name = "agent_world_client_launcher"
 version = "0.1.0"
 dependencies = [
+ "agent_world_launcher_ui",
  "eframe",
  "libc",
  "serde",
@@ -203,6 +205,13 @@ dependencies = [
  "serde_cbor",
  "serde_json",
  "sha2",
+]
+
+[[package]]
+name = "agent_world_launcher_ui"
+version = "0.1.0"
+dependencies = [
+ "serde",
 ]
 
 [[package]]

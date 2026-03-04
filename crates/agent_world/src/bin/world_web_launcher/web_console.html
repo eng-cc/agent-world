@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agent World Web Launcher</title>
+  <style>
+    :root {
+      --bg: #f2f4ef;
+      --panel: #ffffff;
+      --line: #d0d8cc;
+      --text: #1f2a22;
+      --muted: #5f6d63;
+      --ok: #1c7f53;
+      --err: #a13a35;
+      --accent: #125f9a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "IBM Plex Sans", "Noto Sans", sans-serif;
+      background: radial-gradient(circle at 0 0, #f9faf7, var(--bg));
+      color: var(--text);
+    }
+    .wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 24px 16px 32px;
+      display: grid;
+      gap: 16px;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px;
+      box-shadow: 0 10px 30px rgba(23, 37, 26, 0.06);
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 26px;
+      letter-spacing: 0.2px;
+    }
+    h2 {
+      margin: 0 0 10px;
+      font-size: 18px;
+    }
+    .status {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 4px 12px;
+      font-size: 13px;
+      background: #eaf1e8;
+      border: 1px solid #c4d5c0;
+    }
+    .badge.running { color: var(--ok); border-color: #87c9a9; background: #e8f8ef; }
+    .badge.failed, .badge.exited, .badge.invalid_config { color: var(--err); border-color: #e6b0ac; background: #fff0ef; }
+    .row {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      margin-bottom: 10px;
+      align-items: end;
+    }
+    .field {
+      display: block;
+    }
+    .field > span {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    input[type="text"], input[type="number"] {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 14px;
+      color: var(--text);
+      background: #fff;
+    }
+    .checkbox {
+      display: inline-flex;
+      gap: 6px;
+      align-items: center;
+      margin: 0;
+      font-size: 13px;
+      color: var(--text);
+      min-height: 38px;
+    }
+    .btns {
+      margin-top: 14px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    button {
+      border: 1px solid transparent;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: transform 120ms ease;
+    }
+    button:hover { transform: translateY(-1px); }
+    button.start { background: var(--ok); color: #fff; }
+    button.stop { background: var(--err); color: #fff; }
+    button.refresh { background: var(--accent); color: #fff; }
+    pre {
+      margin: 0;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #f8faf6;
+      max-height: 340px;
+      overflow: auto;
+      font-size: 12px;
+      line-height: 1.35;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .meta {
+      font-size: 13px;
+      color: var(--muted);
+    }
+    a { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="card">
+      <h1>Agent World Web Launcher</h1>
+      <div class="status">
+        <span id="status-badge" class="badge">status: idle</span>
+        <span class="meta" id="status-detail"></span>
+      </div>
+      <div class="meta" id="game-url">game url: -</div>
+      <div class="meta" id="launcher-bin">launcher bin: -</div>
+    </section>
+
+    <section class="card">
+      <h2>Launch Config</h2>
+      <div id="config-sections"></div>
+      <div class="btns">
+        <button class="start" id="start-btn">Start</button>
+        <button class="stop" id="stop-btn">Stop</button>
+        <button class="refresh" id="refresh-btn">Refresh</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Logs</h2>
+      <pre id="logs">(empty)</pre>
+    </section>
+  </div>
+
+  <script>
+    const sectionOrder = [
+      "game_core",
+      "viewer_core",
+      "chain_identity",
+      "chain_runtime",
+      "static_assets"
+    ];
+
+    let schema = [];
+
+    async function requestJson(path, options = {}) {
+      const resp = await fetch(path, {
+        headers: { "content-type": "application/json" },
+        ...options,
+      });
+      if (!resp.ok) {
+        throw new Error(`HTTP ${resp.status}`);
+      }
+      return await resp.json();
+    }
+
+    function normalizeSectionTitle(section) {
+      switch (section) {
+        case "game_core": return "Game Core";
+        case "viewer_core": return "Viewer";
+        case "chain_identity": return "Chain Identity";
+        case "chain_runtime": return "Chain Runtime";
+        case "static_assets": return "Static Assets";
+        default: return section;
+      }
+    }
+
+    function renderForm() {
+      const host = document.getElementById("config-sections");
+      host.innerHTML = "";
+
+      const grouped = new Map();
+      for (const field of schema) {
+        if (!grouped.has(field.section)) {
+          grouped.set(field.section, []);
+        }
+        grouped.get(field.section).push(field);
+      }
+
+      for (const section of sectionOrder) {
+        const fields = grouped.get(section);
+        if (!fields || fields.length === 0) {
+          continue;
+        }
+
+        const title = document.createElement("h3");
+        title.textContent = normalizeSectionTitle(section);
+        title.style.margin = "6px 0 8px";
+        title.style.fontSize = "14px";
+        title.style.color = "#4b5f52";
+        host.appendChild(title);
+
+        const row = document.createElement("div");
+        row.className = "row";
+
+        for (const field of fields) {
+          const label = field.label_en || field.id;
+          if (field.kind === "checkbox") {
+            const checkboxWrap = document.createElement("label");
+            checkboxWrap.className = "checkbox";
+            const input = document.createElement("input");
+            input.type = "checkbox";
+            input.id = field.id;
+            const text = document.createElement("span");
+            text.textContent = label;
+            checkboxWrap.appendChild(input);
+            checkboxWrap.appendChild(text);
+            row.appendChild(checkboxWrap);
+          } else {
+            const fieldWrap = document.createElement("label");
+            fieldWrap.className = "field";
+            const text = document.createElement("span");
+            text.textContent = label;
+            const input = document.createElement("input");
+            input.type = "text";
+            input.id = field.id;
+            fieldWrap.appendChild(text);
+            fieldWrap.appendChild(input);
+            row.appendChild(fieldWrap);
+          }
+        }
+
+        host.appendChild(row);
+      }
+    }
+
+    function applyConfig(config) {
+      for (const field of schema) {
+        const el = document.getElementById(field.id);
+        if (!el || !Object.prototype.hasOwnProperty.call(config, field.id)) {
+          continue;
+        }
+        if (field.kind === "checkbox") {
+          el.checked = Boolean(config[field.id]);
+        } else {
+          el.value = config[field.id] ?? "";
+        }
+      }
+    }
+
+    function collectConfig() {
+      const config = {};
+      for (const field of schema) {
+        const el = document.getElementById(field.id);
+        if (!el) {
+          continue;
+        }
+        if (field.kind === "checkbox") {
+          config[field.id] = Boolean(el.checked);
+        } else {
+          config[field.id] = String(el.value || "");
+        }
+      }
+      return config;
+    }
+
+    function renderState(state) {
+      const badge = document.getElementById("status-badge");
+      badge.textContent = `status: ${state.status}${state.pid ? ` (pid=${state.pid})` : ""}`;
+      badge.className = `badge ${state.status}`;
+      document.getElementById("status-detail").textContent = state.detail || "";
+
+      const gameUrl = state.game_url || "-";
+      document.getElementById("game-url").innerHTML =
+        gameUrl === "-" ? "game url: -" : `game url: <a href="${gameUrl}" target="_blank" rel="noreferrer">${gameUrl}</a>`;
+      document.getElementById("launcher-bin").textContent = `launcher bin: ${state.launcher_bin}`;
+
+      const logs = state.logs && state.logs.length ? state.logs.join("\n") : "(empty)";
+      document.getElementById("logs").textContent = logs;
+
+      applyConfig(state.config || {});
+    }
+
+    async function refreshState() {
+      try {
+        const state = await requestJson("/api/state");
+        renderState(state);
+      } catch (err) {
+        document.getElementById("status-detail").textContent = `refresh failed: ${err.message}`;
+      }
+    }
+
+    async function startLauncher() {
+      const config = collectConfig();
+      try {
+        const result = await requestJson("/api/start", {
+          method: "POST",
+          body: JSON.stringify(config),
+        });
+        renderState(result.state);
+        if (!result.ok) {
+          document.getElementById("status-detail").textContent = result.error || "start failed";
+        }
+      } catch (err) {
+        document.getElementById("status-detail").textContent = `start failed: ${err.message}`;
+      }
+    }
+
+    async function stopLauncher() {
+      try {
+        const result = await requestJson("/api/stop", { method: "POST" });
+        renderState(result.state);
+        if (!result.ok) {
+          document.getElementById("status-detail").textContent = result.error || "stop failed";
+        }
+      } catch (err) {
+        document.getElementById("status-detail").textContent = `stop failed: ${err.message}`;
+      }
+    }
+
+    async function bootstrap() {
+      try {
+        schema = await requestJson("/api/ui/schema");
+        renderForm();
+        await refreshState();
+      } catch (err) {
+        document.getElementById("status-detail").textContent = `bootstrap failed: ${err.message}`;
+      }
+    }
+
+    document.getElementById("refresh-btn").addEventListener("click", refreshState);
+    document.getElementById("start-btn").addEventListener("click", startLauncher);
+    document.getElementById("stop-btn").addEventListener("click", stopLauncher);
+
+    bootstrap();
+    setInterval(refreshState, 1000);
+  </script>
+</body>
+</html>

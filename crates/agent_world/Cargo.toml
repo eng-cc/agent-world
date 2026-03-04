@@ -20,6 +20,7 @@ rand_core = { version = "0.6", features = ["getrandom"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 agent_world_distfs = { path = "../agent_world_distfs" }
+agent_world_launcher_ui = { path = "../agent_world_launcher_ui" }
 agent_world_node = { path = "../agent_world_node" }
 agent_world_wasm_executor = { path = "../agent_world_wasm_executor", default-features = false }
 agent_world_wasm_router = { path = "../agent_world_wasm_router" }

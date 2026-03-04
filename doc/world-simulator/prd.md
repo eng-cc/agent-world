@@ -215,7 +215,7 @@
 | PRD-WORLD_SIMULATOR-008 | TASK-WORLD_SIMULATOR-019/020 | `test_tier_required` + `test_tier_full` | native 抓帧脚本复现/回归、`agent_world_viewer` 单测与构建检查 | Viewer 2D/3D 渲染稳定性、native 交互可用性 |
 | PRD-WORLD_SIMULATOR-009 | TASK-WORLD_SIMULATOR-021/022 | `test_tier_required` | 启动 `run-game.sh` 占用二进制后重复执行 bundle 脚本，验证无 `Text file busy` 且新产物可启动 | 启动器发行打包稳定性、重复发布可靠性 |
 | PRD-WORLD_SIMULATOR-010 | TASK-WORLD_SIMULATOR-023/024 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher` + 启动 `world_web_launcher` 后通过 `/api/start`/`/api/stop`/`/api/state` 回归 + `bash -n scripts/build-game-launcher-bundle.sh` 校验打包入口脚本 | 无 GUI 服务器远程运维、launcher Web 控制能力 |
-| PRD-WORLD_SIMULATOR-011 | TASK-WORLD_SIMULATOR-025/026 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher --lib` + `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher`，验证 native/web 同源 schema 渲染与接口输出 | 启动器 UI 一致性、跨端配置项治理能力 |
+| PRD-WORLD_SIMULATOR-011 | TASK-WORLD_SIMULATOR-025/026 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p agent_world_launcher_ui` + `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher` + `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher`，验证 shared schema 定义、native/web 同源渲染与接口输出 | 启动器 UI 一致性、跨端配置项治理能力 |
 
 - Decision Log:
 
