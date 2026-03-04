@@ -80,6 +80,14 @@
 | `doc/p2p/viewer-live/world-viewer-live-no-llm-flag-2026-02-23.prd.md` | `doc/p2p/viewer-live/world-viewer-live-no-llm-flag-2026-02-23.prd.project.md` |
 | `doc/p2p/viewer-live/world-viewer-live-release-locked-launch-2026-02-23.prd.md` | `doc/p2p/viewer-live/world-viewer-live-release-locked-launch-2026-02-23.prd.project.md` |
 
+## 发布说明文档（release，补充材料）
+| 发布说明 | 对应专题 |
+| --- | --- |
+| `doc/p2p/node/node-redeemable-power-asset.release.md` | `doc/p2p/node/node-redeemable-power-asset.prd.md` |
+| `doc/p2p/node/node-redeemable-power-asset-audit-hardening.release.md` | `doc/p2p/node/node-redeemable-power-asset-audit-hardening.prd.md` |
+| `doc/p2p/token/mainchain-token-allocation-mechanism.release.md` | `doc/p2p/token/mainchain-token-allocation-mechanism.prd.md` |
+
 ## 说明
 - 本索引用于保证模块专题文档在根入口文档树中可达。
 - 文档配对规则：`*.prd.md` 与同名 `*.prd.project.md`。
+- `*.release.md` 为发布补充材料，不参与 PRD 任务配对规则。
