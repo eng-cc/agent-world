@@ -47,7 +47,10 @@
 ## 可操作性对比结论（重构前 vs 重构后）
 - 代码结构：
   - 重构前：`agent_world_viewer` 存在 7 个超限文件（最大 `main.rs = 2231` 行，`egui_right_panel_chat.rs = 1904` 行）。
-  - 重构后：超限文件清零，关键文件降至 `main.rs = 915`、`egui_right_panel_chat.rs = 935`，其余均 `<= 1200`。
+  - 2026-02-22 收口时：超限文件清零，关键文件降至 `main.rs = 915`、`egui_right_panel_chat.rs = 935`，其余均 `<= 1200`。
+- 当前漂移检查（2026-03-04）：
+  - 已重新出现 >1200 行文件：`industry_graph_view_model.rs (1673)`、`egui_right_panel_player_experience.rs (1417)`、`scene_helpers.rs (1376)`、`egui_right_panel.rs (1283)`、`egui_right_panel_player_guide.rs (1229)`、`ui_text.rs (1228)`、`egui_right_panel_tests.rs (1214)`。
+  - 建议持续巡检命令：`wc -l crates/agent_world_viewer/src/*.rs | sort -nr | head`。
 - Web 闭环可操作性：
   - 重构前基线（语义目标）：需要保持此前已修复的窄屏可操作、连接容错与聊天链路行为不回退。
   - 重构后实测（Playwright）：
@@ -56,7 +59,8 @@
     - `getState()` 返回 `connectionStatus=connected`、`selectedKind=agent`、`selectedId=agent-0`；
     - console `Errors = 0`，无新增运行时错误。
 - 结论：
-  - 本次重构主要改善可维护性与可测试性（文件体量显著下降），未引入可操作性回退。
+  - 本次重构在 2026-02-22 时主要改善可维护性与可测试性（文件体量显著下降），未引入可操作性回退。
+  - 截至 2026-03-04，行数约束已发生后续漂移，需在新专题任务中再次收敛并更新本分册状态。
   - 用户可见交互链路（连接、选择、控制、状态读取）与重构前保持一致。
 
 ### Technical Risks
