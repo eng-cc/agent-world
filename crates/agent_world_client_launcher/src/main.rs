@@ -89,6 +89,9 @@ const STOP_POLL_INTERVAL_MS: u64 = 80;
 const CHAIN_STATUS_PROBE_INTERVAL_MS: u64 = 1000;
 const CHAIN_STATUS_PROBE_TIMEOUT_MS: u64 = 300;
 const CHAIN_STATUS_STARTING_GRACE_SECS: u64 = 8;
+const CLIENT_LAUNCHER_CONTROL_URL_ENV: &str = "AGENT_WORLD_CLIENT_LAUNCHER_CONTROL_URL";
+const CLIENT_LAUNCHER_CONTROL_BIND_ENV: &str = "AGENT_WORLD_CLIENT_LAUNCHER_CONTROL_BIND";
+const DEFAULT_CLIENT_LAUNCHER_CONTROL_BIND: &str = "127.0.0.1:5410";
 const NATIVE_UI_SECTIONS: &[&str] = &[
     "game_core",
     "viewer_core",
@@ -100,7 +103,6 @@ const NATIVE_UI_SECTIONS: &[&str] = &[
 
 #[cfg(target_arch = "wasm32")]
 const WEB_CANVAS_ID: &str = "agent-world-launcher-canvas";
-#[cfg(target_arch = "wasm32")]
 const WEB_POLL_INTERVAL_MS: u64 = 1000;
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -311,25 +313,27 @@ struct RunningProcess {
 struct RunningProcess;
 
 #[derive(Debug, Clone)]
-#[cfg(target_arch = "wasm32")]
 enum WebApiEvent {
     State(Result<WebStateSnapshot, String>),
     Action(Result<WebApiResponse, String>),
 }
 
 #[derive(Debug, Clone, Deserialize)]
-#[cfg(target_arch = "wasm32")]
 struct WebStateSnapshot {
     status: String,
     detail: Option<String>,
+    pid: Option<u32>,
     running: bool,
+    chain_status: String,
+    chain_detail: Option<String>,
+    chain_pid: Option<u32>,
+    chain_running: bool,
     game_url: String,
     config: LaunchConfig,
     logs: Vec<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
-#[cfg(target_arch = "wasm32")]
 struct WebApiResponse {
     ok: bool,
     error: Option<String>,
@@ -413,6 +417,31 @@ impl ChainRuntimeStatus {
             Self::Unreachable(detail) | Self::ConfigError(detail) => Some(detail.as_str()),
             Self::Disabled | Self::NotStarted | Self::Starting | Self::Ready => None,
         }
+    }
+}
+
+fn launcher_status_from_web(status: &str, detail: Option<&str>) -> LauncherStatus {
+    match status {
+        "idle" => LauncherStatus::Idle,
+        "running" => LauncherStatus::Running,
+        "stopped" => LauncherStatus::Stopped,
+        "invalid_config" => LauncherStatus::InvalidArgs,
+        "start_failed" => LauncherStatus::StartFailed,
+        "stop_failed" => LauncherStatus::StopFailed,
+        "exited" => LauncherStatus::Exited(detail.unwrap_or("unknown").to_string()),
+        _ => LauncherStatus::QueryFailed,
+    }
+}
+
+fn chain_runtime_status_from_web(status: &str, detail: Option<&str>) -> ChainRuntimeStatus {
+    match status {
+        "disabled" => ChainRuntimeStatus::Disabled,
+        "not_started" => ChainRuntimeStatus::NotStarted,
+        "starting" => ChainRuntimeStatus::Starting,
+        "ready" => ChainRuntimeStatus::Ready,
+        "unreachable" => ChainRuntimeStatus::Unreachable(detail.unwrap_or("unknown").to_string()),
+        "config_error" => ChainRuntimeStatus::ConfigError(detail.unwrap_or("unknown").to_string()),
+        _ => ChainRuntimeStatus::Unreachable(format!("unknown chain status: {status}")),
     }
 }
 
@@ -549,23 +578,47 @@ struct ClientLauncherApp {
     transfer_draft: TransferDraft,
     transfer_submit_state: TransferSubmitState,
     transfer_window_open: bool,
-    #[cfg(target_arch = "wasm32")]
     web_api_tx: Sender<WebApiEvent>,
-    #[cfg(target_arch = "wasm32")]
     web_api_rx: Receiver<WebApiEvent>,
-    #[cfg(target_arch = "wasm32")]
     web_request_inflight: bool,
-    #[cfg(target_arch = "wasm32")]
     last_web_poll_at: Option<Instant>,
-    #[cfg(target_arch = "wasm32")]
     web_game_url: Option<String>,
+    #[cfg(not(target_arch = "wasm32"))]
+    control_api_base: String,
+    #[cfg(not(target_arch = "wasm32"))]
+    control_listen_bind: String,
+    #[cfg(not(target_arch = "wasm32"))]
+    control_manage_service: bool,
 }
 
 impl Default for ClientLauncherApp {
     fn default() -> Self {
         let config = LaunchConfig::default();
-        #[cfg(target_arch = "wasm32")]
         let (web_api_tx, web_api_rx) = mpsc::channel::<WebApiEvent>();
+        #[cfg(not(target_arch = "wasm32"))]
+        let control_url_from_env = env::var(CLIENT_LAUNCHER_CONTROL_URL_ENV)
+            .ok()
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty());
+        #[cfg(not(target_arch = "wasm32"))]
+        let control_listen_bind = env::var(CLIENT_LAUNCHER_CONTROL_BIND_ENV)
+            .ok()
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty())
+            .unwrap_or_else(|| DEFAULT_CLIENT_LAUNCHER_CONTROL_BIND.to_string());
+        #[cfg(not(target_arch = "wasm32"))]
+        let control_api_base = control_url_from_env.clone().unwrap_or_else(|| {
+            let (host, port) = parse_host_port(
+                control_listen_bind.as_str(),
+                CLIENT_LAUNCHER_CONTROL_BIND_ENV,
+            )
+            .unwrap_or(("127.0.0.1".to_string(), 5410));
+            let host = normalize_host_for_url(host.as_str());
+            let host = host_for_url(host.as_str());
+            format!("http://{host}:{port}")
+        });
+        #[cfg(not(target_arch = "wasm32"))]
+        let control_manage_service = control_url_from_env.is_none();
         let chain_runtime_status = if config.chain_enabled {
             ChainRuntimeStatus::NotStarted
         } else {
@@ -590,16 +643,17 @@ impl Default for ClientLauncherApp {
             transfer_draft: TransferDraft::default(),
             transfer_submit_state: TransferSubmitState::None,
             transfer_window_open: false,
-            #[cfg(target_arch = "wasm32")]
             web_api_tx,
-            #[cfg(target_arch = "wasm32")]
             web_api_rx,
-            #[cfg(target_arch = "wasm32")]
             web_request_inflight: false,
-            #[cfg(target_arch = "wasm32")]
             last_web_poll_at: None,
-            #[cfg(target_arch = "wasm32")]
             web_game_url: None,
+            #[cfg(not(target_arch = "wasm32"))]
+            control_api_base,
+            #[cfg(not(target_arch = "wasm32"))]
+            control_listen_bind,
+            #[cfg(not(target_arch = "wasm32"))]
+            control_manage_service,
         }
     }
 }
@@ -697,9 +751,6 @@ impl eframe::App for ClientLauncherApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.poll_process();
         self.poll_chain_process();
-        if !self.config.chain_enabled && self.chain_running.is_some() {
-            self.stop_chain_process();
-        }
         self.maybe_auto_start_chain();
         self.update_chain_runtime_status();
         if !self.is_feedback_available() {
@@ -748,11 +799,14 @@ impl eframe::App for ClientLauncherApp {
         egui::CentralPanel::default().show(ctx, |ui| {
             let game_required_issues = collect_required_config_issues(&self.config);
             let chain_required_issues = collect_chain_required_config_issues(&self.config);
-            let can_start_game = self.running.is_none() && game_required_issues.is_empty();
-            #[cfg(not(target_arch = "wasm32"))]
-            let can_start_chain = self.config.chain_enabled
-                && self.chain_running.is_none()
-                && chain_required_issues.is_empty();
+            let game_running = matches!(self.status, LauncherStatus::Running);
+            let chain_running = matches!(
+                self.chain_runtime_status,
+                ChainRuntimeStatus::Starting | ChainRuntimeStatus::Ready
+            );
+            let can_start_game = !game_running && game_required_issues.is_empty();
+            let can_start_chain =
+                self.config.chain_enabled && !chain_running && chain_required_issues.is_empty();
 
             for section in NATIVE_UI_SECTIONS {
                 self.render_config_section(ui, section);
@@ -810,44 +864,30 @@ impl eframe::App for ClientLauncherApp {
                 }
                 if ui
                     .add_enabled(
-                        self.running.is_some(),
+                        game_running,
                         egui::Button::new(self.tr("停止游戏", "Stop Game")),
                     )
                     .clicked()
                 {
                     self.stop_process();
                 }
-                #[cfg(not(target_arch = "wasm32"))]
-                {
-                    if ui
-                        .add_enabled(
-                            can_start_chain,
-                            egui::Button::new(self.tr("启动区块链", "Start Blockchain")),
-                        )
-                        .clicked()
-                    {
-                        self.start_chain_process();
-                    }
-                    if ui
-                        .add_enabled(
-                            self.chain_running.is_some(),
-                            egui::Button::new(self.tr("停止区块链", "Stop Blockchain")),
-                        )
-                        .clicked()
-                    {
-                        self.stop_chain_process();
-                    }
-                }
-                #[cfg(target_arch = "wasm32")]
-                {
-                    ui.add_enabled(
-                        false,
+                if ui
+                    .add_enabled(
+                        can_start_chain,
                         egui::Button::new(self.tr("启动区块链", "Start Blockchain")),
-                    );
-                    ui.add_enabled(
-                        false,
+                    )
+                    .clicked()
+                {
+                    self.start_chain_process();
+                }
+                if ui
+                    .add_enabled(
+                        chain_running,
                         egui::Button::new(self.tr("停止区块链", "Stop Blockchain")),
-                    );
+                    )
+                    .clicked()
+                {
+                    self.stop_chain_process();
                 }
                 if ui.button(self.tr("打开游戏页", "Open Game Page")).clicked() {
                     let url = self.current_game_url();

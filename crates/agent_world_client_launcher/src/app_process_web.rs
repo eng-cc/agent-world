@@ -8,10 +8,24 @@ impl ClientLauncherApp {
     }
 
     pub(super) fn is_feedback_available(&self) -> bool {
-        false
+        matches!(self.chain_runtime_status, ChainRuntimeStatus::Ready)
     }
 
-    pub(super) fn maybe_auto_start_chain(&mut self) {}
+    pub(super) fn maybe_auto_start_chain(&mut self) {
+        if self.chain_auto_start_attempted {
+            return;
+        }
+        if !self.config.chain_enabled {
+            self.chain_runtime_status = ChainRuntimeStatus::Disabled;
+            self.chain_auto_start_attempted = true;
+            return;
+        }
+        if self.web_request_inflight {
+            return;
+        }
+        self.chain_auto_start_attempted = true;
+        self.start_chain_process();
+    }
 
     pub(super) fn update_chain_runtime_status(&mut self) {}
 
@@ -74,23 +88,19 @@ impl ClientLauncherApp {
     }
 
     pub(super) fn stop_chain_process(&mut self) {
-        self.append_log(
-            self.tr(
-                "Web 模式暂不支持独立停止区块链进程",
-                "Web mode does not support standalone blockchain stop yet",
-            )
-            .to_string(),
-        );
+        if self.web_request_inflight {
+            self.append_log("skip chain stop: previous web request still in flight".to_string());
+            return;
+        }
+        self.request_web_chain_stop();
     }
 
     pub(super) fn start_chain_process(&mut self) {
-        self.append_log(
-            self.tr(
-                "Web 模式暂不支持独立启动区块链进程",
-                "Web mode does not support standalone blockchain start yet",
-            )
-            .to_string(),
-        );
+        if self.web_request_inflight {
+            self.append_log("skip chain start: previous web request still in flight".to_string());
+            return;
+        }
+        self.request_web_chain_start();
     }
 
     fn request_web_state(&mut self) {
@@ -121,9 +131,32 @@ impl ClientLauncherApp {
         });
     }
 
+    fn request_web_chain_start(&mut self) {
+        self.web_request_inflight = true;
+        self.last_web_poll_at = Some(Instant::now());
+        let tx = self.web_api_tx.clone();
+        let config = self.config.clone();
+        spawn_local(async move {
+            let _ = tx.send(WebApiEvent::Action(post_web_chain_start(config).await));
+        });
+    }
+
+    fn request_web_chain_stop(&mut self) {
+        self.web_request_inflight = true;
+        self.last_web_poll_at = Some(Instant::now());
+        let tx = self.web_api_tx.clone();
+        spawn_local(async move {
+            let _ = tx.send(WebApiEvent::Action(post_web_chain_stop().await));
+        });
+    }
+
     fn apply_web_snapshot(&mut self, snapshot: WebStateSnapshot) {
         self.status =
             launcher_status_from_web(snapshot.status.as_str(), snapshot.detail.as_deref());
+        self.chain_runtime_status = chain_runtime_status_from_web(
+            snapshot.chain_status.as_str(),
+            snapshot.chain_detail.as_deref(),
+        );
         self.web_game_url = Some(snapshot.game_url);
         self.config = snapshot.config;
         self.logs = snapshot.logs.into_iter().collect();
@@ -131,26 +164,12 @@ impl ClientLauncherApp {
             self.logs.pop_front();
         }
 
-        self.chain_runtime_status = if !self.config.chain_enabled {
-            ChainRuntimeStatus::Disabled
-        } else if snapshot.running {
-            ChainRuntimeStatus::Ready
-        } else {
-            ChainRuntimeStatus::NotStarted
-        };
-    }
-}
-
-fn launcher_status_from_web(status: &str, detail: Option<&str>) -> LauncherStatus {
-    match status {
-        "idle" => LauncherStatus::Idle,
-        "running" => LauncherStatus::Running,
-        "stopped" => LauncherStatus::Stopped,
-        "invalid_config" => LauncherStatus::InvalidArgs,
-        "start_failed" => LauncherStatus::StartFailed,
-        "stop_failed" => LauncherStatus::StopFailed,
-        "exited" => LauncherStatus::Exited(detail.unwrap_or("unknown").to_string()),
-        _ => LauncherStatus::QueryFailed,
+        if matches!(
+            self.chain_runtime_status,
+            ChainRuntimeStatus::Starting | ChainRuntimeStatus::Ready
+        ) {
+            self.chain_auto_start_attempted = true;
+        }
     }
 }
 
@@ -209,4 +228,44 @@ async fn post_web_stop() -> Result<WebApiResponse, String> {
         .json::<WebApiResponse>()
         .await
         .map_err(|err| format!("decode /api/stop response failed: {err}"))
+}
+
+async fn post_web_chain_start(config: LaunchConfig) -> Result<WebApiResponse, String> {
+    let payload = serde_json::to_string(&config)
+        .map_err(|err| format!("serialize /api/chain/start payload failed: {err}"))?;
+    let request = Request::post("/api/chain/start")
+        .header("content-type", "application/json")
+        .body(payload)
+        .map_err(|err| format!("build /api/chain/start request failed: {err}"))?;
+    let response = request
+        .send()
+        .await
+        .map_err(|err| format!("POST /api/chain/start failed: {err}"))?;
+    if !response.ok() {
+        return Err(format!(
+            "POST /api/chain/start failed with HTTP {}",
+            response.status()
+        ));
+    }
+    response
+        .json::<WebApiResponse>()
+        .await
+        .map_err(|err| format!("decode /api/chain/start response failed: {err}"))
+}
+
+async fn post_web_chain_stop() -> Result<WebApiResponse, String> {
+    let response = Request::post("/api/chain/stop")
+        .send()
+        .await
+        .map_err(|err| format!("POST /api/chain/stop failed: {err}"))?;
+    if !response.ok() {
+        return Err(format!(
+            "POST /api/chain/stop failed with HTTP {}",
+            response.status()
+        ));
+    }
+    response
+        .json::<WebApiResponse>()
+        .await
+        .map_err(|err| format!("decode /api/chain/stop response failed: {err}"))
 }
