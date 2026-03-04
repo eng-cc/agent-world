@@ -520,8 +520,6 @@ pub(super) fn build_launcher_args(config: &LauncherConfig) -> Result<Vec<String>
 
     if config.llm_enabled {
         args.push("--with-llm".to_string());
-    } else {
-        args.push("--no-llm".to_string());
     }
     if !config.auto_open_browser {
         args.push("--no-open-browser".to_string());

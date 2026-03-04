@@ -6,7 +6,7 @@
 - [x] T0 (PRD-WORLD_SIMULATOR-015) [test_tier_required]: 完成专题 PRD 建模、验收标准冻结与模块文档树回写。
 - [x] T1 (PRD-WORLD_SIMULATOR-015) [test_tier_required]: 升级 `world_web_launcher` 为游戏/区块链独立编排控制面，新增链独立启停 API 与状态快照。
 - [x] T2 (PRD-WORLD_SIMULATOR-015) [test_tier_required]: `agent_world_client_launcher` native 改为客户端-服务端分离并复用同一 API 控制链路，恢复 web 端链启停按钮与状态对齐。
-- [ ] T3 (PRD-WORLD_SIMULATOR-015) [test_tier_required]: 执行 `cargo test/check` + Playwright headed 闭环（含链/游戏独立启停），归档证据并收口文档。
+- [x] T3 (PRD-WORLD_SIMULATOR-015) [test_tier_required]: 执行 `cargo test/check` + Playwright headed 闭环（含链/游戏独立启停），归档证据并收口文档。
 
 ## 依赖
 - `doc/world-simulator/prd.md`
@@ -19,6 +19,6 @@
 - `output/playwright/`
 
 ## 状态
-- 当前阶段: in_progress
-- 当前任务: T3
-- 备注: 目标是“native/web 功能行为对齐且链路统一”，完成后回写主 PRD 与模块项目文档。
+- 当前阶段: completed
+- 当前任务: none
+- 备注: 已完成 native/web 同控制面收口，Playwright 证据归档于 `output/playwright/launcher-control-plane-unification-20260304/artifacts-final/`。

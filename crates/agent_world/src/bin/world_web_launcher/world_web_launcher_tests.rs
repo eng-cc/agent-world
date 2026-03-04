@@ -139,7 +139,8 @@ fn build_launcher_args_includes_chain_disable_when_off() {
     };
     let args = build_launcher_args(&config).expect("args");
     assert!(args.contains(&"--chain-disable".to_string()));
-    assert!(args.contains(&"--no-llm".to_string()));
+    assert!(!args.contains(&"--no-llm".to_string()));
+    assert!(!args.contains(&"--with-llm".to_string()));
     assert!(args.contains(&"--no-open-browser".to_string()));
 }
 
