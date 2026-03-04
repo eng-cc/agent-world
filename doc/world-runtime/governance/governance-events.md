@@ -1,184 +1,70 @@
 # Agent World Runtime：治理事件与 Shadow 报告（设计分册）
 
-本分册为 `doc/world-runtime.prd.md` 的详细展开。
+本分册为 `doc/world-runtime/prd.md` 的详细展开。
 
-## 模块失败事件的审计关联（草案）
+## 当前实现口径（2026-03-04）
+- 治理事件使用 `GovernanceEvent` 枚举统一承载：`Proposed` / `ShadowReport` / `Approved` / `Applied`。
+- world 事件体中治理相关入口为 `WorldEventBody::Governance(GovernanceEvent)`。
+- 模块运行失败当前统一进入 `WorldEventBody::ModuleCallFailed`，未拆分 `ModuleLoadFailed` / `ModuleValidationFailed` 事件体。
+- `ShadowReport` 事件当前仅记录提案标识与影子 hash，不内嵌富报告结构。
 
-**关联字段（建议）**
-- `proposal_id`：若发生在治理 apply/shadow 流程中
-- `trace_id`：运行时调用链路标识
-- `module_id` / `wasm_hash` / `version`
-- `cause_event_id`：触发该失败的事件/动作
+## GovernanceEvent 负载结构（当前）
 
-**审计导出建议**
-- 对 `ModuleValidationFailed` 输出 `proposal_id` 与 `ShadowReport` 引用（若存在）。
-- 对 `ModuleCallFailed` 输出 `trace_id` 与导致的 `EffectIntent`/`WorldEvent` 关联。
-
-## 模块失败事件负载结构（草案）
-
-**ModuleLoadFailed**
-```
-{
-  "module_id": "...",
-  "wasm_hash": "...",
-  "code": "ARTIFACT_MISSING|HASH_MISMATCH|IO_ERROR",
-  "detail": "..."
-}
-```
-
-**ModuleValidationFailed**
-```
-{
-  "module_id": "...",
-  "proposal_id": "...",
-  "code": "ABI_INCOMPATIBLE|CAPS_DENIED|LIMITS_EXCEEDED|VERSION_CONFLICT",
-  "detail": "..."
-}
-```
-
-**ModuleCallFailed**
-```
-{
-  "module_id": "...",
-  "trace_id": "...",
-  "code": "TRAP|TIMEOUT|OUTPUT_TOO_LARGE|EFFECT_LIMIT_EXCEEDED",
-  "detail": "..."
-}
-```
-
-## 模块事件与校验（草案）
-
-**事件结构（示意）**
-```
-RegisterModule {
-  module_id,
-  wasm_hash,
-  manifest,         // ModuleManifest 快照
-  registered_by,
-}
-
-ActivateModule {
-  module_id,
-  version,
-  activated_by,
-}
-
-DeactivateModule {
-  module_id,
-  reason,
-  deactivated_by,
-}
-
-UpgradeModule {
-  module_id,
-  from_version,
-  to_version,
-  new_wasm_hash,
-  manifest,         // 新 ModuleManifest 快照
-  upgraded_by,
-}
-```
-
-**校验规则（示意）**
-- `wasm_hash` 必须与工件内容哈希一致；不存在则拒绝并记录失败事件。
-- `manifest` 与 `module_id/wasm_hash/interface_version` 必须一致且合法。
-- `required_caps` 必须有对应 CapabilityGrant，且通过 Policy 校验。
-- `limits` 必须在系统允许范围内（内存/gas/频率/输出大小）。
-- `RegisterModule` 不允许覆盖已有 `module_id` + `version`。
-- `UpgradeModule` 需满足版本单调递增，且 `from_version` 与当前激活版本一致。
-- 任何模块事件必须来自治理闭环 `apply` 结果，不允许绕过治理直接写入。
-
-## ShadowReport 结构（草案）
-
-> 目标：在 shadow 阶段输出可审计的诊断结果，阻断不可用模块变更。
-
-**ShadowReport（示意）**
-```
+### Proposed
+```json
 {
   "proposal_id": "...",
-  "status": "passed|failed|warning",
-  "checked_at": i64,
-  "errors": [
-    { "code": "HASH_MISMATCH", "module_id": "m.weather", "detail": "..." }
-  ],
-  "warnings": [
-    { "code": "LIMITS_HIGH", "module_id": "m.weather", "detail": "..." }
-  ],
-  "modules": [
-    { "module_id": "m.weather", "result": "ok|error|warning", "notes": [ "..." ] }
-  ]
+  "author": "...",
+  "base_manifest_hash": "...",
+  "manifest": { "...": "..." },
+  "patch": { "...": "..." }
 }
 ```
 
-**常见错误码（示意）**
-- `HASH_MISMATCH`：工件哈希不一致
-- `ARTIFACT_MISSING`：工件缺失
-- `ABI_INCOMPATIBLE`：接口版本不兼容
-- `CAPS_DENIED`：能力/政策拒绝
-- `LIMITS_EXCEEDED`：资源上限超出
-- `VERSION_CONFLICT`：版本冲突或非单调升级
-
-## ShadowPolicy 配置与传播（草案）
-
-**WorldConfig 扩展**
-```rust
-struct WorldConfig {
-    // ...
-    shadow_policy: ShadowPolicy,
-}
-
-enum ShadowPolicy {
-    AlwaysPass,
-    AlwaysFail,
-    ByModuleId(HashSet<String>),
-}
-```
-
-**ShadowReport 关联**
-- 报告中可附加 `shadow_policy` 字段用于审计（测试环境可选）。
-- 当 `AlwaysFail` 或命中 `ByModuleId` 时，`status=failed` 且错误码为 `SHADOW_FORCED_FAIL`。
-
-## ShadowReport 事件与审计输出（草案）
-
-**GovernanceEvent::ShadowReport（示意）**
-```
-ShadowReport {
-  proposal_id,
-  manifest_hash,
-  report,         // ShadowReport 结构
-}
-```
-
-**审计导出字段（建议）**
-- `proposal_id`
-- `status`
-- `checked_at`
-- `errors[]` / `warnings[]`
-- `module_id` 维度摘要（ok/error/warning 计数）
-
-## GovernanceEvent 负载结构（草案）
-
-**Proposed**
-```
-{ "proposal_id": "...", "author": "...", "base_manifest_hash": "..." }
-```
-
-**ShadowReport**
-```
-{ "proposal_id": "...", "manifest_hash": "...", "report": { ... } }
-```
-
-**Approved**
-```
-{ "proposal_id": "...", "approver": "...", "decision": "approve|reject", "reason": "..." }
-```
-
-**Applied**
-```
+### ShadowReport
+```json
 {
   "proposal_id": "...",
-  "manifest_hash": "...",
-  "module_changes": { ... },  // ModuleChangeSet（若存在）
-  "module_events": [ "RegisterModule", "UpgradeModule", "ActivateModule", "DeactivateModule" ]
+  "manifest_hash": "..."
 }
 ```
+
+### Approved
+```json
+{
+  "proposal_id": "...",
+  "approver": "...",
+  "decision": "approve | reject"
+}
+```
+
+### Applied
+```json
+{
+  "proposal_id": "...",
+  "manifest_hash": "... (optional)",
+  "consensus_height": 123,
+  "threshold": 5,
+  "signer_node_ids": ["node-a", "node-b"]
+}
+```
+
+## 模块失败事件口径（当前）
+- 当前失败事件类型：`ModuleCallFailed`。
+- 典型失败来源：
+  - 沙箱执行 Trap/OutOfFuel/Interrupted。
+  - 输出超限、效果上限超限、无效输出。
+  - 模块加载失败（例如工件缺失）在调用阶段映射为 `ModuleCallFailed(code=SandboxUnavailable)`。
+- 若后续需要独立 `ModuleLoadFailed` / `ModuleValidationFailed` 事件，应在 `WorldEventBody` 与 `AuditEventKind` 同步扩展后再回写本分册。
+
+## 审计关联（当前）
+- 审计维度通过 `AuditEventKind` 过滤：
+  - 治理链路：`governance`
+  - 模块失败：`module_call_failed`
+  - 模块生命周期事件：`module_event`
+- 因果链通过 `caused_by` 保留 action/effect 关联。
+
+## 实现锚点
+- `crates/agent_world/src/runtime/governance.rs`
+- `crates/agent_world/src/runtime/world_event.rs`
+- `crates/agent_world/src/runtime/audit.rs`

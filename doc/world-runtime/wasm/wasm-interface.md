@@ -1,6 +1,6 @@
 # Agent World Runtime：WASM 扩展接口与 ABI（设计分册）
 
-本分册为 `doc/world-runtime.prd.md` 的详细展开。
+本分册为 `doc/world-runtime/prd.md` 的详细展开。
 
 ## WASM 扩展接口（草案）
 
@@ -13,7 +13,7 @@ struct ModuleManifest {
     name: String,
     version: String,           // 语义化版本
     kind: ModuleKind,          // Reducer / Pure（后续可扩展）
-    role: ModuleRole,          // Rule / Domain / Body / AgentInternal
+    role: ModuleRole,          // Rule / Domain / Gameplay / Body / AgentInternal
     wasm_hash: String,         // 模块工件哈希
     interface_version: String, // 例如 "wasm-1"
     exports: Vec<String>,      // 导出函数名
@@ -30,6 +30,7 @@ struct ModuleManifest {
 **ModuleRole**
 - `Rule`：动作校验/成本评估等规则模块
 - `Domain`：经济、社会、治理等领域规则
+- `Gameplay`：战争/危机/经济玩法协议与状态机模块
 - `Body`：机体/零件/耐久等物理外层逻辑
 - `AgentInternal`：记忆/工具/规划等内部能力
 
@@ -41,7 +42,7 @@ struct ModuleManifest {
 **ModuleSubscription**
 - `event_kinds`: Vec<String>（订阅的事件类型）
 - `action_kinds`: Vec<String>（可选，订阅的动作类型）
-- `stage`: `"pre_action" | "post_action" | "post_event"`（动作/事件路由阶段）
+- `stage`: `"pre_action" | "post_action" | "post_event" | "tick"`（动作/事件/周期路由阶段）
 - `filters`: 可选过滤条件（例如仅关注某类 owner/地点）
 
 **ModuleLimits（示意字段）**
@@ -74,10 +75,9 @@ fn call(input: Bytes, ctx: ModuleContext) -> Bytes
 - `RegisterModule / ActivateModule / DeactivateModule / UpgradeModule`
 - 以事件写入日志，支持审计与回放
 
-**模块失败事件（占位）**
-- `ModuleLoadFailed { module_id, wasm_hash, reason }`
-- `ModuleValidationFailed { module_id, reason }`
+**模块失败事件（当前）**
 - `ModuleCallFailed { module_id, trace_id, reason }`
+- 加载/校验阶段失败当前映射到 `ModuleCallFailed`（由 `code/detail` 区分）。
 
 **规则决策事件（占位）**
 - `RuleDecisionRecorded { action_id, module_id, stage, verdict, override_action?, cost, notes }`
@@ -102,7 +102,7 @@ fn call(input: Bytes, ctx: ModuleContext) -> Bytes
   "trace_id": "...",
   "time": i64,
   "origin": { "kind": "event|action|system", "id": "..." },
-  "stage": "pre_action|post_action|post_event", // action/event 路由阶段（可选）
+  "stage": "pre_action|post_action|post_event|tick", // action/event/tick 路由阶段（可选）
   "world_config_hash": "...", // 当前 manifest 哈希
   "limits": { "max_mem_bytes": u64, "max_gas": u64, "max_output_bytes": u64 }
 }

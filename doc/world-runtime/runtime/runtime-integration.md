@@ -1,13 +1,13 @@
 # Agent World Runtime：运行时集成要点（设计分册）
 
-本分册为 `doc/world-runtime.prd.md` 的详细展开。
+本分册为 `doc/world-runtime/prd.md` 的详细展开。
 
 ## 模块加载与缓存（草案）
 
 - **加载键**：仅允许按 `wasm_hash` 加载，拒绝同名覆盖。
 - **缓存策略**：LRU + `max_cached_modules` 上限；超限时淘汰最久未使用模块。
 - **编译缓存**：可选缓存已编译实例（WASM → 本地可执行表示）。
-- **失败事件**：加载失败写入 `ModuleLoadFailed`（含 hash/原因）。
+- **失败事件**：加载或执行失败统一写入 `ModuleCallFailed`（加载失败在调用阶段映射为 `SandboxUnavailable`）。
 
 ## 沙箱执行器与资源限制（草案）
 
@@ -36,7 +36,7 @@
 ## 事件订阅与路由（草案）
 
 - **订阅来源**：`ModuleManifest.subscriptions` 指定 event/action kinds。
-- **路由顺序**：按 `module_id` 字典序调用，保证确定性。
+- **路由顺序**：按 `instance_id` 字典序调用，保证确定性。
 - **Action 路由**：`action.*` 订阅支持 `pre_action/post_action` 阶段：
   - `pre_action`：规则模块先行校验/计费/覆盖动作参数。
   - `post_action`：动作应用后派发衍生事件或效果。
@@ -91,4 +91,4 @@
 - `Manifest` 结构体新增 `module_changes: Option<ModuleChangeSet>`
 - `ManifestPatch` 允许 `"/module_changes"` set/remove
 - `GovernanceEvent::Applied` 增加 `module_changes` 字段（可选）
-- 审计导出支持 `Module*Failed` 与 `ShadowReport` 记录
+- 审计导出支持 `module_call_failed` 与 `governance` 记录

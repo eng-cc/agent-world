@@ -55,7 +55,7 @@
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
 | 确定性执行与回放 | action/event 序列、snapshot、replay 差异 | 执行回放并比较关键状态 | `pending -> replaying -> matched/mismatched` | 按 tick 与 event id 有序比较 | 仅运行时维护者可调整基线 |
-| WASM 生命周期治理 | 模块ID、版本、哈希、策略 | 注册/升级/禁用流程带审计输出 | `registered -> active -> deprecated/blocked` | 版本与策略双约束 | 未授权模块不得激活 |
+| WASM 生命周期治理 | 模块ID、版本、哈希、策略 | 注册/升级/停用流程带审计输出 | `register -> activate -> deactivate -> upgrade`（治理动作） | 版本与策略双约束 | 未授权模块不得激活 |
 | 审计与收据链路 | effect、receipt、签名、cause | 导出审计记录并验证签名 | `emitted -> signed -> verified/rejected` | 按事件时间与重要级别检索 | 安全评审者可查看完整链路 |
 - Acceptance Criteria:
   - AC-1: world-runtime PRD 覆盖内核、WASM、治理、安全四条主线。
