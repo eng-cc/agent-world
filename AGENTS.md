@@ -1,5 +1,5 @@
 ## 开发工作流
-1. 拿到仓库时先阅读开发日志、PRD 文档、项目管理文档，了解现状
+1. 拿到新需求时先阅读PRD 文档、项目管理文档，了解现状(有时开发日志也可以作为补充性资料)
   1.1 每个模块固定维护一个 PRD 主文档: `doc/<module>/prd.md`；书写PRD需要使用prd skill(.agents/skills/prd)
   1.2 doc下面的PRD文档通过引用关系组成一棵大树，能通过这个文档树承载项目的全貌
   1.3 每个PRD文档维护一个主项目管理文档: `doc/<module>/prd.project.md`；`prd.project.md` 过长时可拆分为 `doc/<module>/prd.project/*.md`（可多层嵌套），并由主文档统一索引与汇总；项目管理文档至少包含:任务拆解(含 PRD-ID 映射)、依赖、状态（可简要）
