@@ -21,6 +21,11 @@
 - [x] T18.1 进入 P0.4：三轮定向复测并定位 `play/step` 无进展根因（共识链路）
 - [x] T18.2a 进入 P0.4：A/B 脚本补齐失败原因分类（`failCategory` + `feedbackStage/Reason/Hint`）
 - [ ] T18.2b 进入 P0.4：修复 `play` 持续推进与 `step` followup 一致性，收敛 B 段与 stall 指标
+  - [ ] T18.2b-1：Web Test API 按动作拆分无推进阈值（`play` 冷启动窗口 vs `step` 严格窗口）
+  - [ ] T18.2b-2：Web Test API 的 executing 判定纳入 `decision_trace` 增量信号
+  - [ ] T18.2b-3：live server `step` completion ack 在共识链路下扩大等待窗口并补齐回归测试
+  - [ ] T18.2b-4：Mission HUD 区分 `completed_advanced` / `completed_no_progress` 文案并显示增量
+  - [ ] T18.2b-5：`scripts/run-game-test-ab.sh` 调整 `play` 失败判定时机并输出回归对比
 
 ## 依赖
 - doc/world-simulator/viewer/viewer-control-predictability-tasklist-2026-02-28.prd.md
@@ -39,9 +44,10 @@
 - `crates/agent_world_viewer/src/web_test_api.rs`
 - `crates/agent_world_viewer/src/egui_right_panel_player_guide.rs`
 - `crates/agent_world_viewer/src/egui_right_panel_player_mission_tests.rs`
+- `crates/agent_world/src/viewer/live_split_part1.rs`
 
 ## 状态
-- 当前阶段：进行中（T1~T18.2a 已完成，执行 T18.2b）
+- 当前阶段：进行中（T1~T18.2a 已完成，执行 T18.2b-1~T18.2b-5）
 - 当前结论：
   - 已形成一份可直接落地的“控制可预期性改版”执行清单，覆盖 P0/P1/P2、量化门槛与 A/B 实验项。
   - P0.1 已落地：控制反馈阶段语义与 UI 展示完成对齐，`completed_no_progress` 不再误标为 `blocked`。
@@ -53,4 +59,4 @@
   - 下一优先级：执行 T18.2b，围绕共识链路的 `play` 持续驱动与 `step` 后续推进语义做针对性修复，再做 10 轮门槛回归。
 - 阻塞项：
   - headless Web 路径在当前环境存在 WebGL 上下文丢失（`CONTEXT_LOST_WEBGL`），P0.3 已改为 headed 执行；后续若恢复 headless 需先修复图形链路稳定性。
-- 最近更新：2026-02-28
+- 最近更新：2026-03-04

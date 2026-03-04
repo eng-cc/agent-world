@@ -60,6 +60,18 @@
 - 交付：将 `step` 二次调用结果在 UI 中显式标注“本次无可推进事件”或“推进成功”。
 - 验收：A/B 脚本中 B 段 FAIL 需附带明确原因分类，不允许“未知失败”。
 
+4. T18.2b 一致性收敛（共识链路专项）
+- 交付：
+  - 按动作类型拆分超时策略：`play` 首控冷启动窗口与 `step` 执行窗口独立配置。
+  - `executing` 判定引入 `decision_trace` 增量信号，不再仅依赖 `tick/eventSeq`。
+  - live `step` completion ack 在共识链路下扩大等待窗口，降低误判 `timeout_no_progress`。
+  - HUD 区分 `completed_advanced` 与 `completed_no_progress` 文案并固定显示推进增量。
+  - A/B 脚本对 `play` 延后失败判定，避免 `completed_no_progress` 过早中断探测。
+- 验收：
+  - 最近 10 轮 A/B 中 A 段首控 `play` 的 `completed_no_progress` 占比较基线显著下降（目标 <= 20%）。
+  - `step` 的 `timeout_no_progress` 与 `completed_no_progress` 分类保留可追溯原因字段。
+  - `maxNoProgressWindowMs` 在同口径复测中持续下降，且不再出现“accepted 后立即失败”的假阳性。
+
 ### P1（次周，高价值）
 1. 首局动作发现模块
 - 交付：默认展示可用动作白名单 + 最小参数示例。
@@ -114,6 +126,8 @@
   - 缓解：保留 `unknown` 并要求日志附带内部 reason code。
 - 风险：指标受 runtime 行为影响，Viewer 单边优化见效有限。
   - 缓解：A/B 报告分离“Viewer 问题”与“runtime 依赖问题”。
+- 风险：扩大 `play` 冷启动窗口后可能掩盖真实阻塞，导致反馈延迟。
+  - 缓解：保留阶段内增量信号（tick/event/trace）与原因字段，超时后仍给出明确恢复指引。
 
 ## 6. Validation & Decision Record
 - 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
