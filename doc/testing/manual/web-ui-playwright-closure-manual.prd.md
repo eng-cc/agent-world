@@ -1,5 +1,7 @@
 # Agent World：Web UI Playwright 闭环测试手册（2026-02-28）
 
+审计轮次: 1
+
 - 对应项目管理文档: doc/testing/manual/web-ui-playwright-closure-manual.prd.project.md
 
 ## 1. Executive Summary

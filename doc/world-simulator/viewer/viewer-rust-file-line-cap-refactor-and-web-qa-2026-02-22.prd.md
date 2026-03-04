@@ -1,5 +1,7 @@
 # Viewer Rust 文件行数上限重构与 Web 闭环对比（2026-02-22）
 
+审计轮次: 1
+
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-rust-file-line-cap-refactor-and-web-qa-2026-02-22.prd.project.md
 
 ## 1. Executive Summary

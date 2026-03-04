@@ -1,5 +1,7 @@
 # Agent World: 启动器生命周期与就绪硬化（2026-03-01）（项目管理）
 
+审计轮次: 1
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] LCH-1 (PRD-TESTING-LAUNCHER-HARDEN-001/003): 完成专题设计文档与项目管理文档建档。
 - [x] LCH-2 (PRD-TESTING-LAUNCHER-HARDEN-001/002): `world_game_launcher` 完成信号清理、启动失败回滚、就绪存活联动、IPv6 解析/URL 修复。

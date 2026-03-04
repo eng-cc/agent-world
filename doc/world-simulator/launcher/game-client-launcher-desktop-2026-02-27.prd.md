@@ -1,5 +1,7 @@
 # 可发行客户端启动器（Desktop）设计文档（2026-02-27）
 
+审计轮次: 1
+
 - 对应项目管理文档: doc/world-simulator/launcher/game-client-launcher-desktop-2026-02-27.prd.project.md
 
 ## 1. Executive Summary

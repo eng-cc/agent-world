@@ -1,5 +1,7 @@
 # Viewer Rust 文件行数上限重构与 Web 闭环对比（项目管理文档）
 
+审计轮次: 1
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] VFL0：建立设计文档与项目管理文档。
 - [x] VFL1：完成低风险拆分（测试外移与小模块下沉），覆盖 `camera_controls`、`viewer_3d_config`、`egui_right_panel`、`tests`、`selection_linking`。

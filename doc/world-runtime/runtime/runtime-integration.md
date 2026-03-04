@@ -1,5 +1,7 @@
 # Agent World Runtime：运行时集成要点（设计分册）
 
+审计轮次: 1
+
 本分册为 `doc/world-runtime/prd.md` 的详细展开。
 
 ## 模块加载与缓存（草案）

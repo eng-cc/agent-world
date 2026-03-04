@@ -1,5 +1,7 @@
 # Agent World Runtime：WASM 扩展接口与 ABI（设计分册）
 
+审计轮次: 1
+
 本分册为 `doc/world-runtime/prd.md` 的详细展开。
 
 ## WASM 扩展接口（草案）

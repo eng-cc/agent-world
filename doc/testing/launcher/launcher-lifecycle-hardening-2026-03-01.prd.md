@@ -1,5 +1,7 @@
 # Agent World: 启动器生命周期与就绪硬化（2026-03-01）
 
+审计轮次: 1
+
 - 对应项目管理文档: doc/testing/launcher/launcher-lifecycle-hardening-2026-03-01.prd.project.md
 
 ## 1. Executive Summary

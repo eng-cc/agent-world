@@ -1,5 +1,7 @@
 # Agent World Runtime：治理事件与 Shadow 报告（设计分册）
 
+审计轮次: 1
+
 本分册为 `doc/world-runtime/prd.md` 的详细展开。
 
 ## 当前实现口径（2026-03-04）
