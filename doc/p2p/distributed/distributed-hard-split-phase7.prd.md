@@ -22,7 +22,7 @@
 - Acceptance Criteria:
   - AC-1: 新增 `agent_world_distfs` crate，并迁移分布式文件能力：CAS、分片、组装校验。
   - AC-2: 分布式彻底拆分（历史里程碑）：删除 `crates/agent_world/src/runtime/distributed*`、`libp2p_net.rs` 及相关分布式路径代码。
-  - AC-2b: 当前实现锚点：分布式主线由 `agent_world_net/agent_world_consensus/agent_world_distfs` 承载，`agent_world` 不再承载分布式核心实现。
+  - AC-2b: 当前实现锚点：分布式主线由 `agent_world_net/agent_world_consensus/agent_world_distfs/agent_world_proto` 四个基础 crate 承载，`agent_world` 不再承载分布式核心实现。
   - AC-3: `agent_world` facade 收敛：移除分布式导出，按领域划分导出边界。
   - AC-4: Viewer 协议迁移到 `agent_world_proto` 并完成 server/viewer 双端适配。
   - AC-5: WASM ABI 边界调整：消除 `agent_world_net` 内重复 `ModuleManifest`，统一到 ABI/proto。
@@ -43,6 +43,7 @@
   - `crates/agent_world_net/src/lib.rs`
   - `crates/agent_world_consensus/src/lib.rs`
   - `crates/agent_world_distfs/src/lib.rs`
+  - `crates/agent_world_proto/src/lib.rs`
   - `testing-manual.md`
 - Edge Cases & Error Handling: 命名不一致、章节缺失、引用断链需在同提交修复。
 - Non-Functional Requirements: PRD-ID/任务映射完整；治理检查通过。
@@ -78,6 +79,20 @@
 | PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |
 | --- | --- | --- | --- | --- |
 | PRD-P2P-MIG-081-001 | T0~Tn | `test_tier_required` | 文档治理检查 + 章节完整性核验 | 专题文档可维护性 |
+
+### 产物文件 + 验收命令
+- 产物文件:
+  - `crates/agent_world_net/src/lib.rs`
+  - `crates/agent_world_consensus/src/lib.rs`
+  - `crates/agent_world_distfs/src/lib.rs`
+  - `crates/agent_world_proto/src/lib.rs`
+  - `doc/p2p/prd.index.md`（release 可达性索引）
+- 验收命令:
+  - `test -f crates/agent_world_net/src/lib.rs`
+  - `test -f crates/agent_world_consensus/src/lib.rs`
+  - `test -f crates/agent_world_distfs/src/lib.rs`
+  - `test -f crates/agent_world_proto/src/lib.rs`
+  - `rg -n "发布说明文档\\（release，补充材料\\）" doc/p2p/prd.index.md`
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |
