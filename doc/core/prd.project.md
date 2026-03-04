@@ -9,7 +9,7 @@
     - `test -f doc/core/checklists/cross-module-impact-checklist.md`
     - `rg -n "适用范围|输入|检查项|阻断条件|回滚策略" doc/core/checklists/cross-module-impact-checklist.md`
     - `./scripts/doc-governance-check.sh`
-- [ ] TASK-CORE-004 (PRD-CORE-002/003) [test_tier_required]: 建立仓库级 PRD-ID 到测试证据映射模板。
+- [x] TASK-CORE-004 (PRD-CORE-002/003) [test_tier_required]: 建立仓库级 PRD-ID 到测试证据映射模板，固化字段定义、层级口径与最小审查清单。
   - 产物文件: `doc/core/templates/prd-id-test-evidence-mapping.md`
   - 验收命令 (`test_tier_required`):
     - `test -f doc/core/templates/prd-id-test-evidence-mapping.md`
@@ -35,6 +35,6 @@
 ## 状态
 - 更新日期: 2026-03-04
 - 当前状态: active
-- 下一任务: TASK-CORE-004
+- 下一任务: TASK-CORE-005
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - 说明: 本文档仅维护 core 设计执行状态；过程记录在 `doc/devlog/2026-03-04.md`。
