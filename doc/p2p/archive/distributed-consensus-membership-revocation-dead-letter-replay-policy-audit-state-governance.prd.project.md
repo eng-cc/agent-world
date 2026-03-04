@@ -5,7 +5,7 @@
 # Agent World Runtime：成员目录吊销死信回放策略审计状态持久化与多级回退治理（项目管理文档）
 
 ## 任务拆解（含 PRD-ID 映射）
-- [x] 输出设计文档（`doc/p2p/distributed/distributed-consensus-membership-revocation-dead-letter-replay-policy-audit-state-governance.md`） (PRD-P2P-MIG-017)
+- [x] 输出设计文档（`doc/p2p/archive/distributed-consensus-membership-revocation-dead-letter-replay-policy-audit-state-governance.prd.md`） (PRD-P2P-MIG-017)
 - [x] 输出项目管理文档（本文件） (PRD-P2P-MIG-017)
 - [x] 实现回滚告警状态 store 抽象与内存/文件实现 (PRD-P2P-MIG-017)
 - [x] 实现回退治理状态模型、策略校验与 state store (PRD-P2P-MIG-017)
@@ -13,7 +13,7 @@
 - [x] 完成验证并同步总文档/devlog (PRD-P2P-MIG-017)
 
 ## 依赖
-- `doc/p2p/distributed/distributed-consensus-membership-revocation-dead-letter-replay-policy-adoption-audit-rollback-alert.md`
+- `doc/p2p/archive/distributed-consensus-membership-revocation-dead-letter-replay-policy-adoption-audit-rollback-alert.prd.md`
 - `crates/agent_world/src/runtime/distributed_membership_sync/recovery/replay_audit.rs`
 - `crates/agent_world/src/runtime/distributed_membership_sync/recovery/replay.rs`
 

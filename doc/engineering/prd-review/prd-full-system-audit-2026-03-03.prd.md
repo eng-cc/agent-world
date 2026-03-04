@@ -1,7 +1,7 @@
 # 全量 PRD 体系审读与对齐（2026-03-03）
 
 ## 1. Executive Summary
-- Problem Statement: 仓库 PRD 文档规模已达 880 份（活跃 708、归档 172），缺少统一“逐篇审读 + 已读清单 + 代码一致性回写”机制，导致口径漂移风险持续累积。
+- Problem Statement: 仓库 PRD 文档规模已达 882 份（活跃 710、归档 172），缺少统一“逐篇审读 + 已读清单 + 代码一致性回写”机制，导致口径漂移风险持续累积。
 - Proposed Solution: 建立工程侧 PRD 全量审读机制，按模块与归档双轨执行“逐篇阅读、代码对齐、重复治理、上下游对齐”，并以可勾选清单沉淀可审计证据。
 - Success Criteria:
   - SC-1: 全量 PRD 文档 100% 纳入已读清单（含活跃与归档）。
@@ -80,8 +80,8 @@
 ## 5. Risks & Roadmap
 - Phased Rollout:
   - Phase-0 (2026-03-03): 建立全量审读专题、生成 active/archive 清单并完成入口文档首批审读。
-  - Phase-1: 按模块逐篇推进 active 专题文档审读与偏差修复。
-  - Phase-2: 完成 archive 专题审读、替代链核对与引用收口。
+  - Phase-1 (完成于 2026-03-04): 按模块逐篇推进 active 专题文档审读与偏差修复。
+  - Phase-2 (完成于 2026-03-04): 完成 archive 专题审读、替代链核对与引用收口。
   - Phase-3: 将审读机制纳入工程例行治理（周度更新）。
 - Technical Risks:
   - 风险-1: 文档规模大，单批次审读深度不足。
@@ -92,7 +92,7 @@
 - Test Plan & Traceability:
 | PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |
 | --- | --- | --- | --- | --- |
-| PRD-ENGINEERING-012 | TASK-ENGINEERING-020 | `test_tier_required` | 清单文件数量/覆盖率核对、入口文档已读抽样 | 全量 PRD 审读可追溯性 |
+| PRD-ENGINEERING-012 | TASK-ENGINEERING-020/024 | `test_tier_required` | 清单文件数量/覆盖率核对、入口文档已读抽样 | 全量 PRD 审读可追溯性 |
 | PRD-ENGINEERING-013 | TASK-ENGINEERING-021/022 | `test_tier_required` | 代码一致性抽样、偏差回写核验、重复项处理记录检查 | 文档行为与实现一致性 |
 | PRD-ENGINEERING-014 | TASK-ENGINEERING-022/023/024 | `test_tier_required` + `test_tier_full` | 引用可达扫描、上下游链路核验、门禁脚本执行 | 文档树清晰度与跨模块一致性 |
 - Decision Log:

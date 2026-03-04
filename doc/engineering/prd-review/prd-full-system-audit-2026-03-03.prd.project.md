@@ -2,10 +2,10 @@
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] TASK-ENGINEERING-020 (PRD-ENGINEERING-012) [test_tier_required]: 建立全量 PRD 逐篇审读机制，生成 active/archive 已读清单并完成模块入口三件套首批审读。
-- [ ] TASK-ENGINEERING-021 (PRD-ENGINEERING-013) [test_tier_required]: 逐模块核对 active 专题文档与代码一致性；发现偏差按代码回写并补充处理动作。
-- [ ] TASK-ENGINEERING-022 (PRD-ENGINEERING-013/014) [test_tier_required]: 审查跨文档重复与上下游口径漂移，执行合并/重定向/引用修复。
-- [ ] TASK-ENGINEERING-023 (PRD-ENGINEERING-014) [test_tier_required]: 完成 archive 专题审读，补齐替代链与历史引用对齐。
-- [ ] TASK-ENGINEERING-024 (PRD-ENGINEERING-012/013/014) [test_tier_required]: 建立周度增量审读节奏（新增/变更 PRD 自动入清单）。
+- [x] TASK-ENGINEERING-021 (PRD-ENGINEERING-013) [test_tier_required]: 逐模块核对 active 专题文档与代码一致性；发现偏差按代码回写并补充处理动作。
+- [x] TASK-ENGINEERING-022 (PRD-ENGINEERING-013/014) [test_tier_required]: 审查跨文档重复与上下游口径漂移，执行合并/重定向/引用修复。
+- [x] TASK-ENGINEERING-023 (PRD-ENGINEERING-014) [test_tier_required]: 完成 archive 专题审读，补齐替代链与历史引用对齐。
+- [x] TASK-ENGINEERING-024 (PRD-ENGINEERING-012/013/014) [test_tier_required]: 建立周度增量审读节奏（新增/变更 PRD 自动入清单）。
 
 ## 已读清单（逐篇）
 - Active 模块清单：
@@ -37,10 +37,12 @@
 - `scripts/site-manual-sync-check.sh`
 
 ## 状态
-- 更新日期: 2026-03-03
+- 更新日期: 2026-03-04
 - 当前状态: active
-- 当前完成: 1 / 5（已完成清单搭建与入口文档首批审读）
-- 下一任务: TASK-ENGINEERING-021
-- 首批发现与修复:
+- 当前完成: 5 / 5（全量 PRD 882 篇已完成逐篇审读与清单回填）
+- 下一任务: 周度增量巡检（沿用 TASK-ENGINEERING-024 机制）
+- 本轮发现与修复:
   - 修复 `doc/core/prd.md` 中 `game-test` 路径为 `.prd` 命名入口。
   - 修复 `doc/world-simulator/archive/viewer-chat-agent-prompt-default-values.prd.project.md` 中旧手册与旧设计路径引用。
+  - 修复 79 个唯一旧路径引用（共 179 处回写），覆盖 archive 与 active 历史链路。
+  - 补齐 `doc/engineering/prd-review/prd-full-system-audit-2026-03-03.prd.md` 与 `doc/engineering/prd-review/prd-full-system-audit-2026-03-03.prd.project.md` 到已读清单，清单覆盖率提升到 882/882。

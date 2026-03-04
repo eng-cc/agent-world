@@ -1,6 +1,6 @@
 # world-simulator 模块 PRD 已读清单（Active）
 
-更新时间：2026-03-03
+更新时间：2026-03-04
 范围：doc/world-simulator/（排除 archive/devlog）
 文档数：303
 
@@ -9,306 +9,306 @@
 - 如发现与代码不一致，按代码实现回写文档，并在“处理动作”注明提交。
 - 如发现与其他文档重复或上下游不对齐，先记录问题，再在对应文档修订并回填状态。
 
-- [ ] - | doc/world-simulator/kernel/intent-distributed-runtime-closure-2026-02-27.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/kernel/intent-distributed-runtime-closure-2026-02-27.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/kernel/kernel-rule-hook-foundation.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/kernel/kernel-rule-hook-foundation.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/kernel/kernel-rule-wasm-executor-foundation.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/kernel/kernel-rule-wasm-executor-foundation.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/kernel/kernel-rule-wasm-module-governance.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/kernel/kernel-rule-wasm-module-governance.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/kernel/kernel-rule-wasm-readiness.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/kernel/kernel-rule-wasm-readiness.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/kernel/kernel-rule-wasm-sandbox-bridge.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/kernel/kernel-rule-wasm-sandbox-bridge.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/kernel/location-electricity-pool-removal-and-radiation-plant.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/kernel/location-electricity-pool-removal-and-radiation-plant.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/kernel/resource-kind-compound-hardware-hard-migration.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/kernel/resource-kind-compound-hardware-hard-migration.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/kernel/rust-wasm-build-suite.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/kernel/rust-wasm-build-suite.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/kernel/social-fact-ledger-declarative-reputation.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/kernel/social-fact-ledger-declarative-reputation.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/launcher/game-client-launcher-desktop-2026-02-27.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/launcher/game-client-launcher-desktop-2026-02-27.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/launcher/game-client-launcher-feedback-entry-2026-03-02.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/launcher/game-client-launcher-feedback-entry-2026-03-02.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/launcher/game-client-launcher-feedback-window-2026-03-02.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/launcher/game-client-launcher-feedback-window-2026-03-02.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/launcher/game-client-launcher-graceful-stop-2026-03-02.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/launcher/game-client-launcher-graceful-stop-2026-03-02.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/launcher/game-client-launcher-i18n-required-config-2026-03-02.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/launcher/game-client-launcher-i18n-required-config-2026-03-02.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/launcher/game-client-launcher-llm-settings-panel-2026-03-02.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/launcher/game-client-launcher-llm-settings-panel-2026-03-02.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/launcher/game-unified-launcher-2026-02-27.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/launcher/game-unified-launcher-2026-02-27.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/launcher/launcher-chain-runtime-decouple-2026-02-28.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/launcher/launcher-chain-runtime-decouple-2026-02-28.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/llm/indirect-control-tick-lifecycle-long-term-memory.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/llm/indirect-control-tick-lifecycle-long-term-memory.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/llm/llm-agent-behavior.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/llm/llm-agent-behavior.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/llm/llm-async-openai-responses.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/llm/llm-async-openai-responses.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/llm/llm-chat-user-message-tool-visualization.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/llm/llm-chat-user-message-tool-visualization.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/llm/llm-config-toml-style-unification-2026-03-02.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/llm/llm-config-toml-style-unification-2026-03-02.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/llm/llm-dialogue-chat-loop.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/llm/llm-dialogue-chat-loop.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/llm/llm-factory-strategy-optimization.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/llm/llm-factory-strategy-optimization.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/llm/llm-industrial-mining-debug-tools.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/llm/llm-industrial-mining-debug-tools.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/llm/llm-lmso29-stability.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/llm/llm-lmso29-stability.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/llm/llm-multi-scenario-evaluation.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/llm/llm-multi-scenario-evaluation.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/llm/llm-prompt-effect-receipt.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/llm/llm-prompt-effect-receipt.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/llm/llm-prompt-multi-step-orchestration.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/llm/llm-prompt-multi-step-orchestration.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/llm/llm-prompt-system.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/llm/llm-prompt-system.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/m4/m4-builtin-wasm-maintainability-2026-02-26.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/m4/m4-builtin-wasm-maintainability-2026-02-26.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/m4/m4-industrial-benchmark-current-state-2026-02-27.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/m4/m4-industrial-benchmark-current-state-2026-02-27.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/m4/m4-industrial-economy-wasm.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/m4/m4-industrial-economy-wasm.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/m4/m4-market-hardware-data-governance-closure-2026-02-26.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/m4/m4-market-hardware-data-governance-closure-2026-02-26.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/m4/m4-power-system.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/m4/m4-power-system.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/m4/m4-resource-product-system-p0-shared-bottleneck-logistics-priority-2026-02-27.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/m4/m4-resource-product-system-p0-shared-bottleneck-logistics-priority-2026-02-27.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/m4/m4-resource-product-system-p1-maintenance-scarcity-pressure-2026-02-27.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/m4/m4-resource-product-system-p1-maintenance-scarcity-pressure-2026-02-27.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/m4/m4-resource-product-system-p2-stage-guidance-market-governance-linkage-2026-02-27.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/m4/m4-resource-product-system-p2-stage-guidance-market-governance-linkage-2026-02-27.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/m4/m4-resource-product-system-p3-layer-profile-chain-expansion-2026-02-27.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/m4/m4-resource-product-system-p3-layer-profile-chain-expansion-2026-02-27.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/m4/m4-resource-product-system-playability-2026-02-27.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/m4/m4-resource-product-system-playability-2026-02-27.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/m4/m4-resource-product-system-playability-priority-hardening-2026-02-28.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/m4/m4-resource-product-system-playability-priority-hardening-2026-02-28.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/m4/material-multi-ledger-logistics.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/m4/material-multi-ledger-logistics.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/kernel/intent-distributed-runtime-closure-2026-02-27.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/kernel/intent-distributed-runtime-closure-2026-02-27.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/kernel/kernel-rule-hook-foundation.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/kernel/kernel-rule-hook-foundation.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/kernel/kernel-rule-wasm-executor-foundation.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/kernel/kernel-rule-wasm-executor-foundation.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/kernel/kernel-rule-wasm-module-governance.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/kernel/kernel-rule-wasm-module-governance.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/kernel/kernel-rule-wasm-readiness.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/kernel/kernel-rule-wasm-readiness.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/kernel/kernel-rule-wasm-sandbox-bridge.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/kernel/kernel-rule-wasm-sandbox-bridge.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/kernel/location-electricity-pool-removal-and-radiation-plant.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/kernel/location-electricity-pool-removal-and-radiation-plant.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/kernel/resource-kind-compound-hardware-hard-migration.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/kernel/resource-kind-compound-hardware-hard-migration.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/kernel/rust-wasm-build-suite.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/kernel/rust-wasm-build-suite.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/kernel/social-fact-ledger-declarative-reputation.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/kernel/social-fact-ledger-declarative-reputation.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/launcher/game-client-launcher-desktop-2026-02-27.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/launcher/game-client-launcher-desktop-2026-02-27.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/launcher/game-client-launcher-feedback-entry-2026-03-02.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/launcher/game-client-launcher-feedback-entry-2026-03-02.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/launcher/game-client-launcher-feedback-window-2026-03-02.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/launcher/game-client-launcher-feedback-window-2026-03-02.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/launcher/game-client-launcher-graceful-stop-2026-03-02.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/launcher/game-client-launcher-graceful-stop-2026-03-02.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/launcher/game-client-launcher-i18n-required-config-2026-03-02.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/launcher/game-client-launcher-i18n-required-config-2026-03-02.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/launcher/game-client-launcher-llm-settings-panel-2026-03-02.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/launcher/game-client-launcher-llm-settings-panel-2026-03-02.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/launcher/game-unified-launcher-2026-02-27.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/launcher/game-unified-launcher-2026-02-27.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/launcher/launcher-chain-runtime-decouple-2026-02-28.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/launcher/launcher-chain-runtime-decouple-2026-02-28.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/llm/indirect-control-tick-lifecycle-long-term-memory.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/llm/indirect-control-tick-lifecycle-long-term-memory.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/llm/llm-agent-behavior.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/llm/llm-agent-behavior.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/llm/llm-async-openai-responses.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/llm/llm-async-openai-responses.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/llm/llm-chat-user-message-tool-visualization.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/llm/llm-chat-user-message-tool-visualization.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/llm/llm-config-toml-style-unification-2026-03-02.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/llm/llm-config-toml-style-unification-2026-03-02.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/llm/llm-dialogue-chat-loop.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/llm/llm-dialogue-chat-loop.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/llm/llm-factory-strategy-optimization.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/llm/llm-factory-strategy-optimization.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/llm/llm-industrial-mining-debug-tools.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/llm/llm-industrial-mining-debug-tools.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/llm/llm-lmso29-stability.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/llm/llm-lmso29-stability.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/llm/llm-multi-scenario-evaluation.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/llm/llm-multi-scenario-evaluation.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/llm/llm-prompt-effect-receipt.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/llm/llm-prompt-effect-receipt.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/llm/llm-prompt-multi-step-orchestration.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/llm/llm-prompt-multi-step-orchestration.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/llm/llm-prompt-system.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/llm/llm-prompt-system.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/m4/m4-builtin-wasm-maintainability-2026-02-26.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/m4/m4-builtin-wasm-maintainability-2026-02-26.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/m4/m4-industrial-benchmark-current-state-2026-02-27.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/m4/m4-industrial-benchmark-current-state-2026-02-27.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/m4/m4-industrial-economy-wasm.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/m4/m4-industrial-economy-wasm.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/m4/m4-market-hardware-data-governance-closure-2026-02-26.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/m4/m4-market-hardware-data-governance-closure-2026-02-26.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/m4/m4-power-system.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/m4/m4-power-system.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/m4/m4-resource-product-system-p0-shared-bottleneck-logistics-priority-2026-02-27.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/m4/m4-resource-product-system-p0-shared-bottleneck-logistics-priority-2026-02-27.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/m4/m4-resource-product-system-p1-maintenance-scarcity-pressure-2026-02-27.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/m4/m4-resource-product-system-p1-maintenance-scarcity-pressure-2026-02-27.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/m4/m4-resource-product-system-p2-stage-guidance-market-governance-linkage-2026-02-27.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/m4/m4-resource-product-system-p2-stage-guidance-market-governance-linkage-2026-02-27.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/m4/m4-resource-product-system-p3-layer-profile-chain-expansion-2026-02-27.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/m4/m4-resource-product-system-p3-layer-profile-chain-expansion-2026-02-27.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/m4/m4-resource-product-system-playability-2026-02-27.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/m4/m4-resource-product-system-playability-2026-02-27.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/m4/m4-resource-product-system-playability-priority-hardening-2026-02-28.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/m4/m4-resource-product-system-playability-priority-hardening-2026-02-28.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/m4/material-multi-ledger-logistics.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/m4/material-multi-ledger-logistics.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
 - [x] 2026-03-03 23:45:14 CST | doc/world-simulator/prd.index.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 无
 - [x] 2026-03-03 23:45:14 CST | doc/world-simulator/prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 无
 - [x] 2026-03-03 23:45:14 CST | doc/world-simulator/prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 无
-- [ ] - | doc/world-simulator/scenario/agent-frag-initial-spawn-position.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/scenario/agent-frag-initial-spawn-position.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/scenario/asteroid-fragment-renaming.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/scenario/asteroid-fragment-renaming.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/scenario/chunked-fragment-generation.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/scenario/chunked-fragment-generation.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/scenario/frag-resource-balance-onboarding.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/scenario/frag-resource-balance-onboarding.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/scenario/fragment-spacing.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/scenario/fragment-spacing.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/scenario/scenario-asteroid-fragment-overrides.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/scenario/scenario-asteroid-fragment-overrides.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/scenario/scenario-files.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/scenario/scenario-files.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/scenario/scenario-power-facility-baseline.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/scenario/scenario-power-facility-baseline.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/scenario/scenario-seed-locations.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/scenario/scenario-seed-locations.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/scenario/world-initialization.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/scenario/world-initialization.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/minimal-system.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/minimal-system.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/module-visual-entities.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/module-visual-entities.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/rendering-physical-accuracy.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/rendering-physical-accuracy.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-2d-3d-clarity-fix.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-2d-3d-clarity-fix.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-2d-visual-polish.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-2d-visual-polish.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-3d-commercial-polish.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-3d-commercial-polish.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-3d-polish-performance.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-3d-polish-performance.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-agent-module-rendering.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-agent-module-rendering.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-agent-quick-locate.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-agent-quick-locate.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-agent-size-inspection.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-agent-size-inspection.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-auto-focus-capture.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-auto-focus-capture.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-auto-select-capture.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-auto-select-capture.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-bevy-web-runtime.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-bevy-web-runtime.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-chat-agent-prompt-default-values-inline-input.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-chat-agent-prompt-default-values-inline-input.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-chat-agent-prompt-default-values-prefill.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-chat-agent-prompt-default-values-prefill.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-chat-dedicated-right-panel.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-chat-dedicated-right-panel.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-chat-enter-send.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-chat-enter-send.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-chat-ime-cn-input.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-chat-ime-cn-input.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-chat-ime-egui-bridge.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-chat-ime-egui-bridge.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-chat-prompt-presets-profile-editing.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-chat-prompt-presets-profile-editing.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-chat-prompt-presets-scroll.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-chat-prompt-presets-scroll.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-chat-prompt-presets.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-chat-prompt-presets.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-chat-right-panel-polish.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-chat-right-panel-polish.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-chat-web-deadlock-fix.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-chat-web-deadlock-fix.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-commercial-release-phase1-asset-pipeline.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-commercial-release-phase1-asset-pipeline.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-commercial-release-phase2-visual-quality-gate.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-commercial-release-phase2-visual-quality-gate.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-commercial-release-phase3-material-style-layer.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-commercial-release-phase3-material-style-layer.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-commercial-release-phase4-texture-style-layer.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-commercial-release-phase4-texture-style-layer.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-commercial-release-phase5-advanced-texture-maps.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-commercial-release-phase5-advanced-texture-maps.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-commercial-release-phase6-material-variant-preview.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-commercial-release-phase6-material-variant-preview.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-commercial-release-phase7-theme-pack-batch-preview.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-commercial-release-phase7-theme-pack-batch-preview.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-commercial-release-phase8-runtime-theme-hot-reload-and-asset-v2.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-commercial-release-phase8-runtime-theme-hot-reload-and-asset-v2.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-control-advanced-debug-folding.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-control-advanced-debug-folding.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-control-feedback-iteration-checklist-2026-02-27.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-control-feedback-iteration-checklist-2026-02-27.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-control-feedback-step-recovery-p0-2026-02-27.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-control-feedback-step-recovery-p0-2026-02-27.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-control-plane-split-live-playback-2026-02-27.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-control-plane-split-live-playback-2026-02-27.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-control-predictability-tasklist-2026-02-28.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-control-predictability-tasklist-2026-02-28.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-copyable-text.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-copyable-text.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-dual-view-2d-3d.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-dual-view-2d-3d.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-egui-right-panel.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-egui-right-panel.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-first-session-goal-clarity-hardening-2026-02-27.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-first-session-goal-clarity-hardening-2026-02-27.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-first-session-goal-control-feedback-2026-02-27.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-first-session-goal-control-feedback-2026-02-27.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-frag-default-rendering.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-frag-default-rendering.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-frag-scale-selection-fix.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-frag-scale-selection-fix.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-fragment-element-rendering.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-fragment-element-rendering.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase10.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase10.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase2.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase2.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase3.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase3.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase4.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase4.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase5.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase5.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase6.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase6.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase7.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase7.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase8.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase8.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase9.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase9.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-generic-focus-targets.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-generic-focus-targets.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-i18n.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-i18n.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-industrial-visual-closure.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-industrial-visual-closure.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-industry-graph-layered-symbolic-zoom-2026-02-28.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-industry-graph-layered-symbolic-zoom-2026-02-28.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-live-disable-seek-p2p-2026-02-27.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-live-disable-seek-p2p-2026-02-27.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-live-full-event-driven-phase10-2026-02-27.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-live-full-event-driven-phase10-2026-02-27.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-live-full-event-driven-phase8-2026-02-27.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-live-full-event-driven-phase8-2026-02-27.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-live-full-event-driven-phase9-2026-02-27.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-live-full-event-driven-phase9-2026-02-27.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-live-llm-event-driven-trigger-2026-02-26.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-live-llm-event-driven-trigger-2026-02-26.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-live-logical-time-interface-phase11-2026-02-27.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-live-logical-time-interface-phase11-2026-02-27.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-live-step-control-progress-stability-2026-02-28.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-live-step-control-progress-stability-2026-02-28.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-live-tick-driven-doc-archive-2026-02-27.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-live-tick-driven-doc-archive-2026-02-27.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-location-depletion-visualization.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-location-depletion-visualization.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-location-fine-grained-rendering.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-location-fine-grained-rendering.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-node-hard-decouple-2026-02-28.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-node-hard-decouple-2026-02-28.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-observability-visual-optimization.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-observability-visual-optimization.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-open-world-sandbox-readiness.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-open-world-sandbox-readiness.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-overview-map-zoom.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-overview-map-zoom.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-player-ui-declutter-2026-02-24.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-player-ui-declutter-2026-02-24.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-release-full-coverage-gate.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-release-full-coverage-gate.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-release-qa-iteration-loop.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-release-qa-iteration-loop.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-right-panel-module-visibility.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-right-panel-module-visibility.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-rust-file-line-cap-refactor-and-web-qa-2026-02-22.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-rust-file-line-cap-refactor-and-web-qa-2026-02-22.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-selection-details.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-selection-details.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-step-completion-ack-2026-02-28.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-step-completion-ack-2026-02-28.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-texture-inspector.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-texture-inspector.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-visual-release-readiness-hardening-2026-03-01.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-visual-release-readiness-hardening-2026-03-01.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-visual-upgrade.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-visual-upgrade.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-wasd-camera-navigation.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-wasd-camera-navigation.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-web-build-pruning-2026-03-02.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-web-build-pruning-2026-03-02.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-web-build-pruning-phase2-2026-03-02.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-web-build-pruning-phase2-2026-03-02.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-web-closure-testing-policy.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-web-closure-testing-policy.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-web-fullscreen-panel-toggle.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-web-fullscreen-panel-toggle.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-web-playability-unblock-2026-02-26.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-web-playability-unblock-2026-02-26.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-web-semantic-test-api.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-web-semantic-test-api.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-web-test-api-step-control-2026-02-24.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-web-test-api-step-control-2026-02-24.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-web-usability-hardening-2026-02-22.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-web-usability-hardening-2026-02-22.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-webgl-deferred-compat-2026-02-24.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-webgl-deferred-compat-2026-02-24.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-websocket-http-bridge.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/viewer-websocket-http-bridge.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/visualization-3d.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/visualization-3d.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/visualization.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/world-simulator/viewer/visualization.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/scenario/agent-frag-initial-spawn-position.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/scenario/agent-frag-initial-spawn-position.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/scenario/asteroid-fragment-renaming.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/scenario/asteroid-fragment-renaming.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/scenario/chunked-fragment-generation.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/scenario/chunked-fragment-generation.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/scenario/frag-resource-balance-onboarding.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/scenario/frag-resource-balance-onboarding.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/scenario/fragment-spacing.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/scenario/fragment-spacing.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/scenario/scenario-asteroid-fragment-overrides.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/scenario/scenario-asteroid-fragment-overrides.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/scenario/scenario-files.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/scenario/scenario-files.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/scenario/scenario-power-facility-baseline.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/scenario/scenario-power-facility-baseline.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/scenario/scenario-seed-locations.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/scenario/scenario-seed-locations.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/scenario/world-initialization.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/scenario/world-initialization.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/minimal-system.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/minimal-system.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/module-visual-entities.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/module-visual-entities.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/rendering-physical-accuracy.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/rendering-physical-accuracy.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-2d-3d-clarity-fix.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-2d-3d-clarity-fix.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-2d-visual-polish.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-2d-visual-polish.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-3d-commercial-polish.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-3d-commercial-polish.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-3d-polish-performance.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-3d-polish-performance.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-agent-module-rendering.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-agent-module-rendering.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-agent-quick-locate.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-agent-quick-locate.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-agent-size-inspection.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-agent-size-inspection.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-auto-focus-capture.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-auto-focus-capture.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-auto-select-capture.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-auto-select-capture.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-bevy-web-runtime.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-bevy-web-runtime.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-chat-agent-prompt-default-values-inline-input.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-chat-agent-prompt-default-values-inline-input.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-chat-agent-prompt-default-values-prefill.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-chat-agent-prompt-default-values-prefill.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-chat-dedicated-right-panel.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-chat-dedicated-right-panel.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-chat-enter-send.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-chat-enter-send.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-chat-ime-cn-input.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-chat-ime-cn-input.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-chat-ime-egui-bridge.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-chat-ime-egui-bridge.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-chat-prompt-presets-profile-editing.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-chat-prompt-presets-profile-editing.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-chat-prompt-presets-scroll.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-chat-prompt-presets-scroll.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-chat-prompt-presets.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-chat-prompt-presets.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-chat-right-panel-polish.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-chat-right-panel-polish.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-chat-web-deadlock-fix.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-chat-web-deadlock-fix.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-commercial-release-phase1-asset-pipeline.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-commercial-release-phase1-asset-pipeline.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-commercial-release-phase2-visual-quality-gate.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-commercial-release-phase2-visual-quality-gate.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-commercial-release-phase3-material-style-layer.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-commercial-release-phase3-material-style-layer.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-commercial-release-phase4-texture-style-layer.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-commercial-release-phase4-texture-style-layer.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-commercial-release-phase5-advanced-texture-maps.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-commercial-release-phase5-advanced-texture-maps.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-commercial-release-phase6-material-variant-preview.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-commercial-release-phase6-material-variant-preview.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-commercial-release-phase7-theme-pack-batch-preview.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-commercial-release-phase7-theme-pack-batch-preview.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-commercial-release-phase8-runtime-theme-hot-reload-and-asset-v2.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-commercial-release-phase8-runtime-theme-hot-reload-and-asset-v2.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-control-advanced-debug-folding.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-control-advanced-debug-folding.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-control-feedback-iteration-checklist-2026-02-27.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-control-feedback-iteration-checklist-2026-02-27.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-control-feedback-step-recovery-p0-2026-02-27.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-control-feedback-step-recovery-p0-2026-02-27.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-control-plane-split-live-playback-2026-02-27.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-control-plane-split-live-playback-2026-02-27.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-control-predictability-tasklist-2026-02-28.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-control-predictability-tasklist-2026-02-28.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-copyable-text.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-copyable-text.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-dual-view-2d-3d.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-dual-view-2d-3d.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-egui-right-panel.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-egui-right-panel.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-first-session-goal-clarity-hardening-2026-02-27.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-first-session-goal-clarity-hardening-2026-02-27.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-first-session-goal-control-feedback-2026-02-27.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-first-session-goal-control-feedback-2026-02-27.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-frag-default-rendering.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-frag-default-rendering.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-frag-scale-selection-fix.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-frag-scale-selection-fix.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-fragment-element-rendering.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-fragment-element-rendering.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase10.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase10.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase2.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase2.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase3.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase3.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase4.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase4.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase5.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase5.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase6.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase6.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase7.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase7.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase8.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase8.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase9.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase9.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-generic-focus-targets.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-generic-focus-targets.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-i18n.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-i18n.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-industrial-visual-closure.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-industrial-visual-closure.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-industry-graph-layered-symbolic-zoom-2026-02-28.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-industry-graph-layered-symbolic-zoom-2026-02-28.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-live-disable-seek-p2p-2026-02-27.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-live-disable-seek-p2p-2026-02-27.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-live-full-event-driven-phase10-2026-02-27.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-live-full-event-driven-phase10-2026-02-27.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-live-full-event-driven-phase8-2026-02-27.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-live-full-event-driven-phase8-2026-02-27.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-live-full-event-driven-phase9-2026-02-27.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-live-full-event-driven-phase9-2026-02-27.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-live-llm-event-driven-trigger-2026-02-26.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-live-llm-event-driven-trigger-2026-02-26.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-live-logical-time-interface-phase11-2026-02-27.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-live-logical-time-interface-phase11-2026-02-27.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-live-step-control-progress-stability-2026-02-28.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-live-step-control-progress-stability-2026-02-28.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-live-tick-driven-doc-archive-2026-02-27.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-live-tick-driven-doc-archive-2026-02-27.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-location-depletion-visualization.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-location-depletion-visualization.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-location-fine-grained-rendering.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-location-fine-grained-rendering.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-node-hard-decouple-2026-02-28.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-node-hard-decouple-2026-02-28.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-observability-visual-optimization.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-observability-visual-optimization.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-open-world-sandbox-readiness.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-open-world-sandbox-readiness.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-overview-map-zoom.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-overview-map-zoom.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-player-ui-declutter-2026-02-24.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-player-ui-declutter-2026-02-24.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-release-full-coverage-gate.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-release-full-coverage-gate.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-release-qa-iteration-loop.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-release-qa-iteration-loop.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-right-panel-module-visibility.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-right-panel-module-visibility.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-rust-file-line-cap-refactor-and-web-qa-2026-02-22.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-rust-file-line-cap-refactor-and-web-qa-2026-02-22.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-selection-details.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-selection-details.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-step-completion-ack-2026-02-28.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-step-completion-ack-2026-02-28.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-texture-inspector.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-texture-inspector.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-visual-release-readiness-hardening-2026-03-01.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-visual-release-readiness-hardening-2026-03-01.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-visual-upgrade.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-visual-upgrade.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-wasd-camera-navigation.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-wasd-camera-navigation.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-web-build-pruning-2026-03-02.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-web-build-pruning-2026-03-02.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-web-build-pruning-phase2-2026-03-02.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-web-build-pruning-phase2-2026-03-02.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-web-closure-testing-policy.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-web-closure-testing-policy.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-web-fullscreen-panel-toggle.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-web-fullscreen-panel-toggle.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-web-playability-unblock-2026-02-26.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-web-playability-unblock-2026-02-26.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-web-semantic-test-api.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-web-semantic-test-api.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-web-test-api-step-control-2026-02-24.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-web-test-api-step-control-2026-02-24.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-web-usability-hardening-2026-02-22.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-web-usability-hardening-2026-02-22.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-webgl-deferred-compat-2026-02-24.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-webgl-deferred-compat-2026-02-24.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-websocket-http-bridge.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-websocket-http-bridge.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/visualization-3d.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/visualization-3d.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/visualization.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/visualization.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验

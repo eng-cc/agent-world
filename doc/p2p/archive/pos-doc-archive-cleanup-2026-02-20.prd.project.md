@@ -6,7 +6,7 @@
 - [x] PDA-3 (PRD-P2P-MIG-044)：修复引用路径、执行检查、更新 devlog 并提交。
 
 ## 依赖
-- `doc/p2p/pos-doc-archive-cleanup-2026-02-20.md`
+- `doc/p2p/archive/pos-doc-archive-cleanup-2026-02-20.prd.md`
 - `doc/p2p/consensus/consensus-code-consolidation-to-agent-world-consensus.prd.md`
 - `doc/p2p/archive/`
 - `doc/devlog/2026-02-20.md`

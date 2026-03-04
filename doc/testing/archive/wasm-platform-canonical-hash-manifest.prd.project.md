@@ -1,6 +1,6 @@
 # Builtin Wasm 平台 Canonical Hash 清单（项目管理文档）
 
-> 归档说明（2026-02-20）：该任务已由 `doc/p2p/builtin-wasm-identity-consensus.md` / `.project.md` 覆盖并替代。
+> 归档说明（2026-02-20）：该任务已由 `doc/p2p/consensus/builtin-wasm-identity-consensus.prd.md` / `.project.md` 覆盖并替代。
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] ARCH-CANON-1 (PRD-TESTING-ARCHIVE-CANON-001): 完成专题设计与项目管理建档。

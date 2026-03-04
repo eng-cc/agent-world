@@ -3,7 +3,7 @@
 > [!WARNING]
 > 归档状态：**过时设计（仅保留历史记录）**  
 > 归档日期：2026-02-17  
-> 说明：本文档描述的迁移阶段已完成并并入当前实现，文中的阶段性任务与兼容路径不再作为现行方案。当前设计以 `doc/world-runtime/runtime-integration.md`、`doc/world-runtime/wasm-interface.md` 与对应源码实现为准。
+> 说明：本文档描述的迁移阶段已完成并并入当前实现，文中的阶段性任务与兼容路径不再作为现行方案。当前设计以 `doc/world-runtime/runtime/runtime-integration.md`、`doc/world-runtime/wasm/wasm-interface.md` 与对应源码实现为准。
 
 
 ## 任务拆解（含 PRD-ID 映射）
@@ -19,8 +19,8 @@
 - [x] WRS-4 更新总设计文档/总项目文档与 devlog 收口
 
 ## 依赖
-- `doc/world-runtime/wasm-executor.md`
-- `doc/world-runtime/runtime-integration.md`
+- `doc/world-runtime/wasm/wasm-executor.prd.md`
+- `doc/world-runtime/runtime/runtime-integration.md`
 - `crates/agent_world/src/runtime/sandbox.rs`
 - `crates/agent_world/src/runtime/world/module_runtime.rs`
 - `crates/agent_world_builtin_wasm/src/lib.rs`

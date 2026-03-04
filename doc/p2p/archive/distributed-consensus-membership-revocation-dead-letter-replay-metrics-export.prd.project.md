@@ -5,7 +5,7 @@
 # Agent World Runtime：成员目录吊销死信回放调度与指标导出（项目管理文档）
 
 ## 任务拆解（含 PRD-ID 映射）
-- [x] 输出设计文档（`doc/p2p/distributed/distributed-consensus-membership-revocation-dead-letter-replay-metrics-export.md`） (PRD-P2P-MIG-014)
+- [x] 输出设计文档（`doc/p2p/archive/distributed-consensus-membership-revocation-dead-letter-replay-metrics-export.prd.md`） (PRD-P2P-MIG-014)
 - [x] 输出项目管理文档（本文件） (PRD-P2P-MIG-014)
 - [x] 扩展 dead-letter store 抽象（list/replace/metrics） (PRD-P2P-MIG-014)
 - [x] 实现 `replay_revocation_dead_letters(...)` (PRD-P2P-MIG-014)
@@ -14,7 +14,7 @@
 - [x] 单元测试与分布式回归验证 (PRD-P2P-MIG-014)
 
 ## 依赖
-- `doc/p2p/distributed/distributed-consensus-membership-revocation-dead-letter-metrics.md`
+- `doc/p2p/archive/distributed-consensus-membership-revocation-dead-letter-metrics.prd.md`
 - `crates/agent_world/src/runtime/distributed_membership_sync/recovery.rs`
 - `crates/agent_world/src/runtime/distributed_membership_sync/recovery_tests.rs`
 

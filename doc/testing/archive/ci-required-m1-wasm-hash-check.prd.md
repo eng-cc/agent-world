@@ -1,6 +1,6 @@
 # Agent World：Required Tier 接入 M1 Builtin Wasm Hash 校验（归档专题）
 
-> 归档说明（2026-02-20）：该方案已被 `doc/p2p/builtin-wasm-identity-consensus.md` 取代，不再作为现行实现依据。
+> 归档说明（2026-02-20）：该方案已被 `doc/p2p/consensus/builtin-wasm-identity-consensus.prd.md` 取代，不再作为现行实现依据。
 
 ## 1. Executive Summary
 - Problem Statement: 在旧流程中，m1 builtin wasm hash 漂移可能在 PR 合入后才暴露，导致 required 门禁对关键清单一致性的保护不足。

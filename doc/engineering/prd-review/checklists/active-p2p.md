@@ -1,6 +1,6 @@
 # p2p 模块 PRD 已读清单（Active）
 
-更新时间：2026-03-03
+更新时间：2026-03-04
 范围：doc/p2p/（排除 archive/devlog）
 文档数：143
 
@@ -9,146 +9,146 @@
 - 如发现与代码不一致，按代码实现回写文档，并在“处理动作”注明提交。
 - 如发现与其他文档重复或上下游不对齐，先记录问题，再在对应文档修订并回填状态。
 
-- [ ] - | doc/p2p/blockchain/blockchain-p2pfs-hardening-phase2.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/blockchain/blockchain-p2pfs-hardening-phase2.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/blockchain/blockchain-p2pfs-hardening-phase3.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/blockchain/blockchain-p2pfs-hardening-phase3.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/blockchain/blockchain-p2pfs-hardening-phase4.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/blockchain/blockchain-p2pfs-hardening-phase4.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/blockchain/blockchain-p2pfs-hardening-phase5.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/blockchain/blockchain-p2pfs-hardening-phase5.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/blockchain/blockchain-p2pfs-hardening-phase6.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/blockchain/blockchain-p2pfs-hardening-phase6.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/blockchain/blockchain-p2pfs-hardening-phase7.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/blockchain/blockchain-p2pfs-hardening-phase7.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/blockchain/blockchain-p2pfs-hardening-phase8.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/blockchain/blockchain-p2pfs-hardening-phase8.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/blockchain/p2p-blockchain-security-hardening-2026-02-23.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/blockchain/p2p-blockchain-security-hardening-2026-02-23.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/blockchain/production-grade-blockchain-p2pfs-phaseb-consensus-execution.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/blockchain/production-grade-blockchain-p2pfs-phaseb-consensus-execution.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/blockchain/production-grade-blockchain-p2pfs-phasec-distfs-proof-network.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/blockchain/production-grade-blockchain-p2pfs-phasec-distfs-proof-network.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/blockchain/production-grade-blockchain-p2pfs-roadmap.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/blockchain/production-grade-blockchain-p2pfs-roadmap.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/consensus/builtin-wasm-identity-consensus.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/consensus/builtin-wasm-identity-consensus.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/consensus/consensus-code-consolidation-to-agent-world-consensus.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/consensus/consensus-code-consolidation-to-agent-world-consensus.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distfs/builtin-wasm-distfs-api-closure.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distfs/builtin-wasm-distfs-api-closure.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distfs/builtin-wasm-distfs-storage.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distfs/builtin-wasm-distfs-storage.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distfs/distfs-feedback-node-runtime-integration-2026-03-01.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distfs/distfs-feedback-node-runtime-integration-2026-03-01.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distfs/distfs-feedback-open-ledger-2026-03-01.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distfs/distfs-feedback-open-ledger-2026-03-01.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distfs/distfs-feedback-p2p-bridge-2026-03-01.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distfs/distfs-feedback-p2p-bridge-2026-03-01.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distfs/distfs-heterogeneous-node-optimal-stability-2026-02-23.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distfs/distfs-heterogeneous-node-optimal-stability-2026-02-23.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distfs/distfs-no-single-full-node-assumption-2026-02-23.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distfs/distfs-no-single-full-node-assumption-2026-02-23.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distfs/distfs-path-index-observer-bootstrap.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distfs/distfs-path-index-observer-bootstrap.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distfs/distfs-production-hardening-phase1.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distfs/distfs-production-hardening-phase1.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distfs/distfs-production-hardening-phase2.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distfs/distfs-production-hardening-phase2.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distfs/distfs-production-hardening-phase3.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distfs/distfs-production-hardening-phase3.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distfs/distfs-production-hardening-phase4.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distfs/distfs-production-hardening-phase4.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distfs/distfs-production-hardening-phase5.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distfs/distfs-production-hardening-phase5.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distfs/distfs-production-hardening-phase6.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distfs/distfs-production-hardening-phase6.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distfs/distfs-production-hardening-phase7.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distfs/distfs-production-hardening-phase7.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distfs/distfs-production-hardening-phase8.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distfs/distfs-production-hardening-phase8.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distfs/distfs-production-hardening-phase9.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distfs/distfs-production-hardening-phase9.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distfs/distfs-runtime-path-index.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distfs/distfs-runtime-path-index.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distfs/distfs-self-healing-control-plane-2026-02-23.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distfs/distfs-self-healing-control-plane-2026-02-23.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distfs/distfs-self-healing-polling-loop-2026-02-23.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distfs/distfs-self-healing-polling-loop-2026-02-23.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distfs/distfs-self-healing-runtime-polling-wiring-2026-02-23.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distfs/distfs-self-healing-runtime-polling-wiring-2026-02-23.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distfs/distfs-standard-file-io.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distfs/distfs-standard-file-io.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distributed/distributed-hard-split-phase7.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distributed/distributed-hard-split-phase7.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distributed/distributed-pos-consensus.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distributed/distributed-pos-consensus.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distributed/distributed-runtime.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distributed/distributed-runtime.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distributed/production-runtime-gap1234568-closure.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/distributed/production-runtime-gap1234568-closure.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/network/net-runtime-bridge-closure.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/network/net-runtime-bridge-closure.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/network/readme-p1-network-production-hardening.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/network/readme-p1-network-production-hardening.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/node/builtin-wasm-fetch-fallback-compile.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/node/builtin-wasm-fetch-fallback-compile.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/node/node-consensus-signer-binding-replication-hardening.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/node/node-consensus-signer-binding-replication-hardening.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/node/node-contribution-points-multi-node-closure-test.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/node/node-contribution-points-multi-node-closure-test.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/node/node-contribution-points-runtime-closure.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/node/node-contribution-points-runtime-closure.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/node/node-contribution-points.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/node/node-contribution-points.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/node/node-distfs-replication-network-closure.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/node/node-distfs-replication-network-closure.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/node/node-execution-reward-consensus-bridge.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/node/node-execution-reward-consensus-bridge.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/node/node-execution-verification-reward-leader-failover-hardening.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/node/node-execution-verification-reward-leader-failover-hardening.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/node/node-keypair-config-bootstrap.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/node/node-keypair-config-bootstrap.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/node/node-redeemable-power-asset-audit-hardening.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/node/node-redeemable-power-asset-audit-hardening.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/node/node-redeemable-power-asset-signature-governance-phase3.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/node/node-redeemable-power-asset-signature-governance-phase3.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/node/node-redeemable-power-asset.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/node/node-redeemable-power-asset.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/node/node-replication-libp2p-migration.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/node/node-replication-libp2p-migration.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/node/node-reward-runtime-production-hardening-phase1.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/node/node-reward-runtime-production-hardening-phase1.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/node/node-reward-settlement-native-transaction.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/node/node-reward-settlement-native-transaction.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/node/node-storage-system-reward-pool.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/node/node-storage-system-reward-pool.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/node/node-uptime-base-reward.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/node/node-uptime-base-reward.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/node/node-wasm32-libp2p-compile-guard.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/node/node-wasm32-libp2p-compile-guard.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/node/readme-p2-node-net-stack-unification.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/node/readme-p2-node-net-stack-unification.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/observer/observer-sync-mode-metrics-runtime-bridge.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/observer/observer-sync-mode-metrics-runtime-bridge.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/observer/observer-sync-mode-observability.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/observer/observer-sync-mode-observability.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/observer/observer-sync-mode-runtime-metrics.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/observer/observer-sync-mode-runtime-metrics.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/observer/observer-sync-source-dht-mode.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/observer/observer-sync-source-dht-mode.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/observer/observer-sync-source-mode.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/observer/observer-sync-source-mode.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/blockchain/blockchain-p2pfs-hardening-phase2.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/blockchain/blockchain-p2pfs-hardening-phase2.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/blockchain/blockchain-p2pfs-hardening-phase3.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/blockchain/blockchain-p2pfs-hardening-phase3.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/blockchain/blockchain-p2pfs-hardening-phase4.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/blockchain/blockchain-p2pfs-hardening-phase4.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/blockchain/blockchain-p2pfs-hardening-phase5.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/blockchain/blockchain-p2pfs-hardening-phase5.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/blockchain/blockchain-p2pfs-hardening-phase6.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/blockchain/blockchain-p2pfs-hardening-phase6.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/blockchain/blockchain-p2pfs-hardening-phase7.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/blockchain/blockchain-p2pfs-hardening-phase7.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/blockchain/blockchain-p2pfs-hardening-phase8.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/blockchain/blockchain-p2pfs-hardening-phase8.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/blockchain/p2p-blockchain-security-hardening-2026-02-23.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/blockchain/p2p-blockchain-security-hardening-2026-02-23.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/blockchain/production-grade-blockchain-p2pfs-phaseb-consensus-execution.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/blockchain/production-grade-blockchain-p2pfs-phaseb-consensus-execution.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/blockchain/production-grade-blockchain-p2pfs-phasec-distfs-proof-network.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/blockchain/production-grade-blockchain-p2pfs-phasec-distfs-proof-network.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/blockchain/production-grade-blockchain-p2pfs-roadmap.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/blockchain/production-grade-blockchain-p2pfs-roadmap.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/consensus/builtin-wasm-identity-consensus.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/consensus/builtin-wasm-identity-consensus.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/consensus/consensus-code-consolidation-to-agent-world-consensus.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/consensus/consensus-code-consolidation-to-agent-world-consensus.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distfs/builtin-wasm-distfs-api-closure.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distfs/builtin-wasm-distfs-api-closure.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distfs/builtin-wasm-distfs-storage.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distfs/builtin-wasm-distfs-storage.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distfs/distfs-feedback-node-runtime-integration-2026-03-01.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distfs/distfs-feedback-node-runtime-integration-2026-03-01.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distfs/distfs-feedback-open-ledger-2026-03-01.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distfs/distfs-feedback-open-ledger-2026-03-01.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distfs/distfs-feedback-p2p-bridge-2026-03-01.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distfs/distfs-feedback-p2p-bridge-2026-03-01.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distfs/distfs-heterogeneous-node-optimal-stability-2026-02-23.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distfs/distfs-heterogeneous-node-optimal-stability-2026-02-23.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distfs/distfs-no-single-full-node-assumption-2026-02-23.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distfs/distfs-no-single-full-node-assumption-2026-02-23.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distfs/distfs-path-index-observer-bootstrap.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distfs/distfs-path-index-observer-bootstrap.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distfs/distfs-production-hardening-phase1.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distfs/distfs-production-hardening-phase1.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distfs/distfs-production-hardening-phase2.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distfs/distfs-production-hardening-phase2.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distfs/distfs-production-hardening-phase3.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distfs/distfs-production-hardening-phase3.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distfs/distfs-production-hardening-phase4.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distfs/distfs-production-hardening-phase4.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distfs/distfs-production-hardening-phase5.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distfs/distfs-production-hardening-phase5.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distfs/distfs-production-hardening-phase6.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distfs/distfs-production-hardening-phase6.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distfs/distfs-production-hardening-phase7.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distfs/distfs-production-hardening-phase7.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distfs/distfs-production-hardening-phase8.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distfs/distfs-production-hardening-phase8.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distfs/distfs-production-hardening-phase9.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distfs/distfs-production-hardening-phase9.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distfs/distfs-runtime-path-index.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distfs/distfs-runtime-path-index.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distfs/distfs-self-healing-control-plane-2026-02-23.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distfs/distfs-self-healing-control-plane-2026-02-23.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distfs/distfs-self-healing-polling-loop-2026-02-23.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distfs/distfs-self-healing-polling-loop-2026-02-23.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distfs/distfs-self-healing-runtime-polling-wiring-2026-02-23.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distfs/distfs-self-healing-runtime-polling-wiring-2026-02-23.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distfs/distfs-standard-file-io.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distfs/distfs-standard-file-io.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distributed/distributed-hard-split-phase7.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distributed/distributed-hard-split-phase7.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distributed/distributed-pos-consensus.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distributed/distributed-pos-consensus.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distributed/distributed-runtime.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distributed/distributed-runtime.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distributed/production-runtime-gap1234568-closure.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/distributed/production-runtime-gap1234568-closure.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/network/net-runtime-bridge-closure.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/network/net-runtime-bridge-closure.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/network/readme-p1-network-production-hardening.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/network/readme-p1-network-production-hardening.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/node/builtin-wasm-fetch-fallback-compile.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/node/builtin-wasm-fetch-fallback-compile.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/node/node-consensus-signer-binding-replication-hardening.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/node/node-consensus-signer-binding-replication-hardening.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/node/node-contribution-points-multi-node-closure-test.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/node/node-contribution-points-multi-node-closure-test.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/node/node-contribution-points-runtime-closure.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/node/node-contribution-points-runtime-closure.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/node/node-contribution-points.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/node/node-contribution-points.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/node/node-distfs-replication-network-closure.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/node/node-distfs-replication-network-closure.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/node/node-execution-reward-consensus-bridge.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/node/node-execution-reward-consensus-bridge.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/node/node-execution-verification-reward-leader-failover-hardening.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/node/node-execution-verification-reward-leader-failover-hardening.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/node/node-keypair-config-bootstrap.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/node/node-keypair-config-bootstrap.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/node/node-redeemable-power-asset-audit-hardening.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/node/node-redeemable-power-asset-audit-hardening.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/node/node-redeemable-power-asset-signature-governance-phase3.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/node/node-redeemable-power-asset-signature-governance-phase3.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/node/node-redeemable-power-asset.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/node/node-redeemable-power-asset.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/node/node-replication-libp2p-migration.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/node/node-replication-libp2p-migration.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/node/node-reward-runtime-production-hardening-phase1.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/node/node-reward-runtime-production-hardening-phase1.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/node/node-reward-settlement-native-transaction.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/node/node-reward-settlement-native-transaction.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/node/node-storage-system-reward-pool.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/node/node-storage-system-reward-pool.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/node/node-uptime-base-reward.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/node/node-uptime-base-reward.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/node/node-wasm32-libp2p-compile-guard.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/node/node-wasm32-libp2p-compile-guard.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/node/readme-p2-node-net-stack-unification.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/node/readme-p2-node-net-stack-unification.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/observer/observer-sync-mode-metrics-runtime-bridge.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/observer/observer-sync-mode-metrics-runtime-bridge.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/observer/observer-sync-mode-observability.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/observer/observer-sync-mode-observability.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/observer/observer-sync-mode-runtime-metrics.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/observer/observer-sync-mode-runtime-metrics.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/observer/observer-sync-source-dht-mode.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/observer/observer-sync-source-dht-mode.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/observer/observer-sync-source-mode.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/observer/observer-sync-source-mode.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
 - [x] 2026-03-03 23:45:14 CST | doc/p2p/prd.index.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 无
 - [x] 2026-03-03 23:45:14 CST | doc/p2p/prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 无
 - [x] 2026-03-03 23:45:14 CST | doc/p2p/prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 无
-- [ ] - | doc/p2p/token/mainchain-token-allocation-mechanism-phase2-governance-bridge-distribution-2026-02-26.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/token/mainchain-token-allocation-mechanism-phase2-governance-bridge-distribution-2026-02-26.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/token/mainchain-token-allocation-mechanism.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/token/mainchain-token-allocation-mechanism.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/viewer-live/world-viewer-live-llm-default-on-2026-02-23.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/viewer-live/world-viewer-live-llm-default-on-2026-02-23.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/viewer-live/world-viewer-live-no-llm-flag-2026-02-23.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/viewer-live/world-viewer-live-no-llm-flag-2026-02-23.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/viewer-live/world-viewer-live-release-locked-launch-2026-02-23.prd.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
-- [ ] - | doc/p2p/viewer-live/world-viewer-live-release-locked-launch-2026-02-23.prd.project.md | 代码一致性: 待核对 | 重复性: 待核对 | 上下游对齐: 待核对 | 处理动作: -
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/token/mainchain-token-allocation-mechanism-phase2-governance-bridge-distribution-2026-02-26.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/token/mainchain-token-allocation-mechanism-phase2-governance-bridge-distribution-2026-02-26.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/token/mainchain-token-allocation-mechanism.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/token/mainchain-token-allocation-mechanism.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/viewer-live/world-viewer-live-llm-default-on-2026-02-23.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/viewer-live/world-viewer-live-llm-default-on-2026-02-23.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/viewer-live/world-viewer-live-no-llm-flag-2026-02-23.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/viewer-live/world-viewer-live-no-llm-flag-2026-02-23.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/viewer-live/world-viewer-live-release-locked-launch-2026-02-23.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/viewer-live/world-viewer-live-release-locked-launch-2026-02-23.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验

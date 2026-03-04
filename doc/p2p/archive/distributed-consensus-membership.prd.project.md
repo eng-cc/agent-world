@@ -5,7 +5,7 @@
 # Agent World Runtime：分布式 Head 共识成员治理与租约联动（项目管理文档）
 
 ## 任务拆解（含 PRD-ID 映射）
-- [x] 输出设计文档（`doc/p2p/distributed/distributed-consensus-membership.md`） (PRD-P2P-MIG-035)
+- [x] 输出设计文档（`doc/p2p/archive/distributed-consensus-membership.prd.md`） (PRD-P2P-MIG-035)
 - [x] 定义成员变更请求/结果结构 (PRD-P2P-MIG-035)
 - [x] 实现成员增减/替换接口 (PRD-P2P-MIG-035)
 - [x] 实现进行中提案保护（Pending 阻断） (PRD-P2P-MIG-035)
@@ -14,8 +14,8 @@
 - [x] 运行单元测试与分布式回归验证并记录结果 (PRD-P2P-MIG-035)
 
 ## 依赖
-- `doc/p2p/distributed/distributed-consensus.md`
-- `doc/p2p/distributed/distributed-consensus-persistence.md`
+- `doc/p2p/archive/distributed-consensus.prd.md`
+- `doc/p2p/archive/distributed-consensus-persistence.prd.md`
 - `crates/agent_world/src/runtime/distributed_consensus.rs`
 - `crates/agent_world/src/runtime/distributed_lease.rs`
 

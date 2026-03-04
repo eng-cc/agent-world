@@ -5,7 +5,7 @@
 # Agent World Runtime：分布式成员目录同步与变更广播（项目管理文档）
 
 ## 任务拆解（含 PRD-ID 映射）
-- [x] 输出设计文档（`doc/p2p/distributed/distributed-consensus-sync.md`） (PRD-P2P-MIG-037)
+- [x] 输出设计文档（`doc/p2p/archive/distributed-consensus-sync.prd.md`） (PRD-P2P-MIG-037)
 - [x] 新增成员目录 topic 与 helper (PRD-P2P-MIG-037)
 - [x] 实现成员目录广播消息结构 (PRD-P2P-MIG-037)
 - [x] 实现发布/订阅/同步客户端（`MembershipSyncClient`） (PRD-P2P-MIG-037)
@@ -13,7 +13,7 @@
 - [x] 运行单元测试与分布式回归验证并记录结果 (PRD-P2P-MIG-037)
 
 ## 依赖
-- `doc/p2p/distributed/distributed-consensus-membership.md`
+- `doc/p2p/archive/distributed-consensus-membership.prd.md`
 - `crates/agent_world/src/runtime/distributed.rs`
 - `crates/agent_world/src/runtime/distributed_membership_sync.rs`
 - `crates/agent_world/src/runtime/distributed_consensus.rs`

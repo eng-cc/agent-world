@@ -19,7 +19,7 @@
 ## 接口/数据
 - 保持锚点与交互标记兼容：
   - Hero 主按钮继续使用 `href="#demo"`。
-  - 次按钮继续指向 `doc/cn/index.html`、`../doc/en/index.html`。
+  - 次按钮继续指向 `site/doc/cn/index.html`、`../doc/en/index.html`。
   - 不新增或删除 `data-*` 交互字段。
 - 文案变更：
   - 中文主 CTA：由“30 秒进入首局”调整为“试玩与演示入口”语义。

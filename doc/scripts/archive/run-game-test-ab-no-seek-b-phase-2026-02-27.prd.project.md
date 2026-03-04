@@ -6,7 +6,7 @@
 - [x] T2 执行脚本验证并收口文档/devlog
 
 ## 依赖
-- `doc/scripts/run-game-test-ab-no-seek-b-phase-2026-02-27.md`
+- `doc/scripts/archive/run-game-test-ab-no-seek-b-phase-2026-02-27.prd.md`
 - `scripts/run-game-test-ab.sh`
 - `doc/devlog/2026-02-27.md`
 

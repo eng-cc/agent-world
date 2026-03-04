@@ -62,25 +62,25 @@
 
 
 ### 详细设计分册
-- `doc/world-runtime/wasm-interface.md`：WASM 扩展接口、ABI/序列化、关键数据结构
-- `doc/world-runtime/wasm-executor.md`：WASM 执行器接入（真实运行时与资源限制）
-- `doc/world-runtime/governance-events.md`：模块事件、ShadowReport、失败事件与治理事件负载
-- `doc/world-runtime/audit-export.md`：审计导出记录、分页/分片、一致性与示例
-- `doc/world-runtime/module-lifecycle.md`：模块治理与兼容性、注册表、治理流程、ModuleChangeSet、冲突与迁移
-- `doc/world-runtime/module-subscription-filters.md`：模块订阅过滤器（JSON Pointer + eq）
-- `doc/world-runtime/runtime-integration.md`：模块加载/沙箱/路由/输出校验与运行时接口
-- `doc/world-runtime/testing.md`：集成测试用例与测试基架建议
-- `doc/world-runtime/module-storage.md`：模块存储持久化（registry/meta/artifacts）
-- `doc/p2p/distributed/distributed-runtime.md`：分布式计算与存储（计算/存储分离 + libp2p）
+- `doc/world-runtime/wasm/wasm-interface.md`：WASM 扩展接口、ABI/序列化、关键数据结构
+- `doc/world-runtime/wasm/wasm-executor.prd.md`：WASM 执行器接入（真实运行时与资源限制）
+- `doc/world-runtime/governance/governance-events.md`：模块事件、ShadowReport、失败事件与治理事件负载
+- `doc/world-runtime/governance/audit-export.md`：审计导出记录、分页/分片、一致性与示例
+- `doc/world-runtime/module/module-lifecycle.md`：模块治理与兼容性、注册表、治理流程、ModuleChangeSet、冲突与迁移
+- `doc/world-runtime/module/module-subscription-filters.prd.md`：模块订阅过滤器（JSON Pointer + eq）
+- `doc/world-runtime/runtime/runtime-integration.md`：模块加载/沙箱/路由/输出校验与运行时接口
+- `doc/world-runtime/testing/testing.md`：集成测试用例与测试基架建议
+- `doc/world-runtime/module/module-storage.prd.md`：模块存储持久化（registry/meta/artifacts）
+- `doc/p2p/distributed/distributed-runtime.prd.md`：分布式计算与存储（计算/存储分离 + libp2p）
 - `doc/world-runtime/archive/wasm-first.prd.md`：WASM First（除位置/资源/基础物理外全模块化）
-- `doc/world-runtime/agent-default-modules.md`：Agent 默认模块体系（身体/发电/储能/感知/移动/记忆/存储）
+- `doc/world-runtime/module/agent-default-modules.prd.md`：Agent 默认模块体系（身体/发电/储能/感知/移动/记忆/存储）
 - `doc/world-runtime/archive/wasm-runtime-crate-split.prd.md`：WASM 运行时激进拆分（ABI/执行器/路由拆 crate）
 - `doc/world-runtime/archive/wasm-runtime-crate-split-phase2.prd.md`：WASM 拆分后测试加固（router/executor）
 - `doc/world-runtime/archive/wasm-runtime-crate-split-phase3.prd.md`：WASM 运行时激进迁移（工件/缓存类型下沉）
 - `doc/world-runtime/archive/wasm-runtime-crate-split-phase4.prd.md`：WASM 运行时激进迁移（模块清单/变更计划类型下沉）
 - `doc/world-runtime/archive/wasm-runtime-crate-split-phase5.prd.md`：WASM 运行时激进迁移（模块注册表/生命周期事件类型下沉）
 - `doc/world-runtime/archive/wasm-runtime-crate-split-phase6.prd.md`：WASM 运行时激进迁移（模块存储实现拆 crate）
-- `doc/p2p/distributed/distributed-hard-split-phase7.md`：分布式能力彻底拆分（distfs + runtime distributed 清理 + viewer 协议下沉 + ABI 边界收敛）
+- `doc/p2p/distributed/distributed-hard-split-phase7.prd.md`：分布式能力彻底拆分（distfs + runtime distributed 清理 + viewer 协议下沉 + ABI 边界收敛）
 - `doc/world-runtime/archive/wasm-runtime-crate-split-phase8.prd.md`：WASM 运行时边界收敛（移除 runtime sandbox 门面，调用方直连 ABI/Executor）
 
 ## 5. Risks & Roadmap

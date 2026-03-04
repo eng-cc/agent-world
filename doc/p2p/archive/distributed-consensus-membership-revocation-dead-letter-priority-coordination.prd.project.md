@@ -5,7 +5,7 @@
 # Agent World Runtime：成员目录吊销死信优先级回放与跨节点回放协同（项目管理文档）
 
 ## 任务拆解（含 PRD-ID 映射）
-- [x] 输出设计文档（`doc/p2p/distributed/distributed-consensus-membership-revocation-dead-letter-priority-coordination.md`） (PRD-P2P-MIG-013)
+- [x] 输出设计文档（`doc/p2p/archive/distributed-consensus-membership-revocation-dead-letter-priority-coordination.prd.md`） (PRD-P2P-MIG-013)
 - [x] 输出项目管理文档（本文件） (PRD-P2P-MIG-013)
 - [x] 实现 dead-letter 优先级回放规则（reason/attempt/dropped_at 排序） (PRD-P2P-MIG-013)
 - [x] 新增 `run_revocation_dead_letter_replay_schedule_coordinated(...)` (PRD-P2P-MIG-013)
@@ -13,7 +13,7 @@
 - [x] 执行回归验证并同步总文档/开发日志状态 (PRD-P2P-MIG-013)
 
 ## 依赖
-- `doc/p2p/distributed/distributed-consensus-membership-revocation-dead-letter-replay-metrics-export.md`
+- `doc/p2p/archive/distributed-consensus-membership-revocation-dead-letter-replay-metrics-export.prd.md`
 - `crates/agent_world/src/runtime/distributed_membership_sync/recovery.rs`
 - `crates/agent_world/src/runtime/distributed_membership_sync/recovery_tests.rs`
 

@@ -18,7 +18,7 @@
 - 当前阶段：R3-0 ~ R3-3 全部完成。
 - 产出：
   - `doc/archive/root-history/doc-structure-freshness-review-round3-2026-02-24.result.md`
-  - `doc/nonviewer/README.md`
+  - `doc/headless-runtime/README.md`
   - `doc/engineering/README.md`
 - 阻塞项：无。
 - 最近更新：2026-02-24。

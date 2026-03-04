@@ -5,7 +5,7 @@
 # Agent World Runtime：分布式 Head 共识层（项目管理文档）
 
 ## 任务拆解（含 PRD-ID 映射）
-- [x] 输出设计文档（`doc/p2p/distributed/distributed-consensus.md`） (PRD-P2P-MIG-038)
+- [x] 输出设计文档（`doc/p2p/archive/distributed-consensus.prd.md`） (PRD-P2P-MIG-038)
 - [x] 新增 quorum 共识模块（`crates/agent_world/src/runtime/distributed_consensus.rs`） (PRD-P2P-MIG-038)
 - [x] 实现提案/投票状态机（Pending/Committed/Rejected） (PRD-P2P-MIG-038)
 - [x] 实现冲突提案与陈旧提案保护 (PRD-P2P-MIG-038)

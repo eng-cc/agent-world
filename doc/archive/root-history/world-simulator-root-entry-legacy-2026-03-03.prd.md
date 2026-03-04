@@ -380,7 +380,7 @@
 - M2：持久化与回放（快照/事件日志、确定性/随机种子管理）
 - M3：Agent SDK 与运行时（调度、限速、可观测性、失败处理）
 - M4：最小社会与经济（工作/生产/交易/关系/声誉；核心为**自由沙盒 + WASM 动态新事物**，Agent 创造的模块以 Rust 编写并编译为 WASM，通过事件/接口影响世界）
-- M5：可视化与调试工具（世界面板、事件浏览、回放、指标；详见 `doc/world-simulator/visualization.md`）
+- M5：可视化与调试工具（世界面板、事件浏览、回放、指标；详见 `doc/world-simulator/viewer/visualization.prd.md`）
 
 ### M4 交叉引用（当前实现）
 - 电力子系统已完成 **M4.1~M4.3**：基础电力状态管理、发电/储能设施、跨 Location 传输与交易基础接口。
@@ -394,8 +394,8 @@
 - runtime 已提供内置 M4 工业模块治理装载入口：`World::install_m4_economy_bootstrap_modules`，默认内置工厂/配方/制成品示例模块与嵌入工件。
 
 ## 分册索引
-- 世界初始化：`doc/world-simulator/world-initialization.md`
-- 可视化与调试：`doc/world-simulator/visualization.md`
+- 世界初始化：`doc/world-simulator/scenario/world-initialization.prd.md`
+- 可视化与调试：`doc/world-simulator/viewer/visualization.prd.md`
 
 ## 背景故事物理一致性修订清单（2026-02-07）
 

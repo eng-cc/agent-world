@@ -1,6 +1,6 @@
 # core 模块 PRD 已读清单（Active）
 
-更新时间：2026-03-03
+更新时间：2026-03-04
 范围：doc/core/（排除 archive/devlog）
 文档数：3
 

@@ -5,7 +5,7 @@
 # Agent World Runtime：成员目录吊销恢复队列容量治理与告警 ACK 重试（项目管理文档）
 
 ## 任务拆解（含 PRD-ID 映射）
-- [x] 输出设计文档（`doc/p2p/distributed/distributed-consensus-membership-revocation-recovery-queue-ack-retry.md`） (PRD-P2P-MIG-033)
+- [x] 输出设计文档（`doc/p2p/archive/distributed-consensus-membership-revocation-recovery-queue-ack-retry.prd.md`） (PRD-P2P-MIG-033)
 - [x] 输出项目管理文档（本文件） (PRD-P2P-MIG-033)
 - [x] 定义恢复队列元素结构与 ACK 重试策略 (PRD-P2P-MIG-033)
 - [x] 升级 recovery store（内存/文件）持久化格式并兼容旧格式 (PRD-P2P-MIG-033)
@@ -14,7 +14,7 @@
 - [x] 扩展恢复报告字段并补充单元测试 (PRD-P2P-MIG-033)
 
 ## 依赖
-- `doc/p2p/distributed/distributed-consensus-membership-revocation-coordinator-state-alert-recovery.md`
+- `doc/p2p/archive/distributed-consensus-membership-revocation-coordinator-state-alert-recovery.prd.md`
 - `crates/agent_world/src/runtime/distributed_membership_sync/recovery.rs`
 - `crates/agent_world/src/runtime/distributed_membership_sync/recovery_tests.rs`
 

@@ -1,6 +1,6 @@
 # Required Tier 接入 M1 Builtin Wasm Hash 校验（项目管理文档）
 
-> 归档说明（2026-02-20）：该任务已由 `doc/p2p/builtin-wasm-identity-consensus.md` / `.project.md` 覆盖并替代。
+> 归档说明（2026-02-20）：该任务已由 `doc/p2p/consensus/builtin-wasm-identity-consensus.prd.md` / `.project.md` 覆盖并替代。
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] ARCH-M1-1 (PRD-TESTING-ARCHIVE-M1-001): 完成专题设计与项目管理建档。

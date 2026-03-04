@@ -40,7 +40,7 @@
   - `doc/m4-*.project.md` -> `doc/world-simulator/m4/*.project.md`
 - 稳定入口：
   - `doc/README.md`（新增）
-  - `doc/viewer-manual.md`、`doc/world-runtime.md`、`doc/world-simulator.md`（保留顶层入口）
+  - `doc/viewer-manual.md`、`doc/world-runtime.prd.md`、`doc/world-simulator.prd.md`（保留顶层入口）
 
 ## 5. Risks & Roadmap
 - M1：完成治理文档（设计 + 项目管理）并冻结迁移边界。

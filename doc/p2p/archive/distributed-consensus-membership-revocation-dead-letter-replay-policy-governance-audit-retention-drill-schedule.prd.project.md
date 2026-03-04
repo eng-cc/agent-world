@@ -5,7 +5,7 @@
 # Agent World Runtime：成员目录吊销死信回放策略治理审计归档保留策略与演练调度（项目管理文档）
 
 ## 任务拆解（含 PRD-ID 映射）
-- [x] 输出设计文档（`doc/p2p/distributed/distributed-consensus-membership-revocation-dead-letter-replay-policy-governance-audit-retention-drill-schedule.md`） (PRD-P2P-MIG-021)
+- [x] 输出设计文档（`doc/p2p/archive/distributed-consensus-membership-revocation-dead-letter-replay-policy-governance-audit-retention-drill-schedule.prd.md`） (PRD-P2P-MIG-021)
 - [x] 输出项目管理文档（本文件） (PRD-P2P-MIG-021)
 - [x] 实现治理审计归档保留策略与裁剪入口 (PRD-P2P-MIG-021)
 - [x] 实现恢复演练调度策略与状态存储（内存/文件） (PRD-P2P-MIG-021)
@@ -13,7 +13,7 @@
 - [x] 完成验证并同步总文档/devlog (PRD-P2P-MIG-021)
 
 ## 依赖
-- `doc/p2p/distributed/distributed-consensus-membership-revocation-dead-letter-replay-policy-governance-audit-archive-drill.md`
+- `doc/p2p/archive/distributed-consensus-membership-revocation-dead-letter-replay-policy-governance-audit-archive-drill.prd.md`
 - `crates/agent_world/src/runtime/distributed_membership_sync/recovery/replay_audit.rs`
 - `crates/agent_world/src/runtime/distributed_membership_sync/recovery_replay_policy_audit_tests.rs`
 

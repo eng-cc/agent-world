@@ -20,7 +20,7 @@
 
 ## 状态
 - 当前阶段：已终止（CBE-3~CBE-9 已取消，不再执行）
-- 最近更新：2026-02-19，按当前决策终止 Docker/Podman 容器化路线；后续沿用 `doc/scripts/builtin-wasm-nightly-build-std.md`。
+- 最近更新：2026-02-19，按当前决策终止 Docker/Podman 容器化路线；后续沿用 `doc/scripts/wasm/builtin-wasm-nightly-build-std.prd.md`。
 
 ## 迁移记录（2026-03-03）
 - 已按 `TASK-ENGINEERING-014-D1 (PRD-ENGINEERING-006)` 从 legacy 命名迁移为 `.prd.md/.prd.project.md`。

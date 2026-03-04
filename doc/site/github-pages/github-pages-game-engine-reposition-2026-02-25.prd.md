@@ -16,7 +16,7 @@
 ## 范围
 - 范围内
   - 重写首页：`site/index.html`、`site/en/index.html`。
-  - 重写文档中心：`site/doc/cn/index.html`、`site/doc/en/index.html`。
+  - 重写文档中心：`site/site/doc/cn/index.html`、`site/doc/en/index.html`。
   - 必要的样式微调（不破坏现有视觉优势）：`site/assets/styles.css`。
   - 页面链接改为当前主叙事文档入口（README + game docs + viewer manual）。
 - 范围外
@@ -33,7 +33,7 @@
 - 页面文件
   - `site/index.html`
   - `site/en/index.html`
-  - `site/doc/cn/index.html`
+  - `site/site/doc/cn/index.html`
   - `site/doc/en/index.html`
   - `site/assets/styles.css`（可选微调）
 

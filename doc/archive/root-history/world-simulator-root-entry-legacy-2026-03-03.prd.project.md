@@ -5,7 +5,7 @@
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T-MIG-20260303 (PRD-ENGINEERING-006): 逐篇阅读旧文档并完成人工重写迁移到 `.prd` 命名。
 ### 0. 对齐与准备
-- [x] 输出设计文档（`doc/world-simulator.md`）
+- [x] 输出设计文档（`doc/world-simulator.prd.md`）
 - [x] 输出项目管理文档（本文件）
 - [x] 在 README 中给出愿景/原则/路线图与文档入口
 - [x] 更新世界观设定（破碎小行星带/碎片尺寸范围/辐射能转电模块，移除辐射反作用力推进描述）
@@ -66,8 +66,8 @@
 - [ ] 世界状态面板（地点、人口、库存、价格等）
 - [ ] 事件浏览器（筛选、回放、聚合统计）
 - [ ] 运行控制（暂停/加速/单步/回滚到快照）
-- [ ] 任务分册：`doc/world-simulator/visualization.project.md`
-- [x] 任务分册：3D 渲染物理准确性（`doc/world-simulator/rendering-physical-accuracy.project.md`，RPA-1 已完成）
+- [ ] 任务分册：`doc/world-simulator/viewer/visualization.prd.project.md`
+- [x] 任务分册：3D 渲染物理准确性（`doc/world-simulator/viewer/rendering-physical-accuracy.prd.project.md`，RPA-1 已完成）
 - [x] Viewer 可观测性增强：Agent 活动面板与世界背景参照（边界盒 + 地板网格）
 - [x] 修复 viewer 多相机渲染歧义（Camera order）并恢复 3D 交互
 - [x] 输出 viewer 选中详情设计文档（`doc/world-simulator/viewer/viewer-selection-details.prd.md`）
@@ -92,8 +92,8 @@
 - [x] Viewer chunk 可视化与背景网格合并（按 chunk 尺寸渲染）
 - [x] Viewer 自动诊断结论面板（无需人工分析）
 - [x] Viewer 事件列表逐条点击定位对象（Click Event -> Select Object）
-- [x] 输出 WASM 模块通用可视实体设计文档（`doc/world-simulator/module-visual-entities.md`）
-- [x] 输出 WASM 模块通用可视实体项目文档（`doc/world-simulator/module-visual-entities.project.md`）
+- [x] 输出 WASM 模块通用可视实体设计文档（`doc/world-simulator/viewer/module-visual-entities.prd.md`）
+- [x] 输出 WASM 模块通用可视实体项目文档（`doc/world-simulator/viewer/module-visual-entities.prd.project.md`）
 - [x] simulator 接入 `module_visual_entities`（init/scenario/action/event/replay）
 - [x] viewer 接入模块可视实体通用渲染与详情展示（snapshot + 增量事件）
 - [x] 补齐模块可视实体事件 -> 对象联动（Event Click -> Select Object）
@@ -161,14 +161,14 @@
 - [x] 清理 `doc/world-simulator` 过时设计文档并归档到 `doc/world-simulator/archive/`（含归档标记与替代文档指引）
 
 ### 7. 分块世界生成（探索驱动）
-- [x] 输出分块世界生成与碎片元素池设计文档（`doc/world-simulator/chunked-fragment-generation.md`）
-- [x] 输出对应项目管理文档（`doc/world-simulator/chunked-fragment-generation.project.md`）
+- [x] 输出分块世界生成与碎片元素池设计文档（`doc/world-simulator/scenario/chunked-fragment-generation.prd.md`）
+- [x] 输出对应项目管理文档（`doc/world-simulator/scenario/chunked-fragment-generation.prd.project.md`）
 - [x] 实现 20km×20km×10km chunk 基础能力（坐标映射/边界/seed）
 - [x] 明确碎片块状几何与物理量（长方体/体积/密度/质量/1cm 最小单位）
 - [x] 明确化合物主导组成与元素统计映射口径
 - [x] 接入未探索不生成的 chunk 索引与触发逻辑（observe/move/transfer/harvest 触发）
 - [x] 接入碎片块状物理画像与化合物组成生成（体积/密度/质量 + compounds/elements）
-- [x] 输出 Agent Frag 初始站位优化设计/项目文档（`doc/world-simulator/agent-frag-initial-spawn-position.md`、`doc/world-simulator/agent-frag-initial-spawn-position.project.md`）
+- [x] 输出 Agent Frag 初始站位优化设计/项目文档（`doc/world-simulator/scenario/agent-frag-initial-spawn-position.prd.md`、`doc/world-simulator/scenario/agent-frag-initial-spawn-position.prd.project.md`）
 - [x] 初始化阶段 Agent 出生点优化：有 frag 时优先 frag，且在 frag 上方约 50m 站位（含测试回归）
 - [x] Agent 2D 遮挡修复：frag 出生改为严格正上方，Viewer 保留 standoff 渲染距离（不贴回表面）
 - [x] 接入资源预算一次性生成（total/remaining）与开采扣减守恒
@@ -201,7 +201,7 @@
 - [x] 新增 `llm_bootstrap` 场景并接入 scenario 枚举/解析/测试矩阵
 
 ### 9. 背景故事物理一致性修订
-- [x] 输出“背景故事物理一致性修订清单”并附加到设计文档（`doc/world-simulator.md`）
+- [x] 输出“背景故事物理一致性修订清单”并附加到设计文档（`doc/world-simulator.prd.md`）
 - [x] C1 尺寸口径统一（文档与默认配置一致）
 - [x] C2 辐射源标度修订（发射强度与尺度关系可配置）
 - [x] C3 采集场模型对齐（近邻源 + 背景场，含距离项）
@@ -253,15 +253,15 @@
 - [x] KWM-3 回归验证与文档收口
 
 ### 15. Rust 到 Wasm 编译套件（KWT）
-- [x] 输出 KWT 设计文档（`doc/world-simulator/rust-wasm-build-suite.md`）
-- [x] 输出 KWT 项目管理文档（`doc/world-simulator/rust-wasm-build-suite.project.md`）
+- [x] 输出 KWT 设计文档（`doc/world-simulator/kernel/rust-wasm-build-suite.prd.md`）
+- [x] 输出 KWT 项目管理文档（`doc/world-simulator/kernel/rust-wasm-build-suite.prd.project.md`）
 - [x] KWT-1 Rust->Wasm 构建套件（CLI + 脚本封装）
 - [x] KWT-2 构建套件测试与最小模板闭环
 - [x] KWT-3 回归验证与文档收口
 
 ### 16. Frag 资源平衡与新手友好生成（FRB）
-- [x] 输出 FRB 设计文档（`doc/world-simulator/frag-resource-balance-onboarding.md`）
-- [x] 输出 FRB 项目管理文档（`doc/world-simulator/frag-resource-balance-onboarding.project.md`）
+- [x] 输出 FRB 设计文档（`doc/world-simulator/scenario/frag-resource-balance-onboarding.prd.md`）
+- [x] 输出 FRB 项目管理文档（`doc/world-simulator/scenario/frag-resource-balance-onboarding.prd.project.md`）
 - [x] 扩展 `AsteroidFragmentConfig`（`min_fragments_per_chunk` / `starter_core_radius_ratio` / `starter_core_density_multiplier`）
 - [x] 生成器接入中心区密度倍率 + 确定性保底补种
 - [x] 补充 `test_tier_required` 测试（数量保底/分布偏置/参数 sanitize）

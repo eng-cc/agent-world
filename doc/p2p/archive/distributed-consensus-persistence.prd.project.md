@@ -5,7 +5,7 @@
 # Agent World Runtime：分布式 Head 共识快照持久化（项目管理文档）
 
 ## 任务拆解（含 PRD-ID 映射）
-- [x] 输出设计文档（`doc/p2p/distributed/distributed-consensus-persistence.md`） (PRD-P2P-MIG-036)
+- [x] 输出设计文档（`doc/p2p/archive/distributed-consensus-persistence.prd.md`） (PRD-P2P-MIG-036)
 - [x] 定义共识快照数据结构与版本字段 (PRD-P2P-MIG-036)
 - [x] 实现共识快照保存接口（原子写入） (PRD-P2P-MIG-036)
 - [x] 实现共识快照加载接口（校验+状态重算） (PRD-P2P-MIG-036)
@@ -13,7 +13,7 @@
 - [x] 运行单元测试与分布式回归验证并记录结果 (PRD-P2P-MIG-036)
 
 ## 依赖
-- `doc/p2p/distributed/distributed-consensus.md`
+- `doc/p2p/archive/distributed-consensus.prd.md`
 - `crates/agent_world/src/runtime/distributed_consensus.rs`
 - `crates/agent_world/src/runtime/util.rs`
 

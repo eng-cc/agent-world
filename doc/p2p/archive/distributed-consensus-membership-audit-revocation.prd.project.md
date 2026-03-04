@@ -5,7 +5,7 @@
 # Agent World Runtime：成员目录审计持久化与吊销传播（项目管理文档）
 
 ## 任务拆解（含 PRD-ID 映射）
-- [x] 输出设计文档（`doc/p2p/distributed/distributed-consensus-membership-audit-revocation.md`） (PRD-P2P-MIG-004)
+- [x] 输出设计文档（`doc/p2p/archive/distributed-consensus-membership-audit-revocation.prd.md`） (PRD-P2P-MIG-004)
 - [x] 输出项目管理文档（本文件） (PRD-P2P-MIG-004)
 - [x] 实现 `MembershipAuditStore` 与内存实现 (PRD-P2P-MIG-004)
 - [x] 实现 restore 审计持久化入口 (PRD-P2P-MIG-004)
@@ -15,7 +15,7 @@
 - [x] 执行格式化、单测与分布式回归 (PRD-P2P-MIG-004)
 
 ## 依赖
-- `doc/p2p/distributed/distributed-consensus-membership-rotation-audit.md`
+- `doc/p2p/archive/distributed-consensus-membership-rotation-audit.prd.md`
 - `crates/agent_world/src/runtime/distributed_membership_sync.rs`
 - `crates/agent_world/src/runtime/distributed_membership_sync/tests.rs`
 

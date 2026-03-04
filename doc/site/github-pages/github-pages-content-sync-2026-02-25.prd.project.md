@@ -9,7 +9,7 @@
 
 ### 1. 首页与文档目录同步
 - [x] 更新 `site/index.html` 与 `site/en/index.html` 的近期更新与运行口径
-- [x] 更新 `site/doc/cn/index.html` 与 `site/doc/en/index.html` 的手册状态摘要
+- [x] 更新 `site/site/doc/cn/index.html` 与 `site/doc/en/index.html` 的手册状态摘要
 - [x] 校对中英文锚点与入口链接一致性
 
 ### 2. 手册正文同步

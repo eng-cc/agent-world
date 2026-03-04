@@ -1,6 +1,6 @@
 # Builtin Wasm Hash 可复现构建（跨环境一致）
 
-> 归档说明（2026-02-20）：该方案已被 `doc/p2p/builtin-wasm-identity-consensus.md` 取代，不再作为现行实现依据。
+> 归档说明（2026-02-20）：该方案已被 `doc/p2p/consensus/builtin-wasm-identity-consensus.prd.md` 取代，不再作为现行实现依据。
 
 ## 目标
 - 根治 builtin wasm hash 在本地与 CI 间不一致的问题，保证 `--check` 校验可稳定通过。

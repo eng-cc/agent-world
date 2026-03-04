@@ -5,7 +5,7 @@
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T-MIG-20260303 (PRD-ENGINEERING-006): 逐篇阅读旧文档并完成人工重写迁移到 `.prd` 命名。
 ### 0. 对齐与准备
-- [x] 输出设计文档（`doc/world-runtime.md`）
+- [x] 输出设计文档（`doc/world-runtime.prd.md`）
 - [x] 输出项目管理文档（本文件）
 - [x] 设计文档拆分为分册（`doc/world-runtime/`）
 
@@ -107,8 +107,8 @@
 - [x] 拆分 runtime builtin_modules（rule/body/default/power）以满足可维护性与文件行数约束
 
 ### 7. Agent 默认模块体系（ADM）
-- [x] 输出默认模块设计分册（`doc/world-runtime/agent-default-modules.md`）
-- [x] 输出默认模块项目管理文档（`doc/world-runtime/agent-default-modules.project.md`）
+- [x] 输出默认模块设计分册（`doc/world-runtime/module/agent-default-modules.prd.md`）
+- [x] 输出默认模块项目管理文档（`doc/world-runtime/module/agent-default-modules.prd.project.md`）
 - [x] 冻结默认模块安装入口（`install_m1_agent_default_modules`）
 - [x] 落地身体接口扩容动作与事件（消耗接口模块）
 - [x] 落地默认 `sensor/mobility/memory/storage` 四模块最小实现
@@ -228,8 +228,8 @@
 - [x] R6-1 提取 `ModuleStore` 文件存储实现到独立 crate 并回归
 
 ### 15. 分布式能力彻底拆分（R7）
-- [x] 输出 R7 设计文档（`doc/p2p/distributed/distributed-hard-split-phase7.md`）
-- [x] 输出 R7 项目管理文档（`doc/p2p/distributed/distributed-hard-split-phase7.project.md`）
+- [x] 输出 R7 设计文档（`doc/p2p/distributed/distributed-hard-split-phase7.prd.md`）
+- [x] 输出 R7 项目管理文档（`doc/p2p/distributed/distributed-hard-split-phase7.prd.project.md`）
 - [x] R7-1 新建 `agent_world_distfs` 并迁移 CAS/分片/组装能力，接入 runtime 基础路径
 - [x] R7-2 删除 `agent_world` 内分布式实现文件并切换调用方到 split crates
 - [x] R7-3 拆分 `agent_world` 大 facade，收敛导出边界

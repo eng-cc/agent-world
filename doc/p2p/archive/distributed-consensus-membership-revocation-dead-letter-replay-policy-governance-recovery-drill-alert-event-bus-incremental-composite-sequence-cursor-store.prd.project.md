@@ -5,7 +5,7 @@
 # Agent World Runtime：成员目录吊销死信回放策略治理恢复演练告警事件总线复合序号游标状态持久化（项目管理文档）
 
 ## 任务拆解（含 PRD-ID 映射）
-- [x] 输出设计文档（`doc/p2p/distributed/distributed-consensus-membership-revocation-dead-letter-replay-policy-governance-recovery-drill-alert-event-bus-incremental-composite-sequence-cursor-store.md`） (PRD-P2P-MIG-026)
+- [x] 输出设计文档（`doc/p2p/archive/distributed-consensus-membership-revocation-dead-letter-replay-policy-governance-recovery-drill-alert-event-bus-incremental-composite-sequence-cursor-store.prd.md`） (PRD-P2P-MIG-026)
 - [x] 输出项目管理文档（本文件） (PRD-P2P-MIG-026)
 - [x] 实现复合序号游标状态模型与 store 抽象 (PRD-P2P-MIG-026)
 - [x] 实现内存/文件游标状态存储 (PRD-P2P-MIG-026)
@@ -14,7 +14,7 @@
 - [x] 完成验证并同步总项目文档/devlog (PRD-P2P-MIG-026)
 
 ## 依赖
-- `doc/p2p/distributed/distributed-consensus-membership-revocation-dead-letter-replay-policy-governance-recovery-drill-alert-event-bus-incremental-composite-sequence-cursor.md`
+- `doc/p2p/archive/distributed-consensus-membership-revocation-dead-letter-replay-policy-governance-recovery-drill-alert-event-bus-incremental-composite-sequence-cursor.prd.md`
 - `crates/agent_world/src/runtime/distributed_membership_sync/recovery/replay_archive_federated.rs`
 - `crates/agent_world/src/runtime/distributed_membership_sync/recovery_replay_federated_tests.rs`
 

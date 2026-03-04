@@ -7,7 +7,7 @@
 ## 任务拆解（含 PRD-ID 映射）
 
 ### LBA0 文档建模
-- [x] LBA0.1 输出设计文档（`doc/world-simulator/llm/llm-build-chain-actions.md`）
+- [x] LBA0.1 输出设计文档（`doc/world-simulator/archive/llm-build-chain-actions.prd.md`）
 - [x] LBA0.2 输出项目管理文档（本文件）
 - [x] LBA0.3 在总项目文档挂载任务入口
 

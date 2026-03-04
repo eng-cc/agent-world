@@ -13,7 +13,7 @@
   - 重写首页结构与文案：`site/index.html`、`site/en/index.html`。
   - 保持 `site/assets/app.js` 依赖的 `id` 与 `data-*` 标记兼容。
 - 范围外
-  - 不改文档中心页面 `site/doc/cn/index.html`、`site/doc/en/index.html`。
+  - 不改文档中心页面 `site/site/doc/cn/index.html`、`site/doc/en/index.html`。
   - 不改 Rust 业务逻辑与 viewer 功能代码。
   - 不引入新的前端构建链路。
 

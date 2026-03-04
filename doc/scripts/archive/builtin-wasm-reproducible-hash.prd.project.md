@@ -1,9 +1,9 @@
 # Builtin Wasm Hash 可复现构建（项目管理文档）
 
-> 归档说明（2026-02-20）：该任务已由 `doc/p2p/builtin-wasm-identity-consensus.md` / `.project.md` 覆盖并替代。
+> 归档说明（2026-02-20）：该任务已由 `doc/p2p/consensus/builtin-wasm-identity-consensus.prd.md` / `.project.md` 覆盖并替代。
 
 ## 任务拆解
-- [x] RWH-1 输出设计文档（`doc/scripts/builtin-wasm-reproducible-hash.md`）
+- [x] RWH-1 输出设计文档（`doc/scripts/archive/builtin-wasm-reproducible-hash.prd.md`）
 - [x] RWH-2 输出项目管理文档（本文件）
 - [x] RWH-3 在 `scripts/build-wasm-module.sh` 接入 remap-path-prefix
 - [x] RWH-4 同步并校验 m1/m4 hash 清单（`sync --check`）

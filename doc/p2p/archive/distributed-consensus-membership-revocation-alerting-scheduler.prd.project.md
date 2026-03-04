@@ -5,7 +5,7 @@
 # Agent World Runtime：成员目录吊销异常告警与对账调度自动化（项目管理文档）
 
 ## 任务拆解（含 PRD-ID 映射）
-- [x] 输出设计文档（`doc/p2p/distributed/distributed-consensus-membership-revocation-alerting-scheduler.md`） (PRD-P2P-MIG-009)
+- [x] 输出设计文档（`doc/p2p/archive/distributed-consensus-membership-revocation-alerting-scheduler.prd.md`） (PRD-P2P-MIG-009)
 - [x] 输出项目管理文档（本文件） (PRD-P2P-MIG-009)
 - [x] 新增吊销对账异常告警策略与结构 (PRD-P2P-MIG-009)
 - [x] 实现 `evaluate_revocation_reconcile_alerts(...)` (PRD-P2P-MIG-009)
@@ -14,7 +14,7 @@
 - [x] 补充单元测试与回归验证 (PRD-P2P-MIG-009)
 
 ## 依赖
-- `doc/p2p/distributed/distributed-consensus-membership-revocation-governance-reconcile.md`
+- `doc/p2p/archive/distributed-consensus-membership-revocation-governance-reconcile.prd.md`
 - `crates/agent_world/src/runtime/distributed_membership_sync/reconciliation.rs`
 - `crates/agent_world/src/runtime/distributed_membership_sync/scheduler_tests.rs`
 

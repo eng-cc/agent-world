@@ -13,7 +13,7 @@
   - 不将 `sync-m1/m4` 默认路径切换为容器化 canonical builder。
   - 不将 CI required gate 切换为容器化 canonical builder 产物校验。
   - 不引入 `AGENT_WORLD_ALLOW_NON_CANONICAL_WASM` 回退开关。
-- 替代路线：继续沿用并维护 pinned nightly + `-Z build-std` 方案，见 `doc/scripts/builtin-wasm-nightly-build-std.md`。
+- 替代路线：继续沿用并维护 pinned nightly + `-Z build-std` 方案，见 `doc/scripts/wasm/builtin-wasm-nightly-build-std.prd.md`。
 
 ## 原方案归档
 

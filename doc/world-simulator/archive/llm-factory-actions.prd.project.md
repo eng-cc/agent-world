@@ -7,7 +7,7 @@
 ## 任务拆解（含 PRD-ID 映射）
 
 ### LFA0 文档立项
-- [x] LFA0.1 输出设计文档（`doc/world-simulator/llm/llm-factory-actions.md`）
+- [x] LFA0.1 输出设计文档（`doc/world-simulator/archive/llm-factory-actions.prd.md`）
 - [x] LFA0.2 输出项目管理文档（本文件）
 
 ### LFA1 simulator 动作与状态

@@ -33,7 +33,7 @@
 - 输出文件
   - `site/index.html`
   - `site/en/index.html`
-  - `site/doc/cn/index.html`
+  - `site/site/doc/cn/index.html`
   - `site/doc/en/index.html`
   - `site/doc/cn/viewer-manual.html`
   - `site/doc/en/viewer-manual.html`

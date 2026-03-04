@@ -1,6 +1,6 @@
 # Agent World：Builtin Wasm 清单收敛为“每平台 1 个 Canonical Hash”（归档专题）
 
-> 归档说明（2026-02-20）：该方案已被 `doc/p2p/builtin-wasm-identity-consensus.md` 取代，不再作为现行实现依据。
+> 归档说明（2026-02-20）：该方案已被 `doc/p2p/consensus/builtin-wasm-identity-consensus.prd.md` 取代，不再作为现行实现依据。
 
 ## 1. Executive Summary
 - Problem Statement: 旧的 builtin wasm 清单允许任意机器 hash 累积，导致清单膨胀、hash 来源不可判定、required 门禁稳定性下降。

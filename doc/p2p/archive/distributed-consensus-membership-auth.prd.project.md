@@ -5,7 +5,7 @@
 # Agent World Runtime：成员目录快照签名与来源校验（项目管理文档）
 
 ## 任务拆解（含 PRD-ID 映射）
-- [x] 输出设计文档（`doc/p2p/distributed/distributed-consensus-membership-auth.md`） (PRD-P2P-MIG-005)
+- [x] 输出设计文档（`doc/p2p/archive/distributed-consensus-membership-auth.prd.md`） (PRD-P2P-MIG-005)
 - [x] 扩展成员目录快照/广播结构支持可选签名字段 (PRD-P2P-MIG-005)
 - [x] 实现 `MembershipDirectorySigner`（签名/验签） (PRD-P2P-MIG-005)
 - [x] 实现 `publish_membership_change_with_dht_signed` 发布链路 (PRD-P2P-MIG-005)
@@ -13,7 +13,7 @@
 - [x] 补充单元测试并执行回归验证 (PRD-P2P-MIG-005)
 
 ## 依赖
-- `doc/p2p/distributed/distributed-consensus-membership-dht.md`
+- `doc/p2p/archive/distributed-consensus-membership-dht.prd.md`
 - `crates/agent_world/src/runtime/distributed_dht.rs`
 - `crates/agent_world/src/runtime/distributed_membership_sync.rs`
 

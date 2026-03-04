@@ -37,7 +37,7 @@
   - SC-7: 活跃设计文档（非 archive/devlog）中 strict schema 覆盖率按周提升，并保留逐篇人工迁移记录。
   - SC-8: 完成四人并行迁移分工，待迁移清单有冻结快照且每日可追踪燃尽进度。
   - SC-9: 活跃文档 `doc/...*.md` 依赖路径断链数为 0。
-  - SC-10: 全量 PRD 审读清单覆盖率 100%（活跃 708 + 归档 172）。
+  - SC-10: 全量 PRD 审读清单覆盖率 100%（活跃 710 + 归档 172）。
   - SC-11: 模块入口三件套（`prd.md`/`prd.project.md`/`prd.index.md`）已读状态长期保持 100%。
   - SC-12: 文档-代码偏差在同批次回写闭环率 100%。
 
@@ -183,7 +183,7 @@
 | PRD-ENGINEERING-009 | TASK-ENGINEERING-017 | `test_tier_required` | `doc-governance-check` 双向互链门禁验证 | PRD/project 追溯完整性 |
 | PRD-ENGINEERING-010 | TASK-ENGINEERING-018 | `test_tier_required` | 模块主项目任务项 tier 显式标注检查 | 任务到测试分层可审计性 |
 | PRD-ENGINEERING-011 | TASK-ENGINEERING-019 | `test_tier_required` | 活跃文档引用路径可达性门禁与断链修复验证 | 文档树引用完整性与迁移稳定性 |
-| PRD-ENGINEERING-012 | TASK-ENGINEERING-020 | `test_tier_required` | 全量审读清单覆盖率与入口文档已读率检查 | PRD 审读可追溯性 |
+| PRD-ENGINEERING-012 | TASK-ENGINEERING-020/024 | `test_tier_required` | 全量审读清单覆盖率与入口文档已读率检查 | PRD 审读可追溯性 |
 | PRD-ENGINEERING-013 | TASK-ENGINEERING-021/022 | `test_tier_required` | 代码一致性抽样与偏差回写核验 | 文档行为与实现一致性 |
 | PRD-ENGINEERING-014 | TASK-ENGINEERING-022/023/024 | `test_tier_required` + `test_tier_full` | 重复治理记录与上下游链路可达性检查 | PRD 体系清晰度与跨模块对齐 |
 - Decision Log:

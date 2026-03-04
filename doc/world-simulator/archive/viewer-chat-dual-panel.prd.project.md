@@ -5,7 +5,7 @@
 > 替代文档：`doc/world-simulator/viewer/viewer-chat-dedicated-right-panel.prd.project.md`、`doc/world-simulator/viewer/viewer-chat-right-panel-polish.prd.project.md`。
 
 ## 任务拆解（含 PRD-ID 映射）
-- [x] VCD1 输出设计文档（`doc/world-simulator/viewer/viewer-chat-dual-panel.md`）
+- [x] VCD1 输出设计文档（`doc/world-simulator/archive/viewer-chat-dual-panel.prd.md`）
 - [x] VCD2 输出项目管理文档（本文件）
 - [x] VCD3 新增左侧 Chat History Panel（会话列表）
 - [x] VCD4 右侧 Chat 区升级为会话视图（消息气泡 + 输入发送联动）
