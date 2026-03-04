@@ -1,5 +1,7 @@
 # headless-runtime 文档索引（原 nonviewer）
 
+审计轮次: 1
+
 说明：
 - 模块目录已从旧名称 `nonviewer` 重命名为 `headless-runtime`。
 - 历史专题文件名保留 `nonviewer-*` 前缀，仅路径发生变化。

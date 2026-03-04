@@ -1,5 +1,7 @@
 # Agent World Runtime：`agent_world_net` runtime_bridge 可编译闭环
 
+审计轮次: 1
+
 ## 1. Executive Summary
 - Problem Statement: 让 `agent_world_net --features runtime_bridge` 在当前拆分架构下可独立编译通过。
 - Proposed Solution: 清理 `runtime_bridge` 路径对已删除 runtime 内部模块路径的依赖，改为稳定 crate 依赖。

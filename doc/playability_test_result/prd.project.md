@@ -1,5 +1,7 @@
 # playability_test_result PRD Project
 
+审计轮次: 1
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] TASK-PLAYABILITY_TEST_RESULT-001 (PRD-PLAYABILITY_TEST_RESULT-001) [test_tier_required]: 完成可玩性结果模块 PRD 改写。
 - [ ] TASK-PLAYABILITY_TEST_RESULT-002 (PRD-PLAYABILITY_TEST_RESULT-001/002) [test_tier_required]: 固化反馈卡片标准字段与评分口径。

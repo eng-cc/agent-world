@@ -1,5 +1,7 @@
 # Agent World Runtime：以太坊风格 PoS Head 共识
 
+审计轮次: 1
+
 ## 1. Executive Summary
 - Problem Statement: 在现有 `QuorumConsensus` 基础上新增一套“类以太坊 PoS”的 Head 共识引擎。
 - Proposed Solution: 将“按票数计数”升级为“按 stake 加权”的超级多数判定（默认 2/3）。

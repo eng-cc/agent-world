@@ -1,5 +1,7 @@
 # world-runtime PRD Project
 
+审计轮次: 1
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] TASK-WORLD_RUNTIME-001 (PRD-WORLD_RUNTIME-001) [test_tier_required]: 完成 world-runtime PRD 改写，建立运行时设计主入口。
 - [ ] TASK-WORLD_RUNTIME-002 (PRD-WORLD_RUNTIME-001/002) [test_tier_required]: 补齐 runtime 核心边界（确定性、WASM、治理）验收清单。

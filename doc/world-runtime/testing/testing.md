@@ -1,5 +1,7 @@
 # Agent World Runtime：测试与基架建议（设计分册）
 
+审计轮次: 1
+
 本分册为 `doc/world-runtime.prd.md` 的详细展开。
 
 ## 集成测试用例（草案）

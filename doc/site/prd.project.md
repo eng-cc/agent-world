@@ -1,5 +1,7 @@
 # site PRD Project
 
+审计轮次: 1
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] TASK-SITE-001 (PRD-SITE-001) [test_tier_required]: 完成 site PRD 改写，建立站点设计主入口。
 - [ ] TASK-SITE-002 (PRD-SITE-001/002) [test_tier_required]: 固化站点信息架构与内容同步校验清单。

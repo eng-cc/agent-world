@@ -1,5 +1,7 @@
 # game PRD Project
 
+审计轮次: 1
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] TASK-GAME-001 (PRD-GAME-001) [test_tier_required]: 完成 game PRD 改写，建立玩法设计总入口。
 - [ ] TASK-GAME-002 (PRD-GAME-001/002) [test_tier_required]: 补齐核心玩法循环（新手/经济/战争）验收矩阵。

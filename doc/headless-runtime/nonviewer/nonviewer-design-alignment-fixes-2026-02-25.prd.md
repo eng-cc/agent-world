@@ -1,5 +1,7 @@
 # Non-Viewer 设计一致性修复（2026-02-25）
 
+审计轮次: 1
+
 - 对应项目管理文档: doc/headless-runtime/nonviewer/nonviewer-design-alignment-fixes-2026-02-25.prd.project.md
 
 ## 1. Executive Summary

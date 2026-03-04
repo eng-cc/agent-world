@@ -1,5 +1,7 @@
 # Pre-commit Checks（本地提交前测试脚本）（项目管理文档）
 
+审计轮次: 1
+
 ## 任务拆解
 - [x] 输出设计文档（`doc/scripts/precommit/pre-commit.prd.md`）
 - [x] 输出项目管理文档（本文件）

@@ -1,5 +1,7 @@
 # Agent World Runtime：模块订阅过滤器（设计分册）
 
+审计轮次: 1
+
 - 对应项目管理文档: doc/world-runtime/module/module-subscription-filters.prd.project.md
 
 本分册定义模块订阅的过滤规则，用于在路由阶段基于事件/动作内容进行细粒度筛选。

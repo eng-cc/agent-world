@@ -1,5 +1,7 @@
 # headless-runtime PRD（原 nonviewer）
 
+审计轮次: 1
+
 命名说明：
 - 模块目录已统一为 `headless-runtime`。
 - 为保持历史追踪连续性，PRD-ID 继续沿用 `PRD-NONVIEWER-*`。

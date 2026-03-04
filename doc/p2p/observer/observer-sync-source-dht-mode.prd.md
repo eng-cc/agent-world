@@ -1,5 +1,7 @@
 # Agent World Runtime：Observer 同步源策略化（DHT 组合链路，设计文档）
 
+审计轮次: 1
+
 ## 1. Executive Summary
 - Problem Statement: 为 `ObserverClient` 增加 DHT 组合链路下的 head 同步源策略，显式控制“网络+DHT路径”与“路径索引路径”的切换。
 - Proposed Solution: 在网络+DHT链路失败时支持回退到路径索引，提升本地恢复鲁棒性。
