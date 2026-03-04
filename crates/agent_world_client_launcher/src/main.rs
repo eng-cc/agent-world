@@ -16,9 +16,11 @@ use std::time::Duration;
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::Instant;
 
-use agent_world_launcher_ui::{
-    launcher_ui_fields_for_native, LauncherUiField, LauncherUiFieldKind,
-};
+#[cfg(not(target_arch = "wasm32"))]
+use agent_world_launcher_ui::launcher_ui_fields_for_native;
+#[cfg(target_arch = "wasm32")]
+use agent_world_launcher_ui::launcher_ui_fields_for_web;
+use agent_world_launcher_ui::{LauncherUiField, LauncherUiFieldKind};
 use eframe::egui;
 #[cfg(not(target_arch = "wasm32"))]
 use feedback_entry::FeedbackDraft;
@@ -626,19 +628,49 @@ impl ClientLauncherApp {
 
     fn render_config_section(&mut self, ui: &mut egui::Ui, section: &str) {
         ui.horizontal_wrapped(|ui| {
-            for field in launcher_ui_fields_for_native().filter(|field| field.section == section) {
-                let label = self.ui_field_label(field);
-                match field.kind {
-                    LauncherUiFieldKind::Text => {
-                        if let Some(value) = launcher_text_field_mut(&mut self.config, field.id) {
-                            ui.label(label);
-                            ui.text_edit_singleline(value);
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                for field in
+                    launcher_ui_fields_for_native().filter(|field| field.section == section)
+                {
+                    let label = self.ui_field_label(field);
+                    match field.kind {
+                        LauncherUiFieldKind::Text => {
+                            if let Some(value) = launcher_text_field_mut(&mut self.config, field.id)
+                            {
+                                ui.label(label);
+                                ui.text_edit_singleline(value);
+                            }
+                        }
+                        LauncherUiFieldKind::Checkbox => {
+                            if let Some(value) =
+                                launcher_checkbox_field_mut(&mut self.config, field.id)
+                            {
+                                ui.checkbox(value, label);
+                            }
                         }
                     }
-                    LauncherUiFieldKind::Checkbox => {
-                        if let Some(value) = launcher_checkbox_field_mut(&mut self.config, field.id)
-                        {
-                            ui.checkbox(value, label);
+                }
+            }
+
+            #[cfg(target_arch = "wasm32")]
+            {
+                for field in launcher_ui_fields_for_web().filter(|field| field.section == section) {
+                    let label = self.ui_field_label(field);
+                    match field.kind {
+                        LauncherUiFieldKind::Text => {
+                            if let Some(value) = launcher_text_field_mut(&mut self.config, field.id)
+                            {
+                                ui.label(label);
+                                ui.text_edit_singleline(value);
+                            }
+                        }
+                        LauncherUiFieldKind::Checkbox => {
+                            if let Some(value) =
+                                launcher_checkbox_field_mut(&mut self.config, field.id)
+                            {
+                                ui.checkbox(value, label);
+                            }
                         }
                     }
                 }

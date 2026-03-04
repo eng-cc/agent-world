@@ -32,7 +32,7 @@
 - [x] TASK-WORLD_SIMULATOR-029 (PRD-WORLD_SIMULATOR-013) [test_tier_required]: 完成“启动器 wasm 时间兼容与 Web 闭环修复”PRD 建模与任务拆解。
 - [x] TASK-WORLD_SIMULATOR-030 (PRD-WORLD_SIMULATOR-013) [test_tier_required]: 修复 launcher wasm `time not implemented` 崩溃并完成 Playwright headed 闭环采证。
 - [x] TASK-WORLD_SIMULATOR-031 (PRD-WORLD_SIMULATOR-014) [test_tier_required]: 完成“启动器 Web 必填校验分流修复”PRD 建模与任务拆解。
-- [ ] TASK-WORLD_SIMULATOR-032 (PRD-WORLD_SIMULATOR-014) [test_tier_required]: 修复 Web 端 native-only 必填项误报（launcher/chain runtime bin）并完成 Playwright 回归。
+- [x] TASK-WORLD_SIMULATOR-032 (PRD-WORLD_SIMULATOR-014) [test_tier_required]: 修复 Web 端 native-only 必填项误报（launcher/chain runtime bin）并完成 Playwright 回归。
 
 ## 专题任务映射（2026-03-02 批次）
 - [x] SUBTASK-WORLD_SIMULATOR-20260302-001 (PRD-WORLD_SIMULATOR-001/002/003) [test_tier_required]: `doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.prd.project.md`
@@ -90,8 +90,8 @@
 
 ## 状态
 - 更新日期: 2026-03-04
-- 当前状态: in_progress（存在进行中任务）
-- 当前优先任务: TASK-WORLD_SIMULATOR-032
+- 当前状态: completed（任务列表已完成，等待新需求）
+- 当前优先任务: 无
 - 并行待办: 无
 - 专题映射状态: 2026-03-02 批次 9/9、2026-03-03 批次 4/4、2026-03-04 批次 5/5 已纳入模块项目管理文档。
 - 手册入口状态: `doc/world-simulator/viewer/viewer-manual.md` 为唯一活跃手册入口。

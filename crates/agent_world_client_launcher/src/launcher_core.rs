@@ -62,13 +62,14 @@ pub(super) fn collect_required_config_issues(config: &LaunchConfig) -> Vec<Confi
         issues.push(ConfigIssue::ViewerStaticDirMissing);
     }
 
-    let launcher_bin = config.launcher_bin.trim();
-    if launcher_bin.is_empty() {
-        issues.push(ConfigIssue::LauncherBinRequired);
-    }
     #[cfg(not(target_arch = "wasm32"))]
-    if !launcher_bin.is_empty() && !Path::new(launcher_bin).is_file() {
-        issues.push(ConfigIssue::LauncherBinMissing);
+    {
+        let launcher_bin = config.launcher_bin.trim();
+        if launcher_bin.is_empty() {
+            issues.push(ConfigIssue::LauncherBinRequired);
+        } else if !Path::new(launcher_bin).is_file() {
+            issues.push(ConfigIssue::LauncherBinMissing);
+        }
     }
 
     issues
@@ -80,13 +81,14 @@ pub(super) fn collect_chain_required_config_issues(config: &LaunchConfig) -> Vec
         return issues;
     }
 
-    let chain_runtime_bin = config.chain_runtime_bin.trim();
-    if chain_runtime_bin.is_empty() {
-        issues.push(ConfigIssue::ChainRuntimeBinRequired);
-    }
     #[cfg(not(target_arch = "wasm32"))]
-    if !chain_runtime_bin.is_empty() && !Path::new(chain_runtime_bin).is_file() {
-        issues.push(ConfigIssue::ChainRuntimeBinMissing);
+    {
+        let chain_runtime_bin = config.chain_runtime_bin.trim();
+        if chain_runtime_bin.is_empty() {
+            issues.push(ConfigIssue::ChainRuntimeBinRequired);
+        } else if !Path::new(chain_runtime_bin).is_file() {
+            issues.push(ConfigIssue::ChainRuntimeBinMissing);
+        }
     }
 
     if parse_host_port(config.chain_status_bind.as_str(), "chain status bind").is_err() {
