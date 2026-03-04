@@ -598,6 +598,48 @@ fn llm_agent_parse_open_governance_proposal_action() {
 }
 
 #[test]
+fn llm_agent_parse_cast_governance_vote_action() {
+    let client = MockClient {
+        output: Some(
+            "{\"decision\":\"cast_governance_vote\",\"voter_agent_id\":\"self\",\"proposal_key\":\"proposal.power.tax\",\"option\":\"approve\",\"weight\":100}".to_string(),
+        ),
+        err: None,
+    };
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+    let decision = behavior.decide(&make_observation());
+
+    assert_eq!(
+        decision,
+        AgentDecision::Act(Action::CastGovernanceVote {
+            voter_agent_id: "agent-1".to_string(),
+            proposal_key: "proposal.power.tax".to_string(),
+            option: "approve".to_string(),
+            weight: 100,
+        })
+    );
+}
+
+#[test]
+fn llm_agent_rejects_cast_governance_vote_weight_over_limit() {
+    let client = MockClient {
+        output: Some(
+            "{\"decision\":\"cast_governance_vote\",\"voter_agent_id\":\"self\",\"proposal_key\":\"proposal.power.tax\",\"option\":\"approve\",\"weight\":101}".to_string(),
+        ),
+        err: None,
+    };
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+    let decision = behavior.decide(&make_observation());
+    assert_eq!(decision, AgentDecision::Wait);
+
+    let trace = behavior.take_decision_trace().expect("trace exists");
+    assert!(trace
+        .parse_error
+        .as_deref()
+        .unwrap_or_default()
+        .contains("weight must be within 1..=100"));
+}
+
+#[test]
 fn llm_agent_parse_grant_meta_progress_action() {
     let client = MockClient {
         output: Some(

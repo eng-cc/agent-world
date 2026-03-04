@@ -9,6 +9,7 @@ const GOVERNANCE_MIN_VOTING_WINDOW_TICKS: u64 = 1;
 const GOVERNANCE_MAX_VOTING_WINDOW_TICKS: u64 = 1_440;
 const GOVERNANCE_MIN_PASS_THRESHOLD_BPS: u16 = 5_000;
 const GOVERNANCE_MAX_PASS_THRESHOLD_BPS: u16 = 10_000;
+const GOVERNANCE_MAX_VOTE_WEIGHT: u32 = 100;
 const WAR_MAX_INTENSITY: u32 = 10;
 
 pub(super) fn parse_market_or_social_action(
@@ -852,6 +853,12 @@ fn parse_cast_governance_vote(
     let weight = parsed.weight.unwrap_or(1);
     if weight == 0 {
         return Err("cast_governance_vote weight must be > 0".to_string());
+    }
+    if weight > GOVERNANCE_MAX_VOTE_WEIGHT {
+        return Err(format!(
+            "cast_governance_vote weight must be within 1..={}",
+            GOVERNANCE_MAX_VOTE_WEIGHT
+        ));
     }
 
     Ok(Action::CastGovernanceVote {
