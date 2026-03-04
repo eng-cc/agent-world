@@ -123,7 +123,7 @@ rg -n "审计轮次:[[:space:]]*[1-9][0-9]*" doc/*/prd*.md doc/*/**/*.prd*.md
 ## 整改项
 | 编号 | 整改动作 | 责任人 | 截止时间 | 状态 |
 | --- | --- | --- | --- | --- |
-| A-001 | 统一 Playwright wrapper 口径（文档与脚本统一使用 `$CODEX_HOME/skills/playwright/scripts/playwright_cli.sh`，并注明仓库开发副本 `.agents/...`） | testing + scripts + site 维护者 | 2026-03-07 | open |
+| A-001 | 统一 Playwright wrapper 口径（文档与脚本统一使用 `$CODEX_HOME/skills/playwright/scripts/playwright_cli.sh`，并注明仓库开发副本 `.agents/...`） | testing + scripts + site 维护者 | 2026-03-07 | done |
 | A-002 | 回写所有 `scripts/viewer-tools/*.prd.md`、`scripts/precommit/*.prd.md` 等旧路径为 `doc/scripts/...` | core + engineering 维护者 | 2026-03-07 | open |
 | A-003 | 修正 launcher 生命周期专题测试路径（`world_game_launcher/tests.rs` -> 当前真实测试文件）并补最小验收命令 | testing/launcher 维护者 | 2026-03-07 | open |
 | A-004 | 修正 `pre-commit` required/full 套件描述，使其与 `scripts/ci-tests.sh` 当前行为一致 | scripts + testing/ci 维护者 | 2026-03-08 | open |

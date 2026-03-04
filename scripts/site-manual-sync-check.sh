@@ -11,14 +11,14 @@ MIRROR_MANUALS=(
 )
 
 REQUIRED_PATTERNS=(
-  'export REPO_ROOT="$(pwd)"'
-  'export PWCLI="$REPO_ROOT/.codex/skills/playwright/scripts/playwright_cli.sh"'
+  'export PWCLI="${CODEX_HOME:-$HOME/.codex}/skills/playwright/scripts/playwright_cli.sh"'
   '[ -f "$PWCLI" ] || { echo "missing playwright cli wrapper: $PWCLI" >&2; exit 1; }'
 )
 
 FORBIDDEN_PATTERNS=(
-  'export CODEX_HOME='
-  '$CODEX_HOME/skills/playwright/scripts/playwright_cli.sh'
+  'export REPO_ROOT="$(pwd)"'
+  '$REPO_ROOT/.codex/skills/playwright/scripts/playwright_cli.sh'
+  './.codex/skills/playwright/scripts/playwright_cli.sh'
 )
 
 contains_fixed_pattern() {

@@ -113,14 +113,14 @@ require_cmd npx
 require_cmd python3
 require_cmd rg
 
-LOCAL_PWCLI="$ROOT_DIR/.codex/skills/playwright/scripts/playwright_cli.sh"
 HOME_PWCLI="${CODEX_HOME:-$HOME/.codex}/skills/playwright/scripts/playwright_cli.sh"
-if [[ -x "$LOCAL_PWCLI" ]]; then
-  PWCLI="$LOCAL_PWCLI"
-elif [[ -x "$HOME_PWCLI" ]]; then
+REPO_DEV_PWCLI="$ROOT_DIR/.agents/skills/playwright/scripts/playwright_cli.sh"
+if [[ -x "$HOME_PWCLI" ]]; then
   PWCLI="$HOME_PWCLI"
+elif [[ -x "$REPO_DEV_PWCLI" ]]; then
+  PWCLI="$REPO_DEV_PWCLI"
 else
-  echo "error: playwright wrapper not found (checked: $LOCAL_PWCLI, $HOME_PWCLI)" >&2
+  echo "error: playwright wrapper not found (checked: $HOME_PWCLI, $REPO_DEV_PWCLI)" >&2
   exit 1
 fi
 

@@ -258,7 +258,7 @@ Game test stack is ready.
 
 Playwright example:
   PLAYWRIGHT_CLI_SESSION=game-test-open \\
-  ./.codex/skills/playwright/scripts/playwright_cli.sh open "$GAME_URL" --headed
+  "${CODEX_HOME:-$HOME/.codex}/skills/playwright/scripts/playwright_cli.sh" open "$GAME_URL" --headed
 
 Press Ctrl+C to stop launcher process.
 INFO

@@ -15,7 +15,7 @@
 - `scripts/viewer-visual-baseline.sh`
 - `scripts/run-viewer-web.sh`
 - `crates/agent_world_viewer/src/web_test_api.rs`
-- `./.codex/skills/playwright/scripts/playwright_cli.sh`
+- `$CODEX_HOME/skills/playwright/scripts/playwright_cli.sh`（默认 `~/.codex/...`；仓库开发副本 `.agents/skills/playwright/scripts/playwright_cli.sh`）
 
 ## 状态
 - 当前阶段：VRQ-6 已完成（发行 QA 闭环全 PASS）

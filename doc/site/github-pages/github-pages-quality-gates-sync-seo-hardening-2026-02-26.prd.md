@@ -21,7 +21,7 @@
 ## 接口/数据
 - 校验脚本接口：
   - `scripts/site-link-check.sh`：校验 `site/*.html` 与 `site/doc/**/*.html` 的本地相对链接存在性。
-  - `scripts/site-manual-sync-check.sh`：校验站内手册镜像与主手册关键路径口径一致（重点校验 `.codex/skills/playwright/scripts/playwright_cli.sh` 与旧口径 `CODEX_HOME`）。
+- `scripts/site-manual-sync-check.sh`：校验站内手册镜像与主手册关键路径口径一致（统一校验 `$CODEX_HOME/skills/playwright/scripts/playwright_cli.sh`，并保留仓库开发副本 `.agents/...` 说明）。
 - CI 接口：
   - `.github/workflows/pages.yml` 在 `Upload Pages artifact` 之前执行上述校验。
 - SEO 字段：
