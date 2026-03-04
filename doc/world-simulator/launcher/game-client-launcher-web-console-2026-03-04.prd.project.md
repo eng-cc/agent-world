@@ -4,9 +4,9 @@
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0 (PRD-WORLD_SIMULATOR-010) [test_tier_required]: 建档并冻结 Web 控制台需求、验收标准与非目标。
-- [ ] T1 (PRD-WORLD_SIMULATOR-010) [test_tier_required]: 新增 `world_web_launcher` 二进制（HTTP 控制台 + 启停 API + 状态/日志接口）。
-- [ ] T2 (PRD-WORLD_SIMULATOR-010) [test_tier_required]: 将 Web 控制台入口接入发行打包脚本并生成运行脚本。
-- [ ] T3 (PRD-WORLD_SIMULATOR-010) [test_tier_required]: 补齐单元测试、模块 PRD 追溯与当日 devlog。
+- [x] T1 (PRD-WORLD_SIMULATOR-010) [test_tier_required]: 新增 `world_web_launcher` 二进制（HTTP 控制台 + 启停 API + 状态/日志接口）。
+- [x] T2 (PRD-WORLD_SIMULATOR-010) [test_tier_required]: 将 Web 控制台入口接入发行打包脚本并生成运行脚本。
+- [x] T3 (PRD-WORLD_SIMULATOR-010) [test_tier_required]: 补齐单元测试、模块 PRD 追溯与当日 devlog。
 
 ## 依赖
 - `doc/world-simulator/prd.md`
@@ -17,6 +17,6 @@
 - `testing-manual.md`
 
 ## 状态
-- 当前阶段: active
-- 当前任务: T1/T2/T3
-- 备注: 面向“无图形会话服务器 + 浏览器远程控制”场景。
+- 当前阶段: completed
+- 当前任务: 无
+- 备注: 面向“无图形会话服务器 + 浏览器远程控制”场景，T0~T3 已完成。

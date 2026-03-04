@@ -15,10 +15,12 @@ Usage: ./scripts/build-game-launcher-bundle.sh [options]
 Build a distributable launcher bundle:
 - bin/agent_world_client_launcher
 - bin/world_game_launcher
+- bin/world_web_launcher
 - bin/world_viewer_live
 - bin/world_chain_runtime
 - web/ (prebuilt viewer static assets)
 - run-client.sh (desktop client launcher entry)
+- run-web-launcher.sh (headless web console launcher entry)
 - run-game.sh (one-command entry)
 
 Options:
@@ -145,6 +147,7 @@ if [[ -n "$WEB_DIST_SOURCE" ]]; then
 fi
 
 LAUNCHER_BIN_NAME="$(resolve_binary_name world_game_launcher "$TARGET_TRIPLE")"
+WEB_LAUNCHER_BIN_NAME="$(resolve_binary_name world_web_launcher "$TARGET_TRIPLE")"
 LIVE_BIN_NAME="$(resolve_binary_name world_viewer_live "$TARGET_TRIPLE")"
 CHAIN_BIN_NAME="$(resolve_binary_name world_chain_runtime "$TARGET_TRIPLE")"
 CLIENT_LAUNCHER_BIN_NAME="$(resolve_binary_name agent_world_client_launcher "$TARGET_TRIPLE")"
@@ -166,26 +169,29 @@ run mkdir -p "$BUNDLE_BIN_DIR" "$BUNDLE_WEB_DIR"
 
 # 1) Build native binaries for launcher/live/client launcher.
 if [[ "$PROFILE" == "release" ]]; then
-  run env -u RUSTC_WRAPPER cargo build --release "${CARGO_TARGET_ARGS[@]}" -p agent_world --bin world_game_launcher --bin world_viewer_live --bin world_chain_runtime
+  run env -u RUSTC_WRAPPER cargo build --release "${CARGO_TARGET_ARGS[@]}" -p agent_world --bin world_game_launcher --bin world_web_launcher --bin world_viewer_live --bin world_chain_runtime
   run env -u RUSTC_WRAPPER cargo build --release "${CARGO_TARGET_ARGS[@]}" -p agent_world_client_launcher
 else
-  run env -u RUSTC_WRAPPER cargo build "${CARGO_TARGET_ARGS[@]}" -p agent_world --bin world_game_launcher --bin world_viewer_live --bin world_chain_runtime
+  run env -u RUSTC_WRAPPER cargo build "${CARGO_TARGET_ARGS[@]}" -p agent_world --bin world_game_launcher --bin world_web_launcher --bin world_viewer_live --bin world_chain_runtime
   run env -u RUSTC_WRAPPER cargo build "${CARGO_TARGET_ARGS[@]}" -p agent_world_client_launcher
 fi
 
 LAUNCHER_SRC="$ROOT_DIR/target/$TARGET_OUTPUT_SUBDIR/$LAUNCHER_BIN_NAME"
+WEB_LAUNCHER_SRC="$ROOT_DIR/target/$TARGET_OUTPUT_SUBDIR/$WEB_LAUNCHER_BIN_NAME"
 LIVE_SRC="$ROOT_DIR/target/$TARGET_OUTPUT_SUBDIR/$LIVE_BIN_NAME"
 CHAIN_SRC="$ROOT_DIR/target/$TARGET_OUTPUT_SUBDIR/$CHAIN_BIN_NAME"
 CLIENT_LAUNCHER_SRC="$ROOT_DIR/target/$TARGET_OUTPUT_SUBDIR/$CLIENT_LAUNCHER_BIN_NAME"
 
 if [[ "$DRY_RUN" != "1" ]]; then
   [[ -f "$LAUNCHER_SRC" ]] || { echo "error: launcher binary not found: $LAUNCHER_SRC" >&2; exit 1; }
+  [[ -f "$WEB_LAUNCHER_SRC" ]] || { echo "error: web launcher binary not found: $WEB_LAUNCHER_SRC" >&2; exit 1; }
   [[ -f "$LIVE_SRC" ]] || { echo "error: world_viewer_live binary not found: $LIVE_SRC" >&2; exit 1; }
   [[ -f "$CHAIN_SRC" ]] || { echo "error: world_chain_runtime binary not found: $CHAIN_SRC" >&2; exit 1; }
   [[ -f "$CLIENT_LAUNCHER_SRC" ]] || { echo "error: client launcher binary not found: $CLIENT_LAUNCHER_SRC" >&2; exit 1; }
 fi
 
 replace_file "$LAUNCHER_SRC" "$BUNDLE_BIN_DIR/$LAUNCHER_BIN_NAME"
+replace_file "$WEB_LAUNCHER_SRC" "$BUNDLE_BIN_DIR/$WEB_LAUNCHER_BIN_NAME"
 replace_file "$LIVE_SRC" "$BUNDLE_BIN_DIR/$LIVE_BIN_NAME"
 replace_file "$CHAIN_SRC" "$BUNDLE_BIN_DIR/$CHAIN_BIN_NAME"
 replace_file "$CLIENT_LAUNCHER_SRC" "$BUNDLE_BIN_DIR/$CLIENT_LAUNCHER_BIN_NAME"
@@ -228,6 +234,16 @@ AGENT_WORLD_WORLD_CHAIN_RUNTIME_BIN=\"\$ROOT_DIR/bin/$CHAIN_BIN_NAME\" \
 LAUNCH"
 run chmod +x "$OUT_DIR/run-client.sh"
 
+run bash -lc "cat > '$OUT_DIR/run-web-launcher.sh' <<'LAUNCH'
+#!/usr/bin/env bash
+set -euo pipefail
+ROOT_DIR=\"\$(cd \"\$(dirname \"\${BASH_SOURCE[0]}\")\" && pwd)\"
+AGENT_WORLD_GAME_LAUNCHER_BIN=\"\$ROOT_DIR/bin/$LAUNCHER_BIN_NAME\" \
+AGENT_WORLD_GAME_STATIC_DIR=\"\$ROOT_DIR/web\" \
+\"\$ROOT_DIR/bin/$WEB_LAUNCHER_BIN_NAME\" \"\$@\"
+LAUNCH"
+run chmod +x "$OUT_DIR/run-web-launcher.sh"
+
 run bash -lc "cat > '$OUT_DIR/run-game.sh' <<'LAUNCH'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -241,21 +257,25 @@ Agent World Launcher Bundle
 
 Quick start:
 1) Desktop launcher: ./run-client.sh
-2) CLI launcher: ./run-game.sh
-3) Open URL printed by launcher (CLI path defaults auto-open browser).
+2) Web launcher (headless): ./run-web-launcher.sh --listen-bind 0.0.0.0:5410
+3) CLI launcher: ./run-game.sh
+4) Open URL printed by launcher (CLI path defaults auto-open browser).
 
 Optional:
 - Desktop launcher can start/stop game stack from GUI and open URL in one click.
+- Web launcher provides a browser control panel for headless server operation.
 - Enable LLM mode: ./run-game.sh --with-llm
 - Disable auto-open browser: ./run-game.sh --no-open-browser
 
 Bundle layout:
 - bin/agent_world_client_launcher
 - bin/world_game_launcher
+- bin/world_web_launcher
 - bin/world_viewer_live
 - bin/world_chain_runtime
 - web/
 - run-client.sh
+- run-web-launcher.sh
 - run-game.sh
 README"
 
@@ -263,8 +283,9 @@ cat <<INFO
 Bundle ready: $OUT_DIR
 - client launcher: $BUNDLE_BIN_DIR/$CLIENT_LAUNCHER_BIN_NAME
 - launcher:        $BUNDLE_BIN_DIR/$LAUNCHER_BIN_NAME
+- web launcher:    $BUNDLE_BIN_DIR/$WEB_LAUNCHER_BIN_NAME
 - live:            $BUNDLE_BIN_DIR/$LIVE_BIN_NAME
 - chain runtime:   $BUNDLE_BIN_DIR/$CHAIN_BIN_NAME
 - web:             $BUNDLE_WEB_DIR
-- entries:         $OUT_DIR/run-client.sh, $OUT_DIR/run-game.sh
+- entries:         $OUT_DIR/run-client.sh, $OUT_DIR/run-web-launcher.sh, $OUT_DIR/run-game.sh
 INFO
