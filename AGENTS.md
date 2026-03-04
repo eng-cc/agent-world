@@ -27,3 +27,7 @@
 - 约束保持不变：
   - Web 闭环为默认链路（Playwright 优先）。
   - `capture-viewer-frame.sh` 仅在 native 图形链路问题或 Web 无法复现时使用。
+
+# Project Agents
+
+See `third_party/rust-skills/AGENTS.md` for Rust development guidelines.
