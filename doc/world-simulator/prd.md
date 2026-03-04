@@ -22,12 +22,14 @@
   - `doc/world-simulator/prd/acceptance/web-llm-evidence-template.md`（PRD-WORLD_SIMULATOR-002/003）
   - `doc/world-simulator/prd/quality/experience-trend-tracking.md`（PRD-WORLD_SIMULATOR-003）
   - `doc/world-simulator/prd/launcher/blockchain-transfer.md`（PRD-WORLD_SIMULATOR-004/005）
+  - `doc/world-simulator/launcher/game-client-launcher-web-console-2026-03-04.prd.md`（PRD-WORLD_SIMULATOR-010）
 
 ## 里程碑
 - M1 (2026-03-03): 完成模块设计 PRD 主体重写与任务改造。
 - M2 (2026-03-03): 完成启动器链上转账需求建模与任务拆解。
 - M3: 完成 PRD 分册结构落地，主入口仅保留总览与导航。
 - M4: 完成链运行时转账 API、运行时账本动作、启动器交互与闭环验收。
+- M5 (2026-03-04): 完成无 GUI 服务器场景的启动器 Web 控制台能力建模与落地。
 
 ## 风险
 - 模块边界演进快，文档同步可能滞后。
@@ -51,6 +53,7 @@
   - SC-11: 启动器“设置”入口升级为完整设置中心，覆盖游戏/区块链/LLM 配置并提供统一可见性。
   - SC-12: Viewer 在 Linux native + Web 双链路下打开 2D/3D 视角时不得出现粉紫屏，且关键交互必须可操作。
   - SC-13: 启动器发行包在可执行文件仍被运行时，重复打包不得出现 `Text file busy` 且不得产生“半更新”产物。
+  - SC-14: 启动器支持无 GUI 服务器 Web 控制台，允许远程启动/停止并查看状态日志。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -74,6 +77,7 @@
   - PRD-WORLD_SIMULATOR-007: As a 启动器玩家, I want a complete settings center for game/blockchain/LLM, so that all launch-related configuration can be managed from one place.
   - PRD-WORLD_SIMULATOR-008: As a Viewer 开发者, I want native/web rendering defaults to avoid tonemapping fallback regressions, so that 2D/3D rendering remains stable and operable.
   - PRD-WORLD_SIMULATOR-009: As a 发布工程师, I want launcher bundle rebuild to safely replace running binaries, so that repeated packaging does not fail or leave mixed-version artifacts.
+  - PRD-WORLD_SIMULATOR-010: As an 运维人员, I want a web-based launcher control plane, so that headless servers can be operated through network browsers.
 - Critical User Flows:
   1. Flow-WS-001（Web-first 闭环）:
      `选择场景 -> 启动 Viewer Web -> 执行关键交互 -> 采集日志/截图/指标 -> 产出 test_tier_required 结论`
@@ -89,6 +93,8 @@
      `启动 native viewer -> 切换 2D/3D -> 观察渲染与交互 -> 若异常则抓取日志/截图 -> 修复后执行 Web+native 双链路回归`
   7. Flow-WS-007（Launcher 重复打包容错）:
      `已有 bundle 运行中 -> 再次执行 build-game-launcher-bundle -> 二进制替换成功 -> 产物完整可启动`
+  8. Flow-WS-008（Launcher Web 控制台远程运维）:
+     `SSH 启动 world_web_launcher -> 浏览器访问控制台 -> 提交配置并启动 -> 观察状态/日志 -> 远程停止`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
@@ -99,6 +105,7 @@
 | 反馈分布式提交 | 反馈文本、会话标识、链状态地址 | 远端失败时自动写本地文件，不丢失原始错误 | `submitting -> remote_failed -> local_saved -> reported` | 本地落盘路径按日期归档；错误签名保留用于回归 | 仅本地授权实例可写入反馈归档目录 |
 | Viewer 色调映射兼容 | `render_profile`、`tonemapping`、`bevy feature`（含 `tonemapping_luts`） | 启动时加载后处理组件；缺失依赖时不得进入粉紫回退态 | `boot -> render_ready -> interactive` | 默认 profile 保持稳定可视；2D/3D 切换不重置错误态 | 对外仅保留配置入口；底层 feature 由构建配置管控 |
 | Launcher bundle 二进制替换容错 | `OUT_DIR/bin/*`、目标文件占用状态、`--profile`、`--web-dist` | 打包时先删除目标二进制再 copy；若旧进程占用也需完成替换 | `build_start -> binaries_replaced -> web_prepared -> bundle_ready` | 同一 `OUT_DIR` 多次执行后产物版本需一致，不得残留半更新状态 | 仅本地构建者可写 bundle 输出目录 |
+| Launcher Web 控制台 | `scenario/live_bind/web_bind/viewer_host/viewer_port/viewer_static_dir/llm/chain` | 浏览器点击“启动/停止”触发子进程编排与状态刷新 | `idle -> running -> stopped/exited` | bind/端口/目录先校验，失败时拒绝启动并返回错误详情 | 默认部署在受信网络，具备远程访问能力 |
 - Acceptance Criteria:
   - AC-1: world-simulator PRD 覆盖场景、Viewer、LLM、启动器四条主线。
   - AC-2: world-simulator project 文档维护任务拆解与状态。
@@ -116,6 +123,7 @@
   - AC-14: 设置中心内的 LLM 配置（`llm.api_key/base_url/model`）必须支持文件重载与保存；游戏/区块链配置变更应即时作用于启动器内存配置。
   - AC-15: `agent_world_viewer` native 链路在默认渲染配置下不得出现 `TonyMcMapFace tonemapping requires tonemapping_luts feature` 错误；2D/3D 均可正常渲染并可交互。
   - AC-16: `scripts/build-game-launcher-bundle.sh` 在 `OUT_DIR/bin` 目标文件已存在且正被运行时，重复执行仍可成功产出完整 bundle，不得出现 `Text file busy` 或“二进制部分更新”状态。
+  - AC-17: `world_web_launcher` 支持在无 GUI 服务器上通过浏览器完成启动/停止、状态查询与日志查看，且打包产物提供独立入口脚本。
 - Non-Goals:
   - 不在本 PRD 中详细列出每个 UI 像素级规范。
   - 不替代 world-runtime/p2p 的底层协议设计。
@@ -135,6 +143,8 @@
   - `doc/world-simulator/prd/acceptance/web-llm-evidence-template.md`
   - `doc/world-simulator/prd/quality/experience-trend-tracking.md`
   - `doc/world-simulator/prd/launcher/blockchain-transfer.md`
+  - `doc/world-simulator/launcher/game-client-launcher-web-console-2026-03-04.prd.md`
+  - `crates/agent_world/src/bin/world_web_launcher.rs`
   - `scripts/build-game-launcher-bundle.sh`
   - `testing-manual.md`
 - Edge Cases & Error Handling:
@@ -147,6 +157,7 @@
   - 远端不可达回退：反馈提交流程在 `Connection refused` 时必须本地落盘，保证证据不丢失。
   - 渲染能力缺口：当色调映射依赖缺失时，viewer 必须避免进入粉紫回退屏，并保留可诊断日志用于回归。
   - 产物覆写冲突：当 bundle 目标二进制正在运行时，打包脚本必须通过“删除后复制”避免 `Text file busy` 并确保输出目录完整可启动。
+  - 无 GUI 环境：桌面 GUI 不可用时需通过 Web 控制台操作启动器，且必须支持远程状态可见与错误可诊断。
 - Non-Functional Requirements:
   - 性能目标:
     - NFR-1: 启动器链状态探针刷新周期 <= 1s，状态可见延迟 <= 2s。
@@ -155,6 +166,7 @@
     - NFR-3: Launcher/Web 闭环流程在 Linux/macOS 开发环境可执行并产出一致证据结构。
     - NFR-8: Viewer 2D/3D 默认渲染在 Linux native + Web 环境可稳定启动，且不出现粉紫回退屏。
     - NFR-9: 复用同一 `--out-dir` 连续执行 `build-game-launcher-bundle.sh`（含“上一次 bundle 仍运行”场景）时，打包成功率需为 100%（`test_tier_required`）。
+    - NFR-10: `world_web_launcher` 在受信网络下可绑定 `0.0.0.0`，并在浏览器端稳定轮询状态接口（`p95 <= 200ms`，本地网络）。
   - 安全与隐私目标:
     - NFR-4: 日志与证据中不得输出私钥、口令、完整凭据；敏感字段需脱敏。
     - NFR-5: 转账请求必须经过 nonce anti-replay 与余额约束校验。
@@ -191,6 +203,7 @@
 | PRD-WORLD_SIMULATOR-007 | TASK-WORLD_SIMULATOR-016/017 | `test_tier_required` | 设置中心分区配置读写与生效验证 | 启动器配置可用性与一致性 |
 | PRD-WORLD_SIMULATOR-008 | TASK-WORLD_SIMULATOR-019/020 | `test_tier_required` + `test_tier_full` | native 抓帧脚本复现/回归、`agent_world_viewer` 单测与构建检查 | Viewer 2D/3D 渲染稳定性、native 交互可用性 |
 | PRD-WORLD_SIMULATOR-009 | TASK-WORLD_SIMULATOR-021/022 | `test_tier_required` | 启动 `run-game.sh` 占用二进制后重复执行 bundle 脚本，验证无 `Text file busy` 且新产物可启动 | 启动器发行打包稳定性、重复发布可靠性 |
+| PRD-WORLD_SIMULATOR-010 | TASK-WORLD_SIMULATOR-023/024 | `test_tier_required` | 启动 `world_web_launcher` 并通过 HTTP API 执行远程启停与状态轮询回归，验证打包入口可用 | 无 GUI 服务器远程运维、launcher Web 控制能力 |
 
 - Decision Log:
 
@@ -201,3 +214,4 @@
 | DEC-WS-003 | 反馈分布式提交在 `Connection refused` 时强制本地回落并保留错误签名 | 远端失败直接报错终止，不落盘 | 可确保证据不丢失，便于回归和线上诊断；已被 `TASK-WORLD_SIMULATOR-012` 验证。 |
 | DEC-WS-004 | 保留 `TonyMcMapFace` 默认色调映射并显式启用 `bevy/tonemapping_luts` 依赖 | 改默认 tonemapping 或运行时静默降级 | 保持既有视觉基线，同时消除 native 粉紫回退与不可交互回归；已由 `TASK-WORLD_SIMULATOR-020` 的 native 抓帧与 viewer 回归验证。 |
 | DEC-WS-005 | `build-game-launcher-bundle.sh` 在 copy 前删除目标二进制，规避运行中覆盖 `Text file busy` | 保持直接 `cp` 覆写（遇占用即失败） | Linux 上删除运行中可执行文件不会中断现有进程，可确保同一路径重建 bundle 不进入半更新态；已由 `TASK-WORLD_SIMULATOR-022` 通过“运行中重复打包”回归验证。 |
+| DEC-WS-006 | 新增 `world_web_launcher` 作为 headless 场景控制平面 | 仅保留桌面 GUI / 仅依赖 CLI 手工操作 | headless 服务器无图形会话，Web 控制台可在浏览器统一操作并保留日志可观察性；由 `TASK-WORLD_SIMULATOR-024` 落地。 |

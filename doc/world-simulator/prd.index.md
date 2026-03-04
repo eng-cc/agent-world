@@ -1,6 +1,6 @@
 # world-simulator PRD 文件级索引
 
-更新时间：2026-03-03
+更新时间：2026-03-04
 
 ## 入口
 - 模块 PRD：`doc/world-simulator/prd.md`
@@ -26,6 +26,7 @@
 | `doc/world-simulator/launcher/game-client-launcher-graceful-stop-2026-03-02.prd.md` | `doc/world-simulator/launcher/game-client-launcher-graceful-stop-2026-03-02.prd.project.md` |
 | `doc/world-simulator/launcher/game-client-launcher-i18n-required-config-2026-03-02.prd.md` | `doc/world-simulator/launcher/game-client-launcher-i18n-required-config-2026-03-02.prd.project.md` |
 | `doc/world-simulator/launcher/game-client-launcher-llm-settings-panel-2026-03-02.prd.md` | `doc/world-simulator/launcher/game-client-launcher-llm-settings-panel-2026-03-02.prd.project.md` |
+| `doc/world-simulator/launcher/game-client-launcher-web-console-2026-03-04.prd.md` | `doc/world-simulator/launcher/game-client-launcher-web-console-2026-03-04.prd.project.md` |
 | `doc/world-simulator/launcher/game-unified-launcher-2026-02-27.prd.md` | `doc/world-simulator/launcher/game-unified-launcher-2026-02-27.prd.project.md` |
 | `doc/world-simulator/launcher/launcher-chain-runtime-decouple-2026-02-28.prd.md` | `doc/world-simulator/launcher/launcher-chain-runtime-decouple-2026-02-28.prd.project.md` |
 | `doc/world-simulator/llm/indirect-control-tick-lifecycle-long-term-memory.prd.md` | `doc/world-simulator/llm/indirect-control-tick-lifecycle-long-term-memory.prd.project.md` |
