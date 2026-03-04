@@ -333,7 +333,12 @@ async (page) => {
         firstProgressMs = Date.now() - startedAt;
         break;
       }
-      if (expectProgress && finalFeedback?.stage === "completed_no_progress") {
+      const allowEarlyNoProgressBreak = action !== "play";
+      if (
+        expectProgress &&
+        allowEarlyNoProgressBreak &&
+        finalFeedback?.stage === "completed_no_progress"
+      ) {
         break;
       }
       if (expectProgress && finalFeedback?.stage === "blocked") {

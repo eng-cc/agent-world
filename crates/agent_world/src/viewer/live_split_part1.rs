@@ -161,7 +161,7 @@ enum LiveLoopIterationAction {
 }
 
 const LIVE_LOOP_QUEUE_CAPACITY: usize = 256;
-const STEP_REQUEST_CONSENSUS_RETRY_MAX_ATTEMPTS: usize = 30;
+const STEP_REQUEST_CONSENSUS_RETRY_MAX_ATTEMPTS: usize = 100;
 const STEP_REQUEST_CONSENSUS_RETRY_SLEEP: Duration = Duration::from_millis(20);
 
 impl ViewerLiveServer {

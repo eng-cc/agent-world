@@ -1053,7 +1053,7 @@ fn step_request_emits_completion_ack_timeout_when_consensus_has_no_commit() {
         .handle_step_request(&mut session, &mut writer, 1, Some(2002))
         .expect("step request should complete");
 
-    let ack = read_control_completion_ack(&peer, Duration::from_secs(2))
+    let ack = read_control_completion_ack(&peer, Duration::from_secs(3))
         .expect("control completion ack should be emitted");
     assert_eq!(ack.request_id, 2002);
     assert_eq!(ack.status, ControlCompletionStatus::TimeoutNoProgress);

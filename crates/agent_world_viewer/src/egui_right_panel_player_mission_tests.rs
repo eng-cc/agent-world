@@ -161,15 +161,15 @@ fn player_control_stage_label_maps_core_states() {
     );
     assert_eq!(
         player_control_stage_label("completed_advanced", crate::i18n::UiLocale::ZhCn),
-        "已完成"
+        "已完成（有推进）"
     );
     assert_eq!(
         player_control_stage_label("completed_no_progress", crate::i18n::UiLocale::EnUs),
-        "Completed"
+        "Completed (no progress)"
     );
     assert_eq!(
         player_control_stage_label("applied", crate::i18n::UiLocale::EnUs),
-        "Completed"
+        "Completed (advanced)"
     );
 }
 

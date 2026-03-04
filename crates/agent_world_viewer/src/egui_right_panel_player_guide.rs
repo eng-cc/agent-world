@@ -351,12 +351,10 @@ pub(super) fn player_control_stage_label(
         ("received", false) => "Received",
         ("executing", true) => "执行中",
         ("executing", false) => "Executing",
-        ("completed_advanced", true) | ("completed_no_progress", true) | ("applied", true) => {
-            "已完成"
-        }
-        ("completed_advanced", false) | ("completed_no_progress", false) | ("applied", false) => {
-            "Completed"
-        }
+        ("completed_advanced", true) | ("applied", true) => "已完成（有推进）",
+        ("completed_advanced", false) | ("applied", false) => "Completed (advanced)",
+        ("completed_no_progress", true) => "已完成（无推进）",
+        ("completed_no_progress", false) => "Completed (no progress)",
         ("blocked", true) => "已阻断",
         ("blocked", false) => "Blocked",
         (_, true) => "处理中",
@@ -1072,6 +1070,21 @@ pub(super) fn render_player_mission_hud(
                                     ))
                                     .color(stage_color),
                                 );
+                                ui.small(if locale.is_zh() {
+                                    format!(
+                                        "增量: tick +{} · event +{} · trace +{}",
+                                        feedback.delta_logical_time,
+                                        feedback.delta_event_seq,
+                                        feedback.delta_trace_count
+                                    )
+                                } else {
+                                    format!(
+                                        "Delta: tick +{} · event +{} · trace +{}",
+                                        feedback.delta_logical_time,
+                                        feedback.delta_event_seq,
+                                        feedback.delta_trace_count
+                                    )
+                                });
                                 ui.small(feedback.effect.as_str());
                                 if let Some(reason) = feedback.reason.as_ref() {
                                     ui.small(

@@ -36,9 +36,13 @@ const TEST_API_GLOBAL_NAME: &str = "__AW_TEST__";
 #[cfg(target_arch = "wasm32")]
 const WEB_TEST_API_CONTROL_ACTIONS: [&str; 3] = ["play", "pause", "step"];
 #[cfg(target_arch = "wasm32")]
-const CONTROL_STALL_FRAME_THRESHOLD: u32 = 150;
+const CONTROL_STALL_FRAME_RATE_FALLBACK: f64 = 60.0;
 #[cfg(target_arch = "wasm32")]
-const CONTROL_STALL_HINT_SECS: f64 = 2.5;
+const CONTROL_STALL_FRAME_THRESHOLD_STEP: u32 = 150;
+#[cfg(target_arch = "wasm32")]
+const CONTROL_STALL_FRAME_THRESHOLD_PLAY_STEADY: u32 = 180;
+#[cfg(target_arch = "wasm32")]
+const CONTROL_STALL_FRAME_THRESHOLD_PLAY_COLD_START: u32 = 420;
 #[cfg(target_arch = "wasm32")]
 const CONTROL_STAGE_RECEIVED: &str = "received";
 #[cfg(target_arch = "wasm32")]
@@ -73,8 +77,10 @@ struct WebTestApiControlFeedback {
     effect: String,
     baseline_logical_time: u64,
     baseline_event_seq: u64,
+    baseline_trace_count: usize,
     delta_logical_time: u64,
     delta_event_seq: u64,
+    delta_trace_count: usize,
     awaiting_effect: bool,
     no_progress_frames: u32,
 }
@@ -85,6 +91,9 @@ pub(super) struct WebTestApiControlFeedbackSnapshot {
     pub(super) reason: Option<String>,
     pub(super) hint: Option<String>,
     pub(super) effect: String,
+    pub(super) delta_logical_time: u64,
+    pub(super) delta_event_seq: u64,
+    pub(super) delta_trace_count: usize,
 }
 #[cfg(target_arch = "wasm32")]
 #[derive(Clone, Debug)]
@@ -187,11 +196,38 @@ fn next_control_feedback_id() -> u64 {
 }
 
 #[cfg(target_arch = "wasm32")]
-fn latest_logical_time_event_seq() -> (u64, u64) {
+fn latest_progress_baseline() -> (u64, u64, usize) {
     WEB_TEST_API_STATE_SNAPSHOT.with(|slot| {
         let snapshot = slot.borrow();
-        (snapshot.logical_time, snapshot.event_seq)
+        (
+            snapshot.logical_time,
+            snapshot.event_seq,
+            snapshot.trace_count,
+        )
     })
+}
+
+#[cfg(target_arch = "wasm32")]
+fn control_feedback_no_progress_threshold(feedback: &WebTestApiControlFeedback) -> u32 {
+    match feedback.action.as_str() {
+        "play" => {
+            if feedback.baseline_logical_time == 0
+                && feedback.baseline_event_seq == 0
+                && feedback.baseline_trace_count == 0
+            {
+                CONTROL_STALL_FRAME_THRESHOLD_PLAY_COLD_START
+            } else {
+                CONTROL_STALL_FRAME_THRESHOLD_PLAY_STEADY
+            }
+        }
+        "step" => CONTROL_STALL_FRAME_THRESHOLD_STEP,
+        _ => CONTROL_STALL_FRAME_THRESHOLD_STEP,
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+fn stall_hint_secs(frame_threshold: u32) -> f64 {
+    frame_threshold as f64 / CONTROL_STALL_FRAME_RATE_FALLBACK
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -467,6 +503,11 @@ fn build_control_feedback_js_value(feedback: &WebTestApiControlFeedback) -> JsVa
     );
     let _ = JsReflect::set(
         &object,
+        &JsValue::from_str("deltaTraceCount"),
+        &JsValue::from_f64(feedback.delta_trace_count as f64),
+    );
+    let _ = JsReflect::set(
+        &object,
         &JsValue::from_str("awaitingEffect"),
         &JsValue::from_bool(feedback.awaiting_effect),
     );
@@ -483,7 +524,8 @@ fn build_control_feedback(
     effect: String,
     awaiting_effect: bool,
 ) -> WebTestApiControlFeedback {
-    let (baseline_logical_time, baseline_event_seq) = latest_logical_time_event_seq();
+    let (baseline_logical_time, baseline_event_seq, baseline_trace_count) =
+        latest_progress_baseline();
     let stage = if !accepted {
         CONTROL_STAGE_BLOCKED
     } else if awaiting_effect {
@@ -504,8 +546,10 @@ fn build_control_feedback(
         effect,
         baseline_logical_time,
         baseline_event_seq,
+        baseline_trace_count,
         delta_logical_time: 0,
         delta_event_seq: 0,
+        delta_trace_count: 0,
         awaiting_effect,
         no_progress_frames: 0,
     }
@@ -524,6 +568,9 @@ pub(super) fn latest_web_test_api_control_feedback() -> Option<WebTestApiControl
                 reason: feedback.reason.clone(),
                 hint: feedback.hint.clone(),
                 effect: feedback.effect.clone(),
+                delta_logical_time: feedback.delta_logical_time,
+                delta_event_seq: feedback.delta_event_seq,
+                delta_trace_count: feedback.delta_trace_count,
             })
     })
 }
@@ -1015,6 +1062,7 @@ pub(super) fn publish_web_test_api_state(
         let connection_ready = matches!(state.status, ConnectionStatus::Connected);
         let latest_logical_time = snapshot.logical_time;
         let latest_event_seq = snapshot.event_seq;
+        let latest_trace_count = snapshot.trace_count;
         if let Some(feedback) = snapshot.last_control_feedback.as_mut() {
             if feedback.awaiting_effect {
                 let mut completion_ack_applied = false;
@@ -1022,6 +1070,8 @@ pub(super) fn publish_web_test_api_state(
                     if let Some(ack) = take_control_completion_ack(request_id) {
                         feedback.delta_logical_time = ack.delta_logical_time;
                         feedback.delta_event_seq = ack.delta_event_seq;
+                        feedback.delta_trace_count =
+                            latest_trace_count.saturating_sub(feedback.baseline_trace_count);
                         feedback.no_progress_frames = 0;
                         match ack.status {
                             ControlCompletionStatus::Advanced => {
@@ -1039,7 +1089,10 @@ pub(super) fn publish_web_test_api_state(
                                 feedback.stage = CONTROL_STAGE_COMPLETED_NO_PROGRESS.to_string();
                                 feedback.reason =
                                     Some("Cause: completion ack timeout_no_progress".to_string());
-                                feedback.hint = Some("Next: use play, then retry step".to_string());
+                                feedback.hint = Some(
+                                    "Next: keep play running, then retry step after sync"
+                                        .to_string(),
+                                );
                                 feedback.effect =
                                     "completion ack: timeout without observed progress"
                                         .to_string();
@@ -1055,9 +1108,14 @@ pub(super) fn publish_web_test_api_state(
                         latest_logical_time.saturating_sub(feedback.baseline_logical_time);
                     let delta_event_seq =
                         latest_event_seq.saturating_sub(feedback.baseline_event_seq);
+                    let delta_trace_count =
+                        latest_trace_count.saturating_sub(feedback.baseline_trace_count);
                     feedback.delta_logical_time = delta_logical_time;
                     feedback.delta_event_seq = delta_event_seq;
-                    if delta_logical_time > 0 || delta_event_seq > 0 {
+                    feedback.delta_trace_count = delta_trace_count;
+                    let world_advanced = delta_logical_time > 0 || delta_event_seq > 0;
+                    let trace_advanced = delta_trace_count > 0;
+                    if world_advanced {
                         feedback.stage = CONTROL_STAGE_COMPLETED_ADVANCED.to_string();
                         feedback.no_progress_frames = 0;
                         feedback.effect = format!(
@@ -1066,16 +1124,31 @@ pub(super) fn publish_web_test_api_state(
                         feedback.hint =
                             Some("input was accepted and world state advanced".to_string());
                         feedback.awaiting_effect = false;
+                    } else if trace_advanced {
+                        feedback.stage = CONTROL_STAGE_EXECUTING.to_string();
+                        feedback.no_progress_frames = 0;
+                        feedback.effect = format!(
+                            "decision trace advanced: +{delta_trace_count}, waiting for world delta"
+                        );
+                        feedback.hint = Some(
+                            "model is still processing, keep waiting for tick/event advancement"
+                                .to_string(),
+                        );
                     } else if connection_ready {
+                        let stall_threshold = control_feedback_no_progress_threshold(feedback);
+                        let hint_secs = stall_hint_secs(stall_threshold);
                         feedback.no_progress_frames = feedback.no_progress_frames.saturating_add(1);
-                        if feedback.no_progress_frames >= CONTROL_STALL_FRAME_THRESHOLD {
+                        if feedback.no_progress_frames >= stall_threshold {
                             feedback.stage = CONTROL_STAGE_COMPLETED_NO_PROGRESS.to_string();
                             feedback.reason = Some(format!(
                                 "Cause: no world delta observed for >= {:.1}s ({} frames)",
-                                CONTROL_STALL_HINT_SECS, CONTROL_STALL_FRAME_THRESHOLD
+                                hint_secs, stall_threshold
                             ));
                             feedback.hint = Some(if feedback.action == "step" {
                                 "Next: click Recover: play, then retry step".to_string()
+                            } else if feedback.action == "play" {
+                                "Next: keep play and wait for sync, or retry play after reconnect"
+                                    .to_string()
                             } else {
                                 control_action_hint(feedback.action.as_str(), false)
                             });

@@ -131,3 +131,12 @@
 
 ## 6. Validation & Decision Record
 - 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- T18.2b 验证证据（2026-03-04）:
+  - 代码验证:
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer player_control_stage_ -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world step_request_emits_completion_ack_ -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-unknown`
+    - `bash -n scripts/run-game-test-ab.sh`
+  - A/B 产物:
+    - `output/playwright/playability/t18_2b_20260304/20260304-212503/ab_metrics.json`
+    - `output/playwright/playability/t18_2b_20260304/20260304-212503/ab_metrics.md`
