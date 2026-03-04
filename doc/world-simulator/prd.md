@@ -25,6 +25,7 @@
   - `doc/world-simulator/launcher/game-client-launcher-web-console-2026-03-04.prd.md`（PRD-WORLD_SIMULATOR-010）
   - `doc/world-simulator/launcher/game-client-launcher-ui-schema-share-2026-03-04.prd.md`（PRD-WORLD_SIMULATOR-011）
   - `doc/world-simulator/launcher/game-client-launcher-egui-web-unification-2026-03-04.prd.md`（PRD-WORLD_SIMULATOR-012）
+  - `doc/world-simulator/launcher/game-client-launcher-web-wasm-time-compat-2026-03-04.prd.md`（PRD-WORLD_SIMULATOR-013）
 
 ## 里程碑
 - M1 (2026-03-03): 完成模块设计 PRD 主体重写与任务改造。
@@ -58,6 +59,7 @@
   - SC-14: 启动器支持无 GUI 服务器 Web 控制台，允许远程启动/停止并查看状态日志。
   - SC-15: 启动器 native 与 web 表单字段由同一份 UI schema 驱动，避免配置项漂移。
   - SC-16: 启动器 web 端改为复用同一套 egui UI 代码并以静态资源方式托管，消除独立 HTML 控制台分叉。
+  - SC-17: 启动器 wasm 页面初始化不得触发 `time not implemented` 崩溃，Playwright headed 闭环必须可稳定采证。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -84,6 +86,7 @@
   - PRD-WORLD_SIMULATOR-010: As an 运维人员, I want a web-based launcher control plane, so that headless servers can be operated through network browsers.
   - PRD-WORLD_SIMULATOR-011: As a 启动器开发者, I want shared launcher UI schema across native/web, so that form fields and labels stay consistent.
   - PRD-WORLD_SIMULATOR-012: As a 启动器开发者, I want launcher egui UI to be reused across native/wasm with static asset serving, so that we no longer maintain a separate HTML console.
+  - PRD-WORLD_SIMULATOR-013: As a 启动器开发者, I want launcher wasm to use web-compatible time primitives, so that web UI startup does not panic in browser runtime.
 - Critical User Flows:
   1. Flow-WS-001（Web-first 闭环）:
      `选择场景 -> 启动 Viewer Web -> 执行关键交互 -> 采集日志/截图/指标 -> 产出 test_tier_required 结论`
@@ -105,6 +108,8 @@
      `更新共享 schema -> native 配置区渲染同步变更 -> web 控制台通过 /api/ui/schema 动态渲染同字段`
   10. Flow-WS-010（Launcher egui Web 同层复用）:
      `构建 launcher wasm 静态资源 -> world_web_launcher 托管静态目录 -> 浏览器加载同一 egui UI -> 调用 /api/state|start|stop`
+  11. Flow-WS-011（Launcher wasm 时间兼容闭环）:
+     `Playwright headed 打开 launcher Web 页面 -> wasm 初始化 -> 无 time panic -> snapshot/console/screenshot 采证`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
@@ -118,6 +123,7 @@
 | Launcher Web 控制台 | `scenario/live_bind/web_bind/viewer_host/viewer_port/viewer_static_dir/llm/chain` | 浏览器点击“启动/停止”触发子进程编排与状态刷新 | `idle -> running -> stopped/exited` | bind/端口/目录先校验，失败时拒绝启动并返回错误详情 | 默认部署在受信网络，具备远程访问能力 |
 | Launcher UI schema 共享 | `id/section/kind/label_zh/label_en/web_visible/native_visible` | UI 按 schema 动态渲染字段，新增字段无需双端重复定义 | `schema_loaded -> form_ready` | section 内按 schema 顺序渲染 | schema 只读；不含敏感数据 |
 | Launcher egui Web 复用与静态托管 | `launcher wasm dist`、`console_static_dir`、`/api/state|start|stop` | `world_web_launcher` 托管静态资源并由浏览器运行同一 egui UI | `boot -> static_ready -> interactive` | 静态请求走目录白名单，API 路径优先级高于静态路径 | 受信网络部署，禁止目录穿越 |
+| Launcher wasm 时间兼容 | `WEB_POLL_INTERVAL_MS`、`last_web_poll_at`、web time primitive | 页面轮询 `/api/state` 且不触发 wasm 时间平台 panic | `interactive -> polling -> synced` | 轮询基于单调时钟差值，防并发请求堆积 | 浏览器会话可读，接口由受信网络控制 |
 - Acceptance Criteria:
   - AC-1: world-simulator PRD 覆盖场景、Viewer、LLM、启动器四条主线。
   - AC-2: world-simulator project 文档维护任务拆解与状态。
@@ -138,6 +144,7 @@
   - AC-17: `world_web_launcher` 支持在无 GUI 服务器上通过浏览器完成启动/停止、状态查询与日志查看，且打包产物提供独立入口脚本。
   - AC-18: `agent_world_client_launcher` 与 `world_web_launcher` 必须消费同一份 launcher UI schema；web 控制台表单字段通过 `/api/ui/schema` 动态渲染。
   - AC-19: 启动器 web UI 必须由 `agent_world_client_launcher` 的 egui wasm 产物提供；`world_web_launcher` 默认托管该静态目录且保持 API 闭环可用。
+  - AC-20: 启动器 wasm 页面在 Playwright headed 打开后不得出现 `time not implemented on this platform` 或 `RuntimeError: unreachable`，并需输出 snapshot/console/screenshot 证据。
 - Non-Goals:
   - 不在本 PRD 中详细列出每个 UI 像素级规范。
   - 不替代 world-runtime/p2p 的底层协议设计。
@@ -160,8 +167,11 @@
   - `doc/world-simulator/launcher/game-client-launcher-web-console-2026-03-04.prd.md`
   - `doc/world-simulator/launcher/game-client-launcher-ui-schema-share-2026-03-04.prd.md`
   - `doc/world-simulator/launcher/game-client-launcher-egui-web-unification-2026-03-04.prd.md`
+  - `doc/world-simulator/launcher/game-client-launcher-web-wasm-time-compat-2026-03-04.prd.md`
   - `crates/agent_world_launcher_ui/src/lib.rs`
   - `crates/agent_world_client_launcher/src/main.rs`
+  - `crates/agent_world_client_launcher/src/app_process_web.rs`
+  - `crates/agent_world_client_launcher/Cargo.toml`
   - `crates/agent_world/src/bin/world_web_launcher.rs`
   - `crates/agent_world_client_launcher/index.html`
   - `scripts/build-game-launcher-bundle.sh`
@@ -177,6 +187,7 @@
   - 渲染能力缺口：当色调映射依赖缺失时，viewer 必须避免进入粉紫回退屏，并保留可诊断日志用于回归。
   - 产物覆写冲突：当 bundle 目标二进制正在运行时，打包脚本必须通过“删除后复制”避免 `Text file busy` 并确保输出目录完整可启动。
   - 无 GUI 环境：桌面 GUI 不可用时需通过 Web 控制台操作启动器，且必须支持远程状态可见与错误可诊断。
+  - wasm 时间兼容：浏览器运行路径不得使用不支持的平台时间实现，避免页面初始化阶段 panic 直接阻断闭环。
 - Non-Functional Requirements:
   - 性能目标:
     - NFR-1: 启动器链状态探针刷新周期 <= 1s，状态可见延迟 <= 2s。
@@ -188,6 +199,7 @@
     - NFR-10: `world_web_launcher` 在受信网络下可绑定 `0.0.0.0`，并在浏览器端稳定轮询状态接口（`p95 <= 200ms`，本地网络）。
     - NFR-11: `/api/ui/schema` 响应 `p95 <= 100ms`（本地网络），且 schema 新增字段不破坏既有渲染逻辑。
     - NFR-12: launcher wasm 静态资源由 `world_web_launcher` 托管时，首屏可交互时间（本地网络）`p95 <= 2s`。
+    - NFR-13: launcher wasm 在 headed 浏览器启动后 `console error` 不得包含 `time not implemented on this platform`，且不出现 `RuntimeError: unreachable`。
   - 安全与隐私目标:
     - NFR-4: 日志与证据中不得输出私钥、口令、完整凭据；敏感字段需脱敏。
     - NFR-5: 转账请求必须经过 nonce anti-replay 与余额约束校验。
@@ -227,6 +239,7 @@
 | PRD-WORLD_SIMULATOR-010 | TASK-WORLD_SIMULATOR-023/024 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher` + 启动 `world_web_launcher` 后通过 `/api/start`/`/api/stop`/`/api/state` 回归 + `bash -n scripts/build-game-launcher-bundle.sh` 校验打包入口脚本 | 无 GUI 服务器远程运维、launcher Web 控制能力 |
 | PRD-WORLD_SIMULATOR-011 | TASK-WORLD_SIMULATOR-025/026 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p agent_world_launcher_ui` + `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher` + `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher`，验证 shared schema 定义、native/web 同源渲染与接口输出 | 启动器 UI 一致性、跨端配置项治理能力 |
 | PRD-WORLD_SIMULATOR-012 | TASK-WORLD_SIMULATOR-027/028 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown` + `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher` + `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher` + `bash -n scripts/build-game-launcher-bundle.sh`，验证同层 egui 复用、静态托管与打包入口 | 启动器 UI 统一维护能力、headless 运维体验一致性 |
+| PRD-WORLD_SIMULATOR-013 | TASK-WORLD_SIMULATOR-029/030 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown` + headed Playwright 打开 `world_web_launcher` 控制台并校验 `console error` 无 `time not implemented` + 归档 screenshot/console/snapshot 证据 | 启动器 Web 端可用性、wasm 运行时兼容稳定性 |
 
 - Decision Log:
 
@@ -240,3 +253,4 @@
 | DEC-WS-006 | 新增 `world_web_launcher` 作为 headless 场景控制平面 | 仅保留桌面 GUI / 仅依赖 CLI 手工操作 | headless 服务器无图形会话，Web 控制台可在浏览器统一操作并保留日志可观察性；由 `TASK-WORLD_SIMULATOR-024` 落地。 |
 | DEC-WS-007 | 采用共享 launcher UI schema，由 native 与 web 双端适配渲染 | 继续维持 native/web 双端字段硬编码 | 单点维护字段与文案可显著降低配置漂移风险，且可保持 UI 行为一致性；由 `TASK-WORLD_SIMULATOR-026` 落地。 |
 | DEC-WS-008 | 采用 `agent_world_client_launcher` 同一套 egui UI 跨 native/wasm 双目标，并由 `world_web_launcher` 托管 launcher 静态资源 | 继续维护独立 HTML 控制台并与 native 并行演进 | 可彻底消除 UI 双栈分叉，降低维护与验收成本；由 `TASK-WORLD_SIMULATOR-028` 落地。 |
+| DEC-WS-009 | launcher wasm 轮询计时切换到 Web 兼容时间实现，并将 Playwright headed 闭环作为回归门禁 | 接受已知 panic 并仅做文档告警 | 该问题会直接导致 Web UI 不可用，必须通过代码修复 + 自动化采证闭环防止回归；由 `TASK-WORLD_SIMULATOR-030` 落地。 |
