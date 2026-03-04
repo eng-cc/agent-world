@@ -10,6 +10,9 @@ use crate::ui_locale_text::{
     seek_button_label, timeline_insights, timeline_jump_label, timeline_mark_filter_label,
     timeline_mode_label, timeline_status_line,
 };
+use crate::web_test_api::{
+    latest_web_test_api_control_feedback, WebTestApiControlFeedbackSnapshot,
+};
 use crate::{
     dispatch_viewer_control, ControlButton, ViewerClient, ViewerControlProfileState, ViewerState,
 };
@@ -72,6 +75,23 @@ pub(super) struct TimelineStatusText;
 
 #[derive(Component)]
 pub(super) struct TimelineInsightsText;
+
+#[derive(Component)]
+pub(super) struct TimelineControlFeedbackText;
+
+#[derive(Component)]
+pub(super) struct TimelineRecoveryActionsRow;
+
+#[derive(Component)]
+pub(super) struct TimelineRecoveryActionLabel {
+    kind: TimelineRecoveryActionKind,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum TimelineRecoveryActionKind {
+    Play,
+    StepX8,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum TimelineMarkKind {
@@ -174,6 +194,49 @@ pub(super) fn spawn_timeline_controls(
                 TextColor(Color::srgb(0.75, 0.8, 0.9)),
                 TimelineInsightsText,
             ));
+
+            timeline.spawn((
+                Text::new(timeline_control_feedback_summary(None, locale)),
+                TextFont {
+                    font: font.clone(),
+                    font_size: 10.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(0.84, 0.84, 0.88)),
+                TimelineControlFeedbackText,
+            ));
+
+            timeline
+                .spawn((
+                    Node {
+                        width: Val::Percent(100.0),
+                        min_height: Val::Px(24.0),
+                        column_gap: Val::Px(6.0),
+                        row_gap: Val::Px(6.0),
+                        flex_direction: FlexDirection::Row,
+                        flex_wrap: FlexWrap::Wrap,
+                        align_items: AlignItems::Center,
+                        display: Display::None,
+                        ..default()
+                    },
+                    TimelineRecoveryActionsRow,
+                ))
+                .with_children(|row| {
+                    spawn_recovery_button(
+                        row,
+                        &font,
+                        timeline_recovery_action_label(TimelineRecoveryActionKind::Play, locale),
+                        TimelineRecoveryActionKind::Play,
+                        ViewerControl::Play,
+                    );
+                    spawn_recovery_button(
+                        row,
+                        &font,
+                        timeline_recovery_action_label(TimelineRecoveryActionKind::StepX8, locale),
+                        TimelineRecoveryActionKind::StepX8,
+                        ViewerControl::Step { count: 8 },
+                    );
+                });
 
             timeline
                 .spawn(Node {
@@ -329,6 +392,41 @@ fn spawn_adjust_button(
                     ..default()
                 },
                 TextColor(Color::WHITE),
+            ));
+        });
+}
+
+fn spawn_recovery_button(
+    buttons: &mut ChildSpawnerCommands,
+    font: &Handle<Font>,
+    label: &str,
+    kind: TimelineRecoveryActionKind,
+    control: ViewerControl,
+) {
+    buttons
+        .spawn((
+            Button,
+            Node {
+                min_width: Val::Px(124.0),
+                padding: UiRect::horizontal(Val::Px(8.0)),
+                height: Val::Px(22.0),
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Center,
+                ..default()
+            },
+            BackgroundColor(Color::srgb(0.3, 0.22, 0.14)),
+            ControlButton { control },
+        ))
+        .with_children(|button| {
+            button.spawn((
+                Text::new(label),
+                TextFont {
+                    font: font.clone(),
+                    font_size: 11.0,
+                    ..default()
+                },
+                TextColor(Color::WHITE),
+                TimelineRecoveryActionLabel { kind },
             ));
         });
 }
@@ -592,14 +690,22 @@ pub(super) fn update_timeline_ui(
     timeline: Res<TimelineUiState>,
     i18n: Option<Res<UiI18n>>,
     mark_filters: Option<Res<TimelineMarkFilterState>>,
+    mut last_feedback_digest: Local<Option<String>>,
     mut queries: ParamSet<(
         Query<&mut Text, With<TimelineStatusText>>,
         Query<&mut Text, With<TimelineInsightsText>>,
         Query<&mut Node, With<TimelineBarFill>>,
         Query<(&TimelineMarkJumpLabel, &mut Text)>,
         Query<&mut Text, With<TimelineSeekLabel>>,
+        Query<&mut Text, With<TimelineControlFeedbackText>>,
+        Query<&mut Node, With<TimelineRecoveryActionsRow>>,
+        Query<(&TimelineRecoveryActionLabel, &mut Text)>,
     )>,
 ) {
+    let control_feedback = latest_web_test_api_control_feedback();
+    let feedback_digest = control_feedback_digest(control_feedback.as_ref());
+    let feedback_changed = *last_feedback_digest != feedback_digest;
+
     let filter_changed = mark_filters
         .as_ref()
         .map(|filters| filters.is_changed())
@@ -608,9 +714,15 @@ pub(super) fn update_timeline_ui(
         .as_ref()
         .map(|value| value.is_changed())
         .unwrap_or(false);
-    if !state.is_changed() && !timeline.is_changed() && !filter_changed && !locale_changed {
+    if !state.is_changed()
+        && !timeline.is_changed()
+        && !filter_changed
+        && !locale_changed
+        && !feedback_changed
+    {
         return;
     }
+    *last_feedback_digest = feedback_digest;
 
     let locale = locale_or_default(i18n.as_deref());
 
@@ -670,6 +782,123 @@ pub(super) fn update_timeline_ui(
 
     for mut text in &mut queries.p4() {
         text.0 = seek_button_label(locale).to_string();
+    }
+
+    if let Ok(mut text) = queries.p5().single_mut() {
+        text.0 = timeline_control_feedback_summary(control_feedback.as_ref(), locale);
+    }
+
+    let show_recovery = timeline_should_show_recovery_actions(control_feedback.as_ref());
+    for mut row in &mut queries.p6() {
+        row.display = if show_recovery {
+            Display::Flex
+        } else {
+            Display::None
+        };
+    }
+
+    for (label, mut text) in &mut queries.p7() {
+        text.0 = timeline_recovery_action_label(label.kind, locale).to_string();
+    }
+}
+
+fn control_feedback_digest(feedback: Option<&WebTestApiControlFeedbackSnapshot>) -> Option<String> {
+    feedback.map(|feedback| {
+        format!(
+            "{}|{}|{:?}|{:?}|{}|{}|{}|{}",
+            feedback.action,
+            feedback.stage,
+            feedback.reason,
+            feedback.hint,
+            feedback.effect,
+            feedback.delta_logical_time,
+            feedback.delta_event_seq,
+            feedback.delta_trace_count
+        )
+    })
+}
+
+fn timeline_control_feedback_summary(
+    feedback: Option<&WebTestApiControlFeedbackSnapshot>,
+    locale: UiLocale,
+) -> String {
+    let Some(feedback) = feedback else {
+        return if locale.is_zh() {
+            "控制反馈: 无（发生阻塞时会在此给出恢复建议）".to_string()
+        } else {
+            "Control feedback: none (recovery hints will appear here when blocked)".to_string()
+        };
+    };
+
+    let mut summary = if locale.is_zh() {
+        format!(
+            "控制反馈: {} · {} | 增量 tick +{} event +{} trace +{} | {}",
+            feedback.action,
+            timeline_control_stage_label(feedback.stage.as_str(), locale),
+            feedback.delta_logical_time,
+            feedback.delta_event_seq,
+            feedback.delta_trace_count,
+            feedback.effect,
+        )
+    } else {
+        format!(
+            "Control: {} · {} | delta tick +{} event +{} trace +{} | {}",
+            feedback.action,
+            timeline_control_stage_label(feedback.stage.as_str(), locale),
+            feedback.delta_logical_time,
+            feedback.delta_event_seq,
+            feedback.delta_trace_count,
+            feedback.effect,
+        )
+    };
+
+    if let Some(reason) = feedback.reason.as_deref() {
+        summary.push_str(" | ");
+        summary.push_str(reason);
+    }
+    if let Some(hint) = feedback.hint.as_deref() {
+        summary.push_str(" | ");
+        summary.push_str(hint);
+    }
+    summary
+}
+
+fn timeline_should_show_recovery_actions(
+    feedback: Option<&WebTestApiControlFeedbackSnapshot>,
+) -> bool {
+    feedback.is_some_and(|feedback| timeline_stage_shows_recovery_actions(feedback.stage.as_str()))
+}
+
+fn timeline_control_stage_label(stage: &str, locale: UiLocale) -> &'static str {
+    match (stage, locale.is_zh()) {
+        ("received", true) => "已接收",
+        ("received", false) => "Received",
+        ("executing", true) => "执行中",
+        ("executing", false) => "Executing",
+        ("completed_advanced", true) | ("applied", true) => "已完成（有推进）",
+        ("completed_advanced", false) | ("applied", false) => "Completed (advanced)",
+        ("completed_no_progress", true) => "已完成（无推进）",
+        ("completed_no_progress", false) => "Completed (no progress)",
+        ("blocked", true) => "已阻断",
+        ("blocked", false) => "Blocked",
+        (_, true) => "处理中",
+        (_, false) => "Pending",
+    }
+}
+
+fn timeline_stage_shows_recovery_actions(stage: &str) -> bool {
+    matches!(stage, "completed_no_progress")
+}
+
+fn timeline_recovery_action_label(
+    kind: TimelineRecoveryActionKind,
+    locale: UiLocale,
+) -> &'static str {
+    match (kind, locale.is_zh()) {
+        (TimelineRecoveryActionKind::Play, true) => "恢复：play",
+        (TimelineRecoveryActionKind::Play, false) => "Recover: play",
+        (TimelineRecoveryActionKind::StepX8, true) => "重试：step x8",
+        (TimelineRecoveryActionKind::StepX8, false) => "Retry: step x8",
     }
 }
 
@@ -1056,6 +1285,31 @@ mod tests {
         assert_eq!(select_next_mark_tick(&ticks, 11), Some(12));
         assert_eq!(select_next_mark_tick(&ticks, 99), Some(3));
         assert_eq!(select_next_mark_tick(&[], 10), None);
+    }
+
+    #[test]
+    fn timeline_feedback_summary_and_recovery_visibility() {
+        let feedback = crate::web_test_api::WebTestApiControlFeedbackSnapshot {
+            action: "step".to_string(),
+            stage: "completed_no_progress".to_string(),
+            reason: Some("Cause: completion ack timeout_no_progress".to_string()),
+            hint: Some("Next: click Recover: play, then retry step".to_string()),
+            effect: "completion ack: timeout without observed progress".to_string(),
+            delta_logical_time: 0,
+            delta_event_seq: 0,
+            delta_trace_count: 0,
+        };
+        let summary = timeline_control_feedback_summary(Some(&feedback), UiLocale::EnUs);
+        assert!(summary.contains("Completed (no progress)"));
+        assert!(summary.contains("Recover: play"));
+        assert!(timeline_should_show_recovery_actions(Some(&feedback)));
+    }
+
+    #[test]
+    fn timeline_feedback_summary_defaults_without_feedback() {
+        let summary = timeline_control_feedback_summary(None, UiLocale::EnUs);
+        assert!(summary.contains("Control feedback: none"));
+        assert!(!timeline_should_show_recovery_actions(None));
     }
 
     #[test]
