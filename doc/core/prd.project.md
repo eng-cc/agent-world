@@ -15,11 +15,11 @@
     - `test -f doc/core/templates/prd-id-test-evidence-mapping.md`
     - `rg -n "PRD-ID|任务ID|测试层级|命令|证据路径|结论" doc/core/templates/prd-id-test-evidence-mapping.md`
     - `./scripts/doc-governance-check.sh`
-- [ ] TASK-CORE-005 (PRD-CORE-003) [test_tier_required]: 对模块 PRD 按轮次进行一致性审查并形成审查记录（含轮次状态字段）。
+- [ ] TASK-CORE-005 (PRD-CORE-003) [test_tier_required]: 对模块 PRD 按轮次进行一致性审查并形成审查记录（含轮次状态与文档级审计轮次字段，缺省按 0 处理）。
   - 产物文件: `doc/core/reviews/consistency-review-round-001.md`
   - 验收命令 (`test_tier_required`):
     - `ls doc/core/reviews/consistency-review-round-*.md`
-    - `rg -n "轮次编号|轮次状态|抽样范围|一致性问题|整改项|责任人|截止时间|复审结果" doc/core/reviews/consistency-review-round-*.md`
+    - `rg -n "轮次编号|轮次状态|审计轮次|缺省=0|抽样范围|一致性问题|整改项|责任人|截止时间|复审结果" doc/core/reviews/consistency-review-round-*.md`
     - `./scripts/doc-governance-check.sh`
 - [x] TASK-CORE-006 (PRD-CORE-001/002) [test_tier_required]: 收敛 `doc/` 根目录 legacy redirect 入口并更新总导航。
 - [x] TASK-CORE-007 (PRD-CORE-001/002/003) [test_tier_required]: 对齐 strict PRD schema，补齐关键流程/规格矩阵/边界异常/NFR/验证与决策记录。
