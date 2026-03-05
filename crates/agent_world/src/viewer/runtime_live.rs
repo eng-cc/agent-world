@@ -908,6 +908,204 @@ mod tests {
     }
 
     #[test]
+    fn runtime_simulator_action_mapping_equivalence_covers_core_gameplay_and_economy() {
+        let server = ViewerRuntimeLiveServer::new(ViewerRuntimeLiveServerConfig::new(
+            WorldScenario::Minimal,
+        ))
+        .expect("runtime server");
+        let assert_mapped = |action: crate::simulator::Action, expected: RuntimeAction| {
+            let mapped = control_plane::simulator_action_to_runtime(&action, &server.world)
+                .expect("action should map to runtime");
+            assert_eq!(mapped, expected);
+        };
+
+        let move_target = GeoPos::new(10.0, 20.0, 30.0);
+        assert_mapped(
+            crate::simulator::Action::MoveAgent {
+                agent_id: "agent-1".to_string(),
+                to: location_id_for_pos(move_target),
+            },
+            RuntimeAction::MoveAgent {
+                agent_id: "agent-1".to_string(),
+                to: move_target,
+            },
+        );
+        assert_mapped(
+            crate::simulator::Action::TransferResource {
+                from: ResourceOwner::Agent {
+                    agent_id: "agent-1".to_string(),
+                },
+                to: ResourceOwner::Agent {
+                    agent_id: "agent-2".to_string(),
+                },
+                kind: ResourceKind::Electricity,
+                amount: 3,
+            },
+            RuntimeAction::TransferResource {
+                from_agent_id: "agent-1".to_string(),
+                to_agent_id: "agent-2".to_string(),
+                kind: ResourceKind::Electricity,
+                amount: 3,
+            },
+        );
+        assert_mapped(
+            crate::simulator::Action::DeclareWar {
+                initiator_agent_id: "agent-1".to_string(),
+                war_id: "war.alpha".to_string(),
+                aggressor_alliance_id: "alliance.a".to_string(),
+                defender_alliance_id: "alliance.b".to_string(),
+                objective: "expand".to_string(),
+                intensity: 2,
+            },
+            RuntimeAction::DeclareWar {
+                initiator_agent_id: "agent-1".to_string(),
+                war_id: "war.alpha".to_string(),
+                aggressor_alliance_id: "alliance.a".to_string(),
+                defender_alliance_id: "alliance.b".to_string(),
+                objective: "expand".to_string(),
+                intensity: 2,
+            },
+        );
+        assert_mapped(
+            crate::simulator::Action::OpenEconomicContract {
+                creator_agent_id: "agent-1".to_string(),
+                contract_id: "contract.alpha".to_string(),
+                counterparty_agent_id: "agent-2".to_string(),
+                settlement_kind: ResourceKind::Data,
+                settlement_amount: 5,
+                reputation_stake: 7,
+                expires_at: 99,
+                description: "trade".to_string(),
+            },
+            RuntimeAction::OpenEconomicContract {
+                creator_agent_id: "agent-1".to_string(),
+                contract_id: "contract.alpha".to_string(),
+                counterparty_agent_id: "agent-2".to_string(),
+                settlement_kind: ResourceKind::Data,
+                settlement_amount: 5,
+                reputation_stake: 7,
+                expires_at: 99,
+                description: "trade".to_string(),
+            },
+        );
+    }
+
+    #[test]
+    fn runtime_simulator_action_mapping_covers_module_artifact_actions() {
+        let server = ViewerRuntimeLiveServer::new(ViewerRuntimeLiveServerConfig::new(
+            WorldScenario::Minimal,
+        ))
+        .expect("runtime server");
+        let mut source_files = std::collections::BTreeMap::new();
+        source_files.insert("module.toml".to_string(), b"manifest".to_vec());
+        source_files.insert("src/lib.rs".to_string(), b"pub fn run() {}".to_vec());
+
+        let compile = crate::simulator::Action::CompileModuleArtifactFromSource {
+            publisher_agent_id: "agent-1".to_string(),
+            module_id: "module.alpha".to_string(),
+            manifest_path: "module.toml".to_string(),
+            source_files: source_files.clone(),
+        };
+        let compile_mapped = control_plane::simulator_action_to_runtime(&compile, &server.world)
+            .expect("compile action should map");
+        assert_eq!(
+            compile_mapped,
+            RuntimeAction::CompileModuleArtifactFromSource {
+                publisher_agent_id: "agent-1".to_string(),
+                module_id: "module.alpha".to_string(),
+                source_package: crate::runtime::ModuleSourcePackage {
+                    manifest_path: "module.toml".to_string(),
+                    files: source_files,
+                },
+            }
+        );
+
+        let deploy = crate::simulator::Action::DeployModuleArtifact {
+            publisher_agent_id: "agent-1".to_string(),
+            wasm_hash: "hash.alpha".to_string(),
+            wasm_bytes: vec![0xAA, 0xBB],
+            module_id_hint: Some("module.alpha".to_string()),
+        };
+        let deploy_mapped = control_plane::simulator_action_to_runtime(&deploy, &server.world)
+            .expect("deploy action should map");
+        assert_eq!(
+            deploy_mapped,
+            RuntimeAction::DeployModuleArtifact {
+                publisher_agent_id: "agent-1".to_string(),
+                wasm_hash: "hash.alpha".to_string(),
+                wasm_bytes: vec![0xAA, 0xBB],
+            }
+        );
+
+        let list = crate::simulator::Action::ListModuleArtifactForSale {
+            seller_agent_id: "agent-1".to_string(),
+            wasm_hash: "hash.alpha".to_string(),
+            price_kind: ResourceKind::Data,
+            price_amount: 9,
+        };
+        let list_mapped = control_plane::simulator_action_to_runtime(&list, &server.world)
+            .expect("list action should map");
+        assert_eq!(
+            list_mapped,
+            RuntimeAction::ListModuleArtifactForSale {
+                seller_agent_id: "agent-1".to_string(),
+                wasm_hash: "hash.alpha".to_string(),
+                price_kind: ResourceKind::Data,
+                price_amount: 9,
+            }
+        );
+
+        let buy = crate::simulator::Action::BuyModuleArtifact {
+            buyer_agent_id: "agent-2".to_string(),
+            wasm_hash: "hash.alpha".to_string(),
+        };
+        let buy_mapped = control_plane::simulator_action_to_runtime(&buy, &server.world)
+            .expect("buy action should map");
+        assert_eq!(
+            buy_mapped,
+            RuntimeAction::BuyModuleArtifact {
+                buyer_agent_id: "agent-2".to_string(),
+                wasm_hash: "hash.alpha".to_string(),
+            }
+        );
+    }
+
+    #[test]
+    fn runtime_simulator_action_mapping_keeps_unmapped_actions_as_none() {
+        let server = ViewerRuntimeLiveServer::new(ViewerRuntimeLiveServerConfig::new(
+            WorldScenario::Minimal,
+        ))
+        .expect("runtime server");
+
+        let build_factory = crate::simulator::Action::BuildFactory {
+            owner: ResourceOwner::Agent {
+                agent_id: "agent-1".to_string(),
+            },
+            location_id: "loc-1".to_string(),
+            factory_id: "factory-1".to_string(),
+            factory_kind: "smelter".to_string(),
+        };
+        assert!(
+            control_plane::simulator_action_to_runtime(&build_factory, &server.world).is_none()
+        );
+
+        let transfer_to_location = crate::simulator::Action::TransferResource {
+            from: ResourceOwner::Agent {
+                agent_id: "agent-1".to_string(),
+            },
+            to: ResourceOwner::Location {
+                location_id: "loc-1".to_string(),
+            },
+            kind: ResourceKind::Electricity,
+            amount: 1,
+        };
+        assert!(
+            control_plane::simulator_action_to_runtime(&transfer_to_location, &server.world)
+                .is_none()
+        );
+    }
+
+    #[test]
     fn runtime_prompt_control_script_mode_requires_llm_mode() {
         let mut server = ViewerRuntimeLiveServer::new(
             ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal)

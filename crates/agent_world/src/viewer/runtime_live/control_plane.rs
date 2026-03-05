@@ -9,7 +9,7 @@ use super::super::protocol::{
     AgentChatAck, AgentChatError, AgentChatRequest, PromptControlAck, PromptControlApplyRequest,
     PromptControlCommand, PromptControlError, PromptControlOperation, PromptControlRollbackRequest,
 };
-use crate::runtime::{Action as RuntimeAction, World as RuntimeWorld};
+use crate::runtime::{Action as RuntimeAction, ModuleSourcePackage, World as RuntimeWorld};
 use crate::simulator::{
     Action as SimulatorAction, AgentPromptProfile, PromptUpdateOperation, ResourceKind,
     ResourceOwner, WorldEventKind,
@@ -946,6 +946,13 @@ pub(super) fn simulator_action_to_runtime(
     world: &RuntimeWorld,
 ) -> Option<RuntimeAction> {
     match action {
+        SimulatorAction::RegisterAgent {
+            agent_id,
+            location_id,
+        } => Some(RuntimeAction::RegisterAgent {
+            agent_id: agent_id.clone(),
+            pos: resolve_runtime_location(world, location_id)?,
+        }),
         SimulatorAction::MoveAgent { agent_id, to } => Some(RuntimeAction::MoveAgent {
             agent_id: agent_id.clone(),
             to: resolve_runtime_location(world, to)?,
@@ -1114,6 +1121,83 @@ pub(super) fn simulator_action_to_runtime(
             contract_id: contract_id.clone(),
             success: *success,
             notes: notes.clone(),
+        }),
+        SimulatorAction::CompileModuleArtifactFromSource {
+            publisher_agent_id,
+            module_id,
+            manifest_path,
+            source_files,
+        } => Some(RuntimeAction::CompileModuleArtifactFromSource {
+            publisher_agent_id: publisher_agent_id.clone(),
+            module_id: module_id.clone(),
+            source_package: ModuleSourcePackage {
+                manifest_path: manifest_path.clone(),
+                files: source_files.clone(),
+            },
+        }),
+        SimulatorAction::DeployModuleArtifact {
+            publisher_agent_id,
+            wasm_hash,
+            wasm_bytes,
+            ..
+        } => Some(RuntimeAction::DeployModuleArtifact {
+            publisher_agent_id: publisher_agent_id.clone(),
+            wasm_hash: wasm_hash.clone(),
+            wasm_bytes: wasm_bytes.clone(),
+        }),
+        SimulatorAction::ListModuleArtifactForSale {
+            seller_agent_id,
+            wasm_hash,
+            price_kind,
+            price_amount,
+        } => Some(RuntimeAction::ListModuleArtifactForSale {
+            seller_agent_id: seller_agent_id.clone(),
+            wasm_hash: wasm_hash.clone(),
+            price_kind: *price_kind,
+            price_amount: *price_amount,
+        }),
+        SimulatorAction::BuyModuleArtifact {
+            buyer_agent_id,
+            wasm_hash,
+        } => Some(RuntimeAction::BuyModuleArtifact {
+            buyer_agent_id: buyer_agent_id.clone(),
+            wasm_hash: wasm_hash.clone(),
+        }),
+        SimulatorAction::DelistModuleArtifact {
+            seller_agent_id,
+            wasm_hash,
+        } => Some(RuntimeAction::DelistModuleArtifact {
+            seller_agent_id: seller_agent_id.clone(),
+            wasm_hash: wasm_hash.clone(),
+        }),
+        SimulatorAction::DestroyModuleArtifact {
+            owner_agent_id,
+            wasm_hash,
+            reason,
+        } => Some(RuntimeAction::DestroyModuleArtifact {
+            owner_agent_id: owner_agent_id.clone(),
+            wasm_hash: wasm_hash.clone(),
+            reason: reason.clone(),
+        }),
+        SimulatorAction::PlaceModuleArtifactBid {
+            bidder_agent_id,
+            wasm_hash,
+            price_kind,
+            price_amount,
+        } => Some(RuntimeAction::PlaceModuleArtifactBid {
+            bidder_agent_id: bidder_agent_id.clone(),
+            wasm_hash: wasm_hash.clone(),
+            price_kind: *price_kind,
+            price_amount: *price_amount,
+        }),
+        SimulatorAction::CancelModuleArtifactBid {
+            bidder_agent_id,
+            wasm_hash,
+            bid_order_id,
+        } => Some(RuntimeAction::CancelModuleArtifactBid {
+            bidder_agent_id: bidder_agent_id.clone(),
+            wasm_hash: wasm_hash.clone(),
+            bid_order_id: *bid_order_id,
         }),
         _ => None,
     }

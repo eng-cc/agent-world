@@ -4,9 +4,9 @@
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0 (PRD-WORLD_SIMULATOR-018) [test_tier_required]: 完成专题 PRD 建模、验收冻结与模块文档树回写。
-- [ ] T1 (PRD-WORLD_SIMULATOR-018) [test_tier_required]: 扩展 `simulator_action_to_runtime` 覆盖并补齐关键动作映射（含模块工件动作）。
-- [ ] T2 (PRD-WORLD_SIMULATOR-018) [test_tier_required]: 新增 action 映射等价回归与拒绝语义回归测试。
-- [ ] T3 (PRD-WORLD_SIMULATOR-018) [test_tier_required]: 删除 `world_viewer_live` simulator 启动分支，更新手册并完成 required 回归收口。
+- [x] T1 (PRD-WORLD_SIMULATOR-018) [test_tier_required]: 扩展 `simulator_action_to_runtime` 覆盖并补齐关键动作映射（含模块工件动作）。
+- [x] T2 (PRD-WORLD_SIMULATOR-018) [test_tier_required]: 新增 action 映射等价回归与拒绝语义回归测试。
+- [x] T3 (PRD-WORLD_SIMULATOR-018) [test_tier_required]: 删除 `world_viewer_live` simulator 启动分支，更新手册并完成 required 回归收口。
 
 ## 依赖
 - `doc/world-simulator/prd.md`
@@ -18,6 +18,6 @@
 - `doc/world-simulator/viewer/viewer-manual.md`
 
 ## 状态
-- 当前阶段: in_progress
-- 当前任务: T1
-- 备注: 先完成文档建模与任务拆解，待进入代码实现与测试收口阶段。
+- 当前阶段: completed
+- 当前任务: none
+- 备注: 已完成 action 映射覆盖、等价回归与 runtime-only 分支收敛，required 回归通过。

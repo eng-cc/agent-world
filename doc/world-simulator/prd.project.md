@@ -41,7 +41,7 @@
 - [x] TASK-WORLD_SIMULATOR-038 (PRD-WORLD_SIMULATOR-017) [test_tier_required]: 完成“viewer live runtime/world 接管 Phase 2（LLM/chat/prompt）”PRD 建模与任务拆解。
 - [x] TASK-WORLD_SIMULATOR-039 (PRD-WORLD_SIMULATOR-017) [test_tier_required]: 落地 runtime live `LLM/chat/prompt` 控制打通、CLI 接线与 required 回归收口。
 - [x] TASK-WORLD_SIMULATOR-040 (PRD-WORLD_SIMULATOR-018) [test_tier_required]: 完成“viewer live runtime/world 接管 Phase 3（action 映射覆盖 + 旧分支移除）”PRD 建模与任务拆解。
-- [ ] TASK-WORLD_SIMULATOR-041 (PRD-WORLD_SIMULATOR-018) [test_tier_required]: 落地 runtime live action 映射覆盖扩展、等价回归测试与 `world_viewer_live` runtime-only 分支收敛。
+- [x] TASK-WORLD_SIMULATOR-041 (PRD-WORLD_SIMULATOR-018) [test_tier_required]: 落地 runtime live action 映射覆盖扩展、等价回归测试与 `world_viewer_live` runtime-only 分支收敛。
 
 ## 专题任务映射（2026-03-02 批次）
 - [x] SUBTASK-WORLD_SIMULATOR-20260302-001 (PRD-WORLD_SIMULATOR-001/002/003) [test_tier_required]: `doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.prd.project.md`
@@ -72,7 +72,7 @@
 ## 专题任务映射（2026-03-05 批次）
 - [x] SUBTASK-WORLD_SIMULATOR-20260305-001 (PRD-WORLD_SIMULATOR-017) [test_tier_required]: `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase2-2026-03-05.prd.project.md`
 - [x] SUBTASK-WORLD_SIMULATOR-20260305-002 (PRD-WORLD_SIMULATOR-018) [test_tier_required]: `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase3-2026-03-05.prd.project.md`
-- [ ] SUBTASK-WORLD_SIMULATOR-20260305-003 (PRD-WORLD_SIMULATOR-018) [test_tier_required]: `crates/agent_world/src/viewer/runtime_live/control_plane.rs` + `crates/agent_world/src/bin/world_viewer_live.rs`
+- [x] SUBTASK-WORLD_SIMULATOR-20260305-003 (PRD-WORLD_SIMULATOR-018) [test_tier_required]: `crates/agent_world/src/viewer/runtime_live/control_plane.rs` + `crates/agent_world/src/bin/world_viewer_live.rs`
 
 ## 依赖
 - doc/world-simulator/prd.index.md
@@ -110,10 +110,10 @@
 
 ## 状态
 - 更新日期: 2026-03-05
-- 当前状态: in_progress
-- 当前优先任务: TASK-WORLD_SIMULATOR-041
+- 当前状态: completed
+- 当前优先任务: none
 - 并行待办: 无
-- 专题映射状态: 2026-03-02 批次 9/9、2026-03-03 批次 4/4、2026-03-04 批次 7/7、2026-03-05 批次 2/3 已纳入模块项目管理文档。
+- 专题映射状态: 2026-03-02 批次 9/9、2026-03-03 批次 4/4、2026-03-04 批次 7/7、2026-03-05 批次 3/3 已纳入模块项目管理文档。
 - 手册入口状态: `doc/world-simulator/viewer/viewer-manual.md` 为唯一活跃手册入口。
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - 说明: 本文档仅维护 world-simulator 模块设计执行状态；过程记录在 `doc/devlog/2026-03-05.md`。
