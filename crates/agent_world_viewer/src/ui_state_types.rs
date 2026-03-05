@@ -10,24 +10,6 @@ pub(super) enum ConnectionStatus {
     Error(String),
 }
 
-#[derive(Component)]
-pub(super) struct StatusText;
-
-#[derive(Component)]
-pub(super) struct SummaryText;
-
-#[derive(Component)]
-pub(super) struct EventsText;
-
-#[derive(Component)]
-pub(super) struct SelectionText;
-
-#[derive(Component)]
-pub(super) struct AgentActivityText;
-
-#[derive(Component)]
-pub(super) struct SelectionDetailsText;
-
 #[derive(Component, Clone)]
 pub(super) struct ControlButton {
     pub(super) control: ViewerControl,
@@ -51,4 +33,10 @@ impl Default for RightPanelWidthState {
             width_px: UI_PANEL_WIDTH,
         }
     }
+}
+
+#[derive(Resource, Default, Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) struct RightPanelLayoutState {
+    pub top_panel_collapsed: bool,
+    pub panel_hidden: bool,
 }

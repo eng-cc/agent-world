@@ -79,8 +79,6 @@ mod location_fragment_render;
 mod main_connection;
 mod main_ui_runtime;
 mod material_library;
-mod panel_layout;
-mod panel_scroll;
 mod perf_probe;
 mod render_perf_summary;
 mod right_panel_module_visibility;
@@ -114,17 +112,14 @@ use camera_controls::{
     update_grid_line_lod_visibility, OrbitDragState, TwoDZoomTier,
 };
 use copyable_text::{load_runtime_cjk_font, CopyableTextPanelState};
-use diagnosis::{spawn_diagnosis_panel, update_diagnosis_panel, DiagnosisState};
+use diagnosis::{update_diagnosis_panel, DiagnosisState};
 use egui_right_panel::render_right_side_panel_egui;
-use event_click_list::{
-    handle_event_click_buttons, spawn_event_click_list, update_event_click_list_ui,
-};
+use event_click_list::{handle_event_click_buttons, update_event_click_list_ui};
 use event_window::{event_window_policy_from_env, push_event_with_window, EventWindowPolicy};
 use floating_origin::update_floating_origin;
 use headless::headless_auto_play_once;
 #[cfg(not(target_arch = "wasm32"))]
 use headless::headless_report;
-use i18n::{control_button_label, locale_or_default, UiI18n};
 use internal_capture::{
     internal_capture_config_from_env, trigger_internal_capture, InternalCaptureState,
 };
@@ -132,8 +127,6 @@ use label_lod::{update_label_lod, LabelLodStats};
 use main_connection::*;
 use main_ui_runtime::*;
 use material_library::{build_fragment_element_material_handles, FragmentElementMaterialHandles};
-use panel_layout::{spawn_top_panel_toggle, RightPanelLayoutState, TopPanelContainer};
-use panel_scroll::{RightPanelScroll, TopPanelScroll};
 #[cfg(not(target_arch = "wasm32"))]
 use render_perf_summary::sample_headless_perf_summary;
 use render_perf_summary::{sample_render_perf_summary, RenderPerfHistory, RenderPerfSummary};
@@ -145,20 +138,16 @@ use scene_helpers::*;
 use selection_emphasis::{update_selection_emphasis, SelectionEmphasisState};
 use selection_linking::{
     handle_jump_selection_events_button, handle_locate_focus_event_button, pick_3d_selection,
-    spawn_event_object_link_controls, update_event_object_link_text, EventObjectLinkState,
+    update_event_object_link_text, EventObjectLinkState,
 };
 use timeline_controls::{
     handle_control_buttons, handle_timeline_adjust_buttons, handle_timeline_bar_drag,
     handle_timeline_mark_filter_buttons, handle_timeline_mark_jump_buttons,
-    handle_timeline_seek_submit, spawn_timeline_controls, sync_timeline_state_from_world,
-    update_timeline_ui, TimelineMarkFilterState, TimelineUiState,
+    handle_timeline_seek_submit, sync_timeline_state_from_world, update_timeline_ui,
+    TimelineMarkFilterState, TimelineUiState,
 };
-use ui_locale_text::{
-    agents_activity_no_snapshot, details_click_to_inspect, events_empty, selection_line,
-    status_line, summary_no_snapshot,
-};
+use ui_state_types::RightPanelLayoutState;
 use ui_state_types::*;
-use ui_text::{agent_activity_summary, events_summary, selection_details_summary, world_summary};
 use viewer_3d_config::{
     load_viewer_external_material_config_from, load_viewer_external_mesh_config_from,
     load_viewer_external_texture_config_from, resolve_viewer_3d_config,
@@ -176,9 +165,9 @@ use wasm_egui_input_bridge::{
     sync_wasm_egui_input_bridge_focus,
 };
 use world_overlay::{
-    handle_world_overlay_toggle_buttons, spawn_world_overlay_controls,
-    update_world_overlay_status_text, update_world_overlays_3d, world_overlay_config_from_env,
-    OverlayRenderRuntime, WorldOverlayConfig, WorldOverlayUiState,
+    handle_world_overlay_toggle_buttons, update_world_overlay_status_text,
+    update_world_overlays_3d, world_overlay_config_from_env, OverlayRenderRuntime,
+    WorldOverlayConfig, WorldOverlayUiState,
 };
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -1176,3 +1165,5 @@ struct BaseScale(Vec3);
 mod camera_mode_tests;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_ui_text;

@@ -1,26 +1,16 @@
+use super::tests_ui_text::{build_selection_details_text, default_locale};
 use super::*;
 
 #[test]
 fn update_ui_populates_asset_selection_details() {
-    let mut app = App::new();
-    app.add_systems(Update, update_ui);
-
-    app.world_mut().spawn((Text::new(""), StatusText));
-    app.world_mut().spawn((Text::new(""), SummaryText));
-    app.world_mut().spawn((Text::new(""), EventsText));
-    app.world_mut().spawn((Text::new(""), SelectionText));
-    app.world_mut().spawn((Text::new(""), AgentActivityText));
-    app.world_mut().spawn((Text::new(""), SelectionDetailsText));
-
-    let entity = app.world_mut().spawn_empty().id();
-    app.world_mut().insert_resource(ViewerSelection {
+    let selection = ViewerSelection {
         current: Some(SelectionInfo {
-            entity,
+            entity: Entity::from_raw_u32(1).expect("entity"),
             kind: SelectionKind::Asset,
             id: "asset-1".to_string(),
             name: None,
         }),
-    });
+    };
 
     let mut model = agent_world::simulator::WorldModel::default();
     model.locations.insert(
@@ -75,48 +65,31 @@ fn update_ui_populates_asset_selection_details() {
         runtime_event: None,
     }];
 
-    app.world_mut().insert_resource(ViewerState {
+    let state = ViewerState {
         status: ConnectionStatus::Connected,
         snapshot: Some(snapshot),
         events,
         decision_traces: Vec::new(),
         metrics: None,
-    });
-
-    app.update();
-
-    let world = app.world_mut();
-    let details_text = {
-        let mut query = world.query::<(&Text, &SelectionDetailsText)>();
-        query.single(world).expect("details text").0.clone()
     };
+    let locale = default_locale();
+    let details_text = build_selection_details_text(&selection, &state, None, locale);
 
-    assert!(details_text.0.contains("Details: asset asset-1"));
-    assert!(details_text.0.contains("Owner: location::loc-1"));
-    assert!(details_text.0.contains("Recent Owner Events"));
+    assert!(details_text.contains("Details: asset asset-1"));
+    assert!(details_text.contains("Owner: location::loc-1"));
+    assert!(details_text.contains("Recent Owner Events"));
 }
 
 #[test]
 fn update_ui_populates_power_plant_selection_details() {
-    let mut app = App::new();
-    app.add_systems(Update, update_ui);
-
-    app.world_mut().spawn((Text::new(""), StatusText));
-    app.world_mut().spawn((Text::new(""), SummaryText));
-    app.world_mut().spawn((Text::new(""), EventsText));
-    app.world_mut().spawn((Text::new(""), SelectionText));
-    app.world_mut().spawn((Text::new(""), AgentActivityText));
-    app.world_mut().spawn((Text::new(""), SelectionDetailsText));
-
-    let entity = app.world_mut().spawn_empty().id();
-    app.world_mut().insert_resource(ViewerSelection {
+    let selection = ViewerSelection {
         current: Some(SelectionInfo {
-            entity,
+            entity: Entity::from_raw_u32(2).expect("entity"),
             kind: SelectionKind::PowerPlant,
             id: "plant-1".to_string(),
             name: None,
         }),
-    });
+    };
 
     let mut model = agent_world::simulator::WorldModel::default();
     model.locations.insert(
@@ -172,48 +145,31 @@ fn update_ui_populates_power_plant_selection_details() {
         runtime_event: None,
     }];
 
-    app.world_mut().insert_resource(ViewerState {
+    let state = ViewerState {
         status: ConnectionStatus::Connected,
         snapshot: Some(snapshot),
         events,
         decision_traces: Vec::new(),
         metrics: None,
-    });
-
-    app.update();
-
-    let world = app.world_mut();
-    let details_text = {
-        let mut query = world.query::<(&Text, &SelectionDetailsText)>();
-        query.single(world).expect("details text").0.clone()
     };
+    let locale = default_locale();
+    let details_text = build_selection_details_text(&selection, &state, None, locale);
 
-    assert!(details_text.0.contains("Details: power_plant plant-1"));
-    assert!(details_text.0.contains("Output: current=12"));
-    assert!(details_text.0.contains("generated 7"));
+    assert!(details_text.contains("Details: power_plant plant-1"));
+    assert!(details_text.contains("Output: current=12"));
+    assert!(details_text.contains("generated 7"));
 }
 
 #[test]
 fn update_ui_populates_chunk_selection_details() {
-    let mut app = App::new();
-    app.add_systems(Update, update_ui);
-
-    app.world_mut().spawn((Text::new(""), StatusText));
-    app.world_mut().spawn((Text::new(""), SummaryText));
-    app.world_mut().spawn((Text::new(""), EventsText));
-    app.world_mut().spawn((Text::new(""), SelectionText));
-    app.world_mut().spawn((Text::new(""), AgentActivityText));
-    app.world_mut().spawn((Text::new(""), SelectionDetailsText));
-
-    let entity = app.world_mut().spawn_empty().id();
-    app.world_mut().insert_resource(ViewerSelection {
+    let selection = ViewerSelection {
         current: Some(SelectionInfo {
-            entity,
+            entity: Entity::from_raw_u32(3).expect("entity"),
             kind: SelectionKind::Chunk,
             id: "0,0,0".to_string(),
             name: Some("generated".to_string()),
         }),
-    });
+    };
 
     let mut model = agent_world::simulator::WorldModel::default();
     model.chunks.insert(
@@ -261,49 +217,32 @@ fn update_ui_populates_chunk_selection_details() {
         runtime_event: None,
     }];
 
-    app.world_mut().insert_resource(ViewerState {
+    let state = ViewerState {
         status: ConnectionStatus::Connected,
         snapshot: Some(snapshot),
         events,
         decision_traces: Vec::new(),
         metrics: None,
-    });
-
-    app.update();
-
-    let world = app.world_mut();
-    let details_text = {
-        let mut query = world.query::<(&Text, &SelectionDetailsText)>();
-        query.single(world).expect("details text").0.clone()
     };
+    let locale = default_locale();
+    let details_text = build_selection_details_text(&selection, &state, None, locale);
 
-    assert!(details_text.0.contains("Details: chunk 0,0,0"));
-    assert!(details_text.0.contains("State: generated"));
-    assert!(details_text.0.contains("Budget (remaining top):"));
-    assert!(details_text.0.contains("generated fragments=4 blocks=18"));
+    assert!(details_text.contains("Details: chunk 0,0,0"));
+    assert!(details_text.contains("State: generated"));
+    assert!(details_text.contains("Budget (remaining top):"));
+    assert!(details_text.contains("generated fragments=4 blocks=18"));
 }
 
 #[test]
 fn update_ui_populates_fragment_selection_details_with_owner_location() {
-    let mut app = App::new();
-    app.add_systems(Update, update_ui);
-
-    app.world_mut().spawn((Text::new(""), StatusText));
-    app.world_mut().spawn((Text::new(""), SummaryText));
-    app.world_mut().spawn((Text::new(""), EventsText));
-    app.world_mut().spawn((Text::new(""), SelectionText));
-    app.world_mut().spawn((Text::new(""), AgentActivityText));
-    app.world_mut().spawn((Text::new(""), SelectionDetailsText));
-
-    let entity = app.world_mut().spawn_empty().id();
-    app.world_mut().insert_resource(ViewerSelection {
+    let selection = ViewerSelection {
         current: Some(SelectionInfo {
-            entity,
+            entity: Entity::from_raw_u32(4).expect("entity"),
             kind: SelectionKind::Fragment,
             id: "loc-1#0".to_string(),
             name: Some("loc-1".to_string()),
         }),
-    });
+    };
 
     let mut model = agent_world::simulator::WorldModel::default();
     model.locations.insert(
@@ -329,23 +268,17 @@ fn update_ui_populates_fragment_selection_details_with_owner_location() {
         runtime_snapshot: None,
     };
 
-    app.world_mut().insert_resource(ViewerState {
+    let state = ViewerState {
         status: ConnectionStatus::Connected,
         snapshot: Some(snapshot),
         events: Vec::new(),
         decision_traces: Vec::new(),
         metrics: None,
-    });
-
-    app.update();
-
-    let world = app.world_mut();
-    let details_text = {
-        let mut query = world.query::<(&Text, &SelectionDetailsText)>();
-        query.single(world).expect("details text").0.clone()
     };
+    let locale = default_locale();
+    let details_text = build_selection_details_text(&selection, &state, None, locale);
 
-    assert!(details_text.0.contains("Details: fragment loc-1#0"));
-    assert!(details_text.0.contains("Location: loc-1"));
-    assert!(details_text.0.contains("Location Name: Alpha"));
+    assert!(details_text.contains("Details: fragment loc-1#0"));
+    assert!(details_text.contains("Location: loc-1"));
+    assert!(details_text.contains("Location Name: Alpha"));
 }

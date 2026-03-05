@@ -1,3 +1,7 @@
+use super::tests_ui_text::{
+    build_agent_activity_text, build_events_text, build_status_text, build_summary_text,
+    default_locale,
+};
 use super::*;
 use crate::app_bootstrap::decide_offline;
 use crate::button_feedback::StepControlLoadingState;
@@ -5,6 +9,7 @@ use crate::timeline_controls::{
     normalized_x_to_tick, TimelineAdjustButton, TimelineBar, TimelineBarFill,
     TimelineSeekSubmitButton, TimelineStatusText,
 };
+use crate::ui_text::events_summary;
 use crate::viewer_3d_config::{
     Viewer3dConfig, ViewerExternalMaterialSlotConfig, ViewerExternalTextureSlotConfig,
     ViewerTonemappingMode,
@@ -20,17 +25,6 @@ mod tests_scene_grid;
 
 #[test]
 fn update_ui_sets_status_and_events() {
-    let mut app = App::new();
-    app.add_systems(Update, update_ui);
-
-    app.world_mut().spawn((Text::new(""), StatusText));
-    app.world_mut().spawn((Text::new(""), SummaryText));
-    app.world_mut().spawn((Text::new(""), EventsText));
-    app.world_mut().spawn((Text::new(""), SelectionText));
-    app.world_mut().spawn((Text::new(""), AgentActivityText));
-    app.world_mut().insert_resource(ViewerSelection::default());
-    app.world_mut().insert_resource(Viewer3dConfig::default());
-
     let event = WorldEvent {
         id: 1,
         time: 7,
@@ -47,38 +41,16 @@ fn update_ui_sets_status_and_events() {
         decision_traces: Vec::new(),
         metrics: None,
     };
-    app.world_mut().insert_resource(state);
+    let locale = default_locale();
+    let status_text = build_status_text(&state, locale);
+    assert_eq!(status_text, "Status: error: oops");
 
-    app.update();
-
-    let world = app.world_mut();
-
-    let status_text = {
-        let mut query = world.query::<(&Text, &StatusText)>();
-        query.single(world).expect("status text").0.clone()
-    };
-    assert_eq!(status_text.0, "Status: error: oops");
-
-    let events_text = {
-        let mut query = world.query::<(&Text, &EventsText)>();
-        query.single(world).expect("events text").0.clone()
-    };
-    assert_eq!(events_text.0, events_summary(&[event], None));
+    let events_text = build_events_text(&state, None, locale);
+    assert_eq!(events_text, events_summary(&[event], None));
 }
 
 #[test]
 fn update_ui_populates_world_summary_and_metrics() {
-    let mut app = App::new();
-    app.add_systems(Update, update_ui);
-
-    app.world_mut().spawn((Text::new(""), SummaryText));
-    app.world_mut().spawn((Text::new(""), StatusText));
-    app.world_mut().spawn((Text::new(""), EventsText));
-    app.world_mut().spawn((Text::new(""), SelectionText));
-    app.world_mut().spawn((Text::new(""), AgentActivityText));
-    app.world_mut().insert_resource(ViewerSelection::default());
-    app.world_mut().insert_resource(Viewer3dConfig::default());
-
     let mut model = agent_world::simulator::WorldModel::default();
     model.locations.insert(
         "loc-1".to_string(),
@@ -145,38 +117,21 @@ fn update_ui_populates_world_summary_and_metrics() {
         decision_traces: Vec::new(),
         metrics: Some(metrics),
     };
-    app.world_mut().insert_resource(state);
+    let locale = default_locale();
+    let viewer_config = Viewer3dConfig::default();
+    let summary_text = build_summary_text(&state, Some(&viewer_config), locale);
 
-    app.update();
-
-    let world = app.world_mut();
-    let summary_text = {
-        let mut query = world.query::<(&Text, &SummaryText)>();
-        query.single(world).expect("summary text").0.clone()
-    };
-
-    assert!(summary_text.0.contains("Time: 42"));
-    assert!(summary_text.0.contains("Locations: 2"));
-    assert!(summary_text.0.contains("Agents: 1"));
-    assert!(summary_text.0.contains("Ticks: 42"));
-    assert!(summary_text.0.contains("Actions: 7"));
-    assert!(summary_text.0.contains("Decisions: 4"));
-    assert!(summary_text.0.contains("Render Physical: off"));
+    assert!(summary_text.contains("Time: 42"));
+    assert!(summary_text.contains("Locations: 2"));
+    assert!(summary_text.contains("Agents: 1"));
+    assert!(summary_text.contains("Ticks: 42"));
+    assert!(summary_text.contains("Actions: 7"));
+    assert!(summary_text.contains("Decisions: 4"));
+    assert!(summary_text.contains("Render Physical: off"));
 }
 
 #[test]
 fn update_ui_reflects_filtered_events() {
-    let mut app = App::new();
-    app.add_systems(Update, update_ui);
-
-    app.world_mut().spawn((Text::new(""), EventsText));
-    app.world_mut().spawn((Text::new(""), SummaryText));
-    app.world_mut().spawn((Text::new(""), StatusText));
-    app.world_mut().spawn((Text::new(""), SelectionText));
-    app.world_mut().spawn((Text::new(""), AgentActivityText));
-    app.world_mut().insert_resource(ViewerSelection::default());
-    app.world_mut().insert_resource(Viewer3dConfig::default());
-
     let event = WorldEvent {
         id: 9,
         time: 5,
@@ -198,30 +153,13 @@ fn update_ui_reflects_filtered_events() {
         decision_traces: Vec::new(),
         metrics: None,
     };
-    app.world_mut().insert_resource(state);
-
-    app.update();
-
-    let world = app.world_mut();
-    let events_text = {
-        let mut query = world.query::<(&Text, &EventsText)>();
-        query.single(world).expect("events text").0.clone()
-    };
-    assert!(events_text.0.contains("Power"));
+    let locale = default_locale();
+    let events_text = build_events_text(&state, None, locale);
+    assert!(events_text.contains("Power"));
 }
 
 #[test]
 fn update_ui_populates_agent_activity_panel() {
-    let mut app = App::new();
-    app.add_systems(Update, update_ui);
-
-    app.world_mut().spawn((Text::new(""), EventsText));
-    app.world_mut().spawn((Text::new(""), SummaryText));
-    app.world_mut().spawn((Text::new(""), StatusText));
-    app.world_mut().spawn((Text::new(""), SelectionText));
-    app.world_mut().spawn((Text::new(""), AgentActivityText));
-    app.world_mut().insert_resource(ViewerSelection::default());
-
     let mut model = agent_world::simulator::WorldModel::default();
     model.locations.insert(
         "loc-1".to_string(),
@@ -274,24 +212,18 @@ fn update_ui_populates_agent_activity_panel() {
         runtime_event: None,
     }];
 
-    app.world_mut().insert_resource(ViewerState {
+    let state = ViewerState {
         status: ConnectionStatus::Connected,
         snapshot: Some(snapshot),
         events,
         decision_traces: Vec::new(),
         metrics: None,
-    });
-
-    app.update();
-
-    let world = app.world_mut();
-    let activity_text = {
-        let mut query = world.query::<(&Text, &AgentActivityText)>();
-        query.single(world).expect("activity text").0.clone()
     };
-    assert!(activity_text.0.contains("agent-1 @ loc-2"));
-    assert!(activity_text.0.contains("E=42"));
-    assert!(activity_text.0.contains("harvest +6"));
+    let locale = default_locale();
+    let activity_text = build_agent_activity_text(&state, locale);
+    assert!(activity_text.contains("agent-1 @ loc-2"));
+    assert!(activity_text.contains("E=42"));
+    assert!(activity_text.contains("harvest +6"));
 }
 
 #[test]

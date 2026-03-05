@@ -69,8 +69,6 @@
   - `scripts/viewer-texture-inspector.sh`
   - `crates/agent_world_viewer/src/main_ui_runtime.rs`
   - `crates/agent_world_viewer/src/right_panel_layout_state.rs`
-  - `crates/agent_world_viewer/src/panel_layout.rs`（legacy 清理）
-  - `crates/agent_world_viewer/src/panel_scroll.rs`（legacy 清理）
   - `crates/agent_world_viewer/src/theme_runtime.rs`
   - `crates/agent_world_viewer/src/viewer_3d_config.rs`
   - `crates/agent_world_viewer/src/egui_right_panel.rs`

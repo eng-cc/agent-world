@@ -2,6 +2,7 @@ use super::web_test_api::{
     consume_web_test_api_commands, publish_web_test_api_state, setup_web_test_api,
 };
 use super::*;
+use crate::i18n::UiI18n;
 use crate::right_panel_module_visibility::RightPanelModuleVisibilityState;
 #[cfg(target_arch = "wasm32")]
 use bevy::asset::{AssetMetaCheck, AssetPlugin};

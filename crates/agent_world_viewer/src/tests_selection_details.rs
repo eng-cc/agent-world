@@ -1,27 +1,16 @@
+use super::tests_ui_text::{build_selection_details_text, default_locale};
 use super::*;
 
 #[test]
 fn update_ui_populates_agent_selection_details_with_llm_trace() {
-    let mut app = App::new();
-    app.add_systems(Update, update_ui);
-
-    app.world_mut().spawn((Text::new(""), StatusText));
-    app.world_mut().spawn((Text::new(""), SummaryText));
-    app.world_mut().spawn((Text::new(""), EventsText));
-    app.world_mut().spawn((Text::new(""), SelectionText));
-    app.world_mut().spawn((Text::new(""), AgentActivityText));
-    app.world_mut().spawn((Text::new(""), SelectionDetailsText));
-    app.world_mut().insert_resource(Viewer3dConfig::default());
-
-    let entity = app.world_mut().spawn_empty().id();
-    app.world_mut().insert_resource(ViewerSelection {
+    let selection = ViewerSelection {
         current: Some(SelectionInfo {
-            entity,
+            entity: Entity::from_raw_u32(1).expect("entity"),
             kind: SelectionKind::Agent,
             id: "agent-1".to_string(),
             name: None,
         }),
-    });
+    };
 
     let mut model = agent_world::simulator::WorldModel::default();
     model.locations.insert(
@@ -91,68 +80,44 @@ fn update_ui_populates_agent_selection_details_with_llm_trace() {
         llm_chat_messages: Vec::new(),
     }];
 
-    app.world_mut().insert_resource(ViewerState {
+    let state = ViewerState {
         status: ConnectionStatus::Connected,
         snapshot: Some(snapshot),
         events,
         decision_traces,
         metrics: None,
-    });
-
-    app.update();
-
-    let world = app.world_mut();
-    let details_text = {
-        let mut query = world.query::<(&Text, &SelectionDetailsText)>();
-        query.single(world).expect("details text").0.clone()
     };
+    let locale = default_locale();
+    let viewer_config = Viewer3dConfig::default();
+    let details_text =
+        build_selection_details_text(&selection, &state, Some(&viewer_config), locale);
 
-    assert!(details_text.0.contains("Details: agent agent-1"));
-    assert!(details_text
-        .0
-        .contains("Body Size: data_height=1.00m (100cm)"));
-    assert!(details_text.0.contains("Location Radius: 100cm (1.00m)"));
-    assert!(details_text
-        .0
-        .contains("Scale Ratio: height/location_radius=1.000"));
-    assert!(details_text
-        .0
-        .contains("Thermal Visual: ratio=0.00 color=heat_low"));
-    assert!(details_text.0.contains("Recent LLM I/O"));
-    assert!(details_text.0.contains("input:"));
-    assert!(details_text.0.contains("output:"));
-    assert!(details_text.0.contains("model: gpt-4o-mini"));
-    assert!(details_text.0.contains("latency_ms: 123"));
-    assert!(details_text
-        .0
-        .contains("tokens: prompt=77 completion=9 total=86"));
-    assert!(details_text.0.contains("retries: 1"));
+    assert!(details_text.contains("Details: agent agent-1"));
+    assert!(details_text.contains("Body Size: data_height=1.00m (100cm)"));
+    assert!(details_text.contains("Location Radius: 100cm (1.00m)"));
+    assert!(details_text.contains("Scale Ratio: height/location_radius=1.000"));
+    assert!(details_text.contains("Thermal Visual: ratio=0.00 color=heat_low"));
+    assert!(details_text.contains("Recent LLM I/O"));
+    assert!(details_text.contains("input:"));
+    assert!(details_text.contains("output:"));
+    assert!(details_text.contains("model: gpt-4o-mini"));
+    assert!(details_text.contains("latency_ms: 123"));
+    assert!(details_text.contains("tokens: prompt=77 completion=9 total=86"));
+    assert!(details_text.contains("retries: 1"));
 }
 
 #[test]
 fn update_ui_populates_location_selection_details() {
-    let mut app = App::new();
-    app.add_systems(Update, update_ui);
-
-    app.world_mut().spawn((Text::new(""), StatusText));
-    app.world_mut().spawn((Text::new(""), SummaryText));
-    app.world_mut().spawn((Text::new(""), EventsText));
-    app.world_mut().spawn((Text::new(""), SelectionText));
-    app.world_mut().spawn((Text::new(""), AgentActivityText));
-    app.world_mut().spawn((Text::new(""), SelectionDetailsText));
     let mut viewer_config = Viewer3dConfig::default();
     viewer_config.physical.reference_radiation_area_m2 = 2.0;
-    app.world_mut().insert_resource(viewer_config);
-
-    let entity = app.world_mut().spawn_empty().id();
-    app.world_mut().insert_resource(ViewerSelection {
+    let selection = ViewerSelection {
         current: Some(SelectionInfo {
-            entity,
+            entity: Entity::from_raw_u32(2).expect("entity"),
             kind: SelectionKind::Location,
             id: "loc-1".to_string(),
             name: Some("Alpha".to_string()),
         }),
-    });
+    };
 
     let mut model = agent_world::simulator::WorldModel::default();
     let mut location = agent_world::simulator::Location::new_with_profile(
@@ -190,28 +155,19 @@ fn update_ui_populates_location_selection_details() {
         runtime_snapshot: None,
     };
 
-    app.world_mut().insert_resource(ViewerState {
+    let state = ViewerState {
         status: ConnectionStatus::Connected,
         snapshot: Some(snapshot),
         events: Vec::new(),
         decision_traces: Vec::new(),
         metrics: None,
-    });
-
-    app.update();
-
-    let world = app.world_mut();
-    let details_text = {
-        let mut query = world.query::<(&Text, &SelectionDetailsText)>();
-        query.single(world).expect("details text").0.clone()
     };
+    let locale = default_locale();
+    let details_text =
+        build_selection_details_text(&selection, &state, Some(&viewer_config), locale);
 
-    assert!(details_text.0.contains("Details: location loc-1"));
-    assert!(details_text.0.contains("radiation/tick=9"));
-    assert!(details_text
-        .0
-        .contains("Radiation Visual: power=900.00W flux=450.00W/m2 area=2.00m2"));
-    assert!(details_text
-        .0
-        .contains("Fragment Depletion: mined=87.5% remaining=125g/1000g"));
+    assert!(details_text.contains("Details: location loc-1"));
+    assert!(details_text.contains("radiation/tick=9"));
+    assert!(details_text.contains("Radiation Visual: power=900.00W flux=450.00W/m2 area=2.00m2"));
+    assert!(details_text.contains("Fragment Depletion: mined=87.5% remaining=125g/1000g"));
 }
