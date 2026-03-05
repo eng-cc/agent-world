@@ -79,6 +79,7 @@
   - `doc/world-runtime/wasm/wasm-interface.md`
   - `doc/world-runtime/wasm/wasm-executor.prd.md`
   - `doc/world-runtime/governance/governance-events.md`
+  - `doc/world-runtime/module/player-published-entities-2026-03-05.prd.md`
   - `doc/world-runtime/testing/testing.md`
 - Edge Cases & Error Handling:
   - 回放不一致：立即标记高风险阻断并输出差异快照。
