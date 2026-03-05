@@ -451,6 +451,7 @@ mod tests {
             kind: WorldEventKind::ActionRejected {
                 reason: RejectReason::InvalidAmount { amount: 1 },
             },
+            runtime_event: None,
         }
     }
 

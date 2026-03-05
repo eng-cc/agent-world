@@ -87,6 +87,7 @@ mod tests {
             next_action_id: 1,
             pending_actions: Vec::new(),
             journal_len: 0,
+            runtime_snapshot: None,
         }
     }
 

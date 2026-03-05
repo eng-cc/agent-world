@@ -31,6 +31,7 @@ fn seed_known_factory<C: LlmCompletionClient>(
                 electricity_cost: 8,
                 hardware_cost: 4,
             },
+            runtime_event: None,
         },
     });
 }
@@ -252,6 +253,7 @@ fn llm_agent_user_prompt_includes_last_action_summary_after_feedback() {
                     available: 0,
                 },
             },
+            runtime_event: None,
         },
     };
 
@@ -285,6 +287,7 @@ fn llm_agent_user_prompt_preserves_facility_already_exists_reject_reason() {
                     facility_id: "factory.alpha".to_string(),
                 },
             },
+            runtime_event: None,
         },
     };
 
@@ -319,6 +322,7 @@ fn llm_agent_user_prompt_preserves_rule_denied_reject_reason() {
                     notes: vec!["factory/recipe mismatch".to_string()],
                 },
             },
+            runtime_event: None,
         },
     };
 
@@ -350,6 +354,7 @@ fn llm_agent_user_prompt_preserves_location_not_found_reject_reason() {
                     location_id: "loc.missing".to_string(),
                 },
             },
+            runtime_event: None,
         },
     };
 
@@ -484,6 +489,7 @@ fn llm_agent_records_failed_action_into_long_term_memory() {
                     agent_id: "agent-1".to_string(),
                 },
             },
+            runtime_event: None,
         },
     };
 
@@ -656,6 +662,7 @@ fn llm_agent_force_replan_breaks_repeated_harvest_loop_with_repair() {
                 amount: 5,
                 available: 90,
             },
+            runtime_event: None,
         },
     });
 
@@ -681,6 +688,7 @@ fn llm_agent_force_replan_breaks_repeated_harvest_loop_with_repair() {
                 amount: 4,
                 available: 86,
             },
+            runtime_event: None,
         },
     });
 
@@ -894,6 +902,7 @@ fn llm_agent_auto_reentry_arms_execute_until_for_repeated_actions() {
                 amount: 9,
                 available: 90,
             },
+            runtime_event: None,
         },
     });
 
@@ -925,6 +934,7 @@ fn llm_agent_auto_reentry_arms_execute_until_for_repeated_actions() {
                 amount: 8,
                 available: 82,
             },
+            runtime_event: None,
         },
     });
 

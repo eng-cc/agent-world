@@ -1,5 +1,9 @@
 use crate::geometry::GeoPos;
+#[cfg(not(target_arch = "wasm32"))]
+use crate::runtime::WorldEvent as RuntimeWorldEvent;
 use serde::{Deserialize, Serialize};
+#[cfg(target_arch = "wasm32")]
+use serde_json::Value as RuntimeWorldEvent;
 use std::collections::BTreeMap;
 
 use super::super::agent::{LlmEffectIntentTrace, LlmEffectReceiptTrace};
@@ -111,6 +115,8 @@ pub struct WorldEvent {
     pub id: WorldEventId,
     pub time: WorldTime,
     pub kind: WorldEventKind,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub runtime_event: Option<RuntimeWorldEvent>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -292,6 +298,11 @@ pub enum WorldEventKind {
         player_id: String,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         public_key: Option<String>,
+    },
+    RuntimeEvent {
+        kind: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        domain_kind: Option<String>,
     },
     SocialFactPublished {
         fact: SocialFactState,

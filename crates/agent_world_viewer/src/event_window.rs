@@ -138,6 +138,7 @@ mod tests {
                     kind: WorldEventKind::ActionRejected {
                         reason: RejectReason::InvalidAmount { amount: id as i64 },
                     },
+                    runtime_event: None,
                 },
                 policy,
             );
@@ -161,6 +162,7 @@ mod tests {
                     kind: WorldEventKind::ActionRejected {
                         reason: RejectReason::InvalidAmount { amount: id as i64 },
                     },
+                    runtime_event: None,
                 },
                 policy,
             );

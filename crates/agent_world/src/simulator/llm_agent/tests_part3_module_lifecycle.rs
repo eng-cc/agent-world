@@ -260,6 +260,7 @@ fn llm_agent_module_lifecycle_status_module_reads_observation_snapshot() {
                 bytes_len: 4,
                 module_id_hint: Some("m.llm.lifecycle".to_string()),
             },
+            runtime_event: None,
         },
     });
     behavior.on_action_result(&ActionResult {
@@ -283,6 +284,7 @@ fn llm_agent_module_lifecycle_status_module_reads_observation_snapshot() {
                 active: true,
                 install_target: ModuleInstallTarget::SelfAgent,
             },
+            runtime_event: None,
         },
     });
 

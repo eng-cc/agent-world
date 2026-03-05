@@ -27,6 +27,7 @@ pub fn viewer_event_kind_matches(filter: &ViewerEventKind, kind: &WorldEventKind
         (ViewerEventKind::ActionRejected, WorldEventKind::ActionRejected { .. }) => true,
         (ViewerEventKind::Power, WorldEventKind::Power(_)) => true,
         (ViewerEventKind::PromptUpdated, WorldEventKind::AgentPromptUpdated { .. }) => true,
+        (ViewerEventKind::RuntimeEvent, WorldEventKind::RuntimeEvent { .. }) => true,
         _ => false,
     }
 }
@@ -66,6 +67,13 @@ mod tests {
                 to: "loc-b".to_string(),
                 distance_cm: 100,
                 electricity_cost: 1,
+            },
+        ));
+        assert!(viewer_event_kind_matches(
+            &ViewerEventKind::RuntimeEvent,
+            &WorldEventKind::RuntimeEvent {
+                kind: "snapshot_created".to_string(),
+                domain_kind: None,
             },
         ));
     }

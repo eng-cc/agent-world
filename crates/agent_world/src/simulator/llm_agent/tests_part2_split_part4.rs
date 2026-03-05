@@ -33,6 +33,7 @@ fn llm_agent_prioritizes_mine_alternative_with_lower_failure_streak() {
                         available: 0,
                     },
                 },
+                runtime_event: None,
             },
         });
     }
@@ -60,6 +61,7 @@ fn llm_agent_prioritizes_mine_alternative_with_lower_failure_streak() {
                     available: 0,
                 },
             },
+            runtime_event: None,
         },
     });
 
@@ -268,6 +270,7 @@ fn llm_agent_rewrites_execute_until_wait_action_to_actionable_harvest() {
                 amount: 1,
                 available: 12,
             },
+            runtime_event: None,
         },
     });
     observation.time = 102;
@@ -351,6 +354,7 @@ fn llm_agent_clamps_execute_until_harvest_max_ticks_to_short_cap() {
                     amount: 6,
                     available: 80,
                 },
+                runtime_event: None,
             },
         });
 
@@ -409,6 +413,7 @@ fn llm_agent_execute_until_stops_on_harvest_available_threshold() {
                 amount: 5,
                 available: 1,
             },
+            runtime_event: None,
         },
     });
 

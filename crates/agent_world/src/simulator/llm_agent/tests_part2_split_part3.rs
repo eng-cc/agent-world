@@ -118,6 +118,7 @@ fn llm_agent_uses_relay_fallback_after_move_distance_exceeded_history() {
                     max_distance_cm: 1_000_000,
                 },
             },
+            runtime_event: None,
         },
     });
 
@@ -174,6 +175,7 @@ fn llm_agent_hard_switches_schedule_recipe_to_next_uncovered_recipe() {
                 finished_product_id: "product.component.control_chip".to_string(),
                 finished_product_units: 1,
             },
+            runtime_event: None,
         },
     });
 
@@ -240,6 +242,7 @@ fn llm_agent_rewrites_wait_ticks_to_sustained_schedule_after_full_recipe_coverag
                 electricity_cost: 10,
                 hardware_cost: 5,
             },
+            runtime_event: None,
         },
     });
 
@@ -294,6 +297,7 @@ fn llm_agent_rewrites_wait_ticks_to_sustained_schedule_after_full_recipe_coverag
                     finished_product_id: finished_product_id.to_string(),
                     finished_product_units: 1,
                 },
+                runtime_event: None,
             },
         });
     }
@@ -375,6 +379,7 @@ fn llm_agent_rewrites_wait_to_recovery_action_after_full_recipe_coverage() {
                 electricity_cost: 10,
                 hardware_cost: 5,
             },
+            runtime_event: None,
         },
     });
 
@@ -411,6 +416,7 @@ fn llm_agent_rewrites_wait_to_recovery_action_after_full_recipe_coverage() {
                     finished_product_id: format!("product.{recipe_id}"),
                     finished_product_units: 1,
                 },
+                runtime_event: None,
             },
         });
     }
@@ -486,6 +492,7 @@ fn llm_agent_user_prompt_includes_recipe_coverage_summary() {
                 finished_product_id: "product.component.control_chip".to_string(),
                 finished_product_units: 1,
             },
+            runtime_event: None,
         },
     });
 
@@ -617,6 +624,7 @@ fn llm_agent_clamps_mine_compound_mass_by_known_location_availability() {
                     available: 1_000,
                 },
             },
+            runtime_event: None,
         },
     });
 
@@ -685,6 +693,7 @@ fn llm_agent_reroutes_mine_compound_from_depleted_location_to_alternative_locati
                     available: 0,
                 },
             },
+            runtime_event: None,
         },
     });
 
@@ -765,6 +774,7 @@ fn llm_agent_skips_depleted_location_during_cooldown_window() {
                     available: 0,
                 },
             },
+            runtime_event: None,
         },
     });
 
@@ -844,6 +854,7 @@ fn llm_agent_allows_retry_depleted_location_after_cooldown_expires() {
                     available: 0,
                 },
             },
+            runtime_event: None,
         },
     });
 

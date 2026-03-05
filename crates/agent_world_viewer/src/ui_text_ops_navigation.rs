@@ -119,6 +119,7 @@ mod tests {
             next_action_id: 3,
             pending_actions: Vec::new(),
             journal_len: 5,
+            runtime_snapshot: None,
         };
 
         let events = vec![
@@ -135,6 +136,7 @@ mod tests {
                     kind: ResourceKind::Data,
                     amount: 2,
                 },
+                runtime_event: None,
             },
             WorldEvent {
                 id: 2,
@@ -146,6 +148,7 @@ mod tests {
                     distance_cm: 100,
                     electricity_cost: 1,
                 },
+                runtime_event: None,
             },
             WorldEvent {
                 id: 3,
@@ -160,6 +163,7 @@ mod tests {
                         available: 2,
                     },
                 },
+                runtime_event: None,
             },
         ];
 

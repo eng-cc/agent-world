@@ -278,6 +278,7 @@ fn sample_rejected_event(id: u64, time: u64) -> WorldEvent {
                 agent_id: format!("agent-{id}"),
             },
         },
+        runtime_event: None,
     }
 }
 
@@ -292,6 +293,7 @@ fn sample_agent_moved_event(id: u64, time: u64) -> WorldEvent {
             distance_cm: 12,
             electricity_cost: 3,
         },
+        runtime_event: None,
     }
 }
 
@@ -1198,6 +1200,7 @@ fn rejection_event_count_only_counts_rejected_events() {
                 pos: GeoPos::new(0.0, 0.0, 0.0),
                 profile: Default::default(),
             },
+            runtime_event: None,
         },
         WorldEvent {
             id: 2,
@@ -1207,6 +1210,7 @@ fn rejection_event_count_only_counts_rejected_events() {
                     agent_id: "a-1".to_string(),
                 },
             },
+            runtime_event: None,
         },
     ];
 

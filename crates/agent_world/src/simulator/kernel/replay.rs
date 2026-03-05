@@ -1063,6 +1063,7 @@ impl WorldKernel {
             },
             WorldEventKind::LlmEffectQueued { .. } => {}
             WorldEventKind::LlmReceiptAppended { .. } => {}
+            WorldEventKind::RuntimeEvent { .. } => {}
         }
 
         Ok(())

@@ -383,6 +383,7 @@ fn observe_action_result_counts_reject_reason_breakdown() {
             kind: WorldEventKind::ActionRejected {
                 reason: RejectReason::InvalidAmount { amount: 0 },
             },
+            runtime_event: None,
         },
     };
 
@@ -429,6 +430,7 @@ fn observe_action_result_counts_success_and_first_tick_per_action_kind() {
                 electricity_cost: 10,
                 hardware_cost: 2,
             },
+            runtime_event: None,
         },
     };
     let failure = ActionResult {
@@ -450,6 +452,7 @@ fn observe_action_result_counts_success_and_first_tick_per_action_kind() {
                     facility_id: "factory.alpha".to_string(),
                 },
             },
+            runtime_event: None,
         },
     };
 

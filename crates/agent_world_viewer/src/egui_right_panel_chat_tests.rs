@@ -74,6 +74,7 @@ fn prompt_event(
             digest: "digest".to_string(),
             rolled_back_to_version: None,
         },
+        runtime_event: None,
     }
 }
 

@@ -56,6 +56,7 @@ fn update_ui_populates_asset_selection_details() {
         next_action_id: 1,
         pending_actions: Vec::new(),
         journal_len: 0,
+        runtime_snapshot: None,
     };
 
     let events = vec![WorldEvent {
@@ -71,6 +72,7 @@ fn update_ui_populates_asset_selection_details() {
             kind: agent_world::simulator::ResourceKind::Electricity,
             amount: 3,
         },
+        runtime_event: None,
     }];
 
     app.world_mut().insert_resource(ViewerState {
@@ -154,6 +156,7 @@ fn update_ui_populates_power_plant_selection_details() {
         next_action_id: 1,
         pending_actions: Vec::new(),
         journal_len: 0,
+        runtime_snapshot: None,
     };
 
     let events = vec![WorldEvent {
@@ -166,6 +169,7 @@ fn update_ui_populates_power_plant_selection_details() {
                 amount: 7,
             },
         ),
+        runtime_event: None,
     }];
 
     app.world_mut().insert_resource(ViewerState {
@@ -240,6 +244,7 @@ fn update_ui_populates_chunk_selection_details() {
         next_action_id: 1,
         pending_actions: Vec::new(),
         journal_len: 0,
+        runtime_snapshot: None,
     };
 
     let events = vec![WorldEvent {
@@ -253,6 +258,7 @@ fn update_ui_populates_chunk_selection_details() {
             chunk_budget: agent_world::simulator::ChunkResourceBudget::default(),
             cause: agent_world::simulator::ChunkGenerationCause::Action,
         },
+        runtime_event: None,
     }];
 
     app.world_mut().insert_resource(ViewerState {
@@ -320,6 +326,7 @@ fn update_ui_populates_fragment_selection_details_with_owner_location() {
         next_action_id: 1,
         pending_actions: Vec::new(),
         journal_len: 0,
+        runtime_snapshot: None,
     };
 
     app.world_mut().insert_resource(ViewerState {

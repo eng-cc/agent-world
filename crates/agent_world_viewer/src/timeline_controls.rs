@@ -1155,6 +1155,7 @@ mod tests {
                 kind: WorldEventKind::ActionRejected {
                     reason: RejectReason::InvalidAmount { amount: 1 },
                 },
+                runtime_event: None,
             },
             WorldEvent {
                 id: 2,
@@ -1164,6 +1165,7 @@ mod tests {
                     location_id: "loc-1".to_string(),
                     amount: 120,
                 }),
+                runtime_event: None,
             },
             WorldEvent {
                 id: 3,
@@ -1178,6 +1180,7 @@ mod tests {
                     kind: agent_world::simulator::ResourceKind::Electricity,
                     amount: 300,
                 },
+                runtime_event: None,
             },
             WorldEvent {
                 id: 4,
@@ -1188,6 +1191,7 @@ mod tests {
                     reason: ConsumeReason::Decision,
                     remaining: 10,
                 }),
+                runtime_event: None,
             },
         ];
 
@@ -1240,6 +1244,7 @@ mod tests {
                 kind: WorldEventKind::ActionRejected {
                     reason: RejectReason::InvalidAmount { amount: 1 },
                 },
+                runtime_event: None,
             },
             WorldEvent {
                 id: 2,
@@ -1247,6 +1252,7 @@ mod tests {
                 kind: WorldEventKind::ActionRejected {
                     reason: RejectReason::InvalidAmount { amount: 1 },
                 },
+                runtime_event: None,
             },
             WorldEvent {
                 id: 3,
@@ -1254,6 +1260,7 @@ mod tests {
                 kind: WorldEventKind::ActionRejected {
                     reason: RejectReason::InvalidAmount { amount: 1 },
                 },
+                runtime_event: None,
             },
             WorldEvent {
                 id: 4,
@@ -1261,6 +1268,7 @@ mod tests {
                 kind: WorldEventKind::ActionRejected {
                     reason: RejectReason::InvalidAmount { amount: 1 },
                 },
+                runtime_event: None,
             },
         ];
 
@@ -1346,6 +1354,7 @@ mod tests {
             kind: WorldEventKind::ActionRejected {
                 reason: RejectReason::InvalidAmount { amount: 1 },
             },
+            runtime_event: None,
         }];
 
         app.world_mut().insert_resource(ViewerState {
@@ -1393,6 +1402,7 @@ mod tests {
             kind: WorldEventKind::ActionRejected {
                 reason: RejectReason::InvalidAmount { amount: 1 },
             },
+            runtime_event: None,
         }];
 
         app.world_mut().insert_resource(ViewerState {

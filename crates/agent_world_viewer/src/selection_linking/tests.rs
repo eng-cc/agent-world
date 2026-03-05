@@ -14,6 +14,7 @@ fn nearest_event_uses_smallest_tick_distance() {
                 distance_cm: 1,
                 electricity_cost: 1,
             },
+            runtime_event: None,
         },
         WorldEvent {
             id: 2,
@@ -25,6 +26,7 @@ fn nearest_event_uses_smallest_tick_distance() {
                 distance_cm: 1,
                 electricity_cost: 1,
             },
+            runtime_event: None,
         },
     ];
 
@@ -57,6 +59,7 @@ fn reject_reason_facility_maps_to_plant_target() {
         next_action_id: 1,
         pending_actions: Vec::new(),
         journal_len: 0,
+        runtime_snapshot: None,
     };
 
     let event = WorldEvent {
@@ -67,6 +70,7 @@ fn reject_reason_facility_maps_to_plant_target() {
                 facility_id: "pp-1".to_string(),
             },
         },
+        runtime_event: None,
     };
 
     let target = event_primary_target(&event, Some(&snapshot)).expect("target");
@@ -112,6 +116,7 @@ fn selection_related_ticks_match_agent_events() {
         next_action_id: 1,
         pending_actions: Vec::new(),
         journal_len: 0,
+        runtime_snapshot: None,
     };
 
     let events = vec![
@@ -125,6 +130,7 @@ fn selection_related_ticks_match_agent_events() {
                 distance_cm: 1,
                 electricity_cost: 1,
             },
+            runtime_event: None,
         },
         WorldEvent {
             id: 2,
@@ -135,6 +141,7 @@ fn selection_related_ticks_match_agent_events() {
                 reason: agent_world::simulator::ConsumeReason::Decision,
                 remaining: 9,
             }),
+            runtime_event: None,
         },
         WorldEvent {
             id: 3,
@@ -149,6 +156,7 @@ fn selection_related_ticks_match_agent_events() {
                 },
                 profile: agent_world::simulator::LocationProfile::default(),
             },
+            runtime_event: None,
         },
     ];
 
@@ -178,6 +186,7 @@ fn factory_and_recipe_events_map_to_owner_target() {
             electricity_cost: 12,
             hardware_cost: 3,
         },
+        runtime_event: None,
     };
     let recipe_scheduled = WorldEvent {
         id: 22,
@@ -195,6 +204,7 @@ fn factory_and_recipe_events_map_to_owner_target() {
             finished_product_id: "drone".to_string(),
             finished_product_units: 1,
         },
+        runtime_event: None,
     };
 
     let factory_target = event_primary_target(&factory_built, None).expect("factory target");
@@ -222,6 +232,7 @@ fn selection_related_ticks_include_factory_and_recipe_events() {
                 electricity_cost: 18,
                 hardware_cost: 7,
             },
+            runtime_event: None,
         },
         WorldEvent {
             id: 31,
@@ -239,6 +250,7 @@ fn selection_related_ticks_include_factory_and_recipe_events() {
                 finished_product_id: "iron_ingot".to_string(),
                 finished_product_units: 1,
             },
+            runtime_event: None,
         },
     ];
 
@@ -293,6 +305,7 @@ fn locate_focus_event_button_selects_target_and_updates_timeline() {
                 distance_cm: 100,
                 electricity_cost: 1,
             },
+            runtime_event: None,
         }],
         decision_traces: Vec::new(),
         metrics: None,
@@ -343,6 +356,7 @@ fn jump_selection_events_button_moves_timeline_target() {
                     distance_cm: 100,
                     electricity_cost: 1,
                 },
+                runtime_event: None,
             },
             WorldEvent {
                 id: 2,
@@ -353,6 +367,7 @@ fn jump_selection_events_button_moves_timeline_target() {
                     reason: agent_world::simulator::ConsumeReason::Decision,
                     remaining: 5,
                 }),
+                runtime_event: None,
             },
         ],
         decision_traces: Vec::new(),

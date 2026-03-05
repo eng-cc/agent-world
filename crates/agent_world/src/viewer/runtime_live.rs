@@ -3,17 +3,16 @@ use std::io::{self, BufRead, BufReader, BufWriter, Write};
 use std::net::{TcpListener, TcpStream};
 use std::time::Duration;
 
-use crate::geometry::{space_distance_cm, GeoPos};
+use crate::geometry::GeoPos;
 use crate::runtime::{
-    Action as RuntimeAction, DomainEvent as RuntimeDomainEvent,
-    RejectReason as RuntimeRejectReason, World as RuntimeWorld, WorldError as RuntimeWorldError,
-    WorldEvent as RuntimeWorldEvent, WorldEventBody as RuntimeWorldEventBody,
+    Action as RuntimeAction, DomainEvent as RuntimeDomainEvent, World as RuntimeWorld,
+    WorldError as RuntimeWorldError, WorldEventBody as RuntimeWorldEventBody,
 };
 use crate::simulator::{
-    build_world_model, Agent, AgentDecisionTrace, ChunkRuntimeConfig, Location,
-    RejectReason as SimulatorRejectReason, ResourceKind, ResourceOwner, RunnerMetrics, WorldConfig,
-    WorldEvent, WorldEventKind, WorldInitConfig, WorldModel, WorldScenario, WorldSnapshot,
-    CHUNK_GENERATION_SCHEMA_VERSION, SNAPSHOT_VERSION,
+    build_world_model, AgentDecisionTrace, ChunkRuntimeConfig,
+    RejectReason as SimulatorRejectReason, ResourceKind, RunnerMetrics, WorldConfig, WorldEvent,
+    WorldInitConfig, WorldScenario, WorldSnapshot, CHUNK_GENERATION_SCHEMA_VERSION,
+    SNAPSHOT_VERSION,
 };
 
 use super::live::ViewerLiveDecisionMode;
@@ -24,7 +23,12 @@ use super::protocol::{
 };
 #[path = "runtime_live/control_plane.rs"]
 mod control_plane;
+mod mapping;
+#[cfg(test)]
+mod tests;
+
 use control_plane::RuntimeLlmSidecar;
+use mapping::{map_runtime_event, runtime_state_to_simulator_model};
 
 #[derive(Debug, Clone)]
 pub struct ViewerRuntimeLiveServerConfig {
@@ -298,11 +302,12 @@ impl ViewerRuntimeLiveServer {
             let new_events: Vec<_> = self.world.journal().events[journal_start..].to_vec();
             let mut mapped_events = Vec::new();
             for runtime_event in &new_events {
-                if let Some(event) = map_runtime_event(runtime_event, &self.snapshot_config) {
+                let event = map_runtime_event(runtime_event, &self.snapshot_config);
+                if matches!(runtime_event.body, RuntimeWorldEventBody::Domain(_)) {
                     self.llm_sidecar
                         .notify_action_result_if_needed(runtime_event, event.clone());
-                    mapped_events.push(event);
                 }
+                mapped_events.push(event);
             }
             mapped_events.extend(self.pending_virtual_events.drain(..));
 
@@ -375,17 +380,21 @@ impl ViewerRuntimeLiveServer {
 
     fn compat_snapshot(&self) -> WorldSnapshot {
         let runtime_snapshot = self.world.snapshot();
+        let runtime_journal_len = runtime_snapshot.journal_len;
+        let next_event_id = runtime_snapshot.last_event_id.saturating_add(1).max(1);
+        let next_action_id = runtime_snapshot.next_action_id.max(1);
         WorldSnapshot {
             version: SNAPSHOT_VERSION,
             chunk_generation_schema_version: CHUNK_GENERATION_SCHEMA_VERSION,
             time: self.world.state().time,
             config: self.snapshot_config.clone(),
             model: runtime_state_to_simulator_model(self.world.state(), &self.llm_sidecar),
+            runtime_snapshot: Some(runtime_snapshot),
             chunk_runtime: ChunkRuntimeConfig::default(),
-            next_event_id: runtime_snapshot.last_event_id.saturating_add(1).max(1),
-            next_action_id: runtime_snapshot.next_action_id.max(1),
+            next_event_id,
+            next_action_id,
             pending_actions: Vec::new(),
-            journal_len: runtime_snapshot.journal_len,
+            journal_len: runtime_journal_len,
         }
     }
 }
@@ -596,145 +605,6 @@ fn bootstrap_runtime_world(scenario: WorldScenario) -> Result<(RuntimeWorld, Wor
     Ok((world, config))
 }
 
-fn runtime_state_to_simulator_model(
-    state: &crate::runtime::WorldState,
-    sidecar: &RuntimeLlmSidecar,
-) -> WorldModel {
-    let mut model = WorldModel::default();
-
-    for (agent_id, cell) in &state.agents {
-        let location_id = location_id_for_pos(cell.state.pos);
-        model
-            .locations
-            .entry(location_id.clone())
-            .or_insert_with(|| {
-                Location::new(
-                    location_id.clone(),
-                    format!("runtime-{location_id}"),
-                    cell.state.pos,
-                )
-            });
-
-        let mut agent = Agent::new(agent_id.clone(), location_id, cell.state.pos);
-        agent.body = cell.state.body.clone();
-        agent.resources = cell.state.resources.clone();
-        model.agents.insert(agent_id.clone(), agent);
-    }
-
-    model.agent_prompt_profiles = sidecar.prompt_profiles.clone();
-    model.agent_player_bindings = sidecar.agent_player_bindings.clone();
-    model.agent_player_public_key_bindings = sidecar.agent_public_key_bindings.clone();
-    model.player_auth_last_nonce = sidecar.player_auth_last_nonce.clone();
-    model
-}
-
-fn map_runtime_event(
-    runtime_event: &RuntimeWorldEvent,
-    config: &WorldConfig,
-) -> Option<WorldEvent> {
-    let kind = match &runtime_event.body {
-        RuntimeWorldEventBody::Domain(domain) => map_runtime_domain_event(domain, config)?,
-        _ => return None,
-    };
-
-    Some(WorldEvent {
-        id: runtime_event.id,
-        time: runtime_event.time,
-        kind,
-    })
-}
-
-fn map_runtime_domain_event(
-    event: &RuntimeDomainEvent,
-    config: &WorldConfig,
-) -> Option<WorldEventKind> {
-    match event {
-        RuntimeDomainEvent::AgentRegistered { agent_id, pos } => {
-            Some(WorldEventKind::AgentRegistered {
-                agent_id: agent_id.clone(),
-                location_id: location_id_for_pos(*pos),
-                pos: *pos,
-            })
-        }
-        RuntimeDomainEvent::AgentMoved { agent_id, from, to } => {
-            let distance_cm = space_distance_cm(*from, *to);
-            Some(WorldEventKind::AgentMoved {
-                agent_id: agent_id.clone(),
-                from: location_id_for_pos(*from),
-                to: location_id_for_pos(*to),
-                distance_cm,
-                electricity_cost: config.movement_cost(distance_cm),
-            })
-        }
-        RuntimeDomainEvent::ResourceTransferred {
-            from_agent_id,
-            to_agent_id,
-            kind,
-            amount,
-        } => Some(WorldEventKind::ResourceTransferred {
-            from: ResourceOwner::Agent {
-                agent_id: from_agent_id.clone(),
-            },
-            to: ResourceOwner::Agent {
-                agent_id: to_agent_id.clone(),
-            },
-            kind: *kind,
-            amount: *amount,
-        }),
-        RuntimeDomainEvent::ActionRejected { reason, .. } => Some(WorldEventKind::ActionRejected {
-            reason: runtime_reject_reason_to_simulator(reason),
-        }),
-        _ => None,
-    }
-}
-
-fn runtime_reject_reason_to_simulator(reason: &RuntimeRejectReason) -> SimulatorRejectReason {
-    match reason {
-        RuntimeRejectReason::AgentAlreadyExists { agent_id } => {
-            SimulatorRejectReason::AgentAlreadyExists {
-                agent_id: agent_id.clone(),
-            }
-        }
-        RuntimeRejectReason::AgentNotFound { agent_id } => SimulatorRejectReason::AgentNotFound {
-            agent_id: agent_id.clone(),
-        },
-        RuntimeRejectReason::AgentsNotCoLocated {
-            agent_id,
-            other_agent_id,
-        } => SimulatorRejectReason::AgentsNotCoLocated {
-            agent_id: agent_id.clone(),
-            other_agent_id: other_agent_id.clone(),
-        },
-        RuntimeRejectReason::InvalidAmount { amount } => {
-            SimulatorRejectReason::InvalidAmount { amount: *amount }
-        }
-        RuntimeRejectReason::InsufficientResource {
-            agent_id,
-            kind,
-            requested,
-            available,
-        } => SimulatorRejectReason::InsufficientResource {
-            owner: ResourceOwner::Agent {
-                agent_id: agent_id.clone(),
-            },
-            kind: *kind,
-            requested: *requested,
-            available: *available,
-        },
-        RuntimeRejectReason::FactoryNotFound { factory_id } => {
-            SimulatorRejectReason::FacilityNotFound {
-                facility_id: factory_id.clone(),
-            }
-        }
-        RuntimeRejectReason::RuleDenied { notes } => SimulatorRejectReason::RuleDenied {
-            notes: notes.clone(),
-        },
-        other => SimulatorRejectReason::RuleDenied {
-            notes: vec![format!("runtime reject: {other:?}")],
-        },
-    }
-}
-
 fn runtime_metrics(world: &RuntimeWorld) -> RunnerMetrics {
     let total_ticks = world.state().time;
     let total_actions = world.journal().len() as u64;
@@ -807,442 +677,4 @@ fn is_timeout_error(err: &io::Error) -> bool {
         err.kind(),
         io::ErrorKind::WouldBlock | io::ErrorKind::TimedOut | io::ErrorKind::Interrupted
     )
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use ed25519_dalek::SigningKey;
-
-    fn test_signer(seed: u8) -> (String, String) {
-        let private_key = [seed; 32];
-        let signing_key = SigningKey::from_bytes(&private_key);
-        (
-            hex::encode(signing_key.verifying_key().to_bytes()),
-            hex::encode(private_key),
-        )
-    }
-
-    fn signed_prompt_control_apply_request(
-        mut request: crate::viewer::PromptControlApplyRequest,
-        intent: crate::viewer::PromptControlAuthIntent,
-        nonce: u64,
-        public_key_hex: &str,
-        private_key_hex: &str,
-    ) -> crate::viewer::PromptControlApplyRequest {
-        request.public_key = Some(public_key_hex.to_string());
-        let proof = crate::viewer::sign_prompt_control_apply_auth_proof(
-            intent,
-            &request,
-            nonce,
-            public_key_hex,
-            private_key_hex,
-        )
-        .expect("sign prompt auth");
-        request.auth = Some(proof);
-        request
-    }
-
-    #[test]
-    fn map_runtime_domain_event_agent_registered_uses_runtime_location_id() {
-        let event = RuntimeDomainEvent::AgentRegistered {
-            agent_id: "a1".to_string(),
-            pos: GeoPos::new(12.0, 34.0, 56.0),
-        };
-        let mapped =
-            map_runtime_domain_event(&event, &WorldConfig::default()).expect("mapped event");
-        match mapped {
-            WorldEventKind::AgentRegistered {
-                agent_id,
-                location_id,
-                pos,
-            } => {
-                assert_eq!(agent_id, "a1");
-                assert_eq!(location_id, "runtime:12:34:56");
-                assert_eq!(pos, GeoPos::new(12.0, 34.0, 56.0));
-            }
-            other => panic!("unexpected mapped event: {other:?}"),
-        }
-    }
-
-    #[test]
-    fn map_runtime_domain_event_agent_moved_sets_distance_and_cost() {
-        let config = WorldConfig::default();
-        let event = RuntimeDomainEvent::AgentMoved {
-            agent_id: "a1".to_string(),
-            from: GeoPos::new(0.0, 0.0, 0.0),
-            to: GeoPos::new(100_000.0, 0.0, 0.0),
-        };
-        let mapped = map_runtime_domain_event(&event, &config).expect("mapped event");
-        match mapped {
-            WorldEventKind::AgentMoved {
-                distance_cm,
-                electricity_cost,
-                ..
-            } => {
-                assert_eq!(distance_cm, 100_000);
-                assert_eq!(electricity_cost, config.movement_cost(distance_cm));
-            }
-            other => panic!("unexpected mapped event: {other:?}"),
-        }
-    }
-
-    #[test]
-    fn runtime_reject_reason_maps_agent_not_found() {
-        let reason = RuntimeRejectReason::AgentNotFound {
-            agent_id: "ghost".to_string(),
-        };
-        let mapped = runtime_reject_reason_to_simulator(&reason);
-        match mapped {
-            SimulatorRejectReason::AgentNotFound { agent_id } => {
-                assert_eq!(agent_id, "ghost");
-            }
-            other => panic!("unexpected reject mapping: {other:?}"),
-        }
-    }
-
-    #[test]
-    fn runtime_reject_reason_unmapped_falls_back_to_rule_denied() {
-        let reason = RuntimeRejectReason::InsufficientMaterial {
-            material_kind: "iron".to_string(),
-            requested: 10,
-            available: 0,
-        };
-        let mapped = runtime_reject_reason_to_simulator(&reason);
-        match mapped {
-            SimulatorRejectReason::RuleDenied { notes } => {
-                assert_eq!(notes.len(), 1);
-                assert!(notes[0].contains("runtime reject"));
-            }
-            other => panic!("unexpected reject mapping: {other:?}"),
-        }
-    }
-
-    #[test]
-    fn runtime_simulator_action_mapping_equivalence_covers_core_gameplay_and_economy() {
-        let server = ViewerRuntimeLiveServer::new(ViewerRuntimeLiveServerConfig::new(
-            WorldScenario::Minimal,
-        ))
-        .expect("runtime server");
-        let assert_mapped = |action: crate::simulator::Action, expected: RuntimeAction| {
-            let mapped = control_plane::simulator_action_to_runtime(&action, &server.world)
-                .expect("action should map to runtime");
-            assert_eq!(mapped, expected);
-        };
-
-        let move_target = GeoPos::new(10.0, 20.0, 30.0);
-        assert_mapped(
-            crate::simulator::Action::MoveAgent {
-                agent_id: "agent-1".to_string(),
-                to: location_id_for_pos(move_target),
-            },
-            RuntimeAction::MoveAgent {
-                agent_id: "agent-1".to_string(),
-                to: move_target,
-            },
-        );
-        assert_mapped(
-            crate::simulator::Action::TransferResource {
-                from: ResourceOwner::Agent {
-                    agent_id: "agent-1".to_string(),
-                },
-                to: ResourceOwner::Agent {
-                    agent_id: "agent-2".to_string(),
-                },
-                kind: ResourceKind::Electricity,
-                amount: 3,
-            },
-            RuntimeAction::TransferResource {
-                from_agent_id: "agent-1".to_string(),
-                to_agent_id: "agent-2".to_string(),
-                kind: ResourceKind::Electricity,
-                amount: 3,
-            },
-        );
-        assert_mapped(
-            crate::simulator::Action::DeclareWar {
-                initiator_agent_id: "agent-1".to_string(),
-                war_id: "war.alpha".to_string(),
-                aggressor_alliance_id: "alliance.a".to_string(),
-                defender_alliance_id: "alliance.b".to_string(),
-                objective: "expand".to_string(),
-                intensity: 2,
-            },
-            RuntimeAction::DeclareWar {
-                initiator_agent_id: "agent-1".to_string(),
-                war_id: "war.alpha".to_string(),
-                aggressor_alliance_id: "alliance.a".to_string(),
-                defender_alliance_id: "alliance.b".to_string(),
-                objective: "expand".to_string(),
-                intensity: 2,
-            },
-        );
-        assert_mapped(
-            crate::simulator::Action::OpenEconomicContract {
-                creator_agent_id: "agent-1".to_string(),
-                contract_id: "contract.alpha".to_string(),
-                counterparty_agent_id: "agent-2".to_string(),
-                settlement_kind: ResourceKind::Data,
-                settlement_amount: 5,
-                reputation_stake: 7,
-                expires_at: 99,
-                description: "trade".to_string(),
-            },
-            RuntimeAction::OpenEconomicContract {
-                creator_agent_id: "agent-1".to_string(),
-                contract_id: "contract.alpha".to_string(),
-                counterparty_agent_id: "agent-2".to_string(),
-                settlement_kind: ResourceKind::Data,
-                settlement_amount: 5,
-                reputation_stake: 7,
-                expires_at: 99,
-                description: "trade".to_string(),
-            },
-        );
-    }
-
-    #[test]
-    fn runtime_simulator_action_mapping_covers_module_artifact_actions() {
-        let server = ViewerRuntimeLiveServer::new(ViewerRuntimeLiveServerConfig::new(
-            WorldScenario::Minimal,
-        ))
-        .expect("runtime server");
-        let mut source_files = std::collections::BTreeMap::new();
-        source_files.insert("module.toml".to_string(), b"manifest".to_vec());
-        source_files.insert("src/lib.rs".to_string(), b"pub fn run() {}".to_vec());
-
-        let compile = crate::simulator::Action::CompileModuleArtifactFromSource {
-            publisher_agent_id: "agent-1".to_string(),
-            module_id: "module.alpha".to_string(),
-            manifest_path: "module.toml".to_string(),
-            source_files: source_files.clone(),
-        };
-        let compile_mapped = control_plane::simulator_action_to_runtime(&compile, &server.world)
-            .expect("compile action should map");
-        assert_eq!(
-            compile_mapped,
-            RuntimeAction::CompileModuleArtifactFromSource {
-                publisher_agent_id: "agent-1".to_string(),
-                module_id: "module.alpha".to_string(),
-                source_package: crate::runtime::ModuleSourcePackage {
-                    manifest_path: "module.toml".to_string(),
-                    files: source_files,
-                },
-            }
-        );
-
-        let deploy = crate::simulator::Action::DeployModuleArtifact {
-            publisher_agent_id: "agent-1".to_string(),
-            wasm_hash: "hash.alpha".to_string(),
-            wasm_bytes: vec![0xAA, 0xBB],
-            module_id_hint: Some("module.alpha".to_string()),
-        };
-        let deploy_mapped = control_plane::simulator_action_to_runtime(&deploy, &server.world)
-            .expect("deploy action should map");
-        assert_eq!(
-            deploy_mapped,
-            RuntimeAction::DeployModuleArtifact {
-                publisher_agent_id: "agent-1".to_string(),
-                wasm_hash: "hash.alpha".to_string(),
-                wasm_bytes: vec![0xAA, 0xBB],
-            }
-        );
-
-        let list = crate::simulator::Action::ListModuleArtifactForSale {
-            seller_agent_id: "agent-1".to_string(),
-            wasm_hash: "hash.alpha".to_string(),
-            price_kind: ResourceKind::Data,
-            price_amount: 9,
-        };
-        let list_mapped = control_plane::simulator_action_to_runtime(&list, &server.world)
-            .expect("list action should map");
-        assert_eq!(
-            list_mapped,
-            RuntimeAction::ListModuleArtifactForSale {
-                seller_agent_id: "agent-1".to_string(),
-                wasm_hash: "hash.alpha".to_string(),
-                price_kind: ResourceKind::Data,
-                price_amount: 9,
-            }
-        );
-
-        let buy = crate::simulator::Action::BuyModuleArtifact {
-            buyer_agent_id: "agent-2".to_string(),
-            wasm_hash: "hash.alpha".to_string(),
-        };
-        let buy_mapped = control_plane::simulator_action_to_runtime(&buy, &server.world)
-            .expect("buy action should map");
-        assert_eq!(
-            buy_mapped,
-            RuntimeAction::BuyModuleArtifact {
-                buyer_agent_id: "agent-2".to_string(),
-                wasm_hash: "hash.alpha".to_string(),
-            }
-        );
-    }
-
-    #[test]
-    fn runtime_simulator_action_mapping_keeps_unmapped_actions_as_none() {
-        let server = ViewerRuntimeLiveServer::new(ViewerRuntimeLiveServerConfig::new(
-            WorldScenario::Minimal,
-        ))
-        .expect("runtime server");
-
-        let build_factory = crate::simulator::Action::BuildFactory {
-            owner: ResourceOwner::Agent {
-                agent_id: "agent-1".to_string(),
-            },
-            location_id: "loc-1".to_string(),
-            factory_id: "factory-1".to_string(),
-            factory_kind: "smelter".to_string(),
-        };
-        assert!(
-            control_plane::simulator_action_to_runtime(&build_factory, &server.world).is_none()
-        );
-
-        let transfer_to_location = crate::simulator::Action::TransferResource {
-            from: ResourceOwner::Agent {
-                agent_id: "agent-1".to_string(),
-            },
-            to: ResourceOwner::Location {
-                location_id: "loc-1".to_string(),
-            },
-            kind: ResourceKind::Electricity,
-            amount: 1,
-        };
-        assert!(
-            control_plane::simulator_action_to_runtime(&transfer_to_location, &server.world)
-                .is_none()
-        );
-    }
-
-    #[test]
-    fn runtime_prompt_control_script_mode_requires_llm_mode() {
-        let mut server = ViewerRuntimeLiveServer::new(
-            ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal)
-                .with_decision_mode(ViewerLiveDecisionMode::Script),
-        )
-        .expect("runtime server");
-        let agent_id = server
-            .world
-            .state()
-            .agents
-            .keys()
-            .next()
-            .cloned()
-            .expect("seed agent");
-        let (public_key, private_key) = test_signer(11);
-        let request = signed_prompt_control_apply_request(
-            crate::viewer::PromptControlApplyRequest {
-                agent_id: agent_id.clone(),
-                player_id: "player-a".to_string(),
-                public_key: None,
-                auth: None,
-                expected_version: Some(0),
-                updated_by: None,
-                system_prompt_override: Some(Some("system".to_string())),
-                short_term_goal_override: None,
-                long_term_goal_override: None,
-            },
-            crate::viewer::PromptControlAuthIntent::Apply,
-            1,
-            public_key.as_str(),
-            private_key.as_str(),
-        );
-        let err = server
-            .handle_prompt_control(crate::viewer::PromptControlCommand::Apply { request })
-            .expect_err("script mode should reject prompt control");
-        assert_eq!(err.code, "llm_mode_required");
-        assert!(server.llm_sidecar.prompt_profiles.is_empty());
-    }
-
-    #[test]
-    fn runtime_prompt_control_apply_updates_snapshot_and_bindings() {
-        let mut server = ViewerRuntimeLiveServer::new(
-            ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal)
-                .with_decision_mode(ViewerLiveDecisionMode::Llm),
-        )
-        .expect("runtime server");
-        let agent_id = server
-            .world
-            .state()
-            .agents
-            .keys()
-            .next()
-            .cloned()
-            .expect("seed agent");
-        let (public_key, private_key) = test_signer(12);
-        let request = signed_prompt_control_apply_request(
-            crate::viewer::PromptControlApplyRequest {
-                agent_id: agent_id.clone(),
-                player_id: "player-a".to_string(),
-                public_key: None,
-                auth: None,
-                expected_version: Some(0),
-                updated_by: None,
-                system_prompt_override: Some(Some("system".to_string())),
-                short_term_goal_override: None,
-                long_term_goal_override: None,
-            },
-            crate::viewer::PromptControlAuthIntent::Apply,
-            2,
-            public_key.as_str(),
-            private_key.as_str(),
-        );
-
-        let ack = server
-            .handle_prompt_control(crate::viewer::PromptControlCommand::Apply { request })
-            .expect("llm mode apply");
-        assert_eq!(ack.version, 1);
-        let snapshot = server.compat_snapshot();
-        let profile = snapshot
-            .model
-            .agent_prompt_profiles
-            .get(agent_id.as_str())
-            .expect("profile in snapshot");
-        assert_eq!(profile.version, 1);
-        assert_eq!(
-            snapshot
-                .model
-                .agent_player_bindings
-                .get(agent_id.as_str())
-                .map(String::as_str),
-            Some("player-a")
-        );
-        assert_eq!(
-            snapshot
-                .model
-                .player_auth_last_nonce
-                .get("player-a")
-                .copied(),
-            Some(2)
-        );
-    }
-
-    #[test]
-    fn runtime_agent_chat_script_mode_requires_llm_mode() {
-        let mut server = ViewerRuntimeLiveServer::new(
-            ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal)
-                .with_decision_mode(ViewerLiveDecisionMode::Script),
-        )
-        .expect("runtime server");
-        let agent_id = server
-            .world
-            .state()
-            .agents
-            .keys()
-            .next()
-            .cloned()
-            .expect("seed agent");
-        let err = server
-            .handle_agent_chat(crate::viewer::AgentChatRequest {
-                agent_id,
-                player_id: Some("player-a".to_string()),
-                public_key: None,
-                auth: None,
-                message: "hello".to_string(),
-            })
-            .expect_err("script mode should reject chat");
-        assert_eq!(err.code, "llm_mode_required");
-    }
 }

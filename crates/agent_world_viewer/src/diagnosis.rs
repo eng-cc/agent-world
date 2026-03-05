@@ -250,6 +250,7 @@ mod tests {
                         available: 5,
                     },
                 },
+                runtime_event: None,
             }],
             decision_traces: Vec::new(),
             metrics: None,

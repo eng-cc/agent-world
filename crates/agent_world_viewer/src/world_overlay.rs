@@ -874,6 +874,7 @@ mod tests {
             next_action_id: 2,
             pending_actions: Vec::new(),
             journal_len: 0,
+            runtime_snapshot: None,
         }
     }
 
@@ -901,6 +902,7 @@ mod tests {
                 price_per_pu: 0,
                 settlement_amount: 0,
             }),
+            runtime_event: None,
         }];
 
         let text = build_overlay_status_text(
@@ -936,6 +938,7 @@ mod tests {
                     kind: ResourceKind::Data,
                     amount: 5,
                 },
+                runtime_event: None,
             },
             WorldEvent {
                 id: 2,
@@ -953,6 +956,7 @@ mod tests {
                     price_per_pu: 0,
                     settlement_amount: 0,
                 }),
+                runtime_event: None,
             },
         ];
 

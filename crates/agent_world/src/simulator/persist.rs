@@ -13,6 +13,10 @@ use super::types::{
     JOURNAL_VERSION, SNAPSHOT_VERSION,
 };
 use super::world_model::{WorldConfig, WorldModel};
+#[cfg(not(target_arch = "wasm32"))]
+use crate::runtime::Snapshot as RuntimeSnapshot;
+#[cfg(target_arch = "wasm32")]
+use serde_json::Value as RuntimeSnapshot;
 
 // ============================================================================
 // Snapshot
@@ -47,6 +51,8 @@ pub struct WorldSnapshot {
     pub time: WorldTime,
     pub config: WorldConfig,
     pub model: WorldModel,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub runtime_snapshot: Option<RuntimeSnapshot>,
     #[serde(default)]
     pub chunk_runtime: ChunkRuntimeConfig,
     pub next_event_id: WorldEventId,

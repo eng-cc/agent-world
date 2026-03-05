@@ -233,6 +233,7 @@ pub(crate) fn execute_action_in_kernel(
                     notes: vec!["kernel.step returned no event".to_string()],
                 },
             },
+            runtime_event: None,
         },
     }
 }
@@ -264,6 +265,7 @@ pub(crate) fn execute_system_action_in_kernel(
                     notes: vec!["kernel.step returned no event".to_string()],
                 },
             },
+            runtime_event: None,
         },
     }
 }
@@ -512,6 +514,7 @@ impl RuntimeGameplayBridge {
                 kind: WorldEventKind::ActionRejected {
                     reason: runtime_reject_reason_to_simulator(reason),
                 },
+                runtime_event: None,
             }
         } else {
             WorldEvent {
@@ -527,6 +530,7 @@ impl RuntimeGameplayBridge {
                     kind: ResourceKind::Data,
                     amount: 0,
                 },
+                runtime_event: None,
             }
         };
         self.next_simulator_event_id = self.next_simulator_event_id.saturating_add(1);

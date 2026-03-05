@@ -347,6 +347,7 @@ mod tests {
             next_action_id: 1,
             pending_actions: Vec::new(),
             journal_len: 0,
+            runtime_snapshot: None,
         }
     }
 
@@ -362,6 +363,7 @@ mod tests {
                     pos: GeoPos::new(0.0, 0.0, 0.0),
                     profile: Default::default(),
                 },
+                runtime_event: None,
             },
             WorldEvent {
                 id: 2,
@@ -372,6 +374,7 @@ mod tests {
                     pos: GeoPos::new(0.0, 0.0, 0.0),
                     profile: Default::default(),
                 },
+                runtime_event: None,
             },
             WorldEvent {
                 id: 3,
@@ -382,6 +385,7 @@ mod tests {
                     pos: GeoPos::new(0.0, 0.0, 0.0),
                     profile: Default::default(),
                 },
+                runtime_event: None,
             },
         ];
 
@@ -425,6 +429,7 @@ mod tests {
                 pos: GeoPos::new(0.0, 0.0, 0.0),
                 profile: Default::default(),
             },
+            runtime_event: None,
         };
 
         app.world_mut().insert_resource(ViewerState {
@@ -495,6 +500,7 @@ mod tests {
                     },
                 },
             },
+            runtime_event: None,
         };
 
         app.world_mut().insert_resource(ViewerState {
@@ -539,6 +545,7 @@ mod tests {
             kind: agent_world::simulator::WorldEventKind::ActionRejected {
                 reason: agent_world::simulator::RejectReason::InvalidAmount { amount: 0 },
             },
+            runtime_event: None,
         };
 
         app.world_mut().insert_resource(ViewerState {

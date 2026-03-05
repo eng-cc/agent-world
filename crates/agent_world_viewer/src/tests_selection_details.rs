@@ -52,6 +52,7 @@ fn update_ui_populates_agent_selection_details_with_llm_trace() {
         next_action_id: 2,
         pending_actions: Vec::new(),
         journal_len: 0,
+        runtime_snapshot: None,
     };
 
     let events = vec![WorldEvent {
@@ -64,6 +65,7 @@ fn update_ui_populates_agent_selection_details_with_llm_trace() {
             distance_cm: 100,
             electricity_cost: 2,
         },
+        runtime_event: None,
     }];
 
     let decision_traces = vec![agent_world::simulator::AgentDecisionTrace {
@@ -185,6 +187,7 @@ fn update_ui_populates_location_selection_details() {
         next_action_id: 1,
         pending_actions: Vec::new(),
         journal_len: 0,
+        runtime_snapshot: None,
     };
 
     app.world_mut().insert_resource(ViewerState {

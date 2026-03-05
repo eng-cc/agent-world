@@ -496,6 +496,7 @@ impl WorldKernel {
             id: self.next_event_id,
             time: self.time,
             kind,
+            runtime_event: None,
         };
         self.next_event_id = self.next_event_id.saturating_add(1);
         self.journal.push(event.clone());

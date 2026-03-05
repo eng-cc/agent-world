@@ -37,6 +37,7 @@ fn update_ui_sets_status_and_events() {
         kind: agent_world::simulator::WorldEventKind::ActionRejected {
             reason: agent_world::simulator::RejectReason::InvalidAmount { amount: 1 },
         },
+        runtime_event: None,
     };
 
     let state = ViewerState {
@@ -127,6 +128,7 @@ fn update_ui_populates_world_summary_and_metrics() {
         next_action_id: 1,
         pending_actions: Vec::new(),
         journal_len: 0,
+        runtime_snapshot: None,
     };
 
     let metrics = RunnerMetrics {
@@ -186,6 +188,7 @@ fn update_ui_reflects_filtered_events() {
                 remaining: 7,
             },
         ),
+        runtime_event: None,
     };
 
     let state = ViewerState {
@@ -256,6 +259,7 @@ fn update_ui_populates_agent_activity_panel() {
         next_action_id: 1,
         pending_actions: Vec::new(),
         journal_len: 0,
+        runtime_snapshot: None,
     };
 
     let events = vec![WorldEvent {
@@ -267,6 +271,7 @@ fn update_ui_populates_agent_activity_panel() {
             amount: 6,
             available: 12,
         },
+        runtime_event: None,
     }];
 
     app.world_mut().insert_resource(ViewerState {
@@ -615,6 +620,7 @@ fn headless_report_tracks_status_and_event_count() {
             kind: agent_world::simulator::WorldEventKind::ActionRejected {
                 reason: agent_world::simulator::RejectReason::InvalidAmount { amount: 1 },
             },
+            runtime_event: None,
         }],
         decision_traces: Vec::new(),
         metrics: None,
@@ -697,6 +703,7 @@ fn poll_viewer_messages_applies_event_window_sampling_policy() {
                         amount: id as i64,
                     },
                 },
+                runtime_event: None,
             },
         })
         .expect("send event");

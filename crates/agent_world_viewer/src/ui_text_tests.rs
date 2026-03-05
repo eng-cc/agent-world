@@ -9,6 +9,7 @@ fn events_summary_without_focus_keeps_compact_view() {
         kind: WorldEventKind::ActionRejected {
             reason: RejectReason::InvalidAmount { amount: 1 },
         },
+        runtime_event: None,
     }];
 
     let text = events_summary(&events, None);
@@ -26,6 +27,7 @@ fn events_summary_with_focus_marks_nearest_context() {
             kind: WorldEventKind::ActionRejected {
                 reason: RejectReason::InvalidAmount { amount: 1 },
             },
+            runtime_event: None,
         },
         WorldEvent {
             id: 2,
@@ -33,6 +35,7 @@ fn events_summary_with_focus_marks_nearest_context() {
             kind: WorldEventKind::ActionRejected {
                 reason: RejectReason::InvalidAmount { amount: 2 },
             },
+            runtime_event: None,
         },
         WorldEvent {
             id: 3,
@@ -40,6 +43,7 @@ fn events_summary_with_focus_marks_nearest_context() {
             kind: WorldEventKind::ActionRejected {
                 reason: RejectReason::InvalidAmount { amount: 3 },
             },
+            runtime_event: None,
         },
     ];
 

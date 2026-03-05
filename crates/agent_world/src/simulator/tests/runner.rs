@@ -312,6 +312,7 @@ fn action_result_helpers() {
             distance_cm: 1000,
             electricity_cost: 1,
         },
+        runtime_event: None,
     };
     let success_result = ActionResult {
         action: action.clone(),
@@ -330,6 +331,7 @@ fn action_result_helpers() {
                 agent_id: "agent-1".to_string(),
             },
         },
+        runtime_event: None,
     };
     let reject_result = ActionResult {
         action,

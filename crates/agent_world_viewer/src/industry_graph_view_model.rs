@@ -1509,6 +1509,7 @@ mod tests {
             next_action_id: 4,
             pending_actions: Vec::new(),
             journal_len: 10,
+            runtime_snapshot: None,
         }
     }
 
@@ -1529,6 +1530,7 @@ mod tests {
                     kind: ResourceKind::Data,
                     amount: 5,
                 },
+                runtime_event: None,
             },
             WorldEvent {
                 id: 2,
@@ -1546,6 +1548,7 @@ mod tests {
                     price_per_pu: 3,
                     settlement_amount: 27,
                 }),
+                runtime_event: None,
             },
             WorldEvent {
                 id: 3,
@@ -1558,6 +1561,7 @@ mod tests {
                     electricity_cost: 4,
                     hardware_output: 6,
                 },
+                runtime_event: None,
             },
             WorldEvent {
                 id: 4,
@@ -1572,6 +1576,7 @@ mod tests {
                         available: 2,
                     },
                 },
+                runtime_event: None,
             },
         ];
 
@@ -1625,6 +1630,7 @@ mod tests {
                     kind: ResourceKind::Data,
                     amount: 5,
                 },
+                runtime_event: None,
             },
             WorldEvent {
                 id: 2,
@@ -1634,6 +1640,7 @@ mod tests {
                         location_id: "loc-b".to_string(),
                     },
                 },
+                runtime_event: None,
             },
         ];
 

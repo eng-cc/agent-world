@@ -156,6 +156,7 @@ pub enum ViewerEventKind {
     ActionRejected,
     Power,
     PromptUpdated,
+    RuntimeEvent,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]

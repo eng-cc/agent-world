@@ -39,6 +39,7 @@ fn llm_agent_auto_reentry_can_be_disabled() {
                 amount: 9,
                 available: 90,
             },
+            runtime_event: None,
         },
     });
 
@@ -65,6 +66,7 @@ fn llm_agent_auto_reentry_can_be_disabled() {
                 amount: 8,
                 available: 82,
             },
+            runtime_event: None,
         },
     });
 
@@ -118,6 +120,7 @@ fn llm_agent_execute_until_stops_on_insufficient_electricity_reject_reason() {
                     available: 1,
                 },
             },
+            runtime_event: None,
         },
     });
 
@@ -197,6 +200,7 @@ fn llm_agent_execute_until_stops_on_action_rejected_for_mine_compound() {
                     available: 0,
                 },
             },
+            runtime_event: None,
         },
     });
 
@@ -244,6 +248,7 @@ fn llm_agent_rebuilds_execute_until_until_when_mine_is_guardrail_rewritten_to_mo
                     available: 0,
                 },
             },
+            runtime_event: None,
         },
     });
 
@@ -301,6 +306,7 @@ fn llm_agent_rebuilds_execute_until_until_when_mine_is_guardrail_rewritten_to_mo
                 distance_cm: 600_000,
                 electricity_cost: 0,
             },
+            runtime_event: None,
         },
     });
 
@@ -371,6 +377,7 @@ fn llm_agent_execute_until_stops_on_thermal_overload_reject_reason() {
                     capacity: 100,
                 },
             },
+            runtime_event: None,
         },
     });
 
@@ -419,6 +426,7 @@ fn llm_agent_execute_until_stops_on_harvest_yield_threshold() {
                 amount: 2,
                 available: 8,
             },
+            runtime_event: None,
         },
     });
 
@@ -487,6 +495,7 @@ fn llm_agent_prechecks_schedule_recipe_location_and_reroutes_to_move_agent() {
                     location_id: "loc-factory".to_string(),
                 },
             },
+            runtime_event: None,
         },
     });
 
@@ -565,6 +574,7 @@ fn llm_agent_normalizes_schedule_factory_id_from_kind_alias() {
                 electricity_cost: 10,
                 hardware_cost: 5,
             },
+            runtime_event: None,
         },
     });
 
@@ -643,6 +653,7 @@ fn llm_agent_reroutes_schedule_recipe_from_incompatible_factory_to_compatible_fa
                     electricity_cost: 8,
                     hardware_cost: 4,
                 },
+                runtime_event: None,
             },
         });
     }
@@ -726,6 +737,7 @@ fn llm_agent_reroutes_schedule_recipe_to_build_required_factory_when_kind_missin
                 electricity_cost: 8,
                 hardware_cost: 4,
             },
+            runtime_event: None,
         },
     });
 
@@ -795,6 +807,7 @@ fn llm_agent_reroutes_duplicate_build_factory_to_schedule_on_known_factory() {
                 electricity_cost: 10,
                 hardware_cost: 5,
             },
+            runtime_event: None,
         },
     });
 
