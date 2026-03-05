@@ -15,7 +15,7 @@
 ## P1 盘点结果（2026-03-05）
 | 分区 | 盘点结果 |
 | --- | --- |
-| A (`viewer`) | 8 个簇：1 个 `merge`、5 个 `master-slave`、2 个 `keep` |
+| A (`viewer`) | 8 个簇：3 个 `merge`、4 个 `master-slave`、1 个 `keep` |
 | B (`p2p`) | 6 个簇：已全部按 `master-slave` 收口（phase/base 主入口） |
 | C (`testing/ci + precommit`) | 6 个簇：规则归属固定到 CI 主文档，precommit 侧去定义化 |
 | D/E (`site + readme/gap + gameplay`) | 9 个簇：以 `master-slave` 为主，模板段建议抽离 |
@@ -38,6 +38,7 @@
 | B5-C2-006-S2 | `doc/game/gameplay/*`（PRD + project） | `master-slave`（`gameplay-top-level-design` 为主） | 18 份 gameplay 文档 + `doc/game/prd.index.md` 回写主从口径并更新审计轮次 | done |
 | B6-C2-001 | `viewer-gameplay-release-experience-overhaul` / `immersion-phase8~10`（PRD + project） | `keep` + `master-slave`（`experience-overhaul` 为主） | 8 份 viewer 文档回写主从口径并更新审计轮次 | done |
 | B6-C2-002 | `viewer-live-full-event-driven-phase8~10`（PRD + project） | `master-slave`（`phase10-2026-02-27` 为主） | 6 份 viewer 文档 + `doc/world-simulator/prd.index.md` 回写主从口径并更新审计轮次 | done |
+| B7-C2-001/C2-002 | `viewer-gameplay-release-immersion-phase8~10` + `viewer-live-full-event-driven-phase8/9`（PRD + project） | `merge`（物理合并，主入口保留） | 主文档合并增量内容 + 阶段文档历史状态回写 + `doc/world-simulator/prd.index.md` 历史入口更新 | done |
 
 ## 待执行批次（优先级）
 | 批次 | 范围 | 目标 | 验收命令 |

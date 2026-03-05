@@ -2,11 +2,14 @@
 
 审计轮次: 2
 
-## ROUND-002 主从口径
-- 主入口文档：`doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.md`。
-- 本文件仅维护增量内容。
-
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase8.prd.project.md
+
+## 历史状态（2026-03-05 ROUND-002 物理合并）
+- 本专题内容已合并入 `doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.md`。
+- 当前替代入口：
+  - `doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.md`
+  - `doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.project.md`
+- 本文档仅保留阶段追溯，不再作为当前实现基线。
 
 ## 1. Executive Summary
 - 在保持“可随时指挥 Agent”前提下，进一步降低 Player 首屏的信息密度，避免左侧引导卡片重复表达同一目标。

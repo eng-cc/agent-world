@@ -2,9 +2,12 @@
 
 审计轮次: 2
 
-## 审计备注
-- 主项目入口文档：`doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.project.md`。
-- 本文件仅维护增量任务。
+## 审计备注（2026-03-05 ROUND-002 物理合并）
+- 本阶段任务已合并入 `doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.project.md`。
+- 当前替代入口：
+  - `doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.md`
+  - `doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.project.md`
+- 本文件保留为阶段追溯，不再作为当前执行基线。
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] VRI10P0：建立第十阶段设计文档与项目管理文档。

@@ -114,23 +114,18 @@
 | `doc/world-simulator/viewer/viewer-frag-scale-selection-fix.prd.md` | `doc/world-simulator/viewer/viewer-frag-scale-selection-fix.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-fragment-element-rendering.prd.md` | `doc/world-simulator/viewer/viewer-fragment-element-rendering.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.md` | `doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.project.md` |
-| `doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase10.prd.md` | `doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase10.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase2.prd.md` | `doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase2.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase3.prd.md` | `doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase3.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase4.prd.md` | `doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase4.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase5.prd.md` | `doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase5.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase6.prd.md` | `doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase6.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase7.prd.md` | `doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase7.prd.project.md` |
-| `doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase8.prd.md` | `doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase8.prd.project.md` |
-| `doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase9.prd.md` | `doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase9.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-generic-focus-targets.prd.md` | `doc/world-simulator/viewer/viewer-generic-focus-targets.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-i18n.prd.md` | `doc/world-simulator/viewer/viewer-i18n.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-industrial-visual-closure.prd.md` | `doc/world-simulator/viewer/viewer-industrial-visual-closure.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-industry-graph-layered-symbolic-zoom-2026-02-28.prd.md` | `doc/world-simulator/viewer/viewer-industry-graph-layered-symbolic-zoom-2026-02-28.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-live-disable-seek-p2p-2026-02-27.prd.md` | `doc/world-simulator/viewer/viewer-live-disable-seek-p2p-2026-02-27.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-live-full-event-driven-phase10-2026-02-27.prd.md` | `doc/world-simulator/viewer/viewer-live-full-event-driven-phase10-2026-02-27.prd.project.md` |
-| `doc/world-simulator/viewer/viewer-live-full-event-driven-phase8-2026-02-27.prd.md` | `doc/world-simulator/viewer/viewer-live-full-event-driven-phase8-2026-02-27.prd.project.md` |
-| `doc/world-simulator/viewer/viewer-live-full-event-driven-phase9-2026-02-27.prd.md` | `doc/world-simulator/viewer/viewer-live-full-event-driven-phase9-2026-02-27.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-live-llm-event-driven-trigger-2026-02-26.prd.md` | `doc/world-simulator/viewer/viewer-live-llm-event-driven-trigger-2026-02-26.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-live-logical-time-interface-phase11-2026-02-27.prd.md` | `doc/world-simulator/viewer/viewer-live-logical-time-interface-phase11-2026-02-27.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase1-2026-03-04.prd.md` | `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase1-2026-03-04.prd.project.md` |
@@ -174,10 +169,15 @@
 | `doc/world-simulator/launcher/game-client-launcher-desktop-2026-02-27.prd.md` | `doc/world-simulator/launcher/game-client-launcher-desktop-2026-02-27.prd.project.md` | `doc/world-simulator/launcher/game-client-launcher-native-web-control-plane-unification-2026-03-04.prd.md` |
 | `doc/world-simulator/launcher/game-unified-launcher-2026-02-27.prd.md` | `doc/world-simulator/launcher/game-unified-launcher-2026-02-27.prd.project.md` | `doc/world-simulator/launcher/game-client-launcher-native-web-control-plane-unification-2026-03-04.prd.md` |
 | `doc/world-simulator/viewer/viewer-chat-agent-prompt-default-values-inline-input.prd.md` | `doc/world-simulator/viewer/viewer-chat-agent-prompt-default-values-inline-input.prd.project.md` | `doc/world-simulator/viewer/viewer-chat-agent-prompt-default-values-prefill.prd.md` |
+| `doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase8.prd.md` | `doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase8.prd.project.md` | `doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.md` |
+| `doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase9.prd.md` | `doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase9.prd.project.md` | `doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.md` |
+| `doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase10.prd.md` | `doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase10.prd.project.md` | `doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.md` |
+| `doc/world-simulator/viewer/viewer-live-full-event-driven-phase8-2026-02-27.prd.md` | `doc/world-simulator/viewer/viewer-live-full-event-driven-phase8-2026-02-27.prd.project.md` | `doc/world-simulator/viewer/viewer-live-full-event-driven-phase10-2026-02-27.prd.md` |
+| `doc/world-simulator/viewer/viewer-live-full-event-driven-phase9-2026-02-27.prd.md` | `doc/world-simulator/viewer/viewer-live-full-event-driven-phase9-2026-02-27.prd.project.md` | `doc/world-simulator/viewer/viewer-live-full-event-driven-phase10-2026-02-27.prd.md` |
 | `doc/world-simulator/viewer/viewer-rust-file-line-cap-refactor-and-web-qa-2026-02-22.prd.md` | `doc/world-simulator/viewer/viewer-rust-file-line-cap-refactor-and-web-qa-2026-02-22.prd.project.md` | `doc/world-simulator/viewer/viewer-release-full-coverage-gate.prd.md` |
 
 ## 说明
 - 本索引用于保证模块专题文档在根入口文档树中可达。
 - 文档配对规则：`*.prd.md` 与同名 `*.prd.project.md`。
-- ROUND-002 主从口径（gameplay release）：`viewer-gameplay-release-experience-overhaul` 为主文档，`immersion-phase8~10` 为增量子文档。
-- ROUND-002 主从口径（live event-driven）：`viewer-live-full-event-driven-phase10-2026-02-27` 为主文档，`phase8/9` 为增量子文档。
+- ROUND-002 物理合并（gameplay release）：`viewer-gameplay-release-experience-overhaul` 为主文档，`immersion-phase8~10` 已并入并移入历史专题。
+- ROUND-002 物理合并（live event-driven）：`viewer-live-full-event-driven-phase10-2026-02-27` 为主文档，`phase8/9` 已并入并移入历史专题。

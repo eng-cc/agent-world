@@ -2,11 +2,14 @@
 
 审计轮次: 2
 
-## ROUND-002 主从口径
-- 主入口文档：`doc/world-simulator/viewer/viewer-live-full-event-driven-phase10-2026-02-27.prd.md`。
-- 本文件仅维护 Phase 9 增量内容。
-
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-live-full-event-driven-phase9-2026-02-27.prd.project.md
+
+## 历史状态（2026-03-05 ROUND-002 物理合并）
+- 本专题内容已合并入 `doc/world-simulator/viewer/viewer-live-full-event-driven-phase10-2026-02-27.prd.md`。
+- 当前替代入口：
+  - `doc/world-simulator/viewer/viewer-live-full-event-driven-phase10-2026-02-27.prd.md`
+  - `doc/world-simulator/viewer/viewer-live-full-event-driven-phase10-2026-02-27.prd.project.md`
+- 本文档仅保留阶段追溯，不再作为当前实现基线。
 
 ## 1. Executive Summary
 - 彻底移除 `world_viewer_live` 与外围脚本中的旧 `--tick-ms` 入口，只保留 event-driven live 链路。

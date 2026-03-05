@@ -2,11 +2,14 @@
 
 审计轮次: 2
 
-## ROUND-002 主从口径
-- 主入口文档：`doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.md`。
-- 本文件仅维护增量内容。
-
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase10.prd.project.md
+
+## 历史状态（2026-03-05 ROUND-002 物理合并）
+- 本专题内容已合并入 `doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.md`。
+- 当前替代入口：
+  - `doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.md`
+  - `doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.project.md`
+- 本文档仅保留阶段追溯，不再作为当前实现基线。
 
 ## 1. Executive Summary
 - 修复新手流程中的“进度跳步”问题，确保教程按真实行为推进，不再出现 2/4 直接到 4/4。

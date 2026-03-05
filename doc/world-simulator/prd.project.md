@@ -121,5 +121,5 @@
 - 专题映射状态: 2026-03-02 批次 9/9、2026-03-03 批次 4/4、2026-03-04 批次 7/7、2026-03-05 批次 4/4 已纳入模块项目管理文档。
 - 手册入口状态: `doc/world-simulator/viewer/viewer-manual.md` 为唯一活跃手册入口。
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
-- ROUND-002 进展: `C2-001/C2-002` 已完成主从化（`experience-overhaul` 与 `live-event-driven-phase10` 为主入口）。
+- ROUND-002 进展: `C2-001/C2-002` 已完成物理合并（`experience-overhaul` 与 `live-event-driven-phase10` 为主入口，phase 文档归档）。
 - 说明: 本文档仅维护 world-simulator 模块设计执行状态；过程记录在 `doc/devlog/2026-03-05.md`。

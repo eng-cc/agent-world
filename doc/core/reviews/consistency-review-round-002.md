@@ -44,7 +44,7 @@ rg -n "^审计轮次:\s*2$" doc --glob '*.md'
 ## 子代理审计快照（2026-03-05）
 | 分区 | 覆盖范围 | 重复簇数量 | 当前结论 |
 | --- | --- | --- | --- |
-| A | `doc/world-simulator/viewer` | 8 | 1 簇 `merge`（默认值 inline-input/prefill），5 簇 `master-slave`，2 簇 `keep` |
+| A | `doc/world-simulator/viewer` | 8 | 3 簇 `merge`（含 `inline-input/prefill` + phase8~10 物理合并），4 簇 `master-slave`，1 簇 `keep` |
 | B | `doc/p2p/node + distfs + observer` | 6 | 6 簇均已按 `master-slave` 收口，主入口固定为 base/phase1 文档 |
 | C | `doc/testing/ci + doc/scripts/precommit` | 6 | 规则归属固定到 CI 主文档链；pre-commit 侧去定义化、改引用 |
 | D/E | `doc/site/* + doc/readme/gap + doc/game/gameplay` | 9 | 大部分适合 `master-slave`，结构模板段建议抽成统一模板引用 |
@@ -53,7 +53,7 @@ rg -n "^审计轮次:\s*2$" doc --glob '*.md'
 | 编号 | 问题描述 | 影响范围 | 严重度 | 当前判定 |
 | --- | --- | --- | --- | --- |
 | I2-001 | Viewer 默认值专题 `inline-input` 与 `prefill` 在目标/范围/验收高度重复。 | `doc/world-simulator/viewer/viewer-chat-agent-prompt-default-values-*` | high | `merge`；已执行首批收口（C2-007） |
-| I2-002 | Viewer/P2P 阶段型文档存在阶段间“目标/范围/验收模板”重复。 | `doc/world-simulator/viewer/*phase*`、`doc/p2p/node/*`、`doc/p2p/distfs/*`、`doc/p2p/observer/*` | high | 以 `master-slave` 为主，保留阶段增量；P2P 侧已完成 `observer sync`、`node-contribution`、`distfs-self-healing`、`node-redeemable-power-asset`、`distfs-production-hardening` 收口 |
+| I2-002 | Viewer/P2P 阶段型文档存在阶段间“目标/范围/验收模板”重复。 | `doc/world-simulator/viewer/*phase*`、`doc/p2p/node/*`、`doc/p2p/distfs/*`、`doc/p2p/observer/*` | high | 以 `master-slave` 为主，viewer phase8~10 已物理合并；P2P 侧已完成 `observer sync`、`node-contribution`、`distfs-self-healing`、`node-redeemable-power-asset`、`distfs-production-hardening` 收口 |
 | I2-003 | CI 分层专题与 pre-commit 专题存在规则描述重复，易双处漂移。 | `doc/testing/ci/*`、`doc/scripts/precommit/*` | high | 已完成首批收口（C2-004）：规则主源固定在 `testing/ci`，`precommit` 仅保留执行入口 |
 | I2-004 | Site 手册与 github-pages 专题存在流程叙事重复。 | `doc/site/manual/*`、`doc/site/github-pages/*` | medium | `master-slave`；保留主叙事文档，日期文档改差异记录 |
 | I2-005 | README gap 与 gameplay 总述反复定义术语/模块分层。 | `doc/readme/gap/*`、`doc/game/gameplay/*` | medium | 已按 `master-slave` 收口：`readme-gap12345` 与 `gameplay-top-level-design` 固定为双主入口 |
@@ -62,8 +62,8 @@ rg -n "^审计轮次:\s*2$" doc --glob '*.md'
 ## 合并候选批次
 | 编号 | 候选文档簇 | 候选主文档 | 合并策略 | 状态 |
 | --- | --- | --- | --- | --- |
-| C2-001 | `viewer-gameplay-release-immersion-phase8~10` | `viewer-gameplay-release-experience-overhaul.prd.md` | `keep`（补阶段映射表） | done |
-| C2-002 | `viewer-live-full-event-driven-phase8~10` | `viewer-live-full-event-driven-phase10-2026-02-27.prd.md` | `master-slave` | done |
+| C2-001 | `viewer-gameplay-release-immersion-phase8~10` | `viewer-gameplay-release-experience-overhaul.prd.md` | `merge`（物理合并，阶段文档归档） | done |
+| C2-002 | `viewer-live-full-event-driven-phase8~10` | `viewer-live-full-event-driven-phase10-2026-02-27.prd.md` | `merge`（物理合并，阶段文档归档） | done |
 | C2-003 | `node-redeemable-power-asset*` 系列 | `node-redeemable-power-asset.prd.md` | `master-slave` | done |
 | C2-004 | `testing/ci` 分层专题与 `pre-commit` 专题 | `ci-tiered-execution.prd.md` + `pre-commit.prd.md` | 固定规则归属，删除重复定义 | done |
 | C2-005 | `site/manual` + `site/github-pages` 镜像/叙事专题 | `site-manual-static-docs.prd.md` + `github-pages-game-engine-reposition-2026-02-25.prd.md` | `master-slave` | done |
@@ -89,6 +89,7 @@ rg -n "^审计轮次:\s*2$" doc --glob '*.md'
 | A2-010 | 并行执行 B4（site/manual + github-pages）主从化并回写模块索引 | cc | 2026-03-05 | done |
 | A2-011 | 并行执行 B5（readme/gap + game/gameplay）主从化并回写模块索引 | cc | 2026-03-05 | done |
 | A2-012 | 并行执行 B6（viewer phase8~10）主从化并回写模块索引 | cc | 2026-03-05 | done |
+| A2-013 | 执行 C2-001/C2-002 物理合并并回写历史入口（替代链/索引/审计备注） | cc | 2026-03-05 | done |
 
 ## 特殊情况备注（仅在无需合并时填写）
 | 编号 | 原因 | 风险 | 临时缓解 | 复审日期 | 评审人 |
@@ -96,5 +97,5 @@ rg -n "^审计轮次:\s*2$" doc --glob '*.md'
 
 ## 复审结果
 - 复审时间：2026-03-05
-- 复审结论：ROUND-002 已完成；候选簇 C2-001~C2-011 全部完成判定与文档回写，`S_round002` 清单已刷新。
+- 复审结论：ROUND-002 已完成；候选簇 C2-001~C2-011 全部完成判定与文档回写，并补充 C2-001/C2-002 物理合并记录，`S_round002` 清单已刷新。
 - 当前进展：已完成分区盘点，并已落地 C2-001、C2-002、C2-003、C2-004、C2-005、C2-006、C2-007、C2-008、C2-009、C2-010、C2-011。
