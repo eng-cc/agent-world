@@ -1,5 +1,12 @@
 # Agent World Runtime：可兑现节点资产与电力兑换闭环（二期审计与签名加固）
 
+审计轮次: 2
+
+## ROUND-002 主从口径
+- 主入口文档：`doc/p2p/node/node-redeemable-power-asset.prd.md`。
+- 本文件仅维护“二期审计与签名加固”增量专题约束。
+- 通用规格以主文档为准。
+
 ## 1. Executive Summary
 - Problem Statement: 在已完成 `PowerCredit -> Agent 电力` 兑换闭环的基础上，补齐可审计性与签名语义，降低账本漂移和伪造记录风险。
 - Proposed Solution: 将当前结算记录中的占位签名（`bound:<public_key>`）升级为可重算、可校验的结构化签名语义。

@@ -1,5 +1,11 @@
 # Agent World Runtime：DistFS 生产化增强（Phase 3）项目管理文档（项目管理文档）
 
+审计轮次: 2
+
+## 审计备注
+- 主项目入口：`doc/p2p/distfs/distfs-production-hardening-phase1.prd.project.md`。
+- 本文件为 Phase 3 增量计划文档，仅维护本阶段增量任务。
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] DPH3-1 (PRD-P2P-MIG-069)：完成设计文档与项目管理文档。
 - [x] DPH3-2 (PRD-P2P-MIG-069)：实现 DistFS 挑战 probe 接口与单元测试。

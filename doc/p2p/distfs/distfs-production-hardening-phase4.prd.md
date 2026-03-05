@@ -1,5 +1,11 @@
 # Agent World Runtime：DistFS 生产化增强（Phase 4）设计文档
 
+审计轮次: 2
+
+## ROUND-002 主从口径
+- 主入口文档：`doc/p2p/distfs/distfs-production-hardening-phase1.prd.md`。
+- 本文件为 Phase 4 增量子文档（slave），仅维护本阶段增量内容。
+
 ## 1. Executive Summary
 - Problem Statement: 在 DistFS 挑战探测链路引入“有状态调度”，避免每轮重复命中同一批 blob，提高挑战覆盖率与公平性。
 - Proposed Solution: 为 reward runtime 增加挑战调度状态持久化与恢复能力，保证重启后探测序列连续。

@@ -1,5 +1,12 @@
 # Agent World Runtime：可兑现节点资产与电力兑换闭环（二期审计与签名加固，项目管理文档）（项目管理文档）
 
+审计轮次: 2
+
+## 审计备注
+- 项目主入口文档：`doc/p2p/node/node-redeemable-power-asset.prd.project.md`。
+- 本文件仅维护“二期审计与签名加固”增量任务。
+- 通用任务与状态口径以主项目文档为准。
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] AHA-0 (PRD-P2P-MIG-096)：完成设计文档。
 - [x] AHA-1 (PRD-P2P-MIG-096)：完成项目管理文档拆解。

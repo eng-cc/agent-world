@@ -1,5 +1,12 @@
 # Agent World Runtime：可兑现节点资产与电力兑换闭环（项目管理文档）
 
+审计轮次: 2
+
+## ROUND-002 主从口径
+- 项目主入口文档：`doc/p2p/node/node-redeemable-power-asset.prd.project.md`。
+- 增量项目文档：`doc/p2p/node/node-redeemable-power-asset-audit-hardening.prd.project.md`、`doc/p2p/node/node-redeemable-power-asset-signature-governance-phase3.prd.project.md`。
+- 增量项目文档仅维护增量任务，通用任务与状态口径以主项目文档为准。
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] RPA-0 (PRD-P2P-MIG-098)：完成设计文档与项目管理文档。
 - [x] RPA-1 (PRD-P2P-MIG-098)：实现 `PowerCredit` 资产账本与配置（含快照持久化）。

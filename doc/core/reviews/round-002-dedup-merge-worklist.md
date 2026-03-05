@@ -16,7 +16,7 @@
 | 分区 | 盘点结果 |
 | --- | --- |
 | A (`viewer`) | 8 个簇：1 个 `merge`、5 个 `master-slave`、2 个 `keep` |
-| B (`p2p`) | 6 个簇：以 `master-slave` 为主（phase/base 主入口） |
+| B (`p2p`) | 6 个簇：已全部按 `master-slave` 收口（phase/base 主入口） |
 | C (`testing/ci + precommit`) | 6 个簇：规则归属固定到 CI 主文档，precommit 侧去定义化 |
 | D/E (`site + readme/gap + gameplay`) | 9 个簇：以 `master-slave` 为主，模板段建议抽离 |
 
@@ -29,11 +29,13 @@
 | B3-C2-009-S2 | `observer-sync-mode-runtime-metrics` / `metrics-runtime-bridge` / `observability`（PRD + project） | `master-slave`（`runtime-metrics` 为主，另外两篇为增量） | 6 份 observer 文档回写主从口径并更新审计轮次 | done |
 | B3-C2-010 | `node-contribution-points*`（PRD + project） | `master-slave`（`node-contribution-points` 为主） | 6 份 node 文档回写主从口径并更新审计轮次 | done |
 | B3-C2-011 | `distfs-self-healing-*`（PRD + project） | `master-slave`（`control-plane` 为主） | 6 份 distfs 文档回写主从口径并更新审计轮次 | done |
+| B3-C2-003 | `node-redeemable-power-asset*`（PRD + project） | `master-slave`（`node-redeemable-power-asset` 为主） | 6 份 node 文档回写主从口径并更新审计轮次 | done |
+| B3-C2-008-S1 | `distfs-production-hardening-phase1~5`（PRD + project） | `master-slave`（`phase1` 为主） | 10 份 distfs 文档回写主从口径并更新审计轮次 | done |
+| B3-C2-008-S2 | `distfs-production-hardening-phase6~9`（PRD + project） | `master-slave`（`phase1` 为主） | 8 份 distfs 文档回写主从口径并更新审计轮次 | done |
 
 ## 待执行批次（优先级）
 | 批次 | 范围 | 目标 | 验收命令 |
 | --- | --- | --- | --- |
-| B3 | `doc/p2p/node/*` + `doc/p2p/distfs/*` + `doc/p2p/observer/*` | 收敛阶段型专题重复块（C2-003/C2-008） | `find doc/p2p/node doc/p2p/distfs doc/p2p/observer -maxdepth 1 -type f -name '*.prd.md' | wc -l` |
 | B4 | `doc/site/manual/*` + `doc/site/github-pages/*` | 收敛重复流程并保留单一入口（C2-005） | `find doc/site/manual doc/site/github-pages -maxdepth 1 -type f -name '*.prd.md' | wc -l` |
 | B5 | `doc/readme/gap/*` + `doc/game/gameplay/*` | 统一治理/玩法总述口径主入口（C2-006） | `find doc/readme/gap doc/game/gameplay -maxdepth 1 -type f -name '*.md' | wc -l` |
 

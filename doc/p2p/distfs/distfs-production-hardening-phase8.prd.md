@@ -1,5 +1,10 @@
 # Agent World Runtime：DistFS 生产化增强（Phase 8）设计文档
 
+审计轮次: 2
+
+## ROUND-002 主从口径
+- 主入口为 `distfs-production-hardening-phase1.prd.md`，本文仅维护阶段增量。
+
 ## 1. Executive Summary
 - Problem Statement: 将 reason-aware 退避策略中的失败原因倍率参数（multiplier）完整治理化到 `world_viewer_live` CLI。
 - Proposed Solution: 让 reward runtime 运行时可按失败原因分层调优退避，不再依赖编译期默认值。

@@ -1,5 +1,11 @@
 # Agent World Runtime：DistFS 生产化增强（Phase 5）设计文档
 
+审计轮次: 2
+
+## ROUND-002 主从口径
+- 主入口文档：`doc/p2p/distfs/distfs-production-hardening-phase1.prd.md`。
+- 本文件为 Phase 5 增量子文档（slave），仅维护本阶段增量内容。
+
 ## 1. Executive Summary
 - Problem Statement: 把 DistFS challenge probe 从硬编码参数升级为运行时可配置参数，支持按网络状态调优挑战强度。
 - Proposed Solution: 将 reward runtime 中 DistFS probe 逻辑模块化，降低主文件复杂度并保持单文件行数安全。

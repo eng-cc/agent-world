@@ -1,5 +1,12 @@
 # Agent World Runtime：可兑现节点资产与电力兑换闭环（三期真实签名与治理闭环）
 
+审计轮次: 2
+
+## ROUND-002 主从口径
+- 主入口文档：`doc/p2p/node/node-redeemable-power-asset.prd.md`。
+- 本文件仅维护“三期真实签名与治理闭环”增量专题约束。
+- 通用规格以主文档为准。
+
 ## 1. Executive Summary
 - Problem Statement: 在二期 `mintsig:v1` 可重算摘要的基础上，落地真实私钥签名 `mintsig:v2`（ed25519），使结算铸造记录具备密码学不可抵赖性。
 - Proposed Solution: 为兑换动作补齐签名治理闭环：支持签名版兑换动作、验签与治理策略开关，形成“结算签名 + 兑换签名”统一治理路径。

@@ -1,5 +1,10 @@
 # Agent World Runtime：DistFS 生产化增强（Phase 7）设计文档
 
+审计轮次: 2
+
+## ROUND-002 主从口径
+- 主入口为 `distfs-production-hardening-phase1.prd.md`，本文仅维护阶段增量。
+
 ## 1. Executive Summary
 - Problem Statement: 在 DistFS 自适应挑战调度中引入按失败原因分级退避（reason-aware backoff），提高失败处理精度。
 - Proposed Solution: 将自适应调度参数治理化到 `world_viewer_live` CLI，支持运行时调优而无需改代码。

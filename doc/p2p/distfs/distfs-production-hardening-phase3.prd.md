@@ -1,5 +1,11 @@
 # Agent World Runtime：DistFS 生产化增强（Phase 3）设计文档
 
+审计轮次: 2
+
+## ROUND-002 主从口径
+- 主入口文档：`doc/p2p/distfs/distfs-production-hardening-phase1.prd.md`。
+- 本文件为 Phase 3 增量子文档（slave），仅维护本阶段增量内容。
+
 ## 1. Executive Summary
 - Problem Statement: 将 DistFS 挑战机制从“库内能力”推进到“reward runtime 可消费”的生产闭环。
 - Proposed Solution: 让 `storage_valid_checks/storage_total_checks` 使用真实挑战结果，而非固定启发式计数。

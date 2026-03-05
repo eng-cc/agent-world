@@ -1,5 +1,10 @@
 # Agent World Runtime：DistFS 生产化增强（Phase 6）设计文档
 
+审计轮次: 2
+
+## ROUND-002 主从口径
+- 主入口为 `distfs-production-hardening-phase1.prd.md`，本文仅维护阶段增量。
+
 ## 1. Executive Summary
 - Problem Statement: 为 DistFS 有状态挑战调度增加自适应失败退避（backoff）能力，减少持续失败时的 I/O 抖动与无效探测。
 - Proposed Solution: 引入每轮挑战预算上限，避免在高密度 blob 场景下单轮探测放大。

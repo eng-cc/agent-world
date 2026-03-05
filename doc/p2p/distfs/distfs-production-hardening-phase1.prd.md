@@ -1,5 +1,12 @@
 # Agent World Runtime：DistFS 生产化增强（Phase 1）设计文档
 
+审计轮次: 2
+
+## ROUND-002 主从口径
+- `doc/p2p/distfs/distfs-production-hardening-phase1.prd.md` 为主文档（master）。
+- `doc/p2p/distfs/distfs-production-hardening-phase2.prd.md` 至 `doc/p2p/distfs/distfs-production-hardening-phase9.prd.md` 为增量子文档（slave）。
+- 本专题通用边界与基线语义以 phase1 为主入口，后续 phase 文档仅维护阶段增量。
+
 ## 1. Executive Summary
 - Problem Statement: 在不破坏现有 `BlobStore`/`FileStore` 接口兼容性的前提下，补齐 DistFS 的基础生产语义能力。
 - Proposed Solution: 提供“可审计、可回收、可同步、可并发保护”的最小闭环，降低文件索引漂移和脏写风险。

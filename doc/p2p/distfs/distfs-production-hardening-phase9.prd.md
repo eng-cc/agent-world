@@ -1,5 +1,10 @@
 # Agent World Runtime：DistFS 生产化增强（Phase 9）设计文档
 
+审计轮次: 2
+
+## ROUND-002 主从口径
+- 主入口为 `distfs-production-hardening-phase1.prd.md`，本文仅维护阶段增量。
+
 ## 1. Executive Summary
 - Problem Statement: 为 DistFS 自适应挑战调度补充退避决策级别可观测数据（backoff observability），便于生产排障与参数调优。
 - Proposed Solution: 在保持向后兼容的前提下扩展 probe cursor 状态结构，保留旧状态文件可恢复能力。

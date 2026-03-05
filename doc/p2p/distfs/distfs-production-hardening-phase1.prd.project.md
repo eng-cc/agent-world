@@ -1,5 +1,12 @@
 # Agent World Runtime：DistFS 生产化增强（Phase 1）项目管理文档（项目管理文档）
 
+审计轮次: 2
+
+## ROUND-002 主从口径
+- `doc/p2p/distfs/distfs-production-hardening-phase1.prd.project.md` 为主项目文档（master）。
+- `doc/p2p/distfs/distfs-production-hardening-phase2.prd.project.md` 至 `doc/p2p/distfs/distfs-production-hardening-phase9.prd.project.md` 为增量计划文档（slave）。
+- 本专题项目任务总口径以 phase1 project 为主入口，后续 phase project 仅维护阶段增量计划。
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] DPH1-1 (PRD-P2P-MIG-067)：完成设计文档与项目管理文档。
 - [x] DPH1-2 (PRD-P2P-MIG-067)：实现 `write_file_if_match` / `delete_file_if_match` 与单元测试。

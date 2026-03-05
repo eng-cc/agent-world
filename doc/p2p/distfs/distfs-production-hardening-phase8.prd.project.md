@@ -1,5 +1,10 @@
 # Agent World Runtime：DistFS 生产化增强（Phase 8）项目管理文档（项目管理文档）
 
+审计轮次: 2
+
+## 审计备注
+- 项目主入口为 `distfs-production-hardening-phase1.prd.project.md`，本文仅维护增量任务。
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] DPH8-1 (PRD-P2P-MIG-074)：完成设计文档与项目管理文档。
 - [x] DPH8-2 (PRD-P2P-MIG-074)：实现 reason-aware multiplier 的 CLI 参数治理化与 runtime 接线。

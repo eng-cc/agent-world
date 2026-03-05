@@ -1,10 +1,28 @@
 # ROUND-002 已审读文档清单（S_round002）
 
-- 生成时间: 2026-03-05 14:51:56 CST（本提交）
+- 生成时间: 2026-03-05 15:16:59 CST（本提交）
 - 生成规则: `rg -l "^审计轮次:\s*2$" doc --glob '*.md' | sort`
-- 当前已审读文档数: 39
+- 当前已审读文档数: 63
 
 ## 文件列表
+- `doc/p2p/distfs/distfs-production-hardening-phase1.prd.md`
+- `doc/p2p/distfs/distfs-production-hardening-phase1.prd.project.md`
+- `doc/p2p/distfs/distfs-production-hardening-phase2.prd.md`
+- `doc/p2p/distfs/distfs-production-hardening-phase2.prd.project.md`
+- `doc/p2p/distfs/distfs-production-hardening-phase3.prd.md`
+- `doc/p2p/distfs/distfs-production-hardening-phase3.prd.project.md`
+- `doc/p2p/distfs/distfs-production-hardening-phase4.prd.md`
+- `doc/p2p/distfs/distfs-production-hardening-phase4.prd.project.md`
+- `doc/p2p/distfs/distfs-production-hardening-phase5.prd.md`
+- `doc/p2p/distfs/distfs-production-hardening-phase5.prd.project.md`
+- `doc/p2p/distfs/distfs-production-hardening-phase6.prd.md`
+- `doc/p2p/distfs/distfs-production-hardening-phase6.prd.project.md`
+- `doc/p2p/distfs/distfs-production-hardening-phase7.prd.md`
+- `doc/p2p/distfs/distfs-production-hardening-phase7.prd.project.md`
+- `doc/p2p/distfs/distfs-production-hardening-phase8.prd.md`
+- `doc/p2p/distfs/distfs-production-hardening-phase8.prd.project.md`
+- `doc/p2p/distfs/distfs-production-hardening-phase9.prd.md`
+- `doc/p2p/distfs/distfs-production-hardening-phase9.prd.project.md`
 - `doc/p2p/distfs/distfs-self-healing-control-plane-2026-02-23.prd.md`
 - `doc/p2p/distfs/distfs-self-healing-control-plane-2026-02-23.prd.project.md`
 - `doc/p2p/distfs/distfs-self-healing-polling-loop-2026-02-23.prd.md`
@@ -17,6 +35,12 @@
 - `doc/p2p/node/node-contribution-points-runtime-closure.prd.project.md`
 - `doc/p2p/node/node-contribution-points.prd.md`
 - `doc/p2p/node/node-contribution-points.prd.project.md`
+- `doc/p2p/node/node-redeemable-power-asset-audit-hardening.prd.md`
+- `doc/p2p/node/node-redeemable-power-asset-audit-hardening.prd.project.md`
+- `doc/p2p/node/node-redeemable-power-asset-signature-governance-phase3.prd.md`
+- `doc/p2p/node/node-redeemable-power-asset-signature-governance-phase3.prd.project.md`
+- `doc/p2p/node/node-redeemable-power-asset.prd.md`
+- `doc/p2p/node/node-redeemable-power-asset.prd.project.md`
 - `doc/p2p/observer/observer-sync-mode-metrics-runtime-bridge.prd.md`
 - `doc/p2p/observer/observer-sync-mode-metrics-runtime-bridge.prd.project.md`
 - `doc/p2p/observer/observer-sync-mode-observability.prd.md`

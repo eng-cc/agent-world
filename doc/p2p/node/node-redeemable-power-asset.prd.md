@@ -1,5 +1,12 @@
 # Agent World Runtime：可兑现节点资产与电力兑换闭环
 
+审计轮次: 2
+
+## ROUND-002 主从口径
+- 主入口文档：`doc/p2p/node/node-redeemable-power-asset.prd.md`。
+- 从文档：`doc/p2p/node/node-redeemable-power-asset-audit-hardening.prd.md`、`doc/p2p/node/node-redeemable-power-asset-signature-governance-phase3.prd.md`。
+- 从文档仅维护增量约束，通用规格以主文档为准。
+
 ## 1. Executive Summary
 - Problem Statement: 将现有 Node Points 从“统计积分”升级为“可兑现协议资产”，使算力/存储节点可将收益兑换为 Agent 电力。
 - Proposed Solution: 在不破坏现有 PoS + DistFS 能力的前提下，补齐“结算上链、兑换执行、守恒风控、可审计回放”最小经济闭环。
