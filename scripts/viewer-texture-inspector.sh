@@ -502,12 +502,19 @@ capture_variant_bundle() {
       effective_preview_mode="scene_proxy"
       preview_mode_fallback_reason="location_direct_entity_not_applicable"
     fi
+    if [[ "$effective_preview_mode" == "direct_entity" && ( "$entity" == "power_plant" || "$entity" == "power_storage" ) ]]; then
+      effective_preview_mode="lookdev"
+      preview_mode_fallback_reason="power_direct_entity_fallback"
+    fi
     capture_scenario=$(resolve_capture_scenario_for_entity "$entity" "$scenario" "$effective_preview_mode")
     if [[ -z "$automation_steps_override" ]]; then
       hero_steps_effective=$(default_automation_steps_for_entity "$entity" "$capture_scenario")
     fi
     if [[ -z "$closeup_automation_steps_override" && "$retry_attempt" -eq 0 ]]; then
       closeup_steps_effective=$(default_closeup_automation_steps_for_entity "$entity" "$capture_scenario")
+    fi
+    if [[ "$effective_preview_mode" != "direct_entity" && "$art_capture" -eq 1 ]]; then
+      use_source_mesh=1
     fi
     if [[ "$effective_preview_mode" == "direct_entity" ]]; then
       export AGENT_WORLD_VIEWER_SHOW_LOCATIONS=0
