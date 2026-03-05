@@ -58,13 +58,6 @@ fn main() {
 }
 
 fn run_viewer(options: CliOptions) -> Result<(), String> {
-    if options.runtime_world && options.llm_mode {
-        return Err(
-            "--runtime-world is not compatible with --llm in phase1 (runtime live only supports script mode)"
-                .to_string(),
-        );
-    }
-
     if let Some(web_bind_addr) = options.web_bind_addr.clone() {
         let upstream_addr = options.bind_addr.clone();
         thread::spawn(move || {
@@ -79,8 +72,13 @@ fn run_viewer(options: CliOptions) -> Result<(), String> {
     }
 
     if options.runtime_world {
-        let config =
-            ViewerRuntimeLiveServerConfig::new(options.scenario).with_bind_addr(options.bind_addr);
+        let config = ViewerRuntimeLiveServerConfig::new(options.scenario)
+            .with_bind_addr(options.bind_addr)
+            .with_decision_mode(if options.llm_mode {
+                ViewerLiveDecisionMode::Llm
+            } else {
+                ViewerLiveDecisionMode::Script
+            });
         let mut server = ViewerRuntimeLiveServer::new(config)
             .map_err(|err| format!("failed to create runtime viewer server: {err:?}"))?;
         server
@@ -206,7 +204,7 @@ Options:\n\
   --bind <host:port>        viewer live server bind (default: {DEFAULT_BIND})\n\
   --web-bind <host:port>    websocket bridge bind (default: {DEFAULT_WEB_BIND})\n\
   --no-web-bind             disable websocket bridge\n\
-  --runtime-world           run live server on runtime/world (phase1)\n\
+  --runtime-world           run live server on runtime/world\n\
   --no-runtime-world        force simulator live server (default)\n\
   --llm                     enable llm mode\n\
   --no-llm                  disable llm mode (default)\n\
@@ -297,15 +295,10 @@ mod tests {
     }
 
     #[test]
-    fn run_viewer_rejects_runtime_world_with_llm() {
-        let err = run_viewer(CliOptions {
-            scenario: WorldScenario::LlmBootstrap,
-            bind_addr: "127.0.0.1:0".to_string(),
-            web_bind_addr: None,
-            llm_mode: true,
-            runtime_world: true,
-        })
-        .expect_err("runtime world + llm should fail");
-        assert!(err.contains("--runtime-world"));
+    fn parse_options_supports_runtime_world_with_llm() {
+        let options = parse_options(["--runtime-world", "--llm"].into_iter())
+            .expect("runtime world + llm should be allowed");
+        assert!(options.runtime_world);
+        assert!(options.llm_mode);
     }
 }

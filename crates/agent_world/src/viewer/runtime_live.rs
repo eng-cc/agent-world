@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashSet, VecDeque};
 use std::io::{self, BufRead, BufReader, BufWriter, Write};
 use std::net::{TcpListener, TcpStream};
 use std::time::Duration;
@@ -16,17 +16,22 @@ use crate::simulator::{
     SNAPSHOT_VERSION,
 };
 
+use super::live::ViewerLiveDecisionMode;
 use super::protocol::{
-    viewer_event_kind_matches, AgentChatError, ControlCompletionAck, ControlCompletionStatus,
-    PromptControlError, ViewerControl, ViewerControlProfile, ViewerEventKind, ViewerRequest,
-    ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
+    viewer_event_kind_matches, ControlCompletionAck, ControlCompletionStatus, ViewerControl,
+    ViewerControlProfile, ViewerEventKind, ViewerRequest, ViewerResponse, ViewerStream,
+    VIEWER_PROTOCOL_VERSION,
 };
+#[path = "runtime_live/control_plane.rs"]
+mod control_plane;
+use control_plane::RuntimeLlmSidecar;
 
 #[derive(Debug, Clone)]
 pub struct ViewerRuntimeLiveServerConfig {
     pub bind_addr: String,
     pub scenario: WorldScenario,
     pub world_id: String,
+    pub decision_mode: ViewerLiveDecisionMode,
 }
 
 impl ViewerRuntimeLiveServerConfig {
@@ -35,6 +40,7 @@ impl ViewerRuntimeLiveServerConfig {
             bind_addr: "127.0.0.1:5010".to_string(),
             world_id: format!("live-runtime-{}", scenario.as_str()),
             scenario,
+            decision_mode: ViewerLiveDecisionMode::Script,
         }
     }
 
@@ -45,6 +51,20 @@ impl ViewerRuntimeLiveServerConfig {
 
     pub fn with_world_id(mut self, world_id: impl Into<String>) -> Self {
         self.world_id = world_id.into();
+        self
+    }
+
+    pub fn with_decision_mode(mut self, mode: ViewerLiveDecisionMode) -> Self {
+        self.decision_mode = mode;
+        self
+    }
+
+    pub fn with_llm_mode(mut self, enabled: bool) -> Self {
+        self.decision_mode = if enabled {
+            ViewerLiveDecisionMode::Llm
+        } else {
+            ViewerLiveDecisionMode::Script
+        };
         self
     }
 }
@@ -74,6 +94,9 @@ pub struct ViewerRuntimeLiveServer {
     world: RuntimeWorld,
     snapshot_config: WorldConfig,
     script: RuntimeLiveScript,
+    llm_sidecar: RuntimeLlmSidecar,
+    pending_virtual_events: VecDeque<WorldEvent>,
+    next_virtual_event_id: u64,
 }
 
 impl ViewerRuntimeLiveServer {
@@ -82,11 +105,16 @@ impl ViewerRuntimeLiveServer {
     ) -> Result<Self, ViewerRuntimeLiveServerError> {
         let (world, snapshot_config) =
             bootstrap_runtime_world(config.scenario).map_err(ViewerRuntimeLiveServerError::Init)?;
+        let llm_sidecar = RuntimeLlmSidecar::new(config.decision_mode, &world);
+        let next_virtual_event_id = latest_runtime_event_seq(&world).saturating_add(1).max(1);
         Ok(Self {
             config,
             world,
             snapshot_config,
             script: RuntimeLiveScript::default(),
+            llm_sidecar,
+            pending_virtual_events: VecDeque::new(),
+            next_virtual_event_id,
         })
     }
 
@@ -197,44 +225,22 @@ impl ViewerRuntimeLiveServer {
             ViewerRequest::Control { mode, request_id } => {
                 self.apply_control_mode(mode, request_id, session, writer)?;
             }
-            ViewerRequest::PromptControl { command } => {
-                let (agent_id, message) = match command {
-                    super::protocol::PromptControlCommand::Preview { request }
-                    | super::protocol::PromptControlCommand::Apply { request } => (
-                        Some(request.agent_id),
-                        "prompt_control is not supported in --runtime-world phase1".to_string(),
-                    ),
-                    super::protocol::PromptControlCommand::Rollback { request } => (
-                        Some(request.agent_id),
-                        "prompt_control rollback is not supported in --runtime-world phase1"
-                            .to_string(),
-                    ),
-                };
-                send_response(
-                    writer,
-                    &ViewerResponse::PromptControlError {
-                        error: PromptControlError {
-                            code: "unsupported_in_runtime_live_phase1".to_string(),
-                            message,
-                            agent_id,
-                            current_version: None,
-                        },
-                    },
-                )?;
-            }
-            ViewerRequest::AgentChat { request } => {
-                send_response(
-                    writer,
-                    &ViewerResponse::AgentChatError {
-                        error: AgentChatError {
-                            code: "unsupported_in_runtime_live_phase1".to_string(),
-                            message: "agent_chat is not supported in --runtime-world phase1"
-                                .to_string(),
-                            agent_id: Some(request.agent_id),
-                        },
-                    },
-                )?;
-            }
+            ViewerRequest::PromptControl { command } => match self.handle_prompt_control(command) {
+                Ok(ack) => {
+                    send_response(writer, &ViewerResponse::PromptControlAck { ack })?;
+                }
+                Err(error) => {
+                    send_response(writer, &ViewerResponse::PromptControlError { error })?;
+                }
+            },
+            ViewerRequest::AgentChat { request } => match self.handle_agent_chat(request) {
+                Ok(ack) => {
+                    send_response(writer, &ViewerResponse::AgentChatAck { ack })?;
+                }
+                Err(error) => {
+                    send_response(writer, &ViewerResponse::AgentChatError { error })?;
+                }
+            },
         }
         Ok(())
     }
@@ -279,7 +285,10 @@ impl ViewerRuntimeLiveServer {
         let baseline_event_seq = latest_runtime_event_seq(&self.world);
 
         for _ in 0..step_count.max(1) {
-            self.script.enqueue(&mut self.world);
+            match self.config.decision_mode {
+                ViewerLiveDecisionMode::Script => self.script.enqueue(&mut self.world),
+                ViewerLiveDecisionMode::Llm => self.enqueue_llm_action_from_sidecar(),
+            }
             let journal_start = self.world.journal().events.len();
             self.world.step()?;
 
@@ -290,6 +299,7 @@ impl ViewerRuntimeLiveServer {
                     mapped_events.push(event);
                 }
             }
+            mapped_events.extend(self.pending_virtual_events.drain(..));
 
             if session.subscribed.contains(&ViewerStream::Events)
                 && (emit_while_paused || session.playing)
@@ -359,7 +369,7 @@ impl ViewerRuntimeLiveServer {
             chunk_generation_schema_version: CHUNK_GENERATION_SCHEMA_VERSION,
             time: self.world.state().time,
             config: self.snapshot_config.clone(),
-            model: runtime_state_to_simulator_model(self.world.state()),
+            model: runtime_state_to_simulator_model(self.world.state(), &self.llm_sidecar),
             chunk_runtime: ChunkRuntimeConfig::default(),
             next_event_id: runtime_snapshot.last_event_id.saturating_add(1).max(1),
             next_action_id: runtime_snapshot.next_action_id.max(1),
@@ -575,7 +585,10 @@ fn bootstrap_runtime_world(scenario: WorldScenario) -> Result<(RuntimeWorld, Wor
     Ok((world, config))
 }
 
-fn runtime_state_to_simulator_model(state: &crate::runtime::WorldState) -> WorldModel {
+fn runtime_state_to_simulator_model(
+    state: &crate::runtime::WorldState,
+    sidecar: &RuntimeLlmSidecar,
+) -> WorldModel {
     let mut model = WorldModel::default();
 
     for (agent_id, cell) in &state.agents {
@@ -597,6 +610,10 @@ fn runtime_state_to_simulator_model(state: &crate::runtime::WorldState) -> World
         model.agents.insert(agent_id.clone(), agent);
     }
 
+    model.agent_prompt_profiles = sidecar.prompt_profiles.clone();
+    model.agent_player_bindings = sidecar.agent_player_bindings.clone();
+    model.agent_player_public_key_bindings = sidecar.agent_public_key_bindings.clone();
+    model.player_auth_last_nonce = sidecar.player_auth_last_nonce.clone();
     model
 }
 
@@ -784,6 +801,36 @@ fn is_timeout_error(err: &io::Error) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ed25519_dalek::SigningKey;
+
+    fn test_signer(seed: u8) -> (String, String) {
+        let private_key = [seed; 32];
+        let signing_key = SigningKey::from_bytes(&private_key);
+        (
+            hex::encode(signing_key.verifying_key().to_bytes()),
+            hex::encode(private_key),
+        )
+    }
+
+    fn signed_prompt_control_apply_request(
+        mut request: crate::viewer::PromptControlApplyRequest,
+        intent: crate::viewer::PromptControlAuthIntent,
+        nonce: u64,
+        public_key_hex: &str,
+        private_key_hex: &str,
+    ) -> crate::viewer::PromptControlApplyRequest {
+        request.public_key = Some(public_key_hex.to_string());
+        let proof = crate::viewer::sign_prompt_control_apply_auth_proof(
+            intent,
+            &request,
+            nonce,
+            public_key_hex,
+            private_key_hex,
+        )
+        .expect("sign prompt auth");
+        request.auth = Some(proof);
+        request
+    }
 
     #[test]
     fn map_runtime_domain_event_agent_registered_uses_runtime_location_id() {
@@ -858,5 +905,135 @@ mod tests {
             }
             other => panic!("unexpected reject mapping: {other:?}"),
         }
+    }
+
+    #[test]
+    fn runtime_prompt_control_script_mode_requires_llm_mode() {
+        let mut server = ViewerRuntimeLiveServer::new(
+            ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal)
+                .with_decision_mode(ViewerLiveDecisionMode::Script),
+        )
+        .expect("runtime server");
+        let agent_id = server
+            .world
+            .state()
+            .agents
+            .keys()
+            .next()
+            .cloned()
+            .expect("seed agent");
+        let (public_key, private_key) = test_signer(11);
+        let request = signed_prompt_control_apply_request(
+            crate::viewer::PromptControlApplyRequest {
+                agent_id: agent_id.clone(),
+                player_id: "player-a".to_string(),
+                public_key: None,
+                auth: None,
+                expected_version: Some(0),
+                updated_by: None,
+                system_prompt_override: Some(Some("system".to_string())),
+                short_term_goal_override: None,
+                long_term_goal_override: None,
+            },
+            crate::viewer::PromptControlAuthIntent::Apply,
+            1,
+            public_key.as_str(),
+            private_key.as_str(),
+        );
+        let err = server
+            .handle_prompt_control(crate::viewer::PromptControlCommand::Apply { request })
+            .expect_err("script mode should reject prompt control");
+        assert_eq!(err.code, "llm_mode_required");
+        assert!(server.llm_sidecar.prompt_profiles.is_empty());
+    }
+
+    #[test]
+    fn runtime_prompt_control_apply_updates_snapshot_and_bindings() {
+        let mut server = ViewerRuntimeLiveServer::new(
+            ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal)
+                .with_decision_mode(ViewerLiveDecisionMode::Llm),
+        )
+        .expect("runtime server");
+        let agent_id = server
+            .world
+            .state()
+            .agents
+            .keys()
+            .next()
+            .cloned()
+            .expect("seed agent");
+        let (public_key, private_key) = test_signer(12);
+        let request = signed_prompt_control_apply_request(
+            crate::viewer::PromptControlApplyRequest {
+                agent_id: agent_id.clone(),
+                player_id: "player-a".to_string(),
+                public_key: None,
+                auth: None,
+                expected_version: Some(0),
+                updated_by: None,
+                system_prompt_override: Some(Some("system".to_string())),
+                short_term_goal_override: None,
+                long_term_goal_override: None,
+            },
+            crate::viewer::PromptControlAuthIntent::Apply,
+            2,
+            public_key.as_str(),
+            private_key.as_str(),
+        );
+
+        let ack = server
+            .handle_prompt_control(crate::viewer::PromptControlCommand::Apply { request })
+            .expect("llm mode apply");
+        assert_eq!(ack.version, 1);
+        let snapshot = server.compat_snapshot();
+        let profile = snapshot
+            .model
+            .agent_prompt_profiles
+            .get(agent_id.as_str())
+            .expect("profile in snapshot");
+        assert_eq!(profile.version, 1);
+        assert_eq!(
+            snapshot
+                .model
+                .agent_player_bindings
+                .get(agent_id.as_str())
+                .map(String::as_str),
+            Some("player-a")
+        );
+        assert_eq!(
+            snapshot
+                .model
+                .player_auth_last_nonce
+                .get("player-a")
+                .copied(),
+            Some(2)
+        );
+    }
+
+    #[test]
+    fn runtime_agent_chat_script_mode_requires_llm_mode() {
+        let mut server = ViewerRuntimeLiveServer::new(
+            ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal)
+                .with_decision_mode(ViewerLiveDecisionMode::Script),
+        )
+        .expect("runtime server");
+        let agent_id = server
+            .world
+            .state()
+            .agents
+            .keys()
+            .next()
+            .cloned()
+            .expect("seed agent");
+        let err = server
+            .handle_agent_chat(crate::viewer::AgentChatRequest {
+                agent_id,
+                player_id: Some("player-a".to_string()),
+                public_key: None,
+                auth: None,
+                message: "hello".to_string(),
+            })
+            .expect_err("script mode should reject chat");
+        assert_eq!(err.code, "llm_mode_required");
     }
 }
