@@ -1239,6 +1239,113 @@ impl WorldState {
             event @ DomainEvent::RecipeCompleted { .. } => {
                 self.apply_domain_event_industry(event, now)?;
             }
+            DomainEvent::MaterialProfileGoverned {
+                operator_agent_id,
+                proposal_id,
+                profile,
+            } => {
+                if !self.agents.contains_key(operator_agent_id) {
+                    return Err(WorldError::AgentNotFound {
+                        agent_id: operator_agent_id.clone(),
+                    });
+                }
+                if *proposal_id == 0 {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: "material profile governed proposal_id must be > 0".to_string(),
+                    });
+                }
+                if profile.kind.trim().is_empty() {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: "material profile kind cannot be empty".to_string(),
+                    });
+                }
+                if profile.tier == 0 {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!("material profile tier must be >= 1: {}", profile.kind),
+                    });
+                }
+                if profile.category.trim().is_empty() {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "material profile category cannot be empty: {}",
+                            profile.kind
+                        ),
+                    });
+                }
+                if profile.stack_limit <= 0 {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "material profile stack_limit must be > 0: {}",
+                            profile.kind
+                        ),
+                    });
+                }
+                self.material_profiles
+                    .insert(profile.kind.clone(), profile.clone());
+                if let Some(cell) = self.agents.get_mut(operator_agent_id) {
+                    cell.last_active = now;
+                }
+            }
+            DomainEvent::ProductProfileGoverned {
+                operator_agent_id,
+                proposal_id,
+                profile,
+            } => {
+                if !self.agents.contains_key(operator_agent_id) {
+                    return Err(WorldError::AgentNotFound {
+                        agent_id: operator_agent_id.clone(),
+                    });
+                }
+                if *proposal_id == 0 {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: "product profile governed proposal_id must be > 0".to_string(),
+                    });
+                }
+                if profile.product_id.trim().is_empty() {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: "product profile product_id cannot be empty".to_string(),
+                    });
+                }
+                if profile.role_tag.trim().is_empty() {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "product profile role_tag cannot be empty: {}",
+                            profile.product_id
+                        ),
+                    });
+                }
+                self.product_profiles
+                    .insert(profile.product_id.clone(), profile.clone());
+                if let Some(cell) = self.agents.get_mut(operator_agent_id) {
+                    cell.last_active = now;
+                }
+            }
+            DomainEvent::RecipeProfileGoverned {
+                operator_agent_id,
+                proposal_id,
+                profile,
+            } => {
+                if !self.agents.contains_key(operator_agent_id) {
+                    return Err(WorldError::AgentNotFound {
+                        agent_id: operator_agent_id.clone(),
+                    });
+                }
+                if *proposal_id == 0 {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: "recipe profile governed proposal_id must be > 0".to_string(),
+                    });
+                }
+                if profile.recipe_id.trim().is_empty() {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: "recipe profile recipe_id cannot be empty".to_string(),
+                    });
+                }
+                self.recipe_profiles
+                    .insert(profile.recipe_id.clone(), profile.clone());
+                if let Some(cell) = self.agents.get_mut(operator_agent_id) {
+                    cell.last_active = now;
+                }
+            }
             _ => unreachable!("apply_domain_event_core received unsupported event variant"),
         }
         Ok(())

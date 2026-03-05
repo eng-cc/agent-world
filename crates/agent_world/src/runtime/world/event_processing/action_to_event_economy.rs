@@ -1,6 +1,6 @@
 use super::super::super::MaterialMarketQuote;
 use super::*;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 const FACTORY_DURABILITY_PPM_BASE: i64 = 1_000_000;
 const FACTORY_MAINTENANCE_PART_KIND: &str = "hardware_part";
@@ -782,9 +782,262 @@ impl World {
                     },
                 }))
             }
+            Action::GovernMaterialProfile {
+                operator_agent_id,
+                proposal_id,
+                profile,
+            } => Ok(WorldEventBody::Domain(
+                self.evaluate_govern_material_profile_action(
+                    action_id,
+                    operator_agent_id.as_str(),
+                    *proposal_id,
+                    profile,
+                ),
+            )),
+            Action::GovernProductProfile {
+                operator_agent_id,
+                proposal_id,
+                profile,
+            } => Ok(WorldEventBody::Domain(
+                self.evaluate_govern_product_profile_action(
+                    action_id,
+                    operator_agent_id.as_str(),
+                    *proposal_id,
+                    profile,
+                ),
+            )),
+            Action::GovernRecipeProfile {
+                operator_agent_id,
+                proposal_id,
+                profile,
+            } => Ok(WorldEventBody::Domain(
+                self.evaluate_govern_recipe_profile_action(
+                    action_id,
+                    operator_agent_id.as_str(),
+                    *proposal_id,
+                    profile,
+                ),
+            )),
             _ => unreachable!("action_to_event_economy received unsupported action variant"),
         }
     }
+
+    fn evaluate_govern_material_profile_action(
+        &self,
+        action_id: ActionId,
+        operator_agent_id: &str,
+        proposal_id: ProposalId,
+        profile: &crate::runtime::MaterialProfileV1,
+    ) -> DomainEvent {
+        if let Some(rejected) = self.evaluate_profile_governance_gate(
+            action_id,
+            operator_agent_id,
+            proposal_id,
+            "govern material profile",
+        ) {
+            return rejected;
+        }
+        let allowed_fields = [
+            "kind",
+            "tier",
+            "category",
+            "stack_limit",
+            "transport_loss_class",
+            "decay_bps_per_tick",
+            "default_priority",
+        ];
+        if let Err(reason) =
+            ensure_profile_field_whitelist(profile, allowed_fields.as_slice(), "material profile")
+        {
+            return DomainEvent::ActionRejected {
+                action_id,
+                reason: RejectReason::RuleDenied {
+                    notes: vec![reason],
+                },
+            };
+        }
+        let event = DomainEvent::MaterialProfileGoverned {
+            operator_agent_id: operator_agent_id.to_string(),
+            proposal_id,
+            profile: profile.clone(),
+        };
+        let mut preview_state = self.state.clone();
+        if let Err(err) = preview_state.apply_domain_event(&event, self.state.time) {
+            return DomainEvent::ActionRejected {
+                action_id,
+                reason: RejectReason::RuleDenied {
+                    notes: vec![format!("govern material profile rejected: {err:?}")],
+                },
+            };
+        }
+        event
+    }
+
+    fn evaluate_govern_product_profile_action(
+        &self,
+        action_id: ActionId,
+        operator_agent_id: &str,
+        proposal_id: ProposalId,
+        profile: &crate::runtime::ProductProfileV1,
+    ) -> DomainEvent {
+        if let Some(rejected) = self.evaluate_profile_governance_gate(
+            action_id,
+            operator_agent_id,
+            proposal_id,
+            "govern product profile",
+        ) {
+            return rejected;
+        }
+        let allowed_fields = [
+            "product_id",
+            "role_tag",
+            "maintenance_sink",
+            "tradable",
+            "unlock_stage",
+        ];
+        if let Err(reason) =
+            ensure_profile_field_whitelist(profile, allowed_fields.as_slice(), "product profile")
+        {
+            return DomainEvent::ActionRejected {
+                action_id,
+                reason: RejectReason::RuleDenied {
+                    notes: vec![reason],
+                },
+            };
+        }
+        let event = DomainEvent::ProductProfileGoverned {
+            operator_agent_id: operator_agent_id.to_string(),
+            proposal_id,
+            profile: profile.clone(),
+        };
+        let mut preview_state = self.state.clone();
+        if let Err(err) = preview_state.apply_domain_event(&event, self.state.time) {
+            return DomainEvent::ActionRejected {
+                action_id,
+                reason: RejectReason::RuleDenied {
+                    notes: vec![format!("govern product profile rejected: {err:?}")],
+                },
+            };
+        }
+        event
+    }
+
+    fn evaluate_govern_recipe_profile_action(
+        &self,
+        action_id: ActionId,
+        operator_agent_id: &str,
+        proposal_id: ProposalId,
+        profile: &crate::runtime::RecipeProfileV1,
+    ) -> DomainEvent {
+        if let Some(rejected) = self.evaluate_profile_governance_gate(
+            action_id,
+            operator_agent_id,
+            proposal_id,
+            "govern recipe profile",
+        ) {
+            return rejected;
+        }
+        let allowed_fields = [
+            "recipe_id",
+            "bottleneck_tags",
+            "stage_gate",
+            "preferred_factory_tags",
+        ];
+        if let Err(reason) =
+            ensure_profile_field_whitelist(profile, allowed_fields.as_slice(), "recipe profile")
+        {
+            return DomainEvent::ActionRejected {
+                action_id,
+                reason: RejectReason::RuleDenied {
+                    notes: vec![reason],
+                },
+            };
+        }
+        let event = DomainEvent::RecipeProfileGoverned {
+            operator_agent_id: operator_agent_id.to_string(),
+            proposal_id,
+            profile: profile.clone(),
+        };
+        let mut preview_state = self.state.clone();
+        if let Err(err) = preview_state.apply_domain_event(&event, self.state.time) {
+            return DomainEvent::ActionRejected {
+                action_id,
+                reason: RejectReason::RuleDenied {
+                    notes: vec![format!("govern recipe profile rejected: {err:?}")],
+                },
+            };
+        }
+        event
+    }
+
+    fn evaluate_profile_governance_gate(
+        &self,
+        action_id: ActionId,
+        operator_agent_id: &str,
+        proposal_id: ProposalId,
+        action_label: &str,
+    ) -> Option<DomainEvent> {
+        if !self.state.agents.contains_key(operator_agent_id) {
+            return Some(DomainEvent::ActionRejected {
+                action_id,
+                reason: RejectReason::AgentNotFound {
+                    agent_id: operator_agent_id.to_string(),
+                },
+            });
+        }
+        if proposal_id == 0 {
+            return Some(DomainEvent::ActionRejected {
+                action_id,
+                reason: RejectReason::RuleDenied {
+                    notes: vec![format!("{action_label} rejected: proposal_id must be > 0")],
+                },
+            });
+        }
+        let Some(proposal) = self.proposals.get(&proposal_id) else {
+            return Some(DomainEvent::ActionRejected {
+                action_id,
+                reason: RejectReason::RuleDenied {
+                    notes: vec![format!(
+                        "{action_label} rejected: governance proposal not found ({proposal_id})"
+                    )],
+                },
+            });
+        };
+        match proposal.status {
+            ProposalStatus::Approved { .. } | ProposalStatus::Applied { .. } => None,
+            _ => Some(DomainEvent::ActionRejected {
+                action_id,
+                reason: RejectReason::RuleDenied {
+                    notes: vec![format!(
+                        "{action_label} rejected: governance proposal must be approved or applied ({proposal_id})"
+                    )],
+                },
+            }),
+        }
+    }
+}
+
+fn ensure_profile_field_whitelist<T: serde::Serialize>(
+    profile: &T,
+    allowed_fields: &[&str],
+    profile_label: &str,
+) -> Result<(), String> {
+    let value = serde_json::to_value(profile)
+        .map_err(|err| format!("{profile_label} whitelist encode failed: {err}"))?;
+    let serde_json::Value::Object(fields) = value else {
+        return Err(format!(
+            "{profile_label} whitelist rejected: payload is not an object"
+        ));
+    };
+    let allowed: BTreeSet<&str> = allowed_fields.iter().copied().collect();
+    for key in fields.keys() {
+        if !allowed.contains(key.as_str()) {
+            return Err(format!(
+                "{profile_label} whitelist rejected: field `{key}` is not allowed"
+            ));
+        }
+    }
+    Ok(())
 }
 
 fn merge_recipe_consume_with_maintenance_sink(

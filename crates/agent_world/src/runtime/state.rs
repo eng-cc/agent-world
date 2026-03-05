@@ -637,7 +637,12 @@ impl WorldState {
             | DomainEvent::FactoryMaintained { .. }
             | DomainEvent::FactoryRecycled { .. }
             | DomainEvent::RecipeStarted { .. }
-            | DomainEvent::RecipeCompleted { .. } => self.apply_domain_event_core(event, now)?,
+            | DomainEvent::RecipeCompleted { .. }
+            | DomainEvent::MaterialProfileGoverned { .. }
+            | DomainEvent::ProductProfileGoverned { .. }
+            | DomainEvent::RecipeProfileGoverned { .. } => {
+                self.apply_domain_event_core(event, now)?
+            }
             DomainEvent::GameplayPolicyUpdated { .. }
             | DomainEvent::EconomicContractOpened { .. }
             | DomainEvent::EconomicContractAccepted { .. }

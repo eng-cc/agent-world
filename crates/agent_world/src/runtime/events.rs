@@ -4,8 +4,8 @@ use crate::geometry::GeoPos;
 use crate::models::{BodyKernelView, BodySlotType};
 use crate::simulator::{ModuleInstallTarget, ResourceKind};
 use agent_world_wasm_abi::{
-    FactoryModuleSpec, MaterialStack, ModuleManifest, ProductValidationDecision,
-    RecipeExecutionPlan,
+    FactoryModuleSpec, MaterialProfileV1, MaterialStack, ModuleManifest, ProductProfileV1,
+    ProductValidationDecision, RecipeExecutionPlan, RecipeProfileV1,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
@@ -450,6 +450,21 @@ pub enum Action {
         module_id: String,
         stack: MaterialStack,
         deterministic_seed: u64,
+    },
+    GovernMaterialProfile {
+        operator_agent_id: String,
+        proposal_id: ProposalId,
+        profile: MaterialProfileV1,
+    },
+    GovernProductProfile {
+        operator_agent_id: String,
+        proposal_id: ProposalId,
+        profile: ProductProfileV1,
+    },
+    GovernRecipeProfile {
+        operator_agent_id: String,
+        proposal_id: ProposalId,
+        profile: RecipeProfileV1,
     },
 }
 
@@ -970,6 +985,21 @@ pub enum DomainEvent {
         quality_levels: Vec<String>,
         notes: Vec<String>,
     },
+    MaterialProfileGoverned {
+        operator_agent_id: String,
+        proposal_id: ProposalId,
+        profile: MaterialProfileV1,
+    },
+    ProductProfileGoverned {
+        operator_agent_id: String,
+        proposal_id: ProposalId,
+        profile: ProductProfileV1,
+    },
+    RecipeProfileGoverned {
+        operator_agent_id: String,
+        proposal_id: ProposalId,
+        profile: RecipeProfileV1,
+    },
 }
 
 impl DomainEvent {
@@ -1122,6 +1152,15 @@ impl DomainEvent {
             DomainEvent::ProductValidated {
                 requester_agent_id, ..
             } => Some(requester_agent_id.as_str()),
+            DomainEvent::MaterialProfileGoverned {
+                operator_agent_id, ..
+            } => Some(operator_agent_id.as_str()),
+            DomainEvent::ProductProfileGoverned {
+                operator_agent_id, ..
+            } => Some(operator_agent_id.as_str()),
+            DomainEvent::RecipeProfileGoverned {
+                operator_agent_id, ..
+            } => Some(operator_agent_id.as_str()),
         }
     }
 }

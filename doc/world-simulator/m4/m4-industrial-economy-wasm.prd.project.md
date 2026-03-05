@@ -92,12 +92,12 @@
 - [x] 运行 `env -u RUSTC_WRAPPER cargo check -p agent_world --features wasmtime`
 
 ### E10 Profile 治理动作（PRD-M4-E10）
-- [ ] 在 runtime 动作层新增治理化 profile 更新动作（material/product/recipe）
-- [ ] 接入 `proposal_id` 门禁（仅 `approved|applied` proposal 允许执行）
-- [ ] 在 runtime 事件层新增 `*_profile_governed` 事件并接入状态落账
-- [ ] 新增拒绝路径测试（proposal 缺失、状态不合法、字段校验失败）
-- [ ] 运行 `env -u RUSTC_WRAPPER cargo test -p agent_world runtime::tests::economy_priority_logistics -- --nocapture`
-- [ ] 运行 `env -u RUSTC_WRAPPER cargo check -p agent_world --features wasmtime`
+- [x] 在 runtime 动作层新增治理化 profile 更新动作（material/product/recipe）
+- [x] 接入 `proposal_id` 门禁（仅 `approved|applied` proposal 允许执行）
+- [x] 在 runtime 事件层新增 `*_profile_governed` 事件并接入状态落账
+- [x] 新增拒绝路径测试（proposal 缺失、状态不合法、字段校验失败）
+- [x] 运行 `env -u RUSTC_WRAPPER cargo test -p agent_world runtime::tests::economy_priority_logistics -- --nocapture`
+- [x] 运行 `env -u RUSTC_WRAPPER cargo check -p agent_world --features wasmtime`
 
 ### E11 多角色审批策略（PRD-M4-E11）
 - [ ] 新增治理角色绑定模型（agent -> roles）与角色校验逻辑
@@ -132,6 +132,6 @@
 
 ## 状态
 
-- 当前阶段：E10 进行中（方案B：发布单 + profile 治理 + 多角色审批 + 回滚 + 发布门禁）。
-- 下一步：按 E10 -> E11 -> E12 -> E13 顺序连续推进，直到发布门禁收口。
-- 最近更新：E9 已完成模块发布单动作/事件/状态机闭环并通过 `module_action_loop` 定向回归（2026-03-05）。
+- 当前阶段：E11 进行中（方案B：发布单 + profile 治理 + 多角色审批 + 回滚 + 发布门禁）。
+- 下一步：按 E11 -> E12 -> E13 顺序连续推进，直到发布门禁收口。
+- 最近更新：E10 已完成 profile 治理动作与 proposal 门禁闭环，并通过 `economy_priority_logistics` 定向回归（2026-03-05）。

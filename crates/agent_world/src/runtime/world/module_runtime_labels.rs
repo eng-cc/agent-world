@@ -96,6 +96,11 @@ pub(super) fn event_kind_label(body: &WorldEventBody) -> &'static str {
             DomainEvent::CrisisTimedOut { .. } => "domain.gameplay.crisis_timed_out",
             DomainEvent::MetaProgressGranted { .. } => "domain.gameplay.meta_progress_granted",
             DomainEvent::ProductValidated { .. } => "domain.economy.product_validated",
+            DomainEvent::MaterialProfileGoverned { .. } => {
+                "domain.economy.material_profile_governed"
+            }
+            DomainEvent::ProductProfileGoverned { .. } => "domain.economy.product_profile_governed",
+            DomainEvent::RecipeProfileGoverned { .. } => "domain.economy.recipe_profile_governed",
         },
         WorldEventBody::EffectQueued(_) => "effect.queued",
         WorldEventBody::ReceiptAppended(_) => "effect.receipt_appended",
@@ -182,6 +187,9 @@ pub(super) fn action_kind_label(action: &Action) -> &'static str {
         Action::ScheduleRecipeWithModule { .. } => "action.economy.schedule_recipe_with_module",
         Action::ValidateProduct { .. } => "action.economy.validate_product",
         Action::ValidateProductWithModule { .. } => "action.economy.validate_product_with_module",
+        Action::GovernMaterialProfile { .. } => "action.economy.govern_material_profile",
+        Action::GovernProductProfile { .. } => "action.economy.govern_product_profile",
+        Action::GovernRecipeProfile { .. } => "action.economy.govern_recipe_profile",
     }
 }
 

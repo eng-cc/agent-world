@@ -184,7 +184,10 @@ impl World {
             | Action::ScheduleRecipe { .. }
             | Action::ScheduleRecipeWithModule { .. }
             | Action::ValidateProduct { .. }
-            | Action::ValidateProductWithModule { .. } => {
+            | Action::ValidateProductWithModule { .. }
+            | Action::GovernMaterialProfile { .. }
+            | Action::GovernProductProfile { .. }
+            | Action::GovernRecipeProfile { .. } => {
                 self.action_to_event_economy(action_id, &envelope.action)
             }
         }
