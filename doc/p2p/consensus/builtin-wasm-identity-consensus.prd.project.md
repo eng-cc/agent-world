@@ -12,7 +12,6 @@
 - [x] BWI-9 扩展设计范围 (PRD-P2P-MIG-057)：纳入 CI/pre-commit/runtime fallback 全系统改造与旧方案归档
 - [x] BWI-10 runtime materializer 生产化改造 (PRD-P2P-MIG-057)：补齐 m5 module-id 清单、支持非 canonical 平台回退编译缓存复用
 - [x] BWI-11 门禁与流程改造 (PRD-P2P-MIG-057)：`scripts/ci-tests.sh required` 覆盖 `m1/m4/m5 --check`，文档与测试手册同步
-- [x] BWI-12 过时方案归档 (PRD-P2P-MIG-057)：将 hash-only 旧设计文档迁移到 `archive/` 并修复活跃引用
 - [x] BWI-13 回归收口 (PRD-P2P-MIG-057)：required tier + 定向 materializer 测试 + 清单校验 + 文档状态更新
 - [x] BWI-14 维护收口 (PRD-P2P-MIG-057)：更新 m1/m5 hash 后补齐 m1/m4/m5 identity 重签，并同步 builtin signer 公钥
 

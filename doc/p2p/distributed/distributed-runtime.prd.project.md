@@ -154,4 +154,3 @@
 ## 补充信息
 ### 文档拆分说明
 - 主文档保留活跃里程碑（P3.25+）与当前状态，便于持续推进。
-- 历史里程碑（0~41）拆分到：`doc/p2p/archive/distributed-runtime.project.archive-0-41.md`。

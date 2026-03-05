@@ -18,7 +18,6 @@
   - 验证失败路径不写 `last_replay_at_ms`，不提交部分 recovery/dead-letter 状态。
 
 ### Out of Scope（后续阶段）
-- `membership_recovery/replay.rs` 之外其他 replay 子模块（archive/federated/audit）剩余饱和计数收口。
 - `membership.rs`、`mempool.rs` 等非本阶段目标文件的全量计数语义统一。
 - 全链路数值 newtype 与跨模块统一时钟治理。
 

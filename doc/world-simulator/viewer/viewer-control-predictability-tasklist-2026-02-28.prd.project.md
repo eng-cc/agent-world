@@ -30,8 +30,6 @@
 ## 依赖
 - doc/world-simulator/viewer/viewer-control-predictability-tasklist-2026-02-28.prd.md
 - `doc/playability_test_result/card_2026_02_28_19_22_20.md`
-- `doc/playability_test_result/archive/2026-02/card_2026_02_27_23_21_00.md`
-- `doc/playability_test_result/archive/2026-02/card_2026_02_27_21_04_46.md`
 - `doc/world-simulator/viewer/viewer-step-completion-ack-2026-02-28.prd.md`
 - `doc/world-simulator/viewer/viewer-control-feedback-iteration-checklist-2026-02-27.prd.md`
 - `scripts/run-game-test-ab.sh`

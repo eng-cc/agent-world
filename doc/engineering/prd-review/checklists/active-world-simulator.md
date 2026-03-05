@@ -1,8 +1,7 @@
 # world-simulator 模块 PRD 已读清单（Active）
 
-更新时间：2026-03-04
-范围：doc/world-simulator/（排除 archive/devlog）
-文档数：303
+更新时间：2026-03-05
+文档数：293
 
 说明：
 - 逐篇阅读后再勾选，必须填写阅读时刻与核对结论。
@@ -212,8 +211,6 @@
 - [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-fragment-element-rendering.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
 - [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
 - [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
-- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/archive/viewer-gameplay-release-immersion-phase10.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
-- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/archive/viewer-gameplay-release-immersion-phase10.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
 - [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase2.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
 - [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase2.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
 - [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase3.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
@@ -226,10 +223,6 @@
 - [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase6.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
 - [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase7.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
 - [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase7.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
-- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/archive/viewer-gameplay-release-immersion-phase8.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
-- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/archive/viewer-gameplay-release-immersion-phase8.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
-- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/archive/viewer-gameplay-release-immersion-phase9.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
-- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/archive/viewer-gameplay-release-immersion-phase9.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
 - [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-generic-focus-targets.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
 - [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-generic-focus-targets.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
 - [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-i18n.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
@@ -242,10 +235,6 @@
 - [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-live-disable-seek-p2p-2026-02-27.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
 - [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-live-full-event-driven-phase10-2026-02-27.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
 - [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-live-full-event-driven-phase10-2026-02-27.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
-- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/archive/viewer-live-full-event-driven-phase8-2026-02-27.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
-- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/archive/viewer-live-full-event-driven-phase8-2026-02-27.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
-- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/archive/viewer-live-full-event-driven-phase9-2026-02-27.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
-- [x] 2026-03-04 00:18:15 CST | doc/world-simulator/archive/viewer-live-full-event-driven-phase9-2026-02-27.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
 - [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-live-llm-event-driven-trigger-2026-02-26.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
 - [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-live-llm-event-driven-trigger-2026-02-26.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
 - [x] 2026-03-04 00:18:15 CST | doc/world-simulator/viewer/viewer-live-logical-time-interface-phase11-2026-02-27.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验

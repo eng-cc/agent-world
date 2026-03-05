@@ -15,7 +15,6 @@
 - `site/doc/`
 - `doc/site/github-pages/`
 - `doc/site/manual/`
-- `doc/site/archive/`
 - `doc/readme/prd.md`
 - `.agents/skills/prd/check.md`
 

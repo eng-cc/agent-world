@@ -9,7 +9,6 @@
 - `precommit/`：提交前检查与门禁策略。
 - `viewer-tools/`：viewer 抓帧与纹理质检工具链路。
 - `wasm/`：WASM 构建脚本与环境约束。
-- `archive/`：历史脚本治理文档。
 
 ## 根目录收口
 - 模块根目录仅保留：`README.md`、`prd.md`、`prd.project.md`、`prd.index.md`。

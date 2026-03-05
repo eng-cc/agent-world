@@ -1,28 +1,17 @@
 # 待迁移文档清单快照（2026-03-03）
 
 ## 快照范围
-- 统计口径：`find doc -type f -name '*.project.md' ! -name '*.prd.project.md'`，排除模块主项目文档 `doc/<module>/prd.project.md`。
-- 快照总量：391 篇。
+- 统计口径：`find doc -type f -name '*.project.md' ! -name '*.prd.project.md'`，排除模块主项目文档 `doc/<module>/prd.project.md`（已剔除 archive 目录条目）。
+- 快照总量：307 篇。
 - 目标：将每对旧文档 `X.md / X.project.md` 迁移为 `X.prd.md / X.prd.project.md`，并完成内容保真重写。
 
 ## 分工总览
-- Owner-A: `doc/world-simulator/**`（161 篇）
-- Owner-B: `doc/p2p/**`（115 篇）
-- Owner-C: `doc/world-runtime/**` + `doc/headless-runtime/**` + `doc/archive/root-history/**`（52 篇）
-- Owner-D: `doc/site/**` + `doc/readme/**` + `doc/scripts/**` + `doc/game/**` + `doc/engineering/**` + 根入口遗留（63 篇）
+- Owner-A: `doc/world-simulator/**`（150 篇）
+- Owner-B: `doc/p2p/**`（70 篇）
+- Owner-C: `doc/world-runtime/**` + `doc/headless-runtime/**`（30 篇）
+- Owner-D: `doc/site/**` + `doc/readme/**` + `doc/scripts/**` + `doc/game/**` + `doc/engineering/**` + 根入口遗留（57 篇）
 
-## Owner-A 清单（161）
-- `doc/world-simulator/archive/llm-build-chain-actions.project.md`
-- `doc/world-simulator/archive/llm-factory-actions.project.md`
-- `doc/world-simulator/archive/viewer-chat-agent-prompt-default-values.project.md`
-- `doc/world-simulator/archive/viewer-chat-dual-panel.project.md`
-- `doc/world-simulator/archive/viewer-live-full-event-driven-phase1-2026-02-26.project.md`
-- `doc/world-simulator/archive/viewer-live-full-event-driven-phase2-2026-02-26.project.md`
-- `doc/world-simulator/archive/viewer-live-full-event-driven-phase3-2026-02-26.project.md`
-- `doc/world-simulator/archive/viewer-live-full-event-driven-phase4-2026-02-26.project.md`
-- `doc/world-simulator/archive/viewer-live-full-event-driven-phase5-2026-02-26.project.md`
-- `doc/world-simulator/archive/viewer-live-full-event-driven-phase6-2026-02-26.project.md`
-- `doc/world-simulator/archive/viewer-live-full-event-driven-phase7-2026-02-27.project.md`
+## Owner-A 清单（150）
 - `doc/world-simulator/kernel/intent-distributed-runtime-closure-2026-02-27.project.md`
 - `doc/world-simulator/kernel/kernel-rule-hook-foundation.project.md`
 - `doc/world-simulator/kernel/kernel-rule-wasm-executor-foundation.project.md`
@@ -174,52 +163,7 @@
 - `doc/world-simulator/viewer/visualization-3d.project.md`
 - `doc/world-simulator/viewer/visualization.project.md`
 
-## Owner-B 清单（115）
-- `doc/p2p/archive/agent-world-proto.project.md`
-- `doc/p2p/archive/blockchain-p2pfs-foundation-closure.project.md`
-- `doc/p2p/archive/blockchain-p2pfs-hardening-phase1.project.md`
-- `doc/p2p/archive/distributed-consensus-membership-audit-revocation.project.md`
-- `doc/p2p/archive/distributed-consensus-membership-auth.project.md`
-- `doc/p2p/archive/distributed-consensus-membership-dht.project.md`
-- `doc/p2p/archive/distributed-consensus-membership-revocation-alert-dedup-coordination.project.md`
-- `doc/p2p/archive/distributed-consensus-membership-revocation-alert-delivery-state-store.project.md`
-- `doc/p2p/archive/distributed-consensus-membership-revocation-alerting-scheduler.project.md`
-- `doc/p2p/archive/distributed-consensus-membership-revocation-auth-archive.project.md`
-- `doc/p2p/archive/distributed-consensus-membership-revocation-coordinator-state-alert-recovery.project.md`
-- `doc/p2p/archive/distributed-consensus-membership-revocation-dead-letter-metrics.project.md`
-- `doc/p2p/archive/distributed-consensus-membership-revocation-dead-letter-priority-coordination.project.md`
-- `doc/p2p/archive/distributed-consensus-membership-revocation-dead-letter-replay-metrics-export.project.md`
-- `doc/p2p/archive/distributed-consensus-membership-revocation-dead-letter-replay-observability-adaptive-policy.project.md`
-- `doc/p2p/archive/distributed-consensus-membership-revocation-dead-letter-replay-policy-adoption-audit-rollback-alert.project.md`
-- `doc/p2p/archive/distributed-consensus-membership-revocation-dead-letter-replay-policy-audit-state-governance.project.md`
-- `doc/p2p/archive/distributed-consensus-membership-revocation-dead-letter-replay-policy-cooldown-drift-guard.project.md`
-- `doc/p2p/archive/distributed-consensus-membership-revocation-dead-letter-replay-policy-governance-audit-aggregate-query-drill-alert-event-bus.project.md`
-- `doc/p2p/archive/distributed-consensus-membership-revocation-dead-letter-replay-policy-governance-audit-archive-drill.project.md`
-- `doc/p2p/archive/distributed-consensus-membership-revocation-dead-letter-replay-policy-governance-audit-retention-drill-schedule.project.md`
-- `doc/p2p/archive/distributed-consensus-membership-revocation-dead-letter-replay-policy-governance-audit-tiered-offload-drill-alert-linkage.project.md`
-- `doc/p2p/archive/distributed-consensus-membership-revocation-dead-letter-replay-policy-governance-recovery-drill-alert-event-bus-aggregate-pull-pagination.project.md`
-- `doc/p2p/archive/distributed-consensus-membership-revocation-dead-letter-replay-policy-governance-recovery-drill-alert-event-bus-incremental-composite-cursor.project.md`
-- `doc/p2p/archive/distributed-consensus-membership-revocation-dead-letter-replay-policy-governance-recovery-drill-alert-event-bus-incremental-composite-sequence-cursor-store-monotonic-guard.project.md`
-- `doc/p2p/archive/distributed-consensus-membership-revocation-dead-letter-replay-policy-governance-recovery-drill-alert-event-bus-incremental-composite-sequence-cursor-store.project.md`
-- `doc/p2p/archive/distributed-consensus-membership-revocation-dead-letter-replay-policy-governance-recovery-drill-alert-event-bus-incremental-composite-sequence-cursor.project.md`
-- `doc/p2p/archive/distributed-consensus-membership-revocation-dead-letter-replay-policy-governance-recovery-drill-alert-event-bus-incremental-watermark-advance.project.md`
-- `doc/p2p/archive/distributed-consensus-membership-revocation-dead-letter-replay-policy-governance-recovery-drill-alert-event-bus-incremental-watermark-summary.project.md`
-- `doc/p2p/archive/distributed-consensus-membership-revocation-dead-letter-replay-policy-persistence-rollback.project.md`
-- `doc/p2p/archive/distributed-consensus-membership-revocation-dead-letter-replay-state-fair-scheduling.project.md`
-- `doc/p2p/archive/distributed-consensus-membership-revocation-governance-reconcile.project.md`
-- `doc/p2p/archive/distributed-consensus-membership-revocation-recovery-queue-ack-retry.project.md`
-- `doc/p2p/archive/distributed-consensus-membership-rotation-audit.project.md`
-- `doc/p2p/archive/distributed-consensus-membership.project.md`
-- `doc/p2p/archive/distributed-consensus-persistence.project.md`
-- `doc/p2p/archive/distributed-consensus-sync.project.md`
-- `doc/p2p/archive/distributed-consensus.project.md`
-- `doc/p2p/archive/distributed-crate-split-net-consensus.project.md`
-- `doc/p2p/archive/distributed-node-mainloop.project.md`
-- `doc/p2p/archive/distributed-node-pos-gossip.project.md`
-- `doc/p2p/archive/distributed-node-pos-mainloop.project.md`
-- `doc/p2p/archive/p2p-doc-consolidation.project.md`
-- `doc/p2p/archive/pos-doc-archive-cleanup-2026-02-20.project.md`
-- `doc/p2p/archive/wasm-artifact-identity-reproducibility.project.md`
+## Owner-B 清单（70）
 - `doc/p2p/blockchain/blockchain-p2pfs-hardening-phase2.project.md`
 - `doc/p2p/blockchain/blockchain-p2pfs-hardening-phase3.project.md`
 - `doc/p2p/blockchain/blockchain-p2pfs-hardening-phase4.project.md`
@@ -291,33 +235,11 @@
 - `doc/p2p/viewer-live/world-viewer-live-no-llm-flag-2026-02-23.project.md`
 - `doc/p2p/viewer-live/world-viewer-live-release-locked-launch-2026-02-23.project.md`
 
-## Owner-C 清单（52）
-- `doc/archive/root-history/doc-archive-audit-2026-02-20.prd.project.md`
-- `doc/archive/root-history/doc-structure-cleanup-2026-02-20.prd.project.md`
-- `doc/archive/root-history/doc-structure-freshness-review-round2-2026-02-20.prd.project.md`
-- `doc/archive/root-history/doc-structure-freshness-review-round3-2026-02-24.prd.project.md`
-- `doc/archive/root-history/game-test-archive-cleanup-2026-02-28.prd.project.md`
-- `doc/archive/root-history/world-runtime-root-entry-legacy-2026-03-03.prd.project.md`
-- `doc/archive/root-history/world-simulator-root-entry-legacy-2026-03-03.prd.project.md`
-- `doc/headless-runtime/archive/nonviewer-longrun-memory-safety-traceability-2026-02-23.prd.project.md`
-- `doc/headless-runtime/archive/nonviewer-release-readiness-hardening.prd.project.md`
+## Owner-C 清单（30）
 - `doc/headless-runtime/nonviewer/nonviewer-design-alignment-fixes-2026-02-25.prd.project.md`
 - `doc/headless-runtime/nonviewer/nonviewer-design-alignment-review-round2-2026-02-25.prd.project.md`
 - `doc/headless-runtime/nonviewer/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.prd.project.md`
 - `doc/headless-runtime/nonviewer/nonviewer-onchain-auth-protocol-hardening.prd.project.md`
-- `doc/world-runtime/archive/builtin-wasm-crate-split.prd.project.md`
-- `doc/world-runtime/archive/builtin-wasm-independent-module-crates.prd.project.md`
-- `doc/world-runtime/archive/builtin-wasm-lifecycle-sdk.prd.project.md`
-- `doc/world-runtime/archive/builtin-wasm-module-business-logic-migration.prd.project.md`
-- `doc/world-runtime/archive/builtin-wasm-runtime-core-replacement.prd.project.md`
-- `doc/world-runtime/archive/wasm-first.prd.project.md`
-- `doc/world-runtime/archive/wasm-runtime-crate-split-phase2.prd.project.md`
-- `doc/world-runtime/archive/wasm-runtime-crate-split-phase3.prd.project.md`
-- `doc/world-runtime/archive/wasm-runtime-crate-split-phase4.prd.project.md`
-- `doc/world-runtime/archive/wasm-runtime-crate-split-phase5.prd.project.md`
-- `doc/world-runtime/archive/wasm-runtime-crate-split-phase6.prd.project.md`
-- `doc/world-runtime/archive/wasm-runtime-crate-split-phase8.prd.project.md`
-- `doc/world-runtime/archive/wasm-runtime-crate-split.prd.project.md`
 - `doc/world-runtime/governance/zero-trust-governance-receipt-hardening-2026-02-26.prd.project.md`
 - `doc/world-runtime/module/agent-default-modules.prd.project.md`
 - `doc/world-runtime/module/module-storage.prd.project.md`
@@ -345,9 +267,7 @@
 - `doc/world-runtime/wasm/wasm-sdk-no-std.prd.project.md`
 - `doc/world-runtime/wasm/wasm-sdk-wire-types-dedup.prd.project.md`
 
-## Owner-D 清单（63）
-- `doc/engineering/archive/oversized-rust-file-splitting-round2-2026-02-23.project.md`
-- `doc/engineering/archive/oversized-rust-file-splitting.project.md`
+## Owner-D 清单（57）
 - `doc/engineering/documentation-governance-engineering-closure-2026-02-27.project.md`
 - `doc/game-test.project.md`
 - `doc/game/gameplay/gameplay-base-runtime-wasm-layer-split.project.md`
@@ -375,9 +295,6 @@
 - `doc/readme/production/readme-p0-p1-closure.project.md`
 - `doc/readme/production/readme-prod-closure-llm-distfs-consensus.project.md`
 - `doc/readme/production/readme-prod-gap1245-wasm-repl-topology-player.project.md`
-- `doc/scripts/archive/builtin-wasm-canonical-build-environment.project.md`
-- `doc/scripts/archive/builtin-wasm-reproducible-hash.project.md`
-- `doc/scripts/archive/run-game-test-ab-no-seek-b-phase-2026-02-27.project.md`
 - `doc/scripts/precommit/fix-precommit.project.md`
 - `doc/scripts/precommit/pre-commit.project.md`
 - `doc/scripts/viewer-tools/capture-viewer-frame.project.md`
@@ -387,7 +304,6 @@
 - `doc/scripts/viewer-tools/viewer-texture-inspector-material-recognizability-2026-02-28.project.md`
 - `doc/scripts/viewer-tools/viewer-texture-inspector-visual-detail-system-optimization-2026-02-28.project.md`
 - `doc/scripts/wasm/builtin-wasm-nightly-build-std.project.md`
-- `doc/site/archive/github-pages-wow-polish.project.md`
 - `doc/site/github-pages/github-pages-architecture-svg-refresh.project.md`
 - `doc/site/github-pages/github-pages-benchmark-polish-v3.project.md`
 - `doc/site/github-pages/github-pages-content-sync-2026-02-12.project.md`

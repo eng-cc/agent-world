@@ -71,8 +71,6 @@
 - [x] SUBTASK-TESTING-20260303-025 (PRD-TESTING-004) [test_tier_required]: `doc/testing/performance/viewer-performance-methodology-closure-2026-02-25.prd.project.md`
 - [x] SUBTASK-TESTING-20260303-026 (PRD-TESTING-004) [test_tier_required]: `doc/testing/manual/systematic-application-testing-manual.prd.project.md`
 - [x] SUBTASK-TESTING-20260303-027 (PRD-TESTING-004) [test_tier_required]: `doc/testing/manual/web-ui-playwright-closure-manual.prd.project.md`
-- [x] SUBTASK-TESTING-20260303-028 (PRD-TESTING-004) [test_tier_required]: `doc/testing/archive/ci-required-m1-wasm-hash-check.prd.project.md`
-- [x] SUBTASK-TESTING-20260303-029 (PRD-TESTING-004) [test_tier_required]: `doc/testing/archive/wasm-platform-canonical-hash-manifest.prd.project.md`
 
 ## 依赖
 - doc/testing/prd.index.md

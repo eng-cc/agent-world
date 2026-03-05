@@ -8,7 +8,6 @@
 
 ## 依赖
 - doc/p2p/network/net-runtime-bridge-closure.prd.md
-- `doc/p2p/archive/distributed-crate-split-net-consensus.prd.project.md`
 - `crates/agent_world_net`
 - `crates/agent_world_distfs`
 - `crates/agent_world`

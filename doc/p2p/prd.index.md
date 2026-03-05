@@ -8,7 +8,6 @@
 - 模块 PRD：`doc/p2p/prd.md`
 - 模块项目管理：`doc/p2p/prd.project.md`
 
-## 活跃专题文档（非 archive/devlog）
 | 专题 PRD | 专题项目文档 |
 | --- | --- |
 | `doc/p2p/blockchain/blockchain-p2pfs-hardening-phase2.prd.md` | `doc/p2p/blockchain/blockchain-p2pfs-hardening-phase2.prd.project.md` |

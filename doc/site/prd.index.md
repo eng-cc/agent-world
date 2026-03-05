@@ -8,7 +8,6 @@
 - 模块 PRD：`doc/site/prd.md`
 - 模块项目管理：`doc/site/prd.project.md`
 
-## 活跃专题文档（非 archive/devlog）
 | 专题 PRD | 专题项目文档 |
 | --- | --- |
 | `doc/site/github-pages/github-pages-architecture-svg-refresh.prd.md` | `doc/site/github-pages/github-pages-architecture-svg-refresh.prd.project.md` |

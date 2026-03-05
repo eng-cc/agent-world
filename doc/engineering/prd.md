@@ -34,10 +34,9 @@
   - SC-4: 工程类任务 100% 映射到 PRD-ENGINEERING-ID。
   - SC-5: `doc/` 根目录与模块根目录平铺文档新增违规数为 0（allowlist 冻结机制）。
   - SC-6: 重点模块（world-simulator/p2p/world-runtime/testing/site/readme/scripts/game/headless-runtime）根目录平铺专题文档迁移完成并保持引用闭环。
-  - SC-7: 活跃设计文档（非 archive/devlog）中 strict schema 覆盖率按周提升，并保留逐篇人工迁移记录。
   - SC-8: 完成四人并行迁移分工，待迁移清单有冻结快照且每日可追踪燃尽进度。
   - SC-9: 活跃文档 `doc/...*.md` 依赖路径断链数为 0。
-  - SC-10: 全量 PRD 审读清单覆盖率 100%（活跃 710 + 归档 172）。
+  - SC-10: 全量 PRD 审读清单覆盖率 100%（当前 PRD 文档 708 份，含 `prd.md` 与 `prd.project.md`）。
   - SC-11: 模块入口三件套（`prd.md`/`prd.project.md`/`prd.index.md`）已读状态长期保持 100%。
   - SC-12: 文档-代码偏差在同批次回写闭环率 100%。
 
@@ -82,10 +81,9 @@
 | PRD 格式迁移 | 文档路径、迁移批次ID、原文关键约束点 | 人工阅读原文后按 strict schema 重写并复核 | `inventory -> migrated -> verified` | 默认按活跃文档优先、按模块分批 | 治理维护者可冻结批次，贡献者可提交迁移 |
 | 并行迁移协作 | Owner、范围、快照日期、燃尽统计 | 依据协作方案分批推进迁移 | `planned -> in_progress -> done` | 目录前缀互斥，按负载均衡调整 | 协调人分配，Owner 执行，复核人抽检 |
 | PRD 文件级索引 | 模块名、专题PRD路径、专题project路径 | 生成/更新模块索引并回写入口引用 | `missing -> indexed -> verified` | 活跃文档优先，按路径稳定排序 | 维护者可更新，所有贡献者可读 |
-| 双向互链门禁 | prd路径、project路径、互链状态 | 文档门禁脚本检查并阻断缺失互链 | `pass/fail` | 非archive/devlog活跃文档必须全部通过 | 维护者可更新规则，提交者必须遵守 |
 | 依赖路径可达门禁 | 引用文档路径、引用来源、豁免列表 | 校验 `doc/...*.md` 引用目标是否存在 | `pass/fail` | 默认全量校验，通配符/模板与白名单文件豁免 | 维护者维护豁免，提交者必须修复断链 |
 | 任务测试分层标注 | 任务ID、PRD-ID、test tier | 在模块 `prd.project.md` 显式写 tier | `unspecified -> specified -> audited` | 先模块主项目，再专题项目 | 模块维护者审核，贡献者执行 |
-| 全量 PRD 审读清单 | 文档路径、阅读时刻、代码一致性、重复性、上下游状态、处理动作 | 逐篇阅读后更新清单并回写偏差 | `unread -> read -> aligned` | 活跃优先、归档次级、风险优先 | 维护者与评审者可写，贡献者可读 |
+| 全量 PRD 审读清单 | 文档路径、阅读时刻、代码一致性、重复性、上下游状态、处理动作 | 逐篇阅读后更新清单并回写偏差 | `unread -> read -> aligned` | 入口优先、风险优先 | 维护者与评审者可写，贡献者可读 |
 - Acceptance Criteria:
   - AC-1: engineering PRD 明确文件约束、脚本约束、测试分层约束。
   - AC-2: engineering project 文档维护任务拆解与状态。
@@ -99,7 +97,7 @@
   - AC-10: 文档治理门禁必须校验专题 PRD/project 双向互链；缺失即失败。
   - AC-11: 模块 `prd.project.md` 每个任务项必须显式标注 `test_tier_required` 或 `test_tier_full`（可为组合层级）。
   - AC-12: 文档治理门禁必须校验活跃文档 `doc/...*.md` 引用路径可达；断链必须阻断并修复。
-  - AC-13: 需存在全量 PRD 审读清单（active/archive），且每条已读记录包含阅读时刻和三类核对结论（代码/重复/上下游）。
+  - AC-13: 需存在全量 PRD 审读清单（按模块拆分，单一清单口径），且每条已读记录包含阅读时刻和三类核对结论（代码/重复/上下游）。
 - Non-Goals:
   - 不定义 gameplay/p2p/runtime 业务规则。
   - 不替代模块内部测试策略。
@@ -122,7 +120,6 @@
   - `doc/engineering/prd-review/prd-full-system-audit-2026-03-03.prd.md`
   - `doc/engineering/prd-review/prd-full-system-audit-2026-03-03.prd.project.md`
   - `doc/engineering/prd-review/checklists/active-*.md`
-  - `doc/engineering/prd-review/checklists/archive-all.md`
   - `scripts/doc-governance-check.sh`
   - `doc/*/README.md`
   - `testing-manual.md`
@@ -133,7 +130,6 @@
   - 本地/CI 不一致：本地通过但 CI 失败时以 CI 结果为准并补环境对齐说明。
   - 脚本不可执行：缺依赖时给出明确安装建议与最小复现命令。
   - 并发修改冲突：同一规则多分支更新时以最新主干基线重放验证。
-  - 历史文档例外：仅允许 archive/devlog 例外，不得扩散到活跃目录。
   - 新旧格式并存：迁移中允许 legacy 与 strict 共存，但每个迁移批次必须标注边界并回写追踪状态。
   - 批量迁移回归风险：结构改写可能造成引用断链，需附带路径扫描与脚本复核。
   - 根入口重定向迁移：`doc/game-test.prd.project.md`、`doc/world-runtime.prd.project.md`、`doc/world-simulator.prd.project.md` 在 D2 阶段已完成收口；后续变更仅允许在 redirect 语义内维护，不恢复为业务正文入口。
@@ -200,6 +196,6 @@
 | DEC-ENG-009 | 双向互链作为门禁硬规则 | 仅人工评审追溯关系 | 自动阻断可避免追溯链路长期漂移。 |
 | DEC-ENG-010 | 模块任务项显式标注 `test_tier_required/full` | 仅在 PRD 总表声明 tier | 任务级标注更直接支撑评审与执行。 |
 | DEC-ENG-011 | 将活跃文档引用路径可达性纳入门禁并维护最小豁免白名单 | 仅靠人工抽查断链 | 迁移后断链可自动阻断，减少隐性导航故障。 |
-| DEC-ENG-012 | 采用全量逐篇审读清单（active/archive 分轨） | 仅维护模块级进度百分比 | 逐篇清单可审计且可直接定位遗漏文档。 |
+| DEC-ENG-012 | 采用全量逐篇审读清单（按模块拆分，单一清单口径） | 仅维护模块级进度百分比 | 逐篇清单可审计且可直接定位遗漏文档。 |
 | DEC-ENG-013 | 审读偏差按代码实现回写文档 | 以历史文档条款反推代码变更 | 当前阶段先恢复“文档描述事实”可降低评审噪声。 |
 | DEC-ENG-014 | 重复与上下游对齐问题在同批次完成修复与回填 | 跨批次累积处理 | 同批次闭环可避免问题扩散到下一轮审读。 |

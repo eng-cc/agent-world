@@ -1,10 +1,10 @@
 # 全量 PRD 体系审读与对齐（2026-03-03）
 
 ## 1. Executive Summary
-- Problem Statement: 仓库 PRD 文档规模已达 882 份（活跃 710、归档 172），缺少统一“逐篇审读 + 已读清单 + 代码一致性回写”机制，导致口径漂移风险持续累积。
-- Proposed Solution: 建立工程侧 PRD 全量审读机制，按模块与归档双轨执行“逐篇阅读、代码对齐、重复治理、上下游对齐”，并以可勾选清单沉淀可审计证据。
+- Problem Statement: 仓库 PRD 文档规模已达 708 份（含 `prd.md` 与 `prd.project.md`），缺少统一“逐篇审读 + 已读清单 + 代码一致性回写”机制，导致口径漂移风险持续累积。
+- Proposed Solution: 建立工程侧 PRD 全量审读机制，按模块执行“逐篇阅读、代码对齐、重复治理、上下游对齐”，并以可勾选清单沉淀可审计证据。
 - Success Criteria:
-  - SC-1: 全量 PRD 文档 100% 纳入已读清单（含活跃与归档）。
+  - SC-1: 全量 PRD 文档 100% 纳入已读清单。
   - SC-2: 每篇文档均具备“代码一致性 / 重复性 / 上下游对齐”评审状态。
   - SC-3: 发现不一致项后以代码为准回写文档，并在同批次完成追溯记录。
   - SC-4: 模块主入口（`prd.md`/`prd.project.md`/`prd.index.md`）审读覆盖率维持 100%。
@@ -30,27 +30,27 @@
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
-| 全量清单生成 | 文档路径、模块、活跃/归档、初始状态 | 生成 checklist 文件并按模块落盘 | `inventory -> published` | 活跃优先，归档次级 | 维护者可生成，所有人可读 |
+| 全量清单生成 | 文档路径、模块、初始状态 | 生成 checklist 文件并按模块落盘 | `inventory -> published` | 入口优先，风险优先 | 维护者可生成，所有人可读 |
 | 逐篇已读标记 | 已读勾选、阅读时刻、结论字段 | 阅读后更新条目并记录结论 | `unread -> read` | 按风险与依赖优先阅读 | 评审者/维护者可写 |
 | 代码一致性核对 | 代码路径、行为条款、偏差说明 | 偏差按代码回写 PRD 并留痕 | `pending -> aligned` | 高风险链路优先修复 | 模块负责人审批 |
 | 重复性治理 | 重复文档对、保留文档、重定向策略 | 合并条款并修复索引 | `detected -> merged` | 先同模块后跨模块 | 维护者执行，评审者复核 |
 | 上下游对齐 | 上游文档、下游文档、引用状态 | 修复断链、更新口径 | `drifted -> synced` | 以模块入口链路优先 | 维护者可写 |
 - Acceptance Criteria:
-  - AC-1: 产出分模块 active 清单与 archive 清单，且每篇 PRD 可被勾选追踪。
+  - AC-1: 产出分模块清单，且每篇 PRD 可被勾选追踪。
   - AC-2: 每条已读记录必须包含阅读时刻与三类结论（代码/重复/上下游）。
   - AC-3: 一旦发现文档与代码不一致，必须在同批次按代码回写并记录处理动作。
   - AC-4: 模块 `prd.index.md` 与专题文档保持可达，不得遗漏活跃专题。
   - AC-5: 审读任务可映射到模块级 `PRD-ID -> Task -> test_tier`。
 - Non-Goals:
   - 不在本专题内新增业务功能代码。
-  - 不将 archive 文档恢复为活跃主入口。
+  - 不重新引入 `doc/**/archive/` 归档目录。
 
 ## 3. AI System Requirements (If Applicable)
 - Tool Requirements: `rg`、`scripts/doc-governance-check.sh`、`scripts/site-manual-sync-check.sh`。
 - Evaluation Strategy: 以“清单覆盖率、已读完成率、偏差修复闭环率、引用断链数”为核心指标。
 
 ## 4. Technical Specifications
-- Architecture Overview: 采用“入口文档先行 + 模块清单执行 + 归档补全”的三级审读架构；所有审读结果通过 checklist 固化在 `doc/engineering/prd-review/checklists/`。
+- Architecture Overview: 采用“入口文档先行 + 模块清单执行”的审读架构；所有审读结果通过 checklist 固化在 `doc/engineering/prd-review/checklists/`。
 - Integration Points:
   - `doc/engineering/prd.md`
   - `doc/engineering/prd.project.md`
@@ -58,14 +58,13 @@
   - `doc/engineering/prd-review/prd-full-system-audit-2026-03-03.prd.project.md`
   - `doc/engineering/prd-review/checklists/active-*.md`
   - `doc/engineering/prd-review/checklists/active-root-legacy.md`
-  - `doc/engineering/prd-review/checklists/archive-all.md`
   - `doc/*/prd.md`
   - `doc/*/prd.project.md`
   - `doc/*/prd.index.md`
   - `scripts/doc-governance-check.sh`
 - Edge Cases & Error Handling:
   - 旧路径残留：若条目指向历史路径，立即回写到当前 `.prd` 路径并记录。
-  - 归档替代关系：archive 文档若被后续方案替代，需标注替代链而非删除历史记录。
+  - 历史专题替代关系：历史专题若被后续方案替代，需标注替代链并保持索引可追溯。
   - 一文多义：同主题多文档语义重叠时，保留一个主文档并在其余文档明确 redirect。
   - 引用断链：任何 `doc/...` 引用不可达时，视为阻断项，必须在当前任务修复。
   - 高并发更新：审读批次冲突时，以模块 owner 最新提交为准并补充冲突说明。
@@ -79,13 +78,13 @@
 
 ## 5. Risks & Roadmap
 - Phased Rollout:
-  - Phase-0 (2026-03-03): 建立全量审读专题、生成 active/archive 清单并完成入口文档首批审读。
-  - Phase-1 (完成于 2026-03-04): 按模块逐篇推进 active 专题文档审读与偏差修复。
-  - Phase-2 (完成于 2026-03-04): 完成 archive 专题审读、替代链核对与引用收口。
+  - Phase-0 (2026-03-03): 建立全量审读专题、生成清单并完成入口文档首批审读。
+  - Phase-1 (完成于 2026-03-04): 按模块逐篇推进审读与偏差修复。
+  - Phase-2 (完成于 2026-03-05): 清理 archive 目录与历史引用，统一清单口径。
   - Phase-3: 将审读机制纳入工程例行治理（周度更新）。
 - Technical Risks:
   - 风险-1: 文档规模大，单批次审读深度不足。
-  - 风险-2: archive 历史语义复杂，替代链容易遗漏。
+  - 风险-2: 历史专题语义复杂，替代链容易遗漏。
   - 风险-3: 代码快速演进导致“审读完成后再漂移”。
 
 ## 6. Validation & Decision Record
@@ -100,4 +99,4 @@
 | --- | --- | --- | --- |
 | DEC-ENG-PRD-001 | 以“逐篇已读清单”作为全量审读唯一执行面 | 仅模块级进度百分比 | 逐篇清单可审计、可复核、可追责。 |
 | DEC-ENG-PRD-002 | 文档偏差按“代码为准”回写 | 以文档为准要求改代码 | 当前目标是恢复文档与实现一致性，先收口事实再讨论重构。 |
-| DEC-ENG-PRD-003 | active 与 archive 双轨清单分开维护 | 合并单一超长清单 | 分轨可读性更高、便于分阶段推进。 |
+| DEC-ENG-PRD-003 | 单一清单 + 文档内审计轮次标记 | active/archive 双轨清单 | 归档目录已移除，单一清单更易维护且与审计轮次一致。 |

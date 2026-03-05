@@ -31,10 +31,6 @@
   - `output/playwright/playability/startup-20260228-224626/`
   - `output/playwright/playability/startup-20260228-231005/`
 - 历史归档：
-  - 卡片归档：`doc/playability_test_result/archive/2026-02/`
-  - 项目文档快照：`doc/archive/game-test/game-test.project.2026-02-28.pre-archive.md`
-  - 旧量化手册：`doc/archive/game-test/playability_test_manual.md`
-  - 阶段性 A/B 文档：`doc/scripts/archive/run-game-test-ab-no-seek-b-phase-2026-02-27.prd.md`
 
 ## 状态
 - 当前阶段：现行视图 + 历史归档模式下持续复测（2026-03-01）

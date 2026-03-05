@@ -11,7 +11,6 @@
 - `launcher/`: 启动器与链路编排相关设计。
 - `scenario/`: 场景定义、初始化与配置相关设计。
 - `kernel/`: 内核规则桥接与 WASM 规则执行相关设计。
-- `archive/`: 历史归档文档。
 - `m4/`: M4 专题文档。
 
 ## 根目录收口
@@ -24,8 +23,6 @@
 ## 根目录 legacy
 - `doc/world-simulator.prd.md`
 - `doc/world-simulator.prd.project.md`
-- 历史完整总览归档：`doc/archive/root-history/world-simulator-root-entry-legacy-2026-03-03.prd.md`
-- 历史完整项目归档：`doc/archive/root-history/world-simulator-root-entry-legacy-2026-03-03.prd.project.md`
 
 ## 维护约定
 - 新文档按主题目录落位，不再默认平铺在模块根目录。

@@ -7,7 +7,6 @@
 - 模块 PRD：`doc/game/prd.md`
 - 模块项目管理：`doc/game/prd.project.md`
 
-## 活跃专题文档（非 archive/devlog）
 | 专题 PRD | 专题项目文档 |
 | --- | --- |
 | `doc/game/gameplay/gameplay-base-runtime-wasm-layer-split.prd.md` | `doc/game/gameplay/gameplay-base-runtime-wasm-layer-split.prd.project.md` |

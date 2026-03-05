@@ -6,7 +6,6 @@
 - 模块 PRD：`doc/playability_test_result/prd.md`
 - 模块项目管理：`doc/playability_test_result/prd.project.md`
 
-## 活跃专题文档（非 archive/devlog）
 | 专题 PRD | 专题项目文档 |
 | --- | --- |
 | `doc/playability_test_result/game-test.prd.md` | `doc/playability_test_result/game-test.prd.project.md` |

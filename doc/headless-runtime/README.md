@@ -5,6 +5,7 @@
 说明：
 - 模块目录已从旧名称 `nonviewer` 重命名为 `headless-runtime`。
 - 历史专题文件名保留 `nonviewer-*` 前缀，仅路径发生变化。
+- 不再保留 `doc/headless-runtime/archive/` 归档目录。
 
 ## 入口
 - PRD: `doc/headless-runtime/prd.md`
@@ -20,12 +21,6 @@
 - `doc/headless-runtime/nonviewer/nonviewer-design-alignment-fixes-2026-02-25.prd.project.md`
 - `doc/headless-runtime/nonviewer/nonviewer-design-alignment-review-round2-2026-02-25.prd.md`
 - `doc/headless-runtime/nonviewer/nonviewer-design-alignment-review-round2-2026-02-25.prd.project.md`
-
-## 归档文档
-- `doc/headless-runtime/archive/nonviewer-release-readiness-hardening.prd.md`
-- `doc/headless-runtime/archive/nonviewer-release-readiness-hardening.prd.project.md`
-- `doc/headless-runtime/archive/nonviewer-longrun-memory-safety-traceability-2026-02-23.prd.md`
-- `doc/headless-runtime/archive/nonviewer-longrun-memory-safety-traceability-2026-02-23.prd.project.md`
 
 ## 维护约定
 - 无界面运行链路行为变更，优先回写 `prd.md` 与 `prd.project.md`。

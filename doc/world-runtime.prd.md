@@ -18,8 +18,7 @@
 - 当前模块主入口：
   - `doc/world-runtime/prd.md`
   - `doc/world-runtime/prd.project.md`
-- 历史完整总览（归档）：
-  - `doc/archive/root-history/world-runtime-root-entry-legacy-2026-03-03.prd.md`
+- 历史完整总览：不再保留归档目录；如需追溯参考 `doc/world-runtime/prd.index.md`。
 
 ## 里程碑
 - M1（2026-03-03）：根目录 world-runtime redirect 文档完成 `.prd` 命名收口。

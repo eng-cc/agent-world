@@ -1,6 +1,6 @@
 # 工程文档总入口（模块设计）
 
-更新时间：2026-03-03
+更新时间：2026-03-05
 
 本文件用于导航各模块设计文档与执行文档。所有新需求与在研需求均以模块 PRD 为唯一入口。
 
@@ -9,13 +9,11 @@
 2. 读 `doc/core/prd.md`，获取项目全局设计总览（模块地图、关键链路、关键分册）。
 3. 进入目标模块 `doc/<module>/prd.md`，确认问题定义、方案、验收标准与技术边界。
 4. 继续读 `doc/<module>/prd.project.md`，确认任务拆解、PRD-ID 映射、依赖与状态。
-5. 按需下钻模块子文档（`doc/<module>/**/*.md`，含 `archive/`）。
+5. 按需下钻模块子文档（`doc/<module>/**/*.md`）。
 6. 对照系统测试策略：`testing-manual.md` 与 `doc/testing/prd.md`。
 7. 回溯过程记录：`doc/devlog/YYYY-MM-DD.md`。
 
 ## 根目录入口说明
-- `doc/world-runtime.prd.md` 与 `doc/world-runtime.prd.project.md`：兼容跳转入口（legacy redirect），历史完整总览已归档到 `doc/archive/root-history/world-runtime-root-entry-legacy-2026-03-03*.md`，当前模块主入口以 `doc/world-runtime/prd.md` 与 `doc/world-runtime/prd.project.md` 为准。
-- `doc/world-simulator.prd.md` 与 `doc/world-simulator.prd.project.md`：兼容跳转入口（legacy redirect），历史完整总览已归档到 `doc/archive/root-history/world-simulator-root-entry-legacy-2026-03-03*.md`，当前模块主入口以 `doc/world-simulator/prd.md` 与 `doc/world-simulator/prd.project.md` 为准。
 - 以下文件为兼容跳转入口（legacy redirect），正文已迁移到模块目录：
   - `doc/viewer-manual.md` -> `doc/world-simulator/viewer/viewer-manual.md`
   - `doc/game-test.prd.md` -> `doc/playability_test_result/game-test.prd.md`
@@ -43,11 +41,11 @@
 - `doc/<module>/prd.md`：模块设计主文档（唯一 PRD 入口）。
 - `doc/<module>/prd.project.md`：模块任务拆解与执行状态。
 - `doc/<module>/prd.index.md`：模块文件级 PRD 索引（活跃专题文档可达入口）。
-- `doc/<module>/**/*.md`：专题设计、实现方案、复盘与归档。
+- `doc/<module>/**/*.md`：专题设计、实现方案、复盘与历史说明。
 - `doc/<module>/README.md`：模块目录索引（按主题子目录导航）。
-- `doc/archive/root-history/`：`doc/` 根目录历史治理文档归档。
 - `doc/devlog/`：按日任务日志（时刻、完成内容、遗留事项）。
 - `doc/.governance/*-allowlist.txt`：文档组织门禁基线（根目录与模块根目录平铺文件冻结清单）。
+- `doc/**/archive/` 目录已移除；历史专题仅在模块目录内保留并在索引中标注。
 
 ## 维护约定（摘要）
 - 新功能或行为变更必须先更新模块 `prd.md`，再更新 `prd.project.md`，最后实现与测试。

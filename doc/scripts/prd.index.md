@@ -6,7 +6,6 @@
 - 模块 PRD：`doc/scripts/prd.md`
 - 模块项目管理：`doc/scripts/prd.project.md`
 
-## 活跃专题文档（非 archive/devlog）
 | 专题 PRD | 专题项目文档 |
 | --- | --- |
 | `doc/scripts/precommit/fix-precommit.prd.md` | `doc/scripts/precommit/fix-precommit.prd.project.md` |

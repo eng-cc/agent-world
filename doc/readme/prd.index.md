@@ -8,7 +8,6 @@
 - 模块 PRD：`doc/readme/prd.md`
 - 模块项目管理：`doc/readme/prd.project.md`
 
-## 活跃专题文档（非 archive/devlog）
 | 专题 PRD | 专题项目文档 |
 | --- | --- |
 | `doc/readme/gap/readme-gap-distributed-prod-hardening-gap12345.prd.md` | `doc/readme/gap/readme-gap-distributed-prod-hardening-gap12345.prd.project.md` |

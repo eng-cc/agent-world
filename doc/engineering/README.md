@@ -15,8 +15,5 @@
 - `doc/engineering/prd-review/prd-full-system-audit-2026-03-03.prd.project.md`
 - `doc/engineering/prd-review/checklists/*.md`
 
-## 归档文档
-- `doc/engineering/archive/oversized-rust-file-splitting.prd.md`
-- `doc/engineering/archive/oversized-rust-file-splitting.prd.project.md`
-- `doc/engineering/archive/oversized-rust-file-splitting-round2-2026-02-23.prd.md`
-- `doc/engineering/archive/oversized-rust-file-splitting-round2-2026-02-23.prd.project.md`
+## 说明
+- 不再保留 `doc/engineering/archive/` 归档目录。

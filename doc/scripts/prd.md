@@ -77,7 +77,6 @@
   - `doc/scripts/precommit/`
   - `doc/scripts/viewer-tools/`
   - `doc/scripts/wasm/`
-  - `doc/scripts/archive/`
   - `testing-manual.md`
   - `.github/workflows/*`
 - Edge Cases & Error Handling:

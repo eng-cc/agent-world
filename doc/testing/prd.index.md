@@ -6,7 +6,6 @@
 - 模块 PRD：`doc/testing/prd.md`
 - 模块项目管理：`doc/testing/prd.project.md`
 
-## 活跃专题文档（非 archive/devlog）
 | 专题 PRD | 专题项目文档 |
 | --- | --- |
 | `doc/testing/ci/ci-builtin-wasm-m1-multi-runner.prd.md` | `doc/testing/ci/ci-builtin-wasm-m1-multi-runner.prd.project.md` |

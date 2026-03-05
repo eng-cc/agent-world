@@ -12,7 +12,6 @@
 - 启动器链路测试：`doc/testing/launcher/`
 - 长稳与压力测试：`doc/testing/longrun/`、`doc/testing/performance/`
 - 门禁策略与治理：`doc/testing/governance/`、`doc/testing/chaos-plans/`
-- 历史测试归档：`doc/testing/archive/`
 
 ## 根目录收口
 - 模块根目录仅保留：`README.md`、`prd.md`、`prd.project.md`、`prd.index.md`。

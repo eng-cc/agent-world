@@ -4,10 +4,7 @@
 
 ## ROUND-002 物理合并
 - 本文件为主文档（当前权威入口）。
-- `phase8/phase9` 内容已物理合并入本文件，对应阶段文档降级为历史追溯。
-- 历史阶段文档:
-  - `doc/world-simulator/archive/viewer-live-full-event-driven-phase8-2026-02-27.prd.md`
-  - `doc/world-simulator/archive/viewer-live-full-event-driven-phase9-2026-02-27.prd.md`
+- `phase8/phase9` 内容已物理合并入本文件，对应阶段文档已合并并从仓库移除（不再保留 archive 目录）。
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-live-full-event-driven-phase10-2026-02-27.prd.project.md
 
 ## 1. Executive Summary
@@ -71,17 +68,15 @@
 - `env -u RUSTC_WRAPPER cargo test -p agent_world viewer::live::tests:: -- --nocapture`
 - `env -u RUSTC_WRAPPER cargo test -p agent_world viewer::web_bridge::tests:: -- --nocapture`
 - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required --test viewer_offline_integration -- --nocapture`
-- `rg --line-number --no-heading --glob '!doc/devlog/**' --glob '!doc/world-simulator/archive/viewer-live-full-event-driven-phase9-2026-02-27*' -- \"--tick-ms\" .`
 
 ### 阶段结论
 - Phase 10 达成：`agent_world::viewer` 活跃链路已移除旧 tick/poll 驱动入口与可配置轮询参数，viewer 运行路径收敛为事件驱动语义。
 - 当前剩余 tick 仅在 node/runtime 基础机制及其测试中（例如 `agent_world_node` 与相关配置），不属于 viewer old-code 清理范围。
 
 ## Phase 8/9 增量记录（ROUND-002 物理合并）
+- 原阶段文档已合并并删除，以下记录用于追溯。
 
 ### Phase 8：script 路径收敛为事件驱动
-- 原阶段文档: `doc/world-simulator/archive/viewer-live-full-event-driven-phase8-2026-02-27.prd.md`
-- 对应项目管理文档: `doc/world-simulator/archive/viewer-live-full-event-driven-phase8-2026-02-27.prd.project.md`
 
 #### 1. Executive Summary
 - 将 script 路径默认且唯一节拍收敛为 `event_drive`，不再保留 `timer_pulse` 回退模式。
@@ -147,8 +142,6 @@
 - 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
 
 ### Phase 9：移除 live tick 入口与脚本透传
-- 原阶段文档: `doc/world-simulator/archive/viewer-live-full-event-driven-phase9-2026-02-27.prd.md`
-- 对应项目管理文档: `doc/world-simulator/archive/viewer-live-full-event-driven-phase9-2026-02-27.prd.project.md`
 
 #### 1. Executive Summary
 - 彻底移除 `world_viewer_live` 与外围脚本中的旧 `--tick-ms` 入口，只保留 event-driven live 链路。

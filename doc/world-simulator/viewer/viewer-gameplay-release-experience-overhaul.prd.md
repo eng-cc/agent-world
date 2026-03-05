@@ -4,11 +4,7 @@
 
 ## ROUND-002 物理合并
 - 本文件为主文档（当前权威入口）。
-- `immersion-phase8~10` 内容已物理合并入本文件，对应阶段文档降级为历史追溯。
-- 历史阶段文档:
-  - `doc/world-simulator/archive/viewer-gameplay-release-immersion-phase8.prd.md`
-  - `doc/world-simulator/archive/viewer-gameplay-release-immersion-phase9.prd.md`
-  - `doc/world-simulator/archive/viewer-gameplay-release-immersion-phase10.prd.md`
+- `immersion-phase8~10` 内容已物理合并入本文件，对应阶段文档已合并并从仓库移除（不再保留 archive 目录）。
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.project.md
 
 ## 1. Executive Summary
@@ -88,10 +84,9 @@
   - console 无 error（仅浏览器 warning）。
 
 ## Phase 8~10 增量记录（ROUND-002 物理合并）
+- 原阶段文档已合并并删除，以下记录用于追溯。
 
 ### Phase 8：信息分层减负与焦点收敛
-- 原阶段文档: `doc/world-simulator/archive/viewer-gameplay-release-immersion-phase8.prd.md`
-- 对应项目管理文档: `doc/world-simulator/archive/viewer-gameplay-release-immersion-phase8.prd.project.md`
 
 #### 1. Executive Summary
 - 在保持“可随时指挥 Agent”前提下，进一步降低 Player 首屏的信息密度，避免左侧引导卡片重复表达同一目标。
@@ -164,8 +159,6 @@
 - 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
 
 ### Phase 9：指挥链路前置与顶层减噪
-- 原阶段文档: `doc/world-simulator/archive/viewer-gameplay-release-immersion-phase9.prd.md`
-- 对应项目管理文档: `doc/world-simulator/archive/viewer-gameplay-release-immersion-phase9.prd.project.md`
 
 #### 1. Executive Summary
 - 继续降低 Player 首屏 UI 压力，消除顶部叠层竞争，让世界画面保持第一视觉焦点。
@@ -239,8 +232,6 @@
 - 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
 
 ### Phase 10：新手流程闭环与认知减负
-- 原阶段文档: `doc/world-simulator/archive/viewer-gameplay-release-immersion-phase10.prd.md`
-- 对应项目管理文档: `doc/world-simulator/archive/viewer-gameplay-release-immersion-phase10.prd.project.md`
 
 #### 1. Executive Summary
 - 修复新手流程中的“进度跳步”问题，确保教程按真实行为推进，不再出现 2/4 直接到 4/4。

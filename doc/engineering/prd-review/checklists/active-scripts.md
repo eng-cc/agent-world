@@ -1,7 +1,6 @@
 # scripts 模块 PRD 已读清单（Active）
 
-更新时间：2026-03-04
-范围：doc/scripts/（排除 archive/devlog）
+更新时间：2026-03-05
 文档数：21
 
 说明：

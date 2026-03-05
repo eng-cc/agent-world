@@ -79,7 +79,6 @@
   - `site/doc/`
   - `doc/site/github-pages/`
   - `doc/site/manual/`
-  - `doc/site/archive/`
   - `doc/readme/prd.md`
 - Edge Cases & Error Handling:
   - 断链：发现下载或文档断链时阻断发布并进入修复流程。

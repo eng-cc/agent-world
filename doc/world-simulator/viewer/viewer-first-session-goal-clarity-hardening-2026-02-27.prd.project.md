@@ -11,7 +11,6 @@
 - doc/world-simulator/viewer/viewer-first-session-goal-clarity-hardening-2026-02-27.prd.md
 - `doc/world-simulator/viewer/viewer-first-session-goal-control-feedback-2026-02-27.prd.md`
 - `doc/playability_test_result/game-test.prd.md`
-- `doc/playability_test_result/archive/2026-02/card_2026_02_27_16_06_17.md`
 - `crates/agent_world_viewer/src/egui_right_panel_player_guide.rs`
 - `crates/agent_world_viewer/src/egui_right_panel_player_experience.rs`
 

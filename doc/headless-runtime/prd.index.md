@@ -8,7 +8,6 @@
 - 模块 PRD：`doc/headless-runtime/prd.md`
 - 模块项目管理：`doc/headless-runtime/prd.project.md`
 
-## 活跃专题文档（非 archive/devlog）
 | 专题 PRD | 专题项目文档 |
 | --- | --- |
 | `doc/headless-runtime/nonviewer/nonviewer-design-alignment-fixes-2026-02-25.prd.md` | `doc/headless-runtime/nonviewer/nonviewer-design-alignment-fixes-2026-02-25.prd.project.md` |

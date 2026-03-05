@@ -7,7 +7,6 @@
 
 ## 依赖
 - doc/world-simulator/viewer/viewer-control-feedback-step-recovery-p0-2026-02-27.prd.md
-- `doc/playability_test_result/archive/2026-02/card_2026_02_27_20_32_17.md`
 - `doc/world-simulator/viewer/viewer-control-feedback-iteration-checklist-2026-02-27.prd.md`
 - `crates/agent_world_viewer/src/web_test_api.rs`
 - `scripts/run-game-test-ab.sh`

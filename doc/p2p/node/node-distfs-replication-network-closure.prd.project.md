@@ -11,7 +11,6 @@
 - `crates/agent_world_node`
 - `crates/agent_world_distfs`
 - `crates/agent_world/src/bin/world_viewer_live.rs`
-- `doc/p2p/archive/blockchain-p2pfs-foundation-closure.prd.md`
 - `doc/p2p/node/node-keypair-config-bootstrap.prd.md`
 
 ## 状态

@@ -44,7 +44,6 @@
   - AC-5: 形成分工完成后的汇总收口规则（燃尽、抽检、收尾）。
 - Non-Goals:
   - 不在本方案内改动业务代码或测试脚本实现。
-  - 不把 archive/devlog 历史文档回改为活跃设计入口。
 
 ## 3. AI System Requirements (If Applicable)
 - Tool Requirements:
@@ -63,10 +62,9 @@
   - 模块追踪：`doc/engineering/prd.md`、`doc/engineering/prd.project.md`
   - 任务日志：`doc/devlog/2026-03-03.md`
 - Owner-C 执行分批（TASK-ENGINEERING-013）：
-  - Batch-C1: `doc/archive/root-history/**`（7 篇）
-  - Batch-C2: `doc/headless-runtime/**`（6 篇）
-  - Batch-C3: `doc/world-runtime/archive/**` + `doc/world-runtime/governance/**` + `doc/world-runtime/module/**` + `doc/world-runtime/wasm/**`（23 篇）
-  - Batch-C4: `doc/world-runtime/runtime/**`（16 篇）
+  - Batch-C2: `doc/headless-runtime/**`（4 篇）
+  - Batch-C3: `doc/world-runtime/governance/**` + `doc/world-runtime/module/**` + `doc/world-runtime/wasm/**`（9 篇）
+  - Batch-C4: `doc/world-runtime/runtime/**`（17 篇）
 - Edge Cases & Error Handling:
   - 分工冲突：若同一文档被多人认领，以协作项目文档登记的 Owner 为唯一执行者，其余回退。
   - 内容不保真：复核发现约束缺失时，任务状态回退为 `in_progress`，不得合并。
@@ -85,7 +83,7 @@
 - Phased Rollout:
   - Phase-0 (2026-03-03): 完成协作文档、分工与待迁移快照冻结。
   - Phase-1: Owner-A/B/C/D 按目录并行迁移，按日收口。
-  - Phase-1 进展（2026-03-03）: Owner-A 已完成 `doc/world-simulator/**` 161 篇、Owner-B 已完成 `doc/p2p/**` 115 篇、Owner-C 已完成 `doc/world-runtime/**`+`doc/headless-runtime/**`+`doc/archive/root-history/**` 52 篇，燃尽进入 328 / 391（Owner-D 持续执行）。
+  - Phase-1 进展（2026-03-03）: Owner-A 已完成 `doc/world-simulator/**` 150 篇、Owner-B 已完成 `doc/p2p/**` 70 篇、Owner-C 已完成 `doc/world-runtime/**`+`doc/headless-runtime/**` 30 篇，Owner-D 责任域 57 篇已完成。
   - Phase-2: 全量收尾抽检，清理残留旧命名与断链引用。
 - Technical Risks:
   - 风险-1: 超大目录（`world-simulator`、`p2p`）导致 Owner 负载不均。

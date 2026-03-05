@@ -8,7 +8,6 @@
 - 模块 PRD：`doc/world-simulator/prd.md`
 - 模块项目管理：`doc/world-simulator/prd.project.md`
 
-## 活跃专题文档（非 archive/devlog）
 | 专题 PRD | 专题项目文档 |
 | --- | --- |
 | `doc/world-simulator/kernel/intent-distributed-runtime-closure-2026-02-27.prd.md` | `doc/world-simulator/kernel/intent-distributed-runtime-closure-2026-02-27.prd.project.md` |
@@ -169,15 +168,10 @@
 | `doc/world-simulator/launcher/game-client-launcher-desktop-2026-02-27.prd.md` | `doc/world-simulator/launcher/game-client-launcher-desktop-2026-02-27.prd.project.md` | `doc/world-simulator/launcher/game-client-launcher-native-web-control-plane-unification-2026-03-04.prd.md` |
 | `doc/world-simulator/launcher/game-unified-launcher-2026-02-27.prd.md` | `doc/world-simulator/launcher/game-unified-launcher-2026-02-27.prd.project.md` | `doc/world-simulator/launcher/game-client-launcher-native-web-control-plane-unification-2026-03-04.prd.md` |
 | `doc/world-simulator/viewer/viewer-chat-agent-prompt-default-values-inline-input.prd.md` | `doc/world-simulator/viewer/viewer-chat-agent-prompt-default-values-inline-input.prd.project.md` | `doc/world-simulator/viewer/viewer-chat-agent-prompt-default-values-prefill.prd.md` |
-| `doc/world-simulator/archive/viewer-gameplay-release-immersion-phase8.prd.md` | `doc/world-simulator/archive/viewer-gameplay-release-immersion-phase8.prd.project.md` | `doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.md` |
-| `doc/world-simulator/archive/viewer-gameplay-release-immersion-phase9.prd.md` | `doc/world-simulator/archive/viewer-gameplay-release-immersion-phase9.prd.project.md` | `doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.md` |
-| `doc/world-simulator/archive/viewer-gameplay-release-immersion-phase10.prd.md` | `doc/world-simulator/archive/viewer-gameplay-release-immersion-phase10.prd.project.md` | `doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.md` |
-| `doc/world-simulator/archive/viewer-live-full-event-driven-phase8-2026-02-27.prd.md` | `doc/world-simulator/archive/viewer-live-full-event-driven-phase8-2026-02-27.prd.project.md` | `doc/world-simulator/viewer/viewer-live-full-event-driven-phase10-2026-02-27.prd.md` |
-| `doc/world-simulator/archive/viewer-live-full-event-driven-phase9-2026-02-27.prd.md` | `doc/world-simulator/archive/viewer-live-full-event-driven-phase9-2026-02-27.prd.project.md` | `doc/world-simulator/viewer/viewer-live-full-event-driven-phase10-2026-02-27.prd.md` |
 | `doc/world-simulator/viewer/viewer-rust-file-line-cap-refactor-and-web-qa-2026-02-22.prd.md` | `doc/world-simulator/viewer/viewer-rust-file-line-cap-refactor-and-web-qa-2026-02-22.prd.project.md` | `doc/world-simulator/viewer/viewer-release-full-coverage-gate.prd.md` |
 
 ## 说明
 - 本索引用于保证模块专题文档在根入口文档树中可达。
 - 文档配对规则：`*.prd.md` 与同名 `*.prd.project.md`。
-- ROUND-002 物理合并（gameplay release）：`viewer-gameplay-release-experience-overhaul` 为主文档，`immersion-phase8~10` 已并入并移入历史专题。
-- ROUND-002 物理合并（live event-driven）：`viewer-live-full-event-driven-phase10-2026-02-27` 为主文档，`phase8/9` 已并入并移入历史专题。
+- ROUND-002 物理合并（gameplay release）：`viewer-gameplay-release-experience-overhaul` 为主文档，`immersion-phase8~10` 已并入并从仓库移除旧阶段文档（不再保留 archive）。
+- ROUND-002 物理合并（live event-driven）：`viewer-live-full-event-driven-phase10-2026-02-27` 为主文档，`phase8/9` 已并入并从仓库移除旧阶段文档（不再保留 archive）。

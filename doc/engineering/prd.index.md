@@ -6,7 +6,6 @@
 - 模块 PRD：`doc/engineering/prd.md`
 - 模块项目管理：`doc/engineering/prd.project.md`
 
-## 活跃专题文档（非 archive/devlog）
 | 专题 PRD | 专题项目文档 |
 | --- | --- |
 | `doc/engineering/doc-migration/legacy-doc-migration-collaboration-2026-03-03.prd.md` | `doc/engineering/doc-migration/legacy-doc-migration-collaboration-2026-03-03.prd.project.md` |
