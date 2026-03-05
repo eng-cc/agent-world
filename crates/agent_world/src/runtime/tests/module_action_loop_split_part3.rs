@@ -102,6 +102,27 @@ fn duplicate_factory_profile_changes() -> ModuleProfileChanges {
     }
 }
 
+fn duplicate_recipe_profile_changes() -> ModuleProfileChanges {
+    ModuleProfileChanges {
+        product_profiles: Vec::new(),
+        recipe_profiles: vec![
+            RecipeProfileV1 {
+                recipe_id: "dup_recipe".to_string(),
+                bottleneck_tags: vec!["control_chip".to_string()],
+                stage_gate: "scale_out".to_string(),
+                preferred_factory_tags: vec!["assembler".to_string()],
+            },
+            RecipeProfileV1 {
+                recipe_id: "dup_recipe".to_string(),
+                bottleneck_tags: vec!["maintenance".to_string()],
+                stage_gate: "scale_out".to_string(),
+                preferred_factory_tags: vec!["assembler".to_string()],
+            },
+        ],
+        factory_profiles: Vec::new(),
+    }
+}
+
 #[test]
 fn module_release_state_machine_runs_submit_shadow_approve_apply() {
     let mut world = World::new();
@@ -382,6 +403,139 @@ fn module_release_shadow_rejects_duplicate_factory_profile_changes() {
 }
 
 #[test]
+fn module_release_shadow_rejects_duplicate_recipe_profile_changes() {
+    let mut world = World::new();
+    register_agent(&mut world, "publisher-1");
+    register_agent(&mut world, "operator-1");
+
+    let wasm_bytes = b"module-release-dup-recipe-profile".to_vec();
+    let wasm_hash = util::sha256_hex(&wasm_bytes);
+    world.submit_action(Action::DeployModuleArtifact {
+        publisher_agent_id: "publisher-1".to_string(),
+        wasm_hash: wasm_hash.clone(),
+        wasm_bytes,
+    });
+    world.step().expect("deploy module artifact");
+
+    world.submit_action(Action::ModuleReleaseSubmit {
+        requester_agent_id: "publisher-1".to_string(),
+        manifest: base_manifest("m.loop.release.dup-recipe", "0.1.0", &wasm_hash),
+        activate: true,
+        install_target: ModuleInstallTarget::SelfAgent,
+        required_roles: vec!["security".to_string()],
+        profile_changes: duplicate_recipe_profile_changes(),
+    });
+    world.step().expect("submit module release request");
+    let request_id = match &world.journal().events.last().expect("submit event").body {
+        WorldEventBody::Domain(DomainEvent::ModuleReleaseRequested { request_id, .. }) => {
+            *request_id
+        }
+        other => panic!("expected module release requested event: {other:?}"),
+    };
+
+    let action_id = world.submit_action(Action::ModuleReleaseShadow {
+        operator_agent_id: "operator-1".to_string(),
+        request_id,
+    });
+    world
+        .step()
+        .expect("shadow module release request with dup recipe profiles");
+    assert_rule_denied_note_for_action(&world, action_id, "duplicate recipe profile_id");
+}
+
+#[test]
+fn module_release_shadow_rejects_missing_artifact_identity() {
+    let mut world = World::new();
+    register_agent(&mut world, "publisher-1");
+    register_agent(&mut world, "operator-1");
+
+    let wasm_bytes = b"module-release-missing-identity".to_vec();
+    let wasm_hash = util::sha256_hex(&wasm_bytes);
+    world.submit_action(Action::DeployModuleArtifact {
+        publisher_agent_id: "publisher-1".to_string(),
+        wasm_hash: wasm_hash.clone(),
+        wasm_bytes,
+    });
+    world.step().expect("deploy module artifact");
+
+    let mut manifest = base_manifest("m.loop.release.missing-identity", "0.1.0", &wasm_hash);
+    manifest.artifact_identity = None;
+    world.submit_action(Action::ModuleReleaseSubmit {
+        requester_agent_id: "publisher-1".to_string(),
+        manifest,
+        activate: true,
+        install_target: ModuleInstallTarget::SelfAgent,
+        required_roles: vec!["security".to_string()],
+        profile_changes: ModuleProfileChanges::default(),
+    });
+    world.step().expect("submit module release request");
+    let request_id = match &world.journal().events.last().expect("submit event").body {
+        WorldEventBody::Domain(DomainEvent::ModuleReleaseRequested { request_id, .. }) => {
+            *request_id
+        }
+        other => panic!("expected module release requested event: {other:?}"),
+    };
+
+    let action_id = world.submit_action(Action::ModuleReleaseShadow {
+        operator_agent_id: "operator-1".to_string(),
+        request_id,
+    });
+    world
+        .step()
+        .expect("shadow module release request missing identity");
+    assert_rule_denied_note_for_action(&world, action_id, "artifact_identity is required");
+}
+
+#[test]
+fn module_release_shadow_rejects_unsigned_artifact_identity_signature() {
+    let mut world = World::new();
+    register_agent(&mut world, "publisher-1");
+    register_agent(&mut world, "operator-1");
+
+    let wasm_bytes = b"module-release-unsigned-identity".to_vec();
+    let wasm_hash = util::sha256_hex(&wasm_bytes);
+    world.submit_action(Action::DeployModuleArtifact {
+        publisher_agent_id: "publisher-1".to_string(),
+        wasm_hash: wasm_hash.clone(),
+        wasm_bytes,
+    });
+    world.step().expect("deploy module artifact");
+
+    let mut manifest = base_manifest("m.loop.release.unsigned-identity", "0.1.0", &wasm_hash);
+    let mut identity = manifest
+        .artifact_identity
+        .clone()
+        .expect("base manifest identity");
+    identity.artifact_signature = "unsigned:tampered".to_string();
+    manifest.artifact_identity = Some(identity);
+
+    world.submit_action(Action::ModuleReleaseSubmit {
+        requester_agent_id: "publisher-1".to_string(),
+        manifest,
+        activate: true,
+        install_target: ModuleInstallTarget::SelfAgent,
+        required_roles: vec!["security".to_string()],
+        profile_changes: ModuleProfileChanges::default(),
+    });
+    world.step().expect("submit module release request");
+    let request_id = match &world.journal().events.last().expect("submit event").body {
+        WorldEventBody::Domain(DomainEvent::ModuleReleaseRequested { request_id, .. }) => {
+            *request_id
+        }
+        other => panic!("expected module release requested event: {other:?}"),
+    };
+
+    let action_id = world.submit_action(Action::ModuleReleaseShadow {
+        operator_agent_id: "operator-1".to_string(),
+        request_id,
+    });
+    world
+        .step()
+        .expect("shadow module release request unsigned identity");
+    assert_rule_denied_note_for_action(&world, action_id, "unsigned signature is forbidden");
+}
+
+#[test]
 fn module_release_apply_rejects_when_required_roles_are_missing() {
     let mut world = World::new();
     register_agent(&mut world, "publisher-1");
@@ -515,6 +669,109 @@ fn module_release_duplicate_role_approval_is_idempotent_for_same_approver() {
         request.role_approvals.get("security"),
         Some(&"publisher-1".to_string())
     );
+}
+
+#[test]
+fn module_release_approve_role_rejects_when_role_not_required() {
+    let mut world = World::new();
+    register_agent(&mut world, "publisher-1");
+    register_agent(&mut world, "operator-1");
+
+    let wasm_bytes = b"module-release-role-not-required".to_vec();
+    let wasm_hash = util::sha256_hex(&wasm_bytes);
+    world.submit_action(Action::DeployModuleArtifact {
+        publisher_agent_id: "publisher-1".to_string(),
+        wasm_hash: wasm_hash.clone(),
+        wasm_bytes,
+    });
+    world.step().expect("deploy module artifact");
+
+    world.submit_action(Action::ModuleReleaseSubmit {
+        requester_agent_id: "publisher-1".to_string(),
+        manifest: base_manifest("m.loop.release.role-not-required", "0.1.0", &wasm_hash),
+        activate: true,
+        install_target: ModuleInstallTarget::SelfAgent,
+        required_roles: vec!["security".to_string()],
+        profile_changes: ModuleProfileChanges::default(),
+    });
+    world.step().expect("submit module release request");
+    let request_id = match &world.journal().events.last().expect("submit event").body {
+        WorldEventBody::Domain(DomainEvent::ModuleReleaseRequested { request_id, .. }) => {
+            *request_id
+        }
+        other => panic!("expected module release requested event: {other:?}"),
+    };
+
+    world.submit_action(Action::ModuleReleaseShadow {
+        operator_agent_id: "operator-1".to_string(),
+        request_id,
+    });
+    world.step().expect("shadow module release request");
+    bind_release_roles(&mut world, "operator-1", "operator-1", &["runtime"]);
+
+    let action_id = world.submit_action(Action::ModuleReleaseApproveRole {
+        approver_agent_id: "operator-1".to_string(),
+        request_id,
+        role: "runtime".to_string(),
+    });
+    world.step().expect("reject role not required");
+    assert_rule_denied_note_for_action(&world, action_id, "role not required");
+}
+
+#[test]
+fn module_release_approve_role_rejects_when_role_already_approved_by_other() {
+    let mut world = World::new();
+    register_agent(&mut world, "publisher-1");
+    register_agent(&mut world, "operator-1");
+    register_agent(&mut world, "operator-2");
+
+    let wasm_bytes = b"module-release-role-already-approved".to_vec();
+    let wasm_hash = util::sha256_hex(&wasm_bytes);
+    world.submit_action(Action::DeployModuleArtifact {
+        publisher_agent_id: "publisher-1".to_string(),
+        wasm_hash: wasm_hash.clone(),
+        wasm_bytes,
+    });
+    world.step().expect("deploy module artifact");
+
+    world.submit_action(Action::ModuleReleaseSubmit {
+        requester_agent_id: "publisher-1".to_string(),
+        manifest: base_manifest("m.loop.release.role-already-approved", "0.1.0", &wasm_hash),
+        activate: true,
+        install_target: ModuleInstallTarget::SelfAgent,
+        required_roles: vec!["security".to_string()],
+        profile_changes: ModuleProfileChanges::default(),
+    });
+    world.step().expect("submit module release request");
+    let request_id = match &world.journal().events.last().expect("submit event").body {
+        WorldEventBody::Domain(DomainEvent::ModuleReleaseRequested { request_id, .. }) => {
+            *request_id
+        }
+        other => panic!("expected module release requested event: {other:?}"),
+    };
+
+    world.submit_action(Action::ModuleReleaseShadow {
+        operator_agent_id: "operator-1".to_string(),
+        request_id,
+    });
+    world.step().expect("shadow module release request");
+    bind_release_roles(&mut world, "operator-1", "operator-1", &["security"]);
+    bind_release_roles(&mut world, "operator-1", "operator-2", &["security"]);
+
+    world.submit_action(Action::ModuleReleaseApproveRole {
+        approver_agent_id: "operator-1".to_string(),
+        request_id,
+        role: "security".to_string(),
+    });
+    world.step().expect("approve required role");
+
+    let action_id = world.submit_action(Action::ModuleReleaseApproveRole {
+        approver_agent_id: "operator-2".to_string(),
+        request_id,
+        role: "security".to_string(),
+    });
+    world.step().expect("reject role already approved");
+    assert_rule_denied_note_for_action(&world, action_id, "already approved");
 }
 
 #[test]

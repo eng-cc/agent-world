@@ -4,7 +4,7 @@
 - [x] TASK-WORLD_RUNTIME-010 (PRD-WORLD_RUNTIME-010/012) [test_tier_required]: 发布单扩展 `profile_changes`，Apply 时落账 product/recipe profile，并补齐拒绝路径与回放测试。
 - [x] TASK-WORLD_RUNTIME-011 (PRD-WORLD_RUNTIME-010/012) [test_tier_required]: 新增 `FactoryProfileV1` + `GovernFactoryProfile` 动作/事件/状态落账与字段白名单校验。
 - [x] TASK-WORLD_RUNTIME-012 (PRD-WORLD_RUNTIME-011) [test_tier_full]: 三节点发布链路 SLA 测试（submit->apply p95 <= 60s）与报表。
-- [ ] TASK-WORLD_RUNTIME-013 (PRD-WORLD_RUNTIME-012) [test_tier_required]: 角色审批/签名/冲突校验覆盖与回归。
+- [x] TASK-WORLD_RUNTIME-013 (PRD-WORLD_RUNTIME-012) [test_tier_required]: 角色审批/签名/冲突校验覆盖与回归。
 
 ## 依赖
 - doc/world-runtime/module/player-published-entities-2026-03-05.prd.md
