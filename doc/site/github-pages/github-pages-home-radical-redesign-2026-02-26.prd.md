@@ -1,6 +1,11 @@
 # GitHub Pages 首页激进改造（2026-02-26）设计文档
+审计轮次: 2
 
 - 对应项目管理文档: doc/site/github-pages/github-pages-home-radical-redesign-2026-02-26.prd.project.md
+
+## ROUND-002 主从口径
+- 主入口：`doc/site/github-pages/github-pages-game-engine-reposition-2026-02-25.prd.md`
+- 本文仅维护增量。
 
 ## 目标
 - 对 `site/` 首页执行“大刀阔斧”改造，在不破坏现有交互闭环的前提下，显著提升视觉记忆点与信息冲击力。

@@ -1,6 +1,11 @@
 # GitHub Pages Hero 指针微交互（四期增量）设计文档
+审计轮次: 2
 
 - 对应项目管理文档: doc/site/github-pages/github-pages-hero-pointer-interaction.prd.project.md
+
+## ROUND-002 主从口径
+- 主入口：`doc/site/github-pages/github-pages-game-engine-reposition-2026-02-25.prd.md`
+- 本文仅维护增量。
 
 ## 目标
 - 在现有 Hero 动态背景层上增加鼠标/触摸微交互联动，增强“可感知科技感”。

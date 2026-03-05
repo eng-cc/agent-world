@@ -1,6 +1,11 @@
 # GitHub Pages 精简科技感升级（四期）设计文档
+审计轮次: 2
 
 - 对应项目管理文档: doc/site/github-pages/github-pages-lean-tech-refresh.prd.project.md
+
+## ROUND-002 主从口径
+- 主入口：`doc/site/github-pages/github-pages-game-engine-reposition-2026-02-25.prd.md`
+- 本文仅维护增量。
 
 ## 目标
 - 解决当前展示站“文字密度偏高、页面过长、科技感辨识度一般”的问题。

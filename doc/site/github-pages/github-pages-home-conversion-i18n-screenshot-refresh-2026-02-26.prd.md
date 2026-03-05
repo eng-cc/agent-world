@@ -1,6 +1,11 @@
 # GitHub Pages 首页转化文案与中英一致性收敛 + UI 截图刷新（2026-02-26）设计文档
+审计轮次: 2
 
 - 对应项目管理文档: doc/site/github-pages/github-pages-home-conversion-i18n-screenshot-refresh-2026-02-26.prd.project.md
+
+## ROUND-002 主从口径
+- 主入口：`doc/site/github-pages/github-pages-game-engine-reposition-2026-02-25.prd.md`
+- 本文仅维护增量。
 
 ## 目标
 - 收敛首页首屏转化承诺，确保“点击预期”与真实上手门槛一致，降低新用户落差。
