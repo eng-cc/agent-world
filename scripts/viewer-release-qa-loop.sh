@@ -218,10 +218,17 @@ if [[ -s "$HOME/.nvm/nvm.sh" ]]; then
   nvm use 24 >/dev/null || true
 fi
 
-export CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
-PWCLI="$CODEX_HOME/skills/playwright/scripts/playwright_cli.sh"
-if [[ ! -f "$PWCLI" ]]; then
-  echo "error: playwright wrapper not found: $PWCLI" >&2
+local_pwcli="$repo_root/.codex/skills/playwright/scripts/playwright_cli.sh"
+repo_skill_pwcli="$repo_root/.agents/skills/playwright/scripts/playwright_cli.sh"
+home_pwcli="${CODEX_HOME:-$HOME/.codex}/skills/playwright/scripts/playwright_cli.sh"
+if [[ -x "$local_pwcli" ]]; then
+  PWCLI="$local_pwcli"
+elif [[ -x "$repo_skill_pwcli" ]]; then
+  PWCLI="$repo_skill_pwcli"
+elif [[ -x "$home_pwcli" ]]; then
+  PWCLI="$home_pwcli"
+else
+  echo "error: playwright wrapper not found (checked: $local_pwcli, $repo_skill_pwcli, $home_pwcli)" >&2
   exit 1
 fi
 

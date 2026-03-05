@@ -115,14 +115,15 @@
 - [x] 运行 `env -u RUSTC_WRAPPER cargo check -p agent_world --features wasmtime`
 
 ### E13 发布门禁收口（PRD-M4-E13）
-- [ ] 新增/更新发布 gate 脚本：`full + sync-m1/m4/m5 --check + Web strict + S9/S10`
-- [ ] 将发布 gate 接入 release workflow 前置步骤
-- [ ] 收口 testing-manual S7 TODO 覆盖口径（`world_init_demo_runs_` 切换 full）
-- [ ] 新增 gate 冒烟测试与失败提示校验
-- [ ] 运行 `./scripts/ci-tests.sh full`
-- [ ] 运行 `./scripts/sync-m1-builtin-wasm-artifacts.sh --check`
-- [ ] 运行 `./scripts/sync-m4-builtin-wasm-artifacts.sh --check`
-- [ ] 运行 `./scripts/sync-m5-builtin-wasm-artifacts.sh --check`
+- [x] 新增/更新发布 gate 脚本：`full + sync-m1/m4/m5 --check + Web strict + S9/S10`
+- [x] 将发布 gate 接入 release workflow 前置步骤
+- [x] 收口 testing-manual S7 TODO 覆盖口径（`world_init_demo_runs_` 切换 full）
+- [x] 新增 gate 冒烟测试与失败提示校验
+- [x] 运行 `./scripts/release-gate-smoke.sh`
+- [x] 运行 `./scripts/ci-tests.sh full`
+- [x] 运行 `./scripts/sync-m1-builtin-wasm-artifacts.sh --check`
+- [x] 运行 `./scripts/sync-m4-builtin-wasm-artifacts.sh --check`
+- [x] 运行 `./scripts/sync-m5-builtin-wasm-artifacts.sh --check`
 
 ## 依赖
 
@@ -132,6 +133,6 @@
 
 ## 状态
 
-- 当前阶段：E13 进行中（方案B：发布单 + profile 治理 + 多角色审批 + 回滚 + 发布门禁）。
-- 下一步：完成 E13 发布门禁脚本/工作流/手册收口并补齐 gate 冒烟校验。
-- 最近更新：E12 已完成模块实例回滚闭环（治理复用 + 审计事件 + 拒绝路径），并通过 `module_action_loop` 与 `cargo check --features wasmtime` 定向回归（2026-03-05）。
+- 当前阶段：方案B（E9~E13）已完成（发布单 + profile 治理 + 多角色审批 + 回滚 + 发布门禁）。
+- 下一步：进入对外发布演练，基于 `release-gate` 执行发布前实跑并沉淀异常分诊记录。
+- 最近更新：E13 已完成发布门禁收口（`release-gate` 编排、release workflow 前置、S7 TODO 收口、gate 冒烟与失败提示校验），并通过 `ci-tests full` 与 `sync-m1/m4/m5 --check` 回归（2026-03-05）。

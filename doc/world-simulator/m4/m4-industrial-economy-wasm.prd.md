@@ -387,6 +387,7 @@ V2 需要新增以下测试组：
 - 2026-03-05：完成 E10（profile 治理动作），新增 `proposal_id` 门禁与 `*_profile_governed` 事件落账闭环。
 - 2026-03-05：完成 E11（多角色审批策略），新增 `agent -> roles` 绑定与越权审批拒绝门禁。
 - 2026-03-05：完成 E12（模块实例回滚），新增 `rollback_module_instance` 动作与 `ModuleRollbackApplied` 审计事件，回滚路径复用治理闭环并校验历史版本兼容性。
+- 2026-03-05：完成 E13（发布门禁收口），新增 `scripts/release-gate.sh` 与 `scripts/release-gate-smoke.sh`，将 gate 接入 `release-packages` workflow 前置并收口 S7 TODO 口径。
 
 ## 5. Risks & Roadmap
 

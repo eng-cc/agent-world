@@ -220,7 +220,7 @@ env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-u
 ```bash
 env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required scenario_specs_match_ids -- --nocapture
 env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required scenarios_are_stable -- --nocapture
-env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required world_init_demo_runs_ -- --nocapture
+env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_full world_init_demo_runs_ -- --nocapture
 ```
 - 配套文档：`doc/world-simulator/scenario/scenario-files.prd.md` 的“场景测试覆盖矩阵”。
 
@@ -304,6 +304,16 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
   - 若失败，必须保留 `failures.md` 作为分诊依据。
 - 参考文档：`doc/testing/longrun/chain-runtime-soak-script-reactivation-2026-02-28.prd.md`、`doc/testing/longrun/s10-five-node-real-game-soak.prd.md`。
 
+### 发布门禁一键收口（S0 + S1 + S6 + S9 + S10）
+```bash
+./scripts/release-gate.sh
+./scripts/release-gate.sh --quick
+./scripts/release-gate.sh --dry-run
+```
+- 默认串行执行：`ci-tests full`、`sync-m1/m4/m5 --check`、Web strict、S9/S10。
+- `--quick` 用于缩短 S9/S10 时长并关闭 Web visual baseline。
+- `--dry-run` 用于门禁编排冒烟，不执行真实命令。
+
 ## 改动路径 -> 必跑套件矩阵（针对性执行）
 
 | 改动路径 | 必跑 | 推荐追加 |
@@ -317,6 +327,7 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
 | `crates/agent_world_consensus/**` | S0 + S4（consensus） + S9/S10（按改动面至少一条） | S2 + S8 + 另一条在线长跑（S9 或 S10） |
 | `crates/agent_world_distfs/**` | S0 + S4（distfs） + S9/S10（按改动面至少一条） | S2 + S8 + 另一条在线长跑（S9 或 S10） |
 | `scripts/ci-tests.sh` / `.github/workflows/rust.yml` | S0（含 `./scripts/doc-governance-check.sh`） + S1 + `./scripts/viewer-visual-baseline.sh` + （full）`./scripts/llm-baseline-fixture-smoke.sh` | S2 + S4 + S6（抽样） |
+| `scripts/release-gate.sh` / `.github/workflows/release-packages.yml` | `./scripts/ci-tests.sh full` + `sync-m1/m4/m5 --check` + Web strict + S9 + S10 | `./scripts/release-gate.sh --quick` / `--dry-run` |
 | `scripts/ci-m1-wasm-summary.sh` / `scripts/ci-verify-m1-wasm-summaries.py` / `.github/workflows/builtin-wasm-m1-multi-runner.yml` | `S0` + `./scripts/ci-m1-wasm-summary.sh --runner-label darwin-arm64 --out output/ci/m1-wasm-summary/darwin-arm64.json` + `./scripts/ci-verify-m1-wasm-summaries.py --summary-dir output/ci/m1-wasm-summary --expected-runners darwin-arm64` | `workflow_dispatch` 触发双 runner（`linux-x86_64,darwin-arm64`）对账 |
 | `scripts/run-viewer-web.sh` / `scripts/capture-viewer-frame.sh` | S0 + S6 | S5 + S8 |
 | `scripts/p2p-longrun-soak.sh` / `doc/testing/p2p-storage-consensus-longrun-online-stability-2026-02-24*` | S0 + S9 smoke（含 summary/timeline 校验） | S9 endurance（含 chaos） |
@@ -393,10 +404,9 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
 6. L5 失败：判定是否性能退化、资源泄漏、长时状态累计问题。
 
 ## TODO（待收口）
-- [ ] TODO-1：修正 S7 场景矩阵回归命令的覆盖口径。
-  - 问题：当前 `world_init_demo_runs_` 在 `test_tier_required` 下只会命中 1 条用例，无法代表场景矩阵回归充分度。
-  - 动作：将 S7 中 `world_init_demo_runs_` 的执行档位调整为 `test_tier_full`（或在文档中明确 required/full 的期望命中数差异与适用场景）。
-  - 验收：`env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_full world_init_demo_runs_ -- --nocapture` 命中多场景用例（非 1 条）。
+- [x] TODO-1：修正 S7 场景矩阵回归命令的覆盖口径。
+  - 处理结果（2026-03-05）：S7 的 `world_init_demo_runs_` 已切换到 `test_tier_full` 执行档位。
+  - 验收记录：`env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_full world_init_demo_runs_ -- --nocapture` 命中多场景用例（非 1 条）。
 
 - [x] TODO-2：修复 S5 `agent_world_viewer` 测试编译阻塞。
   - 处理结果（2026-02-21）：`agent_world_viewer` 测试集已恢复可编译可执行，并已纳入 `scripts/ci-tests.sh` 的 `required/full` 默认 gate。

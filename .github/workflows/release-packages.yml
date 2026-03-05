@@ -17,7 +17,37 @@ env:
   RUST_TOOLCHAIN: 1.92.0
 
 jobs:
+  release-gate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install pinned Rust toolchain
+        run: |
+          rustup toolchain install "${RUST_TOOLCHAIN}" --profile default
+          rustup target add wasm32-unknown-unknown --toolchain "${RUST_TOOLCHAIN}"
+          rustup default "${RUST_TOOLCHAIN}"
+      - name: Install Linux system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            jq \
+            netcat-openbsd \
+            pkg-config \
+            libwayland-dev \
+            wayland-protocols \
+            libxkbcommon-dev \
+            libx11-dev \
+            libxi-dev \
+            libxcursor-dev \
+            libxrandr-dev \
+            libxinerama-dev \
+            libasound2-dev \
+            libudev-dev
+      - name: Run release gate
+        run: ./scripts/release-gate.sh
+
   build-web-dist:
+    needs: release-gate
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
