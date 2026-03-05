@@ -1,6 +1,6 @@
 # game PRD Project
 
-审计轮次: 1
+审计轮次: 2
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] TASK-GAME-001 (PRD-GAME-001) [test_tier_required]: 完成 game PRD 改写，建立玩法设计总入口。
@@ -22,4 +22,5 @@
 - 当前状态: active
 - 下一任务: TASK-GAME-002
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
+- ROUND-002 进展: gameplay 子簇主从化完成。
 - 说明: 本文档仅维护 game 设计执行状态；过程记录在 `doc/devlog/2026-03-03.md`。

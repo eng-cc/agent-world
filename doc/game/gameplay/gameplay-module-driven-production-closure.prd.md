@@ -1,6 +1,12 @@
 # Gameplay Module-Driven Production Closure（生产级设计）
 
+- 审计轮次: 2
+
 - 对应项目管理文档: doc/game/gameplay/gameplay-module-driven-production-closure.prd.project.md
+
+## ROUND-002 主从口径
+- 主入口：`doc/game/gameplay/gameplay-top-level-design.prd.md`
+- 本文仅维护增量，不重复主文档口径。
 
 ## 目标
 - 把 Gameplay 层从“runtime 硬编码推进”切换为“WASM gameplay 模块驱动推进”，让战争/治理/危机/元进度具备可替换、可演进实现。

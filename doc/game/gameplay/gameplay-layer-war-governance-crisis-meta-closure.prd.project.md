@@ -1,5 +1,11 @@
 # Gameplay Layer War/Governance/Crisis/Meta Closure（项目管理文档）
 
+- 审计轮次: 2
+
+## 审计备注
+- 主项目入口：`doc/game/gameplay/gameplay-top-level-design.prd.project.md`
+- 本文仅维护增量任务，不重复主项目文档任务编排。
+
 ## 任务拆解
 
 ### T0 设计建档

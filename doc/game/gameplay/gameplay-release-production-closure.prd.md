@@ -1,6 +1,11 @@
 # Gameplay 发行收口（社会经济治理 + 压测门禁 + 联盟战争生命周期）
 
+- 审计轮次: 2
 - 对应项目管理文档: doc/game/gameplay/gameplay-release-production-closure.prd.project.md
+
+## ROUND-002 主从口径
+- 主入口文档：`doc/game/gameplay/gameplay-top-level-design.prd.md`。
+- 本文档仅维护发行收口增量需求，通用玩法顶层规格以主入口为准。
 
 ## 目标
 - 将当前 Gameplay 从“协议可运行”推进到“可发行的生产级闭环”，聚焦非 viewer 路径。

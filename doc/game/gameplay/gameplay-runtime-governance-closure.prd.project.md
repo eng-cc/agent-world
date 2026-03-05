@@ -1,5 +1,11 @@
 # Gameplay Runtime Governance Closure（项目管理文档）
 
+- 审计轮次: 2
+
+## 审计备注
+- 主项目入口：`doc/game/gameplay/gameplay-top-level-design.prd.project.md`。
+- 本文档仅维护 runtime governance 收口增量任务与状态。
+
 ## 任务拆解
 
 ### T0 设计建档

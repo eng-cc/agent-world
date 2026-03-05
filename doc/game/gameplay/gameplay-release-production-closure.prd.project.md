@@ -1,5 +1,11 @@
 # Gameplay 发行收口（项目管理文档）
 
+- 审计轮次: 2
+
+## 审计备注
+- 主项目入口：`doc/game/gameplay/gameplay-top-level-design.prd.project.md`。
+- 本文档仅维护发行收口增量任务与状态。
+
 ## 任务拆解
 
 ### T0 文档与任务建模

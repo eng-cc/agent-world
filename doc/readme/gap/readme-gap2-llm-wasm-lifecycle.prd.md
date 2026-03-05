@@ -1,5 +1,10 @@
 # README 缺口 2 收口：LLM 直连 WASM 生命周期（设计文档）
 
+审计轮次: 2
+
+## ROUND-002 主从口径
+- 主入口统一指向 `doc/readme/gap/readme-gap-distributed-prod-hardening-gap12345.prd.md`，本文仅维护增量。
+
 - 对应项目管理文档: doc/readme/gap/readme-gap2-llm-wasm-lifecycle.prd.project.md
 
 ## 目标

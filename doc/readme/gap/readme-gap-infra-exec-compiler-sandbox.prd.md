@@ -1,5 +1,11 @@
 # README 收口：基础设施模块执行引擎 + 编译 Sandbox 隔离（设计文档）
 
+审计轮次: 2
+
+## ROUND-002 主从口径
+- 主入口文档：`doc/readme/gap/readme-gap-distributed-prod-hardening-gap12345.prd.md`。
+- 本文件仅维护本专题增量内容。
+
 - 对应项目管理文档: doc/readme/gap/readme-gap-infra-exec-compiler-sandbox.prd.project.md
 
 ## 目标

@@ -33,6 +33,7 @@
     - 已完成并行批次 `B3-C2-009-S2/C2-010/C2-011`：observer sync-mode、node-contribution、distfs-self-healing 三簇主从化收口并回写审计轮次。
     - 已完成并行批次 `B3-C2-003/C2-008-S1/C2-008-S2`：node-redeemable-power-asset 与 distfs-production-hardening（phase1~9）主从化收口并回写审计轮次。
     - 已完成并行批次 `B4-C2-005-S1/S2`：site/manual 与 github-pages 主从化收口并回写审计轮次。
+    - 已完成并行批次 `B5-C2-006-S1/S2`：readme/gap 与 game/gameplay 主从化收口并回写审计轮次。
 - [x] TASK-CORE-006 (PRD-CORE-001/002) [test_tier_required]: 收敛 `doc/` 根目录 legacy redirect 入口并更新总导航。
 - [x] TASK-CORE-007 (PRD-CORE-001/002/003) [test_tier_required]: 对齐 strict PRD schema，补齐关键流程/规格矩阵/边界异常/NFR/验证与决策记录。
 

@@ -34,11 +34,13 @@
 | B3-C2-008-S2 | `distfs-production-hardening-phase6~9`（PRD + project） | `master-slave`（`phase1` 为主） | 8 份 distfs 文档回写主从口径并更新审计轮次 | done |
 | B4-C2-005-S1 | `site/manual/*`（PRD + project） | `master-slave`（`site-manual-static-docs` 为主） | 4 份 manual 文档 + `doc/site/prd.index.md` 回写主从口径并更新审计轮次 | done |
 | B4-C2-005-S2 | `site/github-pages/*`（PRD + project） | `master-slave`（`github-pages-game-engine-reposition-2026-02-25` 为主） | 34 份 github-pages 文档回写主从口径并更新审计轮次 | done |
+| B5-C2-006-S1 | `doc/readme/gap/*`（PRD + project） | `master-slave`（`readme-gap-distributed-prod-hardening-gap12345` 为主） | 18 份 gap 文档 + `doc/readme/prd.index.md` 回写主从口径并更新审计轮次 | done |
+| B5-C2-006-S2 | `doc/game/gameplay/*`（PRD + project） | `master-slave`（`gameplay-top-level-design` 为主） | 18 份 gameplay 文档 + `doc/game/prd.index.md` 回写主从口径并更新审计轮次 | done |
 
 ## 待执行批次（优先级）
 | 批次 | 范围 | 目标 | 验收命令 |
 | --- | --- | --- | --- |
-| B5 | `doc/readme/gap/*` + `doc/game/gameplay/*` | 统一治理/玩法总述口径主入口（C2-006） | `find doc/readme/gap doc/game/gameplay -maxdepth 1 -type f -name '*.md' | wc -l` |
+| B6 | `doc/world-simulator/viewer/*phase*` | 收敛阶段型专题重复块（C2-001/C2-002） | `find doc/world-simulator/viewer -maxdepth 1 -type f -name '*.prd.md' | wc -l` |
 
 ## 决策记录模板（每簇必填）
 | 字段 | 说明 |

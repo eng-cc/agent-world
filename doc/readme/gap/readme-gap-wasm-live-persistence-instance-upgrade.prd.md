@@ -1,5 +1,11 @@
 # README WASM 主链路收口：Live 模块执行 + 默认持久化模块仓库 + 模块实例化 + 升级动作（设计文档）
 
+审计轮次: 2
+
+## ROUND-002 主从口径
+- 主入口文档：`doc/readme/gap/readme-gap-distributed-prod-hardening-gap12345.prd.md`。
+- 本文件仅维护本专题增量内容。
+
 - 对应项目管理文档: doc/readme/gap/readme-gap-wasm-live-persistence-instance-upgrade.prd.project.md
 
 ## 目标

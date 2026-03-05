@@ -1,6 +1,6 @@
 # readme PRD Project
 
-审计轮次: 1
+审计轮次: 2
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] TASK-README-001 (PRD-README-001) [test_tier_required]: 完成 readme PRD 改写，建立对外口径主控入口。
@@ -24,4 +24,5 @@
 - 当前状态: active
 - 下一任务: TASK-README-002
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
+- ROUND-002 进展: gap 子簇主从化已完成（gap12345 主入口，其它 gap 专题增量维护）。
 - 说明: 本文档仅维护 readme 模块设计执行状态；过程记录在 `doc/devlog/2026-03-03.md`。

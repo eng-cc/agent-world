@@ -1,10 +1,18 @@
 # ROUND-002 已审读文档清单（S_round002）
 
-- 生成时间: 2026-03-05 15:44:52 CST（本提交）
+- 生成时间: 2026-03-05 16:15:32 CST（本提交）
 - 生成规则: `rg -l "^审计轮次:\s*2$" doc --glob '*.md' | sort`
-- 当前已审读文档数: 93
+- 当前已审读文档数: 121
 
 ## 文件列表
+- `doc/game/gameplay/gameplay-base-runtime-wasm-layer-split.prd.md`
+- `doc/game/gameplay/gameplay-base-runtime-wasm-layer-split.prd.project.md`
+- `doc/game/gameplay/gameplay-beta-balance-hardening-2026-02-22.prd.md`
+- `doc/game/gameplay/gameplay-beta-balance-hardening-2026-02-22.prd.project.md`
+- `doc/game/gameplay/gameplay-top-level-design.prd.md`
+- `doc/game/gameplay/gameplay-top-level-design.prd.project.md`
+- `doc/game/prd.index.md`
+- `doc/game/prd.project.md`
 - `doc/p2p/distfs/distfs-production-hardening-phase1.prd.md`
 - `doc/p2p/distfs/distfs-production-hardening-phase1.prd.project.md`
 - `doc/p2p/distfs/distfs-production-hardening-phase2.prd.md`
@@ -53,6 +61,26 @@
 - `doc/p2p/observer/observer-sync-source-mode.prd.project.md`
 - `doc/p2p/prd.index.md`
 - `doc/p2p/prd.project.md`
+- `doc/readme/gap/readme-gap-distributed-prod-hardening-gap12345.prd.md`
+- `doc/readme/gap/readme-gap-distributed-prod-hardening-gap12345.prd.project.md`
+- `doc/readme/gap/readme-gap-infra-exec-compiler-sandbox.prd.md`
+- `doc/readme/gap/readme-gap-infra-exec-compiler-sandbox.prd.project.md`
+- `doc/readme/gap/readme-gap-wasm-live-persistence-instance-upgrade.prd.md`
+- `doc/readme/gap/readme-gap-wasm-live-persistence-instance-upgrade.prd.project.md`
+- `doc/readme/gap/readme-gap12-consensus-market-lifecycle-closure.prd.md`
+- `doc/readme/gap/readme-gap12-consensus-market-lifecycle-closure.prd.project.md`
+- `doc/readme/gap/readme-gap12-market-closure.prd.md`
+- `doc/readme/gap/readme-gap12-market-closure.prd.project.md`
+- `doc/readme/gap/readme-gap123-runtime-consensus-metering.prd.md`
+- `doc/readme/gap/readme-gap123-runtime-consensus-metering.prd.project.md`
+- `doc/readme/gap/readme-gap2-llm-wasm-lifecycle.prd.md`
+- `doc/readme/gap/readme-gap2-llm-wasm-lifecycle.prd.project.md`
+- `doc/readme/gap/readme-gap3-install-target-infrastructure.prd.md`
+- `doc/readme/gap/readme-gap3-install-target-infrastructure.prd.project.md`
+- `doc/readme/gap/readme-gap34-lifecycle-orderbook-closure.prd.md`
+- `doc/readme/gap/readme-gap34-lifecycle-orderbook-closure.prd.project.md`
+- `doc/readme/prd.index.md`
+- `doc/readme/prd.project.md`
 - `doc/scripts/precommit/fix-precommit.prd.md`
 - `doc/scripts/precommit/fix-precommit.prd.project.md`
 - `doc/scripts/precommit/pre-commit.prd.md`

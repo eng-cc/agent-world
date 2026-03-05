@@ -1,4 +1,5 @@
 # game PRD 文件级索引
+审计轮次: 2
 
 更新时间：2026-03-03
 
@@ -22,3 +23,4 @@
 ## 说明
 - 本索引用于保证模块专题文档在根入口文档树中可达。
 - 文档配对规则：`*.prd.md` 与同名 `*.prd.project.md`。
+- ROUND-002 口径：`doc/game/gameplay/gameplay-top-level-design.prd.md` 为 gameplay 主文档，其余 gameplay 专题文档仅维护增量。

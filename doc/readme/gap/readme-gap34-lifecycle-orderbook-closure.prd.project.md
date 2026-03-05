@@ -1,5 +1,10 @@
 # README 高优先级差距收口（二期）：模块生命周期 + 单一订单簿撮合（项目管理文档）
 
+审计轮次: 2
+
+## 审计备注
+- 主项目入口统一指向 `doc/readme/gap/readme-gap-distributed-prod-hardening-gap12345.prd.project.md`，本文仅维护增量任务。
+
 ## 任务拆解
 - [x] T0：输出设计文档（`doc/readme/gap/readme-gap34-lifecycle-orderbook-closure.prd.md`）
 - [x] T0：输出项目管理文档（本文件）

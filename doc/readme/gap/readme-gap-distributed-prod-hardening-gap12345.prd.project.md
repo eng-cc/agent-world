@@ -1,5 +1,11 @@
 # README 分布式计算与存储生产级收口（Gap 1/2/3/4/5）项目管理文档
 
+审计轮次: 2
+
+## ROUND-002 主从口径
+- 本文件为 gap 项目主入口文档。
+- 其余 gap 项目文档为增量计划文档。
+
 ## 任务拆解
 - [x] T0：输出设计文档（`doc/readme/gap/readme-gap-distributed-prod-hardening-gap12345.prd.md`）与项目管理文档（本文件）
 - [x] T1：`agent_world_node` 复用 `agent_world_consensus` PoS 内核（提议者选择/阈值判定）并补测试（Gap 1）

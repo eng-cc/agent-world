@@ -1,6 +1,11 @@
 # Gameplay 内测数值加固（治理票权 + 策略授权 + 合约声誉去通胀）
+审计轮次: 2
 
 - 对应项目管理文档: doc/game/gameplay/gameplay-beta-balance-hardening-2026-02-22.prd.project.md
+
+## ROUND-002 主从口径
+- 主入口：`doc/game/gameplay/gameplay-top-level-design.prd.md`
+- 本文仅维护增量。
 
 ## 目标
 - 收敛当前内测前的三类高风险数值/规则问题：

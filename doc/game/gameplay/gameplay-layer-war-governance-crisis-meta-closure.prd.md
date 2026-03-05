@@ -1,6 +1,12 @@
 # Gameplay Layer War/Governance/Crisis/Meta Closure（生产级设计）
 
+- 审计轮次: 2
+
 - 对应项目管理文档: doc/game/gameplay/gameplay-layer-war-governance-crisis-meta-closure.prd.project.md
+
+## ROUND-002 主从口径
+- 主入口：`doc/game/gameplay/gameplay-top-level-design.prd.md`
+- 本文仅维护增量，不重复主文档口径。
 
 ## 目标
 - 补齐 `README.md` 与 `doc/game/gameplay/gameplay-engineering-architecture.md` 对完整玩法层的最低要求：战争、政治治理、危机、经济覆盖、元进度五类玩法都具备可启动模块与可审计协议原语。

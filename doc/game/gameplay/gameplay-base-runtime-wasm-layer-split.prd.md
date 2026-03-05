@@ -1,6 +1,11 @@
 # Gameplay Base Runtime / WASM Layer Split（设计文档）
+审计轮次: 2
 
 - 对应项目管理文档: doc/game/gameplay/gameplay-base-runtime-wasm-layer-split.prd.project.md
+
+## ROUND-002 主从口径
+- 主入口：`doc/game/gameplay/gameplay-top-level-design.prd.md`
+- 本文仅维护增量。
 
 ## 目标
 - 将 `agent_world` runtime 的模块治理与执行架构拆分为两个明确边界：

@@ -1,5 +1,7 @@
 # readme PRD 文件级索引
 
+审计轮次: 2
+
 更新时间：2026-03-03
 
 ## 入口
@@ -28,3 +30,4 @@
 ## 说明
 - 本索引用于保证模块专题文档在根入口文档树中可达。
 - 文档配对规则：`*.prd.md` 与同名 `*.prd.project.md`。
+- ROUND-002 口径：`readme-gap-distributed-prod-hardening-gap12345` 为 gap 主专题，其它 gap 专题为增量子专题。

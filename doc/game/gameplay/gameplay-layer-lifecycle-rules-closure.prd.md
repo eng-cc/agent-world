@@ -1,6 +1,12 @@
 # Gameplay Layer Lifecycle Rules Closure（生产级设计）
 
+- 审计轮次: 2
+
 - 对应项目管理文档: doc/game/gameplay/gameplay-layer-lifecycle-rules-closure.prd.project.md
+
+## ROUND-002 主从口径
+- 主入口：`doc/game/gameplay/gameplay-top-level-design.prd.md`
+- 本文仅维护增量，不重复主文档口径。
 
 ## 目标
 - 在已完成“基础层 / WASM 游戏层拆分”和“玩法原语补齐”的基础上，补齐可持续运行的玩法生命周期规则。

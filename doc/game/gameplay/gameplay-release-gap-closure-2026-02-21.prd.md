@@ -1,6 +1,12 @@
 # Gameplay 发行差距收口（Prompt 触发 + Gate 覆盖 + 经济动作 + 规则深度）
 
+- 审计轮次: 2
+
 - 对应项目管理文档: doc/game/gameplay/gameplay-release-gap-closure-2026-02-21.prd.project.md
+
+## ROUND-002 主从口径
+- 主入口：`doc/game/gameplay/gameplay-top-level-design.prd.md`
+- 本文仅维护增量，不重复主文档口径。
 
 ## 目标
 - 修复当前“游戏性可发行（非 viewer）”的 5 个关键差距：

@@ -1,6 +1,11 @@
 # Gameplay Runtime Governance Closure（生产级设计）
 
+- 审计轮次: 2
 - 对应项目管理文档: doc/game/gameplay/gameplay-runtime-governance-closure.prd.project.md
+
+## ROUND-002 主从口径
+- 主入口文档：`doc/game/gameplay/gameplay-top-level-design.prd.md`。
+- 本文档仅维护 runtime governance 收口增量需求，通用玩法顶层规格以主入口为准。
 
 ## 目标
 - 将 `doc/game/gameplay/gameplay-engineering-architecture.md` 中“Gameplay Layer 只通过受限接口接入运行时”的要求落到可执行代码，而不是停留在文档层。
