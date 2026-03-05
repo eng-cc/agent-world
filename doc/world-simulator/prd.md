@@ -31,6 +31,7 @@
   - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase1-2026-03-04.prd.md`（PRD-WORLD_SIMULATOR-016）
   - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase2-2026-03-05.prd.md`（PRD-WORLD_SIMULATOR-017）
   - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase3-2026-03-05.prd.md`（PRD-WORLD_SIMULATOR-018）
+  - `doc/world-simulator/viewer/viewer-live-runtime-world-llm-full-bridge-2026-03-05.prd.md`（PRD-WORLD_SIMULATOR-019）
 
 ## 里程碑
 - M1 (2026-03-03): 完成模块设计 PRD 主体重写与任务改造。
@@ -71,6 +72,8 @@
   - SC-20: `world_viewer_live` 必须支持 runtime/world 驱动模式，并在不改 viewer 协议前提下输出可消费的 live 快照与事件。
   - SC-21: runtime 模式必须支持 `LLM/chat/prompt` 控制链路（含鉴权与错误语义），避免与 simulator 模式形成双套体验断裂。
   - SC-22: runtime live 必须补齐高频动作映射与等价回归，并移除 `world_viewer_live` simulator 启动分支，统一 runtime-only 体验。
+  - SC-23: runtime live 必须使用真实 LLM 决策链路（AgentRunner/LlmAgentBehavior），且 LLM 失败时硬失败，不得回退启发式。
+  - SC-24: runtime live 必须达到 runtime 事件/快照 100% 覆盖，并允许通过协议扩展输出 DecisionTrace。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -103,6 +106,7 @@
   - PRD-WORLD_SIMULATOR-016: As a 玩法架构开发者, I want world_viewer_live to run on runtime/world with protocol compatibility, so that live behavior aligns with runtime semantics without immediate viewer model rewrite.
   - PRD-WORLD_SIMULATOR-017: As a 玩法架构开发者, I want runtime live to support llm/chat/prompt controls, so that runtime 联调不再依赖 simulator 模式兜底。
   - PRD-WORLD_SIMULATOR-018: As a 玩法架构开发者, I want runtime live action mapping coverage with parity regression and runtime-only launch path, so that world_viewer_live no longer keeps a simulator fallback branch.
+  - PRD-WORLD_SIMULATOR-019: As a 玩法架构开发者, I want runtime live to use true LLM decisions with 100% runtime event/snapshot coverage, so that runtime 行为与观测不再被启发式上限限制。
 - Critical User Flows:
   1. Flow-WS-001（Web-first 闭环）:
      `选择场景 -> 启动 Viewer Web -> 执行关键交互 -> 采集日志/截图/指标 -> 产出 test_tier_required 结论`
@@ -136,6 +140,8 @@
      `world_viewer_live --runtime-world --llm -> PromptControl/AgentChat 鉴权通过 -> LLM 决策动作桥接 runtime 执行 -> 输出兼容事件/快照`
   16. Flow-WS-016（Viewer live runtime 接管 Phase 3）:
      `补齐 action 映射 -> 增加等价回归 -> 删除 world_viewer_live simulator 启动分支 -> 统一 runtime-only 启动与错误语义`
+  17. Flow-WS-017（Viewer live runtime 真 LLM 全量接管）:
+     `真实 LLM 决策 -> runtime action 执行 -> 100% 事件/快照映射 -> DecisionTrace 输出 -> 无启发式 fallback`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
@@ -181,6 +187,8 @@
   - AC-23: `world_viewer_live --runtime-world` 可启动 runtime 驱动 live server，并保持现有 viewer 协议兼容（`WorldSnapshot/WorldEvent`）。
   - AC-24: `world_viewer_live --runtime-world --llm` 必须支持 prompt/chat 鉴权与控制闭环，runtime script 模式对 prompt/chat 返回 `llm_mode_required`。
   - AC-25: runtime live 补齐动作映射覆盖并新增等价回归；`world_viewer_live` 移除 simulator 启动分支并统一 runtime-only 路径。
+  - AC-26: runtime live 使用真实 LLM 决策链路且 LLM 失败时硬失败，不得回退启发式。
+  - AC-27: runtime 事件/快照映射覆盖率 100%，DecisionTrace 可被 viewer 订阅并包含错误上下文。
 - Non-Goals:
   - 不在本 PRD 中详细列出每个 UI 像素级规范。
   - 不替代 world-runtime/p2p 的底层协议设计。
@@ -299,6 +307,7 @@
 | PRD-WORLD_SIMULATOR-016 | TASK-WORLD_SIMULATOR-036/037 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_viewer_live` + `env -u RUSTC_WRAPPER cargo check -p agent_world --bin world_viewer_live`，验证 runtime 驱动 live 链路与协议兼容适配 | viewer live runtime/simulator 双模式一致性与迁移风险可控 |
 | PRD-WORLD_SIMULATOR-017 | TASK-WORLD_SIMULATOR-038/039 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_viewer_live` + `env -u RUSTC_WRAPPER cargo check -p agent_world --bin world_viewer_live`，验证 runtime llm/chat/prompt 控制链路打通与脚本模式边界错误码 | viewer live runtime llm/script 体验连续性、鉴权与桥接稳定性 |
 | PRD-WORLD_SIMULATOR-018 | TASK-WORLD_SIMULATOR-040/041 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_viewer_live` + `env -u RUSTC_WRAPPER cargo check -p agent_world --bin world_viewer_live`，验证 action 映射覆盖扩展、等价回归与 runtime-only 启动分支收敛 | viewer live runtime 映射覆盖稳定性、旧分支移除风险与体验一致性 |
+| PRD-WORLD_SIMULATOR-019 | TASK-WORLD_SIMULATOR-042/043/044/045 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_viewer_live` + `env -u RUSTC_WRAPPER cargo check -p agent_world --bin world_viewer_live`，验证真实 LLM 决策链路、100% 映射覆盖与硬失败语义 | runtime live LLM 行为真实性与观测完整性 |
 
 - Decision Log:
 

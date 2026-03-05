@@ -136,6 +136,7 @@
 | `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase1-2026-03-04.prd.md` | `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase1-2026-03-04.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase2-2026-03-05.prd.md` | `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase2-2026-03-05.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase3-2026-03-05.prd.md` | `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase3-2026-03-05.prd.project.md` |
+| `doc/world-simulator/viewer/viewer-live-runtime-world-llm-full-bridge-2026-03-05.prd.md` | `doc/world-simulator/viewer/viewer-live-runtime-world-llm-full-bridge-2026-03-05.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-live-step-control-progress-stability-2026-02-28.prd.md` | `doc/world-simulator/viewer/viewer-live-step-control-progress-stability-2026-02-28.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-live-tick-driven-doc-archive-2026-02-27.prd.md` | `doc/world-simulator/viewer/viewer-live-tick-driven-doc-archive-2026-02-27.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-location-depletion-visualization.prd.md` | `doc/world-simulator/viewer/viewer-location-depletion-visualization.prd.project.md` |
