@@ -4,6 +4,13 @@ set -euo pipefail
 repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 cd "$repo_root"
 
+theme_defaults_file="scripts/viewer-theme-defaults.env"
+if [[ -f "$theme_defaults_file" ]]; then
+  # shellcheck source=/dev/null
+  source "$theme_defaults_file"
+fi
+default_theme_pack="${VIEWER_THEME_DEFAULT_PACK:-industrial_v3}"
+
 usage() {
   cat <<'USAGE'
 Usage: ./scripts/viewer-release-full-coverage.sh [options]
@@ -178,7 +185,7 @@ count_connected_captures() {
 }
 
 scenario="llm_bootstrap"
-theme_pack="industrial_v3"
+theme_pack="$default_theme_pack"
 variants_raw="default,matte,glossy"
 inspect_raw="all"
 ticks_industrial=100

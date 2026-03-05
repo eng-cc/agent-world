@@ -6,12 +6,26 @@ const THEME_PRESET_ENV: &str = "AGENT_WORLD_VIEWER_THEME_PRESET";
 const THEME_PRESET_FILE_ENV: &str = "AGENT_WORLD_VIEWER_THEME_PRESET_FILE";
 const THEME_HOT_RELOAD_ENV: &str = "AGENT_WORLD_VIEWER_THEME_HOT_RELOAD";
 
+const INDUSTRIAL_V3_DEFAULT_PRESET_PATH: &str =
+    "crates/agent_world_viewer/assets/themes/industrial_v3/presets/industrial_v3_default.env";
+const INDUSTRIAL_V3_MATTE_PRESET_PATH: &str =
+    "crates/agent_world_viewer/assets/themes/industrial_v3/presets/industrial_v3_matte.env";
+const INDUSTRIAL_V3_GLOSSY_PRESET_PATH: &str =
+    "crates/agent_world_viewer/assets/themes/industrial_v3/presets/industrial_v3_glossy.env";
+
 const INDUSTRIAL_V2_DEFAULT_PRESET_PATH: &str =
     "crates/agent_world_viewer/assets/themes/industrial_v2/presets/industrial_v2_default.env";
 const INDUSTRIAL_V2_MATTE_PRESET_PATH: &str =
     "crates/agent_world_viewer/assets/themes/industrial_v2/presets/industrial_v2_matte.env";
 const INDUSTRIAL_V2_GLOSSY_PRESET_PATH: &str =
     "crates/agent_world_viewer/assets/themes/industrial_v2/presets/industrial_v2_glossy.env";
+
+const INDUSTRIAL_V3_DEFAULT_PRESET_EMBEDDED: &str =
+    include_str!("../assets/themes/industrial_v3/presets/industrial_v3_default.env");
+const INDUSTRIAL_V3_MATTE_PRESET_EMBEDDED: &str =
+    include_str!("../assets/themes/industrial_v3/presets/industrial_v3_matte.env");
+const INDUSTRIAL_V3_GLOSSY_PRESET_EMBEDDED: &str =
+    include_str!("../assets/themes/industrial_v3/presets/industrial_v3_glossy.env");
 
 const INDUSTRIAL_V2_DEFAULT_PRESET_EMBEDDED: &str =
     include_str!("../assets/themes/industrial_v2/presets/industrial_v2_default.env");
@@ -23,6 +37,9 @@ const INDUSTRIAL_V2_GLOSSY_PRESET_EMBEDDED: &str =
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum ThemePresetSelection {
     None,
+    IndustrialV3Default,
+    IndustrialV3Matte,
+    IndustrialV3Glossy,
     IndustrialV2Default,
     IndustrialV2Matte,
     IndustrialV2Glossy,
@@ -30,8 +47,11 @@ pub(crate) enum ThemePresetSelection {
 }
 
 impl ThemePresetSelection {
-    pub(crate) const ORDERED: [Self; 5] = [
+    pub(crate) const ORDERED: [Self; 8] = [
         Self::None,
+        Self::IndustrialV3Default,
+        Self::IndustrialV3Matte,
+        Self::IndustrialV3Glossy,
         Self::IndustrialV2Default,
         Self::IndustrialV2Matte,
         Self::IndustrialV2Glossy,
@@ -41,13 +61,22 @@ impl ThemePresetSelection {
     pub(crate) fn from_env(raw: &str) -> Option<Self> {
         match raw.trim().to_ascii_lowercase().as_str() {
             "none" | "off" | "disabled" => Some(Self::None),
-            "industrial_v2_default" | "industrial-v2-default" | "v2_default" | "default" => {
+            "industrial_v3_default" | "industrial-v3-default" | "v3_default" | "default" => {
+                Some(Self::IndustrialV3Default)
+            }
+            "industrial_v3_matte" | "industrial-v3-matte" | "v3_matte" | "matte" => {
+                Some(Self::IndustrialV3Matte)
+            }
+            "industrial_v3_glossy" | "industrial-v3-glossy" | "v3_glossy" | "glossy" => {
+                Some(Self::IndustrialV3Glossy)
+            }
+            "industrial_v2_default" | "industrial-v2-default" | "v2_default" => {
                 Some(Self::IndustrialV2Default)
             }
-            "industrial_v2_matte" | "industrial-v2-matte" | "v2_matte" | "matte" => {
+            "industrial_v2_matte" | "industrial-v2-matte" | "v2_matte" => {
                 Some(Self::IndustrialV2Matte)
             }
-            "industrial_v2_glossy" | "industrial-v2-glossy" | "v2_glossy" | "glossy" => {
+            "industrial_v2_glossy" | "industrial-v2-glossy" | "v2_glossy" => {
                 Some(Self::IndustrialV2Glossy)
             }
             "custom" => Some(Self::Custom),
@@ -59,6 +88,12 @@ impl ThemePresetSelection {
         match (self, locale.is_zh()) {
             (Self::None, true) => "关闭",
             (Self::None, false) => "Off",
+            (Self::IndustrialV3Default, true) => "industrial_v3 默认",
+            (Self::IndustrialV3Default, false) => "industrial_v3 default",
+            (Self::IndustrialV3Matte, true) => "industrial_v3 哑光",
+            (Self::IndustrialV3Matte, false) => "industrial_v3 matte",
+            (Self::IndustrialV3Glossy, true) => "industrial_v3 亮面",
+            (Self::IndustrialV3Glossy, false) => "industrial_v3 glossy",
             (Self::IndustrialV2Default, true) => "industrial_v2 默认",
             (Self::IndustrialV2Default, false) => "industrial_v2 default",
             (Self::IndustrialV2Matte, true) => "industrial_v2 哑光",
@@ -72,6 +107,9 @@ impl ThemePresetSelection {
 
     fn builtin_path(self) -> Option<&'static str> {
         match self {
+            Self::IndustrialV3Default => Some(INDUSTRIAL_V3_DEFAULT_PRESET_PATH),
+            Self::IndustrialV3Matte => Some(INDUSTRIAL_V3_MATTE_PRESET_PATH),
+            Self::IndustrialV3Glossy => Some(INDUSTRIAL_V3_GLOSSY_PRESET_PATH),
             Self::IndustrialV2Default => Some(INDUSTRIAL_V2_DEFAULT_PRESET_PATH),
             Self::IndustrialV2Matte => Some(INDUSTRIAL_V2_MATTE_PRESET_PATH),
             Self::IndustrialV2Glossy => Some(INDUSTRIAL_V2_GLOSSY_PRESET_PATH),
@@ -81,6 +119,9 @@ impl ThemePresetSelection {
 
     fn builtin_embedded(self) -> Option<&'static str> {
         match self {
+            Self::IndustrialV3Default => Some(INDUSTRIAL_V3_DEFAULT_PRESET_EMBEDDED),
+            Self::IndustrialV3Matte => Some(INDUSTRIAL_V3_MATTE_PRESET_EMBEDDED),
+            Self::IndustrialV3Glossy => Some(INDUSTRIAL_V3_GLOSSY_PRESET_EMBEDDED),
             Self::IndustrialV2Default => Some(INDUSTRIAL_V2_DEFAULT_PRESET_EMBEDDED),
             Self::IndustrialV2Matte => Some(INDUSTRIAL_V2_MATTE_PRESET_EMBEDDED),
             Self::IndustrialV2Glossy => Some(INDUSTRIAL_V2_GLOSSY_PRESET_EMBEDDED),
@@ -697,6 +738,15 @@ fn trim_wrapping_quotes(raw: &str) -> &str {
 
 fn embedded_preset_for_path(path: &str) -> Option<&'static str> {
     match path {
+        INDUSTRIAL_V3_DEFAULT_PRESET_PATH => {
+            ThemePresetSelection::IndustrialV3Default.builtin_embedded()
+        }
+        INDUSTRIAL_V3_MATTE_PRESET_PATH => {
+            ThemePresetSelection::IndustrialV3Matte.builtin_embedded()
+        }
+        INDUSTRIAL_V3_GLOSSY_PRESET_PATH => {
+            ThemePresetSelection::IndustrialV3Glossy.builtin_embedded()
+        }
         INDUSTRIAL_V2_DEFAULT_PRESET_PATH => {
             ThemePresetSelection::IndustrialV2Default.builtin_embedded()
         }
@@ -784,5 +834,45 @@ mod tests {
             Some("mr.png")
         );
         assert_eq!(slot.emissive_texture_asset.as_deref(), Some("emissive.png"));
+    }
+
+    #[test]
+    fn theme_preset_from_env_prefers_v3_for_plain_aliases() {
+        assert_eq!(
+            ThemePresetSelection::from_env("default"),
+            Some(ThemePresetSelection::IndustrialV3Default)
+        );
+        assert_eq!(
+            ThemePresetSelection::from_env("matte"),
+            Some(ThemePresetSelection::IndustrialV3Matte)
+        );
+        assert_eq!(
+            ThemePresetSelection::from_env("glossy"),
+            Some(ThemePresetSelection::IndustrialV3Glossy)
+        );
+    }
+
+    #[test]
+    fn theme_preset_from_env_keeps_v2_compat_aliases() {
+        assert_eq!(
+            ThemePresetSelection::from_env("industrial_v2_default"),
+            Some(ThemePresetSelection::IndustrialV2Default)
+        );
+        assert_eq!(
+            ThemePresetSelection::from_env("v2_matte"),
+            Some(ThemePresetSelection::IndustrialV2Matte)
+        );
+        assert_eq!(
+            ThemePresetSelection::from_env("industrial-v2-glossy"),
+            Some(ThemePresetSelection::IndustrialV2Glossy)
+        );
+    }
+
+    #[test]
+    fn embedded_preset_for_path_supports_v3_and_v2() {
+        assert!(embedded_preset_for_path(INDUSTRIAL_V3_DEFAULT_PRESET_PATH).is_some());
+        assert!(embedded_preset_for_path(INDUSTRIAL_V3_MATTE_PRESET_PATH).is_some());
+        assert!(embedded_preset_for_path(INDUSTRIAL_V3_GLOSSY_PRESET_PATH).is_some());
+        assert!(embedded_preset_for_path(INDUSTRIAL_V2_DEFAULT_PRESET_PATH).is_some());
     }
 }

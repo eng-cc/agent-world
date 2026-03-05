@@ -4,6 +4,13 @@ set -euo pipefail
 repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 cd "$repo_root"
 
+theme_defaults_file="scripts/viewer-theme-defaults.env"
+if [[ -f "$theme_defaults_file" ]]; then
+  # shellcheck source=/dev/null
+  source "$theme_defaults_file"
+fi
+default_theme_pack="${VIEWER_THEME_DEFAULT_PACK:-industrial_v3}"
+
 usage() {
   cat <<'USAGE'
 Usage: ./scripts/viewer-texture-inspector.sh [options]
@@ -127,6 +134,23 @@ resolve_entities() {
     esac
   done
   echo "${parsed[*]}"
+}
+
+resolve_default_preset_file_for_pack() {
+  case "$1" in
+    industrial_v3)
+      echo "crates/agent_world_viewer/assets/themes/industrial_v3/presets/industrial_v3_default.env"
+      ;;
+    industrial_v2)
+      echo "crates/agent_world_viewer/assets/themes/industrial_v2/presets/industrial_v2_default.env"
+      ;;
+    industrial_v1)
+      echo "crates/agent_world_viewer/assets/themes/industrial_v1/presets/industrial_default.env"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
 }
 
 entity_prefix() {
@@ -999,7 +1023,11 @@ variant_semantic_fail_count() {
   echo "$fail_count"
 }
 
-preset_file="crates/agent_world_viewer/assets/themes/industrial_v3/presets/industrial_v3_default.env"
+if ! preset_file=$(resolve_default_preset_file_for_pack "$default_theme_pack"); then
+  echo "invalid VIEWER_THEME_DEFAULT_PACK in $theme_defaults_file: $default_theme_pack" >&2
+  echo "supported theme packs: industrial_v3,industrial_v2,industrial_v1" >&2
+  exit 2
+fi
 inspect_raw="all"
 variants_raw="all"
 scenario="llm_bootstrap"
