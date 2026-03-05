@@ -201,6 +201,16 @@ impl World {
                     },
                 }))
             }
+            Action::RollbackModuleInstance { .. } => {
+                Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::RuleDenied {
+                        notes: vec![
+                            "rollback_module_instance requires runtime action loop".to_string()
+                        ],
+                    },
+                }))
+            }
             Action::ModuleReleaseSubmit { .. } => {
                 Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
                     action_id,

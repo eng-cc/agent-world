@@ -24,6 +24,7 @@ pub(super) fn event_kind_label(body: &WorldEventBody) -> &'static str {
             DomainEvent::ModuleReleaseRolesBound { .. } => "domain.module_release.roles_bound",
             DomainEvent::ModuleReleaseRejected { .. } => "domain.module_release.rejected",
             DomainEvent::ModuleReleaseApplied { .. } => "domain.module_release.applied",
+            DomainEvent::ModuleRollbackApplied { .. } => "domain.module.rollback_applied",
             DomainEvent::ModuleArtifactListed { .. } => "domain.module_artifact_listed",
             DomainEvent::ModuleArtifactDelisted { .. } => "domain.module_artifact_delisted",
             DomainEvent::ModuleArtifactDestroyed { .. } => "domain.module_artifact_destroyed",
@@ -138,6 +139,7 @@ pub(super) fn action_kind_label(action: &Action) -> &'static str {
             "action.module.install_to_target_from_artifact"
         }
         Action::UpgradeModuleFromArtifact { .. } => "action.module.upgrade_from_artifact",
+        Action::RollbackModuleInstance { .. } => "action.module.rollback_instance",
         Action::ModuleReleaseSubmit { .. } => "action.module_release.submit",
         Action::ModuleReleaseShadow { .. } => "action.module_release.shadow",
         Action::ModuleReleaseApproveRole { .. } => "action.module_release.approve_role",

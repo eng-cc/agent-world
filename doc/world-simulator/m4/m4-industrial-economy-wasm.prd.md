@@ -386,6 +386,7 @@ V2 需要新增以下测试组：
 - 2026-03-05：完成 E9（模块发布单动作/事件/状态机），新增 submit/shadow/approve_role/reject/apply 全链路审计与状态回放。
 - 2026-03-05：完成 E10（profile 治理动作），新增 `proposal_id` 门禁与 `*_profile_governed` 事件落账闭环。
 - 2026-03-05：完成 E11（多角色审批策略），新增 `agent -> roles` 绑定与越权审批拒绝门禁。
+- 2026-03-05：完成 E12（模块实例回滚），新增 `rollback_module_instance` 动作与 `ModuleRollbackApplied` 审计事件，回滚路径复用治理闭环并校验历史版本兼容性。
 
 ## 5. Risks & Roadmap
 

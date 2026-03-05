@@ -107,12 +107,12 @@
 - [x] 运行 `env -u RUSTC_WRAPPER cargo check -p agent_world --features wasmtime`
 
 ### E12 模块实例回滚能力（PRD-M4-E12）
-- [ ] 在 runtime 动作层新增 `rollback_module_instance` 动作
-- [ ] 在 runtime 事件层新增 `ModuleRollbackApplied` 审计事件
-- [ ] 回滚动作复用治理闭环并校验历史版本可回退性
-- [ ] 新增回滚通过/拒绝路径测试（版本不存在、owner 不匹配、接口不兼容）
-- [ ] 运行 `env -u RUSTC_WRAPPER cargo test -p agent_world runtime::tests::module_action_loop -- --nocapture`
-- [ ] 运行 `env -u RUSTC_WRAPPER cargo check -p agent_world --features wasmtime`
+- [x] 在 runtime 动作层新增 `rollback_module_instance` 动作
+- [x] 在 runtime 事件层新增 `ModuleRollbackApplied` 审计事件
+- [x] 回滚动作复用治理闭环并校验历史版本可回退性
+- [x] 新增回滚通过/拒绝路径测试（版本不存在、owner 不匹配、接口不兼容）
+- [x] 运行 `env -u RUSTC_WRAPPER cargo test -p agent_world runtime::tests::module_action_loop -- --nocapture`
+- [x] 运行 `env -u RUSTC_WRAPPER cargo check -p agent_world --features wasmtime`
 
 ### E13 发布门禁收口（PRD-M4-E13）
 - [ ] 新增/更新发布 gate 脚本：`full + sync-m1/m4/m5 --check + Web strict + S9/S10`
@@ -132,6 +132,6 @@
 
 ## 状态
 
-- 当前阶段：E12 进行中（方案B：发布单 + profile 治理 + 多角色审批 + 回滚 + 发布门禁）。
-- 下一步：按 E12 -> E13 顺序连续推进，直到发布门禁收口。
-- 最近更新：E11 已完成角色绑定与越权审批拒绝闭环，并通过 `module_action_loop` 定向回归（2026-03-05）。
+- 当前阶段：E13 进行中（方案B：发布单 + profile 治理 + 多角色审批 + 回滚 + 发布门禁）。
+- 下一步：完成 E13 发布门禁脚本/工作流/手册收口并补齐 gate 冒烟校验。
+- 最近更新：E12 已完成模块实例回滚闭环（治理复用 + 审计事件 + 拒绝路径），并通过 `module_action_loop` 与 `cargo check --features wasmtime` 定向回归（2026-03-05）。

@@ -609,6 +609,7 @@ impl WorldState {
             | DomainEvent::ModuleReleaseRolesBound { .. }
             | DomainEvent::ModuleReleaseRejected { .. }
             | DomainEvent::ModuleReleaseApplied { .. }
+            | DomainEvent::ModuleRollbackApplied { .. }
             | DomainEvent::ModuleArtifactListed { .. }
             | DomainEvent::ModuleArtifactDelisted { .. }
             | DomainEvent::ModuleArtifactDestroyed { .. }

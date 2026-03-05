@@ -214,6 +214,16 @@ impl World {
                 manifest,
                 *activate,
             ),
+            Action::RollbackModuleInstance {
+                operator_agent_id,
+                instance_id,
+                target_module_version,
+            } => self.apply_rollback_module_instance_action(
+                action_id,
+                operator_agent_id.as_str(),
+                instance_id.as_str(),
+                target_module_version.as_str(),
+            ),
             Action::ModuleReleaseSubmit {
                 requester_agent_id,
                 manifest,

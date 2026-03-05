@@ -203,6 +203,11 @@ pub enum Action {
         operator_agent_id: String,
         request_id: u64,
     },
+    RollbackModuleInstance {
+        operator_agent_id: String,
+        instance_id: String,
+        target_module_version: String,
+    },
     ListModuleArtifactForSale {
         seller_agent_id: String,
         wasm_hash: String,
@@ -600,6 +605,23 @@ pub enum DomainEvent {
         module_version: String,
         proposal_id: ProposalId,
         manifest_hash: String,
+    },
+    ModuleRollbackApplied {
+        operator_agent_id: String,
+        instance_id: String,
+        module_id: String,
+        from_module_version: String,
+        to_module_version: String,
+        wasm_hash: String,
+        #[serde(default)]
+        install_target: ModuleInstallTarget,
+        active: bool,
+        proposal_id: ProposalId,
+        manifest_hash: String,
+        #[serde(default = "default_module_action_fee_kind")]
+        fee_kind: ResourceKind,
+        #[serde(default)]
+        fee_amount: i64,
     },
     ModuleArtifactListed {
         seller_agent_id: String,
@@ -1049,6 +1071,9 @@ impl DomainEvent {
                 rejector_agent_id, ..
             } => Some(rejector_agent_id.as_str()),
             DomainEvent::ModuleReleaseApplied {
+                operator_agent_id, ..
+            } => Some(operator_agent_id.as_str()),
+            DomainEvent::ModuleRollbackApplied {
                 operator_agent_id, ..
             } => Some(operator_agent_id.as_str()),
             DomainEvent::ModuleArtifactListed {

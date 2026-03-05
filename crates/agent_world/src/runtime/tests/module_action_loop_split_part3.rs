@@ -488,3 +488,222 @@ fn module_release_bind_roles_normalizes_and_updates_state() {
             .contains_key("auditor-1")
     );
 }
+
+#[test]
+fn rollback_module_instance_reverts_to_historical_version_and_emits_audit() {
+    let mut world = World::new();
+    register_agent(&mut world, "owner-1");
+
+    let wasm_v1_bytes = b"module-rollback-v1".to_vec();
+    let wasm_v1_hash = util::sha256_hex(&wasm_v1_bytes);
+    world.submit_action(Action::DeployModuleArtifact {
+        publisher_agent_id: "owner-1".to_string(),
+        wasm_hash: wasm_v1_hash.clone(),
+        wasm_bytes: wasm_v1_bytes,
+    });
+    world.step().expect("deploy v1 artifact");
+
+    world.submit_action(Action::InstallModuleFromArtifact {
+        installer_agent_id: "owner-1".to_string(),
+        manifest: base_manifest("m.loop.rollback", "0.1.0", &wasm_v1_hash),
+        activate: true,
+    });
+    world.step().expect("install v1");
+    let instance_id = match &world.journal().events.last().expect("install event").body {
+        WorldEventBody::Domain(DomainEvent::ModuleInstalled { instance_id, .. }) => {
+            instance_id.clone()
+        }
+        other => panic!("expected module installed event: {other:?}"),
+    };
+
+    let wasm_v2_bytes = b"module-rollback-v2".to_vec();
+    let wasm_v2_hash = util::sha256_hex(&wasm_v2_bytes);
+    world.submit_action(Action::DeployModuleArtifact {
+        publisher_agent_id: "owner-1".to_string(),
+        wasm_hash: wasm_v2_hash.clone(),
+        wasm_bytes: wasm_v2_bytes,
+    });
+    world.step().expect("deploy v2 artifact");
+
+    world.submit_action(Action::UpgradeModuleFromArtifact {
+        upgrader_agent_id: "owner-1".to_string(),
+        instance_id: instance_id.clone(),
+        from_module_version: "0.1.0".to_string(),
+        manifest: base_manifest("m.loop.rollback", "0.2.0", &wasm_v2_hash),
+        activate: true,
+    });
+    world.step().expect("upgrade to v2");
+
+    world.submit_action(Action::RollbackModuleInstance {
+        operator_agent_id: "owner-1".to_string(),
+        instance_id: instance_id.clone(),
+        target_module_version: "0.1.0".to_string(),
+    });
+    world.step().expect("rollback to v1");
+
+    let rollback_event = world
+        .journal()
+        .events
+        .iter()
+        .rev()
+        .find_map(|event| match &event.body {
+            WorldEventBody::Domain(DomainEvent::ModuleRollbackApplied {
+                instance_id: event_instance_id,
+                from_module_version,
+                to_module_version,
+                wasm_hash,
+                proposal_id,
+                ..
+            }) if event_instance_id == &instance_id => Some((
+                from_module_version.clone(),
+                to_module_version.clone(),
+                wasm_hash.clone(),
+                *proposal_id,
+            )),
+            _ => None,
+        })
+        .expect("module rollback event");
+    assert_eq!(rollback_event.0, "0.2.0");
+    assert_eq!(rollback_event.1, "0.1.0");
+    assert_eq!(rollback_event.2, wasm_v1_hash);
+    assert!(rollback_event.3 > 0);
+
+    let instance = world
+        .state()
+        .module_instances
+        .get(&instance_id)
+        .expect("instance state");
+    assert_eq!(instance.module_version, "0.1.0");
+    assert_eq!(instance.wasm_hash, rollback_event.2);
+}
+
+#[test]
+fn rollback_module_instance_rejects_when_target_version_missing() {
+    let mut world = World::new();
+    register_agent(&mut world, "owner-1");
+
+    let wasm_bytes = b"module-rollback-missing-target".to_vec();
+    let wasm_hash = util::sha256_hex(&wasm_bytes);
+    world.submit_action(Action::DeployModuleArtifact {
+        publisher_agent_id: "owner-1".to_string(),
+        wasm_hash: wasm_hash.clone(),
+        wasm_bytes,
+    });
+    world.step().expect("deploy artifact");
+
+    world.submit_action(Action::InstallModuleFromArtifact {
+        installer_agent_id: "owner-1".to_string(),
+        manifest: base_manifest("m.loop.rollback.missing", "0.1.0", &wasm_hash),
+        activate: true,
+    });
+    world.step().expect("install module");
+    let instance_id = match &world.journal().events.last().expect("install event").body {
+        WorldEventBody::Domain(DomainEvent::ModuleInstalled { instance_id, .. }) => {
+            instance_id.clone()
+        }
+        other => panic!("expected module installed event: {other:?}"),
+    };
+
+    let action_id = world.submit_action(Action::RollbackModuleInstance {
+        operator_agent_id: "owner-1".to_string(),
+        instance_id,
+        target_module_version: "9.9.9".to_string(),
+    });
+    world.step().expect("reject missing rollback target");
+    assert_rule_denied_note_for_action(&world, action_id, "target version not found");
+}
+
+#[test]
+fn rollback_module_instance_rejects_when_operator_does_not_own_instance() {
+    let mut world = World::new();
+    register_agent(&mut world, "owner-1");
+    register_agent(&mut world, "owner-2");
+
+    let wasm_bytes = b"module-rollback-owner-mismatch".to_vec();
+    let wasm_hash = util::sha256_hex(&wasm_bytes);
+    world.submit_action(Action::DeployModuleArtifact {
+        publisher_agent_id: "owner-1".to_string(),
+        wasm_hash: wasm_hash.clone(),
+        wasm_bytes,
+    });
+    world.step().expect("deploy artifact");
+
+    world.submit_action(Action::InstallModuleFromArtifact {
+        installer_agent_id: "owner-1".to_string(),
+        manifest: base_manifest("m.loop.rollback.owner", "0.1.0", &wasm_hash),
+        activate: true,
+    });
+    world.step().expect("install module");
+    let instance_id = match &world.journal().events.last().expect("install event").body {
+        WorldEventBody::Domain(DomainEvent::ModuleInstalled { instance_id, .. }) => {
+            instance_id.clone()
+        }
+        other => panic!("expected module installed event: {other:?}"),
+    };
+
+    let action_id = world.submit_action(Action::RollbackModuleInstance {
+        operator_agent_id: "owner-2".to_string(),
+        instance_id,
+        target_module_version: "0.1.0".to_string(),
+    });
+    world.step().expect("reject owner mismatch rollback");
+    assert_rule_denied_note_for_action(&world, action_id, "does not own instance");
+}
+
+#[test]
+fn rollback_module_instance_rejects_when_target_interface_is_incompatible() {
+    let mut world = World::new();
+    register_agent(&mut world, "owner-1");
+
+    let wasm_v1_bytes = b"module-rollback-incompatible-v1".to_vec();
+    let wasm_v1_hash = util::sha256_hex(&wasm_v1_bytes);
+    world.submit_action(Action::DeployModuleArtifact {
+        publisher_agent_id: "owner-1".to_string(),
+        wasm_hash: wasm_v1_hash.clone(),
+        wasm_bytes: wasm_v1_bytes,
+    });
+    world.step().expect("deploy v1 artifact");
+
+    world.submit_action(Action::InstallModuleFromArtifact {
+        installer_agent_id: "owner-1".to_string(),
+        manifest: base_manifest("m.loop.rollback.incompatible", "0.1.0", &wasm_v1_hash),
+        activate: true,
+    });
+    world.step().expect("install v1");
+    let instance_id = match &world.journal().events.last().expect("install event").body {
+        WorldEventBody::Domain(DomainEvent::ModuleInstalled { instance_id, .. }) => {
+            instance_id.clone()
+        }
+        other => panic!("expected module installed event: {other:?}"),
+    };
+
+    let wasm_v2_bytes = b"module-rollback-incompatible-v2".to_vec();
+    let wasm_v2_hash = util::sha256_hex(&wasm_v2_bytes);
+    world.submit_action(Action::DeployModuleArtifact {
+        publisher_agent_id: "owner-1".to_string(),
+        wasm_hash: wasm_v2_hash.clone(),
+        wasm_bytes: wasm_v2_bytes,
+    });
+    world.step().expect("deploy v2 artifact");
+
+    let mut manifest_v2 = base_manifest("m.loop.rollback.incompatible", "0.2.0", &wasm_v2_hash);
+    manifest_v2.exports.push("audit".to_string());
+    world.submit_action(Action::UpgradeModuleFromArtifact {
+        upgrader_agent_id: "owner-1".to_string(),
+        instance_id: instance_id.clone(),
+        from_module_version: "0.1.0".to_string(),
+        manifest: manifest_v2,
+        activate: true,
+    });
+    world.step().expect("upgrade to v2");
+
+    let action_id = world.submit_action(Action::RollbackModuleInstance {
+        operator_agent_id: "owner-1".to_string(),
+        instance_id,
+        target_module_version: "0.1.0".to_string(),
+    });
+    world
+        .step()
+        .expect("reject incompatible rollback target interface");
+    assert_rule_denied_note_for_action(&world, action_id, "exports incompatible");
+}
