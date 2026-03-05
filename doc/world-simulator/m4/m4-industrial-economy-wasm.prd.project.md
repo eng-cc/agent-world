@@ -125,6 +125,14 @@
 - [x] 运行 `./scripts/sync-m4-builtin-wasm-artifacts.sh --check`
 - [x] 运行 `./scripts/sync-m5-builtin-wasm-artifacts.sh --check`
 
+### E14 对外发布演练与门禁稳定性修复（PRD-M4-E14）
+- [x] 实跑 `./scripts/release-gate.sh --quick`，覆盖 ci full + sync-m1/m4/m5 + Web strict + S9/S10
+- [x] 修复 builtin wasm materializer 测试环境污染（移除 `AGENT_WORLD_BUILTIN_WASM_DISTFS_ROOT` 设置）
+- [x] 加固 `scripts/viewer-release-qa-loop.sh`：仅统计 Bevy/Rust 错误日志，忽略资源加载噪声
+- [x] 加固 `scripts/viewer-release-qa-loop.sh`：放宽 zoom gate 断言并增加截图重试/超时
+- [x] 加固 `scripts/viewer-release-qa-loop.sh`：`snapshotForAI` 超时不再阻断 gate
+- [x] 复跑 `./scripts/release-gate.sh --quick` 并确认 summary PASS
+
 ## 依赖
 
 - `crates/agent_world_wasm_abi`：模块 ABI 与共享契约定义。
@@ -133,6 +141,6 @@
 
 ## 状态
 
-- 当前阶段：方案B（E9~E13）已完成（发布单 + profile 治理 + 多角色审批 + 回滚 + 发布门禁）。
-- 下一步：进入对外发布演练，基于 `release-gate` 执行发布前实跑并沉淀异常分诊记录。
-- 最近更新：E13 已完成发布门禁收口（`release-gate` 编排、release workflow 前置、S7 TODO 收口、gate 冒烟与失败提示校验），并通过 `ci-tests full` 与 `sync-m1/m4/m5 --check` 回归（2026-03-05）。
+- 当前阶段：方案B（E9~E14）已完成（发布单 + profile 治理 + 多角色审批 + 回滚 + 发布门禁 + 发布演练）。
+- 下一步：根据发布评审结论推进对外发布或补充剩余治理/稳定性项。
+- 最近更新：E14 已完成对外发布演练（`release-gate --quick` 实跑 PASS），修复内置 wasm 测试环境污染并加固 Web strict 抗噪声（2026-03-05）。

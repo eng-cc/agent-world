@@ -10,7 +10,6 @@ use super::super::{
 };
 
 const FETCHER_ENV: &str = "AGENT_WORLD_BUILTIN_WASM_FETCHER";
-const DISTFS_ROOT_ENV: &str = "AGENT_WORLD_BUILTIN_WASM_DISTFS_ROOT";
 
 static ENV_LOCK: Mutex<()> = Mutex::new(());
 
@@ -32,9 +31,7 @@ fn materializer_fetch_miss_falls_back_to_compile_and_caches_blob() {
     let expected_hash_refs: Vec<&str> = expected_hashes.iter().map(String::as_str).collect();
 
     let _fetcher_guard = EnvVarGuard::capture(FETCHER_ENV);
-    let _distfs_guard = EnvVarGuard::capture(DISTFS_ROOT_ENV);
     std::env::set_var(FETCHER_ENV, &fetcher);
-    std::env::set_var(DISTFS_ROOT_ENV, &distfs_root);
 
     let load_result =
         load_builtin_wasm_with_fetch_fallback(module_id, &expected_hash_refs, &distfs_root);

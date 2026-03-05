@@ -388,6 +388,7 @@ V2 需要新增以下测试组：
 - 2026-03-05：完成 E11（多角色审批策略），新增 `agent -> roles` 绑定与越权审批拒绝门禁。
 - 2026-03-05：完成 E12（模块实例回滚），新增 `rollback_module_instance` 动作与 `ModuleRollbackApplied` 审计事件，回滚路径复用治理闭环并校验历史版本兼容性。
 - 2026-03-05：完成 E13（发布门禁收口），新增 `scripts/release-gate.sh` 与 `scripts/release-gate-smoke.sh`，将 gate 接入 `release-packages` workflow 前置并收口 S7 TODO 口径。
+- 2026-03-05：完成 E14（对外发布演练与门禁稳定性修复），`release-gate --quick` 实跑通过并修复门禁脚本中的测试隔离与 Web strict 抗噪声细节。
 
 ## 5. Risks & Roadmap
 
@@ -401,6 +402,7 @@ V2 需要新增以下测试组：
 - M4-E11：多角色审批策略落地。
 - M4-E12：模块实例回滚能力落地。
 - M4-E13：发布门禁脚本与工作流收口。
+- M4-E14：对外发布演练与门禁稳定性修复。
 
 ### Technical Risks
 
@@ -420,6 +422,7 @@ V2 需要新增以下测试组：
   - `PRD-M4-E11` 多角色审批策略
   - `PRD-M4-E12` 模块实例回滚能力
   - `PRD-M4-E13` 发布门禁收口
+  - `PRD-M4-E14` 对外发布演练与门禁稳定性修复
 - 测试分层：
   - `test_tier_required`：E9/E10/E11 的状态机与拒绝路径单测
   - `test_tier_full`：E12 回滚与 E13 发布门禁联动回归
