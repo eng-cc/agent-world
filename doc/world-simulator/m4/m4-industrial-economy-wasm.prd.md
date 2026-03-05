@@ -25,6 +25,13 @@
 - 模块治理、兼容版本、审计与确定性约束。
 - 面向后续扩展的事件与动作协议。
 
+### In Scope（M4-ECO V2：对外发布治理平台）
+- 将“模块发布单/审批单”升级为 runtime 一等公民动作与事件，支持完整审计链路。
+- 将 `material/product/recipe profile` 的变更纳入治理动作与门禁，不依赖直接内存 upsert 作为产品链路。
+- 引入多角色审批策略（角色绑定 + 必需角色集合）并作为模块发布生效前置条件。
+- 提供模块实例回滚动作，支持按实例回滚到历史版本并写入审计事件。
+- 对外发布门禁收口：full 测试、m4/m5 工件 hash 校验、Web strict 闭环、长稳回归。
+
 ### Out of Scope（V1 不做）
 - 全量市场金融系统（期货、信用衍生品、复杂税制）。
 - 超大规模自动物流寻路优化（仅定义接口，不落地算法细节）。
@@ -276,6 +283,56 @@ pub trait FactoryModuleApi {
   - 禁止真实时间和系统随机数；使用上下文种子。
   - 输出大小、effect/emits 数量受 `ModuleLimits` 限制。
 
+### 模块发布单（V2）
+
+- 新增动作：
+  - `action.module_release.submit`
+  - `action.module_release.shadow`
+  - `action.module_release.approve_role`
+  - `action.module_release.reject`
+  - `action.module_release.apply`
+- 新增事件：
+  - `domain.module_release.requested`
+  - `domain.module_release.shadowed`
+  - `domain.module_release.role_approved`
+  - `domain.module_release.rejected`
+  - `domain.module_release.applied`
+- 发布单状态机：
+  - `requested -> shadowed -> partially_approved -> approved -> applied`
+  - 任意前置状态可进入 `rejected`
+- 发布单约束：
+  - `apply` 前必须满足必需角色集合全部达成（见“多角色审批策略”）。
+  - `apply` 内部仍走模块治理闭环（manifest 更新审计不可绕过）。
+
+### Profile 治理动作（V2）
+
+- 新增动作：
+  - `action.economy.govern_material_profile`
+  - `action.economy.govern_product_profile`
+  - `action.economy.govern_recipe_profile`
+- 新增事件：
+  - `domain.economy.material_profile_governed`
+  - `domain.economy.product_profile_governed`
+  - `domain.economy.recipe_profile_governed`
+- 治理门禁：
+  - 必须携带 `proposal_id`，且 proposal 状态为 `approved|applied`。
+  - 仅允许字段级白名单更新（避免破坏性配置注入）。
+
+### 多角色审批策略（V2）
+
+- 角色绑定：`agent_id -> role_set`（例：`security`、`economy`、`runtime`）。
+- 发布单必需角色：默认 `["security", "economy", "runtime"]`，可在发布单提交时按策略收敛。
+- 同一角色仅计一次有效审批；未绑定该角色的审批请求拒绝。
+- 角色缺失时不可 `apply`。
+
+### 回滚策略（V2）
+
+- 新增动作：`action.module.rollback_instance`
+- 新增事件：`domain.module.rollback_applied`
+- 回滚约束：
+  - 仅允许回滚到同 `module_id` 的历史已注册版本。
+  - 回滚也走治理审计闭环，不允许直接篡改实例状态。
+
 ## 测试与验收
 
 V1 需要覆盖以下测试组：
@@ -284,6 +341,13 @@ V1 需要覆盖以下测试组：
 - 账本守恒测试：输入扣减与输出增加严格平衡（含副产物）。
 - 工厂门槛测试：未达工厂等级或标签不匹配时配方必须拒绝。
 - 构建链路测试：S0 -> S4 解锁顺序可重复通过。
+
+V2 需要新增以下测试组：
+- 模块发布单状态机测试：提交/影子校验/角色审批/拒绝/应用状态迁移可回放。
+- 多角色审批门禁测试：角色不满足时 `apply` 必须拒绝；满足后可应用。
+- Profile 治理门禁测试：`proposal_id` 不合法或未批准时拒绝更新。
+- 回滚测试：实例可回滚到历史版本，且写入审计事件与 proposal 追溯信息。
+- 发布门禁集成测试：`full + m4/m5 hash + Web strict + 长稳` 结果可审计。
 
 ## 当前实现进展（2026-02-14）
 
@@ -318,6 +382,7 @@ V1 需要覆盖以下测试组：
   - `World::install_m4_economy_bootstrap_modules(actor)`
   - 模块 manifest 统一使用 `M4_ECONOMY_MODULE_VERSION = 0.1.0`，并受 `ModuleLimits` 约束
 - 已完成真实 wasm 执行链路回归：基础资源 -> 熔炼/装配 -> `logistics_drone` 终端制成品。
+- 2026-03-05：启动 V2（方案B）实施，进入 E9~E13（发布单、profile 治理、多角色审批、回滚、发布门禁）。
 
 ## 5. Risks & Roadmap
 
@@ -326,6 +391,11 @@ V1 需要覆盖以下测试组：
 - M4-E3：接入 runtime 动作/事件最小闭环（build_factory/schedule_recipe）。
 - M4-E4：完成首批内置示例模块（最少 6 配方、4 制成品、3 工厂）。
 - M4-E5：开放玩家/AI 自定义模块接入与治理模板。
+- M4-E9：模块发布单动作/事件/状态机落地。
+- M4-E10：profile 治理动作落地（proposal 门禁）。
+- M4-E11：多角色审批策略落地。
+- M4-E12：模块实例回滚能力落地。
+- M4-E13：发布门禁脚本与工作流收口。
 
 ### Technical Risks
 
@@ -334,6 +404,20 @@ V1 需要覆盖以下测试组：
 - 平衡性风险：高阶配方收益过高会导致经济塌缩，需要参数治理。
 - 性能风险：模块数量增加会拉长 tick 时延，需要缓存与调用预算。
 - 可解释性风险：若缺少标准事件与诊断字段，难以定位产能瓶颈。
+- 治理僵局风险：多角色审批可能导致发布排队，需要超时与拒绝快速路径。
+- 回滚滥用风险：高频回滚会破坏经济预期，需要角色审计与频率门限。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+
+- PRD-ID 追溯：
+  - `PRD-M4-E9` 模块发布单动作/事件/状态机
+  - `PRD-M4-E10` profile 治理动作与 proposal 门禁
+  - `PRD-M4-E11` 多角色审批策略
+  - `PRD-M4-E12` 模块实例回滚能力
+  - `PRD-M4-E13` 发布门禁收口
+- 测试分层：
+  - `test_tier_required`：E9/E10/E11 的状态机与拒绝路径单测
+  - `test_tier_full`：E12 回滚与 E13 发布门禁联动回归
+- 关键决策：
+  - 采用“发布单 + 角色审批 + 内部治理闭环”而非“直接 install/upgrade exposed API”，以保持审计完整与对外可运营性。
+  - profile 变更走动作门禁，不把 `World::upsert_*_profile` 作为外部产品入口，避免绕过治理。

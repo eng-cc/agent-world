@@ -82,6 +82,48 @@
 - [x] 运行 `env -u RUSTC_WRAPPER cargo check -p agent_world --features wasmtime`
 - [x] 回写设计文档、项目文档、devlog 并提交
 
+### E9 模块发布单动作/事件/状态机（PRD-M4-E9）
+- [ ] 在 runtime 动作层新增 `module_release` 动作族（submit/shadow/approve_role/reject/apply）
+- [ ] 在 runtime 事件层新增 `module_release` 事件族（requested/shadowed/role_approved/rejected/applied）
+- [ ] 新增发布单状态存储与序列化迁移（request_id、required_roles、role approvals、status）
+- [ ] 在 `try_apply_runtime_module_action` 接线发布单状态机与门禁
+- [ ] 新增状态机回放测试（可回放、拒绝路径、重复审批幂等）
+- [ ] 运行 `env -u RUSTC_WRAPPER cargo test -p agent_world runtime::tests::module_action_loop -- --nocapture`
+- [ ] 运行 `env -u RUSTC_WRAPPER cargo check -p agent_world --features wasmtime`
+
+### E10 Profile 治理动作（PRD-M4-E10）
+- [ ] 在 runtime 动作层新增治理化 profile 更新动作（material/product/recipe）
+- [ ] 接入 `proposal_id` 门禁（仅 `approved|applied` proposal 允许执行）
+- [ ] 在 runtime 事件层新增 `*_profile_governed` 事件并接入状态落账
+- [ ] 新增拒绝路径测试（proposal 缺失、状态不合法、字段校验失败）
+- [ ] 运行 `env -u RUSTC_WRAPPER cargo test -p agent_world runtime::tests::economy_priority_logistics -- --nocapture`
+- [ ] 运行 `env -u RUSTC_WRAPPER cargo check -p agent_world --features wasmtime`
+
+### E11 多角色审批策略（PRD-M4-E11）
+- [ ] 新增治理角色绑定模型（agent -> roles）与角色校验逻辑
+- [ ] 发布单 `apply` 前强制必需角色集合达成
+- [ ] 新增角色缺失/越权审批拒绝测试
+- [ ] 运行 `env -u RUSTC_WRAPPER cargo test -p agent_world runtime::tests::module_action_loop -- --nocapture`
+- [ ] 运行 `env -u RUSTC_WRAPPER cargo check -p agent_world --features wasmtime`
+
+### E12 模块实例回滚能力（PRD-M4-E12）
+- [ ] 在 runtime 动作层新增 `rollback_module_instance` 动作
+- [ ] 在 runtime 事件层新增 `ModuleRollbackApplied` 审计事件
+- [ ] 回滚动作复用治理闭环并校验历史版本可回退性
+- [ ] 新增回滚通过/拒绝路径测试（版本不存在、owner 不匹配、接口不兼容）
+- [ ] 运行 `env -u RUSTC_WRAPPER cargo test -p agent_world runtime::tests::module_action_loop -- --nocapture`
+- [ ] 运行 `env -u RUSTC_WRAPPER cargo check -p agent_world --features wasmtime`
+
+### E13 发布门禁收口（PRD-M4-E13）
+- [ ] 新增/更新发布 gate 脚本：`full + sync-m1/m4/m5 --check + Web strict + S9/S10`
+- [ ] 将发布 gate 接入 release workflow 前置步骤
+- [ ] 收口 testing-manual S7 TODO 覆盖口径（`world_init_demo_runs_` 切换 full）
+- [ ] 新增 gate 冒烟测试与失败提示校验
+- [ ] 运行 `./scripts/ci-tests.sh full`
+- [ ] 运行 `./scripts/sync-m1-builtin-wasm-artifacts.sh --check`
+- [ ] 运行 `./scripts/sync-m4-builtin-wasm-artifacts.sh --check`
+- [ ] 运行 `./scripts/sync-m5-builtin-wasm-artifacts.sh --check`
+
 ## 依赖
 
 - `crates/agent_world_wasm_abi`：模块 ABI 与共享契约定义。
@@ -90,6 +132,6 @@
 
 ## 状态
 
-- 当前阶段：E8 完成（Product 校验自动闭环 + 入账门禁 + 端到端回归通过）。
-- 下一步：M4-E5（玩家/AI 自定义模块治理模板与扩展接口）按主线节奏推进。
+- 当前阶段：E9 进行中（方案B：发布单 + profile 治理 + 多角色审批 + 回滚 + 发布门禁）。
+- 下一步：按 E9 -> E10 -> E11 -> E12 -> E13 顺序连续推进，直到发布门禁收口。
 - 最近更新：修正文档中的内置模块 crate 名为 `agent_world_builtin_wasm_modules`，并同步校验命令为 `sync-m4-builtin-wasm-artifacts.sh --check`（2026-02-26）。
