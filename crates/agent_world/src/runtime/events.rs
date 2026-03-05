@@ -188,6 +188,12 @@ pub enum Action {
         request_id: u64,
         role: String,
     },
+    ModuleReleaseBindRoles {
+        operator_agent_id: String,
+        target_agent_id: String,
+        #[serde(default)]
+        roles: Vec<String>,
+    },
     ModuleReleaseReject {
         rejector_agent_id: String,
         request_id: u64,
@@ -573,6 +579,12 @@ pub enum DomainEvent {
         request_id: u64,
         approver_agent_id: String,
         role: String,
+    },
+    ModuleReleaseRolesBound {
+        operator_agent_id: String,
+        target_agent_id: String,
+        #[serde(default)]
+        roles: Vec<String>,
     },
     ModuleReleaseRejected {
         request_id: u64,
@@ -1030,6 +1042,9 @@ impl DomainEvent {
             DomainEvent::ModuleReleaseRoleApproved {
                 approver_agent_id, ..
             } => Some(approver_agent_id.as_str()),
+            DomainEvent::ModuleReleaseRolesBound {
+                operator_agent_id, ..
+            } => Some(operator_agent_id.as_str()),
             DomainEvent::ModuleReleaseRejected {
                 rejector_agent_id, ..
             } => Some(rejector_agent_id.as_str()),

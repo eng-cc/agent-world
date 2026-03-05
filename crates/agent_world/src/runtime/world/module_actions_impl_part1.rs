@@ -188,6 +188,17 @@ impl World {
         normalized
     }
 
+    fn normalize_module_release_role_set(roles: &[String]) -> Vec<String> {
+        let mut normalized: Vec<String> = roles
+            .iter()
+            .map(|role| role.trim().to_ascii_lowercase())
+            .filter(|role| !role.is_empty())
+            .collect();
+        normalized.sort();
+        normalized.dedup();
+        normalized
+    }
+
     fn normalize_module_release_role(role: &str) -> Option<String> {
         let normalized = role.trim().to_ascii_lowercase();
         if normalized.is_empty() {

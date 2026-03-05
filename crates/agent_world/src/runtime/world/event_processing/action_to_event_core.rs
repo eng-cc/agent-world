@@ -231,6 +231,16 @@ impl World {
                     },
                 }))
             }
+            Action::ModuleReleaseBindRoles { .. } => {
+                Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::RuleDenied {
+                        notes: vec![
+                            "module_release_bind_roles requires runtime action loop".to_string()
+                        ],
+                    },
+                }))
+            }
             Action::ModuleReleaseReject { .. } => {
                 Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
                     action_id,

@@ -370,6 +370,42 @@ impl WorldState {
                     cell.last_active = now;
                 }
             }
+            DomainEvent::ModuleReleaseRolesBound {
+                operator_agent_id,
+                target_agent_id,
+                roles,
+            } => {
+                if !self.agents.contains_key(operator_agent_id) {
+                    return Err(WorldError::AgentNotFound {
+                        agent_id: operator_agent_id.clone(),
+                    });
+                }
+                if !self.agents.contains_key(target_agent_id) {
+                    return Err(WorldError::AgentNotFound {
+                        agent_id: target_agent_id.clone(),
+                    });
+                }
+
+                let normalized_roles: BTreeSet<String> = roles
+                    .iter()
+                    .map(|role| role.trim().to_ascii_lowercase())
+                    .filter(|role| !role.is_empty())
+                    .collect();
+                if normalized_roles.is_empty() {
+                    self.module_release_role_bindings.remove(target_agent_id);
+                } else {
+                    self.module_release_role_bindings
+                        .insert(target_agent_id.clone(), normalized_roles);
+                }
+                if let Some(cell) = self.agents.get_mut(operator_agent_id) {
+                    cell.last_active = now;
+                }
+                if operator_agent_id != target_agent_id {
+                    if let Some(cell) = self.agents.get_mut(target_agent_id) {
+                        cell.last_active = now;
+                    }
+                }
+            }
             DomainEvent::ModuleReleaseRejected {
                 request_id,
                 rejector_agent_id,

@@ -1,5 +1,34 @@
 use crate::runtime::state::ModuleReleaseRequestStatus;
 
+fn bind_release_roles(world: &mut World, operator_agent_id: &str, target_agent_id: &str, roles: &[&str]) {
+    world.submit_action(Action::ModuleReleaseBindRoles {
+        operator_agent_id: operator_agent_id.to_string(),
+        target_agent_id: target_agent_id.to_string(),
+        roles: roles.iter().map(|role| role.to_string()).collect(),
+    });
+    world.step().expect("bind module release roles");
+}
+
+fn assert_rule_denied_note_for_action(world: &World, action_id: ActionId, expected: &str) {
+    let notes = world
+        .journal()
+        .events
+        .iter()
+        .rev()
+        .find_map(|event| match &event.body {
+            WorldEventBody::Domain(DomainEvent::ActionRejected {
+                action_id: rejected_action_id,
+                reason: RejectReason::RuleDenied { notes },
+            }) if *rejected_action_id == action_id => Some(notes.clone()),
+            _ => None,
+        })
+        .expect("action rejected rule denied event");
+    assert!(
+        notes.iter().any(|note| note.contains(expected)),
+        "missing expected note `{expected}` in {notes:?}"
+    );
+}
+
 #[test]
 fn module_release_state_machine_runs_submit_shadow_approve_apply() {
     let mut world = World::new();
@@ -77,6 +106,8 @@ fn module_release_state_machine_runs_submit_shadow_approve_apply() {
             .map(|item| item.status),
         Some(ModuleReleaseRequestStatus::Shadowed)
     ));
+    bind_release_roles(&mut world, "operator-1", "operator-1", &["security"]);
+    bind_release_roles(&mut world, "operator-1", "publisher-1", &["runtime"]);
 
     world.submit_action(Action::ModuleReleaseApproveRole {
         approver_agent_id: "operator-1".to_string(),
@@ -207,6 +238,7 @@ fn module_release_apply_rejects_when_required_roles_are_missing() {
         request_id,
     });
     world.step().expect("shadow module release request");
+    bind_release_roles(&mut world, "operator-1", "operator-1", &["security"]);
 
     world.submit_action(Action::ModuleReleaseApproveRole {
         approver_agent_id: "operator-1".to_string(),
@@ -231,7 +263,7 @@ fn module_release_apply_rejects_when_required_roles_are_missing() {
         .step()
         .expect("apply module release request with missing roles");
 
-    assert_last_rejection_note(&world, action_id, "required roles are not fully approved");
+    assert_rule_denied_note_for_action(&world, action_id, "required roles are not fully approved");
     assert!(matches!(
         world
             .state()
@@ -276,6 +308,7 @@ fn module_release_duplicate_role_approval_is_idempotent_for_same_approver() {
         request_id,
     });
     world.step().expect("shadow module release request");
+    bind_release_roles(&mut world, "publisher-1", "publisher-1", &["security"]);
 
     world.submit_action(Action::ModuleReleaseApproveRole {
         approver_agent_id: "publisher-1".to_string(),
@@ -358,4 +391,100 @@ fn module_release_reject_moves_request_to_rejected() {
         .expect("module release request state");
     assert_eq!(request.status, ModuleReleaseRequestStatus::Rejected);
     assert_eq!(request.rejected_reason.as_deref(), Some("policy violation"));
+}
+
+#[test]
+fn module_release_approve_role_rejects_when_approver_role_binding_is_missing() {
+    let mut world = World::new();
+    register_agent(&mut world, "publisher-1");
+    register_agent(&mut world, "operator-1");
+
+    let wasm_bytes = b"module-release-unbound-approver".to_vec();
+    let wasm_hash = util::sha256_hex(&wasm_bytes);
+    world.submit_action(Action::DeployModuleArtifact {
+        publisher_agent_id: "publisher-1".to_string(),
+        wasm_hash: wasm_hash.clone(),
+        wasm_bytes,
+    });
+    world.step().expect("deploy module artifact");
+
+    world.submit_action(Action::ModuleReleaseSubmit {
+        requester_agent_id: "publisher-1".to_string(),
+        manifest: base_manifest("m.loop.release.unbound", "0.1.0", &wasm_hash),
+        activate: true,
+        install_target: ModuleInstallTarget::SelfAgent,
+        required_roles: vec!["security".to_string()],
+    });
+    world.step().expect("submit module release request");
+    let request_id = match &world.journal().events.last().expect("submit event").body {
+        WorldEventBody::Domain(DomainEvent::ModuleReleaseRequested { request_id, .. }) => {
+            *request_id
+        }
+        other => panic!("expected module release requested event: {other:?}"),
+    };
+
+    world.submit_action(Action::ModuleReleaseShadow {
+        operator_agent_id: "operator-1".to_string(),
+        request_id,
+    });
+    world.step().expect("shadow module release request");
+
+    let action_id = world.submit_action(Action::ModuleReleaseApproveRole {
+        approver_agent_id: "operator-1".to_string(),
+        request_id,
+        role: "security".to_string(),
+    });
+    world
+        .step()
+        .expect("reject approve role without role binding");
+    assert_rule_denied_note_for_action(&world, action_id, "approver role binding missing");
+}
+
+#[test]
+fn module_release_bind_roles_normalizes_and_updates_state() {
+    let mut world = World::new();
+    register_agent(&mut world, "operator-1");
+    register_agent(&mut world, "auditor-1");
+
+    world.submit_action(Action::ModuleReleaseBindRoles {
+        operator_agent_id: "operator-1".to_string(),
+        target_agent_id: "auditor-1".to_string(),
+        roles: vec![
+            "Security".to_string(),
+            " runtime ".to_string(),
+            "security".to_string(),
+            "".to_string(),
+        ],
+    });
+    world.step().expect("bind module release roles");
+    assert!(matches!(
+        world.journal().events.last().map(|event| &event.body),
+        Some(WorldEventBody::Domain(DomainEvent::ModuleReleaseRolesBound {
+            operator_agent_id,
+            target_agent_id,
+            roles,
+        })) if operator_agent_id == "operator-1"
+            && target_agent_id == "auditor-1"
+            && roles == &vec!["runtime".to_string(), "security".to_string()]
+    ));
+    let bound_roles = world
+        .state()
+        .module_release_role_bindings
+        .get("auditor-1")
+        .expect("bound roles");
+    assert!(bound_roles.contains("security"));
+    assert!(bound_roles.contains("runtime"));
+
+    world.submit_action(Action::ModuleReleaseBindRoles {
+        operator_agent_id: "operator-1".to_string(),
+        target_agent_id: "auditor-1".to_string(),
+        roles: Vec::new(),
+    });
+    world.step().expect("unbind module release roles");
+    assert!(
+        !world
+            .state()
+            .module_release_role_bindings
+            .contains_key("auditor-1")
+    );
 }

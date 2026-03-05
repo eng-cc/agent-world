@@ -450,6 +450,27 @@ impl World {
                     )?;
                     return Ok(true);
                 };
+                let bound_roles = self
+                    .state
+                    .module_release_role_bindings
+                    .get(approver_agent_id)
+                    .cloned()
+                    .unwrap_or_default();
+                if !bound_roles.contains(&normalized_role) {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![format!(
+                                    "module release approve_role rejected: approver role binding missing for {} role {}",
+                                    approver_agent_id, normalized_role
+                                )],
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                }
                 if !request
                     .required_roles
                     .iter()
@@ -490,6 +511,46 @@ impl World {
                         request_id: *request_id,
                         approver_agent_id: approver_agent_id.clone(),
                         role: normalized_role,
+                    }),
+                    Some(CausedBy::Action(action_id)),
+                )?;
+                Ok(true)
+            }
+            Action::ModuleReleaseBindRoles {
+                operator_agent_id,
+                target_agent_id,
+                roles,
+            } => {
+                if !self.state.agents.contains_key(operator_agent_id) {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::AgentNotFound {
+                                agent_id: operator_agent_id.clone(),
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                }
+                if !self.state.agents.contains_key(target_agent_id) {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::AgentNotFound {
+                                agent_id: target_agent_id.clone(),
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                }
+                let normalized_roles = Self::normalize_module_release_role_set(roles.as_slice());
+                self.append_event(
+                    WorldEventBody::Domain(DomainEvent::ModuleReleaseRolesBound {
+                        operator_agent_id: operator_agent_id.clone(),
+                        target_agent_id: target_agent_id.clone(),
+                        roles: normalized_roles,
                     }),
                     Some(CausedBy::Action(action_id)),
                 )?;

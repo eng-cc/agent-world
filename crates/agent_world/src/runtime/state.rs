@@ -606,6 +606,7 @@ impl WorldState {
             | DomainEvent::ModuleReleaseRequested { .. }
             | DomainEvent::ModuleReleaseShadowed { .. }
             | DomainEvent::ModuleReleaseRoleApproved { .. }
+            | DomainEvent::ModuleReleaseRolesBound { .. }
             | DomainEvent::ModuleReleaseRejected { .. }
             | DomainEvent::ModuleReleaseApplied { .. }
             | DomainEvent::ModuleArtifactListed { .. }

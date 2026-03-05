@@ -100,11 +100,11 @@
 - [x] 运行 `env -u RUSTC_WRAPPER cargo check -p agent_world --features wasmtime`
 
 ### E11 多角色审批策略（PRD-M4-E11）
-- [ ] 新增治理角色绑定模型（agent -> roles）与角色校验逻辑
-- [ ] 发布单 `apply` 前强制必需角色集合达成
-- [ ] 新增角色缺失/越权审批拒绝测试
-- [ ] 运行 `env -u RUSTC_WRAPPER cargo test -p agent_world runtime::tests::module_action_loop -- --nocapture`
-- [ ] 运行 `env -u RUSTC_WRAPPER cargo check -p agent_world --features wasmtime`
+- [x] 新增治理角色绑定模型（agent -> roles）与角色校验逻辑
+- [x] 发布单 `apply` 前强制必需角色集合达成
+- [x] 新增角色缺失/越权审批拒绝测试
+- [x] 运行 `env -u RUSTC_WRAPPER cargo test -p agent_world runtime::tests::module_action_loop -- --nocapture`
+- [x] 运行 `env -u RUSTC_WRAPPER cargo check -p agent_world --features wasmtime`
 
 ### E12 模块实例回滚能力（PRD-M4-E12）
 - [ ] 在 runtime 动作层新增 `rollback_module_instance` 动作
@@ -132,6 +132,6 @@
 
 ## 状态
 
-- 当前阶段：E11 进行中（方案B：发布单 + profile 治理 + 多角色审批 + 回滚 + 发布门禁）。
-- 下一步：按 E11 -> E12 -> E13 顺序连续推进，直到发布门禁收口。
-- 最近更新：E10 已完成 profile 治理动作与 proposal 门禁闭环，并通过 `economy_priority_logistics` 定向回归（2026-03-05）。
+- 当前阶段：E12 进行中（方案B：发布单 + profile 治理 + 多角色审批 + 回滚 + 发布门禁）。
+- 下一步：按 E12 -> E13 顺序连续推进，直到发布门禁收口。
+- 最近更新：E11 已完成角色绑定与越权审批拒绝闭环，并通过 `module_action_loop` 定向回归（2026-03-05）。
