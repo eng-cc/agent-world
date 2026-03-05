@@ -3,7 +3,8 @@
 use crate::models::AgentState;
 use crate::simulator::{ModuleInstallTarget, ResourceKind};
 use agent_world_wasm_abi::{
-    FactoryModuleSpec, MaterialProfileV1, MaterialStack, ProductProfileV1, RecipeProfileV1,
+    FactoryModuleSpec, MaterialProfileV1, MaterialStack, ModuleManifest, ProductProfileV1,
+    RecipeProfileV1,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
@@ -30,7 +31,7 @@ use super::reward_asset::{
     NodeRewardMintRecord, ProtocolPowerReserve, RewardAssetConfig, RewardSignatureGovernancePolicy,
     SystemOrderPoolBudget, REWARD_MINT_SIGNATURE_V1_PREFIX, REWARD_MINT_SIGNATURE_V2_PREFIX,
 };
-use super::types::{ActionId, MaterialLedgerId, WorldTime};
+use super::types::{ActionId, MaterialLedgerId, ProposalId, WorldTime};
 use super::util::hash_json;
 
 mod apply_domain_event_core;
@@ -61,8 +62,20 @@ fn default_next_module_instance_id() -> u64 {
     1
 }
 
+fn default_next_module_release_request_id() -> u64 {
+    1
+}
+
 fn default_factory_durability_ppm() -> i64 {
     1_000_000
+}
+
+fn default_module_release_required_roles() -> Vec<String> {
+    vec![
+        "security".to_string(),
+        "economy".to_string(),
+        "runtime".to_string(),
+    ]
 }
 
 const ALLIANCE_MIN_MEMBER_COUNT: usize = 2;
@@ -186,6 +199,52 @@ pub struct ModuleInstanceState {
     pub installed_at: WorldTime,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ModuleReleaseRequestStatus {
+    Requested,
+    Shadowed,
+    PartiallyApproved,
+    Approved,
+    Rejected,
+    Applied,
+}
+
+impl Default for ModuleReleaseRequestStatus {
+    fn default() -> Self {
+        Self::Requested
+    }
+}
+
+/// Module release request tracked through governance closure.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ModuleReleaseRequestState {
+    pub request_id: u64,
+    pub requester_agent_id: String,
+    pub manifest: ModuleManifest,
+    pub activate: bool,
+    #[serde(default)]
+    pub install_target: ModuleInstallTarget,
+    #[serde(default = "default_module_release_required_roles")]
+    pub required_roles: Vec<String>,
+    #[serde(default)]
+    pub role_approvals: BTreeMap<String, String>,
+    #[serde(default)]
+    pub status: ModuleReleaseRequestStatus,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shadow_manifest_hash: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub applied_manifest_hash: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub applied_proposal_id: Option<ProposalId>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rejected_reason: Option<String>,
+    #[serde(default)]
+    pub created_at: WorldTime,
+    #[serde(default)]
+    pub updated_at: WorldTime,
+}
+
 /// The mutable state of the world.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct WorldState {
@@ -249,6 +308,12 @@ pub struct WorldState {
     pub module_artifact_bids: BTreeMap<String, Vec<ModuleArtifactBidState>>,
     #[serde(default)]
     pub module_instances: BTreeMap<String, ModuleInstanceState>,
+    #[serde(default)]
+    pub module_release_requests: BTreeMap<u64, ModuleReleaseRequestState>,
+    #[serde(default = "default_next_module_release_request_id")]
+    pub next_module_release_request_id: u64,
+    #[serde(default)]
+    pub module_release_role_bindings: BTreeMap<String, BTreeSet<String>>,
     #[serde(default)]
     pub installed_module_targets: BTreeMap<String, ModuleInstallTarget>,
     #[serde(default = "default_next_module_instance_id")]
@@ -334,6 +399,9 @@ impl Default for WorldState {
             module_artifact_listings: BTreeMap::new(),
             module_artifact_bids: BTreeMap::new(),
             module_instances: BTreeMap::new(),
+            module_release_requests: BTreeMap::new(),
+            next_module_release_request_id: default_next_module_release_request_id(),
+            module_release_role_bindings: BTreeMap::new(),
             installed_module_targets: BTreeMap::new(),
             next_module_instance_id: default_next_module_instance_id(),
             next_module_market_order_id: default_module_market_order_id(),
@@ -535,6 +603,11 @@ impl WorldState {
             | DomainEvent::ModuleArtifactDeployed { .. }
             | DomainEvent::ModuleInstalled { .. }
             | DomainEvent::ModuleUpgraded { .. }
+            | DomainEvent::ModuleReleaseRequested { .. }
+            | DomainEvent::ModuleReleaseShadowed { .. }
+            | DomainEvent::ModuleReleaseRoleApproved { .. }
+            | DomainEvent::ModuleReleaseRejected { .. }
+            | DomainEvent::ModuleReleaseApplied { .. }
             | DomainEvent::ModuleArtifactListed { .. }
             | DomainEvent::ModuleArtifactDelisted { .. }
             | DomainEvent::ModuleArtifactDestroyed { .. }

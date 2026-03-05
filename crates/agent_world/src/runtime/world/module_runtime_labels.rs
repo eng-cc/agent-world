@@ -18,6 +18,11 @@ pub(super) fn event_kind_label(body: &WorldEventBody) -> &'static str {
             DomainEvent::ModuleArtifactDeployed { .. } => "domain.module_artifact_deployed",
             DomainEvent::ModuleInstalled { .. } => "domain.module_installed",
             DomainEvent::ModuleUpgraded { .. } => "domain.module_upgraded",
+            DomainEvent::ModuleReleaseRequested { .. } => "domain.module_release.requested",
+            DomainEvent::ModuleReleaseShadowed { .. } => "domain.module_release.shadowed",
+            DomainEvent::ModuleReleaseRoleApproved { .. } => "domain.module_release.role_approved",
+            DomainEvent::ModuleReleaseRejected { .. } => "domain.module_release.rejected",
+            DomainEvent::ModuleReleaseApplied { .. } => "domain.module_release.applied",
             DomainEvent::ModuleArtifactListed { .. } => "domain.module_artifact_listed",
             DomainEvent::ModuleArtifactDelisted { .. } => "domain.module_artifact_delisted",
             DomainEvent::ModuleArtifactDestroyed { .. } => "domain.module_artifact_destroyed",
@@ -127,6 +132,11 @@ pub(super) fn action_kind_label(action: &Action) -> &'static str {
             "action.module.install_to_target_from_artifact"
         }
         Action::UpgradeModuleFromArtifact { .. } => "action.module.upgrade_from_artifact",
+        Action::ModuleReleaseSubmit { .. } => "action.module_release.submit",
+        Action::ModuleReleaseShadow { .. } => "action.module_release.shadow",
+        Action::ModuleReleaseApproveRole { .. } => "action.module_release.approve_role",
+        Action::ModuleReleaseReject { .. } => "action.module_release.reject",
+        Action::ModuleReleaseApply { .. } => "action.module_release.apply",
         Action::ListModuleArtifactForSale { .. } => "action.module.list_artifact_for_sale",
         Action::BuyModuleArtifact { .. } => "action.module.buy_artifact",
         Action::DelistModuleArtifact { .. } => "action.module.delist_artifact",

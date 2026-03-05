@@ -214,6 +214,468 @@ impl World {
                 manifest,
                 *activate,
             ),
+            Action::ModuleReleaseSubmit {
+                requester_agent_id,
+                manifest,
+                activate,
+                install_target,
+                required_roles,
+            } => {
+                if !self.state.agents.contains_key(requester_agent_id) {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::AgentNotFound {
+                                agent_id: requester_agent_id.clone(),
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                }
+                if manifest.module_id.trim().is_empty() {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec!["module release submit rejected: module_id is empty"
+                                    .to_string()],
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                }
+                if manifest.version.trim().is_empty() {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![
+                                    "module release submit rejected: version is empty".to_string()
+                                ],
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                }
+                if !self.module_artifacts.contains(&manifest.wasm_hash) {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![format!(
+                                    "module release submit rejected: module artifact missing {}",
+                                    manifest.wasm_hash
+                                )],
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                }
+                if let Some(owner_agent_id) =
+                    self.state.module_artifact_owners.get(&manifest.wasm_hash)
+                {
+                    if owner_agent_id != requester_agent_id {
+                        self.append_event(
+                            WorldEventBody::Domain(DomainEvent::ActionRejected {
+                                action_id,
+                                reason: RejectReason::RuleDenied {
+                                    notes: vec![format!(
+                                        "module release submit rejected: requester {} does not own {} (owner {})",
+                                        requester_agent_id, manifest.wasm_hash, owner_agent_id
+                                    )],
+                                },
+                            }),
+                            Some(CausedBy::Action(action_id)),
+                        )?;
+                        return Ok(true);
+                    }
+                }
+
+                let request_id = self.peek_next_module_release_request_id();
+                let normalized_roles =
+                    Self::normalize_module_release_required_roles(required_roles.as_slice());
+                self.append_event(
+                    WorldEventBody::Domain(DomainEvent::ModuleReleaseRequested {
+                        request_id,
+                        requester_agent_id: requester_agent_id.clone(),
+                        manifest: manifest.clone(),
+                        activate: *activate,
+                        install_target: install_target.clone(),
+                        required_roles: normalized_roles,
+                    }),
+                    Some(CausedBy::Action(action_id)),
+                )?;
+                Ok(true)
+            }
+            Action::ModuleReleaseShadow {
+                operator_agent_id,
+                request_id,
+            } => {
+                if !self.state.agents.contains_key(operator_agent_id) {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::AgentNotFound {
+                                agent_id: operator_agent_id.clone(),
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                }
+                let Some(request) = self.state.module_release_requests.get(request_id).cloned()
+                else {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![format!(
+                                    "module release shadow rejected: request not found ({request_id})"
+                                )],
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                };
+                if !matches!(request.status, ModuleReleaseRequestStatus::Requested) {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![format!(
+                                    "module release shadow rejected: invalid status {:?} for request {}",
+                                    request.status, request_id
+                                )],
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                }
+                let shadow_manifest_hash = match self
+                    .evaluate_module_release_shadow_hash(&request.manifest, request.activate)
+                {
+                    Ok(hash) => hash,
+                    Err(reason) => {
+                        self.append_event(
+                            WorldEventBody::Domain(DomainEvent::ActionRejected {
+                                action_id,
+                                reason: RejectReason::RuleDenied {
+                                    notes: vec![reason],
+                                },
+                            }),
+                            Some(CausedBy::Action(action_id)),
+                        )?;
+                        return Ok(true);
+                    }
+                };
+                self.append_event(
+                    WorldEventBody::Domain(DomainEvent::ModuleReleaseShadowed {
+                        request_id: *request_id,
+                        operator_agent_id: operator_agent_id.clone(),
+                        manifest_hash: shadow_manifest_hash,
+                    }),
+                    Some(CausedBy::Action(action_id)),
+                )?;
+                Ok(true)
+            }
+            Action::ModuleReleaseApproveRole {
+                approver_agent_id,
+                request_id,
+                role,
+            } => {
+                if !self.state.agents.contains_key(approver_agent_id) {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::AgentNotFound {
+                                agent_id: approver_agent_id.clone(),
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                }
+                let Some(request) = self.state.module_release_requests.get(request_id).cloned()
+                else {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![format!(
+                                    "module release approve_role rejected: request not found ({request_id})"
+                                )],
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                };
+                if !matches!(
+                    request.status,
+                    ModuleReleaseRequestStatus::Shadowed
+                        | ModuleReleaseRequestStatus::PartiallyApproved
+                        | ModuleReleaseRequestStatus::Approved
+                ) {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![format!(
+                                    "module release approve_role rejected: invalid status {:?} for request {}",
+                                    request.status, request_id
+                                )],
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                }
+                let Some(normalized_role) = Self::normalize_module_release_role(role.as_str())
+                else {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec!["module release approve_role rejected: role is empty"
+                                    .to_string()],
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                };
+                if !request
+                    .required_roles
+                    .iter()
+                    .any(|required| required == &normalized_role)
+                {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![format!(
+                                    "module release approve_role rejected: role not required ({normalized_role})"
+                                )],
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                }
+                if let Some(existing_approver) = request.role_approvals.get(&normalized_role) {
+                    if existing_approver != approver_agent_id {
+                        self.append_event(
+                            WorldEventBody::Domain(DomainEvent::ActionRejected {
+                                action_id,
+                                reason: RejectReason::RuleDenied {
+                                    notes: vec![format!(
+                                        "module release approve_role rejected: role {} already approved by {}",
+                                        normalized_role, existing_approver
+                                    )],
+                                },
+                            }),
+                            Some(CausedBy::Action(action_id)),
+                        )?;
+                        return Ok(true);
+                    }
+                }
+                self.append_event(
+                    WorldEventBody::Domain(DomainEvent::ModuleReleaseRoleApproved {
+                        request_id: *request_id,
+                        approver_agent_id: approver_agent_id.clone(),
+                        role: normalized_role,
+                    }),
+                    Some(CausedBy::Action(action_id)),
+                )?;
+                Ok(true)
+            }
+            Action::ModuleReleaseReject {
+                rejector_agent_id,
+                request_id,
+                reason,
+            } => {
+                if !self.state.agents.contains_key(rejector_agent_id) {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::AgentNotFound {
+                                agent_id: rejector_agent_id.clone(),
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                }
+                let Some(request) = self.state.module_release_requests.get(request_id).cloned()
+                else {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![format!(
+                                    "module release reject rejected: request not found ({request_id})"
+                                )],
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                };
+                if matches!(
+                    request.status,
+                    ModuleReleaseRequestStatus::Rejected | ModuleReleaseRequestStatus::Applied
+                ) {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![format!(
+                                    "module release reject rejected: invalid status {:?} for request {}",
+                                    request.status, request_id
+                                )],
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                }
+                if reason.trim().is_empty() {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![
+                                    "module release reject rejected: reason is empty".to_string()
+                                ],
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                }
+                self.append_event(
+                    WorldEventBody::Domain(DomainEvent::ModuleReleaseRejected {
+                        request_id: *request_id,
+                        rejector_agent_id: rejector_agent_id.clone(),
+                        reason: reason.trim().to_string(),
+                    }),
+                    Some(CausedBy::Action(action_id)),
+                )?;
+                Ok(true)
+            }
+            Action::ModuleReleaseApply {
+                operator_agent_id,
+                request_id,
+            } => {
+                if !self.state.agents.contains_key(operator_agent_id) {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::AgentNotFound {
+                                agent_id: operator_agent_id.clone(),
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                }
+                let Some(request) = self.state.module_release_requests.get(request_id).cloned()
+                else {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![format!(
+                                    "module release apply rejected: request not found ({request_id})"
+                                )],
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                };
+                if matches!(
+                    request.status,
+                    ModuleReleaseRequestStatus::Requested
+                        | ModuleReleaseRequestStatus::Shadowed
+                        | ModuleReleaseRequestStatus::Rejected
+                        | ModuleReleaseRequestStatus::Applied
+                ) {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![format!(
+                                    "module release apply rejected: invalid status {:?} for request {}",
+                                    request.status, request_id
+                                )],
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                }
+                if !Self::module_release_roles_satisfied(
+                    request.required_roles.as_slice(),
+                    &request.role_approvals,
+                ) {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![format!(
+                                    "module release apply rejected: required roles are not fully approved for request {}",
+                                    request_id
+                                )],
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                }
+
+                let installer_agent_id = request.requester_agent_id.clone();
+                self.apply_install_module_action(
+                    action_id,
+                    installer_agent_id.as_str(),
+                    &request.manifest,
+                    request.activate,
+                    request.install_target.clone(),
+                )?;
+
+                let Some(WorldEventBody::Domain(DomainEvent::ModuleInstalled {
+                    instance_id,
+                    module_id,
+                    module_version,
+                    proposal_id,
+                    manifest_hash,
+                    ..
+                })) = self.journal.events.last().map(|event| &event.body)
+                else {
+                    return Ok(true);
+                };
+
+                self.append_event(
+                    WorldEventBody::Domain(DomainEvent::ModuleReleaseApplied {
+                        request_id: *request_id,
+                        operator_agent_id: operator_agent_id.clone(),
+                        installer_agent_id,
+                        instance_id: instance_id.clone(),
+                        module_id: module_id.clone(),
+                        module_version: module_version.clone(),
+                        proposal_id: *proposal_id,
+                        manifest_hash: manifest_hash.clone(),
+                    }),
+                    Some(CausedBy::Action(action_id)),
+                )?;
+                Ok(true)
+            }
             Action::ListModuleArtifactForSale {
                 seller_agent_id,
                 wasm_hash,

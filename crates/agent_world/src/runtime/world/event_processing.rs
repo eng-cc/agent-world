@@ -131,6 +131,11 @@ impl World {
             | Action::InstallModuleFromArtifact { .. }
             | Action::InstallModuleToTargetFromArtifact { .. }
             | Action::UpgradeModuleFromArtifact { .. }
+            | Action::ModuleReleaseSubmit { .. }
+            | Action::ModuleReleaseShadow { .. }
+            | Action::ModuleReleaseApproveRole { .. }
+            | Action::ModuleReleaseReject { .. }
+            | Action::ModuleReleaseApply { .. }
             | Action::ListModuleArtifactForSale { .. }
             | Action::BuyModuleArtifact { .. }
             | Action::DelistModuleArtifact { .. }

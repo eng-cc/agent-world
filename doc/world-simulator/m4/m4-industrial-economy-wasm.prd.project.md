@@ -83,13 +83,13 @@
 - [x] 回写设计文档、项目文档、devlog 并提交
 
 ### E9 模块发布单动作/事件/状态机（PRD-M4-E9）
-- [ ] 在 runtime 动作层新增 `module_release` 动作族（submit/shadow/approve_role/reject/apply）
-- [ ] 在 runtime 事件层新增 `module_release` 事件族（requested/shadowed/role_approved/rejected/applied）
-- [ ] 新增发布单状态存储与序列化迁移（request_id、required_roles、role approvals、status）
-- [ ] 在 `try_apply_runtime_module_action` 接线发布单状态机与门禁
-- [ ] 新增状态机回放测试（可回放、拒绝路径、重复审批幂等）
-- [ ] 运行 `env -u RUSTC_WRAPPER cargo test -p agent_world runtime::tests::module_action_loop -- --nocapture`
-- [ ] 运行 `env -u RUSTC_WRAPPER cargo check -p agent_world --features wasmtime`
+- [x] 在 runtime 动作层新增 `module_release` 动作族（submit/shadow/approve_role/reject/apply）
+- [x] 在 runtime 事件层新增 `module_release` 事件族（requested/shadowed/role_approved/rejected/applied）
+- [x] 新增发布单状态存储与序列化迁移（request_id、required_roles、role approvals、status）
+- [x] 在 `try_apply_runtime_module_action` 接线发布单状态机与门禁
+- [x] 新增状态机回放测试（可回放、拒绝路径、重复审批幂等）
+- [x] 运行 `env -u RUSTC_WRAPPER cargo test -p agent_world runtime::tests::module_action_loop -- --nocapture`
+- [x] 运行 `env -u RUSTC_WRAPPER cargo check -p agent_world --features wasmtime`
 
 ### E10 Profile 治理动作（PRD-M4-E10）
 - [ ] 在 runtime 动作层新增治理化 profile 更新动作（material/product/recipe）
@@ -132,6 +132,6 @@
 
 ## 状态
 
-- 当前阶段：E9 进行中（方案B：发布单 + profile 治理 + 多角色审批 + 回滚 + 发布门禁）。
-- 下一步：按 E9 -> E10 -> E11 -> E12 -> E13 顺序连续推进，直到发布门禁收口。
-- 最近更新：修正文档中的内置模块 crate 名为 `agent_world_builtin_wasm_modules`，并同步校验命令为 `sync-m4-builtin-wasm-artifacts.sh --check`（2026-02-26）。
+- 当前阶段：E10 进行中（方案B：发布单 + profile 治理 + 多角色审批 + 回滚 + 发布门禁）。
+- 下一步：按 E10 -> E11 -> E12 -> E13 顺序连续推进，直到发布门禁收口。
+- 最近更新：E9 已完成模块发布单动作/事件/状态机闭环并通过 `module_action_loop` 定向回归（2026-03-05）。

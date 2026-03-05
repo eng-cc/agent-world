@@ -383,6 +383,7 @@ V2 需要新增以下测试组：
   - 模块 manifest 统一使用 `M4_ECONOMY_MODULE_VERSION = 0.1.0`，并受 `ModuleLimits` 约束
 - 已完成真实 wasm 执行链路回归：基础资源 -> 熔炼/装配 -> `logistics_drone` 终端制成品。
 - 2026-03-05：启动 V2（方案B）实施，进入 E9~E13（发布单、profile 治理、多角色审批、回滚、发布门禁）。
+- 2026-03-05：完成 E9（模块发布单动作/事件/状态机），新增 submit/shadow/approve_role/reject/apply 全链路审计与状态回放。
 
 ## 5. Risks & Roadmap
 

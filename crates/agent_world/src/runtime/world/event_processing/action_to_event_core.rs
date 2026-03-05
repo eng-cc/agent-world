@@ -201,6 +201,54 @@ impl World {
                     },
                 }))
             }
+            Action::ModuleReleaseSubmit { .. } => {
+                Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::RuleDenied {
+                        notes: vec![
+                            "module_release_submit requires runtime action loop".to_string()
+                        ],
+                    },
+                }))
+            }
+            Action::ModuleReleaseShadow { .. } => {
+                Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::RuleDenied {
+                        notes: vec![
+                            "module_release_shadow requires runtime action loop".to_string()
+                        ],
+                    },
+                }))
+            }
+            Action::ModuleReleaseApproveRole { .. } => {
+                Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::RuleDenied {
+                        notes: vec![
+                            "module_release_approve_role requires runtime action loop".to_string()
+                        ],
+                    },
+                }))
+            }
+            Action::ModuleReleaseReject { .. } => {
+                Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::RuleDenied {
+                        notes: vec![
+                            "module_release_reject requires runtime action loop".to_string()
+                        ],
+                    },
+                }))
+            }
+            Action::ModuleReleaseApply { .. } => {
+                Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::RuleDenied {
+                        notes: vec!["module_release_apply requires runtime action loop".to_string()],
+                    },
+                }))
+            }
             Action::ListModuleArtifactForSale { .. } => {
                 Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
                     action_id,

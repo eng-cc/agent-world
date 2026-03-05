@@ -170,6 +170,33 @@ pub enum Action {
         manifest: ModuleManifest,
         activate: bool,
     },
+    ModuleReleaseSubmit {
+        requester_agent_id: String,
+        manifest: ModuleManifest,
+        activate: bool,
+        #[serde(default)]
+        install_target: ModuleInstallTarget,
+        #[serde(default)]
+        required_roles: Vec<String>,
+    },
+    ModuleReleaseShadow {
+        operator_agent_id: String,
+        request_id: u64,
+    },
+    ModuleReleaseApproveRole {
+        approver_agent_id: String,
+        request_id: u64,
+        role: String,
+    },
+    ModuleReleaseReject {
+        rejector_agent_id: String,
+        request_id: u64,
+        reason: String,
+    },
+    ModuleReleaseApply {
+        operator_agent_id: String,
+        request_id: u64,
+    },
     ListModuleArtifactForSale {
         seller_agent_id: String,
         wasm_hash: String,
@@ -511,6 +538,41 @@ pub enum DomainEvent {
         fee_kind: ResourceKind,
         #[serde(default)]
         fee_amount: i64,
+    },
+    ModuleReleaseRequested {
+        request_id: u64,
+        requester_agent_id: String,
+        manifest: ModuleManifest,
+        activate: bool,
+        #[serde(default)]
+        install_target: ModuleInstallTarget,
+        #[serde(default)]
+        required_roles: Vec<String>,
+    },
+    ModuleReleaseShadowed {
+        request_id: u64,
+        operator_agent_id: String,
+        manifest_hash: String,
+    },
+    ModuleReleaseRoleApproved {
+        request_id: u64,
+        approver_agent_id: String,
+        role: String,
+    },
+    ModuleReleaseRejected {
+        request_id: u64,
+        rejector_agent_id: String,
+        reason: String,
+    },
+    ModuleReleaseApplied {
+        request_id: u64,
+        operator_agent_id: String,
+        installer_agent_id: String,
+        instance_id: String,
+        module_id: String,
+        module_version: String,
+        proposal_id: ProposalId,
+        manifest_hash: String,
     },
     ModuleArtifactListed {
         seller_agent_id: String,
@@ -929,6 +991,21 @@ impl DomainEvent {
             DomainEvent::ModuleUpgraded {
                 upgrader_agent_id, ..
             } => Some(upgrader_agent_id.as_str()),
+            DomainEvent::ModuleReleaseRequested {
+                requester_agent_id, ..
+            } => Some(requester_agent_id.as_str()),
+            DomainEvent::ModuleReleaseShadowed {
+                operator_agent_id, ..
+            } => Some(operator_agent_id.as_str()),
+            DomainEvent::ModuleReleaseRoleApproved {
+                approver_agent_id, ..
+            } => Some(approver_agent_id.as_str()),
+            DomainEvent::ModuleReleaseRejected {
+                rejector_agent_id, ..
+            } => Some(rejector_agent_id.as_str()),
+            DomainEvent::ModuleReleaseApplied {
+                operator_agent_id, ..
+            } => Some(operator_agent_id.as_str()),
             DomainEvent::ModuleArtifactListed {
                 seller_agent_id, ..
             } => Some(seller_agent_id.as_str()),
