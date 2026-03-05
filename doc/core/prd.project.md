@@ -21,6 +21,10 @@
     - `ls doc/core/reviews/consistency-review-round-*.md`
     - `rg -n "轮次编号|轮次状态|审计轮次|缺省=0|抽样范围|一致性问题|整改项|责任人|截止时间|复审结果" doc/core/reviews/consistency-review-round-*.md`
     - `./scripts/doc-governance-check.sh`
+  - ROUND-002 启动产物（2026-03-05）:
+    - `doc/core/reviews/consistency-review-round-002.md`
+    - `doc/core/reviews/round-002-reviewed-files.md`
+    - `doc/core/reviews/round-002-dedup-merge-worklist.md`
 - [x] TASK-CORE-006 (PRD-CORE-001/002) [test_tier_required]: 收敛 `doc/` 根目录 legacy redirect 入口并更新总导航。
 - [x] TASK-CORE-007 (PRD-CORE-001/002/003) [test_tier_required]: 对齐 strict PRD schema，补齐关键流程/规格矩阵/边界异常/NFR/验证与决策记录。
 
@@ -33,8 +37,8 @@
 - 各模块 `doc/<module>/prd.md` 与 `doc/<module>/prd.project.md`
 
 ## 状态
-- 更新日期: 2026-03-04
+- 更新日期: 2026-03-05
 - 当前状态: active
 - 下一任务: TASK-CORE-005
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
-- 说明: 本文档仅维护 core 设计执行状态；过程记录在 `doc/devlog/2026-03-04.md`。
+- 说明: 本文档仅维护 core 设计执行状态；过程记录在 `doc/devlog/2026-03-05.md`（历史记录见同目录其他日期文件）。

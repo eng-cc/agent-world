@@ -9,7 +9,7 @@
 - 轮次编号: `ROUND-001`
 - 轮次状态: `completed` (`not_started` | `in_progress` | `completed`)
 - 审查时间窗: 2026-03-04 ~ 2026-03-05
-- 审查负责人: qcraft / codex
+- 审查负责人: cc
 
 状态判定：
 - `not_started`: 未开始抽样，且“一致性问题/整改项/复审结果”尚未形成有效记录。
@@ -149,8 +149,8 @@ rg -n "审计轮次:[[:space:]]*[1-9][0-9]*" doc/*/prd*.md doc/*/**/*.prd*.md
 ## 特殊情况备注（仅在无需整改时填写）
 | 编号 | 原因 | 风险 | 临时缓解 | 复审日期 | 评审人 |
 | --- | --- | --- | --- | --- | --- |
-| S-001 | `runtime-numeric-correctness-phase*` 仍被部分历史链接/讨论引用，本批次先不立即归档 | 继续误导“当前状态”的风险 | 在 `doc/world-runtime/prd.index.md` 增加“历史里程碑”标记并指向主入口 | 2026-03-12 | qcraft/codex |
-| S-002 | `doc/engineering/prd-review/checklists/*` 仍承担 ROUND-001 执行期临时跟踪作用 | 与新方法并存造成重复维护 | ROUND-001 收口前只增量更新；收口后统一迁移或归档 | 2026-03-12 | qcraft/codex |
+| S-001 | `runtime-numeric-correctness-phase*` 仍被部分历史链接/讨论引用，本批次先不立即归档 | 继续误导“当前状态”的风险 | 在 `doc/world-runtime/prd.index.md` 增加“历史里程碑”标记并指向主入口 | 2026-03-12 | cc |
+| S-002 | `doc/engineering/prd-review/checklists/*` 仍承担 ROUND-001 执行期临时跟踪作用 | 与新方法并存造成重复维护 | ROUND-001 收口前只增量更新；收口后统一迁移或归档 | 2026-03-12 | cc |
 
 ## 复审结果
 - 复审时间：2026-03-05 00:33 CST
