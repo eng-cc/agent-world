@@ -160,11 +160,12 @@ use ui_locale_text::{
 use ui_state_types::*;
 use ui_text::{agent_activity_summary, events_summary, selection_details_summary, world_summary};
 use viewer_3d_config::{
-    resolve_viewer_3d_config, resolve_viewer_external_material_config,
-    resolve_viewer_external_mesh_config, resolve_viewer_external_texture_config, Viewer3dConfig,
-    ViewerExternalMaterialConfig, ViewerExternalMaterialSlotConfig, ViewerExternalMeshConfig,
-    ViewerExternalTextureConfig, ViewerExternalTextureSlotConfig, ViewerGeometryTier,
-    ViewerTonemappingMode,
+    load_viewer_external_material_config_from, load_viewer_external_mesh_config_from,
+    load_viewer_external_texture_config_from, resolve_viewer_3d_config,
+    resolve_viewer_external_material_config, resolve_viewer_external_mesh_config,
+    resolve_viewer_external_texture_config, Viewer3dConfig, ViewerExternalMaterialConfig,
+    ViewerExternalMaterialSlotConfig, ViewerExternalMeshConfig, ViewerExternalTextureConfig,
+    ViewerExternalTextureSlotConfig, ViewerGeometryTier, ViewerTonemappingMode,
 };
 use viewer_automation::{
     run_viewer_automation, viewer_automation_config_from_env, ViewerAutomationState,
@@ -707,6 +708,26 @@ struct ResolvedTextureSlot {
     emissive_texture: Option<Handle<Image>>,
 }
 
+struct LocationOverrideMaterialTemplates {
+    core_silicate: StandardMaterial,
+    core_metal: StandardMaterial,
+    core_ice: StandardMaterial,
+    halo: StandardMaterial,
+}
+
+struct ResolvedThemeSceneAssets {
+    agent_mesh: Handle<Mesh>,
+    location_mesh: Handle<Mesh>,
+    asset_mesh: Handle<Mesh>,
+    power_plant_mesh: Handle<Mesh>,
+    power_storage_mesh: Handle<Mesh>,
+    agent_material: StandardMaterial,
+    asset_material: StandardMaterial,
+    power_plant_material: StandardMaterial,
+    power_storage_material: StandardMaterial,
+    location_override_materials: Option<LocationOverrideMaterialTemplates>,
+}
+
 fn resolve_texture_slot(
     asset_server: &AssetServer,
     slot: &ViewerExternalTextureSlotConfig,
@@ -728,6 +749,229 @@ fn resolve_texture_slot(
             .emissive_texture_asset
             .as_ref()
             .map(|path| asset_server.load(path.to_string())),
+    }
+}
+
+fn resolve_theme_scene_assets(
+    config: &Viewer3dConfig,
+    external_mesh: &ViewerExternalMeshConfig,
+    external_material: &ViewerExternalMaterialConfig,
+    external_texture: &ViewerExternalTextureConfig,
+    variant_preview: &MaterialVariantPreviewState,
+    meshes: &mut Assets<Mesh>,
+    asset_server: &AssetServer,
+) -> ResolvedThemeSceneAssets {
+    let geometry_tier = config.assets.geometry_tier;
+    let agent_mesh = resolve_mesh_handle(
+        asset_server,
+        meshes,
+        external_mesh.agent_mesh_asset.as_deref(),
+        || Capsule3d::new(AGENT_BODY_MESH_RADIUS, AGENT_BODY_MESH_LENGTH).into(),
+    );
+    let location_mesh = resolve_mesh_handle(
+        asset_server,
+        meshes,
+        external_mesh.location_mesh_asset.as_deref(),
+        || location_mesh_for_geometry_tier(geometry_tier),
+    );
+    let asset_mesh = resolve_mesh_handle(
+        asset_server,
+        meshes,
+        external_mesh.asset_mesh_asset.as_deref(),
+        || asset_mesh_for_geometry_tier(geometry_tier),
+    );
+    let power_plant_mesh = resolve_mesh_handle(
+        asset_server,
+        meshes,
+        external_mesh.power_plant_mesh_asset.as_deref(),
+        || power_plant_mesh_for_geometry_tier(geometry_tier),
+    );
+    let power_storage_mesh = resolve_mesh_handle(
+        asset_server,
+        meshes,
+        external_mesh.power_storage_mesh_asset.as_deref(),
+        || power_storage_mesh_for_geometry_tier(geometry_tier),
+    );
+
+    let agent_texture = resolve_texture_slot(asset_server, &external_texture.agent);
+    let location_texture = resolve_texture_slot(asset_server, &external_texture.location);
+    let asset_texture = resolve_texture_slot(asset_server, &external_texture.asset);
+    let power_plant_texture = resolve_texture_slot(asset_server, &external_texture.power_plant);
+    let power_storage_texture = resolve_texture_slot(asset_server, &external_texture.power_storage);
+
+    let scalars = material_variant_scalars(variant_preview.active);
+    let agent_roughness =
+        apply_material_variant_scalar(config.materials.agent.roughness, scalars.roughness_scale);
+    let agent_metallic =
+        apply_material_variant_scalar(config.materials.agent.metallic, scalars.metallic_scale);
+    let asset_roughness =
+        apply_material_variant_scalar(config.materials.asset.roughness, scalars.roughness_scale);
+    let asset_metallic =
+        apply_material_variant_scalar(config.materials.asset.metallic, scalars.metallic_scale);
+    let facility_roughness =
+        apply_material_variant_scalar(config.materials.facility.roughness, scalars.roughness_scale);
+    let facility_metallic =
+        apply_material_variant_scalar(config.materials.facility.metallic, scalars.metallic_scale);
+    let power_plant_roughness = apply_material_variant_scalar(
+        config.materials.power_plant.roughness,
+        scalars.roughness_scale,
+    );
+    let power_plant_metallic = apply_material_variant_scalar(
+        config.materials.power_plant.metallic,
+        scalars.metallic_scale,
+    );
+    let power_storage_roughness = apply_material_variant_scalar(
+        config.materials.power_storage.roughness,
+        scalars.roughness_scale,
+    );
+    let power_storage_metallic = apply_material_variant_scalar(
+        config.materials.power_storage.metallic,
+        scalars.metallic_scale,
+    );
+
+    let agent_base_color =
+        resolve_srgb_slot_color([1.0, 0.42, 0.22], external_material.agent.base_color_srgb);
+    let agent_emissive_color = resolve_srgb_slot_color(
+        [0.90, 0.38, 0.20],
+        external_material.agent.emissive_color_srgb,
+    );
+    let agent_material = StandardMaterial {
+        base_color: color_from_srgb(agent_base_color),
+        base_color_texture: agent_texture.base_color_texture,
+        normal_map_texture: agent_texture.normal_map_texture,
+        metallic_roughness_texture: agent_texture.metallic_roughness_texture,
+        emissive_texture: agent_texture.emissive_texture,
+        perceptual_roughness: agent_roughness,
+        metallic: agent_metallic,
+        emissive: emissive_from_srgb_with_boost(
+            agent_emissive_color,
+            config.materials.agent.emissive_boost,
+        ),
+        ..default()
+    };
+
+    let asset_base_color =
+        resolve_srgb_slot_color([0.82, 0.76, 0.34], external_material.asset.base_color_srgb);
+    let asset_emissive_color = resolve_srgb_slot_color(
+        [0.82, 0.76, 0.34],
+        external_material.asset.emissive_color_srgb,
+    );
+    let asset_material = StandardMaterial {
+        base_color: color_from_srgb(asset_base_color),
+        base_color_texture: asset_texture.base_color_texture,
+        normal_map_texture: asset_texture.normal_map_texture,
+        metallic_roughness_texture: asset_texture.metallic_roughness_texture,
+        emissive_texture: asset_texture.emissive_texture,
+        perceptual_roughness: asset_roughness,
+        metallic: asset_metallic,
+        emissive: emissive_from_srgb_with_boost(
+            asset_emissive_color,
+            config.materials.asset.emissive_boost,
+        ),
+        ..default()
+    };
+
+    let power_plant_base_color = resolve_srgb_slot_color(
+        [0.95, 0.42, 0.20],
+        external_material.power_plant.base_color_srgb,
+    );
+    let power_plant_emissive_color = resolve_srgb_slot_color(
+        [0.95, 0.42, 0.20],
+        external_material.power_plant.emissive_color_srgb,
+    );
+    let power_plant_material = StandardMaterial {
+        base_color: color_from_srgb(power_plant_base_color),
+        base_color_texture: power_plant_texture.base_color_texture,
+        normal_map_texture: power_plant_texture.normal_map_texture,
+        metallic_roughness_texture: power_plant_texture.metallic_roughness_texture,
+        emissive_texture: power_plant_texture.emissive_texture,
+        perceptual_roughness: power_plant_roughness,
+        metallic: power_plant_metallic,
+        emissive: emissive_from_srgb_with_boost(
+            power_plant_emissive_color,
+            config.materials.power_plant.emissive_boost,
+        ),
+        ..default()
+    };
+
+    let power_storage_base_color = resolve_srgb_slot_color(
+        [0.20, 0.86, 0.48],
+        external_material.power_storage.base_color_srgb,
+    );
+    let power_storage_emissive_color = resolve_srgb_slot_color(
+        [0.20, 0.86, 0.48],
+        external_material.power_storage.emissive_color_srgb,
+    );
+    let power_storage_material = StandardMaterial {
+        base_color: color_from_srgb(power_storage_base_color),
+        base_color_texture: power_storage_texture.base_color_texture,
+        normal_map_texture: power_storage_texture.normal_map_texture,
+        metallic_roughness_texture: power_storage_texture.metallic_roughness_texture,
+        emissive_texture: power_storage_texture.emissive_texture,
+        perceptual_roughness: power_storage_roughness,
+        metallic: power_storage_metallic,
+        emissive: emissive_from_srgb_with_boost(
+            power_storage_emissive_color,
+            config.materials.power_storage.emissive_boost,
+        ),
+        ..default()
+    };
+
+    let location_override_materials = if location_style_override_enabled(
+        external_material.location,
+        &external_texture.location,
+    ) {
+        let location_base_color = resolve_srgb_slot_color(
+            [0.30, 0.42, 0.66],
+            external_material.location.base_color_srgb,
+        );
+        let location_emissive_color = resolve_srgb_slot_color(
+            location_base_color,
+            external_material.location.emissive_color_srgb,
+        );
+        let core_textures = location_texture.clone();
+        let core_template = |alpha: f32| StandardMaterial {
+            base_color: color_from_srgb_with_alpha(location_base_color, alpha),
+            base_color_texture: core_textures.base_color_texture.clone(),
+            normal_map_texture: core_textures.normal_map_texture.clone(),
+            metallic_roughness_texture: core_textures.metallic_roughness_texture.clone(),
+            emissive_texture: core_textures.emissive_texture.clone(),
+            perceptual_roughness: facility_roughness,
+            metallic: facility_metallic,
+            emissive: color_from_srgb(location_emissive_color).into(),
+            alpha_mode: AlphaMode::Blend,
+            ..default()
+        };
+        Some(LocationOverrideMaterialTemplates {
+            core_silicate: core_template(0.22),
+            core_metal: core_template(0.30),
+            core_ice: core_template(0.30),
+            halo: StandardMaterial {
+                base_color: color_from_srgb_with_alpha(location_base_color, 0.10),
+                base_color_texture: location_texture.base_color_texture,
+                normal_map_texture: location_texture.normal_map_texture,
+                metallic_roughness_texture: location_texture.metallic_roughness_texture,
+                emissive_texture: location_texture.emissive_texture,
+                emissive: color_from_srgb(location_emissive_color).into(),
+                alpha_mode: AlphaMode::Blend,
+                ..default()
+            },
+        })
+    } else {
+        None
+    };
+
+    ResolvedThemeSceneAssets {
+        agent_mesh,
+        location_mesh,
+        asset_mesh,
+        power_plant_mesh,
+        power_storage_mesh,
+        agent_material,
+        asset_material,
+        power_plant_material,
+        power_storage_material,
+        location_override_materials,
     }
 }
 

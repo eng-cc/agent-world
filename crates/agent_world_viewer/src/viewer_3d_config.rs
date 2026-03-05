@@ -595,7 +595,7 @@ pub(super) fn resolve_viewer_external_texture_config() -> ViewerExternalTextureC
     load_viewer_external_texture_config_from(|key| std::env::var(key).ok())
 }
 
-fn load_viewer_external_mesh_config_from<F>(lookup: F) -> ViewerExternalMeshConfig
+pub(crate) fn load_viewer_external_mesh_config_from<F>(lookup: F) -> ViewerExternalMeshConfig
 where
     F: Fn(&str) -> Option<String>,
 {
@@ -617,7 +617,9 @@ where
     }
 }
 
-fn load_viewer_external_material_config_from<F>(lookup: F) -> ViewerExternalMaterialConfig
+pub(crate) fn load_viewer_external_material_config_from<F>(
+    lookup: F,
+) -> ViewerExternalMaterialConfig
 where
     F: Fn(&str) -> Option<String>,
 {
@@ -669,7 +671,7 @@ where
     }
 }
 
-fn load_viewer_external_texture_config_from<F>(lookup: F) -> ViewerExternalTextureConfig
+pub(crate) fn load_viewer_external_texture_config_from<F>(lookup: F) -> ViewerExternalTextureConfig
 where
     F: Fn(&str) -> Option<String>,
 {

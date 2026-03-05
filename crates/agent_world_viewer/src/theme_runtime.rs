@@ -327,229 +327,47 @@ fn apply_theme_to_assets_and_scene(
     materials: &mut Assets<StandardMaterial>,
     asset_server: &AssetServer,
 ) {
-    let geometry_tier = config.assets.geometry_tier;
-    assets.agent_mesh = crate::resolve_mesh_handle(
-        asset_server,
+    let resolved_theme_assets = crate::resolve_theme_scene_assets(
+        config,
+        external_mesh,
+        external_material,
+        external_texture,
+        variant_preview,
         meshes,
-        external_mesh.agent_mesh_asset.as_deref(),
-        || Capsule3d::new(crate::AGENT_BODY_MESH_RADIUS, crate::AGENT_BODY_MESH_LENGTH).into(),
-    );
-    assets.location_mesh = crate::resolve_mesh_handle(
         asset_server,
-        meshes,
-        external_mesh.location_mesh_asset.as_deref(),
-        || crate::location_mesh_for_geometry_tier(geometry_tier),
     );
-    assets.asset_mesh = crate::resolve_mesh_handle(
-        asset_server,
-        meshes,
-        external_mesh.asset_mesh_asset.as_deref(),
-        || crate::asset_mesh_for_geometry_tier(geometry_tier),
-    );
-    assets.power_plant_mesh = crate::resolve_mesh_handle(
-        asset_server,
-        meshes,
-        external_mesh.power_plant_mesh_asset.as_deref(),
-        || crate::power_plant_mesh_for_geometry_tier(geometry_tier),
-    );
-    assets.power_storage_mesh = crate::resolve_mesh_handle(
-        asset_server,
-        meshes,
-        external_mesh.power_storage_mesh_asset.as_deref(),
-        || crate::power_storage_mesh_for_geometry_tier(geometry_tier),
-    );
+    assets.agent_mesh = resolved_theme_assets.agent_mesh;
+    assets.location_mesh = resolved_theme_assets.location_mesh;
+    assets.asset_mesh = resolved_theme_assets.asset_mesh;
+    assets.power_plant_mesh = resolved_theme_assets.power_plant_mesh;
+    assets.power_storage_mesh = resolved_theme_assets.power_storage_mesh;
 
-    let agent_texture = crate::resolve_texture_slot(asset_server, &external_texture.agent);
-    let location_texture = crate::resolve_texture_slot(asset_server, &external_texture.location);
-    let asset_texture = crate::resolve_texture_slot(asset_server, &external_texture.asset);
-    let power_plant_texture =
-        crate::resolve_texture_slot(asset_server, &external_texture.power_plant);
-    let power_storage_texture =
-        crate::resolve_texture_slot(asset_server, &external_texture.power_storage);
-
-    let scalars = crate::material_variant_scalars(variant_preview.active);
-    let agent_roughness = crate::apply_material_variant_scalar(
-        config.materials.agent.roughness,
-        scalars.roughness_scale,
-    );
-    let agent_metallic = crate::apply_material_variant_scalar(
-        config.materials.agent.metallic,
-        scalars.metallic_scale,
-    );
-    let asset_roughness = crate::apply_material_variant_scalar(
-        config.materials.asset.roughness,
-        scalars.roughness_scale,
-    );
-    let asset_metallic = crate::apply_material_variant_scalar(
-        config.materials.asset.metallic,
-        scalars.metallic_scale,
-    );
-    let facility_roughness = crate::apply_material_variant_scalar(
-        config.materials.facility.roughness,
-        scalars.roughness_scale,
-    );
-    let facility_metallic = crate::apply_material_variant_scalar(
-        config.materials.facility.metallic,
-        scalars.metallic_scale,
-    );
-    let power_plant_roughness = crate::apply_material_variant_scalar(
-        config.materials.power_plant.roughness,
-        scalars.roughness_scale,
-    );
-    let power_plant_metallic = crate::apply_material_variant_scalar(
-        config.materials.power_plant.metallic,
-        scalars.metallic_scale,
-    );
-    let power_storage_roughness = crate::apply_material_variant_scalar(
-        config.materials.power_storage.roughness,
-        scalars.roughness_scale,
-    );
-    let power_storage_metallic = crate::apply_material_variant_scalar(
-        config.materials.power_storage.metallic,
-        scalars.metallic_scale,
-    );
-
-    let agent_base_color =
-        crate::resolve_srgb_slot_color([1.0, 0.42, 0.22], external_material.agent.base_color_srgb);
-    let agent_emissive_color = crate::resolve_srgb_slot_color(
-        [0.90, 0.38, 0.20],
-        external_material.agent.emissive_color_srgb,
-    );
     write_material(
         materials,
         &assets.agent_material,
-        StandardMaterial {
-            base_color: crate::color_from_srgb(agent_base_color),
-            base_color_texture: agent_texture.base_color_texture,
-            normal_map_texture: agent_texture.normal_map_texture,
-            metallic_roughness_texture: agent_texture.metallic_roughness_texture,
-            emissive_texture: agent_texture.emissive_texture,
-            perceptual_roughness: agent_roughness,
-            metallic: agent_metallic,
-            emissive: crate::emissive_from_srgb_with_boost(
-                agent_emissive_color,
-                config.materials.agent.emissive_boost,
-            ),
-            ..default()
-        },
-    );
-
-    let asset_base_color =
-        crate::resolve_srgb_slot_color([0.82, 0.76, 0.34], external_material.asset.base_color_srgb);
-    let asset_emissive_color = crate::resolve_srgb_slot_color(
-        [0.82, 0.76, 0.34],
-        external_material.asset.emissive_color_srgb,
+        resolved_theme_assets.agent_material,
     );
     write_material(
         materials,
         &assets.asset_material,
-        StandardMaterial {
-            base_color: crate::color_from_srgb(asset_base_color),
-            base_color_texture: asset_texture.base_color_texture,
-            normal_map_texture: asset_texture.normal_map_texture,
-            metallic_roughness_texture: asset_texture.metallic_roughness_texture,
-            emissive_texture: asset_texture.emissive_texture,
-            perceptual_roughness: asset_roughness,
-            metallic: asset_metallic,
-            emissive: crate::emissive_from_srgb_with_boost(
-                asset_emissive_color,
-                config.materials.asset.emissive_boost,
-            ),
-            ..default()
-        },
-    );
-
-    let power_plant_base_color = crate::resolve_srgb_slot_color(
-        [0.95, 0.42, 0.20],
-        external_material.power_plant.base_color_srgb,
-    );
-    let power_plant_emissive_color = crate::resolve_srgb_slot_color(
-        [0.95, 0.42, 0.20],
-        external_material.power_plant.emissive_color_srgb,
+        resolved_theme_assets.asset_material,
     );
     write_material(
         materials,
         &assets.power_plant_material,
-        StandardMaterial {
-            base_color: crate::color_from_srgb(power_plant_base_color),
-            base_color_texture: power_plant_texture.base_color_texture,
-            normal_map_texture: power_plant_texture.normal_map_texture,
-            metallic_roughness_texture: power_plant_texture.metallic_roughness_texture,
-            emissive_texture: power_plant_texture.emissive_texture,
-            perceptual_roughness: power_plant_roughness,
-            metallic: power_plant_metallic,
-            emissive: crate::emissive_from_srgb_with_boost(
-                power_plant_emissive_color,
-                config.materials.power_plant.emissive_boost,
-            ),
-            ..default()
-        },
-    );
-
-    let power_storage_base_color = crate::resolve_srgb_slot_color(
-        [0.20, 0.86, 0.48],
-        external_material.power_storage.base_color_srgb,
-    );
-    let power_storage_emissive_color = crate::resolve_srgb_slot_color(
-        [0.20, 0.86, 0.48],
-        external_material.power_storage.emissive_color_srgb,
+        resolved_theme_assets.power_plant_material,
     );
     write_material(
         materials,
         &assets.power_storage_material,
-        StandardMaterial {
-            base_color: crate::color_from_srgb(power_storage_base_color),
-            base_color_texture: power_storage_texture.base_color_texture,
-            normal_map_texture: power_storage_texture.normal_map_texture,
-            metallic_roughness_texture: power_storage_texture.metallic_roughness_texture,
-            emissive_texture: power_storage_texture.emissive_texture,
-            perceptual_roughness: power_storage_roughness,
-            metallic: power_storage_metallic,
-            emissive: crate::emissive_from_srgb_with_boost(
-                power_storage_emissive_color,
-                config.materials.power_storage.emissive_boost,
-            ),
-            ..default()
-        },
+        resolved_theme_assets.power_storage_material,
     );
 
-    if crate::location_style_override_enabled(
-        external_material.location,
-        &external_texture.location,
-    ) {
-        let location_base_color = crate::resolve_srgb_slot_color(
-            [0.30, 0.42, 0.66],
-            external_material.location.base_color_srgb,
-        );
-        let location_emissive_color = crate::resolve_srgb_slot_color(
-            location_base_color,
-            external_material.location.emissive_color_srgb,
-        );
-        let location_core = |alpha: f32| StandardMaterial {
-            base_color: crate::color_from_srgb_with_alpha(location_base_color, alpha),
-            base_color_texture: location_texture.base_color_texture.clone(),
-            normal_map_texture: location_texture.normal_map_texture.clone(),
-            metallic_roughness_texture: location_texture.metallic_roughness_texture.clone(),
-            emissive_texture: location_texture.emissive_texture.clone(),
-            perceptual_roughness: facility_roughness,
-            metallic: facility_metallic,
-            emissive: crate::color_from_srgb(location_emissive_color).into(),
-            alpha_mode: AlphaMode::Blend,
-            ..default()
-        };
-        assets.location_core_silicate_material = materials.add(location_core(0.22));
-        assets.location_core_metal_material = materials.add(location_core(0.30));
-        assets.location_core_ice_material = materials.add(location_core(0.30));
-        assets.location_halo_material = materials.add(StandardMaterial {
-            base_color: crate::color_from_srgb_with_alpha(location_base_color, 0.10),
-            base_color_texture: location_texture.base_color_texture,
-            normal_map_texture: location_texture.normal_map_texture,
-            metallic_roughness_texture: location_texture.metallic_roughness_texture,
-            emissive_texture: location_texture.emissive_texture,
-            emissive: crate::color_from_srgb(location_emissive_color).into(),
-            alpha_mode: AlphaMode::Blend,
-            ..default()
-        });
+    if let Some(location_override) = resolved_theme_assets.location_override_materials {
+        assets.location_core_silicate_material = materials.add(location_override.core_silicate);
+        assets.location_core_metal_material = materials.add(location_override.core_metal);
+        assets.location_core_ice_material = materials.add(location_override.core_ice);
+        assets.location_halo_material = materials.add(location_override.halo);
     } else {
         assets.location_core_silicate_material = assets.chunk_unexplored_material.clone();
         assets.location_core_metal_material = assets.chunk_generated_material.clone();
@@ -572,104 +390,19 @@ fn write_material(
 }
 
 fn parse_external_mesh_config(vars: &HashMap<String, String>) -> crate::ViewerExternalMeshConfig {
-    crate::ViewerExternalMeshConfig {
-        agent_mesh_asset: value_non_empty(vars, "AGENT_WORLD_VIEWER_AGENT_MESH_ASSET"),
-        location_mesh_asset: value_non_empty(vars, "AGENT_WORLD_VIEWER_LOCATION_MESH_ASSET"),
-        asset_mesh_asset: value_non_empty(vars, "AGENT_WORLD_VIEWER_ASSET_MESH_ASSET"),
-        power_plant_mesh_asset: value_non_empty(vars, "AGENT_WORLD_VIEWER_POWER_PLANT_MESH_ASSET"),
-        power_storage_mesh_asset: value_non_empty(
-            vars,
-            "AGENT_WORLD_VIEWER_POWER_STORAGE_MESH_ASSET",
-        ),
-    }
+    crate::load_viewer_external_mesh_config_from(|key| vars.get(key).cloned())
 }
 
 fn parse_external_material_config(
     vars: &HashMap<String, String>,
 ) -> crate::ViewerExternalMaterialConfig {
-    crate::ViewerExternalMaterialConfig {
-        agent: crate::ViewerExternalMaterialSlotConfig {
-            base_color_srgb: value_hex_color(vars, "AGENT_WORLD_VIEWER_AGENT_BASE_COLOR"),
-            emissive_color_srgb: value_hex_color(vars, "AGENT_WORLD_VIEWER_AGENT_EMISSIVE_COLOR"),
-        },
-        location: crate::ViewerExternalMaterialSlotConfig {
-            base_color_srgb: value_hex_color(vars, "AGENT_WORLD_VIEWER_LOCATION_BASE_COLOR"),
-            emissive_color_srgb: value_hex_color(
-                vars,
-                "AGENT_WORLD_VIEWER_LOCATION_EMISSIVE_COLOR",
-            ),
-        },
-        asset: crate::ViewerExternalMaterialSlotConfig {
-            base_color_srgb: value_hex_color(vars, "AGENT_WORLD_VIEWER_ASSET_BASE_COLOR"),
-            emissive_color_srgb: value_hex_color(vars, "AGENT_WORLD_VIEWER_ASSET_EMISSIVE_COLOR"),
-        },
-        power_plant: crate::ViewerExternalMaterialSlotConfig {
-            base_color_srgb: value_hex_color(vars, "AGENT_WORLD_VIEWER_POWER_PLANT_BASE_COLOR"),
-            emissive_color_srgb: value_hex_color(
-                vars,
-                "AGENT_WORLD_VIEWER_POWER_PLANT_EMISSIVE_COLOR",
-            ),
-        },
-        power_storage: crate::ViewerExternalMaterialSlotConfig {
-            base_color_srgb: value_hex_color(vars, "AGENT_WORLD_VIEWER_POWER_STORAGE_BASE_COLOR"),
-            emissive_color_srgb: value_hex_color(
-                vars,
-                "AGENT_WORLD_VIEWER_POWER_STORAGE_EMISSIVE_COLOR",
-            ),
-        },
-    }
+    crate::load_viewer_external_material_config_from(|key| vars.get(key).cloned())
 }
 
 fn parse_external_texture_config(
     vars: &HashMap<String, String>,
 ) -> crate::ViewerExternalTextureConfig {
-    crate::ViewerExternalTextureConfig {
-        agent: parse_external_texture_slot(vars, "AGENT"),
-        location: parse_external_texture_slot(vars, "LOCATION"),
-        asset: parse_external_texture_slot(vars, "ASSET"),
-        power_plant: parse_external_texture_slot(vars, "POWER_PLANT"),
-        power_storage: parse_external_texture_slot(vars, "POWER_STORAGE"),
-    }
-}
-
-fn parse_external_texture_slot(
-    vars: &HashMap<String, String>,
-    entity: &str,
-) -> crate::ViewerExternalTextureSlotConfig {
-    let key = |suffix: &str| format!("AGENT_WORLD_VIEWER_{entity}_{suffix}");
-    crate::ViewerExternalTextureSlotConfig {
-        base_texture_asset: value_non_empty(vars, key("BASE_TEXTURE_ASSET").as_str()),
-        normal_texture_asset: value_non_empty(vars, key("NORMAL_TEXTURE_ASSET").as_str()),
-        metallic_roughness_texture_asset: value_non_empty(
-            vars,
-            key("METALLIC_ROUGHNESS_TEXTURE_ASSET").as_str(),
-        ),
-        emissive_texture_asset: value_non_empty(vars, key("EMISSIVE_TEXTURE_ASSET").as_str()),
-    }
-}
-
-fn value_non_empty(vars: &HashMap<String, String>, key: &str) -> Option<String> {
-    vars.get(key).and_then(|raw| {
-        let value = raw.trim();
-        if value.is_empty() {
-            None
-        } else {
-            Some(value.to_string())
-        }
-    })
-}
-
-fn value_hex_color(vars: &HashMap<String, String>, key: &str) -> Option<[f32; 3]> {
-    let raw = vars.get(key)?;
-    let raw = raw.trim();
-    let hex = raw.strip_prefix('#')?;
-    if hex.len() != 6 {
-        return None;
-    }
-    let r = u8::from_str_radix(&hex[0..2], 16).ok()?;
-    let g = u8::from_str_radix(&hex[2..4], 16).ok()?;
-    let b = u8::from_str_radix(&hex[4..6], 16).ok()?;
-    Some([r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0])
+    crate::load_viewer_external_texture_config_from(|key| vars.get(key).cloned())
 }
 
 fn parse_toggle(raw: Option<&str>) -> bool {
@@ -808,7 +541,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_external_texture_slot_reads_all_channels() {
+    fn parse_external_texture_config_reads_all_channels() {
         let mut vars = HashMap::new();
         vars.insert(
             "AGENT_WORLD_VIEWER_AGENT_BASE_TEXTURE_ASSET".to_string(),
@@ -826,7 +559,7 @@ mod tests {
             "AGENT_WORLD_VIEWER_AGENT_EMISSIVE_TEXTURE_ASSET".to_string(),
             "emissive.png".to_string(),
         );
-        let slot = parse_external_texture_slot(&vars, "AGENT");
+        let slot = parse_external_texture_config(&vars).agent;
         assert_eq!(slot.base_texture_asset.as_deref(), Some("base.png"));
         assert_eq!(slot.normal_texture_asset.as_deref(), Some("normal.png"));
         assert_eq!(
