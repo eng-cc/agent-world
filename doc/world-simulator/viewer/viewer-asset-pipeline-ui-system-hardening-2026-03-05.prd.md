@@ -14,6 +14,7 @@
   - SC-3: `egui_right_panel.rs` 与 `viewer-texture-inspector.sh` 完成结构拆分并保持行为不变。
   - SC-4: `test_tier_required` 回归全部通过，`test_tier_full` 至少完成 `viewer-release-full-coverage.sh --quick`。
   - SC-5: 旧 Bevy UI 路径移除，RightPanelLayoutState 等布局状态统一为 egui 单一路径并完成 CI required + Web 闭环截图验证。
+  - SC-6: legacy Bevy UI 仅保留必要 3D 场景路径，UI 相关入口与测试迁移到 egui/文本逻辑直测。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -29,6 +30,7 @@
   - PRD-VAPUI-002: As a Viewer 运行时开发者, I want unified theme apply/config parsing paths, so that init and hot-reload behavior stay consistent.
   - PRD-VAPUI-003: As a 维护者, I want oversized files split into focused modules, so that future changes are safer and reviewable.
   - PRD-VAPUI-004: As a 维护者, I want legacy Bevy UI removed and RightPanelLayoutState unified in egui, so that UI state does not drift between paths.
+  - PRD-VAPUI-005: As a 维护者, I want legacy Bevy UI tests removed and text formatting validated directly, so that egui becomes the only UI path under test.
 - Critical User Flows:
   1. Flow-VAPUI-001: `更新主题资产 -> 运行 validate-viewer-theme-pack -> 若超限则阻断并输出具体阈值差异`
   2. Flow-VAPUI-002: `启动 Viewer -> 初始化主题 -> 运行 runtime apply -> 同步校验初始化与热更新使用同一路径`
@@ -41,6 +43,7 @@
 | Runtime 主题应用单路径 | 共享 `apply`/`parse` 函数接口 | 初始化与热更新统一调用共享函数 | `initialized -> runtime_applied` | 以配置快照为唯一输入源 | 内部模块可调用，对外接口保持不变 |
 | UI/Shell 模块化拆分 | `egui_right_panel_*` 子模块、`viewer-texture-inspector-lib.sh` | 主入口文件通过 `mod/source` 复用子模块逻辑 | `legacy_single_file -> modularized` | 拆分后行为保持字面一致 | 仅代码维护者可编辑拆分边界 |
 | Legacy UI 清理与布局状态迁移 | `RightPanelLayoutState`/`right_panel_layout_state.rs` | egui 右侧面板使用单一路径状态，旧 Bevy UI 移除 | `dual_path -> egui_only` | 保持默认布局不变 | 仅维护者可调整默认布局 |
+| Legacy UI 测试路径移除 | `tests.rs`、`tests_selection_*` | 由文本函数直测替换 `update_ui` 依赖 | `legacy_ui_tests -> egui_only_tests` | 保持断言语义不变 | 仅维护者可调整测试入口 |
 - Acceptance Criteria:
   - AC-1: 资产校验脚本对 `industrial_v1/v2/v3` 均支持上限预算校验并保留现有下限校验。
   - AC-2: 初始化与 runtime apply 不再维护重复材质拼装逻辑。
@@ -48,6 +51,7 @@
   - AC-4: `egui_right_panel.rs` 与 `viewer-texture-inspector.sh` 行数分别回落到 1200 行以内或主文件仅保留入口转发。
   - AC-5: 必跑回归命令通过并在 devlog 留痕。
   - AC-6: `panel_layout.rs`/`panel_scroll.rs`/`setup_ui`/`update_ui` 移除，RightPanelLayoutState 迁移到 egui 侧并完成 CI required + Web 闭环截图验证。
+  - AC-7: `tests.rs`/`tests_selection_details.rs`/`tests_selection_panels.rs` 不再依赖 legacy UI 组件或 `update_ui`，改为文本函数直测。
 - Non-Goals:
   - 不改变主题包资产内容风格与命名规范。
   - 不重构 Viewer 功能行为与交互设计。
@@ -93,6 +97,7 @@
   - v1.1: TASK-WORLD_SIMULATOR-042（Runtime 去重）
   - v2.0: TASK-WORLD_SIMULATOR-043（文件模块化 + full gate 回归）
   - v2.1: TASK-WORLD_SIMULATOR-044（Legacy UI 清理 + 右侧面板布局状态迁移 + CI/Web 闭环）
+  - v2.2: TASK-WORLD_SIMULATOR-046（Legacy UI 测试路径移除 + egui 单路径收口）
 - Technical Risks:
   - 风险-1: 去重过程可能改变细节行为。
   - 风险-2: Shell 拆分可能破坏历史执行环境。
@@ -106,6 +111,7 @@
 | PRD-VAPUI-002 | TASK-WORLD_SIMULATOR-042 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer theme_runtime` + `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer viewer_3d_config` | Viewer 初始化/热更新一致性 |
 | PRD-VAPUI-003 | TASK-WORLD_SIMULATOR-043 | `test_tier_required` + `test_tier_full` | `bash -n scripts/viewer-texture-inspector.sh` + `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer egui_right_panel_tests` + `./scripts/viewer-release-full-coverage.sh --quick` | UI 模块维护性、发布回归稳定性 |
 | PRD-VAPUI-004 | TASK-WORLD_SIMULATOR-044 | `test_tier_required` + `test_tier_full` | `./scripts/ci-tests.sh required` + `./scripts/viewer-release-qa-loop.sh` + `./scripts/viewer-release-art-baseline.sh` | Legacy UI 清理与 Web 端闭环验证 |
+| PRD-VAPUI-005 | TASK-WORLD_SIMULATOR-046 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer` + `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-unknown` | legacy UI 测试收敛与 egui 单路径验证 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |
@@ -113,3 +119,4 @@
 | DEC-VAPUI-002 | 初始化与热更新统一复用函数 | 继续双实现并靠测试兜底 | 双实现长期会漂移，维护成本不可控。 |
 | DEC-VAPUI-003 | 主文件保留入口并拆到子模块文件 | 单文件内继续堆叠逻辑 | 需要满足行数治理并降低审查复杂度。 |
 | DEC-VAPUI-004 | 移除 legacy Bevy UI 路径并统一 egui 布局状态 | 同时保留双 UI 路径 | 双路径增加漂移与测试成本，不符合治理目标。 |
+| DEC-VAPUI-005 | 移除 legacy UI 测试路径并改为文本函数直测 | 继续保留 `update_ui` 测试入口 | 保留 legacy UI 测试会长期拖累维护并误导 UI 单路径目标。 |
