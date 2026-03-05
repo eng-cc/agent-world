@@ -1,6 +1,12 @@
 # GitHub Pages 用户视角问题修复（2026-02-26）设计文档
 
+- 审计轮次: 2
+
 - 对应项目管理文档: doc/site/github-pages/github-pages-user-perspective-fixes-2026-02-26.prd.project.md
+
+## ROUND-002 主从口径
+- 主入口：`doc/site/github-pages/github-pages-game-engine-reposition-2026-02-25.prd.md`
+- 本文仅维护本专题增量，不重复主文档口径。
 
 ## 目标
 - 修复首页顶部导航在长页面滚动时失效的问题，保证用户在任意位置都能快速导航与切换语言。

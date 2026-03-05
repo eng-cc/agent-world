@@ -66,7 +66,7 @@ rg -n "^审计轮次:\s*2$" doc --glob '*.md'
 | C2-002 | `viewer-live-full-event-driven-phase8~10` | `viewer-live-full-event-driven-phase10-2026-02-27.prd.md` | `master-slave` | open |
 | C2-003 | `node-redeemable-power-asset*` 系列 | `node-redeemable-power-asset.prd.md` | `master-slave` | done |
 | C2-004 | `testing/ci` 分层专题与 `pre-commit` 专题 | `ci-tiered-execution.prd.md` + `pre-commit.prd.md` | 固定规则归属，删除重复定义 | done |
-| C2-005 | `site/manual` + `site/github-pages` 镜像/叙事专题 | `site-manual-static-docs.prd.md` + `github-pages-game-engine-reposition-2026-02-25.prd.md` | `master-slave` | open |
+| C2-005 | `site/manual` + `site/github-pages` 镜像/叙事专题 | `site-manual-static-docs.prd.md` + `github-pages-game-engine-reposition-2026-02-25.prd.md` | `master-slave` | done |
 | C2-006 | `readme/gap` 与 `gameplay` 总述簇 | 待定（术语主入口） | `master-slave` + 模板化 | open |
 | C2-007 | `viewer-chat-agent-prompt-default-values-inline-input` vs `prefill` | `viewer-chat-agent-prompt-default-values-prefill.prd.md` | `merge`（inline-input 降级历史） | done |
 | C2-008 | `distfs-production-hardening-phase1~9` | `distfs-production-hardening-phase1.prd.md` | `master-slave` | done |
@@ -86,6 +86,7 @@ rg -n "^审计轮次:\s*2$" doc --glob '*.md'
 | A2-007 | 完成 C2-007（viewer 默认值专题）主从化落地并更新模块索引 | cc | 2026-03-05 | done |
 | A2-008 | 并行执行 B3 第一批主从化（observer-sync-mode、node-contribution、distfs-self-healing） | cc | 2026-03-05 | done |
 | A2-009 | 并行执行 B3 第二批主从化（node-redeemable-power-asset、distfs-production-hardening） | cc | 2026-03-05 | done |
+| A2-010 | 并行执行 B4（site/manual + github-pages）主从化并回写模块索引 | cc | 2026-03-05 | done |
 
 ## 特殊情况备注（仅在无需合并时填写）
 | 编号 | 原因 | 风险 | 临时缓解 | 复审日期 | 评审人 |
@@ -94,4 +95,4 @@ rg -n "^审计轮次:\s*2$" doc --glob '*.md'
 ## 复审结果
 - 复审时间：
 - 复审结论：
-- 当前进展：已完成分区盘点，并已落地 C2-007、C2-004、C2-003、C2-008、C2-009、C2-010、C2-011；剩余重点批次为 C2-005、C2-006、C2-002、C2-001。
+- 当前进展：已完成分区盘点，并已落地 C2-007、C2-004、C2-003、C2-005、C2-008、C2-009、C2-010、C2-011；剩余重点批次为 C2-006、C2-002、C2-001。

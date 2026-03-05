@@ -1,5 +1,11 @@
 # GitHub Pages 对标优化（三期）设计文档
 
+审计轮次: 2
+
+## ROUND-002 主从口径
+- 主入口文档：`doc/site/github-pages/github-pages-game-engine-reposition-2026-02-25.prd.md`。
+- 本文件仅维护对标优化（三期）增量内容。
+
 ## 目标
 - 基于近年科技项目站点对标（Vercel / Supabase / Linear / Replicate）结果，继续提升 `agent-world` 对外展示页的“首屏记忆点 + 叙事节奏 + 证据可信度”。
 - 将当前页面从“信息完整”升级为“更像产品官网”：先给价值与体验路径，再给架构与证据。

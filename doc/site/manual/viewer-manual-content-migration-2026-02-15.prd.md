@@ -1,5 +1,11 @@
 # Viewer 使用手册内容搬迁（2026-02-15）设计文档
 
+审计轮次: 2
+
+## ROUND-002 主从口径
+- 主入口文档：`doc/site/manual/site-manual-static-docs.prd.md`。
+- 本文件仅维护增量专题内容。
+
 - 对应项目管理文档: doc/site/manual/viewer-manual-content-migration-2026-02-15.prd.project.md
 
 ## 目标

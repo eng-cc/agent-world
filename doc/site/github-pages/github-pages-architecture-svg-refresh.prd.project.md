@@ -1,5 +1,11 @@
 # GitHub Pages 架构图 SVG 精修（四期增量）项目管理文档
 
+审计轮次: 2
+
+## 审计备注
+- 项目主入口：`doc/site/github-pages/github-pages-game-engine-reposition-2026-02-25.prd.project.md`。
+- 本文件仅维护架构图 SVG 精修的增量任务。
+
 ## 任务拆解
 
 ### 0. 文档与基线

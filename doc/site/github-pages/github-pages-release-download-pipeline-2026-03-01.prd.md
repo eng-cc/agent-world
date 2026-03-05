@@ -1,6 +1,12 @@
 # GitHub Pages 发布入口 + Release 安装包流水线（2026-03-01）设计文档
 
+- 审计轮次: 2
+
 - 对应项目管理文档: doc/site/github-pages/github-pages-release-download-pipeline-2026-03-01.prd.project.md
+
+## ROUND-002 主从口径
+- 主入口：`doc/site/github-pages/github-pages-game-engine-reposition-2026-02-25.prd.md`
+- 本文仅维护本专题增量，不重复主文档口径。
 
 ## 目标
 - 建立可直接上线的发布系统：GitHub Pages 作为发行入口页，GitHub Releases 作为安装包分发源。

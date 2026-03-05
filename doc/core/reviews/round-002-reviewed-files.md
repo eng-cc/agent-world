@@ -1,8 +1,8 @@
 # ROUND-002 已审读文档清单（S_round002）
 
-- 生成时间: 2026-03-05 15:16:59 CST（本提交）
+- 生成时间: 2026-03-05 15:44:52 CST（本提交）
 - 生成规则: `rg -l "^审计轮次:\s*2$" doc --glob '*.md' | sort`
-- 当前已审读文档数: 63
+- 当前已审读文档数: 93
 
 ## 文件列表
 - `doc/p2p/distfs/distfs-production-hardening-phase1.prd.md`
@@ -57,6 +57,36 @@
 - `doc/scripts/precommit/fix-precommit.prd.project.md`
 - `doc/scripts/precommit/pre-commit.prd.md`
 - `doc/scripts/precommit/pre-commit.prd.project.md`
+- `doc/site/github-pages/github-pages-architecture-svg-refresh.prd.md`
+- `doc/site/github-pages/github-pages-architecture-svg-refresh.prd.project.md`
+- `doc/site/github-pages/github-pages-benchmark-polish-v3.prd.md`
+- `doc/site/github-pages/github-pages-benchmark-polish-v3.prd.project.md`
+- `doc/site/github-pages/github-pages-content-sync-2026-02-12.prd.md`
+- `doc/site/github-pages/github-pages-content-sync-2026-02-12.prd.project.md`
+- `doc/site/github-pages/github-pages-content-sync-2026-02-25.prd.md`
+- `doc/site/github-pages/github-pages-content-sync-2026-02-25.prd.project.md`
+- `doc/site/github-pages/github-pages-game-engine-reposition-2026-02-25.prd.md`
+- `doc/site/github-pages/github-pages-game-engine-reposition-2026-02-25.prd.project.md`
+- `doc/site/github-pages/github-pages-game-first-home-2026-02-25.prd.md`
+- `doc/site/github-pages/github-pages-game-first-home-2026-02-25.prd.project.md`
+- `doc/site/github-pages/github-pages-hero-cta-simplify-2026-02-26.prd.md`
+- `doc/site/github-pages/github-pages-hero-cta-simplify-2026-02-26.prd.project.md`
+- `doc/site/github-pages/github-pages-hero-motion-layer.prd.md`
+- `doc/site/github-pages/github-pages-hero-motion-layer.prd.project.md`
+- `doc/site/github-pages/github-pages-hero-pointer-interaction.prd.md`
+- `doc/site/github-pages/github-pages-hero-pointer-interaction.prd.project.md`
+- `doc/site/github-pages/github-pages-home-conversion-i18n-screenshot-refresh-2026-02-26.prd.md`
+- `doc/site/github-pages/github-pages-home-conversion-i18n-screenshot-refresh-2026-02-26.prd.project.md`
+- `doc/site/github-pages/github-pages-home-radical-redesign-2026-02-26.prd.md`
+- `doc/site/github-pages/github-pages-home-radical-redesign-2026-02-26.prd.project.md`
+- `doc/site/github-pages/github-pages-lean-tech-refresh.prd.md`
+- `doc/site/github-pages/github-pages-lean-tech-refresh.prd.project.md`
+- `doc/site/manual/site-manual-static-docs.prd.md`
+- `doc/site/manual/site-manual-static-docs.prd.project.md`
+- `doc/site/manual/viewer-manual-content-migration-2026-02-15.prd.md`
+- `doc/site/manual/viewer-manual-content-migration-2026-02-15.prd.project.md`
+- `doc/site/prd.index.md`
+- `doc/site/prd.project.md`
 - `doc/testing/ci/ci-test-coverage.prd.md`
 - `doc/testing/ci/ci-test-coverage.prd.project.md`
 - `doc/testing/ci/ci-testcase-tiering.prd.md`

@@ -1,5 +1,10 @@
 # GitHub Pages Hero 动态背景层（四期增量）项目管理文档
 
+审计轮次: 2
+
+## 审计备注
+- 主项目入口统一指向 `doc/site/github-pages/github-pages-game-engine-reposition-2026-02-25.prd.project.md`，本文仅维护增量任务。
+
 ## 任务拆解
 
 ### 0. 文档与基线

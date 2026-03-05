@@ -1,5 +1,11 @@
 # GitHub Pages 用户视角问题修复（2026-02-26）项目管理文档
 
+- 审计轮次: 2
+
+## 审计备注
+- 主项目入口：`doc/site/github-pages/github-pages-game-engine-reposition-2026-02-25.prd.project.md`
+- 本文仅维护本专题增量任务，不重复主项目文档任务编排。
+
 ## 任务拆解
 
 ### 0. 建档与基线

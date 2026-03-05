@@ -1,5 +1,11 @@
 # GitHub Pages 游戏+引擎定位重写（2026-02-25）项目管理文档
 
+审计轮次: 2
+
+## ROUND-002 主从口径
+- 本文件为 github-pages 项目主入口（master）。
+- `doc/site/github-pages/github-pages-architecture-svg-refresh.prd.project.md`、`doc/site/github-pages/github-pages-benchmark-polish-v3.prd.project.md`、`doc/site/github-pages/github-pages-content-sync-2026-02-12.prd.project.md` 为本批增量计划文档（slave）。
+
 ## 任务拆解
 
 ### 0. 文档与基线

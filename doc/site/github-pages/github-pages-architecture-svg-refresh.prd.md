@@ -1,5 +1,11 @@
 # GitHub Pages 架构图 SVG 精修（四期增量）设计文档
 
+审计轮次: 2
+
+## ROUND-002 主从口径
+- 主入口文档：`doc/site/github-pages/github-pages-game-engine-reposition-2026-02-25.prd.md`。
+- 本文件仅维护架构图 SVG 精修增量内容。
+
 - 对应项目管理文档: doc/site/github-pages/github-pages-architecture-svg-refresh.prd.project.md
 
 ## 目标

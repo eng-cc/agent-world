@@ -1,6 +1,12 @@
 # GitHub Pages 对外展示站点设计
 
+- 审计轮次: 2
+
 - 对应项目管理文档: doc/site/github-pages/github-pages-showcase.prd.project.md
+
+## ROUND-002 主从口径
+- 主入口：`doc/site/github-pages/github-pages-game-engine-reposition-2026-02-25.prd.md`
+- 本文仅维护本专题增量，不重复主文档口径。
 
 ## 目标
 - 在仓库内新增一个可公开访问的 GitHub Pages 站点，用于对外介绍 `agent-world`。

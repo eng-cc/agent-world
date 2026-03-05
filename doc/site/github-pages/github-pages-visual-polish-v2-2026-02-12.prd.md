@@ -1,6 +1,12 @@
 # GitHub Pages 视觉细节打磨 V2（2026-02-12）设计文档
 
+- 审计轮次: 2
+
 - 对应项目管理文档: doc/site/github-pages/github-pages-visual-polish-v2-2026-02-12.prd.project.md
+
+## ROUND-002 主从口径
+- 主入口：`doc/site/github-pages/github-pages-game-engine-reposition-2026-02-25.prd.md`
+- 本文仅维护本专题增量，不重复主文档口径。
 
 ## 目标
 - 在不重做结构的前提下，继续降低页面阅读负担，重点改善移动端信息密度。

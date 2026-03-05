@@ -1,6 +1,12 @@
 # GitHub Pages 质量门禁 + 文档镜像同步 + SEO 元信息加固（2026-02-26）设计文档
 
+- 审计轮次: 2
+
 - 对应项目管理文档: doc/site/github-pages/github-pages-quality-gates-sync-seo-hardening-2026-02-26.prd.project.md
+
+## ROUND-002 主从口径
+- 主入口：`doc/site/github-pages/github-pages-game-engine-reposition-2026-02-25.prd.md`
+- 本文仅维护本专题增量，不重复主文档口径。
 
 ## 目标
 - 建立 GitHub Pages 发布前的最小质量门禁，避免“改了就发”导致线上回归。

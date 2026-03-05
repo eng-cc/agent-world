@@ -1,6 +1,6 @@
 # site PRD Project
 
-审计轮次: 1
+审计轮次: 2
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] TASK-SITE-001 (PRD-SITE-001) [test_tier_required]: 完成 site PRD 改写，建立站点设计主入口。
@@ -24,4 +24,6 @@
 - 当前状态: active
 - 下一任务: TASK-SITE-002
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
+- ROUND-002 进展: manual 子簇主从化已完成（`site-manual-static-docs` 主入口，`viewer-manual-content-migration-2026-02-15` 增量维护）。
+- ROUND-002 进展: github-pages 子簇主从化已完成（`github-pages-game-engine-reposition-2026-02-25` 主入口，其余专题增量维护）。
 - 说明: 本文档仅维护 site 模块设计执行状态；过程记录在 `doc/devlog/2026-03-03.md`。

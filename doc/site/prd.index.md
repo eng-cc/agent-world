@@ -1,5 +1,7 @@
 # site PRD 文件级索引
 
+审计轮次: 2
+
 更新时间：2026-03-03
 
 ## 入口
@@ -32,3 +34,5 @@
 ## 说明
 - 本索引用于保证模块专题文档在根入口文档树中可达。
 - 文档配对规则：`*.prd.md` 与同名 `*.prd.project.md`。
+- ROUND-002 口径：`doc/site/manual/site-manual-static-docs.prd.md` 为 manual 主文档，`doc/site/manual/viewer-manual-content-migration-2026-02-15.prd.md` 为增量子文档。
+- ROUND-002 口径：`doc/site/github-pages/github-pages-game-engine-reposition-2026-02-25.prd.md` 为 github-pages 主文档，其余 github-pages 专题为增量子文档。

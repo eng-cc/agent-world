@@ -1,5 +1,11 @@
 # Site 使用手册静态化（CN/EN）项目管理文档
 
+审计轮次: 2
+
+## ROUND-002 主从口径
+- 本文件为 manual 项目主入口文档。
+- `doc/site/manual/viewer-manual-content-migration-2026-02-15.prd.project.md` 为增量计划文档。
+
 ## 任务拆解
 
 ### 0. 文档与基线

@@ -1,5 +1,10 @@
 # GitHub Pages 首屏 CTA 收敛与文案校准（2026-02-26）设计文档
 
+审计轮次: 2
+
+## ROUND-002 主从口径
+- 主入口统一指向 `doc/site/github-pages/github-pages-game-engine-reposition-2026-02-25.prd.md`，本文仅维护增量。
+
 - 对应项目管理文档: doc/site/github-pages/github-pages-hero-cta-simplify-2026-02-26.prd.project.md
 
 ## 目标
