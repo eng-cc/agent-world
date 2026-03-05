@@ -32,7 +32,10 @@ class ThemeValidationProfile:
     mesh_suffix: str
     preset_files: Tuple[str, ...]
     min_texture_size: int
+    max_texture_size: int
+    max_total_texture_bytes: int
     min_vertices: Dict[str, int]
+    max_vertices: Dict[str, int]
 
 
 PROFILES: Dict[str, ThemeValidationProfile] = {
@@ -45,12 +48,21 @@ PROFILES: Dict[str, ThemeValidationProfile] = {
             "industrial_glossy.env",
         ),
         min_texture_size=256,
+        max_texture_size=512,
+        max_total_texture_bytes=3_500_000,
         min_vertices={
             "agent": 18,
             "location": 300,
             "asset": 16,
             "power_plant": 30,
             "power_storage": 200,
+        },
+        max_vertices={
+            "agent": 128,
+            "location": 1200,
+            "asset": 96,
+            "power_plant": 256,
+            "power_storage": 1200,
         },
     ),
     "v2": ThemeValidationProfile(
@@ -62,12 +74,21 @@ PROFILES: Dict[str, ThemeValidationProfile] = {
             "industrial_v2_glossy.env",
         ),
         min_texture_size=512,
+        max_texture_size=1024,
+        max_total_texture_bytes=12_000_000,
         min_vertices={
             "agent": 48,
             "location": 1200,
             "asset": 90,
             "power_plant": 90,
             "power_storage": 900,
+        },
+        max_vertices={
+            "agent": 256,
+            "location": 3200,
+            "asset": 240,
+            "power_plant": 320,
+            "power_storage": 2200,
         },
     ),
     "v3": ThemeValidationProfile(
@@ -79,12 +100,21 @@ PROFILES: Dict[str, ThemeValidationProfile] = {
             "industrial_v3_glossy.env",
         ),
         min_texture_size=768,
+        max_texture_size=1024,
+        max_total_texture_bytes=28_000_000,
         min_vertices={
             "agent": 300,
             "location": 2600,
             "asset": 150,
             "power_plant": 160,
             "power_storage": 1300,
+        },
+        max_vertices={
+            "agent": 900,
+            "location": 5000,
+            "asset": 480,
+            "power_plant": 600,
+            "power_storage": 3000,
         },
     ),
 }
@@ -131,11 +161,14 @@ def validate_theme_pack(
     theme_dir: Path,
     profile: ThemeValidationProfile,
     min_texture_size: int,
+    max_texture_size: int,
+    max_total_texture_bytes: int,
 ) -> List[str]:
     errors: List[str] = []
     mesh_dir = theme_dir / "meshes"
     texture_dir = theme_dir / "textures"
     preset_dir = theme_dir / "presets"
+    total_texture_bytes = 0
 
     for directory in (mesh_dir, texture_dir, preset_dir):
         if not directory.exists():
@@ -159,6 +192,9 @@ def validate_theme_pack(
                 errors.append(
                     f"{mesh_path}: vertex count {vertices} < required {required_vertices}"
                 )
+            max_vertices = profile.max_vertices[entity]
+            if vertices > max_vertices:
+                errors.append(f"{mesh_path}: vertex count {vertices} > allowed {max_vertices}")
 
         for channel in TEXTURE_CHANNELS:
             texture_path = texture_dir / f"{entity}_{channel}.png"
@@ -170,12 +206,22 @@ def validate_theme_pack(
             except Exception as exc:  # noqa: BLE001
                 errors.append(f"{texture_path}: invalid png ({exc})")
                 continue
+            total_texture_bytes += texture_path.stat().st_size
             if width < min_texture_size or height < min_texture_size:
                 errors.append(
                     f"{texture_path}: size {width}x{height} < {min_texture_size}x{min_texture_size}"
                 )
+            if width > max_texture_size or height > max_texture_size:
+                errors.append(
+                    f"{texture_path}: size {width}x{height} > {max_texture_size}x{max_texture_size}"
+                )
             if width != height:
                 errors.append(f"{texture_path}: texture must be square (got {width}x{height})")
+
+    if max_total_texture_bytes > 0 and total_texture_bytes > max_total_texture_bytes:
+        errors.append(
+            f"{texture_dir}: total texture bytes {total_texture_bytes} > allowed {max_total_texture_bytes}"
+        )
 
     return errors
 
@@ -201,6 +247,18 @@ def parse_args() -> argparse.Namespace:
         default=0,
         help="Optional override for minimum texture size (0 means profile default).",
     )
+    parser.add_argument(
+        "--max-texture-size",
+        type=int,
+        default=0,
+        help="Optional override for maximum texture size (0 means profile default).",
+    )
+    parser.add_argument(
+        "--max-total-texture-bytes",
+        type=int,
+        default=0,
+        help="Optional override for max total bytes across all textures (0 means profile default).",
+    )
     return parser.parse_args()
 
 
@@ -210,9 +268,23 @@ def main() -> int:
     min_texture_size = (
         args.min_texture_size if args.min_texture_size > 0 else profile.min_texture_size
     )
+    max_texture_size = (
+        args.max_texture_size if args.max_texture_size > 0 else profile.max_texture_size
+    )
+    max_total_texture_bytes = (
+        args.max_total_texture_bytes
+        if args.max_total_texture_bytes > 0
+        else profile.max_total_texture_bytes
+    )
     theme_dir = Path(args.theme_dir)
 
-    errors = validate_theme_pack(theme_dir, profile, min_texture_size)
+    errors = validate_theme_pack(
+        theme_dir,
+        profile,
+        min_texture_size,
+        max_texture_size,
+        max_total_texture_bytes,
+    )
     if errors:
         print("theme pack validation failed:")
         for err in errors:
@@ -220,7 +292,9 @@ def main() -> int:
         return 1
 
     print(
-        f"theme pack validation passed: {theme_dir} (profile={profile.name}, min_texture={min_texture_size})"
+        "theme pack validation passed: "
+        f"{theme_dir} (profile={profile.name}, min_texture={min_texture_size}, "
+        f"max_texture={max_texture_size}, max_total_texture_bytes={max_total_texture_bytes})"
     )
     return 0
 
