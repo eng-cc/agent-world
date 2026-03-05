@@ -1,5 +1,10 @@
 # Agent World Runtime：Observer 同步源策略可观测性（项目管理文档）
 
+审计轮次: 2
+
+## 审计备注（ROUND-002 主从口径）
+- 当前项目文档为增量子任务清单；主项目管理入口为 `doc/p2p/observer/observer-sync-mode-runtime-metrics.prd.project.md`。
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] OSMO-1 (PRD-P2P-MIG-107)：设计文档与项目管理文档落地。
 - [x] OSMO-2 (PRD-P2P-MIG-107)：实现可观测报告结构与模式化报告接口。

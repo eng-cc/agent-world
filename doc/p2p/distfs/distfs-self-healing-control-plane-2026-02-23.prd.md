@@ -1,5 +1,12 @@
 # Agent World Runtime：分布式存储自愈控制面（2026-02-23）
 
+审计轮次: 2
+
+## ROUND-002 主从口径
+- 本文档为 distfs-self-healing 专题主文档（master），作为需求与范围主入口。
+- `distfs-self-healing-polling-loop-2026-02-23.prd.md` 与 `distfs-self-healing-runtime-polling-wiring-2026-02-23.prd.md` 作为增量子文档（slave）。
+- 子文档仅补充对应阶段增量；通用边界与基线语义以本文档为准。
+
 ## 1. Executive Summary
 - Problem Statement: 补齐此前 out-of-scope 的控制面空缺：让系统在 provider 异构与节点波动下可持续自动修复副本并做负载重平衡。
 - Proposed Solution: 将“副本修复 / 重平衡”从人工运维动作收敛为可执行、可测试的控制面闭环。

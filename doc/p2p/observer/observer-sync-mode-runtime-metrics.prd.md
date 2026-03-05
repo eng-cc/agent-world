@@ -1,5 +1,11 @@
 # Agent World Runtime：Observer 同步源运行态统计
 
+审计轮次: 2
+
+## ROUND-002 主从口径
+- 主入口：`doc/p2p/observer/observer-sync-mode-runtime-metrics.prd.md`。
+- `observer-sync-mode-metrics-runtime-bridge` 与 `observer-sync-mode-observability` 作为增量子文档维护，跨专题统一口径以本主文档为准。
+
 ## 1. Executive Summary
 - Problem Statement: 将 `ObserverClient` 已有的模式化可观测报告接入运行态统计，形成“持续监控”基础闭环。
 - Proposed Solution: 统一沉淀非 DHT 与 DHT 组合模式下的核心计数：`total`、`applied`、`fallback`。

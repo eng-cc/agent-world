@@ -22,3 +22,4 @@
 - 下一任务: TASK-P2P-002
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - 说明: 本文档仅维护 p2p 设计执行状态；过程记录在 `doc/devlog/2026-03-05.md`（含 ROUND-002 `B3-C2-009-S1` observer 主从化回写）。
+- ROUND-002 进展（2026-03-05）: 已并行完成 `B3-C2-009-S2/C2-010/C2-011`（observer sync-mode、node-contribution、distfs-self-healing）主从化回写。

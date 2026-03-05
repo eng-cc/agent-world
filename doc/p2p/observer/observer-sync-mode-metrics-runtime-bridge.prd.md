@@ -1,5 +1,11 @@
 # Agent World Runtime：Observer 同步源统计桥接
 
+审计轮次: 2
+
+## ROUND-002 主从口径
+- 当前文档降级为增量子文档，仅维护“统计桥接”专题增量约束。
+- 主入口：`doc/p2p/observer/observer-sync-mode-runtime-metrics.prd.md`；跨专题统一口径以主文档为准。
+
 ## 1. Executive Summary
 - Problem Statement: 将 `ObserverRuntimeMetrics` 从“可手动记录”推进到“跟随同步流程自动记录”，降低上层 runtime 接入复杂度。
 - Proposed Solution: 为非 DHT 与 DHT 组合模式提供一致的“同步 + 计数”入口。

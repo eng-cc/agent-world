@@ -1,5 +1,11 @@
 # Agent World Runtime：节点贡献积分多节点闭环测试（项目管理文档）
 
+审计轮次: 2
+
+## 审计备注
+- 项目管理主入口：`doc/p2p/node/node-contribution-points.prd.project.md`。
+- 本文档仅维护多节点闭环测试的增量任务与状态回写。
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] NCPM-1 (PRD-P2P-MIG-089)：完成设计文档与项目管理文档。
 - [x] NCPM-2 (PRD-P2P-MIG-089)：实现多节点闭环测试（多维贡献 + 惩罚 + 奖池守恒 + 累计）。

@@ -94,3 +94,6 @@
 - 文档配对规则：`*.prd.md` 与同名 `*.prd.project.md`。
 - `*.release.md` 为发布补充材料，不参与 PRD 任务配对规则。
 - ROUND-002 主从口径（observer）：`observer-sync-source-mode` 为主文档；`observer-sync-source-dht-mode` 为 DHT 增量子文档。
+- ROUND-002 主从口径（observer）：`observer-sync-mode-runtime-metrics` 为主文档；`metrics-runtime-bridge` 与 `observability` 为增量子文档。
+- ROUND-002 主从口径（node）：`node-contribution-points` 为主文档；`runtime-closure` 与 `multi-node-closure-test` 为增量子文档。
+- ROUND-002 主从口径（distfs）：`distfs-self-healing-control-plane-2026-02-23` 为主文档；`polling-loop` 与 `runtime-polling-wiring` 为增量子文档。

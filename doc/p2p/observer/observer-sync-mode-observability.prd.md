@@ -1,5 +1,11 @@
 # Agent World Runtime：Observer 同步源策略可观测性
 
+审计轮次: 2
+
+## ROUND-002 主从口径
+- 当前文档降级为增量子文档，仅维护“策略可观测性”专题增量约束。
+- 主入口：`doc/p2p/observer/observer-sync-mode-runtime-metrics.prd.md`；跨专题统一口径以主文档为准。
+
 ## 1. Executive Summary
 - Problem Statement: 为 `ObserverClient` 的模式化同步接口补充“是否触发回退”的显式观测结果，降低故障排查成本。
 - Proposed Solution: 保持现有接口行为不变，在不破坏兼容性的前提下新增可观测报告接口。

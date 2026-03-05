@@ -1,10 +1,28 @@
 # ROUND-002 已审读文档清单（S_round002）
 
-- 生成时间: 2026-03-05 14:35:08 CST（本提交）
+- 生成时间: 2026-03-05 14:51:56 CST（本提交）
 - 生成规则: `rg -l "^审计轮次:\s*2$" doc --glob '*.md' | sort`
-- 当前已审读文档数: 21
+- 当前已审读文档数: 39
 
 ## 文件列表
+- `doc/p2p/distfs/distfs-self-healing-control-plane-2026-02-23.prd.md`
+- `doc/p2p/distfs/distfs-self-healing-control-plane-2026-02-23.prd.project.md`
+- `doc/p2p/distfs/distfs-self-healing-polling-loop-2026-02-23.prd.md`
+- `doc/p2p/distfs/distfs-self-healing-polling-loop-2026-02-23.prd.project.md`
+- `doc/p2p/distfs/distfs-self-healing-runtime-polling-wiring-2026-02-23.prd.md`
+- `doc/p2p/distfs/distfs-self-healing-runtime-polling-wiring-2026-02-23.prd.project.md`
+- `doc/p2p/node/node-contribution-points-multi-node-closure-test.prd.md`
+- `doc/p2p/node/node-contribution-points-multi-node-closure-test.prd.project.md`
+- `doc/p2p/node/node-contribution-points-runtime-closure.prd.md`
+- `doc/p2p/node/node-contribution-points-runtime-closure.prd.project.md`
+- `doc/p2p/node/node-contribution-points.prd.md`
+- `doc/p2p/node/node-contribution-points.prd.project.md`
+- `doc/p2p/observer/observer-sync-mode-metrics-runtime-bridge.prd.md`
+- `doc/p2p/observer/observer-sync-mode-metrics-runtime-bridge.prd.project.md`
+- `doc/p2p/observer/observer-sync-mode-observability.prd.md`
+- `doc/p2p/observer/observer-sync-mode-observability.prd.project.md`
+- `doc/p2p/observer/observer-sync-mode-runtime-metrics.prd.md`
+- `doc/p2p/observer/observer-sync-mode-runtime-metrics.prd.project.md`
 - `doc/p2p/observer/observer-sync-source-dht-mode.prd.md`
 - `doc/p2p/observer/observer-sync-source-dht-mode.prd.project.md`
 - `doc/p2p/observer/observer-sync-source-mode.prd.md`

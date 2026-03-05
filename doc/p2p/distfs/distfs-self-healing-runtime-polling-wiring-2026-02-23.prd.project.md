@@ -1,5 +1,11 @@
 # Agent World Runtime：分布式存储自愈轮询 Runtime 接线（项目管理）（项目管理文档）
 
+审计轮次: 2
+
+## 审计备注（ROUND-002 主从口径）
+- 本文档为增量子项目文档（slave），主入口为 `doc/p2p/distfs/distfs-self-healing-control-plane-2026-02-23.prd.project.md`。
+- 仅维护 Runtime 接线增量任务，不覆盖主项目文档的总任务分解与状态口径。
+
 ## 任务拆解（含 PRD-ID 映射）
 ### T0 建档
 - [x] 设计文档 (PRD-P2P-MIG-079)：`doc/p2p/distfs/distfs-self-healing-runtime-polling-wiring-2026-02-23.prd.md`

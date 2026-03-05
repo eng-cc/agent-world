@@ -1,5 +1,11 @@
 # Agent World Runtime：节点贡献积分激励
 
+审计轮次: 2
+
+## ROUND-002 主从口径
+- 主入口文档：`doc/p2p/node/node-contribution-points.prd.md`。
+- 从文档：`node-contribution-points-runtime-closure.prd.md`、`node-contribution-points-multi-node-closure-test.prd.md` 仅维护增量约束与专题闭环，主规格以本文件为准。
+
 ## 1. Executive Summary
 - Problem Statement: 在 Agent World 的区块链 + P2P FS 闭环内，引入可审计的节点积分激励（Node Points）。
 - Proposed Solution: 明确“基础义务”和“额外贡献”的边界：

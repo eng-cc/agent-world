@@ -1,5 +1,11 @@
 # Agent World Runtime：节点贡献积分运行时闭环
 
+审计轮次: 2
+
+## ROUND-002 主从口径
+- 主入口文档：`doc/p2p/node/node-contribution-points.prd.md`。
+- 本文档定位：仅记录运行时闭环增量需求与约束；通用规格以主文档为准。
+
 ## 1. Executive Summary
 - Problem Statement: 在运行时侧形成 Node Contribution Points 的闭环：采样、结算、审计、回放一致。
 - Proposed Solution: 为后续节点收益、治理参数调优、发布门禁提供统一口径。

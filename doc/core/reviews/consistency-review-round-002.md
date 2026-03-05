@@ -53,7 +53,7 @@ rg -n "^审计轮次:\s*2$" doc --glob '*.md'
 | 编号 | 问题描述 | 影响范围 | 严重度 | 当前判定 |
 | --- | --- | --- | --- | --- |
 | I2-001 | Viewer 默认值专题 `inline-input` 与 `prefill` 在目标/范围/验收高度重复。 | `doc/world-simulator/viewer/viewer-chat-agent-prompt-default-values-*` | high | `merge`；已执行首批收口（C2-007） |
-| I2-002 | Viewer/P2P 阶段型文档存在阶段间“目标/范围/验收模板”重复。 | `doc/world-simulator/viewer/*phase*`、`doc/p2p/node/*`、`doc/p2p/distfs/*`、`doc/p2p/observer/*` | high | 以 `master-slave` 为主，保留阶段增量；`observer sync source` 子簇已进入执行（C2-009） |
+| I2-002 | Viewer/P2P 阶段型文档存在阶段间“目标/范围/验收模板”重复。 | `doc/world-simulator/viewer/*phase*`、`doc/p2p/node/*`、`doc/p2p/distfs/*`、`doc/p2p/observer/*` | high | 以 `master-slave` 为主，保留阶段增量；`observer sync`、`node-contribution`、`distfs-self-healing` 子簇已完成第一批收口 |
 | I2-003 | CI 分层专题与 pre-commit 专题存在规则描述重复，易双处漂移。 | `doc/testing/ci/*`、`doc/scripts/precommit/*` | high | 已完成首批收口（C2-004）：规则主源固定在 `testing/ci`，`precommit` 仅保留执行入口 |
 | I2-004 | Site 手册与 github-pages 专题存在流程叙事重复。 | `doc/site/manual/*`、`doc/site/github-pages/*` | medium | `master-slave`；保留主叙事文档，日期文档改差异记录 |
 | I2-005 | README gap 与 gameplay 总述反复定义术语/模块分层。 | `doc/readme/gap/*`、`doc/game/gameplay/*` | medium | `master-slave` + 术语主入口收敛 |
@@ -70,7 +70,9 @@ rg -n "^审计轮次:\s*2$" doc --glob '*.md'
 | C2-006 | `readme/gap` 与 `gameplay` 总述簇 | 待定（术语主入口） | `master-slave` + 模板化 | open |
 | C2-007 | `viewer-chat-agent-prompt-default-values-inline-input` vs `prefill` | `viewer-chat-agent-prompt-default-values-prefill.prd.md` | `merge`（inline-input 降级历史） | done |
 | C2-008 | `distfs-production-hardening-phase1~9` | `distfs-production-hardening-phase1.prd.md` | `master-slave` | open |
-| C2-009 | `observer-sync-source*`/`observer-sync-mode*` | `observer-sync-source-mode.prd.md` + `observer-sync-mode-runtime-metrics.prd.md` | `master-slave` | in_progress |
+| C2-009 | `observer-sync-source*`/`observer-sync-mode*` | `observer-sync-source-mode.prd.md` + `observer-sync-mode-runtime-metrics.prd.md` | `master-slave` | done |
+| C2-010 | `node-contribution-points*` 系列 | `node-contribution-points.prd.md` | `master-slave` | done |
+| C2-011 | `distfs-self-healing-*` 系列 | `distfs-self-healing-control-plane-2026-02-23.prd.md` | `master-slave` | done |
 
 ## 整改项
 | 编号 | 整改动作 | 责任人 | 截止时间 | 状态 |
@@ -82,6 +84,7 @@ rg -n "^审计轮次:\s*2$" doc --glob '*.md'
 | A2-005 | 执行首批合并/主从化迁移并回写替代链、索引、redirect | cc | 2026-03-09 | in_progress |
 | A2-006 | 对已完成 ROUND-002 审读的文档回写 `审计轮次: 2`，并以 `S_round002` 为统计分母 | cc | 2026-03-09 | in_progress |
 | A2-007 | 完成 C2-007（viewer 默认值专题）主从化落地并更新模块索引 | cc | 2026-03-05 | done |
+| A2-008 | 并行执行 B3 第一批主从化（observer-sync-mode、node-contribution、distfs-self-healing） | cc | 2026-03-05 | done |
 
 ## 特殊情况备注（仅在无需合并时填写）
 | 编号 | 原因 | 风险 | 临时缓解 | 复审日期 | 评审人 |
@@ -90,4 +93,4 @@ rg -n "^审计轮次:\s*2$" doc --glob '*.md'
 ## 复审结果
 - 复审时间：
 - 复审结论：
-- 当前进展：已完成分区盘点，并已落地 C2-007（viewer 默认值专题）与 C2-004（CI/precommit 规则归属收口）；C2-009（observer sync source 子簇）已进入执行，其余批次按 C2-001~C2-009 顺序推进。
+- 当前进展：已完成分区盘点，并已落地 C2-007、C2-004、C2-009、C2-010、C2-011；剩余重点批次为 C2-003、C2-008、C2-005、C2-006、C2-002、C2-001。

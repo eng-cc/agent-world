@@ -1,5 +1,11 @@
 # Agent World Runtime：Observer 同步源运行态统计（项目管理文档）
 
+审计轮次: 2
+
+## ROUND-002 主从口径
+- 主项目管理入口：`doc/p2p/observer/observer-sync-mode-runtime-metrics.prd.project.md`。
+- `observer-sync-mode-metrics-runtime-bridge` 与 `observer-sync-mode-observability` 项目文档仅维护增量任务，收口状态以本主文档为准。
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] OSRM-1 (PRD-P2P-MIG-108)：设计文档与项目管理文档落地。
 - [x] OSRM-2 (PRD-P2P-MIG-108)：实现运行态统计结构与导出接口。

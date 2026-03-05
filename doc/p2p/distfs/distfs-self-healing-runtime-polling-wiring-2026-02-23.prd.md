@@ -1,5 +1,11 @@
 # Agent World Runtime：分布式存储自愈轮询 Runtime 接线（2026-02-23）
 
+审计轮次: 2
+
+## ROUND-002 主从口径
+- 本文档为增量子文档（slave），主入口为 `doc/p2p/distfs/distfs-self-healing-control-plane-2026-02-23.prd.md`。
+- 本文档仅描述 NodeRuntime 接线与执行器增量；控制面基础语义以主文档为准。
+
 ## 1. Executive Summary
 - Problem Statement: 将已实现的 `run_replica_maintenance_poll` 接入 `NodeRuntime` 周期循环，实现自动触发副本维护。
 - Proposed Solution: 保持“无单机完整数据假设”：节点仅在目标副本为本节点时执行拉取与落盘，不引入单机全量回退路径。

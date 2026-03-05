@@ -1,5 +1,11 @@
 # Agent World Runtime：分布式存储自愈控制面（项目管理）（项目管理文档）
 
+审计轮次: 2
+
+## ROUND-002 主从口径
+- 本文档为 distfs-self-healing 项目管理主入口（master）。
+- `distfs-self-healing-polling-loop-2026-02-23.prd.project.md` 与 `distfs-self-healing-runtime-polling-wiring-2026-02-23.prd.project.md` 仅维护各自增量任务与状态。
+
 ## 任务拆解（含 PRD-ID 映射）
 ### T0 建档
 - [x] 设计文档 (PRD-P2P-MIG-077)：`doc/p2p/distfs/distfs-self-healing-control-plane-2026-02-23.prd.md`

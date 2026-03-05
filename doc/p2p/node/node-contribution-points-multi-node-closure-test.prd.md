@@ -1,5 +1,11 @@
 # Agent World Runtime：节点贡献积分多节点闭环测试
 
+审计轮次: 2
+
+## ROUND-002 主从口径
+- 主入口文档：`doc/p2p/node/node-contribution-points.prd.md`。
+- 本文档定位：仅记录多节点闭环测试的增量需求与验收口径；通用规格以主文档为准。
+
 ## 1. Executive Summary
 - Problem Statement: 为“区块链 + P2P FS 场景下，提供算力和存储节点获得收益积分”补齐多节点闭环测试。
 - Proposed Solution: 验证节点积分引擎在多节点输入下的关键经济语义：

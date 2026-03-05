@@ -1,5 +1,11 @@
 # Agent World Runtime：节点贡献积分激励（项目管理文档）
 
+审计轮次: 2
+
+## ROUND-002 主从口径
+- 项目管理主入口：`doc/p2p/node/node-contribution-points.prd.project.md`。
+- 从项目文档：`node-contribution-points-runtime-closure.prd.project.md`、`node-contribution-points-multi-node-closure-test.prd.project.md` 仅维护增量任务与状态，主计划以本文件为准。
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] NCP-1 (PRD-P2P-MIG-091)：完成设计文档与项目管理文档。
 - [x] NCP-2 (PRD-P2P-MIG-091)：实现节点积分结算引擎（额外计算/存储/在线/惩罚 + 积分台账）。
