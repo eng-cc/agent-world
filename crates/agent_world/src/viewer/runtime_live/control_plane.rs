@@ -1,5 +1,5 @@
 use super::*;
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::BTreeMap;
 
 use super::super::auth::{
     verify_agent_chat_auth_proof, verify_prompt_control_apply_auth_proof,
@@ -9,10 +9,14 @@ use super::super::protocol::{
     AgentChatAck, AgentChatError, AgentChatRequest, PromptControlAck, PromptControlApplyRequest,
     PromptControlCommand, PromptControlError, PromptControlOperation, PromptControlRollbackRequest,
 };
-use crate::runtime::{Action as RuntimeAction, ModuleSourcePackage, World as RuntimeWorld};
+use crate::runtime::{
+    Action as RuntimeAction, CausedBy as RuntimeCausedBy, ModuleSourcePackage,
+    World as RuntimeWorld,
+};
 use crate::simulator::{
-    Action as SimulatorAction, AgentPromptProfile, PromptUpdateOperation, ResourceKind,
-    ResourceOwner, WorldEventKind,
+    Action as SimulatorAction, ActionResult, AgentDecision, AgentDecisionTrace, AgentPromptProfile,
+    AgentRunner, LlmAgentBehavior, OpenAiChatCompletionClient, PromptUpdateOperation,
+    ResourceOwner, WorldEventKind, WorldJournal, WorldKernel, WorldSnapshot,
 };
 use sha2::{Digest, Sha256};
 
@@ -146,6 +150,7 @@ impl ViewerRuntimeLiveServer {
         candidate.updated_at_tick = self.world.state().time;
         candidate.updated_by = player_id.clone();
         self.llm_sidecar.upsert_prompt_profile(candidate.clone());
+        self.llm_sidecar.apply_prompt_profile_to_driver(&candidate);
         self.bind_agent_player_access(
             request.agent_id.as_str(),
             player_id.as_str(),
@@ -236,6 +241,7 @@ impl ViewerRuntimeLiveServer {
         candidate.updated_at_tick = self.world.state().time;
         candidate.updated_by = player_id.clone();
         self.llm_sidecar.upsert_prompt_profile(candidate.clone());
+        self.llm_sidecar.apply_prompt_profile_to_driver(&candidate);
         self.bind_agent_player_access(
             request.agent_id.as_str(),
             player_id.as_str(),
@@ -303,10 +309,12 @@ impl ViewerRuntimeLiveServer {
             player_id.as_str(),
             public_key.as_deref(),
         )?;
-        self.llm_sidecar.enqueue_chat(RuntimeChatMessage {
-            agent_id: request.agent_id.clone(),
-            message,
-        });
+        self.llm_sidecar.push_chat_message(
+            &self.world,
+            &self.snapshot_config,
+            request.agent_id.as_str(),
+            message.as_str(),
+        )?;
         self.llm_sidecar.request_decision();
         Ok(AgentChatAck {
             agent_id: request.agent_id,
@@ -536,35 +544,52 @@ impl ViewerRuntimeLiveServer {
         id
     }
 
-    pub(super) fn enqueue_llm_action_from_sidecar(&mut self) {
-        let Some(action) = self.llm_sidecar.next_simulator_action(&self.world) else {
-            return;
+    pub(super) fn enqueue_llm_action_from_sidecar(&mut self) -> Option<AgentDecisionTrace> {
+        let Some(decision) = self
+            .llm_sidecar
+            .next_llm_decision(&self.world, &self.snapshot_config)
+        else {
+            return None;
         };
-        match simulator_action_to_runtime(&action, &self.world) {
-            Some(runtime_action) => {
-                self.world.submit_action(runtime_action);
-            }
-            None => {
+        let decision_trace = decision.decision_trace.clone();
+        if let Some(trace) = decision_trace.as_ref() {
+            if let Some(message) = trace
+                .llm_error
+                .as_ref()
+                .or_else(|| trace.parse_error.as_ref())
+            {
                 self.enqueue_virtual_event(WorldEventKind::ActionRejected {
                     reason: SimulatorRejectReason::RuleDenied {
-                        notes: vec![format!(
-                            "runtime llm bridge cannot map action: {}",
-                            simulator_action_label(&action)
-                        )],
+                        notes: vec![format!("llm_failed: {}", message)],
                     },
                 });
+                return decision_trace;
             }
         }
+
+        if let AgentDecision::Act(action) = decision.decision {
+            match simulator_action_to_runtime(&action, &self.world) {
+                Some(runtime_action) => {
+                    let action_id = self.world.submit_action(runtime_action);
+                    self.llm_sidecar
+                        .track_action(action_id, decision.agent_id, action.clone());
+                }
+                None => {
+                    self.enqueue_virtual_event(WorldEventKind::ActionRejected {
+                        reason: SimulatorRejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "runtime llm bridge cannot map action: {}",
+                                simulator_action_label(&action)
+                            )],
+                        },
+                    });
+                }
+            }
+        }
+        decision_trace
     }
 }
 
-#[derive(Debug, Clone)]
-pub(super) struct RuntimeChatMessage {
-    pub(super) agent_id: String,
-    pub(super) message: String,
-}
-
-#[derive(Debug)]
 pub(super) struct RuntimeLlmSidecar {
     pub(super) decision_mode: ViewerLiveDecisionMode,
     pub(super) prompt_profiles: BTreeMap<String, AgentPromptProfile>,
@@ -572,13 +597,14 @@ pub(super) struct RuntimeLlmSidecar {
     pub(super) agent_player_bindings: BTreeMap<String, String>,
     pub(super) agent_public_key_bindings: BTreeMap<String, String>,
     pub(super) player_auth_last_nonce: BTreeMap<String, u64>,
-    chat_mailbox: VecDeque<RuntimeChatMessage>,
     llm_decision_mailbox: u64,
-    move_direction: i64,
+    runner: Option<AgentRunner<LlmAgentBehavior<OpenAiChatCompletionClient>>>,
+    shadow_kernel: Option<WorldKernel>,
+    pending_actions: BTreeMap<u64, RuntimePendingAction>,
 }
 
 impl RuntimeLlmSidecar {
-    pub(super) fn new(decision_mode: ViewerLiveDecisionMode, _world: &RuntimeWorld) -> Self {
+    pub(super) fn new(decision_mode: ViewerLiveDecisionMode) -> Self {
         Self {
             decision_mode,
             prompt_profiles: BTreeMap::new(),
@@ -586,9 +612,10 @@ impl RuntimeLlmSidecar {
             agent_player_bindings: BTreeMap::new(),
             agent_public_key_bindings: BTreeMap::new(),
             player_auth_last_nonce: BTreeMap::new(),
-            chat_mailbox: VecDeque::new(),
             llm_decision_mailbox: 0,
-            move_direction: 1,
+            runner: None,
+            shadow_kernel: None,
+            pending_actions: BTreeMap::new(),
         }
     }
 
@@ -681,62 +708,271 @@ impl RuntimeLlmSidecar {
         }
     }
 
-    pub(super) fn enqueue_chat(&mut self, message: RuntimeChatMessage) {
-        self.chat_mailbox.push_back(message);
+    pub(super) fn apply_prompt_profile_to_driver(&mut self, profile: &AgentPromptProfile) {
+        let Some(runner) = self.runner.as_mut() else {
+            return;
+        };
+        let Some(agent) = runner.get_mut(profile.agent_id.as_str()) else {
+            return;
+        };
+        agent.behavior.apply_prompt_overrides(
+            profile.system_prompt_override.clone(),
+            profile.short_term_goal_override.clone(),
+            profile.long_term_goal_override.clone(),
+        );
     }
 
-    pub(super) fn next_simulator_action(
+    pub(super) fn push_chat_message(
         &mut self,
         world: &RuntimeWorld,
-    ) -> Option<SimulatorAction> {
+        config: &WorldConfig,
+        agent_id: &str,
+        message: &str,
+    ) -> Result<(), AgentChatError> {
+        if !self.is_llm_mode() {
+            return Err(AgentChatError {
+                code: "llm_mode_required".to_string(),
+                message: "agent chat requires runtime live server running with --llm".to_string(),
+                agent_id: Some(agent_id.to_string()),
+            });
+        }
+        if let Err(message) = self.sync_shadow_kernel(world, config) {
+            return Err(AgentChatError {
+                code: "llm_init_failed".to_string(),
+                message,
+                agent_id: Some(agent_id.to_string()),
+            });
+        }
+        if let Err(message) = self.ensure_runner_initialized() {
+            return Err(AgentChatError {
+                code: "llm_init_failed".to_string(),
+                message,
+                agent_id: Some(agent_id.to_string()),
+            });
+        }
+        let runner = match self.runner.as_mut() {
+            Some(runner) => runner,
+            None => {
+                return Err(AgentChatError {
+                    code: "llm_init_failed".to_string(),
+                    message: "llm runner not initialized".to_string(),
+                    agent_id: Some(agent_id.to_string()),
+                });
+            }
+        };
+        let Some(agent) = runner.get_mut(agent_id) else {
+            return Err(AgentChatError {
+                code: "agent_not_registered".to_string(),
+                message: format!("agent {} is not registered in llm runner", agent_id),
+                agent_id: Some(agent_id.to_string()),
+            });
+        };
+        if !agent
+            .behavior
+            .push_player_message(world.state().time, message)
+        {
+            return Err(AgentChatError {
+                code: "empty_message".to_string(),
+                message: "chat message cannot be empty".to_string(),
+                agent_id: Some(agent_id.to_string()),
+            });
+        }
+        Ok(())
+    }
+
+    pub(super) fn next_llm_decision(
+        &mut self,
+        world: &RuntimeWorld,
+        config: &WorldConfig,
+    ) -> Option<RuntimeLlmDecision> {
         if !self.is_llm_mode() || self.llm_decision_mailbox == 0 {
             return None;
         }
         self.llm_decision_mailbox = self.llm_decision_mailbox.saturating_sub(1);
-        let mut agent_ids: Vec<String> = world.state().agents.keys().cloned().collect();
-        agent_ids.sort();
-        let chat = self.chat_mailbox.pop_front();
-        let hinted_agent_id = chat.as_ref().map(|entry| entry.agent_id.as_str());
-        let acting_agent_id = hinted_agent_id
-            .filter(|agent_id| world.state().agents.contains_key(*agent_id))
-            .map(ToOwned::to_owned)
-            .or_else(|| agent_ids.first().cloned())?;
 
-        let wants_transfer = chat.as_ref().is_some_and(|entry| {
-            let lowered = entry.message.to_ascii_lowercase();
-            lowered.contains("transfer")
-                || lowered.contains("send")
-                || lowered.contains("trade")
-                || lowered.contains("转")
-        });
-        if wants_transfer && agent_ids.len() >= 2 {
-            let to_agent_id = agent_ids
-                .iter()
-                .find(|entry| entry.as_str() != acting_agent_id.as_str())
-                .cloned()?;
-            return Some(SimulatorAction::TransferResource {
-                from: ResourceOwner::Agent {
-                    agent_id: acting_agent_id,
-                },
-                to: ResourceOwner::Agent {
-                    agent_id: to_agent_id,
-                },
-                kind: ResourceKind::Electricity,
-                amount: 1,
-            });
+        if let Err(message) = self.sync_shadow_kernel(world, config) {
+            return Some(RuntimeLlmDecision::from_error(world, message));
         }
-
-        let from_pos = world.state().agents.get(&acting_agent_id)?.state.pos;
-        self.move_direction = -self.move_direction;
-        if self.move_direction == 0 {
-            self.move_direction = 1;
+        if let Err(message) = self.ensure_runner_initialized() {
+            return Some(RuntimeLlmDecision::from_error(world, message));
         }
-        let delta_cm = (self.move_direction * 1_000) as f64;
-        let to_pos = GeoPos::new(from_pos.x_cm + delta_cm, from_pos.y_cm, from_pos.z_cm);
-        Some(SimulatorAction::MoveAgent {
-            agent_id: acting_agent_id,
-            to: location_id_for_pos(to_pos),
+        let kernel = match self.shadow_kernel.as_mut() {
+            Some(kernel) => kernel,
+            None => {
+                return Some(RuntimeLlmDecision::from_error(
+                    world,
+                    "shadow kernel not initialized".to_string(),
+                ));
+            }
+        };
+        let runner = match self.runner.as_mut() {
+            Some(runner) => runner,
+            None => {
+                return Some(RuntimeLlmDecision::from_error(
+                    world,
+                    "llm runner not initialized".to_string(),
+                ));
+            }
+        };
+        let result = runner.tick_decide_only(kernel);
+        sync_llm_runner_long_term_memory(kernel, runner);
+        result.map(|tick| RuntimeLlmDecision {
+            agent_id: tick.agent_id,
+            decision: tick.decision,
+            decision_trace: tick.decision_trace,
         })
+    }
+
+    pub(super) fn track_action(
+        &mut self,
+        action_id: u64,
+        agent_id: String,
+        action: SimulatorAction,
+    ) {
+        self.pending_actions
+            .insert(action_id, RuntimePendingAction { agent_id, action });
+    }
+
+    pub(super) fn notify_action_result(
+        &mut self,
+        action_id: u64,
+        event: WorldEvent,
+        rejected: bool,
+    ) {
+        let Some(pending) = self.pending_actions.remove(&action_id) else {
+            return;
+        };
+        let success = !rejected;
+        let action_result = ActionResult {
+            action: pending.action,
+            action_id,
+            success,
+            event,
+        };
+        if let Some(runner) = self.runner.as_mut() {
+            let _ = runner.notify_action_result(pending.agent_id.as_str(), &action_result);
+        }
+    }
+
+    pub(super) fn notify_action_result_if_needed(
+        &mut self,
+        runtime_event: &RuntimeWorldEvent,
+        mapped_event: WorldEvent,
+    ) {
+        let Some(caused_by) = runtime_event.caused_by.as_ref() else {
+            return;
+        };
+        let RuntimeCausedBy::Action(action_id) = caused_by else {
+            return;
+        };
+        let rejected = matches!(
+            runtime_event.body,
+            RuntimeWorldEventBody::Domain(RuntimeDomainEvent::ActionRejected { .. })
+        );
+        self.notify_action_result(*action_id, mapped_event, rejected);
+    }
+
+    fn sync_shadow_kernel(
+        &mut self,
+        world: &RuntimeWorld,
+        config: &WorldConfig,
+    ) -> Result<(), String> {
+        let runtime_snapshot = world.snapshot();
+        let model = runtime_state_to_simulator_model(world.state(), self);
+        let snapshot = WorldSnapshot {
+            version: SNAPSHOT_VERSION,
+            chunk_generation_schema_version: CHUNK_GENERATION_SCHEMA_VERSION,
+            time: world.state().time,
+            config: config.clone(),
+            model,
+            chunk_runtime: ChunkRuntimeConfig::default(),
+            next_event_id: runtime_snapshot.last_event_id.saturating_add(1).max(1),
+            next_action_id: runtime_snapshot.next_action_id.max(1),
+            pending_actions: Vec::new(),
+            journal_len: 0,
+        };
+        let kernel = WorldKernel::from_snapshot(snapshot, WorldJournal::new())
+            .map_err(|err| format!("runtime live shadow kernel rebuild failed: {err:?}"))?;
+        self.shadow_kernel = Some(kernel);
+        Ok(())
+    }
+
+    fn ensure_runner_initialized(&mut self) -> Result<(), String> {
+        let kernel = self
+            .shadow_kernel
+            .as_ref()
+            .ok_or_else(|| "shadow kernel not initialized".to_string())?;
+        if self.runner.is_none() {
+            self.runner = Some(AgentRunner::new());
+        }
+        let runner = self
+            .runner
+            .as_mut()
+            .ok_or_else(|| "llm runner not initialized".to_string())?;
+        let mut agent_ids: Vec<String> = kernel.model().agents.keys().cloned().collect();
+        agent_ids.sort();
+        for agent_id in agent_ids {
+            if runner.get(agent_id.as_str()).is_some() {
+                continue;
+            }
+            let mut behavior = LlmAgentBehavior::from_env(agent_id.clone())
+                .map_err(|err| format!("llm init failed for {}: {err}", agent_id))?;
+            if let Some(profile) = self.prompt_profiles.get(agent_id.as_str()) {
+                behavior.apply_prompt_overrides(
+                    profile.system_prompt_override.clone(),
+                    profile.short_term_goal_override.clone(),
+                    profile.long_term_goal_override.clone(),
+                );
+            }
+            restore_behavior_long_term_memory_from_model(&mut behavior, kernel, agent_id.as_str());
+            runner.register(behavior);
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone)]
+struct RuntimePendingAction {
+    agent_id: String,
+    action: SimulatorAction,
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct RuntimeLlmDecision {
+    pub(super) agent_id: String,
+    pub(super) decision: AgentDecision,
+    pub(super) decision_trace: Option<AgentDecisionTrace>,
+}
+
+impl RuntimeLlmDecision {
+    fn from_error(world: &RuntimeWorld, message: String) -> Self {
+        let agent_id = world
+            .state()
+            .agents
+            .keys()
+            .next()
+            .cloned()
+            .unwrap_or_else(|| "runtime-agent-0".to_string());
+        let trace = AgentDecisionTrace {
+            agent_id: agent_id.clone(),
+            time: world.state().time,
+            decision: AgentDecision::Wait,
+            llm_input: None,
+            llm_output: None,
+            llm_error: Some(message),
+            parse_error: None,
+            llm_diagnostics: None,
+            llm_effect_intents: Vec::new(),
+            llm_effect_receipts: Vec::new(),
+            llm_step_trace: Vec::new(),
+            llm_prompt_section_trace: Vec::new(),
+            llm_chat_messages: Vec::new(),
+        };
+        Self {
+            agent_id,
+            decision: AgentDecision::Wait,
+            decision_trace: Some(trace),
+        }
     }
 }
 
@@ -1225,4 +1461,34 @@ fn parse_runtime_location_id(location_id: &str) -> Option<GeoPos> {
         return None;
     }
     Some(GeoPos::new(x as f64, y as f64, z as f64))
+}
+
+fn restore_behavior_long_term_memory_from_model(
+    behavior: &mut LlmAgentBehavior<OpenAiChatCompletionClient>,
+    kernel: &WorldKernel,
+    agent_id: &str,
+) {
+    if let Some(entries) = kernel.long_term_memory_for_agent(agent_id) {
+        behavior.restore_long_term_memory_entries(entries);
+    } else {
+        behavior.restore_long_term_memory_entries(&[]);
+    }
+}
+
+fn sync_llm_runner_long_term_memory(
+    kernel: &mut WorldKernel,
+    runner: &AgentRunner<LlmAgentBehavior<OpenAiChatCompletionClient>>,
+) {
+    for agent_id in runner.agent_ids() {
+        let Some(agent) = runner.get(agent_id.as_str()) else {
+            continue;
+        };
+        let entries = agent.behavior.export_long_term_memory_entries();
+        if let Err(message) = kernel.set_agent_long_term_memory(agent_id.as_str(), entries) {
+            eprintln!(
+                "viewer runtime live: skip long-term memory sync for {}: {}",
+                agent_id, message
+            );
+        }
+    }
 }

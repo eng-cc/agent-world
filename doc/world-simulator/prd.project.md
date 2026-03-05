@@ -43,7 +43,7 @@
 - [x] TASK-WORLD_SIMULATOR-040 (PRD-WORLD_SIMULATOR-018) [test_tier_required]: 完成“viewer live runtime/world 接管 Phase 3（action 映射覆盖 + 旧分支移除）”PRD 建模与任务拆解。
 - [x] TASK-WORLD_SIMULATOR-041 (PRD-WORLD_SIMULATOR-018) [test_tier_required]: 落地 runtime live action 映射覆盖扩展、等价回归测试与 `world_viewer_live` runtime-only 分支收敛。
 - [x] TASK-WORLD_SIMULATOR-042 (PRD-WORLD_SIMULATOR-019) [test_tier_required]: 完成“viewer live runtime/world 真 LLM 全量接管（LLM 决策 + 100% 事件/快照 + hard-fail）”PRD 建模与任务拆解。
-- [ ] TASK-WORLD_SIMULATOR-043 (PRD-WORLD_SIMULATOR-019) [test_tier_required]: 移除启发式 sidecar，落地真实 LLM driver + shadow WorldKernel，并接入硬失败语义。
+- [x] TASK-WORLD_SIMULATOR-043 (PRD-WORLD_SIMULATOR-019) [test_tier_required]: 移除启发式 sidecar，落地真实 LLM driver + shadow WorldKernel，并接入硬失败语义。
 - [ ] TASK-WORLD_SIMULATOR-044 (PRD-WORLD_SIMULATOR-019) [test_tier_required]: 补齐 runtime 事件/快照 100% 映射、扩展 viewer 协议并输出 DecisionTrace。
 - [ ] TASK-WORLD_SIMULATOR-045 (PRD-WORLD_SIMULATOR-019) [test_tier_required]: 执行 required 回归、更新 viewer 手册与模块项目状态收口。
 
@@ -116,7 +116,7 @@
 ## 状态
 - 更新日期: 2026-03-05
 - 当前状态: in_progress
-- 当前优先任务: TASK-WORLD_SIMULATOR-043
+- 当前优先任务: TASK-WORLD_SIMULATOR-044
 - 并行待办: 无
 - 专题映射状态: 2026-03-02 批次 9/9、2026-03-03 批次 4/4、2026-03-04 批次 7/7、2026-03-05 批次 3/4 已纳入模块项目管理文档。
 - 手册入口状态: `doc/world-simulator/viewer/viewer-manual.md` 为唯一活跃手册入口。

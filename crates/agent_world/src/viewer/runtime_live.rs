@@ -10,10 +10,10 @@ use crate::runtime::{
     WorldEvent as RuntimeWorldEvent, WorldEventBody as RuntimeWorldEventBody,
 };
 use crate::simulator::{
-    build_world_model, Agent, ChunkRuntimeConfig, Location, RejectReason as SimulatorRejectReason,
-    ResourceKind, ResourceOwner, RunnerMetrics, WorldConfig, WorldEvent, WorldEventKind,
-    WorldInitConfig, WorldModel, WorldScenario, WorldSnapshot, CHUNK_GENERATION_SCHEMA_VERSION,
-    SNAPSHOT_VERSION,
+    build_world_model, Agent, AgentDecisionTrace, ChunkRuntimeConfig, Location,
+    RejectReason as SimulatorRejectReason, ResourceKind, ResourceOwner, RunnerMetrics, WorldConfig,
+    WorldEvent, WorldEventKind, WorldInitConfig, WorldModel, WorldScenario, WorldSnapshot,
+    CHUNK_GENERATION_SCHEMA_VERSION, SNAPSHOT_VERSION,
 };
 
 use super::live::ViewerLiveDecisionMode;
@@ -105,7 +105,7 @@ impl ViewerRuntimeLiveServer {
     ) -> Result<Self, ViewerRuntimeLiveServerError> {
         let (world, snapshot_config) =
             bootstrap_runtime_world(config.scenario).map_err(ViewerRuntimeLiveServerError::Init)?;
-        let llm_sidecar = RuntimeLlmSidecar::new(config.decision_mode, &world);
+        let llm_sidecar = RuntimeLlmSidecar::new(config.decision_mode);
         let next_virtual_event_id = latest_runtime_event_seq(&world).saturating_add(1).max(1);
         Ok(Self {
             config,
@@ -285,9 +285,12 @@ impl ViewerRuntimeLiveServer {
         let baseline_event_seq = latest_runtime_event_seq(&self.world);
 
         for _ in 0..step_count.max(1) {
+            let mut decision_trace: Option<AgentDecisionTrace> = None;
             match self.config.decision_mode {
                 ViewerLiveDecisionMode::Script => self.script.enqueue(&mut self.world),
-                ViewerLiveDecisionMode::Llm => self.enqueue_llm_action_from_sidecar(),
+                ViewerLiveDecisionMode::Llm => {
+                    decision_trace = self.enqueue_llm_action_from_sidecar();
+                }
             }
             let journal_start = self.world.journal().events.len();
             self.world.step()?;
@@ -296,10 +299,18 @@ impl ViewerRuntimeLiveServer {
             let mut mapped_events = Vec::new();
             for runtime_event in &new_events {
                 if let Some(event) = map_runtime_event(runtime_event, &self.snapshot_config) {
+                    self.llm_sidecar
+                        .notify_action_result_if_needed(runtime_event, event.clone());
                     mapped_events.push(event);
                 }
             }
             mapped_events.extend(self.pending_virtual_events.drain(..));
+
+            if let Some(trace) = decision_trace {
+                if session.subscribed.contains(&ViewerStream::Events) {
+                    send_response(writer, &ViewerResponse::DecisionTrace { trace })?;
+                }
+            }
 
             if session.subscribed.contains(&ViewerStream::Events)
                 && (emit_while_paused || session.playing)
