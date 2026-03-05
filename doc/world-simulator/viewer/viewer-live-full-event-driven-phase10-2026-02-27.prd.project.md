@@ -1,5 +1,11 @@
 # Viewer Live 完全事件驱动改造 Phase 10（项目管理）
 
+审计轮次: 2
+
+## ROUND-002 主从口径
+- 本文件为主项目入口（master）。
+- `doc/world-simulator/viewer/viewer-live-full-event-driven-phase8-2026-02-27.prd.project.md` 与 `doc/world-simulator/viewer/viewer-live-full-event-driven-phase9-2026-02-27.prd.project.md` 为增量计划文档（slave）。
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0 建档：设计文档 + 项目管理文档
 - [x] T1 代码收敛：`viewer/server` 删除 `tick_interval` 与定时回放推进

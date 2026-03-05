@@ -178,3 +178,5 @@
 ## 说明
 - 本索引用于保证模块专题文档在根入口文档树中可达。
 - 文档配对规则：`*.prd.md` 与同名 `*.prd.project.md`。
+- ROUND-002 主从口径（gameplay release）：`viewer-gameplay-release-experience-overhaul` 为主文档，`immersion-phase8~10` 为增量子文档。
+- ROUND-002 主从口径（live event-driven）：`viewer-live-full-event-driven-phase10-2026-02-27` 为主文档，`phase8/9` 为增量子文档。

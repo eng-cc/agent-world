@@ -9,8 +9,8 @@
 | --- | --- | --- | --- |
 | P0 | 建立启动文档与审读清单 | `consistency-review-round-002.md`、`round-002-reviewed-files.md`、本清单 | done |
 | P1 | 分区盘点重复簇（A~E）并形成判定草案 | 子代理审计快照 + 候选簇判定（C2-*） | done |
-| P2 | 批次执行合并/主从化并回写索引 | 模块 `prd.index.md` + 文档历史状态/替代链 | in_progress |
-| P3 | 回写 `审计轮次: 2` 与复审结论 | `S_round002` + ROUND-002 复审结果 | in_progress |
+| P2 | 批次执行合并/主从化并回写索引 | 模块 `prd.index.md` + 文档历史状态/替代链 | done |
+| P3 | 回写 `审计轮次: 2` 与复审结论 | `S_round002` + ROUND-002 复审结果 | done |
 
 ## P1 盘点结果（2026-03-05）
 | 分区 | 盘点结果 |
@@ -36,11 +36,13 @@
 | B4-C2-005-S2 | `site/github-pages/*`（PRD + project） | `master-slave`（`github-pages-game-engine-reposition-2026-02-25` 为主） | 34 份 github-pages 文档回写主从口径并更新审计轮次 | done |
 | B5-C2-006-S1 | `doc/readme/gap/*`（PRD + project） | `master-slave`（`readme-gap-distributed-prod-hardening-gap12345` 为主） | 18 份 gap 文档 + `doc/readme/prd.index.md` 回写主从口径并更新审计轮次 | done |
 | B5-C2-006-S2 | `doc/game/gameplay/*`（PRD + project） | `master-slave`（`gameplay-top-level-design` 为主） | 18 份 gameplay 文档 + `doc/game/prd.index.md` 回写主从口径并更新审计轮次 | done |
+| B6-C2-001 | `viewer-gameplay-release-experience-overhaul` / `immersion-phase8~10`（PRD + project） | `keep` + `master-slave`（`experience-overhaul` 为主） | 8 份 viewer 文档回写主从口径并更新审计轮次 | done |
+| B6-C2-002 | `viewer-live-full-event-driven-phase8~10`（PRD + project） | `master-slave`（`phase10-2026-02-27` 为主） | 6 份 viewer 文档 + `doc/world-simulator/prd.index.md` 回写主从口径并更新审计轮次 | done |
 
 ## 待执行批次（优先级）
 | 批次 | 范围 | 目标 | 验收命令 |
 | --- | --- | --- | --- |
-| B6 | `doc/world-simulator/viewer/*phase*` | 收敛阶段型专题重复块（C2-001/C2-002） | `find doc/world-simulator/viewer -maxdepth 1 -type f -name '*.prd.md' | wc -l` |
+| - | - | ROUND-002 批次执行已完成 | - |
 
 ## 决策记录模板（每簇必填）
 | 字段 | 说明 |

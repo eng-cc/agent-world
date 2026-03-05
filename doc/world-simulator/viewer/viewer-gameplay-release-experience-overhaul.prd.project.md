@@ -1,5 +1,11 @@
 # Viewer 发行体验改造（项目管理文档）
 
+审计轮次: 2
+
+## ROUND-002 主从口径
+- 本文件为项目主入口文档。
+- `doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase8.prd.project.md`、`doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase9.prd.project.md`、`doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase10.prd.project.md` 为增量计划文档。
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] VGRO0：建立设计文档与项目管理文档。
 - [x] VGRO1：实现体验模式资源与环境变量解析（Player/Director）。

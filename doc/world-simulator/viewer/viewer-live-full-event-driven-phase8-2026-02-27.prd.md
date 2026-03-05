@@ -1,5 +1,11 @@
 # Viewer Live 完全事件驱动改造 Phase 8（2026-02-27）
 
+审计轮次: 2
+
+## ROUND-002 主从口径
+- 主入口文档：`doc/world-simulator/viewer/viewer-live-full-event-driven-phase10-2026-02-27.prd.md`。
+- 本文件仅维护 Phase 8 增量内容。
+
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-live-full-event-driven-phase8-2026-02-27.prd.project.md
 
 ## 1. Executive Summary

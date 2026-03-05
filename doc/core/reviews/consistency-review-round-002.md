@@ -7,8 +7,8 @@
 
 ## 轮次信息
 - 轮次编号: `ROUND-002`
-- 轮次状态: `in_progress` (`not_started` | `in_progress` | `completed`)
-- 审查时间窗: 2026-03-05 ~ 进行中
+- 轮次状态: `completed` (`not_started` | `in_progress` | `completed`)
+- 审查时间窗: 2026-03-05 ~ 2026-03-05
 - 审查负责人: cc
 
 状态判定：
@@ -62,8 +62,8 @@ rg -n "^审计轮次:\s*2$" doc --glob '*.md'
 ## 合并候选批次
 | 编号 | 候选文档簇 | 候选主文档 | 合并策略 | 状态 |
 | --- | --- | --- | --- | --- |
-| C2-001 | `viewer-gameplay-release-immersion-phase8~10` | `viewer-gameplay-release-experience-overhaul.prd.md` | `keep`（补阶段映射表） | open |
-| C2-002 | `viewer-live-full-event-driven-phase8~10` | `viewer-live-full-event-driven-phase10-2026-02-27.prd.md` | `master-slave` | open |
+| C2-001 | `viewer-gameplay-release-immersion-phase8~10` | `viewer-gameplay-release-experience-overhaul.prd.md` | `keep`（补阶段映射表） | done |
+| C2-002 | `viewer-live-full-event-driven-phase8~10` | `viewer-live-full-event-driven-phase10-2026-02-27.prd.md` | `master-slave` | done |
 | C2-003 | `node-redeemable-power-asset*` 系列 | `node-redeemable-power-asset.prd.md` | `master-slave` | done |
 | C2-004 | `testing/ci` 分层专题与 `pre-commit` 专题 | `ci-tiered-execution.prd.md` + `pre-commit.prd.md` | 固定规则归属，删除重复定义 | done |
 | C2-005 | `site/manual` + `site/github-pages` 镜像/叙事专题 | `site-manual-static-docs.prd.md` + `github-pages-game-engine-reposition-2026-02-25.prd.md` | `master-slave` | done |
@@ -82,18 +82,19 @@ rg -n "^审计轮次:\s*2$" doc --glob '*.md'
 | A2-003 | 完成分区 C 的规则归属收口（CI/pre-commit 去重） | cc | 2026-03-07 | done |
 | A2-004 | 完成分区 D/E 的主入口收口与历史专题分组策略 | cc | 2026-03-08 | done |
 | A2-005 | 执行首批合并/主从化迁移并回写替代链、索引、redirect | cc | 2026-03-09 | done |
-| A2-006 | 对已完成 ROUND-002 审读的文档回写 `审计轮次: 2`，并以 `S_round002` 为统计分母 | cc | 2026-03-09 | in_progress |
+| A2-006 | 对已完成 ROUND-002 审读的文档回写 `审计轮次: 2`，并以 `S_round002` 为统计分母 | cc | 2026-03-09 | done |
 | A2-007 | 完成 C2-007（viewer 默认值专题）主从化落地并更新模块索引 | cc | 2026-03-05 | done |
 | A2-008 | 并行执行 B3 第一批主从化（observer-sync-mode、node-contribution、distfs-self-healing） | cc | 2026-03-05 | done |
 | A2-009 | 并行执行 B3 第二批主从化（node-redeemable-power-asset、distfs-production-hardening） | cc | 2026-03-05 | done |
 | A2-010 | 并行执行 B4（site/manual + github-pages）主从化并回写模块索引 | cc | 2026-03-05 | done |
 | A2-011 | 并行执行 B5（readme/gap + game/gameplay）主从化并回写模块索引 | cc | 2026-03-05 | done |
+| A2-012 | 并行执行 B6（viewer phase8~10）主从化并回写模块索引 | cc | 2026-03-05 | done |
 
 ## 特殊情况备注（仅在无需合并时填写）
 | 编号 | 原因 | 风险 | 临时缓解 | 复审日期 | 评审人 |
 | --- | --- | --- | --- | --- | --- |
 
 ## 复审结果
-- 复审时间：
-- 复审结论：
-- 当前进展：已完成分区盘点，并已落地 C2-007、C2-004、C2-003、C2-005、C2-006、C2-008、C2-009、C2-010、C2-011；剩余重点批次为 C2-002、C2-001。
+- 复审时间：2026-03-05
+- 复审结论：ROUND-002 已完成；候选簇 C2-001~C2-011 全部完成判定与文档回写，`S_round002` 清单已刷新。
+- 当前进展：已完成分区盘点，并已落地 C2-001、C2-002、C2-003、C2-004、C2-005、C2-006、C2-007、C2-008、C2-009、C2-010、C2-011。

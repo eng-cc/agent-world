@@ -1,8 +1,8 @@
 # ROUND-002 已审读文档清单（S_round002）
 
-- 生成时间: 2026-03-05 16:15:32 CST（本提交）
+- 生成时间: 2026-03-05 16:24:38 CST（本提交）
 - 生成规则: `rg -l "^审计轮次:\s*2$" doc --glob '*.md' | sort`
-- 当前已审读文档数: 121
+- 当前已审读文档数: 135
 
 ## 文件列表
 - `doc/game/gameplay/gameplay-base-runtime-wasm-layer-split.prd.md`
@@ -126,3 +126,17 @@
 - `doc/world-simulator/viewer/viewer-chat-agent-prompt-default-values-inline-input.prd.project.md`
 - `doc/world-simulator/viewer/viewer-chat-agent-prompt-default-values-prefill.prd.md`
 - `doc/world-simulator/viewer/viewer-chat-agent-prompt-default-values-prefill.prd.project.md`
+- `doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.md`
+- `doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.project.md`
+- `doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase10.prd.md`
+- `doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase10.prd.project.md`
+- `doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase8.prd.md`
+- `doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase8.prd.project.md`
+- `doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase9.prd.md`
+- `doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase9.prd.project.md`
+- `doc/world-simulator/viewer/viewer-live-full-event-driven-phase10-2026-02-27.prd.md`
+- `doc/world-simulator/viewer/viewer-live-full-event-driven-phase10-2026-02-27.prd.project.md`
+- `doc/world-simulator/viewer/viewer-live-full-event-driven-phase8-2026-02-27.prd.md`
+- `doc/world-simulator/viewer/viewer-live-full-event-driven-phase8-2026-02-27.prd.project.md`
+- `doc/world-simulator/viewer/viewer-live-full-event-driven-phase9-2026-02-27.prd.md`
+- `doc/world-simulator/viewer/viewer-live-full-event-driven-phase9-2026-02-27.prd.project.md`

@@ -1,5 +1,11 @@
 # Viewer 发行体验改造（游戏化优先）
 
+审计轮次: 2
+
+## ROUND-002 主从口径
+- 本文件为主文档。
+- `doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase8.prd.md`、`doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase9.prd.md`、`doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase10.prd.md` 为增量子文档。
+
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.project.md
 
 ## 1. Executive Summary

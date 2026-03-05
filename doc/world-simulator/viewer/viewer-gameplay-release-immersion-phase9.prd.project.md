@@ -1,5 +1,11 @@
 # Viewer 发行体验改造（第九阶段：项目管理文档）
 
+审计轮次: 2
+
+## 审计备注
+- 主项目入口文档：`doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.project.md`。
+- 本文件仅维护增量任务。
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] VRI9P0：建立第九阶段设计文档与项目管理文档。
 - [x] VRI9P1：实现顶部布局预设条减噪策略（隐藏态移除 + 锚点重排）并补单测。

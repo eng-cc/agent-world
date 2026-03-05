@@ -1,5 +1,11 @@
 # Viewer 发行体验改造（第八阶段：项目管理文档）
 
+审计轮次: 2
+
+## 审计备注
+- 主项目入口文档：`doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.project.md`。
+- 本文件仅维护增量任务。
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] VRI8P0：建立第八阶段设计文档与项目管理文档。
 - [x] VRI8P1：收敛“下一步目标卡”与“新手引导卡”共存策略，去除重复提示。

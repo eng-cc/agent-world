@@ -1,5 +1,11 @@
 # Viewer 发行体验改造（第十阶段：新手流程闭环与认知减负）
 
+审计轮次: 2
+
+## ROUND-002 主从口径
+- 主入口文档：`doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.md`。
+- 本文件仅维护增量内容。
+
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase10.prd.project.md
 
 ## 1. Executive Summary
