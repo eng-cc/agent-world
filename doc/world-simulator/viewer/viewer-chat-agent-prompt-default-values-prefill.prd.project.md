@@ -1,5 +1,7 @@
 # Chat Panel Agent Prompt 默认值预填充输入框（项目管理文档）
 
+审计轮次: 2
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] VCPPF1 输出设计文档（`doc/world-simulator/viewer/viewer-chat-agent-prompt-default-values-prefill.prd.md`）
 - [x] VCPPF2 输出项目管理文档（本文件）
@@ -16,3 +18,4 @@
 - 当前阶段：VCPPF1-VCPPF5 全部完成。
 - 下一步：无；等待验收，如需增强可追加“字段被 override 状态可视化”。
 - 最近更新：2026-02-16。
+- 审计备注（2026-03-05 ROUND-002）：本专题升格为默认值行为主入口，统一收敛 `inline-input` 历史专题语义与后续维护口径。

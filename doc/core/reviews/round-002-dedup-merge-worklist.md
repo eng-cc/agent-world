@@ -8,18 +8,30 @@
 | 阶段 | 动作 | 产物 | 状态 |
 | --- | --- | --- | --- |
 | P0 | 建立启动文档与审读清单 | `consistency-review-round-002.md`、`round-002-reviewed-files.md`、本清单 | done |
-| P1 | 分区盘点重复簇（A~E） | 重复簇表 + 初判结果 | open |
-| P2 | 批次执行合并/主从化并回写索引 | 模块 `prd.index.md` + 文档头历史状态/替代链 | open |
-| P3 | 回写 `审计轮次: 2` 与复审结论 | `S_round002` + ROUND-002 复审结果 | open |
+| P1 | 分区盘点重复簇（A~E）并形成判定草案 | 子代理审计快照 + 候选簇判定（C2-*） | done |
+| P2 | 批次执行合并/主从化并回写索引 | 模块 `prd.index.md` + 文档历史状态/替代链 | in_progress |
+| P3 | 回写 `审计轮次: 2` 与复审结论 | `S_round002` + ROUND-002 复审结果 | in_progress |
 
-## 启动批次（优先级）
+## P1 盘点结果（2026-03-05）
+| 分区 | 盘点结果 |
+| --- | --- |
+| A (`viewer`) | 8 个簇：1 个 `merge`、5 个 `master-slave`、2 个 `keep` |
+| B (`p2p`) | 6 个簇：以 `master-slave` 为主（phase/base 主入口） |
+| C (`testing/ci + precommit`) | 6 个簇：规则归属固定到 CI 主文档，precommit 侧去定义化 |
+| D/E (`site + readme/gap + gameplay`) | 9 个簇：以 `master-slave` 为主，模板段建议抽离 |
+
+## P2 已执行批次
+| 批次ID | 范围 | 决策 | 已落地产物 | 状态 |
+| --- | --- | --- | --- | --- |
+| B1-C2-007 | `viewer-chat-agent-prompt-default-values-inline-input` / `prefill`（PRD + project） | `merge`（prefill 为主，inline-input 降级历史） | 4 份专题文档历史状态回写 + `doc/world-simulator/prd.index.md` 替代链回写 | done |
+
+## 待执行批次（优先级）
 | 批次 | 范围 | 目标 | 验收命令 |
 | --- | --- | --- | --- |
-| B1 | `doc/world-simulator/viewer/*` | 找出可主从化的日期专题簇并形成首批迁移建议 | `find doc/world-simulator/viewer -maxdepth 1 -type f -name '*.prd.md' | wc -l` |
-| B2 | `doc/p2p/node/*` + `doc/p2p/distfs/*` | 收敛阶段型专题重复块（目标/范围/验收） | `find doc/p2p/node doc/p2p/distfs -maxdepth 1 -type f -name '*.prd.md' | wc -l` |
-| B3 | `doc/testing/ci/*` + `doc/scripts/precommit/*` | 固定规则归属并消除双处口径维护 | `rg -n \"required|full|ci-tests\\.sh\" doc/testing/ci doc/scripts/precommit -g '*.md'` |
-| B4 | `doc/site/manual/*` + `doc/site/github-pages/*` | 收敛重复流程并保留单一入口 | `find doc/site/manual doc/site/github-pages -maxdepth 1 -type f -name '*.prd.md' | wc -l` |
-| B5 | `doc/readme/gap/*` + `doc/game/gameplay/*` | 统一治理/玩法总述口径主入口 | `find doc/readme/gap doc/game/gameplay -maxdepth 1 -type f -name '*.md' | wc -l` |
+| B2 | `doc/testing/ci/*` + `doc/scripts/precommit/*` | 固定规则归属并消除双处口径维护（C2-004） | `rg -n "required|full|ci-tests\.sh" doc/testing/ci doc/scripts/precommit -g '*.md'` |
+| B3 | `doc/p2p/node/*` + `doc/p2p/distfs/*` + `doc/p2p/observer/*` | 收敛阶段型专题重复块（C2-003/C2-008/C2-009） | `find doc/p2p/node doc/p2p/distfs doc/p2p/observer -maxdepth 1 -type f -name '*.prd.md' | wc -l` |
+| B4 | `doc/site/manual/*` + `doc/site/github-pages/*` | 收敛重复流程并保留单一入口（C2-005） | `find doc/site/manual doc/site/github-pages -maxdepth 1 -type f -name '*.prd.md' | wc -l` |
+| B5 | `doc/readme/gap/*` + `doc/game/gameplay/*` | 统一治理/玩法总述口径主入口（C2-006） | `find doc/readme/gap doc/game/gameplay -maxdepth 1 -type f -name '*.md' | wc -l` |
 
 ## 决策记录模板（每簇必填）
 | 字段 | 说明 |

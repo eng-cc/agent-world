@@ -1,5 +1,7 @@
 # world-simulator PRD 文件级索引
 
+审计轮次: 2
+
 更新时间：2026-03-05
 
 ## 入口
@@ -80,7 +82,6 @@
 | `doc/world-simulator/viewer/viewer-auto-focus-capture.prd.md` | `doc/world-simulator/viewer/viewer-auto-focus-capture.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-auto-select-capture.prd.md` | `doc/world-simulator/viewer/viewer-auto-select-capture.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-bevy-web-runtime.prd.md` | `doc/world-simulator/viewer/viewer-bevy-web-runtime.prd.project.md` |
-| `doc/world-simulator/viewer/viewer-chat-agent-prompt-default-values-inline-input.prd.md` | `doc/world-simulator/viewer/viewer-chat-agent-prompt-default-values-inline-input.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-chat-agent-prompt-default-values-prefill.prd.md` | `doc/world-simulator/viewer/viewer-chat-agent-prompt-default-values-prefill.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-chat-dedicated-right-panel.prd.md` | `doc/world-simulator/viewer/viewer-chat-dedicated-right-panel.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-chat-enter-send.prd.md` | `doc/world-simulator/viewer/viewer-chat-enter-send.prd.project.md` |
@@ -171,6 +172,7 @@
 | --- | --- | --- |
 | `doc/world-simulator/launcher/game-client-launcher-desktop-2026-02-27.prd.md` | `doc/world-simulator/launcher/game-client-launcher-desktop-2026-02-27.prd.project.md` | `doc/world-simulator/launcher/game-client-launcher-native-web-control-plane-unification-2026-03-04.prd.md` |
 | `doc/world-simulator/launcher/game-unified-launcher-2026-02-27.prd.md` | `doc/world-simulator/launcher/game-unified-launcher-2026-02-27.prd.project.md` | `doc/world-simulator/launcher/game-client-launcher-native-web-control-plane-unification-2026-03-04.prd.md` |
+| `doc/world-simulator/viewer/viewer-chat-agent-prompt-default-values-inline-input.prd.md` | `doc/world-simulator/viewer/viewer-chat-agent-prompt-default-values-inline-input.prd.project.md` | `doc/world-simulator/viewer/viewer-chat-agent-prompt-default-values-prefill.prd.md` |
 | `doc/world-simulator/viewer/viewer-rust-file-line-cap-refactor-and-web-qa-2026-02-22.prd.md` | `doc/world-simulator/viewer/viewer-rust-file-line-cap-refactor-and-web-qa-2026-02-22.prd.project.md` | `doc/world-simulator/viewer/viewer-release-full-coverage-gate.prd.md` |
 
 ## 说明

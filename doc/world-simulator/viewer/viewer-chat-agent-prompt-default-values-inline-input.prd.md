@@ -1,6 +1,15 @@
 # Agent World Simulator：Chat Panel Agent Prompt 默认值内联到输入框（设计文档）
 
+审计轮次: 2
+
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-chat-agent-prompt-default-values-inline-input.prd.project.md
+
+## 历史状态（2026-03-05 ROUND-002）
+- 本专题在 ROUND-002 判定为与 `viewer-chat-agent-prompt-default-values-prefill.prd.md` 高重复，已并入后者作为统一当前入口。
+- 当前替代入口：
+  - `doc/world-simulator/viewer/viewer-chat-agent-prompt-default-values-prefill.prd.md`
+  - `doc/world-simulator/viewer/viewer-chat-agent-prompt-default-values-prefill.prd.project.md`
+- 本文档仅保留“默认值占位内联”阶段追溯，不再作为当前实现基线。
 
 ## 1. Executive Summary
 - 将 `system prompt`、`短期目标`、`长期目标` 的默认值直接显示在对应输入框内（占位文本）。
