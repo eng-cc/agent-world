@@ -6,9 +6,7 @@
 
 ## ROUND-002 主文档状态（2026-03-05）
 - 本专题在 ROUND-002 判定为当前权威入口，统一承载 Chat Panel `Agent Prompt Draft` 默认值显示与 patch 语义。
-- 已吸收历史专题：
-  - `doc/world-simulator/viewer/viewer-chat-agent-prompt-default-values-inline-input.prd.md`
-  - `doc/world-simulator/viewer/viewer-chat-agent-prompt-default-values-inline-input.prd.project.md`
+- 已吸收历史专题：`viewer-chat-agent-prompt-default-values-inline-input`（旧文档已删除）
 - 合并后口径：以“预填充 + 清除 override 等价语义”为当前实现基线；历史占位方案仅保留追溯。
 
 ## 1. Executive Summary

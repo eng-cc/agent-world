@@ -60,8 +60,8 @@
 
 ## 专题任务映射（2026-03-03 批次）
 - [x] SUBTASK-WORLD_SIMULATOR-20260303-001 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: `doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.prd.project.md`
-- [x] SUBTASK-WORLD_SIMULATOR-20260303-002 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: `doc/world-simulator/launcher/game-client-launcher-desktop-2026-02-27.prd.project.md`
-- [x] SUBTASK-WORLD_SIMULATOR-20260303-003 (PRD-WORLD_SIMULATOR-006) [test_tier_required]: `doc/world-simulator/launcher/game-client-launcher-desktop-2026-02-27.prd.project.md`
+- [x] SUBTASK-WORLD_SIMULATOR-20260303-002 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: legacy launcher desktop 方案文档清理（旧文档已删除）
+- [x] SUBTASK-WORLD_SIMULATOR-20260303-003 (PRD-WORLD_SIMULATOR-006) [test_tier_required]: legacy launcher unified 方案文档清理（旧文档已删除）
 - [x] SUBTASK-WORLD_SIMULATOR-20260303-004 (PRD-WORLD_SIMULATOR-007) [test_tier_required]: `doc/world-simulator/launcher/game-client-launcher-llm-settings-panel-2026-03-02.prd.project.md`
 
 ## 专题任务映射（2026-03-04 批次）
@@ -83,7 +83,6 @@
 - doc/world-simulator/prd.index.md
 - `doc/world-simulator/scenario/scenario-files.prd.md`
 - `doc/world-simulator/viewer/viewer-web-closure-testing-policy.prd.md`
-- `doc/world-simulator/launcher/game-unified-launcher-2026-02-27.prd.md`
 - `doc/world-simulator/launcher/launcher-chain-runtime-decouple-2026-02-28.prd.md`
 - `doc/world-simulator/prd/acceptance/unified-checklist.md`
 - `doc/world-simulator/prd/acceptance/web-llm-evidence-template.md`

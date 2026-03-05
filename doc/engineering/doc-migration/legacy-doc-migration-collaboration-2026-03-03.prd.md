@@ -83,7 +83,7 @@
 - Phased Rollout:
   - Phase-0 (2026-03-03): 完成协作文档、分工与待迁移快照冻结。
   - Phase-1: Owner-A/B/C/D 按目录并行迁移，按日收口。
-  - Phase-1 进展（2026-03-03）: Owner-A 已完成 `doc/world-simulator/**` 150 篇、Owner-B 已完成 `doc/p2p/**` 70 篇、Owner-C 已完成 `doc/world-runtime/**`+`doc/headless-runtime/**` 30 篇，Owner-D 责任域 57 篇已完成。
+  - Phase-1 进展（2026-03-03）: Owner-A 已完成 `doc/world-simulator/**` 146 篇、Owner-B 已完成 `doc/p2p/**` 70 篇、Owner-C 已完成 `doc/world-runtime/**`+`doc/headless-runtime/**` 30 篇，Owner-D 责任域 57 篇已完成。
   - Phase-2: 全量收尾抽检，清理残留旧命名与断链引用。
 - Technical Risks:
   - 风险-1: 超大目录（`world-simulator`、`p2p`）导致 Owner 负载不均。

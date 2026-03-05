@@ -27,7 +27,7 @@
     - `doc/core/reviews/round-002-dedup-merge-worklist.md`
   - ROUND-002 进展（2026-03-05）:
     - 已完成 A/B/C/D-E 分区重复簇盘点并回写到 ROUND-002 台账。
-    - 已完成首批执行 `C2-007`：`viewer-chat-agent-prompt-default-values-inline-input` 并入 `prefill`，同步回写替代链与索引。
+    - 已完成首批执行 `C2-007`：`viewer-chat-agent-prompt-default-values-inline-input` 并入 `prefill` 且旧文档已删除，替代链与索引已回写。
     - 已完成第二批执行 `C2-004`：CI/precommit 规则归属收口（CI 文档链定义规则，precommit/fix-precommit 保留入口与修复流程）。
     - 已完成第三批子簇 `B3-C2-009-S1`：observer sync source 主从化（`source-mode` 主文档 + `source-dht-mode` 增量子文档）。
     - 已完成并行批次 `B3-C2-009-S2/C2-010/C2-011`：observer sync-mode、node-contribution、distfs-self-healing 三簇主从化收口并回写审计轮次。

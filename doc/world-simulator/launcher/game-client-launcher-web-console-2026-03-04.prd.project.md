@@ -11,7 +11,6 @@
 ## 依赖
 - `doc/world-simulator/prd.md`
 - `doc/world-simulator/prd.project.md`
-- `doc/world-simulator/launcher/game-client-launcher-desktop-2026-02-27.prd.md`
 - `crates/agent_world/src/bin/world_game_launcher.rs`
 - `scripts/build-game-launcher-bundle.sh`
 - `testing-manual.md`

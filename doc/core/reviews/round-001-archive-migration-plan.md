@@ -14,8 +14,8 @@
 | --- | --- | --- | --- | --- | --- |
 | R-001 | `doc/headless-runtime/nonviewer/nonviewer-design-alignment-*.prd*.md` | `doc/headless-runtime/prd.md` + ROUND 记录 | 待执行（headless-runtime 索引） | 计划 soft redirect | pending |
 | R-002 | `doc/world-runtime/runtime/runtime-numeric-correctness-phase*` | `doc/world-runtime/prd.md` | 待执行（受 `S-001` 约束） | 计划 soft redirect | deferred (`S-001`) |
-| R-003 | `doc/world-simulator/launcher/game-client-launcher-desktop-2026-02-27.prd*.md`、`game-unified-launcher-2026-02-27.prd*.md` | `game-client-launcher-native-web-control-plane-unification-2026-03-04.prd.md` + `game-client-launcher-web-console-2026-03-04.prd.md` | 已执行：移出 `doc/world-simulator/prd.index.md` 活跃分组并加入历史分组 | 已执行：文档内新增“历史状态 + 替代入口” | first_batch_done |
-| R-004 | `doc/world-simulator/viewer/viewer-rust-file-line-cap-refactor-and-web-qa-2026-02-22.prd*.md` | `viewer-release-full-coverage-gate.prd.md` + `viewer-visual-release-readiness-hardening-2026-03-01.prd.md` | 已执行：移出 `doc/world-simulator/prd.index.md` 活跃分组并加入历史分组 | 已执行：文档内新增“历史状态 + 替代入口” | first_batch_done |
+| R-003 | legacy launcher desktop/unified 文档（已删除） | `game-client-launcher-native-web-control-plane-unification-2026-03-04.prd.md` + `game-client-launcher-web-console-2026-03-04.prd.md` | 已执行：从索引中移除旧文档并保留替代入口 | 已执行：旧文档已删除 | done |
+| R-004 | legacy viewer rust line cap 文档（已删除） | `viewer-release-full-coverage-gate.prd.md` + `viewer-visual-release-readiness-hardening-2026-03-01.prd.md` | 已执行：从索引中移除旧文档并保留替代入口 | 已执行：旧文档已删除 | done |
 | R-005 | `doc/p2p/distributed/distributed-hard-split-phase7.prd*.md` 与 `doc/p2p/observer/observer-sync-*.prd*.md` 前序阶段 | `doc/p2p/distributed/distributed-runtime.prd.md` + 最新 observer 专题 | 待执行（p2p 索引分层） | 计划 soft redirect | pending |
 | R-006 | `doc/p2p/*/*.release.md` | 对应 `*.prd.md` / `*.prd.project.md` | 已执行：`doc/p2p/prd.index.md` 增加 release 可达分组 | 不做归档迁移（保留为补充材料） | kept_with_index |
 | R-007 | `doc/engineering/prd-review/checklists/*.md` | `doc/core/reviews/consistency-review-round-001.md` + 文档头 `审计轮次` | 待执行（ROUND 收口后统一） | 计划迁移/归档二选一 | deferred (`S-002`) |
@@ -24,6 +24,6 @@
 
 ## 验收命令（A-012）
 - `test -f doc/core/reviews/round-001-archive-migration-plan.md`
-- `rg -n "历史专题（保留追溯，不作为当前实现依据）" doc/world-simulator/prd.index.md`
-- `rg -n "viewer-rust-file-line-cap-refactor-and-web-qa-2026-02-22" doc/world-simulator/prd.index.md`
+- `rg -n "game-client-launcher-native-web-control-plane-unification-2026-03-04" doc/world-simulator/prd.index.md`
+- `rg -n "viewer-release-full-coverage-gate" doc/world-simulator/prd.index.md`
 - `./scripts/doc-governance-check.sh`

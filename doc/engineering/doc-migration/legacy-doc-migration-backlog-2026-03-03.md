@@ -2,16 +2,16 @@
 
 ## 快照范围
 - 统计口径：`find doc -type f -name '*.project.md' ! -name '*.prd.project.md'`，排除模块主项目文档 `doc/<module>/prd.project.md`（已剔除 archive 目录条目）。
-- 快照总量：307 篇。
+- 快照总量：303 篇。
 - 目标：将每对旧文档 `X.md / X.project.md` 迁移为 `X.prd.md / X.prd.project.md`，并完成内容保真重写。
 
 ## 分工总览
-- Owner-A: `doc/world-simulator/**`（150 篇）
+- Owner-A: `doc/world-simulator/**`（146 篇）
 - Owner-B: `doc/p2p/**`（70 篇）
 - Owner-C: `doc/world-runtime/**` + `doc/headless-runtime/**`（30 篇）
 - Owner-D: `doc/site/**` + `doc/readme/**` + `doc/scripts/**` + `doc/game/**` + `doc/engineering/**` + 根入口遗留（57 篇）
 
-## Owner-A 清单（150）
+## Owner-A 清单（146）
 - `doc/world-simulator/kernel/intent-distributed-runtime-closure-2026-02-27.project.md`
 - `doc/world-simulator/kernel/kernel-rule-hook-foundation.project.md`
 - `doc/world-simulator/kernel/kernel-rule-wasm-executor-foundation.project.md`
@@ -22,14 +22,12 @@
 - `doc/world-simulator/kernel/resource-kind-compound-hardware-hard-migration.project.md`
 - `doc/world-simulator/kernel/rust-wasm-build-suite.project.md`
 - `doc/world-simulator/kernel/social-fact-ledger-declarative-reputation.project.md`
-- `doc/world-simulator/launcher/game-client-launcher-desktop-2026-02-27.project.md`
 - `doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.project.md`
 - `doc/world-simulator/launcher/game-client-launcher-feedback-entry-2026-03-02.project.md`
 - `doc/world-simulator/launcher/game-client-launcher-feedback-window-2026-03-02.project.md`
 - `doc/world-simulator/launcher/game-client-launcher-graceful-stop-2026-03-02.project.md`
 - `doc/world-simulator/launcher/game-client-launcher-i18n-required-config-2026-03-02.project.md`
 - `doc/world-simulator/launcher/game-client-launcher-llm-settings-panel-2026-03-02.project.md`
-- `doc/world-simulator/launcher/game-unified-launcher-2026-02-27.project.md`
 - `doc/world-simulator/launcher/launcher-chain-runtime-decouple-2026-02-28.project.md`
 - `doc/world-simulator/llm/indirect-control-tick-lifecycle-long-term-memory.project.md`
 - `doc/world-simulator/llm/llm-agent-behavior.project.md`
@@ -79,7 +77,6 @@
 - `doc/world-simulator/viewer/viewer-auto-focus-capture.project.md`
 - `doc/world-simulator/viewer/viewer-auto-select-capture.project.md`
 - `doc/world-simulator/viewer/viewer-bevy-web-runtime.project.md`
-- `doc/world-simulator/viewer/viewer-chat-agent-prompt-default-values-inline-input.project.md`
 - `doc/world-simulator/viewer/viewer-chat-agent-prompt-default-values-prefill.project.md`
 - `doc/world-simulator/viewer/viewer-chat-dedicated-right-panel.project.md`
 - `doc/world-simulator/viewer/viewer-chat-enter-send.project.md`
@@ -143,7 +140,6 @@
 - `doc/world-simulator/viewer/viewer-release-full-coverage-gate.project.md`
 - `doc/world-simulator/viewer/viewer-release-qa-iteration-loop.project.md`
 - `doc/world-simulator/viewer/viewer-right-panel-module-visibility.project.md`
-- `doc/world-simulator/viewer/viewer-rust-file-line-cap-refactor-and-web-qa-2026-02-22.project.md`
 - `doc/world-simulator/viewer/viewer-selection-details.project.md`
 - `doc/world-simulator/viewer/viewer-step-completion-ack-2026-02-28.project.md`
 - `doc/world-simulator/viewer/viewer-texture-inspector.project.md`

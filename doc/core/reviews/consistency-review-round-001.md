@@ -65,9 +65,7 @@ rg -n "审计轮次:[[:space:]]*[1-9][0-9]*" doc/*/prd*.md doc/*/**/*.prd*.md
   - `doc/world-runtime/runtime/runtime-integration.md`
   - `doc/world-runtime/wasm/wasm-interface.md`
   - `doc/headless-runtime/prd.md`
-  - `doc/world-simulator/launcher/game-client-launcher-desktop-2026-02-27.prd.md`
   - `doc/world-simulator/launcher/game-client-launcher-web-console-2026-03-04.prd.md`
-  - `doc/world-simulator/viewer/viewer-rust-file-line-cap-refactor-and-web-qa-2026-02-22.prd.md`
   - `doc/p2p/distributed/distributed-runtime.prd.md`
   - `doc/p2p/distributed/distributed-hard-split-phase7.prd.md`
   - `doc/scripts/precommit/pre-commit.prd.md`
@@ -113,8 +111,8 @@ rg -n "审计轮次:[[:space:]]*[1-9][0-9]*" doc/*/prd*.md doc/*/**/*.prd*.md
 | --- | --- | --- | --- | --- |
 | R-001 | `doc/headless-runtime/nonviewer/nonviewer-design-alignment-fixes-2026-02-25.prd.md`、`doc/headless-runtime/nonviewer/nonviewer-design-alignment-review-round2-2026-02-25.prd.md` | 一次性设计对齐收口文档，项目状态已完成 | `doc/headless-runtime/prd.md` + `doc/core/reviews/consistency-review-round-001.md` | proposed |
 | R-002 | `doc/world-runtime/runtime/runtime-numeric-correctness-phase1~15*.prd*.md`、`runtime-infinite-sequence-rollover.prd.md` | 阶段性里程碑文档大量保留在活跃区，维护噪声高 | `doc/world-runtime/prd.md`（建议补一份汇总页） | proposed |
-| R-003 | `doc/world-simulator/launcher/game-client-launcher-desktop-2026-02-27.prd*.md`、`game-unified-launcher-2026-02-27.prd*.md` | 已被 2026-03-04 控制面统一系列文档替代 | `game-client-launcher-native-web-control-plane-unification-2026-03-04.prd.md` | first_batch_done |
-| R-004 | `doc/world-simulator/viewer/viewer-rust-file-line-cap-refactor-and-web-qa-2026-02-22.prd*.md` | 历史收口结论与当前代码状态漂移 | `viewer-release-full-coverage-gate.prd.md` + `doc/devlog/2026-02-22.md` | first_batch_done |
+| R-003 | legacy launcher desktop/unified 文档（已删除） | 已被 2026-03-04 控制面统一系列文档替代 | `game-client-launcher-native-web-control-plane-unification-2026-03-04.prd.md` | done |
+| R-004 | legacy viewer rust line cap 文档（已删除） | 历史收口结论与当前代码状态漂移 | `viewer-release-full-coverage-gate.prd.md` + `doc/devlog/2026-02-22.md` | done |
 | R-005 | `doc/p2p/distributed/distributed-hard-split-phase7.prd*.md`、`doc/p2p/observer/observer-sync-*.prd*.md`（前序阶段） | 历史拆分/阶段文档已完成，信息可并入现行主线 | `doc/p2p/distributed/distributed-runtime.prd.md` + 最新 observer 桥接文档 | proposed |
 | R-006 | `doc/p2p/*/*.release.md` | 与 PRD 树索引机制不一致，链路不可达 | 对应 `*.prd.md` + `*.prd.project.md` 的状态段 | kept_with_index |
 | R-007 | `doc/engineering/prd-review/checklists/*.md` | 旧快照法与“审计轮次 + ROUND 状态”方法重复，且存在结论漂移 | `doc/core/reviews/consistency-review-round-001.md` + 文档头 `审计轮次` | proposed |

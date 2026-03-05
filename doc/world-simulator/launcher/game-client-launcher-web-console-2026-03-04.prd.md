@@ -56,7 +56,6 @@
 - Integration Points:
   - `crates/agent_world/src/bin/world_game_launcher.rs`
   - `scripts/build-game-launcher-bundle.sh`
-  - `doc/world-simulator/launcher/game-client-launcher-desktop-2026-02-27.prd.md`
 - Edge Cases & Error Handling:
   - 子进程已运行重复启动：返回冲突错误并保持现状。
   - 子进程非预期退出：状态标记为 `exited` 并记录退出码。

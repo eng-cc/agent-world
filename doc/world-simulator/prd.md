@@ -203,7 +203,6 @@
 - Integration Points:
   - `doc/world-simulator/scenario/scenario-files.prd.md`
   - `doc/world-simulator/viewer/viewer-web-closure-testing-policy.prd.md`
-  - `doc/world-simulator/launcher/game-unified-launcher-2026-02-27.prd.md`
   - `doc/world-simulator/prd/acceptance/unified-checklist.md`
   - `doc/world-simulator/prd/acceptance/web-llm-evidence-template.md`
   - `doc/world-simulator/prd/quality/experience-trend-tracking.md`

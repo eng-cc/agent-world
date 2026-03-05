@@ -162,14 +162,6 @@
 | `doc/world-simulator/viewer/visualization-3d.prd.md` | `doc/world-simulator/viewer/visualization-3d.prd.project.md` |
 | `doc/world-simulator/viewer/visualization.prd.md` | `doc/world-simulator/viewer/visualization.prd.project.md` |
 
-## 历史专题（保留追溯，不作为当前实现依据）
-| 专题 PRD | 专题项目文档 | 当前替代入口 |
-| --- | --- | --- |
-| `doc/world-simulator/launcher/game-client-launcher-desktop-2026-02-27.prd.md` | `doc/world-simulator/launcher/game-client-launcher-desktop-2026-02-27.prd.project.md` | `doc/world-simulator/launcher/game-client-launcher-native-web-control-plane-unification-2026-03-04.prd.md` |
-| `doc/world-simulator/launcher/game-unified-launcher-2026-02-27.prd.md` | `doc/world-simulator/launcher/game-unified-launcher-2026-02-27.prd.project.md` | `doc/world-simulator/launcher/game-client-launcher-native-web-control-plane-unification-2026-03-04.prd.md` |
-| `doc/world-simulator/viewer/viewer-chat-agent-prompt-default-values-inline-input.prd.md` | `doc/world-simulator/viewer/viewer-chat-agent-prompt-default-values-inline-input.prd.project.md` | `doc/world-simulator/viewer/viewer-chat-agent-prompt-default-values-prefill.prd.md` |
-| `doc/world-simulator/viewer/viewer-rust-file-line-cap-refactor-and-web-qa-2026-02-22.prd.md` | `doc/world-simulator/viewer/viewer-rust-file-line-cap-refactor-and-web-qa-2026-02-22.prd.project.md` | `doc/world-simulator/viewer/viewer-release-full-coverage-gate.prd.md` |
-
 ## 说明
 - 本索引用于保证模块专题文档在根入口文档树中可达。
 - 文档配对规则：`*.prd.md` 与同名 `*.prd.project.md`。
