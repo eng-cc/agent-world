@@ -45,7 +45,7 @@
 - [x] TASK-WORLD_SIMULATOR-042 (PRD-WORLD_SIMULATOR-019) [test_tier_required]: 完成“viewer live runtime/world 真 LLM 全量接管（LLM 决策 + 100% 事件/快照 + hard-fail）”PRD 建模与任务拆解。
 - [x] TASK-WORLD_SIMULATOR-043 (PRD-WORLD_SIMULATOR-019) [test_tier_required]: 移除启发式 sidecar，落地真实 LLM driver + shadow WorldKernel，并接入硬失败语义。
 - [x] TASK-WORLD_SIMULATOR-044 (PRD-WORLD_SIMULATOR-019) [test_tier_required]: 补齐 runtime 事件/快照 100% 映射、扩展 viewer 协议并输出 DecisionTrace。
-- [ ] TASK-WORLD_SIMULATOR-045 (PRD-WORLD_SIMULATOR-019) [test_tier_required]: 执行 required 回归、更新 viewer 手册与模块项目状态收口。
+- [x] TASK-WORLD_SIMULATOR-045 (PRD-WORLD_SIMULATOR-019) [test_tier_required]: 执行 required 回归、更新 viewer 手册与模块项目状态收口。
 
 ## 专题任务映射（2026-03-02 批次）
 - [x] SUBTASK-WORLD_SIMULATOR-20260302-001 (PRD-WORLD_SIMULATOR-001/002/003) [test_tier_required]: `doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.prd.project.md`
@@ -77,7 +77,7 @@
 - [x] SUBTASK-WORLD_SIMULATOR-20260305-001 (PRD-WORLD_SIMULATOR-017) [test_tier_required]: `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase2-2026-03-05.prd.project.md`
 - [x] SUBTASK-WORLD_SIMULATOR-20260305-002 (PRD-WORLD_SIMULATOR-018) [test_tier_required]: `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase3-2026-03-05.prd.project.md`
 - [x] SUBTASK-WORLD_SIMULATOR-20260305-003 (PRD-WORLD_SIMULATOR-018) [test_tier_required]: `crates/agent_world/src/viewer/runtime_live/control_plane.rs` + `crates/agent_world/src/bin/world_viewer_live.rs`
-- [ ] SUBTASK-WORLD_SIMULATOR-20260305-004 (PRD-WORLD_SIMULATOR-019) [test_tier_required]: `doc/world-simulator/viewer/viewer-live-runtime-world-llm-full-bridge-2026-03-05.prd.project.md`
+- [x] SUBTASK-WORLD_SIMULATOR-20260305-004 (PRD-WORLD_SIMULATOR-019) [test_tier_required]: `doc/world-simulator/viewer/viewer-live-runtime-world-llm-full-bridge-2026-03-05.prd.project.md`
 
 ## 依赖
 - doc/world-simulator/prd.index.md
@@ -115,10 +115,10 @@
 
 ## 状态
 - 更新日期: 2026-03-05
-- 当前状态: in_progress
-- 当前优先任务: TASK-WORLD_SIMULATOR-045
+- 当前状态: completed
+- 当前优先任务: none
 - 并行待办: 无
-- 专题映射状态: 2026-03-02 批次 9/9、2026-03-03 批次 4/4、2026-03-04 批次 7/7、2026-03-05 批次 3/4 已纳入模块项目管理文档。
+- 专题映射状态: 2026-03-02 批次 9/9、2026-03-03 批次 4/4、2026-03-04 批次 7/7、2026-03-05 批次 4/4 已纳入模块项目管理文档。
 - 手册入口状态: `doc/world-simulator/viewer/viewer-manual.md` 为唯一活跃手册入口。
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - ROUND-002 进展: `C2-001/C2-002` 已完成主从化（`experience-overhaul` 与 `live-event-driven-phase10` 为主入口）。

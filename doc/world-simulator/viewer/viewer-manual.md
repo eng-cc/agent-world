@@ -47,6 +47,12 @@ env -u NO_COLOR ./scripts/run-viewer-web.sh --address 127.0.0.1 --port 4173
   - `trunk`（`cargo install trunk`）
   - `wasm32-unknown-unknown`（`rustup target add wasm32-unknown-unknown`）
 
+## runtime 事件/快照覆盖
+- Live server 输出的 `WorldEvent` 会附带原始 runtime 事件载荷：`runtime_event`（JSON 透传）。
+- 未映射的 runtime DomainEvent 会封装为 `WorldEventKind::RuntimeEvent { kind, domain_kind }`，保证事件覆盖不丢失。
+- `WorldSnapshot` 增加 `runtime_snapshot` 字段，透传完整 runtime world state，便于回归与诊断。
+- Viewer 协议过滤器支持 `RuntimeEvent`，可用于订阅/筛选未映射事件。
+
 ## 发行模式（P2P 推荐）
 
 当节点发布后不希望再通过命令行临时调参时，使用 `--release-config <path>` 启动锁定参数文件：
