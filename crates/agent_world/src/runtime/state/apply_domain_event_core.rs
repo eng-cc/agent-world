@@ -212,6 +212,7 @@ impl WorldState {
                 activate,
                 install_target,
                 required_roles,
+                profile_changes,
             } => {
                 if *request_id == 0 {
                     return Err(WorldError::ResourceBalanceInvalid {
@@ -250,6 +251,7 @@ impl WorldState {
                         manifest: manifest.clone(),
                         activate: *activate,
                         install_target: install_target.clone(),
+                        profile_changes: profile_changes.clone(),
                         required_roles: normalized_roles,
                         role_approvals: BTreeMap::new(),
                         status: ModuleReleaseRequestStatus::Requested,

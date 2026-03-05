@@ -1,6 +1,11 @@
 use crate::runtime::state::ModuleReleaseRequestStatus;
 
-fn bind_release_roles(world: &mut World, operator_agent_id: &str, target_agent_id: &str, roles: &[&str]) {
+fn bind_release_roles(
+    world: &mut World,
+    operator_agent_id: &str,
+    target_agent_id: &str,
+    roles: &[&str],
+) {
     world.submit_action(Action::ModuleReleaseBindRoles {
         operator_agent_id: operator_agent_id.to_string(),
         target_agent_id: target_agent_id.to_string(),
@@ -29,6 +34,46 @@ fn assert_rule_denied_note_for_action(world: &World, action_id: ActionId, expect
     );
 }
 
+fn sample_profile_changes() -> ModuleProfileChanges {
+    ModuleProfileChanges {
+        product_profiles: vec![ProductProfileV1 {
+            product_id: "module_rack".to_string(),
+            role_tag: "scale".to_string(),
+            maintenance_sink: vec![MaterialStack::new("hardware_part", 1)],
+            tradable: true,
+            unlock_stage: "scale_out".to_string(),
+        }],
+        recipe_profiles: vec![RecipeProfileV1 {
+            recipe_id: "recipe.assembler.module_rack".to_string(),
+            bottleneck_tags: vec!["control_chip".to_string()],
+            stage_gate: "scale_out".to_string(),
+            preferred_factory_tags: vec!["assembler".to_string()],
+        }],
+    }
+}
+
+fn duplicate_profile_changes() -> ModuleProfileChanges {
+    ModuleProfileChanges {
+        product_profiles: vec![
+            ProductProfileV1 {
+                product_id: "dup_product".to_string(),
+                role_tag: "scale".to_string(),
+                maintenance_sink: Vec::new(),
+                tradable: true,
+                unlock_stage: "scale_out".to_string(),
+            },
+            ProductProfileV1 {
+                product_id: "dup_product".to_string(),
+                role_tag: "energy".to_string(),
+                maintenance_sink: Vec::new(),
+                tradable: true,
+                unlock_stage: "scale_out".to_string(),
+            },
+        ],
+        recipe_profiles: Vec::new(),
+    }
+}
+
 #[test]
 fn module_release_state_machine_runs_submit_shadow_approve_apply() {
     let mut world = World::new();
@@ -51,6 +96,7 @@ fn module_release_state_machine_runs_submit_shadow_approve_apply() {
         activate: true,
         install_target: ModuleInstallTarget::SelfAgent,
         required_roles: vec!["runtime".to_string(), "security".to_string()],
+        profile_changes: sample_profile_changes(),
     });
     world.step().expect("submit module release request");
 
@@ -201,6 +247,64 @@ fn module_release_state_machine_runs_submit_shadow_approve_apply() {
         world.module_registry().active.get("m.loop.release"),
         Some(&"0.1.0".to_string())
     );
+
+    let product = world
+        .product_profile("module_rack")
+        .expect("product profile applied");
+    assert_eq!(product.role_tag, "scale");
+    let recipe = world
+        .recipe_profile("recipe.assembler.module_rack")
+        .expect("recipe profile applied");
+    assert_eq!(recipe.stage_gate, "scale_out");
+
+    let snapshot = world.snapshot();
+    let restored =
+        World::from_snapshot(snapshot, world.journal().clone()).expect("restore from snapshot");
+    assert!(restored.product_profile("module_rack").is_some());
+    assert!(restored
+        .recipe_profile("recipe.assembler.module_rack")
+        .is_some());
+}
+
+#[test]
+fn module_release_shadow_rejects_duplicate_profile_changes() {
+    let mut world = World::new();
+    register_agent(&mut world, "publisher-1");
+    register_agent(&mut world, "operator-1");
+
+    let wasm_bytes = b"module-release-dup-profile".to_vec();
+    let wasm_hash = util::sha256_hex(&wasm_bytes);
+    world.submit_action(Action::DeployModuleArtifact {
+        publisher_agent_id: "publisher-1".to_string(),
+        wasm_hash: wasm_hash.clone(),
+        wasm_bytes,
+    });
+    world.step().expect("deploy module artifact");
+
+    world.submit_action(Action::ModuleReleaseSubmit {
+        requester_agent_id: "publisher-1".to_string(),
+        manifest: base_manifest("m.loop.release.dup-profile", "0.1.0", &wasm_hash),
+        activate: true,
+        install_target: ModuleInstallTarget::SelfAgent,
+        required_roles: vec!["security".to_string()],
+        profile_changes: duplicate_profile_changes(),
+    });
+    world.step().expect("submit module release request");
+    let request_id = match &world.journal().events.last().expect("submit event").body {
+        WorldEventBody::Domain(DomainEvent::ModuleReleaseRequested { request_id, .. }) => {
+            *request_id
+        }
+        other => panic!("expected module release requested event: {other:?}"),
+    };
+
+    let action_id = world.submit_action(Action::ModuleReleaseShadow {
+        operator_agent_id: "operator-1".to_string(),
+        request_id,
+    });
+    world
+        .step()
+        .expect("shadow module release request with dup profiles");
+    assert_rule_denied_note_for_action(&world, action_id, "duplicate product profile_id");
 }
 
 #[test]
@@ -224,6 +328,7 @@ fn module_release_apply_rejects_when_required_roles_are_missing() {
         activate: true,
         install_target: ModuleInstallTarget::SelfAgent,
         required_roles: vec!["security".to_string(), "runtime".to_string()],
+        profile_changes: ModuleProfileChanges::default(),
     });
     world.step().expect("submit module release request");
     let request_id = match &world.journal().events.last().expect("submit event").body {
@@ -294,6 +399,7 @@ fn module_release_duplicate_role_approval_is_idempotent_for_same_approver() {
         activate: true,
         install_target: ModuleInstallTarget::SelfAgent,
         required_roles: vec!["security".to_string()],
+        profile_changes: ModuleProfileChanges::default(),
     });
     world.step().expect("submit module release request");
     let request_id = match &world.journal().events.last().expect("submit event").body {
@@ -358,6 +464,7 @@ fn module_release_reject_moves_request_to_rejected() {
         activate: true,
         install_target: ModuleInstallTarget::SelfAgent,
         required_roles: vec!["security".to_string()],
+        profile_changes: ModuleProfileChanges::default(),
     });
     world.step().expect("submit module release request");
     let request_id = match &world.journal().events.last().expect("submit event").body {
@@ -414,6 +521,7 @@ fn module_release_approve_role_rejects_when_approver_role_binding_is_missing() {
         activate: true,
         install_target: ModuleInstallTarget::SelfAgent,
         required_roles: vec!["security".to_string()],
+        profile_changes: ModuleProfileChanges::default(),
     });
     world.step().expect("submit module release request");
     let request_id = match &world.journal().events.last().expect("submit event").body {
@@ -481,12 +589,10 @@ fn module_release_bind_roles_normalizes_and_updates_state() {
         roles: Vec::new(),
     });
     world.step().expect("unbind module release roles");
-    assert!(
-        !world
-            .state()
-            .module_release_role_bindings
-            .contains_key("auditor-1")
-    );
+    assert!(!world
+        .state()
+        .module_release_role_bindings
+        .contains_key("auditor-1"));
 }
 
 #[test]

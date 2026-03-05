@@ -1017,7 +1017,7 @@ impl World {
     }
 }
 
-fn ensure_profile_field_whitelist<T: serde::Serialize>(
+pub(crate) fn ensure_profile_field_whitelist<T: serde::Serialize>(
     profile: &T,
     allowed_fields: &[&str],
     profile_label: &str,

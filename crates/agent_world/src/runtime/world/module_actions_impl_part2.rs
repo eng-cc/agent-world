@@ -1,3 +1,5 @@
+const MODULE_RELEASE_PROFILE_CHANGE_LIMIT: usize = 50;
+
 impl World {
     pub(super) fn try_apply_runtime_module_action(
         &mut self,
@@ -230,6 +232,7 @@ impl World {
                 activate,
                 install_target,
                 required_roles,
+                profile_changes,
             } => {
                 if !self.state.agents.contains_key(requester_agent_id) {
                     self.append_event(
@@ -316,6 +319,7 @@ impl World {
                         activate: *activate,
                         install_target: install_target.clone(),
                         required_roles: normalized_roles,
+                        profile_changes: profile_changes.clone(),
                     }),
                     Some(CausedBy::Action(action_id)),
                 )?;
@@ -361,6 +365,20 @@ impl World {
                                     "module release shadow rejected: invalid status {:?} for request {}",
                                     request.status, request_id
                                 )],
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                }
+                if let Err(reason) =
+                    self.validate_module_release_profile_changes(&request.profile_changes)
+                {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![format!("module release shadow rejected: {reason}")],
                             },
                         }),
                         Some(CausedBy::Action(action_id)),
@@ -710,6 +728,20 @@ impl World {
                     )?;
                     return Ok(true);
                 }
+                if let Err(reason) =
+                    self.validate_module_release_profile_changes(&request.profile_changes)
+                {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![format!("module release apply rejected: {reason}")],
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                }
 
                 let installer_agent_id = request.requester_agent_id.clone();
                 self.apply_install_module_action(
@@ -720,28 +752,41 @@ impl World {
                     request.install_target.clone(),
                 )?;
 
-                let Some(WorldEventBody::Domain(DomainEvent::ModuleInstalled {
-                    instance_id,
-                    module_id,
-                    module_version,
-                    proposal_id,
-                    manifest_hash,
-                    ..
-                })) = self.journal.events.last().map(|event| &event.body)
-                else {
-                    return Ok(true);
-                };
+                let (instance_id, module_id, module_version, proposal_id, manifest_hash) =
+                    match self.journal.events.last().map(|event| &event.body) {
+                        Some(WorldEventBody::Domain(DomainEvent::ModuleInstalled {
+                            instance_id,
+                            module_id,
+                            module_version,
+                            proposal_id,
+                            manifest_hash,
+                            ..
+                        })) => (
+                            instance_id.clone(),
+                            module_id.clone(),
+                            module_version.clone(),
+                            *proposal_id,
+                            manifest_hash.clone(),
+                        ),
+                        _ => return Ok(true),
+                    };
 
+                self.apply_module_release_profile_changes(
+                    action_id,
+                    operator_agent_id.as_str(),
+                    proposal_id,
+                    &request.profile_changes,
+                )?;
                 self.append_event(
                     WorldEventBody::Domain(DomainEvent::ModuleReleaseApplied {
                         request_id: *request_id,
                         operator_agent_id: operator_agent_id.clone(),
                         installer_agent_id,
-                        instance_id: instance_id.clone(),
-                        module_id: module_id.clone(),
-                        module_version: module_version.clone(),
-                        proposal_id: *proposal_id,
-                        manifest_hash: manifest_hash.clone(),
+                        instance_id,
+                        module_id,
+                        module_version,
+                        proposal_id,
+                        manifest_hash,
                     }),
                     Some(CausedBy::Action(action_id)),
                 )?;
@@ -1353,5 +1398,112 @@ impl World {
             }
             _ => Ok(false),
         }
+    }
+
+    fn validate_module_release_profile_changes(
+        &self,
+        changes: &ModuleProfileChanges,
+    ) -> Result<(), String> {
+        if changes.is_empty() {
+            return Ok(());
+        }
+
+        let total_changes = changes
+            .product_profiles
+            .len()
+            .saturating_add(changes.recipe_profiles.len());
+        if total_changes > MODULE_RELEASE_PROFILE_CHANGE_LIMIT {
+            return Err(format!(
+                "profile changes exceed limit {} (got {})",
+                MODULE_RELEASE_PROFILE_CHANGE_LIMIT, total_changes
+            ));
+        }
+
+        let product_fields = [
+            "product_id",
+            "role_tag",
+            "maintenance_sink",
+            "tradable",
+            "unlock_stage",
+        ];
+        let recipe_fields = [
+            "recipe_id",
+            "bottleneck_tags",
+            "stage_gate",
+            "preferred_factory_tags",
+        ];
+
+        let mut product_ids = BTreeSet::new();
+        for profile in &changes.product_profiles {
+            if profile.product_id.trim().is_empty() {
+                return Err("product profile product_id cannot be empty".to_string());
+            }
+            if profile.role_tag.trim().is_empty() {
+                return Err(format!(
+                    "product profile role_tag cannot be empty: {}",
+                    profile.product_id
+                ));
+            }
+            ensure_profile_field_whitelist(profile, product_fields.as_slice(), "product profile")?;
+            if !product_ids.insert(profile.product_id.clone()) {
+                return Err(format!(
+                    "duplicate product profile_id {}",
+                    profile.product_id
+                ));
+            }
+        }
+
+        let mut recipe_ids = BTreeSet::new();
+        for profile in &changes.recipe_profiles {
+            if profile.recipe_id.trim().is_empty() {
+                return Err("recipe profile recipe_id cannot be empty".to_string());
+            }
+            ensure_profile_field_whitelist(profile, recipe_fields.as_slice(), "recipe profile")?;
+            if !recipe_ids.insert(profile.recipe_id.clone()) {
+                return Err(format!("duplicate recipe profile_id {}", profile.recipe_id));
+            }
+        }
+
+        Ok(())
+    }
+
+    fn apply_module_release_profile_changes(
+        &mut self,
+        action_id: ActionId,
+        operator_agent_id: &str,
+        proposal_id: ProposalId,
+        changes: &ModuleProfileChanges,
+    ) -> Result<(), WorldError> {
+        if changes.is_empty() {
+            return Ok(());
+        }
+
+        let mut product_profiles = changes.product_profiles.clone();
+        product_profiles.sort_by(|left, right| left.product_id.cmp(&right.product_id));
+        for profile in product_profiles {
+            self.append_event(
+                WorldEventBody::Domain(DomainEvent::ProductProfileGoverned {
+                    operator_agent_id: operator_agent_id.to_string(),
+                    proposal_id,
+                    profile,
+                }),
+                Some(CausedBy::Action(action_id)),
+            )?;
+        }
+
+        let mut recipe_profiles = changes.recipe_profiles.clone();
+        recipe_profiles.sort_by(|left, right| left.recipe_id.cmp(&right.recipe_id));
+        for profile in recipe_profiles {
+            self.append_event(
+                WorldEventBody::Domain(DomainEvent::RecipeProfileGoverned {
+                    operator_agent_id: operator_agent_id.to_string(),
+                    proposal_id,
+                    profile,
+                }),
+                Some(CausedBy::Action(action_id)),
+            )?;
+        }
+
+        Ok(())
     }
 }

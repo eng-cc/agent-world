@@ -2,11 +2,14 @@ use super::super::state::{
     ModuleArtifactBidState, ModuleArtifactListingState, ModuleReleaseRequestStatus,
 };
 use super::super::{
-    Action, ActionEnvelope, CausedBy, DomainEvent, ModuleActivation, ModuleChangeSet,
-    ModuleUpgrade, ProposalDecision, RejectReason, WorldError, WorldEventBody,
+    Action, ActionEnvelope, ActionId, CausedBy, DomainEvent, ModuleActivation, ModuleChangeSet,
+    ModuleProfileChanges, ModuleUpgrade, ProposalDecision, ProposalId, RejectReason, WorldError,
+    WorldEventBody,
 };
+use super::event_processing::action_to_event_economy::ensure_profile_field_whitelist;
 use super::World;
 use crate::simulator::{ModuleInstallTarget, ResourceKind};
+use std::collections::BTreeSet;
 
 const MODULE_DEPLOY_FEE_BYTES_PER_ELECTRICITY: i64 = 2_048;
 const MODULE_COMPILE_FEE_BYTES_PER_ELECTRICITY: i64 = 1_024;

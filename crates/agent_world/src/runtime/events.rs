@@ -109,6 +109,20 @@ pub struct ModuleSourcePackage {
     pub files: BTreeMap<String, Vec<u8>>,
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct ModuleProfileChanges {
+    #[serde(default)]
+    pub product_profiles: Vec<ProductProfileV1>,
+    #[serde(default)]
+    pub recipe_profiles: Vec<RecipeProfileV1>,
+}
+
+impl ModuleProfileChanges {
+    pub fn is_empty(&self) -> bool {
+        self.product_profiles.is_empty() && self.recipe_profiles.is_empty()
+    }
+}
+
 /// Actions that can be submitted to the world.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", content = "data")]
@@ -178,6 +192,8 @@ pub enum Action {
         install_target: ModuleInstallTarget,
         #[serde(default)]
         required_roles: Vec<String>,
+        #[serde(default)]
+        profile_changes: ModuleProfileChanges,
     },
     ModuleReleaseShadow {
         operator_agent_id: String,
@@ -574,6 +590,8 @@ pub enum DomainEvent {
         install_target: ModuleInstallTarget,
         #[serde(default)]
         required_roles: Vec<String>,
+        #[serde(default)]
+        profile_changes: ModuleProfileChanges,
     },
     ModuleReleaseShadowed {
         request_id: u64,

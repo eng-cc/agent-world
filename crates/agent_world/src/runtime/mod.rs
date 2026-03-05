@@ -69,7 +69,8 @@ pub use error::WorldError;
 // Events
 pub use events::{
     Action, ActionEnvelope, CausedBy, DomainEvent, IndustryStage, MainTokenFeeKind,
-    MaterialMarketQuote, MaterialTransitPriority, ModuleSourcePackage, RejectReason,
+    MaterialMarketQuote, MaterialTransitPriority, ModuleProfileChanges, ModuleSourcePackage,
+    RejectReason,
 };
 
 // Governance

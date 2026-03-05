@@ -11,6 +11,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use super::agent_cell::AgentCell;
 use super::error::WorldError;
+use super::events::ModuleProfileChanges;
 use super::events::{DomainEvent, IndustryStage, MaterialMarketQuote, MaterialTransitPriority};
 use super::gameplay_state::{
     AllianceState, CrisisState, CrisisStatus, EconomicContractState, EconomicContractStatus,
@@ -225,6 +226,8 @@ pub struct ModuleReleaseRequestState {
     pub activate: bool,
     #[serde(default)]
     pub install_target: ModuleInstallTarget,
+    #[serde(default)]
+    pub profile_changes: ModuleProfileChanges,
     #[serde(default = "default_module_release_required_roles")]
     pub required_roles: Vec<String>,
     #[serde(default)]

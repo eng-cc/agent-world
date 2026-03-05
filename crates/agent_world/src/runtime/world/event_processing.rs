@@ -47,7 +47,7 @@ const ECONOMIC_CONTRACT_REPUTATION_WINDOW_CAP: i64 = 24;
 const MAIN_TOKEN_POLICY_UPDATE_DELAY_EPOCHS: u64 = 2;
 
 mod action_to_event_core;
-mod action_to_event_economy;
+pub(super) mod action_to_event_economy;
 mod action_to_event_gameplay;
 mod action_to_event_policy_contract;
 
