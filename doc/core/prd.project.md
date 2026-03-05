@@ -29,6 +29,7 @@
     - 已完成 A/B/C/D-E 分区重复簇盘点并回写到 ROUND-002 台账。
     - 已完成首批执行 `C2-007`：`viewer-chat-agent-prompt-default-values-inline-input` 并入 `prefill`，同步回写替代链与索引。
     - 已完成第二批执行 `C2-004`：CI/precommit 规则归属收口（CI 文档链定义规则，precommit/fix-precommit 保留入口与修复流程）。
+    - 已完成第三批子簇 `B3-C2-009-S1`：observer sync source 主从化（`source-mode` 主文档 + `source-dht-mode` 增量子文档）。
 - [x] TASK-CORE-006 (PRD-CORE-001/002) [test_tier_required]: 收敛 `doc/` 根目录 legacy redirect 入口并更新总导航。
 - [x] TASK-CORE-007 (PRD-CORE-001/002/003) [test_tier_required]: 对齐 strict PRD schema，补齐关键流程/规格矩阵/边界异常/NFR/验证与决策记录。
 

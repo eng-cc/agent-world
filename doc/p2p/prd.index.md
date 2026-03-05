@@ -1,8 +1,8 @@
 # p2p PRD 文件级索引
 
-审计轮次: 1
+审计轮次: 2
 
-更新时间：2026-03-03
+更新时间：2026-03-05
 
 ## 入口
 - 模块 PRD：`doc/p2p/prd.md`
@@ -93,3 +93,4 @@
 - 本索引用于保证模块专题文档在根入口文档树中可达。
 - 文档配对规则：`*.prd.md` 与同名 `*.prd.project.md`。
 - `*.release.md` 为发布补充材料，不参与 PRD 任务配对规则。
+- ROUND-002 主从口径（observer）：`observer-sync-source-mode` 为主文档；`observer-sync-source-dht-mode` 为 DHT 增量子文档。

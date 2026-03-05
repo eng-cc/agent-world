@@ -1,6 +1,6 @@
 # p2p PRD Project
 
-审计轮次: 1
+审计轮次: 2
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] TASK-P2P-001 (PRD-P2P-001) [test_tier_required]: 完成 p2p PRD 改写，建立分布式系统设计入口。
@@ -17,8 +17,8 @@
 - `.agents/skills/prd/check.md`
 
 ## 状态
-- 更新日期: 2026-03-03
+- 更新日期: 2026-03-05
 - 当前状态: active
 - 下一任务: TASK-P2P-002
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
-- 说明: 本文档仅维护 p2p 设计执行状态；过程记录在 `doc/devlog/2026-03-03.md`。
+- 说明: 本文档仅维护 p2p 设计执行状态；过程记录在 `doc/devlog/2026-03-05.md`（含 ROUND-002 `B3-C2-009-S1` observer 主从化回写）。

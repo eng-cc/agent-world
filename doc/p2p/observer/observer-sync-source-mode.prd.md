@@ -1,5 +1,15 @@
 # Agent World Runtime：Observer 同步源策略化
 
+审计轮次: 2
+
+- 对应项目管理文档: `doc/p2p/observer/observer-sync-source-mode.prd.project.md`
+
+## ROUND-002 主从口径（2026-03-05）
+- 本文档为 Observer 同步源策略化的基线主文档（非 DHT 链路）。
+- DHT 组合同步源专题降级为增量子文档，保留差异项与实现追溯：
+  - `doc/p2p/observer/observer-sync-source-dht-mode.prd.md`
+  - `doc/p2p/observer/observer-sync-source-dht-mode.prd.project.md`
+
 ## 1. Executive Summary
 - Problem Statement: 为 `ObserverClient` 增加可配置的 head 同步源策略，显式控制“网络路径”与“路径索引路径”的使用方式。
 - Proposed Solution: 支持网络失败时回退路径索引，提升本地恢复弹性。

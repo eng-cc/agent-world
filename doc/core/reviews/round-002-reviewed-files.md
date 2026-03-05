@@ -1,10 +1,16 @@
 # ROUND-002 已审读文档清单（S_round002）
 
-- 生成时间: 2026-03-05 14:28:21 CST（本提交）
+- 生成时间: 2026-03-05 14:35:08 CST（本提交）
 - 生成规则: `rg -l "^审计轮次:\s*2$" doc --glob '*.md' | sort`
-- 当前已审读文档数: 15
+- 当前已审读文档数: 21
 
 ## 文件列表
+- `doc/p2p/observer/observer-sync-source-dht-mode.prd.md`
+- `doc/p2p/observer/observer-sync-source-dht-mode.prd.project.md`
+- `doc/p2p/observer/observer-sync-source-mode.prd.md`
+- `doc/p2p/observer/observer-sync-source-mode.prd.project.md`
+- `doc/p2p/prd.index.md`
+- `doc/p2p/prd.project.md`
 - `doc/scripts/precommit/fix-precommit.prd.md`
 - `doc/scripts/precommit/fix-precommit.prd.project.md`
 - `doc/scripts/precommit/pre-commit.prd.md`

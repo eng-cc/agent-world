@@ -1,6 +1,13 @@
 # Agent World Runtime：Observer 同步源策略化（DHT 组合链路，设计文档）
 
-审计轮次: 1
+审计轮次: 2
+
+## ROUND-002 主从口径（2026-03-05）
+- 本文档在 ROUND-002 判定为 `observer-sync-source-mode` 的 DHT 增量子文档。
+- 主文档入口：
+  - `doc/p2p/observer/observer-sync-source-mode.prd.md`
+  - `doc/p2p/observer/observer-sync-source-mode.prd.project.md`
+- 本文档仅保留 DHT 组合链路差异（`HeadSyncSourceModeWithDht`）与对应实现追溯。
 
 ## 1. Executive Summary
 - Problem Statement: 为 `ObserverClient` 增加 DHT 组合链路下的 head 同步源策略，显式控制“网络+DHT路径”与“路径索引路径”的切换。
