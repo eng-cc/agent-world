@@ -1,6 +1,12 @@
 # Agent World: 测试覆盖与 CI 扩展
 
+审计轮次: 2
+
 - 对应项目管理文档: doc/testing/ci/ci-test-coverage.prd.project.md
+
+## ROUND-002 口径归属（2026-03-05）
+- 本文档是 required/full 具体覆盖命令矩阵与覆盖边界的权威入口。
+- 其它文档（含 `pre-commit.prd.md`）仅引用命令矩阵，不再内联完整命令清单。
 
 ## 1. Executive Summary
 - Problem Statement: 关键链路（viewer 离线回放、wasmtime、在线联测）若未在 CI 中显式覆盖，容易在特性分支阶段漏检回归。

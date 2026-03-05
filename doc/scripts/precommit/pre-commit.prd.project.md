@@ -1,6 +1,6 @@
 # Pre-commit Checks（本地提交前测试脚本）（项目管理文档）
 
-审计轮次: 1
+审计轮次: 2
 
 ## 任务拆解
 - [x] 输出设计文档（`doc/scripts/precommit/pre-commit.prd.md`）
@@ -31,6 +31,7 @@
 ## 状态
 - 当前阶段：已提交
 - 最近更新：required 门禁文档回写到 `scripts/ci-tests.sh` 当前口径（2026-03-04）
+- 审计备注（2026-03-05 ROUND-002）：本文件仅保留执行记录；required/full 规则定义与命令矩阵以 `ci-tiered-execution`、`ci-testcase-tiering`、`ci-test-coverage` 及 `scripts/ci-tests.sh` 为准。
 
 ## 迁移记录（2026-03-03）
 - 已按 `TASK-ENGINEERING-014-D1 (PRD-ENGINEERING-006)` 从 legacy 命名迁移为 `.prd.md/.prd.project.md`。

@@ -1,6 +1,12 @@
 # Agent World: CI 与提交钩子测试分级
 
+审计轮次: 2
+
 - 对应项目管理文档: doc/testing/ci/ci-tiered-execution.prd.project.md
+
+## ROUND-002 口径归属（2026-03-05）
+- 本文档是 required/full 分层触发策略的权威定义入口。
+- 其它文档（含 `doc/scripts/precommit/pre-commit.prd.md`）仅引用本口径，不再重复定义分层规则。
 
 ## 1. Executive Summary
 - Problem Statement: 本地 `pre-commit` 与 PR 门禁若默认跑全量测试，会显著拉长反馈周期并影响开发迭代效率。

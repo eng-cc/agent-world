@@ -1,5 +1,7 @@
 # Agent World: 测试覆盖与 CI 扩展（项目管理）
 
+审计轮次: 2
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T1 (PRD-TESTING-CI-COVER-001/002): 新增离线回放 viewer 联测（snapshot/journal -> server -> client）。
 - [x] T1.1 (PRD-TESTING-CI-COVER-002): 补充 viewer server 单次运行入口（run_once）。
@@ -26,3 +28,4 @@
 - 当前阶段：已完成
 - 阻塞项：无
 - 下一步：无（当前专题已收口）
+- 审计备注（2026-03-05 ROUND-002）：本文件仅保留执行任务记录；required/full 命令矩阵定义以 `ci-test-coverage.prd.md` 与 `scripts/ci-tests.sh` 为准。

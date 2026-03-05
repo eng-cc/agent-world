@@ -1,5 +1,7 @@
 # Agent World: CI 与提交钩子测试分级（项目管理）
 
+审计轮次: 2
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T1 (PRD-TESTING-CI-TIERED-001/002): 输出设计文档与项目管理文档。
 - [x] T2 (PRD-TESTING-CI-TIERED-001/002): 改造 `scripts/ci-tests.sh` 支持 `required/full`。
@@ -22,3 +24,4 @@
 - 当前阶段：已完成
 - 阻塞项：无
 - 下一步：无（当前专题已收口）
+- 审计备注（2026-03-05 ROUND-002）：本文件仅保留执行任务记录；规则定义以 `ci-tiered-execution.prd.md` 为准。

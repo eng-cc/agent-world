@@ -24,11 +24,11 @@
 | 批次ID | 范围 | 决策 | 已落地产物 | 状态 |
 | --- | --- | --- | --- | --- |
 | B1-C2-007 | `viewer-chat-agent-prompt-default-values-inline-input` / `prefill`（PRD + project） | `merge`（prefill 为主，inline-input 降级历史） | 4 份专题文档历史状态回写 + `doc/world-simulator/prd.index.md` 替代链回写 | done |
+| B2-C2-004 | `doc/testing/ci/*` + `doc/scripts/precommit/*` | `master-slave`（CI 文档链定义规则，precommit 文档保留执行入口） | CI 三份主 PRD 增加“口径归属”；precommit/fix-precommit 改为引用主口径并回写审计轮次 | done |
 
 ## 待执行批次（优先级）
 | 批次 | 范围 | 目标 | 验收命令 |
 | --- | --- | --- | --- |
-| B2 | `doc/testing/ci/*` + `doc/scripts/precommit/*` | 固定规则归属并消除双处口径维护（C2-004） | `rg -n "required|full|ci-tests\.sh" doc/testing/ci doc/scripts/precommit -g '*.md'` |
 | B3 | `doc/p2p/node/*` + `doc/p2p/distfs/*` + `doc/p2p/observer/*` | 收敛阶段型专题重复块（C2-003/C2-008/C2-009） | `find doc/p2p/node doc/p2p/distfs doc/p2p/observer -maxdepth 1 -type f -name '*.prd.md' | wc -l` |
 | B4 | `doc/site/manual/*` + `doc/site/github-pages/*` | 收敛重复流程并保留单一入口（C2-005） | `find doc/site/manual doc/site/github-pages -maxdepth 1 -type f -name '*.prd.md' | wc -l` |
 | B5 | `doc/readme/gap/*` + `doc/game/gameplay/*` | 统一治理/玩法总述口径主入口（C2-006） | `find doc/readme/gap doc/game/gameplay -maxdepth 1 -type f -name '*.md' | wc -l` |

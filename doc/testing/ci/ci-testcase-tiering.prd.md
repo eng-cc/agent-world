@@ -1,6 +1,12 @@
 # Agent World: CI 测试分级细化到 Test Case
 
+审计轮次: 2
+
 - 对应项目管理文档: doc/testing/ci/ci-testcase-tiering.prd.project.md
+
+## ROUND-002 口径归属（2026-03-05）
+- 本文档是 `test_tier_required` / `test_tier_full` 标签语义与分配规则的权威入口。
+- 其它文档只引用标签语义，不重复描述 case 标签边界。
 
 ## 1. Executive Summary
 - Problem Statement: 仅以“整套 `cargo test`”作为门禁粒度会拉长反馈链路，难以在 required 阶段快速定位关键回归。

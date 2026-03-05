@@ -1,6 +1,6 @@
 # Pre-commit Checks（本地提交前测试脚本）
 
-审计轮次: 1
+审计轮次: 2
 
 - 对应项目管理文档: doc/scripts/precommit/pre-commit.prd.project.md
 
@@ -18,25 +18,16 @@
 - 运行命令：`./scripts/pre-commit.sh`
 - 执行内容：
   - 先格式化已暂存的 Rust 文件：`env -u RUSTC_WRAPPER rustfmt --edition 2021 <staged .rs files>`，并自动 `git add` 回暂存区。
-  - 调用统一测试清单脚本：`./scripts/ci-tests.sh required`，其中 required 会执行：
-    - `./scripts/doc-governance-check.sh`
-    - `cargo fmt --all -- --check`
-    - `cargo test -p agent_world --tests --features test_tier_required`
-    - `cargo test -p agent_world_consensus --lib`
-    - `cargo test -p agent_world_distfs --lib`
-    - `cargo test -p agent_world_viewer`
+  - 调用统一测试清单脚本：`./scripts/ci-tests.sh required`（required 具体命令以该脚本与 `doc/testing/ci/ci-test-coverage.prd.md` 为准）。
   - 执行 viewer wasm 编译门禁：`env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-unknown`。
-- 用例分级标签：
-  - `test_tier_required`：本地提交与 PR 必跑 case。
-  - `test_tier_full`：每日定时全量回归 case。
-- 统一脚本支持两级：
-  - `required`：本地提交与 PR 必跑。
-  - `full`：每日定时与手动触发全量回归。
-- CI 格式化校验仍由 `scripts/ci-tests.sh` 统一执行 `env -u RUSTC_WRAPPER cargo fmt --all -- --check`。
+- 规则归属：
+  - required/full 分层定义：`doc/testing/ci/ci-tiered-execution.prd.md`
+  - case 标签定义（`test_tier_required`/`test_tier_full`）：`doc/testing/ci/ci-testcase-tiering.prd.md`
+  - required/full 命令矩阵：`doc/testing/ci/ci-test-coverage.prd.md` 与 `scripts/ci-tests.sh`
 
 ## 最小验收命令
+- `./scripts/pre-commit.sh`
 - `./scripts/ci-tests.sh required`
-- `./scripts/ci-tests.sh full`
 - `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-unknown`
 
 ## Git Hook
@@ -61,11 +52,7 @@ test -x .git/hooks/pre-commit && echo "pre-commit hook installed"
 ```
 
 ## 失败修复
-- 当 `pre-commit` 因格式化差异失败时，可执行：`./scripts/fix-precommit.sh`。
-- 该脚本会自动执行：
-  - `env -u RUSTC_WRAPPER cargo fmt --all`
-  - `git add -u`
-  - `./scripts/pre-commit.sh`
+- 当 `pre-commit` 失败时，统一走 `./scripts/fix-precommit.sh`；修复流程与边界以 `doc/scripts/precommit/fix-precommit.prd.md` 为准。
 
 ## 里程碑
 - **M1**：新增本地提交前联测脚本并纳入文档说明。

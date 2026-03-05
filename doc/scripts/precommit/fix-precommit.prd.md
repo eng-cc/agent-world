@@ -1,5 +1,7 @@
 # Fix Pre-commit（预提交失败修复脚本）
 
+审计轮次: 2
+
 - 对应项目管理文档: doc/scripts/precommit/fix-precommit.prd.project.md
 
 ## 目标
@@ -18,6 +20,7 @@
 ## 接口 / 数据
 - 脚本路径：`scripts/fix-precommit.sh`
 - 调用方式：`./scripts/fix-precommit.sh`
+- 归属说明：本专题是 pre-commit 失败修复流程的唯一权威入口；`pre-commit.prd.md` 仅保留跳转引用。
 - 执行顺序：
   1. `env -u RUSTC_WRAPPER cargo fmt --all`
   2. `git add -u`（将已跟踪文件的格式化结果加入暂存区）
