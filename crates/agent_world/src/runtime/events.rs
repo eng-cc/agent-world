@@ -4,8 +4,8 @@ use crate::geometry::GeoPos;
 use crate::models::{BodyKernelView, BodySlotType};
 use crate::simulator::{ModuleInstallTarget, ResourceKind};
 use agent_world_wasm_abi::{
-    FactoryModuleSpec, MaterialProfileV1, MaterialStack, ModuleManifest, ProductProfileV1,
-    ProductValidationDecision, RecipeExecutionPlan, RecipeProfileV1,
+    FactoryModuleSpec, FactoryProfileV1, MaterialProfileV1, MaterialStack, ModuleManifest,
+    ProductProfileV1, ProductValidationDecision, RecipeExecutionPlan, RecipeProfileV1,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
@@ -115,11 +115,15 @@ pub struct ModuleProfileChanges {
     pub product_profiles: Vec<ProductProfileV1>,
     #[serde(default)]
     pub recipe_profiles: Vec<RecipeProfileV1>,
+    #[serde(default)]
+    pub factory_profiles: Vec<FactoryProfileV1>,
 }
 
 impl ModuleProfileChanges {
     pub fn is_empty(&self) -> bool {
-        self.product_profiles.is_empty() && self.recipe_profiles.is_empty()
+        self.product_profiles.is_empty()
+            && self.recipe_profiles.is_empty()
+            && self.factory_profiles.is_empty()
     }
 }
 
@@ -492,6 +496,11 @@ pub enum Action {
         operator_agent_id: String,
         proposal_id: ProposalId,
         profile: RecipeProfileV1,
+    },
+    GovernFactoryProfile {
+        operator_agent_id: String,
+        proposal_id: ProposalId,
+        profile: FactoryProfileV1,
     },
 }
 
@@ -1052,6 +1061,11 @@ pub enum DomainEvent {
         proposal_id: ProposalId,
         profile: RecipeProfileV1,
     },
+    FactoryProfileGoverned {
+        operator_agent_id: String,
+        proposal_id: ProposalId,
+        profile: FactoryProfileV1,
+    },
 }
 
 impl DomainEvent {
@@ -1217,6 +1231,9 @@ impl DomainEvent {
                 operator_agent_id, ..
             } => Some(operator_agent_id.as_str()),
             DomainEvent::RecipeProfileGoverned {
+                operator_agent_id, ..
+            } => Some(operator_agent_id.as_str()),
+            DomainEvent::FactoryProfileGoverned {
                 operator_agent_id, ..
             } => Some(operator_agent_id.as_str()),
         }

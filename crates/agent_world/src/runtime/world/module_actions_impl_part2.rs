@@ -1411,7 +1411,8 @@ impl World {
         let total_changes = changes
             .product_profiles
             .len()
-            .saturating_add(changes.recipe_profiles.len());
+            .saturating_add(changes.recipe_profiles.len())
+            .saturating_add(changes.factory_profiles.len());
         if total_changes > MODULE_RELEASE_PROFILE_CHANGE_LIMIT {
             return Err(format!(
                 "profile changes exceed limit {} (got {})",
@@ -1432,6 +1433,7 @@ impl World {
             "stage_gate",
             "preferred_factory_tags",
         ];
+        let factory_fields = ["factory_id", "tier", "recipe_slots", "tags"];
 
         let mut product_ids = BTreeSet::new();
         for profile in &changes.product_profiles {
@@ -1461,6 +1463,32 @@ impl World {
             ensure_profile_field_whitelist(profile, recipe_fields.as_slice(), "recipe profile")?;
             if !recipe_ids.insert(profile.recipe_id.clone()) {
                 return Err(format!("duplicate recipe profile_id {}", profile.recipe_id));
+            }
+        }
+
+        let mut factory_ids = BTreeSet::new();
+        for profile in &changes.factory_profiles {
+            if profile.factory_id.trim().is_empty() {
+                return Err("factory profile factory_id cannot be empty".to_string());
+            }
+            if profile.tier == 0 {
+                return Err(format!(
+                    "factory profile tier must be >= 1: {}",
+                    profile.factory_id
+                ));
+            }
+            if profile.recipe_slots == 0 {
+                return Err(format!(
+                    "factory profile recipe_slots must be > 0: {}",
+                    profile.factory_id
+                ));
+            }
+            ensure_profile_field_whitelist(profile, factory_fields.as_slice(), "factory profile")?;
+            if !factory_ids.insert(profile.factory_id.clone()) {
+                return Err(format!(
+                    "duplicate factory profile_id {}",
+                    profile.factory_id
+                ));
             }
         }
 
@@ -1496,6 +1524,19 @@ impl World {
         for profile in recipe_profiles {
             self.append_event(
                 WorldEventBody::Domain(DomainEvent::RecipeProfileGoverned {
+                    operator_agent_id: operator_agent_id.to_string(),
+                    proposal_id,
+                    profile,
+                }),
+                Some(CausedBy::Action(action_id)),
+            )?;
+        }
+
+        let mut factory_profiles = changes.factory_profiles.clone();
+        factory_profiles.sort_by(|left, right| left.factory_id.cmp(&right.factory_id));
+        for profile in factory_profiles {
+            self.append_event(
+                WorldEventBody::Domain(DomainEvent::FactoryProfileGoverned {
                     operator_agent_id: operator_agent_id.to_string(),
                     proposal_id,
                     profile,

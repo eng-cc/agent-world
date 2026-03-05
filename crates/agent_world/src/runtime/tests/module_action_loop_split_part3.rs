@@ -49,6 +49,12 @@ fn sample_profile_changes() -> ModuleProfileChanges {
             stage_gate: "scale_out".to_string(),
             preferred_factory_tags: vec!["assembler".to_string()],
         }],
+        factory_profiles: vec![FactoryProfileV1 {
+            factory_id: "factory.assembler.mk1".to_string(),
+            tier: 2,
+            recipe_slots: 4,
+            tags: vec!["assembler".to_string()],
+        }],
     }
 }
 
@@ -71,6 +77,28 @@ fn duplicate_profile_changes() -> ModuleProfileChanges {
             },
         ],
         recipe_profiles: Vec::new(),
+        factory_profiles: Vec::new(),
+    }
+}
+
+fn duplicate_factory_profile_changes() -> ModuleProfileChanges {
+    ModuleProfileChanges {
+        product_profiles: Vec::new(),
+        recipe_profiles: Vec::new(),
+        factory_profiles: vec![
+            FactoryProfileV1 {
+                factory_id: "dup_factory".to_string(),
+                tier: 1,
+                recipe_slots: 2,
+                tags: vec!["assembly".to_string()],
+            },
+            FactoryProfileV1 {
+                factory_id: "dup_factory".to_string(),
+                tier: 2,
+                recipe_slots: 3,
+                tags: vec!["assembly".to_string()],
+            },
+        ],
     }
 }
 
@@ -256,6 +284,10 @@ fn module_release_state_machine_runs_submit_shadow_approve_apply() {
         .recipe_profile("recipe.assembler.module_rack")
         .expect("recipe profile applied");
     assert_eq!(recipe.stage_gate, "scale_out");
+    let factory = world
+        .factory_profile("factory.assembler.mk1")
+        .expect("factory profile applied");
+    assert_eq!(factory.recipe_slots, 4);
 
     let snapshot = world.snapshot();
     let restored =
@@ -264,6 +296,7 @@ fn module_release_state_machine_runs_submit_shadow_approve_apply() {
     assert!(restored
         .recipe_profile("recipe.assembler.module_rack")
         .is_some());
+    assert!(restored.factory_profile("factory.assembler.mk1").is_some());
 }
 
 #[test]
@@ -305,6 +338,47 @@ fn module_release_shadow_rejects_duplicate_profile_changes() {
         .step()
         .expect("shadow module release request with dup profiles");
     assert_rule_denied_note_for_action(&world, action_id, "duplicate product profile_id");
+}
+
+#[test]
+fn module_release_shadow_rejects_duplicate_factory_profile_changes() {
+    let mut world = World::new();
+    register_agent(&mut world, "publisher-1");
+    register_agent(&mut world, "operator-1");
+
+    let wasm_bytes = b"module-release-dup-factory-profile".to_vec();
+    let wasm_hash = util::sha256_hex(&wasm_bytes);
+    world.submit_action(Action::DeployModuleArtifact {
+        publisher_agent_id: "publisher-1".to_string(),
+        wasm_hash: wasm_hash.clone(),
+        wasm_bytes,
+    });
+    world.step().expect("deploy module artifact");
+
+    world.submit_action(Action::ModuleReleaseSubmit {
+        requester_agent_id: "publisher-1".to_string(),
+        manifest: base_manifest("m.loop.release.dup-factory", "0.1.0", &wasm_hash),
+        activate: true,
+        install_target: ModuleInstallTarget::SelfAgent,
+        required_roles: vec!["security".to_string()],
+        profile_changes: duplicate_factory_profile_changes(),
+    });
+    world.step().expect("submit module release request");
+    let request_id = match &world.journal().events.last().expect("submit event").body {
+        WorldEventBody::Domain(DomainEvent::ModuleReleaseRequested { request_id, .. }) => {
+            *request_id
+        }
+        other => panic!("expected module release requested event: {other:?}"),
+    };
+
+    let action_id = world.submit_action(Action::ModuleReleaseShadow {
+        operator_agent_id: "operator-1".to_string(),
+        request_id,
+    });
+    world
+        .step()
+        .expect("shadow module release request with dup factory profiles");
+    assert_rule_denied_note_for_action(&world, action_id, "duplicate factory profile_id");
 }
 
 #[test]

@@ -818,6 +818,18 @@ impl World {
                     profile,
                 ),
             )),
+            Action::GovernFactoryProfile {
+                operator_agent_id,
+                proposal_id,
+                profile,
+            } => Ok(WorldEventBody::Domain(
+                self.evaluate_govern_factory_profile_action(
+                    action_id,
+                    operator_agent_id.as_str(),
+                    *proposal_id,
+                    profile,
+                ),
+            )),
             _ => unreachable!("action_to_event_economy received unsupported action variant"),
         }
     }
@@ -964,6 +976,49 @@ impl World {
                 action_id,
                 reason: RejectReason::RuleDenied {
                     notes: vec![format!("govern recipe profile rejected: {err:?}")],
+                },
+            };
+        }
+        event
+    }
+
+    fn evaluate_govern_factory_profile_action(
+        &self,
+        action_id: ActionId,
+        operator_agent_id: &str,
+        proposal_id: ProposalId,
+        profile: &crate::runtime::FactoryProfileV1,
+    ) -> DomainEvent {
+        if let Some(rejected) = self.evaluate_profile_governance_gate(
+            action_id,
+            operator_agent_id,
+            proposal_id,
+            "govern factory profile",
+        ) {
+            return rejected;
+        }
+        let allowed_fields = ["factory_id", "tier", "recipe_slots", "tags"];
+        if let Err(reason) =
+            ensure_profile_field_whitelist(profile, allowed_fields.as_slice(), "factory profile")
+        {
+            return DomainEvent::ActionRejected {
+                action_id,
+                reason: RejectReason::RuleDenied {
+                    notes: vec![reason],
+                },
+            };
+        }
+        let event = DomainEvent::FactoryProfileGoverned {
+            operator_agent_id: operator_agent_id.to_string(),
+            proposal_id,
+            profile: profile.clone(),
+        };
+        let mut preview_state = self.state.clone();
+        if let Err(err) = preview_state.apply_domain_event(&event, self.state.time) {
+            return DomainEvent::ActionRejected {
+                action_id,
+                reason: RejectReason::RuleDenied {
+                    notes: vec![format!("govern factory profile rejected: {err:?}")],
                 },
             };
         }

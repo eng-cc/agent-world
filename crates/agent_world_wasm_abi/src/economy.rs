@@ -84,6 +84,16 @@ pub struct RecipeProfileV1 {
     pub preferred_factory_tags: Vec<String>,
 }
 
+/// Runtime factory profile used by progression and capacity tuning.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FactoryProfileV1 {
+    pub factory_id: String,
+    pub tier: u8,
+    pub recipe_slots: u16,
+    #[serde(default)]
+    pub tags: Vec<String>,
+}
+
 /// Static recipe definition emitted by a recipe module.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RecipeModuleSpec {
@@ -363,7 +373,7 @@ mod tests {
     }
 
     #[test]
-    fn product_and_recipe_profiles_round_trip_json() {
+    fn product_recipe_and_factory_profiles_round_trip_json() {
         let product = ProductProfileV1 {
             product_id: "module_rack".to_string(),
             role_tag: "scale".to_string(),
@@ -377,14 +387,24 @@ mod tests {
             stage_gate: "scale_out".to_string(),
             preferred_factory_tags: vec!["assembler".to_string(), "precision".to_string()],
         };
+        let factory = FactoryProfileV1 {
+            factory_id: "factory.assembler.mk1".to_string(),
+            tier: 2,
+            recipe_slots: 4,
+            tags: vec!["assembler".to_string(), "precision".to_string()],
+        };
         let product_json = serde_json::to_vec(&product).expect("serialize product profile");
         let recipe_json = serde_json::to_vec(&recipe).expect("serialize recipe profile");
+        let factory_json = serde_json::to_vec(&factory).expect("serialize factory profile");
         let product_decoded: ProductProfileV1 =
             serde_json::from_slice(&product_json).expect("deserialize product profile");
         let recipe_decoded: RecipeProfileV1 =
             serde_json::from_slice(&recipe_json).expect("deserialize recipe profile");
+        let factory_decoded: FactoryProfileV1 =
+            serde_json::from_slice(&factory_json).expect("deserialize factory profile");
         assert_eq!(product_decoded, product);
         assert_eq!(recipe_decoded, recipe);
+        assert_eq!(factory_decoded, factory);
     }
 
     #[test]

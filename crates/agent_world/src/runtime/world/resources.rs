@@ -8,13 +8,13 @@ use super::super::util::hash_json;
 use super::super::ResourceDelta;
 use super::super::WorldError;
 use super::super::{
-    EpochSettlementReport, MainTokenAccountBalance, MainTokenConfig, MainTokenEpochIssuanceRecord,
-    MainTokenGenesisAllocationBucketState, MainTokenNodePointsBridgeEpochRecord,
-    MainTokenScheduledPolicyUpdate, MainTokenSupplyState, MainTokenTreasuryDistributionRecord,
-    MaterialLedgerId, MaterialProfileV1, MaterialStack, NodeAssetBalance, NodeRewardMintRecord,
-    ProductProfileV1, ProtocolPowerReserve, RecipeProfileV1, RewardAssetConfig,
-    RewardAssetInvariantReport, RewardAssetInvariantViolation, RewardSignatureGovernancePolicy,
-    SystemOrderPoolBudget,
+    EpochSettlementReport, FactoryProfileV1, MainTokenAccountBalance, MainTokenConfig,
+    MainTokenEpochIssuanceRecord, MainTokenGenesisAllocationBucketState,
+    MainTokenNodePointsBridgeEpochRecord, MainTokenScheduledPolicyUpdate, MainTokenSupplyState,
+    MainTokenTreasuryDistributionRecord, MaterialLedgerId, MaterialProfileV1, MaterialStack,
+    NodeAssetBalance, NodeRewardMintRecord, ProductProfileV1, ProtocolPowerReserve,
+    RecipeProfileV1, RewardAssetConfig, RewardAssetInvariantReport, RewardAssetInvariantViolation,
+    RewardSignatureGovernancePolicy, SystemOrderPoolBudget,
 };
 use super::World;
 use crate::simulator::ResourceKind;
@@ -796,6 +796,10 @@ impl World {
         self.state.recipe_profiles.get(recipe_id)
     }
 
+    pub fn factory_profile(&self, factory_id: &str) -> Option<&FactoryProfileV1> {
+        self.state.factory_profiles.get(factory_id)
+    }
+
     pub fn upsert_material_profile(
         &mut self,
         profile: MaterialProfileV1,
@@ -837,6 +841,31 @@ impl World {
         self.state
             .recipe_profiles
             .insert(profile.recipe_id.clone(), profile);
+        Ok(())
+    }
+
+    pub fn upsert_factory_profile(&mut self, profile: FactoryProfileV1) -> Result<(), WorldError> {
+        if profile.factory_id.trim().is_empty() {
+            return Err(WorldError::ResourceBalanceInvalid {
+                reason: "factory profile factory_id cannot be empty".to_string(),
+            });
+        }
+        if profile.tier == 0 {
+            return Err(WorldError::ResourceBalanceInvalid {
+                reason: format!("factory profile tier must be >= 1: {}", profile.factory_id),
+            });
+        }
+        if profile.recipe_slots == 0 {
+            return Err(WorldError::ResourceBalanceInvalid {
+                reason: format!(
+                    "factory profile recipe_slots must be > 0: {}",
+                    profile.factory_id
+                ),
+            });
+        }
+        self.state
+            .factory_profiles
+            .insert(profile.factory_id.clone(), profile);
         Ok(())
     }
 

@@ -189,7 +189,8 @@ impl World {
             | Action::ValidateProductWithModule { .. }
             | Action::GovernMaterialProfile { .. }
             | Action::GovernProductProfile { .. }
-            | Action::GovernRecipeProfile { .. } => {
+            | Action::GovernRecipeProfile { .. }
+            | Action::GovernFactoryProfile { .. } => {
                 self.action_to_event_economy(action_id, &envelope.action)
             }
         }

@@ -103,6 +103,7 @@ pub(super) fn event_kind_label(body: &WorldEventBody) -> &'static str {
             }
             DomainEvent::ProductProfileGoverned { .. } => "domain.economy.product_profile_governed",
             DomainEvent::RecipeProfileGoverned { .. } => "domain.economy.recipe_profile_governed",
+            DomainEvent::FactoryProfileGoverned { .. } => "domain.economy.factory_profile_governed",
         },
         WorldEventBody::EffectQueued(_) => "effect.queued",
         WorldEventBody::ReceiptAppended(_) => "effect.receipt_appended",
@@ -194,6 +195,7 @@ pub(super) fn action_kind_label(action: &Action) -> &'static str {
         Action::GovernMaterialProfile { .. } => "action.economy.govern_material_profile",
         Action::GovernProductProfile { .. } => "action.economy.govern_product_profile",
         Action::GovernRecipeProfile { .. } => "action.economy.govern_recipe_profile",
+        Action::GovernFactoryProfile { .. } => "action.economy.govern_factory_profile",
     }
 }
 

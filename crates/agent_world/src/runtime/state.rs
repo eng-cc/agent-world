@@ -3,8 +3,8 @@
 use crate::models::AgentState;
 use crate::simulator::{ModuleInstallTarget, ResourceKind};
 use agent_world_wasm_abi::{
-    FactoryModuleSpec, MaterialProfileV1, MaterialStack, ModuleManifest, ProductProfileV1,
-    RecipeProfileV1,
+    FactoryModuleSpec, FactoryProfileV1, MaterialProfileV1, MaterialStack, ModuleManifest,
+    ProductProfileV1, RecipeProfileV1,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
@@ -266,6 +266,8 @@ pub struct WorldState {
     #[serde(default)]
     pub recipe_profiles: BTreeMap<String, RecipeProfileV1>,
     #[serde(default)]
+    pub factory_profiles: BTreeMap<String, FactoryProfileV1>,
+    #[serde(default)]
     pub factories: BTreeMap<String, FactoryState>,
     #[serde(default)]
     pub pending_factory_builds: BTreeMap<ActionId, FactoryBuildJobState>,
@@ -379,6 +381,7 @@ impl Default for WorldState {
             material_profiles: BTreeMap::new(),
             product_profiles: BTreeMap::new(),
             recipe_profiles: BTreeMap::new(),
+            factory_profiles: BTreeMap::new(),
             factories: BTreeMap::new(),
             pending_factory_builds: BTreeMap::new(),
             pending_recipe_jobs: BTreeMap::new(),
@@ -645,7 +648,8 @@ impl WorldState {
             | DomainEvent::RecipeCompleted { .. }
             | DomainEvent::MaterialProfileGoverned { .. }
             | DomainEvent::ProductProfileGoverned { .. }
-            | DomainEvent::RecipeProfileGoverned { .. } => {
+            | DomainEvent::RecipeProfileGoverned { .. }
+            | DomainEvent::FactoryProfileGoverned { .. } => {
                 self.apply_domain_event_core(event, now)?
             }
             DomainEvent::GameplayPolicyUpdated { .. }

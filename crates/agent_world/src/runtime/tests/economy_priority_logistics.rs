@@ -1,8 +1,9 @@
 use super::pos;
 use crate::runtime::{
-    Action, DomainEvent, GovernanceProposalStatus, IndustryStage, MaterialDefaultPriority,
-    MaterialLedgerId, MaterialProfileV1, MaterialTransitPriority, MaterialTransportLossClass,
-    ProductProfileV1, ProposalDecision, RecipeProfileV1, World, WorldEventBody,
+    Action, DomainEvent, FactoryProfileV1, GovernanceProposalStatus, IndustryStage,
+    MaterialDefaultPriority, MaterialLedgerId, MaterialProfileV1, MaterialTransitPriority,
+    MaterialTransportLossClass, ProductProfileV1, ProposalDecision, RecipeProfileV1, World,
+    WorldEventBody,
 };
 use crate::simulator::ResourceKind;
 use agent_world_wasm_abi::{FactoryModuleSpec, MaterialStack, RecipeExecutionPlan};
@@ -1413,6 +1414,28 @@ fn govern_profile_actions_emit_events_and_update_profile_state() {
             && profile.recipe_id == "governed_recipe"
     ));
 
+    world.submit_action(Action::GovernFactoryProfile {
+        operator_agent_id: "operator-a".to_string(),
+        proposal_id,
+        profile: FactoryProfileV1 {
+            factory_id: "governed_factory".to_string(),
+            tier: 2,
+            recipe_slots: 3,
+            tags: vec!["assembly".to_string()],
+        },
+    });
+    world.step().expect("govern factory profile");
+    assert!(matches!(
+        world.journal().events.last().map(|event| &event.body),
+        Some(WorldEventBody::Domain(DomainEvent::FactoryProfileGoverned {
+            operator_agent_id,
+            proposal_id: event_proposal_id,
+            profile,
+        })) if operator_agent_id == "operator-a"
+            && *event_proposal_id == proposal_id
+            && profile.factory_id == "governed_factory"
+    ));
+
     assert_eq!(
         world
             .state()
@@ -1436,6 +1459,14 @@ fn govern_profile_actions_emit_events_and_update_profile_state() {
             .get("governed_recipe")
             .map(|profile| profile.stage_gate.as_str()),
         Some("governance")
+    );
+    assert_eq!(
+        world
+            .state()
+            .factory_profiles
+            .get("governed_factory")
+            .map(|profile| profile.recipe_slots),
+        Some(3)
     );
 }
 
@@ -1491,4 +1522,17 @@ fn govern_profile_actions_reject_invalid_profile_payloads() {
     });
     world.step().expect("reject invalid recipe profile");
     assert_rejected_note_contains(&world, recipe_action_id, "recipe_id cannot be empty");
+
+    let factory_action_id = world.submit_action(Action::GovernFactoryProfile {
+        operator_agent_id: "operator-a".to_string(),
+        proposal_id,
+        profile: FactoryProfileV1 {
+            factory_id: "broken_factory".to_string(),
+            tier: 1,
+            recipe_slots: 0,
+            tags: vec!["assembly".to_string()],
+        },
+    });
+    world.step().expect("reject invalid factory profile");
+    assert_rejected_note_contains(&world, factory_action_id, "recipe_slots must be > 0");
 }
