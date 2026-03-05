@@ -1,4 +1,7 @@
-# Viewer Live 完全事件驱动改造 Phase 8（项目管理）
+# [已归档] Viewer Live 完全事件驱动改造 Phase 8（项目管理）
+
+> 归档标记（2026-03-05）：本阶段项目文档已合并入 Phase 10 主项目文档，仅供历史追溯。
+> 替代文档：`doc/world-simulator/viewer/viewer-live-full-event-driven-phase10-2026-02-27.prd.project.md`、`doc/world-simulator/viewer/viewer-live-full-event-driven-phase10-2026-02-27.prd.md`。
 
 审计轮次: 2
 

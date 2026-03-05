@@ -1,4 +1,7 @@
-# Viewer 发行体验改造（第八阶段：项目管理文档）
+# [已归档] Viewer 发行体验改造（第八阶段：项目管理文档）
+
+> 归档标记（2026-03-05）：本阶段项目文档已合并入 `viewer-gameplay-release-experience-overhaul` 主项目文档，仅供历史追溯。
+> 替代文档：`doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.project.md`、`doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.md`。
 
 审计轮次: 2
 

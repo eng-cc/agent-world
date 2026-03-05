@@ -1,4 +1,7 @@
-# Viewer 发行体验改造（第八阶段：信息分层减负与焦点收敛）
+# [已归档] Viewer 发行体验改造（第八阶段：信息分层减负与焦点收敛）
+
+> 归档标记（2026-03-05）：本阶段文档已合并入 `viewer-gameplay-release-experience-overhaul` 主文档，仅供历史追溯。
+> 替代文档：`doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.md`、`doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.project.md`。
 
 审计轮次: 2
 
