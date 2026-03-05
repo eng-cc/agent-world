@@ -5,7 +5,7 @@
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-live-runtime-world-llm-full-bridge-2026-03-05.prd.project.md
 
 ## 1. Executive Summary
-- Problem Statement: runtime live 仍存在启发式 sidecar 与不完整事件/快照映射，导致“LLM 模式”与实际行为不一致、可观测性不足、回归风险不可控。
+- Problem Statement: runtime live 仍存在启发式 sidecar 与不完整事件/快照映射，导致“LLM 模式”与实际行为不一致、可观测性不足、回归风险不可控。优先级来源: 用户明确为 P0（真实 LLM 预期不一致）。对齐 `PRD-WORLD_SIMULATOR-016~018` 迁移主线作为阶段目标收口。
 - Proposed Solution: runtime live 以真实 `AgentRunner + LlmAgentBehavior` 取代启发式 sidecar，建立 runtime->shadow WorldKernel 观测面，扩展 viewer 协议以完整承载 runtime DomainEvent 与 WorldState 快照，LLM 失败统一硬失败并输出可诊断 DecisionTrace。
 - Success Criteria:
   - SC-1: runtime live llm 模式下不再调用任何启发式 sidecar 逻辑；所有决策均来自 `AgentRunner<LlmAgentBehavior<_>>`。
