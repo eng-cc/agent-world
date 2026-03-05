@@ -16,7 +16,7 @@
 - [x] T3 文档收口：更新阶段结论与遗留事项
 
 ## 依赖
-- doc/world-simulator/viewer/viewer-live-full-event-driven-phase8-2026-02-27.prd.md
+- doc/world-simulator/archive/viewer-live-full-event-driven-phase8-2026-02-27.prd.md
 - `crates/agent_world/src/viewer/live_split_part1.rs`
 - `crates/agent_world/src/viewer/live_split_part2.rs`
 - `crates/agent_world/src/viewer/live/tests.rs`

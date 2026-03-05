@@ -6,9 +6,9 @@
 - 本文件为项目主入口文档（当前权威入口）。
 - `immersion-phase8~10` 项目内容已物理合并入本文件，对应阶段项目文档降级为历史追溯。
 - 历史阶段项目文档:
-  - `doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase8.prd.project.md`
-  - `doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase9.prd.project.md`
-  - `doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase10.prd.project.md`
+  - `doc/world-simulator/archive/viewer-gameplay-release-immersion-phase8.prd.project.md`
+  - `doc/world-simulator/archive/viewer-gameplay-release-immersion-phase9.prd.project.md`
+  - `doc/world-simulator/archive/viewer-gameplay-release-immersion-phase10.prd.project.md`
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] VGRO0：建立设计文档与项目管理文档。
@@ -46,9 +46,9 @@
 - `crates/agent_world_viewer/src/ui_state_types.rs`
 - `crates/agent_world_viewer/src/tests.rs`
 - `testing-manual.md`
-- Phase 8 补充依赖: `doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase8.prd.md`、`crates/agent_world_viewer/src/egui_right_panel_player_experience.rs`、`crates/agent_world_viewer/src/egui_right_panel_player_guide.rs`、`crates/agent_world_viewer/src/egui_right_panel_tests.rs`、`testing-manual.md`
-- Phase 9 补充依赖: `doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase9.prd.md`、`crates/agent_world_viewer/src/egui_right_panel_player_guide.rs`、`crates/agent_world_viewer/src/egui_right_panel_player_experience.rs`、`crates/agent_world_viewer/src/egui_right_panel_player_mission_tests.rs`、`crates/agent_world_viewer/src/egui_right_panel_player_layout_tests.rs`、`testing-manual.md`
-- Phase 10 补充依赖: `doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase10.prd.md`、`crates/agent_world_viewer/src/egui_right_panel_player_guide.rs`、`crates/agent_world_viewer/src/egui_right_panel_player_experience.rs`、`crates/agent_world_viewer/src/egui_right_panel_player_entry.rs`、`crates/agent_world_viewer/src/egui_right_panel_player_guide_progress_tests.rs`、`crates/agent_world_viewer/src/egui_right_panel_player_mission_tests.rs`、`testing-manual.md`
+- Phase 8 补充依赖: `doc/world-simulator/archive/viewer-gameplay-release-immersion-phase8.prd.md`、`crates/agent_world_viewer/src/egui_right_panel_player_experience.rs`、`crates/agent_world_viewer/src/egui_right_panel_player_guide.rs`、`crates/agent_world_viewer/src/egui_right_panel_tests.rs`、`testing-manual.md`
+- Phase 9 补充依赖: `doc/world-simulator/archive/viewer-gameplay-release-immersion-phase9.prd.md`、`crates/agent_world_viewer/src/egui_right_panel_player_guide.rs`、`crates/agent_world_viewer/src/egui_right_panel_player_experience.rs`、`crates/agent_world_viewer/src/egui_right_panel_player_mission_tests.rs`、`crates/agent_world_viewer/src/egui_right_panel_player_layout_tests.rs`、`testing-manual.md`
+- Phase 10 补充依赖: `doc/world-simulator/archive/viewer-gameplay-release-immersion-phase10.prd.md`、`crates/agent_world_viewer/src/egui_right_panel_player_guide.rs`、`crates/agent_world_viewer/src/egui_right_panel_player_experience.rs`、`crates/agent_world_viewer/src/egui_right_panel_player_entry.rs`、`crates/agent_world_viewer/src/egui_right_panel_player_guide_progress_tests.rs`、`crates/agent_world_viewer/src/egui_right_panel_player_mission_tests.rs`、`testing-manual.md`
 
 ## 状态
 - 当前阶段：VGRO0~VGRO5 全部完成（项目收口）。

@@ -2,7 +2,7 @@
 
 审计轮次: 2
 
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase8.prd.project.md
+- 对应项目管理文档: doc/world-simulator/archive/viewer-gameplay-release-immersion-phase8.prd.project.md
 
 ## 历史状态（2026-03-05 ROUND-002 物理合并）
 - 本专题内容已合并入 `doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.md`。

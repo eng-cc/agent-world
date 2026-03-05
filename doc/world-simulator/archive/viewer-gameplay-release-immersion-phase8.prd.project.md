@@ -16,7 +16,7 @@
 - [x] VRI8P3：执行回归与 Web 闭环验收并完成文档收口。
 
 ## 依赖
-- doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase8.prd.md
+- doc/world-simulator/archive/viewer-gameplay-release-immersion-phase8.prd.md
 - `crates/agent_world_viewer/src/egui_right_panel_player_experience.rs`
 - `crates/agent_world_viewer/src/egui_right_panel_player_guide.rs`
 - `crates/agent_world_viewer/src/egui_right_panel_tests.rs`

@@ -1,5 +1,29 @@
 # World Simulator 归档文档索引
 
+## 2026-03-05
+
+### Viewer 发行体验改造 Phase 8~10（已合并归档）
+- `doc/world-simulator/archive/viewer-gameplay-release-immersion-phase8.prd.md`
+- `doc/world-simulator/archive/viewer-gameplay-release-immersion-phase8.prd.project.md`
+- `doc/world-simulator/archive/viewer-gameplay-release-immersion-phase9.prd.md`
+- `doc/world-simulator/archive/viewer-gameplay-release-immersion-phase9.prd.project.md`
+- `doc/world-simulator/archive/viewer-gameplay-release-immersion-phase10.prd.md`
+- `doc/world-simulator/archive/viewer-gameplay-release-immersion-phase10.prd.project.md`
+- 归档原因：Phase 8~10 已物理合并到主文档，阶段文档仅保留历史追溯。
+- 替代文档：
+  - `doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.md`
+  - `doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.project.md`
+
+### Viewer Live 完全事件驱动 Phase 8/9（已合并归档）
+- `doc/world-simulator/archive/viewer-live-full-event-driven-phase8-2026-02-27.prd.md`
+- `doc/world-simulator/archive/viewer-live-full-event-driven-phase8-2026-02-27.prd.project.md`
+- `doc/world-simulator/archive/viewer-live-full-event-driven-phase9-2026-02-27.prd.md`
+- `doc/world-simulator/archive/viewer-live-full-event-driven-phase9-2026-02-27.prd.project.md`
+- 归档原因：Phase 8/9 已物理合并到 Phase 10 主文档，阶段文档仅保留历史追溯。
+- 替代文档：
+  - `doc/world-simulator/viewer/viewer-live-full-event-driven-phase10-2026-02-27.prd.md`
+  - `doc/world-simulator/viewer/viewer-live-full-event-driven-phase10-2026-02-27.prd.project.md`
+
 ## 2026-02-27
 
 ### Viewer Live 旧 Tick 驱动阶段文档（已归档）
@@ -19,8 +43,6 @@
 - `doc/world-simulator/archive/viewer-live-full-event-driven-phase7-2026-02-27.prd.project.md`
 - 归档原因：以上阶段文档围绕 `timer_pulse` / `PlaybackPulse` / `tick` 兼容链路与过渡改造，相关运行链路已在 Phase 8~10 收口并下线。
 - 替代文档：
-  - `doc/world-simulator/viewer/viewer-live-full-event-driven-phase8-2026-02-27.prd.md`
-  - `doc/world-simulator/viewer/viewer-live-full-event-driven-phase9-2026-02-27.prd.md`
   - `doc/world-simulator/viewer/viewer-live-full-event-driven-phase10-2026-02-27.prd.md`
 
 ## 2026-02-17

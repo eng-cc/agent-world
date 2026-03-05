@@ -2,7 +2,7 @@
 
 审计轮次: 2
 
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-live-full-event-driven-phase9-2026-02-27.prd.project.md
+- 对应项目管理文档: doc/world-simulator/archive/viewer-live-full-event-driven-phase9-2026-02-27.prd.project.md
 
 ## 历史状态（2026-03-05 ROUND-002 物理合并）
 - 本专题内容已合并入 `doc/world-simulator/viewer/viewer-live-full-event-driven-phase10-2026-02-27.prd.md`。

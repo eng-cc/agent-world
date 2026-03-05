@@ -6,8 +6,8 @@
 - 本文件为主项目入口（当前权威入口）。
 - `phase8/phase9` 项目内容已物理合并入本文件，对应阶段项目文档降级为历史追溯。
 - 历史阶段项目文档:
-  - `doc/world-simulator/viewer/viewer-live-full-event-driven-phase8-2026-02-27.prd.project.md`
-  - `doc/world-simulator/viewer/viewer-live-full-event-driven-phase9-2026-02-27.prd.project.md`
+  - `doc/world-simulator/archive/viewer-live-full-event-driven-phase8-2026-02-27.prd.project.md`
+  - `doc/world-simulator/archive/viewer-live-full-event-driven-phase9-2026-02-27.prd.project.md`
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0 建档：设计文档 + 项目管理文档
@@ -39,8 +39,8 @@
 - `site/index.html`
 - `site/en/index.html`
 - `testing-manual.md` / `doc/world-simulator/viewer/viewer-manual.md`（如需）
-- Phase 8 补充依赖: `doc/world-simulator/viewer/viewer-live-full-event-driven-phase8-2026-02-27.prd.md`、`crates/agent_world/src/viewer/live_split_part1.rs`、`crates/agent_world/src/viewer/live_split_part2.rs`、`crates/agent_world/src/viewer/live/tests.rs`、`crates/agent_world/src/viewer/mod.rs`、`crates/agent_world/src/bin/world_viewer_live/world_viewer_live_split_part1.rs`
-- Phase 9 补充依赖: `doc/world-simulator/viewer/viewer-live-full-event-driven-phase9-2026-02-27.prd.md`、`crates/agent_world/src/bin/world_viewer_live/cli.rs`、`crates/agent_world/src/bin/world_viewer_live/world_viewer_live_split_part2.rs`、`crates/agent_world/src/bin/world_viewer_live/world_viewer_live_tests_split_part1.rs`、`crates/agent_world/tests/viewer_live_integration.rs`、`scripts/capture-viewer-frame.sh`、`scripts/viewer-theme-pack-preview.sh`、`scripts/run-game-test.sh`、`scripts/p2p-longrun-soak.sh`、`scripts/viewer-owr4-stress.sh`、`scripts/viewer-release-qa-loop.sh`、`scripts/viewer-texture-inspector.sh`、`testing-manual.md`、`doc/world-simulator/viewer/viewer-manual.md`
+- Phase 8 补充依赖: `doc/world-simulator/archive/viewer-live-full-event-driven-phase8-2026-02-27.prd.md`、`crates/agent_world/src/viewer/live_split_part1.rs`、`crates/agent_world/src/viewer/live_split_part2.rs`、`crates/agent_world/src/viewer/live/tests.rs`、`crates/agent_world/src/viewer/mod.rs`、`crates/agent_world/src/bin/world_viewer_live/world_viewer_live_split_part1.rs`
+- Phase 9 补充依赖: `doc/world-simulator/archive/viewer-live-full-event-driven-phase9-2026-02-27.prd.md`、`crates/agent_world/src/bin/world_viewer_live/cli.rs`、`crates/agent_world/src/bin/world_viewer_live/world_viewer_live_split_part2.rs`、`crates/agent_world/src/bin/world_viewer_live/world_viewer_live_tests_split_part1.rs`、`crates/agent_world/tests/viewer_live_integration.rs`、`scripts/capture-viewer-frame.sh`、`scripts/viewer-theme-pack-preview.sh`、`scripts/run-game-test.sh`、`scripts/p2p-longrun-soak.sh`、`scripts/viewer-owr4-stress.sh`、`scripts/viewer-release-qa-loop.sh`、`scripts/viewer-texture-inspector.sh`、`testing-manual.md`、`doc/world-simulator/viewer/viewer-manual.md`
 
 ## 状态
 - 当前阶段：已完成（T0~T4）
