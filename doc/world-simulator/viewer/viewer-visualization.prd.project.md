@@ -41,7 +41,7 @@
 - [x] UI 测试覆盖：选中详情面板（Location + Agent LLM I/O）
 - [x] 在线模式：新增 LLM 决策 trace 下发（DecisionTrace）
 - [x] UI：新增选中对象详情面板（Agent/Location）
-- [x] UI：选中对象详情扩展（Asset/PowerPlant/PowerStorage）
+- [x] UI：选中对象详情扩展（Asset/PowerPlant；PowerStorage 已于 2026-03-06 下线）
 - [x] UI 测试覆盖：Asset/PowerPlant 详情文案（headless 断言）
 - [x] UI：选中对象详情扩展（Chunk）
 - [x] UI 测试覆盖：Chunk 详情文案（headless 断言）

@@ -409,7 +409,6 @@ fn reject_reason_for_agent_submitter(agent_id: &str, action: &Action) -> Option<
         Action::RegisterLocation { .. }
         | Action::RegisterAgent { .. }
         | Action::RegisterPowerPlant { .. }
-        | Action::RegisterPowerStorage { .. }
         | Action::UpsertModuleVisualEntity { .. }
         | Action::RemoveModuleVisualEntity { .. }
         | Action::DebugGrantResource { .. } => denied("system-only action"),
@@ -627,7 +626,6 @@ fn reject_reason_for_agent_submitter(agent_id: &str, action: &Action) -> Option<
                 denied("bidder_agent_id must be the submitter agent")
             }
         }
-        Action::DrawPower { .. } | Action::StorePower { .. } => None,
     }
 }
 

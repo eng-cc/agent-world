@@ -68,7 +68,6 @@
 | Location | `world_model::Location` + `types::LocationProfile` | `material`/`radius_cm`/`radiation_emission_per_tick`/`fragment_budget` |
 | Asset | `world_model::Asset` | `owner`/`kind`/`quantity` |
 | PowerPlant | `power::PowerPlant` | `capacity_per_tick`/`efficiency`/`degradation` |
-| PowerStorage | `power::PowerStorage` | `capacity`/`current_level`/`charge_efficiency`/`discharge_efficiency` |
 | Chunk | `ChunkState + bounds` | `state`/边界坐标 |
 
 > 说明：Fragment 当前以 `Location.fragment_profile/fragment_budget` 形式挂载，不作为独立顶层实体流转。

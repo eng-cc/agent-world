@@ -366,7 +366,7 @@ python3 scripts/generate-viewer-industrial-theme-assets.py --quality v1 --out-di
 
 ### 常用参数
 - `--preset-file <path>`：指定主题预设 env 文件（默认跟随 `scripts/viewer-theme-defaults.env`，即 `industrial_v3_default.env`）。
-- `--inspect <list>`：贴图来源实体（`agent,location,asset,power_plant,power_storage,all`）。
+- `--inspect <list>`：贴图来源实体（`agent,location,asset,power_plant,all`）。
 - `--variants <list>`：`default,matte,glossy,all`。
 - `--base-texture/--normal-texture/--mr-texture/--emissive-texture`：临时覆盖贴图路径。
 - `--use-source-mesh`：把“来源实体 mesh”作为预览载体（默认关闭，默认使用 location 载体保证构图稳定）。
@@ -451,7 +451,6 @@ bash "$PWCLI" close
   - Location
   - Asset
   - PowerPlant
-  - PowerStorage
   - Chunk
 - LLM 场景下，Agent 详情可显示最近决策 I/O（输入、输出、错误与 token/时延摘要）。
 - 离线或无 LLM trace 时会显示降级提示，不影响基础详情查看。

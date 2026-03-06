@@ -45,10 +45,6 @@ fn load_viewer_3d_config_applies_env_overrides() {
             "models/facility/power_plant.glb#Mesh0/Primitive0",
         ),
         (
-            "AGENT_WORLD_VIEWER_POWER_STORAGE_MESH_ASSET",
-            "models/facility/power_storage.glb#Mesh0/Primitive0",
-        ),
-        (
             "AGENT_WORLD_VIEWER_AGENT_BASE_TEXTURE_ASSET",
             "textures/agents/worker_albedo.png",
         ),
@@ -112,22 +108,6 @@ fn load_viewer_3d_config_applies_env_overrides() {
             "AGENT_WORLD_VIEWER_POWER_PLANT_EMISSIVE_TEXTURE_ASSET",
             "textures/facility/power_plant_emissive.png",
         ),
-        (
-            "AGENT_WORLD_VIEWER_POWER_STORAGE_BASE_TEXTURE_ASSET",
-            "textures/facility/power_storage_albedo.png",
-        ),
-        (
-            "AGENT_WORLD_VIEWER_POWER_STORAGE_NORMAL_TEXTURE_ASSET",
-            "textures/facility/power_storage_normal.png",
-        ),
-        (
-            "AGENT_WORLD_VIEWER_POWER_STORAGE_METALLIC_ROUGHNESS_TEXTURE_ASSET",
-            "textures/facility/power_storage_metal_rough.png",
-        ),
-        (
-            "AGENT_WORLD_VIEWER_POWER_STORAGE_EMISSIVE_TEXTURE_ASSET",
-            "textures/facility/power_storage_emissive.png",
-        ),
         ("AGENT_WORLD_VIEWER_AGENT_BASE_COLOR", "#FF6A38"),
         ("AGENT_WORLD_VIEWER_AGENT_EMISSIVE_COLOR", "#E66230"),
         ("AGENT_WORLD_VIEWER_LOCATION_BASE_COLOR", "#4B88D9"),
@@ -136,8 +116,6 @@ fn load_viewer_3d_config_applies_env_overrides() {
         ("AGENT_WORLD_VIEWER_ASSET_EMISSIVE_COLOR", "#FFD45A"),
         ("AGENT_WORLD_VIEWER_POWER_PLANT_BASE_COLOR", "#F36934"),
         ("AGENT_WORLD_VIEWER_POWER_PLANT_EMISSIVE_COLOR", "#FF7F4A"),
-        ("AGENT_WORLD_VIEWER_POWER_STORAGE_BASE_COLOR", "#37CC77"),
-        ("AGENT_WORLD_VIEWER_POWER_STORAGE_EMISSIVE_COLOR", "#6CFFD1"),
         ("AGENT_WORLD_VIEWER_ASSET_GEOMETRY_TIER", "cinematic"),
         ("AGENT_WORLD_VIEWER_LOCATION_SHELL_ENABLED", "true"),
         ("AGENT_WORLD_VIEWER_FRAGMENT_MATERIAL_STRATEGY", "fidelity"),
@@ -155,15 +133,6 @@ fn load_viewer_3d_config_applies_env_overrides() {
         (
             "AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_EMISSIVE_BOOST",
             "0.12",
-        ),
-        (
-            "AGENT_WORLD_VIEWER_MATERIAL_POWER_STORAGE_ROUGHNESS",
-            "0.67",
-        ),
-        ("AGENT_WORLD_VIEWER_MATERIAL_POWER_STORAGE_METALLIC", "0.16"),
-        (
-            "AGENT_WORLD_VIEWER_MATERIAL_POWER_STORAGE_EMISSIVE_BOOST",
-            "0.18",
         ),
         ("AGENT_WORLD_VIEWER_TONEMAPPING", "aces"),
         ("AGENT_WORLD_VIEWER_DEBAND_DITHER_ENABLED", "true"),
@@ -236,9 +205,6 @@ fn load_viewer_3d_config_applies_env_overrides() {
     assert!((config.materials.power_plant.roughness - 0.29).abs() < f32::EPSILON);
     assert!((config.materials.power_plant.metallic - 0.74).abs() < f32::EPSILON);
     assert!((config.materials.power_plant.emissive_boost - 0.12).abs() < f32::EPSILON);
-    assert!((config.materials.power_storage.roughness - 0.67).abs() < f32::EPSILON);
-    assert!((config.materials.power_storage.metallic - 0.16).abs() < f32::EPSILON);
-    assert!((config.materials.power_storage.emissive_boost - 0.18).abs() < f32::EPSILON);
     assert_eq!(
         config.post_process.tonemapping,
         ViewerTonemappingMode::AcesFitted
@@ -288,10 +254,6 @@ fn load_viewer_3d_config_applies_env_overrides() {
     assert_eq!(
         external_mesh.power_plant_mesh_asset.as_deref(),
         Some("models/facility/power_plant.glb#Mesh0/Primitive0")
-    );
-    assert_eq!(
-        external_mesh.power_storage_mesh_asset.as_deref(),
-        Some("models/facility/power_storage.glb#Mesh0/Primitive0")
     );
 
     let external_texture =
@@ -375,31 +337,6 @@ fn load_viewer_3d_config_applies_env_overrides() {
             .as_deref(),
         Some("textures/facility/power_plant_emissive.png")
     );
-    assert_eq!(
-        external_texture.power_storage.base_texture_asset.as_deref(),
-        Some("textures/facility/power_storage_albedo.png")
-    );
-    assert_eq!(
-        external_texture
-            .power_storage
-            .normal_texture_asset
-            .as_deref(),
-        Some("textures/facility/power_storage_normal.png")
-    );
-    assert_eq!(
-        external_texture
-            .power_storage
-            .metallic_roughness_texture_asset
-            .as_deref(),
-        Some("textures/facility/power_storage_metal_rough.png")
-    );
-    assert_eq!(
-        external_texture
-            .power_storage
-            .emissive_texture_asset
-            .as_deref(),
-        Some("textures/facility/power_storage_emissive.png")
-    );
 
     let external_material =
         load_viewer_external_material_config_from(|key| env.get(key).map(|v| v.to_string()));
@@ -434,14 +371,6 @@ fn load_viewer_3d_config_applies_env_overrides() {
     assert_rgb_approx_eq(
         external_material.power_plant.emissive_color_srgb,
         [1.0, 0.49803922, 0.2901961],
-    );
-    assert_rgb_approx_eq(
-        external_material.power_storage.base_color_srgb,
-        [0.21568628, 0.8, 0.46666667],
-    );
-    assert_rgb_approx_eq(
-        external_material.power_storage.emissive_color_srgb,
-        [0.42352942, 1.0, 0.81960785],
     );
 }
 
@@ -479,12 +408,6 @@ fn load_viewer_3d_config_ignores_invalid_values() {
         (
             "AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_EMISSIVE_BOOST",
             "-1",
-        ),
-        ("AGENT_WORLD_VIEWER_MATERIAL_POWER_STORAGE_ROUGHNESS", "10"),
-        ("AGENT_WORLD_VIEWER_MATERIAL_POWER_STORAGE_METALLIC", "-9"),
-        (
-            "AGENT_WORLD_VIEWER_MATERIAL_POWER_STORAGE_EMISSIVE_BOOST",
-            "nan",
         ),
         ("AGENT_WORLD_VIEWER_TONEMAPPING", "ultra-hdr"),
         ("AGENT_WORLD_VIEWER_DEBAND_DITHER_ENABLED", "???"),
@@ -571,20 +494,6 @@ fn load_viewer_3d_config_ignores_invalid_values() {
     );
     assert!(
         (config.materials.power_plant.emissive_boost - DEFAULT_MATERIAL_POWER_PLANT_EMISSIVE_BOOST)
-            .abs()
-            < f32::EPSILON
-    );
-    assert!(
-        (config.materials.power_storage.roughness - DEFAULT_MATERIAL_POWER_STORAGE_ROUGHNESS).abs()
-            < f32::EPSILON
-    );
-    assert!(
-        (config.materials.power_storage.metallic - DEFAULT_MATERIAL_POWER_STORAGE_METALLIC).abs()
-            < f32::EPSILON
-    );
-    assert!(
-        (config.materials.power_storage.emissive_boost
-            - DEFAULT_MATERIAL_POWER_STORAGE_EMISSIVE_BOOST)
             .abs()
             < f32::EPSILON
     );
@@ -797,7 +706,6 @@ fn load_viewer_external_mesh_config_ignores_empty_values() {
         Some("models/world/asset.glb#Mesh0/Primitive0")
     );
     assert_eq!(external_mesh.power_plant_mesh_asset, None);
-    assert_eq!(external_mesh.power_storage_mesh_asset, None);
 }
 
 #[test]
@@ -806,7 +714,6 @@ fn load_viewer_external_material_config_ignores_empty_or_invalid_values() {
         ("AGENT_WORLD_VIEWER_AGENT_BASE_COLOR", "   "),
         ("AGENT_WORLD_VIEWER_AGENT_EMISSIVE_COLOR", "#GG2233"),
         ("AGENT_WORLD_VIEWER_ASSET_BASE_COLOR", " #D1C35A "),
-        ("AGENT_WORLD_VIEWER_POWER_STORAGE_EMISSIVE_COLOR", "#6CFFD1"),
     ]);
 
     let external_material =
@@ -816,10 +723,6 @@ fn load_viewer_external_material_config_ignores_empty_or_invalid_values() {
     assert_rgb_approx_eq(
         external_material.asset.base_color_srgb,
         [0.81960785, 0.7647059, 0.3529412],
-    );
-    assert_rgb_approx_eq(
-        external_material.power_storage.emissive_color_srgb,
-        [0.42352942, 1.0, 0.81960785],
     );
     assert_eq!(external_material.location.base_color_srgb, None);
     assert_eq!(external_material.power_plant.base_color_srgb, None);
@@ -857,5 +760,4 @@ fn load_viewer_external_texture_config_ignores_empty_values() {
     assert_eq!(external_texture.asset.base_texture_asset, None);
     assert_eq!(external_texture.asset.emissive_texture_asset, None);
     assert_eq!(external_texture.power_plant.base_texture_asset, None);
-    assert_eq!(external_texture.power_storage.base_texture_asset, None);
 }

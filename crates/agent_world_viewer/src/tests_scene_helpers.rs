@@ -202,16 +202,6 @@ pub(super) fn spawn_power_facility_scale_test_system(
         location_id,
         location_pos,
     );
-    spawn_power_storage_entity(
-        &mut commands,
-        &config,
-        &assets,
-        &mut scene,
-        origin,
-        "storage-scale",
-        location_id,
-        location_pos,
-    );
 }
 
 pub(super) fn spawn_agent_scale_test_system(

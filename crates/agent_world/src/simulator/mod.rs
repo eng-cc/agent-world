@@ -54,8 +54,8 @@ pub use fragment_physics::{
 };
 pub use init::{
     build_world_model, initialize_kernel, AgentSpawnConfig, AsteroidFragmentInitConfig,
-    LocationSeedConfig, OriginLocationConfig, PowerPlantSeedConfig, PowerStorageSeedConfig,
-    WorldInitConfig, WorldInitError, WorldInitReport,
+    LocationSeedConfig, OriginLocationConfig, PowerPlantSeedConfig, WorldInitConfig,
+    WorldInitError, WorldInitReport,
 };
 pub use kernel::ChunkRuntimeConfig;
 pub use kernel::{
@@ -113,7 +113,7 @@ pub use world_model::{
 // Re-export power system types
 pub use power::{
     AgentPowerState, AgentPowerStatus, ConsumeReason, PlantStatus, PowerConfig, PowerEvent,
-    PowerPlant, PowerStorage,
+    PowerPlant,
 };
 pub use runtime_perf::{
     RuntimePerfBottleneck, RuntimePerfHealth, RuntimePerfSeriesSnapshot, RuntimePerfSnapshot,

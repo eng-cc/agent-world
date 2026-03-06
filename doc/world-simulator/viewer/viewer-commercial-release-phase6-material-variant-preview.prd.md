@@ -14,7 +14,7 @@
 - 新增材质变体预览状态资源与预设枚举。
 - 新增环境变量入口，支持启动时设置初始预设。
 - 新增运行时热切换快捷键（`F8`）用于循环切换预设。
-- 将预设系数应用到核心实体材质（agent/asset/power_plant/power_storage）的 roughness/metallic。
+- 将预设系数应用到核心实体材质（agent/asset/power_plant）的 roughness/metallic。
 - 补充单元测试，覆盖预设解析、切换顺序、系数与 clamp 行为。
 - 更新 `doc/world-simulator/viewer/viewer-manual.md` 与项目状态文档。
 

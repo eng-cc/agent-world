@@ -340,7 +340,6 @@ fn apply_theme_to_assets_and_scene(
     assets.location_mesh = resolved_theme_assets.location_mesh;
     assets.asset_mesh = resolved_theme_assets.asset_mesh;
     assets.power_plant_mesh = resolved_theme_assets.power_plant_mesh;
-    assets.power_storage_mesh = resolved_theme_assets.power_storage_mesh;
 
     write_material(
         materials,
@@ -356,11 +355,6 @@ fn apply_theme_to_assets_and_scene(
         materials,
         &assets.power_plant_material,
         resolved_theme_assets.power_plant_material,
-    );
-    write_material(
-        materials,
-        &assets.power_storage_material,
-        resolved_theme_assets.power_storage_material,
     );
 
     if let Some(location_override) = resolved_theme_assets.location_override_materials {

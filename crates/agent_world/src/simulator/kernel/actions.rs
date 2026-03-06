@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 
 use super::super::chunking::CHUNK_SIZE_X_CM;
 use super::super::module_visual::ModuleVisualAnchor;
-use super::super::power::{PlantStatus, PowerEvent, PowerPlant, PowerStorage};
+use super::super::power::{PlantStatus, PowerEvent, PowerPlant};
 use super::super::types::{
     Action, ElementBudgetError, FragmentElementKind, PowerOrderSide, ResourceKind, ResourceOwner,
     StockError, CM_PER_KM, PPM_BASE,

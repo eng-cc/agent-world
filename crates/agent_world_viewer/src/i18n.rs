@@ -272,13 +272,6 @@ pub(super) fn selection_kind_label(kind: SelectionKind, locale: UiLocale) -> &'s
                 "power_plant"
             }
         }
-        SelectionKind::PowerStorage => {
-            if locale.is_zh() {
-                "储能"
-            } else {
-                "power_storage"
-            }
-        }
         SelectionKind::Chunk => {
             if locale.is_zh() {
                 "分块"

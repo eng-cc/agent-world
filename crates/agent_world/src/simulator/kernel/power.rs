@@ -1,9 +1,8 @@
 use super::super::power::{AgentPowerState, ConsumeReason, PlantStatus, PowerEvent};
 use super::super::types::{AgentId, FacilityId, ResourceKind};
-use super::types::{RejectReason, WorldEvent, WorldEventKind};
+use super::types::WorldEvent;
 use super::WorldKernel;
 
-const LOCATION_ELECTRICITY_POOL_REMOVED_NOTE: &str = "location electricity pool removed";
 const FACTORY_KIND_RADIATION_POWER_MK1: &str = "factory.power.radiation.mk1";
 
 impl WorldKernel {
@@ -153,54 +152,6 @@ impl WorldKernel {
         }
 
         events
-    }
-
-    /// Charge a power storage facility using electricity at its location.
-    /// Returns the power event if charging occurred.
-    pub fn charge_power_storage(
-        &mut self,
-        storage_id: &FacilityId,
-        requested_input: i64,
-    ) -> Option<WorldEvent> {
-        let power_event = self
-            .charge_power_storage_event(storage_id, requested_input)
-            .ok()?;
-        Some(self.record_event(WorldEventKind::Power(power_event)))
-    }
-
-    /// Discharge a power storage facility, adding electricity to its location.
-    /// Returns the power event if discharging occurred.
-    pub fn discharge_power_storage(
-        &mut self,
-        storage_id: &FacilityId,
-        requested_output: i64,
-    ) -> Option<WorldEvent> {
-        let power_event = self
-            .discharge_power_storage_event(storage_id, requested_output)
-            .ok()?;
-        Some(self.record_event(WorldEventKind::Power(power_event)))
-    }
-
-    pub(super) fn charge_power_storage_event(
-        &mut self,
-        storage_id: &FacilityId,
-        requested_input: i64,
-    ) -> Result<PowerEvent, RejectReason> {
-        let _ = (storage_id, requested_input);
-        Err(RejectReason::RuleDenied {
-            notes: vec![LOCATION_ELECTRICITY_POOL_REMOVED_NOTE.to_string()],
-        })
-    }
-
-    pub(super) fn discharge_power_storage_event(
-        &mut self,
-        storage_id: &FacilityId,
-        requested_output: i64,
-    ) -> Result<PowerEvent, RejectReason> {
-        let _ = (storage_id, requested_output);
-        Err(RejectReason::RuleDenied {
-            notes: vec![LOCATION_ELECTRICITY_POOL_REMOVED_NOTE.to_string()],
-        })
     }
 
     /// Consume power from an agent for a specific reason.

@@ -93,7 +93,6 @@ fn main() {
     println!("locations: {}", report.locations);
     println!("agents: {}", report.agents);
     println!("power_plants: {}", model.power_plants.len());
-    println!("power_storages: {}", model.power_storages.len());
     println!(
         "asteroid_fragment_fragments: {}",
         asteroid_fragment_fragments
@@ -113,28 +112,19 @@ fn main() {
             );
         }
 
-        let mut facility_counts: BTreeMap<String, (usize, usize)> = BTreeMap::new();
+        let mut facility_counts: BTreeMap<String, usize> = BTreeMap::new();
         for plant in model.power_plants.values() {
             let entry = facility_counts
                 .entry(plant.location_id.clone())
-                .or_insert((0, 0));
-            entry.0 += 1;
-        }
-        for storage in model.power_storages.values() {
-            let entry = facility_counts
-                .entry(storage.location_id.clone())
-                .or_insert((0, 0));
-            entry.1 += 1;
+                .or_insert(0);
+            *entry += 1;
         }
         println!("location_facilities:");
         let mut facility_locations: Vec<_> = facility_counts.keys().collect();
         facility_locations.sort();
         for location_id in facility_locations {
-            let (plants, storages) = facility_counts[location_id];
-            println!(
-                "- {}: power_plants={} power_storages={}",
-                location_id, plants, storages
-            );
+            let plants = facility_counts[location_id];
+            println!("- {}: power_plants={}", location_id, plants);
         }
 
         println!("agent_resources:");

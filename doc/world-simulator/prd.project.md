@@ -83,7 +83,7 @@
 
 ## 专题任务映射（2026-03-06 批次）
 - [x] SUBTASK-WORLD_SIMULATOR-20260306-001 (PRD-WORLD_SIMULATOR-001/002/003) [test_tier_required]: `doc/world-simulator/kernel/power-storage-complete-removal-2026-03-06.prd.project.md`（文档建档）
-- [ ] SUBTASK-WORLD_SIMULATOR-20260306-002 (PRD-WORLD_SIMULATOR-001/002/003) [test_tier_required]: `PowerStorage` 全链路删除（simulator + viewer + scripts + docs 回写）
+- [x] SUBTASK-WORLD_SIMULATOR-20260306-002 (PRD-WORLD_SIMULATOR-001/002/003) [test_tier_required]: `PowerStorage` 全链路删除（simulator + viewer + scripts + docs 回写）
 
 ## 依赖
 - doc/world-simulator/prd.index.md
@@ -124,9 +124,9 @@
 ## 状态
 - 更新日期: 2026-03-06
 - 当前状态: in_progress
-- 当前优先任务: SUBTASK-WORLD_SIMULATOR-20260306-002（PowerStorage 全链路删除）
+- 当前优先任务: 待排期（本轮 PowerStorage 全链路删除已完成）
 - 并行待办: 无
-- 专题映射状态: 2026-03-02 批次 9/9、2026-03-03 批次 4/4、2026-03-04 批次 7/7、2026-03-05 批次 4/4、2026-03-06 批次 1/2 已纳入模块项目管理文档。
+- 专题映射状态: 2026-03-02 批次 9/9、2026-03-03 批次 4/4、2026-03-04 批次 7/7、2026-03-05 批次 4/4、2026-03-06 批次 2/2 已纳入模块项目管理文档。
 - 手册入口状态: `doc/world-simulator/viewer/viewer-manual.md` 为唯一活跃手册入口。
 - 视觉评分模板状态: `doc/world-simulator/prd/acceptance/visual-review-score-card.md` 已纳入文档树，采用卡片式评审覆盖 llm_bootstrap 场景 18 张截图。
 - UI 评审结果状态: `doc/ui_review_result/ui_review_list.md` 已建立，首张待打分卡片为 `doc/ui_review_result/card_2026_03_06_11_50_29.md`。

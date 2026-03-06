@@ -187,8 +187,8 @@
 - 问题标签（可多选）: [ ]过曝 [ ]欠曝 [ ]饱和度异常 [ ]纹理重复感强 [ ]主体不清晰 [ ]UI 遮挡
 - 备注:
 
-### 16. `texture_inspector/power_storage/default`
-- 图片路径: `output/visual_review/<review_ts>/texture_inspector/power_storage/default/viewer.png`
+### 16. `texture_inspector/power_plant/default_closeup`
+- 图片路径: `output/visual_review/<review_ts>/texture_inspector/power_plant/default/viewer_art_closeup.png`
 - 材质表现（1-5）: [ ]1 [ ]2 [ ]3 [ ]4 [ ]5
 - 光照与层次（1-5）: [ ]1 [ ]2 [ ]3 [ ]4 [ ]5
 - 可读性（1-5）: [ ]1 [ ]2 [ ]3 [ ]4 [ ]5
@@ -198,8 +198,8 @@
 - 问题标签（可多选）: [ ]过曝 [ ]欠曝 [ ]饱和度异常 [ ]纹理重复感强 [ ]主体不清晰 [ ]UI 遮挡
 - 备注:
 
-### 17. `texture_inspector/power_storage/matte`
-- 图片路径: `output/visual_review/<review_ts>/texture_inspector/power_storage/matte/viewer.png`
+### 17. `texture_inspector/power_plant/matte_closeup`
+- 图片路径: `output/visual_review/<review_ts>/texture_inspector/power_plant/matte/viewer_art_closeup.png`
 - 材质表现（1-5）: [ ]1 [ ]2 [ ]3 [ ]4 [ ]5
 - 光照与层次（1-5）: [ ]1 [ ]2 [ ]3 [ ]4 [ ]5
 - 可读性（1-5）: [ ]1 [ ]2 [ ]3 [ ]4 [ ]5
@@ -209,8 +209,8 @@
 - 问题标签（可多选）: [ ]过曝 [ ]欠曝 [ ]饱和度异常 [ ]纹理重复感强 [ ]主体不清晰 [ ]UI 遮挡
 - 备注:
 
-### 18. `texture_inspector/power_storage/glossy`
-- 图片路径: `output/visual_review/<review_ts>/texture_inspector/power_storage/glossy/viewer.png`
+### 18. `texture_inspector/power_plant/glossy_closeup`
+- 图片路径: `output/visual_review/<review_ts>/texture_inspector/power_plant/glossy/viewer_art_closeup.png`
 - 材质表现（1-5）: [ ]1 [ ]2 [ ]3 [ ]4 [ ]5
 - 光照与层次（1-5）: [ ]1 [ ]2 [ ]3 [ ]4 [ ]5
 - 可读性（1-5）: [ ]1 [ ]2 [ ]3 [ ]4 [ ]5

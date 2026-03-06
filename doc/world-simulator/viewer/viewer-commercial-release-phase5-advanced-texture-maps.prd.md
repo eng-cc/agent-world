@@ -11,7 +11,7 @@
 ## 2. User Experience & Functionality
 
 ### In Scope
-- 扩展外部贴图覆盖配置结构，支持五类实体（agent/location/asset/power_plant/power_storage）的高级贴图路径。
+- 扩展外部贴图覆盖配置结构，支持四类实体（agent/location/asset/power_plant）的高级贴图路径。
 - 新增环境变量入口，解析并注入 `ViewerExternalTextureConfig`。
 - `setup_3d_scene` 接入高级贴图通道装载：
   - `normal_map_texture`

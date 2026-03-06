@@ -18,7 +18,7 @@
 - 自定义地点创建：显式指定地点列表，可配置位置/画像/初始资源。
 - 小行星带碎片生成：复用 `generate_fragments`，并支持单独 seed 偏移。
 - 初始 Agent 生成：按数量与前缀批量创建，按 seed 从可用地点中确定性随机出生，可配置初始资源。
-- 初始电力设施：支持发电设施/储能设施的预置与校验。
+- 初始电力设施：支持发电设施的预置与校验。
 - 初始化输出：生成 `WorldModel`，并提供 `WorldKernel` 便捷构造。
 - 基础校验：越界位置、ID 冲突、出生地点不存在、负资源、设施参数非法等。
 
@@ -40,24 +40,23 @@
   - `asteroid_fragment: AsteroidFragmentInitConfig`（小行星带碎片生成配置）
   - `agents: AgentSpawnConfig`
   - `power_plants: Vec<PowerPlantSeedConfig>`
-  - `power_storages: Vec<PowerStorageSeedConfig>`
 - `WorldScenario`
   - `minimal`：原点 + 1 Agent，不启用小行星带碎片
   - `two_bases`：原点 + 2 个基地地点 + 2 Agent，不启用小行星带碎片
-  - `power_bootstrap`：原点 + 1 Agent + 基础发电/储能设施
+  - `power_bootstrap`：原点 + 1 Agent + 基础发电设施
   - `resource_bootstrap`：原点 + 1 Agent + 初始电力/硬件/数据库存
-  - `twin_region_bootstrap`：双区域 + 双 Agent + 基础发电/储能与资源库存
-  - `triad_region_bootstrap`：三区域 + 三 Agent + 分层电力/储能与资源库存
+  - `twin_region_bootstrap`：双区域 + 双 Agent + 基础发电与资源库存
+  - `triad_region_bootstrap`：三区域 + 三 Agent + 分层电力与资源库存
   - `triad_p2p_bootstrap`：三 P2P 节点 + 3 Agent（Agent 出生地点由 seed 随机）
-  - `asteroid_fragment_bootstrap`：小行星带碎片开启 + 原点 + 1 Agent + 储能与基础资源
-  - `asteroid_fragment_twin_region_bootstrap`：小行星带碎片开启 + 双区域 + 双 Agent + 基础电力/储能与资源
-  - `asteroid_fragment_triad_region_bootstrap`：小行星带碎片开启 + 三区域 + 三 Agent + 基础电力/储能与资源
+  - `asteroid_fragment_bootstrap`：小行星带碎片开启 + 原点 + 1 Agent + 发电设施与基础资源
+  - `asteroid_fragment_twin_region_bootstrap`：小行星带碎片开启 + 双区域 + 双 Agent + 基础电力与资源
+  - `asteroid_fragment_triad_region_bootstrap`：小行星带碎片开启 + 三区域 + 三 Agent + 基础电力与资源
   - 场景定义文件：`crates/agent_world/scenarios/*.json`（编译期嵌入）
 
 ### 场景使用建议
 - `minimal`：用于测试核心流程或最小单 Agent 回归。
 - `two_bases`：用于验证多地点移动与基础互动。
-- `power_bootstrap`：用于验证电力设施与充放电路径。
+- `power_bootstrap`：用于验证发电设施路径。
 - `resource_bootstrap`：用于验证资源库存与交易/消耗逻辑。
 - `twin_region_bootstrap` / `triad_region_bootstrap`：用于验证多区域资源/设施差异与运输成本。
 - `triad_p2p_bootstrap`：用于验证 P2P 多节点拓扑与节点内 Agent 初始分布。
@@ -108,11 +107,6 @@
   - `facility_id/location_id/owner`
   - `capacity_per_tick/fuel_cost_per_pu/maintenance_cost`
   - `efficiency/degradation`
-- `PowerStorageSeedConfig`
-  - `facility_id/location_id/owner`
-  - `capacity/current_level`
-  - `charge_efficiency/discharge_efficiency`
-  - `max_charge_rate/max_discharge_rate`
 - `WorldInitReport`
   - 统计创建数量（locations/agents）与使用的 seed
 - `WorldInitError`
@@ -137,14 +131,14 @@
 - 示例输出包含每个地点的资源摘要（electricity/hardware/data）。
 - 示例输出包含每个 Agent 的资源摘要（electricity/hardware/data）。
 - 示例输出包含估算的小行星带碎片数量（asteroid_fragment_fragments）。
-- 示例输出包含每个地点的设施统计（power_plants/power_storages）。
+- 示例输出包含每个地点的设施统计（power_plants）。
 - `--summary-only` 可仅输出概要统计（隐藏详细列表）。
 
 ## 5. Risks & Roadmap
 - **I1**：定义初始化配置与报表结构，输出 `WorldModel`。
 - **I2**：接入 `WorldKernel` 便捷构造与基础校验；补充单元测试。
 - **I3**：扩展初始化模板（资源/多据点）与更多可配置项。
-- **I4**：扩展初始化模板（电力设施）与更多校验/测试。
+- **I4**：扩展初始化模板（发电设施）与更多校验/测试。
 
 ### Technical Risks
 - 默认小行星带碎片生成可能导致初始化耗时波动（需可配置关闭）。

@@ -229,11 +229,10 @@ fn render_status_dump(
         .unwrap_or(-1.0);
 
     format!(
-        "connection_status={connection_status}\nlast_error={last_error}\nsnapshot_ready={snapshot_ready}\nevent_count={}\ndecision_trace_count={}\nselection_kind={selection_kind}\nselection_id={selection_id}\ncamera_mode={camera_mode_label}\norbit_radius={orbit_radius:.6}\nscene_power_plant_count={}\nscene_power_storage_count={}\n",
+        "connection_status={connection_status}\nlast_error={last_error}\nsnapshot_ready={snapshot_ready}\nevent_count={}\ndecision_trace_count={}\nselection_kind={selection_kind}\nselection_id={selection_id}\ncamera_mode={camera_mode_label}\norbit_radius={orbit_radius:.6}\nscene_power_plant_count={}\n",
         viewer_state.events.len(),
         viewer_state.decision_traces.len(),
         scene.power_plant_entities.len(),
-        scene.power_storage_entities.len(),
     )
 }
 
@@ -244,7 +243,6 @@ fn selection_kind_label(kind: SelectionKind) -> &'static str {
         SelectionKind::Fragment => "fragment",
         SelectionKind::Asset => "asset",
         SelectionKind::PowerPlant => "power_plant",
-        SelectionKind::PowerStorage => "power_storage",
         SelectionKind::Chunk => "chunk",
     }
 }
@@ -335,9 +333,6 @@ mod tests {
         scene
             .power_plant_entities
             .insert("plant-1".to_string(), Entity::from_bits(11));
-        scene
-            .power_storage_entities
-            .insert("storage-1".to_string(), Entity::from_bits(12));
 
         let mut app = App::new();
         app.world_mut().spawn((
@@ -367,6 +362,5 @@ mod tests {
         assert!(dump.contains("camera_mode=3d"));
         assert!(dump.contains("orbit_radius=23.500000"));
         assert!(dump.contains("scene_power_plant_count=1"));
-        assert!(dump.contains("scene_power_storage_count=1"));
     }
 }

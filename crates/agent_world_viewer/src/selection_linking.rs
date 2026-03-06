@@ -490,7 +490,6 @@ pub(super) fn pick_3d_selection(
     fragments: Query<(Entity, &GlobalTransform, &FragmentElementMarker)>,
     assets: Query<(Entity, &GlobalTransform, &AssetMarker)>,
     power_plants: Query<(Entity, &GlobalTransform, &PowerPlantMarker)>,
-    power_storages: Query<(Entity, &GlobalTransform, &PowerStorageMarker)>,
     chunks: Query<(Entity, &GlobalTransform, &ChunkMarker)>,
     config: Res<Viewer3dConfig>,
     panel_width: Option<Res<RightPanelWidthState>>,
@@ -617,25 +616,6 @@ pub(super) fn pick_3d_selection(
                 best = Some((
                     entity,
                     SelectionKind::PowerPlant,
-                    marker.id.clone(),
-                    None,
-                    distance,
-                ));
-            }
-        }
-    }
-
-    for (entity, transform, marker) in power_storages.iter() {
-        if let Some(distance) = ray_point_distance(ray, transform.translation()) {
-            if distance <= PICK_MAX_DISTANCE
-                && best
-                    .as_ref()
-                    .map(|(_, _, _, _, best_dist)| distance < *best_dist)
-                    .unwrap_or(true)
-            {
-                best = Some((
-                    entity,
-                    SelectionKind::PowerStorage,
                     marker.id.clone(),
                     None,
                     distance,
@@ -778,7 +758,6 @@ fn event_matches_selection(
             .map(|location_id| event_matches_location(event, location_id))
             .unwrap_or(false),
         SelectionKind::PowerPlant => event_matches_power_plant(event, selection.id.as_str()),
-        SelectionKind::PowerStorage => event_matches_power_storage(event, selection.id.as_str()),
         SelectionKind::Chunk => selection
             .id
             .parse::<ChunkCoordId>()
@@ -951,20 +930,9 @@ fn power_event_target(
             id: plant.id.clone(),
             name: None,
         }),
-        PowerEvent::PowerStorageRegistered { storage } => Some(SelectionTarget {
-            kind: SelectionKind::PowerStorage,
-            id: storage.id.clone(),
-            name: None,
-        }),
         PowerEvent::PowerGenerated { plant_id, .. } => Some(SelectionTarget {
             kind: SelectionKind::PowerPlant,
             id: plant_id.clone(),
-            name: None,
-        }),
-        PowerEvent::PowerStored { storage_id, .. }
-        | PowerEvent::PowerDischarged { storage_id, .. } => Some(SelectionTarget {
-            kind: SelectionKind::PowerStorage,
-            id: storage_id.clone(),
             name: None,
         }),
         PowerEvent::PowerConsumed { agent_id, .. }
@@ -1053,13 +1021,6 @@ fn facility_target(facility_id: &str, snapshot: Option<&WorldSnapshot>) -> Optio
                 name: None,
             });
         }
-        if snapshot.model.power_storages.contains_key(facility_id) {
-            return Some(SelectionTarget {
-                kind: SelectionKind::PowerStorage,
-                id: facility_id.to_string(),
-                name: None,
-            });
-        }
     }
     None
 }
@@ -1080,10 +1041,6 @@ pub(super) fn target_entity(scene: &Viewer3dScene, target: &SelectionTarget) -> 
                     .copied()
             }),
         SelectionKind::PowerPlant => scene.power_plant_entities.get(target.id.as_str()).copied(),
-        SelectionKind::PowerStorage => scene
-            .power_storage_entities
-            .get(target.id.as_str())
-            .copied(),
         SelectionKind::Chunk => scene.chunk_entities.get(target.id.as_str()).copied(),
     }
 }
@@ -1095,7 +1052,6 @@ pub(super) fn selection_kind_label(kind: SelectionKind) -> &'static str {
         SelectionKind::Fragment => "fragment",
         SelectionKind::Asset => "asset",
         SelectionKind::PowerPlant => "power_plant",
-        SelectionKind::PowerStorage => "power_storage",
         SelectionKind::Chunk => "chunk",
     }
 }

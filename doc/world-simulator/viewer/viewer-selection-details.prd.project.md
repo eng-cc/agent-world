@@ -9,7 +9,7 @@
 - [x] viewer 新增“选中对象详情”面板（Agent/Location 分支）
 - [x] 详情面板接入最近事件与最近 LLM trace 展示
 - [x] LLM 诊断字段扩展（模型/耗时/token/重试）
-- [x] 选中对象扩展：Asset/PowerPlant/PowerStorage（3D marker + 点击 + 详情）
+- [x] 选中对象扩展：Asset/PowerPlant（3D marker + 点击 + 详情；PowerStorage 已于 2026-03-06 下线）
 - [x] 选中对象扩展：Chunk（3D marker + 点击 + 详情）
 - [x] 新增/更新测试（协议 round-trip + viewer UI 文案 + live trace 流）
 - [x] 新增/更新测试（Asset/PowerPlant 详情文案）

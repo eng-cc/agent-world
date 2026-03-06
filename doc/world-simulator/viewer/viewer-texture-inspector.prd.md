@@ -12,7 +12,7 @@
 
 ### In Scope
 - 新增脚本：`scripts/viewer-texture-inspector.sh`。
-- 支持按“贴图来源实体”检查：`agent/location/asset/power_plant/power_storage`。
+- 支持按“贴图来源实体”检查：`agent/location/asset/power_plant`。
 - 支持材质变体批量检查：`default/matte/glossy`。
 - 支持输出截图、日志、元数据到独立目录（可归档对比）。
 - 支持覆盖 base/normal/metallic_roughness/emissive 贴图路径，便于临时验图。

@@ -1,6 +1,9 @@
 # M4 电力子系统（项目管理文档）
 
 审计轮次: 5
+
+> 注：本项目文档对应历史实现阶段。`PowerStorage` 能力已于 2026-03-06 全量下线，当前执行状态以 `doc/world-simulator/kernel/power-storage-complete-removal-2026-03-06.prd.project.md` 为准。
+
 ## 背景设定与约束
 
 - 初始状态：硅基个体未工业化，每个 Agent 自带基础发电与储能零件，可维持短期自给自足

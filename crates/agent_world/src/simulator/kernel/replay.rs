@@ -345,9 +345,7 @@ impl WorldKernel {
                     },
                 );
                 if factory_kind.eq_ignore_ascii_case(FACTORY_KIND_RADIATION_POWER_MK1) {
-                    if self.model.power_plants.contains_key(factory_id)
-                        || self.model.power_storages.contains_key(factory_id)
-                    {
+                    if self.model.power_plants.contains_key(factory_id) {
                         return Err(PersistError::ReplayConflict {
                             message: format!(
                                 "power facility already exists while replaying factory build: {factory_id}"
@@ -907,9 +905,7 @@ impl WorldKernel {
             }
             WorldEventKind::Power(power_event) => match power_event {
                 PowerEvent::PowerPlantRegistered { plant } => {
-                    if self.model.power_plants.contains_key(&plant.id)
-                        || self.model.power_storages.contains_key(&plant.id)
-                    {
+                    if self.model.power_plants.contains_key(&plant.id) {
                         return Err(PersistError::ReplayConflict {
                             message: format!("power plant already exists: {}", plant.id),
                         });
@@ -930,31 +926,6 @@ impl WorldKernel {
                     self.model
                         .power_plants
                         .insert(plant.id.clone(), plant.clone());
-                }
-                PowerEvent::PowerStorageRegistered { storage } => {
-                    if self.model.power_plants.contains_key(&storage.id)
-                        || self.model.power_storages.contains_key(&storage.id)
-                    {
-                        return Err(PersistError::ReplayConflict {
-                            message: format!("power storage already exists: {}", storage.id),
-                        });
-                    }
-                    if !self.model.locations.contains_key(&storage.location_id) {
-                        return Err(PersistError::ReplayConflict {
-                            message: format!(
-                                "location not found for power storage: {}",
-                                storage.location_id
-                            ),
-                        });
-                    }
-                    self.ensure_owner_exists(&storage.owner).map_err(|reason| {
-                        PersistError::ReplayConflict {
-                            message: format!("invalid power storage owner: {reason:?}"),
-                        }
-                    })?;
-                    self.model
-                        .power_storages
-                        .insert(storage.id.clone(), storage.clone());
                 }
                 PowerEvent::PowerGenerated {
                     plant_id,
@@ -984,20 +955,6 @@ impl WorldKernel {
                         plant.owner.clone()
                     };
                     self.add_to_owner_for_replay(&owner, ResourceKind::Electricity, *amount)?;
-                }
-                PowerEvent::PowerStored { storage_id, .. } => {
-                    return Err(PersistError::ReplayConflict {
-                        message: format!(
-                            "{LOCATION_ELECTRICITY_POOL_REMOVED_NOTE}: PowerStored unsupported in replay for storage {storage_id}"
-                        ),
-                    });
-                }
-                PowerEvent::PowerDischarged { storage_id, .. } => {
-                    return Err(PersistError::ReplayConflict {
-                        message: format!(
-                            "{LOCATION_ELECTRICITY_POOL_REMOVED_NOTE}: PowerDischarged unsupported in replay for storage {storage_id}"
-                        ),
-                    });
                 }
                 PowerEvent::PowerConsumed {
                     agent_id, amount, ..

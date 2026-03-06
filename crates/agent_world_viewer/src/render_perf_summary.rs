@@ -202,7 +202,6 @@ fn scene_world_entity_count(scene: &Viewer3dScene) -> usize {
         + scene.asset_entities.len()
         + scene.module_visual_entities.len()
         + scene.power_plant_entities.len()
-        + scene.power_storage_entities.len()
         + scene.chunk_entities.len()
         + scene
             .chunk_line_entities
@@ -272,7 +271,6 @@ fn snapshot_world_entity_count(snapshot: &agent_world::simulator::WorldSnapshot)
         + model.assets.len()
         + model.module_visual_entities.len()
         + model.power_plants.len()
-        + model.power_storages.len()
         + model.chunks.len()
 }
 

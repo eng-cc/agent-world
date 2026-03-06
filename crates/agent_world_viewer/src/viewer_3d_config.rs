@@ -49,9 +49,6 @@ const DEFAULT_MATERIAL_FACILITY_EMISSIVE_BOOST: f32 = 0.08;
 const DEFAULT_MATERIAL_POWER_PLANT_ROUGHNESS: f32 = 0.48;
 const DEFAULT_MATERIAL_POWER_PLANT_METALLIC: f32 = 0.20;
 const DEFAULT_MATERIAL_POWER_PLANT_EMISSIVE_BOOST: f32 = 0.08;
-const DEFAULT_MATERIAL_POWER_STORAGE_ROUGHNESS: f32 = 0.48;
-const DEFAULT_MATERIAL_POWER_STORAGE_METALLIC: f32 = 0.20;
-const DEFAULT_MATERIAL_POWER_STORAGE_EMISSIVE_BOOST: f32 = 0.08;
 const DEFAULT_FRAGMENT_UNLIT: bool = true;
 const DEFAULT_FRAGMENT_ALPHA: f32 = 0.92;
 const DEFAULT_FRAGMENT_EMISSIVE_BOOST: f32 = 0.24;
@@ -304,7 +301,6 @@ pub(super) struct ViewerExternalMeshConfig {
     pub location_mesh_asset: Option<String>,
     pub asset_mesh_asset: Option<String>,
     pub power_plant_mesh_asset: Option<String>,
-    pub power_storage_mesh_asset: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -319,7 +315,6 @@ pub(super) struct ViewerExternalMaterialConfig {
     pub location: ViewerExternalMaterialSlotConfig,
     pub asset: ViewerExternalMaterialSlotConfig,
     pub power_plant: ViewerExternalMaterialSlotConfig,
-    pub power_storage: ViewerExternalMaterialSlotConfig,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -336,7 +331,6 @@ pub(super) struct ViewerExternalTextureConfig {
     pub location: ViewerExternalTextureSlotConfig,
     pub asset: ViewerExternalTextureSlotConfig,
     pub power_plant: ViewerExternalTextureSlotConfig,
-    pub power_storage: ViewerExternalTextureSlotConfig,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -434,7 +428,6 @@ pub(super) struct ViewerMaterialConfig {
     pub asset: ViewerPbrMaterialConfig,
     pub facility: ViewerPbrMaterialConfig,
     pub power_plant: ViewerPbrMaterialConfig,
-    pub power_storage: ViewerPbrMaterialConfig,
     pub fragment: ViewerFragmentMaterialConfig,
 }
 
@@ -460,11 +453,6 @@ impl Default for ViewerMaterialConfig {
                 roughness: DEFAULT_MATERIAL_POWER_PLANT_ROUGHNESS,
                 metallic: DEFAULT_MATERIAL_POWER_PLANT_METALLIC,
                 emissive_boost: DEFAULT_MATERIAL_POWER_PLANT_EMISSIVE_BOOST,
-            },
-            power_storage: ViewerPbrMaterialConfig {
-                roughness: DEFAULT_MATERIAL_POWER_STORAGE_ROUGHNESS,
-                metallic: DEFAULT_MATERIAL_POWER_STORAGE_METALLIC,
-                emissive_boost: DEFAULT_MATERIAL_POWER_STORAGE_EMISSIVE_BOOST,
             },
             fragment: ViewerFragmentMaterialConfig::default(),
         }
@@ -610,10 +598,6 @@ where
             &lookup,
             "AGENT_WORLD_VIEWER_POWER_PLANT_MESH_ASSET",
         ),
-        power_storage_mesh_asset: parse_non_empty_string(
-            &lookup,
-            "AGENT_WORLD_VIEWER_POWER_STORAGE_MESH_ASSET",
-        ),
     }
 }
 
@@ -656,16 +640,6 @@ where
             emissive_color_srgb: parse_hex_srgb_color(
                 &lookup,
                 "AGENT_WORLD_VIEWER_POWER_PLANT_EMISSIVE_COLOR",
-            ),
-        },
-        power_storage: ViewerExternalMaterialSlotConfig {
-            base_color_srgb: parse_hex_srgb_color(
-                &lookup,
-                "AGENT_WORLD_VIEWER_POWER_STORAGE_BASE_COLOR",
-            ),
-            emissive_color_srgb: parse_hex_srgb_color(
-                &lookup,
-                "AGENT_WORLD_VIEWER_POWER_STORAGE_EMISSIVE_COLOR",
             ),
         },
     }
@@ -746,24 +720,6 @@ where
             emissive_texture_asset: parse_non_empty_string(
                 &lookup,
                 "AGENT_WORLD_VIEWER_POWER_PLANT_EMISSIVE_TEXTURE_ASSET",
-            ),
-        },
-        power_storage: ViewerExternalTextureSlotConfig {
-            base_texture_asset: parse_non_empty_string(
-                &lookup,
-                "AGENT_WORLD_VIEWER_POWER_STORAGE_BASE_TEXTURE_ASSET",
-            ),
-            normal_texture_asset: parse_non_empty_string(
-                &lookup,
-                "AGENT_WORLD_VIEWER_POWER_STORAGE_NORMAL_TEXTURE_ASSET",
-            ),
-            metallic_roughness_texture_asset: parse_non_empty_string(
-                &lookup,
-                "AGENT_WORLD_VIEWER_POWER_STORAGE_METALLIC_ROUGHNESS_TEXTURE_ASSET",
-            ),
-            emissive_texture_asset: parse_non_empty_string(
-                &lookup,
-                "AGENT_WORLD_VIEWER_POWER_STORAGE_EMISSIVE_TEXTURE_ASSET",
             ),
         },
     }
@@ -908,30 +864,6 @@ where
     ) {
         if value.is_finite() && value >= 0.0 {
             config.materials.power_plant.emissive_boost = value;
-        }
-    }
-    if let Some(value) = parse_f32(
-        &lookup,
-        "AGENT_WORLD_VIEWER_MATERIAL_POWER_STORAGE_ROUGHNESS",
-    ) {
-        if value.is_finite() && (0.0..=1.0).contains(&value) {
-            config.materials.power_storage.roughness = value;
-        }
-    }
-    if let Some(value) = parse_f32(
-        &lookup,
-        "AGENT_WORLD_VIEWER_MATERIAL_POWER_STORAGE_METALLIC",
-    ) {
-        if value.is_finite() && (0.0..=1.0).contains(&value) {
-            config.materials.power_storage.metallic = value;
-        }
-    }
-    if let Some(value) = parse_f32(
-        &lookup,
-        "AGENT_WORLD_VIEWER_MATERIAL_POWER_STORAGE_EMISSIVE_BOOST",
-    ) {
-        if value.is_finite() && value >= 0.0 {
-            config.materials.power_storage.emissive_boost = value;
         }
     }
     if let Some(value) = parse_tonemapping_mode(&lookup, "AGENT_WORLD_VIEWER_TONEMAPPING") {

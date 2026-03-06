@@ -594,16 +594,6 @@ def generate_meshes(mesh_dir: Path, profile: QualityProfile) -> None:
                 transform_mesh(build_prism(0.09, 0.72, 12), translate=(-0.55, 0.72, 0.0)),
             ]
         )
-        power_storage = merge_meshes(
-            [
-                build_prism(0.47, 1.36, 36),
-                transform_mesh(build_uv_sphere(0.46, 30, 18), scale=(1.0, 0.44, 1.0), translate=(0.0, 0.69, 0.0)),
-                transform_mesh(build_uv_sphere(0.46, 30, 18), scale=(1.0, 0.44, 1.0), translate=(0.0, -0.69, 0.0)),
-                transform_mesh(build_prism(0.56, 0.08, 36), translate=(0.0, 0.26, 0.0)),
-                transform_mesh(build_prism(0.56, 0.08, 36), translate=(0.0, -0.26, 0.0)),
-                transform_mesh(build_prism(0.4, 0.1, 18), translate=(0.0, 0.0, 0.0)),
-            ]
-        )
     elif profile.quality == "v2":
         agent = merge_meshes(
             [
@@ -642,15 +632,6 @@ def generate_meshes(mesh_dir: Path, profile: QualityProfile) -> None:
                 transform_mesh(build_box((0.18, 0.09, 0.98)), translate=(0.0, 0.28, 0.0)),
             ]
         )
-        power_storage = merge_meshes(
-            [
-                build_prism(0.46, 1.32, 28),
-                transform_mesh(build_uv_sphere(0.44, 24, 14), scale=(1.0, 0.44, 1.0), translate=(0.0, 0.67, 0.0)),
-                transform_mesh(build_uv_sphere(0.44, 24, 14), scale=(1.0, 0.44, 1.0), translate=(0.0, -0.67, 0.0)),
-                transform_mesh(build_prism(0.53, 0.08, 28), translate=(0.0, 0.24, 0.0)),
-                transform_mesh(build_prism(0.53, 0.08, 28), translate=(0.0, -0.24, 0.0)),
-            ]
-        )
     else:
         agent = merge_meshes(
             [
@@ -669,21 +650,6 @@ def generate_meshes(mesh_dir: Path, profile: QualityProfile) -> None:
             [
                 build_prism(0.56, 1.22, 8),
                 transform_mesh(build_prism(0.22, 0.72, 8), translate=(0.0, 0.74, 0.0)),
-            ]
-        )
-        power_storage = merge_meshes(
-            [
-                build_prism(0.46, 1.3, 18),
-                transform_mesh(
-                    build_uv_sphere(0.43, 16, 10),
-                    scale=(1.0, 0.44, 1.0),
-                    translate=(0.0, 0.65, 0.0),
-                ),
-                transform_mesh(
-                    build_uv_sphere(0.43, 16, 10),
-                    scale=(1.0, 0.44, 1.0),
-                    translate=(0.0, -0.65, 0.0),
-                ),
             ]
         )
 
@@ -710,12 +676,6 @@ def generate_meshes(mesh_dir: Path, profile: QualityProfile) -> None:
         f"PowerPlantIndustrial{profile.quality.upper()}Mesh",
         power_plant.vertices,
         power_plant.indices,
-    )
-    write_gltf(
-        mesh_dir / _mesh_file_name("power_storage", profile),
-        f"PowerStorageIndustrial{profile.quality.upper()}Mesh",
-        power_storage.vertices,
-        power_storage.indices,
     )
 
 
@@ -756,14 +716,6 @@ def generate_textures(texture_dir: Path, profile: QualityProfile) -> None:
                 "roughness": 0.23,
                 "seed": 247,
             },
-            "power_storage": {
-                "base_a": (42, 58, 84),
-                "base_b": (134, 172, 224),
-                "emissive": (128, 206, 255),
-                "metallic": 0.66,
-                "roughness": 0.26,
-                "seed": 259,
-            },
         }
     elif profile.quality == "v2":
         palette = {
@@ -799,14 +751,6 @@ def generate_textures(texture_dir: Path, profile: QualityProfile) -> None:
                 "roughness": 0.28,
                 "seed": 147,
             },
-            "power_storage": {
-                "base_a": (44, 62, 88),
-                "base_b": (124, 158, 204),
-                "emissive": (112, 192, 255),
-                "metallic": 0.62,
-                "roughness": 0.31,
-                "seed": 159,
-            },
         }
     else:
         palette = {
@@ -841,14 +785,6 @@ def generate_textures(texture_dir: Path, profile: QualityProfile) -> None:
                 "metallic": 0.63,
                 "roughness": 0.39,
                 "seed": 47,
-            },
-            "power_storage": {
-                "base_a": (53, 68, 91),
-                "base_b": (117, 142, 182),
-                "emissive": (84, 152, 255),
-                "metallic": 0.52,
-                "roughness": 0.36,
-                "seed": 59,
             },
         }
 

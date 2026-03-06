@@ -16,7 +16,6 @@ ENTITIES: Tuple[str, ...] = (
     "location",
     "asset",
     "power_plant",
-    "power_storage",
 )
 TEXTURE_CHANNELS: Tuple[str, ...] = (
     "base",
@@ -55,14 +54,12 @@ PROFILES: Dict[str, ThemeValidationProfile] = {
             "location": 300,
             "asset": 16,
             "power_plant": 30,
-            "power_storage": 200,
         },
         max_vertices={
             "agent": 128,
             "location": 1200,
             "asset": 96,
             "power_plant": 256,
-            "power_storage": 1200,
         },
     ),
     "v2": ThemeValidationProfile(
@@ -81,14 +78,12 @@ PROFILES: Dict[str, ThemeValidationProfile] = {
             "location": 1200,
             "asset": 90,
             "power_plant": 90,
-            "power_storage": 900,
         },
         max_vertices={
             "agent": 256,
             "location": 3200,
             "asset": 240,
             "power_plant": 320,
-            "power_storage": 2200,
         },
     ),
     "v3": ThemeValidationProfile(
@@ -107,14 +102,12 @@ PROFILES: Dict[str, ThemeValidationProfile] = {
             "location": 2600,
             "asset": 150,
             "power_plant": 160,
-            "power_storage": 1300,
         },
         max_vertices={
             "agent": 900,
             "location": 5000,
             "asset": 480,
             "power_plant": 600,
-            "power_storage": 3000,
         },
     ),
 }

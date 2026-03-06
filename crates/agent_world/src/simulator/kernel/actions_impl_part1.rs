@@ -82,9 +82,7 @@ impl WorldKernel {
                 efficiency,
                 degradation,
             } => {
-                if self.model.power_plants.contains_key(&facility_id)
-                    || self.model.power_storages.contains_key(&facility_id)
-                {
+                if self.model.power_plants.contains_key(&facility_id) {
                     return WorldEventKind::ActionRejected {
                         reason: RejectReason::FacilityAlreadyExists { facility_id },
                     };
@@ -133,74 +131,6 @@ impl WorldKernel {
                 self.model.power_plants.insert(facility_id, plant.clone());
                 WorldEventKind::Power(PowerEvent::PowerPlantRegistered { plant })
             }
-            Action::RegisterPowerStorage {
-                facility_id,
-                location_id,
-                owner,
-                capacity,
-                current_level,
-                charge_efficiency,
-                discharge_efficiency,
-                max_charge_rate,
-                max_discharge_rate,
-            } => {
-                if self.model.power_plants.contains_key(&facility_id)
-                    || self.model.power_storages.contains_key(&facility_id)
-                {
-                    return WorldEventKind::ActionRejected {
-                        reason: RejectReason::FacilityAlreadyExists { facility_id },
-                    };
-                }
-                if !self.model.locations.contains_key(&location_id) {
-                    return WorldEventKind::ActionRejected {
-                        reason: RejectReason::LocationNotFound { location_id },
-                    };
-                }
-                if let Err(reason) = self.ensure_owner_exists(&owner) {
-                    return WorldEventKind::ActionRejected { reason };
-                }
-                if capacity < 0 {
-                    return WorldEventKind::ActionRejected {
-                        reason: RejectReason::InvalidAmount { amount: capacity },
-                    };
-                }
-                if current_level < 0 || current_level > capacity {
-                    return WorldEventKind::ActionRejected {
-                        reason: RejectReason::InvalidAmount {
-                            amount: current_level,
-                        },
-                    };
-                }
-                if max_charge_rate < 0 {
-                    return WorldEventKind::ActionRejected {
-                        reason: RejectReason::InvalidAmount {
-                            amount: max_charge_rate,
-                        },
-                    };
-                }
-                if max_discharge_rate < 0 {
-                    return WorldEventKind::ActionRejected {
-                        reason: RejectReason::InvalidAmount {
-                            amount: max_discharge_rate,
-                        },
-                    };
-                }
-                let storage = PowerStorage {
-                    id: facility_id.clone(),
-                    location_id,
-                    owner,
-                    capacity,
-                    current_level,
-                    charge_efficiency,
-                    discharge_efficiency,
-                    max_charge_rate,
-                    max_discharge_rate,
-                };
-                self.model
-                    .power_storages
-                    .insert(facility_id, storage.clone());
-                WorldEventKind::Power(PowerEvent::PowerStorageRegistered { storage })
-            }
             Action::UpsertModuleVisualEntity { entity } => {
                 let entity = entity.sanitized();
                 if entity.entity_id.is_empty() || entity.module_id.is_empty() {
@@ -237,16 +167,6 @@ impl WorldKernel {
                 }
                 WorldEventKind::ModuleVisualEntityRemoved { entity_id }
             }
-            Action::DrawPower { .. } => WorldEventKind::ActionRejected {
-                reason: RejectReason::RuleDenied {
-                    notes: vec![LOCATION_ELECTRICITY_POOL_REMOVED_NOTE.to_string()],
-                },
-            },
-            Action::StorePower { .. } => WorldEventKind::ActionRejected {
-                reason: RejectReason::RuleDenied {
-                    notes: vec![LOCATION_ELECTRICITY_POOL_REMOVED_NOTE.to_string()],
-                },
-            },
             Action::MoveAgent { agent_id, to } => {
                 let to_pos = match self.model.locations.get(&to) {
                     Some(location) => location.pos,

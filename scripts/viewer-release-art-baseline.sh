@@ -16,7 +16,7 @@ Options:
   --scenario <name>         Scenario for captures (default: triad_region_bootstrap)
   --theme-pack <name>       Theme pack: industrial_v3,industrial_v2,industrial_v1 (default: industrial_v3)
   --variant <name>          Theme variant: default,matte,glossy (default: default)
-  --inspect <list>          Entities: agent,location,asset,power_plant,power_storage,all (default: agent,location,power_plant,power_storage)
+  --inspect <list>          Entities: agent,location,asset,power_plant,all (default: agent,location,power_plant)
   --base-port <port>        Base port for native capture scripts (default: 6723)
   --viewer-wait <sec>       Viewer wait seconds per capture (default: 10)
   --ui-profile-file <path>  UI profile env for native captures (default: scripts/viewer-release-ui-profile.env)
@@ -59,7 +59,7 @@ resolve_inspect_entities() {
   local normalized
   normalized=$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]')
   if [[ -z "$normalized" || "$normalized" == "all" ]]; then
-    echo "agent location asset power_plant power_storage"
+    echo "agent location asset power_plant"
     return 0
   fi
 
@@ -69,11 +69,11 @@ resolve_inspect_entities() {
   for item in "${parsed[@]}"; do
     item=$(trim_whitespace "$item")
     case "$item" in
-      agent|location|asset|power_plant|power_storage)
+      agent|location|asset|power_plant)
         ;;
       *)
         echo "invalid --inspect item: $item" >&2
-        echo "supported: agent,location,asset,power_plant,power_storage,all" >&2
+        echo "supported: agent,location,asset,power_plant,all" >&2
         exit 2
         ;;
     esac
@@ -94,7 +94,7 @@ extract_meta_value() {
 scenario="triad_region_bootstrap"
 theme_pack="industrial_v3"
 variant="default"
-inspect_raw="agent,location,power_plant,power_storage"
+inspect_raw="agent,location,power_plant"
 base_port=6723
 viewer_wait=10
 ui_profile_file="scripts/viewer-release-ui-profile.env"

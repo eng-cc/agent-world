@@ -100,7 +100,7 @@
 - 通过以上口径，确保“owner/location 多账本 + 物流约束”在场景层具备可验证闭环，而非仅停留在数据结构层。
 
 说明：
-- 自 2026-02-07 起，除 `power_bootstrap` 外，内置场景不再默认注入 `power_plants`/`power_storages`；如需设施，需在场景 JSON 中显式声明。
+- 自 2026-02-07 起，除 `power_bootstrap` 外，内置场景不再默认注入 `power_plants`；如需设施，需在场景 JSON 中显式声明。
 - `scenario_specs_match_ids` 定位于 `crates/agent_world/src/simulator/scenario.rs`，用于约束“枚举 ID 与 JSON ID 一致”。
 - 其余命名测试主要位于 `crates/agent_world/src/simulator/tests/init.rs` 与 `crates/agent_world/tests/world_init_demo.rs`。
 - 场景矩阵应随测试变更同步更新，避免“文档保留但测试漂移”。

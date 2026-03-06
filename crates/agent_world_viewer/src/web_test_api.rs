@@ -1025,7 +1025,6 @@ pub(super) fn publish_web_test_api_state(
                 SelectionKind::Fragment => "fragment",
                 SelectionKind::Asset => "asset",
                 SelectionKind::PowerPlant => "power_plant",
-                SelectionKind::PowerStorage => "power_storage",
                 SelectionKind::Chunk => "chunk",
             })
             .map(str::to_string);

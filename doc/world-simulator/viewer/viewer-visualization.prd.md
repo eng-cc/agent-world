@@ -151,7 +151,7 @@
 - 事件定位对象：在时间轴区新增 `Locate Focus Event Object` 控件，按当前 focus tick 选择最近事件，并将 3D 选中对象定位到该事件关联实体。
 - 对象跳转事件：在选中对象详情区新增 `Jump Selection Events` 控件，按当前选中对象筛选相关事件并将时间轴目标跳转到下一相关 tick。
 - 联动口径：
-  - `事件 -> 对象`：优先映射 Agent/Location/PowerPlant/PowerStorage/Chunk；资源转移与精炼事件按 owner 映射。
+  - `事件 -> 对象`：优先映射 Agent/Location/PowerPlant/Chunk；资源转移与精炼事件按 owner 映射。
   - `对象 -> 事件`：对 Agent/Location/设施按 ID 精确匹配；Asset 按 owner 关联匹配；Chunk 按坐标匹配。
 - 降级策略：当事件无可映射对象或对象无相关事件时，UI 保留当前状态并输出明确提示。
 
@@ -184,7 +184,7 @@
 
 ### 选中对象详情面板（2026-02-07 更新）
 - 右侧 UI 新增“Details”区块：点击 3D 视图中的对象后展示详情。
-- 已支持对象：Agent、Location、Asset、PowerPlant、PowerStorage、Chunk。
+- 已支持对象：Agent、Location、Asset、PowerPlant、Chunk。
 - Agent 详情包含：位置/坐标、机体参数、电力与热状态、资源、最近事件。
 - LLM 模式下，Agent 详情额外展示最近 LLM 输入输出与诊断字段：
   - `llm_input`（system+user prompt）
@@ -193,7 +193,7 @@
   - `model / latency_ms / prompt_tokens / completion_tokens / total_tokens / retry_count`
 - Location 详情包含：名称/坐标、profile、资源、碎片物理与预算摘要、最近相关事件。
 - Asset 详情包含：种类、数量、归属者、归属者关联事件。
-- PowerPlant/PowerStorage 详情包含：设施参数、电力状态与相关电力事件。
+- PowerPlant 详情包含：设施参数、电力状态与相关电力事件。
 - 离线回放与 script 模式无 LLM trace 时，面板显示降级提示（`no llm trace yet`）。
 
 ### 自动诊断结论面板（2026-02-07 实现）
@@ -246,7 +246,7 @@
   - chunk 轮廓与背景网格一致，不再出现“背景一套网格、chunk 另一套 marker”的视觉割裂。
 
 ### 现状缺口（信息直达视角，2026-02-07）
-- 对象覆盖：选中详情已覆盖 Agent/Location/Asset/PowerPlant/PowerStorage/Chunk。
+- 对象覆盖：选中详情已覆盖 Agent/Location/Asset/PowerPlant/Chunk。
 - 时间轴仍有增强空间：当前已支持标注跳转、类别开关与联动定位，但仍缺更细粒度的多级刻度与跨窗口聚合浏览。
 - 联动检索能力已补齐：支持“focus event -> 定位对象”“selection -> 跳转事件”与“事件列表逐条点击定位对象”。
 - LLM 诊断维度仍可增强：已展示 `model/latency/token/retry`，后续可补链路级成本估算与请求 ID 追踪。

@@ -5,7 +5,7 @@
 - [x] GFT-0 输出设计文档（`doc/world-simulator/viewer/viewer-generic-focus-targets.prd.md`）
 - [x] GFT-1 输出项目管理文档（本文件）
 - [x] GFT-2 扩展 `viewer_automation` target 语法为通用 kind（兼容旧语法）
-- [x] GFT-3 接入 `asset/module_visual/power_plant/power_storage/chunk/fragment` resolver
+- [x] GFT-3 接入 `asset/module_visual/power_plant/chunk/fragment` resolver（`power_storage` 已于 2026-03-06 下线）
 - [x] GFT-4 新增/更新单元测试（解析 + 目标解析）
 - [x] GFT-5 运行定向测试并记录结果
 - [x] GFT-6 回写项目状态与 devlog，提交收口

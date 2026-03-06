@@ -409,10 +409,7 @@ impl WorldKernel {
         }
         let is_radiation_power_factory =
             factory_kind.eq_ignore_ascii_case(FACTORY_KIND_RADIATION_POWER_MK1);
-        if is_radiation_power_factory
-            && (self.model.power_plants.contains_key(&factory_id)
-                || self.model.power_storages.contains_key(&factory_id))
-        {
+        if is_radiation_power_factory && self.model.power_plants.contains_key(&factory_id) {
             return WorldEventKind::ActionRejected {
                 reason: RejectReason::FacilityAlreadyExists {
                     facility_id: factory_id,

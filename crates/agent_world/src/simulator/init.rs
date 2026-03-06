@@ -13,7 +13,7 @@ use super::fragment_physics::{
 use super::init_module_visual::{ensure_module_visual_anchor_exists, insert_module_visual_entity};
 use super::kernel::{ChunkGenerationCause, ChunkRuntimeConfig, WorldEventKind, WorldKernel};
 use super::module_visual::{ModuleVisualAnchor, ModuleVisualEntity};
-use super::power::{PlantStatus, PowerPlant, PowerStorage};
+use super::power::{PlantStatus, PowerPlant};
 use super::scenario::WorldScenario;
 use super::types::{
     AgentId, ChunkResourceBudget, FacilityId, LocationId, LocationProfile, ResourceKind,
@@ -32,7 +32,6 @@ pub struct WorldInitConfig {
     pub asteroid_fragment: AsteroidFragmentInitConfig,
     pub agents: AgentSpawnConfig,
     pub power_plants: Vec<PowerPlantSeedConfig>,
-    pub power_storages: Vec<PowerStorageSeedConfig>,
     pub module_visual_entities: Vec<ModuleVisualEntity>,
 }
 
@@ -45,7 +44,6 @@ impl Default for WorldInitConfig {
             asteroid_fragment: AsteroidFragmentInitConfig::default(),
             agents: AgentSpawnConfig::default(),
             power_plants: Vec::new(),
-            power_storages: Vec::new(),
             module_visual_entities: Vec::new(),
         }
     }
@@ -65,11 +63,6 @@ impl WorldInitConfig {
             .power_plants
             .into_iter()
             .map(|plant| plant.sanitized())
-            .collect();
-        self.power_storages = self
-            .power_storages
-            .into_iter()
-            .map(|storage| storage.sanitized())
             .collect();
         self.module_visual_entities = self
             .module_visual_entities
@@ -250,44 +243,6 @@ impl PowerPlantSeedConfig {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(default)]
-pub struct PowerStorageSeedConfig {
-    pub facility_id: FacilityId,
-    pub location_id: LocationId,
-    pub owner: ResourceOwner,
-    pub capacity: i64,
-    pub current_level: i64,
-    pub charge_efficiency: f64,
-    pub discharge_efficiency: f64,
-    pub max_charge_rate: i64,
-    pub max_discharge_rate: i64,
-}
-
-impl Default for PowerStorageSeedConfig {
-    fn default() -> Self {
-        Self {
-            facility_id: String::new(),
-            location_id: String::new(),
-            owner: ResourceOwner::Location {
-                location_id: String::new(),
-            },
-            capacity: 0,
-            current_level: 0,
-            charge_efficiency: 1.0,
-            discharge_efficiency: 1.0,
-            max_charge_rate: 0,
-            max_discharge_rate: 0,
-        }
-    }
-}
-
-impl PowerStorageSeedConfig {
-    pub fn sanitized(self) -> Self {
-        self
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct WorldInitReport {
     pub seed: u64,
     pub asteroid_fragment_seed: Option<u64>,
@@ -350,10 +305,6 @@ pub enum WorldInitError {
     InvalidFacilityRatio {
         field: String,
         value: f64,
-    },
-    InvalidFacilityLevel {
-        current_level: i64,
-        capacity: i64,
     },
 }
 
@@ -539,45 +490,6 @@ pub fn build_world_model(
             degradation: plant_seed.degradation,
         };
         insert_power_plant(&mut model, plant)?;
-    }
-
-    for storage_seed in &init.power_storages {
-        if storage_seed.facility_id.is_empty() {
-            return Err(WorldInitError::InvalidFacilityId {
-                facility_id: storage_seed.facility_id.clone(),
-            });
-        }
-        if !model.locations.contains_key(&storage_seed.location_id) {
-            return Err(WorldInitError::FacilityLocationNotFound {
-                location_id: storage_seed.location_id.clone(),
-            });
-        }
-        ensure_owner_exists(&model, &storage_seed.owner)?;
-        ensure_non_negative_amount("capacity", storage_seed.capacity)?;
-        ensure_non_negative_amount("current_level", storage_seed.current_level)?;
-        ensure_non_negative_amount("max_charge_rate", storage_seed.max_charge_rate)?;
-        ensure_non_negative_amount("max_discharge_rate", storage_seed.max_discharge_rate)?;
-        ensure_valid_ratio("charge_efficiency", storage_seed.charge_efficiency)?;
-        ensure_valid_ratio("discharge_efficiency", storage_seed.discharge_efficiency)?;
-        if storage_seed.current_level > storage_seed.capacity {
-            return Err(WorldInitError::InvalidFacilityLevel {
-                current_level: storage_seed.current_level,
-                capacity: storage_seed.capacity,
-            });
-        }
-
-        let storage = PowerStorage {
-            id: storage_seed.facility_id.clone(),
-            location_id: storage_seed.location_id.clone(),
-            owner: storage_seed.owner.clone(),
-            capacity: storage_seed.capacity,
-            current_level: storage_seed.current_level,
-            charge_efficiency: storage_seed.charge_efficiency,
-            discharge_efficiency: storage_seed.discharge_efficiency,
-            max_charge_rate: storage_seed.max_charge_rate,
-            max_discharge_rate: storage_seed.max_discharge_rate,
-        };
-        insert_power_storage(&mut model, storage)?;
     }
 
     for module_entity in &init.module_visual_entities {
@@ -1170,26 +1082,11 @@ fn splitmix64(mut x: u64) -> u64 {
 }
 
 fn insert_power_plant(model: &mut WorldModel, plant: PowerPlant) -> Result<(), WorldInitError> {
-    if model.power_plants.contains_key(&plant.id) || model.power_storages.contains_key(&plant.id) {
+    if model.power_plants.contains_key(&plant.id) {
         return Err(WorldInitError::FacilityIdConflict {
             facility_id: plant.id,
         });
     }
     model.power_plants.insert(plant.id.clone(), plant);
-    Ok(())
-}
-
-fn insert_power_storage(
-    model: &mut WorldModel,
-    storage: PowerStorage,
-) -> Result<(), WorldInitError> {
-    if model.power_plants.contains_key(&storage.id)
-        || model.power_storages.contains_key(&storage.id)
-    {
-        return Err(WorldInitError::FacilityIdConflict {
-            facility_id: storage.id,
-        });
-    }
-    model.power_storages.insert(storage.id.clone(), storage);
     Ok(())
 }

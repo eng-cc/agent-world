@@ -420,7 +420,6 @@ struct Viewer3dScene {
     asset_entities: HashMap<String, Entity>,
     module_visual_entities: HashMap<String, Entity>,
     power_plant_entities: HashMap<String, Entity>,
-    power_storage_entities: HashMap<String, Entity>,
     chunk_entities: HashMap<String, Entity>,
     chunk_line_entities: HashMap<String, Vec<Entity>>,
     location_positions: HashMap<String, GeoPos>,
@@ -505,8 +504,6 @@ struct Viewer3dAssets {
     asset_material: Handle<StandardMaterial>,
     power_plant_mesh: Handle<Mesh>,
     power_plant_material: Handle<StandardMaterial>,
-    power_storage_mesh: Handle<Mesh>,
-    power_storage_material: Handle<StandardMaterial>,
     location_core_silicate_material: Handle<StandardMaterial>,
     location_core_metal_material: Handle<StandardMaterial>,
     location_core_ice_material: Handle<StandardMaterial>,
@@ -551,7 +548,6 @@ enum SelectionKind {
     Fragment,
     Asset,
     PowerPlant,
-    PowerStorage,
     Chunk,
 }
 
@@ -661,14 +657,6 @@ fn power_plant_mesh_for_geometry_tier(tier: ViewerGeometryTier) -> Mesh {
     }
 }
 
-fn power_storage_mesh_for_geometry_tier(tier: ViewerGeometryTier) -> Mesh {
-    match tier {
-        ViewerGeometryTier::Debug => Cuboid::new(0.62, 0.92, 0.62).into(),
-        ViewerGeometryTier::Balanced => Cuboid::new(0.7, 1.0, 0.7).into(),
-        ViewerGeometryTier::Cinematic => Cuboid::new(0.78, 1.08, 0.78).into(),
-    }
-}
-
 fn resolve_mesh_handle<F>(
     asset_server: &AssetServer,
     meshes: &mut Assets<Mesh>,
@@ -709,11 +697,9 @@ struct ResolvedThemeSceneAssets {
     location_mesh: Handle<Mesh>,
     asset_mesh: Handle<Mesh>,
     power_plant_mesh: Handle<Mesh>,
-    power_storage_mesh: Handle<Mesh>,
     agent_material: StandardMaterial,
     asset_material: StandardMaterial,
     power_plant_material: StandardMaterial,
-    power_storage_material: StandardMaterial,
     location_override_materials: Option<LocationOverrideMaterialTemplates>,
 }
 
@@ -775,18 +761,11 @@ fn resolve_theme_scene_assets(
         external_mesh.power_plant_mesh_asset.as_deref(),
         || power_plant_mesh_for_geometry_tier(geometry_tier),
     );
-    let power_storage_mesh = resolve_mesh_handle(
-        asset_server,
-        meshes,
-        external_mesh.power_storage_mesh_asset.as_deref(),
-        || power_storage_mesh_for_geometry_tier(geometry_tier),
-    );
 
     let agent_texture = resolve_texture_slot(asset_server, &external_texture.agent);
     let location_texture = resolve_texture_slot(asset_server, &external_texture.location);
     let asset_texture = resolve_texture_slot(asset_server, &external_texture.asset);
     let power_plant_texture = resolve_texture_slot(asset_server, &external_texture.power_plant);
-    let power_storage_texture = resolve_texture_slot(asset_server, &external_texture.power_storage);
 
     let scalars = material_variant_scalars(variant_preview.active);
     let agent_roughness =
@@ -807,14 +786,6 @@ fn resolve_theme_scene_assets(
     );
     let power_plant_metallic = apply_material_variant_scalar(
         config.materials.power_plant.metallic,
-        scalars.metallic_scale,
-    );
-    let power_storage_roughness = apply_material_variant_scalar(
-        config.materials.power_storage.roughness,
-        scalars.roughness_scale,
-    );
-    let power_storage_metallic = apply_material_variant_scalar(
-        config.materials.power_storage.metallic,
         scalars.metallic_scale,
     );
 
@@ -883,29 +854,6 @@ fn resolve_theme_scene_assets(
         ..default()
     };
 
-    let power_storage_base_color = resolve_srgb_slot_color(
-        [0.20, 0.86, 0.48],
-        external_material.power_storage.base_color_srgb,
-    );
-    let power_storage_emissive_color = resolve_srgb_slot_color(
-        [0.20, 0.86, 0.48],
-        external_material.power_storage.emissive_color_srgb,
-    );
-    let power_storage_material = StandardMaterial {
-        base_color: color_from_srgb(power_storage_base_color),
-        base_color_texture: power_storage_texture.base_color_texture,
-        normal_map_texture: power_storage_texture.normal_map_texture,
-        metallic_roughness_texture: power_storage_texture.metallic_roughness_texture,
-        emissive_texture: power_storage_texture.emissive_texture,
-        perceptual_roughness: power_storage_roughness,
-        metallic: power_storage_metallic,
-        emissive: emissive_from_srgb_with_boost(
-            power_storage_emissive_color,
-            config.materials.power_storage.emissive_boost,
-        ),
-        ..default()
-    };
-
     let location_override_materials = if location_style_override_enabled(
         external_material.location,
         &external_texture.location,
@@ -955,11 +903,9 @@ fn resolve_theme_scene_assets(
         location_mesh,
         asset_mesh,
         power_plant_mesh,
-        power_storage_mesh,
         agent_material,
         asset_material,
         power_plant_material,
-        power_storage_material,
         location_override_materials,
     }
 }
@@ -1063,13 +1009,6 @@ fn apply_material_variant_to_scene_materials(
         &assets.power_plant_material,
         config.materials.power_plant.roughness,
         config.materials.power_plant.metallic,
-        preset,
-    );
-    apply_material_variant_to_material(
-        materials,
-        &assets.power_storage_material,
-        config.materials.power_storage.roughness,
-        config.materials.power_storage.metallic,
         preset,
     );
 }

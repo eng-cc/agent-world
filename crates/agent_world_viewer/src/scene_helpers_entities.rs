@@ -8,7 +8,6 @@ const TWO_D_AGENT_MARKER_MIN_LIFT_M: f32 = 0.18;
 const TWO_D_AGENT_MARKER_MAX_LIFT_M: f32 = 0.85;
 const FACILITY_MARKER_MIN_SCALE_M: f32 = 4.8;
 const POWER_PLANT_SCALE_RATIO_TO_LOCATION_RADIUS: f32 = 0.88;
-const POWER_STORAGE_SCALE_RATIO_TO_LOCATION_RADIUS: f32 = 0.78;
 
 pub(super) fn spawn_agent_two_d_map_marker(
     parent: &mut ChildSpawnerCommands,
@@ -430,66 +429,6 @@ pub(crate) fn spawn_power_plant_entity(
     });
     scene
         .power_plant_entities
-        .insert(facility_id.to_string(), entity);
-}
-
-pub(crate) fn spawn_power_storage_entity(
-    commands: &mut Commands,
-    config: &Viewer3dConfig,
-    assets: &Viewer3dAssets,
-    scene: &mut Viewer3dScene,
-    origin: GeoPos,
-    facility_id: &str,
-    location_id: &str,
-    location_pos: GeoPos,
-) {
-    let cm_to_unit = config.effective_cm_to_unit();
-    let base = geo_to_vec3(location_pos, origin, config.effective_cm_to_unit());
-    let translation = base
-        + Vec3::new(
-            0.0,
-            FACILITY_MARKER_VERTICAL_OFFSET,
-            FACILITY_MARKER_LATERAL_OFFSET,
-        );
-    let marker_scale = Vec3::splat(facility_marker_scale_for_location(
-        scene,
-        location_id,
-        cm_to_unit,
-        POWER_STORAGE_SCALE_RATIO_TO_LOCATION_RADIUS,
-    ));
-
-    if let Some(entity) = scene.power_storage_entities.get(facility_id) {
-        commands.entity(*entity).insert((
-            Transform::from_translation(translation).with_scale(marker_scale),
-            BaseScale(marker_scale),
-        ));
-        return;
-    }
-
-    let entity = commands
-        .spawn((
-            Mesh3d(assets.power_storage_mesh.clone()),
-            MeshMaterial3d(assets.power_storage_material.clone()),
-            Transform::from_translation(translation).with_scale(marker_scale),
-            Name::new(format!("power_storage:{facility_id}:{location_id}")),
-            PowerStorageMarker {
-                id: facility_id.to_string(),
-            },
-            BaseScale(marker_scale),
-        ))
-        .id();
-    attach_to_scene_root(commands, scene, entity);
-    commands.entity(entity).with_children(|parent| {
-        spawn_label(
-            parent,
-            assets,
-            format!("storage:{facility_id}"),
-            LOCATION_LABEL_OFFSET,
-            format!("label:power_storage:{facility_id}"),
-        );
-    });
-    scene
-        .power_storage_entities
         .insert(facility_id.to_string(), entity);
 }
 

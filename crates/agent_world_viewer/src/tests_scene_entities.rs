@@ -12,8 +12,6 @@ fn test_assets() -> Viewer3dAssets {
         asset_material: Handle::default(),
         power_plant_mesh: Handle::default(),
         power_plant_material: Handle::default(),
-        power_storage_mesh: Handle::default(),
-        power_storage_material: Handle::default(),
         location_core_silicate_material: Handle::default(),
         location_core_metal_material: Handle::default(),
         location_core_ice_material: Handle::default(),
@@ -51,8 +49,6 @@ fn spawn_location_entity_keeps_anchor_without_label() {
         asset_material: Handle::default(),
         power_plant_mesh: Handle::default(),
         power_plant_material: Handle::default(),
-        power_storage_mesh: Handle::default(),
-        power_storage_material: Handle::default(),
         location_core_silicate_material: Handle::default(),
         location_core_metal_material: Handle::default(),
         location_core_ice_material: Handle::default(),
@@ -103,8 +99,6 @@ fn spawn_location_entity_uses_linear_anchor_radius_scale() {
         asset_material: Handle::default(),
         power_plant_mesh: Handle::default(),
         power_plant_material: Handle::default(),
-        power_storage_mesh: Handle::default(),
-        power_storage_material: Handle::default(),
         location_core_silicate_material: Handle::default(),
         location_core_metal_material: Handle::default(),
         location_core_ice_material: Handle::default(),
@@ -160,18 +154,8 @@ fn spawn_power_entities_scale_with_location_radius_units() {
         .map(|(_, base)| base.0.x)
         .expect("power plant marker exists");
 
-    let mut storage_query = world.query::<(&PowerStorageMarker, &BaseScale)>();
-    let storage_scale = storage_query
-        .iter(world)
-        .find(|(marker, _)| marker.id == "storage-scale")
-        .map(|(_, base)| base.0.x)
-        .expect("power storage marker exists");
-
     assert!(plant_scale >= location_radius_units * 0.6);
     assert!(plant_scale <= location_radius_units * 1.1);
-    assert!(storage_scale >= location_radius_units * 0.5);
-    assert!(storage_scale <= location_radius_units);
-    assert!(storage_scale < plant_scale);
 }
 
 #[test]
@@ -197,11 +181,6 @@ fn spawn_power_entities_without_location_mesh_when_locations_hidden() {
     assert!(plant_query
         .iter(world)
         .any(|marker| marker.id == "plant-scale"));
-
-    let mut storage_query = world.query::<&PowerStorageMarker>();
-    assert!(storage_query
-        .iter(world)
-        .any(|marker| marker.id == "storage-scale"));
 }
 
 #[test]
@@ -221,8 +200,6 @@ fn spawn_location_entity_renders_fine_grained_ring_details() {
         asset_material: Handle::default(),
         power_plant_mesh: Handle::default(),
         power_plant_material: Handle::default(),
-        power_storage_mesh: Handle::default(),
-        power_storage_material: Handle::default(),
         location_core_silicate_material: Handle::default(),
         location_core_metal_material: Handle::default(),
         location_core_ice_material: Handle::default(),
@@ -281,8 +258,6 @@ fn spawn_location_entity_renders_radiation_halo_details() {
         asset_material: Handle::default(),
         power_plant_mesh: Handle::default(),
         power_plant_material: Handle::default(),
-        power_storage_mesh: Handle::default(),
-        power_storage_material: Handle::default(),
         location_core_silicate_material: Handle::default(),
         location_core_metal_material: Handle::default(),
         location_core_ice_material: Handle::default(),
@@ -458,8 +433,6 @@ fn spawn_location_entity_skips_shell_details_when_disabled() {
         asset_material: Handle::default(),
         power_plant_mesh: Handle::default(),
         power_plant_material: Handle::default(),
-        power_storage_mesh: Handle::default(),
-        power_storage_material: Handle::default(),
         location_core_silicate_material: Handle::default(),
         location_core_metal_material: Handle::default(),
         location_core_ice_material: Handle::default(),
@@ -510,8 +483,6 @@ fn spawn_agent_entity_uses_body_height_scale() {
         asset_material: Handle::default(),
         power_plant_mesh: Handle::default(),
         power_plant_material: Handle::default(),
-        power_storage_mesh: Handle::default(),
-        power_storage_material: Handle::default(),
         location_core_silicate_material: Handle::default(),
         location_core_metal_material: Handle::default(),
         location_core_ice_material: Handle::default(),
@@ -661,8 +632,6 @@ fn spawn_agent_entity_attaches_to_location_surface() {
         asset_material: Handle::default(),
         power_plant_mesh: Handle::default(),
         power_plant_material: Handle::default(),
-        power_storage_mesh: Handle::default(),
-        power_storage_material: Handle::default(),
         location_core_silicate_material: Handle::default(),
         location_core_metal_material: Handle::default(),
         location_core_ice_material: Handle::default(),
@@ -730,8 +699,6 @@ fn spawn_agent_entity_preserves_location_standoff_distance() {
         asset_material: Handle::default(),
         power_plant_mesh: Handle::default(),
         power_plant_material: Handle::default(),
-        power_storage_mesh: Handle::default(),
-        power_storage_material: Handle::default(),
         location_core_silicate_material: Handle::default(),
         location_core_metal_material: Handle::default(),
         location_core_ice_material: Handle::default(),
@@ -802,8 +769,6 @@ fn spawn_agent_entity_renders_module_markers_up_to_cap() {
         asset_material: Handle::default(),
         power_plant_mesh: Handle::default(),
         power_plant_material: Handle::default(),
-        power_storage_mesh: Handle::default(),
-        power_storage_material: Handle::default(),
         location_core_silicate_material: Handle::default(),
         location_core_metal_material: Handle::default(),
         location_core_ice_material: Handle::default(),
@@ -854,8 +819,6 @@ fn spawn_agent_entity_robot_layout_places_head_slot_first() {
         asset_material: Handle::default(),
         power_plant_mesh: Handle::default(),
         power_plant_material: Handle::default(),
-        power_storage_mesh: Handle::default(),
-        power_storage_material: Handle::default(),
         location_core_silicate_material: Handle::default(),
         location_core_metal_material: Handle::default(),
         location_core_ice_material: Handle::default(),
@@ -907,8 +870,6 @@ fn rebuild_scene_maps_agent_module_count_from_module_visual_entities() {
         asset_material: Handle::default(),
         power_plant_mesh: Handle::default(),
         power_plant_material: Handle::default(),
-        power_storage_mesh: Handle::default(),
-        power_storage_material: Handle::default(),
         location_core_silicate_material: Handle::default(),
         location_core_metal_material: Handle::default(),
         location_core_ice_material: Handle::default(),
@@ -956,8 +917,6 @@ fn rebuild_scene_uses_default_module_count_when_no_module_visual_entities() {
         asset_material: Handle::default(),
         power_plant_mesh: Handle::default(),
         power_plant_material: Handle::default(),
-        power_storage_mesh: Handle::default(),
-        power_storage_material: Handle::default(),
         location_core_silicate_material: Handle::default(),
         location_core_metal_material: Handle::default(),
         location_core_ice_material: Handle::default(),

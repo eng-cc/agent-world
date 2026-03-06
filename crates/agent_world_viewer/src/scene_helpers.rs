@@ -91,11 +91,6 @@ pub(super) struct PowerPlantMarker {
 }
 
 #[derive(Component)]
-pub(super) struct PowerStorageMarker {
-    pub id: String,
-}
-
-#[derive(Component)]
 pub(super) struct ChunkMarker {
     pub id: String,
     pub state: String,
@@ -132,7 +127,6 @@ pub(super) fn rebuild_scene_from_snapshot(
         .chain(scene.asset_entities.values())
         .chain(scene.module_visual_entities.values())
         .chain(scene.power_plant_entities.values())
-        .chain(scene.power_storage_entities.values())
         .chain(
             scene
                 .chunk_line_entities
@@ -156,7 +150,6 @@ pub(super) fn rebuild_scene_from_snapshot(
     scene.asset_entities.clear();
     scene.module_visual_entities.clear();
     scene.power_plant_entities.clear();
-    scene.power_storage_entities.clear();
     scene.chunk_entities.clear();
     scene.chunk_line_entities.clear();
     scene.location_positions.clear();
@@ -238,21 +231,6 @@ pub(super) fn rebuild_scene_from_snapshot(
                 origin,
                 facility_id,
                 plant.location_id.as_str(),
-                location.pos,
-            );
-        }
-    }
-
-    for (facility_id, storage) in snapshot.model.power_storages.iter() {
-        if let Some(location) = snapshot.model.locations.get(&storage.location_id) {
-            spawn_power_storage_entity(
-                commands,
-                config,
-                assets,
-                scene,
-                origin,
-                facility_id,
-                storage.location_id.as_str(),
                 location.pos,
             );
         }
@@ -449,20 +427,6 @@ pub(super) fn apply_events_to_scene(
                             origin,
                             &plant.id,
                             &plant.location_id,
-                            *pos,
-                        );
-                    }
-                }
-                PowerEvent::PowerStorageRegistered { storage } => {
-                    if let Some(pos) = scene.location_positions.get(&storage.location_id) {
-                        spawn_power_storage_entity(
-                            commands,
-                            config,
-                            assets,
-                            scene,
-                            origin,
-                            &storage.id,
-                            &storage.location_id,
                             *pos,
                         );
                     }
@@ -1276,12 +1240,12 @@ fn agent_label_offset(height_cm: i64, cm_to_unit: f32) -> f32 {
 #[path = "scene_helpers_entities.rs"]
 mod scene_helpers_entities;
 
+pub(super) use scene_helpers_entities::spawn_power_plant_entity;
 use scene_helpers_entities::{
     id_hash_fraction, module_visual_anchor_pos_in_scene, module_visual_anchor_pos_in_snapshot,
     spawn_agent_two_d_map_marker, spawn_asset_entity, spawn_location_shell_details,
     spawn_module_visual_entity,
 };
-pub(super) use scene_helpers_entities::{spawn_power_plant_entity, spawn_power_storage_entity};
 
 pub(super) fn spawn_chunk_entity(
     commands: &mut Commands,

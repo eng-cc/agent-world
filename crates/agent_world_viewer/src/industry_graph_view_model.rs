@@ -995,12 +995,6 @@ fn location_target_for_event(event: &WorldEvent) -> Option<String> {
         WorldEventKind::Power(PowerEvent::PowerGenerated { location_id, .. }) => {
             Some(location_id.clone())
         }
-        WorldEventKind::Power(PowerEvent::PowerStored { location_id, .. }) => {
-            Some(location_id.clone())
-        }
-        WorldEventKind::Power(PowerEvent::PowerDischarged { location_id, .. }) => {
-            Some(location_id.clone())
-        }
         WorldEventKind::ResourceTransferred { from, to, .. } => {
             owner_location_id(from).or_else(|| owner_location_id(to))
         }

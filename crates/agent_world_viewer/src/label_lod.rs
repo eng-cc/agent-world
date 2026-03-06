@@ -193,7 +193,6 @@ fn selected_label_bias(name: Option<&str>, selected: Option<(SelectionKind, &str
         SelectionKind::Fragment => "label:fragment:",
         SelectionKind::Asset => "label:asset:",
         SelectionKind::PowerPlant => "label:power_plant:",
-        SelectionKind::PowerStorage => "label:power_storage:",
         SelectionKind::Chunk => "label:chunk:",
     };
 

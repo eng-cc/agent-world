@@ -193,8 +193,6 @@ fn sample_assets() -> Viewer3dAssets {
         asset_material: Handle::default(),
         power_plant_mesh: Handle::default(),
         power_plant_material: Handle::default(),
-        power_storage_mesh: Handle::default(),
-        power_storage_material: Handle::default(),
         location_core_silicate_material: Handle::default(),
         location_core_metal_material: Handle::default(),
         location_core_ice_material: Handle::default(),

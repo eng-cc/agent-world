@@ -53,7 +53,6 @@ const TARGET_KIND_LOCATION: &str = "location";
 const TARGET_KIND_ASSET: &str = "asset";
 const TARGET_KIND_MODULE_VISUAL: &str = "module_visual";
 const TARGET_KIND_POWER_PLANT: &str = "power_plant";
-const TARGET_KIND_POWER_STORAGE: &str = "power_storage";
 const TARGET_KIND_CHUNK: &str = "chunk";
 const TARGET_KIND_FRAGMENT: &str = "fragment";
 const POWER_FOCUS_RADIUS_SCALE_FROM_BASE: f32 = 3.0;
@@ -372,11 +371,6 @@ fn target_kind_spec<'a>(scene: &'a Viewer3dScene, kind: &str) -> Option<TargetKi
             entities: &scene.power_plant_entities,
             first_filter: always_true,
         }),
-        TARGET_KIND_POWER_STORAGE => Some(TargetKindSpec {
-            selection_kind: SelectionKind::PowerStorage,
-            entities: &scene.power_storage_entities,
-            first_filter: always_true,
-        }),
         TARGET_KIND_CHUNK => Some(TargetKindSpec {
             selection_kind: SelectionKind::Chunk,
             entities: &scene.chunk_entities,
@@ -419,7 +413,7 @@ fn automation_focus_radius_for_target(
     cm_to_unit: f32,
 ) -> Option<f32> {
     match selection_kind {
-        SelectionKind::PowerPlant | SelectionKind::PowerStorage => {
+        SelectionKind::PowerPlant => {
             let units_per_meter = cm_to_unit.max(f32::EPSILON) * 100.0;
             let min_radius = POWER_FOCUS_RADIUS_MIN_M * units_per_meter;
             let scale_extent = base_scale
@@ -554,7 +548,6 @@ fn canonical_target_kind(raw: &str) -> Option<&'static str> {
         "asset" => Some(TARGET_KIND_ASSET),
         "module_visual" | "module-visual" | "modulevisual" => Some(TARGET_KIND_MODULE_VISUAL),
         "power_plant" | "power-plant" | "powerplant" => Some(TARGET_KIND_POWER_PLANT),
-        "power_storage" | "power-storage" | "powerstorage" => Some(TARGET_KIND_POWER_STORAGE),
         "chunk" => Some(TARGET_KIND_CHUNK),
         _ => None,
     }
@@ -742,11 +735,8 @@ mod tests {
             .power_plant_entities
             .insert("plant-1".to_string(), Entity::from_bits(6));
         scene
-            .power_storage_entities
-            .insert("storage-1".to_string(), Entity::from_bits(7));
-        scene
             .chunk_entities
-            .insert("chunk-1".to_string(), Entity::from_bits(8));
+            .insert("chunk-1".to_string(), Entity::from_bits(7));
 
         let fragment_target = ViewerAutomationTarget::FirstKind(TARGET_KIND_FRAGMENT);
         let Some((fragment_entity, fragment_kind, fragment_id)) =
@@ -780,7 +770,7 @@ mod tests {
         else {
             panic!("chunk target should resolve");
         };
-        assert_eq!(chunk_entity, Entity::from_bits(8));
+        assert_eq!(chunk_entity, Entity::from_bits(7));
         assert_eq!(chunk_kind, SelectionKind::Chunk);
         assert_eq!(chunk_id, "chunk-1");
     }

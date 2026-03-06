@@ -12,7 +12,7 @@
 
 ### In Scope
 - 新增 `agent_world_viewer` 资产目录下的工业风主题包（`industrial_v1`）：
-  - 五类实体外部 mesh：`agent/location/asset/power_plant/power_storage`。
+  - 四类实体外部 mesh：`agent/location/asset/power_plant`。
   - 五类实体 PBR 贴图：`base/normal/metallic_roughness/emissive`。
 - 新增主题预设环境变量文件，统一管理外部 mesh/贴图映射。
 - 新增批量预览脚本：

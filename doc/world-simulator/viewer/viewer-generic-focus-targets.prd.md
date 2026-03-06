@@ -42,7 +42,6 @@
 - `asset`
 - `module_visual`（映射到 Asset 详情分支）
 - `power_plant`
-- `power_storage`
 - `chunk`
 - `fragment`（基于 location 索引，优先匹配 `frag-` 前缀）
 

@@ -156,24 +156,8 @@ fn init_seeds_power_facilities() {
     };
     init.power_plants.push(plant_seed);
 
-    let storage_seed = PowerStorageSeedConfig {
-        facility_id: "storage-1".to_string(),
-        location_id: "origin".to_string(),
-        owner: ResourceOwner::Location {
-            location_id: "origin".to_string(),
-        },
-        capacity: 10,
-        current_level: 3,
-        charge_efficiency: 1.0,
-        discharge_efficiency: 1.0,
-        max_charge_rate: 4,
-        max_discharge_rate: 4,
-    };
-    init.power_storages.push(storage_seed);
-
     let (model, _) = build_world_model(&config, &init).expect("init should succeed");
     assert!(model.power_plants.contains_key("plant-1"));
-    assert!(model.power_storages.contains_key("storage-1"));
 }
 
 #[test]
@@ -370,7 +354,6 @@ fn twin_region_bootstrap_seeds_regions() {
     assert!(model.locations.contains_key("region-0"));
     assert!(model.locations.contains_key("region-1"));
     assert!(model.power_plants.is_empty());
-    assert!(model.power_storages.is_empty());
     assert!(model.agents.contains_key("agent-0"));
     assert!(model.agents.contains_key("agent-1"));
 }
@@ -385,7 +368,6 @@ fn triad_region_bootstrap_seeds_regions() {
     assert!(model.locations.contains_key("region-1"));
     assert!(model.locations.contains_key("region-2"));
     assert!(model.power_plants.is_empty());
-    assert!(model.power_storages.is_empty());
     assert!(model.agents.contains_key("agent-0"));
     assert!(model.agents.contains_key("agent-1"));
     assert!(model.agents.contains_key("agent-2"));
@@ -419,7 +401,6 @@ fn asteroid_fragment_bootstrap_seeds_fragments_and_resources() {
     assert!(report.asteroid_fragment_seed.is_some());
     assert!(model.locations.len() >= 1);
     assert!(model.power_plants.is_empty());
-    assert!(model.power_storages.is_empty());
     assert!(model.agents.contains_key("agent-0"));
     assert!(!init.asteroid_fragment.bootstrap_chunks.is_empty());
     for coord in &init.asteroid_fragment.bootstrap_chunks {
@@ -442,7 +423,6 @@ fn asteroid_fragment_twin_region_bootstrap_seeds_fragments_and_regions() {
     assert!(model.locations.contains_key("region-0"));
     assert!(model.locations.contains_key("region-1"));
     assert!(model.power_plants.is_empty());
-    assert!(model.power_storages.is_empty());
     assert!(model.agents.contains_key("agent-0"));
     assert!(model.agents.contains_key("agent-1"));
     assert!(!init.asteroid_fragment.bootstrap_chunks.is_empty());
@@ -494,7 +474,6 @@ fn asteroid_fragment_triad_region_bootstrap_seeds_fragments_and_regions() {
     assert!(model.locations.contains_key("region-1"));
     assert!(model.locations.contains_key("region-2"));
     assert!(model.power_plants.is_empty());
-    assert!(model.power_storages.is_empty());
     assert!(model.agents.contains_key("agent-0"));
     assert!(model.agents.contains_key("agent-1"));
     assert!(model.agents.contains_key("agent-2"));
@@ -550,7 +529,6 @@ fn scenarios_are_stable() {
         expect_origin: bool,
         required_locations: &'a [&'a str],
         required_plants: &'a [&'a str],
-        required_storages: &'a [&'a str],
         expect_asteroid_fragment: bool,
     }
 
@@ -561,7 +539,6 @@ fn scenarios_are_stable() {
             expect_origin: true,
             required_locations: &["origin"],
             required_plants: &[],
-            required_storages: &[],
             expect_asteroid_fragment: false,
         },
         ScenarioExpectation {
@@ -570,7 +547,6 @@ fn scenarios_are_stable() {
             expect_origin: true,
             required_locations: &["origin", "base-0", "base-1"],
             required_plants: &[],
-            required_storages: &[],
             expect_asteroid_fragment: false,
         },
         ScenarioExpectation {
@@ -579,7 +555,6 @@ fn scenarios_are_stable() {
             expect_origin: true,
             required_locations: &["origin", "llm-site-0", "llm-site-1"],
             required_plants: &[],
-            required_storages: &[],
             expect_asteroid_fragment: true,
         },
         ScenarioExpectation {
@@ -588,7 +563,6 @@ fn scenarios_are_stable() {
             expect_origin: true,
             required_locations: &["origin"],
             required_plants: &["plant-1"],
-            required_storages: &["storage-1"],
             expect_asteroid_fragment: false,
         },
         ScenarioExpectation {
@@ -597,7 +571,6 @@ fn scenarios_are_stable() {
             expect_origin: true,
             required_locations: &["origin"],
             required_plants: &[],
-            required_storages: &[],
             expect_asteroid_fragment: false,
         },
         ScenarioExpectation {
@@ -606,7 +579,6 @@ fn scenarios_are_stable() {
             expect_origin: false,
             required_locations: &["region-0", "region-1"],
             required_plants: &[],
-            required_storages: &[],
             expect_asteroid_fragment: false,
         },
         ScenarioExpectation {
@@ -615,7 +587,6 @@ fn scenarios_are_stable() {
             expect_origin: false,
             required_locations: &["region-0", "region-1", "region-2"],
             required_plants: &[],
-            required_storages: &[],
             expect_asteroid_fragment: false,
         },
         ScenarioExpectation {
@@ -624,7 +595,6 @@ fn scenarios_are_stable() {
             expect_origin: false,
             required_locations: &["node-0", "node-1", "node-2"],
             required_plants: &[],
-            required_storages: &[],
             expect_asteroid_fragment: false,
         },
         ScenarioExpectation {
@@ -633,7 +603,6 @@ fn scenarios_are_stable() {
             expect_origin: true,
             required_locations: &["origin"],
             required_plants: &[],
-            required_storages: &[],
             expect_asteroid_fragment: true,
         },
         ScenarioExpectation {
@@ -642,7 +611,6 @@ fn scenarios_are_stable() {
             expect_origin: false,
             required_locations: &[],
             required_plants: &[],
-            required_storages: &[],
             expect_asteroid_fragment: true,
         },
         ScenarioExpectation {
@@ -651,7 +619,6 @@ fn scenarios_are_stable() {
             expect_origin: false,
             required_locations: &["region-0", "region-1"],
             required_plants: &[],
-            required_storages: &[],
             expect_asteroid_fragment: true,
         },
         ScenarioExpectation {
@@ -660,7 +627,6 @@ fn scenarios_are_stable() {
             expect_origin: false,
             required_locations: &["region-0", "region-1", "region-2"],
             required_plants: &[],
-            required_storages: &[],
             expect_asteroid_fragment: true,
         },
     ];
@@ -682,9 +648,6 @@ fn scenarios_are_stable() {
         }
         for plant_id in expectation.required_plants {
             assert!(model.power_plants.contains_key(*plant_id));
-        }
-        for storage_id in expectation.required_storages {
-            assert!(model.power_storages.contains_key(*storage_id));
         }
 
         assert_eq!(

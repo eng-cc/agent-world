@@ -10,7 +10,7 @@
 - [x] I3 支持自定义地点列表（LocationSeedConfig）
 - [x] I3 支持初始资源配置（Origin/Location/Agent）
 - [x] I3 补充资源/多地点初始化测试
-- [x] I4 支持电力设施种子（PowerPlant/PowerStorage）
+- [x] I4 支持电力设施种子（PowerPlant；PowerStorage 已于 2026-03-06 下线）
 - [x] I4 增加设施参数校验与错误分支
 - [x] I4 补充电力设施初始化测试
 - [x] I5 提供场景模板（WorldScenario）

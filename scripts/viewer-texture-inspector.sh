@@ -21,7 +21,7 @@ Purpose:
 
 Options:
   --preset-file <path>     preset env file (default: industrial_v3_default.env)
-  --inspect <list>         entity source list: agent,location,asset,power_plant,power_storage,all (default: all)
+  --inspect <list>         entity source list: agent,location,asset,power_plant,all (default: all)
   --variants <list>        default,matte,glossy,all (default: all)
   --scenario <name>        world_viewer_live scenario (default: llm_bootstrap)
   --base-port <port>       start port per capture (default: 6123)
@@ -502,7 +502,7 @@ capture_variant_bundle() {
       effective_preview_mode="scene_proxy"
       preview_mode_fallback_reason="location_direct_entity_not_applicable"
     fi
-    if [[ "$effective_preview_mode" == "direct_entity" && ( "$entity" == "power_plant" || "$entity" == "power_storage" ) ]]; then
+    if [[ "$effective_preview_mode" == "direct_entity" && "$entity" == "power_plant" ]]; then
       effective_preview_mode="lookdev"
       preview_mode_fallback_reason="power_direct_entity_fallback"
     fi
@@ -604,13 +604,13 @@ capture_variant_bundle() {
 
     if [[ "$material_profile" == "art_review_v1" ]]; then
       case "$entity:$variant" in
-        power_plant:matte|power_storage:matte)
+        power_plant:matte)
           effective_base_texture_asset=""
           effective_normal_texture_asset=""
           effective_mr_texture_asset=""
           effective_emissive_texture_asset=""
           ;;
-        power_plant:glossy|power_storage:glossy)
+        power_plant:glossy)
           effective_base_texture_asset=""
           effective_normal_texture_asset=""
           effective_mr_texture_asset=""
@@ -655,22 +655,6 @@ capture_variant_bundle() {
       fi
       if [[ -n "$pack_emissive_color_override" ]]; then
         set_or_unset_env "AGENT_WORLD_VIEWER_POWER_PLANT_EMISSIVE_COLOR" "$pack_emissive_color_override"
-      fi
-    elif [[ "$entity" == "power_storage" ]]; then
-      if [[ -n "$pack_roughness_override" ]]; then
-        set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_POWER_STORAGE_ROUGHNESS" "$pack_roughness_override"
-      fi
-      if [[ -n "$pack_metallic_override" ]]; then
-        set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_POWER_STORAGE_METALLIC" "$pack_metallic_override"
-      fi
-      if [[ -n "$pack_emissive_boost_override" ]]; then
-        set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_POWER_STORAGE_EMISSIVE_BOOST" "$pack_emissive_boost_override"
-      fi
-      if [[ -n "$pack_base_color_override" ]]; then
-        set_or_unset_env "AGENT_WORLD_VIEWER_POWER_STORAGE_BASE_COLOR" "$pack_base_color_override"
-      fi
-      if [[ -n "$pack_emissive_color_override" ]]; then
-        set_or_unset_env "AGENT_WORLD_VIEWER_POWER_STORAGE_EMISSIVE_COLOR" "$pack_emissive_color_override"
       fi
     fi
 
@@ -734,7 +718,6 @@ capture_variant_bundle() {
     camera_mode_closeup=$(capture_status_value "$capture_status_file" "camera_mode")
     orbit_radius_closeup=$(capture_status_value "$capture_status_file" "orbit_radius")
     scene_power_plant_count_closeup=$(capture_status_value "$capture_status_file" "scene_power_plant_count")
-    scene_power_storage_count_closeup=$(capture_status_value "$capture_status_file" "scene_power_storage_count")
     selection_gate_expected_kind=$(expected_selection_kind_for_entity "$entity" "$effective_preview_mode")
     selection_gate_mode_effective="$semantic_gate_mode"
     selection_gate_enforced=0
@@ -765,7 +748,6 @@ capture_variant_bundle() {
       camera_mode_closeup=$(capture_status_value "$capture_status_file" "camera_mode")
       orbit_radius_closeup=$(capture_status_value "$capture_status_file" "orbit_radius")
       scene_power_plant_count_closeup=$(capture_status_value "$capture_status_file" "scene_power_plant_count")
-      scene_power_storage_count_closeup=$(capture_status_value "$capture_status_file" "scene_power_storage_count")
       if [[ "$capture_connection_status_closeup" != "connected" || "$capture_snapshot_ready_closeup" != "1" ]]; then
         echo "texture inspector closeup capture connectivity gate failed: entity=$entity variant=$variant connection_status=${capture_connection_status_closeup:-unknown} snapshot_ready=${capture_snapshot_ready_closeup:-unknown}" >&2
         if [[ -n "$capture_last_error_closeup" ]]; then
@@ -793,7 +775,7 @@ capture_variant_bundle() {
       closeup_edge_energy=$(image_edge_energy "$variant_dir/viewer_art_closeup.png")
     fi
 
-    if [[ "$effective_preview_mode" == "direct_entity" && ( "$entity" == "power_plant" || "$entity" == "power_storage" ) ]]; then
+    if [[ "$effective_preview_mode" == "direct_entity" && "$entity" == "power_plant" ]]; then
       ssim_metric_crop_window="760:760:220:20"
     fi
     viewer_art_closeup_ssim_capture_status=$(crop_or_copy_image \
@@ -895,13 +877,8 @@ material_facility_metallic_override=${AGENT_WORLD_VIEWER_MATERIAL_FACILITY_METAL
 material_power_plant_roughness_override=${AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_ROUGHNESS:-}
 material_power_plant_metallic_override=${AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_METALLIC:-}
 material_power_plant_emissive_boost_override=${AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_EMISSIVE_BOOST:-}
-material_power_storage_roughness_override=${AGENT_WORLD_VIEWER_MATERIAL_POWER_STORAGE_ROUGHNESS:-}
-material_power_storage_metallic_override=${AGENT_WORLD_VIEWER_MATERIAL_POWER_STORAGE_METALLIC:-}
-material_power_storage_emissive_boost_override=${AGENT_WORLD_VIEWER_MATERIAL_POWER_STORAGE_EMISSIVE_BOOST:-}
 material_power_plant_base_color_override=${AGENT_WORLD_VIEWER_POWER_PLANT_BASE_COLOR:-}
 material_power_plant_emissive_color_override=${AGENT_WORLD_VIEWER_POWER_PLANT_EMISSIVE_COLOR:-}
-material_power_storage_base_color_override=${AGENT_WORLD_VIEWER_POWER_STORAGE_BASE_COLOR:-}
-material_power_storage_emissive_color_override=${AGENT_WORLD_VIEWER_POWER_STORAGE_EMISSIVE_COLOR:-}
 base_texture_template_override=$override_base_texture_template
 normal_texture_template_override=$override_normal_texture_template
 mr_texture_template_override=$override_mr_texture_template
@@ -936,7 +913,6 @@ selection_gate_reason=$selection_gate_reason
 selection_gate_pass=$selection_gate_pass
 closeup_edge_energy=$closeup_edge_energy
 scene_power_plant_count_closeup=${scene_power_plant_count_closeup:-}
-scene_power_storage_count_closeup=${scene_power_storage_count_closeup:-}
 capture_connection_status=$capture_connection_status
 capture_snapshot_ready=$capture_snapshot_ready
 capture_connection_status_closeup=$capture_connection_status_closeup
@@ -978,7 +954,7 @@ for entity in "${entities[@]}"; do
     capture_variant_bundle "$entity" "$variant" "$variant_dir" "$port" "$hero_steps" "$closeup_steps" "$no_prewarm_arg" "0" "0" "1" "initial"
   done
 
-  if [[ "$art_capture" -eq 1 && ( "$entity" == "power_plant" || "$entity" == "power_storage" ) ]]; then
+  if [[ "$art_capture" -eq 1 && "$entity" == "power_plant" ]]; then
     if captures_are_all_present "$out_dir" "$entity"; then
       unique_count=$(variant_hash_unique_count "$out_dir" "$entity")
       min_ssim=$(variant_min_pair_ssim "$out_dir" "$entity")

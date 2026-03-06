@@ -62,15 +62,8 @@ pub(super) fn event_matches_location(event: &WorldEvent, location_id: &str) -> b
         WorldEventKind::Power(power_event) => match power_event {
             PowerEvent::PowerGenerated {
                 location_id: id, ..
-            }
-            | PowerEvent::PowerStored {
-                location_id: id, ..
-            }
-            | PowerEvent::PowerDischarged {
-                location_id: id, ..
             } => id == location_id,
             PowerEvent::PowerPlantRegistered { plant } => plant.location_id == location_id,
-            PowerEvent::PowerStorageRegistered { storage } => storage.location_id == location_id,
             _ => false,
         },
         _ => false,
@@ -84,25 +77,6 @@ pub(super) fn event_matches_power_plant(event: &WorldEvent, facility_id: &str) -
         }
         WorldEventKind::Power(PowerEvent::PowerGenerated { plant_id, .. }) => {
             plant_id == facility_id
-        }
-        WorldEventKind::ActionRejected {
-            reason: RejectReason::FacilityAlreadyExists { facility_id: id },
-        }
-        | WorldEventKind::ActionRejected {
-            reason: RejectReason::FacilityNotFound { facility_id: id },
-        } => id == facility_id,
-        _ => false,
-    }
-}
-
-pub(super) fn event_matches_power_storage(event: &WorldEvent, facility_id: &str) -> bool {
-    match &event.kind {
-        WorldEventKind::Power(PowerEvent::PowerStorageRegistered { storage }) => {
-            storage.id == facility_id
-        }
-        WorldEventKind::Power(PowerEvent::PowerStored { storage_id, .. })
-        | WorldEventKind::Power(PowerEvent::PowerDischarged { storage_id, .. }) => {
-            storage_id == facility_id
         }
         WorldEventKind::ActionRejected {
             reason: RejectReason::FacilityAlreadyExists { facility_id: id },

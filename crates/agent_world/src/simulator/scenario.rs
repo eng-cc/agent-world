@@ -8,7 +8,7 @@ use crate::geometry::GeoPos;
 
 use super::init::{
     AgentSpawnConfig, AsteroidFragmentInitConfig, LocationSeedConfig, OriginLocationConfig,
-    PowerPlantSeedConfig, PowerStorageSeedConfig, WorldInitConfig,
+    PowerPlantSeedConfig, WorldInitConfig,
 };
 use super::module_visual::ModuleVisualEntity;
 use super::types::{LocationId, LocationProfile, ResourceStock};
@@ -191,7 +191,6 @@ pub struct WorldScenarioSpec {
     pub asteroid_fragment: AsteroidFragmentInitConfig,
     pub agents: AgentSpawnConfig,
     pub power_plants: Vec<PowerPlantSeedConfig>,
-    pub power_storages: Vec<PowerStorageSeedConfig>,
     pub module_visual_entities: Vec<ModuleVisualEntity>,
 }
 
@@ -206,7 +205,6 @@ impl Default for WorldScenarioSpec {
             asteroid_fragment: AsteroidFragmentInitConfig::default(),
             agents: AgentSpawnConfig::default(),
             power_plants: Vec::new(),
-            power_storages: Vec::new(),
             module_visual_entities: Vec::new(),
         }
     }
@@ -224,7 +222,6 @@ impl WorldScenarioSpec {
             asteroid_fragment: self.asteroid_fragment,
             agents: self.agents,
             power_plants: self.power_plants,
-            power_storages: self.power_storages,
             module_visual_entities: self.module_visual_entities,
         }
     }

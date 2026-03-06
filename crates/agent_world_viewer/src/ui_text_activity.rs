@@ -78,32 +78,6 @@ pub(super) fn event_activity_for_power_plant(
     }
 }
 
-pub(super) fn event_activity_for_power_storage(
-    event: &WorldEvent,
-    storage_id: &str,
-) -> Option<String> {
-    match &event.kind {
-        WorldEventKind::Power(PowerEvent::PowerStorageRegistered { storage })
-            if storage.id == storage_id =>
-        {
-            Some(format!("register at {}", storage.location_id))
-        }
-        WorldEventKind::Power(PowerEvent::PowerStored {
-            storage_id: id,
-            input,
-            stored,
-            ..
-        }) if id == storage_id => Some(format!("stored {} (input {})", stored, input)),
-        WorldEventKind::Power(PowerEvent::PowerDischarged {
-            storage_id: id,
-            output,
-            drawn,
-            ..
-        }) if id == storage_id => Some(format!("discharged {} (drawn {})", output, drawn)),
-        _ => None,
-    }
-}
-
 pub(super) fn owner_matches_agent(owner: &ResourceOwner, agent_id: &str) -> bool {
     matches!(owner, ResourceOwner::Agent { agent_id: id } if id == agent_id)
 }

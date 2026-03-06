@@ -427,30 +427,11 @@ pub enum Action {
         efficiency: f64,
         degradation: f64,
     },
-    RegisterPowerStorage {
-        facility_id: FacilityId,
-        location_id: LocationId,
-        owner: ResourceOwner,
-        capacity: i64,
-        current_level: i64,
-        charge_efficiency: f64,
-        discharge_efficiency: f64,
-        max_charge_rate: i64,
-        max_discharge_rate: i64,
-    },
     UpsertModuleVisualEntity {
         entity: ModuleVisualEntity,
     },
     RemoveModuleVisualEntity {
         entity_id: String,
-    },
-    DrawPower {
-        storage_id: FacilityId,
-        amount: i64,
-    },
-    StorePower {
-        storage_id: FacilityId,
-        amount: i64,
     },
     MoveAgent {
         agent_id: AgentId,

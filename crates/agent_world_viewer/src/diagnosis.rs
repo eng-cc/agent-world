@@ -176,7 +176,6 @@ fn selection_kind_name(kind: SelectionKind) -> &'static str {
         SelectionKind::Fragment => "fragment",
         SelectionKind::Asset => "asset",
         SelectionKind::PowerPlant => "power_plant",
-        SelectionKind::PowerStorage => "power_storage",
         SelectionKind::Chunk => "chunk",
     }
 }

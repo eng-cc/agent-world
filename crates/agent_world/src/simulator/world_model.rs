@@ -14,7 +14,7 @@ use super::chunking::{chunk_coord_of, ChunkCoord};
 use super::fragment_physics::FragmentPhysicalProfile;
 use super::memory::LongTermMemoryEntry;
 use super::module_visual::ModuleVisualEntity;
-use super::power::{AgentPowerStatus, PowerConfig, PowerPlant, PowerStorage};
+use super::power::{AgentPowerStatus, PowerConfig, PowerPlant};
 use super::social::{
     default_next_social_edge_id, default_next_social_fact_id, SocialEdgeState, SocialFactState,
 };
@@ -267,8 +267,6 @@ pub struct WorldModel {
     pub next_module_market_sale_id: u64,
     #[serde(default)]
     pub power_plants: BTreeMap<FacilityId, PowerPlant>,
-    #[serde(default)]
-    pub power_storages: BTreeMap<FacilityId, PowerStorage>,
     #[serde(default)]
     pub power_order_book: PowerOrderBookState,
     #[serde(default = "default_next_social_fact_id")]

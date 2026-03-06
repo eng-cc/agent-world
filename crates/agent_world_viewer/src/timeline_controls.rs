@@ -1040,8 +1040,6 @@ fn event_resource_weight(event: &WorldEvent) -> Option<i64> {
 fn power_event_weight(power_event: &PowerEvent) -> Option<i64> {
     match power_event {
         PowerEvent::PowerGenerated { amount, .. } => Some(amount.abs()),
-        PowerEvent::PowerStored { stored, .. } => Some(stored.abs()),
-        PowerEvent::PowerDischarged { output, .. } => Some(output.abs()),
         PowerEvent::PowerConsumed { amount, .. } => Some(amount.abs()),
         PowerEvent::PowerTransferred { amount, loss, .. } => {
             Some(amount.abs().saturating_add(loss.abs()))

@@ -25,7 +25,7 @@ Options:
   --scenario <name>             Scenario for viewer/live + gameplay gate (default: llm_bootstrap)
   --theme-pack <name>           Theme pack: industrial_v3,industrial_v2,industrial_v1 (default: industrial_v3)
   --variants <list>             Theme variants: default,matte,glossy,all (default: default,matte,glossy)
-  --inspect <list>              Texture inspector entities: agent,location,asset,power_plant,power_storage,all (default: all)
+  --inspect <list>              Texture inspector entities: agent,location,asset,power_plant,all (default: all)
   --ticks-industrial <n>        Industrial loop ticks (default: 100)
   --base-port <port>            Base port for native capture scripts (default: 6423)
   --ui-profile-file <path>      UI profile env for native visual captures (default: scripts/viewer-release-ui-profile.env)
@@ -104,7 +104,7 @@ resolve_inspect_entities() {
   local normalized
   normalized=$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]')
   if [[ -z "$normalized" || "$normalized" == "all" ]]; then
-    echo "agent location asset power_plant power_storage"
+    echo "agent location asset power_plant"
     return 0
   fi
 
@@ -114,11 +114,11 @@ resolve_inspect_entities() {
   for item in "${parsed[@]}"; do
     item=$(trim_whitespace "$item")
     case "$item" in
-      agent|location|asset|power_plant|power_storage)
+      agent|location|asset|power_plant)
         ;;
       *)
         echo "invalid --inspect item: $item" >&2
-        echo "supported: agent,location,asset,power_plant,power_storage,all" >&2
+        echo "supported: agent,location,asset,power_plant,all" >&2
         exit 2
         ;;
     esac

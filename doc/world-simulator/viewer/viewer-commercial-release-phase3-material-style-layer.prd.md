@@ -11,7 +11,7 @@
 ## 2. User Experience & Functionality
 
 ### In Scope
-- 新增材质风格覆盖配置资源（agent/location/asset/power_plant/power_storage）。
+- 新增材质风格覆盖配置资源（agent/location/asset/power_plant）。
 - 新增环境变量入口，支持通过十六进制颜色字符串（`#RRGGBB`）覆盖基础色与自发光色。
 - `setup_3d_scene` 接入覆盖逻辑（覆盖值优先、默认值兜底）。
 - 补齐配置解析测试与关键材质构建逻辑测试。

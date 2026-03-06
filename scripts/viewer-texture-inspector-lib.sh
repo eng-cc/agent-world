@@ -34,7 +34,7 @@ resolve_entities() {
   normalized=$(echo "$raw" | tr '[:upper:]' '[:lower:]')
 
   if [[ -z "$normalized" || "$normalized" == "all" ]]; then
-    echo "agent location asset power_plant power_storage"
+    echo "agent location asset power_plant"
     return 0
   fi
 
@@ -43,11 +43,11 @@ resolve_entities() {
   local item
   for item in "${parsed[@]}"; do
     case "$item" in
-      agent|location|asset|power_plant|power_storage)
+      agent|location|asset|power_plant)
         ;;
       *)
         echo "invalid inspect entity: $item" >&2
-        echo "supported entities: agent,location,asset,power_plant,power_storage,all" >&2
+        echo "supported entities: agent,location,asset,power_plant,all" >&2
         exit 2
         ;;
     esac
@@ -85,9 +85,6 @@ entity_prefix() {
       ;;
     power_plant)
       echo "POWER_PLANT"
-      ;;
-    power_storage)
-      echo "POWER_STORAGE"
       ;;
     *)
       echo "unknown entity: $1" >&2
@@ -164,13 +161,6 @@ resolve_focus_target_for_entity() {
         echo "first_location"
       fi
       ;;
-    power_storage)
-      if [[ "$scenario_name" == *power* ]]; then
-        echo "first_power_storage"
-      else
-        echo "first_location"
-      fi
-      ;;
     *)
       echo "first_location"
       ;;
@@ -181,7 +171,7 @@ resolve_capture_scenario_for_entity() {
   local entity=$1
   local scenario_name=${2:-llm_bootstrap}
   local preview_mode_effective=${3:-scene_proxy}
-  if [[ "$preview_mode_effective" == "direct_entity" && ( "$entity" == "power_plant" || "$entity" == "power_storage" ) && "$scenario_name" != *power* ]]; then
+  if [[ "$preview_mode_effective" == "direct_entity" && "$entity" == "power_plant" && "$scenario_name" != *power* ]]; then
     echo "power_bootstrap"
     return 0
   fi
@@ -281,9 +271,6 @@ default_automation_steps_for_entity() {
     power_plant)
       echo "mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};${power_hero_pose}"
       ;;
-    power_storage)
-      echo "mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};${power_hero_pose}"
-      ;;
     *)
       echo "mode=3d;focus=first_location;pan=0,2,0;zoom=1.2;orbit=10,-25;select=first_location;wait=0.4"
       ;;
@@ -310,9 +297,6 @@ default_closeup_automation_steps_for_entity() {
     power_plant)
       echo "mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};${power_closeup_pose}"
       ;;
-    power_storage)
-      echo "mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};${power_closeup_pose}"
-      ;;
     *)
       echo "mode=3d;focus=first_location;zoom=0.18;orbit=30,-22;wait=0.7"
       ;;
@@ -330,9 +314,6 @@ fallback_closeup_automation_steps_for_entity() {
     power_plant)
       echo "mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};${power_fallback_pose}"
       ;;
-    power_storage)
-      echo "mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};${power_fallback_pose}"
-      ;;
     *)
       echo "mode=3d;wait=1.0;select=${focus_target};focus=${focus_target};zoom=0.95;orbit=42,-16;wait=0.9"
       ;;
@@ -345,7 +326,7 @@ retry_closeup_candidate_specs_for_entity() {
   local focus_target
   focus_target=$(resolve_focus_target_for_entity "$entity" "$scenario_name")
   case "$entity" in
-    power_plant|power_storage)
+    power_plant)
       emit_power_retry_closeup_candidates "$focus_target" "$composition_profile"
       ;;
     *)
@@ -364,9 +345,6 @@ expected_selection_kind_for_entity() {
   case "$entity" in
     power_plant)
       echo "power_plant"
-      ;;
-    power_storage)
-      echo "power_storage"
       ;;
     agent)
       echo "agent"
@@ -461,7 +439,7 @@ resolve_effective_crop_window() {
 
   if [[ "$panel_hidden_flag" -eq 1 ]]; then
     case "$entity" in
-      power_plant|power_storage)
+      power_plant)
         echo "920:700:120:50"
         ;;
       *)
@@ -472,7 +450,7 @@ resolve_effective_crop_window() {
   fi
 
   case "$entity" in
-    power_plant|power_storage)
+    power_plant)
       echo "600:620:0:120"
       ;;
     *)
@@ -640,13 +618,8 @@ clear_material_overrides() {
   set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_ROUGHNESS" ""
   set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_METALLIC" ""
   set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_EMISSIVE_BOOST" ""
-  set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_POWER_STORAGE_ROUGHNESS" ""
-  set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_POWER_STORAGE_METALLIC" ""
-  set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_POWER_STORAGE_EMISSIVE_BOOST" ""
   set_or_unset_env "AGENT_WORLD_VIEWER_POWER_PLANT_BASE_COLOR" ""
   set_or_unset_env "AGENT_WORLD_VIEWER_POWER_PLANT_EMISSIVE_COLOR" ""
-  set_or_unset_env "AGENT_WORLD_VIEWER_POWER_STORAGE_BASE_COLOR" ""
-  set_or_unset_env "AGENT_WORLD_VIEWER_POWER_STORAGE_EMISSIVE_COLOR" ""
 }
 
 apply_variant_material_profile() {
@@ -697,47 +670,6 @@ apply_variant_material_profile() {
     set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_EMISSIVE_BOOST" "$emissive_boost"
     set_or_unset_env "AGENT_WORLD_VIEWER_POWER_PLANT_BASE_COLOR" "$base_color"
     set_or_unset_env "AGENT_WORLD_VIEWER_POWER_PLANT_EMISSIVE_COLOR" "$emissive_color"
-    return 0
-  fi
-
-  if [[ "$entity" == "power_storage" ]]; then
-    local roughness
-    local metallic
-    local emissive_boost
-    local base_color
-    local emissive_color
-    case "$variant" in
-      default)
-        roughness="0.50"
-        metallic="0.22"
-        emissive_boost="0.10"
-        base_color="#37CC77"
-        emissive_color="#6CFFD1"
-        ;;
-      matte)
-        roughness="1.00"
-        metallic="0.00"
-        emissive_boost="0.00"
-        base_color="#102018"
-        emissive_color="#000000"
-        ;;
-      glossy)
-        roughness="0.00"
-        metallic="1.00"
-        emissive_boost="1.20"
-        base_color="#D8FFF7"
-        emissive_color="#FFFFFF"
-        ;;
-      *)
-        return 0
-        ;;
-    esac
-
-    set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_POWER_STORAGE_ROUGHNESS" "$roughness"
-    set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_POWER_STORAGE_METALLIC" "$metallic"
-    set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_POWER_STORAGE_EMISSIVE_BOOST" "$emissive_boost"
-    set_or_unset_env "AGENT_WORLD_VIEWER_POWER_STORAGE_BASE_COLOR" "$base_color"
-    set_or_unset_env "AGENT_WORLD_VIEWER_POWER_STORAGE_EMISSIVE_COLOR" "$emissive_color"
     return 0
   fi
 
@@ -839,7 +771,7 @@ apply_art_lighting_profile() {
       set_or_unset_env "AGENT_WORLD_VIEWER_BLOOM_INTENSITY" "0"
 
       case "$entity" in
-        power_plant|power_storage)
+        power_plant)
           set_or_unset_env "AGENT_WORLD_VIEWER_COLOR_GRADING_EXPOSURE" "-0.05"
           set_or_unset_env "AGENT_WORLD_VIEWER_AMBIENT_BRIGHTNESS" "88"
           set_or_unset_env "AGENT_WORLD_VIEWER_FILL_LIGHT_RATIO" "0.36"

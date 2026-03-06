@@ -11,7 +11,7 @@
 ## 2. User Experience & Functionality
 
 ### In Scope
-- 新增外部贴图覆盖配置资源（agent/location/asset/power_plant/power_storage）。
+- 新增外部贴图覆盖配置资源（agent/location/asset/power_plant）。
 - 新增环境变量入口，支持传入贴图资源路径（`<path#label>`）。
 - `setup_3d_scene` 接入 `base_color_texture` 覆盖逻辑（有配置加载贴图，无配置保持默认）。
 - 补齐配置解析测试与关键辅助逻辑测试。

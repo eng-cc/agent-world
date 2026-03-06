@@ -37,13 +37,10 @@ pub(super) fn setup_3d_scene(
     let location_mesh = resolved_theme_assets.location_mesh.clone();
     let asset_mesh = resolved_theme_assets.asset_mesh.clone();
     let power_plant_mesh = resolved_theme_assets.power_plant_mesh.clone();
-    let power_storage_mesh = resolved_theme_assets.power_storage_mesh.clone();
     let world_box_mesh = meshes.add(Cuboid::new(1.0, 1.0, 1.0));
     let agent_material = materials.add(resolved_theme_assets.agent_material.clone());
     let asset_material = materials.add(resolved_theme_assets.asset_material.clone());
     let power_plant_material = materials.add(resolved_theme_assets.power_plant_material.clone());
-    let power_storage_material =
-        materials.add(resolved_theme_assets.power_storage_material.clone());
     let agent_module_marker_mesh = meshes.add(Cuboid::new(1.0, 1.0, 1.0));
     let module_marker_color = config
         .visual
@@ -154,8 +151,6 @@ pub(super) fn setup_3d_scene(
         asset_material,
         power_plant_mesh,
         power_plant_material,
-        power_storage_mesh,
-        power_storage_material,
         location_core_silicate_material,
         location_core_metal_material,
         location_core_ice_material,

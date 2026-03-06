@@ -8,7 +8,7 @@
 - [x] 输出项目管理文档（本文件）
 
 ### S2 场景配置调整
-- [x] 清理非专项场景中的默认 `power_plants`/`power_storages`
+- [x] 清理非专项场景中的默认 `power_plants`（`power_storages` 已于 2026-03-06 全量下线）
 - [x] 保留 `power_bootstrap` 作为显式设施场景
 
 ### S3 测试与回归
