@@ -5,7 +5,7 @@
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0 (PRD-WORLD_SIMULATOR-020) [test_tier_required]: 完成专题 PRD 建模、验收标准冻结与模块文档树回写。
-- [ ] T1 (PRD-WORLD_SIMULATOR-020) [test_tier_required]: 落地 Web 转账闭环（`/api/chain/transfer` 代理 + wasm 转账窗口提交 + 回归测试）。
+- [x] T1 (PRD-WORLD_SIMULATOR-020) [test_tier_required]: 落地 Web 转账闭环（`/api/chain/transfer` 代理 + wasm 转账窗口提交 + 回归测试）。
 
 ## 依赖
 - `doc/world-simulator/prd.md`
@@ -21,6 +21,6 @@
 
 ## 状态
 - 最近更新：2026-03-06
-- 当前阶段: in_progress
-- 当前任务: T1
-- 备注: 先完成文档建模；代码闭环与测试证据由 T1 收口。
+- 当前阶段: completed
+- 当前任务: 无（T0/T1 已完成）
+- 备注: Web 转账入口已在 wasm 界面可用，控制面新增 `/api/chain/transfer` 代理并完成 required 回归。

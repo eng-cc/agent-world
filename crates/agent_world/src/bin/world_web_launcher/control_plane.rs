@@ -8,8 +8,64 @@ use std::sync::mpsc::{self, Sender, TryRecvError};
 use std::thread;
 use std::time::{Duration, Instant};
 
+const CHAIN_TRANSFER_SUBMIT_PATH: &str = "/v1/chain/transfer/submit";
+const CHAIN_TRANSFER_PROXY_TIMEOUT_MS: u64 = 1_500;
+
 pub(super) fn parse_config_request(body: &[u8], action: &str) -> Result<LauncherConfig, String> {
     serde_json::from_slice(body).map_err(|err| format!("parse {action} request JSON failed: {err}"))
+}
+
+pub(super) fn parse_chain_transfer_request(
+    body: &[u8],
+) -> Result<ChainTransferSubmitRequest, String> {
+    serde_json::from_slice(body)
+        .map_err(|err| format!("parse chain transfer request JSON failed: {err}"))
+}
+
+pub(super) fn submit_chain_transfer(
+    state: &mut ServiceState,
+    request: &ChainTransferSubmitRequest,
+) -> ChainTransferSubmitResponse {
+    if !state.config.chain_enabled {
+        let response =
+            ChainTransferSubmitResponse::error("chain_disabled", "chain runtime is disabled");
+        state.append_log("chain transfer submit rejected: chain runtime is disabled");
+        state.mark_updated();
+        return response;
+    }
+
+    let chain_status_bind = state.config.chain_status_bind.clone();
+    match submit_chain_transfer_remote(chain_status_bind.as_str(), request) {
+        Ok(response) => {
+            if response.ok {
+                let action_id = response
+                    .action_id
+                    .map(|value| value.to_string())
+                    .unwrap_or_else(|| "n/a".to_string());
+                state.append_log(format!(
+                    "chain transfer submitted via control plane (action_id={action_id})"
+                ));
+            } else {
+                let error_code = response
+                    .error_code
+                    .as_deref()
+                    .map(|code| format!(" ({code})"))
+                    .unwrap_or_default();
+                let error_text = response.error.as_deref().unwrap_or("unknown error");
+                state.append_log(format!(
+                    "chain transfer rejected by runtime{error_code}: {error_text}"
+                ));
+            }
+            state.mark_updated();
+            response
+        }
+        Err(err) => {
+            let response = ChainTransferSubmitResponse::error("proxy_error", err.clone());
+            state.append_log(format!("chain transfer proxy failed: {err}"));
+            state.mark_updated();
+            response
+        }
+    }
 }
 
 pub(super) fn poll_service_state(state: &mut ServiceState) {
@@ -175,6 +231,79 @@ fn probe_chain_status_endpoint(bind: &str) -> Result<(), String> {
         return Err(format!("chain status probe returned HTTP {status_code}"));
     }
     Ok(())
+}
+
+fn submit_chain_transfer_remote(
+    chain_status_bind: &str,
+    request: &ChainTransferSubmitRequest,
+) -> Result<ChainTransferSubmitResponse, String> {
+    let (host, port) = parse_host_port(chain_status_bind, "chain status bind")?;
+    let host = runtime_paths::normalize_bind_host_for_local_access(host.as_str());
+    let socket_addr = (host.as_str(), port)
+        .to_socket_addrs()
+        .map_err(|err| format!("resolve chain status server failed: {err}"))?
+        .next()
+        .ok_or_else(|| "resolve chain status server failed: no socket address".to_string())?;
+
+    let mut stream = TcpStream::connect_timeout(
+        &socket_addr,
+        Duration::from_millis(CHAIN_TRANSFER_PROXY_TIMEOUT_MS),
+    )
+    .map_err(|err| format!("connect chain status server failed: {err}"))?;
+    let timeout = Some(Duration::from_millis(CHAIN_TRANSFER_PROXY_TIMEOUT_MS));
+    let _ = stream.set_read_timeout(timeout);
+    let _ = stream.set_write_timeout(timeout);
+
+    let payload = serde_json::to_vec(request)
+        .map_err(|err| format!("serialize chain transfer request failed: {err}"))?;
+    let host_header = host_for_url(host.as_str());
+    let request_head = format!(
+        "POST {CHAIN_TRANSFER_SUBMIT_PATH} HTTP/1.1\r\nHost: {host_header}:{port}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+        payload.len()
+    );
+    std::io::Write::write_all(&mut stream, request_head.as_bytes())
+        .map_err(|err| format!("write chain transfer request header failed: {err}"))?;
+    std::io::Write::write_all(&mut stream, payload.as_slice())
+        .map_err(|err| format!("write chain transfer request body failed: {err}"))?;
+    std::io::Write::flush(&mut stream)
+        .map_err(|err| format!("flush chain transfer request failed: {err}"))?;
+
+    let mut response_bytes = Vec::new();
+    std::io::Read::read_to_end(&mut stream, &mut response_bytes)
+        .map_err(|err| format!("read chain transfer response failed: {err}"))?;
+    let (status_code, response) = parse_chain_transfer_submit_response(response_bytes.as_slice())?;
+
+    if !(200..=299).contains(&status_code) && response.ok {
+        return Err(format!(
+            "chain transfer submit returned HTTP {status_code} with invalid success payload"
+        ));
+    }
+    Ok(response)
+}
+
+fn parse_chain_transfer_submit_response(
+    response_bytes: &[u8],
+) -> Result<(u16, ChainTransferSubmitResponse), String> {
+    let Some(boundary) = response_bytes
+        .windows(4)
+        .position(|window| window == b"\r\n\r\n")
+    else {
+        return Err("invalid HTTP response: missing header terminator".to_string());
+    };
+    let header = std::str::from_utf8(&response_bytes[..boundary])
+        .map_err(|_| "invalid HTTP response: header is not UTF-8".to_string())?;
+    let body = &response_bytes[(boundary + 4)..];
+
+    let status_code = header
+        .lines()
+        .next()
+        .and_then(|line| line.split_whitespace().nth(1))
+        .and_then(|token| token.parse::<u16>().ok())
+        .ok_or_else(|| "invalid HTTP response: missing status code".to_string())?;
+
+    let response: ChainTransferSubmitResponse = serde_json::from_slice(body)
+        .map_err(|err| format!("parse chain transfer response JSON failed: {err}"))?;
+    Ok((status_code, response))
 }
 
 pub(super) fn start_process(
@@ -688,5 +817,129 @@ fn send_interrupt_signal(child: &Child) -> Result<(), String> {
     {
         let _ = child;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        parse_chain_transfer_request, submit_chain_transfer_remote, ChainTransferSubmitRequest,
+    };
+    use std::io::{Read, Write};
+    use std::net::TcpListener;
+    use std::time::Duration;
+
+    fn read_http_request(stream: &mut std::net::TcpStream) -> Vec<u8> {
+        stream
+            .set_read_timeout(Some(Duration::from_secs(2)))
+            .expect("set read timeout");
+        let mut bytes = Vec::new();
+        let mut buffer = [0_u8; 1024];
+
+        loop {
+            let read = stream.read(&mut buffer).expect("read request");
+            if read == 0 {
+                break;
+            }
+            bytes.extend_from_slice(&buffer[..read]);
+            let Some(boundary) = bytes.windows(4).position(|window| window == b"\r\n\r\n") else {
+                continue;
+            };
+            let header =
+                std::str::from_utf8(&bytes[..boundary]).expect("request header should be UTF-8");
+            let content_length = header
+                .lines()
+                .find_map(|line| line.strip_prefix("Content-Length:"))
+                .and_then(|value| value.trim().parse::<usize>().ok())
+                .unwrap_or(0);
+            if bytes.len() >= boundary + 4 + content_length {
+                break;
+            }
+        }
+
+        bytes
+    }
+
+    fn write_http_json_response(stream: &mut std::net::TcpStream, status: &str, body: &str) {
+        let response = format!(
+            "HTTP/1.1 {status}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+            body.len(),
+            body
+        );
+        stream
+            .write_all(response.as_bytes())
+            .expect("write response should succeed");
+    }
+
+    #[test]
+    fn parse_chain_transfer_request_rejects_invalid_json() {
+        let err = parse_chain_transfer_request(br#"{"from_account_id":"player:alice"}"#)
+            .expect_err("invalid payload should fail");
+        assert!(err.contains("parse chain transfer request JSON failed"));
+    }
+
+    #[test]
+    fn submit_chain_transfer_remote_posts_expected_payload_and_reads_success() {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("bind test server");
+        let bind = listener.local_addr().expect("local addr");
+
+        let server = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().expect("accept");
+            let request_bytes = read_http_request(&mut stream);
+            let request_text = String::from_utf8_lossy(&request_bytes);
+            assert!(request_text.starts_with("POST /v1/chain/transfer/submit HTTP/1.1"));
+            assert!(request_text.contains("\"from_account_id\":\"player:alice\""));
+            assert!(request_text.contains("\"to_account_id\":\"player:bob\""));
+            assert!(request_text.contains("\"amount\":7"));
+            assert!(request_text.contains("\"nonce\":2"));
+            write_http_json_response(
+                &mut stream,
+                "200 OK",
+                r#"{"ok":true,"action_id":11,"submitted_at_unix_ms":1700000000}"#,
+            );
+        });
+
+        let request = ChainTransferSubmitRequest {
+            from_account_id: "player:alice".to_string(),
+            to_account_id: "player:bob".to_string(),
+            amount: 7,
+            nonce: 2,
+        };
+        let response =
+            submit_chain_transfer_remote(format!("127.0.0.1:{}", bind.port()).as_str(), &request)
+                .expect("submit should succeed");
+        assert!(response.ok);
+        assert_eq!(response.action_id, Some(11));
+        server.join().expect("server thread should finish");
+    }
+
+    #[test]
+    fn submit_chain_transfer_remote_returns_rejected_payload_for_http_400() {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("bind test server");
+        let bind = listener.local_addr().expect("local addr");
+
+        let server = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().expect("accept");
+            let _ = read_http_request(&mut stream);
+            write_http_json_response(
+                &mut stream,
+                "400 Bad Request",
+                r#"{"ok":false,"error_code":"invalid_request","error":"bad payload"}"#,
+            );
+        });
+
+        let request = ChainTransferSubmitRequest {
+            from_account_id: "player:alice".to_string(),
+            to_account_id: "player:bob".to_string(),
+            amount: 7,
+            nonce: 2,
+        };
+        let response =
+            submit_chain_transfer_remote(format!("127.0.0.1:{}", bind.port()).as_str(), &request)
+                .expect("proxy should return rejected payload");
+        assert!(!response.ok);
+        assert_eq!(response.error_code.as_deref(), Some("invalid_request"));
+        assert_eq!(response.error.as_deref(), Some("bad payload"));
+        server.join().expect("server thread should finish");
     }
 }

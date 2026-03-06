@@ -316,6 +316,7 @@ struct RunningProcess;
 enum WebApiEvent {
     State(Result<WebStateSnapshot, String>),
     Action(Result<WebApiResponse, String>),
+    Transfer(Result<WebTransferSubmitResponse, String>),
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -338,6 +339,23 @@ struct WebApiResponse {
     ok: bool,
     error: Option<String>,
     state: WebStateSnapshot,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct WebTransferSubmitRequest {
+    from_account_id: String,
+    to_account_id: String,
+    amount: u64,
+    nonce: u64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct WebTransferSubmitResponse {
+    ok: bool,
+    action_id: Option<u64>,
+    submitted_at_unix_ms: Option<i64>,
+    error_code: Option<String>,
+    error: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -547,9 +565,26 @@ enum FeedbackSubmitState {
     Failed(String),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg(target_arch = "wasm32")]
-struct TransferDraft;
+struct TransferDraft {
+    from_account_id: String,
+    to_account_id: String,
+    amount: String,
+    nonce: String,
+}
+
+#[cfg(target_arch = "wasm32")]
+impl Default for TransferDraft {
+    fn default() -> Self {
+        Self {
+            from_account_id: String::new(),
+            to_account_id: String::new(),
+            amount: "1".to_string(),
+            nonce: "1".to_string(),
+        }
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum TransferSubmitState {
@@ -670,6 +705,55 @@ impl ClientLauncherApp {
         self.logs.push_back(line.into());
         while self.logs.len() > MAX_LOG_LINES {
             self.logs.pop_front();
+        }
+    }
+
+    fn apply_web_transfer_submit_result(
+        &mut self,
+        result: Result<WebTransferSubmitResponse, String>,
+    ) {
+        match result {
+            Ok(response) => {
+                if response.ok {
+                    let action_id_text = response
+                        .action_id
+                        .map(|value| value.to_string())
+                        .unwrap_or_else(|| "n/a".to_string());
+                    let submitted_at_text = response
+                        .submitted_at_unix_ms
+                        .map(|value| format!(", submitted_at={value}"))
+                        .unwrap_or_default();
+                    let message = format!(
+                        "{}: action_id={action_id_text}{submitted_at_text}",
+                        self.tr("转账请求已提交", "Transfer request submitted")
+                    );
+                    self.append_log(message.clone());
+                    self.transfer_submit_state = TransferSubmitState::Success(message);
+                } else {
+                    let error_text = response
+                        .error
+                        .unwrap_or_else(|| self.tr("未知错误", "Unknown error").to_string());
+                    let error_code = response
+                        .error_code
+                        .map(|value| format!(" ({value})"))
+                        .unwrap_or_default();
+                    let message = format!(
+                        "{}{}: {error_text}",
+                        self.tr("转账提交被拒绝", "Transfer submit rejected"),
+                        error_code
+                    );
+                    self.append_log(message.clone());
+                    self.transfer_submit_state = TransferSubmitState::Failed(message);
+                }
+            }
+            Err(err) => {
+                let message = format!(
+                    "{}: {err}",
+                    self.tr("转账提交失败", "Transfer submit failed")
+                );
+                self.append_log(message.clone());
+                self.transfer_submit_state = TransferSubmitState::Failed(message);
+            }
         }
     }
 
@@ -919,7 +1003,15 @@ impl eframe::App for ClientLauncherApp {
                 {
                     ui.add_enabled(false, egui::Button::new(self.tr("设置", "Settings")));
                     ui.add_enabled(false, egui::Button::new(self.tr("反馈", "Feedback")));
-                    ui.add_enabled(false, egui::Button::new(self.tr("转账", "Transfer")));
+                    if ui
+                        .add_enabled(
+                            self.is_feedback_available(),
+                            egui::Button::new(self.tr("转账", "Transfer")),
+                        )
+                        .clicked()
+                    {
+                        self.transfer_window_open = true;
+                    }
                 }
                 if ui.button(self.tr("清空日志", "Clear Logs")).clicked() {
                     self.logs.clear();

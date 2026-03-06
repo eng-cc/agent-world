@@ -292,6 +292,40 @@ struct ApiResponse {
     state: StateSnapshot,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+struct ChainTransferSubmitRequest {
+    from_account_id: String,
+    to_account_id: String,
+    amount: u64,
+    nonce: u64,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+struct ChainTransferSubmitResponse {
+    ok: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    action_id: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    submitted_at_unix_ms: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    error_code: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    error: Option<String>,
+}
+
+impl ChainTransferSubmitResponse {
+    fn error(error_code: impl Into<String>, error: impl Into<String>) -> Self {
+        Self {
+            ok: false,
+            action_id: None,
+            submitted_at_unix_ms: None,
+            error_code: Some(error_code.into()),
+            error: Some(error.into()),
+        }
+    }
+}
+
 fn main() {
     let raw_args: Vec<String> = env::args().skip(1).collect();
     if raw_args.iter().any(|arg| arg == "--help" || arg == "-h") {
@@ -496,6 +530,19 @@ fn handle_connection(
             };
             write_json_response(&mut stream, 200, &response)
         }
+        ("POST", "/api/chain/transfer") => {
+            let submit_request = match parse_chain_transfer_request(request.body.as_slice()) {
+                Ok(request) => request,
+                Err(err) => {
+                    let response = ChainTransferSubmitResponse::error("invalid_request", err);
+                    return write_json_response(&mut stream, 200, &response);
+                }
+            };
+            let mut state = lock_state(&shared_state);
+            poll_service_state(&mut state);
+            let response = submit_chain_transfer(&mut state, &submit_request);
+            write_json_response(&mut stream, 200, &response)
+        }
         ("OPTIONS", _) => {
             write_http_response(&mut stream, 204, "text/plain", b"", false)?;
             Ok(())
@@ -508,6 +555,7 @@ fn handle_connection(
         | (method, "/api/stop")
         | (method, "/api/chain/start")
         | (method, "/api/chain/stop")
+        | (method, "/api/chain/transfer")
             if method != "GET" && method != "POST" =>
         {
             write_http_response(
