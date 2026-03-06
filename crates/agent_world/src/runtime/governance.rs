@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 use super::events::DomainEvent;
+use super::gameplay_state::GovernanceIdentityStatus;
 use super::manifest::{Manifest, ManifestPatch};
 use super::types::{ProposalId, WorldTime};
 
@@ -28,6 +29,47 @@ impl Default for GovernanceExecutionPolicy {
             emergency_brake_max_ticks: 720,
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum GovernanceIdentityPenaltyStatus {
+    Applied,
+    Appealed,
+    AppealAccepted,
+    AppealRejected,
+}
+
+impl Default for GovernanceIdentityPenaltyStatus {
+    fn default() -> Self {
+        Self::Applied
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct GovernanceIdentityPenaltyRecord {
+    pub penalty_id: u64,
+    pub target_agent_id: String,
+    pub evidence_hash: String,
+    pub reason: String,
+    #[serde(default)]
+    pub slash_stake: u64,
+    #[serde(default)]
+    pub appeal_deadline_tick: WorldTime,
+    #[serde(default)]
+    pub status: GovernanceIdentityPenaltyStatus,
+    #[serde(default)]
+    pub identity_status_before: GovernanceIdentityStatus,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub appellant: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub appeal_reason: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resolved_by: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resolution_reason: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resolved_at_tick: Option<WorldTime>,
 }
 
 /// A proposal for manifest changes.
@@ -176,6 +218,28 @@ pub enum GovernanceEvent {
         reason: String,
         threshold: u16,
         signer_node_ids: Vec<String>,
+    },
+    IdentityPenaltyApplied {
+        penalty_id: u64,
+        target_agent_id: String,
+        evidence_hash: String,
+        initiator: String,
+        reason: String,
+        slash_stake: u64,
+        appeal_deadline_tick: WorldTime,
+        threshold: u16,
+        signer_node_ids: Vec<String>,
+    },
+    IdentityPenaltyAppealed {
+        penalty_id: u64,
+        appellant: String,
+        reason: String,
+    },
+    IdentityPenaltyResolved {
+        penalty_id: u64,
+        resolver: String,
+        accepted: bool,
+        reason: String,
     },
 }
 

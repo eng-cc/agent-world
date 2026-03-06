@@ -1,7 +1,8 @@
 use super::super::util::{hash_json, sha256_hex};
 use super::super::{
     apply_manifest_patch, GovernanceEvent, GovernanceExecutionPolicy,
-    GovernanceFinalityCertificate, GovernanceIdentityProfileState, GovernanceIdentityStatus,
+    GovernanceFinalityCertificate, GovernanceIdentityPenaltyRecord,
+    GovernanceIdentityPenaltyStatus, GovernanceIdentityProfileState, GovernanceIdentityStatus,
     Manifest, ManifestPatch, ManifestUpdate, Proposal, ProposalDecision, ProposalId,
     ProposalStatus, WorldError, WorldEventBody, WorldTime,
 };
@@ -101,6 +102,119 @@ impl World {
                 slash_count,
                 updated_at: self.state.time,
             })
+    }
+
+    pub fn apply_identity_penalty(
+        &mut self,
+        target_agent_id: impl Into<String>,
+        evidence_hash: impl Into<String>,
+        reason: impl Into<String>,
+        slash_stake: u64,
+        appeal_window_ticks: u64,
+        initiator: impl Into<String>,
+        signer_node_ids: Vec<String>,
+    ) -> Result<u64, WorldError> {
+        let target_agent_id = target_agent_id.into();
+        if !self.state.agents.contains_key(target_agent_id.as_str()) {
+            return Err(WorldError::AgentNotFound {
+                agent_id: target_agent_id.clone(),
+            });
+        }
+        let evidence_hash = evidence_hash.into();
+        if evidence_hash.trim().is_empty() {
+            return Err(WorldError::GovernancePolicyInvalid {
+                reason: "identity penalty evidence_hash cannot be empty".to_string(),
+            });
+        }
+        if appeal_window_ticks == 0 {
+            return Err(WorldError::GovernancePolicyInvalid {
+                reason: "identity penalty appeal_window_ticks must be > 0".to_string(),
+            });
+        }
+        let threshold = self
+            .governance_execution_policy
+            .emergency_veto_guardian_threshold;
+        let signer_node_ids = self.validate_guardian_signers(&signer_node_ids, threshold)?;
+        let penalty_id = self.allocate_next_governance_identity_penalty_id();
+        let event = GovernanceEvent::IdentityPenaltyApplied {
+            penalty_id,
+            target_agent_id,
+            evidence_hash,
+            initiator: initiator.into(),
+            reason: reason.into(),
+            slash_stake,
+            appeal_deadline_tick: self.state.time.saturating_add(appeal_window_ticks),
+            threshold,
+            signer_node_ids,
+        };
+        self.append_event(WorldEventBody::Governance(event), None)?;
+        Ok(penalty_id)
+    }
+
+    pub fn appeal_identity_penalty(
+        &mut self,
+        penalty_id: u64,
+        appellant: impl Into<String>,
+        reason: impl Into<String>,
+    ) -> Result<(), WorldError> {
+        let Some(penalty) = self.governance_identity_penalties.get(&penalty_id) else {
+            return Err(WorldError::GovernancePolicyInvalid {
+                reason: format!("identity penalty not found: penalty_id={penalty_id}"),
+            });
+        };
+        if penalty.status != GovernanceIdentityPenaltyStatus::Applied {
+            return Err(WorldError::GovernancePolicyInvalid {
+                reason: format!(
+                    "identity penalty is not appealable: penalty_id={} status={:?}",
+                    penalty_id, penalty.status
+                ),
+            });
+        }
+        if self.state.time > penalty.appeal_deadline_tick {
+            return Err(WorldError::GovernancePolicyInvalid {
+                reason: format!(
+                    "identity penalty appeal window closed: penalty_id={} deadline_tick={}",
+                    penalty_id, penalty.appeal_deadline_tick
+                ),
+            });
+        }
+        let event = GovernanceEvent::IdentityPenaltyAppealed {
+            penalty_id,
+            appellant: appellant.into(),
+            reason: reason.into(),
+        };
+        self.append_event(WorldEventBody::Governance(event), None)?;
+        Ok(())
+    }
+
+    pub fn resolve_identity_penalty_appeal(
+        &mut self,
+        penalty_id: u64,
+        resolver: impl Into<String>,
+        accepted: bool,
+        reason: impl Into<String>,
+    ) -> Result<(), WorldError> {
+        let Some(penalty) = self.governance_identity_penalties.get(&penalty_id) else {
+            return Err(WorldError::GovernancePolicyInvalid {
+                reason: format!("identity penalty not found: penalty_id={penalty_id}"),
+            });
+        };
+        if penalty.status != GovernanceIdentityPenaltyStatus::Appealed {
+            return Err(WorldError::GovernancePolicyInvalid {
+                reason: format!(
+                    "identity penalty appeal is not pending: penalty_id={} status={:?}",
+                    penalty_id, penalty.status
+                ),
+            });
+        }
+        let event = GovernanceEvent::IdentityPenaltyResolved {
+            penalty_id,
+            resolver: resolver.into(),
+            accepted,
+            reason: reason.into(),
+        };
+        self.append_event(WorldEventBody::Governance(event), None)?;
+        Ok(())
     }
 
     pub fn set_governance_execution_policy(
@@ -491,6 +605,13 @@ impl World {
         Ok(applied_hash)
     }
 
+    fn allocate_next_governance_identity_penalty_id(&mut self) -> u64 {
+        let id = self.next_governance_identity_penalty_id;
+        self.next_governance_identity_penalty_id =
+            self.next_governance_identity_penalty_id.saturating_add(1);
+        id
+    }
+
     pub(super) fn validate_governance_execution_policy(
         policy: &GovernanceExecutionPolicy,
     ) -> Result<(), WorldError> {
@@ -843,6 +964,161 @@ impl World {
                 proposal.status = ProposalStatus::Rejected {
                     reason: format!("emergency_veto: {reason}"),
                 };
+            }
+            GovernanceEvent::IdentityPenaltyApplied {
+                penalty_id,
+                target_agent_id,
+                evidence_hash,
+                initiator: _,
+                reason,
+                slash_stake,
+                appeal_deadline_tick,
+                threshold,
+                signer_node_ids,
+            } => {
+                self.validate_guardian_signers(signer_node_ids, *threshold)?;
+                if !self.state.agents.contains_key(target_agent_id.as_str()) {
+                    return Err(WorldError::AgentNotFound {
+                        agent_id: target_agent_id.clone(),
+                    });
+                }
+                if evidence_hash.trim().is_empty() {
+                    return Err(WorldError::GovernancePolicyInvalid {
+                        reason: format!(
+                            "identity penalty evidence_hash cannot be empty: penalty_id={penalty_id}"
+                        ),
+                    });
+                }
+                if self.governance_identity_penalties.contains_key(penalty_id) {
+                    return Err(WorldError::GovernancePolicyInvalid {
+                        reason: format!("duplicate identity penalty id: penalty_id={penalty_id}"),
+                    });
+                }
+                let mut profile = self
+                    .state
+                    .governance_identity_profiles
+                    .get(target_agent_id)
+                    .cloned()
+                    .unwrap_or_else(|| GovernanceIdentityProfileState {
+                        agent_id: target_agent_id.clone(),
+                        ..GovernanceIdentityProfileState::default()
+                    });
+                if *slash_stake > profile.stake_locked {
+                    return Err(WorldError::GovernancePolicyInvalid {
+                        reason: format!(
+                            "identity penalty slash exceeds locked stake: penalty_id={} slash={} stake_locked={}",
+                            penalty_id, slash_stake, profile.stake_locked
+                        ),
+                    });
+                }
+                let identity_status_before = profile.status;
+                profile.stake_locked = profile.stake_locked.saturating_sub(*slash_stake);
+                profile.status = GovernanceIdentityStatus::Frozen;
+                profile.slash_count = profile.slash_count.saturating_add(1);
+                profile.updated_at = self.state.time;
+                self.state
+                    .governance_identity_profiles
+                    .insert(target_agent_id.clone(), profile);
+                self.governance_identity_penalties.insert(
+                    *penalty_id,
+                    GovernanceIdentityPenaltyRecord {
+                        penalty_id: *penalty_id,
+                        target_agent_id: target_agent_id.clone(),
+                        evidence_hash: evidence_hash.clone(),
+                        reason: reason.clone(),
+                        slash_stake: *slash_stake,
+                        appeal_deadline_tick: *appeal_deadline_tick,
+                        status: GovernanceIdentityPenaltyStatus::Applied,
+                        identity_status_before,
+                        appellant: None,
+                        appeal_reason: None,
+                        resolved_by: None,
+                        resolution_reason: None,
+                        resolved_at_tick: None,
+                    },
+                );
+                self.next_governance_identity_penalty_id = self
+                    .next_governance_identity_penalty_id
+                    .max(penalty_id.saturating_add(1));
+            }
+            GovernanceEvent::IdentityPenaltyAppealed {
+                penalty_id,
+                appellant,
+                reason,
+            } => {
+                let penalty = self
+                    .governance_identity_penalties
+                    .get_mut(penalty_id)
+                    .ok_or(WorldError::GovernancePolicyInvalid {
+                        reason: format!("identity penalty not found: penalty_id={penalty_id}"),
+                    })?;
+                if penalty.status != GovernanceIdentityPenaltyStatus::Applied {
+                    return Err(WorldError::GovernancePolicyInvalid {
+                        reason: format!(
+                            "identity penalty is not appealable: penalty_id={} status={:?}",
+                            penalty_id, penalty.status
+                        ),
+                    });
+                }
+                if self.state.time > penalty.appeal_deadline_tick {
+                    return Err(WorldError::GovernancePolicyInvalid {
+                        reason: format!(
+                            "identity penalty appeal window closed: penalty_id={} deadline_tick={}",
+                            penalty_id, penalty.appeal_deadline_tick
+                        ),
+                    });
+                }
+                penalty.status = GovernanceIdentityPenaltyStatus::Appealed;
+                penalty.appellant = Some(appellant.clone());
+                penalty.appeal_reason = Some(reason.clone());
+            }
+            GovernanceEvent::IdentityPenaltyResolved {
+                penalty_id,
+                resolver,
+                accepted,
+                reason,
+            } => {
+                let (target_agent_id, slash_stake, identity_status_before) = {
+                    let penalty = self
+                        .governance_identity_penalties
+                        .get_mut(penalty_id)
+                        .ok_or(WorldError::GovernancePolicyInvalid {
+                            reason: format!("identity penalty not found: penalty_id={penalty_id}"),
+                        })?;
+                    if penalty.status != GovernanceIdentityPenaltyStatus::Appealed {
+                        return Err(WorldError::GovernancePolicyInvalid {
+                            reason: format!(
+                                "identity penalty appeal is not pending: penalty_id={} status={:?}",
+                                penalty_id, penalty.status
+                            ),
+                        });
+                    }
+                    penalty.status = if *accepted {
+                        GovernanceIdentityPenaltyStatus::AppealAccepted
+                    } else {
+                        GovernanceIdentityPenaltyStatus::AppealRejected
+                    };
+                    penalty.resolved_by = Some(resolver.clone());
+                    penalty.resolution_reason = Some(reason.clone());
+                    penalty.resolved_at_tick = Some(self.state.time);
+                    (
+                        penalty.target_agent_id.clone(),
+                        penalty.slash_stake,
+                        penalty.identity_status_before,
+                    )
+                };
+                let profile = self
+                    .state
+                    .governance_identity_profiles
+                    .get_mut(target_agent_id.as_str())
+                    .ok_or(WorldError::AgentNotFound {
+                        agent_id: target_agent_id.clone(),
+                    })?;
+                if *accepted {
+                    profile.stake_locked = profile.stake_locked.saturating_add(slash_stake);
+                    profile.status = identity_status_before;
+                }
+                profile.updated_at = self.state.time;
             }
         }
         Ok(())

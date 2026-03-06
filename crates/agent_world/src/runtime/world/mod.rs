@@ -38,8 +38,7 @@ use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use super::consensus::TickConsensusRecord;
 use super::effect::{CapabilityGrant, EffectIntent};
 use super::events::{ActionEnvelope, MaterialTransitPriority};
-use super::governance::GovernanceExecutionPolicy;
-use super::governance::Proposal;
+use super::governance::{GovernanceExecutionPolicy, GovernanceIdentityPenaltyRecord, Proposal};
 use super::manifest::Manifest;
 use super::modules::{ModuleCache, ModuleLimits, ModuleRegistry};
 use super::policy::PolicySet;
@@ -71,6 +70,10 @@ fn test_module_signer_public_key_hex() -> String {
         .expect("test module signing seed is 32 bytes");
     let signing_key = SigningKey::from_bytes(&private_key_bytes);
     hex::encode(signing_key.verifying_key().to_bytes())
+}
+
+fn default_next_governance_identity_penalty_id() -> u64 {
+    1
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -187,6 +190,10 @@ pub struct World {
     governance_execution_policy: GovernanceExecutionPolicy,
     #[serde(default)]
     governance_emergency_brake_until_tick: Option<WorldTime>,
+    #[serde(default)]
+    governance_identity_penalties: BTreeMap<u64, GovernanceIdentityPenaltyRecord>,
+    #[serde(default = "default_next_governance_identity_penalty_id")]
+    next_governance_identity_penalty_id: u64,
 }
 
 impl World {
@@ -246,6 +253,8 @@ impl World {
             tick_consensus_records: Vec::new(),
             governance_execution_policy: GovernanceExecutionPolicy::default(),
             governance_emergency_brake_until_tick: None,
+            governance_identity_penalties: BTreeMap::new(),
+            next_governance_identity_penalty_id: default_next_governance_identity_penalty_id(),
         }
     }
 
@@ -315,6 +324,10 @@ impl World {
 
     pub fn governance_emergency_brake_until_tick(&self) -> Option<WorldTime> {
         self.governance_emergency_brake_until_tick
+    }
+
+    pub fn governance_identity_penalties(&self) -> &BTreeMap<u64, GovernanceIdentityPenaltyRecord> {
+        &self.governance_identity_penalties
     }
 
     pub fn with_runtime_memory_limits(mut self, limits: WorldRuntimeMemoryLimits) -> Self {

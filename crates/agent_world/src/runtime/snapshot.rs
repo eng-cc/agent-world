@@ -8,7 +8,7 @@ use super::consensus::TickConsensusRecord;
 use super::effect::{CapabilityGrant, EffectIntent};
 use super::error::WorldError;
 use super::events::ActionEnvelope;
-use super::governance::{GovernanceExecutionPolicy, Proposal};
+use super::governance::{GovernanceExecutionPolicy, GovernanceIdentityPenaltyRecord, Proposal};
 use super::manifest::Manifest;
 use super::modules::{ModuleLimits, ModuleRegistry};
 use super::policy::PolicySet;
@@ -99,10 +99,18 @@ pub struct Snapshot {
     pub governance_execution_policy: GovernanceExecutionPolicy,
     #[serde(default)]
     pub governance_emergency_brake_until_tick: Option<WorldTime>,
+    #[serde(default)]
+    pub governance_identity_penalties: BTreeMap<u64, GovernanceIdentityPenaltyRecord>,
+    #[serde(default = "default_next_governance_identity_penalty_id")]
+    pub next_governance_identity_penalty_id: u64,
 }
 
 fn module_limits_unbounded() -> ModuleLimits {
     ModuleLimits::unbounded()
+}
+
+fn default_next_governance_identity_penalty_id() -> u64 {
+    1
 }
 
 impl Snapshot {

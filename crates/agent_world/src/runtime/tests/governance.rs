@@ -1,4 +1,5 @@
 use super::super::*;
+use super::pos;
 use serde_json::json;
 
 fn local_guardians() -> Vec<String> {
@@ -6,6 +7,14 @@ fn local_guardians() -> Vec<String> {
         "governance.local.finality.signer.1".to_string(),
         "governance.local.finality.signer.2".to_string(),
     ]
+}
+
+fn register_agent(world: &mut World, agent_id: &str, x: f64, y: f64) {
+    world.submit_action(Action::RegisterAgent {
+        agent_id: agent_id.to_string(),
+        pos: pos(x, y),
+    });
+    world.step().unwrap();
 }
 
 #[test]
@@ -350,4 +359,107 @@ fn governance_emergency_controls_reject_invalid_guardian_signatures() {
         untrusted_signer,
         WorldError::GovernancePolicyInvalid { .. }
     ));
+}
+
+#[test]
+fn governance_identity_penalty_freezes_and_slashes_profile() {
+    let mut world = World::new();
+    register_agent(&mut world, "agent-1", 0.0, 0.0);
+    world
+        .set_governance_identity_profile("agent-1", 100, 0, GovernanceIdentityStatus::Active)
+        .unwrap();
+
+    let penalty_id = world
+        .apply_identity_penalty(
+            "agent-1",
+            "evidence.sybil.cluster",
+            "suspected sybil coordination",
+            40,
+            10,
+            "guardian-1",
+            local_guardians(),
+        )
+        .unwrap();
+
+    let profile = world.governance_identity_profile("agent-1").unwrap();
+    assert_eq!(profile.status, GovernanceIdentityStatus::Frozen);
+    assert_eq!(profile.stake_locked, 60);
+    assert_eq!(profile.slash_count, 1);
+
+    let record = world
+        .governance_identity_penalties()
+        .get(&penalty_id)
+        .unwrap();
+    assert_eq!(record.status, GovernanceIdentityPenaltyStatus::Applied);
+    assert_eq!(record.slash_stake, 40);
+    assert_eq!(record.target_agent_id, "agent-1");
+}
+
+#[test]
+fn governance_identity_penalty_appeal_accept_restores_profile() {
+    let mut world = World::new();
+    register_agent(&mut world, "agent-1", 0.0, 0.0);
+    world
+        .set_governance_identity_profile("agent-1", 50, 0, GovernanceIdentityStatus::Active)
+        .unwrap();
+
+    let penalty_id = world
+        .apply_identity_penalty(
+            "agent-1",
+            "evidence.fp.case",
+            "potential false positive",
+            20,
+            10,
+            "guardian-1",
+            local_guardians(),
+        )
+        .unwrap();
+    world
+        .appeal_identity_penalty(penalty_id, "agent-1", "request review")
+        .unwrap();
+    world
+        .resolve_identity_penalty_appeal(penalty_id, "committee", true, "appeal accepted")
+        .unwrap();
+
+    let profile = world.governance_identity_profile("agent-1").unwrap();
+    assert_eq!(profile.status, GovernanceIdentityStatus::Active);
+    assert_eq!(profile.stake_locked, 50);
+
+    let record = world
+        .governance_identity_penalties()
+        .get(&penalty_id)
+        .unwrap();
+    assert_eq!(
+        record.status,
+        GovernanceIdentityPenaltyStatus::AppealAccepted
+    );
+    assert_eq!(record.resolved_by.as_deref(), Some("committee"));
+}
+
+#[test]
+fn governance_identity_penalty_appeal_respects_deadline() {
+    let mut world = World::new();
+    register_agent(&mut world, "agent-1", 0.0, 0.0);
+    world
+        .set_governance_identity_profile("agent-1", 30, 0, GovernanceIdentityStatus::Active)
+        .unwrap();
+    let penalty_id = world
+        .apply_identity_penalty(
+            "agent-1",
+            "evidence.deadline.case",
+            "deadline check",
+            10,
+            1,
+            "guardian-1",
+            local_guardians(),
+        )
+        .unwrap();
+
+    for _ in 0..2 {
+        world.step().unwrap();
+    }
+    let err = world
+        .appeal_identity_penalty(penalty_id, "agent-1", "too late")
+        .unwrap_err();
+    assert!(matches!(err, WorldError::GovernancePolicyInvalid { .. }));
 }

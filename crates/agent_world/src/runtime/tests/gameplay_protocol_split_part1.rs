@@ -104,6 +104,13 @@ fn assert_latest_rule_denied_contains(world: &World, needle: &str) {
     );
 }
 
+fn local_guardians() -> Vec<String> {
+    vec![
+        "governance.local.finality.signer.1".to_string(),
+        "governance.local.finality.signer.2".to_string(),
+    ]
+}
+
 fn open_governance_proposal_by(
     world: &mut World,
     proposer_agent_id: &str,
@@ -718,6 +725,59 @@ fn governance_vote_rejects_voter_not_in_snapshot() {
     });
     world.step().expect("late voter should be rejected");
     assert_latest_rule_denied_contains(&world, "not in governance snapshot");
+}
+
+#[test]
+fn governance_identity_penalty_and_appeal_drive_vote_rights() {
+    let mut world = World::new();
+    register_agents(&mut world, &["a", "b"]);
+    world
+        .set_governance_identity_profile("a", 25, 0, GovernanceIdentityStatus::Active)
+        .expect("set identity profile");
+    let penalty_id = world
+        .apply_identity_penalty(
+            "a",
+            "evidence.sybil.vote",
+            "suspected sybil voting ring",
+            5,
+            10,
+            "guardian-1",
+            local_guardians(),
+        )
+        .expect("apply identity penalty");
+
+    open_governance_proposal(&mut world, "proposal.penalty.block", 6, 1, 5_000);
+    world.submit_action(Action::CastGovernanceVote {
+        voter_agent_id: "a".to_string(),
+        proposal_key: "proposal.penalty.block".to_string(),
+        option: "approve".to_string(),
+        weight: 1,
+    });
+    world.step().expect("frozen voter should be rejected");
+    assert_latest_rule_denied_contains(&world, "identity is not active");
+
+    world
+        .appeal_identity_penalty(penalty_id, "a", "appeal with evidence")
+        .expect("appeal penalty");
+    world
+        .resolve_identity_penalty_appeal(penalty_id, "committee", true, "appeal accepted")
+        .expect("resolve appeal");
+
+    open_governance_proposal(&mut world, "proposal.penalty.restore", 6, 1, 5_000);
+    world.submit_action(Action::CastGovernanceVote {
+        voter_agent_id: "a".to_string(),
+        proposal_key: "proposal.penalty.restore".to_string(),
+        option: "approve".to_string(),
+        weight: 1,
+    });
+    world.step().expect("restored voter should pass");
+
+    let governance = world
+        .state()
+        .governance_votes
+        .get("proposal.penalty.restore")
+        .expect("governance vote state");
+    assert_eq!(governance.total_weight, 1);
 }
 
 #[test]

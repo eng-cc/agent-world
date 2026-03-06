@@ -66,6 +66,8 @@ impl World {
             tick_consensus_records: self.tick_consensus_records.clone(),
             governance_execution_policy: self.governance_execution_policy.clone(),
             governance_emergency_brake_until_tick: self.governance_emergency_brake_until_tick,
+            governance_identity_penalties: self.governance_identity_penalties.clone(),
+            next_governance_identity_penalty_id: self.next_governance_identity_penalty_id,
         }
     }
 
@@ -220,6 +222,9 @@ impl World {
         Self::validate_governance_execution_policy(&world.governance_execution_policy)?;
         world.governance_emergency_brake_until_tick =
             snapshot.governance_emergency_brake_until_tick;
+        world.governance_identity_penalties = snapshot.governance_identity_penalties;
+        world.next_governance_identity_penalty_id =
+            snapshot.next_governance_identity_penalty_id.max(1);
         world.enforce_pending_action_limit();
         world.enforce_pending_effect_limit();
         world.enforce_inflight_effect_limit();
