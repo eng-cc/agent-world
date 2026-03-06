@@ -57,6 +57,7 @@
     - 已闭环工作失误 `E4-001`：纠偏后采用“`doc/**/*.md` 排除 `doc/devlog/**`”作为 ROUND-004 分母口径。
     - 已完成 `F4-001~F4-004`：补审 `doc/world-simulator/**` 至 `314/314`，并将 `S_round004` 更新到 `788`（非 devlog 全覆盖），`A4-002/A4-006` 已恢复 `done`。
     - 已执行首批整改：完成 `A4-009/A4-010`（清理重复行内审计字段、修正 `site/site/doc` 路径、修复 pre-commit 占位命令口径并更新验收命令）。
+    - 已完成整改验收闭环：`A4-008`（跨模块 PRD-ID/任务/验收字段检查）与 `A4-011~A4-014`（审计字段口径、world-simulator 串写校验、runtime 术语/路径、legacy 快照治理）均已通过并回写 `done`。
 - [x] TASK-CORE-006 (PRD-CORE-001/002) [test_tier_required]: 收敛 `doc/` 根目录 legacy redirect 入口并更新总导航。
 - [x] TASK-CORE-007 (PRD-CORE-001/002/003) [test_tier_required]: 对齐 strict PRD schema，补齐关键流程/规格矩阵/边界异常/NFR/验证与决策记录。
 

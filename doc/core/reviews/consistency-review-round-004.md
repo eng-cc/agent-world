@@ -141,13 +141,13 @@ rg -n "^审计轮次:\s*4$" doc --glob '*.md'
 | A4-005 | 生成 `S_round004` 清单并完成复审结论 | cc | 2026-03-12 | todo |
 | A4-006 | 启动 6 子代理并行审计并回收分区问题清单 | cc | 2026-03-06 | done |
 | A4-007 | 落实“逐文档即时回写”机制（审计轮次 + 进度日志）并纳入并行审计流程 | cc | 2026-03-06 | done |
-| A4-008 | 验收命令：`rg -n "PRD-ID|验收命令|证据" doc/core/prd.project.md doc/engineering/prd.project.md doc/p2p/prd.project.md doc/world-runtime/prd.project.md doc/headless-runtime/prd.project.md doc/testing/prd.project.md`<br>`rg -n "PRD-ID.*TASK|TASK.*PRD-ID" doc/core/prd.project.md doc/engineering/prd.project.md doc/p2p/prd.project.md doc/world-runtime/prd.project.md doc/headless-runtime/prd.project.md doc/testing/prd.project.md` | cc | 2026-03-10 | todo |
+| A4-008 | 验收命令：`rg -n "PRD-ID|验收命令|证据" doc/core/prd.project.md doc/engineering/prd.project.md doc/p2p/prd.project.md doc/world-runtime/prd.project.md doc/headless-runtime/prd.project.md doc/testing/prd.project.md`<br>`rg -n "PRD-ID.*TASK|TASK.*PRD-ID" doc/core/prd.project.md doc/engineering/prd.project.md doc/p2p/prd.project.md doc/world-runtime/prd.project.md doc/headless-runtime/prd.project.md doc/testing/prd.project.md` | cc | 2026-03-10 | done |
 | A4-009 | 验收命令：`rg -n "env -u RUSTC_WRAPPER cargo check|\\./scripts/|bash scripts/" doc/site doc/testing doc/scripts doc/playability_test_result --glob '*.md'`<br>`! rg -n "\\$CODEX_HOME|<staged \\.rs files>|site/site/doc" doc/site doc/testing doc/scripts doc/playability_test_result --glob '*.md'` | cc | 2026-03-10 | done |
 | A4-010 | 验收命令：`./scripts/doc-governance-check.sh`<br>`! rg -n "site/site/doc" doc/site doc/testing doc/scripts doc/playability_test_result --glob '*.md'`<br>`test -f doc/world-simulator.prd.project.md && test -f doc/world-simulator/prd.project.md` | cc | 2026-03-10 | done |
-| A4-011 | 验收命令：`! rg -n "^- 审计轮次:\\s*[0-9]+" doc --glob '*.md'`<br>`rg -n "当前基线|当前已审读文档数" doc/core/reviews/consistency-review-round-004.md doc/core/reviews/round-004-reviewed-files.md` | cc | 2026-03-11 | todo |
-| A4-012 | 验收命令：`! rg -n "完成内容|遗留事项|时刻" doc/world-simulator/viewer/viewer-live-full-event-driven-phase10-2026-02-27.prd.md doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.md`<br>`rg -n "PRD-ID|任务拆解|验收命令" doc/world-simulator/viewer/viewer-live-full-event-driven-phase10-2026-02-27.prd.project.md doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.project.md` | cc | 2026-03-11 | todo |
-| A4-013 | 验收命令：`! rg -n "doc/world-runtime\\.prd\\.md|ModuleValidationFailed" doc/world-runtime/testing/testing.md`<br>`rg -n "headless-runtime|nonviewer" doc/headless-runtime/README.md doc/headless-runtime/prd.md doc/headless-runtime/prd.project.md` | cc | 2026-03-11 | todo |
-| A4-014 | 验收命令：`rg -n "legacy|快照|豁免|可达性" doc/engineering/doc-migration/legacy-doc-migration-backlog-2026-03-03.md`<br>`./scripts/doc-governance-check.sh` | cc | 2026-03-12 | todo |
+| A4-011 | 验收命令：`! rg -n "^- 审计轮次:\\s*[0-9]+" doc --glob '*.md'`<br>`rg -n "当前基线|当前已审读文档数" doc/core/reviews/consistency-review-round-004.md doc/core/reviews/round-004-reviewed-files.md` | cc | 2026-03-11 | done |
+| A4-012 | 验收命令：`! rg -n "完成内容|遗留事项|时刻" doc/world-simulator/viewer/viewer-live-full-event-driven-phase10-2026-02-27.prd.md doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.md`<br>`rg -n "PRD-ID|任务拆解|验收命令" doc/world-simulator/viewer/viewer-live-full-event-driven-phase10-2026-02-27.prd.project.md doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.project.md` | cc | 2026-03-11 | done |
+| A4-013 | 验收命令：`! rg -n "doc/world-runtime\\.prd\\.md|ModuleValidationFailed" doc/world-runtime/testing/testing.md`<br>`rg -n "headless-runtime|nonviewer" doc/headless-runtime/README.md doc/headless-runtime/prd.md doc/headless-runtime/prd.project.md` | cc | 2026-03-11 | done |
+| A4-014 | 验收命令：`rg -n "legacy|快照|豁免|可达性" doc/engineering/doc-migration/legacy-doc-migration-backlog-2026-03-03.md`<br>`./scripts/doc-governance-check.sh` | cc | 2026-03-12 | done |
 
 ## 特殊情况备注（仅在无需整改时填写）
 | 编号 | 原因 | 风险 | 临时缓解 | 复审日期 | 评审人 |
@@ -156,4 +156,4 @@ rg -n "^审计轮次:\s*4$" doc --glob '*.md'
 ## 复审结果
 - 复审时间：-
 - 复审结论：-
-- 当前进展：覆盖率口径失误 `E4-001` 已完成纠偏关闭（F4-001~F4-004 done），`A4-002/A4-006` 重新关闭为 `done`，当前进入整改执行阶段（A4-003/A4-004/A4-008~A4-014）。
+- 当前进展：覆盖率口径失误 `E4-001` 已完成纠偏关闭（F4-001~F4-004 done），`A4-002/A4-006` 重新关闭为 `done`，`A4-008~A4-014` 已完成，当前进入收口阶段（A4-003/A4-004/A4-005）。
