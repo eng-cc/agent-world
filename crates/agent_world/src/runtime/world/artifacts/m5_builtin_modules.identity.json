@@ -19,7 +19,8 @@
     {
       "module_id": "m5.gameplay.crisis.cycle",
       "hash_tokens": [
-        "d039851a30fec87f4c80ec46eb3e4a0e30c94fdb0cae621a3b73c7222465ad9f"
+        "darwin-arm64=d039851a30fec87f4c80ec46eb3e4a0e30c94fdb0cae621a3b73c7222465ad9f",
+        "linux-x86_64=2f905cfd550f220accbe7236fd1feaeb2f5fe0c9e91c11e25ad1c1db9aae8b50"
       ],
       "source_hash": "1982d9e4211df7b5e181c0e1cfec8d3ddc96e32885dc276737ab63d71ef3fdb5",
       "build_manifest_hash": "6f92432d2b79412ae7aabc9928de1631077d26748f1371444eb28f3e80c2baf7",
@@ -28,7 +29,8 @@
     {
       "module_id": "m5.gameplay.economic.overlay",
       "hash_tokens": [
-        "797e76900aa04297700c8ca5512ba9b00c6f8c4e83845d8ff473bd2adb0e6676"
+        "darwin-arm64=797e76900aa04297700c8ca5512ba9b00c6f8c4e83845d8ff473bd2adb0e6676",
+        "linux-x86_64=797e76900aa04297700c8ca5512ba9b00c6f8c4e83845d8ff473bd2adb0e6676"
       ],
       "source_hash": "b306e9421c78a158786a5f4c24ff0b8cfaac718ae1e49b467ac29bfb303877f0",
       "build_manifest_hash": "6f92432d2b79412ae7aabc9928de1631077d26748f1371444eb28f3e80c2baf7",
@@ -37,7 +39,8 @@
     {
       "module_id": "m5.gameplay.governance.council",
       "hash_tokens": [
-        "d9a1b4d26c2a0d3fbc86bb77114200a7e7d772ae8b15b66a07b4fad9c3102413"
+        "darwin-arm64=d9a1b4d26c2a0d3fbc86bb77114200a7e7d772ae8b15b66a07b4fad9c3102413",
+        "linux-x86_64=d9a1b4d26c2a0d3fbc86bb77114200a7e7d772ae8b15b66a07b4fad9c3102413"
       ],
       "source_hash": "e95ac1db0addca40f71889f93e33a3d89f2b38989666ef801023d8deed907518",
       "build_manifest_hash": "6f92432d2b79412ae7aabc9928de1631077d26748f1371444eb28f3e80c2baf7",
@@ -46,7 +49,8 @@
     {
       "module_id": "m5.gameplay.meta.progression",
       "hash_tokens": [
-        "bc9795cd1011d08ca209ae20f46232f40f769365e941543f2c2dc0c51f3ea9c3"
+        "darwin-arm64=bc9795cd1011d08ca209ae20f46232f40f769365e941543f2c2dc0c51f3ea9c3",
+        "linux-x86_64=bc9795cd1011d08ca209ae20f46232f40f769365e941543f2c2dc0c51f3ea9c3"
       ],
       "source_hash": "078f1295d493d1b7c485af237422cae2e85c3f964d1eae90668d25fbfeb1403e",
       "build_manifest_hash": "6f92432d2b79412ae7aabc9928de1631077d26748f1371444eb28f3e80c2baf7",
@@ -55,7 +59,8 @@
     {
       "module_id": "m5.gameplay.war.core",
       "hash_tokens": [
-        "9c19a832b28ddb8ee4db1dcc73dd41fe34b34c077a0f9386599e45bf466f8c15"
+        "darwin-arm64=9c19a832b28ddb8ee4db1dcc73dd41fe34b34c077a0f9386599e45bf466f8c15",
+        "linux-x86_64=9c19a832b28ddb8ee4db1dcc73dd41fe34b34c077a0f9386599e45bf466f8c15"
       ],
       "source_hash": "7a1a7c5a4467bfcfae14df315ed2e4573d871d662631262da92ab6837547f0f7",
       "build_manifest_hash": "6f92432d2b79412ae7aabc9928de1631077d26748f1371444eb28f3e80c2baf7",

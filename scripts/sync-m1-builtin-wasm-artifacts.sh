@@ -338,7 +338,6 @@ if [[ "$CHECK_ONLY" -eq 1 ]]; then
     legacy_tokens=0
     platform_keys=()
     platform_hashes=()
-    legacy_hashes=()
 
     for token in "${manifest_tokens[@]}"; do
       hash_value="$(token_hash_value "$token")"
@@ -363,50 +362,46 @@ if [[ "$CHECK_ONLY" -eq 1 ]]; then
         platform_hashes+=("$hash_value")
       else
         legacy_tokens=$((legacy_tokens + 1))
-        legacy_hashes+=("$hash_value")
       fi
     done
 
-    if [[ "$keyed_tokens" -gt 0 && "$legacy_tokens" -gt 0 ]]; then
-      echo "error: mixed keyed/legacy hash tokens are not allowed module_id=$module_id" >&2
+    if [[ "$legacy_tokens" -gt 0 ]]; then
+      echo "error: legacy hash tokens are not supported in strict mode module_id=$module_id" >&2
+      echo "  manifest_tokens=${manifest_tokens[*]}" >&2
       exit 1
     fi
 
-    if [[ "$keyed_tokens" -gt 0 ]]; then
-      require_current_platform_supported
+    if [[ "$keyed_tokens" -eq 0 ]]; then
+      echo "error: manifest entry has no keyed platform tokens module_id=$module_id" >&2
+      echo "  manifest_tokens=${manifest_tokens[*]}" >&2
+      exit 1
+    fi
 
-      expected_platform_hash=""
-      for idx in "${!platform_keys[@]}"; do
-        if [[ "${platform_keys[$idx]}" == "$CURRENT_PLATFORM" ]]; then
-          expected_platform_hash="${platform_hashes[$idx]}"
-          break
-        fi
-      done
+    require_current_platform_supported
 
-      if [[ -z "$expected_platform_hash" ]]; then
-        echo "error: manifest missing canonical hash for current platform" >&2
-        echo "  module_id=$module_id" >&2
-        echo "  current_platform=$CURRENT_PLATFORM" >&2
-        echo "  manifest_tokens=${manifest_tokens[*]}" >&2
-        exit 1
+    expected_platform_hash=""
+    for idx in "${!platform_keys[@]}"; do
+      if [[ "${platform_keys[$idx]}" == "$CURRENT_PLATFORM" ]]; then
+        expected_platform_hash="${platform_hashes[$idx]}"
+        break
       fi
+    done
 
-      if [[ "$built_hash" != "$expected_platform_hash" ]]; then
-        echo "error: canonical hash mismatch for current platform module_id=$module_id" >&2
-        echo "  platform=$CURRENT_PLATFORM" >&2
-        echo "  built   =$built_hash" >&2
-        echo "  manifest=$expected_platform_hash" >&2
-        echo "hint: run scripts/sync-m1-builtin-wasm-artifacts.sh" >&2
-        exit 1
-      fi
-    else
-      if ! array_contains "$built_hash" "${legacy_hashes[@]-}"; then
-        echo "error: hash manifest is stale vs built wasm for module: $module_id" >&2
-        echo "  built   =$built_hash" >&2
-        echo "  manifest=${legacy_hashes[*]}" >&2
-        echo "hint: run scripts/sync-m1-builtin-wasm-artifacts.sh" >&2
-        exit 1
-      fi
+    if [[ -z "$expected_platform_hash" ]]; then
+      echo "error: manifest missing canonical hash for current platform" >&2
+      echo "  module_id=$module_id" >&2
+      echo "  current_platform=$CURRENT_PLATFORM" >&2
+      echo "  manifest_tokens=${manifest_tokens[*]}" >&2
+      exit 1
+    fi
+
+    if [[ "$built_hash" != "$expected_platform_hash" ]]; then
+      echo "error: canonical hash mismatch for current platform module_id=$module_id" >&2
+      echo "  platform=$CURRENT_PLATFORM" >&2
+      echo "  built   =$built_hash" >&2
+      echo "  manifest=$expected_platform_hash" >&2
+      echo "hint: run scripts/sync-m1-builtin-wasm-artifacts.sh" >&2
+      exit 1
     fi
   done
 
@@ -472,46 +467,43 @@ for module_id in "${MODULE_IDS[@]}"; do
     fi
   done
 
-  if [[ "$keyed_tokens" -gt 0 && "$legacy_tokens" -gt 0 ]]; then
-    echo "error: mixed keyed/legacy hash tokens are not allowed module_id=$module_id" >&2
+  if [[ "$legacy_tokens" -gt 0 ]]; then
+    echo "error: legacy hash tokens are not supported in strict mode module_id=$module_id" >&2
+    echo "  manifest_tokens=${manifest_tokens[*]}" >&2
     exit 1
   fi
 
-  if [[ "$keyed_tokens" -gt 0 ]]; then
-    require_current_platform_supported
+  require_current_platform_supported
 
-    updated=0
+  updated=0
+  for idx in "${!platform_keys[@]}"; do
+    if [[ "${platform_keys[$idx]}" == "$CURRENT_PLATFORM" ]]; then
+      platform_hashes[$idx]="$built_hash"
+      updated=1
+      break
+    fi
+  done
+  if [[ "$updated" -ne 1 ]]; then
+    platform_keys+=("$CURRENT_PLATFORM")
+    platform_hashes+=("$built_hash")
+  fi
+
+  printf "%s" "$module_id" >> "$tmp_manifest"
+  emitted=0
+  for platform in "${CANONICAL_PLATFORMS[@]}"; do
     for idx in "${!platform_keys[@]}"; do
-      if [[ "${platform_keys[$idx]}" == "$CURRENT_PLATFORM" ]]; then
-        platform_hashes[$idx]="$built_hash"
-        updated=1
+      if [[ "${platform_keys[$idx]}" == "$platform" ]]; then
+        printf " %s=%s" "$platform" "${platform_hashes[$idx]}" >> "$tmp_manifest"
+        emitted=1
         break
       fi
     done
-    if [[ "$updated" -ne 1 ]]; then
-      platform_keys+=("$CURRENT_PLATFORM")
-      platform_hashes+=("$built_hash")
-    fi
-
-    printf "%s" "$module_id" >> "$tmp_manifest"
-    emitted=0
-    for platform in "${CANONICAL_PLATFORMS[@]}"; do
-      for idx in "${!platform_keys[@]}"; do
-        if [[ "${platform_keys[$idx]}" == "$platform" ]]; then
-          printf " %s=%s" "$platform" "${platform_hashes[$idx]}" >> "$tmp_manifest"
-          emitted=1
-          break
-        fi
-      done
-    done
-    if [[ "$emitted" -ne 1 ]]; then
-      echo "error: no canonical platform entries emitted for module_id=$module_id" >&2
-      exit 1
-    fi
-    printf "\n" >> "$tmp_manifest"
-  else
-    printf "%s %s\n" "$module_id" "$built_hash" >> "$tmp_manifest"
+  done
+  if [[ "$emitted" -ne 1 ]]; then
+    echo "error: no canonical platform entries emitted for module_id=$module_id" >&2
+    exit 1
   fi
+  printf "\n" >> "$tmp_manifest"
 done
 
 mkdir -p "$(dirname "$HASH_MANIFEST_PATH")"
