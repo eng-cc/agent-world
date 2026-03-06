@@ -81,6 +81,16 @@
 - 每个实现任务完成后执行一轮手动实操并截图，输出视觉评估结论。
 - 产物至少包含：baseline + 每轮改动后对照图 + 简要结论。
 - 关键验证：截图人工审阅通过并归档。
+- 2026-03-07 ROUND-008 迭代记录：
+  - 证据目录：`output/playwright/playability/manual-20260307-round008/`
+  - 关键截图：
+    - `d7-runtime-throttle-initial.png`（默认停驻）
+    - `d8-runtime-throttle-playing.png`（播放态）
+    - `d9-runtime-throttle-paused.png`（暂停态）
+  - 手动量化（`window.__AW_TEST__.getState().tick` 按 1s 窗口采样）：
+    - 修复前：播放稳态约 `+11~12 tick/s`，首秒可达 `+17 tick/s`。
+    - 修复后：播放首秒 `+2 tick`，后续稳态 `+1 tick/s`；暂停 `+0 tick/s`。
+  - 本轮实现：`runtime_live` 播放循环增加间隔节流，默认 `play_step_interval=800ms`，并新增间隔门控回归测试。
 
 ### TASK-GAMEPLAY-MLF-004 执行记录（2026-03-06）
 - CI 问题修复：`./scripts/ci-tests.sh full` 首次失败于 `m4_builtin_modules.identity.json missing hash token`，通过 `./scripts/sync-m4-builtin-wasm-artifacts.sh` 对齐 m4 hash/identity 清单后复跑通过。

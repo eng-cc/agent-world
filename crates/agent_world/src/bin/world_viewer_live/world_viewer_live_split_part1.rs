@@ -209,7 +209,9 @@ fn main() {
         });
     }
 
-    let play_step_interval_ms = options.node_tick_ms.saturating_mul(3).clamp(200, 800);
+    // Player mode should remain visually stable by default; run play cadence
+    // conservatively to avoid rapid HUD flashing in live consensus streams.
+    let play_step_interval_ms = options.node_tick_ms.saturating_mul(6).clamp(800, 2000);
     let mut config = ViewerLiveServerConfig::new(options.scenario)
         .with_bind_addr(options.bind_addr)
         .with_play_step_interval(Duration::from_millis(play_step_interval_ms))

@@ -1,6 +1,7 @@
 use super::*;
 use crate::simulator::ResourceOwner;
 use ed25519_dalek::SigningKey;
+use std::time::Duration;
 
 fn test_signer(seed: u8) -> (String, String) {
     let private_key = [seed; 32];
@@ -137,6 +138,26 @@ fn runtime_simulator_action_mapping_equivalence_covers_core_gameplay_and_economy
             description: "trade".to_string(),
         },
     );
+}
+
+#[test]
+fn runtime_live_server_config_play_interval_defaults_and_clamps() {
+    let config = ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal);
+    assert_eq!(config.play_step_interval, Duration::from_millis(800));
+
+    let clamped = config.with_play_step_interval(Duration::from_millis(10));
+    assert_eq!(clamped.play_step_interval, Duration::from_millis(50));
+}
+
+#[test]
+fn runtime_live_session_play_step_is_interval_gated() {
+    let mut session = RuntimeLiveSession::new();
+    session.playing = true;
+
+    assert!(session.should_advance_play_step(Duration::from_millis(40)));
+    assert!(!session.should_advance_play_step(Duration::from_millis(40)));
+    std::thread::sleep(Duration::from_millis(50));
+    assert!(session.should_advance_play_step(Duration::from_millis(40)));
 }
 
 #[test]

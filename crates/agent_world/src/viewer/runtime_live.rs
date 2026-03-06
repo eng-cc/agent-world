@@ -1,7 +1,7 @@
 use std::collections::{HashSet, VecDeque};
 use std::io::{self, BufRead, BufReader, BufWriter, Write};
 use std::net::{TcpListener, TcpStream};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use crate::geometry::GeoPos;
 use crate::runtime::{
@@ -36,6 +36,7 @@ pub struct ViewerRuntimeLiveServerConfig {
     pub scenario: WorldScenario,
     pub world_id: String,
     pub decision_mode: ViewerLiveDecisionMode,
+    pub play_step_interval: Duration,
 }
 
 impl ViewerRuntimeLiveServerConfig {
@@ -45,6 +46,7 @@ impl ViewerRuntimeLiveServerConfig {
             world_id: format!("live-runtime-{}", scenario.as_str()),
             scenario,
             decision_mode: ViewerLiveDecisionMode::Script,
+            play_step_interval: Duration::from_millis(800),
         }
     }
 
@@ -69,6 +71,11 @@ impl ViewerRuntimeLiveServerConfig {
         } else {
             ViewerLiveDecisionMode::Script
         };
+        self
+    }
+
+    pub fn with_play_step_interval(mut self, interval: Duration) -> Self {
+        self.play_step_interval = interval.max(Duration::from_millis(50));
         self
     }
 }
@@ -167,7 +174,7 @@ impl ViewerRuntimeLiveServer {
                 Err(err) => return Err(ViewerRuntimeLiveServerError::Io(err)),
             }
 
-            if session.playing {
+            if session.should_advance_play_step(self.config.play_step_interval) {
                 self.advance_runtime(&mut session, &mut writer, 1, None, false)?;
             }
         }
@@ -259,16 +266,20 @@ impl ViewerRuntimeLiveServer {
         match mode {
             ViewerControl::Pause => {
                 session.playing = false;
+                session.next_play_step_at = None;
             }
             ViewerControl::Play => {
                 session.playing = true;
+                session.next_play_step_at = None;
             }
             ViewerControl::Step { count } => {
                 session.playing = false;
+                session.next_play_step_at = None;
                 self.advance_runtime(session, writer, count.max(1), request_id, true)?;
             }
             ViewerControl::Seek { tick } => {
                 session.playing = false;
+                session.next_play_step_at = None;
                 eprintln!(
                     "viewer runtime live: ignore seek control in live mode (target_tick={tick})"
                 );
@@ -495,6 +506,7 @@ struct RuntimeLiveSession {
     subscribed: HashSet<ViewerStream>,
     event_filters: Option<HashSet<ViewerEventKind>>,
     playing: bool,
+    next_play_step_at: Option<Instant>,
     metrics: RunnerMetrics,
 }
 
@@ -504,6 +516,7 @@ impl RuntimeLiveSession {
             subscribed: HashSet::new(),
             event_filters: None,
             playing: false,
+            next_play_step_at: None,
             metrics: RunnerMetrics::default(),
         }
     }
@@ -515,6 +528,21 @@ impl RuntimeLiveSession {
                 .any(|filter| viewer_event_kind_matches(filter, &event.kind)),
             None => true,
         }
+    }
+
+    fn should_advance_play_step(&mut self, interval: Duration) -> bool {
+        if !self.playing {
+            self.next_play_step_at = None;
+            return false;
+        }
+        let now = Instant::now();
+        if let Some(next_step_at) = self.next_play_step_at {
+            if now < next_step_at {
+                return false;
+            }
+        }
+        self.next_play_step_at = Some(now + interval);
+        true
     }
 }
 

@@ -423,15 +423,33 @@ impl ViewerLiveServer {
         if !self.world.can_step_for_consensus() {
             return Ok(());
         }
-        loop {
-            let step = self.world.step()?;
-            let had_event = step.event.is_some();
-            self.emit_step_outcome(session, writer, step, false)?;
-            if !had_event {
-                break;
+
+        if !session.playing {
+            // Keep committed state synchronized while paused, but avoid pushing
+            // per-step visual updates to the viewer to prevent HUD flicker.
+            loop {
+                let step = self.world.step()?;
+                if step.event.is_none() {
+                    break;
+                }
             }
+            return Ok(());
         }
-        Ok(())
+
+        session.throttle_play_drive();
+        let baseline_tick = self.world.logical_time();
+        let baseline_event_seq = self.world.latest_event_seq();
+        let step = self.world.step()?;
+        let advanced_ticks = self.world.logical_time().saturating_sub(baseline_tick);
+        let advanced_events = self
+            .world
+            .latest_event_seq()
+            .saturating_sub(baseline_event_seq);
+        session.schedule_next_play_drive(
+            self.config.play_step_interval,
+            advanced_ticks.max(advanced_events),
+        );
+        self.emit_step_outcome(session, writer, step, false)
     }
 
     fn handle_consensus_drive_requested(
