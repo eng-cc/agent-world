@@ -12,6 +12,7 @@
 | `doc/game/gameplay/gameplay-base-runtime-wasm-layer-split.prd.md` | `doc/game/gameplay/gameplay-base-runtime-wasm-layer-split.prd.project.md` |
 | `doc/game/gameplay/gameplay-beta-balance-hardening-2026-02-22.prd.md` | `doc/game/gameplay/gameplay-beta-balance-hardening-2026-02-22.prd.project.md` |
 | `doc/game/gameplay/gameplay-distributed-consensus-governance-longrun-2026-03-06.prd.md` | `doc/game/gameplay/gameplay-distributed-consensus-governance-longrun-2026-03-06.prd.project.md` |
+| `doc/game/gameplay/gameplay-longrun-p0-production-hardening-2026-03-06.prd.md` | `doc/game/gameplay/gameplay-longrun-p0-production-hardening-2026-03-06.prd.project.md` |
 | `doc/game/gameplay/gameplay-layer-lifecycle-rules-closure.prd.md` | `doc/game/gameplay/gameplay-layer-lifecycle-rules-closure.prd.project.md` |
 | `doc/game/gameplay/gameplay-layer-war-governance-crisis-meta-closure.prd.md` | `doc/game/gameplay/gameplay-layer-war-governance-crisis-meta-closure.prd.project.md` |
 | `doc/game/gameplay/gameplay-micro-loop-feedback-visibility-2026-03-05.prd.md` | `doc/game/gameplay/gameplay-micro-loop-feedback-visibility-2026-03-05.prd.project.md` |

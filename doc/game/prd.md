@@ -36,12 +36,14 @@
   - SC-4: 关键玩法规则变更同步更新 game PRD 与 project 文档。
   - SC-5: 微循环关键动作具备可见反馈与计时提示，发布前可玩性卡片评分显著提升。
   - SC-6: 长期在线场景下，治理改动与世界状态具备 tick 级可验证证书和可重放一致性证明。
+  - SC-7: 长期在线 P0 能力（状态权威分层、确定性回放/回滚、反作弊与反女巫、经济闭环、可运维性）具备独立 PRD 与分任务门禁。
 
 ## 2. User Experience & Functionality
 - User Personas:
   - 玩法设计者：需要统一管理玩法目标与平衡约束。
   - 玩法开发者：需要规则层与实现层的映射边界。
   - 发行评审者：需要可度量的可玩性验收标准。
+  - 运行值守/SRE：需要持续监控、告警与故障恢复手册，保障长期在线稳定性。
 - User Scenarios & Frequency:
   - 玩法规则迭代：每个玩法改动周期至少 1 次规则审阅。
   - 核心循环回归：每周执行，覆盖新手/经济/战争路径。
@@ -53,11 +55,13 @@
   - PRD-GAME-003: As a 发行评审者, I want measurable playability gates, so that release readiness is objective.
   - PRD-GAME-004: As a 玩家/评测者, I want micro-loop feedback visibility, so that control and pacing are reliable.
   - PRD-GAME-005: As a 运行治理者, I want deterministic distributed execution and governance guardrails, so that the world can run online for the long term.
+  - PRD-GAME-006: As a 运行值守者, I want a P0 production hardening baseline for long-run online operation, so that adversarial and failure scenarios stay controllable.
 - Critical User Flows:
   1. Flow-GAME-001: `玩法需求提出 -> 规则层建模 -> 映射实现边界 -> 进入开发`
   2. Flow-GAME-002: `执行核心循环回归 -> 记录可玩性问题 -> 分级 -> 回填修复任务`
   3. Flow-GAME-003: `发布前汇总可玩性证据 -> 对照门禁 -> 输出放行结论`
   4. Flow-GAME-004: `治理提案 -> 投票 -> timelock -> epoch 生效 -> tick 证书审计回放`
+  5. Flow-GAME-005: `P2P 状态传播 -> 权威裁决 -> 回放一致性核验 -> 告警/回滚 -> 事件复盘`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
@@ -65,6 +69,7 @@
 | 可玩性问题分级 | 问题描述、严重级、复现步骤、责任人 | 提交后自动进入待修复队列 | `opened -> triaged -> fixed -> verified` | 高严重级优先 | 评审者可调整级别 |
 | 发行门禁评审 | 证据包、风险等级、放行建议 | 审查后给出 go/no-go | `pending -> reviewed -> released/blocked` | 风险优先级驱动结论 | 发布负责人最终决策 |
 | 分布式执行与治理 | `tick/block hash`、`state_root`、治理提案元数据、身份信誉/抵押 | 发起提案、投票、队列生效、紧急刹车/否决 | `draft -> voting -> queued -> applied/rejected` | tick 全序执行 + epoch 边界生效 | 治理角色+阈值双重校验 |
+| 长期在线 P0 硬化 | 权威源标识、回放哈希、作弊风险分、经济源汇统计、SLO 指标 | 执行权威裁决、回放验证、惩罚/申诉、经济阈值调节、告警确认 | `observed -> validated -> enforced -> recovered` | 先一致性后可用性，异常按严重级优先处置 | 运行值守与治理角色联合审批 |
 - 核心玩法循环验收矩阵（TASK-GAME-002）:
 | 循环 | 验收场景（Given / When / Then） | 规则层边界（PRD-GAME-002） | 证据事件/状态 | `test_tier_required` 入口 | 通过阈值（Done） | 失败处置 |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -113,6 +118,7 @@
   - AC-7: 新手/经济/战争三循环均具备 Given/When/Then、规则层边界、证据事件、`test_tier_required` 命令与失败处置，且可直接用于周回归。
   - AC-8: 可玩性问题分级模板覆盖 `P0~P3` 判定、发布阻断规则、责任人和时限，并能直接驱动 `opened -> triaged -> fixing -> verified -> closed/deferred` 闭环。
   - AC-9: 发布前门禁明确 D/RC/D-1/D0 节奏、必跑命令、通过阈值与证据包字段，能够直接产出 go/no-go 决策。
+  - AC-10: 新增长期在线 P0 专题 PRD，覆盖状态权威分层、确定性回放/回滚、反作弊与反女巫、经济闭环、可运维性五项能力，并提供 PRD-ID 到任务与测试映射。
 - Non-Goals:
   - 不在本 PRD 中给出逐条数值参数表。
   - 不替代 runtime/p2p 的底层实现设计。
@@ -126,6 +132,7 @@
 - Integration Points:
   - `doc/game/gameplay/gameplay-top-level-design.prd.md`
   - `doc/game/gameplay/gameplay-distributed-consensus-governance-longrun-2026-03-06.prd.md`
+  - `doc/game/gameplay/gameplay-longrun-p0-production-hardening-2026-03-06.prd.md`
   - `doc/game/gameplay/gameplay-engineering-architecture.md`
   - `doc/playability_test_result/prd.md`
   - `testing-manual.md`
@@ -139,6 +146,8 @@
   - 状态分叉：出现同 tick 不同 `state_root` 时阻断提交并触发恢复流程。
   - 提前生效：治理提案在 `timelock/epoch` 约束前申请生效必须拒绝。
   - 女巫攻击：疑似多号协同投票触发权重冻结与人工复核。
+  - 权威漂移：同高度出现多个权威裁决来源时，必须拒绝非权威写入并触发仲裁告警。
+  - 经济失衡：单位时间净增发/净流出超过阈值时触发自动降载策略与治理升级提案。
 - Non-Functional Requirements:
   - NFR-GAME-1: 关键玩法回归覆盖率 100%（新手/经济/战争）。
   - NFR-GAME-2: 高优先级可玩性问题发布前闭环率 >= 95%。
@@ -148,6 +157,10 @@
   - NFR-GAME-6: RSM 回放一致性偏差率为 0（同输入同版本）。
   - NFR-GAME-7: 治理规则变更 100% 走提案链路并满足 `timelock + epoch` 生效。
   - NFR-GAME-8: 紧急权限触发事件 100% 具备可验签证据和审计记录。
+  - NFR-GAME-9: 权威裁决冲突检测误放过率为 0，冲突告警在 60 秒内可见。
+  - NFR-GAME-10: 回放漂移发现到回滚执行的 P95 时间 <= 10 分钟。
+  - NFR-GAME-11: 经济源汇审计日批成功率 100%，关键异常 5 分钟内触发告警。
+  - NFR-GAME-12: P0 故障（一致性/作弊/经济/可用性）均具备可执行 runbook 与演练记录。
 - Security & Privacy: gameplay 不直接处理密钥；涉及玩家反馈与行为数据时遵循最小化采集与脱敏记录。
 
 ## 5. Risks & Roadmap
@@ -168,6 +181,7 @@
 | PRD-GAME-003 | TASK-GAME-003/004/005 | `test_tier_required` | 问题分级模板抽样、修复闭环记录核验、发布门禁对账 | 发布质量与玩家体验风险 |
 | PRD-GAME-004 | TASK-GAME-006 + TASK-GAMEPLAY-MLF-001/002/003/004 | `test_tier_required` | 微循环反馈可见性回归 + 可玩性卡片评分复核 | 玩家控制感与节奏体验 |
 | PRD-GAME-005 | TASK-GAME-008 + TASK-GAME-DCG-001/002/003/004/005/006/007/008/009/010 | `test_tier_required` + `test_tier_full` | Tick 证书、治理时序、身份惩罚闭环验证 | 长期在线一致性与治理安全 |
+| PRD-GAME-006 | TASK-GAME-012/013/014/015/016/017 | `test_tier_required` + `test_tier_full` | 权威分层裁决回归、回放与回滚演练、反作弊/反女巫对抗用例、经济源汇审计、SRE runbook 演练 | 长期在线 P0 稳定性与运维可信度 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |
@@ -177,3 +191,4 @@
 | DEC-GAME-004 | 以“新手/经济/战争”分循环验收矩阵驱动 `TASK-GAME-002` | 仅保留统一 required/full 命令清单 | 分循环矩阵更易映射规则边界、失败处置与责任归属。 |
 | DEC-GAME-005 | 采用 `P0~P3 + 闭环模板 + deferred 豁免` 的分级机制 | 仅保留缺陷列表，不定义状态与门禁 | 可保证问题优先级、修复责任与发布决策可审计。 |
 | DEC-GAME-006 | 采用 `D/RC/D-1/D0` 四阶段可玩性门禁节奏 | 仅在发布前一次性回归 | 分阶段门禁可提前暴露风险，降低临门一脚失败概率。 |
+| DEC-GAME-007 | 新增独立 `PRD-GAME-006` 作为长期在线 P0 基线 | 将 P0 细节继续堆叠在 `PRD-GAME-005` 现有章节中 | 独立基线更利于跨角色（玩法/运行/安全/经济）协同验收与长期维护。 |

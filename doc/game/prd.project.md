@@ -14,11 +14,18 @@
 - [x] TASK-GAME-009 (PRD-GAME-005) [test_tier_required]: 落地 tick 证书链与 `state_root/events_hash` 一致性校验实现（含 replay/save-load 闭环）。
 - [x] TASK-GAME-010 (PRD-GAME-005) [test_tier_required]: 落地治理 `timelock + epoch` 生效门禁与紧急刹车/否决约束。
 - [x] TASK-GAME-011 (PRD-GAME-005) [test_tier_required + test_tier_full]: 落地身份信誉/抵押权重、女巫检测与惩罚申诉闭环。
+- [x] TASK-GAME-012 (PRD-GAME-006) [test_tier_required]: 新增长期在线 P0 生产硬化专题 PRD 与项目管理文档，完成根文档追踪映射。
+- [ ] TASK-GAME-013 (PRD-GAME-006) [test_tier_required]: 落地状态权威分层（传播层/裁决层）与冲突仲裁拒绝路径。
+- [ ] TASK-GAME-014 (PRD-GAME-006) [test_tier_required + test_tier_full]: 补齐确定性回放 + 快照回滚 runbook 与演练门禁。
+- [ ] TASK-GAME-015 (PRD-GAME-006) [test_tier_required + test_tier_full]: 落地反作弊/反女巫对抗检测、惩罚与申诉证据链强化。
+- [ ] TASK-GAME-016 (PRD-GAME-006) [test_tier_required]: 建立经济源汇审计与通胀/套利告警阈值门禁。
+- [ ] TASK-GAME-017 (PRD-GAME-006) [test_tier_required]: 补齐可运维性能力（SLO、告警、灰度、灾备演练）与发布阻断规则。
 
 ## 依赖
 - doc/game/prd.index.md
 - `doc/game/gameplay/gameplay-top-level-design.prd.md`
 - `doc/game/gameplay/gameplay-distributed-consensus-governance-longrun-2026-03-06.prd.md`
+- `doc/game/gameplay/gameplay-longrun-p0-production-hardening-2026-03-06.prd.md`
 - `doc/game/gameplay/gameplay-engineering-architecture.md`
 - `doc/playability_test_result/prd.md`
 - `testing-manual.md`
@@ -26,8 +33,8 @@
 
 ## 状态
 - 更新日期: 2026-03-06
-- 当前状态: completed
-- 下一任务: 无（当前任务拆解已全部完成，待新需求进入后重开）
+- 当前状态: active
+- 下一任务: TASK-GAME-013
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - ROUND-002 进展: gameplay 子簇主从化完成，`TASK-GAMEPLAY-MLF-001/002/003/004` 与 `TASK-GAME-007` 已闭环；分布式长期在线专题已完成设计建档（`TASK-GAME-008`）与执行共识首个实现切片（`TASK-GAME-009`）。
 - ROUND-003 进展: `TASK-GAME-010` 已完成，治理 `Queued + timelock/epoch` 门禁与紧急控制（刹车/否决）状态机已落地并通过定向回归。
@@ -37,4 +44,5 @@
 - ROUND-007 进展: `TASK-GAME-002` 已完成，根 PRD 新增“新手/经济/战争”三循环验收矩阵（含 Given/When/Then、规则边界、证据事件、`test_tier_required` 入口与失败处置）。
 - ROUND-008 进展: `TASK-GAME-003` 已完成，根 PRD 新增 `P0~P3` 分级标准、`opened -> triaged -> fixing -> verified -> closed/deferred` 闭环模板与强制约束（含豁免门禁）。
 - ROUND-009 进展: `TASK-GAME-004` 已完成，根 PRD 新增 `D/RC/D-1/D0` 发布门禁节奏与证据包字段，形成可直接执行的 go/no-go 流程。
+- ROUND-010 进展: `TASK-GAME-012` 已完成，新增 `PRD-GAME-006` 长期在线 P0 生产硬化专题（状态权威分层、回放回滚、反作弊、经济闭环、可运维性）并挂载到文档树。
 - 说明: 本文档仅维护 game 设计执行状态；过程记录在 `doc/devlog/2026-03-05.md` 与 `doc/devlog/2026-03-06.md`。
