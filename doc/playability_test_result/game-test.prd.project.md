@@ -19,6 +19,7 @@
 
 ## 测试记录
 - 活跃卡片（主目录）：
+  - `card_2026_03_06_18_40_48.md`
   - `card_2026_03_06_12_43_31.md`
   - `card_2026_03_01_00_20_13.md`
   - `card_2026_02_28_19_22_20.md`
@@ -26,6 +27,7 @@
   - `card_2026_02_28_22_47_14.md`
   - `card_2026_02_28_23_27_06.md`
 - 活跃产物目录：
+  - `output/playwright/playability/20260306-184048/`
   - `output/playwright/playability/20260306-124312/`
   - `output/playwright/playability/startup-20260306-123100/`
   - `output/playwright/playability/20260301-001603-long/`
