@@ -244,11 +244,16 @@
   - 新增 `GovernanceIdentityPenaltyRecord` 状态机（`Applied -> Appealed -> AppealAccepted/AppealRejected`），并持久化 `evidence_hash/slash_stake/appeal_deadline_tick/resolution` 审计字段。
   - 增加 `World::apply_identity_penalty`、`World::appeal_identity_penalty`、`World::resolve_identity_penalty_appeal` API；惩罚执行冻结身份并按治理规则扣减抵押，复核通过后恢复状态与抵押。
   - `snapshot/save/load/from_snapshot` 持久化并恢复 `governance_identity_penalties` 与惩罚流水号，保证崩溃恢复后惩罚链可重放与去重。
+- 已完成 `PRD-GAME-005` 的长稳演练门禁切片（S9 P2P/共识/存储）：
+  - `scripts/p2p-longrun-soak.sh` 新增“共识哈希一致性门禁”：按高度对比 `last_block_hash`、`last_execution_block_hash`、`last_execution_state_root`，发现跨节点分歧即判定 `metric_gate=fail`。
+  - `timeline.csv` 增补 `last_block_hash/last_execution_block_hash/last_execution_state_root` 列；`summary.json`/`summary.md` 输出 `consensus_hash_*` 指标与分歧统计。
+  - 新增 `topology/.consensus_hash_mismatch.tsv` 证据文件，用于定位高度与节点级哈希分歧。
 - 验证口径：
   - `runtime::tests::basic::tick_consensus_records_*`
   - `runtime::tests::governance::{governance_timelock_blocks_early_apply, governance_epoch_gate_blocks_early_apply, governance_emergency_brake_and_release_gate_apply, governance_emergency_veto_rejects_queued_proposal, governance_emergency_controls_reject_invalid_guardian_signatures}`
   - `runtime::tests::governance::{governance_identity_penalty_freezes_and_slashes_profile, governance_identity_penalty_appeal_accept_restores_profile, governance_identity_penalty_appeal_respects_deadline}`
   - `runtime::tests::gameplay_protocol::{governance_vote_enforces_identity_snapshot_cap, governance_vote_rejects_voter_not_in_snapshot, governance_identity_penalty_and_appeal_drive_vote_rights}`
+  - `./scripts/p2p-longrun-soak.sh --profile soak_smoke --topologies triad --duration-secs 90 --no-prewarm --chaos-continuous-enable --chaos-continuous-interval-secs 20 --chaos-continuous-start-sec 20 --chaos-continuous-max-events 2 --chaos-continuous-actions restart,pause --out-dir .tmp/p2p_longrun_dcg009`
   - `runtime::tests::persistence::persist_and_restore_world`
   - `runtime::tests::audit::audit_filter_governance_events`
   - `runtime::tests::gameplay_protocol::*` 回归无破坏
@@ -258,9 +263,9 @@
 ### 6.1 Test Plan & Traceability
 | PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |
 | --- | --- | --- | --- | --- |
-| PRD-GAME-005-01 | TASK-GAME-DCG-001/002 | `test_tier_required` + `test_tier_full` | 多次回放一致性、证书验签、快照恢复 | world runtime 一致性与恢复能力 |
-| PRD-GAME-005-02 | TASK-GAME-DCG-003/004/005/006 | `test_tier_required` | 治理事件收敛、timelock/epoch 门禁、紧急权限阈值与越权拒绝 | 治理安全与规则稳定性 |
-| PRD-GAME-005-03 | TASK-GAME-DCG-007/008 | `test_tier_required` + `test_tier_full` | 女巫攻击模拟、惩罚与申诉闭环 | 治理公平性与经济安全 |
+| PRD-GAME-005-01 | TASK-GAME-DCG-001/002/009 | `test_tier_required` + `test_tier_full` | 多次回放一致性、证书验签、快照恢复、P2P chaos 长稳 | world runtime 一致性与恢复能力 |
+| PRD-GAME-005-02 | TASK-GAME-DCG-003/004/005/006/009 | `test_tier_required` + `test_tier_full` | 治理事件收敛、timelock/epoch 门禁、紧急权限阈值与越权拒绝、故障注入恢复 | 治理安全与规则稳定性 |
+| PRD-GAME-005-03 | TASK-GAME-DCG-007/008/009 | `test_tier_required` + `test_tier_full` | 女巫攻击模拟、惩罚与申诉闭环、跨节点共识哈希一致性门禁 | 治理公平性与经济安全 |
 
 ### 6.2 Decision Log
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |

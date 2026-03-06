@@ -622,7 +622,7 @@ jq -n \
   echo "|---|---|---|---|---|---|---|---|"
 } > "$summary_md"
 
-echo "topology,node,epoch_index,observed_at_unix_ms,committed_height,network_committed_height,lag,total_checks,failed_checks,distfs_failure_ratio,invariant_ok,report_path" > "$timeline_csv"
+echo "topology,node,epoch_index,observed_at_unix_ms,committed_height,network_committed_height,lag,total_checks,failed_checks,distfs_failure_ratio,invariant_ok,last_block_hash,last_execution_block_hash,last_execution_state_root,report_path" > "$timeline_csv"
 : > "$topology_summary_ndjson"
 echo "timestamp|topology|event_id|phase|action|node|detail" > "$chaos_events_log"
 echo "timestamp|topology|event_id|phase|node|category|detail" > "$feedback_events_log"
@@ -988,8 +988,14 @@ analysis_minted_non_empty_samples=0
 analysis_reward_runtime_available_samples=0
 analysis_monotonic_ok=true
 analysis_monotonic_violation_nodes=""
+analysis_consensus_hash_consistent=true
+analysis_consensus_hash_mismatch_count=0
+analysis_consensus_hash_mismatch_heights=""
+analysis_consensus_hash_samples=0
+analysis_consensus_hash_missing_samples=0
 analysis_lag_values_file=""
 analysis_runtime_errors_file=""
+analysis_consensus_hash_mismatch_file=""
 analysis_topology_dir=""
 best_height=-1
 last_progress_epoch_sec=0
@@ -1000,6 +1006,10 @@ declare -A analysis_node_distfs_failed_checks_max=()
 declare -A analysis_node_settlement_apply_attempts_max=()
 declare -A analysis_node_settlement_apply_failures_max=()
 declare -A analysis_node_reward_minted_count_max=()
+declare -A analysis_consensus_hash_mismatch_heights_map=()
+declare -A analysis_committed_height_block_hash=()
+declare -A analysis_execution_height_block_hash=()
+declare -A analysis_execution_height_state_root=()
 
 reset_topology_analysis() {
   local topology=$1
@@ -1029,11 +1039,18 @@ reset_topology_analysis() {
   analysis_reward_runtime_available_samples=0
   analysis_monotonic_ok=true
   analysis_monotonic_violation_nodes=""
+  analysis_consensus_hash_consistent=true
+  analysis_consensus_hash_mismatch_count=0
+  analysis_consensus_hash_mismatch_heights=""
+  analysis_consensus_hash_samples=0
+  analysis_consensus_hash_missing_samples=0
   analysis_lag_values_file="$topology_dir/.lag_values.txt"
   analysis_runtime_errors_file="$topology_dir/.runtime_errors.tsv"
+  analysis_consensus_hash_mismatch_file="$topology_dir/.consensus_hash_mismatch.tsv"
   analysis_topology_dir="$topology_dir"
   : > "$analysis_lag_values_file"
   : > "$analysis_runtime_errors_file"
+  : > "$analysis_consensus_hash_mismatch_file"
   best_height=-1
   last_progress_epoch_sec=$(date +%s)
   analysis_node_prev_committed=()
@@ -1043,6 +1060,48 @@ reset_topology_analysis() {
   analysis_node_settlement_apply_attempts_max=()
   analysis_node_settlement_apply_failures_max=()
   analysis_node_reward_minted_count_max=()
+  analysis_consensus_hash_mismatch_heights_map=()
+  analysis_committed_height_block_hash=()
+  analysis_execution_height_block_hash=()
+  analysis_execution_height_state_root=()
+}
+
+record_consensus_hash_sample() {
+  local scope=$1
+  local height=$2
+  local hash_value=$3
+  local node_name=$4
+  local map_name=$5
+
+  if (( height <= 0 )); then
+    return 0
+  fi
+
+  analysis_consensus_hash_samples=$((analysis_consensus_hash_samples + 1))
+  if [[ -z "$hash_value" ]]; then
+    analysis_consensus_hash_missing_samples=$((analysis_consensus_hash_missing_samples + 1))
+    return 0
+  fi
+
+  local -n hash_map_ref="$map_name"
+  local expected=${hash_map_ref[$height]:-}
+  if [[ -z "$expected" ]]; then
+    hash_map_ref["$height"]=$hash_value
+    return 0
+  fi
+
+  if [[ "$expected" != "$hash_value" ]]; then
+    analysis_consensus_hash_consistent=false
+    analysis_consensus_hash_mismatch_count=$((analysis_consensus_hash_mismatch_count + 1))
+    analysis_consensus_hash_mismatch_heights_map["$height"]=1
+    printf '%s\t%s\t%s\t%s\t%s\t%s\n' \
+      "$(date +%s)" \
+      "$scope" \
+      "$height" \
+      "$node_name" \
+      "$expected" \
+      "$hash_value" >> "$analysis_consensus_hash_mismatch_file"
+  fi
 }
 
 append_topology_timeline_sample() {
@@ -1054,7 +1113,10 @@ append_topology_timeline_sample() {
   local network_committed_height=$6
   local lag=$7
   local invariant_ok=$8
-  local report_path=$9
+  local last_block_hash=${9}
+  local last_execution_block_hash=${10}
+  local last_execution_state_root=${11}
+  local report_path=${12}
 
   jq -rRn \
     --arg topology "$topology" \
@@ -1065,6 +1127,9 @@ append_topology_timeline_sample() {
     --arg network "$network_committed_height" \
     --arg lag "$lag" \
     --arg invariant "$invariant_ok" \
+    --arg last_block_hash "$last_block_hash" \
+    --arg last_execution_block_hash "$last_execution_block_hash" \
+    --arg last_execution_state_root "$last_execution_state_root" \
     --arg report "$report_path" \
     '[
       $topology,
@@ -1078,6 +1143,9 @@ append_topology_timeline_sample() {
       0,
       "0.000000",
       ($invariant == "true"),
+      $last_block_hash,
+      $last_execution_block_hash,
+      $last_execution_state_root,
       $report
     ] | @csv' >> "$timeline_csv"
 }
@@ -1108,6 +1176,10 @@ poll_topology_node_once() {
   running="false"
   known_peer_heads=0
   last_error=""
+  local last_block_hash=""
+  local last_execution_height=0
+  local last_execution_block_hash=""
+  local last_execution_state_root=""
   local rr_metrics_available="false"
   local rr_last_error=""
   local rr_distfs_total_checks=0
@@ -1124,6 +1196,10 @@ poll_topology_node_once() {
     network_committed_height=$(safe_int "$(jq -r '.consensus.network_committed_height // 0' <<< "$status_json")")
     running=$(jq -r '.running // false' <<< "$status_json")
     known_peer_heads=$(safe_int "$(jq -r '.consensus.known_peer_heads // 0' <<< "$status_json")")
+    last_block_hash=$(jq -r '.consensus.last_block_hash // empty' <<< "$status_json")
+    last_execution_height=$(safe_int "$(jq -r '.consensus.last_execution_height // 0' <<< "$status_json")")
+    last_execution_block_hash=$(jq -r '.consensus.last_execution_block_hash // empty' <<< "$status_json")
+    last_execution_state_root=$(jq -r '.consensus.last_execution_state_root // empty' <<< "$status_json")
     last_error=$(jq -r '.last_error // empty' <<< "$status_json")
     rr_metrics_available=$(jq -r '.reward_runtime.metrics_available // false' <<< "$status_json")
     rr_last_error=$(jq -r '.reward_runtime.last_error // empty' <<< "$status_json")
@@ -1157,6 +1233,27 @@ poll_topology_node_once() {
     invariant_ok="false"
   fi
 
+  if [[ "$status_ok" -eq 1 ]]; then
+    record_consensus_hash_sample \
+      "committed_block_hash" \
+      "$committed_height" \
+      "$last_block_hash" \
+      "$node_name" \
+      "analysis_committed_height_block_hash"
+    record_consensus_hash_sample \
+      "execution_block_hash" \
+      "$last_execution_height" \
+      "$last_execution_block_hash" \
+      "$node_name" \
+      "analysis_execution_height_block_hash"
+    record_consensus_hash_sample \
+      "execution_state_root" \
+      "$last_execution_height" \
+      "$last_execution_state_root" \
+      "$node_name" \
+      "analysis_execution_height_state_root"
+  fi
+
   append_topology_timeline_sample \
     "$topology" \
     "$node_name" \
@@ -1166,6 +1263,9 @@ poll_topology_node_once() {
     "$network_committed_height" \
     "$lag" \
     "$invariant_ok" \
+    "$last_block_hash" \
+    "$last_execution_block_hash" \
+    "$last_execution_state_root" \
     "$status_url"
 
   analysis_report_count=$((analysis_report_count + 1))
@@ -1287,6 +1387,9 @@ finalize_topology_metric_gate() {
     analysis_monotonic_ok=false
     analysis_monotonic_violation_nodes=$(printf '%s\n' "${!analysis_node_monotonic_violations[@]}" | sort | paste -sd ',' -)
   fi
+  if (( ${#analysis_consensus_hash_mismatch_heights_map[@]} > 0 )); then
+    analysis_consensus_hash_mismatch_heights=$(printf '%s\n' "${!analysis_consensus_hash_mismatch_heights_map[@]}" | sort -n | paste -sd ',' -)
+  fi
 
   analysis_distfs_total_checks=0
   analysis_distfs_failed_checks=0
@@ -1349,11 +1452,23 @@ finalize_topology_metric_gate() {
   if [[ "$analysis_invariant_all_ok" != "true" ]]; then
     gate_failures+=("reward_asset_invariant_violation")
   fi
+  if [[ "$analysis_consensus_hash_consistent" != "true" ]]; then
+    if [[ -z "$analysis_consensus_hash_mismatch_heights" ]]; then
+      gate_failures+=("consensus_hash_divergence count=${analysis_consensus_hash_mismatch_count}")
+    else
+      gate_failures+=("consensus_hash_divergence count=${analysis_consensus_hash_mismatch_count} heights=${analysis_consensus_hash_mismatch_heights}")
+    fi
+  fi
 
   if (( analysis_reward_runtime_available_samples <= 0 )); then
     gate_data_warnings+=("reward_runtime_metrics_not_ready")
   elif (( analysis_distfs_total_checks <= 0 )); then
     gate_warnings+=("distfs_checks_zero")
+  fi
+  if (( analysis_consensus_hash_samples <= 0 )); then
+    gate_data_warnings+=("consensus_hash_samples_missing")
+  elif (( analysis_consensus_hash_missing_samples > 0 )); then
+    gate_warnings+=("consensus_hash_missing_samples=${analysis_consensus_hash_missing_samples}")
   fi
   if (( analysis_settlement_apply_attempts <= 0 )); then
     gate_warnings+=("settlement_apply_attempts_zero")
@@ -1521,7 +1636,13 @@ run_topology() {
           reward_runtime_available_samples: 0,
           minted_non_empty_samples: 0,
           committed_height_monotonic: true,
-          committed_height_monotonic_violation_nodes: []
+          committed_height_monotonic_violation_nodes: [],
+          consensus_hash_consistent: true,
+          consensus_hash_samples: 0,
+          consensus_hash_missing_samples: 0,
+          consensus_hash_mismatch_count: 0,
+          consensus_hash_mismatch_heights: [],
+          consensus_hash_mismatch_file: ""
         }
       }' >> "$topology_summary_ndjson"
     return 0
@@ -1893,6 +2014,12 @@ run_topology() {
     --argjson minted_non_empty_samples "$analysis_minted_non_empty_samples" \
     --argjson monotonic_ok "$analysis_monotonic_ok" \
     --arg monotonic_violation_nodes "$analysis_monotonic_violation_nodes" \
+    --argjson consensus_hash_consistent "$analysis_consensus_hash_consistent" \
+    --argjson consensus_hash_samples "$analysis_consensus_hash_samples" \
+    --argjson consensus_hash_missing_samples "$analysis_consensus_hash_missing_samples" \
+    --argjson consensus_hash_mismatch_count "$analysis_consensus_hash_mismatch_count" \
+    --arg consensus_hash_mismatch_heights "$analysis_consensus_hash_mismatch_heights" \
+    --arg consensus_hash_mismatch_file "$analysis_consensus_hash_mismatch_file" \
     '{
       topology: $topology,
       status: $status,
@@ -1934,7 +2061,17 @@ run_topology() {
           if $monotonic_violation_nodes == "" then []
           else ($monotonic_violation_nodes | split(","))
           end
-        )
+        ),
+        consensus_hash_consistent: $consensus_hash_consistent,
+        consensus_hash_samples: $consensus_hash_samples,
+        consensus_hash_missing_samples: $consensus_hash_missing_samples,
+        consensus_hash_mismatch_count: $consensus_hash_mismatch_count,
+        consensus_hash_mismatch_heights: (
+          if $consensus_hash_mismatch_heights == "" then []
+          else ($consensus_hash_mismatch_heights | split(","))
+          end
+        ),
+        consensus_hash_mismatch_file: $consensus_hash_mismatch_file
       }
     }' >> "$topology_summary_ndjson"
 
@@ -2091,12 +2228,12 @@ append_summary_metrics_section() {
     echo
     echo "## Gate Metrics"
     echo
-    echo "| topology | gate | reports | chaos_plan | chaos_continuous | chaos_events | feedback_events | feedback_success | feedback_failed | chaos_exempt_s | max_stall_s | max_stall_s_effective | lag_p95 | distfs_ratio | settlement_apply_ratio | invariant_all_ok | reward_runtime_samples | minted_samples |"
-    echo "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"
+    echo "| topology | gate | reports | chaos_plan | chaos_continuous | chaos_events | feedback_events | feedback_success | feedback_failed | chaos_exempt_s | max_stall_s | max_stall_s_effective | lag_p95 | distfs_ratio | settlement_apply_ratio | invariant_all_ok | reward_runtime_samples | minted_samples | consensus_hash_consistent | consensus_hash_mismatch_count | consensus_hash_missing_samples |"
+    echo "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"
     if [[ -f "$summary_json" ]]; then
-      while IFS=$'\t' read -r topology gate reports chaos_plan chaos_continuous chaos_events feedback_events feedback_success feedback_failed chaos_exempt stall stall_effective lag ratio settlement_ratio invariant rr_samples minted; do
-        echo "| $topology | $gate | $reports | $chaos_plan | $chaos_continuous | $chaos_events | $feedback_events | $feedback_success | $feedback_failed | $chaos_exempt | $stall | $stall_effective | $lag | $ratio | $settlement_ratio | $invariant | $rr_samples | $minted |"
-      done < <(jq -r '.topologies[] | [ .topology, .metric_gate.status, .report_samples, .chaos_plan_events, .chaos_continuous_events, .chaos_events, .feedback_events, .feedback_events_success, .feedback_events_failed, .metrics.chaos_exempt_secs, .metrics.max_stall_secs_observed, .metrics.effective_max_stall_secs, .metrics.lag_p95, .metrics.distfs_failure_ratio, .metrics.settlement_apply_failure_ratio, .metrics.invariant_all_ok, .metrics.reward_runtime_available_samples, .metrics.minted_non_empty_samples ] | @tsv' "$summary_json")
+      while IFS=$'\t' read -r topology gate reports chaos_plan chaos_continuous chaos_events feedback_events feedback_success feedback_failed chaos_exempt stall stall_effective lag ratio settlement_ratio invariant rr_samples minted consensus_consistent consensus_mismatch consensus_missing; do
+        echo "| $topology | $gate | $reports | $chaos_plan | $chaos_continuous | $chaos_events | $feedback_events | $feedback_success | $feedback_failed | $chaos_exempt | $stall | $stall_effective | $lag | $ratio | $settlement_ratio | $invariant | $rr_samples | $minted | $consensus_consistent | $consensus_mismatch | $consensus_missing |"
+      done < <(jq -r '.topologies[] | [ .topology, .metric_gate.status, .report_samples, .chaos_plan_events, .chaos_continuous_events, .chaos_events, .feedback_events, .feedback_events_success, .feedback_events_failed, .metrics.chaos_exempt_secs, .metrics.max_stall_secs_observed, .metrics.effective_max_stall_secs, .metrics.lag_p95, .metrics.distfs_failure_ratio, .metrics.settlement_apply_failure_ratio, .metrics.invariant_all_ok, .metrics.reward_runtime_available_samples, .metrics.minted_non_empty_samples, .metrics.consensus_hash_consistent, .metrics.consensus_hash_mismatch_count, .metrics.consensus_hash_missing_samples ] | @tsv' "$summary_json")
     fi
   } >> "$summary_md"
 }

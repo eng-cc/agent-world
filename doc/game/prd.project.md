@@ -27,9 +27,10 @@
 ## 状态
 - 更新日期: 2026-03-06
 - 当前状态: active
-- 下一任务: TASK-GAME-DCG-009（专题长稳 soak + 故障注入，见 `gameplay-distributed-consensus-governance-longrun-2026-03-06.prd.project.md`）
+- 下一任务: TASK-GAME-DCG-010（专题发布门禁报告与回滚预案，见 `gameplay-distributed-consensus-governance-longrun-2026-03-06.prd.project.md`）
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - ROUND-002 进展: gameplay 子簇主从化完成，`TASK-GAMEPLAY-MLF-001/002/003/004` 与 `TASK-GAME-007` 已闭环；分布式长期在线专题已完成设计建档（`TASK-GAME-008`）与执行共识首个实现切片（`TASK-GAME-009`）。
 - ROUND-003 进展: `TASK-GAME-010` 已完成，治理 `Queued + timelock/epoch` 门禁与紧急控制（刹车/否决）状态机已落地并通过定向回归。
 - ROUND-004 进展: `TASK-GAME-011` 已完成，`TASK-GAME-DCG-007/008`（身份权重快照 + 女巫惩罚申诉闭环）已落地并通过治理/协议/持久化/审计回归。
+- ROUND-005 进展: `TASK-GAME-DCG-009` 已完成，P2P 长稳脚本新增共识哈希一致性门禁并通过 triad+chaos 烟测。
 - 说明: 本文档仅维护 game 设计执行状态；过程记录在 `doc/devlog/2026-03-05.md` 与 `doc/devlog/2026-03-06.md`。
