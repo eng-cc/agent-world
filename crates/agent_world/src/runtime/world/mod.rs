@@ -15,6 +15,7 @@ mod gameplay_loop;
 mod governance;
 mod governance_identity_penalty;
 mod logistics;
+mod main_token_economy_audit;
 mod module_actions;
 mod module_runtime;
 mod module_runtime_labels;

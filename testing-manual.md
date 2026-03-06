@@ -306,6 +306,16 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required gov
   - 同目标主体 + 同证据哈希的惩罚重放被拒绝（incident 指纹不重复通过）。
   - 惩罚 -> 申诉 -> 复核后 `evidence_chain_hash` 逐阶段变化且 `appeal_evidence_hash/resolution_evidence_hash` 非空。
   - `governance_identity_penalty_monitor_stats` 输出误伤率与高风险未闭环数量。
+- 经济源汇审计与阈值门禁（TASK-GAME-016）：
+```bash
+env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required main_token_economy_ -- --nocapture
+env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required main_token_treasury_distribution_applies_closed_loop_and_records_audit -- --nocapture
+env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required main_token_fee_settlement_burns_supply_and_tracks_treasury_buckets -- --nocapture
+```
+- 通过标准：
+  - 审计报表输出 `mint_total/burn_total/net_flow` 与当期 `issued/distributed` 指标。
+  - `enforce_main_token_economy_gate` 在 `inflation:*` 或 `arbitrage:*` 告警时返回阻断错误。
+  - 报表中 `exploit_signature` 可用于治理升级与 runbook 分诊。
 
 ### S10：五节点真实游戏数据在线长跑套件（L5）
 - 当前状态（2026-02-28）：`scripts/s10-five-node-game-soak.sh` 已恢复为可执行脚本，底座为五进程 `world_chain_runtime`。

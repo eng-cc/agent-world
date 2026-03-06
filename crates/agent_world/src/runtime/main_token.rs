@@ -196,6 +196,52 @@ pub struct MainTokenTreasuryDistributionRecord {
     pub distributed_epoch: u64,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MainTokenEconomyAuditThresholds {
+    pub max_net_flow_bps_of_total_supply: u32,
+    pub max_epoch_issued_bps_of_total_supply: u32,
+    pub max_treasury_distribution_bps_of_total_supply: u32,
+}
+
+impl Default for MainTokenEconomyAuditThresholds {
+    fn default() -> Self {
+        Self {
+            max_net_flow_bps_of_total_supply: 2_500,
+            max_epoch_issued_bps_of_total_supply: 1_000,
+            max_treasury_distribution_bps_of_total_supply: 1_200,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct MainTokenEconomyAnomalyAlert {
+    pub alert_id: String,
+    pub metric: String,
+    pub observed_bps: u32,
+    pub threshold_bps: u32,
+    pub exploit_signature: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct MainTokenEconomyAuditReport {
+    pub epoch_index: u64,
+    pub mint_total: u64,
+    pub burn_total: u64,
+    pub net_flow: i128,
+    pub issued_this_epoch: u64,
+    pub treasury_distributed_this_epoch: u64,
+    pub net_flow_bps_of_total_supply: u32,
+    pub epoch_issued_bps_of_total_supply: u32,
+    pub treasury_distribution_bps_of_total_supply: u32,
+    pub alerts: Vec<MainTokenEconomyAnomalyAlert>,
+}
+
+impl MainTokenEconomyAuditReport {
+    pub fn gate_passed(&self) -> bool {
+        self.alerts.is_empty()
+    }
+}
+
 pub fn validate_main_token_config_bounds(config: &MainTokenConfig) -> Result<(), String> {
     if config.symbol.trim().is_empty() {
         return Err("main token symbol cannot be empty".to_string());

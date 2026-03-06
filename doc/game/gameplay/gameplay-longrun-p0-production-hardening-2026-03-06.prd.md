@@ -143,6 +143,23 @@
   - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required runtime::tests::governance::governance_identity_penalty_ -- --nocapture`
   - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required governance_identity_penalty_and_appeal_drive_vote_rights -- --nocapture`
   - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required runtime::tests::persistence::persist_and_restore_world -- --nocapture`
+- 已完成 `TASK-GAME-016`（`PRD-GAME-006-04`）：
+  - 新增经济源汇审计模型：
+    - `MainTokenEconomyAuditThresholds`
+    - `MainTokenEconomyAnomalyAlert`
+    - `MainTokenEconomyAuditReport`
+  - `World` 新增审计/门禁接口：
+    - `main_token_economy_audit_report(epoch_index, thresholds)`：输出 `mint_total/burn_total/net_flow`、当期 `issued/distributed` 与 bps 指标。
+    - `enforce_main_token_economy_gate(epoch_index, thresholds)`：阈值越线返回阻断错误，告警含 `exploit_signature`（`inflation:*` / `arbitrage:*`）。
+  - 新增 `runtime/world/main_token_economy_audit.rs`，将经济审计逻辑与资源账本逻辑解耦。
+  - 覆盖的阈值告警场景：
+    - `net_flow_bps_of_total_supply`
+    - `epoch_issued_bps_of_total_supply`
+    - `treasury_distribution_bps_of_total_supply`
+- 已通过定向回归（TASK-GAME-016）：
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required main_token_economy_ -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required main_token_treasury_distribution_applies_closed_loop_and_records_audit -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required main_token_fee_settlement_burns_supply_and_tracks_treasury_buckets -- --nocapture`
 
 ## 6. Validation & Decision Record
 - Test Plan & Traceability:
@@ -151,7 +168,7 @@
 | PRD-GAME-006-01 | TASK-GAME-013 | `test_tier_required` | 权威冲突注入测试 + 非权威写入拒绝断言 | 共识提交与状态一致性 |
 | PRD-GAME-006-02 | TASK-GAME-014 | `test_tier_required` + `test_tier_full` | 回放漂移注入、快照回滚演练、恢复后 `state_root` 对账 | 恢复能力与数据完整性 |
 | PRD-GAME-006-03 | TASK-GAME-015 | `test_tier_required` + `test_tier_full` | 对抗样本重放拒绝、惩罚申诉状态机回归、`evidence_chain_hash` 连续性与误伤率监控校验 | 安全与治理公平性 |
-| PRD-GAME-006-04 | TASK-GAME-016 | `test_tier_required` | 经济源汇日审计、阈值越线告警、自动保护策略触发验证 | 经济稳定性与抗套利能力 |
+| PRD-GAME-006-04 | TASK-GAME-016 | `test_tier_required` | `mint/burn/net_flow` 审计报表、通胀/套利阈值告警、经济 gate 阻断校验 | 经济稳定性与抗套利能力 |
 | PRD-GAME-006-05 | TASK-GAME-017 | `test_tier_required` | SLO 对账、告警演练、灰度与灾备回滚演练 | 可运维性与发布稳定性 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
