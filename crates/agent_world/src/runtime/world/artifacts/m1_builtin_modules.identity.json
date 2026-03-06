@@ -50,7 +50,7 @@
       "module_id": "m1.power.radiation_harvest",
       "hash_tokens": [
         "darwin-arm64=d4dc1a5e1aef27793e69faa7682cc3b2e9fffac8d5d6a516f9b267aa724113e7",
-        "linux-x86_64=89c39348676bccbce2f7ed8ff07449e4753470ad3d3c70dd897cd9e43e8279c9"
+        "linux-x86_64=484e8d7207ac59679d6dac2da9fdf9afd939a3520fbf7e7dfef7c8dcae744636"
       ],
       "source_hash": "bfe156bb1fc65da9ccb8dd08bf1d989a169a39c76c1a8456d1c1a38dd80ebfa0",
       "build_manifest_hash": "6f92432d2b79412ae7aabc9928de1631077d26748f1371444eb28f3e80c2baf7",

@@ -64,6 +64,7 @@
   - AC-2: world-runtime project 文档任务映射 PRD-ID 并维护状态。
   - AC-3: 与 `doc/world-runtime/runtime/runtime-integration.md`、`doc/world-runtime/wasm/wasm-interface.md` 等分册一致。
   - AC-4: 关键行为变更同步更新测试方案与执行记录。
+  - AC-5: 内置 WASM 工件 `sha256` 清单与 identity manifest 保持一致，CI 不得出现 hash token 漂移。
 - Non-Goals:
   - 不在本 PRD 中展开每个阶段的实现代码细节。
   - 不替代 p2p 网络拓扑或 site 发布策略设计。
@@ -110,7 +111,7 @@
 | PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |
 | --- | --- | --- | --- | --- |
 | PRD-WORLD_RUNTIME-001 | TASK-WORLD_RUNTIME-001/002/005 | `test_tier_required` + `test_tier_full` | 回放一致性、核心边界验收清单校验 | 世界状态演化与确定性语义 |
-| PRD-WORLD_RUNTIME-002 | TASK-WORLD_RUNTIME-002/003/005 | `test_tier_required` | WASM 接口兼容性检查、治理流程测试 | 模块升级与生命周期稳定性 |
+| PRD-WORLD_RUNTIME-002 | TASK-WORLD_RUNTIME-002/003/005/006 | `test_tier_required` | WASM 接口兼容性检查、治理流程测试、builtin wasm `sha256` 与 identity 清单一致性校验 | 模块升级、工件治理与生命周期稳定性 |
 | PRD-WORLD_RUNTIME-003 | TASK-WORLD_RUNTIME-003/004/005 | `test_tier_full` | 收据签名校验、安全回归抽样 | 审计可信性与安全边界 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
