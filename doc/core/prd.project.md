@@ -54,7 +54,7 @@
     - 已完成 ROUND-004 启动台账，聚焦文档设计质量八项维度（信息架构、分工边界、追溯闭环、可执行性、权威源、状态时效、术语一致性、发布可达性）。
     - 已启动 6 个子代理并行分区审读（core/engineering、world-simulator、p2p、testing/scripts/playability、site/readme/game、world-runtime/headless-runtime）。
     - 已补充“逐文档即时回写”机制：每篇文档审读完成即回写 `审计轮次: 4` 并登记 `round-004-audit-progress-log.md`，用于中断恢复追溯。
-    - 轮次状态当前为 `in_progress`，待汇总 I4-* 问题清单并进入整改阶段。
+    - 已完成 A4-002（全量审读与问题清单登记）与 A4-006（6 分区问题回收汇总），当前进入整改执行阶段（A4-003/A4-004/A4-008~A4-014）。
 - [x] TASK-CORE-006 (PRD-CORE-001/002) [test_tier_required]: 收敛 `doc/` 根目录 legacy redirect 入口并更新总导航。
 - [x] TASK-CORE-007 (PRD-CORE-001/002/003) [test_tier_required]: 对齐 strict PRD schema，补齐关键流程/规格矩阵/边界异常/NFR/验证与决策记录。
 

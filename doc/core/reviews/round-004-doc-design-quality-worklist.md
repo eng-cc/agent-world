@@ -10,7 +10,7 @@
 | 阶段 | 动作 | 产物 | 状态 |
 | --- | --- | --- | --- |
 | P0 | 建立启动文档与审读清单 | `consistency-review-round-004.md`、`round-004-reviewed-files.md`、本清单 | done |
-| P1 | 按 D4-001~D4-008 分区审读并登记问题 | 设计问题清单（I4-*） | in_progress |
+| P1 | 按 D4-001~D4-008 分区审读并登记问题 | 设计问题清单（I4-*） | done |
 | P2 | 输出整改方案与验收命令 | A4-* 整改项 + 验收命令 | todo |
 | P3 | 执行整改并回写索引/引用 | 修订文档 + 索引/引用更新 | todo |
 | P4 | 回写 `审计轮次: 4` 与复审结论 | `S_round004` + ROUND-004 复审结果 | todo |
@@ -18,12 +18,12 @@
 ## 并行批次（6 子代理）
 | 批次 | Agent | 审读范围 | 状态 |
 | --- | --- | --- | --- |
-| B4-001 | Locke | `doc/core/**` + `doc/engineering/**` | in_progress |
-| B4-002 | Aristotle | `doc/world-simulator/**` | in_progress |
-| B4-003 | Beauvoir | `doc/p2p/**` | in_progress |
-| B4-004 | Socrates | `doc/testing/**` + `doc/scripts/**` + `doc/playability_test_result/**` | in_progress |
-| B4-005 | Feynman | `doc/site/**` + `doc/readme/**` + `doc/game/**` | in_progress |
-| B4-006 | Turing | `doc/world-runtime/**` + `doc/headless-runtime/**` + 根入口补查 | in_progress |
+| B4-001 | Locke | `doc/core/**` + `doc/engineering/**` | done |
+| B4-002 | Aristotle | `doc/world-simulator/**` | done |
+| B4-003 | Beauvoir | `doc/p2p/**` | done |
+| B4-004 | Socrates | `doc/testing/**` + `doc/scripts/**` + `doc/playability_test_result/**` | done |
+| B4-005 | Feynman | `doc/site/**` + `doc/readme/**` + `doc/game/**` | done |
+| B4-006 | Turing | `doc/world-runtime/**` + `doc/headless-runtime/**` + 根入口补查 | done |
 
 ## 即时回写规则（并行强制）
 - 每个子代理读完 1 篇文档后，立即执行：

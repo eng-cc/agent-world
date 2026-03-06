@@ -71,7 +71,7 @@ rg -n "^审计轮次:\s*4$" doc --glob '*.md'
 ## 受审文件清单（S_round004）
 - 清单文件：`doc/core/reviews/round-004-reviewed-files.md`
 - 生成规则：`rg -l "^审计轮次:\s*4$" doc --glob '*.md' | sort`
-- 当前基线（2026-03-06 11:46 CST）：`18` 份文档（增量执行中）
+- 当前基线（2026-03-06 14:33 CST）：`491` 份文档（已完成全量审读与回写）
 - 用途：作为 ROUND-004 统计分母（仅对纳入本轮清单的文档判定“已审读/未审读”）。
 
 ## 审计进度日志（逐文档）
@@ -79,19 +79,54 @@ rg -n "^审计轮次:\s*4$" doc --glob '*.md'
 - 记录粒度：1 文档 1 记录（即时写入，不延后）。
 - 字段：`时间`、`审计人/代理`、`文档路径`、`结论(pass/issue_open/blocked)`、`问题编号`、`备注`。
 
+## 分区问题回收汇总（A4-006）
+| 编组 | 审读范围 | 已审文件数 | 问题登记完成 | 主要问题编号（摘要） |
+| --- | --- | --- | --- | --- |
+| G4-001 | `doc/core/**` + `doc/engineering/**` | 45 | yes | I4-201/I4-202/I4-203 |
+| G4-002 | `doc/world-simulator/**` | 22 | yes | I4-001/I4-002/I4-003/I4-004/I4-005/I4-006/I4-007/I4-008/I4-009/I4-010/I4-011 |
+| G4-003 | `doc/p2p/**` | 147 | yes | I4-001/I4-003/I4-004/I4-005/I4-006/I4-008/I4-010/I4-011/I4-012/I4-013 |
+| G4-004 | `doc/testing/**` + `doc/scripts/**` + `doc/playability_test_result/**` | 93 | yes | I4-001/I4-002/I4-003/I4-004/I4-005/I4-006/I4-008 |
+| G4-005 | `doc/site/**` + `doc/readme/**` + `doc/game/**` | 102 | yes | I4-001/I4-002/I4-003/I4-004/I4-005/I4-006 |
+| G4-006 | `doc/world-runtime/**` + `doc/headless-runtime/**` + 根入口补查 | 82 | yes | I4-001/I4-014/I4-015/I4-016/I4-017/I4-018/I4-019/I4-020/I4-021 |
+| 合计 | 全分区 | 491 | yes | 已回收 6/6 子代理分区问题清单 |
+
 ## 设计问题清单
 | 编号 | 问题描述 | 影响范围 | 建议动作 | 严重度 | 当前判定 |
 | --- | --- | --- | --- | --- | --- |
+| I4-001 | 索引/入口存在可达性断链或漏登记 | world-runtime/p2p/site/testing/world-simulator | 修复 `prd.index` 与入口互链，补齐孤儿文档登记 | high | open（82） |
+| I4-002 | 验收命令口径不一致（如裸 `cargo check`） | site/testing/p2p/world-simulator | 统一仓库执行口径与命令模板 | high | open（24） |
+| I4-003 | 追溯链字段缺失或审计字段重复导致口径冲突 | p2p/site/playability/core | 清理重复审计字段并补齐 PRD-ID 到任务链 | high | open（92） |
+| I4-004 | 文档含不可直接执行命令/占位命令 | p2p/testing/scripts/playability/site | 替换为仓内可执行命令并补示例 | high | open（74） |
+| I4-005 | PRD-ID/任务编号体系不一致 | world-simulator/testing/site/p2p | 统一编号体系并回写映射 | high | open（21） |
+| I4-006 | 文档状态与最近更新时间失真 | p2p/site/playability/world-simulator | 回写真实状态与时间字段 | medium | open（82） |
+| I4-007 | PRD 混入 project/devlog 性质内容 | p2p/world-simulator | 清理串写，恢复 Why/What/Done 边界 | high | open（2） |
+| I4-008 | 完成态缺日期/映射字段 | p2p/playability/world-simulator | 增加完成日期与映射字段 | medium | open（7） |
+| I4-009 | world-simulator 结构命名一致性偏差 | world-simulator | 统一目录/命名口径并回写索引 | medium | open（3） |
+| I4-010 | world-simulator 与 p2p 索引覆盖规则不一致 | world-simulator/p2p | 统一索引覆盖声明与入口规则 | medium | open（4） |
+| I4-011 | world-simulator 与 p2p 的追溯链声明不完整 | world-simulator/p2p | 补齐 PRD-ID 与任务追溯声明 | high | open（2） |
+| I4-012 | p2p 主 PRD 缺可执行验收命令映射 | p2p | 在主 PRD 补充可执行验证映射 | high | open（1） |
+| I4-013 | p2p 子项目 PRD-ID 粒度与主 PRD 不一致 | p2p | 统一 PRD-ID 粒度并校验引用 | high | open（1） |
+| I4-014 | world-runtime 专题 traceability 链不闭合 | world-runtime | 补齐 PRD-ID->TASK->证据链 | high | open（30） |
+| I4-015 | world-runtime project 任务缺 PRD-ID 映射与证据 | world-runtime | 为任务补齐映射与验收证据 | high | open（30） |
+| I4-016 | world-runtime 旧模板文档未纳入索引且链路不全 | world-runtime | 升级模板并纳入索引 | high | open（1） |
+| I4-017 | world-runtime/headless 主 PRD 验证仅描述性无命令 | world-runtime/headless-runtime | 增补可执行命令与证据路径 | high | open（3） |
+| I4-018 | world-runtime/headless project 任务缺验收命令 | world-runtime/headless-runtime | 为任务补充命令与证据链接 | high | open（3） |
+| I4-019 | runtime 测试术语与治理事件口径不一致 | world-runtime | 统一术语并清理旧引用 | medium | open（2） |
+| I4-020 | `headless-runtime` 与 `nonviewer` 命名双轨 | headless-runtime | 收敛命名并补兼容说明 | medium | open（1） |
+| I4-021 | root 补查入口的口径声明缺失 | 根入口 | 补充 root 入口到分区索引映射 | medium | open（1） |
+| I4-201 | core/engineering project 追溯链条目不完整 | core/engineering | 补齐 PRD-ID->TASK->命令->证据 | high | open（2） |
+| I4-202 | legacy 迁移快照存在可达性债务 | engineering/doc-migration | 制定迁移清理与豁免收敛计划 | medium | open（1） |
+| I4-203 | ROUND-004 基线统计未与实时进度同步 | core/reviews | 统一 S_round004 统计与生成时间 | medium | open（2） |
 
 ## 整改项
 | 编号 | 整改动作 | 责任人 | 截止时间 | 状态 |
 | --- | --- | --- | --- | --- |
 | A4-001 | 建立 ROUND-004 启动台账（本文件 + 审读清单 + 执行清单） | cc | 2026-03-06 | done |
-| A4-002 | 完成 D4-001~D4-008 全量审读并登记问题清单 | cc | 2026-03-09 | in_progress |
+| A4-002 | 完成 D4-001~D4-008 全量审读并登记问题清单 | cc | 2026-03-09 | done |
 | A4-003 | 对 high 严重度问题输出“整改方案 + 影响面 + 验收命令” | cc | 2026-03-10 | todo |
 | A4-004 | 执行文档整改并回写审计轮次与索引引用 | cc | 2026-03-12 | todo |
 | A4-005 | 生成 `S_round004` 清单并完成复审结论 | cc | 2026-03-12 | todo |
-| A4-006 | 启动 6 子代理并行审计并回收分区问题清单 | cc | 2026-03-06 | in_progress |
+| A4-006 | 启动 6 子代理并行审计并回收分区问题清单 | cc | 2026-03-06 | done |
 | A4-007 | 落实“逐文档即时回写”机制（审计轮次 + 进度日志）并纳入并行审计流程 | cc | 2026-03-06 | done |
 | A4-008 | 验收命令：`rg -n "PRD-ID|验收命令|证据" doc/core/prd.project.md doc/engineering/prd.project.md doc/p2p/prd.project.md doc/world-runtime/prd.project.md doc/headless-runtime/prd.project.md doc/testing/prd.project.md`<br>`rg -n "PRD-ID.*TASK|TASK.*PRD-ID" doc/core/prd.project.md doc/engineering/prd.project.md doc/p2p/prd.project.md doc/world-runtime/prd.project.md doc/headless-runtime/prd.project.md doc/testing/prd.project.md` | cc | 2026-03-10 | todo |
 | A4-009 | 验收命令：`rg -n "env -u RUSTC_WRAPPER cargo check|\\./scripts/|bash scripts/" doc/site doc/testing doc/scripts doc/playability_test_result --glob '*.md'`<br>`! rg -n "\\$CODEX_HOME|<staged \\.rs files>|site/site/doc" doc/site doc/testing doc/scripts doc/playability_test_result --glob '*.md'` | cc | 2026-03-10 | todo |
@@ -108,4 +143,4 @@ rg -n "^审计轮次:\s*4$" doc --glob '*.md'
 ## 复审结果
 - 复审时间：-
 - 复审结论：-
-- 当前进展：ROUND-004 已启动并进入并行审读阶段（6 子代理分区执行）；已下发“逐文档即时回写”强制规则（读完即写 `审计轮次: 4` + 进度日志），待汇总 I4-* 问题清单。
+- 当前进展：ROUND-004 已完成全量审读与 6 分区问题回收（A4-002/A4-006 done），当前进入整改执行阶段（A4-003/A4-004/A4-008~A4-014）。
