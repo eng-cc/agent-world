@@ -65,6 +65,13 @@
 | 可玩性问题分级 | 问题描述、严重级、复现步骤、责任人 | 提交后自动进入待修复队列 | `opened -> triaged -> fixed -> verified` | 高严重级优先 | 评审者可调整级别 |
 | 发行门禁评审 | 证据包、风险等级、放行建议 | 审查后给出 go/no-go | `pending -> reviewed -> released/blocked` | 风险优先级驱动结论 | 发布负责人最终决策 |
 | 分布式执行与治理 | `tick/block hash`、`state_root`、治理提案元数据、身份信誉/抵押 | 发起提案、投票、队列生效、紧急刹车/否决 | `draft -> voting -> queued -> applied/rejected` | tick 全序执行 + epoch 边界生效 | 治理角色+阈值双重校验 |
+- 核心玩法循环验收矩阵（TASK-GAME-002）:
+| 循环 | 验收场景（Given / When / Then） | 规则层边界（PRD-GAME-002） | 证据事件/状态 | `test_tier_required` 入口 | 通过阈值（Done） | 失败处置 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 新手循环（前 1~3 天） | Given `llm_bootstrap` 场景可启动；When 玩家完成“选定目标 -> 首次指令 -> 收到反馈”；Then 在单次会话内形成 `观察 -> 决策 -> 反馈 -> 调整` 闭环。 | 新手引导只消费 runtime 已开放动作（不允许越权改写世界状态）；动作被拒绝时必须返回可解释原因。 | `DomainEvent::ActionAccepted`；viewer 任务循环快照与倒计时提示。 | `env -u RUSTC_WRAPPER cargo test -p agent_world runtime::tests::gameplay_protocol::gameplay_actions_emit_action_accepted_before_resolution_event -- --nocapture`；`env -u RUSTC_WRAPPER cargo test -p agent_world_viewer player_mission_tests:: -- --nocapture` | 必须出现“先接受后解析”的动作证据；玩家任务循环快照能稳定展示剩余提示与反馈计时。 | 阻断合入；补齐失败动作链路日志与 UI 快照，按 P1 建立修复任务并复测。 |
+| 经济循环 | Given 双方具备可结算资源；When 执行 `Open -> Accept -> Settle` 经济合约；Then 合约状态与声誉/税费变化可回放。 | 经济规则不得绕过资源守恒；结算溢出/配额/黑名单冲突必须原子拒绝且不污染状态。 | `DomainEvent::EconomicContractOpened/Accepted/Settled/Expired`；`economic_contracts` 状态与声誉快照。 | `env -u RUSTC_WRAPPER cargo test -p agent_world runtime::tests::gameplay_protocol::economic_contract_ -- --nocapture` | 合约终态必须可解释（`Settled` 或 `Expired`）；税费、信誉奖励与策略上限一致；异常路径无半提交状态。 | 阻断合入；输出冲突合约 ID、策略参数与状态差异，回归通过前不得进入发布评审。 |
+| 战争循环 | Given 至少两联盟且满足动员成本；When 发起宣战并推进 tick；Then 战争按时结算并写入胜负与参与者后果。 | 宣战必须校验联盟成员身份与动员资源；活动战争期间违反约束的动作（如违规加入）必须拒绝。 | `DomainEvent::WarDeclared/WarConcluded`；`wars` 状态（`active/winner/loser/concluded_at`）。 | `env -u RUSTC_WRAPPER cargo test -p agent_world runtime::tests::gameplay_protocol::war_ -- --nocapture` | 战争必须在设计时长内自动收敛；胜负、资源后果与事件链一致；拒绝路径具备明确规则原因。 | 阻断合入；保存冲突 tick 与战报证据，按 P0 进入规则修复并执行全链路复测。 |
+- 矩阵基线一致性校验：`env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required scenario_specs_match_ids -- --nocapture`，用于确保场景入口与矩阵引用保持一致。
 - Acceptance Criteria:
   - AC-1: game PRD 覆盖核心玩法循环、治理机制、测试口径。
   - AC-2: game project 文档任务项可映射到 PRD-GAME-001/002/003。
@@ -72,6 +79,7 @@
   - AC-4: 发行前可玩性回归必须在 testing 手册与测试结果中可追溯。
   - AC-5: 微循环反馈优化 PRD 定义可见反馈与计时规则，并形成可验证的评分提升目标。
   - AC-6: 新增长期在线分布式专题 PRD，明确 RSM、治理时延生效、身份与惩罚的验收约束。
+  - AC-7: 新手/经济/战争三循环均具备 Given/When/Then、规则层边界、证据事件、`test_tier_required` 命令与失败处置，且可直接用于周回归。
 - Non-Goals:
   - 不在本 PRD 中给出逐条数值参数表。
   - 不替代 runtime/p2p 的底层实现设计。
@@ -133,3 +141,4 @@
 | DEC-GAME-001 | 以玩法循环为需求主轴组织验收 | 以功能列表平铺验收 | 循环视角更贴近真实体验链路。 |
 | DEC-GAME-002 | 引入问题分级与闭环模板 | 缺陷统一平级处理 | 可优化修复优先级与发布节奏。 |
 | DEC-GAME-003 | 发布评审绑定可玩性证据 | 仅依赖技术测试 | 能降低“可运行但不好玩”的发布风险。 |
+| DEC-GAME-004 | 以“新手/经济/战争”分循环验收矩阵驱动 `TASK-GAME-002` | 仅保留统一 required/full 命令清单 | 分循环矩阵更易映射规则边界、失败处置与责任归属。 |
