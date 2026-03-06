@@ -35,6 +35,7 @@
   - SC-3: Web UI 闭环与分布式长跑在发布流程中有可追溯证据。
   - SC-4: 测试任务 100% 映射 PRD-TESTING-ID。
   - SC-5: 活跃 testing 专题文档按批次完成人工迁移到 strict schema，并统一 `*.prd.md` / `*.prd.project.md` 命名。
+  - SC-6: builtin wasm（m1/m4/m5）hash 发布链路具备跨 runner 对账、required check 保护与本地只读校验策略。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -51,11 +52,13 @@
   - PRD-TESTING-002: As a 开发者, I want clear trigger matrices, so that I can run the right tests efficiently.
   - PRD-TESTING-003: As a 发布负责人, I want auditable evidence bundles, so that release decisions are defensible.
   - PRD-TESTING-004: As a 文档维护者, I want each legacy testing topic doc manually migrated with content-preserving rewrite, so that historical intent remains accurate after format upgrade.
+  - PRD-TESTING-005: As a 发布工程维护者, I want builtin wasm hash chain hardened end-to-end, so that hash drift can be blocked and traced before release.
 - Critical User Flows:
   1. Flow-TST-001: `识别改动类型 -> 匹配 S0~S10 -> 执行 required -> 输出结果`
   2. Flow-TST-002: `发布前执行 full 套件 -> 汇总命令/日志/截图 -> 生成证据包`
   3. Flow-TST-003: `线上问题复盘 -> 回填触发矩阵 -> 增加回归用例 -> 验证闭环`
   4. Flow-TST-004: `逐篇阅读 legacy 专题文档 -> 按 strict schema 人工重写 -> 改名为 .prd/.prd.project -> 回归校验`
+  5. Flow-TST-005: `触发 wasm hash 校验 -> 跨 runner 对账 -> required check 放行/阻断 -> 发布链路收口`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
@@ -63,12 +66,14 @@
 | 证据包归档 | 命令、日志、截图、结论、责任人 | 执行后归档并建立索引 | `collecting -> archived -> reviewed` | 按版本与模块分层索引 | 测试维护者负责最终校验 |
 | 缺陷回归闭环 | 缺陷ID、触发条件、修复提交、复测结论 | 缺陷关闭前必须绑定回归记录 | `opened -> fixed -> regressed -> closed` | 高风险缺陷优先回归 | QA/维护者可更新状态 |
 | 文档格式迁移 | 旧文档路径、约束点清单、目标命名 | 人工重写并更名，补全映射与验证证据 | `inventory -> migrated -> validated` | 先迁移活跃文档、后迁移归档文档 | 维护者审批迁移质量，贡献者执行 |
+| Builtin wasm hash 治理 | 模块集、平台 token、runner 摘要、required check context | 执行 `sync --check`、摘要导出与对账、分支保护同步 | `check-only -> reconciled -> protected` | keyed token 仅允许 canonical 平台，identity 输入使用白名单 | 本地默认只读校验，写路径限定 CI bot |
 - Acceptance Criteria:
   - AC-1: testing PRD 覆盖分层模型、触发矩阵、证据规范。
   - AC-2: testing project 文档维护分层测试演进任务。
   - AC-3: 与 `testing-manual.md` 保持一致且互相引用。
   - AC-4: 新增测试流程需标注 `test_tier_required` 或 `test_tier_full`。
   - AC-5: 每个迁移批次必须提供“原文约束点 -> 新章节映射”并通过文档治理检查。
+  - AC-6: builtin wasm hash 发布链路治理（m4/m5 keyed + strict + multi-runner + required check + identity 输入收敛）具备独立专题与任务追踪。
 - Non-Goals:
   - 不在本 PRD 中替代业务模块的功能设计。
   - 不承诺所有测试都进入 CI 默认路径。
@@ -82,7 +87,11 @@
 - Integration Points:
   - `testing-manual.md`
   - `doc/testing/manual/web-ui-playwright-closure-manual.prd.md`
+  - `doc/testing/ci/ci-builtin-wasm-m4-m5-hash-drift-hardening.prd.md`
   - `scripts/ci-tests.sh`
+  - `scripts/sync-m1-builtin-wasm-artifacts.sh`
+  - `scripts/ci-m1-wasm-summary.sh`
+  - `scripts/ci-verify-m1-wasm-summaries.py`
   - `.github/workflows/*`
 - Edge Cases & Error Handling:
   - 网络波动：外部依赖失败时记录失败签名并支持重试，不静默跳过。
@@ -99,6 +108,7 @@
   - NFR-TST-4: 测试手册与脚本口径冲突数为 0。
   - NFR-TST-5: 测试执行结果可在 30 分钟内完成追溯定位。
   - NFR-TST-6: 文档迁移批次在不降低治理质量的前提下保持可审阅粒度（每任务对应单文档或单专题）。
+  - NFR-TST-7: builtin wasm hash 校验在多 runner 下可复现且差异可定位到模块与平台维度。
 - Security & Privacy: 测试日志与产物需避免泄露凭据；外部 API 测试使用最小化数据并执行脱敏。
 
 ## 5. Risks & Roadmap
@@ -109,6 +119,7 @@
 - Technical Risks:
   - 风险-1: 套件增长导致执行成本上升。
   - 风险-2: 手册与脚本不一致导致执行偏差。
+  - 风险-3: hash 校验策略分散会导致 m4/m5 漂移长期难以收敛。
 
 ## 6. Validation & Decision Record
 - Test Plan & Traceability:
@@ -118,6 +129,7 @@
 | PRD-TESTING-002 | TASK-TESTING-002/003/006 | `test_tier_required` + `test_tier_full` | 证据模板抽样、发布前必填字段检查 | 发布链路可信性与可复现性 |
 | PRD-TESTING-003 | TASK-TESTING-003/004/006 | `test_tier_full` | 趋势指标回顾、缺陷逃逸复盘 | 长期质量治理与发布风险控制 |
 | PRD-TESTING-004 | TASK-TESTING-007/008/009/010/011/012/013/014/015/016/017/018/019/020/021/022/023/024/025/026/027/028/029/030/031/032/033/034/035/036 | `test_tier_required` | 原文约束点映射审查、命名与引用回归检查 | 专题文档可维护性与追溯一致性 |
+| PRD-TESTING-005 | TASK-TESTING-037/038/039/040 | `test_tier_required` | keyed manifest/strict policy/多 runner required checks/identity 输入收敛回归 | builtin wasm 发布链路稳定性 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |

@@ -2,7 +2,7 @@
 
 审计轮次: 4
 
-更新时间：2026-03-03
+更新时间：2026-03-06
 
 ## 入口
 - 模块 PRD：`doc/testing/prd.md`
@@ -11,6 +11,7 @@
 | 专题 PRD | 专题项目文档 |
 | --- | --- |
 | `doc/testing/ci/ci-builtin-wasm-m1-multi-runner.prd.md` | `doc/testing/ci/ci-builtin-wasm-m1-multi-runner.prd.project.md` |
+| `doc/testing/ci/ci-builtin-wasm-m4-m5-hash-drift-hardening.prd.md` | `doc/testing/ci/ci-builtin-wasm-m4-m5-hash-drift-hardening.prd.project.md` |
 | `doc/testing/ci/ci-m1-multi-runner-required-check-protection.prd.md` | `doc/testing/ci/ci-m1-multi-runner-required-check-protection.prd.project.md` |
 | `doc/testing/ci/ci-remove-builtin-wasm-hash-checks-from-base-gate.prd.md` | `doc/testing/ci/ci-remove-builtin-wasm-hash-checks-from-base-gate.prd.project.md` |
 | `doc/testing/ci/ci-test-coverage.prd.md` | `doc/testing/ci/ci-test-coverage.prd.project.md` |
