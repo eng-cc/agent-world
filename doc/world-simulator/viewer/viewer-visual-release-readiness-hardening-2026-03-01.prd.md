@@ -1,6 +1,6 @@
 # Viewer 视觉外发就绪硬化（2026-03-01）
 
-审计轮次: 4
+审计轮次: 5
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-visual-release-readiness-hardening-2026-03-01.prd.project.md
 
 ## 1. Executive Summary

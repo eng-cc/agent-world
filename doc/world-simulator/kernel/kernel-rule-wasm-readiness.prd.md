@@ -1,6 +1,6 @@
 # Agent World Simulator：规则 Wasm 化就绪（第二阶段）设计文档
 
-审计轮次: 4
+审计轮次: 5
 - 对应项目管理文档: doc/world-simulator/kernel/kernel-rule-wasm-readiness.prd.project.md
 
 ## 1. Executive Summary

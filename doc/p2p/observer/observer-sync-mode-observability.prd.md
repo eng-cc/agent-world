@@ -1,6 +1,6 @@
 # Agent World Runtime：Observer 同步源策略可观测性
 
-审计轮次: 4
+审计轮次: 5
 ## ROUND-002 主从口径
 - 当前文档降级为增量子文档，仅维护“策略可观测性”专题增量约束。
 - 主入口：`doc/p2p/observer/observer-sync-mode-runtime-metrics.prd.md`；跨专题统一口径以主文档为准。

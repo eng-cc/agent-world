@@ -1,6 +1,6 @@
 # Agent World Simulator：Location 电力资源池下线与 Agent 辐射电厂建造
 
-审计轮次: 4
+审计轮次: 5
 - 对应项目管理文档: doc/world-simulator/kernel/location-electricity-pool-removal-and-radiation-plant.prd.project.md
 
 ## 1. Executive Summary

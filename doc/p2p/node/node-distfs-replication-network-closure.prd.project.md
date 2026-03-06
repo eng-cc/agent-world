@@ -1,6 +1,6 @@
 # Agent World Runtime：Node DistFS 复制网络化收敛（项目管理文档）
 
-审计轮次: 4
+审计轮次: 5
 ## 任务拆解（含 PRD-ID 映射）
 - [x] NRX-0 (PRD-P2P-MIG-092)：输出设计文档与项目管理文档。
 - [x] NRX-1 (PRD-P2P-MIG-092)：node gossip 接入 DistFS 复制消息（广播+应用+guard 持久化）。

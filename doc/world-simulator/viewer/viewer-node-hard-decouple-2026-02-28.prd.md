@@ -1,6 +1,6 @@
 # Viewer 与节点彻底拆分（2026-02-28）
 
-审计轮次: 4
+审计轮次: 5
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-node-hard-decouple-2026-02-28.prd.project.md
 
 ## 1. Executive Summary

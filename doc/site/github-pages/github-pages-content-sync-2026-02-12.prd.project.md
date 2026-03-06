@@ -1,6 +1,6 @@
 # GitHub Pages 内容状态同步（2026-02-12）项目管理文档
 
-审计轮次: 4
+审计轮次: 5
 
 ## 审计备注
 - 项目主入口：`doc/site/github-pages/github-pages-game-engine-reposition-2026-02-25.prd.project.md`。

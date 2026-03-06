@@ -1,6 +1,6 @@
 # Viewer 首局目标清晰度加固（2026-02-27）
 
-审计轮次: 4
+审计轮次: 5
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-first-session-goal-clarity-hardening-2026-02-27.prd.project.md
 
 ## 1. Executive Summary

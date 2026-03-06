@@ -1,6 +1,6 @@
 # Viewer 启动自动化步骤（相机/选中，用于截图闭环）
 
-审计轮次: 4
+审计轮次: 5
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-auto-select-capture.prd.project.md
 
 ## 1. Executive Summary

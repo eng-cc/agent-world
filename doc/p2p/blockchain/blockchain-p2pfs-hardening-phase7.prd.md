@@ -1,6 +1,6 @@
 # Agent World Runtime：区块链 + P2P FS 硬改造（Phase 7）设计文档
 
-审计轮次: 4
+审计轮次: 5
 ## 1. Executive Summary
 - Problem Statement: 将 sequencer `accepted_action_signer_public_keys` 升级为生产级治理语义：配置合法性校验、规范化比较、重复项拒绝。
 - Proposed Solution: 统一 ed25519 signer 公钥白名单行为，避免大小写/格式差异导致动作签名误拒绝。

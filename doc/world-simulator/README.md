@@ -1,6 +1,6 @@
 # world-simulator 文档索引
 
-审计轮次: 4
+审计轮次: 5
 
 ## 入口
 - PRD: `doc/world-simulator/prd.md`

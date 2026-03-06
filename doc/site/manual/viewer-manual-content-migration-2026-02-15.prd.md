@@ -1,6 +1,6 @@
 # Viewer 使用手册内容搬迁（2026-02-15）设计文档
 
-审计轮次: 4
+审计轮次: 5
 
 ## ROUND-002 主从口径
 - 主入口文档：`doc/site/manual/site-manual-static-docs.prd.md`。

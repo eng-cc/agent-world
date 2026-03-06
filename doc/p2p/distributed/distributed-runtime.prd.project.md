@@ -1,6 +1,6 @@
 # Agent World Runtime：分布式计算与存储（项目管理文档）
 
-审计轮次: 4
+审计轮次: 5
 ## 任务拆解（含 PRD-ID 映射）
 ### 42. P3.25 成员目录吊销死信优先级回放与跨节点回放协同
 - [x] `replay_revocation_dead_letters` 按 reason/attempt/dropped_at 优先级回放 (PRD-P2P-MIG-083)

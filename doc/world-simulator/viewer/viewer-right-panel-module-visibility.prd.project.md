@@ -1,6 +1,6 @@
 # Viewer 右侧面板模块开关与本地缓存（项目管理文档）
 
-审计轮次: 4
+审计轮次: 5
 ## 任务拆解（含 PRD-ID 映射）
 - [x] VRPM1：输出设计文档（`doc/world-simulator/viewer/viewer-right-panel-module-visibility.prd.md`）
 - [x] VRPM2：输出项目管理文档（本文件）

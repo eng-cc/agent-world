@@ -1,6 +1,6 @@
 # Viewer Live runtime/world 接管 Phase 1（2026-03-04）
 
-审计轮次: 4
+审计轮次: 5
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase1-2026-03-04.prd.project.md
 
 ## 1. Executive Summary

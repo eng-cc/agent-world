@@ -1,6 +1,6 @@
 # Agent World 主链 Token 分配与发行机制（已实现）
 
-审计轮次: 4
+审计轮次: 5
 ## 1. Executive Summary
 - Problem Statement: 建立主链 Token 经济闭环：创世分配、解锁领取、epoch 增发、费用销毁、治理参数更新。
 - Proposed Solution: 将 `NodePoints/PowerCredit` 与主链 Token 账本解耦，通过可审计桥接事件接入 `node_service_reward` 分配。

@@ -1,6 +1,6 @@
 # Viewer 可视化观察体验优化设计
 
-审计轮次: 4
+审计轮次: 5
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-observability-visual-optimization.prd.project.md
 
 ## 1. Executive Summary

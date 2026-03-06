@@ -1,6 +1,6 @@
 # 启动器链路重构：链运行时与游戏进程解耦（2026-02-28）
 
-审计轮次: 4
+审计轮次: 5
 - 对应项目管理文档: doc/world-simulator/launcher/game-client-launcher-chain-runtime-decouple-2026-02-28.prd.project.md
 
 ## 1. Executive Summary

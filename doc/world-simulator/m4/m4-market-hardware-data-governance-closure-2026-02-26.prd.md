@@ -1,6 +1,6 @@
 # M4 市场/硬件/数据/治理闭环收口（2026-02-26）
 
-审计轮次: 4
+审计轮次: 5
 - 对应项目管理文档: doc/world-simulator/m4/m4-market-hardware-data-governance-closure-2026-02-26.prd.project.md
 
 ## 1. Executive Summary

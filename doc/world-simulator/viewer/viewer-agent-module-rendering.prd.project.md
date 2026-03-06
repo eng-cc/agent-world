@@ -1,6 +1,6 @@
 # Viewer Agent 渲染改造（项目管理文档）
 
-审计轮次: 4
+审计轮次: 5
 ## 任务拆解（含 PRD-ID 映射）
 - [x] AMR-1：输出设计文档（`viewer-agent-module-rendering.md`）
 - [x] AMR-2：输出项目管理文档（本文件）

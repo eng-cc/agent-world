@@ -1,6 +1,6 @@
 # Compound/Hardware 硬迁移：从内建 ResourceKind 移除并转向 WASM 定义（设计文档）
 
-审计轮次: 4
+审计轮次: 5
 - 对应项目管理文档: doc/world-simulator/kernel/resource-kind-compound-hardware-hard-migration.prd.project.md
 
 ## 1. Executive Summary

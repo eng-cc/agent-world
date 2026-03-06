@@ -1,6 +1,6 @@
 # Agent World Runtime：Observer 同步源运行态统计
 
-审计轮次: 4
+审计轮次: 5
 ## ROUND-002 主从口径
 - 主入口：`doc/p2p/observer/observer-sync-mode-runtime-metrics.prd.md`。
 - `observer-sync-mode-metrics-runtime-bridge` 与 `observer-sync-mode-observability` 作为增量子文档维护，跨专题统一口径以本主文档为准。

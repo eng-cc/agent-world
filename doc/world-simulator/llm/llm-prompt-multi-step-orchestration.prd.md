@@ -1,6 +1,6 @@
 # Agent World Simulator：LLM Prompt 组装重构与多步决策机制（设计文档）
 
-审计轮次: 4
+审计轮次: 5
 - 对应项目管理文档: doc/world-simulator/llm/llm-prompt-multi-step-orchestration.prd.project.md
 ## 1. Executive Summary
 - 解决当前 `system_prompt + user_prompt` 直接拼接过于生硬的问题，形成可维护、可扩展、可裁剪的 Prompt 组装层。

@@ -1,6 +1,6 @@
 # Viewer 控制反馈迭代清单（2026-02-27）
 
-审计轮次: 4
+审计轮次: 5
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-control-feedback-iteration-checklist-2026-02-27.prd.project.md
 
 ## 1. Executive Summary

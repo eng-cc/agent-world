@@ -1,6 +1,6 @@
 # GitHub Pages 视觉细节打磨 V2（2026-02-12）设计文档
 
-审计轮次: 4
+审计轮次: 5
 
 - 对应项目管理文档: doc/site/github-pages/github-pages-visual-polish-v2-2026-02-12.prd.project.md
 

@@ -1,5 +1,5 @@
 # GitHub Pages 首页转化文案与中英一致性收敛 + UI 截图刷新（2026-02-26）项目管理文档
-审计轮次: 4
+审计轮次: 5
 
 ## 审计备注
 - 主项目入口：`doc/site/github-pages/github-pages-game-engine-reposition-2026-02-25.prd.project.md`

@@ -1,6 +1,6 @@
 # viewer-web-playability-unblock-2026-02-26 项目管理
 
-审计轮次: 4
+审计轮次: 5
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0 建立设计文档与项目管理文档
 - [x] T1 修复 `web_test_api` 的 `runSteps`/`sendControl` 入参契约，消除类型不匹配 panic。

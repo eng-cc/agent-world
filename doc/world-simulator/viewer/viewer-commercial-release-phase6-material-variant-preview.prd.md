@@ -1,6 +1,6 @@
 # Viewer 商业化发行缺口收敛 Phase 6：材质变体快速预览
 
-审计轮次: 4
+审计轮次: 5
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-commercial-release-phase6-material-variant-preview.prd.project.md
 
 ## 1. Executive Summary

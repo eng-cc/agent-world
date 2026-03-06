@@ -1,6 +1,6 @@
 # Viewer 双视角（2D/3D）切换设计
 
-审计轮次: 4
+审计轮次: 5
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-dual-view-2d-3d.prd.project.md
 
 ## 1. Executive Summary

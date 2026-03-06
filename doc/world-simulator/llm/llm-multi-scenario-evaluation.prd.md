@@ -1,6 +1,6 @@
 # Agent World Simulator：LLM 多场景评测基线（设计文档）
 
-审计轮次: 4
+审计轮次: 5
 - 对应项目管理文档: doc/world-simulator/llm/llm-multi-scenario-evaluation.prd.project.md
 
 ## 1. Executive Summary

@@ -1,6 +1,6 @@
 # Agent World Simulator：LLM 驱动 Agent 行为落地（设计文档）
 
-审计轮次: 4
+审计轮次: 5
 - 对应项目管理文档: doc/world-simulator/llm/llm-agent-behavior.prd.project.md
 
 ## 1. Executive Summary

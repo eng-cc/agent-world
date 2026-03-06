@@ -1,6 +1,6 @@
 # world_viewer_live `--no-llm` 关闭开关设计文档（2026-02-23）
 
-审计轮次: 4
+审计轮次: 5
 ## 1. Executive Summary
 - Problem Statement: 在 `world_viewer_live` 默认启用 LLM 决策的前提下，提供显式关闭开关 `--no-llm`，用于本地调试或脚本回退到 Script 决策。
 - Proposed Solution: 保持参数语义可预期：默认值稳定、显式参数可覆盖。

@@ -1,6 +1,6 @@
 # world-simulator PRD Project
 
-审计轮次: 4
+审计轮次: 5
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] TASK-WORLD_SIMULATOR-001 (PRD-WORLD_SIMULATOR-001) [test_tier_required]: 完成 world-simulator PRD 改写，建立模拟层设计主入口。

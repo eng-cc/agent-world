@@ -1,6 +1,6 @@
 # Agent World Runtime：节点存储系统奖励池
 
-审计轮次: 4
+审计轮次: 5
 ## 1. Executive Summary
 - Problem Statement: 在 Node Points 结算中新增“存储系统奖励池”，使存储奖励和在线奖励一样由协议固定池发放。
 - Proposed Solution: 存储奖励以挑战通过率为核心资格，避免仅靠自报容量领取奖励。

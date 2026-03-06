@@ -1,6 +1,6 @@
 # Agent World Simulator：Viewer 默认渲染 Frag 且不渲染 Location（设计文档）
 
-审计轮次: 4
+审计轮次: 5
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-frag-default-rendering.prd.project.md
 
 ## 1. Executive Summary

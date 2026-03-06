@@ -1,6 +1,6 @@
 # Viewer Web 全屏自适应与右侧面板整体显隐设计
 
-审计轮次: 4
+审计轮次: 5
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-web-fullscreen-panel-toggle.prd.project.md
 
 ## 1. Executive Summary

@@ -1,6 +1,6 @@
 # Agent World Viewer：Web Chat 面板锁重入与回车发送闭环修复（设计文档）
 
-审计轮次: 4
+审计轮次: 5
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-chat-web-deadlock-resolution.prd.project.md
 
 ## 1. Executive Summary

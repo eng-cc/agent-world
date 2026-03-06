@@ -1,6 +1,6 @@
 # Agent World Runtime：节点执行桥接与奖励共识触发闭环
 
-审计轮次: 4
+审计轮次: 5
 ## 1. Executive Summary
 - Problem Statement: 把 `agent_world_node` 的共识提交高度与 `agent_world` 运行时执行状态打通，补齐“提交高度 -> 执行状态 -> 存储落盘”的桥接链路。
 - Proposed Solution: 将奖励结算从本地线程直触发升级为“基于网络传播的结算包触发”，使多节点可消费同一结算动作。

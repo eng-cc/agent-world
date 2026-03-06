@@ -1,6 +1,6 @@
 # Agent World Runtime：`agent_world_net` runtime_bridge 可编译闭环（项目管理文档）
 
-审计轮次: 4
+审计轮次: 5
 ## 任务拆解（含 PRD-ID 映射）
 - [x] RB1 (PRD-P2P-MIG-085)：设计文档与项目管理文档落地。
 - [x] RB2 (PRD-P2P-MIG-085)：runtime_bridge 模块导入与依赖收敛（切到 `agent_world_distfs` / `agent_world::runtime` / `agent_world_proto` 稳定路径）。

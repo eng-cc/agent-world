@@ -1,6 +1,6 @@
 # Viewer 文本可选中与复制能力（项目管理文档）
 
-审计轮次: 4
+审计轮次: 5
 ## 任务拆解（含 PRD-ID 映射）
 - [x] 输出设计文档（`doc/world-simulator/viewer/viewer-copyable-text.prd.md`）
 - [x] 输出项目管理文档（本文件）

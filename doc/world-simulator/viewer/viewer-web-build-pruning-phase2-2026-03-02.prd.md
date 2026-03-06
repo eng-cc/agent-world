@@ -1,6 +1,6 @@
 # Viewer Web 构建体积裁剪 Phase 2（2026-03-02）
 
-审计轮次: 4
+审计轮次: 5
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-web-build-pruning-phase2-2026-03-02.prd.project.md
 
 ## 1. Executive Summary

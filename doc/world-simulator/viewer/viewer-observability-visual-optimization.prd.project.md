@@ -1,6 +1,6 @@
 # Viewer 可视化观察体验优化（项目管理文档）
 
-审计轮次: 4
+审计轮次: 5
 ## 任务拆解（含 PRD-ID 映射）
 - [x] VO1：输出设计文档（`viewer-observability-visual-optimization.md`）
 - [x] VO2：输出项目管理文档（本文件）

@@ -1,6 +1,6 @@
 # Agent World Runtime：DistFS 公开反馈账本（2026-03-01）设计文档
 
-审计轮次: 4
+审计轮次: 5
 ## 1. Executive Summary
 - Problem Statement: 在不引入数据库的前提下，基于 `agent_world_distfs` 落地可运行的玩家反馈系统。
 - Proposed Solution: 支持公开写入与公开读取，同时保证反馈记录 append-only，不允许覆盖原始反馈。

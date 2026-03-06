@@ -1,6 +1,6 @@
 # Agent World Runtime：生产级区块链 + P2P FS 路线图 Phase C（项目管理文档）
 
-审计轮次: 4
+审计轮次: 5
 ## 任务拆解（含 PRD-ID 映射）
 - [x] PRG-C1 (PRD-P2P-MIG-055)：完成 Phase C 设计文档与项目管理文档；同步删除 PRG-M6 设计方向。
 - [x] PRG-C2 (PRD-P2P-MIG-055)：实现 DistFS challenge request/proof 消息、签名与验签。

@@ -1,6 +1,6 @@
 # World Runtime：Builtin Wasm DistFS 存储与提交前校验（项目管理文档）
 
-审计轮次: 4
+审计轮次: 5
 ## 任务拆解（含 PRD-ID 映射）
 - [x] BWD-1 输出设计文档（`doc/p2p/distfs/distfs-builtin-wasm-storage.prd.md`）与项目管理文档（本文件）。 (PRD-P2P-MIG-060)
 - [x] BWD-2 改造 wasm 同步脚本 (PRD-P2P-MIG-060)：以 hash 清单为 git 基线，产物落盘到 DistFS 本地存储。

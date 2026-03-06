@@ -1,6 +1,6 @@
 # Agent World Runtime：生产级区块链 + P2P FS 路线图 Phase C（PRG-M5 跨节点 DistFS 挑战证明网络化）
 
-审计轮次: 4
+审计轮次: 5
 ## 1. Executive Summary
 - Problem Statement: 将存储可用性证明从“本地 self-challenge/self-answer”升级为“跨节点 challenge-response 网络证明”。
 - Proposed Solution: 在现有 reward runtime 中建立可审计的 DistFS challenge request/proof 通道，使存储节点收益依赖跨节点可验证证明。

@@ -9,7 +9,7 @@
 
 ## 轮次信息
 - 轮次编号: `ROUND-005`
-- 轮次状态: `in_progress` (`not_started` | `in_progress` | `completed`)
+- 轮次状态: `completed` (`not_started` | `in_progress` | `completed`)
 - 审查时间窗: 2026-03-06 ~ 2026-03-15
 - 审查负责人: cc
 
@@ -55,7 +55,7 @@ rg -n "^审计轮次:\s*5$" doc/world-simulator doc/p2p doc/site doc/playability
 ## 受审文件清单（S_round005）
 - 清单文件：`doc/core/reviews/round-005-reviewed-files.md`
 - 统计口径：`doc/world-simulator/** + doc/p2p/** + doc/site/** + doc/playability_test_result/**`
-- 当前基线（2026-03-06 17:20 CST）：`516` 份文档
+- 当前基线（2026-03-06 18:04 CST）：`516` 份文档
 - 用途：作为 ROUND-005 判定分母（仅统计本轮范围）。
 
 ## 审计进度日志（逐文档）
@@ -75,18 +75,18 @@ rg -n "^审计轮次:\s*5$" doc/world-simulator doc/p2p doc/site doc/playability
 | 编号 | 整改动作 | 责任人 | 截止时间 | 验收命令 | 状态 |
 | --- | --- | --- | --- | --- | --- |
 | A5-001 | 建立 ROUND-005 启动台账（本文件 + 审读清单 + 执行清单 + 进度日志） | cc | 2026-03-06 | `test -f doc/core/reviews/consistency-review-round-005.md && test -f doc/core/reviews/round-005-reviewed-files.md && test -f doc/core/reviews/round-005-timeliness-index-worklist.md && test -f doc/core/reviews/round-005-audit-progress-log.md` | done |
-| A5-002 | 完成 S5-001~S5-004 全量审读并登记 I5-* 细分问题 | cc | 2026-03-10 | `rg -n "I5-00[1-4]" doc/core/reviews/consistency-review-round-005.md` | in_progress |
+| A5-002 | 完成 S5-001~S5-004 全量审读并登记 I5-* 细分问题 | cc | 2026-03-10 | `rg -n "I5-00[1-4]" doc/core/reviews/consistency-review-round-005.md` | done |
 | A5-003 | 收敛状态时效字段（`当前状态` 与更新时间字段配对） | cc | 2026-03-12 | `rg -l "^## 状态$|^#### 当前状态$|^### 当前状态$" doc/world-simulator doc/p2p doc/site doc/playability_test_result --glob '*.md' \| while read -r f; do rg -q "更新日期|最近更新|更新时间|最近更新时间" "$f" || echo "$f"; done` | done |
 | A5-004 | 补齐完成态最小字段（完成日期/最近更新/映射字段） | cc | 2026-03-12 | `rg -l "当前状态[:：].*(已完成|completed)" doc/world-simulator doc/p2p doc/site doc/playability_test_result --glob '*.md' \| while read -r f; do rg -q "完成日期|最近更新|更新日期|更新时间" "$f" || echo "$f"; done` | done |
 | A5-005 | 统一 world-simulator 命名语义并回写引用 | cc | 2026-03-13 | `rg --files doc/world-simulator --glob '*.md' \| rg "fix|tmp|misc|new|update"` | done |
 | A5-006 | 统一 world-simulator/p2p 索引覆盖规则与声明模板 | cc | 2026-03-14 | `rg -n "覆盖规则|纳入规则|排除规则|历史入口|兼容跳转" doc/world-simulator/prd.index.md doc/p2p/prd.index.md` | done |
-| A5-007 | 生成 `S_round005` 并完成复审结论 | cc | 2026-03-15 | `rg -n "轮次状态|复审结论|S_round005" doc/core/reviews/consistency-review-round-005.md` | todo |
+| A5-007 | 生成 `S_round005` 并完成复审结论 | cc | 2026-03-15 | `rg -n "轮次状态|复审结论|S_round005" doc/core/reviews/consistency-review-round-005.md` | done |
 
 ## 特殊情况备注（仅在无需整改时填写）
 | 编号 | 原因 | 风险 | 临时缓解 | 复审日期 | 评审人 |
 | --- | --- | --- | --- | --- | --- |
 
 ## 复审结果
-- 复审时间：-
-- 复审结论：-
-- 当前进展：`I5-001~I5-004` 问题已全部关闭；`S_round005` 已审读 `78/516`，当前继续推进剩余文档的逐文档审读与 `审计轮次: 5` 回写。
+- 复审时间：2026-03-06 18:04 CST
+- 复审结论：ROUND-005 completed（`I5-001~I5-004` 全部关闭，`S_round005=516/516`）。
+- 当前进展：已完成 ROUND-005 全量审读与逐文档回写；本轮范围文档均已回写 `审计轮次: 5`。

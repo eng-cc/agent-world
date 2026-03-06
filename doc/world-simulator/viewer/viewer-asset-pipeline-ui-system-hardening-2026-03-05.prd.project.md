@@ -1,6 +1,6 @@
 # Viewer 资产管线与 UI 体系硬化（2026-03-05）（项目管理文档）
 
-审计轮次: 4
+审计轮次: 5
 
 - 对应设计文档: `doc/world-simulator/viewer/viewer-asset-pipeline-ui-system-hardening-2026-03-05.prd.md`
 

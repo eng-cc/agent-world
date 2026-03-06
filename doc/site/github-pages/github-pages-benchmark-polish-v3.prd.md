@@ -1,6 +1,6 @@
 # GitHub Pages 对标优化（三期）设计文档
 
-审计轮次: 4
+审计轮次: 5
 
 ## ROUND-002 主从口径
 - 主入口文档：`doc/site/github-pages/github-pages-game-engine-reposition-2026-02-25.prd.md`。

@@ -1,6 +1,6 @@
 # Viewer 3D 精致化与性能优化设计
 
-审计轮次: 4
+审计轮次: 5
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-3d-polish-performance.prd.project.md
 
 ## 1. Executive Summary

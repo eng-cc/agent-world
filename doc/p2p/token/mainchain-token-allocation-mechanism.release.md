@@ -1,6 +1,6 @@
 # Agent World Runtime：主链 Token 分配与发行机制（发布说明）
 
-审计轮次: 4
+审计轮次: 5
 ## 发布范围
 - 设计/项目文档：
   - `doc/p2p/token/mainchain-token-allocation-mechanism.prd.md`

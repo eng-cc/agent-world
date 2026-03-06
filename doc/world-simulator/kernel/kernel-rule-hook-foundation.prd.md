@@ -1,6 +1,6 @@
 # Agent World Simulator：内核不变量回归与规则 Hook 基座（设计文档）
 
-审计轮次: 4
+审计轮次: 5
 - 对应项目管理文档: doc/world-simulator/kernel/kernel-rule-hook-foundation.prd.project.md
 
 ## 1. Executive Summary

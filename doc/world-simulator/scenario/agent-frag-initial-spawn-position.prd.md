@@ -1,6 +1,6 @@
 # Agent World Simulator：Agent Frag 初始站位优化（设计文档）
 
-审计轮次: 4
+审计轮次: 5
 - 对应项目管理文档: doc/world-simulator/scenario/agent-frag-initial-spawn-position.prd.project.md
 
 ## 1. Executive Summary

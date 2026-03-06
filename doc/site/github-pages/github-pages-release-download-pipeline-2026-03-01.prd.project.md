@@ -1,6 +1,6 @@
 # GitHub Pages 发布入口 + Release 安装包流水线（2026-03-01）项目管理文档
 
-审计轮次: 4
+审计轮次: 5
 
 ## 审计备注
 - 主项目入口：`doc/site/github-pages/github-pages-game-engine-reposition-2026-02-25.prd.project.md`

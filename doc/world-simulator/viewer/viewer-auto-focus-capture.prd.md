@@ -1,6 +1,6 @@
 # Agent World Simulator：Viewer 自动聚焦（人机共用 + 截图闭环）设计文档
 
-审计轮次: 4
+审计轮次: 5
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-auto-focus-capture.prd.project.md
 
 ## 1. Executive Summary

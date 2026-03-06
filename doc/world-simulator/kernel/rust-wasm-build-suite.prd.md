@@ -1,6 +1,6 @@
 # Agent World Simulator：Rust 到 Wasm 编译套件（KWT）设计文档
 
-审计轮次: 4
+审计轮次: 5
 - 对应项目管理文档: doc/world-simulator/kernel/rust-wasm-build-suite.prd.project.md
 
 ## 1. Executive Summary

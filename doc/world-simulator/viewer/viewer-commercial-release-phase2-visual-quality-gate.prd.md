@@ -1,6 +1,6 @@
 # Viewer 商业化发行缺口收敛 Phase 2：视觉验收基线与门禁
 
-审计轮次: 4
+审计轮次: 5
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-commercial-release-phase2-visual-quality-gate.prd.project.md
 
 ## 1. Executive Summary

@@ -1,6 +1,6 @@
 # 社会系统生产级方案：事实账本 + 声明式关系层（设计文档）
 
-审计轮次: 4
+审计轮次: 5
 - 对应项目管理文档: doc/world-simulator/kernel/social-fact-ledger-declarative-reputation.prd.project.md
 
 ## 1. Executive Summary

@@ -1,6 +1,6 @@
 # 客户端启动器优雅退出与级联进程关闭（2026-03-02）
 
-审计轮次: 4
+审计轮次: 5
 - 对应项目管理文档: doc/world-simulator/launcher/game-client-launcher-graceful-stop-2026-03-02.prd.project.md
 
 ## 1. Executive Summary

@@ -1,6 +1,6 @@
 # Viewer 文本可选中与复制能力设计
 
-审计轮次: 4
+审计轮次: 5
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-copyable-text.prd.project.md
 
 ## 1. Executive Summary

@@ -1,6 +1,6 @@
 # Agent World Runtime：可兑现节点资产与电力兑换闭环（二期审计与签名加固）
 
-审计轮次: 4
+审计轮次: 5
 ## ROUND-002 主从口径
 - 主入口文档：`doc/p2p/node/node-redeemable-power-asset.prd.md`。
 - 本文件仅维护“二期审计与签名加固”增量专题约束。

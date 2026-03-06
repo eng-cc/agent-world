@@ -1,6 +1,6 @@
 # Agent World Simulator：Viewer 默认渲染 Frag 且不渲染 Location（项目管理文档）
 
-审计轮次: 4
+审计轮次: 5
 ## 任务拆解（含 PRD-ID 映射）
 - [x] FDR1：输出设计文档与项目管理文档
 - [x] FDR2：改造渲染路径（不渲染 location、默认渲染 frag、移除 frag 开关）

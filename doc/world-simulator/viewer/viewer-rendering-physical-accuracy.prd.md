@@ -1,6 +1,6 @@
 # Agent World：3D 渲染物理准确性设计（尺寸对齐真实物理数据）
 
-审计轮次: 4
+审计轮次: 5
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-rendering-physical-accuracy.prd.project.md
 
 ## 1. Executive Summary

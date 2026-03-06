@@ -1,6 +1,6 @@
 # GitHub Pages 对外展示站点设计
 
-审计轮次: 4
+审计轮次: 5
 
 - 对应项目管理文档: doc/site/github-pages/github-pages-showcase.prd.project.md
 

@@ -1,6 +1,6 @@
 # Agent World Simulator：Viewer Fragment 元素材质渲染与开关（设计文档）
 
-审计轮次: 4
+审计轮次: 5
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-fragment-element-rendering.prd.project.md
 
 ## 1. Executive Summary

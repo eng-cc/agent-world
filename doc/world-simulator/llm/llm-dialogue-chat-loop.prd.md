@@ -1,6 +1,6 @@
 # Agent World Simulator：LLM 对话轮次驱动与右侧 Chat 面板（设计文档）
 
-审计轮次: 4
+审计轮次: 5
 - 对应项目管理文档: doc/world-simulator/llm/llm-dialogue-chat-loop.prd.project.md
 
 ## 1. Executive Summary

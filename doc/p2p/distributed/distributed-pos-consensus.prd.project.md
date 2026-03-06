@@ -1,6 +1,6 @@
 # Agent World Runtime：以太坊风格 PoS Head 共识（项目管理文档）
 
-审计轮次: 4
+审计轮次: 5
 ## 任务拆解（含 PRD-ID 映射）
 - [x] POS-1 (PRD-P2P-MIG-082)：设计文档与项目管理文档落地。
 - [x] POS-2 (PRD-P2P-MIG-082)：实现 `PosConsensus`（stake 加权、slot proposer、attestation/slashing、DHT 门控、快照持久化）并补齐单元测试。

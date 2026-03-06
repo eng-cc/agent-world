@@ -1,6 +1,6 @@
 # Viewer Web 可操作性与舒适度加固（2026-02-22）
 
-审计轮次: 4
+审计轮次: 5
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-web-usability-hardening-2026-02-22.prd.project.md
 
 ## 1. Executive Summary
