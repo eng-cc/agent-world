@@ -23,6 +23,7 @@
 | `doc/world-simulator/kernel/kernel-rule-wasm-readiness.prd.md` | `doc/world-simulator/kernel/kernel-rule-wasm-readiness.prd.project.md` |
 | `doc/world-simulator/kernel/kernel-rule-wasm-sandbox-bridge.prd.md` | `doc/world-simulator/kernel/kernel-rule-wasm-sandbox-bridge.prd.project.md` |
 | `doc/world-simulator/kernel/location-electricity-pool-removal-and-radiation-plant.prd.md` | `doc/world-simulator/kernel/location-electricity-pool-removal-and-radiation-plant.prd.project.md` |
+| `doc/world-simulator/kernel/power-storage-complete-removal-2026-03-06.prd.md` | `doc/world-simulator/kernel/power-storage-complete-removal-2026-03-06.prd.project.md` |
 | `doc/world-simulator/kernel/resource-kind-compound-hardware-hard-migration.prd.md` | `doc/world-simulator/kernel/resource-kind-compound-hardware-hard-migration.prd.project.md` |
 | `doc/world-simulator/kernel/rust-wasm-build-suite.prd.md` | `doc/world-simulator/kernel/rust-wasm-build-suite.prd.project.md` |
 | `doc/world-simulator/kernel/social-fact-ledger-declarative-reputation.prd.md` | `doc/world-simulator/kernel/social-fact-ledger-declarative-reputation.prd.project.md` |
