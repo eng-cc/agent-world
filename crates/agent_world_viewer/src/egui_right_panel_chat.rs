@@ -243,6 +243,8 @@ pub(super) fn render_chat_section(
                         player_id: Some(VIEWER_PLAYER_ID.to_string()),
                         public_key: None,
                         auth: None,
+                        intent_tick: state.snapshot.as_ref().map(|snapshot| snapshot.time),
+                        intent_seq: None,
                     };
                     sign_agent_chat_request(&mut request)?;
                     client

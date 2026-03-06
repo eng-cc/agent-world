@@ -192,6 +192,9 @@ pub(super) fn attach_agent_chat_auth(
     signer: &ViewerAuthSigner,
     nonce: u64,
 ) -> Result<(), String> {
+    if request.intent_seq.is_none() {
+        request.intent_seq = Some(nonce);
+    }
     request.player_id = Some(signer.player_id.clone());
     request.public_key = Some(signer.public_key.clone());
     request.auth = None;

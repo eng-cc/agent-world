@@ -384,6 +384,8 @@ fn attach_agent_chat_auth_sets_claims_and_verifiable_proof() {
         player_id: None,
         public_key: None,
         auth: None,
+        intent_tick: Some(9),
+        intent_seq: None,
     };
 
     attach_agent_chat_auth(&mut request, &signer, 41).expect("attach auth");
@@ -401,6 +403,8 @@ fn attach_agent_chat_auth_sets_claims_and_verifiable_proof() {
     assert_eq!(verified.player_id, signer.player_id);
     assert_eq!(verified.public_key, signer.public_key);
     assert_eq!(verified.nonce, 41);
+    assert_eq!(request.intent_tick, Some(9));
+    assert_eq!(request.intent_seq, Some(41));
 }
 
 #[test]

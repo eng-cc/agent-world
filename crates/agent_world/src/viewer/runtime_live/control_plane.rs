@@ -2,7 +2,7 @@ use super::*;
 
 use super::super::auth::{
     verify_agent_chat_auth_proof, verify_prompt_control_apply_auth_proof,
-    verify_prompt_control_rollback_auth_proof, PromptControlAuthIntent,
+    verify_prompt_control_rollback_auth_proof, PromptControlAuthIntent, VerifiedPlayerAuth,
 };
 use super::super::protocol::{
     AgentChatAck, AgentChatError, AgentChatRequest, PromptControlAck, PromptControlApplyRequest,
@@ -18,6 +18,12 @@ mod llm_sidecar;
 pub(super) use llm_sidecar::{
     simulator_action_label, simulator_action_to_runtime, RuntimeLlmSidecar,
 };
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct ResolvedAgentChatIntent {
+    intent_tick: Option<u64>,
+    intent_seq: u64,
+}
 
 impl ViewerRuntimeLiveServer {
     pub(super) fn handle_prompt_control(
@@ -272,11 +278,12 @@ impl ViewerRuntimeLiveServer {
         &mut self,
         request: AgentChatRequest,
     ) -> Result<AgentChatAck, AgentChatError> {
+        let agent_id = request.agent_id.clone();
         if !self.llm_sidecar.is_llm_mode() {
             return Err(AgentChatError {
                 code: "llm_mode_required".to_string(),
                 message: "agent chat requires runtime live server running with --llm".to_string(),
-                agent_id: Some(request.agent_id),
+                agent_id: Some(agent_id),
             });
         }
 
@@ -290,7 +297,7 @@ impl ViewerRuntimeLiveServer {
             return Err(AgentChatError {
                 code: "player_id_required".to_string(),
                 message: "agent_chat requires non-empty player_id".to_string(),
-                agent_id: Some(request.agent_id),
+                agent_id: Some(agent_id),
             });
         };
         let public_key = normalize_optional_public_key(request.public_key.as_deref());
@@ -299,28 +306,73 @@ impl ViewerRuntimeLiveServer {
             return Err(AgentChatError {
                 code: "empty_message".to_string(),
                 message: "chat message cannot be empty".to_string(),
-                agent_id: Some(request.agent_id),
+                agent_id: Some(agent_id),
             });
         }
-        self.verify_and_consume_agent_chat_auth(&request)?;
+        let verified = self.verify_agent_chat_auth(&request)?;
+        let intent = resolve_agent_chat_intent(&request, verified.nonce).map_err(|message| {
+            AgentChatError {
+                code: "intent_seq_invalid".to_string(),
+                message,
+                agent_id: Some(agent_id.clone()),
+            }
+        })?;
+        if let Some(replay_ack) = self
+            .llm_sidecar
+            .find_chat_intent_replay(
+                verified.player_id.as_str(),
+                agent_id.as_str(),
+                intent.intent_seq,
+                intent.intent_tick,
+                message.as_str(),
+                public_key.as_deref(),
+            )
+            .map_err(|message| AgentChatError {
+                code: "intent_seq_conflict".to_string(),
+                message,
+                agent_id: Some(agent_id.clone()),
+            })?
+        {
+            return Ok(replay_ack);
+        }
+        self.llm_sidecar
+            .consume_player_auth_nonce(verified.player_id.as_str(), verified.nonce)
+            .map_err(|message| AgentChatError {
+                code: "auth_nonce_replay".to_string(),
+                message,
+                agent_id: Some(agent_id.clone()),
+            })?;
         self.bind_agent_player_access_for_chat(
-            request.agent_id.as_str(),
+            agent_id.as_str(),
             player_id.as_str(),
             public_key.as_deref(),
         )?;
         self.llm_sidecar.push_chat_message(
             &self.world,
             &self.snapshot_config,
-            request.agent_id.as_str(),
+            agent_id.as_str(),
             message.as_str(),
         )?;
         self.llm_sidecar.request_decision();
-        Ok(AgentChatAck {
-            agent_id: request.agent_id,
+        let ack = AgentChatAck {
+            agent_id: agent_id.clone(),
             accepted_at_tick: self.world.state().time,
-            message_len: request.message.trim().chars().count(),
+            message_len: message.chars().count(),
             player_id: Some(player_id),
-        })
+            intent_tick: intent.intent_tick,
+            intent_seq: Some(intent.intent_seq),
+            idempotent_replay: false,
+        };
+        self.llm_sidecar.record_chat_intent_ack(
+            verified.player_id.as_str(),
+            agent_id.as_str(),
+            intent.intent_seq,
+            intent.intent_tick,
+            message.as_str(),
+            public_key.as_deref(),
+            &ack,
+        );
+        Ok(ack)
     }
 
     fn verify_and_consume_prompt_control_apply_auth(
@@ -388,10 +440,10 @@ impl ViewerRuntimeLiveServer {
         Ok(())
     }
 
-    fn verify_and_consume_agent_chat_auth(
+    fn verify_agent_chat_auth(
         &mut self,
         request: &AgentChatRequest,
-    ) -> Result<(), AgentChatError> {
+    ) -> Result<VerifiedPlayerAuth, AgentChatError> {
         let Some(auth) = request.auth.as_ref() else {
             return Err(AgentChatError {
                 code: "auth_proof_required".to_string(),
@@ -405,14 +457,7 @@ impl ViewerRuntimeLiveServer {
                 message,
                 agent_id: Some(request.agent_id.clone()),
             })?;
-        self.llm_sidecar
-            .consume_player_auth_nonce(verified.player_id.as_str(), verified.nonce)
-            .map_err(|message| AgentChatError {
-                code: "auth_nonce_replay".to_string(),
-                message,
-                agent_id: Some(request.agent_id.clone()),
-            })?;
-        Ok(())
+        Ok(verified)
     }
 
     fn current_prompt_version(&self, agent_id: &str) -> Option<u64> {
@@ -789,4 +834,27 @@ pub(super) fn map_auth_verify_error_code(message: &str) -> &'static str {
         return "auth_claim_invalid";
     }
     "auth_invalid"
+}
+
+fn resolve_agent_chat_intent(
+    request: &AgentChatRequest,
+    verified_nonce: u64,
+) -> Result<ResolvedAgentChatIntent, String> {
+    let intent_seq = match request.intent_seq {
+        Some(0) => {
+            return Err("intent_seq must be greater than zero".to_string());
+        }
+        Some(seq) if seq != verified_nonce => {
+            return Err(format!(
+                "intent_seq {} must match auth nonce {}",
+                seq, verified_nonce
+            ));
+        }
+        Some(seq) => seq,
+        None => verified_nonce,
+    };
+    Ok(ResolvedAgentChatIntent {
+        intent_tick: request.intent_tick,
+        intent_seq,
+    })
 }

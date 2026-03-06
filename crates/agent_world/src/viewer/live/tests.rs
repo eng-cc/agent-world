@@ -127,6 +127,9 @@ fn signed_agent_chat_request(
     private_key_hex: &str,
 ) -> AgentChatRequest {
     request.public_key = Some(public_key_hex.to_string());
+    if request.intent_seq.is_none() {
+        request.intent_seq = Some(nonce);
+    }
     let proof =
         crate::viewer::sign_agent_chat_auth_proof(&request, nonce, public_key_hex, private_key_hex)
             .expect("sign agent_chat auth");
@@ -799,6 +802,8 @@ fn agent_chat_requires_player_id() {
             player_id: None,
             public_key: None,
             auth: None,
+            intent_tick: None,
+            intent_seq: None,
         })
         .expect_err("missing player_id should be rejected");
 
@@ -819,6 +824,8 @@ fn agent_chat_rejects_replayed_nonce() {
             player_id: Some("player-a".to_string()),
             public_key: None,
             auth: None,
+            intent_tick: None,
+            intent_seq: None,
         },
         9,
         public_key.as_str(),
@@ -859,6 +866,8 @@ fn agent_chat_upgrades_legacy_player_binding_with_public_key() {
                 player_id: Some("player-a".to_string()),
                 public_key: Some(public_key.clone()),
                 auth: None,
+                intent_tick: None,
+                intent_seq: None,
             },
             6,
             public_key.as_str(),

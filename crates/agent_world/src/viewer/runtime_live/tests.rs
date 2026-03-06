@@ -11,6 +11,15 @@ fn test_signer(seed: u8) -> (String, String) {
     )
 }
 
+fn set_test_llm_env() {
+    std::env::set_var(crate::simulator::ENV_LLM_MODEL, "gpt-4o-mini");
+    std::env::set_var(
+        crate::simulator::ENV_LLM_BASE_URL,
+        "https://api.openai.com/v1",
+    );
+    std::env::set_var(crate::simulator::ENV_LLM_API_KEY, "test-api-key");
+}
+
 fn signed_prompt_control_apply_request(
     mut request: crate::viewer::PromptControlApplyRequest,
     intent: crate::viewer::PromptControlAuthIntent,
@@ -27,6 +36,23 @@ fn signed_prompt_control_apply_request(
         private_key_hex,
     )
     .expect("sign prompt auth");
+    request.auth = Some(proof);
+    request
+}
+
+fn signed_agent_chat_request(
+    mut request: crate::viewer::AgentChatRequest,
+    nonce: u64,
+    public_key_hex: &str,
+    private_key_hex: &str,
+) -> crate::viewer::AgentChatRequest {
+    request.public_key = Some(public_key_hex.to_string());
+    if request.intent_seq.is_none() {
+        request.intent_seq = Some(nonce);
+    }
+    let proof =
+        crate::viewer::sign_agent_chat_auth_proof(&request, nonce, public_key_hex, private_key_hex)
+            .expect("sign agent chat auth");
     request.auth = Some(proof);
     request
 }
@@ -348,7 +374,159 @@ fn runtime_agent_chat_script_mode_requires_llm_mode() {
             public_key: None,
             auth: None,
             message: "hello".to_string(),
+            intent_tick: None,
+            intent_seq: None,
         })
         .expect_err("script mode should reject chat");
     assert_eq!(err.code, "llm_mode_required");
+}
+
+#[test]
+fn runtime_agent_chat_replay_returns_idempotent_ack() {
+    set_test_llm_env();
+    let mut server = ViewerRuntimeLiveServer::new(
+        ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal)
+            .with_decision_mode(ViewerLiveDecisionMode::Llm),
+    )
+    .expect("runtime server");
+    let agent_id = server
+        .world
+        .state()
+        .agents
+        .keys()
+        .next()
+        .cloned()
+        .expect("seed agent");
+    let (public_key, private_key) = test_signer(21);
+    let request = signed_agent_chat_request(
+        crate::viewer::AgentChatRequest {
+            agent_id: agent_id.clone(),
+            player_id: Some("player-a".to_string()),
+            public_key: None,
+            auth: None,
+            message: "hello".to_string(),
+            intent_tick: Some(7),
+            intent_seq: Some(5),
+        },
+        5,
+        public_key.as_str(),
+        private_key.as_str(),
+    );
+
+    let first = server
+        .handle_agent_chat(request.clone())
+        .expect("first request accepted");
+    assert_eq!(first.intent_tick, Some(7));
+    assert_eq!(first.intent_seq, Some(5));
+    assert!(!first.idempotent_replay);
+
+    let replay = server
+        .handle_agent_chat(request)
+        .expect("replay request accepted");
+    assert_eq!(replay.agent_id, first.agent_id);
+    assert_eq!(replay.accepted_at_tick, first.accepted_at_tick);
+    assert_eq!(replay.message_len, first.message_len);
+    assert_eq!(replay.player_id, first.player_id);
+    assert_eq!(replay.intent_tick, first.intent_tick);
+    assert_eq!(replay.intent_seq, first.intent_seq);
+    assert!(replay.idempotent_replay);
+    assert_eq!(
+        server
+            .llm_sidecar
+            .player_auth_last_nonce
+            .get("player-a")
+            .copied(),
+        Some(5)
+    );
+}
+
+#[test]
+fn runtime_agent_chat_rejects_intent_seq_conflict_on_payload_change() {
+    set_test_llm_env();
+    let mut server = ViewerRuntimeLiveServer::new(
+        ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal)
+            .with_decision_mode(ViewerLiveDecisionMode::Llm),
+    )
+    .expect("runtime server");
+    let agent_id = server
+        .world
+        .state()
+        .agents
+        .keys()
+        .next()
+        .cloned()
+        .expect("seed agent");
+    let (public_key, private_key) = test_signer(22);
+    let first = signed_agent_chat_request(
+        crate::viewer::AgentChatRequest {
+            agent_id: agent_id.clone(),
+            player_id: Some("player-a".to_string()),
+            public_key: None,
+            auth: None,
+            message: "hello".to_string(),
+            intent_tick: Some(10),
+            intent_seq: Some(6),
+        },
+        6,
+        public_key.as_str(),
+        private_key.as_str(),
+    );
+    server
+        .handle_agent_chat(first)
+        .expect("first request accepted");
+
+    let conflict = signed_agent_chat_request(
+        crate::viewer::AgentChatRequest {
+            agent_id,
+            player_id: Some("player-a".to_string()),
+            public_key: None,
+            auth: None,
+            message: "changed".to_string(),
+            intent_tick: Some(10),
+            intent_seq: Some(6),
+        },
+        6,
+        public_key.as_str(),
+        private_key.as_str(),
+    );
+    let err = server
+        .handle_agent_chat(conflict)
+        .expect_err("same seq with different payload must fail");
+    assert_eq!(err.code, "intent_seq_conflict");
+}
+
+#[test]
+fn runtime_agent_chat_rejects_intent_seq_nonce_mismatch() {
+    let mut server = ViewerRuntimeLiveServer::new(
+        ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal)
+            .with_decision_mode(ViewerLiveDecisionMode::Llm),
+    )
+    .expect("runtime server");
+    let agent_id = server
+        .world
+        .state()
+        .agents
+        .keys()
+        .next()
+        .cloned()
+        .expect("seed agent");
+    let (public_key, private_key) = test_signer(23);
+    let request = signed_agent_chat_request(
+        crate::viewer::AgentChatRequest {
+            agent_id,
+            player_id: Some("player-a".to_string()),
+            public_key: None,
+            auth: None,
+            message: "hello".to_string(),
+            intent_tick: Some(3),
+            intent_seq: Some(8),
+        },
+        9,
+        public_key.as_str(),
+        private_key.as_str(),
+    );
+    let err = server
+        .handle_agent_chat(request)
+        .expect_err("intent seq mismatch should fail");
+    assert_eq!(err.code, "intent_seq_invalid");
 }

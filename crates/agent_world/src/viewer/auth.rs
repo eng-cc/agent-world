@@ -71,6 +71,10 @@ struct AgentChatSigningPayload<'a> {
     public_key: &'a str,
     nonce: u64,
     message: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    intent_tick: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    intent_seq: Option<u64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -393,6 +397,13 @@ fn build_agent_chat_signing_payload(
     public_key: &str,
     nonce: u64,
 ) -> Result<Vec<u8>, String> {
+    let intent_seq = match request.intent_seq {
+        Some(0) => {
+            return Err("agent_chat intent_seq must be greater than zero".to_string());
+        }
+        Some(value) => Some(value),
+        None => None,
+    };
     let payload = AgentChatSigningPayload {
         operation: "agent_chat",
         agent_id: request.agent_id.as_str(),
@@ -400,6 +411,8 @@ fn build_agent_chat_signing_payload(
         public_key,
         nonce,
         message: request.message.as_str(),
+        intent_tick: request.intent_tick,
+        intent_seq,
     };
     encode_signing_payload(payload)
 }
@@ -635,6 +648,8 @@ mod tests {
             player_id: Some("player-a".to_string()),
             public_key: Some(public_key.clone()),
             auth: None,
+            intent_tick: Some(9),
+            intent_seq: Some(15),
         };
         let mut proof =
             sign_agent_chat_auth_proof(&request, 15, public_key.as_str(), private_key.as_str())
@@ -653,6 +668,8 @@ mod tests {
             player_id: Some("player-a".to_string()),
             public_key: Some(public_key.clone()),
             auth: None,
+            intent_tick: None,
+            intent_seq: Some(16),
         };
         let mut proof =
             sign_agent_chat_auth_proof(&request, 16, public_key.as_str(), private_key.as_str())
@@ -660,5 +677,23 @@ mod tests {
         proof.signature = "badprefix:deadbeef".to_string();
         let err = verify_agent_chat_auth_proof(&request, &proof).expect_err("invalid prefix");
         assert!(err.contains("awviewauth:v1"));
+    }
+
+    #[test]
+    fn agent_chat_auth_verify_rejects_zero_intent_seq() {
+        let (public_key, private_key) = test_signer();
+        let request = AgentChatRequest {
+            agent_id: "agent-0".to_string(),
+            message: "hello".to_string(),
+            player_id: Some("player-a".to_string()),
+            public_key: Some(public_key.clone()),
+            auth: None,
+            intent_tick: Some(1),
+            intent_seq: Some(0),
+        };
+        let err =
+            sign_agent_chat_auth_proof(&request, 17, public_key.as_str(), private_key.as_str())
+                .expect_err("zero intent_seq should fail");
+        assert!(err.contains("intent_seq"));
     }
 }

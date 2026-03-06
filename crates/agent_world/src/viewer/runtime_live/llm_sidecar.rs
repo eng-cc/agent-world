@@ -13,7 +13,8 @@ use crate::simulator::{
     CHUNK_GENERATION_SCHEMA_VERSION, SNAPSHOT_VERSION,
 };
 use crate::viewer::live::ViewerLiveDecisionMode;
-use crate::viewer::protocol::AgentChatError;
+use crate::viewer::protocol::{AgentChatAck, AgentChatError};
+use sha2::{Digest, Sha256};
 
 use super::super::{location_id_for_pos, mapping::runtime_state_to_simulator_model};
 
@@ -28,6 +29,14 @@ pub(super) struct RuntimeLlmDecision {
     pub(super) agent_id: String,
     pub(super) decision: AgentDecision,
     pub(super) decision_trace: Option<AgentDecisionTrace>,
+}
+
+#[derive(Clone, Debug)]
+struct RuntimeChatIntentAckRecord {
+    ack: AgentChatAck,
+    message_hash: String,
+    public_key: Option<String>,
+    intent_tick: Option<u64>,
 }
 
 impl RuntimeLlmDecision {
@@ -70,6 +79,7 @@ pub(in crate::viewer::runtime_live) struct RuntimeLlmSidecar {
     pub(in crate::viewer::runtime_live) agent_player_bindings: BTreeMap<String, String>,
     pub(in crate::viewer::runtime_live) agent_public_key_bindings: BTreeMap<String, String>,
     pub(in crate::viewer::runtime_live) player_auth_last_nonce: BTreeMap<String, u64>,
+    player_chat_intent_acks: BTreeMap<(String, String, u64), RuntimeChatIntentAckRecord>,
     llm_decision_mailbox: u64,
     runner: Option<AgentRunner<LlmAgentBehavior<OpenAiChatCompletionClient>>>,
     shadow_kernel: Option<WorldKernel>,
@@ -85,6 +95,7 @@ impl RuntimeLlmSidecar {
             agent_player_bindings: BTreeMap::new(),
             agent_public_key_bindings: BTreeMap::new(),
             player_auth_last_nonce: BTreeMap::new(),
+            player_chat_intent_acks: BTreeMap::new(),
             llm_decision_mailbox: 0,
             runner: None,
             shadow_kernel: None,
@@ -119,6 +130,63 @@ impl RuntimeLlmSidecar {
         self.player_auth_last_nonce
             .insert(player_id.to_string(), nonce);
         Ok(())
+    }
+
+    pub(super) fn find_chat_intent_replay(
+        &self,
+        player_id: &str,
+        agent_id: &str,
+        intent_seq: u64,
+        intent_tick: Option<u64>,
+        message: &str,
+        public_key: Option<&str>,
+    ) -> Result<Option<AgentChatAck>, String> {
+        let key = (
+            player_id.trim().to_string(),
+            agent_id.trim().to_string(),
+            intent_seq,
+        );
+        let Some(record) = self.player_chat_intent_acks.get(&key) else {
+            return Ok(None);
+        };
+        let normalized_public_key = normalize_optional_public_key(public_key);
+        let message_hash = hash_chat_message(message);
+        if record.message_hash != message_hash
+            || record.intent_tick != intent_tick
+            || record.public_key != normalized_public_key
+        {
+            return Err(format!(
+                "agent_chat intent_seq conflict for {} on {} seq {}",
+                key.0, key.1, intent_seq
+            ));
+        }
+        let mut ack = record.ack.clone();
+        ack.idempotent_replay = true;
+        Ok(Some(ack))
+    }
+
+    pub(super) fn record_chat_intent_ack(
+        &mut self,
+        player_id: &str,
+        agent_id: &str,
+        intent_seq: u64,
+        intent_tick: Option<u64>,
+        message: &str,
+        public_key: Option<&str>,
+        ack: &AgentChatAck,
+    ) {
+        let key = (
+            player_id.trim().to_string(),
+            agent_id.trim().to_string(),
+            intent_seq,
+        );
+        let record = RuntimeChatIntentAckRecord {
+            ack: ack.clone(),
+            message_hash: hash_chat_message(message),
+            public_key: normalize_optional_public_key(public_key),
+            intent_tick,
+        };
+        self.player_chat_intent_acks.insert(key, record);
     }
 
     pub(super) fn bind_agent_player(
@@ -405,6 +473,19 @@ impl RuntimeLlmSidecar {
         }
         Ok(())
     }
+}
+
+fn normalize_optional_public_key(value: Option<&str>) -> Option<String> {
+    value
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(ToOwned::to_owned)
+}
+
+fn hash_chat_message(message: &str) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(message.as_bytes());
+    hex::encode(hasher.finalize())
 }
 
 pub(in crate::viewer::runtime_live) fn simulator_action_label(action: &SimulatorAction) -> String {

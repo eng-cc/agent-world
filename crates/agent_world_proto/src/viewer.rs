@@ -135,6 +135,10 @@ pub struct AgentChatRequest {
     pub public_key: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub auth: Option<PlayerAuthProof>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub intent_tick: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub intent_seq: Option<u64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -289,6 +293,16 @@ pub struct AgentChatAck<Time> {
     pub message_len: usize,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub player_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub intent_tick: Option<Time>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub intent_seq: Option<u64>,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub idempotent_replay: bool,
+}
+
+fn is_false(value: &bool) -> bool {
+    !*value
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -450,6 +464,8 @@ mod tests {
                     nonce: 9,
                     signature: "awviewauth:v1:deadbeef".to_string(),
                 }),
+                intent_tick: Some(42),
+                intent_seq: Some(9),
             },
         };
         let json = serde_json::to_string(&request).expect("serialize request");
@@ -496,6 +512,8 @@ mod tests {
             panic!("expected agent_chat request");
         };
         assert_eq!(request.auth, None);
+        assert_eq!(request.intent_tick, None);
+        assert_eq!(request.intent_seq, None);
     }
 
     #[test]
@@ -573,6 +591,9 @@ mod tests {
                 accepted_at_tick: 42,
                 message_len: 11,
                 player_id: Some("player-1".to_string()),
+                intent_tick: Some(42),
+                intent_seq: Some(17),
+                idempotent_replay: true,
             },
         };
         let json = serde_json::to_string(&response).expect("serialize response");

@@ -1038,6 +1038,11 @@ impl LiveWorld {
             accepted_at_tick: self.kernel.time(),
             message_len: message.chars().count(),
             player_id: Some(player_id),
+            intent_tick: request.intent_tick,
+            intent_seq: request
+                .intent_seq
+                .or_else(|| request.auth.as_ref().map(|auth| auth.nonce)),
+            idempotent_replay: false,
         })
     }
 

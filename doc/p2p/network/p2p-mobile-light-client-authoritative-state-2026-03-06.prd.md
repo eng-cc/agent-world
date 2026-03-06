@@ -36,7 +36,7 @@
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
-| 输入意图上报 | `player_id/session_pubkey/tick/seq/action/payload_hash/sig` | 客户端只发送 intent，不上报位置/血量等权威状态 | `queued -> sequenced -> executed` | 以 `tick` 主序、`seq` 次序；同 `(player_id, seq)` 去重 | 仅登录后有效 session key 可写入 |
+| 输入意图上报 | `player_id/session_pubkey/tick/seq/action/payload_hash/sig` | 客户端只发送 intent，不上报位置/血量等权威状态 | `queued -> sequenced -> executed` | 以 `tick` 主序、`seq` 次序；同 `(player_id, seq)` 去重，且 `seq` 必须与签名 `nonce` 一致 | 仅登录后有效 session key 可写入 |
 | 权威增量下发 | `from_tick/to_tick/batch_id/patches/state_root/authority_sig` | 客户端接收并校验签名/根哈希，执行视觉纠偏 | `predicted -> corrected -> confirmed` | `to_tick` 必须单调递增；越界 patch 拒收 | 仅权威节点签名数据可生效 |
 | 链上承诺与挑战 | `batch_id/state_root/data_root/bond/challenge_deadline` | 提交承诺；watcher 在窗口内发起 challenge | `committed -> challenged -> resolved -> final` | 超过 `challenge_deadline` 自动进入 final | 仅被授权提交者可 commit；挑战者需抵押 |
 | 最终性展示 | `tx_hash/confirm_height/final_height/finality_state` | 客户端 UI 展示三段最终性并限制可消费动作 | `pending -> confirmed -> final` | 资产结算与排行榜仅使用 final 数据 | 非 final 数据禁止触发资产结算 |
@@ -44,6 +44,7 @@
 - Acceptance Criteria:
   - AC-MLC-001 (PRD-P2P-MLC-001): 手机端主流程不启动本地权威模拟器；只存在输入、渲染和纠偏逻辑。
   - AC-MLC-002 (PRD-P2P-MLC-001): 同一 `(player_id, seq)` 重复上报仅生效一次，且具备审计日志。
+  - AC-MLC-002a (PRD-P2P-MLC-001): 同一 `(player_id, agent_id, seq)` 重放请求返回幂等 ACK（`idempotent_replay=true`）；同序号不同载荷必须拒绝。
   - AC-MLC-003 (PRD-P2P-MLC-002): 至少 95% 批次在提交窗口内完成 `commit -> confirmed`。
   - AC-MLC-004 (PRD-P2P-MLC-003): challenge 流程可在窗口内成功阻断错误根并产生惩罚记录。
   - AC-MLC-005 (PRD-P2P-MLC-004): 客户端断线恢复流程可在快照可用前提下追平到最近确认高度。
@@ -76,6 +77,7 @@
   - `testing-manual.md`
 - Edge Cases & Error Handling:
   - 意图乱序/重复：按 `(tick, seq)` 排序并去重，重复 intent 返回幂等 ACK。
+  - 序号篡改：`intent_seq` 与签名 `nonce` 不一致时直接拒绝，避免重放窗口绕过。
   - 长时间无 peer：Gateway 回退到中继链路并触发网络健康告警。
   - 链重组：客户端回滚到最近稳定提交点并重放未最终批次。
   - 挑战超时：窗口超时后状态进入 final，后续仅允许审计不上链回滚。
