@@ -91,6 +91,18 @@
   - 无复现证据的 P0/P1 不得降级。
   - P0/P1 在 `verified` 前不得进入发布评审。
   - `deferred` 必须带豁免 ID、风险说明、下一次复测日期。
+- 发布前可玩性门禁与回归节奏（TASK-GAME-004）:
+| 阶段 | 触发频率 / 时点 | 必跑入口 | 通过标准 | 输出证据 | 失败处置 |
+| --- | --- | --- | --- | --- | --- |
+| 日常回归（D） | 有 gameplay/viewer 改动的工作日 | `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required scenario_specs_match_ids -- --nocapture`；`env -u RUSTC_WRAPPER cargo test -p agent_world_viewer player_mission_tests:: -- --nocapture` | 两条命令全绿；新增问题中 `P0=0`。 | 当日测试日志 + 问题清单更新。 | 阻断当日合入，转入 `TASK-GAME-003` 闭环。 |
+| 候选版本回归（RC） | 每个候选版本至少 1 轮 | `./scripts/ci-tests.sh required`；`env -u RUSTC_WRAPPER cargo test -p agent_world runtime::tests::gameplay_protocol:: -- --nocapture` | required 套件通过；新手/经济/战争协议回归无回退；`P0/P1=0` 或具备豁免。 | RC 回归报告 + 命令与结论。 | 标记 `blocked`，禁止进入发布评审。 |
+| Web 闭环门禁（D-1） | 发布前 1 天 | `./scripts/run-game-test-ab.sh --headed --no-llm`（S6）；按 `doc/playability_test_result/game-test.prd.md` 填写卡片 | A/B 流程 `PASS`；`console error = 0`；有效控制命中率 `>= 80%`；无未豁免 `P0/P1`。 | `output/playwright/playability/<run_id>/` + `doc/playability_test_result/card_*.md`。 | 阻断发布，进入修复并复跑 S6。 |
+| 发布评审（D0） | 发布会 | 汇总 D/RC/D-1 证据包并执行 go/no-go 评审 | 证据链完整、结论一致、风险闭环清晰。 | 发布结论（`go`/`no-go`）、豁免单、回滚预案。 | 结论为 `no-go` 时冻结版本并触发应急回归。 |
+- 发布证据包最小字段:
+  - 命令清单（含执行时间、执行人、结果摘要）。
+  - 日志与产物路径（测试日志、Playwright 录屏/截图、可玩性卡片）。
+  - 问题闭环状态（`P0~P3` 分级、豁免 ID、下次复测时间）。
+  - 最终决策记录（go/no-go、风险、回滚策略）。
 - Acceptance Criteria:
   - AC-1: game PRD 覆盖核心玩法循环、治理机制、测试口径。
   - AC-2: game project 文档任务项可映射到 PRD-GAME-001/002/003。
@@ -100,6 +112,7 @@
   - AC-6: 新增长期在线分布式专题 PRD，明确 RSM、治理时延生效、身份与惩罚的验收约束。
   - AC-7: 新手/经济/战争三循环均具备 Given/When/Then、规则层边界、证据事件、`test_tier_required` 命令与失败处置，且可直接用于周回归。
   - AC-8: 可玩性问题分级模板覆盖 `P0~P3` 判定、发布阻断规则、责任人和时限，并能直接驱动 `opened -> triaged -> fixing -> verified -> closed/deferred` 闭环。
+  - AC-9: 发布前门禁明确 D/RC/D-1/D0 节奏、必跑命令、通过阈值与证据包字段，能够直接产出 go/no-go 决策。
 - Non-Goals:
   - 不在本 PRD 中给出逐条数值参数表。
   - 不替代 runtime/p2p 的底层实现设计。
@@ -163,3 +176,4 @@
 | DEC-GAME-003 | 发布评审绑定可玩性证据 | 仅依赖技术测试 | 能降低“可运行但不好玩”的发布风险。 |
 | DEC-GAME-004 | 以“新手/经济/战争”分循环验收矩阵驱动 `TASK-GAME-002` | 仅保留统一 required/full 命令清单 | 分循环矩阵更易映射规则边界、失败处置与责任归属。 |
 | DEC-GAME-005 | 采用 `P0~P3 + 闭环模板 + deferred 豁免` 的分级机制 | 仅保留缺陷列表，不定义状态与门禁 | 可保证问题优先级、修复责任与发布决策可审计。 |
+| DEC-GAME-006 | 采用 `D/RC/D-1/D0` 四阶段可玩性门禁节奏 | 仅在发布前一次性回归 | 分阶段门禁可提前暴露风险，降低临门一脚失败概率。 |
