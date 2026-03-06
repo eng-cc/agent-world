@@ -316,6 +316,14 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required mai
   - 审计报表输出 `mint_total/burn_total/net_flow` 与当期 `issued/distributed` 指标。
   - `enforce_main_token_economy_gate` 在 `inflation:*` 或 `arbitrage:*` 告警时返回阻断错误。
   - 报表中 `exploit_signature` 可用于治理升级与 runbook 分诊。
+- 可运维发布阻断门禁（TASK-GAME-017）：
+```bash
+env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required longrun_operability_release_gate_ -- --nocapture
+```
+- 通过标准：
+  - `evaluate_longrun_operability_release_gate` 产出统一报告，覆盖 `SLO + 告警 + 灾备演练 + 灰度阶段 + 经济告警`。
+  - `enforce_longrun_operability_release_gate` 对首个违规项返回阻断错误（包含 `gate + reason`）。
+  - 报告中的 `economy_report.alerts` 会同步升级为发布阻断违规项。
 
 ### S10：五节点真实游戏数据在线长跑套件（L5）
 - 当前状态（2026-02-28）：`scripts/s10-five-node-game-soak.sh` 已恢复为可执行脚本，底座为五进程 `world_chain_runtime`。

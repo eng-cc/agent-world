@@ -71,6 +71,7 @@ mod main_token_economy_audit;
 mod module_action_loop;
 mod module_runtime_metering;
 mod modules;
+mod operability_release_gate;
 mod persistence;
 mod power_bootstrap;
 mod reward_asset;

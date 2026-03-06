@@ -160,6 +160,25 @@
   - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required main_token_economy_ -- --nocapture`
   - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required main_token_treasury_distribution_applies_closed_loop_and_records_audit -- --nocapture`
   - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required main_token_fee_settlement_burns_supply_and_tracks_treasury_buckets -- --nocapture`
+- 已完成 `TASK-GAME-017`（`PRD-GAME-006-05`）：
+  - 新增可运维性发布门禁模型：
+    - `LongRunReleaseStage`（`canary/full`）
+    - `LongRunOperabilityReleaseGateThresholds`
+    - `LongRunOperabilityGateViolation`
+    - `LongRunOperabilityReleaseGateReport`
+  - `World` 新增统一门禁接口：
+    - `evaluate_longrun_operability_release_gate(release_stage, economy_epoch_index, thresholds)`
+    - `enforce_longrun_operability_release_gate(...)`
+  - 门禁指标覆盖：
+    - SLO：`logistics_breach_bps`
+    - 告警升级：`pending_actions_evicted/journal_events_evicted` 与 `tick_consensus_rejection_audit_events`
+    - 灾备演练证据：`RollbackApplied` 事件计数（`rollback_drill_count`）
+    - 灰度阶段：`release_stage >= required_release_stage`
+    - 经济门禁联动：复用 `main_token_economy_audit_report` 告警项纳入阻断。
+  - 阻断错误包含首个违规 `gate + reason`，可直接用于发布 go/no-go 判定。
+- 已通过定向回归（TASK-GAME-017）：
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required longrun_operability_release_gate_ -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required main_token_economy_ -- --nocapture`
 
 ## 6. Validation & Decision Record
 - Test Plan & Traceability:
@@ -169,7 +188,7 @@
 | PRD-GAME-006-02 | TASK-GAME-014 | `test_tier_required` + `test_tier_full` | 回放漂移注入、快照回滚演练、恢复后 `state_root` 对账 | 恢复能力与数据完整性 |
 | PRD-GAME-006-03 | TASK-GAME-015 | `test_tier_required` + `test_tier_full` | 对抗样本重放拒绝、惩罚申诉状态机回归、`evidence_chain_hash` 连续性与误伤率监控校验 | 安全与治理公平性 |
 | PRD-GAME-006-04 | TASK-GAME-016 | `test_tier_required` | `mint/burn/net_flow` 审计报表、通胀/套利阈值告警、经济 gate 阻断校验 | 经济稳定性与抗套利能力 |
-| PRD-GAME-006-05 | TASK-GAME-017 | `test_tier_required` | SLO 对账、告警演练、灰度与灾备回滚演练 | 可运维性与发布稳定性 |
+| PRD-GAME-006-05 | TASK-GAME-017 | `test_tier_required` | SLO/告警/灰度/灾备信号汇总为发布 gate，违规项形成阻断报告 | 可运维性与发布稳定性 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |

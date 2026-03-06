@@ -30,6 +30,7 @@ mod module_store;
 mod modules;
 mod node_points;
 mod node_points_runtime;
+mod operability;
 mod policy;
 mod reward_asset;
 mod rules;
@@ -139,6 +140,10 @@ pub use node_points_runtime::{
     measure_directory_storage_bytes, NodePointsRuntimeAccumulatorSnapshot,
     NodePointsRuntimeCollector, NodePointsRuntimeCollectorSnapshot,
     NodePointsRuntimeCursorSnapshot, NodePointsRuntimeHeuristics, NodePointsRuntimeObservation,
+};
+pub use operability::{
+    LongRunOperabilityGateViolation, LongRunOperabilityReleaseGateReport,
+    LongRunOperabilityReleaseGateThresholds, LongRunReleaseStage,
 };
 pub use reward_asset::{
     reward_redeem_signature_v1, NodeAssetBalance, NodeRewardMintRecord, ProtocolPowerReserve,
