@@ -1,7 +1,6 @@
 # Agent World Runtime：分布式存储自愈定时轮询（2026-02-23）
 
-审计轮次: 3
-
+审计轮次: 4
 ## ROUND-002 主从口径
 - 本文档为增量子文档（slave），主入口为 `doc/p2p/distfs/distfs-self-healing-control-plane-2026-02-23.prd.md`。
 - 本文档仅描述“轮询策略/状态/入口”增量，不重复定义主文档中的通用边界。

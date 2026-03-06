@@ -1,7 +1,6 @@
 # Agent World Runtime：Observer/Bootstrap 路径索引读取接入
 
-审计轮次: 3
-
+审计轮次: 4
 ## 1. Executive Summary
 - Problem Statement: 将 DistFS 路径索引读取能力接入 `agent_world_net` 的 bootstrap/observer 调用链。
 - Proposed Solution: 在“本地已持有执行产物”的场景下，支持不依赖网络拉取完成世界恢复。

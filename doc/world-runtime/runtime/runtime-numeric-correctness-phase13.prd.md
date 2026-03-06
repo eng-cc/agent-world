@@ -1,6 +1,6 @@
 # Agent World Runtime：Membership Reconciliation 调度门控与对账计数算术语义硬化（15 点清单第十三阶段）
 
-审计轮次: 3
+审计轮次: 4
 
 - 对应项目管理文档: doc/world-runtime/runtime/runtime-numeric-correctness-phase13.prd.project.md
 

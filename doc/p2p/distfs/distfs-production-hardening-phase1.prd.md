@@ -1,7 +1,6 @@
 # Agent World Runtime：DistFS 生产化增强（Phase 1）设计文档
 
-审计轮次: 3
-
+审计轮次: 4
 ## ROUND-002 主从口径
 - `doc/p2p/distfs/distfs-production-hardening-phase1.prd.md` 为主文档（master）。
 - `doc/p2p/distfs/distfs-production-hardening-phase2.prd.md` 至 `doc/p2p/distfs/distfs-production-hardening-phase9.prd.md` 为增量子文档（slave）。

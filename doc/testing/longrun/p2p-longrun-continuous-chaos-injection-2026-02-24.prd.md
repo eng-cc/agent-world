@@ -1,6 +1,6 @@
 # Agent World：P2P 长跑持续 Chaos 注入方案（2026-02-24）
 
-审计轮次: 3
+审计轮次: 4
 
 ## 1. Executive Summary
 - Problem Statement: 现有 `--chaos-plan` 只支持固定注入序列，无法模拟线上长期抖动与故障组合，导致 S9 长跑对未知风险覆盖不足。

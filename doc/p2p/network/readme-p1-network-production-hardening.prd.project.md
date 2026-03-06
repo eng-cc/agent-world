@@ -1,7 +1,6 @@
 # README P1 缺口收口：分布式网络主路径生产化（项目管理文档）
 
-审计轮次: 3
-
+审计轮次: 4
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0 (PRD-P2P-MIG-086)：输出设计文档（`doc/p2p/network/readme-p1-network-production-hardening.prd.md`）与项目管理文档（本文件）。
 - [x] T1 (PRD-P2P-MIG-086)：实现 libp2p request 多 peer 轮换重试 + 无 peer 可控回退策略，并补测试。

@@ -1,7 +1,6 @@
 # Node 共识签名身份绑定与复制摄取硬化（项目管理文档）
 
-审计轮次: 3
-
+审计轮次: 4
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0 (PRD-P2P-MIG-088)：输出设计文档（`doc/p2p/node/node-consensus-signer-binding-replication-hardening.prd.md`）
 - [x] T0 (PRD-P2P-MIG-088)：输出项目管理文档（本文件）

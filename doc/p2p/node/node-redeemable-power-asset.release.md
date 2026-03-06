@@ -1,7 +1,6 @@
 # Agent World Runtime：可兑现节点资产与电力兑换闭环（发布说明）
 
-审计轮次: 3
-
+审计轮次: 4
 ## 发布范围
 - 设计/项目文档：
   - `doc/p2p/node/node-redeemable-power-asset.prd.md`

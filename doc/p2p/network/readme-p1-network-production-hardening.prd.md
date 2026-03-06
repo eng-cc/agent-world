@@ -1,7 +1,6 @@
 # README P1 缺口收口：分布式网络主路径生产化
 
-审计轮次: 3
-
+审计轮次: 4
 ## 1. Executive Summary
 - Problem Statement: 收口 P1-1：将 Node 共识消息（proposal/attestation/commit）从“仅 UDP gossip”升级为“libp2p pubsub 主路径”，保留 UDP 兼容兜底。
 - Proposed Solution: 收口 P1-2：将 libp2p request/response 从“单 peer + 无 peer 本地 handler 回退”升级为“多 peer 轮换重试 + 可控本地回退策略”。

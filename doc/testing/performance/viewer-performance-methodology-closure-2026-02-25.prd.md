@@ -1,6 +1,6 @@
 # Agent World：Viewer 性能测试方法论能力补齐（2026-02-25）
 
-审计轮次: 3
+审计轮次: 4
 
 ## 1. Executive Summary
 - Problem Statement: viewer 性能回归长期依赖人工观察，缺少自动采集、门禁判定与跨版本对比的统一方法，发布评审成本高且一致性不足。

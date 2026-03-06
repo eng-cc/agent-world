@@ -1,7 +1,6 @@
 # Agent World Runtime：DistFS 反馈 P2P 广播与拉取桥接（2026-03-01）项目管理文档（项目管理文档）
 
-审计轮次: 3
-
+审计轮次: 4
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0 (PRD-P2P-MIG-063)：完成设计文档与项目管理文档。
 - [x] T1 (PRD-P2P-MIG-063)：扩展 FeedbackStore 复制入库接口（root/event ingest + 幂等）。

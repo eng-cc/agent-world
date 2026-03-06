@@ -1,6 +1,6 @@
 # Legacy Redirect: game-test.prd
 
-审计轮次: 3
+审计轮次: 4
 
 ## 目标
 - 将根目录 `doc/game-test.prd.md` 的 redirect 入口迁移到 `.prd` 命名，保持入口语义一致。

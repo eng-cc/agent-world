@@ -1,6 +1,6 @@
 # Agent World Runtime：Membership Recovery 调度门控与计数聚合算术语义硬化（15 点清单第十二阶段）
 
-审计轮次: 3
+审计轮次: 4
 
 - 对应项目管理文档: doc/world-runtime/runtime/runtime-numeric-correctness-phase12.prd.project.md
 

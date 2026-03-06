@@ -1,6 +1,6 @@
 # testing PRD Project
 
-审计轮次: 3
+审计轮次: 4
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] TASK-TESTING-001 (PRD-TESTING-001) [test_tier_required]: 完成 testing PRD 改写，建立分层测试设计入口。

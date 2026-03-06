@@ -1,6 +1,6 @@
 # Agent World Runtime：代码执行性能采集/统计/分析基础（2026-02-25）
 
-审计轮次: 3
+审计轮次: 4
 
 ## 1. Executive Summary
 - Problem Statement: runtime/simulator 缺少统一的代码执行性能观测基础，导致卡顿风险只能靠分散日志和体感排查，难以在 longrun/viewer/demo 链路内形成稳定诊断。

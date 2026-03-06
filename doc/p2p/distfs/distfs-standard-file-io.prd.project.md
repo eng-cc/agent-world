@@ -1,7 +1,6 @@
 # Agent World Runtime：DistFS 标准文件读写接口（项目管理文档）
 
-审计轮次: 3
-
+审计轮次: 4
 ## 任务拆解（含 PRD-ID 映射）
 - [x] DFIO-1 (PRD-P2P-MIG-080)：设计文档与项目管理文档落地。
 - [x] DFIO-2 (PRD-P2P-MIG-080)：实现 `FileStore` 与本地文件索引（`files_index.json`）。

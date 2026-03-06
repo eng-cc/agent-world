@@ -1,6 +1,6 @@
 # Agent World: 测试覆盖与 CI 扩展
 
-审计轮次: 3
+审计轮次: 4
 
 - 对应项目管理文档: doc/testing/ci/ci-test-coverage.prd.project.md
 

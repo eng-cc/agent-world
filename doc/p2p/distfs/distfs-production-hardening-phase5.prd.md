@@ -1,7 +1,6 @@
 # Agent World Runtime：DistFS 生产化增强（Phase 5）设计文档
 
-审计轮次: 3
-
+审计轮次: 4
 ## ROUND-002 主从口径
 - 主入口文档：`doc/p2p/distfs/distfs-production-hardening-phase1.prd.md`。
 - 本文件为 Phase 5 增量子文档（slave），仅维护本阶段增量内容。

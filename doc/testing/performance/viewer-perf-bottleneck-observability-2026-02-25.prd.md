@@ -1,6 +1,6 @@
 # Agent World：Viewer 性能瓶颈观测能力补齐（2026-02-25）
 
-审计轮次: 3
+审计轮次: 4
 
 ## 1. Executive Summary
 - Problem Statement: 现有 viewer 性能链路主要给出 FPS/帧时/over-budget 结果，能判断是否超标但难以明确“瓶颈在哪”，定位效率低。

@@ -1,5 +1,5 @@
 # GitHub Pages 首页激进改造（2026-02-26）项目管理文档
-审计轮次: 3
+审计轮次: 4
 
 ## 审计备注
 - 主项目入口：`doc/site/github-pages/github-pages-game-engine-reposition-2026-02-25.prd.project.md`

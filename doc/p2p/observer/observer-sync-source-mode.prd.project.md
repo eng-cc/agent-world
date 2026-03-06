@@ -1,7 +1,6 @@
 # Agent World Runtime：Observer 同步源策略化（项目管理文档）
 
-审计轮次: 3
-
+审计轮次: 4
 ## 任务拆解（含 PRD-ID 映射）
 - [x] OSSM-1 (PRD-P2P-MIG-110)：设计文档与项目管理文档落地。
 - [x] OSSM-2 (PRD-P2P-MIG-110)：实现 `HeadSyncSourceMode` 与 `ObserverClient` 模式化同步入口。

@@ -1,7 +1,6 @@
 # Agent World 主链 Token 分配机制二期（项目管理文档）
 
-审计轮次: 3
-
+审计轮次: 4
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0 (PRD-P2P-MIG-111)：设计文档与项目管理文档建档。
 - [x] T1 (PRD-P2P-MIG-111)：实现 Node -> 主链 Token 地址绑定模型并接入 NodePoints 桥接。

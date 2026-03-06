@@ -1,7 +1,6 @@
 # P2P Builtin Wasm 身份共识与跨平台构建（项目管理文档）
 
-审计轮次: 3
-
+审计轮次: 4
 ## 任务拆解（含 PRD-ID 映射）
 - [x] BWI-1 设计文档落地（`doc/p2p/consensus/builtin-wasm-identity-consensus.prd.md`） (PRD-P2P-MIG-057)
 - [x] BWI-2 项目管理文档落地（本文件） (PRD-P2P-MIG-057)

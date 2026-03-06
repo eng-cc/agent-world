@@ -1,6 +1,6 @@
 # Agent World Runtime：Membership Recovery Federated 聚合扫描与游标计数算术语义硬化（15 点清单第十五阶段）
 
-审计轮次: 3
+审计轮次: 4
 
 - 对应项目管理文档: doc/world-runtime/runtime/runtime-numeric-correctness-phase15.prd.project.md
 

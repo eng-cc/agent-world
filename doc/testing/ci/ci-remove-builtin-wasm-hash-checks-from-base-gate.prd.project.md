@@ -1,6 +1,6 @@
 # Agent World: 基础 CI 门禁移除 Builtin Wasm Hash 校验（项目管理）
 
-审计轮次: 3
+审计轮次: 4
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T1 (PRD-TESTING-CI-HASHBASE-001): 建档（设计文档与项目管理文档落地）。

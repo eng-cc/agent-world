@@ -1,7 +1,6 @@
 # Agent World Runtime：异构节点分布式存储最优稳定性改造（项目管理）（项目管理文档）
 
-审计轮次: 3
-
+审计轮次: 4
 ## 任务拆解（含 PRD-ID 映射）
 ### T0 建档
 - [x] 设计文档 (PRD-P2P-MIG-064)：`doc/p2p/distfs/distfs-heterogeneous-node-optimal-stability-2026-02-23.prd.md`

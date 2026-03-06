@@ -1,6 +1,6 @@
 # Agent World: CI 与提交钩子测试分级
 
-审计轮次: 3
+审计轮次: 4
 
 - 对应项目管理文档: doc/testing/ci/ci-tiered-execution.prd.project.md
 

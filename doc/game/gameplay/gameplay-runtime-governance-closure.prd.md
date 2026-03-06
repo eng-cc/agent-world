@@ -1,6 +1,6 @@
 # Gameplay Runtime Governance Closure（生产级设计）
 
-审计轮次: 3
+审计轮次: 4
 
 - 审计轮次: 2
 - 对应项目管理文档: doc/game/gameplay/gameplay-runtime-governance-closure.prd.project.md

@@ -1,6 +1,6 @@
 # Agent World: m1 多 Runner CI Required Check 保护
 
-审计轮次: 3
+审计轮次: 4
 
 - 对应项目管理文档: doc/testing/ci/ci-m1-multi-runner-required-check-protection.prd.project.md
 

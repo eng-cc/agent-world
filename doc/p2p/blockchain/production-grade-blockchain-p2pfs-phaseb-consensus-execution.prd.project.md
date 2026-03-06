@@ -1,7 +1,6 @@
 # Agent World Runtime：生产级区块链 + P2P FS 路线图 Phase B（项目管理文档）
 
-审计轮次: 3
-
+审计轮次: 4
 ## 任务拆解（含 PRD-ID 映射）
 - [x] PRG-B1 (PRD-P2P-MIG-054)：完成 Phase B 设计文档与项目管理文档。
 - [x] PRG-B2 (PRD-P2P-MIG-054)：实现 `agent_world_node` 内生执行 hook、快照字段扩展与持久化兼容。

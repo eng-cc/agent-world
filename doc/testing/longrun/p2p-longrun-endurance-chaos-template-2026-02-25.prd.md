@@ -1,6 +1,6 @@
 # Agent World：P2P 长跑 180 分钟 Chaos 模板方案（2026-02-25）
 
-审计轮次: 3
+审计轮次: 4
 
 ## 1. Executive Summary
 - Problem Statement: S9 长跑缺少可复用、可审计的大规模固定 chaos 基线，导致 180 分钟以上 endurance 场景难以稳定复现与跨版本比对。

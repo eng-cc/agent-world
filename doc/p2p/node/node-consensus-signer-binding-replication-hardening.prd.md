@@ -1,7 +1,6 @@
 # Node 共识签名身份绑定与复制摄取硬化
 
-审计轮次: 3
-
+审计轮次: 4
 ## 1. Executive Summary
 - Problem Statement: 收口 P0：把 node 共识消息签名从“仅校验签名有效”升级为“校验签名有效 + 校验签名公钥与 validator 身份绑定一致”，阻断伪造 validator 身份的空间。
 - Proposed Solution: 收口 P1-1：把 replication 入站处理从“先更新网络高度再尝试落库、且落库错误被吞”升级为“先成功校验/落库再更新观测高度，错误可观测”。

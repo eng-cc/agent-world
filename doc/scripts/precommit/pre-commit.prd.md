@@ -1,6 +1,6 @@
 # Pre-commit Checks（本地提交前测试脚本）
 
-审计轮次: 3
+审计轮次: 4
 
 - 对应项目管理文档: doc/scripts/precommit/pre-commit.prd.project.md
 

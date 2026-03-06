@@ -1,6 +1,6 @@
 # Agent World Runtime：分布式计算与存储
 
-审计轮次: 3
+审计轮次: 4
 ## 1. Executive Summary
 - Problem Statement: 将**计算与存储拆分**为不同节点角色，计算侧专注确定性执行，存储侧专注内容寻址与持久化。
 - Proposed Solution: 参照 **IPFS** 的内容寻址与 DHT 发现方式，以及 **EVM** 的确定性执行与状态根校验模式。

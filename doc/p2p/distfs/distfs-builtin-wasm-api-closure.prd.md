@@ -1,7 +1,6 @@
 # World Runtime：Builtin Wasm DistFS API 闭环
 
-审计轮次: 3
-
+审计轮次: 4
 ## 1. Executive Summary
 - Problem Statement: 将 builtin wasm 的“写入/读取”统一走 `agent_world_distfs` API，避免旁路文件操作。
 - Proposed Solution: 让后续 wasm 模块扩展复用同一 DistFS API 路径（脚本落盘、运行时读取、hash 校验语义一致）。

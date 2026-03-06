@@ -1,6 +1,6 @@
 # Viewer Texture Inspector 材质可辨识增强（2026-02-28）
 
-审计轮次: 3
+审计轮次: 4
 
 - 对应项目管理文档: doc/scripts/viewer-tools/viewer-texture-inspector-material-recognizability-2026-02-28.prd.project.md
 

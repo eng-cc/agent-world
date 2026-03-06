@@ -1,6 +1,6 @@
 # Agent World Runtime：Agent 默认模块体系（Body/Power/Sense/Move/Memory/Storage）
 
-审计轮次: 3
+审计轮次: 4
 
 - 对应项目管理文档: doc/world-runtime/module/agent-default-modules.prd.project.md
 

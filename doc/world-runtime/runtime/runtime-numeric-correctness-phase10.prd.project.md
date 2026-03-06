@@ -1,6 +1,6 @@
 # Agent World Runtime：Governance Tiered Offload 与 Rollback Audit 算术语义硬化（15 点清单第十阶段）项目管理文档
 
-审计轮次: 3
+审计轮次: 4
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T-MIG-20260303 (PRD-ENGINEERING-006): 逐篇阅读旧文档并完成人工重写迁移到 `.prd` 命名。

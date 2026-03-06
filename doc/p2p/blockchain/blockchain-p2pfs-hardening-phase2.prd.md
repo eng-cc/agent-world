@@ -1,6 +1,6 @@
 # Agent World Runtime：区块链 + P2P FS 硬改造（Phase 2）设计文档
 
-审计轮次: 3
+审计轮次: 4
 
 ## 1. Executive Summary
 - Problem Statement: 在 Phase 1 网络闭环基础上，补齐“最小可信 + 重启可恢复”能力。

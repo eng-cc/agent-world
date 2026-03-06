@@ -1,7 +1,6 @@
 # Agent World Runtime：DistFS Feedback P2P Node Runtime 接入（2026-03-01）设计文档
 
-审计轮次: 3
-
+审计轮次: 4
 ## 1. Executive Summary
 - Problem Statement: 在不走共识、无中心化服务器前提下，将 feedback 的“提交 + 传播 + 入库”接入 `agent_world_node` 运行时主循环。
 - Proposed Solution: 让节点具备两种自动行为：

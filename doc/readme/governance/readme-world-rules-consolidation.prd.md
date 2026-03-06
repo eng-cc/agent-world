@@ -1,6 +1,6 @@
 # README 世界规则文档收敛整合（设计文档）
 
-审计轮次: 3
+审计轮次: 4
 
 - 对应项目管理文档: doc/readme/governance/readme-world-rules-consolidation.prd.project.md
 

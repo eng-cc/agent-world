@@ -1,7 +1,6 @@
 # Agent World Runtime：区块链 + P2P FS 硬改造（Phase 8）项目管理文档（项目管理文档）
 
-审计轮次: 3
-
+审计轮次: 4
 ## 任务拆解（含 PRD-ID 映射）
 - [x] HP8-0 (PRD-P2P-MIG-052)：输出设计文档与项目管理文档。
 - [x] HP8-1 (PRD-P2P-MIG-052)：实现共享 ed25519 公钥规范化/allowlist 工具并接线 membership、sequencer、signature。

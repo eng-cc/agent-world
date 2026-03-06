@@ -1,7 +1,6 @@
 # Agent World Runtime：区块链 + P2P FS 硬改造（Phase 6）设计文档
 
-审计轮次: 3
-
+审计轮次: 4
 ## 1. Executive Summary
 - Problem Statement: 在 Phase 5 signer 公钥白名单治理基础上，补齐**生产可运维**所需的策略配置校验能力。
 - Proposed Solution: 将 `accepted_signature_signer_public_keys` 从“原样字符串比较”升级为“规范化后比较”，降低大小写与格式差异导致的误拒绝风险。

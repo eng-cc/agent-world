@@ -1,6 +1,6 @@
 # engineering PRD Project
 
-审计轮次: 3
+审计轮次: 4
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] TASK-ENGINEERING-001 (PRD-ENGINEERING-001) [test_tier_required]: 完成 engineering PRD 改写，建立工程治理主文档。

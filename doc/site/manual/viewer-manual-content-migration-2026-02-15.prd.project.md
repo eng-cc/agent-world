@@ -1,6 +1,6 @@
 # Viewer 使用手册内容搬迁（2026-02-15）项目管理文档
 
-审计轮次: 3
+审计轮次: 4
 
 ## 审计备注
 - 主项目入口文档：`doc/site/manual/site-manual-static-docs.prd.project.md`。

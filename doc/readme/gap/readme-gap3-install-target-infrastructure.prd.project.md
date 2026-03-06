@@ -1,6 +1,6 @@
 # README 缺口 3 收口：模块安装目标语义（自身 / 基础设施）（项目管理文档）
 
-审计轮次: 3
+审计轮次: 4
 
 ## 审计备注
 - 主项目入口统一指向 `doc/readme/gap/readme-gap-distributed-prod-hardening-gap12345.prd.project.md`，本文仅维护增量任务。

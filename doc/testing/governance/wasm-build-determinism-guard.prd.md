@@ -1,6 +1,6 @@
 # Agent World: Builtin Wasm 构建确定性护栏
 
-审计轮次: 3
+审计轮次: 4
 
 - 对应项目管理文档: doc/testing/governance/wasm-build-determinism-guard.prd.project.md
 

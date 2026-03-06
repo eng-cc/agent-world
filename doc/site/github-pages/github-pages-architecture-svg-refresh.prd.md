@@ -1,6 +1,6 @@
 # GitHub Pages 架构图 SVG 精修（四期增量）设计文档
 
-审计轮次: 3
+审计轮次: 4
 
 ## ROUND-002 主从口径
 - 主入口文档：`doc/site/github-pages/github-pages-game-engine-reposition-2026-02-25.prd.md`。

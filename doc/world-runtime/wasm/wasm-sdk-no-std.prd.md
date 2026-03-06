@@ -1,6 +1,6 @@
 # Agent World Runtime：WASM SDK no_std 优先化设计
 
-审计轮次: 3
+审计轮次: 4
 
 - 对应项目管理文档: doc/world-runtime/wasm/wasm-sdk-no-std.prd.project.md
 

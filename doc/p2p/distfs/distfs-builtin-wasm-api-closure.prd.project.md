@@ -1,7 +1,6 @@
 # World Runtime：Builtin Wasm DistFS API 闭环（项目管理文档）
 
-审计轮次: 3
-
+审计轮次: 4
 ## 任务拆解（含 PRD-ID 映射）
 - [x] DAC-1 输出设计文档（`doc/p2p/distfs/distfs-builtin-wasm-api-closure.prd.md`）与项目管理文档（本文件）。 (PRD-P2P-MIG-059)
 - [x] DAC-2 扩展 `agent_world_distfs` (PRD-P2P-MIG-059)：支持可选 hash 算法（sha256）并补充测试。

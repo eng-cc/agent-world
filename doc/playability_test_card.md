@@ -1,6 +1,6 @@
 # Legacy Redirect: playability_test_card
 
-审计轮次: 3
+审计轮次: 4
 
 本文件自 2026-03-03 起仅保留兼容跳转，不再作为活跃入口。
 

@@ -1,7 +1,6 @@
 # Agent World Runtime：节点贡献积分多节点闭环测试
 
-审计轮次: 3
-
+审计轮次: 4
 ## ROUND-002 主从口径
 - 主入口文档：`doc/p2p/node/node-contribution-points.prd.md`。
 - 本文档定位：仅记录多节点闭环测试的增量需求与验收口径；通用规格以主文档为准。

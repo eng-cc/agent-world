@@ -1,7 +1,6 @@
 # world_viewer_live 发行锁定启动（P2P）设计文档（2026-02-23）
 
-审计轮次: 3
-
+审计轮次: 4
 ## 1. Executive Summary
 - Problem Statement: 将 `world_viewer_live` 从“开发期高自由度 CLI”收口为“发行期锁定参数启动”，避免 P2P 上线后因单节点临时调参导致网络语义漂移。
 - Proposed Solution: 发行部署提供稳定、可复现、可审计的启动输入；运行时仅允许极少数非共识语义覆盖项。

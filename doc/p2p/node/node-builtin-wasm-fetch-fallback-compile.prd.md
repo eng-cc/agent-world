@@ -1,7 +1,6 @@
 # World Runtime：Builtin Wasm 先拉取后编译回退
 
-审计轮次: 3
-
+审计轮次: 4
 ## 1. Executive Summary
 - Problem Statement: 在节点运行时装载 builtin wasm 时，优先从网络拉取已构建产物；拉取失败后再触发本地编译回退。
 - Proposed Solution: 保持去中心化：不引入中心化 Builder，任何节点都可以在本地编译并产出可校验 wasm。

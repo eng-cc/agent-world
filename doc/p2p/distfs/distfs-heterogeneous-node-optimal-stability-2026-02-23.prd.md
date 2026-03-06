@@ -1,7 +1,6 @@
 # Agent World Runtime：异构节点分布式存储最优稳定性改造（2026-02-23）
 
-审计轮次: 3
-
+审计轮次: 4
 ## 1. Executive Summary
 - Problem Statement: 面向“1000+ 节点、容量与在线时长显著异构”的场景，构建可长期稳定运行的分布式存储策略。
 - Proposed Solution: 将当前“provider 列表 + 单节点优先请求”升级为“能力感知排序 + 多候选重试 + 退避回退”，降低单点离线与弱节点抖动影响。

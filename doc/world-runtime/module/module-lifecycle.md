@@ -1,6 +1,6 @@
 # Agent World Runtime：模块治理与生命周期（设计分册）
 
-审计轮次: 3
+审计轮次: 4
 
 本分册为 `doc/world-runtime.prd.md` 的详细展开。
 

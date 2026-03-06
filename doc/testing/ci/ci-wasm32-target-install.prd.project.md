@@ -1,6 +1,6 @@
 # Agent World: CI 安装 wasm32-unknown-unknown target（项目管理）
 
-审计轮次: 3
+审计轮次: 4
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] WASMCI-1 (PRD-TESTING-CI-WASM-001/003): 设计文档与项目管理文档落地。

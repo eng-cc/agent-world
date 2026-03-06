@@ -1,6 +1,6 @@
 # Agent World Runtime：零信任多节点治理与签名加固（2026-02-26）
 
-审计轮次: 3
+审计轮次: 4
 
 - 对应项目管理文档: doc/world-runtime/governance/zero-trust-governance-receipt-hardening-2026-02-26.prd.project.md
 

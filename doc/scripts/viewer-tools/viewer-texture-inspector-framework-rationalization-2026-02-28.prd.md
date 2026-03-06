@@ -1,6 +1,6 @@
 # Viewer Texture Inspector 框架合理性治理（2026-02-28）
 
-审计轮次: 3
+审计轮次: 4
 
 - 对应项目管理文档: doc/scripts/viewer-tools/viewer-texture-inspector-framework-rationalization-2026-02-28.prd.project.md
 

@@ -1,7 +1,6 @@
 # Agent World Runtime：区块链 + P2P FS 硬改造（Phase 4）设计文档
 
-审计轮次: 3
-
+审计轮次: 4
 ## 1. Executive Summary
 - Problem Statement: 将 membership 目录（snapshot/revocation）签名从 HMAC-only 扩展为 ed25519 + HMAC 双栈，补齐跨模块签名口径。
 - Proposed Solution: 在不破坏历史数据与既有流程前提下，支持 keyring 管理 ed25519 签名 key，完成签发与验签闭环。

@@ -1,7 +1,6 @@
 # Agent World Runtime：节点贡献积分运行时闭环
 
-审计轮次: 3
-
+审计轮次: 4
 ## ROUND-002 主从口径
 - 主入口文档：`doc/p2p/node/node-contribution-points.prd.md`。
 - 本文档定位：仅记录运行时闭环增量需求与约束；通用规格以主文档为准。

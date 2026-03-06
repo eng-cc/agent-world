@@ -1,6 +1,6 @@
 # 全量 PRD 体系审读与对齐（2026-03-03）
 
-审计轮次: 3
+审计轮次: 4
 
 ## 1. Executive Summary
 - Problem Statement: 仓库 PRD 文档规模已达 708 份（含 `prd.md` 与 `prd.project.md`），缺少统一“逐篇审读 + 已读清单 + 代码一致性回写”机制，导致口径漂移风险持续累积。

@@ -1,7 +1,6 @@
 # Agent World Runtime：Observer/Bootstrap 路径索引读取接入（项目管理文档）
 
-审计轮次: 3
-
+审计轮次: 4
 ## 任务拆解（含 PRD-ID 映射）
 - [x] POBI-1 (PRD-P2P-MIG-066)：设计文档与项目管理文档落地。
 - [x] POBI-2 (PRD-P2P-MIG-066)：实现 bootstrap/head_follow/observer 的路径索引入口。

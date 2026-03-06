@@ -1,7 +1,6 @@
 # README P2 缺口收口：Node Replication 统一到 agent_world_net 网络栈
 
-审计轮次: 3
-
+审计轮次: 4
 ## 1. Executive Summary
 - Problem Statement: 收口此前评估中的“网络栈分裂”问题：将 `agent_world_node` 的 replication libp2p 实现从独立 swarm 线程迁移为复用 `agent_world_net::Libp2pNetwork`。
 - Proposed Solution: 保持 `world_viewer_live` 现有接线和配置不变，不改变上层对 `Libp2pReplicationNetwork` 的调用方式。

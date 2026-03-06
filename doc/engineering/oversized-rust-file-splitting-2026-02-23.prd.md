@@ -1,6 +1,6 @@
 # Rust 超限文件拆分（第三轮，2026-02-23）
 
-审计轮次: 3
+审计轮次: 4
 
 - 对应项目管理文档: doc/engineering/oversized-rust-file-splitting-2026-02-23.prd.project.md
 

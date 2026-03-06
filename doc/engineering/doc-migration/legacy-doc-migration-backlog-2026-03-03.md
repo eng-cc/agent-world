@@ -1,6 +1,6 @@
 # 待迁移文档清单快照（2026-03-03）
 
-审计轮次: 3
+审计轮次: 4
 
 ## 快照范围
 - 统计口径：`find doc -type f -name '*.project.md' ! -name '*.prd.project.md'`，排除模块主项目文档 `doc/<module>/prd.project.md`（已剔除 archive 目录条目）。

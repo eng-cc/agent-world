@@ -1,6 +1,6 @@
 # Agent World Runtime：模块存储持久化（设计文档）
 
-审计轮次: 3
+审计轮次: 4
 
 - 对应项目管理文档: doc/world-runtime/module/module-storage.prd.project.md
 

@@ -1,6 +1,6 @@
 # Agent World Runtime：区块链 + P2P FS 硬改造（Phase 8）设计文档
 
-审计轮次: 3
+审计轮次: 4
 
 ## 1. Executive Summary
 - Problem Statement: 把 membership 与 sequencer 的 ed25519 signer 公钥白名单校验/规范化逻辑抽到共享模块，消除重复实现。

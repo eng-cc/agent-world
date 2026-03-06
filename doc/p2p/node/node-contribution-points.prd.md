@@ -1,7 +1,6 @@
 # Agent World Runtime：节点贡献积分激励
 
-审计轮次: 3
-
+审计轮次: 4
 ## ROUND-002 主从口径
 - 主入口文档：`doc/p2p/node/node-contribution-points.prd.md`。
 - 从文档：`node-contribution-points-runtime-closure.prd.md`、`node-contribution-points-multi-node-closure-test.prd.md` 仅维护增量约束与专题闭环，主规格以本文件为准。

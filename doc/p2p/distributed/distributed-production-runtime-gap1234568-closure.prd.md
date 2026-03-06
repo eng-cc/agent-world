@@ -1,7 +1,6 @@
 # Agent World Runtime：生产级收口（Gap 1/2/3/4/5/6/8）设计文档
 
-审计轮次: 3
-
+审计轮次: 4
 ## 1. Executive Summary
 - Problem Statement: 收口 Gap 1：将节点状态复制从“本地目录侧车”推进为“网络优先拉取 + 本地持久化兜底”。
 - Proposed Solution: 收口 Gap 2：补齐生产可用的区块/Blob 交换协议，支持按高度与按内容哈希拉取。

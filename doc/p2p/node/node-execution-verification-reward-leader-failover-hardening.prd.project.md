@@ -1,7 +1,6 @@
 # Agent World Runtime：节点执行校验与奖励 Leader/Failover 生产化收口（项目管理文档）
 
-审计轮次: 3
-
+审计轮次: 4
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0 (PRD-P2P-MIG-094)：完成设计文档与项目管理文档。
 - [x] T1 (PRD-P2P-MIG-094)：实现 `agent_world_node` 执行校验强化（配置、入站校验、gap-sync 执行一致性校验、快照可观测字段）。

@@ -1,7 +1,6 @@
 # Agent World Runtime：节点密钥 config.toml 自举
 
-审计轮次: 3
-
+审计轮次: 4
 ## 1. Executive Summary
 - Problem Statement: 在节点启动时确保根目录 `config.toml` 存在可用的节点密钥字段（公钥/私钥）。
 - Proposed Solution: 当字段缺失时自动生成一对密钥并写回 `config.toml`，形成“启动即自举”的最小闭环。

@@ -1,6 +1,6 @@
 # Agent World Runtime：玩家发布制成品的 WASM 模块与 Profile 治理闭环（项目管理文档）
 
-审计轮次: 3
+审计轮次: 4
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] TASK-WORLD_RUNTIME-010 (PRD-WORLD_RUNTIME-010/012) [test_tier_required]: 发布单扩展 `profile_changes`，Apply 时落账 product/recipe profile，并补齐拒绝路径与回放测试。

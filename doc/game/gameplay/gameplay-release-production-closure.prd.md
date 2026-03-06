@@ -1,6 +1,6 @@
 # Gameplay 发行收口（社会经济治理 + 压测门禁 + 联盟战争生命周期）
 
-审计轮次: 3
+审计轮次: 4
 
 - 审计轮次: 2
 - 对应项目管理文档: doc/game/gameplay/gameplay-release-production-closure.prd.project.md

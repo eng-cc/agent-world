@@ -1,7 +1,6 @@
 # World Runtime：Builtin Wasm DistFS 存储与提交前校验
 
-审计轮次: 3
-
+审计轮次: 4
 ## 1. Executive Summary
 - Problem Statement: 将内置 builtin wasm 二进制从 git 跟踪中移出，避免仓库长期携带二进制大文件。
 - Proposed Solution: 保留并强化可追踪的一致性基线：`module_id -> wasm_hash` 清单继续由 git 跟踪。

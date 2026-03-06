@@ -1,6 +1,6 @@
 # Agent World Runtime：Sequencer 主循环与 Lease 递进数值语义硬化（15 点清单第五阶段）
 
-审计轮次: 3
+审计轮次: 4
 
 - 对应项目管理文档: doc/world-runtime/runtime/runtime-numeric-correctness-phase5.prd.project.md
 

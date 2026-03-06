@@ -1,6 +1,6 @@
 # Agent World: LLM 跳过 Tick 占比指标
 
-审计轮次: 3
+审计轮次: 4
 
 - 对应项目管理文档: doc/testing/governance/llm-skip-tick-ratio-metric.prd.project.md
 

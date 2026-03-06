@@ -1,6 +1,6 @@
 # scripts PRD Project
 
-审计轮次: 3
+审计轮次: 4
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] TASK-SCRIPTS-001 (PRD-SCRIPTS-001) [test_tier_required]: 完成 scripts PRD 改写，建立脚本治理主入口。

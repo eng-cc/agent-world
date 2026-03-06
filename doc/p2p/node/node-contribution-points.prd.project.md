@@ -1,7 +1,6 @@
 # Agent World Runtime：节点贡献积分激励（项目管理文档）
 
-审计轮次: 3
-
+审计轮次: 4
 ## ROUND-002 主从口径
 - 项目管理主入口：`doc/p2p/node/node-contribution-points.prd.project.md`。
 - 从项目文档：`node-contribution-points-runtime-closure.prd.project.md`、`node-contribution-points-multi-node-closure-test.prd.project.md` 仅维护增量任务与状态，主计划以本文件为准。

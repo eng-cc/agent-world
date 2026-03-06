@@ -1,6 +1,6 @@
 # Non-Viewer 链上鉴权协议重构（生产级）
 
-审计轮次: 3
+审计轮次: 4
 
 - 对应项目管理文档: doc/headless-runtime/nonviewer/nonviewer-onchain-auth-protocol-hardening.prd.project.md
 

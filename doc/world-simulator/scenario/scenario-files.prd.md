@@ -1,6 +1,6 @@
 # Agent World Simulator：场景文件化（设计文档）
 
-审计轮次: 3
+审计轮次: 4
 
 - 对应项目管理文档: doc/world-simulator/scenario/scenario-files.prd.project.md
 
