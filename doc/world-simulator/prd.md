@@ -35,6 +35,7 @@
   - `doc/world-simulator/launcher/game-client-launcher-web-transfer-closure-2026-03-06.prd.md`（PRD-WORLD_SIMULATOR-020）
   - `doc/world-simulator/launcher/game-client-launcher-web-settings-feedback-parity-2026-03-06.prd.md`（PRD-WORLD_SIMULATOR-021）
   - `doc/world-simulator/launcher/game-client-launcher-native-legacy-cleanup-2026-03-06.prd.md`（PRD-WORLD_SIMULATOR-022）
+  - `doc/world-simulator/launcher/game-client-launcher-transfer-product-grade-parity-2026-03-06.prd.md`（PRD-WORLD_SIMULATOR-023）
   - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase1-2026-03-04.prd.md`（PRD-WORLD_SIMULATOR-016）
   - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase2-2026-03-05.prd.md`（PRD-WORLD_SIMULATOR-017）
   - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase3-2026-03-05.prd.md`（PRD-WORLD_SIMULATOR-018）
@@ -51,6 +52,7 @@
 - M7 (2026-03-06): 完成启动器 Web 端链上转账闭环补齐（控制面代理 + wasm 提交）。
 - M8 (2026-03-06): 完成启动器 Web 端设置/反馈入口对齐（设置中心可用化 + 反馈代理提交）。
 - M9 (2026-03-06): 完成启动器 native 遗留代码清理与测试资产收敛（移除失效状态字段与未引用旧测试文件）。
+- M10 (2026-03-06): 完成启动器转账产品级需求建模（自动 nonce、账户/余额辅助、历史/最终状态可视化、native/web 同层前端一致性）。
 
 ## 风险
 - 模块边界演进快，文档同步可能滞后。
@@ -88,6 +90,7 @@
   - SC-25: 启动器 Web 端必须支持链上转账提交并保持与 native 一致的成功/拒绝/失败语义。
   - SC-26: 启动器 Web 端必须支持设置中心与反馈入口可用，并保持与 native 一致的操作语义（不再为禁用占位）。
   - SC-27: 启动器 native 端已迁移后的历史遗留状态字段/测试资产必须收敛，避免继续引入无效维护成本与告警噪声。
+  - SC-28: 启动器转账能力必须升级为产品级体验，并在 native/web 端共用同层前端实现（门控、表单、状态机、文案一致）。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -124,6 +127,7 @@
   - PRD-WORLD_SIMULATOR-020: As a Web 启动器玩家, I want to submit blockchain transfers in browser, so that I can complete asset interaction without native tools.
   - PRD-WORLD_SIMULATOR-021: As a Web 启动器玩家, I want settings and feedback entries to work in browser, so that I can complete the same control loop as native.
   - PRD-WORLD_SIMULATOR-022: As a 启动器开发者, I want native legacy launcher code to be removed after control-plane unification, so that code ownership and long-term maintenance are cleaner.
+  - PRD-WORLD_SIMULATOR-023: As a 启动器玩家, I want a product-grade transfer experience with shared native/web frontend behavior, so that I can complete account selection, nonce handling, and final confirmation in one consistent flow.
 - Critical User Flows:
   1. Flow-WS-001（Web-first 闭环）:
      `选择场景 -> 启动 Viewer Web -> 执行关键交互 -> 采集日志/截图/指标 -> 产出 test_tier_required 结论`
@@ -165,6 +169,8 @@
      `链状态就绪 -> 打开设置窗口编辑参数 -> 打开反馈窗口提交 kind/title/description -> 通过 /api/chain/feedback 返回 feedback_id/event_id 或结构化错误`
   20. Flow-WS-020（Launcher native 遗留清理）:
      `确认 native 已走统一控制面 -> 删除失效状态字段/未引用旧测试文件 -> 运行 native+wasm 回归 -> 状态与交互行为保持不变`
+  21. Flow-WS-021（Launcher 转账产品级一致性）:
+     `链状态就绪 -> 打开同层转账面板 -> 账户选择 + 余额辅助 + 自动 nonce -> 提交 -> pending -> confirmed/failed -> 历史可追溯`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
@@ -182,6 +188,7 @@
 | Launcher Web 必填分流 | `launcher_bin`、`chain_runtime_bin`（native-only） | Web 端校验排除 native-only 必填，native 端保持阻断 | `config_loaded -> validated` | 按 `target_arch` 分流 | 平台边界一致 |
 | Launcher native/web 同控制面 | `/api/state`、`/api/start`、`/api/stop`、`/api/chain/start`、`/api/chain/stop` | native 与 web 端统一走 API 触发游戏/区块链独立启停 | `service_ready -> game_running/stopped + chain_starting/ready/stopped` | 状态以服务端快照为准，客户端仅做展示与轮询 | 控制面部署在受信网络，客户端仅消费授权 API |
 | Launcher Web 转账闭环 | `/api/chain/transfer`、`from/to/amount/nonce` | 浏览器端提交转账请求并展示成功/拒绝/失败 | `idle -> validating -> submitting -> success/failed` | `amount/nonce > 0`、`from != to`，账本规则以 runtime 为准 | 链就绪才允许提交 |
+| Launcher 转账产品级一致性 | `from/to` 账户选择器、余额辅助、`nonce_mode(auto/manual)`、`action_id`、`final_status`、历史列表 | native/web 使用同一转账前端状态机；提交后跟踪最终状态并可查看历史 | `idle -> validating -> submitting -> accepted/pending -> confirmed/failed/timeout` | 历史按 `timestamp desc` + `action_id desc`；`auto nonce` 默认开启 | 链未就绪时入口禁用；查询只读、提交可写 |
 | Launcher Web 设置/反馈对齐 | 设置窗口字段 + `/api/chain/feedback` + `kind/title/description` | 浏览器端可打开设置窗口与反馈窗口；反馈提交通过控制面代理返回结构化结果 | `settings: closed/open/saved` + `feedback: idle/validating/submitting/success/failed` | 反馈标题/描述必填；单请求 in-flight 门控 | 反馈提交仅链就绪可用；设置仅当前会话可编辑 |
 | Launcher native 遗留清理 | native 失效状态字段、无效常量 `cfg` 边界、未引用旧测试文件 | 保持现有 UI/API 行为不变前提下清理历史残留 | `legacy_present -> removed -> regression_passed` | 优先删除“无读写路径/无编译入口引用”的资产 | 仅开发维护路径可修改，运行时玩家能力不变 |
 | Viewer live runtime 接管 | `--runtime-world`、runtime `DomainEvent`、兼容 `WorldSnapshot/WorldEvent` | 启动 runtime 模式后按 Play/Step 推进 runtime，并推送兼容快照/事件 | `simulator_mode/runtime_mode`（启动参数决定） | 事件序列保持单调；至少映射注册/移动/转移/拒绝四类事件 | 本地开发链路，默认不开放远程写接口 |
@@ -218,6 +225,7 @@
   - AC-28: 启动器 Web 端支持转账提交（`/api/chain/transfer`），并可展示结构化 `action_id/error_code/error`。
   - AC-29: 启动器 Web 端 `设置` 与 `反馈` 入口可用，反馈提交流程通过 `/api/chain/feedback` 返回结构化成功/失败结果。
   - AC-30: 启动器 native 已失效遗留代码（状态字段/测试资产）完成清理后，`agent_world_client_launcher` 与 `world_web_launcher` required 回归通过且行为无回归。
+  - AC-31: 启动器转账功能升级为产品级体验（账户/余额辅助、自动 nonce、最终状态与历史可视化），且 native/web 同层前端行为一致并通过跨端回归。
 - Non-Goals:
   - 不在本 PRD 中详细列出每个 UI 像素级规范。
   - 不替代 world-runtime/p2p 的底层协议设计。
@@ -245,6 +253,7 @@
   - `doc/world-simulator/launcher/game-client-launcher-web-required-config-gating-2026-03-04.prd.md`
   - `doc/world-simulator/launcher/game-client-launcher-native-web-control-plane-unification-2026-03-04.prd.md`
   - `doc/world-simulator/launcher/game-client-launcher-web-transfer-closure-2026-03-06.prd.md`
+  - `doc/world-simulator/launcher/game-client-launcher-transfer-product-grade-parity-2026-03-06.prd.md`
   - `doc/world-simulator/launcher/game-client-launcher-web-settings-feedback-parity-2026-03-06.prd.md`
   - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase1-2026-03-04.prd.md`
   - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase2-2026-03-05.prd.md`
@@ -253,6 +262,7 @@
   - `crates/agent_world_client_launcher/src/main.rs`
   - `crates/agent_world_client_launcher/src/app_process.rs`
   - `crates/agent_world_client_launcher/src/app_process_web.rs`
+  - `crates/agent_world_client_launcher/src/transfer_window.rs`
   - `crates/agent_world_client_launcher/src/transfer_window_web.rs`
   - `crates/agent_world_client_launcher/src/launcher_core.rs`
   - `crates/agent_world_client_launcher/Cargo.toml`
@@ -278,6 +288,8 @@
   - 控制面分离回归：native 若无法拉起本地 `world_web_launcher`，必须回传可诊断错误且禁止误导性“运行中”状态。
   - Web 设置存储失败：浏览器禁用本地存储时，设置窗口需返回明确失败提示，不得 silent fail。
   - Web 反馈代理失败：`/api/chain/feedback` 不可达或上游拒绝时，前端需展示结构化错误并保留重试能力。
+  - 转账最终态悬挂：`accepted` 长时间未进入 `confirmed/failed` 时需明确标记为 `pending/timeout`，避免“仅 action_id”误判成功。
+  - 账户与 nonce 漂移：余额/nonce 辅助信息过期时需支持刷新并在提交前给出可诊断提示。
   - runtime 映射覆盖不足：runtime `DomainEvent` 未全量映射时，需降级输出可诊断事件并保留序列一致性。
   - runtime llm 桥接缺口：LLM 决策动作若无 runtime 映射实现，需返回结构化拒绝并继续服务循环，禁止 panic/卡死。
 - Non-Functional Requirements:
@@ -299,6 +311,8 @@
     - NFR-18: runtime live action 映射不可覆盖项必须稳定返回结构化拒绝，且 `world_viewer_live` runtime-only 启动路径在 required 回归中通过率为 100%。
     - NFR-19: Web 转账提交（控制面代理 + runtime 受理）本地链路 `p95 <= 500ms`，失败路径 `p95 <= 1s` 返回结构化结果。
     - NFR-20: Web 反馈提交（控制面代理 + runtime 受理）本地链路 `p95 <= 500ms`，失败路径 `p95 <= 1s` 返回结构化结果。
+    - NFR-21: native/web 转账交互一致性差异为 0（字段、门控、状态机、文案、错误语义），由同一前端实现来源保证。
+    - NFR-22: 转账提交后最终状态可见延迟 <= 2 个轮询周期（本地链路），历史面板最近 50 条查询 `p95 <= 300ms`。
   - 安全与隐私目标:
     - NFR-4: 日志与证据中不得输出私钥、口令、完整凭据；敏感字段需脱敏。
     - NFR-5: 转账请求必须经过 nonce anti-replay 与余额约束校验。
@@ -348,6 +362,7 @@
 | PRD-WORLD_SIMULATOR-020 | TASK-WORLD_SIMULATOR-046/047 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher` + `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown`，验证 Web 转账代理与 wasm 提交流程 | 启动器 Web 转账闭环可用性与跨端语义一致性 |
 | PRD-WORLD_SIMULATOR-021 | TASK-WORLD_SIMULATOR-048/049 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher` + `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher` + `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown`，验证 Web 设置中心可用化与反馈代理提交闭环 | 启动器 Web 设置/反馈跨端一致性与功能可达性 |
 | PRD-WORLD_SIMULATOR-022 | TASK-WORLD_SIMULATOR-050/051 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown`，验证 native 遗留代码清理后行为稳定 | 启动器 native 维护面收敛与跨端行为稳定性 |
+| PRD-WORLD_SIMULATOR-023 | TASK-WORLD_SIMULATOR-052/053 | `test_tier_required` + `test_tier_full` | `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p agent_world --tests --features test_tier_required transfer_submit_api::tests:: -- --nocapture` + Playwright 启动器转账闭环采证，验证账户/余额辅助、自动 nonce、最终状态与历史面板跨端一致 | 启动器转账产品化体验、跨端前端一致性与链路可观测性 |
 
 - Decision Log:
 
@@ -368,3 +383,4 @@
 | DEC-WS-013 | viewer live runtime Phase 2 采用“LLM sidecar + prompt/chat/auth + 动作桥接子集”渐进方案 | 等待 runtime action 全量 1:1 映射后再开放控制面 | 先打通 runtime 的 LLM/chat/prompt 体验可立即消除双套控制断裂，并将动作映射风险限制在可诊断范围内；由 `TASK-WORLD_SIMULATOR-039` 落地。 |
 | DEC-WS-014 | viewer live runtime Phase 3 采用“补齐高频动作映射 + 等价回归 + runtime-only 启动”方案 | 保留 simulator fallback 分支与部分映射缺口 | fallback 分支会持续制造双轨行为与回归成本，统一 runtime-only 并补齐映射可把风险收敛到单一可诊断链路；由 `TASK-WORLD_SIMULATOR-041` 落地。 |
 | DEC-WS-015 | 在不改变 native 功能语义前提下，优先清理“无读写路径 + 无编译入口引用”的启动器遗留代码 | 维持遗留字段/旧测试文件并通过忽略告警维持现状 | 迁移到统一控制面后遗留代码会持续制造维护歧义；结构化清理可降低后续需求迭代成本；由 `TASK-WORLD_SIMULATOR-051` 落地。 |
+| DEC-WS-016 | 启动器转账升级为产品级能力并强制 native/web 同层前端复用（账户选择/余额辅助/自动 nonce/最终状态与历史可视化） | 继续维护 native/web 分叉转账实现，仅补局部按钮或文案 | 分叉实现已导致门控与反馈语义漂移；统一前端与状态机可一次性收敛体验差异并降低长期维护成本；对应 `TASK-WORLD_SIMULATOR-052/053`。 |
