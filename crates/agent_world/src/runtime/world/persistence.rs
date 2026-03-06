@@ -64,6 +64,8 @@ impl World {
             runtime_memory_limits: self.runtime_memory_limits.clone(),
             runtime_backpressure_stats: self.runtime_backpressure_stats.clone(),
             tick_consensus_records: self.tick_consensus_records.clone(),
+            governance_execution_policy: self.governance_execution_policy.clone(),
+            governance_emergency_brake_until_tick: self.governance_emergency_brake_until_tick,
         }
     }
 
@@ -214,6 +216,10 @@ impl World {
         world.runtime_memory_limits = snapshot.runtime_memory_limits;
         world.runtime_backpressure_stats = snapshot.runtime_backpressure_stats;
         world.tick_consensus_records = snapshot.tick_consensus_records;
+        world.governance_execution_policy = snapshot.governance_execution_policy;
+        Self::validate_governance_execution_policy(&world.governance_execution_policy)?;
+        world.governance_emergency_brake_until_tick =
+            snapshot.governance_emergency_brake_until_tick;
         world.enforce_pending_action_limit();
         world.enforce_pending_effect_limit();
         world.enforce_inflight_effect_limit();

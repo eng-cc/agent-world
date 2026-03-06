@@ -8,7 +8,7 @@ use super::consensus::TickConsensusRecord;
 use super::effect::{CapabilityGrant, EffectIntent};
 use super::error::WorldError;
 use super::events::ActionEnvelope;
-use super::governance::Proposal;
+use super::governance::{GovernanceExecutionPolicy, Proposal};
 use super::manifest::Manifest;
 use super::modules::{ModuleLimits, ModuleRegistry};
 use super::policy::PolicySet;
@@ -95,6 +95,10 @@ pub struct Snapshot {
     pub runtime_backpressure_stats: WorldRuntimeBackpressureStats,
     #[serde(default)]
     pub tick_consensus_records: Vec<TickConsensusRecord>,
+    #[serde(default)]
+    pub governance_execution_policy: GovernanceExecutionPolicy,
+    #[serde(default)]
+    pub governance_emergency_brake_until_tick: Option<WorldTime>,
 }
 
 fn module_limits_unbounded() -> ModuleLimits {

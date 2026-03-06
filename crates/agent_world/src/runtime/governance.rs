@@ -5,7 +5,30 @@ use std::collections::BTreeMap;
 
 use super::events::DomainEvent;
 use super::manifest::{Manifest, ManifestPatch};
-use super::types::ProposalId;
+use super::types::{ProposalId, WorldTime};
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GovernanceExecutionPolicy {
+    pub timelock_ticks: u64,
+    pub epoch_length_ticks: u64,
+    pub activation_delay_epochs: u64,
+    pub emergency_brake_guardian_threshold: u16,
+    pub emergency_veto_guardian_threshold: u16,
+    pub emergency_brake_max_ticks: u64,
+}
+
+impl Default for GovernanceExecutionPolicy {
+    fn default() -> Self {
+        Self {
+            timelock_ticks: 0,
+            epoch_length_ticks: 120,
+            activation_delay_epochs: 0,
+            emergency_brake_guardian_threshold: 2,
+            emergency_veto_guardian_threshold: 2,
+            emergency_brake_max_ticks: 720,
+        }
+    }
+}
 
 /// A proposal for manifest changes.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -15,6 +38,14 @@ pub struct Proposal {
     pub base_manifest_hash: String,
     pub manifest: Manifest,
     pub patch: Option<ManifestPatch>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub queued_at_tick: Option<WorldTime>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub not_before_tick: Option<WorldTime>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub activate_epoch: Option<u64>,
+    #[serde(default)]
+    pub timelock_ticks: u64,
     pub status: ProposalStatus,
 }
 
@@ -105,6 +136,14 @@ pub enum GovernanceEvent {
         approver: String,
         decision: ProposalDecision,
     },
+    Queued {
+        proposal_id: ProposalId,
+        manifest_hash: String,
+        queued_at_tick: WorldTime,
+        not_before_tick: WorldTime,
+        activate_epoch: u64,
+        timelock_ticks: u64,
+    },
     Applied {
         proposal_id: ProposalId,
         #[serde(default)]
@@ -114,6 +153,28 @@ pub enum GovernanceEvent {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         threshold: Option<u16>,
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        signer_node_ids: Vec<String>,
+    },
+    EmergencyBrakeActivated {
+        initiator: String,
+        reason: String,
+        active_until_tick: WorldTime,
+        threshold: u16,
+        signer_node_ids: Vec<String>,
+    },
+    EmergencyBrakeReleased {
+        initiator: String,
+        reason: String,
+        #[serde(default)]
+        threshold: u16,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        signer_node_ids: Vec<String>,
+    },
+    EmergencyVetoed {
+        proposal_id: ProposalId,
+        initiator: String,
+        reason: String,
+        threshold: u16,
         signer_node_ids: Vec<String>,
     },
 }

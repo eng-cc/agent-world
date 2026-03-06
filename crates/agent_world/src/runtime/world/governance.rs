@@ -1,11 +1,12 @@
 use super::super::util::{hash_json, sha256_hex};
 use super::super::{
-    apply_manifest_patch, GovernanceEvent, GovernanceFinalityCertificate, Manifest, ManifestPatch,
-    ManifestUpdate, Proposal, ProposalDecision, ProposalId, ProposalStatus, WorldError,
-    WorldEventBody,
+    apply_manifest_patch, GovernanceEvent, GovernanceExecutionPolicy,
+    GovernanceFinalityCertificate, Manifest, ManifestPatch, ManifestUpdate, Proposal,
+    ProposalDecision, ProposalId, ProposalStatus, WorldError, WorldEventBody,
 };
 use super::World;
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
+use std::collections::BTreeSet;
 
 const LOCAL_GOVERNANCE_FINALITY_SIGNERS: [(&str, &str); 2] = [
     (
@@ -59,6 +60,114 @@ impl World {
 
     pub fn current_manifest_hash(&self) -> Result<String, WorldError> {
         hash_json(&self.manifest)
+    }
+
+    pub fn set_governance_execution_policy(
+        &mut self,
+        policy: GovernanceExecutionPolicy,
+    ) -> Result<(), WorldError> {
+        Self::validate_governance_execution_policy(&policy)?;
+        self.governance_execution_policy = policy;
+        Ok(())
+    }
+
+    pub fn activate_emergency_brake(
+        &mut self,
+        initiator: impl Into<String>,
+        reason: impl Into<String>,
+        duration_ticks: u64,
+        signer_node_ids: Vec<String>,
+    ) -> Result<(), WorldError> {
+        let threshold = self
+            .governance_execution_policy
+            .emergency_brake_guardian_threshold;
+        let signer_node_ids = self.validate_guardian_signers(&signer_node_ids, threshold)?;
+        if duration_ticks == 0 {
+            return Err(WorldError::GovernancePolicyInvalid {
+                reason: "emergency brake duration must be > 0".to_string(),
+            });
+        }
+        if duration_ticks > self.governance_execution_policy.emergency_brake_max_ticks {
+            return Err(WorldError::GovernancePolicyInvalid {
+                reason: format!(
+                    "emergency brake duration exceeds max: duration_ticks={} max={}",
+                    duration_ticks, self.governance_execution_policy.emergency_brake_max_ticks
+                ),
+            });
+        }
+        let active_until_tick = self.state.time.saturating_add(duration_ticks);
+        let event = GovernanceEvent::EmergencyBrakeActivated {
+            initiator: initiator.into(),
+            reason: reason.into(),
+            active_until_tick,
+            threshold,
+            signer_node_ids,
+        };
+        self.append_event(WorldEventBody::Governance(event), None)?;
+        Ok(())
+    }
+
+    pub fn release_emergency_brake(
+        &mut self,
+        initiator: impl Into<String>,
+        reason: impl Into<String>,
+        signer_node_ids: Vec<String>,
+    ) -> Result<(), WorldError> {
+        let threshold = self
+            .governance_execution_policy
+            .emergency_brake_guardian_threshold;
+        let signer_node_ids = self.validate_guardian_signers(&signer_node_ids, threshold)?;
+        if !self.is_governance_emergency_brake_active() {
+            return Err(WorldError::GovernancePolicyInvalid {
+                reason: "emergency brake is not active".to_string(),
+            });
+        }
+        let event = GovernanceEvent::EmergencyBrakeReleased {
+            initiator: initiator.into(),
+            reason: reason.into(),
+            threshold,
+            signer_node_ids,
+        };
+        self.append_event(WorldEventBody::Governance(event), None)?;
+        Ok(())
+    }
+
+    pub fn emergency_veto_proposal(
+        &mut self,
+        proposal_id: ProposalId,
+        initiator: impl Into<String>,
+        reason: impl Into<String>,
+        signer_node_ids: Vec<String>,
+    ) -> Result<(), WorldError> {
+        let proposal = self
+            .proposals
+            .get(&proposal_id)
+            .ok_or(WorldError::ProposalNotFound { proposal_id })?;
+        if !matches!(proposal.status, ProposalStatus::Approved { .. }) {
+            return Err(WorldError::ProposalInvalidState {
+                proposal_id,
+                expected: "approved".to_string(),
+                found: proposal.status.label(),
+            });
+        }
+        if proposal.not_before_tick.is_none() || proposal.activate_epoch.is_none() {
+            return Err(WorldError::GovernancePolicyInvalid {
+                reason: format!("proposal_id={} is not queued for activation", proposal_id),
+            });
+        }
+        let threshold = self
+            .governance_execution_policy
+            .emergency_veto_guardian_threshold;
+        let signer_node_ids = self.validate_guardian_signers(&signer_node_ids, threshold)?;
+        let event = GovernanceEvent::EmergencyVetoed {
+            proposal_id,
+            initiator: initiator.into(),
+            reason: reason.into(),
+            threshold,
+            signer_node_ids,
+        };
+        self.append_event(WorldEventBody::Governance(event), None)?;
+        Ok(())
     }
 
     pub fn propose_manifest_update(
@@ -136,13 +245,16 @@ impl World {
         approver: impl Into<String>,
         decision: ProposalDecision,
     ) -> Result<(), WorldError> {
+        let mut queued_manifest_hash: Option<String> = None;
         let proposal = self
             .proposals
             .get(&proposal_id)
             .ok_or(WorldError::ProposalNotFound { proposal_id })?;
 
         match (&decision, &proposal.status) {
-            (ProposalDecision::Approve, ProposalStatus::Shadowed { .. }) => {}
+            (ProposalDecision::Approve, ProposalStatus::Shadowed { manifest_hash }) => {
+                queued_manifest_hash = Some(manifest_hash.clone());
+            }
             (ProposalDecision::Reject { .. }, ProposalStatus::Applied { .. })
             | (ProposalDecision::Reject { .. }, ProposalStatus::Rejected { .. }) => {
                 return Err(WorldError::ProposalInvalidState {
@@ -167,6 +279,25 @@ impl World {
             decision,
         };
         self.append_event(WorldEventBody::Governance(event), None)?;
+        if let Some(manifest_hash) = queued_manifest_hash {
+            let queued_at_tick = self.state.time;
+            let timelock_ticks = self.governance_execution_policy.timelock_ticks;
+            let not_before_tick = queued_at_tick.saturating_add(timelock_ticks);
+            let activate_epoch = self
+                .current_governance_epoch()
+                .saturating_add(self.governance_execution_policy.activation_delay_epochs);
+            self.append_event(
+                WorldEventBody::Governance(GovernanceEvent::Queued {
+                    proposal_id,
+                    manifest_hash,
+                    queued_at_tick,
+                    not_before_tick,
+                    activate_epoch,
+                    timelock_ticks,
+                }),
+                None,
+            )?;
+        }
         Ok(())
     }
 
@@ -247,6 +378,36 @@ impl World {
                 })
             }
         };
+        if self.is_governance_emergency_brake_active() {
+            return Err(WorldError::GovernancePolicyInvalid {
+                reason: format!(
+                    "governance apply blocked by emergency brake until_tick={}",
+                    self.governance_emergency_brake_until_tick
+                        .unwrap_or(self.state.time)
+                ),
+            });
+        }
+        if let Some(not_before_tick) = proposal.not_before_tick {
+            if self.state.time < not_before_tick {
+                return Err(WorldError::GovernancePolicyInvalid {
+                    reason: format!(
+                        "proposal_id={} timelock pending current_tick={} not_before_tick={}",
+                        proposal_id, self.state.time, not_before_tick
+                    ),
+                });
+            }
+        }
+        if let Some(activate_epoch) = proposal.activate_epoch {
+            let current_epoch = self.current_governance_epoch();
+            if current_epoch < activate_epoch {
+                return Err(WorldError::GovernancePolicyInvalid {
+                    reason: format!(
+                        "proposal_id={} activation epoch pending current_epoch={} activate_epoch={}",
+                        proposal_id, current_epoch, activate_epoch
+                    ),
+                });
+            }
+        }
 
         let module_changes = manifest.module_changes()?;
         if let Some(changes) = &module_changes {
@@ -287,6 +448,76 @@ impl World {
         };
         self.append_event(WorldEventBody::Governance(event), None)?;
         Ok(applied_hash)
+    }
+
+    pub(super) fn validate_governance_execution_policy(
+        policy: &GovernanceExecutionPolicy,
+    ) -> Result<(), WorldError> {
+        if policy.epoch_length_ticks == 0 {
+            return Err(WorldError::GovernancePolicyInvalid {
+                reason: "epoch_length_ticks must be > 0".to_string(),
+            });
+        }
+        if policy.emergency_brake_guardian_threshold == 0 {
+            return Err(WorldError::GovernancePolicyInvalid {
+                reason: "emergency_brake_guardian_threshold must be > 0".to_string(),
+            });
+        }
+        if policy.emergency_veto_guardian_threshold == 0 {
+            return Err(WorldError::GovernancePolicyInvalid {
+                reason: "emergency_veto_guardian_threshold must be > 0".to_string(),
+            });
+        }
+        if policy.emergency_brake_max_ticks == 0 {
+            return Err(WorldError::GovernancePolicyInvalid {
+                reason: "emergency_brake_max_ticks must be > 0".to_string(),
+            });
+        }
+        Ok(())
+    }
+
+    fn current_governance_epoch(&self) -> u64 {
+        self.governance_epoch_for_time(self.state.time)
+    }
+
+    fn governance_epoch_for_time(&self, time: u64) -> u64 {
+        let epoch_len = self.governance_execution_policy.epoch_length_ticks.max(1);
+        time / epoch_len
+    }
+
+    fn is_governance_emergency_brake_active(&self) -> bool {
+        self.governance_emergency_brake_until_tick
+            .is_some_and(|until| self.state.time < until)
+    }
+
+    fn validate_guardian_signers(
+        &self,
+        signer_node_ids: &[String],
+        threshold: u16,
+    ) -> Result<Vec<String>, WorldError> {
+        if threshold == 0 {
+            return Err(WorldError::GovernancePolicyInvalid {
+                reason: "guardian threshold must be > 0".to_string(),
+            });
+        }
+        let mut unique = BTreeSet::new();
+        for node_id in signer_node_ids {
+            if self.node_identity_public_key(node_id.as_str()).is_none() {
+                return Err(WorldError::GovernancePolicyInvalid {
+                    reason: format!("untrusted guardian signer node_id={node_id}"),
+                });
+            }
+            unique.insert(node_id.clone());
+        }
+        if unique.len() < threshold as usize {
+            return Err(WorldError::GovernancePolicyInvalid {
+                reason: format!(
+                    "guardian signatures below threshold: signers={} threshold={threshold}",
+                    unique.len()
+                ),
+            });
+        }
+        Ok(unique.into_iter().collect())
     }
 
     fn validate_governance_finality_certificate(
@@ -382,6 +613,10 @@ impl World {
                     base_manifest_hash: base_manifest_hash.clone(),
                     manifest: manifest.clone(),
                     patch: patch.clone(),
+                    queued_at_tick: None,
+                    not_before_tick: None,
+                    activate_epoch: None,
+                    timelock_ticks: 0,
                     status: ProposalStatus::Proposed,
                 };
                 self.proposals.insert(*proposal_id, proposal);
@@ -427,11 +662,61 @@ impl World {
                         };
                     }
                     ProposalDecision::Reject { reason } => {
+                        proposal.queued_at_tick = None;
+                        proposal.not_before_tick = None;
+                        proposal.activate_epoch = None;
+                        proposal.timelock_ticks = 0;
                         proposal.status = ProposalStatus::Rejected {
                             reason: reason.clone(),
                         };
                     }
                 }
+            }
+            GovernanceEvent::Queued {
+                proposal_id,
+                manifest_hash,
+                queued_at_tick,
+                not_before_tick,
+                activate_epoch,
+                timelock_ticks,
+            } => {
+                let proposal =
+                    self.proposals
+                        .get_mut(proposal_id)
+                        .ok_or(WorldError::ProposalNotFound {
+                            proposal_id: *proposal_id,
+                        })?;
+                let ProposalStatus::Approved {
+                    manifest_hash: approved_hash,
+                    ..
+                } = &proposal.status
+                else {
+                    return Err(WorldError::ProposalInvalidState {
+                        proposal_id: *proposal_id,
+                        expected: "approved".to_string(),
+                        found: proposal.status.label(),
+                    });
+                };
+                if approved_hash != manifest_hash {
+                    return Err(WorldError::GovernancePolicyInvalid {
+                        reason: format!(
+                            "queued manifest hash drift: proposal_id={} approved={} queued={}",
+                            proposal_id, approved_hash, manifest_hash
+                        ),
+                    });
+                }
+                if not_before_tick < queued_at_tick {
+                    return Err(WorldError::GovernancePolicyInvalid {
+                        reason: format!(
+                            "invalid queued timeline: proposal_id={} queued_at={} not_before={}",
+                            proposal_id, queued_at_tick, not_before_tick
+                        ),
+                    });
+                }
+                proposal.queued_at_tick = Some(*queued_at_tick);
+                proposal.not_before_tick = Some(*not_before_tick);
+                proposal.activate_epoch = Some(*activate_epoch);
+                proposal.timelock_ticks = *timelock_ticks;
             }
             GovernanceEvent::Applied {
                 proposal_id,
@@ -460,6 +745,62 @@ impl World {
                     .unwrap_or_else(|| approved_hash.clone());
                 proposal.status = ProposalStatus::Applied {
                     manifest_hash: applied_hash,
+                };
+            }
+            GovernanceEvent::EmergencyBrakeActivated {
+                active_until_tick,
+                threshold,
+                signer_node_ids,
+                ..
+            } => {
+                self.validate_guardian_signers(signer_node_ids, *threshold)?;
+                let next_until = self
+                    .governance_emergency_brake_until_tick
+                    .map_or(*active_until_tick, |current| {
+                        current.max(*active_until_tick)
+                    });
+                self.governance_emergency_brake_until_tick = Some(next_until);
+            }
+            GovernanceEvent::EmergencyBrakeReleased {
+                threshold,
+                signer_node_ids,
+                ..
+            } => {
+                self.validate_guardian_signers(signer_node_ids, *threshold)?;
+                self.governance_emergency_brake_until_tick = None;
+            }
+            GovernanceEvent::EmergencyVetoed {
+                proposal_id,
+                reason,
+                threshold,
+                signer_node_ids,
+                ..
+            } => {
+                self.validate_guardian_signers(signer_node_ids, *threshold)?;
+                let proposal =
+                    self.proposals
+                        .get_mut(proposal_id)
+                        .ok_or(WorldError::ProposalNotFound {
+                            proposal_id: *proposal_id,
+                        })?;
+                if !matches!(proposal.status, ProposalStatus::Approved { .. }) {
+                    return Err(WorldError::ProposalInvalidState {
+                        proposal_id: *proposal_id,
+                        expected: "approved".to_string(),
+                        found: proposal.status.label(),
+                    });
+                }
+                if proposal.not_before_tick.is_none() || proposal.activate_epoch.is_none() {
+                    return Err(WorldError::GovernancePolicyInvalid {
+                        reason: format!("proposal_id={} is not queued for activation", proposal_id),
+                    });
+                }
+                proposal.queued_at_tick = None;
+                proposal.not_before_tick = None;
+                proposal.activate_epoch = None;
+                proposal.timelock_ticks = 0;
+                proposal.status = ProposalStatus::Rejected {
+                    reason: format!("emergency_veto: {reason}"),
                 };
             }
         }

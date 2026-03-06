@@ -1,6 +1,13 @@
 use super::super::*;
 use serde_json::json;
 
+fn local_guardians() -> Vec<String> {
+    vec![
+        "governance.local.finality.signer.1".to_string(),
+        "governance.local.finality.signer.2".to_string(),
+    ]
+}
+
 #[test]
 fn governance_flow_applies_manifest() {
     let mut world = World::new();
@@ -184,4 +191,163 @@ fn governance_apply_emits_manifest_updated_before_applied() {
         manifest_updated_idx < applied_idx,
         "manifest must be updated before applied marker"
     );
+}
+
+#[test]
+fn governance_timelock_blocks_early_apply() {
+    let mut world = World::new();
+    world
+        .set_governance_execution_policy(GovernanceExecutionPolicy {
+            timelock_ticks: 3,
+            ..GovernanceExecutionPolicy::default()
+        })
+        .unwrap();
+
+    let manifest = Manifest {
+        version: 2,
+        content: json!({ "name": "timelock" }),
+    };
+    let proposal_id = world.propose_manifest_update(manifest, "alice").unwrap();
+    world.shadow_proposal(proposal_id).unwrap();
+    world
+        .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)
+        .unwrap();
+
+    let err = world.apply_proposal(proposal_id).unwrap_err();
+    assert!(matches!(err, WorldError::GovernancePolicyInvalid { .. }));
+
+    for _ in 0..3 {
+        world.step().unwrap();
+    }
+    world.apply_proposal(proposal_id).unwrap();
+}
+
+#[test]
+fn governance_epoch_gate_blocks_early_apply() {
+    let mut world = World::new();
+    world
+        .set_governance_execution_policy(GovernanceExecutionPolicy {
+            epoch_length_ticks: 5,
+            activation_delay_epochs: 1,
+            ..GovernanceExecutionPolicy::default()
+        })
+        .unwrap();
+
+    let manifest = Manifest {
+        version: 2,
+        content: json!({ "name": "epoch" }),
+    };
+    let proposal_id = world.propose_manifest_update(manifest, "alice").unwrap();
+    world.shadow_proposal(proposal_id).unwrap();
+    world
+        .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)
+        .unwrap();
+
+    let err = world.apply_proposal(proposal_id).unwrap_err();
+    assert!(matches!(err, WorldError::GovernancePolicyInvalid { .. }));
+
+    for _ in 0..5 {
+        world.step().unwrap();
+    }
+    world.apply_proposal(proposal_id).unwrap();
+}
+
+#[test]
+fn governance_emergency_brake_and_release_gate_apply() {
+    let mut world = World::new();
+    let manifest = Manifest {
+        version: 2,
+        content: json!({ "name": "brake" }),
+    };
+    let proposal_id = world.propose_manifest_update(manifest, "alice").unwrap();
+    world.shadow_proposal(proposal_id).unwrap();
+    world
+        .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)
+        .unwrap();
+
+    world
+        .activate_emergency_brake("guardian-1", "incident", 4, local_guardians())
+        .unwrap();
+    let err = world.apply_proposal(proposal_id).unwrap_err();
+    assert!(matches!(err, WorldError::GovernancePolicyInvalid { .. }));
+
+    world
+        .release_emergency_brake("guardian-2", "incident mitigated", local_guardians())
+        .unwrap();
+    world.apply_proposal(proposal_id).unwrap();
+}
+
+#[test]
+fn governance_emergency_veto_rejects_queued_proposal() {
+    let mut world = World::new();
+    let manifest = Manifest {
+        version: 2,
+        content: json!({ "name": "veto" }),
+    };
+    let proposal_id = world.propose_manifest_update(manifest, "alice").unwrap();
+    world.shadow_proposal(proposal_id).unwrap();
+    world
+        .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)
+        .unwrap();
+
+    world
+        .emergency_veto_proposal(
+            proposal_id,
+            "guardian-1",
+            "unsafe parameter drift",
+            local_guardians(),
+        )
+        .unwrap();
+    let proposal = world.proposals().get(&proposal_id).unwrap();
+    assert!(matches!(proposal.status, ProposalStatus::Rejected { .. }));
+    let ProposalStatus::Rejected { reason } = &proposal.status else {
+        panic!("proposal should be rejected");
+    };
+    assert!(reason.contains("emergency_veto"));
+
+    let err = world.apply_proposal(proposal_id).unwrap_err();
+    assert!(matches!(err, WorldError::ProposalInvalidState { .. }));
+}
+
+#[test]
+fn governance_emergency_controls_reject_invalid_guardian_signatures() {
+    let mut world = World::new();
+    let manifest = Manifest {
+        version: 2,
+        content: json!({ "name": "guardian-check" }),
+    };
+    let proposal_id = world.propose_manifest_update(manifest, "alice").unwrap();
+    world.shadow_proposal(proposal_id).unwrap();
+    world
+        .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)
+        .unwrap();
+
+    let below_threshold = world
+        .activate_emergency_brake(
+            "guardian-1",
+            "threshold check",
+            3,
+            vec!["governance.local.finality.signer.1".to_string()],
+        )
+        .unwrap_err();
+    assert!(matches!(
+        below_threshold,
+        WorldError::GovernancePolicyInvalid { .. }
+    ));
+
+    let untrusted_signer = world
+        .emergency_veto_proposal(
+            proposal_id,
+            "guardian-2",
+            "untrusted signer",
+            vec![
+                "governance.local.finality.signer.1".to_string(),
+                "governance.unknown.signer".to_string(),
+            ],
+        )
+        .unwrap_err();
+    assert!(matches!(
+        untrusted_signer,
+        WorldError::GovernancePolicyInvalid { .. }
+    ));
 }

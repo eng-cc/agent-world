@@ -230,9 +230,16 @@
   - `World::step/step_with_modules` 在 tick 末尾写入 `TickConsensusRecord`。
   - `snapshot/save/load/from_snapshot(replay)` 持久化并恢复 tick 共识记录。
   - 增加 `verify_tick_consensus_chain()` 对 `parent_hash/events_hash/block_hash/state_root` 的一致性校验。
+- 已完成 `PRD-GAME-005-02` 的治理门禁切片：
+  - `GovernanceEvent` 增加 `Queued`、`EmergencyBrakeActivated/Released`、`EmergencyVetoed`，治理关键状态变更进入事件流回放。
+  - `Proposal` 增加 `queued_at_tick/not_before_tick/activate_epoch/timelock_ticks`，在 `apply_proposal_with_finality` 执行 `timelock + epoch` 门禁校验。
+  - 新增治理执行策略 `GovernanceExecutionPolicy`，约束 epoch 长度、激活延迟、紧急权限阈值与最长刹车时长。
+  - 增加紧急刹车/释放/否决 API，并对 guardian 阈值、签名身份、时长上限执行拒绝校验。
 - 验证口径：
   - `runtime::tests::basic::tick_consensus_records_*`
+  - `runtime::tests::governance::{governance_timelock_blocks_early_apply, governance_epoch_gate_blocks_early_apply, governance_emergency_brake_and_release_gate_apply, governance_emergency_veto_rejects_queued_proposal, governance_emergency_controls_reject_invalid_guardian_signatures}`
   - `runtime::tests::persistence::persist_and_restore_world`
+  - `runtime::tests::audit::audit_filter_governance_events`
   - `runtime::tests::gameplay_protocol::*` 回归无破坏
 
 ## 6. Validation & Decision Record
@@ -241,8 +248,8 @@
 | PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |
 | --- | --- | --- | --- | --- |
 | PRD-GAME-005-01 | TASK-GAME-DCG-001/002 | `test_tier_required` + `test_tier_full` | 多次回放一致性、证书验签、快照恢复 | world runtime 一致性与恢复能力 |
-| PRD-GAME-005-02 | TASK-GAME-DCG-003/004 | `test_tier_required` | 提案时序、timelock 与 epoch 生效门禁 | 治理安全与规则稳定性 |
-| PRD-GAME-005-03 | TASK-GAME-DCG-005/006 | `test_tier_required` + `test_tier_full` | 女巫攻击模拟、惩罚与申诉闭环 | 治理公平性与经济安全 |
+| PRD-GAME-005-02 | TASK-GAME-DCG-003/004/005/006 | `test_tier_required` | 治理事件收敛、timelock/epoch 门禁、紧急权限阈值与越权拒绝 | 治理安全与规则稳定性 |
+| PRD-GAME-005-03 | TASK-GAME-DCG-007/008 | `test_tier_required` + `test_tier_full` | 女巫攻击模拟、惩罚与申诉闭环 | 治理公平性与经济安全 |
 
 ### 6.2 Decision Log
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |

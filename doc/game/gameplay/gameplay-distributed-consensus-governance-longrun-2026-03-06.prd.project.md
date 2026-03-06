@@ -17,12 +17,12 @@
 - [x] TASK-GAME-DCG-002 (PRD-GAME-005-01) [test_tier_required]: 补齐 `events_hash/state_root` 计算与多次回放一致性回归（full-tier 长稳覆盖并入 `TASK-GAME-DCG-009`）。
 
 ### T2 治理共识层（规则与参数）
-- [ ] TASK-GAME-DCG-003 (PRD-GAME-005-02) [test_tier_required]: 将规则/参数变更收敛到治理事件流，禁止旁路应用。
-- [ ] TASK-GAME-DCG-004 (PRD-GAME-005-02) [test_tier_required]: 落地 `timelock + epoch` 生效门禁，补齐提前 apply 拒绝测试。
+- [x] TASK-GAME-DCG-003 (PRD-GAME-005-02) [test_tier_required]: 将规则/参数变更收敛到治理事件流，禁止旁路应用。
+- [x] TASK-GAME-DCG-004 (PRD-GAME-005-02) [test_tier_required]: 落地 `timelock + epoch` 生效门禁，补齐提前 apply 拒绝测试。
 
 ### T3 紧急控制与宪章
-- [ ] TASK-GAME-DCG-005 (PRD-GAME-005-02) [test_tier_required]: 新增紧急刹车/紧急否决状态机与阈值校验。
-- [ ] TASK-GAME-DCG-006 (PRD-GAME-005-02) [test_tier_required]: 宪章化权限与审计字段，补齐越权拒绝回归。
+- [x] TASK-GAME-DCG-005 (PRD-GAME-005-02) [test_tier_required]: 新增紧急刹车/紧急否决状态机与阈值校验。
+- [x] TASK-GAME-DCG-006 (PRD-GAME-005-02) [test_tier_required]: 宪章化权限与审计字段，补齐越权拒绝回归。
 
 ### T4 身份与反女巫
 - [ ] TASK-GAME-DCG-007 (PRD-GAME-005-03) [test_tier_required]: 新增身份信誉+抵押权重快照模型。
@@ -41,6 +41,7 @@
 ## 状态
 - 更新日期: 2026-03-06
 - 当前状态: `active`
-- 下一任务: `TASK-GAME-DCG-003`（治理变更收敛到事件流并禁止旁路）
+- 下一任务: `TASK-GAME-DCG-007`（身份信誉+抵押权重快照模型）
 - ROUND-002 进展: `TASK-GAME-DCG-001/002` 已完成，tick 证书链在 `step/replay/save-load` 闭环可用。
+- ROUND-003 进展: `TASK-GAME-DCG-003/004/005/006` 已完成，治理 `Queued + timelock/epoch` 门禁与紧急控制（刹车/否决）已接入状态机并具备拒绝回归测试。
 - 阻塞项: 无

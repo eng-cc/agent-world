@@ -81,8 +81,8 @@ pub use events::{
 
 // Governance
 pub use governance::{
-    AgentSchedule, GovernanceEvent, GovernanceFinalityCertificate, Proposal, ProposalDecision,
-    ProposalStatus,
+    AgentSchedule, GovernanceEvent, GovernanceExecutionPolicy, GovernanceFinalityCertificate,
+    Proposal, ProposalDecision, ProposalStatus,
 };
 
 // Manifest

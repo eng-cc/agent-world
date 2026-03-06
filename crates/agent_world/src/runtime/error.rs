@@ -46,6 +46,9 @@ pub enum WorldError {
     GovernanceFinalityInvalid {
         reason: String,
     },
+    GovernancePolicyInvalid {
+        reason: String,
+    },
     PatchBaseMismatch {
         expected: String,
         found: String,

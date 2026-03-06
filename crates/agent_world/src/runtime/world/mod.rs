@@ -38,6 +38,7 @@ use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use super::consensus::TickConsensusRecord;
 use super::effect::{CapabilityGrant, EffectIntent};
 use super::events::{ActionEnvelope, MaterialTransitPriority};
+use super::governance::GovernanceExecutionPolicy;
 use super::governance::Proposal;
 use super::manifest::Manifest;
 use super::modules::{ModuleCache, ModuleLimits, ModuleRegistry};
@@ -182,6 +183,10 @@ pub struct World {
     threat_heatmap: BTreeMap<String, i64>,
     #[serde(default)]
     tick_consensus_records: Vec<TickConsensusRecord>,
+    #[serde(default)]
+    governance_execution_policy: GovernanceExecutionPolicy,
+    #[serde(default)]
+    governance_emergency_brake_until_tick: Option<WorldTime>,
 }
 
 impl World {
@@ -239,6 +244,8 @@ impl World {
             logistics_sla_metrics: LogisticsSlaMetrics::default(),
             threat_heatmap: BTreeMap::new(),
             tick_consensus_records: Vec::new(),
+            governance_execution_policy: GovernanceExecutionPolicy::default(),
+            governance_emergency_brake_until_tick: None,
         }
     }
 
@@ -300,6 +307,14 @@ impl World {
 
     pub fn tick_consensus_records(&self) -> &[TickConsensusRecord] {
         self.tick_consensus_records.as_slice()
+    }
+
+    pub fn governance_execution_policy(&self) -> &GovernanceExecutionPolicy {
+        &self.governance_execution_policy
+    }
+
+    pub fn governance_emergency_brake_until_tick(&self) -> Option<WorldTime> {
+        self.governance_emergency_brake_until_tick
     }
 
     pub fn with_runtime_memory_limits(mut self, limits: WorldRuntimeMemoryLimits) -> Self {

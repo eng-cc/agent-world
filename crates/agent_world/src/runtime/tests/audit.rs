@@ -150,7 +150,7 @@ fn audit_filter_governance_events() {
         kinds: Some(vec![AuditEventKind::Governance]),
         ..AuditFilter::default()
     });
-    assert_eq!(governance_events.len(), 4);
+    assert_eq!(governance_events.len(), 5);
     assert!(matches!(
         governance_events[0].body,
         WorldEventBody::Governance(GovernanceEvent::Proposed { .. })
@@ -165,6 +165,10 @@ fn audit_filter_governance_events() {
     ));
     assert!(matches!(
         governance_events[3].body,
+        WorldEventBody::Governance(GovernanceEvent::Queued { .. })
+    ));
+    assert!(matches!(
+        governance_events[4].body,
         WorldEventBody::Governance(GovernanceEvent::Applied { .. })
     ));
 
