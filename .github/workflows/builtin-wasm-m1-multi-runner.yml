@@ -39,6 +39,7 @@ jobs:
       - name: Run m1 check and export summary
         run: |
           ./scripts/ci-m1-wasm-summary.sh \
+            --module-set m1 \
             --runner-label "${{ matrix.runner_label }}" \
             --out "output/ci/m1-wasm-summary/${{ matrix.runner_label }}.json"
       - name: Upload m1 summary artifact
@@ -62,5 +63,6 @@ jobs:
       - name: Verify multi-runner summaries
         run: |
           ./scripts/ci-verify-m1-wasm-summaries.py \
+            --module-set m1 \
             --summary-dir output/ci/m1-wasm-summary \
             --expected-runners linux-x86_64,darwin-arm64

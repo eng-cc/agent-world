@@ -42,7 +42,7 @@
 - [x] TASK-TESTING-037 (PRD-TESTING-005) [test_tier_required]: 完成 `ci-builtin-wasm-m4-m5-hash-drift-hardening` 专题 PRD 与项目管理文档建档，建立 1-6 治理项映射。
 - [x] TASK-TESTING-038 (PRD-TESTING-005) [test_tier_required]: 落地 m4/m5 keyed hash manifest 迁移与 sync strict 模式（禁 legacy 写回）。
 - [x] TASK-TESTING-039 (PRD-TESTING-005) [test_tier_required]: 收敛 builtin wasm identity 的 `source_hash` 输入范围并移除 workspace 根 `Cargo.lock` 依赖。
-- [ ] TASK-TESTING-040 (PRD-TESTING-005) [test_tier_required]: 增加 m4/m5 多 runner 对账 workflow、required checks 保护与本地只读校验策略。
+- [x] TASK-TESTING-040 (PRD-TESTING-005) [test_tier_required]: 增加 m4/m5 多 runner 对账 workflow、required checks 保护与本地只读校验策略。
 
 ## 专题任务映射（2026-03-02 批次）
 - [x] SUBTASK-TESTING-20260302-001 (PRD-TESTING-002/003) [test_tier_required]: `doc/testing/longrun/chain-runtime-feedback-replication-network-autowire-2026-03-02.prd.project.md`
@@ -92,7 +92,7 @@
 ## 状态
 - 更新日期: 2026-03-06
 - 当前状态: active
-- 下一任务: TASK-TESTING-040
+- 下一任务: TASK-TESTING-002
 - 专题映射状态: 2026-03-02 批次 3/3 已纳入模块项目管理文档。
 - 专题映射状态补充: 2026-03-06 批次 1/1 已纳入模块项目管理文档。
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。

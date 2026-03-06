@@ -14,7 +14,11 @@ from typing import Any
 
 DEFAULT_BRANCH = "main"
 DEFAULT_STRICT = True
-DEFAULT_REQUIRED_CHECK = "Builtin Wasm m1 Multi Runner / verify-m1-multi-runner-summary"
+DEFAULT_REQUIRED_CHECKS = [
+    "Builtin Wasm m1 Multi Runner / verify-m1-multi-runner-summary",
+    "Builtin Wasm m4 m5 Multi Runner / verify-m4-multi-runner-summary",
+    "Builtin Wasm m4 m5 Multi Runner / verify-m5-multi-runner-summary",
+]
 
 
 def fail(msg: str) -> None:
@@ -148,7 +152,7 @@ def main() -> None:
     strict = parse_bool(args.strict)
     repo = args.repo or resolve_repo_from_origin()
 
-    requested = args.check[:] if args.check else [DEFAULT_REQUIRED_CHECK]
+    requested = args.check[:] if args.check else DEFAULT_REQUIRED_CHECKS[:]
     requested = unique_keep_order(requested)
     if not requested:
         fail("requested checks cannot be empty")

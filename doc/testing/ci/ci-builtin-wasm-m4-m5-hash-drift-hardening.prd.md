@@ -11,7 +11,10 @@
   - SC-1: `m4/m5` hash manifest 仅包含 canonical 平台 keyed token（`darwin-arm64`、`linux-x86_64`）。
   - SC-2: `sync-m*-builtin-wasm-artifacts.sh` 禁止 legacy token 写回，并在 strict 模式下拒绝 legacy/mixed 输入。
   - SC-3: `m4/m5` 建立多 runner 对账 workflow，单次运行可定位平台差异。
-  - SC-4: required checks 默认包含 `m1/m4/m5` 多 runner 汇总校验上下文。
+  - SC-4: required checks 默认包含以下 3 个汇总校验上下文：
+    - `Builtin Wasm m1 Multi Runner / verify-m1-multi-runner-summary`
+    - `Builtin Wasm m4 m5 Multi Runner / verify-m4-multi-runner-summary`
+    - `Builtin Wasm m4 m5 Multi Runner / verify-m5-multi-runner-summary`
   - SC-5: `source_hash` 仅基于可追踪源码与模块级 lockfile 输入，不再依赖 workspace 根 `Cargo.lock`。
   - SC-6: 本地默认只读校验，manifest/identity 写入路径限定 CI bot 流程。
 
@@ -45,7 +48,7 @@
   - AC-2: sync 脚本在 check/sync 两种模式均拒绝 legacy 或 mixed token 输入。
   - AC-3: 本地执行不带 CI 写入授权时，sync 脚本拒绝写入并提供修复提示。
   - AC-4: 新增 `m4/m5` 多 runner workflow 与摘要对账脚本，PR 触发可稳定运行。
-  - AC-5: required checks 自动化默认上下文覆盖 `m1/m4/m5` 汇总校验。
+  - AC-5: required checks 自动化默认上下文覆盖 m1/m4/m5 三个 verify job（上述 3 个 context 精确匹配）。
   - AC-6: identity `source_hash` 移除 workspace 根 `Cargo.lock` 依赖，并仅使用可追踪稳定输入。
 - Non-Goals:
   - 不变更 runtime 对 builtin wasm manifest 的消费协议。

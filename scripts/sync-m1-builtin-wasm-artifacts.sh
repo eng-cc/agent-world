@@ -42,6 +42,9 @@ Env:
   AGENT_WORLD_WASM_CANONICAL_PLATFORMS
       Comma-separated canonical platforms in <os>-<arch> format.
       Default: darwin-arm64,linux-x86_64
+  AGENT_WORLD_WASM_SYNC_WRITE_ALLOW
+      Required when writing manifest/identity (non --check mode).
+      Must be set to ci-bot together with CI=true.
 USAGE
 }
 
@@ -125,6 +128,23 @@ require_current_platform_supported() {
     echo "hint: set AGENT_WORLD_WASM_CANONICAL_PLATFORMS to include current platform" >&2
     exit 1
   fi
+}
+
+require_ci_bot_write_authorization() {
+  if [[ "$CHECK_ONLY" -eq 1 ]]; then
+    return 0
+  fi
+
+  if [[ "${CI:-}" == "true" && "${AGENT_WORLD_WASM_SYNC_WRITE_ALLOW:-}" == "ci-bot" ]]; then
+    return 0
+  fi
+
+  echo "error: sync write mode is restricted to CI bot" >&2
+  echo "  CI=${CI:-<unset>}" >&2
+  echo "  AGENT_WORLD_WASM_SYNC_WRITE_ALLOW=${AGENT_WORLD_WASM_SYNC_WRITE_ALLOW:-<unset>}" >&2
+  echo "hint: local development should run scripts/sync-m1-builtin-wasm-artifacts.sh --check" >&2
+  echo "hint: CI bot write flow must set CI=true and AGENT_WORLD_WASM_SYNC_WRITE_ALLOW=ci-bot" >&2
+  exit 1
 }
 
 read_module_ids() {
@@ -288,6 +308,7 @@ fi
 
 CURRENT_PLATFORM="$(detect_current_platform)"
 read_canonical_platforms
+require_ci_bot_write_authorization
 
 read_module_ids
 mkdir -p "$OUT_DIR"
@@ -301,7 +322,7 @@ mkdir -p "$DISTFS_BLOBS_DIR"
 if [[ ! -f "$HASH_MANIFEST_PATH" ]]; then
   if [[ "$CHECK_ONLY" -eq 1 ]]; then
     echo "error: hash manifest missing: $HASH_MANIFEST_PATH" >&2
-    echo "hint: run scripts/sync-m1-builtin-wasm-artifacts.sh" >&2
+    echo "hint: manifest generation is restricted to CI bot write flow" >&2
     exit 1
   fi
 fi
@@ -400,7 +421,7 @@ if [[ "$CHECK_ONLY" -eq 1 ]]; then
       echo "  platform=$CURRENT_PLATFORM" >&2
       echo "  built   =$built_hash" >&2
       echo "  manifest=$expected_platform_hash" >&2
-      echo "hint: run scripts/sync-m1-builtin-wasm-artifacts.sh" >&2
+      echo "hint: local only supports --check; use CI bot flow for manifest writes" >&2
       exit 1
     fi
   done

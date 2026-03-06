@@ -75,8 +75,12 @@
   - `./scripts/viewer-visual-baseline.sh`
 - 入口 C：`.github/workflows/builtin-wasm-m1-multi-runner.yml`（构建 hash 链路独立 gate）
   - runner 矩阵：`ubuntu-24.04 (linux-x86_64)` + `macos-14 (darwin-arm64)`
-  - 每个 runner 仅执行：`./scripts/ci-m1-wasm-summary.sh --runner-label ... --out ...`
-  - 汇总 job 对账：`./scripts/ci-verify-m1-wasm-summaries.py --summary-dir ... --expected-runners linux-x86_64,darwin-arm64`
+  - 每个 runner 仅执行：`./scripts/ci-m1-wasm-summary.sh --module-set m1 --runner-label ... --out ...`
+  - 汇总 job 对账：`./scripts/ci-verify-m1-wasm-summaries.py --module-set m1 --summary-dir ... --expected-runners linux-x86_64,darwin-arm64`
+- 入口 D：`.github/workflows/builtin-wasm-m4-m5-multi-runner.yml`（m4/m5 构建 hash 链路独立 gate）
+  - runner 矩阵：`(m4|m5) x (ubuntu-24.04/linux-x86_64, macos-14/darwin-arm64)`
+  - 每个 runner 执行：`./scripts/ci-m1-wasm-summary.sh --module-set <m4|m5> --runner-label ... --out ...`
+  - 汇总 job 对账：`./scripts/ci-verify-m1-wasm-summaries.py --module-set <m4|m5> --summary-dir ... --expected-runners linux-x86_64,darwin-arm64`
 
 ### 当前 CI 未直接覆盖（需手册补齐）
 - Web UI Playwright 闭环（现为手动/agent 流程，不在 CI 默认路径中）。
@@ -85,7 +89,7 @@
 结论：
 - `required/full` 是“核心链路测试层”的主入口（required 含 `agent_world + consensus + distfs + viewer`，full 追加 `node + net/libp2p`）；
 - `required-gate` 已补充 viewer 视觉基线脚本（snapshot 基线 + 定向测试）；
-- `builtin-wasm-m1-multi-runner` 负责 `m1` hash 链路独立 gate；
+- `builtin-wasm-m1-multi-runner` 与 `builtin-wasm-m4-m5-multi-runner` 共同负责 `m1/m4/m5` hash 链路独立 gate；
 - 若目标是“整应用充分测试”，仍需在此基础上叠加 UI 闭环层（S6）与压力层（S8）。
 
 ## 分层模型（针对当前仓库）
@@ -130,6 +134,9 @@ env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-u
 ./scripts/sync-m4-builtin-wasm-artifacts.sh --check
 ./scripts/sync-m5-builtin-wasm-artifacts.sh --check
 ```
+- 本地策略（2026-03-06 起）：
+  - 本地仅允许 `--check`；manifest/identity 写入由 CI bot 流程执行。
+  - 非 `--check` 写入需同时满足 `CI=true` 且 `AGENT_WORLD_WASM_SYNC_WRITE_ALLOW=ci-bot`。
 
 ### S1：核心 required 套件（L1）
 ```bash
@@ -329,7 +336,7 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_full world_i
 | `crates/agent_world_distfs/**` | S0 + S4（distfs） + S9/S10（按改动面至少一条） | S2 + S8 + 另一条在线长跑（S9 或 S10） |
 | `scripts/ci-tests.sh` / `.github/workflows/rust.yml` | S0（含 `./scripts/doc-governance-check.sh`） + S1 + `./scripts/viewer-visual-baseline.sh` + （full）`./scripts/llm-baseline-fixture-smoke.sh` | S2 + S4 + S6（抽样） |
 | `scripts/release-gate.sh` / `.github/workflows/release-packages.yml` | `./scripts/ci-tests.sh full` + `sync-m1/m4/m5 --check` + Web strict + S9 + S10 | `./scripts/release-gate.sh --quick` / `--dry-run` |
-| `scripts/ci-m1-wasm-summary.sh` / `scripts/ci-verify-m1-wasm-summaries.py` / `.github/workflows/builtin-wasm-m1-multi-runner.yml` | `S0` + `./scripts/ci-m1-wasm-summary.sh --runner-label darwin-arm64 --out output/ci/m1-wasm-summary/darwin-arm64.json` + `./scripts/ci-verify-m1-wasm-summaries.py --summary-dir output/ci/m1-wasm-summary --expected-runners darwin-arm64` | `workflow_dispatch` 触发双 runner（`linux-x86_64,darwin-arm64`）对账 |
+| `scripts/ci-m1-wasm-summary.sh` / `scripts/ci-verify-m1-wasm-summaries.py` / `.github/workflows/builtin-wasm-m1-multi-runner.yml` / `.github/workflows/builtin-wasm-m4-m5-multi-runner.yml` | `S0` + `./scripts/ci-m1-wasm-summary.sh --module-set m4 --runner-label darwin-arm64 --out output/ci/m4-wasm-summary/darwin-arm64.json` + `./scripts/ci-verify-m1-wasm-summaries.py --module-set m4 --summary-dir output/ci/m4-wasm-summary --expected-runners darwin-arm64` | `workflow_dispatch` 触发 m1/m4/m5 双 runner（`linux-x86_64,darwin-arm64`）对账 |
 | `scripts/run-viewer-web.sh` / `scripts/capture-viewer-frame.sh` | S0 + S6 | S5 + S8 |
 | `scripts/p2p-longrun-soak.sh` / `doc/testing/p2p-storage-consensus-longrun-online-stability-2026-02-24*` | S0 + S9 smoke（含 summary/timeline 校验） | S9 endurance（含 chaos） |
 | `scripts/s10-five-node-game-soak.sh` / `doc/testing/s10-five-node-real-game-soak*` | S0 + S10 smoke（含 summary/timeline 校验） | S10 默认长窗（30min+） |

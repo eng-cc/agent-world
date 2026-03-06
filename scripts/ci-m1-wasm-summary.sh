@@ -5,18 +5,21 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
 metadata_dir="$repo_root/.tmp/builtin-wasm-sync-modules"
-hash_manifest_path="$repo_root/crates/agent_world/src/runtime/world/artifacts/m1_builtin_modules.sha256"
-identity_manifest_path="$repo_root/crates/agent_world/src/runtime/world/artifacts/m1_builtin_modules.identity.json"
+module_set="m1"
+sync_script_path=""
+hash_manifest_path=""
+identity_manifest_path=""
 runner_label=""
 out_path=""
 
 usage() {
   cat <<'USAGE'
 Usage:
-  scripts/ci-m1-wasm-summary.sh --out <path> [--runner-label <label>] [--metadata-dir <dir>]
+  scripts/ci-m1-wasm-summary.sh --out <path> [--module-set <m1|m4|m5>] [--runner-label <label>] [--metadata-dir <dir>]
 
 Options:
   --out <path>            Output summary JSON path (required)
+  --module-set <name>     Builtin wasm module set (default: m1, allowed: m1|m4|m5)
   --runner-label <label>  Runner label recorded in summary (default: detected platform key)
   --metadata-dir <dir>    Metadata dir produced by sync script
                           (default: .tmp/builtin-wasm-sync-modules)
@@ -49,11 +52,41 @@ detect_current_platform() {
   echo "${os}-${arch}"
 }
 
+configure_module_set() {
+  case "$module_set" in
+    m1)
+      sync_script_path="./scripts/sync-m1-builtin-wasm-artifacts.sh"
+      hash_manifest_path="$repo_root/crates/agent_world/src/runtime/world/artifacts/m1_builtin_modules.sha256"
+      identity_manifest_path="$repo_root/crates/agent_world/src/runtime/world/artifacts/m1_builtin_modules.identity.json"
+      ;;
+    m4)
+      sync_script_path="./scripts/sync-m4-builtin-wasm-artifacts.sh"
+      hash_manifest_path="$repo_root/crates/agent_world/src/runtime/world/artifacts/m4_builtin_modules.sha256"
+      identity_manifest_path="$repo_root/crates/agent_world/src/runtime/world/artifacts/m4_builtin_modules.identity.json"
+      ;;
+    m5)
+      sync_script_path="./scripts/sync-m5-builtin-wasm-artifacts.sh"
+      hash_manifest_path="$repo_root/crates/agent_world/src/runtime/world/artifacts/m5_builtin_modules.sha256"
+      identity_manifest_path="$repo_root/crates/agent_world/src/runtime/world/artifacts/m5_builtin_modules.identity.json"
+      ;;
+    *)
+      echo "error: unsupported --module-set value: $module_set" >&2
+      echo "hint: allowed values are m1, m4, m5" >&2
+      exit 2
+      ;;
+  esac
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --out)
       [[ $# -ge 2 ]] || { echo "error: --out requires a value" >&2; exit 2; }
       out_path="$2"
+      shift 2
+      ;;
+    --module-set)
+      [[ $# -ge 2 ]] || { echo "error: --module-set requires a value" >&2; exit 2; }
+      module_set="$2"
       shift 2
       ;;
     --runner-label)
@@ -84,32 +117,33 @@ if [[ -z "$out_path" ]]; then
   exit 2
 fi
 
+configure_module_set
 current_platform="$(detect_current_platform)"
 if [[ -z "$runner_label" ]]; then
   runner_label="$current_platform"
 fi
 
-./scripts/sync-m1-builtin-wasm-artifacts.sh --check
+"$sync_script_path" --check
 
 mkdir -p "$(dirname "$out_path")"
 
-python3 - "$metadata_dir" "$hash_manifest_path" "$identity_manifest_path" "$out_path" "$runner_label" "$current_platform" <<'PY'
+python3 - "$module_set" "$metadata_dir" "$hash_manifest_path" "$identity_manifest_path" "$out_path" "$runner_label" "$current_platform" <<'PY'
 import datetime as dt
 import glob
 import json
 import pathlib
 import sys
 
-metadata_dir = pathlib.Path(sys.argv[1])
-hash_manifest_path = pathlib.Path(sys.argv[2])
-identity_manifest_path = pathlib.Path(sys.argv[3])
-out_path = pathlib.Path(sys.argv[4])
-runner_label = sys.argv[5]
-current_platform = sys.argv[6]
+module_set = sys.argv[1]
+metadata_dir = pathlib.Path(sys.argv[2])
+hash_manifest_path = pathlib.Path(sys.argv[3])
+identity_manifest_path = pathlib.Path(sys.argv[4])
+out_path = pathlib.Path(sys.argv[5])
+runner_label = sys.argv[6]
+current_platform = sys.argv[7]
 
 manifest_platform_hashes = {}
 canonical_platforms = set()
-legacy_mode = False
 for lineno, raw_line in enumerate(hash_manifest_path.read_text().splitlines(), start=1):
     line = raw_line.strip()
     if not line:
@@ -121,21 +155,32 @@ for lineno, raw_line in enumerate(hash_manifest_path.read_text().splitlines(), s
         )
     module_id = tokens[0]
     keyed_tokens = [token for token in tokens[1:] if "=" in token]
-    if keyed_tokens:
-        selected_hash = None
-        for token in keyed_tokens:
-            platform_key, hash_value = token.split("=", 1)
-            canonical_platforms.add(platform_key)
-            if platform_key == current_platform:
-                selected_hash = hash_value
-        if selected_hash is None:
+    legacy_tokens = [token for token in tokens[1:] if "=" not in token]
+    if legacy_tokens:
+        raise SystemExit(
+            f"error: legacy hash tokens are not allowed in strict mode for module {module_id}: {legacy_tokens}"
+        )
+    if not keyed_tokens:
+        raise SystemExit(
+            f"error: hash manifest line {lineno} has no keyed platform token for module {module_id}"
+        )
+
+    selected_hash = None
+    for token in keyed_tokens:
+        platform_key, hash_value = token.split("=", 1)
+        if not platform_key:
             raise SystemExit(
-                f"error: hash manifest missing platform {current_platform} for module {module_id}"
+                f"error: empty platform key in hash manifest line {lineno} token {token}"
             )
-        manifest_platform_hashes[module_id] = selected_hash
-    else:
-        legacy_mode = True
-        manifest_platform_hashes[module_id] = tokens[1]
+        canonical_platforms.add(platform_key)
+        if platform_key == current_platform:
+            selected_hash = hash_value
+
+    if selected_hash is None:
+        raise SystemExit(
+            f"error: hash manifest missing platform {current_platform} for module {module_id}"
+        )
+    manifest_platform_hashes[module_id] = selected_hash
 
 manifest_module_ids = set(manifest_platform_hashes.keys())
 
@@ -171,16 +216,17 @@ for entry in identity_modules:
         continue
     identity_hashes[module_id] = identity_hash
 
-module_id_set = set(module_hashes.keys())
-if module_id_set != manifest_module_ids:
-    missing = sorted(module_id_set - manifest_module_ids)
-    extra = sorted(manifest_module_ids - module_id_set)
+metadata_module_ids = set(module_hashes.keys())
+if metadata_module_ids != manifest_module_ids:
+    missing = sorted(manifest_module_ids - metadata_module_ids)
+    extra = sorted(metadata_module_ids - manifest_module_ids)
     raise SystemExit(
         f"error: module set mismatch between metadata and hash manifest missing={missing} extra={extra}"
     )
-if module_id_set != set(identity_hashes.keys()):
-    missing = sorted(module_id_set - set(identity_hashes.keys()))
-    extra = sorted(set(identity_hashes.keys()) - module_id_set)
+identity_module_ids = set(identity_hashes.keys())
+if metadata_module_ids != identity_module_ids:
+    missing = sorted(metadata_module_ids - identity_module_ids)
+    extra = sorted(identity_module_ids - metadata_module_ids)
     raise SystemExit(
         f"error: module set mismatch between metadata and identity manifest missing={missing} extra={extra}"
     )
@@ -194,6 +240,7 @@ for module_id, built_hash in sorted(module_hashes.items()):
 
 summary = {
     "schema_version": 1,
+    "module_set": module_set,
     "runner": runner_label,
     "current_platform": current_platform,
     "generated_at_utc": dt.datetime.now(dt.timezone.utc).isoformat().replace("+00:00", "Z"),
@@ -202,11 +249,10 @@ summary = {
     "manifest_platform_hashes": dict(sorted(manifest_platform_hashes.items())),
     "identity_hashes": dict(sorted(identity_hashes.items())),
     "canonical_platforms": sorted(canonical_platforms),
-    "legacy_manifest_mode": legacy_mode,
     "hash_manifest_path": str(hash_manifest_path),
     "identity_manifest_path": str(identity_manifest_path),
 }
 
 out_path.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n")
-print(f"wrote m1 wasm summary: {out_path}")
+print(f"wrote {module_set} wasm summary: {out_path}")
 PY

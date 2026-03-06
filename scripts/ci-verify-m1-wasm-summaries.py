@@ -7,7 +7,12 @@ import sys
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Verify m1 builtin wasm summaries collected from multi-runner CI jobs."
+        description="Verify builtin wasm summaries collected from multi-runner CI jobs."
+    )
+    parser.add_argument(
+        "--module-set",
+        default="m1",
+        help="Builtin wasm module set expected in summary files (default: m1).",
     )
     parser.add_argument(
         "--summary-dir",
@@ -35,6 +40,7 @@ def load_summary(path: pathlib.Path) -> dict:
 
     required_keys = {
         "schema_version",
+        "module_set",
         "runner",
         "current_platform",
         "module_count",
@@ -48,9 +54,16 @@ def load_summary(path: pathlib.Path) -> dict:
     return payload
 
 
-def verify_summary_shape(path: pathlib.Path, payload: dict) -> None:
+def verify_summary_shape(path: pathlib.Path, payload: dict, module_set: str) -> None:
     if payload["schema_version"] != 1:
         fail(f"summary {path} schema_version must be 1")
+
+    if payload["module_set"] != module_set:
+        fail(
+            "summary {} module_set mismatch: expected={} actual={}".format(
+                path, module_set, payload["module_set"]
+            )
+        )
 
     for key in ("module_hashes", "manifest_platform_hashes", "identity_hashes"):
         if not isinstance(payload[key], dict):
@@ -83,6 +96,10 @@ def verify_summary_shape(path: pathlib.Path, payload: dict) -> None:
 
 def main() -> None:
     args = parse_args()
+    module_set = args.module_set.strip()
+    if not module_set:
+        fail("--module-set must not be empty")
+
     summary_dir = pathlib.Path(args.summary_dir)
     if not summary_dir.exists():
         fail(f"summary dir does not exist: {summary_dir}")
@@ -100,7 +117,7 @@ def main() -> None:
     summaries_by_runner = {}
     for path in summary_paths:
         payload = load_summary(path)
-        verify_summary_shape(path, payload)
+        verify_summary_shape(path, payload, module_set)
         runner = payload["runner"]
         if runner in summaries_by_runner:
             fail(f"duplicate runner summary detected for {runner}")
@@ -133,8 +150,8 @@ def main() -> None:
             )
 
     print(
-        "m1 multi-runner summary verify ok: runners={} module_count={}".format(
-            ",".join(sorted(found_runners)), len(baseline_module_keys)
+        "{} multi-runner summary verify ok: runners={} module_count={}".format(
+            module_set, ",".join(sorted(found_runners)), len(baseline_module_keys)
         )
     )
 
