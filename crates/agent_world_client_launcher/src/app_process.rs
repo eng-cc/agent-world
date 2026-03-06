@@ -70,12 +70,6 @@ impl ClientLauncherApp {
                         self.append_log(format!("web action request failed: {err}"));
                     }
                 },
-                WebApiEvent::Feedback(result) => {
-                    self.apply_web_feedback_submit_result(result);
-                }
-                WebApiEvent::Transfer(result) => {
-                    self.apply_web_transfer_submit_result(result);
-                }
             }
         }
 

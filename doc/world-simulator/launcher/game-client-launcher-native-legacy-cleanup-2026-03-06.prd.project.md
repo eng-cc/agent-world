@@ -5,7 +5,7 @@
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0 (PRD-WORLD_SIMULATOR-022) [test_tier_required]: 完成专题 PRD 建模、验收标准冻结与模块文档树回写。
-- [ ] T1 (PRD-WORLD_SIMULATOR-022) [test_tier_required]: 落地 native 遗留代码清理（状态字段/常量边界收敛 + 删除未引用旧测试文件）并执行 required 回归。
+- [x] T1 (PRD-WORLD_SIMULATOR-022) [test_tier_required]: 落地 native 遗留代码清理（状态字段/常量边界收敛 + 删除未引用旧测试文件）并执行 required 回归。
 
 ## 依赖
 - `doc/world-simulator/prd.md`
@@ -18,6 +18,6 @@
 
 ## 状态
 - 最近更新：2026-03-06
-- 当前阶段: in_progress
-- 当前任务: T1（native 遗留代码清理 + required 回归）
-- 备注: 本轮严格限制为“无行为变更”的历史残留清理。
+- 当前阶段: completed
+- 当前任务: 无（T0/T1 已完成）
+- 备注: native 遗留清理已完成，required 回归通过且功能语义保持不变。

@@ -84,13 +84,17 @@ const EGUI_CJK_FONT_BYTES: &[u8] =
     include_bytes!("../../agent_world_viewer/assets/fonts/ms-yahei.ttf");
 const CLIENT_LAUNCHER_FONT_ENV: &str = "AGENT_WORLD_CLIENT_LAUNCHER_FONT";
 const CLIENT_LAUNCHER_LANG_ENV: &str = "AGENT_WORLD_CLIENT_LAUNCHER_LANG";
+#[cfg(not(target_arch = "wasm32"))]
 const GRACEFUL_STOP_TIMEOUT_MS: u64 = 4000;
+#[cfg(not(target_arch = "wasm32"))]
 const STOP_POLL_INTERVAL_MS: u64 = 80;
-const CHAIN_STATUS_PROBE_INTERVAL_MS: u64 = 1000;
+#[cfg(not(target_arch = "wasm32"))]
 const CHAIN_STATUS_PROBE_TIMEOUT_MS: u64 = 300;
-const CHAIN_STATUS_STARTING_GRACE_SECS: u64 = 8;
+#[cfg(not(target_arch = "wasm32"))]
 const CLIENT_LAUNCHER_CONTROL_URL_ENV: &str = "AGENT_WORLD_CLIENT_LAUNCHER_CONTROL_URL";
+#[cfg(not(target_arch = "wasm32"))]
 const CLIENT_LAUNCHER_CONTROL_BIND_ENV: &str = "AGENT_WORLD_CLIENT_LAUNCHER_CONTROL_BIND";
+#[cfg(not(target_arch = "wasm32"))]
 const DEFAULT_CLIENT_LAUNCHER_CONTROL_BIND: &str = "127.0.0.1:5410";
 const NATIVE_UI_SECTIONS: &[&str] = &[
     "game_core",
@@ -308,15 +312,13 @@ struct RunningProcess {
     log_rx: Receiver<String>,
 }
 
-#[derive(Debug, Default)]
-#[cfg(target_arch = "wasm32")]
-struct RunningProcess;
-
 #[derive(Debug, Clone)]
 enum WebApiEvent {
     State(Result<WebStateSnapshot, String>),
     Action(Result<WebApiResponse, String>),
+    #[cfg(target_arch = "wasm32")]
     Feedback(Result<WebFeedbackSubmitResponse, String>),
+    #[cfg(target_arch = "wasm32")]
     Transfer(Result<WebTransferSubmitResponse, String>),
 }
 
@@ -324,12 +326,8 @@ enum WebApiEvent {
 struct WebStateSnapshot {
     status: String,
     detail: Option<String>,
-    pid: Option<u32>,
-    running: bool,
     chain_status: String,
     chain_detail: Option<String>,
-    chain_pid: Option<u32>,
-    chain_running: bool,
     game_url: String,
     config: LaunchConfig,
     logs: Vec<String>,
@@ -342,6 +340,7 @@ struct WebApiResponse {
     state: WebStateSnapshot,
 }
 
+#[cfg(target_arch = "wasm32")]
 #[derive(Debug, Clone, Serialize)]
 struct WebFeedbackSubmitRequest {
     category: String,
@@ -351,6 +350,7 @@ struct WebFeedbackSubmitRequest {
     game_version: String,
 }
 
+#[cfg(target_arch = "wasm32")]
 #[derive(Debug, Clone, Deserialize)]
 struct WebFeedbackSubmitResponse {
     ok: bool,
@@ -359,6 +359,7 @@ struct WebFeedbackSubmitResponse {
     error: Option<String>,
 }
 
+#[cfg(target_arch = "wasm32")]
 #[derive(Debug, Clone, Serialize)]
 struct WebTransferSubmitRequest {
     from_account_id: String,
@@ -367,6 +368,7 @@ struct WebTransferSubmitRequest {
     nonce: u64,
 }
 
+#[cfg(target_arch = "wasm32")]
 #[derive(Debug, Clone, Deserialize)]
 struct WebTransferSubmitResponse {
     ok: bool,
@@ -650,11 +652,8 @@ struct ClientLauncherApp {
     ui_language: UiLanguage,
     status: LauncherStatus,
     chain_runtime_status: ChainRuntimeStatus,
-    launcher_started_at: Option<Instant>,
-    chain_started_at: Option<Instant>,
-    last_chain_probe_at: Option<Instant>,
+    #[cfg(not(target_arch = "wasm32"))]
     running: Option<RunningProcess>,
-    chain_running: Option<RunningProcess>,
     chain_auto_start_attempted: bool,
     logs: VecDeque<String>,
     feedback_draft: FeedbackDraft,
@@ -715,11 +714,8 @@ impl Default for ClientLauncherApp {
             ui_language: UiLanguage::detect_from_env(),
             status: LauncherStatus::Idle,
             chain_runtime_status,
-            launcher_started_at: None,
-            chain_started_at: None,
-            last_chain_probe_at: None,
+            #[cfg(not(target_arch = "wasm32"))]
             running: None,
-            chain_running: None,
             chain_auto_start_attempted: false,
             logs: VecDeque::new(),
             feedback_draft: FeedbackDraft::default(),
@@ -758,6 +754,7 @@ impl ClientLauncherApp {
         }
     }
 
+    #[cfg(target_arch = "wasm32")]
     fn apply_web_transfer_submit_result(
         &mut self,
         result: Result<WebTransferSubmitResponse, String>,
@@ -807,6 +804,7 @@ impl ClientLauncherApp {
         }
     }
 
+    #[cfg(target_arch = "wasm32")]
     fn apply_web_feedback_submit_result(
         &mut self,
         result: Result<WebFeedbackSubmitResponse, String>,
@@ -913,9 +911,6 @@ impl Drop for ClientLauncherApp {
         #[cfg(not(target_arch = "wasm32"))]
         {
             if let Some(mut running) = self.running.take() {
-                let _ = stop_child_process(&mut running.child);
-            }
-            if let Some(mut running) = self.chain_running.take() {
                 let _ = stop_child_process(&mut running.child);
             }
         }
