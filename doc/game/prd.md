@@ -34,6 +34,7 @@
   - SC-2: 核心玩法场景（新手/经济/战争）在测试矩阵中具备对应用例。
   - SC-3: 每次版本发布前至少完成一轮可玩性卡片收集并回填闭环。
   - SC-4: 关键玩法规则变更同步更新 game PRD 与 project 文档。
+  - SC-5: 微循环关键动作具备可见反馈与计时提示，发布前可玩性卡片评分显著提升。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -49,6 +50,7 @@
   - PRD-GAME-001: As a 玩法设计者, I want a canonical gameplay blueprint, so that feature decisions are coherent.
   - PRD-GAME-002: As a 玩法开发者, I want clear rule-layer boundaries, so that runtime and gameplay modules evolve safely.
   - PRD-GAME-003: As a 发行评审者, I want measurable playability gates, so that release readiness is objective.
+  - PRD-GAME-004: As a 玩家/评测者, I want micro-loop feedback visibility, so that control and pacing are reliable.
 - Critical User Flows:
   1. Flow-GAME-001: `玩法需求提出 -> 规则层建模 -> 映射实现边界 -> 进入开发`
   2. Flow-GAME-002: `执行核心循环回归 -> 记录可玩性问题 -> 分级 -> 回填修复任务`
@@ -64,6 +66,7 @@
   - AC-2: game project 文档任务项可映射到 PRD-GAME-001/002/003。
   - AC-3: 与 `doc/game/gameplay/gameplay-top-level-design.prd.md`、`doc/game/gameplay/gameplay-engineering-architecture.md` 口径一致。
   - AC-4: 发行前可玩性回归必须在 testing 手册与测试结果中可追溯。
+  - AC-5: 微循环反馈优化 PRD 定义可见反馈与计时规则，并形成可验证的评分提升目标。
 - Non-Goals:
   - 不在本 PRD 中给出逐条数值参数表。
   - 不替代 runtime/p2p 的底层实现设计。
@@ -110,6 +113,7 @@
 | PRD-GAME-001 | TASK-GAME-001/002/005 | `test_tier_required` | 核心循环验收矩阵检查 | 玩法主循环一致性 |
 | PRD-GAME-002 | TASK-GAME-002/003/005 | `test_tier_required` + `test_tier_full` | 规则层边界回归、跨模块联动抽样 | gameplay/runtime 协同稳定性 |
 | PRD-GAME-003 | TASK-GAME-003/004/005 | `test_tier_required` | 可玩性证据与发布门禁核验 | 发布质量与玩家体验风险 |
+| PRD-GAME-004 | TASK-GAME-006 + TASK-GAMEPLAY-MLF-001/002/003/004 | `test_tier_required` | 微循环反馈可见性回归 + 可玩性卡片评分复核 | 玩家控制感与节奏体验 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |
