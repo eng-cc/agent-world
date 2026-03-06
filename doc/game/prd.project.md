@@ -33,7 +33,7 @@
 - `.agents/skills/prd/check.md`
 
 ## 状态
-- 更新日期: 2026-03-06
+- 更新日期: 2026-03-07
 - 当前状态: active
 - 下一任务: TASK-GAME-018（微循环可玩性视觉优化二期）
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
@@ -52,4 +52,5 @@
 - ROUND-014 进展: `TASK-GAME-016` 已完成，main token 新增经济源汇审计报表与通胀/套利阈值 gate（`main_token_economy_audit_report/enforce_main_token_economy_gate`），并通过定向回归。
 - ROUND-015 进展: `TASK-GAME-017` 已完成，新增 long-run 可运维发布门禁模型（SLO/告警/灰度/灾备 + 经济告警联动）与阻断接口 `enforce_longrun_operability_release_gate`。
 - ROUND-016 进展: `TASK-GAME-018` 已立项，进入 viewer 体验层改造与手动截图验收阶段。
-- 说明: 本文档仅维护 game 设计执行状态；过程记录在 `doc/devlog/2026-03-05.md` 与 `doc/devlog/2026-03-06.md`。
+- ROUND-017 进展: `TASK-GAME-018` 已进入执行中，`TASK-GAMEPLAY-MLF-005/006` 已完成（控制结果显著条 + 玩家模式默认减负），`TASK-GAMEPLAY-MLF-008` 正在迭代截图验收（含 tick 闪烁节奏修正）。
+- 说明: 本文档仅维护 game 设计执行状态；过程记录在 `doc/devlog/2026-03-05.md`、`doc/devlog/2026-03-06.md` 与 `doc/devlog/2026-03-07.md`。

@@ -46,51 +46,53 @@ pub(super) struct RightPanelModuleVisibilityPath {
 struct PersistedRightPanelModuleVisibility {
     #[serde(default = "persisted_version")]
     version: u32,
-    #[serde(default = "default_visible")]
-    show_controls: bool,
-    #[serde(default = "default_visible")]
-    show_overview: bool,
-    #[serde(default = "default_visible")]
-    show_chat: bool,
-    #[serde(default = "default_visible")]
-    show_overlay: bool,
-    #[serde(default = "default_visible")]
-    show_diagnosis: bool,
-    #[serde(default = "default_visible")]
-    show_event_link: bool,
-    #[serde(default = "default_visible")]
-    show_timeline: bool,
-    #[serde(default = "default_visible")]
-    show_details: bool,
+    #[serde(default)]
+    show_controls: Option<bool>,
+    #[serde(default)]
+    show_overview: Option<bool>,
+    #[serde(default)]
+    show_chat: Option<bool>,
+    #[serde(default)]
+    show_overlay: Option<bool>,
+    #[serde(default)]
+    show_diagnosis: Option<bool>,
+    #[serde(default)]
+    show_event_link: Option<bool>,
+    #[serde(default)]
+    show_timeline: Option<bool>,
+    #[serde(default)]
+    show_details: Option<bool>,
 }
 
 impl Default for PersistedRightPanelModuleVisibility {
     fn default() -> Self {
+        let defaults = RightPanelModuleVisibilityState::default();
         Self {
             version: MODULE_VISIBILITY_VERSION,
-            show_controls: true,
-            show_overview: true,
-            show_chat: true,
-            show_overlay: true,
-            show_diagnosis: true,
-            show_event_link: true,
-            show_timeline: true,
-            show_details: true,
+            show_controls: Some(defaults.show_controls),
+            show_overview: Some(defaults.show_overview),
+            show_chat: Some(defaults.show_chat),
+            show_overlay: Some(defaults.show_overlay),
+            show_diagnosis: Some(defaults.show_diagnosis),
+            show_event_link: Some(defaults.show_event_link),
+            show_timeline: Some(defaults.show_timeline),
+            show_details: Some(defaults.show_details),
         }
     }
 }
 
 impl From<PersistedRightPanelModuleVisibility> for RightPanelModuleVisibilityState {
     fn from(value: PersistedRightPanelModuleVisibility) -> Self {
+        let defaults = Self::default();
         Self {
-            show_controls: value.show_controls,
-            show_overview: value.show_overview,
-            show_chat: value.show_chat,
-            show_overlay: value.show_overlay,
-            show_diagnosis: value.show_diagnosis,
-            show_event_link: value.show_event_link,
-            show_timeline: value.show_timeline,
-            show_details: value.show_details,
+            show_controls: value.show_controls.unwrap_or(defaults.show_controls),
+            show_overview: value.show_overview.unwrap_or(defaults.show_overview),
+            show_chat: value.show_chat.unwrap_or(defaults.show_chat),
+            show_overlay: value.show_overlay.unwrap_or(defaults.show_overlay),
+            show_diagnosis: value.show_diagnosis.unwrap_or(defaults.show_diagnosis),
+            show_event_link: value.show_event_link.unwrap_or(defaults.show_event_link),
+            show_timeline: value.show_timeline.unwrap_or(defaults.show_timeline),
+            show_details: value.show_details.unwrap_or(defaults.show_details),
         }
     }
 }
@@ -98,21 +100,17 @@ impl From<PersistedRightPanelModuleVisibility> for RightPanelModuleVisibilitySta
 impl From<RightPanelModuleVisibilityState> for PersistedRightPanelModuleVisibility {
     fn from(value: RightPanelModuleVisibilityState) -> Self {
         Self {
-            show_controls: value.show_controls,
-            show_overview: value.show_overview,
-            show_chat: value.show_chat,
-            show_overlay: value.show_overlay,
-            show_diagnosis: value.show_diagnosis,
-            show_event_link: value.show_event_link,
-            show_timeline: value.show_timeline,
-            show_details: value.show_details,
+            show_controls: Some(value.show_controls),
+            show_overview: Some(value.show_overview),
+            show_chat: Some(value.show_chat),
+            show_overlay: Some(value.show_overlay),
+            show_diagnosis: Some(value.show_diagnosis),
+            show_event_link: Some(value.show_event_link),
+            show_timeline: Some(value.show_timeline),
+            show_details: Some(value.show_details),
             ..Default::default()
         }
     }
-}
-
-fn default_visible() -> bool {
-    true
 }
 
 fn persisted_version() -> u32 {
@@ -250,7 +248,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_visibility_defaults_missing_fields_to_visible() {
+    fn parse_visibility_defaults_missing_fields_to_module_defaults() {
         let state = parse_right_panel_module_visibility(
             r#"{
   "version": 1,
@@ -262,11 +260,11 @@ mod tests {
         assert!(!state.show_controls);
         assert!(state.show_overview);
         assert!(state.show_chat);
-        assert!(state.show_overlay);
-        assert!(state.show_diagnosis);
+        assert!(!state.show_overlay);
+        assert!(!state.show_diagnosis);
         assert!(state.show_event_link);
-        assert!(state.show_timeline);
-        assert!(state.show_details);
+        assert!(!state.show_timeline);
+        assert!(!state.show_details);
     }
 
     #[test]

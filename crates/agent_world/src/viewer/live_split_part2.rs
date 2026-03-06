@@ -128,6 +128,7 @@ struct ViewerLiveSession {
     subscribed: HashSet<ViewerStream>,
     event_filters: Option<HashSet<ViewerEventKind>>,
     playing: bool,
+    next_play_step_at: Option<Instant>,
     metrics: RunnerMetrics,
 }
 
@@ -462,6 +463,7 @@ impl ViewerLiveSession {
             subscribed: HashSet::new(),
             event_filters: None,
             playing: false,
+            next_play_step_at: None,
             metrics: RunnerMetrics::default(),
         }
     }
@@ -592,13 +594,16 @@ impl ViewerLiveSession {
         match mode {
             ViewerControl::Pause => {
                 self.playing = false;
+                self.next_play_step_at = None;
             }
             ViewerControl::Play => {
                 self.playing = true;
+                self.next_play_step_at = None;
                 *request_llm_decision = true;
             }
             ViewerControl::Step { count } => {
                 self.playing = false;
+                self.next_play_step_at = None;
                 *deferred_control = Some(ViewerLiveDeferredControl::Step {
                     count: count.max(1),
                     request_id,
@@ -606,10 +611,35 @@ impl ViewerLiveSession {
             }
             ViewerControl::Seek { tick } => {
                 self.playing = false;
+                self.next_play_step_at = None;
                 // P2P live mode is monotonic and does not support rewind/seek semantics.
                 eprintln!("viewer live: ignore seek control in live mode (target_tick={tick})");
             }
         }
+    }
+
+    fn throttle_play_drive(&mut self) {
+        if !self.playing {
+            return;
+        }
+        if let Some(next_step_at) = self.next_play_step_at {
+            let now = Instant::now();
+            if now < next_step_at {
+                thread::sleep(next_step_at - now);
+            }
+        }
+    }
+
+    fn schedule_next_play_drive(&mut self, interval: Duration, advanced_ticks: u64) {
+        if !self.playing {
+            self.next_play_step_at = None;
+            return;
+        }
+        let scaled_ticks = advanced_ticks.clamp(1, 16) as u32;
+        let delay = interval
+            .checked_mul(scaled_ticks)
+            .unwrap_or_else(|| Duration::from_secs(10));
+        self.next_play_step_at = Some(Instant::now() + delay);
     }
 
     fn should_emit_event(&self) -> bool {

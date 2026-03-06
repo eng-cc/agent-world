@@ -366,6 +366,16 @@ pub(super) fn player_control_stage_label(
     }
 }
 
+pub(super) fn player_control_stage_color(stage: &str) -> egui::Color32 {
+    match stage {
+        "completed_advanced" | "applied" => egui::Color32::from_rgb(78, 182, 108),
+        "completed_no_progress" => egui::Color32::from_rgb(224, 176, 92),
+        "blocked" => egui::Color32::from_rgb(226, 128, 98),
+        "executing" | "received" => egui::Color32::from_rgb(118, 168, 236),
+        _ => egui::Color32::from_rgb(186, 206, 238),
+    }
+}
+
 pub(super) fn player_control_stage_shows_recovery_actions(stage: &str) -> bool {
     matches!(stage, "completed_no_progress")
 }
@@ -981,6 +991,67 @@ fn render_player_micro_loop_summary(
         });
 }
 
+fn render_player_control_result_strip(
+    ui: &mut egui::Ui,
+    feedback: &WebTestApiControlFeedbackSnapshot,
+    locale: crate::i18n::UiLocale,
+    pulse: f32,
+) {
+    let stage_color = player_control_stage_color(feedback.stage.as_str());
+    let stroke_alpha = (172.0 + 58.0 * pulse).round() as u8;
+    let fill_alpha = if feedback.stage == "blocked" { 62 } else { 44 };
+    egui::Frame::group(ui.style())
+        .fill(egui::Color32::from_rgba_unmultiplied(
+            stage_color.r(),
+            stage_color.g(),
+            stage_color.b(),
+            fill_alpha,
+        ))
+        .stroke(egui::Stroke::new(
+            1.1,
+            egui::Color32::from_rgba_unmultiplied(
+                stage_color.r(),
+                stage_color.g(),
+                stage_color.b(),
+                stroke_alpha,
+            ),
+        ))
+        .corner_radius(egui::CornerRadius::same(7))
+        .inner_margin(egui::Margin::same(7))
+        .show(ui, |ui| {
+            ui.small(if locale.is_zh() {
+                "控制结果"
+            } else {
+                "Control Result"
+            });
+            ui.small(
+                egui::RichText::new(format!(
+                    "{} · {}",
+                    feedback.action,
+                    player_control_stage_label(feedback.stage.as_str(), locale)
+                ))
+                .color(stage_color)
+                .strong(),
+            );
+            ui.small(if locale.is_zh() {
+                format!(
+                    "增量: tick +{} · event +{} · trace +{}",
+                    feedback.delta_logical_time,
+                    feedback.delta_event_seq,
+                    feedback.delta_trace_count
+                )
+            } else {
+                format!(
+                    "Delta: tick +{} · event +{} · trace +{}",
+                    feedback.delta_logical_time,
+                    feedback.delta_event_seq,
+                    feedback.delta_trace_count
+                )
+            });
+            ui.small(feedback.effect.as_str());
+        });
+}
+
 pub(super) fn render_player_mission_hud(
     context: &egui::Context,
     state: &crate::ViewerState,
@@ -1051,6 +1122,9 @@ pub(super) fn render_player_mission_hud(
                         egui::RichText::new(remaining_hint.as_str())
                             .color(egui::Color32::from_rgb(186, 206, 238)),
                     );
+                    if let Some(feedback) = control_feedback.as_ref() {
+                        render_player_control_result_strip(ui, feedback, locale, pulse);
+                    }
                     render_player_micro_loop_summary(ui, &micro_loop_snapshot, locale);
                     egui::CollapsingHeader::new(if locale.is_zh() {
                         "展开短目标"
@@ -1111,9 +1185,9 @@ pub(super) fn render_player_mission_hud(
                                     ui.horizontal_wrapped(|ui| {
                                         recover_play_clicked = ui
                                             .button(if locale.is_zh() {
-                                                "恢复：play"
+                                                "恢复：step x1"
                                             } else {
-                                                "Recover: play"
+                                                "Recover: step x1"
                                             })
                                             .clicked();
                                         recover_step_clicked = ui
@@ -1128,84 +1202,58 @@ pub(super) fn render_player_mission_hud(
                             });
                     }
                     if let Some(feedback) = control_feedback.as_ref() {
-                        let stage_color = match feedback.stage.as_str() {
-                            "completed_advanced" | "applied" => {
-                                egui::Color32::from_rgb(78, 182, 108)
-                            }
-                            "completed_no_progress" => egui::Color32::from_rgb(224, 176, 92),
-                            "blocked" => egui::Color32::from_rgb(226, 128, 98),
-                            "executing" => egui::Color32::from_rgb(118, 168, 236),
-                            _ => egui::Color32::from_rgb(186, 206, 238),
-                        };
-                        egui::Frame::group(ui.style())
-                            .fill(egui::Color32::from_rgba_unmultiplied(28, 36, 52, 156))
-                            .stroke(egui::Stroke::new(1.0, stage_color))
-                            .corner_radius(egui::CornerRadius::same(6))
-                            .inner_margin(egui::Margin::same(6))
-                            .show(ui, |ui| {
-                                ui.small(if locale.is_zh() {
-                                    "控制反馈"
-                                } else {
-                                    "Control Feedback"
-                                });
-                                ui.small(
-                                    egui::RichText::new(format!(
-                                        "{} · {}",
-                                        feedback.action,
-                                        player_control_stage_label(feedback.stage.as_str(), locale)
-                                    ))
-                                    .color(stage_color),
-                                );
-                                ui.small(if locale.is_zh() {
-                                    format!(
-                                        "增量: tick +{} · event +{} · trace +{}",
-                                        feedback.delta_logical_time,
-                                        feedback.delta_event_seq,
-                                        feedback.delta_trace_count
-                                    )
-                                } else {
-                                    format!(
-                                        "Delta: tick +{} · event +{} · trace +{}",
-                                        feedback.delta_logical_time,
-                                        feedback.delta_event_seq,
-                                        feedback.delta_trace_count
-                                    )
-                                });
-                                ui.small(feedback.effect.as_str());
-                                if let Some(reason) = feedback.reason.as_ref() {
-                                    ui.small(
-                                        egui::RichText::new(reason.as_str())
-                                            .color(egui::Color32::from_rgb(226, 164, 136)),
-                                    );
-                                }
-                                if let Some(hint) = feedback.hint.as_ref() {
-                                    ui.small(
-                                        egui::RichText::new(hint.as_str())
-                                            .color(egui::Color32::from_rgb(186, 206, 238)),
-                                    );
-                                }
-                                if player_control_stage_shows_recovery_actions(
-                                    feedback.stage.as_str(),
-                                ) && client.is_some()
-                                {
-                                    ui.horizontal_wrapped(|ui| {
-                                        recover_play_clicked = ui
-                                            .button(if locale.is_zh() {
-                                                "恢复：play"
-                                            } else {
-                                                "Recover: play"
-                                            })
-                                            .clicked();
-                                        recover_step_clicked = ui
-                                            .button(if locale.is_zh() {
-                                                "重试：step x8"
-                                            } else {
-                                                "Retry: step x8"
-                                            })
-                                            .clicked();
+                        let stage_color = player_control_stage_color(feedback.stage.as_str());
+                        let show_detail_card =
+                            player_control_stage_shows_recovery_actions(feedback.stage.as_str())
+                                || feedback.reason.is_some()
+                                || feedback.hint.is_some();
+                        if show_detail_card {
+                            egui::Frame::group(ui.style())
+                                .fill(egui::Color32::from_rgba_unmultiplied(28, 36, 52, 156))
+                                .stroke(egui::Stroke::new(1.0, stage_color))
+                                .corner_radius(egui::CornerRadius::same(6))
+                                .inner_margin(egui::Margin::same(6))
+                                .show(ui, |ui| {
+                                    ui.small(if locale.is_zh() {
+                                        "反馈细节"
+                                    } else {
+                                        "Feedback Details"
                                     });
-                                }
-                            });
+                                    if let Some(reason) = feedback.reason.as_ref() {
+                                        ui.small(
+                                            egui::RichText::new(reason.as_str())
+                                                .color(egui::Color32::from_rgb(226, 164, 136)),
+                                        );
+                                    }
+                                    if let Some(hint) = feedback.hint.as_ref() {
+                                        ui.small(
+                                            egui::RichText::new(hint.as_str())
+                                                .color(egui::Color32::from_rgb(186, 206, 238)),
+                                        );
+                                    }
+                                    if player_control_stage_shows_recovery_actions(
+                                        feedback.stage.as_str(),
+                                    ) && client.is_some()
+                                    {
+                                        ui.horizontal_wrapped(|ui| {
+                                            recover_play_clicked = ui
+                                                .button(if locale.is_zh() {
+                                                    "恢复：step x1"
+                                                } else {
+                                                    "Recover: step x1"
+                                                })
+                                                .clicked();
+                                            recover_step_clicked = ui
+                                                .button(if locale.is_zh() {
+                                                    "重试：step x8"
+                                                } else {
+                                                    "Retry: step x8"
+                                                })
+                                                .clicked();
+                                        });
+                                    }
+                                });
+                        }
                     }
                     let progress_ratio = (snapshot.completed_steps as f32 / 4.0).clamp(0.0, 1.0);
                     ui.add(
@@ -1264,7 +1312,7 @@ pub(super) fn render_player_mission_hud(
             let _ = crate::dispatch_viewer_control(
                 client,
                 control_profile,
-                agent_world::viewer::ViewerControl::Play,
+                agent_world::viewer::ViewerControl::Step { count: 1 },
                 None,
             );
         }
@@ -1277,7 +1325,7 @@ pub(super) fn render_player_mission_hud(
             let _ = crate::dispatch_viewer_control(
                 client,
                 control_profile,
-                agent_world::viewer::ViewerControl::Play,
+                agent_world::viewer::ViewerControl::Step { count: 1 },
                 None,
             );
         }

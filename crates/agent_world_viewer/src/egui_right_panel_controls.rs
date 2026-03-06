@@ -31,6 +31,7 @@ pub(super) fn render_module_toggle_button(
 pub(super) fn render_control_buttons(
     ui: &mut egui::Ui,
     locale: crate::i18n::UiLocale,
+    player_mode_enabled: bool,
     state: &ViewerState,
     loading: &mut StepControlLoadingState,
     control_ui: &mut ControlPanelUiState,
@@ -40,11 +41,21 @@ pub(super) fn render_control_buttons(
     ui.horizontal_wrapped(|ui| {
         let play_pause = if control_ui.playing {
             ViewerControl::Pause
+        } else if player_mode_enabled {
+            ViewerControl::Step { count: 1 }
         } else {
             ViewerControl::Play
         };
         if ui
-            .button(play_pause_toggle_label(control_ui.playing, locale))
+            .button(if !control_ui.playing && player_mode_enabled {
+                if locale.is_zh() {
+                    "推进 +1"
+                } else {
+                    "Advance +1"
+                }
+            } else {
+                play_pause_toggle_label(control_ui.playing, locale)
+            })
             .clicked()
         {
             send_control_request(

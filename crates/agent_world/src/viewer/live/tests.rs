@@ -208,6 +208,7 @@ fn live_world_reset_rebuilds_kernel() {
 fn live_server_config_supports_llm_mode() {
     let config = ViewerLiveServerConfig::new(WorldScenario::Minimal);
     assert_eq!(config.decision_mode, ViewerLiveDecisionMode::Script);
+    assert_eq!(config.play_step_interval, Duration::from_millis(200));
     assert!(config.consensus_gate_max_tick.is_none());
     assert!(config.consensus_runtime.is_none());
 
@@ -216,6 +217,26 @@ fn live_server_config_supports_llm_mode() {
 
     let script_config = llm_config.with_decision_mode(ViewerLiveDecisionMode::Script);
     assert_eq!(script_config.decision_mode, ViewerLiveDecisionMode::Script);
+}
+
+#[test]
+fn live_server_config_play_step_interval_clamps_to_minimum_budget() {
+    let config = ViewerLiveServerConfig::new(WorldScenario::Minimal)
+        .with_play_step_interval(Duration::from_millis(5));
+    assert_eq!(config.play_step_interval, Duration::from_millis(20));
+}
+
+#[test]
+fn viewer_live_session_play_schedule_scales_with_tick_progress() {
+    let mut session = ViewerLiveSession::new();
+    session.playing = true;
+    let started_at = Instant::now();
+    session.schedule_next_play_drive(Duration::from_millis(40), 4);
+    let scheduled_at = session
+        .next_play_step_at
+        .expect("schedule should set next play drive timestamp");
+    let delay = scheduled_at.saturating_duration_since(started_at);
+    assert!(delay >= Duration::from_millis(160));
 }
 
 #[test]

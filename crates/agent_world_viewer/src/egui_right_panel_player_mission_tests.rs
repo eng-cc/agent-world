@@ -1,10 +1,11 @@
 use super::egui_right_panel_player_experience::PlayerGuideStep;
 use super::egui_right_panel_player_guide::{
     build_player_mission_loop_snapshot, build_player_mission_remaining_hint,
-    player_control_stage_label, player_control_stage_shows_recovery_actions,
-    player_mission_hud_anchor_y, player_mission_hud_compact_mode,
-    player_mission_hud_minimap_reserved_bottom, player_mission_hud_show_command_action,
-    player_mission_hud_show_minimap, PlayerGuideProgressSnapshot,
+    player_control_stage_color, player_control_stage_label,
+    player_control_stage_shows_recovery_actions, player_mission_hud_anchor_y,
+    player_mission_hud_compact_mode, player_mission_hud_minimap_reserved_bottom,
+    player_mission_hud_show_command_action, player_mission_hud_show_minimap,
+    PlayerGuideProgressSnapshot,
 };
 use super::egui_right_panel_player_micro_loop::{
     build_player_micro_loop_snapshot, format_due_timer_line,
@@ -187,6 +188,15 @@ fn player_control_stage_shows_recovery_actions_only_for_no_progress_completion()
     ));
     assert!(!player_control_stage_shows_recovery_actions("executing"));
     assert!(!player_control_stage_shows_recovery_actions("blocked"));
+}
+
+#[test]
+fn player_control_stage_color_distinguishes_warning_and_positive_states() {
+    let positive = player_control_stage_color("completed_advanced");
+    let warning = player_control_stage_color("completed_no_progress");
+    let blocked = player_control_stage_color("blocked");
+    assert_ne!(positive, warning);
+    assert_ne!(warning, blocked);
 }
 
 #[test]

@@ -109,6 +109,7 @@ use egui_right_panel_player_experience::{
     player_action_feedback_seen, render_feedback_toasts, render_player_experience_layers,
     sync_feedback_toasts, FeedbackToastState, PlayerAchievementState, PlayerOnboardingState,
 };
+use egui_right_panel_player_guide::{apply_player_layout_preset, PlayerLayoutPreset};
 use egui_right_panel_text_sections::render_text_sections;
 use egui_right_panel_text_utils::{rejection_event_count, truncate_observe_text};
 use egui_right_panel_theme_runtime::render_theme_runtime_section;
@@ -169,6 +170,8 @@ pub(super) fn render_right_side_panel_egui(
     mut feedback_toast_state: Local<FeedbackToastState>,
     mut player_achievement_state: Local<PlayerAchievementState>,
     mut onboarding_state: Local<PlayerOnboardingState>,
+    mut player_layout_initialized: Local<bool>,
+    mut module_switches_expanded: Local<bool>,
     params: RightPanelParams,
 ) {
     let RightPanelParams {
@@ -215,6 +218,19 @@ pub(super) fn render_right_side_panel_egui(
     }
     let now_secs = context.input(|input| input.time);
     let player_mode_enabled = *experience_mode == ViewerExperienceMode::Player;
+    if player_mode_enabled && !*player_layout_initialized {
+        apply_player_layout_preset(
+            layout_state.as_mut(),
+            module_visibility.as_mut(),
+            PlayerLayoutPreset::Mission,
+        );
+        copyable_panel_state.visible = module_visibility.show_details;
+        *module_switches_expanded = false;
+        *player_layout_initialized = true;
+    } else if !player_mode_enabled {
+        *player_layout_initialized = false;
+        *module_switches_expanded = true;
+    }
     if player_mode_enabled {
         sync_feedback_toasts(&mut feedback_toast_state, &state, now_secs, locale);
     }
@@ -372,57 +388,83 @@ pub(super) fn render_right_side_panel_egui(
             }
 
             ui.separator();
-            ui.strong(module_switches_title(locale));
-            ui.horizontal_wrapped(|ui| {
-                render_module_toggle_button(
-                    ui,
-                    "controls",
-                    &mut module_visibility.show_controls,
-                    locale,
-                );
-                render_module_toggle_button(
-                    ui,
-                    "overview",
-                    &mut module_visibility.show_overview,
-                    locale,
-                );
-                render_module_toggle_button(ui, "chat", &mut module_visibility.show_chat, locale);
-                render_module_toggle_button(
-                    ui,
-                    "overlay",
-                    &mut module_visibility.show_overlay,
-                    locale,
-                );
-                render_module_toggle_button(
-                    ui,
-                    "diagnosis",
-                    &mut module_visibility.show_diagnosis,
-                    locale,
-                );
-                render_module_toggle_button(
-                    ui,
-                    "event_link",
-                    &mut module_visibility.show_event_link,
-                    locale,
-                );
-                render_module_toggle_button(
-                    ui,
-                    "timeline",
-                    &mut module_visibility.show_timeline,
-                    locale,
-                );
+            if player_mode_enabled {
+                if ui
+                    .button(if *module_switches_expanded {
+                        if locale.is_zh() {
+                            "收起模块开关"
+                        } else {
+                            "Hide Module Switches"
+                        }
+                    } else if locale.is_zh() {
+                        "展开模块开关"
+                    } else {
+                        "Show Module Switches"
+                    })
+                    .clicked()
+                {
+                    *module_switches_expanded = !*module_switches_expanded;
+                }
+            }
+            if !player_mode_enabled || *module_switches_expanded {
+                ui.strong(module_switches_title(locale));
+                ui.horizontal_wrapped(|ui| {
+                    render_module_toggle_button(
+                        ui,
+                        "controls",
+                        &mut module_visibility.show_controls,
+                        locale,
+                    );
+                    render_module_toggle_button(
+                        ui,
+                        "overview",
+                        &mut module_visibility.show_overview,
+                        locale,
+                    );
+                    render_module_toggle_button(
+                        ui,
+                        "chat",
+                        &mut module_visibility.show_chat,
+                        locale,
+                    );
+                    render_module_toggle_button(
+                        ui,
+                        "overlay",
+                        &mut module_visibility.show_overlay,
+                        locale,
+                    );
+                    render_module_toggle_button(
+                        ui,
+                        "diagnosis",
+                        &mut module_visibility.show_diagnosis,
+                        locale,
+                    );
+                    render_module_toggle_button(
+                        ui,
+                        "event_link",
+                        &mut module_visibility.show_event_link,
+                        locale,
+                    );
+                    render_module_toggle_button(
+                        ui,
+                        "timeline",
+                        &mut module_visibility.show_timeline,
+                        locale,
+                    );
 
-                let mut details_visible = module_visibility.show_details;
-                render_module_toggle_button(ui, "details", &mut details_visible, locale);
-                module_visibility.show_details = details_visible;
-                copyable_panel_state.visible = details_visible;
-            });
+                    let mut details_visible = module_visibility.show_details;
+                    render_module_toggle_button(ui, "details", &mut details_visible, locale);
+                    module_visibility.show_details = details_visible;
+                    copyable_panel_state.visible = details_visible;
+                });
+            }
 
             if module_visibility.show_controls {
                 ui.separator();
                 render_control_buttons(
                     ui,
                     locale,
+                    player_mode_enabled,
                     &state,
                     loading.as_mut(),
                     &mut control_panel,

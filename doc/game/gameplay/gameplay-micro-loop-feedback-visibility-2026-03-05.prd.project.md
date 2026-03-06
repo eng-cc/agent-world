@@ -18,10 +18,10 @@
 | TASK-GAMEPLAY-MLF-002 | PRD-GAME-004-02 | runtime-live-owner | D1-D2 | runtime_live 对 gameplay DomainEvent 与 ACK 的结构化映射与兼容降级 | runtime_live mapping + 兼容降级摘要规则 + 映射回归测试 | `test_tier_required` | completed |
 | TASK-GAMEPLAY-MLF-003 | PRD-GAME-004-01 | viewer-owner | D2 | 微循环 HUD（倒计时/最近动作状态）与无进展诊断建议 | viewer right panel / i18n / tone 规则 | `test_tier_required` | completed |
 | TASK-GAMEPLAY-MLF-004 | PRD-GAME-004-03 | test-release-owner | D3 | required/full 回归与卡片评分复核，形成门禁证据包 | 测试日志 + playability 卡片 + 结论 | `test_tier_required` + `test_tier_full` | completed |
-| TASK-GAMEPLAY-MLF-005 | PRD-GAME-004-04 | viewer-owner | D4 | Mission HUD 增加控制结果显著条，压缩重复反馈信息 | `egui_right_panel_player_guide.rs` + 任务回归测试 | `test_tier_required` | planned |
-| TASK-GAMEPLAY-MLF-006 | PRD-GAME-004-04 | viewer-owner | D4 | 玩家模式默认 Mission 预设 + 模块开关渐进披露 + 可见性持久化缺字段默认策略修正 | `egui_right_panel.rs` + `right_panel_module_visibility.rs` + 回归测试 | `test_tier_required` | planned |
+| TASK-GAMEPLAY-MLF-005 | PRD-GAME-004-04 | viewer-owner | D4 | Mission HUD 增加控制结果显著条，压缩重复反馈信息 | `egui_right_panel_player_guide.rs` + 任务回归测试 | `test_tier_required` | completed |
+| TASK-GAMEPLAY-MLF-006 | PRD-GAME-004-04 | viewer-owner | D4 | 玩家模式默认 Mission 预设 + 模块开关渐进披露 + 可见性持久化缺字段默认策略修正 | `egui_right_panel.rs` + `right_panel_module_visibility.rs` + 回归测试 | `test_tier_required` | completed |
 | TASK-GAMEPLAY-MLF-007 | PRD-GAME-004-05 | viewer-owner | D4-D5 | 选中强调与 2D marker 可见性/尺寸增强 | `selection_emphasis.rs` / `camera_controls.rs` / `scene_helpers_entities.rs` + 回归测试 | `test_tier_required` | planned |
-| TASK-GAMEPLAY-MLF-008 | PRD-GAME-004-03/04/05 | test-release-owner | D5 | 手动实操迭代截图（每任务后）并给出视觉评估结论 | `output/playwright/playability/manual-*` 证据集 + 结论摘要 | `test_tier_required` | planned |
+| TASK-GAMEPLAY-MLF-008 | PRD-GAME-004-03/04/05 | test-release-owner | D5 | 手动实操迭代截图（每任务后）并给出视觉评估结论 | `output/playwright/playability/manual-*` 证据集 + 结论摘要 | `test_tier_required` | in_progress |
 
 ## 执行顺序与依赖
 - 串行主链：`MLF-001 -> MLF-002 -> MLF-003 -> MLF-004 -> MLF-005 -> MLF-006 -> MLF-007 -> MLF-008`。
@@ -107,11 +107,11 @@
 - `testing-manual.md`
 
 ## 状态
-- 更新日期: 2026-03-06
+- 更新日期: 2026-03-07
 - 当前状态: active
-- 当前完成: `TASK-GAMEPLAY-MLF-000`、`TASK-GAMEPLAY-MLF-001`、`TASK-GAMEPLAY-MLF-002`、`TASK-GAMEPLAY-MLF-003`、`TASK-GAMEPLAY-MLF-004`
-- 下一任务: `TASK-GAMEPLAY-MLF-005`（控制结果显著化）
+- 当前完成: `TASK-GAMEPLAY-MLF-000`、`TASK-GAMEPLAY-MLF-001`、`TASK-GAMEPLAY-MLF-002`、`TASK-GAMEPLAY-MLF-003`、`TASK-GAMEPLAY-MLF-004`、`TASK-GAMEPLAY-MLF-005`、`TASK-GAMEPLAY-MLF-006`
+- 下一任务: `TASK-GAMEPLAY-MLF-007`（世界可读性增强）
 - 阻塞项: 无
-- 说明: 过程记录在 `doc/devlog/2026-03-06.md`
+- 说明: 过程记录在 `doc/devlog/2026-03-06.md` 与 `doc/devlog/2026-03-07.md`
 
 审计轮次: 4

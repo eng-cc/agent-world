@@ -49,6 +49,7 @@ pub struct ViewerLiveServerConfig {
     pub scenario: WorldScenario,
     pub world_id: String,
     pub decision_mode: ViewerLiveDecisionMode,
+    pub play_step_interval: Duration,
     pub consensus_gate_max_tick: Option<Arc<AtomicU64>>,
     pub consensus_runtime: Option<Arc<Mutex<NodeRuntime>>>,
 }
@@ -60,6 +61,7 @@ impl ViewerLiveServerConfig {
             world_id: format!("live-{}", scenario.as_str()),
             scenario,
             decision_mode: ViewerLiveDecisionMode::Script,
+            play_step_interval: Duration::from_millis(200),
             consensus_gate_max_tick: None,
             consensus_runtime: None,
         }
@@ -77,6 +79,11 @@ impl ViewerLiveServerConfig {
 
     pub fn with_decision_mode(mut self, mode: ViewerLiveDecisionMode) -> Self {
         self.decision_mode = mode;
+        self
+    }
+
+    pub fn with_play_step_interval(mut self, interval: Duration) -> Self {
+        self.play_step_interval = interval.max(Duration::from_millis(20));
         self
     }
 
@@ -438,7 +445,19 @@ impl ViewerLiveServer {
         if !self.world.can_step_for_consensus() {
             return Ok(());
         }
+        session.throttle_play_drive();
+        let baseline_tick = self.world.logical_time();
+        let baseline_event_seq = self.world.latest_event_seq();
         let step = self.world.step()?;
+        let advanced_ticks = self.world.logical_time().saturating_sub(baseline_tick);
+        let advanced_events = self
+            .world
+            .latest_event_seq()
+            .saturating_sub(baseline_event_seq);
+        session.schedule_next_play_drive(
+            self.config.play_step_interval,
+            advanced_ticks.max(advanced_events),
+        );
         self.emit_step_outcome(session, writer, step, false)
     }
 
@@ -453,7 +472,19 @@ impl ViewerLiveServer {
         if !self.world.should_step_on_event_drive() {
             return Ok(false);
         }
+        session.throttle_play_drive();
+        let baseline_tick = self.world.logical_time();
+        let baseline_event_seq = self.world.latest_event_seq();
         let step = self.world.step()?;
+        let advanced_ticks = self.world.logical_time().saturating_sub(baseline_tick);
+        let advanced_events = self
+            .world
+            .latest_event_seq()
+            .saturating_sub(baseline_event_seq);
+        session.schedule_next_play_drive(
+            self.config.play_step_interval,
+            advanced_ticks.max(advanced_events),
+        );
         let should_requeue = self.world.should_requeue_non_consensus_drive(&step);
         self.emit_step_outcome(session, writer, step, false)?;
         Ok(should_requeue)

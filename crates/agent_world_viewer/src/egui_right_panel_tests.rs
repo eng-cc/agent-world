@@ -583,6 +583,7 @@ fn egui_kittest_control_buttons_merge_play_pause_and_fold_advanced_debug() {
             render_control_buttons(
                 ui,
                 crate::i18n::UiLocale::ZhCn,
+                false,
                 &state.viewer_state,
                 &mut state.loading,
                 &mut state.control_ui,

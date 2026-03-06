@@ -61,7 +61,7 @@ fn headless_auto_play_enabled(experience_mode: Option<&ViewerExperienceMode>) ->
     }
     #[cfg(target_arch = "wasm32")]
     if matches!(experience_mode, Some(ViewerExperienceMode::Player)) {
-        return true;
+        return false;
     }
     #[cfg(not(target_arch = "wasm32"))]
     let _ = experience_mode;

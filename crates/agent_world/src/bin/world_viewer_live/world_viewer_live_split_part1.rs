@@ -209,8 +209,10 @@ fn main() {
         });
     }
 
+    let play_step_interval_ms = options.node_tick_ms.saturating_mul(3).clamp(200, 800);
     let mut config = ViewerLiveServerConfig::new(options.scenario)
         .with_bind_addr(options.bind_addr)
+        .with_play_step_interval(Duration::from_millis(play_step_interval_ms))
         .with_decision_mode(if options.llm_mode {
             ViewerLiveDecisionMode::Llm
         } else {
