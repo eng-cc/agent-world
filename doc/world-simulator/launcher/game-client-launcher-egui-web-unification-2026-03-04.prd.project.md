@@ -1,6 +1,6 @@
 # 客户端启动器 egui Web 同层复用与静态资源服务（2026-03-04）项目管理文档
 
-审计轮次: 4
+审计轮次: 5
 
 - 对应设计文档: doc/world-simulator/launcher/game-client-launcher-egui-web-unification-2026-03-04.prd.md
 
@@ -19,6 +19,7 @@
 - `scripts/build-game-launcher-bundle.sh`
 
 ## 状态
+- 最近更新：2026-03-06（ROUND-005 I5-001 字段补齐）
 - 当前阶段: completed
 - 当前任务: 无
 - 备注: 目标是 native/web 启动器共享同一套 egui UI 层，web 端以静态资源方式由 `world_web_launcher` 托管。

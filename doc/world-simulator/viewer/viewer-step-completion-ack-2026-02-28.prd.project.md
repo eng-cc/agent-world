@@ -1,6 +1,6 @@
 # Viewer `step` Completion Ack（2026-02-28）项目管理文档
 
-审计轮次: 4
+审计轮次: 5
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T1 设计文档与任务拆解
 - [x] T2 协议改造：控制请求增加 `request_id`，新增 completion ack 响应
@@ -21,6 +21,7 @@
 - `scripts/run-game-test-ab.sh`
 
 ## 状态
+- 最近更新：2026-03-06（ROUND-005 I5-001 字段补齐）
 - 当前阶段：已完成（T1~T6）。
 - 当前结论：
   - 协议/服务端/Viewer 已完成 `request_id` 贯通，`step` completion ack 可明确回传 `advanced` 或 `timeout_no_progress`。

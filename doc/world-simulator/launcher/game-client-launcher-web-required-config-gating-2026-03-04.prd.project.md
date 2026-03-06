@@ -1,6 +1,6 @@
 # 客户端启动器 Web 必填配置校验分流修复（2026-03-04）项目管理文档
 
-审计轮次: 4
+审计轮次: 5
 - 对应设计文档: doc/world-simulator/launcher/game-client-launcher-web-required-config-gating-2026-03-04.prd.md
 
 ## 任务拆解（含 PRD-ID 映射）
@@ -18,6 +18,7 @@
 - `output/playwright/`
 
 ## 状态
+- 最近更新：2026-03-06（ROUND-005 I5-001 字段补齐）
 - 当前阶段: completed
 - 当前任务: 无
 - 备注: 已完成校验与渲染分流修复；Playwright 证据位于 `output/playwright/launcher-web-required-config-20260304/artifacts`。

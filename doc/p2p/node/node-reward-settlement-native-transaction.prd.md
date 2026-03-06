@@ -1,6 +1,6 @@
 # Agent World Runtime：奖励结算切换到网络共识主路径原生交易
 
-审计轮次: 4
+审计轮次: 5
 ## 1. Executive Summary
 - Problem Statement: 将当前 reward runtime 的“旁路直写结算（`apply_node_points_settlement_mint_v2` 直接调用）”切换为世界主执行路径可消费的原生 `Action` 交易。
 - Proposed Solution: 让奖励结算和兑换一样进入 `submit_action -> step -> event -> state apply` 闭环，统一审计与回放语义。

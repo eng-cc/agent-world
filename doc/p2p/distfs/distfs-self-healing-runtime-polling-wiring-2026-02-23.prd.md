@@ -1,6 +1,6 @@
 # Agent World Runtime：分布式存储自愈轮询 Runtime 接线（2026-02-23）
 
-审计轮次: 4
+审计轮次: 5
 ## ROUND-002 主从口径
 - 本文档为增量子文档（slave），主入口为 `doc/p2p/distfs/distfs-self-healing-control-plane-2026-02-23.prd.md`。
 - 本文档仅描述 NodeRuntime 接线与执行器增量；控制面基础语义以主文档为准。
@@ -76,6 +76,7 @@
 
 #### 当前状态
 - 状态：已完成
+- 最近更新：2026-03-06（ROUND-005 I5-001 字段补齐）
 - 已完成：M0、M1、M2
 - 进行中：无
 - 未开始：无

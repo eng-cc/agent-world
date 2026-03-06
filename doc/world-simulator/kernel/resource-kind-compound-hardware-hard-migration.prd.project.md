@@ -1,6 +1,6 @@
 # Compound/Hardware 硬迁移：从内建 ResourceKind 移除并转向 WASM 定义（项目管理文档）
 
-审计轮次: 4
+审计轮次: 5
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0：输出设计文档（`doc/world-simulator/kernel/resource-kind-compound-hardware-hard-migration.prd.md`）
 - [x] T0：输出项目管理文档（本文件）
@@ -12,6 +12,7 @@
 - T2 依赖 T1 完成后统一回归。
 
 ## 状态
+- 最近更新：2026-03-06（ROUND-005 I5-001 字段补齐）
 - 当前阶段：T0/T1/T2 已完成。
 - 阻塞项：无。
 - 下一步：无。

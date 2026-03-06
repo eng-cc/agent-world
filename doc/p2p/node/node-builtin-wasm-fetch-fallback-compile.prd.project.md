@@ -1,6 +1,6 @@
 # World Runtime：Builtin Wasm 先拉取后编译回退（项目管理文档）
 
-审计轮次: 4
+审计轮次: 5
 ## 任务拆解（含 PRD-ID 映射）
 - [x] BFC-1 设计文档落地（`doc/p2p/node/node-builtin-wasm-fetch-fallback-compile.prd.md`） (PRD-P2P-MIG-087)
 - [x] BFC-1 项目管理文档落地（本文件） (PRD-P2P-MIG-087)
@@ -19,4 +19,5 @@
 - `tools/wasm_build_suite/*`
 
 ## 状态
+- 最近更新：2026-03-06（ROUND-005 I5-001 字段补齐）
 - 当前阶段：已完成（含 wasm32 编译兼容修复）

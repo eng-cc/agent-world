@@ -1,6 +1,6 @@
 # Agent World Simulator：Location 电力池下线与 Agent 辐射电厂（项目管理文档）
 
-审计轮次: 4
+审计轮次: 5
 ## 任务拆解（含 PRD-ID 映射）
 
 ### R1 文档
@@ -35,5 +35,6 @@
 - `crates/agent_world/src/simulator/tests/*`
 
 ## 状态
+- 最近更新：2026-03-06（ROUND-005 I5-001 字段补齐）
 - 当前阶段：R1-R4 已完成
 - 下一阶段：无（等待新需求）

@@ -1,6 +1,6 @@
 # 社会系统生产级方案：事实账本 + 声明式关系层（项目管理文档）
 
-审计轮次: 4
+审计轮次: 5
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0：输出设计文档（`doc/world-simulator/kernel/social-fact-ledger-declarative-reputation.prd.md`）
 - [x] T0：输出项目管理文档（本文件）
@@ -19,6 +19,7 @@
 - `crates/agent_world/src/simulator/tests/persist.rs`
 
 ## 状态
+- 最近更新：2026-03-06（ROUND-005 I5-001 字段补齐）
 - 当前阶段：T0~T5 已全部完成。
 - 阻塞项：无。
 - 下一步：按上层策略需要接入 schema 语义解释器或治理插件（本期不包含固定评分模型）。

@@ -1,6 +1,6 @@
 # 客户端启动器 UI Schema 共享（2026-03-04）项目管理文档
 
-审计轮次: 4
+审计轮次: 5
 - 对应设计文档: doc/world-simulator/launcher/game-client-launcher-ui-schema-share-2026-03-04.prd.md
 
 ## 任务拆解（含 PRD-ID 映射）
@@ -18,6 +18,7 @@
 - `crates/agent_world/src/bin/world_web_launcher.rs`
 
 ## 状态
+- 最近更新：2026-03-06（ROUND-005 I5-001 字段补齐）
 - 当前阶段: completed
 - 当前任务: 无
 - 备注: 目标是实现“同一份 UI schema，多端渲染适配”。

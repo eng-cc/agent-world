@@ -66,20 +66,20 @@ rg -n "^审计轮次:\s*5$" doc/world-simulator doc/p2p doc/site doc/playability
 ## 承接问题清单（来自 ROUND-004）
 | 编号 | 承接来源 | 问题描述 | 影响范围 | 建议动作 | 当前判定 |
 | --- | --- | --- | --- | --- | --- |
-| I5-001 | I4-006 | 文档状态与最近更新时间失真 | world-simulator/p2p/site/playability_test_result | 统一状态时效字段与回写规则 | open |
-| I5-002 | I4-008 | 完成态缺日期/映射字段 | world-simulator/p2p/site/playability_test_result | 补齐完成态最小字段集合 | open |
-| I5-003 | I4-009 | world-simulator 结构命名一致性偏差 | world-simulator | 执行命名收敛并回写索引/引用 | open |
-| I5-004 | I4-010 | world-simulator 与 p2p 索引覆盖规则不一致 | world-simulator/p2p | 建立统一覆盖规则并同步入口说明 | open |
+| I5-001 | I4-006 | 文档状态与最近更新时间失真 | world-simulator/p2p/site/playability_test_result | 统一状态时效字段与回写规则 | closed（A5-003，规则扫描剩余 0） |
+| I5-002 | I4-008 | 完成态缺日期/映射字段 | world-simulator/p2p/site/playability_test_result | 补齐完成态最小字段集合 | closed（A5-004，当前规则扫描剩余 0） |
+| I5-003 | I4-009 | world-simulator 结构命名一致性偏差 | world-simulator | 执行命名收敛并回写索引/引用 | closed（A5-005，风险词扫描 0 命中） |
+| I5-004 | I4-010 | world-simulator 与 p2p 索引覆盖规则不一致 | world-simulator/p2p | 建立统一覆盖规则并同步入口说明 | closed（A5-006，索引规则模板已统一） |
 
 ## 整改项
 | 编号 | 整改动作 | 责任人 | 截止时间 | 验收命令 | 状态 |
 | --- | --- | --- | --- | --- | --- |
 | A5-001 | 建立 ROUND-005 启动台账（本文件 + 审读清单 + 执行清单 + 进度日志） | cc | 2026-03-06 | `test -f doc/core/reviews/consistency-review-round-005.md && test -f doc/core/reviews/round-005-reviewed-files.md && test -f doc/core/reviews/round-005-timeliness-index-worklist.md && test -f doc/core/reviews/round-005-audit-progress-log.md` | done |
 | A5-002 | 完成 S5-001~S5-004 全量审读并登记 I5-* 细分问题 | cc | 2026-03-10 | `rg -n "I5-00[1-4]" doc/core/reviews/consistency-review-round-005.md` | in_progress |
-| A5-003 | 收敛状态时效字段（`当前状态` 与更新时间字段配对） | cc | 2026-03-12 | `rg -n "当前状态|更新日期|最近更新|更新时间" doc/world-simulator doc/p2p doc/site doc/playability_test_result --glob '*.md'` | todo |
-| A5-004 | 补齐完成态最小字段（完成日期/最近更新/映射字段） | cc | 2026-03-12 | `rg -n "完成日期|最近更新|PRD-ID|任务拆解" doc/world-simulator doc/p2p doc/site doc/playability_test_result --glob '*.md'` | todo |
-| A5-005 | 统一 world-simulator 命名语义并回写引用 | cc | 2026-03-13 | `rg --files doc/world-simulator --glob '*.md' | rg -n "fix|tmp|misc|new|update"` | todo |
-| A5-006 | 统一 world-simulator/p2p 索引覆盖规则与声明模板 | cc | 2026-03-14 | `rg -n "覆盖范围|纳入规则|排除规则|历史入口|兼容跳转" doc/world-simulator/prd.index.md doc/p2p/prd.index.md` | todo |
+| A5-003 | 收敛状态时效字段（`当前状态` 与更新时间字段配对） | cc | 2026-03-12 | `rg -l "^## 状态$|^#### 当前状态$|^### 当前状态$" doc/world-simulator doc/p2p doc/site doc/playability_test_result --glob '*.md' \| while read -r f; do rg -q "更新日期|最近更新|更新时间|最近更新时间" "$f" || echo "$f"; done` | done |
+| A5-004 | 补齐完成态最小字段（完成日期/最近更新/映射字段） | cc | 2026-03-12 | `rg -l "当前状态[:：].*(已完成|completed)" doc/world-simulator doc/p2p doc/site doc/playability_test_result --glob '*.md' \| while read -r f; do rg -q "完成日期|最近更新|更新日期|更新时间" "$f" || echo "$f"; done` | done |
+| A5-005 | 统一 world-simulator 命名语义并回写引用 | cc | 2026-03-13 | `rg --files doc/world-simulator --glob '*.md' \| rg "fix|tmp|misc|new|update"` | done |
+| A5-006 | 统一 world-simulator/p2p 索引覆盖规则与声明模板 | cc | 2026-03-14 | `rg -n "覆盖规则|纳入规则|排除规则|历史入口|兼容跳转" doc/world-simulator/prd.index.md doc/p2p/prd.index.md` | done |
 | A5-007 | 生成 `S_round005` 并完成复审结论 | cc | 2026-03-15 | `rg -n "轮次状态|复审结论|S_round005" doc/core/reviews/consistency-review-round-005.md` | todo |
 
 ## 特殊情况备注（仅在无需整改时填写）
@@ -89,4 +89,4 @@ rg -n "^审计轮次:\s*5$" doc/world-simulator doc/p2p doc/site doc/playability
 ## 复审结果
 - 复审时间：-
 - 复审结论：-
-- 当前进展：ROUND-005 已启动，当前聚焦 I5-001~I5-004 的中风险闭环。
+- 当前进展：`I5-001~I5-004` 问题已全部关闭；`S_round005` 已审读 `78/516`，当前继续推进剩余文档的逐文档审读与 `审计轮次: 5` 回写。

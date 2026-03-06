@@ -1,6 +1,6 @@
 # Viewer Live runtime/world 真 LLM 全量接管（LLM 决策 + 100% 事件/快照 + hard-fail）（2026-03-05）项目管理文档
 
-审计轮次: 4
+审计轮次: 5
 - 对应设计文档: doc/world-simulator/viewer/viewer-live-runtime-world-llm-full-bridge-2026-03-05.prd.md
 
 ## 任务拆解（含 PRD-ID 映射）
@@ -23,6 +23,7 @@
 - `doc/world-simulator/viewer/viewer-manual.md`
 
 ## 状态
+- 最近更新：2026-03-06（ROUND-005 I5-001 字段补齐）
 - 当前阶段: completed
 - 当前任务: none
 - 备注: true LLM 全量接管、事件/快照覆盖与手册/回归收口已完成。

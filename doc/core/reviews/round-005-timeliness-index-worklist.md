@@ -11,8 +11,8 @@
 | --- | --- | --- | --- |
 | P0 | 建立启动文档与审读清单 | `consistency-review-round-005.md`、`round-005-reviewed-files.md`、`round-005-audit-progress-log.md`、本清单 | done |
 | P1 | 按 S5-001~S5-004 审读并细分问题 | I5-* 细分问题与影响范围 | in_progress |
-| P2 | 输出整改方案与验收命令 | A5-* 整改项 + 验收命令 | todo |
-| P3 | 执行整改并回写索引/引用 | 修订文档 + 索引/引用更新 | todo |
+| P2 | 输出整改方案与验收命令 | A5-* 整改项 + 验收命令 | done |
+| P3 | 执行整改并回写索引/引用 | 修订文档 + 索引/引用更新 | in_progress |
 | P4 | 回写 `审计轮次: 5` 与复审结论 | `S_round005` + ROUND-005 复审结果 | todo |
 
 ## 并行批次（4 批）
@@ -20,8 +20,8 @@
 | --- | --- | --- | --- |
 | B5-001 | `doc/world-simulator/**` | I5-001/I5-002/I5-003 | in_progress |
 | B5-002 | `doc/p2p/**` | I5-001/I5-002/I5-004 | in_progress |
-| B5-003 | `doc/site/**` + `doc/playability_test_result/**` | I5-001/I5-002 | todo |
-| B5-004 | `doc/world-simulator/prd.index.md` + `doc/p2p/prd.index.md` | I5-004（规则统一） | todo |
+| B5-003 | `doc/site/**` + `doc/playability_test_result/**` | I5-001/I5-002 | done |
+| B5-004 | `doc/world-simulator/prd.index.md` + `doc/p2p/prd.index.md` | I5-004（规则统一） | done |
 
 ## 执行原则
 - 不扩范围：仅处理 `I5-001~I5-004`，其它问题记录到后续轮次。

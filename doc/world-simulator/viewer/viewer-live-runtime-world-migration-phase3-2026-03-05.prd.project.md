@@ -1,6 +1,6 @@
 # Viewer Live runtime/world 接管 Phase 3（action 映射覆盖 + 旧分支移除）（2026-03-05）项目管理文档
 
-审计轮次: 4
+审计轮次: 5
 - 对应设计文档: doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase3-2026-03-05.prd.md
 
 ## 任务拆解（含 PRD-ID 映射）
@@ -19,6 +19,7 @@
 - `doc/world-simulator/viewer/viewer-manual.md`
 
 ## 状态
+- 最近更新：2026-03-06（ROUND-005 I5-001 字段补齐）
 - 当前阶段: completed
 - 当前任务: none
 - 备注: 已完成 action 映射覆盖、等价回归与 runtime-only 分支收敛，required 回归通过。

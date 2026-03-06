@@ -1,12 +1,18 @@
 # world-simulator PRD 文件级索引
 
-审计轮次: 4
+审计轮次: 5
 
-更新时间：2026-03-05
+更新时间：2026-03-06
 
 ## 入口
 - 模块 PRD：`doc/world-simulator/prd.md`
 - 模块项目管理：`doc/world-simulator/prd.project.md`
+
+## 覆盖规则（ROUND-005 统一）
+- 纳入规则：纳入 `doc/world-simulator/**` 下所有 `*.prd.md` 与同名 `*.prd.project.md`。
+- 排除规则：不纳入 `doc/devlog/**` 与非 PRD 配对文档（如临时草稿/日志快照）。
+- 历史入口：根目录 `doc/world-simulator.prd.md` 与 `doc/world-simulator.prd.project.md` 仅保留兼容跳转语义，不作为主索引分母。
+- 兼容跳转：历史路径命中时统一跳转到本目录 `prd.md` / `prd.project.md` 主入口。
 
 | 专题 PRD | 专题项目文档 |
 | --- | --- |

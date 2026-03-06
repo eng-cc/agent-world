@@ -1,6 +1,6 @@
 # Viewer Live 完全事件驱动改造 Phase 10（项目管理）
 
-审计轮次: 4
+审计轮次: 5
 
 ## ROUND-002 物理合并
 - 本文件为主项目入口（当前权威入口）。
@@ -38,5 +38,6 @@
 - `testing-manual.md` / `doc/world-simulator/viewer/viewer-manual.md`（如需）
 
 ## 状态
+- 最近更新：2026-03-06（ROUND-005 I5-001 字段补齐）
 - 当前阶段：已完成（T0~T4）
 - 备注：Phase 8/9 任务记录已合并归档，阶段项目文档转为历史追溯。

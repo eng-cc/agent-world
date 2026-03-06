@@ -68,6 +68,9 @@
     - 已完成 ROUND-005 启动台账，范围锁定为 ROUND-004 延期项 `I4-006/I4-008/I4-009/I4-010`。
     - 已建立 `S_round005` 基线（`516` 份，范围：world-simulator/p2p/site/playability_test_result）。
     - 已建立逐文档进度日志 `round-005-audit-progress-log.md`，用于抗中断追溯。
+    - 已完成两批整改（78 篇）：`p2p/distfs` 5 对 PRD/project 补齐 `最近更新` 与 `完成日期` 字段；继续扩展到 world-simulator/p2p 其余状态文档回写 `最近更新`。
+    - `I5-001~I5-004` 已全部关闭：状态时效缺口清零、完成态字段缺口清零、命名风险词扫描 0 命中、索引覆盖规则模板已统一。
+    - 当前为 ROUND-005 收口前阶段：`S_round005` 已审读 `78/516`，继续推进剩余文档逐文档审读与 `审计轮次: 5` 回写。
 - [x] TASK-CORE-006 (PRD-CORE-001/002) [test_tier_required]: 收敛 `doc/` 根目录 legacy redirect 入口并更新总导航。
 - [x] TASK-CORE-007 (PRD-CORE-001/002/003) [test_tier_required]: 对齐 strict PRD schema，补齐关键流程/规格矩阵/边界异常/NFR/验证与决策记录。
 

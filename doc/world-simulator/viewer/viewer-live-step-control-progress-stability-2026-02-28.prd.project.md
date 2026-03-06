@@ -1,6 +1,6 @@
 # Viewer Live `step` 控制推进稳定性修复（2026-02-28）项目管理文档
 
-审计轮次: 4
+审计轮次: 5
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T1 复现 `step accepted 但无推进` 并定位到 live+consensus 处理链路
 - [x] T2 修复 paused 会话下 `ConsensusCommitted` 未推进的问题
@@ -17,6 +17,7 @@
 - `doc/playability_test_result/game-test.prd.md`
 
 ## 状态
+- 最近更新：2026-03-06（ROUND-005 I5-001 字段补齐）
 - 当前阶段：已完成（T1~T5）
 - 结论：
   - 根因链路可稳定复现；修复后相关单测通过。
