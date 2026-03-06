@@ -45,6 +45,7 @@
   - ROUND-003 进展（2026-03-05）:
     - 已完成全量命名审读并回写 `审计轮次: 3`，`S_round003` 清单已生成。
     - 已登记命名问题 `I3-001~I3-011`（viewer/launcher/p2p/engineering/headless-runtime/scripts/site 命名不一致），并已完成更名与引用回写。
+    - ROUND-003 已于 2026-03-06 收口为 `completed`（复审结论已落档）。
 - [x] TASK-CORE-006 (PRD-CORE-001/002) [test_tier_required]: 收敛 `doc/` 根目录 legacy redirect 入口并更新总导航。
 - [x] TASK-CORE-007 (PRD-CORE-001/002/003) [test_tier_required]: 对齐 strict PRD schema，补齐关键流程/规格矩阵/边界异常/NFR/验证与决策记录。
 
@@ -57,8 +58,8 @@
 - 各模块 `doc/<module>/prd.md` 与 `doc/<module>/prd.project.md`
 
 ## 状态
-- 更新日期: 2026-03-05
+- 更新日期: 2026-03-06
 - 当前状态: active
 - 下一任务: TASK-CORE-005
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
-- 说明: 本文档仅维护 core 设计执行状态；过程记录在 `doc/devlog/2026-03-05.md`（历史记录见同目录其他日期文件）。
+- 说明: 本文档仅维护 core 设计执行状态；过程记录在 `doc/devlog/2026-03-06.md`（历史记录见同目录其他日期文件）。
