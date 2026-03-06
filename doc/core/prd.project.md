@@ -35,6 +35,11 @@
     - `doc/core/reviews/consistency-review-round-004.md`
     - `doc/core/reviews/round-004-reviewed-files.md`
     - `doc/core/reviews/round-004-doc-design-quality-worklist.md`
+  - ROUND-005 启动产物（2026-03-06）:
+    - `doc/core/reviews/consistency-review-round-005.md`
+    - `doc/core/reviews/round-005-reviewed-files.md`
+    - `doc/core/reviews/round-005-timeliness-index-worklist.md`
+    - `doc/core/reviews/round-005-audit-progress-log.md`
   - ROUND-002 进展（2026-03-05）:
     - 已完成 A/B/C/D-E 分区重复簇盘点并回写到 ROUND-002 台账。
     - 已完成首批执行 `C2-007`：`viewer-chat-agent-prompt-default-values-inline-input` 并入 `prefill` 且旧文档已删除，替代链与索引已回写。
@@ -59,6 +64,10 @@
     - 已执行首批整改：完成 `A4-009/A4-010`（清理重复行内审计字段、修正 `site/site/doc` 路径、修复 pre-commit 占位命令口径并更新验收命令）。
     - 已完成整改验收闭环：`A4-008`（跨模块 PRD-ID/任务/验收字段检查）与 `A4-011~A4-014`（审计字段口径、world-simulator 串写校验、runtime 术语/路径、legacy 快照治理）均已通过并回写 `done`。
     - ROUND-004 已收口为 `completed`：`A4-001~A4-014` 全部完成；中风险延期项 `I4-006/I4-008/I4-009/I4-010` 已登记到下轮（复审日 2026-03-15）。
+  - ROUND-005 进展（2026-03-06）:
+    - 已完成 ROUND-005 启动台账，范围锁定为 ROUND-004 延期项 `I4-006/I4-008/I4-009/I4-010`。
+    - 已建立 `S_round005` 基线（`516` 份，范围：world-simulator/p2p/site/playability_test_result）。
+    - 已建立逐文档进度日志 `round-005-audit-progress-log.md`，用于抗中断追溯。
 - [x] TASK-CORE-006 (PRD-CORE-001/002) [test_tier_required]: 收敛 `doc/` 根目录 legacy redirect 入口并更新总导航。
 - [x] TASK-CORE-007 (PRD-CORE-001/002/003) [test_tier_required]: 对齐 strict PRD schema，补齐关键流程/规格矩阵/边界异常/NFR/验证与决策记录。
 
