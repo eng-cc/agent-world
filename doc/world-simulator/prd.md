@@ -19,9 +19,11 @@
 - 文件级索引: doc/world-simulator/prd.index.md
 - 追踪主键: `PRD-WORLD_SIMULATOR-xxx`
 - 测试与发布参考: `testing-manual.md`
+- UI 视觉评审列表: `doc/ui_review_result/ui_review_list.md`
 - 分册索引:
   - `doc/world-simulator/prd/acceptance/unified-checklist.md`（PRD-WORLD_SIMULATOR-001/002）
   - `doc/world-simulator/prd/acceptance/web-llm-evidence-template.md`（PRD-WORLD_SIMULATOR-002/003）
+  - `doc/world-simulator/prd/acceptance/visual-review-score-card.md`（PRD-WORLD_SIMULATOR-003）
   - `doc/world-simulator/prd/quality/experience-trend-tracking.md`（PRD-WORLD_SIMULATOR-003）
   - `doc/world-simulator/prd/launcher/blockchain-transfer.md`（PRD-WORLD_SIMULATOR-004/005）
   - `doc/world-simulator/launcher/game-client-launcher-web-console-2026-03-04.prd.md`（PRD-WORLD_SIMULATOR-010）
@@ -205,8 +207,10 @@
 - Integration Points:
   - `doc/world-simulator/scenario/scenario-files.prd.md`
   - `doc/world-simulator/viewer/viewer-web-closure-testing-policy.prd.md`
+  - `doc/ui_review_result/ui_review_list.md`
   - `doc/world-simulator/prd/acceptance/unified-checklist.md`
   - `doc/world-simulator/prd/acceptance/web-llm-evidence-template.md`
+  - `doc/world-simulator/prd/acceptance/visual-review-score-card.md`
   - `doc/world-simulator/prd/quality/experience-trend-tracking.md`
   - `doc/world-simulator/prd/launcher/blockchain-transfer.md`
   - `doc/world-simulator/launcher/game-client-launcher-web-console-2026-03-04.prd.md`
