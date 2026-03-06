@@ -78,6 +78,53 @@ impl Default for GovernanceProposalStatus {
     }
 }
 
+/// Governance identity status used for anti-sybil controls.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum GovernanceIdentityStatus {
+    Active,
+    Frozen,
+    Expelled,
+}
+
+impl Default for GovernanceIdentityStatus {
+    fn default() -> Self {
+        Self::Active
+    }
+}
+
+/// Persisted governance identity profile (stake + status + warmup).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct GovernanceIdentityProfileState {
+    pub agent_id: String,
+    #[serde(default)]
+    pub stake_locked: u64,
+    #[serde(default)]
+    pub warmup_until_tick: WorldTime,
+    #[serde(default)]
+    pub status: GovernanceIdentityStatus,
+    #[serde(default)]
+    pub slash_count: u32,
+    #[serde(default)]
+    pub updated_at: WorldTime,
+}
+
+/// Snapshot of one voter's governance identity at proposal open time.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct GovernanceVoteWeightSnapshotState {
+    pub agent_id: String,
+    #[serde(default)]
+    pub reputation_score: i64,
+    #[serde(default)]
+    pub stake_locked: u64,
+    #[serde(default)]
+    pub status: GovernanceIdentityStatus,
+    #[serde(default)]
+    pub vote_weight_cap: u32,
+}
+
+pub const GOVERNANCE_IDENTITY_DEFAULT_MAX_VOTE_WEIGHT: u32 = 100;
+
 /// Governance proposal lifecycle state.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GovernanceProposalState {
@@ -105,6 +152,10 @@ pub struct GovernanceProposalState {
     pub winning_weight: u64,
     #[serde(default)]
     pub total_weight_at_finalize: u64,
+    #[serde(default)]
+    pub snapshot_at_tick: WorldTime,
+    #[serde(default)]
+    pub vote_weight_snapshot: BTreeMap<String, GovernanceVoteWeightSnapshotState>,
 }
 
 /// Persisted ballot for one voter in one governance proposal.

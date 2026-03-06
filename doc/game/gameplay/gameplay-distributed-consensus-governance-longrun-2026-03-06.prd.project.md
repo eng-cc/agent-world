@@ -25,7 +25,7 @@
 - [x] TASK-GAME-DCG-006 (PRD-GAME-005-02) [test_tier_required]: 宪章化权限与审计字段，补齐越权拒绝回归。
 
 ### T4 身份与反女巫
-- [ ] TASK-GAME-DCG-007 (PRD-GAME-005-03) [test_tier_required]: 新增身份信誉+抵押权重快照模型。
+- [x] TASK-GAME-DCG-007 (PRD-GAME-005-03) [test_tier_required]: 新增身份信誉+抵押权重快照模型。
 - [ ] TASK-GAME-DCG-008 (PRD-GAME-005-03) [test_tier_required + test_tier_full]: 女巫攻击模拟、惩罚与申诉闭环测试。
 
 ### T5 长稳与发布门禁
@@ -41,7 +41,8 @@
 ## 状态
 - 更新日期: 2026-03-06
 - 当前状态: `active`
-- 下一任务: `TASK-GAME-DCG-007`（身份信誉+抵押权重快照模型）
+- 下一任务: `TASK-GAME-DCG-008`（女巫攻击模拟、惩罚与申诉闭环测试）
 - ROUND-002 进展: `TASK-GAME-DCG-001/002` 已完成，tick 证书链在 `step/replay/save-load` 闭环可用。
 - ROUND-003 进展: `TASK-GAME-DCG-003/004/005/006` 已完成，治理 `Queued + timelock/epoch` 门禁与紧急控制（刹车/否决）已接入状态机并具备拒绝回归测试。
+- ROUND-004 进展: `TASK-GAME-DCG-007` 已完成，治理提案新增身份权重快照（信誉+抵押）并在投票时按快照门禁校验，阻断提案开启后临时增号/提权投票。
 - 阻塞项: 无

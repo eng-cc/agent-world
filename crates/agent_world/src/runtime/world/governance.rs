@@ -1,8 +1,9 @@
 use super::super::util::{hash_json, sha256_hex};
 use super::super::{
     apply_manifest_patch, GovernanceEvent, GovernanceExecutionPolicy,
-    GovernanceFinalityCertificate, Manifest, ManifestPatch, ManifestUpdate, Proposal,
-    ProposalDecision, ProposalId, ProposalStatus, WorldError, WorldEventBody,
+    GovernanceFinalityCertificate, GovernanceIdentityProfileState, GovernanceIdentityStatus,
+    Manifest, ManifestPatch, ManifestUpdate, Proposal, ProposalDecision, ProposalId,
+    ProposalStatus, WorldError, WorldEventBody, WorldTime,
 };
 use super::World;
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
@@ -60,6 +61,46 @@ impl World {
 
     pub fn current_manifest_hash(&self) -> Result<String, WorldError> {
         hash_json(&self.manifest)
+    }
+
+    pub fn governance_identity_profile(
+        &self,
+        agent_id: &str,
+    ) -> Option<&GovernanceIdentityProfileState> {
+        self.state.governance_identity_profiles.get(agent_id)
+    }
+
+    pub fn set_agent_reputation_score(
+        &mut self,
+        agent_id: &str,
+        reputation_score: i64,
+    ) -> Result<(), WorldError> {
+        self.state.set_reputation_score(agent_id, reputation_score)
+    }
+
+    pub fn set_governance_identity_profile(
+        &mut self,
+        agent_id: impl Into<String>,
+        stake_locked: u64,
+        warmup_until_tick: WorldTime,
+        status: GovernanceIdentityStatus,
+    ) -> Result<(), WorldError> {
+        let agent_id = agent_id.into();
+        let slash_count = self
+            .state
+            .governance_identity_profiles
+            .get(agent_id.as_str())
+            .map(|profile| profile.slash_count)
+            .unwrap_or(0);
+        self.state
+            .set_governance_identity_profile(GovernanceIdentityProfileState {
+                agent_id,
+                stake_locked,
+                warmup_until_tick,
+                status,
+                slash_count,
+                updated_at: self.state.time,
+            })
     }
 
     pub fn set_governance_execution_policy(

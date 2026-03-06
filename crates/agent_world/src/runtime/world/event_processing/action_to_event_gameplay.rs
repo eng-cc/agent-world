@@ -809,6 +809,17 @@ impl World {
                         },
                     }));
                 }
+                if let Err(WorldError::ResourceBalanceInvalid { reason }) = self
+                    .state
+                    .governance_effective_vote_weight_for_agent(proposal, voter_agent_id, *weight)
+                {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![reason],
+                        },
+                    }));
+                }
                 Ok(WorldEventBody::Domain(DomainEvent::GovernanceVoteCast {
                     voter_agent_id: voter_agent_id.clone(),
                     proposal_key: proposal_key.to_string(),

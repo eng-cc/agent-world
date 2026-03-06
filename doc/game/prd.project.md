@@ -31,4 +31,5 @@
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - ROUND-002 进展: gameplay 子簇主从化完成，`TASK-GAMEPLAY-MLF-001/002/003/004` 与 `TASK-GAME-007` 已闭环；分布式长期在线专题已完成设计建档（`TASK-GAME-008`）与执行共识首个实现切片（`TASK-GAME-009`）。
 - ROUND-003 进展: `TASK-GAME-010` 已完成，治理 `Queued + timelock/epoch` 门禁与紧急控制（刹车/否决）状态机已落地并通过定向回归。
+- ROUND-004 进展: `TASK-GAME-011` 进入执行中，`TASK-GAME-DCG-007`（身份信誉+抵押权重快照模型）已完成，待继续完成 `TASK-GAME-DCG-008`（女巫惩罚与申诉闭环）。
 - 说明: 本文档仅维护 game 设计执行状态；过程记录在 `doc/devlog/2026-03-05.md` 与 `doc/devlog/2026-03-06.md`。

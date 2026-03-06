@@ -645,6 +645,82 @@ fn governance_proposal_finalizes_and_rejects_late_votes() {
 }
 
 #[test]
+fn governance_vote_enforces_identity_snapshot_cap() {
+    let mut world = World::new();
+    register_agents(&mut world, &["a", "b"]);
+    world
+        .set_agent_reputation_score("a", 20)
+        .expect("set reputation");
+    world
+        .set_governance_identity_profile("a", 16, 0, GovernanceIdentityStatus::Active)
+        .expect("set governance identity profile");
+
+    open_governance_proposal(&mut world, "proposal.identity.snapshot", 6, 1, 5_000);
+    let snapshot_cap = world
+        .state()
+        .governance_proposals
+        .get("proposal.identity.snapshot")
+        .and_then(|proposal| proposal.vote_weight_snapshot.get("a"))
+        .map(|snapshot| snapshot.vote_weight_cap)
+        .expect("snapshot cap");
+    assert_eq!(snapshot_cap, 6);
+
+    world
+        .set_agent_reputation_score("a", 2_000)
+        .expect("raise live reputation");
+    world
+        .set_governance_identity_profile("a", 65_536, 0, GovernanceIdentityStatus::Active)
+        .expect("raise live stake");
+
+    world.submit_action(Action::CastGovernanceVote {
+        voter_agent_id: "a".to_string(),
+        proposal_key: "proposal.identity.snapshot".to_string(),
+        option: "approve".to_string(),
+        weight: snapshot_cap.saturating_add(1),
+    });
+    world
+        .step()
+        .expect("vote above snapshot cap should be rejected");
+    assert_latest_rule_denied_contains(&world, "exceeds snapshot cap");
+
+    world.submit_action(Action::CastGovernanceVote {
+        voter_agent_id: "a".to_string(),
+        proposal_key: "proposal.identity.snapshot".to_string(),
+        option: "approve".to_string(),
+        weight: snapshot_cap,
+    });
+    world.step().expect("vote at snapshot cap");
+    let governance = world
+        .state()
+        .governance_votes
+        .get("proposal.identity.snapshot")
+        .expect("governance vote state");
+    assert_eq!(governance.total_weight, u64::from(snapshot_cap));
+}
+
+#[test]
+fn governance_vote_rejects_voter_not_in_snapshot() {
+    let mut world = World::new();
+    register_agents(&mut world, &["a"]);
+    open_governance_proposal(&mut world, "proposal.snapshot.membership", 6, 1, 5_000);
+
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "late".to_string(),
+        pos: pos(3.0, 0.0),
+    });
+    world.step().expect("register late voter");
+
+    world.submit_action(Action::CastGovernanceVote {
+        voter_agent_id: "late".to_string(),
+        proposal_key: "proposal.snapshot.membership".to_string(),
+        option: "approve".to_string(),
+        weight: 1,
+    });
+    world.step().expect("late voter should be rejected");
+    assert_latest_rule_denied_contains(&world, "not in governance snapshot");
+}
+
+#[test]
 fn crisis_cycle_spawns_and_times_out_if_unresolved() {
     let mut world = World::new();
     register_agents(&mut world, &["a"]);

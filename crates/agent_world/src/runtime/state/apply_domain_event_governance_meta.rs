@@ -23,6 +23,13 @@ impl WorldState {
                         agent_id: proposer_agent_id.clone(),
                     });
                 }
+                let mut vote_weight_snapshot = BTreeMap::new();
+                for agent_id in self.agents.keys() {
+                    vote_weight_snapshot.insert(
+                        agent_id.clone(),
+                        self.governance_identity_snapshot_for_agent(agent_id.as_str(), now),
+                    );
+                }
                 self.governance_proposals.insert(
                     proposal_key.clone(),
                     GovernanceProposalState {
@@ -41,6 +48,8 @@ impl WorldState {
                         winning_option: None,
                         winning_weight: 0,
                         total_weight_at_finalize: 0,
+                        snapshot_at_tick: now,
+                        vote_weight_snapshot,
                     },
                 );
                 self.governance_votes
@@ -67,7 +76,7 @@ impl WorldState {
                         agent_id: voter_agent_id.clone(),
                     });
                 }
-                let Some(proposal) = self.governance_proposals.get(proposal_key) else {
+                let Some(proposal) = self.governance_proposals.get(proposal_key).cloned() else {
                     return Err(WorldError::ResourceBalanceInvalid {
                         reason: format!(
                             "governance vote references unknown proposal: {proposal_key}"
@@ -87,6 +96,11 @@ impl WorldState {
                         ),
                     });
                 }
+                let effective_weight = self.governance_effective_vote_weight_for_agent(
+                    &proposal,
+                    voter_agent_id,
+                    *weight,
+                )?;
 
                 let state = self
                     .governance_votes
@@ -114,11 +128,11 @@ impl WorldState {
                     voter_agent_id.clone(),
                     GovernanceVoteBallotState {
                         option: option.clone(),
-                        weight: *weight,
+                        weight: effective_weight,
                         voted_at: now,
                     },
                 );
-                let vote_weight = u64::from(*weight);
+                let vote_weight = u64::from(effective_weight);
                 let current_tally = state.tallies.get(option).copied().unwrap_or(0);
                 *state.tallies.entry(option.clone()).or_insert(0) =
                     current_tally.saturating_add(vote_weight);

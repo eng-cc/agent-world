@@ -98,9 +98,10 @@ pub use gameplay::{
 };
 pub use gameplay_state::{
     AllianceState, CrisisState, CrisisStatus, EconomicContractState, EconomicContractStatus,
-    GameplayPolicyState, GovernanceProposalState, GovernanceProposalStatus,
-    GovernanceVoteBallotState, GovernanceVoteState, MetaProgressState, WarParticipantOutcome,
-    WarState,
+    GameplayPolicyState, GovernanceIdentityProfileState, GovernanceIdentityStatus,
+    GovernanceProposalState, GovernanceProposalStatus, GovernanceVoteBallotState,
+    GovernanceVoteState, GovernanceVoteWeightSnapshotState, MetaProgressState,
+    WarParticipantOutcome, WarState, GOVERNANCE_IDENTITY_DEFAULT_MAX_VOTE_WEIGHT,
 };
 pub use modules::{
     EconomyModuleKind, FactoryBuildDecision, FactoryBuildRequest, FactoryModuleApi,

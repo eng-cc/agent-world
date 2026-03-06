@@ -235,9 +235,15 @@
   - `Proposal` 增加 `queued_at_tick/not_before_tick/activate_epoch/timelock_ticks`，在 `apply_proposal_with_finality` 执行 `timelock + epoch` 门禁校验。
   - 新增治理执行策略 `GovernanceExecutionPolicy`，约束 epoch 长度、激活延迟、紧急权限阈值与最长刹车时长。
   - 增加紧急刹车/释放/否决 API，并对 guardian 阈值、签名身份、时长上限执行拒绝校验。
+- 已完成 `PRD-GAME-005-03` 的首个实现切片（身份权重快照）：
+  - 新增 `GovernanceIdentityProfileState`（`stake_locked/warmup_until_tick/status/slash_count`）与 `GovernanceVoteWeightSnapshotState`。
+  - 提案开启时对全体已注册 agent 生成身份快照，并固化到 `GovernanceProposalState.vote_weight_snapshot`。
+  - 投票时强制校验“快照成员 + 快照权重上限”，拒绝提案开启后新增身份或超快照权重投票请求。
+  - 增加 `World::set_agent_reputation_score` 与 `World::set_governance_identity_profile` 以支持治理身份档案配置与测试驱动。
 - 验证口径：
   - `runtime::tests::basic::tick_consensus_records_*`
   - `runtime::tests::governance::{governance_timelock_blocks_early_apply, governance_epoch_gate_blocks_early_apply, governance_emergency_brake_and_release_gate_apply, governance_emergency_veto_rejects_queued_proposal, governance_emergency_controls_reject_invalid_guardian_signatures}`
+  - `runtime::tests::gameplay_protocol::{governance_vote_enforces_identity_snapshot_cap, governance_vote_rejects_voter_not_in_snapshot}`
   - `runtime::tests::persistence::persist_and_restore_world`
   - `runtime::tests::audit::audit_filter_governance_events`
   - `runtime::tests::gameplay_protocol::*` 回归无破坏

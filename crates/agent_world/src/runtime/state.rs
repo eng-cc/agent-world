@@ -15,9 +15,10 @@ use super::events::ModuleProfileChanges;
 use super::events::{DomainEvent, IndustryStage, MaterialMarketQuote, MaterialTransitPriority};
 use super::gameplay_state::{
     AllianceState, CrisisState, CrisisStatus, EconomicContractState, EconomicContractStatus,
-    GameplayPolicyState, GovernanceProposalState, GovernanceProposalStatus,
-    GovernanceVoteBallotState, GovernanceVoteState, MetaProgressState, WarParticipantOutcome,
-    WarState,
+    GameplayPolicyState, GovernanceIdentityProfileState, GovernanceIdentityStatus,
+    GovernanceProposalState, GovernanceProposalStatus, GovernanceVoteBallotState,
+    GovernanceVoteState, GovernanceVoteWeightSnapshotState, MetaProgressState,
+    WarParticipantOutcome, WarState, GOVERNANCE_IDENTITY_DEFAULT_MAX_VOTE_WEIGHT,
 };
 use super::main_token::{
     main_token_bucket_unlocked_amount, MainTokenAccountBalance, MainTokenConfig,
@@ -300,6 +301,8 @@ pub struct WorldState {
     #[serde(default)]
     pub governance_proposals: BTreeMap<String, GovernanceProposalState>,
     #[serde(default)]
+    pub governance_identity_profiles: BTreeMap<String, GovernanceIdentityProfileState>,
+    #[serde(default)]
     pub crises: BTreeMap<String, CrisisState>,
     #[serde(default)]
     pub meta_progress: BTreeMap<String, MetaProgressState>,
@@ -398,6 +401,7 @@ impl Default for WorldState {
             wars: BTreeMap::new(),
             governance_votes: BTreeMap::new(),
             governance_proposals: BTreeMap::new(),
+            governance_identity_profiles: BTreeMap::new(),
             crises: BTreeMap::new(),
             meta_progress: BTreeMap::new(),
             module_states: BTreeMap::new(),
@@ -553,6 +557,132 @@ impl WorldState {
             self.reputation_reward_window_accumulated
                 .insert(agent_id.to_string(), reward_delta);
         }
+    }
+
+    pub fn set_reputation_score(
+        &mut self,
+        agent_id: &str,
+        reputation_score: i64,
+    ) -> Result<(), WorldError> {
+        if !self.agents.contains_key(agent_id) {
+            return Err(WorldError::AgentNotFound {
+                agent_id: agent_id.to_string(),
+            });
+        }
+        self.reputation_scores
+            .insert(agent_id.to_string(), reputation_score);
+        Ok(())
+    }
+
+    pub fn set_governance_identity_profile(
+        &mut self,
+        profile: GovernanceIdentityProfileState,
+    ) -> Result<(), WorldError> {
+        if !self.agents.contains_key(profile.agent_id.as_str()) {
+            return Err(WorldError::AgentNotFound {
+                agent_id: profile.agent_id.clone(),
+            });
+        }
+        self.governance_identity_profiles
+            .insert(profile.agent_id.clone(), profile);
+        Ok(())
+    }
+
+    pub fn governance_identity_snapshot_for_agent(
+        &self,
+        agent_id: &str,
+        snapshot_tick: WorldTime,
+    ) -> GovernanceVoteWeightSnapshotState {
+        let reputation_score = self.reputation_scores.get(agent_id).copied().unwrap_or(0);
+        if let Some(profile) = self.governance_identity_profiles.get(agent_id) {
+            let vote_weight_cap = self.governance_vote_weight_cap_from_profile(
+                reputation_score,
+                profile,
+                snapshot_tick,
+            );
+            return GovernanceVoteWeightSnapshotState {
+                agent_id: agent_id.to_string(),
+                reputation_score,
+                stake_locked: profile.stake_locked,
+                status: profile.status,
+                vote_weight_cap,
+            };
+        }
+        GovernanceVoteWeightSnapshotState {
+            agent_id: agent_id.to_string(),
+            reputation_score,
+            stake_locked: 0,
+            status: GovernanceIdentityStatus::Active,
+            vote_weight_cap: GOVERNANCE_IDENTITY_DEFAULT_MAX_VOTE_WEIGHT,
+        }
+    }
+
+    pub fn governance_effective_vote_weight_for_agent(
+        &self,
+        proposal: &GovernanceProposalState,
+        voter_agent_id: &str,
+        requested_weight: u32,
+    ) -> Result<u32, WorldError> {
+        if proposal.vote_weight_snapshot.is_empty() {
+            return Ok(requested_weight);
+        }
+        let Some(snapshot) = proposal.vote_weight_snapshot.get(voter_agent_id) else {
+            return Err(WorldError::ResourceBalanceInvalid {
+                reason: format!(
+                    "voter is not in governance snapshot: proposal={} voter={}",
+                    proposal.proposal_key, voter_agent_id
+                ),
+            });
+        };
+        if snapshot.status != GovernanceIdentityStatus::Active {
+            return Err(WorldError::ResourceBalanceInvalid {
+                reason: format!(
+                    "governance identity is not active: proposal={} voter={} status={:?}",
+                    proposal.proposal_key, voter_agent_id, snapshot.status
+                ),
+            });
+        }
+        if snapshot.vote_weight_cap == 0 {
+            return Err(WorldError::ResourceBalanceInvalid {
+                reason: format!(
+                    "governance vote weight cap is zero: proposal={} voter={}",
+                    proposal.proposal_key, voter_agent_id
+                ),
+            });
+        }
+        if requested_weight > snapshot.vote_weight_cap {
+            return Err(WorldError::ResourceBalanceInvalid {
+                reason: format!(
+                    "vote weight {} exceeds snapshot cap {} for voter {} in proposal {}",
+                    requested_weight,
+                    snapshot.vote_weight_cap,
+                    voter_agent_id,
+                    proposal.proposal_key
+                ),
+            });
+        }
+        Ok(requested_weight)
+    }
+
+    fn governance_vote_weight_cap_from_profile(
+        &self,
+        reputation_score: i64,
+        profile: &GovernanceIdentityProfileState,
+        snapshot_tick: WorldTime,
+    ) -> u32 {
+        if profile.status != GovernanceIdentityStatus::Active {
+            return 0;
+        }
+        if snapshot_tick < profile.warmup_until_tick {
+            return 0;
+        }
+        let stake_component = integer_sqrt_u64(profile.stake_locked);
+        let reputation_component = reputation_score.max(0).saturating_div(10) as u64;
+        let raw_weight = stake_component
+            .saturating_add(reputation_component)
+            .max(1)
+            .min(u64::from(GOVERNANCE_IDENTITY_DEFAULT_MAX_VOTE_WEIGHT));
+        raw_weight as u32
     }
 
     fn settle_module_action_fee(
@@ -1135,6 +1265,19 @@ fn apply_main_token_bridge_from_settlement_event(
         },
     );
     Ok(())
+}
+
+fn integer_sqrt_u64(value: u64) -> u64 {
+    if value < 2 {
+        return value;
+    }
+    let mut x0 = value;
+    let mut x1 = (x0 + value / x0) / 2;
+    while x1 < x0 {
+        x0 = x1;
+        x1 = (x0 + value / x0) / 2;
+    }
+    x0
 }
 
 fn add_material_balance(
