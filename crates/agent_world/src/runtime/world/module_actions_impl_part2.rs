@@ -1453,6 +1453,16 @@ impl World {
                     profile.product_id
                 ));
             }
+            if self
+                .state
+                .product_profiles
+                .contains_key(profile.product_id.as_str())
+            {
+                return Err(format!(
+                    "product profile_id already exists in state {} (module release overwrite is forbidden)",
+                    profile.product_id
+                ));
+            }
         }
 
         let mut recipe_ids = BTreeSet::new();
@@ -1463,6 +1473,16 @@ impl World {
             ensure_profile_field_whitelist(profile, recipe_fields.as_slice(), "recipe profile")?;
             if !recipe_ids.insert(profile.recipe_id.clone()) {
                 return Err(format!("duplicate recipe profile_id {}", profile.recipe_id));
+            }
+            if self
+                .state
+                .recipe_profiles
+                .contains_key(profile.recipe_id.as_str())
+            {
+                return Err(format!(
+                    "recipe profile_id already exists in state {} (module release overwrite is forbidden)",
+                    profile.recipe_id
+                ));
             }
         }
 
@@ -1487,6 +1507,16 @@ impl World {
             if !factory_ids.insert(profile.factory_id.clone()) {
                 return Err(format!(
                     "duplicate factory profile_id {}",
+                    profile.factory_id
+                ));
+            }
+            if self
+                .state
+                .factory_profiles
+                .contains_key(profile.factory_id.as_str())
+            {
+                return Err(format!(
+                    "factory profile_id already exists in state {} (module release overwrite is forbidden)",
                     profile.factory_id
                 ));
             }
