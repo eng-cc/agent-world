@@ -1,7 +1,6 @@
 # Agent World Simulator：Viewer 自动聚焦（人机共用 + 截图闭环）（项目管理文档）
 
-审计轮次: 3
-
+审计轮次: 4
 ## 任务拆解（含 PRD-ID 映射）
 - [x] AFC1：输出设计文档与项目管理文档
 - [x] AFC2：viewer 自动聚焦（启动配置 + `F` 快捷键）

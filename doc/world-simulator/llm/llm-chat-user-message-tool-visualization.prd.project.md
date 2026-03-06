@@ -1,7 +1,6 @@
 # LLM 用户文本输出与工具调用分区可视化（项目管理文档）
 
-审计轮次: 3
-
+审计轮次: 4
 ## 任务拆解（含 PRD-ID 映射）
 - [x] LUV1 输出设计文档（`doc/world-simulator/llm/llm-chat-user-message-tool-visualization.prd.md`）
 - [x] LUV2 输出项目管理文档（本文件）

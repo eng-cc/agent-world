@@ -1,7 +1,6 @@
 # Viewer UI 多语言支持设计（中文 / 英文）
 
-审计轮次: 3
-
+审计轮次: 4
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-i18n.prd.project.md
 
 ## 1. Executive Summary

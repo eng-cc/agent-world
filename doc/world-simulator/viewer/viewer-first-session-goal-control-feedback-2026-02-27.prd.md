@@ -1,7 +1,6 @@
 # Viewer 首局目标与控制语义可解释反馈优化（2026-02-27）
 
-审计轮次: 3
-
+审计轮次: 4
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-first-session-goal-control-feedback-2026-02-27.prd.project.md
 
 ## 1. Executive Summary

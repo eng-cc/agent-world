@@ -1,7 +1,6 @@
 # Viewer Live runtime/world 接管 Phase 3（action 映射覆盖 + 旧分支移除）（2026-03-05）
 
-审计轮次: 3
-
+审计轮次: 4
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase3-2026-03-05.prd.project.md
 
 ## 1. Executive Summary

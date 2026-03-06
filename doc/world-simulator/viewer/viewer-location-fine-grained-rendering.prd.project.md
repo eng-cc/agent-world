@@ -1,7 +1,6 @@
 # Agent World Simulator：Viewer Location 细粒度渲染（项目管理文档）
 
-审计轮次: 3
-
+审计轮次: 4
 ## 任务拆解（含 PRD-ID 映射）
 - [x] LFR1：输出设计文档与项目管理文档
 - [x] LFR2：Location 细粒度渲染实现（主球体 + 细节子节点）

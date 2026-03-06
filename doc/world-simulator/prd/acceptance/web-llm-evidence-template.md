@@ -1,7 +1,6 @@
 # world-simulator PRD 分册：Web-first 与 LLM 测试证据模板
 
-审计轮次: 3
-
+审计轮次: 4
 ## 目标
 - 固化 Viewer Web-first 闭环（S6）与 LLM 链路（S8）的统一证据模板，减少“跑了测试但不可复核”的记录漂移。
 - 为 `TASK-WORLD_SIMULATOR-003` 提供可直接复制的结果卡片格式。

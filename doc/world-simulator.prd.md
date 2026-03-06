@@ -1,7 +1,6 @@
 # Legacy Redirect: world-simulator.prd
 
-审计轮次: 3
-
+审计轮次: 4
 ## 目标
 - 将根目录 `doc/world-simulator.prd.md` 的 redirect 入口迁移为 `.prd` 命名。
 - 固化 world-simulator 模块主入口优先级，减少根目录历史入口误用。

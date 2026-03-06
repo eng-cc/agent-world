@@ -1,7 +1,6 @@
 # Viewer 商业化发行缺口收敛 Phase 8：运行中主题切换/热重载与 industrial_v2 资产包
 
-审计轮次: 3
-
+审计轮次: 4
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-commercial-release-phase8-runtime-theme-hot-reload-and-asset-v2.prd.project.md
 
 ## 1. Executive Summary

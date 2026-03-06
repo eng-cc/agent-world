@@ -1,7 +1,6 @@
 # Viewer Web 全屏自适应与右侧面板整体显隐（项目管理文档）
 
-审计轮次: 3
-
+审计轮次: 4
 ## 任务拆解（含 PRD-ID 映射）
 - [x] VWFP-1：输出设计文档（`doc/world-simulator/viewer/viewer-web-fullscreen-panel-toggle.prd.md`）
 - [x] VWFP-2：输出项目管理文档（本文件）

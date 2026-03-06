@@ -1,7 +1,6 @@
 # Agent World Simulator：规则 Wasm 模块装载治理（第五阶段）设计文档
 
-审计轮次: 3
-
+审计轮次: 4
 - 对应项目管理文档: doc/world-simulator/kernel/kernel-rule-wasm-module-governance.prd.project.md
 
 ## 1. Executive Summary

@@ -1,7 +1,6 @@
 # Viewer Chat 预设 Prompt 编辑区（项目管理文档）
 
-审计轮次: 3
-
+审计轮次: 4
 ## 任务拆解（含 PRD-ID 映射）
 - [x] VCP1 输出设计文档（`doc/world-simulator/viewer/viewer-chat-prompt-presets.prd.md`）
 - [x] VCP2 输出项目管理文档（本文件）

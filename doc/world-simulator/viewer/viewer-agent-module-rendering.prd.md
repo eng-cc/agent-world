@@ -1,7 +1,6 @@
 # Viewer Agent 渲染改造：模块可见 + 体积尺寸匹配
 
-审计轮次: 3
-
+审计轮次: 4
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-agent-module-rendering.prd.project.md
 
 ## 1. Executive Summary

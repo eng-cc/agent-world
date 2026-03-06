@@ -71,7 +71,7 @@ rg -n "^审计轮次:\s*4$" doc --glob '*.md'
 ## 受审文件清单（S_round004）
 - 清单文件：`doc/core/reviews/round-004-reviewed-files.md`
 - 生成规则：`rg -l "^审计轮次:\s*4$" doc --glob '*.md' | sort`
-- 当前基线（2026-03-06 14:47 CST）：`491` 份文档（阶段性快照，审计口径纠偏中）
+- 当前基线（2026-03-06 15:07 CST）：`788` 份文档（统计口径：`doc/**/*.md` 排除 `doc/devlog/**`）
 - 用途：作为 ROUND-004 统计分母（仅对纳入本轮清单的文档判定“已审读/未审读”）。
 
 ## 审计进度日志（逐文档）
@@ -83,37 +83,37 @@ rg -n "^审计轮次:\s*4$" doc --glob '*.md'
 | 编组 | 审读范围 | 已审文件数 | 问题登记完成 | 主要问题编号（摘要） |
 | --- | --- | --- | --- | --- |
 | G4-001 | `doc/core/**` + `doc/engineering/**` | 45 | yes | I4-201/I4-202/I4-203 |
-| G4-002 | `doc/world-simulator/**` | 22 | partial | I4-001/I4-002/I4-003/I4-004/I4-005/I4-006/I4-007/I4-008/I4-009/I4-010/I4-011 |
+| G4-002 | `doc/world-simulator/**` | 314 | yes | I4-001/I4-002/I4-003/I4-004/I4-005/I4-006/I4-007/I4-008/I4-009/I4-010/I4-011 |
 | G4-003 | `doc/p2p/**` | 147 | yes | I4-001/I4-003/I4-004/I4-005/I4-006/I4-008/I4-010/I4-011/I4-012/I4-013 |
 | G4-004 | `doc/testing/**` + `doc/scripts/**` + `doc/playability_test_result/**` | 93 | yes | I4-001/I4-002/I4-003/I4-004/I4-005/I4-006/I4-008 |
 | G4-005 | `doc/site/**` + `doc/readme/**` + `doc/game/**` | 102 | yes | I4-001/I4-002/I4-003/I4-004/I4-005/I4-006 |
 | G4-006 | `doc/world-runtime/**` + `doc/headless-runtime/**` + 根入口补查 | 82 | yes | I4-001/I4-014/I4-015/I4-016/I4-017/I4-018/I4-019/I4-020/I4-021 |
-| 合计 | 全分区 | 491 | partial | 已回收 6/6 子代理结果，但 `G4-002` 需补审覆盖 |
+| 合计 | 全分区 | 788 | yes | 已回收 6/6 子代理结果并完成纠偏补审 |
 
 ## 工作失误记录（2026-03-06）
 | 编号 | 失误描述 | 发现时间 | 客观证据 | 影响 | 当前状态 |
 | --- | --- | --- | --- | --- | --- |
-| E4-001 | 误将 `A4-002/A4-006` 提前标记为 `done`。根因是把 `S_round004` 的已打标集合当作审计分母，未与 `doc/**/*.md` 全量清单对账。 | 2026-03-06 14:47 CST | `doc_total=820`、`doc_marked=491`、`doc_unmarked=329`；排除 `doc/devlog/**` 后仍有 `297` 未打标；`doc/world-simulator/**` 为 `22/314`。 | ROUND-004 覆盖率判断失真，导致阶段状态和进度结论不准确。 | open |
+| E4-001 | 误将 `A4-002/A4-006` 提前标记为 `done`。根因是把 `S_round004` 的已打标集合当作审计分母，未与 `doc/**/*.md` 全量清单对账。 | 2026-03-06 14:47 CST | 失误时：`doc_total=820`、`doc_marked=491`、`doc_unmarked=329`；排除 `doc/devlog/**` 后 `297` 未打标，`doc/world-simulator/**` 为 `22/314`。纠偏后：`doc_no_devlog_marked=788/788`、`world-simulator=314/314`。 | 覆盖率判断一度失真；已通过纠偏恢复。 | closed |
 
 ## 弥补计划（纠偏）
 | 编号 | 计划动作 | 负责人 | 截止时间 | 验收命令 | 状态 |
 | --- | --- | --- | --- | --- | --- |
-| F4-001 | 固化 ROUND-004 审计分母口径：`doc/**/*.md`（默认排除 `doc/devlog/**`），并在台账写明统计口径。 | cc | 2026-03-06 | `total=$(rg --files doc -g '*.md' -g '!doc/devlog/**' | wc -l); marked=$(rg -l '^审计轮次:\\s*4$' doc --glob '*.md' -g '!doc/devlog/**' | wc -l); test \"$marked\" -le \"$total\"` | in_progress |
-| F4-002 | 补审 `doc/world-simulator/**` 剩余未覆盖文档并逐篇回写 `审计轮次: 4` 与审计日志。 | cc | 2026-03-07 | `total=$(rg --files doc/world-simulator -g '*.md' | wc -l); marked=$(rg -l '^审计轮次:\\s*4$' doc/world-simulator --glob '*.md' | wc -l); test \"$marked\" -eq \"$total\"` | todo |
-| F4-003 | 全量重生成 `S_round004` 并与审计日志做集合对账，确保“日志集合=打标集合”。 | cc | 2026-03-07 | `comm -3 <(awk -F'|' 'NR>4 && /2026-03-06/ {gsub(/`/,\"\",$4); gsub(/^ +| +$/,\"\",$4); if($4!=\"\" && $4!=\"文档路径\") print $4}' doc/core/reviews/round-004-audit-progress-log.md | sort -u) <(rg -l '^审计轮次:\\s*4$' doc --glob '*.md' | sort)` | todo |
-| F4-004 | 完成纠偏后再判定 `A4-002/A4-006` 与 `P1/B4-002` 是否可关闭，并回写复审说明。 | cc | 2026-03-08 | `rg -n '\\| A4-002 \\|.*\\| done \\||\\| A4-006 \\|.*\\| done \\|' doc/core/reviews/consistency-review-round-004.md` | todo |
+| F4-001 | 固化 ROUND-004 审计分母口径：`doc/**/*.md`（默认排除 `doc/devlog/**`），并在台账写明统计口径。 | cc | 2026-03-06 | `total=$(rg --files doc -g '*.md' -g '!doc/devlog/**' | wc -l); marked=$(rg -l '^审计轮次:\\s*4$' doc --glob '*.md' -g '!doc/devlog/**' | wc -l); test \"$marked\" -eq \"$total\"` | done |
+| F4-002 | 补审 `doc/world-simulator/**` 剩余未覆盖文档并逐篇回写 `审计轮次: 4` 与审计日志。 | cc | 2026-03-07 | `total=$(rg --files doc/world-simulator -g '*.md' | wc -l); marked=$(rg -l '^审计轮次:\\s*4$' doc/world-simulator --glob '*.md' | wc -l); test \"$marked\" -eq \"$total\"` | done |
+| F4-003 | 全量重生成 `S_round004` 并与审计日志做集合对账，确保“日志集合=打标集合”。 | cc | 2026-03-07 | `comm -3 <(awk -F'|' 'NR>4 && /2026-03-06/ {gsub(/`/,\"\",$4); gsub(/^ +| +$/,\"\",$4); if($4!=\"\" && $4!=\"文档路径\") print $4}' doc/core/reviews/round-004-audit-progress-log.md | sort -u) <(rg -l '^审计轮次:\\s*4$' doc --glob '*.md' | sort)` | done |
+| F4-004 | 完成纠偏后再判定 `A4-002/A4-006` 与 `P1/B4-002` 是否可关闭，并回写复审说明。 | cc | 2026-03-08 | `rg -n '\\| A4-002 \\|.*\\| done \\||\\| A4-006 \\|.*\\| done \\|' doc/core/reviews/consistency-review-round-004.md` | done |
 
 ## 设计问题清单
 | 编号 | 问题描述 | 影响范围 | 建议动作 | 严重度 | 当前判定 |
 | --- | --- | --- | --- | --- | --- |
 | I4-001 | 索引/入口存在可达性断链或漏登记 | world-runtime/p2p/site/testing/world-simulator | 修复 `prd.index` 与入口互链，补齐孤儿文档登记 | high | open（82） |
-| I4-002 | 验收命令口径不一致（如裸 `cargo check`） | site/testing/p2p/world-simulator | 统一仓库执行口径与命令模板 | high | open（24） |
+| I4-002 | 验收命令口径不一致（如裸 `cargo check`） | site/testing/p2p/world-simulator | 统一仓库执行口径与命令模板 | high | open（36） |
 | I4-003 | 追溯链字段缺失或审计字段重复导致口径冲突 | p2p/site/playability/core | 清理重复审计字段并补齐 PRD-ID 到任务链 | high | open（92） |
 | I4-004 | 文档含不可直接执行命令/占位命令 | p2p/testing/scripts/playability/site | 替换为仓内可执行命令并补示例 | high | open（74） |
 | I4-005 | PRD-ID/任务编号体系不一致 | world-simulator/testing/site/p2p | 统一编号体系并回写映射 | high | open（21） |
-| I4-006 | 文档状态与最近更新时间失真 | p2p/site/playability/world-simulator | 回写真实状态与时间字段 | medium | open（82） |
+| I4-006 | 文档状态与最近更新时间失真 | p2p/site/playability/world-simulator | 回写真实状态与时间字段 | medium | open（89） |
 | I4-007 | PRD 混入 project/devlog 性质内容 | p2p/world-simulator | 清理串写，恢复 Why/What/Done 边界 | high | open（2） |
-| I4-008 | 完成态缺日期/映射字段 | p2p/playability/world-simulator | 增加完成日期与映射字段 | medium | open（7） |
+| I4-008 | 完成态缺日期/映射字段 | p2p/playability/world-simulator | 增加完成日期与映射字段 | medium | open（9） |
 | I4-009 | world-simulator 结构命名一致性偏差 | world-simulator | 统一目录/命名口径并回写索引 | medium | open（3） |
 | I4-010 | world-simulator 与 p2p 索引覆盖规则不一致 | world-simulator/p2p | 统一索引覆盖声明与入口规则 | medium | open（4） |
 | I4-011 | world-simulator 与 p2p 的追溯链声明不完整 | world-simulator/p2p | 补齐 PRD-ID 与任务追溯声明 | high | open（2） |
@@ -135,11 +135,11 @@ rg -n "^审计轮次:\s*4$" doc --glob '*.md'
 | 编号 | 整改动作 | 责任人 | 截止时间 | 状态 |
 | --- | --- | --- | --- | --- |
 | A4-001 | 建立 ROUND-004 启动台账（本文件 + 审读清单 + 执行清单） | cc | 2026-03-06 | done |
-| A4-002 | 完成 D4-001~D4-008 全量审读并登记问题清单 | cc | 2026-03-09 | in_progress |
+| A4-002 | 完成 D4-001~D4-008 全量审读并登记问题清单 | cc | 2026-03-09 | done |
 | A4-003 | 对 high 严重度问题输出“整改方案 + 影响面 + 验收命令” | cc | 2026-03-10 | todo |
 | A4-004 | 执行文档整改并回写审计轮次与索引引用 | cc | 2026-03-12 | todo |
 | A4-005 | 生成 `S_round004` 清单并完成复审结论 | cc | 2026-03-12 | todo |
-| A4-006 | 启动 6 子代理并行审计并回收分区问题清单 | cc | 2026-03-06 | in_progress |
+| A4-006 | 启动 6 子代理并行审计并回收分区问题清单 | cc | 2026-03-06 | done |
 | A4-007 | 落实“逐文档即时回写”机制（审计轮次 + 进度日志）并纳入并行审计流程 | cc | 2026-03-06 | done |
 | A4-008 | 验收命令：`rg -n "PRD-ID|验收命令|证据" doc/core/prd.project.md doc/engineering/prd.project.md doc/p2p/prd.project.md doc/world-runtime/prd.project.md doc/headless-runtime/prd.project.md doc/testing/prd.project.md`<br>`rg -n "PRD-ID.*TASK|TASK.*PRD-ID" doc/core/prd.project.md doc/engineering/prd.project.md doc/p2p/prd.project.md doc/world-runtime/prd.project.md doc/headless-runtime/prd.project.md doc/testing/prd.project.md` | cc | 2026-03-10 | todo |
 | A4-009 | 验收命令：`rg -n "env -u RUSTC_WRAPPER cargo check|\\./scripts/|bash scripts/" doc/site doc/testing doc/scripts doc/playability_test_result --glob '*.md'`<br>`! rg -n "\\$CODEX_HOME|<staged \\.rs files>|site/site/doc" doc/site doc/testing doc/scripts doc/playability_test_result --glob '*.md'` | cc | 2026-03-10 | todo |
@@ -156,4 +156,4 @@ rg -n "^审计轮次:\s*4$" doc --glob '*.md'
 ## 复审结果
 - 复审时间：-
 - 复审结论：-
-- 当前进展：已确认覆盖率统计存在口径失误（E4-001），`A4-002/A4-006` 已回退为 `in_progress`，进入纠偏补审阶段（F4-001~F4-004）。
+- 当前进展：覆盖率口径失误 `E4-001` 已完成纠偏关闭（F4-001~F4-004 done），`A4-002/A4-006` 重新关闭为 `done`，当前进入整改执行阶段（A4-003/A4-004/A4-008~A4-014）。

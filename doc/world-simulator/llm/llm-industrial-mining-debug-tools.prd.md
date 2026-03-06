@@ -1,7 +1,6 @@
 # LLM 工业采矿闭环与调试补给工具（设计文档）
 
-审计轮次: 3
-
+审计轮次: 4
 - 对应项目管理文档: doc/world-simulator/llm/llm-industrial-mining-debug-tools.prd.project.md
 
 ## 1. Executive Summary

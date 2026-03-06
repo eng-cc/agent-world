@@ -1,7 +1,6 @@
 # Agent World Simulator：LLM 多场景评测基线（项目管理文档）
 
-审计轮次: 3
-
+审计轮次: 4
 ## 任务拆解（含 PRD-ID 映射）
 - [x] LMSO30A 输出设计文档（`doc/world-simulator/llm/llm-multi-scenario-evaluation.prd.md`）
 - [x] LMSO30B 扩展压测脚本参数（`--scenario` 可重复 + `--scenarios`）

@@ -1,7 +1,6 @@
 # Viewer 发行体验改造（第三阶段：情绪闭环与世界活性）
 
-审计轮次: 3
-
+审计轮次: 4
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase3.prd.project.md
 
 ## 1. Executive Summary

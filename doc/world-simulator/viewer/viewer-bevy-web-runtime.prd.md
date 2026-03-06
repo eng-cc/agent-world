@@ -1,7 +1,6 @@
 # Viewer Bevy 浏览器运行路径设计
 
-审计轮次: 3
-
+审计轮次: 4
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-bevy-web-runtime.prd.project.md
 
 ## 1. Executive Summary

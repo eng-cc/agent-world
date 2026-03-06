@@ -1,7 +1,6 @@
 # Agent World Simulator：Agent-LLM Prompt 模块交互系统（项目管理文档）
 
-审计轮次: 3
-
+审计轮次: 4
 ## 任务拆解（含 PRD-ID 映射）
 - [x] LPS1 输出设计文档（`doc/world-simulator/llm/llm-prompt-system.prd.md`）
 - [x] LPS2 输出项目管理文档（本文件）

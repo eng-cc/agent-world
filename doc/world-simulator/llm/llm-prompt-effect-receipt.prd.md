@@ -1,7 +1,6 @@
 # Agent World Simulator：LLM Prompt ModuleCall Effect/Receipt 可回放链路（设计文档）
 
-审计轮次: 3
-
+审计轮次: 4
 - 对应项目管理文档: doc/world-simulator/llm/llm-prompt-effect-receipt.prd.project.md
 
 ## 1. Executive Summary

@@ -1,7 +1,6 @@
 # Viewer 商业化发行缺口收敛 Phase 5：高级贴图通道覆盖层
 
-审计轮次: 3
-
+审计轮次: 4
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-commercial-release-phase5-advanced-texture-maps.prd.project.md
 
 ## 1. Executive Summary

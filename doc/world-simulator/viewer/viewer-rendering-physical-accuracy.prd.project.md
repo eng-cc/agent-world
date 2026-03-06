@@ -1,7 +1,6 @@
 # Agent World：3D 渲染物理准确性（项目管理文档）
 
-审计轮次: 3
-
+审计轮次: 4
 ## 任务拆解（含 PRD-ID 映射）
 - [x] 输出设计文档（`doc/world-simulator/viewer/viewer-rendering-physical-accuracy.prd.md`）
 - [x] 输出项目管理文档（本文件）

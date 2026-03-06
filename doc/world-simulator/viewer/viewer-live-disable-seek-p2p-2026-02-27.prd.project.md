@@ -1,7 +1,6 @@
 # Viewer Live 禁用 Seek（P2P 不可回退）2026-02-27 项目管理
 
-审计轮次: 3
-
+审计轮次: 4
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0 建立设计文档与项目管理文档
 - [x] T1 改造 live 控制处理：禁用 `ViewerControl::Seek`

@@ -1,7 +1,6 @@
 # viewer-web-playability-unblock-2026-02-26
 
-审计轮次: 3
-
+审计轮次: 4
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-web-playability-unblock-2026-02-26.prd.project.md
 
 ## 1. Executive Summary

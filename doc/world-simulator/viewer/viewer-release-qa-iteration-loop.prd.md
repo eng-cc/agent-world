@@ -1,7 +1,6 @@
 # Viewer 发行验收测试迭代闭环（完成度 + 视觉效果）
 
-审计轮次: 3
-
+审计轮次: 4
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-release-qa-iteration-loop.prd.project.md
 
 ## 1. Executive Summary

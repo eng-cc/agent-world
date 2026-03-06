@@ -1,7 +1,6 @@
 # Viewer 选中对象详情面板（含 LLM 决策 I/O）
 
-审计轮次: 3
-
+审计轮次: 4
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-selection-details.prd.project.md
 
 ## 1. Executive Summary

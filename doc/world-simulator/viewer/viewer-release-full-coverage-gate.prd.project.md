@@ -1,7 +1,6 @@
 # Viewer 发行全覆盖验收 Gate（项目管理）
 
-审计轮次: 3
-
+审计轮次: 4
 ## 任务拆解（含 PRD-ID 映射）
 - [x] RFCG-0 文档建档：设计文档 + 项目管理文档
 - [x] RFCG-1 扩展 `viewer-theme-pack-preview.sh`：支持主题包选择（`industrial_v2|industrial_v1`）

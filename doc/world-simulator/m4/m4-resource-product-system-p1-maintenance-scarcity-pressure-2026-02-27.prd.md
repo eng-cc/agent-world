@@ -1,7 +1,6 @@
 # M4 资源与产品系统 P1：维护压力与本地稀缺供给延迟（2026-02-27）
 
-审计轮次: 3
-
+审计轮次: 4
 - 对应项目管理文档: doc/world-simulator/m4/m4-resource-product-system-p1-maintenance-scarcity-pressure-2026-02-27.prd.project.md
 
 ## 1. Executive Summary

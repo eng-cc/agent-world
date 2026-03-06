@@ -1,7 +1,6 @@
 # Agent World Simulator：世界初始化（项目管理文档）
 
-审计轮次: 3
-
+审计轮次: 4
 ## 任务拆解（含 PRD-ID 映射）
 - [x] I1 定义初始化配置结构（WorldInitConfig/Origin/AsteroidFragment/Agent）
 - [x] I1 实现世界初始化输出（WorldModel + Report）

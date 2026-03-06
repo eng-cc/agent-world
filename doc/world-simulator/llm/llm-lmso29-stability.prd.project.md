@@ -1,7 +1,6 @@
 # Agent World Simulator：LMSO29 可用性与稳定性收敛（项目管理文档）
 
-审计轮次: 3
-
+审计轮次: 4
 ## 任务拆解（含 PRD-ID 映射）
 - [x] LMSO29A 放宽 Prompt peak 预算阈值（soft/hard reserve 与 soft cap）。
 - [x] LMSO29B 放宽 Prompt 素材压缩上限（history/memory/observation）。

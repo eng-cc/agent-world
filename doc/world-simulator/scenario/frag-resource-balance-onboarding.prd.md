@@ -1,7 +1,6 @@
 # Agent World Simulator：Frag 资源平衡与新手友好生成（设计文档）
 
-审计轮次: 3
-
+审计轮次: 4
 - 对应项目管理文档: doc/world-simulator/scenario/frag-resource-balance-onboarding.prd.project.md
 
 本分册定义一版可落地的 frag 资源生成改造，目标是同时满足两点：

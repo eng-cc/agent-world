@@ -1,7 +1,6 @@
 # M4 材料多账本与物流约束（设计文档）
 
-审计轮次: 3
-
+审计轮次: 4
 - 对应项目管理文档: doc/world-simulator/m4/material-multi-ledger-logistics.prd.project.md
 
 ## 1. Executive Summary

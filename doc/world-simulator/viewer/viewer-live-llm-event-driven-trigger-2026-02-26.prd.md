@@ -1,7 +1,6 @@
 # Viewer Live LLM 事件触发决策门控（2026-02-26）
 
-审计轮次: 3
-
+审计轮次: 4
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-live-llm-event-driven-trigger-2026-02-26.prd.project.md
 
 ## 1. Executive Summary

@@ -1,7 +1,6 @@
 # Viewer Frag 实际比例与选中显示修复（项目管理文档）
 
-审计轮次: 3
-
+审计轮次: 4
 ## 任务拆解（含 PRD-ID 映射）
 - [x] FSF1.1 输出设计文档（`doc/world-simulator/viewer/viewer-frag-scale-selection-stability.prd.md`）
 - [x] FSF1.2 输出项目管理文档（本文件）

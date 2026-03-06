@@ -1,7 +1,6 @@
 # Viewer Live 禁用 Seek（P2P 不可回退）2026-02-27
 
-审计轮次: 3
-
+审计轮次: 4
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-live-disable-seek-p2p-2026-02-27.prd.project.md
 
 ## 1. Executive Summary

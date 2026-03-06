@@ -1,7 +1,6 @@
 # Viewer Live 逻辑时间与事件游标接口改造 Phase 11（2026-02-27）项目管理
 
-审计轮次: 3
-
+审计轮次: 4
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0 建立 Phase 11 设计文档与项目管理文档
 - [x] T1 改造 Web Test API 状态输出：新增 `logicalTime/eventSeq`，兼容保留 `tick`

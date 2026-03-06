@@ -1,7 +1,6 @@
 # Agent World Simulator：Viewer 快速定位 Agent 按钮（项目管理文档）
 
-审计轮次: 3
-
+审计轮次: 4
 ## 任务拆解（含 PRD-ID 映射）
 - [x] QAG1：输出设计文档（`doc/world-simulator/viewer/viewer-agent-quick-locate.prd.md`）与项目管理文档（本文件）
 - [x] QAG2：新增快速定位 Agent 动作（优先当前 Agent，否则首个 Agent）

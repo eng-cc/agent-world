@@ -1,7 +1,6 @@
 # 客户端启动器 native/web 同控制面与客户端服务端分离（2026-03-04）项目管理文档
 
-审计轮次: 3
-
+审计轮次: 4
 - 对应设计文档: doc/world-simulator/launcher/game-client-launcher-native-web-control-plane-unification-2026-03-04.prd.md
 
 ## 任务拆解（含 PRD-ID 映射）

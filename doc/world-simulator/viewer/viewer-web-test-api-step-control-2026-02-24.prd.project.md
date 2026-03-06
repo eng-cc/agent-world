@@ -1,7 +1,6 @@
 # Viewer Web Test API `step` 控制补齐项目管理文档（2026-02-24）
 
-审计轮次: 3
-
+审计轮次: 4
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0：建档设计文档与项目管理文档。
 - [x] T1：在 `web_test_api` 补齐 `sendControl("step")` 解析与 `count` 规则。

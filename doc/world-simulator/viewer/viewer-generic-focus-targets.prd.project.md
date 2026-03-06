@@ -1,7 +1,6 @@
 # Viewer 通用聚焦目标（可扩展实体）（项目管理文档）
 
-审计轮次: 3
-
+审计轮次: 4
 ## 任务拆解（含 PRD-ID 映射）
 - [x] GFT-0 输出设计文档（`doc/world-simulator/viewer/viewer-generic-focus-targets.prd.md`）
 - [x] GFT-1 输出项目管理文档（本文件）

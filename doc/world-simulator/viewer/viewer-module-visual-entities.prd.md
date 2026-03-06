@@ -1,7 +1,6 @@
 # Agent World Simulator：WASM 模块驱动新事物的通用可视实体机制
 
-审计轮次: 3
-
+审计轮次: 4
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-module-visual-entities.prd.project.md
 
 ## 1. Executive Summary

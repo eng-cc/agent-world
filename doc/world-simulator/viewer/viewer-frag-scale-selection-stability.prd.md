@@ -1,7 +1,6 @@
 # Viewer Frag 实际比例与选中显示修复（设计文档）
 
-审计轮次: 3
-
+审计轮次: 4
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-frag-scale-selection-stability.prd.project.md
 
 ## 1. Executive Summary

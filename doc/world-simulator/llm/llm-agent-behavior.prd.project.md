@@ -1,7 +1,6 @@
 # Agent World Simulator：LLM 驱动 Agent 行为落地（项目管理文档）
 
-审计轮次: 3
-
+审计轮次: 4
 ## 任务拆解（含 PRD-ID 映射）
 - [x] LLM1 输出设计文档（`doc/world-simulator/llm/llm-agent-behavior.prd.md`）
 - [x] LLM2 输出项目管理文档（本文件）

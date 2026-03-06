@@ -1,7 +1,6 @@
 # Viewer Web 语义化测试 API（Phase 9 发行验收支撑）
 
-审计轮次: 3
-
+审计轮次: 4
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-web-semantic-test-api.prd.project.md
 
 ## 1. Executive Summary

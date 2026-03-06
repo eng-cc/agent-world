@@ -1,7 +1,6 @@
 # Agent World：M6 3D 可视化（项目管理文档）
 
-审计轮次: 3
-
+审计轮次: 4
 ## 任务拆解（含 PRD-ID 映射）
 - [x] 输出 3D 可视化设计文档与项目管理文档（`doc/world-simulator/viewer/viewer-visualization-3d.prd.md`）
 - [x] 3D viewer 最小闭环：Snapshot 初始化 + 事件更新 + 三节点场景可跑通

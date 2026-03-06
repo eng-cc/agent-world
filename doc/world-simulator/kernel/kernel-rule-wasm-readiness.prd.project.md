@@ -1,7 +1,6 @@
 # Agent World Simulator：规则 Wasm 化就绪（第二阶段）项目管理文档
 
-审计轮次: 3
-
+审计轮次: 4
 ## 任务拆解（含 PRD-ID 映射）
 - [x] KWR-0 输出设计文档（`doc/world-simulator/kernel/kernel-rule-wasm-readiness.prd.md`）与项目管理文档（本文件）。
 - [x] KWR-1 扩展 pre-action hook 接口，支持读取 `&WorldKernel` 上下文。

@@ -1,7 +1,6 @@
 # Agent World Simulator：Asteroid Fragment 命名替换（项目管理文档）
 
-审计轮次: 3
-
+审计轮次: 4
 ## 任务拆解（含 PRD-ID 映射）
 - [x] R0 输出设计文档与项目管理文档
 - [x] R1 代码/场景/工具/测试命名替换（统一为 asteroid_fragment）

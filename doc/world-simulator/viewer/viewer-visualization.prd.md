@@ -1,7 +1,6 @@
 # Agent World：M5 可视化与调试（Bevy）
 
-审计轮次: 3
-
+审计轮次: 4
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-visualization.prd.project.md
 
 ## 1. Executive Summary

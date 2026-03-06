@@ -1,7 +1,6 @@
 # Agent World Simulator：Viewer Chat Web IME EGUI 输入桥接（项目管理文档）
 
-审计轮次: 3
-
+审计轮次: 4
 ## 任务拆解（含 PRD-ID 映射）
 - [x] CIB1 输出设计文档（`doc/world-simulator/viewer/viewer-chat-ime-egui-bridge.prd.md`）
 - [x] CIB2 输出项目管理文档（本文件）

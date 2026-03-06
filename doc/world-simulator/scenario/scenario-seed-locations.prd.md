@@ -1,7 +1,6 @@
 # Agent World Simulator：场景种子化地点生成（设计文档）
 
-审计轮次: 3
-
+审计轮次: 4
 - 对应项目管理文档: doc/world-simulator/scenario/scenario-seed-locations.prd.project.md
 
 本分册定义“场景不再显式声明 `locations`，而是由 `seed` 确定性生成地点”的新策略，并将 Agent 初始出生点改为“从可用地点中随机（但可复现）选择”。

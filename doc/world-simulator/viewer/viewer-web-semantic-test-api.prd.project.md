@@ -1,7 +1,6 @@
 # Viewer Web 语义化测试 API（项目管理）
 
-审计轮次: 3
-
+审计轮次: 4
 ## 任务拆解（含 PRD-ID 映射）
 - [x] WTA-0 文档建档：设计文档 + 项目管理文档
 - [x] WTA-1 `viewer_automation` 支持运行时步骤入队

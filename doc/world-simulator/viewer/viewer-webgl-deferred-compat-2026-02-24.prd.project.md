@@ -1,7 +1,6 @@
 # Viewer WebGL Deferred 兼容降级项目管理文档（2026-02-24）
 
-审计轮次: 3
-
+审计轮次: 4
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0：设计文档与项目管理文档建档。
 - [x] T1：实现 wasm 路径关闭默认 deferred lighting 插件。

@@ -1,7 +1,6 @@
 # 客户端启动器反馈分布式提交迁移（2026-03-02）项目管理文档
 
-审计轮次: 3
-
+审计轮次: 4
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0 (PRD-WORLD_SIMULATOR-001)：建档（设计文档 + 项目管理文档）。
 - [x] T1 (PRD-WORLD_SIMULATOR-001/002)：链运行时实现反馈提交接口（HTTP -> NodeRuntime::submit_feedback）并启用 feedback_p2p。
