@@ -101,6 +101,190 @@ pub(super) fn map_runtime_domain_event(
         RuntimeDomainEvent::ActionRejected { reason, .. } => Some(WorldEventKind::ActionRejected {
             reason: runtime_reject_reason_to_simulator(reason),
         }),
+        RuntimeDomainEvent::ActionAccepted {
+            action_id,
+            action_kind,
+            actor_id,
+            eta_ticks,
+            ..
+        } => Some(runtime_structured_event(
+            "runtime.action_accepted",
+            format!(
+                "action_id={action_id} action_kind={} actor_id={} eta_ticks={eta_ticks}",
+                fallback_non_empty(action_kind, "unknown_action"),
+                fallback_non_empty(actor_id, "system"),
+            ),
+        )),
+        RuntimeDomainEvent::WarDeclared {
+            war_id,
+            objective,
+            intensity,
+            ..
+        } => Some(runtime_structured_event(
+            "runtime.gameplay.war_declared",
+            format!(
+                "war_id={} objective={} intensity={intensity}",
+                fallback_non_empty(war_id, "unknown_war"),
+                fallback_non_empty(objective, "unknown_objective"),
+            ),
+        )),
+        RuntimeDomainEvent::WarConcluded {
+            war_id,
+            winner_alliance_id,
+            summary,
+            ..
+        } => Some(runtime_structured_event(
+            "runtime.gameplay.war_concluded",
+            format!(
+                "war_id={} winner={} summary={}",
+                fallback_non_empty(war_id, "unknown_war"),
+                fallback_non_empty(winner_alliance_id, "unknown_winner"),
+                fallback_non_empty(summary, "none"),
+            ),
+        )),
+        RuntimeDomainEvent::GovernanceProposalOpened {
+            proposal_key,
+            title,
+            closes_at,
+            ..
+        } => Some(runtime_structured_event(
+            "runtime.gameplay.governance_proposal_opened",
+            format!(
+                "proposal_key={} title={} closes_at={closes_at}",
+                fallback_non_empty(proposal_key, "unknown_proposal"),
+                fallback_non_empty(title, "untitled"),
+            ),
+        )),
+        RuntimeDomainEvent::GovernanceVoteCast {
+            proposal_key,
+            option,
+            weight,
+            ..
+        } => Some(runtime_structured_event(
+            "runtime.gameplay.governance_vote_cast",
+            format!(
+                "proposal_key={} option={} weight={weight}",
+                fallback_non_empty(proposal_key, "unknown_proposal"),
+                fallback_non_empty(option, "unknown_option"),
+            ),
+        )),
+        RuntimeDomainEvent::GovernanceProposalFinalized {
+            proposal_key,
+            winning_option,
+            passed,
+            ..
+        } => Some(runtime_structured_event(
+            "runtime.gameplay.governance_proposal_finalized",
+            format!(
+                "proposal_key={} winning_option={} passed={passed}",
+                fallback_non_empty(proposal_key, "unknown_proposal"),
+                winning_option.as_deref().unwrap_or("none"),
+            ),
+        )),
+        RuntimeDomainEvent::CrisisSpawned {
+            crisis_id,
+            kind,
+            severity,
+            expires_at,
+        } => Some(runtime_structured_event(
+            "runtime.gameplay.crisis_spawned",
+            format!(
+                "crisis_id={} kind={} severity={severity} expires_at={expires_at}",
+                fallback_non_empty(crisis_id, "unknown_crisis"),
+                fallback_non_empty(kind, "unknown_kind"),
+            ),
+        )),
+        RuntimeDomainEvent::CrisisResolved {
+            crisis_id,
+            strategy,
+            success,
+            impact,
+            ..
+        } => Some(runtime_structured_event(
+            "runtime.gameplay.crisis_resolved",
+            format!(
+                "crisis_id={} strategy={} success={success} impact={impact}",
+                fallback_non_empty(crisis_id, "unknown_crisis"),
+                fallback_non_empty(strategy, "unknown_strategy"),
+            ),
+        )),
+        RuntimeDomainEvent::CrisisTimedOut {
+            crisis_id,
+            penalty_impact,
+        } => Some(runtime_structured_event(
+            "runtime.gameplay.crisis_timed_out",
+            format!(
+                "crisis_id={} penalty_impact={penalty_impact}",
+                fallback_non_empty(crisis_id, "unknown_crisis"),
+            ),
+        )),
+        RuntimeDomainEvent::EconomicContractOpened {
+            contract_id,
+            counterparty_agent_id,
+            settlement_amount,
+            expires_at,
+            ..
+        } => Some(runtime_structured_event(
+            "runtime.gameplay.economic_contract_opened",
+            format!(
+                "contract_id={} counterparty={} settlement_amount={settlement_amount} expires_at={expires_at}",
+                fallback_non_empty(contract_id, "unknown_contract"),
+                fallback_non_empty(counterparty_agent_id, "unknown_counterparty"),
+            ),
+        )),
+        RuntimeDomainEvent::EconomicContractAccepted {
+            contract_id,
+            accepter_agent_id,
+        } => Some(runtime_structured_event(
+            "runtime.gameplay.economic_contract_accepted",
+            format!(
+                "contract_id={} accepter={}",
+                fallback_non_empty(contract_id, "unknown_contract"),
+                fallback_non_empty(accepter_agent_id, "unknown_accepter"),
+            ),
+        )),
+        RuntimeDomainEvent::EconomicContractSettled {
+            contract_id,
+            success,
+            transfer_amount,
+            tax_amount,
+            ..
+        } => Some(runtime_structured_event(
+            "runtime.gameplay.economic_contract_settled",
+            format!(
+                "contract_id={} success={success} transfer_amount={transfer_amount} tax_amount={tax_amount}",
+                fallback_non_empty(contract_id, "unknown_contract"),
+            ),
+        )),
+        RuntimeDomainEvent::EconomicContractExpired {
+            contract_id,
+            creator_agent_id,
+            counterparty_agent_id,
+            ..
+        } => Some(runtime_structured_event(
+            "runtime.gameplay.economic_contract_expired",
+            format!(
+                "contract_id={} creator={} counterparty={}",
+                fallback_non_empty(contract_id, "unknown_contract"),
+                fallback_non_empty(creator_agent_id, "unknown_creator"),
+                fallback_non_empty(counterparty_agent_id, "unknown_counterparty"),
+            ),
+        )),
+        RuntimeDomainEvent::MetaProgressGranted {
+            target_agent_id,
+            track,
+            points,
+            achievement_id,
+            ..
+        } => Some(runtime_structured_event(
+            "runtime.gameplay.meta_progress_granted",
+            format!(
+                "target={} track={} points={points} achievement_id={}",
+                fallback_non_empty(target_agent_id, "unknown_target"),
+                fallback_non_empty(track, "unknown_track"),
+                achievement_id.as_deref().unwrap_or("none"),
+            ),
+        )),
         _ => None,
     }
 }
@@ -157,6 +341,22 @@ pub(super) fn runtime_reject_reason_to_simulator(
 fn runtime_fallback_event_kind(runtime_event: &RuntimeWorldEvent) -> WorldEventKind {
     let (kind, domain_kind) = runtime_event_kind_label(&runtime_event.body);
     WorldEventKind::RuntimeEvent { kind, domain_kind }
+}
+
+fn runtime_structured_event(kind: &str, domain_kind: String) -> WorldEventKind {
+    WorldEventKind::RuntimeEvent {
+        kind: kind.to_string(),
+        domain_kind: Some(domain_kind),
+    }
+}
+
+fn fallback_non_empty<'a>(value: &'a str, fallback: &'a str) -> &'a str {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        fallback
+    } else {
+        trimmed
+    }
 }
 
 fn runtime_event_kind_label(body: &RuntimeWorldEventBody) -> (String, Option<String>) {
@@ -227,6 +427,53 @@ mod tests {
             } => {
                 assert_eq!(distance_cm, 100_000);
                 assert_eq!(electricity_cost, config.movement_cost(distance_cm));
+            }
+            other => panic!("unexpected mapped event: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn map_runtime_domain_event_action_accepted_emits_structured_runtime_event() {
+        let event = RuntimeDomainEvent::ActionAccepted {
+            action_id: 7,
+            action_kind: "".to_string(),
+            actor_id: "".to_string(),
+            eta_ticks: 3,
+            notes: vec!["accepted".to_string()],
+        };
+        let mapped =
+            map_runtime_domain_event(&event, &WorldConfig::default()).expect("mapped event");
+        match mapped {
+            WorldEventKind::RuntimeEvent { kind, domain_kind } => {
+                assert_eq!(kind, "runtime.action_accepted");
+                let summary = domain_kind.expect("domain summary");
+                assert!(summary.contains("action_id=7"));
+                assert!(summary.contains("action_kind=unknown_action"));
+                assert!(summary.contains("actor_id=system"));
+                assert!(summary.contains("eta_ticks=3"));
+            }
+            other => panic!("unexpected mapped event: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn map_runtime_domain_event_governance_finalize_keeps_compat_fallbacks() {
+        let event = RuntimeDomainEvent::GovernanceProposalFinalized {
+            proposal_key: "proposal.alpha".to_string(),
+            winning_option: None,
+            winning_weight: 0,
+            total_weight: 0,
+            passed: false,
+        };
+        let mapped =
+            map_runtime_domain_event(&event, &WorldConfig::default()).expect("mapped event");
+        match mapped {
+            WorldEventKind::RuntimeEvent { kind, domain_kind } => {
+                assert_eq!(kind, "runtime.gameplay.governance_proposal_finalized");
+                let summary = domain_kind.expect("domain summary");
+                assert!(summary.contains("proposal_key=proposal.alpha"));
+                assert!(summary.contains("winning_option=none"));
+                assert!(summary.contains("passed=false"));
             }
             other => panic!("unexpected mapped event: {other:?}"),
         }
