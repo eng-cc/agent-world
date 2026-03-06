@@ -18,6 +18,7 @@ impl WorldState {
                     cell.last_active = now;
                 }
             }
+            DomainEvent::ActionAccepted { .. } => {}
             DomainEvent::ActionRejected { .. } => {}
             DomainEvent::Observation { .. } => {}
             DomainEvent::BodyAttributesUpdated { agent_id, view, .. } => {

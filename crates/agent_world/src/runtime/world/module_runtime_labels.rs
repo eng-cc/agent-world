@@ -7,6 +7,7 @@ pub(super) fn event_kind_label(body: &WorldEventBody) -> &'static str {
         WorldEventBody::Domain(event) => match event {
             DomainEvent::AgentRegistered { .. } => "domain.agent_registered",
             DomainEvent::AgentMoved { .. } => "domain.agent_moved",
+            DomainEvent::ActionAccepted { .. } => "domain.action_accepted",
             DomainEvent::ActionRejected { .. } => "domain.action_rejected",
             DomainEvent::Observation { .. } => "domain.observation",
             DomainEvent::BodyAttributesUpdated { .. } => "domain.body_attributes_updated",

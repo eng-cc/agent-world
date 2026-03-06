@@ -1,13 +1,62 @@
 use agent_world_wasm_abi::ModuleSandbox;
 
 use super::super::{
-    ActionEnvelope, CausedBy, ModuleSubscriptionStage, RejectReason, RuleVerdict, WorldError,
-    WorldEventBody,
+    Action, ActionEnvelope, CausedBy, DomainEvent, ModuleSubscriptionStage, RejectReason,
+    RuleVerdict, WorldError, WorldEventBody,
 };
 use super::economy::EconomyActionResolution;
 use super::World;
 
 impl World {
+    fn should_emit_action_accepted(action: &Action) -> bool {
+        matches!(
+            action,
+            Action::FormAlliance { .. }
+                | Action::JoinAlliance { .. }
+                | Action::LeaveAlliance { .. }
+                | Action::DissolveAlliance { .. }
+                | Action::DeclareWar { .. }
+                | Action::OpenGovernanceProposal { .. }
+                | Action::CastGovernanceVote { .. }
+                | Action::ResolveCrisis { .. }
+                | Action::GrantMetaProgress { .. }
+                | Action::UpdateGameplayPolicy { .. }
+                | Action::OpenEconomicContract { .. }
+                | Action::AcceptEconomicContract { .. }
+                | Action::SettleEconomicContract { .. }
+        )
+    }
+
+    fn append_action_accepted_event(
+        &mut self,
+        envelope: &ActionEnvelope,
+    ) -> Result<(), WorldError> {
+        if !Self::should_emit_action_accepted(&envelope.action) {
+            return Ok(());
+        }
+        let actor_id = envelope.action.actor_id().unwrap_or("system");
+        self.append_event(
+            WorldEventBody::Domain(DomainEvent::ActionAccepted {
+                action_id: envelope.id,
+                action_kind: super::module_runtime_labels::action_kind_label(&envelope.action)
+                    .to_string(),
+                actor_id: actor_id.to_string(),
+                eta_ticks: 0,
+                notes: vec!["accepted_for_gameplay_processing".to_string()],
+            }),
+            Some(CausedBy::Action(envelope.id)),
+        )?;
+        Ok(())
+    }
+
+    fn preflight_domain_event(&self, body: &WorldEventBody) -> Result<(), WorldError> {
+        let WorldEventBody::Domain(event) = body else {
+            return Ok(());
+        };
+        let mut preview_state = self.state.clone();
+        preview_state.apply_domain_event(event, self.state.time)
+    }
+
     // ---------------------------------------------------------------------
     // Simulation step
     // ---------------------------------------------------------------------
@@ -20,6 +69,8 @@ impl World {
                 continue;
             }
             let event_body = self.action_to_event(&envelope)?;
+            self.preflight_domain_event(&event_body)?;
+            self.append_action_accepted_event(&envelope)?;
             self.append_event(event_body, Some(CausedBy::Action(envelope.id)))?;
         }
         let _ = self.process_due_economy_jobs()?;
@@ -41,6 +92,7 @@ impl World {
                     action_envelope.action = action;
                 }
                 EconomyActionResolution::Rejected(reason) => {
+                    self.append_action_accepted_event(&envelope)?;
                     self.append_event(
                         WorldEventBody::Domain(super::super::DomainEvent::ActionRejected {
                             action_id: envelope.id,
@@ -80,6 +132,7 @@ impl World {
             }
 
             if decision.verdict == RuleVerdict::Deny {
+                self.append_action_accepted_event(&envelope)?;
                 self.append_event(
                     WorldEventBody::Domain(super::super::DomainEvent::ActionRejected {
                         action_id: envelope.id,
@@ -92,6 +145,7 @@ impl World {
             } else {
                 let deficits = decision.cost.deficits(&self.state.resources);
                 if !deficits.is_empty() {
+                    self.append_action_accepted_event(&envelope)?;
                     self.append_event(
                         WorldEventBody::Domain(super::super::DomainEvent::ActionRejected {
                             action_id: envelope.id,
@@ -104,10 +158,13 @@ impl World {
                         Ok(()) => {
                             if !self.try_apply_runtime_module_action(&action_envelope)? {
                                 let event_body = self.action_to_event(&action_envelope)?;
+                                self.preflight_domain_event(&event_body)?;
+                                self.append_action_accepted_event(&envelope)?;
                                 self.append_event(event_body, Some(CausedBy::Action(envelope.id)))?;
                             }
                         }
                         Err(err) => {
+                            self.append_action_accepted_event(&envelope)?;
                             self.append_event(
                                 WorldEventBody::Domain(super::super::DomainEvent::ActionRejected {
                                     action_id: envelope.id,

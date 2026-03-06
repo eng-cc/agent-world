@@ -600,6 +600,7 @@ impl WorldState {
         match event {
             DomainEvent::AgentRegistered { .. }
             | DomainEvent::AgentMoved { .. }
+            | DomainEvent::ActionAccepted { .. }
             | DomainEvent::ActionRejected { .. }
             | DomainEvent::Observation { .. }
             | DomainEvent::BodyAttributesUpdated { .. }

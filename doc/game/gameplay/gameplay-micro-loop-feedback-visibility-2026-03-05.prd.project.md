@@ -16,7 +16,7 @@
 | Task ID | PRD-ID | Owner | 计划窗口 | 核心改动 | 交付物 | 测试层级 | 状态 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | TASK-GAMEPLAY-MLF-000 | PRD-GAME-004 | game-doc-owner | D0 (2026-03-05) | PRD 与项目文档建模、索引挂载 | `gameplay-micro-loop-feedback-visibility-2026-03-05.prd.md` / `.prd.project.md` | `test_tier_required`（文档治理） | completed |
-| TASK-GAMEPLAY-MLF-001 | PRD-GAME-004-01/02 | runtime-owner | D1 | 新增 `ActionAccepted` 协议原语并接入 action 流程，保证“动作被接受”可观测 | runtime 事件模型 + action/event 处理代码 | `test_tier_required` | pending |
+| TASK-GAMEPLAY-MLF-001 | PRD-GAME-004-01/02 | runtime-owner | D1 | 新增 `ActionAccepted` 协议原语并接入 gameplay action 流程，保证“动作被接受”可观测 | runtime 事件模型 + action/event 处理代码 + gameplay 协议回归测试 | `test_tier_required` | completed |
 | TASK-GAMEPLAY-MLF-002 | PRD-GAME-004-02 | runtime-live-owner | D1-D2 | runtime_live 对 gameplay DomainEvent 与 ACK 的结构化映射与兼容降级 | runtime_live mapping + viewer 协议字段 | `test_tier_required` | pending |
 | TASK-GAMEPLAY-MLF-003 | PRD-GAME-004-01 | viewer-owner | D2 | 微循环 HUD（倒计时/最近动作状态）与无进展诊断建议 | viewer right panel / i18n / tone 规则 | `test_tier_required` | pending |
 | TASK-GAMEPLAY-MLF-004 | PRD-GAME-004-03 | test-release-owner | D3 | required/full 回归与卡片评分复核，形成门禁证据包 | 测试日志 + playability 卡片 + 结论 | `test_tier_required` + `test_tier_full` | pending |
@@ -69,7 +69,7 @@
 ## 状态
 - 更新日期: 2026-03-06
 - 当前状态: active
-- 当前完成: `TASK-GAMEPLAY-MLF-000`
-- 下一任务: `TASK-GAMEPLAY-MLF-001`
+- 当前完成: `TASK-GAMEPLAY-MLF-000`、`TASK-GAMEPLAY-MLF-001`
+- 下一任务: `TASK-GAMEPLAY-MLF-002`
 - 阻塞项: 无（若 required tier 触发 builtin identity 基线故障，按“风险与应对”登记）
 - 说明: 过程记录在 `doc/devlog/2026-03-06.md`

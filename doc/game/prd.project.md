@@ -20,9 +20,9 @@
 - `.agents/skills/prd/check.md`
 
 ## 状态
-- 更新日期: 2026-03-05
+- 更新日期: 2026-03-06
 - 当前状态: active
-- 下一任务: TASK-GAME-007（起步子任务：TASK-GAMEPLAY-MLF-001）
+- 下一任务: TASK-GAME-007（下一子任务：TASK-GAMEPLAY-MLF-002）
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
-- ROUND-002 进展: gameplay 子簇主从化完成。
-- 说明: 本文档仅维护 game 设计执行状态；过程记录在 `doc/devlog/2026-03-05.md`。
+- ROUND-002 进展: gameplay 子簇主从化完成，`TASK-GAMEPLAY-MLF-001` 已交付。
+- 说明: 本文档仅维护 game 设计执行状态；过程记录在 `doc/devlog/2026-03-05.md` 与 `doc/devlog/2026-03-06.md`。

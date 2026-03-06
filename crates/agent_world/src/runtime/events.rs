@@ -504,6 +504,168 @@ pub enum Action {
     },
 }
 
+impl Action {
+    pub fn actor_id(&self) -> Option<&str> {
+        match self {
+            Action::RegisterAgent { agent_id, .. }
+            | Action::MoveAgent { agent_id, .. }
+            | Action::QueryObservation { agent_id, .. }
+            | Action::BodyAction { agent_id, .. }
+            | Action::EmitBodyAttributes { agent_id, .. }
+            | Action::ExpandBodyInterface { agent_id, .. } => Some(agent_id.as_str()),
+            Action::EmitObservation { observation } => Some(observation.agent_id.as_str()),
+            Action::DeployModuleArtifact {
+                publisher_agent_id, ..
+            }
+            | Action::CompileModuleArtifactFromSource {
+                publisher_agent_id, ..
+            } => Some(publisher_agent_id.as_str()),
+            Action::InstallModuleFromArtifact {
+                installer_agent_id, ..
+            }
+            | Action::InstallModuleToTargetFromArtifact {
+                installer_agent_id, ..
+            } => Some(installer_agent_id.as_str()),
+            Action::UpgradeModuleFromArtifact {
+                upgrader_agent_id, ..
+            } => Some(upgrader_agent_id.as_str()),
+            Action::ModuleReleaseSubmit {
+                requester_agent_id, ..
+            } => Some(requester_agent_id.as_str()),
+            Action::ModuleReleaseShadow {
+                operator_agent_id, ..
+            }
+            | Action::ModuleReleaseBindRoles {
+                operator_agent_id, ..
+            }
+            | Action::ModuleReleaseApply {
+                operator_agent_id, ..
+            }
+            | Action::RollbackModuleInstance {
+                operator_agent_id, ..
+            } => Some(operator_agent_id.as_str()),
+            Action::ModuleReleaseApproveRole {
+                approver_agent_id, ..
+            } => Some(approver_agent_id.as_str()),
+            Action::ModuleReleaseReject {
+                rejector_agent_id, ..
+            } => Some(rejector_agent_id.as_str()),
+            Action::ListModuleArtifactForSale {
+                seller_agent_id, ..
+            }
+            | Action::DelistModuleArtifact {
+                seller_agent_id, ..
+            } => Some(seller_agent_id.as_str()),
+            Action::BuyModuleArtifact { buyer_agent_id, .. } => Some(buyer_agent_id.as_str()),
+            Action::DestroyModuleArtifact { owner_agent_id, .. } => Some(owner_agent_id.as_str()),
+            Action::PlaceModuleArtifactBid {
+                bidder_agent_id, ..
+            }
+            | Action::CancelModuleArtifactBid {
+                bidder_agent_id, ..
+            } => Some(bidder_agent_id.as_str()),
+            Action::TransferResource { from_agent_id, .. }
+            | Action::EmitResourceTransfer { from_agent_id, .. } => Some(from_agent_id.as_str()),
+            Action::CollectData {
+                collector_agent_id, ..
+            } => Some(collector_agent_id.as_str()),
+            Action::GrantDataAccess { owner_agent_id, .. }
+            | Action::RevokeDataAccess { owner_agent_id, .. } => Some(owner_agent_id.as_str()),
+            Action::RedeemPower { node_id, .. } | Action::RedeemPowerSigned { node_id, .. } => {
+                Some(node_id.as_str())
+            }
+            Action::ApplyNodePointsSettlementSigned { signer_node_id, .. } => {
+                Some(signer_node_id.as_str())
+            }
+            Action::InitializeMainTokenGenesis { .. } => None,
+            Action::ClaimMainTokenVesting { beneficiary, .. } => Some(beneficiary.as_str()),
+            Action::TransferMainToken {
+                from_account_id, ..
+            } => Some(from_account_id.as_str()),
+            Action::ApplyMainTokenEpochIssuance { .. }
+            | Action::SettleMainTokenFee { .. }
+            | Action::UpdateMainTokenPolicy { .. }
+            | Action::DistributeMainTokenTreasury { .. } => None,
+            Action::TransferMaterial {
+                requester_agent_id, ..
+            }
+            | Action::ScheduleRecipe {
+                requester_agent_id, ..
+            }
+            | Action::ScheduleRecipeWithModule {
+                requester_agent_id, ..
+            }
+            | Action::ValidateProduct {
+                requester_agent_id, ..
+            }
+            | Action::ValidateProductWithModule {
+                requester_agent_id, ..
+            } => Some(requester_agent_id.as_str()),
+            Action::FormAlliance {
+                proposer_agent_id, ..
+            }
+            | Action::OpenGovernanceProposal {
+                proposer_agent_id, ..
+            } => Some(proposer_agent_id.as_str()),
+            Action::JoinAlliance {
+                operator_agent_id, ..
+            }
+            | Action::LeaveAlliance {
+                operator_agent_id, ..
+            }
+            | Action::DissolveAlliance {
+                operator_agent_id, ..
+            }
+            | Action::GrantMetaProgress {
+                operator_agent_id, ..
+            }
+            | Action::UpdateGameplayPolicy {
+                operator_agent_id, ..
+            }
+            | Action::SettleEconomicContract {
+                operator_agent_id, ..
+            }
+            | Action::MaintainFactory {
+                operator_agent_id, ..
+            }
+            | Action::RecycleFactory {
+                operator_agent_id, ..
+            }
+            | Action::GovernMaterialProfile {
+                operator_agent_id, ..
+            }
+            | Action::GovernProductProfile {
+                operator_agent_id, ..
+            }
+            | Action::GovernRecipeProfile {
+                operator_agent_id, ..
+            }
+            | Action::GovernFactoryProfile {
+                operator_agent_id, ..
+            } => Some(operator_agent_id.as_str()),
+            Action::DeclareWar {
+                initiator_agent_id, ..
+            } => Some(initiator_agent_id.as_str()),
+            Action::CastGovernanceVote { voter_agent_id, .. } => Some(voter_agent_id.as_str()),
+            Action::ResolveCrisis {
+                resolver_agent_id, ..
+            } => Some(resolver_agent_id.as_str()),
+            Action::OpenEconomicContract {
+                creator_agent_id, ..
+            } => Some(creator_agent_id.as_str()),
+            Action::AcceptEconomicContract {
+                accepter_agent_id, ..
+            } => Some(accepter_agent_id.as_str()),
+            Action::BuildFactory {
+                builder_agent_id, ..
+            }
+            | Action::BuildFactoryWithModule {
+                builder_agent_id, ..
+            } => Some(builder_agent_id.as_str()),
+        }
+    }
+}
+
 /// Domain events that describe state changes.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", content = "data")]
@@ -516,6 +678,15 @@ pub enum DomainEvent {
         agent_id: String,
         from: GeoPos,
         to: GeoPos,
+    },
+    ActionAccepted {
+        action_id: ActionId,
+        action_kind: String,
+        actor_id: String,
+        #[serde(default)]
+        eta_ticks: u64,
+        #[serde(default)]
+        notes: Vec<String>,
     },
     ActionRejected {
         action_id: ActionId,
@@ -1073,6 +1244,7 @@ impl DomainEvent {
         match self {
             DomainEvent::AgentRegistered { agent_id, .. } => Some(agent_id.as_str()),
             DomainEvent::AgentMoved { agent_id, .. } => Some(agent_id.as_str()),
+            DomainEvent::ActionAccepted { actor_id, .. } => Some(actor_id.as_str()),
             DomainEvent::Observation { observation } => Some(observation.agent_id.as_str()),
             DomainEvent::BodyAttributesUpdated { agent_id, .. } => Some(agent_id.as_str()),
             DomainEvent::BodyAttributesRejected { agent_id, .. } => Some(agent_id.as_str()),

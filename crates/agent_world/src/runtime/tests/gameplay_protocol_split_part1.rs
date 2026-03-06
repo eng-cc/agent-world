@@ -5,6 +5,9 @@ use agent_world_wasm_abi::{
     ModuleCallFailure, ModuleCallRequest, ModuleEmit, ModuleOutput, ModuleSandbox,
     ModuleTickLifecycleDirective,
 };
+use std::fs;
+use std::path::PathBuf;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 struct GameplayDirectiveSandbox {
     governance_directives: Vec<serde_json::Value>,
@@ -188,6 +191,108 @@ fn advance_until_auto_crisis(world: &mut World) -> String {
         }
     }
     panic!("expected an auto crisis to spawn");
+}
+
+fn temp_dir(prefix: &str) -> PathBuf {
+    let unique = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("duration")
+        .as_nanos();
+    std::env::temp_dir().join(format!("agent-world-{prefix}-{unique}"))
+}
+
+#[test]
+fn gameplay_actions_emit_action_accepted_before_resolution_event() {
+    let mut world = World::new();
+    register_agents(&mut world, &["a"]);
+
+    let action_id = world.submit_action(Action::OpenGovernanceProposal {
+        proposer_agent_id: "a".to_string(),
+        proposal_key: "proposal.action.accepted".to_string(),
+        title: "Action Accepted".to_string(),
+        description: "verify ack ordering".to_string(),
+        options: vec!["approve".to_string(), "reject".to_string()],
+        voting_window_ticks: 6,
+        quorum_weight: 1,
+        pass_threshold_bps: 5_000,
+    });
+    world.step().expect("open governance proposal");
+
+    let events_for_action = world
+        .journal()
+        .events
+        .iter()
+        .filter(|event| matches!(event.caused_by, Some(CausedBy::Action(id)) if id == action_id))
+        .collect::<Vec<_>>();
+    assert!(
+        events_for_action.len() >= 2,
+        "expected accepted + resolved events for action, got {}",
+        events_for_action.len()
+    );
+
+    let WorldEventBody::Domain(DomainEvent::ActionAccepted {
+        action_id: accepted_action_id,
+        action_kind,
+        actor_id,
+        eta_ticks,
+        ..
+    }) = &events_for_action[0].body
+    else {
+        panic!(
+            "expected ActionAccepted as first event, got {:?}",
+            events_for_action[0].body
+        );
+    };
+    assert_eq!(*accepted_action_id, action_id);
+    assert_eq!(action_kind, "action.gameplay.open_governance_proposal");
+    assert_eq!(actor_id, "a");
+    assert_eq!(*eta_ticks, 0);
+    assert!(matches!(
+        events_for_action[1].body,
+        WorldEventBody::Domain(DomainEvent::GovernanceProposalOpened { .. })
+    ));
+}
+
+#[test]
+fn gameplay_action_accepted_event_survives_save_and_load() {
+    let mut world = World::new();
+    register_agents(&mut world, &["a"]);
+
+    let action_id = world.submit_action(Action::OpenEconomicContract {
+        creator_agent_id: "a".to_string(),
+        contract_id: "contract.ack.persist".to_string(),
+        counterparty_agent_id: "a".to_string(),
+        settlement_kind: ResourceKind::Data,
+        settlement_amount: 1,
+        reputation_stake: 1,
+        expires_at: world.state().time.saturating_add(8),
+        description: "persist ack event".to_string(),
+    });
+    world.step().expect("open economic contract");
+
+    let dir = temp_dir("gameplay-action-accepted-persist");
+    world.save_to_dir(&dir).expect("save world");
+    let restored = World::load_from_dir(&dir).expect("load world");
+
+    let has_action_accepted = restored.journal().events.iter().any(|event| {
+        matches!(
+            &event.body,
+            WorldEventBody::Domain(DomainEvent::ActionAccepted {
+                action_id: accepted_action_id,
+                action_kind,
+                actor_id,
+                ..
+            }) if *accepted_action_id == action_id
+                && action_kind == "action.gameplay.open_economic_contract"
+                && actor_id == "a"
+        )
+    });
+    assert!(
+        has_action_accepted,
+        "expected ActionAccepted event to persist through save/load"
+    );
+
+    let _ = fs::remove_dir_all(&dir);
 }
 
 #[test]
