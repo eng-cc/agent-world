@@ -48,6 +48,8 @@
 - [x] TASK-WORLD_SIMULATOR-043 (PRD-WORLD_SIMULATOR-019) [test_tier_required]: 移除启发式 sidecar，落地真实 LLM driver + shadow WorldKernel，并接入硬失败语义。
 - [x] TASK-WORLD_SIMULATOR-044 (PRD-WORLD_SIMULATOR-019) [test_tier_required]: 补齐 runtime 事件/快照 100% 映射、扩展 viewer 协议并输出 DecisionTrace。
 - [x] TASK-WORLD_SIMULATOR-045 (PRD-WORLD_SIMULATOR-019) [test_tier_required]: 执行 required 回归、更新 viewer 手册与模块项目状态收口。
+- [x] TASK-WORLD_SIMULATOR-046 (PRD-WORLD_SIMULATOR-020) [test_tier_required]: 完成“启动器 Web 链上转账闭环补齐”PRD 建模与任务拆解。
+- [ ] TASK-WORLD_SIMULATOR-047 (PRD-WORLD_SIMULATOR-020) [test_tier_required]: 落地 Web 转账闭环（`/api/chain/transfer` 代理 + wasm 转账窗口提交 + 回归测试）。
 
 ## 专题任务映射（2026-03-02 批次）
 - [x] SUBTASK-WORLD_SIMULATOR-20260302-001 (PRD-WORLD_SIMULATOR-001/002/003) [test_tier_required]: `doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.prd.project.md`
@@ -84,6 +86,7 @@
 ## 专题任务映射（2026-03-06 批次）
 - [x] SUBTASK-WORLD_SIMULATOR-20260306-001 (PRD-WORLD_SIMULATOR-001/002/003) [test_tier_required]: `doc/world-simulator/kernel/power-storage-complete-removal-2026-03-06.prd.project.md`（文档建档）
 - [x] SUBTASK-WORLD_SIMULATOR-20260306-002 (PRD-WORLD_SIMULATOR-001/002/003) [test_tier_required]: `PowerStorage` 全链路删除（simulator + viewer + scripts + docs 回写）
+- [x] SUBTASK-WORLD_SIMULATOR-20260306-003 (PRD-WORLD_SIMULATOR-020) [test_tier_required]: `doc/world-simulator/launcher/game-client-launcher-web-transfer-closure-2026-03-06.prd.project.md`（文档建档）
 
 ## 依赖
 - doc/world-simulator/prd.index.md
@@ -102,6 +105,7 @@
 - `doc/world-simulator/launcher/game-client-launcher-web-wasm-time-compat-2026-03-04.prd.md`
 - `doc/world-simulator/launcher/game-client-launcher-web-required-config-gating-2026-03-04.prd.md`
 - `doc/world-simulator/launcher/game-client-launcher-native-web-control-plane-unification-2026-03-04.prd.md`
+- `doc/world-simulator/launcher/game-client-launcher-web-transfer-closure-2026-03-06.prd.md`
 - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase1-2026-03-04.prd.md`
 - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase2-2026-03-05.prd.md`
 - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase3-2026-03-05.prd.md`
@@ -124,9 +128,9 @@
 ## 状态
 - 更新日期: 2026-03-06
 - 当前状态: in_progress
-- 当前优先任务: 待排期（本轮 PowerStorage 全链路删除已完成）
+- 当前优先任务: `TASK-WORLD_SIMULATOR-047`（Web 转账闭环代码与回归）
 - 并行待办: 无
-- 专题映射状态: 2026-03-02 批次 9/9、2026-03-03 批次 4/4、2026-03-04 批次 7/7、2026-03-05 批次 4/4、2026-03-06 批次 2/2 已纳入模块项目管理文档。
+- 专题映射状态: 2026-03-02 批次 9/9、2026-03-03 批次 4/4、2026-03-04 批次 7/7、2026-03-05 批次 4/4、2026-03-06 批次 3/3 已纳入模块项目管理文档。
 - 手册入口状态: `doc/world-simulator/viewer/viewer-manual.md` 为唯一活跃手册入口。
 - 视觉评分模板状态: `doc/world-simulator/prd/acceptance/visual-review-score-card.md` 已纳入文档树，采用卡片式评审覆盖 llm_bootstrap 场景 18 张截图。
 - UI 评审结果状态: `doc/ui_review_result/ui_review_list.md` 已建立，首张待打分卡片为 `doc/ui_review_result/card_2026_03_06_11_50_29.md`。

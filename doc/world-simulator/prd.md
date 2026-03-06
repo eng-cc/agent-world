@@ -32,6 +32,7 @@
   - `doc/world-simulator/launcher/game-client-launcher-web-wasm-time-compat-2026-03-04.prd.md`（PRD-WORLD_SIMULATOR-013）
   - `doc/world-simulator/launcher/game-client-launcher-web-required-config-gating-2026-03-04.prd.md`（PRD-WORLD_SIMULATOR-014）
   - `doc/world-simulator/launcher/game-client-launcher-native-web-control-plane-unification-2026-03-04.prd.md`（PRD-WORLD_SIMULATOR-015）
+  - `doc/world-simulator/launcher/game-client-launcher-web-transfer-closure-2026-03-06.prd.md`（PRD-WORLD_SIMULATOR-020）
   - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase1-2026-03-04.prd.md`（PRD-WORLD_SIMULATOR-016）
   - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase2-2026-03-05.prd.md`（PRD-WORLD_SIMULATOR-017）
   - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase3-2026-03-05.prd.md`（PRD-WORLD_SIMULATOR-018）
@@ -45,6 +46,7 @@
 - M4: 完成链运行时转账 API、运行时账本动作、启动器交互与闭环验收。
 - M5 (2026-03-04): 完成无 GUI 服务器场景的启动器 Web 控制台能力建模与落地。
 - M6 (2026-03-04): 完成启动器 native 客户端服务端分离，native/web 统一控制面链路与功能对齐。
+- M7 (2026-03-06): 完成启动器 Web 端链上转账闭环补齐（控制面代理 + wasm 提交）。
 
 ## 风险
 - 模块边界演进快，文档同步可能滞后。
@@ -79,6 +81,7 @@
   - SC-22: runtime live 必须补齐高频动作映射与等价回归，并移除 `world_viewer_live` simulator 启动分支，统一 runtime-only 体验。
   - SC-23: runtime live 必须使用真实 LLM 决策链路（AgentRunner/LlmAgentBehavior），且 LLM 失败时硬失败，不得回退启发式。
   - SC-24: runtime live 必须达到 runtime 事件/快照 100% 覆盖，并允许通过协议扩展输出 DecisionTrace。
+  - SC-25: 启动器 Web 端必须支持链上转账提交并保持与 native 一致的成功/拒绝/失败语义。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -112,6 +115,7 @@
   - PRD-WORLD_SIMULATOR-017: As a 玩法架构开发者, I want runtime live to support llm/chat/prompt controls, so that runtime 联调不再依赖 simulator 模式兜底。
   - PRD-WORLD_SIMULATOR-018: As a 玩法架构开发者, I want runtime live action mapping coverage with parity regression and runtime-only launch path, so that world_viewer_live no longer keeps a simulator fallback branch.
   - PRD-WORLD_SIMULATOR-019: As a 玩法架构开发者, I want runtime live to use true LLM decisions with 100% runtime event/snapshot coverage, so that runtime 行为与观测不再被启发式上限限制。
+  - PRD-WORLD_SIMULATOR-020: As a Web 启动器玩家, I want to submit blockchain transfers in browser, so that I can complete asset interaction without native tools.
 - Critical User Flows:
   1. Flow-WS-001（Web-first 闭环）:
      `选择场景 -> 启动 Viewer Web -> 执行关键交互 -> 采集日志/截图/指标 -> 产出 test_tier_required 结论`
@@ -147,6 +151,8 @@
      `补齐 action 映射 -> 增加等价回归 -> 删除 world_viewer_live simulator 启动分支 -> 统一 runtime-only 启动与错误语义`
   17. Flow-WS-017（Viewer live runtime 真 LLM 全量接管）:
      `真实 LLM 决策 -> runtime action 执行 -> 100% 事件/快照映射 -> DecisionTrace 输出 -> 无启发式 fallback`
+  18. Flow-WS-018（Launcher Web 链上转账闭环）:
+     `链状态就绪 -> 打开转账窗口 -> 填写 from/to/amount/nonce -> 通过 /api/chain/transfer 提交 -> 返回 action_id 或结构化错误`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
@@ -163,6 +169,7 @@
 | Launcher wasm 时间兼容 | `WEB_POLL_INTERVAL_MS`、`last_web_poll_at`、web time primitive | 页面轮询 `/api/state` 且不触发 wasm 时间平台 panic | `interactive -> polling -> synced` | 轮询基于单调时钟差值，防并发请求堆积 | 浏览器会话可读，接口由受信网络控制 |
 | Launcher Web 必填分流 | `launcher_bin`、`chain_runtime_bin`（native-only） | Web 端校验排除 native-only 必填，native 端保持阻断 | `config_loaded -> validated` | 按 `target_arch` 分流 | 平台边界一致 |
 | Launcher native/web 同控制面 | `/api/state`、`/api/start`、`/api/stop`、`/api/chain/start`、`/api/chain/stop` | native 与 web 端统一走 API 触发游戏/区块链独立启停 | `service_ready -> game_running/stopped + chain_starting/ready/stopped` | 状态以服务端快照为准，客户端仅做展示与轮询 | 控制面部署在受信网络，客户端仅消费授权 API |
+| Launcher Web 转账闭环 | `/api/chain/transfer`、`from/to/amount/nonce` | 浏览器端提交转账请求并展示成功/拒绝/失败 | `idle -> validating -> submitting -> success/failed` | `amount/nonce > 0`、`from != to`，账本规则以 runtime 为准 | 链就绪才允许提交 |
 | Viewer live runtime 接管 | `--runtime-world`、runtime `DomainEvent`、兼容 `WorldSnapshot/WorldEvent` | 启动 runtime 模式后按 Play/Step 推进 runtime，并推送兼容快照/事件 | `simulator_mode/runtime_mode`（启动参数决定） | 事件序列保持单调；至少映射注册/移动/转移/拒绝四类事件 | 本地开发链路，默认不开放远程写接口 |
 | Viewer live runtime LLM/chat/prompt 接管 | `--runtime-world --llm`、`PromptControl`、`AgentChat`、auth proof、nonce | 运行时允许 prompt 预览/应用/回滚与 agent chat，驱动 LLM 决策并桥接可映射动作 | `runtime_script/runtime_llm` + `profile[vN]->profile[vN+1]` | 版本单调递增；nonce 必须递增；不可映射动作输出可诊断拒绝 | 仅本地受控链路可写，鉴权签名与绑定校验必经 |
 | Viewer live runtime action 覆盖与分支收敛 | `simulator_action_to_runtime`、`ActionRejected::RuleDenied`、`world_viewer_live` runtime-only CLI | 补齐 runtime 可执行映射并对不可映射动作保持结构化拒绝；启动链路移除 simulator 分支 | `runtime_bridge_partial -> runtime_bridge_hardened` | 映射成功动作优先执行；不可映射动作拒绝语义稳定可回归 | 不新增远程写入口，仅本地受控链路 |
@@ -194,6 +201,7 @@
   - AC-25: runtime live 补齐动作映射覆盖并新增等价回归；`world_viewer_live` 移除 simulator 启动分支并统一 runtime-only 路径。
   - AC-26: runtime live 使用真实 LLM 决策链路且 LLM 失败时硬失败，不得回退启发式。
   - AC-27: runtime 事件/快照映射覆盖率 100%，DecisionTrace 可被 viewer 订阅并包含错误上下文。
+  - AC-28: 启动器 Web 端支持转账提交（`/api/chain/transfer`），并可展示结构化 `action_id/error_code/error`。
 - Non-Goals:
   - 不在本 PRD 中详细列出每个 UI 像素级规范。
   - 不替代 world-runtime/p2p 的底层协议设计。
@@ -220,6 +228,7 @@
   - `doc/world-simulator/launcher/game-client-launcher-web-wasm-time-compat-2026-03-04.prd.md`
   - `doc/world-simulator/launcher/game-client-launcher-web-required-config-gating-2026-03-04.prd.md`
   - `doc/world-simulator/launcher/game-client-launcher-native-web-control-plane-unification-2026-03-04.prd.md`
+  - `doc/world-simulator/launcher/game-client-launcher-web-transfer-closure-2026-03-06.prd.md`
   - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase1-2026-03-04.prd.md`
   - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase2-2026-03-05.prd.md`
   - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase3-2026-03-05.prd.md`
@@ -227,6 +236,7 @@
   - `crates/agent_world_client_launcher/src/main.rs`
   - `crates/agent_world_client_launcher/src/app_process.rs`
   - `crates/agent_world_client_launcher/src/app_process_web.rs`
+  - `crates/agent_world_client_launcher/src/transfer_window_web.rs`
   - `crates/agent_world_client_launcher/src/launcher_core.rs`
   - `crates/agent_world_client_launcher/Cargo.toml`
   - `crates/agent_world/src/bin/world_web_launcher.rs`
@@ -268,6 +278,7 @@
     - NFR-16: runtime live 模式下，`Step` 控制请求本地执行延迟 `p95 <= 100ms`（默认场景、无外部依赖）。
     - NFR-17: runtime live llm 模式下，prompt/chat 鉴权失败请求返回延迟 `p95 <= 100ms`（本地环境）。
     - NFR-18: runtime live action 映射不可覆盖项必须稳定返回结构化拒绝，且 `world_viewer_live` runtime-only 启动路径在 required 回归中通过率为 100%。
+    - NFR-19: Web 转账提交（控制面代理 + runtime 受理）本地链路 `p95 <= 500ms`，失败路径 `p95 <= 1s` 返回结构化结果。
   - 安全与隐私目标:
     - NFR-4: 日志与证据中不得输出私钥、口令、完整凭据；敏感字段需脱敏。
     - NFR-5: 转账请求必须经过 nonce anti-replay 与余额约束校验。
@@ -314,6 +325,7 @@
 | PRD-WORLD_SIMULATOR-017 | TASK-WORLD_SIMULATOR-038/039 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_viewer_live` + `env -u RUSTC_WRAPPER cargo check -p agent_world --bin world_viewer_live`，验证 runtime llm/chat/prompt 控制链路打通与脚本模式边界错误码 | viewer live runtime llm/script 体验连续性、鉴权与桥接稳定性 |
 | PRD-WORLD_SIMULATOR-018 | TASK-WORLD_SIMULATOR-040/041 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_viewer_live` + `env -u RUSTC_WRAPPER cargo check -p agent_world --bin world_viewer_live`，验证 action 映射覆盖扩展、等价回归与 runtime-only 启动分支收敛 | viewer live runtime 映射覆盖稳定性、旧分支移除风险与体验一致性 |
 | PRD-WORLD_SIMULATOR-019 | TASK-WORLD_SIMULATOR-042/043/044/045 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_viewer_live` + `env -u RUSTC_WRAPPER cargo check -p agent_world --bin world_viewer_live`，验证真实 LLM 决策链路、100% 映射覆盖与硬失败语义 | runtime live LLM 行为真实性与观测完整性 |
+| PRD-WORLD_SIMULATOR-020 | TASK-WORLD_SIMULATOR-046/047 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher` + `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown`，验证 Web 转账代理与 wasm 提交流程 | 启动器 Web 转账闭环可用性与跨端语义一致性 |
 
 - Decision Log:
 
