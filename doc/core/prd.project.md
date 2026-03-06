@@ -31,6 +31,10 @@
     - `doc/core/reviews/consistency-review-round-003.md`
     - `doc/core/reviews/round-003-reviewed-files.md`
     - `doc/core/reviews/round-003-filename-semantic-worklist.md`
+  - ROUND-004 启动产物（2026-03-06）:
+    - `doc/core/reviews/consistency-review-round-004.md`
+    - `doc/core/reviews/round-004-reviewed-files.md`
+    - `doc/core/reviews/round-004-doc-design-quality-worklist.md`
   - ROUND-002 进展（2026-03-05）:
     - 已完成 A/B/C/D-E 分区重复簇盘点并回写到 ROUND-002 台账。
     - 已完成首批执行 `C2-007`：`viewer-chat-agent-prompt-default-values-inline-input` 并入 `prefill` 且旧文档已删除，替代链与索引已回写。
@@ -46,6 +50,9 @@
     - 已完成全量命名审读并回写 `审计轮次: 3`，`S_round003` 清单已生成。
     - 已登记命名问题 `I3-001~I3-011`（viewer/launcher/p2p/engineering/headless-runtime/scripts/site 命名不一致），并已完成更名与引用回写。
     - ROUND-003 已于 2026-03-06 收口为 `completed`（复审结论已落档）。
+  - ROUND-004 进展（2026-03-06）:
+    - 已完成 ROUND-004 启动台账，聚焦文档设计质量八项维度（信息架构、分工边界、追溯闭环、可执行性、权威源、状态时效、术语一致性、发布可达性）。
+    - 轮次状态当前为 `not_started`，待启动文档级审读与问题登记。
 - [x] TASK-CORE-006 (PRD-CORE-001/002) [test_tier_required]: 收敛 `doc/` 根目录 legacy redirect 入口并更新总导航。
 - [x] TASK-CORE-007 (PRD-CORE-001/002/003) [test_tier_required]: 对齐 strict PRD schema，补齐关键流程/规格矩阵/边界异常/NFR/验证与决策记录。
 
