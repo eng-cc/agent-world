@@ -4,6 +4,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 const DEFAULT_WASM_TOOLCHAIN: &str = "nightly-2025-12-11";
 const DEFAULT_WASM_TARGET: &str = "wasm32-unknown-unknown";
@@ -295,40 +296,120 @@ fn parse_canonical_platforms(raw_csv: &str) -> Vec<String> {
     items
 }
 
-fn collect_source_files(dir: &Path, root: &Path, out: &mut Vec<PathBuf>) -> Result<(), String> {
-    let entries = fs::read_dir(dir)
-        .map_err(|error| format!("failed to read source dir {}: {error}", dir.display()))?;
+fn run_git_ls_files(module_dir: &Path, workspace_root: &Path) -> Result<Vec<PathBuf>, String> {
+    let module_rel = module_dir.strip_prefix(workspace_root).map_err(|error| {
+        format!(
+            "failed to compute module relative path module_dir={} workspace_root={} err={error}",
+            module_dir.display(),
+            workspace_root.display()
+        )
+    })?;
+    let module_rel_arg = if module_rel.as_os_str().is_empty() {
+        PathBuf::from(".")
+    } else {
+        module_rel.to_path_buf()
+    };
 
-    for entry in entries {
-        let entry = entry
-            .map_err(|error| format!("failed to read dir entry in {}: {error}", dir.display()))?;
-        let path = entry.path();
-        let file_type = entry
-            .file_type()
-            .map_err(|error| format!("failed to read file type {}: {error}", path.display()))?;
-
-        let rel = path.strip_prefix(root).map_err(|error| {
-            format!("failed to strip source prefix {}: {error}", path.display())
+    let output = Command::new("git")
+        .arg("-C")
+        .arg(workspace_root)
+        .arg("ls-files")
+        .arg("--")
+        .arg(&module_rel_arg)
+        .output()
+        .map_err(|error| {
+            format!(
+                "failed to execute git ls-files for module_dir={} err={error}",
+                module_dir.display()
+            )
         })?;
 
-        if rel
-            .components()
-            .any(|component| component.as_os_str() == "target")
-        {
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!(
+            "git ls-files failed for module_dir={} status={} stderr={}",
+            module_dir.display(),
+            output.status,
+            stderr.trim()
+        ));
+    }
+
+    let stdout = String::from_utf8(output.stdout)
+        .map_err(|error| format!("git ls-files returned invalid utf-8: {error}"))?;
+
+    let mut files = Vec::new();
+    for line in stdout.lines() {
+        let rel = line.trim();
+        if rel.is_empty() {
+            continue;
+        }
+        files.push(workspace_root.join(rel));
+    }
+    Ok(files)
+}
+
+fn is_whitelisted_source_file(module_rel: &Path) -> bool {
+    if module_rel == Path::new("Cargo.toml")
+        || module_rel == Path::new("Cargo.lock")
+        || module_rel == Path::new("build.rs")
+    {
+        return true;
+    }
+
+    let Some(first) = module_rel.components().next() else {
+        return false;
+    };
+    matches!(
+        first.as_os_str().to_str(),
+        Some("src" | "wit" | ".cargo" | "assets")
+    )
+}
+
+fn collect_source_files_for_hash(
+    module_dir: &Path,
+    workspace_root: &Path,
+) -> Result<Vec<PathBuf>, String> {
+    let tracked_files = run_git_ls_files(module_dir, workspace_root)?;
+    let mut files = Vec::new();
+
+    for file in tracked_files {
+        if !file.starts_with(module_dir) {
             continue;
         }
 
-        if file_type.is_dir() {
-            collect_source_files(&path, root, out)?;
+        let rel = file.strip_prefix(module_dir).map_err(|error| {
+            format!(
+                "failed to strip module dir prefix path={} module_dir={} err={error}",
+                file.display(),
+                module_dir.display()
+            )
+        })?;
+        if !is_whitelisted_source_file(rel) {
             continue;
         }
 
-        if file_type.is_file() {
-            out.push(path);
+        let metadata = fs::metadata(&file)
+            .map_err(|error| format!("failed to stat source file {}: {error}", file.display()))?;
+        if metadata.is_file() {
+            files.push(file);
         }
     }
 
-    Ok(())
+    if files.is_empty() {
+        return Err(format!(
+            "source whitelist produced no tracked files module_dir={}",
+            module_dir.display()
+        ));
+    }
+
+    files.sort_by(|left, right| {
+        let left_rel = left.strip_prefix(module_dir).unwrap_or(left.as_path());
+        let right_rel = right.strip_prefix(module_dir).unwrap_or(right.as_path());
+        left_rel.to_string_lossy().cmp(&right_rel.to_string_lossy())
+    });
+    files.dedup();
+
+    Ok(files)
 }
 
 fn compute_source_hash(
@@ -336,14 +417,7 @@ fn compute_source_hash(
     source_manifest_rel: &str,
     workspace_root: &Path,
 ) -> Result<String, String> {
-    let mut files = Vec::new();
-    collect_source_files(module_dir, module_dir, &mut files)?;
-
-    files.sort_by(|left, right| {
-        let left_rel = left.strip_prefix(module_dir).unwrap_or(left.as_path());
-        let right_rel = right.strip_prefix(module_dir).unwrap_or(right.as_path());
-        left_rel.to_string_lossy().cmp(&right_rel.to_string_lossy())
-    });
+    let files = collect_source_files_for_hash(module_dir, workspace_root)?;
 
     let mut hasher = Sha256::new();
     hasher.update(format!("source_manifest_rel={source_manifest_rel}\n").as_bytes());
@@ -361,14 +435,18 @@ fn compute_source_hash(
         hasher.update(format!("module_file:{}:{}\n", rel.to_string_lossy(), digest).as_bytes());
     }
 
-    let lock_path = workspace_root.join("Cargo.lock");
-    let lock_bytes = fs::read(&lock_path).map_err(|error| {
-        format!(
-            "failed to read workspace Cargo.lock {}: {error}",
-            lock_path.display()
-        )
-    })?;
-    hasher.update(format!("workspace_file:Cargo.lock:{}\n", sha256_hex(&lock_bytes)).as_bytes());
+    let module_lock_path = module_dir.join("Cargo.lock");
+    if module_lock_path.exists() {
+        let lock_bytes = fs::read(&module_lock_path).map_err(|error| {
+            format!(
+                "failed to read module Cargo.lock {}: {error}",
+                module_lock_path.display()
+            )
+        })?;
+        hasher.update(format!("module_file:Cargo.lock:{}\n", sha256_hex(&lock_bytes)).as_bytes());
+    } else {
+        hasher.update(b"module_file:Cargo.lock:none\n");
+    }
 
     Ok(format!("{:x}", hasher.finalize()))
 }

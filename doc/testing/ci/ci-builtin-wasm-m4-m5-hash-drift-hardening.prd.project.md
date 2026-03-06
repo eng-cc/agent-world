@@ -8,8 +8,8 @@
 - [x] T3 (PRD-TESTING-CI-WASMHARD-001): sync 脚本启用 strict 模式并彻底禁止 legacy token 写回。
 - [ ] T4 (PRD-TESTING-CI-WASMHARD-003): 新增 m4/m5 多 runner 摘要与跨 runner 对账 workflow。
 - [ ] T5 (PRD-TESTING-CI-WASMHARD-003): required checks 自动化默认上下文扩展到 m1/m4/m5 汇总校验。
-- [ ] T6 (PRD-TESTING-CI-WASMHARD-002): identity `source_hash` 输入收敛为源码白名单/可追踪文件集合。
-- [ ] T7 (PRD-TESTING-CI-WASMHARD-002): identity 输入移除 workspace 根 `Cargo.lock`，改为模块级 lockfile 策略。
+- [x] T6 (PRD-TESTING-CI-WASMHARD-002): identity `source_hash` 输入收敛为源码白名单/可追踪文件集合。
+- [x] T7 (PRD-TESTING-CI-WASMHARD-002): identity 输入移除 workspace 根 `Cargo.lock`，改为模块级 lockfile 策略。
 - [ ] T8 (PRD-TESTING-CI-WASMHARD-003): 落地“本地仅 `--check`、写入仅 CI bot”策略并同步测试手册。
 
 ## 依赖
@@ -29,6 +29,6 @@
 
 ## 状态
 - 更新日期：2026-03-06
-- 当前阶段：执行中（T1~T3 已完成，T4~T8 待实施）
+- 当前阶段：执行中（T1~T3、T6~T7 已完成，T4~T5/T8 待实施）
 - 阻塞项：无
 - 下一步：执行 T4（新增 m4/m5 多 runner 对账 workflow）
