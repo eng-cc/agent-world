@@ -18,13 +18,20 @@
 | TASK-GAMEPLAY-MLF-002 | PRD-GAME-004-02 | runtime-live-owner | D1-D2 | runtime_live 对 gameplay DomainEvent 与 ACK 的结构化映射与兼容降级 | runtime_live mapping + 兼容降级摘要规则 + 映射回归测试 | `test_tier_required` | completed |
 | TASK-GAMEPLAY-MLF-003 | PRD-GAME-004-01 | viewer-owner | D2 | 微循环 HUD（倒计时/最近动作状态）与无进展诊断建议 | viewer right panel / i18n / tone 规则 | `test_tier_required` | completed |
 | TASK-GAMEPLAY-MLF-004 | PRD-GAME-004-03 | test-release-owner | D3 | required/full 回归与卡片评分复核，形成门禁证据包 | 测试日志 + playability 卡片 + 结论 | `test_tier_required` + `test_tier_full` | completed |
+| TASK-GAMEPLAY-MLF-005 | PRD-GAME-004-04 | viewer-owner | D4 | Mission HUD 增加控制结果显著条，压缩重复反馈信息 | `egui_right_panel_player_guide.rs` + 任务回归测试 | `test_tier_required` | planned |
+| TASK-GAMEPLAY-MLF-006 | PRD-GAME-004-04 | viewer-owner | D4 | 玩家模式默认 Mission 预设 + 模块开关渐进披露 + 可见性持久化缺字段默认策略修正 | `egui_right_panel.rs` + `right_panel_module_visibility.rs` + 回归测试 | `test_tier_required` | planned |
+| TASK-GAMEPLAY-MLF-007 | PRD-GAME-004-05 | viewer-owner | D4-D5 | 选中强调与 2D marker 可见性/尺寸增强 | `selection_emphasis.rs` / `camera_controls.rs` / `scene_helpers_entities.rs` + 回归测试 | `test_tier_required` | planned |
+| TASK-GAMEPLAY-MLF-008 | PRD-GAME-004-03/04/05 | test-release-owner | D5 | 手动实操迭代截图（每任务后）并给出视觉评估结论 | `output/playwright/playability/manual-*` 证据集 + 结论摘要 | `test_tier_required` | planned |
 
 ## 执行顺序与依赖
-- 串行主链：`MLF-001 -> MLF-002 -> MLF-003 -> MLF-004`。
+- 串行主链：`MLF-001 -> MLF-002 -> MLF-003 -> MLF-004 -> MLF-005 -> MLF-006 -> MLF-007 -> MLF-008`。
 - 依赖约束：
   - `MLF-002` 依赖 `MLF-001` 的事件 schema 稳定。
   - `MLF-003` 依赖 `MLF-002` 的映射字段与摘要口径。
   - `MLF-004` 依赖 `MLF-001/002/003` 全部合入后执行。
+  - `MLF-006` 依赖 `MLF-005` 的反馈显著条落位，避免重复显示冲突。
+  - `MLF-007` 与 `MLF-006` 可并行编码，但验收截图需在两者完成后统一复核。
+  - `MLF-008` 依赖 `MLF-005/006/007` 全部完成。
 
 ## 任务级完成标准（Definition of Done）
 
@@ -50,6 +57,30 @@
   - `./scripts/ci-tests.sh required`
   - `./scripts/ci-tests.sh full`
   - Web 闭环用例按 `testing-manual.md` 执行并归档到 `doc/playability_test_result/`。
+
+### TASK-GAMEPLAY-MLF-005
+- Mission HUD 顶部新增“控制结果显著条”，可区分 `executing/completed_advanced/completed_no_progress/blocked`。
+- 在不丢失恢复动作（recover/retry）的前提下，减少重复反馈块。
+- 关键测试：`env -u RUSTC_WRAPPER cargo test -p agent_world_viewer player_mission_tests:: -- --nocapture`。
+
+### TASK-GAMEPLAY-MLF-006
+- 玩家模式首次进入默认 Mission 布局；模块开关改为折叠展开。
+- 修复模块可见性持久化“缺字段默认全开”问题，回落到运行时默认值。
+- 关键测试：
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer right_panel_module_visibility::tests:: -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer egui_right_panel_tests:: -- --nocapture`。
+
+### TASK-GAMEPLAY-MLF-007
+- 选中强调 halo 与 2D marker 在玩家常用视角下可稳定辨识。
+- 可读性增强不触发渲染退化门禁。
+- 关键测试：
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer camera_controls_tests:: -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer selection_emphasis::tests:: -- --nocapture`。
+
+### TASK-GAMEPLAY-MLF-008
+- 每个实现任务完成后执行一轮手动实操并截图，输出视觉评估结论。
+- 产物至少包含：baseline + 每轮改动后对照图 + 简要结论。
+- 关键验证：截图人工审阅通过并归档。
 
 ### TASK-GAMEPLAY-MLF-004 执行记录（2026-03-06）
 - CI 问题修复：`./scripts/ci-tests.sh full` 首次失败于 `m4_builtin_modules.identity.json missing hash token`，通过 `./scripts/sync-m4-builtin-wasm-artifacts.sh` 对齐 m4 hash/identity 清单后复跑通过。
@@ -79,9 +110,8 @@
 - 更新日期: 2026-03-06
 - 当前状态: active
 - 当前完成: `TASK-GAMEPLAY-MLF-000`、`TASK-GAMEPLAY-MLF-001`、`TASK-GAMEPLAY-MLF-002`、`TASK-GAMEPLAY-MLF-003`、`TASK-GAMEPLAY-MLF-004`
-- 下一任务: 无（子任务闭环完成，返回上层 `TASK-GAME-007` 状态同步）
+- 下一任务: `TASK-GAMEPLAY-MLF-005`（控制结果显著化）
 - 阻塞项: 无
 - 说明: 过程记录在 `doc/devlog/2026-03-06.md`
 
 审计轮次: 4
-
