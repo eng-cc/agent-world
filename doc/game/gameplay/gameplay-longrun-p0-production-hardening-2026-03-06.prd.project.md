@@ -13,7 +13,7 @@
 - [x] TASK-GAME-012 (PRD-GAME-006) [test_tier_required]: 新增专题 PRD 与项目管理文档，完成根文档追踪映射。
 
 ### T1 状态权威分层
-- [ ] TASK-GAME-013 (PRD-GAME-006-01) [test_tier_required]: 明确传播层/裁决层提交边界，落地冲突仲裁拒绝路径与审计事件。
+- [x] TASK-GAME-013 (PRD-GAME-006-01) [test_tier_required]: 明确传播层/裁决层提交边界，落地冲突仲裁拒绝路径与审计事件。
 
 ### T2 回放与回滚
 - [ ] TASK-GAME-014 (PRD-GAME-006-02) [test_tier_required + test_tier_full]: 建立回放漂移定位、快照回滚 runbook、恢复对账自动化。
@@ -38,6 +38,6 @@
 ## 状态
 - 更新日期: 2026-03-06
 - 当前状态: active
-- 下一任务: `TASK-GAME-013`
+- 下一任务: `TASK-GAME-014`
 - 阻塞项: 无
 - 说明: 过程记录写入 `doc/devlog/2026-03-06.md`，后续按任务完成度逐项回写状态。

@@ -336,3 +336,171 @@ fn from_snapshot_replay_rebuilds_missing_tick_consensus_records() {
         .verify_tick_consensus_chain()
         .expect("verify rebuilt chain");
 }
+
+#[test]
+fn tick_consensus_rejects_non_authoritative_submission_after_authority_commit() {
+    let mut world = World::new();
+    world
+        .bind_node_identity("relay.node.1", "relay-public-key")
+        .expect("bind relay identity");
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.step().expect("step");
+
+    let err = world
+        .record_tick_consensus_propagation_for_tick(1, "relay.node.1")
+        .expect_err("non-authoritative overwrite must be rejected");
+    assert!(
+        matches!(err, WorldError::DistributedValidationFailed { .. }),
+        "unexpected error: {err:?}"
+    );
+
+    let audit = world
+        .tick_consensus_rejection_audit_events()
+        .last()
+        .expect("rejection audit event");
+    assert_eq!(audit.tick, 1);
+    assert_eq!(audit.attempted_source, "relay.node.1");
+    assert_eq!(
+        audit.attempted_role,
+        TickConsensusSubmissionRole::Propagation
+    );
+    assert_eq!(
+        audit.existing_role,
+        Some(TickConsensusSubmissionRole::Authority)
+    );
+    assert!(
+        audit
+            .reason
+            .contains("non-authoritative submission rejected"),
+        "unexpected audit reason: {}",
+        audit.reason
+    );
+}
+
+#[test]
+fn tick_consensus_rejects_authority_submission_from_unconfigured_source() {
+    let mut world = World::new();
+    world
+        .bind_node_identity("authority.alt", "authority-alt-public-key")
+        .expect("bind alt authority identity");
+    world.step().expect("step");
+
+    let err = world
+        .record_tick_consensus_authority_for_tick(1, "authority.alt")
+        .expect_err("unconfigured authority source must be rejected");
+    assert!(
+        matches!(err, WorldError::DistributedValidationFailed { .. }),
+        "unexpected error: {err:?}"
+    );
+    let audit = world
+        .tick_consensus_rejection_audit_events()
+        .last()
+        .expect("rejection audit event");
+    assert_eq!(audit.attempted_role, TickConsensusSubmissionRole::Authority);
+    assert_eq!(audit.attempted_source, "authority.alt");
+    assert!(
+        audit
+            .reason
+            .contains("authority submission source mismatch"),
+        "unexpected audit reason: {}",
+        audit.reason
+    );
+}
+
+#[test]
+fn tick_consensus_authority_source_can_be_reconfigured_for_new_commits() {
+    let mut world = World::new();
+    world
+        .bind_node_identity("authority.next", "authority-next-public-key")
+        .expect("bind authority source");
+    world
+        .set_tick_consensus_authority_source("authority.next")
+        .expect("set authority source");
+
+    world.step().expect("step");
+    let record = world
+        .latest_tick_consensus_record()
+        .expect("tick consensus record");
+    assert_eq!(record.block.header.tick, 1);
+    assert_eq!(record.certificate.authority_source, "authority.next");
+    assert_eq!(
+        record.certificate.submission_role,
+        TickConsensusSubmissionRole::Authority
+    );
+    assert!(
+        record.certificate.signatures.contains_key("authority.next"),
+        "authority signature is missing"
+    );
+}
+
+#[test]
+fn tick_consensus_propagation_conflict_requires_authority_adjudication() {
+    let mut world = World::new();
+    world
+        .bind_node_identity("relay.node.1", "relay-public-key-1")
+        .expect("bind relay 1");
+    world
+        .record_tick_consensus_propagation_for_tick(0, "relay.node.1")
+        .expect("seed propagation record");
+    world
+        .bind_node_identity("relay.node.2", "relay-public-key-2")
+        .expect("bind relay 2 to perturb state root");
+
+    let err = world
+        .record_tick_consensus_propagation_for_tick(0, "relay.node.2")
+        .expect_err("propagation conflict must be rejected");
+    assert!(
+        matches!(err, WorldError::DistributedValidationFailed { .. }),
+        "unexpected error: {err:?}"
+    );
+    let audit = world
+        .tick_consensus_rejection_audit_events()
+        .last()
+        .expect("rejection audit event");
+    assert_eq!(
+        audit.attempted_role,
+        TickConsensusSubmissionRole::Propagation
+    );
+    assert_eq!(
+        audit.existing_role,
+        Some(TickConsensusSubmissionRole::Propagation)
+    );
+    assert!(
+        audit.reason.contains("requires authoritative adjudication"),
+        "unexpected audit reason: {}",
+        audit.reason
+    );
+}
+
+#[test]
+fn tick_consensus_authority_can_replace_propagation_record_after_conflict() {
+    let mut world = World::new();
+    world
+        .bind_node_identity("relay.node.1", "relay-public-key-1")
+        .expect("bind relay");
+    world
+        .record_tick_consensus_propagation_for_tick(0, "relay.node.1")
+        .expect("seed propagation record");
+    world
+        .bind_node_identity("relay.node.2", "relay-public-key-2")
+        .expect("bind relay 2 to perturb state root");
+
+    let authority_source = world.tick_consensus_authority_source().to_string();
+    world
+        .record_tick_consensus_authority_for_tick(0, authority_source.as_str())
+        .expect("authority should adjudicate and replace");
+
+    let record = world
+        .tick_consensus_records()
+        .iter()
+        .find(|record| record.block.header.tick == 0)
+        .expect("tick 0 consensus record");
+    assert_eq!(
+        record.certificate.submission_role,
+        TickConsensusSubmissionRole::Authority
+    );
+    assert_eq!(record.certificate.authority_source, authority_source);
+}

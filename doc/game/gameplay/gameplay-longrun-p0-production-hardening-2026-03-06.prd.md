@@ -106,6 +106,24 @@
   - 风险-006-3: 反女巫策略阈值过高会误伤正常活跃玩家。
   - 风险-006-4: 经济告警阈值配置错误可能引发频繁误报。
 
+## 5.1 当前实现切片（2026-03-06）
+- 已完成 `TASK-GAME-013`（`PRD-GAME-006-01`）：
+  - 在 `TickCertificate` 增加 `authority_source` 与 `submission_role`（`propagation/authority`）字段，用于区分传播提交与权威裁决提交。
+  - `World` 增加权威源配置 `tick_consensus_authority_source`，默认绑定 `builtin.module.release.signer`，并提供显式切换接口。
+  - 新增提交接口：
+    - `record_tick_consensus_propagation_for_tick`
+    - `record_tick_consensus_authority_for_tick`
+  - 落地冲突仲裁拒绝规则：
+    - 已有权威提交时，非权威重复提交一律拒绝。
+    - 未配置为当前权威源的 `authority` 提交一律拒绝。
+    - 不同传播源在同 tick 形成冲突哈希时，必须等待权威裁决。
+  - 新增审计事件模型 `TickConsensusRejectionAuditEvent`，记录 `attempted_source/attempted_role/existing_source/existing_role/reason`。
+  - 快照与持久化链路已接线：`snapshot/save/load/from_snapshot` 保持权威配置与拒绝审计事件可恢复。
+- 已通过定向回归：
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required runtime::tests::basic::tick_consensus_ -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required runtime::tests::persistence::persist_and_restore_world -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required runtime::tests::basic::from_snapshot_replay_rebuilds_missing_tick_consensus_records -- --nocapture`
+
 ## 6. Validation & Decision Record
 - Test Plan & Traceability:
 | PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |

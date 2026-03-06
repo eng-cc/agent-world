@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
-use super::consensus::TickConsensusRecord;
+use super::consensus::{TickConsensusRecord, TickConsensusRejectionAuditEvent};
 use super::effect::{CapabilityGrant, EffectIntent};
 use super::error::WorldError;
 use super::events::ActionEnvelope;
@@ -95,6 +95,10 @@ pub struct Snapshot {
     pub runtime_backpressure_stats: WorldRuntimeBackpressureStats,
     #[serde(default)]
     pub tick_consensus_records: Vec<TickConsensusRecord>,
+    #[serde(default = "default_tick_consensus_authority_source")]
+    pub tick_consensus_authority_source: String,
+    #[serde(default)]
+    pub tick_consensus_rejection_audit_events: Vec<TickConsensusRejectionAuditEvent>,
     #[serde(default)]
     pub governance_execution_policy: GovernanceExecutionPolicy,
     #[serde(default)]
@@ -111,6 +115,10 @@ fn module_limits_unbounded() -> ModuleLimits {
 
 fn default_next_governance_identity_penalty_id() -> u64 {
     1
+}
+
+fn default_tick_consensus_authority_source() -> String {
+    super::consensus::DEFAULT_TICK_CONSENSUS_AUTHORITY_SOURCE.to_string()
 }
 
 impl Snapshot {

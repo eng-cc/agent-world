@@ -64,6 +64,10 @@ impl World {
             runtime_memory_limits: self.runtime_memory_limits.clone(),
             runtime_backpressure_stats: self.runtime_backpressure_stats.clone(),
             tick_consensus_records: self.tick_consensus_records.clone(),
+            tick_consensus_authority_source: self.tick_consensus_authority_source.clone(),
+            tick_consensus_rejection_audit_events: self
+                .tick_consensus_rejection_audit_events
+                .clone(),
             governance_execution_policy: self.governance_execution_policy.clone(),
             governance_emergency_brake_until_tick: self.governance_emergency_brake_until_tick,
             governance_identity_penalties: self.governance_identity_penalties.clone(),
@@ -218,6 +222,14 @@ impl World {
         world.runtime_memory_limits = snapshot.runtime_memory_limits;
         world.runtime_backpressure_stats = snapshot.runtime_backpressure_stats;
         world.tick_consensus_records = snapshot.tick_consensus_records;
+        world.tick_consensus_authority_source =
+            snapshot.tick_consensus_authority_source.trim().to_string();
+        if world.tick_consensus_authority_source.is_empty() {
+            world.tick_consensus_authority_source =
+                super::BUILTIN_MODULE_SIGNER_NODE_ID.to_string();
+        }
+        world.tick_consensus_rejection_audit_events =
+            snapshot.tick_consensus_rejection_audit_events;
         world.governance_execution_policy = snapshot.governance_execution_policy;
         Self::validate_governance_execution_policy(&world.governance_execution_policy)?;
         world.governance_emergency_brake_until_tick =

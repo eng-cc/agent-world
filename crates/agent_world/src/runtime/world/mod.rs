@@ -35,7 +35,7 @@ pub use bootstrap_power::M1ScenarioBootstrapConfig;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
-use super::consensus::TickConsensusRecord;
+use super::consensus::{TickConsensusRecord, TickConsensusRejectionAuditEvent};
 use super::effect::{CapabilityGrant, EffectIntent};
 use super::events::{ActionEnvelope, MaterialTransitPriority};
 use super::governance::{GovernanceExecutionPolicy, GovernanceIdentityPenaltyRecord, Proposal};
@@ -74,6 +74,10 @@ fn test_module_signer_public_key_hex() -> String {
 
 fn default_next_governance_identity_penalty_id() -> u64 {
     1
+}
+
+fn default_tick_consensus_authority_source() -> String {
+    BUILTIN_MODULE_SIGNER_NODE_ID.to_string()
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -186,6 +190,10 @@ pub struct World {
     threat_heatmap: BTreeMap<String, i64>,
     #[serde(default)]
     tick_consensus_records: Vec<TickConsensusRecord>,
+    #[serde(default = "default_tick_consensus_authority_source")]
+    tick_consensus_authority_source: String,
+    #[serde(default)]
+    tick_consensus_rejection_audit_events: Vec<TickConsensusRejectionAuditEvent>,
     #[serde(default)]
     governance_execution_policy: GovernanceExecutionPolicy,
     #[serde(default)]
@@ -251,6 +259,8 @@ impl World {
             logistics_sla_metrics: LogisticsSlaMetrics::default(),
             threat_heatmap: BTreeMap::new(),
             tick_consensus_records: Vec::new(),
+            tick_consensus_authority_source: default_tick_consensus_authority_source(),
+            tick_consensus_rejection_audit_events: Vec::new(),
             governance_execution_policy: GovernanceExecutionPolicy::default(),
             governance_emergency_brake_until_tick: None,
             governance_identity_penalties: BTreeMap::new(),
@@ -316,6 +326,14 @@ impl World {
 
     pub fn tick_consensus_records(&self) -> &[TickConsensusRecord] {
         self.tick_consensus_records.as_slice()
+    }
+
+    pub fn tick_consensus_authority_source(&self) -> &str {
+        self.tick_consensus_authority_source.as_str()
+    }
+
+    pub fn tick_consensus_rejection_audit_events(&self) -> &[TickConsensusRejectionAuditEvent] {
+        self.tick_consensus_rejection_audit_events.as_slice()
     }
 
     pub fn governance_execution_policy(&self) -> &GovernanceExecutionPolicy {

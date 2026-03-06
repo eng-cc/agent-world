@@ -1,7 +1,8 @@
 use super::super::util::{hash_json, sha256_hex};
 use super::super::{
     CausedBy, TickBlock, TickBlockHeader, TickCertificate, TickConsensusRecord,
-    TickExecutionDigest, WorldError, WorldEvent, WorldEventBody, WorldEventId, WorldTime,
+    TickConsensusRejectionAuditEvent, TickConsensusSubmissionRole, TickExecutionDigest, WorldError,
+    WorldEvent, WorldEventBody, WorldEventId, WorldTime,
 };
 use super::World;
 use serde::Serialize;
@@ -10,6 +11,7 @@ use std::collections::{BTreeMap, BTreeSet};
 const TICK_CONSENSUS_EPOCH_LEN: u64 = 360;
 const TICK_CONSENSUS_GENESIS_PARENT_HASH: &str = "genesis";
 const TICK_CERT_SIGNATURE_PREFIX: &str = "sha256:";
+const MAX_TICK_CONSENSUS_REJECTION_AUDIT_EVENTS: usize = 2_048;
 
 #[derive(Serialize)]
 struct TickEventHashInput<'a> {
@@ -30,10 +32,48 @@ impl World {
         self.tick_consensus_records.last()
     }
 
+    pub fn set_tick_consensus_authority_source(
+        &mut self,
+        source_node_id: &str,
+    ) -> Result<(), WorldError> {
+        let validated = self.validate_tick_consensus_source_node(source_node_id)?;
+        self.tick_consensus_authority_source = validated;
+        Ok(())
+    }
+
+    pub fn clear_tick_consensus_rejection_audit_events(&mut self) {
+        self.tick_consensus_rejection_audit_events.clear();
+    }
+
+    pub fn record_tick_consensus_propagation_for_tick(
+        &mut self,
+        tick: WorldTime,
+        source_node_id: &str,
+    ) -> Result<(), WorldError> {
+        self.record_tick_consensus_submission_for_tick(
+            tick,
+            source_node_id,
+            TickConsensusSubmissionRole::Propagation,
+        )
+    }
+
+    pub fn record_tick_consensus_authority_for_tick(
+        &mut self,
+        tick: WorldTime,
+        source_node_id: &str,
+    ) -> Result<(), WorldError> {
+        self.record_tick_consensus_submission_for_tick(
+            tick,
+            source_node_id,
+            TickConsensusSubmissionRole::Authority,
+        )
+    }
+
     pub fn verify_tick_consensus_chain(&self) -> Result<(), WorldError> {
         let mut expected_parent = TICK_CONSENSUS_GENESIS_PARENT_HASH.to_string();
         let mut expected_height = 1_u64;
         for record in &self.tick_consensus_records {
+            self.validate_tick_consensus_record_metadata(record)?;
             if record.block.header.parent_hash != expected_parent {
                 return Err(WorldError::DistributedValidationFailed {
                     reason: format!(
@@ -100,6 +140,36 @@ impl World {
         &mut self,
         tick: WorldTime,
     ) -> Result<(), WorldError> {
+        let authority_source = self.tick_consensus_authority_source.clone();
+        self.record_tick_consensus_submission_for_tick(
+            tick,
+            authority_source.as_str(),
+            TickConsensusSubmissionRole::Authority,
+        )
+    }
+
+    fn record_tick_consensus_submission_for_tick(
+        &mut self,
+        tick: WorldTime,
+        source_node_id: &str,
+        submission_role: TickConsensusSubmissionRole,
+    ) -> Result<(), WorldError> {
+        let source_node_id = self.validate_tick_consensus_source_node(source_node_id)?;
+        let record = self.build_tick_consensus_record_for_submission(
+            tick,
+            source_node_id.as_str(),
+            submission_role,
+        )?;
+        self.commit_tick_consensus_record_submission(record)?;
+        self.verify_latest_tick_consensus_record()
+    }
+
+    fn build_tick_consensus_record_for_submission(
+        &self,
+        tick: WorldTime,
+        source_node_id: &str,
+        submission_role: TickConsensusSubmissionRole,
+    ) -> Result<TickConsensusRecord, WorldError> {
         let tick_events: Vec<WorldEvent> = self
             .journal
             .events
@@ -140,37 +210,224 @@ impl World {
         let block_hash = block.block_hash();
         let mut signatures = BTreeMap::new();
         signatures.insert(
-            super::BUILTIN_MODULE_SIGNER_NODE_ID.to_string(),
+            source_node_id.to_string(),
             format!(
                 "{}{}",
                 TICK_CERT_SIGNATURE_PREFIX,
-                sha256_hex(
-                    format!(
-                        "tickcert:v1|{}|{}",
-                        super::BUILTIN_MODULE_SIGNER_NODE_ID,
-                        block_hash
-                    )
-                    .as_bytes()
-                )
+                sha256_hex(format!("tickcert:v1|{}|{}", source_node_id, block_hash).as_bytes())
             ),
         );
-        let record = TickConsensusRecord {
+        Ok(TickConsensusRecord {
             block,
             certificate: TickCertificate {
                 block_hash,
                 consensus_height,
                 threshold: 1,
+                authority_source: source_node_id.to_string(),
+                submission_role,
                 signatures,
             },
-        };
-        self.upsert_tick_consensus_record(record);
-        self.verify_latest_tick_consensus_record()
+        })
+    }
+
+    fn commit_tick_consensus_record_submission(
+        &mut self,
+        candidate: TickConsensusRecord,
+    ) -> Result<(), WorldError> {
+        let tick = candidate.block.header.tick;
+        let existing_index = self
+            .tick_consensus_records
+            .iter()
+            .position(|record| record.block.header.tick == tick);
+        if let Some(index) = existing_index {
+            let existing = self.tick_consensus_records[index].clone();
+            self.validate_tick_consensus_candidate_against_policy(&candidate, Some(&existing))?;
+            self.validate_tick_consensus_candidate_against_existing(&candidate, &existing)?;
+            self.tick_consensus_records[index] = candidate;
+            return Ok(());
+        }
+        self.validate_tick_consensus_candidate_against_policy(&candidate, None)?;
+        self.tick_consensus_records.push(candidate);
+        Ok(())
+    }
+
+    fn validate_tick_consensus_candidate_against_policy(
+        &mut self,
+        candidate: &TickConsensusRecord,
+        existing: Option<&TickConsensusRecord>,
+    ) -> Result<(), WorldError> {
+        let source = candidate.certificate.authority_source.trim();
+        if source.is_empty() {
+            return self.reject_tick_consensus_submission(
+                candidate,
+                existing,
+                "tick consensus authority_source cannot be empty".to_string(),
+            );
+        }
+        if self.node_identity_public_key(source).is_none() {
+            return self.reject_tick_consensus_submission(
+                candidate,
+                existing,
+                format!("tick consensus source node is not trusted: {source}"),
+            );
+        }
+        if !candidate.certificate.signatures.contains_key(source) {
+            return self.reject_tick_consensus_submission(
+                candidate,
+                existing,
+                format!("tick consensus signatures missing source signer: {source}"),
+            );
+        }
+        if candidate.certificate.submission_role == TickConsensusSubmissionRole::Authority
+            && source != self.tick_consensus_authority_source
+        {
+            return self.reject_tick_consensus_submission(
+                candidate,
+                existing,
+                format!(
+                    "authority submission source mismatch: expected={} found={source}",
+                    self.tick_consensus_authority_source
+                ),
+            );
+        }
+        Ok(())
+    }
+
+    fn validate_tick_consensus_candidate_against_existing(
+        &mut self,
+        candidate: &TickConsensusRecord,
+        existing: &TickConsensusRecord,
+    ) -> Result<(), WorldError> {
+        let existing_role = existing.certificate.submission_role;
+        let candidate_role = candidate.certificate.submission_role;
+        if existing_role == TickConsensusSubmissionRole::Authority {
+            if candidate_role != TickConsensusSubmissionRole::Authority {
+                return self.reject_tick_consensus_submission(
+                    candidate,
+                    Some(existing),
+                    format!(
+                        "non-authoritative submission rejected at tick {} because authoritative commitment already exists",
+                        candidate.block.header.tick
+                    ),
+                );
+            }
+            if existing.certificate.authority_source != candidate.certificate.authority_source {
+                return self.reject_tick_consensus_submission(
+                    candidate,
+                    Some(existing),
+                    format!(
+                        "conflicting authority sources at tick {}: existing={} attempted={}",
+                        candidate.block.header.tick,
+                        existing.certificate.authority_source,
+                        candidate.certificate.authority_source
+                    ),
+                );
+            }
+            return Ok(());
+        }
+
+        if candidate_role == TickConsensusSubmissionRole::Propagation
+            && existing.certificate.authority_source != candidate.certificate.authority_source
+            && existing.certificate.block_hash != candidate.certificate.block_hash
+        {
+            return self.reject_tick_consensus_submission(
+                candidate,
+                Some(existing),
+                format!(
+                    "propagation conflict at tick {} requires authoritative adjudication",
+                    candidate.block.header.tick
+                ),
+            );
+        }
+        Ok(())
+    }
+
+    fn reject_tick_consensus_submission(
+        &mut self,
+        candidate: &TickConsensusRecord,
+        existing: Option<&TickConsensusRecord>,
+        reason: String,
+    ) -> Result<(), WorldError> {
+        self.push_tick_consensus_rejection_audit_event(TickConsensusRejectionAuditEvent {
+            recorded_at_tick: self.state.time,
+            tick: candidate.block.header.tick,
+            consensus_height: candidate.certificate.consensus_height,
+            attempted_source: candidate.certificate.authority_source.clone(),
+            attempted_role: candidate.certificate.submission_role,
+            existing_source: existing.map(|record| record.certificate.authority_source.clone()),
+            existing_role: existing.map(|record| record.certificate.submission_role),
+            reason: reason.clone(),
+        });
+        Err(WorldError::DistributedValidationFailed { reason })
+    }
+
+    fn push_tick_consensus_rejection_audit_event(
+        &mut self,
+        event: TickConsensusRejectionAuditEvent,
+    ) {
+        if self.tick_consensus_rejection_audit_events.len()
+            >= MAX_TICK_CONSENSUS_REJECTION_AUDIT_EVENTS
+        {
+            self.tick_consensus_rejection_audit_events.remove(0);
+        }
+        self.tick_consensus_rejection_audit_events.push(event);
+    }
+
+    fn validate_tick_consensus_source_node(
+        &self,
+        source_node_id: &str,
+    ) -> Result<String, WorldError> {
+        let source_node_id = source_node_id.trim();
+        if source_node_id.is_empty() {
+            return Err(WorldError::DistributedValidationFailed {
+                reason: "tick consensus source_node_id cannot be empty".to_string(),
+            });
+        }
+        if self.node_identity_public_key(source_node_id).is_none() {
+            return Err(WorldError::DistributedValidationFailed {
+                reason: format!("tick consensus source node is not trusted: {source_node_id}"),
+            });
+        }
+        Ok(source_node_id.to_string())
+    }
+
+    fn validate_tick_consensus_record_metadata(
+        &self,
+        record: &TickConsensusRecord,
+    ) -> Result<(), WorldError> {
+        let source = record.certificate.authority_source.trim();
+        if source.is_empty() {
+            return Err(WorldError::DistributedValidationFailed {
+                reason: format!(
+                    "tick consensus authority_source is empty at tick {}",
+                    record.block.header.tick
+                ),
+            });
+        }
+        if self.node_identity_public_key(source).is_none() {
+            return Err(WorldError::DistributedValidationFailed {
+                reason: format!(
+                    "tick consensus authority_source is untrusted at tick {}: {}",
+                    record.block.header.tick, source
+                ),
+            });
+        }
+        if !record.certificate.signatures.contains_key(source) {
+            return Err(WorldError::DistributedValidationFailed {
+                reason: format!(
+                    "tick consensus source signature missing at tick {} source={}",
+                    record.block.header.tick, source
+                ),
+            });
+        }
+        Ok(())
     }
 
     fn verify_latest_tick_consensus_record(&self) -> Result<(), WorldError> {
         let Some(record) = self.tick_consensus_records.last() else {
             return Ok(());
         };
+        self.validate_tick_consensus_record_metadata(record)?;
         let events_hash = self.hash_tick_events_from_ids(
             record.block.header.tick,
             record.block.ordered_event_ids.as_slice(),
@@ -305,17 +562,5 @@ impl World {
 
     fn derive_tick_randomness_seed(parent_hash: &str, tick: WorldTime) -> String {
         sha256_hex(format!("tick-rand:v1|{parent_hash}|{tick}").as_bytes())
-    }
-
-    fn upsert_tick_consensus_record(&mut self, record: TickConsensusRecord) {
-        if let Some(index) = self
-            .tick_consensus_records
-            .iter()
-            .position(|existing| existing.block.header.tick == record.block.header.tick)
-        {
-            self.tick_consensus_records[index] = record;
-            return;
-        }
-        self.tick_consensus_records.push(record);
     }
 }

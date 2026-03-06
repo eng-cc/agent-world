@@ -69,7 +69,8 @@ pub use error::WorldError;
 
 // Consensus
 pub use consensus::{
-    TickBlock, TickBlockHeader, TickCertificate, TickConsensusRecord, TickExecutionDigest,
+    TickBlock, TickBlockHeader, TickCertificate, TickConsensusRecord,
+    TickConsensusRejectionAuditEvent, TickConsensusSubmissionRole, TickExecutionDigest,
 };
 
 // Events
