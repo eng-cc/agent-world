@@ -1,5 +1,7 @@
 # Viewer 发行体验改造（第六阶段：任务驱动与电影化首屏）
 
+审计轮次: 3
+
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase6.prd.project.md
 
 ## 1. Executive Summary

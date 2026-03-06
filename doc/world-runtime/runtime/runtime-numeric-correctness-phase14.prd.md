@@ -1,5 +1,7 @@
 # Agent World Runtime：Membership Sync 与 Mempool 批处理计数算术语义硬化（15 点清单第十四阶段）
 
+审计轮次: 3
+
 - 对应项目管理文档: doc/world-runtime/runtime/runtime-numeric-correctness-phase14.prd.project.md
 
 ## 1. Executive Summary

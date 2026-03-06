@@ -1,5 +1,7 @@
 # Viewer 发行体验改造（第五阶段：沉浸式布局与新手闭环）
 
+审计轮次: 3
+
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase5.prd.project.md
 
 ## 1. Executive Summary

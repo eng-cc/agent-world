@@ -1,5 +1,7 @@
 # Agent World: 发布门禁指标策略对齐（2026-02-28）（项目管理）
 
+审计轮次: 3
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] RELGATE-1 (PRD-TESTING-GOV-RELEASE-001/003): 完成专题设计文档与项目管理文档建档。
 - [x] RELGATE-2 (PRD-TESTING-GOV-RELEASE-001/002): 接通 `world_chain_runtime` reward runtime worker 与 `/v1/chain/status` 指标输出。

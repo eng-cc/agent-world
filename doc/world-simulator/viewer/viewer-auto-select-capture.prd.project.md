@@ -1,5 +1,7 @@
 # Viewer 启动自动化步骤（相机/选中，用于截图闭环）（项目管理文档）
 
+审计轮次: 3
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] ASC-1：输出设计文档（`doc/world-simulator/viewer/viewer-auto-select-capture.prd.md`）
 - [x] ASC-2：输出项目管理文档（本文件）

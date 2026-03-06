@@ -1,5 +1,7 @@
 # Agent World：P2P 长跑持续 Chaos 注入方案（2026-02-24）
 
+审计轮次: 3
+
 ## 1. Executive Summary
 - Problem Statement: 现有 `--chaos-plan` 只支持固定注入序列，无法模拟线上长期抖动与故障组合，导致 S9 长跑对未知风险覆盖不足。
 - Proposed Solution: 在 `scripts/p2p-longrun-soak.sh` 增加持续 chaos 注入能力，并支持与固定计划混合运行，输出完整注入时间线与统计证据以保持门禁可审计。

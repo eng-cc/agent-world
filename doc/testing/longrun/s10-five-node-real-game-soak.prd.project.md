@@ -1,5 +1,7 @@
 # Agent World：S10 五节点真实游戏数据在线长跑套件（项目管理文档）
 
+审计轮次: 3
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] S10REAL-0 (PRD-TESTING-LONGRUN-S10REAL-001/002): 完成 S10 设计文档与项目管理建档。
 - [x] S10REAL-1 (PRD-TESTING-LONGRUN-S10REAL-001): 实现 `scripts/s10-five-node-game-soak.sh` 五节点编排（启动/停止/输出目录/帮助/dry-run）。

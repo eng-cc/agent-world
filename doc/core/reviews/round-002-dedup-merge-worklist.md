@@ -24,7 +24,7 @@
 | 批次ID | 范围 | 决策 | 已落地产物 | 状态 |
 | --- | --- | --- | --- | --- |
 | B1-C2-007 | `viewer-chat-agent-prompt-default-values-inline-input` / `prefill`（PRD + project） | `merge`（prefill 为主，inline-input 文档已删除） | 4 份专题文档历史状态回写 + `doc/world-simulator/prd.index.md` 替代链回写 | done |
-| B2-C2-004 | `doc/testing/ci/*` + `doc/scripts/precommit/*` | `master-slave`（CI 文档链定义规则，precommit 文档保留执行入口） | CI 三份主 PRD 增加“口径归属”；precommit/fix-precommit 改为引用主口径并回写审计轮次 | done |
+| B2-C2-004 | `doc/testing/ci/*` + `doc/scripts/precommit/*` | `master-slave`（CI 文档链定义规则，precommit 文档保留执行入口） | CI 三份主 PRD 增加“口径归属”；precommit/precommit-remediation-playbook 改为引用主口径并回写审计轮次 | done |
 | B3-C2-009-S1 | `observer-sync-source-mode` / `observer-sync-source-dht-mode`（PRD + project） | `master-slave`（`source-mode` 为主，`source-dht-mode` 为 DHT 增量） | 4 份 observer 文档与 `doc/p2p/prd.index.md` 回写主从口径并更新审计轮次 | done |
 | B3-C2-009-S2 | `observer-sync-mode-runtime-metrics` / `metrics-runtime-bridge` / `observability`（PRD + project） | `master-slave`（`runtime-metrics` 为主，另外两篇为增量） | 6 份 observer 文档回写主从口径并更新审计轮次 | done |
 | B3-C2-010 | `node-contribution-points*`（PRD + project） | `master-slave`（`node-contribution-points` 为主） | 6 份 node 文档回写主从口径并更新审计轮次 | done |

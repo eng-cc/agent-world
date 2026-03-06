@@ -1,5 +1,7 @@
 # README 对齐收口：P0/P1 设计文档
 
+审计轮次: 3
+
 - 对应项目管理文档: doc/readme/production/readme-p0-p1-closure.prd.project.md
 
 ## 目标

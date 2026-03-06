@@ -1,5 +1,7 @@
 # Agent World Simulator：规则 Wasm 模块装载治理（第五阶段）项目管理文档
 
+审计轮次: 3
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] KWM-0 输出设计文档（`doc/world-simulator/kernel/kernel-rule-wasm-module-governance.prd.md`）与项目管理文档（本文件）。
 - [x] KWM-1 新增 wasm rule artifact 注册表与按 hash 激活 API。

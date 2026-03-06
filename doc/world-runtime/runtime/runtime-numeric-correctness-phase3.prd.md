@@ -1,5 +1,7 @@
 # Agent World Runtime：节点高度/Slot 递进与复制补洞数值语义硬化（15 点清单第三阶段）
 
+审计轮次: 3
+
 - 对应项目管理文档: doc/world-runtime/runtime/runtime-numeric-correctness-phase3.prd.project.md
 
 ## 1. Executive Summary

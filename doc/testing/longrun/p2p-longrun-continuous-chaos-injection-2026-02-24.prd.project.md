@@ -1,5 +1,7 @@
 # Agent World：P2P 长跑持续 Chaos 注入（项目管理文档）
 
+审计轮次: 3
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] CHAOSCNT-1 (PRD-TESTING-LONGRUN-CHAOS-001/002): 完成方案建档（设计文档 + 项目管理文档）。
 - [x] CHAOSCNT-2 (PRD-TESTING-LONGRUN-CHAOS-001/003): 实现持续注入调度核心（参数解析、校验、混合模式执行）。

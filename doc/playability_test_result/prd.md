@@ -1,6 +1,6 @@
 # playability_test_result PRD
 
-审计轮次: 1
+审计轮次: 3
 
 ## 目标
 - 建立 playability_test_result 模块设计主文档，统一需求边界、技术方案与验收标准。

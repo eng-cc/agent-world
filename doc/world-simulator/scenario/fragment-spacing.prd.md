@@ -1,5 +1,7 @@
 # Agent World Simulator：小行星碎片最小间距（设计文档）
 
+审计轮次: 3
+
 - 对应项目管理文档: doc/world-simulator/scenario/fragment-spacing.prd.project.md
 
 本分册定义小行星带碎片生成的**最小间距约束**，用于保证碎片分布的稀疏性与可解释性。

@@ -1,5 +1,7 @@
 # Agent World Runtime：WASM 模块设计对齐增强（agent-os 借鉴）
 
+审计轮次: 3
+
 - 对应项目管理文档: doc/world-runtime/wasm/wasm-agent-os-alignment-hardening.prd.project.md
 
 ## 1. Executive Summary

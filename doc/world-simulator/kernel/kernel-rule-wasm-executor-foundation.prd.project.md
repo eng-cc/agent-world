@@ -1,5 +1,7 @@
 # Agent World Simulator：规则 Wasm 执行接线基础（第三阶段）项目管理文档
 
+审计轮次: 3
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] KWE-0 输出设计文档（`doc/world-simulator/kernel/kernel-rule-wasm-executor-foundation.prd.md`）与项目管理文档（本文件）。
 - [x] KWE-1 新增规则 wasm 输入/输出契约与可选 pre-action 评估入口。

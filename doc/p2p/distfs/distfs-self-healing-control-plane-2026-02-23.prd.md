@@ -1,6 +1,6 @@
 # Agent World Runtime：分布式存储自愈控制面（2026-02-23）
 
-审计轮次: 2
+审计轮次: 3
 
 ## ROUND-002 主从口径
 - 本文档为 distfs-self-healing 专题主文档（master），作为需求与范围主入口。

@@ -1,5 +1,7 @@
 # Agent World Simulator：LLM 请求层迁移至 async-openai Responses API（设计文档）
 
+审计轮次: 3
+
 - 对应项目管理文档: doc/world-simulator/llm/llm-async-openai-responses.prd.project.md
 
 ## 1. Executive Summary

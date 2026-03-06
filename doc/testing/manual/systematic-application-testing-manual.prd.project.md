@@ -1,5 +1,7 @@
 # 系统性应用测试手册工程化收口（项目管理文档）
 
+审计轮次: 3
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] TMAN-1 (PRD-TESTING-MANUAL-001): 完成手册迁移与主入口命名统一（`testing-manual.md`）。
 - [x] TMAN-2 (PRD-TESTING-MANUAL-001/002): 收口分层模型（L0~L5）与套件矩阵（S0~S10）。

@@ -1,5 +1,7 @@
 # Legacy Redirect: world-runtime.prd.project
 
+审计轮次: 3
+
 ## 任务拆解
 - [x] REDIRECT-001: 根目录 `world-runtime` / `world-runtime.project` 已迁移为 `.prd` 命名 redirect 入口。
 

@@ -1,5 +1,7 @@
 # world-simulator PRD 分册：启动器链上转账
 
+审计轮次: 3
+
 ## 目标
 - 在启动器链路中提供可操作的链上转账能力，形成“配置-提交-结果反馈”的发行级闭环体验。
 - 将转账能力拆分为可追溯条款（PRD-ID、验收、测试）并与主 PRD 同步。
@@ -14,7 +16,7 @@
 - 项目管理：`doc/world-simulator/prd.project.md`
 - 追踪主键：`PRD-WORLD_SIMULATOR-004`、`PRD-WORLD_SIMULATOR-005`
 - 关键集成点：
-  - `doc/world-simulator/launcher/launcher-chain-runtime-decouple-2026-02-28.prd.md`
+  - `doc/world-simulator/launcher/game-client-launcher-chain-runtime-decouple-2026-02-28.prd.md`
   - `crates/agent_world/src/bin/world_chain_runtime.rs`
   - `crates/agent_world_client_launcher/src/main.rs`
   - `crates/agent_world/src/runtime/world/event_processing/action_to_event_core.rs`

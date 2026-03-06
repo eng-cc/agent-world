@@ -1,5 +1,7 @@
 # Viewer Texture Inspector 视觉细节系统优化（2026-02-28）（项目管理文档）
 
+审计轮次: 3
+
 ## 任务拆解
 - [x] T0：输出设计文档 `doc/scripts/viewer-tools/viewer-texture-inspector-visual-detail-system-optimization-2026-02-28.prd.md`
 - [x] T0：输出项目管理文档（本文件）

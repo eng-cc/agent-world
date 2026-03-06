@@ -1,5 +1,7 @@
 # P2P Builtin Wasm 身份共识与跨平台构建方案
 
+审计轮次: 3
+
 ## 1. Executive Summary
 - Problem Statement: 解决“不同宿主构建产物 hash 漂移导致门禁不稳定”的生产问题，同时保留节点本地可构建能力。
 - Proposed Solution: 将一致性目标从“跨平台产物字节 hash 必须一致”升级为“跨平台模块身份（identity）一致”。

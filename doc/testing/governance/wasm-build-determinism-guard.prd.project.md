@@ -1,5 +1,7 @@
 # Agent World: Builtin Wasm 构建确定性护栏（项目管理）
 
+审计轮次: 3
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] WASMDET-1 (PRD-TESTING-GOV-WASMDET-001/003): 完成专题设计文档与项目管理文档基线。
 - [x] WASMDET-2 (PRD-TESTING-GOV-WASMDET-001/002): 在 `scripts/build-wasm-module.sh` 落地 canonical 输入约束、污染环境变量拦截、复现环境固定。

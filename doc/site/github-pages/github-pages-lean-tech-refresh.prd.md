@@ -1,5 +1,5 @@
 # GitHub Pages 精简科技感升级（四期）设计文档
-审计轮次: 2
+审计轮次: 3
 
 - 对应项目管理文档: doc/site/github-pages/github-pages-lean-tech-refresh.prd.project.md
 

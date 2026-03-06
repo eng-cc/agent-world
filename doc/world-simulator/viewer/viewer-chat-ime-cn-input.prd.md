@@ -1,5 +1,7 @@
 # Agent World Simulator：Viewer Chat 中文输入兼容修复（设计文档）
 
+审计轮次: 3
+
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-chat-ime-cn-input.prd.project.md
 
 ## 1. Executive Summary

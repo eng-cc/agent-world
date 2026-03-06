@@ -1,5 +1,7 @@
 # Viewer 产业链图谱化与分层符号化（2026-02-28）
 
+审计轮次: 3
+
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-industry-graph-layered-symbolic-zoom-2026-02-28.prd.project.md
 
 ## 1. Executive Summary

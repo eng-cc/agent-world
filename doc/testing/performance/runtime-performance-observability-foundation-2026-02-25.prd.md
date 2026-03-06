@@ -1,5 +1,7 @@
 # Agent World Runtime：代码执行性能采集/统计/分析基础（2026-02-25）
 
+审计轮次: 3
+
 ## 1. Executive Summary
 - Problem Statement: runtime/simulator 缺少统一的代码执行性能观测基础，导致卡顿风险只能靠分散日志和体感排查，难以在 longrun/viewer/demo 链路内形成稳定诊断。
 - Proposed Solution: 在 simulator 内建 runtime perf 采集与分析层，覆盖 `tick/decision/action_execution/callback` 四阶段，输出窗口统计、预算超限比、health/bottleneck 结论，并接入 RunnerMetrics 与脚本汇总链路。

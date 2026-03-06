@@ -1,5 +1,7 @@
 # Agent World Simulator：小行星碎片最小间距（项目管理文档）
 
+审计轮次: 3
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] S1 输出设计文档与项目管理文档
 - [x] S2 扩展 AsteroidFragmentConfig 最小间距字段并接入生成器约束，补充测试与文档同步

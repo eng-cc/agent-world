@@ -1,5 +1,7 @@
 # Agent World Runtime：区块链 + P2P FS 硬改造（Phase 5）设计文档
 
+审计轮次: 3
+
 ## 1. Executive Summary
 - Problem Statement: 在 membership 签名双栈（HMAC + ed25519）基础上，增加“签名公钥信任根”治理能力。
 - Proposed Solution: 支持按策略限制可接受的 ed25519 signer 公钥，降低伪造 signer 身份风险。

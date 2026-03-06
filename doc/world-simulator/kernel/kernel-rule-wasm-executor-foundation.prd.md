@@ -1,5 +1,7 @@
 # Agent World Simulator：规则 Wasm 执行接线基础（第三阶段）设计文档
 
+审计轮次: 3
+
 - 对应项目管理文档: doc/world-simulator/kernel/kernel-rule-wasm-executor-foundation.prd.project.md
 
 ## 1. Executive Summary

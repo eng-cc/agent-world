@@ -1,5 +1,7 @@
 # Viewer 性能测试方法论能力补齐（项目管理文档）
 
+审计轮次: 3
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] VPMC-1 (PRD-TESTING-PERF-VPMC-001/002): 输出设计文档与项目管理文档建档。
 - [x] VPMC-2 (PRD-TESTING-PERF-VPMC-001/002): 增强 `scripts/viewer-owr4-stress.sh`（自动采集、门禁判定、基线对比、结构化输出）。

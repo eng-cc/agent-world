@@ -1,6 +1,6 @@
 # Pre-commit Checks（本地提交前测试脚本）
 
-审计轮次: 2
+审计轮次: 3
 
 - 对应项目管理文档: doc/scripts/precommit/pre-commit.prd.project.md
 
@@ -52,7 +52,7 @@ test -x .git/hooks/pre-commit && echo "pre-commit hook installed"
 ```
 
 ## 失败修复
-- 当 `pre-commit` 失败时，统一走 `./scripts/fix-precommit.sh`；修复流程与边界以 `doc/scripts/precommit/fix-precommit.prd.md` 为准。
+- 当 `pre-commit` 失败时，统一走 `./scripts/fix-precommit.sh`；修复流程与边界以 `doc/scripts/precommit/precommit-remediation-playbook.prd.md` 为准。
 
 ## 里程碑
 - **M1**：新增本地提交前联测脚本并纳入文档说明。

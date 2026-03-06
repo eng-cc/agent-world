@@ -1,6 +1,6 @@
 # Agent World Runtime：模块订阅过滤器（设计分册）
 
-审计轮次: 1
+审计轮次: 3
 
 - 对应项目管理文档: doc/world-runtime/module/module-subscription-filters.prd.project.md
 

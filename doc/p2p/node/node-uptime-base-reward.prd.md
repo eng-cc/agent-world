@@ -1,5 +1,7 @@
 # Agent World Runtime：节点基础在线时长奖励
 
+审计轮次: 3
+
 ## 1. Executive Summary
 - Problem Statement: 在现有节点贡献积分（Node Points）中加入“基础在线时长奖励”可运行实现。
 - Proposed Solution: 在线奖励基于“挑战通过率”而不是节点自报时长，降低假在线收益。

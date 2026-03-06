@@ -1,6 +1,6 @@
 # 客户端启动器 egui Web 同层复用与静态资源服务（2026-03-04）
 
-审计轮次: 1
+审计轮次: 3
 
 - 对应项目管理文档: doc/world-simulator/launcher/game-client-launcher-egui-web-unification-2026-03-04.prd.project.md
 

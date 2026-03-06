@@ -1,5 +1,7 @@
 # Agent World：P2P 长跑反馈事件注入（2026-03-02）（项目管理文档）
 
+审计轮次: 3
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] FEEDINJ-1 (PRD-TESTING-LONGRUN-FEEDINJ-001/002): 完成设计文档与项目管理文档建档。
 - [x] FEEDINJ-2 (PRD-TESTING-LONGRUN-FEEDINJ-001/003): 实现 `p2p-longrun-soak.sh` feedback 注入参数解析与执行逻辑。

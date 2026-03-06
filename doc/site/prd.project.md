@@ -1,6 +1,6 @@
 # site PRD Project
 
-审计轮次: 2
+审计轮次: 3
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] TASK-SITE-001 (PRD-SITE-001) [test_tier_required]: 完成 site PRD 改写，建立站点设计主入口。

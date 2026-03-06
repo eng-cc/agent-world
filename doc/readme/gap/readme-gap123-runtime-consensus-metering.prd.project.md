@@ -1,6 +1,6 @@
 # README 高优先级缺口收口（三期）：世界内编译 + 共识动作载荷 + WASM 运行计费（项目管理文档）
 
-审计轮次: 2
+审计轮次: 3
 
 ## 审计备注
 - 主项目入口：`doc/readme/gap/readme-gap-distributed-prod-hardening-gap12345.prd.project.md`。

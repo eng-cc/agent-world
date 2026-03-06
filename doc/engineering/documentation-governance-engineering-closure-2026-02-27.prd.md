@@ -1,5 +1,7 @@
 # 文档治理工程化全量优化（2026-02-27）
 
+审计轮次: 3
+
 - 对应项目管理文档: doc/engineering/documentation-governance-engineering-closure-2026-02-27.prd.project.md
 
 ## 目标

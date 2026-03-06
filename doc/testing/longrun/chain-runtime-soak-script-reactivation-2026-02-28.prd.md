@@ -1,5 +1,7 @@
 # Agent World: 基于 world_chain_runtime 的长跑脚本可用化（2026-02-28）
 
+审计轮次: 3
+
 ## 1. Executive Summary
 - Problem Statement: 长跑脚本依赖已下线的 `world_viewer_live --node-*` 链路，导致脚本无法稳定执行，自动化门禁与产物输出被阻断。
 - Proposed Solution: 将 S10 与 P2P 长跑脚本统一迁移到 `world_chain_runtime` 多节点编排，改用 `/v1/chain/status` 与 `/v1/chain/balances` 采样，并保留既有产物与失败定位契约。

@@ -1,5 +1,7 @@
 # Viewer Web 端闭环测试策略
 
+审计轮次: 3
+
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-web-closure-testing-policy.prd.project.md
 
 ## 1. Executive Summary

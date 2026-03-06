@@ -1,5 +1,7 @@
 # world-simulator PRD Project
 
+审计轮次: 3
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] TASK-WORLD_SIMULATOR-001 (PRD-WORLD_SIMULATOR-001) [test_tier_required]: 完成 world-simulator PRD 改写，建立模拟层设计主入口。
 - [x] TASK-WORLD_SIMULATOR-002 (PRD-WORLD_SIMULATOR-001/002) [test_tier_required]: 对齐场景系统、Viewer、启动器的统一验收清单。
@@ -83,7 +85,7 @@
 - doc/world-simulator/prd.index.md
 - `doc/world-simulator/scenario/scenario-files.prd.md`
 - `doc/world-simulator/viewer/viewer-web-closure-testing-policy.prd.md`
-- `doc/world-simulator/launcher/launcher-chain-runtime-decouple-2026-02-28.prd.md`
+- `doc/world-simulator/launcher/game-client-launcher-chain-runtime-decouple-2026-02-28.prd.md`
 - `doc/world-simulator/prd/acceptance/unified-checklist.md`
 - `doc/world-simulator/prd/acceptance/web-llm-evidence-template.md`
 - `doc/world-simulator/prd/quality/experience-trend-tracking.md`

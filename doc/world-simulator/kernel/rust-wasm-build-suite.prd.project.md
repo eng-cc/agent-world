@@ -1,5 +1,7 @@
 # Agent World Simulator：Rust 到 Wasm 编译套件（KWT）项目管理文档
 
+审计轮次: 3
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] KWT-0 输出设计文档（`doc/world-simulator/kernel/rust-wasm-build-suite.prd.md`）与项目管理文档（本文件）。
 - [x] KWT-1 新增 Rust->Wasm 构建套件（CLI + 脚本封装）。

@@ -1,5 +1,7 @@
 # 客户端启动器 LLM 设置入口（2026-03-02）项目管理
 
+审计轮次: 3
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0 (PRD-WORLD_SIMULATOR-001)：建档（设计文档 + 项目管理文档）。
 - [x] T1 (PRD-WORLD_SIMULATOR-002)：功能实现（设置按钮/窗口 + `config.toml [llm]` 三字段读写 + 单测）。

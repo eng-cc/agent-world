@@ -1,5 +1,7 @@
 # Agent World：P2P 长跑反馈事件注入（2026-03-02）
 
+审计轮次: 3
+
 ## 1. Executive Summary
 - Problem Statement: S9 长跑当前主要覆盖共识/存储/奖励指标，缺少真实业务事件流量注入，导致反馈提交流程无法在长跑阶段持续验证。
 - Proposed Solution: 在 `scripts/p2p-longrun-soak.sh` 增加 feedback submit 事件注入能力，支持周期注入、成功/失败分统计、独立日志与 summary 汇总，并接入 S9 手册验收口径。

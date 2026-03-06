@@ -1,5 +1,7 @@
 # Viewer 视觉外发就绪硬化（项目管理）
 
+审计轮次: 3
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] VVRH-0 文档建档：设计文档 + 项目管理文档
 - [x] VVRH-1 视觉门禁硬化：texture inspector strict gate + 选中/构图修复

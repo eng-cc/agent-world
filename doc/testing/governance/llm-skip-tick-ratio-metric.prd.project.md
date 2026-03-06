@@ -1,5 +1,7 @@
 # Agent World: LLM 跳过 Tick 占比指标（项目管理）
 
+审计轮次: 3
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] LLMSKIP-1 (PRD-TESTING-GOV-LLMSKIP-001/003): 完成专题设计文档与项目管理文档建档。
 - [x] LLMSKIP-2 (PRD-TESTING-GOV-LLMSKIP-001/002): `world_llm_agent_demo` 接入 skipped tick 计数与占比输出。

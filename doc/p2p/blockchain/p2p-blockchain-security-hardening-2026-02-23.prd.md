@@ -1,5 +1,7 @@
 # P2P/区块链链路安全硬化（2026-02-23，设计文档）
 
+审计轮次: 3
+
 ## 1. Executive Summary
 - Problem Statement: 修复 replication 写入链路中的“先推进 guard 后写入”状态污染问题，保证失败不产生半更新。
 - Proposed Solution: 将 Node 共识与复制链路从“签名可选/绑定可选”收口到“生产默认严格绑定与授权”。

@@ -1,5 +1,7 @@
 # Agent World Simulator：Viewer Location 开采损耗可视化（设计文档）
 
+审计轮次: 3
+
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-location-depletion-visualization.prd.project.md
 
 ## 1. Executive Summary

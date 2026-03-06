@@ -1,5 +1,7 @@
 # Agent World: CI 拆分 Builtin Wasm m1 多 Runner 校验（项目管理）
 
+审计轮次: 3
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T1 (PRD-TESTING-CI-M1RUNNER-001): 建档（设计文档与项目管理文档落地）。
 - [x] T2 (PRD-TESTING-CI-M1RUNNER-002): 实现 runner 摘要与跨 runner 对账脚本。

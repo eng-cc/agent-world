@@ -1,5 +1,7 @@
 # Agent World Runtime：LLM API 延迟与代码执行耗时解耦（2026-02-25）
 
+审计轮次: 3
+
 ## 1. Executive Summary
 - Problem Statement: runtime perf 的 `decision` 指标混入 LLM 云端 API 网络时延后，会掩盖本地代码执行真实性能，导致“代码卡顿”判断被外部依赖噪声污染。
 - Proposed Solution: 将 `llm_api` 作为独立 runtime perf 阶段，并把 `decision` 重新定义为本地执行耗时（`decision_local_ms`），保持 health/bottleneck 仅基于本地四阶段。

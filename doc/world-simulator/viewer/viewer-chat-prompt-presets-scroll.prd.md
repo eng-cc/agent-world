@@ -1,5 +1,7 @@
 # Chat Panel 预设 Prompt 展开区滚动改造
 
+审计轮次: 3
+
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-chat-prompt-presets-scroll.prd.project.md
 
 ## 1. Executive Summary

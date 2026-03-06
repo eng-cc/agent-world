@@ -1,5 +1,7 @@
 # site 模块 PRD 已读清单（Active）
 
+审计轮次: 3
+
 更新时间：2026-03-05
 文档数：41
 
@@ -38,8 +40,8 @@
 - [x] 2026-03-04 00:18:15 CST | doc/site/github-pages/github-pages-release-download-pipeline-2026-03-01.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
 - [x] 2026-03-04 00:18:15 CST | doc/site/github-pages/github-pages-showcase.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
 - [x] 2026-03-04 00:18:15 CST | doc/site/github-pages/github-pages-showcase.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
-- [x] 2026-03-04 00:18:15 CST | doc/site/github-pages/github-pages-user-perspective-fixes-2026-02-26.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
-- [x] 2026-03-04 00:18:15 CST | doc/site/github-pages/github-pages-user-perspective-fixes-2026-02-26.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/site/github-pages/github-pages-user-perspective-adjustments-2026-02-26.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/site/github-pages/github-pages-user-perspective-adjustments-2026-02-26.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
 - [x] 2026-03-04 00:18:15 CST | doc/site/github-pages/github-pages-visual-polish-v2-2026-02-12.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
 - [x] 2026-03-04 00:18:15 CST | doc/site/github-pages/github-pages-visual-polish-v2-2026-02-12.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
 - [x] 2026-03-04 00:18:15 CST | doc/site/manual/site-manual-static-docs.prd.md | 代码一致性: 已核对（代码/路径回写） | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已回写旧路径并复检通过

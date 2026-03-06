@@ -1,5 +1,7 @@
 # Agent World: Chain Runtime 反馈网络复制层自动挂载修复（2026-03-02）
 
+审计轮次: 3
+
 ## 1. Executive Summary
 - Problem Statement: `world_chain_runtime` 默认开启 `feedback_p2p` 时，若未预先挂载 replication network，会在启动阶段直接报错 `InvalidConfig("feedback_p2p requires replication network")`，导致单机链路不可用。
 - Proposed Solution: 在 `world_chain_runtime` 内部提供默认 replication network 自动挂载，并将启动时序调整为“先挂载 network handle，再执行 runtime.start()”，同时启用无 peers 的本地 fallback。

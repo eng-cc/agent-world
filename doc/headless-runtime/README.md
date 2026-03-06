@@ -1,6 +1,6 @@
 # headless-runtime 文档索引（原 nonviewer）
 
-审计轮次: 1
+审计轮次: 3
 
 说明：
 - 模块目录已从旧名称 `nonviewer` 重命名为 `headless-runtime`。
@@ -17,10 +17,10 @@
 - `doc/headless-runtime/nonviewer/nonviewer-onchain-auth-protocol-hardening.prd.project.md`
 - `doc/headless-runtime/nonviewer/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.prd.md`
 - `doc/headless-runtime/nonviewer/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.prd.project.md`
-- `doc/headless-runtime/nonviewer/nonviewer-design-alignment-fixes-2026-02-25.prd.md`
-- `doc/headless-runtime/nonviewer/nonviewer-design-alignment-fixes-2026-02-25.prd.project.md`
-- `doc/headless-runtime/nonviewer/nonviewer-design-alignment-review-round2-2026-02-25.prd.md`
-- `doc/headless-runtime/nonviewer/nonviewer-design-alignment-review-round2-2026-02-25.prd.project.md`
+- `doc/headless-runtime/nonviewer/nonviewer-design-alignment-closure-2026-02-25.prd.md`
+- `doc/headless-runtime/nonviewer/nonviewer-design-alignment-closure-2026-02-25.prd.project.md`
+- `doc/headless-runtime/nonviewer/nonviewer-design-alignment-review-2026-02-25.prd.md`
+- `doc/headless-runtime/nonviewer/nonviewer-design-alignment-review-2026-02-25.prd.project.md`
 
 ## 维护约定
 - 无界面运行链路行为变更，优先回写 `prd.md` 与 `prd.project.md`。

@@ -1,5 +1,7 @@
 # Viewer Web Test API `step` 控制补齐（2026-02-24）
 
+审计轮次: 3
+
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-web-test-api-step-control-2026-02-24.prd.project.md
 
 ## 1. Executive Summary

@@ -1,5 +1,7 @@
 # Agent World Runtime：WASM 模块设计对齐增强（项目管理文档）
 
+审计轮次: 3
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T-MIG-20260303 (PRD-ENGINEERING-006): 逐篇阅读旧文档并完成人工重写迁移到 `.prd` 命名。
 - [x] AOSA-1 ABI/Schema 合约约束增强（manifest 字段与 shadow 校验）。

@@ -1,5 +1,7 @@
 # Agent World：P2P/存储/共识在线长跑稳定性测试方案（2026-02-24）
 
+审计轮次: 3
+
 ## 1. Executive Summary
 - Problem Statement: 短时功能测试无法覆盖持续在线运行下的稳定性退化，缺少可重复执行的长跑方案来验证 P2P、DistFS 与共识链路在长期运行中的健康度。
 - Proposed Solution: 建立 S9 长跑方案与统一脚本入口，按 `soak_smoke/soak_endurance/soak_release` 分档执行，输出可审计产物并用门禁规则评估稳定性、恢复能力与不变量状态。

@@ -1,5 +1,7 @@
 # Agent World: 启动链路脚本迁移（2026-02-28）
 
+审计轮次: 3
+
 - 对应项目管理文档: doc/testing/launcher/launcher-chain-script-migration-2026-02-28.prd.project.md
 
 ## 1. Executive Summary

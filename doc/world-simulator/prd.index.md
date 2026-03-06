@@ -1,6 +1,6 @@
 # world-simulator PRD 文件级索引
 
-审计轮次: 2
+审计轮次: 3
 
 更新时间：2026-03-05
 
@@ -32,7 +32,7 @@
 | `doc/world-simulator/launcher/game-client-launcher-native-web-control-plane-unification-2026-03-04.prd.md` | `doc/world-simulator/launcher/game-client-launcher-native-web-control-plane-unification-2026-03-04.prd.project.md` |
 | `doc/world-simulator/launcher/game-client-launcher-ui-schema-share-2026-03-04.prd.md` | `doc/world-simulator/launcher/game-client-launcher-ui-schema-share-2026-03-04.prd.project.md` |
 | `doc/world-simulator/launcher/game-client-launcher-web-console-2026-03-04.prd.md` | `doc/world-simulator/launcher/game-client-launcher-web-console-2026-03-04.prd.project.md` |
-| `doc/world-simulator/launcher/launcher-chain-runtime-decouple-2026-02-28.prd.md` | `doc/world-simulator/launcher/launcher-chain-runtime-decouple-2026-02-28.prd.project.md` |
+| `doc/world-simulator/launcher/game-client-launcher-chain-runtime-decouple-2026-02-28.prd.md` | `doc/world-simulator/launcher/game-client-launcher-chain-runtime-decouple-2026-02-28.prd.project.md` |
 | `doc/world-simulator/llm/indirect-control-tick-lifecycle-long-term-memory.prd.md` | `doc/world-simulator/llm/indirect-control-tick-lifecycle-long-term-memory.prd.project.md` |
 | `doc/world-simulator/llm/llm-agent-behavior.prd.md` | `doc/world-simulator/llm/llm-agent-behavior.prd.project.md` |
 | `doc/world-simulator/llm/llm-async-openai-responses.prd.md` | `doc/world-simulator/llm/llm-async-openai-responses.prd.project.md` |
@@ -68,10 +68,10 @@
 | `doc/world-simulator/scenario/scenario-power-facility-baseline.prd.md` | `doc/world-simulator/scenario/scenario-power-facility-baseline.prd.project.md` |
 | `doc/world-simulator/scenario/scenario-seed-locations.prd.md` | `doc/world-simulator/scenario/scenario-seed-locations.prd.project.md` |
 | `doc/world-simulator/scenario/world-initialization.prd.md` | `doc/world-simulator/scenario/world-initialization.prd.project.md` |
-| `doc/world-simulator/viewer/minimal-system.prd.md` | `doc/world-simulator/viewer/minimal-system.prd.project.md` |
-| `doc/world-simulator/viewer/module-visual-entities.prd.md` | `doc/world-simulator/viewer/module-visual-entities.prd.project.md` |
-| `doc/world-simulator/viewer/rendering-physical-accuracy.prd.md` | `doc/world-simulator/viewer/rendering-physical-accuracy.prd.project.md` |
-| `doc/world-simulator/viewer/viewer-2d-3d-clarity-fix.prd.md` | `doc/world-simulator/viewer/viewer-2d-3d-clarity-fix.prd.project.md` |
+| `doc/world-simulator/viewer/viewer-minimal-system.prd.md` | `doc/world-simulator/viewer/viewer-minimal-system.prd.project.md` |
+| `doc/world-simulator/viewer/viewer-module-visual-entities.prd.md` | `doc/world-simulator/viewer/viewer-module-visual-entities.prd.project.md` |
+| `doc/world-simulator/viewer/viewer-rendering-physical-accuracy.prd.md` | `doc/world-simulator/viewer/viewer-rendering-physical-accuracy.prd.project.md` |
+| `doc/world-simulator/viewer/viewer-2d-3d-clarity-improvement.prd.md` | `doc/world-simulator/viewer/viewer-2d-3d-clarity-improvement.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-2d-visual-polish.prd.md` | `doc/world-simulator/viewer/viewer-2d-visual-polish.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-3d-commercial-polish.prd.md` | `doc/world-simulator/viewer/viewer-3d-commercial-polish.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-3d-polish-performance.prd.md` | `doc/world-simulator/viewer/viewer-3d-polish-performance.prd.project.md` |
@@ -90,7 +90,7 @@
 | `doc/world-simulator/viewer/viewer-chat-prompt-presets-scroll.prd.md` | `doc/world-simulator/viewer/viewer-chat-prompt-presets-scroll.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-chat-prompt-presets.prd.md` | `doc/world-simulator/viewer/viewer-chat-prompt-presets.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-chat-right-panel-polish.prd.md` | `doc/world-simulator/viewer/viewer-chat-right-panel-polish.prd.project.md` |
-| `doc/world-simulator/viewer/viewer-chat-web-deadlock-fix.prd.md` | `doc/world-simulator/viewer/viewer-chat-web-deadlock-fix.prd.project.md` |
+| `doc/world-simulator/viewer/viewer-chat-web-deadlock-resolution.prd.md` | `doc/world-simulator/viewer/viewer-chat-web-deadlock-resolution.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-commercial-release-phase1-asset-pipeline.prd.md` | `doc/world-simulator/viewer/viewer-commercial-release-phase1-asset-pipeline.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-commercial-release-phase2-visual-quality-gate.prd.md` | `doc/world-simulator/viewer/viewer-commercial-release-phase2-visual-quality-gate.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-commercial-release-phase3-material-style-layer.prd.md` | `doc/world-simulator/viewer/viewer-commercial-release-phase3-material-style-layer.prd.project.md` |
@@ -110,7 +110,7 @@
 | `doc/world-simulator/viewer/viewer-first-session-goal-clarity-hardening-2026-02-27.prd.md` | `doc/world-simulator/viewer/viewer-first-session-goal-clarity-hardening-2026-02-27.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-first-session-goal-control-feedback-2026-02-27.prd.md` | `doc/world-simulator/viewer/viewer-first-session-goal-control-feedback-2026-02-27.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-frag-default-rendering.prd.md` | `doc/world-simulator/viewer/viewer-frag-default-rendering.prd.project.md` |
-| `doc/world-simulator/viewer/viewer-frag-scale-selection-fix.prd.md` | `doc/world-simulator/viewer/viewer-frag-scale-selection-fix.prd.project.md` |
+| `doc/world-simulator/viewer/viewer-frag-scale-selection-stability.prd.md` | `doc/world-simulator/viewer/viewer-frag-scale-selection-stability.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-fragment-element-rendering.prd.md` | `doc/world-simulator/viewer/viewer-fragment-element-rendering.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.md` | `doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase2.prd.md` | `doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase2.prd.project.md` |
@@ -159,8 +159,8 @@
 | `doc/world-simulator/viewer/viewer-web-usability-hardening-2026-02-22.prd.md` | `doc/world-simulator/viewer/viewer-web-usability-hardening-2026-02-22.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-webgl-deferred-compat-2026-02-24.prd.md` | `doc/world-simulator/viewer/viewer-webgl-deferred-compat-2026-02-24.prd.project.md` |
 | `doc/world-simulator/viewer/viewer-websocket-http-bridge.prd.md` | `doc/world-simulator/viewer/viewer-websocket-http-bridge.prd.project.md` |
-| `doc/world-simulator/viewer/visualization-3d.prd.md` | `doc/world-simulator/viewer/visualization-3d.prd.project.md` |
-| `doc/world-simulator/viewer/visualization.prd.md` | `doc/world-simulator/viewer/visualization.prd.project.md` |
+| `doc/world-simulator/viewer/viewer-visualization-3d.prd.md` | `doc/world-simulator/viewer/viewer-visualization-3d.prd.project.md` |
+| `doc/world-simulator/viewer/viewer-visualization.prd.md` | `doc/world-simulator/viewer/viewer-visualization.prd.project.md` |
 
 ## 说明
 - 本索引用于保证模块专题文档在根入口文档树中可达。

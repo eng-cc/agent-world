@@ -1,5 +1,7 @@
 # Agent World Runtime：WASM SDK Wire 类型收敛设计
 
+审计轮次: 3
+
 - 对应项目管理文档: doc/world-runtime/wasm/wasm-sdk-wire-types-dedup.prd.project.md
 
 ## 1. Executive Summary

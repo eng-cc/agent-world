@@ -1,6 +1,6 @@
 # Agent World: CI 测试分级细化到 Test Case（项目管理）
 
-审计轮次: 2
+审计轮次: 3
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T1 (PRD-TESTING-CI-TIER-001): 输出设计文档与项目管理文档。

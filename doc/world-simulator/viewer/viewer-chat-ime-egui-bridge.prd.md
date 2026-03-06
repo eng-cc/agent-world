@@ -1,5 +1,7 @@
 # Agent World Simulator：Viewer Chat Web IME EGUI 输入桥接（设计文档）
 
+审计轮次: 3
+
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-chat-ime-egui-bridge.prd.project.md
 
 ## 1. Executive Summary

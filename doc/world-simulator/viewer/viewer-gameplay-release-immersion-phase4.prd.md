@@ -1,5 +1,7 @@
 # Viewer 发行体验改造（第四阶段：场景活化与交互动效）
 
+审计轮次: 3
+
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase4.prd.project.md
 
 ## 1. Executive Summary

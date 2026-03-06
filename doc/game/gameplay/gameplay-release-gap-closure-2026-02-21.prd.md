@@ -1,5 +1,7 @@
 # Gameplay 发行差距收口（Prompt 触发 + Gate 覆盖 + 经济动作 + 规则深度）
 
+审计轮次: 3
+
 - 审计轮次: 2
 
 - 对应项目管理文档: doc/game/gameplay/gameplay-release-gap-closure-2026-02-21.prd.project.md

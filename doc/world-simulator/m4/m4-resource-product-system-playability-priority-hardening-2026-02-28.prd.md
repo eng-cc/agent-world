@@ -1,5 +1,7 @@
 # M4 资源产业链可玩性优先强化（2026-02-28）
 
+审计轮次: 3
+
 - 对应项目管理文档: doc/world-simulator/m4/m4-resource-product-system-playability-priority-hardening-2026-02-28.prd.project.md
 
 ## 1. Executive Summary

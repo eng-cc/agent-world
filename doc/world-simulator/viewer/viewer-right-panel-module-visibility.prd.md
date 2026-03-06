@@ -1,5 +1,7 @@
 # Viewer 右侧面板模块开关与本地缓存设计
 
+审计轮次: 3
+
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-right-panel-module-visibility.prd.project.md
 
 ## 1. Executive Summary

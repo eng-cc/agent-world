@@ -1,5 +1,7 @@
 # 社会系统生产级方案：事实账本 + 声明式关系层（项目管理文档）
 
+审计轮次: 3
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0：输出设计文档（`doc/world-simulator/kernel/social-fact-ledger-declarative-reputation.prd.md`）
 - [x] T0：输出项目管理文档（本文件）

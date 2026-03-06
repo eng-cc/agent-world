@@ -1,6 +1,6 @@
 # Viewer Live 完全事件驱动改造 Phase 10（2026-02-27）
 
-审计轮次: 2
+审计轮次: 3
 
 ## ROUND-002 物理合并
 - 本文件为主文档（当前权威入口）。
@@ -54,7 +54,7 @@
   - 删除 `thread::sleep` 轮询，改为 socket 超时读 + 事件转发。
 - 活跃入口与文档已清理旧 `--tick-ms` 示例：
   - `site/index.html`、`site/en/index.html`
-  - `doc/world-simulator/viewer/visualization.prd.md`
+  - `doc/world-simulator/viewer/viewer-visualization.prd.md`
   - `doc/world-simulator/viewer/viewer-i18n.prd.md`
   - `doc/world-simulator/viewer/viewer-open-world-sandbox-readiness.prd.md`
   - `doc/world-simulator/viewer/viewer-open-world-sandbox-readiness.stress-report.template.md`

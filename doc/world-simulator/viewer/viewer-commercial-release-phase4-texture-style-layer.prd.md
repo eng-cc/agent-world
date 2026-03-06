@@ -1,5 +1,7 @@
 # Viewer 商业化发行缺口收敛 Phase 4：贴图风格覆盖层
 
+审计轮次: 3
+
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-commercial-release-phase4-texture-style-layer.prd.project.md
 
 ## 1. Executive Summary

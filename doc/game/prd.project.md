@@ -1,6 +1,6 @@
 # game PRD Project
 
-审计轮次: 2
+审计轮次: 3
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] TASK-GAME-001 (PRD-GAME-001) [test_tier_required]: 完成 game PRD 改写，建立玩法设计总入口。

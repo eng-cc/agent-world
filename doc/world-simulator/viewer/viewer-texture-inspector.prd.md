@@ -1,5 +1,7 @@
 # Viewer 贴图查看器（可截图）设计文档
 
+审计轮次: 3
+
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-texture-inspector.prd.project.md
 
 ## 1. Executive Summary

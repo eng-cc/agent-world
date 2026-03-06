@@ -1,6 +1,6 @@
 # Agent World Simulator：Chat Panel Agent Prompt 默认值预填充输入框（设计文档）
 
-审计轮次: 2
+审计轮次: 3
 
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-chat-agent-prompt-default-values-prefill.prd.project.md
 

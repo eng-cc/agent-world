@@ -1,5 +1,7 @@
 # Agent World：P2P 长跑 180 分钟 Chaos 模板（项目管理文档）
 
+审计轮次: 3
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] CHAOSTPL-1 (PRD-TESTING-LONGRUN-CHAOSTPL-001/002): 完成方案建档（设计文档 + 项目管理文档）。
 - [x] CHAOSTPL-2 (PRD-TESTING-LONGRUN-CHAOSTPL-001/002): 新增固定 chaos 模板文件 `p2p-soak-endurance-full-chaos-v1.json` 并覆盖 180 分钟窗口。

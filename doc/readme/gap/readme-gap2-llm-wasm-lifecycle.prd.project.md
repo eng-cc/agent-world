@@ -1,6 +1,6 @@
 # README 缺口 2 收口：LLM 直连 WASM 生命周期（项目管理文档）
 
-审计轮次: 2
+审计轮次: 3
 
 ## 审计备注
 - 主项目入口统一指向 `doc/readme/gap/readme-gap-distributed-prod-hardening-gap12345.prd.project.md`，本文仅维护增量任务。

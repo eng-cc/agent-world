@@ -1,5 +1,7 @@
 # 客户端启动器中英文切换与必填配置校验（2026-03-02）
 
+审计轮次: 3
+
 - 对应项目管理文档: doc/world-simulator/launcher/game-client-launcher-i18n-required-config-2026-03-02.prd.project.md
 
 ## 1. Executive Summary

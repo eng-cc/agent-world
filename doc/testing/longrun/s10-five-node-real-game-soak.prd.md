@@ -1,5 +1,7 @@
 # Agent World：S10 五节点真实游戏数据在线长跑套件
 
+审计轮次: 3
+
 ## 1. Executive Summary
 - Problem Statement: 现有 S9 长跑侧重 P2P/存储/共识稳定性，但对真实 gameplay 数据流、奖励结算、资产不变量的联合验证覆盖不足，发布前仍存在高风险盲区。
 - Proposed Solution: 建立 S10 五节点在线长跑套件（1 sequencer + 2 storage + 2 observer），提供统一编排脚本、硬门禁指标与证据产物，在 no-LLM 默认路径下稳定复现实战数据交换与结算链路。

@@ -1,5 +1,7 @@
 # LLM 工厂闭环策略稳定性优化（llm_bootstrap）
 
+审计轮次: 3
+
 - 对应项目管理文档: doc/world-simulator/llm/llm-factory-strategy-optimization.prd.project.md
 
 ## 1. Executive Summary

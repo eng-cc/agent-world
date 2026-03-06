@@ -1,6 +1,6 @@
 # 游戏发布前测试（game-test）项目管理文档
 
-审计轮次: 1
+审计轮次: 3
 
 ## 任务拆解
 - [x] G1 按 `doc/playability_test_result/game-test.prd.md` 执行真实玩家闭环（Playwright + 录屏）

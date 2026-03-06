@@ -1,5 +1,7 @@
 # Agent World Runtime：生命出厂电力模块（辐射发电 + 基础储能）
 
+审计轮次: 3
+
 - 对应项目管理文档: doc/world-runtime/runtime/bootstrap-power-modules.prd.project.md
 
 ## 1. Executive Summary

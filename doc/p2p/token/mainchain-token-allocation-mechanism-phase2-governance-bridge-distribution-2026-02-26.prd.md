@@ -1,5 +1,7 @@
 # Agent World 主链 Token 分配机制二期：地址绑定 + 治理绑定 + 分发闭环（2026-02-26）
 
+审计轮次: 3
+
 ## 1. Executive Summary
 - Problem Statement: 将 NodePoints -> 主链 Token 桥接的收款方从 `account_id = node_id` 升级为真实地址绑定语义。
 - Proposed Solution: 将 `Action::UpdateMainTokenPolicy` 与治理提案生命周期绑定，避免“脱离治理状态”的参数更新。

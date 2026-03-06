@@ -1,5 +1,7 @@
 # engineering PRD
 
+审计轮次: 3
+
 ## 目标
 - 建立 engineering 模块设计主文档，统一需求边界、技术方案与验收标准。
 - 确保 engineering 模块后续改动可追溯到 PRD-ID、任务和测试。
@@ -111,7 +113,7 @@
 - Integration Points:
   - `scripts/doc-governance-check.sh`
   - `doc/scripts/precommit/pre-commit.prd.md`
-  - `doc/scripts/precommit/fix-precommit.prd.md`
+  - `doc/scripts/precommit/precommit-remediation-playbook.prd.md`
   - `doc/.governance/doc-root-md-allowlist.txt`
   - `doc/.governance/module-root-md-allowlist.txt`
   - `doc/engineering/doc-migration/legacy-doc-migration-collaboration-2026-03-03.prd.md`

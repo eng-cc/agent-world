@@ -1,6 +1,6 @@
 # Agent World Runtime：WASM 执行器接入（设计分册）
 
-审计轮次: 1
+审计轮次: 3
 
 - 对应项目管理文档: doc/world-runtime/wasm/wasm-executor.prd.project.md
 

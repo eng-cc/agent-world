@@ -1,5 +1,7 @@
 # playability_test_result 目录说明
 
+审计轮次: 3
+
 ## 入口
 - `doc/playability_test_result/prd.md`
 - `doc/playability_test_result/prd.project.md`

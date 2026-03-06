@@ -1,5 +1,7 @@
 # Agent World: 启动器 Viewer 鉴权自动继承 Node 配置（2026-03-02）（项目管理）
 
+审计轮次: 3
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] AUTOWIRE-1 (PRD-TESTING-LAUNCHER-AUTH-001): 完成专题设计文档与项目管理文档建档。
 - [x] AUTOWIRE-2 (PRD-TESTING-LAUNCHER-AUTH-001/002): `world_game_launcher` 在 Web `index.html` 注入 Viewer 鉴权配置并补测试。

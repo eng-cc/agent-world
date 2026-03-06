@@ -1,5 +1,7 @@
 # Capture Viewer Frame（Agent UI截图闭环调试脚本）
 
+审计轮次: 3
+
 - 对应项目管理文档: doc/scripts/viewer-tools/capture-viewer-frame.prd.project.md
 
 > 状态说明（2026-02-15）：该脚本已降级为 **native fallback**。默认闭环路径为 Web 端：`scripts/run-viewer-web.sh + Playwright`。

@@ -1,5 +1,7 @@
 # Agent World Simulator：Viewer 快速定位 Agent 按钮（设计文档）
 
+审计轮次: 3
+
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-agent-quick-locate.prd.project.md
 
 ## 1. Executive Summary

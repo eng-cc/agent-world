@@ -1,6 +1,6 @@
 # p2p PRD 文件级索引
 
-审计轮次: 2
+审计轮次: 3
 
 更新时间：2026-03-05
 
@@ -23,8 +23,8 @@
 | `doc/p2p/blockchain/production-grade-blockchain-p2pfs-roadmap.prd.md` | `doc/p2p/blockchain/production-grade-blockchain-p2pfs-roadmap.prd.project.md` |
 | `doc/p2p/consensus/builtin-wasm-identity-consensus.prd.md` | `doc/p2p/consensus/builtin-wasm-identity-consensus.prd.project.md` |
 | `doc/p2p/consensus/consensus-code-consolidation-to-agent-world-consensus.prd.md` | `doc/p2p/consensus/consensus-code-consolidation-to-agent-world-consensus.prd.project.md` |
-| `doc/p2p/distfs/builtin-wasm-distfs-api-closure.prd.md` | `doc/p2p/distfs/builtin-wasm-distfs-api-closure.prd.project.md` |
-| `doc/p2p/distfs/builtin-wasm-distfs-storage.prd.md` | `doc/p2p/distfs/builtin-wasm-distfs-storage.prd.project.md` |
+| `doc/p2p/distfs/distfs-builtin-wasm-api-closure.prd.md` | `doc/p2p/distfs/distfs-builtin-wasm-api-closure.prd.project.md` |
+| `doc/p2p/distfs/distfs-builtin-wasm-storage.prd.md` | `doc/p2p/distfs/distfs-builtin-wasm-storage.prd.project.md` |
 | `doc/p2p/distfs/distfs-feedback-node-runtime-integration-2026-03-01.prd.md` | `doc/p2p/distfs/distfs-feedback-node-runtime-integration-2026-03-01.prd.project.md` |
 | `doc/p2p/distfs/distfs-feedback-open-ledger-2026-03-01.prd.md` | `doc/p2p/distfs/distfs-feedback-open-ledger-2026-03-01.prd.project.md` |
 | `doc/p2p/distfs/distfs-feedback-p2p-bridge-2026-03-01.prd.md` | `doc/p2p/distfs/distfs-feedback-p2p-bridge-2026-03-01.prd.project.md` |
@@ -48,10 +48,10 @@
 | `doc/p2p/distributed/distributed-hard-split-phase7.prd.md` | `doc/p2p/distributed/distributed-hard-split-phase7.prd.project.md` |
 | `doc/p2p/distributed/distributed-pos-consensus.prd.md` | `doc/p2p/distributed/distributed-pos-consensus.prd.project.md` |
 | `doc/p2p/distributed/distributed-runtime.prd.md` | `doc/p2p/distributed/distributed-runtime.prd.project.md` |
-| `doc/p2p/distributed/production-runtime-gap1234568-closure.prd.md` | `doc/p2p/distributed/production-runtime-gap1234568-closure.prd.project.md` |
+| `doc/p2p/distributed/distributed-production-runtime-gap1234568-closure.prd.md` | `doc/p2p/distributed/distributed-production-runtime-gap1234568-closure.prd.project.md` |
 | `doc/p2p/network/net-runtime-bridge-closure.prd.md` | `doc/p2p/network/net-runtime-bridge-closure.prd.project.md` |
 | `doc/p2p/network/readme-p1-network-production-hardening.prd.md` | `doc/p2p/network/readme-p1-network-production-hardening.prd.project.md` |
-| `doc/p2p/node/builtin-wasm-fetch-fallback-compile.prd.md` | `doc/p2p/node/builtin-wasm-fetch-fallback-compile.prd.project.md` |
+| `doc/p2p/node/node-builtin-wasm-fetch-fallback-compile.prd.md` | `doc/p2p/node/node-builtin-wasm-fetch-fallback-compile.prd.project.md` |
 | `doc/p2p/node/node-consensus-signer-binding-replication-hardening.prd.md` | `doc/p2p/node/node-consensus-signer-binding-replication-hardening.prd.project.md` |
 | `doc/p2p/node/node-contribution-points-multi-node-closure-test.prd.md` | `doc/p2p/node/node-contribution-points-multi-node-closure-test.prd.project.md` |
 | `doc/p2p/node/node-contribution-points-runtime-closure.prd.md` | `doc/p2p/node/node-contribution-points-runtime-closure.prd.project.md` |
@@ -69,7 +69,7 @@
 | `doc/p2p/node/node-storage-system-reward-pool.prd.md` | `doc/p2p/node/node-storage-system-reward-pool.prd.project.md` |
 | `doc/p2p/node/node-uptime-base-reward.prd.md` | `doc/p2p/node/node-uptime-base-reward.prd.project.md` |
 | `doc/p2p/node/node-wasm32-libp2p-compile-guard.prd.md` | `doc/p2p/node/node-wasm32-libp2p-compile-guard.prd.project.md` |
-| `doc/p2p/node/readme-p2-node-net-stack-unification.prd.md` | `doc/p2p/node/readme-p2-node-net-stack-unification.prd.project.md` |
+| `doc/p2p/node/node-net-stack-unification-readme.prd.md` | `doc/p2p/node/node-net-stack-unification-readme.prd.project.md` |
 | `doc/p2p/observer/observer-sync-mode-metrics-runtime-bridge.prd.md` | `doc/p2p/observer/observer-sync-mode-metrics-runtime-bridge.prd.project.md` |
 | `doc/p2p/observer/observer-sync-mode-observability.prd.md` | `doc/p2p/observer/observer-sync-mode-observability.prd.project.md` |
 | `doc/p2p/observer/observer-sync-mode-runtime-metrics.prd.md` | `doc/p2p/observer/observer-sync-mode-runtime-metrics.prd.project.md` |

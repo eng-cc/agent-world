@@ -1,5 +1,7 @@
 # M4 内置 WASM 模块可维护性收口（2026-02-26）
 
+审计轮次: 3
+
 - 对应项目管理文档: doc/world-simulator/m4/m4-builtin-wasm-maintainability-2026-02-26.prd.project.md
 
 ## 1. Executive Summary

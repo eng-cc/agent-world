@@ -1,5 +1,7 @@
 # Agent World Simulator：Agent-LLM Prompt 模块交互系统（设计文档）
 
+审计轮次: 3
+
 - 对应项目管理文档: doc/world-simulator/llm/llm-prompt-system.prd.project.md
 
 ## 1. Executive Summary

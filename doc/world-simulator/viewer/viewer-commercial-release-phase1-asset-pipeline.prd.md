@@ -1,5 +1,7 @@
 # Viewer 商业化发行缺口收敛 Phase 1：资产管线基础层
 
+审计轮次: 3
+
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-commercial-release-phase1-asset-pipeline.prd.project.md
 
 ## 1. Executive Summary

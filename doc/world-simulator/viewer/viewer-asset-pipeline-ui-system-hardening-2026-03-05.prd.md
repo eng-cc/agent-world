@@ -1,5 +1,7 @@
 # Viewer 资产管线与 UI 体系硬化（2026-03-05）
 
+审计轮次: 3
+
 - 对应项目管理文档: `doc/world-simulator/viewer/viewer-asset-pipeline-ui-system-hardening-2026-03-05.prd.project.md`
 - 模块主追踪: `PRD-WORLD_SIMULATOR-018`
 

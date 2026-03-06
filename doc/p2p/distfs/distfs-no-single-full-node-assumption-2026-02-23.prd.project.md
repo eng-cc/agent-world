@@ -1,5 +1,7 @@
 # Agent World Runtime：分布式存储去单机完整依赖改造（项目管理）（项目管理文档）
 
+审计轮次: 3
+
 ## 任务拆解（含 PRD-ID 映射）
 ### T0 建档
 - [x] 设计文档 (PRD-P2P-MIG-065)：`doc/p2p/distfs/distfs-no-single-full-node-assumption-2026-02-23.prd.md`

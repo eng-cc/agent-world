@@ -1,6 +1,6 @@
 # Agent World: 基础 CI 门禁移除 Builtin Wasm Hash 校验
 
-审计轮次: 1
+审计轮次: 3
 
 - 对应项目管理文档: doc/testing/ci/ci-remove-builtin-wasm-hash-checks-from-base-gate.prd.project.md
 

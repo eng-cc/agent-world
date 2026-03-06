@@ -1,5 +1,7 @@
 # Viewer 视觉升级设计文档（Phase 10 后增量强化）
 
+审计轮次: 3
+
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-visual-upgrade.prd.project.md
 
 ## 背景

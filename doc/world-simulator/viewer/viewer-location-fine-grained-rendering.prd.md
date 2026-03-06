@@ -1,5 +1,7 @@
 # Agent World Simulator：Viewer Location 细粒度渲染（设计文档）
 
+审计轮次: 3
+
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-location-fine-grained-rendering.prd.project.md
 
 ## 1. Executive Summary

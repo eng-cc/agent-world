@@ -1,5 +1,7 @@
 # core 文档索引
 
+审计轮次: 3
+
 ## 入口
 - PRD: `doc/core/prd.md`
 - 项目管理: `doc/core/prd.project.md`

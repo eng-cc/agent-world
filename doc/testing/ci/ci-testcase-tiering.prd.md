@@ -1,6 +1,6 @@
 # Agent World: CI 测试分级细化到 Test Case
 
-审计轮次: 2
+审计轮次: 3
 
 - 对应项目管理文档: doc/testing/ci/ci-testcase-tiering.prd.project.md
 

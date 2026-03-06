@@ -1,5 +1,7 @@
 # Viewer 商业化发行缺口收敛 Phase 7：工业风资产包与主题批量预览
 
+审计轮次: 3
+
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-commercial-release-phase7-theme-pack-batch-preview.prd.project.md
 
 ## 1. Executive Summary

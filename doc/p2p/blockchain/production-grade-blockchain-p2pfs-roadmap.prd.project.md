@@ -1,5 +1,7 @@
 # Agent World Runtime：生产级区块链 + P2P FS 路线图（项目管理文档）
 
+审计轮次: 3
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] PRG-1 (PRD-P2P-MIG-056)：完成路线图设计文档与项目管理文档。
 - [x] PRG-2 (PRD-P2P-MIG-056)：实现 `agent_world_node` 链式 `block_hash`（含状态持久化兼容）。

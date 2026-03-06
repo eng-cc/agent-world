@@ -1,5 +1,7 @@
 # Agent World Runtime：共识代码统一收敛到 agent_world_consensus（项目管理文档）
 
+审计轮次: 3
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] CCG-0 (PRD-P2P-MIG-058)：完成设计文档与项目管理文档。
 - [x] CCG-1 (PRD-P2P-MIG-058)：在 `agent_world_consensus` 实现可复用 node_pos 核心状态机，并在 `agent_world_node` 完成接线替换。

@@ -1,5 +1,7 @@
 # Agent World Simulator：LLM 请求层迁移至 async-openai Responses API（项目管理文档）
 
+审计轮次: 3
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] AOR1 输出设计文档（`doc/world-simulator/llm/llm-async-openai-responses.prd.md`）
 - [x] AOR2 输出项目管理文档（本文件）

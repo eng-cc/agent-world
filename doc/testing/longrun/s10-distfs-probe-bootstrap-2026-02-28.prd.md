@@ -1,5 +1,7 @@
 # Agent World：S10 DistFS Probe Bootstrap（2026-02-28）
 
+审计轮次: 3
+
 ## 1. Executive Summary
 - Problem Statement: S10 长跑中 reward runtime 的 DistFS 统计可能长期为 `distfs_total_checks=0`，导致 `metric_gate=insufficient_data`，使发布门禁无法得出有效结论。
 - Proposed Solution: 在 reward worker 启动阶段增加最小 probe seed bootstrap，仅当 `storage_root/blobs` 为空时写入幂等 seed blob，确保 DistFS 在长窗内产生可统计样本。

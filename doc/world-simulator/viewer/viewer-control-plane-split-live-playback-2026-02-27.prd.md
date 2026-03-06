@@ -1,5 +1,7 @@
 # Viewer 控制面拆分：回放/Live 分离（2026-02-27）
 
+审计轮次: 3
+
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-control-plane-split-live-playback-2026-02-27.prd.project.md
 
 ## 1. Executive Summary

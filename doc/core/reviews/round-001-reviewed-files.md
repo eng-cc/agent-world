@@ -10,8 +10,8 @@
 - `doc/game/prd.md`
 - `doc/game/prd.project.md`
 - `doc/headless-runtime/README.md`
-- `doc/headless-runtime/nonviewer/nonviewer-design-alignment-fixes-2026-02-25.prd.md`
-- `doc/headless-runtime/nonviewer/nonviewer-design-alignment-review-round2-2026-02-25.prd.md`
+- `doc/headless-runtime/nonviewer/nonviewer-design-alignment-closure-2026-02-25.prd.md`
+- `doc/headless-runtime/nonviewer/nonviewer-design-alignment-review-2026-02-25.prd.md`
 - `doc/headless-runtime/nonviewer/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.prd.md`
 - `doc/headless-runtime/nonviewer/nonviewer-onchain-auth-protocol-hardening.prd.md`
 - `doc/headless-runtime/prd.index.md`

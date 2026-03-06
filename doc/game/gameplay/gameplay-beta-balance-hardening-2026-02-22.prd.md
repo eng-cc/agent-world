@@ -1,5 +1,5 @@
 # Gameplay 内测数值加固（治理票权 + 策略授权 + 合约声誉去通胀）
-审计轮次: 2
+审计轮次: 3
 
 - 对应项目管理文档: doc/game/gameplay/gameplay-beta-balance-hardening-2026-02-22.prd.project.md
 

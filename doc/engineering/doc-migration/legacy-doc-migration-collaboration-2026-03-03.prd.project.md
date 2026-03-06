@@ -1,5 +1,7 @@
 # 文档迁移并行协作方案（2026-03-03）项目管理文档
 
+审计轮次: 3
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] TASK-ENGINEERING-010 (PRD-ENGINEERING-005): 冻结四人并行迁移原则、目录边界与执行流程，并产出协作主文档。
 - [x] TASK-ENGINEERING-011 (PRD-ENGINEERING-006): Owner-A 迁移 `doc/world-simulator/**` 待迁移文档（146 篇）。

@@ -1,5 +1,7 @@
 # Agent World Simulator：LLM 用户文本输出与工具调用分区可视化（设计文档）
 
+审计轮次: 3
+
 - 对应项目管理文档: doc/world-simulator/llm/llm-chat-user-message-tool-visualization.prd.project.md
 
 ## 1. Executive Summary

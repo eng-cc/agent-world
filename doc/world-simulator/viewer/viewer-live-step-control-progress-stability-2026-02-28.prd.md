@@ -1,5 +1,7 @@
 # Viewer Live `step` 控制推进稳定性修复（2026-02-28）
 
+审计轮次: 3
+
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-live-step-control-progress-stability-2026-02-28.prd.project.md
 
 ## 1. Executive Summary

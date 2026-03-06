@@ -1,5 +1,7 @@
 # Viewer 通用聚焦目标（可扩展实体）
 
+审计轮次: 3
+
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-generic-focus-targets.prd.project.md
 
 ## 1. Executive Summary

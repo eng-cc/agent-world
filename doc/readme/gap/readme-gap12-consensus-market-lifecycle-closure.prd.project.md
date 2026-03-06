@@ -1,6 +1,6 @@
 # README 缺口 1/2 收口：Live 共识提交主路径 + LLM/Simulator 模块市场生命周期（项目管理文档）
 
-审计轮次: 2
+审计轮次: 3
 
 ## 审计备注
 - 主项目入口：`doc/readme/gap/readme-gap-distributed-prod-hardening-gap12345.prd.project.md`。

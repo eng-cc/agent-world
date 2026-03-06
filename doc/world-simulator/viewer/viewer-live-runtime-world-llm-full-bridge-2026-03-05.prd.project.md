@@ -1,5 +1,7 @@
 # Viewer Live runtime/world 真 LLM 全量接管（LLM 决策 + 100% 事件/快照 + hard-fail）（2026-03-05）项目管理文档
 
+审计轮次: 3
+
 - 对应设计文档: doc/world-simulator/viewer/viewer-live-runtime-world-llm-full-bridge-2026-03-05.prd.md
 
 ## 任务拆解（含 PRD-ID 映射）

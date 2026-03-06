@@ -1,5 +1,7 @@
 # Viewer Live LLM 事件触发决策门控（项目管理）
 
+审计轮次: 3
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0 建档：设计文档与项目管理文档
 - [x] T1 `LiveWorld` 增加 LLM 决策门控状态，并接入普通 live `step()`

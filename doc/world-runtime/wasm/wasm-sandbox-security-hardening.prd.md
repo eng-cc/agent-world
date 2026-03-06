@@ -1,6 +1,6 @@
 # Agent World Runtime：WASM 沙箱安全补强（设计文档）
 
-审计轮次: 1
+审计轮次: 3
 
 - 对应项目管理文档: doc/world-runtime/wasm/wasm-sandbox-security-hardening.prd.project.md
 

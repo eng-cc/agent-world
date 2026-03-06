@@ -1,5 +1,7 @@
 # README 口径对齐：LLM P1/P2 生产级收口（项目管理文档）
 
+审计轮次: 3
+
 ## 任务拆解
 - [x] T0：输出设计文档（`doc/readme/production/readme-llm-p1p2-production-closure.prd.md`）
 - [x] T0：输出项目管理文档（本文件）

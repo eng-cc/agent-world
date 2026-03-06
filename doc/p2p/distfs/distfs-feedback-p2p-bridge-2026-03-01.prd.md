@@ -1,5 +1,7 @@
 # Agent World Runtime：DistFS 反馈 P2P 广播与拉取桥接（2026-03-01）设计文档
 
+审计轮次: 3
+
 ## 1. Executive Summary
 - Problem Statement: 在无中心化服务器场景下，为 feedback 系统补齐“节点间传播”主链路。
 - Proposed Solution: 提供 gossip announce 轻量广播，announce 仅携带元信息与 blob 引用。

@@ -1,6 +1,6 @@
 # Agent World Runtime：共识代码统一收敛到 agent_world_consensus
 
-审计轮次: 1
+审计轮次: 3
 
 ## 1. Executive Summary
 - Problem Statement: 将 `agent_world_node` 中 PoS 共识核心状态机（proposal/attestation/decision）迁移到 `agent_world_consensus`，避免同语义双实现长期漂移。

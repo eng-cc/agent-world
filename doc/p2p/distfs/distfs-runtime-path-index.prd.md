@@ -1,5 +1,7 @@
 # Agent World Runtime：DistFS 路径索引接入 execution_storage
 
+审计轮次: 3
+
 ## 1. Executive Summary
 - Problem Statement: 将 `agent_world_distfs::FileStore` 接入 `agent_world_net::execution_storage`，为执行产物提供稳定路径索引。
 - Proposed Solution: 保持 CAS（content hash）作为底层真相，路径索引只作为可读、可枚举入口。

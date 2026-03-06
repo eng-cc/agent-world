@@ -1,5 +1,7 @@
 # Agent World Viewer：3D 商业化精致度收敛（资产/材质/光照/后处理）
 
+审计轮次: 3
+
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-3d-commercial-polish.prd.project.md
 
 ## 1. Executive Summary

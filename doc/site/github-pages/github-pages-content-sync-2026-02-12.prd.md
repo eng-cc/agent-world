@@ -1,6 +1,6 @@
 # GitHub Pages 内容状态同步（2026-02-12）设计文档
 
-审计轮次: 2
+审计轮次: 3
 
 ## ROUND-002 主从口径
 - 主入口文档：`doc/site/github-pages/github-pages-game-engine-reposition-2026-02-25.prd.md`。

@@ -81,8 +81,8 @@
 - `doc/readme/gap/readme-gap34-lifecycle-orderbook-closure.prd.project.md`
 - `doc/readme/prd.index.md`
 - `doc/readme/prd.project.md`
-- `doc/scripts/precommit/fix-precommit.prd.md`
-- `doc/scripts/precommit/fix-precommit.prd.project.md`
+- `doc/scripts/precommit/precommit-remediation-playbook.prd.md`
+- `doc/scripts/precommit/precommit-remediation-playbook.prd.project.md`
 - `doc/scripts/precommit/pre-commit.prd.md`
 - `doc/scripts/precommit/pre-commit.prd.project.md`
 - `doc/site/github-pages/github-pages-architecture-svg-refresh.prd.md`

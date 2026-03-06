@@ -1,5 +1,7 @@
 # 根目录 Redirect PRD 已读清单（Active）
 
+审计轮次: 3
+
 更新时间：2026-03-04
 范围：doc/*.prd.md 与 doc/*.prd.project.md（legacy redirect）
 文档数：6

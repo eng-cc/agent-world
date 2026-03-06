@@ -1,6 +1,6 @@
 # GitHub Pages 对标优化（三期）项目管理文档
 
-审计轮次: 2
+审计轮次: 3
 
 ## 审计备注
 - 项目主入口：`doc/site/github-pages/github-pages-game-engine-reposition-2026-02-25.prd.project.md`。

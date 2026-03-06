@@ -1,6 +1,6 @@
 # README 资源模型口径修订：内建最小资源 + 模块扩展资源（设计文档）
 
-审计轮次: 1
+审计轮次: 3
 
 - 对应项目管理文档: doc/readme/governance/readme-resource-model-layering.prd.project.md
 

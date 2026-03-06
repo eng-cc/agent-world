@@ -1,5 +1,7 @@
 # Gameplay Layer Lifecycle Rules Closure（生产级设计）
 
+审计轮次: 3
+
 - 审计轮次: 2
 
 - 对应项目管理文档: doc/game/gameplay/gameplay-layer-lifecycle-rules-closure.prd.project.md

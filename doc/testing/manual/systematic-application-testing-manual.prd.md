@@ -1,5 +1,7 @@
 # Agent World：系统性应用测试手册工程化收口（2026-02-26）
 
+审计轮次: 3
+
 - 对应项目管理文档: doc/testing/manual/systematic-application-testing-manual.prd.project.md
 
 ## 1. Executive Summary

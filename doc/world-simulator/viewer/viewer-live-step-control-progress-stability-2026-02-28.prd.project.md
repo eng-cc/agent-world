@@ -1,5 +1,7 @@
 # Viewer Live `step` 控制推进稳定性修复（2026-02-28）项目管理文档
 
+审计轮次: 3
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T1 复现 `step accepted 但无推进` 并定位到 live+consensus 处理链路
 - [x] T2 修复 paused 会话下 `ConsensusCommitted` 未推进的问题

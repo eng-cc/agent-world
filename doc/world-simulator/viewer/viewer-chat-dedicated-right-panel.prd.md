@@ -1,5 +1,7 @@
 # Agent World Simulator：Viewer Chat 独立最右侧 Panel（设计文档）
 
+审计轮次: 3
+
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-chat-dedicated-right-panel.prd.project.md
 
 ## 1. Executive Summary

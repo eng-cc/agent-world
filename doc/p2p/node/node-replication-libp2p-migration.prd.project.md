@@ -1,5 +1,7 @@
 # Agent World Runtime：Node Replication 迁移到 libp2p 统一网络栈（项目管理文档）
 
+审计轮次: 3
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] NRM-0 (PRD-P2P-MIG-099)：输出设计文档与项目管理文档。
 - [x] NRM-1 (PRD-P2P-MIG-099)：Node 注入 `DistributedNetwork` 复制通道（优先网络，UDP 回退）并补测试。

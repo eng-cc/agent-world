@@ -1,5 +1,7 @@
 # Viewer 发行全覆盖验收 Gate（可用性 + 视觉 + 玩法环节）
 
+审计轮次: 3
+
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-release-full-coverage-gate.prd.project.md
 
 ## 1. Executive Summary

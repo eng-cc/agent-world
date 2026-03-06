@@ -1,5 +1,7 @@
 # Agent World：Viewer 性能瓶颈观测能力补齐（2026-02-25）
 
+审计轮次: 3
+
 ## 1. Executive Summary
 - Problem Statement: 现有 viewer 性能链路主要给出 FPS/帧时/over-budget 结果，能判断是否超标但难以明确“瓶颈在哪”，定位效率低。
 - Proposed Solution: 扩展 `RenderPerfSummary` 与 `perf_probe`/`viewer-owr4-stress.sh` 输出，新增 runtime 分阶段指标与容量压力标记，并引入统一 `PerfHotspot` 推断规则。

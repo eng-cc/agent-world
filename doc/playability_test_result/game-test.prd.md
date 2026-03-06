@@ -1,6 +1,6 @@
 # 游戏发布前的测试手册(你不能改这个文档)
 
-审计轮次: 1
+审计轮次: 3
 
 - 对应项目管理文档: doc/playability_test_result/game-test.prd.project.md
 

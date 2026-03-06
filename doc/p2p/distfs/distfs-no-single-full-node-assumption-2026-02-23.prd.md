@@ -1,5 +1,7 @@
 # Agent World Runtime：分布式存储去单机完整依赖改造（2026-02-23）
 
+审计轮次: 3
+
 ## 1. Executive Summary
 - Problem Statement: 明确移除“任意单机可独立提供完整执行数据”的隐含假设。
 - Proposed Solution: DHT 路径下的数据拉取必须依赖 provider 索引，不允许无 provider 时回退到非定向全网请求。

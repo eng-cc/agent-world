@@ -1,5 +1,7 @@
 # 全量 PRD 体系审读与对齐（2026-03-03）项目管理文档
 
+审计轮次: 3
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] TASK-ENGINEERING-020 (PRD-ENGINEERING-012) [test_tier_required]: 建立全量 PRD 逐篇审读机制，生成已读清单并完成模块入口三件套首批审读。
 - [x] TASK-ENGINEERING-021 (PRD-ENGINEERING-013) [test_tier_required]: 逐模块核对专题文档与代码一致性；发现偏差按代码回写并补充处理动作。

@@ -1,5 +1,7 @@
 # world-simulator PRD
 
+审计轮次: 3
+
 ## 目标
 - 建立 world-simulator 模块设计主文档，统一需求边界、技术方案与验收标准。
 - 确保 world-simulator 模块后续改动可追溯到 PRD-ID、任务和测试。

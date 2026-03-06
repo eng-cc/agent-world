@@ -1,5 +1,7 @@
 # Agent World Simulator：Frag 资源平衡与新手友好生成（项目管理文档）
 
+审计轮次: 3
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] FRB1 输出设计文档与项目管理文档
 - [x] FRB2.1 扩展 `AsteroidFragmentConfig`（保底数量 + 中心引导参数）

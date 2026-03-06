@@ -1,6 +1,6 @@
 # site PRD 文件级索引
 
-审计轮次: 2
+审计轮次: 3
 
 更新时间：2026-03-03
 
@@ -25,7 +25,7 @@
 | `doc/site/github-pages/github-pages-quality-gates-sync-seo-hardening-2026-02-26.prd.md` | `doc/site/github-pages/github-pages-quality-gates-sync-seo-hardening-2026-02-26.prd.project.md` |
 | `doc/site/github-pages/github-pages-release-download-pipeline-2026-03-01.prd.md` | `doc/site/github-pages/github-pages-release-download-pipeline-2026-03-01.prd.project.md` |
 | `doc/site/github-pages/github-pages-showcase.prd.md` | `doc/site/github-pages/github-pages-showcase.prd.project.md` |
-| `doc/site/github-pages/github-pages-user-perspective-fixes-2026-02-26.prd.md` | `doc/site/github-pages/github-pages-user-perspective-fixes-2026-02-26.prd.project.md` |
+| `doc/site/github-pages/github-pages-user-perspective-adjustments-2026-02-26.prd.md` | `doc/site/github-pages/github-pages-user-perspective-adjustments-2026-02-26.prd.project.md` |
 | `doc/site/github-pages/github-pages-visual-polish-v2-2026-02-12.prd.md` | `doc/site/github-pages/github-pages-visual-polish-v2-2026-02-12.prd.project.md` |
 | `doc/site/manual/site-manual-static-docs.prd.md` | `doc/site/manual/site-manual-static-docs.prd.project.md` |
 | `doc/site/manual/viewer-manual-content-migration-2026-02-15.prd.md` | `doc/site/manual/viewer-manual-content-migration-2026-02-15.prd.project.md` |

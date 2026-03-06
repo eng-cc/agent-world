@@ -1,6 +1,6 @@
 # Agent World Runtime：节点贡献积分多节点闭环测试（项目管理文档）
 
-审计轮次: 2
+审计轮次: 3
 
 ## 审计备注
 - 项目管理主入口：`doc/p2p/node/node-contribution-points.prd.project.md`。

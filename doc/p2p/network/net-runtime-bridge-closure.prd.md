@@ -1,6 +1,6 @@
 # Agent World Runtime：`agent_world_net` runtime_bridge 可编译闭环
 
-审计轮次: 1
+审计轮次: 3
 
 ## 1. Executive Summary
 - Problem Statement: 让 `agent_world_net --features runtime_bridge` 在当前拆分架构下可独立编译通过。

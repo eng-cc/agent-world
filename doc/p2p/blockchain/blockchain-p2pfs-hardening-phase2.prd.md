@@ -1,5 +1,7 @@
 # Agent World Runtime：区块链 + P2P FS 硬改造（Phase 2）设计文档
 
+审计轮次: 3
+
 ## 1. Executive Summary
 - Problem Statement: 在 Phase 1 网络闭环基础上，补齐“最小可信 + 重启可恢复”能力。
 - Proposed Solution: 将节点密钥真正接入 PoS gossip 主链路（proposal/attestation/commit 签名验签）。

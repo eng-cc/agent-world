@@ -1,6 +1,6 @@
 # README 收口：基础设施模块执行引擎 + 编译 Sandbox 隔离（项目管理文档）
 
-审计轮次: 2
+审计轮次: 3
 
 ## 审计备注
 - 主项目入口：`doc/readme/gap/readme-gap-distributed-prod-hardening-gap12345.prd.project.md`。

@@ -1,5 +1,7 @@
 # Agent World：P2P/存储/共识在线长跑稳定性测试（项目管理文档）
 
+审计轮次: 3
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] S9SOAK-1 (PRD-TESTING-LONGRUN-S9SOAK-001/002): 完成方案与项目管理文档建档。
 - [x] S9SOAK-2 (PRD-TESTING-LONGRUN-S9SOAK-001/002): 实现 `scripts/p2p-longrun-soak.sh` 最小闭环（启动/停止/超时/清理/目录结构），支持 `triad/triad_distributed`。

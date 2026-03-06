@@ -1,5 +1,7 @@
 # Viewer 右侧 2D UI 迁移到 bevy_egui（项目管理文档）
 
+审计轮次: 3
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] ER1：输出设计文档（`doc/world-simulator/viewer/viewer-egui-right-panel.prd.md`）
 - [x] ER2：输出项目管理文档（本文件）

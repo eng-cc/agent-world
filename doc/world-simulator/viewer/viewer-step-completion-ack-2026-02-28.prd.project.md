@@ -1,5 +1,7 @@
 # Viewer `step` Completion Ack（2026-02-28）项目管理文档
 
+审计轮次: 3
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T1 设计文档与任务拆解
 - [x] T2 协议改造：控制请求增加 `request_id`，新增 completion ack 响应

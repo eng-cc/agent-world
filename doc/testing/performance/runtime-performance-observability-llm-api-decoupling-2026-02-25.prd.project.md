@@ -1,5 +1,7 @@
 # Agent World Runtime：LLM API 延迟与代码执行耗时解耦（项目管理文档）
 
+审计轮次: 3
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] RPOF-L1 (PRD-TESTING-PERF-RPOFLLM-001/002): 完成设计文档与项目管理文档建档。
 - [x] RPOF-L2 (PRD-TESTING-PERF-RPOFLLM-001/002/003): 实现 runtime perf 解耦（新增 `llm_api`、拆分 `decision_local`、保持 health/bottleneck 本地口径）。

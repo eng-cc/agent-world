@@ -1,5 +1,7 @@
 # Viewer WebGL Deferred 兼容降级（2026-02-24）
 
+审计轮次: 3
+
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-webgl-deferred-compat-2026-02-24.prd.project.md
 
 ## 1. Executive Summary

@@ -1,5 +1,7 @@
 # Agent World Runtime：节点基础在线时长奖励（项目管理文档）
 
+审计轮次: 3
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] UBR-1 (PRD-P2P-MIG-103)：完成设计文档与项目管理文档。
 - [x] UBR-2 (PRD-P2P-MIG-103)：实现 `node_points` 在线挑战门槛与归一化奖励，补齐单元测试。

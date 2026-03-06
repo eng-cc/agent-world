@@ -1,5 +1,7 @@
 # Agent World Runtime：Membership Dead-Letter Replay 重试计数与比率阈值数值语义硬化（15 点清单第八阶段）
 
+审计轮次: 3
+
 - 对应项目管理文档: doc/world-runtime/runtime/runtime-numeric-correctness-phase8.prd.project.md
 
 ## 1. Executive Summary

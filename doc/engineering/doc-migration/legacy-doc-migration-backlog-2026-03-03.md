@@ -1,5 +1,7 @@
 # 待迁移文档清单快照（2026-03-03）
 
+审计轮次: 3
+
 ## 快照范围
 - 统计口径：`find doc -type f -name '*.project.md' ! -name '*.prd.project.md'`，排除模块主项目文档 `doc/<module>/prd.project.md`（已剔除 archive 目录条目）。
 - 快照总量：303 篇。
@@ -232,8 +234,8 @@
 - `doc/p2p/viewer-live/world-viewer-live-release-locked-launch-2026-02-23.project.md`
 
 ## Owner-C 清单（30）
-- `doc/headless-runtime/nonviewer/nonviewer-design-alignment-fixes-2026-02-25.prd.project.md`
-- `doc/headless-runtime/nonviewer/nonviewer-design-alignment-review-round2-2026-02-25.prd.project.md`
+- `doc/headless-runtime/nonviewer/nonviewer-design-alignment-closure-2026-02-25.prd.project.md`
+- `doc/headless-runtime/nonviewer/nonviewer-design-alignment-review-2026-02-25.prd.project.md`
 - `doc/headless-runtime/nonviewer/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.prd.project.md`
 - `doc/headless-runtime/nonviewer/nonviewer-onchain-auth-protocol-hardening.prd.project.md`
 - `doc/world-runtime/governance/zero-trust-governance-receipt-hardening-2026-02-26.prd.project.md`

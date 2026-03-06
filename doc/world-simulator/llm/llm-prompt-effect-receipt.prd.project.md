@@ -1,5 +1,7 @@
 # Agent World Simulator：LLM Prompt ModuleCall Effect/Receipt 可回放链路（项目管理文档）
 
+审计轮次: 3
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] LPER1 输出设计文档（`doc/world-simulator/llm/llm-prompt-effect-receipt.prd.md`）
 - [x] LPER2 输出项目管理文档（本文件）

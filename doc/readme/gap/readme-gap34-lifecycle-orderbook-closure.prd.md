@@ -1,6 +1,6 @@
 # README 高优先级差距收口（二期）：模块生命周期 + 单一订单簿撮合（设计文档）
 
-审计轮次: 2
+审计轮次: 3
 
 ## ROUND-002 主从口径
 - 主入口统一指向 `doc/readme/gap/readme-gap-distributed-prod-hardening-gap12345.prd.md`，本文仅维护增量。

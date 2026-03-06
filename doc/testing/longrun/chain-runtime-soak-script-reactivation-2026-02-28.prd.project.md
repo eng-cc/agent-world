@@ -1,5 +1,7 @@
 # Agent World: 基于 world_chain_runtime 的长跑脚本可用化（2026-02-28）（项目管理）
 
+审计轮次: 3
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] SOAKREACT-1 (PRD-TESTING-LONGRUN-SOAK-001/002): 完成专题设计文档与项目管理文档建档。
 - [x] SOAKREACT-2 (PRD-TESTING-LONGRUN-SOAK-001/002): 改造 `s10-five-node-game-soak.sh` 为可运行的 `world_chain_runtime` 五节点脚本。

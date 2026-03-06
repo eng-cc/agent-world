@@ -1,5 +1,7 @@
 # Viewer UI 多语言支持（中文 / 英文）（项目管理文档）
 
+审计轮次: 3
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] 输出设计文档（`doc/world-simulator/viewer/viewer-i18n.prd.md`）
 - [x] 输出项目管理文档（本文件）

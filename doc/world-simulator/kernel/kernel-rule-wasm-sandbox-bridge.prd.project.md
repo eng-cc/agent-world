@@ -1,5 +1,7 @@
 # Agent World Simulator：规则 Wasm Sandbox 桥接（第四阶段）项目管理文档
 
+审计轮次: 3
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] KWS-0 输出设计文档（`doc/world-simulator/kernel/kernel-rule-wasm-sandbox-bridge.prd.md`）与项目管理文档（本文件）。
 - [x] KWS-1 新增基于 `ModuleSandbox` 的 pre-action wasm 桥接 API 与输入/输出转换。

@@ -1,5 +1,5 @@
 # GitHub Pages 首页转化文案与中英一致性收敛 + UI 截图刷新（2026-02-26）设计文档
-审计轮次: 2
+审计轮次: 3
 
 - 对应项目管理文档: doc/site/github-pages/github-pages-home-conversion-i18n-screenshot-refresh-2026-02-26.prd.project.md
 

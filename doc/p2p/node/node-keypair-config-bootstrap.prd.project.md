@@ -1,5 +1,7 @@
 # Agent World Runtime：节点密钥 config.toml 自举（项目管理文档）
 
+审计轮次: 3
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] NKEY-1 (PRD-P2P-MIG-095)：设计文档与项目管理文档落地。
 - [x] NKEY-2 (PRD-P2P-MIG-095)：实现启动阶段读取/生成/写回 `config.toml` 的节点密钥逻辑。

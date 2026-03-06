@@ -1,5 +1,7 @@
 # world_viewer_live LLM 默认开启（P2P 发行基线）设计文档（2026-02-23）
 
+审计轮次: 3
+
 ## 1. Executive Summary
 - Problem Statement: 将 `world_viewer_live` 的决策模式默认值从 Script 调整为 LLM，减少发行参数遗漏导致的节点行为偏差。
 - Proposed Solution: 在不破坏现有参数模型的前提下，保持 CLI 语义简单且可审计。

@@ -1,5 +1,7 @@
 # Agent World Simulator：Viewer 控制区精简与高级调试折叠（设计文档）
 
+审计轮次: 3
+
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-control-advanced-debug-folding.prd.project.md
 
 ## 1. Executive Summary

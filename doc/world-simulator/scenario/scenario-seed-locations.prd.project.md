@@ -1,5 +1,7 @@
 # Agent World Simulator：场景种子化地点生成（项目管理文档）
 
+审计轮次: 3
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] SL1.1 新增设计文档与项目管理文档
 - [x] SL1.2 改造 `WorldScenarioSpec` 数据结构（移除 `locations`，新增 `location_generator`）

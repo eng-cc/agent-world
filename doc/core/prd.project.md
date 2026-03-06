@@ -1,5 +1,7 @@
 # core PRD Project
 
+审计轮次: 3
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] TASK-CORE-001 (PRD-CORE-001) [test_tier_required]: 完成 core PRD 改写，固化跨模块治理基线。
 - [x] TASK-CORE-002 (PRD-CORE-001/002/003) [test_tier_required]: 将 core PRD 扩展为项目全局总览入口（模块地图/关键链路/关键分册导航）。
@@ -25,10 +27,14 @@
     - `doc/core/reviews/consistency-review-round-002.md`
     - `doc/core/reviews/round-002-reviewed-files.md`
     - `doc/core/reviews/round-002-dedup-merge-worklist.md`
+  - ROUND-003 启动产物（2026-03-05）:
+    - `doc/core/reviews/consistency-review-round-003.md`
+    - `doc/core/reviews/round-003-reviewed-files.md`
+    - `doc/core/reviews/round-003-filename-semantic-worklist.md`
   - ROUND-002 进展（2026-03-05）:
     - 已完成 A/B/C/D-E 分区重复簇盘点并回写到 ROUND-002 台账。
     - 已完成首批执行 `C2-007`：`viewer-chat-agent-prompt-default-values-inline-input` 并入 `prefill` 且旧文档已删除，替代链与索引已回写。
-    - 已完成第二批执行 `C2-004`：CI/precommit 规则归属收口（CI 文档链定义规则，precommit/fix-precommit 保留入口与修复流程）。
+    - 已完成第二批执行 `C2-004`：CI/precommit 规则归属收口（CI 文档链定义规则，precommit/precommit-remediation-playbook 保留入口与修复流程）。
     - 已完成第三批子簇 `B3-C2-009-S1`：observer sync source 主从化（`source-mode` 主文档 + `source-dht-mode` 增量子文档）。
     - 已完成并行批次 `B3-C2-009-S2/C2-010/C2-011`：observer sync-mode、node-contribution、distfs-self-healing 三簇主从化收口并回写审计轮次。
     - 已完成并行批次 `B3-C2-003/C2-008-S1/C2-008-S2`：node-redeemable-power-asset 与 distfs-production-hardening（phase1~9）主从化收口并回写审计轮次。
@@ -36,6 +42,9 @@
     - 已完成并行批次 `B5-C2-006-S1/S2`：readme/gap 与 game/gameplay 主从化收口并回写审计轮次。
     - 已完成并行批次 `B6-C2-001/C2-002`：viewer phase8~10 簇收口并回写审计轮次，ROUND-002 进入 completed。
     - 已完成补充批次 `B7-C2-001/C2-002`：viewer phase8~10 物理合并并回写历史入口/索引。
+  - ROUND-003 进展（2026-03-05）:
+    - 已完成全量命名审读并回写 `审计轮次: 3`，`S_round003` 清单已生成。
+    - 已登记命名问题 `I3-001~I3-011`（viewer/launcher/p2p/engineering/headless-runtime/scripts/site 命名不一致），并已完成更名与引用回写。
 - [x] TASK-CORE-006 (PRD-CORE-001/002) [test_tier_required]: 收敛 `doc/` 根目录 legacy redirect 入口并更新总导航。
 - [x] TASK-CORE-007 (PRD-CORE-001/002/003) [test_tier_required]: 对齐 strict PRD schema，补齐关键流程/规格矩阵/边界异常/NFR/验证与决策记录。
 

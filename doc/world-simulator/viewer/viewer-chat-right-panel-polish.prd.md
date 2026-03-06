@@ -1,5 +1,7 @@
 # Agent World Simulator：Viewer Chat 右侧收敛布局与闭环验收（设计文档）
 
+审计轮次: 3
+
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-chat-right-panel-polish.prd.project.md
 
 ## 1. Executive Summary
