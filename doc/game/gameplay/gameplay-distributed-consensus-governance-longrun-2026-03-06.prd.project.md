@@ -13,8 +13,8 @@
 - [x] TASK-GAME-DCG-000 (PRD-GAME-005): 新增专题 PRD 与项目管理文档，完成文档树挂载。
 
 ### T1 执行共识层（RSM）
-- [ ] TASK-GAME-DCG-001 (PRD-GAME-005-01) [test_tier_required]: 新增 `TickBlock/TickCertificate` 数据结构与持久化写入。
-- [ ] TASK-GAME-DCG-002 (PRD-GAME-005-01) [test_tier_required + test_tier_full]: 补齐 `events_hash/state_root` 计算与多次回放一致性回归。
+- [x] TASK-GAME-DCG-001 (PRD-GAME-005-01) [test_tier_required]: 新增 `TickBlock/TickCertificate` 数据结构与持久化写入。
+- [x] TASK-GAME-DCG-002 (PRD-GAME-005-01) [test_tier_required]: 补齐 `events_hash/state_root` 计算与多次回放一致性回归（full-tier 长稳覆盖并入 `TASK-GAME-DCG-009`）。
 
 ### T2 治理共识层（规则与参数）
 - [ ] TASK-GAME-DCG-003 (PRD-GAME-005-02) [test_tier_required]: 将规则/参数变更收敛到治理事件流，禁止旁路应用。
@@ -41,5 +41,6 @@
 ## 状态
 - 更新日期: 2026-03-06
 - 当前状态: `active`
-- 下一任务: `TASK-GAME-DCG-001`（Tick 证书结构与持久化）
+- 下一任务: `TASK-GAME-DCG-003`（治理变更收敛到事件流并禁止旁路）
+- ROUND-002 进展: `TASK-GAME-DCG-001/002` 已完成，tick 证书链在 `step/replay/save-load` 闭环可用。
 - 阻塞项: 无

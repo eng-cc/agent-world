@@ -77,6 +77,7 @@ impl World {
         let _ = self.process_due_material_transits()?;
         let _ = self.process_gameplay_cycles()?;
         self.refresh_threat_heatmap();
+        self.record_tick_consensus()?;
         Ok(())
     }
 
@@ -201,6 +202,7 @@ impl World {
             self.route_event_to_modules(&event, sandbox)?;
         }
         self.refresh_threat_heatmap();
+        self.record_tick_consensus()?;
         Ok(())
     }
 }

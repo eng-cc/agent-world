@@ -265,3 +265,74 @@ fn journal_events_are_bounded_and_track_evictions() {
     assert_eq!(world.journal().events[0].id, 2);
     assert_eq!(world.runtime_backpressure_stats().journal_events_evicted, 1);
 }
+
+#[test]
+fn tick_consensus_records_chain_and_verify_across_steps() {
+    let mut world = World::new();
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.step().expect("step 1");
+    world.submit_action(Action::MoveAgent {
+        agent_id: "agent-1".to_string(),
+        to: pos(1.0, 1.0),
+    });
+    world.step().expect("step 2");
+
+    let records = world.tick_consensus_records();
+    assert_eq!(records.len(), 2);
+    assert_eq!(records[0].block.header.parent_hash, "genesis");
+    assert_eq!(
+        records[1].block.header.parent_hash,
+        records[0].certificate.block_hash
+    );
+    assert_eq!(records[0].block.header.tick, 1);
+    assert_eq!(records[1].block.header.tick, 2);
+    assert!(records[0].block.event_count > 0);
+    assert!(records[1].block.event_count > 0);
+
+    world
+        .verify_tick_consensus_chain()
+        .expect("verify consensus chain");
+}
+
+#[test]
+fn tick_consensus_records_include_empty_tick() {
+    let mut world = World::new();
+    world.step().expect("step without actions");
+
+    let records = world.tick_consensus_records();
+    assert_eq!(records.len(), 1);
+    assert_eq!(records[0].block.header.tick, 1);
+    assert_eq!(records[0].block.event_count, 0);
+    assert!(records[0].block.ordered_event_ids.is_empty());
+    world
+        .verify_tick_consensus_chain()
+        .expect("verify consensus chain");
+}
+
+#[test]
+fn from_snapshot_replay_rebuilds_missing_tick_consensus_records() {
+    let mut world = World::new();
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.step().expect("step 1");
+    let snapshot = world.snapshot();
+    assert_eq!(snapshot.tick_consensus_records.len(), 1);
+
+    world.submit_action(Action::MoveAgent {
+        agent_id: "agent-1".to_string(),
+        to: pos(2.0, 2.0),
+    });
+    world.step().expect("step 2");
+    let journal = world.journal().clone();
+
+    let restored = World::from_snapshot(snapshot, journal).expect("restore from snapshot");
+    assert_eq!(restored.tick_consensus_records().len(), 2);
+    restored
+        .verify_tick_consensus_chain()
+        .expect("verify rebuilt chain");
+}

@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
+use super::consensus::TickConsensusRecord;
 use super::effect::{CapabilityGrant, EffectIntent};
 use super::error::WorldError;
 use super::events::ActionEnvelope;
@@ -92,6 +93,8 @@ pub struct Snapshot {
     pub runtime_memory_limits: WorldRuntimeMemoryLimits,
     #[serde(default)]
     pub runtime_backpressure_stats: WorldRuntimeBackpressureStats,
+    #[serde(default)]
+    pub tick_consensus_records: Vec<TickConsensusRecord>,
 }
 
 fn module_limits_unbounded() -> ModuleLimits {

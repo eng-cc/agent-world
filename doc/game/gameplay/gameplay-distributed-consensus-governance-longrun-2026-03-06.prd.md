@@ -76,6 +76,9 @@
   - `Policy set hash`（规则参数）
 - `block_hash = H("tickblock:v1|parent_hash|tick|events_hash|state_root|executor_version")`
 - `TickCertificate` 只对 `block_hash` 签名，验签失败的 block 不得进入可见历史。
+- v1 实现约束（2026-03-06）：
+  - 先使用 `sha256` 本地签章占位（`threshold=1`）打通证书链路与回放校验。
+  - 后续在 `TASK-GAME-010` 前替换为多签验签路径并接入治理权限门禁。
 
 ### 1.5 执行流程（单分片）
 1. Ingress：收集 `pending_actions`，封板为 tick 输入集。
@@ -221,6 +224,16 @@
 ### PRD-GAME-005-03 身份与反女巫
 - AC-005-06: 身份权重由抵押+信誉共同决定，并具备快照冻结。
 - AC-005-07: 惩罚流程具备“证据 -> 处置 -> 申诉 -> 复核”完整状态链。
+
+## 5.1 当前实现切片（2026-03-06）
+- 已完成 `PRD-GAME-005-01` 的首个实现切片：
+  - `World::step/step_with_modules` 在 tick 末尾写入 `TickConsensusRecord`。
+  - `snapshot/save/load/from_snapshot(replay)` 持久化并恢复 tick 共识记录。
+  - 增加 `verify_tick_consensus_chain()` 对 `parent_hash/events_hash/block_hash/state_root` 的一致性校验。
+- 验证口径：
+  - `runtime::tests::basic::tick_consensus_records_*`
+  - `runtime::tests::persistence::persist_and_restore_world`
+  - `runtime::tests::gameplay_protocol::*` 回归无破坏
 
 ## 6. Validation & Decision Record
 

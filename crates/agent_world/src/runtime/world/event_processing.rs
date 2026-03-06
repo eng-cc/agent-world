@@ -105,10 +105,20 @@ impl World {
     pub(super) fn replay_from(&mut self, start_index: usize) -> Result<(), WorldError> {
         let start_index = start_index.min(self.journal.events.len());
         let events: Vec<WorldEvent> = self.journal.events[start_index..].to_vec();
+        let mut replaying_tick: Option<WorldTime> = None;
         for event in events {
+            if let Some(tick) = replaying_tick {
+                if event.time != tick {
+                    self.record_tick_consensus_for_tick(tick)?;
+                }
+            }
             self.apply_event_body(&event.body, event.time)?;
             self.state.time = event.time;
             self.next_event_id = self.next_event_id.max(event.id.saturating_add(1));
+            replaying_tick = Some(event.time);
+        }
+        if let Some(tick) = replaying_tick {
+            self.record_tick_consensus_for_tick(tick)?;
         }
         Ok(())
     }
@@ -1285,6 +1295,7 @@ impl World {
             body,
         });
         self.enforce_journal_event_limit();
+        self.record_tick_consensus_for_tick(self.state.time)?;
         Ok(event_id)
     }
 

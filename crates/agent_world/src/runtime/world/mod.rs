@@ -26,6 +26,7 @@ mod rules;
 mod scheduling;
 mod snapshot;
 mod step;
+mod tick_consensus;
 
 #[cfg(all(test, feature = "wasmtime", feature = "test_tier_full"))]
 pub(crate) use bootstrap_economy::m4_bootstrap_module_ids;
@@ -34,6 +35,7 @@ pub use bootstrap_power::M1ScenarioBootstrapConfig;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
+use super::consensus::TickConsensusRecord;
 use super::effect::{CapabilityGrant, EffectIntent};
 use super::events::{ActionEnvelope, MaterialTransitPriority};
 use super::governance::Proposal;
@@ -178,6 +180,8 @@ pub struct World {
     logistics_sla_metrics: LogisticsSlaMetrics,
     #[serde(default)]
     threat_heatmap: BTreeMap<String, i64>,
+    #[serde(default)]
+    tick_consensus_records: Vec<TickConsensusRecord>,
 }
 
 impl World {
@@ -234,6 +238,7 @@ impl World {
             runtime_backpressure_stats: WorldRuntimeBackpressureStats::default(),
             logistics_sla_metrics: LogisticsSlaMetrics::default(),
             threat_heatmap: BTreeMap::new(),
+            tick_consensus_records: Vec::new(),
         }
     }
 
@@ -291,6 +296,10 @@ impl World {
 
     pub fn threat_heatmap(&self) -> &BTreeMap<String, i64> {
         &self.threat_heatmap
+    }
+
+    pub fn tick_consensus_records(&self) -> &[TickConsensusRecord] {
+        self.tick_consensus_records.as_slice()
     }
 
     pub fn with_runtime_memory_limits(mut self, limits: WorldRuntimeMemoryLimits) -> Self {

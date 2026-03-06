@@ -13,6 +13,7 @@ mod audit;
 mod blob_store;
 mod builtin_wasm_identity_manifest;
 mod builtin_wasm_materializer;
+mod consensus;
 mod effect;
 mod error;
 mod events;
@@ -65,6 +66,11 @@ pub use effect::{
 
 // Error
 pub use error::WorldError;
+
+// Consensus
+pub use consensus::{
+    TickBlock, TickBlockHeader, TickCertificate, TickConsensusRecord, TickExecutionDigest,
+};
 
 // Events
 pub use events::{

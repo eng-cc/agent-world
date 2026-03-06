@@ -76,6 +76,13 @@ fn persist_and_restore_world() {
 
     let restored = World::load_from_dir(&dir).unwrap();
     assert_eq!(restored.state(), world.state());
+    assert_eq!(
+        restored.tick_consensus_records(),
+        world.tick_consensus_records()
+    );
+    restored
+        .verify_tick_consensus_chain()
+        .expect("verify persisted tick consensus chain");
 
     let _ = fs::remove_dir_all(&dir);
 }
