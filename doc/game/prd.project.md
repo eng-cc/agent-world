@@ -22,7 +22,7 @@
 ## 状态
 - 更新日期: 2026-03-06
 - 当前状态: active
-- 下一任务: TASK-GAME-007（下一子任务：TASK-GAMEPLAY-MLF-003）
+- 下一任务: TASK-GAME-007（下一子任务：TASK-GAMEPLAY-MLF-004）
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
-- ROUND-002 进展: gameplay 子簇主从化完成，`TASK-GAMEPLAY-MLF-001/002` 已交付。
+- ROUND-002 进展: gameplay 子簇主从化完成，`TASK-GAMEPLAY-MLF-001/002/003` 已交付。
 - 说明: 本文档仅维护 game 设计执行状态；过程记录在 `doc/devlog/2026-03-05.md` 与 `doc/devlog/2026-03-06.md`。

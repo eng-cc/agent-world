@@ -6,6 +6,10 @@ use super::egui_right_panel_player_guide::{
     player_mission_hud_minimap_reserved_bottom, player_mission_hud_show_command_action,
     player_mission_hud_show_minimap, PlayerGuideProgressSnapshot,
 };
+use super::egui_right_panel_player_micro_loop::{
+    build_player_micro_loop_snapshot, format_due_timer_line,
+};
+use agent_world::simulator::{WorldEvent, WorldEventKind};
 
 #[test]
 fn build_player_mission_loop_snapshot_open_panel_requires_open_action() {
@@ -183,4 +187,45 @@ fn player_control_stage_shows_recovery_actions_only_for_no_progress_completion()
     ));
     assert!(!player_control_stage_shows_recovery_actions("executing"));
     assert!(!player_control_stage_shows_recovery_actions("blocked"));
+}
+
+#[test]
+fn player_micro_loop_snapshot_exposes_due_timer_lines() {
+    let mut state = super::sample_viewer_state(
+        crate::ConnectionStatus::Connected,
+        vec![
+            WorldEvent {
+                id: 1,
+                time: 8,
+                kind: WorldEventKind::RuntimeEvent {
+                    kind: "runtime.gameplay.governance_proposal_opened".to_string(),
+                    domain_kind: Some(
+                        "proposal_key=gov-main title=budget closes_at=20".to_string(),
+                    ),
+                },
+                runtime_event: None,
+            },
+            WorldEvent {
+                id: 2,
+                time: 9,
+                kind: WorldEventKind::RuntimeEvent {
+                    kind: "runtime.action_accepted".to_string(),
+                    domain_kind: Some(
+                        "action_id=7 action_kind=open_governance actor_id=agent-1 eta_ticks=4"
+                            .to_string(),
+                    ),
+                },
+                runtime_event: None,
+            },
+        ],
+    );
+    state.metrics = Some(agent_world::simulator::RunnerMetrics {
+        total_ticks: 10,
+        ..agent_world::simulator::RunnerMetrics::default()
+    });
+    let snapshot = build_player_micro_loop_snapshot(&state, crate::i18n::UiLocale::EnUs);
+    assert_eq!(snapshot.action_status.headline, "Recent Action: Accepted");
+    let timer_line = format_due_timer_line(&snapshot.due_timers[0], crate::i18n::UiLocale::EnUs);
+    assert!(timer_line.contains("Governance gov-main"));
+    assert!(timer_line.contains("T-10"));
 }

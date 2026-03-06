@@ -1,9 +1,13 @@
-use crate::web_test_api::latest_web_test_api_control_feedback;
+use crate::web_test_api::WebTestApiControlFeedbackSnapshot;
 use crate::{RightPanelLayoutState, ViewerSelection};
 use bevy_egui::egui;
 use std::collections::HashMap;
 
 use super::egui_right_panel_player_experience::PlayerGuideStep;
+use super::egui_right_panel_player_micro_loop::{
+    build_player_micro_loop_snapshot, format_due_timer_line, PlayerMicroLoopSnapshot,
+    PlayerMicroLoopTone, PlayerNoProgressDiagnosis,
+};
 
 const PLAYER_CINEMATIC_FADE_IN_TICKS: u64 = 6;
 const PLAYER_CINEMATIC_HOLD_END_TICKS: u64 = 28;
@@ -916,11 +920,73 @@ fn render_player_minimap_card(
         });
 }
 
+fn player_micro_loop_tone_color(tone: PlayerMicroLoopTone) -> egui::Color32 {
+    match tone {
+        PlayerMicroLoopTone::Positive => egui::Color32::from_rgb(92, 188, 126),
+        PlayerMicroLoopTone::Warning => egui::Color32::from_rgb(230, 148, 96),
+        PlayerMicroLoopTone::Info => egui::Color32::from_rgb(116, 174, 236),
+    }
+}
+
+fn render_player_micro_loop_summary(
+    ui: &mut egui::Ui,
+    snapshot: &PlayerMicroLoopSnapshot,
+    locale: crate::i18n::UiLocale,
+) {
+    let tone = player_micro_loop_tone_color(snapshot.action_status.tone);
+    egui::Frame::group(ui.style())
+        .fill(egui::Color32::from_rgba_unmultiplied(26, 34, 48, 144))
+        .stroke(egui::Stroke::new(1.0, tone))
+        .corner_radius(egui::CornerRadius::same(7))
+        .inner_margin(egui::Margin::same(7))
+        .show(ui, |ui| {
+            ui.small(if locale.is_zh() {
+                "微循环反馈"
+            } else {
+                "Micro-loop Feedback"
+            });
+            ui.small(egui::RichText::new(snapshot.action_status.headline.as_str()).color(tone));
+            ui.small(snapshot.action_status.detail.as_str());
+            if let Some(pending_eta_ticks) = snapshot.action_status.pending_eta_ticks {
+                ui.small(if locale.is_zh() {
+                    format!("动作 ETA: 约 {} tick", pending_eta_ticks)
+                } else {
+                    format!("Action ETA: about {} ticks", pending_eta_ticks)
+                });
+            }
+            if snapshot.due_timers.is_empty() {
+                ui.small(if locale.is_zh() {
+                    "关键计时器：暂无激活项"
+                } else {
+                    "Key timers: none active"
+                });
+            } else {
+                ui.small(if locale.is_zh() {
+                    "关键计时器（战争/治理/危机/合约）"
+                } else {
+                    "Key timers (war/governance/crisis/contract)"
+                });
+                for timer in snapshot.due_timers.iter().take(4) {
+                    ui.small(
+                        egui::RichText::new(format_due_timer_line(timer, locale)).color(
+                            if timer.overdue_ticks > 0 {
+                                egui::Color32::from_rgb(238, 168, 108)
+                            } else {
+                                egui::Color32::from_rgb(186, 206, 238)
+                            },
+                        ),
+                    );
+                }
+            }
+        });
+}
+
 pub(super) fn render_player_mission_hud(
     context: &egui::Context,
     state: &crate::ViewerState,
     selection: &ViewerSelection,
     client: Option<&crate::ViewerClient>,
+    control_feedback: Option<&WebTestApiControlFeedbackSnapshot>,
     control_profile: Option<&crate::ViewerControlProfileState>,
     layout_state: &mut RightPanelLayoutState,
     module_visibility: &mut crate::right_panel_module_visibility::RightPanelModuleVisibilityState,
@@ -928,6 +994,7 @@ pub(super) fn render_player_mission_hud(
     step: PlayerGuideStep,
     progress: PlayerGuideProgressSnapshot,
     stuck_hint: Option<&str>,
+    stuck_diagnosis: Option<&PlayerNoProgressDiagnosis>,
     locale: crate::i18n::UiLocale,
     now_secs: f64,
 ) {
@@ -947,7 +1014,7 @@ pub(super) fn render_player_mission_hud(
     let mut action_clicked = false;
     let mut command_clicked = false;
     let (mut recover_play_clicked, mut recover_step_clicked) = (false, false);
-    let control_feedback = latest_web_test_api_control_feedback();
+    let micro_loop_snapshot = build_player_micro_loop_snapshot(state, locale);
     let control_feedback_needs_recovery = control_feedback.as_ref().is_some_and(|feedback| {
         player_control_stage_shows_recovery_actions(feedback.stage.as_str())
     });
@@ -984,6 +1051,7 @@ pub(super) fn render_player_mission_hud(
                         egui::RichText::new(remaining_hint.as_str())
                             .color(egui::Color32::from_rgb(186, 206, 238)),
                     );
+                    render_player_micro_loop_summary(ui, &micro_loop_snapshot, locale);
                     egui::CollapsingHeader::new(if locale.is_zh() {
                         "展开短目标"
                     } else {
@@ -1021,6 +1089,24 @@ pub(super) fn render_player_mission_hud(
                                     egui::RichText::new(stuck_hint)
                                         .color(egui::Color32::from_rgb(248, 210, 180)),
                                 );
+                                if let Some(diagnosis) = stuck_diagnosis {
+                                    ui.small(
+                                        egui::RichText::new(if locale.is_zh() {
+                                            format!("原因：{}", diagnosis.reason)
+                                        } else {
+                                            format!("Cause: {}", diagnosis.reason)
+                                        })
+                                        .color(egui::Color32::from_rgb(244, 188, 152)),
+                                    );
+                                    ui.small(
+                                        egui::RichText::new(if locale.is_zh() {
+                                            format!("建议：{}", diagnosis.suggestion)
+                                        } else {
+                                            format!("Next: {}", diagnosis.suggestion)
+                                        })
+                                        .color(egui::Color32::from_rgb(204, 226, 244)),
+                                    );
+                                }
                                 if client.is_some() && !control_feedback_needs_recovery {
                                     ui.horizontal_wrapped(|ui| {
                                         recover_play_clicked = ui

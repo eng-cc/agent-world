@@ -8,6 +8,9 @@ use super::egui_right_panel_player_guide::{
     render_player_guide_progress_lines, render_player_layout_preset_strip,
     render_player_mission_hud, PlayerGuideProgressSnapshot,
 };
+use super::egui_right_panel_player_micro_loop::{
+    build_player_micro_loop_snapshot, build_player_no_progress_diagnosis, PlayerNoProgressDiagnosis,
+};
 use agent_world::simulator::{ResourceOwner, WorldEvent, WorldEventKind};
 use bevy_egui::egui;
 use std::collections::BTreeSet;
@@ -968,8 +971,17 @@ pub(super) fn build_player_stuck_hint(
     locale: crate::i18n::UiLocale,
     idle_secs: f64,
 ) -> String {
+    build_player_stuck_hint_with_diagnosis(step, locale, idle_secs, None)
+}
+
+pub(super) fn build_player_stuck_hint_with_diagnosis(
+    step: PlayerGuideStep,
+    locale: crate::i18n::UiLocale,
+    idle_secs: f64,
+    diagnosis: Option<&PlayerNoProgressDiagnosis>,
+) -> String {
     let idle_secs = idle_secs.round() as u64;
-    match (step, locale.is_zh()) {
+    let base = match (step, locale.is_zh()) {
         (PlayerGuideStep::ExploreAction, true) => {
             format!("检测到 {idle_secs} 秒无进展：点击“执行下一步”或“直接指挥 Agent”恢复推进")
         }
@@ -982,6 +994,21 @@ pub(super) fn build_player_stuck_hint(
         (_, false) => {
             format!("No progress for {idle_secs}s: complete the current main step to recover")
         }
+    };
+    match diagnosis {
+        Some(diagnosis) if locale.is_zh() => {
+            format!(
+                "{base}｜原因：{}｜建议：{}",
+                diagnosis.reason, diagnosis.suggestion
+            )
+        }
+        Some(diagnosis) => {
+            format!(
+                "{base} | Cause: {} | Next: {}",
+                diagnosis.reason, diagnosis.suggestion
+            )
+        }
+        None => base,
     }
 }
 
@@ -1364,7 +1391,14 @@ pub(super) fn render_player_experience_layers(
         action_feedback_seen,
     );
     let stuck_idle_secs = sync_player_stuck_hint_state(onboarding, state, now_secs);
-    let stuck_hint = stuck_idle_secs.map(|idle| build_player_stuck_hint(guide_step, locale, idle));
+    let control_feedback = crate::web_test_api::latest_web_test_api_control_feedback();
+    let micro_loop_snapshot = build_player_micro_loop_snapshot(state, locale);
+    let stuck_diagnosis = stuck_idle_secs.map(|_| {
+        build_player_no_progress_diagnosis(control_feedback.as_ref(), &micro_loop_snapshot, locale)
+    });
+    let stuck_hint = stuck_idle_secs.map(|idle| {
+        build_player_stuck_hint_with_diagnosis(guide_step, locale, idle, stuck_diagnosis.as_ref())
+    });
     sync_player_first_session_summary_state(onboarding, state, guide_progress, now_secs);
     let onboarding_visible = should_show_player_onboarding_card(onboarding, guide_step);
     sync_player_guide_transition(&mut onboarding.guide_transition, guide_step, now_secs);
@@ -1375,6 +1409,7 @@ pub(super) fn render_player_experience_layers(
         state,
         selection,
         client,
+        control_feedback.as_ref(),
         control_profile,
         layout_state,
         module_visibility,
@@ -1382,6 +1417,7 @@ pub(super) fn render_player_experience_layers(
         guide_step,
         guide_progress,
         stuck_hint.as_deref(),
+        stuck_diagnosis.as_ref(),
         locale,
         now_secs,
     );

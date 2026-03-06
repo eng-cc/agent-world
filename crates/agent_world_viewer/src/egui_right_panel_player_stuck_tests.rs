@@ -1,6 +1,8 @@
 use super::egui_right_panel_player_experience::{
-    build_player_stuck_hint, sync_player_stuck_hint_state, PlayerGuideStep, PlayerOnboardingState,
+    build_player_stuck_hint, build_player_stuck_hint_with_diagnosis, sync_player_stuck_hint_state,
+    PlayerGuideStep, PlayerOnboardingState,
 };
+use super::egui_right_panel_player_micro_loop::PlayerNoProgressDiagnosis;
 
 #[test]
 fn stuck_hint_triggers_after_five_seconds_without_progress() {
@@ -47,4 +49,20 @@ fn build_player_stuck_hint_mentions_recovery_actions_for_explore_step() {
     );
     assert!(message.contains("Do next step"));
     assert!(message.contains("Command Agent"));
+}
+
+#[test]
+fn stuck_hint_includes_reason_and_suggestion_when_diagnosis_provided() {
+    let diagnosis = PlayerNoProgressDiagnosis {
+        reason: "completion ack timeout_no_progress".to_string(),
+        suggestion: "click Recover: play and retry".to_string(),
+    };
+    let message = build_player_stuck_hint_with_diagnosis(
+        PlayerGuideStep::ExploreAction,
+        crate::i18n::UiLocale::EnUs,
+        9.0,
+        Some(&diagnosis),
+    );
+    assert!(message.contains("Cause: completion ack timeout_no_progress"));
+    assert!(message.contains("Next: click Recover: play and retry"));
 }

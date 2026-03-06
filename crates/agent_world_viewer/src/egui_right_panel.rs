@@ -63,6 +63,8 @@ mod egui_right_panel_player_entry;
 mod egui_right_panel_player_experience;
 #[path = "egui_right_panel_player_guide.rs"]
 mod egui_right_panel_player_guide;
+#[path = "egui_right_panel_player_micro_loop.rs"]
+mod egui_right_panel_player_micro_loop;
 #[path = "egui_right_panel_text_sections.rs"]
 mod egui_right_panel_text_sections;
 #[path = "egui_right_panel_text_utils.rs"]
