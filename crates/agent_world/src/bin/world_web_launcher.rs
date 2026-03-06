@@ -326,6 +326,38 @@ impl ChainTransferSubmitResponse {
     }
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+struct ChainFeedbackSubmitRequest {
+    category: String,
+    title: String,
+    description: String,
+    platform: String,
+    game_version: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+struct ChainFeedbackSubmitResponse {
+    ok: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    feedback_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    event_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    error: Option<String>,
+}
+
+impl ChainFeedbackSubmitResponse {
+    fn error(error: impl Into<String>) -> Self {
+        Self {
+            ok: false,
+            feedback_id: None,
+            event_id: None,
+            error: Some(error.into()),
+        }
+    }
+}
+
 fn main() {
     let raw_args: Vec<String> = env::args().skip(1).collect();
     if raw_args.iter().any(|arg| arg == "--help" || arg == "-h") {
@@ -543,6 +575,19 @@ fn handle_connection(
             let response = submit_chain_transfer(&mut state, &submit_request);
             write_json_response(&mut stream, 200, &response)
         }
+        ("POST", "/api/chain/feedback") => {
+            let submit_request = match parse_chain_feedback_request(request.body.as_slice()) {
+                Ok(request) => request,
+                Err(err) => {
+                    let response = ChainFeedbackSubmitResponse::error(err);
+                    return write_json_response(&mut stream, 200, &response);
+                }
+            };
+            let mut state = lock_state(&shared_state);
+            poll_service_state(&mut state);
+            let response = submit_chain_feedback(&mut state, &submit_request);
+            write_json_response(&mut stream, 200, &response)
+        }
         ("OPTIONS", _) => {
             write_http_response(&mut stream, 204, "text/plain", b"", false)?;
             Ok(())
@@ -556,6 +601,7 @@ fn handle_connection(
         | (method, "/api/chain/start")
         | (method, "/api/chain/stop")
         | (method, "/api/chain/transfer")
+        | (method, "/api/chain/feedback")
             if method != "GET" && method != "POST" =>
         {
             write_http_response(

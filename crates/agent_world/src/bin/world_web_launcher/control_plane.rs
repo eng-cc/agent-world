@@ -9,6 +9,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 const CHAIN_TRANSFER_SUBMIT_PATH: &str = "/v1/chain/transfer/submit";
+const CHAIN_FEEDBACK_SUBMIT_PATH: &str = "/v1/chain/feedback/submit";
 const CHAIN_TRANSFER_PROXY_TIMEOUT_MS: u64 = 1_500;
 
 pub(super) fn parse_config_request(body: &[u8], action: &str) -> Result<LauncherConfig, String> {
@@ -20,6 +21,13 @@ pub(super) fn parse_chain_transfer_request(
 ) -> Result<ChainTransferSubmitRequest, String> {
     serde_json::from_slice(body)
         .map_err(|err| format!("parse chain transfer request JSON failed: {err}"))
+}
+
+pub(super) fn parse_chain_feedback_request(
+    body: &[u8],
+) -> Result<ChainFeedbackSubmitRequest, String> {
+    serde_json::from_slice(body)
+        .map_err(|err| format!("parse chain feedback request JSON failed: {err}"))
 }
 
 pub(super) fn submit_chain_transfer(
@@ -62,6 +70,42 @@ pub(super) fn submit_chain_transfer(
         Err(err) => {
             let response = ChainTransferSubmitResponse::error("proxy_error", err.clone());
             state.append_log(format!("chain transfer proxy failed: {err}"));
+            state.mark_updated();
+            response
+        }
+    }
+}
+
+pub(super) fn submit_chain_feedback(
+    state: &mut ServiceState,
+    request: &ChainFeedbackSubmitRequest,
+) -> ChainFeedbackSubmitResponse {
+    if !state.config.chain_enabled {
+        let response = ChainFeedbackSubmitResponse::error("chain runtime is disabled");
+        state.append_log("chain feedback submit rejected: chain runtime is disabled");
+        state.mark_updated();
+        return response;
+    }
+
+    let chain_status_bind = state.config.chain_status_bind.clone();
+    match submit_chain_feedback_remote(chain_status_bind.as_str(), request) {
+        Ok(response) => {
+            if response.ok {
+                let feedback_id = response.feedback_id.as_deref().unwrap_or("n/a");
+                let event_id = response.event_id.as_deref().unwrap_or("n/a");
+                state.append_log(format!(
+                    "chain feedback submitted via control plane (feedback_id={feedback_id}, event_id={event_id})"
+                ));
+            } else {
+                let error_text = response.error.as_deref().unwrap_or("unknown error");
+                state.append_log(format!("chain feedback rejected by runtime: {error_text}"));
+            }
+            state.mark_updated();
+            response
+        }
+        Err(err) => {
+            let response = ChainFeedbackSubmitResponse::error(err.clone());
+            state.append_log(format!("chain feedback proxy failed: {err}"));
             state.mark_updated();
             response
         }
@@ -303,6 +347,79 @@ fn parse_chain_transfer_submit_response(
 
     let response: ChainTransferSubmitResponse = serde_json::from_slice(body)
         .map_err(|err| format!("parse chain transfer response JSON failed: {err}"))?;
+    Ok((status_code, response))
+}
+
+fn submit_chain_feedback_remote(
+    chain_status_bind: &str,
+    request: &ChainFeedbackSubmitRequest,
+) -> Result<ChainFeedbackSubmitResponse, String> {
+    let (host, port) = parse_host_port(chain_status_bind, "chain status bind")?;
+    let host = runtime_paths::normalize_bind_host_for_local_access(host.as_str());
+    let socket_addr = (host.as_str(), port)
+        .to_socket_addrs()
+        .map_err(|err| format!("resolve chain status server failed: {err}"))?
+        .next()
+        .ok_or_else(|| "resolve chain status server failed: no socket address".to_string())?;
+
+    let mut stream = TcpStream::connect_timeout(
+        &socket_addr,
+        Duration::from_millis(CHAIN_TRANSFER_PROXY_TIMEOUT_MS),
+    )
+    .map_err(|err| format!("connect chain status server failed: {err}"))?;
+    let timeout = Some(Duration::from_millis(CHAIN_TRANSFER_PROXY_TIMEOUT_MS));
+    let _ = stream.set_read_timeout(timeout);
+    let _ = stream.set_write_timeout(timeout);
+
+    let payload = serde_json::to_vec(request)
+        .map_err(|err| format!("serialize chain feedback request failed: {err}"))?;
+    let host_header = host_for_url(host.as_str());
+    let request_head = format!(
+        "POST {CHAIN_FEEDBACK_SUBMIT_PATH} HTTP/1.1\r\nHost: {host_header}:{port}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+        payload.len()
+    );
+    std::io::Write::write_all(&mut stream, request_head.as_bytes())
+        .map_err(|err| format!("write chain feedback request header failed: {err}"))?;
+    std::io::Write::write_all(&mut stream, payload.as_slice())
+        .map_err(|err| format!("write chain feedback request body failed: {err}"))?;
+    std::io::Write::flush(&mut stream)
+        .map_err(|err| format!("flush chain feedback request failed: {err}"))?;
+
+    let mut response_bytes = Vec::new();
+    std::io::Read::read_to_end(&mut stream, &mut response_bytes)
+        .map_err(|err| format!("read chain feedback response failed: {err}"))?;
+    let (status_code, response) = parse_chain_feedback_submit_response(response_bytes.as_slice())?;
+
+    if !(200..=299).contains(&status_code) && response.ok {
+        return Err(format!(
+            "chain feedback submit returned HTTP {status_code} with invalid success payload"
+        ));
+    }
+    Ok(response)
+}
+
+fn parse_chain_feedback_submit_response(
+    response_bytes: &[u8],
+) -> Result<(u16, ChainFeedbackSubmitResponse), String> {
+    let Some(boundary) = response_bytes
+        .windows(4)
+        .position(|window| window == b"\r\n\r\n")
+    else {
+        return Err("invalid HTTP response: missing header terminator".to_string());
+    };
+    let header = std::str::from_utf8(&response_bytes[..boundary])
+        .map_err(|_| "invalid HTTP response: header is not UTF-8".to_string())?;
+    let body = &response_bytes[(boundary + 4)..];
+
+    let status_code = header
+        .lines()
+        .next()
+        .and_then(|line| line.split_whitespace().nth(1))
+        .and_then(|token| token.parse::<u16>().ok())
+        .ok_or_else(|| "invalid HTTP response: missing status code".to_string())?;
+
+    let response: ChainFeedbackSubmitResponse = serde_json::from_slice(body)
+        .map_err(|err| format!("parse chain feedback response JSON failed: {err}"))?;
     Ok((status_code, response))
 }
 
@@ -823,7 +940,8 @@ fn send_interrupt_signal(child: &Child) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::{
-        parse_chain_transfer_request, submit_chain_transfer_remote, ChainTransferSubmitRequest,
+        parse_chain_feedback_request, parse_chain_transfer_request, submit_chain_feedback_remote,
+        submit_chain_transfer_remote, ChainFeedbackSubmitRequest, ChainTransferSubmitRequest,
     };
     use std::io::{Read, Write};
     use std::net::TcpListener;
@@ -876,6 +994,13 @@ mod tests {
         let err = parse_chain_transfer_request(br#"{"from_account_id":"player:alice"}"#)
             .expect_err("invalid payload should fail");
         assert!(err.contains("parse chain transfer request JSON failed"));
+    }
+
+    #[test]
+    fn parse_chain_feedback_request_rejects_invalid_json() {
+        let err = parse_chain_feedback_request(br#"{"category":"bug","title":"x"}"#)
+            .expect_err("invalid payload should fail");
+        assert!(err.contains("parse chain feedback request JSON failed"));
     }
 
     #[test]
@@ -940,6 +1065,72 @@ mod tests {
         assert!(!response.ok);
         assert_eq!(response.error_code.as_deref(), Some("invalid_request"));
         assert_eq!(response.error.as_deref(), Some("bad payload"));
+        server.join().expect("server thread should finish");
+    }
+
+    #[test]
+    fn submit_chain_feedback_remote_posts_expected_payload_and_reads_success() {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("bind test server");
+        let bind = listener.local_addr().expect("local addr");
+
+        let server = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().expect("accept");
+            let request_bytes = read_http_request(&mut stream);
+            let request_text = String::from_utf8_lossy(&request_bytes);
+            assert!(request_text.starts_with("POST /v1/chain/feedback/submit HTTP/1.1"));
+            assert!(request_text.contains("\"category\":\"bug\""));
+            assert!(request_text.contains("\"title\":\"web feedback\""));
+            assert!(request_text.contains("\"description\":\"looks good\""));
+            write_http_json_response(
+                &mut stream,
+                "200 OK",
+                r#"{"ok":true,"feedback_id":"fb-1","event_id":"evt-1"}"#,
+            );
+        });
+
+        let request = ChainFeedbackSubmitRequest {
+            category: "bug".to_string(),
+            title: "web feedback".to_string(),
+            description: "looks good".to_string(),
+            platform: "client_launcher_web".to_string(),
+            game_version: "unknown".to_string(),
+        };
+        let response =
+            submit_chain_feedback_remote(format!("127.0.0.1:{}", bind.port()).as_str(), &request)
+                .expect("submit should succeed");
+        assert!(response.ok);
+        assert_eq!(response.feedback_id.as_deref(), Some("fb-1"));
+        assert_eq!(response.event_id.as_deref(), Some("evt-1"));
+        server.join().expect("server thread should finish");
+    }
+
+    #[test]
+    fn submit_chain_feedback_remote_returns_rejected_payload_for_http_400() {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("bind test server");
+        let bind = listener.local_addr().expect("local addr");
+
+        let server = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().expect("accept");
+            let _ = read_http_request(&mut stream);
+            write_http_json_response(
+                &mut stream,
+                "400 Bad Request",
+                r#"{"ok":false,"error":"invalid category"}"#,
+            );
+        });
+
+        let request = ChainFeedbackSubmitRequest {
+            category: "bug".to_string(),
+            title: "web feedback".to_string(),
+            description: "looks good".to_string(),
+            platform: "client_launcher_web".to_string(),
+            game_version: "unknown".to_string(),
+        };
+        let response =
+            submit_chain_feedback_remote(format!("127.0.0.1:{}", bind.port()).as_str(), &request)
+                .expect("proxy should return rejected payload");
+        assert!(!response.ok);
+        assert_eq!(response.error.as_deref(), Some("invalid category"));
         server.join().expect("server thread should finish");
     }
 }

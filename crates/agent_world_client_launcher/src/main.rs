@@ -316,6 +316,7 @@ struct RunningProcess;
 enum WebApiEvent {
     State(Result<WebStateSnapshot, String>),
     Action(Result<WebApiResponse, String>),
+    Feedback(Result<WebFeedbackSubmitResponse, String>),
     Transfer(Result<WebTransferSubmitResponse, String>),
 }
 
@@ -339,6 +340,23 @@ struct WebApiResponse {
     ok: bool,
     error: Option<String>,
     state: WebStateSnapshot,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct WebFeedbackSubmitRequest {
+    category: String,
+    title: String,
+    description: String,
+    platform: String,
+    game_version: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct WebFeedbackSubmitResponse {
+    ok: bool,
+    feedback_id: Option<String>,
+    event_id: Option<String>,
+    error: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -554,9 +572,41 @@ impl ConfigIssue {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg(target_arch = "wasm32")]
-struct FeedbackDraft;
+enum FeedbackKind {
+    Bug,
+    Suggestion,
+}
+
+#[cfg(target_arch = "wasm32")]
+impl FeedbackKind {
+    fn slug(self) -> &'static str {
+        match self {
+            Self::Bug => "bug",
+            Self::Suggestion => "suggestion",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg(target_arch = "wasm32")]
+struct FeedbackDraft {
+    kind: FeedbackKind,
+    title: String,
+    description: String,
+}
+
+#[cfg(target_arch = "wasm32")]
+impl Default for FeedbackDraft {
+    fn default() -> Self {
+        Self {
+            kind: FeedbackKind::Bug,
+            title: String::new(),
+            description: String::new(),
+        }
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum FeedbackSubmitState {
@@ -753,6 +803,47 @@ impl ClientLauncherApp {
                 );
                 self.append_log(message.clone());
                 self.transfer_submit_state = TransferSubmitState::Failed(message);
+            }
+        }
+    }
+
+    fn apply_web_feedback_submit_result(
+        &mut self,
+        result: Result<WebFeedbackSubmitResponse, String>,
+    ) {
+        match result {
+            Ok(response) => {
+                if response.ok {
+                    let feedback_id = response.feedback_id.unwrap_or_else(|| "n/a".to_string());
+                    let event_id = response.event_id.unwrap_or_else(|| "n/a".to_string());
+                    let message = format!(
+                        "{}: feedback_id={feedback_id}, event_id={event_id}",
+                        self.tr(
+                            "反馈已提交到分布式网络",
+                            "Feedback submitted to distributed network"
+                        )
+                    );
+                    self.append_log(message.clone());
+                    self.feedback_submit_state = FeedbackSubmitState::Success(message);
+                } else {
+                    let error_text = response
+                        .error
+                        .unwrap_or_else(|| self.tr("未知错误", "Unknown error").to_string());
+                    let message = format!(
+                        "{}: {error_text}",
+                        self.tr("反馈提交被拒绝", "Feedback submit rejected")
+                    );
+                    self.append_log(message.clone());
+                    self.feedback_submit_state = FeedbackSubmitState::Failed(message);
+                }
+            }
+            Err(err) => {
+                let message = format!(
+                    "{}: {err}",
+                    self.tr("反馈提交失败", "Feedback submit failed")
+                );
+                self.append_log(message.clone());
+                self.feedback_submit_state = FeedbackSubmitState::Failed(message);
             }
         }
     }
@@ -1001,8 +1092,18 @@ impl eframe::App for ClientLauncherApp {
                 }
                 #[cfg(target_arch = "wasm32")]
                 {
-                    ui.add_enabled(false, egui::Button::new(self.tr("设置", "Settings")));
-                    ui.add_enabled(false, egui::Button::new(self.tr("反馈", "Feedback")));
+                    if ui.button(self.tr("设置", "Settings")).clicked() {
+                        self.llm_settings_panel.open();
+                    }
+                    if ui
+                        .add_enabled(
+                            self.is_feedback_available(),
+                            egui::Button::new(self.tr("反馈", "Feedback")),
+                        )
+                        .clicked()
+                    {
+                        self.feedback_window_open = true;
+                    }
                     if ui
                         .add_enabled(
                             self.is_feedback_available(),

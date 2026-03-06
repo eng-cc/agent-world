@@ -57,6 +57,7 @@ impl ClientLauncherApp {
                         self.append_log(format!("web action request failed: {err}"));
                     }
                 },
+                WebApiEvent::Feedback(result) => self.apply_web_feedback_submit_result(result),
                 WebApiEvent::Transfer(result) => self.apply_web_transfer_submit_result(result),
             }
         }
@@ -115,6 +116,21 @@ impl ClientLauncherApp {
         spawn_local(async move {
             let _ = tx.send(WebApiEvent::Transfer(
                 post_web_chain_transfer(request).await,
+            ));
+        });
+    }
+
+    pub(super) fn request_web_chain_feedback(&mut self, request: WebFeedbackSubmitRequest) {
+        if self.web_request_inflight {
+            self.append_log("skip feedback submit: previous web request still in flight");
+            return;
+        }
+        self.web_request_inflight = true;
+        self.last_web_poll_at = Some(Instant::now());
+        let tx = self.web_api_tx.clone();
+        spawn_local(async move {
+            let _ = tx.send(WebApiEvent::Feedback(
+                post_web_chain_feedback(request).await,
             ));
         });
     }
@@ -309,4 +325,29 @@ async fn post_web_chain_transfer(
         .json::<WebTransferSubmitResponse>()
         .await
         .map_err(|err| format!("decode /api/chain/transfer response failed: {err}"))
+}
+
+async fn post_web_chain_feedback(
+    request_payload: WebFeedbackSubmitRequest,
+) -> Result<WebFeedbackSubmitResponse, String> {
+    let payload = serde_json::to_string(&request_payload)
+        .map_err(|err| format!("serialize /api/chain/feedback payload failed: {err}"))?;
+    let request = Request::post("/api/chain/feedback")
+        .header("content-type", "application/json")
+        .body(payload)
+        .map_err(|err| format!("build /api/chain/feedback request failed: {err}"))?;
+    let response = request
+        .send()
+        .await
+        .map_err(|err| format!("POST /api/chain/feedback failed: {err}"))?;
+    if !response.ok() {
+        return Err(format!(
+            "POST /api/chain/feedback failed with HTTP {}",
+            response.status()
+        ));
+    }
+    response
+        .json::<WebFeedbackSubmitResponse>()
+        .await
+        .map_err(|err| format!("decode /api/chain/feedback response failed: {err}"))
 }
