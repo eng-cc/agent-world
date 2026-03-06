@@ -2,7 +2,7 @@
 
 审计轮次: 4
 
-本分册为 `doc/world-runtime.prd.md` 的详细展开。
+本分册为 `doc/world-runtime/prd.md` 的详细展开。
 
 ## 模块治理与兼容性（草案）
 - **版本与兼容**：`interface_version` 由内核维护；模块声明兼容范围，若不兼容则拒绝加载。
@@ -106,7 +106,7 @@ ArtifactWrite(wasm_hash)
     -> ShadowReport(pass)
       -> Approve
         -> Apply
-          -> ModuleValidationFailed
+          -> ModuleCallFailed(reject_reason)
           -> 无 Register/Activate（不更新注册表）
 ```
 
@@ -127,7 +127,7 @@ ArtifactWrite(wasm_hash)
 **Apply 行为（示意）**
 - 生成模块生命周期事件并追加到事件流。
 - 更新 `module_registry.json` 与内存缓存索引。
-- 若任何校验失败，拒绝 apply 并记录 `ModuleValidationFailed`。
+- 若任何校验失败，拒绝 apply 并记录 `ModuleCallFailed`（带拒绝原因）。
 
 **ModuleChangeSet（示意）**
 ```rust
