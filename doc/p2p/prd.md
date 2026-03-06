@@ -34,36 +34,43 @@
   - SC-2: 多节点在线长跑套件按计划执行并形成可追溯结果。
   - SC-3: 共识与存储链路关键失败模式具备回归测试覆盖。
   - SC-4: 发行前完成网络/共识/DistFS 三线联合验收。
+  - SC-5: 移动端轻客户端路径可在不运行本地权威模拟器前提下稳定接入。
 
 ## 2. User Experience & Functionality
 - User Personas:
   - 协议工程师：需要明确网络与共识边界。
   - 节点运营者：需要稳定部署和可观测运行信号。
   - 安全评审者：需要签名、治理、资产流转的可审计证据。
+  - 移动端玩家：需要低算力设备可持续在线并获得正确最终性反馈。
 - User Scenarios & Frequency:
   - 协议演进评审：每次共识或网络协议改动前执行。
   - 多节点长跑：按周执行并记录稳定性与恢复结果。
   - 发行前联合验收：每个候选版本执行一次三线联测。
   - 安全审计复核：关键资产链路改动后立即触发。
+  - 轻客户端接入验收：每次移动端协议调整后执行输入/最终性/重连验证。
 - User Stories:
   - PRD-P2P-001: As a 协议工程师, I want explicit protocol boundaries, so that multi-crate changes remain coherent.
   - PRD-P2P-002: As a 节点运营者, I want reliable longrun validation, so that production confidence increases.
   - PRD-P2P-003: As a 安全评审者, I want auditable cryptographic and governance flows, so that risk is controlled.
+  - PRD-P2P-004: As a 移动端玩家, I want intent-only light client access, so that low-end devices can still participate fairly.
 - Critical User Flows:
   1. Flow-P2P-001: `网络拓扑变更 -> 共识联调 -> DistFS 同步 -> 节点状态一致性验证`
   2. Flow-P2P-002: `执行 S9/S10 长跑 -> 采集故障与恢复数据 -> 输出收敛报告`
   3. Flow-P2P-003: `资产/签名链路变更 -> 审计检查 -> 安全门禁 -> 发布判定`
+  4. Flow-P2P-004: `手机端提交签名 intent -> 权威模拟执行 -> 链上承诺/挑战 -> 客户端 final 确认`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
 | 网络与共识协同 | 节点ID、轮次、提交高度、延迟 | 启动联测并比对共识结果 | `joining -> syncing -> committed` | 高度/轮次单调递增 | 仅授权节点参与共识 |
 | DistFS 复制 | 文件ID、副本状态、同步延迟 | 触发复制并校验完整性 | `queued -> replicating -> verified` | 优先关键数据副本 | 节点需满足存储策略 |
 | 长跑与恢复 | 失败类型、恢复动作、恢复时长 | 注入故障并执行恢复流程 | `stable -> degraded -> recovered` | 按故障等级排序处理 | 运维/评审可操作恢复流程 |
+| 轻客户端权威状态 | `intent(tick/seq/sig)`、`state_root`、`finality_state` | 手机端只上报 intent，接收 delta/proof 并展示最终性 | `pending -> confirmed -> final` | 按 tick 排序，重复 seq 幂等去重 | 权威状态仅由模拟节点提交，客户端无写权限 |
 - Acceptance Criteria:
   - AC-1: p2p PRD 覆盖网络、共识、存储、激励四条主线。
   - AC-2: p2p project 文档任务项明确映射 PRD-P2P-ID。
   - AC-3: 与 `doc/p2p/blockchain/production-grade-blockchain-p2pfs-roadmap.prd.md` 等设计文档口径一致。
   - AC-4: S9/S10 相关测试套件在 testing 手册中有对应条目。
+  - AC-5: 轻客户端专题需求落盘并映射到独立任务链（`TASK-P2P-MLC-*`）。
 - Non-Goals:
   - 不在本 PRD 细化 viewer UI 交互。
   - 不替代 runtime 内核的模块执行细节设计。
@@ -77,11 +84,13 @@
 - Integration Points:
   - `doc/p2p/blockchain/production-grade-blockchain-p2pfs-roadmap.prd.md`
   - `doc/p2p/distributed/distributed-hard-split-phase7.prd.md`
+  - `doc/p2p/network/p2p-mobile-light-client-authoritative-state-2026-03-06.prd.md`
   - `doc/p2p/token/mainchain-token-allocation-mechanism-phase2-governance-bridge-distribution-2026-02-26.prd.md`
   - `testing-manual.md`
 - Edge Cases & Error Handling:
   - 节点掉线：共识链路需在节点恢复后自动重同步并验证状态。
   - 网络分区：检测分区后阻断不安全提交并等待合并恢复。
+  - 轻客户端弱网：启用低频增量+关键帧同步并保持最终性状态不倒退。
   - 空副本：DistFS 副本不足时触发补副本任务并记录告警。
   - 超时：共识轮次超时后执行回退/重试策略。
   - 并发冲突：同高度多提交候选按共识规则拒绝冲突分支。
@@ -92,6 +101,7 @@
   - NFR-P2P-3: 节点异常恢复流程具备标准化操作与证据产物。
   - NFR-P2P-4: 资产与签名链路审计记录完整率 100%。
   - NFR-P2P-5: 协议演进不得破坏既有网络兼容性基线。
+  - NFR-P2P-6: 手机轻客户端路径必须可验证最终性，且不要求端侧权威模拟。
 - Security & Privacy: 需保证节点身份、签名、账本与反馈数据链路的完整性；所有关键动作必须具备可审计记录。
 
 ## 5. Risks & Roadmap
@@ -110,9 +120,11 @@
 | PRD-P2P-001 | TASK-P2P-001/002/005 | `test_tier_required` | 网络/共识/存储联合验收清单检查 | 协议边界与跨 crate 兼容 |
 | PRD-P2P-002 | TASK-P2P-002/003/005 | `test_tier_required` + `test_tier_full` | S9/S10 长跑与恢复演练 | 多节点稳定性与故障恢复 |
 | PRD-P2P-003 | TASK-P2P-003/004/005 | `test_tier_full` | 签名与治理链路审计检查 | 资产安全与发布风险控制 |
+| PRD-P2P-004 | TASK-P2P-006/007 | `test_tier_required` + `test_tier_full` | 轻客户端 intent/finality/challenge/reconnect 闭环验证 | 移动端接入、公平性与可用性 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |
 | DEC-P2P-001 | 网络/共识/DistFS 统一验收 | 子系统独立验收 | 可降低跨链路隐性回归风险。 |
 | DEC-P2P-002 | 长跑结果进入发布门禁 | 仅开发阶段抽样运行 | 发布质量依赖真实长稳证据。 |
 | DEC-P2P-003 | 关键动作全链路审计 | 仅关键节点日志 | 审计深度不足会放大安全风险。 |
+| DEC-P2P-004 | 移动端采用轻客户端+链下权威模拟 | 手机端参与权威模拟 | 移动端资源受限，权威性和实时性需分层保障。 |
