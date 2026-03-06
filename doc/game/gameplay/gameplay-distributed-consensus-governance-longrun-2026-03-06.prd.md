@@ -209,6 +209,8 @@
 - 无证书 tick 不可进入“已确认历史”。
 - 任一 `epoch` 边界升级必须有 `Queued` 证据链和签名证书。
 - 紧急权限使用必须有完整审计记录，否则发布阻断。
+- 发布门禁执行结论与回滚预案统一沉淀到：
+  - `doc/game/gameplay/gameplay-distributed-consensus-governance-longrun-release-gate-2026-03-06.md`
 
 ## 5. 验收标准（PRD-GAME-005）
 
@@ -248,6 +250,9 @@
   - `scripts/p2p-longrun-soak.sh` 新增“共识哈希一致性门禁”：按高度对比 `last_block_hash`、`last_execution_block_hash`、`last_execution_state_root`，发现跨节点分歧即判定 `metric_gate=fail`。
   - `timeline.csv` 增补 `last_block_hash/last_execution_block_hash/last_execution_state_root` 列；`summary.json`/`summary.md` 输出 `consensus_hash_*` 指标与分歧统计。
   - 新增 `topology/.consensus_hash_mismatch.tsv` 证据文件，用于定位高度与节点级哈希分歧。
+- 已完成 `TASK-GAME-DCG-010` 发布收口：
+  - 产出发布门禁报告与回滚预案：`doc/game/gameplay/gameplay-distributed-consensus-governance-longrun-release-gate-2026-03-06.md`。
+  - 以 `soak_release + triad_distributed + chaos` 基线命令生成放行证据并固化门禁判定规则。
 - 验证口径：
   - `runtime::tests::basic::tick_consensus_records_*`
   - `runtime::tests::governance::{governance_timelock_blocks_early_apply, governance_epoch_gate_blocks_early_apply, governance_emergency_brake_and_release_gate_apply, governance_emergency_veto_rejects_queued_proposal, governance_emergency_controls_reject_invalid_guardian_signatures}`

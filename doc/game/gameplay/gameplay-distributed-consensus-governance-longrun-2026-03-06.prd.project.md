@@ -30,7 +30,7 @@
 
 ### T5 长稳与发布门禁
 - [x] TASK-GAME-DCG-009 (PRD-GAME-005-01/002/003) [test_tier_full]: 7~30 天 soak + 故障注入，验证恢复与证书链一致性。
-- [ ] TASK-GAME-DCG-010 (PRD-GAME-005-01/002/003) [test_tier_required]: 输出发布门禁报告与回滚预案。
+- [x] TASK-GAME-DCG-010 (PRD-GAME-005-01/002/003) [test_tier_required]: 输出发布门禁报告与回滚预案。
 
 ## 依赖
 - `doc/game/gameplay/gameplay-top-level-design.prd.md`
@@ -40,11 +40,12 @@
 
 ## 状态
 - 更新日期: 2026-03-06
-- 当前状态: `active`
-- 下一任务: `TASK-GAME-DCG-010`（输出发布门禁报告与回滚预案）
+- 当前状态: `completed`
+- 下一任务: `none`（当前专题任务已全部完成）
 - ROUND-002 进展: `TASK-GAME-DCG-001/002` 已完成，tick 证书链在 `step/replay/save-load` 闭环可用。
 - ROUND-003 进展: `TASK-GAME-DCG-003/004/005/006` 已完成，治理 `Queued + timelock/epoch` 门禁与紧急控制（刹车/否决）已接入状态机并具备拒绝回归测试。
 - ROUND-004 进展: `TASK-GAME-DCG-007` 已完成，治理提案新增身份权重快照（信誉+抵押）并在投票时按快照门禁校验，阻断提案开启后临时增号/提权投票。
 - ROUND-005 进展: `TASK-GAME-DCG-008` 已完成，身份惩罚与申诉复核闭环（Apply/Appeal/Resolve）接入治理事件流、快照持久化与投票权回归验证。
 - ROUND-006 进展: `TASK-GAME-DCG-009` 已完成，S9 长稳脚本新增共识哈希一致性门禁并通过 triad+chaos 烟测，产出 `summary/timeline/mismatch` 证据链。
+- ROUND-007 进展: `TASK-GAME-DCG-010` 已完成，输出发布门禁报告与回滚预案，`soak_release` 基线证据可追溯到 run 产物目录。
 - 阻塞项: 无
