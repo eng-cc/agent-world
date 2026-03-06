@@ -9,7 +9,7 @@
 - [ ] TASK-GAME-004 (PRD-GAME-003) [test_tier_required]: 对接发布前可玩性门禁与回归节奏。
 - [x] TASK-GAME-005 (PRD-GAME-001/002/003) [test_tier_required]: 对齐 strict PRD schema，补齐关键流程/规格矩阵/边界异常/NFR/验证与决策记录。
 - [x] TASK-GAME-006 (PRD-GAME-004) [test_tier_required]: 新增微循环反馈可见性 PRD 与项目文档，完成文档树挂载。
-- [ ] TASK-GAME-007 (PRD-GAME-004) [test_tier_required]: 落地 runtime 协议与 viewer 反馈闭环并完成回归验证（执行子任务 `TASK-GAMEPLAY-MLF-001/002/003/004`，见 `doc/game/gameplay/gameplay-micro-loop-feedback-visibility-2026-03-05.prd.project.md`）。
+- [x] TASK-GAME-007 (PRD-GAME-004) [test_tier_required]: 落地 runtime 协议与 viewer 反馈闭环并完成回归验证（子任务 `TASK-GAMEPLAY-MLF-001/002/003/004` 已全部完成，见 `doc/game/gameplay/gameplay-micro-loop-feedback-visibility-2026-03-05.prd.project.md`）。
 
 ## 依赖
 - doc/game/prd.index.md
@@ -22,7 +22,7 @@
 ## 状态
 - 更新日期: 2026-03-06
 - 当前状态: active
-- 下一任务: TASK-GAME-007（下一子任务：TASK-GAMEPLAY-MLF-004）
+- 下一任务: TASK-GAME-002（补齐核心玩法循环验收矩阵）
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
-- ROUND-002 进展: gameplay 子簇主从化完成，`TASK-GAMEPLAY-MLF-001/002/003` 已交付。
+- ROUND-002 进展: gameplay 子簇主从化完成，`TASK-GAMEPLAY-MLF-001/002/003/004` 已交付；`TASK-GAME-007` 已闭环。
 - 说明: 本文档仅维护 game 设计执行状态；过程记录在 `doc/devlog/2026-03-05.md` 与 `doc/devlog/2026-03-06.md`。

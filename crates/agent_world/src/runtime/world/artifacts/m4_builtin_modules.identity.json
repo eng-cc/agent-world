@@ -46,7 +46,7 @@
     {
       "module_id": "m4.product.component.control_chip",
       "hash_tokens": [
-        "2e80cae483d9dae8a5943af93b8a80d96733bc6e961dd6e0e857d521786acc76"
+        "927c1e420b75c87f7c0ba3f2d3d4154c40593fc256816e6ec04d5c34d908bd71"
       ],
       "source_hash": "9451bbf82419306673bae967f373b7444cfb583701654a025a54e52f1ee43572",
       "build_manifest_hash": "6f92432d2b79412ae7aabc9928de1631077d26748f1371444eb28f3e80c2baf7",
@@ -55,7 +55,7 @@
     {
       "module_id": "m4.product.component.motor_mk1",
       "hash_tokens": [
-        "a02a8bacaeec1fb3cee4ef04058326bbeefa57e79f773b6d66395d0343caaa67"
+        "fcc345c89cc58a54907bf0e15a5fe72a96b481f43dcacabecf018c328103b46a"
       ],
       "source_hash": "186d0c9f1646ff7a8728773b7c6ef62340a97771fd2b6c16b6254efd753785ff",
       "build_manifest_hash": "6f92432d2b79412ae7aabc9928de1631077d26748f1371444eb28f3e80c2baf7",
@@ -73,7 +73,7 @@
     {
       "module_id": "m4.product.finished.logistics_drone",
       "hash_tokens": [
-        "87b204651a175f7f708d5cc109eef24417d3287bddd9b598ec66cafc0879166e"
+        "13823ed9f5eeaa54f18b5dea51efd3879e822e0b152fc06fcda7758ef7e4eb50"
       ],
       "source_hash": "a558bc04727de09fbbac94bc0105eb2195b1d8f782a8f57983cc5692332ccdd1",
       "build_manifest_hash": "6f92432d2b79412ae7aabc9928de1631077d26748f1371444eb28f3e80c2baf7",
@@ -109,7 +109,7 @@
     {
       "module_id": "m4.product.material.iron_ingot",
       "hash_tokens": [
-        "64f804a7041f892479ff331a6105c9528c75abb4533f414abf9736489410fd08"
+        "f46ad2f9a340d2c68fb98347660a390b4ff724ef61ac18375795d2eaffba91ea"
       ],
       "source_hash": "3200040c7b1bbb45b9a081e23bd7abb1e39e6208cc02bda966babb95c17d4359",
       "build_manifest_hash": "6f92432d2b79412ae7aabc9928de1631077d26748f1371444eb28f3e80c2baf7",

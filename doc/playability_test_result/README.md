@@ -16,6 +16,7 @@
   - `doc/playability_test_result/playability_test_manual.md`
 
 当前主目录活跃卡片：
+- `card_2026_03_06_12_43_31.md`
 - `card_2026_03_01_00_20_13.md`
 - `card_2026_02_28_19_22_20.md`
 - `card_2026_02_28_21_22_51.md`
