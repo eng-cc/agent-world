@@ -39,6 +39,7 @@
 | `doc/world-simulator/launcher/game-client-launcher-native-web-control-plane-unification-2026-03-04.prd.md` | `doc/world-simulator/launcher/game-client-launcher-native-web-control-plane-unification-2026-03-04.prd.project.md` |
 | `doc/world-simulator/launcher/game-client-launcher-web-transfer-closure-2026-03-06.prd.md` | `doc/world-simulator/launcher/game-client-launcher-web-transfer-closure-2026-03-06.prd.project.md` |
 | `doc/world-simulator/launcher/game-client-launcher-web-settings-feedback-parity-2026-03-06.prd.md` | `doc/world-simulator/launcher/game-client-launcher-web-settings-feedback-parity-2026-03-06.prd.project.md` |
+| `doc/world-simulator/launcher/game-client-launcher-native-legacy-cleanup-2026-03-06.prd.md` | `doc/world-simulator/launcher/game-client-launcher-native-legacy-cleanup-2026-03-06.prd.project.md` |
 | `doc/world-simulator/launcher/game-client-launcher-ui-schema-share-2026-03-04.prd.md` | `doc/world-simulator/launcher/game-client-launcher-ui-schema-share-2026-03-04.prd.project.md` |
 | `doc/world-simulator/launcher/game-client-launcher-web-console-2026-03-04.prd.md` | `doc/world-simulator/launcher/game-client-launcher-web-console-2026-03-04.prd.project.md` |
 | `doc/world-simulator/launcher/game-client-launcher-chain-runtime-decouple-2026-02-28.prd.md` | `doc/world-simulator/launcher/game-client-launcher-chain-runtime-decouple-2026-02-28.prd.project.md` |
