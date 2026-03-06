@@ -1,6 +1,6 @@
 # 客户端启动器转账产品级体验与跨端同层前端（2026-03-06）
 
-审计轮次: 5
+审计轮次: 6
 - 对应项目管理文档: `doc/world-simulator/launcher/game-client-launcher-transfer-product-grade-parity-2026-03-06.prd.project.md`
 
 ## 1. Executive Summary
@@ -71,12 +71,12 @@
   - `crates/agent_world_client_launcher/src/app_process.rs`
   - `crates/agent_world_client_launcher/src/app_process_web.rs`
   - `crates/agent_world_client_launcher/src/transfer_window.rs`
-  - `crates/agent_world_client_launcher/src/transfer_window_web.rs`
   - `crates/agent_world/src/bin/world_web_launcher.rs`
-  - `crates/agent_world/src/bin/world_web_launcher/control_plane.rs`
+  - `crates/agent_world/src/bin/world_web_launcher/transfer_query_proxy.rs`
   - `crates/agent_world/src/bin/world_chain_runtime.rs`
   - `crates/agent_world/src/bin/world_chain_runtime/transfer_submit_api.rs`
-  - `crates/agent_world/src/bin/world_chain_runtime/balances_api.rs`
+  - `crates/agent_world/src/bin/world_chain_runtime/transfer_submit_api_tests.rs`
+  - `crates/agent_world/src/runtime/world/resources.rs`
 - Edge Cases & Error Handling:
   - 链未就绪：入口禁用 + 诊断提示；禁止“点了再报错”的晚失败体验。
   - 余额不足：提交拒绝后保留当前输入并高亮余额差额提示。
@@ -103,18 +103,19 @@
   - v1.1: 落地共享前端 transfer panel + 就绪门控 + 自动 nonce + 余额辅助。
   - v2.0: 落地历史/最终状态查询与可观测指标增强。
 - Technical Risks:
-  - 风险-1: native/web 历史实现差异导致共享组件落地时出现行为回归。
-  - 风险-2: runtime 尚无完整状态/历史查询接口时，控制面中间层可能出现语义不一致。
+  - 风险-1: 当前 launcher Web 端保留全局单请求 in-flight 门控，状态轮询与其他请求串行，可能在高频刷新场景下放大等待抖动。
+  - 风险-2: 运行时转账状态/历史跟踪为进程内存态，不跨重启持久化；重启后历史可见性受限。
   - 风险-3: 自动 nonce 策略与多端并发写入场景存在竞争窗口，需要明确定义冲突回退策略。
 
 ## 6. Validation & Decision Record
 - Test Plan & Traceability:
-  - PRD-WORLD_SIMULATOR-023 -> TASK-WORLD_SIMULATOR-052/053 -> `test_tier_required` + `test_tier_full`。
-  - 计划验证：
+  - PRD-WORLD_SIMULATOR-023 -> TASK-WORLD_SIMULATOR-052/053 -> T1/T2/T3 -> `test_tier_required` + `test_tier_full`。
+  - 已执行验证（2026-03-07）：
     - `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher -- --nocapture`
     - `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher -- --nocapture`
     - `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown`
     - `env -u RUSTC_WRAPPER cargo test -p agent_world --tests --features test_tier_required transfer_submit_api::tests:: -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --tests --features test_tier_full transfer_submit_api::tests:: -- --nocapture`
 - Decision Log:
   - DEC-LAUNCHER-TRANSFER-PRO-001: 转账前端强制单一实现（同层复用），native/web 仅保留 transport 适配差异。理由：从根源消除跨端行为漂移。
   - DEC-LAUNCHER-TRANSFER-PRO-002: nonce 默认自动分配，保留手动覆盖作为高级路径。理由：降低普通用户失败率，同时保留调试能力。

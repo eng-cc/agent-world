@@ -62,10 +62,7 @@ mod llm_settings;
 mod platform_ops;
 #[cfg(not(target_arch = "wasm32"))]
 mod transfer_entry;
-#[cfg(not(target_arch = "wasm32"))]
 mod transfer_window;
-#[cfg(target_arch = "wasm32")]
-mod transfer_window_web;
 
 use launcher_core::*;
 
@@ -318,8 +315,8 @@ enum WebApiEvent {
     Action(Result<WebApiResponse, String>),
     #[cfg(target_arch = "wasm32")]
     Feedback(Result<WebFeedbackSubmitResponse, String>),
-    #[cfg(target_arch = "wasm32")]
     Transfer(Result<WebTransferSubmitResponse, String>),
+    TransferQuery(Result<transfer_window::TransferQueryResponse, String>),
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -359,7 +356,6 @@ struct WebFeedbackSubmitResponse {
     error: Option<String>,
 }
 
-#[cfg(target_arch = "wasm32")]
 #[derive(Debug, Clone, Serialize)]
 struct WebTransferSubmitRequest {
     from_account_id: String,
@@ -368,12 +364,12 @@ struct WebTransferSubmitRequest {
     nonce: u64,
 }
 
-#[cfg(target_arch = "wasm32")]
 #[derive(Debug, Clone, Deserialize)]
 struct WebTransferSubmitResponse {
     ok: bool,
     action_id: Option<u64>,
     submitted_at_unix_ms: Option<i64>,
+    lifecycle_status: Option<transfer_window::WebTransferLifecycleStatus>,
     error_code: Option<String>,
     error: Option<String>,
 }
@@ -662,6 +658,7 @@ struct ClientLauncherApp {
     transfer_draft: TransferDraft,
     transfer_submit_state: TransferSubmitState,
     transfer_window_open: bool,
+    transfer_panel_state: transfer_window::TransferPanelState,
     web_api_tx: Sender<WebApiEvent>,
     web_api_rx: Receiver<WebApiEvent>,
     web_request_inflight: bool,
@@ -724,6 +721,7 @@ impl Default for ClientLauncherApp {
             transfer_draft: TransferDraft::default(),
             transfer_submit_state: TransferSubmitState::None,
             transfer_window_open: false,
+            transfer_panel_state: transfer_window::TransferPanelState::default(),
             web_api_tx,
             web_api_rx,
             web_request_inflight: false,
@@ -751,56 +749,6 @@ impl ClientLauncherApp {
         self.logs.push_back(line.into());
         while self.logs.len() > MAX_LOG_LINES {
             self.logs.pop_front();
-        }
-    }
-
-    #[cfg(target_arch = "wasm32")]
-    fn apply_web_transfer_submit_result(
-        &mut self,
-        result: Result<WebTransferSubmitResponse, String>,
-    ) {
-        match result {
-            Ok(response) => {
-                if response.ok {
-                    let action_id_text = response
-                        .action_id
-                        .map(|value| value.to_string())
-                        .unwrap_or_else(|| "n/a".to_string());
-                    let submitted_at_text = response
-                        .submitted_at_unix_ms
-                        .map(|value| format!(", submitted_at={value}"))
-                        .unwrap_or_default();
-                    let message = format!(
-                        "{}: action_id={action_id_text}{submitted_at_text}",
-                        self.tr("转账请求已提交", "Transfer request submitted")
-                    );
-                    self.append_log(message.clone());
-                    self.transfer_submit_state = TransferSubmitState::Success(message);
-                } else {
-                    let error_text = response
-                        .error
-                        .unwrap_or_else(|| self.tr("未知错误", "Unknown error").to_string());
-                    let error_code = response
-                        .error_code
-                        .map(|value| format!(" ({value})"))
-                        .unwrap_or_default();
-                    let message = format!(
-                        "{}{}: {error_text}",
-                        self.tr("转账提交被拒绝", "Transfer submit rejected"),
-                        error_code
-                    );
-                    self.append_log(message.clone());
-                    self.transfer_submit_state = TransferSubmitState::Failed(message);
-                }
-            }
-            Err(err) => {
-                let message = format!(
-                    "{}: {err}",
-                    self.tr("转账提交失败", "Transfer submit failed")
-                );
-                self.append_log(message.clone());
-                self.transfer_submit_state = TransferSubmitState::Failed(message);
-            }
         }
     }
 
@@ -1081,7 +1029,13 @@ impl eframe::App for ClientLauncherApp {
                     {
                         self.feedback_window_open = true;
                     }
-                    if ui.button(self.tr("转账", "Transfer")).clicked() {
+                    if ui
+                        .add_enabled(
+                            self.is_feedback_available(),
+                            egui::Button::new(self.tr("转账", "Transfer")),
+                        )
+                        .clicked()
+                    {
                         self.transfer_window_open = true;
                     }
                 }

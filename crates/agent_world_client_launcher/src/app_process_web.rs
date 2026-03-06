@@ -59,6 +59,7 @@ impl ClientLauncherApp {
                 },
                 WebApiEvent::Feedback(result) => self.apply_web_feedback_submit_result(result),
                 WebApiEvent::Transfer(result) => self.apply_web_transfer_submit_result(result),
+                WebApiEvent::TransferQuery(result) => self.apply_web_transfer_query_result(result),
             }
         }
 
@@ -116,6 +117,61 @@ impl ClientLauncherApp {
         spawn_local(async move {
             let _ = tx.send(WebApiEvent::Transfer(
                 post_web_chain_transfer(request).await,
+            ));
+        });
+    }
+
+    pub(super) fn request_web_chain_transfer_accounts(&mut self) {
+        if self.web_request_inflight {
+            self.append_log("skip transfer accounts query: previous web request still in flight");
+            return;
+        }
+        self.web_request_inflight = true;
+        self.last_web_poll_at = Some(Instant::now());
+        let tx = self.web_api_tx.clone();
+        spawn_local(async move {
+            let _ = tx.send(WebApiEvent::TransferQuery(
+                fetch_web_transfer_accounts()
+                    .await
+                    .map(transfer_window::TransferQueryResponse::Accounts),
+            ));
+        });
+    }
+
+    pub(super) fn request_web_chain_transfer_history(
+        &mut self,
+        account_filter: String,
+        action_filter: String,
+    ) {
+        if self.web_request_inflight {
+            self.append_log("skip transfer history query: previous web request still in flight");
+            return;
+        }
+        self.web_request_inflight = true;
+        self.last_web_poll_at = Some(Instant::now());
+        let tx = self.web_api_tx.clone();
+        spawn_local(async move {
+            let _ = tx.send(WebApiEvent::TransferQuery(
+                fetch_web_transfer_history(account_filter, action_filter)
+                    .await
+                    .map(transfer_window::TransferQueryResponse::History),
+            ));
+        });
+    }
+
+    pub(super) fn request_web_chain_transfer_status(&mut self, action_id: u64) {
+        if self.web_request_inflight {
+            self.append_log("skip transfer status query: previous web request still in flight");
+            return;
+        }
+        self.web_request_inflight = true;
+        self.last_web_poll_at = Some(Instant::now());
+        let tx = self.web_api_tx.clone();
+        spawn_local(async move {
+            let _ = tx.send(WebApiEvent::TransferQuery(
+                fetch_web_transfer_status(action_id)
+                    .await
+                    .map(transfer_window::TransferQueryResponse::Status),
             ));
         });
     }
@@ -325,6 +381,74 @@ async fn post_web_chain_transfer(
         .json::<WebTransferSubmitResponse>()
         .await
         .map_err(|err| format!("decode /api/chain/transfer response failed: {err}"))
+}
+
+async fn fetch_web_transfer_accounts(
+) -> Result<transfer_window::WebTransferAccountsResponse, String> {
+    let response = Request::get("/api/chain/transfer/accounts")
+        .send()
+        .await
+        .map_err(|err| format!("GET /api/chain/transfer/accounts failed: {err}"))?;
+    if !response.ok() {
+        return Err(format!(
+            "GET /api/chain/transfer/accounts failed with HTTP {}",
+            response.status()
+        ));
+    }
+    response
+        .json::<transfer_window::WebTransferAccountsResponse>()
+        .await
+        .map_err(|err| format!("decode /api/chain/transfer/accounts response failed: {err}"))
+}
+
+async fn fetch_web_transfer_status(
+    action_id: u64,
+) -> Result<transfer_window::WebTransferStatusResponse, String> {
+    let path = format!("/api/chain/transfer/status?action_id={action_id}");
+    let response = Request::get(path.as_str())
+        .send()
+        .await
+        .map_err(|err| format!("GET /api/chain/transfer/status failed: {err}"))?;
+    if !response.ok() {
+        return Err(format!(
+            "GET /api/chain/transfer/status failed with HTTP {}",
+            response.status()
+        ));
+    }
+    response
+        .json::<transfer_window::WebTransferStatusResponse>()
+        .await
+        .map_err(|err| format!("decode /api/chain/transfer/status response failed: {err}"))
+}
+
+async fn fetch_web_transfer_history(
+    account_filter: String,
+    action_filter: String,
+) -> Result<transfer_window::WebTransferHistoryResponse, String> {
+    let mut query = vec!["limit=50".to_string()];
+    let account_filter = account_filter.trim();
+    if !account_filter.is_empty() {
+        query.push(format!("account_id={account_filter}"));
+    }
+    let action_filter = action_filter.trim();
+    if !action_filter.is_empty() {
+        query.push(format!("action_id={action_filter}"));
+    }
+    let path = format!("/api/chain/transfer/history?{}", query.join("&"));
+    let response = Request::get(path.as_str())
+        .send()
+        .await
+        .map_err(|err| format!("GET /api/chain/transfer/history failed: {err}"))?;
+    if !response.ok() {
+        return Err(format!(
+            "GET /api/chain/transfer/history failed with HTTP {}",
+            response.status()
+        ));
+    }
+    response
+        .json::<transfer_window::WebTransferHistoryResponse>()
+        .await
+        .map_err(|err| format!("decode /api/chain/transfer/history response failed: {err}"))
 }
 
 async fn post_web_chain_feedback(

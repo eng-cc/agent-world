@@ -1,6 +1,6 @@
 # world-simulator PRD
 
-审计轮次: 5
+审计轮次: 6
 
 ## 目标
 - 建立 world-simulator 模块设计主文档，统一需求边界、技术方案与验收标准。
@@ -53,6 +53,7 @@
 - M8 (2026-03-06): 完成启动器 Web 端设置/反馈入口对齐（设置中心可用化 + 反馈代理提交）。
 - M9 (2026-03-06): 完成启动器 native 遗留代码清理与测试资产收敛（移除失效状态字段与未引用旧测试文件）。
 - M10 (2026-03-06): 完成启动器转账产品级需求建模（自动 nonce、账户/余额辅助、历史/最终状态可视化、native/web 同层前端一致性）。
+- M11 (2026-03-07): 完成启动器转账产品级能力实现（runtime 查询 API + 控制面代理 + native/web 共享转账前端 + required/full 回归）。
 
 ## 风险
 - 模块边界演进快，文档同步可能滞后。
@@ -362,7 +363,7 @@
 | PRD-WORLD_SIMULATOR-020 | TASK-WORLD_SIMULATOR-046/047 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher` + `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown`，验证 Web 转账代理与 wasm 提交流程 | 启动器 Web 转账闭环可用性与跨端语义一致性 |
 | PRD-WORLD_SIMULATOR-021 | TASK-WORLD_SIMULATOR-048/049 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher` + `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher` + `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown`，验证 Web 设置中心可用化与反馈代理提交闭环 | 启动器 Web 设置/反馈跨端一致性与功能可达性 |
 | PRD-WORLD_SIMULATOR-022 | TASK-WORLD_SIMULATOR-050/051 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown`，验证 native 遗留代码清理后行为稳定 | 启动器 native 维护面收敛与跨端行为稳定性 |
-| PRD-WORLD_SIMULATOR-023 | TASK-WORLD_SIMULATOR-052/053 | `test_tier_required` + `test_tier_full` | `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p agent_world --tests --features test_tier_required transfer_submit_api::tests:: -- --nocapture` + Playwright 启动器转账闭环采证，验证账户/余额辅助、自动 nonce、最终状态与历史面板跨端一致 | 启动器转账产品化体验、跨端前端一致性与链路可观测性 |
+| PRD-WORLD_SIMULATOR-023 | TASK-WORLD_SIMULATOR-052/053 | `test_tier_required` + `test_tier_full` | `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown` + `env -u RUSTC_WRAPPER cargo test -p agent_world --tests --features test_tier_required transfer_submit_api::tests:: -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p agent_world --tests --features test_tier_full transfer_submit_api::tests:: -- --nocapture`，验证账户/余额辅助、自动 nonce、最终状态与历史面板跨端一致 | 启动器转账产品化体验、跨端前端一致性与链路可观测性 |
 
 - Decision Log:
 

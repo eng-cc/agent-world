@@ -1,6 +1,6 @@
 # world-simulator PRD Project
 
-审计轮次: 5
+审计轮次: 6
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] TASK-WORLD_SIMULATOR-001 (PRD-WORLD_SIMULATOR-001) [test_tier_required]: 完成 world-simulator PRD 改写，建立模拟层设计主入口。
@@ -55,7 +55,7 @@
 - [x] TASK-WORLD_SIMULATOR-050 (PRD-WORLD_SIMULATOR-022) [test_tier_required]: 完成“启动器 native 遗留代码清理”PRD 建模与任务拆解。
 - [x] TASK-WORLD_SIMULATOR-051 (PRD-WORLD_SIMULATOR-022) [test_tier_required]: 清理 launcher native 遗留状态字段与无效测试资产（字段/常量收敛 + 删除未引用旧测试文件）并完成回归。
 - [x] TASK-WORLD_SIMULATOR-052 (PRD-WORLD_SIMULATOR-023) [test_tier_required]: 完成“启动器转账产品级体验与跨端同层前端一致性”PRD 建模与任务拆解。
-- [ ] TASK-WORLD_SIMULATOR-053 (PRD-WORLD_SIMULATOR-023) [test_tier_required + test_tier_full]: 落地转账产品级能力（账户/余额辅助、自动 nonce、最终状态与历史视图）并收敛 native/web 为同一前端实现，完成跨端回归与证据归档。
+- [x] TASK-WORLD_SIMULATOR-053 (PRD-WORLD_SIMULATOR-023) [test_tier_required + test_tier_full]: 落地转账产品级能力（runtime accounts/status/history 查询 + 提交生命周期状态 + native/web 共享转账前端）并完成跨端回归与证据归档。
 
 ## 专题任务映射（2026-03-02 批次）
 - [x] SUBTASK-WORLD_SIMULATOR-20260302-001 (PRD-WORLD_SIMULATOR-001/002/003) [test_tier_required]: `doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.prd.project.md`
@@ -138,14 +138,14 @@
 - `testing-manual.md`
 
 ## 状态
-- 更新日期: 2026-03-06
-- 当前状态: in_progress（新增转账产品级一致性任务待执行）
-- 当前优先任务: TASK-WORLD_SIMULATOR-053（PRD-WORLD_SIMULATOR-023）
+- 更新日期: 2026-03-07
+- 当前状态: completed（当前批次任务已收口）
+- 当前优先任务: 无
 - 并行待办: 无
-- 专题映射状态: 2026-03-02 批次 9/9、2026-03-03 批次 4/4、2026-03-04 批次 7/7、2026-03-05 批次 4/4、2026-03-06 批次 6/6 已纳入模块项目管理文档；其中 `TASK-WORLD_SIMULATOR-052` 已完成，`TASK-WORLD_SIMULATOR-053` 待执行。
+- 专题映射状态: 2026-03-02 批次 9/9、2026-03-03 批次 4/4、2026-03-04 批次 7/7、2026-03-05 批次 4/4、2026-03-06 批次 6/6 已纳入模块项目管理文档；`TASK-WORLD_SIMULATOR-052/053` 已完成。
 - 手册入口状态: `doc/world-simulator/viewer/viewer-manual.md` 为唯一活跃手册入口。
 - 视觉评分模板状态: `doc/world-simulator/prd/acceptance/visual-review-score-card.md` 已纳入文档树，采用卡片式评审覆盖 llm_bootstrap 场景 18 张截图。
 - UI 评审结果状态: `doc/ui_review_result/ui_review_list.md` 已建立，首张待打分卡片为 `doc/ui_review_result/card_2026_03_06_11_50_29.md`。
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - ROUND-002 进展: `C2-001/C2-002` 已完成物理合并（`experience-overhaul` 与 `live-event-driven-phase10` 为主入口，phase 文档归档）。
-- 说明: 本文档仅维护 world-simulator 模块设计执行状态；过程记录在 `doc/devlog/2026-03-06.md`。
+- 说明: 本文档仅维护 world-simulator 模块设计执行状态；过程记录在 `doc/devlog/2026-03-07.md`。

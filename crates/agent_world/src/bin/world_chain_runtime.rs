@@ -615,6 +615,9 @@ fn handle_chain_status_connection(
         &runtime,
         method,
         path,
+        node_id,
+        world_id,
+        execution_world_dir,
     )? {
         return Ok(());
     }

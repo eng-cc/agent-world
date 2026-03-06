@@ -22,6 +22,8 @@ mod parse_utils;
 mod runtime_paths;
 #[path = "world_web_launcher/static_files.rs"]
 mod static_files;
+#[path = "world_web_launcher/transfer_query_proxy.rs"]
+mod transfer_query_proxy;
 
 use control_plane::*;
 use http_codec::{read_http_request, write_http_response, write_json_response};
@@ -33,6 +35,7 @@ use runtime_paths::{
     resolve_static_dir_path, resolve_world_game_launcher_binary,
 };
 use static_files::{load_console_static_asset, StaticAsset};
+use transfer_query_proxy::query_chain_transfer_json;
 
 const DEFAULT_LISTEN_BIND: &str = "0.0.0.0:5410";
 const DEFAULT_SCENARIO: &str = "llm_bootstrap";
@@ -575,6 +578,34 @@ fn handle_connection(
             let response = submit_chain_transfer(&mut state, &submit_request);
             write_json_response(&mut stream, 200, &response)
         }
+        ("GET", "/api/chain/transfer/accounts") => {
+            let mut state = lock_state(&shared_state);
+            poll_service_state(&mut state);
+            let response = query_chain_transfer_json(&mut state, "/v1/chain/transfer/accounts");
+            write_json_response(&mut stream, 200, &response)
+        }
+        ("GET", "/api/chain/transfer/status") => {
+            let mut state = lock_state(&shared_state);
+            poll_service_state(&mut state);
+            let runtime_target = remap_transfer_runtime_target(
+                request.path.as_str(),
+                "/api/chain/transfer/status",
+                "/v1/chain/transfer/status",
+            );
+            let response = query_chain_transfer_json(&mut state, runtime_target.as_str());
+            write_json_response(&mut stream, 200, &response)
+        }
+        ("GET", "/api/chain/transfer/history") => {
+            let mut state = lock_state(&shared_state);
+            poll_service_state(&mut state);
+            let runtime_target = remap_transfer_runtime_target(
+                request.path.as_str(),
+                "/api/chain/transfer/history",
+                "/v1/chain/transfer/history",
+            );
+            let response = query_chain_transfer_json(&mut state, runtime_target.as_str());
+            write_json_response(&mut stream, 200, &response)
+        }
         ("POST", "/api/chain/feedback") => {
             let submit_request = match parse_chain_feedback_request(request.body.as_slice()) {
                 Ok(request) => request,
@@ -601,6 +632,9 @@ fn handle_connection(
         | (method, "/api/chain/start")
         | (method, "/api/chain/stop")
         | (method, "/api/chain/transfer")
+        | (method, "/api/chain/transfer/accounts")
+        | (method, "/api/chain/transfer/status")
+        | (method, "/api/chain/transfer/history")
         | (method, "/api/chain/feedback")
             if method != "GET" && method != "POST" =>
         {
@@ -665,6 +699,15 @@ fn serve_console_static_request(
 
 fn strip_query(path: &str) -> &str {
     path.split('?').next().unwrap_or(path)
+}
+
+fn remap_transfer_runtime_target(
+    request_path: &str,
+    api_prefix: &str,
+    runtime_prefix: &str,
+) -> String {
+    let suffix = request_path.strip_prefix(api_prefix).unwrap_or_default();
+    format!("{runtime_prefix}{suffix}")
 }
 
 fn extract_host_header(headers: &[(String, String)]) -> Option<String> {

@@ -54,6 +54,10 @@ impl World {
             .unwrap_or(0)
     }
 
+    pub fn main_token_account_balances(&self) -> Vec<MainTokenAccountBalance> {
+        self.state.main_token_balances.values().cloned().collect()
+    }
+
     pub fn set_main_token_account_balance(
         &mut self,
         account_id: &str,

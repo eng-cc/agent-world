@@ -70,6 +70,8 @@ impl ClientLauncherApp {
                         self.append_log(format!("web action request failed: {err}"));
                     }
                 },
+                WebApiEvent::Transfer(result) => self.apply_web_transfer_submit_result(result),
+                WebApiEvent::TransferQuery(result) => self.apply_web_transfer_query_result(result),
             }
         }
 
@@ -334,6 +336,86 @@ impl ClientLauncherApp {
         });
     }
 
+    pub(super) fn request_web_chain_transfer(&mut self, request: WebTransferSubmitRequest) {
+        self.ensure_control_plane_service();
+        if self.web_request_inflight {
+            self.append_log("skip transfer submit: previous web request still in flight");
+            return;
+        }
+        self.web_request_inflight = true;
+        self.last_web_poll_at = Some(Instant::now());
+        let tx = self.web_api_tx.clone();
+        let base_url = self.control_api_base.clone();
+        thread::spawn(move || {
+            let _ = tx.send(WebApiEvent::Transfer(post_web_chain_transfer_blocking(
+                base_url.as_str(),
+                request,
+            )));
+        });
+    }
+
+    pub(super) fn request_web_chain_transfer_accounts(&mut self) {
+        self.ensure_control_plane_service();
+        if self.web_request_inflight {
+            self.append_log("skip transfer accounts query: previous web request still in flight");
+            return;
+        }
+        self.web_request_inflight = true;
+        self.last_web_poll_at = Some(Instant::now());
+        let tx = self.web_api_tx.clone();
+        let base_url = self.control_api_base.clone();
+        thread::spawn(move || {
+            let _ = tx.send(WebApiEvent::TransferQuery(
+                get_web_chain_transfer_accounts_blocking(base_url.as_str())
+                    .map(transfer_window::TransferQueryResponse::Accounts),
+            ));
+        });
+    }
+
+    pub(super) fn request_web_chain_transfer_history(
+        &mut self,
+        account_filter: String,
+        action_filter: String,
+    ) {
+        self.ensure_control_plane_service();
+        if self.web_request_inflight {
+            self.append_log("skip transfer history query: previous web request still in flight");
+            return;
+        }
+        self.web_request_inflight = true;
+        self.last_web_poll_at = Some(Instant::now());
+        let tx = self.web_api_tx.clone();
+        let base_url = self.control_api_base.clone();
+        thread::spawn(move || {
+            let _ = tx.send(WebApiEvent::TransferQuery(
+                get_web_chain_transfer_history_blocking(
+                    base_url.as_str(),
+                    account_filter,
+                    action_filter,
+                )
+                .map(transfer_window::TransferQueryResponse::History),
+            ));
+        });
+    }
+
+    pub(super) fn request_web_chain_transfer_status(&mut self, action_id: u64) {
+        self.ensure_control_plane_service();
+        if self.web_request_inflight {
+            self.append_log("skip transfer status query: previous web request still in flight");
+            return;
+        }
+        self.web_request_inflight = true;
+        self.last_web_poll_at = Some(Instant::now());
+        let tx = self.web_api_tx.clone();
+        let base_url = self.control_api_base.clone();
+        thread::spawn(move || {
+            let _ = tx.send(WebApiEvent::TransferQuery(
+                get_web_chain_transfer_status_blocking(base_url.as_str(), action_id)
+                    .map(transfer_window::TransferQueryResponse::Status),
+            ));
+        });
+    }
+
     fn apply_web_snapshot(&mut self, snapshot: WebStateSnapshot) {
         self.status =
             launcher_status_from_web(snapshot.status.as_str(), snapshot.detail.as_deref());
@@ -387,6 +469,52 @@ fn post_web_chain_start_blocking(
 
 fn post_web_chain_stop_blocking(base_url: &str) -> Result<WebApiResponse, String> {
     http_json_request(base_url, "POST", "/api/chain/stop", None)
+}
+
+fn post_web_chain_transfer_blocking(
+    base_url: &str,
+    request: WebTransferSubmitRequest,
+) -> Result<WebTransferSubmitResponse, String> {
+    let payload = serde_json::to_vec(&request)
+        .map_err(|err| format!("serialize /api/chain/transfer payload failed: {err}"))?;
+    http_json_request(
+        base_url,
+        "POST",
+        "/api/chain/transfer",
+        Some(payload.as_slice()),
+    )
+}
+
+fn get_web_chain_transfer_accounts_blocking(
+    base_url: &str,
+) -> Result<transfer_window::WebTransferAccountsResponse, String> {
+    http_json_request(base_url, "GET", "/api/chain/transfer/accounts", None)
+}
+
+fn get_web_chain_transfer_status_blocking(
+    base_url: &str,
+    action_id: u64,
+) -> Result<transfer_window::WebTransferStatusResponse, String> {
+    let path = format!("/api/chain/transfer/status?action_id={action_id}");
+    http_json_request(base_url, "GET", path.as_str(), None)
+}
+
+fn get_web_chain_transfer_history_blocking(
+    base_url: &str,
+    account_filter: String,
+    action_filter: String,
+) -> Result<transfer_window::WebTransferHistoryResponse, String> {
+    let mut query = vec!["limit=50".to_string()];
+    let account_filter = account_filter.trim();
+    if !account_filter.is_empty() {
+        query.push(format!("account_id={account_filter}"));
+    }
+    let action_filter = action_filter.trim();
+    if !action_filter.is_empty() {
+        query.push(format!("action_id={action_filter}"));
+    }
+    let path = format!("/api/chain/transfer/history?{}", query.join("&"));
+    http_json_request(base_url, "GET", path.as_str(), None)
 }
 
 fn check_web_health(base_url: &str) -> Result<(), String> {
