@@ -26,7 +26,7 @@
 
 ## 接口/数据
 - 页面目录
-  - `site/site/doc/cn/index.html`
+  - `site/doc/cn/index.html`
   - `site/doc/en/index.html`
   - `site/doc/cn/viewer-manual.html`
   - `site/doc/en/viewer-manual.html`

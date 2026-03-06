@@ -2,8 +2,6 @@
 
 审计轮次: 4
 
-- 审计轮次: 2
-
 ## 审计备注
 - 主项目入口：`doc/game/gameplay/gameplay-top-level-design.prd.project.md`。
 - 本文档仅维护 runtime governance 收口增量任务与状态。

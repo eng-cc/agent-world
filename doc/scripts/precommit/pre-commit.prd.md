@@ -17,7 +17,7 @@
 - 脚本路径：`scripts/pre-commit.sh`
 - 运行命令：`./scripts/pre-commit.sh`
 - 执行内容：
-  - 先格式化已暂存的 Rust 文件：`env -u RUSTC_WRAPPER rustfmt --edition 2021 <staged .rs files>`，并自动 `git add` 回暂存区。
+  - 先通过 `git diff --cached --name-only --diff-filter=ACMR -- '*.rs'` 收集已暂存 Rust 文件，再执行 `env -u RUSTC_WRAPPER rustfmt --edition 2021 <files>`，并自动 `git add` 回暂存区。
   - 调用统一测试清单脚本：`./scripts/ci-tests.sh required`（required 具体命令以该脚本与 `doc/testing/ci/ci-test-coverage.prd.md` 为准）。
   - 执行 viewer wasm 编译门禁：`env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-unknown`。
 - 规则归属：

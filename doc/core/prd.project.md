@@ -56,6 +56,7 @@
     - 已补充“逐文档即时回写”机制：每篇文档审读完成即回写 `审计轮次: 4` 并登记 `round-004-audit-progress-log.md`，用于中断恢复追溯。
     - 已闭环工作失误 `E4-001`：纠偏后采用“`doc/**/*.md` 排除 `doc/devlog/**`”作为 ROUND-004 分母口径。
     - 已完成 `F4-001~F4-004`：补审 `doc/world-simulator/**` 至 `314/314`，并将 `S_round004` 更新到 `788`（非 devlog 全覆盖），`A4-002/A4-006` 已恢复 `done`。
+    - 已执行首批整改：完成 `A4-009/A4-010`（清理重复行内审计字段、修正 `site/site/doc` 路径、修复 pre-commit 占位命令口径并更新验收命令）。
 - [x] TASK-CORE-006 (PRD-CORE-001/002) [test_tier_required]: 收敛 `doc/` 根目录 legacy redirect 入口并更新总导航。
 - [x] TASK-CORE-007 (PRD-CORE-001/002/003) [test_tier_required]: 对齐 strict PRD schema，补齐关键流程/规格矩阵/边界异常/NFR/验证与决策记录。
 

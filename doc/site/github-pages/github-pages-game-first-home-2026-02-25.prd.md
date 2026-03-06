@@ -18,7 +18,7 @@
   - 调整 section 顺序与文案重心（游戏内容上移，引擎内容后置）。
   - 保持 `site/assets/app.js` 依赖的 `data-*` 标记兼容。
 - 范围外
-  - 不改 `site/site/doc/cn/index.html`、`site/doc/en/index.html` 内容。
+  - 不改 `site/doc/cn/index.html`、`site/doc/en/index.html` 内容。
   - 不新增前端框架或构建系统。
   - 不改 viewer-manual 正文章节。
 

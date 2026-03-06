@@ -2,8 +2,6 @@
 
 审计轮次: 4
 
-- 审计轮次: 2
-
 - 对应项目管理文档: doc/site/github-pages/github-pages-user-perspective-adjustments-2026-02-26.prd.project.md
 
 ## ROUND-002 主从口径

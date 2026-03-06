@@ -14,7 +14,7 @@
 - [x] 明确内容基线（`doc/world-simulator/viewer/viewer-manual.md`）
 
 ### 1. 任务一：静态文档框架
-- [x] 新增 `site/site/doc/cn/index.html` 与 `site/doc/en/index.html`
+- [x] 新增 `site/doc/cn/index.html` 与 `site/doc/en/index.html`
 - [x] 新增文档页导航/语言切换基础布局
 - [x] 在中英文首页接入“使用手册”入口
 - [x] 补充文档框架样式与最小交互（含文档路径语言重定向保护）

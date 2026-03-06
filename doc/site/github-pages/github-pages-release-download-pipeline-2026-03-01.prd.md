@@ -2,8 +2,6 @@
 
 审计轮次: 4
 
-- 审计轮次: 2
-
 - 对应项目管理文档: doc/site/github-pages/github-pages-release-download-pipeline-2026-03-01.prd.project.md
 
 ## ROUND-002 主从口径

@@ -1,7 +1,5 @@
 # Gameplay 微循环反馈可见性闭环（项目管理文档）
 
-- 审计轮次: 2
-
 ## ROUND-002 主从口径
 - 主入口：`doc/game/gameplay/gameplay-top-level-design.prd.md`
 - 本文仅维护增量计划，不重复主文档口径。

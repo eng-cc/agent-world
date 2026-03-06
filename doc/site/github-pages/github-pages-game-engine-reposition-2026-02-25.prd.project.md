@@ -19,7 +19,7 @@
 - [x] 更新首页外链入口到当前叙事文档
 
 ### 2. 文档中心重写（CN/EN）
-- [x] 更新 `site/site/doc/cn/index.html`，新增游戏与引擎文档入口
+- [x] 更新 `site/doc/cn/index.html`，新增游戏与引擎文档入口
 - [x] 更新 `site/doc/en/index.html`，保持与中文同构
 - [x] 文档目录状态文案改为“定位重写已完成，手册分层维护”
 
