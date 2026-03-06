@@ -132,6 +132,17 @@
   - `testing-manual.md` 已补充漂移定位/回滚演练门禁命令与通过标准。
 - 已通过定向回归（TASK-GAME-014）：
   - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required runtime::tests::persistence::rollback_with_reconciliation_recovers_from_detected_tick_consensus_drift -- --nocapture`
+- 已完成 `TASK-GAME-015`（`PRD-GAME-006-03`）：
+  - `GovernanceIdentityPenaltyRecord` 增加检测与证据链字段：`detection_source/detection_risk_score/detection_incident_id/evidence_chain_hash/appeal_evidence_hash/resolution_evidence_hash`。
+  - 惩罚事件应用路径补齐证据链闭环：
+    - 惩罚时生成 `detection_incident_id` 并拒绝重复事件指纹（防重放）。
+    - 申诉与复核阶段生成阶段证据摘要并滚动更新 `evidence_chain_hash`，保证链路可追溯。
+  - 新增治理监控快照接口 `governance_identity_penalty_monitor_stats(high_risk_threshold)`，输出误伤率（`false_positive_rate_bps`）与高风险未闭环数量。
+  - 将身份惩罚入口与 helper 从 `runtime/world/governance.rs` 拆分到 `runtime/world/governance_identity_penalty.rs`，保持单文件行数约束（`<1200`）。
+- 已通过定向回归（TASK-GAME-015）：
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required runtime::tests::governance::governance_identity_penalty_ -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required governance_identity_penalty_and_appeal_drive_vote_rights -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required runtime::tests::persistence::persist_and_restore_world -- --nocapture`
 
 ## 6. Validation & Decision Record
 - Test Plan & Traceability:
@@ -139,7 +150,7 @@
 | --- | --- | --- | --- | --- |
 | PRD-GAME-006-01 | TASK-GAME-013 | `test_tier_required` | 权威冲突注入测试 + 非权威写入拒绝断言 | 共识提交与状态一致性 |
 | PRD-GAME-006-02 | TASK-GAME-014 | `test_tier_required` + `test_tier_full` | 回放漂移注入、快照回滚演练、恢复后 `state_root` 对账 | 恢复能力与数据完整性 |
-| PRD-GAME-006-03 | TASK-GAME-015 | `test_tier_required` + `test_tier_full` | 对抗样本回放、惩罚申诉状态机回归、证据链完整性校验 | 安全与治理公平性 |
+| PRD-GAME-006-03 | TASK-GAME-015 | `test_tier_required` + `test_tier_full` | 对抗样本重放拒绝、惩罚申诉状态机回归、`evidence_chain_hash` 连续性与误伤率监控校验 | 安全与治理公平性 |
 | PRD-GAME-006-04 | TASK-GAME-016 | `test_tier_required` | 经济源汇日审计、阈值越线告警、自动保护策略触发验证 | 经济稳定性与抗套利能力 |
 | PRD-GAME-006-05 | TASK-GAME-017 | `test_tier_required` | SLO 对账、告警演练、灰度与灾备回滚演练 | 可运维性与发布稳定性 |
 - Decision Log:

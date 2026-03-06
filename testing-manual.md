@@ -297,6 +297,15 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required run
   - `rollback_to_snapshot_with_reconciliation` 后 `first_tick_consensus_drift() == None`；
   - `verify_tick_consensus_chain()` 通过。
 - 参考文档：`doc/testing/longrun/chain-runtime-soak-script-reactivation-2026-02-28.prd.md`、`doc/testing/longrun/p2p-storage-consensus-longrun-online-stability-2026-02-24.prd.md`。
+- 反作弊/反女巫证据链门禁（TASK-GAME-015）：
+```bash
+env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required runtime::tests::governance::governance_identity_penalty_ -- --nocapture
+env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required governance_identity_penalty_and_appeal_drive_vote_rights -- --nocapture
+```
+- 通过标准：
+  - 同目标主体 + 同证据哈希的惩罚重放被拒绝（incident 指纹不重复通过）。
+  - 惩罚 -> 申诉 -> 复核后 `evidence_chain_hash` 逐阶段变化且 `appeal_evidence_hash/resolution_evidence_hash` 非空。
+  - `governance_identity_penalty_monitor_stats` 输出误伤率与高风险未闭环数量。
 
 ### S10：五节点真实游戏数据在线长跑套件（L5）
 - 当前状态（2026-02-28）：`scripts/s10-five-node-game-soak.sh` 已恢复为可执行脚本，底座为五进程 `world_chain_runtime`。

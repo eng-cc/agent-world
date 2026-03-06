@@ -17,7 +17,7 @@
 - [x] TASK-GAME-012 (PRD-GAME-006) [test_tier_required]: 新增长期在线 P0 生产硬化专题 PRD 与项目管理文档，完成根文档追踪映射。
 - [x] TASK-GAME-013 (PRD-GAME-006) [test_tier_required]: 落地状态权威分层（传播层/裁决层）与冲突仲裁拒绝路径。
 - [x] TASK-GAME-014 (PRD-GAME-006) [test_tier_required + test_tier_full]: 补齐确定性回放 + 快照回滚 runbook 与演练门禁。
-- [ ] TASK-GAME-015 (PRD-GAME-006) [test_tier_required + test_tier_full]: 落地反作弊/反女巫对抗检测、惩罚与申诉证据链强化。
+- [x] TASK-GAME-015 (PRD-GAME-006) [test_tier_required + test_tier_full]: 落地反作弊/反女巫对抗检测、惩罚与申诉证据链强化。
 - [ ] TASK-GAME-016 (PRD-GAME-006) [test_tier_required]: 建立经济源汇审计与通胀/套利告警阈值门禁。
 - [ ] TASK-GAME-017 (PRD-GAME-006) [test_tier_required]: 补齐可运维性能力（SLO、告警、灰度、灾备演练）与发布阻断规则。
 
@@ -34,7 +34,7 @@
 ## 状态
 - 更新日期: 2026-03-06
 - 当前状态: active
-- 下一任务: TASK-GAME-015
+- 下一任务: TASK-GAME-016
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - ROUND-002 进展: gameplay 子簇主从化完成，`TASK-GAMEPLAY-MLF-001/002/003/004` 与 `TASK-GAME-007` 已闭环；分布式长期在线专题已完成设计建档（`TASK-GAME-008`）与执行共识首个实现切片（`TASK-GAME-009`）。
 - ROUND-003 进展: `TASK-GAME-010` 已完成，治理 `Queued + timelock/epoch` 门禁与紧急控制（刹车/否决）状态机已落地并通过定向回归。
@@ -47,4 +47,5 @@
 - ROUND-010 进展: `TASK-GAME-012` 已完成，新增 `PRD-GAME-006` 长期在线 P0 生产硬化专题（状态权威分层、回放回滚、反作弊、经济闭环、可运维性）并挂载到文档树。
 - ROUND-011 进展: `TASK-GAME-013` 已完成，runtime 新增 `authority_source/submission_role` 共识提交分层与冲突拒绝审计事件，完成状态权威分层首个实现切片。
 - ROUND-012 进展: `TASK-GAME-014` 已完成，新增 `first_tick_consensus_drift` 漂移定位与 `rollback_to_snapshot_with_reconciliation` 回滚后自动对账能力，并补齐 runbook + 演练门禁。
+- ROUND-013 进展: `TASK-GAME-015` 已完成，治理惩罚记录新增 `detection_* + evidence_chain_hash` 证据链字段，惩罚事件指纹防重放与误伤率监控快照能力已落地并通过定向回归。
 - 说明: 本文档仅维护 game 设计执行状态；过程记录在 `doc/devlog/2026-03-05.md` 与 `doc/devlog/2026-03-06.md`。

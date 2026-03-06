@@ -463,3 +463,141 @@ fn governance_identity_penalty_appeal_respects_deadline() {
         .unwrap_err();
     assert!(matches!(err, WorldError::GovernancePolicyInvalid { .. }));
 }
+
+#[test]
+fn governance_identity_penalty_rejects_duplicate_incident_signature() {
+    let mut world = World::new();
+    register_agent(&mut world, "agent-1", 0.0, 0.0);
+    world
+        .set_governance_identity_profile("agent-1", 80, 0, GovernanceIdentityStatus::Active)
+        .unwrap();
+
+    world
+        .apply_identity_penalty(
+            "agent-1",
+            "evidence.sybil.replay",
+            "first signal",
+            10,
+            10,
+            "guardian-1",
+            local_guardians(),
+        )
+        .unwrap();
+    let err = world
+        .apply_identity_penalty(
+            "agent-1",
+            "evidence.sybil.replay",
+            "duplicate signal",
+            10,
+            10,
+            "guardian-1",
+            local_guardians(),
+        )
+        .unwrap_err();
+    assert!(matches!(err, WorldError::GovernancePolicyInvalid { .. }));
+    let WorldError::GovernancePolicyInvalid { reason } = err else {
+        panic!("expected governance policy invalid");
+    };
+    assert!(reason.contains("duplicate identity penalty incident"));
+}
+
+#[test]
+fn governance_identity_penalty_evidence_chain_tracks_appeal_and_resolution() {
+    let mut world = World::new();
+    register_agent(&mut world, "agent-1", 0.0, 0.0);
+    world
+        .set_governance_identity_profile("agent-1", 60, 0, GovernanceIdentityStatus::Active)
+        .unwrap();
+
+    let penalty_id = world
+        .apply_identity_penalty(
+            "agent-1",
+            "evidence.sybil.chain",
+            "chain seed",
+            20,
+            10,
+            "guardian-1",
+            local_guardians(),
+        )
+        .unwrap();
+    let root_chain_hash = world
+        .governance_identity_penalties()
+        .get(&penalty_id)
+        .unwrap()
+        .evidence_chain_hash
+        .clone();
+    assert!(!root_chain_hash.is_empty());
+
+    world
+        .appeal_identity_penalty(penalty_id, "agent-1", "provide counter evidence")
+        .unwrap();
+    let appealed = world
+        .governance_identity_penalties()
+        .get(&penalty_id)
+        .unwrap();
+    assert!(appealed.appeal_evidence_hash.is_some());
+    assert_ne!(appealed.evidence_chain_hash, root_chain_hash);
+    let appeal_chain_hash = appealed.evidence_chain_hash.clone();
+
+    world
+        .resolve_identity_penalty_appeal(penalty_id, "committee", false, "appeal rejected")
+        .unwrap();
+    let resolved = world
+        .governance_identity_penalties()
+        .get(&penalty_id)
+        .unwrap();
+    assert!(resolved.resolution_evidence_hash.is_some());
+    assert_ne!(resolved.evidence_chain_hash, appeal_chain_hash);
+}
+
+#[test]
+fn governance_identity_penalty_monitor_reports_false_positive_and_open_risk() {
+    let mut world = World::new();
+    register_agent(&mut world, "agent-1", 0.0, 0.0);
+    world
+        .set_governance_identity_profile("agent-1", 100, 0, GovernanceIdentityStatus::Active)
+        .unwrap();
+
+    let restored_penalty = world
+        .apply_identity_penalty(
+            "agent-1",
+            "evidence.fp.monitor",
+            "possible false positive",
+            10,
+            10,
+            "guardian-1",
+            local_guardians(),
+        )
+        .unwrap();
+    world
+        .appeal_identity_penalty(restored_penalty, "agent-1", "counter evidence provided")
+        .unwrap();
+    world
+        .resolve_identity_penalty_appeal(
+            restored_penalty,
+            "committee",
+            true,
+            "counter evidence accepted",
+        )
+        .unwrap();
+
+    world
+        .apply_identity_penalty(
+            "agent-1",
+            "evidence.sybil.open",
+            "still under review",
+            5,
+            10,
+            "guardian-2",
+            local_guardians(),
+        )
+        .unwrap();
+
+    let stats = world.governance_identity_penalty_monitor_stats(0);
+    assert_eq!(stats.total_penalties, 2);
+    assert_eq!(stats.appealed_penalties, 1);
+    assert_eq!(stats.resolved_appeals, 1);
+    assert_eq!(stats.appeal_accepted_penalties, 1);
+    assert_eq!(stats.high_risk_open_penalties, 1);
+    assert_eq!(stats.false_positive_rate_bps, 10_000);
+}

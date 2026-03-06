@@ -19,7 +19,7 @@
 - [x] TASK-GAME-014 (PRD-GAME-006-02) [test_tier_required + test_tier_full]: 建立回放漂移定位、快照回滚 runbook、恢复对账自动化。
 
 ### T3 反作弊与反女巫
-- [ ] TASK-GAME-015 (PRD-GAME-006-03) [test_tier_required + test_tier_full]: 扩展对抗样本检测、惩罚与申诉证据链，补齐漏检与误伤监控。
+- [x] TASK-GAME-015 (PRD-GAME-006-03) [test_tier_required + test_tier_full]: 扩展对抗样本检测、惩罚与申诉证据链，补齐漏检与误伤监控。
 
 ### T4 经济闭环
 - [ ] TASK-GAME-016 (PRD-GAME-006-04) [test_tier_required]: 建立经济源汇审计任务与异常阈值门禁（通胀/套利风险）。
@@ -39,6 +39,6 @@
 ## 状态
 - 更新日期: 2026-03-06
 - 当前状态: active
-- 下一任务: `TASK-GAME-015`
+- 下一任务: `TASK-GAME-016`
 - 阻塞项: 无
 - 说明: 过程记录写入 `doc/devlog/2026-03-06.md`，后续按任务完成度逐项回写状态。

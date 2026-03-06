@@ -60,6 +60,18 @@ pub struct GovernanceIdentityPenaltyRecord {
     pub status: GovernanceIdentityPenaltyStatus,
     #[serde(default)]
     pub identity_status_before: GovernanceIdentityStatus,
+    #[serde(default)]
+    pub detection_source: String,
+    #[serde(default)]
+    pub detection_risk_score: i64,
+    #[serde(default)]
+    pub detection_incident_id: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub evidence_chain_hash: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub appeal_evidence_hash: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resolution_evidence_hash: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub appellant: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -70,6 +82,16 @@ pub struct GovernanceIdentityPenaltyRecord {
     pub resolution_reason: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub resolved_at_tick: Option<WorldTime>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct GovernanceIdentityPenaltyMonitorStats {
+    pub total_penalties: u64,
+    pub appealed_penalties: u64,
+    pub resolved_appeals: u64,
+    pub appeal_accepted_penalties: u64,
+    pub high_risk_open_penalties: u64,
+    pub false_positive_rate_bps: u16,
 }
 
 /// A proposal for manifest changes.

@@ -13,6 +13,7 @@ mod event_processing;
 mod gameplay_layer;
 mod gameplay_loop;
 mod governance;
+mod governance_identity_penalty;
 mod logistics;
 mod module_actions;
 mod module_runtime;
@@ -38,7 +39,10 @@ use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use super::consensus::{TickConsensusRecord, TickConsensusRejectionAuditEvent};
 use super::effect::{CapabilityGrant, EffectIntent};
 use super::events::{ActionEnvelope, MaterialTransitPriority};
-use super::governance::{GovernanceExecutionPolicy, GovernanceIdentityPenaltyRecord, Proposal};
+use super::governance::{
+    GovernanceExecutionPolicy, GovernanceIdentityPenaltyMonitorStats,
+    GovernanceIdentityPenaltyRecord, Proposal,
+};
 use super::manifest::Manifest;
 use super::modules::{ModuleCache, ModuleLimits, ModuleRegistry};
 use super::policy::PolicySet;
@@ -346,6 +350,42 @@ impl World {
 
     pub fn governance_identity_penalties(&self) -> &BTreeMap<u64, GovernanceIdentityPenaltyRecord> {
         &self.governance_identity_penalties
+    }
+
+    pub fn governance_identity_penalty_monitor_stats(
+        &self,
+        high_risk_threshold: i64,
+    ) -> GovernanceIdentityPenaltyMonitorStats {
+        let mut stats = GovernanceIdentityPenaltyMonitorStats::default();
+        for record in self.governance_identity_penalties.values() {
+            stats.total_penalties = stats.total_penalties.saturating_add(1);
+            if record.status != super::GovernanceIdentityPenaltyStatus::Applied {
+                stats.appealed_penalties = stats.appealed_penalties.saturating_add(1);
+            }
+            if record.status == super::GovernanceIdentityPenaltyStatus::Appealed
+                || record.status == super::GovernanceIdentityPenaltyStatus::AppealAccepted
+                || record.status == super::GovernanceIdentityPenaltyStatus::AppealRejected
+            {
+                stats.resolved_appeals = stats.resolved_appeals.saturating_add(u64::from(
+                    record.status != super::GovernanceIdentityPenaltyStatus::Appealed,
+                ));
+                if record.status == super::GovernanceIdentityPenaltyStatus::AppealAccepted {
+                    stats.appeal_accepted_penalties =
+                        stats.appeal_accepted_penalties.saturating_add(1);
+                }
+            }
+            if record.status == super::GovernanceIdentityPenaltyStatus::Applied
+                && record.detection_risk_score >= high_risk_threshold
+            {
+                stats.high_risk_open_penalties = stats.high_risk_open_penalties.saturating_add(1);
+            }
+        }
+        if stats.resolved_appeals > 0 {
+            stats.false_positive_rate_bps =
+                ((stats.appeal_accepted_penalties.saturating_mul(10_000)) / stats.resolved_appeals)
+                    .min(10_000) as u16;
+        }
+        stats
     }
 
     pub fn with_runtime_memory_limits(mut self, limits: WorldRuntimeMemoryLimits) -> Self {
