@@ -5,6 +5,8 @@
 - [x] TASK-WORLD_RUNTIME-011 (PRD-WORLD_RUNTIME-010/012) [test_tier_required]: 新增 `FactoryProfileV1` + `GovernFactoryProfile` 动作/事件/状态落账与字段白名单校验。
 - [x] TASK-WORLD_RUNTIME-012 (PRD-WORLD_RUNTIME-011) [test_tier_full]: 三节点发布链路 SLA 测试（submit->apply p95 <= 60s）与报表。
 - [x] TASK-WORLD_RUNTIME-013 (PRD-WORLD_RUNTIME-012) [test_tier_required]: 角色审批/签名/冲突校验覆盖与回归。
+- [x] TASK-WORLD_RUNTIME-014 (PRD-WORLD_RUNTIME-012) [test_tier_required]: 更新冲突治理口径：发布单 profile 变更禁止覆盖既有 ID，要求 `Shadow/Apply` 双重拒绝并给出明确原因。
+- [ ] TASK-WORLD_RUNTIME-015 (PRD-WORLD_RUNTIME-012) [test_tier_required]: 实现 profile 覆盖拒绝（包括 payload 与现状完全一致的场景）并补齐 release shadow/apply 冲突拒绝回归测试。
 
 ## 依赖
 - doc/world-runtime/module/player-published-entities-2026-03-05.prd.md
@@ -15,6 +17,6 @@
 - testing-manual.md
 
 ## 状态
-- 更新日期: 2026-03-05
+- 更新日期: 2026-03-06
 - 当前状态: active
-- 下一任务: TASK-WORLD_RUNTIME-013
+- 下一任务: TASK-WORLD_RUNTIME-015
