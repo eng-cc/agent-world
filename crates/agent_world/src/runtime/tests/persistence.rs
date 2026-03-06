@@ -301,6 +301,54 @@ fn rollback_to_snapshot_resets_state() {
 }
 
 #[test]
+fn rollback_with_reconciliation_recovers_from_detected_tick_consensus_drift() {
+    let mut world = World::new();
+    world
+        .bind_node_identity("relay.node.1", "relay-public-key-1")
+        .expect("bind relay identity");
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.step().expect("step");
+
+    let stable_snapshot = world.snapshot();
+    let stable_journal = world.journal().clone();
+
+    world
+        .record_tick_consensus_propagation_for_tick(0, "relay.node.1")
+        .expect("inject propagation record that breaks parent ordering");
+    let drift = world
+        .first_tick_consensus_drift()
+        .expect("drift report should be present");
+    assert_eq!(drift.tick, 0);
+    assert!(
+        drift.reason.contains("parent hash mismatch"),
+        "unexpected drift reason: {}",
+        drift.reason
+    );
+    world
+        .verify_tick_consensus_chain()
+        .expect_err("drifted chain should fail verification");
+
+    world
+        .rollback_to_snapshot_with_reconciliation(
+            stable_snapshot,
+            stable_journal,
+            "reconcile-after-drift",
+        )
+        .expect("rollback with reconciliation");
+
+    assert!(
+        world.first_tick_consensus_drift().is_none(),
+        "drift should be fully reconciled after rollback"
+    );
+    world
+        .verify_tick_consensus_chain()
+        .expect("reconciled chain should verify");
+}
+
+#[test]
 fn snapshot_retention_policy_prunes_old_entries() {
     let mut world = World::new();
     world.set_snapshot_retention(SnapshotRetentionPolicy { max_snapshots: 1 });

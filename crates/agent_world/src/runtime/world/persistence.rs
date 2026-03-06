@@ -189,6 +189,24 @@ impl World {
         Ok(())
     }
 
+    pub fn rollback_to_snapshot_with_reconciliation(
+        &mut self,
+        snapshot: Snapshot,
+        journal: Journal,
+        reason: impl Into<String>,
+    ) -> Result<(), WorldError> {
+        self.rollback_to_snapshot(snapshot, journal, reason)?;
+        if let Some(drift) = self.first_tick_consensus_drift() {
+            return Err(WorldError::DistributedValidationFailed {
+                reason: format!(
+                    "rollback reconciliation drift detected at tick {}: {}",
+                    drift.tick, drift.reason
+                ),
+            });
+        }
+        Ok(())
+    }
+
     pub fn from_snapshot(snapshot: Snapshot, journal: Journal) -> Result<Self, WorldError> {
         if snapshot.journal_len > journal.len() {
             return Err(WorldError::JournalMismatch);

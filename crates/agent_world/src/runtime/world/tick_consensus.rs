@@ -1,8 +1,8 @@
 use super::super::util::{hash_json, sha256_hex};
 use super::super::{
-    CausedBy, TickBlock, TickBlockHeader, TickCertificate, TickConsensusRecord,
-    TickConsensusRejectionAuditEvent, TickConsensusSubmissionRole, TickExecutionDigest, WorldError,
-    WorldEvent, WorldEventBody, WorldEventId, WorldTime,
+    CausedBy, TickBlock, TickBlockHeader, TickCertificate, TickConsensusDriftReport,
+    TickConsensusRecord, TickConsensusRejectionAuditEvent, TickConsensusSubmissionRole,
+    TickExecutionDigest, WorldError, WorldEvent, WorldEventBody, WorldEventId, WorldTime,
 };
 use super::World;
 use serde::Serialize;
@@ -30,6 +30,95 @@ struct StateRootProjection<'a> {
 impl World {
     pub fn latest_tick_consensus_record(&self) -> Option<&TickConsensusRecord> {
         self.tick_consensus_records.last()
+    }
+
+    pub fn first_tick_consensus_drift(&self) -> Option<TickConsensusDriftReport> {
+        let mut expected_parent = TICK_CONSENSUS_GENESIS_PARENT_HASH.to_string();
+        let mut expected_height = 1_u64;
+        for record in &self.tick_consensus_records {
+            if let Err(err) = self.validate_tick_consensus_record_metadata(record) {
+                return Some(TickConsensusDriftReport {
+                    tick: record.block.header.tick,
+                    reason: format!("{err:?}"),
+                });
+            }
+            if record.block.header.parent_hash != expected_parent {
+                return Some(TickConsensusDriftReport {
+                    tick: record.block.header.tick,
+                    reason: format!(
+                        "tick consensus parent hash mismatch tick={} expected={} found={}",
+                        record.block.header.tick, expected_parent, record.block.header.parent_hash
+                    ),
+                });
+            }
+            if record.certificate.consensus_height != expected_height {
+                return Some(TickConsensusDriftReport {
+                    tick: record.block.header.tick,
+                    reason: format!(
+                        "tick consensus height mismatch tick={} expected={} found={}",
+                        record.block.header.tick,
+                        expected_height,
+                        record.certificate.consensus_height
+                    ),
+                });
+            }
+            let block_hash = record.block.block_hash();
+            if record.certificate.block_hash != block_hash {
+                return Some(TickConsensusDriftReport {
+                    tick: record.block.header.tick,
+                    reason: format!(
+                        "tick consensus block hash mismatch tick={} expected={} found={}",
+                        record.block.header.tick, block_hash, record.certificate.block_hash
+                    ),
+                });
+            }
+            let events_hash = match self.hash_tick_events_from_ids(
+                record.block.header.tick,
+                &record.block.ordered_event_ids,
+            ) {
+                Ok(value) => value,
+                Err(err) => {
+                    return Some(TickConsensusDriftReport {
+                        tick: record.block.header.tick,
+                        reason: format!("{err:?}"),
+                    });
+                }
+            };
+            if events_hash != record.block.header.events_hash {
+                return Some(TickConsensusDriftReport {
+                    tick: record.block.header.tick,
+                    reason: format!(
+                        "tick events hash mismatch tick={} expected={} found={}",
+                        record.block.header.tick, events_hash, record.block.header.events_hash
+                    ),
+                });
+            }
+            expected_parent = record.certificate.block_hash.clone();
+            expected_height = expected_height.saturating_add(1);
+        }
+        if let Some(record) = self.tick_consensus_records.last() {
+            let current_state_root = match self.current_state_root_hash() {
+                Ok(value) => value,
+                Err(err) => {
+                    return Some(TickConsensusDriftReport {
+                        tick: record.block.header.tick,
+                        reason: format!("{err:?}"),
+                    });
+                }
+            };
+            if record.block.header.state_root != current_state_root {
+                return Some(TickConsensusDriftReport {
+                    tick: record.block.header.tick,
+                    reason: format!(
+                        "latest state root mismatch tick={} expected={} found={}",
+                        record.block.header.tick,
+                        current_state_root,
+                        record.block.header.state_root
+                    ),
+                });
+            }
+        }
+        None
     }
 
     pub fn set_tick_consensus_authority_source(
@@ -70,64 +159,10 @@ impl World {
     }
 
     pub fn verify_tick_consensus_chain(&self) -> Result<(), WorldError> {
-        let mut expected_parent = TICK_CONSENSUS_GENESIS_PARENT_HASH.to_string();
-        let mut expected_height = 1_u64;
-        for record in &self.tick_consensus_records {
-            self.validate_tick_consensus_record_metadata(record)?;
-            if record.block.header.parent_hash != expected_parent {
-                return Err(WorldError::DistributedValidationFailed {
-                    reason: format!(
-                        "tick consensus parent hash mismatch tick={} expected={} found={}",
-                        record.block.header.tick, expected_parent, record.block.header.parent_hash
-                    ),
-                });
-            }
-            if record.certificate.consensus_height != expected_height {
-                return Err(WorldError::DistributedValidationFailed {
-                    reason: format!(
-                        "tick consensus height mismatch tick={} expected={} found={}",
-                        record.block.header.tick,
-                        expected_height,
-                        record.certificate.consensus_height
-                    ),
-                });
-            }
-            let block_hash = record.block.block_hash();
-            if record.certificate.block_hash != block_hash {
-                return Err(WorldError::DistributedValidationFailed {
-                    reason: format!(
-                        "tick consensus block hash mismatch tick={} expected={} found={}",
-                        record.block.header.tick, block_hash, record.certificate.block_hash
-                    ),
-                });
-            }
-            let events_hash = self.hash_tick_events_from_ids(
-                record.block.header.tick,
-                &record.block.ordered_event_ids,
-            )?;
-            if events_hash != record.block.header.events_hash {
-                return Err(WorldError::DistributedValidationFailed {
-                    reason: format!(
-                        "tick events hash mismatch tick={} expected={} found={}",
-                        record.block.header.tick, events_hash, record.block.header.events_hash
-                    ),
-                });
-            }
-            expected_parent = record.certificate.block_hash.clone();
-            expected_height = expected_height.saturating_add(1);
-        }
-        if let Some(record) = self.tick_consensus_records.last() {
-            let current_state_root = self.current_state_root_hash()?;
-            if record.block.header.state_root != current_state_root {
-                return Err(WorldError::DistributedValidationFailed {
-                    reason: format!(
-                        "latest state root mismatch tick={} expected={} found={}",
-                        record.block.header.tick,
-                        current_state_root,
-                        record.block.header.state_root
-                    ),
-                });
-            }
+        if let Some(report) = self.first_tick_consensus_drift() {
+            return Err(WorldError::DistributedValidationFailed {
+                reason: report.reason,
+            });
         }
         Ok(())
     }

@@ -16,7 +16,7 @@
 - [x] TASK-GAME-013 (PRD-GAME-006-01) [test_tier_required]: 明确传播层/裁决层提交边界，落地冲突仲裁拒绝路径与审计事件。
 
 ### T2 回放与回滚
-- [ ] TASK-GAME-014 (PRD-GAME-006-02) [test_tier_required + test_tier_full]: 建立回放漂移定位、快照回滚 runbook、恢复对账自动化。
+- [x] TASK-GAME-014 (PRD-GAME-006-02) [test_tier_required + test_tier_full]: 建立回放漂移定位、快照回滚 runbook、恢复对账自动化。
 
 ### T3 反作弊与反女巫
 - [ ] TASK-GAME-015 (PRD-GAME-006-03) [test_tier_required + test_tier_full]: 扩展对抗样本检测、惩罚与申诉证据链，补齐漏检与误伤监控。
@@ -31,6 +31,7 @@
 - `doc/game/prd.md`
 - `doc/game/prd.project.md`
 - `doc/game/gameplay/gameplay-distributed-consensus-governance-longrun-2026-03-06.prd.md`
+- `doc/game/gameplay/gameplay-longrun-p0-replay-rollback-runbook-2026-03-06.md`
 - `doc/world-runtime/prd.md`
 - `testing-manual.md`
 - `scripts/p2p-longrun-soak.sh`
@@ -38,6 +39,6 @@
 ## 状态
 - 更新日期: 2026-03-06
 - 当前状态: active
-- 下一任务: `TASK-GAME-014`
+- 下一任务: `TASK-GAME-015`
 - 阻塞项: 无
 - 说明: 过程记录写入 `doc/devlog/2026-03-06.md`，后续按任务完成度逐项回写状态。

@@ -95,3 +95,9 @@ pub struct TickConsensusRejectionAuditEvent {
     pub existing_role: Option<TickConsensusSubmissionRole>,
     pub reason: String,
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TickConsensusDriftReport {
+    pub tick: WorldTime,
+    pub reason: String,
+}

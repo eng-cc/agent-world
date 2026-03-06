@@ -73,6 +73,7 @@
   - `doc/game/prd.md`
   - `doc/game/prd.project.md`
   - `doc/game/gameplay/gameplay-distributed-consensus-governance-longrun-2026-03-06.prd.md`
+  - `doc/game/gameplay/gameplay-longrun-p0-replay-rollback-runbook-2026-03-06.md`
   - `doc/world-runtime/prd.md`
   - `testing-manual.md`
   - `scripts/p2p-longrun-soak.sh`
@@ -123,6 +124,14 @@
   - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required runtime::tests::basic::tick_consensus_ -- --nocapture`
   - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required runtime::tests::persistence::persist_and_restore_world -- --nocapture`
   - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required runtime::tests::basic::from_snapshot_replay_rebuilds_missing_tick_consensus_records -- --nocapture`
+- 已完成 `TASK-GAME-014`（`PRD-GAME-006-02`）：
+  - 增加漂移定位接口 `first_tick_consensus_drift()`，可返回首个 `mismatch_tick + reason`。
+  - 新增恢复对账自动化接口 `rollback_to_snapshot_with_reconciliation(...)`，回滚后自动执行漂移复核并在异常时阻断返回。
+  - 新增 required-tier 演练测试 `rollback_with_reconciliation_recovers_from_detected_tick_consensus_drift`，覆盖“注入漂移 -> 定位 -> 回滚 -> 对账通过”全流程。
+  - 新增运行手册文档：`doc/game/gameplay/gameplay-longrun-p0-replay-rollback-runbook-2026-03-06.md`。
+  - `testing-manual.md` 已补充漂移定位/回滚演练门禁命令与通过标准。
+- 已通过定向回归（TASK-GAME-014）：
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required runtime::tests::persistence::rollback_with_reconciliation_recovers_from_detected_tick_consensus_drift -- --nocapture`
 
 ## 6. Validation & Decision Record
 - Test Plan & Traceability:

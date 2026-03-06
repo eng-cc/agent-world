@@ -288,6 +288,14 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_full world_i
   - `topologies[].metrics.consensus_hash_consistent` 必须为 `true`，且 `consensus_hash_mismatch_count == 0`（若失败需检查 `topology/.consensus_hash_mismatch.tsv`）；
   - 如启用 chaos，`chaos_events.log` 与 `summary.json.totals.chaos_events_total` 一致。
   - 如启用 feedback events，`summary.json.totals.feedback_events_total == summary.json.totals.feedback_events_success_total + summary.json.totals.feedback_events_failed_total`，且 `feedback_events.log` 中 `phase=completed/failed` 事件数量与 `feedback_events_total` 一致。
+- 漂移定位/回滚演练门禁（TASK-GAME-014）：
+```bash
+env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required runtime::tests::persistence::rollback_with_reconciliation_recovers_from_detected_tick_consensus_drift -- --nocapture
+```
+- 演练通过标准：
+  - 能定位 `mismatch_tick`；
+  - `rollback_to_snapshot_with_reconciliation` 后 `first_tick_consensus_drift() == None`；
+  - `verify_tick_consensus_chain()` 通过。
 - 参考文档：`doc/testing/longrun/chain-runtime-soak-script-reactivation-2026-02-28.prd.md`、`doc/testing/longrun/p2p-storage-consensus-longrun-online-stability-2026-02-24.prd.md`。
 
 ### S10：五节点真实游戏数据在线长跑套件（L5）
