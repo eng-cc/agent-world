@@ -8,7 +8,7 @@
 - [x] TASK-P2P-MLC-003 (PRD-P2P-MLC-002) [test_tier_required]: 实现权威批次提交（`state_root/data_root`）和客户端 `pending/confirmed/final` 状态机。
 - [x] TASK-P2P-MLC-004 (PRD-P2P-MLC-002/003) [test_tier_full]: 实现 challenge/resolve/slash 链路与 watcher 复算入口。
 - [x] TASK-P2P-MLC-005 (PRD-P2P-MLC-004) [test_tier_required]: 实现链重组回滚、断线重连快照追平、会话吊销换钥流程。
-- [ ] TASK-P2P-MLC-006 (PRD-P2P-MLC-001/002/003/004) [test_tier_full]: 执行 required/full 联合回归并沉淀发布门禁证据。
+- [x] TASK-P2P-MLC-006 (PRD-P2P-MLC-001/002/003/004) [test_tier_full]: 执行 required/full 联合回归并沉淀发布门禁证据。
 
 ### TASK-P2P-MLC-003 执行拆解（PRD-P2P-MLC-002）
 - [x] TASK-P2P-MLC-003-A [test_tier_required]: 在权威执行提交链路补齐批次承诺结构，确保 `batch_id/state_root/data_root` 同步产出与持久化。
@@ -29,10 +29,10 @@
 - [x] TASK-P2P-MLC-005-D [test_tier_required]: 补齐重组回滚、重连追平、会话吊销换钥的定向测试并执行 `testing-manual.md` 对应 required 套件。
 
 ### TASK-P2P-MLC-006 执行拆解（PRD-P2P-MLC-001/002/003/004）
-- [ ] TASK-P2P-MLC-006-A [test_tier_required]: 执行 MLC 链路 required 回归矩阵（intent/finality/recovery 关键用例）并归档命令与结果。
-- [ ] TASK-P2P-MLC-006-B [test_tier_full]: 执行 MLC 链路 full 回归矩阵（challenge/slash/recovery 组合路径）并归档命令与结果。
-- [ ] TASK-P2P-MLC-006-C [test_tier_full]: 汇总联合回归证据，形成 PRD-ID -> Test -> 结果映射与失败项说明（含基线缺陷隔离）。
-- [ ] TASK-P2P-MLC-006-D [test_tier_full]: 更新发布门禁结论与风险说明，确认是否满足进入下一阶段的回归准入条件。
+- [x] TASK-P2P-MLC-006-A [test_tier_required]: 执行 MLC 链路 required 回归矩阵（intent/finality/recovery 关键用例）并归档命令与结果。
+- [x] TASK-P2P-MLC-006-B [test_tier_full]: 执行 MLC 链路 full 回归矩阵（challenge/slash/recovery 组合路径）并归档命令与结果。
+- [x] TASK-P2P-MLC-006-C [test_tier_full]: 汇总联合回归证据，形成 PRD-ID -> Test -> 结果映射与失败项说明（含基线缺陷隔离）。
+- [x] TASK-P2P-MLC-006-D [test_tier_full]: 更新发布门禁结论与风险说明，确认是否满足进入下一阶段的回归准入条件。
 
 ## 依赖
 - `doc/p2p/network/p2p-mobile-light-client-authoritative-state-2026-03-06.prd.md`
@@ -46,11 +46,11 @@
 ## 状态
 - 更新日期: 2026-03-07
 - 当前状态: active
-- 下一任务: TASK-P2P-MLC-006
+- 下一任务: 无（TASK-P2P-MLC-001~006 已完成）
 - TASK-P2P-MLC-003 收口（2026-03-07）: A/B/C/D 已全部完成（批次承诺、最终性状态机、结算闸门、required 定向回归）。
 - TASK-P2P-MLC-004 收口（2026-03-07）: A/B/C/D 已全部完成（challenge 提交入口、resolve 状态机、slash 联动、full 定向回归）。
 - TASK-P2P-MLC-005 收口（2026-03-07）: A/B/C/D 已全部完成（稳定点回滚、重连追平元数据、会话吊销换钥、required 定向回归）。
-- TASK-P2P-MLC-006 计划口径（2026-03-07）: 已锁定 A/B/C/D 四个子步骤（required/full 联合回归执行、证据映射、发布门禁结论）。
+- TASK-P2P-MLC-006 收口（2026-03-07）: A/B/C/D 已全部完成（required/full 联合回归、证据映射、发布门禁结论）。
 - 本轮完成:
   - 在 `agent_world_proto::viewer::AgentChatRequest` 增加 `intent_tick/intent_seq` 字段，并在 `AgentChatAck` 增加 `intent_tick/intent_seq/idempotent_replay`。
   - `runtime_live` 增加 `intent_seq` 幂等重放语义：同 `(player_id, agent_id, intent_seq)` 重试返回同 ACK，变更载荷触发冲突拒绝。
@@ -76,7 +76,16 @@
     - `env -u RUSTC_WRAPPER cargo test -p agent_world_proto viewer_response_round_trip_authoritative_recovery_`
     - `env -u RUSTC_WRAPPER cargo test -p agent_world runtime_authoritative_recovery_`
     - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required runtime_authoritative_recovery_`
+  - `TASK-P2P-MLC-006` 联合回归证据（required/full）:
+    - `env -u RUSTC_WRAPPER cargo check -p agent_world_proto -p agent_world -p agent_world_viewer`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world_proto viewer_authoritative_`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world_proto viewer_response_round_trip_authoritative_`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required runtime_authoritative_batch_`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required runtime_authoritative_recovery_`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_full runtime_authoritative_challenge_`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_full runtime_authoritative_recovery_`
 - 风险提示:
   - challenge 规则与实时体验存在冲突，需要联动客户端最终性文案。
   - 快照/日志可用性会直接影响重连追平成功率。
+  - 全仓 pre-commit required 套件存在已知基线失败（`bootstrap_power` / `agent_default_modules` 等约 10 项），本任务仅对 MLC 相关矩阵执行并通过；全仓门禁修复需另立专项追踪。
 - 说明: 本文档只维护执行计划；过程记录写入 `doc/devlog/2026-03-07.md`。
