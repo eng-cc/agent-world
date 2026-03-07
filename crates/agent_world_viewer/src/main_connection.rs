@@ -451,6 +451,7 @@ pub(super) fn poll_viewer_messages(
                 ViewerResponse::Event { event } => {
                     push_event_with_window(&mut state.events, event, config.event_window);
                 }
+                ViewerResponse::AuthoritativeBatch { .. } => {}
                 ViewerResponse::DecisionTrace { trace } => {
                     state.decision_traces.push(trace);
                     if state.decision_traces.len() > config.max_events {

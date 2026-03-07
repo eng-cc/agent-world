@@ -39,7 +39,7 @@
 | 输入意图上报 | `player_id/session_pubkey/tick/seq/action/payload_hash/sig` | 客户端只发送 intent，不上报位置/血量等权威状态 | `queued -> sequenced -> executed` | 以 `tick` 主序、`seq` 次序；同 `(player_id, seq)` 去重，且 `seq` 必须与签名 `nonce` 一致 | 仅登录后有效 session key 可写入 |
 | 权威增量下发 | `from_tick/to_tick/batch_id/patches/state_root/authority_sig` | 客户端接收并校验签名/根哈希，执行视觉纠偏 | `predicted -> corrected -> confirmed` | `to_tick` 必须单调递增；越界 patch 拒收 | 仅权威节点签名数据可生效 |
 | 链上承诺与挑战 | `batch_id/state_root/data_root/bond/challenge_deadline` | 提交承诺；watcher 在窗口内发起 challenge | `committed -> challenged -> resolved -> final` | 超过 `challenge_deadline` 自动进入 final | 仅被授权提交者可 commit；挑战者需抵押 |
-| 最终性展示 | `tx_hash/confirm_height/final_height/finality_state` | 客户端 UI 展示三段最终性并限制可消费动作 | `pending -> confirmed -> final` | `pending=已提交但未达到 confirm_height`；`confirmed=已达到 confirm_height 且未被 challenge 阻断`；`final=已达到 final_height 且 challenge 窗口关闭`；状态仅允许前进不允许倒退（除链重组回滚路径） | 非 final 数据禁止触发资产结算 |
+| 最终性展示 | `batch_id/tx_hash/event_seq_start/event_seq_end/confirm_height/final_height/finality_state/settlement_ready/ranking_ready` | 客户端 UI 展示三段最终性并限制可消费动作 | `pending -> confirmed -> final` | `pending=已提交但未达到 confirm_height`；`confirmed=已达到 confirm_height 且未被 challenge 阻断`；`final=已达到 final_height 且 challenge 窗口关闭`；状态仅允许前进不允许倒退（除链重组回滚路径） | 非 final 数据禁止触发资产结算与排行统计 |
 | 重连与追平 | `snapshot_height/snapshot_hash/log_cursor` | 断线后拉快照+增量，必要时回滚到稳定点 | `offline -> syncing -> caught_up` | 优先最近稳定快照，再按 cursor 回放 | 仅同账户同会话（或恢复会话）可追平自身视图 |
 - Acceptance Criteria:
   - AC-MLC-001 (PRD-P2P-MLC-001): 手机端主流程不启动本地权威模拟器；只存在输入、渲染和纠偏逻辑。

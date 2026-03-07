@@ -551,3 +551,103 @@ fn runtime_agent_chat_rejects_intent_seq_nonce_mismatch() {
         .expect_err("intent seq mismatch should fail");
     assert_eq!(err.code, "intent_seq_invalid");
 }
+
+fn commit_single_authoritative_batch(
+    server: &mut ViewerRuntimeLiveServer,
+) -> AuthoritativeBatchFinality {
+    let journal_start = server.world.journal().events.len();
+    server.script.enqueue(&mut server.world);
+    server.world.step().expect("runtime step");
+
+    let mut mapped_events = Vec::new();
+    for runtime_event in &server.world.journal().events[journal_start..] {
+        mapped_events.push(map_runtime_event(runtime_event, &server.snapshot_config));
+    }
+    mapped_events.extend(server.pending_virtual_events.drain(..));
+
+    server
+        .register_authoritative_batch(mapped_events.as_slice())
+        .expect("register authoritative batch")
+}
+
+#[test]
+fn runtime_authoritative_batch_commit_records_required_roots() {
+    let mut server =
+        ViewerRuntimeLiveServer::new(ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal))
+            .expect("runtime server");
+
+    let batch = commit_single_authoritative_batch(&mut server);
+    assert_eq!(batch.finality_state, AuthoritativeFinalityState::Pending);
+    assert!(!batch.batch_id.is_empty());
+    assert!(is_valid_root_hash(batch.state_root.as_str()));
+    assert!(is_valid_root_hash(batch.data_root.as_str()));
+    assert_eq!(server.authoritative_batches.len(), 1);
+}
+
+#[test]
+fn runtime_authoritative_batch_finality_is_monotonic_and_final_only_gates_settlement() {
+    let mut server =
+        ViewerRuntimeLiveServer::new(ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal))
+            .expect("runtime server");
+
+    let pending = commit_single_authoritative_batch(&mut server);
+    assert!(!pending.settlement_ready);
+    assert!(!pending.ranking_ready);
+
+    let confirmed_updates = server
+        .advance_authoritative_batch_finality(pending.confirm_height)
+        .expect("advance to confirmed");
+    assert_eq!(confirmed_updates.len(), 1);
+    let confirmed = &confirmed_updates[0];
+    assert_eq!(
+        confirmed.finality_state,
+        AuthoritativeFinalityState::Confirmed
+    );
+    assert!(!confirmed.settlement_ready);
+    assert!(!confirmed.ranking_ready);
+
+    let final_updates = server
+        .advance_authoritative_batch_finality(pending.final_height)
+        .expect("advance to final");
+    assert_eq!(final_updates.len(), 1);
+    let final_update = &final_updates[0];
+    assert_eq!(
+        final_update.finality_state,
+        AuthoritativeFinalityState::Final
+    );
+    assert!(final_update.settlement_ready);
+    assert!(final_update.ranking_ready);
+
+    let no_regression = server
+        .advance_authoritative_batch_finality(pending.confirm_height)
+        .expect("finality should be monotonic");
+    assert!(no_regression.is_empty());
+    let stored = server.authoritative_batches.back().expect("stored batch");
+    assert_eq!(stored.finality_state, AuthoritativeFinalityState::Final);
+}
+
+#[test]
+fn runtime_authoritative_batch_data_root_mismatch_blocks_confirmation() {
+    let mut server =
+        ViewerRuntimeLiveServer::new(ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal))
+            .expect("runtime server");
+
+    let pending = commit_single_authoritative_batch(&mut server);
+    let tampered_root = "f".repeat(64);
+    let batch = server
+        .authoritative_batches
+        .back_mut()
+        .expect("stored batch for tamper");
+    batch.data_root = tampered_root;
+
+    let updates = server
+        .advance_authoritative_batch_finality(pending.final_height.saturating_add(10))
+        .expect("advance finality");
+    assert!(updates.is_empty());
+
+    let stored = server.authoritative_batches.back().expect("stored batch");
+    assert_eq!(stored.finality_state, AuthoritativeFinalityState::Pending);
+    let wire = stored.as_wire(&server.settlement_ranking_gate);
+    assert!(!wire.settlement_ready);
+    assert!(!wire.ranking_ready);
+}

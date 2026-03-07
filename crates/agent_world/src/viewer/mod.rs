@@ -24,8 +24,9 @@ pub use live::{
     ViewerLiveDecisionMode, ViewerLiveServer, ViewerLiveServerConfig, ViewerLiveServerError,
 };
 pub use protocol::{
-    AgentChatAck, AgentChatError, AgentChatRequest, ControlCompletionAck, ControlCompletionStatus,
-    LiveControl, PlaybackControl, PlayerAuthProof, PlayerAuthScheme, PromptControlAck,
+    AgentChatAck, AgentChatError, AgentChatRequest, AuthoritativeBatchFinality,
+    AuthoritativeFinalityState, ControlCompletionAck, ControlCompletionStatus, LiveControl,
+    PlaybackControl, PlayerAuthProof, PlayerAuthScheme, PromptControlAck,
     PromptControlApplyRequest, PromptControlCommand, PromptControlError, PromptControlOperation,
     PromptControlRollbackRequest, ViewerControl, ViewerControlProfile, ViewerRequest,
     ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,

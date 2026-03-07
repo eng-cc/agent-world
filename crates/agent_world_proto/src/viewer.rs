@@ -188,6 +188,34 @@ pub enum LiveControl {
     Step { count: usize },
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AuthoritativeFinalityState {
+    Pending,
+    Confirmed,
+    Final,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AuthoritativeBatchFinality {
+    pub batch_id: String,
+    pub tx_hash: String,
+    pub commit_tick: u64,
+    pub confirm_height: u64,
+    pub final_height: u64,
+    pub state_root: String,
+    pub data_root: String,
+    pub finality_state: AuthoritativeFinalityState,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub event_seq_start: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub event_seq_end: Option<u64>,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub settlement_ready: bool,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub ranking_ready: bool,
+}
+
 // Legacy mixed control channel. Prefer PlaybackControl/LiveControl.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "mode", rename_all = "snake_case")]
@@ -213,6 +241,9 @@ pub enum ViewerResponse<Snapshot, Event, DecisionTrace, Metrics, Time> {
     },
     Event {
         event: Event,
+    },
+    AuthoritativeBatch {
+        batch: AuthoritativeBatchFinality,
     },
     DecisionTrace {
         trace: DecisionTrace,
@@ -594,6 +625,41 @@ mod tests {
                 intent_tick: Some(42),
                 intent_seq: Some(17),
                 idempotent_replay: true,
+            },
+        };
+        let json = serde_json::to_string(&response).expect("serialize response");
+        let parsed: ViewerResponse<
+            serde_json::Value,
+            serde_json::Value,
+            serde_json::Value,
+            serde_json::Value,
+            u64,
+        > = serde_json::from_str(&json).expect("deserialize response");
+        assert_eq!(parsed, response);
+    }
+
+    #[test]
+    fn viewer_response_round_trip_authoritative_batch() {
+        let response = ViewerResponse::<
+            serde_json::Value,
+            serde_json::Value,
+            serde_json::Value,
+            serde_json::Value,
+            u64,
+        >::AuthoritativeBatch {
+            batch: AuthoritativeBatchFinality {
+                batch_id: "batch-7".to_string(),
+                tx_hash: "tx-hash-7".to_string(),
+                commit_tick: 70,
+                confirm_height: 72,
+                final_height: 75,
+                state_root: "state-root-7".to_string(),
+                data_root: "data-root-7".to_string(),
+                finality_state: AuthoritativeFinalityState::Confirmed,
+                event_seq_start: Some(101),
+                event_seq_end: Some(110),
+                settlement_ready: false,
+                ranking_ready: false,
             },
         };
         let json = serde_json::to_string(&response).expect("serialize response");

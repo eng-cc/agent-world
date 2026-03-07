@@ -1,11 +1,11 @@
-use std::collections::{HashSet, VecDeque};
+use std::collections::{BTreeSet, HashSet, VecDeque};
 use std::io::{self, BufRead, BufReader, BufWriter, Write};
 use std::net::{TcpListener, TcpStream};
 use std::time::{Duration, Instant};
 
 use crate::geometry::GeoPos;
 use crate::runtime::{
-    Action as RuntimeAction, DomainEvent as RuntimeDomainEvent, World as RuntimeWorld,
+    blake3_hex, Action as RuntimeAction, DomainEvent as RuntimeDomainEvent, World as RuntimeWorld,
     WorldError as RuntimeWorldError, WorldEventBody as RuntimeWorldEventBody,
 };
 use crate::simulator::{
@@ -17,9 +17,9 @@ use crate::simulator::{
 
 use super::live::ViewerLiveDecisionMode;
 use super::protocol::{
-    viewer_event_kind_matches, ControlCompletionAck, ControlCompletionStatus, ViewerControl,
-    ViewerControlProfile, ViewerEventKind, ViewerRequest, ViewerResponse, ViewerStream,
-    VIEWER_PROTOCOL_VERSION,
+    viewer_event_kind_matches, AuthoritativeBatchFinality, AuthoritativeFinalityState,
+    ControlCompletionAck, ControlCompletionStatus, ViewerControl, ViewerControlProfile,
+    ViewerEventKind, ViewerRequest, ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
 };
 #[path = "runtime_live/control_plane.rs"]
 mod control_plane;
@@ -29,6 +29,90 @@ mod tests;
 
 use control_plane::RuntimeLlmSidecar;
 use mapping::{map_runtime_event, runtime_state_to_simulator_model};
+
+const AUTHORITATIVE_BATCH_CONFIRM_DELAY_TICKS: u64 = 1;
+const AUTHORITATIVE_BATCH_FINALITY_WINDOW_TICKS: u64 = 2;
+const MAX_AUTHORITATIVE_BATCH_HISTORY: usize = 256;
+
+#[derive(Debug, Clone)]
+struct RuntimeAuthoritativeBatchRecord {
+    batch_id: String,
+    tx_hash: String,
+    commit_tick: u64,
+    confirm_height: u64,
+    final_height: u64,
+    state_root: String,
+    data_root: String,
+    event_seq_start: Option<u64>,
+    event_seq_end: Option<u64>,
+    finality_state: AuthoritativeFinalityState,
+    events: Vec<WorldEvent>,
+}
+
+impl RuntimeAuthoritativeBatchRecord {
+    fn has_valid_commit_roots(&self) -> bool {
+        is_valid_root_hash(self.state_root.as_str()) && is_valid_root_hash(self.data_root.as_str())
+    }
+
+    fn expected_finality(&self, current_tick: u64) -> AuthoritativeFinalityState {
+        if current_tick >= self.final_height {
+            AuthoritativeFinalityState::Final
+        } else if current_tick >= self.confirm_height {
+            AuthoritativeFinalityState::Confirmed
+        } else {
+            AuthoritativeFinalityState::Pending
+        }
+    }
+
+    fn as_wire(&self, gate: &RuntimeSettlementRankingGate) -> AuthoritativeBatchFinality {
+        AuthoritativeBatchFinality {
+            batch_id: self.batch_id.clone(),
+            tx_hash: self.tx_hash.clone(),
+            commit_tick: self.commit_tick,
+            confirm_height: self.confirm_height,
+            final_height: self.final_height,
+            state_root: self.state_root.clone(),
+            data_root: self.data_root.clone(),
+            finality_state: self.finality_state,
+            event_seq_start: self.event_seq_start,
+            event_seq_end: self.event_seq_end,
+            settlement_ready: gate.settlement_allowed(self.batch_id.as_str(), self.finality_state),
+            ranking_ready: gate.ranking_allowed(self.batch_id.as_str(), self.finality_state),
+        }
+    }
+}
+
+#[derive(Debug, Default)]
+struct RuntimeSettlementRankingGate {
+    settlement_ready_batches: BTreeSet<String>,
+    ranking_ready_batches: BTreeSet<String>,
+}
+
+impl RuntimeSettlementRankingGate {
+    fn promote_final(&mut self, batch_id: &str) {
+        self.settlement_ready_batches.insert(batch_id.to_string());
+        self.ranking_ready_batches.insert(batch_id.to_string());
+    }
+
+    fn evict_batch(&mut self, batch_id: &str) {
+        self.settlement_ready_batches.remove(batch_id);
+        self.ranking_ready_batches.remove(batch_id);
+    }
+
+    fn settlement_allowed(
+        &self,
+        batch_id: &str,
+        finality_state: AuthoritativeFinalityState,
+    ) -> bool {
+        finality_state == AuthoritativeFinalityState::Final
+            && self.settlement_ready_batches.contains(batch_id)
+    }
+
+    fn ranking_allowed(&self, batch_id: &str, finality_state: AuthoritativeFinalityState) -> bool {
+        finality_state == AuthoritativeFinalityState::Final
+            && self.ranking_ready_batches.contains(batch_id)
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct ViewerRuntimeLiveServerConfig {
@@ -108,6 +192,9 @@ pub struct ViewerRuntimeLiveServer {
     llm_sidecar: RuntimeLlmSidecar,
     pending_virtual_events: VecDeque<WorldEvent>,
     next_virtual_event_id: u64,
+    authoritative_batches: VecDeque<RuntimeAuthoritativeBatchRecord>,
+    next_authoritative_batch_id: u64,
+    settlement_ranking_gate: RuntimeSettlementRankingGate,
 }
 
 impl ViewerRuntimeLiveServer {
@@ -126,6 +213,9 @@ impl ViewerRuntimeLiveServer {
             llm_sidecar,
             pending_virtual_events: VecDeque::new(),
             next_virtual_event_id,
+            authoritative_batches: VecDeque::new(),
+            next_authoritative_batch_id: 1,
+            settlement_ranking_gate: RuntimeSettlementRankingGate::default(),
         })
     }
 
@@ -226,6 +316,9 @@ impl ViewerRuntimeLiveServer {
                         },
                     )?;
                 }
+                if session.subscribed.contains(&ViewerStream::Events) {
+                    self.emit_authoritative_batch_snapshot(writer)?;
+                }
             }
             ViewerRequest::PlaybackControl { mode, request_id } => {
                 self.apply_control_mode(ViewerControl::from(mode), request_id, session, writer)?;
@@ -321,6 +414,9 @@ impl ViewerRuntimeLiveServer {
                 mapped_events.push(event);
             }
             mapped_events.extend(self.pending_virtual_events.drain(..));
+            let pending_batch = self.register_authoritative_batch(mapped_events.as_slice())?;
+            let batch_finality_updates =
+                self.advance_authoritative_batch_finality(self.world.state().time)?;
 
             if let Some(trace) = decision_trace {
                 if session.subscribed.contains(&ViewerStream::Events) {
@@ -340,6 +436,15 @@ impl ViewerRuntimeLiveServer {
                             },
                         )?;
                     }
+                }
+                send_response(
+                    writer,
+                    &ViewerResponse::AuthoritativeBatch {
+                        batch: pending_batch,
+                    },
+                )?;
+                for batch in batch_finality_updates {
+                    send_response(writer, &ViewerResponse::AuthoritativeBatch { batch })?;
                 }
             }
 
@@ -387,6 +492,124 @@ impl ViewerRuntimeLiveServer {
         }
 
         Ok(())
+    }
+
+    fn register_authoritative_batch(
+        &mut self,
+        events: &[WorldEvent],
+    ) -> Result<AuthoritativeBatchFinality, ViewerRuntimeLiveServerError> {
+        let commit_tick = self.world.state().time;
+        let batch_id = format!(
+            "{}-batch-{:020}",
+            self.config.world_id, self.next_authoritative_batch_id
+        );
+        self.next_authoritative_batch_id = self.next_authoritative_batch_id.saturating_add(1);
+        let state_root = compute_runtime_state_root(&self.world)?;
+        let data_root = compute_batch_data_root(events)?;
+        let tx_hash = compute_batch_tx_hash(
+            batch_id.as_str(),
+            state_root.as_str(),
+            data_root.as_str(),
+            commit_tick,
+        )?;
+        let record = RuntimeAuthoritativeBatchRecord {
+            batch_id,
+            tx_hash,
+            commit_tick,
+            confirm_height: commit_tick.saturating_add(AUTHORITATIVE_BATCH_CONFIRM_DELAY_TICKS),
+            final_height: commit_tick
+                .saturating_add(AUTHORITATIVE_BATCH_CONFIRM_DELAY_TICKS)
+                .saturating_add(AUTHORITATIVE_BATCH_FINALITY_WINDOW_TICKS),
+            state_root,
+            data_root,
+            event_seq_start: events.first().map(|event| event.id),
+            event_seq_end: events.last().map(|event| event.id),
+            finality_state: AuthoritativeFinalityState::Pending,
+            events: events.to_vec(),
+        };
+        let response = record.as_wire(&self.settlement_ranking_gate);
+        self.authoritative_batches.push_back(record);
+        self.prune_authoritative_batch_history();
+        Ok(response)
+    }
+
+    fn advance_authoritative_batch_finality(
+        &mut self,
+        current_tick: u64,
+    ) -> Result<Vec<AuthoritativeBatchFinality>, ViewerRuntimeLiveServerError> {
+        let mut changed_indexes = Vec::new();
+        let mut newly_finalized_batch_ids = Vec::new();
+        for index in 0..self.authoritative_batches.len() {
+            let batch = self
+                .authoritative_batches
+                .get_mut(index)
+                .expect("batch index is valid");
+            if !batch.has_valid_commit_roots() {
+                eprintln!(
+                    "viewer runtime live: authoritative batch remains pending due missing/invalid roots batch_id={} state_root={} data_root={}",
+                    batch.batch_id,
+                    batch.state_root,
+                    batch.data_root
+                );
+                continue;
+            }
+            let expected_data_root = compute_batch_data_root(batch.events.as_slice())?;
+            if expected_data_root != batch.data_root {
+                eprintln!(
+                    "viewer runtime live: authoritative batch remains pending due data_root mismatch batch_id={} expected={} actual={}",
+                    batch.batch_id,
+                    expected_data_root,
+                    batch.data_root
+                );
+                continue;
+            }
+            let expected_state = batch.expected_finality(current_tick);
+            if expected_state > batch.finality_state {
+                batch.finality_state = expected_state;
+                if batch.finality_state == AuthoritativeFinalityState::Final {
+                    newly_finalized_batch_ids.push(batch.batch_id.clone());
+                }
+                changed_indexes.push(index);
+            }
+        }
+
+        for batch_id in newly_finalized_batch_ids {
+            self.settlement_ranking_gate
+                .promote_final(batch_id.as_str());
+        }
+
+        let mut responses = Vec::new();
+        for index in changed_indexes {
+            if let Some(batch) = self.authoritative_batches.get(index) {
+                responses.push(batch.as_wire(&self.settlement_ranking_gate));
+            }
+        }
+        Ok(responses)
+    }
+
+    fn emit_authoritative_batch_snapshot(
+        &self,
+        writer: &mut BufWriter<TcpStream>,
+    ) -> Result<(), ViewerRuntimeLiveServerError> {
+        for batch in &self.authoritative_batches {
+            send_response(
+                writer,
+                &ViewerResponse::AuthoritativeBatch {
+                    batch: batch.as_wire(&self.settlement_ranking_gate),
+                },
+            )?;
+        }
+        Ok(())
+    }
+
+    fn prune_authoritative_batch_history(&mut self) {
+        while self.authoritative_batches.len() > MAX_AUTHORITATIVE_BATCH_HISTORY {
+            let Some(evicted) = self.authoritative_batches.pop_front() else {
+                break;
+            };
+            self.settlement_ranking_gate
+                .evict_batch(evicted.batch_id.as_str());
+        }
     }
 
     fn compat_snapshot(&self) -> WorldSnapshot {
@@ -677,6 +900,51 @@ fn latest_runtime_event_seq(world: &RuntimeWorld) -> u64 {
         .last()
         .map(|event| event.id)
         .unwrap_or(0)
+}
+
+fn compute_runtime_state_root(
+    world: &RuntimeWorld,
+) -> Result<String, ViewerRuntimeLiveServerError> {
+    let snapshot = world.snapshot();
+    let bytes = serde_json::to_vec(&snapshot).map_err(|err| {
+        ViewerRuntimeLiveServerError::Serde(format!(
+            "serialize runtime snapshot for state_root failed: {err}"
+        ))
+    })?;
+    Ok(blake3_hex(bytes.as_slice()))
+}
+
+fn compute_batch_data_root(events: &[WorldEvent]) -> Result<String, ViewerRuntimeLiveServerError> {
+    let bytes = serde_json::to_vec(events).map_err(|err| {
+        ViewerRuntimeLiveServerError::Serde(format!(
+            "serialize authoritative batch events for data_root failed: {err}"
+        ))
+    })?;
+    Ok(blake3_hex(bytes.as_slice()))
+}
+
+fn compute_batch_tx_hash(
+    batch_id: &str,
+    state_root: &str,
+    data_root: &str,
+    commit_tick: u64,
+) -> Result<String, ViewerRuntimeLiveServerError> {
+    let payload = serde_json::json!({
+        "batch_id": batch_id,
+        "state_root": state_root,
+        "data_root": data_root,
+        "commit_tick": commit_tick,
+    });
+    let bytes = serde_json::to_vec(&payload).map_err(|err| {
+        ViewerRuntimeLiveServerError::Serde(format!(
+            "serialize authoritative batch tx payload failed: {err}"
+        ))
+    })?;
+    Ok(blake3_hex(bytes.as_slice()))
+}
+
+fn is_valid_root_hash(value: &str) -> bool {
+    value.len() == 64 && value.chars().all(|ch| ch.is_ascii_hexdigit())
 }
 
 fn location_id_for_pos(pos: GeoPos) -> String {
