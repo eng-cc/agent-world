@@ -50,7 +50,7 @@ fn pos_engine_rejects_commit_without_execution_hashes_when_required() {
     thread::sleep(Duration::from_millis(20));
 
     engine
-        .ingest_peer_messages(&endpoint_b, &config.node_id, &config.world_id, None)
+        .ingest_peer_messages(&endpoint_b, &config.node_id, &config.world_id, None, 0)
         .expect("ingest");
     assert!(
         !engine.peer_heads.contains_key("node-a"),
@@ -117,7 +117,7 @@ fn pos_engine_rejects_commit_when_execution_binding_mismatches_local() {
     thread::sleep(Duration::from_millis(20));
 
     engine
-        .ingest_peer_messages(&endpoint_b, &config.node_id, &config.world_id, None)
+        .ingest_peer_messages(&endpoint_b, &config.node_id, &config.world_id, None, 0)
         .expect("ingest");
     assert!(
         !engine.peer_heads.contains_key("node-a"),
@@ -449,7 +449,7 @@ fn gossip_endpoint_learns_inbound_peer_for_followup_broadcasts() {
         .expect("broadcast to a");
     thread::sleep(Duration::from_millis(20));
     engine_a
-        .ingest_peer_messages(&endpoint_a, "node-a", world_id, None)
+        .ingest_peer_messages(&endpoint_a, "node-a", world_id, None, 0)
         .expect("ingest from b");
 
     endpoint_a

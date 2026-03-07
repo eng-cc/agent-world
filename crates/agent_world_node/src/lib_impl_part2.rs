@@ -147,6 +147,7 @@ impl PosNodeEngine {
         &mut self,
         world_id: &str,
         message: &GossipProposalMessage,
+        current_slot: u64,
     ) -> Result<(), NodeError> {
         if message.version != 1 || message.world_id != world_id {
             return Ok(());
@@ -173,6 +174,31 @@ impl PosNodeEngine {
             .is_err()
         {
             return Ok(());
+        }
+        match self.classify_inbound_slot_window(message.slot, current_slot) {
+            InboundSlotWindow::Accept => {}
+            InboundSlotWindow::Future => {
+                self.inbound_rejected_proposal_future_slot =
+                    self.inbound_rejected_proposal_future_slot.saturating_add(1);
+                self.note_inbound_timing_reject(format!(
+                    "reject proposal timing: future slot={} current_slot={} height={} proposer_id={}",
+                    message.slot, current_slot, message.height, message.proposer_id
+                ));
+                return Ok(());
+            }
+            InboundSlotWindow::Stale => {
+                self.inbound_rejected_proposal_stale_slot =
+                    self.inbound_rejected_proposal_stale_slot.saturating_add(1);
+                self.note_inbound_timing_reject(format!(
+                    "reject proposal timing: stale slot={} current_slot={} lag={} height={} proposer_id={}",
+                    message.slot,
+                    current_slot,
+                    self.max_past_slot_lag,
+                    message.height,
+                    message.proposer_id
+                ));
+                return Ok(());
+            }
         }
         if message.height < self.next_height {
             return Ok(());
@@ -232,6 +258,7 @@ impl PosNodeEngine {
         &mut self,
         world_id: &str,
         message: &GossipAttestationMessage,
+        current_slot: u64,
     ) -> Result<(), NodeError> {
         if message.version != 1 || message.world_id != world_id {
             return Ok(());
@@ -259,10 +286,67 @@ impl PosNodeEngine {
         {
             return Ok(());
         }
+        match self.classify_inbound_slot_window(message.slot, current_slot) {
+            InboundSlotWindow::Accept => {}
+            InboundSlotWindow::Future => {
+                self.inbound_rejected_attestation_future_slot = self
+                    .inbound_rejected_attestation_future_slot
+                    .saturating_add(1);
+                self.note_inbound_timing_reject(format!(
+                    "reject attestation timing: future slot={} current_slot={} height={} validator_id={}",
+                    message.slot, current_slot, message.height, message.validator_id
+                ));
+                return Ok(());
+            }
+            InboundSlotWindow::Stale => {
+                self.inbound_rejected_attestation_stale_slot = self
+                    .inbound_rejected_attestation_stale_slot
+                    .saturating_add(1);
+                self.note_inbound_timing_reject(format!(
+                    "reject attestation timing: stale slot={} current_slot={} lag={} height={} validator_id={}",
+                    message.slot,
+                    current_slot,
+                    self.max_past_slot_lag,
+                    message.height,
+                    message.validator_id
+                ));
+                return Ok(());
+            }
+        }
         let Some(mut proposal) = self.pending.clone() else {
             return Ok(());
         };
         if proposal.height != message.height || proposal.block_hash != message.block_hash {
+            return Ok(());
+        }
+        if message.slot != proposal.slot || message.epoch != proposal.epoch {
+            self.inbound_rejected_attestation_epoch_mismatch = self
+                .inbound_rejected_attestation_epoch_mismatch
+                .saturating_add(1);
+            self.note_inbound_timing_reject(format!(
+                "reject attestation timing: slot/epoch mismatch height={} validator_id={} message_slot={} message_epoch={} proposal_slot={} proposal_epoch={}",
+                message.height,
+                message.validator_id,
+                message.slot,
+                message.epoch,
+                proposal.slot,
+                proposal.epoch
+            ));
+            return Ok(());
+        }
+        let expected_target_epoch = self.slot_epoch(proposal.slot);
+        if message.target_epoch != expected_target_epoch {
+            self.inbound_rejected_attestation_epoch_mismatch = self
+                .inbound_rejected_attestation_epoch_mismatch
+                .saturating_add(1);
+            self.note_inbound_timing_reject(format!(
+                "reject attestation timing: target_epoch mismatch height={} validator_id={} expected_target_epoch={} actual_target_epoch={} slot={}",
+                message.height,
+                message.validator_id,
+                expected_target_epoch,
+                message.target_epoch,
+                proposal.slot
+            ));
             return Ok(());
         }
 
@@ -283,6 +367,7 @@ impl PosNodeEngine {
         &mut self,
         endpoint: &ConsensusNetworkEndpoint,
         world_id: &str,
+        current_slot: u64,
     ) -> Result<(), NodeError> {
         let messages = endpoint.drain_messages()?;
         for message in messages {
@@ -368,7 +453,7 @@ impl PosNodeEngine {
                     {
                         continue;
                     }
-                    self.ingest_proposal_message(world_id, &proposal)?;
+                    self.ingest_proposal_message(world_id, &proposal, current_slot)?;
                 }
                 GossipMessage::Attestation(attestation) => {
                     if attestation.version != 1 || attestation.world_id != world_id {
@@ -382,7 +467,7 @@ impl PosNodeEngine {
                     {
                         continue;
                     }
-                    self.ingest_attestation_message(world_id, &attestation)?;
+                    self.ingest_attestation_message(world_id, &attestation, current_slot)?;
                 }
                 GossipMessage::Replication(_) => {}
             }
@@ -396,6 +481,7 @@ impl PosNodeEngine {
         node_id: &str,
         world_id: &str,
         mut replication: Option<&mut ReplicationRuntime>,
+        current_slot: u64,
     ) -> Result<(), NodeError> {
         let messages = endpoint.drain_messages()?;
         for received in messages {
@@ -483,7 +569,7 @@ impl PosNodeEngine {
                     {
                         continue;
                     }
-                    self.ingest_proposal_message(world_id, &proposal)?;
+                    self.ingest_proposal_message(world_id, &proposal, current_slot)?;
                     endpoint.remember_peer(from)?;
                 }
                 GossipMessage::Attestation(attestation) => {
@@ -498,7 +584,7 @@ impl PosNodeEngine {
                     {
                         continue;
                     }
-                    self.ingest_attestation_message(world_id, &attestation)?;
+                    self.ingest_attestation_message(world_id, &attestation, current_slot)?;
                     endpoint.remember_peer(from)?;
                 }
                 GossipMessage::Replication(replication_msg) => {

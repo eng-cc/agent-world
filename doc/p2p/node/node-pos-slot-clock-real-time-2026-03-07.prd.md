@@ -36,13 +36,14 @@
 | 固定时间槽计算 | `genesis_unix_ms`、`slot_duration_ms`、`epoch_length_slots` | 每次 tick 计算 `current_slot/current_epoch` | `observed_slot` 单调递增 | `current_slot=floor((now-genesis)/slot_duration)`；`epoch=slot/epoch_length_slots` | 全节点一致执行，无角色分叉 |
 | 漏槽对齐 | `next_slot`、`last_observed_slot`、`missed_slot_count` | `next_slot < current_slot` 时对齐并累计漏槽 | `aligned -> proposing` | `missed += current_slot-next_slot` | 仅本地引擎写入 |
 | 提案准入窗口 | `proposal.slot`、`current_slot`、`max_past_slot_lag` | 拒绝未来槽/过旧槽提案 | `accepted/rejected` | `proposal.slot <= current_slot` 且 `proposal.slot + lag >= current_slot` | 仅 validator 提案可进入共识 |
-| 投票准入窗口 | `attestation.target_epoch`、`slot/epoch` | 校验目标 epoch 与槽位映射一致 | `accepted/rejected` | `target_epoch == slot_epoch(proposal.slot)` | 仅已授权 validator 投票 |
+| 投票准入窗口 | `attestation.slot`、`attestation.target_epoch`、`current_slot`、`max_past_slot_lag` | 拒绝未来槽/过旧槽投票，并校验目标 epoch 与提案槽位映射一致 | `accepted/rejected` | `attestation.slot <= current_slot` 且 `attestation.slot + lag >= current_slot` 且 `target_epoch == slot_epoch(proposal.slot)` | 仅已授权 validator 投票 |
+| 入站拒绝可观测 | `inbound_rejected_*`、`last_inbound_timing_reject_reason` | 记录 proposal/attestation 时间窗口拒绝统计与最近拒绝原因 | `updated` | 按拒绝类型累加计数并覆盖最近原因文本 | 节点快照只读暴露 |
 - Acceptance Criteria:
   - AC-1: `NodePosConfig` 支持固定时钟槽位参数（含默认值与校验）。
   - AC-2: 提案路径不再依赖纯 `next_slot += 1` 驱动；提案仅发生在 `next_slot <= current_slot`。
   - AC-3: 当 wall-clock 跨槽导致 `next_slot < current_slot` 时，系统记录漏槽并对齐，不补历史空块。
   - AC-4: 节点快照可观测 `last_observed_slot/missed_slot_count`，重启后保持单调。
-  - AC-5: 入站消息存在时间窗口校验，未来槽/超窗口过旧槽被拒绝。
+  - AC-5: 入站 proposal/attestation 存在时间窗口校验，未来槽/超窗口过旧槽被拒绝。
   - AC-6: 回归覆盖单节点、重启恢复、跨节点消息窗口三类路径。
 - Non-Goals:
   - 不在本任务实现 fork choice/finality 全流程升级。

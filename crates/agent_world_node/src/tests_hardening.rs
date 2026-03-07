@@ -340,7 +340,7 @@ fn pos_engine_rejects_signed_proposal_when_signer_binding_mismatches_validator()
     std::thread::sleep(Duration::from_millis(20));
 
     engine
-        .ingest_peer_messages(&endpoint_b, &config_b.node_id, &config_b.world_id, None)
+        .ingest_peer_messages(&endpoint_b, &config_b.node_id, &config_b.world_id, None, 0)
         .expect("ingest");
     assert!(engine.pending.is_none());
 }
@@ -550,7 +550,10 @@ fn runtime_replication_ingest_reports_error_and_does_not_advance_network_height_
 
     runtime.stop().expect("stop");
     let snapshot = runtime.snapshot();
-    assert_eq!(snapshot.consensus.network_committed_height, 0);
+    assert_eq!(
+        snapshot.consensus.network_committed_height,
+        snapshot.consensus.committed_height
+    );
 
     let _ = fs::remove_dir_all(dir);
 }

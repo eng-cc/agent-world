@@ -88,6 +88,7 @@ pub struct NodePosConfig {
     pub epoch_length_slots: u64,
     pub slot_duration_ms: u64,
     pub slot_clock_genesis_unix_ms: Option<i64>,
+    pub max_past_slot_lag: u64,
 }
 
 impl NodePosConfig {
@@ -108,6 +109,7 @@ impl NodePosConfig {
             epoch_length_slots: 32,
             slot_duration_ms: 1,
             slot_clock_genesis_unix_ms: None,
+            max_past_slot_lag: 256,
         }
     }
 
@@ -125,6 +127,12 @@ impl NodePosConfig {
         validator_signer_public_keys: BTreeMap<String, String>,
     ) -> Result<Self, NodeError> {
         self.validator_signer_public_keys = validator_signer_public_keys;
+        validate_pos_config(&self)?;
+        Ok(self)
+    }
+
+    pub fn with_max_past_slot_lag(mut self, max_past_slot_lag: u64) -> Result<Self, NodeError> {
+        self.max_past_slot_lag = max_past_slot_lag;
         validate_pos_config(&self)?;
         Ok(self)
     }
@@ -537,6 +545,12 @@ pub struct NodeConsensusSnapshot {
     pub network_committed_height: u64,
     pub known_peer_heads: usize,
     pub peer_heads: Vec<NodePeerCommittedHead>,
+    pub inbound_rejected_proposal_future_slot: u64,
+    pub inbound_rejected_proposal_stale_slot: u64,
+    pub inbound_rejected_attestation_future_slot: u64,
+    pub inbound_rejected_attestation_stale_slot: u64,
+    pub inbound_rejected_attestation_epoch_mismatch: u64,
+    pub last_inbound_timing_reject_reason: Option<String>,
     pub last_status: Option<PosConsensusStatus>,
     pub last_block_hash: Option<String>,
     pub last_execution_height: u64,
@@ -568,6 +582,12 @@ impl Default for NodeConsensusSnapshot {
             network_committed_height: 0,
             known_peer_heads: 0,
             peer_heads: Vec::new(),
+            inbound_rejected_proposal_future_slot: 0,
+            inbound_rejected_proposal_stale_slot: 0,
+            inbound_rejected_attestation_future_slot: 0,
+            inbound_rejected_attestation_stale_slot: 0,
+            inbound_rejected_attestation_epoch_mismatch: 0,
+            last_inbound_timing_reject_reason: None,
             last_status: None,
             last_block_hash: None,
             last_execution_height: 0,

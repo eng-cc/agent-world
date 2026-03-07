@@ -1,3 +1,10 @@
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum InboundSlotWindow {
+    Accept,
+    Future,
+    Stale,
+}
+
 impl PosNodeEngine {
     fn new(config: &NodeConfig) -> Result<Self, NodeError> {
         let (validators, validator_players, validator_signers, total_stake, required_stake) =
@@ -74,6 +81,7 @@ impl PosNodeEngine {
             epoch_length_slots: config.pos_config.epoch_length_slots,
             slot_duration_ms: config.pos_config.slot_duration_ms,
             slot_clock_genesis_unix_ms: config.pos_config.slot_clock_genesis_unix_ms,
+            max_past_slot_lag: config.pos_config.max_past_slot_lag,
             last_observed_slot: 0,
             missed_slot_count: 0,
             local_validator_id: config.node_id.clone(),
@@ -96,6 +104,12 @@ impl PosNodeEngine {
             peer_heads: BTreeMap::new(),
             last_committed_at_ms: None,
             last_committed_block_hash: None,
+            inbound_rejected_proposal_future_slot: 0,
+            inbound_rejected_proposal_stale_slot: 0,
+            inbound_rejected_attestation_future_slot: 0,
+            inbound_rejected_attestation_stale_slot: 0,
+            inbound_rejected_attestation_epoch_mismatch: 0,
+            last_inbound_timing_reject_reason: None,
             last_execution_height: 0,
             last_execution_block_hash: None,
             last_execution_state_root: None,
@@ -123,11 +137,19 @@ impl PosNodeEngine {
             self.max_pending_consensus_actions,
         )?;
 
+        let current_slot = self.observe_wall_clock_slot(now_ms);
+
         if let Some(endpoint) = gossip.as_ref() {
-            self.ingest_peer_messages(endpoint, node_id, world_id, replication.as_deref_mut())?;
+            self.ingest_peer_messages(
+                endpoint,
+                node_id,
+                world_id,
+                replication.as_deref_mut(),
+                current_slot,
+            )?;
         }
         if let Some(endpoint) = consensus_network.as_ref() {
-            self.ingest_consensus_network_messages(endpoint, world_id)?;
+            self.ingest_consensus_network_messages(endpoint, world_id, current_slot)?;
         }
         if let Some(endpoint) = replication_network.as_ref() {
             self.ingest_network_replications(
@@ -143,8 +165,6 @@ impl PosNodeEngine {
                 replication.as_deref_mut(),
             )?;
         }
-
-        let current_slot = self.observe_wall_clock_slot(now_ms);
         self.align_next_slot_to_wall_clock(current_slot)?;
 
         let mut decision = if self.pending.is_some() {
@@ -190,10 +210,16 @@ impl PosNodeEngine {
             replication.as_deref_mut(),
         )?;
         if let Some(endpoint) = gossip.as_ref() {
-            self.ingest_peer_messages(endpoint, node_id, world_id, replication.as_deref_mut())?;
+            self.ingest_peer_messages(
+                endpoint,
+                node_id,
+                world_id,
+                replication.as_deref_mut(),
+                current_slot,
+            )?;
         }
         if let Some(endpoint) = consensus_network.as_ref() {
-            self.ingest_consensus_network_messages(endpoint, world_id)?;
+            self.ingest_consensus_network_messages(endpoint, world_id, current_slot)?;
         }
         if let Some(endpoint) = replication_network.as_ref() {
             self.ingest_network_replications(
@@ -261,6 +287,25 @@ impl PosNodeEngine {
             })?;
         self.next_slot = current_slot;
         Ok(())
+    }
+
+    fn classify_inbound_slot_window(
+        &self,
+        message_slot: u64,
+        current_slot: u64,
+    ) -> InboundSlotWindow {
+        if message_slot > current_slot {
+            return InboundSlotWindow::Future;
+        }
+        let latest_acceptable_slot = message_slot.saturating_add(self.max_past_slot_lag);
+        if latest_acceptable_slot < current_slot {
+            return InboundSlotWindow::Stale;
+        }
+        InboundSlotWindow::Accept
+    }
+
+    fn note_inbound_timing_reject(&mut self, reason: String) {
+        self.last_inbound_timing_reject_reason = Some(reason);
     }
 
     fn idle_pending_decision(&self) -> Result<PosDecision, NodeError> {
@@ -512,6 +557,13 @@ impl PosNodeEngine {
             network_committed_height: self.network_committed_height.max(self.committed_height),
             known_peer_heads: self.peer_heads.len(),
             peer_heads,
+            inbound_rejected_proposal_future_slot: self.inbound_rejected_proposal_future_slot,
+            inbound_rejected_proposal_stale_slot: self.inbound_rejected_proposal_stale_slot,
+            inbound_rejected_attestation_future_slot: self.inbound_rejected_attestation_future_slot,
+            inbound_rejected_attestation_stale_slot: self.inbound_rejected_attestation_stale_slot,
+            inbound_rejected_attestation_epoch_mismatch: self
+                .inbound_rejected_attestation_epoch_mismatch,
+            last_inbound_timing_reject_reason: self.last_inbound_timing_reject_reason.clone(),
             last_status: Some(decision.status),
             last_block_hash: Some(decision.block_hash.clone()),
             last_execution_height: self.last_execution_height,

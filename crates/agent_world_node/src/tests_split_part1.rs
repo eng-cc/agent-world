@@ -658,7 +658,7 @@ fn pos_engine_ingest_proposal_rejects_slot_overflow_without_partial_state() {
     };
 
     let err = engine
-        .ingest_proposal_message(config.world_id.as_str(), &message)
+        .ingest_proposal_message(config.world_id.as_str(), &message, u64::MAX)
         .expect_err("slot overflow must fail");
     assert!(
         matches!(err, NodeError::Consensus { reason } if reason.contains("proposal.slot overflow"))
@@ -949,9 +949,70 @@ fn pos_engine_signature_enforced_rejects_unsigned_proposal() {
     thread::sleep(Duration::from_millis(20));
 
     engine
-        .ingest_peer_messages(&endpoint_b, &config_b.node_id, &config_b.world_id, None)
+        .ingest_peer_messages(&endpoint_b, &config_b.node_id, &config_b.world_id, None, 0)
         .expect("ingest");
     assert!(engine.pending.is_none());
+}
+
+#[test]
+fn pos_engine_rejects_future_slot_proposal_from_peer_messages() {
+    let socket_a = UdpSocket::bind("127.0.0.1:0").expect("bind a");
+    let socket_b = UdpSocket::bind("127.0.0.1:0").expect("bind b");
+    let addr_a = socket_a.local_addr().expect("addr a");
+    let addr_b = socket_b.local_addr().expect("addr b");
+    drop(socket_a);
+    drop(socket_b);
+
+    let config = NodeConfig::new(
+        "node-b",
+        "world-future-slot-peer-reject",
+        NodeRole::Observer,
+    )
+    .expect("config")
+    .with_pos_validators(vec![
+        PosValidator {
+            validator_id: "node-a".to_string(),
+            stake: 60,
+        },
+        PosValidator {
+            validator_id: "node-b".to_string(),
+            stake: 40,
+        },
+    ])
+    .expect("validators");
+    let mut engine = PosNodeEngine::new(&config).expect("engine");
+
+    let endpoint_a =
+        GossipEndpoint::bind(&gossip_config(addr_a, vec![addr_b])).expect("endpoint a");
+    let endpoint_b =
+        GossipEndpoint::bind(&gossip_config(addr_b, vec![addr_a])).expect("endpoint b");
+
+    let proposal = GossipProposalMessage {
+        version: 1,
+        world_id: config.world_id.clone(),
+        node_id: "node-a".to_string(),
+        player_id: "node-a".to_string(),
+        proposer_id: "node-a".to_string(),
+        height: 1,
+        slot: 9,
+        epoch: 0,
+        block_hash: format!("{}:h1:s9:p{}", config.world_id, "node-a"),
+        action_root: empty_action_root(),
+        actions: Vec::new(),
+        proposed_at_ms: 1_000,
+        public_key_hex: None,
+        signature_hex: None,
+    };
+    endpoint_a
+        .broadcast_proposal(&proposal)
+        .expect("broadcast proposal");
+    thread::sleep(Duration::from_millis(20));
+
+    engine
+        .ingest_peer_messages(&endpoint_b, &config.node_id, &config.world_id, None, 2)
+        .expect("ingest");
+    assert!(engine.pending.is_none());
+    assert_eq!(engine.inbound_rejected_proposal_future_slot, 1);
 }
 
 #[test]
@@ -1055,7 +1116,7 @@ fn pos_engine_signature_enforced_accepts_signed_proposal_and_attestation() {
     thread::sleep(Duration::from_millis(20));
 
     engine
-        .ingest_peer_messages(&endpoint_b, &config_b.node_id, &config_b.world_id, None)
+        .ingest_peer_messages(&endpoint_b, &config_b.node_id, &config_b.world_id, None, 0)
         .expect("ingest");
     let pending = engine.pending.as_ref().expect("pending exists");
     assert_eq!(pending.height, 1);
@@ -1157,7 +1218,7 @@ fn pos_engine_ingests_commit_execution_hashes() {
     thread::sleep(Duration::from_millis(20));
 
     engine
-        .ingest_peer_messages(&endpoint_b, &config.node_id, &config.world_id, None)
+        .ingest_peer_messages(&endpoint_b, &config.node_id, &config.world_id, None, 0)
         .expect("ingest");
     let head = engine
         .peer_heads
