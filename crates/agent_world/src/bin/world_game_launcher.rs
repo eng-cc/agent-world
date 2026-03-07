@@ -23,6 +23,10 @@ const DEFAULT_CHAIN_STATUS_BIND: &str = "127.0.0.1:5121";
 const DEFAULT_CHAIN_NODE_ID: &str = "viewer-live-node";
 const DEFAULT_CHAIN_NODE_ROLE: &str = "sequencer";
 const DEFAULT_CHAIN_NODE_TICK_MS: u64 = 200;
+const DEFAULT_CHAIN_POS_SLOT_DURATION_MS: u64 = 1;
+const DEFAULT_CHAIN_POS_TICKS_PER_SLOT: u64 = 1;
+const DEFAULT_CHAIN_POS_PROPOSAL_TICK_PHASE: u64 = 0;
+const DEFAULT_CHAIN_POS_MAX_PAST_SLOT_LAG: u64 = 256;
 const VIEWER_PLAYER_ID_ENV: &str = "AGENT_WORLD_VIEWER_PLAYER_ID";
 const VIEWER_AUTH_PUBLIC_KEY_ENV: &str = "AGENT_WORLD_VIEWER_AUTH_PUBLIC_KEY";
 const VIEWER_AUTH_PRIVATE_KEY_ENV: &str = "AGENT_WORLD_VIEWER_AUTH_PRIVATE_KEY";
@@ -57,6 +61,12 @@ struct CliOptions {
     chain_world_id: Option<String>,
     chain_node_role: String,
     chain_node_tick_ms: u64,
+    chain_pos_slot_duration_ms: u64,
+    chain_pos_ticks_per_slot: u64,
+    chain_pos_proposal_tick_phase: u64,
+    chain_pos_adaptive_tick_scheduler_enabled: bool,
+    chain_pos_slot_clock_genesis_unix_ms: Option<i64>,
+    chain_pos_max_past_slot_lag: u64,
     chain_node_validators: Vec<String>,
 }
 
@@ -77,6 +87,12 @@ impl Default for CliOptions {
             chain_world_id: None,
             chain_node_role: DEFAULT_CHAIN_NODE_ROLE.to_string(),
             chain_node_tick_ms: DEFAULT_CHAIN_NODE_TICK_MS,
+            chain_pos_slot_duration_ms: DEFAULT_CHAIN_POS_SLOT_DURATION_MS,
+            chain_pos_ticks_per_slot: DEFAULT_CHAIN_POS_TICKS_PER_SLOT,
+            chain_pos_proposal_tick_phase: DEFAULT_CHAIN_POS_PROPOSAL_TICK_PHASE,
+            chain_pos_adaptive_tick_scheduler_enabled: false,
+            chain_pos_slot_clock_genesis_unix_ms: None,
+            chain_pos_max_past_slot_lag: DEFAULT_CHAIN_POS_MAX_PAST_SLOT_LAG,
             chain_node_validators: Vec::new(),
         }
     }
@@ -239,7 +255,25 @@ fn spawn_world_chain_runtime(path: &Path, options: &CliOptions) -> Result<Child,
         .arg("--node-role")
         .arg(options.chain_node_role.as_str())
         .arg("--node-tick-ms")
-        .arg(options.chain_node_tick_ms.to_string());
+        .arg(options.chain_node_tick_ms.to_string())
+        .arg("--pos-slot-duration-ms")
+        .arg(options.chain_pos_slot_duration_ms.to_string())
+        .arg("--pos-ticks-per-slot")
+        .arg(options.chain_pos_ticks_per_slot.to_string())
+        .arg("--pos-proposal-tick-phase")
+        .arg(options.chain_pos_proposal_tick_phase.to_string())
+        .arg("--pos-max-past-slot-lag")
+        .arg(options.chain_pos_max_past_slot_lag.to_string())
+        .arg(if options.chain_pos_adaptive_tick_scheduler_enabled {
+            "--pos-adaptive-tick-scheduler"
+        } else {
+            "--pos-no-adaptive-tick-scheduler"
+        });
+    if let Some(genesis) = options.chain_pos_slot_clock_genesis_unix_ms {
+        command
+            .arg("--pos-slot-clock-genesis-unix-ms")
+            .arg(genesis.to_string());
+    }
     for validator in &options.chain_node_validators {
         command.arg("--node-validator").arg(validator.as_str());
     }
@@ -878,6 +912,56 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
                     return Err("--chain-node-tick-ms must be a positive integer".to_string());
                 }
             }
+            "--chain-pos-slot-duration-ms" => {
+                let raw = parse_required_value(&mut iter, "--chain-pos-slot-duration-ms")?;
+                options.chain_pos_slot_duration_ms = raw.parse::<u64>().map_err(|_| {
+                    format!("--chain-pos-slot-duration-ms must be a positive integer, got `{raw}`")
+                })?;
+                if options.chain_pos_slot_duration_ms == 0 {
+                    return Err(
+                        "--chain-pos-slot-duration-ms must be a positive integer".to_string()
+                    );
+                }
+            }
+            "--chain-pos-ticks-per-slot" => {
+                let raw = parse_required_value(&mut iter, "--chain-pos-ticks-per-slot")?;
+                options.chain_pos_ticks_per_slot = raw.parse::<u64>().map_err(|_| {
+                    format!("--chain-pos-ticks-per-slot must be a positive integer, got `{raw}`")
+                })?;
+                if options.chain_pos_ticks_per_slot == 0 {
+                    return Err("--chain-pos-ticks-per-slot must be a positive integer".to_string());
+                }
+            }
+            "--chain-pos-proposal-tick-phase" => {
+                let raw = parse_required_value(&mut iter, "--chain-pos-proposal-tick-phase")?;
+                options.chain_pos_proposal_tick_phase = raw.parse::<u64>().map_err(|_| {
+                    format!("--chain-pos-proposal-tick-phase must be a non-negative integer, got `{raw}`")
+                })?;
+            }
+            "--chain-pos-adaptive-tick-scheduler" => {
+                options.chain_pos_adaptive_tick_scheduler_enabled = true;
+            }
+            "--chain-pos-no-adaptive-tick-scheduler" => {
+                options.chain_pos_adaptive_tick_scheduler_enabled = false;
+            }
+            "--chain-pos-slot-clock-genesis-unix-ms" => {
+                let raw =
+                    parse_required_value(&mut iter, "--chain-pos-slot-clock-genesis-unix-ms")?;
+                options.chain_pos_slot_clock_genesis_unix_ms =
+                    Some(raw.parse::<i64>().map_err(|_| {
+                        format!(
+                            "--chain-pos-slot-clock-genesis-unix-ms must be an integer, got `{raw}`"
+                        )
+                    })?);
+            }
+            "--chain-pos-max-past-slot-lag" => {
+                let raw = parse_required_value(&mut iter, "--chain-pos-max-past-slot-lag")?;
+                options.chain_pos_max_past_slot_lag = raw.parse::<u64>().map_err(|_| {
+                    format!(
+                        "--chain-pos-max-past-slot-lag must be a non-negative integer, got `{raw}`"
+                    )
+                })?;
+            }
             "--chain-node-validator" => {
                 let value = parse_required_value(&mut iter, "--chain-node-validator")?;
                 validate_chain_node_validator(value.as_str())?;
@@ -902,6 +986,18 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
         parse_chain_node_role(options.chain_node_role.as_str())?;
         if options.chain_node_tick_ms == 0 {
             return Err("--chain-node-tick-ms must be a positive integer".to_string());
+        }
+        if options.chain_pos_slot_duration_ms == 0 {
+            return Err("--chain-pos-slot-duration-ms must be a positive integer".to_string());
+        }
+        if options.chain_pos_ticks_per_slot == 0 {
+            return Err("--chain-pos-ticks-per-slot must be a positive integer".to_string());
+        }
+        if options.chain_pos_proposal_tick_phase >= options.chain_pos_ticks_per_slot {
+            return Err(format!(
+                "--chain-pos-proposal-tick-phase={} must be less than --chain-pos-ticks-per-slot={}",
+                options.chain_pos_proposal_tick_phase, options.chain_pos_ticks_per_slot
+            ));
         }
         for validator in &options.chain_node_validators {
             validate_chain_node_validator(validator.as_str())?;
@@ -1198,7 +1294,21 @@ Options:\n\
   --chain-node-id <id>         world_chain_runtime node id (default: {DEFAULT_CHAIN_NODE_ID})\n\
   --chain-world-id <id>        world_chain_runtime world id (default: live-<scenario>)\n\
   --chain-node-role <role>     world_chain_runtime role (default: {DEFAULT_CHAIN_NODE_ROLE})\n\
-  --chain-node-tick-ms <n>     world_chain_runtime tick ms (default: {DEFAULT_CHAIN_NODE_TICK_MS})\n\
+  --chain-node-tick-ms <n>     world_chain_runtime worker poll/fallback interval ms (default: {DEFAULT_CHAIN_NODE_TICK_MS})\n\
+  --chain-pos-slot-duration-ms <n>\n\
+                               world_chain_runtime PoS slot duration ms (default: {DEFAULT_CHAIN_POS_SLOT_DURATION_MS})\n\
+  --chain-pos-ticks-per-slot <n>\n\
+                               world_chain_runtime PoS logical ticks per slot (default: {DEFAULT_CHAIN_POS_TICKS_PER_SLOT})\n\
+  --chain-pos-proposal-tick-phase <n>\n\
+                               world_chain_runtime proposal phase in slot tick window (default: {DEFAULT_CHAIN_POS_PROPOSAL_TICK_PHASE})\n\
+  --chain-pos-adaptive-tick-scheduler\n\
+                               enable world_chain_runtime adaptive tick scheduler\n\
+  --chain-pos-no-adaptive-tick-scheduler\n\
+                               disable world_chain_runtime adaptive scheduler (default)\n\
+  --chain-pos-slot-clock-genesis-unix-ms <n>\n\
+                               world_chain_runtime fixed slot clock genesis unix ms (default: auto)\n\
+  --chain-pos-max-past-slot-lag <n>\n\
+                               world_chain_runtime max accepted stale slot lag (default: {DEFAULT_CHAIN_POS_MAX_PAST_SLOT_LAG})\n\
   --chain-node-validator <v:s> world_chain_runtime validator (repeatable)\n\
   --with-llm                   enable llm mode\n\
   --no-open-browser            do not auto open browser\n\

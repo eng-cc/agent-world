@@ -14,6 +14,13 @@ pub(super) fn launcher_text_field_mut<'a>(
         "chain_world_id" => Some(&mut config.chain_world_id),
         "chain_node_role" => Some(&mut config.chain_node_role),
         "chain_node_tick_ms" => Some(&mut config.chain_node_tick_ms),
+        "chain_pos_slot_duration_ms" => Some(&mut config.chain_pos_slot_duration_ms),
+        "chain_pos_ticks_per_slot" => Some(&mut config.chain_pos_ticks_per_slot),
+        "chain_pos_proposal_tick_phase" => Some(&mut config.chain_pos_proposal_tick_phase),
+        "chain_pos_slot_clock_genesis_unix_ms" => {
+            Some(&mut config.chain_pos_slot_clock_genesis_unix_ms)
+        }
+        "chain_pos_max_past_slot_lag" => Some(&mut config.chain_pos_max_past_slot_lag),
         "chain_node_validators" => Some(&mut config.chain_node_validators),
         "launcher_bin" => Some(&mut config.launcher_bin),
         "chain_runtime_bin" => Some(&mut config.chain_runtime_bin),
@@ -29,6 +36,9 @@ pub(super) fn launcher_checkbox_field_mut<'a>(
     match field_id {
         "llm_enabled" => Some(&mut config.llm_enabled),
         "chain_enabled" => Some(&mut config.chain_enabled),
+        "chain_pos_adaptive_tick_scheduler_enabled" => {
+            Some(&mut config.chain_pos_adaptive_tick_scheduler_enabled)
+        }
         "auto_open_browser" => Some(&mut config.auto_open_browser),
         _ => None,
     }
@@ -100,8 +110,51 @@ pub(super) fn collect_chain_required_config_issues(config: &LaunchConfig) -> Vec
     if parse_chain_role(config.chain_node_role.as_str()).is_err() {
         issues.push(ConfigIssue::ChainRoleInvalid);
     }
-    if parse_port(config.chain_node_tick_ms.as_str(), "chain tick ms").is_err() {
+    if parse_positive_u64(config.chain_node_tick_ms.as_str(), "chain tick ms").is_err() {
         issues.push(ConfigIssue::ChainTickMsInvalid);
+    }
+    if parse_positive_u64(
+        config.chain_pos_slot_duration_ms.as_str(),
+        "chain pos slot duration ms",
+    )
+    .is_err()
+    {
+        issues.push(ConfigIssue::ChainPosSlotDurationMsInvalid);
+    }
+    let ticks_per_slot = parse_positive_u64(
+        config.chain_pos_ticks_per_slot.as_str(),
+        "chain pos ticks per slot",
+    );
+    if ticks_per_slot.is_err() {
+        issues.push(ConfigIssue::ChainPosTicksPerSlotInvalid);
+    }
+    let proposal_tick_phase = parse_non_negative_u64(
+        config.chain_pos_proposal_tick_phase.as_str(),
+        "chain pos proposal tick phase",
+    );
+    if proposal_tick_phase.is_err() {
+        issues.push(ConfigIssue::ChainPosProposalTickPhaseInvalid);
+    }
+    if let (Ok(ticks_per_slot), Ok(proposal_tick_phase)) = (ticks_per_slot, proposal_tick_phase) {
+        if proposal_tick_phase >= ticks_per_slot {
+            issues.push(ConfigIssue::ChainPosProposalTickPhaseOutOfRange);
+        }
+    }
+    if parse_optional_i64(
+        config.chain_pos_slot_clock_genesis_unix_ms.as_str(),
+        "chain pos slot clock genesis unix ms",
+    )
+    .is_err()
+    {
+        issues.push(ConfigIssue::ChainPosSlotClockGenesisUnixMsInvalid);
+    }
+    if parse_non_negative_u64(
+        config.chain_pos_max_past_slot_lag.as_str(),
+        "chain pos max past slot lag",
+    )
+    .is_err()
+    {
+        issues.push(ConfigIssue::ChainPosMaxPastSlotLagInvalid);
     }
     if parse_chain_validators(config.chain_node_validators.as_str()).is_err() {
         issues.push(ConfigIssue::ChainValidatorsInvalid);
@@ -159,7 +212,33 @@ pub(super) fn build_chain_runtime_args(config: &LaunchConfig) -> Result<Vec<Stri
         return Err("chain node id cannot be empty".to_string());
     }
     let chain_role = parse_chain_role(config.chain_node_role.as_str())?;
-    let chain_tick_ms = parse_port(config.chain_node_tick_ms.as_str(), "chain tick ms")?;
+    let chain_tick_ms = parse_positive_u64(config.chain_node_tick_ms.as_str(), "chain tick ms")?;
+    let pos_slot_duration_ms = parse_positive_u64(
+        config.chain_pos_slot_duration_ms.as_str(),
+        "chain pos slot duration ms",
+    )?;
+    let pos_ticks_per_slot = parse_positive_u64(
+        config.chain_pos_ticks_per_slot.as_str(),
+        "chain pos ticks per slot",
+    )?;
+    let pos_proposal_tick_phase = parse_non_negative_u64(
+        config.chain_pos_proposal_tick_phase.as_str(),
+        "chain pos proposal tick phase",
+    )?;
+    if pos_proposal_tick_phase >= pos_ticks_per_slot {
+        return Err(format!(
+            "chain pos proposal tick phase={} must be less than chain pos ticks per slot={}",
+            pos_proposal_tick_phase, pos_ticks_per_slot
+        ));
+    }
+    let pos_slot_clock_genesis_unix_ms = parse_optional_i64(
+        config.chain_pos_slot_clock_genesis_unix_ms.as_str(),
+        "chain pos slot clock genesis unix ms",
+    )?;
+    let pos_max_past_slot_lag = parse_non_negative_u64(
+        config.chain_pos_max_past_slot_lag.as_str(),
+        "chain pos max past slot lag",
+    )?;
     let validators = parse_chain_validators(config.chain_node_validators.as_str())?;
     let scenario = config.scenario.trim();
     let default_world_id = if scenario.is_empty() {
@@ -184,7 +263,24 @@ pub(super) fn build_chain_runtime_args(config: &LaunchConfig) -> Result<Vec<Stri
         chain_role,
         "--node-tick-ms".to_string(),
         chain_tick_ms.to_string(),
+        "--pos-slot-duration-ms".to_string(),
+        pos_slot_duration_ms.to_string(),
+        "--pos-ticks-per-slot".to_string(),
+        pos_ticks_per_slot.to_string(),
+        "--pos-proposal-tick-phase".to_string(),
+        pos_proposal_tick_phase.to_string(),
+        if config.chain_pos_adaptive_tick_scheduler_enabled {
+            "--pos-adaptive-tick-scheduler".to_string()
+        } else {
+            "--pos-no-adaptive-tick-scheduler".to_string()
+        },
+        "--pos-max-past-slot-lag".to_string(),
+        pos_max_past_slot_lag.to_string(),
     ];
+    if let Some(genesis) = pos_slot_clock_genesis_unix_ms {
+        args.push("--pos-slot-clock-genesis-unix-ms".to_string());
+        args.push(genesis.to_string());
+    }
     for validator in validators {
         args.push("--node-validator".to_string());
         args.push(validator);
@@ -291,6 +387,35 @@ pub(super) fn parse_port(raw: &str, label: &str) -> Result<u16, String> {
         return Err(format!("{label} must be in 1..=65535"));
     }
     Ok(port)
+}
+
+pub(super) fn parse_positive_u64(raw: &str, label: &str) -> Result<u64, String> {
+    let value = raw.trim();
+    let parsed = value
+        .parse::<u64>()
+        .map_err(|_| format!("{label} must be a positive integer"))?;
+    if parsed == 0 {
+        return Err(format!("{label} must be a positive integer"));
+    }
+    Ok(parsed)
+}
+
+pub(super) fn parse_non_negative_u64(raw: &str, label: &str) -> Result<u64, String> {
+    let value = raw.trim();
+    value
+        .parse::<u64>()
+        .map_err(|_| format!("{label} must be a non-negative integer"))
+}
+
+pub(super) fn parse_optional_i64(raw: &str, label: &str) -> Result<Option<i64>, String> {
+    let value = raw.trim();
+    if value.is_empty() {
+        return Ok(None);
+    }
+    value
+        .parse::<i64>()
+        .map(Some)
+        .map_err(|_| format!("{label} must be an integer"))
 }
 
 pub(super) fn parse_host_port(raw: &str, label: &str) -> Result<(String, u16), String> {

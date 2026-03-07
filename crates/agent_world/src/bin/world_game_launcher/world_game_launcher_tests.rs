@@ -25,6 +25,12 @@ fn parse_options_defaults() {
     assert_eq!(options.chain_status_bind, DEFAULT_CHAIN_STATUS_BIND);
     assert_eq!(options.chain_node_id, DEFAULT_CHAIN_NODE_ID);
     assert_eq!(options.chain_node_role, "sequencer");
+    assert_eq!(options.chain_pos_slot_duration_ms, 1);
+    assert_eq!(options.chain_pos_ticks_per_slot, 1);
+    assert_eq!(options.chain_pos_proposal_tick_phase, 0);
+    assert!(!options.chain_pos_adaptive_tick_scheduler_enabled);
+    assert_eq!(options.chain_pos_slot_clock_genesis_unix_ms, None);
+    assert_eq!(options.chain_pos_max_past_slot_lag, 256);
 }
 
 #[test]
@@ -53,6 +59,17 @@ fn parse_options_accepts_overrides() {
             "storage",
             "--chain-node-tick-ms",
             "350",
+            "--chain-pos-slot-duration-ms",
+            "12000",
+            "--chain-pos-ticks-per-slot",
+            "10",
+            "--chain-pos-proposal-tick-phase",
+            "9",
+            "--chain-pos-adaptive-tick-scheduler",
+            "--chain-pos-slot-clock-genesis-unix-ms",
+            "1700000000000",
+            "--chain-pos-max-past-slot-lag",
+            "32",
             "--chain-node-validator",
             "chain-a:55",
             "--with-llm",
@@ -73,6 +90,15 @@ fn parse_options_accepts_overrides() {
     assert_eq!(options.chain_world_id, Some("live-chain-a".to_string()));
     assert_eq!(options.chain_node_role, "storage");
     assert_eq!(options.chain_node_tick_ms, 350);
+    assert_eq!(options.chain_pos_slot_duration_ms, 12_000);
+    assert_eq!(options.chain_pos_ticks_per_slot, 10);
+    assert_eq!(options.chain_pos_proposal_tick_phase, 9);
+    assert!(options.chain_pos_adaptive_tick_scheduler_enabled);
+    assert_eq!(
+        options.chain_pos_slot_clock_genesis_unix_ms,
+        Some(1_700_000_000_000)
+    );
+    assert_eq!(options.chain_pos_max_past_slot_lag, 32);
     assert_eq!(
         options.chain_node_validators,
         vec!["chain-a:55".to_string()]
@@ -91,6 +117,21 @@ fn parse_options_accepts_chain_disable() {
 fn parse_options_rejects_invalid_chain_role() {
     let err = parse_options(["--chain-node-role", "invalid"].into_iter()).expect_err("should fail");
     assert!(err.contains("sequencer, storage, observer"));
+}
+
+#[test]
+fn parse_options_rejects_proposal_tick_phase_out_of_range() {
+    let err = parse_options(
+        [
+            "--chain-pos-ticks-per-slot",
+            "4",
+            "--chain-pos-proposal-tick-phase",
+            "4",
+        ]
+        .into_iter(),
+    )
+    .expect_err("should fail");
+    assert!(err.contains("--chain-pos-proposal-tick-phase"));
 }
 
 #[test]

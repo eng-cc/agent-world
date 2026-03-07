@@ -75,6 +75,11 @@ const DEFAULT_CHAIN_STATUS_BIND: &str = "127.0.0.1:5121";
 const DEFAULT_CHAIN_NODE_ID: &str = "viewer-live-node";
 const DEFAULT_CHAIN_NODE_ROLE: &str = "sequencer";
 const DEFAULT_CHAIN_NODE_TICK_MS: &str = "200";
+const DEFAULT_CHAIN_POS_SLOT_DURATION_MS: &str = "1";
+const DEFAULT_CHAIN_POS_TICKS_PER_SLOT: &str = "1";
+const DEFAULT_CHAIN_POS_PROPOSAL_TICK_PHASE: &str = "0";
+const DEFAULT_CHAIN_POS_SLOT_CLOCK_GENESIS_UNIX_MS: &str = "";
+const DEFAULT_CHAIN_POS_MAX_PAST_SLOT_LAG: &str = "256";
 const MAX_LOG_LINES: usize = 2000;
 const EGUI_CJK_FONT_NAME: &str = "agent-world-cjk";
 const EGUI_CJK_FONT_BYTES: &[u8] =
@@ -260,6 +265,12 @@ struct LaunchConfig {
     chain_world_id: String,
     chain_node_role: String,
     chain_node_tick_ms: String,
+    chain_pos_slot_duration_ms: String,
+    chain_pos_ticks_per_slot: String,
+    chain_pos_proposal_tick_phase: String,
+    chain_pos_adaptive_tick_scheduler_enabled: bool,
+    chain_pos_slot_clock_genesis_unix_ms: String,
+    chain_pos_max_past_slot_lag: String,
     chain_node_validators: String,
     auto_open_browser: bool,
     launcher_bin: String,
@@ -294,6 +305,13 @@ impl Default for LaunchConfig {
             chain_world_id: String::new(),
             chain_node_role: DEFAULT_CHAIN_NODE_ROLE.to_string(),
             chain_node_tick_ms: DEFAULT_CHAIN_NODE_TICK_MS.to_string(),
+            chain_pos_slot_duration_ms: DEFAULT_CHAIN_POS_SLOT_DURATION_MS.to_string(),
+            chain_pos_ticks_per_slot: DEFAULT_CHAIN_POS_TICKS_PER_SLOT.to_string(),
+            chain_pos_proposal_tick_phase: DEFAULT_CHAIN_POS_PROPOSAL_TICK_PHASE.to_string(),
+            chain_pos_adaptive_tick_scheduler_enabled: false,
+            chain_pos_slot_clock_genesis_unix_ms: DEFAULT_CHAIN_POS_SLOT_CLOCK_GENESIS_UNIX_MS
+                .to_string(),
+            chain_pos_max_past_slot_lag: DEFAULT_CHAIN_POS_MAX_PAST_SLOT_LAG.to_string(),
             chain_node_validators: String::new(),
             auto_open_browser: true,
             launcher_bin,
@@ -496,6 +514,12 @@ enum ConfigIssue {
     ChainNodeIdRequired,
     ChainRoleInvalid,
     ChainTickMsInvalid,
+    ChainPosSlotDurationMsInvalid,
+    ChainPosTicksPerSlotInvalid,
+    ChainPosProposalTickPhaseInvalid,
+    ChainPosProposalTickPhaseOutOfRange,
+    ChainPosSlotClockGenesisUnixMsInvalid,
+    ChainPosMaxPastSlotLagInvalid,
     ChainValidatorsInvalid,
 }
 
@@ -559,6 +583,42 @@ impl ConfigIssue {
             }
             (Self::ChainTickMsInvalid, UiLanguage::EnUs) => {
                 "Chain tick milliseconds must be a positive integer"
+            }
+            (Self::ChainPosSlotDurationMsInvalid, UiLanguage::ZhCn) => {
+                "链 PoS 槽时长（slot duration ms）必须是正整数"
+            }
+            (Self::ChainPosSlotDurationMsInvalid, UiLanguage::EnUs) => {
+                "Chain PoS slot duration ms must be a positive integer"
+            }
+            (Self::ChainPosTicksPerSlotInvalid, UiLanguage::ZhCn) => {
+                "链 PoS 每槽 tick 数（ticks per slot）必须是正整数"
+            }
+            (Self::ChainPosTicksPerSlotInvalid, UiLanguage::EnUs) => {
+                "Chain PoS ticks per slot must be a positive integer"
+            }
+            (Self::ChainPosProposalTickPhaseInvalid, UiLanguage::ZhCn) => {
+                "链 PoS 提案相位（proposal tick phase）必须是非负整数"
+            }
+            (Self::ChainPosProposalTickPhaseInvalid, UiLanguage::EnUs) => {
+                "Chain PoS proposal tick phase must be a non-negative integer"
+            }
+            (Self::ChainPosProposalTickPhaseOutOfRange, UiLanguage::ZhCn) => {
+                "链 PoS 提案相位必须小于每槽 tick 数"
+            }
+            (Self::ChainPosProposalTickPhaseOutOfRange, UiLanguage::EnUs) => {
+                "Chain PoS proposal tick phase must be less than ticks per slot"
+            }
+            (Self::ChainPosSlotClockGenesisUnixMsInvalid, UiLanguage::ZhCn) => {
+                "链 PoS 槽时钟起点（slot clock genesis unix ms）必须是整数或留空"
+            }
+            (Self::ChainPosSlotClockGenesisUnixMsInvalid, UiLanguage::EnUs) => {
+                "Chain PoS slot clock genesis unix ms must be an integer or empty"
+            }
+            (Self::ChainPosMaxPastSlotLagInvalid, UiLanguage::ZhCn) => {
+                "链 PoS 允许过旧槽滞后（max past slot lag）必须是非负整数"
+            }
+            (Self::ChainPosMaxPastSlotLagInvalid, UiLanguage::EnUs) => {
+                "Chain PoS max past slot lag must be a non-negative integer"
             }
             (Self::ChainValidatorsInvalid, UiLanguage::ZhCn) => {
                 "链验证者（chain validators）格式必须是 <validator_id:stake>"

@@ -28,7 +28,8 @@ mod transfer_query_proxy;
 use control_plane::*;
 use http_codec::{read_http_request, write_http_response, write_json_response};
 use parse_utils::{
-    next_value, parse_chain_role, parse_chain_validators, parse_host_port, parse_port,
+    next_value, parse_chain_role, parse_chain_validators, parse_host_port, parse_non_negative_u64,
+    parse_optional_i64, parse_port, parse_positive_u64,
 };
 use runtime_paths::{
     normalize_bind_host_for_local_access, now_unix_ms, resolve_console_static_dir_path,
@@ -48,6 +49,10 @@ const DEFAULT_CHAIN_STATUS_BIND: &str = "127.0.0.1:5121";
 const DEFAULT_CHAIN_NODE_ID: &str = "viewer-live-node";
 const DEFAULT_CHAIN_NODE_ROLE: &str = "sequencer";
 const DEFAULT_CHAIN_NODE_TICK_MS: u64 = 200;
+const DEFAULT_CHAIN_POS_SLOT_DURATION_MS: u64 = 1;
+const DEFAULT_CHAIN_POS_TICKS_PER_SLOT: u64 = 1;
+const DEFAULT_CHAIN_POS_PROPOSAL_TICK_PHASE: u64 = 0;
+const DEFAULT_CHAIN_POS_MAX_PAST_SLOT_LAG: u64 = 256;
 const MAX_LOG_LINES: usize = 2000;
 const GRACEFUL_STOP_TIMEOUT_MS: u64 = 4000;
 const STOP_POLL_INTERVAL_MS: u64 = 80;
@@ -74,6 +79,12 @@ struct LauncherConfig {
     chain_world_id: String,
     chain_node_role: String,
     chain_node_tick_ms: String,
+    chain_pos_slot_duration_ms: String,
+    chain_pos_ticks_per_slot: String,
+    chain_pos_proposal_tick_phase: String,
+    chain_pos_adaptive_tick_scheduler_enabled: bool,
+    chain_pos_slot_clock_genesis_unix_ms: String,
+    chain_pos_max_past_slot_lag: String,
     chain_node_validators: String,
     auto_open_browser: bool,
     launcher_bin: String,
@@ -98,6 +109,12 @@ impl Default for LauncherConfig {
             chain_world_id: String::new(),
             chain_node_role: DEFAULT_CHAIN_NODE_ROLE.to_string(),
             chain_node_tick_ms: DEFAULT_CHAIN_NODE_TICK_MS.to_string(),
+            chain_pos_slot_duration_ms: DEFAULT_CHAIN_POS_SLOT_DURATION_MS.to_string(),
+            chain_pos_ticks_per_slot: DEFAULT_CHAIN_POS_TICKS_PER_SLOT.to_string(),
+            chain_pos_proposal_tick_phase: DEFAULT_CHAIN_POS_PROPOSAL_TICK_PHASE.to_string(),
+            chain_pos_adaptive_tick_scheduler_enabled: false,
+            chain_pos_slot_clock_genesis_unix_ms: String::new(),
+            chain_pos_max_past_slot_lag: DEFAULT_CHAIN_POS_MAX_PAST_SLOT_LAG.to_string(),
             chain_node_validators: String::new(),
             auto_open_browser: false,
             launcher_bin: String::new(),
@@ -403,7 +420,13 @@ Options:\n\
   --chain-node-id <id>\n\
   --chain-world-id <id>\n\
   --chain-node-role <role>        sequencer|storage|observer\n\
-  --chain-node-tick-ms <ms>\n\
+  --chain-node-tick-ms <ms>       worker poll/fallback interval ms\n\
+  --chain-pos-slot-duration-ms <n>\n\
+  --chain-pos-ticks-per-slot <n>\n\
+  --chain-pos-proposal-tick-phase <n>\n\
+  --chain-pos-adaptive-tick-scheduler / --chain-pos-no-adaptive-tick-scheduler\n\
+  --chain-pos-slot-clock-genesis-unix-ms <n>\n\
+  --chain-pos-max-past-slot-lag <n>\n\
   --chain-node-validator <id:stake> (repeatable)\n\
   --open-browser / --no-open-browser\n\
   -h, --help                      show this help\n"
@@ -806,6 +829,36 @@ where
                 options.initial_config.chain_node_tick_ms =
                     next_value(&mut iter, "--chain-node-tick-ms")?;
             }
+            "--chain-pos-slot-duration-ms" => {
+                options.initial_config.chain_pos_slot_duration_ms =
+                    next_value(&mut iter, "--chain-pos-slot-duration-ms")?;
+            }
+            "--chain-pos-ticks-per-slot" => {
+                options.initial_config.chain_pos_ticks_per_slot =
+                    next_value(&mut iter, "--chain-pos-ticks-per-slot")?;
+            }
+            "--chain-pos-proposal-tick-phase" => {
+                options.initial_config.chain_pos_proposal_tick_phase =
+                    next_value(&mut iter, "--chain-pos-proposal-tick-phase")?;
+            }
+            "--chain-pos-adaptive-tick-scheduler" => {
+                options
+                    .initial_config
+                    .chain_pos_adaptive_tick_scheduler_enabled = true;
+            }
+            "--chain-pos-no-adaptive-tick-scheduler" => {
+                options
+                    .initial_config
+                    .chain_pos_adaptive_tick_scheduler_enabled = false;
+            }
+            "--chain-pos-slot-clock-genesis-unix-ms" => {
+                options.initial_config.chain_pos_slot_clock_genesis_unix_ms =
+                    next_value(&mut iter, "--chain-pos-slot-clock-genesis-unix-ms")?;
+            }
+            "--chain-pos-max-past-slot-lag" => {
+                options.initial_config.chain_pos_max_past_slot_lag =
+                    next_value(&mut iter, "--chain-pos-max-past-slot-lag")?;
+            }
             "--chain-node-validator" => {
                 validators.push(next_value(&mut iter, "--chain-node-validator")?);
             }
@@ -837,9 +890,41 @@ where
             "--chain-status-bind",
         )?;
         parse_chain_role(options.initial_config.chain_node_role.as_str())?;
-        parse_port(
+        parse_positive_u64(
             options.initial_config.chain_node_tick_ms.as_str(),
             "--chain-node-tick-ms",
+        )?;
+        parse_positive_u64(
+            options.initial_config.chain_pos_slot_duration_ms.as_str(),
+            "--chain-pos-slot-duration-ms",
+        )?;
+        let ticks_per_slot = parse_positive_u64(
+            options.initial_config.chain_pos_ticks_per_slot.as_str(),
+            "--chain-pos-ticks-per-slot",
+        )?;
+        let proposal_tick_phase = parse_non_negative_u64(
+            options
+                .initial_config
+                .chain_pos_proposal_tick_phase
+                .as_str(),
+            "--chain-pos-proposal-tick-phase",
+        )?;
+        if proposal_tick_phase >= ticks_per_slot {
+            return Err(format!(
+                "--chain-pos-proposal-tick-phase={} must be less than --chain-pos-ticks-per-slot={}",
+                proposal_tick_phase, ticks_per_slot
+            ));
+        }
+        parse_optional_i64(
+            options
+                .initial_config
+                .chain_pos_slot_clock_genesis_unix_ms
+                .as_str(),
+            "--chain-pos-slot-clock-genesis-unix-ms",
+        )?;
+        parse_non_negative_u64(
+            options.initial_config.chain_pos_max_past_slot_lag.as_str(),
+            "--chain-pos-max-past-slot-lag",
         )?;
         parse_chain_validators(options.initial_config.chain_node_validators.as_str())?;
     }

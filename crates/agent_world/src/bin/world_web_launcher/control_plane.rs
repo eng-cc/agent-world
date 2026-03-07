@@ -725,8 +725,54 @@ pub(super) fn validate_chain_config(config: &LauncherConfig) -> Vec<String> {
     if parse_chain_role(config.chain_node_role.as_str()).is_err() {
         issues.push("chain role must be one of: sequencer|storage|observer".to_string());
     }
-    if parse_port(config.chain_node_tick_ms.as_str(), "chain node tick ms").is_err() {
-        issues.push("chain node tick ms must be integer in 1..=65535".to_string());
+    if parse_positive_u64(config.chain_node_tick_ms.as_str(), "chain node tick ms").is_err() {
+        issues.push("chain node tick ms must be a positive integer".to_string());
+    }
+    if parse_positive_u64(
+        config.chain_pos_slot_duration_ms.as_str(),
+        "chain pos slot duration ms",
+    )
+    .is_err()
+    {
+        issues.push("chain pos slot duration ms must be a positive integer".to_string());
+    }
+    let ticks_per_slot = parse_positive_u64(
+        config.chain_pos_ticks_per_slot.as_str(),
+        "chain pos ticks per slot",
+    );
+    if ticks_per_slot.is_err() {
+        issues.push("chain pos ticks per slot must be a positive integer".to_string());
+    }
+    let proposal_tick_phase = parse_non_negative_u64(
+        config.chain_pos_proposal_tick_phase.as_str(),
+        "chain pos proposal tick phase",
+    );
+    if proposal_tick_phase.is_err() {
+        issues.push("chain pos proposal tick phase must be a non-negative integer".to_string());
+    }
+    if let (Ok(ticks_per_slot), Ok(proposal_tick_phase)) = (ticks_per_slot, proposal_tick_phase) {
+        if proposal_tick_phase >= ticks_per_slot {
+            issues.push(
+                "chain pos proposal tick phase must be less than chain pos ticks per slot"
+                    .to_string(),
+            );
+        }
+    }
+    if parse_optional_i64(
+        config.chain_pos_slot_clock_genesis_unix_ms.as_str(),
+        "chain pos slot clock genesis unix ms",
+    )
+    .is_err()
+    {
+        issues.push("chain pos slot clock genesis unix ms must be an integer or empty".to_string());
+    }
+    if parse_non_negative_u64(
+        config.chain_pos_max_past_slot_lag.as_str(),
+        "chain pos max past slot lag",
+    )
+    .is_err()
+    {
+        issues.push("chain pos max past slot lag must be a non-negative integer".to_string());
     }
     if parse_chain_validators(config.chain_node_validators.as_str()).is_err() {
         issues.push("chain validators must be in <validator_id:stake> format".to_string());
@@ -781,7 +827,34 @@ pub(super) fn build_chain_runtime_args(config: &LauncherConfig) -> Result<Vec<St
         return Err("chain node id cannot be empty".to_string());
     }
     let chain_role = parse_chain_role(config.chain_node_role.as_str())?;
-    let chain_tick_ms = parse_port(config.chain_node_tick_ms.as_str(), "chain node tick ms")?;
+    let chain_tick_ms =
+        parse_positive_u64(config.chain_node_tick_ms.as_str(), "chain node tick ms")?;
+    let pos_slot_duration_ms = parse_positive_u64(
+        config.chain_pos_slot_duration_ms.as_str(),
+        "chain pos slot duration ms",
+    )?;
+    let pos_ticks_per_slot = parse_positive_u64(
+        config.chain_pos_ticks_per_slot.as_str(),
+        "chain pos ticks per slot",
+    )?;
+    let pos_proposal_tick_phase = parse_non_negative_u64(
+        config.chain_pos_proposal_tick_phase.as_str(),
+        "chain pos proposal tick phase",
+    )?;
+    if pos_proposal_tick_phase >= pos_ticks_per_slot {
+        return Err(format!(
+            "chain pos proposal tick phase={} must be less than chain pos ticks per slot={}",
+            pos_proposal_tick_phase, pos_ticks_per_slot
+        ));
+    }
+    let pos_slot_clock_genesis_unix_ms = parse_optional_i64(
+        config.chain_pos_slot_clock_genesis_unix_ms.as_str(),
+        "chain pos slot clock genesis unix ms",
+    )?;
+    let pos_max_past_slot_lag = parse_non_negative_u64(
+        config.chain_pos_max_past_slot_lag.as_str(),
+        "chain pos max past slot lag",
+    )?;
     let validators = parse_chain_validators(config.chain_node_validators.as_str())?;
 
     let mut args = vec![
@@ -795,7 +868,24 @@ pub(super) fn build_chain_runtime_args(config: &LauncherConfig) -> Result<Vec<St
         chain_role,
         "--node-tick-ms".to_string(),
         chain_tick_ms.to_string(),
+        "--pos-slot-duration-ms".to_string(),
+        pos_slot_duration_ms.to_string(),
+        "--pos-ticks-per-slot".to_string(),
+        pos_ticks_per_slot.to_string(),
+        "--pos-proposal-tick-phase".to_string(),
+        pos_proposal_tick_phase.to_string(),
+        if config.chain_pos_adaptive_tick_scheduler_enabled {
+            "--pos-adaptive-tick-scheduler".to_string()
+        } else {
+            "--pos-no-adaptive-tick-scheduler".to_string()
+        },
+        "--pos-max-past-slot-lag".to_string(),
+        pos_max_past_slot_lag.to_string(),
     ];
+    if let Some(genesis) = pos_slot_clock_genesis_unix_ms {
+        args.push("--pos-slot-clock-genesis-unix-ms".to_string());
+        args.push(genesis.to_string());
+    }
     for validator in validators {
         args.push("--node-validator".to_string());
         args.push(validator);

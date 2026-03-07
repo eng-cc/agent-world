@@ -32,7 +32,7 @@
 ### TASK-P2P-010 执行拆解（PRD-P2P-007）
 - [x] TASK-P2P-010-T0 [test_tier_required]: 新增专题 PRD / project 文档并回写 `doc/p2p/prd.md`、`doc/p2p/prd.project.md`、`doc/p2p/prd.index.md` 映射。
 - [x] TASK-P2P-010-T1 [test_tier_required]: `world_chain_runtime/world_viewer_live` 暴露并校验 `slot_duration_ms/ticks_per_slot/proposal_tick_phase/adaptive_tick_scheduler_enabled/slot_clock_genesis_unix_ms/max_past_slot_lag`，并明确 `node_tick_ms` 为轮询间隔。
-- [ ] TASK-P2P-010-T2 [test_tier_required]: launcher UI/配置字段与参数透传对齐新口径，补齐校验与错误提示。
+- [x] TASK-P2P-010-T2 [test_tier_required]: launcher UI/配置字段与参数透传对齐新口径，补齐校验与错误提示。
 - [ ] TASK-P2P-010-T3 [test_tier_required]: p2p longrun/s10 脚本、release lock 示例、专题文档口径更新，避免将 `node_tick_ms` 作为出块时间。
 - [ ] TASK-P2P-010-T4 [test_tier_required + test_tier_full]: 补齐 CLI/launcher/脚本/状态接口回归测试并完成证据收口。
 
@@ -77,6 +77,7 @@
 - TASK-P2P-004 进展（2026-03-07）: 已完成发行门禁分布式质量指标映射收口（S9/S10 指标阈值、阻断策略、责任归属与脚本参数对齐）。
 - TASK-P2P-010 进展（2026-03-07）: `TASK-P2P-010-T0` 已完成（专题文档建档并回写模块主 PRD / project / index 映射）。
 - TASK-P2P-010 进展（2026-03-07）: `TASK-P2P-010-T1` 已完成代码落地与 required 定向回归（runtime/viewer 新增 `--pos-*` 参数、`node_tick_ms` 轮询语义澄清、`NodePosConfig` 映射与相位校验）。
+- TASK-P2P-010 进展（2026-03-07）: `TASK-P2P-010-T2` 已完成代码落地与 required 定向回归（game/web/client launcher 新增 `chain-pos-*` 字段、校验与参数透传，UI schema/设置面板同步扩展）。
 - 说明: 本文档仅维护 p2p 设计执行状态；过程记录在 `doc/devlog/2026-03-07.md`。
 - ROUND-002 进展（2026-03-05）: 已并行完成 `B3-C2-009-S2/C2-010/C2-011`（observer sync-mode、node-contribution、distfs-self-healing）主从化回写。
 - ROUND-002 进展（2026-03-05）: 已并行完成 `B3-C2-003/C2-008-S1/C2-008-S2`（node-redeemable-power-asset、distfs-production-hardening phase1~9）主从化回写。

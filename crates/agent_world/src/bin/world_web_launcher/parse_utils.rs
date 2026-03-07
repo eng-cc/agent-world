@@ -21,6 +21,35 @@ pub(super) fn parse_port(raw: &str, label: &str) -> Result<u16, String> {
     Ok(port)
 }
 
+pub(super) fn parse_positive_u64(raw: &str, label: &str) -> Result<u64, String> {
+    let value = raw.trim();
+    let parsed = value
+        .parse::<u64>()
+        .map_err(|_| format!("{label} must be a positive integer"))?;
+    if parsed == 0 {
+        return Err(format!("{label} must be a positive integer"));
+    }
+    Ok(parsed)
+}
+
+pub(super) fn parse_non_negative_u64(raw: &str, label: &str) -> Result<u64, String> {
+    let value = raw.trim();
+    value
+        .parse::<u64>()
+        .map_err(|_| format!("{label} must be a non-negative integer"))
+}
+
+pub(super) fn parse_optional_i64(raw: &str, label: &str) -> Result<Option<i64>, String> {
+    let value = raw.trim();
+    if value.is_empty() {
+        return Ok(None);
+    }
+    value
+        .parse::<i64>()
+        .map(Some)
+        .map_err(|_| format!("{label} must be an integer"))
+}
+
 pub(super) fn parse_host_port(raw: &str, label: &str) -> Result<(String, u16), String> {
     let value = raw.trim();
     let (host_raw, port_raw) = if let Some(rest) = value.strip_prefix('[') {

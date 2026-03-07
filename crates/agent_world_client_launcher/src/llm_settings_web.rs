@@ -119,8 +119,50 @@ impl LlmSettingsPanel {
                         ui.horizontal_wrapped(|ui| {
                             ui.label(tr(language, "链节点角色", "Chain Role"));
                             ui.text_edit_singleline(&mut config.chain_node_role);
-                            ui.label(tr(language, "链 Tick 毫秒", "Chain Tick Milliseconds"));
+                            ui.label(tr(
+                                language,
+                                "链轮询间隔毫秒",
+                                "Chain Worker Poll/Fallback Milliseconds",
+                            ));
                             ui.text_edit_singleline(&mut config.chain_node_tick_ms);
+                        });
+                        ui.horizontal_wrapped(|ui| {
+                            ui.label(tr(
+                                language,
+                                "PoS 槽时长毫秒",
+                                "PoS Slot Duration Milliseconds",
+                            ));
+                            ui.text_edit_singleline(&mut config.chain_pos_slot_duration_ms);
+                            ui.label(tr(language, "PoS 每槽 Tick 数", "PoS Ticks Per Slot"));
+                            ui.text_edit_singleline(&mut config.chain_pos_ticks_per_slot);
+                        });
+                        ui.horizontal_wrapped(|ui| {
+                            ui.label(tr(
+                                language,
+                                "PoS 提案 Tick 相位",
+                                "PoS Proposal Tick Phase",
+                            ));
+                            ui.text_edit_singleline(&mut config.chain_pos_proposal_tick_phase);
+                            ui.label(tr(language, "PoS 过旧槽滞后上限", "PoS Max Past Slot Lag"));
+                            ui.text_edit_singleline(&mut config.chain_pos_max_past_slot_lag);
+                        });
+                        ui.horizontal_wrapped(|ui| {
+                            ui.checkbox(
+                                &mut config.chain_pos_adaptive_tick_scheduler_enabled,
+                                tr(
+                                    language,
+                                    "启用 PoS 自适应 Tick 调度",
+                                    "Enable PoS Adaptive Tick Scheduler",
+                                ),
+                            );
+                            ui.label(tr(
+                                language,
+                                "PoS 槽时钟起点 Unix 毫秒（可留空）",
+                                "PoS Slot Clock Genesis Unix Ms (optional)",
+                            ));
+                            ui.text_edit_singleline(
+                                &mut config.chain_pos_slot_clock_genesis_unix_ms,
+                            );
                         });
                         ui.horizontal_wrapped(|ui| {
                             ui.label(tr(language, "链验证者", "Chain Validators"));

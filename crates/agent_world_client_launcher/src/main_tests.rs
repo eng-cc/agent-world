@@ -113,6 +113,12 @@ fn build_chain_runtime_args_contains_chain_overrides_when_enabled() {
         chain_world_id: "live-chain-a".to_string(),
         chain_node_role: "storage".to_string(),
         chain_node_tick_ms: "350".to_string(),
+        chain_pos_slot_duration_ms: "12000".to_string(),
+        chain_pos_ticks_per_slot: "10".to_string(),
+        chain_pos_proposal_tick_phase: "9".to_string(),
+        chain_pos_adaptive_tick_scheduler_enabled: true,
+        chain_pos_slot_clock_genesis_unix_ms: "1700000000000".to_string(),
+        chain_pos_max_past_slot_lag: "32".to_string(),
         chain_node_validators: "node-a:55,node-b:45".to_string(),
         chain_runtime_bin: "/tmp/world_chain_runtime".to_string(),
         ..LaunchConfig::default()
@@ -128,6 +134,17 @@ fn build_chain_runtime_args_contains_chain_overrides_when_enabled() {
     assert!(args.contains(&"storage".to_string()));
     assert!(args.contains(&"--node-tick-ms".to_string()));
     assert!(args.contains(&"350".to_string()));
+    assert!(args.contains(&"--pos-slot-duration-ms".to_string()));
+    assert!(args.contains(&"12000".to_string()));
+    assert!(args.contains(&"--pos-ticks-per-slot".to_string()));
+    assert!(args.contains(&"10".to_string()));
+    assert!(args.contains(&"--pos-proposal-tick-phase".to_string()));
+    assert!(args.contains(&"9".to_string()));
+    assert!(args.contains(&"--pos-adaptive-tick-scheduler".to_string()));
+    assert!(args.contains(&"--pos-slot-clock-genesis-unix-ms".to_string()));
+    assert!(args.contains(&"1700000000000".to_string()));
+    assert!(args.contains(&"--pos-max-past-slot-lag".to_string()));
+    assert!(args.contains(&"32".to_string()));
     assert!(args.contains(&"--node-validator".to_string()));
     assert!(args.contains(&"node-a:55".to_string()));
     assert!(args.contains(&"node-b:45".to_string()));
@@ -271,6 +288,11 @@ fn collect_chain_required_config_issues_reports_missing_required_fields() {
         chain_node_id: "".to_string(),
         chain_node_role: "invalid".to_string(),
         chain_node_tick_ms: "0".to_string(),
+        chain_pos_slot_duration_ms: "0".to_string(),
+        chain_pos_ticks_per_slot: "4".to_string(),
+        chain_pos_proposal_tick_phase: "4".to_string(),
+        chain_pos_slot_clock_genesis_unix_ms: "oops".to_string(),
+        chain_pos_max_past_slot_lag: "-1".to_string(),
         chain_node_validators: "node-a".to_string(),
         ..LaunchConfig::default()
     };
@@ -281,6 +303,10 @@ fn collect_chain_required_config_issues_reports_missing_required_fields() {
     assert!(issues.contains(&ConfigIssue::ChainNodeIdRequired));
     assert!(issues.contains(&ConfigIssue::ChainRoleInvalid));
     assert!(issues.contains(&ConfigIssue::ChainTickMsInvalid));
+    assert!(issues.contains(&ConfigIssue::ChainPosSlotDurationMsInvalid));
+    assert!(issues.contains(&ConfigIssue::ChainPosProposalTickPhaseOutOfRange));
+    assert!(issues.contains(&ConfigIssue::ChainPosSlotClockGenesisUnixMsInvalid));
+    assert!(issues.contains(&ConfigIssue::ChainPosMaxPastSlotLagInvalid));
     assert!(issues.contains(&ConfigIssue::ChainValidatorsInvalid));
 }
 #[test]
