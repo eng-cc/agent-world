@@ -21,19 +21,22 @@
 ## 里程碑
 - M1 (2026-03-03): 完成模块设计 PRD 主体重写与任务改造。
 - M2 (2026-03-07): 完成站点手册镜像语义同步与状态文档回写。
-- M3: 建立 PRD-ID -> Task -> Test 的长期追踪闭环。
+- M3 (2026-03-07): 完成对外“可玩状态”口径与真实产品状态对齐。
+- M4: 建立 PRD-ID -> Task -> Test 的长期追踪闭环。
 
 ## 风险
 - 模块边界演进快，文档同步可能滞后。
 - 指标口径不稳定会降低验收一致性。
 ## 1. Executive Summary
-- Problem Statement: 站点页面、发布下载入口、文档镜像与 SEO 优化在多轮迭代中快速演进，缺少统一设计文档来约束信息架构与发布质量。
-- Proposed Solution: 将 site PRD 作为站点设计主入口，统一页面结构、内容同步、发布链路与质量门禁。
+- Problem Statement: 站点页面、发布下载入口、文档镜像与 SEO 优化在多轮迭代中快速演进；若对外叙事与真实可玩状态不一致，会直接损伤用户信任。
+- Proposed Solution: 将 site PRD 作为站点设计主入口，统一页面结构、内容同步、发布链路、质量门禁与“真实状态口径”约束。
 - Success Criteria:
   - SC-1: 首页关键信息架构与模块设计口径保持一致。
   - SC-2: 发布下载链接在版本发布后可用率达到 100%。
   - SC-3: 关键页面的可访问性与性能指标持续满足目标阈值。
   - SC-4: 站点改动任务全部映射到 PRD-SITE-ID。
+  - SC-5: 当产品尚不可玩时，首页与文档入口页 100% 显式标注“开发中技术预览 / Not playable yet”。
+  - SC-6: 首页不得出现与真实状态冲突的“已可玩/赛季进行中”表述（违规数 0）。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -49,21 +52,25 @@
   - PRD-SITE-001: As a 新访问者, I want a clear homepage narrative, so that I can understand the product quickly.
   - PRD-SITE-002: As a 技术用户, I want trustworthy download and docs links, so that I can install and verify efficiently.
   - PRD-SITE-003: As a 维护者, I want measurable quality gates, so that releases are predictable.
+  - PRD-SITE-004: As a 对外内容维护者, I want marketing copy to match real product readiness, so that user trust is not damaged by over-claiming.
 - Critical User Flows:
   1. Flow-SITE-001: `访问首页 -> 理解价值与入口 -> 跳转安装/文档`
   2. Flow-SITE-002: `发布前执行链接检查 -> 处理断链 -> 复测通过`
   3. Flow-SITE-003: `发布后监控质量指标 -> 发现退化 -> 回滚或修复`
+  4. Flow-SITE-004: `确认真实可玩状态 -> 回写首页/文档入口口径 -> 复核中英一致性 -> 发布`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
 | 首页信息架构 | 版块标题、入口链接、版本信息 | 点击跳转安装/文档/下载 | `draft -> published -> revised` | 关键信息优先上屏 | 站点维护者可修改 |
 | 发布下载链路 | 版本号、资产地址、校验信息 | 发布后自动校验可用性 | `prepared -> published -> verified` | 最新版本优先展示 | 发布负责人审批上线 |
 | 质量门禁巡检 | 链接状态、性能指标、可访问性结果 | 巡检失败阻断发布 | `checking -> passed/blocked` | 严重问题优先修复 | 维护者可解阻断（需说明） |
+| 对外状态口径 | 产品状态（playable / preview）、禁用词列表、状态标识文案 | 发布前校验首页与文档入口文案是否匹配真实状态 | `draft -> aligned -> published` | 真实状态字段优先于营销文案 | 模块维护者可改，发布责任人复核 |
 - Acceptance Criteria:
   - AC-1: site PRD 定义页面层级、内容同步和发布链路。
   - AC-2: site project 文档任务映射 PRD-SITE-ID。
   - AC-3: 与 `site/doc` 与 GitHub Pages 相关设计文档口径一致。
   - AC-4: 发布前完成链接有效性与基础质量检查。
+  - AC-5: 首页与文档入口页（`site/index.html`、`site/en/index.html`、`site/doc/cn/index.html`、`site/doc/en/index.html`）对“是否可玩”状态的表达必须一致且与真实状态相符。
 - Non-Goals:
   - 不在 site PRD 中定义 runtime/p2p 低层实现。
   - 不覆盖内部测试流程细节（由 testing 模块负责）。
@@ -87,12 +94,14 @@
   - 超时：构建/巡检超时时输出中间结果并允许重试。
   - 并发发布：同版本并发发布时只允许一个发布会话生效。
   - 数据异常：版本元数据错误时不展示到公开页面。
+  - 状态漂移：若产品尚不可玩但页面出现“已可玩/赛季进行中”表述，发布流程必须阻断并回写文案。
 - Non-Functional Requirements:
   - NFR-SITE-1: 发布后关键链接可用率 100%。
   - NFR-SITE-2: 核心页面性能与可访问性指标达到门禁阈值。
   - NFR-SITE-3: 多语言内容口径一致并可追溯。
   - NFR-SITE-4: 发布回滚流程可在限定时间内执行。
   - NFR-SITE-5: 站点输出不得暴露内部敏感配置。
+  - NFR-SITE-6: “可玩状态口径一致性”检查在发布前必须完成且误报率 <= 5%（按月统计）。
 - Security & Privacy: 站点不得暴露内部凭据与敏感配置；下载链路需具备来源可验证性。
 
 ## 5. Risks & Roadmap
@@ -103,6 +112,7 @@
 - Technical Risks:
   - 风险-1: 内容更新频率高导致页面口径漂移。
   - 风险-2: 发布资产链接策略变化引入断链风险。
+  - 风险-3: 对外文案过度承诺导致信任流失与社区负反馈。
 
 ## 6. Validation & Decision Record
 - Test Plan & Traceability:
@@ -111,9 +121,11 @@
 | PRD-SITE-001 | TASK-SITE-001/002/005 | `test_tier_required` | 首页结构与导航检查 | 用户首次访问体验 |
 | PRD-SITE-002 | TASK-SITE-002/003/005/006 | `test_tier_required` | 下载与文档链接巡检、手册镜像语义对齐校验 | 安装与文档可用性 |
 | PRD-SITE-003 | TASK-SITE-003/004/005/007 | `test_tier_required` + `test_tier_full` | 发布门禁与回归节奏复核、项目状态回写核对 | 发布稳定性与回滚能力 |
+| PRD-SITE-004 | TASK-SITE-008/009 | `test_tier_required` | 中英文首页与文档入口页状态文案一致性核验 | 对外信任与信息准确性 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |
 | DEC-SITE-001 | 发布前强制执行质量巡检 | 发布后补检查 | 可提前发现阻断问题。 |
 | DEC-SITE-002 | 下载链路绑定版本与校验信息 | 仅展示下载地址 | 可提升来源可信度。 |
 | DEC-SITE-003 | 站点口径与 readme 联动维护 | 独立维护站点文案 | 可降低对外口径漂移。 |
+| DEC-SITE-004 | 对外“可玩状态”按真实产品状态保守表达（未可玩即明确预览） | 继续使用高承诺营销口径 | 可避免误导用户并降低信任风险。 |
