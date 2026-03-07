@@ -47,6 +47,7 @@ use web_time::Instant;
 mod app_process;
 #[cfg(target_arch = "wasm32")]
 mod app_process_web;
+mod explorer_window;
 #[cfg(not(target_arch = "wasm32"))]
 mod feedback_entry;
 #[cfg(not(target_arch = "wasm32"))]
@@ -335,6 +336,7 @@ enum WebApiEvent {
     Feedback(Result<WebFeedbackSubmitResponse, String>),
     Transfer(Result<WebTransferSubmitResponse, String>),
     TransferQuery(Result<transfer_window::TransferQueryResponse, String>),
+    ExplorerQuery(Result<explorer_window::ExplorerQueryResponse, String>),
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -719,6 +721,8 @@ struct ClientLauncherApp {
     transfer_submit_state: TransferSubmitState,
     transfer_window_open: bool,
     transfer_panel_state: transfer_window::TransferPanelState,
+    explorer_window_open: bool,
+    explorer_panel_state: explorer_window::ExplorerPanelState,
     web_api_tx: Sender<WebApiEvent>,
     web_api_rx: Receiver<WebApiEvent>,
     web_request_inflight: bool,
@@ -782,6 +786,8 @@ impl Default for ClientLauncherApp {
             transfer_submit_state: TransferSubmitState::None,
             transfer_window_open: false,
             transfer_panel_state: transfer_window::TransferPanelState::default(),
+            explorer_window_open: false,
+            explorer_panel_state: explorer_window::ExplorerPanelState::default(),
             web_api_tx,
             web_api_rx,
             web_request_inflight: false,
@@ -1098,6 +1104,15 @@ impl eframe::App for ClientLauncherApp {
                     {
                         self.transfer_window_open = true;
                     }
+                    if ui
+                        .add_enabled(
+                            self.is_feedback_available(),
+                            egui::Button::new(self.tr("浏览器", "Explorer")),
+                        )
+                        .clicked()
+                    {
+                        self.explorer_window_open = true;
+                    }
                 }
                 #[cfg(target_arch = "wasm32")]
                 {
@@ -1121,6 +1136,15 @@ impl eframe::App for ClientLauncherApp {
                         .clicked()
                     {
                         self.transfer_window_open = true;
+                    }
+                    if ui
+                        .add_enabled(
+                            self.is_feedback_available(),
+                            egui::Button::new(self.tr("浏览器", "Explorer")),
+                        )
+                        .clicked()
+                    {
+                        self.explorer_window_open = true;
                     }
                 }
                 if ui.button(self.tr("清空日志", "Clear Logs")).clicked() {
@@ -1158,6 +1182,7 @@ impl eframe::App for ClientLauncherApp {
             .show(ctx, self.ui_language, &mut self.config);
         self.show_feedback_window(ctx);
         self.show_transfer_window(ctx);
+        self.show_explorer_window(ctx);
         ctx.request_repaint_after(Duration::from_millis(120));
     }
 }

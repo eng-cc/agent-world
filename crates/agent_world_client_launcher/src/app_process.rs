@@ -72,6 +72,7 @@ impl ClientLauncherApp {
                 },
                 WebApiEvent::Transfer(result) => self.apply_web_transfer_submit_result(result),
                 WebApiEvent::TransferQuery(result) => self.apply_web_transfer_query_result(result),
+                WebApiEvent::ExplorerQuery(result) => self.apply_web_explorer_query_result(result),
             }
         }
 
@@ -416,6 +417,74 @@ impl ClientLauncherApp {
         });
     }
 
+    pub(super) fn request_web_chain_explorer_overview(&mut self) {
+        self.ensure_control_plane_service();
+        if self.web_request_inflight {
+            self.append_log("skip explorer overview query: previous web request still in flight");
+            return;
+        }
+        self.web_request_inflight = true;
+        self.last_web_poll_at = Some(Instant::now());
+        let tx = self.web_api_tx.clone();
+        let base_url = self.control_api_base.clone();
+        thread::spawn(move || {
+            let _ = tx.send(WebApiEvent::ExplorerQuery(
+                get_web_chain_explorer_overview_blocking(base_url.as_str())
+                    .map(explorer_window::ExplorerQueryResponse::Overview),
+            ));
+        });
+    }
+
+    pub(super) fn request_web_chain_explorer_transactions(
+        &mut self,
+        account_filter: String,
+        status_filter: Option<String>,
+        limit: usize,
+    ) {
+        self.ensure_control_plane_service();
+        if self.web_request_inflight {
+            self.append_log(
+                "skip explorer transactions query: previous web request still in flight",
+            );
+            return;
+        }
+        self.web_request_inflight = true;
+        self.last_web_poll_at = Some(Instant::now());
+        let tx = self.web_api_tx.clone();
+        let base_url = self.control_api_base.clone();
+        thread::spawn(move || {
+            let _ = tx.send(WebApiEvent::ExplorerQuery(
+                get_web_chain_explorer_transactions_blocking(
+                    base_url.as_str(),
+                    account_filter,
+                    status_filter,
+                    limit,
+                )
+                .map(explorer_window::ExplorerQueryResponse::Transactions),
+            ));
+        });
+    }
+
+    pub(super) fn request_web_chain_explorer_transaction(&mut self, action_id: u64) {
+        self.ensure_control_plane_service();
+        if self.web_request_inflight {
+            self.append_log(
+                "skip explorer transaction query: previous web request still in flight",
+            );
+            return;
+        }
+        self.web_request_inflight = true;
+        self.last_web_poll_at = Some(Instant::now());
+        let tx = self.web_api_tx.clone();
+        let base_url = self.control_api_base.clone();
+        thread::spawn(move || {
+            let _ = tx.send(WebApiEvent::ExplorerQuery(
+                get_web_chain_explorer_transaction_blocking(base_url.as_str(), action_id)
+                    .map(explorer_window::ExplorerQueryResponse::Transaction),
+            ));
+        });
+    }
+
     fn apply_web_snapshot(&mut self, snapshot: WebStateSnapshot) {
         self.status =
             launcher_status_from_web(snapshot.status.as_str(), snapshot.detail.as_deref());
@@ -514,6 +583,41 @@ fn get_web_chain_transfer_history_blocking(
         query.push(format!("action_id={action_filter}"));
     }
     let path = format!("/api/chain/transfer/history?{}", query.join("&"));
+    http_json_request(base_url, "GET", path.as_str(), None)
+}
+
+fn get_web_chain_explorer_overview_blocking(
+    base_url: &str,
+) -> Result<explorer_window::WebExplorerOverviewResponse, String> {
+    http_json_request(base_url, "GET", "/api/chain/explorer/overview", None)
+}
+
+fn get_web_chain_explorer_transactions_blocking(
+    base_url: &str,
+    account_filter: String,
+    status_filter: Option<String>,
+    limit: usize,
+) -> Result<explorer_window::WebExplorerTransactionsResponse, String> {
+    let mut query = vec![format!("limit={}", limit.clamp(1, 200))];
+    let account_filter = account_filter.trim();
+    if !account_filter.is_empty() {
+        query.push(format!("account_id={account_filter}"));
+    }
+    if let Some(status_filter) = status_filter {
+        let status_filter = status_filter.trim().to_string();
+        if !status_filter.is_empty() {
+            query.push(format!("status={status_filter}"));
+        }
+    }
+    let path = format!("/api/chain/explorer/transactions?{}", query.join("&"));
+    http_json_request(base_url, "GET", path.as_str(), None)
+}
+
+fn get_web_chain_explorer_transaction_blocking(
+    base_url: &str,
+    action_id: u64,
+) -> Result<explorer_window::WebExplorerTransactionResponse, String> {
+    let path = format!("/api/chain/explorer/transaction?action_id={action_id}");
     http_json_request(base_url, "GET", path.as_str(), None)
 }
 

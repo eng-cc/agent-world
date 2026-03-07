@@ -60,6 +60,7 @@ impl ClientLauncherApp {
                 WebApiEvent::Feedback(result) => self.apply_web_feedback_submit_result(result),
                 WebApiEvent::Transfer(result) => self.apply_web_transfer_submit_result(result),
                 WebApiEvent::TransferQuery(result) => self.apply_web_transfer_query_result(result),
+                WebApiEvent::ExplorerQuery(result) => self.apply_web_explorer_query_result(result),
             }
         }
 
@@ -172,6 +173,66 @@ impl ClientLauncherApp {
                 fetch_web_transfer_status(action_id)
                     .await
                     .map(transfer_window::TransferQueryResponse::Status),
+            ));
+        });
+    }
+
+    pub(super) fn request_web_chain_explorer_overview(&mut self) {
+        if self.web_request_inflight {
+            self.append_log("skip explorer overview query: previous web request still in flight");
+            return;
+        }
+        self.web_request_inflight = true;
+        self.last_web_poll_at = Some(Instant::now());
+        let tx = self.web_api_tx.clone();
+        spawn_local(async move {
+            let _ = tx.send(WebApiEvent::ExplorerQuery(
+                fetch_web_explorer_overview()
+                    .await
+                    .map(explorer_window::ExplorerQueryResponse::Overview),
+            ));
+        });
+    }
+
+    pub(super) fn request_web_chain_explorer_transactions(
+        &mut self,
+        account_filter: String,
+        status_filter: Option<String>,
+        limit: usize,
+    ) {
+        if self.web_request_inflight {
+            self.append_log(
+                "skip explorer transactions query: previous web request still in flight",
+            );
+            return;
+        }
+        self.web_request_inflight = true;
+        self.last_web_poll_at = Some(Instant::now());
+        let tx = self.web_api_tx.clone();
+        spawn_local(async move {
+            let _ = tx.send(WebApiEvent::ExplorerQuery(
+                fetch_web_explorer_transactions(account_filter, status_filter, limit)
+                    .await
+                    .map(explorer_window::ExplorerQueryResponse::Transactions),
+            ));
+        });
+    }
+
+    pub(super) fn request_web_chain_explorer_transaction(&mut self, action_id: u64) {
+        if self.web_request_inflight {
+            self.append_log(
+                "skip explorer transaction query: previous web request still in flight",
+            );
+            return;
+        }
+        self.web_request_inflight = true;
+        self.last_web_poll_at = Some(Instant::now());
+        let tx = self.web_api_tx.clone();
+        spawn_local(async move {
+            let _ = tx.send(WebApiEvent::ExplorerQuery(
+                fetch_web_explorer_transaction(action_id)
+                    .await
+                    .map(explorer_window::ExplorerQueryResponse::Transaction),
             ));
         });
     }
@@ -449,6 +510,77 @@ async fn fetch_web_transfer_history(
         .json::<transfer_window::WebTransferHistoryResponse>()
         .await
         .map_err(|err| format!("decode /api/chain/transfer/history response failed: {err}"))
+}
+
+async fn fetch_web_explorer_overview(
+) -> Result<explorer_window::WebExplorerOverviewResponse, String> {
+    let response = Request::get("/api/chain/explorer/overview")
+        .send()
+        .await
+        .map_err(|err| format!("GET /api/chain/explorer/overview failed: {err}"))?;
+    if !response.ok() {
+        return Err(format!(
+            "GET /api/chain/explorer/overview failed with HTTP {}",
+            response.status()
+        ));
+    }
+    response
+        .json::<explorer_window::WebExplorerOverviewResponse>()
+        .await
+        .map_err(|err| format!("decode /api/chain/explorer/overview response failed: {err}"))
+}
+
+async fn fetch_web_explorer_transactions(
+    account_filter: String,
+    status_filter: Option<String>,
+    limit: usize,
+) -> Result<explorer_window::WebExplorerTransactionsResponse, String> {
+    let mut query = vec![format!("limit={}", limit.clamp(1, 200))];
+    let account_filter = account_filter.trim();
+    if !account_filter.is_empty() {
+        query.push(format!("account_id={account_filter}"));
+    }
+    if let Some(status_filter) = status_filter {
+        let status_filter = status_filter.trim().to_string();
+        if !status_filter.is_empty() {
+            query.push(format!("status={status_filter}"));
+        }
+    }
+    let path = format!("/api/chain/explorer/transactions?{}", query.join("&"));
+    let response = Request::get(path.as_str())
+        .send()
+        .await
+        .map_err(|err| format!("GET /api/chain/explorer/transactions failed: {err}"))?;
+    if !response.ok() {
+        return Err(format!(
+            "GET /api/chain/explorer/transactions failed with HTTP {}",
+            response.status()
+        ));
+    }
+    response
+        .json::<explorer_window::WebExplorerTransactionsResponse>()
+        .await
+        .map_err(|err| format!("decode /api/chain/explorer/transactions response failed: {err}"))
+}
+
+async fn fetch_web_explorer_transaction(
+    action_id: u64,
+) -> Result<explorer_window::WebExplorerTransactionResponse, String> {
+    let path = format!("/api/chain/explorer/transaction?action_id={action_id}");
+    let response = Request::get(path.as_str())
+        .send()
+        .await
+        .map_err(|err| format!("GET /api/chain/explorer/transaction failed: {err}"))?;
+    if !response.ok() {
+        return Err(format!(
+            "GET /api/chain/explorer/transaction failed with HTTP {}",
+            response.status()
+        ));
+    }
+    response
+        .json::<explorer_window::WebExplorerTransactionResponse>()
+        .await
+        .map_err(|err| format!("decode /api/chain/explorer/transaction response failed: {err}"))
 }
 
 async fn post_web_chain_feedback(
