@@ -28,6 +28,12 @@
 - [x] TASK-P2P-MLC-005-C [test_tier_required]: 实现会话吊销/换钥命令，落地旧 key 拒绝、新 key 绑定与 epoch 单调约束。
 - [x] TASK-P2P-MLC-005-D [test_tier_required]: 补齐重组回滚、重连追平、会话吊销换钥的定向测试并执行 `testing-manual.md` 对应 required 套件。
 
+### TASK-P2P-MLC-006 执行拆解（PRD-P2P-MLC-001/002/003/004）
+- [ ] TASK-P2P-MLC-006-A [test_tier_required]: 执行 MLC 链路 required 回归矩阵（intent/finality/recovery 关键用例）并归档命令与结果。
+- [ ] TASK-P2P-MLC-006-B [test_tier_full]: 执行 MLC 链路 full 回归矩阵（challenge/slash/recovery 组合路径）并归档命令与结果。
+- [ ] TASK-P2P-MLC-006-C [test_tier_full]: 汇总联合回归证据，形成 PRD-ID -> Test -> 结果映射与失败项说明（含基线缺陷隔离）。
+- [ ] TASK-P2P-MLC-006-D [test_tier_full]: 更新发布门禁结论与风险说明，确认是否满足进入下一阶段的回归准入条件。
+
 ## 依赖
 - `doc/p2p/network/p2p-mobile-light-client-authoritative-state-2026-03-06.prd.md`
 - `doc/p2p/network/p2p-mobile-light-client-authoritative-state-2026-03-06.prd.project.md`
@@ -44,6 +50,7 @@
 - TASK-P2P-MLC-003 收口（2026-03-07）: A/B/C/D 已全部完成（批次承诺、最终性状态机、结算闸门、required 定向回归）。
 - TASK-P2P-MLC-004 收口（2026-03-07）: A/B/C/D 已全部完成（challenge 提交入口、resolve 状态机、slash 联动、full 定向回归）。
 - TASK-P2P-MLC-005 收口（2026-03-07）: A/B/C/D 已全部完成（稳定点回滚、重连追平元数据、会话吊销换钥、required 定向回归）。
+- TASK-P2P-MLC-006 计划口径（2026-03-07）: 已锁定 A/B/C/D 四个子步骤（required/full 联合回归执行、证据映射、发布门禁结论）。
 - 本轮完成:
   - 在 `agent_world_proto::viewer::AgentChatRequest` 增加 `intent_tick/intent_seq` 字段，并在 `AgentChatAck` 增加 `intent_tick/intent_seq/idempotent_replay`。
   - `runtime_live` 增加 `intent_seq` 幂等重放语义：同 `(player_id, agent_id, intent_seq)` 重试返回同 ACK，变更载荷触发冲突拒绝。

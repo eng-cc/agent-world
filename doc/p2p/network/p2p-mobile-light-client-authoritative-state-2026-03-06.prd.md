@@ -57,6 +57,8 @@
   - AC-MLC-005b (PRD-P2P-MLC-004): 重连追平必须返回可验证的 `snapshot_hash + log_cursor`；若游标缺口或快照校验失败，必须触发“强制重拉快照”而非继续增量回放。
   - AC-MLC-005c (PRD-P2P-MLC-004): 会话吊销后旧 `session_pubkey` 的 intent 与控制请求必须全部拒绝；换钥后仅新 key 可通过鉴权并继续写入。
   - AC-MLC-006 (PRD-P2P-MLC-002/004): 客户端最终性 UI 与链上状态一致，不出现“未 final 被当作 final”。
+  - AC-MLC-006a (PRD-P2P-MLC-001/002/003/004): `test_tier_required` 与 `test_tier_full` 联合回归需形成可追溯证据（命令、结果、时间）并映射到 PRD-ID。
+  - AC-MLC-006b (PRD-P2P-MLC-001/002/003/004): 联合回归若存在基线缺陷，必须在发布门禁中记录失败项、影响范围与放行策略，不允许静默跳过。
 - Non-Goals:
   - 不在本期实现“手机端本地确定性复算全世界状态”。
   - 不在本期替换现有 token 经济规则与发行策略。
