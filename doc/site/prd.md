@@ -20,7 +20,7 @@
 
 ## 里程碑
 - M1 (2026-03-03): 完成模块设计 PRD 主体重写与任务改造。
-- M2: 补齐模块设计验收清单与关键指标。
+- M2 (2026-03-07): 完成站点手册镜像语义同步与状态文档回写。
 - M3: 建立 PRD-ID -> Task -> Test 的长期追踪闭环。
 
 ## 风险
@@ -109,8 +109,8 @@
 | PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |
 | --- | --- | --- | --- | --- |
 | PRD-SITE-001 | TASK-SITE-001/002/005 | `test_tier_required` | 首页结构与导航检查 | 用户首次访问体验 |
-| PRD-SITE-002 | TASK-SITE-002/003/005 | `test_tier_required` | 下载与文档链接巡检 | 安装与文档可用性 |
-| PRD-SITE-003 | TASK-SITE-003/004/005 | `test_tier_required` + `test_tier_full` | 发布门禁与回归节奏复核 | 发布稳定性与回滚能力 |
+| PRD-SITE-002 | TASK-SITE-002/003/005/006 | `test_tier_required` | 下载与文档链接巡检、手册镜像语义对齐校验 | 安装与文档可用性 |
+| PRD-SITE-003 | TASK-SITE-003/004/005/007 | `test_tier_required` + `test_tier_full` | 发布门禁与回归节奏复核、项目状态回写核对 | 发布稳定性与回滚能力 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |
