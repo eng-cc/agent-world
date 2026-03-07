@@ -1,7 +1,7 @@
 use super::{
     build_transfer_submit_action_payload, maybe_handle_transfer_submit_request,
-    parse_transfer_submit_request, ChainTransferHistoryResponse, ChainTransferStatusResponse,
-    ChainTransferSubmitResponse, TransferLifecycleStatus,
+    parse_transfer_submit_request, ChainExplorerOverviewResponse, ChainTransferHistoryResponse,
+    ChainTransferStatusResponse, ChainTransferSubmitResponse, TransferLifecycleStatus,
 };
 use agent_world::consensus_action_payload::{
     decode_consensus_action_payload, ConsensusActionPayloadBody,
@@ -267,4 +267,235 @@ fn transfer_status_and_history_endpoint_report_confirmed_record() {
         .expect("lock runtime for stop")
         .stop()
         .expect("stop node runtime");
+}
+
+#[test]
+fn explorer_overview_and_transaction_queries_return_expected_payloads() {
+    let config = NodeConfig::new(
+        "node-transfer-explorer-ok",
+        "world-transfer-explorer-ok",
+        NodeRole::Sequencer,
+    )
+    .expect("node config")
+    .with_tick_interval(Duration::from_millis(10))
+    .expect("tick interval");
+    let mut node_runtime = NodeRuntime::new(config).with_execution_hook(NoopExecutionHook);
+    node_runtime.start().expect("start node runtime");
+    let runtime = Arc::new(Mutex::new(node_runtime));
+
+    let (mut submit_server, mut submit_client) = tcp_stream_pair();
+    let submit_body =
+        r#"{"from_account_id":"player:alice","to_account_id":"player:bob","amount":4,"nonce":9}"#;
+    let submit_http = format!(
+        "POST /v1/chain/transfer/submit HTTP/1.1\r\nHost: 127.0.0.1:5121\r\nContent-Length: {}\r\n\r\n{}",
+        submit_body.len(),
+        submit_body
+    );
+    maybe_handle_transfer_submit_request(
+        &mut submit_server,
+        submit_http.as_bytes(),
+        &runtime,
+        "POST",
+        "/v1/chain/transfer/submit",
+        "node-transfer-explorer-ok",
+        "world-transfer-explorer-ok",
+        Path::new("."),
+    )
+    .expect("submit should be handled");
+    drop(submit_server);
+
+    let mut submit_response_bytes = Vec::new();
+    submit_client
+        .set_read_timeout(Some(Duration::from_secs(2)))
+        .expect("set timeout");
+    submit_client
+        .read_to_end(&mut submit_response_bytes)
+        .expect("read submit response");
+    let (_, submit_response): (u16, ChainTransferSubmitResponse) =
+        decode_http_json_response(&submit_response_bytes);
+    let action_id = submit_response.action_id.expect("action_id");
+
+    let deadline = Instant::now() + Duration::from_secs(3);
+    let mut confirmed = false;
+    while Instant::now() < deadline {
+        let (mut status_server, mut status_client) = tcp_stream_pair();
+        let status_http = format!(
+            "GET /v1/chain/transfer/status?action_id={} HTTP/1.1\r\nHost: 127.0.0.1:5121\r\n\r\n",
+            action_id
+        );
+        maybe_handle_transfer_submit_request(
+            &mut status_server,
+            status_http.as_bytes(),
+            &runtime,
+            "GET",
+            "/v1/chain/transfer/status",
+            "node-transfer-explorer-ok",
+            "world-transfer-explorer-ok",
+            Path::new("."),
+        )
+        .expect("status should be handled");
+        drop(status_server);
+
+        status_client
+            .set_read_timeout(Some(Duration::from_secs(2)))
+            .expect("set timeout");
+        let mut status_response_bytes = Vec::new();
+        status_client
+            .read_to_end(&mut status_response_bytes)
+            .expect("read status response");
+        let (_, status_response): (u16, ChainTransferStatusResponse) =
+            decode_http_json_response(&status_response_bytes);
+        if status_response
+            .status
+            .as_ref()
+            .is_some_and(|record| record.status == TransferLifecycleStatus::Confirmed)
+        {
+            confirmed = true;
+            break;
+        }
+        std::thread::sleep(Duration::from_millis(80));
+    }
+    assert!(confirmed, "status should eventually become confirmed");
+
+    let (mut overview_server, mut overview_client) = tcp_stream_pair();
+    let overview_http = "GET /v1/chain/explorer/overview HTTP/1.1\r\nHost: 127.0.0.1:5121\r\n\r\n";
+    maybe_handle_transfer_submit_request(
+        &mut overview_server,
+        overview_http.as_bytes(),
+        &runtime,
+        "GET",
+        "/v1/chain/explorer/overview",
+        "node-transfer-explorer-ok",
+        "world-transfer-explorer-ok",
+        Path::new("."),
+    )
+    .expect("overview should be handled");
+    drop(overview_server);
+
+    overview_client
+        .set_read_timeout(Some(Duration::from_secs(2)))
+        .expect("set timeout");
+    let mut overview_response_bytes = Vec::new();
+    overview_client
+        .read_to_end(&mut overview_response_bytes)
+        .expect("read overview response");
+    let (_, overview): (u16, ChainExplorerOverviewResponse) =
+        decode_http_json_response(&overview_response_bytes);
+    assert!(overview.ok);
+    assert_eq!(overview.node_id, "node-transfer-explorer-ok");
+    assert_eq!(overview.world_id, "world-transfer-explorer-ok");
+    assert!(overview.transfer_total >= 1);
+    assert!(overview.transfer_confirmed >= 1);
+    assert!(overview.latest_height >= 1);
+
+    let (mut txs_server, mut txs_client) = tcp_stream_pair();
+    let txs_http =
+        "GET /v1/chain/explorer/transactions?status=confirmed&limit=10 HTTP/1.1\r\nHost: 127.0.0.1:5121\r\n\r\n";
+    maybe_handle_transfer_submit_request(
+        &mut txs_server,
+        txs_http.as_bytes(),
+        &runtime,
+        "GET",
+        "/v1/chain/explorer/transactions",
+        "node-transfer-explorer-ok",
+        "world-transfer-explorer-ok",
+        Path::new("."),
+    )
+    .expect("transactions should be handled");
+    drop(txs_server);
+
+    txs_client
+        .set_read_timeout(Some(Duration::from_secs(2)))
+        .expect("set timeout");
+    let mut txs_response_bytes = Vec::new();
+    txs_client
+        .read_to_end(&mut txs_response_bytes)
+        .expect("read transactions response");
+    let (_, txs): (u16, ChainTransferHistoryResponse) =
+        decode_http_json_response(&txs_response_bytes);
+    assert!(txs.ok);
+    assert_eq!(txs.status_filter, Some(TransferLifecycleStatus::Confirmed));
+    assert!(txs.items.iter().any(|item| item.action_id == action_id));
+
+    let (mut tx_server, mut tx_client) = tcp_stream_pair();
+    let tx_http = format!(
+        "GET /v1/chain/explorer/transaction?action_id={} HTTP/1.1\r\nHost: 127.0.0.1:5121\r\n\r\n",
+        action_id
+    );
+    maybe_handle_transfer_submit_request(
+        &mut tx_server,
+        tx_http.as_bytes(),
+        &runtime,
+        "GET",
+        "/v1/chain/explorer/transaction",
+        "node-transfer-explorer-ok",
+        "world-transfer-explorer-ok",
+        Path::new("."),
+    )
+    .expect("transaction detail should be handled");
+    drop(tx_server);
+
+    tx_client
+        .set_read_timeout(Some(Duration::from_secs(2)))
+        .expect("set timeout");
+    let mut tx_response_bytes = Vec::new();
+    tx_client
+        .read_to_end(&mut tx_response_bytes)
+        .expect("read transaction detail response");
+    let (_, tx_detail): (u16, ChainTransferStatusResponse) =
+        decode_http_json_response(&tx_response_bytes);
+    assert!(tx_detail.ok);
+    assert_eq!(tx_detail.action_id, action_id);
+    assert_eq!(
+        tx_detail.status.as_ref().map(|item| item.status),
+        Some(TransferLifecycleStatus::Confirmed)
+    );
+
+    runtime
+        .lock()
+        .expect("lock runtime for stop")
+        .stop()
+        .expect("stop node runtime");
+}
+
+#[test]
+fn explorer_transactions_reject_invalid_status_filter() {
+    let runtime = Arc::new(Mutex::new(NodeRuntime::new(
+        NodeConfig::new(
+            "node-transfer-explorer-filter",
+            "world-transfer-explorer-filter",
+            NodeRole::Sequencer,
+        )
+        .expect("node config"),
+    )));
+
+    let (mut server_stream, mut client_stream) = tcp_stream_pair();
+    let request =
+        "GET /v1/chain/explorer/transactions?status=bad HTTP/1.1\r\nHost: 127.0.0.1:5121\r\n\r\n";
+    let handled = maybe_handle_transfer_submit_request(
+        &mut server_stream,
+        request.as_bytes(),
+        &runtime,
+        "GET",
+        "/v1/chain/explorer/transactions",
+        "node-transfer-explorer-filter",
+        "world-transfer-explorer-filter",
+        Path::new("."),
+    )
+    .expect("request should be handled");
+    assert!(handled);
+    drop(server_stream);
+
+    client_stream
+        .set_read_timeout(Some(Duration::from_secs(2)))
+        .expect("set timeout");
+    let mut response_bytes = Vec::new();
+    client_stream
+        .read_to_end(&mut response_bytes)
+        .expect("read response");
+    let (status, response): (u16, ChainTransferHistoryResponse) =
+        decode_http_json_response(&response_bytes);
+    assert_eq!(status, 400);
+    assert!(!response.ok);
+    assert_eq!(response.error_code.as_deref(), Some("invalid_request"));
 }

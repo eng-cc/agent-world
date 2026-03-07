@@ -16,6 +16,9 @@ const TRANSFER_SUBMIT_PATH: &str = "/v1/chain/transfer/submit";
 const TRANSFER_STATUS_PATH: &str = "/v1/chain/transfer/status";
 const TRANSFER_HISTORY_PATH: &str = "/v1/chain/transfer/history";
 const TRANSFER_ACCOUNTS_PATH: &str = "/v1/chain/transfer/accounts";
+const EXPLORER_OVERVIEW_PATH: &str = "/v1/chain/explorer/overview";
+const EXPLORER_TRANSACTIONS_PATH: &str = "/v1/chain/explorer/transactions";
+const EXPLORER_TRANSACTION_PATH: &str = "/v1/chain/explorer/transaction";
 const ACCOUNT_ID_MAX_LEN: usize = 128;
 const MAX_TRACKED_TRANSFER_RECORDS: usize = 500;
 const DEFAULT_HISTORY_LIMIT: usize = 50;
@@ -148,6 +151,8 @@ pub(super) struct ChainTransferHistoryResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(super) account_filter: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub(super) status_filter: Option<TransferLifecycleStatus>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub(super) action_filter: Option<u64>,
     pub(super) limit: usize,
     pub(super) total: usize,
@@ -161,6 +166,7 @@ pub(super) struct ChainTransferHistoryResponse {
 impl ChainTransferHistoryResponse {
     fn success(
         account_filter: Option<String>,
+        status_filter: Option<TransferLifecycleStatus>,
         action_filter: Option<u64>,
         limit: usize,
         total: usize,
@@ -170,6 +176,7 @@ impl ChainTransferHistoryResponse {
             ok: true,
             observed_at_unix_ms: super::now_unix_ms(),
             account_filter,
+            status_filter,
             action_filter,
             limit,
             total,
@@ -232,6 +239,72 @@ impl ChainTransferAccountsResponse {
             error: Some(message.into()),
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub(super) struct ChainExplorerOverviewResponse {
+    pub(super) ok: bool,
+    pub(super) observed_at_unix_ms: i64,
+    pub(super) node_id: String,
+    pub(super) world_id: String,
+    pub(super) latest_height: u64,
+    pub(super) committed_height: u64,
+    pub(super) network_committed_height: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(super) last_block_hash: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(super) last_execution_block_hash: Option<String>,
+    pub(super) tracked_records: usize,
+    pub(super) transfer_total: usize,
+    pub(super) transfer_accepted: usize,
+    pub(super) transfer_pending: usize,
+    pub(super) transfer_confirmed: usize,
+    pub(super) transfer_failed: usize,
+    pub(super) transfer_timeout: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(super) error_code: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(super) error: Option<String>,
+}
+
+impl ChainExplorerOverviewResponse {
+    fn success(
+        node_id: &str,
+        world_id: &str,
+        snapshot: &agent_world_node::NodeSnapshot,
+        counters: TransferLifecycleCounters,
+    ) -> Self {
+        Self {
+            ok: true,
+            observed_at_unix_ms: super::now_unix_ms(),
+            node_id: node_id.to_string(),
+            world_id: world_id.to_string(),
+            latest_height: snapshot.consensus.latest_height,
+            committed_height: snapshot.consensus.committed_height,
+            network_committed_height: snapshot.consensus.network_committed_height,
+            last_block_hash: snapshot.consensus.last_block_hash.clone(),
+            last_execution_block_hash: snapshot.consensus.last_execution_block_hash.clone(),
+            tracked_records: counters.total,
+            transfer_total: counters.total,
+            transfer_accepted: counters.accepted,
+            transfer_pending: counters.pending,
+            transfer_confirmed: counters.confirmed,
+            transfer_failed: counters.failed,
+            transfer_timeout: counters.timeout,
+            error_code: None,
+            error: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+struct TransferLifecycleCounters {
+    total: usize,
+    accepted: usize,
+    pending: usize,
+    confirmed: usize,
+    failed: usize,
+    timeout: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -369,6 +442,7 @@ impl TransferTracker {
     fn query_history(
         &self,
         account_filter: Option<&str>,
+        status_filter: Option<TransferLifecycleStatus>,
         action_filter: Option<u64>,
         limit: usize,
     ) -> (usize, Vec<ChainTransferRecord>) {
@@ -382,7 +456,14 @@ impl TransferTracker {
                     return item.action_id == action_id;
                 }
                 if let Some(account) = account_filter {
-                    return item.from_account_id == account || item.to_account_id == account;
+                    if item.from_account_id != account && item.to_account_id != account {
+                        return false;
+                    }
+                }
+                if let Some(status) = status_filter {
+                    if item.status != status {
+                        return false;
+                    }
                 }
                 true
             })
@@ -399,6 +480,21 @@ impl TransferTracker {
         let total = items.len();
         items.truncate(limit);
         (total, items)
+    }
+
+    fn lifecycle_counters(&self) -> TransferLifecycleCounters {
+        let mut counters = TransferLifecycleCounters::default();
+        for item in self.by_action_id.values() {
+            counters.total += 1;
+            match item.status {
+                TransferLifecycleStatus::Accepted => counters.accepted += 1,
+                TransferLifecycleStatus::Pending => counters.pending += 1,
+                TransferLifecycleStatus::Confirmed => counters.confirmed += 1,
+                TransferLifecycleStatus::Failed => counters.failed += 1,
+                TransferLifecycleStatus::Timeout => counters.timeout += 1,
+            }
+        }
+        counters
     }
 
     fn prune(&mut self) {
@@ -443,6 +539,15 @@ pub(super) fn maybe_handle_transfer_submit_request(
             execution_world_dir,
             head_only(method),
         );
+    }
+    if path == EXPLORER_OVERVIEW_PATH {
+        return handle_explorer_overview(stream, runtime, node_id, world_id, head_only(method));
+    }
+    if path == EXPLORER_TRANSACTIONS_PATH {
+        return handle_explorer_transactions(stream, request_bytes, runtime, head_only(method));
+    }
+    if path == EXPLORER_TRANSACTION_PATH {
+        return handle_explorer_transaction(stream, request_bytes, runtime, head_only(method));
     }
 
     Ok(false)
@@ -587,9 +692,16 @@ fn handle_transfer_history(
     sync_tracker_from_runtime(runtime, &mut tracker)?;
     tracker.refresh_lifecycle_by_time(super::now_unix_ms());
 
-    let (total, items) = tracker.query_history(account_filter.as_deref(), action_filter, limit);
-    let response =
-        ChainTransferHistoryResponse::success(account_filter, action_filter, limit, total, items);
+    let (total, items) =
+        tracker.query_history(account_filter.as_deref(), None, action_filter, limit);
+    let response = ChainTransferHistoryResponse::success(
+        account_filter,
+        None,
+        action_filter,
+        limit,
+        total,
+        items,
+    );
     write_transfer_json_response(stream, 200, &response, head_only)?;
     Ok(true)
 }
@@ -609,6 +721,111 @@ fn handle_transfer_accounts(
     let response = build_transfer_accounts_response(node_id, world_id, execution_world_dir);
     write_transfer_json_response(stream, 200, &response, head_only)?;
     Ok(true)
+}
+
+fn handle_explorer_overview(
+    stream: &mut TcpStream,
+    runtime: &Arc<Mutex<NodeRuntime>>,
+    node_id: &str,
+    world_id: &str,
+    head_only: bool,
+) -> Result<bool, String> {
+    let mut tracker = lock_transfer_tracker();
+    sync_tracker_from_runtime(runtime, &mut tracker)?;
+    tracker.refresh_lifecycle_by_time(super::now_unix_ms());
+
+    let snapshot = runtime
+        .lock()
+        .map_err(|_| "failed to lock node runtime for explorer overview".to_string())?
+        .snapshot();
+    let counters = tracker.lifecycle_counters();
+    let response = ChainExplorerOverviewResponse::success(node_id, world_id, &snapshot, counters);
+    write_transfer_json_response(stream, 200, &response, head_only)?;
+    Ok(true)
+}
+
+fn handle_explorer_transactions(
+    stream: &mut TcpStream,
+    request_bytes: &[u8],
+    runtime: &Arc<Mutex<NodeRuntime>>,
+    head_only: bool,
+) -> Result<bool, String> {
+    let target = parse_http_target(request_bytes)?;
+    let params = parse_query_params(target.as_str());
+
+    let account_filter = params
+        .get("account_id")
+        .map(String::as_str)
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(ToOwned::to_owned);
+    let action_filter = params
+        .get("action_id")
+        .and_then(|value| value.parse::<u64>().ok())
+        .filter(|value| *value > 0);
+    let status_filter = match params
+        .get("status")
+        .map(String::as_str)
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    {
+        Some(raw) => match parse_transfer_lifecycle_status(raw) {
+            Some(status) => Some(status),
+            None => {
+                let response = ChainTransferHistoryResponse {
+                    ok: false,
+                    observed_at_unix_ms: super::now_unix_ms(),
+                    account_filter: account_filter.clone(),
+                    status_filter: None,
+                    action_filter,
+                    limit: 0,
+                    total: 0,
+                    items: Vec::new(),
+                    error_code: Some(TRANSFER_ERROR_INVALID_REQUEST.to_string()),
+                    error: Some(format!(
+                        "query parameter status must be one of: accepted,pending,confirmed,failed,timeout; got `{raw}`"
+                    )),
+                };
+                write_transfer_json_response(stream, 400, &response, head_only)?;
+                return Ok(true);
+            }
+        },
+        None => None,
+    };
+    let limit = params
+        .get("limit")
+        .and_then(|value| value.parse::<usize>().ok())
+        .map(|value| value.clamp(1, MAX_HISTORY_LIMIT))
+        .unwrap_or(DEFAULT_HISTORY_LIMIT);
+
+    let mut tracker = lock_transfer_tracker();
+    sync_tracker_from_runtime(runtime, &mut tracker)?;
+    tracker.refresh_lifecycle_by_time(super::now_unix_ms());
+    let (total, items) = tracker.query_history(
+        account_filter.as_deref(),
+        status_filter,
+        action_filter,
+        limit,
+    );
+    let response = ChainTransferHistoryResponse::success(
+        account_filter,
+        status_filter,
+        action_filter,
+        limit,
+        total,
+        items,
+    );
+    write_transfer_json_response(stream, 200, &response, head_only)?;
+    Ok(true)
+}
+
+fn handle_explorer_transaction(
+    stream: &mut TcpStream,
+    request_bytes: &[u8],
+    runtime: &Arc<Mutex<NodeRuntime>>,
+    head_only: bool,
+) -> Result<bool, String> {
+    handle_transfer_status(stream, request_bytes, runtime, head_only)
 }
 
 fn write_transfer_json_response<T: Serialize>(
@@ -824,6 +1041,17 @@ fn parse_query_params(target: &str) -> BTreeMap<String, String> {
         params.insert(key, value);
     }
     params
+}
+
+fn parse_transfer_lifecycle_status(raw: &str) -> Option<TransferLifecycleStatus> {
+    match raw.trim().to_ascii_lowercase().as_str() {
+        "accepted" => Some(TransferLifecycleStatus::Accepted),
+        "pending" => Some(TransferLifecycleStatus::Pending),
+        "confirmed" => Some(TransferLifecycleStatus::Confirmed),
+        "failed" => Some(TransferLifecycleStatus::Failed),
+        "timeout" => Some(TransferLifecycleStatus::Timeout),
+        _ => None,
+    }
 }
 
 fn percent_decode(raw: &str) -> String {

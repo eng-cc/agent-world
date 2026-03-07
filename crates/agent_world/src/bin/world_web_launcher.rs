@@ -629,6 +629,34 @@ fn handle_connection(
             let response = query_chain_transfer_json(&mut state, runtime_target.as_str());
             write_json_response(&mut stream, 200, &response)
         }
+        ("GET", "/api/chain/explorer/overview") => {
+            let mut state = lock_state(&shared_state);
+            poll_service_state(&mut state);
+            let response = query_chain_transfer_json(&mut state, "/v1/chain/explorer/overview");
+            write_json_response(&mut stream, 200, &response)
+        }
+        ("GET", "/api/chain/explorer/transactions") => {
+            let mut state = lock_state(&shared_state);
+            poll_service_state(&mut state);
+            let runtime_target = remap_transfer_runtime_target(
+                request.path.as_str(),
+                "/api/chain/explorer/transactions",
+                "/v1/chain/explorer/transactions",
+            );
+            let response = query_chain_transfer_json(&mut state, runtime_target.as_str());
+            write_json_response(&mut stream, 200, &response)
+        }
+        ("GET", "/api/chain/explorer/transaction") => {
+            let mut state = lock_state(&shared_state);
+            poll_service_state(&mut state);
+            let runtime_target = remap_transfer_runtime_target(
+                request.path.as_str(),
+                "/api/chain/explorer/transaction",
+                "/v1/chain/explorer/transaction",
+            );
+            let response = query_chain_transfer_json(&mut state, runtime_target.as_str());
+            write_json_response(&mut stream, 200, &response)
+        }
         ("POST", "/api/chain/feedback") => {
             let submit_request = match parse_chain_feedback_request(request.body.as_slice()) {
                 Ok(request) => request,
@@ -658,6 +686,9 @@ fn handle_connection(
         | (method, "/api/chain/transfer/accounts")
         | (method, "/api/chain/transfer/status")
         | (method, "/api/chain/transfer/history")
+        | (method, "/api/chain/explorer/overview")
+        | (method, "/api/chain/explorer/transactions")
+        | (method, "/api/chain/explorer/transaction")
         | (method, "/api/chain/feedback")
             if method != "GET" && method != "POST" =>
         {

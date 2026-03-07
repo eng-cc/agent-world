@@ -5,8 +5,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::{
     build_chain_runtime_args, build_game_url, build_launcher_args, parse_chain_validators,
-    parse_host_port, parse_options, parse_port, validate_chain_config, validate_game_config,
-    CliOptions, LauncherConfig, DEFAULT_CHAIN_STATUS_BIND, DEFAULT_LISTEN_BIND, DEFAULT_SCENARIO,
+    parse_host_port, parse_options, parse_port, remap_transfer_runtime_target,
+    validate_chain_config, validate_game_config, CliOptions, LauncherConfig,
+    DEFAULT_CHAIN_STATUS_BIND, DEFAULT_LISTEN_BIND, DEFAULT_SCENARIO,
 };
 
 #[test]
@@ -345,6 +346,19 @@ fn cli_options_default_launcher_bin_is_not_empty() {
     let options = CliOptions::default();
     assert!(!options.launcher_bin.trim().is_empty());
     assert!(!options.chain_runtime_bin.trim().is_empty());
+}
+
+#[test]
+fn remap_transfer_runtime_target_preserves_query_parameters() {
+    let mapped = remap_transfer_runtime_target(
+        "/api/chain/explorer/transactions?status=confirmed&limit=50",
+        "/api/chain/explorer/transactions",
+        "/v1/chain/explorer/transactions",
+    );
+    assert_eq!(
+        mapped,
+        "/v1/chain/explorer/transactions?status=confirmed&limit=50"
+    );
 }
 
 fn make_temp_dir(label: &str) -> PathBuf {
