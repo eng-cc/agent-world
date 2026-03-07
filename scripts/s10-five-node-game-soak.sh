@@ -26,7 +26,15 @@ Options:
   --startup-timeout-secs <n>       startup grace before monitor loop (default: 20)
   --poll-interval-secs <n>         monitor loop interval (default: 2)
   --curl-timeout-secs <n>          HTTP timeout for status polling (default: 2)
-  --node-tick-ms <n>               node tick interval in milliseconds (default: 200)
+  --node-tick-ms <n>               worker poll/fallback interval milliseconds (default: 200)
+  --pos-slot-duration-ms <n>       PoS slot duration in milliseconds (default: 200)
+  --pos-ticks-per-slot <n>         PoS logical ticks per slot (default: 1)
+  --pos-proposal-tick-phase <n>    PoS proposal phase within slot tick window (default: 0)
+  --pos-adaptive-tick-scheduler    enable PoS adaptive tick scheduler
+  --pos-no-adaptive-tick-scheduler disable PoS adaptive scheduler (default)
+  --pos-slot-clock-genesis-unix-ms <n>
+                                   fixed PoS slot clock genesis unix ms (default: auto)
+  --pos-max-past-slot-lag <n>      max accepted stale slot lag (default: 256)
   --max-stall-secs <n>             gate threshold for max no-progress window (default: 300)
   --max-lag-p95 <n>                gate threshold for p95(network_height - committed_height) (default: 12)
   --max-distfs-failure-ratio <r>   gate threshold for distfs failure ratio (default: 0.25)
@@ -105,6 +113,15 @@ ensure_non_negative_int() {
   fi
 }
 
+ensure_integer() {
+  local flag=$1
+  local value=$2
+  if [[ ! "$value" =~ ^-?[0-9]+$ ]]; then
+    echo "invalid $flag: $value" >&2
+    exit 2
+  fi
+}
+
 ensure_ratio_between_zero_and_one() {
   local flag=$1
   local value=$2
@@ -145,6 +162,12 @@ startup_timeout_secs=20
 poll_interval_secs=2
 curl_timeout_secs=2
 node_tick_ms=200
+pos_slot_duration_ms=200
+pos_ticks_per_slot=1
+pos_proposal_tick_phase=0
+pos_adaptive_tick_scheduler_enabled=0
+pos_slot_clock_genesis_unix_ms=""
+pos_max_past_slot_lag=256
 max_stall_secs=300
 max_lag_p95=12
 max_distfs_failure_ratio="0.25"
@@ -212,6 +235,34 @@ while [[ $# -gt 0 ]]; do
       node_tick_ms=${2:-}
       shift 2
       ;;
+    --pos-slot-duration-ms)
+      pos_slot_duration_ms=${2:-}
+      shift 2
+      ;;
+    --pos-ticks-per-slot)
+      pos_ticks_per_slot=${2:-}
+      shift 2
+      ;;
+    --pos-proposal-tick-phase)
+      pos_proposal_tick_phase=${2:-}
+      shift 2
+      ;;
+    --pos-adaptive-tick-scheduler)
+      pos_adaptive_tick_scheduler_enabled=1
+      shift
+      ;;
+    --pos-no-adaptive-tick-scheduler)
+      pos_adaptive_tick_scheduler_enabled=0
+      shift
+      ;;
+    --pos-slot-clock-genesis-unix-ms)
+      pos_slot_clock_genesis_unix_ms=${2:-}
+      shift 2
+      ;;
+    --pos-max-past-slot-lag)
+      pos_max_past_slot_lag=${2:-}
+      shift 2
+      ;;
     --max-stall-secs)
       max_stall_secs=${2:-}
       shift 2
@@ -272,6 +323,17 @@ ensure_positive_int "--startup-timeout-secs" "$startup_timeout_secs"
 ensure_positive_int "--poll-interval-secs" "$poll_interval_secs"
 ensure_positive_int "--curl-timeout-secs" "$curl_timeout_secs"
 ensure_positive_int "--node-tick-ms" "$node_tick_ms"
+ensure_positive_int "--pos-slot-duration-ms" "$pos_slot_duration_ms"
+ensure_positive_int "--pos-ticks-per-slot" "$pos_ticks_per_slot"
+ensure_non_negative_int "--pos-proposal-tick-phase" "$pos_proposal_tick_phase"
+ensure_non_negative_int "--pos-max-past-slot-lag" "$pos_max_past_slot_lag"
+if (( pos_proposal_tick_phase >= pos_ticks_per_slot )); then
+  echo "--pos-proposal-tick-phase must be less than --pos-ticks-per-slot" >&2
+  exit 2
+fi
+if [[ -n "$pos_slot_clock_genesis_unix_ms" ]]; then
+  ensure_integer "--pos-slot-clock-genesis-unix-ms" "$pos_slot_clock_genesis_unix_ms"
+fi
 ensure_non_negative_int "--max-stall-secs" "$max_stall_secs"
 ensure_non_negative_int "--max-lag-p95" "$max_lag_p95"
 ensure_ratio_between_zero_and_one "--max-distfs-failure-ratio" "$max_distfs_failure_ratio"
@@ -438,6 +500,12 @@ jq -n \
   --argjson reward_runtime_epoch_duration_secs "$reward_runtime_epoch_duration_secs" \
   --argjson reward_points_per_credit "$reward_points_per_credit" \
   --argjson node_tick_ms "$node_tick_ms" \
+  --argjson pos_slot_duration_ms "$pos_slot_duration_ms" \
+  --argjson pos_ticks_per_slot "$pos_ticks_per_slot" \
+  --argjson pos_proposal_tick_phase "$pos_proposal_tick_phase" \
+  --argjson pos_adaptive_tick_scheduler_enabled "$pos_adaptive_tick_scheduler_enabled" \
+  --arg pos_slot_clock_genesis_unix_ms "$pos_slot_clock_genesis_unix_ms" \
+  --argjson pos_max_past_slot_lag "$pos_max_past_slot_lag" \
   --argjson base_port "$base_port" \
   --argjson startup_timeout_secs "$startup_timeout_secs" \
   --argjson poll_interval_secs "$poll_interval_secs" \
@@ -458,6 +526,14 @@ jq -n \
     reward_runtime_epoch_duration_secs: $reward_runtime_epoch_duration_secs,
     reward_points_per_credit: $reward_points_per_credit,
     node_tick_ms: $node_tick_ms,
+    pos_config: {
+      slot_duration_ms: $pos_slot_duration_ms,
+      ticks_per_slot: $pos_ticks_per_slot,
+      proposal_tick_phase: $pos_proposal_tick_phase,
+      adaptive_tick_scheduler_enabled: ($pos_adaptive_tick_scheduler_enabled == 1),
+      slot_clock_genesis_unix_ms: (if $pos_slot_clock_genesis_unix_ms == "" then null else ($pos_slot_clock_genesis_unix_ms | tonumber) end),
+      max_past_slot_lag: $pos_max_past_slot_lag
+    },
     duration_secs: $duration_secs,
     bind_host: $bind_host,
     base_port: $base_port,
@@ -476,7 +552,8 @@ jq -n \
     validators: $validators,
     nodes: $nodes,
     compatibility_notes: [
-      "--llm/--no-llm are accepted but no longer affect world_chain_runtime"
+      "--llm/--no-llm are accepted but no longer affect world_chain_runtime",
+      "node_tick_ms is worker poll/fallback interval; PoS slot timing is configured by pos_config.*"
     ]
   }' > "$run_config_json"
 
@@ -490,7 +567,17 @@ jq -n \
   echo "- llm_enabled_compat: \`$llm_enabled\`"
   echo "- reward_runtime_epoch_duration_secs: \`$reward_runtime_epoch_duration_secs\`"
   echo "- reward_points_per_credit: \`$reward_points_per_credit\`"
-  echo "- node_tick_ms: \`$node_tick_ms\`"
+  echo "- node_tick_ms(worker_poll_fallback_ms): \`$node_tick_ms\`"
+  echo "- pos_slot_duration_ms: \`$pos_slot_duration_ms\`"
+  echo "- pos_ticks_per_slot: \`$pos_ticks_per_slot\`"
+  echo "- pos_proposal_tick_phase: \`$pos_proposal_tick_phase\`"
+  echo "- pos_adaptive_tick_scheduler_enabled: \`$pos_adaptive_tick_scheduler_enabled\`"
+  if [[ -n "$pos_slot_clock_genesis_unix_ms" ]]; then
+    echo "- pos_slot_clock_genesis_unix_ms: \`$pos_slot_clock_genesis_unix_ms\`"
+  else
+    echo "- pos_slot_clock_genesis_unix_ms: \`auto\`"
+  fi
+  echo "- pos_max_past_slot_lag: \`$pos_max_past_slot_lag\`"
   echo "- max_stall_secs: \`$max_stall_secs\`"
   echo "- max_lag_p95: \`$max_lag_p95\`"
   echo "- max_distfs_failure_ratio: \`$max_distfs_failure_ratio\`"
@@ -528,10 +615,22 @@ prepare_node_command() {
     --status-bind "$(node_status_bind_addr "$idx")"
     --node-role "$role"
     --node-tick-ms "$node_tick_ms"
+    --pos-slot-duration-ms "$pos_slot_duration_ms"
+    --pos-ticks-per-slot "$pos_ticks_per_slot"
+    --pos-proposal-tick-phase "$pos_proposal_tick_phase"
+    --pos-max-past-slot-lag "$pos_max_past_slot_lag"
     --reward-runtime-epoch-duration-secs "$reward_runtime_epoch_duration_secs"
     --reward-points-per-credit "$reward_points_per_credit"
     --node-gossip-bind "$(node_gossip_addr "$idx")"
   )
+  if [[ "$pos_adaptive_tick_scheduler_enabled" -eq 1 ]]; then
+    cmd+=(--pos-adaptive-tick-scheduler)
+  else
+    cmd+=(--pos-no-adaptive-tick-scheduler)
+  fi
+  if [[ -n "$pos_slot_clock_genesis_unix_ms" ]]; then
+    cmd+=(--pos-slot-clock-genesis-unix-ms "$pos_slot_clock_genesis_unix_ms")
+  fi
 
   if [[ "$node_auto_attest_mode" -eq 2 ]] || { [[ "$node_auto_attest_mode" -eq 1 ]] && [[ "$role" == "sequencer" ]]; }; then
     cmd+=(--node-auto-attest-all)

@@ -4,6 +4,10 @@
 #
 # In --release-config mode, runtime CLI only allows:
 #   --release-config, --bind, --web-bind, --help
+#
+# Timing note:
+#   --node-tick-ms is worker poll/fallback interval only.
+#   PoS slot/block timing should be configured by --pos-* flags.
 
 locked_args = [
   "llm_bootstrap",
@@ -14,6 +18,11 @@ locked_args = [
   "--triad-storage-gossip", "10.0.0.12:5500",
   "--triad-observer-gossip", "10.0.0.13:5500",
   "--node-tick-ms", "200",
+  "--pos-slot-duration-ms", "200",
+  "--pos-ticks-per-slot", "1",
+  "--pos-proposal-tick-phase", "0",
+  "--pos-no-adaptive-tick-scheduler",
+  "--pos-max-past-slot-lag", "256",
   "--reward-runtime-enable",
   "--reward-runtime-min-observer-traces", "2",
 ]
