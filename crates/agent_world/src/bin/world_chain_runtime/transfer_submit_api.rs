@@ -516,6 +516,8 @@ pub(super) fn maybe_handle_transfer_submit_request(
     world_id: &str,
     execution_world_dir: &Path,
 ) -> Result<bool, String> {
+    super::explorer_p0_api::configure_persistence_root(execution_world_dir);
+
     if method.eq_ignore_ascii_case("POST") && path == TRANSFER_SUBMIT_PATH {
         return handle_transfer_submit(stream, request_bytes, runtime, execution_world_dir);
     }
@@ -548,6 +550,15 @@ pub(super) fn maybe_handle_transfer_submit_request(
     }
     if path == EXPLORER_TRANSACTION_PATH {
         return handle_explorer_transaction(stream, request_bytes, runtime, head_only(method));
+    }
+
+    if super::explorer_p0_api::maybe_handle_explorer_p0_request(
+        stream,
+        request_bytes,
+        path,
+        head_only(method),
+    )? {
+        return Ok(true);
     }
 
     Ok(false)
@@ -615,6 +626,7 @@ fn handle_transfer_submit(
 
     let now_ms = super::now_unix_ms();
     with_transfer_tracker(|tracker| tracker.record_accepted(action_id, &submit_request, now_ms));
+    super::explorer_p0_api::record_transfer_accepted(action_id, &submit_request, now_ms);
 
     let response = ChainTransferSubmitResponse::success(action_id, now_ms);
     write_transfer_json_response(stream, 200, &response, false)
@@ -947,6 +959,7 @@ fn sync_tracker_from_runtime(
         .lock()
         .map_err(|_| "failed to lock node runtime for transfer tracker sync".to_string())?
         .drain_committed_action_batches();
+    super::explorer_p0_api::ingest_committed_batches(batches.as_slice());
 
     for batch in batches {
         for committed_action in batch.actions {

@@ -361,6 +361,16 @@ fn remap_transfer_runtime_target_preserves_query_parameters() {
     );
 }
 
+#[test]
+fn remap_transfer_runtime_target_supports_explorer_blocks_pagination() {
+    let mapped = remap_transfer_runtime_target(
+        "/api/chain/explorer/blocks?cursor=50&limit=25",
+        "/api/chain/explorer/blocks",
+        "/v1/chain/explorer/blocks",
+    );
+    assert_eq!(mapped, "/v1/chain/explorer/blocks?cursor=50&limit=25");
+}
+
 fn make_temp_dir(label: &str) -> PathBuf {
     let mut path = env::temp_dir();
     let stamp = SystemTime::now()

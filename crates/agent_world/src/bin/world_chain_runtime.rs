@@ -27,6 +27,8 @@ mod distfs_probe_runtime;
 #[allow(dead_code)]
 #[path = "world_viewer_live/execution_bridge.rs"]
 mod execution_bridge;
+#[path = "world_chain_runtime/explorer_p0_api.rs"]
+mod explorer_p0_api;
 #[path = "world_chain_runtime/feedback_submit_api.rs"]
 mod feedback_submit_api;
 #[path = "world_viewer_live/node_keypair_config.rs"]
