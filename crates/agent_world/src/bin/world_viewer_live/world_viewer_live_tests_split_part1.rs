@@ -159,6 +159,12 @@ fn parse_options_defaults() {
     assert_eq!(options.node_id, "viewer-live-node");
     assert_eq!(options.node_role, NodeRole::Observer);
     assert_eq!(options.node_tick_ms, 200);
+    assert_eq!(options.pos_slot_duration_ms, 1);
+    assert_eq!(options.pos_ticks_per_slot, 1);
+    assert_eq!(options.pos_proposal_tick_phase, 0);
+    assert!(!options.pos_adaptive_tick_scheduler_enabled);
+    assert!(options.pos_slot_clock_genesis_unix_ms.is_none());
+    assert_eq!(options.pos_max_past_slot_lag, 256);
     assert!(!options.node_auto_attest_all_validators);
     assert!(options.node_validators.is_empty());
     assert!(options.node_gossip_bind.is_none());
@@ -252,6 +258,17 @@ fn parse_options_reads_custom_values() {
             "storage",
             "--node-tick-ms",
             "30",
+            "--pos-slot-duration-ms",
+            "12000",
+            "--pos-ticks-per-slot",
+            "10",
+            "--pos-proposal-tick-phase",
+            "9",
+            "--pos-adaptive-tick-scheduler",
+            "--pos-slot-clock-genesis-unix-ms",
+            "1700000000000",
+            "--pos-max-past-slot-lag",
+            "32",
             "--node-validator",
             "node-a:60",
             "--node-validator",
@@ -332,6 +349,15 @@ fn parse_options_reads_custom_values() {
     assert_eq!(options.node_id, "viewer-live-1");
     assert_eq!(options.node_role, NodeRole::Storage);
     assert_eq!(options.node_tick_ms, 30);
+    assert_eq!(options.pos_slot_duration_ms, 12_000);
+    assert_eq!(options.pos_ticks_per_slot, 10);
+    assert_eq!(options.pos_proposal_tick_phase, 9);
+    assert!(options.pos_adaptive_tick_scheduler_enabled);
+    assert_eq!(
+        options.pos_slot_clock_genesis_unix_ms,
+        Some(1_700_000_000_000)
+    );
+    assert_eq!(options.pos_max_past_slot_lag, 32);
     assert!(!options.node_auto_attest_all_validators);
     assert_eq!(options.node_validators.len(), 2);
     assert_eq!(
@@ -817,6 +843,21 @@ fn parse_options_rejects_invalid_node_role() {
 }
 
 #[test]
+fn parse_options_rejects_proposal_tick_phase_out_of_range() {
+    let err = parse_options(
+        [
+            "--pos-ticks-per-slot",
+            "4",
+            "--pos-proposal-tick-phase",
+            "4",
+        ]
+        .into_iter(),
+    )
+    .expect_err("invalid pos proposal tick phase");
+    assert!(err.contains("--pos-proposal-tick-phase"));
+}
+
+#[test]
 fn parse_options_rejects_invalid_node_validator_spec() {
     let err = parse_options(["--node-validator", "missing_stake"].into_iter()).expect_err("spec");
     assert!(err.contains("--node-validator"));
@@ -838,6 +879,17 @@ fn start_live_node_applies_pos_options() {
             "node-main",
             "--node-tick-ms",
             "20",
+            "--pos-slot-duration-ms",
+            "12000",
+            "--pos-ticks-per-slot",
+            "10",
+            "--pos-proposal-tick-phase",
+            "9",
+            "--pos-adaptive-tick-scheduler",
+            "--pos-slot-clock-genesis-unix-ms",
+            "1700000000000",
+            "--pos-max-past-slot-lag",
+            "32",
             "--node-validator",
             "node-main:70",
             "--node-validator",
@@ -872,6 +924,15 @@ fn start_live_node_applies_pos_options() {
         .pos_config
         .validator_signer_public_keys
         .contains_key("node-backup"));
+    assert_eq!(config.pos_config.slot_duration_ms, 12_000);
+    assert_eq!(config.pos_config.ticks_per_slot, 10);
+    assert_eq!(config.pos_config.proposal_tick_phase, 9);
+    assert!(config.pos_config.adaptive_tick_scheduler_enabled);
+    assert_eq!(
+        config.pos_config.slot_clock_genesis_unix_ms,
+        Some(1_700_000_000_000)
+    );
+    assert_eq!(config.pos_config.max_past_slot_lag, 32);
     assert!(!config.auto_attest_all_validators);
     assert!(!config.require_execution_on_commit);
     assert!(!config.require_peer_execution_hashes);
@@ -908,7 +969,18 @@ fn start_live_node_rejects_gossip_peers_without_bind() {
 #[test]
 fn start_live_node_starts_triad_topology_by_default() {
     let base_port = unique_triad_gossip_base_port().to_string();
-    let args = vec!["--triad-gossip-base-port", base_port.as_str()];
+    let args = vec![
+        "--triad-gossip-base-port",
+        base_port.as_str(),
+        "--pos-slot-duration-ms",
+        "8000",
+        "--pos-ticks-per-slot",
+        "8",
+        "--pos-proposal-tick-phase",
+        "7",
+        "--pos-max-past-slot-lag",
+        "64",
+    ];
     let options = parse_options(args.into_iter()).expect("default options");
     let runtime = start_live_node(&options)
         .expect("start triad")
@@ -929,6 +1001,11 @@ fn start_live_node_starts_triad_topology_by_default() {
             primary_config.pos_config.validator_signer_public_keys.len(),
             3
         );
+        assert_eq!(primary_config.pos_config.slot_duration_ms, 8_000);
+        assert_eq!(primary_config.pos_config.ticks_per_slot, 8);
+        assert_eq!(primary_config.pos_config.proposal_tick_phase, 7);
+        assert!(!primary_config.pos_config.adaptive_tick_scheduler_enabled);
+        assert_eq!(primary_config.pos_config.max_past_slot_lag, 64);
     }
     assert_eq!(runtime.auxiliary_runtimes.len(), 2);
 
@@ -957,6 +1034,17 @@ fn start_live_node_starts_triad_distributed_storage_role() {
             "127.0.0.1:7401",
             "--triad-storage-gossip",
             "127.0.0.1:7402",
+            "--pos-slot-duration-ms",
+            "5000",
+            "--pos-ticks-per-slot",
+            "5",
+            "--pos-proposal-tick-phase",
+            "4",
+            "--pos-adaptive-tick-scheduler",
+            "--pos-slot-clock-genesis-unix-ms",
+            "1800000000000",
+            "--pos-max-past-slot-lag",
+            "16",
         ]
         .into_iter(),
     )
@@ -982,6 +1070,15 @@ fn start_live_node_starts_triad_distributed_storage_role() {
     );
     assert_eq!(config.pos_config.validators.len(), 3);
     assert_eq!(config.pos_config.validator_signer_public_keys.len(), 3);
+    assert_eq!(config.pos_config.slot_duration_ms, 5_000);
+    assert_eq!(config.pos_config.ticks_per_slot, 5);
+    assert_eq!(config.pos_config.proposal_tick_phase, 4);
+    assert!(config.pos_config.adaptive_tick_scheduler_enabled);
+    assert_eq!(
+        config.pos_config.slot_clock_genesis_unix_ms,
+        Some(1_800_000_000_000)
+    );
+    assert_eq!(config.pos_config.max_past_slot_lag, 16);
     assert!(!config.require_execution_on_commit);
     assert!(!config.require_peer_execution_hashes);
     assert_eq!(runtime.auxiliary_runtimes.len(), 0);

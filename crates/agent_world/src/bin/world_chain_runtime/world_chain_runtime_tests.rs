@@ -14,6 +14,12 @@ fn parse_options_defaults() {
     assert!(options.node_validators.is_empty());
     assert!(options.reward_runtime_enabled);
     assert!(options.reward_runtime_epoch_duration_secs.is_none());
+    assert_eq!(options.pos_slot_duration_ms, 1);
+    assert_eq!(options.pos_ticks_per_slot, 1);
+    assert_eq!(options.pos_proposal_tick_phase, 0);
+    assert!(!options.pos_adaptive_tick_scheduler_enabled);
+    assert!(options.pos_slot_clock_genesis_unix_ms.is_none());
+    assert_eq!(options.pos_max_past_slot_lag, 256);
 }
 
 #[test]
@@ -30,6 +36,17 @@ fn parse_options_reads_custom_values() {
             "storage",
             "--node-tick-ms",
             "350",
+            "--pos-slot-duration-ms",
+            "12000",
+            "--pos-ticks-per-slot",
+            "10",
+            "--pos-proposal-tick-phase",
+            "9",
+            "--pos-adaptive-tick-scheduler",
+            "--pos-slot-clock-genesis-unix-ms",
+            "1700000000000",
+            "--pos-max-past-slot-lag",
+            "32",
             "--node-validator",
             "node-a:55",
             "--node-validator",
@@ -54,6 +71,15 @@ fn parse_options_reads_custom_values() {
     assert_eq!(options.status_bind, "127.0.0.1:6221");
     assert_eq!(options.node_role.as_str(), "storage");
     assert_eq!(options.node_tick_ms, 350);
+    assert_eq!(options.pos_slot_duration_ms, 12_000);
+    assert_eq!(options.pos_ticks_per_slot, 10);
+    assert_eq!(options.pos_proposal_tick_phase, 9);
+    assert!(options.pos_adaptive_tick_scheduler_enabled);
+    assert_eq!(
+        options.pos_slot_clock_genesis_unix_ms,
+        Some(1_700_000_000_000)
+    );
+    assert_eq!(options.pos_max_past_slot_lag, 32);
     assert_eq!(options.node_validators.len(), 2);
     assert!(options.node_auto_attest_all_validators);
     assert_eq!(options.reward_runtime_epoch_duration_secs, Some(60));
@@ -81,6 +107,21 @@ fn parse_options_rejects_peer_without_bind() {
     let err = parse_options(["--node-gossip-peer", "127.0.0.1:9001"].into_iter())
         .expect_err("should reject peer without bind");
     assert!(err.contains("requires --node-gossip-bind"));
+}
+
+#[test]
+fn parse_options_rejects_proposal_tick_phase_out_of_range() {
+    let err = parse_options(
+        [
+            "--pos-ticks-per-slot",
+            "4",
+            "--pos-proposal-tick-phase",
+            "4",
+        ]
+        .into_iter(),
+    )
+    .expect_err("proposal tick phase out of range");
+    assert!(err.contains("--pos-proposal-tick-phase"));
 }
 
 #[test]

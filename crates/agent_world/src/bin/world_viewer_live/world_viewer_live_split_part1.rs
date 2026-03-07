@@ -356,13 +356,24 @@ fn build_validator_signer_public_keys(
 }
 
 fn build_signed_pos_config(
+    options: &CliOptions,
     validators: Vec<PosValidator>,
     root_keypair: &node_keypair_config::NodeKeypairConfig,
 ) -> Result<NodePosConfig, String> {
     let signer_bindings = build_validator_signer_public_keys(validators.as_slice(), root_keypair)?;
-    NodePosConfig::ethereum_like(validators)
+    let mut pos_config = NodePosConfig::ethereum_like(validators)
         .with_validator_signer_public_keys(signer_bindings)
-        .map_err(|err| format!("failed to apply validator signer bindings: {err:?}"))
+        .map_err(|err| format!("failed to apply validator signer bindings: {err:?}"))?;
+    pos_config.slot_duration_ms = options.pos_slot_duration_ms;
+    pos_config.slot_clock_genesis_unix_ms = options.pos_slot_clock_genesis_unix_ms;
+    pos_config
+        .with_ticks_per_slot(options.pos_ticks_per_slot)
+        .and_then(|cfg| cfg.with_proposal_tick_phase(options.pos_proposal_tick_phase))
+        .and_then(|cfg| cfg.with_max_past_slot_lag(options.pos_max_past_slot_lag))
+        .map_err(|err| format!("failed to apply PoS clock options: {err:?}"))
+        .map(|cfg| {
+            cfg.with_adaptive_tick_scheduler_enabled(options.pos_adaptive_tick_scheduler_enabled)
+        })
 }
 
 fn attach_optional_replication_network(
@@ -621,7 +632,7 @@ fn start_single_live_node(
     } else {
         options.node_validators.clone()
     };
-    let pos_config = build_signed_pos_config(validators, keypair)?;
+    let pos_config = build_signed_pos_config(options, validators, keypair)?;
     config = config
         .with_pos_config(pos_config)
         .map_err(|err| format!("failed to apply node pos config: {err:?}"))?;
@@ -738,7 +749,7 @@ fn start_triad_live_nodes(
     let mut primary_reward_network: Option<
         Arc<dyn ProtoDistributedNetwork<ProtoWorldError> + Send + Sync>,
     > = None;
-    let triad_pos_config = build_signed_pos_config(validators.clone(), keypair)?;
+    let triad_pos_config = build_signed_pos_config(options, validators.clone(), keypair)?;
     for (node_id, role, bind_addr, peers, attach_execution_hook) in node_specs {
         let mut config = NodeConfig::new(node_id.clone(), world_id.to_string(), role)
             .and_then(|cfg| cfg.with_tick_interval(Duration::from_millis(options.node_tick_ms)))
@@ -844,7 +855,7 @@ fn start_triad_distributed_live_node(
         .map_err(|err| {
             format!("failed to build triad_distributed node config {node_id}: {err:?}")
         })?;
-    let pos_config = build_signed_pos_config(validators, keypair)?;
+    let pos_config = build_signed_pos_config(options, validators, keypair)?;
     config = config.with_pos_config(pos_config).map_err(|err| {
         format!("failed to apply triad_distributed pos config for {node_id}: {err:?}")
     })?;

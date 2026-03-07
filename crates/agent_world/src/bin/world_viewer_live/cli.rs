@@ -50,6 +50,12 @@ pub(super) struct CliOptions {
     pub node_id: String,
     pub node_role: NodeRole,
     pub node_tick_ms: u64,
+    pub pos_slot_duration_ms: u64,
+    pub pos_ticks_per_slot: u64,
+    pub pos_proposal_tick_phase: u64,
+    pub pos_adaptive_tick_scheduler_enabled: bool,
+    pub pos_slot_clock_genesis_unix_ms: Option<i64>,
+    pub pos_max_past_slot_lag: u64,
     pub node_auto_attest_all_validators: bool,
     pub node_validators: Vec<PosValidator>,
     pub node_gossip_bind: Option<SocketAddr>,
@@ -91,6 +97,12 @@ impl Default for CliOptions {
             node_id: "viewer-live-node".to_string(),
             node_role: NodeRole::Observer,
             node_tick_ms: 200,
+            pos_slot_duration_ms: 1,
+            pos_ticks_per_slot: 1,
+            pos_proposal_tick_phase: 0,
+            pos_adaptive_tick_scheduler_enabled: false,
+            pos_slot_clock_genesis_unix_ms: None,
+            pos_max_past_slot_lag: 256,
             node_auto_attest_all_validators: false,
             node_validators: Vec::new(),
             node_gossip_bind: None,
@@ -353,6 +365,61 @@ pub(super) fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<C
                     .ok()
                     .filter(|value| *value > 0)
                     .ok_or_else(|| "--node-tick-ms requires a positive integer".to_string())?;
+            }
+            "--pos-slot-duration-ms" => {
+                let raw = iter.next().ok_or_else(|| {
+                    "--pos-slot-duration-ms requires a positive integer".to_string()
+                })?;
+                options.pos_slot_duration_ms = raw
+                    .parse::<u64>()
+                    .ok()
+                    .filter(|value| *value > 0)
+                    .ok_or_else(|| {
+                    "--pos-slot-duration-ms requires a positive integer".to_string()
+                })?;
+            }
+            "--pos-ticks-per-slot" => {
+                let raw = iter.next().ok_or_else(|| {
+                    "--pos-ticks-per-slot requires a positive integer".to_string()
+                })?;
+                options.pos_ticks_per_slot = raw
+                    .parse::<u64>()
+                    .ok()
+                    .filter(|value| *value > 0)
+                    .ok_or_else(|| {
+                        "--pos-ticks-per-slot requires a positive integer".to_string()
+                    })?;
+            }
+            "--pos-proposal-tick-phase" => {
+                let raw = iter.next().ok_or_else(|| {
+                    "--pos-proposal-tick-phase requires a non-negative integer".to_string()
+                })?;
+                options.pos_proposal_tick_phase = raw.parse::<u64>().map_err(|_| {
+                    "--pos-proposal-tick-phase requires a non-negative integer".to_string()
+                })?;
+            }
+            "--pos-adaptive-tick-scheduler" => {
+                options.pos_adaptive_tick_scheduler_enabled = true;
+            }
+            "--pos-no-adaptive-tick-scheduler" => {
+                options.pos_adaptive_tick_scheduler_enabled = false;
+            }
+            "--pos-slot-clock-genesis-unix-ms" => {
+                let raw = iter.next().ok_or_else(|| {
+                    "--pos-slot-clock-genesis-unix-ms requires an integer".to_string()
+                })?;
+                options.pos_slot_clock_genesis_unix_ms =
+                    Some(raw.parse::<i64>().map_err(|_| {
+                        "--pos-slot-clock-genesis-unix-ms requires an integer".to_string()
+                    })?);
+            }
+            "--pos-max-past-slot-lag" => {
+                let raw = iter.next().ok_or_else(|| {
+                    "--pos-max-past-slot-lag requires a non-negative integer".to_string()
+                })?;
+                options.pos_max_past_slot_lag = raw.parse::<u64>().map_err(|_| {
+                    "--pos-max-past-slot-lag requires a non-negative integer".to_string()
+                })?;
             }
             "--node-validator" => {
                 let raw = iter
@@ -640,6 +707,12 @@ pub(super) fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<C
                 .to_string(),
         );
     }
+    if options.pos_proposal_tick_phase >= options.pos_ticks_per_slot {
+        return Err(format!(
+            "--pos-proposal-tick-phase={} must be less than --pos-ticks-per-slot={}",
+            options.pos_proposal_tick_phase, options.pos_ticks_per_slot
+        ));
+    }
     if options.reward_runtime_enabled && !options.node_enabled {
         return Err(
             "--reward-runtime-enable requires embedded node runtime (remove --no-node)".to_string(),
@@ -682,7 +755,16 @@ pub(super) fn print_help() {
     println!("  --no-node         Disable embedded node runtime startup");
     println!("  --node-id <id>    Node identifier (default: viewer-live-node)");
     println!("  --node-role <r>   Node role: sequencer|storage|observer (default: observer)");
-    println!("  --node-tick-ms <ms> Node runtime tick interval (default: 200)");
+    println!("  --node-tick-ms <ms> Node worker poll/fallback interval (default: 200)");
+    println!("  --pos-slot-duration-ms <n> PoS slot duration in milliseconds (default: 1)");
+    println!("  --pos-ticks-per-slot <n> PoS logical ticks per slot (default: 1)");
+    println!("  --pos-proposal-tick-phase <n> Proposal phase within slot tick window (default: 0)");
+    println!("  --pos-adaptive-tick-scheduler Enable adaptive wait to next logical tick boundary");
+    println!("  --pos-no-adaptive-tick-scheduler Disable adaptive scheduler (default)");
+    println!(
+        "  --pos-slot-clock-genesis-unix-ms <n> Fixed slot clock genesis unix ms (default: auto)"
+    );
+    println!("  --pos-max-past-slot-lag <n> Max accepted inbound stale slot lag (default: 256)");
     println!("  --node-validator <id:stake> Add PoS validator stake (repeatable)");
     println!(
         "  --node-no-auto-attest-all Disable auto-attesting all validators per tick (default)"

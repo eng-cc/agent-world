@@ -108,6 +108,10 @@ const DEFAULT_STATUS_BIND: &str = "127.0.0.1:5121";
 const DEFAULT_CONFIG_FILE: &str = "config.toml";
 const DEFAULT_REPLICATION_NETWORK_LISTEN: &str = "/ip4/127.0.0.1/tcp/0";
 const DEFAULT_NODE_TICK_MS: u64 = 200;
+const DEFAULT_POS_SLOT_DURATION_MS: u64 = 1;
+const DEFAULT_POS_TICKS_PER_SLOT: u64 = 1;
+const DEFAULT_POS_PROPOSAL_TICK_PHASE: u64 = 0;
+const DEFAULT_POS_MAX_PAST_SLOT_LAG: u64 = 256;
 const DEFAULT_RECENT_MINT_RECORD_LIMIT: usize = 20;
 const DEFAULT_REWARD_RUNTIME_STATE_FILE: &str = "reward-runtime-state.json";
 const DEFAULT_REWARD_RUNTIME_DISTFS_PROBE_STATE_FILE: &str =
@@ -122,6 +126,12 @@ struct CliOptions {
     status_bind: String,
     node_role: NodeRole,
     node_tick_ms: u64,
+    pos_slot_duration_ms: u64,
+    pos_ticks_per_slot: u64,
+    pos_proposal_tick_phase: u64,
+    pos_adaptive_tick_scheduler_enabled: bool,
+    pos_slot_clock_genesis_unix_ms: Option<i64>,
+    pos_max_past_slot_lag: u64,
     node_auto_attest_all_validators: bool,
     node_validators: Vec<PosValidator>,
     node_gossip_bind: Option<SocketAddr>,
@@ -148,6 +158,12 @@ impl Default for CliOptions {
             status_bind: DEFAULT_STATUS_BIND.to_string(),
             node_role: NodeRole::Sequencer,
             node_tick_ms: DEFAULT_NODE_TICK_MS,
+            pos_slot_duration_ms: DEFAULT_POS_SLOT_DURATION_MS,
+            pos_ticks_per_slot: DEFAULT_POS_TICKS_PER_SLOT,
+            pos_proposal_tick_phase: DEFAULT_POS_PROPOSAL_TICK_PHASE,
+            pos_adaptive_tick_scheduler_enabled: false,
+            pos_slot_clock_genesis_unix_ms: None,
+            pos_max_past_slot_lag: DEFAULT_POS_MAX_PAST_SLOT_LAG,
             node_auto_attest_all_validators: false,
             node_validators: Vec::new(),
             node_gossip_bind: None,
@@ -206,6 +222,14 @@ struct ChainStatusResponse {
 struct ChainConsensusStatus {
     slot: u64,
     epoch: u64,
+    ticks_per_slot: u64,
+    tick_phase: u64,
+    proposal_tick_phase: u64,
+    last_observed_slot: u64,
+    missed_slot_count: u64,
+    last_observed_tick: u64,
+    missed_tick_count: u64,
+    adaptive_tick_scheduler_enabled: bool,
     latest_height: u64,
     committed_height: u64,
     network_committed_height: u64,
@@ -276,9 +300,17 @@ fn run_chain_runtime(options: CliOptions) -> Result<(), String> {
     };
     let validator_signer_bindings =
         build_validator_signer_public_keys(validators.as_slice(), &keypair)?;
-    let pos_config = NodePosConfig::ethereum_like(validators.clone())
+    let mut pos_config = NodePosConfig::ethereum_like(validators.clone())
         .with_validator_signer_public_keys(validator_signer_bindings.clone())
         .map_err(|err| format!("failed to apply validator signer bindings: {err:?}"))?;
+    pos_config.slot_duration_ms = options.pos_slot_duration_ms;
+    pos_config.slot_clock_genesis_unix_ms = options.pos_slot_clock_genesis_unix_ms;
+    pos_config = pos_config
+        .with_ticks_per_slot(options.pos_ticks_per_slot)
+        .and_then(|cfg| cfg.with_proposal_tick_phase(options.pos_proposal_tick_phase))
+        .and_then(|cfg| cfg.with_max_past_slot_lag(options.pos_max_past_slot_lag))
+        .map_err(|err| format!("failed to apply PoS clock options: {err:?}"))?
+        .with_adaptive_tick_scheduler_enabled(options.pos_adaptive_tick_scheduler_enabled);
     config = config
         .with_pos_config(pos_config)
         .map_err(|err| format!("failed to apply node pos config: {err:?}"))?;
@@ -746,6 +778,14 @@ fn build_chain_status_payload(
         consensus: ChainConsensusStatus {
             slot: snapshot.consensus.slot,
             epoch: snapshot.consensus.epoch,
+            ticks_per_slot: snapshot.consensus.ticks_per_slot,
+            tick_phase: snapshot.consensus.tick_phase,
+            proposal_tick_phase: snapshot.consensus.proposal_tick_phase,
+            last_observed_slot: snapshot.consensus.last_observed_slot,
+            missed_slot_count: snapshot.consensus.missed_slot_count,
+            last_observed_tick: snapshot.consensus.last_observed_tick,
+            missed_tick_count: snapshot.consensus.missed_tick_count,
+            adaptive_tick_scheduler_enabled: snapshot.consensus.adaptive_tick_scheduler_enabled,
             latest_height: snapshot.consensus.latest_height,
             committed_height: snapshot.consensus.committed_height,
             network_committed_height: snapshot.consensus.network_committed_height,
@@ -850,6 +890,51 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
                     .ok()
                     .filter(|value| *value > 0)
                     .ok_or_else(|| "--node-tick-ms requires a positive integer".to_string())?;
+            }
+            "--pos-slot-duration-ms" => {
+                let raw = parse_required_value(&mut iter, "--pos-slot-duration-ms")?;
+                options.pos_slot_duration_ms = raw
+                    .parse::<u64>()
+                    .ok()
+                    .filter(|value| *value > 0)
+                    .ok_or_else(|| {
+                    "--pos-slot-duration-ms requires a positive integer".to_string()
+                })?;
+            }
+            "--pos-ticks-per-slot" => {
+                let raw = parse_required_value(&mut iter, "--pos-ticks-per-slot")?;
+                options.pos_ticks_per_slot = raw
+                    .parse::<u64>()
+                    .ok()
+                    .filter(|value| *value > 0)
+                    .ok_or_else(|| {
+                        "--pos-ticks-per-slot requires a positive integer".to_string()
+                    })?;
+            }
+            "--pos-proposal-tick-phase" => {
+                let raw = parse_required_value(&mut iter, "--pos-proposal-tick-phase")?;
+                options.pos_proposal_tick_phase = raw.parse::<u64>().map_err(|_| {
+                    "--pos-proposal-tick-phase requires a non-negative integer".to_string()
+                })?;
+            }
+            "--pos-adaptive-tick-scheduler" => {
+                options.pos_adaptive_tick_scheduler_enabled = true;
+            }
+            "--pos-no-adaptive-tick-scheduler" => {
+                options.pos_adaptive_tick_scheduler_enabled = false;
+            }
+            "--pos-slot-clock-genesis-unix-ms" => {
+                let raw = parse_required_value(&mut iter, "--pos-slot-clock-genesis-unix-ms")?;
+                options.pos_slot_clock_genesis_unix_ms =
+                    Some(raw.parse::<i64>().map_err(|_| {
+                        "--pos-slot-clock-genesis-unix-ms requires an integer".to_string()
+                    })?);
+            }
+            "--pos-max-past-slot-lag" => {
+                let raw = parse_required_value(&mut iter, "--pos-max-past-slot-lag")?;
+                options.pos_max_past_slot_lag = raw.parse::<u64>().map_err(|_| {
+                    "--pos-max-past-slot-lag requires a non-negative integer".to_string()
+                })?;
             }
             "--node-validator" => {
                 let raw = parse_required_value(&mut iter, "--node-validator")?;
@@ -964,6 +1049,12 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
     }
     if options.reward_initial_reserve_power_units < 0 {
         return Err("--reward-initial-reserve-power-units requires a non-negative integer".into());
+    }
+    if options.pos_proposal_tick_phase >= options.pos_ticks_per_slot {
+        return Err(format!(
+            "--pos-proposal-tick-phase={} must be less than --pos-ticks-per-slot={}",
+            options.pos_proposal_tick_phase, options.pos_ticks_per_slot
+        ));
     }
 
     if !options.node_gossip_peers.is_empty() && options.node_gossip_bind.is_none() {
@@ -1134,7 +1225,15 @@ Options:\n\
   --world-id <id>                   world identifier (default: {DEFAULT_WORLD_ID})\n\
   --status-bind <host:port>         status HTTP bind (default: {DEFAULT_STATUS_BIND})\n\
   --node-role <role>                sequencer|storage|observer (default: sequencer)\n\
-  --node-tick-ms <n>                node tick interval ms (default: {DEFAULT_NODE_TICK_MS})\n\
+  --node-tick-ms <n>                worker poll/fallback interval ms (default: {DEFAULT_NODE_TICK_MS})\n\
+  --pos-slot-duration-ms <n>        PoS slot duration in milliseconds (default: {DEFAULT_POS_SLOT_DURATION_MS})\n\
+  --pos-ticks-per-slot <n>          logical ticks per PoS slot (default: {DEFAULT_POS_TICKS_PER_SLOT})\n\
+  --pos-proposal-tick-phase <n>     proposal trigger phase within slot tick window (default: {DEFAULT_POS_PROPOSAL_TICK_PHASE})\n\
+  --pos-adaptive-tick-scheduler     enable adaptive wait to next logical tick boundary\n\
+  --pos-no-adaptive-tick-scheduler  disable adaptive scheduler (default)\n\
+  --pos-slot-clock-genesis-unix-ms <n>\n\
+                                    fixed slot clock genesis unix ms (default: auto)\n\
+  --pos-max-past-slot-lag <n>       max accepted inbound stale slot lag (default: {DEFAULT_POS_MAX_PAST_SLOT_LAG})\n\
   --node-validator <id:stake>       add validator stake (repeatable)\n\
   --node-auto-attest-all            enable auto attesting validators\n\
   --node-no-auto-attest-all         disable auto attesting validators (default)\n\
