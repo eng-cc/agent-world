@@ -25,11 +25,13 @@ pub use live::{
 };
 pub use protocol::{
     AgentChatAck, AgentChatError, AgentChatRequest, AuthoritativeBatchFinality,
-    AuthoritativeFinalityState, ControlCompletionAck, ControlCompletionStatus, LiveControl,
-    PlaybackControl, PlayerAuthProof, PlayerAuthScheme, PromptControlAck,
-    PromptControlApplyRequest, PromptControlCommand, PromptControlError, PromptControlOperation,
-    PromptControlRollbackRequest, ViewerControl, ViewerControlProfile, ViewerRequest,
-    ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
+    AuthoritativeChallengeAck, AuthoritativeChallengeCommand, AuthoritativeChallengeError,
+    AuthoritativeChallengeResolveRequest, AuthoritativeChallengeStatus,
+    AuthoritativeChallengeSubmitRequest, AuthoritativeFinalityState, ControlCompletionAck,
+    ControlCompletionStatus, LiveControl, PlaybackControl, PlayerAuthProof, PlayerAuthScheme,
+    PromptControlAck, PromptControlApplyRequest, PromptControlCommand, PromptControlError,
+    PromptControlOperation, PromptControlRollbackRequest, ViewerControl, ViewerControlProfile,
+    ViewerRequest, ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
 };
 #[cfg(not(target_arch = "wasm32"))]
 pub use runtime_live::{

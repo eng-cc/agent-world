@@ -576,6 +576,21 @@ impl ViewerLiveSession {
                     &mut deferred_control,
                 );
             }
+            ViewerRequest::AuthoritativeChallenge { command: _ } => {
+                send_response(
+                    writer,
+                    &ViewerResponse::AuthoritativeChallengeError {
+                        error: crate::viewer::AuthoritativeChallengeError {
+                            code: "unsupported_in_live_server".to_string(),
+                            message:
+                                "authoritative_challenge is only available in runtime live mode"
+                                    .to_string(),
+                            challenge_id: None,
+                            batch_id: None,
+                        },
+                    },
+                )?;
+            }
         }
         Ok(ViewerLiveRequestOutcome {
             continue_running: true,

@@ -10,9 +10,9 @@ use crate::simulator::{
 };
 
 use super::protocol::{
-    viewer_event_kind_matches, AgentChatError, ControlCompletionAck, ControlCompletionStatus,
-    PlaybackControl, PromptControlError, ViewerControlProfile, ViewerEventKind, ViewerRequest,
-    ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
+    viewer_event_kind_matches, AgentChatError, AuthoritativeChallengeError, ControlCompletionAck,
+    ControlCompletionStatus, PlaybackControl, PromptControlError, ViewerControlProfile,
+    ViewerEventKind, ViewerRequest, ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
 };
 
 #[derive(Debug, Clone)]
@@ -251,6 +251,21 @@ impl<'a> ViewerSession<'a> {
                             code: "unsupported_in_offline_server".to_string(),
                             message: "agent_chat is only available in live mode".to_string(),
                             agent_id: Some(request.agent_id),
+                        },
+                    },
+                )?;
+            }
+            ViewerRequest::AuthoritativeChallenge { command: _ } => {
+                send_response(
+                    writer,
+                    &ViewerResponse::AuthoritativeChallengeError {
+                        error: AuthoritativeChallengeError {
+                            code: "unsupported_in_offline_server".to_string(),
+                            message:
+                                "authoritative_challenge is only available in runtime live mode"
+                                    .to_string(),
+                            challenge_id: None,
+                            batch_id: None,
                         },
                     },
                 )?;

@@ -17,9 +17,12 @@ use crate::simulator::{
 
 use super::live::ViewerLiveDecisionMode;
 use super::protocol::{
-    viewer_event_kind_matches, AuthoritativeBatchFinality, AuthoritativeFinalityState,
-    ControlCompletionAck, ControlCompletionStatus, ViewerControl, ViewerControlProfile,
-    ViewerEventKind, ViewerRequest, ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
+    viewer_event_kind_matches, AuthoritativeBatchFinality, AuthoritativeChallengeAck,
+    AuthoritativeChallengeCommand, AuthoritativeChallengeError,
+    AuthoritativeChallengeResolveRequest, AuthoritativeChallengeStatus,
+    AuthoritativeChallengeSubmitRequest, AuthoritativeFinalityState, ControlCompletionAck,
+    ControlCompletionStatus, ViewerControl, ViewerControlProfile, ViewerEventKind, ViewerRequest,
+    ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
 };
 #[path = "runtime_live/control_plane.rs"]
 mod control_plane;
@@ -33,6 +36,44 @@ use mapping::{map_runtime_event, runtime_state_to_simulator_model};
 const AUTHORITATIVE_BATCH_CONFIRM_DELAY_TICKS: u64 = 1;
 const AUTHORITATIVE_BATCH_FINALITY_WINDOW_TICKS: u64 = 2;
 const MAX_AUTHORITATIVE_BATCH_HISTORY: usize = 256;
+const MAX_AUTHORITATIVE_CHALLENGE_HISTORY: usize = 512;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum RuntimeBatchChallengeState {
+    None,
+    Challenged,
+    ResolvedNoFraud,
+    ResolvedFraudSlashed,
+}
+
+#[derive(Debug, Clone)]
+struct RuntimeAuthoritativeChallengeRecord {
+    challenge_id: String,
+    batch_id: String,
+    watcher_id: String,
+    recomputed_state_root: String,
+    recomputed_data_root: String,
+    status: AuthoritativeChallengeStatus,
+    submitted_at_tick: u64,
+    resolved_at_tick: Option<u64>,
+    slash_applied: bool,
+    slash_reason: Option<String>,
+}
+
+impl RuntimeAuthoritativeChallengeRecord {
+    fn as_ack(&self) -> AuthoritativeChallengeAck<u64> {
+        AuthoritativeChallengeAck {
+            challenge_id: self.challenge_id.clone(),
+            batch_id: self.batch_id.clone(),
+            watcher_id: self.watcher_id.clone(),
+            status: self.status,
+            submitted_at_tick: self.submitted_at_tick,
+            resolved_at_tick: self.resolved_at_tick,
+            slash_applied: self.slash_applied,
+            slash_reason: self.slash_reason.clone(),
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 struct RuntimeAuthoritativeBatchRecord {
@@ -46,6 +87,8 @@ struct RuntimeAuthoritativeBatchRecord {
     event_seq_start: Option<u64>,
     event_seq_end: Option<u64>,
     finality_state: AuthoritativeFinalityState,
+    challenge_state: RuntimeBatchChallengeState,
+    active_challenge_id: Option<String>,
     events: Vec<WorldEvent>,
 }
 
@@ -78,6 +121,9 @@ impl RuntimeAuthoritativeBatchRecord {
             event_seq_end: self.event_seq_end,
             settlement_ready: gate.settlement_allowed(self.batch_id.as_str(), self.finality_state),
             ranking_ready: gate.ranking_allowed(self.batch_id.as_str(), self.finality_state),
+            challenge_open: self.challenge_state == RuntimeBatchChallengeState::Challenged,
+            slashed: self.challenge_state == RuntimeBatchChallengeState::ResolvedFraudSlashed,
+            active_challenge_id: self.active_challenge_id.clone(),
         }
     }
 }
@@ -194,6 +240,8 @@ pub struct ViewerRuntimeLiveServer {
     next_virtual_event_id: u64,
     authoritative_batches: VecDeque<RuntimeAuthoritativeBatchRecord>,
     next_authoritative_batch_id: u64,
+    authoritative_challenges: VecDeque<RuntimeAuthoritativeChallengeRecord>,
+    next_authoritative_challenge_id: u64,
     settlement_ranking_gate: RuntimeSettlementRankingGate,
 }
 
@@ -215,6 +263,8 @@ impl ViewerRuntimeLiveServer {
             next_virtual_event_id,
             authoritative_batches: VecDeque::new(),
             next_authoritative_batch_id: 1,
+            authoritative_challenges: VecDeque::new(),
+            next_authoritative_challenge_id: 1,
             settlement_ranking_gate: RuntimeSettlementRankingGate::default(),
         })
     }
@@ -318,6 +368,7 @@ impl ViewerRuntimeLiveServer {
                 }
                 if session.subscribed.contains(&ViewerStream::Events) {
                     self.emit_authoritative_batch_snapshot(writer)?;
+                    self.emit_authoritative_challenge_snapshot(writer)?;
                 }
             }
             ViewerRequest::PlaybackControl { mode, request_id } => {
@@ -345,6 +396,22 @@ impl ViewerRuntimeLiveServer {
                     send_response(writer, &ViewerResponse::AgentChatError { error })?;
                 }
             },
+            ViewerRequest::AuthoritativeChallenge { command } => {
+                match self.handle_authoritative_challenge(command) {
+                    Ok((ack, maybe_batch_update)) => {
+                        send_response(writer, &ViewerResponse::AuthoritativeChallengeAck { ack })?;
+                        if let Some(batch) = maybe_batch_update {
+                            send_response(writer, &ViewerResponse::AuthoritativeBatch { batch })?;
+                        }
+                    }
+                    Err(error) => {
+                        send_response(
+                            writer,
+                            &ViewerResponse::AuthoritativeChallengeError { error },
+                        )?;
+                    }
+                }
+            }
         }
         Ok(())
     }
@@ -525,6 +592,8 @@ impl ViewerRuntimeLiveServer {
             event_seq_start: events.first().map(|event| event.id),
             event_seq_end: events.last().map(|event| event.id),
             finality_state: AuthoritativeFinalityState::Pending,
+            challenge_state: RuntimeBatchChallengeState::None,
+            active_challenge_id: None,
             events: events.to_vec(),
         };
         let response = record.as_wire(&self.settlement_ranking_gate);
@@ -544,6 +613,12 @@ impl ViewerRuntimeLiveServer {
                 .authoritative_batches
                 .get_mut(index)
                 .expect("batch index is valid");
+            if batch.challenge_state == RuntimeBatchChallengeState::Challenged {
+                continue;
+            }
+            if batch.challenge_state == RuntimeBatchChallengeState::ResolvedFraudSlashed {
+                continue;
+            }
             if !batch.has_valid_commit_roots() {
                 eprintln!(
                     "viewer runtime live: authoritative batch remains pending due missing/invalid roots batch_id={} state_root={} data_root={}",
@@ -587,6 +662,282 @@ impl ViewerRuntimeLiveServer {
         Ok(responses)
     }
 
+    fn handle_authoritative_challenge(
+        &mut self,
+        command: AuthoritativeChallengeCommand,
+    ) -> Result<
+        (
+            AuthoritativeChallengeAck<u64>,
+            Option<AuthoritativeBatchFinality>,
+        ),
+        AuthoritativeChallengeError,
+    > {
+        match command {
+            AuthoritativeChallengeCommand::Submit { request } => {
+                self.submit_authoritative_challenge(request)
+            }
+            AuthoritativeChallengeCommand::Resolve { request } => {
+                self.resolve_authoritative_challenge(request)
+            }
+        }
+    }
+
+    fn submit_authoritative_challenge(
+        &mut self,
+        request: AuthoritativeChallengeSubmitRequest,
+    ) -> Result<
+        (
+            AuthoritativeChallengeAck<u64>,
+            Option<AuthoritativeBatchFinality>,
+        ),
+        AuthoritativeChallengeError,
+    > {
+        if !is_valid_root_hash(request.recomputed_state_root.as_str()) {
+            return Err(challenge_error(
+                "invalid_recomputed_state_root",
+                format!(
+                    "recomputed_state_root must be 64 hex chars, got {}",
+                    request.recomputed_state_root
+                ),
+                None,
+                Some(request.batch_id.clone()),
+            ));
+        }
+        if !is_valid_root_hash(request.recomputed_data_root.as_str()) {
+            return Err(challenge_error(
+                "invalid_recomputed_data_root",
+                format!(
+                    "recomputed_data_root must be 64 hex chars, got {}",
+                    request.recomputed_data_root
+                ),
+                None,
+                Some(request.batch_id.clone()),
+            ));
+        }
+
+        let challenge_id = request.challenge_id.unwrap_or_else(|| {
+            let generated = format!(
+                "{}-challenge-{:020}",
+                self.config.world_id, self.next_authoritative_challenge_id
+            );
+            self.next_authoritative_challenge_id =
+                self.next_authoritative_challenge_id.saturating_add(1);
+            generated
+        });
+
+        if let Some(existing) = self
+            .authoritative_challenges
+            .iter()
+            .find(|record| record.challenge_id == challenge_id)
+        {
+            if existing.batch_id == request.batch_id
+                && existing.watcher_id == request.watcher_id
+                && existing.recomputed_state_root == request.recomputed_state_root
+                && existing.recomputed_data_root == request.recomputed_data_root
+            {
+                let maybe_batch = self
+                    .authoritative_batches
+                    .iter()
+                    .find(|batch| batch.batch_id == request.batch_id)
+                    .map(|batch| batch.as_wire(&self.settlement_ranking_gate));
+                return Ok((existing.as_ack(), maybe_batch));
+            }
+            return Err(challenge_error(
+                "challenge_id_conflict",
+                format!(
+                    "challenge_id {} already exists with different payload",
+                    challenge_id
+                ),
+                Some(challenge_id),
+                Some(request.batch_id),
+            ));
+        }
+
+        let current_tick = self.world.state().time;
+        let Some(batch_index) = self
+            .authoritative_batches
+            .iter()
+            .position(|batch| batch.batch_id == request.batch_id)
+        else {
+            return Err(challenge_error(
+                "batch_not_found",
+                format!("authoritative batch {} not found", request.batch_id),
+                Some(challenge_id),
+                Some(request.batch_id),
+            ));
+        };
+
+        let batch = self
+            .authoritative_batches
+            .get_mut(batch_index)
+            .expect("batch index is valid");
+        if batch.finality_state == AuthoritativeFinalityState::Final
+            || current_tick > batch.final_height
+        {
+            return Err(challenge_error(
+                "challenge_window_closed",
+                format!(
+                    "challenge window closed for batch {} at tick={}",
+                    batch.batch_id, current_tick
+                ),
+                Some(challenge_id),
+                Some(batch.batch_id.clone()),
+            ));
+        }
+        if batch.challenge_state == RuntimeBatchChallengeState::ResolvedFraudSlashed {
+            return Err(challenge_error(
+                "batch_already_slashed",
+                format!("batch {} is already slashed", batch.batch_id),
+                Some(challenge_id),
+                Some(batch.batch_id.clone()),
+            ));
+        }
+        if batch.challenge_state == RuntimeBatchChallengeState::Challenged {
+            return Err(challenge_error(
+                "batch_already_challenged",
+                format!("batch {} already has an open challenge", batch.batch_id),
+                Some(challenge_id),
+                Some(batch.batch_id.clone()),
+            ));
+        }
+
+        batch.challenge_state = RuntimeBatchChallengeState::Challenged;
+        batch.active_challenge_id = Some(challenge_id.clone());
+        let batch_wire = batch.as_wire(&self.settlement_ranking_gate);
+
+        let record = RuntimeAuthoritativeChallengeRecord {
+            challenge_id: challenge_id.clone(),
+            batch_id: request.batch_id,
+            watcher_id: request.watcher_id,
+            recomputed_state_root: request.recomputed_state_root,
+            recomputed_data_root: request.recomputed_data_root,
+            status: AuthoritativeChallengeStatus::Challenged,
+            submitted_at_tick: current_tick,
+            resolved_at_tick: None,
+            slash_applied: false,
+            slash_reason: None,
+        };
+        let ack = record.as_ack();
+        self.authoritative_challenges.push_back(record);
+        self.prune_authoritative_challenge_history();
+        Ok((ack, Some(batch_wire)))
+    }
+
+    fn resolve_authoritative_challenge(
+        &mut self,
+        request: AuthoritativeChallengeResolveRequest,
+    ) -> Result<
+        (
+            AuthoritativeChallengeAck<u64>,
+            Option<AuthoritativeBatchFinality>,
+        ),
+        AuthoritativeChallengeError,
+    > {
+        let current_tick = self.world.state().time;
+        let Some(challenge_index) = self
+            .authoritative_challenges
+            .iter()
+            .position(|record| record.challenge_id == request.challenge_id)
+        else {
+            return Err(challenge_error(
+                "challenge_not_found",
+                format!("challenge {} not found", request.challenge_id),
+                Some(request.challenge_id),
+                None,
+            ));
+        };
+
+        let batch_id = self.authoritative_challenges[challenge_index]
+            .batch_id
+            .clone();
+        let Some(batch_index) = self
+            .authoritative_batches
+            .iter()
+            .position(|batch| batch.batch_id == batch_id)
+        else {
+            return Err(challenge_error(
+                "batch_not_found",
+                format!("authoritative batch {} not found", batch_id),
+                Some(request.challenge_id),
+                Some(batch_id),
+            ));
+        };
+
+        let challenge = self
+            .authoritative_challenges
+            .get_mut(challenge_index)
+            .expect("challenge index is valid");
+        if challenge.status != AuthoritativeChallengeStatus::Challenged {
+            return Err(challenge_error(
+                "challenge_already_resolved",
+                format!("challenge {} already resolved", challenge.challenge_id),
+                Some(challenge.challenge_id.clone()),
+                Some(challenge.batch_id.clone()),
+            ));
+        }
+
+        let challenge_id = challenge.challenge_id.clone();
+        let batch_id = challenge.batch_id.clone();
+        let expected_state_root = challenge.recomputed_state_root.clone();
+        let expected_data_root = challenge.recomputed_data_root.clone();
+
+        let mut batch_wire = {
+            let batch = self
+                .authoritative_batches
+                .get_mut(batch_index)
+                .expect("batch index is valid");
+            let state_root_match = expected_state_root == batch.state_root;
+            let data_root_match = expected_data_root == batch.data_root;
+            if state_root_match && data_root_match {
+                challenge.status = AuthoritativeChallengeStatus::ResolvedNoFraud;
+                challenge.resolved_at_tick = Some(current_tick);
+                challenge.slash_applied = false;
+                challenge.slash_reason = None;
+                batch.challenge_state = RuntimeBatchChallengeState::ResolvedNoFraud;
+                batch.active_challenge_id = None;
+            } else {
+                challenge.status = AuthoritativeChallengeStatus::ResolvedFraudSlashed;
+                challenge.resolved_at_tick = Some(current_tick);
+                challenge.slash_applied = true;
+                let slash_reason = if !state_root_match && !data_root_match {
+                    "state_root_and_data_root_mismatch"
+                } else if !state_root_match {
+                    "state_root_mismatch"
+                } else {
+                    "data_root_mismatch"
+                };
+                challenge.slash_reason = Some(slash_reason.to_string());
+                batch.challenge_state = RuntimeBatchChallengeState::ResolvedFraudSlashed;
+                batch.active_challenge_id = None;
+            }
+            batch.as_wire(&self.settlement_ranking_gate)
+        };
+
+        if self.authoritative_challenges[challenge_index].status
+            == AuthoritativeChallengeStatus::ResolvedNoFraud
+        {
+            let updates = self
+                .advance_authoritative_batch_finality(current_tick)
+                .map_err(|err| {
+                    challenge_error(
+                        "resolve_failed",
+                        format!("{err:?}"),
+                        Some(challenge_id.clone()),
+                        Some(batch_id.clone()),
+                    )
+                })?;
+            if let Some(update) = updates
+                .into_iter()
+                .find(|update| update.batch_id == batch_id)
+            {
+                batch_wire = update;
+            }
+        }
+
+        let ack = self.authoritative_challenges[challenge_index].as_ack();
+        Ok((ack, Some(batch_wire)))
+    }
+
     fn emit_authoritative_batch_snapshot(
         &self,
         writer: &mut BufWriter<TcpStream>,
@@ -602,6 +953,21 @@ impl ViewerRuntimeLiveServer {
         Ok(())
     }
 
+    fn emit_authoritative_challenge_snapshot(
+        &self,
+        writer: &mut BufWriter<TcpStream>,
+    ) -> Result<(), ViewerRuntimeLiveServerError> {
+        for challenge in &self.authoritative_challenges {
+            send_response(
+                writer,
+                &ViewerResponse::AuthoritativeChallengeAck {
+                    ack: challenge.as_ack(),
+                },
+            )?;
+        }
+        Ok(())
+    }
+
     fn prune_authoritative_batch_history(&mut self) {
         while self.authoritative_batches.len() > MAX_AUTHORITATIVE_BATCH_HISTORY {
             let Some(evicted) = self.authoritative_batches.pop_front() else {
@@ -609,6 +975,14 @@ impl ViewerRuntimeLiveServer {
             };
             self.settlement_ranking_gate
                 .evict_batch(evicted.batch_id.as_str());
+            self.authoritative_challenges
+                .retain(|challenge| challenge.batch_id != evicted.batch_id);
+        }
+    }
+
+    fn prune_authoritative_challenge_history(&mut self) {
+        while self.authoritative_challenges.len() > MAX_AUTHORITATIVE_CHALLENGE_HISTORY {
+            let _ = self.authoritative_challenges.pop_front();
         }
     }
 
@@ -945,6 +1319,20 @@ fn compute_batch_tx_hash(
 
 fn is_valid_root_hash(value: &str) -> bool {
     value.len() == 64 && value.chars().all(|ch| ch.is_ascii_hexdigit())
+}
+
+fn challenge_error(
+    code: impl Into<String>,
+    message: impl Into<String>,
+    challenge_id: Option<String>,
+    batch_id: Option<String>,
+) -> AuthoritativeChallengeError {
+    AuthoritativeChallengeError {
+        code: code.into(),
+        message: message.into(),
+        challenge_id,
+        batch_id,
+    }
 }
 
 fn location_id_for_pos(pos: GeoPos) -> String {

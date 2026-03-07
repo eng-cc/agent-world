@@ -474,6 +474,8 @@ pub(super) fn poll_viewer_messages(
                 ViewerResponse::PromptControlAck { .. } => {}
                 ViewerResponse::PromptControlError { .. } => {}
                 ViewerResponse::AgentChatAck { .. } => {}
+                ViewerResponse::AuthoritativeChallengeAck { .. } => {}
+                ViewerResponse::AuthoritativeChallengeError { .. } => {}
                 ViewerResponse::AgentChatError { error } => {
                     state.status = ConnectionStatus::Error(format!(
                         "agent chat error: {} ({})",

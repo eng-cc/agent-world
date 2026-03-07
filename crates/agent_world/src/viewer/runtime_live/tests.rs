@@ -651,3 +651,175 @@ fn runtime_authoritative_batch_data_root_mismatch_blocks_confirmation() {
     assert!(!wire.settlement_ready);
     assert!(!wire.ranking_ready);
 }
+
+#[test]
+fn runtime_authoritative_challenge_submit_opens_challenge_and_blocks_finality_progress() {
+    let mut server =
+        ViewerRuntimeLiveServer::new(ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal))
+            .expect("runtime server");
+
+    let pending = commit_single_authoritative_batch(&mut server);
+    let (_, maybe_batch_update) = server
+        .handle_authoritative_challenge(AuthoritativeChallengeCommand::Submit {
+            request: AuthoritativeChallengeSubmitRequest {
+                batch_id: pending.batch_id.clone(),
+                watcher_id: "watcher-1".to_string(),
+                recomputed_state_root: pending.state_root.clone(),
+                recomputed_data_root: pending.data_root.clone(),
+                challenge_id: Some("challenge-1".to_string()),
+            },
+        })
+        .expect("submit challenge");
+    let batch_update = maybe_batch_update.expect("batch update");
+    assert!(batch_update.challenge_open);
+    assert_eq!(
+        batch_update.active_challenge_id.as_deref(),
+        Some("challenge-1")
+    );
+
+    let updates = server
+        .advance_authoritative_batch_finality(pending.final_height.saturating_add(10))
+        .expect("advance while challenged");
+    assert!(updates.is_empty());
+    let stored = server.authoritative_batches.back().expect("stored batch");
+    assert_ne!(stored.finality_state, AuthoritativeFinalityState::Final);
+}
+
+#[test]
+fn runtime_authoritative_challenge_resolve_no_fraud_unblocks_finality_without_slash() {
+    let mut server =
+        ViewerRuntimeLiveServer::new(ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal))
+            .expect("runtime server");
+
+    let pending = commit_single_authoritative_batch(&mut server);
+    let (submit_ack, _) = server
+        .handle_authoritative_challenge(AuthoritativeChallengeCommand::Submit {
+            request: AuthoritativeChallengeSubmitRequest {
+                batch_id: pending.batch_id.clone(),
+                watcher_id: "watcher-2".to_string(),
+                recomputed_state_root: pending.state_root.clone(),
+                recomputed_data_root: pending.data_root.clone(),
+                challenge_id: None,
+            },
+        })
+        .expect("submit challenge");
+    assert_eq!(submit_ack.status, AuthoritativeChallengeStatus::Challenged);
+
+    let (resolve_ack, maybe_batch_update) = server
+        .handle_authoritative_challenge(AuthoritativeChallengeCommand::Resolve {
+            request: AuthoritativeChallengeResolveRequest {
+                challenge_id: submit_ack.challenge_id.clone(),
+                resolved_by: Some("arbiter-1".to_string()),
+            },
+        })
+        .expect("resolve challenge");
+    assert_eq!(
+        resolve_ack.status,
+        AuthoritativeChallengeStatus::ResolvedNoFraud
+    );
+    assert!(!resolve_ack.slash_applied);
+    let batch_update = maybe_batch_update.expect("batch update");
+    assert!(!batch_update.challenge_open);
+    assert!(!batch_update.slashed);
+
+    let final_updates = server
+        .advance_authoritative_batch_finality(pending.final_height)
+        .expect("advance after resolve");
+    assert!(final_updates.iter().any(|update| {
+        update.batch_id == pending.batch_id
+            && update.finality_state == AuthoritativeFinalityState::Final
+            && !update.slashed
+    }));
+}
+
+#[test]
+fn runtime_authoritative_challenge_resolve_fraud_slashes_and_blocks_finality() {
+    let mut server =
+        ViewerRuntimeLiveServer::new(ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal))
+            .expect("runtime server");
+
+    let pending = commit_single_authoritative_batch(&mut server);
+    let (submit_ack, _) = server
+        .handle_authoritative_challenge(AuthoritativeChallengeCommand::Submit {
+            request: AuthoritativeChallengeSubmitRequest {
+                batch_id: pending.batch_id.clone(),
+                watcher_id: "watcher-3".to_string(),
+                recomputed_state_root: "f".repeat(64),
+                recomputed_data_root: pending.data_root.clone(),
+                challenge_id: None,
+            },
+        })
+        .expect("submit challenge");
+
+    let (resolve_ack, maybe_batch_update) = server
+        .handle_authoritative_challenge(AuthoritativeChallengeCommand::Resolve {
+            request: AuthoritativeChallengeResolveRequest {
+                challenge_id: submit_ack.challenge_id,
+                resolved_by: Some("arbiter-1".to_string()),
+            },
+        })
+        .expect("resolve challenge");
+    assert_eq!(
+        resolve_ack.status,
+        AuthoritativeChallengeStatus::ResolvedFraudSlashed
+    );
+    assert!(resolve_ack.slash_applied);
+    assert_eq!(
+        resolve_ack.slash_reason.as_deref(),
+        Some("state_root_mismatch")
+    );
+    let batch_update = maybe_batch_update.expect("batch update");
+    assert!(batch_update.slashed);
+    assert!(!batch_update.challenge_open);
+
+    let updates = server
+        .advance_authoritative_batch_finality(pending.final_height.saturating_add(10))
+        .expect("advance after slash");
+    assert!(updates
+        .iter()
+        .all(|update| update.batch_id != pending.batch_id));
+    let stored = server.authoritative_batches.back().expect("stored batch");
+    assert_eq!(
+        stored.challenge_state,
+        RuntimeBatchChallengeState::ResolvedFraudSlashed
+    );
+    assert_ne!(stored.finality_state, AuthoritativeFinalityState::Final);
+}
+
+#[test]
+fn runtime_authoritative_challenge_duplicate_resolve_is_rejected() {
+    let mut server =
+        ViewerRuntimeLiveServer::new(ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal))
+            .expect("runtime server");
+
+    let pending = commit_single_authoritative_batch(&mut server);
+    let (submit_ack, _) = server
+        .handle_authoritative_challenge(AuthoritativeChallengeCommand::Submit {
+            request: AuthoritativeChallengeSubmitRequest {
+                batch_id: pending.batch_id,
+                watcher_id: "watcher-4".to_string(),
+                recomputed_state_root: pending.state_root,
+                recomputed_data_root: pending.data_root,
+                challenge_id: Some("challenge-dup".to_string()),
+            },
+        })
+        .expect("submit challenge");
+    let _ = server
+        .handle_authoritative_challenge(AuthoritativeChallengeCommand::Resolve {
+            request: AuthoritativeChallengeResolveRequest {
+                challenge_id: submit_ack.challenge_id.clone(),
+                resolved_by: None,
+            },
+        })
+        .expect("first resolve");
+
+    let err = server
+        .handle_authoritative_challenge(AuthoritativeChallengeCommand::Resolve {
+            request: AuthoritativeChallengeResolveRequest {
+                challenge_id: submit_ack.challenge_id,
+                resolved_by: None,
+            },
+        })
+        .expect_err("duplicate resolve should reject");
+    assert_eq!(err.code, "challenge_already_resolved");
+}

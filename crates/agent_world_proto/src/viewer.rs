@@ -54,6 +54,9 @@ pub enum ViewerRequest {
     AgentChat {
         request: AgentChatRequest,
     },
+    AuthoritativeChallenge {
+        command: AuthoritativeChallengeCommand,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -141,6 +144,34 @@ pub struct AgentChatRequest {
     pub intent_seq: Option<u64>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "mode", rename_all = "snake_case")]
+pub enum AuthoritativeChallengeCommand {
+    Submit {
+        request: AuthoritativeChallengeSubmitRequest,
+    },
+    Resolve {
+        request: AuthoritativeChallengeResolveRequest,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AuthoritativeChallengeSubmitRequest {
+    pub batch_id: String,
+    pub watcher_id: String,
+    pub recomputed_state_root: String,
+    pub recomputed_data_root: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub challenge_id: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AuthoritativeChallengeResolveRequest {
+    pub challenge_id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resolved_by: Option<String>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ViewerStream {
@@ -214,6 +245,45 @@ pub struct AuthoritativeBatchFinality {
     pub settlement_ready: bool,
     #[serde(default, skip_serializing_if = "is_false")]
     pub ranking_ready: bool,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub challenge_open: bool,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub slashed: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub active_challenge_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AuthoritativeChallengeStatus {
+    Challenged,
+    ResolvedNoFraud,
+    ResolvedFraudSlashed,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AuthoritativeChallengeAck<Time> {
+    pub challenge_id: String,
+    pub batch_id: String,
+    pub watcher_id: String,
+    pub status: AuthoritativeChallengeStatus,
+    pub submitted_at_tick: Time,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub resolved_at_tick: Option<Time>,
+    #[serde(skip_serializing_if = "is_false")]
+    pub slash_applied: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub slash_reason: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AuthoritativeChallengeError {
+    pub code: String,
+    pub message: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub challenge_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub batch_id: Option<String>,
 }
 
 // Legacy mixed control channel. Prefer PlaybackControl/LiveControl.
@@ -244,6 +314,12 @@ pub enum ViewerResponse<Snapshot, Event, DecisionTrace, Metrics, Time> {
     },
     AuthoritativeBatch {
         batch: AuthoritativeBatchFinality,
+    },
+    AuthoritativeChallengeAck {
+        ack: AuthoritativeChallengeAck<Time>,
+    },
+    AuthoritativeChallengeError {
+        error: AuthoritativeChallengeError,
     },
     DecisionTrace {
         trace: DecisionTrace,
@@ -505,6 +581,24 @@ mod tests {
     }
 
     #[test]
+    fn viewer_authoritative_challenge_submit_request_round_trip() {
+        let request = ViewerRequest::AuthoritativeChallenge {
+            command: AuthoritativeChallengeCommand::Submit {
+                request: AuthoritativeChallengeSubmitRequest {
+                    batch_id: "batch-1".to_string(),
+                    watcher_id: "watcher-1".to_string(),
+                    recomputed_state_root: "a".repeat(64),
+                    recomputed_data_root: "b".repeat(64),
+                    challenge_id: Some("challenge-1".to_string()),
+                },
+            },
+        };
+        let json = serde_json::to_string(&request).expect("serialize request");
+        let parsed: ViewerRequest = serde_json::from_str(&json).expect("deserialize request");
+        assert_eq!(parsed, request);
+    }
+
+    #[test]
     fn viewer_prompt_control_request_legacy_without_public_key_is_accepted() {
         let json = r#"{
             "type":"prompt_control",
@@ -660,6 +754,40 @@ mod tests {
                 event_seq_end: Some(110),
                 settlement_ready: false,
                 ranking_ready: false,
+                challenge_open: true,
+                slashed: false,
+                active_challenge_id: Some("challenge-9".to_string()),
+            },
+        };
+        let json = serde_json::to_string(&response).expect("serialize response");
+        let parsed: ViewerResponse<
+            serde_json::Value,
+            serde_json::Value,
+            serde_json::Value,
+            serde_json::Value,
+            u64,
+        > = serde_json::from_str(&json).expect("deserialize response");
+        assert_eq!(parsed, response);
+    }
+
+    #[test]
+    fn viewer_response_round_trip_authoritative_challenge_ack() {
+        let response = ViewerResponse::<
+            serde_json::Value,
+            serde_json::Value,
+            serde_json::Value,
+            serde_json::Value,
+            u64,
+        >::AuthoritativeChallengeAck {
+            ack: AuthoritativeChallengeAck {
+                challenge_id: "challenge-1".to_string(),
+                batch_id: "batch-1".to_string(),
+                watcher_id: "watcher-1".to_string(),
+                status: AuthoritativeChallengeStatus::ResolvedFraudSlashed,
+                submitted_at_tick: 40,
+                resolved_at_tick: Some(42),
+                slash_applied: true,
+                slash_reason: Some("state_root_mismatch".to_string()),
             },
         };
         let json = serde_json::to_string(&response).expect("serialize response");
