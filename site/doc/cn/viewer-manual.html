@@ -110,21 +110,21 @@
           <li>`AGENT_WORLD_VIEWER_AUTO_FOCUS_FORCE_3D=1|0`（默认 `1`）</li>
           <li>`AGENT_WORLD_VIEWER_AUTO_FOCUS_RADIUS=&lt;number&gt;`（可选）</li>
         </ul>
-        <p>支持语法：`first:&lt;kind&gt;`、`&lt;kind&gt;:&lt;id&gt;`，兼容旧语法 `first_agent/first_location`。</p>
-        <p>首批 kind：`agent`、`location`、`fragment`、`asset`、`module_visual`、`power_plant`、`power_storage`、`chunk`。</p>
+        <p>支持语法：`first_fragment`、`first_location`、`first_agent`、`location:&lt;id&gt;`、`agent:&lt;id&gt;`（兼容简写 `fragment/location/agent`）。</p>
+        <p>自动聚焦目标仅支持 Agent / Location / Fragment 三类。</p>
       </section>
 
       <section class="section" data-reveal>
         <h2>自动步骤（Auto Select / Automation Steps）</h2>
         <ul>
-          <li>`--auto-select-target`：启动后自动选中目标（如 `first:agent`）。</li>
-          <li>`--automation-steps`：执行一组自动步骤（如 `mode=3d;focus=first:agent;zoom=0.8;select=asset:asset-0`）。</li>
+          <li>`--auto-select-target`：启动后自动选中目标（推荐 `first_agent`，兼容 `first:agent`）。</li>
+          <li>`--automation-steps`：执行一组自动步骤（如 `mode=3d;focus=first_agent;zoom=0.8;select=asset:asset-0`）。</li>
         </ul>
         <pre><code>./scripts/capture-viewer-frame.sh \
   --scenario llm_bootstrap \
   --addr 127.0.0.1:5131 \
-  --auto-select-target first:agent \
-  --automation-steps "mode=3d;focus=first:agent;zoom=0.8;select=fragment:frag-0"</code></pre>
+  --auto-select-target first_agent \
+  --automation-steps "mode=3d;focus=first_agent;zoom=0.8;select=fragment:frag-0"</code></pre>
       </section>
 
       <section id="web-loop" class="section" data-reveal>
@@ -183,7 +183,7 @@ window.__AW_TEST__.getState();</code></pre>
 
         <h3>选中详情面板</h3>
         <ul>
-          <li>支持对象：Agent、Location、Asset、PowerPlant、PowerStorage、Chunk。</li>
+          <li>支持对象：Agent、Location、Asset、PowerPlant、Chunk。</li>
           <li>LLM 场景下可查看最近决策 I/O 摘要。</li>
         </ul>
 
@@ -243,7 +243,7 @@ window.__AW_TEST__.getState();</code></pre>
           <li>Playwright 启动失败：检查 `node --version`、`npm --version`、`npx`。</li>
           <li>Console 出现 wasm 报错：先修复运行时错误，再判断视觉问题。</li>
           <li>看不到细节：切换 3D，放大并移动视角，或按 `F` 聚焦。</li>
-          <li>自动聚焦无效：先用 `first:fragment` 排除目标 ID 输入问题。</li>
+          <li>自动聚焦无效：先用 `first_fragment` 排除目标 ID 输入问题。</li>
           <li>连接失败：检查 `world_viewer_live` 运行状态与端口一致性。</li>
         </ul>
       </section>

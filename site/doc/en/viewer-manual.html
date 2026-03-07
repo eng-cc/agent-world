@@ -110,21 +110,21 @@
           <li>`AGENT_WORLD_VIEWER_AUTO_FOCUS_FORCE_3D=1|0` (default `1`)</li>
           <li>`AGENT_WORLD_VIEWER_AUTO_FOCUS_RADIUS=&lt;number&gt;` (optional)</li>
         </ul>
-        <p>Supported syntax: `first:&lt;kind&gt;` and `&lt;kind&gt;:&lt;id&gt;`, with legacy aliases like `first_agent` kept compatible.</p>
-        <p>Initial kinds: `agent`, `location`, `fragment`, `asset`, `module_visual`, `power_plant`, `power_storage`, `chunk`.</p>
+        <p>Supported syntax: `first_fragment`, `first_location`, `first_agent`, `location:&lt;id&gt;`, and `agent:&lt;id&gt;` (with shorthand aliases `fragment/location/agent`).</p>
+        <p>Auto focus targets are limited to Agent / Location / Fragment.</p>
       </section>
 
       <section class="section" data-reveal>
         <h2>Auto Select / Automation Steps</h2>
         <ul>
-          <li>`--auto-select-target`: auto-select a target after startup (for example `first:agent`).</li>
-          <li>`--automation-steps`: execute a step sequence (for example `mode=3d;focus=first:agent;zoom=0.8;select=asset:asset-0`).</li>
+          <li>`--auto-select-target`: auto-select a target after startup (recommended `first_agent`, legacy `first:agent` remains supported).</li>
+          <li>`--automation-steps`: execute a step sequence (for example `mode=3d;focus=first_agent;zoom=0.8;select=asset:asset-0`).</li>
         </ul>
         <pre><code>./scripts/capture-viewer-frame.sh \
   --scenario llm_bootstrap \
   --addr 127.0.0.1:5131 \
-  --auto-select-target first:agent \
-  --automation-steps "mode=3d;focus=first:agent;zoom=0.8;select=fragment:frag-0"</code></pre>
+  --auto-select-target first_agent \
+  --automation-steps "mode=3d;focus=first_agent;zoom=0.8;select=fragment:frag-0"</code></pre>
       </section>
 
       <section id="web-loop" class="section" data-reveal>
@@ -183,7 +183,7 @@ window.__AW_TEST__.getState();</code></pre>
 
         <h3>Selection details panel</h3>
         <ul>
-          <li>Supports: Agent, Location, Asset, PowerPlant, PowerStorage, Chunk.</li>
+          <li>Supports: Agent, Location, Asset, PowerPlant, Chunk.</li>
           <li>In LLM scenarios, the latest decision I/O summary is available.</li>
         </ul>
 
@@ -243,7 +243,7 @@ window.__AW_TEST__.getState();</code></pre>
           <li>Playwright startup failure: check `node --version`, `npm --version`, and `npx` availability.</li>
           <li>Wasm errors in console: fix runtime initialization errors before debugging visuals.</li>
           <li>Cannot see detail: switch to 3D, zoom and move camera, or use `F` focus.</li>
-          <li>Auto focus not working: verify target existence, start from `first:fragment`.</li>
+          <li>Auto focus not working: verify target existence, start from `first_fragment`.</li>
           <li>Connection failure: check `world_viewer_live` process and endpoint port match.</li>
         </ul>
       </section>
