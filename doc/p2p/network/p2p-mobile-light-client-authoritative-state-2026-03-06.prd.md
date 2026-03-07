@@ -38,7 +38,7 @@
 | --- | --- | --- | --- | --- | --- |
 | 输入意图上报 | `player_id/session_pubkey/tick/seq/action/payload_hash/sig` | 客户端只发送 intent，不上报位置/血量等权威状态 | `queued -> sequenced -> executed` | 以 `tick` 主序、`seq` 次序；同 `(player_id, seq)` 去重，且 `seq` 必须与签名 `nonce` 一致 | 仅登录后有效 session key 可写入 |
 | 权威增量下发 | `from_tick/to_tick/batch_id/patches/state_root/authority_sig` | 客户端接收并校验签名/根哈希，执行视觉纠偏 | `predicted -> corrected -> confirmed` | `to_tick` 必须单调递增；越界 patch 拒收 | 仅权威节点签名数据可生效 |
-| 链上承诺与挑战 | `batch_id/state_root/data_root/bond/challenge_deadline` | 提交承诺；watcher 在窗口内发起 challenge | `committed -> challenged -> resolved -> final` | 超过 `challenge_deadline` 自动进入 final | 仅被授权提交者可 commit；挑战者需抵押 |
+| 链上承诺与挑战 | `batch_id/state_root/data_root/challenge_id/challenger_id/recomputed_state_root/recomputed_data_root/slash_record` | 提交承诺；watcher 在窗口内发起 challenge，并通过 resolve 产出是否 slash 的结论 | `committed -> challenged -> resolved -> final` | challenge 只能在窗口内提交；resolve 后若根不一致必须阻断 final 并记录 slash；根一致则允许继续进入 final | 仅被授权提交者可 commit；挑战者需抵押；resolve 仅权威仲裁流程可写 |
 | 最终性展示 | `batch_id/tx_hash/event_seq_start/event_seq_end/confirm_height/final_height/finality_state/settlement_ready/ranking_ready` | 客户端 UI 展示三段最终性并限制可消费动作 | `pending -> confirmed -> final` | `pending=已提交但未达到 confirm_height`；`confirmed=已达到 confirm_height 且未被 challenge 阻断`；`final=已达到 final_height 且 challenge 窗口关闭`；状态仅允许前进不允许倒退（除链重组回滚路径） | 非 final 数据禁止触发资产结算与排行统计 |
 | 重连与追平 | `snapshot_height/snapshot_hash/log_cursor` | 断线后拉快照+增量，必要时回滚到稳定点 | `offline -> syncing -> caught_up` | 优先最近稳定快照，再按 cursor 回放 | 仅同账户同会话（或恢复会话）可追平自身视图 |
 - Acceptance Criteria:
@@ -49,6 +49,8 @@
   - AC-MLC-003a (PRD-P2P-MLC-002): 每个权威批次提交必须同时落盘 `batch_id/state_root/data_root`，缺任一字段或与本地批次数据根不一致时拒绝确认。
   - AC-MLC-003b (PRD-P2P-MLC-002): 客户端 `pending/confirmed/final` 最终性状态机满足单调性，不出现“confirmed/final 回退为 pending”的误判（链重组路径除外）。
   - AC-MLC-004 (PRD-P2P-MLC-003): challenge 流程可在窗口内成功阻断错误根并产生惩罚记录。
+  - AC-MLC-004a (PRD-P2P-MLC-003): watcher 提交 `recomputed_state_root/recomputed_data_root` 与批次根不一致时，批次不得进入 `final` 且必须产出 `slash_record`。
+  - AC-MLC-004b (PRD-P2P-MLC-003): watcher 提交 challenge 后，`resolve` 必须给出确定性结论；若根一致则不得产生 slash，且批次可继续按窗口规则进入 `final`。
   - AC-MLC-005 (PRD-P2P-MLC-004): 客户端断线恢复流程可在快照可用前提下追平到最近确认高度。
   - AC-MLC-006 (PRD-P2P-MLC-002/004): 客户端最终性 UI 与链上状态一致，不出现“未 final 被当作 final”。
 - Non-Goals:
@@ -84,6 +86,7 @@
   - 长时间无 peer：Gateway 回退到中继链路并触发网络健康告警。
   - 链重组：客户端回滚到最近稳定提交点并重放未最终批次。
   - 挑战超时：窗口超时后状态进入 final，后续仅允许审计不上链回滚。
+  - 重复 challenge/重复 resolve：同一 `challenge_id` 二次提交或二次结算必须幂等拒绝，防止重复罚没。
   - 快照损坏：校验哈希失败即丢弃，回退到上一个可用快照并补拉增量。
   - 会话密钥泄露：支持会话吊销与换钥，吊销后旧会话 intent 全部拒绝。
   - 弱网高抖动：客户端降级为低频 delta + 关键帧同步，保活优先。
@@ -116,7 +119,7 @@
 | --- | --- | --- | --- | --- |
 | PRD-P2P-MLC-001 | TASK-P2P-MLC-001/002 | `test_tier_required` | intent 签名/去重/幂等 ACK 回归 | 移动端输入链路与网关 |
 | PRD-P2P-MLC-002 | TASK-P2P-MLC-003/004 | `test_tier_required` + `test_tier_full` | `state_root/data_root` 批次提交校验、commit/finality 状态机与 UI 最终性一致性检查 | 模拟执行与结算可见性 |
-| PRD-P2P-MLC-003 | TASK-P2P-MLC-004/005 | `test_tier_full` | challenge 复算、错误根阻断与惩罚验证 | 安全与反作弊 |
+| PRD-P2P-MLC-003 | TASK-P2P-MLC-004/005 | `test_tier_full` | challenge 提交/resolve/slash 闭环、watcher 复算入口与错误根阻断验证 | 安全与反作弊 |
 | PRD-P2P-MLC-004 | TASK-P2P-MLC-005/006 | `test_tier_required` + `test_tier_full` | 掉线恢复、链重组回滚、快照追平演练 | 可用性与稳定性 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |

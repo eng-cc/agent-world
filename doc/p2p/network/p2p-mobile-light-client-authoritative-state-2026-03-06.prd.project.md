@@ -16,6 +16,12 @@
 - [x] TASK-P2P-MLC-003-C [test_tier_required]: 在结算/排行入口增加最终性闸门，非 `final` 数据禁止进入资产结算与排行统计。
 - [x] TASK-P2P-MLC-003-D [test_tier_required]: 补齐 `state_root/data_root` 与 finality 状态机定向测试，并执行 `testing-manual.md` 对应 required 套件。
 
+### TASK-P2P-MLC-004 执行拆解（PRD-P2P-MLC-002/003）
+- [ ] TASK-P2P-MLC-004-A [test_tier_full]: 在 `runtime_live` 增加 challenge 提交结构（`challenge_id/batch_id/recomputed_state_root/recomputed_data_root`）与 watcher 复算入口。
+- [ ] TASK-P2P-MLC-004-B [test_tier_full]: 实现 `challenged -> resolved` 仲裁状态机，根不一致分支阻断 final。
+- [ ] TASK-P2P-MLC-004-C [test_tier_full]: 实现 slash 记录与批次联动（错误根触发 slash、正确根不罚没），并保证重复 challenge/resolve 幂等拒绝。
+- [ ] TASK-P2P-MLC-004-D [test_tier_full]: 补齐 challenge/resolve/slash 定向测试并执行 `testing-manual.md` 对应 full 套件。
+
 ## 依赖
 - `doc/p2p/network/p2p-mobile-light-client-authoritative-state-2026-03-06.prd.md`
 - `doc/p2p/network/p2p-mobile-light-client-authoritative-state-2026-03-06.prd.project.md`
@@ -30,6 +36,7 @@
 - 当前状态: active
 - 下一任务: TASK-P2P-MLC-004
 - TASK-P2P-MLC-003 收口（2026-03-07）: A/B/C/D 已全部完成（批次承诺、最终性状态机、结算闸门、required 定向回归）。
+- TASK-P2P-MLC-004 计划口径（2026-03-07）: 已锁定 A/B/C/D 四个子步骤（challenge 提交入口、resolve 状态机、slash 联动、full 回归）。
 - 本轮完成:
   - 在 `agent_world_proto::viewer::AgentChatRequest` 增加 `intent_tick/intent_seq` 字段，并在 `AgentChatAck` 增加 `intent_tick/intent_seq/idempotent_replay`。
   - `runtime_live` 增加 `intent_seq` 幂等重放语义：同 `(player_id, agent_id, intent_seq)` 重试返回同 ACK，变更载荷触发冲突拒绝。
