@@ -7,7 +7,7 @@
 - [x] TASK-P2P-010-T1 (PRD-P2P-NODE-SURFACE-001) [test_tier_required]: `world_chain_runtime/world_viewer_live` 新增 PoS 时间锚定参数解析与 `NodePosConfig` 映射，并明确 `node_tick_ms` 轮询语义。
 - [x] TASK-P2P-010-T2 (PRD-P2P-NODE-SURFACE-002) [test_tier_required]: launcher UI/配置字段扩展与参数透传对齐，补齐校验提示。
 - [x] TASK-P2P-010-T3 (PRD-P2P-NODE-SURFACE-003) [test_tier_required]: 更新 longrun/s10 脚本、release 示例与相关文档口径；保持旧参数兼容。
-- [ ] TASK-P2P-010-T4 (PRD-P2P-NODE-SURFACE-001/002/003) [test_tier_required + test_tier_full]: 补齐定向测试与闭环回归，收口模块项目状态。
+- [x] TASK-P2P-010-T4 (PRD-P2P-NODE-SURFACE-001/002/003) [test_tier_required + test_tier_full]: 补齐定向测试与闭环回归，收口模块项目状态。
 
 ## 依赖
 - `doc/p2p/node/node-pos-time-anchor-control-plane-alignment-2026-03-07.prd.md`
@@ -27,8 +27,8 @@
 
 ## 状态
 - 更新日期: 2026-03-07
-- 当前状态: in_progress
-- 下一任务: `TASK-P2P-010-T4`
+- 当前状态: completed
+- 下一任务: 无
 - 阻塞项: 无
-- 进展: `TASK-P2P-010-T0~T3` 已完成，已完成专题文档建档、runtime/viewer 参数映射、launcher UI/配置透传、脚本与 release 示例口径对齐。
+- 进展: `TASK-P2P-010-T0~T4` 全部完成，已完成控制面参数透传、脚本示例对齐、required/full 定向回归与任务收口。
 - 说明: 本文档仅维护执行计划与任务状态；实施过程记录写入 `doc/devlog/2026-03-07.md`。

@@ -12,7 +12,7 @@
 - [x] TASK-P2P-007 (PRD-P2P-004) [test_tier_required + test_tier_full]: 实现 intent-only 接入、finality UI、challenge/reconnect 闭环并补齐回归证据。
 - [x] TASK-P2P-008 (PRD-P2P-005) [test_tier_required + test_tier_full]: 实现 PoS 固定时间槽（slot/epoch）真实时钟驱动、漏槽计数与时间窗口校验，并补齐回归证据。
 - [x] TASK-P2P-009 (PRD-P2P-006) [test_tier_required + test_tier_full]: 实现 PoS 槽内 tick 相位门控（`ticks_per_slot`）与动态节拍调度，并补齐回归证据。
-- [ ] TASK-P2P-010 (PRD-P2P-007) [test_tier_required + test_tier_full]: 对齐 PoS 时间锚定控制面参数与可观测口径（runtime/viewer/launcher/scripts）。
+- [x] TASK-P2P-010 (PRD-P2P-007) [test_tier_required + test_tier_full]: 对齐 PoS 时间锚定控制面参数与可观测口径（runtime/viewer/launcher/scripts）。
 
 ### TASK-P2P-002 执行拆解（PRD-P2P-001/002）
 - [x] TASK-P2P-002-A [test_tier_required]: 在 `doc/p2p/prd.md` 补齐网络/共识/DistFS 三线联合验收清单（基线命令、门禁命令、阻断条件、证据产物）。
@@ -34,7 +34,7 @@
 - [x] TASK-P2P-010-T1 [test_tier_required]: `world_chain_runtime/world_viewer_live` 暴露并校验 `slot_duration_ms/ticks_per_slot/proposal_tick_phase/adaptive_tick_scheduler_enabled/slot_clock_genesis_unix_ms/max_past_slot_lag`，并明确 `node_tick_ms` 为轮询间隔。
 - [x] TASK-P2P-010-T2 [test_tier_required]: launcher UI/配置字段与参数透传对齐新口径，补齐校验与错误提示。
 - [x] TASK-P2P-010-T3 [test_tier_required]: p2p longrun/s10 脚本、release lock 示例、专题文档口径更新，避免将 `node_tick_ms` 作为出块时间。
-- [ ] TASK-P2P-010-T4 [test_tier_required + test_tier_full]: 补齐 CLI/launcher/脚本/状态接口回归测试并完成证据收口。
+- [x] TASK-P2P-010-T4 [test_tier_required + test_tier_full]: 补齐 CLI/launcher/脚本/状态接口回归测试并完成证据收口。
 
 ## 依赖
 - doc/p2p/prd.index.md
@@ -55,8 +55,8 @@
 
 ## 状态
 - 更新日期: 2026-03-07
-- 当前状态: in_progress（ROUND-006）
-- 下一任务: `TASK-P2P-010-T1`
+- 当前状态: completed（ROUND-006）
+- 下一任务: 无
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - 本轮新增: `TASK-P2P-006` 已完成，专题文档 `p2p-mobile-light-client-authoritative-state-2026-03-06` 已纳入索引和模块追踪映射。
 - 本轮新增: `TASK-P2P-008` 已建档，专题文档 `node-pos-slot-clock-real-time-2026-03-07` 已纳入模块追踪映射。
@@ -79,6 +79,7 @@
 - TASK-P2P-010 进展（2026-03-07）: `TASK-P2P-010-T1` 已完成代码落地与 required 定向回归（runtime/viewer 新增 `--pos-*` 参数、`node_tick_ms` 轮询语义澄清、`NodePosConfig` 映射与相位校验）。
 - TASK-P2P-010 进展（2026-03-07）: `TASK-P2P-010-T2` 已完成代码落地与 required 定向回归（game/web/client launcher 新增 `chain-pos-*` 字段、校验与参数透传，UI schema/设置面板同步扩展）。
 - TASK-P2P-010 进展（2026-03-07）: `TASK-P2P-010-T3` 已完成脚本与示例口径对齐（`p2p-longrun/s10` 支持 `--pos-*`、`node_tick_ms` 文案改为轮询语义、release 示例补齐 PoS 参数）。
+- TASK-P2P-010 进展（2026-03-07）: `TASK-P2P-010-T4` 已完成 required/full 回归与文档收口（runtime/game/web/client launcher + scripts 回归通过，主任务 `TASK-P2P-010` 完成）。
 - 说明: 本文档仅维护 p2p 设计执行状态；过程记录在 `doc/devlog/2026-03-07.md`。
 - ROUND-002 进展（2026-03-05）: 已并行完成 `B3-C2-009-S2/C2-010/C2-011`（observer sync-mode、node-contribution、distfs-self-healing）主从化回写。
 - ROUND-002 进展（2026-03-05）: 已并行完成 `B3-C2-003/C2-008-S1/C2-008-S2`（node-redeemable-power-asset、distfs-production-hardening phase1~9）主从化回写。
