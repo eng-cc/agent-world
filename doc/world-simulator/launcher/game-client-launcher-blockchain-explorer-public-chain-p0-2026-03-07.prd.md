@@ -99,7 +99,7 @@
 - Phased Rollout:
   - MVP: 完成专题 PRD 建模与任务拆解。
   - v1.1: 落地 runtime explorer P0 API + 持久化索引 + 控制面代理。
-  - v2.0: 落地启动器 Blocks/Txs/Search 分页 UI 并完成跨端回归。
+  - v2.0 (2026-03-07): 落地启动器 Blocks/Txs/Search 分页 UI 并完成跨端回归。
 - Technical Risks:
   - 风险-1: committed batch 为单消费语义，若多处独立 drain 会导致索引/历史漂移。
   - 风险-2: 索引写盘频率过高可能导致 I/O 抖动。
