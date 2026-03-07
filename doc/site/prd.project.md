@@ -10,7 +10,7 @@
 - [x] TASK-SITE-005 (PRD-SITE-001/002/003) [test_tier_required]: 对齐 strict PRD schema，补齐关键流程/规格矩阵/边界异常/NFR/验证与决策记录。
 - [x] TASK-SITE-006 (PRD-SITE-002) [test_tier_required]: 同步 `site/doc/cn|en/viewer-manual.html` 语义口径（移除过时 `power_storage`，并校准自动目标语法）。
 - [x] TASK-SITE-007 (PRD-SITE-003) [test_tier_required]: 回写站点项目状态文档（release pipeline + module 主项目）并与 CI 实况对齐。
-- [ ] TASK-SITE-008 (PRD-SITE-004) [test_tier_required]: 修复首页与文档入口“可玩状态”口径，明确当前为开发中技术预览（尚不可玩）。
+- [x] TASK-SITE-008 (PRD-SITE-004) [test_tier_required]: 修复首页与文档入口“可玩状态”口径，明确当前为开发中技术预览（尚不可玩）。
 - [ ] TASK-SITE-009 (PRD-SITE-001/004) [test_tier_required]: 在保持真实状态口径前提下重排 CTA 与信息层级（预览体验优先、构建路径次级）。
 
 ## 依赖
@@ -25,7 +25,7 @@
 ## 状态
 - 更新日期: 2026-03-07
 - 当前状态: active
-- 下一任务: TASK-SITE-008（对外口径修复）
+- 下一任务: TASK-SITE-009（口径一致前提下优化转化层级）
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - ROUND-002 进展: manual 子簇主从化已完成（`site-manual-static-docs` 主入口，`viewer-manual-content-migration-2026-02-15` 增量维护）。
 - ROUND-002 进展: github-pages 子簇主从化已完成（`github-pages-game-engine-reposition-2026-02-25` 主入口，其余专题增量维护）。
@@ -33,4 +33,5 @@
 - ROUND-003 进展: TASK-SITE-006 已完成，静态手册已移除过时 `power_storage` 表述并校准自动目标语法。
 - ROUND-003 进展: TASK-SITE-007 已完成，`github-pages-release-download-pipeline-2026-03-01.prd.project.md` 状态已与 `Release Packages` 最新成功 run 对齐。
 - ROUND-004 进展: 已识别首页“已可玩/赛季运行中”叙事与真实状态不一致，进入 TASK-SITE-008 修复口径。
+- ROUND-004 进展: TASK-SITE-008 已完成；`site/index.html`、`site/en/index.html`、`site/doc/cn/index.html`、`site/doc/en/index.html` 已统一为“技术预览（尚不可玩）”口径。
 - 说明: 本文档仅维护 site 模块设计执行状态；过程记录在 `doc/devlog/2026-03-03.md`。

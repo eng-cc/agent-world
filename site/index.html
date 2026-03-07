@@ -5,26 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="agent-world：面向玩家的多主体文明战争游戏，先讲可玩性与长期博弈，再在下半页展开 WASM 引擎底座。"
+      content="agent-world：多主体文明战争引擎技术预览（开发中，尚不可玩）。当前聚焦架构、验证链路与可追溯开发路线。"
     />
-    <meta property="og:title" content="agent-world | 会进化的文明战争游戏" />
+    <meta property="og:title" content="agent-world | 技术预览（开发中）" />
     <meta
       property="og:description"
-      content="上半页聚焦玩法冲突、联盟与赛季目标；下半页再看引擎架构、治理升级与扩展接口。"
+      content="当前版本为技术预览：展示引擎能力、验证链路与开发路线，不承诺可玩体验。"
     />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://eng-cc.github.io/agent-world/" />
     <meta property="og:image" content="https://eng-cc.github.io/agent-world/assets/images/og-cover.png" />
     <meta property="og:locale" content="zh_CN" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="agent-world | 会进化的文明战争游戏" />
+    <meta name="twitter:title" content="agent-world | 技术预览（开发中）" />
     <meta
       name="twitter:description"
-      content="上半页聚焦玩法冲突、联盟与赛季目标；下半页再看引擎架构、治理升级与扩展接口。"
+      content="当前版本为技术预览：展示引擎能力、验证链路与开发路线，不承诺可玩体验。"
     />
     <meta name="twitter:image" content="https://eng-cc.github.io/agent-world/assets/images/og-cover.png" />
     <meta name="theme-color" content="#060b11" />
-    <title>agent-world | 会进化的文明战争游戏</title>
+    <title>agent-world | 技术预览（开发中）</title>
     <link rel="canonical" href="https://eng-cc.github.io/agent-world/" />
     <link rel="alternate" hreflang="zh-CN" href="https://eng-cc.github.io/agent-world/" />
     <link rel="alternate" hreflang="en" href="https://eng-cc.github.io/agent-world/en/" />
@@ -77,33 +77,33 @@
         <canvas class="hero-canvas" data-hero-canvas aria-hidden="true"></canvas>
         <div class="hero-grid">
           <div>
-            <p class="eyebrow">可玩的文明战争</p>
-            <h1>这不是模拟器，而是一场会记住你决定的文明战争</h1>
+            <p class="eyebrow">开发中技术预览</p>
+            <h1>agent-world 仍在开发中，当前版本尚不可玩</h1>
             <p class="subtitle">
-              你每天只需 5~15 分钟做策略决策：调资源、换联盟、赌政策。世界会持续演化，历史不可回滚，
-              你的每一步都会影响下一阶段的冲突与秩序。首次本地运行需先完成 Rust 构建（常见 5~15 分钟，视机器而定）。
+              当前站点用于展示多主体文明战争引擎的设计目标、验证链路与开发路线。你可以运行本地构建做技术验证，
+              但这不是对外可玩版本，也不代表赛季已上线。首次本地运行需先完成 Rust 构建（常见 5~15 分钟，视机器而定）。
             </p>
             <div class="cta-row">
-              <a class="button primary" href="#demo">本地 3 步快速上手</a>
+              <a class="button primary" href="#roadmap">查看开发路线</a>
               <a class="button secondary" href="doc/cn/index.html">查看完整手册</a>
             </div>
             <ul class="hero-signals">
-              <li>玩家目标驱动，不直接操控 Agent</li>
-              <li>联盟与背刺并存，局势持续改写</li>
-              <li>同一条链路支持回放、在线与审计</li>
+              <li>当前状态：技术预览（Not playable yet）</li>
+              <li>重点：引擎能力验证与证据可追溯</li>
+              <li>目标：逐步收敛到可玩发布版本</li>
             </ul>
             <div class="hero-stats">
               <article class="metric-box">
                 <strong data-counter-target="3">0</strong>
-                <span>循环层级（微 / 中 / 长）</span>
+                <span>目标循环层级（微 / 中 / 长）</span>
               </article>
               <article class="metric-box">
-                <strong data-counter-target="6">0</strong>
-                <span>核心玩家动机维度</span>
+                <strong data-counter-target="0">0</strong>
+                <span>当前可玩状态（0=未开放）</span>
               </article>
               <article class="metric-box">
-                <strong data-counter-target="72">0</strong>
-                <span>关键赛季窗口（小时）</span>
+                <strong data-counter-target="4">0</strong>
+                <span>开发阶段（D1~D4）</span>
               </article>
             </div>
           </div>
@@ -111,75 +111,75 @@
           <aside class="hero-visual">
             <figure class="hero-figure">
               <img src="assets/images/world-constellation.svg" alt="agent-world 文明冲突星图" />
-              <figcaption>你面对的不是静态演示图，而是实时变化且可长期运营的文明战场。</figcaption>
+              <figcaption>当前展示的是研发验证视图，用于说明系统行为，不代表对外可玩体验。</figcaption>
             </figure>
             <div class="pulse-panel">
-              <p class="panel-title">战局脉冲</p>
+              <p class="panel-title">开发脉冲</p>
               <ul>
-                <li><span>微循环</span><strong>5~15 分钟反馈</strong></li>
-                <li><span>中循环</span><strong>1~3 天阶段战果</strong></li>
-                <li><span>长循环</span><strong>多周文明目标</strong></li>
-                <li><span>社会层</span><strong>联盟、谈判、冲突</strong></li>
+                <li><span>D1</span><strong>基础链路闭环</strong></li>
+                <li><span>D2</span><strong>可观测与回放</strong></li>
+                <li><span>D3</span><strong>规则与治理强化</strong></li>
+                <li><span>D4</span><strong>可玩版本收敛</strong></li>
               </ul>
             </div>
             <div class="command-panel">
-              <p class="panel-title">玩家视角指挥台</p>
+              <p class="panel-title">当前重点</p>
               <ul>
-                <li><span>今日主线</span><strong>扩张产能 / 防守边境</strong></li>
-                <li><span>关键抉择</span><strong>结盟还是制裁</strong></li>
-                <li><span>代价模型</span><strong>收益越高，反制越强</strong></li>
+                <li><span>运行链路</span><strong>可复现、可审计</strong></li>
+                <li><span>工程能力</span><strong>WASM 模块化与治理</strong></li>
+                <li><span>交付目标</span><strong>先可信，再可玩</strong></li>
               </ul>
             </div>
             <ul class="hero-proof-points">
-              <li>页面上半屏全部服务“为什么玩家会继续玩”</li>
-              <li>引擎能力刻意后置到下半屏，避免技术喧宾夺主</li>
+              <li>页面上半屏明确披露“尚不可玩”的真实状态</li>
+              <li>下半屏提供技术证据与开发路线，便于外部评估</li>
             </ul>
           </aside>
         </div>
       </section>
 
       <section id="matrix" class="section" data-reveal>
-        <h2>让人上头的四条系统支柱</h2>
-        <p class="section-intro">先讲玩家价值，再讲实现细节。每条支柱都对应明确行为后果和长期投入回报。</p>
+        <h2>目标玩法设计的四条系统支柱</h2>
+        <p class="section-intro">以下为目标能力设计，不代表当前已向玩家开放。</p>
         <div class="game-lattice">
           <article class="lattice-feature is-primary">
             <h3>三层循环统一驱动</h3>
-            <p>短循环给即时反馈，中循环给阶段胜负，长循环沉淀文明史。你不会“打完一把就结束”，而是持续经营下一轮优势。</p>
-            <span>价值：留存动机与情绪曲线持续存在</span>
+            <p>设计目标是让短循环提供即时反馈，中循环提供阶段胜负，长循环沉淀长期策略成本。</p>
+            <span>目标价值：形成长期留存动机</span>
           </article>
           <article class="lattice-feature">
             <h3>战争 x 治理双线博弈</h3>
-            <p>资源封锁、政体投票、区域条约同步发生，战术操作和制度设计相互缠绕。</p>
-            <span>价值：战斗之外有更高层策略空间</span>
+            <p>目标规则包含资源封锁、制度投票、区域条约等并行系统，提升策略层级。</p>
+            <span>目标价值：战斗之外仍有决策空间</span>
           </article>
           <article class="lattice-feature">
             <h3>玩家间接控制</h3>
-            <p>你定义目标、边界与底线，Agent 执行并承担不可逆后果，减少机械点击，放大决策张力。</p>
-            <span>价值：更像“指挥文明”，不是“点点点”</span>
+            <p>目标交互是“定义目标与约束，由 Agent 执行”，减少机械操作并强调策略表达。</p>
+            <span>目标价值：提升指挥层决策感</span>
           </article>
           <article class="lattice-feature is-alert">
             <h3>高收益伴随高反噬</h3>
-            <p>越激进的扩张越容易触发围堵、制裁与信誉崩塌，系统会逼你做取舍，而不是一路滚雪球。</p>
-            <span>价值：每次胜利都必须付出真实代价</span>
+            <p>目标平衡是“高收益伴随高代价”，避免单一路径滚雪球并强化反制。</p>
+            <span>目标价值：胜利与代价同时成立</span>
           </article>
         </div>
       </section>
 
       <section id="scenarios" class="section" data-reveal>
-        <h2>玩家的一天：从侦察到改写秩序</h2>
-        <p class="section-intro">同一世界里，你会在三个时间尺度上做完全不同的决策。</p>
+        <h2>目标体验样例（设计中）</h2>
+        <p class="section-intro">这些样例用于说明目标节奏与设计方向，不代表当前可玩流程。</p>
         <div class="grid cards-3">
           <article class="card">
-            <h3>日常循环（5~15 分钟）</h3>
-            <p>查看资源波动、调整策略阈值、处理突发事件，确保今天不被对手偷节奏。</p>
+            <h3>短循环目标（5~15 分钟）</h3>
+            <p>目标是在短时间内给出清晰反馈，让玩家能快速完成一次策略确认。</p>
           </article>
           <article class="card">
-            <h3>阶段循环（1~3 天）</h3>
-            <p>争夺关键节点、签订短期协定、重构生产链，形成阶段性碾压或反扑。</p>
+            <h3>中循环目标（1~3 天）</h3>
+            <p>目标是让联盟、交易、冲突在阶段内形成可验证的策略差异。</p>
           </article>
           <article class="card">
-            <h3>赛季循环（数周）</h3>
-            <p>推动制度变更与治理提案，把一次战术优势固化成文明级长期规则。</p>
+            <h3>长循环目标（数周）</h3>
+            <p>目标是把治理提案与制度变化沉淀为长期世界规则。</p>
           </article>
         </div>
         <div class="screens-grid">
@@ -192,7 +192,7 @@
               width="2400"
               height="1600"
             />
-            <figcaption>minimal：开局生存与第一轮资源反馈</figcaption>
+            <figcaption>minimal：研发验证截图（非可玩版本）</figcaption>
           </figure>
           <figure class="screen-card">
             <img
@@ -203,7 +203,7 @@
               width="2400"
               height="1600"
             />
-            <figcaption>twin_region：双边交易、合作与背刺</figcaption>
+            <figcaption>twin_region：研发验证截图（非可玩版本）</figcaption>
           </figure>
           <figure class="screen-card">
             <img
@@ -214,24 +214,24 @@
               width="2400"
               height="1600"
             />
-            <figcaption>triad_region：多方联盟与局势涌现</figcaption>
+            <figcaption>triad_region：研发验证截图（非可玩版本）</figcaption>
           </figure>
         </div>
       </section>
 
       <section id="demo" class="section" data-reveal>
-        <h2>本地 3 步上手：先回放，再在线</h2>
+        <h2>本地技术验证 3 步（开发者）</h2>
         <div class="grid cards-2">
           <article class="card">
-            <h3>离线战局回放（推荐）</h3>
-            <p>快速生成世界数据并回放，先理解玩法节奏与关键事件链。</p>
+            <h3>离线验证（推荐）</h3>
+            <p>先运行回放链路，确认数据产出、服务启动与 viewer 连接正常。</p>
             <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_demo -- twin_region_bootstrap --out .data/world_viewer_data
 env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_server -- .data/world_viewer_data 127.0.0.1:5010
 env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010</code></pre>
           </article>
           <article class="card">
-            <h3>在线持续战局（LLM 默认）</h3>
-            <p>进入持续推进模式，观察多日策略拉扯与对抗稳定性。</p>
+            <h3>在线验证（LLM 默认）</h3>
+            <p>进入持续运行模式，验证实时事件流、观测面板与控制链路。</p>
             <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011
 # 可选：回退脚本决策
 env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --no-llm --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011
@@ -239,11 +239,11 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023</code></p
           </article>
         </div>
         <article class="quickstart card">
-          <h3>三步完成本地首局（首次编译约 5~15 分钟）</h3>
+          <h3>三步完成本地技术验证（首次编译约 5~15 分钟）</h3>
           <ol class="steps">
             <li>克隆仓库并进入目录。</li>
             <li>执行 `env -u RUSTC_WRAPPER cargo check` 验证环境。</li>
-            <li>先跑回放熟悉规则，再切到在线模式观察长期演化。</li>
+            <li>先跑回放确认链路，再切到在线模式验证持续运行。</li>
           </ol>
           <p class="doc-entry-note">
             参数说明、排障路径与测试矩阵请前往
@@ -254,8 +254,8 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023</code></p
       </section>
 
       <section id="download" class="section" data-reveal>
-        <h2>下载安装包（最新稳定版）</h2>
-        <p class="section-intro">GitHub Pages 只做发布入口，安装包由 GitHub Releases 托管。点击下方按钮可直接下载。</p>
+        <h2>开发预览构建包下载（非正式可玩版）</h2>
+        <p class="section-intro">当前包体用于开发验证与联调，不代表面向玩家的可玩发布版本。</p>
         <p class="release-meta">
           当前版本：<strong data-release-tag>latest</strong>
           <span data-release-date data-release-date-prefix="发布时间">发布时间待同步</span>
@@ -267,21 +267,21 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023</code></p
             href="https://github.com/eng-cc/agent-world/releases/latest/download/agent-world-windows-x64.zip"
           >
             <h3>Windows x64</h3>
-            <p>下载 `agent-world-windows-x64.zip`，解压后运行 `run-client` 或 `run-game`。</p>
+            <p>下载开发预览包 `agent-world-windows-x64.zip`，用于技术验证。</p>
           </a>
           <a
             class="download-card"
             href="https://github.com/eng-cc/agent-world/releases/latest/download/agent-world-macos-x64.tar.gz"
           >
             <h3>macOS x64</h3>
-            <p>下载 `agent-world-macos-x64.tar.gz`，解压后用终端执行 `./run-client.sh`。</p>
+            <p>下载开发预览包 `agent-world-macos-x64.tar.gz`，用于技术验证。</p>
           </a>
           <a
             class="download-card"
             href="https://github.com/eng-cc/agent-world/releases/latest/download/agent-world-linux-x64.tar.gz"
           >
             <h3>Linux x64</h3>
-            <p>下载 `agent-world-linux-x64.tar.gz`，解压后执行 `./run-game.sh` 或 `./run-client.sh`。</p>
+            <p>下载开发预览包 `agent-world-linux-x64.tar.gz`，用于技术验证。</p>
           </a>
         </div>
         <p class="download-note">
@@ -293,8 +293,8 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023</code></p
       </section>
 
       <section id="proof" class="section" data-reveal>
-        <h2>证据链：不仅“看起来能玩”，而且可复现</h2>
-        <p class="section-intro">每个场景都可以复跑、回放、审计，玩法结果与命令链路一一对应。</p>
+        <h2>技术证据链：可复现、可审计</h2>
+        <p class="section-intro">以下内容证明当前开发链路可复跑、可回放、可审计；不等同于已开放玩家体验。</p>
         <div class="proof-switcher" data-proof-switcher>
           <p class="proof-switcher-label">切换证据场景</p>
           <div class="proof-switcher-controls" role="group" aria-label="切换证据场景" data-proof-controls>
@@ -308,13 +308,13 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023</code></p
 
         <div class="proof-grid">
           <article class="proof-card proof-card-key">
-            <h3>玩家闭环</h3>
+            <h3>技术闭环</h3>
             <ol class="proof-list">
               <li>执行 `world_viewer_demo` 或 `world_viewer_live` 产出局内事件</li>
               <li>通过 server 暴露回放/在线观测接口</li>
-              <li>连接 viewer 验证策略后果与规则反馈</li>
+              <li>连接 viewer 验证事件链路与规则反馈</li>
             </ol>
-            <a class="button secondary" href="#demo">按命令直接开局</a>
+            <a class="button secondary" href="#demo">按命令复现验证</a>
           </article>
 
           <article class="proof-card">
@@ -332,62 +332,62 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023</code></p
         </div>
 
         <div class="proof-strip">
-          <span class="proof-chip">覆盖：日常循环 + 阶段博弈 + 赛季治理</span>
+          <span class="proof-chip">覆盖：离线回放 + 在线运行 + 审计校验</span>
           <span class="proof-chip">运行：Offline Replay + Live LLM/Script</span>
           <span class="proof-chip">产物：命令 + 事件 + 截图</span>
-          <span class="proof-chip is-highlight">下一个章节开始讲引擎底座与扩展边界</span>
+          <span class="proof-chip is-highlight">当前状态：技术预览（尚不可玩）</span>
         </div>
 
         <div class="proof-timeline" data-proof-timeline>
           <article class="proof-timeline-item" data-proof-event="minimal" data-proof-visible="true">
             <span>Tick 128</span>
-            <p>minimal：采集动作通过，微循环即时反馈开启。</p>
+            <p>minimal：采集动作通过，验证事件采集链路正常。</p>
           </article>
           <article class="proof-timeline-item" data-proof-event="minimal" data-proof-visible="true">
             <span>Tick 136</span>
-            <p>minimal：价格波动触发风险提示，玩家进入取舍窗口。</p>
+            <p>minimal：价格波动事件可见，验证观测与告警链路正常。</p>
           </article>
           <article class="proof-timeline-item" data-proof-event="twin" data-proof-visible="false">
             <span>Tick 91</span>
-            <p>twin_region：双边交易达成，协同生产正式生效。</p>
+            <p>twin_region：交易事件完成，验证协同生产事件可追踪。</p>
           </article>
           <article class="proof-timeline-item" data-proof-event="twin" data-proof-visible="false">
             <span>Tick 97</span>
-            <p>twin_region：联盟摩擦出现，进入外交再谈判。</p>
+            <p>twin_region：冲突事件出现，验证事件流连续性。</p>
           </article>
           <article class="proof-timeline-item" data-proof-event="triad" data-proof-visible="false">
             <span>Tick 149</span>
-            <p>triad_region：三方协定签署，区域平衡被重写。</p>
+            <p>triad_region：多方协定事件落盘，验证治理事件输出。</p>
           </article>
           <article class="proof-timeline-item" data-proof-event="triad" data-proof-visible="false">
             <span>Tick 155</span>
-            <p>triad_region：治理投票结束，新制度进入执行态。</p>
+            <p>triad_region：治理投票结束，验证执行态切换事件。</p>
           </article>
         </div>
       </section>
 
       <section id="roadmap" class="section" data-reveal>
-        <h2>赛季路线图</h2>
+        <h2>开发路线图（非赛季）</h2>
         <div class="timeline">
           <article class="timeline-item done">
             <span class="status-tag done">已完成</span>
-            <h3>S1 · 新手首周闭环</h3>
-            <p>玩家上线即有明确收益与风险反馈，完成“可玩”基线。</p>
+            <h3>D1 · 基础运行链路</h3>
+            <p>完成 world 运行、viewer 连接与基础事件流闭环。</p>
           </article>
           <article class="timeline-item done">
             <span class="status-tag done">已完成</span>
-            <h3>S2 · 中循环对抗框架</h3>
-            <p>联盟、交易、冲突进入可验证状态，阶段胜负路径清晰。</p>
+            <h3>D2 · 观测与回放能力</h3>
+            <p>完成回放、在线观测与证据归档链路。</p>
           </article>
           <article class="timeline-item active">
             <span class="status-tag active">进行中</span>
-            <h3>S3 · 战争/治理/经济深度耦合</h3>
-            <p>强化反制链、信誉代价与策略分化，提升高端局张力。</p>
+            <h3>D3 · 规则与治理强化</h3>
+            <p>持续完善规则约束、治理机制与一致性保障。</p>
           </article>
           <article class="timeline-item next">
             <span class="status-tag next">下一阶段</span>
-            <h3>S4 · 文明级长线运营</h3>
-            <p>支持数周赛季、历史沉淀、社区规则共建与生态化扩展。</p>
+            <h3>D4 · 可玩版本收敛</h3>
+            <p>在验证链路稳定后，逐步推进面向玩家的可玩发布版本。</p>
           </article>
         </div>
       </section>
@@ -451,7 +451,7 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023</code></p
           </article>
           <article class="card">
             <h3>参与共建</h3>
-            <p>优先欢迎玩法循环与玩家体验提案，也欢迎引擎扩展、观测工具链与治理机制优化。</p>
+            <p>当前阶段优先欢迎引擎扩展、观测工具链、治理机制与可玩性验证方法的改进提案。</p>
             <div class="cta-row">
               <a class="button secondary" href="https://github.com/eng-cc/agent-world/issues" target="_blank" rel="noreferrer"
                 >提交 Issue</a
@@ -466,7 +466,7 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023</code></p
     </main>
 
     <footer class="footer">
-      <p>© <span data-year></span> agent-world. Play the game first, then extend the engine.</p>
+      <p>© <span data-year></span> agent-world. 当前为技术预览，目标逐步走向可玩版本。</p>
     </footer>
   </body>
 </html>
