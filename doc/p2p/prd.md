@@ -88,6 +88,7 @@
   - AC-6: `node-pos-slot-clock-real-time-2026-03-07` 专题文档落盘并映射任务链 `TASK-P2P-008`。
   - AC-7: `node-pos-subslot-tick-pacing-2026-03-07` 专题文档落盘并映射任务链 `TASK-P2P-009`。
   - AC-8: 三线联合验收清单明确给出“基线命令 + 发布门禁阈值 + 阻断条件 + 证据产物”，可直接用于发行前检查。
+  - AC-9: S9/S10 长跑结果模板与缺陷闭环模板完成定义，失败运行必须能映射到 `incident_id -> 修复任务 -> 回归证据`。
 - Non-Goals:
   - 不在本 PRD 细化 viewer UI 交互。
   - 不替代 runtime 内核的模块执行细节设计。
@@ -125,6 +126,7 @@
   - NFR-P2P-6: 手机轻客户端路径必须可验证最终性，且不要求端侧权威模拟。
   - NFR-P2P-7: slot 计算在重启前后保持单调一致；槽位倒退容忍度为 0（仅允许漏槽）。
   - NFR-P2P-8: 在启用 `ticks_per_slot` 时，logical tick/phase 计算跨节点一致，提案节拍可观测且可回归验证。
+  - NFR-P2P-9: S9/S10 若出现失败，必须在同一审计轮次内沉淀 `incident_id/root_cause/fix_commit/regression_command` 四元组证据。
 - Security & Privacy: 需保证节点身份、签名、账本与反馈数据链路的完整性；所有关键动作必须具备可审计记录。
 
 ## 5. Risks & Roadmap
@@ -146,6 +148,25 @@
 | PRD-P2P-004 | TASK-P2P-006/007 | `test_tier_required` + `test_tier_full` | 轻客户端 intent/finality/challenge/reconnect 闭环验证 | 移动端接入、公平性与可用性 |
 | PRD-P2P-005 | TASK-P2P-008 | `test_tier_required` + `test_tier_full` | 固定时间槽单调性/漏槽/重启恢复/未来槽拒绝回归 | 共识时间语义、提案与投票窗口 |
 | PRD-P2P-006 | TASK-P2P-009 | `test_tier_required` + `test_tier_full` | 槽内 tick 相位门控、动态调度等待与跨节点节拍回归 | 共识提案节奏、runtime 调度与可观测 |
+- S9/S10 长跑结果模板（TASK-P2P-003）:
+| 字段 | 说明 | 来源 |
+| --- | --- | --- |
+| `suite` | `S9` 或 `S10` | `testing-manual.md` 套件定义 |
+| `run_id` | 本次运行唯一标识（目录名/时间戳） | `.tmp/p2p_longrun/*` 或 `.tmp/s10_game_longrun/*` |
+| `profile` | `soak_smoke/soak_endurance/soak_release` 或 S10 对应档位 | 执行命令 |
+| `gate_status` | `pass/fail` | `summary.json` |
+| `key_metrics` | `lag_p95/distfs_failure_ratio/consensus_hash_mismatch_count` 等 | `summary.json` |
+| `evidence_paths` | `summary.json/timeline.csv/failures.md` | 产物目录 |
+- S9/S10 缺陷闭环模板（TASK-P2P-003）:
+| 字段 | 填写要求 | 闭环判定 |
+| --- | --- | --- |
+| `incident_id` | `S9-YYYYMMDD-xxx` 或 `S10-YYYYMMDD-xxx` | 与失败运行一一对应 |
+| `symptom` | 失败现象 + 首个告警指标 | 可定位到日志行或指标项 |
+| `root_cause` | 技术根因（网络/共识/存储/配置） | 具备可复现实验步骤 |
+| `fix_task` | 对应任务 ID（如 `TASK-P2P-00x-*`） | 任务文档可追踪 |
+| `fix_commit` | 修复提交 SHA | commit 可检索 |
+| `regression_command` | 至少 1 条定向回归 + 1 条长跑复验命令 | 命令可执行且结果通过 |
+| `closure_note` | 风险评估与是否阻断发布 | 发布门禁结论一致 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |

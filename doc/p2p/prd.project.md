@@ -5,7 +5,7 @@
 ## 任务拆解（含 PRD-ID 映射）
 - [x] TASK-P2P-001 (PRD-P2P-001) [test_tier_required]: 完成 p2p PRD 改写，建立分布式系统设计入口。
 - [x] TASK-P2P-002 (PRD-P2P-001/002) [test_tier_required]: 补齐网络/共识/DistFS 三线联合验收清单。
-- [ ] TASK-P2P-003 (PRD-P2P-002/003) [test_tier_required]: 建立 S9/S10 长跑结果与缺陷闭环模板。
+- [x] TASK-P2P-003 (PRD-P2P-002/003) [test_tier_required]: 建立 S9/S10 长跑结果与缺陷闭环模板。
 - [ ] TASK-P2P-004 (PRD-P2P-003) [test_tier_required]: 对接发行门禁中的分布式质量指标。
 - [x] TASK-P2P-005 (PRD-P2P-001/002/003) [test_tier_required]: 对齐 strict PRD schema，补齐关键流程/规格矩阵/边界异常/NFR/验证与决策记录。
 - [x] TASK-P2P-006 (PRD-P2P-004) [test_tier_required]: 输出“手机轻客户端权威状态”专题 PRD 与项目管理文档，并回写模块主索引链路。
@@ -17,6 +17,11 @@
 - [x] TASK-P2P-002-A [test_tier_required]: 在 `doc/p2p/prd.md` 补齐网络/共识/DistFS 三线联合验收清单（基线命令、门禁命令、阻断条件、证据产物）。
 - [x] TASK-P2P-002-B [test_tier_required]: 在主 PRD 的 Acceptance Criteria 与 Decision Log 增加联合验收清单的验收口径与决策依据。
 - [x] TASK-P2P-002-C [test_tier_required]: 执行文档门禁并回写项目状态，确保任务与测试层级可追溯。
+
+### TASK-P2P-003 执行拆解（PRD-P2P-002/003）
+- [x] TASK-P2P-003-A [test_tier_required]: 在 `doc/p2p/prd.md` 新增 S9/S10 长跑结果模板，统一运行记录字段与证据来源。
+- [x] TASK-P2P-003-B [test_tier_required]: 在 `doc/p2p/prd.md` 新增缺陷闭环模板，定义 `incident_id -> fix_task -> fix_commit -> regression_command` 链路。
+- [x] TASK-P2P-003-C [test_tier_required]: 在主 PRD 增补 AC/NFR 并回写项目状态，确保长跑失败不可静默。
 
 ## 依赖
 - doc/p2p/prd.index.md
@@ -31,7 +36,7 @@
 ## 状态
 - 更新日期: 2026-03-07
 - 当前状态: active
-- 下一任务: TASK-P2P-003 / TASK-P2P-007
+- 下一任务: TASK-P2P-004 / TASK-P2P-007
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - 本轮新增: `TASK-P2P-006` 已完成，专题文档 `p2p-mobile-light-client-authoritative-state-2026-03-06` 已纳入索引和模块追踪映射。
 - 本轮新增: `TASK-P2P-008` 已建档，专题文档 `node-pos-slot-clock-real-time-2026-03-07` 已纳入模块追踪映射。
@@ -47,6 +52,7 @@
 - TASK-P2P-009 进展（2026-03-07）: `TASK-P2P-009-T2` 已完成代码落地与 required 回归（runtime 动态等待下一 logical tick 边界、异常回退固定间隔、调度频率对比单测）。
 - TASK-P2P-009 进展（2026-03-07）: `TASK-P2P-009-T3` 已完成定向 required/full 回归与文档收口，`TASK-P2P-009` 全部完成。
 - TASK-P2P-002 进展（2026-03-07）: 已完成三线联合验收清单收口（网络/共识/DistFS 的基线命令、S9/S10 门禁阈值、阻断条件与证据产物定义）。
+- TASK-P2P-003 进展（2026-03-07）: 已完成 S9/S10 结果与缺陷闭环模板收口（运行结果字段、缺陷闭环字段、AC/NFR 口径）。
 - 说明: 本文档仅维护 p2p 设计执行状态；过程记录在 `doc/devlog/2026-03-07.md`。
 - ROUND-002 进展（2026-03-05）: 已并行完成 `B3-C2-009-S2/C2-010/C2-011`（observer sync-mode、node-contribution、distfs-self-healing）主从化回写。
 - ROUND-002 进展（2026-03-05）: 已并行完成 `B3-C2-003/C2-008-S1/C2-008-S2`（node-redeemable-power-asset、distfs-production-hardening phase1~9）主从化回写。
