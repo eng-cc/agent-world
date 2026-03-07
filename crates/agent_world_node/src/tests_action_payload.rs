@@ -400,6 +400,37 @@ fn config_rejects_zero_slot_duration() {
 }
 
 #[test]
+fn config_rejects_zero_ticks_per_slot() {
+    let mut pos_config = NodePosConfig::ethereum_like(vec![PosValidator {
+        validator_id: "node-a".to_string(),
+        stake: 100,
+    }]);
+    pos_config.ticks_per_slot = 0;
+    let result = NodeConfig::new("node-a", "world-tick-config", NodeRole::Observer)
+        .expect("base config")
+        .with_pos_config(pos_config);
+    assert!(
+        matches!(result, Err(NodeError::InvalidConfig { reason }) if reason.contains("ticks_per_slot"))
+    );
+}
+
+#[test]
+fn config_rejects_out_of_range_proposal_tick_phase() {
+    let mut pos_config = NodePosConfig::ethereum_like(vec![PosValidator {
+        validator_id: "node-a".to_string(),
+        stake: 100,
+    }]);
+    pos_config.ticks_per_slot = 10;
+    pos_config.proposal_tick_phase = 10;
+    let result = NodeConfig::new("node-a", "world-tick-phase", NodeRole::Observer)
+        .expect("base config")
+        .with_pos_config(pos_config);
+    assert!(
+        matches!(result, Err(NodeError::InvalidConfig { reason }) if reason.contains("proposal_tick_phase"))
+    );
+}
+
+#[test]
 fn feedback_p2p_config_rejects_zero_limits() {
     let err = NodeFeedbackP2pConfig::default()
         .with_max_incoming_announces_per_tick(0)

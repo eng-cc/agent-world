@@ -87,6 +87,9 @@ pub struct NodePosConfig {
     pub supermajority_denominator: u64,
     pub epoch_length_slots: u64,
     pub slot_duration_ms: u64,
+    pub ticks_per_slot: u64,
+    pub proposal_tick_phase: u64,
+    pub adaptive_tick_scheduler_enabled: bool,
     pub slot_clock_genesis_unix_ms: Option<i64>,
     pub max_past_slot_lag: u64,
 }
@@ -108,6 +111,9 @@ impl NodePosConfig {
             supermajority_denominator: 3,
             epoch_length_slots: 32,
             slot_duration_ms: 1,
+            ticks_per_slot: 1,
+            proposal_tick_phase: 0,
+            adaptive_tick_scheduler_enabled: false,
             slot_clock_genesis_unix_ms: None,
             max_past_slot_lag: 256,
         }
@@ -129,6 +135,26 @@ impl NodePosConfig {
         self.validator_signer_public_keys = validator_signer_public_keys;
         validate_pos_config(&self)?;
         Ok(self)
+    }
+
+    pub fn with_ticks_per_slot(mut self, ticks_per_slot: u64) -> Result<Self, NodeError> {
+        self.ticks_per_slot = ticks_per_slot;
+        if ticks_per_slot > 0 && self.proposal_tick_phase >= ticks_per_slot {
+            self.proposal_tick_phase = ticks_per_slot - 1;
+        }
+        validate_pos_config(&self)?;
+        Ok(self)
+    }
+
+    pub fn with_proposal_tick_phase(mut self, proposal_tick_phase: u64) -> Result<Self, NodeError> {
+        self.proposal_tick_phase = proposal_tick_phase;
+        validate_pos_config(&self)?;
+        Ok(self)
+    }
+
+    pub fn with_adaptive_tick_scheduler_enabled(mut self, enabled: bool) -> Self {
+        self.adaptive_tick_scheduler_enabled = enabled;
+        self
     }
 
     pub fn with_max_past_slot_lag(mut self, max_past_slot_lag: u64) -> Result<Self, NodeError> {
@@ -537,8 +563,14 @@ pub struct NodeConsensusSnapshot {
     pub mode: NodeConsensusMode,
     pub slot: u64,
     pub epoch: u64,
+    pub ticks_per_slot: u64,
+    pub tick_phase: u64,
+    pub proposal_tick_phase: u64,
     pub last_observed_slot: u64,
     pub missed_slot_count: u64,
+    pub last_observed_tick: u64,
+    pub missed_tick_count: u64,
+    pub adaptive_tick_scheduler_enabled: bool,
     pub latest_height: u64,
     pub committed_height: u64,
     pub last_committed_at_ms: Option<i64>,
@@ -574,8 +606,14 @@ impl Default for NodeConsensusSnapshot {
             mode: NodeConsensusMode::Pos,
             slot: 0,
             epoch: 0,
+            ticks_per_slot: 1,
+            tick_phase: 0,
+            proposal_tick_phase: 0,
             last_observed_slot: 0,
             missed_slot_count: 0,
+            last_observed_tick: 0,
+            missed_tick_count: 0,
+            adaptive_tick_scheduler_enabled: false,
             latest_height: 0,
             committed_height: 0,
             last_committed_at_ms: None,

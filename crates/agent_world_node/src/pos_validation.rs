@@ -36,6 +36,19 @@ pub(crate) fn validated_pos_state(
             reason: "slot_duration_ms must be positive".to_string(),
         });
     }
+    if pos_config.ticks_per_slot == 0 {
+        return Err(NodeError::InvalidConfig {
+            reason: "ticks_per_slot must be positive".to_string(),
+        });
+    }
+    if pos_config.proposal_tick_phase >= pos_config.ticks_per_slot {
+        return Err(NodeError::InvalidConfig {
+            reason: format!(
+                "proposal_tick_phase={} must be less than ticks_per_slot={}",
+                pos_config.proposal_tick_phase, pos_config.ticks_per_slot
+            ),
+        });
+    }
     if pos_config.supermajority_denominator == 0
         || pos_config.supermajority_numerator == 0
         || pos_config.supermajority_numerator > pos_config.supermajority_denominator

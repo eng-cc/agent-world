@@ -267,6 +267,109 @@ fn pos_engine_observed_slot_does_not_backtrack_on_clock_rewind() {
 }
 
 #[test]
+fn pos_engine_proposes_only_on_configured_tick_phase() {
+    let mut config =
+        NodeConfig::new("node-a", "world-phase-gate", NodeRole::Observer).expect("config");
+    config.pos_config.slot_duration_ms = 100;
+    config.pos_config.ticks_per_slot = 10;
+    config.pos_config.proposal_tick_phase = 9;
+    config.pos_config.slot_clock_genesis_unix_ms = Some(1_000);
+    let mut engine = PosNodeEngine::new(&config).expect("engine");
+
+    let phase_zero = engine
+        .tick(
+            &config.node_id,
+            &config.world_id,
+            1_000,
+            None,
+            None,
+            None,
+            None,
+            Vec::new(),
+            None,
+        )
+        .expect("phase zero tick");
+    assert_eq!(phase_zero.consensus_snapshot.committed_height, 0);
+    assert_eq!(phase_zero.consensus_snapshot.tick_phase, 0);
+
+    let phase_eight = engine
+        .tick(
+            &config.node_id,
+            &config.world_id,
+            1_080,
+            None,
+            None,
+            None,
+            None,
+            Vec::new(),
+            None,
+        )
+        .expect("phase eight tick");
+    assert_eq!(phase_eight.consensus_snapshot.committed_height, 0);
+    assert_eq!(phase_eight.consensus_snapshot.tick_phase, 8);
+
+    let phase_nine = engine
+        .tick(
+            &config.node_id,
+            &config.world_id,
+            1_090,
+            None,
+            None,
+            None,
+            None,
+            Vec::new(),
+            None,
+        )
+        .expect("phase nine tick");
+    assert_eq!(phase_nine.consensus_snapshot.committed_height, 1);
+    assert_eq!(phase_nine.consensus_snapshot.tick_phase, 9);
+}
+
+#[test]
+fn pos_engine_tracks_missed_logical_ticks() {
+    let mut config =
+        NodeConfig::new("node-a", "world-missed-tick", NodeRole::Observer).expect("config");
+    config.pos_config.slot_duration_ms = 100;
+    config.pos_config.ticks_per_slot = 10;
+    config.pos_config.proposal_tick_phase = 9;
+    config.pos_config.slot_clock_genesis_unix_ms = Some(1_000);
+    let mut engine = PosNodeEngine::new(&config).expect("engine");
+
+    engine
+        .tick(
+            &config.node_id,
+            &config.world_id,
+            1_000,
+            None,
+            None,
+            None,
+            None,
+            Vec::new(),
+            None,
+        )
+        .expect("first tick");
+    let jumped = engine
+        .tick(
+            &config.node_id,
+            &config.world_id,
+            1_120,
+            None,
+            None,
+            None,
+            None,
+            Vec::new(),
+            None,
+        )
+        .expect("jumped tick");
+
+    assert_eq!(engine.last_observed_tick, 12);
+    assert_eq!(engine.missed_tick_count, 11);
+    assert_eq!(jumped.consensus_snapshot.last_observed_tick, 12);
+    assert_eq!(jumped.consensus_snapshot.missed_tick_count, 11);
+    assert_eq!(jumped.consensus_snapshot.tick_phase, 2);
+}
+
+#[test]
 fn replication_commit_payload_includes_execution_hashes() {
     let dir = temp_dir("replication-payload-exec");
     let config = NodeReplicationConfig::new(dir.clone()).expect("replication config");
@@ -647,14 +750,15 @@ fn runtime_gossip_tracks_peer_committed_heads() {
     let mut runtime_b = NodeRuntime::new(config_b);
     runtime_a.start().expect("start a");
     runtime_b.start().expect("start b");
-    thread::sleep(Duration::from_millis(180));
-
-    let snapshot_a = runtime_a.snapshot();
-    let snapshot_b = runtime_b.snapshot();
-    assert!(snapshot_a.consensus.network_committed_height >= 1);
-    assert!(snapshot_b.consensus.network_committed_height >= 1);
-    assert!(snapshot_a.consensus.known_peer_heads >= 1);
-    assert!(snapshot_b.consensus.known_peer_heads >= 1);
+    let synced = wait_until(Instant::now() + Duration::from_secs(5), || {
+        let snapshot_a = runtime_a.snapshot();
+        let snapshot_b = runtime_b.snapshot();
+        snapshot_a.consensus.network_committed_height >= 1
+            && snapshot_b.consensus.network_committed_height >= 1
+            && snapshot_a.consensus.known_peer_heads >= 1
+            && snapshot_b.consensus.known_peer_heads >= 1
+    });
+    assert!(synced, "runtime gossip did not observe peer heads in time");
 
     runtime_a.stop().expect("stop a");
     runtime_b.stop().expect("stop b");

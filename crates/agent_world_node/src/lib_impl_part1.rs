@@ -5,6 +5,12 @@ enum InboundSlotWindow {
     Stale,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct ObservedPosTick {
+    slot: u64,
+    tick_phase: u64,
+}
+
 impl PosNodeEngine {
     fn new(config: &NodeConfig) -> Result<Self, NodeError> {
         let (validators, validator_players, validator_signers, total_stake, required_stake) =
@@ -80,8 +86,13 @@ impl PosNodeEngine {
             required_stake,
             epoch_length_slots: config.pos_config.epoch_length_slots,
             slot_duration_ms: config.pos_config.slot_duration_ms,
+            ticks_per_slot: config.pos_config.ticks_per_slot,
+            proposal_tick_phase: config.pos_config.proposal_tick_phase,
+            adaptive_tick_scheduler_enabled: config.pos_config.adaptive_tick_scheduler_enabled,
             slot_clock_genesis_unix_ms: config.pos_config.slot_clock_genesis_unix_ms,
             max_past_slot_lag: config.pos_config.max_past_slot_lag,
+            last_observed_tick: 0,
+            missed_tick_count: 0,
             last_observed_slot: 0,
             missed_slot_count: 0,
             local_validator_id: config.node_id.clone(),
@@ -137,7 +148,8 @@ impl PosNodeEngine {
             self.max_pending_consensus_actions,
         )?;
 
-        let current_slot = self.observe_wall_clock_slot(now_ms);
+        let observed_tick = self.observe_wall_clock_tick(now_ms)?;
+        let current_slot = observed_tick.slot;
 
         if let Some(endpoint) = gossip.as_ref() {
             self.ingest_peer_messages(
@@ -169,7 +181,9 @@ impl PosNodeEngine {
 
         let mut decision = if self.pending.is_some() {
             self.advance_pending_attestations(now_ms)?
-        } else if self.next_slot <= current_slot {
+        } else if self.next_slot <= current_slot
+            && observed_tick.tick_phase == self.proposal_tick_phase
+        {
             self.propose_next_head(node_id, world_id, now_ms)?
         } else {
             self.idle_pending_decision()?
@@ -252,12 +266,12 @@ impl PosNodeEngine {
         })
     }
 
-    fn observe_wall_clock_slot(&mut self, now_ms: i64) -> u64 {
+    fn observe_wall_clock_tick(&mut self, now_ms: i64) -> Result<ObservedPosTick, NodeError> {
         if self.slot_clock_genesis_unix_ms.is_none() {
-            let observed_offset_ms = self
-                .last_observed_slot
-                .saturating_mul(self.slot_duration_ms)
-                .min(i64::MAX as u64) as i64;
+            let observed_tick_offset = ((self.last_observed_tick as u128)
+                .saturating_mul(self.slot_duration_ms as u128))
+                / self.ticks_per_slot as u128;
+            let observed_offset_ms = observed_tick_offset.min(i64::MAX as u128) as i64;
             self.slot_clock_genesis_unix_ms = Some(now_ms.saturating_sub(observed_offset_ms));
         }
         let genesis = self.slot_clock_genesis_unix_ms.unwrap_or(now_ms);
@@ -266,9 +280,31 @@ impl PosNodeEngine {
         } else {
             0
         };
-        let observed_slot = elapsed_ms / self.slot_duration_ms;
+        let observed_tick = (((elapsed_ms as u128).saturating_mul(self.ticks_per_slot as u128))
+            / self.slot_duration_ms as u128) as u64;
+        if observed_tick > self.last_observed_tick {
+            let delta_ticks = observed_tick - self.last_observed_tick;
+            if delta_ticks > 1 {
+                self.missed_tick_count = self
+                    .missed_tick_count
+                    .checked_add(delta_ticks - 1)
+                    .ok_or_else(|| NodeError::Consensus {
+                        reason: format!(
+                            "missed_tick_count overflow while observing tick: current={} delta={}",
+                            self.missed_tick_count,
+                            delta_ticks - 1
+                        ),
+                    })?;
+            }
+            self.last_observed_tick = observed_tick;
+        }
+        let observed_slot = self.last_observed_tick / self.ticks_per_slot;
         self.last_observed_slot = self.last_observed_slot.max(observed_slot);
-        self.last_observed_slot
+        let tick_phase = self.last_observed_tick % self.ticks_per_slot;
+        Ok(ObservedPosTick {
+            slot: self.last_observed_slot,
+            tick_phase,
+        })
     }
 
     fn align_next_slot_to_wall_clock(&mut self, current_slot: u64) -> Result<(), NodeError> {
@@ -549,8 +585,14 @@ impl PosNodeEngine {
             mode: NodeConsensusMode::Pos,
             slot: self.next_slot,
             epoch: self.slot_epoch(self.next_slot),
+            ticks_per_slot: self.ticks_per_slot,
+            tick_phase: self.last_observed_tick % self.ticks_per_slot,
+            proposal_tick_phase: self.proposal_tick_phase,
             last_observed_slot: self.last_observed_slot,
             missed_slot_count: self.missed_slot_count,
+            last_observed_tick: self.last_observed_tick,
+            missed_tick_count: self.missed_tick_count,
+            adaptive_tick_scheduler_enabled: self.adaptive_tick_scheduler_enabled,
             latest_height: decision.height,
             committed_height: self.committed_height,
             last_committed_at_ms: self.last_committed_at_ms,

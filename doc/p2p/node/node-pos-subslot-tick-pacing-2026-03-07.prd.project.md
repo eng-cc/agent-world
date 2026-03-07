@@ -4,7 +4,7 @@
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] TASK-P2P-009-T0 (PRD-P2P-NODE-TICK-001/002/003) [test_tier_required]: 完成专题 PRD 与项目管理建档，并回写 `doc/p2p/prd.md` / `doc/p2p/prd.project.md` / `doc/p2p/prd.index.md`。
-- [ ] TASK-P2P-009-T1 (PRD-P2P-NODE-TICK-001/002) [test_tier_required]: 在 `NodePosConfig/PosNodeEngine` 引入 `ticks_per_slot`、`proposal_tick_phase`、logical tick 观测与提案相位门控，并补齐状态快照持久化字段。
+- [x] TASK-P2P-009-T1 (PRD-P2P-NODE-TICK-001/002) [test_tier_required]: 在 `NodePosConfig/PosNodeEngine` 引入 `ticks_per_slot`、`proposal_tick_phase`、logical tick 观测与提案相位门控，并补齐状态快照持久化字段。
 - [ ] TASK-P2P-009-T2 (PRD-P2P-NODE-TICK-003) [test_tier_required]: 在 `NodeRuntime` 引入自适应 tick 调度等待计算（动态单 tick 时长），并补齐 runtime 单元测试。
 - [ ] TASK-P2P-009-T3 (PRD-P2P-NODE-TICK-001/002/003) [test_tier_required + test_tier_full]: 补齐定向 required/full 回归，回写专题与模块项目文档并沉淀 devlog 证据。
 
@@ -21,7 +21,7 @@
 ## 状态
 - 更新日期: 2026-03-07
 - 当前状态: active
-- 下一任务: TASK-P2P-009-T1
+- 下一任务: TASK-P2P-009-T2
 - 阻塞项: 无
-- 进展: 已完成 `TASK-P2P-009-T0` 文档建档，明确 `slot_duration_ms=12000` + `ticks_per_slot=10` 的槽内 tick 相位门控与动态调度目标。
+- 进展: 已完成 `TASK-P2P-009-T0~T1`；已落地 `ticks_per_slot/proposal_tick_phase` 配置校验、logical tick/phase 观测、提案相位门控、`last_observed_tick/missed_tick_count` 快照持久化与 required 单测。
 - 说明: 本文档仅维护执行计划与任务状态；实施过程记录写入 `doc/devlog/2026-03-07.md`。

@@ -696,6 +696,8 @@ fn pos_engine_restore_state_snapshot_rejects_overflow_without_partial_state() {
         next_slot: 77,
         last_observed_slot: 77,
         missed_slot_count: 0,
+        last_observed_tick: 77,
+        missed_tick_count: 0,
         committed_height: u64::MAX,
         network_committed_height: u64::MAX,
         last_broadcast_proposal_height: 0,

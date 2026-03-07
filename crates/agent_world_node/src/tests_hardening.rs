@@ -431,6 +431,8 @@ fn runtime_start_fails_when_pos_state_snapshot_height_overflows() {
         next_slot: 0,
         last_observed_slot: 0,
         missed_slot_count: 0,
+        last_observed_tick: 0,
+        missed_tick_count: 0,
         committed_height: u64::MAX,
         network_committed_height: u64::MAX,
         last_broadcast_proposal_height: 0,
@@ -572,8 +574,11 @@ fn runtime_replication_ingest_rejects_signed_writer_outside_allowlist() {
             stake: 40,
         },
     ];
-    let pos_config =
+    let mut pos_config =
         signed_pos_config_with_signer_seeds(validators, &[("node-a", 91), ("node-b", 92)]);
+    pos_config.slot_duration_ms = 60_000;
+    pos_config.ticks_per_slot = 10;
+    pos_config.proposal_tick_phase = 9;
 
     let network_impl = Arc::new(TestInMemoryNetwork::default());
     let network: Arc<
