@@ -73,6 +73,12 @@
 | 轻客户端权威状态 | `intent(tick/seq/sig)`、`state_root`、`finality_state` | 手机端只上报 intent，接收 delta/proof 并展示最终性 | `pending -> confirmed -> final` | 按 tick 排序，重复 seq 幂等去重 | 权威状态仅由模拟节点提交，客户端无写权限 |
 | PoS 固定时间槽 | `genesis_unix_ms`、`slot_duration_ms`、`epoch_length_slots`、`last_observed_slot`、`missed_slot_count` | 每次 tick 按真实时间换算 slot；仅在 `next_slot <= current_slot` 时允许提案 | `pending -> committed/rejected`（槽位单调） | `current_slot=floor((now-genesis)/slot_duration)`；`epoch=slot/epoch_length_slots` | 仅验证者可提案/投票；未来槽消息拒绝 |
 | PoS 槽内 tick 节拍 | `ticks_per_slot`、`tick_phase`、`proposal_tick_phase`、`last_observed_tick`、`missed_tick_count` | 仅在命中提案相位时触发提案；worker 按下一 logical tick 边界动态调度 | `idle -> proposing`（相位门控） | `logical_tick=floor((now-genesis)*ticks_per_slot/slot_duration)`；`phase=tick%ticks_per_slot` | 节拍公式全节点一致；本地调度可回退固定间隔 |
+- 三线联合验收清单（TASK-P2P-002）:
+| 线别 | 必跑命令（基线） | 联合验收门禁 | 阻断条件（任一命中即 fail） | 证据产物 |
+| --- | --- | --- | --- | --- |
+| 网络线（net） | `env -u RUSTC_WRAPPER cargo test -p agent_world_net --lib`；`env -u RUSTC_WRAPPER cargo test -p agent_world_net --features libp2p --lib` | `./scripts/release-gate.sh --dry-run` + S9 发布档位命令（见 `testing-manual.md`） | `agent_world_net` 单测失败；S9 `metric_gate.status != pass`；`consensus_hash_consistent != true` | `release-gate-summary.md`、S9 `summary.json/timeline.csv` |
+| 共识线（consensus） | `env -u RUSTC_WRAPPER cargo test -p agent_world_consensus --lib`；`env -u RUSTC_WRAPPER cargo test -p agent_world_node --lib` | S9 + S10 发布档位命令（见 `testing-manual.md`） | 共识/节点单测失败；S9 或 S10 `overall_status/run.status != ok`；`consensus_hash_mismatch_count > 0` | S9/S10 `summary.json`、`failures.md`（若失败） |
+| 存储线（DistFS） | `env -u RUSTC_WRAPPER cargo test -p agent_world_distfs --lib` | S9 发布档位命令（含 `--max-distfs-failure-ratio 0.1`） | DistFS 单测失败；`distfs_failure_ratio` 超阈值；反馈/复制不一致无法闭环 | S9 `summary.json`、`feedback_events.log`、`chaos_events.log` |
 - Acceptance Criteria:
   - AC-1: p2p PRD 覆盖网络、共识、存储、激励四条主线。
   - AC-2: p2p project 文档任务项明确映射 PRD-P2P-ID。
@@ -81,6 +87,7 @@
   - AC-5: 轻客户端专题需求落盘并映射到独立任务链（`TASK-P2P-MLC-*`）。
   - AC-6: `node-pos-slot-clock-real-time-2026-03-07` 专题文档落盘并映射任务链 `TASK-P2P-008`。
   - AC-7: `node-pos-subslot-tick-pacing-2026-03-07` 专题文档落盘并映射任务链 `TASK-P2P-009`。
+  - AC-8: 三线联合验收清单明确给出“基线命令 + 发布门禁阈值 + 阻断条件 + 证据产物”，可直接用于发行前检查。
 - Non-Goals:
   - 不在本 PRD 细化 viewer UI 交互。
   - 不替代 runtime 内核的模块执行细节设计。
@@ -148,3 +155,4 @@
 | DEC-P2P-004 | 移动端采用轻客户端+链下权威模拟 | 手机端参与权威模拟 | 移动端资源受限，权威性和实时性需分层保障。 |
 | DEC-P2P-005 | PoS slot 按 wall-clock 统一公式驱动 | 继续本地 tick 自增 slot | 可消除重启/负载抖动造成的时间语义漂移。 |
 | DEC-P2P-006 | PoS 增加槽内 tick 相位门控与动态调度 | 仅保留固定 `tick_interval` 与 slot 门控 | 需要稳定落地 `10 tick/slot` 节奏并降低固定 sleep 漂移。 |
+| DEC-P2P-007 | 三线联合验收采用“子系统单测基线 + S9/S10 长跑门禁”双层收口 | 仅保留单测或仅保留长跑 | 单一层级无法覆盖“确定性回归 + 长时退化”双维风险。 |
