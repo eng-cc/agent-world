@@ -40,7 +40,8 @@
 | 权威增量下发 | `from_tick/to_tick/batch_id/patches/state_root/authority_sig` | 客户端接收并校验签名/根哈希，执行视觉纠偏 | `predicted -> corrected -> confirmed` | `to_tick` 必须单调递增；越界 patch 拒收 | 仅权威节点签名数据可生效 |
 | 链上承诺与挑战 | `batch_id/state_root/data_root/challenge_id/challenger_id/recomputed_state_root/recomputed_data_root/slash_record` | 提交承诺；watcher 在窗口内发起 challenge，并通过 resolve 产出是否 slash 的结论 | `committed -> challenged -> resolved -> final` | challenge 只能在窗口内提交；resolve 后若根不一致必须阻断 final 并记录 slash；根一致则允许继续进入 final | 仅被授权提交者可 commit；挑战者需抵押；resolve 仅权威仲裁流程可写 |
 | 最终性展示 | `batch_id/tx_hash/event_seq_start/event_seq_end/confirm_height/final_height/finality_state/settlement_ready/ranking_ready` | 客户端 UI 展示三段最终性并限制可消费动作 | `pending -> confirmed -> final` | `pending=已提交但未达到 confirm_height`；`confirmed=已达到 confirm_height 且未被 challenge 阻断`；`final=已达到 final_height 且 challenge 窗口关闭`；状态仅允许前进不允许倒退（除链重组回滚路径） | 非 final 数据禁止触发资产结算与排行统计 |
-| 重连与追平 | `snapshot_height/snapshot_hash/log_cursor` | 断线后拉快照+增量，必要时回滚到稳定点 | `offline -> syncing -> caught_up` | 优先最近稳定快照，再按 cursor 回放 | 仅同账户同会话（或恢复会话）可追平自身视图 |
+| 重连与追平 | `snapshot_height/snapshot_hash/log_cursor/stable_batch_id/reorg_epoch` | 断线后拉快照+增量，必要时回滚到稳定点并重建游标 | `offline -> syncing -> caught_up -> resynced` | 优先最近稳定快照；若 `snapshot_hash` 或 cursor 链不连续则强制回滚到 `stable_batch_id` 并重新追平 | 仅同账户同会话（或恢复会话）可追平自身视图 |
+| 会话吊销与换钥 | `player_id/session_pubkey/session_epoch/revoked_at_tick/replaced_by_pubkey/revoke_reason` | 运维或安全流程可发起吊销/换钥；旧会话立刻失效，新会话重新绑定 | `active -> revoked -> rotated` | 会话 epoch 单调递增；同一 `public_key` 被吊销后不可再次激活 | 仅受权运维流程可写入吊销；客户端只可使用当前有效 session key |
 - Acceptance Criteria:
   - AC-MLC-001 (PRD-P2P-MLC-001): 手机端主流程不启动本地权威模拟器；只存在输入、渲染和纠偏逻辑。
   - AC-MLC-002 (PRD-P2P-MLC-001): 同一 `(player_id, seq)` 重复上报仅生效一次，且具备审计日志。
@@ -52,6 +53,9 @@
   - AC-MLC-004a (PRD-P2P-MLC-003): watcher 提交 `recomputed_state_root/recomputed_data_root` 与批次根不一致时，批次不得进入 `final` 且必须产出 `slash_record`。
   - AC-MLC-004b (PRD-P2P-MLC-003): watcher 提交 challenge 后，`resolve` 必须给出确定性结论；若根一致则不得产生 slash，且批次可继续按窗口规则进入 `final`。
   - AC-MLC-005 (PRD-P2P-MLC-004): 客户端断线恢复流程可在快照可用前提下追平到最近确认高度。
+  - AC-MLC-005a (PRD-P2P-MLC-004): 发生链重组时，系统必须回滚到最近稳定（`final`）批次并重建 `log_cursor`；回滚后不得保留被重组分叉的最终性结果。
+  - AC-MLC-005b (PRD-P2P-MLC-004): 重连追平必须返回可验证的 `snapshot_hash + log_cursor`；若游标缺口或快照校验失败，必须触发“强制重拉快照”而非继续增量回放。
+  - AC-MLC-005c (PRD-P2P-MLC-004): 会话吊销后旧 `session_pubkey` 的 intent 与控制请求必须全部拒绝；换钥后仅新 key 可通过鉴权并继续写入。
   - AC-MLC-006 (PRD-P2P-MLC-002/004): 客户端最终性 UI 与链上状态一致，不出现“未 final 被当作 final”。
 - Non-Goals:
   - 不在本期实现“手机端本地确定性复算全世界状态”。
@@ -84,11 +88,11 @@
   - 序号篡改：`intent_seq` 与签名 `nonce` 不一致时直接拒绝，避免重放窗口绕过。
   - 批次根缺失/不一致：`state_root` 或 `data_root` 缺失、格式非法或校验失败时批次保持 pending 并产生日志告警。
   - 长时间无 peer：Gateway 回退到中继链路并触发网络健康告警。
-  - 链重组：客户端回滚到最近稳定提交点并重放未最终批次。
+  - 链重组：客户端回滚到最近稳定（`final`）提交点，重建 `log_cursor` 并重新追平，禁止沿旧分叉继续确认。
   - 挑战超时：窗口超时后状态进入 final，后续仅允许审计不上链回滚。
   - 重复 challenge/重复 resolve：同一 `challenge_id` 二次提交或二次结算必须幂等拒绝，防止重复罚没。
-  - 快照损坏：校验哈希失败即丢弃，回退到上一个可用快照并补拉增量。
-  - 会话密钥泄露：支持会话吊销与换钥，吊销后旧会话 intent 全部拒绝。
+  - 快照损坏：校验哈希失败即丢弃，回退到上一个可用快照并补拉增量；若连续失败则触发强制全量快照重拉。
+  - 会话密钥泄露：支持会话吊销与换钥；吊销后旧会话 intent/控制请求全部拒绝，并要求新 key 重新绑定会话 epoch。
   - 弱网高抖动：客户端降级为低频 delta + 关键帧同步，保活优先。
 - Non-Functional Requirements:
   - NFR-MLC-1 (性能): 目标模拟频率 15Hz；客户端 delta 接收频率默认 5Hz。

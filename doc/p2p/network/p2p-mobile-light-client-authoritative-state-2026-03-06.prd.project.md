@@ -22,6 +22,12 @@
 - [x] TASK-P2P-MLC-004-C [test_tier_full]: 实现 slash 记录与批次联动（错误根触发 slash、正确根不罚没），并保证重复 challenge/resolve 幂等拒绝。
 - [x] TASK-P2P-MLC-004-D [test_tier_full]: 补齐 challenge/resolve/slash 定向测试并执行 `testing-manual.md` 对应 full 套件。
 
+### TASK-P2P-MLC-005 执行拆解（PRD-P2P-MLC-004）
+- [ ] TASK-P2P-MLC-005-A [test_tier_required]: 在 `runtime_live` 引入稳定检查点与回滚入口，支持按稳定批次执行重组回滚并清理分叉批次最终性。
+- [ ] TASK-P2P-MLC-005-B [test_tier_required]: 增加断线重连追平元数据（`snapshot_hash/log_cursor/stable_batch_id/reorg_epoch`）与快照重拉分支，确保游标缺口可恢复。
+- [ ] TASK-P2P-MLC-005-C [test_tier_required]: 实现会话吊销/换钥命令，落地旧 key 拒绝、新 key 绑定与 epoch 单调约束。
+- [ ] TASK-P2P-MLC-005-D [test_tier_required]: 补齐重组回滚、重连追平、会话吊销换钥的定向测试并执行 `testing-manual.md` 对应 required 套件。
+
 ## 依赖
 - `doc/p2p/network/p2p-mobile-light-client-authoritative-state-2026-03-06.prd.md`
 - `doc/p2p/network/p2p-mobile-light-client-authoritative-state-2026-03-06.prd.project.md`
@@ -37,6 +43,7 @@
 - 下一任务: TASK-P2P-MLC-005
 - TASK-P2P-MLC-003 收口（2026-03-07）: A/B/C/D 已全部完成（批次承诺、最终性状态机、结算闸门、required 定向回归）。
 - TASK-P2P-MLC-004 收口（2026-03-07）: A/B/C/D 已全部完成（challenge 提交入口、resolve 状态机、slash 联动、full 定向回归）。
+- TASK-P2P-MLC-005 计划口径（2026-03-07）: 已锁定 A/B/C/D 四个子步骤（稳定点回滚、重连追平、会话吊销换钥、required 回归）。
 - 本轮完成:
   - 在 `agent_world_proto::viewer::AgentChatRequest` 增加 `intent_tick/intent_seq` 字段，并在 `AgentChatAck` 增加 `intent_tick/intent_seq/idempotent_replay`。
   - `runtime_live` 增加 `intent_seq` 幂等重放语义：同 `(player_id, agent_id, intent_seq)` 重试返回同 ACK，变更载荷触发冲突拒绝。

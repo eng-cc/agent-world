@@ -28,6 +28,7 @@
 - TASK-P2P-007 进展（2026-03-07）: 已完成子任务 `TASK-P2P-MLC-002`（intent `tick/seq/sig` 字段、`runtime_live` 幂等 ACK、相关回归测试）。
 - TASK-P2P-007 进展（2026-03-07）: `TASK-P2P-MLC-003` 已完成代码落地与定向 required 回归（权威批次 `state_root/data_root`、`pending/confirmed/final` 状态机、final-only 结算/排行闸门）。
 - TASK-P2P-007 进展（2026-03-07）: `TASK-P2P-MLC-004` 已完成代码落地与 `test_tier_full` 定向回归（watcher challenge 入口、resolve/slash 仲裁、challenge 阻断 final）。
+- TASK-P2P-007 进展（2026-03-07）: `TASK-P2P-MLC-005` 已完成文档侧拆解，进入重组回滚/重连追平/会话吊销换钥代码实现阶段。
 - 说明: 本文档仅维护 p2p 设计执行状态；过程记录在 `doc/devlog/2026-03-07.md`。
 - ROUND-002 进展（2026-03-05）: 已并行完成 `B3-C2-009-S2/C2-010/C2-011`（observer sync-mode、node-contribution、distfs-self-healing）主从化回写。
 - ROUND-002 进展（2026-03-05）: 已并行完成 `B3-C2-003/C2-008-S1/C2-008-S2`（node-redeemable-power-asset、distfs-production-hardening phase1~9）主从化回写。
