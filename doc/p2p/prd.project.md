@@ -11,7 +11,7 @@
 - [x] TASK-P2P-006 (PRD-P2P-004) [test_tier_required]: 输出“手机轻客户端权威状态”专题 PRD 与项目管理文档，并回写模块主索引链路。
 - [ ] TASK-P2P-007 (PRD-P2P-004) [test_tier_required + test_tier_full]: 实现 intent-only 接入、finality UI、challenge/reconnect 闭环并补齐回归证据。
 - [x] TASK-P2P-008 (PRD-P2P-005) [test_tier_required + test_tier_full]: 实现 PoS 固定时间槽（slot/epoch）真实时钟驱动、漏槽计数与时间窗口校验，并补齐回归证据。
-- [ ] TASK-P2P-009 (PRD-P2P-006) [test_tier_required + test_tier_full]: 实现 PoS 槽内 tick 相位门控（`ticks_per_slot`）与动态节拍调度，并补齐回归证据。
+- [x] TASK-P2P-009 (PRD-P2P-006) [test_tier_required + test_tier_full]: 实现 PoS 槽内 tick 相位门控（`ticks_per_slot`）与动态节拍调度，并补齐回归证据。
 
 ## 依赖
 - doc/p2p/prd.index.md
@@ -26,7 +26,7 @@
 ## 状态
 - 更新日期: 2026-03-07
 - 当前状态: active
-- 下一任务: TASK-P2P-009-T1 / TASK-P2P-002
+- 下一任务: TASK-P2P-002 / TASK-P2P-007
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - 本轮新增: `TASK-P2P-006` 已完成，专题文档 `p2p-mobile-light-client-authoritative-state-2026-03-06` 已纳入索引和模块追踪映射。
 - 本轮新增: `TASK-P2P-008` 已建档，专题文档 `node-pos-slot-clock-real-time-2026-03-07` 已纳入模块追踪映射。
@@ -40,6 +40,7 @@
 - TASK-P2P-009 进展（2026-03-07）: `TASK-P2P-009-T0` 已完成（专题 PRD/项目管理建档，明确 `10 tick/slot` 相位门控与动态调度方案）。
 - TASK-P2P-009 进展（2026-03-07）: `TASK-P2P-009-T1` 已完成代码落地与 required 回归（`ticks_per_slot/proposal_tick_phase` 配置校验、logical tick 观测、提案相位门控、tick 级快照持久化）。
 - TASK-P2P-009 进展（2026-03-07）: `TASK-P2P-009-T2` 已完成代码落地与 required 回归（runtime 动态等待下一 logical tick 边界、异常回退固定间隔、调度频率对比单测）。
+- TASK-P2P-009 进展（2026-03-07）: `TASK-P2P-009-T3` 已完成定向 required/full 回归与文档收口，`TASK-P2P-009` 全部完成。
 - 说明: 本文档仅维护 p2p 设计执行状态；过程记录在 `doc/devlog/2026-03-07.md`。
 - ROUND-002 进展（2026-03-05）: 已并行完成 `B3-C2-009-S2/C2-010/C2-011`（observer sync-mode、node-contribution、distfs-self-healing）主从化回写。
 - ROUND-002 进展（2026-03-05）: 已并行完成 `B3-C2-003/C2-008-S1/C2-008-S2`（node-redeemable-power-asset、distfs-production-hardening phase1~9）主从化回写。
