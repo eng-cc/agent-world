@@ -89,6 +89,7 @@
   - AC-7: `node-pos-subslot-tick-pacing-2026-03-07` 专题文档落盘并映射任务链 `TASK-P2P-009`。
   - AC-8: 三线联合验收清单明确给出“基线命令 + 发布门禁阈值 + 阻断条件 + 证据产物”，可直接用于发行前检查。
   - AC-9: S9/S10 长跑结果模板与缺陷闭环模板完成定义，失败运行必须能映射到 `incident_id -> 修复任务 -> 回归证据`。
+  - AC-10: 发行门禁分布式质量指标（S9/S10）具备“阈值 + 数据源 + 阻断策略 + 责任归属”映射，并与 `release-gate` 脚本参数一致。
 - Non-Goals:
   - 不在本 PRD 细化 viewer UI 交互。
   - 不替代 runtime 内核的模块执行细节设计。
@@ -127,6 +128,7 @@
   - NFR-P2P-7: slot 计算在重启前后保持单调一致；槽位倒退容忍度为 0（仅允许漏槽）。
   - NFR-P2P-8: 在启用 `ticks_per_slot` 时，logical tick/phase 计算跨节点一致，提案节拍可观测且可回归验证。
   - NFR-P2P-9: S9/S10 若出现失败，必须在同一审计轮次内沉淀 `incident_id/root_cause/fix_commit/regression_command` 四元组证据。
+  - NFR-P2P-10: 分布式发布门禁不得接受 `insufficient_data` 作为通过结果；S9/S10 指标门禁结果必须显式为 `pass`。
 - Security & Privacy: 需保证节点身份、签名、账本与反馈数据链路的完整性；所有关键动作必须具备可审计记录。
 
 ## 5. Risks & Roadmap
@@ -167,6 +169,17 @@
 | `fix_commit` | 修复提交 SHA | commit 可检索 |
 | `regression_command` | 至少 1 条定向回归 + 1 条长跑复验命令 | 命令可执行且结果通过 |
 | `closure_note` | 风险评估与是否阻断发布 | 发布门禁结论一致 |
+- 发行门禁分布式质量指标映射（TASK-P2P-004）:
+| 指标 | 数据源 | 发布阈值（2026-03-07） | 阻断策略 | 执行责任 |
+| --- | --- | --- | --- | --- |
+| `S9.topologies[].metric_gate.status` | S9 `summary.json` | 必须为 `pass` | 任何拓扑 `fail/insufficient_data` 直接阻断 | 发行值班工程师 |
+| `S9.topologies[].metrics.consensus_hash_consistent` | S9 `summary.json` | 必须为 `true` | 任意 `false` 直接阻断并拉起共识排障 | 共识 owner |
+| `S9.topologies[].metrics.consensus_hash_mismatch_count` | S9 `summary.json` | 必须为 `0` | 非 0 直接阻断并要求补 `consensus_hash_mismatch.tsv` 分析 | 共识 owner |
+| `S9.topologies[].metrics.lag_p95` | S9 `summary.json` | `<= 50`（由 `--max-lag-p95 50` 注入） | 超阈值阻断并进入网络退化复盘 | 网络 owner |
+| `S9.topologies[].metrics.distfs_failure_ratio` | S9 `summary.json` | `<= 0.1`（由 `--max-distfs-failure-ratio 0.1` 注入） | 超阈值阻断并进入 DistFS 复制链路修复 | DistFS owner |
+| `S10.run.metric_gate.status` | S10 `summary.json` | 必须为 `pass` | `fail/insufficient_data` 直接阻断 | 发行值班工程师 |
+| `S10.run.status` | S10 `summary.json` | 必须为 `ok` | 非 `ok` 直接阻断并要求 `failures.md` | 发行值班工程师 |
+| `S10.run.metrics.lag_p95` | S10 `summary.json` | `<= 50`（由 `--max-lag-p95 50` 注入） | 超阈值阻断并回退到性能/网络专项 | 网络 owner |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |
@@ -177,3 +190,4 @@
 | DEC-P2P-005 | PoS slot 按 wall-clock 统一公式驱动 | 继续本地 tick 自增 slot | 可消除重启/负载抖动造成的时间语义漂移。 |
 | DEC-P2P-006 | PoS 增加槽内 tick 相位门控与动态调度 | 仅保留固定 `tick_interval` 与 slot 门控 | 需要稳定落地 `10 tick/slot` 节奏并降低固定 sleep 漂移。 |
 | DEC-P2P-007 | 三线联合验收采用“子系统单测基线 + S9/S10 长跑门禁”双层收口 | 仅保留单测或仅保留长跑 | 单一层级无法覆盖“确定性回归 + 长时退化”双维风险。 |
+| DEC-P2P-008 | 分布式质量指标按 `release-gate.sh` 参数固化为“硬阻断” | 发布前人工主观评估放行 | 降低人工判断漂移，确保门禁可复现。 |
