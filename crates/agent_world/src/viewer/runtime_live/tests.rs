@@ -823,3 +823,231 @@ fn runtime_authoritative_challenge_duplicate_resolve_is_rejected() {
         .expect_err("duplicate resolve should reject");
     assert_eq!(err.code, "challenge_already_resolved");
 }
+
+#[test]
+fn runtime_authoritative_recovery_rollback_prunes_fork_batches() {
+    let mut server =
+        ViewerRuntimeLiveServer::new(ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal))
+            .expect("runtime server");
+
+    let first = commit_single_authoritative_batch(&mut server);
+    let updates = server
+        .advance_authoritative_batch_finality(first.final_height)
+        .expect("finalize first batch");
+    assert!(updates.iter().any(|batch| {
+        batch.batch_id == first.batch_id
+            && batch.finality_state == AuthoritativeFinalityState::Final
+    }));
+    assert_eq!(server.stable_checkpoints.len(), 1);
+
+    let second = commit_single_authoritative_batch(&mut server);
+    assert_eq!(server.authoritative_batches.len(), 2);
+    assert_eq!(server.authoritative_batches[1].batch_id, second.batch_id);
+
+    let (ack, emit_snapshot_after_ack) = server
+        .handle_authoritative_recovery(AuthoritativeRecoveryCommand::Rollback {
+            request: AuthoritativeRollbackRequest {
+                target_batch_id: Some(first.batch_id.clone()),
+                reason: "test_reorg".to_string(),
+                requested_by: Some("ops".to_string()),
+            },
+        })
+        .expect("rollback to first stable batch");
+    assert!(emit_snapshot_after_ack);
+    assert_eq!(ack.status, AuthoritativeRecoveryStatus::RolledBack);
+    assert_eq!(
+        ack.stable_batch_id.as_deref(),
+        Some(first.batch_id.as_str())
+    );
+    assert_eq!(server.reorg_epoch, 1);
+    assert_eq!(server.authoritative_batches.len(), 1);
+    assert_eq!(server.authoritative_batches[0].batch_id, first.batch_id);
+}
+
+#[test]
+fn runtime_authoritative_recovery_reconnect_detects_reorg_epoch_mismatch() {
+    let mut server =
+        ViewerRuntimeLiveServer::new(ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal))
+            .expect("runtime server");
+
+    let first = commit_single_authoritative_batch(&mut server);
+    let _ = server
+        .advance_authoritative_batch_finality(first.final_height)
+        .expect("finalize first batch");
+    let initial_cursor = latest_runtime_event_seq(&server.world);
+
+    let (initial_ack, emit_snapshot_after_ack) = server
+        .handle_authoritative_recovery(AuthoritativeRecoveryCommand::ReconnectSync {
+            request: AuthoritativeReconnectSyncRequest {
+                player_id: "player-a".to_string(),
+                session_pubkey: None,
+                last_known_log_cursor: Some(initial_cursor),
+                expected_reorg_epoch: Some(0),
+            },
+        })
+        .expect("initial reconnect sync");
+    assert!(!emit_snapshot_after_ack);
+    assert_eq!(
+        initial_ack.status,
+        AuthoritativeRecoveryStatus::CatchUpReady
+    );
+    assert_eq!(initial_ack.message.as_deref(), Some("delta_replay_allowed"));
+
+    let _ = server
+        .handle_authoritative_recovery(AuthoritativeRecoveryCommand::Rollback {
+            request: AuthoritativeRollbackRequest {
+                target_batch_id: Some(first.batch_id),
+                reason: "force_reorg".to_string(),
+                requested_by: None,
+            },
+        })
+        .expect("rollback");
+    assert_eq!(server.reorg_epoch, 1);
+
+    let (stale_ack, emit_snapshot_after_ack) = server
+        .handle_authoritative_recovery(AuthoritativeRecoveryCommand::ReconnectSync {
+            request: AuthoritativeReconnectSyncRequest {
+                player_id: "player-a".to_string(),
+                session_pubkey: None,
+                last_known_log_cursor: Some(initial_cursor),
+                expected_reorg_epoch: Some(0),
+            },
+        })
+        .expect("stale reconnect sync");
+    assert!(!emit_snapshot_after_ack);
+    assert_eq!(stale_ack.status, AuthoritativeRecoveryStatus::CatchUpReady);
+    assert!(stale_ack
+        .message
+        .as_deref()
+        .is_some_and(|message| message.contains("snapshot_reload_required")));
+}
+
+#[test]
+fn runtime_authoritative_recovery_rotate_and_revoke_session_enforced_for_agent_chat() {
+    set_test_llm_env();
+    let mut server = ViewerRuntimeLiveServer::new(
+        ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal)
+            .with_decision_mode(ViewerLiveDecisionMode::Llm),
+    )
+    .expect("runtime server");
+    let agent_id = server
+        .world
+        .state()
+        .agents
+        .keys()
+        .next()
+        .cloned()
+        .expect("seed agent");
+    let (public_key_v1, private_key_v1) = test_signer(31);
+    let (public_key_v2, private_key_v2) = test_signer(32);
+
+    let first_request = signed_agent_chat_request(
+        crate::viewer::AgentChatRequest {
+            agent_id: agent_id.clone(),
+            player_id: Some("player-a".to_string()),
+            public_key: None,
+            auth: None,
+            message: "hello".to_string(),
+            intent_tick: Some(1),
+            intent_seq: Some(1),
+        },
+        1,
+        public_key_v1.as_str(),
+        private_key_v1.as_str(),
+    );
+    let _ = server
+        .handle_agent_chat(first_request)
+        .expect("first key should be accepted");
+
+    let (rotate_ack, emit_snapshot_after_ack) = server
+        .handle_authoritative_recovery(AuthoritativeRecoveryCommand::RotateSession {
+            request: AuthoritativeSessionRotateRequest {
+                player_id: "player-a".to_string(),
+                old_session_pubkey: public_key_v1.clone(),
+                new_session_pubkey: public_key_v2.clone(),
+                rotate_reason: "security_rotation".to_string(),
+                rotated_by: Some("ops".to_string()),
+            },
+        })
+        .expect("rotate session");
+    assert!(!emit_snapshot_after_ack);
+    assert_eq!(
+        rotate_ack.status,
+        AuthoritativeRecoveryStatus::SessionRotated
+    );
+    assert_eq!(
+        rotate_ack.session_pubkey.as_deref(),
+        Some(public_key_v1.as_str())
+    );
+    assert_eq!(
+        rotate_ack.replaced_by_pubkey.as_deref(),
+        Some(public_key_v2.as_str())
+    );
+
+    let stale_request = signed_agent_chat_request(
+        crate::viewer::AgentChatRequest {
+            agent_id: agent_id.clone(),
+            player_id: Some("player-a".to_string()),
+            public_key: None,
+            auth: None,
+            message: "stale".to_string(),
+            intent_tick: Some(2),
+            intent_seq: Some(2),
+        },
+        2,
+        public_key_v1.as_str(),
+        private_key_v1.as_str(),
+    );
+    let stale_err = server
+        .handle_agent_chat(stale_request)
+        .expect_err("old key should be rejected after rotation");
+    assert_eq!(stale_err.code, "session_revoked");
+
+    let rotated_request = signed_agent_chat_request(
+        crate::viewer::AgentChatRequest {
+            agent_id: agent_id.clone(),
+            player_id: Some("player-a".to_string()),
+            public_key: None,
+            auth: None,
+            message: "rotated".to_string(),
+            intent_tick: Some(3),
+            intent_seq: Some(1),
+        },
+        1,
+        public_key_v2.as_str(),
+        private_key_v2.as_str(),
+    );
+    let _ = server
+        .handle_agent_chat(rotated_request)
+        .expect("new key should be accepted");
+
+    let _ = server
+        .handle_authoritative_recovery(AuthoritativeRecoveryCommand::RevokeSession {
+            request: AuthoritativeSessionRevokeRequest {
+                player_id: "player-a".to_string(),
+                session_pubkey: Some(public_key_v2.clone()),
+                revoke_reason: "compromised".to_string(),
+                revoked_by: Some("ops".to_string()),
+            },
+        })
+        .expect("revoke session");
+
+    let revoked_request = signed_agent_chat_request(
+        crate::viewer::AgentChatRequest {
+            agent_id,
+            player_id: Some("player-a".to_string()),
+            public_key: None,
+            auth: None,
+            message: "revoked".to_string(),
+            intent_tick: Some(4),
+            intent_seq: Some(2),
+        },
+        2,
+        public_key_v2.as_str(),
+        private_key_v2.as_str(),
+    );
+    let revoked_err = server
+        .handle_agent_chat(revoked_request)
+        .expect_err("revoked key should be rejected");
+    assert_eq!(revoked_err.code, "session_revoked");
+}

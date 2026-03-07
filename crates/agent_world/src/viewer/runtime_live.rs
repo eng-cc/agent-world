@@ -1,11 +1,12 @@
-use std::collections::{BTreeSet, HashSet, VecDeque};
+use std::collections::{BTreeMap, BTreeSet, HashSet, VecDeque};
 use std::io::{self, BufRead, BufReader, BufWriter, Write};
 use std::net::{TcpListener, TcpStream};
 use std::time::{Duration, Instant};
 
 use crate::geometry::GeoPos;
 use crate::runtime::{
-    blake3_hex, Action as RuntimeAction, DomainEvent as RuntimeDomainEvent, World as RuntimeWorld,
+    blake3_hex, Action as RuntimeAction, DomainEvent as RuntimeDomainEvent,
+    Journal as RuntimeJournal, Snapshot as RuntimeSnapshot, World as RuntimeWorld,
     WorldError as RuntimeWorldError, WorldEventBody as RuntimeWorldEventBody,
 };
 use crate::simulator::{
@@ -20,7 +21,10 @@ use super::protocol::{
     viewer_event_kind_matches, AuthoritativeBatchFinality, AuthoritativeChallengeAck,
     AuthoritativeChallengeCommand, AuthoritativeChallengeError,
     AuthoritativeChallengeResolveRequest, AuthoritativeChallengeStatus,
-    AuthoritativeChallengeSubmitRequest, AuthoritativeFinalityState, ControlCompletionAck,
+    AuthoritativeChallengeSubmitRequest, AuthoritativeFinalityState,
+    AuthoritativeReconnectSyncRequest, AuthoritativeRecoveryAck, AuthoritativeRecoveryCommand,
+    AuthoritativeRecoveryError, AuthoritativeRecoveryStatus, AuthoritativeRollbackRequest,
+    AuthoritativeSessionRevokeRequest, AuthoritativeSessionRotateRequest, ControlCompletionAck,
     ControlCompletionStatus, ViewerControl, ViewerControlProfile, ViewerEventKind, ViewerRequest,
     ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
 };
@@ -37,6 +41,211 @@ const AUTHORITATIVE_BATCH_CONFIRM_DELAY_TICKS: u64 = 1;
 const AUTHORITATIVE_BATCH_FINALITY_WINDOW_TICKS: u64 = 2;
 const MAX_AUTHORITATIVE_BATCH_HISTORY: usize = 256;
 const MAX_AUTHORITATIVE_CHALLENGE_HISTORY: usize = 512;
+const MAX_AUTHORITATIVE_STABLE_CHECKPOINTS: usize = 64;
+
+#[derive(Debug, Clone)]
+struct RuntimeStableCheckpoint {
+    batch_id: String,
+    snapshot: RuntimeSnapshot,
+    journal: RuntimeJournal,
+    log_cursor: u64,
+}
+
+#[derive(Debug, Clone)]
+struct RuntimeRecoveryCursor {
+    snapshot_hash: String,
+    snapshot_height: u64,
+    log_cursor: u64,
+    stable_batch_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Default)]
+struct RuntimeSessionPolicy {
+    active_pubkey_by_player: BTreeMap<String, String>,
+    revoked_pubkeys_by_player: BTreeMap<String, BTreeSet<String>>,
+    session_epoch_by_player: BTreeMap<String, u64>,
+}
+
+impl RuntimeSessionPolicy {
+    fn validate_or_register_active_key(
+        &mut self,
+        player_id: &str,
+        public_key: &str,
+    ) -> Result<u64, String> {
+        let player_id = player_id.trim();
+        let public_key = public_key.trim();
+        if player_id.is_empty() {
+            return Err("session_player_id_invalid: player_id cannot be empty".to_string());
+        }
+        if public_key.is_empty() {
+            return Err("session_pubkey_invalid: session_pubkey cannot be empty".to_string());
+        }
+
+        if self
+            .revoked_pubkeys_by_player
+            .get(player_id)
+            .is_some_and(|keys| keys.contains(public_key))
+        {
+            return Err(format!(
+                "session_revoked: player {} session_pubkey {} is revoked",
+                player_id, public_key
+            ));
+        }
+
+        match self.active_pubkey_by_player.get(player_id) {
+            Some(active) if active == public_key => {}
+            Some(active) => {
+                return Err(format!(
+                    "session_key_mismatch: player {} active session_pubkey {} does not match {}",
+                    player_id, active, public_key
+                ));
+            }
+            None => {
+                self.active_pubkey_by_player
+                    .insert(player_id.to_string(), public_key.to_string());
+                self.session_epoch_by_player
+                    .entry(player_id.to_string())
+                    .or_insert(1);
+            }
+        }
+
+        Ok(self.session_epoch(player_id))
+    }
+
+    fn validate_known_session_key(&self, player_id: &str, public_key: &str) -> Result<u64, String> {
+        let player_id = player_id.trim();
+        let public_key = public_key.trim();
+        if player_id.is_empty() {
+            return Err("session_player_id_invalid: player_id cannot be empty".to_string());
+        }
+        if public_key.is_empty() {
+            return Err("session_pubkey_invalid: session_pubkey cannot be empty".to_string());
+        }
+
+        if self
+            .revoked_pubkeys_by_player
+            .get(player_id)
+            .is_some_and(|keys| keys.contains(public_key))
+        {
+            return Err(format!(
+                "session_revoked: player {} session_pubkey {} is revoked",
+                player_id, public_key
+            ));
+        }
+        if let Some(active) = self.active_pubkey_by_player.get(player_id) {
+            if active != public_key {
+                return Err(format!(
+                    "session_key_mismatch: player {} active session_pubkey {} does not match {}",
+                    player_id, active, public_key
+                ));
+            }
+        }
+        Ok(self.session_epoch(player_id))
+    }
+
+    fn revoke_session(
+        &mut self,
+        player_id: &str,
+        session_pubkey: Option<&str>,
+    ) -> Result<(String, u64), String> {
+        let player_id = player_id.trim();
+        if player_id.is_empty() {
+            return Err("session_player_id_invalid: player_id cannot be empty".to_string());
+        }
+
+        let target = session_pubkey
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .map(ToOwned::to_owned)
+            .or_else(|| self.active_pubkey_by_player.get(player_id).cloned())
+            .ok_or_else(|| {
+                format!(
+                    "session_not_found: player {} has no active session_pubkey",
+                    player_id
+                )
+            })?;
+
+        let revoked = self
+            .revoked_pubkeys_by_player
+            .entry(player_id.to_string())
+            .or_default()
+            .insert(target.clone());
+        if self
+            .active_pubkey_by_player
+            .get(player_id)
+            .is_some_and(|active| active == &target)
+        {
+            self.active_pubkey_by_player.remove(player_id);
+        }
+
+        if revoked {
+            let next_epoch = self.session_epoch(player_id).saturating_add(1).max(1);
+            self.session_epoch_by_player
+                .insert(player_id.to_string(), next_epoch);
+        }
+
+        Ok((target, self.session_epoch(player_id)))
+    }
+
+    fn rotate_session(
+        &mut self,
+        player_id: &str,
+        old_session_pubkey: &str,
+        new_session_pubkey: &str,
+    ) -> Result<u64, String> {
+        let player_id = player_id.trim();
+        let old_session_pubkey = old_session_pubkey.trim();
+        let new_session_pubkey = new_session_pubkey.trim();
+        if player_id.is_empty() {
+            return Err("session_player_id_invalid: player_id cannot be empty".to_string());
+        }
+        if old_session_pubkey.is_empty() || new_session_pubkey.is_empty() {
+            return Err("session_pubkey_invalid: session_pubkey cannot be empty".to_string());
+        }
+        if old_session_pubkey == new_session_pubkey {
+            return Err("session_rotation_invalid: old/new session_pubkey must differ".to_string());
+        }
+
+        if self
+            .active_pubkey_by_player
+            .get(player_id)
+            .is_some_and(|active| active != old_session_pubkey)
+        {
+            return Err(format!(
+                "session_key_mismatch: player {} active session_pubkey does not match {}",
+                player_id, old_session_pubkey
+            ));
+        }
+        if self
+            .revoked_pubkeys_by_player
+            .get(player_id)
+            .is_some_and(|keys| keys.contains(new_session_pubkey))
+        {
+            return Err(format!(
+                "session_rotation_invalid: new session_pubkey {} is already revoked",
+                new_session_pubkey
+            ));
+        }
+
+        self.revoked_pubkeys_by_player
+            .entry(player_id.to_string())
+            .or_default()
+            .insert(old_session_pubkey.to_string());
+        self.active_pubkey_by_player
+            .insert(player_id.to_string(), new_session_pubkey.to_string());
+        let next_epoch = self.session_epoch(player_id).saturating_add(1).max(1);
+        self.session_epoch_by_player
+            .insert(player_id.to_string(), next_epoch);
+        Ok(next_epoch)
+    }
+
+    fn session_epoch(&self, player_id: &str) -> u64 {
+        self.session_epoch_by_player
+            .get(player_id)
+            .copied()
+            .unwrap_or(0)
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum RuntimeBatchChallengeState {
@@ -242,6 +451,9 @@ pub struct ViewerRuntimeLiveServer {
     next_authoritative_batch_id: u64,
     authoritative_challenges: VecDeque<RuntimeAuthoritativeChallengeRecord>,
     next_authoritative_challenge_id: u64,
+    stable_checkpoints: VecDeque<RuntimeStableCheckpoint>,
+    reorg_epoch: u64,
+    session_policy: RuntimeSessionPolicy,
     settlement_ranking_gate: RuntimeSettlementRankingGate,
 }
 
@@ -265,6 +477,9 @@ impl ViewerRuntimeLiveServer {
             next_authoritative_batch_id: 1,
             authoritative_challenges: VecDeque::new(),
             next_authoritative_challenge_id: 1,
+            stable_checkpoints: VecDeque::new(),
+            reorg_epoch: 0,
+            session_policy: RuntimeSessionPolicy::default(),
             settlement_ranking_gate: RuntimeSettlementRankingGate::default(),
         })
     }
@@ -356,6 +571,31 @@ impl ViewerRuntimeLiveServer {
                     let snapshot = self.compat_snapshot();
                     send_response(writer, &ViewerResponse::Snapshot { snapshot })?;
                 }
+                if session.subscribed.is_empty()
+                    || session.subscribed.contains(&ViewerStream::Snapshot)
+                    || session.subscribed.contains(&ViewerStream::Events)
+                {
+                    let cursor = self.current_recovery_cursor()?;
+                    send_response(
+                        writer,
+                        &ViewerResponse::AuthoritativeRecoveryAck {
+                            ack: AuthoritativeRecoveryAck {
+                                status: AuthoritativeRecoveryStatus::CatchUpReady,
+                                reorg_epoch: self.reorg_epoch,
+                                snapshot_height: cursor.snapshot_height,
+                                snapshot_hash: cursor.snapshot_hash,
+                                log_cursor: cursor.log_cursor,
+                                stable_batch_id: cursor.stable_batch_id,
+                                player_id: None,
+                                session_pubkey: None,
+                                replaced_by_pubkey: None,
+                                session_epoch: None,
+                                message: Some("snapshot_sync_metadata".to_string()),
+                                acknowledged_at_tick: self.world.state().time,
+                            },
+                        },
+                    )?;
+                }
                 if session.subscribed.contains(&ViewerStream::Metrics) {
                     session.metrics = runtime_metrics(&self.world);
                     send_response(
@@ -408,6 +648,25 @@ impl ViewerRuntimeLiveServer {
                         send_response(
                             writer,
                             &ViewerResponse::AuthoritativeChallengeError { error },
+                        )?;
+                    }
+                }
+            }
+            ViewerRequest::AuthoritativeRecovery { command } => {
+                match self.handle_authoritative_recovery(command) {
+                    Ok((ack, emit_snapshot_after_ack)) => {
+                        send_response(writer, &ViewerResponse::AuthoritativeRecoveryAck { ack })?;
+                        if emit_snapshot_after_ack {
+                            let snapshot = self.compat_snapshot();
+                            send_response(writer, &ViewerResponse::Snapshot { snapshot })?;
+                            self.emit_authoritative_batch_snapshot(writer)?;
+                            self.emit_authoritative_challenge_snapshot(writer)?;
+                        }
+                    }
+                    Err(error) => {
+                        send_response(
+                            writer,
+                            &ViewerResponse::AuthoritativeRecoveryError { error },
                         )?;
                     }
                 }
@@ -651,6 +910,7 @@ impl ViewerRuntimeLiveServer {
         for batch_id in newly_finalized_batch_ids {
             self.settlement_ranking_gate
                 .promote_final(batch_id.as_str());
+            self.capture_stable_checkpoint(batch_id.as_str())?;
         }
 
         let mut responses = Vec::new();
@@ -938,6 +1198,474 @@ impl ViewerRuntimeLiveServer {
         Ok((ack, Some(batch_wire)))
     }
 
+    fn handle_authoritative_recovery(
+        &mut self,
+        command: AuthoritativeRecoveryCommand,
+    ) -> Result<(AuthoritativeRecoveryAck<u64>, bool), AuthoritativeRecoveryError> {
+        match command {
+            AuthoritativeRecoveryCommand::Rollback { request } => self
+                .rollback_to_stable_checkpoint(request)
+                .map(|ack| (ack, true)),
+            AuthoritativeRecoveryCommand::ReconnectSync { request } => {
+                self.handle_reconnect_sync(request).map(|ack| (ack, false))
+            }
+            AuthoritativeRecoveryCommand::RevokeSession { request } => {
+                self.revoke_session_key(request).map(|ack| (ack, false))
+            }
+            AuthoritativeRecoveryCommand::RotateSession { request } => {
+                self.rotate_session_key(request).map(|ack| (ack, false))
+            }
+        }
+    }
+
+    fn rollback_to_stable_checkpoint(
+        &mut self,
+        request: AuthoritativeRollbackRequest,
+    ) -> Result<AuthoritativeRecoveryAck<u64>, AuthoritativeRecoveryError> {
+        let target_batch_id = request
+            .target_batch_id
+            .clone()
+            .or_else(|| {
+                self.stable_checkpoints
+                    .back()
+                    .map(|entry| entry.batch_id.clone())
+            })
+            .ok_or_else(|| {
+                recovery_error(
+                    "stable_checkpoint_not_found",
+                    "no stable checkpoint available for rollback",
+                    None,
+                    None,
+                    None,
+                )
+            })?;
+        let checkpoint = self
+            .stable_checkpoints
+            .iter()
+            .find(|entry| entry.batch_id == target_batch_id)
+            .cloned()
+            .ok_or_else(|| {
+                recovery_error(
+                    "stable_checkpoint_not_found",
+                    format!("stable checkpoint for batch {} not found", target_batch_id),
+                    Some(target_batch_id.clone()),
+                    None,
+                    None,
+                )
+            })?;
+        let Some(batch_index) = self
+            .authoritative_batches
+            .iter()
+            .position(|batch| batch.batch_id == target_batch_id)
+        else {
+            return Err(recovery_error(
+                "batch_not_found",
+                format!("authoritative batch {} not found", target_batch_id),
+                Some(target_batch_id),
+                None,
+                None,
+            ));
+        };
+
+        let reason = request.reason.trim();
+        let rollback_reason = if reason.is_empty() {
+            "authoritative_recovery_rollback".to_string()
+        } else {
+            reason.to_string()
+        };
+        self.world
+            .rollback_to_snapshot_with_reconciliation(
+                checkpoint.snapshot.clone(),
+                checkpoint.journal.clone(),
+                rollback_reason,
+            )
+            .map_err(|err| {
+                recovery_error(
+                    "rollback_failed",
+                    format!("{err:?}"),
+                    Some(checkpoint.batch_id.clone()),
+                    None,
+                    None,
+                )
+            })?;
+
+        self.authoritative_batches
+            .truncate(batch_index.saturating_add(1));
+        self.authoritative_challenges.retain(|challenge| {
+            self.authoritative_batches
+                .iter()
+                .any(|batch| batch.batch_id == challenge.batch_id)
+        });
+        self.prune_stable_checkpoints_after_batch(checkpoint.batch_id.as_str());
+        self.rebuild_settlement_ranking_gate();
+        self.reorg_epoch = self.reorg_epoch.saturating_add(1);
+
+        let cursor = self.current_recovery_cursor().map_err(|err| {
+            recovery_error(
+                "cursor_compute_failed",
+                format!("{err:?}"),
+                Some(checkpoint.batch_id.clone()),
+                None,
+                None,
+            )
+        })?;
+        Ok(AuthoritativeRecoveryAck {
+            status: AuthoritativeRecoveryStatus::RolledBack,
+            reorg_epoch: self.reorg_epoch,
+            snapshot_height: cursor.snapshot_height,
+            snapshot_hash: cursor.snapshot_hash,
+            log_cursor: cursor.log_cursor,
+            stable_batch_id: Some(checkpoint.batch_id),
+            player_id: None,
+            session_pubkey: None,
+            replaced_by_pubkey: None,
+            session_epoch: None,
+            message: Some("rollback applied to stable checkpoint".to_string()),
+            acknowledged_at_tick: self.world.state().time,
+        })
+    }
+
+    fn handle_reconnect_sync(
+        &mut self,
+        request: AuthoritativeReconnectSyncRequest,
+    ) -> Result<AuthoritativeRecoveryAck<u64>, AuthoritativeRecoveryError> {
+        let player_id = request.player_id.trim().to_string();
+        if player_id.is_empty() {
+            return Err(recovery_error(
+                "player_id_required",
+                "reconnect_sync requires non-empty player_id",
+                None,
+                None,
+                None,
+            ));
+        }
+
+        let session_pubkey = request
+            .session_pubkey
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .map(ToOwned::to_owned);
+        let mut session_epoch = None;
+        if let Some(pubkey) = session_pubkey.as_deref() {
+            let epoch = self
+                .session_policy
+                .validate_known_session_key(player_id.as_str(), pubkey)
+                .map_err(|message| {
+                    recovery_error(
+                        map_session_policy_error_code(message.as_str()),
+                        message,
+                        None,
+                        Some(player_id.clone()),
+                        Some(pubkey.to_string()),
+                    )
+                })?;
+            session_epoch = Some(epoch);
+        }
+
+        let cursor = self.current_recovery_cursor().map_err(|err| {
+            recovery_error(
+                "cursor_compute_failed",
+                format!("{err:?}"),
+                None,
+                Some(player_id.clone()),
+                session_pubkey.clone(),
+            )
+        })?;
+        let stable_cursor = self
+            .stable_checkpoints
+            .back()
+            .map(|entry| entry.log_cursor)
+            .unwrap_or(0);
+
+        let mut reasons = Vec::new();
+        if request
+            .expected_reorg_epoch
+            .is_some_and(|epoch| epoch != self.reorg_epoch)
+        {
+            reasons.push(format!(
+                "expected_reorg_epoch mismatch (client={}, server={})",
+                request.expected_reorg_epoch.unwrap_or_default(),
+                self.reorg_epoch
+            ));
+        }
+        if let Some(last_known_cursor) = request.last_known_log_cursor {
+            if last_known_cursor > cursor.log_cursor {
+                reasons.push(format!(
+                    "client cursor {} is ahead of server cursor {}",
+                    last_known_cursor, cursor.log_cursor
+                ));
+            }
+            if last_known_cursor < stable_cursor {
+                reasons.push(format!(
+                    "client cursor {} is behind stable cursor {}",
+                    last_known_cursor, stable_cursor
+                ));
+            }
+        }
+        let message = if reasons.is_empty() {
+            Some("delta_replay_allowed".to_string())
+        } else {
+            Some(format!("snapshot_reload_required: {}", reasons.join("; ")))
+        };
+
+        Ok(AuthoritativeRecoveryAck {
+            status: AuthoritativeRecoveryStatus::CatchUpReady,
+            reorg_epoch: self.reorg_epoch,
+            snapshot_height: cursor.snapshot_height,
+            snapshot_hash: cursor.snapshot_hash,
+            log_cursor: cursor.log_cursor,
+            stable_batch_id: cursor.stable_batch_id,
+            player_id: Some(player_id),
+            session_pubkey,
+            replaced_by_pubkey: None,
+            session_epoch,
+            message,
+            acknowledged_at_tick: self.world.state().time,
+        })
+    }
+
+    fn revoke_session_key(
+        &mut self,
+        request: AuthoritativeSessionRevokeRequest,
+    ) -> Result<AuthoritativeRecoveryAck<u64>, AuthoritativeRecoveryError> {
+        let player_id = request.player_id.trim().to_string();
+        if player_id.is_empty() {
+            return Err(recovery_error(
+                "player_id_required",
+                "revoke_session requires non-empty player_id",
+                None,
+                None,
+                None,
+            ));
+        }
+
+        let (revoked_pubkey, session_epoch) = self
+            .session_policy
+            .revoke_session(player_id.as_str(), request.session_pubkey.as_deref())
+            .map_err(|message| {
+                recovery_error(
+                    map_session_policy_error_code(message.as_str()),
+                    message,
+                    None,
+                    Some(player_id.clone()),
+                    request.session_pubkey.clone(),
+                )
+            })?;
+        self.clear_player_auth_runtime_state(player_id.as_str());
+        self.apply_session_revoke_binding(player_id.as_str(), revoked_pubkey.as_str());
+
+        let cursor = self.current_recovery_cursor().map_err(|err| {
+            recovery_error(
+                "cursor_compute_failed",
+                format!("{err:?}"),
+                None,
+                Some(player_id.clone()),
+                Some(revoked_pubkey.clone()),
+            )
+        })?;
+        Ok(AuthoritativeRecoveryAck {
+            status: AuthoritativeRecoveryStatus::SessionRevoked,
+            reorg_epoch: self.reorg_epoch,
+            snapshot_height: cursor.snapshot_height,
+            snapshot_hash: cursor.snapshot_hash,
+            log_cursor: cursor.log_cursor,
+            stable_batch_id: cursor.stable_batch_id,
+            player_id: Some(player_id),
+            session_pubkey: Some(revoked_pubkey),
+            replaced_by_pubkey: None,
+            session_epoch: Some(session_epoch),
+            message: Some(request.revoke_reason.trim().to_string()),
+            acknowledged_at_tick: self.world.state().time,
+        })
+    }
+
+    fn rotate_session_key(
+        &mut self,
+        request: AuthoritativeSessionRotateRequest,
+    ) -> Result<AuthoritativeRecoveryAck<u64>, AuthoritativeRecoveryError> {
+        let player_id = request.player_id.trim().to_string();
+        if player_id.is_empty() {
+            return Err(recovery_error(
+                "player_id_required",
+                "rotate_session requires non-empty player_id",
+                None,
+                None,
+                None,
+            ));
+        }
+
+        let session_epoch = self
+            .session_policy
+            .rotate_session(
+                player_id.as_str(),
+                request.old_session_pubkey.as_str(),
+                request.new_session_pubkey.as_str(),
+            )
+            .map_err(|message| {
+                recovery_error(
+                    map_session_policy_error_code(message.as_str()),
+                    message,
+                    None,
+                    Some(player_id.clone()),
+                    Some(request.old_session_pubkey.clone()),
+                )
+            })?;
+        self.clear_player_auth_runtime_state(player_id.as_str());
+        self.apply_session_rotate_binding(
+            player_id.as_str(),
+            request.old_session_pubkey.as_str(),
+            request.new_session_pubkey.as_str(),
+        );
+
+        let cursor = self.current_recovery_cursor().map_err(|err| {
+            recovery_error(
+                "cursor_compute_failed",
+                format!("{err:?}"),
+                None,
+                Some(player_id.clone()),
+                Some(request.old_session_pubkey.clone()),
+            )
+        })?;
+        Ok(AuthoritativeRecoveryAck {
+            status: AuthoritativeRecoveryStatus::SessionRotated,
+            reorg_epoch: self.reorg_epoch,
+            snapshot_height: cursor.snapshot_height,
+            snapshot_hash: cursor.snapshot_hash,
+            log_cursor: cursor.log_cursor,
+            stable_batch_id: cursor.stable_batch_id,
+            player_id: Some(player_id),
+            session_pubkey: Some(request.old_session_pubkey),
+            replaced_by_pubkey: Some(request.new_session_pubkey),
+            session_epoch: Some(session_epoch),
+            message: Some(request.rotate_reason.trim().to_string()),
+            acknowledged_at_tick: self.world.state().time,
+        })
+    }
+
+    fn current_recovery_cursor(
+        &self,
+    ) -> Result<RuntimeRecoveryCursor, ViewerRuntimeLiveServerError> {
+        let snapshot_hash = compute_runtime_snapshot_hash(&self.world.snapshot())?;
+        Ok(RuntimeRecoveryCursor {
+            snapshot_hash,
+            snapshot_height: self.world.state().time,
+            log_cursor: latest_runtime_event_seq(&self.world),
+            stable_batch_id: self
+                .stable_checkpoints
+                .back()
+                .map(|entry| entry.batch_id.clone()),
+        })
+    }
+
+    fn capture_stable_checkpoint(
+        &mut self,
+        batch_id: &str,
+    ) -> Result<(), ViewerRuntimeLiveServerError> {
+        let snapshot = self.world.snapshot();
+        let journal = self.world.journal().clone();
+        let checkpoint = RuntimeStableCheckpoint {
+            batch_id: batch_id.to_string(),
+            snapshot,
+            journal,
+            log_cursor: latest_runtime_event_seq(&self.world),
+        };
+        if let Some(index) = self
+            .stable_checkpoints
+            .iter()
+            .position(|entry| entry.batch_id == batch_id)
+        {
+            let _ = self.stable_checkpoints.remove(index);
+        }
+        self.stable_checkpoints.push_back(checkpoint);
+        self.prune_stable_checkpoint_history();
+        Ok(())
+    }
+
+    fn prune_stable_checkpoint_history(&mut self) {
+        while self.stable_checkpoints.len() > MAX_AUTHORITATIVE_STABLE_CHECKPOINTS {
+            let _ = self.stable_checkpoints.pop_front();
+        }
+    }
+
+    fn prune_stable_checkpoints_after_batch(&mut self, batch_id: &str) {
+        if let Some(index) = self
+            .stable_checkpoints
+            .iter()
+            .position(|entry| entry.batch_id == batch_id)
+        {
+            self.stable_checkpoints.truncate(index.saturating_add(1));
+        }
+    }
+
+    fn rebuild_settlement_ranking_gate(&mut self) {
+        let mut gate = RuntimeSettlementRankingGate::default();
+        for batch in &self.authoritative_batches {
+            if batch.finality_state == AuthoritativeFinalityState::Final
+                && batch.challenge_state != RuntimeBatchChallengeState::ResolvedFraudSlashed
+                && batch.challenge_state != RuntimeBatchChallengeState::Challenged
+            {
+                gate.promote_final(batch.batch_id.as_str());
+            }
+        }
+        self.settlement_ranking_gate = gate;
+    }
+
+    fn clear_player_auth_runtime_state(&mut self, player_id: &str) {
+        self.llm_sidecar
+            .player_auth_last_nonce
+            .remove(player_id.trim());
+        self.llm_sidecar
+            .clear_chat_intent_acks_for_player(player_id.trim());
+    }
+
+    fn apply_session_revoke_binding(&mut self, player_id: &str, revoked_pubkey: &str) {
+        let mut affected_agents = Vec::new();
+        for (agent_id, bound_player) in &self.llm_sidecar.agent_player_bindings {
+            if bound_player == player_id {
+                affected_agents.push(agent_id.clone());
+            }
+        }
+        for agent_id in affected_agents {
+            if self
+                .llm_sidecar
+                .agent_public_key_bindings
+                .get(agent_id.as_str())
+                .is_some_and(|bound| bound == revoked_pubkey)
+            {
+                self.llm_sidecar
+                    .agent_public_key_bindings
+                    .remove(agent_id.as_str());
+            }
+        }
+    }
+
+    fn apply_session_rotate_binding(
+        &mut self,
+        player_id: &str,
+        old_pubkey: &str,
+        new_pubkey: &str,
+    ) {
+        let mut affected_agents = Vec::new();
+        for (agent_id, bound_player) in &self.llm_sidecar.agent_player_bindings {
+            if bound_player == player_id {
+                affected_agents.push(agent_id.clone());
+            }
+        }
+        for agent_id in affected_agents {
+            let should_replace = self
+                .llm_sidecar
+                .agent_public_key_bindings
+                .get(agent_id.as_str())
+                .map_or(true, |bound| bound == old_pubkey);
+            if should_replace {
+                self.llm_sidecar
+                    .agent_public_key_bindings
+                    .insert(agent_id, new_pubkey.to_string());
+            }
+        }
+    }
+
     fn emit_authoritative_batch_snapshot(
         &self,
         writer: &mut BufWriter<TcpStream>,
@@ -977,6 +1705,8 @@ impl ViewerRuntimeLiveServer {
                 .evict_batch(evicted.batch_id.as_str());
             self.authoritative_challenges
                 .retain(|challenge| challenge.batch_id != evicted.batch_id);
+            self.stable_checkpoints
+                .retain(|entry| entry.batch_id != evicted.batch_id);
         }
     }
 
@@ -1280,9 +2010,15 @@ fn compute_runtime_state_root(
     world: &RuntimeWorld,
 ) -> Result<String, ViewerRuntimeLiveServerError> {
     let snapshot = world.snapshot();
-    let bytes = serde_json::to_vec(&snapshot).map_err(|err| {
+    compute_runtime_snapshot_hash(&snapshot)
+}
+
+fn compute_runtime_snapshot_hash(
+    snapshot: &RuntimeSnapshot,
+) -> Result<String, ViewerRuntimeLiveServerError> {
+    let bytes = serde_json::to_vec(snapshot).map_err(|err| {
         ViewerRuntimeLiveServerError::Serde(format!(
-            "serialize runtime snapshot for state_root failed: {err}"
+            "serialize runtime snapshot hash payload failed: {err}"
         ))
     })?;
     Ok(blake3_hex(bytes.as_slice()))
@@ -1333,6 +2069,41 @@ fn challenge_error(
         challenge_id,
         batch_id,
     }
+}
+
+fn recovery_error(
+    code: impl Into<String>,
+    message: impl Into<String>,
+    batch_id: Option<String>,
+    player_id: Option<String>,
+    session_pubkey: Option<String>,
+) -> AuthoritativeRecoveryError {
+    AuthoritativeRecoveryError {
+        code: code.into(),
+        message: message.into(),
+        batch_id,
+        player_id,
+        session_pubkey,
+    }
+}
+
+fn map_session_policy_error_code(message: &str) -> &'static str {
+    if message.contains("session_revoked") {
+        return "session_revoked";
+    }
+    if message.contains("session_key_mismatch") {
+        return "session_key_mismatch";
+    }
+    if message.contains("session_not_found") {
+        return "session_not_found";
+    }
+    if message.contains("session_pubkey_invalid")
+        || message.contains("session_player_id_invalid")
+        || message.contains("session_rotation_invalid")
+    {
+        return "session_invalid";
+    }
+    "session_policy_error"
 }
 
 fn location_id_for_pos(pos: GeoPos) -> String {

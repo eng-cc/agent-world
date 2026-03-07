@@ -476,6 +476,8 @@ pub(super) fn poll_viewer_messages(
                 ViewerResponse::AgentChatAck { .. } => {}
                 ViewerResponse::AuthoritativeChallengeAck { .. } => {}
                 ViewerResponse::AuthoritativeChallengeError { .. } => {}
+                ViewerResponse::AuthoritativeRecoveryAck { .. } => {}
+                ViewerResponse::AuthoritativeRecoveryError { .. } => {}
                 ViewerResponse::AgentChatError { error } => {
                     state.status = ConnectionStatus::Error(format!(
                         "agent chat error: {} ({})",

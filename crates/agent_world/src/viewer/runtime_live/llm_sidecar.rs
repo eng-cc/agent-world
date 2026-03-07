@@ -189,6 +189,15 @@ impl RuntimeLlmSidecar {
         self.player_chat_intent_acks.insert(key, record);
     }
 
+    pub(in crate::viewer::runtime_live) fn clear_chat_intent_acks_for_player(
+        &mut self,
+        player_id: &str,
+    ) {
+        let player_id = player_id.trim();
+        self.player_chat_intent_acks
+            .retain(|(record_player_id, _, _), _| record_player_id != player_id);
+    }
+
     pub(super) fn bind_agent_player(
         &mut self,
         agent_id: &str,

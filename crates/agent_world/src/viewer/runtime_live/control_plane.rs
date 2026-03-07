@@ -310,6 +310,16 @@ impl ViewerRuntimeLiveServer {
             });
         }
         let verified = self.verify_agent_chat_auth(&request)?;
+        self.session_policy
+            .validate_or_register_active_key(
+                verified.player_id.as_str(),
+                verified.public_key.as_str(),
+            )
+            .map_err(|message| AgentChatError {
+                code: map_session_policy_error_code(message.as_str()).to_string(),
+                message,
+                agent_id: Some(agent_id.clone()),
+            })?;
         let intent = resolve_agent_chat_intent(&request, verified.nonce).map_err(|message| {
             AgentChatError {
                 code: "intent_seq_invalid".to_string(),
@@ -397,6 +407,17 @@ impl ViewerRuntimeLiveServer {
                     current_version: self.current_prompt_version(request.agent_id.as_str()),
                 }
             })?;
+        self.session_policy
+            .validate_or_register_active_key(
+                verified.player_id.as_str(),
+                verified.public_key.as_str(),
+            )
+            .map_err(|message| PromptControlError {
+                code: map_session_policy_error_code(message.as_str()).to_string(),
+                message,
+                agent_id: Some(request.agent_id.clone()),
+                current_version: self.current_prompt_version(request.agent_id.as_str()),
+            })?;
         self.llm_sidecar
             .consume_player_auth_nonce(verified.player_id.as_str(), verified.nonce)
             .map_err(|message| PromptControlError {
@@ -428,6 +449,17 @@ impl ViewerRuntimeLiveServer {
                     agent_id: Some(request.agent_id.clone()),
                     current_version: self.current_prompt_version(request.agent_id.as_str()),
                 }
+            })?;
+        self.session_policy
+            .validate_or_register_active_key(
+                verified.player_id.as_str(),
+                verified.public_key.as_str(),
+            )
+            .map_err(|message| PromptControlError {
+                code: map_session_policy_error_code(message.as_str()).to_string(),
+                message,
+                agent_id: Some(request.agent_id.clone()),
+                current_version: self.current_prompt_version(request.agent_id.as_str()),
             })?;
         self.llm_sidecar
             .consume_player_auth_nonce(verified.player_id.as_str(), verified.nonce)

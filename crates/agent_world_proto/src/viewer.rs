@@ -57,6 +57,9 @@ pub enum ViewerRequest {
     AuthoritativeChallenge {
         command: AuthoritativeChallengeCommand,
     },
+    AuthoritativeRecovery {
+        command: AuthoritativeRecoveryCommand,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -170,6 +173,63 @@ pub struct AuthoritativeChallengeResolveRequest {
     pub challenge_id: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub resolved_by: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "mode", rename_all = "snake_case")]
+pub enum AuthoritativeRecoveryCommand {
+    Rollback {
+        request: AuthoritativeRollbackRequest,
+    },
+    ReconnectSync {
+        request: AuthoritativeReconnectSyncRequest,
+    },
+    RevokeSession {
+        request: AuthoritativeSessionRevokeRequest,
+    },
+    RotateSession {
+        request: AuthoritativeSessionRotateRequest,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AuthoritativeRollbackRequest {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub target_batch_id: Option<String>,
+    pub reason: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub requested_by: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AuthoritativeReconnectSyncRequest {
+    pub player_id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub session_pubkey: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_known_log_cursor: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub expected_reorg_epoch: Option<u64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AuthoritativeSessionRevokeRequest {
+    pub player_id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub session_pubkey: Option<String>,
+    pub revoke_reason: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub revoked_by: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AuthoritativeSessionRotateRequest {
+    pub player_id: String,
+    pub old_session_pubkey: String,
+    pub new_session_pubkey: String,
+    pub rotate_reason: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rotated_by: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -286,6 +346,49 @@ pub struct AuthoritativeChallengeError {
     pub batch_id: Option<String>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AuthoritativeRecoveryStatus {
+    RolledBack,
+    CatchUpReady,
+    SessionRevoked,
+    SessionRotated,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AuthoritativeRecoveryAck<Time> {
+    pub status: AuthoritativeRecoveryStatus,
+    pub reorg_epoch: u64,
+    pub snapshot_height: u64,
+    pub snapshot_hash: String,
+    pub log_cursor: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stable_batch_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub player_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub session_pubkey: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub replaced_by_pubkey: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub session_epoch: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub message: Option<String>,
+    pub acknowledged_at_tick: Time,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AuthoritativeRecoveryError {
+    pub code: String,
+    pub message: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub batch_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub player_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub session_pubkey: Option<String>,
+}
+
 // Legacy mixed control channel. Prefer PlaybackControl/LiveControl.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "mode", rename_all = "snake_case")]
@@ -320,6 +423,12 @@ pub enum ViewerResponse<Snapshot, Event, DecisionTrace, Metrics, Time> {
     },
     AuthoritativeChallengeError {
         error: AuthoritativeChallengeError,
+    },
+    AuthoritativeRecoveryAck {
+        ack: AuthoritativeRecoveryAck<Time>,
+    },
+    AuthoritativeRecoveryError {
+        error: AuthoritativeRecoveryError,
     },
     DecisionTrace {
         trace: DecisionTrace,
@@ -599,6 +708,24 @@ mod tests {
     }
 
     #[test]
+    fn viewer_authoritative_recovery_rotate_session_request_round_trip() {
+        let request = ViewerRequest::AuthoritativeRecovery {
+            command: AuthoritativeRecoveryCommand::RotateSession {
+                request: AuthoritativeSessionRotateRequest {
+                    player_id: "player-1".to_string(),
+                    old_session_pubkey: "old-key".to_string(),
+                    new_session_pubkey: "new-key".to_string(),
+                    rotate_reason: "security_rotation".to_string(),
+                    rotated_by: Some("ops".to_string()),
+                },
+            },
+        };
+        let json = serde_json::to_string(&request).expect("serialize request");
+        let parsed: ViewerRequest = serde_json::from_str(&json).expect("deserialize request");
+        assert_eq!(parsed, request);
+    }
+
+    #[test]
     fn viewer_prompt_control_request_legacy_without_public_key_is_accepted() {
         let json = r#"{
             "type":"prompt_control",
@@ -788,6 +915,41 @@ mod tests {
                 resolved_at_tick: Some(42),
                 slash_applied: true,
                 slash_reason: Some("state_root_mismatch".to_string()),
+            },
+        };
+        let json = serde_json::to_string(&response).expect("serialize response");
+        let parsed: ViewerResponse<
+            serde_json::Value,
+            serde_json::Value,
+            serde_json::Value,
+            serde_json::Value,
+            u64,
+        > = serde_json::from_str(&json).expect("deserialize response");
+        assert_eq!(parsed, response);
+    }
+
+    #[test]
+    fn viewer_response_round_trip_authoritative_recovery_ack() {
+        let response = ViewerResponse::<
+            serde_json::Value,
+            serde_json::Value,
+            serde_json::Value,
+            serde_json::Value,
+            u64,
+        >::AuthoritativeRecoveryAck {
+            ack: AuthoritativeRecoveryAck {
+                status: AuthoritativeRecoveryStatus::SessionRotated,
+                reorg_epoch: 2,
+                snapshot_height: 88,
+                snapshot_hash: "snapshot-hash-1".to_string(),
+                log_cursor: 123,
+                stable_batch_id: Some("batch-9".to_string()),
+                player_id: Some("player-1".to_string()),
+                session_pubkey: Some("old-key".to_string()),
+                replaced_by_pubkey: Some("new-key".to_string()),
+                session_epoch: Some(5),
+                message: Some("session rotated".to_string()),
+                acknowledged_at_tick: 89,
             },
         };
         let json = serde_json::to_string(&response).expect("serialize response");

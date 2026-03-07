@@ -591,6 +591,22 @@ impl ViewerLiveSession {
                     },
                 )?;
             }
+            ViewerRequest::AuthoritativeRecovery { command: _ } => {
+                send_response(
+                    writer,
+                    &ViewerResponse::AuthoritativeRecoveryError {
+                        error: crate::viewer::AuthoritativeRecoveryError {
+                            code: "unsupported_in_live_server".to_string(),
+                            message:
+                                "authoritative_recovery is only available in runtime live mode"
+                                    .to_string(),
+                            batch_id: None,
+                            player_id: None,
+                            session_pubkey: None,
+                        },
+                    },
+                )?;
+            }
         }
         Ok(ViewerLiveRequestOutcome {
             continue_running: true,

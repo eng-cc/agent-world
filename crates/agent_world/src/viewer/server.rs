@@ -10,9 +10,10 @@ use crate::simulator::{
 };
 
 use super::protocol::{
-    viewer_event_kind_matches, AgentChatError, AuthoritativeChallengeError, ControlCompletionAck,
-    ControlCompletionStatus, PlaybackControl, PromptControlError, ViewerControlProfile,
-    ViewerEventKind, ViewerRequest, ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
+    viewer_event_kind_matches, AgentChatError, AuthoritativeChallengeError,
+    AuthoritativeRecoveryError, ControlCompletionAck, ControlCompletionStatus, PlaybackControl,
+    PromptControlError, ViewerControlProfile, ViewerEventKind, ViewerRequest, ViewerResponse,
+    ViewerStream, VIEWER_PROTOCOL_VERSION,
 };
 
 #[derive(Debug, Clone)]
@@ -266,6 +267,22 @@ impl<'a> ViewerSession<'a> {
                                     .to_string(),
                             challenge_id: None,
                             batch_id: None,
+                        },
+                    },
+                )?;
+            }
+            ViewerRequest::AuthoritativeRecovery { command: _ } => {
+                send_response(
+                    writer,
+                    &ViewerResponse::AuthoritativeRecoveryError {
+                        error: AuthoritativeRecoveryError {
+                            code: "unsupported_in_offline_server".to_string(),
+                            message:
+                                "authoritative_recovery is only available in runtime live mode"
+                                    .to_string(),
+                            batch_id: None,
+                            player_id: None,
+                            session_pubkey: None,
                         },
                     },
                 )?;
