@@ -441,6 +441,48 @@ fn runtime_rejects_double_start() {
 }
 
 #[test]
+fn runtime_adaptive_tick_scheduler_reduces_tick_frequency() {
+    let genesis_unix_ms = super::runtime_util::now_unix_ms();
+
+    let mut adaptive_config =
+        NodeConfig::new("node-adaptive", "world-adaptive", NodeRole::Observer).expect("config");
+    adaptive_config.tick_interval = Duration::from_millis(1);
+    adaptive_config.pos_config.slot_duration_ms = 200;
+    adaptive_config.pos_config.ticks_per_slot = 10;
+    adaptive_config.pos_config.proposal_tick_phase = 9;
+    adaptive_config.pos_config.slot_clock_genesis_unix_ms = Some(genesis_unix_ms);
+    adaptive_config.pos_config.adaptive_tick_scheduler_enabled = true;
+
+    let mut fixed_config =
+        NodeConfig::new("node-fixed", "world-fixed", NodeRole::Observer).expect("config");
+    fixed_config.tick_interval = Duration::from_millis(1);
+    fixed_config.pos_config.slot_duration_ms = 200;
+    fixed_config.pos_config.ticks_per_slot = 10;
+    fixed_config.pos_config.proposal_tick_phase = 9;
+    fixed_config.pos_config.slot_clock_genesis_unix_ms = Some(genesis_unix_ms);
+    fixed_config.pos_config.adaptive_tick_scheduler_enabled = false;
+
+    let mut adaptive_runtime = NodeRuntime::new(adaptive_config);
+    let mut fixed_runtime = NodeRuntime::new(fixed_config);
+    adaptive_runtime.start().expect("start adaptive");
+    fixed_runtime.start().expect("start fixed");
+    thread::sleep(Duration::from_millis(140));
+
+    let adaptive_snapshot = adaptive_runtime.snapshot();
+    let fixed_snapshot = fixed_runtime.snapshot();
+
+    adaptive_runtime.stop().expect("stop adaptive");
+    fixed_runtime.stop().expect("stop fixed");
+
+    assert!(
+        fixed_snapshot.tick_count > adaptive_snapshot.tick_count + 20,
+        "adaptive scheduler should significantly reduce tick frequency: adaptive={} fixed={}",
+        adaptive_snapshot.tick_count,
+        fixed_snapshot.tick_count
+    );
+}
+
+#[test]
 fn runtime_pos_state_persists_across_restart() {
     let dir = temp_dir("pos-state-restart");
     let build_config = || {

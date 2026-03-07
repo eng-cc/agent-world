@@ -483,7 +483,9 @@ impl NodeRuntime {
             .name(worker_name)
             .spawn(move || {
                 loop {
-                    match stop_rx.recv_timeout(tick_interval) {
+                    let wait_duration =
+                        engine.next_tick_wait_duration(now_unix_ms(), tick_interval);
+                    match stop_rx.recv_timeout(wait_duration) {
                         Ok(()) => break,
                         Err(mpsc::RecvTimeoutError::Timeout) => {
                             let now_ms = now_unix_ms();

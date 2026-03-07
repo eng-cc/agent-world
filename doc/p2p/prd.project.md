@@ -39,6 +39,7 @@
 - TASK-P2P-008 进展（2026-03-07）: `TASK-P2P-008-T0~T3` 全部完成（`slot_duration_ms`/`slot_clock_genesis_unix_ms`、wall-clock 提案门控、`last_observed_slot`/`missed_slot_count` 持久化、proposal/attestation 未来槽与过旧槽拒绝、attestation epoch 映射校验、拒绝原因快照可观测、跨节点 gossip/network 定向回归）。
 - TASK-P2P-009 进展（2026-03-07）: `TASK-P2P-009-T0` 已完成（专题 PRD/项目管理建档，明确 `10 tick/slot` 相位门控与动态调度方案）。
 - TASK-P2P-009 进展（2026-03-07）: `TASK-P2P-009-T1` 已完成代码落地与 required 回归（`ticks_per_slot/proposal_tick_phase` 配置校验、logical tick 观测、提案相位门控、tick 级快照持久化）。
+- TASK-P2P-009 进展（2026-03-07）: `TASK-P2P-009-T2` 已完成代码落地与 required 回归（runtime 动态等待下一 logical tick 边界、异常回退固定间隔、调度频率对比单测）。
 - 说明: 本文档仅维护 p2p 设计执行状态；过程记录在 `doc/devlog/2026-03-07.md`。
 - ROUND-002 进展（2026-03-05）: 已并行完成 `B3-C2-009-S2/C2-010/C2-011`（observer sync-mode、node-contribution、distfs-self-healing）主从化回写。
 - ROUND-002 进展（2026-03-05）: 已并行完成 `B3-C2-003/C2-008-S1/C2-008-S2`（node-redeemable-power-asset、distfs-production-hardening phase1~9）主从化回写。

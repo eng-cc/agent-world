@@ -325,6 +325,24 @@ impl PosNodeEngine {
         Ok(())
     }
 
+    fn next_tick_wait_duration(&self, now_ms: i64, fallback: Duration) -> Duration {
+        if !self.adaptive_tick_scheduler_enabled {
+            return fallback;
+        }
+        let Some(genesis_unix_ms) = self.slot_clock_genesis_unix_ms else {
+            return fallback;
+        };
+        let Some(wait_ms) = crate::runtime_util::millis_until_next_logical_tick(
+            now_ms,
+            genesis_unix_ms,
+            self.slot_duration_ms,
+            self.ticks_per_slot,
+        ) else {
+            return fallback;
+        };
+        Duration::from_millis(wait_ms.max(1))
+    }
+
     fn classify_inbound_slot_window(
         &self,
         message_slot: u64,
