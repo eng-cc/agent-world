@@ -1,6 +1,6 @@
 # p2p PRD Project
 
-审计轮次: 5
+审计轮次: 6
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] TASK-P2P-001 (PRD-P2P-001) [test_tier_required]: 完成 p2p PRD 改写，建立分布式系统设计入口。
@@ -12,6 +12,7 @@
 - [x] TASK-P2P-007 (PRD-P2P-004) [test_tier_required + test_tier_full]: 实现 intent-only 接入、finality UI、challenge/reconnect 闭环并补齐回归证据。
 - [x] TASK-P2P-008 (PRD-P2P-005) [test_tier_required + test_tier_full]: 实现 PoS 固定时间槽（slot/epoch）真实时钟驱动、漏槽计数与时间窗口校验，并补齐回归证据。
 - [x] TASK-P2P-009 (PRD-P2P-006) [test_tier_required + test_tier_full]: 实现 PoS 槽内 tick 相位门控（`ticks_per_slot`）与动态节拍调度，并补齐回归证据。
+- [ ] TASK-P2P-010 (PRD-P2P-007) [test_tier_required + test_tier_full]: 对齐 PoS 时间锚定控制面参数与可观测口径（runtime/viewer/launcher/scripts）。
 
 ### TASK-P2P-002 执行拆解（PRD-P2P-001/002）
 - [x] TASK-P2P-002-A [test_tier_required]: 在 `doc/p2p/prd.md` 补齐网络/共识/DistFS 三线联合验收清单（基线命令、门禁命令、阻断条件、证据产物）。
@@ -28,6 +29,13 @@
 - [x] TASK-P2P-004-B [test_tier_required]: 在主 PRD 增补 `AC-10`、`NFR-P2P-10` 与 `DEC-P2P-008`，固化“指标硬阻断”口径。
 - [x] TASK-P2P-004-C [test_tier_required]: 执行 `release-gate` 干跑与文档门禁检查，回写项目状态与追踪链路。
 
+### TASK-P2P-010 执行拆解（PRD-P2P-007）
+- [x] TASK-P2P-010-T0 [test_tier_required]: 新增专题 PRD / project 文档并回写 `doc/p2p/prd.md`、`doc/p2p/prd.project.md`、`doc/p2p/prd.index.md` 映射。
+- [ ] TASK-P2P-010-T1 [test_tier_required]: `world_chain_runtime/world_viewer_live` 暴露并校验 `slot_duration_ms/ticks_per_slot/proposal_tick_phase/adaptive_tick_scheduler_enabled/slot_clock_genesis_unix_ms/max_past_slot_lag`，并明确 `node_tick_ms` 为轮询间隔。
+- [ ] TASK-P2P-010-T2 [test_tier_required]: launcher UI/配置字段与参数透传对齐新口径，补齐校验与错误提示。
+- [ ] TASK-P2P-010-T3 [test_tier_required]: p2p longrun/s10 脚本、release lock 示例、专题文档口径更新，避免将 `node_tick_ms` 作为出块时间。
+- [ ] TASK-P2P-010-T4 [test_tier_required + test_tier_full]: 补齐 CLI/launcher/脚本/状态接口回归测试并完成证据收口。
+
 ## 依赖
 - doc/p2p/prd.index.md
 - `doc/p2p/blockchain/production-grade-blockchain-p2pfs-roadmap.prd.md`
@@ -35,13 +43,20 @@
 - `doc/p2p/network/p2p-mobile-light-client-authoritative-state-2026-03-06.prd.md`
 - `doc/p2p/node/node-pos-slot-clock-real-time-2026-03-07.prd.md`
 - `doc/p2p/node/node-pos-subslot-tick-pacing-2026-03-07.prd.md`
+- `doc/p2p/node/node-pos-time-anchor-control-plane-alignment-2026-03-07.prd.md`
+- `crates/agent_world/src/bin/world_chain_runtime.rs`
+- `crates/agent_world/src/bin/world_viewer_live/cli.rs`
+- `crates/agent_world/src/bin/world_viewer_live/world_viewer_live_split_part1.rs`
+- `crates/agent_world_client_launcher/src/launcher_core.rs`
+- `scripts/p2p-longrun-soak.sh`
+- `scripts/s10-five-node-game-soak.sh`
 - `testing-manual.md`
 - `.agents/skills/prd/check.md`
 
 ## 状态
 - 更新日期: 2026-03-07
-- 当前状态: completed（ROUND-005）
-- 下一任务: 无
+- 当前状态: in_progress（ROUND-006）
+- 下一任务: `TASK-P2P-010-T1`
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - 本轮新增: `TASK-P2P-006` 已完成，专题文档 `p2p-mobile-light-client-authoritative-state-2026-03-06` 已纳入索引和模块追踪映射。
 - 本轮新增: `TASK-P2P-008` 已建档，专题文档 `node-pos-slot-clock-real-time-2026-03-07` 已纳入模块追踪映射。
@@ -60,6 +75,7 @@
 - TASK-P2P-002 进展（2026-03-07）: 已完成三线联合验收清单收口（网络/共识/DistFS 的基线命令、S9/S10 门禁阈值、阻断条件与证据产物定义）。
 - TASK-P2P-003 进展（2026-03-07）: 已完成 S9/S10 结果与缺陷闭环模板收口（运行结果字段、缺陷闭环字段、AC/NFR 口径）。
 - TASK-P2P-004 进展（2026-03-07）: 已完成发行门禁分布式质量指标映射收口（S9/S10 指标阈值、阻断策略、责任归属与脚本参数对齐）。
+- TASK-P2P-010 进展（2026-03-07）: `TASK-P2P-010-T0` 已完成（专题文档建档并回写模块主 PRD / project / index 映射）。
 - 说明: 本文档仅维护 p2p 设计执行状态；过程记录在 `doc/devlog/2026-03-07.md`。
 - ROUND-002 进展（2026-03-05）: 已并行完成 `B3-C2-009-S2/C2-010/C2-011`（observer sync-mode、node-contribution、distfs-self-healing）主从化回写。
 - ROUND-002 进展（2026-03-05）: 已并行完成 `B3-C2-003/C2-008-S1/C2-008-S2`（node-redeemable-power-asset、distfs-production-hardening phase1~9）主从化回写。
