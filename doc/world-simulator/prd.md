@@ -264,7 +264,7 @@
   - `crates/agent_world_client_launcher/src/app_process.rs`
   - `crates/agent_world_client_launcher/src/app_process_web.rs`
   - `crates/agent_world_client_launcher/src/transfer_window.rs`
-  - `crates/agent_world_client_launcher/src/transfer_window_web.rs`
+  - `crates/agent_world_client_launcher/src/transfer_window.rs`
   - `crates/agent_world_client_launcher/src/launcher_core.rs`
   - `crates/agent_world_client_launcher/Cargo.toml`
   - `crates/agent_world/src/bin/world_web_launcher.rs`

@@ -54,7 +54,7 @@
 - Integration Points:
   - `crates/agent_world_client_launcher/src/main.rs`
   - `crates/agent_world_client_launcher/src/app_process_web.rs`
-  - `crates/agent_world_client_launcher/src/transfer_window_web.rs`
+  - `crates/agent_world_client_launcher/src/transfer_window.rs`
   - `crates/agent_world/src/bin/world_web_launcher.rs`
   - `crates/agent_world/src/bin/world_web_launcher/control_plane.rs`
   - `crates/agent_world/src/bin/world_chain_runtime/transfer_submit_api.rs`
