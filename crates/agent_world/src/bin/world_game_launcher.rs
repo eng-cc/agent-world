@@ -17,6 +17,7 @@ const DEFAULT_WEB_BIND: &str = "127.0.0.1:5011";
 const DEFAULT_VIEWER_HOST: &str = "127.0.0.1";
 const DEFAULT_VIEWER_PORT: u16 = 4173;
 const DEFAULT_VIEWER_STATIC_DIR: &str = "web";
+const GAME_STATIC_DIR_ENV: &str = "AGENT_WORLD_GAME_STATIC_DIR";
 const DEFAULT_VIEWER_PLAYER_ID: &str = "viewer-player";
 const DEFAULT_CHAIN_STATUS_BIND: &str = "127.0.0.1:5121";
 const DEFAULT_CHAIN_NODE_ID: &str = "viewer-live-node";
@@ -1058,20 +1059,30 @@ fn resolve_world_chain_runtime_binary() -> Result<PathBuf, String> {
 }
 
 fn resolve_viewer_static_dir(raw: &str) -> Result<PathBuf, String> {
-    let user_path = PathBuf::from(raw);
-    if user_path.is_dir() {
-        return Ok(user_path);
+    let env_override = env::var(GAME_STATIC_DIR_ENV)
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty());
+    resolve_viewer_static_dir_with_override(raw, env_override.as_deref())
+}
+
+fn resolve_viewer_static_dir_with_override(
+    raw: &str,
+    env_override: Option<&str>,
+) -> Result<PathBuf, String> {
+    if raw == DEFAULT_VIEWER_STATIC_DIR {
+        if let Some(override_path) = env_override {
+            if let Some(dir) = resolve_viewer_static_dir_candidate(override_path) {
+                return Ok(dir);
+            }
+            return Err(format!(
+                "{GAME_STATIC_DIR_ENV} is set but viewer static dir not found: `{override_path}`"
+            ));
+        }
     }
 
-    if user_path.is_relative() {
-        if let Ok(current_exe) = env::current_exe() {
-            if let Some(bin_dir) = current_exe.parent() {
-                let sibling_candidate = bin_dir.join("..").join(&user_path);
-                if sibling_candidate.is_dir() {
-                    return Ok(sibling_candidate);
-                }
-            }
-        }
+    if let Some(dir) = resolve_viewer_static_dir_candidate(raw) {
+        return Ok(dir);
     }
 
     let dev_fallback = Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -1085,6 +1096,25 @@ fn resolve_viewer_static_dir(raw: &str) -> Result<PathBuf, String> {
     Err(format!(
         "viewer static dir not found: `{raw}`; provide --viewer-static-dir <path> (expected trunk build output)"
     ))
+}
+
+fn resolve_viewer_static_dir_candidate(raw: &str) -> Option<PathBuf> {
+    let user_path = PathBuf::from(raw);
+    if user_path.is_dir() {
+        return Some(user_path);
+    }
+
+    if user_path.is_relative() {
+        if let Ok(current_exe) = env::current_exe() {
+            if let Some(bin_dir) = current_exe.parent() {
+                let sibling_candidate = bin_dir.join("..").join(&user_path);
+                if sibling_candidate.is_dir() {
+                    return Some(sibling_candidate);
+                }
+            }
+        }
+    }
+    None
 }
 
 fn binary_name(base: &str) -> String {
@@ -1175,7 +1205,8 @@ Options:\n\
   -h, --help                   show help\n\n\
 Env:\n\
   AGENT_WORLD_WORLD_VIEWER_LIVE_BIN   explicit path of world_viewer_live binary\n\
-  AGENT_WORLD_WORLD_CHAIN_RUNTIME_BIN explicit path of world_chain_runtime binary"
+  AGENT_WORLD_WORLD_CHAIN_RUNTIME_BIN explicit path of world_chain_runtime binary\n\
+  AGENT_WORLD_GAME_STATIC_DIR         override default viewer static dir when --viewer-static-dir is omitted"
     );
 }
 

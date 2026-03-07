@@ -28,6 +28,7 @@ Options:
   --inspect <list>              Texture inspector entities: agent,location,asset,power_plant,all (default: all)
   --ticks-industrial <n>        Industrial loop ticks (default: 100)
   --base-port <port>            Base port for native capture scripts (default: 6423)
+  --viewer-static-dir <path>    Static dir passed through to viewer-release-qa-loop
   --ui-profile-file <path>      UI profile env for native visual captures (default: scripts/viewer-release-ui-profile.env)
   --out-dir <path>              Output root (default: output/playwright/viewer/release_full/<timestamp>)
   --quick                       Quick mode: smaller samples and shorter ticks for smoke checks
@@ -190,6 +191,7 @@ variants_raw="default,matte,glossy"
 inspect_raw="all"
 ticks_industrial=100
 base_port=6423
+viewer_static_dir=""
 out_dir=""
 quick=0
 headed=0
@@ -232,6 +234,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --base-port)
       base_port=${2:-}
+      shift 2
+      ;;
+    --viewer-static-dir)
+      viewer_static_dir=${2:-}
       shift 2
       ;;
     --ui-profile-file)
@@ -394,6 +400,9 @@ if (( skip_web_qa == 0 )); then
     --scenario "$scenario"
     --out-dir "$web_out"
   )
+  if [[ -n "${viewer_static_dir// }" ]]; then
+    web_cmd+=(--viewer-static-dir "$viewer_static_dir")
+  fi
   if (( skip_web_visual_baseline == 1 )); then
     web_cmd+=(--skip-visual-baseline)
   fi

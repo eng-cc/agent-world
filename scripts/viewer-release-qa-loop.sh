@@ -14,6 +14,7 @@ Options:
   --web-bind <host:port>     web bridge bind (default: 127.0.0.1:5011)
   --viewer-host <host>       web viewer host (default: 127.0.0.1)
   --viewer-port <port>       web viewer port (default: 4173)
+  --viewer-static-dir <dir>  viewer static asset dir passed to world_game_launcher (default: web)
   --out-dir <path>           artifact output dir (default: output/playwright/viewer)
   --with-consensus-gate      deprecated no-op (viewer/node split removed this behavior)
   --skip-visual-baseline     skip scripts/viewer-visual-baseline.sh
@@ -67,6 +68,7 @@ live_bind="127.0.0.1:5023"
 web_bind="127.0.0.1:5011"
 viewer_host="127.0.0.1"
 viewer_port="4173"
+viewer_static_dir="web"
 out_dir="output/playwright/viewer"
 with_consensus_gate=0
 skip_visual_baseline=0
@@ -92,6 +94,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --viewer-port)
       viewer_port=${2:-}
+      shift 2
+      ;;
+    --viewer-static-dir)
+      viewer_static_dir=${2:-}
       shift 2
       ;;
     --out-dir)
@@ -124,6 +130,10 @@ done
 
 if [[ ! "$viewer_port" =~ ^[0-9]+$ ]]; then
   echo "error: --viewer-port must be an integer" >&2
+  exit 2
+fi
+if [[ -z "${viewer_static_dir// }" ]]; then
+  echo "error: --viewer-static-dir must be a non-empty path" >&2
   exit 2
 fi
 if [[ "$live_bind" != *:* ]]; then
@@ -188,6 +198,7 @@ live_args=(
   "--web-bind" "$web_bind"
   "--viewer-host" "$viewer_host"
   "--viewer-port" "$viewer_port"
+  "--viewer-static-dir" "$viewer_static_dir"
   "--no-open-browser"
 )
 
@@ -787,6 +798,7 @@ fi
   echo "- Timestamp: $(date '+%Y-%m-%d %H:%M:%S %Z')"
   echo "- Scenario: \`$scenario\`"
   echo "- Viewer URL: \`$viewer_url\`"
+  echo "- Viewer static dir: \`$viewer_static_dir\`"
   echo "- Visual baseline: $visual_baseline_status"
   if [[ "$semantic_ok" -eq 1 ]]; then
     echo "- Semantic web gate: passed"

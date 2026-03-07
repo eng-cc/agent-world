@@ -8,7 +8,7 @@
 - [x] LAUNCHMIG-3 (PRD-TESTING-LAUNCHER-SCRIPT-002/003): 为 `s10-five-node-game-soak.sh`、`p2p-longrun-soak.sh` 添加显式阻断与迁移提示。
 - [x] LAUNCHMIG-4 (PRD-TESTING-LAUNCHER-SCRIPT-003): 完成手册口径同步、项目状态更新与任务日志收口。
 - [x] LAUNCHMIG-5 (PRD-TESTING-004): 专题文档按 strict schema 人工重写，并切换命名到 `.prd.md/.prd.project.md`。
-- [ ] LAUNCHMIG-6 (PRD-TESTING-LAUNCHER-SCRIPT-004): 修复 Viewer 静态资源目录兼容（`viewer-release-qa-loop` 透传 `--viewer-static-dir` + `world_game_launcher` 支持 `AGENT_WORLD_GAME_STATIC_DIR` 覆盖默认目录）。
+- [x] LAUNCHMIG-6 (PRD-TESTING-LAUNCHER-SCRIPT-004): 修复 Viewer 静态资源目录兼容（`viewer-release-qa-loop` 透传 `--viewer-static-dir` + `world_game_launcher` 支持 `AGENT_WORLD_GAME_STATIC_DIR` 覆盖默认目录）。
 
 ## 依赖
 - doc/testing/launcher/launcher-chain-script-migration-2026-02-28.prd.md
@@ -24,6 +24,6 @@
 
 ## 状态
 - 更新日期：2026-03-07
-- 当前阶段：LAUNCHMIG-6 执行中
+- 当前阶段：已完成
 - 阻塞项：无
-- 下一步：完成脚本参数透传、launcher 目录覆盖实现与闭环验证
+- 下一步：无（当前专题已收口）

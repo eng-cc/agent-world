@@ -6,10 +6,11 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use super::{
     build_game_url, build_viewer_auth_bootstrap_script, content_type_for_path, parse_host_port,
     parse_options, resolve_static_asset_path, resolve_viewer_auth_bootstrap_from_path,
-    sanitize_index_html_for_embedded_server, sanitize_relative_request_path, CliOptions,
-    ViewerAuthBootstrap, DEFAULT_CHAIN_NODE_ID, DEFAULT_CHAIN_STATUS_BIND, DEFAULT_LIVE_BIND,
-    DEFAULT_SCENARIO, VIEWER_AUTH_BOOTSTRAP_OBJECT, VIEWER_AUTH_PRIVATE_KEY_ENV,
-    VIEWER_AUTH_PUBLIC_KEY_ENV, VIEWER_PLAYER_ID_ENV,
+    resolve_viewer_static_dir_with_override, sanitize_index_html_for_embedded_server,
+    sanitize_relative_request_path, CliOptions, ViewerAuthBootstrap, DEFAULT_CHAIN_NODE_ID,
+    DEFAULT_CHAIN_STATUS_BIND, DEFAULT_LIVE_BIND, DEFAULT_SCENARIO, DEFAULT_VIEWER_STATIC_DIR,
+    VIEWER_AUTH_BOOTSTRAP_OBJECT, VIEWER_AUTH_PRIVATE_KEY_ENV, VIEWER_AUTH_PUBLIC_KEY_ENV,
+    VIEWER_PLAYER_ID_ENV,
 };
 
 #[test]
@@ -284,6 +285,52 @@ fn resolve_viewer_auth_bootstrap_from_path_reads_node_keypair() {
     let _ = fs::remove_dir_all(temp_dir);
 }
 
+#[test]
+fn resolve_viewer_static_dir_with_override_prefers_env_for_default_static_dir() {
+    let override_dir = make_temp_dir("viewer_static_override");
+    let override_raw = override_dir.to_string_lossy().to_string();
+
+    let resolved = resolve_viewer_static_dir_with_override(
+        DEFAULT_VIEWER_STATIC_DIR,
+        Some(override_raw.as_str()),
+    )
+    .expect("resolve should succeed");
+
+    assert_eq!(resolved, override_dir);
+    let _ = fs::remove_dir_all(override_dir);
+}
+
+#[test]
+fn resolve_viewer_static_dir_with_override_keeps_explicit_path_priority() {
+    let explicit_dir = make_temp_dir("viewer_static_explicit");
+    let override_dir = make_temp_dir("viewer_static_override_ignored");
+    let explicit_raw = explicit_dir.to_string_lossy().to_string();
+    let override_raw = override_dir.to_string_lossy().to_string();
+
+    let resolved =
+        resolve_viewer_static_dir_with_override(explicit_raw.as_str(), Some(override_raw.as_str()))
+            .expect("resolve should succeed");
+
+    assert_eq!(resolved, explicit_dir);
+    let _ = fs::remove_dir_all(explicit_dir);
+    let _ = fs::remove_dir_all(override_dir);
+}
+
+#[test]
+fn resolve_viewer_static_dir_with_override_rejects_missing_env_dir() {
+    let missing_path = make_missing_temp_path("viewer_static_missing_env");
+    let missing_raw = missing_path.to_string_lossy().to_string();
+
+    let err = resolve_viewer_static_dir_with_override(
+        DEFAULT_VIEWER_STATIC_DIR,
+        Some(missing_raw.as_str()),
+    )
+    .expect_err("missing override path should fail");
+
+    assert!(err.contains("AGENT_WORLD_GAME_STATIC_DIR"));
+    assert!(err.contains("not found"));
+}
+
 fn make_temp_dir(label: &str) -> PathBuf {
     let mut path = env::temp_dir();
     let stamp = SystemTime::now()
@@ -296,5 +343,19 @@ fn make_temp_dir(label: &str) -> PathBuf {
         stamp
     ));
     fs::create_dir_all(&path).expect("create temp dir");
+    path
+}
+
+fn make_missing_temp_path(label: &str) -> PathBuf {
+    let mut path = env::temp_dir();
+    let stamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("time")
+        .as_nanos();
+    path.push(format!(
+        "agent_world_launcher_missing_{label}_{}_{}",
+        std::process::id(),
+        stamp
+    ));
     path
 }
