@@ -86,6 +86,8 @@ pub struct NodePosConfig {
     pub supermajority_numerator: u64,
     pub supermajority_denominator: u64,
     pub epoch_length_slots: u64,
+    pub slot_duration_ms: u64,
+    pub slot_clock_genesis_unix_ms: Option<i64>,
 }
 
 impl NodePosConfig {
@@ -104,6 +106,8 @@ impl NodePosConfig {
             supermajority_numerator: 2,
             supermajority_denominator: 3,
             epoch_length_slots: 32,
+            slot_duration_ms: 1,
+            slot_clock_genesis_unix_ms: None,
         }
     }
 
@@ -525,6 +529,8 @@ pub struct NodeConsensusSnapshot {
     pub mode: NodeConsensusMode,
     pub slot: u64,
     pub epoch: u64,
+    pub last_observed_slot: u64,
+    pub missed_slot_count: u64,
     pub latest_height: u64,
     pub committed_height: u64,
     pub last_committed_at_ms: Option<i64>,
@@ -554,6 +560,8 @@ impl Default for NodeConsensusSnapshot {
             mode: NodeConsensusMode::Pos,
             slot: 0,
             epoch: 0,
+            last_observed_slot: 0,
+            missed_slot_count: 0,
             latest_height: 0,
             committed_height: 0,
             last_committed_at_ms: None,

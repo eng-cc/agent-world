@@ -126,6 +126,147 @@ fn pos_engine_rejects_commit_when_execution_binding_mismatches_local() {
 }
 
 #[test]
+fn pos_engine_waits_when_next_slot_is_in_future() {
+    let mut config =
+        NodeConfig::new("node-a", "world-slot-wait", NodeRole::Observer).expect("config");
+    config.pos_config.slot_duration_ms = 100;
+    config.pos_config.slot_clock_genesis_unix_ms = Some(1_000);
+    let mut engine = PosNodeEngine::new(&config).expect("engine");
+
+    let first = engine
+        .tick(
+            &config.node_id,
+            &config.world_id,
+            1_000,
+            None,
+            None,
+            None,
+            None,
+            Vec::new(),
+            None,
+        )
+        .expect("first tick");
+    assert_eq!(first.consensus_snapshot.committed_height, 1);
+
+    let second = engine
+        .tick(
+            &config.node_id,
+            &config.world_id,
+            1_050,
+            None,
+            None,
+            None,
+            None,
+            Vec::new(),
+            None,
+        )
+        .expect("second tick");
+    assert_eq!(second.consensus_snapshot.committed_height, 1);
+    assert_eq!(
+        second.consensus_snapshot.last_status,
+        Some(PosConsensusStatus::Pending)
+    );
+    assert_eq!(second.consensus_snapshot.last_observed_slot, 0);
+    assert_eq!(engine.next_height, 2);
+    assert!(engine.pending.is_none());
+}
+
+#[test]
+fn pos_engine_aligns_missed_slots_to_wall_clock() {
+    let mut config =
+        NodeConfig::new("node-a", "world-slot-align", NodeRole::Observer).expect("config");
+    config.pos_config.slot_duration_ms = 10;
+    config.pos_config.slot_clock_genesis_unix_ms = Some(1_000);
+    let mut engine = PosNodeEngine::new(&config).expect("engine");
+
+    engine
+        .tick(
+            &config.node_id,
+            &config.world_id,
+            1_000,
+            None,
+            None,
+            None,
+            None,
+            Vec::new(),
+            None,
+        )
+        .expect("first tick");
+    let second = engine
+        .tick(
+            &config.node_id,
+            &config.world_id,
+            1_100,
+            None,
+            None,
+            None,
+            None,
+            Vec::new(),
+            None,
+        )
+        .expect("second tick");
+
+    assert_eq!(engine.missed_slot_count, 9);
+    assert_eq!(engine.last_observed_slot, 10);
+    assert_eq!(second.consensus_snapshot.last_observed_slot, 10);
+    assert_eq!(second.consensus_snapshot.missed_slot_count, 9);
+    assert_eq!(second.consensus_snapshot.slot, 11);
+}
+
+#[test]
+fn pos_engine_observed_slot_does_not_backtrack_on_clock_rewind() {
+    let mut config =
+        NodeConfig::new("node-a", "world-slot-monotonic", NodeRole::Observer).expect("config");
+    config.pos_config.slot_duration_ms = 10;
+    config.pos_config.slot_clock_genesis_unix_ms = Some(1_000);
+    let mut engine = PosNodeEngine::new(&config).expect("engine");
+
+    engine
+        .tick(
+            &config.node_id,
+            &config.world_id,
+            1_000,
+            None,
+            None,
+            None,
+            None,
+            Vec::new(),
+            None,
+        )
+        .expect("first tick");
+    engine
+        .tick(
+            &config.node_id,
+            &config.world_id,
+            1_200,
+            None,
+            None,
+            None,
+            None,
+            Vec::new(),
+            None,
+        )
+        .expect("second tick");
+    let third = engine
+        .tick(
+            &config.node_id,
+            &config.world_id,
+            1_150,
+            None,
+            None,
+            None,
+            None,
+            Vec::new(),
+            None,
+        )
+        .expect("third tick");
+
+    assert_eq!(engine.last_observed_slot, 20);
+    assert_eq!(third.consensus_snapshot.last_observed_slot, 20);
+    assert_eq!(third.consensus_snapshot.committed_height, 2);
+}
+
+#[test]
 fn replication_commit_payload_includes_execution_hashes() {
     let dir = temp_dir("replication-payload-exec");
     let config = NodeReplicationConfig::new(dir.clone()).expect("replication config");
@@ -227,6 +368,8 @@ fn runtime_pos_state_persists_across_restart() {
     .expect("parse pos state");
     assert!(persisted.committed_height >= first.consensus.committed_height);
     assert!(persisted.last_execution_height >= first.consensus.last_execution_height);
+    assert!(persisted.last_observed_slot >= first.consensus.last_observed_slot);
+    assert!(persisted.missed_slot_count >= first.consensus.missed_slot_count);
     assert!(persisted.last_execution_block_hash.is_some());
     assert!(persisted.last_execution_state_root.is_some());
 
@@ -240,6 +383,7 @@ fn runtime_pos_state_persists_across_restart() {
     assert!(second.last_error.is_none());
     assert!(second.consensus.committed_height > first.consensus.committed_height);
     assert!(second.consensus.last_execution_height > first.consensus.last_execution_height);
+    assert!(second.consensus.last_observed_slot >= first.consensus.last_observed_slot);
 
     let _ = fs::remove_dir_all(&dir);
 }

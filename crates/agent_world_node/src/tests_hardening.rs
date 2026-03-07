@@ -429,6 +429,8 @@ fn runtime_start_fails_when_pos_state_snapshot_height_overflows() {
     let snapshot = super::pos_state_store::PosNodeStateSnapshot {
         next_height: 0,
         next_slot: 0,
+        last_observed_slot: 0,
+        missed_slot_count: 0,
         committed_height: u64::MAX,
         network_committed_height: u64::MAX,
         last_broadcast_proposal_height: 0,

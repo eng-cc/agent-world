@@ -31,6 +31,11 @@ pub(crate) fn validated_pos_state(
             reason: "epoch_length_slots must be positive".to_string(),
         });
     }
+    if pos_config.slot_duration_ms == 0 {
+        return Err(NodeError::InvalidConfig {
+            reason: "slot_duration_ms must be positive".to_string(),
+        });
+    }
     if pos_config.supermajority_denominator == 0
         || pos_config.supermajority_numerator == 0
         || pos_config.supermajority_numerator > pos_config.supermajority_denominator

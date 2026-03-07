@@ -12,6 +12,10 @@ const POS_STATE_FILE_NAME: &str = "node_pos_state.json";
 pub(crate) struct PosNodeStateSnapshot {
     pub next_height: u64,
     pub next_slot: u64,
+    #[serde(default)]
+    pub last_observed_slot: u64,
+    #[serde(default)]
+    pub missed_slot_count: u64,
     pub committed_height: u64,
     pub network_committed_height: u64,
     pub last_broadcast_proposal_height: u64,
@@ -107,6 +111,8 @@ impl PosNodeEngine {
         PosNodeStateSnapshot {
             next_height: self.next_height,
             next_slot: self.next_slot,
+            last_observed_slot: self.last_observed_slot,
+            missed_slot_count: self.missed_slot_count,
             committed_height: self.committed_height,
             network_committed_height: self.network_committed_height,
             last_broadcast_proposal_height: self.last_broadcast_proposal_height,
@@ -126,6 +132,8 @@ impl PosNodeEngine {
         let PosNodeStateSnapshot {
             next_height: snapshot_next_height,
             next_slot,
+            last_observed_slot: snapshot_last_observed_slot,
+            missed_slot_count: snapshot_missed_slot_count,
             committed_height,
             network_committed_height: snapshot_network_committed_height,
             last_broadcast_proposal_height,
@@ -162,6 +170,10 @@ impl PosNodeEngine {
         self.network_committed_height = restored_network_committed_height;
         self.next_height = restored_next_height;
         self.next_slot = next_slot;
+        self.last_observed_slot = self
+            .last_observed_slot
+            .max(snapshot_last_observed_slot.max(next_slot.saturating_sub(1)));
+        self.missed_slot_count = self.missed_slot_count.max(snapshot_missed_slot_count);
         self.last_broadcast_proposal_height = last_broadcast_proposal_height;
         self.last_broadcast_local_attestation_height = last_broadcast_local_attestation_height;
         self.last_broadcast_committed_height = last_broadcast_committed_height;

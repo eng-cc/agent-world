@@ -72,6 +72,10 @@ impl PosNodeEngine {
             total_stake,
             required_stake,
             epoch_length_slots: config.pos_config.epoch_length_slots,
+            slot_duration_ms: config.pos_config.slot_duration_ms,
+            slot_clock_genesis_unix_ms: config.pos_config.slot_clock_genesis_unix_ms,
+            last_observed_slot: 0,
+            missed_slot_count: 0,
             local_validator_id: config.node_id.clone(),
             node_player_id: config.player_id.clone(),
             require_execution_on_commit: config.require_execution_on_commit,
@@ -140,13 +144,18 @@ impl PosNodeEngine {
             )?;
         }
 
+        let current_slot = self.observe_wall_clock_slot(now_ms);
+        self.align_next_slot_to_wall_clock(current_slot)?;
+
         let mut decision = if self.pending.is_some() {
             self.advance_pending_attestations(now_ms)?
-        } else {
+        } else if self.next_slot <= current_slot {
             self.propose_next_head(node_id, world_id, now_ms)?
+        } else {
+            self.idle_pending_decision()?
         };
 
-        if matches!(decision.status, PosConsensusStatus::Pending) {
+        if matches!(decision.status, PosConsensusStatus::Pending) && self.pending.is_some() {
             decision = self.advance_pending_attestations(now_ms)?;
         }
 
@@ -214,6 +223,62 @@ impl PosNodeEngine {
         Ok(NodeEngineTickResult {
             consensus_snapshot: self.snapshot_from_decision(&decision),
             committed_action_batch,
+        })
+    }
+
+    fn observe_wall_clock_slot(&mut self, now_ms: i64) -> u64 {
+        if self.slot_clock_genesis_unix_ms.is_none() {
+            let observed_offset_ms = self
+                .last_observed_slot
+                .saturating_mul(self.slot_duration_ms)
+                .min(i64::MAX as u64) as i64;
+            self.slot_clock_genesis_unix_ms = Some(now_ms.saturating_sub(observed_offset_ms));
+        }
+        let genesis = self.slot_clock_genesis_unix_ms.unwrap_or(now_ms);
+        let elapsed_ms = if now_ms > genesis {
+            (now_ms - genesis) as u64
+        } else {
+            0
+        };
+        let observed_slot = elapsed_ms / self.slot_duration_ms;
+        self.last_observed_slot = self.last_observed_slot.max(observed_slot);
+        self.last_observed_slot
+    }
+
+    fn align_next_slot_to_wall_clock(&mut self, current_slot: u64) -> Result<(), NodeError> {
+        if self.next_slot >= current_slot {
+            return Ok(());
+        }
+        let skipped_slots = current_slot - self.next_slot;
+        self.missed_slot_count = self
+            .missed_slot_count
+            .checked_add(skipped_slots)
+            .ok_or_else(|| NodeError::Consensus {
+                reason: format!(
+                    "missed_slot_count overflow while aligning next_slot: current={} delta={}",
+                    self.missed_slot_count, skipped_slots
+                ),
+            })?;
+        self.next_slot = current_slot;
+        Ok(())
+    }
+
+    fn idle_pending_decision(&self) -> Result<PosDecision, NodeError> {
+        Ok(PosDecision {
+            height: self.committed_height,
+            slot: self.next_slot,
+            epoch: self.slot_epoch(self.next_slot),
+            status: PosConsensusStatus::Pending,
+            block_hash: self
+                .last_committed_block_hash
+                .clone()
+                .unwrap_or_else(|| "genesis".to_string()),
+            action_root: compute_consensus_action_root(&[])?,
+            committed_actions: Vec::new(),
+            approved_stake: 0,
+            rejected_stake: 0,
+            required_stake: self.required_stake,
+            total_stake: self.total_stake,
         })
     }
 
@@ -439,6 +504,8 @@ impl PosNodeEngine {
             mode: NodeConsensusMode::Pos,
             slot: self.next_slot,
             epoch: self.slot_epoch(self.next_slot),
+            last_observed_slot: self.last_observed_slot,
+            missed_slot_count: self.missed_slot_count,
             latest_height: decision.height,
             committed_height: self.committed_height,
             last_committed_at_ms: self.last_committed_at_ms,

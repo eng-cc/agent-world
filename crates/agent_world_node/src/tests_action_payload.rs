@@ -385,6 +385,21 @@ fn config_rejects_invalid_pos_config() {
 }
 
 #[test]
+fn config_rejects_zero_slot_duration() {
+    let mut pos_config = NodePosConfig::ethereum_like(vec![PosValidator {
+        validator_id: "node-a".to_string(),
+        stake: 100,
+    }]);
+    pos_config.slot_duration_ms = 0;
+    let result = NodeConfig::new("node-a", "world-slot-config", NodeRole::Observer)
+        .expect("base config")
+        .with_pos_config(pos_config);
+    assert!(
+        matches!(result, Err(NodeError::InvalidConfig { reason }) if reason.contains("slot_duration_ms"))
+    );
+}
+
+#[test]
 fn feedback_p2p_config_rejects_zero_limits() {
     let err = NodeFeedbackP2pConfig::default()
         .with_max_incoming_announces_per_tick(0)
