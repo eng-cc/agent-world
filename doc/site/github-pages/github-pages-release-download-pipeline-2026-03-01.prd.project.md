@@ -77,9 +77,9 @@
 - 站点入口文件：`site/index.html`、`site/en/index.html`
 
 ## 状态
-- 当前阶段：进行中（T0A/T0/T1/T2/T3/T3A/T3B/T3C/T3D/T3E/T3F）
-- 最近更新：完成 T3F Release Packages macOS runner 配置热修并进入 Actions 回归验证（2026-03-01）
-- 下一步：等待 `Release Packages` workflow_dispatch 回归结果；通过后收口该项
+- 当前阶段：已完成（T0A/T0/T1/T2/T3/T3A/T3B/T3C/T3D/T3E/T3F）
+- 最近更新：`Release Packages` workflow_dispatch 已连续回归通过（run `22547105163` / run `22576969803`，2026-03-02）。
+- 下一步：无（后续按新 release tag / workflow_dispatch 重复执行同一流水线）。
 
 ## 迁移记录（2026-03-03）
 - 已按 `TASK-ENGINEERING-014-D1 (PRD-ENGINEERING-006)` 从 legacy 命名迁移为 `.prd.md/.prd.project.md`。
