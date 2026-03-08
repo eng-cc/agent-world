@@ -296,6 +296,56 @@ impl ClientLauncherApp {
         false
     }
 
+    pub(super) fn reset_explorer_active_tab_state(&mut self) {
+        match self.explorer_panel_state.active_tab {
+            ExplorerTab::Blocks => {
+                self.explorer_panel_state.block_height_input.clear();
+                self.explorer_panel_state.block_hash_input.clear();
+                self.explorer_panel_state.blocks_cursor = 0;
+                self.explorer_panel_state.pending_blocks_refresh = true;
+                self.explorer_panel_state.selected_block = None;
+            }
+            ExplorerTab::Txs => {
+                self.explorer_panel_state.account_filter.clear();
+                self.explorer_panel_state.action_filter_input.clear();
+                self.explorer_panel_state.status_filter = ExplorerStatusFilter::All;
+                self.explorer_panel_state.txs_cursor = 0;
+                self.explorer_panel_state.pending_txs_refresh = true;
+                self.explorer_panel_state.selected_tx = None;
+                self.explorer_panel_state.tx_hash_input.clear();
+                self.explorer_panel_state.tx_action_input.clear();
+            }
+            ExplorerTab::Search => {
+                self.explorer_panel_state.search_query.clear();
+                self.explorer_panel_state.search_results.clear();
+                self.explorer_panel_state.pending_search_refresh = false;
+            }
+            ExplorerTab::Address => {
+                self.explorer_panel_state.p1.address_account_input.clear();
+                self.explorer_panel_state.p1.address_cursor = 0;
+                self.explorer_panel_state.p1.address_response = None;
+                self.explorer_panel_state.p1.pending_address_refresh = false;
+            }
+            ExplorerTab::Contracts => {
+                self.explorer_panel_state.p1.contract_id_input.clear();
+                self.explorer_panel_state.p1.contract_response = None;
+                self.explorer_panel_state.p1.contracts_cursor = 0;
+                self.explorer_panel_state.p1.pending_contracts_refresh = true;
+            }
+            ExplorerTab::Assets => {
+                self.explorer_panel_state.p1.assets_account_filter.clear();
+                self.explorer_panel_state.p1.assets_cursor = 0;
+                self.explorer_panel_state.p1.pending_assets_refresh = true;
+            }
+            ExplorerTab::Mempool => {
+                self.explorer_panel_state.p1.mempool_status_filter =
+                    ExplorerMempoolStatusFilter::All;
+                self.explorer_panel_state.p1.mempool_cursor = 0;
+                self.explorer_panel_state.p1.pending_mempool_refresh = true;
+            }
+        }
+    }
+
     pub(super) fn apply_explorer_address_response(&mut self, response: WebExplorerAddressResponse) {
         if response.ok {
             self.explorer_panel_state.p1.address_cursor = response.cursor;
@@ -387,6 +437,11 @@ impl ClientLauncherApp {
                 self.explorer_panel_state.p1.address_cursor = 0;
                 self.explorer_panel_state.p1.pending_address_refresh = true;
             }
+            if ui.button(self.tr("清空", "Clear")).clicked() {
+                self.explorer_panel_state.p1.address_account_input.clear();
+                self.explorer_panel_state.p1.address_cursor = 0;
+                self.explorer_panel_state.p1.address_response = None;
+            }
         });
 
         if let Some(response) = self.explorer_panel_state.p1.address_response.clone() {
@@ -438,18 +493,26 @@ impl ClientLauncherApp {
                     .max_height(220.0)
                     .show(ui, |ui| {
                         for tx in &response.items {
-                            let line = format!(
-                                "{} | {} | {} -> {} | amount={} | {}",
-                                short_hash(tx.tx_hash.as_str()),
-                                self.explorer_lifecycle_text(tx.status),
-                                tx.from_account_id,
-                                tx.to_account_id,
-                                tx.amount,
-                                tx.submitted_at_unix_ms,
-                            );
-                            if ui.selectable_label(false, line).clicked() {
-                                clicked_hash = Some(tx.tx_hash.clone());
-                            }
+                            ui.horizontal_wrapped(|ui| {
+                                ui.label(
+                                    egui::RichText::new(format!(
+                                        "[{}]",
+                                        self.explorer_lifecycle_text(tx.status)
+                                    ))
+                                    .color(self.explorer_lifecycle_color(tx.status)),
+                                );
+                                let line = format!(
+                                    "{} | {} -> {} | amount={} | {}",
+                                    short_hash(tx.tx_hash.as_str()),
+                                    tx.from_account_id,
+                                    tx.to_account_id,
+                                    tx.amount,
+                                    tx.submitted_at_unix_ms,
+                                );
+                                if ui.selectable_label(false, line).clicked() {
+                                    clicked_hash = Some(tx.tx_hash.clone());
+                                }
+                            });
                         }
                         if response.items.is_empty() {
                             ui.small(self.tr("暂无地址交易", "No address txs"));
@@ -490,6 +553,10 @@ impl ClientLauncherApp {
             ui.text_edit_singleline(&mut self.explorer_panel_state.p1.contract_id_input);
             if ui.button(self.tr("查询合约", "Query Contract")).clicked() {
                 self.explorer_panel_state.p1.pending_contract_refresh = true;
+            }
+            if ui.button(self.tr("清空", "Clear")).clicked() {
+                self.explorer_panel_state.p1.contract_id_input.clear();
+                self.explorer_panel_state.p1.contract_response = None;
             }
         });
 
@@ -605,6 +672,11 @@ impl ClientLauncherApp {
                 self.explorer_panel_state.p1.assets_cursor = 0;
                 self.explorer_panel_state.p1.pending_assets_refresh = true;
             }
+            if ui.button(self.tr("清空过滤", "Clear Filter")).clicked() {
+                self.explorer_panel_state.p1.assets_account_filter.clear();
+                self.explorer_panel_state.p1.assets_cursor = 0;
+                self.explorer_panel_state.p1.pending_assets_refresh = true;
+            }
         });
 
         if let Some(response) = self.explorer_panel_state.p1.assets_response.clone() {
@@ -704,6 +776,12 @@ impl ClientLauncherApp {
                 self.explorer_panel_state.p1.mempool_cursor = 0;
                 self.explorer_panel_state.p1.pending_mempool_refresh = true;
             }
+            if ui.button(self.tr("清空过滤", "Clear Filter")).clicked() {
+                self.explorer_panel_state.p1.mempool_status_filter =
+                    ExplorerMempoolStatusFilter::All;
+                self.explorer_panel_state.p1.mempool_cursor = 0;
+                self.explorer_panel_state.p1.pending_mempool_refresh = true;
+            }
         });
 
         if let Some(response) = self.explorer_panel_state.p1.mempool_response.clone() {
@@ -747,18 +825,26 @@ impl ClientLauncherApp {
                 .max_height(220.0)
                 .show(ui, |ui| {
                     for tx in &response.items {
-                        let line = format!(
-                            "{} | {} | {} -> {} | amount={} | {}",
-                            short_hash(tx.tx_hash.as_str()),
-                            self.explorer_lifecycle_text(tx.status),
-                            tx.from_account_id,
-                            tx.to_account_id,
-                            tx.amount,
-                            tx.submitted_at_unix_ms,
-                        );
-                        if ui.selectable_label(false, line).clicked() {
-                            clicked_hash = Some(tx.tx_hash.clone());
-                        }
+                        ui.horizontal_wrapped(|ui| {
+                            ui.label(
+                                egui::RichText::new(format!(
+                                    "[{}]",
+                                    self.explorer_lifecycle_text(tx.status)
+                                ))
+                                .color(self.explorer_lifecycle_color(tx.status)),
+                            );
+                            let line = format!(
+                                "{} | {} -> {} | amount={} | {}",
+                                short_hash(tx.tx_hash.as_str()),
+                                tx.from_account_id,
+                                tx.to_account_id,
+                                tx.amount,
+                                tx.submitted_at_unix_ms,
+                            );
+                            if ui.selectable_label(false, line).clicked() {
+                                clicked_hash = Some(tx.tx_hash.clone());
+                            }
+                        });
                     }
                     if response.items.is_empty() {
                         ui.small(self.tr("暂无待处理交易", "No pending txs"));

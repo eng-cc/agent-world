@@ -349,6 +349,29 @@ impl ClientLauncherApp {
         }
     }
 
+    fn explorer_lifecycle_color(
+        &self,
+        status: transfer_window::WebTransferLifecycleStatus,
+    ) -> egui::Color32 {
+        match status {
+            transfer_window::WebTransferLifecycleStatus::Accepted => {
+                egui::Color32::from_rgb(66, 132, 214)
+            }
+            transfer_window::WebTransferLifecycleStatus::Pending => {
+                egui::Color32::from_rgb(214, 150, 58)
+            }
+            transfer_window::WebTransferLifecycleStatus::Confirmed => {
+                egui::Color32::from_rgb(56, 150, 86)
+            }
+            transfer_window::WebTransferLifecycleStatus::Failed => {
+                egui::Color32::from_rgb(188, 60, 60)
+            }
+            transfer_window::WebTransferLifecycleStatus::Timeout => {
+                egui::Color32::from_rgb(153, 92, 45)
+            }
+        }
+    }
+
     fn maybe_request_explorer_panel_data(&mut self) {
         if !self.explorer_window_open || self.web_request_inflight {
             return;
@@ -625,6 +648,12 @@ impl ClientLauncherApp {
                         }
                         self.explorer_panel_state.last_poll_at = Some(Instant::now());
                     }
+                    if ui
+                        .button(self.tr("重置当前筛选", "Reset Current Filters"))
+                        .clicked()
+                    {
+                        self.reset_explorer_active_tab_state();
+                    }
                     if self.web_request_inflight {
                         ui.small(
                             egui::RichText::new(
@@ -669,34 +698,82 @@ impl ClientLauncherApp {
     fn render_overview(&mut self, ui: &mut egui::Ui) {
         ui.label(self.tr("链概览", "Overview"));
         if let Some(overview) = self.explorer_panel_state.overview.as_ref() {
-            ui.small(format!(
-                "node={} | world={} | observed_at={}",
-                overview.node_id, overview.world_id, overview.observed_at_unix_ms
-            ));
-            ui.small(format!(
-                "height latest={} committed={} network_committed={}",
-                overview.latest_height,
-                overview.committed_height,
-                overview.network_committed_height
-            ));
-            ui.small(format!(
-                "last_block_hash={} | last_execution_block_hash={}",
-                overview.last_block_hash.as_deref().unwrap_or("n/a"),
-                overview
-                    .last_execution_block_hash
-                    .as_deref()
-                    .unwrap_or("n/a")
-            ));
-            ui.small(format!(
-                "tracked={} | total={} | accepted={} | pending={} | confirmed={} | failed={} | timeout={}",
-                overview.tracked_records,
-                overview.transfer_total,
-                overview.transfer_accepted,
-                overview.transfer_pending,
-                overview.transfer_confirmed,
-                overview.transfer_failed,
-                overview.transfer_timeout,
-            ));
+            ui.group(|ui| {
+                ui.small(format!(
+                    "node={} | world={} | observed_at={}",
+                    overview.node_id, overview.world_id, overview.observed_at_unix_ms
+                ));
+                ui.horizontal_wrapped(|ui| {
+                    ui.label(
+                        egui::RichText::new(format!("latest {}", overview.latest_height)).strong(),
+                    );
+                    ui.label(
+                        egui::RichText::new(format!("committed {}", overview.committed_height))
+                            .strong(),
+                    );
+                    ui.label(
+                        egui::RichText::new(format!(
+                            "network {}",
+                            overview.network_committed_height
+                        ))
+                        .strong(),
+                    );
+                });
+                ui.horizontal_wrapped(|ui| {
+                    ui.small(format!(
+                        "last_block={}",
+                        overview.last_block_hash.as_deref().unwrap_or("n/a")
+                    ));
+                    ui.small(format!(
+                        "last_exec={}",
+                        overview
+                            .last_execution_block_hash
+                            .as_deref()
+                            .unwrap_or("n/a")
+                    ));
+                });
+                ui.horizontal_wrapped(|ui| {
+                    ui.label(
+                        egui::RichText::new(format!("tracked {}", overview.tracked_records))
+                            .color(egui::Color32::from_rgb(112, 121, 130)),
+                    );
+                    ui.label(
+                        egui::RichText::new(format!("total {}", overview.transfer_total))
+                            .color(egui::Color32::from_rgb(81, 104, 132)),
+                    );
+                    ui.label(
+                        egui::RichText::new(format!("accepted {}", overview.transfer_accepted))
+                            .color(self.explorer_lifecycle_color(
+                                transfer_window::WebTransferLifecycleStatus::Accepted,
+                            )),
+                    );
+                    ui.label(
+                        egui::RichText::new(format!("pending {}", overview.transfer_pending))
+                            .color(self.explorer_lifecycle_color(
+                                transfer_window::WebTransferLifecycleStatus::Pending,
+                            )),
+                    );
+                    ui.label(
+                        egui::RichText::new(format!("confirmed {}", overview.transfer_confirmed))
+                            .color(self.explorer_lifecycle_color(
+                                transfer_window::WebTransferLifecycleStatus::Confirmed,
+                            )),
+                    );
+                    ui.label(
+                        egui::RichText::new(format!("failed {}", overview.transfer_failed)).color(
+                            self.explorer_lifecycle_color(
+                                transfer_window::WebTransferLifecycleStatus::Failed,
+                            ),
+                        ),
+                    );
+                    ui.label(
+                        egui::RichText::new(format!("timeout {}", overview.transfer_timeout))
+                            .color(self.explorer_lifecycle_color(
+                                transfer_window::WebTransferLifecycleStatus::Timeout,
+                            )),
+                    );
+                });
+            });
         } else {
             ui.small(self.tr("暂无概览数据", "No overview data"));
         }
@@ -891,6 +968,13 @@ impl ClientLauncherApp {
                 self.explorer_panel_state.txs_cursor = 0;
                 self.explorer_panel_state.pending_txs_refresh = true;
             }
+            if ui.button(self.tr("清空过滤", "Clear Filters")).clicked() {
+                self.explorer_panel_state.account_filter.clear();
+                self.explorer_panel_state.action_filter_input.clear();
+                self.explorer_panel_state.status_filter = ExplorerStatusFilter::All;
+                self.explorer_panel_state.txs_cursor = 0;
+                self.explorer_panel_state.pending_txs_refresh = true;
+            }
         });
 
         ui.horizontal_wrapped(|ui| {
@@ -954,21 +1038,29 @@ impl ClientLauncherApp {
             .max_height(220.0)
             .show(ui, |ui| {
                 for tx in &self.explorer_panel_state.txs {
-                    let line = format!(
-                        "{} | {} | {} -> {} | amount={} | h={} | {}",
-                        short_hash(tx.tx_hash.as_str()),
-                        self.explorer_lifecycle_text(tx.status),
-                        tx.from_account_id,
-                        tx.to_account_id,
-                        tx.amount,
-                        tx.block_height
-                            .map(|height| height.to_string())
-                            .unwrap_or_else(|| "n/a".to_string()),
-                        tx.submitted_at_unix_ms,
-                    );
-                    if ui.selectable_label(false, line).clicked() {
-                        clicked_hash = Some(tx.tx_hash.clone());
-                    }
+                    ui.horizontal_wrapped(|ui| {
+                        ui.label(
+                            egui::RichText::new(format!(
+                                "[{}]",
+                                self.explorer_lifecycle_text(tx.status)
+                            ))
+                            .color(self.explorer_lifecycle_color(tx.status)),
+                        );
+                        let line = format!(
+                            "{} | {} -> {} | amount={} | h={} | {}",
+                            short_hash(tx.tx_hash.as_str()),
+                            tx.from_account_id,
+                            tx.to_account_id,
+                            tx.amount,
+                            tx.block_height
+                                .map(|height| height.to_string())
+                                .unwrap_or_else(|| "n/a".to_string()),
+                            tx.submitted_at_unix_ms,
+                        );
+                        if ui.selectable_label(false, line).clicked() {
+                            clicked_hash = Some(tx.tx_hash.clone());
+                        }
+                    });
                 }
                 if self.explorer_panel_state.txs.is_empty() {
                     ui.small(self.tr("暂无交易记录", "No txs"));
@@ -990,6 +1082,10 @@ impl ClientLauncherApp {
                 tx.action_id,
                 self.explorer_lifecycle_text(tx.status)
             ));
+            ui.small(
+                egui::RichText::new(self.explorer_lifecycle_text(tx.status))
+                    .color(self.explorer_lifecycle_color(tx.status)),
+            );
             ui.small(format!(
                 "{} -> {} | amount={} | nonce={} | submitted_at={} | updated_at={}",
                 tx.from_account_id,
@@ -1039,6 +1135,10 @@ impl ClientLauncherApp {
                 } else {
                     self.explorer_panel_state.pending_search_refresh = true;
                 }
+            }
+            if ui.button(self.tr("清空", "Clear")).clicked() {
+                self.explorer_panel_state.search_query.clear();
+                self.explorer_panel_state.search_results.clear();
             }
         });
 
