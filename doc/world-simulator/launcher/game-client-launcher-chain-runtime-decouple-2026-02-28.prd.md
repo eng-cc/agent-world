@@ -16,13 +16,13 @@
   - 暴露 HTTP 状态接口（health/status/balances）。
 - `world_game_launcher` 负责：
   - 启动并托管 `world_chain_runtime` 子进程（默认启用）；
-  - 启动 `world_viewer_live` 时改为 `--no-node`；
+  - 启动 `world_viewer_live` 纯观察服务（不再承载内嵌节点控制面）；
   - 透传链配置参数并输出链状态入口 URL。
 - 更新发行打包脚本：将 `world_chain_runtime` 纳入 bundle。
 
 ## 非目标
 - 本轮不实现复杂钱包 UI、助记词管理、链上转账签名流程。
-- 本轮不替换现有 `world_viewer_live` 内全部节点代码路径（保留兼容 CLI 场景）。
+- 本轮不让 `world_viewer_live` 接收 `--node-*`/`--triad-*` 控制面参数（节点控制面统一由 `world_chain_runtime` 承载）。
 - 本轮不覆盖跨机器大规模集群编排（先覆盖单机发行链路）。
 
 ## 3. AI System Requirements (If Applicable)
@@ -34,7 +34,13 @@
 - `--world-id <id>`：默认 `live-llm_bootstrap`。
 - `--status-bind <host:port>`：默认 `127.0.0.1:5121`。
 - `--node-role <sequencer|storage|observer>`：默认 `sequencer`。
-- `--node-tick-ms <n>`：默认 `200`。
+- `--node-tick-ms <n>`：默认 `200`，仅用于 worker 轮询/回退间隔。
+- `--pos-slot-duration-ms <n>`：默认 `1`，定义 slot 时长（ms）。
+- `--pos-ticks-per-slot <n>`：默认 `1`，定义每个 slot 的逻辑 tick 数。
+- `--pos-proposal-tick-phase <n>`：默认 `0`，定义提案相位。
+- `--pos-adaptive-tick-scheduler` / `--pos-no-adaptive-tick-scheduler`。
+- `--pos-slot-clock-genesis-unix-ms <n>`：可选，定义 slot 时钟起点。
+- `--pos-max-past-slot-lag <n>`：默认 `256`，定义最大允许过旧槽滞后。
 - `--node-validator <id:stake>`：可重复；为空时默认单 validator（本节点）。
 - `--node-auto-attest-all` / `--node-no-auto-attest-all`。
 - `--node-gossip-bind <addr:port>` / `--node-gossip-peer <addr:port>`（可选）。
@@ -55,17 +61,23 @@
 - `--chain-node-id <id>`。
 - `--chain-world-id <id>`（默认跟随 scenario 推导）。
 - `--chain-node-role <role>`。
-- `--chain-node-tick-ms <n>`。
+- `--chain-node-tick-ms <n>`（worker poll/fallback interval）。
+- `--chain-pos-slot-duration-ms <n>`。
+- `--chain-pos-ticks-per-slot <n>`。
+- `--chain-pos-proposal-tick-phase <n>`。
+- `--chain-pos-adaptive-tick-scheduler` / `--chain-pos-no-adaptive-tick-scheduler`。
+- `--chain-pos-slot-clock-genesis-unix-ms <n>`。
+- `--chain-pos-max-past-slot-lag <n>`。
 - `--chain-node-validator <id:stake>`（repeatable）。
 
 ### 4) 关键链路
 - 桌面入口：`run-client.sh -> agent_world_client_launcher -> world_game_launcher`。
 - CLI 入口：`run-game.sh -> world_game_launcher`。
-- 启动器编排：`world_game_launcher -> world_chain_runtime + world_viewer_live(--no-node) + static_http`。
+- 启动器编排：`world_game_launcher -> world_chain_runtime + world_viewer_live + static_http`。
 
 ## 5. Risks & Roadmap
 - M1：`world_chain_runtime` 落地（节点主循环 + status/balances API）。
-- M2：`world_game_launcher` 完成链子进程托管，viewer 进程切换为 `--no-node`。
+- M2：`world_game_launcher` 完成链子进程托管，viewer 进程收敛为纯观察服务。
 - M3：发行打包与桌面启动器参数透传完成。
 - M4：回归测试、文档收口、发布口径验证。
 

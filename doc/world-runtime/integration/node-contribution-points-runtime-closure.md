@@ -30,7 +30,8 @@
 NodePointsRuntimeObservation {
   node_id: String,
   role: NodeRole,
-  tick_count: u64,
+  worker_poll_count: u64, // 来自 NodeSnapshot.tick_count（兼容字段）
+  consensus_last_observed_tick: u64,
   running: bool,
   observed_at_unix_ms: i64,
   has_error: bool,
@@ -50,7 +51,7 @@ NodePointsRuntimeCollector::force_settle() -> Option<EpochSettlementReport>
 ```
 
 ### 采样映射策略（MVP）
-- `tick_count` 差分映射为基础义务计算量 `self_sim_compute_units`。
+- `worker_poll_count`（兼容来源: `NodeSnapshot.tick_count`）差分映射为基础义务计算量 `self_sim_compute_units`；该值仅表示 worker 轮询推进，不等价于共识 tick。
 - 角色导向额外贡献估算：
   - `Sequencer`：优先记为 `world_maintenance_compute_units`；
   - `Observer`：优先记为 `delegated_sim_compute_units`；

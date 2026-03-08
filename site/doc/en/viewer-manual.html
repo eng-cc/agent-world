@@ -65,7 +65,7 @@
         <h2>Quick Start</h2>
         <h3>1) Start live server (recommended)</h3>
         <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011</code></pre>
-        <p>`world_viewer_live` enables LLM decisions by default (configure key(s) first); use `--no-llm` for script fallback.</p>
+        <p>`world_viewer_live` runs script decisions by default; pass `--llm` to enable LLM mode (configure key(s) first).</p>
         <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --no-llm --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011</code></pre>
 
         <h3>2) Start viewer</h3>
@@ -78,12 +78,9 @@
         <pre><code>env -u NO_COLOR ./scripts/run-viewer-web.sh --address 127.0.0.1 --port 4173</code></pre>
         <p>Open: `http://127.0.0.1:4173/?ws=ws://127.0.0.1:5011`.</p>
 
-        <h3>5) Release-locked mode (optional)</h3>
-        <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- \
-  --release-config world_viewer_live.release.example.toml \
-  --bind 0.0.0.0:5010 \
-  --web-bind 0.0.0.0:5011</code></pre>
-        <p>In `--release-config` mode, only `--release-config`, `--bind`, `--web-bind`, and `--help` are accepted.</p>
+        <h3>5) Release mode (P2P recommended)</h3>
+        <p>`world_viewer_live` is now a pure viewer live service and no longer accepts `--release-config` or `--node-*` control-plane flags.</p>
+        <p>For P2P release flows, lock chain parameters through `world_chain_runtime` (typically managed by `world_game_launcher` / `world_web_launcher` / `agent_world_client_launcher`). Viewer keeps only `--bind`, `--web-bind`, and `--llm/--no-llm`.</p>
       </section>
 
       <section class="section" data-reveal>

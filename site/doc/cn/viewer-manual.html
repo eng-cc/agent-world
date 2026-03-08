@@ -65,7 +65,7 @@
         <h2>快速开始</h2>
         <h3>1) 启动 live server（推荐）</h3>
         <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011</code></pre>
-        <p>`world_viewer_live` 默认使用 LLM 决策（需先配置 key）；如需脚本回退可显式传 `--no-llm`。</p>
+        <p>`world_viewer_live` 默认使用脚本决策；如需 LLM 决策可显式传 `--llm`（需先配置 key）。</p>
         <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --no-llm --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011</code></pre>
 
         <h3>2) 启动 viewer</h3>
@@ -78,12 +78,9 @@
         <pre><code>env -u NO_COLOR ./scripts/run-viewer-web.sh --address 127.0.0.1 --port 4173</code></pre>
         <p>访问：`http://127.0.0.1:4173/?ws=ws://127.0.0.1:5011`。</p>
 
-        <h3>5) 发行锁定模式（可选）</h3>
-        <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- \
-  --release-config world_viewer_live.release.example.toml \
-  --bind 0.0.0.0:5010 \
-  --web-bind 0.0.0.0:5011</code></pre>
-        <p>`--release-config` 模式下仅允许 `--release-config`、`--bind`、`--web-bind`、`--help`，其余 CLI 参数会被拒绝。</p>
+        <h3>5) 发行模式（P2P 推荐）</h3>
+        <p>`world_viewer_live` 当前为纯 Viewer live 服务，不再承载 `--release-config` 与 `--node-*` 控制面参数。</p>
+        <p>P2P 发行建议使用 `world_chain_runtime`（可由 `world_game_launcher` / `world_web_launcher` / `agent_world_client_launcher` 托管）锁定链参数，Viewer 仅保留 `--bind`、`--web-bind`、`--llm/--no-llm`。</p>
       </section>
 
       <section class="section" data-reveal>

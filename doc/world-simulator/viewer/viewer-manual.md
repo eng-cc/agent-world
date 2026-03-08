@@ -56,17 +56,8 @@ env -u NO_COLOR ./scripts/run-viewer-web.sh --address 127.0.0.1 --port 4173
 
 ## 发行模式（P2P 推荐）
 
-当节点发布后不希望再通过命令行临时调参时，使用 `--release-config <path>` 启动锁定参数文件：
-
-```bash
-env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- \
-  --release-config world_viewer_live.release.example.toml \
-  --bind 0.0.0.0:5010 \
-  --web-bind 0.0.0.0:5011
-```
-
-- `world_viewer_live.release.example.toml` 参考根目录样例，核心字段为 `locked_args = [...]`。
-- `--release-config` 模式下 CLI 仅允许 `--release-config`、`--bind`、`--web-bind`、`--help`；其余参数会直接拒绝，避免线上节点语义漂移。
+`world_viewer_live` 当前为纯 Viewer live 服务，不再承载 `--release-config` 与 `--node-*` 控制面参数。  
+P2P 发行建议使用 `world_chain_runtime`（可由 `world_game_launcher` / `world_web_launcher` / `agent_world_client_launcher` 托管）锁定链参数，Viewer 仅保留 `--bind`、`--web-bind`、`--llm/--no-llm`。
 
 ## 常用交互
 - 鼠标拖拽：旋转/平移观察视角。

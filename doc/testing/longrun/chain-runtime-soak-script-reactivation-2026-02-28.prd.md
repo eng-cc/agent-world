@@ -31,8 +31,8 @@
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
-| 多节点 runtime 编排 | `--node-id --world-id --status-bind --node-role --node-tick-ms`、`--node-validator`、`--node-gossip-*` | 脚本按节点配置启动并维持运行时长 | `booting -> running -> stopping` | 先启动主节点后拉起 peers，保留 startup grace | 脚本维护者可改默认参数 |
-| HTTP 采样 | status: `running/tick_count/consensus.committed_height/network_committed_height/known_peer_heads/last_error`；balances: `reward_mint_record_count/node_power_credit_balance/node_main_token_liquid_balance` | 周期抓取并写入 timeline/summary | `sampling -> aggregated -> reported` | 高度滞后与错误字段优先标注 | QA/发布可审阅 |
+| 多节点 runtime 编排 | `--node-id --world-id --status-bind --node-role --node-tick-ms --pos-*`、`--node-validator`、`--node-gossip-*` | 脚本按节点配置启动并维持运行时长 | `booting -> running -> stopping` | 先启动主节点后拉起 peers，保留 startup grace | 脚本维护者可改默认参数 |
+| HTTP 采样 | status: `running/worker_poll_count(兼容 tick_count)/consensus.last_observed_tick/consensus.committed_height/network_committed_height/known_peer_heads/last_error`；balances: `reward_mint_record_count/node_power_credit_balance/node_main_token_liquid_balance` | 周期抓取并写入 timeline/summary | `sampling -> aggregated -> reported` | 以共识高度/tick 为主，轮询计数仅作运行活性观测 | QA/发布可审阅 |
 | 产物契约保持 | `run_config.json/timeline.csv/summary.json/summary.md/failures.md` | 每次 run 输出固定结构产物 | `generated -> archived` | 失败时必须附 `failures.md` 诊断 | 自动化流水线直接消费 |
 | chaos 复用 | 故障注入配置与恢复窗口 | 在 P2P longrun 中执行注入并观测恢复 | `stable -> injected -> recovered/degraded` | 注入后需经过观测窗口再判定门禁 | 测试维护者可开关/调参 |
 - Acceptance Criteria:

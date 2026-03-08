@@ -1,11 +1,11 @@
-# world_viewer_live release-locked startup arguments.
-# Use with:
-#   env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- --release-config world_viewer_live.release.example.toml
+# Legacy sample kept for historical reference only.
+# Current `crates/agent_world/src/bin/world_viewer_live.rs` does NOT support `--release-config`
+# or any `--node-*`/`--triad-*`/`--reward-runtime-*` control-plane flags.
 #
-# In --release-config mode, runtime CLI only allows:
-#   --release-config, --bind, --web-bind, --help
+# P2P release flows should lock timing/network parameters on `world_chain_runtime`
+# (typically managed by `world_game_launcher` / `world_web_launcher` / client launcher).
 #
-# Timing note:
+# Timing note for historical args below:
 #   --node-tick-ms is worker poll/fallback interval only.
 #   PoS slot/block timing should be configured by --pos-* flags.
 
