@@ -1,6 +1,6 @@
 # p2p PRD Project
 
-审计轮次: 8
+审计轮次: 9
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] TASK-P2P-001 (PRD-P2P-001) [test_tier_required]: 完成 p2p PRD 改写，建立分布式系统设计入口。
@@ -15,6 +15,7 @@
 - [x] TASK-P2P-010 (PRD-P2P-007) [test_tier_required + test_tier_full]: 对齐 PoS 时间锚定控制面参数与可观测口径（runtime/viewer/launcher/scripts）。
 - [x] TASK-P2P-011 (PRD-P2P-008) [test_tier_required]: 收敛 PoS 时间锚定残留语义偏差（状态字段命名、launcher 校验文案、viewer/manual/site 与 `world_viewer_live` 实际能力对齐）。
 - [x] TASK-P2P-012 (PRD-P2P-009) [test_tier_required]: 修正默认 PoS 时间参数与校验文案残留偏差，确保默认启动即符合“tick 锚定出块时间”口径。
+- [ ] TASK-P2P-013 (PRD-P2P-009) [test_tier_required]: 将默认 PoS 时间参数对齐到“12s 出块、每块 10 tick”基线（`12000/10/9`），并收敛 CLI/脚本/文档一致性。
 
 ### TASK-P2P-002 执行拆解（PRD-P2P-001/002）
 - [x] TASK-P2P-002-A [test_tier_required]: 在 `doc/p2p/prd.md` 补齐网络/共识/DistFS 三线联合验收清单（基线命令、门禁命令、阻断条件、证据产物）。
@@ -49,6 +50,12 @@
 - [x] TASK-P2P-012-T1 [test_tier_required]: 调整 `world_chain_runtime/world_game_launcher/world_web_launcher/agent_world_client_launcher` 默认 `slot_duration_ms` 为统一基线值，并收敛 `world_web_launcher` 校验文案为 poll interval 语义，补齐定向回归。
 - [x] TASK-P2P-012-T2 [test_tier_required]: 回写 launcher/testing 相关文档默认值与语义说明，执行文档门禁并完成任务收口。
 
+### TASK-P2P-013 执行拆解（PRD-P2P-009）
+- [x] TASK-P2P-013-T0 [test_tier_required]: 在主 PRD/project 建立“12s/10/9 默认参数”任务链并冻结验收口径。
+- [ ] TASK-P2P-013-T1 [test_tier_required]: 调整 `world_chain_runtime/world_game_launcher/world_web_launcher/agent_world_client_launcher/world_viewer_live` 默认 `slot_duration_ms/ticks_per_slot/proposal_tick_phase` 到 `12000/10/9`，并补齐定向回归。
+- [ ] TASK-P2P-013-T2 [test_tier_required]: 调整 `scripts/p2p-longrun-soak.sh` 与 `scripts/s10-five-node-game-soak.sh` 默认 PoS 参数到 `12000/10/9`，并更新帮助文案。
+- [ ] TASK-P2P-013-T3 [test_tier_required]: 回写 launcher/testing/longrun 相关文档默认值与语义说明，执行文档门禁并完成任务收口。
+
 ## 依赖
 - doc/p2p/prd.index.md
 - `doc/p2p/blockchain/production-grade-blockchain-p2pfs-roadmap.prd.md`
@@ -72,8 +79,8 @@
 
 ## 状态
 - 更新日期: 2026-03-08
-- 当前状态: completed（ROUND-008）
-- 下一任务: 无
+- 当前状态: in_progress（ROUND-009）
+- 下一任务: TASK-P2P-013-T1
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - 本轮新增: `TASK-P2P-006` 已完成，专题文档 `p2p-mobile-light-client-authoritative-state-2026-03-06` 已纳入索引和模块追踪映射。
 - 本轮新增: `TASK-P2P-008` 已建档，专题文档 `node-pos-slot-clock-real-time-2026-03-07` 已纳入模块追踪映射。
@@ -105,6 +112,8 @@
 - TASK-P2P-012 进展（2026-03-08）: `TASK-P2P-012-T0` 已完成（主 PRD / project 建档并冻结验收口径）。
 - TASK-P2P-012 进展（2026-03-08）: `TASK-P2P-012-T1` 已完成代码落地（统一 runtime/game/web/client launcher 默认 `slot_duration_ms=200`，并将 `world_web_launcher` 的 `chain_node_tick_ms` 校验文案收敛为 poll interval 语义）。
 - TASK-P2P-012 收口（2026-03-08）: `TASK-P2P-012-T2` 已完成文档回写（launcher/testing/viewer 专题默认值与语义说明对齐）并通过文档门禁。
+- TASK-P2P-013 启动（2026-03-08）: 基于“12s 出块、每块 10 tick”设计口径新增默认参数对齐任务链，覆盖 runtime/game/web/client launcher/world_viewer_live 与 longrun 脚本默认值收敛。
+- TASK-P2P-013 进展（2026-03-08）: `TASK-P2P-013-T0` 已完成（主 PRD/project 建档并冻结 `12000/10/9` 验收口径）。
 - 说明: 本文档仅维护 p2p 设计执行状态；过程记录在 `doc/devlog/2026-03-07.md` 与 `doc/devlog/2026-03-08.md`。
 - ROUND-002 进展（2026-03-05）: 已并行完成 `B3-C2-009-S2/C2-010/C2-011`（observer sync-mode、node-contribution、distfs-self-healing）主从化回写。
 - ROUND-002 进展（2026-03-05）: 已并行完成 `B3-C2-003/C2-008-S1/C2-008-S2`（node-redeemable-power-asset、distfs-production-hardening phase1~9）主从化回写。
