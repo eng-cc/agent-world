@@ -547,6 +547,126 @@ impl ClientLauncherApp {
         });
     }
 
+    pub(super) fn request_web_chain_explorer_address(
+        &mut self,
+        account_id: String,
+        cursor: usize,
+        limit: usize,
+    ) {
+        self.ensure_control_plane_service();
+        if self.web_request_inflight {
+            self.append_log("skip explorer address query: previous web request still in flight");
+            return;
+        }
+        self.web_request_inflight = true;
+        self.last_web_poll_at = Some(Instant::now());
+        let tx = self.web_api_tx.clone();
+        let base_url = self.control_api_base.clone();
+        thread::spawn(move || {
+            let _ = tx.send(WebApiEvent::ExplorerQuery(
+                get_web_chain_explorer_address_blocking(
+                    base_url.as_str(),
+                    account_id,
+                    cursor,
+                    limit,
+                )
+                .map(explorer_window::ExplorerQueryResponse::Address),
+            ));
+        });
+    }
+
+    pub(super) fn request_web_chain_explorer_contracts(&mut self, cursor: usize, limit: usize) {
+        self.ensure_control_plane_service();
+        if self.web_request_inflight {
+            self.append_log("skip explorer contracts query: previous web request still in flight");
+            return;
+        }
+        self.web_request_inflight = true;
+        self.last_web_poll_at = Some(Instant::now());
+        let tx = self.web_api_tx.clone();
+        let base_url = self.control_api_base.clone();
+        thread::spawn(move || {
+            let _ = tx.send(WebApiEvent::ExplorerQuery(
+                get_web_chain_explorer_contracts_blocking(base_url.as_str(), cursor, limit)
+                    .map(explorer_window::ExplorerQueryResponse::Contracts),
+            ));
+        });
+    }
+
+    pub(super) fn request_web_chain_explorer_contract(&mut self, contract_id: String) {
+        self.ensure_control_plane_service();
+        if self.web_request_inflight {
+            self.append_log("skip explorer contract query: previous web request still in flight");
+            return;
+        }
+        self.web_request_inflight = true;
+        self.last_web_poll_at = Some(Instant::now());
+        let tx = self.web_api_tx.clone();
+        let base_url = self.control_api_base.clone();
+        thread::spawn(move || {
+            let _ = tx.send(WebApiEvent::ExplorerQuery(
+                get_web_chain_explorer_contract_blocking(base_url.as_str(), contract_id)
+                    .map(explorer_window::ExplorerQueryResponse::Contract),
+            ));
+        });
+    }
+
+    pub(super) fn request_web_chain_explorer_assets(
+        &mut self,
+        account_filter: String,
+        cursor: usize,
+        limit: usize,
+    ) {
+        self.ensure_control_plane_service();
+        if self.web_request_inflight {
+            self.append_log("skip explorer assets query: previous web request still in flight");
+            return;
+        }
+        self.web_request_inflight = true;
+        self.last_web_poll_at = Some(Instant::now());
+        let tx = self.web_api_tx.clone();
+        let base_url = self.control_api_base.clone();
+        thread::spawn(move || {
+            let _ = tx.send(WebApiEvent::ExplorerQuery(
+                get_web_chain_explorer_assets_blocking(
+                    base_url.as_str(),
+                    account_filter,
+                    cursor,
+                    limit,
+                )
+                .map(explorer_window::ExplorerQueryResponse::Assets),
+            ));
+        });
+    }
+
+    pub(super) fn request_web_chain_explorer_mempool(
+        &mut self,
+        status_filter: Option<String>,
+        cursor: usize,
+        limit: usize,
+    ) {
+        self.ensure_control_plane_service();
+        if self.web_request_inflight {
+            self.append_log("skip explorer mempool query: previous web request still in flight");
+            return;
+        }
+        self.web_request_inflight = true;
+        self.last_web_poll_at = Some(Instant::now());
+        let tx = self.web_api_tx.clone();
+        let base_url = self.control_api_base.clone();
+        thread::spawn(move || {
+            let _ = tx.send(WebApiEvent::ExplorerQuery(
+                get_web_chain_explorer_mempool_blocking(
+                    base_url.as_str(),
+                    status_filter,
+                    cursor,
+                    limit,
+                )
+                .map(explorer_window::ExplorerQueryResponse::Mempool),
+            ));
+        });
+    }
+
     fn apply_web_snapshot(&mut self, snapshot: WebStateSnapshot) {
         self.status =
             launcher_status_from_web(snapshot.status.as_str(), snapshot.detail.as_deref());
@@ -748,6 +868,79 @@ fn get_web_chain_explorer_search_blocking(
 ) -> Result<explorer_window::WebExplorerSearchResponse, String> {
     let query = query.trim().to_string();
     let path = format!("/api/chain/explorer/search?q={query}");
+    http_json_request(base_url, "GET", path.as_str(), None)
+}
+
+fn get_web_chain_explorer_address_blocking(
+    base_url: &str,
+    account_id: String,
+    cursor: usize,
+    limit: usize,
+) -> Result<explorer_window::WebExplorerAddressResponse, String> {
+    let account_id = account_id.trim().to_string();
+    let path = format!(
+        "/api/chain/explorer/address?account_id={account_id}&limit={}&cursor={cursor}",
+        limit.clamp(1, 200)
+    );
+    http_json_request(base_url, "GET", path.as_str(), None)
+}
+
+fn get_web_chain_explorer_contracts_blocking(
+    base_url: &str,
+    cursor: usize,
+    limit: usize,
+) -> Result<explorer_window::WebExplorerContractsResponse, String> {
+    let path = format!(
+        "/api/chain/explorer/contracts?limit={}&cursor={cursor}",
+        limit.clamp(1, 200)
+    );
+    http_json_request(base_url, "GET", path.as_str(), None)
+}
+
+fn get_web_chain_explorer_contract_blocking(
+    base_url: &str,
+    contract_id: String,
+) -> Result<explorer_window::WebExplorerContractResponse, String> {
+    let contract_id = contract_id.trim().to_string();
+    let path = format!("/api/chain/explorer/contract?contract_id={contract_id}");
+    http_json_request(base_url, "GET", path.as_str(), None)
+}
+
+fn get_web_chain_explorer_assets_blocking(
+    base_url: &str,
+    account_filter: String,
+    cursor: usize,
+    limit: usize,
+) -> Result<explorer_window::WebExplorerAssetsResponse, String> {
+    let mut query = vec![
+        format!("limit={}", limit.clamp(1, 200)),
+        format!("cursor={cursor}"),
+    ];
+    let account_filter = account_filter.trim();
+    if !account_filter.is_empty() {
+        query.push(format!("account_id={account_filter}"));
+    }
+    let path = format!("/api/chain/explorer/assets?{}", query.join("&"));
+    http_json_request(base_url, "GET", path.as_str(), None)
+}
+
+fn get_web_chain_explorer_mempool_blocking(
+    base_url: &str,
+    status_filter: Option<String>,
+    cursor: usize,
+    limit: usize,
+) -> Result<explorer_window::WebExplorerMempoolResponse, String> {
+    let mut query = vec![
+        format!("limit={}", limit.clamp(1, 200)),
+        format!("cursor={cursor}"),
+    ];
+    if let Some(status_filter) = status_filter {
+        let status_filter = status_filter.trim().to_string();
+        if !status_filter.is_empty() {
+            query.push(format!("status={status_filter}"));
+        }
+    }
+    let path = format!("/api/chain/explorer/mempool?{}", query.join("&"));
     http_json_request(base_url, "GET", path.as_str(), None)
 }
 

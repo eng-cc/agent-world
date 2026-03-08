@@ -3,6 +3,15 @@ use super::*;
 const EXPLORER_POLL_INTERVAL_MS: u64 = 1_000;
 const EXPLORER_DEFAULT_LIMIT: usize = 50;
 
+#[path = "explorer_window_p1.rs"]
+mod explorer_window_p1;
+
+use explorer_window_p1::ExplorerP1State;
+pub(super) use explorer_window_p1::{
+    WebExplorerAddressResponse, WebExplorerAssetsResponse, WebExplorerContractResponse,
+    WebExplorerContractsResponse, WebExplorerMempoolResponse,
+};
+
 #[derive(Debug, Clone, Deserialize)]
 pub(super) struct WebExplorerOverviewResponse {
     pub(super) ok: bool,
@@ -135,6 +144,11 @@ pub(super) enum ExplorerQueryResponse {
     Txs(WebExplorerTxsResponse),
     Tx(WebExplorerTxResponse),
     Search(WebExplorerSearchResponse),
+    Address(WebExplorerAddressResponse),
+    Contracts(WebExplorerContractsResponse),
+    Contract(WebExplorerContractResponse),
+    Assets(WebExplorerAssetsResponse),
+    Mempool(WebExplorerMempoolResponse),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -171,6 +185,10 @@ enum ExplorerTab {
     Blocks,
     Txs,
     Search,
+    Address,
+    Contracts,
+    Assets,
+    Mempool,
 }
 
 impl Default for ExplorerTab {
@@ -215,6 +233,7 @@ pub(super) struct ExplorerPanelState {
     pub(super) pending_tx_hash: Option<String>,
     pub(super) pending_tx_action_id: Option<u64>,
     pub(super) last_poll_at: Option<Instant>,
+    p1: ExplorerP1State,
 }
 
 impl Default for ExplorerPanelState {
@@ -254,6 +273,7 @@ impl Default for ExplorerPanelState {
             pending_tx_hash: None,
             pending_tx_action_id: None,
             last_poll_at: None,
+            p1: ExplorerP1State::default(),
         }
     }
 }
@@ -298,6 +318,14 @@ impl ClientLauncherApp {
             (ExplorerTab::Txs, UiLanguage::EnUs) => "Txs",
             (ExplorerTab::Search, UiLanguage::ZhCn) => "搜索",
             (ExplorerTab::Search, UiLanguage::EnUs) => "Search",
+            (ExplorerTab::Address, UiLanguage::ZhCn) => "地址",
+            (ExplorerTab::Address, UiLanguage::EnUs) => "Address",
+            (ExplorerTab::Contracts, UiLanguage::ZhCn) => "合约",
+            (ExplorerTab::Contracts, UiLanguage::EnUs) => "Contracts",
+            (ExplorerTab::Assets, UiLanguage::ZhCn) => "资产",
+            (ExplorerTab::Assets, UiLanguage::EnUs) => "Assets",
+            (ExplorerTab::Mempool, UiLanguage::ZhCn) => "内存池",
+            (ExplorerTab::Mempool, UiLanguage::EnUs) => "Mempool",
         }
     }
 
@@ -339,6 +367,12 @@ impl ClientLauncherApp {
                     ExplorerTab::Blocks => self.explorer_panel_state.pending_blocks_refresh = true,
                     ExplorerTab::Txs => self.explorer_panel_state.pending_txs_refresh = true,
                     ExplorerTab::Search => self.explorer_panel_state.pending_search_refresh = true,
+                    ExplorerTab::Address
+                    | ExplorerTab::Contracts
+                    | ExplorerTab::Assets
+                    | ExplorerTab::Mempool => {
+                        self.schedule_explorer_p1_tab_refresh(self.explorer_panel_state.active_tab)
+                    }
                 }
             }
             self.request_web_chain_explorer_overview();
@@ -390,6 +424,11 @@ impl ClientLauncherApp {
         if self.explorer_panel_state.pending_search_refresh {
             self.explorer_panel_state.pending_search_refresh = false;
             self.request_web_chain_explorer_search(self.explorer_panel_state.search_query.clone());
+            return;
+        }
+
+        if self.maybe_request_explorer_p1_data() {
+            return;
         }
     }
 
@@ -502,6 +541,21 @@ impl ClientLauncherApp {
                     );
                 }
             }
+            Ok(ExplorerQueryResponse::Address(response)) => {
+                self.apply_explorer_address_response(response);
+            }
+            Ok(ExplorerQueryResponse::Contracts(response)) => {
+                self.apply_explorer_contracts_response(response);
+            }
+            Ok(ExplorerQueryResponse::Contract(response)) => {
+                self.apply_explorer_contract_response(response);
+            }
+            Ok(ExplorerQueryResponse::Assets(response)) => {
+                self.apply_explorer_assets_response(response);
+            }
+            Ok(ExplorerQueryResponse::Mempool(response)) => {
+                self.apply_explorer_mempool_response(response);
+            }
             Err(err) => {
                 self.append_log(format!(
                     "{}: {err}",
@@ -562,6 +616,12 @@ impl ClientLauncherApp {
                             ExplorerTab::Search => {
                                 self.explorer_panel_state.pending_search_refresh = true
                             }
+                            ExplorerTab::Address
+                            | ExplorerTab::Contracts
+                            | ExplorerTab::Assets
+                            | ExplorerTab::Mempool => self.schedule_explorer_p1_tab_refresh(
+                                self.explorer_panel_state.active_tab,
+                            ),
                         }
                         self.explorer_panel_state.last_poll_at = Some(Instant::now());
                     }
@@ -596,6 +656,10 @@ impl ClientLauncherApp {
                     ExplorerTab::Blocks => self.render_blocks_tab(ui),
                     ExplorerTab::Txs => self.render_txs_tab(ui),
                     ExplorerTab::Search => self.render_search_tab(ui),
+                    ExplorerTab::Address => self.render_address_tab(ui),
+                    ExplorerTab::Contracts => self.render_contracts_tab(ui),
+                    ExplorerTab::Assets => self.render_assets_tab(ui),
+                    ExplorerTab::Mempool => self.render_mempool_tab(ui),
                 }
             });
 
@@ -640,7 +704,15 @@ impl ClientLauncherApp {
 
     fn render_tabs(&mut self, ui: &mut egui::Ui) {
         ui.horizontal_wrapped(|ui| {
-            for tab in [ExplorerTab::Blocks, ExplorerTab::Txs, ExplorerTab::Search] {
+            for tab in [
+                ExplorerTab::Blocks,
+                ExplorerTab::Txs,
+                ExplorerTab::Search,
+                ExplorerTab::Address,
+                ExplorerTab::Contracts,
+                ExplorerTab::Assets,
+                ExplorerTab::Mempool,
+            ] {
                 let selected = self.explorer_panel_state.active_tab == tab;
                 if ui
                     .selectable_label(selected, self.explorer_tab_text(tab))
@@ -655,6 +727,10 @@ impl ClientLauncherApp {
                         ExplorerTab::Search => {
                             self.explorer_panel_state.pending_search_refresh = true
                         }
+                        ExplorerTab::Address
+                        | ExplorerTab::Contracts
+                        | ExplorerTab::Assets
+                        | ExplorerTab::Mempool => self.schedule_explorer_p1_tab_refresh(tab),
                     }
                 }
             }

@@ -294,6 +294,106 @@ impl ClientLauncherApp {
         });
     }
 
+    pub(super) fn request_web_chain_explorer_address(
+        &mut self,
+        account_id: String,
+        cursor: usize,
+        limit: usize,
+    ) {
+        if self.web_request_inflight {
+            self.append_log("skip explorer address query: previous web request still in flight");
+            return;
+        }
+        self.web_request_inflight = true;
+        self.last_web_poll_at = Some(Instant::now());
+        let tx = self.web_api_tx.clone();
+        spawn_local(async move {
+            let _ = tx.send(WebApiEvent::ExplorerQuery(
+                fetch_web_explorer_address(account_id, cursor, limit)
+                    .await
+                    .map(explorer_window::ExplorerQueryResponse::Address),
+            ));
+        });
+    }
+
+    pub(super) fn request_web_chain_explorer_contracts(&mut self, cursor: usize, limit: usize) {
+        if self.web_request_inflight {
+            self.append_log("skip explorer contracts query: previous web request still in flight");
+            return;
+        }
+        self.web_request_inflight = true;
+        self.last_web_poll_at = Some(Instant::now());
+        let tx = self.web_api_tx.clone();
+        spawn_local(async move {
+            let _ = tx.send(WebApiEvent::ExplorerQuery(
+                fetch_web_explorer_contracts(cursor, limit)
+                    .await
+                    .map(explorer_window::ExplorerQueryResponse::Contracts),
+            ));
+        });
+    }
+
+    pub(super) fn request_web_chain_explorer_contract(&mut self, contract_id: String) {
+        if self.web_request_inflight {
+            self.append_log("skip explorer contract query: previous web request still in flight");
+            return;
+        }
+        self.web_request_inflight = true;
+        self.last_web_poll_at = Some(Instant::now());
+        let tx = self.web_api_tx.clone();
+        spawn_local(async move {
+            let _ = tx.send(WebApiEvent::ExplorerQuery(
+                fetch_web_explorer_contract(contract_id)
+                    .await
+                    .map(explorer_window::ExplorerQueryResponse::Contract),
+            ));
+        });
+    }
+
+    pub(super) fn request_web_chain_explorer_assets(
+        &mut self,
+        account_filter: String,
+        cursor: usize,
+        limit: usize,
+    ) {
+        if self.web_request_inflight {
+            self.append_log("skip explorer assets query: previous web request still in flight");
+            return;
+        }
+        self.web_request_inflight = true;
+        self.last_web_poll_at = Some(Instant::now());
+        let tx = self.web_api_tx.clone();
+        spawn_local(async move {
+            let _ = tx.send(WebApiEvent::ExplorerQuery(
+                fetch_web_explorer_assets(account_filter, cursor, limit)
+                    .await
+                    .map(explorer_window::ExplorerQueryResponse::Assets),
+            ));
+        });
+    }
+
+    pub(super) fn request_web_chain_explorer_mempool(
+        &mut self,
+        status_filter: Option<String>,
+        cursor: usize,
+        limit: usize,
+    ) {
+        if self.web_request_inflight {
+            self.append_log("skip explorer mempool query: previous web request still in flight");
+            return;
+        }
+        self.web_request_inflight = true;
+        self.last_web_poll_at = Some(Instant::now());
+        let tx = self.web_api_tx.clone();
+        spawn_local(async move {
+            let _ = tx.send(WebApiEvent::ExplorerQuery(
+                fetch_web_explorer_mempool(status_filter, cursor, limit)
+                    .await
+                    .map(explorer_window::ExplorerQueryResponse::Mempool),
+            ));
+        });
+    }
+
     pub(super) fn request_web_chain_feedback(&mut self, request: WebFeedbackSubmitRequest) {
         if self.web_request_inflight {
             self.append_log("skip feedback submit: previous web request still in flight");
@@ -741,6 +841,139 @@ async fn fetch_web_explorer_search(
         .json::<explorer_window::WebExplorerSearchResponse>()
         .await
         .map_err(|err| format!("decode /api/chain/explorer/search response failed: {err}"))
+}
+
+async fn fetch_web_explorer_address(
+    account_id: String,
+    cursor: usize,
+    limit: usize,
+) -> Result<explorer_window::WebExplorerAddressResponse, String> {
+    let account_id = account_id.trim().to_string();
+    let path = format!(
+        "/api/chain/explorer/address?account_id={account_id}&limit={}&cursor={cursor}",
+        limit.clamp(1, 200)
+    );
+    let response = Request::get(path.as_str())
+        .send()
+        .await
+        .map_err(|err| format!("GET /api/chain/explorer/address failed: {err}"))?;
+    if !response.ok() {
+        return Err(format!(
+            "GET /api/chain/explorer/address failed with HTTP {}",
+            response.status()
+        ));
+    }
+    response
+        .json::<explorer_window::WebExplorerAddressResponse>()
+        .await
+        .map_err(|err| format!("decode /api/chain/explorer/address response failed: {err}"))
+}
+
+async fn fetch_web_explorer_contracts(
+    cursor: usize,
+    limit: usize,
+) -> Result<explorer_window::WebExplorerContractsResponse, String> {
+    let path = format!(
+        "/api/chain/explorer/contracts?limit={}&cursor={cursor}",
+        limit.clamp(1, 200)
+    );
+    let response = Request::get(path.as_str())
+        .send()
+        .await
+        .map_err(|err| format!("GET /api/chain/explorer/contracts failed: {err}"))?;
+    if !response.ok() {
+        return Err(format!(
+            "GET /api/chain/explorer/contracts failed with HTTP {}",
+            response.status()
+        ));
+    }
+    response
+        .json::<explorer_window::WebExplorerContractsResponse>()
+        .await
+        .map_err(|err| format!("decode /api/chain/explorer/contracts response failed: {err}"))
+}
+
+async fn fetch_web_explorer_contract(
+    contract_id: String,
+) -> Result<explorer_window::WebExplorerContractResponse, String> {
+    let contract_id = contract_id.trim().to_string();
+    let path = format!("/api/chain/explorer/contract?contract_id={contract_id}");
+    let response = Request::get(path.as_str())
+        .send()
+        .await
+        .map_err(|err| format!("GET /api/chain/explorer/contract failed: {err}"))?;
+    if !response.ok() {
+        return Err(format!(
+            "GET /api/chain/explorer/contract failed with HTTP {}",
+            response.status()
+        ));
+    }
+    response
+        .json::<explorer_window::WebExplorerContractResponse>()
+        .await
+        .map_err(|err| format!("decode /api/chain/explorer/contract response failed: {err}"))
+}
+
+async fn fetch_web_explorer_assets(
+    account_filter: String,
+    cursor: usize,
+    limit: usize,
+) -> Result<explorer_window::WebExplorerAssetsResponse, String> {
+    let mut query = vec![
+        format!("limit={}", limit.clamp(1, 200)),
+        format!("cursor={cursor}"),
+    ];
+    let account_filter = account_filter.trim();
+    if !account_filter.is_empty() {
+        query.push(format!("account_id={account_filter}"));
+    }
+    let path = format!("/api/chain/explorer/assets?{}", query.join("&"));
+    let response = Request::get(path.as_str())
+        .send()
+        .await
+        .map_err(|err| format!("GET /api/chain/explorer/assets failed: {err}"))?;
+    if !response.ok() {
+        return Err(format!(
+            "GET /api/chain/explorer/assets failed with HTTP {}",
+            response.status()
+        ));
+    }
+    response
+        .json::<explorer_window::WebExplorerAssetsResponse>()
+        .await
+        .map_err(|err| format!("decode /api/chain/explorer/assets response failed: {err}"))
+}
+
+async fn fetch_web_explorer_mempool(
+    status_filter: Option<String>,
+    cursor: usize,
+    limit: usize,
+) -> Result<explorer_window::WebExplorerMempoolResponse, String> {
+    let mut query = vec![
+        format!("limit={}", limit.clamp(1, 200)),
+        format!("cursor={cursor}"),
+    ];
+    if let Some(status_filter) = status_filter {
+        let status_filter = status_filter.trim().to_string();
+        if !status_filter.is_empty() {
+            query.push(format!("status={status_filter}"));
+        }
+    }
+    let path = format!("/api/chain/explorer/mempool?{}", query.join("&"));
+    let response = Request::get(path.as_str())
+        .send()
+        .await
+        .map_err(|err| format!("GET /api/chain/explorer/mempool failed: {err}"))?;
+    if !response.ok() {
+        return Err(format!(
+            "GET /api/chain/explorer/mempool failed with HTTP {}",
+            response.status()
+        ));
+    }
+    response
+        .json::<explorer_window::WebExplorerMempoolResponse>()
+        .await
+        .map_err(|err| format!("decode /api/chain/explorer/mempool response failed: {err}"))
 }
 
 async fn post_web_chain_feedback(
