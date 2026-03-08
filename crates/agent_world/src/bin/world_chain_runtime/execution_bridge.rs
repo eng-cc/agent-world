@@ -145,6 +145,297 @@ impl ExecutionBridgeRecord {
     }
 }
 
+const EXECUTION_CHECKPOINT_MANIFEST_SCHEMA_V1: u32 = 1;
+
+fn execution_checkpoint_manifest_schema_v1() -> u32 {
+    EXECUTION_CHECKPOINT_MANIFEST_SCHEMA_V1
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub(super) struct ExecutionCheckpointManifest {
+    #[serde(default = "execution_checkpoint_manifest_schema_v1")]
+    pub schema_version: u32,
+    pub checkpoint_id: String,
+    pub world_id: String,
+    pub height: u64,
+    pub execution_block_hash: String,
+    pub execution_state_root: String,
+    pub latest_state_ref: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub snapshot_ref: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub journal_ref: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub pinned_refs: Vec<String>,
+    pub manifest_hash: String,
+    pub created_at_ms: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+struct ExecutionCheckpointLatestPointer {
+    #[serde(default = "execution_checkpoint_manifest_schema_v1")]
+    pub schema_version: u32,
+    pub checkpoint_id: String,
+    pub height: u64,
+    pub manifest_hash: String,
+    pub manifest_rel_path: String,
+    pub updated_at_ms: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+struct ExecutionCheckpointManifestHashPayload<'a> {
+    schema_version: u32,
+    checkpoint_id: &'a str,
+    world_id: &'a str,
+    height: u64,
+    execution_block_hash: &'a str,
+    execution_state_root: &'a str,
+    latest_state_ref: &'a str,
+    snapshot_ref: Option<&'a str>,
+    journal_ref: Option<&'a str>,
+    pinned_refs: &'a [String],
+    created_at_ms: i64,
+}
+
+impl ExecutionCheckpointManifest {
+    fn new(
+        world_id: String,
+        height: u64,
+        execution_block_hash: String,
+        execution_state_root: String,
+        latest_state_ref: String,
+        snapshot_ref: Option<String>,
+        journal_ref: Option<String>,
+        created_at_ms: i64,
+    ) -> Result<Self, String> {
+        let checkpoint_id = execution_checkpoint_id(height, execution_block_hash.as_str());
+        let mut pinned_refs = vec![latest_state_ref.clone()];
+        if let Some(snapshot_ref) = snapshot_ref.as_ref() {
+            pinned_refs.push(snapshot_ref.clone());
+        }
+        if let Some(journal_ref) = journal_ref.as_ref() {
+            pinned_refs.push(journal_ref.clone());
+        }
+        pinned_refs.sort();
+        pinned_refs.dedup();
+
+        let mut manifest = Self {
+            schema_version: EXECUTION_CHECKPOINT_MANIFEST_SCHEMA_V1,
+            checkpoint_id,
+            world_id,
+            height,
+            execution_block_hash,
+            execution_state_root,
+            latest_state_ref,
+            snapshot_ref,
+            journal_ref,
+            pinned_refs,
+            manifest_hash: String::new(),
+            created_at_ms,
+        };
+        manifest.manifest_hash = manifest.compute_manifest_hash()?;
+        Ok(manifest)
+    }
+
+    fn compute_manifest_hash(&self) -> Result<String, String> {
+        let payload = ExecutionCheckpointManifestHashPayload {
+            schema_version: self.schema_version,
+            checkpoint_id: self.checkpoint_id.as_str(),
+            world_id: self.world_id.as_str(),
+            height: self.height,
+            execution_block_hash: self.execution_block_hash.as_str(),
+            execution_state_root: self.execution_state_root.as_str(),
+            latest_state_ref: self.latest_state_ref.as_str(),
+            snapshot_ref: self.snapshot_ref.as_deref(),
+            journal_ref: self.journal_ref.as_deref(),
+            pinned_refs: self.pinned_refs.as_slice(),
+            created_at_ms: self.created_at_ms,
+        };
+        Ok(blake3_hex(to_cbor(payload)?.as_slice()))
+    }
+
+    fn validate(&self) -> Result<(), String> {
+        if self.schema_version < EXECUTION_CHECKPOINT_MANIFEST_SCHEMA_V1 {
+            return Err(format!(
+                "execution checkpoint manifest {} has invalid schema_version={}",
+                self.checkpoint_id, self.schema_version
+            ));
+        }
+        if self.height == 0 {
+            return Err(format!(
+                "execution checkpoint manifest {} has invalid height=0",
+                self.checkpoint_id
+            ));
+        }
+        if self.latest_state_ref.is_empty() {
+            return Err(format!(
+                "execution checkpoint manifest {} missing latest_state_ref",
+                self.checkpoint_id
+            ));
+        }
+        let mut expected_pins = vec![self.latest_state_ref.clone()];
+        if let Some(snapshot_ref) = self.snapshot_ref.as_ref() {
+            expected_pins.push(snapshot_ref.clone());
+        }
+        if let Some(journal_ref) = self.journal_ref.as_ref() {
+            expected_pins.push(journal_ref.clone());
+        }
+        expected_pins.sort();
+        expected_pins.dedup();
+        if expected_pins != self.pinned_refs {
+            return Err(format!(
+                "execution checkpoint manifest {} pin-set mismatch expected={:?} actual={:?}",
+                self.checkpoint_id, expected_pins, self.pinned_refs
+            ));
+        }
+        let expected_hash = self.compute_manifest_hash()?;
+        if self.manifest_hash != expected_hash {
+            return Err(format!(
+                "execution checkpoint manifest {} hash mismatch expected={} actual={}",
+                self.checkpoint_id, expected_hash, self.manifest_hash
+            ));
+        }
+        Ok(())
+    }
+}
+
+fn execution_checkpoint_id(height: u64, execution_block_hash: &str) -> String {
+    let short_hash: String = execution_block_hash.chars().take(16).collect();
+    format!("checkpoint-{:020}-{short_hash}", height)
+}
+
+fn execution_checkpoint_root_dir(execution_records_dir: &Path) -> std::path::PathBuf {
+    execution_records_dir.join("checkpoints")
+}
+
+fn execution_checkpoint_manifest_path(
+    execution_records_dir: &Path,
+    height: u64,
+) -> std::path::PathBuf {
+    execution_checkpoint_root_dir(execution_records_dir)
+        .join(format!("{:020}", height))
+        .join("manifest.json")
+}
+
+fn execution_checkpoint_latest_path(execution_records_dir: &Path) -> std::path::PathBuf {
+    execution_checkpoint_root_dir(execution_records_dir).join("latest.json")
+}
+
+fn persist_execution_checkpoint_manifest(
+    execution_records_dir: &Path,
+    manifest: &ExecutionCheckpointManifest,
+) -> Result<(), String> {
+    manifest.validate()?;
+    let manifest_path = execution_checkpoint_manifest_path(execution_records_dir, manifest.height);
+    let manifest_parent = manifest_path.parent().ok_or_else(|| {
+        format!(
+            "execution checkpoint manifest path {} missing parent",
+            manifest_path.display()
+        )
+    })?;
+    fs::create_dir_all(manifest_parent).map_err(|err| {
+        format!(
+            "create execution checkpoint dir {} failed: {}",
+            manifest_parent.display(),
+            err
+        )
+    })?;
+    let manifest_bytes = serde_json::to_vec_pretty(manifest)
+        .map_err(|err| format!("serialize execution checkpoint manifest failed: {}", err))?;
+    super::write_bytes_atomic(manifest_path.as_path(), manifest_bytes.as_slice())?;
+
+    let root_dir = execution_checkpoint_root_dir(execution_records_dir);
+    fs::create_dir_all(root_dir.as_path()).map_err(|err| {
+        format!(
+            "create execution checkpoint root {} failed: {}",
+            root_dir.display(),
+            err
+        )
+    })?;
+    let latest = ExecutionCheckpointLatestPointer {
+        schema_version: EXECUTION_CHECKPOINT_MANIFEST_SCHEMA_V1,
+        checkpoint_id: manifest.checkpoint_id.clone(),
+        height: manifest.height,
+        manifest_hash: manifest.manifest_hash.clone(),
+        manifest_rel_path: format!("{:020}/manifest.json", manifest.height),
+        updated_at_ms: manifest.created_at_ms,
+    };
+    let latest_bytes = serde_json::to_vec_pretty(&latest).map_err(|err| {
+        format!(
+            "serialize execution checkpoint latest pointer failed: {}",
+            err
+        )
+    })?;
+    let latest_path = execution_checkpoint_latest_path(execution_records_dir);
+    super::write_bytes_atomic(latest_path.as_path(), latest_bytes.as_slice())
+}
+
+fn load_execution_checkpoint_manifest(path: &Path) -> Result<ExecutionCheckpointManifest, String> {
+    let bytes = fs::read(path).map_err(|err| {
+        format!(
+            "read execution checkpoint manifest {} failed: {}",
+            path.display(),
+            err
+        )
+    })?;
+    let manifest = serde_json::from_slice::<ExecutionCheckpointManifest>(bytes.as_slice())
+        .map_err(|err| {
+            format!(
+                "parse execution checkpoint manifest {} failed: {}",
+                path.display(),
+                err
+            )
+        })?;
+    manifest.validate()?;
+    Ok(manifest)
+}
+
+fn load_latest_execution_checkpoint_manifest(
+    execution_records_dir: &Path,
+) -> Result<Option<ExecutionCheckpointManifest>, String> {
+    let latest_path = execution_checkpoint_latest_path(execution_records_dir);
+    if !latest_path.exists() {
+        return Ok(None);
+    }
+    let bytes = fs::read(latest_path.as_path()).map_err(|err| {
+        format!(
+            "read execution checkpoint latest pointer {} failed: {}",
+            latest_path.display(),
+            err
+        )
+    })?;
+    let latest = serde_json::from_slice::<ExecutionCheckpointLatestPointer>(bytes.as_slice())
+        .map_err(|err| {
+            format!(
+                "parse execution checkpoint latest pointer {} failed: {}",
+                latest_path.display(),
+                err
+            )
+        })?;
+    let manifest_path =
+        execution_checkpoint_root_dir(execution_records_dir).join(latest.manifest_rel_path);
+    let manifest = load_execution_checkpoint_manifest(manifest_path.as_path())?;
+    if manifest.height != latest.height {
+        return Err(format!(
+            "execution checkpoint latest pointer height mismatch expected={} actual={}",
+            latest.height, manifest.height
+        ));
+    }
+    if manifest.manifest_hash != latest.manifest_hash {
+        return Err(format!(
+            "execution checkpoint latest pointer hash mismatch expected={} actual={}",
+            latest.manifest_hash, manifest.manifest_hash
+        ));
+    }
+    if manifest.checkpoint_id != latest.checkpoint_id {
+        return Err(format!(
+            "execution checkpoint latest pointer id mismatch expected={} actual={}",
+            latest.checkpoint_id, manifest.checkpoint_id
+        ));
+    }
+    Ok(Some(manifest))
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub(super) struct ExecutionSimulatorMirrorRecord {
     pub action_count: usize,
@@ -881,6 +1172,84 @@ mod tests {
         assert!(record.commit_log_ref.is_none());
         assert!(record.checkpoint_ref.is_none());
         assert!(record.external_effect_ref.is_none());
+    }
+
+    #[test]
+    fn execution_checkpoint_manifest_roundtrip_updates_latest_pointer() {
+        let dir = temp_dir("execution-checkpoint-manifest");
+        let records_dir = dir.join("records");
+        let manifest = ExecutionCheckpointManifest::new(
+            "w1".to_string(),
+            12,
+            "exec-h12".to_string(),
+            "state-r12".to_string(),
+            "cas:snapshot-12".to_string(),
+            Some("cas:snapshot-12".to_string()),
+            Some("cas:journal-12".to_string()),
+            12_000,
+        )
+        .expect("build manifest");
+
+        persist_execution_checkpoint_manifest(records_dir.as_path(), &manifest)
+            .expect("persist manifest");
+        let loaded = load_execution_checkpoint_manifest(
+            execution_checkpoint_manifest_path(records_dir.as_path(), 12).as_path(),
+        )
+        .expect("load manifest");
+        let latest = load_latest_execution_checkpoint_manifest(records_dir.as_path())
+            .expect("load latest manifest")
+            .expect("latest manifest should exist");
+
+        assert_eq!(loaded, manifest);
+        assert_eq!(latest, manifest);
+        assert_eq!(
+            latest.pinned_refs,
+            vec!["cas:journal-12".to_string(), "cas:snapshot-12".to_string()]
+        );
+        assert!(execution_checkpoint_latest_path(records_dir.as_path()).exists());
+
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn execution_checkpoint_manifest_rejects_tampered_latest_pointer() {
+        let dir = temp_dir("execution-checkpoint-manifest-tamper");
+        let records_dir = dir.join("records");
+        let manifest = ExecutionCheckpointManifest::new(
+            "w1".to_string(),
+            4,
+            "exec-h4".to_string(),
+            "state-r4".to_string(),
+            "cas:snapshot-4".to_string(),
+            Some("cas:snapshot-4".to_string()),
+            Some("cas:journal-4".to_string()),
+            4_000,
+        )
+        .expect("build manifest");
+        persist_execution_checkpoint_manifest(records_dir.as_path(), &manifest)
+            .expect("persist manifest");
+
+        let latest_path = execution_checkpoint_latest_path(records_dir.as_path());
+        let mut latest_json: serde_json::Value = serde_json::from_slice(
+            fs::read(latest_path.as_path())
+                .expect("read latest pointer")
+                .as_slice(),
+        )
+        .expect("parse latest pointer");
+        latest_json["manifest_hash"] = serde_json::Value::String("tampered".to_string());
+        let latest_bytes =
+            serde_json::to_vec_pretty(&latest_json).expect("serialize tampered latest pointer");
+        crate::write_bytes_atomic(latest_path.as_path(), latest_bytes.as_slice())
+            .expect("persist tampered latest pointer");
+
+        let err = load_latest_execution_checkpoint_manifest(records_dir.as_path())
+            .expect_err("tampered latest pointer should fail");
+        assert!(
+            err.contains("hash mismatch"),
+            "unexpected latest pointer error: {err}"
+        );
+
+        let _ = fs::remove_dir_all(dir);
     }
 
     #[test]
