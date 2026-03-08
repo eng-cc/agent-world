@@ -156,7 +156,7 @@
 - TASK-P2P-016 启动（2026-03-08）: 新增“历史文档路径替换”任务链，目标为清理已删除 `world_viewer_live/` 子目录路径并统一到当前源码布局。
 - TASK-P2P-016 进展（2026-03-08）: `TASK-P2P-016-T0` 已完成（主 PRD/project 建档并冻结路径替换验收口径）。
 - TASK-P2P-016 进展（2026-03-08）: `TASK-P2P-016-T1` 已完成历史专题文档路径替换（`world_viewer_live` 旧子目录路径迁移到 `world_viewer_live.rs` / `world_chain_runtime/*`）。
-- TASK-P2P-016 进展（2026-03-08）: `TASK-P2P-016-T2` 已完成文档门禁与 grep 校验（排除 `doc/devlog/**` 后 `crates/agent_world/src/bin/world_viewer_live/` 旧路径零残留）。
+- TASK-P2P-016 进展（2026-03-08）: `TASK-P2P-016-T2` 已完成文档门禁与 grep 校验（排除 `doc/devlog/**` 后 `world_viewer_live` 子目录旧路径零残留）。
 - TASK-P2P-016 收口（2026-03-08）: `TASK-P2P-016-T3` 已完成项目状态回写并关闭主任务状态。
 - 说明: 本文档仅维护 p2p 设计执行状态；过程记录在 `doc/devlog/2026-03-07.md` 与 `doc/devlog/2026-03-08.md`。
 - ROUND-002 进展（2026-03-05）: 已并行完成 `B3-C2-009-S2/C2-010/C2-011`（observer sync-mode、node-contribution、distfs-self-healing）主从化回写。
