@@ -43,6 +43,7 @@
   - SC-11: runtime/game/web/client launcher 与 longrun 脚本默认参数统一为 `slot_duration_ms=12000`、`ticks_per_slot=10`、`proposal_tick_phase=9`，满足“12s 出块、每块 10 tick”基线。
   - SC-12: `world_viewer_live` 对外 CLI 收敛为纯观察服务，不再接受 `--release-config` 与 `--node-*` 控制面参数；误传时必须显式拒绝并提示改用 `world_chain_runtime`。
   - SC-13: `world_viewer_live` 移除 legacy 参数兼容层，不再接受 `--runtime-world` 等历史别名；代码库中不再保留未接入生产入口的旧 CLI 解析路径。
+  - SC-14: 历史 PRD/project 文档中的 `world_viewer_live` 旧文件路径完成替换，不再指向已删除的 `src/bin/world_viewer_live/` 子目录文件。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -68,6 +69,7 @@
   - PRD-P2P-009: As a 节点运营者, I want sane default PoS timing values and uniform validation wording, so that default startup already follows anchored block-time semantics without hidden overrides.
   - PRD-P2P-010: As a 发布维护者, I want `world_viewer_live` to reject legacy release/node control-plane flags, so that chain control is unambiguously hosted by `world_chain_runtime`.
   - PRD-P2P-011: As a 发布维护者, I want legacy compatibility aliases removed from `world_viewer_live`, so that CLI semantics are single-source and there is no dead parser path.
+  - PRD-P2P-012: As a 维护者, I want historical docs to reference current source layout, so that reviewers do not chase deleted paths during audit or regression.
 - Critical User Flows:
   1. Flow-P2P-001: `网络拓扑变更 -> 共识联调 -> DistFS 同步 -> 节点状态一致性验证`
   2. Flow-P2P-002: `执行 S9/S10 长跑 -> 采集故障与恢复数据 -> 输出收敛报告`
@@ -80,6 +82,7 @@
   9. Flow-P2P-009: `默认启动 runtime/game/web/client launcher -> 使用统一默认 slot_duration/ticks_per_slot -> 文档/帮助/校验文案一致呈现 poll vs slot 语义`
   10. Flow-P2P-010: `用户误传 world_viewer_live --release-config/--node-* -> CLI 显式拒绝并给出替代入口 -> 文档与示例迁移到 world_chain_runtime`
   11. Flow-P2P-011: `用户误传 world_viewer_live 任意 legacy 参数（含 --runtime-world） -> CLI 明确拒绝并输出迁移入口 -> 测试与手册口径一致`
+  12. Flow-P2P-012: `执行历史文档巡检 -> 替换已删除源码路径到当前入口路径 -> 文档门禁 + grep 零残留校验`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
@@ -115,6 +118,7 @@
   - AC-14: `world_chain_runtime/world_game_launcher/world_web_launcher/agent_world_client_launcher/world_viewer_live/p2p-longrun/s10` 默认 `slot_duration_ms/ticks_per_slot/proposal_tick_phase` 与“12s/10/9”基线一致，相关默认值断言与手册同步更新。
   - AC-15: `world_viewer_live` 解析层移除 `--release-config` 与 `--node-*` 参数能力；定向测试覆盖“误传 legacy 参数 -> 启动失败 + 替代提示”路径。
   - AC-16: `world_viewer_live` 进一步移除 `--runtime-world` 兼容别名与旧 split CLI 路径，定向测试覆盖 `--release-config/--runtime-world/--node-*` 拒绝行为。
+  - AC-17: 历史文档中 `crates/agent_world/src/bin/world_viewer_live/*.rs` 旧路径完成迁移（对齐 `world_viewer_live.rs` 与 `world_chain_runtime/*` 现行布局），文档门禁通过。
 - Non-Goals:
   - 不在本 PRD 细化 viewer UI 交互。
   - 不替代 runtime 内核的模块执行细节设计。
@@ -167,6 +171,7 @@
   - NFR-P2P-12: 指标命名必须区分“worker poll”与“consensus tick”；任何对外接口不得将二者混称为同一 tick 语义。
   - NFR-P2P-13: `world_viewer_live` CLI 帮助与错误文案中不得再出现 release/node 控制面入口，避免与 `world_chain_runtime` 控制平面重复。
   - NFR-P2P-14: `world_viewer_live` 仅保留一个生效的 CLI 解析实现；仓内不得存在与生产入口分叉的 legacy 参数解析代码路径。
+  - NFR-P2P-15: 模块文档中的源码路径引用必须可解析到当前仓库存在文件，避免审计与回归排障时出现失效链接。
 - Security & Privacy: 需保证节点身份、签名、账本与反馈数据链路的完整性；所有关键动作必须具备可审计记录。
 
 ## 5. Risks & Roadmap
@@ -194,6 +199,7 @@
 | PRD-P2P-009 | TASK-P2P-013 | `test_tier_required` | 默认值切换到 `12s/10/9` 并回归 CLI/脚本/文档口径 | 时间锚定基线一致性与默认运行节拍 |
 | PRD-P2P-010 | TASK-P2P-014 | `test_tier_required` | `world_viewer_live` legacy 参数拒绝、帮助文案收敛与文档/示例迁移回归 | Viewer/chain 控制面边界一致性 |
 | PRD-P2P-011 | TASK-P2P-015 | `test_tier_required` | `world_viewer_live` 删除 `--runtime-world` 兼容别名、移除旧 split CLI 路径并回归手册/测试口径 | CLI 单一事实源与维护成本收敛 |
+| PRD-P2P-012 | TASK-P2P-016 | `test_tier_required` | 历史文档旧路径替换 + 文档门禁 + 旧路径 grep 零残留校验（过程日志除外） | 文档可追溯性与维护效率 |
 - S9/S10 长跑结果模板（TASK-P2P-003）:
 | 字段 | 说明 | 来源 |
 | --- | --- | --- |
@@ -241,3 +247,4 @@
 | DEC-P2P-012 | 默认 PoS 时间参数采用 `slot_duration_ms=12000`、`ticks_per_slot=10`、`proposal_tick_phase=9` | 保持 `200/1/0` 等压测导向默认组合 | 与“12s 出块、每块 10 tick”设计口径一致，默认体验与协议基线对齐。 |
 | DEC-P2P-013 | `world_viewer_live` 移除 `--release-config` 与 `--node-*` 控制面参数，仅保留观察服务 CLI | 继续在 viewer 保留 release/node 控制面兼容入口 | 避免控制面双入口造成运维误配，统一由 `world_chain_runtime` 承担链参数与节点生命周期。 |
 | DEC-P2P-014 | `world_viewer_live` 删除 `--runtime-world` 兼容别名与 legacy split CLI 代码，保留单一生产入口 `world_viewer_live.rs` | 继续保留兼容别名和未接入入口的旧解析代码 | 避免“文档/测试改了但真实入口不生效”的双轨风险，降低后续维护和误判成本。 |
+| DEC-P2P-015 | 统一将历史文档中的 `world_viewer_live` 旧文件路径替换为当前源码布局路径（`world_viewer_live.rs` / `world_chain_runtime/*`） | 保留旧路径并依赖读者自行映射 | 降低审计误导与排障成本，确保文档可直接定位现行实现。 |

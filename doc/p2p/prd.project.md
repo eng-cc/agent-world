@@ -18,6 +18,7 @@
 - [x] TASK-P2P-013 (PRD-P2P-009) [test_tier_required]: 将默认 PoS 时间参数对齐到“12s 出块、每块 10 tick”基线（`12000/10/9`），并收敛 CLI/脚本/文档一致性。
 - [x] TASK-P2P-014 (PRD-P2P-010) [test_tier_required]: 移除 `world_viewer_live --release-config/--node-*` 控制面参数，收敛为纯观察服务并完成文档/示例/测试闭环。
 - [x] TASK-P2P-015 (PRD-P2P-011) [test_tier_required]: 删除 `world_viewer_live` legacy 参数兼容层（含 `--runtime-world`）与未接入生产入口的旧 CLI 解析代码，统一单一入口并完成文档/测试收口。
+- [ ] TASK-P2P-016 (PRD-P2P-012) [test_tier_required]: 替换历史文档中 `world_viewer_live` 已删除源码路径引用，统一到当前源码布局并完成门禁收口。
 
 ### TASK-P2P-002 执行拆解（PRD-P2P-001/002）
 - [x] TASK-P2P-002-A [test_tier_required]: 在 `doc/p2p/prd.md` 补齐网络/共识/DistFS 三线联合验收清单（基线命令、门禁命令、阻断条件、证据产物）。
@@ -72,6 +73,12 @@
 - [x] TASK-P2P-015-T3 [test_tier_required]: 回写 viewer/manual/site 与相关项目文档（含测试路径说明）到单入口口径。
 - [x] TASK-P2P-015-T4 [test_tier_required]: 执行 required 回归并完成项目状态与 devlog 收口。
 
+### TASK-P2P-016 执行拆解（PRD-P2P-012）
+- [x] TASK-P2P-016-T0 [test_tier_required]: 在主 PRD/project 建立“历史文档路径替换”任务链并冻结验收口径。
+- [ ] TASK-P2P-016-T1 [test_tier_required]: 替换历史专题 PRD/project 中 `crates/agent_world/src/bin/world_viewer_live/*.rs` 旧路径为现行入口路径。
+- [ ] TASK-P2P-016-T2 [test_tier_required]: 执行文档门禁与旧路径 grep 清理校验（排除 `doc/devlog/**` 过程记录）。
+- [ ] TASK-P2P-016-T3 [test_tier_required]: 回写主项目状态并关闭任务链。
+
 ## 依赖
 - doc/p2p/prd.index.md
 - `doc/p2p/blockchain/production-grade-blockchain-p2pfs-roadmap.prd.md`
@@ -96,8 +103,8 @@
 
 ## 状态
 - 更新日期: 2026-03-08
-- 当前状态: completed（ROUND-011）
-- 下一任务: 无（等待新需求）
+- 当前状态: in_progress（ROUND-012）
+- 下一任务: TASK-P2P-016-T1
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - 本轮新增: `TASK-P2P-006` 已完成，专题文档 `p2p-mobile-light-client-authoritative-state-2026-03-06` 已纳入索引和模块追踪映射。
 - 本轮新增: `TASK-P2P-008` 已建档，专题文档 `node-pos-slot-clock-real-time-2026-03-07` 已纳入模块追踪映射。
@@ -146,6 +153,8 @@
 - TASK-P2P-015 进展（2026-03-08）: `TASK-P2P-015-T2` 已删除 `crates/agent_world/src/bin/world_viewer_live/` legacy split CLI 路径，`world_viewer_live` 构建与 required 定向测试通过。
 - TASK-P2P-015 进展（2026-03-08）: `TASK-P2P-015-T3` 已完成手册/项目文档回写（viewer manual/site、testing-manual、longrun 专题与依赖路径更新）并通过文档门禁。
 - TASK-P2P-015 收口（2026-03-08）: `TASK-P2P-015-T4` 已完成 required 回归（`cargo check --all-targets`、`world_viewer_live/world_chain_runtime` 定向测试、文档门禁）并关闭主任务状态。
+- TASK-P2P-016 启动（2026-03-08）: 新增“历史文档路径替换”任务链，目标为清理已删除 `world_viewer_live/` 子目录路径并统一到当前源码布局。
+- TASK-P2P-016 进展（2026-03-08）: `TASK-P2P-016-T0` 已完成（主 PRD/project 建档并冻结路径替换验收口径）。
 - 说明: 本文档仅维护 p2p 设计执行状态；过程记录在 `doc/devlog/2026-03-07.md` 与 `doc/devlog/2026-03-08.md`。
 - ROUND-002 进展（2026-03-05）: 已并行完成 `B3-C2-009-S2/C2-010/C2-011`（observer sync-mode、node-contribution、distfs-self-healing）主从化回写。
 - ROUND-002 进展（2026-03-05）: 已并行完成 `B3-C2-003/C2-008-S1/C2-008-S2`（node-redeemable-power-asset、distfs-production-hardening phase1~9）主从化回写。
