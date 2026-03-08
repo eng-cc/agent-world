@@ -485,6 +485,63 @@ fn load_commit_message_cold_index_restores_legacy_alias_from_canonical_manifest(
 }
 
 #[test]
+fn commit_cold_index_scan_anchor_matches_readback_boundaries() {
+    let dir = temp_dir("commit-cold-index-scan-anchor");
+    let world_id = "world-commit-cold-index-scan-anchor";
+    let config = NodeReplicationConfig::new(&dir)
+        .expect("config")
+        .with_max_hot_commit_messages(2)
+        .expect("hot commit cap");
+    let runtime = ReplicationRuntime::new(&config, "node-a").expect("runtime");
+
+    let mut messages = Vec::new();
+    for height in 1..=5 {
+        let message = signed_remote_message(100 + height as u8, world_id, "node-b", height);
+        runtime
+            .persist_commit_message(height, &message)
+            .expect("persist commit message");
+        messages.push(message);
+    }
+
+    let cold_index = load_commit_message_cold_index_from_root(dir.as_path()).expect("cold index");
+    let anchor = cold_index
+        .manifest
+        .cold_range_anchor
+        .clone()
+        .expect("cold range anchor");
+    assert_eq!(anchor.from_key, 1);
+    assert_eq!(anchor.to_key, 3);
+    assert_eq!(anchor.entry_count, 3);
+
+    let first_cold = runtime
+        .load_commit_message_by_height(world_id, anchor.from_key)
+        .expect("load first cold height")
+        .expect("first cold commit exists");
+    let last_cold = runtime
+        .load_commit_message_by_height(world_id, anchor.to_key)
+        .expect("load last cold height")
+        .expect("last cold commit exists");
+    assert_eq!(
+        cold_index.by_height.get(&anchor.from_key),
+        Some(&anchor.first_content_hash)
+    );
+    assert_eq!(
+        cold_index.by_height.get(&anchor.to_key),
+        Some(&anchor.last_content_hash)
+    );
+    assert_eq!(
+        first_cold.record.content_hash,
+        messages[0].record.content_hash
+    );
+    assert_eq!(
+        last_cold.record.content_hash,
+        messages[2].record.content_hash
+    );
+
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn prune_hot_commit_messages_uses_latest_height_window_range() {
     let dir = temp_dir("commit-hot-window-range");
     let world_id = "world-commit-hot-window-range";

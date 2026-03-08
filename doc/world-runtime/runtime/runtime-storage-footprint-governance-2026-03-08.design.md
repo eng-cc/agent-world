@@ -225,7 +225,7 @@ struct StorageColdIndexRangeAnchor {
 #### 设计说明
 - 共享 cold index 目录采用 `<namespace>.cold-index/index.json`；有分段数据时统一使用同级 `segments/` 目录承载 payload。
 - `hot_range` 表示当前仍保留在热路径中的连续键范围；对 replication 即 latest-based height window，对 tick/archive 则可映射为 tick range。
-- `cold_range_anchor` 只承载冷区边界锚点而不是全量 payload，最低要求为 `from_key` / `to_key` / `first_content_hash` / `last_content_hash` / `entry_count`，供审计、metrics 与 seek 策略共用。
+- `cold_range_anchor` 只承载冷区边界锚点而不是全量 payload，最低要求为 `from_key` / `to_key` / `first_content_hash` / `last_content_hash` / `entry_count`，供审计、metrics 与 seek 策略共用；cold-index scan 与按 key seek 的边界必须从同一 anchor 派生。
 - rollout 期间 canonical 与 legacy alias 采用双写 + 读时回填策略：若 `<namespace>.cold-index/index.json` 或旧别名缺失，读取路径会补回另一侧，避免已有样本和脚本立即失效。
 
 ### 6.7 StorageMetricsSnapshot
@@ -433,6 +433,7 @@ struct StorageMetricsSnapshot {
 - sidecar generation sweep 后 orphan blob 数量为 `0`。
 - retained target height 可由 checkpoint + canonical log 重建。
 - `tick_consensus_records` archive read + verify 成功。
+- replication cold-index scan / seek 与 tick archive range seek 在边界口径上保持一致。
 
 ### 16.2 `test_tier_full`
 - GC 中断/部分写入注入，验证 fail-safe。
