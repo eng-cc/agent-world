@@ -28,7 +28,7 @@
 - [x] T3.4 (PRD-WORLD_RUNTIME-013/014) [test_tier_required]: 补齐 save 中断、manifest 部分写入、rollback 恢复与 orphan cleanup 故障注入测试。
 
 ### T4 Tick consensus 热冷分层
-- [ ] T4.1 (PRD-WORLD_RUNTIME-013/015) [test_tier_required]: 将 `tick_consensus_records` 从热快照拆分为热摘要 + 冷归档，控制 `snapshot.json` 默认体积。
+- [x] T4.1 (PRD-WORLD_RUNTIME-013/015) [test_tier_required]: 将 `tick_consensus_records` 从热快照拆分为热摘要 + 冷归档，控制 `snapshot.json` 默认体积。
 - [ ] T4.2 (PRD-WORLD_RUNTIME-013/015) [test_tier_required]: 定义 `TickConsensusArchiveIndex` 的 anchor / hash chain / range metadata，保证审计与校验可顺序读取。
 - [ ] T4.3 (PRD-WORLD_RUNTIME-013/015) [test_tier_required]: 落地 archive read / verify 路径与旧快照迁移逻辑，保证冷热分层后查询与验证语义不变。
 - [ ] T4.4 (PRD-WORLD_RUNTIME-013/015) [test_tier_required]: 补齐 snapshot size regression、archive read、hash verify、旧样本迁移回归测试。
@@ -78,8 +78,8 @@
 ## 状态
 - 更新日期: 2026-03-08
 - 当前状态: planning
-- 已完成: T0、T0.1、T1.1、T1.2、T1.3、T1.4、T1.5、T2.1、T2.2、T2.3、T2.4、T2.5、T3.1、T3.2、T3.3、T3.4
-- 已拆解待执行: T4.1 ~ T7.5
-- 进行中: T4.1
+- 已完成: T0、T0.1、T1.1、T1.2、T1.3、T1.4、T1.5、T2.1、T2.2、T2.3、T2.4、T2.5、T3.1、T3.2、T3.3、T3.4、T4.1
+- 已拆解待执行: T4.2 ~ T7.5
+- 进行中: T4.2
 - 阻塞项: 无；但 T2 / T3 / T6 / T7 的实现必须以前置 T1 契约冻结为准。
-- 下一任务: T4.1（将 `tick_consensus_records` 从热快照拆分为热摘要 + 冷归档）
+- 下一任务: T4.2（定义 `TickConsensusArchiveIndex` 的 anchor / hash chain / range metadata）

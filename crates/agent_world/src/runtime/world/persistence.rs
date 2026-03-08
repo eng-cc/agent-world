@@ -12,7 +12,8 @@ use serde::{Deserialize, Serialize};
 use super::super::util::{hash_json, read_json_from_path, write_json_to_path};
 use super::super::{
     segment_journal, segment_snapshot, Journal, JournalSegmentRef, LocalCasStore, ModuleCache,
-    ModuleStore, RollbackEvent, SegmentConfig, Snapshot, WorldError, WorldEvent,
+    ModuleStore, RollbackEvent, SegmentConfig, Snapshot, TickConsensusRecord, WorldError,
+    WorldEvent, WorldTime,
 };
 use super::World;
 
@@ -23,6 +24,8 @@ const DISTFS_SNAPSHOT_MANIFEST_FILE: &str = "snapshot.manifest.json";
 const DISTFS_JOURNAL_SEGMENTS_FILE: &str = "journal.segments.json";
 const DISTFS_RECOVERY_AUDIT_FILE: &str = "distfs.recovery.audit.json";
 const DISTFS_WORLD_ID_FALLBACK: &str = "runtime-world";
+const TICK_CONSENSUS_ARCHIVE_FILE: &str = "tick-consensus.archive.json";
+const TICK_CONSENSUS_HOT_LIMIT: usize = 128;
 const SIDECAR_GENERATION_INDEX_SCHEMA_V1: u32 = 1;
 const SIDECAR_GENERATION_RECORD_SCHEMA_V1: u32 = 1;
 const SIDECAR_GENERATION_ROOT_DIR: &str = "sidecar-generations";
@@ -110,12 +113,145 @@ struct SidecarGenerationHashPayload<'a> {
     created_at_ms: i64,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+struct TickConsensusArchiveFile {
+    archived_records: Vec<TickConsensusRecord>,
+}
+
 #[derive(Debug, Serialize)]
 struct DistfsRecoveryAuditRecord {
     timestamp_ms: i64,
     status: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     reason: Option<String>,
+}
+
+fn tick_consensus_archive_path(dir: &Path) -> std::path::PathBuf {
+    dir.join(TICK_CONSENSUS_ARCHIVE_FILE)
+}
+
+fn tick_consensus_hot_tick_bounds(
+    records: &[TickConsensusRecord],
+) -> (Option<WorldTime>, Option<WorldTime>) {
+    (
+        records.first().map(|record| record.block.header.tick),
+        records.last().map(|record| record.block.header.tick),
+    )
+}
+
+fn split_tick_consensus_snapshot_for_persistence(
+    snapshot: &Snapshot,
+) -> (Snapshot, Option<TickConsensusArchiveFile>) {
+    let mut persisted_snapshot = snapshot.clone();
+    persisted_snapshot.tick_consensus_total_record_count = snapshot.tick_consensus_records.len();
+    if snapshot.tick_consensus_records.len() <= TICK_CONSENSUS_HOT_LIMIT {
+        persisted_snapshot.tick_consensus_archived_record_count = 0;
+        let (hot_from_tick, hot_to_tick) =
+            tick_consensus_hot_tick_bounds(persisted_snapshot.tick_consensus_records.as_slice());
+        persisted_snapshot.tick_consensus_hot_from_tick = hot_from_tick;
+        persisted_snapshot.tick_consensus_hot_to_tick = hot_to_tick;
+        return (persisted_snapshot, None);
+    }
+
+    let archived_record_count = snapshot
+        .tick_consensus_records
+        .len()
+        .saturating_sub(TICK_CONSENSUS_HOT_LIMIT);
+    let archived_records = snapshot.tick_consensus_records[..archived_record_count].to_vec();
+    persisted_snapshot.tick_consensus_records =
+        snapshot.tick_consensus_records[archived_record_count..].to_vec();
+    persisted_snapshot.tick_consensus_archived_record_count = archived_records.len();
+    let (hot_from_tick, hot_to_tick) =
+        tick_consensus_hot_tick_bounds(persisted_snapshot.tick_consensus_records.as_slice());
+    persisted_snapshot.tick_consensus_hot_from_tick = hot_from_tick;
+    persisted_snapshot.tick_consensus_hot_to_tick = hot_to_tick;
+    (
+        persisted_snapshot,
+        Some(TickConsensusArchiveFile { archived_records }),
+    )
+}
+
+fn persist_tick_consensus_archive(
+    dir: &Path,
+    archive: Option<&TickConsensusArchiveFile>,
+) -> Result<(), WorldError> {
+    let archive_path = tick_consensus_archive_path(dir);
+    match archive {
+        Some(archive) if !archive.archived_records.is_empty() => {
+            write_json_to_path(archive, archive_path.as_path())
+        }
+        _ => {
+            if archive_path.exists() {
+                fs::remove_file(archive_path.as_path())?;
+            }
+            Ok(())
+        }
+    }
+}
+
+fn hydrate_tick_consensus_snapshot_from_archive(
+    dir: &Path,
+    snapshot: &mut Snapshot,
+) -> Result<(), WorldError> {
+    let (actual_hot_from_tick, actual_hot_to_tick) =
+        tick_consensus_hot_tick_bounds(snapshot.tick_consensus_records.as_slice());
+    if snapshot.tick_consensus_hot_from_tick.is_some()
+        || snapshot.tick_consensus_hot_to_tick.is_some()
+    {
+        if snapshot.tick_consensus_hot_from_tick != actual_hot_from_tick
+            || snapshot.tick_consensus_hot_to_tick != actual_hot_to_tick
+        {
+            return Err(WorldError::DistributedValidationFailed {
+                reason: format!(
+                    "tick consensus hot summary mismatch: expected_from={:?} actual_from={:?} expected_to={:?} actual_to={:?}",
+                    snapshot.tick_consensus_hot_from_tick,
+                    actual_hot_from_tick,
+                    snapshot.tick_consensus_hot_to_tick,
+                    actual_hot_to_tick,
+                ),
+            });
+        }
+    }
+
+    if snapshot.tick_consensus_total_record_count == 0 {
+        snapshot.tick_consensus_total_record_count = snapshot.tick_consensus_records.len();
+    }
+    if snapshot.tick_consensus_archived_record_count == 0 {
+        return Ok(());
+    }
+
+    let archive_path = tick_consensus_archive_path(dir);
+    if !archive_path.exists() {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: format!(
+                "tick consensus archive missing: path={}",
+                archive_path.display(),
+            ),
+        });
+    }
+    let archive: TickConsensusArchiveFile = read_json_from_path(archive_path.as_path())?;
+    if archive.archived_records.len() != snapshot.tick_consensus_archived_record_count {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: format!(
+                "tick consensus archive count mismatch: expected={} actual={}",
+                snapshot.tick_consensus_archived_record_count,
+                archive.archived_records.len(),
+            ),
+        });
+    }
+    let mut records = archive.archived_records;
+    records.extend(snapshot.tick_consensus_records.clone());
+    if records.len() != snapshot.tick_consensus_total_record_count {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: format!(
+                "tick consensus total count mismatch: expected={} actual={}",
+                snapshot.tick_consensus_total_record_count,
+                records.len(),
+            ),
+        });
+    }
+    snapshot.tick_consensus_records = records;
+    Ok(())
 }
 
 impl World {
@@ -151,6 +287,16 @@ impl World {
             runtime_memory_limits: self.runtime_memory_limits.clone(),
             runtime_backpressure_stats: self.runtime_backpressure_stats.clone(),
             tick_consensus_records: self.tick_consensus_records.clone(),
+            tick_consensus_total_record_count: self.tick_consensus_records.len(),
+            tick_consensus_archived_record_count: 0,
+            tick_consensus_hot_from_tick: self
+                .tick_consensus_records
+                .first()
+                .map(|record| record.block.header.tick),
+            tick_consensus_hot_to_tick: self
+                .tick_consensus_records
+                .last()
+                .map(|record| record.block.header.tick),
             tick_consensus_authority_source: self.tick_consensus_authority_source.clone(),
             tick_consensus_rejection_audit_events: self
                 .tick_consensus_rejection_audit_events
@@ -166,11 +312,14 @@ impl World {
         let dir = dir.as_ref();
         fs::create_dir_all(dir)?;
         let snapshot = self.snapshot();
+        let (persisted_snapshot, tick_consensus_archive) =
+            split_tick_consensus_snapshot_for_persistence(&snapshot);
         let journal_path = dir.join(JOURNAL_FILE);
         let snapshot_path = dir.join(SNAPSHOT_FILE);
         self.journal.save_json(journal_path)?;
-        snapshot.save_json(snapshot_path)?;
-        self.save_distfs_sidecar(dir, &snapshot)?;
+        persisted_snapshot.save_json(snapshot_path)?;
+        persist_tick_consensus_archive(dir, tick_consensus_archive.as_ref())?;
+        self.save_distfs_sidecar(dir, &persisted_snapshot)?;
         self.save_module_store_to_dir(dir)?;
         Ok(())
     }
@@ -197,7 +346,8 @@ impl World {
 
     pub fn load_from_dir(dir: impl AsRef<Path>) -> Result<Self, WorldError> {
         let dir = dir.as_ref();
-        if let Some((snapshot, journal)) = Self::try_load_from_distfs_sidecar(dir)? {
+        if let Some((mut snapshot, journal)) = Self::try_load_from_distfs_sidecar(dir)? {
+            hydrate_tick_consensus_snapshot_from_archive(dir, &mut snapshot)?;
             let mut world = Self::from_snapshot(snapshot, journal)?;
             world.load_module_store_from_dir(dir)?;
             return Ok(world);
@@ -205,7 +355,8 @@ impl World {
         let journal_path = dir.join(JOURNAL_FILE);
         let snapshot_path = dir.join(SNAPSHOT_FILE);
         let journal = Journal::load_json(journal_path)?;
-        let snapshot = Snapshot::load_json(snapshot_path)?;
+        let mut snapshot = Snapshot::load_json(snapshot_path)?;
+        hydrate_tick_consensus_snapshot_from_archive(dir, &mut snapshot)?;
         let mut world = Self::from_snapshot(snapshot, journal)?;
         world.load_module_store_from_dir(dir)?;
         Ok(world)

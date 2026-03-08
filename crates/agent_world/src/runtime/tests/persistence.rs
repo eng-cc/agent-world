@@ -206,6 +206,113 @@ fn persist_writes_distfs_sidecar_and_restores_without_json_files() {
 }
 
 #[test]
+fn persist_splits_tick_consensus_records_into_hot_snapshot_and_archive() {
+    let mut world = World::new();
+    for _ in 0..140 {
+        world.step().expect("step");
+    }
+    let full_snapshot = world.snapshot();
+    let full_snapshot_json_len = full_snapshot
+        .to_json()
+        .expect("serialize full snapshot")
+        .len();
+    assert!(full_snapshot.tick_consensus_records.len() > 128);
+
+    let dir = temp_dir("persist-tick-consensus-archive");
+    world
+        .save_to_dir(&dir)
+        .expect("save world with tick archive");
+
+    let persisted_snapshot: serde_json::Value = serde_json::from_slice(
+        &fs::read(dir.join("snapshot.json")).expect("read persisted snapshot json"),
+    )
+    .expect("decode persisted snapshot json");
+    let hot_records = persisted_snapshot
+        .get("tick_consensus_records")
+        .and_then(|value| value.as_array())
+        .expect("hot tick consensus records");
+    let total_record_count = persisted_snapshot
+        .get("tick_consensus_total_record_count")
+        .and_then(|value| value.as_u64())
+        .expect("tick consensus total record count") as usize;
+    let archived_record_count = persisted_snapshot
+        .get("tick_consensus_archived_record_count")
+        .and_then(|value| value.as_u64())
+        .expect("tick consensus archived record count") as usize;
+    assert_eq!(total_record_count, world.tick_consensus_records().len());
+    assert_eq!(
+        hot_records.len() + archived_record_count,
+        total_record_count
+    );
+    assert!(hot_records.len() < total_record_count);
+    let persisted_snapshot_json_len = fs::read(dir.join("snapshot.json"))
+        .expect("read snapshot json bytes")
+        .len();
+    assert!(persisted_snapshot_json_len < full_snapshot_json_len);
+
+    let archive: serde_json::Value = serde_json::from_slice(
+        &fs::read(dir.join("tick-consensus.archive.json"))
+            .expect("read tick consensus archive json"),
+    )
+    .expect("decode tick consensus archive json");
+    let archived_records = archive
+        .get("archived_records")
+        .and_then(|value| value.as_array())
+        .expect("archived tick consensus records");
+    assert_eq!(archived_records.len(), archived_record_count);
+
+    let restored = World::load_from_dir(&dir).expect("restore world with tick archive");
+    assert_eq!(
+        restored.tick_consensus_records(),
+        world.tick_consensus_records()
+    );
+    restored
+        .verify_tick_consensus_chain()
+        .expect("verify restored tick consensus chain");
+
+    let _ = fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn persist_does_not_write_tick_consensus_archive_within_hot_limit() {
+    let mut world = World::new();
+    for _ in 0..8 {
+        world.step().expect("step");
+    }
+
+    let dir = temp_dir("persist-tick-consensus-hot-only");
+    world
+        .save_to_dir(&dir)
+        .expect("save world within hot limit");
+
+    assert!(!dir.join("tick-consensus.archive.json").exists());
+    let persisted_snapshot: serde_json::Value = serde_json::from_slice(
+        &fs::read(dir.join("snapshot.json")).expect("read persisted snapshot json"),
+    )
+    .expect("decode persisted snapshot json");
+    assert_eq!(
+        persisted_snapshot
+            .get("tick_consensus_archived_record_count")
+            .and_then(|value| value.as_u64()),
+        Some(0)
+    );
+    assert_eq!(
+        persisted_snapshot
+            .get("tick_consensus_total_record_count")
+            .and_then(|value| value.as_u64()),
+        Some(world.tick_consensus_records().len() as u64)
+    );
+
+    let restored = World::load_from_dir(&dir).expect("restore world within hot limit");
+    assert_eq!(
+        restored.tick_consensus_records(),
+        world.tick_consensus_records()
+    );
+
+    let _ = fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn persist_writes_sidecar_generation_index_and_pinset() {
     let mut world = World::new();
     world.submit_action(Action::RegisterAgent {

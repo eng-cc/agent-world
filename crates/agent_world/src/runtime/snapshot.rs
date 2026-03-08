@@ -95,6 +95,14 @@ pub struct Snapshot {
     pub runtime_backpressure_stats: WorldRuntimeBackpressureStats,
     #[serde(default)]
     pub tick_consensus_records: Vec<TickConsensusRecord>,
+    #[serde(default)]
+    pub tick_consensus_total_record_count: usize,
+    #[serde(default)]
+    pub tick_consensus_archived_record_count: usize,
+    #[serde(default)]
+    pub tick_consensus_hot_from_tick: Option<WorldTime>,
+    #[serde(default)]
+    pub tick_consensus_hot_to_tick: Option<WorldTime>,
     #[serde(default = "default_tick_consensus_authority_source")]
     pub tick_consensus_authority_source: String,
     #[serde(default)]
