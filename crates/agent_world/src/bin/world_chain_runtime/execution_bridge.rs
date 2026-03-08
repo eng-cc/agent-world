@@ -692,6 +692,19 @@ fn sync_execution_bridge_pin_set(
     Ok(pin_set)
 }
 
+fn list_execution_bridge_legacy_heights(execution_records_dir: &Path) -> Result<Vec<u64>, String> {
+    let mut legacy_heights = Vec::new();
+    for height in list_execution_bridge_record_heights(execution_records_dir)? {
+        let record = load_execution_bridge_record(
+            execution_bridge_record_path(execution_records_dir, height).as_path(),
+        )?;
+        if record.schema_version < EXECUTION_BRIDGE_RECORD_SCHEMA_V2 {
+            legacy_heights.push(height);
+        }
+    }
+    Ok(legacy_heights)
+}
+
 fn update_execution_bridge_record_checkpoint_ref(
     execution_records_dir: &Path,
     height: u64,
@@ -821,6 +834,12 @@ fn run_execution_bridge_retention_maintenance(
     execution_store: &LocalCasStore,
     hot_window_heights: u64,
 ) -> Result<u64, String> {
+    let legacy_heights = list_execution_bridge_legacy_heights(execution_records_dir)?;
+    if !legacy_heights.is_empty() {
+        sync_execution_bridge_pin_set(execution_records_dir, execution_store, hot_window_heights)?;
+        return Ok(0);
+    }
+
     let pin_set = build_execution_bridge_pin_set(execution_records_dir, hot_window_heights)?;
     compact_execution_bridge_records(execution_records_dir, &pin_set)?;
     sync_execution_bridge_pin_set(execution_records_dir, execution_store, hot_window_heights)?;
@@ -1816,13 +1835,25 @@ pub(super) fn bridge_committed_heights(
     Ok(records)
 }
 
+fn normalize_execution_bridge_record_for_persist(
+    record: &ExecutionBridgeRecord,
+) -> ExecutionBridgeRecord {
+    let mut normalized = record.clone();
+    normalized.schema_version = EXECUTION_BRIDGE_RECORD_SCHEMA_V2;
+    if normalized.latest_state_ref.is_none() {
+        normalized.latest_state_ref = normalized.snapshot_ref.clone();
+    }
+    normalized
+}
+
 fn persist_execution_bridge_record_only(
     execution_records_dir: &Path,
     record: &ExecutionBridgeRecord,
 ) -> Result<Vec<u8>, String> {
-    let bytes = serde_json::to_vec_pretty(record)
+    let normalized = normalize_execution_bridge_record_for_persist(record);
+    let bytes = serde_json::to_vec_pretty(&normalized)
         .map_err(|err| format!("serialize execution bridge record failed: {}", err))?;
-    let path = execution_bridge_record_path(execution_records_dir, record.height);
+    let path = execution_bridge_record_path(execution_records_dir, normalized.height);
     super::write_bytes_atomic(path.as_path(), bytes.as_slice())?;
     Ok(bytes)
 }
@@ -2061,6 +2092,106 @@ mod tests {
         assert!(record.commit_log_ref.is_none());
         assert!(record.checkpoint_ref.is_none());
         assert!(record.external_effect_ref.is_none());
+    }
+
+    #[test]
+    fn persist_execution_bridge_record_only_migrates_legacy_record_to_v2() {
+        let dir = temp_dir("execution-bridge-legacy-migrate");
+        let records_dir = dir.join("records");
+        fs::create_dir_all(records_dir.as_path()).expect("create records dir");
+        let legacy = serde_json::json!({
+            "world_id": "w1",
+            "height": 7,
+            "node_block_hash": "node-h7",
+            "execution_block_hash": "exec-h7",
+            "execution_state_root": "state-r7",
+            "journal_len": 7,
+            "snapshot_ref": "cas:snapshot-7",
+            "journal_ref": "cas:journal-7",
+            "timestamp_ms": 7000
+        });
+        let legacy_bytes = serde_json::to_vec_pretty(&legacy).expect("serialize legacy record");
+        crate::write_bytes_atomic(
+            execution_bridge_record_path(records_dir.as_path(), 7).as_path(),
+            legacy_bytes.as_slice(),
+        )
+        .expect("persist legacy record");
+
+        let record = load_execution_bridge_record(
+            execution_bridge_record_path(records_dir.as_path(), 7).as_path(),
+        )
+        .expect("load legacy record");
+        assert_eq!(record.schema_version, EXECUTION_BRIDGE_RECORD_SCHEMA_V1);
+        persist_execution_bridge_record_only(records_dir.as_path(), &record)
+            .expect("rewrite legacy record as v2");
+
+        let migrated = load_execution_bridge_record(
+            execution_bridge_record_path(records_dir.as_path(), 7).as_path(),
+        )
+        .expect("load migrated record");
+        assert_eq!(migrated.schema_version, EXECUTION_BRIDGE_RECORD_SCHEMA_V2);
+        assert_eq!(migrated.latest_state_ref.as_deref(), Some("cas:snapshot-7"));
+        assert_eq!(migrated.snapshot_ref.as_deref(), Some("cas:snapshot-7"));
+        assert_eq!(migrated.journal_ref.as_deref(), Some("cas:journal-7"));
+
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn execution_bridge_retention_maintenance_skips_aggressive_sweep_for_legacy_records() {
+        let dir = temp_dir("execution-bridge-legacy-safe-mode");
+        let records_dir = dir.join("records");
+        let store = LocalCasStore::new(dir.join("store"));
+        fs::create_dir_all(records_dir.as_path()).expect("create records dir");
+
+        let snapshot_ref = store
+            .put_bytes(b"legacy-snapshot")
+            .expect("store legacy snapshot");
+        let journal_ref = store
+            .put_bytes(b"legacy-journal")
+            .expect("store legacy journal");
+        let legacy = serde_json::json!({
+            "world_id": "w1",
+            "height": 1,
+            "node_block_hash": "node-h1",
+            "execution_block_hash": "exec-h1",
+            "execution_state_root": "state-r1",
+            "journal_len": 1,
+            "snapshot_ref": snapshot_ref,
+            "journal_ref": journal_ref,
+            "timestamp_ms": 1000
+        });
+        let legacy_bytes = serde_json::to_vec_pretty(&legacy).expect("serialize legacy record");
+        crate::write_bytes_atomic(
+            execution_bridge_record_path(records_dir.as_path(), 1).as_path(),
+            legacy_bytes.as_slice(),
+        )
+        .expect("persist legacy record");
+        crate::write_bytes_atomic(
+            records_dir.join("latest.json").as_path(),
+            legacy_bytes.as_slice(),
+        )
+        .expect("persist legacy latest pointer");
+
+        let freed_bytes =
+            run_execution_bridge_retention_maintenance(records_dir.as_path(), &store, 1)
+                .expect("run retention maintenance");
+        assert_eq!(freed_bytes, 0);
+        let record = load_execution_bridge_record(
+            execution_bridge_record_path(records_dir.as_path(), 1).as_path(),
+        )
+        .expect("load legacy record after maintenance");
+        assert_eq!(record.schema_version, EXECUTION_BRIDGE_RECORD_SCHEMA_V1);
+        assert!(record.snapshot_ref.is_some());
+        assert!(record.journal_ref.is_some());
+        assert!(store
+            .has(record.snapshot_ref.as_deref().expect("legacy snapshot ref"))
+            .expect("legacy snapshot still exists"));
+        assert!(store
+            .has(record.journal_ref.as_deref().expect("legacy journal ref"))
+            .expect("legacy journal still exists"));
+
+        let _ = fs::remove_dir_all(dir);
     }
 
     #[test]
