@@ -263,9 +263,9 @@ fn build_chain_status_payload_includes_storage_metrics() {
         },
         orphan_blob_count: 0,
         last_gc_at_ms: Some(1_700_000_000_000),
-        last_gc_result: "success".to_string(),
-        last_gc_error: None,
-        degraded_reason: None,
+        last_gc_result: "failed".to_string(),
+        last_gc_error: Some("gc failed".to_string()),
+        degraded_reason: Some("storage degraded".to_string()),
     };
 
     let payload = super::build_chain_status_payload(
@@ -284,5 +284,14 @@ fn build_chain_status_payload_includes_storage_metrics() {
         StorageProfile::DevLocal
     );
     assert_eq!(payload.storage.replay_summary.mode, "checkpoint_plus_log");
-    assert_eq!(payload.storage.last_gc_result, "success");
+    assert_eq!(
+        payload.storage.replay_summary.latest_retained_height,
+        Some(2)
+    );
+    assert_eq!(payload.storage.last_gc_result, "failed");
+    assert_eq!(payload.storage.last_gc_error.as_deref(), Some("gc failed"));
+    assert_eq!(
+        payload.storage.degraded_reason.as_deref(),
+        Some("storage degraded")
+    );
 }

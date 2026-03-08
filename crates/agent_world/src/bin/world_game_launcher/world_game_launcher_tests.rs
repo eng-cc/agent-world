@@ -146,6 +146,15 @@ fn parse_options_rejects_unknown_option() {
 }
 
 #[test]
+fn parse_options_rejects_unknown_chain_storage_profile() {
+    let err =
+        parse_options(["--chain-storage-profile", "unknown"].into_iter()).expect_err("should fail");
+    assert!(err.contains("dev_local"));
+    assert!(err.contains("release_default"));
+    assert!(err.contains("soak_forensics"));
+}
+
+#[test]
 fn parse_options_rejects_missing_value() {
     let err = parse_options(["--viewer-port"].into_iter()).expect_err("should fail");
     assert!(err.contains("requires a value"));

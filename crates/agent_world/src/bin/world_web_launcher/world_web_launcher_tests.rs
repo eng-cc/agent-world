@@ -278,6 +278,19 @@ fn build_chain_runtime_args_includes_chain_overrides_when_on() {
 }
 
 #[test]
+fn build_chain_runtime_args_rejects_unknown_storage_profile() {
+    let config = LauncherConfig {
+        chain_enabled: true,
+        chain_storage_profile: "unknown".to_string(),
+        ..LauncherConfig::default()
+    };
+    let err = build_chain_runtime_args(&config).expect_err("should fail");
+    assert!(err.contains("dev_local"));
+    assert!(err.contains("release_default"));
+    assert!(err.contains("soak_forensics"));
+}
+
+#[test]
 fn build_game_url_uses_request_host_for_wildcard_bindings() {
     let config = LauncherConfig {
         viewer_host: "0.0.0.0".to_string(),
