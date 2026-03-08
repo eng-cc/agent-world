@@ -1,12 +1,10 @@
 use std::collections::BTreeSet;
-use std::fs;
 use std::net::SocketAddr;
 use std::process;
 
 use agent_world::runtime::RewardAssetConfig;
 use agent_world::simulator::WorldScenario;
 use agent_world_node::{NodeRole, PosValidator};
-use serde::Deserialize;
 
 use super::{
     parse_distfs_probe_runtime_option, DistfsProbeRuntimeConfig,
@@ -20,8 +18,6 @@ pub(super) enum NodeTopologyMode {
     Triad,
     TriadDistributed,
 }
-
-const RELEASE_CONFIG_FLAG: &str = "--release-config";
 
 impl NodeTopologyMode {
     fn parse(raw: &str) -> Result<Self, String> {
@@ -130,135 +126,22 @@ impl Default for CliOptions {
     }
 }
 
-#[derive(Debug, Deserialize)]
-struct ReleaseLockedArgsFile {
-    locked_args: Vec<String>,
-}
-
-#[derive(Debug, Default)]
-struct ReleaseModeCommandLine {
-    release_config_path: String,
-    bind_addr_override: Option<String>,
-    web_bind_addr_override: Option<String>,
-}
-
 pub(super) fn parse_launch_options<'a>(
     args: impl Iterator<Item = &'a str>,
 ) -> Result<CliOptions, String> {
     let argv = args.map(str::to_string).collect::<Vec<_>>();
-    if !argv.iter().any(|arg| arg == RELEASE_CONFIG_FLAG) {
-        return parse_options(argv.iter().map(|arg| arg.as_str()));
-    }
-
-    let mode = parse_release_mode_command_line(argv.as_slice())?;
-    let mut options = load_release_locked_options(mode.release_config_path.as_str())?;
-    if let Some(bind_addr) = mode.bind_addr_override {
-        options.bind_addr = bind_addr;
-    }
-    if let Some(web_bind_addr) = mode.web_bind_addr_override {
-        options.web_bind_addr = Some(web_bind_addr);
-    }
-    Ok(options)
-}
-
-fn parse_release_mode_command_line(args: &[String]) -> Result<ReleaseModeCommandLine, String> {
-    let mut mode = ReleaseModeCommandLine::default();
-    let mut release_config_seen = false;
-    let mut unsupported = Vec::new();
-    let mut index = 0usize;
-
-    while index < args.len() {
-        match args[index].as_str() {
-            "--help" | "-h" => {
-                print_help();
-                process::exit(0);
-            }
-            RELEASE_CONFIG_FLAG => {
-                let value = args
-                    .get(index + 1)
-                    .ok_or_else(|| "--release-config requires <path>".to_string())?;
-                let value = value.trim();
-                if value.is_empty() {
-                    return Err("--release-config requires non-empty <path>".to_string());
-                }
-                if release_config_seen {
-                    return Err("--release-config can only be specified once".to_string());
-                }
-                mode.release_config_path = value.to_string();
-                release_config_seen = true;
-                index += 2;
-            }
-            "--bind" => {
-                mode.bind_addr_override =
-                    Some(parse_release_mode_override_value(args, index, "--bind")?);
-                index += 2;
-            }
-            "--web-bind" => {
-                mode.web_bind_addr_override = Some(parse_release_mode_override_value(
-                    args,
-                    index,
-                    "--web-bind",
-                )?);
-                index += 2;
-            }
-            _ => {
-                unsupported.push(args[index].clone());
-                index += 1;
-            }
+    for arg in &argv {
+        if arg == "--release-config" || arg.starts_with("--node-") {
+            return Err(removed_control_plane_flag_error(arg.as_str()));
         }
     }
-
-    if !release_config_seen {
-        return Err("internal error: --release-config mode expected".to_string());
-    }
-    if !unsupported.is_empty() {
-        return Err(format!(
-            "--release-config mode only allows --bind/--web-bind/--help; unsupported argument(s): {}",
-            unsupported.join(", ")
-        ));
-    }
-    Ok(mode)
+    parse_options(argv.iter().map(|arg| arg.as_str()))
 }
 
-fn parse_release_mode_override_value(
-    args: &[String],
-    index: usize,
-    flag: &str,
-) -> Result<String, String> {
-    let value = args
-        .get(index + 1)
-        .ok_or_else(|| format!("{flag} requires a value in --release-config mode"))?;
-    let value = value.trim();
-    if value.is_empty() {
-        return Err(format!(
-            "{flag} requires non-empty value in --release-config mode"
-        ));
-    }
-    Ok(value.to_string())
-}
-
-fn load_release_locked_options(path: &str) -> Result<CliOptions, String> {
-    let text = fs::read_to_string(path)
-        .map_err(|err| format!("failed to read release config `{path}`: {err}"))?;
-    let file: ReleaseLockedArgsFile = toml::from_str(text.as_str())
-        .map_err(|err| format!("failed to parse release config `{path}`: {err}"))?;
-    if file.locked_args.is_empty() {
-        return Err(format!(
-            "release config `{path}` must contain non-empty locked_args"
-        ));
-    }
-    if file
-        .locked_args
-        .iter()
-        .any(|arg| arg == RELEASE_CONFIG_FLAG || arg == "--help" || arg == "-h")
-    {
-        return Err(format!(
-            "release config `{path}` locked_args cannot contain --release-config/--help/-h"
-        ));
-    }
-
-    parse_options(file.locked_args.iter().map(|arg| arg.as_str()))
-        .map_err(|err| format!("invalid locked_args in release config `{path}`: {err}"))
+fn removed_control_plane_flag_error(flag: &str) -> String {
+    format!(
+        "{flag} is no longer supported by world_viewer_live; use world_chain_runtime (or world_game_launcher/world_web_launcher/agent_world_client_launcher) for chain control-plane options"
+    )
 }
 
 pub(super) fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, String> {
@@ -727,10 +610,9 @@ pub(super) fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<C
 
 pub(super) fn print_help() {
     println!(
-        "Usage: world_viewer_live [scenario] [--bind <addr>] [--web-bind <addr>] [--llm|--no-llm] [--no-node] [--node-validator <id:stake>...] [--node-gossip-bind <addr:port>] [--node-gossip-peer <addr:port>...]"
+        "Usage: world_viewer_live [scenario] [--bind <addr>] [--web-bind <addr>] [--llm|--no-llm] [--no-node]"
     );
     println!("Options:");
-    println!("  --release-config <path> Enable release-locked launch from TOML locked_args");
     println!("  --bind <addr>     Bind address (default: 127.0.0.1:5010)");
     println!("  --web-bind <addr> WebSocket bridge bind address (optional)");
     println!("  --scenario <name> Scenario name (default: twin_region_bootstrap)");
@@ -753,9 +635,6 @@ pub(super) fn print_help() {
         "  --viewer-no-consensus-gate Disable viewer tick gating by node consensus/execution height"
     );
     println!("  --no-node         Disable embedded node runtime startup");
-    println!("  --node-id <id>    Node identifier (default: viewer-live-node)");
-    println!("  --node-role <r>   Node role: sequencer|storage|observer (default: observer)");
-    println!("  --node-tick-ms <ms> Node worker poll/fallback interval (default: 200)");
     println!("  --pos-slot-duration-ms <n> PoS slot duration in milliseconds (default: 12000)");
     println!("  --pos-ticks-per-slot <n> PoS logical ticks per slot (default: 10)");
     println!("  --pos-proposal-tick-phase <n> Proposal phase within slot tick window (default: 9)");
@@ -765,25 +644,11 @@ pub(super) fn print_help() {
         "  --pos-slot-clock-genesis-unix-ms <n> Fixed slot clock genesis unix ms (default: auto)"
     );
     println!("  --pos-max-past-slot-lag <n> Max accepted inbound stale slot lag (default: 256)");
-    println!("  --node-validator <id:stake> Add PoS validator stake (repeatable)");
-    println!(
-        "  --node-no-auto-attest-all Disable auto-attesting all validators per tick (default)"
-    );
-    println!("  --node-auto-attest-all Enable auto-attesting all validators per tick");
-    println!("  --node-gossip-bind <addr:port> Bind UDP endpoint for node gossip");
-    println!("  --node-gossip-peer <addr:port> Add UDP peer endpoint for node gossip");
-    println!(
-        "  --node-repl-libp2p-listen <multiaddr> Add libp2p listen addr for replication network"
-    );
-    println!(
-        "  --node-repl-libp2p-peer <multiaddr> Add libp2p bootstrap peer for replication network"
-    );
-    println!("  --node-repl-topic <topic> Override replication pubsub topic when libp2p replication is enabled");
     println!("  --reward-runtime-enable Enable reward runtime settlement loop (default: off)");
     println!(
         "  --reward-runtime-auto-redeem Auto redeem minted credits to node-mapped runtime agent"
     );
-    println!("  --reward-runtime-signer <node_id> Settlement signer node id (default: --node-id)");
+    println!("  --reward-runtime-signer <node_id> Settlement signer node id (default: embedded node id)");
     println!(
         "  --reward-runtime-leader-node <node_id> Settlement publisher leader node id (default: inferred sequencer id)"
     );
