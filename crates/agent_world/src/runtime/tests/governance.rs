@@ -40,6 +40,30 @@ fn governance_flow_applies_manifest() {
 }
 
 #[test]
+fn governance_policy_blocks_local_apply_proposal_path() {
+    let mut world = World::new();
+    world.enable_production_release_policy();
+    let manifest = Manifest {
+        version: 2,
+        content: json!({ "name": "external-finality-only" }),
+    };
+
+    let proposal_id = world.propose_manifest_update(manifest, "alice").unwrap();
+    world.shadow_proposal(proposal_id).unwrap();
+    world
+        .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)
+        .unwrap();
+
+    let err = world.apply_proposal(proposal_id).unwrap_err();
+    assert!(matches!(err, WorldError::GovernancePolicyInvalid { .. }));
+
+    let certificate = world.build_local_finality_certificate(proposal_id).unwrap();
+    world
+        .apply_proposal_with_finality(proposal_id, &certificate)
+        .expect("apply with explicit finality cert");
+}
+
+#[test]
 fn governance_patch_updates_manifest() {
     let mut world = World::new();
     let base_hash = world.current_manifest_hash().unwrap();

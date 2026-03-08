@@ -261,6 +261,64 @@ fn shadow_rejects_module_artifact_identity_signature_mismatch() {
 }
 
 #[test]
+fn shadow_rejects_identity_hash_signature_when_release_policy_disables_fallback() {
+    let mut world = World::new();
+    world.enable_production_release_policy();
+    world.add_capability(CapabilityGrant::allow_all("cap.weather"));
+    let wasm_bytes = b"dummy-wasm-weather-identity-hash";
+    let wasm_hash = util::sha256_hex(wasm_bytes);
+    world
+        .register_module_artifact(wasm_hash.clone(), wasm_bytes)
+        .unwrap();
+
+    let source_hash = util::sha256_hex(b"weather-src");
+    let build_manifest_hash = util::sha256_hex(b"weather-build");
+    let identity_hash =
+        util::sha256_hex(format!("m.weather:{source_hash}:{build_manifest_hash}").as_bytes());
+    let module_manifest = ModuleManifest {
+        module_id: "m.weather".to_string(),
+        name: "Weather".to_string(),
+        version: "0.1.0".to_string(),
+        kind: ModuleKind::Reducer,
+        role: ModuleRole::Domain,
+        wasm_hash: wasm_hash.clone(),
+        interface_version: "wasm-1".to_string(),
+        abi_contract: ModuleAbiContract::default(),
+        exports: vec!["reduce".to_string()],
+        subscriptions: Vec::new(),
+        required_caps: vec!["cap.weather".to_string()],
+        artifact_identity: Some(ModuleArtifactIdentity {
+            source_hash,
+            build_manifest_hash,
+            signer_node_id: "builtin.module.release.signer".to_string(),
+            signature_scheme: "identity_hash_v1".to_string(),
+            artifact_signature: format!("idhash:{identity_hash}"),
+        }),
+        limits: ModuleLimits::default(),
+    };
+    let changes = ModuleChangeSet {
+        register: vec![module_manifest],
+        ..ModuleChangeSet::default()
+    };
+    let mut content = serde_json::Map::new();
+    content.insert(
+        "module_changes".to_string(),
+        serde_json::to_value(&changes).unwrap(),
+    );
+    let manifest = Manifest {
+        version: 2,
+        content: serde_json::Value::Object(content),
+    };
+
+    let proposal_id = world.propose_manifest_update(manifest, "alice").unwrap();
+    let err = world.shadow_proposal(proposal_id).unwrap_err();
+    let WorldError::ModuleChangeInvalid { reason } = err else {
+        panic!("expected ModuleChangeInvalid");
+    };
+    assert!(reason.contains("signature_scheme identity_hash_v1 is disabled"));
+}
+
+#[test]
 fn shadow_rejects_unsupported_module_abi_version() {
     let mut world = World::new();
     world.add_capability(CapabilityGrant::allow_all("cap.weather"));

@@ -24,6 +24,7 @@ mod module_tick_runtime;
 mod operability_release_gate;
 mod persistence;
 mod policy;
+mod release_manifest;
 mod resources;
 mod rules;
 mod scheduling;
@@ -149,6 +150,52 @@ impl LogisticsSlaMetrics {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ReleaseSecurityPolicy {
+    #[serde(default = "default_allow_builtin_manifest_fallback")]
+    pub allow_builtin_manifest_fallback: bool,
+    #[serde(default = "default_allow_identity_hash_signature")]
+    pub allow_identity_hash_signature: bool,
+    #[serde(default = "default_allow_local_finality_signing")]
+    pub allow_local_finality_signing: bool,
+}
+
+impl Default for ReleaseSecurityPolicy {
+    fn default() -> Self {
+        Self {
+            allow_builtin_manifest_fallback: default_allow_builtin_manifest_fallback(),
+            allow_identity_hash_signature: default_allow_identity_hash_signature(),
+            allow_local_finality_signing: default_allow_local_finality_signing(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct BuiltinReleaseManifestEntry {
+    #[serde(default)]
+    pub hash_tokens: Vec<String>,
+    #[serde(default)]
+    pub artifact_identities: BTreeMap<String, crate::runtime::ModuleArtifactIdentity>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct BuiltinReleaseManifestState {
+    #[serde(default)]
+    pub module_sets: BTreeMap<String, BTreeMap<String, BuiltinReleaseManifestEntry>>,
+}
+
+fn default_allow_builtin_manifest_fallback() -> bool {
+    true
+}
+
+fn default_allow_identity_hash_signature() -> bool {
+    true
+}
+
+fn default_allow_local_finality_signing() -> bool {
+    true
+}
+
 /// The main World runtime that orchestrates the simulation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct World {
@@ -208,6 +255,10 @@ pub struct World {
     governance_identity_penalties: BTreeMap<u64, GovernanceIdentityPenaltyRecord>,
     #[serde(default = "default_next_governance_identity_penalty_id")]
     next_governance_identity_penalty_id: u64,
+    #[serde(default)]
+    builtin_release_manifest: BuiltinReleaseManifestState,
+    #[serde(default)]
+    release_security_policy: ReleaseSecurityPolicy,
 }
 
 impl World {
@@ -271,6 +322,8 @@ impl World {
             governance_emergency_brake_until_tick: None,
             governance_identity_penalties: BTreeMap::new(),
             next_governance_identity_penalty_id: default_next_governance_identity_penalty_id(),
+            builtin_release_manifest: BuiltinReleaseManifestState::default(),
+            release_security_policy: ReleaseSecurityPolicy::default(),
         }
     }
 
@@ -388,6 +441,26 @@ impl World {
                     .min(10_000) as u16;
         }
         stats
+    }
+
+    pub fn builtin_release_manifest(&self) -> &BuiltinReleaseManifestState {
+        &self.builtin_release_manifest
+    }
+
+    pub fn release_security_policy(&self) -> &ReleaseSecurityPolicy {
+        &self.release_security_policy
+    }
+
+    pub fn set_release_security_policy(&mut self, policy: ReleaseSecurityPolicy) {
+        self.release_security_policy = policy;
+    }
+
+    pub fn enable_production_release_policy(&mut self) {
+        self.release_security_policy = ReleaseSecurityPolicy {
+            allow_builtin_manifest_fallback: false,
+            allow_identity_hash_signature: false,
+            allow_local_finality_signing: false,
+        };
     }
 
     pub fn with_runtime_memory_limits(mut self, limits: WorldRuntimeMemoryLimits) -> Self {

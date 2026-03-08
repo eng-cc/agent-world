@@ -254,6 +254,14 @@ impl World {
         }
 
         if identity.signature_scheme == IDENTITY_HASH_SIGNATURE_SCHEME {
+            if !self.release_security_policy.allow_identity_hash_signature {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!(
+                        "module artifact_identity signature_scheme {} is disabled by release policy for {}",
+                        IDENTITY_HASH_SIGNATURE_SCHEME, module.module_id
+                    ),
+                });
+            }
             let expected_identity_hash = super::super::util::sha256_hex(
                 format!(
                     "{}:{}:{}",

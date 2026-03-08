@@ -1,7 +1,6 @@
 use super::super::{
-    m1_builtin_module_artifact_identity, m1_builtin_wasm_module_artifact_bytes, util, Manifest,
-    ModuleAbiContract, ModuleActivation, ModuleArtifactIdentity, ModuleChangeSet, ModuleKind,
-    ModuleLimits, ModuleManifest, ModuleRegistry, ModuleRole, ModuleSubscription,
+    util, Manifest, ModuleAbiContract, ModuleActivation, ModuleArtifactIdentity, ModuleChangeSet,
+    ModuleKind, ModuleLimits, ModuleManifest, ModuleRegistry, ModuleRole, ModuleSubscription,
     ModuleSubscriptionStage, ProposalDecision, WorldError, M1_AGENT_DEFAULT_MODULE_VERSION,
     M1_MEMORY_MAX_ENTRIES, M1_MEMORY_MODULE_ID, M1_MOBILITY_MODULE_ID, M1_POWER_MODULE_VERSION,
     M1_RADIATION_POWER_MODULE_ID, M1_SENSOR_MODULE_ID, M1_STORAGE_CARGO_MODULE_ID,
@@ -31,9 +30,9 @@ impl World {
         actor: impl Into<String>,
     ) -> Result<(), WorldError> {
         let radiation_power_artifact =
-            m1_builtin_wasm_artifact_for_module(M1_RADIATION_POWER_MODULE_ID)?;
+            self.load_builtin_wasm_artifact_for_module("m1", M1_RADIATION_POWER_MODULE_ID)?;
         let storage_power_artifact =
-            m1_builtin_wasm_artifact_for_module(M1_STORAGE_POWER_MODULE_ID)?;
+            self.load_builtin_wasm_artifact_for_module("m1", M1_STORAGE_POWER_MODULE_ID)?;
         let actor = actor.into();
         let mut changes = ModuleChangeSet::default();
 
@@ -43,6 +42,7 @@ impl World {
             M1_RADIATION_POWER_MODULE_ID,
             &radiation_power_artifact,
             M1_POWER_MODULE_VERSION,
+            "m1",
             m1_radiation_power_manifest,
         )?;
         ensure_bootstrap_module(
@@ -51,6 +51,7 @@ impl World {
             M1_STORAGE_POWER_MODULE_ID,
             &storage_power_artifact,
             M1_POWER_MODULE_VERSION,
+            "m1",
             m1_storage_power_manifest,
         )?;
 
@@ -93,11 +94,14 @@ impl World {
         &mut self,
         actor: impl Into<String>,
     ) -> Result<(), WorldError> {
-        let sensor_artifact = m1_builtin_wasm_artifact_for_module(M1_SENSOR_MODULE_ID)?;
-        let mobility_artifact = m1_builtin_wasm_artifact_for_module(M1_MOBILITY_MODULE_ID)?;
-        let memory_artifact = m1_builtin_wasm_artifact_for_module(M1_MEMORY_MODULE_ID)?;
+        let sensor_artifact =
+            self.load_builtin_wasm_artifact_for_module("m1", M1_SENSOR_MODULE_ID)?;
+        let mobility_artifact =
+            self.load_builtin_wasm_artifact_for_module("m1", M1_MOBILITY_MODULE_ID)?;
+        let memory_artifact =
+            self.load_builtin_wasm_artifact_for_module("m1", M1_MEMORY_MODULE_ID)?;
         let storage_cargo_artifact =
-            m1_builtin_wasm_artifact_for_module(M1_STORAGE_CARGO_MODULE_ID)?;
+            self.load_builtin_wasm_artifact_for_module("m1", M1_STORAGE_CARGO_MODULE_ID)?;
         let actor = actor.into();
         let mut changes = ModuleChangeSet::default();
 
@@ -107,6 +111,7 @@ impl World {
             M1_SENSOR_MODULE_ID,
             &sensor_artifact,
             M1_AGENT_DEFAULT_MODULE_VERSION,
+            "m1",
             m1_sensor_manifest,
         )?;
         ensure_bootstrap_module(
@@ -115,6 +120,7 @@ impl World {
             M1_MOBILITY_MODULE_ID,
             &mobility_artifact,
             M1_AGENT_DEFAULT_MODULE_VERSION,
+            "m1",
             m1_mobility_manifest,
         )?;
         ensure_bootstrap_module(
@@ -123,6 +129,7 @@ impl World {
             M1_MEMORY_MODULE_ID,
             &memory_artifact,
             M1_AGENT_DEFAULT_MODULE_VERSION,
+            "m1",
             m1_memory_manifest,
         )?;
         ensure_bootstrap_module(
@@ -131,6 +138,7 @@ impl World {
             M1_STORAGE_CARGO_MODULE_ID,
             &storage_cargo_artifact,
             M1_AGENT_DEFAULT_MODULE_VERSION,
+            "m1",
             m1_storage_cargo_manifest,
         )?;
 
@@ -157,26 +165,14 @@ impl World {
     }
 }
 
-fn m1_builtin_wasm_artifact_for_module(module_id: &str) -> Result<Vec<u8>, WorldError> {
-    m1_builtin_wasm_module_artifact_bytes(module_id)
-}
-
-fn m1_bootstrap_artifact_identity(module_id: &str, wasm_hash: &str) -> ModuleArtifactIdentity {
-    m1_builtin_module_artifact_identity(module_id, wasm_hash).unwrap_or_else(|error| {
-        panic!(
-            "builtin m1 identity invariant failed module_id={} wasm_hash={} err={:?}",
-            module_id, wasm_hash, error
-        )
-    })
-}
-
 fn ensure_bootstrap_module(
     world: &mut World,
     changes: &mut ModuleChangeSet,
     module_id: &str,
     artifact: &[u8],
     version: &str,
-    make_manifest: fn(String) -> ModuleManifest,
+    module_set: &str,
+    make_manifest: fn(String, ModuleArtifactIdentity) -> ModuleManifest,
 ) -> Result<(), WorldError> {
     if world
         .module_registry
@@ -191,7 +187,9 @@ fn ensure_bootstrap_module(
     if !world.module_registry.records.contains_key(&record_key) {
         let wasm_hash = util::sha256_hex(artifact);
         world.register_module_artifact(wasm_hash.clone(), artifact)?;
-        changes.register.push(make_manifest(wasm_hash));
+        let identity =
+            world.resolve_builtin_module_artifact_identity(module_set, module_id, &wasm_hash)?;
+        changes.register.push(make_manifest(wasm_hash, identity));
     }
 
     changes.activate.push(ModuleActivation {
@@ -202,7 +200,10 @@ fn ensure_bootstrap_module(
     Ok(())
 }
 
-fn m1_radiation_power_manifest(wasm_hash: String) -> ModuleManifest {
+fn m1_radiation_power_manifest(
+    wasm_hash: String,
+    artifact_identity: ModuleArtifactIdentity,
+) -> ModuleManifest {
     ModuleManifest {
         module_id: M1_RADIATION_POWER_MODULE_ID.to_string(),
         name: "M1RadiationPower".to_string(),
@@ -231,10 +232,7 @@ fn m1_radiation_power_manifest(wasm_hash: String) -> ModuleManifest {
             },
         ],
         required_caps: Vec::new(),
-        artifact_identity: Some(m1_bootstrap_artifact_identity(
-            M1_RADIATION_POWER_MODULE_ID,
-            &wasm_hash,
-        )),
+        artifact_identity: Some(artifact_identity),
         limits: ModuleLimits {
             max_mem_bytes: M1_BOOTSTRAP_WASM_MAX_MEM_BYTES,
             max_gas: M1_BOOTSTRAP_WASM_MAX_GAS,
@@ -246,7 +244,10 @@ fn m1_radiation_power_manifest(wasm_hash: String) -> ModuleManifest {
     }
 }
 
-fn m1_storage_power_manifest(wasm_hash: String) -> ModuleManifest {
+fn m1_storage_power_manifest(
+    wasm_hash: String,
+    artifact_identity: ModuleArtifactIdentity,
+) -> ModuleManifest {
     ModuleManifest {
         module_id: M1_STORAGE_POWER_MODULE_ID.to_string(),
         name: "M1StoragePower".to_string(),
@@ -275,10 +276,7 @@ fn m1_storage_power_manifest(wasm_hash: String) -> ModuleManifest {
             },
         ],
         required_caps: Vec::new(),
-        artifact_identity: Some(m1_bootstrap_artifact_identity(
-            M1_STORAGE_POWER_MODULE_ID,
-            &wasm_hash,
-        )),
+        artifact_identity: Some(artifact_identity),
         limits: ModuleLimits {
             max_mem_bytes: M1_BOOTSTRAP_WASM_MAX_MEM_BYTES,
             max_gas: M1_BOOTSTRAP_WASM_MAX_GAS,
@@ -290,7 +288,10 @@ fn m1_storage_power_manifest(wasm_hash: String) -> ModuleManifest {
     }
 }
 
-fn m1_sensor_manifest(wasm_hash: String) -> ModuleManifest {
+fn m1_sensor_manifest(
+    wasm_hash: String,
+    artifact_identity: ModuleArtifactIdentity,
+) -> ModuleManifest {
     ModuleManifest {
         module_id: M1_SENSOR_MODULE_ID.to_string(),
         name: "M1SensorBasic".to_string(),
@@ -319,10 +320,7 @@ fn m1_sensor_manifest(wasm_hash: String) -> ModuleManifest {
             },
         ],
         required_caps: Vec::new(),
-        artifact_identity: Some(m1_bootstrap_artifact_identity(
-            M1_SENSOR_MODULE_ID,
-            &wasm_hash,
-        )),
+        artifact_identity: Some(artifact_identity),
         limits: ModuleLimits {
             max_mem_bytes: M1_BOOTSTRAP_WASM_MAX_MEM_BYTES,
             max_gas: M1_BOOTSTRAP_WASM_MAX_GAS,
@@ -334,7 +332,10 @@ fn m1_sensor_manifest(wasm_hash: String) -> ModuleManifest {
     }
 }
 
-fn m1_mobility_manifest(wasm_hash: String) -> ModuleManifest {
+fn m1_mobility_manifest(
+    wasm_hash: String,
+    artifact_identity: ModuleArtifactIdentity,
+) -> ModuleManifest {
     ModuleManifest {
         module_id: M1_MOBILITY_MODULE_ID.to_string(),
         name: "M1MobilityBasic".to_string(),
@@ -363,10 +364,7 @@ fn m1_mobility_manifest(wasm_hash: String) -> ModuleManifest {
             },
         ],
         required_caps: Vec::new(),
-        artifact_identity: Some(m1_bootstrap_artifact_identity(
-            M1_MOBILITY_MODULE_ID,
-            &wasm_hash,
-        )),
+        artifact_identity: Some(artifact_identity),
         limits: ModuleLimits {
             max_mem_bytes: M1_BOOTSTRAP_WASM_MAX_MEM_BYTES,
             max_gas: M1_BOOTSTRAP_WASM_MAX_GAS,
@@ -378,7 +376,10 @@ fn m1_mobility_manifest(wasm_hash: String) -> ModuleManifest {
     }
 }
 
-fn m1_memory_manifest(wasm_hash: String) -> ModuleManifest {
+fn m1_memory_manifest(
+    wasm_hash: String,
+    artifact_identity: ModuleArtifactIdentity,
+) -> ModuleManifest {
     ModuleManifest {
         module_id: M1_MEMORY_MODULE_ID.to_string(),
         name: "M1MemoryCore".to_string(),
@@ -396,10 +397,7 @@ fn m1_memory_manifest(wasm_hash: String) -> ModuleManifest {
             filters: None,
         }],
         required_caps: Vec::new(),
-        artifact_identity: Some(m1_bootstrap_artifact_identity(
-            M1_MEMORY_MODULE_ID,
-            &wasm_hash,
-        )),
+        artifact_identity: Some(artifact_identity),
         limits: ModuleLimits {
             max_mem_bytes: M1_BOOTSTRAP_WASM_MAX_MEM_BYTES,
             max_gas: M1_BOOTSTRAP_WASM_MAX_GAS,
@@ -411,7 +409,10 @@ fn m1_memory_manifest(wasm_hash: String) -> ModuleManifest {
     }
 }
 
-fn m1_storage_cargo_manifest(wasm_hash: String) -> ModuleManifest {
+fn m1_storage_cargo_manifest(
+    wasm_hash: String,
+    artifact_identity: ModuleArtifactIdentity,
+) -> ModuleManifest {
     let max_output = (M1_MEMORY_MAX_ENTRIES as u64).saturating_mul(64).max(4096);
     ModuleManifest {
         module_id: M1_STORAGE_CARGO_MODULE_ID.to_string(),
@@ -433,10 +434,7 @@ fn m1_storage_cargo_manifest(wasm_hash: String) -> ModuleManifest {
             filters: None,
         }],
         required_caps: Vec::new(),
-        artifact_identity: Some(m1_bootstrap_artifact_identity(
-            M1_STORAGE_CARGO_MODULE_ID,
-            &wasm_hash,
-        )),
+        artifact_identity: Some(artifact_identity),
         limits: ModuleLimits {
             max_mem_bytes: M1_BOOTSTRAP_WASM_MAX_MEM_BYTES,
             max_gas: M1_BOOTSTRAP_WASM_MAX_GAS,

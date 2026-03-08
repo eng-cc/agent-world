@@ -249,6 +249,26 @@ pub struct ModuleReleaseRequestState {
     pub updated_at: WorldTime,
 }
 
+/// Persistent mapping from module release request lifecycle to release manifest lifecycle.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ModuleReleaseManifestMappingState {
+    pub request_id: u64,
+    pub release_id: String,
+    pub module_id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shadow_manifest_hash: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub applied_manifest_hash: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub applied_proposal_id: Option<ProposalId>,
+    #[serde(default)]
+    pub status: ModuleReleaseRequestStatus,
+    #[serde(default)]
+    pub created_at: WorldTime,
+    #[serde(default)]
+    pub updated_at: WorldTime,
+}
+
 /// The mutable state of the world.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct WorldState {
@@ -318,6 +338,8 @@ pub struct WorldState {
     pub module_instances: BTreeMap<String, ModuleInstanceState>,
     #[serde(default)]
     pub module_release_requests: BTreeMap<u64, ModuleReleaseRequestState>,
+    #[serde(default)]
+    pub module_release_manifest_mappings: BTreeMap<u64, ModuleReleaseManifestMappingState>,
     #[serde(default = "default_next_module_release_request_id")]
     pub next_module_release_request_id: u64,
     #[serde(default)]
@@ -410,6 +432,7 @@ impl Default for WorldState {
             module_artifact_bids: BTreeMap::new(),
             module_instances: BTreeMap::new(),
             module_release_requests: BTreeMap::new(),
+            module_release_manifest_mappings: BTreeMap::new(),
             next_module_release_request_id: default_next_module_release_request_id(),
             module_release_role_bindings: BTreeMap::new(),
             installed_module_targets: BTreeMap::new(),

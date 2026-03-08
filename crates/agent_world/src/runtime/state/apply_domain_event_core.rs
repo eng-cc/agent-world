@@ -264,6 +264,20 @@ impl WorldState {
                         updated_at: now,
                     },
                 );
+                self.module_release_manifest_mappings.insert(
+                    *request_id,
+                    ModuleReleaseManifestMappingState {
+                        request_id: *request_id,
+                        release_id: format!("release-{request_id}"),
+                        module_id: manifest.module_id.clone(),
+                        shadow_manifest_hash: None,
+                        applied_manifest_hash: None,
+                        applied_proposal_id: None,
+                        status: ModuleReleaseRequestStatus::Requested,
+                        created_at: now,
+                        updated_at: now,
+                    },
+                );
                 self.next_module_release_request_id = self
                     .next_module_release_request_id
                     .max(request_id.saturating_add(1));
@@ -295,6 +309,17 @@ impl WorldState {
                 request.status = ModuleReleaseRequestStatus::Shadowed;
                 request.shadow_manifest_hash = Some(manifest_hash.clone());
                 request.updated_at = now;
+                let mapping = self
+                    .module_release_manifest_mappings
+                    .get_mut(request_id)
+                    .ok_or_else(|| WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "module release mapping missing for shadow request_id={request_id}"
+                        ),
+                    })?;
+                mapping.status = ModuleReleaseRequestStatus::Shadowed;
+                mapping.shadow_manifest_hash = Some(manifest_hash.clone());
+                mapping.updated_at = now;
                 if let Some(cell) = self.agents.get_mut(operator_agent_id) {
                     cell.last_active = now;
                 }
@@ -369,6 +394,10 @@ impl WorldState {
                     ModuleReleaseRequestStatus::PartiallyApproved
                 };
                 request.updated_at = now;
+                if let Some(mapping) = self.module_release_manifest_mappings.get_mut(request_id) {
+                    mapping.status = request.status;
+                    mapping.updated_at = now;
+                }
                 if let Some(cell) = self.agents.get_mut(approver_agent_id) {
                     cell.last_active = now;
                 }
@@ -443,6 +472,10 @@ impl WorldState {
                 request.status = ModuleReleaseRequestStatus::Rejected;
                 request.rejected_reason = Some(reason.clone());
                 request.updated_at = now;
+                if let Some(mapping) = self.module_release_manifest_mappings.get_mut(request_id) {
+                    mapping.status = ModuleReleaseRequestStatus::Rejected;
+                    mapping.updated_at = now;
+                }
                 if let Some(cell) = self.agents.get_mut(rejector_agent_id) {
                     cell.last_active = now;
                 }
@@ -478,6 +511,22 @@ impl WorldState {
                     Some(*proposal_id)
                 };
                 request.updated_at = now;
+                let mapping = self
+                    .module_release_manifest_mappings
+                    .get_mut(request_id)
+                    .ok_or_else(|| WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "module release mapping missing for apply request_id={request_id}"
+                        ),
+                    })?;
+                mapping.status = ModuleReleaseRequestStatus::Applied;
+                mapping.applied_manifest_hash = Some(manifest_hash.clone());
+                mapping.applied_proposal_id = if *proposal_id == 0 {
+                    None
+                } else {
+                    Some(*proposal_id)
+                };
+                mapping.updated_at = now;
                 if let Some(cell) = self.agents.get_mut(operator_agent_id) {
                     cell.last_active = now;
                 }

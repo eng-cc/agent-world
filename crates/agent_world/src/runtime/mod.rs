@@ -155,23 +155,17 @@ pub use reward_asset::{
 pub use blob_store::{blake3_hex, BlobStore, HashAlgorithm, LocalCasStore};
 pub(crate) use builtin_wasm_materializer::load_builtin_wasm_with_fetch_fallback;
 
-pub(crate) use m1_builtin_wasm_artifact::{
-    m1_builtin_module_artifact_identity, m1_builtin_wasm_module_artifact_bytes,
-};
+pub(crate) use m1_builtin_wasm_artifact::m1_builtin_module_artifact_identity;
 #[cfg(all(test, feature = "wasmtime"))]
 pub(crate) use m1_builtin_wasm_artifact::{
     m1_builtin_module_ids_manifest, register_m1_builtin_wasm_module_artifact,
 };
+pub(crate) use m4_builtin_wasm_artifact::m4_builtin_module_artifact_identity;
 #[cfg(all(test, feature = "wasmtime", feature = "test_tier_full"))]
 pub(crate) use m4_builtin_wasm_artifact::m4_builtin_module_ids_manifest;
-pub(crate) use m4_builtin_wasm_artifact::{
-    m4_builtin_module_artifact_identity, m4_builtin_wasm_module_artifact_bytes,
-};
+pub(crate) use m5_builtin_wasm_artifact::m5_builtin_module_artifact_identity;
 #[cfg(all(test, feature = "wasmtime", feature = "test_tier_full"))]
 pub(crate) use m5_builtin_wasm_artifact::m5_builtin_module_ids_manifest;
-pub(crate) use m5_builtin_wasm_artifact::{
-    m5_builtin_module_artifact_identity, m5_builtin_wasm_module_artifact_bytes,
-};
 #[cfg(all(test, feature = "wasmtime", feature = "test_tier_full"))]
 pub(crate) use world::m4_bootstrap_module_ids;
 
@@ -227,12 +221,13 @@ pub use snapshot::{
 // State
 pub use state::{
     FactoryBuildJobState, FactoryState, IndustryProgressState, MaterialTransitJobState,
-    ModuleInstanceState, RecipeJobState, WorldState,
+    ModuleInstanceState, ModuleReleaseManifestMappingState, RecipeJobState, WorldState,
 };
 
 // World
 pub use world::{
-    M1ScenarioBootstrapConfig, World, WorldRuntimeBackpressureStats, WorldRuntimeMemoryLimits,
+    BuiltinReleaseManifestEntry, BuiltinReleaseManifestState, M1ScenarioBootstrapConfig,
+    ReleaseSecurityPolicy, World, WorldRuntimeBackpressureStats, WorldRuntimeMemoryLimits,
 };
 
 // World event

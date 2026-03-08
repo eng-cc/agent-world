@@ -1,8 +1,10 @@
 #![cfg(feature = "wasmtime")]
 
+use super::super::m1_builtin_wasm_artifact::m1_builtin_manifest_hash_tokens;
 use super::super::*;
 use super::pos;
 use agent_world_wasm_executor::{WasmExecutor, WasmExecutorConfig};
+use std::collections::BTreeMap;
 
 fn has_active(world: &World, module_id: &str) -> bool {
     world.module_registry().active.contains_key(module_id)
@@ -31,6 +33,35 @@ fn apply_module_changes(world: &mut World, actor: &str, changes: ModuleChangeSet
         .approve_proposal(proposal_id, actor.to_string(), ProposalDecision::Approve)
         .expect("approve proposal");
     world.apply_proposal(proposal_id).expect("apply proposal");
+}
+
+fn upsert_online_manifest_entry_with_identity_hash(
+    world: &mut World,
+    module_id: &str,
+) -> Result<(), WorldError> {
+    let hash_tokens = m1_builtin_manifest_hash_tokens(module_id).ok_or_else(|| {
+        WorldError::ModuleChangeInvalid {
+            reason: format!("missing m1 builtin hash tokens for module_id={module_id}"),
+        }
+    })?;
+    let wasm_hash =
+        hash_tokens
+            .first()
+            .cloned()
+            .ok_or_else(|| WorldError::ModuleChangeInvalid {
+                reason: format!("empty hash token list for module_id={module_id}"),
+            })?;
+    let identity = m1_builtin_module_artifact_identity(module_id, wasm_hash.as_str())?;
+    let mut artifact_identities = BTreeMap::new();
+    artifact_identities.insert(wasm_hash, identity);
+    world.upsert_builtin_release_manifest_entry(
+        "m1",
+        module_id,
+        BuiltinReleaseManifestEntry {
+            hash_tokens,
+            artifact_identities,
+        },
+    )
 }
 
 #[test]
@@ -66,6 +97,43 @@ fn install_power_bootstrap_modules_registers_and_activates() {
         ModuleRegistry::record_key(M1_STORAGE_POWER_MODULE_ID, M1_POWER_MODULE_VERSION);
     assert!(world.module_registry().records.contains_key(&radiation_key));
     assert!(world.module_registry().records.contains_key(&storage_key));
+}
+
+#[test]
+fn production_policy_requires_online_manifest_for_builtin_bootstrap() {
+    let mut world = World::new();
+    world.enable_production_release_policy();
+    let err = world
+        .install_m1_power_bootstrap_modules("bootstrap")
+        .expect_err("production policy should require online manifest");
+    match err {
+        WorldError::ModuleChangeInvalid { reason } => {
+            assert!(reason.contains("builtin release manifest entry missing"));
+        }
+        other => panic!("unexpected error: {other:?}"),
+    }
+}
+
+#[test]
+fn production_policy_rejects_identity_hash_even_with_online_manifest() {
+    let mut world = World::new();
+    world.enable_production_release_policy();
+    upsert_online_manifest_entry_with_identity_hash(&mut world, M1_RADIATION_POWER_MODULE_ID)
+        .expect("upsert online manifest for radiation module");
+    upsert_online_manifest_entry_with_identity_hash(&mut world, M1_STORAGE_POWER_MODULE_ID)
+        .expect("upsert online manifest for storage module");
+    let err = world
+        .install_m1_power_bootstrap_modules("bootstrap")
+        .expect_err("identity_hash_v1 should be rejected in production policy");
+    match err {
+        WorldError::ModuleChangeInvalid { reason } => {
+            assert!(
+                reason.contains("signature_scheme identity_hash_v1 is disabled")
+                    || reason.contains("builtin release artifact identity missing")
+            );
+        }
+        other => panic!("unexpected error: {other:?}"),
+    }
 }
 
 #[test]

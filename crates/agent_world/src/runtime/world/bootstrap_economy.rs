@@ -1,13 +1,13 @@
 use super::super::{
-    m4_builtin_module_artifact_identity, m4_builtin_wasm_module_artifact_bytes, util, Manifest,
-    MaterialDefaultPriority, MaterialProfileV1, MaterialStack, MaterialTransportLossClass,
-    ModuleAbiContract, ModuleActivation, ModuleArtifactIdentity, ModuleChangeSet, ModuleKind,
-    ModuleLimits, ModuleManifest, ModuleRegistry, ModuleRole, ProductProfileV1, ProposalDecision,
-    RecipeProfileV1, WorldError, M4_ECONOMY_MODULE_VERSION, M4_FACTORY_ASSEMBLER_MODULE_ID,
-    M4_FACTORY_MINER_MODULE_ID, M4_FACTORY_SMELTER_MODULE_ID, M4_PRODUCT_ALLOY_PLATE_MODULE_ID,
-    M4_PRODUCT_CONTROL_CHIP_MODULE_ID, M4_PRODUCT_FACTORY_CORE_MODULE_ID,
-    M4_PRODUCT_IRON_INGOT_MODULE_ID, M4_PRODUCT_LOGISTICS_DRONE_MODULE_ID,
-    M4_PRODUCT_MODULE_RACK_MODULE_ID, M4_PRODUCT_MOTOR_MODULE_ID, M4_PRODUCT_SENSOR_PACK_MODULE_ID,
+    util, Manifest, MaterialDefaultPriority, MaterialProfileV1, MaterialStack,
+    MaterialTransportLossClass, ModuleAbiContract, ModuleActivation, ModuleArtifactIdentity,
+    ModuleChangeSet, ModuleKind, ModuleLimits, ModuleManifest, ModuleRegistry, ModuleRole,
+    ProductProfileV1, ProposalDecision, RecipeProfileV1, WorldError, M4_ECONOMY_MODULE_VERSION,
+    M4_FACTORY_ASSEMBLER_MODULE_ID, M4_FACTORY_MINER_MODULE_ID, M4_FACTORY_SMELTER_MODULE_ID,
+    M4_PRODUCT_ALLOY_PLATE_MODULE_ID, M4_PRODUCT_CONTROL_CHIP_MODULE_ID,
+    M4_PRODUCT_FACTORY_CORE_MODULE_ID, M4_PRODUCT_IRON_INGOT_MODULE_ID,
+    M4_PRODUCT_LOGISTICS_DRONE_MODULE_ID, M4_PRODUCT_MODULE_RACK_MODULE_ID,
+    M4_PRODUCT_MOTOR_MODULE_ID, M4_PRODUCT_SENSOR_PACK_MODULE_ID,
     M4_RECIPE_ASSEMBLE_CONTROL_CHIP_MODULE_ID, M4_RECIPE_ASSEMBLE_DRONE_MODULE_ID,
     M4_RECIPE_ASSEMBLE_FACTORY_CORE_MODULE_ID, M4_RECIPE_ASSEMBLE_GEAR_MODULE_ID,
     M4_RECIPE_ASSEMBLE_MODULE_RACK_MODULE_ID, M4_RECIPE_ASSEMBLE_MOTOR_MODULE_ID,
@@ -183,12 +183,15 @@ impl World {
         let mut changes = ModuleChangeSet::default();
 
         for descriptor in M4_BOOTSTRAP_MODULES {
+            let artifact =
+                self.load_builtin_wasm_artifact_for_module("m4", descriptor.module_id)?;
             ensure_bootstrap_module(
                 self,
                 &mut changes,
                 descriptor,
-                &m4_builtin_wasm_artifact_for_module(descriptor.module_id)?,
+                &artifact,
                 M4_ECONOMY_MODULE_VERSION,
+                "m4",
             )?;
         }
 
@@ -585,25 +588,13 @@ fn recipe_profile(
     }
 }
 
-fn m4_builtin_wasm_artifact_for_module(module_id: &str) -> Result<Vec<u8>, WorldError> {
-    m4_builtin_wasm_module_artifact_bytes(module_id)
-}
-
-fn m4_bootstrap_artifact_identity(module_id: &str, wasm_hash: &str) -> ModuleArtifactIdentity {
-    m4_builtin_module_artifact_identity(module_id, wasm_hash).unwrap_or_else(|error| {
-        panic!(
-            "builtin m4 identity invariant failed module_id={} wasm_hash={} err={:?}",
-            module_id, wasm_hash, error
-        )
-    })
-}
-
 fn ensure_bootstrap_module(
     world: &mut World,
     changes: &mut ModuleChangeSet,
     descriptor: &M4BootstrapModuleDescriptor,
     artifact: &[u8],
     version: &str,
+    module_set: &str,
 ) -> Result<(), WorldError> {
     if world
         .module_registry
@@ -618,7 +609,14 @@ fn ensure_bootstrap_module(
     if !world.module_registry.records.contains_key(&record_key) {
         let wasm_hash = util::sha256_hex(artifact);
         world.register_module_artifact(wasm_hash.clone(), artifact)?;
-        changes.register.push(m4_manifest(descriptor, wasm_hash));
+        let identity = world.resolve_builtin_module_artifact_identity(
+            module_set,
+            descriptor.module_id,
+            &wasm_hash,
+        )?;
+        changes
+            .register
+            .push(m4_manifest(descriptor, wasm_hash, identity));
     }
 
     changes.activate.push(ModuleActivation {
@@ -629,17 +627,18 @@ fn ensure_bootstrap_module(
     Ok(())
 }
 
-fn m4_manifest(descriptor: &M4BootstrapModuleDescriptor, wasm_hash: String) -> ModuleManifest {
+fn m4_manifest(
+    descriptor: &M4BootstrapModuleDescriptor,
+    wasm_hash: String,
+    artifact_identity: ModuleArtifactIdentity,
+) -> ModuleManifest {
     ModuleManifest {
         module_id: descriptor.module_id.to_string(),
         name: descriptor.manifest_name.to_string(),
         version: M4_ECONOMY_MODULE_VERSION.to_string(),
         kind: ModuleKind::Pure,
         role: ModuleRole::Domain,
-        artifact_identity: Some(m4_bootstrap_artifact_identity(
-            descriptor.module_id,
-            &wasm_hash,
-        )),
+        artifact_identity: Some(artifact_identity),
         wasm_hash,
         interface_version: "wasm-1".to_string(),
         abi_contract: ModuleAbiContract::default(),

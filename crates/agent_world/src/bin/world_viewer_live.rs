@@ -285,8 +285,7 @@ mod tests {
 
     #[test]
     fn parse_options_rejects_release_config_flag() {
-        let err =
-            parse_options(["--release-config", "legacy.toml"].into_iter()).expect_err("flag");
+        let err = parse_options(["--release-config", "legacy.toml"].into_iter()).expect_err("flag");
         assert!(err.contains("no longer supported"));
         assert!(err.contains("world_chain_runtime"));
     }

@@ -1,11 +1,10 @@
 use super::super::{
-    m5_builtin_module_artifact_identity, m5_builtin_wasm_module_artifact_bytes, util,
-    GameplayContract, GameplayModuleKind, M1ScenarioBootstrapConfig, Manifest, ModuleAbiContract,
-    ModuleActivation, ModuleArtifactIdentity, ModuleChangeSet, ModuleKind, ModuleLimits,
-    ModuleManifest, ModuleRegistry, ModuleRole, ModuleSubscription, ModuleSubscriptionStage,
-    ProposalDecision, WorldError, M5_GAMEPLAY_CRISIS_MODULE_ID, M5_GAMEPLAY_ECONOMIC_MODULE_ID,
-    M5_GAMEPLAY_GOVERNANCE_MODULE_ID, M5_GAMEPLAY_META_MODULE_ID, M5_GAMEPLAY_MODULE_VERSION,
-    M5_GAMEPLAY_WAR_MODULE_ID,
+    util, GameplayContract, GameplayModuleKind, M1ScenarioBootstrapConfig, Manifest,
+    ModuleAbiContract, ModuleActivation, ModuleArtifactIdentity, ModuleChangeSet, ModuleKind,
+    ModuleLimits, ModuleManifest, ModuleRegistry, ModuleRole, ModuleSubscription,
+    ModuleSubscriptionStage, ProposalDecision, WorldError, M5_GAMEPLAY_CRISIS_MODULE_ID,
+    M5_GAMEPLAY_ECONOMIC_MODULE_ID, M5_GAMEPLAY_GOVERNANCE_MODULE_ID, M5_GAMEPLAY_META_MODULE_ID,
+    M5_GAMEPLAY_MODULE_VERSION, M5_GAMEPLAY_WAR_MODULE_ID,
 };
 use super::World;
 
@@ -24,40 +23,45 @@ impl World {
             self,
             &mut changes,
             M5_GAMEPLAY_WAR_MODULE_ID,
-            &m5_builtin_wasm_artifact_for_module(M5_GAMEPLAY_WAR_MODULE_ID)?,
+            &self.load_builtin_wasm_artifact_for_module("m5", M5_GAMEPLAY_WAR_MODULE_ID)?,
             M5_GAMEPLAY_MODULE_VERSION,
+            "m5",
             m5_gameplay_war_manifest,
         )?;
         ensure_bootstrap_module(
             self,
             &mut changes,
             M5_GAMEPLAY_GOVERNANCE_MODULE_ID,
-            &m5_builtin_wasm_artifact_for_module(M5_GAMEPLAY_GOVERNANCE_MODULE_ID)?,
+            &self.load_builtin_wasm_artifact_for_module("m5", M5_GAMEPLAY_GOVERNANCE_MODULE_ID)?,
             M5_GAMEPLAY_MODULE_VERSION,
+            "m5",
             m5_gameplay_governance_manifest,
         )?;
         ensure_bootstrap_module(
             self,
             &mut changes,
             M5_GAMEPLAY_CRISIS_MODULE_ID,
-            &m5_builtin_wasm_artifact_for_module(M5_GAMEPLAY_CRISIS_MODULE_ID)?,
+            &self.load_builtin_wasm_artifact_for_module("m5", M5_GAMEPLAY_CRISIS_MODULE_ID)?,
             M5_GAMEPLAY_MODULE_VERSION,
+            "m5",
             m5_gameplay_crisis_manifest,
         )?;
         ensure_bootstrap_module(
             self,
             &mut changes,
             M5_GAMEPLAY_ECONOMIC_MODULE_ID,
-            &m5_builtin_wasm_artifact_for_module(M5_GAMEPLAY_ECONOMIC_MODULE_ID)?,
+            &self.load_builtin_wasm_artifact_for_module("m5", M5_GAMEPLAY_ECONOMIC_MODULE_ID)?,
             M5_GAMEPLAY_MODULE_VERSION,
+            "m5",
             m5_gameplay_economic_manifest,
         )?;
         ensure_bootstrap_module(
             self,
             &mut changes,
             M5_GAMEPLAY_META_MODULE_ID,
-            &m5_builtin_wasm_artifact_for_module(M5_GAMEPLAY_META_MODULE_ID)?,
+            &self.load_builtin_wasm_artifact_for_module("m5", M5_GAMEPLAY_META_MODULE_ID)?,
             M5_GAMEPLAY_MODULE_VERSION,
+            "m5",
             m5_gameplay_meta_manifest,
         )?;
 
@@ -96,26 +100,14 @@ impl World {
     }
 }
 
-fn m5_builtin_wasm_artifact_for_module(module_id: &str) -> Result<Vec<u8>, WorldError> {
-    m5_builtin_wasm_module_artifact_bytes(module_id)
-}
-
-fn m5_bootstrap_artifact_identity(module_id: &str, wasm_hash: &str) -> ModuleArtifactIdentity {
-    m5_builtin_module_artifact_identity(module_id, wasm_hash).unwrap_or_else(|error| {
-        panic!(
-            "builtin m5 identity invariant failed module_id={} wasm_hash={} err={:?}",
-            module_id, wasm_hash, error
-        )
-    })
-}
-
 fn ensure_bootstrap_module(
     world: &mut World,
     changes: &mut ModuleChangeSet,
     module_id: &str,
     artifact: &[u8],
     version: &str,
-    make_manifest: fn(String) -> ModuleManifest,
+    module_set: &str,
+    make_manifest: fn(String, ModuleArtifactIdentity) -> ModuleManifest,
 ) -> Result<(), WorldError> {
     if world
         .module_registry
@@ -130,7 +122,9 @@ fn ensure_bootstrap_module(
     if !world.module_registry.records.contains_key(&record_key) {
         let wasm_hash = util::sha256_hex(artifact);
         world.register_module_artifact(wasm_hash.clone(), artifact)?;
-        changes.register.push(make_manifest(wasm_hash));
+        let identity =
+            world.resolve_builtin_module_artifact_identity(module_set, module_id, &wasm_hash)?;
+        changes.register.push(make_manifest(wasm_hash, identity));
     }
 
     changes.activate.push(ModuleActivation {
@@ -145,6 +139,7 @@ fn m5_gameplay_manifest(
     module_id: &str,
     name: &str,
     wasm_hash: String,
+    artifact_identity: ModuleArtifactIdentity,
     kind: GameplayModuleKind,
     min_players: u16,
     max_players: Option<u16>,
@@ -155,7 +150,7 @@ fn m5_gameplay_manifest(
         version: M5_GAMEPLAY_MODULE_VERSION.to_string(),
         kind: ModuleKind::Reducer,
         role: ModuleRole::Gameplay,
-        artifact_identity: Some(m5_bootstrap_artifact_identity(module_id, &wasm_hash)),
+        artifact_identity: Some(artifact_identity),
         wasm_hash,
         interface_version: "wasm-1".to_string(),
         abi_contract: ModuleAbiContract {
@@ -198,55 +193,75 @@ fn m5_gameplay_manifest(
     }
 }
 
-fn m5_gameplay_war_manifest(wasm_hash: String) -> ModuleManifest {
+fn m5_gameplay_war_manifest(
+    wasm_hash: String,
+    artifact_identity: ModuleArtifactIdentity,
+) -> ModuleManifest {
     m5_gameplay_manifest(
         M5_GAMEPLAY_WAR_MODULE_ID,
         "M5GameplayWarCore",
         wasm_hash,
+        artifact_identity,
         GameplayModuleKind::War,
         2,
         None,
     )
 }
 
-fn m5_gameplay_governance_manifest(wasm_hash: String) -> ModuleManifest {
+fn m5_gameplay_governance_manifest(
+    wasm_hash: String,
+    artifact_identity: ModuleArtifactIdentity,
+) -> ModuleManifest {
     m5_gameplay_manifest(
         M5_GAMEPLAY_GOVERNANCE_MODULE_ID,
         "M5GameplayGovernanceCouncil",
         wasm_hash,
+        artifact_identity,
         GameplayModuleKind::Governance,
         2,
         None,
     )
 }
 
-fn m5_gameplay_crisis_manifest(wasm_hash: String) -> ModuleManifest {
+fn m5_gameplay_crisis_manifest(
+    wasm_hash: String,
+    artifact_identity: ModuleArtifactIdentity,
+) -> ModuleManifest {
     m5_gameplay_manifest(
         M5_GAMEPLAY_CRISIS_MODULE_ID,
         "M5GameplayCrisisCycle",
         wasm_hash,
+        artifact_identity,
         GameplayModuleKind::Crisis,
         1,
         None,
     )
 }
 
-fn m5_gameplay_economic_manifest(wasm_hash: String) -> ModuleManifest {
+fn m5_gameplay_economic_manifest(
+    wasm_hash: String,
+    artifact_identity: ModuleArtifactIdentity,
+) -> ModuleManifest {
     m5_gameplay_manifest(
         M5_GAMEPLAY_ECONOMIC_MODULE_ID,
         "M5GameplayEconomicOverlay",
         wasm_hash,
+        artifact_identity,
         GameplayModuleKind::Economic,
         1,
         None,
     )
 }
 
-fn m5_gameplay_meta_manifest(wasm_hash: String) -> ModuleManifest {
+fn m5_gameplay_meta_manifest(
+    wasm_hash: String,
+    artifact_identity: ModuleArtifactIdentity,
+) -> ModuleManifest {
     m5_gameplay_manifest(
         M5_GAMEPLAY_META_MODULE_ID,
         "M5GameplayMetaProgression",
         wasm_hash,
+        artifact_identity,
         GameplayModuleKind::Meta,
         1,
         None,

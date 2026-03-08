@@ -394,6 +394,13 @@ impl World {
     }
 
     pub fn apply_proposal(&mut self, proposal_id: ProposalId) -> Result<String, WorldError> {
+        if !self.release_security_policy.allow_local_finality_signing {
+            return Err(WorldError::GovernancePolicyInvalid {
+                reason: format!(
+                    "apply_proposal local finality path is disabled by release policy proposal_id={proposal_id}"
+                ),
+            });
+        }
         let finality_certificate = self.build_local_finality_certificate(proposal_id)?;
         self.apply_proposal_with_finality(proposal_id, &finality_certificate)
     }

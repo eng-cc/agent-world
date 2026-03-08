@@ -174,6 +174,14 @@ fn module_release_state_machine_runs_submit_shadow_approve_apply() {
             .map(|item| item.status),
         Some(ModuleReleaseRequestStatus::Requested)
     ));
+    let mapping = world
+        .state()
+        .module_release_manifest_mappings
+        .get(&request_id)
+        .expect("module release manifest mapping state");
+    assert_eq!(mapping.status, ModuleReleaseRequestStatus::Requested);
+    assert_eq!(mapping.module_id, "m.loop.release");
+    assert_eq!(mapping.release_id, format!("release-{request_id}"));
 
     world.submit_action(Action::ModuleReleaseShadow {
         operator_agent_id: "operator-1".to_string(),
@@ -201,6 +209,16 @@ fn module_release_state_machine_runs_submit_shadow_approve_apply() {
             .map(|item| item.status),
         Some(ModuleReleaseRequestStatus::Shadowed)
     ));
+    let mapping = world
+        .state()
+        .module_release_manifest_mappings
+        .get(&request_id)
+        .expect("module release manifest mapping after shadow");
+    assert_eq!(mapping.status, ModuleReleaseRequestStatus::Shadowed);
+    assert_eq!(
+        mapping.shadow_manifest_hash.as_deref(),
+        Some(shadow_manifest_hash.as_str())
+    );
     bind_release_roles(&mut world, "operator-1", "operator-1", &["security"]);
     bind_release_roles(&mut world, "operator-1", "publisher-1", &["runtime"]);
 
@@ -292,6 +310,17 @@ fn module_release_state_machine_runs_submit_shadow_approve_apply() {
         Some(applied_manifest_hash.as_str())
     );
     assert_eq!(release_state.applied_proposal_id, Some(proposal_id));
+    let mapping = world
+        .state()
+        .module_release_manifest_mappings
+        .get(&request_id)
+        .expect("module release manifest mapping state after apply");
+    assert_eq!(mapping.status, ModuleReleaseRequestStatus::Applied);
+    assert_eq!(
+        mapping.applied_manifest_hash.as_deref(),
+        Some(applied_manifest_hash.as_str())
+    );
+    assert_eq!(mapping.applied_proposal_id, Some(proposal_id));
     assert_eq!(
         world.module_registry().active.get("m.loop.release"),
         Some(&"0.1.0".to_string())

@@ -85,6 +85,7 @@
   - `crates/agent_world/src/runtime/world/module_actions_impl_part2.rs`
   - `crates/agent_world/src/runtime/events.rs`
   - `crates/agent_world/src/runtime/state.rs`
+  - `crates/agent_world/src/runtime/world/release_manifest.rs`
   - `crates/agent_world/src/runtime/builtin_wasm_identity_manifest.rs`
   - `crates/agent_world/src/runtime/{m1,m4,m5}_builtin_wasm_artifact.rs`
   - `crates/agent_world/src/runtime/builtin_wasm_materializer.rs`
