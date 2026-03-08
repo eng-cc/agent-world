@@ -1,6 +1,6 @@
 # Viewer Web 语义化测试 API（Phase 9 发行验收支撑）
 
-审计轮次: 14
+审计轮次: 15
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-web-semantic-test-api.prd.project.md
 
 ## 1. Executive Summary
@@ -120,7 +120,7 @@
 - WTA-16（已完成）：执行 round-3 定向回归、更新手册示例与文档状态收口。
 - WTA-17（已完成）：round-4 补齐需求建模与任务拆解（timeline seek/filter/jump 语义）。
 - WTA-18（已完成）：落地 `viewer_automation + web_test_api` round-4 语义步骤（timeline + sendControl.seek）并补齐定向测试。
-- WTA-19：执行 round-4 定向回归、更新手册示例与文档状态收口。
+- WTA-19（已完成）：执行 round-4 定向回归、更新手册示例与文档状态收口。
 
 ### Technical Risks
 - Web 线程与 Bevy 主线程并发风险：

@@ -116,6 +116,9 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023
   - `prompt_system=<agent_id>|<text|clear>`
   - `prompt_short=<agent_id>|<text|clear>`
   - `prompt_long=<agent_id>|<text|clear>`
+  - `timeline_seek=<tick>`
+  - `timeline_filter=<err|llm|peak>:<show|hide|toggle>`
+  - `timeline_jump=<err|llm|peak>`
   - `material_variant=next|cycle`
 
 示例：
@@ -149,6 +152,14 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023
   --scenario llm_bootstrap \
   --addr 127.0.0.1:5131 \
   --automation-steps "layout=command;chat=agent-0|hello%20from%20automation;prompt_short=agent-0|Prioritize%20power%20stability;wait=0.2"
+```
+
+示例（round-4 语义补齐）：
+```bash
+./scripts/capture-viewer-frame.sh \
+  --scenario llm_bootstrap \
+  --addr 127.0.0.1:5131 \
+  --automation-steps "layout=intel;timeline_filter=err:hide;timeline_jump=llm;timeline_seek=120;wait=0.2"
 ```
 
 ## 3D 渲染档位与精调（商业化精致度）
