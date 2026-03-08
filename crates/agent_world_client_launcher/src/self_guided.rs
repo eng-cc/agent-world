@@ -10,12 +10,14 @@ const UX_STATE_STORAGE_KEY: &str = "agent_world_launcher_ux_state_v1";
 #[serde(default)]
 pub(super) struct LauncherUxState {
     pub(super) onboarding_completed: bool,
+    pub(super) expert_mode: bool,
 }
 
 impl Default for LauncherUxState {
     fn default() -> Self {
         Self {
             onboarding_completed: false,
+            expert_mode: false,
         }
     }
 }
@@ -187,6 +189,33 @@ pub(super) fn save_launcher_ux_state(state: &LauncherUxState) -> Result<(), Stri
 }
 
 impl ClientLauncherApp {
+    pub(super) fn is_expert_mode(&self) -> bool {
+        self.ux_state.expert_mode
+    }
+
+    pub(super) fn set_expert_mode(&mut self, enabled: bool) {
+        self.ux_state.expert_mode = enabled;
+        #[cfg(not(test))]
+        {
+            if let Err(err) = save_launcher_ux_state(&self.ux_state) {
+                self.append_log(format!(
+                    "{}: {err}",
+                    self.tr(
+                        "保存专家模式状态失败（已降级为会话内状态）",
+                        "Persist expert mode failed (fallback to session-only)"
+                    )
+                ));
+            }
+        }
+        self.append_log(if enabled {
+            self.tr("已切换为专家模式。", "Switched to expert mode.")
+                .to_string()
+        } else {
+            self.tr("已切换为引导模式。", "Switched to guided mode.")
+                .to_string()
+        });
+    }
+
     fn next_task_hint_text(&self, hint: NextTaskHint) -> &'static str {
         match (hint, self.ui_language) {
             (NextTaskHint::FixChainConfig, UiLanguage::ZhCn) => {
@@ -389,6 +418,10 @@ impl ClientLauncherApp {
         game_running: bool,
         chain_running: bool,
     ) {
+        if self.is_expert_mode() {
+            self.onboarding_state.auto_open_checked = true;
+            return;
+        }
         if self.onboarding_state.auto_open_checked {
             return;
         }
@@ -429,14 +462,17 @@ impl ClientLauncherApp {
         self.onboarding_state.completed = completed;
         self.onboarding_state.open = false;
         self.ux_state.onboarding_completed = completed;
-        if let Err(err) = save_launcher_ux_state(&self.ux_state) {
-            self.append_log(format!(
-                "{}: {err}",
-                self.tr(
-                    "保存引导状态失败（已降级为会话内状态）",
-                    "Persist onboarding state failed (fallback to session-only)"
-                )
-            ));
+        #[cfg(not(test))]
+        {
+            if let Err(err) = save_launcher_ux_state(&self.ux_state) {
+                self.append_log(format!(
+                    "{}: {err}",
+                    self.tr(
+                        "保存引导状态失败（已降级为会话内状态）",
+                        "Persist onboarding state failed (fallback to session-only)"
+                    )
+                ));
+            }
         }
 
         if completed {

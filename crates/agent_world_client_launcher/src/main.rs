@@ -1283,6 +1283,14 @@ impl eframe::App for ClientLauncherApp {
                             UiLanguage::EnUs.display_name(),
                         );
                     });
+                ui.separator();
+                let mut expert_mode = self.is_expert_mode();
+                if ui
+                    .checkbox(&mut expert_mode, self.tr("专家模式", "Expert Mode"))
+                    .changed()
+                {
+                    self.set_expert_mode(expert_mode);
+                }
             });
         });
 
@@ -1316,13 +1324,20 @@ impl eframe::App for ClientLauncherApp {
             );
 
             ui.separator();
-            self.render_task_flow_cards(
-                ui,
-                &game_required_issues,
-                &chain_required_issues,
-                game_running,
-                chain_running,
-            );
+            if self.is_expert_mode() {
+                ui.small(self.tr(
+                    "专家模式已开启：已隐藏新手任务流卡片。",
+                    "Expert mode enabled: guided task cards are hidden.",
+                ));
+            } else {
+                self.render_task_flow_cards(
+                    ui,
+                    &game_required_issues,
+                    &chain_required_issues,
+                    game_running,
+                    chain_running,
+                );
+            }
             ui.separator();
 
             ui.horizontal_wrapped(|ui| {
@@ -1365,11 +1380,13 @@ impl eframe::App for ClientLauncherApp {
                 if ui.button(self.tr("高级配置", "Advanced Config")).clicked() {
                     self.config_window_open = true;
                 }
-                if ui.button(self.tr("新手引导", "Onboarding")).clicked() {
-                    self.open_onboarding_manual();
-                }
-                if ui.button(self.tr("重置引导", "Reset Guide")).clicked() {
-                    self.reset_onboarding();
+                if !self.is_expert_mode() {
+                    if ui.button(self.tr("新手引导", "Onboarding")).clicked() {
+                        self.open_onboarding_manual();
+                    }
+                    if ui.button(self.tr("重置引导", "Reset Guide")).clicked() {
+                        self.reset_onboarding();
+                    }
                 }
                 if ui.button(self.tr("打开游戏页", "Open Game Page")).clicked() {
                     let url = self.current_game_url();

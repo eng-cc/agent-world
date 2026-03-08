@@ -565,3 +565,12 @@ fn resolve_next_task_hint_prioritizes_config_fix_then_start_order() {
         NextTaskHint::OpenGamePage
     );
 }
+
+#[test]
+fn expert_mode_toggle_updates_runtime_state() {
+    let mut app = ClientLauncherApp::default();
+    app.set_expert_mode(true);
+    assert!(app.is_expert_mode());
+    app.set_expert_mode(false);
+    assert!(!app.is_expert_mode());
+}
