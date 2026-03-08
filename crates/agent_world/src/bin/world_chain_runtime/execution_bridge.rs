@@ -1,3 +1,4 @@
+use std::collections::BTreeSet;
 use std::fs;
 use std::path::Path;
 
@@ -6,7 +7,9 @@ use agent_world::consensus_action_payload::ConsensusActionPayloadEnvelope;
 use agent_world::consensus_action_payload::{
     decode_consensus_action_payload, ConsensusActionPayloadBody,
 };
-use agent_world::runtime::{blake3_hex, BlobStore, LocalCasStore, World as RuntimeWorld};
+use agent_world::runtime::{
+    blake3_hex, BlobStore, LocalCasStore, ModuleRegistry, World as RuntimeWorld,
+};
 use agent_world::simulator::{
     Action as SimulatorAction, ActionSubmitter, WorldEventKind, WorldKernel,
 };
@@ -122,6 +125,7 @@ impl ExecutionBridgeRecord {
         journal_len: usize,
         snapshot_ref: String,
         journal_ref: String,
+        external_effect_ref: Option<String>,
         simulator_mirror: Option<ExecutionSimulatorMirrorRecord>,
         timestamp_ms: i64,
     ) -> Self {
@@ -138,7 +142,7 @@ impl ExecutionBridgeRecord {
             journal_ref: Some(journal_ref),
             commit_log_ref: None,
             checkpoint_ref: None,
-            external_effect_ref: None,
+            external_effect_ref,
             simulator_mirror,
             timestamp_ms,
         }
@@ -436,12 +440,291 @@ fn load_latest_execution_checkpoint_manifest(
     Ok(Some(manifest))
 }
 
+const EXECUTION_EXTERNAL_EFFECT_SCHEMA_V1: u32 = 1;
+const EXECUTION_EXTERNAL_EFFECT_CONTRACT_CLOSED_WORLD_V1: &str = "closed_world_v1";
+
+fn execution_external_effect_schema_v1() -> u32 {
+    EXECUTION_EXTERNAL_EFFECT_SCHEMA_V1
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub(super) struct ExecutionExternalEffectMaterialization {
+    #[serde(default = "execution_external_effect_schema_v1")]
+    pub schema_version: u32,
+    pub contract: String,
+    pub world_id: String,
+    pub node_id: String,
+    pub height: u64,
+    pub slot: u64,
+    pub epoch: u64,
+    pub node_block_hash: String,
+    pub action_root: String,
+    pub committed_at_unix_ms: i64,
+    pub pre_step_execution_state_root: String,
+    pub world_manifest_hash: String,
+    pub active_modules_hash: String,
+    pub committed_actions_hash: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub active_modules: Vec<ExecutionModuleResolutionAnchor>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub committed_actions: Vec<ExecutionCommittedActionAnchor>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub unresolved_inputs: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub(super) struct ExecutionModuleResolutionAnchor {
+    pub instance_id: String,
+    pub module_id: String,
+    pub module_version: String,
+    pub wasm_hash: String,
+    pub install_target: agent_world::simulator::ModuleInstallTarget,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub(super) struct ExecutionCommittedActionAnchor {
+    pub action_id: u64,
+    pub submitter_player_id: String,
+    pub payload_hash: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct ExecutionReplayRecordInput {
+    pub record: ExecutionBridgeRecord,
+    pub external_effect: Option<ExecutionExternalEffectMaterialization>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct ExecutionReplayPlan {
     pub target_height: u64,
     pub start_height: u64,
     pub checkpoint: Option<ExecutionCheckpointManifest>,
-    pub records: Vec<ExecutionBridgeRecord>,
+    pub records: Vec<ExecutionReplayRecordInput>,
+}
+
+impl ExecutionExternalEffectMaterialization {
+    fn validate(&self) -> Result<(), String> {
+        if self.schema_version < EXECUTION_EXTERNAL_EFFECT_SCHEMA_V1 {
+            return Err(format!(
+                "execution external effect has invalid schema_version={} at height={}",
+                self.schema_version, self.height
+            ));
+        }
+        if self.contract != EXECUTION_EXTERNAL_EFFECT_CONTRACT_CLOSED_WORLD_V1 {
+            return Err(format!(
+                "execution external effect has unsupported contract={} at height={}",
+                self.contract, self.height
+            ));
+        }
+        if self.world_id.trim().is_empty()
+            || self.node_id.trim().is_empty()
+            || self.node_block_hash.trim().is_empty()
+            || self.action_root.trim().is_empty()
+            || self.pre_step_execution_state_root.trim().is_empty()
+            || self.world_manifest_hash.trim().is_empty()
+        {
+            return Err(format!(
+                "execution external effect missing required fields at height={}",
+                self.height
+            ));
+        }
+        if !self.unresolved_inputs.is_empty() {
+            return Err(format!(
+                "execution external effect unresolved inputs at height={} inputs={:?}",
+                self.height, self.unresolved_inputs
+            ));
+        }
+        let expected_active_hash = execution_module_anchor_hash(self.active_modules.as_slice())?;
+        if self.active_modules_hash != expected_active_hash {
+            return Err(format!(
+                "execution external effect active_modules_hash mismatch expected={} actual={} height={}",
+                expected_active_hash, self.active_modules_hash, self.height
+            ));
+        }
+        let expected_actions_hash =
+            execution_committed_actions_hash(self.committed_actions.as_slice())?;
+        if self.committed_actions_hash != expected_actions_hash {
+            return Err(format!(
+                "execution external effect committed_actions_hash mismatch expected={} actual={} height={}",
+                expected_actions_hash, self.committed_actions_hash, self.height
+            ));
+        }
+        Ok(())
+    }
+}
+
+fn execution_module_anchor_hash(
+    anchors: &[ExecutionModuleResolutionAnchor],
+) -> Result<String, String> {
+    Ok(blake3_hex(to_cbor(anchors)?.as_slice()))
+}
+
+fn execution_committed_actions_hash(
+    actions: &[ExecutionCommittedActionAnchor],
+) -> Result<String, String> {
+    Ok(blake3_hex(to_cbor(actions)?.as_slice()))
+}
+
+fn collect_execution_module_resolution_anchors(
+    execution_world: &RuntimeWorld,
+) -> Result<Vec<ExecutionModuleResolutionAnchor>, String> {
+    let module_registry = execution_world.module_registry();
+    let state = execution_world.state();
+    let mut anchors = Vec::new();
+    let mut module_ids_with_instances = BTreeSet::new();
+    for instance in state.module_instances.values() {
+        module_ids_with_instances.insert(instance.module_id.clone());
+        let key = ModuleRegistry::record_key(
+            instance.module_id.as_str(),
+            instance.module_version.as_str(),
+        );
+        let record = module_registry.records.get(&key).ok_or_else(|| {
+            format!(
+                "execution external effect missing module record {} for instance {}",
+                key, instance.instance_id
+            )
+        })?;
+        anchors.push(ExecutionModuleResolutionAnchor {
+            instance_id: instance.instance_id.clone(),
+            module_id: instance.module_id.clone(),
+            module_version: record.manifest.version.clone(),
+            wasm_hash: record.manifest.wasm_hash.clone(),
+            install_target: instance.install_target.clone(),
+        });
+    }
+
+    let mut legacy_module_ids: Vec<String> = module_registry.active.keys().cloned().collect();
+    legacy_module_ids.sort();
+    for module_id in legacy_module_ids {
+        if module_ids_with_instances.contains(&module_id) {
+            continue;
+        }
+        let version = module_registry.active.get(&module_id).ok_or_else(|| {
+            format!(
+                "execution external effect missing active module version for {}",
+                module_id
+            )
+        })?;
+        let key = ModuleRegistry::record_key(module_id.as_str(), version.as_str());
+        let record = module_registry
+            .records
+            .get(&key)
+            .ok_or_else(|| format!("execution external effect missing module record {}", key))?;
+        anchors.push(ExecutionModuleResolutionAnchor {
+            instance_id: module_id.clone(),
+            module_id: module_id.clone(),
+            module_version: version.clone(),
+            wasm_hash: record.manifest.wasm_hash.clone(),
+            install_target: state
+                .installed_module_targets
+                .get(&module_id)
+                .cloned()
+                .unwrap_or_default(),
+        });
+    }
+
+    anchors.sort_by(|left, right| left.instance_id.cmp(&right.instance_id));
+    Ok(anchors)
+}
+
+fn collect_execution_committed_action_anchors(
+    context: &NodeExecutionCommitContext,
+) -> Vec<ExecutionCommittedActionAnchor> {
+    let mut anchors: Vec<_> = context
+        .committed_actions
+        .iter()
+        .map(|action| ExecutionCommittedActionAnchor {
+            action_id: action.action_id,
+            submitter_player_id: action.submitter_player_id.clone(),
+            payload_hash: action.payload_hash.clone(),
+        })
+        .collect();
+    anchors.sort_by(|left, right| left.action_id.cmp(&right.action_id));
+    anchors
+}
+
+fn build_execution_external_effect_materialization(
+    execution_world: &RuntimeWorld,
+    context: &NodeExecutionCommitContext,
+) -> Result<ExecutionExternalEffectMaterialization, String> {
+    let pre_step_snapshot = execution_world.snapshot();
+    let pre_step_execution_state_root = blake3_hex(to_cbor(pre_step_snapshot)?.as_slice());
+    let world_manifest_hash = execution_world
+        .current_manifest_hash()
+        .map_err(|err| format!("execution external effect manifest hash failed: {:?}", err))?;
+    let active_modules = collect_execution_module_resolution_anchors(execution_world)?;
+    let committed_actions = collect_execution_committed_action_anchors(context);
+    let materialization = ExecutionExternalEffectMaterialization {
+        schema_version: EXECUTION_EXTERNAL_EFFECT_SCHEMA_V1,
+        contract: EXECUTION_EXTERNAL_EFFECT_CONTRACT_CLOSED_WORLD_V1.to_string(),
+        world_id: context.world_id.clone(),
+        node_id: context.node_id.clone(),
+        height: context.height,
+        slot: context.slot,
+        epoch: context.epoch,
+        node_block_hash: context.node_block_hash.clone(),
+        action_root: context.action_root.clone(),
+        committed_at_unix_ms: context.committed_at_unix_ms,
+        pre_step_execution_state_root,
+        world_manifest_hash,
+        active_modules_hash: execution_module_anchor_hash(active_modules.as_slice())?,
+        committed_actions_hash: execution_committed_actions_hash(committed_actions.as_slice())?,
+        active_modules,
+        committed_actions,
+        unresolved_inputs: Vec::new(),
+    };
+    materialization.validate()?;
+    Ok(materialization)
+}
+
+fn persist_execution_external_effect_materialization(
+    execution_store: &LocalCasStore,
+    materialization: &ExecutionExternalEffectMaterialization,
+) -> Result<String, String> {
+    materialization.validate()?;
+    let bytes = to_cbor(materialization)?;
+    execution_store
+        .put_bytes(bytes.as_slice())
+        .map_err(|err| format!("execution external effect CAS put failed: {:?}", err))
+}
+
+fn load_execution_external_effect_materialization(
+    execution_store: &LocalCasStore,
+    external_effect_ref: &str,
+) -> Result<ExecutionExternalEffectMaterialization, String> {
+    let bytes = execution_store.get(external_effect_ref).map_err(|err| {
+        format!(
+            "execution external effect CAS get failed ref={} err={:?}",
+            external_effect_ref, err
+        )
+    })?;
+    let materialization =
+        serde_cbor::from_slice::<ExecutionExternalEffectMaterialization>(bytes.as_slice())
+            .map_err(|err| {
+                format!(
+                    "parse execution external effect failed ref={} err={}",
+                    external_effect_ref, err
+                )
+            })?;
+    materialization.validate()?;
+    Ok(materialization)
+}
+
+fn load_execution_replay_record_input(
+    execution_store: &LocalCasStore,
+    record: ExecutionBridgeRecord,
+) -> Result<ExecutionReplayRecordInput, String> {
+    let external_effect = match record.external_effect_ref.as_deref() {
+        Some(external_effect_ref) => Some(load_execution_external_effect_materialization(
+            execution_store,
+            external_effect_ref,
+        )?),
+        None => None,
+    };
+    Ok(ExecutionReplayRecordInput {
+        record,
+        external_effect,
+    })
 }
 
 fn load_execution_bridge_record(path: &Path) -> Result<ExecutionBridgeRecord, String> {
@@ -523,6 +806,7 @@ fn find_nearest_execution_checkpoint_manifest(
 
 fn build_execution_replay_plan(
     execution_records_dir: &Path,
+    execution_store: &LocalCasStore,
     target_height: u64,
 ) -> Result<ExecutionReplayPlan, String> {
     if target_height == 0 {
@@ -559,7 +843,7 @@ fn build_execution_replay_plan(
                     path.display()
                 ));
             }
-            records.push(record);
+            records.push(load_execution_replay_record_input(execution_store, record)?);
         }
     }
     Ok(ExecutionReplayPlan {
@@ -777,6 +1061,13 @@ impl NodeExecutionHook for NodeRuntimeExecutionDriver {
             ));
         }
 
+        let external_effect =
+            build_execution_external_effect_materialization(&self.execution_world, &context)?;
+        let external_effect_ref = persist_execution_external_effect_materialization(
+            &self.execution_store,
+            &external_effect,
+        )?;
+
         let mut decoded_runtime_actions = Vec::with_capacity(context.committed_actions.len());
         let mut decoded_simulator_actions = Vec::with_capacity(context.committed_actions.len());
         for action in &context.committed_actions {
@@ -857,6 +1148,7 @@ impl NodeExecutionHook for NodeRuntimeExecutionDriver {
             self.execution_world.journal().len(),
             snapshot_ref,
             journal_ref,
+            Some(external_effect_ref),
             simulator_mirror,
             context.committed_at_unix_ms,
         );
@@ -1053,6 +1345,7 @@ pub(super) fn bridge_committed_heights(
             execution_world.journal().len(),
             snapshot_ref,
             journal_ref,
+            None,
             None,
             observed_at_unix_ms,
         );
@@ -1401,6 +1694,7 @@ mod tests {
             format!("cas:snapshot-{height}"),
             format!("cas:journal-{height}"),
             None,
+            None,
             height as i64 * 1_000,
         );
         persist_execution_bridge_record(records_dir, &record)
@@ -1417,14 +1711,15 @@ mod tests {
         persist_test_execution_record(records_dir.as_path(), 2, "exec-h2");
         persist_test_execution_record(records_dir.as_path(), 3, "exec-h3");
 
-        let plan =
-            build_execution_replay_plan(records_dir.as_path(), 3).expect("build replay plan");
+        let store = LocalCasStore::new(dir.join("store"));
+        let plan = build_execution_replay_plan(records_dir.as_path(), &store, 3)
+            .expect("build replay plan");
         assert_eq!(plan.target_height, 3);
         assert_eq!(plan.start_height, 1);
         assert!(plan.checkpoint.is_none());
         assert_eq!(plan.records.len(), 3);
-        assert_eq!(plan.records[0].height, 1);
-        assert_eq!(plan.records[2].height, 3);
+        assert_eq!(plan.records[0].record.height, 1);
+        assert_eq!(plan.records[2].record.height, 3);
 
         let _ = fs::remove_dir_all(dir);
     }
@@ -1468,27 +1763,49 @@ mod tests {
         persist_execution_checkpoint_manifest(records_dir.as_path(), &checkpoint_5)
             .expect("persist checkpoint 5");
 
-        let plan =
-            build_execution_replay_plan(records_dir.as_path(), 6).expect("build replay plan");
+        let store = LocalCasStore::new(dir.join("store"));
+        let plan = build_execution_replay_plan(records_dir.as_path(), &store, 6)
+            .expect("build replay plan");
         assert_eq!(plan.start_height, 6);
         assert_eq!(plan.records.len(), 1);
-        assert_eq!(plan.records[0].height, 6);
+        assert_eq!(plan.records[0].record.height, 6);
         assert_eq!(
             plan.checkpoint.as_ref().map(|manifest| manifest.height),
             Some(5)
         );
 
-        let earlier_plan = build_execution_replay_plan(records_dir.as_path(), 4)
+        let earlier_plan = build_execution_replay_plan(records_dir.as_path(), &store, 4)
             .expect("build earlier replay plan");
         assert_eq!(earlier_plan.start_height, 4);
         assert_eq!(earlier_plan.records.len(), 1);
-        assert_eq!(earlier_plan.records[0].height, 4);
+        assert_eq!(earlier_plan.records[0].record.height, 4);
         assert_eq!(
             earlier_plan
                 .checkpoint
                 .as_ref()
                 .map(|manifest| manifest.height),
             Some(3)
+        );
+
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn execution_replay_plan_fails_closed_when_external_effect_blob_missing() {
+        let dir = temp_dir("execution-replay-plan-missing-external-effect");
+        let records_dir = dir.join("records");
+        let store = LocalCasStore::new(dir.join("store"));
+        fs::create_dir_all(records_dir.as_path()).expect("create records dir");
+        let mut record = persist_test_execution_record(records_dir.as_path(), 1, "exec-h1");
+        record.external_effect_ref = Some("missing-external-effect".to_string());
+        persist_execution_bridge_record(records_dir.as_path(), &record)
+            .expect("persist updated execution record");
+
+        let err = build_execution_replay_plan(records_dir.as_path(), &store, 1)
+            .expect_err("missing external effect blob should fail closed");
+        assert!(
+            err.contains("execution external effect CAS get failed"),
+            "unexpected replay plan error: {err}"
         );
 
         let _ = fs::remove_dir_all(dir);
@@ -1670,6 +1987,28 @@ mod tests {
         assert_eq!(state.last_applied_committed_height, 2);
         assert_eq!(state.last_node_block_hash.as_deref(), Some("node-h2"));
 
+        let store = LocalCasStore::new(dir.join("store"));
+        let record_bytes = fs::read(records_dir.join("00000000000000000002.json"))
+            .expect("read second execution bridge record");
+        let record: ExecutionBridgeRecord =
+            serde_json::from_slice(record_bytes.as_slice()).expect("parse second record");
+        let external_effect_ref = record
+            .external_effect_ref
+            .as_deref()
+            .expect("external effect ref should exist");
+        let external_effect =
+            load_execution_external_effect_materialization(&store, external_effect_ref)
+                .expect("load external effect materialization");
+        assert_eq!(external_effect.height, 2);
+        assert_eq!(external_effect.slot, 1);
+        assert_eq!(external_effect.epoch, 0);
+        assert_eq!(
+            external_effect.action_root,
+            compute_consensus_action_root(&[]).expect("empty root")
+        );
+        assert!(external_effect.committed_actions.is_empty());
+        assert!(external_effect.unresolved_inputs.is_empty());
+
         let _ = fs::remove_dir_all(dir);
     }
 
@@ -1759,6 +2098,8 @@ mod tests {
                 .expect("consensus action");
         let action_root =
             compute_consensus_action_root(std::slice::from_ref(&committed_action)).expect("root");
+        let expected_action_root = action_root.clone();
+        let expected_payload_hash = committed_action.payload_hash.clone();
 
         let result = driver
             .on_commit(NodeExecutionCommitContext {
@@ -1793,6 +2134,25 @@ mod tests {
             .journal_ref
             .as_deref()
             .is_some_and(|journal_ref| !journal_ref.is_empty()));
+        let external_effect_ref = record
+            .external_effect_ref
+            .as_deref()
+            .expect("external effect ref should exist");
+        let store = LocalCasStore::new(dir.join("store"));
+        let external_effect =
+            load_execution_external_effect_materialization(&store, external_effect_ref)
+                .expect("load external effect materialization");
+        assert_eq!(external_effect.height, 1);
+        assert_eq!(external_effect.slot, 0);
+        assert_eq!(external_effect.epoch, 0);
+        assert_eq!(external_effect.action_root, expected_action_root);
+        assert_eq!(external_effect.committed_actions.len(), 1);
+        assert_eq!(external_effect.committed_actions[0].action_id, 1);
+        assert_eq!(
+            external_effect.committed_actions[0].payload_hash,
+            expected_payload_hash
+        );
+        assert!(external_effect.unresolved_inputs.is_empty());
         let simulator = record
             .simulator_mirror
             .expect("simulator mirror record should exist");
