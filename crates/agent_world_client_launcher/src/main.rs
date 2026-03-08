@@ -64,7 +64,7 @@ mod transfer_window;
 
 use config_ui::StartupGuideState;
 use launcher_core::*;
-use self_guided::{LauncherUxState, OnboardingState};
+use self_guided::{DemoModePhase, LauncherUxState, OnboardingState};
 
 const DEFAULT_SCENARIO: &str = "llm_bootstrap";
 const DEFAULT_LIVE_BIND: &str = "127.0.0.1:5023";
@@ -789,6 +789,7 @@ struct ClientLauncherApp {
     feedback_window_open: bool,
     onboarding_state: OnboardingState,
     ux_state: LauncherUxState,
+    demo_mode_phase: DemoModePhase,
     startup_guide_state: StartupGuideState,
     config_window_open: bool,
     transfer_draft: TransferDraft,
@@ -861,6 +862,7 @@ impl Default for ClientLauncherApp {
             feedback_window_open: false,
             onboarding_state,
             ux_state,
+            demo_mode_phase: DemoModePhase::Idle,
             startup_guide_state: StartupGuideState::default(),
             config_window_open: false,
             transfer_draft: TransferDraft::default(),
@@ -1371,6 +1373,12 @@ impl eframe::App for ClientLauncherApp {
                 &chain_required_issues,
             );
         }
+        self.advance_demo_mode(
+            &game_required_issues,
+            &chain_required_issues,
+            game_running,
+            chain_running,
+        );
 
         egui::CentralPanel::default().show(ctx, |ui| {
             self.render_config_validation_summary(
@@ -1471,6 +1479,36 @@ impl eframe::App for ClientLauncherApp {
                         self.tr("最近成功配置时间戳", "Saved Profile Timestamp")
                     ));
                 }
+                let demo_running = matches!(
+                    self.demo_mode_phase,
+                    DemoModePhase::StartChainRequested
+                        | DemoModePhase::WaitChainReady
+                        | DemoModePhase::StartGameRequested
+                        | DemoModePhase::WaitGameRunning
+                );
+                if ui
+                    .add_enabled(
+                        !demo_running,
+                        egui::Button::new(self.tr("演示模式一键启动", "Demo Mode One-Click Start")),
+                    )
+                    .clicked()
+                {
+                    self.start_demo_mode_one_click();
+                }
+                if matches!(
+                    self.demo_mode_phase,
+                    DemoModePhase::Done | DemoModePhase::Failed
+                ) && ui
+                    .button(self.tr("重置演示状态", "Reset Demo State"))
+                    .clicked()
+                {
+                    self.reset_demo_mode();
+                }
+                ui.small(format!(
+                    "{}={}",
+                    self.tr("演示模式状态", "Demo Mode Status"),
+                    self.demo_mode_phase_text()
+                ));
                 if ui.button(self.tr("打开游戏页", "Open Game Page")).clicked() {
                     let url = self.current_game_url();
                     if let Err(err) = open_browser(url.as_str()) {

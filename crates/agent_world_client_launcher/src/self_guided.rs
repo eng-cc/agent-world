@@ -116,6 +116,17 @@ pub(super) enum ConfigGuideTargetHint {
     Chain,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum DemoModePhase {
+    Idle,
+    StartChainRequested,
+    WaitChainReady,
+    StartGameRequested,
+    WaitGameRunning,
+    Done,
+    Failed,
+}
+
 pub(super) fn resolve_next_task_hint(
     chain_enabled: bool,
     game_required_issues: &[ConfigIssue],
@@ -341,6 +352,157 @@ impl ClientLauncherApp {
             "已清空最近成功配置画像。",
             "Cleared last successful configuration profile.",
         ));
+    }
+
+    pub(super) fn demo_mode_phase_text(&self) -> &'static str {
+        match (self.demo_mode_phase, self.ui_language) {
+            (DemoModePhase::Idle, UiLanguage::ZhCn) => "未启动",
+            (DemoModePhase::Idle, UiLanguage::EnUs) => "Idle",
+            (DemoModePhase::StartChainRequested, UiLanguage::ZhCn) => "准备启动区块链",
+            (DemoModePhase::StartChainRequested, UiLanguage::EnUs) => "Prepare Chain Start",
+            (DemoModePhase::WaitChainReady, UiLanguage::ZhCn) => "等待区块链就绪",
+            (DemoModePhase::WaitChainReady, UiLanguage::EnUs) => "Waiting Chain Ready",
+            (DemoModePhase::StartGameRequested, UiLanguage::ZhCn) => "准备启动游戏",
+            (DemoModePhase::StartGameRequested, UiLanguage::EnUs) => "Prepare Game Start",
+            (DemoModePhase::WaitGameRunning, UiLanguage::ZhCn) => "等待游戏运行",
+            (DemoModePhase::WaitGameRunning, UiLanguage::EnUs) => "Waiting Game Running",
+            (DemoModePhase::Done, UiLanguage::ZhCn) => "已完成",
+            (DemoModePhase::Done, UiLanguage::EnUs) => "Done",
+            (DemoModePhase::Failed, UiLanguage::ZhCn) => "失败",
+            (DemoModePhase::Failed, UiLanguage::EnUs) => "Failed",
+        }
+    }
+
+    fn apply_demo_mode_safe_defaults(&mut self) {
+        self.config.scenario = DEFAULT_SCENARIO.to_string();
+        self.config.live_bind = DEFAULT_LIVE_BIND.to_string();
+        self.config.web_bind = DEFAULT_WEB_BIND.to_string();
+        self.config.viewer_host = DEFAULT_VIEWER_HOST.to_string();
+        self.config.viewer_port = DEFAULT_VIEWER_PORT.to_string();
+        self.config.chain_enabled = true;
+        self.config.chain_status_bind = DEFAULT_CHAIN_STATUS_BIND.to_string();
+        self.config.chain_node_id = DEFAULT_CHAIN_NODE_ID.to_string();
+        self.config.chain_node_role = DEFAULT_CHAIN_NODE_ROLE.to_string();
+        self.config.chain_node_tick_ms = DEFAULT_CHAIN_NODE_TICK_MS.to_string();
+        self.config.chain_pos_slot_duration_ms = DEFAULT_CHAIN_POS_SLOT_DURATION_MS.to_string();
+        self.config.chain_pos_ticks_per_slot = DEFAULT_CHAIN_POS_TICKS_PER_SLOT.to_string();
+        self.config.chain_pos_proposal_tick_phase =
+            DEFAULT_CHAIN_POS_PROPOSAL_TICK_PHASE.to_string();
+        self.config.auto_open_browser = false;
+    }
+
+    pub(super) fn start_demo_mode_one_click(&mut self) {
+        self.apply_demo_mode_safe_defaults();
+        self.demo_mode_phase = DemoModePhase::StartChainRequested;
+        self.append_log(self.tr(
+            "演示模式：已应用安全默认配置，准备串行启动区块链与游戏。",
+            "Demo mode: safe defaults applied, preparing serial chain/game startup.",
+        ));
+    }
+
+    pub(super) fn reset_demo_mode(&mut self) {
+        self.demo_mode_phase = DemoModePhase::Idle;
+        self.append_log(self.tr("已重置演示模式状态。", "Demo mode state reset."));
+    }
+
+    pub(super) fn advance_demo_mode(
+        &mut self,
+        game_required_issues: &[ConfigIssue],
+        chain_required_issues: &[ConfigIssue],
+        game_running: bool,
+        chain_running: bool,
+    ) {
+        match self.demo_mode_phase {
+            DemoModePhase::Idle | DemoModePhase::Done | DemoModePhase::Failed => {}
+            DemoModePhase::StartChainRequested => {
+                if chain_running {
+                    self.demo_mode_phase = DemoModePhase::StartGameRequested;
+                    self.append_log(self.tr(
+                        "演示模式：区块链已就绪，进入游戏启动步骤。",
+                        "Demo mode: blockchain ready, moving to game start.",
+                    ));
+                    return;
+                }
+                if !chain_required_issues.is_empty() {
+                    self.demo_mode_phase = DemoModePhase::Failed;
+                    self.open_chain_config_guide();
+                    self.append_log(self.tr(
+                        "演示模式失败：区块链配置仍有阻断项，已打开配置引导。",
+                        "Demo mode failed: chain configuration is blocked. Guide opened.",
+                    ));
+                    return;
+                }
+                self.start_chain_process();
+                self.demo_mode_phase = DemoModePhase::WaitChainReady;
+                self.append_log(self.tr(
+                    "演示模式：已触发区块链启动，等待就绪。",
+                    "Demo mode: blockchain start requested, waiting for ready.",
+                ));
+            }
+            DemoModePhase::WaitChainReady => {
+                if chain_running {
+                    self.demo_mode_phase = DemoModePhase::StartGameRequested;
+                    self.append_log(self.tr(
+                        "演示模式：区块链已就绪，进入游戏启动步骤。",
+                        "Demo mode: blockchain ready, moving to game start.",
+                    ));
+                } else if matches!(
+                    self.chain_runtime_status,
+                    ChainRuntimeStatus::ConfigError(_)
+                        | ChainRuntimeStatus::Unreachable(_)
+                        | ChainRuntimeStatus::Disabled
+                ) {
+                    self.demo_mode_phase = DemoModePhase::Failed;
+                    self.append_log(self.tr(
+                        "演示模式失败：区块链启动异常，请检查日志与配置。",
+                        "Demo mode failed: blockchain startup error, check logs/config.",
+                    ));
+                }
+            }
+            DemoModePhase::StartGameRequested => {
+                if game_running {
+                    self.demo_mode_phase = DemoModePhase::Done;
+                    self.append_log(self.tr(
+                        "演示模式完成：游戏已运行，可打开游戏页面。",
+                        "Demo mode completed: game is running, open game page.",
+                    ));
+                    return;
+                }
+                if !game_required_issues.is_empty() {
+                    self.demo_mode_phase = DemoModePhase::Failed;
+                    self.open_game_config_guide();
+                    self.append_log(self.tr(
+                        "演示模式失败：游戏配置仍有阻断项，已打开配置引导。",
+                        "Demo mode failed: game configuration is blocked. Guide opened.",
+                    ));
+                    return;
+                }
+                self.start_process();
+                self.demo_mode_phase = DemoModePhase::WaitGameRunning;
+                self.append_log(self.tr(
+                    "演示模式：已触发游戏启动，等待运行状态。",
+                    "Demo mode: game start requested, waiting for running state.",
+                ));
+            }
+            DemoModePhase::WaitGameRunning => {
+                if game_running {
+                    self.demo_mode_phase = DemoModePhase::Done;
+                    self.append_log(self.tr(
+                        "演示模式完成：游戏已运行，可打开游戏页面。",
+                        "Demo mode completed: game is running, open game page.",
+                    ));
+                } else if matches!(
+                    self.status,
+                    LauncherStatus::InvalidArgs | LauncherStatus::QueryFailed
+                ) {
+                    self.demo_mode_phase = DemoModePhase::Failed;
+                    self.append_log(self.tr(
+                        "演示模式失败：游戏启动异常，请检查日志与配置。",
+                        "Demo mode failed: game startup error, check logs/config.",
+                    ));
+                }
+            }
+        }
     }
 
     fn next_task_hint_text(&self, hint: NextTaskHint) -> &'static str {

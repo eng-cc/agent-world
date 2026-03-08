@@ -11,7 +11,7 @@ use super::{
     parse_host_port, parse_port, probe_chain_status_endpoint,
     self_guided::{
         resolve_config_guide_target, resolve_next_task_hint, resolve_primary_disabled_cta,
-        ConfigGuideTargetHint, DisabledActionCta, NextTaskHint, OnboardingStep,
+        ConfigGuideTargetHint, DemoModePhase, DisabledActionCta, NextTaskHint, OnboardingStep,
     },
     transfer_window::{
         recommend_default_from_account, recommend_transfer_account_ids, resolve_transfer_timeline,
@@ -879,4 +879,36 @@ fn clear_last_successful_config_profile_clears_saved_snapshot() {
 
     assert!(app.ux_state.last_successful_config.is_none());
     assert!(app.ux_state.last_successful_saved_at_unix_ms.is_none());
+}
+
+#[test]
+fn start_demo_mode_one_click_applies_safe_defaults() {
+    let mut app = ClientLauncherApp::default();
+    app.config.chain_enabled = false;
+    app.config.scenario = "custom".to_string();
+
+    app.start_demo_mode_one_click();
+
+    assert_eq!(app.demo_mode_phase, DemoModePhase::StartChainRequested);
+    assert!(app.config.chain_enabled);
+    assert_eq!(app.config.scenario, "llm_bootstrap");
+}
+
+#[test]
+fn advance_demo_mode_reaches_done_when_chain_and_game_are_ready() {
+    let mut app = ClientLauncherApp::default();
+    app.start_demo_mode_one_click();
+    app.advance_demo_mode(&[], &[], false, true);
+    assert_eq!(app.demo_mode_phase, DemoModePhase::StartGameRequested);
+
+    app.advance_demo_mode(&[], &[], true, true);
+    assert_eq!(app.demo_mode_phase, DemoModePhase::Done);
+}
+
+#[test]
+fn advance_demo_mode_fails_when_chain_config_is_blocked() {
+    let mut app = ClientLauncherApp::default();
+    app.start_demo_mode_one_click();
+    app.advance_demo_mode(&[], &[ConfigIssue::ChainNodeIdRequired], false, false);
+    assert_eq!(app.demo_mode_phase, DemoModePhase::Failed);
 }
