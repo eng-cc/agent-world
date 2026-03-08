@@ -1,6 +1,6 @@
 # Viewer 首局目标清晰度加固（2026-02-27）
 
-审计轮次: 5
+审计轮次: 6
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-first-session-goal-clarity-hardening-2026-02-27.prd.project.md
 
 ## 1. Executive Summary
@@ -52,6 +52,7 @@
 - M2：下一步按钮语义统一（CTA 明确指向当前步骤）。
 - M3：卡住检测与剩余量提示上线。
 - M4：首局结算卡片与验收测试补齐。
+- M5（2026-03-08）：修复“无进展提示”与新手引导卡在隐藏态同屏重叠问题，保持首屏引导可读性。
 
 ### Technical Risks
 - 首局提示信息过多导致 HUD 再次拥挤。
@@ -65,6 +66,7 @@
 - Q1（目标理解）主观档位从“有点模糊”提升到“基本清楚/很清楚”为主。
 - 首局 60 秒内玩家完成首个有效动作（打开面板/选择目标/触发反馈）的可观测比例提升。
 - 卡住场景下 5 秒内出现明确恢复提示，不再静默等待。
+- 当 `stuck_hint_visible=true` 且新手引导卡可见时，Mission HUD 不得与引导卡发生视觉重叠（同一截图中卡片边界有明确间距）。
 
 ## 完成态（2026-02-27）
 - Mission HUD 已支持：
@@ -78,5 +80,26 @@
 - 已新增首局结算卡片（时长、tick 增量、事件增量、下一步建议）并支持关闭。
 - 定向测试已覆盖 mission/stuck/summary 三组行为断言，viewer 编译检查通过。
 
+## 增量需求（2026-03-08）
+- PRD-ID: `PRD-VIEWER-FSGC-005`
+- Problem Statement:
+  - 左侧“检测到 X 秒无进展”提示触发时，Mission HUD 高度变高；在隐藏态同屏存在新手引导卡时，二者出现垂直重叠，导致文案互相遮挡。
+- Proposed Solution:
+  - 对 Mission HUD 锚点加入“无进展提示可见”条件分支，在 `panel_hidden && onboarding_visible && stuck_hint_visible` 场景下进一步下移锚点，确保与引导卡稳定分离。
+- Functional Constraints:
+  - 不改变 `play/pause/step` 恢复动作语义与按钮行为。
+  - 不改变 `5 秒无进展` 判定阈值与诊断文案生成逻辑。
+  - 仅调整布局锚点计算与其纯函数测试。
+- Acceptance Criteria:
+  - AC-FSGC-005-1: `player_mission_hud_anchor_y` 在隐藏态 + onboarding 可见 + stuck 提示可见时返回值大于“仅 onboarding 可见”场景。
+  - AC-FSGC-005-2: 保持其他场景锚点不回退（展开态/无 onboarding/无 stuck）。
+  - AC-FSGC-005-3: `test_tier_required` 定向单测通过，覆盖新增分支。
+
 ## 6. Validation & Decision Record
 - 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- Test Plan & Traceability:
+  - `PRD-VIEWER-FSGC-005 -> T5 -> test_tier_required`
+- Decision Log:
+  - 选型：使用锚点下移解耦卡片重叠，保持信息完整显示。
+  - 拒绝方案 A：隐藏 stuck 提示（会损失恢复引导价值）。
+  - 拒绝方案 B：压缩引导卡内容（会降低首局任务可读性）。
