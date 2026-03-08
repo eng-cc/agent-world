@@ -10,7 +10,7 @@
 ### T1 Canonical replay contract
 - [x] T1.1 (PRD-WORLD_RUNTIME-014) [test_tier_required]: 定义 `ExecutionBridgeRecordV2` 持久化字段与兼容读取策略，明确 `commit_log_ref` / `checkpoint_ref` / `latest_state_ref` / `external_effect_ref` 的角色边界。
 - [x] T1.2 (PRD-WORLD_RUNTIME-014) [test_tier_required]: 定义 `ExecutionCheckpointManifest` 目录布局、pin 语义、hash/height 校验字段与 reader / writer 原子切换规则。
-- [ ] T1.3 (PRD-WORLD_RUNTIME-014) [test_tier_required]: 在 replay planner 中实现“最近 checkpoint + commit log”重建路径，并显式处理无 checkpoint 的全日志回放降级。
+- [x] T1.3 (PRD-WORLD_RUNTIME-014) [test_tier_required]: 在 replay planner 中实现“最近 checkpoint + commit log”重建路径，并显式处理无 checkpoint 的全日志回放降级。
 - [ ] T1.4 (PRD-WORLD_RUNTIME-014) [test_tier_required]: 明确外部非确定性 effect 的 materialization contract，保证 replay 输入可闭包且 mismatch 时 fail-closed。
 - [ ] T1.5 (PRD-WORLD_RUNTIME-014) [test_tier_required]: 补齐 retained-height replay / no-checkpoint fallback / replay mismatch / checkpoint corruption 定向测试。
 
@@ -78,8 +78,8 @@
 ## 状态
 - 更新日期: 2026-03-08
 - 当前状态: planning
-- 已完成: T0、T0.1、T1.1、T1.2
-- 已拆解待执行: T1.3 ~ T7.5
-- 进行中: T1.3
+- 已完成: T0、T0.1、T1.1、T1.2、T1.3
+- 已拆解待执行: T1.4 ~ T7.5
+- 进行中: T1.4
 - 阻塞项: 无；但 T2 / T3 / T6 / T7 的实现必须以前置 T1 契约冻结为准。
-- 下一任务: T1.3（在 replay planner 中实现最近 checkpoint + commit log 重建路径）
+- 下一任务: T1.4（明确外部非确定性 effect 的 materialization contract）

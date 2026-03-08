@@ -436,6 +436,140 @@ fn load_latest_execution_checkpoint_manifest(
     Ok(Some(manifest))
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct ExecutionReplayPlan {
+    pub target_height: u64,
+    pub start_height: u64,
+    pub checkpoint: Option<ExecutionCheckpointManifest>,
+    pub records: Vec<ExecutionBridgeRecord>,
+}
+
+fn load_execution_bridge_record(path: &Path) -> Result<ExecutionBridgeRecord, String> {
+    let bytes = fs::read(path).map_err(|err| {
+        format!(
+            "read execution bridge record {} failed: {}",
+            path.display(),
+            err
+        )
+    })?;
+    serde_json::from_slice::<ExecutionBridgeRecord>(bytes.as_slice()).map_err(|err| {
+        format!(
+            "parse execution bridge record {} failed: {}",
+            path.display(),
+            err
+        )
+    })
+}
+
+fn find_nearest_execution_checkpoint_manifest(
+    execution_records_dir: &Path,
+    target_height: u64,
+) -> Result<Option<ExecutionCheckpointManifest>, String> {
+    if target_height == 0 {
+        return Ok(None);
+    }
+    if let Some(latest) = load_latest_execution_checkpoint_manifest(execution_records_dir)? {
+        if latest.height <= target_height {
+            return Ok(Some(latest));
+        }
+    }
+    let checkpoint_root = execution_checkpoint_root_dir(execution_records_dir);
+    if !checkpoint_root.exists() {
+        return Ok(None);
+    }
+    let mut best_height = None;
+    for entry in fs::read_dir(checkpoint_root.as_path()).map_err(|err| {
+        format!(
+            "read execution checkpoint root {} failed: {}",
+            checkpoint_root.display(),
+            err
+        )
+    })? {
+        let entry = entry.map_err(|err| {
+            format!(
+                "read execution checkpoint dir entry under {} failed: {}",
+                checkpoint_root.display(),
+                err
+            )
+        })?;
+        let file_type = entry.file_type().map_err(|err| {
+            format!(
+                "read execution checkpoint dir entry type {} failed: {}",
+                entry.path().display(),
+                err
+            )
+        })?;
+        if !file_type.is_dir() {
+            continue;
+        }
+        let Some(name) = entry.file_name().to_str().map(ToOwned::to_owned) else {
+            continue;
+        };
+        let Ok(height) = name.parse::<u64>() else {
+            continue;
+        };
+        if height <= target_height && best_height.map(|best| height > best).unwrap_or(true) {
+            best_height = Some(height);
+        }
+    }
+    let Some(best_height) = best_height else {
+        return Ok(None);
+    };
+    load_execution_checkpoint_manifest(
+        execution_checkpoint_manifest_path(execution_records_dir, best_height).as_path(),
+    )
+    .map(Some)
+}
+
+fn build_execution_replay_plan(
+    execution_records_dir: &Path,
+    target_height: u64,
+) -> Result<ExecutionReplayPlan, String> {
+    if target_height == 0 {
+        return Ok(ExecutionReplayPlan {
+            target_height,
+            start_height: 0,
+            checkpoint: None,
+            records: Vec::new(),
+        });
+    }
+    let checkpoint =
+        find_nearest_execution_checkpoint_manifest(execution_records_dir, target_height)?;
+    let start_height = checkpoint
+        .as_ref()
+        .map(|manifest| manifest.height.saturating_add(1))
+        .unwrap_or(1);
+    let mut records = Vec::new();
+    if start_height <= target_height {
+        for height in start_height..=target_height {
+            let path = execution_records_dir.join(format!("{:020}.json", height));
+            if !path.exists() {
+                return Err(format!(
+                    "execution replay plan missing commit record for height {} at {}",
+                    height,
+                    path.display()
+                ));
+            }
+            let record = load_execution_bridge_record(path.as_path())?;
+            if record.height != height {
+                return Err(format!(
+                    "execution replay plan height mismatch expected={} actual={} path={}",
+                    height,
+                    record.height,
+                    path.display()
+                ));
+            }
+            records.push(record);
+        }
+    }
+    Ok(ExecutionReplayPlan {
+        target_height,
+        start_height,
+        checkpoint,
+        records,
+    })
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub(super) struct ExecutionSimulatorMirrorRecord {
     pub action_count: usize,
@@ -1247,6 +1381,114 @@ mod tests {
         assert!(
             err.contains("hash mismatch"),
             "unexpected latest pointer error: {err}"
+        );
+
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    fn persist_test_execution_record(
+        records_dir: &Path,
+        height: u64,
+        block_hash: &str,
+    ) -> ExecutionBridgeRecord {
+        let record = ExecutionBridgeRecord::new_v2(
+            "w1".to_string(),
+            height,
+            Some(format!("node-h{height}")),
+            block_hash.to_string(),
+            format!("state-r{height}"),
+            height as usize,
+            format!("cas:snapshot-{height}"),
+            format!("cas:journal-{height}"),
+            None,
+            height as i64 * 1_000,
+        );
+        persist_execution_bridge_record(records_dir, &record)
+            .expect("persist test execution record");
+        record
+    }
+
+    #[test]
+    fn execution_replay_plan_without_checkpoint_replays_full_log() {
+        let dir = temp_dir("execution-replay-plan-full-log");
+        let records_dir = dir.join("records");
+        fs::create_dir_all(records_dir.as_path()).expect("create records dir");
+        persist_test_execution_record(records_dir.as_path(), 1, "exec-h1");
+        persist_test_execution_record(records_dir.as_path(), 2, "exec-h2");
+        persist_test_execution_record(records_dir.as_path(), 3, "exec-h3");
+
+        let plan =
+            build_execution_replay_plan(records_dir.as_path(), 3).expect("build replay plan");
+        assert_eq!(plan.target_height, 3);
+        assert_eq!(plan.start_height, 1);
+        assert!(plan.checkpoint.is_none());
+        assert_eq!(plan.records.len(), 3);
+        assert_eq!(plan.records[0].height, 1);
+        assert_eq!(plan.records[2].height, 3);
+
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn execution_replay_plan_prefers_nearest_checkpoint_not_ahead_of_target() {
+        let dir = temp_dir("execution-replay-plan-checkpoint");
+        let records_dir = dir.join("records");
+        fs::create_dir_all(records_dir.as_path()).expect("create records dir");
+        for height in 1..=6 {
+            persist_test_execution_record(
+                records_dir.as_path(),
+                height,
+                &format!("exec-h{height}"),
+            );
+        }
+        let checkpoint_3 = ExecutionCheckpointManifest::new(
+            "w1".to_string(),
+            3,
+            "exec-h3".to_string(),
+            "state-r3".to_string(),
+            "cas:snapshot-3".to_string(),
+            Some("cas:snapshot-3".to_string()),
+            Some("cas:journal-3".to_string()),
+            3_000,
+        )
+        .expect("checkpoint 3");
+        let checkpoint_5 = ExecutionCheckpointManifest::new(
+            "w1".to_string(),
+            5,
+            "exec-h5".to_string(),
+            "state-r5".to_string(),
+            "cas:snapshot-5".to_string(),
+            Some("cas:snapshot-5".to_string()),
+            Some("cas:journal-5".to_string()),
+            5_000,
+        )
+        .expect("checkpoint 5");
+        persist_execution_checkpoint_manifest(records_dir.as_path(), &checkpoint_3)
+            .expect("persist checkpoint 3");
+        persist_execution_checkpoint_manifest(records_dir.as_path(), &checkpoint_5)
+            .expect("persist checkpoint 5");
+
+        let plan =
+            build_execution_replay_plan(records_dir.as_path(), 6).expect("build replay plan");
+        assert_eq!(plan.start_height, 6);
+        assert_eq!(plan.records.len(), 1);
+        assert_eq!(plan.records[0].height, 6);
+        assert_eq!(
+            plan.checkpoint.as_ref().map(|manifest| manifest.height),
+            Some(5)
+        );
+
+        let earlier_plan = build_execution_replay_plan(records_dir.as_path(), 4)
+            .expect("build earlier replay plan");
+        assert_eq!(earlier_plan.start_height, 4);
+        assert_eq!(earlier_plan.records.len(), 1);
+        assert_eq!(earlier_plan.records[0].height, 4);
+        assert_eq!(
+            earlier_plan
+                .checkpoint
+                .as_ref()
+                .map(|manifest| manifest.height),
+            Some(3)
         );
 
         let _ = fs::remove_dir_all(dir);
