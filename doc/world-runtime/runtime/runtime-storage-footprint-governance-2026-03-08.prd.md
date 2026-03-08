@@ -47,7 +47,7 @@
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
-| Storage profile 选择 | `storage_profile`, `execution_hot_head_heights`, `execution_checkpoint_interval`, `sidecar_generations_keep`, `tick_consensus_hot_limit` | runtime 启动时加载 profile，可由 CLI/config 显式覆盖 | `configured -> active -> degraded/failed` | 显式参数覆盖 profile 默认值；非法组合直接拒绝启动 | 仅启动参数/配置维护者可放宽预算 |
+| Storage profile 选择 | `storage_profile`, `execution_hot_head_heights`, `execution_checkpoint_interval`, `sidecar_generations_keep`, `tick_consensus_hot_limit` | runtime / launcher / script 启动时加载统一 profile 枚举，可由 CLI/config 显式覆盖，默认 `dev_local` | `configured -> active -> degraded/failed` | 显式参数覆盖 profile 默认值；非法组合直接拒绝启动 | 仅启动参数/配置维护者可放宽预算 |
 | Execution bridge retention | `snapshot_ref`, `journal_ref`, `height`, `retention_class=head/checkpoint/archive` | 每个高度写 record 后重算 pin set，并对 unpinned blob 执行 sweep | `written -> pinned -> pruned/archived` | latest 高度永远保留；checkpoint 按高度升序选取；journal ref 仅按被引用集合保留 | 自动执行，无用户绕过入口 |
 | Sidecar manifest GC | `generation_id`, `manifest_hash`, `journal_segment_hashes`, `pinned_blob_hashes` | world 保存成功后执行两阶段 pin/sweep；失败则回退到旧 generation | `saving -> committed -> swept` 或 `saving -> rollback` | 仅清理未被 latest/rollback generation 引用的 blob | 自动执行；仅 runtime 自身可写 |
 | Tick consensus compaction | `tick_consensus_hot_limit`, `archive_segment_size`, `archive_index` | 超出热窗口时把旧记录转入 archive 段并更新索引 | `hot -> archived` | 热窗口按最新 tick 保留；archive segment 按 tick 连续范围分段；archive seek 必须能按 `from_tick..to_tick` 读回 | 自动执行；审计只读 |
@@ -61,6 +61,7 @@
   - AC-4 (PRD-WORLD_RUNTIME-014): 任意 GC 中断、部分写入或 pin set 构建失败都不得删除 latest generation；系统必须进入 `degraded` 并保留恢复所需数据。
   - AC-5 (PRD-WORLD_RUNTIME-014): 对 retention policy 明确保留的任意目标高度 `H`，系统必须能从最近 checkpoint + canonical replay log 重建出与 `execution_records/H` 一致的 `execution_state_root`。
   - AC-6 (PRD-WORLD_RUNTIME-015): status / metrics 输出必须暴露 `storage_profile`、`bytes_by_dir`、`retained_heights`、`checkpoint_count`、`last_gc_result`、`last_gc_error`，并可被 launcher 或脚本直接采样。
+  - AC-6.1 (PRD-WORLD_RUNTIME-015): `world_chain_runtime`、`world_game_launcher`、`world_web_launcher` 与 launcher UI 必须暴露同名 profile 枚举输入，并沿进程边界无损透传到链运行时。
   - AC-7 (PRD-WORLD_RUNTIME-015): `snapshot.json` 在 `2500` heights 样本下 `<= 512 KiB`；旧 `tick_consensus_records` 通过 archive index 可按区间读取并通过链路校验。
   - AC-8 (PRD-WORLD_RUNTIME-013/014/015): required/full 测试矩阵中必须包含 footprint 上限、restart recovery、GC fail-safe、profile 切换、archive 读取与 retained-height replay 回归。
 - Non-Goals:

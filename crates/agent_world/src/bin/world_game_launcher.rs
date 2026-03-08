@@ -11,6 +11,8 @@ use std::sync::{Arc, OnceLock};
 use std::thread;
 use std::time::{Duration, Instant};
 
+use agent_world_proto::storage_profile::StorageProfile;
+
 const DEFAULT_SCENARIO: &str = "llm_bootstrap";
 const DEFAULT_LIVE_BIND: &str = "127.0.0.1:5023";
 const DEFAULT_WEB_BIND: &str = "127.0.0.1:5011";
@@ -58,6 +60,7 @@ struct CliOptions {
     chain_enabled: bool,
     chain_status_bind: String,
     chain_node_id: String,
+    chain_storage_profile: StorageProfile,
     chain_world_id: Option<String>,
     chain_node_role: String,
     chain_node_tick_ms: u64,
@@ -84,6 +87,7 @@ impl Default for CliOptions {
             chain_enabled: true,
             chain_status_bind: DEFAULT_CHAIN_STATUS_BIND.to_string(),
             chain_node_id: DEFAULT_CHAIN_NODE_ID.to_string(),
+            chain_storage_profile: StorageProfile::DevLocal,
             chain_world_id: None,
             chain_node_role: DEFAULT_CHAIN_NODE_ROLE.to_string(),
             chain_node_tick_ms: DEFAULT_CHAIN_NODE_TICK_MS,
@@ -245,13 +249,8 @@ fn spawn_world_viewer_live(path: &Path, options: &CliOptions) -> Result<Child, S
 
 fn spawn_world_chain_runtime(path: &Path, options: &CliOptions) -> Result<Child, String> {
     let mut command = Command::new(path);
+    command.args(build_world_chain_runtime_args(options));
     command
-        .arg("--node-id")
-        .arg(options.chain_node_id.as_str())
-        .arg("--world-id")
-        .arg(chain_world_id(options).as_str())
-        .arg("--status-bind")
-        .arg(options.chain_status_bind.as_str())
         .arg("--node-role")
         .arg(options.chain_node_role.as_str())
         .arg("--node-tick-ms")
@@ -290,6 +289,19 @@ fn chain_world_id(options: &CliOptions) -> String {
         .chain_world_id
         .clone()
         .unwrap_or_else(|| format!("live-{}", options.scenario))
+}
+
+fn build_world_chain_runtime_args(options: &CliOptions) -> Vec<String> {
+    vec![
+        "--node-id".to_string(),
+        options.chain_node_id.clone(),
+        "--world-id".to_string(),
+        chain_world_id(options),
+        "--status-bind".to_string(),
+        options.chain_status_bind.clone(),
+        "--storage-profile".to_string(),
+        options.chain_storage_profile.as_str().to_string(),
+    ]
 }
 
 fn start_static_http_server(
@@ -896,6 +908,11 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
             "--chain-node-id" => {
                 options.chain_node_id = parse_required_value(&mut iter, "--chain-node-id")?;
             }
+            "--chain-storage-profile" => {
+                options.chain_storage_profile =
+                    parse_required_value(&mut iter, "--chain-storage-profile")?
+                        .parse::<StorageProfile>()?;
+            }
             "--chain-world-id" => {
                 options.chain_world_id = Some(parse_required_value(&mut iter, "--chain-world-id")?);
             }
@@ -1292,6 +1309,7 @@ Options:\n\
   --chain-disable              disable world_chain_runtime\n\
   --chain-status-bind <addr>   world_chain_runtime status bind (default: {DEFAULT_CHAIN_STATUS_BIND})\n\
   --chain-node-id <id>         world_chain_runtime node id (default: {DEFAULT_CHAIN_NODE_ID})\n\
+  --chain-storage-profile <name> world_chain_runtime storage profile (default: dev_local)\n\
   --chain-world-id <id>        world_chain_runtime world id (default: live-<scenario>)\n\
   --chain-node-role <role>     world_chain_runtime role (default: {DEFAULT_CHAIN_NODE_ROLE})\n\
   --chain-node-tick-ms <n>     world_chain_runtime worker poll/fallback interval ms (default: {DEFAULT_CHAIN_NODE_TICK_MS})\n\

@@ -10,6 +10,7 @@ use super::{
     LauncherConfig, ProcessState, ServiceState, DEFAULT_CHAIN_STATUS_BIND, DEFAULT_LISTEN_BIND,
     DEFAULT_SCENARIO,
 };
+use agent_world_proto::storage_profile::StorageProfile;
 
 #[test]
 fn parse_options_defaults() {
@@ -19,6 +20,10 @@ fn parse_options_defaults() {
     assert_eq!(
         options.initial_config.chain_status_bind,
         DEFAULT_CHAIN_STATUS_BIND
+    );
+    assert_eq!(
+        options.initial_config.chain_storage_profile,
+        StorageProfile::DevLocal.as_str()
     );
     assert_eq!(options.initial_config.chain_pos_slot_duration_ms, "12000");
     assert_eq!(options.initial_config.chain_pos_ticks_per_slot, "10");
@@ -65,6 +70,8 @@ fn parse_options_accepts_overrides() {
             "--with-llm",
             "--chain-disable",
             "--open-browser",
+            "--chain-storage-profile",
+            "release_default",
             "--chain-pos-slot-duration-ms",
             "12000",
             "--chain-pos-ticks-per-slot",
@@ -100,6 +107,10 @@ fn parse_options_accepts_overrides() {
     assert_eq!(
         options.initial_config.chain_runtime_bin,
         "/tmp/world_chain_runtime"
+    );
+    assert_eq!(
+        options.initial_config.chain_storage_profile,
+        "release_default"
     );
     assert_eq!(options.initial_config.chain_pos_slot_duration_ms, "12000");
     assert_eq!(options.initial_config.chain_pos_ticks_per_slot, "10");
@@ -205,6 +216,7 @@ fn build_launcher_args_keeps_chain_disabled_even_when_chain_config_is_on() {
         chain_enabled: true,
         chain_status_bind: "127.0.0.1:6121".to_string(),
         chain_node_id: "chain-a".to_string(),
+        chain_storage_profile: "soak_forensics".to_string(),
         chain_world_id: "live-chain-a".to_string(),
         chain_node_role: "storage".to_string(),
         chain_node_tick_ms: "300".to_string(),
@@ -229,6 +241,7 @@ fn build_chain_runtime_args_includes_chain_overrides_when_on() {
         chain_enabled: true,
         chain_status_bind: "127.0.0.1:6121".to_string(),
         chain_node_id: "chain-a".to_string(),
+        chain_storage_profile: "soak_forensics".to_string(),
         chain_world_id: "live-chain-a".to_string(),
         chain_node_role: "storage".to_string(),
         chain_node_tick_ms: "300".to_string(),
@@ -245,6 +258,8 @@ fn build_chain_runtime_args_includes_chain_overrides_when_on() {
     assert!(args.contains(&"--status-bind".to_string()));
     assert!(args.contains(&"127.0.0.1:6121".to_string()));
     assert!(args.contains(&"--node-id".to_string()));
+    assert!(args.contains(&"--storage-profile".to_string()));
+    assert!(args.contains(&"soak_forensics".to_string()));
     assert!(args.contains(&"chain-a".to_string()));
     assert!(args.contains(&"--node-validator".to_string()));
     assert!(args.contains(&"chain-a:55".to_string()));
@@ -286,6 +301,7 @@ fn validate_game_config_reports_missing_required_fields() {
         chain_enabled: true,
         chain_status_bind: "127.0.0.1".to_string(),
         chain_node_id: "".to_string(),
+        chain_storage_profile: "invalid".to_string(),
         chain_node_role: "invalid".to_string(),
         chain_node_tick_ms: "0".to_string(),
         chain_pos_slot_duration_ms: "0".to_string(),
@@ -325,6 +341,7 @@ fn validate_chain_config_reports_missing_required_fields() {
         chain_enabled: true,
         chain_status_bind: "127.0.0.1".to_string(),
         chain_node_id: "".to_string(),
+        chain_storage_profile: "invalid".to_string(),
         chain_node_role: "invalid".to_string(),
         chain_node_tick_ms: "0".to_string(),
         chain_pos_slot_duration_ms: "0".to_string(),
@@ -339,6 +356,9 @@ fn validate_chain_config_reports_missing_required_fields() {
     assert!(!issues.is_empty());
     assert!(issues.iter().any(|item| item.contains("chain status bind")));
     assert!(issues.iter().any(|item| item.contains("chain node id")));
+    assert!(issues
+        .iter()
+        .any(|item| item.contains("chain storage profile")));
     assert!(issues.iter().any(|item| item.contains("chain pos")));
 }
 

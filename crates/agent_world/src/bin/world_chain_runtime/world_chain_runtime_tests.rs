@@ -1,15 +1,18 @@
 use super::{
     build_chain_balances_payload_from_world, build_default_replication_network_config,
-    parse_options, parse_validator_spec, CliOptions, DEFAULT_NODE_ID,
-    DEFAULT_REPLICATION_NETWORK_LISTEN, DEFAULT_STATUS_BIND,
+    build_node_replication_config, node_keypair_config, parse_options, parse_validator_spec,
+    CliOptions, DEFAULT_NODE_ID, DEFAULT_REPLICATION_NETWORK_LISTEN, DEFAULT_STATUS_BIND,
 };
 use agent_world::runtime::World as RuntimeWorld;
+use agent_world_proto::storage_profile::{StorageProfile, StorageProfileConfig};
+use ed25519_dalek::SigningKey;
 
 #[test]
 fn parse_options_defaults() {
     let options = parse_options(std::iter::empty()).expect("parse should succeed");
     assert_eq!(options.node_id, DEFAULT_NODE_ID);
     assert_eq!(options.status_bind, DEFAULT_STATUS_BIND);
+    assert_eq!(options.storage_profile, StorageProfile::DevLocal);
     assert!(!options.node_auto_attest_all_validators);
     assert!(options.node_validators.is_empty());
     assert!(options.reward_runtime_enabled);
@@ -30,6 +33,8 @@ fn parse_options_reads_custom_values() {
             "node-a",
             "--world-id",
             "live-foo",
+            "--storage-profile",
+            "soak_forensics",
             "--status-bind",
             "127.0.0.1:6221",
             "--node-role",
@@ -68,6 +73,7 @@ fn parse_options_reads_custom_values() {
 
     assert_eq!(options.node_id, "node-a");
     assert_eq!(options.world_id, "live-foo");
+    assert_eq!(options.storage_profile, StorageProfile::SoakForensics);
     assert_eq!(options.status_bind, "127.0.0.1:6221");
     assert_eq!(options.node_role.as_str(), "storage");
     assert_eq!(options.node_tick_ms, 350);
@@ -125,6 +131,14 @@ fn parse_options_rejects_proposal_tick_phase_out_of_range() {
 }
 
 #[test]
+fn parse_options_rejects_unknown_storage_profile() {
+    let err = parse_options(["--storage-profile", "unknown"].into_iter())
+        .expect_err("invalid storage profile should fail");
+    assert!(err.contains("dev_local"));
+    assert!(err.contains("soak_forensics"));
+}
+
+#[test]
 fn parse_validator_spec_rejects_zero_stake() {
     let err = parse_validator_spec("node-a:0").expect_err("should reject");
     assert!(err.contains("positive integer"));
@@ -176,4 +190,21 @@ fn default_replication_network_config_uses_loopback_ephemeral_listen() {
     );
     assert!(config.bootstrap_peers.is_empty());
     assert!(!config.allow_local_handler_fallback_when_no_peers);
+}
+
+#[test]
+fn build_node_replication_config_uses_storage_profile_budget() {
+    let signing_key = SigningKey::generate(&mut rand_core::OsRng);
+    let keypair = node_keypair_config::NodeKeypairConfig {
+        private_key_hex: hex::encode(signing_key.to_bytes()),
+        public_key_hex: hex::encode(signing_key.verifying_key().to_bytes()),
+    };
+    let storage_profile = StorageProfileConfig::for_profile(StorageProfile::ReleaseDefault);
+    let config = build_node_replication_config("node-a", &keypair, &storage_profile)
+        .expect("replication config should build");
+
+    assert_eq!(
+        config.max_hot_commit_messages(),
+        storage_profile.replication_max_hot_commit_messages
+    );
 }

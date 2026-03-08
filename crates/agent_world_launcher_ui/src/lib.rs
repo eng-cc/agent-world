@@ -110,6 +110,15 @@ const LAUNCHER_UI_FIELDS: &[LauncherUiField] = &[
         native_visible: true,
     },
     LauncherUiField {
+        id: "chain_storage_profile",
+        section: "chain_identity",
+        kind: LauncherUiFieldKind::Text,
+        label_zh: "链存储档位",
+        label_en: "Chain Storage Profile",
+        web_visible: true,
+        native_visible: true,
+    },
+    LauncherUiField {
         id: "chain_world_id",
         section: "chain_identity",
         kind: LauncherUiFieldKind::Text,
@@ -261,6 +270,7 @@ mod tests {
         assert!(!ids.contains("launcher_bin"));
         assert!(!ids.contains("chain_runtime_bin"));
         assert!(ids.contains("scenario"));
+        assert!(ids.contains("chain_storage_profile"));
         assert!(ids.contains("viewer_static_dir"));
     }
 }

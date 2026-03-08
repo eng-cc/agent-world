@@ -1,5 +1,6 @@
 use super::*;
 
+use agent_world_proto::storage_profile::StorageProfile;
 use std::io::{BufRead, BufReader, Read};
 use std::net::{TcpStream, ToSocketAddrs};
 use std::path::Path;
@@ -729,6 +730,16 @@ pub(super) fn validate_chain_config(config: &LauncherConfig) -> Vec<String> {
     if config.chain_node_id.trim().is_empty() {
         issues.push("chain node id is required".to_string());
     }
+    if config
+        .chain_storage_profile
+        .parse::<StorageProfile>()
+        .is_err()
+    {
+        issues.push(
+            "chain storage profile must be one of: dev_local|release_default|soak_forensics"
+                .to_string(),
+        );
+    }
     if parse_chain_role(config.chain_node_role.as_str()).is_err() {
         issues.push("chain role must be one of: sequencer|storage|observer".to_string());
     }
@@ -869,6 +880,7 @@ pub(super) fn build_chain_runtime_args(config: &LauncherConfig) -> Result<Vec<St
         config.chain_pos_max_past_slot_lag.as_str(),
         "chain pos max past slot lag",
     )?;
+    let storage_profile = config.chain_storage_profile.parse::<StorageProfile>()?;
     let validators = parse_chain_validators(config.chain_node_validators.as_str())?;
 
     let mut args = vec![
@@ -878,6 +890,8 @@ pub(super) fn build_chain_runtime_args(config: &LauncherConfig) -> Result<Vec<St
         resolve_chain_world_id(config),
         "--status-bind".to_string(),
         config.chain_status_bind.trim().to_string(),
+        "--storage-profile".to_string(),
+        storage_profile.as_str().to_string(),
         "--node-role".to_string(),
         chain_role,
         "--node-tick-ms".to_string(),

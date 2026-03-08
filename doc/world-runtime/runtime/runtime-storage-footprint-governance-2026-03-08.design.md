@@ -120,6 +120,7 @@ struct StorageProfileConfig {
     execution_sidecar_generations_keep: u32,
     tick_consensus_hot_limit: usize,
     tick_consensus_archive_segment_len: usize,
+    replication_max_hot_commit_messages: usize,
     metrics_emit_interval_ms: u64,
 }
 ```

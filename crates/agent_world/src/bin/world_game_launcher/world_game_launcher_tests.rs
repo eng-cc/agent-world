@@ -4,14 +4,15 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::{
-    build_game_url, build_viewer_auth_bootstrap_script, content_type_for_path, parse_host_port,
-    parse_options, resolve_static_asset_path, resolve_viewer_auth_bootstrap_from_path,
-    resolve_viewer_static_dir_with_override, sanitize_index_html_for_embedded_server,
-    sanitize_relative_request_path, CliOptions, ViewerAuthBootstrap, DEFAULT_CHAIN_NODE_ID,
-    DEFAULT_CHAIN_STATUS_BIND, DEFAULT_LIVE_BIND, DEFAULT_SCENARIO, DEFAULT_VIEWER_STATIC_DIR,
-    VIEWER_AUTH_BOOTSTRAP_OBJECT, VIEWER_AUTH_PRIVATE_KEY_ENV, VIEWER_AUTH_PUBLIC_KEY_ENV,
-    VIEWER_PLAYER_ID_ENV,
+    build_game_url, build_viewer_auth_bootstrap_script, build_world_chain_runtime_args,
+    content_type_for_path, parse_host_port, parse_options, resolve_static_asset_path,
+    resolve_viewer_auth_bootstrap_from_path, resolve_viewer_static_dir_with_override,
+    sanitize_index_html_for_embedded_server, sanitize_relative_request_path, CliOptions,
+    ViewerAuthBootstrap, DEFAULT_CHAIN_NODE_ID, DEFAULT_CHAIN_STATUS_BIND, DEFAULT_LIVE_BIND,
+    DEFAULT_SCENARIO, DEFAULT_VIEWER_STATIC_DIR, VIEWER_AUTH_BOOTSTRAP_OBJECT,
+    VIEWER_AUTH_PRIVATE_KEY_ENV, VIEWER_AUTH_PUBLIC_KEY_ENV, VIEWER_PLAYER_ID_ENV,
 };
+use agent_world_proto::storage_profile::StorageProfile;
 
 #[test]
 fn parse_options_defaults() {
@@ -24,6 +25,7 @@ fn parse_options_defaults() {
     assert!(options.chain_enabled);
     assert_eq!(options.chain_status_bind, DEFAULT_CHAIN_STATUS_BIND);
     assert_eq!(options.chain_node_id, DEFAULT_CHAIN_NODE_ID);
+    assert_eq!(options.chain_storage_profile, StorageProfile::DevLocal);
     assert_eq!(options.chain_node_role, "sequencer");
     assert_eq!(options.chain_pos_slot_duration_ms, 12_000);
     assert_eq!(options.chain_pos_ticks_per_slot, 10);
@@ -53,6 +55,8 @@ fn parse_options_accepts_overrides() {
             "127.0.0.1:6331",
             "--chain-node-id",
             "chain-a",
+            "--chain-storage-profile",
+            "soak_forensics",
             "--chain-world-id",
             "live-chain-a",
             "--chain-node-role",
@@ -87,6 +91,7 @@ fn parse_options_accepts_overrides() {
     assert_eq!(options.viewer_static_dir, "dist");
     assert_eq!(options.chain_status_bind, "127.0.0.1:6331");
     assert_eq!(options.chain_node_id, "chain-a");
+    assert_eq!(options.chain_storage_profile, StorageProfile::SoakForensics);
     assert_eq!(options.chain_world_id, Some("live-chain-a".to_string()));
     assert_eq!(options.chain_node_role, "storage");
     assert_eq!(options.chain_node_tick_ms, 350);
@@ -206,6 +211,22 @@ fn build_game_url_brackets_ipv6_hosts() {
     };
     let url = build_game_url(&options);
     assert_eq!(url, "http://[::1]:4173/?ws=ws://[::1]:5011");
+}
+
+#[test]
+fn build_world_chain_runtime_args_includes_storage_profile() {
+    let options = CliOptions {
+        scenario: "sandbox".to_string(),
+        chain_node_id: "chain-a".to_string(),
+        chain_status_bind: "127.0.0.1:6121".to_string(),
+        chain_storage_profile: StorageProfile::ReleaseDefault,
+        ..CliOptions::default()
+    };
+    let args = build_world_chain_runtime_args(&options);
+    assert!(args.contains(&"--storage-profile".to_string()));
+    assert!(args.contains(&"release_default".to_string()));
+    assert!(args.contains(&"--world-id".to_string()));
+    assert!(args.contains(&"live-sandbox".to_string()));
 }
 
 #[test]

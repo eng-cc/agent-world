@@ -16,6 +16,7 @@ use agent_world_node::{
     NodePosConfig, NodeReplicationConfig, NodeReplicationNetworkHandle, NodeRole, NodeRuntime,
     NodeSnapshot, PosConsensusStatus, PosValidator,
 };
+use agent_world_proto::storage_profile::{StorageProfile, StorageProfileConfig};
 use ed25519_dalek::SigningKey;
 use serde::Serialize;
 use sha2::{Digest, Sha256};
@@ -126,6 +127,7 @@ struct CliOptions {
     node_id: String,
     world_id: String,
     status_bind: String,
+    storage_profile: StorageProfile,
     node_role: NodeRole,
     node_tick_ms: u64,
     pos_slot_duration_ms: u64,
@@ -158,6 +160,7 @@ impl Default for CliOptions {
             node_id: DEFAULT_NODE_ID.to_string(),
             world_id: DEFAULT_WORLD_ID.to_string(),
             status_bind: DEFAULT_STATUS_BIND.to_string(),
+            storage_profile: StorageProfile::DevLocal,
             node_role: NodeRole::Sequencer,
             node_tick_ms: DEFAULT_NODE_TICK_MS,
             pos_slot_duration_ms: DEFAULT_POS_SLOT_DURATION_MS,
@@ -288,6 +291,7 @@ fn run_chain_runtime(options: CliOptions) -> Result<(), String> {
     let keypair = node_keypair_config::ensure_node_keypair_in_config(Path::new(
         options.config_path.as_str(),
     ))?;
+    let storage_profile_config = StorageProfileConfig::from(options.storage_profile);
 
     let mut config = NodeConfig::new(
         options.node_id.clone(),
@@ -335,6 +339,7 @@ fn run_chain_runtime(options: CliOptions) -> Result<(), String> {
     config = config.with_replication(build_node_replication_config(
         options.node_id.as_str(),
         &keypair,
+        &storage_profile_config,
     )?);
     config = config
         .with_feedback_p2p(NodeFeedbackP2pConfig::default())
@@ -427,6 +432,7 @@ fn run_chain_runtime(options: CliOptions) -> Result<(), String> {
     println!("world_chain_runtime ready.");
     println!("- node_id: {}", options.node_id);
     println!("- world_id: {}", options.world_id);
+    println!("- storage_profile: {}", options.storage_profile.as_str());
     println!("- role: {}", options.node_role.as_str());
     println!(
         "- status: http://{}:{}/v1/chain/status",
@@ -882,6 +888,10 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
             "--status-bind" => {
                 options.status_bind = parse_required_value(&mut iter, "--status-bind")?;
             }
+            "--storage-profile" => {
+                options.storage_profile = parse_required_value(&mut iter, "--storage-profile")?
+                    .parse::<StorageProfile>()?;
+            }
             "--node-role" => {
                 let raw = parse_required_value(&mut iter, "--node-role")?;
                 options.node_role = raw.parse::<NodeRole>().map_err(|_| {
@@ -1130,10 +1140,14 @@ fn parse_validator_spec(raw: &str) -> Result<PosValidator, String> {
 fn build_node_replication_config(
     node_id: &str,
     keypair: &node_keypair_config::NodeKeypairConfig,
+    storage_profile: &StorageProfileConfig,
 ) -> Result<NodeReplicationConfig, String> {
     let signer_keypair = derive_node_consensus_signer_keypair(node_id, keypair)?;
     let replication_root = Path::new("output").join("node-distfs").join(node_id);
     NodeReplicationConfig::new(replication_root)
+        .and_then(|cfg| {
+            cfg.with_max_hot_commit_messages(storage_profile.replication_max_hot_commit_messages)
+        })
         .and_then(|cfg| {
             cfg.with_signing_keypair(
                 signer_keypair.private_key_hex,
@@ -1228,6 +1242,7 @@ Starts standalone chain/node runtime with status HTTP endpoints.\n\n\
 Options:\n\
   --node-id <id>                    node identifier (default: {DEFAULT_NODE_ID})\n\
   --world-id <id>                   world identifier (default: {DEFAULT_WORLD_ID})\n\
+  --storage-profile <name>          dev_local|release_default|soak_forensics (default: dev_local)\n\
   --status-bind <host:port>         status HTTP bind (default: {DEFAULT_STATUS_BIND})\n\
   --node-role <role>                sequencer|storage|observer (default: sequencer)\n\
   --node-tick-ms <n>                worker poll/fallback interval ms (default: {DEFAULT_NODE_TICK_MS})\n\

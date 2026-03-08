@@ -109,6 +109,10 @@ impl NodeReplicationConfig {
         Ok(self)
     }
 
+    pub fn max_hot_commit_messages(&self) -> usize {
+        self.max_hot_commit_messages
+    }
+
     pub(crate) fn with_default_remote_writer_allowlist(
         mut self,
         defaults: impl IntoIterator<Item = String>,

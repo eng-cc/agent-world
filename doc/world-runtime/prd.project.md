@@ -42,7 +42,7 @@
 ## 状态
 - 更新日期: 2026-03-08
 - 当前状态: active
-- 下一任务: TASK-WORLD_RUNTIME-032（进入专题子任务 T6.1）
+- 下一任务: TASK-WORLD_RUNTIME-032（进入专题子任务 T6.2）
 - 实施备注:
   - `TASK-WORLD_RUNTIME-028` 已完成：新增节点侧固定验收入口 `scripts/module-release-node-acceptance.sh` 并将 S11 运行手册切换为“脚本入口 + 等价拆分命令 + 证据目录”；同时收敛 `sync-m1/m4/m5` 非 `--check` 写入授权为“CI 禁止、仅本地显式授权（`AGENT_WORLD_WASM_SYNC_WRITE_ALLOW=local-dev`）”，主 CI 不再具备生产发布写入/激活路径。
   - `TASK-WORLD_RUNTIME-029` 已完成：新增 `scripts/world-runtime-finality-baseline.sh` 固定基准入口，输出 `stake/epoch` 验签耗时聚合指标与 `2 epoch` 收敛状态（`summary.md`/`summary.json` 可归档）；S11 运行手册已补齐命令与产物路径。
@@ -70,5 +70,6 @@
   - `TASK-WORLD_RUNTIME-032` 已继续完成 T5.2：shared cold index 协议已下沉到 `agent_world_proto`，统一 `<namespace>.cold-index/index.json`、`hot_range` 与 `cold_range_anchor` 元数据字段，并先接到 replication 冷索引写路径。
   - `TASK-WORLD_RUNTIME-032` 已继续完成 T5.3：replication 冷索引已支持 canonical/legacy 双写与读时回填迁移，旧样本只保留 alias 时仍可读回并自动补出 canonical 目录。
   - `TASK-WORLD_RUNTIME-032` 已继续完成 T5.4：新增 replication cold-index scan 边界回归与 tick archive range seek 回归，验证 shared protocol 在跨模块读回上的边界口径一致。
+  - `TASK-WORLD_RUNTIME-032` 已继续完成 T6.1：共享 `StorageProfileConfig` 协议、runtime / launcher / web launcher / launcher UI 的统一 profile 入口已落地，并先让 replication 热窗口预算跟随 profile 默认值。
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - 说明: 本文档仅维护 world-runtime 模块设计执行状态；过程记录在 `doc/devlog/2026-03-03.md`、`doc/devlog/2026-03-06.md` 与 `doc/devlog/2026-03-08.md`。

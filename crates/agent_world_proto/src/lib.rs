@@ -5,5 +5,6 @@ pub mod distributed_net;
 pub mod distributed_pos;
 pub mod distributed_storage;
 pub mod storage_cold_index;
+pub mod storage_profile;
 pub mod viewer;
 pub mod world_error;
