@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use std::collections::{HashMap, VecDeque};
 
+use super::auto_focus::focus_selection_with_transform;
 use super::camera_controls::orbit_min_radius;
 use super::selection_linking::apply_selection;
 use super::*;
@@ -36,16 +37,45 @@ pub(super) enum ViewerAutomationStep {
     WaitSeconds(f64),
     SetMode(ViewerCameraMode),
     Focus(ViewerAutomationTarget),
+    FocusSelection,
     Pan(Vec3),
     ZoomFactor(f32),
-    OrbitDeg { yaw: f32, pitch: f32 },
+    OrbitDeg {
+        yaw: f32,
+        pitch: f32,
+    },
     Select(ViewerAutomationTarget),
+    PanelVisibility(ViewerAutomationVisibilityAction),
+    ModuleVisibility {
+        module: ViewerAutomationPanelModule,
+        action: ViewerAutomationVisibilityAction,
+    },
+    CycleMaterialVariant,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) enum ViewerAutomationTarget {
     FirstKind(&'static str),
     KindId { kind: &'static str, id: String },
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum ViewerAutomationVisibilityAction {
+    Show,
+    Hide,
+    Toggle,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum ViewerAutomationPanelModule {
+    Controls,
+    Overview,
+    Chat,
+    Overlay,
+    Diagnosis,
+    EventLink,
+    Timeline,
+    Details,
 }
 
 const TARGET_KIND_AGENT: &str = "agent";
@@ -89,7 +119,14 @@ pub(super) fn run_viewer_automation(
     config: Res<ViewerAutomationConfig>,
     mut state: ResMut<ViewerAutomationState>,
     mut camera_mode: ResMut<ViewerCameraMode>,
+    mut right_panel_layout: ResMut<RightPanelLayoutState>,
+    mut module_visibility: ResMut<
+        crate::right_panel_module_visibility::RightPanelModuleVisibilityState,
+    >,
+    mut variant_preview: ResMut<MaterialVariantPreviewState>,
     viewer_config: Res<Viewer3dConfig>,
+    assets: Option<Res<Viewer3dAssets>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
     scene: Res<Viewer3dScene>,
     mut selection: ResMut<ViewerSelection>,
     mut queries: ParamSet<(
@@ -118,6 +155,11 @@ pub(super) fn run_viewer_automation(
             &scene,
             &viewer_config,
             &mut camera_mode,
+            &mut right_panel_layout,
+            &mut module_visibility,
+            &mut variant_preview,
+            assets.as_deref(),
+            &mut materials,
             &mut selection,
             &mut queries,
             &mut location_markers,
@@ -194,6 +236,11 @@ fn apply_step(
     scene: &Viewer3dScene,
     viewer_config: &Viewer3dConfig,
     camera_mode: &mut ViewerCameraMode,
+    right_panel_layout: &mut RightPanelLayoutState,
+    module_visibility: &mut crate::right_panel_module_visibility::RightPanelModuleVisibilityState,
+    variant_preview: &mut MaterialVariantPreviewState,
+    assets: Option<&Viewer3dAssets>,
+    materials: &mut Assets<StandardMaterial>,
     selection: &mut ViewerSelection,
     queries: &mut ParamSet<(
         Query<(&mut OrbitCamera, &mut Transform, &mut Projection), With<Viewer3dCamera>>,
@@ -246,6 +293,37 @@ fn apply_step(
                 orbit.radius = target_radius.clamp(min_radius, ORBIT_MAX_RADIUS);
             }
             orbit.apply_to_transform(&mut camera_transform);
+            StepResult::Applied
+        }
+        ViewerAutomationStep::FocusSelection => {
+            let Some(current) = selection.current.clone() else {
+                return StepResult::Applied;
+            };
+
+            let focus = {
+                let transform_query = queries.p2();
+                let Ok((target_transform, _)) = transform_query.get(current.entity) else {
+                    return StepResult::Pending;
+                };
+                target_transform.translation
+            };
+
+            let mut camera_query = queries.p0();
+            let Ok((mut orbit, mut camera_transform, mut projection)) = camera_query.single_mut()
+            else {
+                return StepResult::Pending;
+            };
+
+            focus_selection_with_transform(
+                &current,
+                focus,
+                scene,
+                viewer_config,
+                camera_mode,
+                &mut orbit,
+                &mut camera_transform,
+                &mut projection,
+            );
             StepResult::Applied
         }
         ViewerAutomationStep::Pan(delta) => {
@@ -314,6 +392,57 @@ fn apply_step(
             );
             StepResult::Applied
         }
+        ViewerAutomationStep::PanelVisibility(action) => {
+            let current_visible = !right_panel_layout.panel_hidden;
+            let next_visible = apply_visibility_action(current_visible, action);
+            right_panel_layout.panel_hidden = !next_visible;
+            StepResult::Applied
+        }
+        ViewerAutomationStep::ModuleVisibility { module, action } => {
+            let flag = module_visibility_flag(module_visibility, module);
+            let current_visible = *flag;
+            *flag = apply_visibility_action(current_visible, action);
+            StepResult::Applied
+        }
+        ViewerAutomationStep::CycleMaterialVariant => {
+            variant_preview.active = variant_preview.active.next();
+            if let Some(assets) = assets {
+                apply_material_variant_to_scene_materials(
+                    materials,
+                    assets,
+                    viewer_config,
+                    variant_preview.active,
+                );
+            }
+            StepResult::Applied
+        }
+    }
+}
+
+fn module_visibility_flag(
+    state: &mut crate::right_panel_module_visibility::RightPanelModuleVisibilityState,
+    module: ViewerAutomationPanelModule,
+) -> &mut bool {
+    match module {
+        ViewerAutomationPanelModule::Controls => &mut state.show_controls,
+        ViewerAutomationPanelModule::Overview => &mut state.show_overview,
+        ViewerAutomationPanelModule::Chat => &mut state.show_chat,
+        ViewerAutomationPanelModule::Overlay => &mut state.show_overlay,
+        ViewerAutomationPanelModule::Diagnosis => &mut state.show_diagnosis,
+        ViewerAutomationPanelModule::EventLink => &mut state.show_event_link,
+        ViewerAutomationPanelModule::Timeline => &mut state.show_timeline,
+        ViewerAutomationPanelModule::Details => &mut state.show_details,
+    }
+}
+
+fn apply_visibility_action(
+    current_visible: bool,
+    action: ViewerAutomationVisibilityAction,
+) -> bool {
+    match action {
+        ViewerAutomationVisibilityAction::Show => true,
+        ViewerAutomationVisibilityAction::Hide => false,
+        ViewerAutomationVisibilityAction::Toggle => !current_visible,
     }
 }
 
@@ -487,7 +616,9 @@ fn parse_steps(raw: Option<&str>) -> Vec<ViewerAutomationStep> {
                 .ok()
                 .map(ViewerAutomationStep::WaitSeconds),
             "mode" => parse_mode(value).map(ViewerAutomationStep::SetMode),
-            "focus" => parse_target(value).map(ViewerAutomationStep::Focus),
+            "focus" => parse_focus_selection_step(value)
+                .or_else(|| parse_target(value).map(ViewerAutomationStep::Focus)),
+            "focus_selection" | "focus_selected" => parse_focus_selection_step(value),
             "pan" => parse_vec3(value).map(ViewerAutomationStep::Pan),
             "zoom" => value
                 .parse::<f32>()
@@ -495,6 +626,10 @@ fn parse_steps(raw: Option<&str>) -> Vec<ViewerAutomationStep> {
                 .map(ViewerAutomationStep::ZoomFactor),
             "orbit" => parse_orbit(value),
             "select" => parse_target(value).map(ViewerAutomationStep::Select),
+            "panel" => parse_visibility_action(value).map(ViewerAutomationStep::PanelVisibility),
+            "module" | "panel_module" | "module_visibility" => parse_module_visibility_step(value),
+            "material_variant" | "variant" => parse_material_variant_step(value)
+                .map(|_| ViewerAutomationStep::CycleMaterialVariant),
             _ => None,
         };
         if let Some(step) = parsed {
@@ -574,6 +709,55 @@ fn parse_orbit(raw: &str) -> Option<ViewerAutomationStep> {
             yaw: *yaw,
             pitch: *pitch,
         }),
+        _ => None,
+    }
+}
+
+fn parse_focus_selection_step(raw: &str) -> Option<ViewerAutomationStep> {
+    match raw.trim().to_ascii_lowercase().as_str() {
+        "selection" | "selected" | "current" | "current_selection" | "current-selection" | "1"
+        | "true" | "yes" | "on" => Some(ViewerAutomationStep::FocusSelection),
+        _ => None,
+    }
+}
+
+fn parse_visibility_action(raw: &str) -> Option<ViewerAutomationVisibilityAction> {
+    match raw.trim().to_ascii_lowercase().as_str() {
+        "show" | "visible" | "on" | "1" | "true" | "yes" => {
+            Some(ViewerAutomationVisibilityAction::Show)
+        }
+        "hide" | "hidden" | "off" | "0" | "false" | "no" => {
+            Some(ViewerAutomationVisibilityAction::Hide)
+        }
+        "toggle" | "switch" => Some(ViewerAutomationVisibilityAction::Toggle),
+        _ => None,
+    }
+}
+
+fn parse_panel_module(raw: &str) -> Option<ViewerAutomationPanelModule> {
+    match raw.trim().to_ascii_lowercase().as_str() {
+        "controls" | "control" => Some(ViewerAutomationPanelModule::Controls),
+        "overview" => Some(ViewerAutomationPanelModule::Overview),
+        "chat" => Some(ViewerAutomationPanelModule::Chat),
+        "overlay" => Some(ViewerAutomationPanelModule::Overlay),
+        "diagnosis" | "diag" => Some(ViewerAutomationPanelModule::Diagnosis),
+        "event_link" | "event-link" | "eventlink" => Some(ViewerAutomationPanelModule::EventLink),
+        "timeline" => Some(ViewerAutomationPanelModule::Timeline),
+        "details" | "detail" => Some(ViewerAutomationPanelModule::Details),
+        _ => None,
+    }
+}
+
+fn parse_module_visibility_step(raw: &str) -> Option<ViewerAutomationStep> {
+    let (module_raw, action_raw) = raw.split_once(':')?;
+    let module = parse_panel_module(module_raw)?;
+    let action = parse_visibility_action(action_raw)?;
+    Some(ViewerAutomationStep::ModuleVisibility { module, action })
+}
+
+fn parse_material_variant_step(raw: &str) -> Option<()> {
+    match raw.trim().to_ascii_lowercase().as_str() {
+        "next" | "cycle" | "toggle" | "f8" => Some(()),
         _ => None,
     }
 }
@@ -675,6 +859,63 @@ mod tests {
                 }),
             ]
         );
+    }
+
+    #[test]
+    fn parse_steps_supports_panel_module_focus_selection_and_variant_actions() {
+        let steps = parse_steps(Some(
+            "panel=toggle;module=chat:hide;focus=selection;focus_selection=current;material_variant=next",
+        ));
+        assert_eq!(
+            steps,
+            vec![
+                ViewerAutomationStep::PanelVisibility(ViewerAutomationVisibilityAction::Toggle),
+                ViewerAutomationStep::ModuleVisibility {
+                    module: ViewerAutomationPanelModule::Chat,
+                    action: ViewerAutomationVisibilityAction::Hide,
+                },
+                ViewerAutomationStep::FocusSelection,
+                ViewerAutomationStep::FocusSelection,
+                ViewerAutomationStep::CycleMaterialVariant,
+            ]
+        );
+    }
+
+    #[test]
+    fn parse_steps_ignores_invalid_module_and_variant_actions() {
+        let steps = parse_steps(Some(
+            "module=chat;module=unknown:show;module=timeline:toggle;material_variant=bad;variant=cycle",
+        ));
+        assert_eq!(
+            steps,
+            vec![
+                ViewerAutomationStep::ModuleVisibility {
+                    module: ViewerAutomationPanelModule::Timeline,
+                    action: ViewerAutomationVisibilityAction::Toggle,
+                },
+                ViewerAutomationStep::CycleMaterialVariant,
+            ]
+        );
+    }
+
+    #[test]
+    fn apply_visibility_action_respects_show_hide_toggle() {
+        assert!(apply_visibility_action(
+            false,
+            ViewerAutomationVisibilityAction::Show
+        ));
+        assert!(!apply_visibility_action(
+            true,
+            ViewerAutomationVisibilityAction::Hide
+        ));
+        assert!(!apply_visibility_action(
+            true,
+            ViewerAutomationVisibilityAction::Toggle
+        ));
+        assert!(apply_visibility_action(
+            false,
+            ViewerAutomationVisibilityAction::Toggle
+        ));
     }
 
     #[test]

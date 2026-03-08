@@ -166,6 +166,33 @@ pub(super) fn handle_focus_selection_hotkey(
     );
 }
 
+pub(super) fn focus_selection_with_transform(
+    selection: &SelectionInfo,
+    focus: Vec3,
+    scene: &Viewer3dScene,
+    config: &Viewer3dConfig,
+    camera_mode: &mut ViewerCameraMode,
+    orbit: &mut OrbitCamera,
+    camera_transform: &mut Transform,
+    projection: &mut Projection,
+) {
+    let resolved_focus = ResolvedFocus {
+        focus,
+        radius: selection_focus_radius(selection, scene, config.effective_cm_to_unit()),
+    };
+    apply_focus_to_camera(
+        resolved_focus,
+        None,
+        false,
+        config,
+        camera_mode,
+        orbit,
+        camera_transform,
+        projection,
+        None,
+    );
+}
+
 fn apply_focus_to_camera(
     resolved_focus: ResolvedFocus,
     radius_override: Option<f32>,
@@ -223,7 +250,17 @@ fn resolve_focus_from_selection(
 ) -> Option<ResolvedFocus> {
     let entity = selection.entity;
     let focus = transforms.get(entity).ok()?.translation;
-    let radius = match selection.kind {
+    let radius = selection_focus_radius(selection, scene, cm_to_unit);
+
+    Some(ResolvedFocus { focus, radius })
+}
+
+fn selection_focus_radius(
+    selection: &SelectionInfo,
+    scene: &Viewer3dScene,
+    cm_to_unit: f32,
+) -> f32 {
+    match selection.kind {
         SelectionKind::Location => scene
             .location_radii_cm
             .get(selection.id.as_str())
@@ -243,9 +280,7 @@ fn resolve_focus_from_selection(
                 cm_to_unit,
             )),
         _ => focus_radius_units(DEFAULT_MANUAL_FOCUS_RADIUS_M, cm_to_unit),
-    };
-
-    Some(ResolvedFocus { focus, radius })
+    }
 }
 
 fn resolve_target(target: &AutoFocusTarget, scene: &Viewer3dScene) -> Option<ResolvedTarget> {
