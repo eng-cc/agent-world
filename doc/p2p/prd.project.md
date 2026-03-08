@@ -1,6 +1,6 @@
 # p2p PRD Project
 
-审计轮次: 9
+审计轮次: 10
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] TASK-P2P-001 (PRD-P2P-001) [test_tier_required]: 完成 p2p PRD 改写，建立分布式系统设计入口。
@@ -16,6 +16,7 @@
 - [x] TASK-P2P-011 (PRD-P2P-008) [test_tier_required]: 收敛 PoS 时间锚定残留语义偏差（状态字段命名、launcher 校验文案、viewer/manual/site 与 `world_viewer_live` 实际能力对齐）。
 - [x] TASK-P2P-012 (PRD-P2P-009) [test_tier_required]: 修正默认 PoS 时间参数与校验文案残留偏差，确保默认启动即符合“tick 锚定出块时间”口径。
 - [x] TASK-P2P-013 (PRD-P2P-009) [test_tier_required]: 将默认 PoS 时间参数对齐到“12s 出块、每块 10 tick”基线（`12000/10/9`），并收敛 CLI/脚本/文档一致性。
+- [ ] TASK-P2P-014 (PRD-P2P-010) [test_tier_required]: 移除 `world_viewer_live --release-config/--node-*` 控制面参数，收敛为纯观察服务并完成文档/示例/测试闭环。
 
 ### TASK-P2P-002 执行拆解（PRD-P2P-001/002）
 - [x] TASK-P2P-002-A [test_tier_required]: 在 `doc/p2p/prd.md` 补齐网络/共识/DistFS 三线联合验收清单（基线命令、门禁命令、阻断条件、证据产物）。
@@ -56,6 +57,13 @@
 - [x] TASK-P2P-013-T2 [test_tier_required]: 调整 `scripts/p2p-longrun-soak.sh` 与 `scripts/s10-five-node-game-soak.sh` 默认 PoS 参数到 `12000/10/9`，并更新帮助文案。
 - [x] TASK-P2P-013-T3 [test_tier_required]: 回写 launcher/testing/longrun 相关文档默认值与语义说明，执行文档门禁并完成任务收口。
 
+### TASK-P2P-014 执行拆解（PRD-P2P-010）
+- [x] TASK-P2P-014-T0 [test_tier_required]: 在主 PRD/project 建立“viewer 移除 release/node 控制面参数”任务链并冻结验收口径。
+- [ ] TASK-P2P-014-T1 [test_tier_required]: 在 `world_viewer_live` CLI 移除 `--release-config` 与 `--node-*` 参数解析、帮助文案与 release-mode 分支，误传时输出迁移提示。
+- [ ] TASK-P2P-014-T2 [test_tier_required]: 更新 `world_viewer_live.release.example.toml`、viewer manual/site 镜像及相关专题文档，删除与当前能力冲突的表述。
+- [ ] TASK-P2P-014-T3 [test_tier_required]: 更新/替换 `world_viewer_live` 定向测试覆盖，验证 legacy 参数拒绝行为与观察服务参数仍可用。
+- [ ] TASK-P2P-014-T4 [test_tier_required]: 执行 required 回归并完成项目状态与 devlog 收口。
+
 ## 依赖
 - doc/p2p/prd.index.md
 - `doc/p2p/blockchain/production-grade-blockchain-p2pfs-roadmap.prd.md`
@@ -66,6 +74,8 @@
 - `doc/p2p/node/node-pos-time-anchor-control-plane-alignment-2026-03-07.prd.md`
 - `crates/agent_world/src/bin/world_chain_runtime.rs`
 - `crates/agent_world/src/bin/world_viewer_live.rs`
+- `crates/agent_world/src/bin/world_viewer_live/cli.rs`
+- `world_viewer_live.release.example.toml`
 - `crates/agent_world_client_launcher/src/launcher_core.rs`
 - `crates/agent_world_client_launcher/src/main.rs`
 - `scripts/p2p-longrun-soak.sh`
@@ -79,8 +89,8 @@
 
 ## 状态
 - 更新日期: 2026-03-08
-- 当前状态: completed（ROUND-009）
-- 下一任务: none
+- 当前状态: in_progress（ROUND-010）
+- 下一任务: TASK-P2P-014-T1
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - 本轮新增: `TASK-P2P-006` 已完成，专题文档 `p2p-mobile-light-client-authoritative-state-2026-03-06` 已纳入索引和模块追踪映射。
 - 本轮新增: `TASK-P2P-008` 已建档，专题文档 `node-pos-slot-clock-real-time-2026-03-07` 已纳入模块追踪映射。
@@ -117,6 +127,8 @@
 - TASK-P2P-013 进展（2026-03-08）: `TASK-P2P-013-T1` 已完成代码落地与 required 定向回归（runtime/game/web/client/viewer 默认值统一为 `12000/10/9`，并修正 `world_viewer_live` help 默认值文案）。
 - TASK-P2P-013 进展（2026-03-08）: `TASK-P2P-013-T2` 已完成脚本默认值收敛（`p2p-longrun/s10` 帮助文案与默认参数统一为 `12000/10/9`）并通过 dry-run 校验。
 - TASK-P2P-013 收口（2026-03-08）: `TASK-P2P-013-T3` 已完成文档回写与门禁检查，主任务 `TASK-P2P-013` 全部闭环。
+- TASK-P2P-014 启动（2026-03-08）: 基于“viewer 仅保留观察服务 CLI”新增任务链，目标为移除 `world_viewer_live --release-config/--node-*` 控制面参数并收敛文档/测试口径。
+- TASK-P2P-014 进展（2026-03-08）: `TASK-P2P-014-T0` 已完成（主 PRD/project 建档并冻结验收口径）。
 - 说明: 本文档仅维护 p2p 设计执行状态；过程记录在 `doc/devlog/2026-03-07.md` 与 `doc/devlog/2026-03-08.md`。
 - ROUND-002 进展（2026-03-05）: 已并行完成 `B3-C2-009-S2/C2-010/C2-011`（observer sync-mode、node-contribution、distfs-self-healing）主从化回写。
 - ROUND-002 进展（2026-03-05）: 已并行完成 `B3-C2-003/C2-008-S1/C2-008-S2`（node-redeemable-power-asset、distfs-production-hardening phase1~9）主从化回写。
