@@ -1,6 +1,6 @@
 # Viewer Web 语义化测试 API（Phase 9 发行验收支撑）
 
-审计轮次: 8
+审计轮次: 9
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-web-semantic-test-api.prd.project.md
 
 ## 1. Executive Summary
@@ -8,6 +8,7 @@
 - 复用现有 `viewer_automation` 步骤执行器，统一测试动作语义（`mode/focus/select/zoom/orbit/wait`）。
 - 在不暴露生产攻击面的前提下，提供测试模式专用入口：`window.__AW_TEST__`。
 - 补齐 round-1 目标：对齐人类高频操作中的“面板显隐 / 模块显隐 / 选中聚焦 / 材质预览切换”四类语义动作，减少脚本对键盘事件与像素点击的耦合。
+- 补齐 round-2 目标：对齐“顶部区显隐 / 语言切换 / 玩家布局预设（Mission/Command/Intel）”三类 UI 状态动作，进一步降低脚本对界面点击路径的依赖。
 
 ## 2. User Experience & Functionality
 
@@ -24,6 +25,10 @@
   - `module=<controls|overview|chat|overlay|diagnosis|event_link|timeline|details>:<show|hide|toggle>`
   - `focus=selection`（或 `focus_selection=current`）
   - `material_variant=<next|cycle>`
+- `runSteps(steps: string)` round-2 补齐语义：
+  - `top_panel=<show|hide|toggle>`
+  - `locale=<zh|en|toggle>`（或 `language=<zh|en|toggle>`）
+  - `layout=<mission|command|intel>`
 - 通过命令队列将 JS 调用转为主线程逐帧消费，避免并发修改 Bevy 资源。
 - 通过 `getState()` 返回闭环测试关键状态：
   - 连接状态
@@ -63,6 +68,10 @@
   - `PanelModuleVisibility`
   - `FocusSelection`
   - `CycleMaterialVariant`
+- `RunSteps` round-2 扩展步骤类型：
+  - `TopPanelVisibility`
+  - `SetLocale`
+  - `PlayerLayoutPreset`
 
 ### 状态快照
 - Bevy 每帧发布到可读快照：
@@ -85,6 +94,9 @@
 - WTA-8（已完成）：round-1 补齐需求建模与任务拆解（文档任务）。
 - WTA-9（已完成）：落地 `viewer_automation` round-1 语义步骤（panel/module/focus_selection/material_variant）。
 - WTA-10（已完成）：执行 round-1 定向回归并完成文档收口。
+- WTA-11：round-2 补齐需求建模与任务拆解（文档任务）。
+- WTA-12：落地 `viewer_automation` round-2 语义步骤（top_panel/locale/layout）并补齐解析/映射测试。
+- WTA-13：执行 round-2 定向回归、更新手册示例与文档状态收口。
 
 ### Technical Risks
 - Web 线程与 Bevy 主线程并发风险：
@@ -99,7 +111,11 @@
   - PRD-WTA-R1-001 -> WTA-8 -> `test_tier_required`（文档存在性与条目一致性检查）
   - PRD-WTA-R1-002 -> WTA-9 -> `test_tier_required`（`agent_world_viewer` 定向单测）
   - PRD-WTA-R1-003 -> WTA-10 -> `test_tier_required`（`cargo check` + 文档回写追溯）
+  - PRD-WTA-R2-001 -> WTA-11 -> `test_tier_required`（文档存在性与条目一致性检查）
+  - PRD-WTA-R2-002 -> WTA-12 -> `test_tier_required`（`agent_world_viewer` 定向单测）
+  - PRD-WTA-R2-003 -> WTA-13 -> `test_tier_required`（`cargo check` + 手册示例可达 + 文档回写追溯）
 - Decision Log:
   - 采用 `runSteps` 语义扩展而不是新增大量 JS API 方法，避免 `web_test_api.rs` 持续膨胀并贴近单文件上限。
   - round-1 优先补齐“操作语义”而非“原始输入事件回放”，以降低 Web 闭环脚本脆弱性。
+  - round-2 继续优先覆盖“UI 状态切换语义”（top/locale/layout），暂不进入聊天输入文本等高自由度 payload 场景。
 - 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
