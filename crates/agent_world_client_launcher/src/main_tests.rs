@@ -10,8 +10,9 @@ use super::{
         ConfigGuideTargetHint, DisabledActionCta, NextTaskHint, OnboardingStep,
     },
     transfer_window::{
-        recommend_default_from_account, recommend_transfer_account_ids, transfer_amount_presets,
-        WebTransferAccountEntry,
+        recommend_default_from_account, recommend_transfer_account_ids, resolve_transfer_timeline,
+        transfer_amount_presets, TransferTimelineState, WebTransferAccountEntry,
+        WebTransferLifecycleStatus,
     },
     ChainRuntimeStatus, ClientLauncherApp, ConfigIssue, LaunchConfig, LauncherStatus, UiLanguage,
     WebRequestDomain, WebStateSnapshot, EGUI_CJK_FONT_NAME,
@@ -305,6 +306,42 @@ fn recommend_transfer_account_ids_excludes_sender_and_sorts_by_balance() {
             "player-b".to_string(),
             "player-d".to_string(),
             "player-c".to_string()
+        ]
+    );
+}
+
+#[test]
+fn resolve_transfer_timeline_tracks_accepted_pending_final_states() {
+    assert_eq!(
+        resolve_transfer_timeline(WebTransferLifecycleStatus::Accepted),
+        [
+            TransferTimelineState::Active,
+            TransferTimelineState::Waiting,
+            TransferTimelineState::Waiting
+        ]
+    );
+    assert_eq!(
+        resolve_transfer_timeline(WebTransferLifecycleStatus::Pending),
+        [
+            TransferTimelineState::Done,
+            TransferTimelineState::Active,
+            TransferTimelineState::Waiting
+        ]
+    );
+    assert_eq!(
+        resolve_transfer_timeline(WebTransferLifecycleStatus::Confirmed),
+        [
+            TransferTimelineState::Done,
+            TransferTimelineState::Done,
+            TransferTimelineState::Done
+        ]
+    );
+    assert_eq!(
+        resolve_transfer_timeline(WebTransferLifecycleStatus::Failed),
+        [
+            TransferTimelineState::Done,
+            TransferTimelineState::Done,
+            TransferTimelineState::Failed
         ]
     );
 }

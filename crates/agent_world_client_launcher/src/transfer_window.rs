@@ -106,6 +106,14 @@ enum TransferDraftIssue {
     NonceInvalid,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum TransferTimelineState {
+    Waiting,
+    Active,
+    Done,
+    Failed,
+}
+
 fn parse_positive_u64(raw: &str) -> Option<u64> {
     raw.trim().parse::<u64>().ok().filter(|value| *value > 0)
 }
@@ -147,6 +155,33 @@ pub(super) fn recommend_transfer_account_ids(
         .take(limit)
         .map(|account| account.account_id.clone())
         .collect()
+}
+
+pub(super) fn resolve_transfer_timeline(
+    status: WebTransferLifecycleStatus,
+) -> [TransferTimelineState; 3] {
+    match status {
+        WebTransferLifecycleStatus::Accepted => [
+            TransferTimelineState::Active,
+            TransferTimelineState::Waiting,
+            TransferTimelineState::Waiting,
+        ],
+        WebTransferLifecycleStatus::Pending => [
+            TransferTimelineState::Done,
+            TransferTimelineState::Active,
+            TransferTimelineState::Waiting,
+        ],
+        WebTransferLifecycleStatus::Confirmed => [
+            TransferTimelineState::Done,
+            TransferTimelineState::Done,
+            TransferTimelineState::Done,
+        ],
+        WebTransferLifecycleStatus::Failed | WebTransferLifecycleStatus::Timeout => [
+            TransferTimelineState::Done,
+            TransferTimelineState::Done,
+            TransferTimelineState::Failed,
+        ],
+    }
 }
 
 fn is_final_status(status: WebTransferLifecycleStatus) -> bool {
@@ -235,6 +270,72 @@ impl ClientLauncherApp {
             (WebTransferLifecycleStatus::Timeout, UiLanguage::ZhCn) => "超时",
             (WebTransferLifecycleStatus::Timeout, UiLanguage::EnUs) => "Timeout",
         }
+    }
+
+    fn transfer_timeline_stage_label(&self, stage_index: usize) -> &'static str {
+        match (stage_index, self.ui_language) {
+            (0, UiLanguage::ZhCn) => "已受理",
+            (0, UiLanguage::EnUs) => "Accepted",
+            (1, UiLanguage::ZhCn) => "待确认",
+            (1, UiLanguage::EnUs) => "Pending",
+            (2, UiLanguage::ZhCn) => "最终",
+            (2, UiLanguage::EnUs) => "Final",
+            _ => "",
+        }
+    }
+
+    fn transfer_timeline_marker(&self, state: TransferTimelineState) -> &'static str {
+        match state {
+            TransferTimelineState::Waiting => "[ ]",
+            TransferTimelineState::Active => "[>]",
+            TransferTimelineState::Done => "[x]",
+            TransferTimelineState::Failed => "[!]",
+        }
+    }
+
+    fn transfer_timeline_color(&self, state: TransferTimelineState) -> egui::Color32 {
+        match state {
+            TransferTimelineState::Waiting => egui::Color32::from_rgb(148, 148, 148),
+            TransferTimelineState::Active => egui::Color32::from_rgb(74, 116, 168),
+            TransferTimelineState::Done => egui::Color32::from_rgb(62, 152, 92),
+            TransferTimelineState::Failed => egui::Color32::from_rgb(196, 84, 84),
+        }
+    }
+
+    fn render_transfer_timeline(
+        &self,
+        ui: &mut egui::Ui,
+        states: [TransferTimelineState; 3],
+        final_status: Option<WebTransferLifecycleStatus>,
+    ) {
+        ui.horizontal_wrapped(|ui| {
+            for (index, state) in states.iter().enumerate() {
+                let mut stage_text = format!(
+                    "{} {}",
+                    self.transfer_timeline_marker(*state),
+                    self.transfer_timeline_stage_label(index)
+                );
+                if index == 2 {
+                    if let Some(status) = final_status {
+                        if matches!(
+                            status,
+                            WebTransferLifecycleStatus::Confirmed
+                                | WebTransferLifecycleStatus::Failed
+                                | WebTransferLifecycleStatus::Timeout
+                        ) {
+                            stage_text =
+                                format!("{stage_text} ({})", self.transfer_status_text(status));
+                        }
+                    }
+                }
+                ui.small(
+                    egui::RichText::new(stage_text).color(self.transfer_timeline_color(*state)),
+                );
+                if index < 2 {
+                    ui.small("->");
+                }
+            }
+        });
     }
 
     fn transfer_account(&self, account_id: &str) -> Option<&WebTransferAccountEntry> {
@@ -786,11 +887,9 @@ impl ClientLauncherApp {
                 ui.separator();
                 ui.label(self.tr("状态追踪", "Transfer Status"));
                 if let Some(status) = self.transfer_panel_state.tracked_action_status.as_ref() {
-                    let status_text = self.transfer_status_text(status.status);
                     ui.small(format!(
-                        "action_id={} | {} | from={} -> to={} | amount={} | nonce={} | submitted_at={} | updated_at={}",
+                        "action_id={} | from={} -> to={} | amount={} | nonce={} | submitted_at={} | updated_at={}",
                         status.action_id,
-                        status_text,
                         status.from_account_id,
                         status.to_account_id,
                         status.amount,
@@ -798,6 +897,11 @@ impl ClientLauncherApp {
                         status.submitted_at_unix_ms,
                         status.updated_at_unix_ms,
                     ));
+                    self.render_transfer_timeline(
+                        ui,
+                        resolve_transfer_timeline(status.status),
+                        Some(status.status),
+                    );
                     if let Some(error) = status.error.as_deref() {
                         let error_code = status.error_code.as_deref().unwrap_or("unknown");
                         ui.small(
@@ -811,6 +915,15 @@ impl ClientLauncherApp {
                         action_id,
                         self.tr("等待状态更新", "Waiting for status update")
                     ));
+                    self.render_transfer_timeline(
+                        ui,
+                        [
+                            TransferTimelineState::Active,
+                            TransferTimelineState::Waiting,
+                            TransferTimelineState::Waiting,
+                        ],
+                        None,
+                    );
                 }
 
                 ui.separator();
