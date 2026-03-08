@@ -1,6 +1,6 @@
 # Viewer Web 语义化测试 API（Phase 9 发行验收支撑）
 
-审计轮次: 13
+审计轮次: 14
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-web-semantic-test-api.prd.project.md
 
 ## 1. Executive Summary
@@ -10,6 +10,7 @@
 - 补齐 round-1 目标：对齐人类高频操作中的“面板显隐 / 模块显隐 / 选中聚焦 / 材质预览切换”四类语义动作，减少脚本对键盘事件与像素点击的耦合。
 - 补齐 round-2 目标：对齐“顶部区显隐 / 语言切换 / 玩家布局预设（Mission/Command/Intel）”三类 UI 状态动作，进一步降低脚本对界面点击路径的依赖。
 - 补齐 round-3 目标：对齐“聊天消息发送 / Prompt 三字段覆盖提交”两类高频输入动作，减少脚本对 Chat 面板逐控件输入的依赖。
+- 补齐 round-4 目标：对齐“时间轴 seek / 标记过滤 / 标记跳点”三类时间轴操作，减少脚本对 timeline 区块逐按钮点击的依赖。
 
 ## 2. User Experience & Functionality
 
@@ -19,7 +20,7 @@
   - `setMode(mode: "2d" | "3d")`
   - `focus(target: string)`
   - `select(target: string)`
-  - `sendControl(action: "play" | "pause" | "step", payload?: object)`
+  - `sendControl(action: "play" | "pause" | "step" | "seek", payload?: object)`
   - `getState()`
 - `runSteps(steps: string)` round-1 补齐语义：
   - `panel=<show|hide|toggle>`
@@ -35,6 +36,10 @@
   - `prompt_system=<agent_id>|<text|clear>`
   - `prompt_short=<agent_id>|<text|clear>`
   - `prompt_long=<agent_id>|<text|clear>`
+- `runSteps(steps: string)` round-4 补齐语义：
+  - `timeline_seek=<tick>`
+  - `timeline_filter=<err|llm|peak>:<show|hide|toggle>`
+  - `timeline_jump=<err|llm|peak>`
 - 通过命令队列将 JS 调用转为主线程逐帧消费，避免并发修改 Bevy 资源。
 - 通过 `getState()` 返回闭环测试关键状态：
   - 连接状态
@@ -81,6 +86,10 @@
 - `RunSteps` round-3 扩展步骤类型：
   - `SendAgentChat`
   - `ApplyPromptOverride`
+- `RunSteps` round-4 扩展步骤类型：
+  - `TimelineSeek`
+  - `TimelineMarkFilter`
+  - `TimelineMarkJump`
 
 ### 状态快照
 - Bevy 每帧发布到可读快照：
@@ -109,6 +118,9 @@
 - WTA-14（已完成）：round-3 补齐需求建模与任务拆解（聊天发送/Prompt 覆盖提交语义）。
 - WTA-15（已完成）：落地 `viewer_automation` round-3 语义步骤（chat/prompt）并补齐解析/映射测试。
 - WTA-16（已完成）：执行 round-3 定向回归、更新手册示例与文档状态收口。
+- WTA-17（已完成）：round-4 补齐需求建模与任务拆解（timeline seek/filter/jump 语义）。
+- WTA-18：落地 `viewer_automation + web_test_api` round-4 语义步骤（timeline + sendControl.seek）并补齐定向测试。
+- WTA-19：执行 round-4 定向回归、更新手册示例与文档状态收口。
 
 ### Technical Risks
 - Web 线程与 Bevy 主线程并发风险：
@@ -129,9 +141,13 @@
   - PRD-WTA-R3-001 -> WTA-14 -> `test_tier_required`（文档存在性与条目一致性检查）
   - PRD-WTA-R3-002 -> WTA-15 -> `test_tier_required`（`agent_world_viewer` 定向单测）
   - PRD-WTA-R3-003 -> WTA-16 -> `test_tier_required`（`cargo check` + 手册示例可达 + 文档回写追溯）
+  - PRD-WTA-R4-001 -> WTA-17 -> `test_tier_required`（文档存在性与条目一致性检查）
+  - PRD-WTA-R4-002 -> WTA-18 -> `test_tier_required`（`agent_world_viewer` 定向单测）
+  - PRD-WTA-R4-003 -> WTA-19 -> `test_tier_required`（`cargo check` + 手册示例可达 + 文档回写追溯）
 - Decision Log:
   - 采用 `runSteps` 语义扩展而不是新增大量 JS API 方法，避免 `web_test_api.rs` 持续膨胀并贴近单文件上限。
   - round-1 优先补齐“操作语义”而非“原始输入事件回放”，以降低 Web 闭环脚本脆弱性。
   - round-2 继续优先覆盖“UI 状态切换语义”（top/locale/layout），暂不进入聊天输入文本等高自由度 payload 场景。
   - round-3 采用“结构化参数 + `%xx` 文本解码”承载 chat/prompt 文本输入，保持 `runSteps` 单入口而不新增 `sendChat/applyPrompt` 等方法。
+  - round-4 采用“runSteps 承载 timeline 视图语义 + sendControl 承载 seek 控制语义”的双层方案，兼容回放与 live 模式差异（live 下 seek 明确无效回执）。
 - 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
