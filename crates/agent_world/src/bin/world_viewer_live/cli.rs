@@ -97,9 +97,9 @@ impl Default for CliOptions {
             node_id: "viewer-live-node".to_string(),
             node_role: NodeRole::Observer,
             node_tick_ms: 200,
-            pos_slot_duration_ms: 1,
-            pos_ticks_per_slot: 1,
-            pos_proposal_tick_phase: 0,
+            pos_slot_duration_ms: 12_000,
+            pos_ticks_per_slot: 10,
+            pos_proposal_tick_phase: 9,
             pos_adaptive_tick_scheduler_enabled: false,
             pos_slot_clock_genesis_unix_ms: None,
             pos_max_past_slot_lag: 256,
@@ -756,9 +756,9 @@ pub(super) fn print_help() {
     println!("  --node-id <id>    Node identifier (default: viewer-live-node)");
     println!("  --node-role <r>   Node role: sequencer|storage|observer (default: observer)");
     println!("  --node-tick-ms <ms> Node worker poll/fallback interval (default: 200)");
-    println!("  --pos-slot-duration-ms <n> PoS slot duration in milliseconds (default: 1)");
-    println!("  --pos-ticks-per-slot <n> PoS logical ticks per slot (default: 1)");
-    println!("  --pos-proposal-tick-phase <n> Proposal phase within slot tick window (default: 0)");
+    println!("  --pos-slot-duration-ms <n> PoS slot duration in milliseconds (default: 12000)");
+    println!("  --pos-ticks-per-slot <n> PoS logical ticks per slot (default: 10)");
+    println!("  --pos-proposal-tick-phase <n> Proposal phase within slot tick window (default: 9)");
     println!("  --pos-adaptive-tick-scheduler Enable adaptive wait to next logical tick boundary");
     println!("  --pos-no-adaptive-tick-scheduler Disable adaptive scheduler (default)");
     println!(

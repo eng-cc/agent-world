@@ -159,9 +159,9 @@ fn parse_options_defaults() {
     assert_eq!(options.node_id, "viewer-live-node");
     assert_eq!(options.node_role, NodeRole::Observer);
     assert_eq!(options.node_tick_ms, 200);
-    assert_eq!(options.pos_slot_duration_ms, 1);
-    assert_eq!(options.pos_ticks_per_slot, 1);
-    assert_eq!(options.pos_proposal_tick_phase, 0);
+    assert_eq!(options.pos_slot_duration_ms, 12_000);
+    assert_eq!(options.pos_ticks_per_slot, 10);
+    assert_eq!(options.pos_proposal_tick_phase, 9);
     assert!(!options.pos_adaptive_tick_scheduler_enabled);
     assert!(options.pos_slot_clock_genesis_unix_ms.is_none());
     assert_eq!(options.pos_max_past_slot_lag, 256);
