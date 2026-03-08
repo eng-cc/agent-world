@@ -1,12 +1,13 @@
 # Viewer Web 语义化测试 API（Phase 9 发行验收支撑）
 
-审计轮次: 5
+审计轮次: 6
 - 对应项目管理文档: doc/world-simulator/viewer/viewer-web-semantic-test-api.prd.project.md
 
 ## 1. Executive Summary
 - 为 Web 端 `agent_world_viewer` 注入一套稳定的语义化测试 API，降低 Playwright 对像素坐标点击的依赖。
 - 复用现有 `viewer_automation` 步骤执行器，统一测试动作语义（`mode/focus/select/zoom/orbit/wait`）。
 - 在不暴露生产攻击面的前提下，提供测试模式专用入口：`window.__AW_TEST__`。
+- 补齐 round-1 目标：对齐人类高频操作中的“面板显隐 / 模块显隐 / 选中聚焦 / 材质预览切换”四类语义动作，减少脚本对键盘事件与像素点击的耦合。
 
 ## 2. User Experience & Functionality
 
@@ -16,8 +17,13 @@
   - `setMode(mode: "2d" | "3d")`
   - `focus(target: string)`
   - `select(target: string)`
-  - `sendControl(action: "play" | "pause" | "seek", payload?: object)`
+  - `sendControl(action: "play" | "pause" | "step", payload?: object)`
   - `getState()`
+- `runSteps(steps: string)` round-1 补齐语义：
+  - `panel=<show|hide|toggle>`
+  - `module=<controls|overview|chat|overlay|diagnosis|event_link|timeline|details>:<show|hide|toggle>`
+  - `focus=selection`（或 `focus_selection=current`）
+  - `material_variant=<next|cycle>`
 - 通过命令队列将 JS 调用转为主线程逐帧消费，避免并发修改 Bevy 资源。
 - 通过 `getState()` 返回闭环测试关键状态：
   - 连接状态
@@ -32,6 +38,7 @@
 - 不改 Viewer 协议（`ViewerRequest/ViewerResponse` 语义不变）。
 - 不扩展到通用远程控制协议（仅用于 Web UI 测试辅助）。
 - 不在本阶段引入完整 Playwright E2E 套件重写（先提供 API 与最小回归）。
+- 不在本轮覆盖文本输入、鼠标拖拽轨迹细节、IME 组合输入等低层“逐事件复刻”能力。
 
 ## 3. AI System Requirements (If Applicable)
 - N/A: 本专题不新增 AI 专属要求。
@@ -51,6 +58,11 @@
   - `Focus(ViewerAutomationTarget)`
   - `Select(ViewerAutomationTarget)`
   - `SendControl(ViewerControl)`
+- `RunSteps` round-1 扩展步骤类型：
+  - `PanelVisibility`
+  - `PanelModuleVisibility`
+  - `FocusSelection`
+  - `CycleMaterialVariant`
 
 ### 状态快照
 - Bevy 每帧发布到可读快照：
@@ -70,6 +82,9 @@
 - WTA-5：文档状态与 devlog 收口。
 - WTA-6：`testing-manual.md` S6 示例迁移到语义 API。
 - WTA-7：`getState()` 扩展相机语义字段，支撑 zoom 可验证门禁。
+- WTA-8：round-1 补齐需求建模与任务拆解（文档任务）。
+- WTA-9：落地 `viewer_automation` round-1 语义步骤（panel/module/focus_selection/material_variant）。
+- WTA-10：执行 round-1 定向回归并完成文档收口。
 
 ### Technical Risks
 - Web 线程与 Bevy 主线程并发风险：
@@ -80,4 +95,11 @@
   - 缓解：复用已有 `viewer_automation` 解析规则，并对非法输入忽略/记录。
 
 ## 6. Validation & Decision Record
+- Test Plan & Traceability:
+  - PRD-WTA-R1-001 -> WTA-8 -> `test_tier_required`（文档存在性与条目一致性检查）
+  - PRD-WTA-R1-002 -> WTA-9 -> `test_tier_required`（`agent_world_viewer` 定向单测）
+  - PRD-WTA-R1-003 -> WTA-10 -> `test_tier_required`（`cargo check` + 文档回写追溯）
+- Decision Log:
+  - 采用 `runSteps` 语义扩展而不是新增大量 JS API 方法，避免 `web_test_api.rs` 持续膨胀并贴近单文件上限。
+  - round-1 优先补齐“操作语义”而非“原始输入事件回放”，以降低 Web 闭环脚本脆弱性。
 - 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
