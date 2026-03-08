@@ -250,16 +250,28 @@ fn persist_splits_tick_consensus_records_into_hot_snapshot_and_archive() {
         .len();
     assert!(persisted_snapshot_json_len < full_snapshot_json_len);
 
-    let archive: serde_json::Value = serde_json::from_slice(
-        &fs::read(dir.join("tick-consensus.archive.json"))
-            .expect("read tick consensus archive json"),
+    let archive_index: serde_json::Value = serde_json::from_slice(
+        &fs::read(dir.join("tick-consensus.archive.index.json"))
+            .expect("read tick consensus archive index json"),
     )
-    .expect("decode tick consensus archive json");
-    let archived_records = archive
-        .get("archived_records")
+    .expect("decode tick consensus archive index json");
+    let archived_segments = archive_index
+        .get("archived_segments")
         .and_then(|value| value.as_array())
-        .expect("archived tick consensus records");
-    assert_eq!(archived_records.len(), archived_record_count);
+        .expect("archived tick consensus segments");
+    let indexed_record_count = archived_segments
+        .iter()
+        .map(|segment| {
+            segment
+                .get("record_count")
+                .and_then(|value| value.as_u64())
+                .expect("segment record count") as usize
+        })
+        .sum::<usize>();
+    assert_eq!(indexed_record_count, archived_record_count);
+    assert!(!dir.join("tick-consensus.archive.json").exists());
+    assert!(dir.join("tick-consensus.archive.index.json").exists());
+    assert!(dir.join("tick-consensus.archive.segments").exists());
 
     let restored = World::load_from_dir(&dir).expect("restore world with tick archive");
     assert_eq!(
@@ -269,6 +281,120 @@ fn persist_splits_tick_consensus_records_into_hot_snapshot_and_archive() {
     restored
         .verify_tick_consensus_chain()
         .expect("verify restored tick consensus chain");
+
+    let _ = fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn persist_writes_tick_consensus_archive_index_and_segments() {
+    #[derive(serde::Serialize, serde::Deserialize)]
+    struct ArchiveSegmentFile {
+        records: Vec<TickConsensusRecord>,
+    }
+
+    let mut world = World::new();
+    for _ in 0..260 {
+        world.step().expect("step");
+    }
+
+    let dir = temp_dir("persist-tick-consensus-archive-index");
+    world
+        .save_to_dir(&dir)
+        .expect("save world with archive index");
+
+    let persisted_snapshot: serde_json::Value = serde_json::from_slice(
+        &fs::read(dir.join("snapshot.json")).expect("read persisted snapshot json"),
+    )
+    .expect("decode persisted snapshot json");
+    let archive_index: serde_json::Value = serde_json::from_slice(
+        &fs::read(dir.join("tick-consensus.archive.index.json"))
+            .expect("read tick consensus archive index json"),
+    )
+    .expect("decode tick consensus archive index json");
+    assert_eq!(
+        archive_index
+            .get("hot_from_tick")
+            .and_then(|value| value.as_u64()),
+        persisted_snapshot
+            .get("tick_consensus_hot_from_tick")
+            .and_then(|value| value.as_u64())
+    );
+    assert_eq!(
+        archive_index
+            .get("hot_to_tick")
+            .and_then(|value| value.as_u64()),
+        persisted_snapshot
+            .get("tick_consensus_hot_to_tick")
+            .and_then(|value| value.as_u64())
+    );
+    let archived_segments = archive_index
+        .get("archived_segments")
+        .and_then(|value| value.as_array())
+        .expect("archived tick consensus segments");
+    assert!(archived_segments.len() >= 2);
+
+    for segment in archived_segments {
+        let relative_path = segment
+            .get("relative_path")
+            .and_then(|value| value.as_str())
+            .expect("segment relative path");
+        let from_tick = segment
+            .get("from_tick")
+            .and_then(|value| value.as_u64())
+            .expect("segment from tick");
+        let to_tick = segment
+            .get("to_tick")
+            .and_then(|value| value.as_u64())
+            .expect("segment to tick");
+        let record_count = segment
+            .get("record_count")
+            .and_then(|value| value.as_u64())
+            .expect("segment record count") as usize;
+        let expected_content_hash = segment
+            .get("content_hash")
+            .and_then(|value| value.as_str())
+            .expect("segment content hash");
+        let expected_anchor = segment
+            .get("hash_chain_anchor")
+            .and_then(|value| value.as_str())
+            .expect("segment anchor");
+        let segment_file: ArchiveSegmentFile = serde_json::from_slice(
+            &fs::read(dir.join(relative_path)).expect("read archive segment file"),
+        )
+        .expect("decode archive segment file");
+        assert_eq!(segment_file.records.len(), record_count);
+        assert_eq!(
+            segment_file
+                .records
+                .first()
+                .map(|record| record.block.header.tick),
+            Some(from_tick)
+        );
+        assert_eq!(
+            segment_file
+                .records
+                .last()
+                .map(|record| record.block.header.tick),
+            Some(to_tick)
+        );
+        assert_eq!(
+            util::hash_json(&segment_file).expect("hash archive segment file"),
+            expected_content_hash
+        );
+        assert_eq!(
+            segment_file
+                .records
+                .last()
+                .map(|record| record.certificate.block_hash.as_str()),
+            Some(expected_anchor)
+        );
+    }
+
+    let restored = World::load_from_dir(&dir).expect("restore world with archive index");
+    assert_eq!(
+        restored.tick_consensus_records(),
+        world.tick_consensus_records()
+    );
 
     let _ = fs::remove_dir_all(&dir);
 }
