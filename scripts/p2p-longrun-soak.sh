@@ -25,9 +25,9 @@ Options:
   --poll-interval-secs <n>         monitor loop interval (default: 2)
   --curl-timeout-secs <n>          HTTP timeout for status polling (default: 2)
   --node-tick-ms <n>               worker poll/fallback interval milliseconds (default: 200)
-  --pos-slot-duration-ms <n>       PoS slot duration in milliseconds (default: 200)
-  --pos-ticks-per-slot <n>         PoS logical ticks per slot (default: 1)
-  --pos-proposal-tick-phase <n>    PoS proposal phase within slot tick window (default: 0)
+  --pos-slot-duration-ms <n>       PoS slot duration in milliseconds (default: 12000)
+  --pos-ticks-per-slot <n>         PoS logical ticks per slot (default: 10)
+  --pos-proposal-tick-phase <n>    PoS proposal phase within slot tick window (default: 9)
   --pos-adaptive-tick-scheduler    enable PoS adaptive tick scheduler
   --pos-no-adaptive-tick-scheduler disable PoS adaptive scheduler (default)
   --pos-slot-clock-genesis-unix-ms <n>
@@ -211,9 +211,9 @@ startup_timeout_secs=20
 poll_interval_secs=2
 curl_timeout_secs=2
 node_tick_ms=200
-pos_slot_duration_ms=200
-pos_ticks_per_slot=1
-pos_proposal_tick_phase=0
+pos_slot_duration_ms=12000
+pos_ticks_per_slot=10
+pos_proposal_tick_phase=9
 pos_adaptive_tick_scheduler_enabled=0
 pos_slot_clock_genesis_unix_ms=""
 pos_max_past_slot_lag=256
