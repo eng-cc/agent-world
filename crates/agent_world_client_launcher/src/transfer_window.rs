@@ -1,6 +1,7 @@
 use super::*;
 
 const TRANSFER_STATUS_POLL_INTERVAL_MS: u64 = 1_000;
+const TRANSFER_AMOUNT_PRESETS: [u64; 3] = [1, 10, 100];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -107,6 +108,45 @@ enum TransferDraftIssue {
 
 fn parse_positive_u64(raw: &str) -> Option<u64> {
     raw.trim().parse::<u64>().ok().filter(|value| *value > 0)
+}
+
+pub(super) fn transfer_amount_presets() -> &'static [u64] {
+    &TRANSFER_AMOUNT_PRESETS
+}
+
+pub(super) fn recommend_default_from_account(
+    accounts: &[WebTransferAccountEntry],
+) -> Option<String> {
+    accounts
+        .iter()
+        .max_by(|lhs, rhs| {
+            lhs.liquid_balance
+                .cmp(&rhs.liquid_balance)
+                .then_with(|| rhs.account_id.cmp(&lhs.account_id))
+        })
+        .map(|account| account.account_id.clone())
+}
+
+pub(super) fn recommend_transfer_account_ids(
+    accounts: &[WebTransferAccountEntry],
+    from_account_id: &str,
+    limit: usize,
+) -> Vec<String> {
+    let from_account_id = from_account_id.trim();
+    let mut candidates: Vec<&WebTransferAccountEntry> = accounts
+        .iter()
+        .filter(|account| account.account_id.as_str() != from_account_id)
+        .collect();
+    candidates.sort_by(|lhs, rhs| {
+        rhs.liquid_balance
+            .cmp(&lhs.liquid_balance)
+            .then_with(|| lhs.account_id.cmp(&rhs.account_id))
+    });
+    candidates
+        .into_iter()
+        .take(limit)
+        .map(|account| account.account_id.clone())
+        .collect()
 }
 
 fn is_final_status(status: WebTransferLifecycleStatus) -> bool {
@@ -558,6 +598,20 @@ impl ClientLauncherApp {
                     {
                         self.refresh_auto_nonce_hint();
                     }
+                    if self.transfer_draft.from_account_id.trim().is_empty() {
+                        if let Some(recommended_from) = recommend_default_from_account(
+                            self.transfer_panel_state.accounts.as_slice(),
+                        ) {
+                            let button_text = format!(
+                                "{}: {recommended_from}",
+                                self.tr("推荐转出", "Suggested Sender")
+                            );
+                            if ui.button(button_text).clicked() {
+                                self.transfer_draft.from_account_id = recommended_from;
+                                self.refresh_auto_nonce_hint();
+                            }
+                        }
+                    }
                 });
 
                 if let Some(from_account) =
@@ -596,7 +650,29 @@ impl ClientLauncherApp {
                     ui.text_edit_singleline(&mut self.transfer_draft.to_account_id);
                     ui.label(self.tr("金额", "Amount"));
                     ui.text_edit_singleline(&mut self.transfer_draft.amount);
+                    ui.label(self.tr("快捷金额", "Quick Amount"));
+                    for preset in transfer_amount_presets() {
+                        if ui.button(preset.to_string()).clicked() {
+                            self.transfer_draft.amount = preset.to_string();
+                        }
+                    }
                 });
+
+                let recommended_to_accounts = recommend_transfer_account_ids(
+                    self.transfer_panel_state.accounts.as_slice(),
+                    self.transfer_draft.from_account_id.as_str(),
+                    3,
+                );
+                if !recommended_to_accounts.is_empty() {
+                    ui.horizontal_wrapped(|ui| {
+                        ui.label(self.tr("推荐转入", "Suggested Receiver"));
+                        for account_id in &recommended_to_accounts {
+                            if ui.button(account_id.as_str()).clicked() {
+                                self.transfer_draft.to_account_id = account_id.clone();
+                            }
+                        }
+                    });
+                }
 
                 ui.horizontal_wrapped(|ui| {
                     ui.label(self.tr("Nonce 模式", "Nonce Mode"));
@@ -654,6 +730,10 @@ impl ClientLauncherApp {
                         self.transfer_panel_state.pending_history_refresh = true;
                     }
                 });
+                ui.small(self.tr(
+                    "建议：先选转出/转入账户，再点快捷金额，保持自动 nonce 后提交。",
+                    "Tip: choose sender/receiver, use quick amount presets, then submit with auto nonce.",
+                ));
 
                 if self.any_transfer_request_inflight() {
                     ui.small(

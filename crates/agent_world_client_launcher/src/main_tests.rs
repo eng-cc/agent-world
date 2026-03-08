@@ -9,6 +9,10 @@ use super::{
         resolve_config_guide_target, resolve_next_task_hint, resolve_primary_disabled_cta,
         ConfigGuideTargetHint, DisabledActionCta, NextTaskHint, OnboardingStep,
     },
+    transfer_window::{
+        recommend_default_from_account, recommend_transfer_account_ids, transfer_amount_presets,
+        WebTransferAccountEntry,
+    },
     ChainRuntimeStatus, ClientLauncherApp, ConfigIssue, LaunchConfig, LauncherStatus, UiLanguage,
     WebRequestDomain, WebStateSnapshot, EGUI_CJK_FONT_NAME,
 };
@@ -229,6 +233,79 @@ fn encoded_query_pair_formats_key_value_pair() {
     assert_eq!(
         encoded_query_pair("account_id", "player:alice&bob"),
         "account_id=player%3Aalice%26bob"
+    );
+}
+
+#[test]
+fn transfer_amount_presets_match_product_defaults() {
+    assert_eq!(transfer_amount_presets(), &[1, 10, 100]);
+}
+
+#[test]
+fn recommend_default_from_account_uses_highest_liquid_balance() {
+    let accounts = vec![
+        WebTransferAccountEntry {
+            account_id: "player-a".to_string(),
+            liquid_balance: 30,
+            vested_balance: 0,
+            next_nonce_hint: 3,
+        },
+        WebTransferAccountEntry {
+            account_id: "player-b".to_string(),
+            liquid_balance: 90,
+            vested_balance: 0,
+            next_nonce_hint: 1,
+        },
+        WebTransferAccountEntry {
+            account_id: "player-c".to_string(),
+            liquid_balance: 20,
+            vested_balance: 0,
+            next_nonce_hint: 5,
+        },
+    ];
+
+    assert_eq!(
+        recommend_default_from_account(accounts.as_slice()),
+        Some("player-b".to_string())
+    );
+}
+
+#[test]
+fn recommend_transfer_account_ids_excludes_sender_and_sorts_by_balance() {
+    let accounts = vec![
+        WebTransferAccountEntry {
+            account_id: "player-a".to_string(),
+            liquid_balance: 50,
+            vested_balance: 0,
+            next_nonce_hint: 1,
+        },
+        WebTransferAccountEntry {
+            account_id: "player-b".to_string(),
+            liquid_balance: 80,
+            vested_balance: 0,
+            next_nonce_hint: 2,
+        },
+        WebTransferAccountEntry {
+            account_id: "player-c".to_string(),
+            liquid_balance: 20,
+            vested_balance: 0,
+            next_nonce_hint: 3,
+        },
+        WebTransferAccountEntry {
+            account_id: "player-d".to_string(),
+            liquid_balance: 70,
+            vested_balance: 0,
+            next_nonce_hint: 4,
+        },
+    ];
+
+    assert_eq!(
+        recommend_transfer_account_ids(accounts.as_slice(), "player-a", 3),
+        vec![
+            "player-b".to_string(),
+            "player-d".to_string(),
+            "player-c".to_string()
+        ]
     );
 }
 
