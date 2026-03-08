@@ -31,6 +31,7 @@ pub(super) struct ExecutionBridgeState {
 
 const EXECUTION_BRIDGE_RECORD_SCHEMA_V1: u32 = 1;
 const EXECUTION_BRIDGE_RECORD_SCHEMA_V2: u32 = 2;
+const EXECUTION_BRIDGE_DEFAULT_HOT_WINDOW_HEIGHTS: u64 = 32;
 
 fn execution_bridge_record_schema_v1() -> u32 {
     EXECUTION_BRIDGE_RECORD_SCHEMA_V1
@@ -440,6 +441,197 @@ fn load_latest_execution_checkpoint_manifest(
     Ok(Some(manifest))
 }
 
+fn execution_bridge_record_path(execution_records_dir: &Path, height: u64) -> std::path::PathBuf {
+    execution_records_dir.join(format!("{:020}.json", height))
+}
+
+fn list_execution_bridge_record_heights(execution_records_dir: &Path) -> Result<Vec<u64>, String> {
+    if !execution_records_dir.exists() {
+        return Ok(Vec::new());
+    }
+
+    let mut heights = Vec::new();
+    for entry in fs::read_dir(execution_records_dir).map_err(|err| {
+        format!(
+            "read execution records dir {} failed: {}",
+            execution_records_dir.display(),
+            err
+        )
+    })? {
+        let entry = entry.map_err(|err| {
+            format!(
+                "read execution record dir entry under {} failed: {}",
+                execution_records_dir.display(),
+                err
+            )
+        })?;
+        let file_type = entry.file_type().map_err(|err| {
+            format!(
+                "read execution record dir entry type {} failed: {}",
+                entry.path().display(),
+                err
+            )
+        })?;
+        if !file_type.is_file() {
+            continue;
+        }
+        let Some(file_name) = entry.file_name().to_str().map(ToOwned::to_owned) else {
+            continue;
+        };
+        if file_name == "latest.json" || !file_name.ends_with(".json") {
+            continue;
+        }
+        let Some(stem) = file_name.strip_suffix(".json") else {
+            continue;
+        };
+        let Ok(height) = stem.parse::<u64>() else {
+            continue;
+        };
+        heights.push(height);
+    }
+
+    heights.sort_unstable();
+    heights.dedup();
+    Ok(heights)
+}
+
+fn maybe_insert_pin_ref(pinned_refs: &mut BTreeSet<String>, content_ref: Option<&str>) {
+    if let Some(content_ref) = content_ref.filter(|content_ref| !content_ref.is_empty()) {
+        pinned_refs.insert(content_ref.to_string());
+    }
+}
+
+fn collect_execution_bridge_record_retained_refs(
+    record: &ExecutionBridgeRecord,
+    retain_latest_head: bool,
+    retain_hot_window: bool,
+    pinned_refs: &mut BTreeSet<String>,
+) {
+    maybe_insert_pin_ref(pinned_refs, record.commit_log_ref.as_deref());
+    maybe_insert_pin_ref(pinned_refs, record.external_effect_ref.as_deref());
+
+    if retain_latest_head {
+        maybe_insert_pin_ref(pinned_refs, record.latest_state_ref.as_deref());
+    }
+    if retain_latest_head || retain_hot_window {
+        maybe_insert_pin_ref(pinned_refs, record.snapshot_ref.as_deref());
+        maybe_insert_pin_ref(pinned_refs, record.journal_ref.as_deref());
+        if let Some(simulator_mirror) = record.simulator_mirror.as_ref() {
+            pinned_refs.insert(simulator_mirror.snapshot_ref.clone());
+            pinned_refs.insert(simulator_mirror.journal_ref.clone());
+        }
+    }
+}
+
+fn collect_execution_checkpoint_retained_refs(
+    execution_records_dir: &Path,
+    pinned_refs: &mut BTreeSet<String>,
+) -> Result<(), String> {
+    let checkpoint_root = execution_checkpoint_root_dir(execution_records_dir);
+    if !checkpoint_root.exists() {
+        return Ok(());
+    }
+
+    for entry in fs::read_dir(checkpoint_root.as_path()).map_err(|err| {
+        format!(
+            "read execution checkpoint root {} failed: {}",
+            checkpoint_root.display(),
+            err
+        )
+    })? {
+        let entry = entry.map_err(|err| {
+            format!(
+                "read execution checkpoint dir entry under {} failed: {}",
+                checkpoint_root.display(),
+                err
+            )
+        })?;
+        let file_type = entry.file_type().map_err(|err| {
+            format!(
+                "read execution checkpoint dir entry type {} failed: {}",
+                entry.path().display(),
+                err
+            )
+        })?;
+        if !file_type.is_dir() {
+            continue;
+        }
+        let manifest_path = entry.path().join("manifest.json");
+        if !manifest_path.exists() {
+            continue;
+        }
+        let manifest = load_execution_checkpoint_manifest(manifest_path.as_path())?;
+        pinned_refs.extend(manifest.pinned_refs);
+    }
+
+    Ok(())
+}
+
+fn build_execution_bridge_pin_set(
+    execution_records_dir: &Path,
+    hot_window_heights: u64,
+) -> Result<ExecutionBridgePinSet, String> {
+    let record_heights = list_execution_bridge_record_heights(execution_records_dir)?;
+    let Some(latest_height) = record_heights.last().copied() else {
+        let mut pin_set = ExecutionBridgePinSet::default();
+        collect_execution_checkpoint_retained_refs(
+            execution_records_dir,
+            &mut pin_set.pinned_refs,
+        )?;
+        return Ok(pin_set);
+    };
+
+    let retained_hot_window = hot_window_heights.max(1);
+    let hot_window_start_height =
+        latest_height.saturating_sub(retained_hot_window.saturating_sub(1));
+    let mut pin_set = ExecutionBridgePinSet {
+        latest_height: Some(latest_height),
+        hot_window_start_height: Some(hot_window_start_height),
+        pinned_refs: BTreeSet::new(),
+    };
+
+    for height in record_heights {
+        let record = load_execution_bridge_record(
+            execution_bridge_record_path(execution_records_dir, height).as_path(),
+        )?;
+        collect_execution_bridge_record_retained_refs(
+            &record,
+            record.height == latest_height,
+            record.height >= hot_window_start_height,
+            &mut pin_set.pinned_refs,
+        );
+    }
+    collect_execution_checkpoint_retained_refs(execution_records_dir, &mut pin_set.pinned_refs)?;
+
+    Ok(pin_set)
+}
+
+fn sync_execution_bridge_pin_set(
+    execution_records_dir: &Path,
+    execution_store: &LocalCasStore,
+    hot_window_heights: u64,
+) -> Result<ExecutionBridgePinSet, String> {
+    let pin_set = build_execution_bridge_pin_set(execution_records_dir, hot_window_heights)?;
+    let current_pins = execution_store
+        .list_pins()
+        .map_err(|err| format!("list execution store pins failed: {:?}", err))?
+        .into_iter()
+        .collect::<BTreeSet<_>>();
+
+    for stale_ref in current_pins.difference(&pin_set.pinned_refs) {
+        execution_store
+            .unpin(stale_ref.as_str())
+            .map_err(|err| format!("unpin execution store ref {} failed: {:?}", stale_ref, err))?;
+    }
+    for pinned_ref in pin_set.pinned_refs.difference(&current_pins) {
+        execution_store
+            .pin(pinned_ref.as_str())
+            .map_err(|err| format!("pin execution store ref {} failed: {:?}", pinned_ref, err))?;
+    }
+
+    Ok(pin_set)
+}
+
 const EXECUTION_EXTERNAL_EFFECT_SCHEMA_V1: u32 = 1;
 const EXECUTION_EXTERNAL_EFFECT_CONTRACT_CLOSED_WORLD_V1: &str = "closed_world_v1";
 
@@ -500,6 +692,13 @@ pub(super) struct ExecutionReplayPlan {
     pub start_height: u64,
     pub checkpoint: Option<ExecutionCheckpointManifest>,
     pub records: Vec<ExecutionReplayRecordInput>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+struct ExecutionBridgePinSet {
+    latest_height: Option<u64>,
+    hot_window_start_height: Option<u64>,
+    pinned_refs: BTreeSet<String>,
 }
 
 impl ExecutionExternalEffectMaterialization {
@@ -1184,6 +1383,16 @@ impl NodeExecutionHook for NodeRuntimeExecutionDriver {
 
         persist_execution_bridge_state(self.state_path.as_path(), &self.state)?;
         persist_execution_world(self.world_dir.as_path(), &self.execution_world)?;
+        if let Err(err) = sync_execution_bridge_pin_set(
+            self.records_dir.as_path(),
+            &self.execution_store,
+            EXECUTION_BRIDGE_DEFAULT_HOT_WINDOW_HEIGHTS,
+        ) {
+            eprintln!(
+                "execution driver retention pin-set sync failed at height {}: {}",
+                context.height, err
+            );
+        }
 
         Ok(NodeExecutionCommitResult {
             execution_height: context.height,
@@ -1379,6 +1588,19 @@ pub(super) fn bridge_committed_heights(
         state.last_execution_state_root = Some(execution_state_root);
         state.last_node_block_hash = node_block_hash;
         records.push(record);
+    }
+
+    if !records.is_empty() {
+        if let Err(err) = sync_execution_bridge_pin_set(
+            execution_records_dir,
+            execution_store,
+            EXECUTION_BRIDGE_DEFAULT_HOT_WINDOW_HEIGHTS,
+        ) {
+            eprintln!(
+                "execution bridge retention pin-set sync failed after height {}: {}",
+                target_height, err
+            );
+        }
     }
 
     Ok(records)
@@ -1725,6 +1947,57 @@ mod tests {
         record
     }
 
+    fn persist_test_execution_record_with_store_refs(
+        records_dir: &Path,
+        store: &LocalCasStore,
+        height: u64,
+    ) -> ExecutionBridgeRecord {
+        let snapshot_ref = store
+            .put_bytes(format!("record-snapshot-{height}").as_bytes())
+            .expect("store snapshot");
+        let journal_ref = store
+            .put_bytes(format!("record-journal-{height}").as_bytes())
+            .expect("store journal");
+        let simulator_snapshot_ref = store
+            .put_bytes(format!("simulator-snapshot-{height}").as_bytes())
+            .expect("store simulator snapshot");
+        let simulator_journal_ref = store
+            .put_bytes(format!("simulator-journal-{height}").as_bytes())
+            .expect("store simulator journal");
+        let external_effect_ref =
+            persist_test_external_effect(store, "w1", height, format!("node-h{height}").as_str());
+        let record = ExecutionBridgeRecord {
+            latest_state_ref: Some(snapshot_ref.clone()),
+            snapshot_ref: Some(snapshot_ref),
+            journal_ref: Some(journal_ref),
+            external_effect_ref: Some(external_effect_ref),
+            simulator_mirror: Some(ExecutionSimulatorMirrorRecord {
+                action_count: height as usize,
+                rejected_action_count: 0,
+                journal_len: height as usize,
+                snapshot_ref: simulator_snapshot_ref,
+                journal_ref: simulator_journal_ref,
+                state_root: format!("simulator-state-{height}"),
+            }),
+            ..ExecutionBridgeRecord::new_v2(
+                "w1".to_string(),
+                height,
+                Some(format!("node-h{height}")),
+                format!("exec-h{height}"),
+                format!("state-root-{height}"),
+                height as usize,
+                "placeholder-snapshot".to_string(),
+                "placeholder-journal".to_string(),
+                None,
+                None,
+                height as i64 * 1_000,
+            )
+        };
+        persist_execution_bridge_record(records_dir, &record)
+            .expect("persist test execution record with store refs");
+        record
+    }
+
     fn persist_test_external_effect(
         store: &LocalCasStore,
         world_id: &str,
@@ -1927,6 +2200,124 @@ mod tests {
             err.contains("hash mismatch"),
             "unexpected checkpoint corruption error: {err}"
         );
+
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn execution_bridge_pin_set_keeps_latest_head_and_hot_window_refs() {
+        let dir = temp_dir("execution-bridge-pin-set-hot-window");
+        let records_dir = dir.join("records");
+        let store = LocalCasStore::new(dir.join("store"));
+        fs::create_dir_all(records_dir.as_path()).expect("create records dir");
+
+        let mut all_refs = Vec::new();
+        let mut records = Vec::new();
+        for height in 1..=4 {
+            let record = persist_test_execution_record_with_store_refs(
+                records_dir.as_path(),
+                &store,
+                height,
+            );
+            all_refs.extend(record.snapshot_ref.iter().cloned());
+            all_refs.extend(record.journal_ref.iter().cloned());
+            all_refs.extend(record.latest_state_ref.iter().cloned());
+            all_refs.extend(record.external_effect_ref.iter().cloned());
+            if let Some(simulator_mirror) = record.simulator_mirror.as_ref() {
+                all_refs.push(simulator_mirror.snapshot_ref.clone());
+                all_refs.push(simulator_mirror.journal_ref.clone());
+            }
+            records.push(record);
+        }
+        all_refs.sort();
+        all_refs.dedup();
+
+        for content_ref in &all_refs {
+            store.pin(content_ref.as_str()).expect("pre-pin record ref");
+        }
+
+        let pin_set = sync_execution_bridge_pin_set(records_dir.as_path(), &store, 2)
+            .expect("sync execution bridge pin set");
+        assert_eq!(pin_set.latest_height, Some(4));
+        assert_eq!(pin_set.hot_window_start_height, Some(3));
+
+        let actual_pins = store
+            .list_pins()
+            .expect("list pins")
+            .into_iter()
+            .collect::<BTreeSet<_>>();
+        let mut expected_pins = BTreeSet::new();
+        for record in &records {
+            expected_pins.extend(record.external_effect_ref.iter().cloned());
+            if record.height >= 3 {
+                expected_pins.extend(record.snapshot_ref.iter().cloned());
+                expected_pins.extend(record.journal_ref.iter().cloned());
+                if let Some(simulator_mirror) = record.simulator_mirror.as_ref() {
+                    expected_pins.insert(simulator_mirror.snapshot_ref.clone());
+                    expected_pins.insert(simulator_mirror.journal_ref.clone());
+                }
+            }
+            if record.height == 4 {
+                expected_pins.extend(record.latest_state_ref.iter().cloned());
+            }
+        }
+        assert_eq!(actual_pins, expected_pins);
+        assert!(!records[0]
+            .snapshot_ref
+            .as_ref()
+            .is_some_and(|snapshot_ref| actual_pins.contains(snapshot_ref)));
+        assert!(!records[1]
+            .journal_ref
+            .as_ref()
+            .is_some_and(|journal_ref| actual_pins.contains(journal_ref)));
+
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn execution_bridge_pin_set_keeps_checkpoint_refs_outside_hot_window() {
+        let dir = temp_dir("execution-bridge-pin-set-checkpoint");
+        let records_dir = dir.join("records");
+        let store = LocalCasStore::new(dir.join("store"));
+        fs::create_dir_all(records_dir.as_path()).expect("create records dir");
+
+        for height in 1..=3 {
+            let _ = persist_test_execution_record_with_store_refs(
+                records_dir.as_path(),
+                &store,
+                height,
+            );
+        }
+
+        let checkpoint_latest_state_ref = store
+            .put_bytes(b"checkpoint-latest-state")
+            .expect("store checkpoint latest state");
+        let checkpoint_snapshot_ref = store
+            .put_bytes(b"checkpoint-snapshot")
+            .expect("store checkpoint snapshot");
+        let checkpoint_journal_ref = store
+            .put_bytes(b"checkpoint-journal")
+            .expect("store checkpoint journal");
+        let checkpoint = ExecutionCheckpointManifest::new(
+            "w1".to_string(),
+            1,
+            "exec-h1".to_string(),
+            "state-root-1".to_string(),
+            checkpoint_latest_state_ref.clone(),
+            Some(checkpoint_snapshot_ref.clone()),
+            Some(checkpoint_journal_ref.clone()),
+            1_000,
+        )
+        .expect("checkpoint");
+        persist_execution_checkpoint_manifest(records_dir.as_path(), &checkpoint)
+            .expect("persist checkpoint");
+
+        let pin_set = sync_execution_bridge_pin_set(records_dir.as_path(), &store, 1)
+            .expect("sync execution bridge pin set");
+        let actual_pins = pin_set.pinned_refs;
+        assert!(actual_pins.contains(&checkpoint_latest_state_ref));
+        assert!(actual_pins.contains(&checkpoint_snapshot_ref));
+        assert!(actual_pins.contains(&checkpoint_journal_ref));
 
         let _ = fs::remove_dir_all(dir);
     }
