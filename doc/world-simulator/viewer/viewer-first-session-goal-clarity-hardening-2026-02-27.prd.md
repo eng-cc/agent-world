@@ -94,6 +94,9 @@
   - AC-FSGC-005-1: `player_mission_hud_anchor_y` 在隐藏态 + onboarding 可见 + stuck 提示可见时返回值大于“仅 onboarding 可见”场景。
   - AC-FSGC-005-2: 保持其他场景锚点不回退（展开态/无 onboarding/无 stuck）。
   - AC-FSGC-005-3: `test_tier_required` 定向单测通过，覆盖新增分支。
+- 完成态（2026-03-08）:
+  - `player_mission_hud_anchor_y` 已扩展为三参（`panel_hidden/onboarding_visible/stuck_hint_visible`），并在 `stuck_hint_visible=true` 时下移锚点避免与 onboarding 卡叠压。
+  - 已通过 `player_mission_hud_` 与 `stuck_hint_` 定向测试，验证新增分支及既有无进展判定语义无回退。
 
 ## 6. Validation & Decision Record
 - 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。

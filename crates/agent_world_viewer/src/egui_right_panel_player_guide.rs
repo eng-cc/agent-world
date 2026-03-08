@@ -1079,8 +1079,11 @@ pub(super) fn render_player_mission_hud(
         egui::Color32::from_rgb(74, 126, 184)
     };
     let compact_mode = player_mission_hud_compact_mode(layout_state.panel_hidden);
-    let mission_anchor_y =
-        player_mission_hud_anchor_y(layout_state.panel_hidden, onboarding_visible);
+    let mission_anchor_y = player_mission_hud_anchor_y(
+        layout_state.panel_hidden,
+        onboarding_visible,
+        stuck_hint.is_some(),
+    );
     let pulse = ((now_secs * 1.8).sin() * 0.5 + 0.5) as f32;
     let mut action_clicked = false;
     let mut command_clicked = false;
@@ -1349,11 +1352,19 @@ pub(super) fn player_mission_hud_compact_mode(panel_hidden: bool) -> bool {
     !panel_hidden
 }
 
-pub(super) fn player_mission_hud_anchor_y(panel_hidden: bool, onboarding_visible: bool) -> f32 {
+pub(super) fn player_mission_hud_anchor_y(
+    panel_hidden: bool,
+    onboarding_visible: bool,
+    stuck_hint_visible: bool,
+) -> f32 {
     if player_mission_hud_compact_mode(panel_hidden) {
         96.0
     } else if onboarding_visible {
-        214.0
+        if stuck_hint_visible {
+            298.0
+        } else {
+            214.0
+        }
     } else {
         136.0
     }

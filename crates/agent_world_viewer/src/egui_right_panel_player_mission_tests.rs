@@ -127,9 +127,12 @@ fn player_mission_hud_compact_mode_tracks_panel_visibility() {
 
 #[test]
 fn player_mission_hud_anchor_avoids_onboarding_overlap() {
-    assert_eq!(player_mission_hud_anchor_y(false, false), 96.0);
-    assert_eq!(player_mission_hud_anchor_y(true, false), 136.0);
-    assert_eq!(player_mission_hud_anchor_y(true, true), 214.0);
+    assert_eq!(player_mission_hud_anchor_y(false, false, false), 96.0);
+    assert_eq!(player_mission_hud_anchor_y(true, false, false), 136.0);
+    assert_eq!(player_mission_hud_anchor_y(true, true, false), 214.0);
+    assert_eq!(player_mission_hud_anchor_y(true, true, true), 298.0);
+    assert_eq!(player_mission_hud_anchor_y(true, false, true), 136.0);
+    assert_eq!(player_mission_hud_anchor_y(false, true, true), 96.0);
 }
 
 #[test]
