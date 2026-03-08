@@ -16,7 +16,7 @@
 - [x] T9 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 为 nonce/slot/mempool/action_id 补齐术语内联解释。
 - [x] T10 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 新增“最近成功配置画像”保存/恢复/清空闭环。
 - [x] T11 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 落地演示模式一键闭环（安全默认配置 + 串行动作 + 日志提示）。
-- [ ] T12 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 落地本地引导埋点计数与洞察面板（打开/跳过/完成/演示）。
+- [x] T12 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 落地本地引导埋点计数与洞察面板（打开/跳过/完成/演示）。
 
 ## 依赖
 - `doc/world-simulator/prd.md`
@@ -33,6 +33,6 @@
 
 ## 状态
 - 最近更新：2026-03-08
-- 当前阶段: in_progress
-- 当前任务: T12（本地引导埋点）
-- 备注: T0/T1/T2/T3/T4/T5/T6/T7/T8/T9/T10/T11 已完成，T12 待逐步交付并按任务单独提交。
+- 当前阶段: completed
+- 当前任务: 无（PRD-WORLD_SIMULATOR-030 已收口）
+- 备注: T0~T12 已完成，代码/测试/文档均可追溯。

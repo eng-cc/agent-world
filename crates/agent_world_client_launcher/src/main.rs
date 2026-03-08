@@ -790,6 +790,7 @@ struct ClientLauncherApp {
     onboarding_state: OnboardingState,
     ux_state: LauncherUxState,
     demo_mode_phase: DemoModePhase,
+    guidance_insights_open: bool,
     startup_guide_state: StartupGuideState,
     config_window_open: bool,
     transfer_draft: TransferDraft,
@@ -863,6 +864,7 @@ impl Default for ClientLauncherApp {
             onboarding_state,
             ux_state,
             demo_mode_phase: DemoModePhase::Idle,
+            guidance_insights_open: false,
             startup_guide_state: StartupGuideState::default(),
             config_window_open: false,
             transfer_draft: TransferDraft::default(),
@@ -1509,6 +1511,12 @@ impl eframe::App for ClientLauncherApp {
                     self.tr("演示模式状态", "Demo Mode Status"),
                     self.demo_mode_phase_text()
                 ));
+                if ui
+                    .button(self.tr("引导洞察", "Guidance Insights"))
+                    .clicked()
+                {
+                    self.guidance_insights_open = true;
+                }
                 if ui.button(self.tr("打开游戏页", "Open Game Page")).clicked() {
                     let url = self.current_game_url();
                     if let Err(err) = open_browser(url.as_str()) {
@@ -1618,6 +1626,7 @@ impl eframe::App for ClientLauncherApp {
             game_running,
             chain_running,
         );
+        self.show_guidance_insights_window(ctx);
         self.show_startup_guide_window(ctx, &game_required_issues, &chain_required_issues);
         self.llm_settings_panel
             .show(ctx, self.ui_language, &mut self.config);

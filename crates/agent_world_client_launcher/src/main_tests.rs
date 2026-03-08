@@ -912,3 +912,16 @@ fn advance_demo_mode_fails_when_chain_config_is_blocked() {
     app.advance_demo_mode(&[], &[ConfigIssue::ChainNodeIdRequired], false, false);
     assert_eq!(app.demo_mode_phase, DemoModePhase::Failed);
 }
+
+#[test]
+fn guidance_counters_increase_for_open_demo_and_quick_actions() {
+    let mut app = ClientLauncherApp::default();
+    app.open_onboarding_manual();
+    assert_eq!(app.ux_state.onboarding_opened_count, 1);
+
+    app.start_demo_mode_one_click();
+    assert_eq!(app.ux_state.demo_mode_runs_count, 1);
+
+    app.apply_explorer_quick_shortcut(ExplorerQuickShortcut::RecentTxs);
+    assert_eq!(app.ux_state.quick_action_click_count, 1);
+}

@@ -13,6 +13,11 @@ pub(super) struct LauncherUxState {
     pub(super) expert_mode: bool,
     pub(super) last_successful_config: Option<LaunchConfig>,
     pub(super) last_successful_saved_at_unix_ms: Option<i64>,
+    pub(super) onboarding_opened_count: u64,
+    pub(super) onboarding_skipped_count: u64,
+    pub(super) onboarding_completed_count: u64,
+    pub(super) demo_mode_runs_count: u64,
+    pub(super) quick_action_click_count: u64,
 }
 
 impl Default for LauncherUxState {
@@ -22,6 +27,11 @@ impl Default for LauncherUxState {
             expert_mode: false,
             last_successful_config: None,
             last_successful_saved_at_unix_ms: None,
+            onboarding_opened_count: 0,
+            onboarding_skipped_count: 0,
+            onboarding_completed_count: 0,
+            demo_mode_runs_count: 0,
+            quick_action_click_count: 0,
         }
     }
 }
@@ -125,6 +135,15 @@ pub(super) enum DemoModePhase {
     WaitGameRunning,
     Done,
     Failed,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum GuidanceCounter {
+    OnboardingOpened,
+    OnboardingSkipped,
+    OnboardingCompleted,
+    DemoRuns,
+    QuickActionClicks,
 }
 
 pub(super) fn resolve_next_task_hint(
@@ -297,6 +316,24 @@ impl ClientLauncherApp {
         }
     }
 
+    fn increment_guidance_counter(&mut self, counter: GuidanceCounter) {
+        match counter {
+            GuidanceCounter::OnboardingOpened => self.ux_state.onboarding_opened_count += 1,
+            GuidanceCounter::OnboardingSkipped => self.ux_state.onboarding_skipped_count += 1,
+            GuidanceCounter::OnboardingCompleted => self.ux_state.onboarding_completed_count += 1,
+            GuidanceCounter::DemoRuns => self.ux_state.demo_mode_runs_count += 1,
+            GuidanceCounter::QuickActionClicks => self.ux_state.quick_action_click_count += 1,
+        }
+        self.persist_ux_state_or_log(
+            "保存引导计数失败（已降级为会话内状态）",
+            "Persist guidance counters failed (fallback to session-only)",
+        );
+    }
+
+    pub(super) fn record_guided_quick_action_click(&mut self) {
+        self.increment_guidance_counter(GuidanceCounter::QuickActionClicks);
+    }
+
     pub(super) fn maybe_save_last_successful_config_profile(&mut self, game_running: bool) {
         if !game_running {
             return;
@@ -394,6 +431,7 @@ impl ClientLauncherApp {
     pub(super) fn start_demo_mode_one_click(&mut self) {
         self.apply_demo_mode_safe_defaults();
         self.demo_mode_phase = DemoModePhase::StartChainRequested;
+        self.increment_guidance_counter(GuidanceCounter::DemoRuns);
         self.append_log(self.tr(
             "演示模式：已应用安全默认配置，准备串行启动区块链与游戏。",
             "Demo mode: safe defaults applied, preparing serial chain/game startup.",
@@ -576,6 +614,7 @@ impl ClientLauncherApp {
         ) {
             ui.horizontal_wrapped(|ui| {
                 if ui.button(self.config_guide_button_text(target)).clicked() {
+                    self.record_guided_quick_action_click();
                     match target {
                         ConfigGuideTargetHint::Game => self.open_game_config_guide(),
                         ConfigGuideTargetHint::Chain => self.open_chain_config_guide(),
@@ -590,6 +629,7 @@ impl ClientLauncherApp {
                         .button(self.tr("重置新手引导", "Reset Onboarding"))
                         .clicked()
                 {
+                    self.record_guided_quick_action_click();
                     self.reset_onboarding();
                 }
             });
@@ -624,6 +664,7 @@ impl ClientLauncherApp {
             chain_running,
         ) {
             if ui.button(self.disabled_cta_text(cta)).clicked() {
+                self.record_guided_quick_action_click();
                 match cta {
                     DisabledActionCta::EnableChain => {
                         self.config.chain_enabled = true;
@@ -830,6 +871,7 @@ impl ClientLauncherApp {
             self.onboarding_state.step = OnboardingStep::Understand;
         }
         self.onboarding_state.open = true;
+        self.increment_guidance_counter(GuidanceCounter::OnboardingOpened);
         self.append_log(self.tr(
             "已自动打开首次引导（3 步）。",
             "First-run onboarding (3 steps) opened automatically.",
@@ -838,6 +880,7 @@ impl ClientLauncherApp {
 
     pub(super) fn open_onboarding_manual(&mut self) {
         self.onboarding_state.open = true;
+        self.increment_guidance_counter(GuidanceCounter::OnboardingOpened);
     }
 
     pub(super) fn reset_onboarding(&mut self) {
@@ -866,6 +909,11 @@ impl ClientLauncherApp {
         }
 
         if completed {
+            if skipped {
+                self.increment_guidance_counter(GuidanceCounter::OnboardingSkipped);
+            } else {
+                self.increment_guidance_counter(GuidanceCounter::OnboardingCompleted);
+            }
             self.append_log(if skipped {
                 self.tr("已跳过首次引导。", "Onboarding skipped.")
                     .to_string()
@@ -973,6 +1021,51 @@ impl ClientLauncherApp {
         }
 
         self.onboarding_state.open = keep_open;
+    }
+
+    pub(super) fn show_guidance_insights_window(&mut self, ctx: &egui::Context) {
+        if !self.guidance_insights_open {
+            return;
+        }
+
+        let mut keep_open = self.guidance_insights_open;
+        egui::Window::new(self.tr("引导洞察", "Guidance Insights"))
+            .collapsible(false)
+            .resizable(true)
+            .default_width(480.0)
+            .default_height(320.0)
+            .open(&mut keep_open)
+            .show(ctx, |ui| {
+                ui.label(self.tr("本地计数（重启后保留）", "Local counters (persisted)"));
+                ui.separator();
+                ui.small(format!(
+                    "{}: {}",
+                    self.tr("引导打开次数", "Onboarding Opened"),
+                    self.ux_state.onboarding_opened_count
+                ));
+                ui.small(format!(
+                    "{}: {}",
+                    self.tr("引导跳过次数", "Onboarding Skipped"),
+                    self.ux_state.onboarding_skipped_count
+                ));
+                ui.small(format!(
+                    "{}: {}",
+                    self.tr("引导完成次数", "Onboarding Completed"),
+                    self.ux_state.onboarding_completed_count
+                ));
+                ui.small(format!(
+                    "{}: {}",
+                    self.tr("演示模式启动次数", "Demo Mode Runs"),
+                    self.ux_state.demo_mode_runs_count
+                ));
+                ui.small(format!(
+                    "{}: {}",
+                    self.tr("快捷动作点击次数", "Quick Action Clicks"),
+                    self.ux_state.quick_action_click_count
+                ));
+            });
+
+        self.guidance_insights_open = keep_open;
     }
 
     fn render_onboarding_understand_step(

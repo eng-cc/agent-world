@@ -416,6 +416,7 @@ impl ClientLauncherApp {
     }
 
     pub(super) fn apply_explorer_quick_shortcut(&mut self, shortcut: ExplorerQuickShortcut) {
+        self.record_guided_quick_action_click();
         match shortcut {
             ExplorerQuickShortcut::LatestBlock => {
                 self.explorer_panel_state.active_tab = ExplorerTab::Blocks;
