@@ -2,9 +2,9 @@ use super::super::state::{
     ModuleArtifactBidState, ModuleArtifactListingState, ModuleReleaseRequestStatus,
 };
 use super::super::{
-    Action, ActionEnvelope, ActionId, CausedBy, DomainEvent, ModuleActivation, ModuleChangeSet,
-    ModuleProfileChanges, ModuleUpgrade, ProposalDecision, ProposalId, RejectReason, WorldError,
-    WorldEventBody,
+    Action, ActionEnvelope, ActionId, CausedBy, DomainEvent, GovernanceFinalityCertificate,
+    ModuleActivation, ModuleChangeSet, ModuleProfileChanges, ModuleUpgrade, ProposalDecision,
+    ProposalId, RejectReason, WorldError, WorldEventBody,
 };
 use super::event_processing::action_to_event_economy::ensure_profile_field_whitelist;
 use super::World;

@@ -109,6 +109,7 @@
   - 清单回滚：仅允许通过治理撤销事件推进，不允许节点本地手工回滚。
   - 生产节点误开本地 fallback：启动即告警并拒绝进入 `enforce` 状态。
   - 生产路径误调用 `apply_proposal()`：立即拒绝并输出“本地自签路径禁用”错误，禁止 silent fallback。
+  - 生产路径沿用 legacy `Install/Upgrade/Rollback/ModuleReleaseApply`（未携带外部证书）必须拒绝；仅 `*WithFinality` 动作变体允许进入 apply。
   - `ModuleRelease*` 与 release manifest 映射缺失：拒绝激活并要求补齐映射证据。
   - 故障签名标准化：线上不可达/缺失回滚/identity 漂移分别输出 `builtin_release_manifest_unreachable`、`builtin_release_manifest_missing_or_rolled_back`、`builtin_release_manifest_identity_drift`，用于 runbook 与告警分诊。
   - 运行手册锚点：`testing-manual.md` 的 `S11` 必须保持与上述三类阻断信号同口径，作为值守分诊与验收入口。

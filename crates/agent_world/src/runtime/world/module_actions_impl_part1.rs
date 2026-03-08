@@ -390,6 +390,17 @@ impl World {
         Ok(())
     }
 
+    fn apply_module_governance_proposal(
+        &mut self,
+        proposal_id: ProposalId,
+        finality_certificate: Option<&GovernanceFinalityCertificate>,
+    ) -> Result<String, WorldError> {
+        match finality_certificate {
+            Some(certificate) => self.apply_proposal_with_finality(proposal_id, certificate),
+            None => self.apply_proposal(proposal_id),
+        }
+    }
+
     fn apply_install_module_action(
         &mut self,
         action_id: u64,
@@ -397,6 +408,7 @@ impl World {
         manifest: &agent_world_wasm_abi::ModuleManifest,
         activate: bool,
         install_target: ModuleInstallTarget,
+        finality_certificate: Option<&GovernanceFinalityCertificate>,
     ) -> Result<bool, WorldError> {
         if !self.state.agents.contains_key(installer_agent_id) {
             self.append_event(
@@ -560,21 +572,22 @@ impl World {
                 return Ok(true);
             }
 
-            let manifest_hash = match self.apply_proposal(proposal_id) {
-                Ok(hash) => hash,
-                Err(err) => {
-                    self.append_event(
-                        WorldEventBody::Domain(DomainEvent::ActionRejected {
-                            action_id,
-                            reason: RejectReason::RuleDenied {
-                                notes: vec![format!("apply module install rejected: {err:?}")],
-                            },
-                        }),
-                        Some(CausedBy::Action(action_id)),
-                    )?;
-                    return Ok(true);
-                }
-            };
+            let manifest_hash =
+                match self.apply_module_governance_proposal(proposal_id, finality_certificate) {
+                    Ok(hash) => hash,
+                    Err(err) => {
+                        self.append_event(
+                            WorldEventBody::Domain(DomainEvent::ActionRejected {
+                                action_id,
+                                reason: RejectReason::RuleDenied {
+                                    notes: vec![format!("apply module install rejected: {err:?}")],
+                                },
+                            }),
+                            Some(CausedBy::Action(action_id)),
+                        )?;
+                        return Ok(true);
+                    }
+                };
             (proposal_id, manifest_hash)
         };
 
@@ -607,6 +620,7 @@ impl World {
         from_module_version: &str,
         manifest: &agent_world_wasm_abi::ModuleManifest,
         activate: bool,
+        finality_certificate: Option<&GovernanceFinalityCertificate>,
     ) -> Result<bool, WorldError> {
         if !self.state.agents.contains_key(upgrader_agent_id) {
             self.append_event(
@@ -850,21 +864,22 @@ impl World {
             return Ok(true);
         }
 
-        let manifest_hash = match self.apply_proposal(proposal_id) {
-            Ok(hash) => hash,
-            Err(err) => {
-                self.append_event(
-                    WorldEventBody::Domain(DomainEvent::ActionRejected {
-                        action_id,
-                        reason: RejectReason::RuleDenied {
-                            notes: vec![format!("apply module upgrade rejected: {err:?}")],
-                        },
-                    }),
-                    Some(CausedBy::Action(action_id)),
-                )?;
-                return Ok(true);
-            }
-        };
+        let manifest_hash =
+            match self.apply_module_governance_proposal(proposal_id, finality_certificate) {
+                Ok(hash) => hash,
+                Err(err) => {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![format!("apply module upgrade rejected: {err:?}")],
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                }
+            };
 
         self.append_event(
             WorldEventBody::Domain(DomainEvent::ModuleUpgraded {
@@ -892,6 +907,7 @@ impl World {
         operator_agent_id: &str,
         instance_id: &str,
         target_module_version: &str,
+        finality_certificate: Option<&GovernanceFinalityCertificate>,
     ) -> Result<bool, WorldError> {
         if !self.state.agents.contains_key(operator_agent_id) {
             self.append_event(
@@ -1111,21 +1127,22 @@ impl World {
             )?;
             return Ok(true);
         }
-        let manifest_hash = match self.apply_proposal(proposal_id) {
-            Ok(hash) => hash,
-            Err(err) => {
-                self.append_event(
-                    WorldEventBody::Domain(DomainEvent::ActionRejected {
-                        action_id,
-                        reason: RejectReason::RuleDenied {
-                            notes: vec![format!("apply module rollback rejected: {err:?}")],
-                        },
-                    }),
-                    Some(CausedBy::Action(action_id)),
-                )?;
-                return Ok(true);
-            }
-        };
+        let manifest_hash =
+            match self.apply_module_governance_proposal(proposal_id, finality_certificate) {
+                Ok(hash) => hash,
+                Err(err) => {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![format!("apply module rollback rejected: {err:?}")],
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                }
+            };
 
         self.append_event(
             WorldEventBody::Domain(DomainEvent::ModuleRollbackApplied {

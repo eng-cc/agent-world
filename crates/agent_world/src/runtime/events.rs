@@ -12,6 +12,7 @@ use serde_json::Value as JsonValue;
 use std::collections::BTreeMap;
 
 use super::gameplay_state::WarParticipantOutcome;
+use super::governance::GovernanceFinalityCertificate;
 use super::main_token::{
     MainTokenConfig, MainTokenGenesisAllocationBucketState, MainTokenGenesisAllocationPlan,
     MainTokenNodePointsBridgeDistribution, MainTokenTreasuryDistribution,
@@ -174,6 +175,12 @@ pub enum Action {
         manifest: ModuleManifest,
         activate: bool,
     },
+    InstallModuleFromArtifactWithFinality {
+        installer_agent_id: String,
+        manifest: ModuleManifest,
+        activate: bool,
+        finality_certificate: GovernanceFinalityCertificate,
+    },
     InstallModuleToTargetFromArtifact {
         installer_agent_id: String,
         manifest: ModuleManifest,
@@ -181,12 +188,28 @@ pub enum Action {
         #[serde(default)]
         install_target: ModuleInstallTarget,
     },
+    InstallModuleToTargetFromArtifactWithFinality {
+        installer_agent_id: String,
+        manifest: ModuleManifest,
+        activate: bool,
+        #[serde(default)]
+        install_target: ModuleInstallTarget,
+        finality_certificate: GovernanceFinalityCertificate,
+    },
     UpgradeModuleFromArtifact {
         upgrader_agent_id: String,
         instance_id: String,
         from_module_version: String,
         manifest: ModuleManifest,
         activate: bool,
+    },
+    UpgradeModuleFromArtifactWithFinality {
+        upgrader_agent_id: String,
+        instance_id: String,
+        from_module_version: String,
+        manifest: ModuleManifest,
+        activate: bool,
+        finality_certificate: GovernanceFinalityCertificate,
     },
     ModuleReleaseSubmit {
         requester_agent_id: String,
@@ -233,10 +256,21 @@ pub enum Action {
         operator_agent_id: String,
         request_id: u64,
     },
+    ModuleReleaseApplyWithFinality {
+        operator_agent_id: String,
+        request_id: u64,
+        finality_certificate: GovernanceFinalityCertificate,
+    },
     RollbackModuleInstance {
         operator_agent_id: String,
         instance_id: String,
         target_module_version: String,
+    },
+    RollbackModuleInstanceWithFinality {
+        operator_agent_id: String,
+        instance_id: String,
+        target_module_version: String,
+        finality_certificate: GovernanceFinalityCertificate,
     },
     ListModuleArtifactForSale {
         seller_agent_id: String,
@@ -533,10 +567,19 @@ impl Action {
             Action::InstallModuleFromArtifact {
                 installer_agent_id, ..
             }
+            | Action::InstallModuleFromArtifactWithFinality {
+                installer_agent_id, ..
+            }
             | Action::InstallModuleToTargetFromArtifact {
                 installer_agent_id, ..
             } => Some(installer_agent_id.as_str()),
+            Action::InstallModuleToTargetFromArtifactWithFinality {
+                installer_agent_id, ..
+            } => Some(installer_agent_id.as_str()),
             Action::UpgradeModuleFromArtifact {
+                upgrader_agent_id, ..
+            } => Some(upgrader_agent_id.as_str()),
+            Action::UpgradeModuleFromArtifactWithFinality {
                 upgrader_agent_id, ..
             } => Some(upgrader_agent_id.as_str()),
             Action::ModuleReleaseSubmit {
@@ -554,7 +597,13 @@ impl Action {
             | Action::ModuleReleaseApply {
                 operator_agent_id, ..
             }
+            | Action::ModuleReleaseApplyWithFinality {
+                operator_agent_id, ..
+            }
             | Action::RollbackModuleInstance {
+                operator_agent_id, ..
+            }
+            | Action::RollbackModuleInstanceWithFinality {
                 operator_agent_id, ..
             } => Some(operator_agent_id.as_str()),
             Action::ModuleReleaseApproveRole {

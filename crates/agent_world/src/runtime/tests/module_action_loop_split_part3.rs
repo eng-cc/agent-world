@@ -156,6 +156,79 @@ fn set_module_release_attestation_epoch_snapshot(
         .expect("set module release attestation epoch snapshot");
 }
 
+fn prepare_module_release_apply_ready_request(
+    world: &mut World,
+    requester_agent_id: &str,
+    operator_agent_id: &str,
+    module_id: &str,
+) -> u64 {
+    let wasm_bytes = format!("module-release-ready-{module_id}").into_bytes();
+    let wasm_hash = util::sha256_hex(&wasm_bytes);
+    world.submit_action(Action::DeployModuleArtifact {
+        publisher_agent_id: requester_agent_id.to_string(),
+        wasm_hash: wasm_hash.clone(),
+        wasm_bytes,
+    });
+    world.step().expect("deploy module artifact");
+
+    world.submit_action(Action::ModuleReleaseSubmit {
+        requester_agent_id: requester_agent_id.to_string(),
+        manifest: base_manifest(module_id, "0.1.0", &wasm_hash),
+        activate: true,
+        install_target: ModuleInstallTarget::SelfAgent,
+        required_roles: vec!["security".to_string()],
+        profile_changes: ModuleProfileChanges::default(),
+    });
+    world.step().expect("submit module release request");
+    let request_id = match &world.journal().events.last().expect("submit event").body {
+        WorldEventBody::Domain(DomainEvent::ModuleReleaseRequested { request_id, .. }) => {
+            *request_id
+        }
+        other => panic!("expected module release requested event: {other:?}"),
+    };
+
+    world.submit_action(Action::ModuleReleaseShadow {
+        operator_agent_id: operator_agent_id.to_string(),
+        request_id,
+    });
+    world.step().expect("shadow module release request");
+    bind_release_roles(world, operator_agent_id, operator_agent_id, &["security"]);
+    world.submit_action(Action::ModuleReleaseApproveRole {
+        approver_agent_id: operator_agent_id.to_string(),
+        request_id,
+        role: "security".to_string(),
+    });
+    world.step().expect("approve module release role");
+    set_module_release_attestation_epoch_snapshot(
+        world,
+        2,
+        &[LOCAL_FINALITY_SIGNER_1, LOCAL_FINALITY_SIGNER_2],
+    );
+    for (index, signer_node_id) in [LOCAL_FINALITY_SIGNER_1, LOCAL_FINALITY_SIGNER_2]
+        .iter()
+        .enumerate()
+    {
+        world.submit_action(Action::ModuleReleaseSubmitAttestation {
+            operator_agent_id: operator_agent_id.to_string(),
+            request_id,
+            signer_node_id: signer_node_id.to_string(),
+            platform: "linux-x86_64".to_string(),
+            build_manifest_hash: util::sha256_hex(
+                format!("release-ready-build-{request_id}-{index}").as_bytes(),
+            ),
+            source_hash: util::sha256_hex(
+                format!("release-ready-source-{request_id}-{index}").as_bytes(),
+            ),
+            wasm_hash: wasm_hash.clone(),
+            proof_cid: format!("bafyreadyapply{request_id}{index:02}"),
+        });
+        world
+            .step()
+            .expect("submit module release attestation before apply");
+    }
+    request_id
+}
+
 #[test]
 fn module_release_state_machine_runs_submit_shadow_approve_apply() {
     let mut world = World::new();
@@ -1552,4 +1625,262 @@ fn rollback_module_instance_rejects_when_target_interface_is_incompatible() {
         .step()
         .expect("reject incompatible rollback target interface");
     assert_rule_denied_note_for_action(&world, action_id, "exports incompatible");
+}
+
+#[test]
+fn install_module_rejects_without_finality_in_production_policy() {
+    let mut world = World::new();
+    register_agent(&mut world, "owner-1");
+
+    let wasm_bytes = b"module-install-prod-no-finality".to_vec();
+    let wasm_hash = util::sha256_hex(&wasm_bytes);
+    world.submit_action(Action::DeployModuleArtifact {
+        publisher_agent_id: "owner-1".to_string(),
+        wasm_hash: wasm_hash.clone(),
+        wasm_bytes,
+    });
+    world.step().expect("deploy artifact");
+
+    world.enable_production_release_policy();
+    let action_id = world.submit_action(Action::InstallModuleFromArtifact {
+        installer_agent_id: "owner-1".to_string(),
+        manifest: base_manifest("m.loop.prod.install.reject", "0.1.0", &wasm_hash),
+        activate: true,
+    });
+    world.step().expect("reject install without finality");
+    assert_rule_denied_note_for_action(&world, action_id, "local finality path is disabled");
+}
+
+#[test]
+fn upgrade_and_rollback_reject_without_finality_in_production_policy() {
+    let mut world = World::new();
+    register_agent(&mut world, "owner-1");
+
+    let wasm_v1_bytes = b"module-upgrade-rollback-prod-no-finality-v1".to_vec();
+    let wasm_v1_hash = util::sha256_hex(&wasm_v1_bytes);
+    world.submit_action(Action::DeployModuleArtifact {
+        publisher_agent_id: "owner-1".to_string(),
+        wasm_hash: wasm_v1_hash.clone(),
+        wasm_bytes: wasm_v1_bytes,
+    });
+    world.step().expect("deploy v1 artifact");
+    world.submit_action(Action::InstallModuleFromArtifact {
+        installer_agent_id: "owner-1".to_string(),
+        manifest: base_manifest("m.loop.prod.upgrade.reject", "0.1.0", &wasm_v1_hash),
+        activate: true,
+    });
+    world.step().expect("install v1");
+    let instance_id = match &world.journal().events.last().expect("install event").body {
+        WorldEventBody::Domain(DomainEvent::ModuleInstalled { instance_id, .. }) => {
+            instance_id.clone()
+        }
+        other => panic!("expected module installed event: {other:?}"),
+    };
+
+    let wasm_v2_bytes = b"module-upgrade-rollback-prod-no-finality-v2".to_vec();
+    let wasm_v2_hash = util::sha256_hex(&wasm_v2_bytes);
+    world.submit_action(Action::DeployModuleArtifact {
+        publisher_agent_id: "owner-1".to_string(),
+        wasm_hash: wasm_v2_hash.clone(),
+        wasm_bytes: wasm_v2_bytes,
+    });
+    world.step().expect("deploy v2 artifact");
+    world.submit_action(Action::UpgradeModuleFromArtifact {
+        upgrader_agent_id: "owner-1".to_string(),
+        instance_id: instance_id.clone(),
+        from_module_version: "0.1.0".to_string(),
+        manifest: base_manifest("m.loop.prod.upgrade.reject", "0.2.0", &wasm_v2_hash),
+        activate: true,
+    });
+    world.step().expect("upgrade to v2");
+
+    let wasm_v3_bytes = b"module-upgrade-rollback-prod-no-finality-v3".to_vec();
+    let wasm_v3_hash = util::sha256_hex(&wasm_v3_bytes);
+    world.submit_action(Action::DeployModuleArtifact {
+        publisher_agent_id: "owner-1".to_string(),
+        wasm_hash: wasm_v3_hash.clone(),
+        wasm_bytes: wasm_v3_bytes,
+    });
+    world.step().expect("deploy v3 artifact");
+
+    world.enable_production_release_policy();
+    let upgrade_action_id = world.submit_action(Action::UpgradeModuleFromArtifact {
+        upgrader_agent_id: "owner-1".to_string(),
+        instance_id: instance_id.clone(),
+        from_module_version: "0.2.0".to_string(),
+        manifest: base_manifest("m.loop.prod.upgrade.reject", "0.3.0", &wasm_v3_hash),
+        activate: true,
+    });
+    world.step().expect("reject upgrade without finality");
+    assert_rule_denied_note_for_action(
+        &world,
+        upgrade_action_id,
+        "local finality path is disabled",
+    );
+
+    let rollback_action_id = world.submit_action(Action::RollbackModuleInstance {
+        operator_agent_id: "owner-1".to_string(),
+        instance_id,
+        target_module_version: "0.1.0".to_string(),
+    });
+    world.step().expect("reject rollback without finality");
+    assert_rule_denied_note_for_action(
+        &world,
+        rollback_action_id,
+        "local finality path is disabled",
+    );
+}
+
+#[test]
+fn install_upgrade_rollback_with_finality_succeed_in_production_policy() {
+    let mut world = World::new();
+    register_agent(&mut world, "owner-1");
+    set_test_governance_finality_epoch_snapshot(
+        &mut world,
+        2,
+        &[TEST_FINALITY_SIGNER_NODE_1, TEST_FINALITY_SIGNER_NODE_2],
+    );
+
+    let wasm_v1_bytes = b"module-with-finality-prod-v1".to_vec();
+    let wasm_v1_hash = util::sha256_hex(&wasm_v1_bytes);
+    world.submit_action(Action::DeployModuleArtifact {
+        publisher_agent_id: "owner-1".to_string(),
+        wasm_hash: wasm_v1_hash.clone(),
+        wasm_bytes: wasm_v1_bytes,
+    });
+    world.step().expect("deploy v1 artifact");
+
+    world.enable_production_release_policy();
+    let install_manifest = base_manifest("m.loop.prod.with-finality", "0.1.0", &wasm_v1_hash);
+    let install_finality = derive_module_action_finality_certificate(&world, |simulated| {
+        simulated.submit_action(Action::InstallModuleFromArtifact {
+            installer_agent_id: "owner-1".to_string(),
+            manifest: install_manifest.clone(),
+            activate: true,
+        });
+    });
+    world.submit_action(Action::InstallModuleFromArtifactWithFinality {
+        installer_agent_id: "owner-1".to_string(),
+        manifest: install_manifest,
+        activate: true,
+        finality_certificate: install_finality,
+    });
+    world.step().expect("install with finality");
+    let instance_id = match &world.journal().events.last().expect("install event").body {
+        WorldEventBody::Domain(DomainEvent::ModuleInstalled { instance_id, .. }) => {
+            instance_id.clone()
+        }
+        other => panic!("expected module installed event: {other:?}"),
+    };
+
+    let wasm_v2_bytes = b"module-with-finality-prod-v2".to_vec();
+    let wasm_v2_hash = util::sha256_hex(&wasm_v2_bytes);
+    world.submit_action(Action::DeployModuleArtifact {
+        publisher_agent_id: "owner-1".to_string(),
+        wasm_hash: wasm_v2_hash.clone(),
+        wasm_bytes: wasm_v2_bytes,
+    });
+    world.step().expect("deploy v2 artifact");
+    let upgrade_manifest = base_manifest("m.loop.prod.with-finality", "0.2.0", &wasm_v2_hash);
+    let upgrade_finality = derive_module_action_finality_certificate(&world, |simulated| {
+        simulated.submit_action(Action::UpgradeModuleFromArtifact {
+            upgrader_agent_id: "owner-1".to_string(),
+            instance_id: instance_id.clone(),
+            from_module_version: "0.1.0".to_string(),
+            manifest: upgrade_manifest.clone(),
+            activate: true,
+        });
+    });
+    world.submit_action(Action::UpgradeModuleFromArtifactWithFinality {
+        upgrader_agent_id: "owner-1".to_string(),
+        instance_id: instance_id.clone(),
+        from_module_version: "0.1.0".to_string(),
+        manifest: upgrade_manifest,
+        activate: true,
+        finality_certificate: upgrade_finality,
+    });
+    world.step().expect("upgrade with finality");
+
+    let rollback_finality = derive_module_action_finality_certificate(&world, |simulated| {
+        simulated.submit_action(Action::RollbackModuleInstance {
+            operator_agent_id: "owner-1".to_string(),
+            instance_id: instance_id.clone(),
+            target_module_version: "0.1.0".to_string(),
+        });
+    });
+    world.submit_action(Action::RollbackModuleInstanceWithFinality {
+        operator_agent_id: "owner-1".to_string(),
+        instance_id: instance_id.clone(),
+        target_module_version: "0.1.0".to_string(),
+        finality_certificate: rollback_finality,
+    });
+    world.step().expect("rollback with finality");
+
+    let instance = world
+        .state()
+        .module_instances
+        .get(&instance_id)
+        .expect("module instance state");
+    assert_eq!(instance.module_version, "0.1.0");
+}
+
+#[test]
+fn module_release_apply_rejects_without_finality_in_production_policy() {
+    let mut world = World::new();
+    register_agent(&mut world, "publisher-1");
+    register_agent(&mut world, "operator-1");
+    let request_id = prepare_module_release_apply_ready_request(
+        &mut world,
+        "publisher-1",
+        "operator-1",
+        "m.loop.release.prod.reject",
+    );
+
+    world.enable_production_release_policy();
+    let action_id = world.submit_action(Action::ModuleReleaseApply {
+        operator_agent_id: "operator-1".to_string(),
+        request_id,
+    });
+    world
+        .step()
+        .expect("reject module release apply without finality");
+    assert_rule_denied_note_for_action(&world, action_id, "local finality path is disabled");
+}
+
+#[test]
+fn module_release_apply_with_finality_succeeds_in_production_policy() {
+    let mut world = World::new();
+    register_agent(&mut world, "publisher-1");
+    register_agent(&mut world, "operator-1");
+    let request_id = prepare_module_release_apply_ready_request(
+        &mut world,
+        "publisher-1",
+        "operator-1",
+        "m.loop.release.prod.with-finality",
+    );
+
+    world.enable_production_release_policy();
+    let finality_certificate = derive_module_action_finality_certificate(&world, |simulated| {
+        simulated.submit_action(Action::ModuleReleaseApply {
+            operator_agent_id: "operator-1".to_string(),
+            request_id,
+        });
+    });
+    world.submit_action(Action::ModuleReleaseApplyWithFinality {
+        operator_agent_id: "operator-1".to_string(),
+        request_id,
+        finality_certificate,
+    });
+    world
+        .step()
+        .expect("apply module release with finality in production");
+
+    assert!(matches!(
+        world
+            .state()
+            .module_release_requests
+            .get(&request_id)
+            .map(|item| item.status),
+        Some(ModuleReleaseRequestStatus::Applied)
+    ));
 }

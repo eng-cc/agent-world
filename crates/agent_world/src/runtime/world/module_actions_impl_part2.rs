@@ -190,6 +190,20 @@ impl World {
                 manifest,
                 *activate,
                 ModuleInstallTarget::SelfAgent,
+                None,
+            ),
+            Action::InstallModuleFromArtifactWithFinality {
+                installer_agent_id,
+                manifest,
+                activate,
+                finality_certificate,
+            } => self.apply_install_module_action(
+                action_id,
+                installer_agent_id.as_str(),
+                manifest,
+                *activate,
+                ModuleInstallTarget::SelfAgent,
+                Some(finality_certificate),
             ),
             Action::InstallModuleToTargetFromArtifact {
                 installer_agent_id,
@@ -202,6 +216,21 @@ impl World {
                 manifest,
                 *activate,
                 install_target.clone(),
+                None,
+            ),
+            Action::InstallModuleToTargetFromArtifactWithFinality {
+                installer_agent_id,
+                manifest,
+                activate,
+                install_target,
+                finality_certificate,
+            } => self.apply_install_module_action(
+                action_id,
+                installer_agent_id.as_str(),
+                manifest,
+                *activate,
+                install_target.clone(),
+                Some(finality_certificate),
             ),
             Action::UpgradeModuleFromArtifact {
                 upgrader_agent_id,
@@ -216,6 +245,23 @@ impl World {
                 from_module_version.as_str(),
                 manifest,
                 *activate,
+                None,
+            ),
+            Action::UpgradeModuleFromArtifactWithFinality {
+                upgrader_agent_id,
+                instance_id,
+                from_module_version,
+                manifest,
+                activate,
+                finality_certificate,
+            } => self.apply_upgrade_module_action(
+                action_id,
+                upgrader_agent_id.as_str(),
+                instance_id.as_str(),
+                from_module_version.as_str(),
+                manifest,
+                *activate,
+                Some(finality_certificate),
             ),
             Action::RollbackModuleInstance {
                 operator_agent_id,
@@ -226,6 +272,19 @@ impl World {
                 operator_agent_id.as_str(),
                 instance_id.as_str(),
                 target_module_version.as_str(),
+                None,
+            ),
+            Action::RollbackModuleInstanceWithFinality {
+                operator_agent_id,
+                instance_id,
+                target_module_version,
+                finality_certificate,
+            } => self.apply_rollback_module_instance_action(
+                action_id,
+                operator_agent_id.as_str(),
+                instance_id.as_str(),
+                target_module_version.as_str(),
+                Some(finality_certificate),
             ),
             Action::ModuleReleaseSubmit {
                 requester_agent_id,
@@ -904,187 +963,22 @@ impl World {
             Action::ModuleReleaseApply {
                 operator_agent_id,
                 request_id,
-            } => {
-                if !self.state.agents.contains_key(operator_agent_id) {
-                    self.append_event(
-                        WorldEventBody::Domain(DomainEvent::ActionRejected {
-                            action_id,
-                            reason: RejectReason::AgentNotFound {
-                                agent_id: operator_agent_id.clone(),
-                            },
-                        }),
-                        Some(CausedBy::Action(action_id)),
-                    )?;
-                    return Ok(true);
-                }
-                let Some(request) = self.state.module_release_requests.get(request_id).cloned()
-                else {
-                    self.append_event(
-                        WorldEventBody::Domain(DomainEvent::ActionRejected {
-                            action_id,
-                            reason: RejectReason::RuleDenied {
-                                notes: vec![format!(
-                                    "module release apply rejected: request not found ({request_id})"
-                                )],
-                            },
-                        }),
-                        Some(CausedBy::Action(action_id)),
-                    )?;
-                    return Ok(true);
-                };
-                if matches!(
-                    request.status,
-                    ModuleReleaseRequestStatus::Requested
-                        | ModuleReleaseRequestStatus::Shadowed
-                        | ModuleReleaseRequestStatus::Rejected
-                        | ModuleReleaseRequestStatus::Applied
-                ) {
-                    self.append_event(
-                        WorldEventBody::Domain(DomainEvent::ActionRejected {
-                            action_id,
-                            reason: RejectReason::RuleDenied {
-                                notes: vec![format!(
-                                    "module release apply rejected: invalid status {:?} for request {}",
-                                    request.status, request_id
-                                )],
-                            },
-                        }),
-                        Some(CausedBy::Action(action_id)),
-                    )?;
-                    return Ok(true);
-                }
-                if !Self::module_release_roles_satisfied(
-                    request.required_roles.as_slice(),
-                    &request.role_approvals,
-                ) {
-                    self.append_event(
-                        WorldEventBody::Domain(DomainEvent::ActionRejected {
-                            action_id,
-                            reason: RejectReason::RuleDenied {
-                                notes: vec![format!(
-                                    "module release apply rejected: required roles are not fully approved for request {}",
-                                    request_id
-                                )],
-                            },
-                        }),
-                        Some(CausedBy::Action(action_id)),
-                    )?;
-                    return Ok(true);
-                }
-                let epoch_id = self.current_governance_epoch();
-                let snapshot = self.governance_finality_epoch_snapshot_for_epoch(epoch_id);
-                let snapshot_signers: BTreeSet<&str> = snapshot
-                    .signer_node_ids
-                    .iter()
-                    .map(String::as_str)
-                    .collect();
-                let aggregated_signers: BTreeSet<String> = request
-                    .attestations
-                    .values()
-                    .filter_map(|attestation| {
-                        let signer_node_id = attestation.signer_node_id.trim();
-                        if snapshot_signers.contains(signer_node_id) {
-                            Some(signer_node_id.to_string())
-                        } else {
-                            None
-                        }
-                    })
-                    .collect();
-                let min_unique_signers = snapshot.effective_min_unique_signers();
-                let aggregated_stake_bps = if snapshot.signer_node_ids.is_empty() {
-                    0
-                } else {
-                    (u128::from(aggregated_signers.len() as u64)
-                        .saturating_mul(10_000)
-                        .saturating_div(u128::from(snapshot.signer_node_ids.len() as u64)))
-                    .min(10_000) as u16
-                };
-                if aggregated_signers.len() < min_unique_signers as usize
-                    || aggregated_stake_bps < snapshot.threshold_bps
-                {
-                    self.append_event(
-                        WorldEventBody::Domain(DomainEvent::ActionRejected {
-                            action_id,
-                            reason: RejectReason::RuleDenied {
-                                notes: vec![format!(
-                                    "module release apply rejected: attestation threshold not met epoch_id={} min_unique_signers={} threshold_bps={} aggregated_signers={} aggregated_stake_bps={} request_id={}",
-                                    epoch_id,
-                                    min_unique_signers,
-                                    snapshot.threshold_bps,
-                                    aggregated_signers.len(),
-                                    aggregated_stake_bps,
-                                    request_id
-                                )],
-                            },
-                        }),
-                        Some(CausedBy::Action(action_id)),
-                    )?;
-                    return Ok(true);
-                }
-                if let Err(reason) =
-                    self.validate_module_release_profile_changes(&request.profile_changes)
-                {
-                    self.append_event(
-                        WorldEventBody::Domain(DomainEvent::ActionRejected {
-                            action_id,
-                            reason: RejectReason::RuleDenied {
-                                notes: vec![format!("module release apply rejected: {reason}")],
-                            },
-                        }),
-                        Some(CausedBy::Action(action_id)),
-                    )?;
-                    return Ok(true);
-                }
-
-                let installer_agent_id = request.requester_agent_id.clone();
-                self.apply_install_module_action(
-                    action_id,
-                    installer_agent_id.as_str(),
-                    &request.manifest,
-                    request.activate,
-                    request.install_target.clone(),
-                )?;
-
-                let (instance_id, module_id, module_version, proposal_id, manifest_hash) =
-                    match self.journal.events.last().map(|event| &event.body) {
-                        Some(WorldEventBody::Domain(DomainEvent::ModuleInstalled {
-                            instance_id,
-                            module_id,
-                            module_version,
-                            proposal_id,
-                            manifest_hash,
-                            ..
-                        })) => (
-                            instance_id.clone(),
-                            module_id.clone(),
-                            module_version.clone(),
-                            *proposal_id,
-                            manifest_hash.clone(),
-                        ),
-                        _ => return Ok(true),
-                    };
-
-                self.apply_module_release_profile_changes(
-                    action_id,
-                    operator_agent_id.as_str(),
-                    proposal_id,
-                    &request.profile_changes,
-                )?;
-                self.append_event(
-                    WorldEventBody::Domain(DomainEvent::ModuleReleaseApplied {
-                        request_id: *request_id,
-                        operator_agent_id: operator_agent_id.clone(),
-                        installer_agent_id,
-                        instance_id,
-                        module_id,
-                        module_version,
-                        proposal_id,
-                        manifest_hash,
-                    }),
-                    Some(CausedBy::Action(action_id)),
-                )?;
-                Ok(true)
-            }
+            } => self.apply_module_release_request_action(
+                action_id,
+                operator_agent_id.as_str(),
+                *request_id,
+                None,
+            ),
+            Action::ModuleReleaseApplyWithFinality {
+                operator_agent_id,
+                request_id,
+                finality_certificate,
+            } => self.apply_module_release_request_action(
+                action_id,
+                operator_agent_id.as_str(),
+                *request_id,
+                Some(finality_certificate),
+            ),
             Action::ListModuleArtifactForSale {
                 seller_agent_id,
                 wasm_hash,
@@ -1691,6 +1585,193 @@ impl World {
             }
             _ => Ok(false),
         }
+    }
+
+    fn apply_module_release_request_action(
+        &mut self,
+        action_id: u64,
+        operator_agent_id: &str,
+        request_id: u64,
+        finality_certificate: Option<&GovernanceFinalityCertificate>,
+    ) -> Result<bool, WorldError> {
+        if !self.state.agents.contains_key(operator_agent_id) {
+            self.append_event(
+                WorldEventBody::Domain(DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::AgentNotFound {
+                        agent_id: operator_agent_id.to_string(),
+                    },
+                }),
+                Some(CausedBy::Action(action_id)),
+            )?;
+            return Ok(true);
+        }
+        let Some(request) = self.state.module_release_requests.get(&request_id).cloned() else {
+            self.append_event(
+                WorldEventBody::Domain(DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::RuleDenied {
+                        notes: vec![format!(
+                            "module release apply rejected: request not found ({request_id})"
+                        )],
+                    },
+                }),
+                Some(CausedBy::Action(action_id)),
+            )?;
+            return Ok(true);
+        };
+        if matches!(
+            request.status,
+            ModuleReleaseRequestStatus::Requested
+                | ModuleReleaseRequestStatus::Shadowed
+                | ModuleReleaseRequestStatus::Rejected
+                | ModuleReleaseRequestStatus::Applied
+        ) {
+            self.append_event(
+                WorldEventBody::Domain(DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::RuleDenied {
+                        notes: vec![format!(
+                            "module release apply rejected: invalid status {:?} for request {}",
+                            request.status, request_id
+                        )],
+                    },
+                }),
+                Some(CausedBy::Action(action_id)),
+            )?;
+            return Ok(true);
+        }
+        if !Self::module_release_roles_satisfied(
+            request.required_roles.as_slice(),
+            &request.role_approvals,
+        ) {
+            self.append_event(
+                WorldEventBody::Domain(DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::RuleDenied {
+                        notes: vec![format!(
+                            "module release apply rejected: required roles are not fully approved for request {}",
+                            request_id
+                        )],
+                    },
+                }),
+                Some(CausedBy::Action(action_id)),
+            )?;
+            return Ok(true);
+        }
+        let epoch_id = self.current_governance_epoch();
+        let snapshot = self.governance_finality_epoch_snapshot_for_epoch(epoch_id);
+        let snapshot_signers: BTreeSet<&str> = snapshot
+            .signer_node_ids
+            .iter()
+            .map(String::as_str)
+            .collect();
+        let aggregated_signers: BTreeSet<String> = request
+            .attestations
+            .values()
+            .filter_map(|attestation| {
+                let signer_node_id = attestation.signer_node_id.trim();
+                if snapshot_signers.contains(signer_node_id) {
+                    Some(signer_node_id.to_string())
+                } else {
+                    None
+                }
+            })
+            .collect();
+        let min_unique_signers = snapshot.effective_min_unique_signers();
+        let aggregated_stake_bps = if snapshot.signer_node_ids.is_empty() {
+            0
+        } else {
+            (u128::from(aggregated_signers.len() as u64)
+                .saturating_mul(10_000)
+                .saturating_div(u128::from(snapshot.signer_node_ids.len() as u64)))
+            .min(10_000) as u16
+        };
+        if aggregated_signers.len() < min_unique_signers as usize
+            || aggregated_stake_bps < snapshot.threshold_bps
+        {
+            self.append_event(
+                WorldEventBody::Domain(DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::RuleDenied {
+                        notes: vec![format!(
+                            "module release apply rejected: attestation threshold not met epoch_id={} min_unique_signers={} threshold_bps={} aggregated_signers={} aggregated_stake_bps={} request_id={}",
+                            epoch_id,
+                            min_unique_signers,
+                            snapshot.threshold_bps,
+                            aggregated_signers.len(),
+                            aggregated_stake_bps,
+                            request_id
+                        )],
+                    },
+                }),
+                Some(CausedBy::Action(action_id)),
+            )?;
+            return Ok(true);
+        }
+        if let Err(reason) = self.validate_module_release_profile_changes(&request.profile_changes)
+        {
+            self.append_event(
+                WorldEventBody::Domain(DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::RuleDenied {
+                        notes: vec![format!("module release apply rejected: {reason}")],
+                    },
+                }),
+                Some(CausedBy::Action(action_id)),
+            )?;
+            return Ok(true);
+        }
+
+        let installer_agent_id = request.requester_agent_id.clone();
+        self.apply_install_module_action(
+            action_id,
+            installer_agent_id.as_str(),
+            &request.manifest,
+            request.activate,
+            request.install_target.clone(),
+            finality_certificate,
+        )?;
+
+        let (instance_id, module_id, module_version, proposal_id, manifest_hash) =
+            match self.journal.events.last().map(|event| &event.body) {
+                Some(WorldEventBody::Domain(DomainEvent::ModuleInstalled {
+                    instance_id,
+                    module_id,
+                    module_version,
+                    proposal_id,
+                    manifest_hash,
+                    ..
+                })) => (
+                    instance_id.clone(),
+                    module_id.clone(),
+                    module_version.clone(),
+                    *proposal_id,
+                    manifest_hash.clone(),
+                ),
+                _ => return Ok(true),
+            };
+
+        self.apply_module_release_profile_changes(
+            action_id,
+            operator_agent_id,
+            proposal_id,
+            &request.profile_changes,
+        )?;
+        self.append_event(
+            WorldEventBody::Domain(DomainEvent::ModuleReleaseApplied {
+                request_id,
+                operator_agent_id: operator_agent_id.to_string(),
+                installer_agent_id,
+                instance_id,
+                module_id,
+                module_version,
+                proposal_id,
+                manifest_hash,
+            }),
+            Some(CausedBy::Action(action_id)),
+        )?;
+        Ok(true)
     }
 
     fn validate_module_release_profile_changes(

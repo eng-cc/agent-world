@@ -1,6 +1,7 @@
 use super::super::*;
 use super::pos;
 use crate::simulator::{ModuleInstallTarget, ResourceKind};
+use ed25519_dalek::{Signer, SigningKey};
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -12,6 +13,10 @@ const SOURCE_MAX_FILES_ENV: &str = "AGENT_WORLD_MODULE_SOURCE_MAX_FILES";
 const SOURCE_COMPILE_TIMEOUT_MS_ENV: &str = "AGENT_WORLD_MODULE_SOURCE_COMPILE_TIMEOUT_MS";
 const SOURCE_SANDBOX_SECRET_ENV: &str = "AGENT_WORLD_SOURCE_SANDBOX_TEST_SECRET";
 static SOURCE_COMPILER_ENV_LOCK: Mutex<()> = Mutex::new(());
+const TEST_FINALITY_SIGNER_NODE_1: &str = "governance.local.finality.signer.1";
+const TEST_FINALITY_SIGNER_SEED_1: &str = "agent-world-governance-local-finality-signer-1-v1";
+const TEST_FINALITY_SIGNER_NODE_2: &str = "governance.local.finality.signer.2";
+const TEST_FINALITY_SIGNER_SEED_2: &str = "agent-world-governance-local-finality-signer-2-v1";
 
 fn register_agent(world: &mut World, agent_id: &str) {
     world.submit_action(Action::RegisterAgent {
@@ -49,6 +54,175 @@ fn base_manifest(module_id: &str, version: &str, wasm_hash: &str) -> ModuleManif
         artifact_identity: Some(super::signed_test_artifact_identity(wasm_hash)),
         limits: ModuleLimits::default(),
     }
+}
+
+fn set_test_governance_finality_epoch_snapshot(
+    world: &mut World,
+    threshold: u16,
+    signer_node_ids: &[&str],
+) {
+    let epoch_len = world
+        .governance_execution_policy()
+        .epoch_length_ticks
+        .max(1);
+    let epoch_id = world.state().time / epoch_len;
+    world
+        .set_governance_finality_epoch_snapshot(GovernanceFinalityEpochSnapshot {
+            epoch_id,
+            threshold,
+            signer_node_ids: signer_node_ids
+                .iter()
+                .map(|signer| signer.to_string())
+                .collect(),
+            ..GovernanceFinalityEpochSnapshot::default()
+        })
+        .expect("set test finality epoch snapshot");
+}
+
+fn test_finality_signing_key(seed_label: &str) -> SigningKey {
+    let seed = util::sha256_hex(seed_label.as_bytes());
+    let seed_bytes = hex::decode(seed).expect("decode test finality seed");
+    let private_key_bytes: [u8; 32] = seed_bytes
+        .as_slice()
+        .try_into()
+        .expect("test finality seed is 32 bytes");
+    SigningKey::from_bytes(&private_key_bytes)
+}
+
+fn test_finality_seed_label(node_id: &str) -> &'static str {
+    match node_id {
+        TEST_FINALITY_SIGNER_NODE_1 => TEST_FINALITY_SIGNER_SEED_1,
+        TEST_FINALITY_SIGNER_NODE_2 => TEST_FINALITY_SIGNER_SEED_2,
+        _ => panic!("missing test finality seed for signer {node_id}"),
+    }
+}
+
+fn extract_latest_module_apply_proposal_id(world: &World) -> ProposalId {
+    world
+        .journal()
+        .events
+        .iter()
+        .rev()
+        .find_map(|event| match &event.body {
+            WorldEventBody::Domain(DomainEvent::ModuleInstalled { proposal_id, .. })
+            | WorldEventBody::Domain(DomainEvent::ModuleUpgraded { proposal_id, .. })
+            | WorldEventBody::Domain(DomainEvent::ModuleRollbackApplied { proposal_id, .. }) => {
+                Some(*proposal_id)
+            }
+            _ => None,
+        })
+        .expect("module apply proposal id")
+}
+
+fn extract_queued_manifest_hash(world: &World, proposal_id: ProposalId) -> String {
+    world
+        .journal()
+        .events
+        .iter()
+        .rev()
+        .find_map(|event| match &event.body {
+            WorldEventBody::Governance(GovernanceEvent::Queued {
+                proposal_id: event_proposal_id,
+                manifest_hash,
+                ..
+            }) if *event_proposal_id == proposal_id => Some(manifest_hash.clone()),
+            _ => None,
+        })
+        .expect("governance queued manifest hash")
+}
+
+fn extract_governance_applied_consensus_height(world: &World, proposal_id: ProposalId) -> u64 {
+    world
+        .journal()
+        .events
+        .iter()
+        .rev()
+        .find_map(|event| match &event.body {
+            WorldEventBody::Governance(GovernanceEvent::Applied {
+                proposal_id: event_proposal_id,
+                consensus_height: Some(consensus_height),
+                ..
+            }) if *event_proposal_id == proposal_id => Some(*consensus_height),
+            _ => None,
+        })
+        .expect("governance applied consensus height")
+}
+
+fn build_external_finality_certificate(
+    world: &World,
+    proposal_id: ProposalId,
+    manifest_hash: &str,
+    consensus_height: u64,
+) -> GovernanceFinalityCertificate {
+    let epoch_len = world
+        .governance_execution_policy()
+        .epoch_length_ticks
+        .max(1);
+    let epoch_id = world.state().time / epoch_len;
+    let snapshot = world
+        .governance_finality_epoch_snapshots()
+        .get(&epoch_id)
+        .cloned()
+        .expect("governance finality snapshot for current epoch");
+    let min_unique_signers = snapshot.effective_min_unique_signers();
+    let mut signatures = BTreeMap::new();
+    for node_id in &snapshot.signer_node_ids {
+        let payload = GovernanceFinalityCertificate::signing_payload_v1(
+            proposal_id,
+            manifest_hash,
+            consensus_height,
+            epoch_id,
+            snapshot.validator_set_hash.as_str(),
+            snapshot.stake_root.as_str(),
+            snapshot.threshold_bps,
+            min_unique_signers,
+            node_id.as_str(),
+        );
+        let signing_key = test_finality_signing_key(test_finality_seed_label(node_id.as_str()));
+        let signature = signing_key.sign(payload.as_slice());
+        signatures.insert(
+            node_id.clone(),
+            format!(
+                "{}{}",
+                GovernanceFinalityCertificate::SIGNATURE_PREFIX_ED25519_V1,
+                hex::encode(signature.to_bytes())
+            ),
+        );
+    }
+
+    GovernanceFinalityCertificate {
+        proposal_id,
+        manifest_hash: manifest_hash.to_string(),
+        consensus_height,
+        epoch_id,
+        validator_set_hash: snapshot.validator_set_hash,
+        stake_root: snapshot.stake_root,
+        threshold_bps: snapshot.threshold_bps,
+        min_unique_signers,
+        threshold: min_unique_signers,
+        signatures,
+    }
+}
+
+fn derive_module_action_finality_certificate(
+    world: &World,
+    submit_action: impl FnOnce(&mut World),
+) -> GovernanceFinalityCertificate {
+    let mut simulated = world.clone();
+    if !simulated
+        .release_security_policy()
+        .allow_local_finality_signing
+    {
+        let mut policy = simulated.release_security_policy().clone();
+        policy.allow_local_finality_signing = true;
+        simulated.set_release_security_policy(policy);
+    }
+    submit_action(&mut simulated);
+    simulated.step().expect("simulate module action finality");
+    let proposal_id = extract_latest_module_apply_proposal_id(&simulated);
+    let manifest_hash = extract_queued_manifest_hash(&simulated, proposal_id);
+    let consensus_height = extract_governance_applied_consensus_height(&simulated, proposal_id);
+    build_external_finality_certificate(world, proposal_id, &manifest_hash, consensus_height)
 }
 
 fn assert_last_rejection_note(world: &World, action_id: ActionId, expected: &str) {

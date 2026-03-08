@@ -139,9 +139,13 @@ impl World {
             | Action::DeployModuleArtifact { .. }
             | Action::CompileModuleArtifactFromSource { .. }
             | Action::InstallModuleFromArtifact { .. }
+            | Action::InstallModuleFromArtifactWithFinality { .. }
             | Action::InstallModuleToTargetFromArtifact { .. }
+            | Action::InstallModuleToTargetFromArtifactWithFinality { .. }
             | Action::UpgradeModuleFromArtifact { .. }
+            | Action::UpgradeModuleFromArtifactWithFinality { .. }
             | Action::RollbackModuleInstance { .. }
+            | Action::RollbackModuleInstanceWithFinality { .. }
             | Action::ModuleReleaseSubmit { .. }
             | Action::ModuleReleaseShadow { .. }
             | Action::ModuleReleaseApproveRole { .. }
@@ -149,6 +153,7 @@ impl World {
             | Action::ModuleReleaseSubmitAttestation { .. }
             | Action::ModuleReleaseReject { .. }
             | Action::ModuleReleaseApply { .. }
+            | Action::ModuleReleaseApplyWithFinality { .. }
             | Action::ListModuleArtifactForSale { .. }
             | Action::BuyModuleArtifact { .. }
             | Action::DelistModuleArtifact { .. }

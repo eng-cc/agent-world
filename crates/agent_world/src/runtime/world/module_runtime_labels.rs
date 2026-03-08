@@ -138,11 +138,23 @@ pub(super) fn action_kind_label(action: &Action) -> &'static str {
             "action.module.compile_artifact_from_source"
         }
         Action::InstallModuleFromArtifact { .. } => "action.module.install_from_artifact",
+        Action::InstallModuleFromArtifactWithFinality { .. } => {
+            "action.module.install_from_artifact_with_finality"
+        }
         Action::InstallModuleToTargetFromArtifact { .. } => {
             "action.module.install_to_target_from_artifact"
         }
+        Action::InstallModuleToTargetFromArtifactWithFinality { .. } => {
+            "action.module.install_to_target_from_artifact_with_finality"
+        }
         Action::UpgradeModuleFromArtifact { .. } => "action.module.upgrade_from_artifact",
+        Action::UpgradeModuleFromArtifactWithFinality { .. } => {
+            "action.module.upgrade_from_artifact_with_finality"
+        }
         Action::RollbackModuleInstance { .. } => "action.module.rollback_instance",
+        Action::RollbackModuleInstanceWithFinality { .. } => {
+            "action.module.rollback_instance_with_finality"
+        }
         Action::ModuleReleaseSubmit { .. } => "action.module_release.submit",
         Action::ModuleReleaseShadow { .. } => "action.module_release.shadow",
         Action::ModuleReleaseApproveRole { .. } => "action.module_release.approve_role",
@@ -150,6 +162,9 @@ pub(super) fn action_kind_label(action: &Action) -> &'static str {
         Action::ModuleReleaseSubmitAttestation { .. } => "action.module_release.submit_attestation",
         Action::ModuleReleaseReject { .. } => "action.module_release.reject",
         Action::ModuleReleaseApply { .. } => "action.module_release.apply",
+        Action::ModuleReleaseApplyWithFinality { .. } => {
+            "action.module_release.apply_with_finality"
+        }
         Action::ListModuleArtifactForSale { .. } => "action.module.list_artifact_for_sale",
         Action::BuyModuleArtifact { .. } => "action.module.buy_artifact",
         Action::DelistModuleArtifact { .. } => "action.module.delist_artifact",

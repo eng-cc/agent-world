@@ -170,7 +170,8 @@ impl World {
                     },
                 }))
             }
-            Action::InstallModuleFromArtifact { .. } => {
+            Action::InstallModuleFromArtifact { .. }
+            | Action::InstallModuleFromArtifactWithFinality { .. } => {
                 Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
                     action_id,
                     reason: RejectReason::RuleDenied {
@@ -180,7 +181,8 @@ impl World {
                     },
                 }))
             }
-            Action::InstallModuleToTargetFromArtifact { .. } => {
+            Action::InstallModuleToTargetFromArtifact { .. }
+            | Action::InstallModuleToTargetFromArtifactWithFinality { .. } => {
                 Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
                     action_id,
                     reason: RejectReason::RuleDenied {
@@ -191,7 +193,8 @@ impl World {
                     },
                 }))
             }
-            Action::UpgradeModuleFromArtifact { .. } => {
+            Action::UpgradeModuleFromArtifact { .. }
+            | Action::UpgradeModuleFromArtifactWithFinality { .. } => {
                 Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
                     action_id,
                     reason: RejectReason::RuleDenied {
@@ -201,7 +204,8 @@ impl World {
                     },
                 }))
             }
-            Action::RollbackModuleInstance { .. } => {
+            Action::RollbackModuleInstance { .. }
+            | Action::RollbackModuleInstanceWithFinality { .. } => {
                 Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
                     action_id,
                     reason: RejectReason::RuleDenied {
@@ -261,7 +265,7 @@ impl World {
                     },
                 }))
             }
-            Action::ModuleReleaseApply { .. } => {
+            Action::ModuleReleaseApply { .. } | Action::ModuleReleaseApplyWithFinality { .. } => {
                 Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
                     action_id,
                     reason: RejectReason::RuleDenied {
