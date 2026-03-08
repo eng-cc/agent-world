@@ -216,6 +216,12 @@ impl ClientLauncherApp {
         }
     }
 
+    pub(super) fn clear_transfer_history_filters(&mut self) {
+        self.transfer_panel_state.history_account_filter.clear();
+        self.transfer_panel_state.history_action_filter.clear();
+        self.transfer_panel_state.pending_history_refresh = true;
+    }
+
     fn maybe_request_transfer_panel_data(&mut self) {
         if self.any_transfer_request_inflight() {
             return;
@@ -739,6 +745,9 @@ impl ClientLauncherApp {
                         .clicked()
                     {
                         self.transfer_panel_state.pending_history_refresh = true;
+                    }
+                    if ui.button(self.tr("清空过滤", "Clear Filters")).clicked() {
+                        self.clear_transfer_history_filters();
                     }
                 });
                 egui::ScrollArea::vertical()

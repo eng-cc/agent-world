@@ -73,7 +73,7 @@
 - [x] TASK-WORLD_SIMULATOR-068 (PRD-WORLD_SIMULATOR-028) [test_tier_required]: 落地启动器区块链浏览器视觉与交互优化（概览分组、状态徽标、筛选恢复、列表-详情协同）并完成 native/web 回归。
 - [x] TASK-WORLD_SIMULATOR-069 (PRD-WORLD_SIMULATOR-029) [test_tier_required]: 完成“启动器全量可用性残余风险收口”PRD 建模、任务拆解与模块文档树回写。
 - [x] TASK-WORLD_SIMULATOR-070 (PRD-WORLD_SIMULATOR-029) [test_tier_required]: 落地配置防回写与请求并发域拆分（native/web 同步），并补齐定向回归测试。
-- [ ] TASK-WORLD_SIMULATOR-071 (PRD-WORLD_SIMULATOR-029) [test_tier_required]: 落地反馈草稿保护、顶栏响应式与转账过滤重置，并完成 native/web 回归。
+- [x] TASK-WORLD_SIMULATOR-071 (PRD-WORLD_SIMULATOR-029) [test_tier_required]: 落地反馈草稿保护、顶栏响应式与转账过滤重置，并完成 native/web 回归。
 
 ## 专题任务映射（2026-03-02 批次）
 - [x] SUBTASK-WORLD_SIMULATOR-20260302-001 (PRD-WORLD_SIMULATOR-001/002/003) [test_tier_required]: `doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.prd.project.md`
@@ -174,10 +174,10 @@
 
 ## 状态
 - 更新日期: 2026-03-08
-- 当前状态: in_progress
-- 当前优先任务: TASK-WORLD_SIMULATOR-071
+- 当前状态: in_progress（等待下一轮需求）
+- 当前优先任务: 无
 - 并行待办: 无
-- 专题映射状态: 2026-03-02 批次 9/9、2026-03-03 批次 4/4、2026-03-04 批次 7/7、2026-03-05 批次 4/4、2026-03-06 批次 6/6 已纳入模块项目管理文档；`TASK-WORLD_SIMULATOR-057/058/059/060/061/062/063/064/065/066/067/068/069/070` 已完成，`TASK-WORLD_SIMULATOR-071` 进行中。
+- 专题映射状态: 2026-03-02 批次 9/9、2026-03-03 批次 4/4、2026-03-04 批次 7/7、2026-03-05 批次 4/4、2026-03-06 批次 6/6 已纳入模块项目管理文档；`TASK-WORLD_SIMULATOR-057/058/059/060/061/062/063/064/065/066/067/068/069/070/071` 已完成。
 - 手册入口状态: `doc/world-simulator/viewer/viewer-manual.md` 为唯一活跃手册入口。
 - 视觉评分模板状态: `doc/world-simulator/prd/acceptance/visual-review-score-card.md` 已纳入文档树，采用卡片式评审覆盖 llm_bootstrap 场景 18 张截图。
 - UI 评审结果状态: `doc/ui_review_result/ui_review_list.md` 已建立，首张待打分卡片为 `doc/ui_review_result/card_2026_03_06_11_50_29.md`。

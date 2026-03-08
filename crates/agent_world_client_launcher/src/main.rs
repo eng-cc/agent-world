@@ -1238,12 +1238,9 @@ impl eframe::App for ClientLauncherApp {
         self.poll_chain_process();
         self.maybe_auto_start_chain();
         self.update_chain_runtime_status();
-        if !self.is_feedback_available() {
-            self.feedback_window_open = false;
-        }
 
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
-            ui.horizontal(|ui| {
+            ui.horizontal_wrapped(|ui| {
                 ui.heading(self.tr("Agent World 客户端启动器", "Agent World Client Launcher"));
                 ui.separator();
                 ui.label(format!(

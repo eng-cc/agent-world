@@ -324,6 +324,20 @@ fn apply_web_snapshot_clears_dirty_flag_when_snapshot_matches_local_config() {
 }
 
 #[test]
+fn clear_transfer_history_filters_resets_filters_and_marks_refresh() {
+    let mut app = ClientLauncherApp::default();
+    app.transfer_panel_state.history_account_filter = "acc-1".to_string();
+    app.transfer_panel_state.history_action_filter = "42".to_string();
+    app.transfer_panel_state.pending_history_refresh = false;
+
+    app.clear_transfer_history_filters();
+
+    assert!(app.transfer_panel_state.history_account_filter.is_empty());
+    assert!(app.transfer_panel_state.history_action_filter.is_empty());
+    assert!(app.transfer_panel_state.pending_history_refresh);
+}
+
+#[test]
 fn probe_chain_status_endpoint_accepts_http_200_response() {
     let listener = TcpListener::bind("127.0.0.1:0").expect("bind test listener");
     let bind = listener.local_addr().expect("listener addr");
