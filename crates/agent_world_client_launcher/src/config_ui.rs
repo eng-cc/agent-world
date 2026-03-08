@@ -81,22 +81,29 @@ impl ClientLauncherApp {
                     if stack_text_fields {
                         ui.vertical(|ui| {
                             ui.label(label);
-                            ui.add_sized(
+                            let response = ui.add_sized(
                                 [ui.available_width(), 0.0],
                                 egui::TextEdit::singleline(value),
                             );
+                            if response.changed() {
+                                self.config_dirty = true;
+                            }
                         });
                     } else {
                         ui.horizontal(|ui| {
                             ui.label(label);
-                            ui.text_edit_singleline(value);
+                            if ui.text_edit_singleline(value).changed() {
+                                self.config_dirty = true;
+                            }
                         });
                     }
                 }
             }
             LauncherUiFieldKind::Checkbox => {
                 if let Some(value) = launcher_checkbox_field_mut(&mut self.config, field.id) {
-                    ui.checkbox(value, label);
+                    if ui.checkbox(value, label).changed() {
+                        self.config_dirty = true;
+                    }
                 }
             }
         }
@@ -146,6 +153,16 @@ impl ClientLauncherApp {
             }
         });
 
+        if self.config_dirty {
+            ui.small(
+                egui::RichText::new(self.tr(
+                    "检测到本地配置改动：轮询快照不会覆盖当前编辑，直到配置与服务端一致。",
+                    "Local config edits detected: polling snapshots will not overwrite current edits until they match server config.",
+                ))
+                .color(egui::Color32::from_rgb(201, 146, 44)),
+            );
+        }
+
         if !has_issue {
             ui.colored_label(
                 egui::Color32::from_rgb(36, 130, 78),
@@ -181,8 +198,8 @@ impl ClientLauncherApp {
         };
         ui.colored_label(egui::Color32::from_rgb(188, 60, 60), summary);
         ui.small(self.tr(
-            "点击“启动游戏/启动区块链”将自动弹出可编辑的配置引导。",
-            "Click Start Game/Start Blockchain to open the editable configuration guide.",
+            "请点击“高级配置”查看并修复具体字段。",
+            "Open Advanced Config to review and fix specific fields.",
         ));
     }
 
