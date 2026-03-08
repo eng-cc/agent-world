@@ -64,6 +64,7 @@
   - AC-12 (PRD-WORLD_RUNTIME-018): 为阈值验签与发布收敛提供可执行基准：`stake/epoch` 校验耗时与“2 epoch 内收敛”均需有固定测试入口与产物。
   - AC-13 (PRD-WORLD_RUNTIME-018): `proposal -> attestation` 证明落盘必须包含 `signer_node_id/platform/build_manifest_hash/source_hash/wasm_hash/proof_cid`，并强校验 `wasm_hash == release request manifest.wasm_hash`，冲突重复证明拒绝。
   - AC-14 (PRD-WORLD_RUNTIME-018): `ModuleReleaseApply` 必须按当前 epoch 快照 signer 集做 attestation 阈值聚合，且仅快照内 signer 计入阈值；阈值不足不得激活 release manifest。
+  - AC-15 (PRD-WORLD_RUNTIME-018): 发布运行手册必须定义并可执行分诊“证明冲突、attestation 阈值不足、manifest 不可达/回滚/漂移”三类阻断场景，并明确主 CI 仅做开发回归与对账，不承担生产发布写入/激活。
 - Non-Goals:
   - 不在本期引入全新加密算法（继续以 ed25519 为主）。
   - 不在本期重构模块业务 ABI 或 gameplay 逻辑。
@@ -108,6 +109,7 @@
   - 生产路径误调用 `apply_proposal()`：立即拒绝并输出“本地自签路径禁用”错误，禁止 silent fallback。
   - `ModuleRelease*` 与 release manifest 映射缺失：拒绝激活并要求补齐映射证据。
   - 故障签名标准化：线上不可达/缺失回滚/identity 漂移分别输出 `builtin_release_manifest_unreachable`、`builtin_release_manifest_missing_or_rolled_back`、`builtin_release_manifest_identity_drift`，用于 runbook 与告警分诊。
+  - 运行手册锚点：`testing-manual.md` 的 `S11` 必须保持与上述三类阻断信号同口径，作为值守分诊与验收入口。
 - Non-Functional Requirements:
   - NFR-OMR-1: 节点模块校验（manifest + identity + signature）单模块验证耗时 `p95 <= 200ms`（本地缓存命中）。
   - NFR-OMR-2: 发布证据（清单、证明签名、证书、链上高度）可追溯完整率 100%。
@@ -138,7 +140,7 @@
 | --- | --- | --- | --- | --- |
 | PRD-WORLD_RUNTIME-016 | TASK-WORLD_RUNTIME-017/018/019/027 | `test_tier_required` | 运行时仅接受线上 manifest + 签名身份用例；`ModuleRelease* -> release manifest` 映射回放一致性校验 | 模块加载与执行合法性 |
 | PRD-WORLD_RUNTIME-017 | TASK-WORLD_RUNTIME-020/021/025/026 | `test_tier_required` + `test_tier_full` | finality 证书外部化、`stake/epoch` 阈值验签、key 轮换验证；本地自签路径禁用测试 | 治理 apply 安全边界 |
-| PRD-WORLD_RUNTIME-018 | TASK-WORLD_RUNTIME-022/023/024/028/029 | `test_tier_required` | 去中心化提案/复构建证明/阈值签名闭环校验 + 主 CI 去发布写入 + 基准指标产物校验 | 发布门禁与工程流程 |
+| PRD-WORLD_RUNTIME-018 | TASK-WORLD_RUNTIME-022/023/024/028/029 | `test_tier_required` | 去中心化提案/复构建证明/阈值签名闭环校验 + 发布 runbook/告警策略 + 主 CI 去发布写入 + 基准指标产物校验 | 发布门禁与工程流程 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |

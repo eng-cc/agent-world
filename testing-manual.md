@@ -134,9 +134,9 @@ env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-u
 ./scripts/sync-m4-builtin-wasm-artifacts.sh --check
 ./scripts/sync-m5-builtin-wasm-artifacts.sh --check
 ```
-- 本地策略（2026-03-06 起）：
-  - 本地仅允许 `--check`；manifest/identity 写入由 CI bot 流程执行。
-  - 非 `--check` 写入需同时满足 `CI=true` 且 `AGENT_WORLD_WASM_SYNC_WRITE_ALLOW=ci-bot`。
+- 本地策略（2026-03-08 起）：
+  - 本地与主 CI 均仅允许 `--check`；生产发布清单写入与激活由发布节点链上流水完成。
+  - `CI=true` 不再作为生产发布写入/激活授权条件；CI 产物仅用于开发回归和可审计对账证据。
 
 ### S1：核心 required 套件（L1）
 ```bash
@@ -358,6 +358,28 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required lon
 - 默认串行执行：`ci-tests full`、`sync-m1/m4/m5 --check`、Web strict、S9/S10。
 - `--quick` 用于缩短 S9/S10 时长并关闭 Web visual baseline。
 - `--dry-run` 用于门禁编排冒烟，不执行真实命令。
+
+### S11：去中心化模块发布运行与告警（world-runtime）
+- 适用范围：线上模块发布（`proposal -> attestation -> apply`）与 builtin 在线清单加载故障分诊。
+- 生产执行边界（强制）：
+  - 生产发布写入/激活只能由发布节点提交链上动作（`ModuleReleaseSubmit*` / `ModuleReleaseApply`）完成。
+  - 主 CI 仅允许执行 `--check` 类回归与对账，不参与生产发布写入、阈值签名或激活判定。
+- 发布前最小验收（建议按顺序）：
+```bash
+env -u RUSTC_WRAPPER cargo test -p agent_world module_release_submit_attestation_ --features test_tier_required -- --nocapture
+env -u RUSTC_WRAPPER cargo test -p agent_world module_release_apply_rejects_when_attestation_threshold_not_met --features test_tier_required -- --nocapture
+env -u RUSTC_WRAPPER cargo test -p agent_world power_bootstrap_release_manifest_full --features test_tier_full -- --nocapture
+```
+- 运行时分诊检索（日志/审计）：
+```bash
+rg -n "conflicting attestation already exists|attestation threshold not met|fault_signature=builtin_release_manifest_" output .tmp
+```
+- 告警策略（发布阻断）：
+| 场景 | 识别信号（日志/事件） | 阻断策略 | 首轮处置 |
+| --- | --- | --- | --- |
+| 证明冲突 | `module release attestation rejected: conflicting attestation already exists for signer=<id> platform=<platform>` | 阻断对应 `request_id` 的继续激活 | 冻结该 `request_id`，核对 `build_manifest_hash/source_hash/wasm_hash/proof_cid`，保留首条证据并重新发起发布单。 |
+| 阈值不足 | `module release apply rejected: attestation threshold not met epoch_id=<id> threshold=<n> aggregated_signers=<m>` | 阻断 `ModuleReleaseApply`，保持旧 `active_manifest_hash` | 对齐当前 `epoch` 快照 signer 集，补齐缺失 signer 证明后重试 apply。 |
+| manifest 不可达/回滚/漂移 | `fault_signature=builtin_release_manifest_unreachable` / `fault_signature=builtin_release_manifest_missing_or_rolled_back` / `fault_signature=builtin_release_manifest_identity_drift` | 阻断 builtin 新版本加载，维持旧版本 | 检查 distfs artifact 可达性、release manifest 条目与 identity 是否一致，修复后再触发加载。 |
 
 ## 改动路径 -> 必跑套件矩阵（针对性执行）
 
