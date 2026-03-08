@@ -9,7 +9,7 @@
 - [x] T2 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 落地主界面任务流卡片（链/游戏/页面）与“下一步建议”渲染。
 - [x] T3 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 完成专家模式切换（默认简化视图 + 高级配置入口保持可达）。
 - [x] T4 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 为关键禁用态按钮补齐就地 CTA（修复配置/启动链/重试）。
-- [ ] T5 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 增强配置引导联动（从任务流与 CTA 直达引导，支持引导重置）。
+- [x] T5 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 增强配置引导联动（从任务流与 CTA 直达引导，支持引导重置）。
 - [ ] T6 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 扩展转账轻量模式（金额预设、账户推荐、提交前引导文案）。
 - [ ] T7 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 新增转账状态时间线展示（accepted/pending/final）。
 - [ ] T8 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 增加浏览器快捷入口（最新区块/最近交易/我的账户）并接入现有查询。
@@ -34,5 +34,5 @@
 ## 状态
 - 最近更新：2026-03-08
 - 当前阶段: in_progress
-- 当前任务: T5（配置引导联动）
-- 备注: T0/T1/T2/T3/T4 已完成，T5~T12 待逐步交付并按任务单独提交。
+- 当前任务: T6（转账轻量模式）
+- 备注: T0/T1/T2/T3/T4/T5 已完成，T6~T12 待逐步交付并按任务单独提交。

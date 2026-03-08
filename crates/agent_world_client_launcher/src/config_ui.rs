@@ -320,6 +320,14 @@ impl ClientLauncherApp {
         self.open_startup_guide(StartupGuideTarget::Chain);
     }
 
+    pub(super) fn open_game_config_guide(&mut self) {
+        self.open_startup_guide(StartupGuideTarget::Game);
+    }
+
+    pub(super) fn open_chain_config_guide(&mut self) {
+        self.open_startup_guide(StartupGuideTarget::Chain);
+    }
+
     pub(super) fn show_startup_guide_window(
         &mut self,
         ctx: &egui::Context,

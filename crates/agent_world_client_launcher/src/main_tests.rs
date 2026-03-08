@@ -6,8 +6,8 @@ use super::{
     parse_chain_role, parse_chain_validators, parse_host_port, parse_port,
     probe_chain_status_endpoint,
     self_guided::{
-        resolve_next_task_hint, resolve_primary_disabled_cta, DisabledActionCta, NextTaskHint,
-        OnboardingStep,
+        resolve_config_guide_target, resolve_next_task_hint, resolve_primary_disabled_cta,
+        ConfigGuideTargetHint, DisabledActionCta, NextTaskHint, OnboardingStep,
     },
     ChainRuntimeStatus, ClientLauncherApp, ConfigIssue, LaunchConfig, LauncherStatus, UiLanguage,
     WebRequestDomain, WebStateSnapshot, EGUI_CJK_FONT_NAME,
@@ -567,6 +567,27 @@ fn resolve_next_task_hint_prioritizes_config_fix_then_start_order() {
         resolve_next_task_hint(true, &[], &[], true, true),
         NextTaskHint::OpenGamePage
     );
+}
+
+#[test]
+fn resolve_config_guide_target_follows_blocking_priority() {
+    assert_eq!(
+        resolve_config_guide_target(
+            true,
+            &[ConfigIssue::ScenarioRequired],
+            &[ConfigIssue::ChainNodeIdRequired],
+        ),
+        Some(ConfigGuideTargetHint::Chain)
+    );
+    assert_eq!(
+        resolve_config_guide_target(true, &[ConfigIssue::ScenarioRequired], &[]),
+        Some(ConfigGuideTargetHint::Game)
+    );
+    assert_eq!(
+        resolve_config_guide_target(false, &[ConfigIssue::ScenarioRequired], &[]),
+        Some(ConfigGuideTargetHint::Game)
+    );
+    assert_eq!(resolve_config_guide_target(true, &[], &[]), None);
 }
 
 #[test]

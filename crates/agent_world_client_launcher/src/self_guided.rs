@@ -106,6 +106,12 @@ pub(super) enum DisabledActionCta {
     FixGameConfig,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum ConfigGuideTargetHint {
+    Game,
+    Chain,
+}
+
 pub(super) fn resolve_next_task_hint(
     chain_enabled: bool,
     game_required_issues: &[ConfigIssue],
@@ -126,6 +132,20 @@ pub(super) fn resolve_next_task_hint(
         return NextTaskHint::StartGame;
     }
     NextTaskHint::OpenGamePage
+}
+
+pub(super) fn resolve_config_guide_target(
+    chain_enabled: bool,
+    game_required_issues: &[ConfigIssue],
+    chain_required_issues: &[ConfigIssue],
+) -> Option<ConfigGuideTargetHint> {
+    if chain_enabled && !chain_required_issues.is_empty() {
+        return Some(ConfigGuideTargetHint::Chain);
+    }
+    if !game_required_issues.is_empty() {
+        return Some(ConfigGuideTargetHint::Game);
+    }
+    None
 }
 
 pub(super) fn resolve_primary_disabled_cta(
@@ -279,6 +299,15 @@ impl ClientLauncherApp {
         }
     }
 
+    fn config_guide_button_text(&self, target: ConfigGuideTargetHint) -> &'static str {
+        match (target, self.ui_language) {
+            (ConfigGuideTargetHint::Game, UiLanguage::ZhCn) => "修复游戏配置（配置引导）",
+            (ConfigGuideTargetHint::Game, UiLanguage::EnUs) => "Fix Game Config (Guide)",
+            (ConfigGuideTargetHint::Chain, UiLanguage::ZhCn) => "修复区块链配置（配置引导）",
+            (ConfigGuideTargetHint::Chain, UiLanguage::EnUs) => "Fix Blockchain Config (Guide)",
+        }
+    }
+
     pub(super) fn render_task_flow_cards(
         &mut self,
         ui: &mut egui::Ui,
@@ -299,6 +328,32 @@ impl ClientLauncherApp {
             egui::RichText::new(self.next_task_hint_text(hint))
                 .color(egui::Color32::from_rgb(74, 116, 168)),
         );
+
+        if let Some(target) = resolve_config_guide_target(
+            self.config.chain_enabled,
+            game_required_issues,
+            chain_required_issues,
+        ) {
+            ui.horizontal_wrapped(|ui| {
+                if ui.button(self.config_guide_button_text(target)).clicked() {
+                    match target {
+                        ConfigGuideTargetHint::Game => self.open_game_config_guide(),
+                        ConfigGuideTargetHint::Chain => self.open_chain_config_guide(),
+                    }
+                    self.append_log(self.tr(
+                        "已从任务流直达配置引导。",
+                        "Opened configuration guide directly from task flow.",
+                    ));
+                }
+                if !self.is_expert_mode()
+                    && ui
+                        .button(self.tr("重置新手引导", "Reset Onboarding"))
+                        .clicked()
+                {
+                    self.reset_onboarding();
+                }
+            });
+        }
 
         ui.horizontal_wrapped(|ui| {
             self.render_chain_task_card(ui, chain_required_issues, chain_running);
@@ -339,13 +394,21 @@ impl ClientLauncherApp {
                         ));
                     }
                     DisabledActionCta::FixChainConfig => {
-                        self.handle_start_chain_click(chain_required_issues);
+                        self.open_chain_config_guide();
+                        self.append_log(self.tr(
+                            "已打开区块链配置引导，请先修复后再试。",
+                            "Blockchain configuration guide opened. Fix it and retry.",
+                        ));
                     }
                     DisabledActionCta::StartChain => {
                         self.start_chain_process();
                     }
                     DisabledActionCta::FixGameConfig => {
-                        self.handle_start_game_click(game_required_issues);
+                        self.open_game_config_guide();
+                        self.append_log(self.tr(
+                            "已打开游戏配置引导，请先修复后再试。",
+                            "Game configuration guide opened. Fix it and retry.",
+                        ));
                     }
                 }
             }
