@@ -60,6 +60,7 @@ mod platform_ops;
 mod self_guided_blocked_actions;
 mod self_guided;
 mod self_guided_error_cards;
+mod self_guided_onboarding_reminder;
 mod self_guided_preflight;
 #[cfg(not(target_arch = "wasm32"))]
 mod transfer_entry;
@@ -819,7 +820,10 @@ impl Default for ClientLauncherApp {
     fn default() -> Self {
         let config = LaunchConfig::default();
         let ux_state = self_guided::load_launcher_ux_state();
-        let onboarding_state = OnboardingState::from_persisted(ux_state.onboarding_completed);
+        let onboarding_state = OnboardingState::from_persisted(
+            ux_state.onboarding_completed,
+            ux_state.onboarding_dismissed,
+        );
         let (web_api_tx, web_api_rx) = mpsc::channel::<WebApiEvent>();
         #[cfg(not(target_arch = "wasm32"))]
         let control_url_from_env = env::var(CLIENT_LAUNCHER_CONTROL_URL_ENV)
@@ -1392,6 +1396,11 @@ impl eframe::App for ClientLauncherApp {
                 &chain_required_issues,
             );
             ui.separator();
+
+            self.render_onboarding_reminder_banner(ui);
+            if self.should_show_onboarding_reminder() {
+                ui.separator();
+            }
 
             self.render_startup_error_cards(ui, &game_required_issues, &chain_required_issues);
             ui.separator();

@@ -10,6 +10,7 @@ const UX_STATE_STORAGE_KEY: &str = "agent_world_launcher_ux_state_v1";
 #[serde(default)]
 pub(super) struct LauncherUxState {
     pub(super) onboarding_completed: bool,
+    pub(super) onboarding_dismissed: bool,
     pub(super) expert_mode: bool,
     pub(super) last_successful_config: Option<LaunchConfig>,
     pub(super) last_successful_saved_at_unix_ms: Option<i64>,
@@ -24,6 +25,7 @@ impl Default for LauncherUxState {
     fn default() -> Self {
         Self {
             onboarding_completed: false,
+            onboarding_dismissed: false,
             expert_mode: false,
             last_successful_config: None,
             last_successful_saved_at_unix_ms: None,
@@ -139,7 +141,7 @@ pub(super) enum DemoModePhase {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum GuidanceCounter {
+pub(super) enum GuidanceCounter {
     OnboardingOpened,
     OnboardingSkipped,
     OnboardingCompleted,
@@ -210,15 +212,17 @@ pub(super) struct OnboardingState {
     pub(super) step: OnboardingStep,
     pub(super) auto_open_checked: bool,
     pub(super) completed: bool,
+    pub(super) dismissed: bool,
 }
 
 impl OnboardingState {
-    pub(super) fn from_persisted(completed: bool) -> Self {
+    pub(super) fn from_persisted(completed: bool, dismissed: bool) -> Self {
         Self {
             open: false,
             step: OnboardingStep::Understand,
             auto_open_checked: false,
             completed,
+            dismissed,
         }
     }
 }
@@ -308,7 +312,7 @@ impl ClientLauncherApp {
         });
     }
 
-    fn persist_ux_state_or_log(&mut self, _context_zh: &str, _context_en: &str) {
+    pub(super) fn persist_ux_state_or_log(&mut self, _context_zh: &str, _context_en: &str) {
         #[cfg(not(test))]
         {
             if let Err(err) = save_launcher_ux_state(&self.ux_state) {
@@ -317,7 +321,7 @@ impl ClientLauncherApp {
         }
     }
 
-    fn increment_guidance_counter(&mut self, counter: GuidanceCounter) {
+    pub(super) fn increment_guidance_counter(&mut self, counter: GuidanceCounter) {
         match counter {
             GuidanceCounter::OnboardingOpened => self.ux_state.onboarding_opened_count += 1,
             GuidanceCounter::OnboardingSkipped => self.ux_state.onboarding_skipped_count += 1,
@@ -791,7 +795,7 @@ impl ClientLauncherApp {
             return;
         }
         self.onboarding_state.auto_open_checked = true;
-        if self.onboarding_state.completed {
+        if self.onboarding_state.completed || self.onboarding_state.dismissed {
             return;
         }
 
@@ -813,22 +817,31 @@ impl ClientLauncherApp {
     }
 
     pub(super) fn open_onboarding_manual(&mut self) {
+        self.onboarding_state.dismissed = false;
+        self.ux_state.onboarding_dismissed = false;
+        self.persist_ux_state_or_log(
+            "保存引导状态失败（已降级为会话内状态）",
+            "Persist onboarding state failed (fallback to session-only)",
+        );
         self.onboarding_state.open = true;
         self.increment_guidance_counter(GuidanceCounter::OnboardingOpened);
     }
 
     pub(super) fn reset_onboarding(&mut self) {
+        self.set_onboarding_completed(false, false);
         self.onboarding_state.open = true;
         self.onboarding_state.step = OnboardingStep::Understand;
         self.onboarding_state.auto_open_checked = true;
-        self.set_onboarding_completed(false, false);
+        self.onboarding_state.dismissed = false;
         self.append_log(self.tr("已重置引导状态。", "Onboarding state has been reset."));
     }
 
     fn set_onboarding_completed(&mut self, completed: bool, skipped: bool) {
         self.onboarding_state.completed = completed;
+        self.onboarding_state.dismissed = false;
         self.onboarding_state.open = false;
         self.ux_state.onboarding_completed = completed;
+        self.ux_state.onboarding_dismissed = false;
         #[cfg(not(test))]
         {
             if let Err(err) = save_launcher_ux_state(&self.ux_state) {
@@ -950,7 +963,7 @@ impl ClientLauncherApp {
             keep_open = false;
         }
         if request_skip {
-            self.set_onboarding_completed(true, true);
+            self.dismiss_onboarding_with_reminder();
             keep_open = false;
         }
 

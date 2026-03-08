@@ -809,6 +809,46 @@ fn onboarding_auto_open_happens_only_once_per_session() {
 }
 
 #[test]
+fn onboarding_auto_open_respects_dismissed_state() {
+    let mut app = ClientLauncherApp::default();
+    app.onboarding_state.auto_open_checked = false;
+    app.onboarding_state.completed = false;
+    app.onboarding_state.dismissed = true;
+    app.onboarding_state.open = false;
+
+    app.maybe_open_onboarding_on_first_visit(&[], &[], false, false);
+    assert!(!app.onboarding_state.open);
+}
+
+#[test]
+fn dismiss_onboarding_with_reminder_keeps_reminder_visible() {
+    let mut app = ClientLauncherApp::default();
+    app.onboarding_state.open = true;
+
+    app.dismiss_onboarding_with_reminder();
+
+    assert!(!app.onboarding_state.completed);
+    assert!(app.onboarding_state.dismissed);
+    assert!(app.should_show_onboarding_reminder());
+    assert_eq!(app.ux_state.onboarding_skipped_count, 1);
+}
+
+#[test]
+fn should_show_onboarding_reminder_hides_when_completed_or_open() {
+    let mut app = ClientLauncherApp::default();
+    app.onboarding_state.completed = false;
+    app.onboarding_state.open = false;
+    assert!(app.should_show_onboarding_reminder());
+
+    app.onboarding_state.open = true;
+    assert!(!app.should_show_onboarding_reminder());
+
+    app.onboarding_state.open = false;
+    app.onboarding_state.completed = true;
+    assert!(!app.should_show_onboarding_reminder());
+}
+
+#[test]
 fn resolve_next_task_hint_prioritizes_config_fix_then_start_order() {
     assert_eq!(
         resolve_next_task_hint(true, &[], &[ConfigIssue::ChainNodeIdRequired], false, false),

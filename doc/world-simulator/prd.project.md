@@ -90,7 +90,7 @@
 - [x] TASK-WORLD_SIMULATOR-085 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 落地“启动错误卡片 + 一键修复/自动补默认值/重试”并补齐回归。
 - [x] TASK-WORLD_SIMULATOR-086 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 强化阻塞态可执行下一步（启动链、状态重试、修复配置）并补齐回归。
 - [x] TASK-WORLD_SIMULATOR-087 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 落地启动前体检（Preflight）清单与逐项修复入口并补齐回归。
-- [ ] TASK-WORLD_SIMULATOR-088 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 将 onboarding 改为“跳过后持续轻提示”并补齐回归。
+- [x] TASK-WORLD_SIMULATOR-088 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 将 onboarding 改为“跳过后持续轻提示”并补齐回归。
 - [ ] TASK-WORLD_SIMULATOR-089 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 修复自引导 PRD 冲突并补充启动器文件拆分任务建模。
 - [ ] TASK-WORLD_SIMULATOR-090 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 执行启动器超长文件拆分改造并完成回归。
 
@@ -196,9 +196,9 @@
 ## 状态
 - 更新日期: 2026-03-08
 - 当前状态: in_progress（执行 `PRD-WORLD_SIMULATOR-030` 自引导体验闭环）
-- 当前优先任务: TASK-WORLD_SIMULATOR-088（持续轻提示引导）
+- 当前优先任务: TASK-WORLD_SIMULATOR-089（文档冲突修复与拆分任务建模）
 - 并行待办: 无
-- 专题映射状态: 2026-03-02 批次 9/9、2026-03-03 批次 4/4、2026-03-04 批次 7/7、2026-03-05 批次 4/4、2026-03-06 批次 6/6 已纳入模块项目管理文档；`TASK-WORLD_SIMULATOR-057~087` 已完成，`TASK-WORLD_SIMULATOR-088~090` 进行中。
+- 专题映射状态: 2026-03-02 批次 9/9、2026-03-03 批次 4/4、2026-03-04 批次 7/7、2026-03-05 批次 4/4、2026-03-06 批次 6/6 已纳入模块项目管理文档；`TASK-WORLD_SIMULATOR-057~088` 已完成，`TASK-WORLD_SIMULATOR-089~090` 进行中。
 - 手册入口状态: `doc/world-simulator/viewer/viewer-manual.md` 为唯一活跃手册入口。
 - 视觉评分模板状态: `doc/world-simulator/prd/acceptance/visual-review-score-card.md` 已纳入文档树，采用卡片式评审覆盖 llm_bootstrap 场景 18 张截图。
 - UI 评审结果状态: `doc/ui_review_result/ui_review_list.md` 已建立，首张待打分卡片为 `doc/ui_review_result/card_2026_03_06_11_50_29.md`。
