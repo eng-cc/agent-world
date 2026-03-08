@@ -381,6 +381,180 @@ fn persist_sidecar_generation_switch_keeps_latest_and_rollback_safe_only() {
 }
 
 #[test]
+fn persist_sidecar_generation_sweep_keeps_only_retained_blobs() {
+    let mut world = World::new();
+    let dir = temp_dir("persist-sidecar-generation-sweep");
+
+    for step_index in 0..3 {
+        world.submit_action(Action::RegisterAgent {
+            agent_id: format!("agent-sidecar-sweep-{step_index}"),
+            pos: pos(step_index as f64, step_index as f64),
+        });
+        world.step().expect("step before save");
+        world.save_to_dir(&dir).expect("save world");
+    }
+
+    let index: serde_json::Value = serde_json::from_slice(
+        &fs::read(dir.join(".distfs-state/sidecar-generations/index.json"))
+            .expect("read sidecar generation index"),
+    )
+    .expect("decode sidecar generation index");
+    let latest_generation = index
+        .get("latest_generation")
+        .and_then(|value| value.as_str())
+        .expect("latest generation")
+        .to_string();
+    let rollback_safe_generation = index
+        .get("rollback_safe_generation")
+        .and_then(|value| value.as_str())
+        .expect("rollback safe generation")
+        .to_string();
+    let generations = index
+        .get("generations")
+        .and_then(|value| value.as_object())
+        .expect("generation map");
+    let retained_blob_hashes = [
+        latest_generation.as_str(),
+        rollback_safe_generation.as_str(),
+    ]
+    .into_iter()
+    .flat_map(|generation_id| {
+        generations
+            .get(generation_id)
+            .and_then(|value| value.get("pinned_blob_hashes"))
+            .and_then(|value| value.as_array())
+            .expect("generation pinned blob hashes")
+            .iter()
+            .map(|value| value.as_str().expect("pin string").to_string())
+            .collect::<Vec<_>>()
+    })
+    .collect::<std::collections::BTreeSet<_>>();
+    let actual_blob_hashes = LocalCasStore::new(dir.join(".distfs-state"))
+        .list_blob_hashes()
+        .expect("list blob hashes")
+        .into_iter()
+        .collect::<std::collections::BTreeSet<_>>();
+    assert_eq!(actual_blob_hashes, retained_blob_hashes);
+    assert_eq!(
+        index
+            .get("last_gc_result")
+            .and_then(|value| value.get("status"))
+            .and_then(|value| value.as_str()),
+        Some("success")
+    );
+    assert!(index
+        .get("last_gc_result")
+        .and_then(|value| value.get("error"))
+        .is_none());
+
+    let _ = fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn persist_sidecar_generation_gc_failure_preserves_latest_and_rollback_blobs() {
+    let mut world = World::new();
+    let dir = temp_dir("persist-sidecar-generation-gc-failure");
+
+    for step_index in 0..2 {
+        world.submit_action(Action::RegisterAgent {
+            agent_id: format!("agent-sidecar-gc-failure-{step_index}"),
+            pos: pos(step_index as f64, step_index as f64),
+        });
+        world.step().expect("step before save");
+        world.save_to_dir(&dir).expect("save world");
+    }
+
+    let second_index: serde_json::Value = serde_json::from_slice(
+        &fs::read(dir.join(".distfs-state/sidecar-generations/index.json"))
+            .expect("read second sidecar generation index"),
+    )
+    .expect("decode second sidecar generation index");
+    let second_latest_generation = second_index
+        .get("latest_generation")
+        .and_then(|value| value.as_str())
+        .expect("second latest generation")
+        .to_string();
+    fs::write(
+        dir.join(format!(
+            ".distfs-state/sidecar-generations/payloads/{second_latest_generation}/journal.segments.json"
+        )),
+        b"not-json",
+    )
+    .expect("corrupt rollback-safe generation payload");
+
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-sidecar-gc-failure-2".to_string(),
+        pos: pos(2.0, 2.0),
+    });
+    world.step().expect("third step before save");
+    world
+        .save_to_dir(&dir)
+        .expect("save world should degrade instead of failing");
+
+    let third_index: serde_json::Value = serde_json::from_slice(
+        &fs::read(dir.join(".distfs-state/sidecar-generations/index.json"))
+            .expect("read third sidecar generation index"),
+    )
+    .expect("decode third sidecar generation index");
+    let latest_generation = third_index
+        .get("latest_generation")
+        .and_then(|value| value.as_str())
+        .expect("latest generation")
+        .to_string();
+    let rollback_safe_generation = third_index
+        .get("rollback_safe_generation")
+        .and_then(|value| value.as_str())
+        .expect("rollback safe generation")
+        .to_string();
+    assert_eq!(rollback_safe_generation, second_latest_generation);
+    assert_eq!(
+        third_index
+            .get("last_gc_result")
+            .and_then(|value| value.get("status"))
+            .and_then(|value| value.as_str()),
+        Some("failed")
+    );
+    assert!(third_index
+        .get("last_gc_result")
+        .and_then(|value| value.get("error"))
+        .and_then(|value| value.as_str())
+        .is_some());
+
+    let generations = third_index
+        .get("generations")
+        .and_then(|value| value.as_object())
+        .expect("generation map");
+    let retained_blob_hashes = [
+        latest_generation.as_str(),
+        rollback_safe_generation.as_str(),
+    ]
+    .into_iter()
+    .flat_map(|generation_id| {
+        generations
+            .get(generation_id)
+            .and_then(|value| value.get("pinned_blob_hashes"))
+            .and_then(|value| value.as_array())
+            .expect("generation pinned blob hashes")
+            .iter()
+            .map(|value| value.as_str().expect("pin string").to_string())
+            .collect::<Vec<_>>()
+    })
+    .collect::<std::collections::BTreeSet<_>>();
+    let actual_blob_hashes = LocalCasStore::new(dir.join(".distfs-state"))
+        .list_blob_hashes()
+        .expect("list blob hashes")
+        .into_iter()
+        .collect::<std::collections::BTreeSet<_>>();
+    assert!(retained_blob_hashes.is_subset(&actual_blob_hashes));
+
+    let restored =
+        World::load_from_dir(&dir).expect("restore from latest generation after gc failure");
+    assert_eq!(restored.state(), world.state());
+
+    let _ = fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn persist_updates_sidecar_generation_index_with_rollback_safe_generation() {
     let mut world = World::new();
     world.submit_action(Action::RegisterAgent {

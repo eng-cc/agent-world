@@ -54,6 +54,26 @@ impl SidecarGcResult {
             updated_at_ms: now_unix_ms(),
         }
     }
+
+    fn success(freed_blob_count: usize, freed_bytes: u64) -> Self {
+        Self {
+            status: "success".to_string(),
+            freed_blob_count,
+            freed_bytes,
+            error: None,
+            updated_at_ms: now_unix_ms(),
+        }
+    }
+
+    fn failed(error: String) -> Self {
+        Self {
+            status: "failed".to_string(),
+            freed_blob_count: 0,
+            freed_bytes: 0,
+            error: Some(error),
+            updated_at_ms: now_unix_ms(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -539,6 +559,184 @@ fn build_sidecar_generation_record(
     })
 }
 
+fn read_sidecar_generation_payloads(
+    store_root: &Path,
+    generation_record: &SidecarGenerationRecord,
+) -> Result<(SnapshotManifest, Vec<JournalSegmentRef>), WorldError> {
+    let snapshot_manifest_path = store_root.join(generation_record.snapshot_manifest_path.as_str());
+    let journal_segments_path = store_root.join(generation_record.journal_segments_path.as_str());
+    let manifest: SnapshotManifest = read_json_from_path(snapshot_manifest_path.as_path())?;
+    let journal_segments: Vec<JournalSegmentRef> =
+        read_json_from_path(journal_segments_path.as_path())?;
+    Ok((manifest, journal_segments))
+}
+
+fn validate_sidecar_generation_record_payloads(
+    generation_record: &SidecarGenerationRecord,
+    manifest: &SnapshotManifest,
+    journal_segments: &[JournalSegmentRef],
+) -> Result<Vec<String>, WorldError> {
+    let snapshot_manifest_hash = hash_json(manifest)?;
+    if snapshot_manifest_hash != generation_record.snapshot_manifest_hash {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: format!(
+                "sidecar generation snapshot manifest hash mismatch: generation_id={} expected={} actual={}",
+                generation_record.generation_id,
+                generation_record.snapshot_manifest_hash,
+                snapshot_manifest_hash,
+            ),
+        });
+    }
+
+    let journal_segment_hashes = journal_segments
+        .iter()
+        .map(|segment| segment.content_hash.clone())
+        .collect::<Vec<_>>();
+    if journal_segment_hashes != generation_record.journal_segment_hashes {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: format!(
+                "sidecar generation journal segment hashes mismatch: generation_id={}",
+                generation_record.generation_id,
+            ),
+        });
+    }
+
+    let pinned_blob_hashes =
+        build_sidecar_generation_pinned_blob_hashes(manifest, journal_segments);
+    if pinned_blob_hashes != generation_record.pinned_blob_hashes {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: format!(
+                "sidecar generation pin set mismatch: generation_id={}",
+                generation_record.generation_id,
+            ),
+        });
+    }
+
+    let manifest_hash = hash_json(&SidecarGenerationHashPayload {
+        generation_id: generation_record.generation_id.as_str(),
+        snapshot_manifest_path: generation_record.snapshot_manifest_path.as_str(),
+        journal_segments_path: generation_record.journal_segments_path.as_str(),
+        snapshot_manifest_hash: snapshot_manifest_hash.as_str(),
+        journal_segment_hashes: journal_segment_hashes.as_slice(),
+        pinned_blob_hashes: pinned_blob_hashes.as_slice(),
+        created_at_ms: generation_record.created_at_ms,
+    })?;
+    if manifest_hash != generation_record.manifest_hash {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: format!(
+                "sidecar generation manifest hash mismatch: generation_id={} expected={} actual={}",
+                generation_record.generation_id, generation_record.manifest_hash, manifest_hash,
+            ),
+        });
+    }
+
+    Ok(pinned_blob_hashes)
+}
+
+fn validate_sidecar_generation_record(
+    store_root: &Path,
+    generation_record: &SidecarGenerationRecord,
+) -> Result<Vec<String>, WorldError> {
+    let (manifest, journal_segments) =
+        read_sidecar_generation_payloads(store_root, generation_record)?;
+    validate_sidecar_generation_record_payloads(
+        generation_record,
+        &manifest,
+        journal_segments.as_slice(),
+    )
+}
+
+fn sidecar_active_generation_ids(
+    index: &SidecarGenerationIndex,
+) -> Result<BTreeSet<String>, WorldError> {
+    let mut generation_ids = BTreeSet::from([index.latest_generation.clone()]);
+    if let Some(rollback_safe_generation) = index.rollback_safe_generation.as_ref() {
+        generation_ids.insert(rollback_safe_generation.clone());
+    }
+    for generation_id in generation_ids.iter() {
+        if !index.generations.contains_key(generation_id) {
+            return Err(WorldError::DistributedValidationFailed {
+                reason: format!(
+                    "sidecar generation index missing retained generation: generation_id={generation_id}",
+                ),
+            });
+        }
+    }
+    Ok(generation_ids)
+}
+
+fn collect_sidecar_retained_blob_hashes(
+    store_root: &Path,
+    index: &SidecarGenerationIndex,
+) -> Result<BTreeSet<String>, WorldError> {
+    let mut retained_blob_hashes = BTreeSet::new();
+    for generation_id in sidecar_active_generation_ids(index)? {
+        let generation_record = index
+            .generations
+            .get(generation_id.as_str())
+            .ok_or_else(|| WorldError::DistributedValidationFailed {
+                reason: format!(
+                    "sidecar generation record missing during sweep: generation_id={generation_id}",
+                ),
+            })?;
+        retained_blob_hashes.extend(validate_sidecar_generation_record(
+            store_root,
+            generation_record,
+        )?);
+    }
+    Ok(retained_blob_hashes)
+}
+
+fn collect_sidecar_orphan_blob_hashes(
+    store: &LocalCasStore,
+    retained_blob_hashes: &BTreeSet<String>,
+) -> Result<Vec<String>, WorldError> {
+    let external_pinned_hashes = store.list_pins()?.into_iter().collect::<BTreeSet<_>>();
+    let orphan_blob_hashes = store
+        .list_blob_hashes()?
+        .into_iter()
+        .filter(|content_hash| {
+            !retained_blob_hashes.contains(content_hash)
+                && !external_pinned_hashes.contains(content_hash)
+        })
+        .collect::<Vec<_>>();
+    Ok(orphan_blob_hashes)
+}
+
+fn sweep_sidecar_orphan_blobs(
+    store_root: &Path,
+    index: &SidecarGenerationIndex,
+) -> Result<SidecarGcResult, WorldError> {
+    let store = LocalCasStore::new(store_root);
+    let retained_blob_hashes = collect_sidecar_retained_blob_hashes(store_root, index)?;
+    let orphan_blob_hashes = collect_sidecar_orphan_blob_hashes(&store, &retained_blob_hashes)?;
+    let mut freed_blob_count = 0usize;
+    let mut freed_bytes = 0u64;
+
+    for content_hash in orphan_blob_hashes {
+        let blob_path = store.blobs_dir().join(format!("{content_hash}.blob"));
+        if !blob_path.exists() {
+            continue;
+        }
+        freed_bytes = freed_bytes.saturating_add(fs::metadata(blob_path.as_path())?.len());
+        fs::remove_file(blob_path.as_path())?;
+        freed_blob_count += 1;
+    }
+
+    let remaining_orphan_hashes =
+        collect_sidecar_orphan_blob_hashes(&store, &retained_blob_hashes)?;
+    if !remaining_orphan_hashes.is_empty() {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: format!(
+                "sidecar orphan blob sweep incomplete: orphan_blob_hashes={}",
+                remaining_orphan_hashes.join(","),
+            ),
+        });
+    }
+
+    Ok(SidecarGcResult::success(freed_blob_count, freed_bytes))
+}
+
 fn stage_sidecar_generation(
     store_root: &Path,
     manifest: &SnapshotManifest,
@@ -589,17 +787,19 @@ fn validate_staged_sidecar_generation(
     store_root: &Path,
     generation_record: &SidecarGenerationRecord,
 ) -> Result<(), WorldError> {
-    let snapshot_manifest_path = store_root.join(generation_record.snapshot_manifest_path.as_str());
-    let journal_segments_path = store_root.join(generation_record.journal_segments_path.as_str());
-    let restored_snapshot: Snapshot = assemble_snapshot(
-        &read_json_from_path::<SnapshotManifest>(snapshot_manifest_path.as_path())?,
-        &LocalCasStore::new(store_root),
+    let (manifest, journal_segments) =
+        read_sidecar_generation_payloads(store_root, generation_record)?;
+    let _ = validate_sidecar_generation_record_payloads(
+        generation_record,
+        &manifest,
+        journal_segments.as_slice(),
     )?;
-    let restored_events: Vec<WorldEvent> = assemble_journal(
-        &read_json_from_path::<Vec<JournalSegmentRef>>(journal_segments_path.as_path())?,
-        &LocalCasStore::new(store_root),
-        |event: &WorldEvent| event.id,
-    )?;
+    let store = LocalCasStore::new(store_root);
+    let restored_snapshot: Snapshot = assemble_snapshot(&manifest, &store)?;
+    let restored_events: Vec<WorldEvent> =
+        assemble_journal(journal_segments.as_slice(), &store, |event: &WorldEvent| {
+            event.id
+        })?;
     let _ = restored_snapshot;
     let _ = restored_events;
     Ok(())
@@ -700,6 +900,12 @@ fn persist_sidecar_generation_index(
         }
     }
 
+    index.last_gc_result = SidecarGcResult::not_run();
+    write_json_to_path(&index, sidecar_generation_index_path(store_root).as_path())?;
+    index.last_gc_result = match sweep_sidecar_orphan_blobs(store_root, &index) {
+        Ok(result) => result,
+        Err(err) => SidecarGcResult::failed(format!("{err:?}")),
+    };
     write_json_to_path(&index, sidecar_generation_index_path(store_root).as_path())?;
     Ok(())
 }
