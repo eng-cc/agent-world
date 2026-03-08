@@ -23,7 +23,7 @@
 
 ### T3 Sidecar generation GC
 - [x] T3.1 (PRD-WORLD_RUNTIME-013/014) [test_tier_required]: 定义 `SidecarGenerationIndex` 目录布局、manifest 字段与 generation pin 集，区分 staging / latest / rollback-safe generation。
-- [ ] T3.2 (PRD-WORLD_RUNTIME-013/014) [test_tier_required]: 在 `save_to_dir` 落地两阶段 generation 切换，确保 latest generation 原子更新且最少保留 `keep=2`。
+- [x] T3.2 (PRD-WORLD_RUNTIME-013/014) [test_tier_required]: 在 `save_to_dir` 落地两阶段 generation 切换，确保 latest generation 原子更新且最少保留 `keep=2`。
 - [ ] T3.3 (PRD-WORLD_RUNTIME-013/014) [test_tier_required]: 实现 manifest-aware sweep，successful save 后孤儿 blob 数量为 `0`，失败时不得删除仍被 latest/rollback generation 引用的数据。
 - [ ] T3.4 (PRD-WORLD_RUNTIME-013/014) [test_tier_required]: 补齐 save 中断、manifest 部分写入、rollback 恢复与 orphan cleanup 故障注入测试。
 
@@ -78,8 +78,8 @@
 ## 状态
 - 更新日期: 2026-03-08
 - 当前状态: planning
-- 已完成: T0、T0.1、T1.1、T1.2、T1.3、T1.4、T1.5、T2.1、T2.2、T2.3、T2.4、T2.5、T3.1
-- 已拆解待执行: T3.2 ~ T7.5
-- 进行中: T3.2
+- 已完成: T0、T0.1、T1.1、T1.2、T1.3、T1.4、T1.5、T2.1、T2.2、T2.3、T2.4、T2.5、T3.1、T3.2
+- 已拆解待执行: T3.3 ~ T7.5
+- 进行中: T3.3
 - 阻塞项: 无；但 T2 / T3 / T6 / T7 的实现必须以前置 T1 契约冻结为准。
-- 下一任务: T3.2（在 save_to_dir 落地两阶段 generation 切换）
+- 下一任务: T3.3（实现 manifest-aware sidecar sweep）

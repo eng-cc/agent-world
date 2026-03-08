@@ -276,6 +276,111 @@ fn persist_writes_sidecar_generation_index_and_pinset() {
 }
 
 #[test]
+fn persist_sidecar_generation_record_points_to_generation_local_payloads() {
+    let mut world = World::new();
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-sidecar-local-payload".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.step().expect("step");
+
+    let dir = temp_dir("persist-sidecar-generation-local-payload");
+    world.save_to_dir(&dir).expect("save world");
+
+    let index: serde_json::Value = serde_json::from_slice(
+        &fs::read(dir.join(".distfs-state/sidecar-generations/index.json"))
+            .expect("read sidecar generation index"),
+    )
+    .expect("decode sidecar generation index");
+    let latest_generation = index
+        .get("latest_generation")
+        .and_then(|value| value.as_str())
+        .expect("latest generation");
+    let generation_record: serde_json::Value = serde_json::from_slice(
+        &fs::read(dir.join(format!(
+            ".distfs-state/sidecar-generations/generations/{latest_generation}.json"
+        )))
+        .expect("read sidecar generation record"),
+    )
+    .expect("decode sidecar generation record");
+    let snapshot_manifest_path = generation_record
+        .get("snapshot_manifest_path")
+        .and_then(|value| value.as_str())
+        .expect("snapshot manifest path");
+    let journal_segments_path = generation_record
+        .get("journal_segments_path")
+        .and_then(|value| value.as_str())
+        .expect("journal segments path");
+    assert!(snapshot_manifest_path.contains(&format!("payloads/{latest_generation}/")));
+    assert!(journal_segments_path.contains(&format!("payloads/{latest_generation}/")));
+    assert!(dir
+        .join(".distfs-state")
+        .join(snapshot_manifest_path)
+        .exists());
+    assert!(dir
+        .join(".distfs-state")
+        .join(journal_segments_path)
+        .exists());
+
+    let _ = fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn persist_sidecar_generation_switch_keeps_latest_and_rollback_safe_only() {
+    let mut world = World::new();
+    let dir = temp_dir("persist-sidecar-generation-keep-two");
+
+    for step_index in 0..3 {
+        world.submit_action(Action::RegisterAgent {
+            agent_id: format!("agent-sidecar-keep-{step_index}"),
+            pos: pos(step_index as f64, step_index as f64),
+        });
+        world.step().expect("step before save");
+        world.save_to_dir(&dir).expect("save world");
+    }
+
+    let index: serde_json::Value = serde_json::from_slice(
+        &fs::read(dir.join(".distfs-state/sidecar-generations/index.json"))
+            .expect("read sidecar generation index"),
+    )
+    .expect("decode sidecar generation index");
+    let latest_generation = index
+        .get("latest_generation")
+        .and_then(|value| value.as_str())
+        .expect("latest generation")
+        .to_string();
+    let rollback_safe_generation = index
+        .get("rollback_safe_generation")
+        .and_then(|value| value.as_str())
+        .expect("rollback safe generation")
+        .to_string();
+    let generations = index
+        .get("generations")
+        .and_then(|value| value.as_object())
+        .expect("generation map");
+    assert_eq!(generations.len(), 2);
+    assert!(generations.contains_key(latest_generation.as_str()));
+    assert!(generations.contains_key(rollback_safe_generation.as_str()));
+    assert!(dir
+        .join(format!(
+            ".distfs-state/sidecar-generations/payloads/{latest_generation}"
+        ))
+        .exists());
+    assert!(dir
+        .join(format!(
+            ".distfs-state/sidecar-generations/payloads/{rollback_safe_generation}"
+        ))
+        .exists());
+    let staging_entries =
+        fs::read_dir(dir.join(".distfs-state/sidecar-generations/generation.tmp"))
+            .expect("read staging dir")
+            .count();
+    assert_eq!(staging_entries, 0);
+
+    let _ = fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn persist_updates_sidecar_generation_index_with_rollback_safe_generation() {
     let mut world = World::new();
     world.submit_action(Action::RegisterAgent {
