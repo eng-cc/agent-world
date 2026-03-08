@@ -21,19 +21,19 @@ use serde::Serialize;
 use sha2::{Digest, Sha256};
 #[path = "world_chain_runtime/balances_api.rs"]
 mod balances_api;
-#[path = "world_viewer_live/distfs_probe_runtime.rs"]
+#[path = "world_chain_runtime/distfs_probe_runtime.rs"]
 mod distfs_probe_runtime;
 #[cfg(not(test))]
 #[allow(dead_code)]
-#[path = "world_viewer_live/execution_bridge.rs"]
+#[path = "world_chain_runtime/execution_bridge.rs"]
 mod execution_bridge;
 #[path = "world_chain_runtime/explorer_p0_api.rs"]
 mod explorer_p0_api;
 #[path = "world_chain_runtime/feedback_submit_api.rs"]
 mod feedback_submit_api;
-#[path = "world_viewer_live/node_keypair_config.rs"]
+#[path = "world_chain_runtime/node_keypair_config.rs"]
 mod node_keypair_config;
-#[path = "world_viewer_live/reward_runtime_settlement.rs"]
+#[path = "world_chain_runtime/reward_runtime_settlement.rs"]
 mod reward_runtime_settlement;
 #[path = "world_chain_runtime/reward_runtime_worker.rs"]
 mod reward_runtime_worker;
