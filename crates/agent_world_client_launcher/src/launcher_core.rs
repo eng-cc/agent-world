@@ -110,7 +110,12 @@ pub(super) fn collect_chain_required_config_issues(config: &LaunchConfig) -> Vec
     if parse_chain_role(config.chain_node_role.as_str()).is_err() {
         issues.push(ConfigIssue::ChainRoleInvalid);
     }
-    if parse_positive_u64(config.chain_node_tick_ms.as_str(), "chain tick ms").is_err() {
+    if parse_positive_u64(
+        config.chain_node_tick_ms.as_str(),
+        "chain node poll interval ms",
+    )
+    .is_err()
+    {
         issues.push(ConfigIssue::ChainTickMsInvalid);
     }
     if parse_positive_u64(
@@ -212,7 +217,10 @@ pub(super) fn build_chain_runtime_args(config: &LaunchConfig) -> Result<Vec<Stri
         return Err("chain node id cannot be empty".to_string());
     }
     let chain_role = parse_chain_role(config.chain_node_role.as_str())?;
-    let chain_tick_ms = parse_positive_u64(config.chain_node_tick_ms.as_str(), "chain tick ms")?;
+    let chain_tick_ms = parse_positive_u64(
+        config.chain_node_tick_ms.as_str(),
+        "chain node poll interval ms",
+    )?;
     let pos_slot_duration_ms = parse_positive_u64(
         config.chain_pos_slot_duration_ms.as_str(),
         "chain pos slot duration ms",

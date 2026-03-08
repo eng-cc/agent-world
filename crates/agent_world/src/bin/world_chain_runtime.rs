@@ -212,6 +212,8 @@ struct ChainStatusResponse {
     world_id: String,
     role: String,
     running: bool,
+    worker_poll_count: u64,
+    // Legacy alias kept for existing tooling; same value as worker_poll_count.
     tick_count: u64,
     last_tick_unix_ms: Option<i64>,
     consensus: ChainConsensusStatus,
@@ -775,6 +777,7 @@ fn build_chain_status_payload(
         world_id: snapshot.world_id,
         role: snapshot.role.as_str().to_string(),
         running: snapshot.running,
+        worker_poll_count: snapshot.tick_count,
         tick_count: snapshot.tick_count,
         last_tick_unix_ms: snapshot.last_tick_unix_ms,
         consensus: ChainConsensusStatus {

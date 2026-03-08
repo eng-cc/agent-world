@@ -581,10 +581,10 @@ impl ConfigIssue {
                 "Chain role must be one of: sequencer/storage/observer"
             }
             (Self::ChainTickMsInvalid, UiLanguage::ZhCn) => {
-                "链 Tick 毫秒（chain tick ms）必须是正整数"
+                "链节点轮询间隔毫秒（chain node poll interval ms）必须是正整数"
             }
             (Self::ChainTickMsInvalid, UiLanguage::EnUs) => {
-                "Chain tick milliseconds must be a positive integer"
+                "Chain node poll interval milliseconds must be a positive integer"
             }
             (Self::ChainPosSlotDurationMsInvalid, UiLanguage::ZhCn) => {
                 "链 PoS 槽时长（slot duration ms）必须是正整数"

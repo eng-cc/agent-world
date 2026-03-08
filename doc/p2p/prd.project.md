@@ -38,8 +38,8 @@
 - [x] TASK-P2P-010-T4 [test_tier_required + test_tier_full]: 补齐 CLI/launcher/脚本/状态接口回归测试并完成证据收口。
 
 ### TASK-P2P-011 执行拆解（PRD-P2P-008）
-- [ ] TASK-P2P-011-T0 [test_tier_required]: 更新模块主 PRD/project 任务映射，冻结“worker poll vs consensus tick”语义边界与验收口径。
-- [ ] TASK-P2P-011-T1 [test_tier_required]: 调整 `world_chain_runtime` 状态字段命名（新增 `worker_poll_count`）与 launcher `chain_node_tick_ms` 校验/错误文案，避免误读为出块时间。
+- [x] TASK-P2P-011-T0 [test_tier_required]: 更新模块主 PRD/project 任务映射，冻结“worker poll vs consensus tick”语义边界与验收口径。
+- [x] TASK-P2P-011-T1 [test_tier_required]: 调整 `world_chain_runtime` 状态字段命名（新增 `worker_poll_count`）与 launcher `chain_node_tick_ms` 校验/错误文案，避免误读为出块时间。
 - [ ] TASK-P2P-011-T2 [test_tier_required]: 修正文档与手册残留（`world-rule`、p2p/node PRD、viewer/manual/site、launcher/longrun 专题）与当前实现能力一致。
 - [ ] TASK-P2P-011-T3 [test_tier_required]: 运行定向 required 回归并完成项目状态与 devlog 收口。
 
@@ -67,7 +67,7 @@
 ## 状态
 - 更新日期: 2026-03-08
 - 当前状态: in_progress（ROUND-007）
-- 下一任务: TASK-P2P-011-T0
+- 下一任务: TASK-P2P-011-T2
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - 本轮新增: `TASK-P2P-006` 已完成，专题文档 `p2p-mobile-light-client-authoritative-state-2026-03-06` 已纳入索引和模块追踪映射。
 - 本轮新增: `TASK-P2P-008` 已建档，专题文档 `node-pos-slot-clock-real-time-2026-03-07` 已纳入模块追踪映射。
@@ -92,6 +92,7 @@
 - TASK-P2P-010 进展（2026-03-07）: `TASK-P2P-010-T3` 已完成脚本与示例口径对齐（`p2p-longrun/s10` 支持 `--pos-*`、`node_tick_ms` 文案改为轮询语义、release 示例补齐 PoS 参数）。
 - TASK-P2P-010 进展（2026-03-07）: `TASK-P2P-010-T4` 已完成 required/full 回归与文档收口（runtime/game/web/client launcher + scripts 回归通过，主任务 `TASK-P2P-010` 完成）。
 - TASK-P2P-011 启动（2026-03-08）: 新增残留语义收敛任务链，覆盖状态字段命名、launcher 校验文案与跨文档能力对齐。
+- TASK-P2P-011 进展（2026-03-08）: `TASK-P2P-011-T1` 已完成代码落地（`/v1/chain/status` 新增 `worker_poll_count` 并保留 `tick_count` 兼容别名；launcher `chain_node_tick_ms` 校验文案改为“poll interval”语义）。
 - 说明: 本文档仅维护 p2p 设计执行状态；过程记录在 `doc/devlog/2026-03-07.md`。
 - ROUND-002 进展（2026-03-05）: 已并行完成 `B3-C2-009-S2/C2-010/C2-011`（observer sync-mode、node-contribution、distfs-self-healing）主从化回写。
 - ROUND-002 进展（2026-03-05）: 已并行完成 `B3-C2-003/C2-008-S1/C2-008-S2`（node-redeemable-power-asset、distfs-production-hardening phase1~9）主从化回写。
