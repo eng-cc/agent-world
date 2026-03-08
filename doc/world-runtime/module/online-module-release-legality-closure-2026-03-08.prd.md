@@ -95,6 +95,7 @@
 - Edge Cases & Error Handling:
   - 线上 manifest 不可达：节点保持上一版 `active_manifest_hash`，拒绝切换到未验证新版本。
   - 证书阈值不足或签名重复：`GovernanceFinalityInvalid` 并阻断 apply。
+  - 证书 signer 不在当前 epoch 快照验证者集合：`GovernanceFinalityInvalid` 并输出 signer/epoch 诊断信息。
   - 证书 `epoch_id` 与本地信任根快照不一致：拒绝 apply，并记录快照版本冲突审计事件。
   - key 轮换窗口中旧证书：在 grace period 内可验证，窗口结束后统一拒绝。
   - 复构建节点对同平台 hash 结论不一致：标记为 release fault，禁止产生活跃清单。

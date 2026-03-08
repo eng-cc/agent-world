@@ -1,12 +1,93 @@
 use super::super::*;
 use super::pos;
+#[cfg(feature = "test_tier_full")]
+use ed25519_dalek::Signer;
+use ed25519_dalek::SigningKey;
 use serde_json::json;
+#[cfg(feature = "test_tier_full")]
+use std::collections::BTreeMap;
+
+const LOCAL_FINALITY_SIGNER_1: (&str, &str) = (
+    "governance.local.finality.signer.1",
+    "agent-world-governance-local-finality-signer-1-v1",
+);
+const LOCAL_FINALITY_SIGNER_2: (&str, &str) = (
+    "governance.local.finality.signer.2",
+    "agent-world-governance-local-finality-signer-2-v1",
+);
+const ROTATED_FINALITY_SIGNER_3: (&str, &str) = (
+    "governance.test.finality.signer.3",
+    "agent-world-governance-test-finality-signer-3-v1",
+);
 
 fn local_guardians() -> Vec<String> {
     vec![
-        "governance.local.finality.signer.1".to_string(),
-        "governance.local.finality.signer.2".to_string(),
+        LOCAL_FINALITY_SIGNER_1.0.to_string(),
+        LOCAL_FINALITY_SIGNER_2.0.to_string(),
     ]
+}
+
+fn finality_signing_key(seed_label: &str) -> SigningKey {
+    let seed = util::sha256_hex(seed_label.as_bytes());
+    let seed_bytes = hex::decode(seed).expect("decode governance finality seed");
+    let private_key_bytes: [u8; 32] = seed_bytes
+        .as_slice()
+        .try_into()
+        .expect("governance finality seed is 32 bytes");
+    SigningKey::from_bytes(&private_key_bytes)
+}
+
+fn bind_finality_signer_with_seed(world: &mut World, node_id: &str, seed_label: &str) {
+    let signing_key = finality_signing_key(seed_label);
+    let public_key_hex = hex::encode(signing_key.verifying_key().to_bytes());
+    world
+        .bind_node_identity(node_id, public_key_hex.as_str())
+        .expect("bind governance finality signer identity");
+}
+
+#[cfg(feature = "test_tier_full")]
+fn build_finality_certificate_with_signers(
+    world: &World,
+    proposal_id: ProposalId,
+    threshold: u16,
+    signer_specs: &[(&str, &str)],
+) -> GovernanceFinalityCertificate {
+    let proposal = world
+        .proposals()
+        .get(&proposal_id)
+        .expect("proposal should exist");
+    let manifest_hash = match &proposal.status {
+        ProposalStatus::Approved { manifest_hash, .. } => manifest_hash.clone(),
+        other => panic!("proposal must be approved, found {}", other.label()),
+    };
+    let consensus_height = world.journal().events.len() as u64 + 1;
+    let mut signatures = BTreeMap::new();
+    for (node_id, seed_label) in signer_specs {
+        let payload = GovernanceFinalityCertificate::signing_payload_v1(
+            proposal_id,
+            manifest_hash.as_str(),
+            consensus_height,
+            threshold,
+            node_id,
+        );
+        let signing_key = finality_signing_key(seed_label);
+        let signature = signing_key.sign(payload.as_slice());
+        signatures.insert(
+            (*node_id).to_string(),
+            format!(
+                "{}{}",
+                GovernanceFinalityCertificate::SIGNATURE_PREFIX_ED25519_V1,
+                hex::encode(signature.to_bytes())
+            ),
+        );
+    }
+    GovernanceFinalityCertificate {
+        proposal_id,
+        manifest_hash,
+        consensus_height,
+        threshold,
+        signatures,
+    }
 }
 
 fn register_agent(world: &mut World, agent_id: &str, x: f64, y: f64) {
@@ -185,6 +266,121 @@ fn governance_apply_with_finality_rejects_threshold_mismatch() {
         .apply_proposal_with_finality(proposal_id, &certificate)
         .unwrap_err();
     assert!(matches!(err, WorldError::GovernanceFinalityInvalid { .. }));
+}
+
+#[test]
+fn governance_apply_with_finality_rejects_signer_outside_epoch_snapshot() {
+    let mut world = World::new();
+    bind_finality_signer_with_seed(
+        &mut world,
+        ROTATED_FINALITY_SIGNER_3.0,
+        ROTATED_FINALITY_SIGNER_3.1,
+    );
+    world
+        .set_governance_finality_epoch_snapshot(GovernanceFinalityEpochSnapshot {
+            epoch_id: 0,
+            threshold: 2,
+            signer_node_ids: vec![
+                LOCAL_FINALITY_SIGNER_1.0.to_string(),
+                ROTATED_FINALITY_SIGNER_3.0.to_string(),
+            ],
+        })
+        .expect("set epoch snapshot");
+
+    let manifest = Manifest {
+        version: 2,
+        content: json!({ "name": "epoch-signer-check" }),
+    };
+    let proposal_id = world.propose_manifest_update(manifest, "alice").unwrap();
+    world.shadow_proposal(proposal_id).unwrap();
+    world
+        .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)
+        .unwrap();
+
+    let stale_certificate = world.build_local_finality_certificate(proposal_id).unwrap();
+    let err = world
+        .apply_proposal_with_finality(proposal_id, &stale_certificate)
+        .unwrap_err();
+    let WorldError::GovernanceFinalityInvalid { reason } = err else {
+        panic!("expected GovernanceFinalityInvalid");
+    };
+    assert!(reason.contains("not part of finality epoch snapshot"));
+    assert!(reason.contains(LOCAL_FINALITY_SIGNER_2.0));
+}
+
+#[cfg(feature = "test_tier_full")]
+#[test]
+fn governance_finality_epoch_snapshot_rotation_rejects_stale_signers_and_accepts_rotated_set() {
+    let mut world = World::new();
+    world
+        .set_governance_execution_policy(GovernanceExecutionPolicy {
+            epoch_length_ticks: 2,
+            ..GovernanceExecutionPolicy::default()
+        })
+        .expect("set governance policy");
+    bind_finality_signer_with_seed(
+        &mut world,
+        ROTATED_FINALITY_SIGNER_3.0,
+        ROTATED_FINALITY_SIGNER_3.1,
+    );
+    world
+        .set_governance_finality_epoch_snapshot(GovernanceFinalityEpochSnapshot {
+            epoch_id: 0,
+            threshold: 2,
+            signer_node_ids: vec![
+                LOCAL_FINALITY_SIGNER_1.0.to_string(),
+                LOCAL_FINALITY_SIGNER_2.0.to_string(),
+            ],
+        })
+        .expect("set epoch 0 snapshot");
+    world
+        .set_governance_finality_epoch_snapshot(GovernanceFinalityEpochSnapshot {
+            epoch_id: 1,
+            threshold: 2,
+            signer_node_ids: vec![
+                LOCAL_FINALITY_SIGNER_1.0.to_string(),
+                ROTATED_FINALITY_SIGNER_3.0.to_string(),
+            ],
+        })
+        .expect("set epoch 1 snapshot");
+    for _ in 0..2 {
+        world.step().expect("advance governance epoch");
+    }
+
+    let manifest = Manifest {
+        version: 2,
+        content: json!({ "name": "epoch-signer-rotation" }),
+    };
+    let proposal_id = world.propose_manifest_update(manifest, "alice").unwrap();
+    world.shadow_proposal(proposal_id).unwrap();
+    world
+        .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)
+        .unwrap();
+
+    let stale_certificate = build_finality_certificate_with_signers(
+        &world,
+        proposal_id,
+        2,
+        &[LOCAL_FINALITY_SIGNER_1, LOCAL_FINALITY_SIGNER_2],
+    );
+    let err = world
+        .apply_proposal_with_finality(proposal_id, &stale_certificate)
+        .unwrap_err();
+    let WorldError::GovernanceFinalityInvalid { reason } = err else {
+        panic!("expected GovernanceFinalityInvalid");
+    };
+    assert!(reason.contains("not part of finality epoch snapshot"));
+    assert!(reason.contains(LOCAL_FINALITY_SIGNER_2.0));
+
+    let rotated_certificate = build_finality_certificate_with_signers(
+        &world,
+        proposal_id,
+        2,
+        &[LOCAL_FINALITY_SIGNER_1, ROTATED_FINALITY_SIGNER_3],
+    );
+    world
+        .apply_proposal_with_finality(proposal_id, &rotated_certificate)
+        .expect("apply with rotated signer set");
 }
 
 #[test]

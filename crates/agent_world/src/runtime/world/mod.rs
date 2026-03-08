@@ -43,8 +43,8 @@ use super::consensus::{TickConsensusRecord, TickConsensusRejectionAuditEvent};
 use super::effect::{CapabilityGrant, EffectIntent};
 use super::events::{ActionEnvelope, MaterialTransitPriority};
 use super::governance::{
-    GovernanceExecutionPolicy, GovernanceIdentityPenaltyMonitorStats,
-    GovernanceIdentityPenaltyRecord, Proposal,
+    GovernanceExecutionPolicy, GovernanceFinalityEpochSnapshot,
+    GovernanceIdentityPenaltyMonitorStats, GovernanceIdentityPenaltyRecord, Proposal,
 };
 use super::manifest::Manifest;
 use super::modules::{ModuleCache, ModuleLimits, ModuleRegistry};
@@ -250,6 +250,8 @@ pub struct World {
     #[serde(default)]
     governance_execution_policy: GovernanceExecutionPolicy,
     #[serde(default)]
+    governance_finality_epoch_snapshots: BTreeMap<u64, GovernanceFinalityEpochSnapshot>,
+    #[serde(default)]
     governance_emergency_brake_until_tick: Option<WorldTime>,
     #[serde(default)]
     governance_identity_penalties: BTreeMap<u64, GovernanceIdentityPenaltyRecord>,
@@ -319,6 +321,7 @@ impl World {
             tick_consensus_authority_source: default_tick_consensus_authority_source(),
             tick_consensus_rejection_audit_events: Vec::new(),
             governance_execution_policy: GovernanceExecutionPolicy::default(),
+            governance_finality_epoch_snapshots: BTreeMap::new(),
             governance_emergency_brake_until_tick: None,
             governance_identity_penalties: BTreeMap::new(),
             next_governance_identity_penalty_id: default_next_governance_identity_penalty_id(),
@@ -397,6 +400,12 @@ impl World {
 
     pub fn governance_execution_policy(&self) -> &GovernanceExecutionPolicy {
         &self.governance_execution_policy
+    }
+
+    pub fn governance_finality_epoch_snapshots(
+        &self,
+    ) -> &BTreeMap<u64, GovernanceFinalityEpochSnapshot> {
+        &self.governance_finality_epoch_snapshots
     }
 
     pub fn governance_emergency_brake_until_tick(&self) -> Option<WorldTime> {

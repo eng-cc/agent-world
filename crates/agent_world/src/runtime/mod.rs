@@ -84,8 +84,9 @@ pub use events::{
 // Governance
 pub use governance::{
     AgentSchedule, GovernanceEvent, GovernanceExecutionPolicy, GovernanceFinalityCertificate,
-    GovernanceIdentityPenaltyMonitorStats, GovernanceIdentityPenaltyRecord,
-    GovernanceIdentityPenaltyStatus, Proposal, ProposalDecision, ProposalStatus,
+    GovernanceFinalityEpochSnapshot, GovernanceIdentityPenaltyMonitorStats,
+    GovernanceIdentityPenaltyRecord, GovernanceIdentityPenaltyStatus, Proposal, ProposalDecision,
+    ProposalStatus,
 };
 
 // Manifest

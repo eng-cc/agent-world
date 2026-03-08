@@ -180,6 +180,14 @@ impl GovernanceFinalityCertificate {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct GovernanceFinalityEpochSnapshot {
+    pub epoch_id: u64,
+    pub threshold: u16,
+    #[serde(default)]
+    pub signer_node_ids: Vec<String>,
+}
+
 /// Events related to governance actions.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", content = "data")]
