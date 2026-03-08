@@ -20,7 +20,7 @@
 - [x] WTA-15 (PRD-WTA-R3-002) [test_tier_required]：扩展 `viewer_automation` round-3 语义步骤（`chat/prompt`）并补齐解析/映射测试
 - [x] WTA-16 (PRD-WTA-R3-003) [test_tier_required]：执行 round-3 定向回归、更新手册示例与文档状态收口
 - [x] WTA-17 (PRD-WTA-R4-001) [test_tier_required]：round-4 补齐文档建模（`timeline_seek/filter/jump` 语义步骤设计 + 任务拆解）
-- [ ] WTA-18 (PRD-WTA-R4-002) [test_tier_required]：扩展 `viewer_automation + web_test_api` round-4 语义步骤（timeline + `sendControl.seek`）并补齐定向测试
+- [x] WTA-18 (PRD-WTA-R4-002) [test_tier_required]：扩展 `viewer_automation + web_test_api` round-4 语义步骤（timeline + `sendControl.seek`）并补齐定向测试
 - [ ] WTA-19 (PRD-WTA-R4-003) [test_tier_required]：执行 round-4 定向回归、更新手册示例与文档状态收口
 
 ## 依赖
@@ -37,6 +37,6 @@
 - `testing-manual.md`
 
 ## 状态
-- 当前阶段：WTA-18 待执行（round-4 代码实现）
-- 下一步：实现 timeline 语义步骤与 `sendControl.seek`，并补齐定向回归
-- 最近更新：2026-03-08（WTA-17 完成，round-4 任务已建模）
+- 当前阶段：WTA-19 待执行（round-4 回归与手册收口）
+- 下一步：完成 round-4 定向回归与手册示例更新后收口
+- 最近更新：2026-03-08（WTA-18 完成，timeline 语义步骤与 `sendControl.seek` 已落地）

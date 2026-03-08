@@ -34,7 +34,7 @@ const TEST_API_QUERY_KEY: &str = "test_api";
 #[cfg(target_arch = "wasm32")]
 const TEST_API_GLOBAL_NAME: &str = "__AW_TEST__";
 #[cfg(target_arch = "wasm32")]
-const WEB_TEST_API_CONTROL_ACTIONS: [&str; 3] = ["play", "pause", "step"];
+const WEB_TEST_API_CONTROL_ACTIONS: [&str; 4] = ["play", "pause", "step", "seek"];
 #[cfg(target_arch = "wasm32")]
 const CONTROL_STALL_FRAME_RATE_FALLBACK: f64 = 60.0;
 #[cfg(target_arch = "wasm32")]
@@ -243,6 +243,15 @@ fn control_payload_example(action: &str) -> JsValue {
             );
             JsValue::from(payload)
         }
+        "seek" => {
+            let payload = Object::new();
+            let _ = JsReflect::set(
+                &payload,
+                &JsValue::from_str("tick"),
+                &JsValue::from_f64(120.0),
+            );
+            JsValue::from(payload)
+        }
         _ => JsValue::NULL,
     }
 }
@@ -256,6 +265,8 @@ fn control_description(action: &str, is_zh: bool) -> &'static str {
         ("pause", false) => "Pause continuous advancement",
         ("step", true) => "推进固定步数（payload.count）",
         ("step", false) => "Advance fixed steps (payload.count)",
+        ("seek", true) => "跳转到目标 tick（payload.tick）",
+        ("seek", false) => "Seek timeline to target tick (payload.tick)",
         (_, true) => "未知动作",
         (_, false) => "Unknown action",
     }
@@ -319,8 +330,10 @@ fn control_action_hint(action: &str, locale_zh: bool) -> String {
     match (action, locale_zh) {
         ("step", true) => "示例 payload: {\"count\": 5}".to_string(),
         ("step", false) => "Example payload: {\"count\": 5}".to_string(),
-        (_, true) => "可用动作: play, pause, step".to_string(),
-        (_, false) => "Valid actions: play, pause, step".to_string(),
+        ("seek", true) => "示例 payload: {\"tick\": 120}".to_string(),
+        ("seek", false) => "Example payload: {\"tick\": 120}".to_string(),
+        (_, true) => "可用动作: play, pause, step, seek".to_string(),
+        (_, false) => "Valid actions: play, pause, step, seek".to_string(),
     }
 }
 #[cfg(target_arch = "wasm32")]
@@ -384,11 +397,32 @@ fn parse_step_count(payload: &JsValue) -> Option<usize> {
 }
 
 #[cfg(target_arch = "wasm32")]
+fn parse_seek_tick(payload: &JsValue) -> Option<u64> {
+    if payload.is_undefined() || payload.is_null() {
+        return None;
+    }
+
+    if let Some(number) = payload.as_f64() {
+        if number.is_finite() && number >= 0.0 {
+            return Some(number as u64);
+        }
+    }
+
+    let tick = JsReflect::get(payload, &JsValue::from_str("tick")).ok()?;
+    let number = tick.as_f64()?;
+    if number.is_finite() && number >= 0.0 {
+        return Some(number as u64);
+    }
+    None
+}
+
+#[cfg(target_arch = "wasm32")]
 fn parse_control_action(action: &str, payload: &JsValue) -> Option<ViewerControl> {
     match action.trim().to_ascii_lowercase().as_str() {
         "play" => Some(ViewerControl::Play),
         "pause" => Some(ViewerControl::Pause),
         "step" => parse_step_count(payload).map(|count| ViewerControl::Step { count }),
+        "seek" => parse_seek_tick(payload).map(|tick| ViewerControl::Seek { tick }),
         _ => None,
     }
 }
@@ -833,6 +867,7 @@ pub(super) fn setup_web_test_api(world: &mut World) {
             let Some(control) = parse_control_action(action.as_str(), &payload) else {
                 let reason = match action.as_str() {
                     "step" => "step requires numeric payload.count >= 1",
+                    "seek" => "seek requires numeric payload.tick >= 0",
                     _ => "invalid payload for control action",
                 };
                 let feedback = build_control_feedback(

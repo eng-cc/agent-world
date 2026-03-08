@@ -119,7 +119,7 @@
 - WTA-15（已完成）：落地 `viewer_automation` round-3 语义步骤（chat/prompt）并补齐解析/映射测试。
 - WTA-16（已完成）：执行 round-3 定向回归、更新手册示例与文档状态收口。
 - WTA-17（已完成）：round-4 补齐需求建模与任务拆解（timeline seek/filter/jump 语义）。
-- WTA-18：落地 `viewer_automation + web_test_api` round-4 语义步骤（timeline + sendControl.seek）并补齐定向测试。
+- WTA-18（已完成）：落地 `viewer_automation + web_test_api` round-4 语义步骤（timeline + sendControl.seek）并补齐定向测试。
 - WTA-19：执行 round-4 定向回归、更新手册示例与文档状态收口。
 
 ### Technical Risks

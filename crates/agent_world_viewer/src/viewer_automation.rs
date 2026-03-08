@@ -58,6 +58,16 @@ pub(super) enum ViewerAutomationStep {
         module: ViewerAutomationPanelModule,
         action: ViewerAutomationVisibilityAction,
     },
+    TimelineSeek {
+        tick: u64,
+    },
+    TimelineFilter {
+        kind: crate::timeline_controls::TimelineMarkKindPublic,
+        action: ViewerAutomationVisibilityAction,
+    },
+    TimelineJump {
+        kind: crate::timeline_controls::TimelineMarkKindPublic,
+    },
     SendAgentChat {
         agent_id: String,
         message: String,
@@ -171,19 +181,29 @@ pub(super) fn run_viewer_automation(
     >,
     mut i18n: ResMut<crate::i18n::UiI18n>,
     mut variant_preview: ResMut<MaterialVariantPreviewState>,
-    viewer_config: Res<Viewer3dConfig>,
-    assets: Option<Res<Viewer3dAssets>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-    scene: Res<Viewer3dScene>,
-    viewer_client: Option<Res<ViewerClient>>,
+    render_resources: (
+        Res<Viewer3dConfig>,
+        Option<Res<Viewer3dAssets>>,
+        ResMut<Assets<StandardMaterial>>,
+    ),
+    runtime_resources: (
+        Res<Viewer3dScene>,
+        Option<Res<ViewerClient>>,
+        Option<Res<ViewerState>>,
+        Option<Res<ViewerControlProfileState>>,
+    ),
+    mut timeline: ResMut<crate::timeline_controls::TimelineUiState>,
+    mut timeline_filters: Option<ResMut<crate::timeline_controls::TimelineMarkFilterState>>,
     mut selection: ResMut<ViewerSelection>,
     mut queries: ParamSet<(
         Query<(&mut OrbitCamera, &mut Transform, &mut Projection), With<Viewer3dCamera>>,
         Query<(&mut Transform, Option<&BaseScale>)>,
         Query<(&Transform, Option<&BaseScale>)>,
+        Query<&LocationMarker>,
     )>,
-    mut location_markers: Query<&LocationMarker>,
 ) {
+    let (viewer_config, assets, mut materials) = render_resources;
+    let (scene, viewer_client, viewer_state, control_profile) = runtime_resources;
     let now = time.elapsed_secs_f64();
     if let Some(wait_until_secs) = state.wait_until_secs {
         if now < wait_until_secs {
@@ -210,9 +230,12 @@ pub(super) fn run_viewer_automation(
             assets.as_deref(),
             &mut materials,
             viewer_client.as_deref(),
+            viewer_state.as_deref(),
+            control_profile.as_deref(),
+            &mut timeline,
+            timeline_filters.as_deref_mut(),
             &mut selection,
             &mut queries,
-            &mut location_markers,
             &mut state,
         );
         match result {
@@ -293,13 +316,17 @@ fn apply_step(
     assets: Option<&Viewer3dAssets>,
     materials: &mut Assets<StandardMaterial>,
     viewer_client: Option<&ViewerClient>,
+    viewer_state: Option<&ViewerState>,
+    control_profile: Option<&ViewerControlProfileState>,
+    timeline: &mut crate::timeline_controls::TimelineUiState,
+    timeline_filters: Option<&mut crate::timeline_controls::TimelineMarkFilterState>,
     selection: &mut ViewerSelection,
     queries: &mut ParamSet<(
         Query<(&mut OrbitCamera, &mut Transform, &mut Projection), With<Viewer3dCamera>>,
         Query<(&mut Transform, Option<&BaseScale>)>,
         Query<(&Transform, Option<&BaseScale>)>,
+        Query<&LocationMarker>,
     )>,
-    location_markers: &mut Query<&LocationMarker>,
     state: &mut ViewerAutomationState,
 ) -> StepResult {
     match step {
@@ -425,7 +452,8 @@ fn apply_step(
                 return StepResult::Pending;
             };
             let name = if kind == SelectionKind::Location {
-                location_markers
+                queries
+                    .p3()
                     .get(entity)
                     .ok()
                     .map(|marker| marker.name.clone())
@@ -460,6 +488,34 @@ fn apply_step(
             let flag = module_visibility_flag(module_visibility, module);
             let current_visible = *flag;
             *flag = apply_visibility_action(current_visible, action);
+            StepResult::Applied
+        }
+        ViewerAutomationStep::TimelineSeek { tick } => {
+            apply_timeline_seek_step(timeline, viewer_client, control_profile, tick);
+            StepResult::Applied
+        }
+        ViewerAutomationStep::TimelineFilter { kind, action } => {
+            if let Some(filters) = timeline_filters {
+                let flag = timeline_filter_flag(filters, kind);
+                *flag = apply_visibility_action(*flag, action);
+            } else {
+                bevy::log::warn!("viewer automation timeline filter step ignored: filters missing");
+            }
+            StepResult::Applied
+        }
+        ViewerAutomationStep::TimelineJump { kind } => {
+            let Some(viewer_state) = viewer_state else {
+                bevy::log::warn!(
+                    "viewer automation timeline jump step ignored: viewer state missing"
+                );
+                return StepResult::Applied;
+            };
+            crate::timeline_controls::timeline_mark_jump_action(
+                viewer_state,
+                timeline,
+                timeline_filters.as_deref(),
+                kind,
+            );
             StepResult::Applied
         }
         ViewerAutomationStep::SendAgentChat { agent_id, message } => {
@@ -573,6 +629,37 @@ fn apply_layout_preset_automation(
             module_visibility.show_timeline = true;
             module_visibility.show_details = true;
         }
+    }
+}
+
+fn apply_timeline_seek_step(
+    timeline: &mut crate::timeline_controls::TimelineUiState,
+    viewer_client: Option<&ViewerClient>,
+    control_profile: Option<&ViewerControlProfileState>,
+    tick: u64,
+) {
+    timeline.target_tick = tick;
+    timeline.manual_override = true;
+    timeline.drag_active = false;
+
+    if let Some(client) = viewer_client {
+        let _ = dispatch_viewer_control(
+            client,
+            control_profile,
+            agent_world::viewer::ViewerControl::Seek { tick },
+            None,
+        );
+    }
+}
+
+fn timeline_filter_flag(
+    filters: &mut crate::timeline_controls::TimelineMarkFilterState,
+    kind: crate::timeline_controls::TimelineMarkKindPublic,
+) -> &mut bool {
+    match kind {
+        crate::timeline_controls::TimelineMarkKindPublic::Error => &mut filters.show_error,
+        crate::timeline_controls::TimelineMarkKindPublic::Llm => &mut filters.show_llm,
+        crate::timeline_controls::TimelineMarkKindPublic::Peak => &mut filters.show_peak,
     }
 }
 
@@ -911,6 +998,9 @@ fn parse_steps(raw: Option<&str>) -> Vec<ViewerAutomationStep> {
                 parse_visibility_action(value).map(ViewerAutomationStep::TopPanelVisibility)
             }
             "module" | "panel_module" | "module_visibility" => parse_module_visibility_step(value),
+            "timeline_seek" | "seek_timeline" => parse_timeline_seek_step(value),
+            "timeline_filter" | "timeline_mark_filter" => parse_timeline_filter_step(value),
+            "timeline_jump" | "timeline_mark_jump" => parse_timeline_jump_step(value),
             "chat" | "chat_send" => parse_chat_step(value),
             "prompt_system" | "prompt_sys" => {
                 parse_prompt_override_step(value, ViewerAutomationPromptField::System)
@@ -1052,6 +1142,34 @@ fn parse_module_visibility_step(raw: &str) -> Option<ViewerAutomationStep> {
     let module = parse_panel_module(module_raw)?;
     let action = parse_visibility_action(action_raw)?;
     Some(ViewerAutomationStep::ModuleVisibility { module, action })
+}
+
+fn parse_timeline_seek_step(raw: &str) -> Option<ViewerAutomationStep> {
+    let tick = raw.trim().parse::<u64>().ok()?;
+    Some(ViewerAutomationStep::TimelineSeek { tick })
+}
+
+fn parse_timeline_filter_step(raw: &str) -> Option<ViewerAutomationStep> {
+    let (kind_raw, action_raw) = raw.split_once(':')?;
+    let kind = parse_timeline_mark_kind(kind_raw)?;
+    let action = parse_visibility_action(action_raw)?;
+    Some(ViewerAutomationStep::TimelineFilter { kind, action })
+}
+
+fn parse_timeline_jump_step(raw: &str) -> Option<ViewerAutomationStep> {
+    let kind = parse_timeline_mark_kind(raw)?;
+    Some(ViewerAutomationStep::TimelineJump { kind })
+}
+
+fn parse_timeline_mark_kind(raw: &str) -> Option<crate::timeline_controls::TimelineMarkKindPublic> {
+    match raw.trim().to_ascii_lowercase().as_str() {
+        "err" | "error" => Some(crate::timeline_controls::TimelineMarkKindPublic::Error),
+        "llm" => Some(crate::timeline_controls::TimelineMarkKindPublic::Llm),
+        "peak" | "resource_peak" | "resource-peak" | "resourcepeak" => {
+            Some(crate::timeline_controls::TimelineMarkKindPublic::Peak)
+        }
+        _ => None,
+    }
 }
 
 fn parse_chat_step(raw: &str) -> Option<ViewerAutomationStep> {
@@ -1296,6 +1414,30 @@ mod tests {
     }
 
     #[test]
+    fn parse_steps_supports_timeline_seek_filter_and_jump_actions() {
+        let steps = parse_steps(Some(
+            "timeline_seek=42;timeline_filter=err:hide;timeline_filter=llm:toggle;timeline_jump=peak",
+        ));
+        assert_eq!(
+            steps,
+            vec![
+                ViewerAutomationStep::TimelineSeek { tick: 42 },
+                ViewerAutomationStep::TimelineFilter {
+                    kind: crate::timeline_controls::TimelineMarkKindPublic::Error,
+                    action: ViewerAutomationVisibilityAction::Hide,
+                },
+                ViewerAutomationStep::TimelineFilter {
+                    kind: crate::timeline_controls::TimelineMarkKindPublic::Llm,
+                    action: ViewerAutomationVisibilityAction::Toggle,
+                },
+                ViewerAutomationStep::TimelineJump {
+                    kind: crate::timeline_controls::TimelineMarkKindPublic::Peak,
+                },
+            ]
+        );
+    }
+
+    #[test]
     fn parse_steps_supports_chat_and_prompt_actions() {
         let steps = parse_steps(Some(
             "chat=agent-1|hello+world%21;prompt_system=agent-1|clear;prompt_short=agent-1|Need%20power%20first",
@@ -1346,6 +1488,19 @@ mod tests {
             vec![ViewerAutomationStep::SetLocale(
                 ViewerAutomationLocaleAction::En
             )]
+        );
+    }
+
+    #[test]
+    fn parse_steps_ignores_invalid_timeline_actions() {
+        let steps = parse_steps(Some(
+            "timeline_seek=-1;timeline_seek=abc;timeline_filter=foo:show;timeline_filter=err:unknown;timeline_jump=other;timeline_mark_jump=error",
+        ));
+        assert_eq!(
+            steps,
+            vec![ViewerAutomationStep::TimelineJump {
+                kind: crate::timeline_controls::TimelineMarkKindPublic::Error,
+            }]
         );
     }
 
