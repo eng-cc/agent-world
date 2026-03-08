@@ -5,7 +5,7 @@
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 完成专题 PRD 建模、验收标准冻结与模块文档树回写。
-- [ ] T1 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 落地首次 3 步引导向导（打开/跳过/完成/重置）与任务状态联动。
+- [x] T1 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 落地首次 3 步引导向导（打开/跳过/完成/重置）与任务状态联动。
 - [ ] T2 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 落地主界面任务流卡片（链/游戏/页面）与“下一步建议”渲染。
 - [ ] T3 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 完成专家模式切换（默认简化视图 + 高级配置入口保持可达）。
 - [ ] T4 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 为关键禁用态按钮补齐就地 CTA（修复配置/启动链/重试）。
@@ -34,5 +34,5 @@
 ## 状态
 - 最近更新：2026-03-08
 - 当前阶段: in_progress
-- 当前任务: T1（首次 3 步引导向导）
-- 备注: T0 已完成，T1~T12 待逐步交付并按任务单独提交。
+- 当前任务: T2（主界面任务流卡片）
+- 备注: T0/T1 已完成，T2~T12 待逐步交付并按任务单独提交。

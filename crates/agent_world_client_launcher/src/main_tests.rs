@@ -4,8 +4,10 @@ use super::{
     config_ui::{issue_field_ids, StartupGuideTarget},
     encode_query_value, encoded_query_pair, install_cjk_font, normalize_host_for_url,
     parse_chain_role, parse_chain_validators, parse_host_port, parse_port,
-    probe_chain_status_endpoint, ChainRuntimeStatus, ClientLauncherApp, ConfigIssue, LaunchConfig,
-    LauncherStatus, UiLanguage, WebRequestDomain, WebStateSnapshot, EGUI_CJK_FONT_NAME,
+    probe_chain_status_endpoint,
+    self_guided::OnboardingStep,
+    ChainRuntimeStatus, ClientLauncherApp, ConfigIssue, LaunchConfig, LauncherStatus, UiLanguage,
+    WebRequestDomain, WebStateSnapshot, EGUI_CJK_FONT_NAME,
 };
 use eframe::egui;
 use std::io::{Read, Write};
@@ -511,4 +513,31 @@ fn handle_start_chain_click_opens_startup_guide_when_invalid() {
     ));
     assert!(app.startup_guide_state.open);
     assert_eq!(app.startup_guide_state.target, StartupGuideTarget::Chain);
+}
+
+#[test]
+fn onboarding_auto_open_targets_fix_config_step_when_required_fields_missing() {
+    let mut app = ClientLauncherApp::default();
+    app.onboarding_state.auto_open_checked = false;
+    app.onboarding_state.completed = false;
+    app.onboarding_state.open = false;
+    let game_issues = [ConfigIssue::ScenarioRequired];
+    app.maybe_open_onboarding_on_first_visit(&game_issues, &[], false, false);
+    assert!(app.onboarding_state.open);
+    assert_eq!(app.onboarding_state.step, OnboardingStep::FixConfig);
+}
+
+#[test]
+fn onboarding_auto_open_happens_only_once_per_session() {
+    let mut app = ClientLauncherApp::default();
+    app.onboarding_state.auto_open_checked = false;
+    app.onboarding_state.completed = false;
+    app.onboarding_state.open = false;
+    app.maybe_open_onboarding_on_first_visit(&[], &[], false, false);
+    assert!(app.onboarding_state.open);
+    assert_eq!(app.onboarding_state.step, OnboardingStep::Understand);
+
+    app.onboarding_state.open = false;
+    app.maybe_open_onboarding_on_first_visit(&[], &[], false, false);
+    assert!(!app.onboarding_state.open);
 }

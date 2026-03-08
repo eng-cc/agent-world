@@ -75,7 +75,7 @@
 - [x] TASK-WORLD_SIMULATOR-070 (PRD-WORLD_SIMULATOR-029) [test_tier_required]: 落地配置防回写与请求并发域拆分（native/web 同步），并补齐定向回归测试。
 - [x] TASK-WORLD_SIMULATOR-071 (PRD-WORLD_SIMULATOR-029) [test_tier_required]: 落地反馈草稿保护、顶栏响应式与转账过滤重置，并完成 native/web 回归。
 - [x] TASK-WORLD_SIMULATOR-072 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 完成“启动器自引导体验闭环（12 点）”PRD 建模、任务拆解与模块文档树回写。
-- [ ] TASK-WORLD_SIMULATOR-073 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 落地首次 3 步引导向导（可完成/跳过/重置）并完成 native/web 回归。
+- [x] TASK-WORLD_SIMULATOR-073 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 落地首次 3 步引导向导（可完成/跳过/重置）并完成 native/web 回归。
 - [ ] TASK-WORLD_SIMULATOR-074 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 落地主界面任务流卡片与“下一步建议”渲染（链/游戏/页面）并完成回归。
 - [ ] TASK-WORLD_SIMULATOR-075 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 完成专家模式切换（默认简化视图 + 高级配置可达）并完成回归。
 - [ ] TASK-WORLD_SIMULATOR-076 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 为关键禁用态按钮补齐就地 CTA（修复配置/启动链/重试）并完成回归。
@@ -190,9 +190,9 @@
 ## 状态
 - 更新日期: 2026-03-08
 - 当前状态: in_progress（执行 `PRD-WORLD_SIMULATOR-030` 自引导体验闭环）
-- 当前优先任务: TASK-WORLD_SIMULATOR-073
-- 并行待办: TASK-WORLD_SIMULATOR-074/075（待 TASK-WORLD_SIMULATOR-073 收口后进入）
-- 专题映射状态: 2026-03-02 批次 9/9、2026-03-03 批次 4/4、2026-03-04 批次 7/7、2026-03-05 批次 4/4、2026-03-06 批次 6/6 已纳入模块项目管理文档；`TASK-WORLD_SIMULATOR-057/058/059/060/061/062/063/064/065/066/067/068/069/070/071/072` 已完成，`TASK-WORLD_SIMULATOR-073~084` 待执行。
+- 当前优先任务: TASK-WORLD_SIMULATOR-074
+- 并行待办: TASK-WORLD_SIMULATOR-075（待 TASK-WORLD_SIMULATOR-074 收口后进入）
+- 专题映射状态: 2026-03-02 批次 9/9、2026-03-03 批次 4/4、2026-03-04 批次 7/7、2026-03-05 批次 4/4、2026-03-06 批次 6/6 已纳入模块项目管理文档；`TASK-WORLD_SIMULATOR-057/058/059/060/061/062/063/064/065/066/067/068/069/070/071/072/073` 已完成，`TASK-WORLD_SIMULATOR-074~084` 待执行。
 - 手册入口状态: `doc/world-simulator/viewer/viewer-manual.md` 为唯一活跃手册入口。
 - 视觉评分模板状态: `doc/world-simulator/prd/acceptance/visual-review-score-card.md` 已纳入文档树，采用卡片式评审覆盖 llm_bootstrap 场景 18 张截图。
 - UI 评审结果状态: `doc/ui_review_result/ui_review_list.md` 已建立，首张待打分卡片为 `doc/ui_review_result/card_2026_03_06_11_50_29.md`。

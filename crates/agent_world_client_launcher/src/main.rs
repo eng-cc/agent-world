@@ -57,12 +57,14 @@ mod llm_settings;
 #[path = "llm_settings_web.rs"]
 mod llm_settings;
 mod platform_ops;
+mod self_guided;
 #[cfg(not(target_arch = "wasm32"))]
 mod transfer_entry;
 mod transfer_window;
 
 use config_ui::StartupGuideState;
 use launcher_core::*;
+use self_guided::{LauncherUxState, OnboardingState};
 
 const DEFAULT_SCENARIO: &str = "llm_bootstrap";
 const DEFAULT_LIVE_BIND: &str = "127.0.0.1:5023";
@@ -777,6 +779,8 @@ struct ClientLauncherApp {
     feedback_draft: FeedbackDraft,
     feedback_submit_state: FeedbackSubmitState,
     feedback_window_open: bool,
+    onboarding_state: OnboardingState,
+    ux_state: LauncherUxState,
     startup_guide_state: StartupGuideState,
     config_window_open: bool,
     transfer_draft: TransferDraft,
@@ -801,6 +805,8 @@ struct ClientLauncherApp {
 impl Default for ClientLauncherApp {
     fn default() -> Self {
         let config = LaunchConfig::default();
+        let ux_state = self_guided::load_launcher_ux_state();
+        let onboarding_state = OnboardingState::from_persisted(ux_state.onboarding_completed);
         let (web_api_tx, web_api_rx) = mpsc::channel::<WebApiEvent>();
         #[cfg(not(target_arch = "wasm32"))]
         let control_url_from_env = env::var(CLIENT_LAUNCHER_CONTROL_URL_ENV)
@@ -845,6 +851,8 @@ impl Default for ClientLauncherApp {
             feedback_draft: FeedbackDraft::default(),
             feedback_submit_state: FeedbackSubmitState::None,
             feedback_window_open: false,
+            onboarding_state,
+            ux_state,
             startup_guide_state: StartupGuideState::default(),
             config_window_open: false,
             transfer_draft: TransferDraft::default(),
@@ -1287,7 +1295,18 @@ impl eframe::App for ClientLauncherApp {
         );
         let can_click_start_game = !game_running;
         let can_click_start_chain = self.config.chain_enabled && !chain_running;
-        self.maybe_open_startup_guide_on_first_check(&game_required_issues, &chain_required_issues);
+        self.maybe_open_onboarding_on_first_visit(
+            &game_required_issues,
+            &chain_required_issues,
+            game_running,
+            chain_running,
+        );
+        if self.onboarding_state.completed {
+            self.maybe_open_startup_guide_on_first_check(
+                &game_required_issues,
+                &chain_required_issues,
+            );
+        }
 
         egui::CentralPanel::default().show(ctx, |ui| {
             self.render_config_validation_summary(
@@ -1337,6 +1356,12 @@ impl eframe::App for ClientLauncherApp {
                 }
                 if ui.button(self.tr("高级配置", "Advanced Config")).clicked() {
                     self.config_window_open = true;
+                }
+                if ui.button(self.tr("新手引导", "Onboarding")).clicked() {
+                    self.open_onboarding_manual();
+                }
+                if ui.button(self.tr("重置引导", "Reset Guide")).clicked() {
+                    self.reset_onboarding();
                 }
                 if ui.button(self.tr("打开游戏页", "Open Game Page")).clicked() {
                     let url = self.current_game_url();
@@ -1437,6 +1462,13 @@ impl eframe::App for ClientLauncherApp {
         });
 
         self.show_config_window(ctx, &game_required_issues, &chain_required_issues);
+        self.show_onboarding_window(
+            ctx,
+            &game_required_issues,
+            &chain_required_issues,
+            game_running,
+            chain_running,
+        );
         self.show_startup_guide_window(ctx, &game_required_issues, &chain_required_issues);
         self.llm_settings_panel
             .show(ctx, self.ui_language, &mut self.config);
