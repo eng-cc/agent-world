@@ -776,6 +776,12 @@ impl ClientLauncherApp {
                 }
 
                 ui.horizontal_wrapped(|ui| {
+                    ui.small(self.tr("术语", "Glossary"));
+                    self.render_glossary_term_chip(ui, GlossaryTerm::Nonce);
+                    self.render_glossary_term_chip(ui, GlossaryTerm::ActionId);
+                });
+
+                ui.horizontal_wrapped(|ui| {
                     ui.label(self.tr("Nonce 模式", "Nonce Mode"));
                     let auto_text = self.tr("自动", "Auto");
                     let manual_text = self.tr("手动", "Manual");

@@ -216,6 +216,14 @@ enum UiLanguage {
     EnUs,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum GlossaryTerm {
+    Nonce,
+    Slot,
+    Mempool,
+    ActionId,
+}
+
 impl UiLanguage {
     fn from_tag(raw: &str) -> Option<Self> {
         match raw.trim().to_ascii_lowercase().as_str() {
@@ -882,6 +890,53 @@ impl ClientLauncherApp {
             UiLanguage::ZhCn => zh,
             UiLanguage::EnUs => en,
         }
+    }
+
+    fn glossary_term_text(&self, term: GlossaryTerm) -> &'static str {
+        match term {
+            GlossaryTerm::Nonce => "nonce",
+            GlossaryTerm::Slot => "slot",
+            GlossaryTerm::Mempool => "mempool",
+            GlossaryTerm::ActionId => "action_id",
+        }
+    }
+
+    fn glossary_term_definition(&self, term: GlossaryTerm) -> &'static str {
+        match (term, self.ui_language) {
+            (GlossaryTerm::Nonce, UiLanguage::ZhCn) => {
+                "每个账户的递增序号，用于防重放；通常使用 next_nonce_hint。"
+            }
+            (GlossaryTerm::Nonce, UiLanguage::EnUs) => {
+                "Per-account increasing sequence to prevent replay; usually use next_nonce_hint."
+            }
+            (GlossaryTerm::Slot, UiLanguage::ZhCn) => {
+                "链出块时间片编号；多个 tick 组成一个 slot，用于排序区块时间。"
+            }
+            (GlossaryTerm::Slot, UiLanguage::EnUs) => {
+                "Block time window index; multiple ticks form one slot for chain ordering."
+            }
+            (GlossaryTerm::Mempool, UiLanguage::ZhCn) => {
+                "待打包交易池，包含 accepted/pending 状态的交易。"
+            }
+            (GlossaryTerm::Mempool, UiLanguage::EnUs) => {
+                "Queue of transactions waiting to be packed, including accepted/pending states."
+            }
+            (GlossaryTerm::ActionId, UiLanguage::ZhCn) => {
+                "链内动作编号，可用于精确追踪单笔转账状态与查询。"
+            }
+            (GlossaryTerm::ActionId, UiLanguage::EnUs) => {
+                "On-chain action identifier for tracking one transfer lifecycle and queries."
+            }
+        }
+    }
+
+    fn render_glossary_term_chip(&self, ui: &mut egui::Ui, term: GlossaryTerm) {
+        ui.label(
+            egui::RichText::new(self.glossary_term_text(term))
+                .underline()
+                .color(egui::Color32::from_rgb(74, 116, 168)),
+        )
+        .on_hover_text(self.glossary_term_definition(term));
     }
 
     fn append_log<S: Into<String>>(&mut self, line: S) {

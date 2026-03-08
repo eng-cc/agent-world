@@ -18,8 +18,8 @@ use super::{
         transfer_amount_presets, TransferTimelineState, WebTransferAccountEntry,
         WebTransferLifecycleStatus,
     },
-    ChainRuntimeStatus, ClientLauncherApp, ConfigIssue, LaunchConfig, LauncherStatus, UiLanguage,
-    WebRequestDomain, WebStateSnapshot, EGUI_CJK_FONT_NAME,
+    ChainRuntimeStatus, ClientLauncherApp, ConfigIssue, GlossaryTerm, LaunchConfig, LauncherStatus,
+    UiLanguage, WebRequestDomain, WebStateSnapshot, EGUI_CJK_FONT_NAME,
 };
 use eframe::egui;
 use std::io::{Read, Write};
@@ -429,6 +429,25 @@ fn explorer_quick_shortcut_latest_block_prefills_height_from_overview() {
     assert_eq!(app.explorer_panel_state.block_height_input, "88");
     assert_eq!(app.explorer_panel_state.pending_block_height, Some(88));
     assert!(app.explorer_panel_state.pending_block_refresh);
+}
+
+#[test]
+fn glossary_terms_cover_nonce_slot_mempool_action_id() {
+    let mut app = ClientLauncherApp::default();
+    app.ui_language = UiLanguage::EnUs;
+    assert_eq!(app.glossary_term_text(GlossaryTerm::Nonce), "nonce");
+    assert_eq!(app.glossary_term_text(GlossaryTerm::Slot), "slot");
+    assert_eq!(app.glossary_term_text(GlossaryTerm::Mempool), "mempool");
+    assert_eq!(app.glossary_term_text(GlossaryTerm::ActionId), "action_id");
+
+    for term in [
+        GlossaryTerm::Nonce,
+        GlossaryTerm::Slot,
+        GlossaryTerm::Mempool,
+        GlossaryTerm::ActionId,
+    ] {
+        assert!(!app.glossary_term_definition(term).trim().is_empty());
+    }
 }
 
 #[test]

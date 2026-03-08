@@ -784,6 +784,12 @@ impl ClientLauncherApp {
                         ));
                     }
                 });
+                ui.horizontal_wrapped(|ui| {
+                    ui.small(self.tr("术语", "Glossary"));
+                    self.render_glossary_term_chip(ui, GlossaryTerm::Slot);
+                    self.render_glossary_term_chip(ui, GlossaryTerm::Mempool);
+                    self.render_glossary_term_chip(ui, GlossaryTerm::ActionId);
+                });
 
                 if !self.is_feedback_available() {
                     ui.small(
