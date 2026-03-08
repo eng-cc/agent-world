@@ -60,7 +60,7 @@
   - `doc/world-simulator/viewer/viewer-open-world-sandbox-readiness.stress-report.template.md`
   - `doc/testing/longrun/p2p-storage-consensus-longrun-online-stability-2026-02-24.prd.md`
 - 删除 legacy `--tick-ms` 拒绝断言测试，避免保留旧参数语义噪音：
-  - `crates/agent_world/src/bin/world_viewer_live/world_viewer_live_tests_split_part1.rs`
+  - `crates/agent_world/src/bin/world_viewer_live.rs（`#[cfg(test)]`）`
 
 ### 验收证据
 - `env -u RUSTC_WRAPPER cargo fmt --all -- --check`
@@ -88,7 +88,7 @@
 - `crates/agent_world/src/viewer/live_split_part2.rs`
 - `crates/agent_world/src/viewer/live/tests.rs`
 - `crates/agent_world/src/viewer/mod.rs`
-- `crates/agent_world/src/bin/world_viewer_live/world_viewer_live_split_part1.rs`
+- `crates/agent_world/src/bin/world_viewer_live.rs`
 
 不在范围内：
 - 不改动 viewer 对外协议字段。
@@ -149,9 +149,9 @@
 - 保持 node/runtime 共识 tick 机制不变（不在本阶段改造范围内）。
 
 #### 2. User Experience & Functionality
-- `crates/agent_world/src/bin/world_viewer_live/cli.rs`
-- `crates/agent_world/src/bin/world_viewer_live/world_viewer_live_split_part2.rs`
-- `crates/agent_world/src/bin/world_viewer_live/world_viewer_live_tests_split_part1.rs`
+- `crates/agent_world/src/bin/world_viewer_live.rs`
+- `crates/agent_world/src/bin/world_viewer_live.rs`
+- `crates/agent_world/src/bin/world_viewer_live.rs（`#[cfg(test)]`）`
 - `crates/agent_world/tests/viewer_live_integration.rs`
 - `scripts/capture-viewer-frame.sh`
 - `scripts/viewer-theme-pack-preview.sh`

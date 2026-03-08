@@ -14,7 +14,7 @@
 ## 依赖
 - `crates/agent_world_distfs/src/challenge_scheduler.rs`
 - `crates/agent_world/src/bin/world_viewer_live.rs`
-- `crates/agent_world/src/bin/world_viewer_live/world_viewer_live_tests.rs`
+- `crates/agent_world/src/bin/world_viewer_live.rs（`#[cfg(test)]`）`
 - `doc/p2p/distfs/distfs-production-hardening-phase4.prd.md`
 
 ## 状态

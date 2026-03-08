@@ -60,9 +60,9 @@
 
 ### 3) 去中心化默认拓扑（live）
 - 文件
-  - `crates/agent_world/src/bin/world_viewer_live/cli.rs`
   - `crates/agent_world/src/bin/world_viewer_live.rs`
-  - `crates/agent_world/src/bin/world_viewer_live/world_viewer_live_tests.rs`
+  - `crates/agent_world/src/bin/world_viewer_live.rs`
+  - `crates/agent_world/src/bin/world_viewer_live.rs（`#[cfg(test)]`）`
 - 拓扑模式
   - `single`（兼容旧行为）
   - `triad`（默认，sequencer/storage/observer）

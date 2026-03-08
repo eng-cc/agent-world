@@ -12,7 +12,7 @@
 - `crates/agent_world_node/src/lib.rs`
 - `crates/agent_world_node/src/pos_state_store.rs`
 - `crates/agent_world/src/bin/world_viewer_live.rs`
-- `crates/agent_world/src/bin/world_viewer_live/reward_runtime_network.rs`
+- `crates/agent_world/src/bin/world_chain_runtime/reward_runtime_worker.rs`
 - `doc/devlog/2026-02-17.md`
 
 ## 状态

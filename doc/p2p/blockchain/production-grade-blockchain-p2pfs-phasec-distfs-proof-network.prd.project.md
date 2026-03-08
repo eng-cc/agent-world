@@ -11,10 +11,10 @@
 - `doc/p2p/blockchain/production-grade-blockchain-p2pfs-roadmap.prd.md`
 - `doc/p2p/blockchain/production-grade-blockchain-p2pfs-phasec-distfs-proof-network.prd.md`
 - `crates/agent_world/src/bin/world_viewer_live.rs`
-- `crates/agent_world/src/bin/world_viewer_live/distfs_challenge_network.rs`
-- `crates/agent_world/src/bin/world_viewer_live/observation_trace_runtime.rs`
-- `crates/agent_world/src/bin/world_viewer_live/distfs_probe_runtime.rs`
-- `crates/agent_world/src/bin/world_viewer_live/reward_runtime_network.rs`
+- `crates/agent_world/src/bin/world_chain_runtime/reward_runtime_worker.rs`
+- `crates/agent_world/src/bin/world_chain_runtime/reward_runtime_worker.rs`
+- `crates/agent_world/src/bin/world_chain_runtime/distfs_probe_runtime.rs`
+- `crates/agent_world/src/bin/world_chain_runtime/reward_runtime_worker.rs`
 - `doc/devlog/2026-02-17.md`
 
 ## 状态

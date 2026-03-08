@@ -13,8 +13,8 @@
 
 ## 依赖
 - `crates/agent_world/src/bin/world_viewer_live.rs`
-- `crates/agent_world/src/bin/world_viewer_live/distfs_probe_runtime.rs`
-- `crates/agent_world/src/bin/world_viewer_live/world_viewer_live_tests.rs`
+- `crates/agent_world/src/bin/world_chain_runtime/distfs_probe_runtime.rs`
+- `crates/agent_world/src/bin/world_viewer_live.rs（`#[cfg(test)]`）`
 - `doc/p2p/distfs/distfs-production-hardening-phase5.prd.md`
 
 ## 状态

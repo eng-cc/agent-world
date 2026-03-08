@@ -20,7 +20,7 @@
 - `crates/agent_world/src/simulator/kernel`
   - 扩展 `Observation` 数据结构，增加模块生命周期、模块市场、电力市场、社会状态快照。
   - 在 `observe` 路径中从 `WorldModel` 构建并返回上述快照。
-- `crates/agent_world/src/bin/world_viewer_live/execution_bridge.rs`
+- `crates/agent_world/src/bin/world_chain_runtime/execution_bridge.rs`
   - 为共识执行桥接补齐 `SimulatorAction` 执行路径（新增 simulator execution mirror）。
   - 保留 RuntimeWorld 路径兼容；在有 simulator payload 时执行并落审计记录。
 - 测试与回归

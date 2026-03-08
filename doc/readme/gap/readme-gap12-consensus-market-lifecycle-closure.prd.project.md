@@ -27,7 +27,7 @@
 - T1 依赖：
   - `crates/agent_world_node/src/lib.rs`
   - `crates/agent_world/src/viewer/live.rs`
-  - `crates/agent_world/src/bin/world_viewer_live/execution_bridge.rs`
+  - `crates/agent_world/src/bin/world_chain_runtime/execution_bridge.rs`
 - T2 依赖：
   - `crates/agent_world/src/simulator/types.rs`
   - `crates/agent_world/src/simulator/kernel/*`

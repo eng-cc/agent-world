@@ -20,7 +20,7 @@
   - `crates/agent_world/src/viewer/live.rs`
     - 增加 node 共识提交桥接能力，替换直接 `kernel.submit_action + step` 的推进方式。
     - LLM 驱动改为“决策提交”和“提交后回执驱动记忆更新”。
-  - `crates/agent_world/src/bin/world_viewer_live/execution_bridge.rs`
+  - `crates/agent_world/src/bin/world_chain_runtime/execution_bridge.rs`
     - 兼容带 envelope 的共识 payload，非 runtime action 不再导致桥接失败。
   - `crates/agent_world/src/simulator`
     - 扩展 `Action`、`WorldEventKind`、`WorldModel`、kernel 执行/replay，支持模块市场动作。

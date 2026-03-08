@@ -30,7 +30,7 @@
   - `crates/agent_world_node/src/replication.rs`
   - `crates/agent_world_node/src/execution_hook.rs`
 - Viewer execution bridge：
-  - `crates/agent_world/src/bin/world_viewer_live/execution_bridge.rs`
+  - `crates/agent_world/src/bin/world_chain_runtime/execution_bridge.rs`
 - 测试：
   - `crates/agent_world/src/runtime/tests/module_action_loop.rs`
   - `crates/agent_world/src/runtime/tests/modules.rs`

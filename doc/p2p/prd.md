@@ -118,7 +118,7 @@
   - AC-14: `world_chain_runtime/world_game_launcher/world_web_launcher/agent_world_client_launcher/world_viewer_live/p2p-longrun/s10` 默认 `slot_duration_ms/ticks_per_slot/proposal_tick_phase` 与“12s/10/9”基线一致，相关默认值断言与手册同步更新。
   - AC-15: `world_viewer_live` 解析层移除 `--release-config` 与 `--node-*` 参数能力；定向测试覆盖“误传 legacy 参数 -> 启动失败 + 替代提示”路径。
   - AC-16: `world_viewer_live` 进一步移除 `--runtime-world` 兼容别名与旧 split CLI 路径，定向测试覆盖 `--release-config/--runtime-world/--node-*` 拒绝行为。
-  - AC-17: 历史文档中 `crates/agent_world/src/bin/world_viewer_live/*.rs` 旧路径完成迁移（对齐 `world_viewer_live.rs` 与 `world_chain_runtime/*` 现行布局），文档门禁通过。
+  - AC-17: 历史文档中 `world_viewer_live` 子目录旧路径完成迁移（对齐 `world_viewer_live.rs` 与 `world_chain_runtime/*` 现行布局），文档门禁通过。
 - Non-Goals:
   - 不在本 PRD 细化 viewer UI 交互。
   - 不替代 runtime 内核的模块执行细节设计。

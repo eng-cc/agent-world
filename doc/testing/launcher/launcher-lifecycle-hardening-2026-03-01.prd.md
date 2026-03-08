@@ -59,8 +59,8 @@
   - `crates/agent_world/src/bin/world_game_launcher.rs`
   - `crates/agent_world/src/bin/world_game_launcher/world_game_launcher_tests.rs`
   - `crates/agent_world_client_launcher/src/main.rs`
-  - `crates/agent_world/src/bin/world_viewer_live/distfs_probe_runtime.rs`
-  - `crates/agent_world/src/bin/world_viewer_live/world_viewer_live_tests_split_part2.rs`
+  - `crates/agent_world/src/bin/world_chain_runtime/distfs_probe_runtime.rs`
+  - `crates/agent_world/src/bin/world_viewer_live.rs（`#[cfg(test)]`）`
 - Edge Cases & Error Handling:
   - 静态 HTTP 端口占用：视为启动失败并触发子进程回滚。
   - 子进程短暂启动后立即退出：ready 轮询中立即失败，避免误报成功。

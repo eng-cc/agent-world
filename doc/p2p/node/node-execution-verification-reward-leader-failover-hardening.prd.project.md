@@ -11,7 +11,7 @@
 - `doc/p2p/node/node-execution-verification-reward-leader-failover-hardening.prd.md`
 - `crates/agent_world_node/src/types.rs`
 - `crates/agent_world_node/src/lib.rs`
-- `crates/agent_world/src/bin/world_viewer_live/cli.rs`
+- `crates/agent_world/src/bin/world_viewer_live.rs`
 - `crates/agent_world/src/bin/world_viewer_live.rs`
 
 ## 状态
