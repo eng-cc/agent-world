@@ -82,7 +82,7 @@
 - [x] TASK-WORLD_SIMULATOR-077 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 增强配置引导联动（任务流/CTA 直达配置引导）并完成回归。
 - [x] TASK-WORLD_SIMULATOR-078 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 扩展转账轻量模式（金额预设、账户推荐）并完成回归。
 - [x] TASK-WORLD_SIMULATOR-079 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 新增转账状态时间线展示（accepted/pending/final）并完成回归。
-- [ ] TASK-WORLD_SIMULATOR-080 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 增加浏览器快捷入口（最新区块/最近交易/我的账户）并完成回归。
+- [x] TASK-WORLD_SIMULATOR-080 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 增加浏览器快捷入口（最新区块/最近交易/我的账户）并完成回归。
 - [ ] TASK-WORLD_SIMULATOR-081 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 为 nonce/slot/mempool/action_id 补齐术语内联解释并完成回归。
 - [ ] TASK-WORLD_SIMULATOR-082 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 新增“最近成功配置画像”保存/恢复/清空闭环并完成回归。
 - [ ] TASK-WORLD_SIMULATOR-083 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 落地演示模式一键闭环（安全默认配置 + 串行动作）并完成回归。
@@ -190,9 +190,9 @@
 ## 状态
 - 更新日期: 2026-03-08
 - 当前状态: in_progress（执行 `PRD-WORLD_SIMULATOR-030` 自引导体验闭环）
-- 当前优先任务: TASK-WORLD_SIMULATOR-080
-- 并行待办: TASK-WORLD_SIMULATOR-081（待 TASK-WORLD_SIMULATOR-080 收口后进入）
-- 专题映射状态: 2026-03-02 批次 9/9、2026-03-03 批次 4/4、2026-03-04 批次 7/7、2026-03-05 批次 4/4、2026-03-06 批次 6/6 已纳入模块项目管理文档；`TASK-WORLD_SIMULATOR-057/058/059/060/061/062/063/064/065/066/067/068/069/070/071/072/073/074/075/076/077/078/079` 已完成，`TASK-WORLD_SIMULATOR-080~084` 待执行。
+- 当前优先任务: TASK-WORLD_SIMULATOR-081
+- 并行待办: TASK-WORLD_SIMULATOR-082（待 TASK-WORLD_SIMULATOR-081 收口后进入）
+- 专题映射状态: 2026-03-02 批次 9/9、2026-03-03 批次 4/4、2026-03-04 批次 7/7、2026-03-05 批次 4/4、2026-03-06 批次 6/6 已纳入模块项目管理文档；`TASK-WORLD_SIMULATOR-057/058/059/060/061/062/063/064/065/066/067/068/069/070/071/072/073/074/075/076/077/078/079/080` 已完成，`TASK-WORLD_SIMULATOR-081~084` 待执行。
 - 手册入口状态: `doc/world-simulator/viewer/viewer-manual.md` 为唯一活跃手册入口。
 - 视觉评分模板状态: `doc/world-simulator/prd/acceptance/visual-review-score-card.md` 已纳入文档树，采用卡片式评审覆盖 llm_bootstrap 场景 18 张截图。
 - UI 评审结果状态: `doc/ui_review_result/ui_review_list.md` 已建立，首张待打分卡片为 `doc/ui_review_result/card_2026_03_06_11_50_29.md`。

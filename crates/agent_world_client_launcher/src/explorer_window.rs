@@ -191,6 +191,13 @@ enum ExplorerTab {
     Mempool,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum ExplorerQuickShortcut {
+    LatestBlock,
+    RecentTxs,
+    MyAccount,
+}
+
 impl Default for ExplorerTab {
     fn default() -> Self {
         Self::Blocks
@@ -280,6 +287,23 @@ impl Default for ExplorerPanelState {
 
 fn parse_positive_u64(raw: &str) -> Option<u64> {
     raw.trim().parse::<u64>().ok().filter(|value| *value > 0)
+}
+
+pub(super) fn resolve_explorer_my_account_candidate(
+    transfer_from_account: &str,
+    tx_account_filter: &str,
+    address_account_input: &str,
+) -> Option<String> {
+    for candidate in [
+        transfer_from_account.trim(),
+        tx_account_filter.trim(),
+        address_account_input.trim(),
+    ] {
+        if !candidate.is_empty() {
+            return Some(candidate.to_string());
+        }
+    }
+    None
 }
 
 fn short_hash(raw: &str) -> String {
@@ -372,6 +396,68 @@ impl ClientLauncherApp {
         }
     }
 
+    fn explorer_shortcut_text(&self, shortcut: ExplorerQuickShortcut) -> &'static str {
+        match (shortcut, self.ui_language) {
+            (ExplorerQuickShortcut::LatestBlock, UiLanguage::ZhCn) => "最新区块",
+            (ExplorerQuickShortcut::LatestBlock, UiLanguage::EnUs) => "Latest Block",
+            (ExplorerQuickShortcut::RecentTxs, UiLanguage::ZhCn) => "最近交易",
+            (ExplorerQuickShortcut::RecentTxs, UiLanguage::EnUs) => "Recent Txs",
+            (ExplorerQuickShortcut::MyAccount, UiLanguage::ZhCn) => "我的账户",
+            (ExplorerQuickShortcut::MyAccount, UiLanguage::EnUs) => "My Account",
+        }
+    }
+
+    fn explorer_my_account_candidate(&self) -> Option<String> {
+        resolve_explorer_my_account_candidate(
+            self.transfer_draft.from_account_id.as_str(),
+            self.explorer_panel_state.account_filter.as_str(),
+            self.explorer_panel_state.p1.address_account_input.as_str(),
+        )
+    }
+
+    pub(super) fn apply_explorer_quick_shortcut(&mut self, shortcut: ExplorerQuickShortcut) {
+        match shortcut {
+            ExplorerQuickShortcut::LatestBlock => {
+                self.explorer_panel_state.active_tab = ExplorerTab::Blocks;
+                self.explorer_panel_state.blocks_cursor = 0;
+                self.explorer_panel_state.pending_blocks_refresh = true;
+                if let Some(latest_height) = self
+                    .explorer_panel_state
+                    .overview
+                    .as_ref()
+                    .map(|overview| overview.latest_height)
+                {
+                    self.explorer_panel_state.block_height_input = latest_height.to_string();
+                    self.explorer_panel_state.block_hash_input.clear();
+                    self.explorer_panel_state.pending_block_height = Some(latest_height);
+                    self.explorer_panel_state.pending_block_hash = None;
+                    self.explorer_panel_state.pending_block_refresh = true;
+                }
+            }
+            ExplorerQuickShortcut::RecentTxs => {
+                self.explorer_panel_state.active_tab = ExplorerTab::Txs;
+                self.explorer_panel_state.txs_cursor = 0;
+                self.explorer_panel_state.account_filter.clear();
+                self.explorer_panel_state.action_filter_input.clear();
+                self.explorer_panel_state.status_filter = ExplorerStatusFilter::All;
+                self.explorer_panel_state.pending_txs_refresh = true;
+            }
+            ExplorerQuickShortcut::MyAccount => {
+                let Some(account_id) = self.explorer_my_account_candidate() else {
+                    self.append_log(self.tr(
+                        "快捷入口“我的账户”不可用：请先在转账或过滤中选择账户。",
+                        "My Account shortcut is unavailable: choose an account first.",
+                    ));
+                    return;
+                };
+                self.explorer_panel_state.active_tab = ExplorerTab::Address;
+                self.explorer_panel_state.p1.address_account_input = account_id;
+                self.explorer_panel_state.p1.address_cursor = 0;
+                self.explorer_panel_state.p1.pending_address_refresh = true;
+            }
+        }
+        self.explorer_panel_state.pending_overview_refresh = true;
+    }
     fn maybe_request_explorer_panel_data(&mut self) {
         if !self.explorer_window_open
             || self.web_request_inflight_for(WebRequestDomain::ExplorerQuery)
@@ -663,6 +749,39 @@ impl ClientLauncherApp {
                             )
                             .color(egui::Color32::from_rgb(201, 146, 44)),
                         );
+                    }
+                });
+                ui.horizontal_wrapped(|ui| {
+                    ui.label(self.tr("快捷入口", "Quick Shortcuts"));
+                    if ui
+                        .button(self.explorer_shortcut_text(ExplorerQuickShortcut::LatestBlock))
+                        .clicked()
+                    {
+                        self.apply_explorer_quick_shortcut(ExplorerQuickShortcut::LatestBlock);
+                    }
+                    if ui
+                        .button(self.explorer_shortcut_text(ExplorerQuickShortcut::RecentTxs))
+                        .clicked()
+                    {
+                        self.apply_explorer_quick_shortcut(ExplorerQuickShortcut::RecentTxs);
+                    }
+                    let my_account_available = self.explorer_my_account_candidate().is_some();
+                    if ui
+                        .add_enabled(
+                            my_account_available,
+                            egui::Button::new(
+                                self.explorer_shortcut_text(ExplorerQuickShortcut::MyAccount),
+                            ),
+                        )
+                        .clicked()
+                    {
+                        self.apply_explorer_quick_shortcut(ExplorerQuickShortcut::MyAccount);
+                    }
+                    if !my_account_available {
+                        ui.small(self.tr(
+                            "提示：先在转账中选择转出账户即可启用“我的账户”。",
+                            "Tip: choose a sender in Transfer to enable My Account.",
+                        ));
                     }
                 });
 

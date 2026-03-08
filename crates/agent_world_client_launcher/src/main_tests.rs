@@ -2,9 +2,13 @@ use super::{
     build_chain_runtime_args, build_game_url, build_launcher_args,
     collect_chain_required_config_issues, collect_required_config_issues,
     config_ui::{issue_field_ids, StartupGuideTarget},
-    encode_query_value, encoded_query_pair, install_cjk_font, normalize_host_for_url,
-    parse_chain_role, parse_chain_validators, parse_host_port, parse_port,
-    probe_chain_status_endpoint,
+    encode_query_value, encoded_query_pair,
+    explorer_window::{
+        resolve_explorer_my_account_candidate, ExplorerQuickShortcut, ExplorerStatusFilter,
+        WebExplorerOverviewResponse,
+    },
+    install_cjk_font, normalize_host_for_url, parse_chain_role, parse_chain_validators,
+    parse_host_port, parse_port, probe_chain_status_endpoint,
     self_guided::{
         resolve_config_guide_target, resolve_next_task_hint, resolve_primary_disabled_cta,
         ConfigGuideTargetHint, DisabledActionCta, NextTaskHint, OnboardingStep,
@@ -344,6 +348,87 @@ fn resolve_transfer_timeline_tracks_accepted_pending_final_states() {
             TransferTimelineState::Failed
         ]
     );
+}
+
+#[test]
+fn resolve_explorer_my_account_candidate_prefers_transfer_sender() {
+    assert_eq!(
+        resolve_explorer_my_account_candidate("player-a", "player-b", "player-c"),
+        Some("player-a".to_string())
+    );
+    assert_eq!(
+        resolve_explorer_my_account_candidate("", "player-b", "player-c"),
+        Some("player-b".to_string())
+    );
+    assert_eq!(
+        resolve_explorer_my_account_candidate("", "", "player-c"),
+        Some("player-c".to_string())
+    );
+    assert_eq!(resolve_explorer_my_account_candidate("", "", ""), None);
+}
+
+#[test]
+fn explorer_quick_shortcut_recent_txs_resets_filters_and_refreshes() {
+    let mut app = ClientLauncherApp::default();
+    app.explorer_panel_state.account_filter = "player-a".to_string();
+    app.explorer_panel_state.action_filter_input = "42".to_string();
+    app.explorer_panel_state.status_filter = ExplorerStatusFilter::Failed;
+    app.explorer_panel_state.txs_cursor = 20;
+
+    app.apply_explorer_quick_shortcut(ExplorerQuickShortcut::RecentTxs);
+
+    assert!(app.explorer_panel_state.account_filter.is_empty());
+    assert!(app.explorer_panel_state.action_filter_input.is_empty());
+    assert_eq!(
+        app.explorer_panel_state.status_filter,
+        ExplorerStatusFilter::All
+    );
+    assert_eq!(app.explorer_panel_state.txs_cursor, 0);
+    assert!(app.explorer_panel_state.pending_txs_refresh);
+}
+
+#[test]
+fn explorer_quick_shortcut_my_account_logs_when_missing_candidate() {
+    let mut app = ClientLauncherApp::default();
+    app.ui_language = UiLanguage::EnUs;
+    let logs_before = app.logs.len();
+
+    app.apply_explorer_quick_shortcut(ExplorerQuickShortcut::MyAccount);
+
+    assert_eq!(app.logs.len(), logs_before + 1);
+    let latest_log = app.logs.back().expect("latest log should exist");
+    assert!(latest_log.contains("My Account shortcut is unavailable"));
+}
+
+#[test]
+fn explorer_quick_shortcut_latest_block_prefills_height_from_overview() {
+    let mut app = ClientLauncherApp::default();
+    app.explorer_panel_state.overview = Some(WebExplorerOverviewResponse {
+        ok: true,
+        observed_at_unix_ms: 1,
+        node_id: "node-a".to_string(),
+        world_id: "world-a".to_string(),
+        latest_height: 88,
+        committed_height: 88,
+        network_committed_height: 88,
+        last_block_hash: Some("hash-a".to_string()),
+        last_execution_block_hash: Some("hash-b".to_string()),
+        tracked_records: 0,
+        transfer_total: 0,
+        transfer_accepted: 0,
+        transfer_pending: 0,
+        transfer_confirmed: 0,
+        transfer_failed: 0,
+        transfer_timeout: 0,
+        error_code: None,
+        error: None,
+    });
+
+    app.apply_explorer_quick_shortcut(ExplorerQuickShortcut::LatestBlock);
+
+    assert_eq!(app.explorer_panel_state.block_height_input, "88");
+    assert_eq!(app.explorer_panel_state.pending_block_height, Some(88));
+    assert!(app.explorer_panel_state.pending_block_refresh);
 }
 
 #[test]
