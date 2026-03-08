@@ -1,6 +1,6 @@
 # p2p PRD
 
-审计轮次: 5
+审计轮次: 6
 
 ## 目标
 - 建立 p2p 模块设计主文档，统一需求边界、技术方案与验收标准。
@@ -38,6 +38,7 @@
   - SC-6: PoS slot/epoch 在多节点间由统一时间公式驱动，允许漏槽但不出现时间语义倒退。
   - SC-7: PoS 支持槽内 logical tick 相位门控与动态节拍调度，实现可配置 `tick/slot` 语义。
   - SC-8: `world_chain_runtime/world_viewer_live/launcher/scripts` 控制面参数与状态口径与 PoS 时间锚定语义一致，不再将 `node_tick_ms` 误解为出块时间。
+  - SC-9: 清理残留时序语义偏差（`tick_count` 观测命名、`world_viewer_live` 旧控制面假设、`world-rule` 时间模型描述），保证规范/实现/运维口径一致。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -59,6 +60,7 @@
   - PRD-P2P-005: As a 协议工程师, I want slot/epoch to be wall-clock driven, so that block time semantics remain stable across restart and lag.
   - PRD-P2P-006: As a 协议工程师, I want slot-internal tick-phase pacing, so that proposal cadence can follow configured `ticks_per_slot`.
   - PRD-P2P-007: As a 节点运营者, I want runtime/launcher/scripts to expose anchored slot-clock parameters explicitly, so that block-time tuning is deterministic and auditable.
+  - PRD-P2P-008: As a 协议工程师, I want cross-doc and status field naming to disambiguate worker polling vs consensus ticks, so that observability and operations avoid semantic drift.
 - Critical User Flows:
   1. Flow-P2P-001: `网络拓扑变更 -> 共识联调 -> DistFS 同步 -> 节点状态一致性验证`
   2. Flow-P2P-002: `执行 S9/S10 长跑 -> 采集故障与恢复数据 -> 输出收敛报告`
@@ -67,6 +69,7 @@
   5. Flow-P2P-005: `节点读取 wall-clock -> 计算 slot/epoch -> 允许漏槽推进 -> 拒绝未来槽/过旧槽提案`
   6. Flow-P2P-006: `节点按 wall-clock 计算 logical tick/phase -> 相位命中才提案 -> runtime 动态等待下一 tick 边界`
   7. Flow-P2P-007: `运维配置 slot_duration/ticks_per_slot/proposal_phase -> runtime/viewer/launcher 统一生效 -> status/soak 输出可观测并用于门禁`
+  8. Flow-P2P-008: `状态接口/手册/PRD 同步更新 -> `tick_count` 明确为 worker poll 指标 -> 采样脚本以共识 slot/tick/height 为主`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
@@ -77,6 +80,7 @@
 | PoS 固定时间槽 | `genesis_unix_ms`、`slot_duration_ms`、`epoch_length_slots`、`last_observed_slot`、`missed_slot_count` | 每次 tick 按真实时间换算 slot；仅在 `next_slot <= current_slot` 时允许提案 | `pending -> committed/rejected`（槽位单调） | `current_slot=floor((now-genesis)/slot_duration)`；`epoch=slot/epoch_length_slots` | 仅验证者可提案/投票；未来槽消息拒绝 |
 | PoS 槽内 tick 节拍 | `ticks_per_slot`、`tick_phase`、`proposal_tick_phase`、`last_observed_tick`、`missed_tick_count` | 仅在命中提案相位时触发提案；worker 按下一 logical tick 边界动态调度 | `idle -> proposing`（相位门控） | `logical_tick=floor((now-genesis)*ticks_per_slot/slot_duration)`；`phase=tick%ticks_per_slot` | 节拍公式全节点一致；本地调度可回退固定间隔 |
 | PoS 控制面参数对齐 | `node_tick_ms`（轮询）+ `slot_duration_ms`、`ticks_per_slot`、`proposal_tick_phase`、`adaptive_tick_scheduler_enabled`、`slot_clock_genesis_unix_ms`、`max_past_slot_lag` | runtime/viewer/launcher/scripts 显式暴露并校验参数，状态接口回显观测字段 | `configured -> running -> audited` | `node_tick_ms` 不参与出块时间计算，仅作为 worker 轮询/回退间隔 | 运维可配置；非法值必须启动前拒绝 |
+| 时序语义残留收敛 | `worker_poll_count`、`consensus.last_observed_tick`、`consensus.committed_height`、`slot_duration_ms` | 更新状态字段命名/文档叙述并修复过时控制面假设 | `legacy -> aligned` | 轮询指标与共识指标分离，不混用同一“tick”语义 | 运维/QA 只读；配置前必须通过校验 |
 - 三线联合验收清单（TASK-P2P-002）:
 | 线别 | 必跑命令（基线） | 联合验收门禁 | 阻断条件（任一命中即 fail） | 证据产物 |
 | --- | --- | --- | --- | --- |
@@ -95,6 +99,7 @@
   - AC-9: S9/S10 长跑结果模板与缺陷闭环模板完成定义，失败运行必须能映射到 `incident_id -> 修复任务 -> 回归证据`。
   - AC-10: 发行门禁分布式质量指标（S9/S10）具备“阈值 + 数据源 + 阻断策略 + 责任归属”映射，并与 `release-gate` 脚本参数一致。
   - AC-11: `node-pos-time-anchor-control-plane-alignment-2026-03-07` 专题文档落盘并映射任务链 `TASK-P2P-010`，覆盖 runtime/viewer/launcher/scripts 与状态接口口径对齐。
+  - AC-12: 残留语义项完成收敛：`world-rule` 时间模型、launcher `chain_node_tick_ms` 校验文案、`/v1/chain/status` 轮询字段命名、viewer/manual/site 与 `world_viewer_live` 实际 CLI 能力保持一致。
 - Non-Goals:
   - 不在本 PRD 细化 viewer UI 交互。
   - 不替代 runtime 内核的模块执行细节设计。
@@ -112,6 +117,10 @@
   - `doc/p2p/node/node-pos-slot-clock-real-time-2026-03-07.prd.md`
   - `doc/p2p/node/node-pos-subslot-tick-pacing-2026-03-07.prd.md`
   - `doc/p2p/node/node-pos-time-anchor-control-plane-alignment-2026-03-07.prd.md`
+  - `world-rule.md`
+  - `doc/world-simulator/viewer/viewer-manual.md`
+  - `doc/world-simulator/launcher/game-client-launcher-chain-runtime-decouple-2026-02-28.prd.md`
+  - `doc/testing/longrun/chain-runtime-soak-script-reactivation-2026-02-28.prd.md`
   - `doc/p2p/token/mainchain-token-allocation-mechanism-phase2-governance-bridge-distribution-2026-02-26.prd.md`
   - `testing-manual.md`
 - Edge Cases & Error Handling:
@@ -137,6 +146,7 @@
   - NFR-P2P-9: S9/S10 若出现失败，必须在同一审计轮次内沉淀 `incident_id/root_cause/fix_commit/regression_command` 四元组证据。
   - NFR-P2P-10: 分布式发布门禁不得接受 `insufficient_data` 作为通过结果；S9/S10 指标门禁结果必须显式为 `pass`。
   - NFR-P2P-11: 控制面参数命名与状态字段在 runtime/viewer/launcher/scripts 上保持一致，避免语义分叉导致错误调参。
+  - NFR-P2P-12: 指标命名必须区分“worker poll”与“consensus tick”；任何对外接口不得将二者混称为同一 tick 语义。
 - Security & Privacy: 需保证节点身份、签名、账本与反馈数据链路的完整性；所有关键动作必须具备可审计记录。
 
 ## 5. Risks & Roadmap
@@ -159,6 +169,7 @@
 | PRD-P2P-005 | TASK-P2P-008 | `test_tier_required` + `test_tier_full` | 固定时间槽单调性/漏槽/重启恢复/未来槽拒绝回归 | 共识时间语义、提案与投票窗口 |
 | PRD-P2P-006 | TASK-P2P-009 | `test_tier_required` + `test_tier_full` | 槽内 tick 相位门控、动态调度等待与跨节点节拍回归 | 共识提案节奏、runtime 调度与可观测 |
 | PRD-P2P-007 | TASK-P2P-010 | `test_tier_required` + `test_tier_full` | runtime/viewer/launcher/scripts 参数映射、状态观测与兼容回归 | 控制面调参、运维门禁与观测一致性 |
+| PRD-P2P-008 | TASK-P2P-011 | `test_tier_required` | 状态字段语义对齐、launcher 校验文案回归、文档一致性检查 | 运维观测、发行手册与参数治理 |
 - S9/S10 长跑结果模板（TASK-P2P-003）:
 | 字段 | 说明 | 来源 |
 | --- | --- | --- |
@@ -201,3 +212,4 @@
 | DEC-P2P-007 | 三线联合验收采用“子系统单测基线 + S9/S10 长跑门禁”双层收口 | 仅保留单测或仅保留长跑 | 单一层级无法覆盖“确定性回归 + 长时退化”双维风险。 |
 | DEC-P2P-008 | 分布式质量指标按 `release-gate.sh` 参数固化为“硬阻断” | 发布前人工主观评估放行 | 降低人工判断漂移，确保门禁可复现。 |
 | DEC-P2P-009 | 将 `node_tick_ms` 定义为 worker 轮询/回退间隔，并显式暴露 slot-clock 参数 | 继续用 `node_tick_ms` 承担出块时间语义 | 减少运维误配与观测误读，保证时间锚定语义可操作。 |
+| DEC-P2P-010 | 在状态与文档中显式区分 `worker_poll_count` 与共识 tick/height 指标 | 继续沿用 `tick_count` 作为泛化进度字段 | 避免“轮询次数=出块推进”的误读，降低误判与误调参风险。 |
