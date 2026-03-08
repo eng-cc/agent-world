@@ -53,7 +53,7 @@
 | Tick consensus compaction | `tick_consensus_hot_limit`, `archive_segment_size`, `archive_index` | 超出热窗口时把旧记录转入 archive 段并更新索引 | `hot -> archived` | 热窗口按最新 tick 保留；archive segment 按 tick 连续范围分段 | 自动执行；审计只读 |
 | Replay contract | `commit_ref`, `checkpoint_anchor`, `retained_heights`, `replay_profile` | 指定高度回放时从最近 checkpoint + canonical log 重建目标状态 | `requested -> replaying -> matched/mismatched` | 仅对 retention policy 保留的高度提供强保证；重建结果以 `execution_state_root` 校验 | 自动执行；测试/审计只读 |
 | Metrics / status 输出 | `bytes_by_dir`, `blob_count`, `pinned_ref_count`, `orphan_ref_count`, `last_gc_at`, `last_gc_result`, `storage_profile` | status API / state file 输出指标；异常时给出原因 | `collected -> published` | 字节统计按目录聚合；GC 结果按时间覆盖 latest 并写审计历史 | status 只读；配置修改受启动权限控制 |
-| Replication hot/cold retention 对齐 | `max_hot_commit_messages`, `cold_index`, `archive_bytes` | 超出热窗口后迁移到冷索引/对象存储，并更新 metrics | `hot -> cold-indexed` | 热窗口按最新高度回推的连续高度范围定义，不再按“最近 N 个现存文件”解释；冷索引按 height -> content_hash | 自动执行；策略由 profile 决定 |
+| Replication hot/cold retention 对齐 | `max_hot_commit_messages`, `cold_index`, `archive_bytes` | 超出热窗口后迁移到冷索引/对象存储，并更新 metrics | `hot -> cold-indexed` | 热窗口按最新高度回推的连续高度范围定义，不再按“最近 N 个现存文件”解释；冷索引统一走 `<namespace>.cold-index/index.json` 元数据协议，并以 `from_key/to_key + first/last_content_hash + entry_count` 表示 cold range anchor | 自动执行；策略由 profile 决定 |
 - Acceptance Criteria:
   - AC-1 (PRD-WORLD_RUNTIME-013): `world_viewer_live` / `world_chain_runtime` 默认开发 profile 在 `2500` heights 样本下，`output/chain-runtime/<node_id>/store <= 256 MiB`，且 CAS sweep 后不存在“record 仍引用、blob 已删除”的 dangling refs。
   - AC-2 (PRD-WORLD_RUNTIME-013): `reward-runtime-execution-world/.distfs-state/blobs` 经过 successful save 后仅保留 latest + rollback-safe generation 的引用集合；测试中孤儿 blob 计数为 `0`。

@@ -35,7 +35,7 @@
 
 ### T5 冷数据索引语义收敛
 - [x] T5.1 (PRD-WORLD_RUNTIME-013/015) [test_tier_required]: 收敛 `execution_records` 与 `replication_commit_messages` 的热/冷窗口口径，统一“热窗口 + 稀疏冷索引 + 归档读回”语义。
-- [ ] T5.2 (PRD-WORLD_RUNTIME-013/015) [test_tier_required]: 定义共享 cold index 命名、目录布局、元数据字段与 range anchor 规则，避免不同子系统各自发明目录协议。
+- [x] T5.2 (PRD-WORLD_RUNTIME-013/015) [test_tier_required]: 定义共享 cold index 命名、目录布局、元数据字段与 range anchor 规则，避免不同子系统各自发明目录协议。
 - [ ] T5.3 (PRD-WORLD_RUNTIME-013/015) [test_tier_required]: 完成旧目录布局兼容读取 / 别名迁移，保证已有样本与工具脚本不立即失效。
 - [ ] T5.4 (PRD-WORLD_RUNTIME-013/015) [test_tier_required]: 补齐 cold-index scan、archive seek、跨模块读回一致性回归测试。
 
@@ -78,8 +78,8 @@
 ## 状态
 - 更新日期: 2026-03-08
 - 当前状态: active
-- 已完成: T0、T0.1、T1.1、T1.2、T1.3、T1.4、T1.5、T2.1、T2.2、T2.3、T2.4、T2.5、T3.1、T3.2、T3.3、T3.4、T4.1、T4.2、T4.3、T4.4、T5.1
-- 已拆解待执行: T5.2 ~ T7.5
-- 进行中: T5.2
+- 已完成: T0、T0.1、T1.1、T1.2、T1.3、T1.4、T1.5、T2.1、T2.2、T2.3、T2.4、T2.5、T3.1、T3.2、T3.3、T3.4、T4.1、T4.2、T4.3、T4.4、T5.1、T5.2
+- 已拆解待执行: T5.3 ~ T7.5
+- 进行中: T5.3
 - 阻塞项: 无；但 T2 / T3 / T6 / T7 的实现必须以前置 T1 契约冻结为准。
-- 下一任务: T5.2（定义共享 cold index 命名、目录布局、元数据字段与 range anchor 规则）
+- 下一任务: T5.3（完成旧目录布局兼容读取 / 别名迁移）

@@ -2,15 +2,52 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use agent_world_proto::storage_cold_index::{
+    storage_cold_index_dir_name, StorageColdIndexManifest, StorageColdIndexRange,
+    StorageColdIndexRangeAnchor, STORAGE_COLD_INDEX_KEY_KIND_HEIGHT,
+    STORAGE_COLD_INDEX_MANIFEST_FILE, STORAGE_COLD_INDEX_VALUE_KIND_CONTENT_HASH,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::NodeError;
 
 use super::{write_json_pretty, COMMIT_MESSAGE_DIR};
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub(super) struct CommitMessageColdIndex {
+    #[serde(flatten, default)]
+    pub(super) manifest: StorageColdIndexManifest,
+    #[serde(default)]
     pub(super) by_height: BTreeMap<u64, String>,
+}
+
+impl Default for CommitMessageColdIndex {
+    fn default() -> Self {
+        Self {
+            manifest: StorageColdIndexManifest::new(
+                COMMIT_MESSAGE_DIR,
+                STORAGE_COLD_INDEX_KEY_KIND_HEIGHT,
+                STORAGE_COLD_INDEX_VALUE_KIND_CONTENT_HASH,
+            ),
+            by_height: BTreeMap::new(),
+        }
+    }
+}
+
+impl CommitMessageColdIndex {
+    pub(super) fn refresh_metadata(&mut self, hot_window: &CommitMessageHotWindow) {
+        self.manifest.namespace = COMMIT_MESSAGE_DIR.to_string();
+        self.manifest.key_kind = STORAGE_COLD_INDEX_KEY_KIND_HEIGHT.to_string();
+        self.manifest.value_kind = STORAGE_COLD_INDEX_VALUE_KIND_CONTENT_HASH.to_string();
+        self.manifest.hot_range =
+            match (hot_window.hot_window_start_height, hot_window.latest_height) {
+                (Some(from_key), Some(to_key)) if from_key <= to_key => {
+                    Some(StorageColdIndexRange { from_key, to_key })
+                }
+                _ => None,
+            };
+        self.manifest.cold_range_anchor = build_cold_range_anchor(&self.by_height);
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -97,9 +134,24 @@ pub(super) fn resolve_commit_message_readback_source(
 pub(super) fn load_commit_message_cold_index_from_root(
     root_dir: &Path,
 ) -> Result<CommitMessageColdIndex, NodeError> {
-    load_json_or_default::<CommitMessageColdIndex>(
-        commit_message_cold_index_path_from_root(root_dir).as_path(),
-    )
+    let canonical_path = commit_message_cold_index_manifest_path_from_root(root_dir);
+    if canonical_path.exists() {
+        return load_json_or_default::<CommitMessageColdIndex>(canonical_path.as_path())
+            .map(normalize_commit_message_cold_index);
+    }
+
+    let legacy_path = legacy_commit_message_cold_index_path_from_root(root_dir);
+    if legacy_path.exists() {
+        return load_json_or_default::<CommitMessageColdIndex>(legacy_path.as_path())
+            .map(normalize_commit_message_cold_index);
+    }
+
+    Ok(CommitMessageColdIndex::default())
+}
+
+pub(super) fn has_commit_message_cold_index(root_dir: &Path) -> bool {
+    commit_message_cold_index_manifest_path_from_root(root_dir).exists()
+        || legacy_commit_message_cold_index_path_from_root(root_dir).exists()
 }
 
 pub(super) fn write_commit_message_cold_index_to_root(
@@ -107,7 +159,11 @@ pub(super) fn write_commit_message_cold_index_to_root(
     cold_index: &CommitMessageColdIndex,
 ) -> Result<(), NodeError> {
     write_json_pretty(
-        commit_message_cold_index_path_from_root(root_dir).as_path(),
+        commit_message_cold_index_manifest_path_from_root(root_dir).as_path(),
+        cold_index,
+    )?;
+    write_json_pretty(
+        legacy_commit_message_cold_index_path_from_root(root_dir).as_path(),
         cold_index,
     )
 }
@@ -155,8 +211,48 @@ fn commit_message_path_from_root(root_dir: &Path, height: u64) -> PathBuf {
         .join(format!("{:020}.json", height))
 }
 
-fn commit_message_cold_index_path_from_root(root_dir: &Path) -> PathBuf {
+fn commit_message_cold_index_root_dir(root_dir: &Path) -> PathBuf {
+    root_dir.join(storage_cold_index_dir_name(COMMIT_MESSAGE_DIR))
+}
+
+fn commit_message_cold_index_manifest_path_from_root(root_dir: &Path) -> PathBuf {
+    commit_message_cold_index_root_dir(root_dir).join(STORAGE_COLD_INDEX_MANIFEST_FILE)
+}
+
+fn legacy_commit_message_cold_index_path_from_root(root_dir: &Path) -> PathBuf {
     root_dir.join("replication_commit_messages_cold_index.json")
+}
+
+fn normalize_commit_message_cold_index(
+    mut cold_index: CommitMessageColdIndex,
+) -> CommitMessageColdIndex {
+    if cold_index.manifest.namespace.trim().is_empty() {
+        cold_index.manifest.namespace = COMMIT_MESSAGE_DIR.to_string();
+    }
+    if cold_index.manifest.key_kind.trim().is_empty() {
+        cold_index.manifest.key_kind = STORAGE_COLD_INDEX_KEY_KIND_HEIGHT.to_string();
+    }
+    if cold_index.manifest.value_kind.trim().is_empty() {
+        cold_index.manifest.value_kind = STORAGE_COLD_INDEX_VALUE_KIND_CONTENT_HASH.to_string();
+    }
+    if cold_index.manifest.cold_range_anchor.is_none() {
+        cold_index.manifest.cold_range_anchor = build_cold_range_anchor(&cold_index.by_height);
+    }
+    cold_index
+}
+
+fn build_cold_range_anchor(
+    by_height: &BTreeMap<u64, String>,
+) -> Option<StorageColdIndexRangeAnchor> {
+    let ((from_key, first_content_hash), (to_key, last_content_hash)) =
+        (by_height.iter().next()?, by_height.iter().next_back()?);
+    Some(StorageColdIndexRangeAnchor {
+        from_key: *from_key,
+        to_key: *to_key,
+        first_content_hash: first_content_hash.clone(),
+        last_content_hash: last_content_hash.clone(),
+        entry_count: by_height.len(),
+    })
 }
 
 fn load_json_or_default<T>(path: &Path) -> Result<T, NodeError>

@@ -42,7 +42,7 @@
 ## 状态
 - 更新日期: 2026-03-08
 - 当前状态: active
-- 下一任务: TASK-WORLD_RUNTIME-032（进入专题子任务 T5.2）
+- 下一任务: TASK-WORLD_RUNTIME-032（进入专题子任务 T5.3）
 - 实施备注:
   - `TASK-WORLD_RUNTIME-028` 已完成：新增节点侧固定验收入口 `scripts/module-release-node-acceptance.sh` 并将 S11 运行手册切换为“脚本入口 + 等价拆分命令 + 证据目录”；同时收敛 `sync-m1/m4/m5` 非 `--check` 写入授权为“CI 禁止、仅本地显式授权（`AGENT_WORLD_WASM_SYNC_WRITE_ALLOW=local-dev`）”，主 CI 不再具备生产发布写入/激活路径。
   - `TASK-WORLD_RUNTIME-029` 已完成：新增 `scripts/world-runtime-finality-baseline.sh` 固定基准入口，输出 `stake/epoch` 验签耗时聚合指标与 `2 epoch` 收敛状态（`summary.md`/`summary.json` 可归档）；S11 运行手册已补齐命令与产物路径。
@@ -67,5 +67,6 @@
   - `TASK-WORLD_RUNTIME-032` 已继续完成 T4.3：新增显式 archive range read / verify 路径，并能在 index 缺失时回退读取 T4.1 legacy 单文件 archive，保证旧样本迁移可用。
   - `TASK-WORLD_RUNTIME-032` 已继续完成 T4.4：snapshot size regression / archive range read / legacy migration / tampered segment hash verify 回归已补齐，T4 系列任务已闭环。
   - `TASK-WORLD_RUNTIME-032` 已继续完成 T5.1：`replication_commit_messages` 热窗口现按 latest height 回推的连续高度范围裁剪，读路径统一为“热镜像优先 + cold index 归档读回”。
+  - `TASK-WORLD_RUNTIME-032` 已继续完成 T5.2：shared cold index 协议已下沉到 `agent_world_proto`，统一 `<namespace>.cold-index/index.json`、`hot_range` 与 `cold_range_anchor` 元数据字段，并先接到 replication 冷索引写路径。
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - 说明: 本文档仅维护 world-runtime 模块设计执行状态；过程记录在 `doc/devlog/2026-03-03.md`、`doc/devlog/2026-03-06.md` 与 `doc/devlog/2026-03-08.md`。

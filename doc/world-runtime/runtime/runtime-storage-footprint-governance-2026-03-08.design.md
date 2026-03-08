@@ -197,7 +197,37 @@ struct TickConsensusArchiveSegment {
 }
 ```
 
-### 6.6 StorageMetricsSnapshot
+### 6.6 SharedColdIndexManifest
+```rust
+struct StorageColdIndexManifest {
+    schema_version: u32,
+    namespace: String,
+    key_kind: String,
+    value_kind: String,
+    hot_range: Option<StorageColdIndexRange>,
+    cold_range_anchor: Option<StorageColdIndexRangeAnchor>,
+}
+
+struct StorageColdIndexRange {
+    from_key: u64,
+    to_key: u64,
+}
+
+struct StorageColdIndexRangeAnchor {
+    from_key: u64,
+    to_key: u64,
+    first_content_hash: String,
+    last_content_hash: String,
+    entry_count: usize,
+}
+```
+
+#### 设计说明
+- 共享 cold index 目录采用 `<namespace>.cold-index/index.json`；有分段数据时统一使用同级 `segments/` 目录承载 payload。
+- `hot_range` 表示当前仍保留在热路径中的连续键范围；对 replication 即 latest-based height window，对 tick/archive 则可映射为 tick range。
+- `cold_range_anchor` 只承载冷区边界锚点而不是全量 payload，最低要求为 `from_key` / `to_key` / `first_content_hash` / `last_content_hash` / `entry_count`，供审计、metrics 与 seek 策略共用。
+
+### 6.7 StorageMetricsSnapshot
 ```rust
 struct StorageMetricsSnapshot {
     storage_profile: String,

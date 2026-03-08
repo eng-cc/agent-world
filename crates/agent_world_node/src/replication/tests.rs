@@ -1,4 +1,7 @@
 use super::*;
+use agent_world_proto::storage_cold_index::{
+    storage_cold_index_dir_name, STORAGE_COLD_INDEX_MANIFEST_FILE,
+};
 use std::path::PathBuf;
 
 fn temp_dir(prefix: &str) -> PathBuf {
@@ -327,6 +330,76 @@ fn load_commit_message_by_height_reads_from_cold_index_after_hot_prune() {
         .expect("load commit height 3")
         .expect("hot commit height 3 should exist");
     assert_eq!(loaded_3.record.content_hash, message_3.record.content_hash);
+
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn commit_cold_index_uses_canonical_layout_and_refreshes_hot_range() {
+    let dir = temp_dir("commit-cold-index-layout");
+    let world_id = "world-commit-cold-index-layout";
+    let config = NodeReplicationConfig::new(&dir)
+        .expect("config")
+        .with_max_hot_commit_messages(2)
+        .expect("hot commit cap");
+    let runtime = ReplicationRuntime::new(&config, "node-a").expect("runtime");
+
+    runtime
+        .persist_commit_message(1, &signed_remote_message(81, world_id, "node-b", 1))
+        .expect("persist message 1");
+    runtime
+        .persist_commit_message(100, &signed_remote_message(82, world_id, "node-b", 100))
+        .expect("persist message 100");
+    runtime
+        .persist_commit_message(101, &signed_remote_message(83, world_id, "node-b", 101))
+        .expect("persist message 101");
+
+    let canonical_path = dir
+        .join(storage_cold_index_dir_name(COMMIT_MESSAGE_DIR))
+        .join(STORAGE_COLD_INDEX_MANIFEST_FILE);
+    assert!(
+        canonical_path.exists(),
+        "canonical cold index manifest should exist"
+    );
+    assert!(
+        dir.join("replication_commit_messages_cold_index.json")
+            .exists(),
+        "legacy cold index alias should remain available during protocol rollout"
+    );
+
+    let cold_index = load_commit_message_cold_index_from_root(dir.as_path()).expect("cold index");
+    assert_eq!(cold_index.manifest.namespace, COMMIT_MESSAGE_DIR);
+    assert_eq!(cold_index.manifest.key_kind, "height");
+    assert_eq!(cold_index.manifest.value_kind, "content_hash");
+    assert_eq!(
+        cold_index.manifest.hot_range,
+        Some(
+            agent_world_proto::storage_cold_index::StorageColdIndexRange {
+                from_key: 100,
+                to_key: 101,
+            }
+        )
+    );
+    assert_eq!(
+        cold_index.manifest.cold_range_anchor,
+        Some(
+            agent_world_proto::storage_cold_index::StorageColdIndexRangeAnchor {
+                from_key: 1,
+                to_key: 1,
+                first_content_hash: cold_index
+                    .by_height
+                    .get(&1)
+                    .expect("height 1 anchor hash")
+                    .clone(),
+                last_content_hash: cold_index
+                    .by_height
+                    .get(&1)
+                    .expect("height 1 anchor hash")
+                    .clone(),
+                entry_count: 1,
+            }
+        )
+    );
 
     let _ = std::fs::remove_dir_all(&dir);
 }

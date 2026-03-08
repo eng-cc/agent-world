@@ -27,9 +27,9 @@ pub(crate) const REPLICATION_FETCH_BLOB_PROTOCOL: &str = "/aw/node/replication/f
 mod commit_retention;
 
 use self::commit_retention::{
-    build_commit_message_retention_plan, load_commit_message_cold_index_from_root,
-    resolve_commit_message_readback_source, write_commit_message_cold_index_to_root,
-    CommitMessageReadbackSource,
+    build_commit_message_retention_plan, has_commit_message_cold_index,
+    load_commit_message_cold_index_from_root, resolve_commit_message_readback_source,
+    write_commit_message_cold_index_to_root, CommitMessageReadbackSource,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -641,9 +641,7 @@ impl ReplicationRuntime {
             self.config.root_dir.as_path(),
             self.config.max_hot_commit_messages,
         )?;
-        if retention_plan.offload_candidates.is_empty() {
-            return Ok(());
-        }
+        let had_cold_index = has_commit_message_cold_index(self.config.root_dir.as_path());
 
         let mut offloaded = Vec::new();
         for candidate in retention_plan.offload_candidates {
@@ -656,12 +654,16 @@ impl ReplicationRuntime {
                 .map_err(distfs_error_to_node_error)?;
             offloaded.push((candidate.height, content_hash, candidate.path));
         }
+        if offloaded.is_empty() && !had_cold_index {
+            return Ok(());
+        }
 
         let mut cold_index =
             load_commit_message_cold_index_from_root(self.config.root_dir.as_path())?;
         for (height, content_hash, _) in &offloaded {
             cold_index.by_height.insert(*height, content_hash.clone());
         }
+        cold_index.refresh_metadata(&retention_plan.hot_window);
         write_commit_message_cold_index_to_root(self.config.root_dir.as_path(), &cold_index)?;
 
         for (_, _, path) in offloaded {
