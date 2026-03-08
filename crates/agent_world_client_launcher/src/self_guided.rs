@@ -98,6 +98,14 @@ pub(super) enum NextTaskHint {
     OpenGamePage,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum DisabledActionCta {
+    EnableChain,
+    FixChainConfig,
+    StartChain,
+    FixGameConfig,
+}
+
 pub(super) fn resolve_next_task_hint(
     chain_enabled: bool,
     game_required_issues: &[ConfigIssue],
@@ -118,6 +126,27 @@ pub(super) fn resolve_next_task_hint(
         return NextTaskHint::StartGame;
     }
     NextTaskHint::OpenGamePage
+}
+
+pub(super) fn resolve_primary_disabled_cta(
+    chain_enabled: bool,
+    game_required_issues: &[ConfigIssue],
+    chain_required_issues: &[ConfigIssue],
+    chain_running: bool,
+) -> Option<DisabledActionCta> {
+    if !chain_enabled {
+        return Some(DisabledActionCta::EnableChain);
+    }
+    if !chain_required_issues.is_empty() {
+        return Some(DisabledActionCta::FixChainConfig);
+    }
+    if !chain_running {
+        return Some(DisabledActionCta::StartChain);
+    }
+    if !game_required_issues.is_empty() {
+        return Some(DisabledActionCta::FixGameConfig);
+    }
+    None
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -237,6 +266,19 @@ impl ClientLauncherApp {
         }
     }
 
+    fn disabled_cta_text(&self, cta: DisabledActionCta) -> &'static str {
+        match (cta, self.ui_language) {
+            (DisabledActionCta::EnableChain, UiLanguage::ZhCn) => "启用区块链功能",
+            (DisabledActionCta::EnableChain, UiLanguage::EnUs) => "Enable Blockchain",
+            (DisabledActionCta::FixChainConfig, UiLanguage::ZhCn) => "修复区块链配置",
+            (DisabledActionCta::FixChainConfig, UiLanguage::EnUs) => "Fix Chain Config",
+            (DisabledActionCta::StartChain, UiLanguage::ZhCn) => "先启动区块链",
+            (DisabledActionCta::StartChain, UiLanguage::EnUs) => "Start Blockchain First",
+            (DisabledActionCta::FixGameConfig, UiLanguage::ZhCn) => "修复游戏配置",
+            (DisabledActionCta::FixGameConfig, UiLanguage::EnUs) => "Fix Game Config",
+        }
+    }
+
     pub(super) fn render_task_flow_cards(
         &mut self,
         ui: &mut egui::Ui,
@@ -263,6 +305,51 @@ impl ClientLauncherApp {
             self.render_game_task_card(ui, game_required_issues, game_running);
             self.render_page_task_card(ui, game_required_issues, game_running);
         });
+    }
+
+    pub(super) fn render_disabled_action_ctas(
+        &mut self,
+        ui: &mut egui::Ui,
+        game_required_issues: &[ConfigIssue],
+        chain_required_issues: &[ConfigIssue],
+        chain_running: bool,
+    ) {
+        if self.is_feedback_available() {
+            return;
+        }
+
+        if let Some(hint) = self.feedback_unavailable_hint() {
+            ui.small(egui::RichText::new(hint).color(egui::Color32::from_rgb(158, 134, 76)));
+        }
+
+        if let Some(cta) = resolve_primary_disabled_cta(
+            self.config.chain_enabled,
+            game_required_issues,
+            chain_required_issues,
+            chain_running,
+        ) {
+            if ui.button(self.disabled_cta_text(cta)).clicked() {
+                match cta {
+                    DisabledActionCta::EnableChain => {
+                        self.config.chain_enabled = true;
+                        self.chain_runtime_status = ChainRuntimeStatus::NotStarted;
+                        self.append_log(self.tr(
+                            "已启用区块链功能，请继续启动区块链。",
+                            "Blockchain enabled. Continue with Start Blockchain.",
+                        ));
+                    }
+                    DisabledActionCta::FixChainConfig => {
+                        self.handle_start_chain_click(chain_required_issues);
+                    }
+                    DisabledActionCta::StartChain => {
+                        self.start_chain_process();
+                    }
+                    DisabledActionCta::FixGameConfig => {
+                        self.handle_start_game_click(game_required_issues);
+                    }
+                }
+            }
+        }
     }
 
     fn render_chain_task_card(

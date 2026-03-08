@@ -1466,9 +1466,12 @@ impl eframe::App for ClientLauncherApp {
                     self.logs.clear();
                 }
             });
-            if let Some(hint) = self.feedback_unavailable_hint() {
-                ui.small(egui::RichText::new(hint).color(egui::Color32::from_rgb(158, 134, 76)));
-            }
+            self.render_disabled_action_ctas(
+                ui,
+                &game_required_issues,
+                &chain_required_issues,
+                chain_running,
+            );
 
             let url = self.current_game_url();
             ui.label(format!("{}: {url}", self.tr("游戏地址", "Game URL")));

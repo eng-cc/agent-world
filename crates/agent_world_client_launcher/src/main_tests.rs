@@ -5,7 +5,10 @@ use super::{
     encode_query_value, encoded_query_pair, install_cjk_font, normalize_host_for_url,
     parse_chain_role, parse_chain_validators, parse_host_port, parse_port,
     probe_chain_status_endpoint,
-    self_guided::{resolve_next_task_hint, NextTaskHint, OnboardingStep},
+    self_guided::{
+        resolve_next_task_hint, resolve_primary_disabled_cta, DisabledActionCta, NextTaskHint,
+        OnboardingStep,
+    },
     ChainRuntimeStatus, ClientLauncherApp, ConfigIssue, LaunchConfig, LauncherStatus, UiLanguage,
     WebRequestDomain, WebStateSnapshot, EGUI_CJK_FONT_NAME,
 };
@@ -564,6 +567,27 @@ fn resolve_next_task_hint_prioritizes_config_fix_then_start_order() {
         resolve_next_task_hint(true, &[], &[], true, true),
         NextTaskHint::OpenGamePage
     );
+}
+
+#[test]
+fn resolve_primary_disabled_cta_prefers_first_blocking_action() {
+    assert_eq!(
+        resolve_primary_disabled_cta(false, &[], &[], false),
+        Some(DisabledActionCta::EnableChain)
+    );
+    assert_eq!(
+        resolve_primary_disabled_cta(true, &[], &[ConfigIssue::ChainNodeIdRequired], false),
+        Some(DisabledActionCta::FixChainConfig)
+    );
+    assert_eq!(
+        resolve_primary_disabled_cta(true, &[], &[], false),
+        Some(DisabledActionCta::StartChain)
+    );
+    assert_eq!(
+        resolve_primary_disabled_cta(true, &[ConfigIssue::ScenarioRequired], &[], true),
+        Some(DisabledActionCta::FixGameConfig)
+    );
+    assert_eq!(resolve_primary_disabled_cta(true, &[], &[], true), None);
 }
 
 #[test]
