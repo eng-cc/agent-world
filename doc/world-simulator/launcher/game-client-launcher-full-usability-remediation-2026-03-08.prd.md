@@ -12,6 +12,8 @@
   - SC-3: 反馈窗口在链未就绪时不被强制关闭，已输入草稿保持。
   - SC-4: 顶栏在 390x844 视口下自动换行，状态/语言控件可读可操作。
   - SC-5: 转账历史过滤支持“应用 + 清空”，一键恢复默认查询。
+  - SC-6: 主 PRD 启动器条款保持唯一且可追溯（AC 编号无重复、集成点无重复路径）。
+  - SC-7: `agent_world_client_launcher` 源码满足单文件 <=1200 行治理约束，不引入功能回归。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -50,6 +52,8 @@
   - AC-4: 顶栏渲染在窄视口下不出现核心状态信息丢失。
   - AC-5: 转账历史区提供“清空过滤”并在点击后触发刷新。
   - AC-6: native 测试与 wasm `cargo check` 通过。
+  - AC-7: 主 PRD 中与启动器相关 AC 编号保持连续唯一，且集成点列表无重复路径。
+  - AC-8: `crates/agent_world_client_launcher/src/main.rs` 与 `crates/agent_world_client_launcher/src/explorer_window.rs` 行数均 <=1200。
 - Non-Goals:
   - 不新增链协议字段与后端 API。
   - 不重构 transfer/explorer 业务状态机。
@@ -99,7 +103,7 @@
 - Test Plan & Traceability:
 | PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |
 | --- | --- | --- | --- | --- |
-| PRD-WORLD_SIMULATOR-029 | TASK-WORLD_SIMULATOR-069/070/071 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown` | 启动器配置稳定性、高频交互并发性、反馈与转账窗口可用性 |
+| PRD-WORLD_SIMULATOR-029 | TASK-WORLD_SIMULATOR-069/070/071/089/090 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown` + `wc -l crates/agent_world_client_launcher/src/main.rs crates/agent_world_client_launcher/src/explorer_window.rs` | 启动器配置稳定性、高频交互并发性、反馈与转账窗口可用性、文档追溯一致性与代码维护可持续性 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |
