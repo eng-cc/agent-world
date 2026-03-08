@@ -371,6 +371,19 @@ fn remap_transfer_runtime_target_supports_explorer_blocks_pagination() {
     assert_eq!(mapped, "/v1/chain/explorer/blocks?cursor=50&limit=25");
 }
 
+#[test]
+fn remap_transfer_runtime_target_supports_explorer_p1_address_query() {
+    let mapped = remap_transfer_runtime_target(
+        "/api/chain/explorer/address?account_id=player:alice&limit=20",
+        "/api/chain/explorer/address",
+        "/v1/chain/explorer/address",
+    );
+    assert_eq!(
+        mapped,
+        "/v1/chain/explorer/address?account_id=player:alice&limit=20"
+    );
+}
+
 fn make_temp_dir(label: &str) -> PathBuf {
     let mut path = env::temp_dir();
     let stamp = SystemTime::now()

@@ -1,6 +1,10 @@
 use super::super::explorer_p0_api::{
     ExplorerBlocksResponse, ExplorerSearchResponse, ExplorerTxResponse, ExplorerTxsResponse,
 };
+use super::explorer_p1_api::{
+    ExplorerAddressResponse, ExplorerAssetsResponse, ExplorerContractResponse,
+    ExplorerContractsResponse, ExplorerMempoolResponse,
+};
 use super::{
     build_transfer_submit_action_payload, maybe_handle_transfer_submit_request,
     parse_transfer_submit_request, ChainExplorerOverviewResponse, ChainTransferHistoryResponse,
@@ -9,7 +13,11 @@ use super::{
 use agent_world::consensus_action_payload::{
     decode_consensus_action_payload, ConsensusActionPayloadBody,
 };
-use agent_world::runtime::Action;
+use agent_world::runtime::{
+    Action, EconomicContractState, EconomicContractStatus, MainTokenAccountBalance,
+    MainTokenConfig, MainTokenSupplyState, World, WorldState,
+};
+use agent_world::simulator::ResourceKind;
 use agent_world_node::{
     NodeConfig, NodeExecutionCommitContext, NodeExecutionCommitResult, NodeExecutionHook, NodeRole,
     NodeRuntime,
@@ -17,6 +25,7 @@ use agent_world_node::{
 use std::io::Read;
 use std::net::{TcpListener, TcpStream};
 use std::path::Path;
+use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use std::{env, fs};
@@ -74,6 +83,66 @@ fn make_temp_dir(label: &str) -> std::path::PathBuf {
     ));
     fs::create_dir_all(&path).expect("create temp dir");
     path
+}
+
+fn reset_transfer_state_for_tests() {
+    super::with_transfer_tracker(|tracker| {
+        tracker.by_action_id.clear();
+        tracker.action_order.clear();
+    });
+    super::NEXT_TRANSFER_ACTION_ID.store(1, Ordering::Relaxed);
+    super::super::explorer_p0_api::reset_store_for_tests();
+}
+
+fn seed_world_for_explorer_p1(temp_dir: &Path) {
+    let mut state = WorldState::default();
+    state.main_token_config = MainTokenConfig {
+        symbol: "AWT".to_string(),
+        decimals: 9,
+        ..MainTokenConfig::default()
+    };
+    state.main_token_supply = MainTokenSupplyState {
+        total_supply: 1_000_000,
+        circulating_supply: 500_000,
+        total_issued: 600_000,
+        total_burned: 100_000,
+    };
+    state.main_token_balances.insert(
+        "player:alice".to_string(),
+        MainTokenAccountBalance {
+            account_id: "player:alice".to_string(),
+            liquid_balance: 1200,
+            vested_balance: 300,
+        },
+    );
+    state
+        .main_token_transfer_nonces
+        .insert("player:alice".to_string(), 7);
+    state.economic_contracts.insert(
+        "contract:alpha".to_string(),
+        EconomicContractState {
+            contract_id: "contract:alpha".to_string(),
+            creator_agent_id: "player:alice".to_string(),
+            counterparty_agent_id: "player:bob".to_string(),
+            settlement_kind: ResourceKind::Electricity,
+            settlement_amount: 88,
+            reputation_stake: 5,
+            expires_at: 1234,
+            description: "power swap".to_string(),
+            status: EconomicContractStatus::Accepted,
+            accepted_at: Some(1000),
+            settled_at: None,
+            settlement_success: None,
+            transfer_amount: 0,
+            tax_amount: 0,
+            settlement_notes: None,
+        },
+    );
+
+    let world = World::new_with_state(state);
+    world
+        .save_to_dir(temp_dir)
+        .expect("save seeded world for explorer p1 tests");
 }
 
 #[test]
@@ -775,6 +844,276 @@ fn explorer_p0_blocks_rejects_invalid_cursor_parameter() {
     assert_eq!(status, 400);
     assert!(!response.ok);
     assert_eq!(response.error_code.as_deref(), Some("invalid_request"));
+
+    let _ = fs::remove_dir_all(temp_dir);
+}
+
+#[test]
+fn explorer_p1_endpoints_return_expected_payloads() {
+    reset_transfer_state_for_tests();
+    let temp_dir = make_temp_dir("explorer_p1_ok");
+    seed_world_for_explorer_p1(temp_dir.as_path());
+    let runtime = Arc::new(Mutex::new(NodeRuntime::new(
+        NodeConfig::new(
+            "node-transfer-explorer-p1-ok",
+            "world-transfer-explorer-p1-ok",
+            NodeRole::Sequencer,
+        )
+        .expect("node config"),
+    )));
+
+    let accepted_request = parse_transfer_submit_request(
+        br#"{"from_account_id":"player:alice","to_account_id":"player:bob","amount":9,"nonce":8}"#,
+    )
+    .expect("valid transfer request");
+    let now_ms = super::super::now_unix_ms().saturating_sub(2_000);
+    super::with_transfer_tracker(|tracker| tracker.record_accepted(77, &accepted_request, now_ms));
+
+    let (mut address_server, mut address_client) = tcp_stream_pair();
+    let address_http = "GET /v1/chain/explorer/address?account_id=player:alice&limit=20&cursor=0 HTTP/1.1\r\nHost: 127.0.0.1:5121\r\n\r\n";
+    let handled = maybe_handle_transfer_submit_request(
+        &mut address_server,
+        address_http.as_bytes(),
+        &runtime,
+        "GET",
+        "/v1/chain/explorer/address",
+        "node-transfer-explorer-p1-ok",
+        "world-transfer-explorer-p1-ok",
+        temp_dir.as_path(),
+    )
+    .expect("address request should be handled");
+    assert!(handled);
+    drop(address_server);
+    address_client
+        .set_read_timeout(Some(Duration::from_secs(2)))
+        .expect("set timeout");
+    let mut address_response_bytes = Vec::new();
+    address_client
+        .read_to_end(&mut address_response_bytes)
+        .expect("read address response");
+    let (address_status, address): (u16, ExplorerAddressResponse) =
+        decode_http_json_response(&address_response_bytes);
+    assert_eq!(address_status, 200);
+    assert!(address.ok);
+    assert_eq!(address.account_id.as_deref(), Some("player:alice"));
+    assert_eq!(address.liquid_balance, 1200);
+    assert_eq!(address.last_transfer_nonce, Some(7));
+    assert!(!address.items.is_empty());
+
+    let (mut contracts_server, mut contracts_client) = tcp_stream_pair();
+    let contracts_http =
+        "GET /v1/chain/explorer/contracts?limit=20&cursor=0 HTTP/1.1\r\nHost: 127.0.0.1:5121\r\n\r\n";
+    maybe_handle_transfer_submit_request(
+        &mut contracts_server,
+        contracts_http.as_bytes(),
+        &runtime,
+        "GET",
+        "/v1/chain/explorer/contracts",
+        "node-transfer-explorer-p1-ok",
+        "world-transfer-explorer-p1-ok",
+        temp_dir.as_path(),
+    )
+    .expect("contracts request should be handled");
+    drop(contracts_server);
+    contracts_client
+        .set_read_timeout(Some(Duration::from_secs(2)))
+        .expect("set timeout");
+    let mut contracts_response_bytes = Vec::new();
+    contracts_client
+        .read_to_end(&mut contracts_response_bytes)
+        .expect("read contracts response");
+    let (_, contracts): (u16, ExplorerContractsResponse) =
+        decode_http_json_response(&contracts_response_bytes);
+    assert!(contracts.ok);
+    assert!(contracts
+        .items
+        .iter()
+        .any(|item| item.contract_id == "contract:alpha"));
+
+    let (mut contract_server, mut contract_client) = tcp_stream_pair();
+    let contract_http = "GET /v1/chain/explorer/contract?contract_id=contract:alpha HTTP/1.1\r\nHost: 127.0.0.1:5121\r\n\r\n";
+    maybe_handle_transfer_submit_request(
+        &mut contract_server,
+        contract_http.as_bytes(),
+        &runtime,
+        "GET",
+        "/v1/chain/explorer/contract",
+        "node-transfer-explorer-p1-ok",
+        "world-transfer-explorer-p1-ok",
+        temp_dir.as_path(),
+    )
+    .expect("contract request should be handled");
+    drop(contract_server);
+    contract_client
+        .set_read_timeout(Some(Duration::from_secs(2)))
+        .expect("set timeout");
+    let mut contract_response_bytes = Vec::new();
+    contract_client
+        .read_to_end(&mut contract_response_bytes)
+        .expect("read contract response");
+    let (_, contract): (u16, ExplorerContractResponse) =
+        decode_http_json_response(&contract_response_bytes);
+    assert!(contract.ok);
+    assert_eq!(contract.contract_id.as_deref(), Some("contract:alpha"));
+    assert!(contract.contract.is_some());
+    assert!(!contract.recent_txs.is_empty());
+
+    let (mut assets_server, mut assets_client) = tcp_stream_pair();
+    let assets_http =
+        "GET /v1/chain/explorer/assets?limit=20&cursor=0 HTTP/1.1\r\nHost: 127.0.0.1:5121\r\n\r\n";
+    maybe_handle_transfer_submit_request(
+        &mut assets_server,
+        assets_http.as_bytes(),
+        &runtime,
+        "GET",
+        "/v1/chain/explorer/assets",
+        "node-transfer-explorer-p1-ok",
+        "world-transfer-explorer-p1-ok",
+        temp_dir.as_path(),
+    )
+    .expect("assets request should be handled");
+    drop(assets_server);
+    assets_client
+        .set_read_timeout(Some(Duration::from_secs(2)))
+        .expect("set timeout");
+    let mut assets_response_bytes = Vec::new();
+    assets_client
+        .read_to_end(&mut assets_response_bytes)
+        .expect("read assets response");
+    let (_, assets): (u16, ExplorerAssetsResponse) =
+        decode_http_json_response(&assets_response_bytes);
+    assert!(assets.ok);
+    assert_eq!(assets.token_symbol, "AWT");
+    assert!(assets
+        .holders
+        .iter()
+        .any(|item| item.account_id == "player:alice"));
+    assert!(!assets.nft_supported);
+
+    let (mut mempool_server, mut mempool_client) = tcp_stream_pair();
+    let mempool_http = "GET /v1/chain/explorer/mempool?status=all&limit=20&cursor=0 HTTP/1.1\r\nHost: 127.0.0.1:5121\r\n\r\n";
+    maybe_handle_transfer_submit_request(
+        &mut mempool_server,
+        mempool_http.as_bytes(),
+        &runtime,
+        "GET",
+        "/v1/chain/explorer/mempool",
+        "node-transfer-explorer-p1-ok",
+        "world-transfer-explorer-p1-ok",
+        temp_dir.as_path(),
+    )
+    .expect("mempool request should be handled");
+    drop(mempool_server);
+    mempool_client
+        .set_read_timeout(Some(Duration::from_secs(2)))
+        .expect("set timeout");
+    let mut mempool_response_bytes = Vec::new();
+    mempool_client
+        .read_to_end(&mut mempool_response_bytes)
+        .expect("read mempool response");
+    let (_, mempool): (u16, ExplorerMempoolResponse) =
+        decode_http_json_response(&mempool_response_bytes);
+    assert!(mempool.ok);
+    assert_eq!(mempool.status_filter, "all");
+    assert!(mempool.pending_count >= 1);
+    assert!(!mempool.items.is_empty());
+    assert!(mempool.items.iter().all(|item| {
+        matches!(
+            item.status,
+            TransferLifecycleStatus::Accepted | TransferLifecycleStatus::Pending
+        )
+    }));
+
+    let _ = fs::remove_dir_all(temp_dir);
+}
+
+#[test]
+fn explorer_p1_mempool_rejects_invalid_status_parameter() {
+    reset_transfer_state_for_tests();
+    let temp_dir = make_temp_dir("explorer_p1_invalid_mempool_status");
+    let runtime = Arc::new(Mutex::new(NodeRuntime::new(
+        NodeConfig::new(
+            "node-transfer-explorer-p1-invalid",
+            "world-transfer-explorer-p1-invalid",
+            NodeRole::Sequencer,
+        )
+        .expect("node config"),
+    )));
+
+    let (mut mempool_server, mut mempool_client) = tcp_stream_pair();
+    let mempool_http =
+        "GET /v1/chain/explorer/mempool?status=bad HTTP/1.1\r\nHost: 127.0.0.1:5121\r\n\r\n";
+    let handled = maybe_handle_transfer_submit_request(
+        &mut mempool_server,
+        mempool_http.as_bytes(),
+        &runtime,
+        "GET",
+        "/v1/chain/explorer/mempool",
+        "node-transfer-explorer-p1-invalid",
+        "world-transfer-explorer-p1-invalid",
+        temp_dir.as_path(),
+    )
+    .expect("mempool request should be handled");
+    assert!(handled);
+    drop(mempool_server);
+
+    mempool_client
+        .set_read_timeout(Some(Duration::from_secs(2)))
+        .expect("set timeout");
+    let mut mempool_response_bytes = Vec::new();
+    mempool_client
+        .read_to_end(&mut mempool_response_bytes)
+        .expect("read mempool response");
+    let (status, response): (u16, ExplorerMempoolResponse) =
+        decode_http_json_response(&mempool_response_bytes);
+    assert_eq!(status, 400);
+    assert!(!response.ok);
+    assert_eq!(response.error_code.as_deref(), Some("invalid_request"));
+
+    let _ = fs::remove_dir_all(temp_dir);
+}
+
+#[test]
+fn explorer_p1_address_returns_not_found_for_unknown_account() {
+    reset_transfer_state_for_tests();
+    let temp_dir = make_temp_dir("explorer_p1_address_not_found");
+    let runtime = Arc::new(Mutex::new(NodeRuntime::new(
+        NodeConfig::new(
+            "node-transfer-explorer-p1-address-not-found",
+            "world-transfer-explorer-p1-address-not-found",
+            NodeRole::Sequencer,
+        )
+        .expect("node config"),
+    )));
+
+    let (mut address_server, mut address_client) = tcp_stream_pair();
+    let address_http = "GET /v1/chain/explorer/address?account_id=player:missing HTTP/1.1\r\nHost: 127.0.0.1:5121\r\n\r\n";
+    let handled = maybe_handle_transfer_submit_request(
+        &mut address_server,
+        address_http.as_bytes(),
+        &runtime,
+        "GET",
+        "/v1/chain/explorer/address",
+        "node-transfer-explorer-p1-address-not-found",
+        "world-transfer-explorer-p1-address-not-found",
+        temp_dir.as_path(),
+    )
+    .expect("address request should be handled");
+    assert!(handled);
+    drop(address_server);
+
+    address_client
+        .set_read_timeout(Some(Duration::from_secs(2)))
+        .expect("set timeout");
+    let mut address_response_bytes = Vec::new();
+    address_client
+        .read_to_end(&mut address_response_bytes)
+        .expect("read address response");
+    let (status, response): (u16, ExplorerAddressResponse) =
+        decode_http_json_response(&address_response_bytes);
+    assert_eq!(status, 200);
+    assert!(!response.ok);
+    assert_eq!(response.error_code.as_deref(), Some("not_found"));
 
     let _ = fs::remove_dir_all(temp_dir);
 }

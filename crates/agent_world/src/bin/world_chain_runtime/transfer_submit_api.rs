@@ -12,6 +12,9 @@ use agent_world::runtime::Action;
 use agent_world_node::NodeRuntime;
 use serde::{Deserialize, Serialize};
 
+#[path = "transfer_submit_explorer_p1_api.rs"]
+mod explorer_p1_api;
+
 const TRANSFER_SUBMIT_PATH: &str = "/v1/chain/transfer/submit";
 const TRANSFER_STATUS_PATH: &str = "/v1/chain/transfer/status";
 const TRANSFER_HISTORY_PATH: &str = "/v1/chain/transfer/history";
@@ -550,6 +553,17 @@ pub(super) fn maybe_handle_transfer_submit_request(
     }
     if path == EXPLORER_TRANSACTION_PATH {
         return handle_explorer_transaction(stream, request_bytes, runtime, head_only(method));
+    }
+
+    if explorer_p1_api::maybe_handle_explorer_p1_request(
+        stream,
+        request_bytes,
+        runtime,
+        path,
+        execution_world_dir,
+        head_only(method),
+    )? {
+        return Ok(true);
     }
 
     if super::explorer_p0_api::maybe_handle_explorer_p0_request(

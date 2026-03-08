@@ -712,6 +712,61 @@ fn handle_connection(
             let response = query_chain_transfer_json(&mut state, runtime_target.as_str());
             write_json_response(&mut stream, 200, &response)
         }
+        ("GET", "/api/chain/explorer/address") => {
+            let mut state = lock_state(&shared_state);
+            poll_service_state(&mut state);
+            let runtime_target = remap_transfer_runtime_target(
+                request.path.as_str(),
+                "/api/chain/explorer/address",
+                "/v1/chain/explorer/address",
+            );
+            let response = query_chain_transfer_json(&mut state, runtime_target.as_str());
+            write_json_response(&mut stream, 200, &response)
+        }
+        ("GET", "/api/chain/explorer/contracts") => {
+            let mut state = lock_state(&shared_state);
+            poll_service_state(&mut state);
+            let runtime_target = remap_transfer_runtime_target(
+                request.path.as_str(),
+                "/api/chain/explorer/contracts",
+                "/v1/chain/explorer/contracts",
+            );
+            let response = query_chain_transfer_json(&mut state, runtime_target.as_str());
+            write_json_response(&mut stream, 200, &response)
+        }
+        ("GET", "/api/chain/explorer/contract") => {
+            let mut state = lock_state(&shared_state);
+            poll_service_state(&mut state);
+            let runtime_target = remap_transfer_runtime_target(
+                request.path.as_str(),
+                "/api/chain/explorer/contract",
+                "/v1/chain/explorer/contract",
+            );
+            let response = query_chain_transfer_json(&mut state, runtime_target.as_str());
+            write_json_response(&mut stream, 200, &response)
+        }
+        ("GET", "/api/chain/explorer/assets") => {
+            let mut state = lock_state(&shared_state);
+            poll_service_state(&mut state);
+            let runtime_target = remap_transfer_runtime_target(
+                request.path.as_str(),
+                "/api/chain/explorer/assets",
+                "/v1/chain/explorer/assets",
+            );
+            let response = query_chain_transfer_json(&mut state, runtime_target.as_str());
+            write_json_response(&mut stream, 200, &response)
+        }
+        ("GET", "/api/chain/explorer/mempool") => {
+            let mut state = lock_state(&shared_state);
+            poll_service_state(&mut state);
+            let runtime_target = remap_transfer_runtime_target(
+                request.path.as_str(),
+                "/api/chain/explorer/mempool",
+                "/v1/chain/explorer/mempool",
+            );
+            let response = query_chain_transfer_json(&mut state, runtime_target.as_str());
+            write_json_response(&mut stream, 200, &response)
+        }
         ("POST", "/api/chain/feedback") => {
             let submit_request = match parse_chain_feedback_request(request.body.as_slice()) {
                 Ok(request) => request,
@@ -749,6 +804,11 @@ fn handle_connection(
         | (method, "/api/chain/explorer/txs")
         | (method, "/api/chain/explorer/tx")
         | (method, "/api/chain/explorer/search")
+        | (method, "/api/chain/explorer/address")
+        | (method, "/api/chain/explorer/contracts")
+        | (method, "/api/chain/explorer/contract")
+        | (method, "/api/chain/explorer/assets")
+        | (method, "/api/chain/explorer/mempool")
         | (method, "/api/chain/feedback")
             if method != "GET" && method != "POST" =>
         {
