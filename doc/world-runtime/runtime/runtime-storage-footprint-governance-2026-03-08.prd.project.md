@@ -42,7 +42,7 @@
 ### T6 Metrics / profile / launcher 透传
 - [x] T6.1 (PRD-WORLD_RUNTIME-015) [test_tier_required]: 落地 `StorageProfileConfig` 解析、默认值与 runtime / launcher / script 的统一透传入口。
 - [x] T6.2 (PRD-WORLD_RUNTIME-015) [test_tier_required]: 在 runtime status / state file 中输出 `StorageMetricsSnapshot`，覆盖 bytes、ref_count、pin_count、checkpoint_count、orphan_count、gc_last_result 等最低字段。
-- [ ] T6.3 (PRD-WORLD_RUNTIME-015) [test_tier_required]: 补齐 GC 最近结果、失败原因、profile、生效预算与回放能力摘要字段，保证脚本/launcher 无需读取内部目录即可判断状态。
+- [x] T6.3 (PRD-WORLD_RUNTIME-015) [test_tier_required]: 补齐 GC 最近结果、失败原因、profile、生效预算与回放能力摘要字段，保证脚本/launcher 无需读取内部目录即可判断状态。
 - [ ] T6.4 (PRD-WORLD_RUNTIME-015) [test_tier_required]: 对齐 launcher、`run-web-launcher.sh`、chain runtime 启动脚本的 profile 参数透传与默认口径，避免环境间语义漂移。
 - [ ] T6.5 (PRD-WORLD_RUNTIME-015) [test_tier_required]: 补齐 profile 参数、status 输出、错误字段、launcher 透传的定向测试。
 
@@ -78,10 +78,11 @@
 ## 状态
 - 更新日期: 2026-03-08
 - 当前状态: active
-- 已完成: T0、T0.1、T1.1、T1.2、T1.3、T1.4、T1.5、T2.1、T2.2、T2.3、T2.4、T2.5、T3.1、T3.2、T3.3、T3.4、T4.1、T4.2、T4.3、T4.4、T5.1、T5.2、T5.3、T5.4、T6.1、T6.2
-- 已拆解待执行: T6.3 ~ T7.5
-- 进行中: T6.3
+- 已完成: T0、T0.1、T1.1、T1.2、T1.3、T1.4、T1.5、T2.1、T2.2、T2.3、T2.4、T2.5、T3.1、T3.2、T3.3、T3.4、T4.1、T4.2、T4.3、T4.4、T5.1、T5.2、T5.3、T5.4、T6.1、T6.2、T6.3
+- 已拆解待执行: T6.4 ~ T7.5
+- 进行中: T6.4
 - 阻塞项: 无；但 T2 / T3 / T6 / T7 的实现必须以前置 T1 契约冻结为准。
 - 本轮新增: T6.1 已完成共享 `StorageProfileConfig` 协议、`world_chain_runtime --storage-profile`、`world_game_launcher --chain-storage-profile`、`world_web_launcher` / launcher UI 同名透传入口，并先将 replication 热窗口预算接入 profile 默认值。
 - 本轮新增: T6.2 已在 `world_chain_runtime` 中新增共享 `StorageMetricsSnapshot`，按秒写出 `reward-runtime-storage-metrics.json`，并把 storage section 接到 `/v1/chain/status`，当前至少覆盖 bytes、blob_counts、ref_count、pin_count、checkpoint_count、orphan_blob_count 与 GC 最近结果。
-- 下一任务: T6.3（补齐 GC 最近结果、失败原因、profile、生效预算与回放能力摘要字段）
+- 本轮新增: T6.3 已把 `effective_budget` 与 `replay_summary` 接入 `StorageMetricsSnapshot` / `/v1/chain/status.storage`，并把 retained heights / checkpoint heights 收敛为 `latest_only`、`full_log_only`、`checkpoint_plus_log` 三档回放能力摘要，供 launcher / 脚本直接判断治理状态。
+- 下一任务: T6.4（对齐 launcher、`run-web-launcher.sh`、chain runtime 启动脚本的 profile 参数透传与默认口径）

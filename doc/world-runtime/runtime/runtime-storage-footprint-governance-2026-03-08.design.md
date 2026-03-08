@@ -233,19 +233,33 @@ struct StorageColdIndexRangeAnchor {
 ```rust
 struct StorageMetricsSnapshot {
     storage_profile: String,
+    effective_budget: StorageProfileConfig,
     bytes_by_dir: BTreeMap<String, u64>,
     blob_counts: BTreeMap<String, u64>,
     ref_count: u64,
     pin_count: u64,
     retained_heights: Vec<u64>,
     checkpoint_count: usize,
+    replay_summary: StorageReplaySummary,
     orphan_blob_count: u64,
     last_gc_at_ms: Option<i64>,
     last_gc_result: String,
     last_gc_error: Option<String>,
     degraded_reason: Option<String>,
 }
+
+struct StorageReplaySummary {
+    retained_height_count: usize,
+    earliest_retained_height: Option<u64>,
+    latest_retained_height: Option<u64>,
+    earliest_checkpoint_height: Option<u64>,
+    latest_checkpoint_height: Option<u64>,
+    mode: String,
+}
 ```
+
+- `effective_budget` 直接回显当前 profile 对应的预算口径，避免 launcher / 脚本重复推导。
+- `replay_summary.mode` 只允许 `latest_only` / `full_log_only` / `checkpoint_plus_log` 三档，供外部快速判断回放保证等级。
 
 ## 7. 写路径设计
 ### 7.1 Commit 落账顺序
@@ -370,6 +384,8 @@ struct StorageMetricsSnapshot {
 - `pin_count`
 - `retained_heights`
 - `checkpoint_count`
+- `effective_budget`
+- `replay_summary`
 - `orphan_blob_count`
 - `last_gc_at_ms`
 - `last_gc_result`

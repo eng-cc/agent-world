@@ -4,21 +4,46 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 use agent_world::runtime::{measure_directory_storage_bytes, LocalCasStore};
-use agent_world_proto::storage_profile::StorageProfile;
+use agent_world_proto::storage_profile::{StorageProfile, StorageProfileConfig};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::RuntimePaths;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub(super) struct StorageReplaySummary {
+    pub retained_height_count: usize,
+    pub earliest_retained_height: Option<u64>,
+    pub latest_retained_height: Option<u64>,
+    pub earliest_checkpoint_height: Option<u64>,
+    pub latest_checkpoint_height: Option<u64>,
+    pub mode: String,
+}
+
+impl Default for StorageReplaySummary {
+    fn default() -> Self {
+        Self {
+            retained_height_count: 0,
+            earliest_retained_height: None,
+            latest_retained_height: None,
+            earliest_checkpoint_height: None,
+            latest_checkpoint_height: None,
+            mode: "latest_only".to_string(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub(super) struct StorageMetricsSnapshot {
     pub storage_profile: String,
+    pub effective_budget: StorageProfileConfig,
     pub bytes_by_dir: BTreeMap<String, u64>,
     pub blob_counts: BTreeMap<String, u64>,
     pub ref_count: u64,
     pub pin_count: u64,
     pub retained_heights: Vec<u64>,
     pub checkpoint_count: usize,
+    pub replay_summary: StorageReplaySummary,
     pub orphan_blob_count: u64,
     pub last_gc_at_ms: Option<i64>,
     pub last_gc_result: String,
@@ -30,12 +55,14 @@ impl StorageMetricsSnapshot {
     fn empty(profile: StorageProfile) -> Self {
         Self {
             storage_profile: profile.as_str().to_string(),
+            effective_budget: StorageProfileConfig::from(profile),
             bytes_by_dir: BTreeMap::new(),
             blob_counts: BTreeMap::new(),
             ref_count: 0,
             pin_count: 0,
             retained_heights: Vec::new(),
             checkpoint_count: 0,
+            replay_summary: StorageReplaySummary::default(),
             orphan_blob_count: 0,
             last_gc_at_ms: None,
             last_gc_result: "not_available".to_string(),
@@ -125,14 +152,22 @@ pub(super) fn collect_storage_metrics(
         safe_blob_count(paths.replication_root.as_path(), &mut issues),
     );
 
+    let mut checkpoint_heights = Vec::new();
     match list_retained_heights(paths.execution_records_dir.as_path()) {
         Ok(heights) => snapshot.retained_heights = heights,
         Err(err) => issues.push(err),
     }
-    match count_checkpoints(paths.execution_records_dir.as_path()) {
-        Ok(count) => snapshot.checkpoint_count = count,
+    match list_checkpoint_heights(paths.execution_records_dir.as_path()) {
+        Ok(heights) => {
+            snapshot.checkpoint_count = heights.len();
+            checkpoint_heights = heights;
+        }
         Err(err) => issues.push(err),
     }
+    snapshot.replay_summary = build_replay_summary(
+        snapshot.retained_heights.as_slice(),
+        checkpoint_heights.as_slice(),
+    );
     match count_execution_refs(paths.execution_records_dir.as_path()) {
         Ok(ref_count) => snapshot.ref_count = ref_count,
         Err(err) => issues.push(err),
@@ -226,12 +261,12 @@ fn list_retained_heights(execution_records_dir: &Path) -> Result<Vec<u64>, Strin
     Ok(heights)
 }
 
-fn count_checkpoints(execution_records_dir: &Path) -> Result<usize, String> {
+fn list_checkpoint_heights(execution_records_dir: &Path) -> Result<Vec<u64>, String> {
     let checkpoint_root = execution_records_dir.join("checkpoints");
     if !checkpoint_root.exists() {
-        return Ok(0);
+        return Ok(Vec::new());
     }
-    let mut count = 0;
+    let mut heights = Vec::new();
     for entry in fs::read_dir(checkpoint_root.as_path()).map_err(|err| {
         format!(
             "read checkpoint root {} failed: {err}",
@@ -246,11 +281,41 @@ fn count_checkpoints(execution_records_dir: &Path) -> Result<usize, String> {
         {
             continue;
         }
-        if entry.path().join("manifest.json").exists() {
-            count += 1;
+        let path = entry.path();
+        let Some(name) = path.file_name().and_then(|name| name.to_str()) else {
+            continue;
+        };
+        let Ok(height) = name.parse::<u64>() else {
+            continue;
+        };
+        if path.join("manifest.json").exists() {
+            heights.push(height);
         }
     }
-    Ok(count)
+    heights.sort_unstable();
+    Ok(heights)
+}
+
+fn build_replay_summary(
+    retained_heights: &[u64],
+    checkpoint_heights: &[u64],
+) -> StorageReplaySummary {
+    let retained_height_count = retained_heights.len();
+    let mode = if retained_heights.is_empty() {
+        "latest_only"
+    } else if checkpoint_heights.is_empty() {
+        "full_log_only"
+    } else {
+        "checkpoint_plus_log"
+    };
+    StorageReplaySummary {
+        retained_height_count,
+        earliest_retained_height: retained_heights.first().copied(),
+        latest_retained_height: retained_heights.last().copied(),
+        earliest_checkpoint_height: checkpoint_heights.first().copied(),
+        latest_checkpoint_height: checkpoint_heights.last().copied(),
+        mode: mode.to_string(),
+    }
 }
 
 fn count_execution_refs(execution_records_dir: &Path) -> Result<u64, String> {
@@ -577,8 +642,15 @@ mod tests {
 
         let snapshot = collect_storage_metrics(&paths, StorageProfile::ReleaseDefault, None);
         assert_eq!(snapshot.storage_profile, "release_default");
+        assert_eq!(
+            snapshot.effective_budget.profile,
+            StorageProfile::ReleaseDefault
+        );
         assert_eq!(snapshot.retained_heights, vec![1, 2]);
         assert_eq!(snapshot.checkpoint_count, 1);
+        assert_eq!(snapshot.replay_summary.retained_height_count, 2);
+        assert_eq!(snapshot.replay_summary.latest_checkpoint_height, Some(2));
+        assert_eq!(snapshot.replay_summary.mode, "checkpoint_plus_log");
         assert_eq!(snapshot.pin_count, 3);
         assert_eq!(snapshot.orphan_blob_count, 1);
         assert_eq!(snapshot.last_gc_result, "success");
@@ -635,6 +707,8 @@ mod tests {
         let text = String::from_utf8(bytes).expect("utf8");
         assert!(text.contains("dev_local"));
         assert!(text.contains("runtime degraded"));
+        assert!(text.contains("effective_budget"));
+        assert!(text.contains("replay_summary"));
         assert_eq!(
             snapshot.degraded_reason,
             Some("runtime degraded".to_string())

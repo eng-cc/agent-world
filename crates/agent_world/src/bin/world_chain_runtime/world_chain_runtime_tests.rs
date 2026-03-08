@@ -246,12 +246,21 @@ fn build_chain_status_payload_includes_storage_metrics() {
     };
     let storage = super::storage_metrics::StorageMetricsSnapshot {
         storage_profile: "dev_local".to_string(),
+        effective_budget: StorageProfileConfig::from(StorageProfile::DevLocal),
         bytes_by_dir: BTreeMap::from([("runtime_root".to_string(), 128)]),
         blob_counts: BTreeMap::from([("execution_store_blobs".to_string(), 2)]),
         ref_count: 5,
         pin_count: 3,
         retained_heights: vec![1, 2],
         checkpoint_count: 1,
+        replay_summary: super::storage_metrics::StorageReplaySummary {
+            retained_height_count: 2,
+            earliest_retained_height: Some(1),
+            latest_retained_height: Some(2),
+            earliest_checkpoint_height: Some(2),
+            latest_checkpoint_height: Some(2),
+            mode: "checkpoint_plus_log".to_string(),
+        },
         orphan_blob_count: 0,
         last_gc_at_ms: Some(1_700_000_000_000),
         last_gc_result: "success".to_string(),
@@ -270,5 +279,10 @@ fn build_chain_status_payload_includes_storage_metrics() {
     assert_eq!(payload.storage.ref_count, 5);
     assert_eq!(payload.storage.pin_count, 3);
     assert_eq!(payload.storage.checkpoint_count, 1);
+    assert_eq!(
+        payload.storage.effective_budget.profile,
+        StorageProfile::DevLocal
+    );
+    assert_eq!(payload.storage.replay_summary.mode, "checkpoint_plus_log");
     assert_eq!(payload.storage.last_gc_result, "success");
 }
