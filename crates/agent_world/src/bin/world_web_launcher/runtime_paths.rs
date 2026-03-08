@@ -37,13 +37,22 @@ pub(super) fn resolve_static_dir_path(default_viewer_static_dir: &str) -> PathBu
         return PathBuf::from(path);
     }
 
+    let mut candidates = Vec::new();
     if let Ok(current_exe) = env::current_exe() {
         if let Some(bin_dir) = current_exe.parent() {
-            return bin_dir.join("..").join("web");
+            candidates.push(bin_dir.join("..").join("web"));
+            candidates.push(bin_dir.join("..").join("..").join("web"));
         }
     }
+    candidates.push(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("agent_world_viewer")
+            .join("dist"),
+    );
+    candidates.push(PathBuf::from(default_viewer_static_dir));
 
-    PathBuf::from(default_viewer_static_dir)
+    first_existing_dir(candidates).unwrap_or_else(|| PathBuf::from(default_viewer_static_dir))
 }
 
 pub(super) fn resolve_console_static_dir_path() -> PathBuf {
@@ -81,5 +90,52 @@ fn binary_name(base: &str) -> String {
         format!("{base}.exe")
     } else {
         base.to_string()
+    }
+}
+
+fn first_existing_dir(candidates: Vec<PathBuf>) -> Option<PathBuf> {
+    candidates.into_iter().find(|path| path.is_dir())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::first_existing_dir;
+    use std::env;
+    use std::fs;
+    use std::path::PathBuf;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn first_existing_dir_returns_first_existing_candidate() {
+        let missing = make_temp_path("missing");
+        let fallback = make_temp_path("fallback");
+        fs::create_dir_all(&fallback).expect("create fallback dir");
+
+        let resolved = first_existing_dir(vec![missing, fallback.clone()]);
+        assert_eq!(resolved, Some(fallback.clone()));
+
+        let _ = fs::remove_dir_all(fallback);
+    }
+
+    #[test]
+    fn first_existing_dir_returns_none_when_all_candidates_missing() {
+        let first = make_temp_path("first_missing");
+        let second = make_temp_path("second_missing");
+        let resolved = first_existing_dir(vec![first, second]);
+        assert!(resolved.is_none());
+    }
+
+    fn make_temp_path(label: &str) -> PathBuf {
+        let mut path = env::temp_dir();
+        let stamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("time")
+            .as_nanos();
+        path.push(format!(
+            "agent_world_runtime_paths_{label}_{}_{}",
+            std::process::id(),
+            stamp
+        ));
+        path
     }
 }

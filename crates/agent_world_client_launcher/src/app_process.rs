@@ -758,11 +758,11 @@ fn get_web_chain_transfer_history_blocking(
     let mut query = vec!["limit=50".to_string()];
     let account_filter = account_filter.trim();
     if !account_filter.is_empty() {
-        query.push(format!("account_id={account_filter}"));
+        query.push(encoded_query_pair("account_id", account_filter));
     }
     let action_filter = action_filter.trim();
     if !action_filter.is_empty() {
-        query.push(format!("action_id={action_filter}"));
+        query.push(encoded_query_pair("action_id", action_filter));
     }
     let path = format!("/api/chain/transfer/history?{}", query.join("&"));
     http_json_request(base_url, "GET", path.as_str(), None)
@@ -799,7 +799,7 @@ fn get_web_chain_explorer_block_blocking(
         .map(|raw| raw.trim().to_string())
         .filter(|raw| !raw.is_empty())
     {
-        query.push(format!("hash={block_hash}"));
+        query.push(encoded_query_pair("hash", block_hash.as_str()));
     }
     let path = if query.is_empty() {
         "/api/chain/explorer/block".to_string()
@@ -823,17 +823,17 @@ fn get_web_chain_explorer_txs_blocking(
     ];
     let account_filter = account_filter.trim();
     if !account_filter.is_empty() {
-        query.push(format!("account_id={account_filter}"));
+        query.push(encoded_query_pair("account_id", account_filter));
     }
     if let Some(status_filter) = status_filter {
         let status_filter = status_filter.trim().to_string();
         if !status_filter.is_empty() {
-            query.push(format!("status={status_filter}"));
+            query.push(encoded_query_pair("status", status_filter.as_str()));
         }
     }
     let action_filter = action_filter.trim();
     if !action_filter.is_empty() {
-        query.push(format!("action_id={action_filter}"));
+        query.push(encoded_query_pair("action_id", action_filter));
     }
     let path = format!("/api/chain/explorer/txs?{}", query.join("&"));
     http_json_request(base_url, "GET", path.as_str(), None)
@@ -849,7 +849,7 @@ fn get_web_chain_explorer_tx_blocking(
         .map(|raw| raw.trim().to_string())
         .filter(|raw| !raw.is_empty())
     {
-        query.push(format!("tx_hash={tx_hash}"));
+        query.push(encoded_query_pair("tx_hash", tx_hash.as_str()));
     }
     if let Some(action_id) = action_id {
         query.push(format!("action_id={action_id}"));
@@ -867,7 +867,10 @@ fn get_web_chain_explorer_search_blocking(
     query: String,
 ) -> Result<explorer_window::WebExplorerSearchResponse, String> {
     let query = query.trim().to_string();
-    let path = format!("/api/chain/explorer/search?q={query}");
+    let path = format!(
+        "/api/chain/explorer/search?{}",
+        encoded_query_pair("q", query.as_str())
+    );
     http_json_request(base_url, "GET", path.as_str(), None)
 }
 
@@ -879,7 +882,8 @@ fn get_web_chain_explorer_address_blocking(
 ) -> Result<explorer_window::WebExplorerAddressResponse, String> {
     let account_id = account_id.trim().to_string();
     let path = format!(
-        "/api/chain/explorer/address?account_id={account_id}&limit={}&cursor={cursor}",
+        "/api/chain/explorer/address?{}&limit={}&cursor={cursor}",
+        encoded_query_pair("account_id", account_id.as_str()),
         limit.clamp(1, 200)
     );
     http_json_request(base_url, "GET", path.as_str(), None)
@@ -902,7 +906,10 @@ fn get_web_chain_explorer_contract_blocking(
     contract_id: String,
 ) -> Result<explorer_window::WebExplorerContractResponse, String> {
     let contract_id = contract_id.trim().to_string();
-    let path = format!("/api/chain/explorer/contract?contract_id={contract_id}");
+    let path = format!(
+        "/api/chain/explorer/contract?{}",
+        encoded_query_pair("contract_id", contract_id.as_str())
+    );
     http_json_request(base_url, "GET", path.as_str(), None)
 }
 
@@ -918,7 +925,7 @@ fn get_web_chain_explorer_assets_blocking(
     ];
     let account_filter = account_filter.trim();
     if !account_filter.is_empty() {
-        query.push(format!("account_id={account_filter}"));
+        query.push(encoded_query_pair("account_id", account_filter));
     }
     let path = format!("/api/chain/explorer/assets?{}", query.join("&"));
     http_json_request(base_url, "GET", path.as_str(), None)
@@ -937,7 +944,7 @@ fn get_web_chain_explorer_mempool_blocking(
     if let Some(status_filter) = status_filter {
         let status_filter = status_filter.trim().to_string();
         if !status_filter.is_empty() {
-            query.push(format!("status={status_filter}"));
+            query.push(encoded_query_pair("status", status_filter.as_str()));
         }
     }
     let path = format!("/api/chain/explorer/mempool?{}", query.join("&"));

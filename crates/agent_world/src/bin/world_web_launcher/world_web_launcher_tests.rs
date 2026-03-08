@@ -5,9 +5,10 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::{
     build_chain_runtime_args, build_game_url, build_launcher_args, parse_chain_validators,
-    parse_host_port, parse_options, parse_port, remap_transfer_runtime_target,
-    validate_chain_config, validate_game_config, CliOptions, LauncherConfig,
-    DEFAULT_CHAIN_STATUS_BIND, DEFAULT_LISTEN_BIND, DEFAULT_SCENARIO,
+    parse_host_port, parse_options, parse_port, remap_transfer_runtime_target, stop_chain_process,
+    stop_process, validate_chain_config, validate_game_config, ChainRuntimeStatus, CliOptions,
+    LauncherConfig, ProcessState, ServiceState, DEFAULT_CHAIN_STATUS_BIND, DEFAULT_LISTEN_BIND,
+    DEFAULT_SCENARIO,
 };
 
 #[test]
@@ -382,6 +383,50 @@ fn remap_transfer_runtime_target_supports_explorer_p1_address_query() {
         mapped,
         "/v1/chain/explorer/address?account_id=player:alice&limit=20"
     );
+}
+
+#[test]
+fn stop_process_noop_preserves_error_state() {
+    let config = LauncherConfig {
+        chain_enabled: false,
+        ..LauncherConfig::default()
+    };
+    let mut state = ServiceState::new(
+        "launcher".to_string(),
+        "chain".to_string(),
+        PathBuf::from("."),
+        config,
+    );
+    state.process_state = ProcessState::StartFailed("boot failed".to_string());
+
+    stop_process(&mut state).expect("stop no-op should succeed");
+
+    assert!(matches!(
+        state.process_state,
+        ProcessState::StartFailed(ref detail) if detail == "boot failed"
+    ));
+}
+
+#[test]
+fn stop_chain_process_noop_preserves_error_state() {
+    let config = LauncherConfig {
+        chain_enabled: true,
+        ..LauncherConfig::default()
+    };
+    let mut state = ServiceState::new(
+        "launcher".to_string(),
+        "chain".to_string(),
+        PathBuf::from("."),
+        config,
+    );
+    state.chain_runtime_status = ChainRuntimeStatus::Unreachable("probe failed".to_string());
+
+    stop_chain_process(&mut state).expect("chain stop no-op should succeed");
+
+    assert!(matches!(
+        state.chain_runtime_status,
+        ChainRuntimeStatus::Unreachable(ref detail) if detail == "probe failed"
+    ));
 }
 
 fn make_temp_dir(label: &str) -> PathBuf {

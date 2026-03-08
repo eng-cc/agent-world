@@ -499,6 +499,32 @@ fn chain_runtime_status_from_web(status: &str, detail: Option<&str>) -> ChainRun
     }
 }
 
+fn encode_query_value(value: &str) -> String {
+    let mut encoded = String::with_capacity(value.len());
+    for byte in value.bytes() {
+        if byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.' | b'~') {
+            encoded.push(byte as char);
+        } else {
+            encoded.push('%');
+            encoded.push(hex_upper(byte >> 4));
+            encoded.push(hex_upper(byte & 0x0f));
+        }
+    }
+    encoded
+}
+
+fn encoded_query_pair(key: &str, value: &str) -> String {
+    format!("{key}={}", encode_query_value(value))
+}
+
+fn hex_upper(nibble: u8) -> char {
+    match nibble {
+        0..=9 => (b'0' + nibble) as char,
+        10..=15 => (b'A' + (nibble - 10)) as char,
+        _ => unreachable!("nibble must be in 0..=15"),
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ConfigIssue {
     ScenarioRequired,
@@ -867,56 +893,108 @@ impl ClientLauncherApp {
         }
     }
 
+    fn render_config_field(
+        &mut self,
+        ui: &mut egui::Ui,
+        field: &LauncherUiField,
+        stack_text_fields: bool,
+    ) {
+        let label = self.ui_field_label(field);
+        match field.kind {
+            LauncherUiFieldKind::Text => {
+                if let Some(value) = launcher_text_field_mut(&mut self.config, field.id) {
+                    if stack_text_fields {
+                        ui.vertical(|ui| {
+                            ui.label(label);
+                            ui.add_sized(
+                                [ui.available_width(), 0.0],
+                                egui::TextEdit::singleline(value),
+                            );
+                        });
+                    } else {
+                        ui.horizontal(|ui| {
+                            ui.label(label);
+                            ui.text_edit_singleline(value);
+                        });
+                    }
+                }
+            }
+            LauncherUiFieldKind::Checkbox => {
+                if let Some(value) = launcher_checkbox_field_mut(&mut self.config, field.id) {
+                    ui.checkbox(value, label);
+                }
+            }
+        }
+    }
+
     fn render_config_section(&mut self, ui: &mut egui::Ui, section: &str) {
-        ui.horizontal_wrapped(|ui| {
+        let stack_text_fields = ui.available_width() <= 560.0;
+        ui.vertical(|ui| {
             #[cfg(not(target_arch = "wasm32"))]
             {
                 for field in
                     launcher_ui_fields_for_native().filter(|field| field.section == section)
                 {
-                    let label = self.ui_field_label(field);
-                    match field.kind {
-                        LauncherUiFieldKind::Text => {
-                            if let Some(value) = launcher_text_field_mut(&mut self.config, field.id)
-                            {
-                                ui.label(label);
-                                ui.text_edit_singleline(value);
-                            }
-                        }
-                        LauncherUiFieldKind::Checkbox => {
-                            if let Some(value) =
-                                launcher_checkbox_field_mut(&mut self.config, field.id)
-                            {
-                                ui.checkbox(value, label);
-                            }
-                        }
-                    }
+                    self.render_config_field(ui, field, stack_text_fields);
                 }
             }
 
             #[cfg(target_arch = "wasm32")]
             {
                 for field in launcher_ui_fields_for_web().filter(|field| field.section == section) {
-                    let label = self.ui_field_label(field);
-                    match field.kind {
-                        LauncherUiFieldKind::Text => {
-                            if let Some(value) = launcher_text_field_mut(&mut self.config, field.id)
-                            {
-                                ui.label(label);
-                                ui.text_edit_singleline(value);
-                            }
-                        }
-                        LauncherUiFieldKind::Checkbox => {
-                            if let Some(value) =
-                                launcher_checkbox_field_mut(&mut self.config, field.id)
-                            {
-                                ui.checkbox(value, label);
-                            }
-                        }
-                    }
+                    self.render_config_field(ui, field, stack_text_fields);
                 }
             }
         });
+    }
+
+    fn feedback_unavailable_hint(&self) -> Option<String> {
+        if self.is_feedback_available() {
+            return None;
+        }
+        let message = match (&self.chain_runtime_status, self.ui_language) {
+            (ChainRuntimeStatus::Disabled, UiLanguage::ZhCn) => {
+                "反馈/转账/浏览器功能已禁用：区块链功能关闭".to_string()
+            }
+            (ChainRuntimeStatus::Disabled, UiLanguage::EnUs) => {
+                "Feedback/Transfer/Explorer are disabled because blockchain is disabled".to_string()
+            }
+            (ChainRuntimeStatus::NotStarted, UiLanguage::ZhCn) => {
+                "反馈/转账/浏览器功能暂不可用：区块链未启动".to_string()
+            }
+            (ChainRuntimeStatus::NotStarted, UiLanguage::EnUs) => {
+                "Feedback/Transfer/Explorer are unavailable because blockchain is not started"
+                    .to_string()
+            }
+            (ChainRuntimeStatus::Starting, UiLanguage::ZhCn) => {
+                "反馈/转账/浏览器功能暂不可用：区块链启动中".to_string()
+            }
+            (ChainRuntimeStatus::Starting, UiLanguage::EnUs) => {
+                "Feedback/Transfer/Explorer are unavailable while blockchain is starting"
+                    .to_string()
+            }
+            (ChainRuntimeStatus::Unreachable(detail), UiLanguage::ZhCn) => {
+                format!("反馈/转账/浏览器功能暂不可用：区块链不可达（{detail}）")
+            }
+            (ChainRuntimeStatus::Unreachable(detail), UiLanguage::EnUs) => {
+                format!(
+                    "Feedback/Transfer/Explorer are unavailable: blockchain unreachable ({detail})"
+                )
+            }
+            (ChainRuntimeStatus::ConfigError(detail), UiLanguage::ZhCn) => {
+                format!("反馈/转账/浏览器功能暂不可用：区块链配置错误（{detail}）")
+            }
+            (ChainRuntimeStatus::ConfigError(detail), UiLanguage::EnUs) => {
+                format!("Feedback/Transfer/Explorer are unavailable: blockchain config error ({detail})")
+            }
+            (ChainRuntimeStatus::Ready, UiLanguage::ZhCn) => {
+                "反馈/转账/浏览器功能暂不可用：区块链功能关闭".to_string()
+            }
+            (ChainRuntimeStatus::Ready, UiLanguage::EnUs) => {
+                "Feedback/Transfer/Explorer are unavailable: blockchain is disabled".to_string()
+            }
+        };
+        Some(message)
     }
 }
 
@@ -1151,15 +1229,8 @@ impl eframe::App for ClientLauncherApp {
                     self.logs.clear();
                 }
             });
-            #[cfg(not(target_arch = "wasm32"))]
-            if !self.is_feedback_available() {
-                ui.small(
-                    egui::RichText::new(self.tr(
-                        "反馈功能仅在区块链已就绪时可用",
-                        "Feedback is available only when blockchain is ready",
-                    ))
-                    .color(egui::Color32::from_rgb(158, 134, 76)),
-                );
+            if let Some(hint) = self.feedback_unavailable_hint() {
+                ui.small(egui::RichText::new(hint).color(egui::Color32::from_rgb(158, 134, 76)));
             }
 
             let url = self.current_game_url();

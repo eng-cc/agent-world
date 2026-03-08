@@ -70,13 +70,22 @@ pub(crate) fn resolve_static_dir_path() -> PathBuf {
         return PathBuf::from(path);
     }
 
+    let mut candidates = Vec::new();
     if let Ok(current_exe) = env::current_exe() {
         if let Some(bin_dir) = current_exe.parent() {
-            return bin_dir.join("..").join("web");
+            candidates.push(bin_dir.join("..").join("web"));
+            candidates.push(bin_dir.join("..").join("..").join("web"));
         }
     }
+    candidates.push(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("agent_world_viewer")
+            .join("dist"),
+    );
+    candidates.push(PathBuf::from("web"));
 
-    PathBuf::from("web")
+    first_existing_dir(candidates).unwrap_or_else(|| PathBuf::from("web"))
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -143,5 +152,53 @@ fn binary_name(base: &str) -> String {
         format!("{base}.exe")
     } else {
         base.to_string()
+    }
+}
+
+fn first_existing_dir(candidates: Vec<PathBuf>) -> Option<PathBuf> {
+    candidates.into_iter().find(|path| path.is_dir())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::first_existing_dir;
+    use std::env;
+    use std::fs;
+    use std::path::PathBuf;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn first_existing_dir_selects_first_existing_path() {
+        let missing = make_temp_path("missing");
+        let valid = make_temp_path("valid");
+        fs::create_dir_all(&valid).expect("create valid dir");
+
+        let resolved = first_existing_dir(vec![missing, valid.clone()]);
+        assert_eq!(resolved, Some(valid.clone()));
+
+        let _ = fs::remove_dir_all(valid);
+    }
+
+    #[test]
+    fn first_existing_dir_returns_none_without_existing_dirs() {
+        let resolved = first_existing_dir(vec![
+            make_temp_path("missing_a"),
+            make_temp_path("missing_b"),
+        ]);
+        assert!(resolved.is_none());
+    }
+
+    fn make_temp_path(label: &str) -> PathBuf {
+        let mut path = env::temp_dir();
+        let stamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("time")
+            .as_nanos();
+        path.push(format!(
+            "agent_world_platform_ops_{label}_{}_{}",
+            std::process::id(),
+            stamp
+        ));
+        path
     }
 }

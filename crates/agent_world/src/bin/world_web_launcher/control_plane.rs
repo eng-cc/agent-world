@@ -553,7 +553,9 @@ pub(super) fn start_chain_process(
 
 pub(super) fn stop_process(state: &mut ServiceState) -> Result<(), String> {
     let Some(mut running) = state.running.take() else {
-        state.process_state = ProcessState::Stopped;
+        if matches!(state.process_state, ProcessState::Running { .. }) {
+            state.process_state = ProcessState::Stopped;
+        }
         state.append_log("world_game_launcher stop requested but process is not running");
         state.mark_updated();
         return Ok(());
@@ -577,11 +579,16 @@ pub(super) fn stop_process(state: &mut ServiceState) -> Result<(), String> {
 
 pub(super) fn stop_chain_process(state: &mut ServiceState) -> Result<(), String> {
     let Some(mut running) = state.chain_running.take() else {
-        state.chain_runtime_status = if state.config.chain_enabled {
-            ChainRuntimeStatus::NotStarted
-        } else {
-            ChainRuntimeStatus::Disabled
-        };
+        if !matches!(
+            state.chain_runtime_status,
+            ChainRuntimeStatus::Unreachable(_) | ChainRuntimeStatus::ConfigError(_)
+        ) {
+            state.chain_runtime_status = if state.config.chain_enabled {
+                ChainRuntimeStatus::NotStarted
+            } else {
+                ChainRuntimeStatus::Disabled
+            };
+        }
         state.chain_started_at = None;
         state.last_chain_probe_at = None;
         state.append_log("world_chain_runtime stop requested but process is not running");

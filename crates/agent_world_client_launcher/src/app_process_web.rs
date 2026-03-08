@@ -646,11 +646,11 @@ async fn fetch_web_transfer_history(
     let mut query = vec!["limit=50".to_string()];
     let account_filter = account_filter.trim();
     if !account_filter.is_empty() {
-        query.push(format!("account_id={account_filter}"));
+        query.push(encoded_query_pair("account_id", account_filter));
     }
     let action_filter = action_filter.trim();
     if !action_filter.is_empty() {
-        query.push(format!("action_id={action_filter}"));
+        query.push(encoded_query_pair("action_id", action_filter));
     }
     let path = format!("/api/chain/transfer/history?{}", query.join("&"));
     let response = Request::get(path.as_str())
@@ -723,7 +723,7 @@ async fn fetch_web_explorer_block(
         .map(|raw| raw.trim().to_string())
         .filter(|raw| !raw.is_empty())
     {
-        query.push(format!("hash={block_hash}"));
+        query.push(encoded_query_pair("hash", block_hash.as_str()));
     }
     let path = if query.is_empty() {
         "/api/chain/explorer/block".to_string()
@@ -759,17 +759,17 @@ async fn fetch_web_explorer_txs(
     ];
     let account_filter = account_filter.trim();
     if !account_filter.is_empty() {
-        query.push(format!("account_id={account_filter}"));
+        query.push(encoded_query_pair("account_id", account_filter));
     }
     if let Some(status_filter) = status_filter {
         let status_filter = status_filter.trim().to_string();
         if !status_filter.is_empty() {
-            query.push(format!("status={status_filter}"));
+            query.push(encoded_query_pair("status", status_filter.as_str()));
         }
     }
     let action_filter = action_filter.trim();
     if !action_filter.is_empty() {
-        query.push(format!("action_id={action_filter}"));
+        query.push(encoded_query_pair("action_id", action_filter));
     }
     let path = format!("/api/chain/explorer/txs?{}", query.join("&"));
     let response = Request::get(path.as_str())
@@ -797,7 +797,7 @@ async fn fetch_web_explorer_tx(
         .map(|raw| raw.trim().to_string())
         .filter(|raw| !raw.is_empty())
     {
-        query.push(format!("tx_hash={tx_hash}"));
+        query.push(encoded_query_pair("tx_hash", tx_hash.as_str()));
     }
     if let Some(action_id) = action_id {
         query.push(format!("action_id={action_id}"));
@@ -826,7 +826,10 @@ async fn fetch_web_explorer_tx(
 async fn fetch_web_explorer_search(
     query: String,
 ) -> Result<explorer_window::WebExplorerSearchResponse, String> {
-    let path = format!("/api/chain/explorer/search?q={}", query.trim());
+    let path = format!(
+        "/api/chain/explorer/search?{}",
+        encoded_query_pair("q", query.trim())
+    );
     let response = Request::get(path.as_str())
         .send()
         .await
@@ -850,7 +853,8 @@ async fn fetch_web_explorer_address(
 ) -> Result<explorer_window::WebExplorerAddressResponse, String> {
     let account_id = account_id.trim().to_string();
     let path = format!(
-        "/api/chain/explorer/address?account_id={account_id}&limit={}&cursor={cursor}",
+        "/api/chain/explorer/address?{}&limit={}&cursor={cursor}",
+        encoded_query_pair("account_id", account_id.as_str()),
         limit.clamp(1, 200)
     );
     let response = Request::get(path.as_str())
@@ -897,7 +901,10 @@ async fn fetch_web_explorer_contract(
     contract_id: String,
 ) -> Result<explorer_window::WebExplorerContractResponse, String> {
     let contract_id = contract_id.trim().to_string();
-    let path = format!("/api/chain/explorer/contract?contract_id={contract_id}");
+    let path = format!(
+        "/api/chain/explorer/contract?{}",
+        encoded_query_pair("contract_id", contract_id.as_str())
+    );
     let response = Request::get(path.as_str())
         .send()
         .await
@@ -925,7 +932,7 @@ async fn fetch_web_explorer_assets(
     ];
     let account_filter = account_filter.trim();
     if !account_filter.is_empty() {
-        query.push(format!("account_id={account_filter}"));
+        query.push(encoded_query_pair("account_id", account_filter));
     }
     let path = format!("/api/chain/explorer/assets?{}", query.join("&"));
     let response = Request::get(path.as_str())
@@ -956,7 +963,7 @@ async fn fetch_web_explorer_mempool(
     if let Some(status_filter) = status_filter {
         let status_filter = status_filter.trim().to_string();
         if !status_filter.is_empty() {
-            query.push(format!("status={status_filter}"));
+            query.push(encoded_query_pair("status", status_filter.as_str()));
         }
     }
     let path = format!("/api/chain/explorer/mempool?{}", query.join("&"));

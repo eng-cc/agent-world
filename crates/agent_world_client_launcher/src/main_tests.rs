@@ -1,9 +1,10 @@
 use super::{
     build_chain_runtime_args, build_game_url, build_launcher_args,
-    collect_chain_required_config_issues, collect_required_config_issues, install_cjk_font,
-    normalize_host_for_url, parse_chain_role, parse_chain_validators, parse_host_port, parse_port,
-    probe_chain_status_endpoint, ChainRuntimeStatus, ClientLauncherApp, ConfigIssue, LaunchConfig,
-    LauncherStatus, UiLanguage, EGUI_CJK_FONT_NAME,
+    collect_chain_required_config_issues, collect_required_config_issues, encode_query_value,
+    encoded_query_pair, install_cjk_font, normalize_host_for_url, parse_chain_role,
+    parse_chain_validators, parse_host_port, parse_port, probe_chain_status_endpoint,
+    ChainRuntimeStatus, ClientLauncherApp, ConfigIssue, LaunchConfig, LauncherStatus, UiLanguage,
+    EGUI_CJK_FONT_NAME,
 };
 use eframe::egui;
 use std::io::{Read, Write};
@@ -209,6 +210,23 @@ fn chain_runtime_status_text_is_localized() {
 }
 
 #[test]
+fn encode_query_value_percent_encodes_reserved_characters() {
+    assert_eq!(
+        encode_query_value("player:alice & bob?"),
+        "player%3Aalice%20%26%20bob%3F"
+    );
+    assert_eq!(encode_query_value("你好"), "%E4%BD%A0%E5%A5%BD");
+}
+
+#[test]
+fn encoded_query_pair_formats_key_value_pair() {
+    assert_eq!(
+        encoded_query_pair("account_id", "player:alice&bob"),
+        "account_id=player%3Aalice%26bob"
+    );
+}
+
+#[test]
 fn feedback_availability_requires_chain_ready() {
     let mut app = ClientLauncherApp::default();
     app.config.chain_enabled = true;
@@ -221,6 +239,23 @@ fn feedback_availability_requires_chain_ready() {
     app.chain_runtime_status = ChainRuntimeStatus::Ready;
     app.config.chain_enabled = false;
     assert!(!app.is_feedback_available());
+}
+
+#[test]
+fn feedback_unavailable_hint_includes_status_reason() {
+    let mut app = ClientLauncherApp::default();
+    app.ui_language = UiLanguage::EnUs;
+    app.chain_runtime_status = ChainRuntimeStatus::Starting;
+    let hint = app
+        .feedback_unavailable_hint()
+        .expect("starting status should provide hint");
+    assert!(hint.contains("starting"));
+
+    app.chain_runtime_status = ChainRuntimeStatus::ConfigError("bad bind".to_string());
+    let hint = app
+        .feedback_unavailable_hint()
+        .expect("config error status should provide hint");
+    assert!(hint.contains("bad bind"));
 }
 
 #[test]
