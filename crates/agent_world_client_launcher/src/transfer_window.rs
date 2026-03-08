@@ -217,7 +217,7 @@ impl ClientLauncherApp {
     }
 
     fn maybe_request_transfer_panel_data(&mut self) {
-        if self.web_request_inflight {
+        if self.any_transfer_request_inflight() {
             return;
         }
 
@@ -442,7 +442,7 @@ impl ClientLauncherApp {
             return;
         }
 
-        if self.web_request_inflight {
+        if self.web_request_inflight_for(WebRequestDomain::TransferSubmit) {
             let message = self
                 .tr(
                     "转账提交失败：已有请求处理中",
@@ -509,8 +509,9 @@ impl ClientLauncherApp {
             self.transfer_panel_state.nonce_mode,
             self.transfer_panel_state.auto_nonce_hint,
         );
-        let submit_enabled =
-            issues.is_empty() && self.is_feedback_available() && !self.web_request_inflight;
+        let submit_enabled = issues.is_empty()
+            && self.is_feedback_available()
+            && !self.web_request_inflight_for(WebRequestDomain::TransferSubmit);
 
         let title = self.tr("链上转账", "On-Chain Transfer").to_string();
         let mut window_open = self.transfer_window_open;
@@ -648,7 +649,7 @@ impl ClientLauncherApp {
                     }
                 });
 
-                if self.web_request_inflight {
+                if self.any_transfer_request_inflight() {
                     ui.small(
                         egui::RichText::new(
                             self.tr("请求处理中，请稍候…", "Request in flight, please wait..."),

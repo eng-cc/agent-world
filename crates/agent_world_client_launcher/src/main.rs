@@ -336,6 +336,42 @@ enum WebApiEvent {
     ExplorerQuery(Result<explorer_window::ExplorerQueryResponse, String>),
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum WebRequestDomain {
+    StatePoll,
+    ControlAction,
+    FeedbackSubmit,
+    TransferSubmit,
+    TransferQuery,
+    ExplorerQuery,
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+struct WebRequestInflight {
+    state_poll: bool,
+    control_action: bool,
+    feedback_submit: bool,
+    transfer_submit: bool,
+    transfer_query: bool,
+    explorer_query: bool,
+}
+
+impl WebRequestInflight {
+    #[cfg(test)]
+    fn any(self) -> bool {
+        self.state_poll
+            || self.control_action
+            || self.feedback_submit
+            || self.transfer_submit
+            || self.transfer_query
+            || self.explorer_query
+    }
+
+    fn transfer_any(self) -> bool {
+        self.transfer_submit || self.transfer_query
+    }
+}
+
 #[derive(Debug, Clone, Deserialize)]
 struct WebStateSnapshot {
     status: String,
@@ -729,6 +765,7 @@ enum TransferSubmitState {
 #[derive(Debug)]
 struct ClientLauncherApp {
     config: LaunchConfig,
+    config_dirty: bool,
     llm_settings_panel: LlmSettingsPanel,
     ui_language: UiLanguage,
     status: LauncherStatus,
@@ -750,7 +787,7 @@ struct ClientLauncherApp {
     explorer_panel_state: explorer_window::ExplorerPanelState,
     web_api_tx: Sender<WebApiEvent>,
     web_api_rx: Receiver<WebApiEvent>,
-    web_request_inflight: bool,
+    web_request_inflight: WebRequestInflight,
     last_web_poll_at: Option<Instant>,
     web_game_url: Option<String>,
     #[cfg(not(target_arch = "wasm32"))]
@@ -796,6 +833,7 @@ impl Default for ClientLauncherApp {
         };
         Self {
             config,
+            config_dirty: false,
             llm_settings_panel: LlmSettingsPanel::new(LlmSettingsPanel::default_path()),
             ui_language: UiLanguage::detect_from_env(),
             status: LauncherStatus::Idle,
@@ -817,7 +855,7 @@ impl Default for ClientLauncherApp {
             explorer_panel_state: explorer_window::ExplorerPanelState::default(),
             web_api_tx,
             web_api_rx,
-            web_request_inflight: false,
+            web_request_inflight: WebRequestInflight::default(),
             last_web_poll_at: None,
             web_game_url: None,
             #[cfg(not(target_arch = "wasm32"))]
@@ -843,6 +881,41 @@ impl ClientLauncherApp {
         while self.logs.len() > MAX_LOG_LINES {
             self.logs.pop_front();
         }
+    }
+
+    fn web_request_inflight_for(&self, domain: WebRequestDomain) -> bool {
+        match domain {
+            WebRequestDomain::StatePoll => self.web_request_inflight.state_poll,
+            WebRequestDomain::ControlAction => self.web_request_inflight.control_action,
+            WebRequestDomain::FeedbackSubmit => self.web_request_inflight.feedback_submit,
+            WebRequestDomain::TransferSubmit => self.web_request_inflight.transfer_submit,
+            WebRequestDomain::TransferQuery => self.web_request_inflight.transfer_query,
+            WebRequestDomain::ExplorerQuery => self.web_request_inflight.explorer_query,
+        }
+    }
+
+    fn set_web_request_inflight(&mut self, domain: WebRequestDomain, inflight: bool) {
+        match domain {
+            WebRequestDomain::StatePoll => self.web_request_inflight.state_poll = inflight,
+            WebRequestDomain::ControlAction => self.web_request_inflight.control_action = inflight,
+            WebRequestDomain::FeedbackSubmit => {
+                self.web_request_inflight.feedback_submit = inflight;
+            }
+            WebRequestDomain::TransferSubmit => {
+                self.web_request_inflight.transfer_submit = inflight;
+            }
+            WebRequestDomain::TransferQuery => self.web_request_inflight.transfer_query = inflight,
+            WebRequestDomain::ExplorerQuery => self.web_request_inflight.explorer_query = inflight,
+        }
+    }
+
+    #[cfg(test)]
+    fn any_web_request_inflight(&self) -> bool {
+        self.web_request_inflight.any()
+    }
+
+    fn any_transfer_request_inflight(&self) -> bool {
+        self.web_request_inflight.transfer_any()
     }
 
     #[cfg(target_arch = "wasm32")]
@@ -885,6 +958,217 @@ impl ClientLauncherApp {
                 self.feedback_submit_state = FeedbackSubmitState::Failed(message);
             }
         }
+    }
+
+    fn ui_field_label(&self, field: &LauncherUiField) -> &'static str {
+        match self.ui_language {
+            UiLanguage::ZhCn => field.label_zh,
+            UiLanguage::EnUs => field.label_en,
+        }
+    }
+
+    fn render_config_field(
+        &mut self,
+        ui: &mut egui::Ui,
+        field: &LauncherUiField,
+        stack_text_fields: bool,
+    ) {
+        let label = self.ui_field_label(field);
+        match field.kind {
+            LauncherUiFieldKind::Text => {
+                if let Some(value) = launcher_text_field_mut(&mut self.config, field.id) {
+                    if stack_text_fields {
+                        ui.vertical(|ui| {
+                            ui.label(label);
+                            let response = ui.add_sized(
+                                [ui.available_width(), 0.0],
+                                egui::TextEdit::singleline(value),
+                            );
+                            if response.changed() {
+                                self.config_dirty = true;
+                            }
+                        });
+                    } else {
+                        ui.horizontal(|ui| {
+                            ui.label(label);
+                            if ui.text_edit_singleline(value).changed() {
+                                self.config_dirty = true;
+                            }
+                        });
+                    }
+                }
+            }
+            LauncherUiFieldKind::Checkbox => {
+                if let Some(value) = launcher_checkbox_field_mut(&mut self.config, field.id) {
+                    if ui.checkbox(value, label).changed() {
+                        self.config_dirty = true;
+                    }
+                }
+            }
+        }
+    }
+
+    fn render_config_section(&mut self, ui: &mut egui::Ui, section: &str) {
+        let stack_text_fields = ui.available_width() <= 560.0;
+        ui.vertical(|ui| {
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                for field in
+                    launcher_ui_fields_for_native().filter(|field| field.section == section)
+                {
+                    self.render_config_field(ui, field, stack_text_fields);
+                }
+            }
+
+            #[cfg(target_arch = "wasm32")]
+            {
+                for field in launcher_ui_fields_for_web().filter(|field| field.section == section) {
+                    self.render_config_field(ui, field, stack_text_fields);
+                }
+            }
+        });
+    }
+
+    fn render_config_validation_summary(
+        &mut self,
+        ui: &mut egui::Ui,
+        game_required_issues: &[ConfigIssue],
+        chain_required_issues: &[ConfigIssue],
+    ) {
+        let chain_issue_count = if self.config.chain_enabled {
+            chain_required_issues.len()
+        } else {
+            0
+        };
+        let has_issue = !game_required_issues.is_empty() || chain_issue_count > 0;
+
+        ui.horizontal_wrapped(|ui| {
+            ui.label(self.tr(
+                "低频配置已收口到高级配置弹窗。",
+                "Low-frequency settings are grouped in Advanced Config.",
+            ));
+            if ui.button(self.tr("高级配置", "Advanced Config")).clicked() {
+                self.config_window_open = true;
+            }
+        });
+
+        if self.config_dirty {
+            ui.small(
+                egui::RichText::new(self.tr(
+                    "检测到本地配置改动：轮询快照不会覆盖当前编辑，直到配置与服务端一致。",
+                    "Local config edits detected: polling snapshots will not overwrite current edits until they match server config.",
+                ))
+                .color(egui::Color32::from_rgb(201, 146, 44)),
+            );
+        }
+
+        if !has_issue {
+            ui.colored_label(
+                egui::Color32::from_rgb(36, 130, 78),
+                self.tr(
+                    "当前配置校验通过，可直接执行高频操作。",
+                    "Configuration checks passed; quick actions are ready.",
+                ),
+            );
+            return;
+        }
+
+        let summary = if self.config.chain_enabled {
+            match self.ui_language {
+                UiLanguage::ZhCn => format!(
+                    "存在配置问题：游戏 {} 项，区块链 {} 项",
+                    game_required_issues.len(),
+                    chain_issue_count
+                ),
+                UiLanguage::EnUs => format!(
+                    "Configuration issues detected: game {}, blockchain {}",
+                    game_required_issues.len(),
+                    chain_issue_count
+                ),
+            }
+        } else {
+            match self.ui_language {
+                UiLanguage::ZhCn => format!("存在配置问题：游戏 {} 项", game_required_issues.len()),
+                UiLanguage::EnUs => format!(
+                    "Configuration issues detected: game {}",
+                    game_required_issues.len()
+                ),
+            }
+        };
+        ui.colored_label(egui::Color32::from_rgb(188, 60, 60), summary);
+        ui.small(self.tr(
+            "请点击“高级配置”查看并修复具体字段。",
+            "Open Advanced Config to review and fix specific fields.",
+        ));
+    }
+
+    fn show_config_window(
+        &mut self,
+        ctx: &egui::Context,
+        game_required_issues: &[ConfigIssue],
+        chain_required_issues: &[ConfigIssue],
+    ) {
+        if !self.config_window_open {
+            return;
+        }
+
+        let mut keep_open = self.config_window_open;
+        egui::Window::new(self.tr("高级配置", "Advanced Config"))
+            .collapsible(false)
+            .resizable(true)
+            .default_width(780.0)
+            .default_height(640.0)
+            .open(&mut keep_open)
+            .show(ctx, |ui| {
+                egui::ScrollArea::vertical()
+                    .auto_shrink([false, false])
+                    .show(ui, |ui| {
+                        for section in NATIVE_UI_SECTIONS {
+                            self.render_config_section(ui, section);
+                        }
+                    });
+
+                ui.separator();
+
+                if game_required_issues.is_empty() {
+                    ui.colored_label(
+                        egui::Color32::from_rgb(36, 130, 78),
+                        self.tr(
+                            "必填配置项已通过校验，可启动游戏",
+                            "Required configuration check passed; game can start",
+                        ),
+                    );
+                } else {
+                    ui.group(|ui| {
+                        ui.colored_label(
+                            egui::Color32::from_rgb(188, 60, 60),
+                            self.tr(
+                                "游戏启动前请先修复以下必填配置项：",
+                                "Fix the required game configuration issues before starting:",
+                            ),
+                        );
+                        for issue in game_required_issues {
+                            ui.label(format!("- {}", issue.text(self.ui_language)));
+                        }
+                    });
+                }
+
+                if self.config.chain_enabled && !chain_required_issues.is_empty() {
+                    ui.group(|ui| {
+                        ui.colored_label(
+                            egui::Color32::from_rgb(188, 60, 60),
+                            self.tr(
+                                "区块链启动前请先修复以下配置项：",
+                                "Fix the blockchain configuration issues before starting:",
+                            ),
+                        );
+                        for issue in chain_required_issues {
+                            ui.label(format!("- {}", issue.text(self.ui_language)));
+                        }
+                    });
+                }
+            });
+        self.config_window_open = keep_open;
     }
 
     fn feedback_unavailable_hint(&self) -> Option<String> {

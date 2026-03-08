@@ -373,7 +373,9 @@ impl ClientLauncherApp {
     }
 
     fn maybe_request_explorer_panel_data(&mut self) {
-        if !self.explorer_window_open || self.web_request_inflight {
+        if !self.explorer_window_open
+            || self.web_request_inflight_for(WebRequestDomain::ExplorerQuery)
+        {
             return;
         }
 
@@ -654,7 +656,7 @@ impl ClientLauncherApp {
                     {
                         self.reset_explorer_active_tab_state();
                     }
-                    if self.web_request_inflight {
+                    if self.web_request_inflight_for(WebRequestDomain::ExplorerQuery) {
                         ui.small(
                             egui::RichText::new(
                                 self.tr("请求处理中，请稍候…", "Request in flight, please wait..."),

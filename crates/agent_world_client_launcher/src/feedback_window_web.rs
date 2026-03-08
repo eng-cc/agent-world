@@ -71,7 +71,7 @@ impl ClientLauncherApp {
             return;
         }
 
-        if self.web_request_inflight {
+        if self.web_request_inflight_for(WebRequestDomain::FeedbackSubmit) {
             let message = self
                 .tr(
                     "反馈提交失败：已有请求处理中",
@@ -100,8 +100,9 @@ impl ClientLauncherApp {
         }
 
         let issues = validate_web_feedback_draft(&self.feedback_draft);
-        let submit_enabled =
-            issues.is_empty() && self.is_feedback_available() && !self.web_request_inflight;
+        let submit_enabled = issues.is_empty()
+            && self.is_feedback_available()
+            && !self.web_request_inflight_for(WebRequestDomain::FeedbackSubmit);
 
         let title = self
             .tr("反馈（Bug / 建议）", "Feedback (Bug / Suggestion)")
@@ -161,7 +162,7 @@ impl ClientLauncherApp {
                     }
                 });
 
-                if self.web_request_inflight {
+                if self.web_request_inflight_for(WebRequestDomain::FeedbackSubmit) {
                     ui.small(
                         egui::RichText::new(
                             self.tr("请求处理中，请稍候…", "Request in flight, please wait..."),

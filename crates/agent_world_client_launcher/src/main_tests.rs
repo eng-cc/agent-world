@@ -5,7 +5,7 @@ use super::{
     encode_query_value, encoded_query_pair, install_cjk_font, normalize_host_for_url,
     parse_chain_role, parse_chain_validators, parse_host_port, parse_port,
     probe_chain_status_endpoint, ChainRuntimeStatus, ClientLauncherApp, ConfigIssue, LaunchConfig,
-    LauncherStatus, UiLanguage, EGUI_CJK_FONT_NAME,
+    LauncherStatus, UiLanguage, WebRequestDomain, WebStateSnapshot, EGUI_CJK_FONT_NAME,
 };
 use eframe::egui;
 use std::io::{Read, Write};
@@ -257,6 +257,70 @@ fn feedback_unavailable_hint_includes_status_reason() {
         .feedback_unavailable_hint()
         .expect("config error status should provide hint");
     assert!(hint.contains("bad bind"));
+}
+
+#[test]
+fn web_request_inflight_domains_are_independent() {
+    let mut app = ClientLauncherApp::default();
+    assert!(!app.any_web_request_inflight());
+    assert!(!app.any_transfer_request_inflight());
+
+    app.set_web_request_inflight(WebRequestDomain::StatePoll, true);
+    assert!(app.web_request_inflight_for(WebRequestDomain::StatePoll));
+    assert!(!app.web_request_inflight_for(WebRequestDomain::ExplorerQuery));
+    assert!(app.any_web_request_inflight());
+
+    app.set_web_request_inflight(WebRequestDomain::TransferQuery, true);
+    assert!(app.any_transfer_request_inflight());
+    assert!(app.web_request_inflight_for(WebRequestDomain::TransferQuery));
+    assert!(!app.web_request_inflight_for(WebRequestDomain::TransferSubmit));
+
+    app.set_web_request_inflight(WebRequestDomain::StatePoll, false);
+    app.set_web_request_inflight(WebRequestDomain::TransferQuery, false);
+    assert!(!app.any_web_request_inflight());
+    assert!(!app.any_transfer_request_inflight());
+}
+
+#[test]
+fn apply_web_snapshot_preserves_local_dirty_config_when_snapshot_differs() {
+    let mut app = ClientLauncherApp::default();
+    app.config.scenario = "local_edit".to_string();
+    app.config_dirty = true;
+
+    let mut remote_config = app.config.clone();
+    remote_config.scenario = "remote_value".to_string();
+    let snapshot = WebStateSnapshot {
+        status: "idle".to_string(),
+        detail: None,
+        chain_status: "not_started".to_string(),
+        chain_detail: None,
+        game_url: "http://127.0.0.1:4173/".to_string(),
+        config: remote_config,
+        logs: vec!["snapshot".to_string()],
+    };
+
+    app.apply_web_snapshot(snapshot);
+    assert_eq!(app.config.scenario, "local_edit");
+    assert!(app.config_dirty);
+}
+
+#[test]
+fn apply_web_snapshot_clears_dirty_flag_when_snapshot_matches_local_config() {
+    let mut app = ClientLauncherApp::default();
+    app.config.scenario = "same_value".to_string();
+    app.config_dirty = true;
+    let snapshot = WebStateSnapshot {
+        status: "idle".to_string(),
+        detail: None,
+        chain_status: "not_started".to_string(),
+        chain_detail: None,
+        game_url: "http://127.0.0.1:4173/".to_string(),
+        config: app.config.clone(),
+        logs: vec!["snapshot".to_string()],
+    };
+
+    app.apply_web_snapshot(snapshot);
+    assert!(!app.config_dirty);
 }
 
 #[test]

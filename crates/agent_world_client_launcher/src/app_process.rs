@@ -31,7 +31,7 @@ impl ClientLauncherApp {
             self.chain_auto_start_attempted = true;
             return;
         }
-        if self.web_request_inflight {
+        if self.web_request_inflight_for(WebRequestDomain::ControlAction) {
             return;
         }
         self.chain_auto_start_attempted = true;
@@ -44,35 +44,49 @@ impl ClientLauncherApp {
         self.poll_control_plane_process();
 
         while let Ok(event) = self.web_api_rx.try_recv() {
-            self.web_request_inflight = false;
             self.last_web_poll_at = Some(Instant::now());
             match event {
-                WebApiEvent::State(result) => match result {
-                    Ok(snapshot) => self.apply_web_snapshot(snapshot),
-                    Err(err) => {
-                        self.status = LauncherStatus::QueryFailed;
-                        self.append_log(format!("web state refresh failed: {err}"));
-                    }
-                },
-                WebApiEvent::Action(result) => match result {
-                    Ok(response) => {
-                        if !response.ok {
-                            if let Some(error) = response.error {
-                                self.append_log(format!("web action failed: {error}"));
-                            } else {
-                                self.append_log("web action failed".to_string());
-                            }
+                WebApiEvent::State(result) => {
+                    self.set_web_request_inflight(WebRequestDomain::StatePoll, false);
+                    match result {
+                        Ok(snapshot) => self.apply_web_snapshot(snapshot),
+                        Err(err) => {
+                            self.status = LauncherStatus::QueryFailed;
+                            self.append_log(format!("web state refresh failed: {err}"));
                         }
-                        self.apply_web_snapshot(response.state);
                     }
-                    Err(err) => {
-                        self.status = LauncherStatus::QueryFailed;
-                        self.append_log(format!("web action request failed: {err}"));
+                }
+                WebApiEvent::Action(result) => {
+                    self.set_web_request_inflight(WebRequestDomain::ControlAction, false);
+                    match result {
+                        Ok(response) => {
+                            if !response.ok {
+                                if let Some(error) = response.error {
+                                    self.append_log(format!("web action failed: {error}"));
+                                } else {
+                                    self.append_log("web action failed".to_string());
+                                }
+                            }
+                            self.apply_web_snapshot(response.state);
+                        }
+                        Err(err) => {
+                            self.status = LauncherStatus::QueryFailed;
+                            self.append_log(format!("web action request failed: {err}"));
+                        }
                     }
-                },
-                WebApiEvent::Transfer(result) => self.apply_web_transfer_submit_result(result),
-                WebApiEvent::TransferQuery(result) => self.apply_web_transfer_query_result(result),
-                WebApiEvent::ExplorerQuery(result) => self.apply_web_explorer_query_result(result),
+                }
+                WebApiEvent::Transfer(result) => {
+                    self.set_web_request_inflight(WebRequestDomain::TransferSubmit, false);
+                    self.apply_web_transfer_submit_result(result);
+                }
+                WebApiEvent::TransferQuery(result) => {
+                    self.set_web_request_inflight(WebRequestDomain::TransferQuery, false);
+                    self.apply_web_transfer_query_result(result);
+                }
+                WebApiEvent::ExplorerQuery(result) => {
+                    self.set_web_request_inflight(WebRequestDomain::ExplorerQuery, false);
+                    self.apply_web_explorer_query_result(result);
+                }
             }
         }
 
@@ -80,7 +94,7 @@ impl ClientLauncherApp {
         let should_poll = self.last_web_poll_at.is_none_or(|last| {
             now.duration_since(last) >= Duration::from_millis(WEB_POLL_INTERVAL_MS)
         });
-        if should_poll && !self.web_request_inflight {
+        if should_poll && !self.web_request_inflight_for(WebRequestDomain::StatePoll) {
             self.request_web_state();
         }
     }
@@ -88,7 +102,7 @@ impl ClientLauncherApp {
     pub(super) fn poll_chain_process(&mut self) {}
 
     pub(super) fn stop_process(&mut self) {
-        if self.web_request_inflight {
+        if self.web_request_inflight_for(WebRequestDomain::ControlAction) {
             self.append_log("skip stop: previous web request still in flight".to_string());
             return;
         }
@@ -96,7 +110,7 @@ impl ClientLauncherApp {
     }
 
     pub(super) fn start_process(&mut self) {
-        if self.web_request_inflight {
+        if self.web_request_inflight_for(WebRequestDomain::ControlAction) {
             self.append_log("skip start: previous web request still in flight".to_string());
             return;
         }
@@ -121,7 +135,7 @@ impl ClientLauncherApp {
     }
 
     pub(super) fn stop_chain_process(&mut self) {
-        if self.web_request_inflight {
+        if self.web_request_inflight_for(WebRequestDomain::ControlAction) {
             self.append_log("skip chain stop: previous web request still in flight".to_string());
             return;
         }
@@ -135,7 +149,7 @@ impl ClientLauncherApp {
             return;
         }
 
-        if self.web_request_inflight {
+        if self.web_request_inflight_for(WebRequestDomain::ControlAction) {
             self.append_log("skip chain start: previous web request still in flight".to_string());
             return;
         }
@@ -270,7 +284,7 @@ impl ClientLauncherApp {
 
     fn request_web_state(&mut self) {
         self.ensure_control_plane_service();
-        self.web_request_inflight = true;
+        self.set_web_request_inflight(WebRequestDomain::StatePoll, true);
         self.last_web_poll_at = Some(Instant::now());
         let tx = self.web_api_tx.clone();
         let base_url = self.control_api_base.clone();
@@ -283,7 +297,7 @@ impl ClientLauncherApp {
 
     fn request_web_start(&mut self) {
         self.ensure_control_plane_service();
-        self.web_request_inflight = true;
+        self.set_web_request_inflight(WebRequestDomain::ControlAction, true);
         self.last_web_poll_at = Some(Instant::now());
         let tx = self.web_api_tx.clone();
         let base_url = self.control_api_base.clone();
@@ -298,7 +312,7 @@ impl ClientLauncherApp {
 
     fn request_web_stop(&mut self) {
         self.ensure_control_plane_service();
-        self.web_request_inflight = true;
+        self.set_web_request_inflight(WebRequestDomain::ControlAction, true);
         self.last_web_poll_at = Some(Instant::now());
         let tx = self.web_api_tx.clone();
         let base_url = self.control_api_base.clone();
@@ -311,7 +325,7 @@ impl ClientLauncherApp {
 
     fn request_web_chain_start(&mut self) {
         self.ensure_control_plane_service();
-        self.web_request_inflight = true;
+        self.set_web_request_inflight(WebRequestDomain::ControlAction, true);
         self.last_web_poll_at = Some(Instant::now());
         let tx = self.web_api_tx.clone();
         let base_url = self.control_api_base.clone();
@@ -326,7 +340,7 @@ impl ClientLauncherApp {
 
     fn request_web_chain_stop(&mut self) {
         self.ensure_control_plane_service();
-        self.web_request_inflight = true;
+        self.set_web_request_inflight(WebRequestDomain::ControlAction, true);
         self.last_web_poll_at = Some(Instant::now());
         let tx = self.web_api_tx.clone();
         let base_url = self.control_api_base.clone();
@@ -339,11 +353,11 @@ impl ClientLauncherApp {
 
     pub(super) fn request_web_chain_transfer(&mut self, request: WebTransferSubmitRequest) {
         self.ensure_control_plane_service();
-        if self.web_request_inflight {
-            self.append_log("skip transfer submit: previous web request still in flight");
+        if self.web_request_inflight_for(WebRequestDomain::TransferSubmit) {
+            self.append_log("skip transfer submit: previous transfer submit still in flight");
             return;
         }
-        self.web_request_inflight = true;
+        self.set_web_request_inflight(WebRequestDomain::TransferSubmit, true);
         self.last_web_poll_at = Some(Instant::now());
         let tx = self.web_api_tx.clone();
         let base_url = self.control_api_base.clone();
@@ -357,11 +371,13 @@ impl ClientLauncherApp {
 
     pub(super) fn request_web_chain_transfer_accounts(&mut self) {
         self.ensure_control_plane_service();
-        if self.web_request_inflight {
-            self.append_log("skip transfer accounts query: previous web request still in flight");
+        if self.web_request_inflight_for(WebRequestDomain::TransferQuery) {
+            self.append_log(
+                "skip transfer accounts query: previous transfer query still in flight",
+            );
             return;
         }
-        self.web_request_inflight = true;
+        self.set_web_request_inflight(WebRequestDomain::TransferQuery, true);
         self.last_web_poll_at = Some(Instant::now());
         let tx = self.web_api_tx.clone();
         let base_url = self.control_api_base.clone();
@@ -379,11 +395,11 @@ impl ClientLauncherApp {
         action_filter: String,
     ) {
         self.ensure_control_plane_service();
-        if self.web_request_inflight {
-            self.append_log("skip transfer history query: previous web request still in flight");
+        if self.web_request_inflight_for(WebRequestDomain::TransferQuery) {
+            self.append_log("skip transfer history query: previous transfer query still in flight");
             return;
         }
-        self.web_request_inflight = true;
+        self.set_web_request_inflight(WebRequestDomain::TransferQuery, true);
         self.last_web_poll_at = Some(Instant::now());
         let tx = self.web_api_tx.clone();
         let base_url = self.control_api_base.clone();
@@ -401,11 +417,11 @@ impl ClientLauncherApp {
 
     pub(super) fn request_web_chain_transfer_status(&mut self, action_id: u64) {
         self.ensure_control_plane_service();
-        if self.web_request_inflight {
-            self.append_log("skip transfer status query: previous web request still in flight");
+        if self.web_request_inflight_for(WebRequestDomain::TransferQuery) {
+            self.append_log("skip transfer status query: previous transfer query still in flight");
             return;
         }
-        self.web_request_inflight = true;
+        self.set_web_request_inflight(WebRequestDomain::TransferQuery, true);
         self.last_web_poll_at = Some(Instant::now());
         let tx = self.web_api_tx.clone();
         let base_url = self.control_api_base.clone();
@@ -419,11 +435,13 @@ impl ClientLauncherApp {
 
     pub(super) fn request_web_chain_explorer_overview(&mut self) {
         self.ensure_control_plane_service();
-        if self.web_request_inflight {
-            self.append_log("skip explorer overview query: previous web request still in flight");
+        if self.web_request_inflight_for(WebRequestDomain::ExplorerQuery) {
+            self.append_log(
+                "skip explorer overview query: previous explorer query still in flight",
+            );
             return;
         }
-        self.web_request_inflight = true;
+        self.set_web_request_inflight(WebRequestDomain::ExplorerQuery, true);
         self.last_web_poll_at = Some(Instant::now());
         let tx = self.web_api_tx.clone();
         let base_url = self.control_api_base.clone();
@@ -437,11 +455,11 @@ impl ClientLauncherApp {
 
     pub(super) fn request_web_chain_explorer_blocks(&mut self, cursor: usize, limit: usize) {
         self.ensure_control_plane_service();
-        if self.web_request_inflight {
-            self.append_log("skip explorer blocks query: previous web request still in flight");
+        if self.web_request_inflight_for(WebRequestDomain::ExplorerQuery) {
+            self.append_log("skip explorer blocks query: previous explorer query still in flight");
             return;
         }
-        self.web_request_inflight = true;
+        self.set_web_request_inflight(WebRequestDomain::ExplorerQuery, true);
         self.last_web_poll_at = Some(Instant::now());
         let tx = self.web_api_tx.clone();
         let base_url = self.control_api_base.clone();
@@ -459,11 +477,11 @@ impl ClientLauncherApp {
         block_hash: Option<String>,
     ) {
         self.ensure_control_plane_service();
-        if self.web_request_inflight {
-            self.append_log("skip explorer block query: previous web request still in flight");
+        if self.web_request_inflight_for(WebRequestDomain::ExplorerQuery) {
+            self.append_log("skip explorer block query: previous explorer query still in flight");
             return;
         }
-        self.web_request_inflight = true;
+        self.set_web_request_inflight(WebRequestDomain::ExplorerQuery, true);
         self.last_web_poll_at = Some(Instant::now());
         let tx = self.web_api_tx.clone();
         let base_url = self.control_api_base.clone();
@@ -484,11 +502,11 @@ impl ClientLauncherApp {
         limit: usize,
     ) {
         self.ensure_control_plane_service();
-        if self.web_request_inflight {
-            self.append_log("skip explorer tx list query: previous web request still in flight");
+        if self.web_request_inflight_for(WebRequestDomain::ExplorerQuery) {
+            self.append_log("skip explorer tx list query: previous explorer query still in flight");
             return;
         }
-        self.web_request_inflight = true;
+        self.set_web_request_inflight(WebRequestDomain::ExplorerQuery, true);
         self.last_web_poll_at = Some(Instant::now());
         let tx = self.web_api_tx.clone();
         let base_url = self.control_api_base.clone();
@@ -513,11 +531,11 @@ impl ClientLauncherApp {
         action_id: Option<u64>,
     ) {
         self.ensure_control_plane_service();
-        if self.web_request_inflight {
-            self.append_log("skip explorer tx query: previous web request still in flight");
+        if self.web_request_inflight_for(WebRequestDomain::ExplorerQuery) {
+            self.append_log("skip explorer tx query: previous explorer query still in flight");
             return;
         }
-        self.web_request_inflight = true;
+        self.set_web_request_inflight(WebRequestDomain::ExplorerQuery, true);
         self.last_web_poll_at = Some(Instant::now());
         let tx = self.web_api_tx.clone();
         let base_url = self.control_api_base.clone();
@@ -531,11 +549,11 @@ impl ClientLauncherApp {
 
     pub(super) fn request_web_chain_explorer_search(&mut self, query: String) {
         self.ensure_control_plane_service();
-        if self.web_request_inflight {
-            self.append_log("skip explorer search query: previous web request still in flight");
+        if self.web_request_inflight_for(WebRequestDomain::ExplorerQuery) {
+            self.append_log("skip explorer search query: previous explorer query still in flight");
             return;
         }
-        self.web_request_inflight = true;
+        self.set_web_request_inflight(WebRequestDomain::ExplorerQuery, true);
         self.last_web_poll_at = Some(Instant::now());
         let tx = self.web_api_tx.clone();
         let base_url = self.control_api_base.clone();
@@ -554,11 +572,11 @@ impl ClientLauncherApp {
         limit: usize,
     ) {
         self.ensure_control_plane_service();
-        if self.web_request_inflight {
-            self.append_log("skip explorer address query: previous web request still in flight");
+        if self.web_request_inflight_for(WebRequestDomain::ExplorerQuery) {
+            self.append_log("skip explorer address query: previous explorer query still in flight");
             return;
         }
-        self.web_request_inflight = true;
+        self.set_web_request_inflight(WebRequestDomain::ExplorerQuery, true);
         self.last_web_poll_at = Some(Instant::now());
         let tx = self.web_api_tx.clone();
         let base_url = self.control_api_base.clone();
@@ -577,11 +595,13 @@ impl ClientLauncherApp {
 
     pub(super) fn request_web_chain_explorer_contracts(&mut self, cursor: usize, limit: usize) {
         self.ensure_control_plane_service();
-        if self.web_request_inflight {
-            self.append_log("skip explorer contracts query: previous web request still in flight");
+        if self.web_request_inflight_for(WebRequestDomain::ExplorerQuery) {
+            self.append_log(
+                "skip explorer contracts query: previous explorer query still in flight",
+            );
             return;
         }
-        self.web_request_inflight = true;
+        self.set_web_request_inflight(WebRequestDomain::ExplorerQuery, true);
         self.last_web_poll_at = Some(Instant::now());
         let tx = self.web_api_tx.clone();
         let base_url = self.control_api_base.clone();
@@ -595,11 +615,13 @@ impl ClientLauncherApp {
 
     pub(super) fn request_web_chain_explorer_contract(&mut self, contract_id: String) {
         self.ensure_control_plane_service();
-        if self.web_request_inflight {
-            self.append_log("skip explorer contract query: previous web request still in flight");
+        if self.web_request_inflight_for(WebRequestDomain::ExplorerQuery) {
+            self.append_log(
+                "skip explorer contract query: previous explorer query still in flight",
+            );
             return;
         }
-        self.web_request_inflight = true;
+        self.set_web_request_inflight(WebRequestDomain::ExplorerQuery, true);
         self.last_web_poll_at = Some(Instant::now());
         let tx = self.web_api_tx.clone();
         let base_url = self.control_api_base.clone();
@@ -618,11 +640,11 @@ impl ClientLauncherApp {
         limit: usize,
     ) {
         self.ensure_control_plane_service();
-        if self.web_request_inflight {
-            self.append_log("skip explorer assets query: previous web request still in flight");
+        if self.web_request_inflight_for(WebRequestDomain::ExplorerQuery) {
+            self.append_log("skip explorer assets query: previous explorer query still in flight");
             return;
         }
-        self.web_request_inflight = true;
+        self.set_web_request_inflight(WebRequestDomain::ExplorerQuery, true);
         self.last_web_poll_at = Some(Instant::now());
         let tx = self.web_api_tx.clone();
         let base_url = self.control_api_base.clone();
@@ -646,11 +668,11 @@ impl ClientLauncherApp {
         limit: usize,
     ) {
         self.ensure_control_plane_service();
-        if self.web_request_inflight {
-            self.append_log("skip explorer mempool query: previous web request still in flight");
+        if self.web_request_inflight_for(WebRequestDomain::ExplorerQuery) {
+            self.append_log("skip explorer mempool query: previous explorer query still in flight");
             return;
         }
-        self.web_request_inflight = true;
+        self.set_web_request_inflight(WebRequestDomain::ExplorerQuery, true);
         self.last_web_poll_at = Some(Instant::now());
         let tx = self.web_api_tx.clone();
         let base_url = self.control_api_base.clone();
@@ -667,7 +689,7 @@ impl ClientLauncherApp {
         });
     }
 
-    fn apply_web_snapshot(&mut self, snapshot: WebStateSnapshot) {
+    pub(super) fn apply_web_snapshot(&mut self, snapshot: WebStateSnapshot) {
         self.status =
             launcher_status_from_web(snapshot.status.as_str(), snapshot.detail.as_deref());
         self.chain_runtime_status = chain_runtime_status_from_web(
@@ -675,7 +697,13 @@ impl ClientLauncherApp {
             snapshot.chain_detail.as_deref(),
         );
         self.web_game_url = Some(snapshot.game_url);
-        self.config = snapshot.config;
+        if self.config_dirty {
+            if self.config == snapshot.config {
+                self.config_dirty = false;
+            }
+        } else {
+            self.config = snapshot.config;
+        }
         self.logs = snapshot.logs.into_iter().collect();
         while self.logs.len() > MAX_LOG_LINES {
             self.logs.pop_front();
