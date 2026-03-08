@@ -15,12 +15,15 @@
 - `doc/world-simulator/prd.project.md`
 - `doc/world-simulator/prd.index.md`
 - `crates/agent_world_client_launcher/src/main.rs`
+- `crates/agent_world_client_launcher/src/main_app_shell.rs`
+- `crates/agent_world_client_launcher/src/main_ui_helpers.rs`
 - `crates/agent_world_client_launcher/src/app_process.rs`
 - `crates/agent_world_client_launcher/src/app_process_web.rs`
 - `crates/agent_world_client_launcher/src/feedback_window.rs`
 - `crates/agent_world_client_launcher/src/feedback_window_web.rs`
 - `crates/agent_world_client_launcher/src/transfer_window.rs`
 - `crates/agent_world_client_launcher/src/explorer_window.rs`
+- `crates/agent_world_client_launcher/src/explorer_window_view.rs`
 - `crates/agent_world_client_launcher/src/main_tests.rs`
 - `testing-manual.md`
 

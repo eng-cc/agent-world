@@ -183,9 +183,12 @@
 - `crates/agent_world/src/bin/world_chain_runtime/transfer_submit_api_tests.rs`
 - `crates/agent_world_launcher_ui/src/lib.rs`
 - `crates/agent_world_client_launcher/src/main.rs`
+- `crates/agent_world_client_launcher/src/main_app_shell.rs`
+- `crates/agent_world_client_launcher/src/main_ui_helpers.rs`
 - `crates/agent_world_client_launcher/src/app_process.rs`
 - `crates/agent_world_client_launcher/src/app_process_web.rs`
 - `crates/agent_world_client_launcher/src/explorer_window.rs`
+- `crates/agent_world_client_launcher/src/explorer_window_view.rs`
 - `crates/agent_world/src/runtime/world/event_processing/action_to_event_core.rs`
 - `crates/agent_world_viewer/Cargo.toml`
 - `crates/agent_world_viewer/src/main.rs`

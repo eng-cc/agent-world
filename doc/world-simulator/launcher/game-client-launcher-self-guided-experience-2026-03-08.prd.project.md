@@ -1,6 +1,6 @@
 # 客户端启动器自引导体验闭环（2026-03-08）项目管理文档
 
-审计轮次: 1
+审计轮次: 2
 - 对应设计文档: `doc/world-simulator/launcher/game-client-launcher-self-guided-experience-2026-03-08.prd.md`
 
 ## 任务拆解（含 PRD-ID 映射）
@@ -21,17 +21,20 @@
 - [x] T14 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 强化阻塞态下一步动作（启动链、重试探测、修复配置）并补齐回归测试。
 - [x] T15 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 落地启动前体检清单（preflight）与逐项修复入口，并补齐回归测试。
 - [x] T16 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 将 onboarding 改为“跳过后持续轻提示”并补齐回归测试。
-- [ ] T17 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 修复专题文档冲突并补充启动器文件拆分任务建模。
-- [ ] T18 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 执行启动器超长文件拆分改造并完成回归。
+- [x] T17 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 修复专题文档冲突并补充启动器文件拆分任务建模。
+- [x] T18 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 执行启动器超长文件拆分改造并完成回归。
 
 ## 依赖
 - `doc/world-simulator/prd.md`
 - `doc/world-simulator/prd.project.md`
 - `doc/world-simulator/prd.index.md`
 - `crates/agent_world_client_launcher/src/main.rs`
+- `crates/agent_world_client_launcher/src/main_app_shell.rs`
+- `crates/agent_world_client_launcher/src/main_ui_helpers.rs`
 - `crates/agent_world_client_launcher/src/config_ui.rs`
 - `crates/agent_world_client_launcher/src/transfer_window.rs`
 - `crates/agent_world_client_launcher/src/explorer_window.rs`
+- `crates/agent_world_client_launcher/src/explorer_window_view.rs`
 - `crates/agent_world_client_launcher/src/app_process.rs`
 - `crates/agent_world_client_launcher/src/app_process_web.rs`
 - `crates/agent_world_client_launcher/src/main_tests.rs`
@@ -39,6 +42,6 @@
 
 ## 状态
 - 最近更新：2026-03-08
-- 当前阶段: in_progress（round-2）
-- 当前任务: T17（文档冲突修复与拆分任务建模）
-- 备注: T0~T16 已完成；T17~T18 待执行并需逐任务提交与回归。
+- 当前阶段: completed
+- 当前任务: 无
+- 备注: T0~T18 已完成，`PRD-WORLD_SIMULATOR-030` 自引导闭环（含 round-2 与文件治理）已交付。

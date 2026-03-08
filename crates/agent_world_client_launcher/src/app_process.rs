@@ -41,7 +41,7 @@ impl ClientLauncherApp {
     pub(super) fn update_chain_runtime_status(&mut self) {}
 
     pub(super) fn trigger_state_refresh(&mut self) {
-        if self.web_request_inflight {
+        if self.web_request_inflight_for(WebRequestDomain::StatePoll) {
             self.append_log("skip state refresh: previous web request still in flight".to_string());
             return;
         }
