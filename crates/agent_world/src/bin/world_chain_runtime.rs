@@ -8,7 +8,7 @@ use std::process;
 use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use agent_world::runtime::{NodeAssetBalance, NodeRewardMintRecord, RewardAssetConfig};
 use agent_world_node::{
@@ -38,6 +38,8 @@ mod node_keypair_config;
 mod reward_runtime_settlement;
 #[path = "world_chain_runtime/reward_runtime_worker.rs"]
 mod reward_runtime_worker;
+#[path = "world_chain_runtime/storage_metrics.rs"]
+mod storage_metrics;
 #[path = "world_chain_runtime/transfer_submit_api.rs"]
 mod transfer_submit_api;
 use balances_api::build_chain_balances_payload;
@@ -120,6 +122,7 @@ const DEFAULT_REWARD_RUNTIME_STATE_FILE: &str = "reward-runtime-state.json";
 const DEFAULT_REWARD_RUNTIME_DISTFS_PROBE_STATE_FILE: &str =
     "reward-runtime-distfs-probe-state.json";
 const DEFAULT_REWARD_RUNTIME_REPORT_DIR: &str = "reward-runtime-report";
+const DEFAULT_REWARD_RUNTIME_STORAGE_METRICS_FILE: &str = "reward-runtime-storage-metrics.json";
 const DEFAULT_REWARD_RUNTIME_RESERVE_UNITS: i64 = 100_000;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -191,13 +194,16 @@ impl Default for CliOptions {
 
 #[derive(Debug)]
 struct RuntimePaths {
+    runtime_root: PathBuf,
     execution_bridge_state_path: PathBuf,
     execution_world_dir: PathBuf,
     execution_records_dir: PathBuf,
     storage_root: PathBuf,
+    replication_root: PathBuf,
     reward_runtime_state_path: PathBuf,
     reward_runtime_distfs_probe_state_path: PathBuf,
     reward_runtime_report_dir: PathBuf,
+    reward_runtime_storage_metrics_path: PathBuf,
 }
 
 #[derive(Debug)]
@@ -223,6 +229,7 @@ struct ChainStatusResponse {
     last_error: Option<String>,
     execution_world_dir: String,
     reward_runtime: reward_runtime_worker::RewardRuntimeMetricsSnapshot,
+    storage: storage_metrics::StorageMetricsSnapshot,
 }
 
 #[derive(Debug, Serialize)]
@@ -410,6 +417,15 @@ fn run_chain_runtime(options: CliOptions) -> Result<(), String> {
         reward_distfs_probe_config: options.reward_distfs_probe_config,
     };
     let reward_runtime_metrics = init_shared_metrics(&reward_runtime_config);
+    let storage_metrics = storage_metrics::init_shared_storage_metrics(options.storage_profile);
+    if let Err(err) = storage_metrics::refresh_shared_storage_metrics(
+        &storage_metrics,
+        &paths,
+        options.storage_profile,
+        None,
+    ) {
+        eprintln!("warning: initial storage metrics refresh failed: {err}");
+    }
     let mut reward_runtime_worker = start_reward_runtime_worker(
         Arc::clone(&runtime),
         reward_runtime_config,
@@ -426,6 +442,7 @@ fn run_chain_runtime(options: CliOptions) -> Result<(), String> {
         options.world_id.clone(),
         paths.execution_world_dir.clone(),
         Arc::clone(&reward_runtime_metrics),
+        Arc::clone(&storage_metrics),
         feedback_submit_signer,
     )?;
 
@@ -458,6 +475,10 @@ fn run_chain_runtime(options: CliOptions) -> Result<(), String> {
     println!("Press Ctrl+C to stop.");
 
     let mut last_error = String::new();
+    let mut current_degraded_reason: Option<String> = None;
+    let mut last_storage_metrics_refresh = Instant::now()
+        .checked_sub(Duration::from_secs(2))
+        .unwrap_or_else(Instant::now);
     loop {
         if let Some(server_err) = poll_chain_status_server_error(&mut status_server)? {
             stop_chain_status_server(&mut status_server);
@@ -475,12 +496,24 @@ fn run_chain_runtime(options: CliOptions) -> Result<(), String> {
         }
 
         if let Ok(snapshot) = runtime.lock().map(|locked| locked.snapshot()) {
+            current_degraded_reason = snapshot.last_error.clone();
             if let Some(err) = snapshot.last_error {
                 if err != last_error {
                     eprintln!("node runtime reported error: {err}");
                     last_error = err;
                 }
             }
+        }
+        if last_storage_metrics_refresh.elapsed() >= Duration::from_secs(1) {
+            if let Err(err) = storage_metrics::refresh_shared_storage_metrics(
+                &storage_metrics,
+                &paths,
+                options.storage_profile,
+                current_degraded_reason.clone(),
+            ) {
+                eprintln!("warning: storage metrics refresh failed: {err}");
+            }
+            last_storage_metrics_refresh = Instant::now();
         }
 
         thread::sleep(Duration::from_millis(300));
@@ -492,6 +525,7 @@ fn resolve_runtime_paths(options: &CliOptions) -> RuntimePaths {
         .join("chain-runtime")
         .join(options.node_id.as_str());
     RuntimePaths {
+        runtime_root: root.clone(),
         execution_bridge_state_path: options
             .execution_bridge_state_path
             .clone()
@@ -508,10 +542,14 @@ fn resolve_runtime_paths(options: &CliOptions) -> RuntimePaths {
             .storage_root
             .clone()
             .unwrap_or_else(|| root.join("store")),
+        replication_root: Path::new("output")
+            .join("node-distfs")
+            .join(options.node_id.as_str()),
         reward_runtime_state_path: root.join(DEFAULT_REWARD_RUNTIME_STATE_FILE),
         reward_runtime_distfs_probe_state_path: root
             .join(DEFAULT_REWARD_RUNTIME_DISTFS_PROBE_STATE_FILE),
         reward_runtime_report_dir: root.join(DEFAULT_REWARD_RUNTIME_REPORT_DIR),
+        reward_runtime_storage_metrics_path: root.join(DEFAULT_REWARD_RUNTIME_STORAGE_METRICS_FILE),
     }
 }
 
@@ -536,6 +574,7 @@ fn start_chain_status_server(
     world_id: String,
     execution_world_dir: PathBuf,
     reward_runtime_metrics: SharedRewardRuntimeMetrics,
+    storage_metrics: storage_metrics::SharedStorageMetrics,
     feedback_submit_signer: FeedbackSubmitSigner,
 ) -> Result<ChainStatusServer, String> {
     let listener = TcpListener::bind((host, port))
@@ -556,6 +595,7 @@ fn start_chain_status_server(
             world_id,
             execution_world_dir,
             reward_runtime_metrics,
+            storage_metrics,
             feedback_submit_signer,
         ) {
             let _ = error_tx.send(err);
@@ -577,6 +617,7 @@ fn run_chain_status_server_loop(
     world_id: String,
     execution_world_dir: PathBuf,
     reward_runtime_metrics: SharedRewardRuntimeMetrics,
+    storage_metrics: storage_metrics::SharedStorageMetrics,
     feedback_submit_signer: FeedbackSubmitSigner,
 ) -> Result<(), String> {
     loop {
@@ -592,6 +633,7 @@ fn run_chain_status_server_loop(
                 let world_id = world_id.clone();
                 let execution_world_dir = execution_world_dir.clone();
                 let reward_runtime_metrics = Arc::clone(&reward_runtime_metrics);
+                let storage_metrics = Arc::clone(&storage_metrics);
                 let feedback_submit_signer = feedback_submit_signer.clone();
                 thread::spawn(move || {
                     if let Err(err) = handle_chain_status_connection(
@@ -601,6 +643,7 @@ fn run_chain_status_server_loop(
                         world_id.as_str(),
                         execution_world_dir.as_path(),
                         reward_runtime_metrics,
+                        storage_metrics,
                         &feedback_submit_signer,
                     ) {
                         eprintln!("warning: chain status connection failed: {err}");
@@ -624,6 +667,7 @@ fn handle_chain_status_connection(
     world_id: &str,
     execution_world_dir: &Path,
     reward_runtime_metrics: SharedRewardRuntimeMetrics,
+    storage_metrics: storage_metrics::SharedStorageMetrics,
     feedback_submit_signer: &FeedbackSubmitSigner,
 ) -> Result<(), String> {
     stream
@@ -744,6 +788,7 @@ fn handle_chain_status_connection(
                 snapshot,
                 execution_world_dir,
                 snapshot_metrics(&reward_runtime_metrics),
+                storage_metrics::snapshot_storage_metrics(&storage_metrics),
             );
             let body = serde_json::to_vec_pretty(&payload)
                 .map_err(|err| format!("failed to encode status payload: {err}"))?;
@@ -770,6 +815,7 @@ fn build_chain_status_payload(
     snapshot: NodeSnapshot,
     execution_world_dir: &Path,
     reward_runtime_metrics: reward_runtime_worker::RewardRuntimeMetricsSnapshot,
+    storage_metrics: storage_metrics::StorageMetricsSnapshot,
 ) -> ChainStatusResponse {
     let last_status = snapshot
         .consensus
@@ -810,6 +856,7 @@ fn build_chain_status_payload(
         last_error: snapshot.last_error,
         execution_world_dir: execution_world_dir.display().to_string(),
         reward_runtime: reward_runtime_metrics,
+        storage: storage_metrics,
     }
 }
 

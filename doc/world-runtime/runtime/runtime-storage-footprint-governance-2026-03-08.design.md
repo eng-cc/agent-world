@@ -235,6 +235,8 @@ struct StorageMetricsSnapshot {
     storage_profile: String,
     bytes_by_dir: BTreeMap<String, u64>,
     blob_counts: BTreeMap<String, u64>,
+    ref_count: u64,
+    pin_count: u64,
     retained_heights: Vec<u64>,
     checkpoint_count: usize,
     orphan_blob_count: u64,
@@ -364,6 +366,8 @@ struct StorageMetricsSnapshot {
 - `storage_profile`
 - `bytes_by_dir`
 - `blob_counts`
+- `ref_count`
+- `pin_count`
 - `retained_heights`
 - `checkpoint_count`
 - `orphan_blob_count`

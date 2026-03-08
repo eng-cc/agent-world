@@ -4,8 +4,11 @@ use super::{
     CliOptions, DEFAULT_NODE_ID, DEFAULT_REPLICATION_NETWORK_LISTEN, DEFAULT_STATUS_BIND,
 };
 use agent_world::runtime::World as RuntimeWorld;
+use agent_world_node::{NodeConsensusSnapshot, NodeRole, NodeSnapshot};
 use agent_world_proto::storage_profile::{StorageProfile, StorageProfileConfig};
 use ed25519_dalek::SigningKey;
+use std::collections::BTreeMap;
+use std::path::Path;
 
 #[test]
 fn parse_options_defaults() {
@@ -207,4 +210,65 @@ fn build_node_replication_config_uses_storage_profile_budget() {
         config.max_hot_commit_messages(),
         storage_profile.replication_max_hot_commit_messages
     );
+}
+
+#[test]
+fn build_chain_status_payload_includes_storage_metrics() {
+    let snapshot = NodeSnapshot {
+        node_id: "node-a".to_string(),
+        player_id: "player-a".to_string(),
+        world_id: "live-a".to_string(),
+        role: NodeRole::Sequencer,
+        running: true,
+        tick_count: 42,
+        last_tick_unix_ms: Some(1_700_000_000_000),
+        consensus: NodeConsensusSnapshot::default(),
+        last_error: None,
+    };
+    let reward_runtime = super::reward_runtime_worker::RewardRuntimeMetricsSnapshot {
+        enabled: true,
+        metrics_available: true,
+        report_dir: "/tmp/reports".to_string(),
+        report_count: 2,
+        latest_epoch_index: 1,
+        latest_report_observed_at_unix_ms: 1_700_000_000_000,
+        latest_total_distributed_points: 10,
+        latest_minted_record_count: 1,
+        cumulative_minted_record_count: 1,
+        distfs_total_checks: 0,
+        distfs_failed_checks: 0,
+        distfs_failure_ratio: 0.0,
+        settlement_apply_attempts_total: 0,
+        settlement_apply_failures_total: 0,
+        settlement_apply_failure_ratio: 0.0,
+        invariant_ok: true,
+        last_error: None,
+    };
+    let storage = super::storage_metrics::StorageMetricsSnapshot {
+        storage_profile: "dev_local".to_string(),
+        bytes_by_dir: BTreeMap::from([("runtime_root".to_string(), 128)]),
+        blob_counts: BTreeMap::from([("execution_store_blobs".to_string(), 2)]),
+        ref_count: 5,
+        pin_count: 3,
+        retained_heights: vec![1, 2],
+        checkpoint_count: 1,
+        orphan_blob_count: 0,
+        last_gc_at_ms: Some(1_700_000_000_000),
+        last_gc_result: "success".to_string(),
+        last_gc_error: None,
+        degraded_reason: None,
+    };
+
+    let payload = super::build_chain_status_payload(
+        snapshot,
+        Path::new("/tmp/execution-world"),
+        reward_runtime,
+        storage.clone(),
+    );
+
+    assert_eq!(payload.storage.storage_profile, "dev_local");
+    assert_eq!(payload.storage.ref_count, 5);
+    assert_eq!(payload.storage.pin_count, 3);
+    assert_eq!(payload.storage.checkpoint_count, 1);
+    assert_eq!(payload.storage.last_gc_result, "success");
 }
