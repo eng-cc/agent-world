@@ -1,6 +1,6 @@
 # world-simulator PRD
 
-审计轮次: 8
+审计轮次: 9
 
 ## 目标
 - 建立 world-simulator 模块设计主文档，统一需求边界、技术方案与验收标准。
@@ -39,6 +39,7 @@
   - `doc/world-simulator/launcher/game-client-launcher-blockchain-explorer-panel-2026-03-07.prd.md`（PRD-WORLD_SIMULATOR-024）
   - `doc/world-simulator/launcher/game-client-launcher-blockchain-explorer-public-chain-p0-2026-03-07.prd.md`（PRD-WORLD_SIMULATOR-025）
   - `doc/world-simulator/launcher/game-client-launcher-blockchain-explorer-public-chain-p1-address-contract-assets-mempool-2026-03-08.prd.md`（PRD-WORLD_SIMULATOR-026）
+  - `doc/world-simulator/launcher/game-client-launcher-availability-ux-hardening-2026-03-08.prd.md`（PRD-WORLD_SIMULATOR-027）
   - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase1-2026-03-04.prd.md`（PRD-WORLD_SIMULATOR-016）
   - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase2-2026-03-05.prd.md`（PRD-WORLD_SIMULATOR-017）
   - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase3-2026-03-05.prd.md`（PRD-WORLD_SIMULATOR-018）
@@ -60,6 +61,7 @@
 - M12 (2026-03-07): 完成启动器区块链浏览器能力（explorer RPC + 控制面代理 + native/web 面板）。
 - M13 (2026-03-07): 完成启动器区块链浏览器公共主链视角 P0 补齐（runtime + 控制面 + 启动器跨端 UI + 回归）。
 - M14 (2026-03-08): 推进启动器区块链浏览器公共主链视角 P1（地址/合约/资产/内存池）补齐。
+- M15 (2026-03-08): 推进启动器可用性与体验硬化（路径回退、禁用态提示、参数编码、状态语义、移动端可读性、favicon 噪声治理）。
 
 ## 风险
 - 模块边界演进快，文档同步可能滞后。
@@ -101,6 +103,7 @@
   - SC-29: 启动器必须提供区块链浏览器面板，并支持链总览、交易过滤与交易详情查询的跨端一致体验。
   - SC-30: 启动器区块链浏览器必须补齐公共主链视角 P0 能力（区块分页、`tx_hash` 详情、统一搜索、持久化索引）并保持 native/web 行为一致。
   - SC-31: 启动器区块链浏览器必须补齐公共主链视角 P1 能力（地址页、合约页、Token/NFT 资产页、mempool）并保持 native/web 行为一致。
+  - SC-32: 启动器控制面与客户端必须具备可诊断且跨端一致的可用性基线（静态目录回退、禁用态提示、参数编码、stop no-op 语义、移动端可读性、默认静态资源噪声抑制）。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -141,6 +144,7 @@
   - PRD-WORLD_SIMULATOR-024: As a 启动器玩家, I want a blockchain explorer panel in launcher, so that I can inspect chain overview and transaction details without command-line tools.
   - PRD-WORLD_SIMULATOR-025: As a 启动器玩家, I want block/tx/search pagination in launcher explorer, so that I can inspect chain state like a public-chain explorer.
   - PRD-WORLD_SIMULATOR-026: As a 启动器玩家, I want address/contract/asset/mempool views in launcher explorer, so that I can inspect public-chain states from one panel.
+  - PRD-WORLD_SIMULATOR-027: As a 启动器玩家/运维人员, I want robust launcher defaults and explicit web-side diagnostics, so that startup and troubleshooting are reliable in both desktop and mobile usage.
 - Critical User Flows:
   1. Flow-WS-001（Web-first 闭环）:
      `选择场景 -> 启动 Viewer Web -> 执行关键交互 -> 采集日志/截图/指标 -> 产出 test_tier_required 结论`
@@ -190,6 +194,8 @@
      `打开浏览器面板 -> Blocks 分页浏览 -> 点击区块看详情 -> Txs 按 tx_hash 查询 -> Search 统一检索 block/tx/action/account`
   24. Flow-WS-024（Launcher 区块链浏览器 P1 公共主链视角）:
      `打开浏览器面板 -> Address 查询余额/nonce/交易 -> Contracts 查看系统合约目录与详情 -> Assets 查看主 token 与 NFT 能力状态 -> Mempool 查看 pending 交易`
+  25. Flow-WS-025（Launcher 可用性与体验硬化）:
+     `源码直跑 world_web_launcher -> 默认静态目录自动回退 -> 链未就绪时按钮禁用并显示原因 -> 查询参数编码后发起 explorer/search/transfer 请求 -> 未运行时 stop no-op 保留错误态 -> 移动端可读布局 + favicon 无 404 噪声`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
@@ -211,6 +217,7 @@
 | Launcher 区块链浏览器 | `/api/chain/explorer/overview`、`/api/chain/explorer/transactions`、`/api/chain/explorer/transaction`、`account_filter`、`status_filter`、`action_id` | 打开浏览器面板后可刷新概览、过滤交易、查询交易详情 | `closed/open` + `idle -> loading -> ready/failed` | 交易列表按 `submitted_at desc` + `action_id desc`；默认 `limit=50` | 链未就绪时入口禁用；查询只读 |
 | Launcher 区块链浏览器 P0（公共主链视角） | `/api/chain/explorer/blocks`、`/block`、`/txs`、`/tx`、`/search`、`cursor/limit`、`tx_hash` | 支持区块/交易分页、交易哈希详情与统一搜索（block/tx/action/account） | `closed/open` + `idle -> loading -> ready/failed` | 区块按 `height desc`；交易按 `submitted_at desc + tx_hash desc`；`limit<=200` | 链未就绪时入口禁用；查询只读 |
 | Launcher 区块链浏览器 P1（公共主链视角） | `/api/chain/explorer/address`、`/contracts`、`/contract`、`/assets`、`/mempool`、`account_id/contract_id/status/limit/cursor` | 支持地址/合约/资产/内存池查询、筛选与分页 | `closed/open` + `idle -> loading -> ready/failed` | mempool 按 `submitted_at desc + tx_hash desc`；holders 按 `balance desc`；`limit<=200` | 链未就绪时入口禁用；查询只读 |
+| Launcher 可用性与体验硬化 | `viewer_static_dir` 候选路径、`chain_status`、查询参数（`account_id/contract_id/q/tx_hash/action_id`）、移动视口布局、favicon 声明 | 启动自动路径回退；禁用按钮显示原因；请求前统一 URL 编码；stop no-op 保留状态语义；小屏字段纵向可读 | `idle -> running` 或 `idle -> invalid_config`；`stop(no-op) -> same_state` | 路径按候选优先级命中；查询参数按 RFC3986 安全子集编码 | 配置编辑限本地运维；查询只读；控制面操作可写 |
 | Launcher Web 设置/反馈对齐 | 设置窗口字段 + `/api/chain/feedback` + `kind/title/description` | 浏览器端可打开设置窗口与反馈窗口；反馈提交通过控制面代理返回结构化结果 | `settings: closed/open/saved` + `feedback: idle/validating/submitting/success/failed` | 反馈标题/描述必填；单请求 in-flight 门控 | 反馈提交仅链就绪可用；设置仅当前会话可编辑 |
 | Launcher native 遗留清理 | native 失效状态字段、无效常量 `cfg` 边界、未引用旧测试文件 | 保持现有 UI/API 行为不变前提下清理历史残留 | `legacy_present -> removed -> regression_passed` | 优先删除“无读写路径/无编译入口引用”的资产 | 仅开发维护路径可修改，运行时玩家能力不变 |
 | Viewer live runtime 接管 | runtime `DomainEvent`、兼容 `WorldSnapshot/WorldEvent` | 启动 `world_viewer_live` 后按 Play/Step 推进 runtime，并推送兼容快照/事件 | `runtime_mode`（固定） | 事件序列保持单调；至少映射注册/移动/转移/拒绝四类事件 | 本地开发链路，默认不开放远程写接口 |
@@ -251,6 +258,7 @@
   - AC-32: 启动器区块链浏览器面板支持 overview/transactions/transaction 查询，且 native/web 行为一致并通过 required 回归。
   - AC-33: 启动器区块链浏览器支持 `blocks/block/txs/tx/search`、分页与 `tx_hash` 查询，并具备重启后索引恢复能力（最近窗口）且 native/web 行为一致。
   - AC-34: 启动器区块链浏览器支持 `address/contracts/contract/assets/mempool` 五类查询（含筛选/分页/结构化错误语义），且 native/web 行为一致并通过 required 回归。
+  - AC-35: 启动器可用性与体验硬化完成：源码直跑默认静态目录有效回退、wasm 禁用态提示可见、explorer/search/transfer 查询参数统一编码、stop no-op 不覆盖错误态、390x844 视口配置区可读、页面无 `favicon.ico 404` 噪声。
 - Non-Goals:
   - 不在本 PRD 中详细列出每个 UI 像素级规范。
   - 不替代 world-runtime/p2p 的底层协议设计。
@@ -283,6 +291,7 @@
   - `doc/world-simulator/launcher/game-client-launcher-blockchain-explorer-panel-2026-03-07.prd.md`
   - `doc/world-simulator/launcher/game-client-launcher-blockchain-explorer-public-chain-p0-2026-03-07.prd.md`
   - `doc/world-simulator/launcher/game-client-launcher-blockchain-explorer-public-chain-p1-address-contract-assets-mempool-2026-03-08.prd.md`
+  - `doc/world-simulator/launcher/game-client-launcher-availability-ux-hardening-2026-03-08.prd.md`
   - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase1-2026-03-04.prd.md`
   - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase2-2026-03-05.prd.md`
   - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase3-2026-03-05.prd.md`
@@ -401,6 +410,7 @@
 | PRD-WORLD_SIMULATOR-024 | TASK-WORLD_SIMULATOR-054/055/056 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_chain_runtime transfer_submit_api::tests:: -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown`，验证 explorer RPC、控制面代理与启动器面板闭环 | 启动器区块链浏览器可用性、跨端一致性与发布前诊断效率 |
 | PRD-WORLD_SIMULATOR-025 | TASK-WORLD_SIMULATOR-057/058/059 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_chain_runtime transfer_submit_api::tests:: -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown`，验证 explorer P0 API（blocks/block/txs/tx/search）、持久化索引与跨端分页搜索 UI | 启动器区块链浏览器公共主链视角 P0 能力、可观测性与跨端一致性 |
 | PRD-WORLD_SIMULATOR-026 | TASK-WORLD_SIMULATOR-060/061/062 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_chain_runtime transfer_submit_api::tests:: -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown`，验证 explorer P1 API（address/contracts/contract/assets/mempool）与启动器四视图闭环 | 启动器区块链浏览器公共主链视角 P1 能力、可观测性与跨端一致性 |
+| PRD-WORLD_SIMULATOR-027 | TASK-WORLD_SIMULATOR-063/064 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown` + Playwright（桌面 + 390x844）采证，验证路径回退、禁用态提示、参数编码、stop no-op 语义、移动端可读性、favicon 噪声治理 | 启动器可用性稳定性、跨端体验一致性与运维可诊断性 |
 
 - Decision Log:
 
@@ -424,3 +434,4 @@
 | DEC-WS-016 | 启动器转账升级为产品级能力并强制 native/web 同层前端复用（账户选择/余额辅助/自动 nonce/最终状态与历史可视化） | 继续维护 native/web 分叉转账实现，仅补局部按钮或文案 | 分叉实现已导致门控与反馈语义漂移；统一前端与状态机可一次性收敛体验差异并降低长期维护成本；对应 `TASK-WORLD_SIMULATOR-052/053`。 |
 | DEC-WS-017 | 先补齐 explorer RPC 与控制面代理，再接区块链浏览器 UI 面板 | 先做 UI 再倒推接口 | RPC 语义先冻结可避免 UI 返工并降低跨端漂移风险；对应 `TASK-WORLD_SIMULATOR-054/055/056`。 |
 | DEC-WS-018 | 使用统一 explorer store 单点消费 committed batches，并扩展为持久化索引（blocks/txs/search）供旧/新查询接口共享 | 多个查询模块分别 drain committed batches | committed batches 为单消费语义，多点消费会导致索引漂移；统一状态源可保证查询一致性并降低维护复杂度；对应 `TASK-WORLD_SIMULATOR-058/059`。 |
+| DEC-WS-019 | 以“默认可用 + 可解释失败 + 跨端一致”一次性硬化启动器可用性基线（路径回退、禁用态原因、参数编码、stop no-op 语义、移动端可读性、favicon） | 仅修复单点缺陷，保留其余体验债务 | 该批问题会叠加放大运维诊断成本与用户失败感知；合并治理能在一次回归中收敛可用性风险；对应 `TASK-WORLD_SIMULATOR-063/064`。 |
