@@ -46,10 +46,13 @@ pub(super) enum ViewerAutomationStep {
     },
     Select(ViewerAutomationTarget),
     PanelVisibility(ViewerAutomationVisibilityAction),
+    TopPanelVisibility(ViewerAutomationVisibilityAction),
     ModuleVisibility {
         module: ViewerAutomationPanelModule,
         action: ViewerAutomationVisibilityAction,
     },
+    SetLocale(ViewerAutomationLocaleAction),
+    ApplyLayoutPreset(ViewerAutomationLayoutPreset),
     CycleMaterialVariant,
 }
 
@@ -76,6 +79,20 @@ pub(super) enum ViewerAutomationPanelModule {
     EventLink,
     Timeline,
     Details,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum ViewerAutomationLocaleAction {
+    Zh,
+    En,
+    Toggle,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum ViewerAutomationLayoutPreset {
+    Mission,
+    Command,
+    Intel,
 }
 
 const TARGET_KIND_AGENT: &str = "agent";
@@ -123,6 +140,7 @@ pub(super) fn run_viewer_automation(
     mut module_visibility: ResMut<
         crate::right_panel_module_visibility::RightPanelModuleVisibilityState,
     >,
+    mut i18n: ResMut<crate::i18n::UiI18n>,
     mut variant_preview: ResMut<MaterialVariantPreviewState>,
     viewer_config: Res<Viewer3dConfig>,
     assets: Option<Res<Viewer3dAssets>>,
@@ -157,6 +175,7 @@ pub(super) fn run_viewer_automation(
             &mut camera_mode,
             &mut right_panel_layout,
             &mut module_visibility,
+            &mut i18n,
             &mut variant_preview,
             assets.as_deref(),
             &mut materials,
@@ -238,6 +257,7 @@ fn apply_step(
     camera_mode: &mut ViewerCameraMode,
     right_panel_layout: &mut RightPanelLayoutState,
     module_visibility: &mut crate::right_panel_module_visibility::RightPanelModuleVisibilityState,
+    i18n: &mut crate::i18n::UiI18n,
     variant_preview: &mut MaterialVariantPreviewState,
     assets: Option<&Viewer3dAssets>,
     materials: &mut Assets<StandardMaterial>,
@@ -398,10 +418,28 @@ fn apply_step(
             right_panel_layout.panel_hidden = !next_visible;
             StepResult::Applied
         }
+        ViewerAutomationStep::TopPanelVisibility(action) => {
+            let current_visible = !right_panel_layout.top_panel_collapsed;
+            let next_visible = apply_visibility_action(current_visible, action);
+            right_panel_layout.top_panel_collapsed = !next_visible;
+            StepResult::Applied
+        }
         ViewerAutomationStep::ModuleVisibility { module, action } => {
             let flag = module_visibility_flag(module_visibility, module);
             let current_visible = *flag;
             *flag = apply_visibility_action(current_visible, action);
+            StepResult::Applied
+        }
+        ViewerAutomationStep::SetLocale(action) => {
+            i18n.locale = match action {
+                ViewerAutomationLocaleAction::Zh => crate::i18n::UiLocale::ZhCn,
+                ViewerAutomationLocaleAction::En => crate::i18n::UiLocale::EnUs,
+                ViewerAutomationLocaleAction::Toggle => i18n.locale.toggled(),
+            };
+            StepResult::Applied
+        }
+        ViewerAutomationStep::ApplyLayoutPreset(preset) => {
+            apply_layout_preset_automation(right_panel_layout, module_visibility, preset);
             StepResult::Applied
         }
         ViewerAutomationStep::CycleMaterialVariant => {
@@ -443,6 +481,42 @@ fn apply_visibility_action(
         ViewerAutomationVisibilityAction::Show => true,
         ViewerAutomationVisibilityAction::Hide => false,
         ViewerAutomationVisibilityAction::Toggle => !current_visible,
+    }
+}
+
+fn apply_layout_preset_automation(
+    layout_state: &mut RightPanelLayoutState,
+    module_visibility: &mut crate::right_panel_module_visibility::RightPanelModuleVisibilityState,
+    preset: ViewerAutomationLayoutPreset,
+) {
+    layout_state.panel_hidden = false;
+    layout_state.top_panel_collapsed = false;
+    module_visibility.show_controls = false;
+    module_visibility.show_overlay = false;
+    module_visibility.show_diagnosis = false;
+
+    match preset {
+        ViewerAutomationLayoutPreset::Mission => {
+            module_visibility.show_overview = true;
+            module_visibility.show_chat = false;
+            module_visibility.show_event_link = true;
+            module_visibility.show_timeline = false;
+            module_visibility.show_details = false;
+        }
+        ViewerAutomationLayoutPreset::Command => {
+            module_visibility.show_overview = true;
+            module_visibility.show_chat = true;
+            module_visibility.show_event_link = true;
+            module_visibility.show_timeline = false;
+            module_visibility.show_details = false;
+        }
+        ViewerAutomationLayoutPreset::Intel => {
+            module_visibility.show_overview = true;
+            module_visibility.show_chat = false;
+            module_visibility.show_event_link = true;
+            module_visibility.show_timeline = true;
+            module_visibility.show_details = true;
+        }
     }
 }
 
@@ -627,7 +701,16 @@ fn parse_steps(raw: Option<&str>) -> Vec<ViewerAutomationStep> {
             "orbit" => parse_orbit(value),
             "select" => parse_target(value).map(ViewerAutomationStep::Select),
             "panel" => parse_visibility_action(value).map(ViewerAutomationStep::PanelVisibility),
+            "top_panel" | "top" => {
+                parse_visibility_action(value).map(ViewerAutomationStep::TopPanelVisibility)
+            }
             "module" | "panel_module" | "module_visibility" => parse_module_visibility_step(value),
+            "locale" | "language" => {
+                parse_locale_action(value).map(ViewerAutomationStep::SetLocale)
+            }
+            "layout" | "layout_preset" | "panel_layout" => {
+                parse_layout_preset(value).map(ViewerAutomationStep::ApplyLayoutPreset)
+            }
             "material_variant" | "variant" => parse_material_variant_step(value)
                 .map(|_| ViewerAutomationStep::CycleMaterialVariant),
             _ => None,
@@ -762,6 +845,24 @@ fn parse_material_variant_step(raw: &str) -> Option<()> {
     }
 }
 
+fn parse_locale_action(raw: &str) -> Option<ViewerAutomationLocaleAction> {
+    match raw.trim().to_ascii_lowercase().as_str() {
+        "zh" | "zh_cn" | "zh-cn" | "cn" | "chinese" => Some(ViewerAutomationLocaleAction::Zh),
+        "en" | "en_us" | "en-us" | "english" => Some(ViewerAutomationLocaleAction::En),
+        "toggle" | "switch" => Some(ViewerAutomationLocaleAction::Toggle),
+        _ => None,
+    }
+}
+
+fn parse_layout_preset(raw: &str) -> Option<ViewerAutomationLayoutPreset> {
+    match raw.trim().to_ascii_lowercase().as_str() {
+        "mission" => Some(ViewerAutomationLayoutPreset::Mission),
+        "command" => Some(ViewerAutomationLayoutPreset::Command),
+        "intel" => Some(ViewerAutomationLayoutPreset::Intel),
+        _ => None,
+    }
+}
+
 fn parse_truthy(raw: &str) -> bool {
     matches!(
         raw.trim().to_ascii_lowercase().as_str(),
@@ -882,6 +983,23 @@ mod tests {
     }
 
     #[test]
+    fn parse_steps_supports_top_panel_locale_and_layout_actions() {
+        let steps = parse_steps(Some(
+            "top_panel=hide;locale=en;language=toggle;layout=command;top=show",
+        ));
+        assert_eq!(
+            steps,
+            vec![
+                ViewerAutomationStep::TopPanelVisibility(ViewerAutomationVisibilityAction::Hide),
+                ViewerAutomationStep::SetLocale(ViewerAutomationLocaleAction::En),
+                ViewerAutomationStep::SetLocale(ViewerAutomationLocaleAction::Toggle),
+                ViewerAutomationStep::ApplyLayoutPreset(ViewerAutomationLayoutPreset::Command),
+                ViewerAutomationStep::TopPanelVisibility(ViewerAutomationVisibilityAction::Show),
+            ]
+        );
+    }
+
+    #[test]
     fn parse_steps_ignores_invalid_module_and_variant_actions() {
         let steps = parse_steps(Some(
             "module=chat;module=unknown:show;module=timeline:toggle;material_variant=bad;variant=cycle",
@@ -895,6 +1013,17 @@ mod tests {
                 },
                 ViewerAutomationStep::CycleMaterialVariant,
             ]
+        );
+    }
+
+    #[test]
+    fn parse_steps_ignores_invalid_locale_and_layout_actions() {
+        let steps = parse_steps(Some("locale=jp;language=english;layout=unknown"));
+        assert_eq!(
+            steps,
+            vec![ViewerAutomationStep::SetLocale(
+                ViewerAutomationLocaleAction::En
+            )]
         );
     }
 
@@ -916,6 +1045,30 @@ mod tests {
             false,
             ViewerAutomationVisibilityAction::Toggle
         ));
+    }
+
+    #[test]
+    fn apply_layout_preset_automation_updates_panel_and_module_visibility() {
+        let mut layout_state = RightPanelLayoutState {
+            top_panel_collapsed: true,
+            panel_hidden: true,
+        };
+        let mut module_visibility =
+            crate::right_panel_module_visibility::RightPanelModuleVisibilityState::default();
+
+        apply_layout_preset_automation(
+            &mut layout_state,
+            &mut module_visibility,
+            ViewerAutomationLayoutPreset::Intel,
+        );
+        assert!(!layout_state.panel_hidden);
+        assert!(!layout_state.top_panel_collapsed);
+        assert!(!module_visibility.show_controls);
+        assert!(module_visibility.show_overview);
+        assert!(!module_visibility.show_chat);
+        assert!(module_visibility.show_event_link);
+        assert!(module_visibility.show_timeline);
+        assert!(module_visibility.show_details);
     }
 
     #[test]
