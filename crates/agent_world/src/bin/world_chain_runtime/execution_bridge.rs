@@ -26,19 +26,123 @@ pub(super) struct ExecutionBridgeState {
     pub last_node_block_hash: Option<String>,
 }
 
+const EXECUTION_BRIDGE_RECORD_SCHEMA_V1: u32 = 1;
+const EXECUTION_BRIDGE_RECORD_SCHEMA_V2: u32 = 2;
+
+fn execution_bridge_record_schema_v1() -> u32 {
+    EXECUTION_BRIDGE_RECORD_SCHEMA_V1
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(from = "ExecutionBridgeRecordWire")]
 pub(super) struct ExecutionBridgeRecord {
+    pub schema_version: u32,
     pub world_id: String,
     pub height: u64,
     pub node_block_hash: Option<String>,
     pub execution_block_hash: String,
     pub execution_state_root: String,
     pub journal_len: usize,
-    pub snapshot_ref: String,
-    pub journal_ref: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub latest_state_ref: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub snapshot_ref: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub journal_ref: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub commit_log_ref: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub checkpoint_ref: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub external_effect_ref: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub simulator_mirror: Option<ExecutionSimulatorMirrorRecord>,
     pub timestamp_ms: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+struct ExecutionBridgeRecordWire {
+    #[serde(default = "execution_bridge_record_schema_v1")]
+    pub schema_version: u32,
+    pub world_id: String,
+    pub height: u64,
+    #[serde(default)]
+    pub node_block_hash: Option<String>,
+    pub execution_block_hash: String,
+    pub execution_state_root: String,
+    pub journal_len: usize,
+    #[serde(default)]
+    pub latest_state_ref: Option<String>,
+    #[serde(default)]
+    pub snapshot_ref: Option<String>,
+    #[serde(default)]
+    pub journal_ref: Option<String>,
+    #[serde(default)]
+    pub commit_log_ref: Option<String>,
+    #[serde(default)]
+    pub checkpoint_ref: Option<String>,
+    #[serde(default)]
+    pub external_effect_ref: Option<String>,
+    #[serde(default)]
+    pub simulator_mirror: Option<ExecutionSimulatorMirrorRecord>,
+    pub timestamp_ms: i64,
+}
+
+impl From<ExecutionBridgeRecordWire> for ExecutionBridgeRecord {
+    fn from(record: ExecutionBridgeRecordWire) -> Self {
+        let snapshot_ref = record.snapshot_ref;
+        let latest_state_ref = record.latest_state_ref.or_else(|| snapshot_ref.clone());
+        Self {
+            schema_version: record.schema_version.max(EXECUTION_BRIDGE_RECORD_SCHEMA_V1),
+            world_id: record.world_id,
+            height: record.height,
+            node_block_hash: record.node_block_hash,
+            execution_block_hash: record.execution_block_hash,
+            execution_state_root: record.execution_state_root,
+            journal_len: record.journal_len,
+            latest_state_ref,
+            snapshot_ref,
+            journal_ref: record.journal_ref,
+            commit_log_ref: record.commit_log_ref,
+            checkpoint_ref: record.checkpoint_ref,
+            external_effect_ref: record.external_effect_ref,
+            simulator_mirror: record.simulator_mirror,
+            timestamp_ms: record.timestamp_ms,
+        }
+    }
+}
+
+impl ExecutionBridgeRecord {
+    fn new_v2(
+        world_id: String,
+        height: u64,
+        node_block_hash: Option<String>,
+        execution_block_hash: String,
+        execution_state_root: String,
+        journal_len: usize,
+        snapshot_ref: String,
+        journal_ref: String,
+        simulator_mirror: Option<ExecutionSimulatorMirrorRecord>,
+        timestamp_ms: i64,
+    ) -> Self {
+        Self {
+            schema_version: EXECUTION_BRIDGE_RECORD_SCHEMA_V2,
+            world_id,
+            height,
+            node_block_hash,
+            execution_block_hash,
+            execution_state_root,
+            journal_len,
+            latest_state_ref: Some(snapshot_ref.clone()),
+            snapshot_ref: Some(snapshot_ref),
+            journal_ref: Some(journal_ref),
+            commit_log_ref: None,
+            checkpoint_ref: None,
+            external_effect_ref: None,
+            simulator_mirror,
+            timestamp_ms,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -319,18 +423,18 @@ impl NodeExecutionHook for NodeRuntimeExecutionDriver {
         let execution_block_hash = blake3_hex(to_cbor(hash_payload)?.as_slice());
         let node_block_hash = Some(context.node_block_hash.clone());
 
-        let record = ExecutionBridgeRecord {
-            world_id: context.world_id.clone(),
-            height: context.height,
-            node_block_hash: node_block_hash.clone(),
-            execution_block_hash: execution_block_hash.clone(),
-            execution_state_root: execution_state_root.clone(),
-            journal_len: self.execution_world.journal().len(),
+        let record = ExecutionBridgeRecord::new_v2(
+            context.world_id.clone(),
+            context.height,
+            node_block_hash.clone(),
+            execution_block_hash.clone(),
+            execution_state_root.clone(),
+            self.execution_world.journal().len(),
             snapshot_ref,
             journal_ref,
             simulator_mirror,
-            timestamp_ms: context.committed_at_unix_ms,
-        };
+            context.committed_at_unix_ms,
+        );
         persist_execution_bridge_record(self.records_dir.as_path(), &record)?;
 
         self.state.last_applied_committed_height = context.height;
@@ -515,18 +619,18 @@ pub(super) fn bridge_committed_heights(
             None
         };
 
-        let record = ExecutionBridgeRecord {
-            world_id: snapshot.world_id.clone(),
+        let record = ExecutionBridgeRecord::new_v2(
+            snapshot.world_id.clone(),
             height,
-            node_block_hash: node_block_hash.clone(),
-            execution_block_hash: execution_block_hash.clone(),
-            execution_state_root: execution_state_root.clone(),
-            journal_len: execution_world.journal().len(),
+            node_block_hash.clone(),
+            execution_block_hash.clone(),
+            execution_state_root.clone(),
+            execution_world.journal().len(),
             snapshot_ref,
             journal_ref,
-            simulator_mirror: None,
-            timestamp_ms: observed_at_unix_ms,
-        };
+            None,
+            observed_at_unix_ms,
+        );
         persist_execution_bridge_record(execution_records_dir, &record)?;
 
         state.last_applied_committed_height = height;
@@ -673,6 +777,29 @@ mod tests {
         assert!(records_dir.join("00000000000000000002.json").exists());
         assert!(records_dir.join("latest.json").exists());
 
+        let latest_bytes = fs::read(records_dir.join("latest.json")).expect("read latest record");
+        let latest_record: ExecutionBridgeRecord =
+            serde_json::from_slice(latest_bytes.as_slice()).expect("parse latest record");
+        assert_eq!(
+            latest_record.schema_version,
+            EXECUTION_BRIDGE_RECORD_SCHEMA_V2
+        );
+        assert_eq!(
+            latest_record.latest_state_ref.as_deref(),
+            latest_record.snapshot_ref.as_deref()
+        );
+        assert!(latest_record.commit_log_ref.is_none());
+        assert!(latest_record.checkpoint_ref.is_none());
+        assert!(latest_record.external_effect_ref.is_none());
+
+        let latest_json: serde_json::Value =
+            serde_json::from_slice(latest_bytes.as_slice()).expect("parse latest json");
+        assert!(latest_json.get("schema_version").is_some());
+        assert!(latest_json.get("latest_state_ref").is_some());
+        assert!(latest_json.get("commit_log_ref").is_none());
+        assert!(latest_json.get("checkpoint_ref").is_none());
+        assert!(latest_json.get("external_effect_ref").is_none());
+
         let _ = fs::remove_dir_all(dir);
     }
 
@@ -729,6 +856,31 @@ mod tests {
         assert_eq!(loaded, state);
 
         let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn execution_bridge_record_legacy_payload_defaults_latest_state_ref() {
+        let legacy = serde_json::json!({
+            "world_id": "w1",
+            "height": 7,
+            "node_block_hash": "node-h7",
+            "execution_block_hash": "exec-h7",
+            "execution_state_root": "state-r7",
+            "journal_len": 3,
+            "snapshot_ref": "cas:snapshot-7",
+            "journal_ref": "cas:journal-7",
+            "timestamp_ms": 7000
+        });
+        let record: ExecutionBridgeRecord =
+            serde_json::from_value(legacy).expect("parse legacy execution bridge record");
+
+        assert_eq!(record.schema_version, EXECUTION_BRIDGE_RECORD_SCHEMA_V1);
+        assert_eq!(record.latest_state_ref.as_deref(), Some("cas:snapshot-7"));
+        assert_eq!(record.snapshot_ref.as_deref(), Some("cas:snapshot-7"));
+        assert_eq!(record.journal_ref.as_deref(), Some("cas:journal-7"));
+        assert!(record.commit_log_ref.is_none());
+        assert!(record.checkpoint_ref.is_none());
+        assert!(record.external_effect_ref.is_none());
     }
 
     #[test]
@@ -1017,6 +1169,19 @@ mod tests {
             .expect("read execution bridge record");
         let record: ExecutionBridgeRecord =
             serde_json::from_slice(record_bytes.as_slice()).expect("parse execution bridge record");
+        assert_eq!(record.schema_version, EXECUTION_BRIDGE_RECORD_SCHEMA_V2);
+        assert_eq!(
+            record.latest_state_ref.as_deref(),
+            record.snapshot_ref.as_deref()
+        );
+        assert!(record
+            .snapshot_ref
+            .as_deref()
+            .is_some_and(|snapshot_ref| !snapshot_ref.is_empty()));
+        assert!(record
+            .journal_ref
+            .as_deref()
+            .is_some_and(|journal_ref| !journal_ref.is_empty()));
         let simulator = record
             .simulator_mirror
             .expect("simulator mirror record should exist");

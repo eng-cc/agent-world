@@ -1297,5 +1297,9 @@ fn now_unix_ms() -> i64 {
 }
 
 #[cfg(test)]
+#[path = "world_chain_runtime/execution_bridge_real_tests.rs"]
+mod execution_bridge_real_tests;
+
+#[cfg(test)]
 #[path = "world_chain_runtime/world_chain_runtime_tests.rs"]
 mod tests;
