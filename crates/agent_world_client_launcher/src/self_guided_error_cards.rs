@@ -53,7 +53,10 @@ impl ClientLauncherApp {
             ui.small(format!("- {}", issue.text(self.ui_language)));
         }
         if issues.len() > 3 {
-            ui.small(self.tr("...更多问题请在配置引导中查看", "...more issues in config guide"));
+            ui.small(self.tr(
+                "...更多问题请在配置引导中查看",
+                "...more issues in config guide",
+            ));
         }
     }
 

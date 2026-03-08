@@ -55,9 +55,7 @@ impl ClientLauncherApp {
             (DisabledActionCta::StartChain, UiLanguage::ZhCn) => "先启动区块链",
             (DisabledActionCta::StartChain, UiLanguage::EnUs) => "Start Blockchain First",
             (DisabledActionCta::RetryChainStatus, UiLanguage::ZhCn) => "立即重试状态探测",
-            (DisabledActionCta::RetryChainStatus, UiLanguage::EnUs) => {
-                "Retry Chain Status Now"
-            }
+            (DisabledActionCta::RetryChainStatus, UiLanguage::EnUs) => "Retry Chain Status Now",
             (DisabledActionCta::FixGameConfig, UiLanguage::ZhCn) => "修复游戏配置",
             (DisabledActionCta::FixGameConfig, UiLanguage::EnUs) => "Fix Game Config",
         }
@@ -168,14 +166,22 @@ impl ClientLauncherApp {
             if let Some(cta) = primary {
                 if ui.button(self.disabled_cta_text(cta)).clicked() {
                     self.record_guided_quick_action_click();
-                    self.handle_disabled_action_cta(cta, game_required_issues, chain_required_issues);
+                    self.handle_disabled_action_cta(
+                        cta,
+                        game_required_issues,
+                        chain_required_issues,
+                    );
                 }
             }
 
             if let Some(cta) = secondary {
                 if Some(cta) != primary && ui.button(self.disabled_cta_text(cta)).clicked() {
                     self.record_guided_quick_action_click();
-                    self.handle_disabled_action_cta(cta, game_required_issues, chain_required_issues);
+                    self.handle_disabled_action_cta(
+                        cta,
+                        game_required_issues,
+                        chain_required_issues,
+                    );
                 }
             }
         });

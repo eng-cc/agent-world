@@ -50,7 +50,10 @@ impl ClientLauncherApp {
         };
         ui.horizontal_wrapped(|ui| {
             ui.label(self.tr("1) 游戏配置", "1) Game Configuration"));
-            ui.colored_label(self.preflight_state_color(state), self.preflight_state_text(state));
+            ui.colored_label(
+                self.preflight_state_color(state),
+                self.preflight_state_text(state),
+            );
             if state == PreflightCheckState::Blocked {
                 ui.small(format!(
                     "{}={}",
@@ -61,7 +64,10 @@ impl ClientLauncherApp {
                     self.record_guided_quick_action_click();
                     self.open_game_config_guide();
                 }
-                if ui.button(self.tr("自动补默认值", "Autofill Defaults")).clicked() {
+                if ui
+                    .button(self.tr("自动补默认值", "Autofill Defaults"))
+                    .clicked()
+                {
                     self.record_guided_quick_action_click();
                     self.apply_safe_defaults_for_startup_target(StartupGuideTarget::Game);
                 }
@@ -81,9 +87,15 @@ impl ClientLauncherApp {
         };
         ui.horizontal_wrapped(|ui| {
             ui.label(self.tr("2) 区块链配置", "2) Blockchain Configuration"));
-            ui.colored_label(self.preflight_state_color(state), self.preflight_state_text(state));
+            ui.colored_label(
+                self.preflight_state_color(state),
+                self.preflight_state_text(state),
+            );
             if !self.config.chain_enabled {
-                if ui.button(self.tr("启用区块链", "Enable Blockchain")).clicked() {
+                if ui
+                    .button(self.tr("启用区块链", "Enable Blockchain"))
+                    .clicked()
+                {
                     self.record_guided_quick_action_click();
                     self.config.chain_enabled = true;
                     self.chain_runtime_status = ChainRuntimeStatus::NotStarted;
@@ -100,7 +112,10 @@ impl ClientLauncherApp {
                     self.record_guided_quick_action_click();
                     self.open_chain_config_guide();
                 }
-                if ui.button(self.tr("自动补默认值", "Autofill Defaults")).clicked() {
+                if ui
+                    .button(self.tr("自动补默认值", "Autofill Defaults"))
+                    .clicked()
+                {
                     self.record_guided_quick_action_click();
                     self.apply_safe_defaults_for_startup_target(StartupGuideTarget::Chain);
                 }
@@ -113,13 +128,24 @@ impl ClientLauncherApp {
         ui: &mut egui::Ui,
         chain_required_issues: &[ConfigIssue],
     ) {
-        let state =
-            resolve_chain_runtime_preflight_state(self.config.chain_enabled, &self.chain_runtime_status);
+        let state = resolve_chain_runtime_preflight_state(
+            self.config.chain_enabled,
+            &self.chain_runtime_status,
+        );
         ui.horizontal_wrapped(|ui| {
-            ui.label(self.tr("3) 链状态依赖（反馈/转账/浏览器）", "3) Chain Dependency (Feedback/Transfer/Explorer)"));
-            ui.colored_label(self.preflight_state_color(state), self.preflight_state_text(state));
+            ui.label(self.tr(
+                "3) 链状态依赖（反馈/转账/浏览器）",
+                "3) Chain Dependency (Feedback/Transfer/Explorer)",
+            ));
+            ui.colored_label(
+                self.preflight_state_color(state),
+                self.preflight_state_text(state),
+            );
             if state == PreflightCheckState::Blocked {
-                if ui.button(self.tr("启动区块链", "Start Blockchain")).clicked() {
+                if ui
+                    .button(self.tr("启动区块链", "Start Blockchain"))
+                    .clicked()
+                {
                     self.record_guided_quick_action_click();
                     self.handle_start_chain_click(chain_required_issues);
                 }

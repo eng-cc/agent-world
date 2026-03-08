@@ -37,7 +37,10 @@ impl ClientLauncherApp {
                     .color(egui::Color32::from_rgb(74, 116, 168)),
                 );
 
-                if ui.button(self.tr("继续引导", "Continue Onboarding")).clicked() {
+                if ui
+                    .button(self.tr("继续引导", "Continue Onboarding"))
+                    .clicked()
+                {
                     self.record_guided_quick_action_click();
                     self.open_onboarding_manual();
                 }
