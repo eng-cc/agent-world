@@ -108,7 +108,10 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023
   - `zoom=<factor>`
   - `orbit=<yaw_deg>,<pitch_deg>`
   - `panel=show|hide|toggle`
+  - `top_panel=show|hide|toggle`
   - `module=<controls|overview|chat|overlay|diagnosis|event_link|timeline|details>:<show|hide|toggle>`
+  - `locale=zh|en|toggle`（或 `language=zh|en|toggle`）
+  - `layout=mission|command|intel`
   - `material_variant=next|cycle`
 
 示例：
@@ -126,6 +129,14 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023
   --scenario llm_bootstrap \
   --addr 127.0.0.1:5131 \
   --automation-steps "panel=show;module=chat:show;select=first_agent;focus=selection;material_variant=next;wait=0.2"
+```
+
+示例（round-2 语义补齐）：
+```bash
+./scripts/capture-viewer-frame.sh \
+  --scenario llm_bootstrap \
+  --addr 127.0.0.1:5131 \
+  --automation-steps "top_panel=hide;locale=en;layout=command;panel=show;module=chat:show;wait=0.2"
 ```
 
 ## 3D 渲染档位与精调（商业化精致度）
