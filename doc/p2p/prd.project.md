@@ -60,7 +60,7 @@
 ### TASK-P2P-014 执行拆解（PRD-P2P-010）
 - [x] TASK-P2P-014-T0 [test_tier_required]: 在主 PRD/project 建立“viewer 移除 release/node 控制面参数”任务链并冻结验收口径。
 - [x] TASK-P2P-014-T1 [test_tier_required]: 在 `world_viewer_live` CLI 移除 `--release-config` 与 `--node-*` 参数解析、帮助文案与 release-mode 分支，误传时输出迁移提示。
-- [ ] TASK-P2P-014-T2 [test_tier_required]: 更新 `world_viewer_live.release.example.toml`、viewer manual/site 镜像及相关专题文档，删除与当前能力冲突的表述。
+- [x] TASK-P2P-014-T2 [test_tier_required]: 更新 `world_viewer_live.release.example.toml`、viewer manual/site 镜像及相关专题文档，删除与当前能力冲突的表述。
 - [ ] TASK-P2P-014-T3 [test_tier_required]: 更新/替换 `world_viewer_live` 定向测试覆盖，验证 legacy 参数拒绝行为与观察服务参数仍可用。
 - [ ] TASK-P2P-014-T4 [test_tier_required]: 执行 required 回归并完成项目状态与 devlog 收口。
 
@@ -90,7 +90,7 @@
 ## 状态
 - 更新日期: 2026-03-08
 - 当前状态: in_progress（ROUND-010）
-- 下一任务: TASK-P2P-014-T2
+- 下一任务: TASK-P2P-014-T3
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - 本轮新增: `TASK-P2P-006` 已完成，专题文档 `p2p-mobile-light-client-authoritative-state-2026-03-06` 已纳入索引和模块追踪映射。
 - 本轮新增: `TASK-P2P-008` 已建档，专题文档 `node-pos-slot-clock-real-time-2026-03-07` 已纳入模块追踪映射。
@@ -130,6 +130,7 @@
 - TASK-P2P-014 启动（2026-03-08）: 基于“viewer 仅保留观察服务 CLI”新增任务链，目标为移除 `world_viewer_live --release-config/--node-*` 控制面参数并收敛文档/测试口径。
 - TASK-P2P-014 进展（2026-03-08）: `TASK-P2P-014-T0` 已完成（主 PRD/project 建档并冻结验收口径）。
 - TASK-P2P-014 进展（2026-03-08）: `TASK-P2P-014-T1` 已完成代码落地（`parse_launch_options` 显式拒绝 `--release-config/--node-*`，并收敛 help 文案到观察服务入口）。
+- TASK-P2P-014 进展（2026-03-08）: `TASK-P2P-014-T2` 已完成文档/示例回写（release 示例改为弃用说明，viewer-manual 与 viewer-live 历史专题补充归档状态）并通过文档门禁。
 - 说明: 本文档仅维护 p2p 设计执行状态；过程记录在 `doc/devlog/2026-03-07.md` 与 `doc/devlog/2026-03-08.md`。
 - ROUND-002 进展（2026-03-05）: 已并行完成 `B3-C2-009-S2/C2-010/C2-011`（observer sync-mode、node-contribution、distfs-self-healing）主从化回写。
 - ROUND-002 进展（2026-03-05）: 已并行完成 `B3-C2-003/C2-008-S1/C2-008-S2`（node-redeemable-power-asset、distfs-production-hardening phase1~9）主从化回写。

@@ -1,28 +1,10 @@
-# Legacy sample kept for historical reference only.
-# Current `crates/agent_world/src/bin/world_viewer_live.rs` does NOT support `--release-config`
-# or any `--node-*`/`--triad-*`/`--reward-runtime-*` control-plane flags.
+# Deprecated sample retained only to prevent stale path references.
 #
-# P2P release flows should lock timing/network parameters on `world_chain_runtime`
-# (typically managed by `world_game_launcher` / `world_web_launcher` / client launcher).
+# `world_viewer_live` no longer supports:
+# - `--release-config`
+# - any `--node-*` control-plane flags
 #
-# Timing note for historical args below:
-#   --node-tick-ms is worker poll/fallback interval only.
-#   PoS slot/block timing should be configured by --pos-* flags.
-
-locked_args = [
-  "llm_bootstrap",
-  "--topology", "triad_distributed",
-  "--node-id", "p2p-release-node-a",
-  "--node-role", "sequencer",
-  "--triad-sequencer-gossip", "10.0.0.11:5500",
-  "--triad-storage-gossip", "10.0.0.12:5500",
-  "--triad-observer-gossip", "10.0.0.13:5500",
-  "--node-tick-ms", "200",
-  "--pos-slot-duration-ms", "200",
-  "--pos-ticks-per-slot", "1",
-  "--pos-proposal-tick-phase", "0",
-  "--pos-no-adaptive-tick-scheduler",
-  "--pos-max-past-slot-lag", "256",
-  "--reward-runtime-enable",
-  "--reward-runtime-min-observer-traces", "2",
-]
+# For P2P release locking, configure `world_chain_runtime` through:
+# - `world_game_launcher`
+# - `world_web_launcher`
+# - `agent_world_client_launcher`

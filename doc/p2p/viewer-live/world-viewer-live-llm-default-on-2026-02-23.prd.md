@@ -1,11 +1,15 @@
 # world_viewer_live LLM 默认开启（P2P 发行基线）设计文档（2026-02-23）
 
 审计轮次: 5
+> 状态更新（2026-03-08）:
+> - `world_viewer_live` 已下线 `--release-config`/`--node-*` 控制面入口。
+> - 本文仍适用于 `--llm/--no-llm` 行为语义，但不再包含 release-config 运行路径要求。
+
 ## 1. Executive Summary
 - Problem Statement: 将 `world_viewer_live` 的决策模式默认值从 Script 调整为 LLM，减少发行参数遗漏导致的节点行为偏差。
 - Proposed Solution: 在不破坏现有参数模型的前提下，保持 CLI 语义简单且可审计。
 - Success Criteria:
-  - SC-1: 与已上线的 `--release-config` 锁定参数路径保持一致：未显式写入 `--llm` 时也能默认进入 LLM 决策。
+  - SC-1: 未显式写入 `--llm` 时，默认进入 LLM 决策。
 
 ## 2. User Experience & Functionality
 - User Personas: 协议维护者、任务执行者、质量复核者。
@@ -26,7 +30,7 @@
 - Non-Goals:
   - 不新增 `--no-llm` 反向开关。
   - 不调整 `WorldScenario` 默认值与场景集合。
-  - 不改动 `--release-config` 白名单策略。
+  - 不扩展链路控制面参数（由 `world_chain_runtime` 承担）。
 
 ## 3. AI System Requirements (If Applicable)
 - Tool Requirements: 不适用（本专题不涉及 AI 模型能力改造）。
@@ -50,7 +54,7 @@
 
 ### 2) CLI 参数兼容性
 - `--llm` 参数继续保留（显式冗余开启，不影响结果）。
-- 发行锁定 `locked_args` 可继续包含或省略 `--llm`，最终都以开启 LLM 运行。
+- `world_viewer_live` 不再支持 `--release-config`，不再维护 `locked_args` 兼容路径。
 
 ## 5. Risks & Roadmap
 - Phased Rollout:

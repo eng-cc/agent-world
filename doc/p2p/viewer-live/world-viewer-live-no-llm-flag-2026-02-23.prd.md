@@ -1,11 +1,15 @@
 # world_viewer_live `--no-llm` 关闭开关设计文档（2026-02-23）
 
 审计轮次: 5
+> 状态更新（2026-03-08）:
+> - `world_viewer_live` 已下线 `--release-config`/`--node-*` 控制面入口。
+> - 本文继续描述 `--no-llm` 行为语义；release-config 相关口径已失效并归档。
+
 ## 1. Executive Summary
 - Problem Statement: 在 `world_viewer_live` 默认启用 LLM 决策的前提下，提供显式关闭开关 `--no-llm`，用于本地调试或脚本回退到 Script 决策。
 - Proposed Solution: 保持参数语义可预期：默认值稳定、显式参数可覆盖。
 - Success Criteria:
-  - SC-1: 与现有 P2P 发行锁定模式兼容，不放开发行运行时临时调参口。
+  - SC-1: `--no-llm` 可稳定覆盖默认 LLM 决策并切换为 Script 模式。
 
 ## 2. User Experience & Functionality
 - User Personas: 协议维护者、任务执行者、质量复核者。
@@ -22,9 +26,9 @@
   - AC-3: 更新 CLI help/usage 文案，明确 `--llm` 默认开启且可由 `--no-llm` 关闭。
   - AC-4: `crates/agent_world/src/bin/world_viewer_live/world_viewer_live_tests_split_part1.rs`
   - AC-5: 补充 `--no-llm` 参数行为测试。
-  - AC-6: 覆盖 release-config `locked_args` 中 `--no-llm` 的生效行为测试。
+  - AC-6: 覆盖 `--no-llm` 行为回归，不依赖 release-config 路径。
 - Non-Goals:
-  - 不变更 `--release-config` 模式下 CLI 白名单（仍仅允许 `--release-config`、`--bind`、`--web-bind`、`--help`）。
+  - 不恢复 `--release-config` 模式。
   - 不变更场景默认值与拓扑相关参数语义。
   - 不新增额外决策模式枚举，仅在 LLM/Script 之间切换。
 
@@ -53,8 +57,7 @@
 - 采用“按出现顺序覆盖，最后出现者生效”语义，符合现有线性解析行为。
 
 ### 3) 与发行锁定模式的关系
-- 运行时 `--release-config` CLI 白名单不变，仍不允许直接传 `--no-llm`。
-- 若需发行禁用 LLM，应在发行文件 `locked_args` 中显式写入 `--no-llm`。
+- `world_viewer_live` 不再支持 `--release-config`，该约束仅保留历史参考意义。
 
 ## 5. Risks & Roadmap
 - Phased Rollout:
