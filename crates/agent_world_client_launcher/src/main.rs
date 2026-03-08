@@ -743,6 +743,7 @@ struct ClientLauncherApp {
     feedback_draft: FeedbackDraft,
     feedback_submit_state: FeedbackSubmitState,
     feedback_window_open: bool,
+    config_window_open: bool,
     transfer_draft: TransferDraft,
     transfer_submit_state: TransferSubmitState,
     transfer_window_open: bool,
@@ -808,6 +809,7 @@ impl Default for ClientLauncherApp {
             feedback_draft: FeedbackDraft::default(),
             feedback_submit_state: FeedbackSubmitState::None,
             feedback_window_open: false,
+            config_window_open: false,
             transfer_draft: TransferDraft::default(),
             transfer_submit_state: TransferSubmitState::None,
             transfer_window_open: false,
@@ -948,6 +950,138 @@ impl ClientLauncherApp {
         });
     }
 
+    fn render_config_validation_summary(
+        &mut self,
+        ui: &mut egui::Ui,
+        game_required_issues: &[ConfigIssue],
+        chain_required_issues: &[ConfigIssue],
+    ) {
+        let chain_issue_count = if self.config.chain_enabled {
+            chain_required_issues.len()
+        } else {
+            0
+        };
+        let has_issue = !game_required_issues.is_empty() || chain_issue_count > 0;
+
+        ui.horizontal_wrapped(|ui| {
+            ui.label(self.tr(
+                "低频配置已收口到高级配置弹窗。",
+                "Low-frequency settings are grouped in Advanced Config.",
+            ));
+            if ui.button(self.tr("高级配置", "Advanced Config")).clicked() {
+                self.config_window_open = true;
+            }
+        });
+
+        if !has_issue {
+            ui.colored_label(
+                egui::Color32::from_rgb(36, 130, 78),
+                self.tr(
+                    "当前配置校验通过，可直接执行高频操作。",
+                    "Configuration checks passed; quick actions are ready.",
+                ),
+            );
+            return;
+        }
+
+        let summary = if self.config.chain_enabled {
+            match self.ui_language {
+                UiLanguage::ZhCn => format!(
+                    "存在配置问题：游戏 {} 项，区块链 {} 项",
+                    game_required_issues.len(),
+                    chain_issue_count
+                ),
+                UiLanguage::EnUs => format!(
+                    "Configuration issues detected: game {}, blockchain {}",
+                    game_required_issues.len(),
+                    chain_issue_count
+                ),
+            }
+        } else {
+            match self.ui_language {
+                UiLanguage::ZhCn => format!("存在配置问题：游戏 {} 项", game_required_issues.len()),
+                UiLanguage::EnUs => format!(
+                    "Configuration issues detected: game {}",
+                    game_required_issues.len()
+                ),
+            }
+        };
+        ui.colored_label(egui::Color32::from_rgb(188, 60, 60), summary);
+        ui.small(self.tr(
+            "请点击“高级配置”查看并修复具体字段。",
+            "Open Advanced Config to review and fix specific fields.",
+        ));
+    }
+
+    fn show_config_window(
+        &mut self,
+        ctx: &egui::Context,
+        game_required_issues: &[ConfigIssue],
+        chain_required_issues: &[ConfigIssue],
+    ) {
+        if !self.config_window_open {
+            return;
+        }
+
+        let mut keep_open = self.config_window_open;
+        egui::Window::new(self.tr("高级配置", "Advanced Config"))
+            .collapsible(false)
+            .resizable(true)
+            .default_width(780.0)
+            .default_height(640.0)
+            .open(&mut keep_open)
+            .show(ctx, |ui| {
+                egui::ScrollArea::vertical()
+                    .auto_shrink([false, false])
+                    .show(ui, |ui| {
+                        for section in NATIVE_UI_SECTIONS {
+                            self.render_config_section(ui, section);
+                        }
+                    });
+
+                ui.separator();
+
+                if game_required_issues.is_empty() {
+                    ui.colored_label(
+                        egui::Color32::from_rgb(36, 130, 78),
+                        self.tr(
+                            "必填配置项已通过校验，可启动游戏",
+                            "Required configuration check passed; game can start",
+                        ),
+                    );
+                } else {
+                    ui.group(|ui| {
+                        ui.colored_label(
+                            egui::Color32::from_rgb(188, 60, 60),
+                            self.tr(
+                                "游戏启动前请先修复以下必填配置项：",
+                                "Fix the required game configuration issues before starting:",
+                            ),
+                        );
+                        for issue in game_required_issues {
+                            ui.label(format!("- {}", issue.text(self.ui_language)));
+                        }
+                    });
+                }
+
+                if self.config.chain_enabled && !chain_required_issues.is_empty() {
+                    ui.group(|ui| {
+                        ui.colored_label(
+                            egui::Color32::from_rgb(188, 60, 60),
+                            self.tr(
+                                "区块链启动前请先修复以下配置项：",
+                                "Fix the blockchain configuration issues before starting:",
+                            ),
+                        );
+                        for issue in chain_required_issues {
+                            ui.label(format!("- {}", issue.text(self.ui_language)));
+                        }
+                    });
+                }
+            });
+        self.config_window_open = keep_open;
+    }
+
     fn feedback_unavailable_hint(&self) -> Option<String> {
         if self.is_feedback_available() {
             return None;
@@ -1058,63 +1192,27 @@ impl eframe::App for ClientLauncherApp {
             });
         });
 
+        let game_required_issues = collect_required_config_issues(&self.config);
+        let chain_required_issues = collect_chain_required_config_issues(&self.config);
+        let game_running = matches!(self.status, LauncherStatus::Running);
+        let chain_running = matches!(
+            self.chain_runtime_status,
+            ChainRuntimeStatus::Starting | ChainRuntimeStatus::Ready
+        );
+        let can_start_game = !game_running && game_required_issues.is_empty();
+        let can_start_chain =
+            self.config.chain_enabled && !chain_running && chain_required_issues.is_empty();
+
         egui::CentralPanel::default().show(ctx, |ui| {
-            let game_required_issues = collect_required_config_issues(&self.config);
-            let chain_required_issues = collect_chain_required_config_issues(&self.config);
-            let game_running = matches!(self.status, LauncherStatus::Running);
-            let chain_running = matches!(
-                self.chain_runtime_status,
-                ChainRuntimeStatus::Starting | ChainRuntimeStatus::Ready
+            self.render_config_validation_summary(
+                ui,
+                &game_required_issues,
+                &chain_required_issues,
             );
-            let can_start_game = !game_running && game_required_issues.is_empty();
-            let can_start_chain =
-                self.config.chain_enabled && !chain_running && chain_required_issues.is_empty();
-
-            for section in NATIVE_UI_SECTIONS {
-                self.render_config_section(ui, section);
-            }
-
-            if game_required_issues.is_empty() {
-                ui.colored_label(
-                    egui::Color32::from_rgb(36, 130, 78),
-                    self.tr(
-                        "必填配置项已通过校验，可启动游戏",
-                        "Required configuration check passed; game can start",
-                    ),
-                );
-            } else {
-                ui.group(|ui| {
-                    ui.colored_label(
-                        egui::Color32::from_rgb(188, 60, 60),
-                        self.tr(
-                            "游戏启动前请先修复以下必填配置项：",
-                            "Fix the required game configuration issues before starting:",
-                        ),
-                    );
-                    for issue in &game_required_issues {
-                        ui.label(format!("- {}", issue.text(self.ui_language)));
-                    }
-                });
-            }
-
-            if self.config.chain_enabled && !chain_required_issues.is_empty() {
-                ui.group(|ui| {
-                    ui.colored_label(
-                        egui::Color32::from_rgb(188, 60, 60),
-                        self.tr(
-                            "区块链启动前请先修复以下配置项：",
-                            "Fix the blockchain configuration issues before starting:",
-                        ),
-                    );
-                    for issue in &chain_required_issues {
-                        ui.label(format!("- {}", issue.text(self.ui_language)));
-                    }
-                });
-            }
 
             ui.separator();
 
-            ui.horizontal(|ui| {
+            ui.horizontal_wrapped(|ui| {
                 if ui
                     .add_enabled(
                         can_start_game,
@@ -1150,6 +1248,9 @@ impl eframe::App for ClientLauncherApp {
                     .clicked()
                 {
                     self.stop_chain_process();
+                }
+                if ui.button(self.tr("高级配置", "Advanced Config")).clicked() {
+                    self.config_window_open = true;
                 }
                 if ui.button(self.tr("打开游戏页", "Open Game Page")).clicked() {
                     let url = self.current_game_url();
@@ -1249,6 +1350,7 @@ impl eframe::App for ClientLauncherApp {
                 });
         });
 
+        self.show_config_window(ctx, &game_required_issues, &chain_required_issues);
         self.llm_settings_panel
             .show(ctx, self.ui_language, &mut self.config);
         self.show_feedback_window(ctx);
