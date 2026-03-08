@@ -32,6 +32,8 @@ pub(super) struct ExecutionBridgeState {
 const EXECUTION_BRIDGE_RECORD_SCHEMA_V1: u32 = 1;
 const EXECUTION_BRIDGE_RECORD_SCHEMA_V2: u32 = 2;
 const EXECUTION_BRIDGE_DEFAULT_HOT_WINDOW_HEIGHTS: u64 = 32;
+const EXECUTION_BRIDGE_DEFAULT_CHECKPOINT_INTERVAL_HEIGHTS: u64 = 32;
+const EXECUTION_BRIDGE_DEFAULT_CHECKPOINT_KEEP_LATEST: usize = 4;
 
 fn execution_bridge_record_schema_v1() -> u32 {
     EXECUTION_BRIDGE_RECORD_SCHEMA_V1
@@ -326,6 +328,57 @@ fn execution_checkpoint_latest_path(execution_records_dir: &Path) -> std::path::
     execution_checkpoint_root_dir(execution_records_dir).join("latest.json")
 }
 
+fn execution_checkpoint_manifest_rel_path(height: u64) -> String {
+    format!("{:020}/manifest.json", height)
+}
+
+fn list_execution_checkpoint_heights(execution_records_dir: &Path) -> Result<Vec<u64>, String> {
+    let checkpoint_root = execution_checkpoint_root_dir(execution_records_dir);
+    if !checkpoint_root.exists() {
+        return Ok(Vec::new());
+    }
+
+    let mut heights = Vec::new();
+    for entry in fs::read_dir(checkpoint_root.as_path()).map_err(|err| {
+        format!(
+            "read execution checkpoint root {} failed: {}",
+            checkpoint_root.display(),
+            err
+        )
+    })? {
+        let entry = entry.map_err(|err| {
+            format!(
+                "read execution checkpoint dir entry under {} failed: {}",
+                checkpoint_root.display(),
+                err
+            )
+        })?;
+        let file_type = entry.file_type().map_err(|err| {
+            format!(
+                "read execution checkpoint dir entry type {} failed: {}",
+                entry.path().display(),
+                err
+            )
+        })?;
+        if !file_type.is_dir() {
+            continue;
+        }
+        let Some(name) = entry.file_name().to_str().map(ToOwned::to_owned) else {
+            continue;
+        };
+        let Ok(height) = name.parse::<u64>() else {
+            continue;
+        };
+        if execution_checkpoint_manifest_path(execution_records_dir, height).exists() {
+            heights.push(height);
+        }
+    }
+
+    heights.sort_unstable();
+    heights.dedup();
+    Ok(heights)
+}
+
 fn persist_execution_checkpoint_manifest(
     execution_records_dir: &Path,
     manifest: &ExecutionCheckpointManifest,
@@ -362,7 +415,7 @@ fn persist_execution_checkpoint_manifest(
         checkpoint_id: manifest.checkpoint_id.clone(),
         height: manifest.height,
         manifest_hash: manifest.manifest_hash.clone(),
-        manifest_rel_path: format!("{:020}/manifest.json", manifest.height),
+        manifest_rel_path: execution_checkpoint_manifest_rel_path(manifest.height),
         updated_at_ms: manifest.created_at_ms,
     };
     let latest_bytes = serde_json::to_vec_pretty(&latest).map_err(|err| {
@@ -630,6 +683,90 @@ fn sync_execution_bridge_pin_set(
     }
 
     Ok(pin_set)
+}
+
+fn update_execution_bridge_record_checkpoint_ref(
+    execution_records_dir: &Path,
+    height: u64,
+    checkpoint_ref: Option<String>,
+) -> Result<(), String> {
+    let path = execution_bridge_record_path(execution_records_dir, height);
+    if !path.exists() {
+        return Ok(());
+    }
+    let mut record = load_execution_bridge_record(path.as_path())?;
+    record.checkpoint_ref = checkpoint_ref;
+    persist_execution_bridge_record_only(execution_records_dir, &record)?;
+    Ok(())
+}
+
+fn prune_execution_checkpoint_manifests(
+    execution_records_dir: &Path,
+    checkpoint_keep_latest: usize,
+) -> Result<Vec<u64>, String> {
+    let checkpoint_heights = list_execution_checkpoint_heights(execution_records_dir)?;
+    let retained_count = checkpoint_keep_latest.max(1);
+    if checkpoint_heights.len() <= retained_count {
+        return Ok(Vec::new());
+    }
+
+    let prune_heights = checkpoint_heights[..checkpoint_heights.len() - retained_count].to_vec();
+    for height in &prune_heights {
+        let manifest_path = execution_checkpoint_manifest_path(execution_records_dir, *height);
+        let manifest_dir = manifest_path.parent().ok_or_else(|| {
+            format!(
+                "execution checkpoint manifest path {} missing parent",
+                manifest_path.display()
+            )
+        })?;
+        if manifest_dir.exists() {
+            fs::remove_dir_all(manifest_dir).map_err(|err| {
+                format!(
+                    "remove execution checkpoint dir {} failed: {}",
+                    manifest_dir.display(),
+                    err
+                )
+            })?;
+        }
+        update_execution_bridge_record_checkpoint_ref(execution_records_dir, *height, None)?;
+    }
+
+    Ok(prune_heights)
+}
+
+fn maybe_persist_execution_checkpoint_for_record(
+    execution_records_dir: &Path,
+    record: &ExecutionBridgeRecord,
+    checkpoint_interval_heights: u64,
+    checkpoint_keep_latest: usize,
+) -> Result<Option<String>, String> {
+    if checkpoint_interval_heights == 0
+        || record.height == 0
+        || record.height % checkpoint_interval_heights != 0
+    {
+        return Ok(None);
+    }
+
+    let latest_state_ref = record.latest_state_ref.clone().ok_or_else(|| {
+        format!(
+            "execution checkpoint height {} missing latest_state_ref",
+            record.height
+        )
+    })?;
+    let manifest = ExecutionCheckpointManifest::new(
+        record.world_id.clone(),
+        record.height,
+        record.execution_block_hash.clone(),
+        record.execution_state_root.clone(),
+        latest_state_ref,
+        record.snapshot_ref.clone(),
+        record.journal_ref.clone(),
+        record.timestamp_ms,
+    )?;
+    persist_execution_checkpoint_manifest(execution_records_dir, &manifest)?;
+    let checkpoint_ref = execution_checkpoint_manifest_rel_path(record.height);
+    prune_execution_checkpoint_manifests(execution_records_dir, checkpoint_keep_latest)?;
+    Ok(Some(checkpoint_ref))
 }
 
 const EXECUTION_EXTERNAL_EFFECT_SCHEMA_V1: u32 = 1;
@@ -1361,7 +1498,7 @@ impl NodeExecutionHook for NodeRuntimeExecutionDriver {
         let execution_block_hash = blake3_hex(to_cbor(hash_payload)?.as_slice());
         let node_block_hash = Some(context.node_block_hash.clone());
 
-        let record = ExecutionBridgeRecord::new_v2(
+        let mut record = ExecutionBridgeRecord::new_v2(
             context.world_id.clone(),
             context.height,
             node_block_hash.clone(),
@@ -1374,6 +1511,12 @@ impl NodeExecutionHook for NodeRuntimeExecutionDriver {
             simulator_mirror,
             context.committed_at_unix_ms,
         );
+        record.checkpoint_ref = maybe_persist_execution_checkpoint_for_record(
+            self.records_dir.as_path(),
+            &record,
+            EXECUTION_BRIDGE_DEFAULT_CHECKPOINT_INTERVAL_HEIGHTS,
+            EXECUTION_BRIDGE_DEFAULT_CHECKPOINT_KEEP_LATEST,
+        )?;
         persist_execution_bridge_record(self.records_dir.as_path(), &record)?;
 
         self.state.last_applied_committed_height = context.height;
@@ -1568,7 +1711,7 @@ pub(super) fn bridge_committed_heights(
             None
         };
 
-        let record = ExecutionBridgeRecord::new_v2(
+        let mut record = ExecutionBridgeRecord::new_v2(
             snapshot.world_id.clone(),
             height,
             node_block_hash.clone(),
@@ -1581,6 +1724,12 @@ pub(super) fn bridge_committed_heights(
             None,
             observed_at_unix_ms,
         );
+        record.checkpoint_ref = maybe_persist_execution_checkpoint_for_record(
+            execution_records_dir,
+            &record,
+            EXECUTION_BRIDGE_DEFAULT_CHECKPOINT_INTERVAL_HEIGHTS,
+            EXECUTION_BRIDGE_DEFAULT_CHECKPOINT_KEEP_LATEST,
+        )?;
         persist_execution_bridge_record(execution_records_dir, &record)?;
 
         state.last_applied_committed_height = height;
@@ -1606,15 +1755,22 @@ pub(super) fn bridge_committed_heights(
     Ok(records)
 }
 
+fn persist_execution_bridge_record_only(
+    execution_records_dir: &Path,
+    record: &ExecutionBridgeRecord,
+) -> Result<Vec<u8>, String> {
+    let bytes = serde_json::to_vec_pretty(record)
+        .map_err(|err| format!("serialize execution bridge record failed: {}", err))?;
+    let path = execution_bridge_record_path(execution_records_dir, record.height);
+    super::write_bytes_atomic(path.as_path(), bytes.as_slice())?;
+    Ok(bytes)
+}
+
 fn persist_execution_bridge_record(
     execution_records_dir: &Path,
     record: &ExecutionBridgeRecord,
 ) -> Result<(), String> {
-    let bytes = serde_json::to_vec_pretty(record)
-        .map_err(|err| format!("serialize execution bridge record failed: {}", err))?;
-    let path = execution_records_dir.join(format!("{:020}.json", record.height));
-    super::write_bytes_atomic(path.as_path(), bytes.as_slice())?;
-
+    let bytes = persist_execution_bridge_record_only(execution_records_dir, record)?;
     let latest_path = execution_records_dir.join("latest.json");
     super::write_bytes_atomic(latest_path.as_path(), bytes.as_slice())
 }
@@ -2200,6 +2356,137 @@ mod tests {
             err.contains("hash mismatch"),
             "unexpected checkpoint corruption error: {err}"
         );
+
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn execution_checkpoint_cadence_trims_old_manifests_and_clears_record_refs() {
+        let dir = temp_dir("execution-checkpoint-cadence-trim");
+        let records_dir = dir.join("records");
+        let store = LocalCasStore::new(dir.join("store"));
+        fs::create_dir_all(records_dir.as_path()).expect("create records dir");
+
+        for height in 1..=6 {
+            let mut record = persist_test_execution_record_with_store_refs(
+                records_dir.as_path(),
+                &store,
+                height,
+            );
+            record.checkpoint_ref =
+                maybe_persist_execution_checkpoint_for_record(records_dir.as_path(), &record, 2, 2)
+                    .expect("maybe persist checkpoint");
+            persist_execution_bridge_record(records_dir.as_path(), &record)
+                .expect("persist checkpointed record");
+        }
+
+        assert_eq!(
+            list_execution_checkpoint_heights(records_dir.as_path())
+                .expect("list checkpoint heights"),
+            vec![4, 6]
+        );
+        let record_2 = load_execution_bridge_record(
+            execution_bridge_record_path(records_dir.as_path(), 2).as_path(),
+        )
+        .expect("load record 2");
+        let record_4 = load_execution_bridge_record(
+            execution_bridge_record_path(records_dir.as_path(), 4).as_path(),
+        )
+        .expect("load record 4");
+        let record_6 = load_execution_bridge_record(
+            execution_bridge_record_path(records_dir.as_path(), 6).as_path(),
+        )
+        .expect("load record 6");
+        assert!(record_2.checkpoint_ref.is_none());
+        assert_eq!(
+            record_4.checkpoint_ref.as_deref(),
+            Some(execution_checkpoint_manifest_rel_path(4).as_str())
+        );
+        assert_eq!(
+            record_6.checkpoint_ref.as_deref(),
+            Some(execution_checkpoint_manifest_rel_path(6).as_str())
+        );
+        let latest = load_latest_execution_checkpoint_manifest(records_dir.as_path())
+            .expect("load latest checkpoint")
+            .expect("latest checkpoint exists");
+        assert_eq!(latest.height, 6);
+
+        let plan = build_execution_replay_plan(records_dir.as_path(), &store, 5)
+            .expect("build replay plan from sparse checkpoint");
+        assert_eq!(
+            plan.checkpoint.as_ref().map(|manifest| manifest.height),
+            Some(4)
+        );
+        assert_eq!(plan.start_height, 5);
+        assert_eq!(plan.records.len(), 1);
+        assert_eq!(plan.records[0].record.height, 5);
+
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn bridge_committed_heights_persists_sparse_checkpoint_at_default_interval() {
+        let dir = temp_dir("execution-bridge-default-checkpoint");
+        let store = LocalCasStore::new(dir.join("store"));
+        let mut world = RuntimeWorld::new();
+        let mut sandbox = FixedSandbox::succeed(ModuleOutput {
+            new_state: None,
+            effects: Vec::new(),
+            emits: Vec::new(),
+            tick_lifecycle: None,
+            output_bytes: 0,
+        });
+        let mut state = ExecutionBridgeState::default();
+        let records_dir = dir.join("records");
+        let snapshot = sample_snapshot(
+            EXECUTION_BRIDGE_DEFAULT_CHECKPOINT_INTERVAL_HEIGHTS,
+            Some("node-h32"),
+        );
+
+        let records = bridge_committed_heights(
+            &snapshot,
+            1_000,
+            &mut world,
+            &mut sandbox,
+            &store,
+            records_dir.as_path(),
+            &mut state,
+        )
+        .expect("bridge committed heights");
+
+        assert_eq!(
+            records.len() as u64,
+            EXECUTION_BRIDGE_DEFAULT_CHECKPOINT_INTERVAL_HEIGHTS
+        );
+        let latest_record = records.last().expect("latest record");
+        assert_eq!(
+            latest_record.checkpoint_ref.as_deref(),
+            Some(
+                execution_checkpoint_manifest_rel_path(
+                    EXECUTION_BRIDGE_DEFAULT_CHECKPOINT_INTERVAL_HEIGHTS,
+                )
+                .as_str()
+            )
+        );
+        let latest_checkpoint = load_latest_execution_checkpoint_manifest(records_dir.as_path())
+            .expect("load latest checkpoint")
+            .expect("latest checkpoint exists");
+        assert_eq!(
+            latest_checkpoint.height,
+            EXECUTION_BRIDGE_DEFAULT_CHECKPOINT_INTERVAL_HEIGHTS
+        );
+
+        let plan = build_execution_replay_plan(
+            records_dir.as_path(),
+            &store,
+            EXECUTION_BRIDGE_DEFAULT_CHECKPOINT_INTERVAL_HEIGHTS,
+        )
+        .expect("build replay plan");
+        assert_eq!(
+            plan.checkpoint.as_ref().map(|manifest| manifest.height),
+            Some(EXECUTION_BRIDGE_DEFAULT_CHECKPOINT_INTERVAL_HEIGHTS)
+        );
+        assert!(plan.records.is_empty());
 
         let _ = fs::remove_dir_all(dir);
     }
