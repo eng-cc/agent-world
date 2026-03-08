@@ -14,6 +14,7 @@ use super::{
         ConfigGuideTargetHint, DemoModePhase, DisabledActionCta, NextTaskHint, OnboardingStep,
     },
     self_guided_blocked_actions::resolve_disabled_cta_plan,
+    self_guided_preflight::{resolve_chain_runtime_preflight_state, PreflightCheckState},
     transfer_window::{
         recommend_default_from_account, recommend_transfer_account_ids, resolve_transfer_timeline,
         transfer_amount_presets, TransferTimelineState, WebTransferAccountEntry,
@@ -891,6 +892,22 @@ fn resolve_disabled_cta_plan_prioritizes_chain_fix_before_game_fix() {
     );
     assert_eq!(primary, Some(DisabledActionCta::FixChainConfig));
     assert_eq!(secondary, Some(DisabledActionCta::RetryChainStatus));
+}
+
+#[test]
+fn resolve_chain_runtime_preflight_state_requires_ready_chain() {
+    assert_eq!(
+        resolve_chain_runtime_preflight_state(true, &ChainRuntimeStatus::Ready),
+        PreflightCheckState::Pass
+    );
+    assert_eq!(
+        resolve_chain_runtime_preflight_state(true, &ChainRuntimeStatus::Starting),
+        PreflightCheckState::Blocked
+    );
+    assert_eq!(
+        resolve_chain_runtime_preflight_state(false, &ChainRuntimeStatus::Disabled),
+        PreflightCheckState::Blocked
+    );
 }
 
 #[test]

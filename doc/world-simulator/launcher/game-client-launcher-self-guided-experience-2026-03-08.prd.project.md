@@ -19,7 +19,7 @@
 - [x] T12 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 落地本地引导埋点计数与洞察面板（打开/跳过/完成/演示）。
 - [x] T13 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 落地“错误卡片 + 一键修复/自动补默认值/重试”并补齐回归测试。
 - [x] T14 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 强化阻塞态下一步动作（启动链、重试探测、修复配置）并补齐回归测试。
-- [ ] T15 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 落地启动前体检清单（preflight）与逐项修复入口，并补齐回归测试。
+- [x] T15 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 落地启动前体检清单（preflight）与逐项修复入口，并补齐回归测试。
 - [ ] T16 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 将 onboarding 改为“跳过后持续轻提示”并补齐回归测试。
 - [ ] T17 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 修复专题文档冲突并补充启动器文件拆分任务建模。
 - [ ] T18 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 执行启动器超长文件拆分改造并完成回归。
@@ -40,5 +40,5 @@
 ## 状态
 - 最近更新：2026-03-08
 - 当前阶段: in_progress（round-2）
-- 当前任务: T15（启动前体检清单）
-- 备注: T0~T14 已完成；T15~T18 待执行并需逐任务提交与回归。
+- 当前任务: T16（持续轻提示引导）
+- 备注: T0~T15 已完成；T16~T18 待执行并需逐任务提交与回归。
