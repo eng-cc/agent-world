@@ -13,6 +13,7 @@ use super::{
         resolve_config_guide_target, resolve_next_task_hint, resolve_primary_disabled_cta,
         ConfigGuideTargetHint, DemoModePhase, DisabledActionCta, NextTaskHint, OnboardingStep,
     },
+    self_guided_blocked_actions::resolve_disabled_cta_plan,
     transfer_window::{
         recommend_default_from_account, recommend_transfer_account_ids, resolve_transfer_timeline,
         transfer_amount_presets, TransferTimelineState, WebTransferAccountEntry,
@@ -870,6 +871,26 @@ fn resolve_primary_disabled_cta_prefers_first_blocking_action() {
         Some(DisabledActionCta::FixGameConfig)
     );
     assert_eq!(resolve_primary_disabled_cta(true, &[], &[], true), None);
+}
+
+#[test]
+fn resolve_disabled_cta_plan_prefers_retry_when_chain_is_starting() {
+    let (primary, secondary) =
+        resolve_disabled_cta_plan(&ChainRuntimeStatus::Starting, true, &[], &[]);
+    assert_eq!(primary, Some(DisabledActionCta::RetryChainStatus));
+    assert_eq!(secondary, Some(DisabledActionCta::StartChain));
+}
+
+#[test]
+fn resolve_disabled_cta_plan_prioritizes_chain_fix_before_game_fix() {
+    let (primary, secondary) = resolve_disabled_cta_plan(
+        &ChainRuntimeStatus::ConfigError("bad bind".to_string()),
+        true,
+        &[ConfigIssue::ScenarioRequired],
+        &[ConfigIssue::ChainNodeIdRequired],
+    );
+    assert_eq!(primary, Some(DisabledActionCta::FixChainConfig));
+    assert_eq!(secondary, Some(DisabledActionCta::RetryChainStatus));
 }
 
 #[test]

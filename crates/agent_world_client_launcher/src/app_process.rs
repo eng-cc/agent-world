@@ -40,6 +40,14 @@ impl ClientLauncherApp {
 
     pub(super) fn update_chain_runtime_status(&mut self) {}
 
+    pub(super) fn trigger_state_refresh(&mut self) {
+        if self.web_request_inflight {
+            self.append_log("skip state refresh: previous web request still in flight".to_string());
+            return;
+        }
+        self.request_web_state();
+    }
+
     pub(super) fn poll_process(&mut self) {
         self.poll_control_plane_process();
 

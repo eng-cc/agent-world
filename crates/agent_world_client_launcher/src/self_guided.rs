@@ -117,6 +117,7 @@ pub(super) enum DisabledActionCta {
     EnableChain,
     FixChainConfig,
     StartChain,
+    RetryChainStatus,
     FixGameConfig,
 }
 
@@ -564,19 +565,6 @@ impl ClientLauncherApp {
         }
     }
 
-    fn disabled_cta_text(&self, cta: DisabledActionCta) -> &'static str {
-        match (cta, self.ui_language) {
-            (DisabledActionCta::EnableChain, UiLanguage::ZhCn) => "启用区块链功能",
-            (DisabledActionCta::EnableChain, UiLanguage::EnUs) => "Enable Blockchain",
-            (DisabledActionCta::FixChainConfig, UiLanguage::ZhCn) => "修复区块链配置",
-            (DisabledActionCta::FixChainConfig, UiLanguage::EnUs) => "Fix Chain Config",
-            (DisabledActionCta::StartChain, UiLanguage::ZhCn) => "先启动区块链",
-            (DisabledActionCta::StartChain, UiLanguage::EnUs) => "Start Blockchain First",
-            (DisabledActionCta::FixGameConfig, UiLanguage::ZhCn) => "修复游戏配置",
-            (DisabledActionCta::FixGameConfig, UiLanguage::EnUs) => "Fix Game Config",
-        }
-    }
-
     fn config_guide_button_text(&self, target: ConfigGuideTargetHint) -> &'static str {
         match (target, self.ui_language) {
             (ConfigGuideTargetHint::Game, UiLanguage::ZhCn) => "修复游戏配置（配置引导）",
@@ -640,60 +628,6 @@ impl ClientLauncherApp {
             self.render_game_task_card(ui, game_required_issues, game_running);
             self.render_page_task_card(ui, game_required_issues, game_running);
         });
-    }
-
-    pub(super) fn render_disabled_action_ctas(
-        &mut self,
-        ui: &mut egui::Ui,
-        game_required_issues: &[ConfigIssue],
-        chain_required_issues: &[ConfigIssue],
-        chain_running: bool,
-    ) {
-        if self.is_feedback_available() {
-            return;
-        }
-
-        if let Some(hint) = self.feedback_unavailable_hint() {
-            ui.small(egui::RichText::new(hint).color(egui::Color32::from_rgb(158, 134, 76)));
-        }
-
-        if let Some(cta) = resolve_primary_disabled_cta(
-            self.config.chain_enabled,
-            game_required_issues,
-            chain_required_issues,
-            chain_running,
-        ) {
-            if ui.button(self.disabled_cta_text(cta)).clicked() {
-                self.record_guided_quick_action_click();
-                match cta {
-                    DisabledActionCta::EnableChain => {
-                        self.config.chain_enabled = true;
-                        self.chain_runtime_status = ChainRuntimeStatus::NotStarted;
-                        self.append_log(self.tr(
-                            "已启用区块链功能，请继续启动区块链。",
-                            "Blockchain enabled. Continue with Start Blockchain.",
-                        ));
-                    }
-                    DisabledActionCta::FixChainConfig => {
-                        self.open_chain_config_guide();
-                        self.append_log(self.tr(
-                            "已打开区块链配置引导，请先修复后再试。",
-                            "Blockchain configuration guide opened. Fix it and retry.",
-                        ));
-                    }
-                    DisabledActionCta::StartChain => {
-                        self.start_chain_process();
-                    }
-                    DisabledActionCta::FixGameConfig => {
-                        self.open_game_config_guide();
-                        self.append_log(self.tr(
-                            "已打开游戏配置引导，请先修复后再试。",
-                            "Game configuration guide opened. Fix it and retry.",
-                        ));
-                    }
-                }
-            }
-        }
     }
 
     fn render_chain_task_card(

@@ -57,6 +57,7 @@ mod llm_settings;
 #[path = "llm_settings_web.rs"]
 mod llm_settings;
 mod platform_ops;
+mod self_guided_blocked_actions;
 mod self_guided;
 mod self_guided_error_cards;
 #[cfg(not(target_arch = "wasm32"))]
