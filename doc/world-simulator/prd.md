@@ -42,6 +42,7 @@
   - `doc/world-simulator/launcher/game-client-launcher-availability-ux-hardening-2026-03-08.prd.md`（PRD-WORLD_SIMULATOR-027）
   - `doc/world-simulator/launcher/game-client-launcher-blockchain-explorer-ui-ux-optimization-2026-03-08.prd.md`（PRD-WORLD_SIMULATOR-028）
   - `doc/world-simulator/launcher/game-client-launcher-full-usability-remediation-2026-03-08.prd.md`（PRD-WORLD_SIMULATOR-029）
+  - `doc/world-simulator/launcher/game-client-launcher-self-guided-experience-2026-03-08.prd.md`（PRD-WORLD_SIMULATOR-030）
   - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase1-2026-03-04.prd.md`（PRD-WORLD_SIMULATOR-016）
   - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase2-2026-03-05.prd.md`（PRD-WORLD_SIMULATOR-017）
   - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase3-2026-03-05.prd.md`（PRD-WORLD_SIMULATOR-018）
@@ -66,6 +67,7 @@
 - M15 (2026-03-08): 完成启动器可用性与体验硬化（路径回退、禁用态提示、参数编码、状态语义、移动端可读性、favicon 噪声治理）。
 - M16 (2026-03-08): 完成启动器区块链浏览器视觉与交互优化（概览分组、状态徽标、筛选恢复、列表-详情协同）。
 - M17 (2026-03-08): 完成启动器全量可用性残余风险收口（配置防回写、按域并发、反馈草稿保护、顶栏响应式、转账过滤重置）。
+- M18 (2026-03-08): 完成启动器自引导体验闭环建模与任务拆解（首次引导、任务流、术语解释、演示模式、配置画像、本地埋点）。
 
 ## 风险
 - 模块边界演进快，文档同步可能滞后。
@@ -111,6 +113,7 @@
   - SC-33: 启动器在“启动游戏/启动区块链”遇到阻断配置时必须弹出可编辑配置引导窗口，并在首次进入时执行一次轻量自动引导。
   - SC-34: 启动器区块链浏览器必须具备可快速判读的视觉层级与低摩擦交互（概览分组、状态可视化、筛选恢复、列表-详情协同），并保持 native/web 一致。
   - SC-35: 启动器必须在高频操作与轮询并发场景保持交互稳定（本地配置不被轮询回写、请求按域并发、反馈草稿不被中断），并补齐窄屏顶栏可读性与转账过滤重置入口。
+  - SC-36: 启动器需默认提供自引导体验（首次 3 步引导、任务流卡片、禁用态 CTA、术语解释、演示模式、成功配置画像与本地引导埋点），并允许专家用户无阻切换到高级配置路径。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -154,6 +157,7 @@
   - PRD-WORLD_SIMULATOR-027: As a 启动器玩家/运维人员, I want robust launcher defaults and explicit web-side diagnostics, so that startup and troubleshooting are reliable in both desktop and mobile usage.
   - PRD-WORLD_SIMULATOR-028: As a 启动器玩家/运维人员, I want a clearer and faster explorer UI, so that I can inspect chain state and locate problematic transactions with fewer interactions.
   - PRD-WORLD_SIMULATOR-029: As a 启动器玩家/运维人员, I want launcher interactions to remain stable under polling and continuous operations, so that edits and high-frequency actions are not interrupted or silently dropped.
+  - PRD-WORLD_SIMULATOR-030: As a 启动器新用户, I want launcher to guide me with actionable next steps and safe defaults, so that I can finish first launch without reading external docs.
 - Critical User Flows:
   1. Flow-WS-001（Web-first 闭环）:
      `选择场景 -> 启动 Viewer Web -> 执行关键交互 -> 采集日志/截图/指标 -> 产出 test_tier_required 结论`
@@ -209,8 +213,10 @@
      `点击启动游戏/区块链 -> 检测到阻断配置 -> 弹出配置引导窗口并直接填写字段 -> 校验通过后再次启动`
   27. Flow-WS-027（Launcher 区块链浏览器视觉与交互优化）:
      `打开浏览器面板 -> 查看分组概览与状态计数 -> 在区块/交易列表点击项并同页查看详情 -> 按需应用或清空筛选 -> 跨 tab 跳转 tx_hash 完成定位`
-  27. Flow-WS-027（Launcher 可用性残余风险收口）:
+  28. Flow-WS-028（Launcher 可用性残余风险收口）:
      `编辑高级配置并保持草稿 -> 并行执行 explorer/transfer 查询与状态轮询 -> 链状态波动时反馈窗口保持打开 -> 顶栏在窄屏自动换行 -> 转账过滤支持一键清空恢复`
+  29. Flow-WS-029（Launcher 自引导首会话闭环）:
+     `首次进入 -> 3 步向导 -> 任务流卡片驱动链/游戏启动 -> 禁用态 CTA 修复 -> 术语提示 + 快捷入口 -> 成功配置保存并记录引导计数`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
@@ -235,6 +241,7 @@
 | Launcher 可用性与体验硬化 | `viewer_static_dir` 候选路径、`chain_status`、查询参数（`account_id/contract_id/q/tx_hash/action_id`）、移动视口布局、favicon 声明、`ConfigIssue -> 字段` 引导映射 | 启动自动路径回退；禁用按钮显示原因；请求前统一 URL 编码；stop no-op 保留状态语义；小屏字段纵向可读；启动阻断时弹出可编辑配置引导 | `idle -> running` 或 `idle -> invalid_config`；`stop(no-op) -> same_state`；`start_click -> guide_open -> retry_start` | 路径按候选优先级命中；查询参数按 RFC3986 安全子集编码；引导字段按问题去重排序 | 配置编辑限本地运维；查询只读；控制面操作可写 |
 | Launcher 区块链浏览器视觉与交互优化 | 概览卡片、状态徽标、筛选栏、清空动作、列表-详情协同区域 | 支持快速刷新、筛选恢复、列表点击即详情、跨 tab 跳转 | `idle -> loading -> ready/failed`（请求态可见） | 保持既有查询排序；交互减少无效往返点击 | 链未就绪时入口禁用；查询只读 |
 | Launcher 全量可用性残余风险收口 | `config_dirty`、in-flight 域（`state/control/feedback/transfer_submit/transfer_query/explorer`）、`feedback_window_open`、转账历史过滤字段 | 配置编辑时阻止快照回写；请求按域并发；反馈窗口不被强制关闭；顶栏 wrapped；新增清空过滤 | `clean/dirty/synced` + `idle/inflight(domain)` + `window_open/disabled_submit` | 轮询只由 `state` 域门控；过滤清空后按默认排序刷新 | 配置编辑本地可写；查询只读；控制操作按既有权限 |
+| Launcher 自引导体验闭环 | `onboarding_step/onboarding_completed`、任务卡 `ready/blocked_reason/cta`、术语 key（nonce/slot/mempool/action_id）、`last_successful_config`、`demo_mode_enabled`、本地计数器 | 默认展示 3 步引导 + 任务流卡片；禁用态提供就地 CTA；转账/浏览器提供快捷动作；成功配置自动保存并可恢复；演示模式串行动作；引导计数可见 | `onboarding: hidden/step1/step2/step3/completed`；`task: todo/doing/done/blocked`；`profile: none/saved/restored` | 任务卡按依赖顺序（链->游戏->页面）；计数器按事件单调递增；成功配置仅保留最近一次 | 本地会话可写；查询与术语解释只读 |
 | Launcher Web 设置/反馈对齐 | 设置窗口字段 + `/api/chain/feedback` + `kind/title/description` | 浏览器端可打开设置窗口与反馈窗口；反馈提交通过控制面代理返回结构化结果 | `settings: closed/open/saved` + `feedback: idle/validating/submitting/success/failed` | 反馈标题/描述必填；单请求 in-flight 门控 | 反馈提交仅链就绪可用；设置仅当前会话可编辑 |
 | Launcher native 遗留清理 | native 失效状态字段、无效常量 `cfg` 边界、未引用旧测试文件 | 保持现有 UI/API 行为不变前提下清理历史残留 | `legacy_present -> removed -> regression_passed` | 优先删除“无读写路径/无编译入口引用”的资产 | 仅开发维护路径可修改，运行时玩家能力不变 |
 | Viewer live runtime 接管 | runtime `DomainEvent`、兼容 `WorldSnapshot/WorldEvent` | 启动 `world_viewer_live` 后按 Play/Step 推进 runtime，并推送兼容快照/事件 | `runtime_mode`（固定） | 事件序列保持单调；至少映射注册/移动/转移/拒绝四类事件 | 本地开发链路，默认不开放远程写接口 |
@@ -279,6 +286,7 @@
   - AC-36: 启动器可用性与体验硬化完成：源码直跑默认静态目录有效回退、wasm 禁用态提示可见、explorer/search/transfer 查询参数统一编码、stop no-op 不覆盖错误态、390x844 视口配置区可读、页面无 `favicon.ico 404` 噪声。
   - AC-37: 启动器在配置阻断时必须弹出“可编辑配置引导”窗口（非纯提示），首次进入若存在阻断项自动弹出一次；修复后可直接重试启动。
   - AC-38: 启动器区块链浏览器完成视觉与交互优化：概览分组可判读、状态可视化、筛选可一键恢复、列表与详情同页协同，且 native/web 行为一致并通过 required 回归。
+  - AC-39: 启动器自引导闭环完成：首次 3 步引导、任务流卡片、禁用态 CTA、转账金额预设与时间线、浏览器快捷入口、术语解释、成功配置画像、演示模式与本地引导计数在 native/web 双端一致可用。
 - Non-Goals:
   - 不在本 PRD 中详细列出每个 UI 像素级规范。
   - 不替代 world-runtime/p2p 的底层协议设计。
@@ -433,6 +441,7 @@
 | PRD-WORLD_SIMULATOR-027 | TASK-WORLD_SIMULATOR-063/064/065/066 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown` + Playwright（桌面 + 390x844）采证，验证路径回退、禁用态提示、参数编码、stop no-op 语义、移动端可读性、favicon 噪声治理与启动阻断引导 | 启动器可用性稳定性、跨端体验一致性与运维可诊断性 |
 | PRD-WORLD_SIMULATOR-028 | TASK-WORLD_SIMULATOR-067/068 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown` + `env -u RUSTC_WRAPPER cargo fmt --all`，验证浏览器面板视觉层级、状态可视化、筛选恢复与列表-详情协同交互 | 启动器区块链浏览器日常核查效率、跨端体验一致性 |
 | PRD-WORLD_SIMULATOR-029 | TASK-WORLD_SIMULATOR-069/070/071 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown`，验证配置防回写、请求按域并发、反馈草稿保护、顶栏响应式与转账过滤清空 | 启动器高频交互稳定性、并发可用性与窄屏可读性 |
+| PRD-WORLD_SIMULATOR-030 | TASK-WORLD_SIMULATOR-072/073/074/075/076/077/078/079/080/081/082/083/084 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown` + Playwright（桌面 + 390x844）采证，验证首次引导、任务流、禁用态 CTA、术语解释、转账快捷与时间线、浏览器快捷入口、成功配置恢复、演示模式与本地计数 | 启动器新用户自引导闭环、跨端一致性与可复盘能力 |
 
 - Decision Log:
 
@@ -457,3 +466,4 @@
 | DEC-WS-017 | 先补齐 explorer RPC 与控制面代理，再接区块链浏览器 UI 面板 | 先做 UI 再倒推接口 | RPC 语义先冻结可避免 UI 返工并降低跨端漂移风险；对应 `TASK-WORLD_SIMULATOR-054/055/056`。 |
 | DEC-WS-018 | 使用统一 explorer store 单点消费 committed batches，并扩展为持久化索引（blocks/txs/search）供旧/新查询接口共享 | 多个查询模块分别 drain committed batches | committed batches 为单消费语义，多点消费会导致索引漂移；统一状态源可保证查询一致性并降低维护复杂度；对应 `TASK-WORLD_SIMULATOR-058/059`。 |
 | DEC-WS-019 | 以“默认可用 + 可解释失败 + 跨端一致”一次性硬化启动器可用性基线（路径回退、禁用态原因、参数编码、stop no-op 语义、移动端可读性、favicon） | 仅修复单点缺陷，保留其余体验债务 | 该批问题会叠加放大运维诊断成本与用户失败感知；合并治理能在一次回归中收敛可用性风险；对应 `TASK-WORLD_SIMULATOR-063/064`。 |
+| DEC-WS-020 | 启动器采用“默认自引导 + 专家模式可切换 + 本地可复盘计数”策略 | 保持纯按钮面板 + 外链文档说明 | 新用户首会话需在产品内闭环完成关键任务，且要兼顾专家用户效率与后续迭代可观测性；对应 `TASK-WORLD_SIMULATOR-072~084`。 |

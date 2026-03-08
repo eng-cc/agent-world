@@ -74,6 +74,19 @@
 - [x] TASK-WORLD_SIMULATOR-069 (PRD-WORLD_SIMULATOR-029) [test_tier_required]: 完成“启动器全量可用性残余风险收口”PRD 建模、任务拆解与模块文档树回写。
 - [x] TASK-WORLD_SIMULATOR-070 (PRD-WORLD_SIMULATOR-029) [test_tier_required]: 落地配置防回写与请求并发域拆分（native/web 同步），并补齐定向回归测试。
 - [x] TASK-WORLD_SIMULATOR-071 (PRD-WORLD_SIMULATOR-029) [test_tier_required]: 落地反馈草稿保护、顶栏响应式与转账过滤重置，并完成 native/web 回归。
+- [x] TASK-WORLD_SIMULATOR-072 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 完成“启动器自引导体验闭环（12 点）”PRD 建模、任务拆解与模块文档树回写。
+- [ ] TASK-WORLD_SIMULATOR-073 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 落地首次 3 步引导向导（可完成/跳过/重置）并完成 native/web 回归。
+- [ ] TASK-WORLD_SIMULATOR-074 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 落地主界面任务流卡片与“下一步建议”渲染（链/游戏/页面）并完成回归。
+- [ ] TASK-WORLD_SIMULATOR-075 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 完成专家模式切换（默认简化视图 + 高级配置可达）并完成回归。
+- [ ] TASK-WORLD_SIMULATOR-076 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 为关键禁用态按钮补齐就地 CTA（修复配置/启动链/重试）并完成回归。
+- [ ] TASK-WORLD_SIMULATOR-077 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 增强配置引导联动（任务流/CTA 直达配置引导）并完成回归。
+- [ ] TASK-WORLD_SIMULATOR-078 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 扩展转账轻量模式（金额预设、账户推荐）并完成回归。
+- [ ] TASK-WORLD_SIMULATOR-079 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 新增转账状态时间线展示（accepted/pending/final）并完成回归。
+- [ ] TASK-WORLD_SIMULATOR-080 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 增加浏览器快捷入口（最新区块/最近交易/我的账户）并完成回归。
+- [ ] TASK-WORLD_SIMULATOR-081 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 为 nonce/slot/mempool/action_id 补齐术语内联解释并完成回归。
+- [ ] TASK-WORLD_SIMULATOR-082 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 新增“最近成功配置画像”保存/恢复/清空闭环并完成回归。
+- [ ] TASK-WORLD_SIMULATOR-083 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 落地演示模式一键闭环（安全默认配置 + 串行动作）并完成回归。
+- [ ] TASK-WORLD_SIMULATOR-084 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 落地本地引导埋点计数与洞察面板，并完成 native/web 回归收口。
 
 ## 专题任务映射（2026-03-02 批次）
 - [x] SUBTASK-WORLD_SIMULATOR-20260302-001 (PRD-WORLD_SIMULATOR-001/002/003) [test_tier_required]: `doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.prd.project.md`
@@ -148,6 +161,8 @@
 - `doc/world-simulator/launcher/game-client-launcher-blockchain-explorer-ui-ux-optimization-2026-03-08.prd.project.md`
 - `doc/world-simulator/launcher/game-client-launcher-full-usability-remediation-2026-03-08.prd.md`
 - `doc/world-simulator/launcher/game-client-launcher-full-usability-remediation-2026-03-08.prd.project.md`
+- `doc/world-simulator/launcher/game-client-launcher-self-guided-experience-2026-03-08.prd.md`
+- `doc/world-simulator/launcher/game-client-launcher-self-guided-experience-2026-03-08.prd.project.md`
 - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase1-2026-03-04.prd.md`
 - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase2-2026-03-05.prd.md`
 - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase3-2026-03-05.prd.md`
@@ -174,10 +189,10 @@
 
 ## 状态
 - 更新日期: 2026-03-08
-- 当前状态: in_progress（等待下一轮需求）
-- 当前优先任务: 无
-- 并行待办: 无
-- 专题映射状态: 2026-03-02 批次 9/9、2026-03-03 批次 4/4、2026-03-04 批次 7/7、2026-03-05 批次 4/4、2026-03-06 批次 6/6 已纳入模块项目管理文档；`TASK-WORLD_SIMULATOR-057/058/059/060/061/062/063/064/065/066/067/068/069/070/071` 已完成。
+- 当前状态: in_progress（执行 `PRD-WORLD_SIMULATOR-030` 自引导体验闭环）
+- 当前优先任务: TASK-WORLD_SIMULATOR-073
+- 并行待办: TASK-WORLD_SIMULATOR-074/075（待 TASK-WORLD_SIMULATOR-073 收口后进入）
+- 专题映射状态: 2026-03-02 批次 9/9、2026-03-03 批次 4/4、2026-03-04 批次 7/7、2026-03-05 批次 4/4、2026-03-06 批次 6/6 已纳入模块项目管理文档；`TASK-WORLD_SIMULATOR-057/058/059/060/061/062/063/064/065/066/067/068/069/070/071/072` 已完成，`TASK-WORLD_SIMULATOR-073~084` 待执行。
 - 手册入口状态: `doc/world-simulator/viewer/viewer-manual.md` 为唯一活跃手册入口。
 - 视觉评分模板状态: `doc/world-simulator/prd/acceptance/visual-review-score-card.md` 已纳入文档树，采用卡片式评审覆盖 llm_bootstrap 场景 18 张截图。
 - UI 评审结果状态: `doc/ui_review_result/ui_review_list.md` 已建立，首张待打分卡片为 `doc/ui_review_result/card_2026_03_06_11_50_29.md`。
