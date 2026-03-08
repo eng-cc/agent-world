@@ -112,6 +112,10 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023
   - `module=<controls|overview|chat|overlay|diagnosis|event_link|timeline|details>:<show|hide|toggle>`
   - `locale=zh|en|toggle`（或 `language=zh|en|toggle`）
   - `layout=mission|command|intel`
+  - `chat=<agent_id>|<message>`（`message` 支持 `%xx` 文本解码）
+  - `prompt_system=<agent_id>|<text|clear>`
+  - `prompt_short=<agent_id>|<text|clear>`
+  - `prompt_long=<agent_id>|<text|clear>`
   - `material_variant=next|cycle`
 
 示例：
@@ -137,6 +141,14 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023
   --scenario llm_bootstrap \
   --addr 127.0.0.1:5131 \
   --automation-steps "top_panel=hide;locale=en;layout=command;panel=show;module=chat:show;wait=0.2"
+```
+
+示例（round-3 语义补齐）：
+```bash
+./scripts/capture-viewer-frame.sh \
+  --scenario llm_bootstrap \
+  --addr 127.0.0.1:5131 \
+  --automation-steps "layout=command;chat=agent-0|hello%20from%20automation;prompt_short=agent-0|Prioritize%20power%20stability;wait=0.2"
 ```
 
 ## 3D 渲染档位与精调（商业化精致度）
