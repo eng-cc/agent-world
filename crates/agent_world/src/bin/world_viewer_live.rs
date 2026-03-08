@@ -13,6 +13,8 @@ const DEFAULT_BIND: &str = "127.0.0.1:5023";
 const DEFAULT_WEB_BIND: &str = "127.0.0.1:5011";
 const REMOVAL_HINT: &str =
     "embedded node flags were removed from world_viewer_live; use world_chain_runtime (normally launched by world_game_launcher)";
+const RUNTIME_ALIAS_REMOVAL_HINT: &str =
+    "`--runtime-world` was removed; world_viewer_live is runtime/world only, start without this flag";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct CliOptions {
@@ -115,13 +117,16 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
                 options.llm_mode = false;
             }
             "--runtime-world" => {
-                // Keep compatibility with old scripts; runtime/world is now the only mode.
+                return Err(RUNTIME_ALIAS_REMOVAL_HINT.to_string());
             }
             "--no-runtime-world" => {
                 return Err(
                     "`--no-runtime-world` is no longer supported: world_viewer_live is runtime-only"
                         .to_string(),
                 );
+            }
+            "--release-config" => {
+                return Err(format!("`{arg}` is no longer supported: {REMOVAL_HINT}"));
             }
             "--topology" | "--no-node" | "--viewer-no-consensus-gate" => {
                 return Err(format!("`{arg}` is no longer supported: {REMOVAL_HINT}"));
@@ -190,12 +195,11 @@ Options:\n\
   --bind <host:port>        viewer live server bind (default: {DEFAULT_BIND})\n\
   --web-bind <host:port>    websocket bridge bind (default: {DEFAULT_WEB_BIND})\n\
   --no-web-bind             disable websocket bridge\n\
-  --runtime-world           compatibility alias (runtime/world is the only mode)\n\
   --llm                     enable llm mode\n\
   --no-llm                  disable llm mode (default)\n\
   -h, --help                show help\n\n\
 Removed:\n\
-  all --node-*, --topology, --triad-*, --reward-runtime-*, --no-node, --viewer-no-consensus-gate\n\
+  --release-config, --runtime-world, all --node-*, --topology, --triad-*, --reward-runtime-*, --no-node, --viewer-no-consensus-gate\n\
   -> use world_chain_runtime (usually managed by world_game_launcher)"
     );
 }
@@ -272,17 +276,19 @@ mod tests {
     }
 
     #[test]
-    fn parse_options_accepts_runtime_world_alias() {
-        let options = parse_options(["--runtime-world"].into_iter())
-            .expect("runtime world alias should be accepted");
-        assert_eq!(options.bind_addr, DEFAULT_BIND);
+    fn parse_options_rejects_runtime_world_alias() {
+        let err =
+            parse_options(["--runtime-world"].into_iter()).expect_err("runtime alias should fail");
+        assert!(err.contains("removed"));
+        assert!(err.contains("runtime/world"));
     }
 
     #[test]
-    fn parse_options_accepts_runtime_world_alias_with_llm() {
-        let options = parse_options(["--runtime-world", "--llm"].into_iter())
-            .expect("runtime world alias + llm should be allowed");
-        assert!(options.llm_mode);
+    fn parse_options_rejects_release_config_flag() {
+        let err =
+            parse_options(["--release-config", "legacy.toml"].into_iter()).expect_err("flag");
+        assert!(err.contains("no longer supported"));
+        assert!(err.contains("world_chain_runtime"));
     }
 
     #[test]
