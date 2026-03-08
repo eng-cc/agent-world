@@ -135,15 +135,22 @@ pub(super) fn load_commit_message_cold_index_from_root(
     root_dir: &Path,
 ) -> Result<CommitMessageColdIndex, NodeError> {
     let canonical_path = commit_message_cold_index_manifest_path_from_root(root_dir);
+    let legacy_path = legacy_commit_message_cold_index_path_from_root(root_dir);
     if canonical_path.exists() {
-        return load_json_or_default::<CommitMessageColdIndex>(canonical_path.as_path())
-            .map(normalize_commit_message_cold_index);
+        let loaded = load_json_or_default::<CommitMessageColdIndex>(canonical_path.as_path())?;
+        let cold_index = normalize_commit_message_cold_index(loaded.clone());
+        if !legacy_path.exists() || cold_index != loaded {
+            write_commit_message_cold_index_to_root(root_dir, &cold_index)?;
+        }
+        return Ok(cold_index);
     }
 
-    let legacy_path = legacy_commit_message_cold_index_path_from_root(root_dir);
     if legacy_path.exists() {
-        return load_json_or_default::<CommitMessageColdIndex>(legacy_path.as_path())
-            .map(normalize_commit_message_cold_index);
+        let cold_index = normalize_commit_message_cold_index(load_json_or_default::<
+            CommitMessageColdIndex,
+        >(legacy_path.as_path())?);
+        write_commit_message_cold_index_to_root(root_dir, &cold_index)?;
+        return Ok(cold_index);
     }
 
     Ok(CommitMessageColdIndex::default())

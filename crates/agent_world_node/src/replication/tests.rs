@@ -405,6 +405,86 @@ fn commit_cold_index_uses_canonical_layout_and_refreshes_hot_range() {
 }
 
 #[test]
+fn load_commit_message_by_height_migrates_legacy_only_cold_index_to_canonical_layout() {
+    let dir = temp_dir("commit-cold-index-legacy-only");
+    let world_id = "world-commit-cold-index-legacy-only";
+    let config = NodeReplicationConfig::new(&dir)
+        .expect("config")
+        .with_max_hot_commit_messages(2)
+        .expect("hot commit cap");
+    let runtime = ReplicationRuntime::new(&config, "node-a").expect("runtime");
+
+    let message_1 = signed_remote_message(91, world_id, "node-b", 1);
+    let message_2 = signed_remote_message(92, world_id, "node-b", 2);
+    let message_3 = signed_remote_message(93, world_id, "node-b", 3);
+    runtime
+        .persist_commit_message(1, &message_1)
+        .expect("persist message 1");
+    runtime
+        .persist_commit_message(2, &message_2)
+        .expect("persist message 2");
+    runtime
+        .persist_commit_message(3, &message_3)
+        .expect("persist message 3");
+
+    let canonical_dir = dir.join(storage_cold_index_dir_name(COMMIT_MESSAGE_DIR));
+    std::fs::remove_dir_all(&canonical_dir).expect("remove canonical cold index dir");
+    assert!(
+        dir.join("replication_commit_messages_cold_index.json")
+            .exists(),
+        "legacy cold index should still exist"
+    );
+
+    let loaded_1 = runtime
+        .load_commit_message_by_height(world_id, 1)
+        .expect("load commit height 1")
+        .expect("cold commit height 1 should exist");
+    assert_eq!(loaded_1.record.content_hash, message_1.record.content_hash);
+    assert!(
+        canonical_dir
+            .join(STORAGE_COLD_INDEX_MANIFEST_FILE)
+            .exists(),
+        "legacy-only cold index should backfill canonical manifest on read"
+    );
+
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn load_commit_message_cold_index_restores_legacy_alias_from_canonical_manifest() {
+    let dir = temp_dir("commit-cold-index-restore-legacy");
+    let world_id = "world-commit-cold-index-restore-legacy";
+    let config = NodeReplicationConfig::new(&dir)
+        .expect("config")
+        .with_max_hot_commit_messages(2)
+        .expect("hot commit cap");
+    let runtime = ReplicationRuntime::new(&config, "node-a").expect("runtime");
+
+    runtime
+        .persist_commit_message(1, &signed_remote_message(94, world_id, "node-b", 1))
+        .expect("persist message 1");
+    runtime
+        .persist_commit_message(100, &signed_remote_message(95, world_id, "node-b", 100))
+        .expect("persist message 100");
+
+    let legacy_path = dir.join("replication_commit_messages_cold_index.json");
+    std::fs::remove_file(&legacy_path).expect("remove legacy alias");
+    assert!(
+        !legacy_path.exists(),
+        "legacy alias should be removed for test"
+    );
+
+    let cold_index = load_commit_message_cold_index_from_root(dir.as_path()).expect("cold index");
+    assert_eq!(cold_index.manifest.namespace, COMMIT_MESSAGE_DIR);
+    assert!(
+        legacy_path.exists(),
+        "canonical load should restore legacy alias"
+    );
+
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn prune_hot_commit_messages_uses_latest_height_window_range() {
     let dir = temp_dir("commit-hot-window-range");
     let world_id = "world-commit-hot-window-range";

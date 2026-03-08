@@ -226,6 +226,7 @@ struct StorageColdIndexRangeAnchor {
 - 共享 cold index 目录采用 `<namespace>.cold-index/index.json`；有分段数据时统一使用同级 `segments/` 目录承载 payload。
 - `hot_range` 表示当前仍保留在热路径中的连续键范围；对 replication 即 latest-based height window，对 tick/archive 则可映射为 tick range。
 - `cold_range_anchor` 只承载冷区边界锚点而不是全量 payload，最低要求为 `from_key` / `to_key` / `first_content_hash` / `last_content_hash` / `entry_count`，供审计、metrics 与 seek 策略共用。
+- rollout 期间 canonical 与 legacy alias 采用双写 + 读时回填策略：若 `<namespace>.cold-index/index.json` 或旧别名缺失，读取路径会补回另一侧，避免已有样本和脚本立即失效。
 
 ### 6.7 StorageMetricsSnapshot
 ```rust
