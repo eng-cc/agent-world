@@ -68,6 +68,7 @@
 - [x] TASK-WORLD_SIMULATOR-063 (PRD-WORLD_SIMULATOR-027) [test_tier_required]: 完成“启动器可用性与体验硬化”PRD 建模、任务拆解与模块文档树回写。
 - [x] TASK-WORLD_SIMULATOR-064 (PRD-WORLD_SIMULATOR-027) [test_tier_required]: 落地启动器可用性与体验硬化修复（路径回退、禁用态提示、参数编码、stop no-op 语义、移动端布局、favicon 噪声）并完成跨端回归。
 - [x] TASK-WORLD_SIMULATOR-065 (PRD-WORLD_SIMULATOR-027) [test_tier_required]: 启动器主界面采用高频操作收口，低频配置迁移到“高级配置”弹窗，并完成 native/web 回归。
+- [x] TASK-WORLD_SIMULATOR-066 (PRD-WORLD_SIMULATOR-027) [test_tier_required]: 启动阻断时弹出“可编辑配置引导”窗口（含首次进入一次轻量引导），并完成 native/web 回归。
 
 ## 专题任务映射（2026-03-02 批次）
 - [x] SUBTASK-WORLD_SIMULATOR-20260302-001 (PRD-WORLD_SIMULATOR-001/002/003) [test_tier_required]: `doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.prd.project.md`

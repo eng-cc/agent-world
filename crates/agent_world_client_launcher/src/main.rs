@@ -16,11 +16,6 @@ use std::time::Duration;
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::Instant;
 
-#[cfg(not(target_arch = "wasm32"))]
-use agent_world_launcher_ui::launcher_ui_fields_for_native;
-#[cfg(target_arch = "wasm32")]
-use agent_world_launcher_ui::launcher_ui_fields_for_web;
-use agent_world_launcher_ui::{LauncherUiField, LauncherUiFieldKind};
 use eframe::egui;
 #[cfg(not(target_arch = "wasm32"))]
 use feedback_entry::FeedbackDraft;
@@ -47,6 +42,7 @@ use web_time::Instant;
 mod app_process;
 #[cfg(target_arch = "wasm32")]
 mod app_process_web;
+mod config_ui;
 mod explorer_window;
 #[cfg(not(target_arch = "wasm32"))]
 mod feedback_entry;
@@ -65,6 +61,7 @@ mod platform_ops;
 mod transfer_entry;
 mod transfer_window;
 
+use config_ui::StartupGuideState;
 use launcher_core::*;
 
 const DEFAULT_SCENARIO: &str = "llm_bootstrap";
@@ -743,6 +740,7 @@ struct ClientLauncherApp {
     feedback_draft: FeedbackDraft,
     feedback_submit_state: FeedbackSubmitState,
     feedback_window_open: bool,
+    startup_guide_state: StartupGuideState,
     config_window_open: bool,
     transfer_draft: TransferDraft,
     transfer_submit_state: TransferSubmitState,
@@ -809,6 +807,7 @@ impl Default for ClientLauncherApp {
             feedback_draft: FeedbackDraft::default(),
             feedback_submit_state: FeedbackSubmitState::None,
             feedback_window_open: false,
+            startup_guide_state: StartupGuideState::default(),
             config_window_open: false,
             transfer_draft: TransferDraft::default(),
             transfer_submit_state: TransferSubmitState::None,
@@ -886,200 +885,6 @@ impl ClientLauncherApp {
                 self.feedback_submit_state = FeedbackSubmitState::Failed(message);
             }
         }
-    }
-
-    fn ui_field_label(&self, field: &LauncherUiField) -> &'static str {
-        match self.ui_language {
-            UiLanguage::ZhCn => field.label_zh,
-            UiLanguage::EnUs => field.label_en,
-        }
-    }
-
-    fn render_config_field(
-        &mut self,
-        ui: &mut egui::Ui,
-        field: &LauncherUiField,
-        stack_text_fields: bool,
-    ) {
-        let label = self.ui_field_label(field);
-        match field.kind {
-            LauncherUiFieldKind::Text => {
-                if let Some(value) = launcher_text_field_mut(&mut self.config, field.id) {
-                    if stack_text_fields {
-                        ui.vertical(|ui| {
-                            ui.label(label);
-                            ui.add_sized(
-                                [ui.available_width(), 0.0],
-                                egui::TextEdit::singleline(value),
-                            );
-                        });
-                    } else {
-                        ui.horizontal(|ui| {
-                            ui.label(label);
-                            ui.text_edit_singleline(value);
-                        });
-                    }
-                }
-            }
-            LauncherUiFieldKind::Checkbox => {
-                if let Some(value) = launcher_checkbox_field_mut(&mut self.config, field.id) {
-                    ui.checkbox(value, label);
-                }
-            }
-        }
-    }
-
-    fn render_config_section(&mut self, ui: &mut egui::Ui, section: &str) {
-        let stack_text_fields = ui.available_width() <= 560.0;
-        ui.vertical(|ui| {
-            #[cfg(not(target_arch = "wasm32"))]
-            {
-                for field in
-                    launcher_ui_fields_for_native().filter(|field| field.section == section)
-                {
-                    self.render_config_field(ui, field, stack_text_fields);
-                }
-            }
-
-            #[cfg(target_arch = "wasm32")]
-            {
-                for field in launcher_ui_fields_for_web().filter(|field| field.section == section) {
-                    self.render_config_field(ui, field, stack_text_fields);
-                }
-            }
-        });
-    }
-
-    fn render_config_validation_summary(
-        &mut self,
-        ui: &mut egui::Ui,
-        game_required_issues: &[ConfigIssue],
-        chain_required_issues: &[ConfigIssue],
-    ) {
-        let chain_issue_count = if self.config.chain_enabled {
-            chain_required_issues.len()
-        } else {
-            0
-        };
-        let has_issue = !game_required_issues.is_empty() || chain_issue_count > 0;
-
-        ui.horizontal_wrapped(|ui| {
-            ui.label(self.tr(
-                "低频配置已收口到高级配置弹窗。",
-                "Low-frequency settings are grouped in Advanced Config.",
-            ));
-            if ui.button(self.tr("高级配置", "Advanced Config")).clicked() {
-                self.config_window_open = true;
-            }
-        });
-
-        if !has_issue {
-            ui.colored_label(
-                egui::Color32::from_rgb(36, 130, 78),
-                self.tr(
-                    "当前配置校验通过，可直接执行高频操作。",
-                    "Configuration checks passed; quick actions are ready.",
-                ),
-            );
-            return;
-        }
-
-        let summary = if self.config.chain_enabled {
-            match self.ui_language {
-                UiLanguage::ZhCn => format!(
-                    "存在配置问题：游戏 {} 项，区块链 {} 项",
-                    game_required_issues.len(),
-                    chain_issue_count
-                ),
-                UiLanguage::EnUs => format!(
-                    "Configuration issues detected: game {}, blockchain {}",
-                    game_required_issues.len(),
-                    chain_issue_count
-                ),
-            }
-        } else {
-            match self.ui_language {
-                UiLanguage::ZhCn => format!("存在配置问题：游戏 {} 项", game_required_issues.len()),
-                UiLanguage::EnUs => format!(
-                    "Configuration issues detected: game {}",
-                    game_required_issues.len()
-                ),
-            }
-        };
-        ui.colored_label(egui::Color32::from_rgb(188, 60, 60), summary);
-        ui.small(self.tr(
-            "请点击“高级配置”查看并修复具体字段。",
-            "Open Advanced Config to review and fix specific fields.",
-        ));
-    }
-
-    fn show_config_window(
-        &mut self,
-        ctx: &egui::Context,
-        game_required_issues: &[ConfigIssue],
-        chain_required_issues: &[ConfigIssue],
-    ) {
-        if !self.config_window_open {
-            return;
-        }
-
-        let mut keep_open = self.config_window_open;
-        egui::Window::new(self.tr("高级配置", "Advanced Config"))
-            .collapsible(false)
-            .resizable(true)
-            .default_width(780.0)
-            .default_height(640.0)
-            .open(&mut keep_open)
-            .show(ctx, |ui| {
-                egui::ScrollArea::vertical()
-                    .auto_shrink([false, false])
-                    .show(ui, |ui| {
-                        for section in NATIVE_UI_SECTIONS {
-                            self.render_config_section(ui, section);
-                        }
-                    });
-
-                ui.separator();
-
-                if game_required_issues.is_empty() {
-                    ui.colored_label(
-                        egui::Color32::from_rgb(36, 130, 78),
-                        self.tr(
-                            "必填配置项已通过校验，可启动游戏",
-                            "Required configuration check passed; game can start",
-                        ),
-                    );
-                } else {
-                    ui.group(|ui| {
-                        ui.colored_label(
-                            egui::Color32::from_rgb(188, 60, 60),
-                            self.tr(
-                                "游戏启动前请先修复以下必填配置项：",
-                                "Fix the required game configuration issues before starting:",
-                            ),
-                        );
-                        for issue in game_required_issues {
-                            ui.label(format!("- {}", issue.text(self.ui_language)));
-                        }
-                    });
-                }
-
-                if self.config.chain_enabled && !chain_required_issues.is_empty() {
-                    ui.group(|ui| {
-                        ui.colored_label(
-                            egui::Color32::from_rgb(188, 60, 60),
-                            self.tr(
-                                "区块链启动前请先修复以下配置项：",
-                                "Fix the blockchain configuration issues before starting:",
-                            ),
-                        );
-                        for issue in chain_required_issues {
-                            ui.label(format!("- {}", issue.text(self.ui_language)));
-                        }
-                    });
-                }
-            });
-        self.config_window_open = keep_open;
     }
 
     fn feedback_unavailable_hint(&self) -> Option<String> {
@@ -1199,9 +1004,9 @@ impl eframe::App for ClientLauncherApp {
             self.chain_runtime_status,
             ChainRuntimeStatus::Starting | ChainRuntimeStatus::Ready
         );
-        let can_start_game = !game_running && game_required_issues.is_empty();
-        let can_start_chain =
-            self.config.chain_enabled && !chain_running && chain_required_issues.is_empty();
+        let can_click_start_game = !game_running;
+        let can_click_start_chain = self.config.chain_enabled && !chain_running;
+        self.maybe_open_startup_guide_on_first_check(&game_required_issues, &chain_required_issues);
 
         egui::CentralPanel::default().show(ctx, |ui| {
             self.render_config_validation_summary(
@@ -1215,12 +1020,12 @@ impl eframe::App for ClientLauncherApp {
             ui.horizontal_wrapped(|ui| {
                 if ui
                     .add_enabled(
-                        can_start_game,
+                        can_click_start_game,
                         egui::Button::new(self.tr("启动游戏", "Start Game")),
                     )
                     .clicked()
                 {
-                    self.start_process();
+                    self.handle_start_game_click(&game_required_issues);
                 }
                 if ui
                     .add_enabled(
@@ -1233,12 +1038,12 @@ impl eframe::App for ClientLauncherApp {
                 }
                 if ui
                     .add_enabled(
-                        can_start_chain,
+                        can_click_start_chain,
                         egui::Button::new(self.tr("启动区块链", "Start Blockchain")),
                     )
                     .clicked()
                 {
-                    self.start_chain_process();
+                    self.handle_start_chain_click(&chain_required_issues);
                 }
                 if ui
                     .add_enabled(
@@ -1351,6 +1156,7 @@ impl eframe::App for ClientLauncherApp {
         });
 
         self.show_config_window(ctx, &game_required_issues, &chain_required_issues);
+        self.show_startup_guide_window(ctx, &game_required_issues, &chain_required_issues);
         self.llm_settings_panel
             .show(ctx, self.ui_language, &mut self.config);
         self.show_feedback_window(ctx);

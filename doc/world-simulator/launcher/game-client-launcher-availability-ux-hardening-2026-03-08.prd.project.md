@@ -7,7 +7,7 @@
 - [x] T0 (PRD-WORLD_SIMULATOR-027) [test_tier_required]: 完成专题 PRD 建模、验收标准冻结与模块文档树回写。
 - [x] T1 (PRD-WORLD_SIMULATOR-027) [test_tier_required]: 落地启动器可用性与 UX 硬化修复（静态目录回退、wasm 禁用原因提示、查询参数编码、stop no-op 状态语义、移动端布局、favicon 噪声）并完成跨端回归。
 - [x] T2 (PRD-WORLD_SIMULATOR-027) [test_tier_required]: 将主界面低频配置收口到“高级配置”弹窗，保留高频操作面板与错误摘要入口，并完成 native/web 回归。
-- [ ] T3 (PRD-WORLD_SIMULATOR-027) [test_tier_required]: 实现“启动阻断配置引导”弹窗（点击启动即弹出可编辑输入框，首次进入执行一次轻量引导），并完成 native/web 回归。
+- [x] T3 (PRD-WORLD_SIMULATOR-027) [test_tier_required]: 实现“启动阻断配置引导”弹窗（点击启动即弹出可编辑输入框，首次进入执行一次轻量引导），并完成 native/web 回归。
 
 ## 依赖
 - `doc/world-simulator/prd.md`
@@ -27,6 +27,6 @@
 
 ## 状态
 - 最近更新：2026-03-08
-- 当前阶段: in_progress
-- 当前任务: T3
-- 备注: T0/T1/T2 已完成；正在推进 T3（启动阻断配置引导弹窗与首次轻量引导）。
+- 当前阶段: completed
+- 当前任务: 无
+- 备注: T0/T1/T2/T3 已完成；`PRD-WORLD_SIMULATOR-027` 可用性与引导体验闭环交付。

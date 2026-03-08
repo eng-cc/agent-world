@@ -1,10 +1,11 @@
 use super::{
     build_chain_runtime_args, build_game_url, build_launcher_args,
-    collect_chain_required_config_issues, collect_required_config_issues, encode_query_value,
-    encoded_query_pair, install_cjk_font, normalize_host_for_url, parse_chain_role,
-    parse_chain_validators, parse_host_port, parse_port, probe_chain_status_endpoint,
-    ChainRuntimeStatus, ClientLauncherApp, ConfigIssue, LaunchConfig, LauncherStatus, UiLanguage,
-    EGUI_CJK_FONT_NAME,
+    collect_chain_required_config_issues, collect_required_config_issues,
+    config_ui::{issue_field_ids, StartupGuideTarget},
+    encode_query_value, encoded_query_pair, install_cjk_font, normalize_host_for_url,
+    parse_chain_role, parse_chain_validators, parse_host_port, parse_port,
+    probe_chain_status_endpoint, ChainRuntimeStatus, ClientLauncherApp, ConfigIssue, LaunchConfig,
+    LauncherStatus, UiLanguage, EGUI_CJK_FONT_NAME,
 };
 use eframe::egui;
 use std::io::{Read, Write};
@@ -386,4 +387,50 @@ fn collect_chain_required_config_issues_accepts_valid_required_fields() {
 
     let issues = collect_chain_required_config_issues(&config);
     assert!(issues.is_empty());
+}
+
+#[test]
+fn issue_field_ids_maps_phase_out_of_range_to_related_fields() {
+    let ids = issue_field_ids(ConfigIssue::ChainPosProposalTickPhaseOutOfRange);
+    assert_eq!(
+        ids,
+        &["chain_pos_ticks_per_slot", "chain_pos_proposal_tick_phase"]
+    );
+}
+
+#[test]
+fn first_check_opens_startup_guide_once_for_game_issues() {
+    let mut app = ClientLauncherApp::default();
+    let game_issues = [ConfigIssue::ScenarioRequired];
+    app.maybe_open_startup_guide_on_first_check(&game_issues, &[]);
+    assert!(app.startup_guide_state.open);
+    assert_eq!(app.startup_guide_state.target, StartupGuideTarget::Game);
+    assert!(app.startup_guide_state.first_check_done);
+
+    app.startup_guide_state.open = false;
+    app.maybe_open_startup_guide_on_first_check(&game_issues, &[]);
+    assert!(!app.startup_guide_state.open);
+}
+
+#[test]
+fn handle_start_game_click_opens_startup_guide_when_invalid() {
+    let mut app = ClientLauncherApp::default();
+    let game_issues = [ConfigIssue::ScenarioRequired];
+    app.handle_start_game_click(&game_issues);
+    assert_eq!(app.status, LauncherStatus::InvalidArgs);
+    assert!(app.startup_guide_state.open);
+    assert_eq!(app.startup_guide_state.target, StartupGuideTarget::Game);
+}
+
+#[test]
+fn handle_start_chain_click_opens_startup_guide_when_invalid() {
+    let mut app = ClientLauncherApp::default();
+    let chain_issues = [ConfigIssue::ChainNodeIdRequired];
+    app.handle_start_chain_click(&chain_issues);
+    assert!(matches!(
+        app.chain_runtime_status,
+        ChainRuntimeStatus::ConfigError(_)
+    ));
+    assert!(app.startup_guide_state.open);
+    assert_eq!(app.startup_guide_state.target, StartupGuideTarget::Chain);
 }
