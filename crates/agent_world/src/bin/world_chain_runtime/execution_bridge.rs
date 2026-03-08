@@ -715,10 +715,33 @@ fn load_execution_replay_record_input(
     record: ExecutionBridgeRecord,
 ) -> Result<ExecutionReplayRecordInput, String> {
     let external_effect = match record.external_effect_ref.as_deref() {
-        Some(external_effect_ref) => Some(load_execution_external_effect_materialization(
-            execution_store,
-            external_effect_ref,
-        )?),
+        Some(external_effect_ref) => {
+            let external_effect = load_execution_external_effect_materialization(
+                execution_store,
+                external_effect_ref,
+            )?;
+            if external_effect.world_id != record.world_id {
+                return Err(format!(
+                    "execution replay input world_id mismatch height={} expected={} actual={}",
+                    record.height, record.world_id, external_effect.world_id
+                ));
+            }
+            if external_effect.height != record.height {
+                return Err(format!(
+                    "execution replay input height mismatch expected={} actual={}",
+                    record.height, external_effect.height
+                ));
+            }
+            if let Some(node_block_hash) = record.node_block_hash.as_deref() {
+                if external_effect.node_block_hash != node_block_hash {
+                    return Err(format!(
+                        "execution replay input node_block_hash mismatch height={} expected={} actual={}",
+                        record.height, node_block_hash, external_effect.node_block_hash
+                    ));
+                }
+            }
+            Some(external_effect)
+        }
         None => None,
     };
     Ok(ExecutionReplayRecordInput {
@@ -1702,6 +1725,36 @@ mod tests {
         record
     }
 
+    fn persist_test_external_effect(
+        store: &LocalCasStore,
+        world_id: &str,
+        height: u64,
+        node_block_hash: &str,
+    ) -> String {
+        let materialization = ExecutionExternalEffectMaterialization {
+            schema_version: EXECUTION_EXTERNAL_EFFECT_SCHEMA_V1,
+            contract: EXECUTION_EXTERNAL_EFFECT_CONTRACT_CLOSED_WORLD_V1.to_string(),
+            world_id: world_id.to_string(),
+            node_id: "node-a".to_string(),
+            height,
+            slot: height.saturating_sub(1),
+            epoch: 0,
+            node_block_hash: node_block_hash.to_string(),
+            action_root: format!("action-root-{height}"),
+            committed_at_unix_ms: height as i64 * 1_000,
+            pre_step_execution_state_root: format!("pre-step-state-{height}"),
+            world_manifest_hash: format!("manifest-hash-{height}"),
+            active_modules_hash: execution_module_anchor_hash(&[]).expect("empty module hash"),
+            committed_actions_hash: execution_committed_actions_hash(&[])
+                .expect("empty actions hash"),
+            active_modules: Vec::new(),
+            committed_actions: Vec::new(),
+            unresolved_inputs: Vec::new(),
+        };
+        persist_execution_external_effect_materialization(store, &materialization)
+            .expect("persist test external effect")
+    }
+
     #[test]
     fn execution_replay_plan_without_checkpoint_replays_full_log() {
         let dir = temp_dir("execution-replay-plan-full-log");
@@ -1806,6 +1859,73 @@ mod tests {
         assert!(
             err.contains("execution external effect CAS get failed"),
             "unexpected replay plan error: {err}"
+        );
+
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn execution_replay_plan_fails_closed_when_external_effect_mismatches_record() {
+        let dir = temp_dir("execution-replay-plan-external-effect-mismatch");
+        let records_dir = dir.join("records");
+        let store = LocalCasStore::new(dir.join("store"));
+        fs::create_dir_all(records_dir.as_path()).expect("create records dir");
+        let mut record = persist_test_execution_record(records_dir.as_path(), 1, "exec-h1");
+        let external_effect_ref = persist_test_external_effect(&store, "w2", 1, "node-h1");
+        record.external_effect_ref = Some(external_effect_ref);
+        persist_execution_bridge_record(records_dir.as_path(), &record)
+            .expect("persist updated execution record");
+
+        let err = build_execution_replay_plan(records_dir.as_path(), &store, 1)
+            .expect_err("mismatched external effect should fail closed");
+        assert!(
+            err.contains("world_id mismatch"),
+            "unexpected replay plan mismatch error: {err}"
+        );
+
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn execution_replay_plan_fails_closed_when_latest_checkpoint_pointer_is_corrupted() {
+        let dir = temp_dir("execution-replay-plan-corrupted-checkpoint");
+        let records_dir = dir.join("records");
+        let store = LocalCasStore::new(dir.join("store"));
+        fs::create_dir_all(records_dir.as_path()).expect("create records dir");
+        persist_test_execution_record(records_dir.as_path(), 1, "exec-h1");
+        persist_test_execution_record(records_dir.as_path(), 2, "exec-h2");
+        persist_test_execution_record(records_dir.as_path(), 3, "exec-h3");
+        let checkpoint = ExecutionCheckpointManifest::new(
+            "w1".to_string(),
+            2,
+            "exec-h2".to_string(),
+            "state-r2".to_string(),
+            "cas:snapshot-2".to_string(),
+            Some("cas:snapshot-2".to_string()),
+            Some("cas:journal-2".to_string()),
+            2_000,
+        )
+        .expect("checkpoint");
+        persist_execution_checkpoint_manifest(records_dir.as_path(), &checkpoint)
+            .expect("persist checkpoint");
+        let latest_path = execution_checkpoint_latest_path(records_dir.as_path());
+        let mut latest_json: serde_json::Value = serde_json::from_slice(
+            fs::read(latest_path.as_path())
+                .expect("read latest pointer")
+                .as_slice(),
+        )
+        .expect("parse latest pointer");
+        latest_json["manifest_hash"] = serde_json::Value::String("tampered".to_string());
+        let latest_bytes =
+            serde_json::to_vec_pretty(&latest_json).expect("serialize tampered latest pointer");
+        crate::write_bytes_atomic(latest_path.as_path(), latest_bytes.as_slice())
+            .expect("persist tampered latest pointer");
+
+        let err = build_execution_replay_plan(records_dir.as_path(), &store, 3)
+            .expect_err("corrupted checkpoint pointer should fail closed");
+        assert!(
+            err.contains("hash mismatch"),
+            "unexpected checkpoint corruption error: {err}"
         );
 
         let _ = fs::remove_dir_all(dir);

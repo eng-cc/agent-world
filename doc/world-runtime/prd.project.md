@@ -42,7 +42,7 @@
 ## 状态
 - 更新日期: 2026-03-08
 - 当前状态: active
-- 下一任务: TASK-WORLD_RUNTIME-031（继续专题子任务 T1.5）
+- 下一任务: TASK-WORLD_RUNTIME-031（进入专题子任务 T2.1）
 - 实施备注:
   - `TASK-WORLD_RUNTIME-028` 已完成：新增节点侧固定验收入口 `scripts/module-release-node-acceptance.sh` 并将 S11 运行手册切换为“脚本入口 + 等价拆分命令 + 证据目录”；同时收敛 `sync-m1/m4/m5` 非 `--check` 写入授权为“CI 禁止、仅本地显式授权（`AGENT_WORLD_WASM_SYNC_WRITE_ALLOW=local-dev`）”，主 CI 不再具备生产发布写入/激活路径。
   - `TASK-WORLD_RUNTIME-029` 已完成：新增 `scripts/world-runtime-finality-baseline.sh` 固定基准入口，输出 `stake/epoch` 验签耗时聚合指标与 `2 epoch` 收敛状态（`summary.md`/`summary.json` 可归档）；S11 运行手册已补齐命令与产物路径。
@@ -52,5 +52,6 @@
   - `TASK-WORLD_RUNTIME-031` 已继续完成 T1.2：checkpoint manifest 的目录布局、latest 指针与 hash/height 校验已落地。
   - `TASK-WORLD_RUNTIME-031` 已继续完成 T1.3：replay planner 已支持“最近 checkpoint + 本地 execution records”与无 checkpoint 全日志回放降级。
   - `TASK-WORLD_RUNTIME-031` 已继续完成 T1.4：external effect materialization 已通过 `external_effect_ref` 落 CAS，并在 replay plan 构建时执行 fail-closed 校验。
+  - `TASK-WORLD_RUNTIME-031` 已继续完成 T1.5：retained-height replay / no-checkpoint fallback / replay mismatch / checkpoint corruption 定向测试已补齐。
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - 说明: 本文档仅维护 world-runtime 模块设计执行状态；过程记录在 `doc/devlog/2026-03-03.md`、`doc/devlog/2026-03-06.md` 与 `doc/devlog/2026-03-08.md`。

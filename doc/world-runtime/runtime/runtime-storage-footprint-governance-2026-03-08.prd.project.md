@@ -12,7 +12,7 @@
 - [x] T1.2 (PRD-WORLD_RUNTIME-014) [test_tier_required]: 定义 `ExecutionCheckpointManifest` 目录布局、pin 语义、hash/height 校验字段与 reader / writer 原子切换规则。
 - [x] T1.3 (PRD-WORLD_RUNTIME-014) [test_tier_required]: 在 replay planner 中实现“最近 checkpoint + commit log”重建路径，并显式处理无 checkpoint 的全日志回放降级。
 - [x] T1.4 (PRD-WORLD_RUNTIME-014) [test_tier_required]: 明确外部非确定性 effect 的 materialization contract，保证 replay 输入可闭包且 mismatch 时 fail-closed。
-- [ ] T1.5 (PRD-WORLD_RUNTIME-014) [test_tier_required]: 补齐 retained-height replay / no-checkpoint fallback / replay mismatch / checkpoint corruption 定向测试。
+- [x] T1.5 (PRD-WORLD_RUNTIME-014) [test_tier_required]: 补齐 retained-height replay / no-checkpoint fallback / replay mismatch / checkpoint corruption 定向测试。
 
 ### T2 Execution bridge retention
 - [ ] T2.1 (PRD-WORLD_RUNTIME-013/014) [test_tier_required]: 在 `execution_bridge.rs` 实现 latest head + hot window pin set 计算，不再为每个 committed height 默认固定完整 `snapshot_ref`。
@@ -78,8 +78,8 @@
 ## 状态
 - 更新日期: 2026-03-08
 - 当前状态: planning
-- 已完成: T0、T0.1、T1.1、T1.2、T1.3、T1.4
-- 已拆解待执行: T1.5 ~ T7.5
-- 进行中: T1.5
+- 已完成: T0、T0.1、T1.1、T1.2、T1.3、T1.4、T1.5
+- 已拆解待执行: T2.1 ~ T7.5
+- 进行中: T2.1
 - 阻塞项: 无；但 T2 / T3 / T6 / T7 的实现必须以前置 T1 契约冻结为准。
-- 下一任务: T1.5（补 retained-height replay / mismatch / corruption 定向测试）
+- 下一任务: T2.1（实现 latest head + hot window pin set 计算）
