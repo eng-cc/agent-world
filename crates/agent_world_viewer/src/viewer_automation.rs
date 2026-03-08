@@ -9,6 +9,12 @@ use super::*;
 const AUTOMATION_STEPS_ENV: &str = "AGENT_WORLD_VIEWER_AUTOMATION_STEPS";
 const AUTO_SELECT_ENV: &str = "AGENT_WORLD_VIEWER_AUTO_SELECT";
 const AUTO_SELECT_TARGET_ENV: &str = "AGENT_WORLD_VIEWER_AUTO_SELECT_TARGET";
+const VIEWER_PLAYER_ID_DEFAULT: &str = "viewer-player";
+const VIEWER_PLAYER_ID_ENV: &str = "AGENT_WORLD_VIEWER_PLAYER_ID";
+const VIEWER_AUTH_PUBLIC_KEY_ENV: &str = "AGENT_WORLD_VIEWER_AUTH_PUBLIC_KEY";
+const VIEWER_AUTH_PRIVATE_KEY_ENV: &str = "AGENT_WORLD_VIEWER_AUTH_PRIVATE_KEY";
+#[cfg(target_arch = "wasm32")]
+const VIEWER_AUTH_BOOTSTRAP_OBJECT: &str = "__AGENT_WORLD_VIEWER_AUTH_ENV";
 
 #[derive(Resource, Clone, Debug, PartialEq)]
 pub(super) struct ViewerAutomationConfig {
@@ -30,6 +36,7 @@ pub(super) struct ViewerAutomationState {
     startup_step_index: usize,
     wait_until_secs: Option<f64>,
     runtime_steps: VecDeque<ViewerAutomationStep>,
+    auth_nonce_floor: u64,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -50,6 +57,15 @@ pub(super) enum ViewerAutomationStep {
     ModuleVisibility {
         module: ViewerAutomationPanelModule,
         action: ViewerAutomationVisibilityAction,
+    },
+    SendAgentChat {
+        agent_id: String,
+        message: String,
+    },
+    ApplyPromptOverride {
+        agent_id: String,
+        field: ViewerAutomationPromptField,
+        value: ViewerAutomationPromptValue,
     },
     SetLocale(ViewerAutomationLocaleAction),
     ApplyLayoutPreset(ViewerAutomationLayoutPreset),
@@ -93,6 +109,19 @@ pub(super) enum ViewerAutomationLayoutPreset {
     Mission,
     Command,
     Intel,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum ViewerAutomationPromptField {
+    System,
+    ShortTerm,
+    LongTerm,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(super) enum ViewerAutomationPromptValue {
+    Set(String),
+    Clear,
 }
 
 const TARGET_KIND_AGENT: &str = "agent";
@@ -146,6 +175,7 @@ pub(super) fn run_viewer_automation(
     assets: Option<Res<Viewer3dAssets>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     scene: Res<Viewer3dScene>,
+    viewer_client: Option<Res<ViewerClient>>,
     mut selection: ResMut<ViewerSelection>,
     mut queries: ParamSet<(
         Query<(&mut OrbitCamera, &mut Transform, &mut Projection), With<Viewer3dCamera>>,
@@ -179,6 +209,7 @@ pub(super) fn run_viewer_automation(
             &mut variant_preview,
             assets.as_deref(),
             &mut materials,
+            viewer_client.as_deref(),
             &mut selection,
             &mut queries,
             &mut location_markers,
@@ -261,6 +292,7 @@ fn apply_step(
     variant_preview: &mut MaterialVariantPreviewState,
     assets: Option<&Viewer3dAssets>,
     materials: &mut Assets<StandardMaterial>,
+    viewer_client: Option<&ViewerClient>,
     selection: &mut ViewerSelection,
     queries: &mut ParamSet<(
         Query<(&mut OrbitCamera, &mut Transform, &mut Projection), With<Viewer3dCamera>>,
@@ -430,6 +462,30 @@ fn apply_step(
             *flag = apply_visibility_action(current_visible, action);
             StepResult::Applied
         }
+        ViewerAutomationStep::SendAgentChat { agent_id, message } => {
+            if let Err(err) =
+                dispatch_agent_chat_step(viewer_client, state, agent_id.as_str(), message.as_str())
+            {
+                bevy::log::warn!("viewer automation chat step ignored: {err}");
+            }
+            StepResult::Applied
+        }
+        ViewerAutomationStep::ApplyPromptOverride {
+            agent_id,
+            field,
+            value,
+        } => {
+            if let Err(err) = dispatch_prompt_override_step(
+                viewer_client,
+                state,
+                agent_id.as_str(),
+                field,
+                &value,
+            ) {
+                bevy::log::warn!("viewer automation prompt step ignored: {err}");
+            }
+            StepResult::Applied
+        }
         ViewerAutomationStep::SetLocale(action) => {
             i18n.locale = match action {
                 ViewerAutomationLocaleAction::Zh => crate::i18n::UiLocale::ZhCn,
@@ -518,6 +574,156 @@ fn apply_layout_preset_automation(
             module_visibility.show_details = true;
         }
     }
+}
+
+#[derive(Clone, Debug)]
+struct ViewerAutomationAuthSigner {
+    player_id: String,
+    public_key: String,
+    private_key: String,
+}
+
+fn dispatch_agent_chat_step(
+    viewer_client: Option<&ViewerClient>,
+    automation_state: &mut ViewerAutomationState,
+    agent_id: &str,
+    message: &str,
+) -> Result<(), String> {
+    let client = viewer_client.ok_or_else(|| "viewer client unavailable".to_string())?;
+    let signer = resolve_automation_auth_signer()?;
+    let nonce = next_auth_nonce(automation_state);
+    let mut request = agent_world::viewer::AgentChatRequest {
+        agent_id: agent_id.to_string(),
+        message: message.to_string(),
+        player_id: Some(signer.player_id.clone()),
+        public_key: Some(signer.public_key.clone()),
+        auth: None,
+        intent_tick: None,
+        intent_seq: Some(nonce),
+    };
+    let proof = agent_world::viewer::sign_agent_chat_auth_proof(
+        &request,
+        nonce,
+        signer.public_key.as_str(),
+        signer.private_key.as_str(),
+    )
+    .map_err(|err| format!("sign agent chat failed: {err}"))?;
+    request.auth = Some(proof);
+    client
+        .tx
+        .send(agent_world::viewer::ViewerRequest::AgentChat { request })
+        .map_err(|err| format!("send agent chat failed: {err}"))
+}
+
+fn dispatch_prompt_override_step(
+    viewer_client: Option<&ViewerClient>,
+    automation_state: &mut ViewerAutomationState,
+    agent_id: &str,
+    field: ViewerAutomationPromptField,
+    value: &ViewerAutomationPromptValue,
+) -> Result<(), String> {
+    let client = viewer_client.ok_or_else(|| "viewer client unavailable".to_string())?;
+    let signer = resolve_automation_auth_signer()?;
+    let nonce = next_auth_nonce(automation_state);
+    let mut request = agent_world::viewer::PromptControlApplyRequest {
+        agent_id: agent_id.to_string(),
+        player_id: signer.player_id.clone(),
+        public_key: Some(signer.public_key.clone()),
+        auth: None,
+        expected_version: None,
+        updated_by: Some(signer.player_id.clone()),
+        system_prompt_override: None,
+        short_term_goal_override: None,
+        long_term_goal_override: None,
+    };
+
+    let patch = Some(prompt_override_patch(value));
+    match field {
+        ViewerAutomationPromptField::System => request.system_prompt_override = patch,
+        ViewerAutomationPromptField::ShortTerm => request.short_term_goal_override = patch,
+        ViewerAutomationPromptField::LongTerm => request.long_term_goal_override = patch,
+    }
+
+    let proof = agent_world::viewer::sign_prompt_control_apply_auth_proof(
+        agent_world::viewer::PromptControlAuthIntent::Apply,
+        &request,
+        nonce,
+        signer.public_key.as_str(),
+        signer.private_key.as_str(),
+    )
+    .map_err(|err| format!("sign prompt apply failed: {err}"))?;
+    request.auth = Some(proof);
+    client
+        .tx
+        .send(agent_world::viewer::ViewerRequest::PromptControl {
+            command: agent_world::viewer::PromptControlCommand::Apply { request },
+        })
+        .map_err(|err| format!("send prompt apply failed: {err}"))
+}
+
+fn prompt_override_patch(value: &ViewerAutomationPromptValue) -> Option<String> {
+    match value {
+        ViewerAutomationPromptValue::Set(text) => Some(text.clone()),
+        ViewerAutomationPromptValue::Clear => None,
+    }
+}
+
+fn resolve_automation_auth_signer() -> Result<ViewerAutomationAuthSigner, String> {
+    let player_id = resolve_viewer_player_id()?;
+    let public_key = resolve_required_auth_env(VIEWER_AUTH_PUBLIC_KEY_ENV)?;
+    let private_key = resolve_required_auth_env(VIEWER_AUTH_PRIVATE_KEY_ENV)?;
+    Ok(ViewerAutomationAuthSigner {
+        player_id,
+        public_key,
+        private_key,
+    })
+}
+
+fn resolve_viewer_player_id() -> Result<String, String> {
+    match resolve_runtime_auth_value(VIEWER_PLAYER_ID_ENV) {
+        Some(value) => Ok(value),
+        None => Ok(VIEWER_PLAYER_ID_DEFAULT.to_string()),
+    }
+}
+
+fn resolve_required_auth_env(key: &str) -> Result<String, String> {
+    resolve_runtime_auth_value(key).ok_or_else(|| format!("{key} is not set"))
+}
+
+fn resolve_runtime_auth_value(key: &str) -> Option<String> {
+    #[cfg(target_arch = "wasm32")]
+    if let Some(value) = resolve_wasm_auth_value(key) {
+        return Some(value);
+    }
+
+    std::env::var(key)
+        .ok()
+        .map(|raw| raw.trim().to_string())
+        .filter(|value| !value.is_empty())
+}
+
+#[cfg(target_arch = "wasm32")]
+fn resolve_wasm_auth_value(key: &str) -> Option<String> {
+    let window = web_sys::window()?;
+    let store = js_sys::Reflect::get(
+        window.as_ref(),
+        &wasm_bindgen::JsValue::from_str(VIEWER_AUTH_BOOTSTRAP_OBJECT),
+    )
+    .ok()?;
+    if store.is_null() || store.is_undefined() {
+        return None;
+    }
+    let value = js_sys::Reflect::get(&store, &wasm_bindgen::JsValue::from_str(key)).ok()?;
+    value
+        .as_string()
+        .map(|raw| raw.trim().to_string())
+        .filter(|value| !value.is_empty())
+}
+
+fn next_auth_nonce(state: &mut ViewerAutomationState) -> u64 {
+    let nonce = state.auth_nonce_floor.max(1);
+    state.auth_nonce_floor = nonce.saturating_add(1);
+    nonce
 }
 
 fn resolve_target_entity(
@@ -705,6 +911,16 @@ fn parse_steps(raw: Option<&str>) -> Vec<ViewerAutomationStep> {
                 parse_visibility_action(value).map(ViewerAutomationStep::TopPanelVisibility)
             }
             "module" | "panel_module" | "module_visibility" => parse_module_visibility_step(value),
+            "chat" | "chat_send" => parse_chat_step(value),
+            "prompt_system" | "prompt_sys" => {
+                parse_prompt_override_step(value, ViewerAutomationPromptField::System)
+            }
+            "prompt_short" | "prompt_short_term" | "prompt_stg" => {
+                parse_prompt_override_step(value, ViewerAutomationPromptField::ShortTerm)
+            }
+            "prompt_long" | "prompt_long_term" | "prompt_ltg" => {
+                parse_prompt_override_step(value, ViewerAutomationPromptField::LongTerm)
+            }
             "locale" | "language" => {
                 parse_locale_action(value).map(ViewerAutomationStep::SetLocale)
             }
@@ -836,6 +1052,86 @@ fn parse_module_visibility_step(raw: &str) -> Option<ViewerAutomationStep> {
     let module = parse_panel_module(module_raw)?;
     let action = parse_visibility_action(action_raw)?;
     Some(ViewerAutomationStep::ModuleVisibility { module, action })
+}
+
+fn parse_chat_step(raw: &str) -> Option<ViewerAutomationStep> {
+    let (agent_id, message) = parse_agent_and_text(raw)?;
+    Some(ViewerAutomationStep::SendAgentChat { agent_id, message })
+}
+
+fn parse_prompt_override_step(
+    raw: &str,
+    field: ViewerAutomationPromptField,
+) -> Option<ViewerAutomationStep> {
+    let (agent_id, text_raw) = parse_agent_and_text(raw)?;
+    let value = parse_prompt_value(text_raw.as_str())?;
+    Some(ViewerAutomationStep::ApplyPromptOverride {
+        agent_id,
+        field,
+        value,
+    })
+}
+
+fn parse_agent_and_text(raw: &str) -> Option<(String, String)> {
+    let (agent_id_raw, text_raw) = raw.split_once('|')?;
+    let agent_id = agent_id_raw.trim();
+    if agent_id.is_empty() {
+        return None;
+    }
+    let text = decode_percent_text(text_raw)?;
+    Some((agent_id.to_string(), text))
+}
+
+fn parse_prompt_value(raw: &str) -> Option<ViewerAutomationPromptValue> {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    match trimmed.to_ascii_lowercase().as_str() {
+        "clear" | "none" | "null" | "default" => Some(ViewerAutomationPromptValue::Clear),
+        _ => Some(ViewerAutomationPromptValue::Set(trimmed.to_string())),
+    }
+}
+
+fn decode_percent_text(raw: &str) -> Option<String> {
+    let bytes = raw.as_bytes();
+    let mut decoded = Vec::with_capacity(bytes.len());
+    let mut index = 0;
+    while index < bytes.len() {
+        let current = bytes[index];
+        if current == b'%' {
+            if index + 2 >= bytes.len() {
+                return None;
+            }
+            let high = from_hex_nibble(bytes[index + 1])?;
+            let low = from_hex_nibble(bytes[index + 2])?;
+            decoded.push((high << 4) | low);
+            index += 3;
+            continue;
+        }
+        if current == b'+' {
+            decoded.push(b' ');
+        } else {
+            decoded.push(current);
+        }
+        index += 1;
+    }
+    let text = String::from_utf8(decoded).ok()?;
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        None
+    } else {
+        Some(trimmed.to_string())
+    }
+}
+
+fn from_hex_nibble(byte: u8) -> Option<u8> {
+    match byte {
+        b'0'..=b'9' => Some(byte - b'0'),
+        b'a'..=b'f' => Some(byte - b'a' + 10),
+        b'A'..=b'F' => Some(byte - b'A' + 10),
+        _ => None,
+    }
 }
 
 fn parse_material_variant_step(raw: &str) -> Option<()> {
@@ -1000,6 +1296,32 @@ mod tests {
     }
 
     #[test]
+    fn parse_steps_supports_chat_and_prompt_actions() {
+        let steps = parse_steps(Some(
+            "chat=agent-1|hello+world%21;prompt_system=agent-1|clear;prompt_short=agent-1|Need%20power%20first",
+        ));
+        assert_eq!(
+            steps,
+            vec![
+                ViewerAutomationStep::SendAgentChat {
+                    agent_id: "agent-1".to_string(),
+                    message: "hello world!".to_string(),
+                },
+                ViewerAutomationStep::ApplyPromptOverride {
+                    agent_id: "agent-1".to_string(),
+                    field: ViewerAutomationPromptField::System,
+                    value: ViewerAutomationPromptValue::Clear,
+                },
+                ViewerAutomationStep::ApplyPromptOverride {
+                    agent_id: "agent-1".to_string(),
+                    field: ViewerAutomationPromptField::ShortTerm,
+                    value: ViewerAutomationPromptValue::Set("Need power first".to_string()),
+                },
+            ]
+        );
+    }
+
+    #[test]
     fn parse_steps_ignores_invalid_module_and_variant_actions() {
         let steps = parse_steps(Some(
             "module=chat;module=unknown:show;module=timeline:toggle;material_variant=bad;variant=cycle",
@@ -1024,6 +1346,21 @@ mod tests {
             vec![ViewerAutomationStep::SetLocale(
                 ViewerAutomationLocaleAction::En
             )]
+        );
+    }
+
+    #[test]
+    fn parse_steps_ignores_invalid_chat_and_prompt_actions() {
+        let steps = parse_steps(Some(
+            "chat=agent-1;chat=agent-2|%ZZ;prompt_system=agent-1|;prompt_long=|hello;prompt_short=agent-3|default",
+        ));
+        assert_eq!(
+            steps,
+            vec![ViewerAutomationStep::ApplyPromptOverride {
+                agent_id: "agent-3".to_string(),
+                field: ViewerAutomationPromptField::ShortTerm,
+                value: ViewerAutomationPromptValue::Clear,
+            }]
         );
     }
 

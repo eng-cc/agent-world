@@ -107,7 +107,7 @@
 - WTA-12（已完成）：落地 `viewer_automation` round-2 语义步骤（top_panel/locale/layout）并补齐解析/映射测试。
 - WTA-13（已完成）：执行 round-2 定向回归、更新手册示例与文档状态收口。
 - WTA-14（已完成）：round-3 补齐需求建模与任务拆解（聊天发送/Prompt 覆盖提交语义）。
-- WTA-15：落地 `viewer_automation` round-3 语义步骤（chat/prompt）并补齐解析/映射测试。
+- WTA-15（已完成）：落地 `viewer_automation` round-3 语义步骤（chat/prompt）并补齐解析/映射测试。
 - WTA-16：执行 round-3 定向回归、更新手册示例与文档状态收口。
 
 ### Technical Risks
