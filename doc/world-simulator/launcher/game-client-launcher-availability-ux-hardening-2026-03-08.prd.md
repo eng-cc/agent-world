@@ -1,6 +1,6 @@
 # 客户端启动器可用性与体验硬化（2026-03-08）
 
-审计轮次: 2
+审计轮次: 3
 - 对应项目管理文档: `doc/world-simulator/launcher/game-client-launcher-availability-ux-hardening-2026-03-08.prd.project.md`
 
 ## 1. Executive Summary
@@ -14,6 +14,7 @@
   - SC-5: Web 端在 390x844 移动视口下配置区可读，关键按钮与状态信息可完整查看与操作。
   - SC-6: Web 控制台默认页不再产生 `favicon.ico 404` 控制台错误噪声。
   - SC-7: 默认主界面仅保留高频操作（状态、启停、打开页面、日志），低频配置进入“高级配置”弹窗，不影响功能完整性。
+  - SC-8: 当用户触发“启动游戏/启动区块链”且存在阻断配置时，必须弹出“配置引导”窗口并直接提供可编辑输入框；首次进入若存在阻断配置，也需自动弹出一次轻量引导。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -39,6 +40,10 @@
      `手机视口打开 launcher web -> 配置字段纵向可读 -> 状态/按钮/日志可正常浏览`
   6. Flow-LAUNCHER-UX-006（低频配置收口）:
      `打开 launcher -> 默认仅见高频控制区 -> 点击“高级配置”进入弹窗编辑低频参数 -> 关闭弹窗返回主流程`
+  7. Flow-LAUNCHER-UX-007（启动阻断引导闭环）:
+     `点击启动游戏/区块链 -> 检测到必填配置问题 -> 弹出配置引导窗口并展示可编辑输入框 -> 用户现场修复 -> 再次点击启动成功`
+  8. Flow-LAUNCHER-UX-008（首次进入轻量引导）:
+     `首次打开 launcher -> 执行轻量必填检查 -> 若存在阻断项则自动弹出一次配置引导`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
@@ -48,6 +53,7 @@
 | stop 空操作语义 | `status/chain_status` 当前态 | stop 在未运行时返回成功但不覆盖错误态；仅记录 no-op 日志 | `* -> same_state`（no-op） | 保留最近有效状态 | 控制面可写操作 |
 | 移动端配置布局 | 配置区字段渲染方式 | 字段改为纵向布局（label+input），减少小屏截断 | `form_ready -> readable_mobile_form` | 以字段顺序渲染 | 无权限变化 |
 | 低频配置弹窗化 | `scenario/live_bind/web_bind/chain/PoS/static_dir/bin` 等低频字段 | 主界面隐藏低频配置；点击“高级配置”进入弹窗编辑；主界面保留配置问题摘要与跳转入口 | `main_view <-> config_modal_open` | 主界面按高频优先；配置仍按 section 顺序渲染 | 配置编辑权限不变 |
+| 启动阻断配置引导 | `ConfigIssue` 与字段映射（game/chain） | 点击“启动”遇到阻断项时，弹出引导窗并直接渲染缺失字段输入框 | `start_click -> guide_open -> issue_resolved -> retry_start` | 字段按问题优先级去重排序；修复后即时参与下一次校验 | 仅本地会话可编辑 |
 | favicon 噪声抑制 | 默认 favicon 声明 | 页面加载不再触发 `favicon.ico` 404 | `page_load -> console_clean` | 统一静态入口模板 | 无权限变化 |
 - Acceptance Criteria:
   - AC-1: `world_web_launcher` 在源码直跑场景（无 bundle `web/`）下可通过默认回退路径启动，或返回可操作错误信息。
@@ -57,6 +63,9 @@
   - AC-5: Playwright 在 390x844 视口截图中，配置区字段可逐项读取且关键控制按钮可见。
   - AC-6: Playwright console 采样不再出现 `favicon.ico 404`。
   - AC-7: 主界面默认不展示低频配置字段；存在非法配置时主界面提供可见摘要，并可一键打开高级配置弹窗定位修复。
+  - AC-8: 点击“启动游戏/启动区块链”时，若存在阻断配置，按钮行为必须弹出配置引导窗口（而非仅被动提示或静默禁用）。
+  - AC-9: 配置引导窗口必须直接提供对应字段输入框（不是仅文本提示），用户可在窗口内完成修复并再次触发启动。
+  - AC-10: 首次进入 launcher 时执行一次轻量校验，若存在阻断配置自动弹出引导窗口；后续仅在用户触发启动且仍有阻断项时弹出。
 - Non-Goals:
   - 不在本专题新增新的业务入口（新链功能/新操作窗）。
   - 不在本专题重构 transfer/explorer 业务语义本身。
@@ -76,6 +85,7 @@
   - `crates/agent_world/src/bin/world_web_launcher/control_plane.rs`
   - `crates/agent_world_client_launcher/src/platform_ops.rs`
   - `crates/agent_world_client_launcher/src/main.rs`
+  - `crates/agent_world_client_launcher/src/config_ui.rs`
   - `crates/agent_world_client_launcher/src/launcher_core.rs`
   - `crates/agent_world_client_launcher/src/app_process.rs`
   - `crates/agent_world_client_launcher/src/app_process_web.rs`
@@ -87,6 +97,8 @@
   - stop no-op：保留当前错误态，仅增加“进程未运行”的日志记录。
   - 移动小屏：布局拥挤时优先保证字段可读与按钮可触达。
   - 配置弹窗关闭态：若配置非法，主界面仍须阻止启动并展示摘要，不得因字段隐藏造成“可点但失败”。
+  - 配置引导窗口关闭态：若仍有阻断项，再次触发启动必须重新弹出引导，不得进入“无响应”状态。
+  - 问题映射字段重复：同一字段被多个问题引用时仅渲染一次，避免重复输入造成困惑。
   - 浏览器静态资源：默认提供 favicon，避免无意义 404 噪声淹没真实错误。
 - Non-Functional Requirements:
   - NFR-1: 源码直跑 `world_web_launcher` 后首次 `/api/start` 成功率达到 100%（前提存在至少一个有效静态目录候选）。
@@ -104,17 +116,19 @@
   - v1.1 (UXH-2): 实现路径回退、状态语义修正、禁用态提示、参数编码。
   - v1.2 (UXH-3): 完成移动端布局与 favicon 噪声清理，并执行跨端回归。
   - v1.3 (UXH-4): 完成低频配置弹窗化与主界面高频收口，并执行跨端可用性回归。
+  - v1.4 (UXH-5): 完成启动阻断配置引导（可编辑输入框 + 首次轻量引导）并执行 native/web 回归。
 - Technical Risks:
   - 风险-1: 静态目录回退策略过宽可能命中错误目录。
   - 风险-2: 参数编码修复若不统一覆盖 native/web，可能产生双端行为漂移。
   - 风险-3: UI 布局调整可能影响桌面端信息密度与操作效率。
   - 风险-4: 低频配置收口后若缺少摘要提示，可能增加“字段被隐藏”带来的误判成本。
+  - 风险-5: `ConfigIssue -> 字段` 映射若遗漏，可能出现“有问题但无对应输入框”。
 
 ## 6. Validation & Decision Record
 - Test Plan & Traceability:
 | PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |
 | --- | --- | --- | --- | --- |
-| PRD-WORLD_SIMULATOR-027 | TASK-WORLD_SIMULATOR-063/064/065 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown` + Playwright headed（桌面 + 390x844）采证 | 启动器控制面可用性、web 体验、native/web 请求一致性 |
+| PRD-WORLD_SIMULATOR-027 | TASK-WORLD_SIMULATOR-063/064/065/066 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown` + Playwright headed（桌面 + 390x844）采证 | 启动器控制面可用性、web 体验、native/web 请求一致性 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |
@@ -123,3 +137,4 @@
 | DEC-LAUNCHER-UX-003 | 统一 URL 编码函数并在 native/web 全覆盖 | 局部按需修补 | 统一方案可避免后续遗漏与行为漂移。 |
 | DEC-LAUNCHER-UX-004 | stop no-op 保持现有错误态，不做状态覆盖 | 无条件置为 stopped/not_started | 保留状态语义有助于运维定位最后一次失败原因。 |
 | DEC-LAUNCHER-UX-005 | 主界面收敛为高频操作，低频配置收口到“高级配置”弹窗 | 保持所有配置长期常驻主界面 | 渐进披露可降低认知负担，提升启动/诊断高频链路效率。 |
+| DEC-LAUNCHER-UX-006 | 启动按钮在阻断配置下触发“可编辑引导窗” | 继续仅显示错误摘要或直接禁用按钮 | 新手路径应以“可立即修复”为目标，降低首次配置失败流失。 |
