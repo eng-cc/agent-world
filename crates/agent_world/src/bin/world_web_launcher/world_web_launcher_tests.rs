@@ -19,7 +19,7 @@ fn parse_options_defaults() {
         options.initial_config.chain_status_bind,
         DEFAULT_CHAIN_STATUS_BIND
     );
-    assert_eq!(options.initial_config.chain_pos_slot_duration_ms, "1");
+    assert_eq!(options.initial_config.chain_pos_slot_duration_ms, "200");
     assert_eq!(options.initial_config.chain_pos_ticks_per_slot, "1");
     assert_eq!(options.initial_config.chain_pos_proposal_tick_phase, "0");
     assert!(

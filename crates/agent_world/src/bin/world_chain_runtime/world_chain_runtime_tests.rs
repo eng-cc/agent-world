@@ -14,7 +14,7 @@ fn parse_options_defaults() {
     assert!(options.node_validators.is_empty());
     assert!(options.reward_runtime_enabled);
     assert!(options.reward_runtime_epoch_duration_secs.is_none());
-    assert_eq!(options.pos_slot_duration_ms, 1);
+    assert_eq!(options.pos_slot_duration_ms, 200);
     assert_eq!(options.pos_ticks_per_slot, 1);
     assert_eq!(options.pos_proposal_tick_phase, 0);
     assert!(!options.pos_adaptive_tick_scheduler_enabled);
