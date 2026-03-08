@@ -1,6 +1,6 @@
 # world-simulator PRD Project
 
-审计轮次: 13
+审计轮次: 14
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] TASK-WORLD_SIMULATOR-001 (PRD-WORLD_SIMULATOR-001) [test_tier_required]: 完成 world-simulator PRD 改写，建立模拟层设计主入口。
@@ -93,6 +93,8 @@
 - [x] TASK-WORLD_SIMULATOR-088 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 将 onboarding 改为“跳过后持续轻提示”并补齐回归。
 - [x] TASK-WORLD_SIMULATOR-089 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 修复自引导 PRD 冲突并补充启动器文件拆分任务建模。
 - [x] TASK-WORLD_SIMULATOR-090 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 执行启动器超长文件拆分改造并完成回归。
+- [x] TASK-WORLD_SIMULATOR-091 (PRD-WORLD_SIMULATOR-031) [test_tier_required]: 完成“Web Console GUI Agent 全量接口”PRD 建模、任务拆解与模块文档树回写。
+- [ ] TASK-WORLD_SIMULATOR-092 (PRD-WORLD_SIMULATOR-031) [test_tier_required]: 落地 `/api/gui-agent/capabilities|state|action`，覆盖人工操作全功能动作映射并补齐回归测试。
 
 ## 专题任务映射（2026-03-02 批次）
 - [x] SUBTASK-WORLD_SIMULATOR-20260302-001 (PRD-WORLD_SIMULATOR-001/002/003) [test_tier_required]: `doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.prd.project.md`
@@ -169,6 +171,8 @@
 - `doc/world-simulator/launcher/game-client-launcher-full-usability-remediation-2026-03-08.prd.project.md`
 - `doc/world-simulator/launcher/game-client-launcher-self-guided-experience-2026-03-08.prd.md`
 - `doc/world-simulator/launcher/game-client-launcher-self-guided-experience-2026-03-08.prd.project.md`
+- `doc/world-simulator/launcher/game-client-launcher-web-console-gui-agent-interface-2026-03-08.prd.md`
+- `doc/world-simulator/launcher/game-client-launcher-web-console-gui-agent-interface-2026-03-08.prd.project.md`
 - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase1-2026-03-04.prd.md`
 - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase2-2026-03-05.prd.md`
 - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase3-2026-03-05.prd.md`
@@ -179,6 +183,7 @@
 - `crates/agent_world/src/bin/world_chain_runtime.rs`
 - `crates/agent_world/src/bin/world_game_launcher.rs`
 - `crates/agent_world/src/bin/world_web_launcher.rs`
+- `crates/agent_world/src/bin/world_web_launcher/gui_agent_api.rs`
 - `crates/agent_world/src/bin/world_chain_runtime/transfer_submit_api.rs`
 - `crates/agent_world/src/bin/world_chain_runtime/transfer_submit_api_tests.rs`
 - `crates/agent_world_launcher_ui/src/lib.rs`
@@ -198,10 +203,10 @@
 
 ## 状态
 - 更新日期: 2026-03-08
-- 当前状态: in_progress（等待下一轮需求）
-- 当前优先任务: 无
+- 当前状态: in_progress（执行 GUI Agent 接口实现）
+- 当前优先任务: `TASK-WORLD_SIMULATOR-092`
 - 并行待办: 无
-- 专题映射状态: 2026-03-02 批次 9/9、2026-03-03 批次 4/4、2026-03-04 批次 7/7、2026-03-05 批次 4/4、2026-03-06 批次 6/6 已纳入模块项目管理文档；`TASK-WORLD_SIMULATOR-057~090` 已完成。
+- 专题映射状态: 2026-03-02 批次 9/9、2026-03-03 批次 4/4、2026-03-04 批次 7/7、2026-03-05 批次 4/4、2026-03-06 批次 6/6 已纳入模块项目管理文档；`TASK-WORLD_SIMULATOR-057~091` 已完成，`TASK-WORLD_SIMULATOR-092` 进行中。
 - 手册入口状态: `doc/world-simulator/viewer/viewer-manual.md` 为唯一活跃手册入口。
 - 视觉评分模板状态: `doc/world-simulator/prd/acceptance/visual-review-score-card.md` 已纳入文档树，采用卡片式评审覆盖 llm_bootstrap 场景 18 张截图。
 - UI 评审结果状态: `doc/ui_review_result/ui_review_list.md` 已建立，首张待打分卡片为 `doc/ui_review_result/card_2026_03_06_11_50_29.md`。
