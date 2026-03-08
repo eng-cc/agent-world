@@ -2,7 +2,7 @@
 
 审计轮次: 4
 
-更新时间：2026-03-05
+更新时间：2026-03-08
 
 ## 入口
 - 模块 PRD：`doc/world-runtime/prd.md`
@@ -13,6 +13,7 @@
 | `doc/world-runtime/governance/zero-trust-governance-receipt-hardening-2026-02-26.prd.md` | `doc/world-runtime/governance/zero-trust-governance-receipt-hardening-2026-02-26.prd.project.md` |
 | `doc/world-runtime/module/agent-default-modules.prd.md` | `doc/world-runtime/module/agent-default-modules.prd.project.md` |
 | `doc/world-runtime/module/player-published-entities-2026-03-05.prd.md` | `doc/world-runtime/module/player-published-entities-2026-03-05.prd.project.md` |
+| `doc/world-runtime/module/online-module-release-legality-closure-2026-03-08.prd.md` | `doc/world-runtime/module/online-module-release-legality-closure-2026-03-08.prd.project.md` |
 | `doc/world-runtime/module/module-storage.prd.md` | `doc/world-runtime/module/module-storage.prd.project.md` |
 | `doc/world-runtime/module/module-subscription-filters.prd.md` | `doc/world-runtime/module/module-subscription-filters.prd.project.md` |
 | `doc/world-runtime/runtime/bootstrap-power-modules.prd.md` | `doc/world-runtime/runtime/bootstrap-power-modules.prd.project.md` |
