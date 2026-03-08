@@ -9,7 +9,6 @@
 - [ ] TASK-WORLD_RUNTIME-004 (PRD-WORLD_RUNTIME-003) [test_tier_required]: 对接跨模块发布门禁中的 runtime 质量指标。
 - [x] TASK-WORLD_RUNTIME-005 (PRD-WORLD_RUNTIME-001/002/003) [test_tier_required]: 对齐 strict PRD schema，补齐关键流程/规格矩阵/边界异常/NFR/验证与决策记录。
 - [x] TASK-WORLD_RUNTIME-006 (PRD-WORLD_RUNTIME-002) [test_tier_required]: 同步 m1/m5 builtin wasm 工件 `sha256` 与 identity manifest，修复 CI hash token 不一致导致的运行时加载失败；回归 `env -u RUSTC_WRAPPER cargo test -p agent_world --tests --features test_tier_required`。
-<<<<<<< HEAD
 - [x] TASK-WORLD_RUNTIME-016 (PRD-WORLD_RUNTIME-016/017/018) [test_tier_required]: 新增“线上模块发布合法性闭环补齐”专题 PRD/项目管理文档并纳入主索引。
 - [x] TASK-WORLD_RUNTIME-017 (PRD-WORLD_RUNTIME-016) [test_tier_required]: 引入线上 builtin 发布清单入口与生产禁 fallback 策略（`ReleaseSecurityPolicy` + online manifest API）。
 - [x] TASK-WORLD_RUNTIME-018 (PRD-WORLD_RUNTIME-016) [test_tier_required]: `m1/m4/m5` bootstrap 加载迁移到治理清单解析路径，保留受控 fallback。
@@ -30,14 +29,6 @@
 - [ ] TASK-WORLD_RUNTIME-033 (PRD-WORLD_RUNTIME-014/015) [test_tier_required + test_tier_full]: 建立 launcher / chain runtime / soak profile 的 footprint gate、GC fail-safe 与重启恢复联合验证。
 - [x] TASK-WORLD_RUNTIME-034 (PRD-WORLD_RUNTIME-013/014/015) [test_tier_required]: 输出详细技术设计文档，明确 canonical replay log / checkpoint / GC / metrics / migration 方案。
 - [x] TASK-WORLD_RUNTIME-035 (PRD-WORLD_RUNTIME-013/014/015) [test_tier_required]: 将专题项目进一步拆解为 T1.1 ~ T7.5 子任务，明确执行顺序、依赖边界与测试闭环。
-=======
-- [x] TASK-WORLD_RUNTIME-016 (PRD-WORLD_RUNTIME-013/014/015) [test_tier_required]: 建立运行态存储体积治理专题 PRD / project，并回写模块主 PRD、项目文档与索引。
-- [x] TASK-WORLD_RUNTIME-017 (PRD-WORLD_RUNTIME-013/014) [test_tier_required]: 落地 execution bridge / execution world retention policy（head window、稀疏 checkpoint、manifest-aware GC）并验证 latest-state 恢复不回退。
-- [ ] TASK-WORLD_RUNTIME-018 (PRD-WORLD_RUNTIME-013/015) [test_tier_required]: 实现 `tick_consensus_records` 热冷分层与 storage metrics/status 输出，建立 snapshot size regression 与 archive read 回归。
-- [ ] TASK-WORLD_RUNTIME-019 (PRD-WORLD_RUNTIME-014/015) [test_tier_required + test_tier_full]: 建立 launcher / chain runtime / soak profile 的 footprint gate、GC fail-safe 与重启恢复联合验证。
-- [x] TASK-WORLD_RUNTIME-020 (PRD-WORLD_RUNTIME-013/014/015) [test_tier_required]: 输出详细技术设计文档，明确 canonical replay log / checkpoint / GC / metrics / migration 方案。
-- [x] TASK-WORLD_RUNTIME-021 (PRD-WORLD_RUNTIME-013/014/015) [test_tier_required]: 将专题项目进一步拆解为 T1.1 ~ T7.5 子任务，明确执行顺序、依赖边界与测试闭环。
->>>>>>> 53758185 (feat(world-runtime): recover interrupted sidecar saves)
 
 ## 依赖
 - doc/world-runtime/prd.index.md
@@ -51,7 +42,7 @@
 ## 状态
 - 更新日期: 2026-03-08
 - 当前状态: active
-- 下一任务: TASK-WORLD_RUNTIME-032（进入专题子任务 T5.1）
+- 下一任务: TASK-WORLD_RUNTIME-032（进入专题子任务 T5.2）
 - 实施备注:
   - `TASK-WORLD_RUNTIME-028` 已完成：新增节点侧固定验收入口 `scripts/module-release-node-acceptance.sh` 并将 S11 运行手册切换为“脚本入口 + 等价拆分命令 + 证据目录”；同时收敛 `sync-m1/m4/m5` 非 `--check` 写入授权为“CI 禁止、仅本地显式授权（`AGENT_WORLD_WASM_SYNC_WRITE_ALLOW=local-dev`）”，主 CI 不再具备生产发布写入/激活路径。
   - `TASK-WORLD_RUNTIME-029` 已完成：新增 `scripts/world-runtime-finality-baseline.sh` 固定基准入口，输出 `stake/epoch` 验签耗时聚合指标与 `2 epoch` 收敛状态（`summary.md`/`summary.json` 可归档）；S11 运行手册已补齐命令与产物路径。
@@ -75,5 +66,6 @@
   - `TASK-WORLD_RUNTIME-032` 已继续完成 T4.2：冷归档已升级为 `tick-consensus.archive.index.json` + `tick-consensus.archive.segments/`，每段记录 `from/to tick`、`content_hash`、`record_count`、`hash_chain_anchor` 与相对路径。
   - `TASK-WORLD_RUNTIME-032` 已继续完成 T4.3：新增显式 archive range read / verify 路径，并能在 index 缺失时回退读取 T4.1 legacy 单文件 archive，保证旧样本迁移可用。
   - `TASK-WORLD_RUNTIME-032` 已继续完成 T4.4：snapshot size regression / archive range read / legacy migration / tampered segment hash verify 回归已补齐，T4 系列任务已闭环。
+  - `TASK-WORLD_RUNTIME-032` 已继续完成 T5.1：`replication_commit_messages` 热窗口现按 latest height 回推的连续高度范围裁剪，读路径统一为“热镜像优先 + cold index 归档读回”。
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - 说明: 本文档仅维护 world-runtime 模块设计执行状态；过程记录在 `doc/devlog/2026-03-03.md`、`doc/devlog/2026-03-06.md` 与 `doc/devlog/2026-03-08.md`。

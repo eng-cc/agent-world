@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -23,6 +23,14 @@ const DEFAULT_MAX_HOT_COMMIT_MESSAGES: usize = 4096;
 pub(crate) const REPLICATION_FETCH_COMMIT_PROTOCOL: &str =
     "/aw/node/replication/fetch-commit/1.0.0";
 pub(crate) const REPLICATION_FETCH_BLOB_PROTOCOL: &str = "/aw/node/replication/fetch-blob/1.0.0";
+
+mod commit_retention;
+
+use self::commit_retention::{
+    build_commit_message_retention_plan, load_commit_message_cold_index_from_root,
+    resolve_commit_message_readback_source, write_commit_message_cold_index_to_root,
+    CommitMessageReadbackSource,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NodeReplicationConfig {
@@ -260,11 +268,6 @@ impl NodeReplicationConfig {
             .join(COMMIT_MESSAGE_DIR)
             .join(format!("{:020}.json", height))
     }
-
-    fn commit_cold_index_path(&self) -> PathBuf {
-        self.root_dir
-            .join("replication_commit_messages_cold_index.json")
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -336,11 +339,6 @@ struct LocalWriterState {
     writer_epoch: u64,
     last_sequence: u64,
     last_replicated_height: u64,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
-struct CommitMessageColdIndex {
-    by_height: BTreeMap<u64, String>,
 }
 
 impl Default for LocalWriterState {
@@ -639,55 +637,24 @@ impl ReplicationRuntime {
     }
 
     fn prune_hot_commit_messages(&self) -> Result<(), NodeError> {
-        let commit_dir = self.config.root_dir.join(COMMIT_MESSAGE_DIR);
-        if !commit_dir.exists() {
+        let retention_plan = build_commit_message_retention_plan(
+            self.config.root_dir.as_path(),
+            self.config.max_hot_commit_messages,
+        )?;
+        if retention_plan.offload_candidates.is_empty() {
             return Ok(());
         }
-        let max_hot_commit_messages = self.config.max_hot_commit_messages.max(1);
-        let mut commit_files = Vec::new();
-        let entries = fs::read_dir(&commit_dir).map_err(|err| NodeError::Replication {
-            reason: format!("list commit dir {} failed: {}", commit_dir.display(), err),
-        })?;
-        for entry in entries {
-            let entry = entry.map_err(|err| NodeError::Replication {
-                reason: format!("read commit dir entry failed: {}", err),
-            })?;
-            let path = entry.path();
-            if !path.is_file() {
-                continue;
-            }
-            let Some(file_name) = path.file_name().and_then(|name| name.to_str()) else {
-                continue;
-            };
-            let Some(height_text) = file_name.strip_suffix(".json") else {
-                continue;
-            };
-            let Ok(height) = height_text.parse::<u64>() else {
-                continue;
-            };
-            if height == 0 {
-                continue;
-            }
-            commit_files.push((height, path));
-        }
-        if commit_files.len() <= max_hot_commit_messages {
-            return Ok(());
-        }
-        commit_files.sort_by_key(|(height, _)| *height);
-        let overflow = commit_files.len() - max_hot_commit_messages;
+
         let mut offloaded = Vec::new();
-        for (height, path) in commit_files.into_iter().take(overflow) {
-            let bytes = fs::read(&path).map_err(|err| NodeError::Replication {
-                reason: format!("read {} failed: {}", path.display(), err),
+        for candidate in retention_plan.offload_candidates {
+            let bytes = fs::read(&candidate.path).map_err(|err| NodeError::Replication {
+                reason: format!("read {} failed: {}", candidate.path.display(), err),
             })?;
             let content_hash = blake3_hex(bytes.as_slice());
             self.store
                 .put(content_hash.as_str(), bytes.as_slice())
                 .map_err(distfs_error_to_node_error)?;
-            offloaded.push((height, content_hash, path));
-        }
-        if offloaded.is_empty() {
-            return Ok(());
+            offloaded.push((candidate.height, content_hash, candidate.path));
         }
 
         let mut cold_index =
@@ -695,7 +662,7 @@ impl ReplicationRuntime {
         for (height, content_hash, _) in &offloaded {
             cold_index.by_height.insert(*height, content_hash.clone());
         }
-        write_json_pretty(self.config.commit_cold_index_path().as_path(), &cold_index)?;
+        write_commit_message_cold_index_to_root(self.config.root_dir.as_path(), &cold_index)?;
 
         for (_, _, path) in offloaded {
             fs::remove_file(&path).map_err(|err| NodeError::Replication {
@@ -1083,42 +1050,36 @@ pub(crate) fn load_commit_message_from_root(
     world_id: &str,
     height: u64,
 ) -> Result<Option<GossipReplicationMessage>, NodeError> {
-    let path = commit_message_path_from_root(root_dir, height);
-    if path.exists() {
-        let bytes = fs::read(&path).map_err(|err| NodeError::Replication {
-            reason: format!("read {} failed: {}", path.display(), err),
-        })?;
-        let message =
+    let Some(source) = resolve_commit_message_readback_source(root_dir, height)? else {
+        return Ok(None);
+    };
+
+    let message = match source {
+        CommitMessageReadbackSource::HotMirror { path } => {
+            let bytes = fs::read(&path).map_err(|err| NodeError::Replication {
+                reason: format!("read {} failed: {}", path.display(), err),
+            })?;
             serde_json::from_slice::<GossipReplicationMessage>(&bytes).map_err(|err| {
                 NodeError::Replication {
                     reason: format!("parse {} failed: {}", path.display(), err),
                 }
-            })?;
-        if message.version != REPLICATION_VERSION
-            || message.world_id != world_id
-            || message.record.world_id != world_id
-        {
-            return Ok(None);
+            })?
         }
-        return Ok(Some(message));
-    }
-
-    let cold_index = load_commit_message_cold_index_from_root(root_dir)?;
-    let Some(content_hash) = cold_index.by_height.get(&height) else {
-        return Ok(None);
+        CommitMessageReadbackSource::ColdArchive { content_hash } => {
+            let store = LocalCasStore::new(root_dir.join("store"));
+            let bytes = store
+                .get_verified(content_hash.as_str())
+                .map_err(distfs_error_to_node_error)?;
+            serde_json::from_slice::<GossipReplicationMessage>(&bytes).map_err(|err| {
+                NodeError::Replication {
+                    reason: format!(
+                        "parse cold commit message for height {} hash {} failed: {}",
+                        height, content_hash, err
+                    ),
+                }
+            })?
+        }
     };
-    let store = LocalCasStore::new(root_dir.join("store"));
-    let bytes = store
-        .get_verified(content_hash.as_str())
-        .map_err(distfs_error_to_node_error)?;
-    let message = serde_json::from_slice::<GossipReplicationMessage>(&bytes).map_err(|err| {
-        NodeError::Replication {
-            reason: format!(
-                "parse cold commit message for height {} hash {} failed: {}",
-                height, content_hash, err
-            ),
-        }
-    })?;
     if message.version != REPLICATION_VERSION
         || message.world_id != world_id
         || message.record.world_id != world_id
@@ -1138,24 +1099,6 @@ pub(crate) fn load_blob_from_root(
         Err(WorldError::BlobNotFound { .. }) => Ok(None),
         Err(err) => Err(distfs_error_to_node_error(err)),
     }
-}
-
-fn commit_message_path_from_root(root_dir: &Path, height: u64) -> PathBuf {
-    root_dir
-        .join(COMMIT_MESSAGE_DIR)
-        .join(format!("{:020}.json", height))
-}
-
-fn commit_message_cold_index_path_from_root(root_dir: &Path) -> PathBuf {
-    root_dir.join("replication_commit_messages_cold_index.json")
-}
-
-fn load_commit_message_cold_index_from_root(
-    root_dir: &Path,
-) -> Result<CommitMessageColdIndex, NodeError> {
-    load_json_or_default::<CommitMessageColdIndex>(
-        commit_message_cold_index_path_from_root(root_dir).as_path(),
-    )
 }
 
 fn load_json_or_default<T>(path: &Path) -> Result<T, NodeError>

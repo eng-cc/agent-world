@@ -304,6 +304,11 @@ fn load_commit_message_by_height_reads_from_cold_index_after_hot_prune() {
         "cold index should contain pruned height"
     );
 
+    let retention_plan =
+        build_commit_message_retention_plan(dir.as_path(), 2).expect("retention plan");
+    assert_eq!(retention_plan.hot_window.latest_height, Some(3));
+    assert_eq!(retention_plan.hot_window.hot_window_start_height, Some(2));
+
     let loaded_1 = runtime
         .load_commit_message_by_height(world_id, 1)
         .expect("load commit height 1")
@@ -322,6 +327,63 @@ fn load_commit_message_by_height_reads_from_cold_index_after_hot_prune() {
         .expect("load commit height 3")
         .expect("hot commit height 3 should exist");
     assert_eq!(loaded_3.record.content_hash, message_3.record.content_hash);
+
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn prune_hot_commit_messages_uses_latest_height_window_range() {
+    let dir = temp_dir("commit-hot-window-range");
+    let world_id = "world-commit-hot-window-range";
+    let config = NodeReplicationConfig::new(&dir)
+        .expect("config")
+        .with_max_hot_commit_messages(2)
+        .expect("hot commit cap");
+    let runtime = ReplicationRuntime::new(&config, "node-a").expect("runtime");
+
+    let message_1 = signed_remote_message(71, world_id, "node-b", 1);
+    let message_100 = signed_remote_message(72, world_id, "node-b", 100);
+    runtime
+        .persist_commit_message(1, &message_1)
+        .expect("persist message 1");
+    runtime
+        .persist_commit_message(100, &message_100)
+        .expect("persist message 100");
+
+    assert!(
+        !config.commit_message_path(1).exists(),
+        "sparse height outside latest-based hot window should be offloaded"
+    );
+    assert!(
+        config.commit_message_path(100).exists(),
+        "latest height should remain in hot mirror"
+    );
+
+    let retention_plan =
+        build_commit_message_retention_plan(dir.as_path(), 2).expect("retention plan");
+    assert_eq!(retention_plan.hot_window.latest_height, Some(100));
+    assert_eq!(retention_plan.hot_window.hot_window_start_height, Some(99));
+
+    let cold_index = load_commit_message_cold_index_from_root(dir.as_path()).expect("cold index");
+    assert!(
+        cold_index.by_height.contains_key(&1),
+        "cold index should retain offloaded sparse height"
+    );
+
+    let loaded_1 = runtime
+        .load_commit_message_by_height(world_id, 1)
+        .expect("load commit height 1")
+        .expect("cold commit height 1 should exist");
+    assert_eq!(loaded_1.record.content_hash, message_1.record.content_hash);
+
+    let loaded_100 = runtime
+        .load_commit_message_by_height(world_id, 100)
+        .expect("load commit height 100")
+        .expect("hot commit height 100 should exist");
+    assert_eq!(
+        loaded_100.record.content_hash,
+        message_100.record.content_hash
+    );
 
     let _ = std::fs::remove_dir_all(&dir);
 }
