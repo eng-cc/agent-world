@@ -552,7 +552,7 @@ impl World {
         Ok(())
     }
 
-    fn governance_finality_epoch_snapshot_for_epoch(
+    pub(super) fn governance_finality_epoch_snapshot_for_epoch(
         &self,
         epoch_id: u64,
     ) -> GovernanceFinalityEpochSnapshot {
@@ -615,7 +615,7 @@ impl World {
         Ok(())
     }
 
-    fn current_governance_epoch(&self) -> u64 {
+    pub(super) fn current_governance_epoch(&self) -> u64 {
         self.governance_epoch_for_time(self.state.time)
     }
 

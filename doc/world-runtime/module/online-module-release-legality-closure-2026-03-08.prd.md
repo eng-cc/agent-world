@@ -63,6 +63,7 @@
   - AC-11 (PRD-WORLD_RUNTIME-018): 从主 CI 移除生产发布写入与激活职责（含默认模块发布写入）；主 CI 只保留 `--check` 类回归校验。
   - AC-12 (PRD-WORLD_RUNTIME-018): 为阈值验签与发布收敛提供可执行基准：`stake/epoch` 校验耗时与“2 epoch 内收敛”均需有固定测试入口与产物。
   - AC-13 (PRD-WORLD_RUNTIME-018): `proposal -> attestation` 证明落盘必须包含 `signer_node_id/platform/build_manifest_hash/source_hash/wasm_hash/proof_cid`，并强校验 `wasm_hash == release request manifest.wasm_hash`，冲突重复证明拒绝。
+  - AC-14 (PRD-WORLD_RUNTIME-018): `ModuleReleaseApply` 必须按当前 epoch 快照 signer 集做 attestation 阈值聚合，且仅快照内 signer 计入阈值；阈值不足不得激活 release manifest。
 - Non-Goals:
   - 不在本期引入全新加密算法（继续以 ed25519 为主）。
   - 不在本期重构模块业务 ABI 或 gameplay 逻辑。
@@ -101,6 +102,7 @@
   - key 轮换窗口中旧证书：在 grace period 内可验证，窗口结束后统一拒绝。
   - 复构建节点对同平台 hash 结论不一致：标记为 release fault，禁止产生活跃清单。
   - 同 `signer_node_id + platform` 的复构建证明出现不同 hash/cid：拒绝冲突写入并保留首条证明作为审计锚点。
+  - attestation signer 不在当前 epoch 快照 signer 集：该证明不计入阈值聚合，若聚合不足则拒绝 `ModuleReleaseApply`。
   - 清单回滚：仅允许通过治理撤销事件推进，不允许节点本地手工回滚。
   - 生产节点误开本地 fallback：启动即告警并拒绝进入 `enforce` 状态。
   - 生产路径误调用 `apply_proposal()`：立即拒绝并输出“本地自签路径禁用”错误，禁止 silent fallback。

@@ -971,6 +971,43 @@ impl World {
                     )?;
                     return Ok(true);
                 }
+                let epoch_id = self.current_governance_epoch();
+                let snapshot = self.governance_finality_epoch_snapshot_for_epoch(epoch_id);
+                let snapshot_signers: BTreeSet<&str> = snapshot
+                    .signer_node_ids
+                    .iter()
+                    .map(String::as_str)
+                    .collect();
+                let aggregated_signers: BTreeSet<String> = request
+                    .attestations
+                    .values()
+                    .filter_map(|attestation| {
+                        let signer_node_id = attestation.signer_node_id.trim();
+                        if snapshot_signers.contains(signer_node_id) {
+                            Some(signer_node_id.to_string())
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+                if aggregated_signers.len() < snapshot.threshold as usize {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![format!(
+                                    "module release apply rejected: attestation threshold not met epoch_id={} threshold={} aggregated_signers={} request_id={}",
+                                    epoch_id,
+                                    snapshot.threshold,
+                                    aggregated_signers.len(),
+                                    request_id
+                                )],
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                }
                 if let Err(reason) =
                     self.validate_module_release_profile_changes(&request.profile_changes)
                 {
