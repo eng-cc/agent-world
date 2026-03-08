@@ -58,6 +58,7 @@ mod llm_settings;
 mod llm_settings;
 mod platform_ops;
 mod self_guided;
+mod self_guided_error_cards;
 #[cfg(not(target_arch = "wasm32"))]
 mod transfer_entry;
 mod transfer_window;
@@ -1383,6 +1384,9 @@ impl eframe::App for ClientLauncherApp {
         );
 
         egui::CentralPanel::default().show(ctx, |ui| {
+            self.render_startup_error_cards(ui, &game_required_issues, &chain_required_issues);
+            ui.separator();
+
             self.render_config_validation_summary(
                 ui,
                 &game_required_issues,

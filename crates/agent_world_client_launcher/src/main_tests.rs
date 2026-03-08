@@ -737,6 +737,49 @@ fn handle_start_chain_click_opens_startup_guide_when_invalid() {
 }
 
 #[test]
+fn apply_safe_defaults_for_game_target_recovers_required_fields() {
+    let mut app = ClientLauncherApp::default();
+    app.config.scenario.clear();
+    app.config.live_bind = "127.0.0.1".to_string();
+    app.config.web_bind = "127.0.0.1".to_string();
+    app.config.viewer_host.clear();
+    app.config.viewer_port = "0".to_string();
+    app.config.viewer_static_dir.clear();
+
+    app.apply_safe_defaults_for_startup_target(StartupGuideTarget::Game);
+
+    let game_issues = collect_required_config_issues(&app.config);
+    assert!(!game_issues.contains(&ConfigIssue::ScenarioRequired));
+    assert!(!game_issues.contains(&ConfigIssue::LiveBindInvalid));
+    assert!(!game_issues.contains(&ConfigIssue::WebBindInvalid));
+    assert!(!game_issues.contains(&ConfigIssue::ViewerHostRequired));
+    assert!(!game_issues.contains(&ConfigIssue::ViewerPortInvalid));
+    assert!(!game_issues.contains(&ConfigIssue::ViewerStaticDirRequired));
+}
+
+#[test]
+fn apply_safe_defaults_for_chain_target_recovers_required_fields() {
+    let mut app = ClientLauncherApp::default();
+    app.config.chain_enabled = false;
+    app.config.chain_runtime_bin.clear();
+    app.config.chain_status_bind = "127.0.0.1".to_string();
+    app.config.chain_node_id.clear();
+    app.config.chain_node_role = "invalid".to_string();
+    app.config.chain_node_tick_ms = "0".to_string();
+    app.config.chain_pos_slot_duration_ms = "0".to_string();
+    app.config.chain_pos_ticks_per_slot = "0".to_string();
+    app.config.chain_pos_proposal_tick_phase = "99".to_string();
+    app.config.chain_pos_max_past_slot_lag = "-1".to_string();
+
+    app.apply_safe_defaults_for_startup_target(StartupGuideTarget::Chain);
+
+    let chain_issues = collect_chain_required_config_issues(&app.config);
+    assert!(app.config.chain_enabled);
+    assert!(chain_issues.is_empty());
+    assert_eq!(app.chain_runtime_status, ChainRuntimeStatus::NotStarted);
+}
+
+#[test]
 fn onboarding_auto_open_targets_fix_config_step_when_required_fields_missing() {
     let mut app = ClientLauncherApp::default();
     app.onboarding_state.auto_open_checked = false;
