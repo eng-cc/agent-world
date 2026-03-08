@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::collections::BTreeSet;
 use std::collections::VecDeque;
 use std::fs;
 use std::path::Path;
@@ -6,7 +7,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use agent_world_distfs::{assemble_journal, assemble_snapshot};
 use agent_world_proto::distributed::SnapshotManifest;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use super::super::util::{hash_json, read_json_from_path, write_json_to_path};
 use super::super::{
@@ -22,6 +23,68 @@ const DISTFS_SNAPSHOT_MANIFEST_FILE: &str = "snapshot.manifest.json";
 const DISTFS_JOURNAL_SEGMENTS_FILE: &str = "journal.segments.json";
 const DISTFS_RECOVERY_AUDIT_FILE: &str = "distfs.recovery.audit.json";
 const DISTFS_WORLD_ID_FALLBACK: &str = "runtime-world";
+const SIDECAR_GENERATION_INDEX_SCHEMA_V1: u32 = 1;
+const SIDECAR_GENERATION_RECORD_SCHEMA_V1: u32 = 1;
+const SIDECAR_GENERATION_ROOT_DIR: &str = "sidecar-generations";
+const SIDECAR_GENERATION_INDEX_FILE: &str = "index.json";
+const SIDECAR_GENERATION_MANIFESTS_DIR: &str = "generations";
+const SIDECAR_GENERATION_STAGING_DIR: &str = "generation.tmp";
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+struct SidecarGcResult {
+    status: String,
+    freed_blob_count: usize,
+    freed_bytes: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    error: Option<String>,
+    updated_at_ms: i64,
+}
+
+impl SidecarGcResult {
+    fn not_run() -> Self {
+        Self {
+            status: "not_run".to_string(),
+            freed_blob_count: 0,
+            freed_bytes: 0,
+            error: None,
+            updated_at_ms: now_unix_ms(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+struct SidecarGenerationRecord {
+    schema_version: u32,
+    generation_id: String,
+    snapshot_manifest_path: String,
+    journal_segments_path: String,
+    snapshot_manifest_hash: String,
+    manifest_hash: String,
+    journal_segment_hashes: Vec<String>,
+    pinned_blob_hashes: Vec<String>,
+    created_at_ms: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+struct SidecarGenerationIndex {
+    schema_version: u32,
+    latest_generation: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    rollback_safe_generation: Option<String>,
+    generations: BTreeMap<String, SidecarGenerationRecord>,
+    last_gc_result: SidecarGcResult,
+}
+
+#[derive(Debug, Serialize)]
+struct SidecarGenerationHashPayload<'a> {
+    generation_id: &'a str,
+    snapshot_manifest_path: &'a str,
+    journal_segments_path: &'a str,
+    snapshot_manifest_hash: &'a str,
+    journal_segment_hashes: &'a [String],
+    pinned_blob_hashes: &'a [String],
+    created_at_ms: i64,
+}
 
 #[derive(Debug, Serialize)]
 struct DistfsRecoveryAuditRecord {
@@ -293,6 +356,13 @@ impl World {
         let journal_segments_path = dir.join(DISTFS_JOURNAL_SEGMENTS_FILE);
         write_json_to_path(&manifest, snapshot_manifest_path.as_path())?;
         write_json_to_path(&journal_segments, journal_segments_path.as_path())?;
+        persist_sidecar_generation_index(
+            store_root.as_path(),
+            DISTFS_SNAPSHOT_MANIFEST_FILE,
+            DISTFS_JOURNAL_SEGMENTS_FILE,
+            &manifest,
+            journal_segments.as_slice(),
+        )?;
         Ok(())
     }
 
@@ -341,6 +411,139 @@ impl World {
             assemble_journal(&journal_segments, &store, |event: &WorldEvent| event.id)?;
         Ok((snapshot, Journal { events }))
     }
+}
+
+fn sidecar_generation_root_dir(store_root: &Path) -> std::path::PathBuf {
+    store_root.join(SIDECAR_GENERATION_ROOT_DIR)
+}
+
+fn sidecar_generation_manifests_dir(store_root: &Path) -> std::path::PathBuf {
+    sidecar_generation_root_dir(store_root).join(SIDECAR_GENERATION_MANIFESTS_DIR)
+}
+
+fn sidecar_generation_staging_dir(store_root: &Path) -> std::path::PathBuf {
+    sidecar_generation_root_dir(store_root).join(SIDECAR_GENERATION_STAGING_DIR)
+}
+
+fn sidecar_generation_index_path(store_root: &Path) -> std::path::PathBuf {
+    sidecar_generation_root_dir(store_root).join(SIDECAR_GENERATION_INDEX_FILE)
+}
+
+fn sidecar_generation_manifest_path(store_root: &Path, generation_id: &str) -> std::path::PathBuf {
+    sidecar_generation_manifests_dir(store_root).join(format!("{generation_id}.json"))
+}
+
+fn load_sidecar_generation_index(
+    store_root: &Path,
+) -> Result<Option<SidecarGenerationIndex>, WorldError> {
+    let index_path = sidecar_generation_index_path(store_root);
+    if !index_path.exists() {
+        return Ok(None);
+    }
+    let index: SidecarGenerationIndex = read_json_from_path(index_path.as_path())?;
+    Ok(Some(index))
+}
+
+fn build_sidecar_generation_pinned_blob_hashes(
+    manifest: &SnapshotManifest,
+    journal_segments: &[JournalSegmentRef],
+) -> Vec<String> {
+    let mut pinned_blob_hashes = manifest
+        .chunks
+        .iter()
+        .map(|chunk| chunk.content_hash.clone())
+        .collect::<BTreeSet<_>>();
+    pinned_blob_hashes.extend(
+        journal_segments
+            .iter()
+            .map(|segment| segment.content_hash.clone()),
+    );
+    pinned_blob_hashes.into_iter().collect()
+}
+
+fn build_sidecar_generation_record(
+    snapshot_manifest_path: &str,
+    journal_segments_path: &str,
+    manifest: &SnapshotManifest,
+    journal_segments: &[JournalSegmentRef],
+) -> Result<SidecarGenerationRecord, WorldError> {
+    let created_at_ms = now_unix_ms();
+    let snapshot_manifest_hash = hash_json(manifest)?;
+    let journal_segment_hashes = journal_segments
+        .iter()
+        .map(|segment| segment.content_hash.clone())
+        .collect::<Vec<_>>();
+    let pinned_blob_hashes =
+        build_sidecar_generation_pinned_blob_hashes(manifest, journal_segments);
+    let generation_id = format!(
+        "gen-{}-{}",
+        created_at_ms,
+        snapshot_manifest_hash.chars().take(12).collect::<String>()
+    );
+    let manifest_hash = hash_json(&SidecarGenerationHashPayload {
+        generation_id: generation_id.as_str(),
+        snapshot_manifest_path,
+        journal_segments_path,
+        snapshot_manifest_hash: snapshot_manifest_hash.as_str(),
+        journal_segment_hashes: journal_segment_hashes.as_slice(),
+        pinned_blob_hashes: pinned_blob_hashes.as_slice(),
+        created_at_ms,
+    })?;
+    Ok(SidecarGenerationRecord {
+        schema_version: SIDECAR_GENERATION_RECORD_SCHEMA_V1,
+        generation_id,
+        snapshot_manifest_path: snapshot_manifest_path.to_string(),
+        journal_segments_path: journal_segments_path.to_string(),
+        snapshot_manifest_hash,
+        manifest_hash,
+        journal_segment_hashes,
+        pinned_blob_hashes,
+        created_at_ms,
+    })
+}
+
+fn persist_sidecar_generation_index(
+    store_root: &Path,
+    snapshot_manifest_path: &str,
+    journal_segments_path: &str,
+    manifest: &SnapshotManifest,
+    journal_segments: &[JournalSegmentRef],
+) -> Result<(), WorldError> {
+    let generation_root = sidecar_generation_root_dir(store_root);
+    fs::create_dir_all(sidecar_generation_manifests_dir(store_root).as_path())?;
+    fs::create_dir_all(sidecar_generation_staging_dir(store_root).as_path())?;
+
+    let generation_record = build_sidecar_generation_record(
+        snapshot_manifest_path,
+        journal_segments_path,
+        manifest,
+        journal_segments,
+    )?;
+    let generation_manifest_path =
+        sidecar_generation_manifest_path(store_root, generation_record.generation_id.as_str());
+    write_json_to_path(&generation_record, generation_manifest_path.as_path())?;
+
+    let mut index = load_sidecar_generation_index(store_root)?.unwrap_or(SidecarGenerationIndex {
+        schema_version: SIDECAR_GENERATION_INDEX_SCHEMA_V1,
+        latest_generation: generation_record.generation_id.clone(),
+        rollback_safe_generation: None,
+        generations: BTreeMap::new(),
+        last_gc_result: SidecarGcResult::not_run(),
+    });
+    let previous_latest = if index.latest_generation != generation_record.generation_id {
+        Some(index.latest_generation.clone())
+    } else {
+        index.rollback_safe_generation.clone()
+    };
+    index.schema_version = SIDECAR_GENERATION_INDEX_SCHEMA_V1;
+    index.latest_generation = generation_record.generation_id.clone();
+    index.rollback_safe_generation = previous_latest;
+    index
+        .generations
+        .insert(generation_record.generation_id.clone(), generation_record);
+    write_json_to_path(&index, sidecar_generation_index_path(store_root).as_path())?;
+    let _ = generation_root;
+    Ok(())
 }
 
 fn distfs_world_id(dir: &Path) -> String {

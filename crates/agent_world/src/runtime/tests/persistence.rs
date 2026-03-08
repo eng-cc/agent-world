@@ -206,6 +206,133 @@ fn persist_writes_distfs_sidecar_and_restores_without_json_files() {
 }
 
 #[test]
+fn persist_writes_sidecar_generation_index_and_pinset() {
+    let mut world = World::new();
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-sidecar".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.step().expect("step");
+
+    let dir = temp_dir("persist-sidecar-generation-index");
+    world
+        .save_to_dir(&dir)
+        .expect("save world with sidecar generation index");
+
+    let index_path = dir.join(".distfs-state/sidecar-generations/index.json");
+    let index: serde_json::Value = serde_json::from_slice(
+        &fs::read(index_path.as_path()).expect("read sidecar generation index"),
+    )
+    .expect("decode sidecar generation index");
+    let latest_generation = index
+        .get("latest_generation")
+        .and_then(|value| value.as_str())
+        .expect("latest generation");
+    assert!(index.get("rollback_safe_generation").is_none());
+    assert!(dir
+        .join(".distfs-state/sidecar-generations/generation.tmp")
+        .exists());
+    assert!(dir
+        .join(format!(
+            ".distfs-state/sidecar-generations/generations/{latest_generation}.json"
+        ))
+        .exists());
+
+    let generation = index
+        .get("generations")
+        .and_then(|value| value.get(latest_generation))
+        .expect("latest generation entry");
+    let pinned_blob_hashes = generation
+        .get("pinned_blob_hashes")
+        .and_then(|value| value.as_array())
+        .expect("pinned blob hashes");
+    assert!(!pinned_blob_hashes.is_empty());
+    let manifest: agent_world_proto::distributed::SnapshotManifest = serde_json::from_slice(
+        &fs::read(dir.join("snapshot.manifest.json")).expect("read snapshot manifest"),
+    )
+    .expect("decode snapshot manifest");
+    let journal_segments: Vec<agent_world_proto::distributed_storage::JournalSegmentRef> =
+        serde_json::from_slice(
+            &fs::read(dir.join("journal.segments.json")).expect("read journal segments"),
+        )
+        .expect("decode journal segments");
+    let expected_pins = manifest
+        .chunks
+        .iter()
+        .map(|chunk| chunk.content_hash.clone())
+        .chain(
+            journal_segments
+                .iter()
+                .map(|segment| segment.content_hash.clone()),
+        )
+        .collect::<std::collections::BTreeSet<_>>();
+    let actual_pins = pinned_blob_hashes
+        .iter()
+        .map(|value| value.as_str().expect("pin string").to_string())
+        .collect::<std::collections::BTreeSet<_>>();
+    assert_eq!(actual_pins, expected_pins);
+
+    let _ = fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn persist_updates_sidecar_generation_index_with_rollback_safe_generation() {
+    let mut world = World::new();
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-sidecar-2".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.step().expect("first step");
+
+    let dir = temp_dir("persist-sidecar-generation-rollback-safe");
+    world.save_to_dir(&dir).expect("first save");
+
+    let first_index: serde_json::Value = serde_json::from_slice(
+        &fs::read(dir.join(".distfs-state/sidecar-generations/index.json"))
+            .expect("read first sidecar generation index"),
+    )
+    .expect("decode first sidecar generation index");
+    let first_latest = first_index
+        .get("latest_generation")
+        .and_then(|value| value.as_str())
+        .expect("first latest generation")
+        .to_string();
+
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-sidecar-3".to_string(),
+        pos: pos(1.0, 1.0),
+    });
+    world.step().expect("second step");
+    world.save_to_dir(&dir).expect("second save");
+
+    let second_index: serde_json::Value = serde_json::from_slice(
+        &fs::read(dir.join(".distfs-state/sidecar-generations/index.json"))
+            .expect("read second sidecar generation index"),
+    )
+    .expect("decode second sidecar generation index");
+    let latest_generation = second_index
+        .get("latest_generation")
+        .and_then(|value| value.as_str())
+        .expect("latest generation");
+    let rollback_safe_generation = second_index
+        .get("rollback_safe_generation")
+        .and_then(|value| value.as_str())
+        .expect("rollback safe generation");
+    assert_ne!(latest_generation, rollback_safe_generation);
+    assert_eq!(rollback_safe_generation, first_latest);
+    assert!(second_index
+        .get("generations")
+        .and_then(|value| value.get(latest_generation))
+        .is_some());
+    assert!(second_index
+        .get("generations")
+        .and_then(|value| value.get(rollback_safe_generation))
+        .is_some());
+
+    let _ = fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn load_from_dir_falls_back_to_json_when_distfs_sidecar_is_invalid() {
     let mut world = World::new();
     world.submit_action(Action::RegisterAgent {
