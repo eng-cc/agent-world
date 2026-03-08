@@ -1,4 +1,5 @@
 const MODULE_RELEASE_PROFILE_CHANGE_LIMIT: usize = 50;
+const MODULE_RELEASE_ATTESTATION_LIMIT: usize = 128;
 
 impl World {
     pub(super) fn try_apply_runtime_module_action(
@@ -407,6 +408,248 @@ impl World {
                         request_id: *request_id,
                         operator_agent_id: operator_agent_id.clone(),
                         manifest_hash: shadow_manifest_hash,
+                    }),
+                    Some(CausedBy::Action(action_id)),
+                )?;
+                Ok(true)
+            }
+            Action::ModuleReleaseSubmitAttestation {
+                operator_agent_id,
+                request_id,
+                signer_node_id,
+                platform,
+                build_manifest_hash,
+                source_hash,
+                wasm_hash,
+                proof_cid,
+            } => {
+                if !self.state.agents.contains_key(operator_agent_id) {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::AgentNotFound {
+                                agent_id: operator_agent_id.clone(),
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                }
+                let Some(request) = self.state.module_release_requests.get(request_id).cloned()
+                else {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![format!(
+                                    "module release attestation rejected: request not found ({request_id})"
+                                )],
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                };
+                if matches!(
+                    request.status,
+                    ModuleReleaseRequestStatus::Rejected | ModuleReleaseRequestStatus::Applied
+                ) {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![format!(
+                                    "module release attestation rejected: invalid status {:?} for request {}",
+                                    request.status, request_id
+                                )],
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                }
+                let normalized_signer_node_id = signer_node_id.trim().to_string();
+                if normalized_signer_node_id.is_empty() {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![
+                                    "module release attestation rejected: signer_node_id is empty"
+                                        .to_string(),
+                                ],
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                }
+                if self
+                    .node_identity_public_key(normalized_signer_node_id.as_str())
+                    .is_none()
+                {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![format!(
+                                    "module release attestation rejected: signer_node_id is untrusted ({})",
+                                    normalized_signer_node_id
+                                )],
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                }
+                let Some(normalized_platform) =
+                    Self::normalize_module_release_attestation_platform(platform.as_str())
+                else {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![
+                                    "module release attestation rejected: platform is empty"
+                                        .to_string(),
+                                ],
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                };
+                let normalized_build_manifest_hash =
+                    match Self::normalize_module_release_attestation_hash(
+                        build_manifest_hash.as_str(),
+                        "build_manifest_hash",
+                    ) {
+                        Ok(hash) => hash,
+                        Err(note) => {
+                            self.append_event(
+                                WorldEventBody::Domain(DomainEvent::ActionRejected {
+                                    action_id,
+                                    reason: RejectReason::RuleDenied { notes: vec![note] },
+                                }),
+                                Some(CausedBy::Action(action_id)),
+                            )?;
+                            return Ok(true);
+                        }
+                    };
+                let normalized_source_hash = match Self::normalize_module_release_attestation_hash(
+                    source_hash.as_str(),
+                    "source_hash",
+                ) {
+                    Ok(hash) => hash,
+                    Err(note) => {
+                        self.append_event(
+                            WorldEventBody::Domain(DomainEvent::ActionRejected {
+                                action_id,
+                                reason: RejectReason::RuleDenied { notes: vec![note] },
+                            }),
+                            Some(CausedBy::Action(action_id)),
+                        )?;
+                        return Ok(true);
+                    }
+                };
+                let normalized_wasm_hash = match Self::normalize_module_release_attestation_hash(
+                    wasm_hash.as_str(),
+                    "wasm_hash",
+                ) {
+                    Ok(hash) => hash,
+                    Err(note) => {
+                        self.append_event(
+                            WorldEventBody::Domain(DomainEvent::ActionRejected {
+                                action_id,
+                                reason: RejectReason::RuleDenied { notes: vec![note] },
+                            }),
+                            Some(CausedBy::Action(action_id)),
+                        )?;
+                        return Ok(true);
+                    }
+                };
+                if request.manifest.wasm_hash != normalized_wasm_hash {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![format!(
+                                    "module release attestation rejected: wasm hash mismatch expected {} found {}",
+                                    request.manifest.wasm_hash, normalized_wasm_hash
+                                )],
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                }
+                let Some(normalized_proof_cid) =
+                    Self::normalize_module_release_attestation_proof_cid(proof_cid.as_str())
+                else {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![
+                                    "module release attestation rejected: proof_cid is empty or too long"
+                                        .to_string(),
+                                ],
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                };
+                let attestation_key = Self::module_release_attestation_key(
+                    normalized_signer_node_id.as_str(),
+                    normalized_platform.as_str(),
+                );
+                if let Some(existing) = request.attestations.get(attestation_key.as_str()) {
+                    let same_payload = existing.build_manifest_hash
+                        == normalized_build_manifest_hash
+                        && existing.source_hash == normalized_source_hash
+                        && existing.wasm_hash == normalized_wasm_hash
+                        && existing.proof_cid == normalized_proof_cid;
+                    if !same_payload {
+                        self.append_event(
+                            WorldEventBody::Domain(DomainEvent::ActionRejected {
+                                action_id,
+                                reason: RejectReason::RuleDenied {
+                                    notes: vec![format!(
+                                        "module release attestation rejected: conflicting attestation already exists for signer={} platform={}",
+                                        normalized_signer_node_id, normalized_platform
+                                    )],
+                                },
+                            }),
+                            Some(CausedBy::Action(action_id)),
+                        )?;
+                        return Ok(true);
+                    }
+                } else if request.attestations.len() >= MODULE_RELEASE_ATTESTATION_LIMIT {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![format!(
+                                    "module release attestation rejected: attestation limit exceeded for request {}",
+                                    request_id
+                                )],
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                }
+                self.append_event(
+                    WorldEventBody::Domain(DomainEvent::ModuleReleaseAttested {
+                        request_id: *request_id,
+                        operator_agent_id: operator_agent_id.clone(),
+                        signer_node_id: normalized_signer_node_id,
+                        platform: normalized_platform,
+                        build_manifest_hash: normalized_build_manifest_hash,
+                        source_hash: normalized_source_hash,
+                        wasm_hash: normalized_wasm_hash,
+                        proof_cid: normalized_proof_cid,
                     }),
                     Some(CausedBy::Action(action_id)),
                 )?;

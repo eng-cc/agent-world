@@ -255,6 +255,7 @@ impl WorldState {
                         profile_changes: profile_changes.clone(),
                         required_roles: normalized_roles,
                         role_approvals: BTreeMap::new(),
+                        attestations: BTreeMap::new(),
                         status: ModuleReleaseRequestStatus::Requested,
                         shadow_manifest_hash: None,
                         applied_manifest_hash: None,
@@ -270,6 +271,7 @@ impl WorldState {
                         request_id: *request_id,
                         release_id: format!("release-{request_id}"),
                         module_id: manifest.module_id.clone(),
+                        attestation_count: 0,
                         shadow_manifest_hash: None,
                         applied_manifest_hash: None,
                         applied_proposal_id: None,
@@ -319,6 +321,123 @@ impl WorldState {
                     })?;
                 mapping.status = ModuleReleaseRequestStatus::Shadowed;
                 mapping.shadow_manifest_hash = Some(manifest_hash.clone());
+                mapping.updated_at = now;
+                if let Some(cell) = self.agents.get_mut(operator_agent_id) {
+                    cell.last_active = now;
+                }
+            }
+            DomainEvent::ModuleReleaseAttested {
+                request_id,
+                operator_agent_id,
+                signer_node_id,
+                platform,
+                build_manifest_hash,
+                source_hash,
+                wasm_hash,
+                proof_cid,
+            } => {
+                if !self.agents.contains_key(operator_agent_id) {
+                    return Err(WorldError::AgentNotFound {
+                        agent_id: operator_agent_id.clone(),
+                    });
+                }
+                if signer_node_id.trim().is_empty() {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "module release attestation signer_node_id cannot be empty (request_id={request_id})"
+                        ),
+                    });
+                }
+                if !self
+                    .node_identity_bindings
+                    .contains_key(signer_node_id.trim())
+                {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "module release attestation signer_node_id is untrusted: {}",
+                            signer_node_id
+                        ),
+                    });
+                }
+                let normalized_platform = platform.trim().to_ascii_lowercase();
+                if normalized_platform.is_empty() {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "module release attestation platform cannot be empty (request_id={request_id})"
+                        ),
+                    });
+                }
+                let request = self
+                    .module_release_requests
+                    .get_mut(request_id)
+                    .ok_or_else(|| WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "module release attestation rejected: request not found ({request_id})"
+                        ),
+                    })?;
+                if matches!(
+                    request.status,
+                    ModuleReleaseRequestStatus::Rejected | ModuleReleaseRequestStatus::Applied
+                ) {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "module release attestation invalid status for request {}: {:?}",
+                            request_id, request.status
+                        ),
+                    });
+                }
+                if request.manifest.wasm_hash != *wasm_hash {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "module release attestation wasm hash mismatch: request_id={} expected={} found={}",
+                            request_id, request.manifest.wasm_hash, wasm_hash
+                        ),
+                    });
+                }
+
+                let attestation_key = format!("{}|{}", signer_node_id.trim(), normalized_platform);
+                let next_attestation = ModuleReleaseAttestationState {
+                    request_id: *request_id,
+                    signer_node_id: signer_node_id.trim().to_string(),
+                    platform: normalized_platform,
+                    submitted_by_agent_id: operator_agent_id.clone(),
+                    build_manifest_hash: build_manifest_hash.clone(),
+                    source_hash: source_hash.clone(),
+                    wasm_hash: wasm_hash.clone(),
+                    proof_cid: proof_cid.clone(),
+                    submitted_at: now,
+                };
+                if let Some(existing) = request.attestations.get(attestation_key.as_str()) {
+                    let same_payload = existing.request_id == *request_id
+                        && existing.signer_node_id == next_attestation.signer_node_id
+                        && existing.platform == next_attestation.platform
+                        && existing.build_manifest_hash == next_attestation.build_manifest_hash
+                        && existing.source_hash == next_attestation.source_hash
+                        && existing.wasm_hash == next_attestation.wasm_hash
+                        && existing.proof_cid == next_attestation.proof_cid;
+                    if !same_payload {
+                        return Err(WorldError::ResourceBalanceInvalid {
+                            reason: format!(
+                                "module release attestation conflict: request_id={} signer={} platform={}",
+                                request_id, signer_node_id, platform
+                            ),
+                        });
+                    }
+                } else {
+                    request
+                        .attestations
+                        .insert(attestation_key, next_attestation);
+                }
+                request.updated_at = now;
+                let mapping = self
+                    .module_release_manifest_mappings
+                    .get_mut(request_id)
+                    .ok_or_else(|| WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "module release mapping missing for attestation request_id={request_id}"
+                        ),
+                    })?;
+                mapping.attestation_count = request.attestations.len() as u32;
                 mapping.updated_at = now;
                 if let Some(cell) = self.agents.get_mut(operator_agent_id) {
                     cell.last_active = now;

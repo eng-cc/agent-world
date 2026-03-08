@@ -217,6 +217,44 @@ impl World {
             .all(|required| role_approvals.contains_key(required))
     }
 
+    fn module_release_attestation_key(signer_node_id: &str, platform: &str) -> String {
+        format!(
+            "{}|{}",
+            signer_node_id.trim(),
+            platform.trim().to_ascii_lowercase()
+        )
+    }
+
+    fn normalize_module_release_attestation_platform(platform: &str) -> Option<String> {
+        let normalized = platform.trim().to_ascii_lowercase();
+        if normalized.is_empty() {
+            None
+        } else {
+            Some(normalized)
+        }
+    }
+
+    fn normalize_module_release_attestation_hash(raw: &str, field: &str) -> Result<String, String> {
+        let normalized = raw.trim().to_ascii_lowercase();
+        if normalized.len() != 64 || !normalized.chars().all(|ch| ch.is_ascii_hexdigit()) {
+            return Err(format!(
+                "module release attestation rejected: {field} must be 64-char hex"
+            ));
+        }
+        Ok(normalized)
+    }
+
+    fn normalize_module_release_attestation_proof_cid(proof_cid: &str) -> Option<String> {
+        let normalized = proof_cid.trim().to_string();
+        if normalized.is_empty() {
+            return None;
+        }
+        if normalized.len() > 256 {
+            return None;
+        }
+        Some(normalized)
+    }
+
     fn evaluate_module_release_shadow_hash(
         &self,
         manifest: &agent_world_wasm_abi::ModuleManifest,
@@ -948,8 +986,10 @@ impl World {
             )?;
             return Ok(true);
         };
-        let target_key =
-            agent_world_wasm_abi::ModuleRegistry::record_key(instance.module_id.as_str(), target_module_version);
+        let target_key = agent_world_wasm_abi::ModuleRegistry::record_key(
+            instance.module_id.as_str(),
+            target_module_version,
+        );
         let Some(target_record) = self.module_registry.records.get(target_key.as_str()) else {
             self.append_event(
                 WorldEventBody::Domain(DomainEvent::ActionRejected {

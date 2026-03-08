@@ -123,6 +123,13 @@ fn duplicate_recipe_profile_changes() -> ModuleProfileChanges {
     }
 }
 
+fn bind_attestor_node_identity(world: &mut World, node_id: &str) {
+    let public_key_hex = util::sha256_hex(node_id.as_bytes());
+    world
+        .bind_node_identity(node_id, public_key_hex.as_str())
+        .expect("bind attestor node identity");
+}
+
 #[test]
 fn module_release_state_machine_runs_submit_shadow_approve_apply() {
     let mut world = World::new();
@@ -347,6 +354,173 @@ fn module_release_state_machine_runs_submit_shadow_approve_apply() {
         .recipe_profile("recipe.assembler.module_rack")
         .is_some());
     assert!(restored.factory_profile("factory.assembler.mk1").is_some());
+}
+
+#[test]
+fn module_release_submit_attestation_persists_audit_evidence() {
+    let mut world = World::new();
+    register_agent(&mut world, "publisher-1");
+    register_agent(&mut world, "operator-1");
+    bind_attestor_node_identity(&mut world, "attestor-node-1");
+
+    let wasm_bytes = b"module-release-attestation-audit".to_vec();
+    let wasm_hash = util::sha256_hex(&wasm_bytes);
+    world.submit_action(Action::DeployModuleArtifact {
+        publisher_agent_id: "publisher-1".to_string(),
+        wasm_hash: wasm_hash.clone(),
+        wasm_bytes,
+    });
+    world.step().expect("deploy module artifact");
+
+    world.submit_action(Action::ModuleReleaseSubmit {
+        requester_agent_id: "publisher-1".to_string(),
+        manifest: base_manifest("m.loop.release.attest", "0.1.0", &wasm_hash),
+        activate: false,
+        install_target: ModuleInstallTarget::SelfAgent,
+        required_roles: vec!["runtime".to_string()],
+        profile_changes: ModuleProfileChanges::default(),
+    });
+    world.step().expect("submit module release request");
+    let request_id = match &world.journal().events.last().expect("submit event").body {
+        WorldEventBody::Domain(DomainEvent::ModuleReleaseRequested { request_id, .. }) => {
+            *request_id
+        }
+        other => panic!("expected module release requested event: {other:?}"),
+    };
+
+    let build_manifest_hash = util::sha256_hex(b"attest-build-manifest");
+    let source_hash = util::sha256_hex(b"attest-source-hash");
+    world.submit_action(Action::ModuleReleaseSubmitAttestation {
+        operator_agent_id: "operator-1".to_string(),
+        request_id,
+        signer_node_id: "attestor-node-1".to_string(),
+        platform: "linux-x86_64".to_string(),
+        build_manifest_hash: build_manifest_hash.clone(),
+        source_hash: source_hash.clone(),
+        wasm_hash: wasm_hash.clone(),
+        proof_cid: "bafyreleaseattest0001".to_string(),
+    });
+    world.step().expect("submit module release attestation");
+
+    match &world
+        .journal()
+        .events
+        .last()
+        .expect("attestation event")
+        .body
+    {
+        WorldEventBody::Domain(DomainEvent::ModuleReleaseAttested {
+            request_id: event_request_id,
+            operator_agent_id,
+            signer_node_id,
+            platform,
+            build_manifest_hash: event_build_manifest_hash,
+            source_hash: event_source_hash,
+            wasm_hash: event_wasm_hash,
+            proof_cid,
+        }) => {
+            assert_eq!(*event_request_id, request_id);
+            assert_eq!(operator_agent_id, "operator-1");
+            assert_eq!(signer_node_id, "attestor-node-1");
+            assert_eq!(platform, "linux-x86_64");
+            assert_eq!(event_build_manifest_hash, &build_manifest_hash);
+            assert_eq!(event_source_hash, &source_hash);
+            assert_eq!(event_wasm_hash, &wasm_hash);
+            assert_eq!(proof_cid, "bafyreleaseattest0001");
+        }
+        other => panic!("expected module release attested event: {other:?}"),
+    }
+
+    let request = world
+        .state()
+        .module_release_requests
+        .get(&request_id)
+        .expect("module release request state");
+    let attestation = request
+        .attestations
+        .get("attestor-node-1|linux-x86_64")
+        .expect("attestation state");
+    assert_eq!(attestation.proof_cid, "bafyreleaseattest0001");
+    assert_eq!(attestation.wasm_hash, wasm_hash);
+    let mapping = world
+        .state()
+        .module_release_manifest_mappings
+        .get(&request_id)
+        .expect("module release mapping state");
+    assert_eq!(mapping.attestation_count, 1);
+}
+
+#[test]
+fn module_release_submit_attestation_rejects_conflicting_duplicate() {
+    let mut world = World::new();
+    register_agent(&mut world, "publisher-1");
+    register_agent(&mut world, "operator-1");
+    bind_attestor_node_identity(&mut world, "attestor-node-1");
+
+    let wasm_bytes = b"module-release-attestation-conflict".to_vec();
+    let wasm_hash = util::sha256_hex(&wasm_bytes);
+    world.submit_action(Action::DeployModuleArtifact {
+        publisher_agent_id: "publisher-1".to_string(),
+        wasm_hash: wasm_hash.clone(),
+        wasm_bytes,
+    });
+    world.step().expect("deploy module artifact");
+
+    world.submit_action(Action::ModuleReleaseSubmit {
+        requester_agent_id: "publisher-1".to_string(),
+        manifest: base_manifest("m.loop.release.attest.dup", "0.1.0", &wasm_hash),
+        activate: false,
+        install_target: ModuleInstallTarget::SelfAgent,
+        required_roles: vec!["runtime".to_string()],
+        profile_changes: ModuleProfileChanges::default(),
+    });
+    world.step().expect("submit module release request");
+    let request_id = match &world.journal().events.last().expect("submit event").body {
+        WorldEventBody::Domain(DomainEvent::ModuleReleaseRequested { request_id, .. }) => {
+            *request_id
+        }
+        other => panic!("expected module release requested event: {other:?}"),
+    };
+
+    let build_manifest_hash = util::sha256_hex(b"attest-dup-build-manifest");
+    let source_hash = util::sha256_hex(b"attest-dup-source-hash");
+    world.submit_action(Action::ModuleReleaseSubmitAttestation {
+        operator_agent_id: "operator-1".to_string(),
+        request_id,
+        signer_node_id: "attestor-node-1".to_string(),
+        platform: "linux-x86_64".to_string(),
+        build_manifest_hash: build_manifest_hash.clone(),
+        source_hash: source_hash.clone(),
+        wasm_hash: wasm_hash.clone(),
+        proof_cid: "bafyreleaseattestdup0001".to_string(),
+    });
+    world.step().expect("submit first attestation");
+
+    let action_id = world.submit_action(Action::ModuleReleaseSubmitAttestation {
+        operator_agent_id: "operator-1".to_string(),
+        request_id,
+        signer_node_id: "attestor-node-1".to_string(),
+        platform: "linux-x86_64".to_string(),
+        build_manifest_hash,
+        source_hash,
+        wasm_hash,
+        proof_cid: "bafyreleaseattestdup0002".to_string(),
+    });
+    world.step().expect("submit conflicting attestation");
+
+    assert_rule_denied_note_for_action(&world, action_id, "conflicting attestation already exists");
+    let request = world
+        .state()
+        .module_release_requests
+        .get(&request_id)
+        .expect("module release request state");
+    assert_eq!(request.attestations.len(), 1);
+    let mapping = world
+        .state()
+        .module_release_manifest_mappings
+        .get(&request_id)
+        .expect("module release mapping state");
+    assert_eq!(mapping.attestation_count, 1);
 }
 
 #[test]

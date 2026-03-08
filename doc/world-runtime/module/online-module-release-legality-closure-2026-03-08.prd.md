@@ -47,7 +47,7 @@
 | artifact 身份签名 | `wasm_hash`、`source_hash`、`build_manifest_hash`、`signer_node_id`、`signature_scheme`、`artifact_signature` | 生成并校验签名，不允许生产回退 | `unsigned -> signed -> verified/rejected` | payload 固定 `modsig:ed25519:v1` | signer 必须在信任根中且达到阈值策略 |
 | finality 证书 | `proposal_id`、`manifest_hash`、`consensus_height`、`epoch_id`、`threshold_bps`、`min_unique_signers`、`signatures` | 外部提交证书后执行 apply | `approved -> queued -> finalized -> applied` | 校验 `stake_signed_bps >= threshold_bps` 且 `unique_signers >= min_unique_signers`；签名集合去重 | 仅 epoch 快照内验证者签名计入阈值并可签发 |
 | 运行时加载策略 | `trust_root_version`、`active_manifest_hash`、`allow_local_fallback`（prod=false） | 节点启动/热更新时校验并拉取模块 | `bootstrap -> sync -> enforce` | 先验签再加载，失败不降级到未授权字节 | 生产节点禁止本地未授权 fallback |
-| 去中心化发布证据流程 | `proposal_tx`、`build_attestations`、`finality_cert`、`audit_log_cid` | 节点提交复构建证明并聚合签名 | `proposed -> attested -> threshold_reached -> finalized` | 证明按 `module_id/platform/signer` 去重聚合 | 仅信任根内 signer 计入阈值 |
+| 去中心化发布证据流程 | `proposal_tx`、`request_id`、`build_attestations{signer_node_id,platform,build_manifest_hash,source_hash,wasm_hash,proof_cid}`、`finality_cert`、`audit_log_cid` | 节点提交复构建证明并聚合签名；证明必须显式绑定 `request_id` 与 `wasm_hash` | `proposed -> attested -> threshold_reached -> finalized` | 证明按 `signer_node_id + platform` 去重聚合，冲突提交拒绝并保留首条审计证据 | 仅信任根内 signer 且已绑定 node identity 的证明计入阈值 |
 | 兼容状态机映射 | `module_release_request_id`、`release_id`、`shadow_manifest_hash`、`applied_manifest_hash`、`applied_proposal_id` | `ModuleRelease*` 事件驱动写入发布清单映射 | `requested/shadowed/approved/applied -> draft/finalized/active` | 映射关系 append-only；同 `request_id` 不可重写 | 仅治理 apply 与发布流水写入 |
 - Acceptance Criteria:
   - AC-1 (PRD-WORLD_RUNTIME-016): 生产路径移除 builtin 模块清单 `include_str!` 作为主真源，改为线上发布清单驱动；本地内置仅允许作为应急 bootstrap 且默认关闭。
@@ -62,6 +62,7 @@
   - AC-10 (PRD-WORLD_RUNTIME-018): 现有 `ModuleReleaseRequested/Shadowed/RoleApproved/Applied` 状态机需输出到 release manifest 映射，保证迁移期可回放且可追溯。
   - AC-11 (PRD-WORLD_RUNTIME-018): 从主 CI 移除生产发布写入与激活职责（含默认模块发布写入）；主 CI 只保留 `--check` 类回归校验。
   - AC-12 (PRD-WORLD_RUNTIME-018): 为阈值验签与发布收敛提供可执行基准：`stake/epoch` 校验耗时与“2 epoch 内收敛”均需有固定测试入口与产物。
+  - AC-13 (PRD-WORLD_RUNTIME-018): `proposal -> attestation` 证明落盘必须包含 `signer_node_id/platform/build_manifest_hash/source_hash/wasm_hash/proof_cid`，并强校验 `wasm_hash == release request manifest.wasm_hash`，冲突重复证明拒绝。
 - Non-Goals:
   - 不在本期引入全新加密算法（继续以 ed25519 为主）。
   - 不在本期重构模块业务 ABI 或 gameplay 逻辑。
@@ -99,6 +100,7 @@
   - 证书 `epoch_id` 与本地信任根快照不一致：拒绝 apply，并记录快照版本冲突审计事件。
   - key 轮换窗口中旧证书：在 grace period 内可验证，窗口结束后统一拒绝。
   - 复构建节点对同平台 hash 结论不一致：标记为 release fault，禁止产生活跃清单。
+  - 同 `signer_node_id + platform` 的复构建证明出现不同 hash/cid：拒绝冲突写入并保留首条证明作为审计锚点。
   - 清单回滚：仅允许通过治理撤销事件推进，不允许节点本地手工回滚。
   - 生产节点误开本地 fallback：启动即告警并拒绝进入 `enforce` 状态。
   - 生产路径误调用 `apply_proposal()`：立即拒绝并输出“本地自签路径禁用”错误，禁止 silent fallback。

@@ -146,6 +146,7 @@ impl World {
             | Action::ModuleReleaseShadow { .. }
             | Action::ModuleReleaseApproveRole { .. }
             | Action::ModuleReleaseBindRoles { .. }
+            | Action::ModuleReleaseSubmitAttestation { .. }
             | Action::ModuleReleaseReject { .. }
             | Action::ModuleReleaseApply { .. }
             | Action::ListModuleArtifactForSale { .. }

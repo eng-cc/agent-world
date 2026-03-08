@@ -218,6 +218,21 @@ impl Default for ModuleReleaseRequestStatus {
     }
 }
 
+/// One rebuild attestation submitted for a module release request.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ModuleReleaseAttestationState {
+    pub request_id: u64,
+    pub signer_node_id: String,
+    pub platform: String,
+    pub submitted_by_agent_id: String,
+    pub build_manifest_hash: String,
+    pub source_hash: String,
+    pub wasm_hash: String,
+    pub proof_cid: String,
+    #[serde(default)]
+    pub submitted_at: WorldTime,
+}
+
 /// Module release request tracked through governance closure.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ModuleReleaseRequestState {
@@ -233,6 +248,8 @@ pub struct ModuleReleaseRequestState {
     pub required_roles: Vec<String>,
     #[serde(default)]
     pub role_approvals: BTreeMap<String, String>,
+    #[serde(default)]
+    pub attestations: BTreeMap<String, ModuleReleaseAttestationState>,
     #[serde(default)]
     pub status: ModuleReleaseRequestStatus,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -255,6 +272,8 @@ pub struct ModuleReleaseManifestMappingState {
     pub request_id: u64,
     pub release_id: String,
     pub module_id: String,
+    #[serde(default)]
+    pub attestation_count: u32,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub shadow_manifest_hash: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -765,6 +784,7 @@ impl WorldState {
             | DomainEvent::ModuleUpgraded { .. }
             | DomainEvent::ModuleReleaseRequested { .. }
             | DomainEvent::ModuleReleaseShadowed { .. }
+            | DomainEvent::ModuleReleaseAttested { .. }
             | DomainEvent::ModuleReleaseRoleApproved { .. }
             | DomainEvent::ModuleReleaseRolesBound { .. }
             | DomainEvent::ModuleReleaseRejected { .. }

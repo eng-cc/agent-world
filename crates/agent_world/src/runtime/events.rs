@@ -203,6 +203,16 @@ pub enum Action {
         operator_agent_id: String,
         request_id: u64,
     },
+    ModuleReleaseSubmitAttestation {
+        operator_agent_id: String,
+        request_id: u64,
+        signer_node_id: String,
+        platform: String,
+        build_manifest_hash: String,
+        source_hash: String,
+        wasm_hash: String,
+        proof_cid: String,
+    },
     ModuleReleaseApproveRole {
         approver_agent_id: String,
         request_id: u64,
@@ -535,6 +545,9 @@ impl Action {
             Action::ModuleReleaseShadow {
                 operator_agent_id, ..
             }
+            | Action::ModuleReleaseSubmitAttestation {
+                operator_agent_id, ..
+            }
             | Action::ModuleReleaseBindRoles {
                 operator_agent_id, ..
             }
@@ -777,6 +790,16 @@ pub enum DomainEvent {
         request_id: u64,
         operator_agent_id: String,
         manifest_hash: String,
+    },
+    ModuleReleaseAttested {
+        request_id: u64,
+        operator_agent_id: String,
+        signer_node_id: String,
+        platform: String,
+        build_manifest_hash: String,
+        source_hash: String,
+        wasm_hash: String,
+        proof_cid: String,
     },
     ModuleReleaseRoleApproved {
         request_id: u64,
@@ -1263,6 +1286,9 @@ impl DomainEvent {
                 requester_agent_id, ..
             } => Some(requester_agent_id.as_str()),
             DomainEvent::ModuleReleaseShadowed {
+                operator_agent_id, ..
+            } => Some(operator_agent_id.as_str()),
+            DomainEvent::ModuleReleaseAttested {
                 operator_agent_id, ..
             } => Some(operator_agent_id.as_str()),
             DomainEvent::ModuleReleaseRoleApproved {
