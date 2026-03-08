@@ -135,7 +135,8 @@ env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-u
 ./scripts/sync-m5-builtin-wasm-artifacts.sh --check
 ```
 - 本地策略（2026-03-08 起）：
-  - 本地与主 CI 均仅允许 `--check`；生产发布清单写入与激活由发布节点链上流水完成。
+  - 主 CI 仅允许 `--check`；生产发布清单写入与激活由发布节点链上流水完成。
+  - 本地非 `--check` 仅允许显式维护清单（需设置 `AGENT_WORLD_WASM_SYNC_WRITE_ALLOW=local-dev`），不属于生产发布路径。
   - `CI=true` 不再作为生产发布写入/激活授权条件；CI 产物仅用于开发回归和可审计对账证据。
 
 ### S1：核心 required 套件（L1）
@@ -364,7 +365,15 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required lon
 - 生产执行边界（强制）：
   - 生产发布写入/激活只能由发布节点提交链上动作（`ModuleReleaseSubmit*` / `ModuleReleaseApply`）完成。
   - 主 CI 仅允许执行 `--check` 类回归与对账，不参与生产发布写入、阈值签名或激活判定。
-- 发布前最小验收（建议按顺序）：
+- 节点侧固定验收入口（默认 required，按需追加 full）：
+```bash
+./scripts/module-release-node-acceptance.sh
+./scripts/module-release-node-acceptance.sh --include-full
+```
+- 产物与证据：
+  - 默认输出目录：`.tmp/module_release_node_acceptance/<timestamp>/`
+  - 最小归档：`summary.md`、`summary.json`、各 step log（含 triage 信号检索）
+- 等价拆分命令（便于定向排障）：
 ```bash
 env -u RUSTC_WRAPPER cargo test -p agent_world module_release_submit_attestation_ --features test_tier_required -- --nocapture
 env -u RUSTC_WRAPPER cargo test -p agent_world module_release_apply_rejects_when_attestation_threshold_not_met --features test_tier_required -- --nocapture

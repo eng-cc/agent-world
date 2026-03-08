@@ -113,6 +113,7 @@
   - `ModuleRelease*` 与 release manifest 映射缺失：拒绝激活并要求补齐映射证据。
   - 故障签名标准化：线上不可达/缺失回滚/identity 漂移分别输出 `builtin_release_manifest_unreachable`、`builtin_release_manifest_missing_or_rolled_back`、`builtin_release_manifest_identity_drift`，用于 runbook 与告警分诊。
   - 运行手册锚点：`testing-manual.md` 的 `S11` 必须保持与上述三类阻断信号同口径，作为值守分诊与验收入口。
+  - 主 CI 误触发非 `--check` builtin manifest 写入：必须被脚本门禁拒绝（CI write-disabled），避免 CI 成为生产发布写入路径。
 - Non-Functional Requirements:
   - NFR-OMR-1: 节点模块校验（manifest + identity + signature）单模块验证耗时 `p95 <= 200ms`（本地缓存命中）。
   - NFR-OMR-2: 发布证据（清单、证明签名、证书、链上高度）可追溯完整率 100%。
@@ -143,7 +144,7 @@
 | --- | --- | --- | --- | --- |
 | PRD-WORLD_RUNTIME-016 | TASK-WORLD_RUNTIME-017/018/019/027 | `test_tier_required` | 运行时仅接受线上 manifest + 签名身份用例；`ModuleRelease* -> release manifest` 映射回放一致性校验 | 模块加载与执行合法性 |
 | PRD-WORLD_RUNTIME-017 | TASK-WORLD_RUNTIME-020/021/025/026 | `test_tier_required` + `test_tier_full` | finality 证书外部化、`stake/epoch` 阈值验签、key 轮换验证；本地自签路径禁用测试 | 治理 apply 安全边界 |
-| PRD-WORLD_RUNTIME-018 | TASK-WORLD_RUNTIME-022/023/024/028/029 | `test_tier_required` | 去中心化提案/复构建证明/阈值签名闭环校验 + 发布 runbook/告警策略 + 主 CI 去发布写入 + 基准指标产物校验 | 发布门禁与工程流程 |
+| PRD-WORLD_RUNTIME-018 | TASK-WORLD_RUNTIME-022/023/024/028/029 | `test_tier_required` | 去中心化提案/复构建证明/阈值签名闭环校验 + 发布 runbook/告警策略 + 节点侧固定验收脚本（`scripts/module-release-node-acceptance.sh`）+ 主 CI 去发布写入 + 基准指标产物校验 | 发布门禁与工程流程 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |

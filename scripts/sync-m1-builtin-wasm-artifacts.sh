@@ -44,7 +44,10 @@ Env:
       Default: darwin-arm64,linux-x86_64
   AGENT_WORLD_WASM_SYNC_WRITE_ALLOW
       Required when writing manifest/identity (non --check mode).
-      Must be set to ci-bot together with CI=true.
+      Must be set to local-dev.
+  CI
+      Non --check writes are rejected when CI=true.
+      Production publish is node-driven and does not run via CI write path.
 USAGE
 }
 
@@ -130,20 +133,29 @@ require_current_platform_supported() {
   fi
 }
 
-require_ci_bot_write_authorization() {
+require_local_write_authorization() {
   if [[ "$CHECK_ONLY" -eq 1 ]]; then
     return 0
   fi
 
-  if [[ "${CI:-}" == "true" && "${AGENT_WORLD_WASM_SYNC_WRITE_ALLOW:-}" == "ci-bot" ]]; then
+  if [[ "${CI:-}" == "true" ]]; then
+    echo "error: sync write mode is disabled for CI" >&2
+    echo "  CI=${CI:-<unset>}" >&2
+    echo "hint: CI and release gate must run scripts/sync-m1-builtin-wasm-artifacts.sh --check" >&2
+    echo "hint: decentralized production publish must be driven by release nodes, not CI writes" >&2
+    exit 1
+  fi
+
+  if [[ "${AGENT_WORLD_WASM_SYNC_WRITE_ALLOW:-}" == "local-dev" ]]; then
     return 0
   fi
 
-  echo "error: sync write mode is restricted to CI bot" >&2
+  echo "error: sync write mode requires explicit local-dev authorization" >&2
   echo "  CI=${CI:-<unset>}" >&2
   echo "  AGENT_WORLD_WASM_SYNC_WRITE_ALLOW=${AGENT_WORLD_WASM_SYNC_WRITE_ALLOW:-<unset>}" >&2
   echo "hint: local development should run scripts/sync-m1-builtin-wasm-artifacts.sh --check" >&2
-  echo "hint: CI bot write flow must set CI=true and AGENT_WORLD_WASM_SYNC_WRITE_ALLOW=ci-bot" >&2
+  echo "hint: local non --check writes must set AGENT_WORLD_WASM_SYNC_WRITE_ALLOW=local-dev" >&2
+  echo "hint: CI write flow is intentionally disabled; use node-side decentralized publish flow" >&2
   exit 1
 }
 
@@ -308,7 +320,7 @@ fi
 
 CURRENT_PLATFORM="$(detect_current_platform)"
 read_canonical_platforms
-require_ci_bot_write_authorization
+require_local_write_authorization
 
 read_module_ids
 mkdir -p "$OUT_DIR"
