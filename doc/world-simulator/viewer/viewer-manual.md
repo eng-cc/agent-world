@@ -99,6 +99,17 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023
 - `--auto-select-target`：启动后自动选中目标（例如 `first_agent`、`agent:agent-0`）。
 - `--automation-steps`：执行一组自动步骤（例如 `mode=3d;focus=agent:agent-0;zoom=0.8;select=agent:agent-0`）。
 - 常用于截图回归，减少手工定位误差。
+- 常用步骤键：
+  - `wait=<seconds>`
+  - `mode=2d|3d`
+  - `focus=<target>|selection`（或 `focus_selection=current`）
+  - `select=<target>`
+  - `pan=x,y,z`
+  - `zoom=<factor>`
+  - `orbit=<yaw_deg>,<pitch_deg>`
+  - `panel=show|hide|toggle`
+  - `module=<controls|overview|chat|overlay|diagnosis|event_link|timeline|details>:<show|hide|toggle>`
+  - `material_variant=next|cycle`
 
 示例：
 ```bash
@@ -107,6 +118,14 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023
   --addr 127.0.0.1:5131 \
   --auto-select-target first_agent \
   --automation-steps "mode=3d;focus=first_agent;zoom=0.8"
+```
+
+示例（round-1 语义补齐）：
+```bash
+./scripts/capture-viewer-frame.sh \
+  --scenario llm_bootstrap \
+  --addr 127.0.0.1:5131 \
+  --automation-steps "panel=show;module=chat:show;select=first_agent;focus=selection;material_variant=next;wait=0.2"
 ```
 
 ## 3D 渲染档位与精调（商业化精致度）
