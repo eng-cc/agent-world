@@ -43,6 +43,7 @@
 - [x] TASK-TESTING-038 (PRD-TESTING-005) [test_tier_required]: 落地 m4/m5 keyed hash manifest 迁移与 sync strict 模式（禁 legacy 写回）。
 - [x] TASK-TESTING-039 (PRD-TESTING-005) [test_tier_required]: 收敛 builtin wasm identity 的 `source_hash` 输入范围并移除 workspace 根 `Cargo.lock` 依赖。
 - [x] TASK-TESTING-040 (PRD-TESTING-005) [test_tier_required]: 增加 m4/m5 多 runner 对账 workflow、required checks 保护与本地只读校验策略。
+- [ ] TASK-TESTING-041 (PRD-TESTING-002/003) [test_tier_required]: 完成“启动器全功能可用性审查与闭环验收（2026-03-08）”专题执行（脚本审查 + Playwright 真闭环 + 风险分级结论）。
 
 ## 专题任务映射（2026-03-02 批次）
 - [x] SUBTASK-TESTING-20260302-001 (PRD-TESTING-002/003) [test_tier_required]: `doc/testing/longrun/chain-runtime-feedback-replication-network-autowire-2026-03-02.prd.project.md`
@@ -81,6 +82,9 @@
 ## 专题任务映射（2026-03-06 批次）
 - [x] SUBTASK-TESTING-20260306-001 (PRD-TESTING-005) [test_tier_required]: `doc/testing/ci/ci-builtin-wasm-m4-m5-hash-drift-hardening.prd.project.md`
 
+## 专题任务映射（2026-03-08 批次）
+- [ ] SUBTASK-TESTING-20260308-001 (PRD-TESTING-002/003) [test_tier_required]: `doc/testing/launcher/launcher-full-usability-closure-audit-2026-03-08.prd.project.md`
+
 ## 依赖
 - doc/testing/prd.index.md
 - `testing-manual.md`
@@ -90,10 +94,11 @@
 - `.agents/skills/prd/check.md`
 
 ## 状态
-- 更新日期: 2026-03-06
+- 更新日期: 2026-03-08
 - 当前状态: active
-- 下一任务: TASK-TESTING-002
+- 下一任务: TASK-TESTING-041
 - 专题映射状态: 2026-03-02 批次 3/3 已纳入模块项目管理文档。
 - 专题映射状态补充: 2026-03-06 批次 1/1 已纳入模块项目管理文档。
+- 专题映射状态补充: 2026-03-08 批次 0/1 进行中（启动器全功能可用性审查）。
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
-- 说明: 本文档仅维护 testing 模块设计执行状态；过程记录在 `doc/devlog/2026-03-06.md`。
+- 说明: 本文档仅维护 testing 模块设计执行状态；过程记录在 `doc/devlog/2026-03-08.md`。
