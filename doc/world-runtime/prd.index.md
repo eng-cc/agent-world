@@ -18,6 +18,7 @@
 | `doc/world-runtime/module/module-subscription-filters.prd.md` | `doc/world-runtime/module/module-subscription-filters.prd.project.md` |
 | `doc/world-runtime/runtime/bootstrap-power-modules.prd.md` | `doc/world-runtime/runtime/bootstrap-power-modules.prd.project.md` |
 | `doc/world-runtime/runtime/runtime-infinite-sequence-rollover.prd.md` | `doc/world-runtime/runtime/runtime-infinite-sequence-rollover.prd.project.md` |
+| `doc/world-runtime/runtime/runtime-storage-footprint-governance-2026-03-08.prd.md` | `doc/world-runtime/runtime/runtime-storage-footprint-governance-2026-03-08.prd.project.md` |
 | `doc/world-runtime/runtime/runtime-numeric-correctness-phase1.prd.md` | `doc/world-runtime/runtime/runtime-numeric-correctness-phase1.prd.project.md` |
 | `doc/world-runtime/runtime/runtime-numeric-correctness-phase10.prd.md` | `doc/world-runtime/runtime/runtime-numeric-correctness-phase10.prd.project.md` |
 | `doc/world-runtime/runtime/runtime-numeric-correctness-phase11.prd.md` | `doc/world-runtime/runtime/runtime-numeric-correctness-phase11.prd.project.md` |
