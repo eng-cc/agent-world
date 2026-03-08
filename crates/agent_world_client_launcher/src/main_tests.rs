@@ -837,3 +837,46 @@ fn expert_mode_toggle_updates_runtime_state() {
     app.set_expert_mode(false);
     assert!(!app.is_expert_mode());
 }
+
+#[test]
+fn successful_config_profile_is_saved_on_running_state() {
+    let mut app = ClientLauncherApp::default();
+    app.config.scenario = "profile-save".to_string();
+
+    app.maybe_save_last_successful_config_profile(true);
+
+    let saved = app
+        .ux_state
+        .last_successful_config
+        .as_ref()
+        .expect("saved profile");
+    assert_eq!(saved.scenario, "profile-save");
+    assert!(app.ux_state.last_successful_saved_at_unix_ms.is_some());
+}
+
+#[test]
+fn restore_last_successful_config_profile_replaces_runtime_config() {
+    let mut app = ClientLauncherApp::default();
+    let mut saved = app.config.clone();
+    saved.scenario = "restored-scenario".to_string();
+    saved.chain_enabled = false;
+    app.ux_state.last_successful_config = Some(saved);
+
+    app.restore_last_successful_config_profile();
+
+    assert_eq!(app.config.scenario, "restored-scenario");
+    assert!(!app.config.chain_enabled);
+    assert_eq!(app.chain_runtime_status, ChainRuntimeStatus::Disabled);
+}
+
+#[test]
+fn clear_last_successful_config_profile_clears_saved_snapshot() {
+    let mut app = ClientLauncherApp::default();
+    app.ux_state.last_successful_config = Some(app.config.clone());
+    app.ux_state.last_successful_saved_at_unix_ms = Some(7);
+
+    app.clear_last_successful_config_profile();
+
+    assert!(app.ux_state.last_successful_config.is_none());
+    assert!(app.ux_state.last_successful_saved_at_unix_ms.is_none());
+}

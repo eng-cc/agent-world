@@ -11,6 +11,8 @@ const UX_STATE_STORAGE_KEY: &str = "agent_world_launcher_ux_state_v1";
 pub(super) struct LauncherUxState {
     pub(super) onboarding_completed: bool,
     pub(super) expert_mode: bool,
+    pub(super) last_successful_config: Option<LaunchConfig>,
+    pub(super) last_successful_saved_at_unix_ms: Option<i64>,
 }
 
 impl Default for LauncherUxState {
@@ -18,6 +20,8 @@ impl Default for LauncherUxState {
         Self {
             onboarding_completed: false,
             expert_mode: false,
+            last_successful_config: None,
+            last_successful_saved_at_unix_ms: None,
         }
     }
 }
@@ -237,6 +241,14 @@ pub(super) fn save_launcher_ux_state(state: &LauncherUxState) -> Result<(), Stri
     }
 }
 
+fn current_unix_ms() -> i64 {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default();
+    i64::try_from(now.as_millis()).unwrap_or(i64::MAX)
+}
+
 impl ClientLauncherApp {
     pub(super) fn is_expert_mode(&self) -> bool {
         self.ux_state.expert_mode
@@ -263,6 +275,72 @@ impl ClientLauncherApp {
             self.tr("已切换为引导模式。", "Switched to guided mode.")
                 .to_string()
         });
+    }
+
+    fn persist_ux_state_or_log(&mut self, _context_zh: &str, _context_en: &str) {
+        #[cfg(not(test))]
+        {
+            if let Err(err) = save_launcher_ux_state(&self.ux_state) {
+                self.append_log(format!("{}: {err}", self.tr(_context_zh, _context_en)));
+            }
+        }
+    }
+
+    pub(super) fn maybe_save_last_successful_config_profile(&mut self, game_running: bool) {
+        if !game_running {
+            return;
+        }
+        if self
+            .ux_state
+            .last_successful_config
+            .as_ref()
+            .is_some_and(|config| config == &self.config)
+        {
+            return;
+        }
+        self.ux_state.last_successful_config = Some(self.config.clone());
+        self.ux_state.last_successful_saved_at_unix_ms = Some(current_unix_ms());
+        self.persist_ux_state_or_log(
+            "保存最近成功配置失败（已降级为会话内状态）",
+            "Persist last successful config failed (fallback to session-only)",
+        );
+        self.append_log(self.tr(
+            "已保存最近成功配置画像。",
+            "Saved last successful configuration profile.",
+        ));
+    }
+
+    pub(super) fn restore_last_successful_config_profile(&mut self) {
+        let Some(saved_config) = self.ux_state.last_successful_config.clone() else {
+            self.append_log(self.tr(
+                "恢复最近成功配置失败：暂无可用画像。",
+                "Restore failed: no successful profile is available.",
+            ));
+            return;
+        };
+        self.config = saved_config;
+        self.chain_runtime_status = if self.config.chain_enabled {
+            ChainRuntimeStatus::NotStarted
+        } else {
+            ChainRuntimeStatus::Disabled
+        };
+        self.append_log(self.tr(
+            "已恢复最近成功配置，请按需重新启动区块链与游戏。",
+            "Restored last successful configuration. Restart blockchain/game if needed.",
+        ));
+    }
+
+    pub(super) fn clear_last_successful_config_profile(&mut self) {
+        self.ux_state.last_successful_config = None;
+        self.ux_state.last_successful_saved_at_unix_ms = None;
+        self.persist_ux_state_or_log(
+            "清空最近成功配置失败（已降级为会话内状态）",
+            "Clear saved profile failed (fallback to session-only)",
+        );
+        self.append_log(self.tr(
+            "已清空最近成功配置画像。",
+            "Cleared last successful configuration profile.",
+        ));
     }
 
     fn next_task_hint_text(&self, hint: NextTaskHint) -> &'static str {

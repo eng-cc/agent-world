@@ -1356,6 +1356,7 @@ impl eframe::App for ClientLauncherApp {
             self.chain_runtime_status,
             ChainRuntimeStatus::Starting | ChainRuntimeStatus::Ready
         );
+        self.maybe_save_last_successful_config_profile(game_running);
         let can_click_start_game = !game_running;
         let can_click_start_chain = self.config.chain_enabled && !chain_running;
         self.maybe_open_onboarding_on_first_visit(
@@ -1442,6 +1443,33 @@ impl eframe::App for ClientLauncherApp {
                     if ui.button(self.tr("重置引导", "Reset Guide")).clicked() {
                         self.reset_onboarding();
                     }
+                }
+                let has_saved_profile = self.ux_state.last_successful_config.is_some();
+                if ui
+                    .add_enabled(
+                        has_saved_profile,
+                        egui::Button::new(
+                            self.tr("恢复最近成功配置", "Restore Last Successful Config"),
+                        ),
+                    )
+                    .clicked()
+                {
+                    self.restore_last_successful_config_profile();
+                }
+                if ui
+                    .add_enabled(
+                        has_saved_profile,
+                        egui::Button::new(self.tr("清空成功配置", "Clear Saved Config")),
+                    )
+                    .clicked()
+                {
+                    self.clear_last_successful_config_profile();
+                }
+                if let Some(saved_at) = self.ux_state.last_successful_saved_at_unix_ms {
+                    ui.small(format!(
+                        "{}={saved_at}",
+                        self.tr("最近成功配置时间戳", "Saved Profile Timestamp")
+                    ));
                 }
                 if ui.button(self.tr("打开游戏页", "Open Game Page")).clicked() {
                     let url = self.current_game_url();
