@@ -4,11 +4,11 @@ use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::{
-    build_chain_runtime_args, build_game_url, build_launcher_args, parse_chain_validators,
-    parse_host_port, parse_options, parse_port, remap_transfer_runtime_target, stop_chain_process,
-    stop_process, validate_chain_config, validate_game_config, ChainRuntimeStatus, CliOptions,
-    LauncherConfig, ProcessState, ServiceState, DEFAULT_CHAIN_STATUS_BIND, DEFAULT_LISTEN_BIND,
-    DEFAULT_SCENARIO,
+    build_chain_runtime_args, build_game_url, build_launcher_args, execute_gui_agent_action,
+    gui_agent_capabilities_response, parse_chain_validators, parse_host_port, parse_options,
+    parse_port, remap_transfer_runtime_target, stop_chain_process, stop_process,
+    validate_chain_config, validate_game_config, ChainRuntimeStatus, CliOptions, LauncherConfig,
+    ProcessState, ServiceState, DEFAULT_CHAIN_STATUS_BIND, DEFAULT_LISTEN_BIND, DEFAULT_SCENARIO,
 };
 use agent_world_proto::storage_profile::StorageProfile;
 
@@ -460,6 +460,119 @@ fn stop_chain_process_noop_preserves_error_state() {
         state.chain_runtime_status,
         ChainRuntimeStatus::Unreachable(ref detail) if detail == "probe failed"
     ));
+}
+
+#[test]
+fn gui_agent_capabilities_include_expected_actions_and_targets() {
+    let capabilities = gui_agent_capabilities_response();
+    let encoded = serde_json::to_value(&capabilities).expect("serialize capabilities");
+    let actions = encoded
+        .get("actions")
+        .and_then(serde_json::Value::as_array)
+        .expect("actions array");
+    let contains_action = |name: &str| {
+        actions
+            .iter()
+            .any(|item| item.as_str().is_some_and(|value| value == name))
+    };
+    assert!(contains_action("start_game"));
+    assert!(contains_action("submit_transfer"));
+    assert!(contains_action("query_explorer_mempool"));
+
+    let query_targets = encoded
+        .get("query_targets")
+        .and_then(serde_json::Value::as_array)
+        .expect("query_targets array");
+    assert!(query_targets.iter().any(|target| {
+        target.get("id").and_then(serde_json::Value::as_str) == Some("transfer.status")
+    }));
+}
+
+#[test]
+fn gui_agent_action_rejects_unknown_action_with_invalid_request() {
+    let mut state = ServiceState::new(
+        "launcher".to_string(),
+        "chain".to_string(),
+        PathBuf::from("."),
+        LauncherConfig::default(),
+    );
+
+    let response = execute_gui_agent_action(
+        &mut state,
+        br#"{"action":"unknown_action","payload":null}"#,
+        Some("127.0.0.1"),
+    );
+    let encoded = serde_json::to_value(&response).expect("serialize response");
+
+    assert_eq!(encoded["ok"], serde_json::json!(false));
+    assert_eq!(encoded["action"], serde_json::json!("unknown_action"));
+    assert_eq!(encoded["error_code"], serde_json::json!("invalid_request"));
+    assert!(encoded.get("state").is_some());
+}
+
+#[test]
+fn gui_agent_query_chain_disabled_returns_structured_error() {
+    let config = LauncherConfig {
+        chain_enabled: false,
+        ..LauncherConfig::default()
+    };
+    let mut state = ServiceState::new(
+        "launcher".to_string(),
+        "chain".to_string(),
+        PathBuf::from("."),
+        config,
+    );
+
+    let response = execute_gui_agent_action(
+        &mut state,
+        br#"{"action":"query_transfer_accounts","payload":null}"#,
+        Some("127.0.0.1"),
+    );
+    let encoded = serde_json::to_value(&response).expect("serialize response");
+
+    assert_eq!(encoded["ok"], serde_json::json!(false));
+    assert_eq!(
+        encoded["action"],
+        serde_json::json!("query_transfer_accounts")
+    );
+    assert_eq!(encoded["error_code"], serde_json::json!("chain_disabled"));
+    assert!(encoded
+        .get("data")
+        .and_then(|value| value.get("error_code"))
+        .is_some());
+    assert!(encoded.get("state").is_some());
+}
+
+#[test]
+fn gui_agent_action_response_includes_state_snapshot_fields() {
+    let mut state = ServiceState::new(
+        "launcher".to_string(),
+        "chain".to_string(),
+        PathBuf::from("."),
+        LauncherConfig::default(),
+    );
+
+    let response = execute_gui_agent_action(
+        &mut state,
+        br#"{"action":"stop_game","payload":null}"#,
+        Some("127.0.0.1"),
+    );
+    let encoded = serde_json::to_value(&response).expect("serialize response");
+
+    assert_eq!(encoded["ok"], serde_json::json!(true));
+    assert_eq!(encoded["action"], serde_json::json!("stop_game"));
+    assert!(encoded.get("error_code").is_none());
+    assert!(encoded.get("state").is_some());
+    assert!(encoded
+        .get("state")
+        .and_then(|value| value.get("status"))
+        .and_then(serde_json::Value::as_str)
+        .is_some());
+    assert!(encoded
+        .get("state")
+        .and_then(|value| value.get("chain_status"))
+        .and_then(serde_json::Value::as_str)
+        .is_some());
 }
 
 fn make_temp_dir(label: &str) -> PathBuf {

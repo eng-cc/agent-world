@@ -15,6 +15,8 @@ use serde::{Deserialize, Serialize};
 
 #[path = "world_web_launcher/control_plane.rs"]
 mod control_plane;
+#[path = "world_web_launcher/gui_agent_api.rs"]
+mod gui_agent_api;
 #[path = "world_web_launcher/http_codec.rs"]
 mod http_codec;
 #[path = "world_web_launcher/parse_utils.rs"]
@@ -27,6 +29,7 @@ mod static_files;
 mod transfer_query_proxy;
 
 use control_plane::*;
+use gui_agent_api::{execute_gui_agent_action, gui_agent_capabilities_response};
 use http_codec::{read_http_request, write_http_response, write_json_response};
 use parse_utils::{
     next_value, parse_chain_role, parse_chain_validators, parse_host_port, parse_non_negative_u64,
@@ -531,6 +534,28 @@ fn handle_connection(
             let snapshot = snapshot_from_state(&state, request_host.as_deref());
             write_json_response(&mut stream, 200, &snapshot)
         }
+        ("GET", "/api/gui-agent/capabilities") => {
+            let response = gui_agent_capabilities_response();
+            write_json_response(&mut stream, 200, &response)
+        }
+        ("GET", "/api/gui-agent/state") => {
+            let request_host = extract_host_header(request.headers.as_slice());
+            let mut state = lock_state(&shared_state);
+            poll_service_state(&mut state);
+            let snapshot = snapshot_from_state(&state, request_host.as_deref());
+            write_json_response(&mut stream, 200, &snapshot)
+        }
+        ("POST", "/api/gui-agent/action") => {
+            let request_host = extract_host_header(request.headers.as_slice());
+            let mut state = lock_state(&shared_state);
+            poll_service_state(&mut state);
+            let response = execute_gui_agent_action(
+                &mut state,
+                request.body.as_slice(),
+                request_host.as_deref(),
+            );
+            write_json_response(&mut stream, 200, &response)
+        }
         ("GET", "/api/ui/schema") => {
             let schema: Vec<_> = launcher_ui_fields_for_web().copied().collect();
             write_json_response(&mut stream, 200, &schema)
@@ -792,6 +817,9 @@ fn handle_connection(
             serve_console_static_request(&mut stream, request_path, &shared_state)
         }
         (method, "/api/state")
+        | (method, "/api/gui-agent/capabilities")
+        | (method, "/api/gui-agent/state")
+        | (method, "/api/gui-agent/action")
         | (method, "/api/start")
         | (method, "/api/stop")
         | (method, "/api/chain/start")
