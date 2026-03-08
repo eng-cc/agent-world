@@ -508,6 +508,72 @@ fn hydrate_tick_consensus_snapshot_from_archive(
     Ok(())
 }
 
+fn load_persisted_tick_consensus_snapshot_from_dir(dir: &Path) -> Result<Snapshot, WorldError> {
+    if let Some((mut snapshot, _)) = World::try_load_from_distfs_sidecar(dir)? {
+        hydrate_tick_consensus_snapshot_from_archive(dir, &mut snapshot)?;
+        return Ok(snapshot);
+    }
+    let mut snapshot = Snapshot::load_json(dir.join(SNAPSHOT_FILE))?;
+    hydrate_tick_consensus_snapshot_from_archive(dir, &mut snapshot)?;
+    Ok(snapshot)
+}
+
+fn verify_tick_consensus_record_slice(records: &[TickConsensusRecord]) -> Result<(), WorldError> {
+    let mut previous_block_hash = None;
+    let mut previous_height: Option<u64> = None;
+    let mut previous_tick: Option<WorldTime> = None;
+    for record in records {
+        let block_hash = record.block.block_hash();
+        if record.certificate.block_hash != block_hash {
+            return Err(WorldError::DistributedValidationFailed {
+                reason: format!(
+                    "tick consensus archive block hash mismatch tick={} expected={} actual={}",
+                    record.block.header.tick, block_hash, record.certificate.block_hash,
+                ),
+            });
+        }
+        if let Some(previous_block_hash) = previous_block_hash.as_ref() {
+            if record.block.header.parent_hash != *previous_block_hash {
+                return Err(WorldError::DistributedValidationFailed {
+                    reason: format!(
+                        "tick consensus archive parent hash mismatch tick={} expected={} actual={}",
+                        record.block.header.tick,
+                        previous_block_hash,
+                        record.block.header.parent_hash,
+                    ),
+                });
+            }
+        }
+        if let Some(previous_height) = previous_height {
+            let expected_height = previous_height.saturating_add(1);
+            if record.certificate.consensus_height != expected_height {
+                return Err(WorldError::DistributedValidationFailed {
+                    reason: format!(
+                        "tick consensus archive height mismatch tick={} expected={} actual={}",
+                        record.block.header.tick,
+                        expected_height,
+                        record.certificate.consensus_height,
+                    ),
+                });
+            }
+        }
+        if let Some(previous_tick) = previous_tick {
+            if record.block.header.tick <= previous_tick {
+                return Err(WorldError::DistributedValidationFailed {
+                    reason: format!(
+                        "tick consensus archive tick ordering mismatch previous={} current={}",
+                        previous_tick, record.block.header.tick,
+                    ),
+                });
+            }
+        }
+        previous_block_hash = Some(record.certificate.block_hash.clone());
+        previous_height = Some(record.certificate.consensus_height);
+        previous_tick = Some(record.block.header.tick);
+    }
+    Ok(())
+}
+
 impl World {
     // ---------------------------------------------------------------------
     // Persistence
@@ -618,6 +684,31 @@ impl World {
 
     pub fn load_from_dir_with_modules(dir: impl AsRef<Path>) -> Result<Self, WorldError> {
         Self::load_from_dir(dir)
+    }
+
+    pub fn load_tick_consensus_records_from_dir(
+        dir: impl AsRef<Path>,
+        tick_from: Option<WorldTime>,
+        tick_to: Option<WorldTime>,
+    ) -> Result<Vec<TickConsensusRecord>, WorldError> {
+        let snapshot = load_persisted_tick_consensus_snapshot_from_dir(dir.as_ref())?;
+        Ok(snapshot
+            .tick_consensus_records
+            .into_iter()
+            .filter(|record| {
+                tick_from
+                    .map(|from_tick| record.block.header.tick >= from_tick)
+                    .unwrap_or(true)
+                    && tick_to
+                        .map(|to_tick| record.block.header.tick <= to_tick)
+                        .unwrap_or(true)
+            })
+            .collect())
+    }
+
+    pub fn verify_tick_consensus_archive_from_dir(dir: impl AsRef<Path>) -> Result<(), WorldError> {
+        let records = Self::load_tick_consensus_records_from_dir(dir, None, None)?;
+        verify_tick_consensus_record_slice(records.as_slice())
     }
 
     pub fn load_module_store_from_dir(&mut self, dir: impl AsRef<Path>) -> Result<(), WorldError> {
