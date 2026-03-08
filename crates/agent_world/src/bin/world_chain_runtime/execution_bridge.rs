@@ -1258,6 +1258,20 @@ fn build_execution_replay_plan(
     }
     let checkpoint =
         find_nearest_execution_checkpoint_manifest(execution_records_dir, target_height)?;
+    let latest_height = list_execution_bridge_record_heights(execution_records_dir)?
+        .last()
+        .copied()
+        .unwrap_or(0);
+    if checkpoint.is_none() && latest_height > 0 {
+        let hot_window_start_height = latest_height
+            .saturating_sub(EXECUTION_BRIDGE_DEFAULT_HOT_WINDOW_HEIGHTS.saturating_sub(1));
+        if target_height < hot_window_start_height {
+            return Err(format!(
+                "execution replay plan target height {} is outside retained hot window {}..{} and no checkpoint is available",
+                target_height, hot_window_start_height, latest_height
+            ));
+        }
+    }
     let start_height = checkpoint
         .as_ref()
         .map(|manifest| manifest.height.saturating_add(1))
@@ -2399,6 +2413,52 @@ mod tests {
     }
 
     #[test]
+    fn execution_replay_plan_rejects_target_outside_hot_window_without_checkpoint() {
+        let dir = temp_dir("execution-replay-plan-outside-hot-window");
+        let records_dir = dir.join("records");
+        fs::create_dir_all(records_dir.as_path()).expect("create records dir");
+        for height in 1..=40 {
+            persist_test_execution_record(
+                records_dir.as_path(),
+                height,
+                &format!("exec-h{height}"),
+            );
+        }
+
+        let store = LocalCasStore::new(dir.join("store"));
+        let err = build_execution_replay_plan(records_dir.as_path(), &store, 1)
+            .expect_err("target outside hot window should fail closed without checkpoint");
+        assert!(
+            err.contains("outside retained hot window"),
+            "unexpected replay-plan hot-window error: {err}"
+        );
+
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn execution_replay_plan_fails_closed_when_retained_commit_record_is_missing() {
+        let dir = temp_dir("execution-replay-plan-missing-commit-record");
+        let records_dir = dir.join("records");
+        fs::create_dir_all(records_dir.as_path()).expect("create records dir");
+        persist_test_execution_record(records_dir.as_path(), 1, "exec-h1");
+        persist_test_execution_record(records_dir.as_path(), 2, "exec-h2");
+        persist_test_execution_record(records_dir.as_path(), 3, "exec-h3");
+        fs::remove_file(execution_bridge_record_path(records_dir.as_path(), 3).as_path())
+            .expect("remove retained commit record");
+
+        let store = LocalCasStore::new(dir.join("store"));
+        let err = build_execution_replay_plan(records_dir.as_path(), &store, 3)
+            .expect_err("missing retained commit record should fail closed");
+        assert!(
+            err.contains("missing commit record"),
+            "unexpected missing commit record error: {err}"
+        );
+
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
     fn execution_replay_plan_prefers_nearest_checkpoint_not_ahead_of_target() {
         let dir = temp_dir("execution-replay-plan-checkpoint");
         let records_dir = dir.join("records");
@@ -3233,6 +3293,97 @@ mod tests {
         let state = load_execution_bridge_state(state_path.as_path()).expect("load state");
         assert_eq!(state.last_applied_committed_height, 3);
         assert_eq!(state.last_node_block_hash.as_deref(), Some("node-h3"));
+
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn node_runtime_execution_driver_restart_recovers_latest_head_after_retention() {
+        let dir = temp_dir("execution-driver-restart-recovery");
+        let state_path = dir.join("state.json");
+        let world_dir = dir.join("world");
+        let records_dir = dir.join("records");
+        let storage_root = dir.join("store");
+        let mut driver = NodeRuntimeExecutionDriver::new(
+            state_path.clone(),
+            world_dir.clone(),
+            records_dir.clone(),
+            storage_root.clone(),
+        )
+        .expect("driver");
+        let empty_action_root = compute_consensus_action_root(&[]).expect("empty action root");
+        let mut latest_result = None;
+        for height in 1..=33 {
+            latest_result = Some(
+                driver
+                    .on_commit(NodeExecutionCommitContext {
+                        world_id: "w1".to_string(),
+                        node_id: "node-a".to_string(),
+                        height,
+                        slot: height.saturating_sub(1),
+                        epoch: 0,
+                        node_block_hash: format!("node-h{height}"),
+                        action_root: empty_action_root.clone(),
+                        committed_actions: Vec::new(),
+                        committed_at_unix_ms: height as i64 * 1_000,
+                    })
+                    .expect("commit before restart"),
+            );
+        }
+        let latest_result = latest_result.expect("latest result before restart");
+        drop(driver);
+
+        let mut restarted = NodeRuntimeExecutionDriver::new(
+            state_path.clone(),
+            world_dir.clone(),
+            records_dir.clone(),
+            storage_root,
+        )
+        .expect("restarted driver");
+        let replayed_latest = restarted
+            .on_commit(NodeExecutionCommitContext {
+                world_id: "w1".to_string(),
+                node_id: "node-a".to_string(),
+                height: 33,
+                slot: 32,
+                epoch: 0,
+                node_block_hash: "node-h33".to_string(),
+                action_root: empty_action_root.clone(),
+                committed_actions: Vec::new(),
+                committed_at_unix_ms: 33_000,
+            })
+            .expect("replay latest commit after restart");
+        assert_eq!(
+            replayed_latest.execution_height,
+            latest_result.execution_height
+        );
+        assert_eq!(
+            replayed_latest.execution_block_hash,
+            latest_result.execution_block_hash
+        );
+        assert_eq!(
+            replayed_latest.execution_state_root,
+            latest_result.execution_state_root
+        );
+
+        let next = restarted
+            .on_commit(NodeExecutionCommitContext {
+                world_id: "w1".to_string(),
+                node_id: "node-a".to_string(),
+                height: 34,
+                slot: 33,
+                epoch: 0,
+                node_block_hash: "node-h34".to_string(),
+                action_root: empty_action_root,
+                committed_actions: Vec::new(),
+                committed_at_unix_ms: 34_000,
+            })
+            .expect("next commit after restart");
+        assert_eq!(next.execution_height, 34);
+
+        let state = load_execution_bridge_state(state_path.as_path()).expect("load state");
+        assert_eq!(state.last_applied_committed_height, 34);
+        assert_eq!(state.last_node_block_hash.as_deref(), Some("node-h34"));
 
         let _ = fs::remove_dir_all(dir);
     }
