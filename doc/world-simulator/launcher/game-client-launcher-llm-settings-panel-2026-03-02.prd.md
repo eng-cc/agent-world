@@ -75,7 +75,7 @@
 ## 增量完成态（2026-03-03）
 - “设置 / Settings”窗口已升级为完整设置中心：
   - 游戏与显示配置：`scenario/live_bind/web_bind/viewer_host/viewer_port/viewer_static_dir/launcher_bin` 与 `llm_enabled/auto_open_browser`。
-  - 区块链运行时配置：`chain_enabled/chain_runtime_bin/chain_status_bind/chain_node_id/chain_world_id/chain_node_role/chain_node_tick_ms/chain_node_validators`。
+- 区块链运行时配置：`chain_enabled/chain_runtime_bin/chain_status_bind/chain_node_id/chain_world_id/chain_node_role/chain_node_tick_ms/chain_pos_slot_duration_ms/chain_pos_ticks_per_slot/chain_pos_proposal_tick_phase/chain_pos_adaptive_tick_scheduler_enabled/chain_pos_slot_clock_genesis_unix_ms/chain_pos_max_past_slot_lag/chain_node_validators`。
   - LLM 连接配置：保留 `llm.api_key/base_url/model` 文件重载与保存能力。
 - 设置中心内游戏/区块链配置改动即时作用于启动器内存配置（无需额外保存按钮）；LLM 配置保持显式“保存到 config.toml / 从文件重载”流程。
 

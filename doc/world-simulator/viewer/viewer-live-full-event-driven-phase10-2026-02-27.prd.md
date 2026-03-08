@@ -191,7 +191,7 @@
 ##### 交付结果
 - `world_viewer_live` 已删除 live 旧 tick 入口：
   - 移除 `--tick-ms` CLI 参数与 `CliOptions.tick_ms`。
-  - reward runtime 轮询改为复用 `--node-tick-ms`。
+  - reward runtime 轮询改为复用 `--node-tick-ms`（仅 poll/fallback 语义；PoS 节拍由 `--pos-slot-duration-ms/--pos-ticks-per-slot` 锚定）。
 - viewer live 外围脚本已全部移除 `--tick-ms` 参数链路：
   - `capture-viewer-frame` / `viewer-theme-pack-preview` / `run-game-test` /
     `p2p-longrun-soak` / `viewer-owr4-stress` / `viewer-release-qa-loop` /

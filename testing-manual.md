@@ -265,6 +265,7 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_full world_i
 
 ### S9：P2P/存储/共识在线长跑套件（L5）
 - 当前状态（2026-02-28）：`scripts/p2p-longrun-soak.sh` 已恢复为可执行脚本，底座为多进程 `world_chain_runtime`。
+- 时间语义说明：PoS 出块/提案节拍由 `--pos-slot-duration-ms` 与 `--pos-ticks-per-slot` 锚定；`--node-tick-ms` 仅表示 worker 轮询/回退间隔。
 - 建议命令（smoke）：
 ```bash
 ./scripts/p2p-longrun-soak.sh --profile soak_smoke --topologies triad --duration-secs 600 --no-prewarm
@@ -328,6 +329,7 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required lon
 ### S10：五节点真实游戏数据在线长跑套件（L5）
 - 当前状态（2026-02-28）：`scripts/s10-five-node-game-soak.sh` 已恢复为可执行脚本，底座为五进程 `world_chain_runtime`。
 - 当前状态补充（2026-03-01）：reward worker 在空存储时会自动写入 distfs probe seed blob，发布基线下 `distfs_total_checks` 应为正数。
+- 时间语义说明：S10 与 S9 口径一致，`slot_duration_ms/ticks_per_slot` 决定 PoS 逻辑时间，`node_tick_ms` 仅作轮询/回退间隔。
 - 建议命令（smoke）：
 ```bash
 ./scripts/s10-five-node-game-soak.sh --duration-secs 600 --no-prewarm

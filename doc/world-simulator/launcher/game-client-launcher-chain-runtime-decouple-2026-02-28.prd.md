@@ -35,7 +35,7 @@
 - `--status-bind <host:port>`：默认 `127.0.0.1:5121`。
 - `--node-role <sequencer|storage|observer>`：默认 `sequencer`。
 - `--node-tick-ms <n>`：默认 `200`，仅用于 worker 轮询/回退间隔。
-- `--pos-slot-duration-ms <n>`：默认 `1`，定义 slot 时长（ms）。
+- `--pos-slot-duration-ms <n>`：默认 `200`，定义 slot 时长（ms）。
 - `--pos-ticks-per-slot <n>`：默认 `1`，定义每个 slot 的逻辑 tick 数。
 - `--pos-proposal-tick-phase <n>`：默认 `0`，定义提案相位。
 - `--pos-adaptive-tick-scheduler` / `--pos-no-adaptive-tick-scheduler`。
@@ -62,7 +62,7 @@
 - `--chain-world-id <id>`（默认跟随 scenario 推导）。
 - `--chain-node-role <role>`。
 - `--chain-node-tick-ms <n>`（worker poll/fallback interval）。
-- `--chain-pos-slot-duration-ms <n>`。
+- `--chain-pos-slot-duration-ms <n>`（默认 `200`）。
 - `--chain-pos-ticks-per-slot <n>`。
 - `--chain-pos-proposal-tick-phase <n>`。
 - `--chain-pos-adaptive-tick-scheduler` / `--chain-pos-no-adaptive-tick-scheduler`。
