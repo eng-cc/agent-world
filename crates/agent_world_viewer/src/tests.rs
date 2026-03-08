@@ -649,6 +649,48 @@ fn poll_viewer_messages_applies_event_window_sampling_policy() {
 }
 
 #[test]
+fn poll_viewer_messages_keeps_transport_connected_on_agent_chat_error() {
+    let mut app = App::new();
+    app.add_systems(Update, poll_viewer_messages);
+
+    app.world_mut().insert_resource(ViewerConfig {
+        addr: "127.0.0.1:0".to_string(),
+        max_events: 16,
+        event_window: EventWindowPolicy::new(8, 4, 2),
+    });
+
+    let (tx, rx) = mpsc::channel::<ViewerResponse>();
+    app.world_mut().insert_resource(ViewerClient {
+        tx: mpsc::channel::<ViewerRequest>().0,
+        rx: Mutex::new(rx),
+    });
+    app.world_mut().insert_resource(ViewerState {
+        status: ConnectionStatus::Connected,
+        ..ViewerState::default()
+    });
+    app.world_mut().insert_resource(ViewerControlProfileState {
+        profile: Some(ViewerControlProfile::Live),
+    });
+
+    tx.send(ViewerResponse::AgentChatError {
+        error: agent_world::viewer::AgentChatError {
+            code: "invalid_auth".to_string(),
+            message: "signature mismatch".to_string(),
+            agent_id: Some("agent-a".to_string()),
+        },
+    })
+    .expect("send agent chat error");
+
+    app.update();
+
+    let state = app.world().resource::<ViewerState>();
+    assert_eq!(state.status, ConnectionStatus::Connected);
+
+    let profile = app.world().resource::<ViewerControlProfileState>();
+    assert_eq!(profile.profile, Some(ViewerControlProfile::Live));
+}
+
+#[test]
 fn friendly_connection_error_maps_transport_messages() {
     assert_eq!(
         friendly_connection_error("websocket closed: code=1006 reason="),

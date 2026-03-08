@@ -478,15 +478,7 @@ pub(super) fn poll_viewer_messages(
                 ViewerResponse::AuthoritativeChallengeError { .. } => {}
                 ViewerResponse::AuthoritativeRecoveryAck { .. } => {}
                 ViewerResponse::AuthoritativeRecoveryError { .. } => {}
-                ViewerResponse::AgentChatError { error } => {
-                    state.status = ConnectionStatus::Error(format!(
-                        "agent chat error: {} ({})",
-                        error.message, error.code
-                    ));
-                    if let Some(control_profile) = control_profile.as_deref_mut() {
-                        control_profile.profile = None;
-                    }
-                }
+                ViewerResponse::AgentChatError { .. } => {}
             },
             Err(mpsc::TryRecvError::Empty) => break,
             Err(mpsc::TryRecvError::Disconnected) => {

@@ -8,7 +8,7 @@
 - [x] AUTOWIRE-3 (PRD-TESTING-LAUNCHER-AUTH-002/003): `agent_world_viewer` 增加 wasm 注入读取与 native `config.toml[node]` 回退并补测试。
 - [x] AUTOWIRE-4 (PRD-TESTING-LAUNCHER-AUTH-003): 完成定向回归、文档状态与 devlog 收口。
 - [x] AUTOWIRE-5 (PRD-TESTING-004): 专题文档按 strict schema 人工重写，并切换命名到 `.prd.md/.prd.project.md`。
-- [ ] AUTOWIRE-6 (PRD-TESTING-LAUNCHER-AUTH-004): `agent_world_viewer` 修复 `AgentChatError` 误降级连接状态（发送聊天失败不再显示“连接异常”），补状态机回归测试并收口文档/devlog。
+- [x] AUTOWIRE-6 (PRD-TESTING-LAUNCHER-AUTH-004): `agent_world_viewer` 修复 `AgentChatError` 误降级连接状态（发送聊天失败不再显示“连接异常”），补状态机回归测试并收口文档/devlog。
 
 ## 依赖
 - doc/testing/launcher/launcher-viewer-auth-node-config-autowire-2026-03-02.prd.md
@@ -27,6 +27,6 @@
 
 ## 状态
 - 更新日期：2026-03-08
-- 当前阶段：进行中（AUTOWIRE-6）
+- 当前阶段：已完成
 - 阻塞项：无
-- 下一步：完成 `AUTOWIRE-6` 代码修复与 `test_tier_required` 回归，并同步收口状态。
+- 下一步：无（当前专题已收口）。

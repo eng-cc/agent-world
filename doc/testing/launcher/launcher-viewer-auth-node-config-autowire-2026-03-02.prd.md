@@ -105,6 +105,7 @@
 | PRD-TESTING-LAUNCHER-AUTH-002 | AUTOWIRE-2/3 | `test_tier_required` | wasm/native 优先级与回退单测 | Viewer 鉴权解析稳定性 |
 | PRD-TESTING-LAUNCHER-AUTH-003 | AUTOWIRE-3/4 | `test_tier_required` | 环境变量覆盖兼容与文档收口检查 | 自动化脚本兼容性 |
 | PRD-TESTING-LAUNCHER-AUTH-004 | AUTOWIRE-6 | `test_tier_required` | `AgentChatError` 状态机分支单测（连接态保持） | Web 启动器聊天体验与连接诊断准确性 |
+- 执行记录（2026-03-08）: AUTOWIRE-6 已完成，`agent_world_viewer` 连接状态机不再将 `AgentChatError` 视为 transport 断连。
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |
