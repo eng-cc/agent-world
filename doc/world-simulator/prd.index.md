@@ -1,6 +1,6 @@
 # world-simulator PRD 文件级索引
 
-审计轮次: 10
+审计轮次: 11
 
 更新时间：2026-03-08
 
@@ -46,6 +46,7 @@
 | `doc/world-simulator/launcher/game-client-launcher-blockchain-explorer-public-chain-p1-address-contract-assets-mempool-2026-03-08.prd.md` | `doc/world-simulator/launcher/game-client-launcher-blockchain-explorer-public-chain-p1-address-contract-assets-mempool-2026-03-08.prd.project.md` |
 | `doc/world-simulator/launcher/game-client-launcher-availability-ux-hardening-2026-03-08.prd.md` | `doc/world-simulator/launcher/game-client-launcher-availability-ux-hardening-2026-03-08.prd.project.md` |
 | `doc/world-simulator/launcher/game-client-launcher-blockchain-explorer-ui-ux-optimization-2026-03-08.prd.md` | `doc/world-simulator/launcher/game-client-launcher-blockchain-explorer-ui-ux-optimization-2026-03-08.prd.project.md` |
+| `doc/world-simulator/launcher/game-client-launcher-full-usability-remediation-2026-03-08.prd.md` | `doc/world-simulator/launcher/game-client-launcher-full-usability-remediation-2026-03-08.prd.project.md` |
 | `doc/world-simulator/launcher/game-client-launcher-ui-schema-share-2026-03-04.prd.md` | `doc/world-simulator/launcher/game-client-launcher-ui-schema-share-2026-03-04.prd.project.md` |
 | `doc/world-simulator/launcher/game-client-launcher-web-console-2026-03-04.prd.md` | `doc/world-simulator/launcher/game-client-launcher-web-console-2026-03-04.prd.project.md` |
 | `doc/world-simulator/launcher/game-client-launcher-chain-runtime-decouple-2026-02-28.prd.md` | `doc/world-simulator/launcher/game-client-launcher-chain-runtime-decouple-2026-02-28.prd.project.md` |
