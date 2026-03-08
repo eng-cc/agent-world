@@ -1316,6 +1316,14 @@ impl eframe::App for ClientLauncherApp {
             );
 
             ui.separator();
+            self.render_task_flow_cards(
+                ui,
+                &game_required_issues,
+                &chain_required_issues,
+                game_running,
+                chain_running,
+            );
+            ui.separator();
 
             ui.horizontal_wrapped(|ui| {
                 if ui

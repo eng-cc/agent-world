@@ -87,6 +87,37 @@ impl OnboardingStep {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum NextTaskHint {
+    FixChainConfig,
+    StartChain,
+    FixGameConfig,
+    StartGame,
+    OpenGamePage,
+}
+
+pub(super) fn resolve_next_task_hint(
+    chain_enabled: bool,
+    game_required_issues: &[ConfigIssue],
+    chain_required_issues: &[ConfigIssue],
+    game_running: bool,
+    chain_running: bool,
+) -> NextTaskHint {
+    if chain_enabled && !chain_required_issues.is_empty() {
+        return NextTaskHint::FixChainConfig;
+    }
+    if !game_required_issues.is_empty() {
+        return NextTaskHint::FixGameConfig;
+    }
+    if chain_enabled && !chain_running {
+        return NextTaskHint::StartChain;
+    }
+    if !game_running {
+        return NextTaskHint::StartGame;
+    }
+    NextTaskHint::OpenGamePage
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct OnboardingState {
     pub(super) open: bool,
@@ -156,6 +187,201 @@ pub(super) fn save_launcher_ux_state(state: &LauncherUxState) -> Result<(), Stri
 }
 
 impl ClientLauncherApp {
+    fn next_task_hint_text(&self, hint: NextTaskHint) -> &'static str {
+        match (hint, self.ui_language) {
+            (NextTaskHint::FixChainConfig, UiLanguage::ZhCn) => {
+                "下一步：先修复区块链配置，再启动区块链"
+            }
+            (NextTaskHint::FixChainConfig, UiLanguage::EnUs) => {
+                "Next: fix blockchain configuration before starting blockchain"
+            }
+            (NextTaskHint::StartChain, UiLanguage::ZhCn) => "下一步：启动区块链",
+            (NextTaskHint::StartChain, UiLanguage::EnUs) => "Next: start blockchain",
+            (NextTaskHint::FixGameConfig, UiLanguage::ZhCn) => "下一步：先修复游戏配置，再启动游戏",
+            (NextTaskHint::FixGameConfig, UiLanguage::EnUs) => {
+                "Next: fix game configuration before starting game"
+            }
+            (NextTaskHint::StartGame, UiLanguage::ZhCn) => "下一步：启动游戏",
+            (NextTaskHint::StartGame, UiLanguage::EnUs) => "Next: start game",
+            (NextTaskHint::OpenGamePage, UiLanguage::ZhCn) => "下一步：打开游戏页验证闭环",
+            (NextTaskHint::OpenGamePage, UiLanguage::EnUs) => "Next: open game page to verify",
+        }
+    }
+
+    pub(super) fn render_task_flow_cards(
+        &mut self,
+        ui: &mut egui::Ui,
+        game_required_issues: &[ConfigIssue],
+        chain_required_issues: &[ConfigIssue],
+        game_running: bool,
+        chain_running: bool,
+    ) {
+        ui.label(self.tr("任务流（推荐顺序）", "Task Flow (Recommended Order)"));
+        let hint = resolve_next_task_hint(
+            self.config.chain_enabled,
+            game_required_issues,
+            chain_required_issues,
+            game_running,
+            chain_running,
+        );
+        ui.small(
+            egui::RichText::new(self.next_task_hint_text(hint))
+                .color(egui::Color32::from_rgb(74, 116, 168)),
+        );
+
+        ui.horizontal_wrapped(|ui| {
+            self.render_chain_task_card(ui, chain_required_issues, chain_running);
+            self.render_game_task_card(ui, game_required_issues, game_running);
+            self.render_page_task_card(ui, game_required_issues, game_running);
+        });
+    }
+
+    fn render_chain_task_card(
+        &mut self,
+        ui: &mut egui::Ui,
+        chain_required_issues: &[ConfigIssue],
+        chain_running: bool,
+    ) {
+        ui.group(|ui| {
+            ui.set_min_width(220.0);
+            ui.label(self.tr("1. 启动区块链", "1. Start Blockchain"));
+
+            if !self.config.chain_enabled {
+                ui.small(self.tr("链功能已关闭", "Blockchain disabled"));
+                return;
+            }
+
+            if chain_running {
+                ui.small(
+                    egui::RichText::new(self.tr("状态：已就绪/启动中", "Status: Ready/Starting"))
+                        .color(egui::Color32::from_rgb(62, 152, 92)),
+                );
+                return;
+            }
+
+            if !chain_required_issues.is_empty() {
+                ui.small(
+                    egui::RichText::new(self.tr(
+                        "状态：配置阻断（点击修复）",
+                        "Status: blocked by config (click to fix)",
+                    ))
+                    .color(egui::Color32::from_rgb(188, 60, 60)),
+                );
+                if ui
+                    .button(self.tr("修复区块链配置", "Fix Chain Config"))
+                    .clicked()
+                {
+                    self.handle_start_chain_click(chain_required_issues);
+                }
+                return;
+            }
+
+            ui.small(self.tr("状态：待启动", "Status: pending start"));
+            if ui
+                .button(self.tr("启动区块链", "Start Blockchain"))
+                .clicked()
+            {
+                self.start_chain_process();
+            }
+        });
+    }
+
+    fn render_game_task_card(
+        &mut self,
+        ui: &mut egui::Ui,
+        game_required_issues: &[ConfigIssue],
+        game_running: bool,
+    ) {
+        ui.group(|ui| {
+            ui.set_min_width(220.0);
+            ui.label(self.tr("2. 启动游戏", "2. Start Game"));
+
+            if game_running {
+                ui.small(
+                    egui::RichText::new(self.tr("状态：运行中", "Status: Running"))
+                        .color(egui::Color32::from_rgb(62, 152, 92)),
+                );
+                return;
+            }
+
+            if !game_required_issues.is_empty() {
+                ui.small(
+                    egui::RichText::new(self.tr(
+                        "状态：配置阻断（点击修复）",
+                        "Status: blocked by config (click to fix)",
+                    ))
+                    .color(egui::Color32::from_rgb(188, 60, 60)),
+                );
+                if ui
+                    .button(self.tr("修复游戏配置", "Fix Game Config"))
+                    .clicked()
+                {
+                    self.handle_start_game_click(game_required_issues);
+                }
+                return;
+            }
+
+            if self.config.chain_enabled
+                && !matches!(
+                    self.chain_runtime_status,
+                    ChainRuntimeStatus::Starting | ChainRuntimeStatus::Ready
+                )
+            {
+                ui.small(
+                    egui::RichText::new(
+                        self.tr("提示：建议先启动区块链", "Tip: start blockchain first"),
+                    )
+                    .color(egui::Color32::from_rgb(201, 146, 44)),
+                );
+            }
+            ui.small(self.tr("状态：待启动", "Status: pending start"));
+            if ui.button(self.tr("启动游戏", "Start Game")).clicked() {
+                self.start_process();
+            }
+        });
+    }
+
+    fn render_page_task_card(
+        &mut self,
+        ui: &mut egui::Ui,
+        game_required_issues: &[ConfigIssue],
+        game_running: bool,
+    ) {
+        ui.group(|ui| {
+            ui.set_min_width(220.0);
+            ui.label(self.tr("3. 打开游戏页", "3. Open Game Page"));
+            if game_running {
+                ui.small(
+                    egui::RichText::new(
+                        self.tr("状态：可打开并验证画面", "Status: ready to open and verify"),
+                    )
+                    .color(egui::Color32::from_rgb(62, 152, 92)),
+                );
+                if ui.button(self.tr("打开游戏页", "Open Game Page")).clicked() {
+                    let url = self.current_game_url();
+                    if let Err(err) = open_browser(url.as_str()) {
+                        self.append_log(format!("open browser failed: {err}"));
+                    } else {
+                        self.append_log(format!("open browser: {url}"));
+                    }
+                }
+            } else {
+                ui.small(
+                    egui::RichText::new(
+                        self.tr("状态：等待游戏启动", "Status: waiting for game to start"),
+                    )
+                    .color(egui::Color32::from_rgb(201, 146, 44)),
+                );
+                if ui
+                    .button(self.tr("先启动游戏", "Start Game First"))
+                    .clicked()
+                {
+                    self.handle_start_game_click(game_required_issues);
+                }
+            }
+        });
+    }
+
     pub(super) fn maybe_open_onboarding_on_first_visit(
         &mut self,
         game_required_issues: &[ConfigIssue],

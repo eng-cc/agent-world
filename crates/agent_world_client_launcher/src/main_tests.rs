@@ -5,7 +5,7 @@ use super::{
     encode_query_value, encoded_query_pair, install_cjk_font, normalize_host_for_url,
     parse_chain_role, parse_chain_validators, parse_host_port, parse_port,
     probe_chain_status_endpoint,
-    self_guided::OnboardingStep,
+    self_guided::{resolve_next_task_hint, NextTaskHint, OnboardingStep},
     ChainRuntimeStatus, ClientLauncherApp, ConfigIssue, LaunchConfig, LauncherStatus, UiLanguage,
     WebRequestDomain, WebStateSnapshot, EGUI_CJK_FONT_NAME,
 };
@@ -540,4 +540,28 @@ fn onboarding_auto_open_happens_only_once_per_session() {
     app.onboarding_state.open = false;
     app.maybe_open_onboarding_on_first_visit(&[], &[], false, false);
     assert!(!app.onboarding_state.open);
+}
+
+#[test]
+fn resolve_next_task_hint_prioritizes_config_fix_then_start_order() {
+    assert_eq!(
+        resolve_next_task_hint(true, &[], &[ConfigIssue::ChainNodeIdRequired], false, false),
+        NextTaskHint::FixChainConfig
+    );
+    assert_eq!(
+        resolve_next_task_hint(true, &[ConfigIssue::ScenarioRequired], &[], false, false),
+        NextTaskHint::FixGameConfig
+    );
+    assert_eq!(
+        resolve_next_task_hint(true, &[], &[], false, false),
+        NextTaskHint::StartChain
+    );
+    assert_eq!(
+        resolve_next_task_hint(true, &[], &[], false, true),
+        NextTaskHint::StartGame
+    );
+    assert_eq!(
+        resolve_next_task_hint(true, &[], &[], true, true),
+        NextTaskHint::OpenGamePage
+    );
 }
