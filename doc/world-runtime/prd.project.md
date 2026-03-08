@@ -42,7 +42,7 @@
 ## 状态
 - 更新日期: 2026-03-08
 - 当前状态: active
-- 下一任务: TASK-WORLD_RUNTIME-032（进入专题子任务 T6.4）
+- 下一任务: TASK-WORLD_RUNTIME-032（进入专题子任务 T6.5）
 - 实施备注:
   - `TASK-WORLD_RUNTIME-028` 已完成：新增节点侧固定验收入口 `scripts/module-release-node-acceptance.sh` 并将 S11 运行手册切换为“脚本入口 + 等价拆分命令 + 证据目录”；同时收敛 `sync-m1/m4/m5` 非 `--check` 写入授权为“CI 禁止、仅本地显式授权（`AGENT_WORLD_WASM_SYNC_WRITE_ALLOW=local-dev`）”，主 CI 不再具备生产发布写入/激活路径。
   - `TASK-WORLD_RUNTIME-029` 已完成：新增 `scripts/world-runtime-finality-baseline.sh` 固定基准入口，输出 `stake/epoch` 验签耗时聚合指标与 `2 epoch` 收敛状态（`summary.md`/`summary.json` 可归档）；S11 运行手册已补齐命令与产物路径。
@@ -73,5 +73,6 @@
   - `TASK-WORLD_RUNTIME-032` 已继续完成 T6.1：共享 `StorageProfileConfig` 协议、runtime / launcher / web launcher / launcher UI 的统一 profile 入口已落地，并先让 replication 热窗口预算跟随 profile 默认值。
   - `TASK-WORLD_RUNTIME-032` 已继续完成 T6.2：`world_chain_runtime` 新增共享 `StorageMetricsSnapshot`、`reward-runtime-storage-metrics.json` 状态文件与 `/v1/chain/status.storage` 输出，已先覆盖 bytes、ref_count、pin_count、checkpoint_count、orphan_blob_count 与 GC 最近结果。
   - `TASK-WORLD_RUNTIME-032` 已继续完成 T6.3：storage snapshot/status 现补齐 `effective_budget` 与 `replay_summary`，launcher / 脚本可直接读取 profile 预算、checkpoint 边界与回放模式，无需再扫内部目录。
+  - `TASK-WORLD_RUNTIME-032` 已继续完成 T6.4：bundle 入口新增 `run-chain-runtime.sh`，且 `run-game.sh` / `run-web-launcher.sh` 与 direct chain wrapper 已统一走 `AGENT_WORLD_CHAIN_STORAGE_PROFILE` 覆盖通道，同时显式绑定 bundle 内 `world_chain_runtime`。
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - 说明: 本文档仅维护 world-runtime 模块设计执行状态；过程记录在 `doc/devlog/2026-03-03.md`、`doc/devlog/2026-03-06.md` 与 `doc/devlog/2026-03-08.md`。

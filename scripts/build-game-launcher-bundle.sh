@@ -23,6 +23,7 @@ Build a distributable launcher bundle:
 - run-client.sh (desktop client launcher entry)
 - run-web-launcher.sh (headless web console launcher entry)
 - run-game.sh (one-command entry)
+- run-chain-runtime.sh (direct chain runtime entry)
 
 Options:
   --out-dir <path>       output directory (default: output/release/game-launcher-<timestamp>)
@@ -260,18 +261,43 @@ run bash -lc "cat > '$OUT_DIR/run-web-launcher.sh' <<'LAUNCH'
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT_DIR=\"\$(cd \"\$(dirname \"\${BASH_SOURCE[0]}\")\" && pwd)\"
+CHAIN_STORAGE_PROFILE=\"\${AGENT_WORLD_CHAIN_STORAGE_PROFILE:-}\"
+CHAIN_STORAGE_PROFILE_ARGS=()
+if [[ -n \"\$CHAIN_STORAGE_PROFILE\" ]]; then
+  CHAIN_STORAGE_PROFILE_ARGS=(--chain-storage-profile \"\$CHAIN_STORAGE_PROFILE\")
+fi
 AGENT_WORLD_GAME_LAUNCHER_BIN=\"\$ROOT_DIR/bin/$LAUNCHER_BIN_NAME\" \
 AGENT_WORLD_GAME_STATIC_DIR=\"\$ROOT_DIR/web\" \
+AGENT_WORLD_WORLD_CHAIN_RUNTIME_BIN=\"\$ROOT_DIR/bin/$CHAIN_BIN_NAME\" \
 AGENT_WORLD_WEB_LAUNCHER_STATIC_DIR=\"\$ROOT_DIR/web-launcher\" \
-\"\$ROOT_DIR/bin/$WEB_LAUNCHER_BIN_NAME\" \"\$@\"
+\"\$ROOT_DIR/bin/$WEB_LAUNCHER_BIN_NAME\" \"\${CHAIN_STORAGE_PROFILE_ARGS[@]}\" \"\$@\"
 LAUNCH"
 run chmod +x "$OUT_DIR/run-web-launcher.sh"
+
+run bash -lc "cat > '$OUT_DIR/run-chain-runtime.sh' <<'LAUNCH'
+#!/usr/bin/env bash
+set -euo pipefail
+ROOT_DIR=\"\$(cd \"\$(dirname \"\${BASH_SOURCE[0]}\")\" && pwd)\"
+CHAIN_STORAGE_PROFILE=\"\${AGENT_WORLD_CHAIN_STORAGE_PROFILE:-}\"
+CHAIN_STORAGE_PROFILE_ARGS=()
+if [[ -n \"\$CHAIN_STORAGE_PROFILE\" ]]; then
+  CHAIN_STORAGE_PROFILE_ARGS=(--storage-profile \"\$CHAIN_STORAGE_PROFILE\")
+fi
+\"\$ROOT_DIR/bin/$CHAIN_BIN_NAME\" \"\${CHAIN_STORAGE_PROFILE_ARGS[@]}\" \"\$@\"
+LAUNCH"
+run chmod +x "$OUT_DIR/run-chain-runtime.sh"
 
 run bash -lc "cat > '$OUT_DIR/run-game.sh' <<'LAUNCH'
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT_DIR=\"\$(cd \"\$(dirname \"\${BASH_SOURCE[0]}\")\" && pwd)\"
-\"\$ROOT_DIR/bin/$LAUNCHER_BIN_NAME\" --viewer-static-dir \"\$ROOT_DIR/web\" \"\$@\"
+CHAIN_STORAGE_PROFILE=\"\${AGENT_WORLD_CHAIN_STORAGE_PROFILE:-}\"
+CHAIN_STORAGE_PROFILE_ARGS=()
+if [[ -n \"\$CHAIN_STORAGE_PROFILE\" ]]; then
+  CHAIN_STORAGE_PROFILE_ARGS=(--chain-storage-profile \"\$CHAIN_STORAGE_PROFILE\")
+fi
+AGENT_WORLD_WORLD_CHAIN_RUNTIME_BIN=\"\$ROOT_DIR/bin/$CHAIN_BIN_NAME\" \
+\"\$ROOT_DIR/bin/$LAUNCHER_BIN_NAME\" --viewer-static-dir \"\$ROOT_DIR/web\" \"\${CHAIN_STORAGE_PROFILE_ARGS[@]}\" \"\$@\"
 LAUNCH"
 run chmod +x "$OUT_DIR/run-game.sh"
 
@@ -282,13 +308,17 @@ Quick start:
 1) Desktop launcher: ./run-client.sh
 2) Web launcher (headless): ./run-web-launcher.sh --listen-bind 0.0.0.0:5410
 3) CLI launcher: ./run-game.sh
-4) Open URL printed by launcher (CLI path defaults auto-open browser).
+4) Direct chain runtime: ./run-chain-runtime.sh
+5) Open URL printed by launcher (CLI path defaults auto-open browser).
 
 Optional:
 - Desktop launcher can start/stop game stack from GUI and open URL in one click.
 - Web launcher provides a browser control panel for headless server operation.
 - Enable LLM mode: ./run-game.sh --with-llm
 - Disable auto-open browser: ./run-game.sh --no-open-browser
+- Override chain storage profile without hardcoding wrapper defaults:
+  AGENT_WORLD_CHAIN_STORAGE_PROFILE=release_default ./run-game.sh
+  AGENT_WORLD_CHAIN_STORAGE_PROFILE=soak_forensics ./run-web-launcher.sh --listen-bind 0.0.0.0:5410
 
 Bundle layout:
 - bin/agent_world_client_launcher
@@ -301,6 +331,7 @@ Bundle layout:
 - run-client.sh
 - run-web-launcher.sh
 - run-game.sh
+- run-chain-runtime.sh
 README"
 
 cat <<INFO
@@ -312,5 +343,5 @@ Bundle ready: $OUT_DIR
 - chain runtime:   $BUNDLE_BIN_DIR/$CHAIN_BIN_NAME
 - web:             $BUNDLE_WEB_DIR
 - web launcher:    $BUNDLE_WEB_LAUNCHER_DIR
-- entries:         $OUT_DIR/run-client.sh, $OUT_DIR/run-web-launcher.sh, $OUT_DIR/run-game.sh
+- entries:         $OUT_DIR/run-client.sh, $OUT_DIR/run-web-launcher.sh, $OUT_DIR/run-game.sh, $OUT_DIR/run-chain-runtime.sh
 INFO

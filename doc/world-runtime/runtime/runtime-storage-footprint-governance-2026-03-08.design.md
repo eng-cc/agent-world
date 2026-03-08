@@ -261,6 +261,11 @@ struct StorageReplaySummary {
 - `effective_budget` 直接回显当前 profile 对应的预算口径，避免 launcher / 脚本重复推导。
 - `replay_summary.mode` 只允许 `latest_only` / `full_log_only` / `checkpoint_plus_log` 三档，供外部快速判断回放保证等级。
 
+### 6.8 Bundle Wrapper Profile Contract
+- `run-game.sh`、`run-web-launcher.sh`、`run-chain-runtime.sh` 只在 `AGENT_WORLD_CHAIN_STORAGE_PROFILE` 非空时注入对应 profile 参数。
+- 未设置 `AGENT_WORLD_CHAIN_STORAGE_PROFILE` 时，wrapper 必须继承底层二进制默认值，避免在 shell 中复制 `dev_local` 等默认常量。
+- `run-game.sh` / `run-web-launcher.sh` 必须显式指向 bundle 内 `world_chain_runtime` 二进制，保证 profile 覆盖不会落到外部 PATH 上的其他 runtime。
+
 ## 7. 写路径设计
 ### 7.1 Commit 落账顺序
 目标：保证 canonical log 先成立，再生成派生执行数据。
