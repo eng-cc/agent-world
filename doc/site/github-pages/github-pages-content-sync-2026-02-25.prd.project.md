@@ -20,7 +20,7 @@
 ### 2. 手册正文同步
 - [x] 更新 `site/doc/cn/viewer-manual.html`
 - [x] 更新 `site/doc/en/viewer-manual.html`
-- [x] 补齐默认 LLM/`--no-llm`、`--release-config`、Web step 控制、通用 target 语法
+- [x] 补齐默认 LLM/`--no-llm`、legacy 控制面参数下线说明、Web step 控制、通用 target 语法
 
 ### 3. 验证与收口
 - [x] 执行 `env -u RUSTC_WRAPPER cargo check`

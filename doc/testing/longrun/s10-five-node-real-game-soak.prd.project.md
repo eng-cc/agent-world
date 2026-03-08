@@ -20,8 +20,7 @@
 - doc/testing/longrun/s10-five-node-real-game-soak.prd.md
 - `scripts/s10-five-node-game-soak.sh`
 - `scripts/p2p-longrun-soak.sh`
-- `crates/agent_world/src/bin/world_viewer_live/cli.rs`
-- `crates/agent_world/src/bin/world_viewer_live/world_viewer_live_split_part1.rs`
+- `crates/agent_world/src/bin/world_viewer_live.rs`
 - `testing-manual.md`
 - `doc/testing/prd.md`
 - `doc/testing/prd.project.md`

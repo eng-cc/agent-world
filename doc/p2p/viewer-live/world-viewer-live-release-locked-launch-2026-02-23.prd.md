@@ -22,11 +22,11 @@
 | --- | --- | --- | --- | --- | --- |
 | 专题迁移 | 需求/任务/依赖/状态/测试层级 | 逐篇重写并校验 | `draft -> active -> done` | 以原文约束点映射为主线 | 维护者写入，复核者抽检 |
 - Acceptance Criteria:
-  - AC-1: `crates/agent_world/src/bin/world_viewer_live/cli.rs`
+  - AC-1: `crates/agent_world/src/bin/world_viewer_live.rs`
   - AC-2: 新增发行锁定入口：`--release-config <path>`。
   - AC-3: 支持从 TOML 读取 `locked_args` 并复用现有 `parse_options` 解析。
   - AC-4: 在发行锁定模式限制 CLI 覆盖项白名单（仅允许 `--bind`、`--web-bind`、`--help`、`--release-config`）。
-  - AC-5: `crates/agent_world/src/bin/world_viewer_live/world_viewer_live_split_part1.rs`
+  - AC-5: `crates/agent_world/src/bin/world_viewer_live.rs`（`#[cfg(test)]`）
   - AC-6: 启动入口改为新解析函数（支持发行锁定模式）。
 - Non-Goals:
   - 不重构现有 `CliOptions` 数据模型。

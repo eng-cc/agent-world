@@ -60,11 +60,7 @@
   - `testing-manual.md`（S9）
   - `scripts/ci-tests.sh`
   - `scripts/viewer-owr4-stress.sh`
-  - `crates/agent_world/src/bin/world_viewer_live/cli.rs`
-  - `crates/agent_world/src/bin/world_viewer_live/world_viewer_live_split_part1.rs`
-  - `crates/agent_world/src/bin/world_viewer_live/world_viewer_live_split_part2.rs`
-  - `crates/agent_world/src/bin/world_viewer_live/distfs_probe_runtime.rs`
-  - `crates/agent_world/src/bin/world_viewer_live/distfs_challenge_network.rs`
+  - `crates/agent_world/src/bin/world_viewer_live.rs`
   - `crates/agent_world_node/src/types.rs`
   - `doc/testing/longrun/p2p-storage-consensus-longrun-online-stability-2026-02-24.prd.project.md`
 - Edge Cases & Error Handling:

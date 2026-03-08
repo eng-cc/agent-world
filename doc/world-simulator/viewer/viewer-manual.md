@@ -56,7 +56,7 @@ env -u NO_COLOR ./scripts/run-viewer-web.sh --address 127.0.0.1 --port 4173
 
 ## 发行模式（P2P 推荐）
 
-`world_viewer_live` 当前为纯 Viewer live 服务，不再承载 `--release-config` 与 `--node-*` 控制面参数。  
+`world_viewer_live` 当前为纯 Viewer live 服务，不再承载 `--release-config`、`--runtime-world` 与 `--node-*` 控制面参数。  
 P2P 发行建议使用 `world_chain_runtime`（可由 `world_game_launcher` / `world_web_launcher` / `agent_world_client_launcher` 托管）锁定链参数，Viewer 仅保留 `--bind`、`--web-bind`、`--llm/--no-llm`。
 
 ## 常用交互

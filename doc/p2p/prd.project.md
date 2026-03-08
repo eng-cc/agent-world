@@ -69,7 +69,7 @@
 - [x] TASK-P2P-015-T0 [test_tier_required]: 在主 PRD/project 建立“viewer 删除 legacy 兼容层”任务链并冻结验收口径。
 - [x] TASK-P2P-015-T1 [test_tier_required]: 在 `world_viewer_live.rs` 删除 `--runtime-world` 兼容别名，补齐 `--release-config/--runtime-world/--node-*` 拒绝路径与帮助文案。
 - [x] TASK-P2P-015-T2 [test_tier_required]: 删除 `crates/agent_world/src/bin/world_viewer_live/` legacy split CLI 路径与相关未接入测试文件，确保仓内只保留单一生效入口。
-- [ ] TASK-P2P-015-T3 [test_tier_required]: 回写 viewer/manual/site 与相关项目文档（含测试路径说明）到单入口口径。
+- [x] TASK-P2P-015-T3 [test_tier_required]: 回写 viewer/manual/site 与相关项目文档（含测试路径说明）到单入口口径。
 - [ ] TASK-P2P-015-T4 [test_tier_required]: 执行 required 回归并完成项目状态与 devlog 收口。
 
 ## 依赖
@@ -82,7 +82,6 @@
 - `doc/p2p/node/node-pos-time-anchor-control-plane-alignment-2026-03-07.prd.md`
 - `crates/agent_world/src/bin/world_chain_runtime.rs`
 - `crates/agent_world/src/bin/world_viewer_live.rs`
-- `crates/agent_world/src/bin/world_viewer_live/cli.rs`
 - `world_viewer_live.release.example.toml`
 - `crates/agent_world_client_launcher/src/launcher_core.rs`
 - `crates/agent_world_client_launcher/src/main.rs`
@@ -98,7 +97,7 @@
 ## 状态
 - 更新日期: 2026-03-08
 - 当前状态: in_progress（ROUND-011）
-- 下一任务: TASK-P2P-015-T3
+- 下一任务: TASK-P2P-015-T4
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - 本轮新增: `TASK-P2P-006` 已完成，专题文档 `p2p-mobile-light-client-authoritative-state-2026-03-06` 已纳入索引和模块追踪映射。
 - 本轮新增: `TASK-P2P-008` 已建档，专题文档 `node-pos-slot-clock-real-time-2026-03-07` 已纳入模块追踪映射。
@@ -145,6 +144,7 @@
 - TASK-P2P-015 进展（2026-03-08）: `TASK-P2P-015-T0` 已完成（主 PRD/project 建档并冻结“删除兼容层”验收口径）。
 - TASK-P2P-015 进展（2026-03-08）: `TASK-P2P-015-T1` 已完成代码落地（`world_viewer_live.rs` 删除 `--runtime-world` 兼容别名、显式拒绝 `--release-config`，并同步帮助文案与定向测试）。
 - TASK-P2P-015 进展（2026-03-08）: `TASK-P2P-015-T2` 已删除 `crates/agent_world/src/bin/world_viewer_live/` legacy split CLI 路径，`world_viewer_live` 构建与 required 定向测试通过。
+- TASK-P2P-015 进展（2026-03-08）: `TASK-P2P-015-T3` 已完成手册/项目文档回写（viewer manual/site、testing-manual、longrun 专题与依赖路径更新）并通过文档门禁。
 - 说明: 本文档仅维护 p2p 设计执行状态；过程记录在 `doc/devlog/2026-03-07.md` 与 `doc/devlog/2026-03-08.md`。
 - ROUND-002 进展（2026-03-05）: 已并行完成 `B3-C2-009-S2/C2-010/C2-011`（observer sync-mode、node-contribution、distfs-self-healing）主从化回写。
 - ROUND-002 进展（2026-03-05）: 已并行完成 `B3-C2-003/C2-008-S1/C2-008-S2`（node-redeemable-power-asset、distfs-production-hardening phase1~9）主从化回写。

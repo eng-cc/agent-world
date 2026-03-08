@@ -165,9 +165,9 @@
   13. Flow-WS-013（Launcher native/web 同控制面）:
      `启动 world_web_launcher -> native/wasm 客户端轮询 /api/state -> 分别触发 /api/start|stop 与 /api/chain/start|stop -> 状态一致反馈`
   14. Flow-WS-014（Viewer live runtime 接管 Phase 1）:
-     `world_viewer_live --runtime-world -> runtime::World 驱动 step -> 适配为 simulator 协议快照/事件 -> agent_world_viewer 消费`
+     `world_viewer_live -> runtime::World 驱动 step -> 适配为 simulator 协议快照/事件 -> agent_world_viewer 消费`
   15. Flow-WS-015（Viewer live runtime 接管 Phase 2）:
-     `world_viewer_live --runtime-world --llm -> PromptControl/AgentChat 鉴权通过 -> LLM 决策动作桥接 runtime 执行 -> 输出兼容事件/快照`
+     `world_viewer_live --llm -> PromptControl/AgentChat 鉴权通过 -> LLM 决策动作桥接 runtime 执行 -> 输出兼容事件/快照`
   16. Flow-WS-016（Viewer live runtime 接管 Phase 3）:
      `补齐 action 映射 -> 增加等价回归 -> 删除 world_viewer_live simulator 启动分支 -> 统一 runtime-only 启动与错误语义`
   17. Flow-WS-017（Viewer live runtime 真 LLM 全量接管）:
@@ -206,8 +206,8 @@
 | Launcher 区块链浏览器 P0（公共主链视角） | `/api/chain/explorer/blocks`、`/block`、`/txs`、`/tx`、`/search`、`cursor/limit`、`tx_hash` | 支持区块/交易分页、交易哈希详情与统一搜索（block/tx/action/account） | `closed/open` + `idle -> loading -> ready/failed` | 区块按 `height desc`；交易按 `submitted_at desc + tx_hash desc`；`limit<=200` | 链未就绪时入口禁用；查询只读 |
 | Launcher Web 设置/反馈对齐 | 设置窗口字段 + `/api/chain/feedback` + `kind/title/description` | 浏览器端可打开设置窗口与反馈窗口；反馈提交通过控制面代理返回结构化结果 | `settings: closed/open/saved` + `feedback: idle/validating/submitting/success/failed` | 反馈标题/描述必填；单请求 in-flight 门控 | 反馈提交仅链就绪可用；设置仅当前会话可编辑 |
 | Launcher native 遗留清理 | native 失效状态字段、无效常量 `cfg` 边界、未引用旧测试文件 | 保持现有 UI/API 行为不变前提下清理历史残留 | `legacy_present -> removed -> regression_passed` | 优先删除“无读写路径/无编译入口引用”的资产 | 仅开发维护路径可修改，运行时玩家能力不变 |
-| Viewer live runtime 接管 | `--runtime-world`、runtime `DomainEvent`、兼容 `WorldSnapshot/WorldEvent` | 启动 runtime 模式后按 Play/Step 推进 runtime，并推送兼容快照/事件 | `simulator_mode/runtime_mode`（启动参数决定） | 事件序列保持单调；至少映射注册/移动/转移/拒绝四类事件 | 本地开发链路，默认不开放远程写接口 |
-| Viewer live runtime LLM/chat/prompt 接管 | `--runtime-world --llm`、`PromptControl`、`AgentChat`、auth proof、nonce | 运行时允许 prompt 预览/应用/回滚与 agent chat，驱动 LLM 决策并桥接可映射动作 | `runtime_script/runtime_llm` + `profile[vN]->profile[vN+1]` | 版本单调递增；nonce 必须递增；不可映射动作输出可诊断拒绝 | 仅本地受控链路可写，鉴权签名与绑定校验必经 |
+| Viewer live runtime 接管 | runtime `DomainEvent`、兼容 `WorldSnapshot/WorldEvent` | 启动 `world_viewer_live` 后按 Play/Step 推进 runtime，并推送兼容快照/事件 | `runtime_mode`（固定） | 事件序列保持单调；至少映射注册/移动/转移/拒绝四类事件 | 本地开发链路，默认不开放远程写接口 |
+| Viewer live runtime LLM/chat/prompt 接管 | `--llm`、`PromptControl`、`AgentChat`、auth proof、nonce | 运行时允许 prompt 预览/应用/回滚与 agent chat，驱动 LLM 决策并桥接可映射动作 | `runtime_script/runtime_llm` + `profile[vN]->profile[vN+1]` | 版本单调递增；nonce 必须递增；不可映射动作输出可诊断拒绝 | 仅本地受控链路可写，鉴权签名与绑定校验必经 |
 | Viewer live runtime action 覆盖与分支收敛 | `simulator_action_to_runtime`、`ActionRejected::RuleDenied`、`world_viewer_live` runtime-only CLI | 补齐 runtime 可执行映射并对不可映射动作保持结构化拒绝；启动链路移除 simulator 分支 | `runtime_bridge_partial -> runtime_bridge_hardened` | 映射成功动作优先执行；不可映射动作拒绝语义稳定可回归 | 不新增远程写入口，仅本地受控链路 |
 - Acceptance Criteria:
   - AC-1: world-simulator PRD 覆盖场景、Viewer、LLM、启动器四条主线。
@@ -232,8 +232,8 @@
   - AC-20: 启动器 wasm 页面在 Playwright headed 打开后不得出现 `time not implemented on this platform` 或 `RuntimeError: unreachable`，并需输出 snapshot/console/screenshot 证据。
   - AC-21: 启动器 Web 端不得再提示 `launcher bin` 与 `chain runtime bin` 必填；native 端保留对应必填校验。
   - AC-22: 启动器 native 与 web 必须统一消费 `world_web_launcher` 控制面 API，并支持链/游戏独立启停及一致状态展示。
-  - AC-23: `world_viewer_live --runtime-world` 可启动 runtime 驱动 live server，并保持现有 viewer 协议兼容（`WorldSnapshot/WorldEvent`）。
-  - AC-24: `world_viewer_live --runtime-world --llm` 必须支持 prompt/chat 鉴权与控制闭环，runtime script 模式对 prompt/chat 返回 `llm_mode_required`。
+  - AC-23: `world_viewer_live` 可启动 runtime 驱动 live server，并保持现有 viewer 协议兼容（`WorldSnapshot/WorldEvent`）。
+  - AC-24: `world_viewer_live --llm` 必须支持 prompt/chat 鉴权与控制闭环，runtime script 模式对 prompt/chat 返回 `llm_mode_required`。
   - AC-25: runtime live 补齐动作映射覆盖并新增等价回归；`world_viewer_live` 移除 simulator 启动分支并统一 runtime-only 路径。
   - AC-26: runtime live 使用真实 LLM 决策链路且 LLM 失败时硬失败，不得回退启发式。
   - AC-27: runtime 事件/快照映射覆盖率 100%，DecisionTrace 可被 viewer 订阅并包含错误上下文。

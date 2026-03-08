@@ -27,7 +27,7 @@
   - 运行时：`crates/agent_world/src/runtime/tests/*.rs`
   - 模拟器：`crates/agent_world/src/simulator/tests/*.rs`
   - LLM 行为：`crates/agent_world/src/simulator/llm_agent/tests_part2.rs`
-  - Viewer live 服务：`crates/agent_world/src/bin/world_viewer_live/world_viewer_live_tests.rs`
+  - Viewer live 服务：`crates/agent_world/src/bin/world_viewer_live.rs`（内置 `#[cfg(test)]`）
   - 端到端集成：`crates/agent_world/tests/*.rs`
 
 ### Viewer 客户端（Bevy/egui + wasm）
@@ -365,7 +365,7 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required lon
 |---|---|---|
 | `crates/agent_world/src/runtime/**` | S0 + S1 | S2 + S3 + S7 |
 | `crates/agent_world/src/simulator/**` | S0 + S1 | S2 + S3 + S7 + S8 |
-| `crates/agent_world/src/viewer/**` 或 `src/bin/world_viewer_live/**` | S0 + S1 + S6 | S2 + S3 + S5 |
+| `crates/agent_world/src/viewer/**` 或 `src/bin/world_viewer_live.rs` | S0 + S1 + S6 | S2 + S3 + S5 |
 | `crates/agent_world_viewer/**` | S0 + S5 + S6 | S2 + S8 |
 | `crates/agent_world_node/**` | S0 + S4（node） + S9/S10（按改动面至少一条） | S2 + S3 + S8 + 另一条在线长跑（S9 或 S10） |
 | `crates/agent_world_net/**` | S0 + S4（net） + S9/S10（按改动面至少一条） | S2 + runtime_bridge 变体 + S8 + 另一条在线长跑（S9 或 S10） |
