@@ -79,3 +79,4 @@ mod reward_asset;
 mod reward_asset_settlement_action;
 mod rules;
 mod storage_cold_index;
+mod storage_footprint_fixture;
