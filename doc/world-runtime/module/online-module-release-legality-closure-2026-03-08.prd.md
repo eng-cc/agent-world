@@ -61,7 +61,7 @@
   - AC-9 (PRD-WORLD_RUNTIME-017): 安装/升级/回滚/发布应用等生产路径不得调用本地自签 `apply_proposal()`；统一改为外部证书路径。
   - AC-10 (PRD-WORLD_RUNTIME-018): 现有 `ModuleReleaseRequested/Shadowed/RoleApproved/Applied` 状态机需输出到 release manifest 映射，保证迁移期可回放且可追溯。
   - AC-11 (PRD-WORLD_RUNTIME-018): 从主 CI 移除生产发布写入与激活职责（含默认模块发布写入）；主 CI 只保留 `--check` 类回归校验。
-  - AC-12 (PRD-WORLD_RUNTIME-018): 为阈值验签与发布收敛提供可执行基准：`stake/epoch` 校验耗时与“2 epoch 内收敛”均需有固定测试入口与产物。
+  - AC-12 (PRD-WORLD_RUNTIME-018): 为阈值验签与发布收敛提供可执行基准：`stake/epoch` 校验耗时与“2 epoch 内收敛”均需有固定测试入口（`scripts/world-runtime-finality-baseline.sh`）与归档产物（`summary.md`/`summary.json`）。
   - AC-13 (PRD-WORLD_RUNTIME-018): `proposal -> attestation` 证明落盘必须包含 `signer_node_id/platform/build_manifest_hash/source_hash/wasm_hash/proof_cid`，并强校验 `wasm_hash == release request manifest.wasm_hash`，冲突重复证明拒绝。
   - AC-14 (PRD-WORLD_RUNTIME-018): `ModuleReleaseApply` 必须按当前 epoch 快照 signer 集做 attestation 阈值聚合，且仅快照内 signer 计入阈值；阈值不足不得激活 release manifest。
   - AC-15 (PRD-WORLD_RUNTIME-018): 发布运行手册必须定义并可执行分诊“证明冲突、attestation 阈值不足、manifest 不可达/回滚/漂移”三类阻断场景，并明确主 CI 仅做开发回归与对账，不承担生产发布写入/激活。
@@ -144,7 +144,7 @@
 | --- | --- | --- | --- | --- |
 | PRD-WORLD_RUNTIME-016 | TASK-WORLD_RUNTIME-017/018/019/027 | `test_tier_required` | 运行时仅接受线上 manifest + 签名身份用例；`ModuleRelease* -> release manifest` 映射回放一致性校验 | 模块加载与执行合法性 |
 | PRD-WORLD_RUNTIME-017 | TASK-WORLD_RUNTIME-020/021/025/026 | `test_tier_required` + `test_tier_full` | finality 证书外部化、`stake/epoch` 阈值验签、key 轮换验证；本地自签路径禁用测试 | 治理 apply 安全边界 |
-| PRD-WORLD_RUNTIME-018 | TASK-WORLD_RUNTIME-022/023/024/028/029 | `test_tier_required` | 去中心化提案/复构建证明/阈值签名闭环校验 + 发布 runbook/告警策略 + 节点侧固定验收脚本（`scripts/module-release-node-acceptance.sh`）+ 主 CI 去发布写入 + 基准指标产物校验 | 发布门禁与工程流程 |
+| PRD-WORLD_RUNTIME-018 | TASK-WORLD_RUNTIME-022/023/024/028/029 | `test_tier_required` | 去中心化提案/复构建证明/阈值签名闭环校验 + 发布 runbook/告警策略 + 节点侧固定验收脚本（`scripts/module-release-node-acceptance.sh`）+ finality 固定基准脚本（`scripts/world-runtime-finality-baseline.sh`）+ 主 CI 去发布写入 + 基准指标产物校验 | 发布门禁与工程流程 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |

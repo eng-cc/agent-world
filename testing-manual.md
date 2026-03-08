@@ -379,6 +379,14 @@ env -u RUSTC_WRAPPER cargo test -p agent_world module_release_submit_attestation
 env -u RUSTC_WRAPPER cargo test -p agent_world module_release_apply_rejects_when_attestation_threshold_not_met --features test_tier_required -- --nocapture
 env -u RUSTC_WRAPPER cargo test -p agent_world power_bootstrap_release_manifest_full --features test_tier_full -- --nocapture
 ```
+- finality 基准固定入口（`stake/epoch` 验签耗时 + 2 epoch 收敛）：
+```bash
+./scripts/world-runtime-finality-baseline.sh
+./scripts/world-runtime-finality-baseline.sh --required-samples 1 --full-samples 1 --warmup-samples 0
+```
+- 基准产物：
+  - 默认输出目录：`.tmp/world_runtime_finality_baseline/<timestamp>/`
+  - 归档文件：`summary.md`（人读）与 `summary.json`（机器读）
 - 运行时分诊检索（日志/审计）：
 ```bash
 rg -n "conflicting attestation already exists|attestation threshold not met|fault_signature=builtin_release_manifest_" output .tmp
