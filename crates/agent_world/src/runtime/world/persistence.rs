@@ -376,15 +376,15 @@ impl World {
             });
         }
 
-        let snapshot_manifest_path = dir.join(DISTFS_SNAPSHOT_MANIFEST_FILE);
-        let journal_segments_path = dir.join(DISTFS_JOURNAL_SEGMENTS_FILE);
-        write_json_to_path(&manifest, snapshot_manifest_path.as_path())?;
-        write_json_to_path(&journal_segments, journal_segments_path.as_path())?;
         persist_sidecar_generation_index(
             store_root.as_path(),
             &manifest,
             journal_segments.as_slice(),
         )?;
+        let snapshot_manifest_path = dir.join(DISTFS_SNAPSHOT_MANIFEST_FILE);
+        let journal_segments_path = dir.join(DISTFS_JOURNAL_SEGMENTS_FILE);
+        write_json_to_path(&manifest, snapshot_manifest_path.as_path())?;
+        write_json_to_path(&journal_segments, journal_segments_path.as_path())?;
         Ok(())
     }
 
@@ -737,11 +737,45 @@ fn sweep_sidecar_orphan_blobs(
     Ok(SidecarGcResult::success(freed_blob_count, freed_bytes))
 }
 
+fn cleanup_stale_sidecar_generation_staging(store_root: &Path) -> Result<(), WorldError> {
+    let staging_root = sidecar_generation_staging_dir(store_root);
+    if !staging_root.exists() {
+        return Ok(());
+    }
+    for entry in fs::read_dir(staging_root.as_path())? {
+        let entry = entry?;
+        let entry_path = entry.path();
+        if entry.file_type()?.is_dir() {
+            fs::remove_dir_all(entry_path.as_path())?;
+        } else {
+            fs::remove_file(entry_path.as_path())?;
+        }
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+fn maybe_fail_after_sidecar_stage(store_root: &Path) -> Result<(), WorldError> {
+    let fail_path = sidecar_generation_root_dir(store_root).join(".test-fail-after-stage");
+    if fail_path.exists() {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: "sidecar test failpoint after stage".to_string(),
+        });
+    }
+    Ok(())
+}
+
+#[cfg(not(test))]
+fn maybe_fail_after_sidecar_stage(_store_root: &Path) -> Result<(), WorldError> {
+    Ok(())
+}
+
 fn stage_sidecar_generation(
     store_root: &Path,
     manifest: &SnapshotManifest,
     journal_segments: &[JournalSegmentRef],
 ) -> Result<(String, SidecarGenerationRecord), WorldError> {
+    cleanup_stale_sidecar_generation_staging(store_root)?;
     fs::create_dir_all(sidecar_generation_manifests_dir(store_root).as_path())?;
     fs::create_dir_all(sidecar_generation_payloads_dir(store_root).as_path())?;
     fs::create_dir_all(sidecar_generation_staging_dir(store_root).as_path())?;
@@ -838,6 +872,7 @@ fn persist_sidecar_generation_index(
 ) -> Result<(), WorldError> {
     let (generation_id, staged_record) =
         stage_sidecar_generation(store_root, manifest, journal_segments)?;
+    maybe_fail_after_sidecar_stage(store_root)?;
     validate_staged_sidecar_generation(store_root, &staged_record)?;
     let generation_record = finalize_sidecar_generation(
         store_root,

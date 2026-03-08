@@ -555,6 +555,139 @@ fn persist_sidecar_generation_gc_failure_preserves_latest_and_rollback_blobs() {
 }
 
 #[test]
+fn persist_sidecar_generation_interrupted_save_rolls_back_and_retry_cleans_staging() {
+    let mut world = World::new();
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-sidecar-interrupt-0".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.step().expect("first step");
+
+    let dir = temp_dir("persist-sidecar-generation-interrupt");
+    world.save_to_dir(&dir).expect("first save");
+    let first_restored = World::load_from_dir(&dir).expect("load first saved world");
+    let first_state = first_restored.state().clone();
+    let first_index: serde_json::Value = serde_json::from_slice(
+        &fs::read(dir.join(".distfs-state/sidecar-generations/index.json"))
+            .expect("read first sidecar generation index"),
+    )
+    .expect("decode first sidecar generation index");
+    let first_latest_generation = first_index
+        .get("latest_generation")
+        .and_then(|value| value.as_str())
+        .expect("first latest generation")
+        .to_string();
+
+    fs::write(
+        dir.join(".distfs-state/sidecar-generations/.test-fail-after-stage"),
+        b"1",
+    )
+    .expect("install sidecar failpoint");
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-sidecar-interrupt-1".to_string(),
+        pos: pos(1.0, 1.0),
+    });
+    world.step().expect("second step");
+    let err = world
+        .save_to_dir(&dir)
+        .expect_err("interrupted save should fail after staging");
+    assert!(matches!(
+        err,
+        WorldError::DistributedValidationFailed { .. }
+    ));
+    assert!(
+        fs::read_dir(dir.join(".distfs-state/sidecar-generations/generation.tmp"))
+            .expect("read staging dir after interrupted save")
+            .count()
+            > 0
+    );
+
+    let rolled_back = World::load_from_dir(&dir).expect("load after interrupted save");
+    assert_eq!(rolled_back.state(), &first_state);
+    let interrupted_index: serde_json::Value = serde_json::from_slice(
+        &fs::read(dir.join(".distfs-state/sidecar-generations/index.json"))
+            .expect("read interrupted sidecar generation index"),
+    )
+    .expect("decode interrupted sidecar generation index");
+    assert_eq!(
+        interrupted_index
+            .get("latest_generation")
+            .and_then(|value| value.as_str()),
+        Some(first_latest_generation.as_str())
+    );
+
+    fs::remove_file(dir.join(".distfs-state/sidecar-generations/.test-fail-after-stage"))
+        .expect("remove sidecar failpoint");
+    world
+        .save_to_dir(&dir)
+        .expect("retry save after interruption");
+
+    let staging_entries =
+        fs::read_dir(dir.join(".distfs-state/sidecar-generations/generation.tmp"))
+            .expect("read staging dir after retry")
+            .count();
+    assert_eq!(staging_entries, 0);
+    let restored = World::load_from_dir(&dir).expect("load after retry save");
+    assert_eq!(restored.state(), world.state());
+
+    let _ = fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn persist_sidecar_generation_retry_cleans_partial_staging_and_orphan_blob() {
+    let mut world = World::new();
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-sidecar-partial-0".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.step().expect("first step");
+
+    let dir = temp_dir("persist-sidecar-generation-partial-staging");
+    world.save_to_dir(&dir).expect("first save");
+
+    let partial_staging_dir =
+        dir.join(".distfs-state/sidecar-generations/generation.tmp/interrupted-partial");
+    fs::create_dir_all(partial_staging_dir.as_path()).expect("create partial staging dir");
+    fs::write(
+        partial_staging_dir.join("snapshot.manifest.json"),
+        br#"{"partial""#,
+    )
+    .expect("write partial snapshot manifest");
+    fs::write(
+        partial_staging_dir.join("journal.segments.json"),
+        br#"[{"partial""#,
+    )
+    .expect("write partial journal segments");
+    fs::write(partial_staging_dir.join("generation.json"), b"not-json")
+        .expect("write partial generation record");
+
+    let orphan_bytes = b"sidecar-orphan-after-interrupt";
+    let orphan_hash = agent_world_distfs::blake3_hex(orphan_bytes);
+    let orphan_blob_path = dir.join(format!(".distfs-state/blobs/{orphan_hash}.blob"));
+    fs::write(orphan_blob_path.as_path(), orphan_bytes).expect("write orphan blob");
+
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-sidecar-partial-1".to_string(),
+        pos: pos(1.0, 1.0),
+    });
+    world.step().expect("second step");
+    world
+        .save_to_dir(&dir)
+        .expect("retry save after partial staging");
+
+    let staging_entries =
+        fs::read_dir(dir.join(".distfs-state/sidecar-generations/generation.tmp"))
+            .expect("read staging dir after cleanup")
+            .count();
+    assert_eq!(staging_entries, 0);
+    assert!(!orphan_blob_path.exists());
+    let restored = World::load_from_dir(&dir).expect("load after cleanup save");
+    assert_eq!(restored.state(), world.state());
+
+    let _ = fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn persist_updates_sidecar_generation_index_with_rollback_safe_generation() {
     let mut world = World::new();
     world.submit_action(Action::RegisterAgent {
