@@ -74,6 +74,7 @@ mod modules;
 mod operability_release_gate;
 mod persistence;
 mod power_bootstrap;
+mod power_bootstrap_release_manifest_full;
 mod reward_asset;
 mod reward_asset_settlement_action;
 mod rules;

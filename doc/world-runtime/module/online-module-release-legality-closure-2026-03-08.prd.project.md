@@ -6,7 +6,7 @@
 - [x] TASK-WORLD_RUNTIME-016 (PRD-WORLD_RUNTIME-016/017/018) [test_tier_required]: 建立专题 PRD/项目管理文档，冻结目标态边界与验收口径。
 - [x] TASK-WORLD_RUNTIME-017 (PRD-WORLD_RUNTIME-016) [test_tier_required]: 引入线上发布清单主真源与节点加载策略切换（生产禁用本地未授权 fallback）。
 - [x] TASK-WORLD_RUNTIME-018 (PRD-WORLD_RUNTIME-016) [test_tier_required]: 将 `m1/m4/m5` builtin artifact 加载从仓库内置清单迁移到可治理清单入口，保留受控 bootstrap 兜底。
-- [ ] TASK-WORLD_RUNTIME-019 (PRD-WORLD_RUNTIME-016) [test_tier_full]: 补齐线上 manifest 不可达/回滚/版本漂移场景回归与故障签名。
+- [x] TASK-WORLD_RUNTIME-019 (PRD-WORLD_RUNTIME-016) [test_tier_full]: 补齐线上 manifest 不可达/回滚/版本漂移场景回归与故障签名。
 - [x] TASK-WORLD_RUNTIME-020 (PRD-WORLD_RUNTIME-017) [test_tier_required]: 生产策略下禁用 `identity_hash_v1` 回退，强制 artifact ed25519 签名校验。
 - [ ] TASK-WORLD_RUNTIME-021 (PRD-WORLD_RUNTIME-017) [test_tier_required + test_tier_full]: `apply_proposal` 去本地自签路径，改为外部 finality 证书必需并补齐“epoch 快照验证者签名集阈值最终性”与轮换回归。
 - [ ] TASK-WORLD_RUNTIME-022 (PRD-WORLD_RUNTIME-018) [test_tier_required]: 新增去中心化发布提案与复构建证明收集流程（`proposal -> attestation`）并形成可审计证据结构。
@@ -28,7 +28,8 @@
 ## 状态
 - 更新日期: 2026-03-08
 - 当前状态: active
-- 下一任务: TASK-WORLD_RUNTIME-019
+- 下一任务: TASK-WORLD_RUNTIME-021
 - 实施备注:
+  - `TASK-WORLD_RUNTIME-019` 已完成：新增故障签名 `builtin_release_manifest_unreachable`、`builtin_release_manifest_missing_or_rolled_back`、`builtin_release_manifest_identity_drift`，并补齐 `test_tier_full` 回归。
   - 已完成 `TASK-WORLD_RUNTIME-021` 的首段闭环：生产策略下 `apply_proposal()` 本地自签路径禁用，需显式 `apply_proposal_with_finality()`。
   - `TASK-WORLD_RUNTIME-021` 余项（`stake/epoch` 快照阈值、轮换回归）并入下一阶段任务。

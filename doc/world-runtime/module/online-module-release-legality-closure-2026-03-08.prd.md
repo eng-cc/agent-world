@@ -102,6 +102,7 @@
   - 生产节点误开本地 fallback：启动即告警并拒绝进入 `enforce` 状态。
   - 生产路径误调用 `apply_proposal()`：立即拒绝并输出“本地自签路径禁用”错误，禁止 silent fallback。
   - `ModuleRelease*` 与 release manifest 映射缺失：拒绝激活并要求补齐映射证据。
+  - 故障签名标准化：线上不可达/缺失回滚/identity 漂移分别输出 `builtin_release_manifest_unreachable`、`builtin_release_manifest_missing_or_rolled_back`、`builtin_release_manifest_identity_drift`，用于 runbook 与告警分诊。
 - Non-Functional Requirements:
   - NFR-OMR-1: 节点模块校验（manifest + identity + signature）单模块验证耗时 `p95 <= 200ms`（本地缓存命中）。
   - NFR-OMR-2: 发布证据（清单、证明签名、证书、链上高度）可追溯完整率 100%。

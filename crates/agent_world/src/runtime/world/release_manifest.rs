@@ -11,6 +11,15 @@ use super::super::{
 use super::{BuiltinReleaseManifestEntry, World};
 
 const BUILTIN_WASM_DISTFS_ROOT_ENV: &str = "AGENT_WORLD_BUILTIN_WASM_DISTFS_ROOT";
+const FAULT_SIG_BUILTIN_RELEASE_MANIFEST_UNREACHABLE: &str = "builtin_release_manifest_unreachable";
+const FAULT_SIG_BUILTIN_RELEASE_MANIFEST_MISSING_OR_ROLLED_BACK: &str =
+    "builtin_release_manifest_missing_or_rolled_back";
+const FAULT_SIG_BUILTIN_RELEASE_MANIFEST_IDENTITY_DRIFT: &str =
+    "builtin_release_manifest_identity_drift";
+
+fn with_fault_signature(signature: &str, reason: impl Into<String>) -> String {
+    format!("fault_signature={signature} {}", reason.into())
+}
 
 fn builtin_wasm_distfs_root() -> PathBuf {
     if let Ok(path) = std::env::var(BUILTIN_WASM_DISTFS_ROOT_ENV) {
@@ -168,23 +177,29 @@ impl World {
             let distfs_root = builtin_wasm_distfs_root();
             return load_builtin_wasm_with_fetch_fallback(module_id.as_str(), &hash_refs, &distfs_root)
                 .map_err(|error| WorldError::ModuleChangeInvalid {
-                    reason: format!(
+                    reason: with_fault_signature(
+                        FAULT_SIG_BUILTIN_RELEASE_MANIFEST_UNREACHABLE,
+                        format!(
                         "failed to materialize builtin wasm artifact module_set={} module_id={} hashes=[{}] distfs_root={} err={:?}",
                         module_set,
                         module_id,
                         hashes.join(","),
                         distfs_root.display(),
                         error
+                        ),
                     ),
                 });
         }
         if !self.release_security_policy.allow_builtin_manifest_fallback {
             return Err(WorldError::ModuleChangeInvalid {
-                reason: format!(
+                reason: with_fault_signature(
+                    FAULT_SIG_BUILTIN_RELEASE_MANIFEST_MISSING_OR_ROLLED_BACK,
+                    format!(
                     "builtin release manifest entry missing module_set={} module_id={} fallback_allowed={}",
                     module_set,
                     module_id,
                     self.release_security_policy.allow_builtin_manifest_fallback
+                    ),
                 ),
             });
         }
@@ -206,15 +221,42 @@ impl World {
     ) -> Result<ModuleArtifactIdentity, WorldError> {
         let module_set = normalize_module_set(module_set);
         let module_id = normalize_module_id(module_id);
-        if let Some(identity) = self
+        let manifest_entry = self
             .builtin_release_manifest
             .module_sets
             .get(module_set.as_str())
             .and_then(|entries| entries.get(module_id.as_str()))
-            .and_then(|entry| entry.artifact_identities.get(wasm_hash))
-            .cloned()
-        {
-            return Ok(identity);
+            .cloned();
+        if let Some(entry) = manifest_entry {
+            if let Some(identity) = entry.artifact_identities.get(wasm_hash) {
+                return Ok(identity.clone());
+            }
+            if self.release_security_policy.allow_builtin_manifest_fallback {
+                return fallback_builtin_artifact_identity(
+                    module_set.as_str(),
+                    module_id.as_str(),
+                    wasm_hash,
+                );
+            }
+            let known_wasm_hashes = entry
+                .artifact_identities
+                .keys()
+                .cloned()
+                .collect::<Vec<_>>()
+                .join(",");
+            return Err(WorldError::ModuleChangeInvalid {
+                reason: with_fault_signature(
+                    FAULT_SIG_BUILTIN_RELEASE_MANIFEST_IDENTITY_DRIFT,
+                    format!(
+                        "builtin release artifact identity missing module_set={} module_id={} wasm_hash={} known_wasm_hashes=[{}] fallback_allowed={}",
+                        module_set,
+                        module_id,
+                        wasm_hash,
+                        known_wasm_hashes,
+                        self.release_security_policy.allow_builtin_manifest_fallback
+                    ),
+                ),
+            });
         }
         if self.release_security_policy.allow_builtin_manifest_fallback {
             return fallback_builtin_artifact_identity(
@@ -224,12 +266,15 @@ impl World {
             );
         }
         Err(WorldError::ModuleChangeInvalid {
-            reason: format!(
+            reason: with_fault_signature(
+                FAULT_SIG_BUILTIN_RELEASE_MANIFEST_MISSING_OR_ROLLED_BACK,
+                format!(
                 "builtin release artifact identity missing module_set={} module_id={} wasm_hash={} fallback_allowed={}",
                 module_set,
                 module_id,
                 wasm_hash,
                 self.release_security_policy.allow_builtin_manifest_fallback
+                ),
             ),
         })
     }
