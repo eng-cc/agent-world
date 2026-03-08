@@ -42,6 +42,7 @@
   - SC-10: runtime/game/web/client launcher 默认 PoS 时间参数与文档一致，默认启动即满足“slot 时钟锚定 + 轮询语义解耦”口径。
   - SC-11: runtime/game/web/client launcher 与 longrun 脚本默认参数统一为 `slot_duration_ms=12000`、`ticks_per_slot=10`、`proposal_tick_phase=9`，满足“12s 出块、每块 10 tick”基线。
   - SC-12: `world_viewer_live` 对外 CLI 收敛为纯观察服务，不再接受 `--release-config` 与 `--node-*` 控制面参数；误传时必须显式拒绝并提示改用 `world_chain_runtime`。
+  - SC-13: `world_viewer_live` 移除 legacy 参数兼容层，不再接受 `--runtime-world` 等历史别名；代码库中不再保留未接入生产入口的旧 CLI 解析路径。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -66,6 +67,7 @@
   - PRD-P2P-008: As a 协议工程师, I want cross-doc and status field naming to disambiguate worker polling vs consensus ticks, so that observability and operations avoid semantic drift.
   - PRD-P2P-009: As a 节点运营者, I want sane default PoS timing values and uniform validation wording, so that default startup already follows anchored block-time semantics without hidden overrides.
   - PRD-P2P-010: As a 发布维护者, I want `world_viewer_live` to reject legacy release/node control-plane flags, so that chain control is unambiguously hosted by `world_chain_runtime`.
+  - PRD-P2P-011: As a 发布维护者, I want legacy compatibility aliases removed from `world_viewer_live`, so that CLI semantics are single-source and there is no dead parser path.
 - Critical User Flows:
   1. Flow-P2P-001: `网络拓扑变更 -> 共识联调 -> DistFS 同步 -> 节点状态一致性验证`
   2. Flow-P2P-002: `执行 S9/S10 长跑 -> 采集故障与恢复数据 -> 输出收敛报告`
@@ -77,6 +79,7 @@
   8. Flow-P2P-008: 状态接口/手册/PRD 同步更新 -> `tick_count` 明确为 worker poll 指标 -> 采样脚本以共识 slot/tick/height 为主
   9. Flow-P2P-009: `默认启动 runtime/game/web/client launcher -> 使用统一默认 slot_duration/ticks_per_slot -> 文档/帮助/校验文案一致呈现 poll vs slot 语义`
   10. Flow-P2P-010: `用户误传 world_viewer_live --release-config/--node-* -> CLI 显式拒绝并给出替代入口 -> 文档与示例迁移到 world_chain_runtime`
+  11. Flow-P2P-011: `用户误传 world_viewer_live 任意 legacy 参数（含 --runtime-world） -> CLI 明确拒绝并输出迁移入口 -> 测试与手册口径一致`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
@@ -88,7 +91,7 @@
 | PoS 槽内 tick 节拍 | `ticks_per_slot`、`tick_phase`、`proposal_tick_phase`、`last_observed_tick`、`missed_tick_count` | 仅在命中提案相位时触发提案；worker 按下一 logical tick 边界动态调度 | `idle -> proposing`（相位门控） | `logical_tick=floor((now-genesis)*ticks_per_slot/slot_duration)`；`phase=tick%ticks_per_slot` | 节拍公式全节点一致；本地调度可回退固定间隔 |
 | PoS 控制面参数对齐 | `node_tick_ms`（轮询）+ `slot_duration_ms`、`ticks_per_slot`、`proposal_tick_phase`、`adaptive_tick_scheduler_enabled`、`slot_clock_genesis_unix_ms`、`max_past_slot_lag` | runtime/game/web/client launcher/scripts 显式暴露并校验参数，状态接口回显观测字段 | `configured -> running -> audited` | `node_tick_ms` 不参与出块时间计算，仅作为 worker 轮询/回退间隔 | 运维可配置；非法值必须启动前拒绝 |
 | 时序语义残留收敛 | `worker_poll_count`、`consensus.last_observed_tick`、`consensus.committed_height`、`slot_duration_ms` | 更新状态字段命名/文档叙述并修复过时控制面假设 | `legacy -> aligned` | 轮询指标与共识指标分离，不混用同一“tick”语义 | 运维/QA 只读；配置前必须通过校验 |
-| Viewer 控制面边界收敛 | `world_viewer_live` CLI（`--bind`/`--web-bind`/`--llm`/`--no-llm`） | 仅保留观察服务参数；误传 `--release-config` 与 `--node-*` 直接拒绝 | `legacy_mixed -> observer_only` | CLI 白名单固定；错误信息必须包含迁移目标 `world_chain_runtime` | 运行链控制面仅限受信运维入口 |
+| Viewer 控制面边界收敛 | `world_viewer_live` CLI（`--bind`/`--web-bind`/`--llm`/`--no-llm`） | 仅保留观察服务参数；误传 `--release-config`、`--runtime-world`、`--node-*` 与其他 legacy 控制面参数直接拒绝 | `legacy_mixed -> observer_only_strict` | CLI 白名单固定；错误信息必须包含迁移目标 `world_chain_runtime` | 运行链控制面仅限受信运维入口 |
 - 三线联合验收清单（TASK-P2P-002）:
 | 线别 | 必跑命令（基线） | 联合验收门禁 | 阻断条件（任一命中即 fail） | 证据产物 |
 | --- | --- | --- | --- | --- |
@@ -111,6 +114,7 @@
   - AC-13: `world_chain_runtime/world_game_launcher/world_web_launcher/agent_world_client_launcher` 默认 `slot_duration_ms` 与文档基线一致；`world_web_launcher` 校验文案明确 `chain_node_tick_ms` 为 poll interval 语义。
   - AC-14: `world_chain_runtime/world_game_launcher/world_web_launcher/agent_world_client_launcher/world_viewer_live/p2p-longrun/s10` 默认 `slot_duration_ms/ticks_per_slot/proposal_tick_phase` 与“12s/10/9”基线一致，相关默认值断言与手册同步更新。
   - AC-15: `world_viewer_live` 解析层移除 `--release-config` 与 `--node-*` 参数能力；定向测试覆盖“误传 legacy 参数 -> 启动失败 + 替代提示”路径。
+  - AC-16: `world_viewer_live` 进一步移除 `--runtime-world` 兼容别名与旧 split CLI 路径，定向测试覆盖 `--release-config/--runtime-world/--node-*` 拒绝行为。
 - Non-Goals:
   - 不在本 PRD 细化 viewer UI 交互。
   - 不替代 runtime 内核的模块执行细节设计。
@@ -147,6 +151,7 @@
   - 大跨度漏槽：节点恢复后按当前 wall-clock 对齐 slot，并累加漏槽计数，不补历史空块。
   - 控制面兼容：保留 `node_tick_ms` 时必须明确其“轮询/回退间隔”语义，避免误用为 slot/block 时间。
   - 旧参数误用：`world_viewer_live` 若收到 `--release-config` 或任意 `--node-*` 参数，必须立即失败并输出“请改用 world_chain_runtime”。
+  - 兼容别名误用：`world_viewer_live` 若收到 `--runtime-world`，必须立即失败并输出“请直接使用纯 viewer 参数”。
 - Non-Functional Requirements:
   - NFR-P2P-1: 多节点长跑稳定性指标持续达标并可追溯。
   - NFR-P2P-2: 共识提交与复制链路关键失败模式覆盖率 100%。
@@ -161,6 +166,7 @@
   - NFR-P2P-11: 控制面参数命名与状态字段在 runtime/game/web/client launcher/scripts 上保持一致，避免语义分叉导致错误调参。
   - NFR-P2P-12: 指标命名必须区分“worker poll”与“consensus tick”；任何对外接口不得将二者混称为同一 tick 语义。
   - NFR-P2P-13: `world_viewer_live` CLI 帮助与错误文案中不得再出现 release/node 控制面入口，避免与 `world_chain_runtime` 控制平面重复。
+  - NFR-P2P-14: `world_viewer_live` 仅保留一个生效的 CLI 解析实现；仓内不得存在与生产入口分叉的 legacy 参数解析代码路径。
 - Security & Privacy: 需保证节点身份、签名、账本与反馈数据链路的完整性；所有关键动作必须具备可审计记录。
 
 ## 5. Risks & Roadmap
@@ -187,6 +193,7 @@
 | PRD-P2P-009 | TASK-P2P-012 | `test_tier_required` | 默认参数一致性、launcher/web 校验文案与手册口径回归 | 默认启动行为、控制面配置与运维认知一致性 |
 | PRD-P2P-009 | TASK-P2P-013 | `test_tier_required` | 默认值切换到 `12s/10/9` 并回归 CLI/脚本/文档口径 | 时间锚定基线一致性与默认运行节拍 |
 | PRD-P2P-010 | TASK-P2P-014 | `test_tier_required` | `world_viewer_live` legacy 参数拒绝、帮助文案收敛与文档/示例迁移回归 | Viewer/chain 控制面边界一致性 |
+| PRD-P2P-011 | TASK-P2P-015 | `test_tier_required` | `world_viewer_live` 删除 `--runtime-world` 兼容别名、移除旧 split CLI 路径并回归手册/测试口径 | CLI 单一事实源与维护成本收敛 |
 - S9/S10 长跑结果模板（TASK-P2P-003）:
 | 字段 | 说明 | 来源 |
 | --- | --- | --- |
@@ -233,3 +240,4 @@
 | DEC-P2P-011 | 统一 runtime/game/web/client launcher 默认 `slot_duration_ms` 为文档基线值，并收敛校验文案为 poll interval 语义 | 继续维持 `slot_duration_ms=1` 且允许文案混用 tick/block 语义 | 减少“默认启动即偏离锚定口径”的隐性配置风险，降低运维误读。 |
 | DEC-P2P-012 | 默认 PoS 时间参数采用 `slot_duration_ms=12000`、`ticks_per_slot=10`、`proposal_tick_phase=9` | 保持 `200/1/0` 等压测导向默认组合 | 与“12s 出块、每块 10 tick”设计口径一致，默认体验与协议基线对齐。 |
 | DEC-P2P-013 | `world_viewer_live` 移除 `--release-config` 与 `--node-*` 控制面参数，仅保留观察服务 CLI | 继续在 viewer 保留 release/node 控制面兼容入口 | 避免控制面双入口造成运维误配，统一由 `world_chain_runtime` 承担链参数与节点生命周期。 |
+| DEC-P2P-014 | `world_viewer_live` 删除 `--runtime-world` 兼容别名与 legacy split CLI 代码，保留单一生产入口 `world_viewer_live.rs` | 继续保留兼容别名和未接入入口的旧解析代码 | 避免“文档/测试改了但真实入口不生效”的双轨风险，降低后续维护和误判成本。 |
