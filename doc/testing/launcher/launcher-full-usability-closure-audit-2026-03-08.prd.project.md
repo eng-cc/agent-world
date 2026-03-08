@@ -4,7 +4,7 @@
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] LAUNCHREV-1 (PRD-TESTING-LAUNCHER-REVIEW-001): 完成专题 PRD 与项目管理文档建档，明确审查范围/分级标准/追溯口径。
-- [ ] LAUNCHREV-2 (PRD-TESTING-LAUNCHER-REVIEW-001/002/003): 执行启动器定向回归与脚本行为审查（迁移入口 + 阻断入口 + 参数兼容）。
+- [x] LAUNCHREV-2 (PRD-TESTING-LAUNCHER-REVIEW-001/002/003): 执行启动器定向回归与脚本行为审查（迁移入口 + 阻断入口 + 参数兼容）。
 - [ ] LAUNCHREV-3 (PRD-TESTING-LAUNCHER-REVIEW-002): 执行真实 Web 闭环（`world_game_launcher + Playwright`）并归档证据。
 - [ ] LAUNCHREV-4 (PRD-TESTING-LAUNCHER-REVIEW-001/003): 输出可用性分级结论、风险项与后续动作，完成文档/devlog 收口。
 
@@ -24,6 +24,6 @@
 
 ## 状态
 - 更新日期：2026-03-08
-- 当前阶段：进行中（已完成 LAUNCHREV-1）
+- 当前阶段：进行中（已完成 LAUNCHREV-1/2）
 - 阻塞项：无
-- 下一步：执行 LAUNCHREV-2（回归与脚本审查）
+- 下一步：执行 LAUNCHREV-3（Web Playwright 真闭环）
