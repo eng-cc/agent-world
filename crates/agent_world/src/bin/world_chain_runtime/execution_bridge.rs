@@ -625,8 +625,14 @@ fn build_execution_bridge_pin_set(
     hot_window_heights: u64,
 ) -> Result<ExecutionBridgePinSet, String> {
     let record_heights = list_execution_bridge_record_heights(execution_records_dir)?;
+    let checkpoint_heights = list_execution_checkpoint_heights(execution_records_dir)?
+        .into_iter()
+        .collect::<BTreeSet<_>>();
     let Some(latest_height) = record_heights.last().copied() else {
-        let mut pin_set = ExecutionBridgePinSet::default();
+        let mut pin_set = ExecutionBridgePinSet {
+            checkpoint_heights,
+            ..ExecutionBridgePinSet::default()
+        };
         collect_execution_checkpoint_retained_refs(
             execution_records_dir,
             &mut pin_set.pinned_refs,
@@ -640,6 +646,7 @@ fn build_execution_bridge_pin_set(
     let mut pin_set = ExecutionBridgePinSet {
         latest_height: Some(latest_height),
         hot_window_start_height: Some(hot_window_start_height),
+        checkpoint_heights,
         pinned_refs: BTreeSet::new(),
     };
 
@@ -769,6 +776,59 @@ fn maybe_persist_execution_checkpoint_for_record(
     Ok(Some(checkpoint_ref))
 }
 
+fn compact_execution_bridge_records(
+    execution_records_dir: &Path,
+    pin_set: &ExecutionBridgePinSet,
+) -> Result<usize, String> {
+    let record_heights = list_execution_bridge_record_heights(execution_records_dir)?;
+    let latest_height = pin_set.latest_height;
+    let hot_window_start_height = pin_set.hot_window_start_height.unwrap_or(u64::MAX);
+    let mut rewritten_records = 0_usize;
+
+    for height in record_heights {
+        let path = execution_bridge_record_path(execution_records_dir, height);
+        let mut record = load_execution_bridge_record(path.as_path())?;
+        let original_record = record.clone();
+        let retain_latest_head = latest_height == Some(height);
+        let retain_hot_window = height >= hot_window_start_height;
+        let retain_checkpoint = pin_set.checkpoint_heights.contains(&height);
+
+        if !retain_latest_head && !retain_hot_window {
+            record.latest_state_ref = None;
+            record.snapshot_ref = None;
+            record.journal_ref = None;
+            record.simulator_mirror = None;
+            if !retain_checkpoint {
+                record.checkpoint_ref = None;
+            }
+        }
+
+        if record != original_record {
+            if retain_latest_head {
+                persist_execution_bridge_record(execution_records_dir, &record)?;
+            } else {
+                persist_execution_bridge_record_only(execution_records_dir, &record)?;
+            }
+            rewritten_records = rewritten_records.saturating_add(1);
+        }
+    }
+
+    Ok(rewritten_records)
+}
+
+fn run_execution_bridge_retention_maintenance(
+    execution_records_dir: &Path,
+    execution_store: &LocalCasStore,
+    hot_window_heights: u64,
+) -> Result<u64, String> {
+    let pin_set = build_execution_bridge_pin_set(execution_records_dir, hot_window_heights)?;
+    compact_execution_bridge_records(execution_records_dir, &pin_set)?;
+    sync_execution_bridge_pin_set(execution_records_dir, execution_store, hot_window_heights)?;
+    execution_store
+        .prune_orphan_blobs()
+        .map_err(|err| format!("prune execution store orphan blobs failed: {:?}", err))
+}
+
 const EXECUTION_EXTERNAL_EFFECT_SCHEMA_V1: u32 = 1;
 const EXECUTION_EXTERNAL_EFFECT_CONTRACT_CLOSED_WORLD_V1: &str = "closed_world_v1";
 
@@ -835,6 +895,7 @@ pub(super) struct ExecutionReplayPlan {
 struct ExecutionBridgePinSet {
     latest_height: Option<u64>,
     hot_window_start_height: Option<u64>,
+    checkpoint_heights: BTreeSet<u64>,
     pinned_refs: BTreeSet<String>,
 }
 
@@ -1526,7 +1587,7 @@ impl NodeExecutionHook for NodeRuntimeExecutionDriver {
 
         persist_execution_bridge_state(self.state_path.as_path(), &self.state)?;
         persist_execution_world(self.world_dir.as_path(), &self.execution_world)?;
-        if let Err(err) = sync_execution_bridge_pin_set(
+        if let Err(err) = run_execution_bridge_retention_maintenance(
             self.records_dir.as_path(),
             &self.execution_store,
             EXECUTION_BRIDGE_DEFAULT_HOT_WINDOW_HEIGHTS,
@@ -1740,7 +1801,7 @@ pub(super) fn bridge_committed_heights(
     }
 
     if !records.is_empty() {
-        if let Err(err) = sync_execution_bridge_pin_set(
+        if let Err(err) = run_execution_bridge_retention_maintenance(
             execution_records_dir,
             execution_store,
             EXECUTION_BRIDGE_DEFAULT_HOT_WINDOW_HEIGHTS,
@@ -2487,6 +2548,186 @@ mod tests {
             Some(EXECUTION_BRIDGE_DEFAULT_CHECKPOINT_INTERVAL_HEIGHTS)
         );
         assert!(plan.records.is_empty());
+
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn execution_bridge_retention_maintenance_clears_archive_refs_and_prunes_orphans() {
+        let dir = temp_dir("execution-bridge-retention-maintenance");
+        let records_dir = dir.join("records");
+        let store = LocalCasStore::new(dir.join("store"));
+        fs::create_dir_all(records_dir.as_path()).expect("create records dir");
+
+        let mut records = Vec::new();
+        for height in 1..=6 {
+            let mut record = persist_test_execution_record_with_store_refs(
+                records_dir.as_path(),
+                &store,
+                height,
+            );
+            record.checkpoint_ref =
+                maybe_persist_execution_checkpoint_for_record(records_dir.as_path(), &record, 2, 2)
+                    .expect("maybe persist checkpoint");
+            persist_execution_bridge_record(records_dir.as_path(), &record)
+                .expect("persist checkpointed record");
+            records.push(record);
+        }
+
+        let freed_bytes =
+            run_execution_bridge_retention_maintenance(records_dir.as_path(), &store, 2)
+                .expect("run retention maintenance");
+        assert!(freed_bytes > 0, "expected orphan sweep to free bytes");
+
+        let record_1 = load_execution_bridge_record(
+            execution_bridge_record_path(records_dir.as_path(), 1).as_path(),
+        )
+        .expect("load record 1");
+        let record_4 = load_execution_bridge_record(
+            execution_bridge_record_path(records_dir.as_path(), 4).as_path(),
+        )
+        .expect("load record 4");
+        let record_5 = load_execution_bridge_record(
+            execution_bridge_record_path(records_dir.as_path(), 5).as_path(),
+        )
+        .expect("load record 5");
+        let record_6 = load_execution_bridge_record(
+            execution_bridge_record_path(records_dir.as_path(), 6).as_path(),
+        )
+        .expect("load record 6");
+
+        assert!(record_1.latest_state_ref.is_none());
+        assert!(record_1.snapshot_ref.is_none());
+        assert!(record_1.journal_ref.is_none());
+        assert!(record_1.simulator_mirror.is_none());
+        assert_eq!(
+            record_4.checkpoint_ref.as_deref(),
+            Some(execution_checkpoint_manifest_rel_path(4).as_str())
+        );
+        assert!(record_4.snapshot_ref.is_none());
+        assert!(record_4.journal_ref.is_none());
+        assert!(record_4.simulator_mirror.is_none());
+        assert!(record_5.snapshot_ref.is_some());
+        assert!(record_5.journal_ref.is_some());
+        assert!(record_6.snapshot_ref.is_some());
+        assert!(record_6.journal_ref.is_some());
+
+        assert!(!store
+            .has(
+                records[0]
+                    .snapshot_ref
+                    .as_deref()
+                    .expect("record1 snapshot ref")
+            )
+            .expect("check archive snapshot"));
+        assert!(store
+            .has(
+                records[3]
+                    .snapshot_ref
+                    .as_deref()
+                    .expect("record4 snapshot ref")
+            )
+            .expect("check checkpoint snapshot"));
+        assert!(store
+            .has(
+                records[4]
+                    .journal_ref
+                    .as_deref()
+                    .expect("record5 journal ref")
+            )
+            .expect("check hot journal"));
+
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn bridge_committed_heights_sweeps_archive_refs_outside_default_hot_window() {
+        let dir = temp_dir("execution-bridge-default-retention-sweep");
+        let store = LocalCasStore::new(dir.join("store"));
+        let mut world = RuntimeWorld::new();
+        let mut sandbox = FixedSandbox::succeed(ModuleOutput {
+            new_state: None,
+            effects: Vec::new(),
+            emits: Vec::new(),
+            tick_lifecycle: None,
+            output_bytes: 0,
+        });
+        let mut state = ExecutionBridgeState::default();
+        let records_dir = dir.join("records");
+        let target_height = EXECUTION_BRIDGE_DEFAULT_HOT_WINDOW_HEIGHTS
+            + EXECUTION_BRIDGE_DEFAULT_CHECKPOINT_INTERVAL_HEIGHTS;
+        let snapshot = sample_snapshot(target_height, Some("node-h64"));
+
+        let records = bridge_committed_heights(
+            &snapshot,
+            1_000,
+            &mut world,
+            &mut sandbox,
+            &store,
+            records_dir.as_path(),
+            &mut state,
+        )
+        .expect("bridge committed heights");
+
+        let record_1 = load_execution_bridge_record(
+            execution_bridge_record_path(records_dir.as_path(), 1).as_path(),
+        )
+        .expect("load record 1");
+        let checkpoint_height = EXECUTION_BRIDGE_DEFAULT_CHECKPOINT_INTERVAL_HEIGHTS;
+        let record_checkpoint = load_execution_bridge_record(
+            execution_bridge_record_path(records_dir.as_path(), checkpoint_height).as_path(),
+        )
+        .expect("load checkpoint record");
+        let record_hot = load_execution_bridge_record(
+            execution_bridge_record_path(records_dir.as_path(), checkpoint_height + 1).as_path(),
+        )
+        .expect("load hot record");
+
+        assert!(record_1.snapshot_ref.is_none());
+        assert!(record_1.journal_ref.is_none());
+        assert_eq!(
+            record_checkpoint.checkpoint_ref.as_deref(),
+            Some(execution_checkpoint_manifest_rel_path(checkpoint_height).as_str())
+        );
+        assert!(record_checkpoint.snapshot_ref.is_none());
+        assert!(record_checkpoint.journal_ref.is_none());
+        assert!(record_hot.snapshot_ref.is_some());
+        assert!(record_hot.journal_ref.is_some());
+
+        assert!(!store
+            .has(
+                records[0]
+                    .snapshot_ref
+                    .as_deref()
+                    .expect("record1 snapshot ref")
+            )
+            .expect("check archive snapshot"));
+        let checkpoint_index = checkpoint_height.saturating_sub(1) as usize;
+        assert!(store
+            .has(
+                records[checkpoint_index]
+                    .snapshot_ref
+                    .as_deref()
+                    .expect("checkpoint snapshot ref"),
+            )
+            .expect("check checkpoint snapshot"));
+        assert!(store
+            .has(
+                records[checkpoint_index + 1]
+                    .journal_ref
+                    .as_deref()
+                    .expect("hot journal ref"),
+            )
+            .expect("check hot journal"));
+
+        let plan =
+            build_execution_replay_plan(records_dir.as_path(), &store, checkpoint_height + 8)
+                .expect("build replay plan from sparse checkpoint");
+        assert_eq!(
+            plan.checkpoint.as_ref().map(|manifest| manifest.height),
+            Some(checkpoint_height)
+        );
+        assert_eq!(plan.start_height, checkpoint_height + 1);
 
         let _ = fs::remove_dir_all(dir);
     }

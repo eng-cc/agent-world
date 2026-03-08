@@ -17,7 +17,7 @@
 ### T2 Execution bridge retention
 - [x] T2.1 (PRD-WORLD_RUNTIME-013/014) [test_tier_required]: 在 `execution_bridge.rs` 实现 latest head + hot window pin set 计算，不再为每个 committed height 默认固定完整 `snapshot_ref`。
 - [x] T2.2 (PRD-WORLD_RUNTIME-013/014) [test_tier_required]: 落地 sparse checkpoint cadence 与 pin set 计算，保证稀疏高度可直接跳转恢复。
-- [ ] T2.3 (PRD-WORLD_RUNTIME-013/014) [test_tier_required]: 基于显式 pin set sweep 历史 `snapshot_ref` / `journal_ref`，删除后不得留下 dangling refs。
+- [x] T2.3 (PRD-WORLD_RUNTIME-013/014) [test_tier_required]: 基于显式 pin set sweep 历史 `snapshot_ref` / `journal_ref`，删除后不得留下 dangling refs。
 - [ ] T2.4 (PRD-WORLD_RUNTIME-013/014) [test_tier_required]: 完成 `ExecutionBridgeRecordV1 -> V2` 向后兼容读取与渐进迁移，保证旧样本可读且不强制一次性重写。
 - [ ] T2.5 (PRD-WORLD_RUNTIME-013/014) [test_tier_required]: 补齐 head-window retention、稀疏 checkpoint、restart recovery、dangling-ref 拒绝回归测试。
 
@@ -78,8 +78,8 @@
 ## 状态
 - 更新日期: 2026-03-08
 - 当前状态: planning
-- 已完成: T0、T0.1、T1.1、T1.2、T1.3、T1.4、T1.5、T2.1、T2.2
-- 已拆解待执行: T2.3 ~ T7.5
-- 进行中: T2.3
+- 已完成: T0、T0.1、T1.1、T1.2、T1.3、T1.4、T1.5、T2.1、T2.2、T2.3
+- 已拆解待执行: T2.4 ~ T7.5
+- 进行中: T2.4
 - 阻塞项: 无；但 T2 / T3 / T6 / T7 的实现必须以前置 T1 契约冻结为准。
-- 下一任务: T2.3（基于显式 pin set sweep 历史 snapshot_ref / journal_ref）
+- 下一任务: T2.4（完成 ExecutionBridgeRecord V1 -> V2 渐进迁移）
