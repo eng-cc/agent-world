@@ -57,7 +57,7 @@
   - AC-5 (PRD-WORLD_RUNTIME-018): 新增去中心化发布证据链路，支持提案、复构建证明、阈值签名与证据归档，且可由任意合规节点触发。
   - AC-6 (PRD-WORLD_RUNTIME-018): CI 在生产流程中不作为发布必要条件，仅承担开发期回归与兼容性校验，不拥有生产发布判定权。
   - AC-7 (PRD-WORLD_RUNTIME-018): 发布端各节点构建只要求“同平台可复现”；跨平台不同 hash 由 keyed token 表达，最终以签名清单合法性为准。
-  - AC-8 (PRD-WORLD_RUNTIME-017): finality 证书校验必须绑定 `epoch_id + validator_set_hash + stake_root`；仅“签名数量阈值”判定视为不达标。
+  - AC-8 (PRD-WORLD_RUNTIME-017): finality 证书校验必须绑定 `epoch_id + validator_set_hash + stake_root + threshold_bps + min_unique_signers`；仅“签名数量阈值”判定视为不达标。
   - AC-9 (PRD-WORLD_RUNTIME-017): 安装/升级/回滚/发布应用等生产路径不得调用本地自签 `apply_proposal()`；统一改为外部证书路径。
   - AC-10 (PRD-WORLD_RUNTIME-018): 现有 `ModuleReleaseRequested/Shadowed/RoleApproved/Applied` 状态机需输出到 release manifest 映射，保证迁移期可回放且可追溯。
   - AC-11 (PRD-WORLD_RUNTIME-018): 从主 CI 移除生产发布写入与激活职责（含默认模块发布写入）；主 CI 只保留 `--check` 类回归校验。
@@ -99,6 +99,8 @@
   - 线上 manifest 不可达：节点保持上一版 `active_manifest_hash`，拒绝切换到未验证新版本。
   - 证书阈值不足或签名重复：`GovernanceFinalityInvalid` 并阻断 apply。
   - 证书 signer 不在当前 epoch 快照验证者集合：`GovernanceFinalityInvalid` 并输出 signer/epoch 诊断信息。
+  - 证书 `validator_set_hash`/`stake_root` 与当前 epoch 快照不一致：拒绝 apply，并输出快照期望值与证书值。
+  - 证书 `threshold_bps`/`min_unique_signers` 与当前 epoch 快照不一致：拒绝 apply，并保留阈值错配审计信息。
   - 证书 `epoch_id` 与本地信任根快照不一致：拒绝 apply，并记录快照版本冲突审计事件。
   - key 轮换窗口中旧证书：在 grace period 内可验证，窗口结束后统一拒绝。
   - 复构建节点对同平台 hash 结论不一致：标记为 release fault，禁止产生活跃清单。

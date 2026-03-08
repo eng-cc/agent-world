@@ -990,16 +990,29 @@ impl World {
                         }
                     })
                     .collect();
-                if aggregated_signers.len() < snapshot.threshold as usize {
+                let min_unique_signers = snapshot.effective_min_unique_signers();
+                let aggregated_stake_bps = if snapshot.signer_node_ids.is_empty() {
+                    0
+                } else {
+                    (u128::from(aggregated_signers.len() as u64)
+                        .saturating_mul(10_000)
+                        .saturating_div(u128::from(snapshot.signer_node_ids.len() as u64)))
+                    .min(10_000) as u16
+                };
+                if aggregated_signers.len() < min_unique_signers as usize
+                    || aggregated_stake_bps < snapshot.threshold_bps
+                {
                     self.append_event(
                         WorldEventBody::Domain(DomainEvent::ActionRejected {
                             action_id,
                             reason: RejectReason::RuleDenied {
                                 notes: vec![format!(
-                                    "module release apply rejected: attestation threshold not met epoch_id={} threshold={} aggregated_signers={} request_id={}",
+                                    "module release apply rejected: attestation threshold not met epoch_id={} min_unique_signers={} threshold_bps={} aggregated_signers={} aggregated_stake_bps={} request_id={}",
                                     epoch_id,
-                                    snapshot.threshold,
+                                    min_unique_signers,
+                                    snapshot.threshold_bps,
                                     aggregated_signers.len(),
+                                    aggregated_stake_bps,
                                     request_id
                                 )],
                             },

@@ -151,6 +151,7 @@ fn set_module_release_attestation_epoch_snapshot(
                 .iter()
                 .map(|signer| signer.to_string())
                 .collect(),
+            ..GovernanceFinalityEpochSnapshot::default()
         })
         .expect("set module release attestation epoch snapshot");
 }

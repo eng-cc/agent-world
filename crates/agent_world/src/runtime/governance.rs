@@ -159,6 +159,17 @@ pub struct GovernanceFinalityCertificate {
     pub proposal_id: ProposalId,
     pub manifest_hash: String,
     pub consensus_height: u64,
+    #[serde(default)]
+    pub epoch_id: u64,
+    #[serde(default)]
+    pub validator_set_hash: String,
+    #[serde(default)]
+    pub stake_root: String,
+    #[serde(default)]
+    pub threshold_bps: u16,
+    #[serde(default)]
+    pub min_unique_signers: u16,
+    #[serde(default)]
     pub threshold: u16,
     pub signatures: BTreeMap<String, String>,
 }
@@ -170,22 +181,53 @@ impl GovernanceFinalityCertificate {
         proposal_id: ProposalId,
         manifest_hash: &str,
         consensus_height: u64,
-        threshold: u16,
+        epoch_id: u64,
+        validator_set_hash: &str,
+        stake_root: &str,
+        threshold_bps: u16,
+        min_unique_signers: u16,
         signer_node_id: &str,
     ) -> Vec<u8> {
         format!(
-            "govfinal:ed25519:v1|{proposal_id}|{manifest_hash}|{consensus_height}|{threshold}|{signer_node_id}"
+            "govfinal:ed25519:v1|{proposal_id}|{manifest_hash}|{consensus_height}|{epoch_id}|{validator_set_hash}|{stake_root}|{threshold_bps}|{min_unique_signers}|{signer_node_id}"
         )
         .into_bytes()
+    }
+
+    pub fn effective_min_unique_signers(&self) -> u16 {
+        if self.min_unique_signers > 0 {
+            self.min_unique_signers
+        } else {
+            self.threshold
+        }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct GovernanceFinalityEpochSnapshot {
     pub epoch_id: u64,
+    #[serde(default)]
+    pub threshold_bps: u16,
+    #[serde(default)]
+    pub min_unique_signers: u16,
+    #[serde(default)]
+    pub validator_set_hash: String,
+    #[serde(default)]
+    pub stake_root: String,
+    #[serde(default)]
     pub threshold: u16,
     #[serde(default)]
     pub signer_node_ids: Vec<String>,
+}
+
+impl GovernanceFinalityEpochSnapshot {
+    pub fn effective_min_unique_signers(&self) -> u16 {
+        if self.min_unique_signers > 0 {
+            self.min_unique_signers
+        } else {
+            self.threshold
+        }
+    }
 }
 
 /// Events related to governance actions.

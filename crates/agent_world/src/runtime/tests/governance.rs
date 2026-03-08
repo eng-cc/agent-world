@@ -49,25 +49,23 @@ fn bind_finality_signer_with_seed(world: &mut World, node_id: &str, seed_label: 
 fn build_finality_certificate_with_signers(
     world: &World,
     proposal_id: ProposalId,
-    threshold: u16,
     signer_specs: &[(&str, &str)],
 ) -> GovernanceFinalityCertificate {
-    let proposal = world
-        .proposals()
-        .get(&proposal_id)
-        .expect("proposal should exist");
-    let manifest_hash = match &proposal.status {
-        ProposalStatus::Approved { manifest_hash, .. } => manifest_hash.clone(),
-        other => panic!("proposal must be approved, found {}", other.label()),
-    };
-    let consensus_height = world.journal().events.len() as u64 + 1;
+    let mut certificate = world
+        .build_local_finality_certificate(proposal_id)
+        .expect("build local finality certificate");
     let mut signatures = BTreeMap::new();
+    let min_unique_signers = certificate.effective_min_unique_signers();
     for (node_id, seed_label) in signer_specs {
         let payload = GovernanceFinalityCertificate::signing_payload_v1(
             proposal_id,
-            manifest_hash.as_str(),
-            consensus_height,
-            threshold,
+            certificate.manifest_hash.as_str(),
+            certificate.consensus_height,
+            certificate.epoch_id,
+            certificate.validator_set_hash.as_str(),
+            certificate.stake_root.as_str(),
+            certificate.threshold_bps,
+            min_unique_signers,
             node_id,
         );
         let signing_key = finality_signing_key(seed_label);
@@ -81,13 +79,8 @@ fn build_finality_certificate_with_signers(
             ),
         );
     }
-    GovernanceFinalityCertificate {
-        proposal_id,
-        manifest_hash,
-        consensus_height,
-        threshold,
-        signatures,
-    }
+    certificate.signatures = signatures;
+    certificate
 }
 
 fn register_agent(world: &mut World, agent_id: &str, x: f64, y: f64) {
@@ -261,11 +254,60 @@ fn governance_apply_with_finality_rejects_threshold_mismatch() {
         .unwrap();
 
     let mut certificate = world.build_local_finality_certificate(proposal_id).unwrap();
-    certificate.threshold = certificate.threshold.saturating_add(1);
+    certificate.min_unique_signers = certificate.effective_min_unique_signers().saturating_add(1);
+    certificate.threshold = certificate.min_unique_signers;
     let err = world
         .apply_proposal_with_finality(proposal_id, &certificate)
         .unwrap_err();
     assert!(matches!(err, WorldError::GovernanceFinalityInvalid { .. }));
+}
+
+#[test]
+fn governance_apply_with_finality_rejects_validator_set_hash_mismatch() {
+    let mut world = World::new();
+    let manifest = Manifest {
+        version: 2,
+        content: json!({ "name": "validator-set-hash-mismatch" }),
+    };
+    let proposal_id = world.propose_manifest_update(manifest, "alice").unwrap();
+    world.shadow_proposal(proposal_id).unwrap();
+    world
+        .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)
+        .unwrap();
+
+    let mut certificate = world.build_local_finality_certificate(proposal_id).unwrap();
+    certificate.validator_set_hash = "deadbeef".to_string();
+    let err = world
+        .apply_proposal_with_finality(proposal_id, &certificate)
+        .unwrap_err();
+    let WorldError::GovernanceFinalityInvalid { reason } = err else {
+        panic!("expected GovernanceFinalityInvalid");
+    };
+    assert!(reason.contains("validator_set_hash mismatch"));
+}
+
+#[test]
+fn governance_apply_with_finality_rejects_stake_root_mismatch() {
+    let mut world = World::new();
+    let manifest = Manifest {
+        version: 2,
+        content: json!({ "name": "stake-root-mismatch" }),
+    };
+    let proposal_id = world.propose_manifest_update(manifest, "alice").unwrap();
+    world.shadow_proposal(proposal_id).unwrap();
+    world
+        .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)
+        .unwrap();
+
+    let mut certificate = world.build_local_finality_certificate(proposal_id).unwrap();
+    certificate.stake_root = "deadbeef".to_string();
+    let err = world
+        .apply_proposal_with_finality(proposal_id, &certificate)
+        .unwrap_err();
+    let WorldError::GovernanceFinalityInvalid { reason } = err else {
+        panic!("expected GovernanceFinalityInvalid");
+    };
+    assert!(reason.contains("stake_root mismatch"));
 }
 
 #[test]
@@ -284,6 +326,7 @@ fn governance_apply_with_finality_rejects_signer_outside_epoch_snapshot() {
                 LOCAL_FINALITY_SIGNER_1.0.to_string(),
                 ROTATED_FINALITY_SIGNER_3.0.to_string(),
             ],
+            ..GovernanceFinalityEpochSnapshot::default()
         })
         .expect("set epoch snapshot");
 
@@ -331,6 +374,7 @@ fn governance_finality_epoch_snapshot_rotation_rejects_stale_signers_and_accepts
                 LOCAL_FINALITY_SIGNER_1.0.to_string(),
                 LOCAL_FINALITY_SIGNER_2.0.to_string(),
             ],
+            ..GovernanceFinalityEpochSnapshot::default()
         })
         .expect("set epoch 0 snapshot");
     world
@@ -341,6 +385,7 @@ fn governance_finality_epoch_snapshot_rotation_rejects_stale_signers_and_accepts
                 LOCAL_FINALITY_SIGNER_1.0.to_string(),
                 ROTATED_FINALITY_SIGNER_3.0.to_string(),
             ],
+            ..GovernanceFinalityEpochSnapshot::default()
         })
         .expect("set epoch 1 snapshot");
     for _ in 0..2 {
@@ -360,7 +405,6 @@ fn governance_finality_epoch_snapshot_rotation_rejects_stale_signers_and_accepts
     let stale_certificate = build_finality_certificate_with_signers(
         &world,
         proposal_id,
-        2,
         &[LOCAL_FINALITY_SIGNER_1, LOCAL_FINALITY_SIGNER_2],
     );
     let err = world
@@ -375,7 +419,6 @@ fn governance_finality_epoch_snapshot_rotation_rejects_stale_signers_and_accepts
     let rotated_certificate = build_finality_certificate_with_signers(
         &world,
         proposal_id,
-        2,
         &[LOCAL_FINALITY_SIGNER_1, ROTATED_FINALITY_SIGNER_3],
     );
     world

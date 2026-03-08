@@ -57,6 +57,29 @@ fn decode_hex_array<const N: usize>(raw: &str, label: &str) -> Result<[u8; N], W
         })
 }
 
+fn governance_finality_validator_set_hash(signer_node_ids: &[String]) -> String {
+    sha256_hex(signer_node_ids.join("|").as_bytes())
+}
+
+fn governance_finality_stake_root(signer_node_ids: &[String]) -> String {
+    let payload = signer_node_ids
+        .iter()
+        .map(|node_id| format!("{node_id}:1"))
+        .collect::<Vec<_>>()
+        .join("|");
+    sha256_hex(payload.as_bytes())
+}
+
+fn governance_finality_signed_stake_bps(total_signers: usize, signed_signers: usize) -> u16 {
+    if total_signers == 0 {
+        return 0;
+    }
+    let signed = u128::from(signed_signers as u64)
+        .saturating_mul(10_000)
+        .saturating_div(u128::from(total_signers as u64));
+    signed.min(10_000) as u16
+}
+
 impl World {
     // ---------------------------------------------------------------------
     // Manifest and governance
@@ -380,14 +403,20 @@ impl World {
             }
         };
         let consensus_height = self.journal.events.len() as u64 + 1;
-        let threshold = 2_u16;
+        let epoch_id = self.current_governance_epoch();
+        let snapshot = self.governance_finality_epoch_snapshot_for_epoch(epoch_id);
+        let min_unique_signers = snapshot.effective_min_unique_signers();
         let mut signatures = BTreeMap::new();
         for (node_id, seed_label) in LOCAL_GOVERNANCE_FINALITY_SIGNERS {
             let payload = GovernanceFinalityCertificate::signing_payload_v1(
                 proposal_id,
                 manifest_hash.as_str(),
                 consensus_height,
-                threshold,
+                epoch_id,
+                snapshot.validator_set_hash.as_str(),
+                snapshot.stake_root.as_str(),
+                snapshot.threshold_bps,
+                min_unique_signers,
                 node_id,
             );
             let signing_key = local_governance_finality_signing_key(seed_label);
@@ -405,7 +434,12 @@ impl World {
             proposal_id,
             manifest_hash,
             consensus_height,
-            threshold,
+            epoch_id,
+            validator_set_hash: snapshot.validator_set_hash,
+            stake_root: snapshot.stake_root,
+            threshold_bps: snapshot.threshold_bps,
+            min_unique_signers,
+            threshold: min_unique_signers,
             signatures,
         })
     }
@@ -512,7 +546,7 @@ impl World {
             proposal_id,
             manifest_hash: Some(applied_hash.clone()),
             consensus_height: Some(finality_certificate.consensus_height),
-            threshold: Some(finality_certificate.threshold),
+            threshold: Some(finality_certificate.effective_min_unique_signers()),
             signer_node_ids: finality_certificate.signatures.keys().cloned().collect(),
         };
         self.append_event(WorldEventBody::Governance(event), None)?;
@@ -559,13 +593,19 @@ impl World {
         if let Some(snapshot) = self.governance_finality_epoch_snapshots.get(&epoch_id) {
             return snapshot.clone();
         }
+        let signer_node_ids: Vec<String> = LOCAL_GOVERNANCE_FINALITY_SIGNERS
+            .iter()
+            .map(|(node_id, _)| (*node_id).to_string())
+            .collect();
+        let min_unique_signers = LOCAL_GOVERNANCE_FINALITY_SIGNERS.len() as u16;
         GovernanceFinalityEpochSnapshot {
             epoch_id,
-            threshold: LOCAL_GOVERNANCE_FINALITY_SIGNERS.len() as u16,
-            signer_node_ids: LOCAL_GOVERNANCE_FINALITY_SIGNERS
-                .iter()
-                .map(|(node_id, _)| (*node_id).to_string())
-                .collect(),
+            threshold_bps: 10_000,
+            min_unique_signers,
+            validator_set_hash: governance_finality_validator_set_hash(signer_node_ids.as_slice()),
+            stake_root: governance_finality_stake_root(signer_node_ids.as_slice()),
+            threshold: min_unique_signers,
+            signer_node_ids,
         }
     }
 
@@ -573,14 +613,6 @@ impl World {
         &self,
         snapshot: &mut GovernanceFinalityEpochSnapshot,
     ) -> Result<(), WorldError> {
-        if snapshot.threshold == 0 {
-            return Err(WorldError::GovernancePolicyInvalid {
-                reason: format!(
-                    "finality epoch snapshot threshold must be > 0 epoch_id={}",
-                    snapshot.epoch_id
-                ),
-            });
-        }
         let mut unique = BTreeSet::new();
         for node_id in snapshot.signer_node_ids.iter().map(|id| id.trim()) {
             if node_id.is_empty() {
@@ -601,17 +633,86 @@ impl World {
             }
             unique.insert(node_id.to_string());
         }
-        if unique.len() < snapshot.threshold as usize {
+        let unique_signers: Vec<String> = unique.into_iter().collect();
+        let min_unique_signers = if snapshot.min_unique_signers > 0 {
+            snapshot.min_unique_signers
+        } else {
+            snapshot.threshold
+        };
+        if min_unique_signers == 0 {
             return Err(WorldError::GovernancePolicyInvalid {
                 reason: format!(
-                    "finality epoch snapshot signatures below threshold epoch_id={} signers={} threshold={}",
-                    snapshot.epoch_id,
-                    unique.len(),
-                    snapshot.threshold
+                    "finality epoch snapshot min_unique_signers must be > 0 epoch_id={}",
+                    snapshot.epoch_id
                 ),
             });
         }
-        snapshot.signer_node_ids = unique.into_iter().collect();
+        if unique_signers.len() < min_unique_signers as usize {
+            return Err(WorldError::GovernancePolicyInvalid {
+                reason: format!(
+                    "finality epoch snapshot signatures below threshold epoch_id={} signers={} min_unique_signers={}",
+                    snapshot.epoch_id,
+                    unique_signers.len(),
+                    min_unique_signers
+                ),
+            });
+        }
+        let threshold_bps = if snapshot.threshold_bps > 0 {
+            snapshot.threshold_bps
+        } else {
+            let total_signers = unique_signers.len() as u128;
+            let required = u128::from(min_unique_signers);
+            let numerator = required.saturating_mul(10_000);
+            numerator
+                .saturating_add(total_signers.saturating_sub(1))
+                .saturating_div(total_signers)
+                .min(10_000) as u16
+        };
+        if threshold_bps == 0 || threshold_bps > 10_000 {
+            return Err(WorldError::GovernancePolicyInvalid {
+                reason: format!(
+                    "finality epoch snapshot threshold_bps must be within 1..=10000 epoch_id={} threshold_bps={}",
+                    snapshot.epoch_id, threshold_bps
+                ),
+            });
+        }
+        let computed_validator_set_hash =
+            governance_finality_validator_set_hash(unique_signers.as_slice());
+        let validator_set_hash = if snapshot.validator_set_hash.trim().is_empty() {
+            computed_validator_set_hash
+        } else {
+            let normalized = snapshot.validator_set_hash.trim().to_string();
+            if normalized != computed_validator_set_hash {
+                return Err(WorldError::GovernancePolicyInvalid {
+                    reason: format!(
+                        "finality epoch snapshot validator_set_hash mismatch epoch_id={} expected={} found={}",
+                        snapshot.epoch_id, computed_validator_set_hash, normalized
+                    ),
+                });
+            }
+            normalized
+        };
+        let computed_stake_root = governance_finality_stake_root(unique_signers.as_slice());
+        let stake_root = if snapshot.stake_root.trim().is_empty() {
+            computed_stake_root
+        } else {
+            let normalized = snapshot.stake_root.trim().to_string();
+            if normalized != computed_stake_root {
+                return Err(WorldError::GovernancePolicyInvalid {
+                    reason: format!(
+                        "finality epoch snapshot stake_root mismatch epoch_id={} expected={} found={}",
+                        snapshot.epoch_id, computed_stake_root, normalized
+                    ),
+                });
+            }
+            normalized
+        };
+        snapshot.threshold = min_unique_signers;
+        snapshot.min_unique_signers = min_unique_signers;
+        snapshot.threshold_bps = threshold_bps;
+        snapshot.validator_set_hash = validator_set_hash;
+        snapshot.stake_root = stake_root;
+        snapshot.signer_node_ids = unique_signers;
         Ok(())
     }
 
@@ -667,6 +768,7 @@ impl World {
         certificate: &GovernanceFinalityCertificate,
     ) -> Result<(), WorldError> {
         let snapshot = self.governance_finality_epoch_snapshot_for_epoch(epoch_id);
+        let snapshot_min_unique_signers = snapshot.effective_min_unique_signers();
         let epoch_signers: BTreeSet<String> = snapshot.signer_node_ids.iter().cloned().collect();
         if certificate.proposal_id != proposal_id {
             return Err(WorldError::GovernanceFinalityInvalid {
@@ -686,35 +788,88 @@ impl World {
                 reason: "consensus_height must be > 0".to_string(),
             });
         }
-        if certificate.threshold == 0 {
-            return Err(WorldError::GovernanceFinalityInvalid {
-                reason: "threshold must be > 0".to_string(),
-            });
-        }
-        if certificate.threshold != snapshot.threshold {
+        if certificate.epoch_id != epoch_id {
             return Err(WorldError::GovernanceFinalityInvalid {
                 reason: format!(
-                    "epoch snapshot threshold mismatch: epoch_id={} certificate_threshold={} snapshot_threshold={}",
-                    epoch_id, certificate.threshold, snapshot.threshold
+                    "epoch_id mismatch: expected={} found={}",
+                    epoch_id, certificate.epoch_id
                 ),
             });
         }
-        if certificate.signatures.len() < certificate.threshold as usize {
+        if certificate.validator_set_hash.trim().is_empty() {
+            return Err(WorldError::GovernanceFinalityInvalid {
+                reason: "validator_set_hash must be non-empty".to_string(),
+            });
+        }
+        if certificate.validator_set_hash != snapshot.validator_set_hash {
             return Err(WorldError::GovernanceFinalityInvalid {
                 reason: format!(
-                    "signatures below threshold: signatures={} threshold={}",
-                    certificate.signatures.len(),
-                    certificate.threshold
+                    "validator_set_hash mismatch: epoch_id={} certificate={} snapshot={}",
+                    epoch_id, certificate.validator_set_hash, snapshot.validator_set_hash
                 ),
             });
         }
-        if certificate.signatures.len() < snapshot.threshold as usize {
+        if certificate.stake_root.trim().is_empty() {
+            return Err(WorldError::GovernanceFinalityInvalid {
+                reason: "stake_root must be non-empty".to_string(),
+            });
+        }
+        if certificate.stake_root != snapshot.stake_root {
             return Err(WorldError::GovernanceFinalityInvalid {
                 reason: format!(
-                    "signatures below epoch snapshot threshold: epoch_id={} signatures={} threshold={}",
-                    epoch_id,
+                    "stake_root mismatch: epoch_id={} certificate={} snapshot={}",
+                    epoch_id, certificate.stake_root, snapshot.stake_root
+                ),
+            });
+        }
+        if certificate.threshold_bps == 0 || certificate.threshold_bps > 10_000 {
+            return Err(WorldError::GovernanceFinalityInvalid {
+                reason: format!(
+                    "threshold_bps must be within 1..=10000: {}",
+                    certificate.threshold_bps
+                ),
+            });
+        }
+        if certificate.threshold_bps != snapshot.threshold_bps {
+            return Err(WorldError::GovernanceFinalityInvalid {
+                reason: format!(
+                    "threshold_bps mismatch: epoch_id={} certificate={} snapshot={}",
+                    epoch_id, certificate.threshold_bps, snapshot.threshold_bps
+                ),
+            });
+        }
+        let certificate_min_unique_signers = certificate.effective_min_unique_signers();
+        if certificate_min_unique_signers == 0 {
+            return Err(WorldError::GovernanceFinalityInvalid {
+                reason: "min_unique_signers must be > 0".to_string(),
+            });
+        }
+        if certificate_min_unique_signers != snapshot_min_unique_signers {
+            return Err(WorldError::GovernanceFinalityInvalid {
+                reason: format!(
+                    "min_unique_signers mismatch: epoch_id={} certificate={} snapshot={}",
+                    epoch_id, certificate_min_unique_signers, snapshot_min_unique_signers
+                ),
+            });
+        }
+        if certificate.signatures.len() < certificate_min_unique_signers as usize {
+            return Err(WorldError::GovernanceFinalityInvalid {
+                reason: format!(
+                    "signatures below min_unique_signers: signatures={} min_unique_signers={}",
                     certificate.signatures.len(),
-                    snapshot.threshold
+                    certificate_min_unique_signers
+                ),
+            });
+        }
+        let signed_stake_bps = governance_finality_signed_stake_bps(
+            snapshot.signer_node_ids.len(),
+            certificate.signatures.len(),
+        );
+        if signed_stake_bps < certificate.threshold_bps {
+            return Err(WorldError::GovernanceFinalityInvalid {
+                reason: format!(
+                    "signed stake below threshold_bps: epoch_id={} signed_stake_bps={} threshold_bps={}",
+                    epoch_id, signed_stake_bps, certificate.threshold_bps
                 ),
             });
         }
@@ -741,7 +896,11 @@ impl World {
                 certificate.proposal_id,
                 certificate.manifest_hash.as_str(),
                 certificate.consensus_height,
-                certificate.threshold,
+                certificate.epoch_id,
+                certificate.validator_set_hash.as_str(),
+                certificate.stake_root.as_str(),
+                certificate.threshold_bps,
+                certificate_min_unique_signers,
                 node_id.as_str(),
             );
             let public_key_bytes =
