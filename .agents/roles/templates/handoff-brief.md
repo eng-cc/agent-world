@@ -3,11 +3,13 @@
 ## Meta
 - Handoff ID:
 - Date:
-- From Role:
-- To Role:
+- From Role: `producer_system_designer | runtime_engineer | wasm_platform_engineer | agent_engineer | viewer_engineer | qa_engineer | liveops_community`
+- To Role: `producer_system_designer | runtime_engineer | wasm_platform_engineer | agent_engineer | viewer_engineer | qa_engineer | liveops_community`
 - Related PRD-ID:
 - Related Task ID:
 - Priority: `P0` / `P1` / `P2`
+
+> 角色名只能使用 `.agents/roles/*.md` 中已存在的标准角色名，禁止自造别名。
 
 ## Goal
 - 用一句话说明接收方要完成什么。

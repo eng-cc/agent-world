@@ -27,6 +27,8 @@ Checks:
        - topic project doc (*.prd.project.md) includes its *.prd.md path
   8. Non-archive/non-devlog markdown files must not reference missing markdown
      paths under doc/ (wildcards/templates and explicit exemption docs excluded).
+  9. Role labels in devlogs and handoff templates must use canonical names from
+     .agents/roles/*.md.
 USAGE
 }
 
@@ -52,6 +54,8 @@ readonly REFERENCE_EXISTENCE_EXEMPT_DOCS=(
 )
 readonly DOC_ROOT_MD_ALLOWLIST_FILE="doc/.governance/doc-root-md-allowlist.txt"
 readonly MODULE_ROOT_MD_ALLOWLIST_FILE="doc/.governance/module-root-md-allowlist.txt"
+
+mapfile -t CANONICAL_ROLE_NAMES < <(find .agents/roles -mindepth 1 -maxdepth 1 -type f -name '*.md' -printf '%f\n' | sed 's/\.md$//' | sort)
 
 fail() {
   echo "doc-governance-check: FAIL: $*"
@@ -211,8 +215,54 @@ check_doc_path_references() {
   done < <(extract_doc_markdown_references "$file")
 }
 
+is_canonical_role_name() {
+  local role_name="$1"
+  local candidate
+  for candidate in "${CANONICAL_ROLE_NAMES[@]}"; do
+    if [[ "$candidate" == "$role_name" ]]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+check_devlog_role_labels() {
+  local file="$1"
+  local line
+  local role_name
+
+  while IFS= read -r line; do
+    role_name=$(printf '%s\n' "$line" | sed -n 's/^## .*\/ `\([^`][^`]*\)`$/\1/p')
+    [[ -z "$role_name" ]] && continue
+    if ! is_canonical_role_name "$role_name"; then
+      fail "$file uses unknown role label in heading: $role_name"
+    fi
+  done < "$file"
+}
+
+check_handoff_role_fields() {
+  local file="$1"
+  local line
+  local payload
+  local role_name
+
+  while IFS= read -r line; do
+    payload=$(printf '%s\n' "$line" | sed -n 's/^-[[:space:]]*\(From Role\|To Role\): `\(.*\)`$/\2/p')
+    [[ -z "$payload" ]] && continue
+    while IFS= read -r role_name; do
+      role_name=$(printf '%s' "$role_name" | sed 's/^ *//; s/ *$//')
+      [[ -z "$role_name" ]] && continue
+      if ! is_canonical_role_name "$role_name"; then
+        fail "$file references unknown canonical role name: $role_name"
+      fi
+    done < <(printf '%s\n' "$payload" | tr '|' '\n')
+  done < "$file"
+}
+
 mapfile -t all_doc_files < <(find doc -type f -name '*.md' ! -path 'doc/devlog/*' ! -path '*/archive/*' | sort)
 mapfile -t project_docs < <(find doc -type f -name '*.project.md' ! -path '*/archive/*' | sort)
+mapfile -t devlog_files < <(find doc/devlog -type f -name '*.md' | sort)
+mapfile -t handoff_template_files < <(find .agents/roles/templates -type f -name '*.md' | sort)
 
 if [[ ${#all_doc_files[@]} -eq 0 ]]; then
   fail "no markdown files found under doc/"
@@ -292,6 +342,15 @@ check_allowlist_match "doc root markdown set" "$DOC_ROOT_MD_ALLOWLIST_FILE" "$do
 check_allowlist_match "module root markdown set" "$MODULE_ROOT_MD_ALLOWLIST_FILE" "$module_root_actual_tmp"
 
 rm -f "$doc_root_actual_tmp" "$module_root_actual_tmp"
+
+# 5) canonical role names must be used in devlogs and handoff templates
+for file in "${devlog_files[@]}"; do
+  check_devlog_role_labels "$file"
+done
+
+for file in "${handoff_template_files[@]}"; do
+  check_handoff_role_fields "$file"
+done
 
 if ((failures > 0)); then
   echo "doc-governance-check: failed with ${failures} issue(s)"
