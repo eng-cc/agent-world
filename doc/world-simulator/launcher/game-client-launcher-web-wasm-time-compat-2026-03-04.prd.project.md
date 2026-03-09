@@ -23,4 +23,4 @@
 - 最近更新：2026-03-09（回归修复任务 T3 已完成并归档）
 - 当前阶段: done
 - 当前任务: 无
-- 备注: 历史修复（T0~T3）已完成，`self_guided` wasm 时间回归已收敛并完成 Web 启停闭环复验。
+- 备注: 历史修复（T0~T3）已完成，回归证据目录 `output/playwright/launcher-web-ui-timefix-20260309-113010/`；控制台已验证无 `time not implemented` / `RuntimeError: unreachable` 签名。

@@ -92,3 +92,4 @@
 - Decision Log:
   - DEC-LAUNCHER-WASM-TIME-001: 采用“wasm 路径切换 Web 兼容计时类型 + Playwright headed 闭环验证”方案，而非仅在文档中标记已知问题。理由：该问题直接阻断 Web 可用性，必须以代码修复和自动化证据闭环收敛。
   - DEC-LAUNCHER-WASM-TIME-002: 对同一 PRD 补充回归修复子任务（`self_guided`），不新建主题文档。理由：问题属于既有时间兼容专题的遗漏点，继续沿用同一 PRD-ID 可保持追溯连续性。
+  - DEC-LAUNCHER-WASM-TIME-003: `self_guided` 时间函数在 wasm 目标统一使用 `web_time::SystemTime`。理由：保持与既有 Web 兼容依赖一致，避免引入额外时间库并消除 `std::time` 平台 panic。

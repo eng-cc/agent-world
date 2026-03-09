@@ -277,11 +277,23 @@ pub(super) fn save_launcher_ux_state(state: &LauncherUxState) -> Result<(), Stri
 }
 
 fn current_unix_ms() -> i64 {
-    use std::time::{SystemTime, UNIX_EPOCH};
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default();
-    i64::try_from(now.as_millis()).unwrap_or(i64::MAX)
+    #[cfg(target_arch = "wasm32")]
+    {
+        use web_time::{SystemTime, UNIX_EPOCH};
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default();
+        return i64::try_from(now.as_millis()).unwrap_or(i64::MAX);
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        use std::time::{SystemTime, UNIX_EPOCH};
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default();
+        i64::try_from(now.as_millis()).unwrap_or(i64::MAX)
+    }
 }
 
 impl ClientLauncherApp {
