@@ -1,5 +1,7 @@
 # Gameplay Long-Run P0：Replay/Rollback 运行手册（2026-03-06）
 
+审计轮次: 5
+
 - 关联 PRD：`doc/game/gameplay/gameplay-longrun-p0-production-hardening-2026-03-06.prd.md`
 - 覆盖任务：`TASK-GAME-014`（`PRD-GAME-006-02`）
 
