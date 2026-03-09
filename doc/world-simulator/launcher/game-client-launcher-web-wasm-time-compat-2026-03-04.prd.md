@@ -11,6 +11,7 @@
   - SC-2: launcher Web 页面可稳定渲染，且 `/api/state` 轮询可持续运行。
   - SC-3: Playwright headed 闭环可完成页面加载、console 抽样与截图采证。
   - SC-4: 相关改动保持 native 启动器行为不回归。
+  - SC-5: `self_guided` 路径在 wasm 目标不再依赖 `std::time::SystemTime`，并可通过浏览器控制台回归校验。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -41,6 +42,7 @@
   - AC-3: Playwright headed 打开 launcher 页面后，`console error` 中不包含 `time not implemented on this platform`。
   - AC-4: 闭环证据包含至少 1 份 snapshot、1 份 console、1 张 screenshot。
   - AC-5: `world_web_launcher` API（至少 `/api/state`）在闭环期间保持可用。
+  - AC-6: `self_guided::current_unix_ms` 在 wasm 目标使用 Web 兼容实现，避免触发 `time not implemented` panic。
 - Non-Goals:
   - 不在本轮扩展新的 launcher Web 功能模块。
   - 不在本轮重构 `world_web_launcher` 进程编排协议。
@@ -61,6 +63,7 @@
   - `testing-manual.md`
 - Edge Cases & Error Handling:
   - 浏览器平台不支持 `std` 时间 API：必须使用 Web 兼容计时实现，避免 panic。
+  - `main.rs` 已切换 Web 兼容计时，但 `self_guided` 子模块遗漏 `SystemTime::now`：应在同一专题内补齐，防止回归。
   - API 临时失败：UI 回退 `query_failed` 并记录日志，但进程不崩溃。
   - 轮询请求重叠：通过 `web_request_inflight` 防抖，避免并发风暴。
 - Non-Functional Requirements:
@@ -68,6 +71,7 @@
   - NFR-2: `WEB_POLL_INTERVAL_MS` 轮询下请求不会无界堆积。
   - NFR-3: Playwright 闭环证据固定归档在 `output/playwright/launcher-web-closure-*`。
   - NFR-4: 不影响 native 启动器构建与单测通过。
+  - NFR-5: Web 启动器 smoke 在 `start/stop` 闭环后控制台仍保持 `time not implemented` 零命中。
 - Security & Privacy:
   - 闭环采证不得输出敏感配置（如 key/token）；仅记录必要诊断信息。
 
@@ -76,12 +80,15 @@
   - M1: 建模与任务拆解（文档先行）。
   - M2: wasm 时间兼容修复与定向编译验证。
   - M3: Playwright 闭环复测并归档证据。
+  - M4: 回归补丁：覆盖 `self_guided` 时间调用点并执行启动器 Web 控制台启停闭环复验。
 - Technical Risks:
   - 风险-1: wasm 兼容修复遗漏其他时间调用点，导致间歇性崩溃。
   - 风险-2: 修复后 native 路径行为意外变化。
+  - 风险-3: 闭环脚本仅校验 API 状态而忽略 console，可能把前端 panic 误判为通过。
 
 ## 6. Validation & Decision Record
 - Test Plan & Traceability:
-  - PRD-WORLD_SIMULATOR-013 -> TASK-WORLD_SIMULATOR-029/030 -> `test_tier_required`。
+  - PRD-WORLD_SIMULATOR-013 -> TASK-WORLD_SIMULATOR-029/030/097 -> `test_tier_required`。
 - Decision Log:
   - DEC-LAUNCHER-WASM-TIME-001: 采用“wasm 路径切换 Web 兼容计时类型 + Playwright headed 闭环验证”方案，而非仅在文档中标记已知问题。理由：该问题直接阻断 Web 可用性，必须以代码修复和自动化证据闭环收敛。
+  - DEC-LAUNCHER-WASM-TIME-002: 对同一 PRD 补充回归修复子任务（`self_guided`），不新建主题文档。理由：问题属于既有时间兼容专题的遗漏点，继续沿用同一 PRD-ID 可保持追溯连续性。
