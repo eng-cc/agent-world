@@ -67,6 +67,7 @@
   - AC-2: core PRD 包含至少 4 条关键端到端链路描述。
   - AC-3: core PRD 给出关键分册导航并可从 `doc/README.md` 到达。
   - AC-4: core project 文档任务与 PRD-CORE-ID 可映射。
+  - AC-5: 文档级 `审计轮次` 仅可对应已落档的正式 ROUND 台账；当仓库正式基线为 ROUND-005 时，不得保留脱离台账的 `审计轮次 > 5`。
 - Non-Goals:
   - 不在 core PRD 中替代模块详细技术分册。
   - 不在 core PRD 中维护逐版本实现变更流水（该信息在 devlog）。
@@ -150,6 +151,7 @@
 - Technical Risks:
   - 风险-1: 模块新增能力未及时回填全局链路。
   - 风险-2: 总览与分册的口径同步依赖人工流程。
+  - 风险-3: 若局部修订直接上调 `审计轮次` 而未建立正式 ROUND 台账，字段会失去可比性，并破坏 reviewed-files / progress-log 对账。
 
 ## 6. Validation & Decision Record
 - Test Plan & Traceability:
@@ -158,9 +160,11 @@
 | PRD-CORE-001 | TASK-CORE-001/002/006/007 | `test_tier_required` | 入口完整性扫描、模块地图与导航可达检查 | 全项目入口与架构总览一致性 |
 | PRD-CORE-002 | TASK-CORE-002/003/004/007 | `test_tier_required` | 关键链路映射核验、跨模块依赖抽样复核 | 跨模块设计兼容性与发布评审效率 |
 | PRD-CORE-003 | TASK-CORE-004/005/007 | `test_tier_required` | 发布门禁证据映射校验、轮次一致性审查记录检查（含文档级审计轮次标记，缺省按0） | 发布决策可审计性与长期治理稳定性 |
+| PRD-CORE-003 | TASK-CORE-008 | `test_tier_required` | `审计轮次 > 5` 漂移扫描、ROUND-005 基线回写、devlog 与 git 证据核对 | 审计标记口径恢复为正式台账语义 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |
 | DEC-CORE-001 | 将 core 固化为项目全局唯一总览入口 | 各模块独立维护无全局入口 | 降低跨模块认知成本并提升评审效率。 |
 | DEC-CORE-002 | 使用 PRD-ID 作为跨文档追踪主键 | 使用任务编号作为唯一主键 | PRD-ID 可跨任务周期稳定复用并支持审计。 |
 | DEC-CORE-003 | core 文档治理任务默认绑定 `test_tier_required`；跨模块发布结论引用 testing 定义的 required/full 证据 | core 任务直接强制 required/full | 区分治理层与专项回归层，保持口径一致且可执行。 |
+| DEC-CORE-004 | 在 ROUND-006 正式台账落档前，统一将脱离台账的高位 `审计轮次` 回写到 5 | 保留局部 `审计轮次: 6` 作为“专题修订痕迹” | `审计轮次` 的定义是“最近完成的正式审计轮次”，局部修订应通过 `最近更新` 和 devlog 追踪，而不是抬高正式轮次字段。 |

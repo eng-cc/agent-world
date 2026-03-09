@@ -73,6 +73,11 @@
     - ROUND-005 已收口为 `completed`：`A5-001~A5-007` 全部完成，复审结论已落档。
 - [x] TASK-CORE-006 (PRD-CORE-001/002) [test_tier_required]: 收敛 `doc/` 根目录 legacy redirect 入口并更新总导航。
 - [x] TASK-CORE-007 (PRD-CORE-001/002/003) [test_tier_required]: 对齐 strict PRD schema，补齐关键流程/规格矩阵/边界异常/NFR/验证与决策记录。
+- [ ] TASK-CORE-008 (PRD-CORE-003) [test_tier_required]: 统一回写脱离正式台账的高位 `审计轮次` 到 ROUND-005 基线，恢复字段与审计台账的一致语义。
+  - 验收命令 (`test_tier_required`):
+    - `test "$(rg -l "^审计轮次:\s*6$" doc --glob "*.md" -g "!doc/devlog/**" | wc -l)" -eq 0`
+    - `test "$(rg -l "^审计轮次:\s*5$" doc/p2p/prd.md doc/p2p/prd.index.md doc/world-simulator/launcher/game-client-launcher-chain-runtime-decouple-2026-02-28.prd.project.md doc/world-simulator/launcher/game-client-launcher-transfer-product-grade-parity-2026-03-06.prd.md doc/world-simulator/launcher/game-client-launcher-transfer-product-grade-parity-2026-03-06.prd.project.md doc/world-simulator/viewer/viewer-first-session-goal-clarity-hardening-2026-02-27.prd.md doc/world-simulator/viewer/viewer-first-session-goal-clarity-hardening-2026-02-27.prd.project.md | wc -l)" -eq 7`
+    - `./scripts/doc-governance-check.sh`
 
 ## 依赖
 - doc/core/prd.index.md
@@ -83,8 +88,8 @@
 - 各模块 `doc/<module>/prd.md` 与 `doc/<module>/prd.project.md`
 
 ## 状态
-- 更新日期: 2026-03-06
+- 更新日期: 2026-03-09
 - 当前状态: active
-- 下一任务: TASK-CORE-005
+- 下一任务: TASK-CORE-008
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - 说明: 本文档仅维护 core 设计执行状态；过程记录在 `doc/devlog/2026-03-06.md`（历史记录见同目录其他日期文件）。
