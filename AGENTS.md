@@ -72,3 +72,6 @@ See `third_party/rust-skills/AGENTS.md` for Rust development guidelines.
 - 新需求优先在对应角色职责卡中确认 owner、输入、输出与 done 定义；如跨多个角色，按最先落地代码/文档的 owner 牵头。
 - 根 `AGENTS.md` 不再扩写角色细节；角色职责调整时，直接修改 `.agents/roles/*.md`，必要时同步回写 engineering `prd.md` / `prd.project.md`。
 - 角色职责卡用于人机协作对齐，不替代模块 `prd.md` / `prd.project.md` 的需求与任务追踪。
+- 角色交接优先复用统一模板：
+  - `./.agents/roles/templates/handoff-brief.md`
+  - `./.agents/roles/templates/handoff-detailed.md`

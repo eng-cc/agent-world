@@ -39,7 +39,6 @@
 - [x] TASK-ENGINEERING-032 (PRD-ENGINEERING-018) [test_tier_required]: 将 `AGENTS.md` 的“开发工作流”升级为角色协作版，补齐 owner role、handoff、QA/LiveOps 和 no-commit 例外规则。
 - [x] TASK-ENGINEERING-033 (PRD-ENGINEERING-019) [test_tier_required]: 将 devlog 规则明确为“按日期单文件、按条目标角色”，并同步回写工程文档追踪。
 - [x] TASK-ENGINEERING-034 (PRD-ENGINEERING-020) [test_tier_required]: 建立角色名白名单门禁，约束 devlog / handoff 只能使用 `.agents/roles/*.md` 中存在的标准角色名。
-
 ## 依赖
 - doc/engineering/prd.index.md
 - `AGENTS.md`

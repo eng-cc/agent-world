@@ -47,7 +47,6 @@
   - SC-16: `AGENTS.md` 的开发工作流已升级为角色协作版，明确 owner role、handoff 触发条件、QA 与 LiveOps 回流路径。
   - SC-17: `devlog` 继续按日期单文件归档，但多角色执行时单条记录必须显式标注角色。
   - SC-18: `devlog` / handoff 中的角色字段由 `.agents/roles/*.md` 白名单约束，新增别名违规数为 0。
-
 ## 2. User Experience & Functionality
 - User Personas:
   - 工程维护者：需要稳定规则来控制技术债。
@@ -73,16 +72,14 @@
   - PRD-ENGINEERING-012: As a 文档治理维护者, I want a per-document read checklist for all PRDs, so that review coverage is auditable.
   - PRD-ENGINEERING-013: As a 模块负责人, I want code-first discrepancy handling, so that PRD behavior remains aligned with implementation.
   - PRD-ENGINEERING-014: As a 评审者, I want duplicate and upstream/downstream alignment checks, so that the PRD tree stays clear and non-conflicting.
-  - PRD-ENGINEERING-015: As a 文档作者/评审者, I want one canonical document topology and role split, so that I can place new docs without guessing and keep detailed design discoverable.
-- Critical User Flows:
+  - PRD-ENGINEERING-015: As a 文档作者/评审者, I want one canonical document topology and role split, so that I can place new docs without guessing and keep detailed design discoverable.- Critical User Flows:
   1. Flow-ENG-001: `提交前执行脚本 -> 发现违规 -> 修复并复测 -> 进入 CI`
   2. Flow-ENG-002: `CI 失败 -> 定位规则来源 -> 判断误报/真实问题 -> 更新脚本或文档`
   3. Flow-ENG-003: `季度复盘 -> 汇总违规趋势 -> 调整门禁阈值 -> 发布新治理基线`
   4. Flow-ENG-004: `逐篇阅读旧文档 -> 按 strict schema 重写 -> 内容保真复核 -> 更新任务与devlog追踪`
   5. Flow-ENG-005: `冻结待迁移清单 -> 按 Owner-A/B/C/D 切分范围 -> 并行执行 -> 每日燃尽收口`
   6. Flow-ENG-006: `生成全量审读清单 -> 逐篇阅读并打勾 -> 核对代码/重复/上下游 -> 回写偏差并复跑门禁`
-  7. Flow-ENG-007: `新专题提出 -> 选择模块/专题目录 -> 判断文档职责后创建同名 PRD/Design/Project -> 更新索引 -> 评审者按统一阅读顺序审查`
-- Functional Specification Matrix:
+  7. Flow-ENG-007: `新专题提出 -> 选择模块/专题目录 -> 判断文档职责后创建同名 PRD/Design/Project -> 更新索引 -> 评审者按统一阅读顺序审查`- Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
 | 文档治理检查 | allowlist、模块根目录规则、根目录规则 | 执行 `doc-governance-check.sh` | `pass/fail` | 按违规严重度输出 | 所有人可执行，治理维护者可更新基线 |
@@ -99,8 +96,7 @@
 | 角色交接模板 | 交接标题、来源角色、目标角色、目标、上下文、输入、输出、截止、风险、阻断、验证、回写位置 | 从 `.agents/roles/templates/*.md` 复制填写并随任务流转 | `draft -> sent -> acknowledged -> delivered` | 默认先 brief 后 detailed，按风险等级决定是否升级 | 发起方负责填写，接收方负责确认，维护者可演进模板 |
 | 角色协作工作流 | owner role、handoff 触发条件、执行顺序、QA/LiveOps 回流、commit 例外 | 在 `AGENTS.md` 维护流程并在实际任务中执行 | `defined -> adopted -> audited` | 默认按需求进入顺序执行，跨角色任务先定 owner 再流转 | 全体贡献者遵守，治理维护者可演进 |
 | devlog 角色标记 | 日期文件、时刻、角色、完成内容、遗留事项 | 同日任务统一写入 `doc/devlog/YYYY-MM-DD.md`，并在条目级显式标角色 | `logged -> traceable -> audited` | 默认单日单文件，按时间排序 | 全体贡献者可写，评审者可按角色回溯 |
-| 角色名白名单校验 | 角色名、来源文件、白名单来源 | 校验 devlog / handoff 中角色名是否存在于 `.agents/roles/*.md` | `pass/fail` | 以角色文件名去后缀为唯一 canonical name | 治理维护者维护角色清单，提交者必须修复别名 |
-- Acceptance Criteria:
+| 角色名白名单校验 | 角色名、来源文件、白名单来源 | 校验 devlog / handoff 中角色名是否存在于 `.agents/roles/*.md` | `pass/fail` | 以角色文件名去后缀为唯一 canonical name | 治理维护者维护角色清单，提交者必须修复别名 |- Acceptance Criteria:
   - AC-1: engineering PRD 明确文件约束、脚本约束、测试分层约束。
   - AC-2: engineering project 文档维护任务拆解与状态。
   - AC-3: 与 `doc/scripts/precommit/pre-commit.prd.md`、`testing-manual.md` 的口径一致。
@@ -119,8 +115,7 @@
   - AC-16: `.agents/roles/templates/` 下至少提供一套可直接复制使用的角色交接模板，并在根 `AGENTS.md` 可达。
   - AC-17: 根 `AGENTS.md` 的“开发工作流”章节应明确 owner role、handoff 使用时机、QA/LiveOps 责任和“用户要求不提交”时的例外处理。
   - AC-18: 根 `AGENTS.md` 的 devlog 规则需明确“按日期单文件、不按角色拆文件、条目级标角色”的约束。
-  - AC-19: 文档治理门禁需阻断 `devlog` / handoff 中未在 `.agents/roles/*.md` 注册的角色名。
-- Non-Goals:
+  - AC-19: 文档治理门禁需阻断 `devlog` / handoff 中未在 `.agents/roles/*.md` 注册的角色名。- Non-Goals:
   - 不定义 gameplay/p2p/runtime 业务规则。
   - 不替代模块内部测试策略。
 
@@ -176,8 +171,7 @@
   - NFR-ENG-14: 角色交接模板字段命名稳定，默认模板在 5 分钟内可完成填写并可被他人直接执行。
   - NFR-ENG-15: 开发工作流规则在单人执行与多角色协作两种场景下都应自洽，不得出现相互冲突的提交/回写要求。
   - NFR-ENG-16: 单日日志应同时支持时间线回放与角色维度检索，不得因角色拆分导致当日过程碎片化。
-  - NFR-ENG-17: 角色名校验应零配置跟随 `.agents/roles/` 目录变化，不依赖重复维护的手写名单。
-- Security & Privacy: 仅涉及工程流程元信息；涉及凭据的自动化流程必须遵守最小暴露原则并避免日志泄漏。
+  - NFR-ENG-17: 角色名校验应零配置跟随 `.agents/roles/` 目录变化，不依赖重复维护的手写名单。- Security & Privacy: 仅涉及工程流程元信息；涉及凭据的自动化流程必须遵守最小暴露原则并避免日志泄漏。
 
 ## 5. Risks & Roadmap
 - Phased Rollout:
@@ -214,8 +208,7 @@
 | PRD-ENGINEERING-017 | TASK-ENGINEERING-031 | `test_tier_required` | 交接模板存在性、字段完整性与入口可达性检查 | 跨角色协作质量与上下文传递稳定性 |
 | PRD-ENGINEERING-018 | TASK-ENGINEERING-032 | `test_tier_required` | `AGENTS.md` 工作流章节与角色/模板入口一致性检查 | 协作流程稳定性与执行确定性 |
 | PRD-ENGINEERING-019 | TASK-ENGINEERING-033 | `test_tier_required` | devlog 规则与角色标记要求一致性检查 | 单日过程可追溯性与角色责任可读性 |
-| PRD-ENGINEERING-020 | TASK-ENGINEERING-034 | `test_tier_required` | 白名单角色名门禁、模板字段枚举与 devlog 角色标签检查 | 角色命名一致性与防漂移能力 |
-- Decision Log:
+| PRD-ENGINEERING-020 | TASK-ENGINEERING-034 | `test_tier_required` | 白名单角色名门禁、模板字段枚举与 devlog 角色标签检查 | 角色命名一致性与防漂移能力 |- Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |
 | DEC-ENG-001 | 以脚本门禁落实规范 | 仅依赖人工评审 | 自动化一致性更高且可复现。 |
