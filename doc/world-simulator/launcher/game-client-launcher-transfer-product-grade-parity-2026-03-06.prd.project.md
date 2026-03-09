@@ -1,6 +1,6 @@
 # 客户端启动器转账产品级体验与跨端同层前端（2026-03-06）项目管理文档
 
-审计轮次: 6
+审计轮次: 5
 - 对应设计文档: `doc/world-simulator/launcher/game-client-launcher-transfer-product-grade-parity-2026-03-06.prd.md`
 
 ## 任务拆解（含 PRD-ID 映射）
