@@ -78,6 +78,11 @@
     - `test "$(rg -l "^审计轮次:\s*6$" doc --glob "*.md" -g "!doc/devlog/**" | wc -l)" -eq 0`
     - `test "$(rg -l "^审计轮次:\s*5$" doc/p2p/prd.md doc/p2p/prd.index.md doc/world-simulator/launcher/game-client-launcher-chain-runtime-decouple-2026-02-28.prd.project.md doc/world-simulator/launcher/game-client-launcher-transfer-product-grade-parity-2026-03-06.prd.md doc/world-simulator/launcher/game-client-launcher-transfer-product-grade-parity-2026-03-06.prd.project.md doc/world-simulator/viewer/viewer-first-session-goal-clarity-hardening-2026-02-27.prd.md doc/world-simulator/viewer/viewer-first-session-goal-clarity-hardening-2026-02-27.prd.project.md | wc -l)" -eq 7`
     - `./scripts/doc-governance-check.sh`
+- [ ] TASK-CORE-009 (PRD-CORE-003) [test_tier_required]: 统一清理剩余 `审计轮次 > 5` 与缺失 `审计轮次` 的文档，确保全仓文档审计标记不高于 ROUND-005 基线。
+  - 验收命令 (`test_tier_required`):
+    - `test "$(rg -l "^审计轮次:\s*([6-9]|[1-9][0-9]+)$" doc --glob "*.md" -g "!doc/devlog/**" | wc -l)" -eq 0`
+    - `test "$(comm -23 <(rg --files doc -g "*.md" -g "!doc/devlog/**" | sort) <(rg -l "^审计轮次:\s*[0-9]+$" doc --glob "*.md" -g "!doc/devlog/**" | sort) | wc -l)" -eq 0`
+    - `./scripts/doc-governance-check.sh`
 
 ## 依赖
 - doc/core/prd.index.md
@@ -90,6 +95,6 @@
 ## 状态
 - 更新日期: 2026-03-09
 - 当前状态: active
-- 下一任务: TASK-CORE-005
+- 下一任务: TASK-CORE-009
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - 说明: 本文档仅维护 core 设计执行状态；过程记录在 `doc/devlog/2026-03-06.md`（历史记录见同目录其他日期文件）。

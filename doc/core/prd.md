@@ -161,6 +161,7 @@
 | PRD-CORE-002 | TASK-CORE-002/003/004/007 | `test_tier_required` | 关键链路映射核验、跨模块依赖抽样复核 | 跨模块设计兼容性与发布评审效率 |
 | PRD-CORE-003 | TASK-CORE-004/005/007 | `test_tier_required` | 发布门禁证据映射校验、轮次一致性审查记录检查（含文档级审计轮次标记，缺省按0） | 发布决策可审计性与长期治理稳定性 |
 | PRD-CORE-003 | TASK-CORE-008 | `test_tier_required` | `审计轮次 > 5` 漂移扫描、ROUND-005 基线回写、devlog 与 git 证据核对 | 审计标记口径恢复为正式台账语义 |
+| PRD-CORE-003 | TASK-CORE-009 | `test_tier_required` | 全仓 `审计轮次 > 5` 扫描清零、缺失标记补齐为 5、devlog 与 git 证据核对 | 审计标记口径对齐到“全仓不高于 ROUND-005 基线” |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |
