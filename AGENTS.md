@@ -36,3 +36,39 @@
 # Project Agents
 
 See `third_party/rust-skills/AGENTS.md` for Rust development guidelines.
+
+## 分工
+根 `AGENTS.md` 只维护组合角色入口；详细职责、输入输出、决策边界与完成定义统一写在 `.agents/roles/*.md`。
+
+1. `producer_system_designer`
+   - 入口：`.agents/roles/producer_system_designer.md`
+   - 覆盖：制作人 / 产品负责人、世界规则策划、涌现系统策划、经济 / 资源策划
+
+2. `runtime_engineer`
+   - 入口：`.agents/roles/runtime_engineer.md`
+   - 覆盖：运行时 / 世界内核工程师、仿真 / 数值平衡工程师
+
+3. `wasm_platform_engineer`
+   - 入口：`.agents/roles/wasm_platform_engineer.md`
+   - 覆盖：WASM 平台 / 模块生态工程师
+
+4. `agent_engineer`
+   - 入口：`.agents/roles/agent_engineer.md`
+   - 覆盖：Agent 行为设计师、AI / Agent 工程师
+
+5. `viewer_engineer`
+   - 入口：`.agents/roles/viewer_engineer.md`
+   - 覆盖：前端 / Viewer / 交互设计师
+
+6. `qa_engineer`
+   - 入口：`.agents/roles/qa_engineer.md`
+   - 覆盖：测试 / 自动化 / 世界 QA
+
+7. `liveops_community`
+   - 入口：`.agents/roles/liveops_community.md`
+   - 覆盖：运营 / 社区 / 世界管理员
+
+### 使用约定
+- 新需求优先在对应角色职责卡中确认 owner、输入、输出与 done 定义；如跨多个角色，按最先落地代码/文档的 owner 牵头。
+- 根 `AGENTS.md` 不再扩写角色细节；角色职责调整时，直接修改 `.agents/roles/*.md`，必要时同步回写 engineering `prd.md` / `prd.project.md`。
+- 角色职责卡用于人机协作对齐，不替代模块 `prd.md` / `prd.project.md` 的需求与任务追踪。

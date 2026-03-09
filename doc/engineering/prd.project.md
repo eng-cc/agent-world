@@ -34,10 +34,17 @@
 - [x] TASK-ENGINEERING-024 (PRD-ENGINEERING-012/013/014) [test_tier_required]: 建立周度增量审读节奏（新增/变更 PRD 自动入清单）。
 - [x] TASK-ENGINEERING-025 (PRD-ENGINEERING-015) [test_tier_required]: 产出“文档分工与组织规范”专题 PRD、规范正文与项目文档，冻结目录按对象、文件按职责的建档标准。
 - [x] TASK-ENGINEERING-026 (PRD-ENGINEERING-015) [test_tier_required]: 将“文档分工与组织规范”专题收敛为短文件名 `doc-structure-standard`，并同步回写索引、白名单与引用。
+- [x] TASK-ENGINEERING-030 (PRD-ENGINEERING-016) [test_tier_required]: 建立 `.agents/roles/` 七个组合角色职责卡，并将根 `AGENTS.md` 的分工章节替换为角色入口映射与协作约定。
+- [x] TASK-ENGINEERING-031 (PRD-ENGINEERING-017) [test_tier_required]: 建立 `.agents/roles/templates/` 统一交接模板，并在根 `AGENTS.md` 增加使用入口。
+- [x] TASK-ENGINEERING-032 (PRD-ENGINEERING-018) [test_tier_required]: 将 `AGENTS.md` 的“开发工作流”升级为角色协作版，补齐 owner role、handoff、QA/LiveOps 和 no-commit 例外规则。
+- [x] TASK-ENGINEERING-033 (PRD-ENGINEERING-019) [test_tier_required]: 将 devlog 规则明确为“按日期单文件、按条目标角色”，并同步回写工程文档追踪。
+- [x] TASK-ENGINEERING-034 (PRD-ENGINEERING-020) [test_tier_required]: 建立角色名白名单门禁，约束 devlog / handoff 只能使用 `.agents/roles/*.md` 中存在的标准角色名。
 
 ## 依赖
 - doc/engineering/prd.index.md
 - `AGENTS.md`
+- `.agents/roles/*.md`
+- `.agents/roles/templates/*.md`
 - `doc/scripts/precommit/pre-commit.prd.md`
 - `testing-manual.md`
 - `.agents/skills/prd/check.md`
@@ -63,4 +70,9 @@
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - 当前整改批次: R2（引用路径可达门禁）已完成（019）；R3（全量 PRD 审读机制）已完成（020-024，清单覆盖 708/708）。
 - 当前规范补充: 已完成 `TASK-ENGINEERING-025/026/027`，冻结“目录按对象、文件按职责”的文档建模方案、稳定专题命名，并补齐测试相关文档分工规则。
+- 最新完成: `TASK-ENGINEERING-030`（角色职责卡收口与根 `AGENTS.md` 入口改造）。
+- 最新完成: `TASK-ENGINEERING-031`（角色统一交接模板建档与入口接入）。
+- 最新完成: `TASK-ENGINEERING-032`（开发工作流升级为角色协作版）。
+- 最新完成: `TASK-ENGINEERING-033`（devlog 改为按日期存档、按条目标角色）。
+- 最新完成: `TASK-ENGINEERING-034`（角色名白名单门禁与模板枚举接入）。
 - 说明: 本文档仅维护 engineering 设计执行状态；过程记录在 `doc/devlog/2026-03-03.md`、`doc/devlog/2026-03-04.md` 与 `doc/devlog/2026-03-09.md`。
