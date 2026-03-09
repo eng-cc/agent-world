@@ -1,8 +1,8 @@
 # world-simulator PRD 文件级索引
 
-审计轮次: 11
+审计轮次: 12
 
-更新时间：2026-03-08
+更新时间：2026-03-09
 
 ## 入口
 - 模块 PRD：`doc/world-simulator/prd.md`
@@ -24,6 +24,7 @@
 | `doc/world-simulator/kernel/kernel-rule-wasm-sandbox-bridge.prd.md` | `doc/world-simulator/kernel/kernel-rule-wasm-sandbox-bridge.prd.project.md` |
 | `doc/world-simulator/kernel/location-electricity-pool-removal-and-radiation-plant.prd.md` | `doc/world-simulator/kernel/location-electricity-pool-removal-and-radiation-plant.prd.project.md` |
 | `doc/world-simulator/kernel/power-storage-complete-removal-2026-03-06.prd.md` | `doc/world-simulator/kernel/power-storage-complete-removal-2026-03-06.prd.project.md` |
+| `doc/world-simulator/kernel/runtime-required-failing-tests-offline-2026-03-09.prd.md` | `doc/world-simulator/kernel/runtime-required-failing-tests-offline-2026-03-09.prd.project.md` |
 | `doc/world-simulator/kernel/resource-kind-compound-hardware-hard-migration.prd.md` | `doc/world-simulator/kernel/resource-kind-compound-hardware-hard-migration.prd.project.md` |
 | `doc/world-simulator/kernel/rust-wasm-build-suite.prd.md` | `doc/world-simulator/kernel/rust-wasm-build-suite.prd.project.md` |
 | `doc/world-simulator/kernel/social-fact-ledger-declarative-reputation.prd.md` | `doc/world-simulator/kernel/social-fact-ledger-declarative-reputation.prd.project.md` |

@@ -1,6 +1,6 @@
 # world-simulator PRD
 
-审计轮次: 11
+审计轮次: 12
 
 ## 目标
 - 建立 world-simulator 模块设计主文档，统一需求边界、技术方案与验收标准。
@@ -44,6 +44,7 @@
   - `doc/world-simulator/launcher/game-client-launcher-full-usability-remediation-2026-03-08.prd.md`（PRD-WORLD_SIMULATOR-029）
   - `doc/world-simulator/launcher/game-client-launcher-self-guided-experience-2026-03-08.prd.md`（PRD-WORLD_SIMULATOR-030）
   - `doc/world-simulator/launcher/game-client-launcher-web-console-gui-agent-interface-2026-03-08.prd.md`（PRD-WORLD_SIMULATOR-031）
+  - `doc/world-simulator/kernel/runtime-required-failing-tests-offline-2026-03-09.prd.md`（PRD-WORLD_SIMULATOR-032）
   - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase1-2026-03-04.prd.md`（PRD-WORLD_SIMULATOR-016）
   - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase2-2026-03-05.prd.md`（PRD-WORLD_SIMULATOR-017）
   - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase3-2026-03-05.prd.md`（PRD-WORLD_SIMULATOR-018）
@@ -70,6 +71,7 @@
 - M17 (2026-03-08): 完成启动器全量可用性残余风险收口（配置防回写、按域并发、反馈草稿保护、顶栏响应式、转账过滤重置）。
 - M18 (2026-03-08): 完成启动器自引导体验闭环建模与任务拆解（首次引导、任务流、术语解释、演示模式、配置画像、本地埋点）。
 - M19 (2026-03-08): 完成 Web Console GUI Agent 全量接口（能力声明 + 统一动作执行）建模与落地。
+- M20 (2026-03-09): 完成 runtime required 已知失败用例临时下线（精准白名单 `#[ignore]`）并恢复 required 测试链路可执行。
 
 ## 风险
 - 模块边界演进快，文档同步可能滞后。
@@ -117,6 +119,7 @@
   - SC-35: 启动器必须在高频操作与轮询并发场景保持交互稳定（本地配置不被轮询回写、请求按域并发、反馈草稿不被中断），并补齐窄屏顶栏可读性与转账过滤重置入口。
   - SC-36: 启动器需默认提供自引导体验（首次 3 步引导、任务流卡片、禁用态 CTA、术语解释、演示模式、成功配置画像与本地引导埋点），并允许专家用户无阻切换到高级配置路径。
   - SC-37: 启动器 Web Console 需提供一套面向 GUI Agent 的机器接口（能力发现 + 统一动作执行），覆盖人工可达全部功能并返回稳定结构化结果。
+  - SC-38: runtime required 测试链路需支持“已知基线失败项临时下线但资产保留”的精确治理机制，避免 pre-commit 长期阻塞并保持后续恢复可追踪。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -162,6 +165,7 @@
   - PRD-WORLD_SIMULATOR-029: As a 启动器玩家/运维人员, I want launcher interactions to remain stable under polling and continuous operations, so that edits and high-frequency actions are not interrupted or silently dropped.
   - PRD-WORLD_SIMULATOR-030: As a 启动器新用户, I want launcher to guide me with actionable next steps and safe defaults, so that I can finish first launch without reading external docs.
   - PRD-WORLD_SIMULATOR-031: As a GUI Agent 编排器, I want one machine-oriented API surface in web console, so that I can execute every manual launcher operation without UI-dependent parsing.
+  - PRD-WORLD_SIMULATOR-032: As a runtime 维护者, I want known required failing tests to be temporarily offlined with explicit traceability, so that pre-commit can proceed while keeping recovery signals.
 - Critical User Flows:
   1. Flow-WS-001（Web-first 闭环）:
      `选择场景 -> 启动 Viewer Web -> 执行关键交互 -> 采集日志/截图/指标 -> 产出 test_tier_required 结论`
@@ -223,6 +227,8 @@
      `首次进入 -> 3 步向导 -> 任务流卡片驱动链/游戏启动 -> 禁用态 CTA 修复 -> 术语提示 + 快捷入口 -> 成功配置保存并记录引导计数`
   30. Flow-WS-030（Launcher GUI Agent 全量接口）:
      `GET /api/gui-agent/capabilities -> 选择 action -> POST /api/gui-agent/action -> 返回结构化 data+state -> 按 error_code 自动重试/降级`
+  31. Flow-WS-031（runtime required 失败用例临时下线）:
+     `执行 required 测试 -> 命中已知 10 项失败 -> 精确白名单加 #[ignore] 并标注原因 -> required 测试恢复可执行 -> 根因修复后逐项解除 ignore`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
@@ -249,6 +255,7 @@
 | Launcher 全量可用性残余风险收口 | `config_dirty`、in-flight 域（`state/control/feedback/transfer_submit/transfer_query/explorer`）、`feedback_window_open`、转账历史过滤字段 | 配置编辑时阻止快照回写；请求按域并发；反馈窗口不被强制关闭；顶栏 wrapped；新增清空过滤 | `clean/dirty/synced` + `idle/inflight(domain)` + `window_open/disabled_submit` | 轮询只由 `state` 域门控；过滤清空后按默认排序刷新 | 配置编辑本地可写；查询只读；控制操作按既有权限 |
 | Launcher 自引导体验闭环 | `onboarding_step/onboarding_completed`、任务卡 `ready/blocked_reason/cta`、术语 key（nonce/slot/mempool/action_id）、`last_successful_config`、`demo_mode_enabled`、本地计数器 | 默认展示 3 步引导 + 任务流卡片；禁用态提供就地 CTA；转账/浏览器提供快捷动作；成功配置自动保存并可恢复；演示模式串行动作；引导计数可见 | `onboarding: hidden/step1/step2/step3/completed`；`task: todo/doing/done/blocked`；`profile: none/saved/restored` | 任务卡按依赖顺序（链->游戏->页面）；计数器按事件单调递增；成功配置仅保留最近一次 | 本地会话可写；查询与术语解释只读 |
 | Launcher GUI Agent 全量接口 | `/api/gui-agent/capabilities`、`/api/gui-agent/state`、`/api/gui-agent/action{action,payload}` | 机器端通过单一动作入口执行全部人工功能（启停/反馈/转账/浏览器查询） | `ready -> action_running -> succeeded/failed` | `query_target` 白名单映射固定 runtime 路径；动作后必须返回最新 `state` | 受信网络内可调用；沿用现有控制面权限边界 |
+| runtime required 失败用例临时下线 | 失败测试白名单（10 项）、`#[ignore]` 注解、原因标签（builtin identity manifest hash token 缺失） | 对白名单测试逐个加 `#[ignore]`，保留测试实现与断言；required 回归继续执行其他用例 | `failing -> ignored`（白名单范围内） | 下线数量固定为 10；禁止模块级批量屏蔽 | 仅维护者可修改测试注解 |
 | Launcher Web 设置/反馈对齐 | 设置窗口字段 + `/api/chain/feedback` + `kind/title/description` | 浏览器端可打开设置窗口与反馈窗口；反馈提交通过控制面代理返回结构化结果 | `settings: closed/open/saved` + `feedback: idle/validating/submitting/success/failed` | 反馈标题/描述必填；单请求 in-flight 门控 | 反馈提交仅链就绪可用；设置仅当前会话可编辑 |
 | Launcher native 遗留清理 | native 失效状态字段、无效常量 `cfg` 边界、未引用旧测试文件 | 保持现有 UI/API 行为不变前提下清理历史残留 | `legacy_present -> removed -> regression_passed` | 优先删除“无读写路径/无编译入口引用”的资产 | 仅开发维护路径可修改，运行时玩家能力不变 |
 | Viewer live runtime 接管 | runtime `DomainEvent`、兼容 `WorldSnapshot/WorldEvent` | 启动 `world_viewer_live` 后按 Play/Step 推进 runtime，并推送兼容快照/事件 | `runtime_mode`（固定） | 事件序列保持单调；至少映射注册/移动/转移/拒绝四类事件 | 本地开发链路，默认不开放远程写接口 |
@@ -297,6 +304,7 @@
   - AC-40: 启动器自引导 round-2 完成：错误卡片三动作（修复配置/自动补默认值/重试）、阻塞态可执行下一步、启动前体检修复清单、跳过引导后的持续轻提示在 native/web 双端一致可用。
   - AC-41: 启动器代码治理满足工程约束：`agent_world_client_launcher` 单个 Rust 源文件不得超过 1200 行，超限时需模块化拆分且行为不回归。
   - AC-42: `world_web_launcher` 新增 `/api/gui-agent/capabilities|state|action`，并通过统一动作集合覆盖人工操作全功能（启停、反馈、转账、浏览器查询），所有动作返回结构化 `{ok,action,error_code?,error?,data?,state}`。
+  - AC-43: `agent_world` required 测试中 10 个已知失败项按白名单临时下线（`#[ignore]`）且保留原因注释；`env -u RUSTC_WRAPPER cargo test -p agent_world --tests --features test_tier_required` 不再因这 10 项失败阻塞。
 - Non-Goals:
   - 不在本 PRD 中详细列出每个 UI 像素级规范。
   - 不替代 world-runtime/p2p 的底层协议设计。
@@ -373,6 +381,7 @@
   - explorer 索引恢复失败：索引文件缺失/损坏时必须回退空索引并继续提供查询服务，不得阻断 runtime 启动。
   - runtime 映射覆盖不足：runtime `DomainEvent` 未全量映射时，需降级输出可诊断事件并保留序列一致性。
   - runtime llm 桥接缺口：LLM 决策动作若无 runtime 映射实现，需返回结构化拒绝并继续服务循环，禁止 panic/卡死。
+  - required 基线失败下线漂移：临时下线必须限定白名单；若 ignore 数量超出已知 10 项需视为异常并阻断合入。
 - Non-Functional Requirements:
   - 性能目标:
     - NFR-1: 启动器链状态探针刷新周期 <= 1s，状态可见延迟 <= 2s。
@@ -397,6 +406,7 @@
     - NFR-23: 区块链浏览器查询（overview/transactions/transaction）本地链路 `p95 <= 500ms`，默认刷新周期 1s。
     - NFR-24: 区块链浏览器 P0 查询（blocks/block/txs/tx/search）在默认分页 `limit=50` 下本地链路 `p95 <= 500ms`，翻页响应 `p95 <= 700ms`。
     - NFR-25: `POST /api/gui-agent/action` 在本地链路下 `p95 <= 500ms`（查询类动作）与 `p95 <= 1s`（控制/提交类动作）。
+    - NFR-26: runtime required 临时下线数量必须固定为 10 项，且执行 `env -u RUSTC_WRAPPER cargo test -p agent_world --tests --features test_tier_required` 时不得再出现这 10 项失败。
   - 安全与隐私目标:
     - NFR-4: 日志与证据中不得输出私钥、口令、完整凭据；敏感字段需脱敏。
     - NFR-5: 转账请求必须经过 nonce anti-replay 与余额约束校验。
@@ -455,6 +465,7 @@
 | PRD-WORLD_SIMULATOR-029 | TASK-WORLD_SIMULATOR-069/070/071 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown`，验证配置防回写、请求按域并发、反馈草稿保护、顶栏响应式与转账过滤清空 | 启动器高频交互稳定性、并发可用性与窄屏可读性 |
 | PRD-WORLD_SIMULATOR-030 | TASK-WORLD_SIMULATOR-072/073/074/075/076/077/078/079/080/081/082/083/084/085/086/087/088/089/090 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown` + Playwright（桌面 + 390x844）采证 + `wc -l crates/agent_world_client_launcher/src/main.rs crates/agent_world_client_launcher/src/explorer_window.rs`，验证首次引导、任务流、错误恢复、preflight、持续轻提示、术语解释、快捷入口、成功配置画像、演示模式、本地计数与超长文件治理 | 启动器新用户自引导闭环、失败恢复效率、跨端一致性与代码维护可持续性 |
 | PRD-WORLD_SIMULATOR-031 | TASK-WORLD_SIMULATOR-091/092 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p agent_world --bin world_web_launcher`，验证 GUI Agent 能力声明、统一动作执行与结构化响应稳定性 | Web Console 机器控制面、人工操作可替代性、既有控制面兼容性 |
+| PRD-WORLD_SIMULATOR-032 | TASK-WORLD_SIMULATOR-093/094 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p agent_world --tests --features test_tier_required`，验证 10 项已知失败用例临时下线后 required 测试链路恢复可执行且白名单外覆盖保持有效 | runtime required 回归可用性、pre-commit 稳定性、测试资产可追溯性 |
 
 - Decision Log:
 
@@ -481,3 +492,4 @@
 | DEC-WS-019 | 以“默认可用 + 可解释失败 + 跨端一致”一次性硬化启动器可用性基线（路径回退、禁用态原因、参数编码、stop no-op 语义、移动端可读性、favicon） | 仅修复单点缺陷，保留其余体验债务 | 该批问题会叠加放大运维诊断成本与用户失败感知；合并治理能在一次回归中收敛可用性风险；对应 `TASK-WORLD_SIMULATOR-063/064`。 |
 | DEC-WS-020 | 启动器采用“默认自引导 + 专家模式可切换 + 本地可复盘计数”策略 | 保持纯按钮面板 + 外链文档说明 | 新用户首会话需在产品内闭环完成关键任务，且要兼顾专家用户效率与后续迭代可观测性；对应 `TASK-WORLD_SIMULATOR-072~084`。 |
 | DEC-WS-021 | 在 `world_web_launcher` 增加 `/api/gui-agent/*` 统一机器接口并复用既有控制面能力 | 要求 GUI Agent 直接拼接分散 `/api/*` 旧路由 | 单入口 + 统一响应结构可显著降低自动化复杂度，并保持与人工功能的一致映射；对应 `TASK-WORLD_SIMULATOR-091/092`。 |
+| DEC-WS-022 | 对 runtime required 已知 10 项失败测试执行函数级 `#[ignore]` 临时下线，并保留恢复追踪 | 模块级屏蔽整组测试或删除失败测试 | 函数级白名单可最小化影响面，保证 required 链路恢复执行的同时保留测试资产与回收路径；对应 `TASK-WORLD_SIMULATOR-093/094`。 |
