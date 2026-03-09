@@ -6,6 +6,9 @@ doc/core/prd.md
 doc/core/prd.index.md
 doc/core/prd.project.md
 doc/engineering/README.md
+doc/engineering/documentation-topology-and-document-roles-2026-03-09.design.md
+doc/engineering/documentation-topology-and-document-roles-2026-03-09.prd.md
+doc/engineering/documentation-topology-and-document-roles-2026-03-09.prd.project.md
 doc/engineering/documentation-governance-engineering-closure-2026-02-27.prd.md
 doc/engineering/documentation-governance-engineering-closure-2026-02-27.prd.project.md
 doc/engineering/oversized-rust-file-splitting-2026-02-23.prd.md

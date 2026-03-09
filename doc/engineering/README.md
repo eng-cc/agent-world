@@ -8,6 +8,9 @@
 - `doc/engineering/prd.index.md`
 
 ## 活跃文档
+- `doc/engineering/documentation-topology-and-document-roles-2026-03-09.prd.md`
+- `doc/engineering/documentation-topology-and-document-roles-2026-03-09.design.md`
+- `doc/engineering/documentation-topology-and-document-roles-2026-03-09.prd.project.md`
 - `doc/engineering/oversized-rust-file-splitting-2026-02-23.prd.md`
 - `doc/engineering/oversized-rust-file-splitting-2026-02-23.prd.project.md`
 - `doc/engineering/doc-migration/legacy-doc-migration-collaboration-2026-03-03.prd.md`
