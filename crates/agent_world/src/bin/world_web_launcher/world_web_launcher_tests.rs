@@ -275,6 +275,10 @@ fn build_chain_runtime_args_includes_chain_overrides_when_on() {
     assert!(args.contains(&"1700000000000".to_string()));
     assert!(args.contains(&"--pos-max-past-slot-lag".to_string()));
     assert!(args.contains(&"32".to_string()));
+    assert!(args.contains(&"--execution-world-dir".to_string()));
+    assert!(
+        args.contains(&"output/chain-runtime/chain-a/reward-runtime-execution-world".to_string())
+    );
 }
 
 #[test]

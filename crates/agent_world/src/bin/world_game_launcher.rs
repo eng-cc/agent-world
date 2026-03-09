@@ -291,7 +291,17 @@ fn chain_world_id(options: &CliOptions) -> String {
         .unwrap_or_else(|| format!("live-{}", options.scenario))
 }
 
+fn chain_execution_world_dir(node_id: &str) -> String {
+    Path::new("output")
+        .join("chain-runtime")
+        .join(node_id)
+        .join("reward-runtime-execution-world")
+        .to_string_lossy()
+        .into_owned()
+}
+
 fn build_world_chain_runtime_args(options: &CliOptions) -> Vec<String> {
+    let execution_world_dir = chain_execution_world_dir(options.chain_node_id.as_str());
     vec![
         "--node-id".to_string(),
         options.chain_node_id.clone(),
@@ -301,6 +311,8 @@ fn build_world_chain_runtime_args(options: &CliOptions) -> Vec<String> {
         options.chain_status_bind.clone(),
         "--storage-profile".to_string(),
         options.chain_storage_profile.as_str().to_string(),
+        "--execution-world-dir".to_string(),
+        execution_world_dir,
     ]
 }
 

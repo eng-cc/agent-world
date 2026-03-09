@@ -846,7 +846,8 @@ pub(super) fn build_launcher_args(config: &LauncherConfig) -> Result<Vec<String>
 
 pub(super) fn build_chain_runtime_args(config: &LauncherConfig) -> Result<Vec<String>, String> {
     parse_host_port(config.chain_status_bind.as_str(), "chain status bind")?;
-    if config.chain_node_id.trim().is_empty() {
+    let chain_node_id = config.chain_node_id.trim();
+    if chain_node_id.is_empty() {
         return Err("chain node id cannot be empty".to_string());
     }
     let chain_role = parse_chain_role(config.chain_node_role.as_str())?;
@@ -882,16 +883,19 @@ pub(super) fn build_chain_runtime_args(config: &LauncherConfig) -> Result<Vec<St
     )?;
     let storage_profile = config.chain_storage_profile.parse::<StorageProfile>()?;
     let validators = parse_chain_validators(config.chain_node_validators.as_str())?;
+    let execution_world_dir = chain_execution_world_dir(chain_node_id);
 
     let mut args = vec![
         "--node-id".to_string(),
-        config.chain_node_id.trim().to_string(),
+        chain_node_id.to_string(),
         "--world-id".to_string(),
         resolve_chain_world_id(config),
         "--status-bind".to_string(),
         config.chain_status_bind.trim().to_string(),
         "--storage-profile".to_string(),
         storage_profile.as_str().to_string(),
+        "--execution-world-dir".to_string(),
+        execution_world_dir,
         "--node-role".to_string(),
         chain_role,
         "--node-tick-ms".to_string(),
@@ -919,6 +923,15 @@ pub(super) fn build_chain_runtime_args(config: &LauncherConfig) -> Result<Vec<St
         args.push(validator);
     }
     Ok(args)
+}
+
+fn chain_execution_world_dir(node_id: &str) -> String {
+    Path::new("output")
+        .join("chain-runtime")
+        .join(node_id)
+        .join("reward-runtime-execution-world")
+        .to_string_lossy()
+        .into_owned()
 }
 
 fn resolve_chain_world_id(config: &LauncherConfig) -> String {

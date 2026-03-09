@@ -236,6 +236,10 @@ fn build_world_chain_runtime_args_includes_storage_profile() {
     assert!(args.contains(&"release_default".to_string()));
     assert!(args.contains(&"--world-id".to_string()));
     assert!(args.contains(&"live-sandbox".to_string()));
+    assert!(args.contains(&"--execution-world-dir".to_string()));
+    assert!(
+        args.contains(&"output/chain-runtime/chain-a/reward-runtime-execution-world".to_string())
+    );
 }
 
 #[test]

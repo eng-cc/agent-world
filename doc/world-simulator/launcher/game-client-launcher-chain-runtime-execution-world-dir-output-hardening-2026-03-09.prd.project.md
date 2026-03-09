@@ -5,7 +5,7 @@
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0 (PRD-WORLD_SIMULATOR-033) [test_tier_required]: 完成“launcher execution world 输出路径收敛”PRD 建模与模块文档树回写。
-- [ ] T1 (PRD-WORLD_SIMULATOR-033) [test_tier_required]: 在 `world_game_launcher` / `world_web_launcher` 显式传递 `--execution-world-dir` 到 `output/chain-runtime/<node_id>/reward-runtime-execution-world`，并补齐定向回归测试。
+- [x] T1 (PRD-WORLD_SIMULATOR-033) [test_tier_required]: 在 `world_game_launcher` / `world_web_launcher` 显式传递 `--execution-world-dir` 到 `output/chain-runtime/<node_id>/reward-runtime-execution-world`，并补齐定向回归测试。
 
 ## 依赖
 - `doc/world-simulator/prd.md`
@@ -18,6 +18,6 @@
 
 ## 状态
 - 最近更新：2026-03-09
-- 当前阶段: in_progress
-- 当前任务: T1（代码实现 + 定向回归）
-- 备注: 完成 T1 后需要同步回写模块总项目文档与当日日志。
+- 当前阶段: completed
+- 当前任务: 无
+- 备注: `T0/T1` 已完成，启动器双入口已显式收敛 execution world 输出目录规则。
