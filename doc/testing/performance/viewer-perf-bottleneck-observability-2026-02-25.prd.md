@@ -59,7 +59,7 @@
   - `crates/agent_world_viewer/src/egui_right_panel.rs`
   - `scripts/viewer-owr4-stress.sh`
   - `testing-manual.md`
-  - `doc/testing/performance/viewer-perf-bottleneck-observability-2026-02-25.prd.project.md`
+  - `doc/testing/performance/viewer-perf-bottleneck-observability-2026-02-25.project.md`
 - Edge Cases & Error Handling:
   - runtime 指标为空：保留 `unknown/none`，避免误判 runtime 瓶颈。
   - hotspot 抖动：固定优先级保证结论稳定可解释。

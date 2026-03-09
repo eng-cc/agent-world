@@ -2,7 +2,7 @@
 
 审计轮次: 4
 
-- 对应项目管理文档: doc/headless-runtime/nonviewer/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.prd.project.md
+- 对应项目管理文档: doc/headless-runtime/nonviewer/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.project.md
 
 ## 1. Executive Summary
 - 针对 non-viewer 代码路径的 6 个长稳风险点完成治理：

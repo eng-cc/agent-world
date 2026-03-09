@@ -5,7 +5,7 @@
 ## ROUND-002 物理合并
 - 本文件为主文档（当前权威入口）。
 - `phase8/phase9` 内容已物理合并入本文件，对应阶段文档已合并并从仓库移除（不再保留 archive 目录）。
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-live-full-event-driven-phase10-2026-02-27.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-live-full-event-driven-phase10-2026-02-27.project.md
 
 ## 1. Executive Summary
 - 清理 `agent_world::viewer` 活跃运行链路中残留的 tick 轮询逻辑，统一为事件驱动推进。
@@ -139,7 +139,7 @@
 - Phase 8 达成：script 路径已切换为默认且唯一事件驱动，`timer_pulse` 回退开关与回退链路代码已清理。
 
 #### 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。
 
 ### Phase 9：移除 live tick 入口与脚本透传
 
@@ -214,7 +214,7 @@
 - Phase 9 达成：viewer live 运行链路已去除旧 `tick-ms` 驱动入口，保留 event-driven live 语义；node/runtime 基础共识 tick 机制保持不变。
 
 #### 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

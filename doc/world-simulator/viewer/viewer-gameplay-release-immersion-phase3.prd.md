@@ -1,7 +1,7 @@
 # Viewer 发行体验改造（第三阶段：情绪闭环与世界活性）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase3.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase3.project.md
 
 ## 1. Executive Summary
 - 在第二阶段“反馈/引导/HUD”基础上，继续提升可玩性与情绪价值：
@@ -81,4 +81,4 @@
   - 第三阶段已完成“成就反馈 + Agent 世界反馈”能力建设，Player 体验层形成 HUD/引导/成就/气泡的统一渲染闭环，且未回退为技术面板主导形态。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

@@ -5,7 +5,8 @@
 ## ROUND-002 主从口径
 - 主入口统一指向 `doc/site/github-pages/github-pages-game-engine-reposition-2026-02-25.prd.md`，本文仅维护增量。
 
-- 对应项目管理文档: doc/site/github-pages/github-pages-hero-motion-layer.prd.project.md
+- 对应项目管理文档: doc/site/github-pages/github-pages-hero-motion-layer.project.md
+- 对应标准执行入口: `doc/site/github-pages/github-pages-hero-motion-layer.project.md`
 
 ## 目标
 - 在当前四期精简版基础上，为首屏增加轻量动态背景层，提升科技感辨识度。

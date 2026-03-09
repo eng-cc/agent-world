@@ -2,7 +2,7 @@
 
 审计轮次: 4
 
-- 对应项目管理文档: doc/world-runtime/runtime/runtime-numeric-correctness-phase6.prd.project.md
+- 对应项目管理文档: doc/world-runtime/runtime/runtime-numeric-correctness-phase6.project.md
 
 ## 1. Executive Summary
 - 收口 `agent_world_consensus` 中 membership 协调租约主路径的饱和加法语义，避免长期运行后出现静默夹逼并继续调度。

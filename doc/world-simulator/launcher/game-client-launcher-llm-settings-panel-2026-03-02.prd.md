@@ -1,7 +1,7 @@
 # 客户端启动器设置中心（含 LLM）（2026-03-02）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/launcher/game-client-launcher-llm-settings-panel-2026-03-02.prd.project.md
+- 对应项目管理文档: doc/world-simulator/launcher/game-client-launcher-llm-settings-panel-2026-03-02.project.md
 
 ## 1. Executive Summary
 - 在客户端启动器中提供“完整设置中心”，统一承载游戏、区块链与 LLM 配置入口。
@@ -80,4 +80,4 @@
 - 设置中心内游戏/区块链配置改动即时作用于启动器内存配置（无需额外保存按钮）；LLM 配置保持显式“保存到 config.toml / 从文件重载”流程。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

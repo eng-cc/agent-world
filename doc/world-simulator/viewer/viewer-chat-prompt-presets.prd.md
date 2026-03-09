@@ -1,7 +1,7 @@
 # Agent World Simulator：Viewer Chat 预设 Prompt 编辑区（设计文档）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-chat-prompt-presets.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-chat-prompt-presets.project.md
 
 ## 1. Executive Summary
 - 删除现有 `Prompt Ops` 运营模块入口，避免与聊天链路并行维护两套 Prompt 交互面板。
@@ -59,4 +59,4 @@
   - 缓解：在文档中明确本轮为运行期状态，后续可追加持久化任务。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

@@ -1,10 +1,12 @@
 # world-simulator 文档索引
 
-审计轮次: 5
+审计轮次: 6
 
 ## 入口
 - PRD: `doc/world-simulator/prd.md`
-- 项目管理: `doc/world-simulator/prd.project.md`
+- 设计总览: `doc/world-simulator/design.md`
+- 标准执行入口: `doc/world-simulator/project.md`
+- 兼容执行入口: `doc/world-simulator/project.md`
 - 文件级索引: doc/world-simulator/prd.index.md
 
 ## 主题目录
@@ -16,7 +18,7 @@
 - `m4/`: M4 专题文档。
 
 ## 根目录收口
-- 模块根目录仅保留：`README.md`、`prd.md`、`prd.project.md`、`prd.index.md`。
+- 模块根目录仅保留：`README.md`、`prd.md`、`project.md`、`prd.index.md`。
 - 其余专题文档已迁移到对应主题目录（`viewer/llm/launcher/scenario/kernel/m4`）。
 
 ## 专项手册
@@ -24,8 +26,8 @@
 
 ## 根目录 legacy
 - `doc/world-simulator.prd.md`
-- `doc/world-simulator.prd.project.md`
+- `doc/world-simulator.project.md`
 
 ## 维护约定
 - 新文档按主题目录落位，不再默认平铺在模块根目录。
-- 模块行为变更需同步更新 `prd.md` 与 `prd.project.md`。
+- 模块行为变更需同步更新 `prd.md` 与 `project.md`。

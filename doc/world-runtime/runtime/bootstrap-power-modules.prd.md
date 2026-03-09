@@ -2,7 +2,7 @@
 
 审计轮次: 4
 
-- 对应项目管理文档: doc/world-runtime/runtime/bootstrap-power-modules.prd.project.md
+- 对应项目管理文档: doc/world-runtime/runtime/bootstrap-power-modules.project.md
 
 ## 1. Executive Summary
 - 将“硅基生命出厂自带基础供能能力”落到 runtime 的模块化机制中，避免把外部工业设施硬编码为世界初始事实。

@@ -1,7 +1,7 @@
 # Agent World Simulator：规则 Wasm 化就绪（第二阶段）设计文档
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/kernel/kernel-rule-wasm-readiness.prd.project.md
+- 对应项目管理文档: doc/world-simulator/kernel/kernel-rule-wasm-readiness.project.md
 
 ## 1. Executive Summary
 - 为规则迁移到 wasm 执行器做最小必要准备：让内核 pre-action 规则可读取只读世界上下文。
@@ -42,4 +42,4 @@
 - 上下文可见信息增加导致规则行为漂移：通过 KRH 基线回归测试兜底。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

@@ -1,7 +1,7 @@
 # Viewer Live runtime/world 真 LLM 全量接管（LLM 决策 + 100% 事件/快照 + hard-fail）（2026-03-05）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-live-runtime-world-llm-full-bridge-2026-03-05.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-live-runtime-world-llm-full-bridge-2026-03-05.project.md
 
 ## 1. Executive Summary
 - Problem Statement: runtime live 仍存在启发式 sidecar 与不完整事件/快照映射，导致“LLM 模式”与实际行为不一致、可观测性不足、回归风险不可控。优先级来源: 用户明确为 P0（真实 LLM 预期不一致）。对齐 `PRD-WORLD_SIMULATOR-016~018` 迁移主线作为阶段目标收口。

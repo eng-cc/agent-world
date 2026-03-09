@@ -1,16 +1,17 @@
 # 文档迁移并行协作方案（2026-03-03）
 
 审计轮次: 4
+- 对应标准执行入口: `doc/engineering/doc-migration/legacy-doc-migration-collaboration-2026-03-03.project.md`
 
 ## 1. Executive Summary
 - Problem Statement: 当前仓库仍有 391 份老格式专题项目文档待迁移，单人串行推进成本高、周期长，已成为文档治理的关键瓶颈。
 - Proposed Solution: 采用四人并行迁移机制，按目录前缀拆分互斥范围，统一迁移原则、提交流程、复核标准与进度口径。
 - Success Criteria:
-  - SC-1: `391/391` 待迁移目标全部完成新命名迁移（`*.md -> *.prd.md`，`*.project.md -> *.prd.project.md`）。
+  - SC-1: `391/391` 待迁移目标全部完成新命名迁移（`*.md -> *.prd.md`，`*.project.md -> *.project.md`）。
   - SC-2: 每份迁移后的 PRD 均对齐 strict 6 章结构，并附“原文约束点映射（内容保真）”。
   - SC-3: 每个迁移任务均满足“一任务一提交 + devlog + 文档治理校验”闭环。
   - SC-4: 四人并行迁移过程中文件冲突数为 0（目录边界互斥）。
-  - SC-5: 模块级 `prd.md` / `prd.project.md` 对专题迁移任务保持 100% PRD-ID 映射。
+  - SC-5: 模块级 `prd.md` / `project.md` 对专题迁移任务保持 100% PRD-ID 映射。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -27,8 +28,8 @@
   - PRD-ENGINEERING-007: As a 质量复核人, I want measurable acceptance and evidence format, so that migrated docs remain content-faithful and auditable.
 - Critical User Flows:
   1. Flow-ENG-MIG-001: `生成待迁移快照 -> 按目录切片 -> 分配 Owner-A/B/C/D -> 冻结责任边界`
-  2. Flow-ENG-MIG-002: `Owner 领取单篇文档 -> 阅读旧 .md/.project.md -> 人工重写 -> 重命名为 .prd/.prd.project`
-  3. Flow-ENG-MIG-003: `更新模块 prd/prd.project -> 追加 devlog -> 执行 doc-governance-check -> 单任务提交`
+  2. Flow-ENG-MIG-002: `Owner 领取单篇文档 -> 阅读旧 .md/.project.md -> 人工重写 -> 重命名为 .prd/.project`
+  3. Flow-ENG-MIG-003: `更新模块 prd/project -> 追加 devlog -> 执行 doc-governance-check -> 单任务提交`
   4. Flow-ENG-MIG-004: `每日汇总 -> 更新燃尽 -> 调整下一个批次`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
@@ -51,7 +52,7 @@
 - Tool Requirements:
   - 文件扫描：`find`, `rg`
   - 治理校验：`./scripts/doc-governance-check.sh`
-  - 进度追踪：模块 `prd.project.md` 与 `doc/devlog/YYYY-MM-DD.md`
+  - 进度追踪：模块 `project.md` 与 `doc/devlog/YYYY-MM-DD.md`
 - Evaluation Strategy:
   - 以“迁移完成率、抽检通过率、冲突率、回退率”四个指标评估并行迁移质量。
 
@@ -59,9 +60,9 @@
 - Architecture Overview: 采用“模块级追踪 + 专题级执行 + 日志级证据”的三层治理架构。模块主文档负责总追踪，专题文档负责逐篇迁移执行，devlog 负责时序证据。
 - Integration Points:
   - 协作主文档：`doc/engineering/doc-migration/legacy-doc-migration-collaboration-2026-03-03.prd.md`
-  - 协作项目文档：`doc/engineering/doc-migration/legacy-doc-migration-collaboration-2026-03-03.prd.project.md`
+  - 协作项目文档：`doc/engineering/doc-migration/legacy-doc-migration-collaboration-2026-03-03.project.md`
   - 待迁移清单快照：`doc/engineering/doc-migration/legacy-doc-migration-backlog-2026-03-03.md`
-  - 模块追踪：`doc/engineering/prd.md`、`doc/engineering/prd.project.md`
+  - 模块追踪：`doc/engineering/prd.md`、`doc/engineering/project.md`
   - 任务日志：`doc/devlog/2026-03-03.md`
 - Owner-C 执行分批（TASK-ENGINEERING-013）：
   - Batch-C2: `doc/headless-runtime/**`（4 篇）
@@ -70,7 +71,7 @@
 - Edge Cases & Error Handling:
   - 分工冲突：若同一文档被多人认领，以协作项目文档登记的 Owner 为唯一执行者，其余回退。
   - 内容不保真：复核发现约束缺失时，任务状态回退为 `in_progress`，不得合并。
-  - 命名偏差：未转为 `.prd.md/.prd.project.md` 的提交视为未完成。
+  - 命名偏差：未转为 `.prd.md/.project.md` 的提交视为未完成。
   - 引用断链：迁移后引用不可达时必须在同提交修复。
   - 统计漂移：待迁移池口径变更时必须更新快照日期与差异说明。
   - 根入口 redirect 争议：对已切为 legacy redirect 的根入口项目文档允许拆分为独立子阶段执行，但必须在项目文档标注“剩余项 + 计划日期”。

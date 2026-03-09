@@ -2,7 +2,7 @@
 
 审计轮次: 4
 
-- 对应项目管理文档: doc/world-runtime/runtime/runtime-numeric-correctness-phase10.prd.project.md
+- 对应项目管理文档: doc/world-runtime/runtime/runtime-numeric-correctness-phase10.project.md
 
 ## 1. Executive Summary
 - 收口 `membership_recovery/replay_archive_tiered` 与 `membership_recovery/replay_audit` 中剩余的高风险饱和算术，避免长期运行下的静默数值失真。

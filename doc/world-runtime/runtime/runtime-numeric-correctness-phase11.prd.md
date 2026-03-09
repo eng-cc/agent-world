@@ -2,7 +2,7 @@
 
 审计轮次: 4
 
-- 对应项目管理文档: doc/world-runtime/runtime/runtime-numeric-correctness-phase11.prd.project.md
+- 对应项目管理文档: doc/world-runtime/runtime/runtime-numeric-correctness-phase11.project.md
 
 ## 1. Executive Summary
 - 收口 `membership_recovery/replay.rs` 中调度间隔、策略冷却、rollback 冷却三条时间门控的饱和减法语义。

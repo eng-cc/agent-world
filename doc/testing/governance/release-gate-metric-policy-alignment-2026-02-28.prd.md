@@ -2,7 +2,7 @@
 
 审计轮次: 4
 
-- 对应项目管理文档: doc/testing/governance/release-gate-metric-policy-alignment-2026-02-28.prd.project.md
+- 对应项目管理文档: doc/testing/governance/release-gate-metric-policy-alignment-2026-02-28.project.md
 
 ## 1. Executive Summary
 - Problem Statement: S9/S10 在 `world_chain_runtime` 路径下存在“闭环已运行但指标缺失”的门禁误判，导致发布风险评估失真。

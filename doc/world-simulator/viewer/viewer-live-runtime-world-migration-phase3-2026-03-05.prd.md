@@ -1,7 +1,7 @@
 # Viewer Live runtime/world 接管 Phase 3（action 映射覆盖 + 旧分支移除）（2026-03-05）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase3-2026-03-05.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase3-2026-03-05.project.md
 
 ## 1. Executive Summary
 - Problem Statement: Phase 2 后 runtime live 已打通 `LLM/chat/prompt`，但动作映射覆盖仍有缺口，且 `world_viewer_live` 保留 simulator 启动分支，持续造成双轨体验与回归成本。

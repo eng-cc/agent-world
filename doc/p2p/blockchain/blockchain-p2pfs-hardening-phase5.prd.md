@@ -36,7 +36,7 @@
 - Architecture Overview: 保持原文技术边界，按 strict PRD 结构重排。
 - Integration Points:
   - `doc/p2p/blockchain/blockchain-p2pfs-hardening-phase5.prd.md`
-  - `doc/p2p/blockchain/blockchain-p2pfs-hardening-phase5.prd.project.md`
+  - `doc/p2p/blockchain/blockchain-p2pfs-hardening-phase5.project.md`
   - `testing-manual.md`
 - Edge Cases & Error Handling: 命名不一致、章节缺失、引用断链需在同提交修复。
 - Non-Functional Requirements: PRD-ID/任务映射完整；治理检查通过。

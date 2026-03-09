@@ -1,7 +1,7 @@
 # Viewer 与节点彻底拆分（2026-02-28）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-node-hard-decouple-2026-02-28.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-node-hard-decouple-2026-02-28.project.md
 
 ## 1. Executive Summary
 - 将 `world_viewer_live` 从“可内嵌节点运行时”的混合进程，重构为纯 Viewer/游戏服务进程。
@@ -49,4 +49,4 @@
   - 缓解：后续补一轮“归档/删除死代码”专项。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

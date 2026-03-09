@@ -1,10 +1,12 @@
 # testing 文档索引
 
-审计轮次: 4
+审计轮次: 6
 
 ## 入口
 - PRD: `doc/testing/prd.md`
-- 项目管理: `doc/testing/prd.project.md`
+- 设计总览: `doc/testing/design.md`
+- 标准执行入口: `doc/testing/project.md`
+- 兼容执行入口: `doc/testing/project.md`
 - 文件级索引: doc/testing/prd.index.md
 
 ## 关键文档
@@ -16,7 +18,7 @@
 - 门禁策略与治理：`doc/testing/governance/`、`doc/testing/chaos-plans/`
 
 ## 根目录收口
-- 模块根目录仅保留：`README.md`、`prd.md`、`prd.project.md`、`prd.index.md`。
+- 模块根目录仅保留：`README.md`、`prd.md`、`project.md`、`prd.index.md`。
 - 其余专题文档按主题下沉到 `ci/launcher/longrun/performance/manual/governance`。
 
 ## 维护约定

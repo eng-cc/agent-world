@@ -1,6 +1,7 @@
 # Legacy Redirect: world-runtime.prd
 
-审计轮次: 4
+审计轮次: 6
+- 对应标准执行入口: `doc/world-runtime.project.md`
 ## 目标
 - 将根目录 `doc/world-runtime.prd.md` 的 redirect 入口迁移为 `.prd` 命名。
 - 明确 world-runtime 模块主入口，避免与根目录历史入口混淆。
@@ -15,10 +16,10 @@
 
 ## 接口 / 数据
 - 根目录 redirect：`doc/world-runtime.prd.md`
-- 根目录项目管理 redirect：`doc/world-runtime.prd.project.md`
+- 根目录项目管理 redirect：`doc/world-runtime.project.md`
 - 当前模块主入口：
   - `doc/world-runtime/prd.md`
-  - `doc/world-runtime/prd.project.md`
+  - `doc/world-runtime/project.md`
 - 历史完整总览：不再保留归档目录；如需追溯参考 `doc/world-runtime/prd.index.md`。
 
 ## 里程碑

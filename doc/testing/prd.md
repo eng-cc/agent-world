@@ -8,12 +8,12 @@
 
 ## 范围
 - 覆盖 testing 模块当前能力设计、接口边界、测试口径与演进路线。
-- 覆盖 PRD-ID 到 `doc/testing/prd.project.md` 的任务映射。
+- 覆盖 PRD-ID 到 `doc/testing/project.md` 的任务映射。
 - 不覆盖实现代码逐行说明与历史过程记录。
 
 ## 接口 / 数据
 - PRD 主入口: `doc/testing/prd.md`
-- 项目管理入口: `doc/testing/prd.project.md`
+- 项目管理入口: `doc/testing/project.md`
 - 文件级索引: doc/testing/prd.index.md
 - 追踪主键: `PRD-TESTING-xxx`
 - 测试与发布参考: `testing-manual.md`
@@ -34,7 +34,7 @@
   - SC-2: required/full 门禁持续可用且与手册口径一致。
   - SC-3: Web UI 闭环与分布式长跑在发布流程中有可追溯证据。
   - SC-4: 测试任务 100% 映射 PRD-TESTING-ID。
-  - SC-5: 活跃 testing 专题文档按批次完成人工迁移到 strict schema，并统一 `*.prd.md` / `*.prd.project.md` 命名。
+  - SC-5: 活跃 testing 专题文档按批次完成人工迁移到 strict schema，并统一 `*.prd.md` / `*.project.md` 命名。
   - SC-6: builtin wasm（m1/m4/m5）hash 发布链路具备跨 runner 对账、required check 保护与本地只读校验策略。
 
 ## 2. User Experience & Functionality
@@ -57,7 +57,7 @@
   1. Flow-TST-001: `识别改动类型 -> 匹配 S0~S10 -> 执行 required -> 输出结果`
   2. Flow-TST-002: `发布前执行 full 套件 -> 汇总命令/日志/截图 -> 生成证据包`
   3. Flow-TST-003: `线上问题复盘 -> 回填触发矩阵 -> 增加回归用例 -> 验证闭环`
-  4. Flow-TST-004: `逐篇阅读 legacy 专题文档 -> 按 strict schema 人工重写 -> 改名为 .prd/.prd.project -> 回归校验`
+  4. Flow-TST-004: `逐篇阅读 legacy 专题文档 -> 按 strict schema 人工重写 -> 改名为 .prd/.project -> 回归校验`
   5. Flow-TST-005: `触发 wasm hash 校验 -> 跨 runner 对账 -> required check 放行/阻断 -> 发布链路收口`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |

@@ -2,7 +2,7 @@
 
 审计轮次: 4
 
-- 对应项目管理文档: doc/scripts/wasm/builtin-wasm-nightly-build-std.prd.project.md
+- 对应项目管理文档: doc/scripts/wasm/builtin-wasm-nightly-build-std.project.md
 
 ## 目标
 - 采用 nightly + `-Z build-std` 重建 wasm 目标 std，实现 builtin wasm 构建输入闭环可控。

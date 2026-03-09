@@ -2,7 +2,7 @@
 
 审计轮次: 4
 
-- 对应项目管理文档: doc/testing/manual/systematic-application-testing-manual.prd.project.md
+- 对应项目管理文档: doc/testing/manual/systematic-application-testing-manual.project.md
 
 ## 1. Executive Summary
 - Problem Statement: 测试分层模型、触发矩阵与证据标准若分散在多处文档/脚本，容易出现执行口径漂移，导致“通过门禁但风险未覆盖”。
@@ -12,7 +12,7 @@
   - SC-2: 手册、脚本入口与 CI 门禁口径一致，不出现冲突说明。
   - SC-3: Web 闭环分册与主手册引用稳定，执行路径唯一。
   - SC-4: 改动路径到必跑套件映射可复用，发布前可直接判定 required/full 组合。
-  - SC-5: 文档迁移后命名统一为 `.prd.md/.prd.project.md`，并通过文档治理检查。
+  - SC-5: 文档迁移后命名统一为 `.prd.md/.project.md`，并通过文档治理检查。
 
 ## 2. User Experience & Functionality
 - User Personas:

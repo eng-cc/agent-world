@@ -2,7 +2,7 @@
 
 审计轮次: 4
 
-- 对应项目管理文档: doc/testing/ci/ci-m1-multi-runner-required-check-protection.prd.project.md
+- 对应项目管理文档: doc/testing/ci/ci-m1-multi-runner-required-check-protection.project.md
 
 ## 1. Executive Summary
 - Problem Statement: `Builtin Wasm m1 Multi Runner / verify-m1-multi-runner-summary` 若未被固化为 required check，会导致分支保护配置依赖手工操作并产生漂移风险。

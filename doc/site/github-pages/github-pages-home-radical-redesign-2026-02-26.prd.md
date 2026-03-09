@@ -1,7 +1,8 @@
 # GitHub Pages 首页激进改造（2026-02-26）设计文档
 审计轮次: 5
 
-- 对应项目管理文档: doc/site/github-pages/github-pages-home-radical-redesign-2026-02-26.prd.project.md
+- 对应项目管理文档: doc/site/github-pages/github-pages-home-radical-redesign-2026-02-26.project.md
+- 对应标准执行入口: `doc/site/github-pages/github-pages-home-radical-redesign-2026-02-26.project.md`
 
 ## ROUND-002 主从口径
 - 主入口：`doc/site/github-pages/github-pages-game-engine-reposition-2026-02-25.prd.md`

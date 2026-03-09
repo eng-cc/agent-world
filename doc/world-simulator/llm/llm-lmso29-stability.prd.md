@@ -1,7 +1,7 @@
 # Agent World Simulator：LMSO29 可用性与稳定性收敛（设计文档）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/llm/llm-lmso29-stability.prd.project.md
+- 对应项目管理文档: doc/world-simulator/llm/llm-lmso29-stability.project.md
 
 ## 1. Executive Summary
 - 在保持链路可用（`llm_errors=0`、`parse_errors=0`）前提下，回收 LMSO28 后的策略稳定性波动。
@@ -65,4 +65,4 @@
 - 在保持 `llm_errors=0` 的前提下，逐步回收 `llm_input_chars_max` 与 `module_call` 波动。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

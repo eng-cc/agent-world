@@ -57,7 +57,7 @@
   - `doc/testing/chaos-plans/p2p-soak-endurance-full-chaos-v1.json`
   - `scripts/p2p-longrun-soak.sh`
   - `testing-manual.md`（S9）
-  - `doc/testing/longrun/p2p-longrun-endurance-chaos-template-2026-02-25.prd.project.md`
+  - `doc/testing/longrun/p2p-longrun-endurance-chaos-template-2026-02-25.project.md`
 - Edge Cases & Error Handling:
   - 事件过密噪声：按阶段分布注入，避免长期观测被高频扰动淹没。
   - 模板不可复现：固定 `id` 与时间轴，作为跨版本比较基线。

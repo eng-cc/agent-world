@@ -39,7 +39,7 @@
 - Architecture Overview: 保持原文技术边界，按 strict PRD 结构重排。
 - Integration Points:
   - `doc/p2p/node/node-contribution-points-multi-node-closure-test.prd.md`
-  - `doc/p2p/node/node-contribution-points-multi-node-closure-test.prd.project.md`
+  - `doc/p2p/node/node-contribution-points-multi-node-closure-test.project.md`
   - `testing-manual.md`
 - Edge Cases & Error Handling: 命名不一致、章节缺失、引用断链需在同提交修复。
 - Non-Functional Requirements: PRD-ID/任务映射完整；治理检查通过。

@@ -1,7 +1,7 @@
 # 客户端启动器优雅退出与级联进程关闭（2026-03-02）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/launcher/game-client-launcher-graceful-stop-2026-03-02.prd.project.md
+- 对应项目管理文档: doc/world-simulator/launcher/game-client-launcher-graceful-stop-2026-03-02.project.md
 
 ## 1. Executive Summary
 - 在桌面启动器点击“停止”或直接关闭窗口时，优先让 `world_game_launcher` 走优雅退出路径。
@@ -51,4 +51,4 @@
 - 已补充停止逻辑单测，并将测试拆分到独立文件，`main.rs` 行数回落到约束范围内。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

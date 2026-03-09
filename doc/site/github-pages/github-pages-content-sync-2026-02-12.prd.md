@@ -6,7 +6,8 @@
 - 主入口文档：`doc/site/github-pages/github-pages-game-engine-reposition-2026-02-25.prd.md`。
 - 本文件仅维护内容状态同步增量内容。
 
-- 对应项目管理文档: doc/site/github-pages/github-pages-content-sync-2026-02-12.prd.project.md
+- 对应项目管理文档: doc/site/github-pages/github-pages-content-sync-2026-02-12.project.md
+- 对应标准执行入口: `doc/site/github-pages/github-pages-content-sync-2026-02-12.project.md`
 
 ## 目标
 - 让展示站文案与当前代码/项目阶段保持一致，避免“路线图与实际进度不一致”。
@@ -30,7 +31,7 @@
 - 文档文件
   - `README.md`
 - 一致性依据
-  - `doc/world-simulator.prd.project.md` 当前阶段与下一步状态。
+  - `doc/world-simulator.project.md` 当前阶段与下一步状态。
 
 ## 里程碑
 - M1：文档与任务拆解

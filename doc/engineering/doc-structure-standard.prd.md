@@ -2,7 +2,8 @@
 
 审计轮次: 4
 
-- 对应项目管理文档（当前仓库文件）: `doc/engineering/doc-structure-standard.prd.project.md`
+- 对应项目管理文档（当前仓库文件）: `doc/engineering/doc-structure-standard.project.md`
+- 对应标准执行入口: `doc/engineering/doc-structure-standard.project.md`
 - 规范目标命名: `<topic>.project.md`
 - 对应规范正文: `doc/engineering/doc-structure-standard.design.md`
 
@@ -24,7 +25,7 @@
 - 标准载体：
   - 需求与边界：`doc/engineering/doc-structure-standard.prd.md`
   - 规范正文：`doc/engineering/doc-structure-standard.design.md`
-  - 执行状态（当前仓库文件）：`doc/engineering/doc-structure-standard.prd.project.md`
+  - 执行状态（当前仓库文件）：`doc/engineering/doc-structure-standard.project.md`
   - 规范目标命名：`<topic>.project.md`
 
 ## 里程碑

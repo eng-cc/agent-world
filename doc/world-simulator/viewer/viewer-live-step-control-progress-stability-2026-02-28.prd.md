@@ -1,7 +1,7 @@
 # Viewer Live `step` 控制推进稳定性修复（2026-02-28）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-live-step-control-progress-stability-2026-02-28.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-live-step-control-progress-stability-2026-02-28.project.md
 
 ## 1. Executive Summary
 - 复现并收敛 Web 可玩性测试中 `step` 控制“accepted 但无推进”的不稳定问题。
@@ -38,4 +38,4 @@
 - 若后续要求 `step(count=n)` 强语义（严格 n 次可见推进），可能需要引入请求-确认协议或显式 completion ack。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

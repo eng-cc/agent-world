@@ -2,7 +2,7 @@
 
 审计轮次: 4
 
-- 对应项目管理文档: doc/world-runtime/runtime/runtime-numeric-correctness-phase15.prd.project.md
+- 对应项目管理文档: doc/world-runtime/runtime/runtime-numeric-correctness-phase15.project.md
 
 ## 1. Executive Summary
 - 收口 `membership_recovery/replay_archive_federated.rs` 中剩余的关键聚合计数饱和算术。

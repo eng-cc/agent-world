@@ -3,9 +3,9 @@
 审计轮次: 4
 
 ## 快照范围
-- 统计口径：`find doc -type f -name '*.project.md' ! -name '*.prd.project.md'`，排除模块主项目文档 `doc/<module>/prd.project.md`（已剔除 archive 目录条目）。
+- 统计口径：`find doc -type f -name '*.project.md' ! -name '*.project.md'`，排除模块主项目文档 `doc/<module>/project.md`（已剔除 archive 目录条目）。
 - 快照总量：303 篇。
-- 目标：将每对旧文档 `X.md / X.project.md` 迁移为 `X.prd.md / X.prd.project.md`，并完成内容保真重写。
+- 目标：将每对旧文档 `X.md / X.project.md` 迁移为 `X.prd.md / X.project.md`，并完成内容保真重写。
 
 ## 分工总览
 - Owner-A: `doc/world-simulator/**`（146 篇）
@@ -234,36 +234,36 @@
 - `doc/p2p/viewer-live/world-viewer-live-release-locked-launch-2026-02-23.project.md`
 
 ## Owner-C 清单（30）
-- `doc/headless-runtime/nonviewer/nonviewer-design-alignment-closure-2026-02-25.prd.project.md`
-- `doc/headless-runtime/nonviewer/nonviewer-design-alignment-review-2026-02-25.prd.project.md`
-- `doc/headless-runtime/nonviewer/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.prd.project.md`
-- `doc/headless-runtime/nonviewer/nonviewer-onchain-auth-protocol-hardening.prd.project.md`
-- `doc/world-runtime/governance/zero-trust-governance-receipt-hardening-2026-02-26.prd.project.md`
-- `doc/world-runtime/module/agent-default-modules.prd.project.md`
-- `doc/world-runtime/module/module-storage.prd.project.md`
-- `doc/world-runtime/module/module-subscription-filters.prd.project.md`
-- `doc/world-runtime/runtime/bootstrap-power-modules.prd.project.md`
-- `doc/world-runtime/runtime/runtime-infinite-sequence-rollover.prd.project.md`
-- `doc/world-runtime/runtime/runtime-numeric-correctness-phase1.prd.project.md`
-- `doc/world-runtime/runtime/runtime-numeric-correctness-phase10.prd.project.md`
-- `doc/world-runtime/runtime/runtime-numeric-correctness-phase11.prd.project.md`
-- `doc/world-runtime/runtime/runtime-numeric-correctness-phase12.prd.project.md`
-- `doc/world-runtime/runtime/runtime-numeric-correctness-phase13.prd.project.md`
-- `doc/world-runtime/runtime/runtime-numeric-correctness-phase14.prd.project.md`
-- `doc/world-runtime/runtime/runtime-numeric-correctness-phase15.prd.project.md`
-- `doc/world-runtime/runtime/runtime-numeric-correctness-phase2.prd.project.md`
-- `doc/world-runtime/runtime/runtime-numeric-correctness-phase3.prd.project.md`
-- `doc/world-runtime/runtime/runtime-numeric-correctness-phase4.prd.project.md`
-- `doc/world-runtime/runtime/runtime-numeric-correctness-phase5.prd.project.md`
-- `doc/world-runtime/runtime/runtime-numeric-correctness-phase6.prd.project.md`
-- `doc/world-runtime/runtime/runtime-numeric-correctness-phase7.prd.project.md`
-- `doc/world-runtime/runtime/runtime-numeric-correctness-phase8.prd.project.md`
-- `doc/world-runtime/runtime/runtime-numeric-correctness-phase9.prd.project.md`
-- `doc/world-runtime/wasm/wasm-agent-os-alignment-hardening.prd.project.md`
-- `doc/world-runtime/wasm/wasm-executor.prd.project.md`
-- `doc/world-runtime/wasm/wasm-sandbox-security-hardening.prd.project.md`
-- `doc/world-runtime/wasm/wasm-sdk-no-std.prd.project.md`
-- `doc/world-runtime/wasm/wasm-sdk-wire-types-dedup.prd.project.md`
+- `doc/headless-runtime/nonviewer/nonviewer-design-alignment-closure-2026-02-25.project.md`
+- `doc/headless-runtime/nonviewer/nonviewer-design-alignment-review-2026-02-25.project.md`
+- `doc/headless-runtime/nonviewer/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.project.md`
+- `doc/headless-runtime/nonviewer/nonviewer-onchain-auth-protocol-hardening.project.md`
+- `doc/world-runtime/governance/zero-trust-governance-receipt-hardening-2026-02-26.project.md`
+- `doc/world-runtime/module/agent-default-modules.project.md`
+- `doc/world-runtime/module/module-storage.project.md`
+- `doc/world-runtime/module/module-subscription-filters.project.md`
+- `doc/world-runtime/runtime/bootstrap-power-modules.project.md`
+- `doc/world-runtime/runtime/runtime-infinite-sequence-rollover.project.md`
+- `doc/world-runtime/runtime/runtime-numeric-correctness-phase1.project.md`
+- `doc/world-runtime/runtime/runtime-numeric-correctness-phase10.project.md`
+- `doc/world-runtime/runtime/runtime-numeric-correctness-phase11.project.md`
+- `doc/world-runtime/runtime/runtime-numeric-correctness-phase12.project.md`
+- `doc/world-runtime/runtime/runtime-numeric-correctness-phase13.project.md`
+- `doc/world-runtime/runtime/runtime-numeric-correctness-phase14.project.md`
+- `doc/world-runtime/runtime/runtime-numeric-correctness-phase15.project.md`
+- `doc/world-runtime/runtime/runtime-numeric-correctness-phase2.project.md`
+- `doc/world-runtime/runtime/runtime-numeric-correctness-phase3.project.md`
+- `doc/world-runtime/runtime/runtime-numeric-correctness-phase4.project.md`
+- `doc/world-runtime/runtime/runtime-numeric-correctness-phase5.project.md`
+- `doc/world-runtime/runtime/runtime-numeric-correctness-phase6.project.md`
+- `doc/world-runtime/runtime/runtime-numeric-correctness-phase7.project.md`
+- `doc/world-runtime/runtime/runtime-numeric-correctness-phase8.project.md`
+- `doc/world-runtime/runtime/runtime-numeric-correctness-phase9.project.md`
+- `doc/world-runtime/wasm/wasm-agent-os-alignment-hardening.project.md`
+- `doc/world-runtime/wasm/wasm-executor.project.md`
+- `doc/world-runtime/wasm/wasm-sandbox-security-hardening.project.md`
+- `doc/world-runtime/wasm/wasm-sdk-no-std.project.md`
+- `doc/world-runtime/wasm/wasm-sdk-wire-types-dedup.project.md`
 
 ## Owner-D 清单（57）
 - `doc/engineering/documentation-governance-engineering-closure-2026-02-27.project.md`

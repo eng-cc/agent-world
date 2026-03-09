@@ -59,7 +59,7 @@
   - `crates/agent_world/src/simulator/tests/runner.rs`
   - `doc/testing/performance/runtime-performance-observability-foundation-2026-02-25.prd.md`
   - `testing-manual.md`
-  - `doc/testing/performance/runtime-performance-observability-llm-api-decoupling-2026-02-25.prd.project.md`
+  - `doc/testing/performance/runtime-performance-observability-llm-api-decoupling-2026-02-25.project.md`
 - Edge Cases & Error Handling:
   - `llm_diagnostics.latency_ms` 缺失：`llm_api` 可能低估，但不影响本地结论稳定性。
   - `llm_api_ms >= total_decision_ms`：`decision_local` 钳制为 `0`。

@@ -55,7 +55,7 @@
 - Integration Points:
   - `crates/agent_world/src/bin/world_chain_runtime.rs`
   - `crates/agent_world/src/bin/world_chain_runtime/world_chain_runtime_tests.rs`
-  - `doc/testing/longrun/chain-runtime-feedback-replication-network-autowire-2026-03-02.prd.project.md`
+  - `doc/testing/longrun/chain-runtime-feedback-replication-network-autowire-2026-03-02.project.md`
   - `doc/devlog/2026-03-02.md`
 - Edge Cases & Error Handling:
   - 无 peers 网络：启用本地 fallback 保证单机闭环可用。

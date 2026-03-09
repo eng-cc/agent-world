@@ -2,7 +2,7 @@
 
 审计轮次: 4
 
-- 对应项目管理文档: doc/testing/manual/web-ui-playwright-closure-manual.prd.project.md
+- 对应项目管理文档: doc/testing/manual/web-ui-playwright-closure-manual.project.md
 
 ## 1. Executive Summary
 - Problem Statement: Web UI 验收若缺少统一启动、采样、门禁与故障分级，容易出现“看起来可用但证据不可复现”的假通过。
@@ -12,7 +12,7 @@
   - SC-2: 验收口径强制 `open ... --headed`，并阻断 `SwiftShader/software rendering`。
   - SC-3: 至少输出 `snapshot + console + screenshot + state` 证据。
   - SC-4: 发布验收脚本（`viewer-release-qa-loop/full-coverage`）可直接复用手册约束。
-  - SC-5: 文档迁移后统一 `.prd.md/.prd.project.md` 命名并通过治理检查。
+  - SC-5: 文档迁移后统一 `.prd.md/.project.md` 命名并通过治理检查。
 
 ## 2. User Experience & Functionality
 - User Personas:

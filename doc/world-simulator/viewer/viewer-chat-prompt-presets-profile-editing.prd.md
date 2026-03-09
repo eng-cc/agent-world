@@ -1,7 +1,7 @@
 # Agent World Simulator：Chat Panel 预设区扩展 Agent Prompt 字段编辑（设计文档）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-chat-prompt-presets-profile-editing.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-chat-prompt-presets-profile-editing.project.md
 
 ## 1. Executive Summary
 - 在现有最右侧 Chat Panel 的“预设 Prompt”区域内，直接提供 `system prompt`、`短期目标`、`长期目标` 的可编辑能力。
@@ -56,4 +56,4 @@
   - 缓解：子区分组 + 默认折叠，输入框行数保持紧凑。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

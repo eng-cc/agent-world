@@ -6,7 +6,8 @@
 - 主入口文档：`doc/readme/gap/readme-gap-distributed-prod-hardening-gap12345.prd.md`。
 - 本文件仅维护本专题增量内容。
 
-- 对应项目管理文档: doc/readme/gap/readme-gap-infra-exec-compiler-sandbox.prd.project.md
+- 对应项目管理文档: doc/readme/gap/readme-gap-infra-exec-compiler-sandbox.project.md
+- 对应标准执行入口: `doc/readme/gap/readme-gap-infra-exec-compiler-sandbox.project.md`
 
 ## 目标
 - 收口 README 中“模块可安装至基础设施”的运行时差距：不仅记录安装目标，还要在 runtime tick 中形成可执行语义。

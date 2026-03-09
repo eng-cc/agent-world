@@ -1,7 +1,7 @@
 # Viewer 发行体验改造（第五阶段：沉浸式布局与新手闭环）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase5.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase5.project.md
 
 ## 1. Executive Summary
 - 进一步把 Viewer 的 Player 体验从“工具操作界面”推进到“可发行游戏界面”：
@@ -79,4 +79,4 @@
   - Player 打开面板时宽度受预算约束，主场景可见面积相较之前更稳定。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

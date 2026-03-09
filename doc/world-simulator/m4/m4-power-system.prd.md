@@ -1,7 +1,7 @@
 # M4 电力子系统设计文档
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/m4/m4-power-system.prd.project.md
+- 对应项目管理文档: doc/world-simulator/m4/m4-power-system.project.md
 
 > 注：本分册为历史设计记录。自 2026-03-06 起 `PowerStorage`/`power_storages` 已在 simulator + viewer + scripts 全链路下线，现行口径以 `doc/world-simulator/kernel/power-storage-complete-removal-2026-03-06.prd.md` 为准。
 
@@ -310,4 +310,4 @@ enum ConsumeReason {
    - 发电设施故障与恢复
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

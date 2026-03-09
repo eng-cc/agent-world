@@ -8,7 +8,8 @@
 ## ROUND-002 主从口径
 - 主入口统一指向 `doc/site/github-pages/github-pages-game-engine-reposition-2026-02-25.prd.md`，本文仅维护增量。
 
-- 对应项目管理文档: doc/site/github-pages/github-pages-content-sync-2026-02-25.prd.project.md
+- 对应项目管理文档: doc/site/github-pages/github-pages-content-sync-2026-02-25.project.md
+- 对应标准执行入口: `doc/site/github-pages/github-pages-content-sync-2026-02-25.project.md`
 
 ## 目标
 - 基于当前仓库文档与代码现状，修正 GitHub Pages 中已过时的信息口径。
@@ -32,7 +33,7 @@
 ## 接口/数据
 - 输入基线
   - `doc/world-simulator/viewer/viewer-manual.md`
-  - `doc/world-simulator.prd.project.md`
+  - `doc/world-simulator.project.md`
   - `doc/world-simulator/viewer/viewer-generic-focus-targets.prd.md`
   - `doc/world-simulator/viewer/viewer-web-test-api-step-control-2026-02-24.prd.md`
   - `crates/agent_world/src/bin/world_viewer_live.rs`

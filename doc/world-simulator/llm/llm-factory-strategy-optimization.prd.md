@@ -1,7 +1,7 @@
 # LLM 工厂闭环策略稳定性优化（llm_bootstrap）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/llm/llm-factory-strategy-optimization.prd.project.md
+- 对应项目管理文档: doc/world-simulator/llm/llm-factory-strategy-optimization.project.md
 
 ## 1. Executive Summary
 - 在 `llm_bootstrap`（20 tick 默认口径）下，将“可建厂但未稳定排产”的问题从能力缺口转为可度量、可回归的策略问题。
@@ -201,4 +201,4 @@
 - 可观测性噪声风险：回执过多可能污染 prompt；通过仅在“决策类型发生变化”时回灌降低噪声。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

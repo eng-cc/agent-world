@@ -1,7 +1,7 @@
 # Viewer 控制反馈 P0：Step 卡住恢复与强反馈（2026-02-27）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-control-feedback-step-recovery-p0-2026-02-27.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-control-feedback-step-recovery-p0-2026-02-27.project.md
 
 ## 1. Executive Summary
 - 修复 `step` 出现 `accepted` 但无推进（`tick/eventSeq` 不变）时的玩家失控感。
@@ -52,4 +52,4 @@
 - 剩余：B 段仍受 `seek` 偶发无推进影响，后续可单独立项治理 `seek` 语义一致性。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

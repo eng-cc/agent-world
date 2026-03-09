@@ -1,7 +1,7 @@
 # Viewer 视觉外发就绪硬化（2026-03-01）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-visual-release-readiness-hardening-2026-03-01.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-visual-release-readiness-hardening-2026-03-01.project.md
 
 ## 1. Executive Summary
 - 把当前 Viewer 从“技术演示可看”推进到“可对外展示可控”的视觉验收状态。
@@ -59,4 +59,4 @@
   - 缓解：仅用于外发抓帧/演示命令，不改默认开发态行为。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

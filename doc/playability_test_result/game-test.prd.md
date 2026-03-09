@@ -2,7 +2,8 @@
 
 审计轮次: 5
 
-- 对应项目管理文档: doc/playability_test_result/game-test.prd.project.md
+- 对应项目管理文档: doc/playability_test_result/game-test.project.md
+- 对应标准执行入口: `doc/playability_test_result/game-test.project.md`
 
 ## 可玩性测试
 你就是游戏玩家，不能读其他的文档或代码(Playwright操作方法文档除外)，直接通过Playwright来实际玩游戏，并填写playability_test_card，同时需要测试过程中给Playwright录屏，方便后续检查

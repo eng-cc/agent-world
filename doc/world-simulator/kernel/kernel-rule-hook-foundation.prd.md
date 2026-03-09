@@ -1,7 +1,7 @@
 # Agent World Simulator：内核不变量回归与规则 Hook 基座（设计文档）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/kernel/kernel-rule-hook-foundation.prd.project.md
+- 对应项目管理文档: doc/world-simulator/kernel/kernel-rule-hook-foundation.project.md
 
 ## 1. Executive Summary
 - 固化 `WorldKernel` 当前动作语义边界，先保证“现有行为不变”。
@@ -47,4 +47,4 @@
 - 回归测试覆盖不足风险：优先覆盖现有核心动作与关键拒绝分支，后续按动作枚举补齐。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

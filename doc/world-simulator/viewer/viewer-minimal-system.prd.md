@@ -1,7 +1,7 @@
 # Agent World: Minimal System Run (Viewer Demo)
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-minimal-system.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-minimal-system.project.md
 
 ## 1. Executive Summary
 - Provide a deterministic, low-friction way to generate `snapshot.json` + `journal.json` for the viewer.
@@ -56,4 +56,4 @@
 - Users may expect live data; this is offline replay only.
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

@@ -1,7 +1,7 @@
 # Viewer Agent 渲染改造：模块可见 + 体积尺寸匹配
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-agent-module-rendering.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-agent-module-rendering.project.md
 
 ## 1. Executive Summary
 - 将 Agent 从“单球体”改为更接近机器人形态的渲染方式，提升 3D 场景可读性。
@@ -61,4 +61,4 @@
 - 事件增量场景中模块数不同步：首版先以快照数据为准，后续再补事件级精细同步。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

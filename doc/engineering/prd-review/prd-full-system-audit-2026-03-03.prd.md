@@ -1,15 +1,16 @@
 # 全量 PRD 体系审读与对齐（2026-03-03）
 
 审计轮次: 4
+- 对应标准执行入口: `doc/engineering/prd-review/prd-full-system-audit-2026-03-03.project.md`
 
 ## 1. Executive Summary
-- Problem Statement: 仓库 PRD 文档规模已达 708 份（含 `prd.md` 与 `prd.project.md`），缺少统一“逐篇审读 + 已读清单 + 代码一致性回写”机制，导致口径漂移风险持续累积。
+- Problem Statement: 仓库 PRD 文档规模已达 708 份（含 `prd.md` 与 `project.md`），缺少统一“逐篇审读 + 已读清单 + 代码一致性回写”机制，导致口径漂移风险持续累积。
 - Proposed Solution: 建立工程侧 PRD 全量审读机制，按模块执行“逐篇阅读、代码对齐、重复治理、上下游对齐”，并以可勾选清单沉淀可审计证据。
 - Success Criteria:
   - SC-1: 全量 PRD 文档 100% 纳入已读清单。
   - SC-2: 每篇文档均具备“代码一致性 / 重复性 / 上下游对齐”评审状态。
   - SC-3: 发现不一致项后以代码为准回写文档，并在同批次完成追溯记录。
-  - SC-4: 模块主入口（`prd.md`/`prd.project.md`/`prd.index.md`）审读覆盖率维持 100%。
+  - SC-4: 模块主入口（`prd.md`/`project.md`/`prd.index.md`）审读覆盖率维持 100%。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -55,13 +56,13 @@
 - Architecture Overview: 采用“入口文档先行 + 模块清单执行”的审读架构；所有审读结果通过 checklist 固化在 `doc/engineering/prd-review/checklists/`。
 - Integration Points:
   - `doc/engineering/prd.md`
-  - `doc/engineering/prd.project.md`
+  - `doc/engineering/project.md`
   - `doc/engineering/prd.index.md`
-  - `doc/engineering/prd-review/prd-full-system-audit-2026-03-03.prd.project.md`
+  - `doc/engineering/prd-review/prd-full-system-audit-2026-03-03.project.md`
   - `doc/engineering/prd-review/checklists/active-*.md`
   - `doc/engineering/prd-review/checklists/active-root-legacy.md`
   - `doc/*/prd.md`
-  - `doc/*/prd.project.md`
+  - `doc/*/project.md`
   - `doc/*/prd.index.md`
   - `scripts/doc-governance-check.sh`
 - Edge Cases & Error Handling:
@@ -73,7 +74,7 @@
 - Non-Functional Requirements:
   - NFR-1: 审读清单覆盖率 100%（以全量 PRD 清单统计）。
   - NFR-2: 每次批次提交后 `doc-governance-check` 必须通过。
-  - NFR-3: 模块入口三件套（`prd.md`/`prd.project.md`/`prd.index.md`）已读状态保持 100%。
+  - NFR-3: 模块入口三件套（`prd.md`/`project.md`/`prd.index.md`）已读状态保持 100%。
   - NFR-4: 偏差修复任务需在 1 个批次内闭环，不跨批次悬挂。
   - NFR-5: 清单文件应保持可人工审阅粒度，避免单文件不可读膨胀。
 - Security & Privacy: 审读记录不得引入凭据、私密路径或敏感运行参数。

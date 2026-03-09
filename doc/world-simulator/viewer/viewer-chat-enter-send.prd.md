@@ -1,7 +1,7 @@
 # Agent World Viewer：Chat 输入回车发送（设计文档）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-chat-enter-send.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-chat-enter-send.project.md
 
 ## 1. Executive Summary
 - 在 Viewer 右侧独立 Chat 面板中支持“回车发送”。
@@ -41,4 +41,4 @@
   - 缓解：明确 `Shift+Enter` 换行语义，并在手册中说明。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

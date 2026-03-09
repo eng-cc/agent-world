@@ -1,7 +1,7 @@
 # Viewer Agent 尺寸可观测与比例校验
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-agent-size-inspection.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-agent-size-inspection.project.md
 
 ## 1. Executive Summary
 - 回答并可视化验证「Agent 与 Location 的比例是否符合数据口径」。
@@ -49,4 +49,4 @@
 - 文本行数增加后需关注右侧滚动体验，但当前已有滚动容器可承载。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

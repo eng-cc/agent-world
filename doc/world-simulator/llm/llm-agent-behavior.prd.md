@@ -1,7 +1,7 @@
 # Agent World Simulator：LLM 驱动 Agent 行为落地（设计文档）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/llm/llm-agent-behavior.prd.project.md
+- 对应项目管理文档: doc/world-simulator/llm/llm-agent-behavior.project.md
 
 ## 1. Executive Summary
 - 在现有 `AgentBehavior` 抽象上落地一套可运行的 **LLM Agent 行为实现**，用于替代纯规则型 `decide` 逻辑。
@@ -95,4 +95,4 @@
 - **一致性风险**：未接入 receipt 体系前，跨运行不可严格重放；后续在 runtime effect/receipt 中补齐。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

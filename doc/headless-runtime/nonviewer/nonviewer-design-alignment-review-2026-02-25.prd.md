@@ -2,7 +2,7 @@
 
 审计轮次: 4
 
-- 对应项目管理文档: doc/headless-runtime/nonviewer/nonviewer-design-alignment-review-2026-02-25.prd.project.md
+- 对应项目管理文档: doc/headless-runtime/nonviewer/nonviewer-design-alignment-review-2026-02-25.project.md
 
 ## 1. Executive Summary
 - 在已完成 `doc/headless-runtime/nonviewer/nonviewer-design-alignment-closure-2026-02-25.prd.md` 的基础上，继续执行第二轮 non-viewer 设计一致性审查。

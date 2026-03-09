@@ -1,7 +1,7 @@
 # Viewer Bevy 浏览器运行路径设计
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-bevy-web-runtime.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-bevy-web-runtime.project.md
 
 ## 1. Executive Summary
 - 为 `agent_world_viewer` 增加一条可执行的浏览器运行路径（`wasm32-unknown-unknown`），让 Viewer 支持在浏览器中启动与渲染。
@@ -73,4 +73,4 @@
   - 缓解：以 `viewer-web-closure-testing-policy` 统一口径，定期在项目文档中校验。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

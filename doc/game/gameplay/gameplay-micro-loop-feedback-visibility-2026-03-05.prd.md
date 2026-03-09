@@ -1,6 +1,6 @@
 # Gameplay 微循环反馈可见性闭环（Runtime 协议 + Viewer 反馈）
 
-- 对应项目管理文档: doc/game/gameplay/gameplay-micro-loop-feedback-visibility-2026-03-05.prd.project.md
+- 对应项目管理文档: doc/game/gameplay/gameplay-micro-loop-feedback-visibility-2026-03-05.project.md
 
 ## ROUND-002 主从口径
 - 主入口：`doc/game/gameplay/gameplay-top-level-design.prd.md`

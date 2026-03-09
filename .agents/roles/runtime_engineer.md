@@ -39,7 +39,7 @@
 - 改动能追溯到对应 PRD-ID / 任务 / 测试
 
 ## Checklist
-- 是否更新 `doc/world-runtime/prd.md` 与 `doc/world-runtime/prd.project.md`
+- 是否更新 `doc/world-runtime/prd.md` 与 `doc/world-runtime/project.md`
 - 是否检查单文件 Rust 长度上限
 - 是否执行 `env -u RUSTC_WRAPPER cargo check`
 - 是否补 replay / recovery / long-run regression 验证

@@ -1,7 +1,7 @@
 # Viewer Web 语义化测试 API（Phase 9 发行验收支撑）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-web-semantic-test-api.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-web-semantic-test-api.project.md
 
 ## 1. Executive Summary
 - 为 Web 端 `agent_world_viewer` 注入一套稳定的语义化测试 API，降低 Playwright 对像素坐标点击的依赖。
@@ -150,4 +150,4 @@
   - round-2 继续优先覆盖“UI 状态切换语义”（top/locale/layout），暂不进入聊天输入文本等高自由度 payload 场景。
   - round-3 采用“结构化参数 + `%xx` 文本解码”承载 chat/prompt 文本输入，保持 `runSteps` 单入口而不新增 `sendChat/applyPrompt` 等方法。
   - round-4 采用“runSteps 承载 timeline 视图语义 + sendControl 承载 seek 控制语义”的双层方案，兼容回放与 live 模式差异（live 下 seek 明确无效回执）。
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

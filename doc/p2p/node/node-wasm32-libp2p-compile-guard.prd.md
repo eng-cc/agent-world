@@ -21,7 +21,7 @@
   - AC-1: `crates/agent_world_node/src/lib.rs`
   - AC-2: `crates/agent_world_node/src/libp2p_replication_network_wasm.rs`（新增）
   - AC-3: `crates/agent_world/src/viewer/web_bridge.rs`
-  - AC-4: `doc/p2p/node/node-wasm32-libp2p-compile-guard.prd.project.md`
+  - AC-4: `doc/p2p/node/node-wasm32-libp2p-compile-guard.project.md`
   - AC-5: `doc/devlog/2026-02-16.md`
   - AC-6: 调整 PoS/gossip 共识业务语义。
 - Non-Goals:
@@ -35,7 +35,7 @@
 - Architecture Overview: 保持原文技术边界，按 strict PRD 结构重排。
 - Integration Points:
   - `doc/p2p/node/node-wasm32-libp2p-compile-guard.prd.md`
-  - `doc/p2p/node/node-wasm32-libp2p-compile-guard.prd.project.md`
+  - `doc/p2p/node/node-wasm32-libp2p-compile-guard.project.md`
   - `testing-manual.md`
 - Edge Cases & Error Handling: 命名不一致、章节缺失、引用断链需在同提交修复。
 - Non-Functional Requirements: PRD-ID/任务映射完整；治理检查通过。

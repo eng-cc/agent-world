@@ -1,7 +1,7 @@
 # Viewer WebSocket/HTTP Bridge 设计文档
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-websocket-http-bridge.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-websocket-http-bridge.project.md
 
 ## 1. Executive Summary
 - 为 `agent_world_viewer` 的 Web 端补齐在线连接能力，使浏览器可以观察 `world_viewer_live` 的实时世界演化（含 `llm_bootstrap`）。
@@ -61,4 +61,4 @@
   - 缓解：手册给出固定推荐端口组合与一键命令。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

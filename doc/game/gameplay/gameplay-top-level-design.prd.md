@@ -2,7 +2,7 @@
 
 审计轮次: 4
 
-- 对应项目管理文档: doc/game/gameplay/gameplay-top-level-design.prd.project.md
+- 对应项目管理文档: doc/game/gameplay/gameplay-top-level-design.project.md
 
 ## ROUND-002 主从口径
 - 本文件为 gameplay 主文档，其余 gameplay 专题为增量子文档。

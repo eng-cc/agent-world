@@ -1,7 +1,7 @@
 # Viewer 发行验收测试迭代闭环（完成度 + 视觉效果）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-release-qa-iteration-loop.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-release-qa-iteration-loop.project.md
 
 ## 1. Executive Summary
 - 基于现有 `testing-manual.md` 与 `window.__AW_TEST__`，建立一套可重复执行的发行验收闭环：自动验证功能完成度与视觉可用性。
@@ -79,4 +79,4 @@
   - 缓解：复用仓库既有 `playwright_cli.sh` 包装层，保持 Node 版本前置检查。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

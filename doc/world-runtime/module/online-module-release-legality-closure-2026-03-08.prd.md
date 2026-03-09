@@ -2,7 +2,7 @@
 
 审计轮次: 1
 
-- 对应项目管理文档: `doc/world-runtime/module/online-module-release-legality-closure-2026-03-08.prd.project.md`
+- 对应项目管理文档: `doc/world-runtime/module/online-module-release-legality-closure-2026-03-08.project.md`
 
 ## 1. Executive Summary
 - Problem Statement: 当前实现已具备模块身份校验、治理提案与多 runner 对账能力，但仍存在“内置清单写死、身份签名弱化回退、本地可自签最终性证书”等断点，且生产发布路径仍未与 CI 完全解耦，无法满足去中心化场景下“所有节点仅执行合法模块”的目标态。

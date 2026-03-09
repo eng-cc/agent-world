@@ -2,7 +2,7 @@
 
 审计轮次: 3
 
-- 对应项目管理文档: `doc/game/gameplay/gameplay-distributed-consensus-governance-longrun-2026-03-06.prd.project.md`
+- 对应项目管理文档: `doc/game/gameplay/gameplay-distributed-consensus-governance-longrun-2026-03-06.project.md`
 
 ## ROUND-002 主从口径
 - 主入口文档：`doc/game/gameplay/gameplay-top-level-design.prd.md`。

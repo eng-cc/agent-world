@@ -1,7 +1,7 @@
 # Viewer Web 全屏自适应与右侧面板整体显隐设计
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-web-fullscreen-panel-toggle.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-web-fullscreen-panel-toggle.project.md
 
 ## 1. Executive Summary
 - 让 `agent_world_viewer` 在 Web 端默认占满浏览器可用区域，避免固定窗口尺寸导致的显示受限。
@@ -62,4 +62,4 @@
   - 缓解：继续复用统一的 `RightPanelWidthState`，并补行为测试。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

@@ -59,7 +59,7 @@ rg -n "^审计轮次:\s*2$" doc --glob '*.md'
 | I2-003 | CI 分层专题与 pre-commit 专题存在规则描述重复，易双处漂移。 | `doc/testing/ci/*`、`doc/scripts/precommit/*` | high | 已完成首批收口（C2-004）：规则主源固定在 `testing/ci`，`precommit` 仅保留执行入口 |
 | I2-004 | Site 手册与 github-pages 专题存在流程叙事重复。 | `doc/site/manual/*`、`doc/site/github-pages/*` | medium | `master-slave`；保留主叙事文档，日期文档改差异记录 |
 | I2-005 | README gap 与 gameplay 总述反复定义术语/模块分层。 | `doc/readme/gap/*`、`doc/game/gameplay/*` | medium | 已按 `master-slave` 收口：`readme-gap12345` 与 `gameplay-top-level-design` 固定为双主入口 |
-| I2-006 | 跨目录复用模板段（映射说明、迁移记录）在业务文档重复粘贴。 | 多模块 `.prd.md/.prd.project.md` | medium | 建议模板化（`keep` 文档，收敛模板） |
+| I2-006 | 跨目录复用模板段（映射说明、迁移记录）在业务文档重复粘贴。 | 多模块 `.prd.md/.project.md` | medium | 建议模板化（`keep` 文档，收敛模板） |
 
 ## 合并候选批次
 | 编号 | 候选文档簇 | 候选主文档 | 合并策略 | 状态 |

@@ -1,7 +1,7 @@
 # Viewer 右侧 2D UI 迁移到 bevy_egui（SidePanel）设计
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-egui-right-panel.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-egui-right-panel.project.md
 
 ## 1. Executive Summary
 - 将 `agent_world_viewer` 当前右侧全部 2D UI 从 Bevy UI (`Node/Text/Button`) 迁移到 `bevy_egui`。
@@ -62,4 +62,4 @@
   - 缓解：使用 EGUI 可折叠分组与滚动区域，避免固定高度截断。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

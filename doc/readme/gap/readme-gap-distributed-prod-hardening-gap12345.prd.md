@@ -6,7 +6,8 @@
 - 本文件为 readme/gap 主文档。
 - 其余 gap 专题文档为增量子文档。
 
-- 对应项目管理文档: doc/readme/gap/readme-gap-distributed-prod-hardening-gap12345.prd.project.md
+- 对应项目管理文档: doc/readme/gap/readme-gap-distributed-prod-hardening-gap12345.project.md
+- 对应标准执行入口: `doc/readme/gap/readme-gap-distributed-prod-hardening-gap12345.project.md`
 
 ## 目标
 - 收口 Gap 1：将 `agent_world_node` 的 PoS 主循环关键算法与阈值判定下沉到 `agent_world_consensus`，避免双轨共识语义漂移。

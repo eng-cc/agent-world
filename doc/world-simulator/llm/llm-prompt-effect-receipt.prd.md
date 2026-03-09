@@ -1,7 +1,7 @@
 # Agent World Simulator：LLM Prompt ModuleCall Effect/Receipt 可回放链路（设计文档）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/llm/llm-prompt-effect-receipt.prd.project.md
+- 对应项目管理文档: doc/world-simulator/llm/llm-prompt-effect-receipt.project.md
 
 ## 1. Executive Summary
 - 将 LLM `module_call` 交互轨迹从“仅调试文本”升级为结构化的 `effect/receipt` 事件链。
@@ -59,4 +59,4 @@
 - **兼容性**：旧 trace 无新字段；通过 `serde(default)` 保证向后兼容。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

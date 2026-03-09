@@ -1,7 +1,7 @@
 # Agent World：M6 3D 可视化（Bevy）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-visualization-3d.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-visualization-3d.project.md
 
 ## 1. Executive Summary
 - **大目标**：以 3D 场景观测所有 Agent 的活动，可直观查看世界状态（位置、移动、关键事件）。
@@ -76,4 +76,4 @@
 - **渲染性能**：对象数量上升时帧率下降，需要后续实例化/裁剪策略。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

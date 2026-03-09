@@ -1,7 +1,7 @@
 # M4 资源与产品系统 P0：共享中间件竞争 + 运输优先级（2026-02-27）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/m4/m4-resource-product-system-p0-shared-bottleneck-logistics-priority-2026-02-27.prd.project.md
+- 对应项目管理文档: doc/world-simulator/m4/m4-resource-product-system-p0-shared-bottleneck-logistics-priority-2026-02-27.project.md
 
 ## 1. Executive Summary
 - 在不破坏现有 runtime 主流程的前提下，实现 P0 两个可玩性增强点：
@@ -72,4 +72,4 @@
 - 先补单测再跑 required 回归。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

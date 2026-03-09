@@ -1,7 +1,7 @@
 # Viewer 商业化发行缺口收敛 Phase 7：工业风资产包与主题批量预览
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-commercial-release-phase7-theme-pack-batch-preview.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-commercial-release-phase7-theme-pack-batch-preview.project.md
 
 ## 1. Executive Summary
 - 补齐“可发行视觉底座”之后的第一批可交付美术资产：提供可直接加载的 mesh + PBR 贴图主题包（industrial v1）。
@@ -56,4 +56,4 @@
   缓解：默认不启用主题包；批量预览输出作为回归依据。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

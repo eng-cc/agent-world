@@ -1,7 +1,7 @@
 # 客户端启动器 Native 遗留代码清理（2026-03-06）
 
 审计轮次: 5
-- 对应项目管理文档: `doc/world-simulator/launcher/game-client-launcher-native-legacy-cleanup-2026-03-06.prd.project.md`
+- 对应项目管理文档: `doc/world-simulator/launcher/game-client-launcher-native-legacy-cleanup-2026-03-06.project.md`
 
 ## 1. Executive Summary
 - Problem Statement: 启动器 native 已完成“客户端 + 控制面服务”迁移，但代码中仍保留部分无读写路径的历史状态字段与未被编译入口引用的旧测试文件，持续增加维护噪声。
@@ -59,7 +59,7 @@
   - `crates/agent_world_client_launcher/src/main_tests.rs`
   - `crates/agent_world_client_launcher/src/tests.rs`（删除）
   - `doc/world-simulator/prd.md`
-  - `doc/world-simulator/prd.project.md`
+  - `doc/world-simulator/project.md`
 - Edge Cases & Error Handling:
   - 字段误删风险：仅删除经引用扫描确认不可达字段，避免运行路径字段被误删。
   - 条件编译偏差：收敛 `cfg` 时需确保 native 与 wasm 均可编译。

@@ -2,7 +2,7 @@
 
 审计轮次: 4
 
-- 对应项目管理文档: doc/scripts/viewer-tools/capture-viewer-frame.prd.project.md
+- 对应项目管理文档: doc/scripts/viewer-tools/capture-viewer-frame.project.md
 
 > 状态说明（2026-02-15）：该脚本已降级为 **native fallback**。默认闭环路径为 Web 端：`scripts/run-viewer-web.sh + Playwright`。
 

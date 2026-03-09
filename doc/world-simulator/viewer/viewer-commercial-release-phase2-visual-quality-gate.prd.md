@@ -1,7 +1,7 @@
 # Viewer 商业化发行缺口收敛 Phase 2：视觉验收基线与门禁
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-commercial-release-phase2-visual-quality-gate.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-commercial-release-phase2-visual-quality-gate.project.md
 
 ## 1. Executive Summary
 - 建立可执行、可追溯的 Viewer 视觉验收基线，减少“主观观感回归”在发布前才暴露的风险。
@@ -48,4 +48,4 @@
   - 缓解：同批更新 `testing-manual.md` 与项目管理文档状态。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

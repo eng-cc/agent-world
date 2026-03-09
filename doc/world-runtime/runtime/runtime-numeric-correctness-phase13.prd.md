@@ -2,7 +2,7 @@
 
 审计轮次: 4
 
-- 对应项目管理文档: doc/world-runtime/runtime/runtime-numeric-correctness-phase13.prd.project.md
+- 对应项目管理文档: doc/world-runtime/runtime/runtime-numeric-correctness-phase13.project.md
 
 ## 1. Executive Summary
 - 收口 `membership_reconciliation.rs` 中剩余的高风险时间门控与报告计数饱和算术。

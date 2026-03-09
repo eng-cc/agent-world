@@ -1,7 +1,7 @@
 # Viewer 发行全覆盖验收 Gate（可用性 + 视觉 + 玩法环节）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-release-full-coverage-gate.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-release-full-coverage-gate.project.md
 
 ## 1. Executive Summary
 - 在现有 `viewer-release-qa-loop.sh` 可用性门禁基础上，新增“发行级全覆盖验收”入口，避免只验证“能跑”而忽略视觉资产与关键玩法环节。
@@ -87,4 +87,4 @@
   - 缓解：新增 `capture_status.txt` 连通性校验，未连接或无快照时直接 fail。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

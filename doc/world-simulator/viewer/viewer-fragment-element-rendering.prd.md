@@ -1,7 +1,7 @@
 # Agent World Simulator：Viewer Fragment 元素材质渲染与开关（设计文档）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-fragment-element-rendering.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-fragment-element-rendering.project.md
 
 ## 1. Executive Summary
 - 在 Viewer 中把 `location.fragment_profile.blocks` 的分块全部渲染出来，避免只看 location 外球体导致信息丢失。
@@ -46,4 +46,4 @@
 - 不同显示设备上颜色感知有偏差；色板需持续在截图回归中校准。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

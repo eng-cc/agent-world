@@ -1,7 +1,7 @@
 # Viewer 通用聚焦目标（可扩展实体）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-generic-focus-targets.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-generic-focus-targets.project.md
 
 ## 1. Executive Summary
 - 为 viewer 自动化聚焦/选中能力提供统一 target 语法，避免仅支持 `agent/location`。
@@ -64,4 +64,4 @@
   - 缓解：在该文档与项目管理文档中明确“新增实体需补 resolver”作为固定检查项。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

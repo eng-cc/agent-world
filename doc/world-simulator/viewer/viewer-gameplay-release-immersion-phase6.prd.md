@@ -1,7 +1,7 @@
 # Viewer 发行体验改造（第六阶段：任务驱动与电影化首屏）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase6.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase6.project.md
 
 ## 1. Executive Summary
 - 继续将 Viewer 的 Player 体验从“可操作”推进到“可发行游戏体验”：
@@ -84,4 +84,4 @@
   - 对策：限制尺寸与符号层级（普通点/选中点），优先显示选中目标。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

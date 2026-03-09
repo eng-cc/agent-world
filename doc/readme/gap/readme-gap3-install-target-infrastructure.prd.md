@@ -5,7 +5,8 @@
 ## ROUND-002 主从口径
 - 主入口统一指向 `doc/readme/gap/readme-gap-distributed-prod-hardening-gap12345.prd.md`，本文仅维护增量。
 
-- 对应项目管理文档: doc/readme/gap/readme-gap3-install-target-infrastructure.prd.project.md
+- 对应项目管理文档: doc/readme/gap/readme-gap3-install-target-infrastructure.project.md
+- 对应标准执行入口: `doc/readme/gap/readme-gap3-install-target-infrastructure.project.md`
 
 ## 目标
 - 收口 README 中“模块可安装至自身或基础设施”的实现缺口。

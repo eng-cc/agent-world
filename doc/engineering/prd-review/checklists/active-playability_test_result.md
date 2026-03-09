@@ -11,7 +11,7 @@
 - 如发现与其他文档重复或上下游不对齐，先记录问题，再在对应文档修订并回填状态。
 
 - [x] 2026-03-04 00:18:15 CST | doc/playability_test_result/game-test.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
-- [x] 2026-03-04 00:18:15 CST | doc/playability_test_result/game-test.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/playability_test_result/game-test.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
 - [x] 2026-03-03 23:45:14 CST | doc/playability_test_result/prd.index.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 无
 - [x] 2026-03-03 23:45:14 CST | doc/playability_test_result/prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 无
-- [x] 2026-03-03 23:45:14 CST | doc/playability_test_result/prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 无
+- [x] 2026-03-03 23:45:14 CST | doc/playability_test_result/project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 无

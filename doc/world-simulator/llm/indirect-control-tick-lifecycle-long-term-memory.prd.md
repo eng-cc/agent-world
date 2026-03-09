@@ -1,7 +1,7 @@
 # 间接控制链路 + WASM Tick 生命周期 + 长期记忆持久化（设计文档）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/llm/indirect-control-tick-lifecycle-long-term-memory.prd.project.md
+- 对应项目管理文档: doc/world-simulator/llm/indirect-control-tick-lifecycle-long-term-memory.project.md
 
 ## 1. Executive Summary
 - 收口 README 对“玩家间接控制”的约束：玩家不能直接提交世界动作操控 Agent，只能通过间接链路（提示词/对话）影响 Agent 决策。
@@ -75,4 +75,4 @@
 - 持久化风险：长期记忆回写时机若不稳定，可能造成内存态与快照态漂移，需要在 live tick 闭环中固定同步点。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

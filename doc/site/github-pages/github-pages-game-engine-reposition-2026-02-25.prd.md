@@ -6,7 +6,8 @@
 - 本文件为 github-pages 主文档（master）。
 - `doc/site/github-pages/github-pages-architecture-svg-refresh.prd.md`、`doc/site/github-pages/github-pages-benchmark-polish-v3.prd.md`、`doc/site/github-pages/github-pages-content-sync-2026-02-12.prd.md` 为本批增量子文档（slave）。
 
-- 对应项目管理文档: doc/site/github-pages/github-pages-game-engine-reposition-2026-02-25.prd.project.md
+- 对应项目管理文档: doc/site/github-pages/github-pages-game-engine-reposition-2026-02-25.project.md
+- 对应标准执行入口: `doc/site/github-pages/github-pages-game-engine-reposition-2026-02-25.project.md`
 
 ## 目标
 - 将 GitHub Pages 从“世界模拟器”单一叙事，重写为“游戏 + 游戏引擎”双定位叙事。

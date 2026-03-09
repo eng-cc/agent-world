@@ -57,7 +57,7 @@
   - `scripts/p2p-longrun-soak.sh`
   - `crates/agent_world/src/bin/world_chain_runtime.rs`
   - `testing-manual.md`
-  - `doc/testing/longrun/chain-runtime-soak-script-reactivation-2026-02-28.prd.project.md`
+  - `doc/testing/longrun/chain-runtime-soak-script-reactivation-2026-02-28.project.md`
 - Edge Cases & Error Handling:
   - 字段缺失：旧 epoch 报表特有字段缺失时标记 `unavailable`，避免伪造对齐。
   - 启动抖动：引入 startup grace 与采样重试窗口，降低初期误判。

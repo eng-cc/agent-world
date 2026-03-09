@@ -12,7 +12,7 @@
 
 ## 接口 / 数据
 - 主入口：`doc/world-simulator/prd.md`
-- 项目管理：`doc/world-simulator/prd.project.md`
+- 项目管理：`doc/world-simulator/project.md`
 - 追踪主键：`PRD-WORLD_SIMULATOR-004`、`PRD-WORLD_SIMULATOR-005`
 - 关键集成点：
   - `doc/world-simulator/launcher/game-client-launcher-chain-runtime-decouple-2026-02-28.prd.md`

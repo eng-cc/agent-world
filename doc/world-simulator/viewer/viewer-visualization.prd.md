@@ -1,7 +1,7 @@
 # Agent World：M5 可视化与调试（Bevy）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-visualization.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-visualization.project.md
 
 ## 1. Executive Summary
 - 提供一个独立的可视化客户端（Bevy），通过网络连接世界数据源。
@@ -267,4 +267,4 @@
 - **Camera order 冲突风险**：多相机（3D 场景 + UI）若使用相同优先级会导致渲染歧义与交互异常；通过显式 `Camera.order` 分层（3D=0, UI=1）规避。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

@@ -1,7 +1,7 @@
 # Agent World Simulator：规则 Wasm Sandbox 桥接（第四阶段）设计文档
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/kernel/kernel-rule-wasm-sandbox-bridge.prd.project.md
+- 对应项目管理文档: doc/world-simulator/kernel/kernel-rule-wasm-sandbox-bridge.project.md
 
 ## 1. Executive Summary
 - 将模拟器内核已有的可选 wasm pre-action evaluator，与 runtime 的 `ModuleSandbox` 调用链打通。
@@ -44,4 +44,4 @@
 - 沙箱锁争用或故障影响吞吐：本阶段先保证正确性，后续再评估并发优化。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

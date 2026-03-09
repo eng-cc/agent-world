@@ -1,7 +1,7 @@
 # Viewer 文本可选中与复制能力设计
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-copyable-text.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-copyable-text.project.md
 
 ## 1. Executive Summary
 - 让 `agent_world_viewer` 中关键信息文本支持“鼠标选中 + 系统复制快捷键（Cmd/Ctrl+C）”。
@@ -62,4 +62,4 @@
   - 缓解：按钮文案统一进入 `i18n.rs` 并补充测试。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

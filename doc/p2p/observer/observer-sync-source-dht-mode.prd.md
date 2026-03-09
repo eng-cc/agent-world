@@ -5,7 +5,7 @@
 - 本文档在 ROUND-002 判定为 `observer-sync-source-mode` 的 DHT 增量子文档。
 - 主文档入口：
   - `doc/p2p/observer/observer-sync-source-mode.prd.md`
-  - `doc/p2p/observer/observer-sync-source-mode.prd.project.md`
+  - `doc/p2p/observer/observer-sync-source-mode.project.md`
 - 本文档仅保留 DHT 组合链路差异（`HeadSyncSourceModeWithDht`）与对应实现追溯。
 
 ## 1. Executive Summary
@@ -43,7 +43,7 @@
 - Architecture Overview: 保持原文技术边界，按 strict PRD 结构重排。
 - Integration Points:
   - `doc/p2p/observer/observer-sync-source-dht-mode.prd.md`
-  - `doc/p2p/observer/observer-sync-source-dht-mode.prd.project.md`
+  - `doc/p2p/observer/observer-sync-source-dht-mode.project.md`
   - `testing-manual.md`
 - Edge Cases & Error Handling: 命名不一致、章节缺失、引用断链需在同提交修复。
 - Non-Functional Requirements: PRD-ID/任务映射完整；治理检查通过。

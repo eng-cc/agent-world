@@ -1,7 +1,7 @@
 # Agent World：3D 渲染物理准确性设计（尺寸对齐真实物理数据）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-rendering-physical-accuracy.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-rendering-physical-accuracy.project.md
 
 ## 1. Executive Summary
 - 建立一套可落地的 3D 渲染物理口径，使 viewer 中的**尺寸、距离、光照、材质响应**与世界模拟参数保持一致。
@@ -182,4 +182,4 @@ pub struct ViewerPhysicalRenderConfig {
 - 美术与真实性冲突：视觉“好看”可能驱动非物理调参，需要通过配置分层（真实模式/演示模式）隔离。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

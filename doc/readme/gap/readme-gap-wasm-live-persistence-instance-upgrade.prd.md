@@ -6,7 +6,8 @@
 - 主入口文档：`doc/readme/gap/readme-gap-distributed-prod-hardening-gap12345.prd.md`。
 - 本文件仅维护本专题增量内容。
 
-- 对应项目管理文档: doc/readme/gap/readme-gap-wasm-live-persistence-instance-upgrade.prd.project.md
+- 对应项目管理文档: doc/readme/gap/readme-gap-wasm-live-persistence-instance-upgrade.project.md
+- 对应标准执行入口: `doc/readme/gap/readme-gap-wasm-live-persistence-instance-upgrade.project.md`
 
 ## 目标
 - 收口 README 中 WASM 主链路承诺与工程实现差距，覆盖以下四项：

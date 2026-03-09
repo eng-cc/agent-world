@@ -1,7 +1,7 @@
 # Viewer 2D/3D 可视化清晰度修复设计
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-2d-3d-clarity-improvement.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-2d-3d-clarity-improvement.project.md
 
 ## 1. Executive Summary
 - 修复当前 Viewer 在 `llm_bootstrap` 等场景中出现的“2D 大块遮屏、3D 首屏不可读”问题。
@@ -58,4 +58,4 @@
   - 缓解：保持模块开关入口显著，默认只收起非核心区块。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

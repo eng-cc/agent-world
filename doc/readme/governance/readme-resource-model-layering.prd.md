@@ -2,7 +2,8 @@
 
 审计轮次: 4
 
-- 对应项目管理文档: doc/readme/governance/readme-resource-model-layering.prd.project.md
+- 对应项目管理文档: doc/readme/governance/readme-resource-model-layering.project.md
+- 对应标准执行入口: `doc/readme/governance/readme-resource-model-layering.project.md`
 
 ## 目标
 - 修订 `README.md` 的资源描述，使其与当前工程实现一致，避免“文档承诺资源维度”与“代码内建资源枚举”产生歧义。

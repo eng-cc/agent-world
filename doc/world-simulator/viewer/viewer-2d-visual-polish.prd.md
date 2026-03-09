@@ -1,7 +1,7 @@
 # Viewer 2D 可视化精修（地图可读性增强）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-2d-visual-polish.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-2d-visual-polish.project.md
 
 ## 1. Executive Summary
 - 解决当前 2D 观察态“信息点不突出、层次弱、第一眼过于空”的问题。
@@ -69,4 +69,4 @@
   - 缓解：沿用现有 flow 批处理上限，2D 仅增强头部表达，不放宽数量预算。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

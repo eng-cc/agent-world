@@ -1,7 +1,7 @@
 # 客户端启动器反馈窗口化（2026-03-02）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/launcher/game-client-launcher-feedback-window-2026-03-02.prd.project.md
+- 对应项目管理文档: doc/world-simulator/launcher/game-client-launcher-feedback-window-2026-03-02.project.md
 
 ## 1. Executive Summary
 - 将启动器内嵌的反馈表单改为“按钮入口 + 弹窗窗口”交互。
@@ -58,4 +58,4 @@
   - `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher`
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

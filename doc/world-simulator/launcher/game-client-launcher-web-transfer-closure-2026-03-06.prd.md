@@ -1,7 +1,7 @@
 # 客户端启动器 Web 链上转账闭环补齐（2026-03-06）
 
 审计轮次: 5
-- 对应项目管理文档: `doc/world-simulator/launcher/game-client-launcher-web-transfer-closure-2026-03-06.prd.project.md`
+- 对应项目管理文档: `doc/world-simulator/launcher/game-client-launcher-web-transfer-closure-2026-03-06.project.md`
 
 ## 1. Executive Summary
 - Problem Statement: 启动器 UI 已完成 native/web 同层复用，但 Web 端转账入口仍为禁用/占位，导致“统一控制面”在资产交互环节断裂。

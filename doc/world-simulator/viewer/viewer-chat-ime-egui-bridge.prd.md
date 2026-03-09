@@ -1,7 +1,7 @@
 # Agent World Simulator：Viewer Chat Web IME EGUI 输入桥接（设计文档）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-chat-ime-egui-bridge.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-chat-ime-egui-bridge.project.md
 
 ## 1. Executive Summary
 - 解决 Web Viewer 中“可粘贴中文但无法直接输入中文”的问题。
@@ -47,4 +47,4 @@
 - 事件重复注入风险需通过状态位与去重策略控制。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

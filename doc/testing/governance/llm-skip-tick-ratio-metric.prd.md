@@ -2,7 +2,7 @@
 
 审计轮次: 4
 
-- 对应项目管理文档: doc/testing/governance/llm-skip-tick-ratio-metric.prd.project.md
+- 对应项目管理文档: doc/testing/governance/llm-skip-tick-ratio-metric.project.md
 
 ## 1. Executive Summary
 - Problem Statement: 当前 LLM 运行链路缺少“跳过 LLM 调用 tick 占比”这一统一指标，无法量化 `execute_until` 等机制带来的调用节省效果。

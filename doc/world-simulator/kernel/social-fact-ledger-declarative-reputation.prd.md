@@ -1,7 +1,7 @@
 # 社会系统生产级方案：事实账本 + 声明式关系层（设计文档）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/kernel/social-fact-ledger-declarative-reputation.prd.project.md
+- 对应项目管理文档: doc/world-simulator/kernel/social-fact-ledger-declarative-reputation.project.md
 
 ## 1. Executive Summary
 - 在不预设单一“正确声誉模型”的前提下，为世界提供生产级社会系统底座。
@@ -133,4 +133,4 @@
 - 体量风险：新增事件与状态增多，需持续关注单文件长度约束。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

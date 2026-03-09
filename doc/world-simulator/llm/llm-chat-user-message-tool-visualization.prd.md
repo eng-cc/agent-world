@@ -1,7 +1,7 @@
 # Agent World Simulator：LLM 用户文本输出与工具调用分区可视化（设计文档）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/llm/llm-chat-user-message-tool-visualization.prd.project.md
+- 对应项目管理文档: doc/world-simulator/llm/llm-chat-user-message-tool-visualization.project.md
 
 ## 1. Executive Summary
 - 改造 LLM 决策流程，使 Agent 能在决策 JSON 中携带面向用户的文本信息，并进入会话消息链路。
@@ -77,4 +77,4 @@
   - 缓解：解析失败降级为原文展示，不阻塞主信息流。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

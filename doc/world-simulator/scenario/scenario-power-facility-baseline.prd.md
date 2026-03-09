@@ -1,7 +1,7 @@
 # Agent World Simulator：默认电力设施语义下沉为场景配置
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/scenario/scenario-power-facility-baseline.prd.project.md
+- 对应项目管理文档: doc/world-simulator/scenario/scenario-power-facility-baseline.project.md
 
 ## 1. Executive Summary
 
@@ -48,4 +48,4 @@
 - 若后续又在场景层回填大量默认设施，会再次引入语义漂移，需要保持矩阵与测试一致。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

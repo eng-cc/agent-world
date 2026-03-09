@@ -1,7 +1,7 @@
 # Agent World Simulator：Viewer Chat 中文输入兼容修复（设计文档）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-chat-ime-cn-input.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-chat-ime-cn-input.project.md
 
 ## 1. Executive Summary
 - 修复 Viewer 右侧 Agent Chat 输入框无法稳定输入中文（IME 组合输入）的问题。
@@ -42,4 +42,4 @@
 - 若输入法兼容问题来自上游依赖实现限制，可能需要后续补充更深层 workaround。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

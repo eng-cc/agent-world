@@ -1,7 +1,7 @@
 # Agent World Simulator：Chat Panel Agent Prompt 默认值预填充输入框（设计文档）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-chat-agent-prompt-default-values-prefill.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-chat-agent-prompt-default-values-prefill.project.md
 
 ## ROUND-002 主文档状态（2026-03-05）
 - 本专题在 ROUND-002 判定为当前权威入口，统一承载 Chat Panel `Agent Prompt Draft` 默认值显示与 patch 语义。
@@ -53,4 +53,4 @@
   - 缓解：文档明确该等价行为，减少认知负担。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

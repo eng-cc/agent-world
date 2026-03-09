@@ -1,7 +1,7 @@
 # 客户端启动器反馈分布式提交迁移（2026-03-02）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.prd.project.md
+- 对应项目管理文档: doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.project.md
 
 ## 1. Executive Summary
 - 将“给团队提 Bug/建议”能力从“仅本地 JSON 落盘”升级为“启动器优先提交到分布式反馈网络”。
@@ -71,4 +71,4 @@
 - 相关单元测试已补齐并通过，`main.rs` 与 `world_chain_runtime.rs` 均维持在 1200 行以内。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

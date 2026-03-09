@@ -1,7 +1,7 @@
 # Viewer 2D/3D WASD 相机移动设计
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-wasd-camera-navigation.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-wasd-camera-navigation.project.md
 
 ## 1. Executive Summary
 - 为 `agent_world_viewer` 增加键盘 `W/A/S/D` 相机移动能力，降低仅依赖鼠标拖拽的交互成本。
@@ -56,4 +56,4 @@
   - 缓解：速度与 `orbit.radius` 联动，并通过测试与手工回归验证基础可用性。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

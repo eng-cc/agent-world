@@ -62,7 +62,7 @@
   - `scripts/viewer-owr4-stress.sh`
   - `crates/agent_world/src/bin/world_viewer_live.rs`
   - `crates/agent_world_node/src/types.rs`
-  - `doc/testing/longrun/p2p-storage-consensus-longrun-online-stability-2026-02-24.prd.project.md`
+  - `doc/testing/longrun/p2p-storage-consensus-longrun-online-stability-2026-02-24.project.md`
 - Edge Cases & Error Handling:
   - 报表频率不一致：采用时间窗口容错，先确保关键字段可用。
   - 环境资源噪声：记录机器上下文并按 profile 区分阈值。

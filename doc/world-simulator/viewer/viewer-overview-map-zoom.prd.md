@@ -1,7 +1,7 @@
 # Viewer 全览图缩放切换（设计文档）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-overview-map-zoom.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-overview-map-zoom.project.md
 
 ## 1. Executive Summary
 - 参考 Factorio 的双层可视化思路，在 2D 视图引入“近景细节态 / 全览图态”自动切换机制。
@@ -56,4 +56,4 @@
 - 全览图态隐藏细节后，点选命中目标需要依赖简化标记，可能改变既有点选习惯。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

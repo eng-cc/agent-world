@@ -1,7 +1,7 @@
 # Viewer Live 旧 Tick 驱动文档归档（2026-02-27）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-live-tick-driven-doc-archive-2026-02-27.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-live-tick-driven-doc-archive-2026-02-27.project.md
 
 ## 1. Executive Summary
 - 将已下线的 Viewer Live 旧 tick 驱动（TimerPulse / tick-driven 兼容阶段）设计与项目管理文档完成清理与替代链收口。
@@ -30,4 +30,4 @@
 - 若误归档当前有效阶段文档，会影响后续追踪。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

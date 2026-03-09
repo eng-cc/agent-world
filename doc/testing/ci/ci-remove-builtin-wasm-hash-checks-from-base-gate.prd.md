@@ -2,7 +2,7 @@
 
 审计轮次: 4
 
-- 对应项目管理文档: doc/testing/ci/ci-remove-builtin-wasm-hash-checks-from-base-gate.prd.project.md
+- 对应项目管理文档: doc/testing/ci/ci-remove-builtin-wasm-hash-checks-from-base-gate.project.md
 
 ## 1. Executive Summary
 - Problem Statement: 基础门禁若同时承担格式/测试与 builtin wasm hash 校验，容易拉高日常反馈成本并与分层测试职责耦合。

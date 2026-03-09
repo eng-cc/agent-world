@@ -48,7 +48,7 @@
 ## Done Definition
 - [ ] 输出满足目标与成功标准
 - [ ] 影响面已核对上游 / 下游角色
-- [ ] 对应 `prd.md` / `prd.project.md` 已回写
+- [ ] 对应 `prd.md` / `project.md` 已回写
 - [ ] 对应 `doc/devlog/YYYY-MM-DD.md` 已记录
 - [ ] required/full 测试证据已补齐
 

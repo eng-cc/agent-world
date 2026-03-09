@@ -19,9 +19,9 @@
 | R-003 | legacy launcher desktop/unified 文档（已删除） | `game-client-launcher-native-web-control-plane-unification-2026-03-04.prd.md` + `game-client-launcher-web-console-2026-03-04.prd.md` | 已执行：从索引中移除旧文档并保留替代入口 | 已执行：旧文档已删除 | done |
 | R-004 | legacy viewer rust line cap 文档（已删除） | `viewer-release-full-coverage-gate.prd.md` + `viewer-visual-release-readiness-hardening-2026-03-01.prd.md` | 已执行：从索引中移除旧文档并保留替代入口 | 已执行：旧文档已删除 | done |
 | R-005 | `doc/p2p/distributed/distributed-hard-split-phase7.prd*.md` 与 `doc/p2p/observer/observer-sync-*.prd*.md` 前序阶段 | `doc/p2p/distributed/distributed-runtime.prd.md` + 最新 observer 专题 | 待执行（p2p 索引分层） | 计划 soft redirect | pending |
-| R-006 | `doc/p2p/*/*.release.md` | 对应 `*.prd.md` / `*.prd.project.md` | 已执行：`doc/p2p/prd.index.md` 增加 release 可达分组 | 不做归档迁移（保留为补充材料） | kept_with_index |
+| R-006 | `doc/p2p/*/*.release.md` | 对应 `*.prd.md` / `*.project.md` | 已执行：`doc/p2p/prd.index.md` 增加 release 可达分组 | 不做归档迁移（保留为补充材料） | kept_with_index |
 | R-007 | `doc/engineering/prd-review/checklists/*.md` | `doc/core/reviews/consistency-review-round-001.md` + 文档头 `审计轮次` | 待执行（ROUND 收口后统一） | 计划迁移/归档二选一 | deferred (`S-002`) |
-| R-008 | `doc/site/github-pages/*.prd*.md`、`doc/site/manual/*.prd*.md` 的已收口日期专题 | `doc/site/prd.md` + `doc/site/prd.project.md` | 待执行（site 索引治理） | 计划 soft redirect | pending |
+| R-008 | `doc/site/github-pages/*.prd*.md`、`doc/site/manual/*.prd*.md` 的已收口日期专题 | `doc/site/prd.md` + `doc/site/project.md` | 待执行（site 索引治理） | 计划 soft redirect | pending |
 | R-009 | `doc/readme/gap|production|governance` 与 `doc/game/gameplay` 已收口日期专题 | `doc/readme/prd.md`、`doc/game/prd.md`、`README.md` | 待执行（readme/game 索引治理） | 计划 soft redirect | pending |
 
 ## 验收命令（A-012）

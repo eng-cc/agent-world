@@ -1,7 +1,7 @@
 # Viewer 可视化观察体验优化设计
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-observability-visual-optimization.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-observability-visual-optimization.project.md
 
 ## 1. Executive Summary
 - 将右侧面板从“复制导向”调整为“观察导向”，减少外部复制分析依赖。
@@ -52,4 +52,4 @@
   - 缓解：在错误提示中输出当前脚本支持清单，并保留别名映射可维护入口。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

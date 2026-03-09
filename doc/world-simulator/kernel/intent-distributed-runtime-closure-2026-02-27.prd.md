@@ -2,7 +2,7 @@
 
 审计轮次: 5
 
-- 对应项目管理文档: doc/world-simulator/kernel/intent-distributed-runtime-closure-2026-02-27.prd.project.md
+- 对应项目管理文档: doc/world-simulator/kernel/intent-distributed-runtime-closure-2026-02-27.project.md
 
 ## 1. Executive Summary
 - 将 simulator 从“动作提交即执行”升级为“tick 内 Intent 收集、冲突裁决、统一提交”，保证同 tick 冲突可复现、可解释、可回放。
@@ -49,4 +49,4 @@
 - M3：已完成。落地威胁热图并接入 runtime step 刷新与查询接口。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

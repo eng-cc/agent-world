@@ -6,7 +6,8 @@
 - 主入口文档：`doc/site/github-pages/github-pages-game-engine-reposition-2026-02-25.prd.md`。
 - 本文件仅维护架构图 SVG 精修增量内容。
 
-- 对应项目管理文档: doc/site/github-pages/github-pages-architecture-svg-refresh.prd.project.md
+- 对应项目管理文档: doc/site/github-pages/github-pages-architecture-svg-refresh.project.md
+- 对应标准执行入口: `doc/site/github-pages/github-pages-architecture-svg-refresh.project.md`
 
 ## 目标
 - 提升首页架构图 `architecture-flow.svg` 的科技感与信息层次，让用户一眼看懂系统闭环。

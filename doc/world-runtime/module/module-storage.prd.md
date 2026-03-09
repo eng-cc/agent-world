@@ -2,7 +2,7 @@
 
 审计轮次: 4
 
-- 对应项目管理文档: doc/world-runtime/module/module-storage.prd.project.md
+- 对应项目管理文档: doc/world-runtime/module/module-storage.project.md
 
 ## 1. Executive Summary
 - 提供模块工件（WASM bytes）与模块注册表（registry）的**可持久化存储**。

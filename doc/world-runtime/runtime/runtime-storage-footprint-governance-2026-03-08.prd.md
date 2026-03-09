@@ -2,7 +2,7 @@
 
 审计轮次: 4
 
-- 对应项目管理文档: `doc/world-runtime/runtime/runtime-storage-footprint-governance-2026-03-08.prd.project.md`
+- 对应项目管理文档: `doc/world-runtime/runtime/runtime-storage-footprint-governance-2026-03-08.project.md`
 - 详细技术设计文档: `doc/world-runtime/runtime/runtime-storage-footprint-governance-2026-03-08.design.md`
 
 ## 1. Executive Summary

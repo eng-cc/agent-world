@@ -2,7 +2,8 @@
 
 审计轮次: 4
 
-- 对应项目管理文档: doc/readme/production/readme-llm-p1p2-production-closure.prd.project.md
+- 对应项目管理文档: doc/readme/production/readme-llm-p1p2-production-closure.project.md
+- 对应标准执行入口: `doc/readme/production/readme-llm-p1p2-production-closure.project.md`
 
 ## 目标
 - 收口 P1：修复 LLM 工具协议与实现不一致问题，确保提示词、OpenAI tool 注册、解析与执行路径一致。

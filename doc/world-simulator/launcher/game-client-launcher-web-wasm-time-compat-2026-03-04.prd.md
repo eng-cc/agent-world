@@ -1,7 +1,7 @@
 # 客户端启动器 Web wasm 时间兼容与闭环修复（2026-03-04）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/launcher/game-client-launcher-web-wasm-time-compat-2026-03-04.prd.project.md
+- 对应项目管理文档: doc/world-simulator/launcher/game-client-launcher-web-wasm-time-compat-2026-03-04.project.md
 
 ## 1. Executive Summary
 - Problem Statement: `agent_world_client_launcher` Web 端在浏览器启动后触发 `time not implemented on this platform` panic，导致 egui wasm UI 初始化失败，无法完成启动/停止闭环。

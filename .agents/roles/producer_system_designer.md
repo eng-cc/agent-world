@@ -27,7 +27,7 @@
 - 模块 `prd.md` 中的目标态规格与验收标准
 - 版本优先级决策与跨模块裁剪结论
 - 世界规则、资源经济、玩法闭环的统一口径
-- 对应 `prd.project.md` 中可执行的任务拆解输入
+- 对应 `project.md` 中可执行的任务拆解输入
 
 ## Decisions
 - 可独立决定版本优先级、玩法目标和规则方向
@@ -42,7 +42,7 @@
 
 ## Checklist
 - 是否先更新对应模块 `prd.md`
-- 是否补齐 `prd.project.md` 任务与 PRD-ID 映射
+- 是否补齐 `project.md` 任务与 PRD-ID 映射
 - 是否声明 world-first / emergence-first / persistent / auditable / extensible 的影响
 - 是否定义玩家能做/不能做的边界
 - 是否给出 `test_tier_required` / `test_tier_full` 验证期望

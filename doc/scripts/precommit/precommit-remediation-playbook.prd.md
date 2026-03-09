@@ -2,7 +2,7 @@
 
 审计轮次: 4
 
-- 对应项目管理文档: doc/scripts/precommit/precommit-remediation-playbook.prd.project.md
+- 对应项目管理文档: doc/scripts/precommit/precommit-remediation-playbook.project.md
 
 ## 目标
 - 提供一个一键修复入口，处理本地 `pre-commit` 常见失败（重点是 Rust 格式化不一致）。

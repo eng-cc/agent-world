@@ -83,7 +83,7 @@ Use the following split and avoid duplicate definitions:
 | Doc | Focus | Must Not Include |
 | --- | --- | --- |
 | PRD (`doc/<module>/prd.md`, `doc/**/**.prd.md`) | `Why/What/Done` (scope, behavior, acceptance, NFR, risks, decisions) | task breakdown, daily progress |
-| Project (`doc/**/**.prd.project.md`) | `How/When/Who` (tasks, dependency, owner, status, execution plan) | rewriting target-state requirements |
+| Project (`doc/**/**.project.md`) | `How/When/Who` (tasks, dependency, owner, status, execution plan) | rewriting target-state requirements |
 | Devlog (`doc/devlog/YYYY-MM-DD.md`) | immutable daily record (timestamp, done, pending, blockers) | requirement definitions |
 
 Guardrails:

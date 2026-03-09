@@ -1,7 +1,7 @@
 # Viewer Web Test API `step` 控制补齐（2026-02-24）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-web-test-api-step-control-2026-02-24.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-web-test-api-step-control-2026-02-24.project.md
 
 ## 1. Executive Summary
 - 修复 Web 语义测试 API `window.__AW_TEST__.sendControl("step")` 无效的问题。
@@ -52,4 +52,4 @@
 - M3：完成。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

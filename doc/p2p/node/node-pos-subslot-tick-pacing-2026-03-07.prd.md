@@ -57,7 +57,7 @@
 - Architecture Overview: 在 `PosNodeEngine` 扩展 slot 内 logical tick 观测模型；在 `NodeRuntime` worker loop 以 logical tick 边界为参考计算下一次 `recv_timeout`；共识提交逻辑维持既有投票阈值模型。
 - Integration Points:
   - `doc/p2p/node/node-pos-slot-clock-real-time-2026-03-07.prd.md`
-  - `doc/p2p/node/node-pos-subslot-tick-pacing-2026-03-07.prd.project.md`
+  - `doc/p2p/node/node-pos-subslot-tick-pacing-2026-03-07.project.md`
   - `crates/agent_world_node/src/types.rs`
   - `crates/agent_world_node/src/lib.rs`
   - `crates/agent_world_node/src/lib_impl_part1.rs`

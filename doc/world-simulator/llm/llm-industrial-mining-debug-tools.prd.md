@@ -1,7 +1,7 @@
 # LLM 工业采矿闭环与调试补给工具（设计文档）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/llm/llm-industrial-mining-debug-tools.prd.project.md
+- 对应项目管理文档: doc/world-simulator/llm/llm-industrial-mining-debug-tools.project.md
 
 ## 1. Executive Summary
 - 将 simulator 的工业链路从“可直接精炼硬件”升级为“先采矿再精炼再建厂/排产”的正确机制，避免开局直接进入建厂生产。
@@ -360,4 +360,4 @@
 - 在线样本受模型随机性影响，单次 120 tick 仍可能波动，后续可按需要补多样本验证。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

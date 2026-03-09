@@ -1,7 +1,7 @@
 # Agent World Simulator：场景 Asteroid Fragment 配置覆盖（设计文档）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/scenario/scenario-asteroid-fragment-overrides.prd.project.md
+- 对应项目管理文档: doc/world-simulator/scenario/scenario-asteroid-fragment-overrides.project.md
 
 本分册定义场景文件对小行星带碎片生成配置的覆盖方式，用于在不同场景中微调碎片分布。
 
@@ -62,4 +62,4 @@
 - 初始化使用的 asteroid fragment 配置与运行时 `WorldConfig` 可能不一致，需要文档强调。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

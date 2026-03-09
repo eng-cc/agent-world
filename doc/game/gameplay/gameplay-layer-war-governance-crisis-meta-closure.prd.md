@@ -2,7 +2,7 @@
 
 审计轮次: 4
 
-- 对应项目管理文档: doc/game/gameplay/gameplay-layer-war-governance-crisis-meta-closure.prd.project.md
+- 对应项目管理文档: doc/game/gameplay/gameplay-layer-war-governance-crisis-meta-closure.project.md
 
 ## ROUND-002 主从口径
 - 主入口：`doc/game/gameplay/gameplay-top-level-design.prd.md`

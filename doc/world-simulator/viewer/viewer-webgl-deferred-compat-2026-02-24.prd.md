@@ -1,7 +1,7 @@
 # Viewer WebGL Deferred 兼容降级（2026-02-24）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-webgl-deferred-compat-2026-02-24.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-webgl-deferred-compat-2026-02-24.project.md
 
 ## 1. Executive Summary
 - 解决 Web 3D 路径在当前环境（WebGL2 + SwiftShader）偶发的致命崩溃：
@@ -39,4 +39,4 @@
   - 缓解：将“panic 消失”与“性能告警”分开验收，本任务只以“无致命崩溃”作为门禁。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

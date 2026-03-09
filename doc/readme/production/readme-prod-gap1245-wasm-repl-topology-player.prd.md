@@ -2,7 +2,8 @@
 
 审计轮次: 4
 
-- 对应项目管理文档: doc/readme/production/readme-prod-gap1245-wasm-repl-topology-player.prd.project.md
+- 对应项目管理文档: doc/readme/production/readme-prod-gap1245-wasm-repl-topology-player.project.md
+- 对应标准执行入口: `doc/readme/production/readme-prod-gap1245-wasm-repl-topology-player.project.md`
 
 ## 目标
 - 收口缺口 1：默认构建启用真实 WASM 执行路径（`wasmtime`），避免默认环境下模块执行退化为 `SandboxUnavailable`。

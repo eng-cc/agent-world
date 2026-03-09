@@ -1,7 +1,7 @@
 # Viewer 贴图查看器（可截图）设计文档
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-texture-inspector.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-texture-inspector.project.md
 
 ## 1. Executive Summary
 - 提供一个“专门看贴图效果”的查看器入口，避免在完整世界场景里手动找角度。
@@ -54,4 +54,4 @@
   - 缓解：支持 `--inspect`/`--variants` 精简运行范围。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

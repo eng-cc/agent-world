@@ -79,7 +79,7 @@
   - `DA/Snapshot Store`：保存快照与日志，支撑追平和审计。
 - Integration Points:
   - `doc/p2p/network/p2p-mobile-light-client-authoritative-state-2026-03-06.prd.md`
-  - `doc/p2p/network/p2p-mobile-light-client-authoritative-state-2026-03-06.prd.project.md`
+  - `doc/p2p/network/p2p-mobile-light-client-authoritative-state-2026-03-06.project.md`
   - `doc/p2p/prd.md`
   - `doc/p2p/network/readme-p1-network-production-hardening.prd.md`
   - `doc/p2p/distributed/distributed-runtime.prd.md`

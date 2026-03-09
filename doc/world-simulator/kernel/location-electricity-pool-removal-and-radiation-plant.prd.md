@@ -1,7 +1,7 @@
 # Agent World Simulator：Location 电力资源池下线与 Agent 辐射电厂建造
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/kernel/location-electricity-pool-removal-and-radiation-plant.prd.project.md
+- 对应项目管理文档: doc/world-simulator/kernel/location-electricity-pool-removal-and-radiation-plant.project.md
 
 ## 1. Executive Summary
 
@@ -57,4 +57,4 @@
 - 回放（replay）中旧事件序列若包含 Location 电力入账，可能需要兼容处理或明确不兼容边界。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

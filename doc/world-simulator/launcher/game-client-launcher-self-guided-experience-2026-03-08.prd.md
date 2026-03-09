@@ -1,7 +1,7 @@
 # 客户端启动器自引导体验闭环（2026-03-08）
 
 审计轮次: 1
-- 对应项目管理文档: `doc/world-simulator/launcher/game-client-launcher-self-guided-experience-2026-03-08.prd.project.md`
+- 对应项目管理文档: `doc/world-simulator/launcher/game-client-launcher-self-guided-experience-2026-03-08.project.md`
 
 ## 1. Executive Summary
 - Problem Statement: 启动器已具备功能完备性，但新用户首次进入时仍需自行理解术语、按钮依赖与推荐操作路径，容易在“能做什么/下一步做什么”上卡住。

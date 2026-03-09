@@ -1,7 +1,7 @@
 # Viewer Web 构建体积裁剪（2026-03-02）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-web-build-pruning-2026-03-02.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-web-build-pruning-2026-03-02.project.md
 
 ## 1. Executive Summary
 - 降低 `agent_world_viewer` 的 wasm 构建产物体积，优先移除 web 端不需要参与编译的模块。
@@ -61,4 +61,4 @@
 - 结论：当前 wasm 产物大头不在本轮被剥离模块，下一阶段应优先关注字体嵌入与 Bevy feature 精细化。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

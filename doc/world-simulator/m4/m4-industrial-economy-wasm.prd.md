@@ -1,7 +1,7 @@
 # M4 社会经济系统：工业链路与 WASM 模块化（Recipe/Product/Factory）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/m4/m4-industrial-economy-wasm.prd.project.md
+- 对应项目管理文档: doc/world-simulator/m4/m4-industrial-economy-wasm.project.md
 
 ## 1. Executive Summary
 

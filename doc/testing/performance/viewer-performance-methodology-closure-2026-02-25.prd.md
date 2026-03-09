@@ -59,7 +59,7 @@
   - `scripts/viewer-owr4-stress.sh`
   - `crates/agent_world_viewer/src/perf_probe.rs`
   - `testing-manual.md`
-  - `doc/testing/performance/viewer-performance-methodology-closure-2026-02-25.prd.project.md`
+  - `doc/testing/performance/viewer-performance-methodology-closure-2026-02-25.project.md`
 - Edge Cases & Error Handling:
   - 短窗抖动：通过可配置阈值与 baseline 允许范围缓冲误判。
   - 日志格式漂移：解析缺失时显式 `perf_samples=0` 并判失败。

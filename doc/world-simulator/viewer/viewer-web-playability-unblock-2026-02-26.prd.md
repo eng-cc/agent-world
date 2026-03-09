@@ -1,7 +1,7 @@
 # viewer-web-playability-unblock-2026-02-26
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-web-playability-unblock-2026-02-26.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-web-playability-unblock-2026-02-26.project.md
 
 ## 1. Executive Summary
 - 修复 Web 玩家链路中“已连接但无法正常游玩”的主阻塞问题。
@@ -45,4 +45,4 @@
 - `runSteps` 语义扩展后，历史脚本若依赖旧行为需要兼容验证。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

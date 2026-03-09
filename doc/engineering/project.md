@@ -1,0 +1,81 @@
+# engineering PRD Project
+
+审计轮次: 4
+
+## 任务拆解（含 PRD-ID 映射）
+- [x] TASK-ENGINEERING-001 (PRD-ENGINEERING-001) [test_tier_required]: 完成 engineering PRD 改写，建立工程治理主文档。
+- [x] TASK-ENGINEERING-002 (PRD-ENGINEERING-001/002) [test_tier_required]: 补齐高频违规（超行数/超文档长度/文档平铺新增）自动诊断与门禁建议。
+- [x] TASK-ENGINEERING-005 (PRD-ENGINEERING-001/002) [test_tier_required]: 执行文档平铺存量迁移批次（world-simulator/p2p），并更新 allowlist 与引用路径。
+- [x] TASK-ENGINEERING-006 (PRD-ENGINEERING-001/002) [test_tier_required]: 执行文档平铺存量迁移批次（world-runtime/testing/site/readme/scripts/game/headless-runtime），并更新 allowlist 与引用路径。
+- [ ] TASK-ENGINEERING-003 (PRD-ENGINEERING-002/003) [test_tier_required]: 建立工程门禁趋势统计（违规率、修复时长）。
+- [ ] TASK-ENGINEERING-004 (PRD-ENGINEERING-003) [test_tier_required]: 增加工程规范季度审查流程与记录模板。
+- [x] TASK-ENGINEERING-007 (PRD-ENGINEERING-001/002/003) [test_tier_required]: 对齐 strict PRD schema，补齐关键流程/规格矩阵/边界异常/NFR/验证与决策记录。
+- [x] TASK-ENGINEERING-008 (PRD-ENGINEERING-004) [test_tier_required]: 按“逐篇阅读 + 人工重写”完成老格式文档迁移试点（`oversized-rust-file-splitting-2026-02-23`）并补齐内容保真映射。
+- [ ] TASK-ENGINEERING-009 (PRD-ENGINEERING-004) [test_tier_required]: 按模块分批推进活跃老格式文档逐篇人工迁移并持续回写 PRD-ID / project / devlog。
+- [x] TASK-ENGINEERING-010 (PRD-ENGINEERING-005/006/007) [test_tier_required]: 产出四人并行迁移协作方案与 2026-03-03 待迁移清单快照，冻结迁移原则和目录责任域。
+- [x] TASK-ENGINEERING-011 (PRD-ENGINEERING-006) [test_tier_required]: Owner-A 迁移 `doc/world-simulator/**` 待迁移文档（146 篇）。
+- [x] TASK-ENGINEERING-012 (PRD-ENGINEERING-006) [test_tier_required]: Owner-B 迁移 `doc/p2p/**` 待迁移文档（70 篇）。
+- [x] TASK-ENGINEERING-013 (PRD-ENGINEERING-006) [test_tier_required]: Owner-C 迁移 `doc/world-runtime/**`、`doc/headless-runtime/**` 待迁移文档（30 篇）。
+- [x] TASK-ENGINEERING-013B (PRD-ENGINEERING-006) [test_tier_required]: Owner-C Batch-C2 迁移 `doc/headless-runtime/**` 待迁移文档（4 篇）。
+- [x] TASK-ENGINEERING-013C (PRD-ENGINEERING-006) [test_tier_required]: Owner-C Batch-C3 迁移 `doc/world-runtime/governance/**`、`doc/world-runtime/module/**`、`doc/world-runtime/wasm/**` 待迁移文档（9 篇）。
+- [x] TASK-ENGINEERING-013D (PRD-ENGINEERING-006) [test_tier_required]: Owner-C Batch-C4 迁移 `doc/world-runtime/runtime/**` 待迁移文档（17 篇）。
+- [x] TASK-ENGINEERING-014 (PRD-ENGINEERING-006) [test_tier_required]: Owner-D 迁移 `doc/site/**`、`doc/readme/**`、`doc/scripts/**`、`doc/game/**`、`doc/engineering/**` 与根入口遗留文档（57 篇，D1/D2 已完成）。
+- [x] TASK-ENGINEERING-014-D1 (PRD-ENGINEERING-006) [test_tier_required]: Owner-D 已完成非根入口 54 篇 legacy 迁移（`*.md/*.project.md -> *.prd.md/*.project.md`）。
+- [x] TASK-ENGINEERING-014-D2 (PRD-ENGINEERING-006) [test_tier_required]: 完成 3 份根入口 redirect project 文档收口（`doc/game-test.project.md`、`doc/world-runtime.project.md`、`doc/world-simulator.project.md`）。
+- [ ] TASK-ENGINEERING-015 (PRD-ENGINEERING-007) [test_tier_required]: 执行全量迁移收口复核（命名一致性、引用可达、模块追踪同步、燃尽归零）。
+- [x] TASK-ENGINEERING-016 (PRD-ENGINEERING-008) [test_tier_required]: 为 12 个模块补齐文件级 PRD 索引，并从模块入口文档建立可达引用。
+- [x] TASK-ENGINEERING-017 (PRD-ENGINEERING-009) [test_tier_required]: 在 `scripts/doc-governance-check.sh` 新增专题 `*.prd.md <-> *.project.md` 双向互链门禁。
+- [x] TASK-ENGINEERING-018 (PRD-ENGINEERING-010) [test_tier_required]: 在 12 个模块 `project.md` 的任务项显式标注 `test_tier_required/full`。
+- [x] TASK-ENGINEERING-019 (PRD-ENGINEERING-011) [test_tier_required]: 新增活跃文档引用路径可达性门禁并修复现存断链。
+- [x] TASK-ENGINEERING-020 (PRD-ENGINEERING-012) [test_tier_required]: 建立全量 PRD 逐篇审读机制，生成已读清单并完成入口三件套首批审读。
+- [x] TASK-ENGINEERING-021 (PRD-ENGINEERING-013) [test_tier_required]: 逐模块核对 active 专题文档与代码一致性；发现偏差按代码回写并补充处理动作。
+- [x] TASK-ENGINEERING-022 (PRD-ENGINEERING-013/014) [test_tier_required]: 审查跨文档重复与上下游口径漂移，执行合并/重定向/引用修复。
+- [x] TASK-ENGINEERING-023 (PRD-ENGINEERING-014) [test_tier_required]: 完成历史专题审读与引用收口（不再保留 archive 目录）。
+- [x] TASK-ENGINEERING-024 (PRD-ENGINEERING-012/013/014) [test_tier_required]: 建立周度增量审读节奏（新增/变更 PRD 自动入清单）。
+- [x] TASK-ENGINEERING-025 (PRD-ENGINEERING-015) [test_tier_required]: 产出“文档分工与组织规范”专题 PRD、规范正文与项目文档，冻结目录按对象、文件按职责的建档标准。
+- [x] TASK-ENGINEERING-026 (PRD-ENGINEERING-015) [test_tier_required]: 将“文档分工与组织规范”专题收敛为短文件名 `doc-structure-standard`，并同步回写索引、白名单与引用。
+- [x] TASK-ENGINEERING-030 (PRD-ENGINEERING-016) [test_tier_required]: 建立 `.agents/roles/` 七个组合角色职责卡，并将根 `AGENTS.md` 的分工章节替换为角色入口映射与协作约定。
+- [x] TASK-ENGINEERING-031 (PRD-ENGINEERING-017) [test_tier_required]: 建立 `.agents/roles/templates/` 统一交接模板，并在根 `AGENTS.md` 增加使用入口。
+- [x] TASK-ENGINEERING-032 (PRD-ENGINEERING-018) [test_tier_required]: 将 `AGENTS.md` 的“开发工作流”升级为角色协作版，补齐 owner role、handoff、QA/LiveOps 和 no-commit 例外规则。
+- [x] TASK-ENGINEERING-033 (PRD-ENGINEERING-019) [test_tier_required]: 将 devlog 规则明确为“按日期单文件、按条目标角色”，并同步回写工程文档追踪。
+- [x] TASK-ENGINEERING-034 (PRD-ENGINEERING-020) [test_tier_required]: 建立角色名白名单门禁，约束 devlog / handoff 只能使用 `.agents/roles/*.md` 中存在的标准角色名。
+- [x] TASK-ENGINEERING-035 (PRD-ENGINEERING-015) [test_tier_required]: 将 ROUND-006 定义为 `doc-structure-standard` 结构治理轮，建立逐文档改造台账字段、批次骨架与 core/engineering 双侧挂靠。
+
+## 依赖
+- 模块设计总览：`doc/engineering/design.md`
+- doc/engineering/prd.index.md
+- `AGENTS.md`
+- `.agents/roles/*.md`
+- `.agents/roles/templates/*.md`
+- `doc/scripts/precommit/pre-commit.prd.md`
+- `testing-manual.md`
+- `.agents/skills/prd/check.md`
+- `doc/engineering/*.md`
+- `doc/engineering/oversized-rust-file-splitting-2026-02-23.prd.md`
+- `doc/engineering/oversized-rust-file-splitting-2026-02-23.project.md`
+- `doc/engineering/doc-migration/legacy-doc-migration-collaboration-2026-03-03.prd.md`
+- `doc/engineering/doc-migration/legacy-doc-migration-collaboration-2026-03-03.project.md`
+- `doc/engineering/doc-migration/legacy-doc-migration-backlog-2026-03-03.md`
+- `doc/engineering/prd-review/prd-full-system-audit-2026-03-03.prd.md`
+- `doc/engineering/prd-review/prd-full-system-audit-2026-03-03.project.md`
+- `doc/engineering/doc-structure-standard.prd.md`
+- `doc/engineering/doc-structure-standard.design.md`
+- `doc/engineering/doc-structure-standard.project.md`
+- `doc/engineering/prd-review/checklists/`
+- `scripts/doc-governance-check.sh`
+- `doc/*/README.md`
+
+## 状态
+- 更新日期: 2026-03-09
+- 当前状态: active
+- 下一任务: TASK-ENGINEERING-015（全量迁移收口复核）
+- PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
+- 当前整改批次: R2（引用路径可达门禁）已完成（019）；R3（全量 PRD 审读机制）已完成（020-024，清单覆盖 708/708）。
+- 当前规范补充: 已完成 `TASK-ENGINEERING-025/026/027`，冻结“目录按对象、文件按职责”的文档建模方案、稳定专题命名，并补齐测试相关文档分工规则。
+- 最新完成: `TASK-ENGINEERING-030`（角色职责卡收口与根 `AGENTS.md` 入口改造）。
+- 最新完成: `TASK-ENGINEERING-031`（角色统一交接模板建档与入口接入）。
+- 最新完成: `TASK-ENGINEERING-032`（开发工作流升级为角色协作版）。
+- 最新完成: `TASK-ENGINEERING-033`（devlog 改为按日期存档、按条目标角色）。
+- 最新完成: `TASK-ENGINEERING-034`（角色名白名单门禁与模板枚举接入）。
+- 最新完成: `TASK-ENGINEERING-035`（ROUND-006 改为按 `doc-structure-standard` 逐文档治理的执行轮）。
+- 说明: 本文档仅维护 engineering 设计执行状态；过程记录在 `doc/devlog/2026-03-03.md`、`doc/devlog/2026-03-04.md` 与 `doc/devlog/2026-03-09.md`。

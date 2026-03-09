@@ -2,7 +2,8 @@
 
 审计轮次: 4
 
-- 对应项目管理文档: doc/engineering/oversized-rust-file-splitting-2026-02-23.prd.project.md
+- 对应项目管理文档: doc/engineering/oversized-rust-file-splitting-2026-02-23.project.md
+- 对应标准执行入口: `doc/engineering/oversized-rust-file-splitting-2026-02-23.project.md`
 
 ## 1. Executive Summary
 - Problem Statement: 仓库存在 22 个 Rust 文件超过单文件 1200 行约束，导致可维护性下降并增加评审与回归风险。

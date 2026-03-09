@@ -2,7 +2,7 @@
 
 审计轮次: 4
 
-- 对应项目管理文档: doc/world-runtime/runtime/runtime-numeric-correctness-phase5.prd.project.md
+- 对应项目管理文档: doc/world-runtime/runtime/runtime-numeric-correctness-phase5.project.md
 
 ## 1. Executive Summary
 - 收口 `agent_world_consensus` 中仍位于主链路的饱和递进语义，避免长期运行时出现静默夹逼后继续执行。

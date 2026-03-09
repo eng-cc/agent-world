@@ -8,12 +8,12 @@
 
 ## 范围
 - 覆盖 p2p 模块当前能力设计、接口边界、测试口径与演进路线。
-- 覆盖 PRD-ID 到 `doc/p2p/prd.project.md` 的任务映射。
+- 覆盖 PRD-ID 到 `doc/p2p/project.md` 的任务映射。
 - 不覆盖实现代码逐行说明与历史过程记录。
 
 ## 接口 / 数据
 - PRD 主入口: `doc/p2p/prd.md`
-- 项目管理入口: `doc/p2p/prd.project.md`
+- 项目管理入口: `doc/p2p/project.md`
 - 文件级索引: doc/p2p/prd.index.md
 - 追踪主键: `PRD-P2P-xxx`
 - 测试与发布参考: `testing-manual.md`

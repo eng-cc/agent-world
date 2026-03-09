@@ -3,7 +3,7 @@
 审计轮次: 4
 
 更新时间：2026-03-04
-范围：doc/*.prd.md 与 doc/*.prd.project.md（legacy redirect）
+范围：doc/*.prd.md 与 doc/*.project.md（legacy redirect）
 文档数：6
 
 说明：
@@ -12,8 +12,8 @@
 - 如发现与其他文档重复或上下游不对齐，先记录问题，再在对应文档修订并回填状态。
 
 - [x] 2026-03-03 23:45:14 CST | doc/game-test.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 无
-- [x] 2026-03-03 23:45:14 CST | doc/game-test.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 无
+- [x] 2026-03-03 23:45:14 CST | doc/game-test.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 无
 - [x] 2026-03-03 23:45:14 CST | doc/world-runtime.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 无
-- [x] 2026-03-03 23:45:14 CST | doc/world-runtime.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 无
+- [x] 2026-03-03 23:45:14 CST | doc/world-runtime.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 无
 - [x] 2026-03-03 23:45:14 CST | doc/world-simulator.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 无
-- [x] 2026-03-03 23:45:14 CST | doc/world-simulator.prd.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 无
+- [x] 2026-03-03 23:45:14 CST | doc/world-simulator.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 无

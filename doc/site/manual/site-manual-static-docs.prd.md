@@ -6,7 +6,8 @@
 - 本文件为 manual 主文档。
 - `doc/site/manual/viewer-manual-content-migration-2026-02-15.prd.md` 为增量子文档。
 
-- 对应项目管理文档: doc/site/manual/site-manual-static-docs.prd.project.md
+- 对应项目管理文档: doc/site/manual/site-manual-static-docs.project.md
+- 对应标准执行入口: `doc/site/manual/site-manual-static-docs.project.md`
 
 ## 目标
 - 在 `site/doc/cn` 与 `site/doc/en` 下建立可直接发布到 GitHub Pages 的手册站框架。

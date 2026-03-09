@@ -1,7 +1,7 @@
 # Agent World Simulator：Frag 资源平衡与新手友好生成（设计文档）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/scenario/frag-resource-balance-onboarding.prd.project.md
+- 对应项目管理文档: doc/world-simulator/scenario/frag-resource-balance-onboarding.project.md
 
 本分册定义一版可落地的 frag 资源生成改造，目标是同时满足两点：
 1) 资源产出不出现明显“前期断供/后期通胀”；
@@ -122,4 +122,4 @@
 - 运行期补种若参数过大，可能导致中后期资源膨胀与事件日志增长过快。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

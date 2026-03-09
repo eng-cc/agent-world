@@ -1,7 +1,7 @@
 # Viewer 工业风可视化缺口收敛（对标《异星工厂》《工业巨头》）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-industrial-visual-closure.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-industrial-visual-closure.project.md
 
 ## 1. Executive Summary
 - 在不破坏现有调试可视化能力的前提下，补齐“工业经营可读性”。
@@ -69,4 +69,4 @@
 - 回归风险：右侧面板改动容易影响既有快照测试，需要最小侵入与补充单测。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

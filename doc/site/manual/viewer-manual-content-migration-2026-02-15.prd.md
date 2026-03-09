@@ -6,7 +6,8 @@
 - 主入口文档：`doc/site/manual/site-manual-static-docs.prd.md`。
 - 本文件仅维护增量专题内容。
 
-- 对应项目管理文档: doc/site/manual/viewer-manual-content-migration-2026-02-15.prd.project.md
+- 对应项目管理文档: doc/site/manual/viewer-manual-content-migration-2026-02-15.project.md
+- 对应标准执行入口: `doc/site/manual/viewer-manual-content-migration-2026-02-15.project.md`
 
 ## 目标
 - 将分散在 `doc/world-simulator/viewer/viewer-*` 与 `doc/scripts/viewer-tools/capture-viewer-frame.prd.md` 的“用户可操作内容”并入 Viewer 使用手册。

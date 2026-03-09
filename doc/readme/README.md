@@ -1,10 +1,12 @@
 # readme 文档索引
 
-审计轮次: 4
+审计轮次: 6
 
 ## 入口
 - PRD: `doc/readme/prd.md`
-- 项目管理: `doc/readme/prd.project.md`
+- 设计总览: `doc/readme/design.md`
+- 标准执行入口: `doc/readme/project.md`
+- 兼容执行入口: `doc/readme/project.md`
 - 文件级索引: doc/readme/prd.index.md
 
 ## 模块职责
@@ -17,7 +19,7 @@
 - `governance/`：规则层与资源模型治理专题。
 
 ## 根目录收口
-- 模块根目录仅保留：`README.md`、`prd.md`、`prd.project.md`、`prd.index.md`。
+- 模块根目录仅保留：`README.md`、`prd.md`、`project.md`、`prd.index.md`。
 - 其余专题文档按主题下沉到 `gap/production/governance`。
 
 ## 维护约定

@@ -2,7 +2,7 @@
 
 审计轮次: 5
 
-- 对应项目管理文档: doc/world-simulator/scenario/scenario-files.prd.project.md
+- 对应项目管理文档: doc/world-simulator/scenario/scenario-files.project.md
 
 本分册描述将 `WorldScenario` 的内置定义迁移为**场景文件**，用于提升可维护性与可扩展性。
 
@@ -106,4 +106,4 @@
 - 场景矩阵应随测试变更同步更新，避免“文档保留但测试漂移”。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

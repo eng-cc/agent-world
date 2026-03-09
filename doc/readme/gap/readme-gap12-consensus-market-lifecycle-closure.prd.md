@@ -6,7 +6,8 @@
 - 主入口文档：`doc/readme/gap/readme-gap-distributed-prod-hardening-gap12345.prd.md`。
 - 本文件仅维护本专题增量内容。
 
-- 对应项目管理文档: doc/readme/gap/readme-gap12-consensus-market-lifecycle-closure.prd.project.md
+- 对应项目管理文档: doc/readme/gap/readme-gap12-consensus-market-lifecycle-closure.project.md
+- 对应标准执行入口: `doc/readme/gap/readme-gap12-consensus-market-lifecycle-closure.project.md`
 
 ## 目标
 - 收口缺口 1：`world_viewer_live` 主链路从“本地 kernel 直接推进”切换到“先提交 node 共识，再仅回放已提交动作推进状态”。

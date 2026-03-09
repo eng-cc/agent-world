@@ -1,6 +1,6 @@
 ## 开发工作流
-1. 新需求先读目标模块 `doc/<module>/prd.md`、`doc/<module>/prd.project.md`，必要时补读 `doc/devlog/YYYY-MM-DD.md`
-   1. `prd.md` 只写目标态规格（Why/What/Done），`prd.project.md` 只写执行计划（How/When/Who），`devlog` 只写当天过程
+1. 新需求先读目标模块 `doc/<module>/prd.md`、`doc/<module>/project.md`，必要时补读 `doc/devlog/YYYY-MM-DD.md`
+   1. `prd.md` 只写目标态规格（Why/What/Done），`project.md` 只写执行计划（How/When/Who），`devlog` 只写当天过程
    2. PRD 写作与审查门禁以 `.agents/skills/prd/SKILL.md` 与 `.agents/skills/prd/check.md` 为准
 
 2. 新需求先确定 `owner role`
@@ -10,9 +10,9 @@
       2. 跨模块、高风险：`./.agents/roles/templates/handoff-detailed.md`
    3. 接收方开始前必须确认目标、输入、输出、完成定义和验证方式
 
-3. 先更新 `prd.md`，再拆 `prd.project.md`
+3. 先更新 `prd.md`，再拆 `project.md`
    1. 需求、行为、边界变化时必须先更新 `prd.md`
-   2. `prd.project.md` 必须写清 PRD-ID、任务、依赖、状态和测试层级
+   2. `project.md` 必须写清 PRD-ID、任务、依赖、状态和测试层级
    3. handoff 只用于协作，不替代 PRD / project 正式追踪
 
 4. 按任务闭环执行代码、文档、测试
@@ -47,7 +47,7 @@
 
 9. 每个任务（写文档也算）一个 commit；若用户明确要求“先不要提交”，则只保留本地改动，但仍要完成文档与测试闭环
 
-10. 当前 `prd.project.md` 还有后续任务时，不要中断；完成一个任务后继续下一个
+10. 当前 `project.md` 还有后续任务时，不要中断；完成一个任务后继续下一个
 
 ## 工程架构
 - 各个子模块各自闭环基础模块功能
@@ -98,8 +98,8 @@ See `third_party/rust-skills/AGENTS.md` for Rust development guidelines.
 
 ### 使用约定
 1. 新需求优先在对应角色职责卡中确认 owner、输入、输出与 done 定义；如跨多个角色，按最先落地代码/文档的 owner 牵头
-2. 根 `AGENTS.md` 不再扩写角色细节；角色职责调整时，直接修改 `.agents/roles/*.md`，必要时同步回写 engineering `prd.md` / `prd.project.md`
-3. 角色职责卡用于人机协作对齐，不替代模块 `prd.md` / `prd.project.md` 的需求与任务追踪
+2. 根 `AGENTS.md` 不再扩写角色细节；角色职责调整时，直接修改 `.agents/roles/*.md`，必要时同步回写 engineering `prd.md` / `project.md`
+3. 角色职责卡用于人机协作对齐，不替代模块 `prd.md` / `project.md` 的需求与任务追踪
 4. 角色交接优先复用统一模板：
    1. `./.agents/roles/templates/handoff-brief.md`
    2. `./.agents/roles/templates/handoff-detailed.md`

@@ -1,7 +1,7 @@
 # Agent World Simulator：Viewer Location 细粒度渲染（设计文档）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-location-fine-grained-rendering.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-location-fine-grained-rendering.project.md
 
 ## 1. Executive Summary
 - 为 `location` 增加可解释的细粒度几何层级（表面细节 + 辐射外环），避免仅靠单一球体难以区分不同地点状态。
@@ -59,4 +59,4 @@
 - 场景白名单工具脚本若未同步，可能导致截图闭环参数校验失败。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

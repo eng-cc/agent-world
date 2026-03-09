@@ -1,7 +1,7 @@
 # Viewer 控制面拆分：回放/Live 分离（2026-02-27）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-control-plane-split-live-playback-2026-02-27.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-control-plane-split-live-playback-2026-02-27.project.md
 
 ## 1. Executive Summary
 - 将 viewer 协议中的控制语义从“单一 `Control`”拆分为“回放控制 + live 控制”两条独立控制面。
@@ -46,4 +46,4 @@
   - 缓解：优先覆盖协议 round-trip 与关键控制路径（play/pause/step/seek）。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

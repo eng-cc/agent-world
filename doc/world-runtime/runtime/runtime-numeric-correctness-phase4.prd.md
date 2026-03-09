@@ -2,7 +2,7 @@
 
 审计轮次: 4
 
-- 对应项目管理文档: doc/world-runtime/runtime/runtime-numeric-correctness-phase4.prd.project.md
+- 对应项目管理文档: doc/world-runtime/runtime/runtime-numeric-correctness-phase4.project.md
 
 ## 1. Executive Summary
 - 收口 `agent_world_node::replication` 中长期运行敏感的 writer `epoch/sequence` 递进语义。

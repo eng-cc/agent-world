@@ -21,8 +21,8 @@
 - 文件名能表达模块/主题/范围（必要时含阶段/日期）。
 - 避免 `misc/tmp/update/new/fix` 等非语义化词作为主干。
 - `phase/round` 仅在确有阶段序列时使用；无后续阶段需合并或更名。
-- `*.prd.md` 与 `*.prd.project.md` 必须同名成对。
-- 入口类文件（`prd.md`/`prd.project.md`/`prd.index.md`）固定命名不参与更名。
+- `*.prd.md` 与 `*.project.md` 必须同名成对。
+- 入口类文件（`prd.md`/`project.md`/`prd.index.md`）固定命名不参与更名。
 
 ## 更名执行规则
 - 一次更名必须同时更新：

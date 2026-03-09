@@ -1,7 +1,7 @@
 # Agent World Simulator：Viewer Location 开采损耗可视化（设计文档）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-location-depletion-visualization.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-location-depletion-visualization.project.md
 
 ## 1. Executive Summary
 - 在 Viewer 中让“location 被开采后体量下降”可被直观看到，而不只停留在数值面板。
@@ -46,4 +46,4 @@
 - 若 location 无 `fragment_budget`，需安全回退为原半径渲染。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

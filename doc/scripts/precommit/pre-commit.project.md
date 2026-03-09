@@ -1,0 +1,38 @@
+# Pre-commit Checks（本地提交前测试脚本）（项目管理文档）
+
+审计轮次: 4
+
+## 任务拆解
+- [x] 输出设计文档（`doc/scripts/precommit/pre-commit.prd.md`）
+- [x] 输出项目管理文档（本文件）
+- [x] 新增本地提交前联测脚本（`scripts/pre-commit.sh`）
+- [x] 安装 git pre-commit hook（调用 `scripts/pre-commit.sh`）
+- [x] 更新任务日志
+- [x] 运行测试 `./scripts/pre-commit.sh`
+- [x] 提交到 git
+- [x] 对齐 CI 测试清单（改为调用 `scripts/ci-tests.sh`）
+- [x] 提交前新增代码格式化时机（`cargo fmt --all`）
+- [x] CI 增加格式化检查（`cargo fmt --all -- --check`）
+- [x] 文档补充：新仓库需重新注册 pre-commit hook（2026-02-07）
+- [x] 移除默认 pre-commit/CI 的 builtin wasm hash 校验（改为手动按需执行，2026-02-14）
+- [x] 历史方案变更：不再将 builtin wasm hash 校验放在 required 基础门禁（以 `scripts/ci-tests.sh` 当前行为为准）
+- [x] pre-commit 增加 viewer wasm32 编译检查（`cargo check -p agent_world_viewer --target wasm32-unknown-unknown`，2026-02-15）
+- [x] 修复提交钩子 `fmt` 失败并恢复全链路通过（`cargo fmt --all` + 补齐 `selection_linking` 新事件分支，2026-02-16）
+- [x] 修复提交钩子 `fmt` 失败并恢复全链路通过（`cargo fmt --all` 修复 `node_points` / `node_points_runtime` 格式漂移，2026-02-16）
+- [x] 修复 CI `cargo fmt --check` 漂移并恢复门禁通过（`world_viewer_live*` / `agent_world_node*`，2026-02-17）
+- [x] 清理 required 门禁 warning（`world_viewer_live*` DistFS/Node 导入与测试辅助函数，2026-02-17）
+- [x] required 门禁口径同步到当前实现：`doc-governance + fmt + required tier + consensus/distfs/viewer + viewer wasm check`（2026-03-04）
+
+## 依赖
+- `rustfmt`（staged `.rs`）/ `cargo fmt -- --check`
+- `cargo test`（agent_world viewer 联测）
+- `wasm32-unknown-unknown` Rust target（viewer wasm 编译检查）
+
+## 状态
+- 当前阶段：已提交
+- 最近更新：required 门禁文档回写到 `scripts/ci-tests.sh` 当前口径（2026-03-04）
+- 审计备注（2026-03-05 ROUND-002）：本文件仅保留执行记录；required/full 规则定义与命令矩阵以 `ci-tiered-execution`、`ci-testcase-tiering`、`ci-test-coverage` 及 `scripts/ci-tests.sh` 为准。
+
+## 迁移记录（2026-03-03）
+- 已按 `TASK-ENGINEERING-014-D1 (PRD-ENGINEERING-006)` 从 legacy 命名迁移为 `.prd.md/.project.md`。
+- 保留原任务拆解、依赖与状态语义，不改变既有结论。

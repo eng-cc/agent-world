@@ -1,7 +1,7 @@
 # Agent World Simulator：分块世界生成与碎片元素/化合物池（设计文档）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/scenario/chunked-fragment-generation.prd.project.md
+- 对应项目管理文档: doc/world-simulator/scenario/chunked-fragment-generation.project.md
 
 本分册定义“按探索触发”的世界分块生成流程，并补充碎片的几何与物理量模型（体积/密度/质量）、化合物主导组成、块状分布表达。
 
@@ -260,4 +260,4 @@
 - ChunkGenerated 事件体积随 chunk 密度上升而增大，需结合快照频率控制日志膨胀。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

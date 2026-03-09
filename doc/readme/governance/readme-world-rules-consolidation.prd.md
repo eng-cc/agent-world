@@ -2,7 +2,8 @@
 
 审计轮次: 4
 
-- 对应项目管理文档: doc/readme/governance/readme-world-rules-consolidation.prd.project.md
+- 对应项目管理文档: doc/readme/governance/readme-world-rules-consolidation.project.md
+- 对应标准执行入口: `doc/readme/governance/readme-world-rules-consolidation.project.md`
 
 ## 目标
 

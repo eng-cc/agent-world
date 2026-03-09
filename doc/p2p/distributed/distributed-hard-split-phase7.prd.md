@@ -38,7 +38,7 @@
 - Architecture Overview: 保持原文技术边界，按 strict PRD 结构重排。
 - Integration Points:
   - `doc/p2p/distributed/distributed-hard-split-phase7.prd.md`
-  - `doc/p2p/distributed/distributed-hard-split-phase7.prd.project.md`
+  - `doc/p2p/distributed/distributed-hard-split-phase7.project.md`
   - `crates/agent_world_net/src/lib.rs`
   - `crates/agent_world_consensus/src/lib.rs`
   - `crates/agent_world_distfs/src/lib.rs`

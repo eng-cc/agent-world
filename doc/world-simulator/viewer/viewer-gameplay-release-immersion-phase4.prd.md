@@ -1,7 +1,7 @@
 # Viewer 发行体验改造（第四阶段：场景活化与交互动效）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase4.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase4.project.md
 
 ## 1. Executive Summary
 - 在第三阶段“成就/气泡反馈”基础上，继续提升玩家沉浸感与舒适度：
@@ -73,4 +73,4 @@
   - 面板显隐场景均可看到 Player HUD 与“下一步目标”卡片，信息主次较第三阶段更清晰。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

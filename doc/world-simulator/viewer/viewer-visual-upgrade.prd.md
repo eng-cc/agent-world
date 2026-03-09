@@ -1,7 +1,7 @@
 # Viewer 视觉升级设计文档（Phase 10 后增量强化）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-visual-upgrade.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-visual-upgrade.project.md
 
 ## 背景
 - 截至 Phase 10，Viewer 的新手体验、Theme Runtime、industrial_v2 主题包与发布回归链路已经闭环，当前工程状态不是“从 0 到 1 的可玩化”，而是“已可发行基线上的增量强化”。
@@ -194,4 +194,4 @@ AGENT_WORLD_VIEWER_ASSET_TYPE_COLOR=1|0
 - 缓解：新增字段全部提供 `serde(default)` 与向后兼容默认值。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

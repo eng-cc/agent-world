@@ -1,7 +1,7 @@
 # Viewer 发行体验改造（第七阶段：整体布局重构与指挥优先）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase7.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase7.project.md
 
 ## 1. Executive Summary
 - 以“游戏世界优先 + 指挥能力不丢失”为核心，重构 Player 模式布局，不再让右侧工具式面板主导体验。
@@ -72,4 +72,4 @@
   - 第七阶段目标达成：Player 默认保持“世界优先”隐藏态，同时保留“直接指挥”与 Chat 可达性；右侧宽度预算收紧后，展开态不再像此前那样长期挤占主视野。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

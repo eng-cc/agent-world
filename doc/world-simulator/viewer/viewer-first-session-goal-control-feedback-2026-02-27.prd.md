@@ -1,7 +1,7 @@
 # Viewer 首局目标与控制语义可解释反馈优化（2026-02-27）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-first-session-goal-control-feedback-2026-02-27.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-first-session-goal-control-feedback-2026-02-27.project.md
 
 ## 1. Executive Summary
 - 提升首局可理解性：首屏/首阶段明确展示 `1 个主目标 + 2 个短目标`，降低“目标模糊”。
@@ -59,4 +59,4 @@
 - 输入解释链路已覆盖“入参解析、失败原因、建议下一步、世界状态增量（logicalTime/eventSeq）”。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

@@ -57,7 +57,7 @@
 ## 4. Technical Specifications
 - Architecture Overview: 在 `agent_world_node::PosNodeEngine` 增加 wall-clock slot 观察与游标对齐逻辑；`slot/epoch` 来源统一为时间函数，`next_slot` 仅作为下一个可提案槽游标。
 - Integration Points:
-  - `doc/p2p/node/node-pos-slot-clock-real-time-2026-03-07.prd.project.md`
+  - `doc/p2p/node/node-pos-slot-clock-real-time-2026-03-07.project.md`
   - `crates/agent_world_node/src/types.rs`
   - `crates/agent_world_node/src/lib.rs`
   - `crates/agent_world_node/src/lib_impl_part1.rs`

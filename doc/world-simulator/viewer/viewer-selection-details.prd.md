@@ -1,7 +1,7 @@
 # Viewer 选中对象详情面板（含 LLM 决策 I/O）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-selection-details.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-selection-details.project.md
 
 ## 1. Executive Summary
 - 在 viewer 中新增“选中对象详情”面板：点击对象后显示尽量详细的信息。
@@ -73,4 +73,4 @@
 - **交互一致性**：按钮视觉反馈与 loading 状态需和真实控制状态保持一致，避免“假忙/假可点”。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

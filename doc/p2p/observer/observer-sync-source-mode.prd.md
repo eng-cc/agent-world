@@ -1,13 +1,13 @@
 # Agent World Runtime：Observer 同步源策略化
 
 审计轮次: 5
-- 对应项目管理文档: `doc/p2p/observer/observer-sync-source-mode.prd.project.md`
+- 对应项目管理文档: `doc/p2p/observer/observer-sync-source-mode.project.md`
 
 ## ROUND-002 主从口径（2026-03-05）
 - 本文档为 Observer 同步源策略化的基线主文档（非 DHT 链路）。
 - DHT 组合同步源专题降级为增量子文档，保留差异项与实现追溯：
   - `doc/p2p/observer/observer-sync-source-dht-mode.prd.md`
-  - `doc/p2p/observer/observer-sync-source-dht-mode.prd.project.md`
+  - `doc/p2p/observer/observer-sync-source-dht-mode.project.md`
 
 ## 1. Executive Summary
 - Problem Statement: 为 `ObserverClient` 增加可配置的 head 同步源策略，显式控制“网络路径”与“路径索引路径”的使用方式。
@@ -44,7 +44,7 @@
 - Architecture Overview: 保持原文技术边界，按 strict PRD 结构重排。
 - Integration Points:
   - `doc/p2p/observer/observer-sync-source-mode.prd.md`
-  - `doc/p2p/observer/observer-sync-source-mode.prd.project.md`
+  - `doc/p2p/observer/observer-sync-source-mode.project.md`
   - `testing-manual.md`
 - Edge Cases & Error Handling: 命名不一致、章节缺失、引用断链需在同提交修复。
 - Non-Functional Requirements: PRD-ID/任务映射完整；治理检查通过。

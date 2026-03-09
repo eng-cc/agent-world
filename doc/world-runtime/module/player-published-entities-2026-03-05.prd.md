@@ -2,7 +2,7 @@
 
 审计轮次: 4
 
-- 对应项目管理文档: doc/world-runtime/module/player-published-entities-2026-03-05.prd.project.md
+- 对应项目管理文档: doc/world-runtime/module/player-published-entities-2026-03-05.project.md
 
 ## 1. Executive Summary
 - Problem Statement: 玩家无法在可治理、可审计、可回放的前提下发布“新制成品”，WASM 模块发布与产品/配方/工厂 profile 治理脱节，导致经济系统无法稳定接入新内容。

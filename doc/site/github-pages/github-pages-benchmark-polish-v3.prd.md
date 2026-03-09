@@ -1,6 +1,7 @@
 # GitHub Pages 对标优化（三期）设计文档
 
 审计轮次: 5
+- 对应标准执行入口: `doc/site/github-pages/github-pages-benchmark-polish-v3.project.md`
 
 ## ROUND-002 主从口径
 - 主入口文档：`doc/site/github-pages/github-pages-game-engine-reposition-2026-02-25.prd.md`。
@@ -37,7 +38,7 @@
   - `site/assets/images/world-constellation.svg`
 - 文档与管理：
   - `doc/site/github-pages/github-pages-benchmark-polish-v3.prd.md`
-  - `doc/site/github-pages/github-pages-benchmark-polish-v3.prd.project.md`
+  - `doc/site/github-pages/github-pages-benchmark-polish-v3.project.md`
 
 ### 结构约定
 - 新增导航锚点：`#path`、`#proof`。

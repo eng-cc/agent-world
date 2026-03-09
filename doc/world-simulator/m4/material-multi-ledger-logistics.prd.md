@@ -1,7 +1,7 @@
 # M4 材料多账本与物流约束（设计文档）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/m4/material-multi-ledger-logistics.prd.project.md
+- 对应项目管理文档: doc/world-simulator/m4/material-multi-ledger-logistics.project.md
 
 ## 1. Executive Summary
 - 将 runtime 现有 world 级共享材料账本升级为多账本模型，支持 owner/site/factory 维度隔离。
@@ -73,4 +73,4 @@
 - 性能风险：在途队列增长可能拉长每 tick 处理时延。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

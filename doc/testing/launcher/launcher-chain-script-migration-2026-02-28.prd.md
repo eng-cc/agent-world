@@ -2,7 +2,7 @@
 
 审计轮次: 5
 
-- 对应项目管理文档: doc/testing/launcher/launcher-chain-script-migration-2026-02-28.prd.project.md
+- 对应项目管理文档: doc/testing/launcher/launcher-chain-script-migration-2026-02-28.project.md
 
 ## 1. Executive Summary
 - Problem Statement: 多个运行脚本仍依赖 `world_viewer_live` 旧节点参数链路（`--node-*`/`--topology`/`--reward-runtime-*`），在新启动架构下已失效且错误提示不清晰。

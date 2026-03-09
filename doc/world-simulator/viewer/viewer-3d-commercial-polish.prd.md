@@ -1,7 +1,7 @@
 # Agent World Viewer：3D 商业化精致度收敛（资产/材质/光照/后处理）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-3d-commercial-polish.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-3d-commercial-polish.project.md
 
 ## 1. Executive Summary
 - 把当前 Viewer 3D 从“调试可视化风格”提升到“可对外发行的商业化视觉基线”。
@@ -85,4 +85,4 @@
   - 缓解：统一 `AGENT_WORLD_VIEWER_RENDER_PROFILE` 作为主入口，其它变量为细化覆盖。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

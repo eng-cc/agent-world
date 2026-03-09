@@ -6,7 +6,8 @@
 - 主入口文档：`doc/readme/gap/readme-gap-distributed-prod-hardening-gap12345.prd.md`。
 - 本文件仅维护本专题增量内容。
 
-- 对应项目管理文档: doc/readme/gap/readme-gap123-runtime-consensus-metering.prd.project.md
+- 对应项目管理文档: doc/readme/gap/readme-gap123-runtime-consensus-metering.project.md
+- 对应标准执行入口: `doc/readme/gap/readme-gap123-runtime-consensus-metering.project.md`
 
 ## 目标
 - 收口缺口 1：补齐世界内 Rust -> WASM 编译闭环，不再只支持“链下编译后直接部署字节”。

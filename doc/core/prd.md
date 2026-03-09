@@ -9,12 +9,12 @@
 
 ## 范围
 - 覆盖全项目模块地图、端到端链路、关键分册导航与治理基线。
-- 覆盖 PRD-ID 到 `doc/core/prd.project.md` 的任务映射。
+- 覆盖 PRD-ID 到 `doc/core/project.md` 的任务映射。
 - 不覆盖各模块实现细节正文（由模块 PRD 与专题分册承载）。
 
 ## 接口 / 数据
 - 项目级 PRD 入口: `doc/core/prd.md`
-- 项目管理入口: `doc/core/prd.project.md`
+- 项目管理入口: `doc/core/project.md`
 - 文件级索引: doc/core/prd.index.md
 - 追踪主键: `PRD-CORE-xxx`
 - 模块入口总览: `doc/README.md`
@@ -67,7 +67,7 @@
   - AC-2: core PRD 包含至少 4 条关键端到端链路描述。
   - AC-3: core PRD 给出关键分册导航并可从 `doc/README.md` 到达。
   - AC-4: core project 文档任务与 PRD-CORE-ID 可映射。
-  - AC-5: 文档级 `审计轮次` 仅可对应已落档的正式 ROUND 台账；当仓库正式基线为 ROUND-005 时，不得保留脱离台账的 `审计轮次 > 5`。
+  - AC-5: 文档级 `审计轮次` 仅可对应已落档的正式 ROUND 台账；在 `ROUND-NNN` 正式启动文件落档前，不得保留脱离台账的 `审计轮次 > NNN` 标记。
 - Non-Goals:
   - 不在 core PRD 中替代模块详细技术分册。
   - 不在 core PRD 中维护逐版本实现变更流水（该信息在 devlog）。
@@ -126,7 +126,7 @@
   - `AGENTS.md`
   - `doc/README.md`
   - `testing-manual.md`
-  - 各模块 `doc/<module>/prd.md` 与 `doc/<module>/prd.project.md`
+  - 各模块 `doc/<module>/prd.md` 与 `doc/<module>/project.md`
 - Edge Cases & Error Handling:
   - 模块入口失效：若目标路径迁移，core 必须同步更新导航并保留可追溯说明。
   - 信息缺失：若模块 PRD 尚未更新，标记“口径待同步”并阻断发布结论。

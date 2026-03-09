@@ -1,7 +1,7 @@
 # runtime required 失败用例临时下线（2026-03-09）
 
 审计轮次: 1
-- 对应项目管理文档: `doc/world-simulator/kernel/runtime-required-failing-tests-offline-2026-03-09.prd.project.md`
+- 对应项目管理文档: `doc/world-simulator/kernel/runtime-required-failing-tests-offline-2026-03-09.project.md`
 
 ## 1. Executive Summary
 - Problem Statement: `env -u RUSTC_WRAPPER cargo test -p agent_world --tests --features test_tier_required` 当前被 10 个 runtime 基线失败用例阻塞，导致仓库 pre-commit required 测试链路无法通过。
@@ -65,7 +65,7 @@
   - `crates/agent_world/src/runtime/tests/agent_default_modules.rs`
   - `crates/agent_world/src/runtime/tests/power_bootstrap.rs`
   - `doc/world-simulator/prd.md`
-  - `doc/world-simulator/prd.project.md`
+  - `doc/world-simulator/project.md`
 - Edge Cases & Error Handling:
   - 白名单漂移：若新增 ignore 超出 10 项，应视为越权并阻断合入。
   - 原因丢失：若 ignore 无上下文说明，视为不可追溯，不满足验收。

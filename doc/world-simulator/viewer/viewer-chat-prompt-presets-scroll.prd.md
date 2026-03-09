@@ -1,7 +1,7 @@
 # Chat Panel 预设 Prompt 展开区滚动改造
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-chat-prompt-presets-scroll.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-chat-prompt-presets-scroll.project.md
 
 ## 1. Executive Summary
 - 解决最右侧 Chat 面板在展开“预设 Prompt”后内容过高、超出可视区域的问题。
@@ -30,4 +30,4 @@
 - 需要避免滚动容器影响现有输入焦点和 Enter 发送行为。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

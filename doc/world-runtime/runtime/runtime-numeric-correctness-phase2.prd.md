@@ -2,7 +2,7 @@
 
 审计轮次: 4
 
-- 对应项目管理文档: doc/world-runtime/runtime/runtime-numeric-correctness-phase2.prd.project.md
+- 对应项目管理文档: doc/world-runtime/runtime/runtime-numeric-correctness-phase2.project.md
 
 ## 1. Executive Summary
 - 延续第一阶段“正确性优先”原则，继续收敛区块链/P2P 主链路中的数值语义，消除静默饱和带来的隐藏错误。

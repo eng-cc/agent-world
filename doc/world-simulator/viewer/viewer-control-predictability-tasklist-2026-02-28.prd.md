@@ -1,7 +1,7 @@
 # Viewer 控制可预期性改版任务清单（2026-02-28）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-control-predictability-tasklist-2026-02-28.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-control-predictability-tasklist-2026-02-28.project.md
 
 ## 1. Executive Summary
 - 以“玩家控制代理感”为第一目标，修复 `accepted` 但无推进造成的失控感。
@@ -131,7 +131,7 @@
   - 缓解：保留阶段内增量信号（tick/event/trace）与原因字段，超时后仍给出明确恢复指引。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。
 - T18.2b 验证证据（2026-03-04）:
   - 代码验证:
     - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer player_control_stage_ -- --nocapture`

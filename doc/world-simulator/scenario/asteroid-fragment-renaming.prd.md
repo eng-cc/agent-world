@@ -1,7 +1,7 @@
 # Agent World Simulator：Asteroid Fragment 命名替换（设计文档）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/scenario/asteroid-fragment-renaming.prd.project.md
+- 对应项目管理文档: doc/world-simulator/scenario/asteroid-fragment-renaming.project.md
 
 本分册定义将相关命名统一为 “asteroid_fragment” 的方案，用于对齐世界观命名。
 
@@ -49,4 +49,4 @@
 - 历史日志保持原样。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

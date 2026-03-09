@@ -23,7 +23,7 @@
 - 本轮执行规则：
   - 单篇文档完成 ROUND-004 审读后，在同一提交回写 `审计轮次: 4`（与是否需要整改解耦）。
   - 若判定“设计合格无需整改”，仍应回写 `审计轮次: 4`，并在本记录登记判定理由。
-  - 若实施整改，需同步更新：`prd.md`/`prd.index.md`/`prd.project.md` 与引用路径。
+  - 若实施整改，需同步更新：`prd.md`/`prd.index.md`/`project.md` 与引用路径。
   - 若尚未完成 ROUND-004 审读，则保持原值（缺失按 `0`）。
 - 本轮完成条件：纳入 `S_round004` 的文档全部满足 `审计轮次 >= 4`，且复审结论已落档。
 
@@ -43,7 +43,7 @@ rg -n "^审计轮次:\s*4$" doc --glob '*.md'
 ## 重点审计维度（文档设计视角）
 | 编号 | 维度 | 审计目标 | 严重度判定 |
 | --- | --- | --- | --- |
-| D4-001 | 信息架构 | `prd.md / prd.index.md / prd.project.md` 入口层级清晰、无多入口冲突 | 入口冲突=high |
+| D4-001 | 信息架构 | `prd.md / prd.index.md / project.md` 入口层级清晰、无多入口冲突 | 入口冲突=high |
 | D4-002 | 文档分工边界 | PRD 仅写 Why/What/Done，Project 仅写 How/When/Who，Devlog 仅写过程 | 分工串写=high |
 | D4-003 | 可追溯闭环 | `PRD-ID -> TASK -> 验收命令 -> 测试证据` 全链可反查 | 断链=high |
 | D4-004 | 可执行性 | 验收命令真实可跑、与正文描述一致、可复现 | 命令失效=high |
@@ -152,12 +152,12 @@ rg -n "^审计轮次:\s*4$" doc --glob '*.md'
 | A4-005 | 生成 `S_round004` 清单并完成复审结论 | cc | 2026-03-12 | done |
 | A4-006 | 启动 6 子代理并行审计并回收分区问题清单 | cc | 2026-03-06 | done |
 | A4-007 | 落实“逐文档即时回写”机制（审计轮次 + 进度日志）并纳入并行审计流程 | cc | 2026-03-06 | done |
-| A4-008 | 验收命令：`rg -n "PRD-ID|验收命令|证据" doc/core/prd.project.md doc/engineering/prd.project.md doc/p2p/prd.project.md doc/world-runtime/prd.project.md doc/headless-runtime/prd.project.md doc/testing/prd.project.md`<br>`rg -n "PRD-ID.*TASK|TASK.*PRD-ID" doc/core/prd.project.md doc/engineering/prd.project.md doc/p2p/prd.project.md doc/world-runtime/prd.project.md doc/headless-runtime/prd.project.md doc/testing/prd.project.md` | cc | 2026-03-10 | done |
+| A4-008 | 验收命令：`rg -n "PRD-ID|验收命令|证据" doc/core/project.md doc/engineering/project.md doc/p2p/project.md doc/world-runtime/project.md doc/headless-runtime/project.md doc/testing/project.md`<br>`rg -n "PRD-ID.*TASK|TASK.*PRD-ID" doc/core/project.md doc/engineering/project.md doc/p2p/project.md doc/world-runtime/project.md doc/headless-runtime/project.md doc/testing/project.md` | cc | 2026-03-10 | done |
 | A4-009 | 验收命令：`rg -n "env -u RUSTC_WRAPPER cargo check|\\./scripts/|bash scripts/" doc/site doc/testing doc/scripts doc/playability_test_result --glob '*.md'`<br>`! rg -n "\\$CODEX_HOME|<staged \\.rs files>|site/site/doc" doc/site doc/testing doc/scripts doc/playability_test_result --glob '*.md'` | cc | 2026-03-10 | done |
-| A4-010 | 验收命令：`./scripts/doc-governance-check.sh`<br>`! rg -n "site/site/doc" doc/site doc/testing doc/scripts doc/playability_test_result --glob '*.md'`<br>`test -f doc/world-simulator.prd.project.md && test -f doc/world-simulator/prd.project.md` | cc | 2026-03-10 | done |
+| A4-010 | 验收命令：`./scripts/doc-governance-check.sh`<br>`! rg -n "site/site/doc" doc/site doc/testing doc/scripts doc/playability_test_result --glob '*.md'`<br>`test -f doc/world-simulator.project.md && test -f doc/world-simulator/project.md` | cc | 2026-03-10 | done |
 | A4-011 | 验收命令：`! rg -n "^- 审计轮次:\\s*[0-9]+" doc --glob '*.md'`<br>`rg -n "当前基线|当前已审读文档数" doc/core/reviews/consistency-review-round-004.md doc/core/reviews/round-004-reviewed-files.md` | cc | 2026-03-11 | done |
-| A4-012 | 验收命令：`! rg -n "完成内容|遗留事项|时刻" doc/world-simulator/viewer/viewer-live-full-event-driven-phase10-2026-02-27.prd.md doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.md`<br>`rg -n "PRD-ID|任务拆解|验收命令" doc/world-simulator/viewer/viewer-live-full-event-driven-phase10-2026-02-27.prd.project.md doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.project.md` | cc | 2026-03-11 | done |
-| A4-013 | 验收命令：`! rg -n "doc/world-runtime\\.prd\\.md|ModuleValidationFailed" doc/world-runtime/testing/testing.md`<br>`rg -n "headless-runtime|nonviewer" doc/headless-runtime/README.md doc/headless-runtime/prd.md doc/headless-runtime/prd.project.md` | cc | 2026-03-11 | done |
+| A4-012 | 验收命令：`! rg -n "完成内容|遗留事项|时刻" doc/world-simulator/viewer/viewer-live-full-event-driven-phase10-2026-02-27.prd.md doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.md`<br>`rg -n "PRD-ID|任务拆解|验收命令" doc/world-simulator/viewer/viewer-live-full-event-driven-phase10-2026-02-27.project.md doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.project.md` | cc | 2026-03-11 | done |
+| A4-013 | 验收命令：`! rg -n "doc/world-runtime\\.prd\\.md|ModuleValidationFailed" doc/world-runtime/testing/testing.md`<br>`rg -n "headless-runtime|nonviewer" doc/headless-runtime/README.md doc/headless-runtime/prd.md doc/headless-runtime/project.md` | cc | 2026-03-11 | done |
 | A4-014 | 验收命令：`rg -n "legacy|快照|豁免|可达性" doc/engineering/doc-migration/legacy-doc-migration-backlog-2026-03-03.md`<br>`./scripts/doc-governance-check.sh` | cc | 2026-03-12 | done |
 
 ## 特殊情况备注（仅在无需整改时填写）

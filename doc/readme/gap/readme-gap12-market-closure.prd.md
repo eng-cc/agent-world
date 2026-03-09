@@ -6,7 +6,8 @@
 - 主入口文档：`doc/readme/gap/readme-gap-distributed-prod-hardening-gap12345.prd.md`。
 - 本文件仅维护增量专题内容。
 
-- 对应项目管理文档: doc/readme/gap/readme-gap12-market-closure.prd.project.md
+- 对应项目管理文档: doc/readme/gap/readme-gap12-market-closure.project.md
+- 对应标准执行入口: `doc/readme/gap/readme-gap12-market-closure.project.md`
 
 ## 目标
 - 收口 README 高优先级缺口 1：在现有 `DeployModuleArtifact/InstallModuleFromArtifact` 基础上补齐“模块可交易”最小闭环。

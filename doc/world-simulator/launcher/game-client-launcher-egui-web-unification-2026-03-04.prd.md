@@ -2,7 +2,7 @@
 
 审计轮次: 5
 
-- 对应项目管理文档: doc/world-simulator/launcher/game-client-launcher-egui-web-unification-2026-03-04.prd.project.md
+- 对应项目管理文档: doc/world-simulator/launcher/game-client-launcher-egui-web-unification-2026-03-04.project.md
 
 ## 1. Executive Summary
 - Problem Statement: 当前无 GUI 服务器场景的 `world_web_launcher` 使用独立 HTML 控制台，未与 `agent_world_client_launcher` 的 egui UI 层复用，导致交互行为与文案演进仍存在双端分叉风险。
@@ -61,7 +61,7 @@
   - `crates/agent_world/src/bin/world_web_launcher.rs`
   - `scripts/build-game-launcher-bundle.sh`
   - `doc/world-simulator/prd.md`
-  - `doc/world-simulator/prd.project.md`
+  - `doc/world-simulator/project.md`
 - Edge Cases & Error Handling:
   - 静态资源目录不存在：`world_web_launcher` 返回可诊断 404/错误提示，不影响 API 路径。
   - wasm 端 API 超时/HTTP 异常：UI 状态回落为 `query_failed/start_failed/stop_failed` 并写入日志。

@@ -58,7 +58,7 @@
   - `scripts/p2p-longrun-soak.sh`
   - `testing-manual.md`（S9）
   - `doc/testing/longrun/chain-runtime-soak-script-reactivation-2026-02-28.prd.md`
-  - `doc/testing/longrun/p2p-longrun-feedback-event-injection-2026-03-02.prd.project.md`
+  - `doc/testing/longrun/p2p-longrun-feedback-event-injection-2026-03-02.project.md`
 - Edge Cases & Error Handling:
   - 接口短时抖动：失败记账并写日志，不中断主循环。
   - 注入频率过高：默认保守参数并允许显式上限。

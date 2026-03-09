@@ -1,7 +1,7 @@
 # Agent World Simulator：规则 Wasm 执行接线基础（第三阶段）设计文档
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/kernel/kernel-rule-wasm-executor-foundation.prd.project.md
+- 对应项目管理文档: doc/world-simulator/kernel/kernel-rule-wasm-executor-foundation.project.md
 
 ## 1. Executive Summary
 - 在不改变当前规则语义（deny/modify/allow merge）的前提下，为模拟器内核接入 wasm 规则执行器建立最小接线层。
@@ -46,4 +46,4 @@
 - 新接线可能引入行为漂移：通过 KWR 既有回归与新增接线测试双重兜底。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

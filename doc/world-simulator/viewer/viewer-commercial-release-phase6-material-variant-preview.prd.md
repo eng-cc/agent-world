@@ -1,7 +1,7 @@
 # Viewer 商业化发行缺口收敛 Phase 6：材质变体快速预览
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-commercial-release-phase6-material-variant-preview.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-commercial-release-phase6-material-variant-preview.project.md
 
 ## 1. Executive Summary
 - 在不改动模拟协议与资源管线的前提下，提供运行时“材质变体快速预览”能力，缩短美术调参与观感对比回路。
@@ -49,4 +49,4 @@
   - 缓解：采用功能键 `F8`，并保留环境变量启动态以减少运行时操作依赖。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

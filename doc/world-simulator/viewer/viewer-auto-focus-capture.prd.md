@@ -1,7 +1,7 @@
 # Agent World Simulator：Viewer 自动聚焦（人机共用 + 截图闭环）设计文档
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-auto-focus-capture.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-auto-focus-capture.project.md
 
 ## 1. Executive Summary
 - 为人工调试提供“一键聚焦”能力：在对象密集场景中快速把相机对准目标，减少手动拖拽成本。
@@ -60,4 +60,4 @@
 - 截图时间窗口过短会在聚焦前截图，需要脚本等待参数兜底。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

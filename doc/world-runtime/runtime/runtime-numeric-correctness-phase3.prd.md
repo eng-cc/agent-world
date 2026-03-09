@@ -2,7 +2,7 @@
 
 审计轮次: 4
 
-- 对应项目管理文档: doc/world-runtime/runtime/runtime-numeric-correctness-phase3.prd.project.md
+- 对应项目管理文档: doc/world-runtime/runtime/runtime-numeric-correctness-phase3.project.md
 
 ## 1. Executive Summary
 - 延续前两阶段“正确性优先”原则，收口 `agent_world_node` 中长期运行最敏感的高度/slot 计数器路径。

@@ -3,7 +3,7 @@
 审计轮次: 4
 
 - 上游 PRD: `doc/world-runtime/runtime/runtime-storage-footprint-governance-2026-03-08.prd.md`
-- 上游项目管理: `doc/world-runtime/runtime/runtime-storage-footprint-governance-2026-03-08.prd.project.md`
+- 上游项目管理: `doc/world-runtime/runtime/runtime-storage-footprint-governance-2026-03-08.project.md`
 - 适用范围: `world_viewer_live` / `world_chain_runtime` 默认运行链路下的 execution bridge、execution world sidecar、node-distfs 复制热数据与 footprint metrics。
 
 ## 1. 设计目标

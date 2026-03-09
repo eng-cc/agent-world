@@ -56,7 +56,7 @@
   - `crates/agent_world/src/bin/world_chain_runtime/reward_runtime_worker.rs`
   - `scripts/s10-five-node-game-soak.sh`
   - `testing-manual.md`
-  - `doc/testing/longrun/s10-distfs-probe-bootstrap-2026-02-28.prd.project.md`
+  - `doc/testing/longrun/s10-distfs-probe-bootstrap-2026-02-28.project.md`
 - Edge Cases & Error Handling:
   - 存储目录不可写：记录 `last_error` 并继续主流程，等待真实业务样本补齐。
   - 重启频繁：通过“仅空集写入”保障幂等，避免重复污染。
@@ -66,7 +66,7 @@
   - NFR-S10DISTFS-1: 启动 bootstrap 不显著增加启动耗时（相对基线波动 <= 5%）。
   - NFR-S10DISTFS-2: seed 写入逻辑幂等，重复运行不引入无界增长。
   - NFR-S10DISTFS-3: 指标字段具备可观测性，发布审核可在 30 分钟内完成追溯。
-  - NFR-S10DISTFS-4: 文档与手册口径一致，引用路径统一为 `.prd.md/.prd.project.md`。
+  - NFR-S10DISTFS-4: 文档与手册口径一致，引用路径统一为 `.prd.md/.project.md`。
 - Security & Privacy: seed 内容使用最小化非敏感数据；日志不暴露敏感凭据。
 
 ## 5. Risks & Roadmap

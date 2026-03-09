@@ -43,7 +43,7 @@
   - AC-2: `summary.json` 含所有 S10 门禁字段，并与 `summary.md` 一致。
   - AC-3: settlement 应用统计字段（attempts/failures/failure_ratio）稳定输出。
   - AC-4: 真实短跑与长跑样本证明关键验签失败告警为 0。
-  - AC-5: 文档迁移完成 strict schema + `.prd.md/.prd.project.md` 命名。
+  - AC-5: 文档迁移完成 strict schema + `.prd.md/.project.md` 命名。
 - Non-Goals:
   - 不新增 `world_viewer_live` 内建五节点拓扑枚举。
   - 不在本专题引入 S10 chaos 注入编排。
@@ -59,7 +59,7 @@
   - `scripts/s10-five-node-game-soak.sh`
   - `crates/agent_world/src/bin/world_viewer_live.rs`
   - `testing-manual.md`
-  - `doc/testing/longrun/s10-five-node-real-game-soak.prd.project.md`
+  - `doc/testing/longrun/s10-five-node-real-game-soak.project.md`
 - Edge Cases & Error Handling:
   - no-LLM stall：仅 sequencer 启用执行 hook，避免非 sequencer contiguous-height 冲突导致停摆。
   - 跨 run 污染：默认隔离旧 `output/node-distfs/s10-*` 状态目录。

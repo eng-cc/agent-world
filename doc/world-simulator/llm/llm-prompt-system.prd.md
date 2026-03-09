@@ -1,7 +1,7 @@
 # Agent World Simulator：Agent-LLM Prompt 模块交互系统（设计文档）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/llm/llm-prompt-system.prd.project.md
+- 对应项目管理文档: doc/world-simulator/llm/llm-prompt-system.project.md
 
 ## 1. Executive Summary
 - 构建一套可扩展的 Agent-LLM Prompt 交互机制，让 LLM 不只“看见观测”，还能通过机器人模块按需查询上下文。
@@ -91,4 +91,4 @@
 - **配置复杂性提升**：Agent 级覆盖键较多；通过“全局默认 + 可选覆盖”降低接入门槛。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

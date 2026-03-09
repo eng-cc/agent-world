@@ -1,7 +1,7 @@
 # Viewer 商业化发行缺口收敛 Phase 5：高级贴图通道覆盖层
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-commercial-release-phase5-advanced-texture-maps.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-commercial-release-phase5-advanced-texture-maps.project.md
 
 ## 1. Executive Summary
 - 在 Phase 4 基础贴图覆盖基础上，补齐商业化质感所需的高级贴图通道覆盖能力。
@@ -57,4 +57,4 @@
   - 缓解：location 继续使用独立材质分支，避免覆盖污染公共材质。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

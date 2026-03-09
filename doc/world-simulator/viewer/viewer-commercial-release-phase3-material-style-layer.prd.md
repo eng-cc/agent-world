@@ -1,7 +1,7 @@
 # Viewer 商业化发行缺口收敛 Phase 3：材质风格覆盖层
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-commercial-release-phase3-material-style-layer.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-commercial-release-phase3-material-style-layer.project.md
 
 ## 1. Executive Summary
 - 在已有“外部 mesh 可替换”能力之上，补齐“材质风格可配置”能力，减少导入真实美术后出现的风格割裂。
@@ -58,4 +58,4 @@
   - 缓解：按实体类别收敛命名，统一前缀，手册给出最小示例。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

@@ -1,7 +1,7 @@
 # Agent World Simulator：Viewer 快速定位 Agent 按钮（设计文档）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-agent-quick-locate.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-agent-quick-locate.project.md
 
 ## 1. Executive Summary
 - 在 Viewer 右侧「事件联动」区域新增“快速定位 Agent”按钮，降低在对象密集场景中手动查找 Agent 的成本。
@@ -56,4 +56,4 @@
 - 若后续引入“多 Agent 分组过滤”，当前“字典序首个 Agent”策略可能需要升级。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

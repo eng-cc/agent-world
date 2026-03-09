@@ -2,7 +2,7 @@
 
 审计轮次: 5
 
-- 对应项目管理文档: doc/world-simulator/m4/m4-resource-product-system-playability-2026-02-27.prd.project.md
+- 对应项目管理文档: doc/world-simulator/m4/m4-resource-product-system-playability-2026-02-27.project.md
 
 ## 1. Executive Summary
 - 设计一套既符合当前架构约束、又能持续产生策略决策的资源与产品系统。
@@ -169,4 +169,4 @@
 - 每个里程碑绑定 required/full 测试与回放验证。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

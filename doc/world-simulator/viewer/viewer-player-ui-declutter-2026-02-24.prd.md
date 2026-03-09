@@ -1,7 +1,7 @@
 # Viewer 玩家模式 UI 去拥挤优化（2026-02-24）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-player-ui-declutter-2026-02-24.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-player-ui-declutter-2026-02-24.project.md
 
 ## 1. Executive Summary
 - 降低玩家模式下 HUD/引导层在同屏并发时的视觉拥挤与互相覆盖。
@@ -44,4 +44,4 @@
   - 缓解：闭环验证默认使用 2D 链路；3D 稳定性单独跟踪。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

@@ -1,7 +1,7 @@
 # 文档分工与组织规范正文（2026-03-09）
 
 - 对应需求文档: `doc/engineering/doc-structure-standard.prd.md`
-- 对应项目管理文档（当前仓库文件）: `doc/engineering/doc-structure-standard.prd.project.md`
+- 对应项目管理文档（当前仓库文件）: `doc/engineering/doc-structure-standard.project.md`
 - 规范目标命名: `<topic>.project.md`
 
 ## 1. 规范定位
@@ -213,7 +213,7 @@ doc/README.md
 - Project 指向 PRD；
 - Design 指向 PRD 与 Project。
 
-注：本规范中的 `project.md` / `*.project.md` 是目标命名。当前仓库若仍存在 `prd.project.md`，视为历史实现形式，不影响该规范作为未来建档标准。
+注：本规范中的 `project.md` / `*.project.md` 是目标命名。当前仓库若仍存在 `project.md`，视为历史实现形式，不影响该规范作为未来建档标准。
 
 ## 8. 例外规则
 以下情况允许偏离最小三件套，但必须说明原因：

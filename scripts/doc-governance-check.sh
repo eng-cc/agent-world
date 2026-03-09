@@ -11,9 +11,9 @@ Usage: ./scripts/doc-governance-check.sh
 Checks:
   1. Non-archive/non-devlog markdown files must not contain absolute /Users/... or /home/... paths.
   2. Non-archive/non-devlog markdown files must be <= 1000 lines.
-  3. Each non-archive project doc (*.project.md) must include sections:
+  3. Each non-archive project doc (`project.md` / `*.project.md`) must include sections:
      任务拆解 / 依赖 / 状态.
-  4. Each non-archive project doc must have a paired design doc and that design doc
+  4. Each non-archive project doc must have a paired design/PRD doc and that paired doc
      must include either:
        - Legacy sections: 目标 / 范围 / 接口/数据 / 里程碑 / 风险
        - Strict PRD sections: 1..6 chapter structure
@@ -23,8 +23,8 @@ Checks:
      the tracked allowlist (archive/devlog/.governance excluded).
   7. Active topic PRD pairs (non-archive, non-devlog, excluding module main
      doc/<module>/prd*.md) must contain bidirectional references:
-       - topic design doc (*.prd.md) includes its *.prd.project.md path
-       - topic project doc (*.prd.project.md) includes its *.prd.md path
+       - topic design/PRD doc includes its paired project doc path
+       - topic project doc includes its paired design/PRD doc path
   8. Non-archive/non-devlog markdown files must not reference missing markdown
      paths under doc/ (wildcards/templates and explicit exemption docs excluded).
   9. Role labels in devlogs and handoff templates must use canonical names from
@@ -47,7 +47,10 @@ failures=0
 # Some handbooks are intentionally concise and do not follow design-doc section template.
 # Whitelist is keyed by project doc path to keep exemptions explicit and reviewable.
 readonly DESIGN_SECTION_EXEMPT_PROJECT_DOCS=(
-  "doc/playability_test_result/game-test.prd.project.md"
+  "doc/playability_test_result/game-test.project.md"
+  "doc/game-test.project.md"
+  "doc/world-runtime.project.md"
+  "doc/world-simulator.project.md"
 )
 readonly REFERENCE_EXISTENCE_EXEMPT_DOCS=(
   "doc/engineering/doc-migration/legacy-doc-migration-backlog-2026-03-03.md"
@@ -169,9 +172,54 @@ is_design_section_exempt_project_doc() {
   return 1
 }
 
+paired_design_doc() {
+  local project_doc="$1"
+  local candidate
+
+  if [[ "$project_doc" =~ ^doc/([^.]+)\.project\.md$ ]]; then
+    candidate="doc/${BASH_REMATCH[1]}/prd.md"
+    [[ -f "$candidate" ]] && printf '%s\n' "$candidate" && return
+  fi
+
+  if [[ "$project_doc" =~ ^doc/([^.]+)\.prd\.project\.md$ ]]; then
+    candidate="doc/${BASH_REMATCH[1]}/prd.md"
+    [[ -f "$candidate" ]] && printf '%s\n' "$candidate" && return
+  fi
+
+  if [[ "$project_doc" =~ ^doc/[^/]+/prd\.project\.md$ ]]; then
+    candidate="${project_doc%/project.md}/design.md"
+    [[ -f "$candidate" ]] && printf '%s\n' "$candidate" && return
+    candidate="${project_doc%.project.md}.md"
+    [[ -f "$candidate" ]] && printf '%s\n' "$candidate" && return
+  fi
+
+  if [[ "$project_doc" =~ ^doc/[^/]+/project\.md$ ]]; then
+    candidate="${project_doc%/project.md}/design.md"
+    [[ -f "$candidate" ]] && printf '%s\n' "$candidate" && return
+    candidate="${project_doc%/project.md}/prd.md"
+    [[ -f "$candidate" ]] && printf '%s\n' "$candidate" && return
+  fi
+
+  if [[ "$project_doc" =~ \.prd\.project\.md$ ]]; then
+    candidate="${project_doc%.project.md}.md"
+    [[ -f "$candidate" ]] && printf '%s\n' "$candidate" && return
+    candidate="${project_doc%.project.md}.design.md"
+    [[ -f "$candidate" ]] && printf '%s\n' "$candidate" && return
+  fi
+
+  if [[ "$project_doc" =~ \.project\.md$ ]]; then
+    candidate="${project_doc%.project.md}.prd.md"
+    [[ -f "$candidate" ]] && printf '%s\n' "$candidate" && return
+    candidate="${project_doc%.project.md}.design.md"
+    [[ -f "$candidate" ]] && printf '%s\n' "$candidate" && return
+  fi
+
+  printf '%s\n' "${project_doc%.project.md}.md"
+}
+
 is_topic_project_doc() {
   local project_doc="$1"
-  [[ ! "$project_doc" =~ ^doc/[^/]+/prd\.project\.md$ ]]
+  [[ ! "$project_doc" =~ ^doc/[^/]+/(prd\.project|project)\.md$ ]]
 }
 
 is_reference_exempt_doc() {
@@ -291,7 +339,7 @@ done
 for project_doc in "${project_docs[@]}"; do
   check_required_sections "$project_doc" "任务拆解" "依赖" "状态"
 
-  design_doc="${project_doc%.project.md}.md"
+  design_doc="$(paired_design_doc "$project_doc")"
   if [[ ! -f "$design_doc" ]]; then
     fail "$project_doc has no paired design doc: $design_doc"
     continue

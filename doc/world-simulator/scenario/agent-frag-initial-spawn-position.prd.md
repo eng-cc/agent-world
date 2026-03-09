@@ -1,7 +1,7 @@
 # Agent World Simulator：Agent Frag 初始站位优化（设计文档）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/scenario/agent-frag-initial-spawn-position.prd.project.md
+- 对应项目管理文档: doc/world-simulator/scenario/agent-frag-initial-spawn-position.project.md
 
 ## 1. Executive Summary
 - Agent 初始位置优先生成在 `frag` 附近，缩短开局采矿路径。
@@ -44,4 +44,4 @@
 - 出生点从 region 转为 frag 可能影响既有场景的开局行为节奏，需要通过测试稳定约束。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

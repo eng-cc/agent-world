@@ -1,7 +1,7 @@
 # Viewer 发行体验改造（第二阶段：沉浸与引导）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase2.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase2.project.md
 
 ## 1. Executive Summary
 - 在已完成的 Player 默认降噪基础上，继续提升“可玩感”：
@@ -75,4 +75,4 @@
 - 阶段结论：Player 模式下已形成“反馈 + 引导 + HUD”的低噪声体验闭环，右侧技术面板回退为可选辅助路径。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

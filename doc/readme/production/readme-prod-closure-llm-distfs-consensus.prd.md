@@ -2,7 +2,8 @@
 
 审计轮次: 4
 
-- 对应项目管理文档: doc/readme/production/readme-prod-closure-llm-distfs-consensus.prd.project.md
+- 对应项目管理文档: doc/readme/production/readme-prod-closure-llm-distfs-consensus.project.md
+- 对应标准执行入口: `doc/readme/production/readme-prod-closure-llm-distfs-consensus.project.md`
 
 ## 目标
 - 收口差距 1：将 LLM 主决策链路扩展为可直接使用市场/制度相关动作，避免仅限工业闭环动作。

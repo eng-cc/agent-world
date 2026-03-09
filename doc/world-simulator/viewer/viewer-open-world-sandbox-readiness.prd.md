@@ -211,11 +211,11 @@
     - viewer 新增 `perf_probe`（`AGENT_WORLD_VIEWER_PERF_PROBE*`）周期输出运行时性能摘要；
     - headless 模式新增自动 `Play`（默认开启）并落 `viewer status/events` 指标日志；
     - UI 模式支持 `AGENT_WORLD_VIEWER_AUTO_PLAY=1`，用于截图闭环场景下的动态负载采样。
-  - 当前批次基线结论已收口到项目管理文档 `doc/world-simulator/viewer/viewer-open-world-sandbox-readiness.prd.project.md`，后续版本沿用同口径复跑并更新该文档。
+  - 当前批次基线结论已收口到项目管理文档 `doc/world-simulator/viewer/viewer-open-world-sandbox-readiness.project.md`，后续版本沿用同口径复跑并更新该文档。
 - 已完成验证（OWR4.5）：
 - `./scripts/viewer-owr4-stress.sh --duration-secs 12 --out-dir artifacts/owr4_baseline --no-prewarm` 通过。
 - `AGENT_WORLD_VIEWER_AUTO_PLAY=1 AGENT_WORLD_VIEWER_PERF_PROBE=1 AGENT_WORLD_VIEWER_PERF_PROBE_INTERVAL_SECS=1 AGENT_WORLD_VIEWER_PERF_BUDGET_MS=33 ./scripts/capture-viewer-frame.sh --scenario triad_region_bootstrap --addr 127.0.0.1:5640 --viewer-wait 10 --no-prewarm --keep-tmp` 通过。
 - `AGENT_WORLD_VIEWER_AUTO_PLAY=1 AGENT_WORLD_VIEWER_PERF_PROBE=1 AGENT_WORLD_VIEWER_PERF_PROBE_INTERVAL_SECS=1 AGENT_WORLD_VIEWER_PERF_BUDGET_MS=33 ./scripts/capture-viewer-frame.sh --scenario llm_bootstrap --addr 127.0.0.1:5641 --viewer-wait 10 --no-prewarm --keep-tmp` 通过。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

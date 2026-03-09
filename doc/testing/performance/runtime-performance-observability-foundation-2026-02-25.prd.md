@@ -60,7 +60,7 @@
   - `crates/agent_world/src/viewer/live_*`
   - `scripts/llm-longrun-stress.sh`
   - `testing-manual.md`
-  - `doc/testing/performance/runtime-performance-observability-foundation-2026-02-25.prd.project.md`
+  - `doc/testing/performance/runtime-performance-observability-foundation-2026-02-25.project.md`
 - Edge Cases & Error Handling:
   - 环境抖动噪声：通过固定窗口 + ppm 比例降低偶发峰值干扰。
   - 采集开销回流：保持常量级采样与轻量统计，避免反向拖慢执行路径。

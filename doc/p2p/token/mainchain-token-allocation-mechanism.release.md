@@ -4,7 +4,7 @@
 ## 发布范围
 - 设计/项目文档：
   - `doc/p2p/token/mainchain-token-allocation-mechanism.prd.md`
-  - `doc/p2p/token/mainchain-token-allocation-mechanism.prd.project.md`
+  - `doc/p2p/token/mainchain-token-allocation-mechanism.project.md`
 - 代码主线：
   - `crates/agent_world/src/runtime/main_token.rs`
   - `crates/agent_world/src/runtime/events.rs`

@@ -1,7 +1,7 @@
 # M4 资源与产品系统 P3：分层档案化与链路扩展实现（2026-02-27）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/m4/m4-resource-product-system-p3-layer-profile-chain-expansion-2026-02-27.prd.project.md
+- 对应项目管理文档: doc/world-simulator/m4/m4-resource-product-system-p3-layer-profile-chain-expansion-2026-02-27.project.md
 
 ## 1. Executive Summary
 - 将“资源与产品分层”从设计建议提升为可执行数据契约，覆盖 R1~R5。
@@ -111,4 +111,4 @@
 - 首版仅给高阶配方设置阶段门槛，低阶链路保持可用。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

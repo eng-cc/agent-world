@@ -1,6 +1,7 @@
 # Legacy Redirect: game-test.prd
 
-审计轮次: 4
+审计轮次: 6
+- 对应标准执行入口: `doc/game-test.project.md`
 
 ## 目标
 - 将根目录 `doc/game-test.prd.md` 的 redirect 入口迁移到 `.prd` 命名，保持入口语义一致。
@@ -16,9 +17,9 @@
 
 ## 接口 / 数据
 - 根目录 redirect：`doc/game-test.prd.md`
-- 根目录项目管理 redirect：`doc/game-test.prd.project.md`
+- 根目录项目管理 redirect：`doc/game-test.project.md`
 - 活跃主入口：`doc/playability_test_result/game-test.prd.md`
-- 活跃项目管理：`doc/playability_test_result/game-test.prd.project.md`
+- 活跃项目管理：`doc/playability_test_result/game-test.project.md`
 
 ## 里程碑
 - M1（2026-03-03）：根目录 game-test redirect 文档切换到 `.prd` 命名。

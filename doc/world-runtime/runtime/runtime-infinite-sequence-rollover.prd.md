@@ -2,7 +2,7 @@
 
 审计轮次: 4
 
-- 对应项目管理文档: doc/world-runtime/runtime/runtime-infinite-sequence-rollover.prd.project.md
+- 对应项目管理文档: doc/world-runtime/runtime/runtime-infinite-sequence-rollover.project.md
 
 ## 1. Executive Summary
 - 让 Runtime 在超长时间运行场景下保持可持续，不因计数器上溢导致 panic 或静默回绕。

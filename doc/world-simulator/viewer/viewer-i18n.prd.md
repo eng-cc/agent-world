@@ -1,7 +1,7 @@
 # Viewer UI 多语言支持设计（中文 / 英文）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-i18n.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-i18n.project.md
 
 ## 1. Executive Summary
 - 为 `agent_world_viewer` UI 系统引入可扩展的多语言机制，首批支持 `zh-CN` 与 `en-US`。
@@ -111,4 +111,4 @@
 - 验收：通过截图闭环脚本 `./scripts/capture-viewer-frame.sh --scenario llm_bootstrap --addr 127.0.0.1:5052 --viewer-wait 8`，确认中文文本可读。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

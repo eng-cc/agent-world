@@ -1,7 +1,7 @@
 # Agent World Simulator：Viewer Chat 独立最右侧 Panel（设计文档）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-chat-dedicated-right-panel.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-chat-dedicated-right-panel.project.md
 
 ## 1. Executive Summary
 - 将聊天相关能力从当前综合右侧面板中拆分，迁移为独立 Chat Panel。
@@ -50,4 +50,4 @@
   - 缓解：限制默认/最小宽度并允许用户拖拽调整。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

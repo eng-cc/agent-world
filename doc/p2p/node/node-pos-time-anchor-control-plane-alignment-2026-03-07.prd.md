@@ -57,7 +57,7 @@
 ## 4. Technical Specifications
 - Architecture Overview: 以 `NodePosConfig` 为单一事实源；runtime/viewer/launcher/scripts 只负责参数映射与校验；status 接口提供观测投影。
 - Integration Points:
-  - `doc/p2p/node/node-pos-time-anchor-control-plane-alignment-2026-03-07.prd.project.md`
+  - `doc/p2p/node/node-pos-time-anchor-control-plane-alignment-2026-03-07.project.md`
   - `doc/p2p/node/node-pos-slot-clock-real-time-2026-03-07.prd.md`
   - `doc/p2p/node/node-pos-subslot-tick-pacing-2026-03-07.prd.md`
   - `crates/agent_world/src/bin/world_chain_runtime.rs`

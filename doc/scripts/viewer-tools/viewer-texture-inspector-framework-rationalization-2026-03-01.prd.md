@@ -2,7 +2,7 @@
 
 审计轮次: 4
 
-- 对应项目管理文档: doc/scripts/viewer-tools/viewer-texture-inspector-framework-rationalization-2026-03-01.prd.project.md
+- 对应项目管理文档: doc/scripts/viewer-tools/viewer-texture-inspector-framework-rationalization-2026-03-01.project.md
 
 ## 目标
 - 在 T5 已达成视觉差异门禁通过的基础上，继续降低可视化层的“补丁式”维护成本。

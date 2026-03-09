@@ -5,7 +5,8 @@
 ## ROUND-002 主从口径
 - 主入口统一指向 `doc/site/github-pages/github-pages-game-engine-reposition-2026-02-25.prd.md`，本文仅维护增量。
 
-- 对应项目管理文档: doc/site/github-pages/github-pages-game-first-home-2026-02-25.prd.project.md
+- 对应项目管理文档: doc/site/github-pages/github-pages-game-first-home-2026-02-25.project.md
+- 对应标准执行入口: `doc/site/github-pages/github-pages-game-first-home-2026-02-25.project.md`
 
 ## 目标
 - 将首页叙事重构为“游戏优先，引擎后置”：前半屏主要讲玩家体验与玩法闭环，底部几屏再讲引擎架构与工程扩展。

@@ -37,8 +37,8 @@ rg -n "^审计轮次:\s*3$" doc --glob '*.md'
 - 时间敏感/阶段性专题必须包含日期（`YYYY-MM-DD`）或阶段号（`phaseN`），长期有效文档不强制日期。
 - 避免模糊词：`misc`/`tmp`/`update`/`new`/`fix` 等不允许作为主语义。
 - 允许 `phase/round` 仅在存在明确阶段序列时使用；避免“单篇文档带 phase1”但无后续阶段。
-- PRD 配对规则：`*.prd.md` 与 `*.prd.project.md` 必须一一对应且同名；更名需同步调整两者。
-- 根入口/索引固定命名：`prd.md`、`prd.project.md`、`prd.index.md` 不参与更名。
+- PRD 配对规则：`*.prd.md` 与 `*.project.md` 必须一一对应且同名；更名需同步调整两者。
+- 根入口/索引固定命名：`prd.md`、`project.md`、`prd.index.md` 不参与更名。
 
 ## 启动范围（命名风险分区）
 - A: `doc/world-simulator/**/*`（日期专题密集，命名含历史阶段）

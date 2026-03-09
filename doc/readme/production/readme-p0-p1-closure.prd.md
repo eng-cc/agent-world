@@ -2,7 +2,8 @@
 
 审计轮次: 4
 
-- 对应项目管理文档: doc/readme/production/readme-p0-p1-closure.prd.project.md
+- 对应项目管理文档: doc/readme/production/readme-p0-p1-closure.project.md
+- 对应标准执行入口: `doc/readme/production/readme-p0-p1-closure.project.md`
 
 ## 目标
 - 对齐 `README.md` 的三条核心承诺：

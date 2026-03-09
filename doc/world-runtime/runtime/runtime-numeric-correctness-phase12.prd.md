@@ -2,7 +2,7 @@
 
 审计轮次: 4
 
-- 对应项目管理文档: doc/world-runtime/runtime/runtime-numeric-correctness-phase12.prd.project.md
+- 对应项目管理文档: doc/world-runtime/runtime/runtime-numeric-correctness-phase12.project.md
 
 ## 1. Executive Summary
 - 收口 `membership_recovery/mod.rs` 中仍使用饱和算术的调度门控与关键计数聚合路径。

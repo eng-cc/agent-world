@@ -2,7 +2,7 @@
 
 审计轮次: 5
 
-- 对应项目管理文档: doc/world-simulator/llm/llm-config-toml-style-unification-2026-03-02.prd.project.md
+- 对应项目管理文档: doc/world-simulator/llm/llm-config-toml-style-unification-2026-03-02.project.md
 
 ## 1. Executive Summary
 - 将 `config.toml` 中 LLM 配置从 `AGENT_WORLD_LLM_*` 形态统一为小写、结构化 TOML 字段。
@@ -65,4 +65,4 @@
   - `env -u RUSTC_WRAPPER cargo check -p agent_world`
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

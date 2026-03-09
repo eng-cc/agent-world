@@ -57,7 +57,7 @@
   - `scripts/p2p-longrun-soak.sh`
   - `testing-manual.md`（S9）
   - `doc/testing/longrun/p2p-storage-consensus-longrun-online-stability-2026-02-24.prd.md`
-  - `doc/testing/longrun/p2p-longrun-continuous-chaos-injection-2026-02-24.prd.project.md`
+  - `doc/testing/longrun/p2p-longrun-continuous-chaos-injection-2026-02-24.project.md`
 - Edge Cases & Error Handling:
   - 过度注入：默认保守参数，支持上限控制防止“人为打爆”。
   - 随机不可复现：记录 seed 并支持显式 seed 复跑。

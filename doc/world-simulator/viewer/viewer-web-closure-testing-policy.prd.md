@@ -2,7 +2,7 @@
 
 审计轮次: 5
 
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-web-closure-testing-policy.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-web-closure-testing-policy.project.md
 
 ## 1. Executive Summary
 - 将 `agent_world_viewer` 的闭环测试默认路径统一到 Web 端：`trunk serve + Playwright`。
@@ -56,4 +56,4 @@
   - 缓解：在关键入口文档中统一声明“Web 为默认，native 为 fallback”。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

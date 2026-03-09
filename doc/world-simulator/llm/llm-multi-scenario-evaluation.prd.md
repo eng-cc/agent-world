@@ -1,7 +1,7 @@
 # Agent World Simulator：LLM 多场景评测基线（设计文档）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/llm/llm-multi-scenario-evaluation.prd.project.md
+- 对应项目管理文档: doc/world-simulator/llm/llm-multi-scenario-evaluation.project.md
 
 ## 1. Executive Summary
 - 解决仅使用 `llm_bootstrap` 单场景评测导致的样本偏差问题，建立可复用的多场景评测基线。
@@ -119,4 +119,4 @@
 - 在聚合报告中补充分位统计（如 `llm_input_chars_avg` 的 P50/P95），减少均值掩盖峰值风险。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

@@ -1,7 +1,7 @@
 # Viewer Live LLM 事件触发决策门控（2026-02-26）
 
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-live-llm-event-driven-trigger-2026-02-26.prd.project.md
+- 对应项目管理文档: doc/world-simulator/viewer/viewer-live-llm-event-driven-trigger-2026-02-26.project.md
 
 ## 1. Executive Summary
 - 降低 `world_viewer_live` 在 LLM 模式下的空转决策循环。
@@ -41,4 +41,4 @@
 - `Preview` 仍不触发自动决策（设计上仅观测，不改变世界状态）。
 
 ## 6. Validation & Decision Record
-- 追溯: 对应同名 `.prd.project.md`，保持原文约束语义不变。
+- 追溯: 对应同名 `.project.md`，保持原文约束语义不变。
