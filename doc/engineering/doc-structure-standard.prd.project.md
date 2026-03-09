@@ -2,8 +2,8 @@
 
 审计轮次: 4
 
-- 对应需求文档: `doc/engineering/documentation-topology-and-document-roles-2026-03-09.prd.md`
-- 对应规范正文: `doc/engineering/documentation-topology-and-document-roles-2026-03-09.design.md`
+- 对应需求文档: `doc/engineering/doc-structure-standard.prd.md`
+- 对应规范正文: `doc/engineering/doc-structure-standard.design.md`
 
 ## 任务拆解
 - [x] T0 (PRD-ENGINEERING-015) [test_tier_required]: 明确规范目标、范围、非目标与成功标准，完成专题 PRD 建档。

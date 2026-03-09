@@ -33,6 +33,7 @@
 - [x] TASK-ENGINEERING-023 (PRD-ENGINEERING-014) [test_tier_required]: 完成历史专题审读与引用收口（不再保留 archive 目录）。
 - [x] TASK-ENGINEERING-024 (PRD-ENGINEERING-012/013/014) [test_tier_required]: 建立周度增量审读节奏（新增/变更 PRD 自动入清单）。
 - [x] TASK-ENGINEERING-025 (PRD-ENGINEERING-015) [test_tier_required]: 产出“文档分工与组织规范”专题 PRD、规范正文与项目文档，冻结目录按对象、文件按职责的建档标准。
+- [x] TASK-ENGINEERING-026 (PRD-ENGINEERING-015) [test_tier_required]: 将“文档分工与组织规范”专题收敛为短文件名 `doc-structure-standard`，并同步回写索引、白名单与引用。
 
 ## 依赖
 - doc/engineering/prd.index.md
@@ -48,9 +49,9 @@
 - `doc/engineering/doc-migration/legacy-doc-migration-backlog-2026-03-03.md`
 - `doc/engineering/prd-review/prd-full-system-audit-2026-03-03.prd.md`
 - `doc/engineering/prd-review/prd-full-system-audit-2026-03-03.prd.project.md`
-- `doc/engineering/documentation-topology-and-document-roles-2026-03-09.prd.md`
-- `doc/engineering/documentation-topology-and-document-roles-2026-03-09.design.md`
-- `doc/engineering/documentation-topology-and-document-roles-2026-03-09.prd.project.md`
+- `doc/engineering/doc-structure-standard.prd.md`
+- `doc/engineering/doc-structure-standard.design.md`
+- `doc/engineering/doc-structure-standard.prd.project.md`
 - `doc/engineering/prd-review/checklists/`
 - `scripts/doc-governance-check.sh`
 - `doc/*/README.md`
@@ -61,5 +62,5 @@
 - 下一任务: TASK-ENGINEERING-015（全量迁移收口复核）
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - 当前整改批次: R2（引用路径可达门禁）已完成（019）；R3（全量 PRD 审读机制）已完成（020-024，清单覆盖 708/708）。
-- 当前规范补充: 已完成 `TASK-ENGINEERING-025`，冻结“目录按对象、文件按职责”的文档建模方案，并新增详细设计载体 `*.design.md` 的推荐用法。
+- 当前规范补充: 已完成 `TASK-ENGINEERING-025/026`，冻结“目录按对象、文件按职责”的文档建模方案，并将专题短名统一为 `doc-structure-standard`。
 - 说明: 本文档仅维护 engineering 设计执行状态；过程记录在 `doc/devlog/2026-03-03.md`、`doc/devlog/2026-03-04.md` 与 `doc/devlog/2026-03-09.md`。
