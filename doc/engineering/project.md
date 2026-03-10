@@ -41,6 +41,7 @@
 - [x] TASK-ENGINEERING-034 (PRD-ENGINEERING-020) [test_tier_required]: 建立角色名白名单门禁，约束 devlog / handoff 只能使用 `.agents/roles/*.md` 中存在的标准角色名。
 - [x] TASK-ENGINEERING-035 (PRD-ENGINEERING-015) [test_tier_required]: 将 ROUND-006 定义为 `doc-structure-standard` 结构治理轮，建立逐文档改造台账字段、批次骨架与 core/engineering 双侧挂靠。
 - [x] TASK-ENGINEERING-036 (PRD-ENGINEERING-016) [test_tier_required]: 为 7 个组合角色职责卡补齐推荐技能与典型使用场景，统一“角色决定 owner、技能决定方法”的口径。
+- [x] TASK-ENGINEERING-037 (PRD-ENGINEERING-016) [test_tier_required]: 同步 `doc/engineering/README.md` 与 `doc/engineering/prd.index.md` 的模块入口索引，补齐近期治理专题与根目录收口口径。
 
 ## 依赖
 - 模块设计总览：`doc/engineering/design.md`
@@ -80,6 +81,7 @@
 - 最新完成: `TASK-ENGINEERING-034`（角色名白名单门禁与模板枚举接入）。
 - 最新完成: `TASK-ENGINEERING-035`（ROUND-006 改为按 `doc-structure-standard` 逐文档治理的执行轮）。
 - 最新完成: `TASK-ENGINEERING-036`（角色职责卡补齐推荐技能与角色/技能关系口径）。
+- 最新完成: `TASK-ENGINEERING-037`（engineering 模块 README / PRD 索引入口同步）。
 - 最新完成: `TASK-ENGINEERING-015`（legacy 文档迁移专项完成全量收口复核）。
 - 最新完成: `TASK-ENGINEERING-003`（工程门禁趋势统计与首份 baseline）。
 - 最新完成: `TASK-ENGINEERING-004`（engineering 季度治理审查流程与模板）。
