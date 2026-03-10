@@ -212,7 +212,10 @@ env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-u
 ### S6：Web UI 闭环 smoke 套件（L4）
 - S6 详细执行步骤、Playwright 命令、发布门禁与补充约定已拆分到：
   - `doc/testing/manual/web-ui-playwright-closure-manual.prd.md`
+  - `doc/testing/launcher/launcher-manual-test-checklist-2026-03-10.prd.md`（发布前人工体验与异常恢复检查清单）
 - 本手册仅保留分层与触发矩阵，执行时按上述文档操作。
+- 对 `world_web_launcher` 这类 Web 控制面，默认优先使用 GUI Agent 驱动产品动作，再用 Web 页面做状态与字段校验；Canvas 直点仅作补充。
+- 涉及 `Explorer / Transfer` 的闭环时，先准备可观测数据，再执行查询与字段断言；不得只以“页面打开了/接口返回 200”判定通过。
 - 防误用约束：
   - `scripts/run-game-test-ab.sh` 仅用于自动化回归哨兵（TTFC/命中率/无进展窗口），不等价于“真实玩家长玩评测”。
   - 发布前结论仍需补充手动长玩与卡片填写（按 `doc/playability_test_result/game-test.prd.md` 执行）。

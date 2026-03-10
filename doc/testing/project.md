@@ -85,6 +85,9 @@
 ## 专题任务映射（2026-03-08 批次）
 - [x] SUBTASK-TESTING-20260308-001 (PRD-TESTING-002/003) [test_tier_required]: `doc/testing/launcher/launcher-full-usability-closure-audit-2026-03-08.project.md`
 
+## 专题任务映射（2026-03-10 批次）
+- [x] SUBTASK-TESTING-20260310-001 (PRD-TESTING-LAUNCHER-MANUAL-001/002/003) [test_tier_required]: `doc/testing/launcher/launcher-manual-test-checklist-2026-03-10.project.md`
+
 ## 依赖
 - 模块设计总览：`doc/testing/design.md`
 - doc/testing/prd.index.md
@@ -95,11 +98,12 @@
 - `.agents/skills/prd/check.md`
 
 ## 状态
-- 更新日期: 2026-03-08
+- 更新日期: 2026-03-10
 - 当前状态: active
 - 下一任务: TASK-TESTING-002
 - 专题映射状态: 2026-03-02 批次 3/3 已纳入模块项目管理文档。
 - 专题映射状态补充: 2026-03-06 批次 1/1 已纳入模块项目管理文档。
 - 专题映射状态补充: 2026-03-08 批次 1/1 已完成（启动器全功能可用性审查）。
+- 专题映射状态补充: 2026-03-10 批次 1/1 已完成（启动器人工测试清单建档）。
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
-- 说明: 本文档仅维护 testing 模块设计执行状态；过程记录在 `doc/devlog/2026-03-08.md`。
+- 说明: 本文档仅维护 testing 模块设计执行状态；过程记录在 `doc/devlog/2026-03-10.md`。
