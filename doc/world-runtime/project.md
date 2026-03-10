@@ -10,7 +10,12 @@
   - 验收命令 (`test_tier_required`):
     - `test -f doc/world-runtime/checklists/runtime-core-boundary-acceptance-checklist.md`
     - `rg -n "确定性边界|WASM 边界|治理边界|阻断条件|结论记录模板" doc/world-runtime/checklists/runtime-core-boundary-acceptance-checklist.md`
-- [ ] TASK-WORLD_RUNTIME-003 (PRD-WORLD_RUNTIME-002/003) [test_tier_required]: 建立运行时安全与数值语义回归跟踪模板。
+- [x] TASK-WORLD_RUNTIME-003 (PRD-WORLD_RUNTIME-002/003) [test_tier_required]: 建立运行时安全与数值语义回归跟踪模板。
+  - 产物文件:
+    - `doc/world-runtime/templates/runtime-security-numeric-regression-template.md`
+  - 验收命令 (`test_tier_required`):
+    - `test -f doc/world-runtime/templates/runtime-security-numeric-regression-template.md`
+    - `rg -n "安全回归|数值语义回归|失败签名|问题与处置|结论摘要" doc/world-runtime/templates/runtime-security-numeric-regression-template.md`
 - [ ] TASK-WORLD_RUNTIME-004 (PRD-WORLD_RUNTIME-003) [test_tier_required]: 对接跨模块发布门禁中的 runtime 质量指标。
 - [x] TASK-WORLD_RUNTIME-005 (PRD-WORLD_RUNTIME-001/002/003) [test_tier_required]: 对齐 strict PRD schema，补齐关键流程/规格矩阵/边界异常/NFR/验证与决策记录。
 - [x] TASK-WORLD_RUNTIME-006 (PRD-WORLD_RUNTIME-002) [test_tier_required]: 同步 m1/m5 builtin wasm 工件 `sha256` 与 identity manifest，修复 CI hash token 不一致导致的运行时加载失败；回归 `env -u RUSTC_WRAPPER cargo test -p agent_world --tests --features test_tier_required`。
@@ -48,7 +53,7 @@
 ## 状态
 - 更新日期: 2026-03-10
 - 当前状态: active
-- 下一任务: TASK-WORLD_RUNTIME-003（运行时安全与数值语义回归模板）
+- 下一任务: TASK-WORLD_RUNTIME-004（发布门禁中的 runtime 质量指标）
 - 阶段收口优先级: `P0`
 - 阶段 owner: `runtime_engineer`（联审：`producer_system_designer`；验证：`qa_engineer`）
 - 阻断条件: 在 `TASK-WORLD_RUNTIME-002/003/004` 完成前，`TASK-WORLD_RUNTIME-033` 不再作为当前版本的首要发布驱动项。
@@ -152,6 +157,6 @@
 - 回归影响范围：world-runtime / testing / launcher-chain-runtime 接口。
 
 ## Handoff Acknowledgement
-- 接收方确认范围：`已接收 TASK-WORLD_RUNTIME-002；当前提交覆盖确定性 / WASM / 治理三类边界验收清单，不含回归模板与发布指标`
-- 接收方确认 ETA：`本轮已完成 TASK-WORLD_RUNTIME-002，下一步进入 TASK-WORLD_RUNTIME-003`
-- 接收方新增风险：`清单已统一边界，但具体指标与回归命令仍需在 TASK-WORLD_RUNTIME-003/004 中细化`
+- 接收方确认范围：`已接收 TASK-WORLD_RUNTIME-002/003；当前提交覆盖核心边界验收清单与安全 / 数值语义回归模板`
+- 接收方确认 ETA：`TASK-WORLD_RUNTIME-002/003 已完成，下一步进入 TASK-WORLD_RUNTIME-004`
+- 接收方新增风险：`模板已统一字段，但 runtime 发布指标阈值仍需在 TASK-WORLD_RUNTIME-004 中最终落档`
