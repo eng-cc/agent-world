@@ -26,6 +26,8 @@
 
 | `doc/scripts/governance/script-parameter-contracts-2026-03-11.prd.md` | `doc/scripts/governance/script-parameter-contracts-2026-03-11.design.md` | `doc/scripts/governance/script-parameter-contracts-2026-03-11.project.md` |
 
+| `doc/scripts/governance/script-stability-trend-tracking-2026-03-11.prd.md` | `doc/scripts/governance/script-stability-trend-tracking-2026-03-11.design.md` | `doc/scripts/governance/script-stability-trend-tracking-2026-03-11.project.md` |
+
 ## 说明
 - 本索引用于保证模块专题文档在根入口文档树中可达。
 - 文档配对规则：`*.prd.md`、`*.design.md` 与同名 `*.project.md`。
