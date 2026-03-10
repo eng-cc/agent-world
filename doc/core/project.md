@@ -155,6 +155,7 @@
 - [x] TASK-CORE-023 (PRD-CORE-007/008) [test_tier_required]: 同步 `doc/README.md` 的公开阅读路径与更新时间，使工程总入口追平 repo/site 当前状态。
 - [x] TASK-CORE-024 (PRD-CORE-003) [test_tier_required]: 修正 `doc/core/prd.index.md` 的活跃专题索引，补齐本轮新增专题并消除悬挂条目。
 - [x] TASK-CORE-025 (PRD-CORE-003) [test_tier_required]: 清理 `doc/core/project.md` 中串位的旧产物/验收块，恢复任务区可读性与可追溯性。
+- [x] TASK-CORE-026 (PRD-CORE-003) [test_tier_required]: 同步 `doc/core/README.md` 目录索引，补齐本轮 core 活跃专题入口。
 
 ## 依赖
 - doc/core/prd.index.md
@@ -184,6 +185,7 @@
 - 最新完成: `TASK-CORE-023`（已完成文档总入口公开阅读路径同步，并更新到 `2026-03-11`）。
 - 最新完成: `TASK-CORE-024`（已修正 core 文件级索引并补齐本轮新增专题入口）。
 - 最新完成: `TASK-CORE-025`（已清理 core 主项目中的串位产物块，恢复任务区结构一致性）。
+- 最新完成: `TASK-CORE-026`（已同步 core 模块目录索引并补齐活跃专题入口）。
 - 说明: 本文档仅维护 core 设计执行状态；过程记录在 `doc/devlog/2026-03-06.md`、`doc/devlog/2026-03-09.md`、`doc/devlog/2026-03-10.md` 与 `doc/devlog/2026-03-11.md`。
 
 ## 阶段收口执行顺序（PRD-CORE-004）
