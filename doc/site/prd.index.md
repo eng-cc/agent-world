@@ -2,7 +2,7 @@
 
 审计轮次: 6
 
-更新时间：2026-03-10
+更新时间：2026-03-11
 
 ## 入口
 - 模块 PRD：`doc/site/prd.md`
@@ -25,6 +25,7 @@
 | `doc/site/github-pages/github-pages-home-radical-redesign-2026-02-26.prd.md` | `doc/site/github-pages/github-pages-home-radical-redesign-2026-02-26.design.md` | `doc/site/github-pages/github-pages-home-radical-redesign-2026-02-26.project.md` |
 | `doc/site/github-pages/github-pages-lean-tech-refresh.prd.md` | `doc/site/github-pages/github-pages-lean-tech-refresh.design.md` | `doc/site/github-pages/github-pages-lean-tech-refresh.project.md` |
 | `doc/site/github-pages/github-pages-quality-gates-sync-seo-hardening-2026-02-26.prd.md` | `doc/site/github-pages/github-pages-quality-gates-sync-seo-hardening-2026-02-26.design.md` | `doc/site/github-pages/github-pages-quality-gates-sync-seo-hardening-2026-02-26.project.md` |
+| `doc/site/github-pages/github-pages-release-communication-placeholder-2026-03-11.prd.md` | `doc/site/github-pages/github-pages-release-communication-placeholder-2026-03-11.design.md` | `doc/site/github-pages/github-pages-release-communication-placeholder-2026-03-11.project.md` |
 | `doc/site/github-pages/github-pages-release-download-pipeline-2026-03-01.prd.md` | `doc/site/github-pages/github-pages-release-download-pipeline-2026-03-01.design.md` | `doc/site/github-pages/github-pages-release-download-pipeline-2026-03-01.project.md` |
 | `doc/site/github-pages/github-pages-showcase.prd.md` | `doc/site/github-pages/github-pages-showcase.design.md` | `doc/site/github-pages/github-pages-showcase.project.md` |
 | `doc/site/github-pages/github-pages-user-perspective-adjustments-2026-02-26.prd.md` | `doc/site/github-pages/github-pages-user-perspective-adjustments-2026-02-26.design.md` | `doc/site/github-pages/github-pages-user-perspective-adjustments-2026-02-26.project.md` |
