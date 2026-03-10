@@ -52,6 +52,7 @@
 - PRD-README-004: As a `liveops_community`, I want an external communication brief anchored to internal release evidence, so that public-facing messaging stays consistent with current candidate status and risk boundaries.
 - PRD-README-005: As a `liveops_community`, I want a reusable release communication template, so that future candidate briefs follow the same structure, evidence links, and review chain.
 - PRD-README-006: As a `liveops_community`, I want an announcement/changelog draft derived from approved messaging, so that formal external copy can start from a safe, audited baseline.
+- PRD-README-007: As a `liveops_community`, I want a reusable announcement/changelog template, so that future external drafts follow the same sections, source links, and review states.
 - Critical User Flows:
   1. Flow-RM-001: `阅读 README -> 跳转模块入口 -> 快速定位目标能力`
   2. Flow-RM-002: `检测口径变更 -> 更新入口文档 -> 校验链接 -> 发布同步`
@@ -116,6 +117,7 @@
 | PRD-README-004 | TASK-README-006 | `test_tier_required` | 对外口径简报、禁用表述与回滚口径抽样复核 | 版本候选外部沟通一致性 |
 | PRD-README-005 | TASK-README-007 | `test_tier_required` | 对外口径模板、evidence-link 字段与审批链抽样复核 | 版本候选口径模板复用性 |
 | PRD-README-006 | TASK-README-008 | `test_tier_required` | 公告 / changelog 底稿、draft 状态与 FAQ 结构抽样复核 | 对外发布底稿一致性 |
+| PRD-README-007 | TASK-README-009 | `test_tier_required` | 公告模板、source links 与 review status 抽样复核 | 公告底稿模板复用性 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |
@@ -125,3 +127,4 @@
 | DEC-RM-004 | 候选级对外说明先走简报专题，再决定是否升级到 README / 公告 | 直接在 README 或外部公告里写最终口径 | 先用简报控边界，能避免对外承诺过早固化。 |
 | DEC-RM-005 | 用模板沉淀 release communication 结构 | 每次按临时文案自由发挥 | 模板能提高后续候选的复用率与审阅效率。 |
 | DEC-RM-006 | 在简报之后先落 announcement/changelog draft，再决定是否正式发布 | 直接将简报对外公开 | 底稿更接近外部文风，同时仍保留 draft 审核缓冲层。 |
+| DEC-RM-007 | 将 announcement/changelog 底稿继续模板化 | 每个候选手写公告底稿 | 模板化能降低重写成本，并稳定审核结构。 |
