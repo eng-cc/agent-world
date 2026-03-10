@@ -161,6 +161,8 @@
 - 预期结果：runtime 规则边界、回归模板、门禁指标可直接用于发布评审。
 - 回归影响范围：world-runtime / testing / launcher-chain-runtime 接口。
 
+- 模块进展补充（2026-03-10）: 已新增 `doc/world-runtime/runtime-p0-candidate-evidence-handoff-2026-03-10.md`，明确当前 core `blocked` 的剩余缺口是 runtime 候选级实测证据绑定，而非模板缺失。
+
 ## Handoff Acknowledgement
 - 接收方确认范围：`已接收 TASK-WORLD_RUNTIME-002/003/004；当前提交完成边界清单、回归模板与发布门禁指标模板`
 - 接收方确认 ETA：`TASK-WORLD_RUNTIME-002/003/004 已完成，下一步回到 TASK-WORLD_RUNTIME-033`

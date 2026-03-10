@@ -161,6 +161,8 @@
 
 - 模块进展补充（2026-03-10）: 已新增 `doc/core/reviews/stage-closure-go-no-go-task-game-018-2026-03-10.md`，将 `TASK-GAME-018` 接入 core 阶段收口评审；当前 gameplay/playability/testing 已 ready，候选级总评仍待 runtime P0 证据补齐。
 
+- 模块进展补充（2026-03-10 / runtime）: 已向 `runtime_engineer` 发起 `doc/world-runtime/runtime-p0-candidate-evidence-handoff-2026-03-10.md`，要求优先补齐候选级 runtime P0 实测证据。
+
 ## 状态
 - 更新日期: 2026-03-10
 - 当前状态: active
