@@ -2,7 +2,7 @@
 
 审计轮次: 6
 
-更新时间：2026-03-03
+更新时间：2026-03-11
 
 ## 入口
 - 模块 PRD：`doc/readme/prd.md`
@@ -22,6 +22,7 @@
 | `doc/readme/gap/readme-gap3-install-target-infrastructure.prd.md` | `doc/readme/gap/readme-gap3-install-target-infrastructure.design.md` | `doc/readme/gap/readme-gap3-install-target-infrastructure.project.md` |
 | `doc/readme/gap/readme-gap34-lifecycle-orderbook-closure.prd.md` | `doc/readme/gap/readme-gap34-lifecycle-orderbook-closure.design.md` | `doc/readme/gap/readme-gap34-lifecycle-orderbook-closure.project.md` |
 | `doc/readme/governance/readme-resource-model-layering.prd.md` | `doc/readme/governance/readme-resource-model-layering.design.md` | `doc/readme/governance/readme-resource-model-layering.project.md` |
+| `doc/readme/governance/readme-consistency-audit-checklist-2026-03-11.prd.md` | `doc/readme/governance/readme-consistency-audit-checklist-2026-03-11.design.md` | `doc/readme/governance/readme-consistency-audit-checklist-2026-03-11.project.md` |
 | `doc/readme/governance/readme-world-rules-consolidation.prd.md` | `doc/readme/governance/readme-world-rules-consolidation.design.md` | `doc/readme/governance/readme-world-rules-consolidation.project.md` |
 | `doc/readme/production/readme-llm-p1p2-production-closure.prd.md` | `doc/readme/production/readme-llm-p1p2-production-closure.design.md` | `doc/readme/production/readme-llm-p1p2-production-closure.project.md` |
 | `doc/readme/production/readme-p0-p1-closure.prd.md` | `doc/readme/production/readme-p0-p1-closure.design.md` | `doc/readme/production/readme-p0-p1-closure.project.md` |
