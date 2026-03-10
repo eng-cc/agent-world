@@ -243,6 +243,26 @@ fn build_world_chain_runtime_args_includes_storage_profile() {
 }
 
 #[test]
+fn build_world_chain_runtime_args_supports_all_storage_profiles() {
+    for (profile, expected) in [
+        (StorageProfile::DevLocal, "dev_local"),
+        (StorageProfile::ReleaseDefault, "release_default"),
+        (StorageProfile::SoakForensics, "soak_forensics"),
+    ] {
+        let options = CliOptions {
+            scenario: "sandbox".to_string(),
+            chain_node_id: format!("chain-{expected}"),
+            chain_status_bind: "127.0.0.1:6121".to_string(),
+            chain_storage_profile: profile,
+            ..CliOptions::default()
+        };
+        let args = build_world_chain_runtime_args(&options);
+        assert!(args.contains(&"--storage-profile".to_string()));
+        assert!(args.contains(&expected.to_string()));
+    }
+}
+
+#[test]
 fn sanitize_relative_request_path_rejects_traversal() {
     let err = sanitize_relative_request_path("/../etc/passwd").expect_err("should fail");
     assert!(err.contains("traversal"));

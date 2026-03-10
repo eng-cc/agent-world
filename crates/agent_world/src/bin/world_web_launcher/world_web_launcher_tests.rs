@@ -282,6 +282,24 @@ fn build_chain_runtime_args_includes_chain_overrides_when_on() {
 }
 
 #[test]
+fn build_chain_runtime_args_supports_all_storage_profiles() {
+    for expected in ["dev_local", "release_default", "soak_forensics"] {
+        let config = LauncherConfig {
+            viewer_static_dir: ".".to_string(),
+            chain_enabled: true,
+            chain_status_bind: "127.0.0.1:6121".to_string(),
+            chain_node_id: format!("chain-{expected}"),
+            chain_storage_profile: expected.to_string(),
+            chain_world_id: "live-chain-a".to_string(),
+            ..LauncherConfig::default()
+        };
+        let args = build_chain_runtime_args(&config).expect("args");
+        assert!(args.contains(&"--storage-profile".to_string()));
+        assert!(args.contains(&expected.to_string()));
+    }
+}
+
+#[test]
 fn build_chain_runtime_args_rejects_unknown_storage_profile() {
     let config = LauncherConfig {
         chain_enabled: true,

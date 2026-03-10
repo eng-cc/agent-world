@@ -96,4 +96,5 @@
 - 本轮新增（2026-03-10 / T7.2 root cause）: 真实 probe 已在 `height=32` 观察到 `checkpoint_count=1`，并结合读码确认 `world_chain_runtime` 仍使用 execution bridge 的硬编码 `32/4` retention 默认值，而不是 `release_default` 的 `64/8`。
 - 本轮新增（2026-03-11 / T7.2 QA）: `qa_engineer` 已用真实 `release_default` 样本确认 `height=47` 时 `checkpoint_count=0/full_log_only`，`height=65` 时 `checkpoint_count=1/checkpoint_plus_log`，说明修复后 cadence 与 budget 对齐。
 - 本轮新增（2026-03-11 / T7.3）: 已新增 `doc/world-runtime/evidence/runtime-sidecar-orphan-gc-failsafe-2026-03-11.md` 与定向回归 `collect_storage_metrics_sidecar_orphan_recovers_after_successful_save`，证明 sidecar orphan 可在下一次成功 save/GC 后收敛到 `0`。
-- 下一任务: T7.4（对接 profile 切换 / launcher / soak 场景，验证三档 profile 口径一致）
+- 本轮新增（2026-03-11 / T7.4 启动）: 已补 `world_game_launcher` / `world_web_launcher` 的 tri-profile 参数透传回归，并向 `viewer_engineer` 发起 bundle / launcher 实测 handoff。
+- 下一任务: T7.4（由 `viewer_engineer` 补 bundle / launcher / web 实测证据）
