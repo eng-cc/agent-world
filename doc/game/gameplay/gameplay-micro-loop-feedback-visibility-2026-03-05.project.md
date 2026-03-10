@@ -86,6 +86,16 @@
 - 产物至少包含：baseline + 每轮改动后对照图 + 简要结论。
 - 关键验证：截图人工审阅通过并归档。
 - 统一证据模板：`doc/game/gameplay/gameplay-micro-loop-visual-closure-evidence-template-2026-03-10.md`。
+- 2026-03-10 ROUND-009 迭代记录：
+  - 证据目录：`output/playwright/playability/manual-20260310-round009/`
+  - 证据包：`doc/game/gameplay/gameplay-micro-loop-visual-closure-evidence-2026-03-10-round009.md`
+  - 关键截图：
+    - `mlf007-baseline-3d-mid.png`（3D 中景未选中 baseline）
+    - `mlf007-selected-3d-mid.png`（3D 中景选中态）
+    - `mlf007-selected-3d-near.png`（3D 近景选中态）
+    - `mlf007-selected-2d-marker.png`（2D marker 选中态）
+  - 语义状态：`selectedKind=agent`、`connectionStatus=connected`、`errorCount=0`；`console.errors.log` 为空。
+  - 本轮结论：viewer 侧已补齐 `MLF-007` 的固定视角证据，`MLF-008` 等待 `qa_engineer` 刷新卡片并给出最终 verdict。
 - 2026-03-07 ROUND-008 迭代记录：
   - 证据目录：`output/playwright/playability/manual-20260307-round008/`
   - 关键截图：
@@ -126,7 +136,7 @@
 - 当前状态: active
 - 当前完成: `TASK-GAMEPLAY-MLF-000`、`TASK-GAMEPLAY-MLF-001`、`TASK-GAMEPLAY-MLF-002`、`TASK-GAMEPLAY-MLF-003`、`TASK-GAMEPLAY-MLF-004`、`TASK-GAMEPLAY-MLF-005`、`TASK-GAMEPLAY-MLF-006`、`TASK-GAMEPLAY-MLF-007`
 - 当前证据骨架: `doc/game/gameplay/gameplay-micro-loop-visual-closure-evidence-template-2026-03-10.md`
-- 下一任务: `TASK-GAMEPLAY-MLF-008`（按统一视觉证据模板补齐截图/录屏/结论）
+- 下一任务: `TASK-GAMEPLAY-MLF-008`（移交 `qa_engineer` 复核本轮证据并刷新 playability 卡片）
 - 阻塞项: `TASK-GAME-018` 仍待 `MLF-008` 证据收口
 - 说明: 过程记录在 `doc/devlog/2026-03-06.md`、`doc/devlog/2026-03-07.md` 与 `doc/devlog/2026-03-10.md`
 

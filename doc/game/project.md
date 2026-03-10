@@ -62,7 +62,7 @@
 - ROUND-014 进展: `TASK-GAME-016` 已完成，main token 新增经济源汇审计报表与通胀/套利阈值 gate（`main_token_economy_audit_report/enforce_main_token_economy_gate`），并通过定向回归。
 - ROUND-015 进展: `TASK-GAME-017` 已完成，新增 long-run 可运维发布门禁模型（SLO/告警/灰度/灾备 + 经济告警联动）与阻断接口 `enforce_longrun_operability_release_gate`。
 - ROUND-016 进展: `TASK-GAME-018` 已立项，进入 viewer 体验层改造与手动截图验收阶段。
-- ROUND-017 进展: `TASK-GAME-018` 已进入执行中，`TASK-GAMEPLAY-MLF-005/006/007` 已完成（控制结果显著条 + 玩家模式默认减负 + 世界可读性增强首轮实现）；`TASK-GAMEPLAY-MLF-008` 已完成一轮 runtime_live 节奏修正并通过手动截图验收（播放稳态由 `+11~12 tick/s` 降至 `+1 tick/s`，暂停 `+0 tick/s`），下一步补齐统一视觉证据包。
+- ROUND-017 进展: `TASK-GAME-018` 已进入执行中，`TASK-GAMEPLAY-MLF-005/006/007` 已完成（控制结果显著条 + 玩家模式默认减负 + 世界可读性增强首轮实现）；`TASK-GAMEPLAY-MLF-008` 已完成 runtime_live 节奏修正与 ROUND-009 viewer 侧视觉证据采集（baseline / 3D / 2D / console / state / 录屏），下一步由 `qa_engineer` 刷新卡片并给出最终 verdict。
 - 说明: 本文档仅维护 game 设计执行状态；过程记录在 `doc/devlog/2026-03-05.md`、`doc/devlog/2026-03-06.md` 与 `doc/devlog/2026-03-07.md`。
 
 ## 阶段收口角色交接
@@ -99,9 +99,9 @@
 - 现有测试 / 证据：现有手动截图验收记录与 `runtime_live` 节奏修正结果。
 
 ## Requested Work
-- 工作项 1：按统一视觉证据模板复核 `TASK-GAMEPLAY-MLF-007` 的常用视角截图/录屏证据。
-- 工作项 2：复核并统一 `TASK-GAMEPLAY-MLF-005/006/008` 证据格式。
-- 工作项 3：产出可直接进入发布评审的截图 / 视频 / 结论证据包，并回写项目状态。
+- 工作项 1：由 `qa_engineer` 复核 `doc/game/gameplay/gameplay-micro-loop-visual-closure-evidence-2026-03-10-round009.md` 的截图、录屏与语义状态。
+- 工作项 2：刷新 playability 卡片与 `TASK-GAME-018` 阻断结论。
+- 工作项 3：若结论通过，把 evidence linkage 回填到 playability / testing / core 证据链。
 
 ## Expected Outputs
 - 代码改动：如需，仅限支撑 `TASK-GAME-018` 的 Viewer 表达层改动。
@@ -128,6 +128,6 @@
 - 回归影响范围：game / viewer / playability 体验层。
 
 ## Handoff Acknowledgement
-- 接收方确认范围：`viewer_engineer 已接收并完成 TASK-GAMEPLAY-MLF-007 首轮实现；当前进入 TASK-GAMEPLAY-MLF-008 证据收口与后续 qa_engineer 复核交接准备`
-- 接收方确认 ETA：`TASK-GAMEPLAY-MLF-007 已完成；下一步继续推进 TASK-GAMEPLAY-MLF-008`
-- 接收方新增风险：`若缺少固定视角 baseline / 对照图，qa_engineer 仍无法直接判定世界可读性已收口`
+- 接收方确认范围：`viewer_engineer 已完成 TASK-GAMEPLAY-MLF-008 的 ROUND-009 viewer 侧证据采集，并已向 qa_engineer 发起复核交接`
+- 接收方确认 ETA：`viewer_engineer 阶段已完成；下一步等待 qa_engineer 输出 verdict`
+- 接收方新增风险：`若 qa_engineer 认为现有录屏不足以覆盖常用视角切换，仍需补拍更长对照录屏`
