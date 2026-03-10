@@ -2,7 +2,7 @@
 
 审计轮次: 6
 
-说明：
+## 说明
 - 模块目录已从旧名称 `nonviewer` 重命名为 `headless-runtime`。
 - 历史专题文件名保留 `nonviewer-*` 前缀，仅路径发生变化。
 - 不再保留 `doc/headless-runtime/archive/` 归档目录。
@@ -12,22 +12,29 @@
 - 设计总览: `doc/headless-runtime/design.md`
 - 标准执行入口: `doc/headless-runtime/project.md`
 - 兼容执行入口: `doc/headless-runtime/project.md`
-- 文件级索引: doc/headless-runtime/prd.index.md
+- 文件级索引: `doc/headless-runtime/prd.index.md`
 
-## 活跃文档
+## 模块职责
+- 维护无界面运行链路的生命周期、鉴权与长稳追溯口径。
+- 汇总 `nonviewer/` 主题下的历史 hardening、设计对齐与评审专题。
+- 承接与 testing / core 的 headless 证据链和发布门禁对接口径。
+
+## 主题文档
+- `nonviewer/`：历史无界面运行、鉴权、长稳归档与设计对齐专题。
+- `checklists/`：生命周期 / 鉴权一致性检查清单。
+- `templates/`：长稳归档、事故追溯与 release gate 对接模板。
+
+## 近期专题
 - `doc/headless-runtime/nonviewer/nonviewer-onchain-auth-protocol-hardening.prd.md`
-- `doc/headless-runtime/nonviewer/nonviewer-onchain-auth-protocol-hardening.project.md`
 - `doc/headless-runtime/nonviewer/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.prd.md`
-- `doc/headless-runtime/nonviewer/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.project.md`
 - `doc/headless-runtime/nonviewer/nonviewer-design-alignment-closure-2026-02-25.prd.md`
-- `doc/headless-runtime/nonviewer/nonviewer-design-alignment-closure-2026-02-25.project.md`
 - `doc/headless-runtime/nonviewer/nonviewer-design-alignment-review-2026-02-25.prd.md`
-- `doc/headless-runtime/nonviewer/nonviewer-design-alignment-review-2026-02-25.project.md`
+
+## 根目录收口
+- 模块根目录仅保留：`README.md`、`prd.md`、`project.md`、`prd.index.md`。
+- 其余专题文档按主题下沉到 `nonviewer/`、`checklists/`、`templates/`。
 
 ## 维护约定
 - 无界面运行链路行为变更，优先回写 `prd.md` 与 `project.md`。
 - 历史专题文件名可保留 `nonviewer-*`，但新文档优先使用 `headless-runtime-*` 前缀。
-- `doc/headless-runtime/nonviewer/nonviewer-design-alignment-closure-2026-02-25.design.md`
-- `doc/headless-runtime/nonviewer/nonviewer-design-alignment-review-2026-02-25.design.md`
-- `doc/headless-runtime/nonviewer/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.design.md`
-- `doc/headless-runtime/nonviewer/nonviewer-onchain-auth-protocol-hardening.design.md`
+- 新增专题后，需同步回写 `doc/headless-runtime/prd.index.md` 与本目录索引。
