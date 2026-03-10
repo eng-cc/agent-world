@@ -159,6 +159,8 @@
 - `.agents/skills/prd/check.md`
 - 各模块 `doc/<module>/prd.md` 与 `doc/<module>/project.md`
 
+- 模块进展补充（2026-03-10）: 已新增 `doc/core/reviews/stage-closure-go-no-go-task-game-018-2026-03-10.md`，将 `TASK-GAME-018` 接入 core 阶段收口评审；当前 gameplay/playability/testing 已 ready，候选级总评仍待 runtime P0 证据补齐。
+
 ## 状态
 - 更新日期: 2026-03-10
 - 当前状态: active

@@ -106,6 +106,8 @@
 - 预期结果：可玩性问题可被一致记录、追踪并接入发布证据包。
 - 回归影响范围：game / testing / 发布评审体验证据链。
 
+- 模块进展补充（2026-03-10）: 已新增 `doc/playability_test_result/evidence/playability-release-evidence-bundle-task-game-018-2026-03-10.md`，将 `TASK-GAME-018` 的卡片、截图、录屏与 testing/core 引用路径完成实例化互链。
+
 ## Handoff Acknowledgement
 - 接收方确认范围：`已接收 TASK-PLAYABILITY_TEST_RESULT-002/003/004；当前提交完成反馈字段、评分口径、高优问题闭环模板与发布证据包格式`
 - 接收方确认 ETA：`TASK-PLAYABILITY_TEST_RESULT-002/003/004 已完成`

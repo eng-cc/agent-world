@@ -185,6 +185,8 @@
 - 预期结果：任一阶段收口任务都能映射到统一测试范围与证据包格式。
 - 回归影响范围：全模块测试治理与发布评审流程。
 
+- 模块进展补充（2026-03-10）: 已新增 `doc/testing/evidence/release-evidence-bundle-task-game-018-2026-03-10.md`，把 `TASK-GAME-018` 的 S6 证据、viewer 定向回归与 playability 卡片纳入统一 testing 证据包。
+
 ## Handoff Acknowledgement
 - 接收方确认范围：`已接收 TASK-TESTING-002/003；本轮覆盖触发矩阵与发布证据包模板，不含趋势统计`
 - 接收方确认 ETA：`TASK-TESTING-002/003 已完成，下一步进入 TASK-TESTING-004`

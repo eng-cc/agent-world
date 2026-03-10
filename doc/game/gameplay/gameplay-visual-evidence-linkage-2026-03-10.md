@@ -24,3 +24,11 @@
 - 是否为同一轮 `TASK-GAME-018` 使用同一份视觉证据包 ID。
 - playability / testing 是否都引用到同一批截图 / 录屏路径。
 - 若 `MLF-007` 未完成，是否同步把结论维持为 `blocked`。
+
+
+## 本轮实例
+- game 视觉证据：`doc/game/gameplay/gameplay-micro-loop-visual-closure-evidence-2026-03-10-round009.md`
+- playability 证据包：`doc/playability_test_result/evidence/playability-release-evidence-bundle-task-game-018-2026-03-10.md`
+- testing 证据包：`doc/testing/evidence/release-evidence-bundle-task-game-018-2026-03-10.md`
+- core go/no-go 记录：`doc/core/reviews/stage-closure-go-no-go-task-game-018-2026-03-10.md`
+- 当前链路状态：`TASK-GAME-018` 已完成任务关闭，但候选级总评仍取决于其它 `P0` 证据是否齐备。
