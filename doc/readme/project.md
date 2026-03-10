@@ -37,6 +37,7 @@
     - `rg -n "Quarter|Trigger|Review Checklist|Remediation ID|状态" doc/readme/governance/readme-quarterly-review-template-2026-03-11.md doc/readme/governance/readme-remediation-log-template-2026-03-11.md`
     - `./scripts/doc-governance-check.sh`
 - [x] TASK-README-005 (PRD-README-001/002/003) [test_tier_required]: 对齐 strict PRD schema，补齐关键流程/规格矩阵/边界异常/NFR/验证与决策记录。
+- [x] TASK-README-006 (PRD-README-004) [test_tier_required]: 形成版本候选对外口径简报，固化 `liveops_community` 的状态摘要、禁用表述、风险边界与回滚口径。
 
 ## 依赖
 - doc/readme/prd.index.md
@@ -49,7 +50,7 @@
 - `.agents/skills/prd/check.md`
 
 ## 状态
-- 更新日期: 2026-03-03
+- 更新日期: 2026-03-11
 - 当前状态: completed
 - 下一任务: 无（当前模块主项目无未完成任务）
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
@@ -57,4 +58,5 @@
 - 模块进展补充（2026-03-11）: 已新增 README 口径一致性巡检清单，明确顶层叙事、状态口径、术语边界、入口链接与触发条件五类高优检查项。
 - 模块进展补充（2026-03-11 / links）: 已新增 `scripts/readme-link-check.sh`，自动校验 `README.md` 与 `doc/README.md` 的本地 Markdown 入口链接。
 - 模块进展补充（2026-03-11 / quarterly）: 已新增季度口径审查节奏与模板，固定季度审查、重大变更加审与修复记录闭环。
+- 模块进展补充（2026-03-11 / communication）: 已新增版本候选对外口径简报，承接内部 `go/no-go` 结论并固化禁用表述、风险边界与回滚说明。
 - 说明: 本文档仅维护 readme 模块设计执行状态；过程记录在 `doc/devlog/2026-03-03.md` 与 `doc/devlog/2026-03-11.md`。
