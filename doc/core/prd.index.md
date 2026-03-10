@@ -16,6 +16,9 @@
 - `doc/core/next-round-priority-slate-2026-03-11.prd.md`
 - `doc/core/next-round-priority-slate-2026-03-11.design.md`
 - `doc/core/next-round-priority-slate-2026-03-11.project.md`
+- `doc/core/release-candidate-readiness-entry-2026-03-11.prd.md`
+- `doc/core/release-candidate-readiness-entry-2026-03-11.design.md`
+- `doc/core/release-candidate-readiness-entry-2026-03-11.project.md`
 
 ## 说明
 - 新增专题文档后需同步更新本索引，并保持与主入口文档互链。
