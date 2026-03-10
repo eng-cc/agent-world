@@ -40,9 +40,9 @@
 - `.agents/skills/prd/check.md`
 
 ## 状态
-- 更新日期: 2026-03-10
+- 更新日期: 2026-03-11
 - 当前状态: completed
-- 下一任务: 将 `TASK-GAME-018` 证据回填到 `playability_test_result` / `testing` / `core` 链路
+- 下一任务: 无（`TASK-GAME-018` 证据回填链路已完成）
 - 阶段收口优先级: `P0`
 - 阶段 owner: `viewer_engineer`（发起/裁剪：`producer_system_designer`；验证：`qa_engineer`）
 - 阻断条件: 若后续 release gate 缺少 playability / testing / core 的证据互链，当前版本仍不得以“玩法体验已收口”为前提给出发布 `go` 结论。
