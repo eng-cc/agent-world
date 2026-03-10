@@ -24,7 +24,7 @@
 | TASK-GAMEPLAY-MLF-005 | PRD-GAME-004-04 | viewer-owner | D4 | Mission HUD 增加控制结果显著条，压缩重复反馈信息 | `egui_right_panel_player_guide.rs` + 任务回归测试 | `test_tier_required` | completed |
 | TASK-GAMEPLAY-MLF-006 | PRD-GAME-004-04 | viewer-owner | D4 | 玩家模式默认 Mission 预设 + 模块开关渐进披露 + 可见性持久化缺字段默认策略修正 | `egui_right_panel.rs` + `right_panel_module_visibility.rs` + 回归测试 | `test_tier_required` | completed |
 | TASK-GAMEPLAY-MLF-007 | PRD-GAME-004-05 | viewer-owner | D4-D5 | 选中强调与 2D marker 可见性/尺寸增强 | `selection_emphasis.rs` / `camera_controls.rs` / `scene_helpers_entities.rs` + 回归测试 | `test_tier_required` | completed |
-| TASK-GAMEPLAY-MLF-008 | PRD-GAME-004-03/04/05 | test-release-owner | D5 | 手动实操迭代截图（每任务后）并给出视觉评估结论 | `output/playwright/playability/manual-*` 证据集 + 结论摘要 | `test_tier_required` | in_progress |
+| TASK-GAMEPLAY-MLF-008 | PRD-GAME-004-03/04/05 | test-release-owner | D5 | 手动实操迭代截图（每任务后）并给出视觉评估结论 | `output/playwright/playability/manual-*` 证据集 + 结论摘要 | `test_tier_required` | completed |
 
 ## 执行顺序与依赖
 - 串行主链：`MLF-001 -> MLF-002 -> MLF-003 -> MLF-004 -> MLF-005 -> MLF-006 -> MLF-007 -> MLF-008`。
@@ -95,7 +95,7 @@
     - `mlf007-selected-3d-near.png`（3D 近景选中态）
     - `mlf007-selected-2d-marker.png`（2D marker 选中态）
   - 语义状态：`selectedKind=agent`、`connectionStatus=connected`、`errorCount=0`；`console.errors.log` 为空。
-  - 本轮结论：viewer 侧已补齐 `MLF-007` 的固定视角证据，`MLF-008` 等待 `qa_engineer` 刷新卡片并给出最终 verdict。
+  - 本轮结论：`qa_engineer` 已复核通过并回写 `doc/playability_test_result/card_2026_03_10_23_27_43.md`；`MLF-008` 完成。
 - 2026-03-07 ROUND-008 迭代记录：
   - 证据目录：`output/playwright/playability/manual-20260307-round008/`
   - 关键截图：
@@ -133,11 +133,11 @@
 
 ## 状态
 - 更新日期: 2026-03-10
-- 当前状态: active
-- 当前完成: `TASK-GAMEPLAY-MLF-000`、`TASK-GAMEPLAY-MLF-001`、`TASK-GAMEPLAY-MLF-002`、`TASK-GAMEPLAY-MLF-003`、`TASK-GAMEPLAY-MLF-004`、`TASK-GAMEPLAY-MLF-005`、`TASK-GAMEPLAY-MLF-006`、`TASK-GAMEPLAY-MLF-007`
+- 当前状态: completed
+- 当前完成: `TASK-GAMEPLAY-MLF-000`、`TASK-GAMEPLAY-MLF-001`、`TASK-GAMEPLAY-MLF-002`、`TASK-GAMEPLAY-MLF-003`、`TASK-GAMEPLAY-MLF-004`、`TASK-GAMEPLAY-MLF-005`、`TASK-GAMEPLAY-MLF-006`、`TASK-GAMEPLAY-MLF-007`、`TASK-GAMEPLAY-MLF-008`
 - 当前证据骨架: `doc/game/gameplay/gameplay-micro-loop-visual-closure-evidence-template-2026-03-10.md`
-- 下一任务: `TASK-GAMEPLAY-MLF-008`（移交 `qa_engineer` 复核本轮证据并刷新 playability 卡片）
-- 阻塞项: `TASK-GAME-018` 仍待 `MLF-008` 证据收口
+- 下一任务: `已完成`（后续仅需按 evidence linkage 回填到 `playability_test_result` / `testing` / `core`）
+- 阻塞项: 无
 - 说明: 过程记录在 `doc/devlog/2026-03-06.md`、`doc/devlog/2026-03-07.md` 与 `doc/devlog/2026-03-10.md`
 
 审计轮次: 4

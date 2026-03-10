@@ -20,12 +20,13 @@
 - [x] TASK-GAME-015 (PRD-GAME-006) [test_tier_required + test_tier_full]: 落地反作弊/反女巫对抗检测、惩罚与申诉证据链强化。
 - [x] TASK-GAME-016 (PRD-GAME-006) [test_tier_required]: 建立经济源汇审计与通胀/套利告警阈值门禁。
 - [x] TASK-GAME-017 (PRD-GAME-006) [test_tier_required]: 补齐可运维性能力（SLO、告警、灰度、灾备演练）与发布阻断规则。
-- [ ] TASK-GAME-018 (PRD-GAME-004) [test_tier_required]: 执行微循环可玩性视觉优化二期（控制结果显著化、玩家模式减负、世界可读性增强）并以手动截图闭环验收（见 `TASK-GAMEPLAY-MLF-005/006/007/008`）。
-  - 当前收口骨架:
-    - `doc/game/gameplay/gameplay-micro-loop-visual-closure-evidence-template-2026-03-10.md`
+- [x] TASK-GAME-018 (PRD-GAME-004) [test_tier_required]: 执行微循环可玩性视觉优化二期（控制结果显著化、玩家模式减负、世界可读性增强）并以手动截图闭环验收（见 `TASK-GAMEPLAY-MLF-005/006/007/008`）。
+  - 收口证据:
+    - `doc/game/gameplay/gameplay-micro-loop-visual-closure-evidence-2026-03-10-round009.md`
+    - `doc/playability_test_result/card_2026_03_10_23_27_43.md`
     - `doc/game/gameplay/gameplay-visual-evidence-linkage-2026-03-10.md`
-  - 当前缺口:
-    - `TASK-GAMEPLAY-MLF-007` 仍未完成，`MLF-008` 证据包暂不可判定 `pass`。
+  - QA 结论:
+    - `TASK-GAMEPLAY-MLF-005/006/007/008` 已全部完成，当前未见高优先级阻断；更长录屏留给后续 release gate 抽样继续观察。
 
 ## 依赖
 - 模块设计总览：`doc/game/design.md`
@@ -40,11 +41,11 @@
 
 ## 状态
 - 更新日期: 2026-03-10
-- 当前状态: active
-- 下一任务: TASK-GAME-018（微循环可玩性视觉优化二期）
+- 当前状态: completed
+- 下一任务: 将 `TASK-GAME-018` 证据回填到 `playability_test_result` / `testing` / `core` 链路
 - 阶段收口优先级: `P0`
 - 阶段 owner: `viewer_engineer`（发起/裁剪：`producer_system_designer`；验证：`qa_engineer`）
-- 阻断条件: 在 `TASK-GAME-018` 完成截图闭环前，当前版本不得以“玩法体验已收口”为前提给出发布 `go` 结论。
+- 阻断条件: 若后续 release gate 缺少 playability / testing / core 的证据互链，当前版本仍不得以“玩法体验已收口”为前提给出发布 `go` 结论。
 - 承接约束: `TASK-GAMEPLAY-MLF-005/006/007/008` 必须统一回写到同一轮视觉优化证据包，并同步引用 `playability_test_result` 模块的反馈口径。
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - ROUND-002 进展: gameplay 子簇主从化完成，`TASK-GAMEPLAY-MLF-001/002/003/004` 与 `TASK-GAME-007` 已闭环；分布式长期在线专题已完成设计建档（`TASK-GAME-008`）与执行共识首个实现切片（`TASK-GAME-009`）。
@@ -62,7 +63,8 @@
 - ROUND-014 进展: `TASK-GAME-016` 已完成，main token 新增经济源汇审计报表与通胀/套利阈值 gate（`main_token_economy_audit_report/enforce_main_token_economy_gate`），并通过定向回归。
 - ROUND-015 进展: `TASK-GAME-017` 已完成，新增 long-run 可运维发布门禁模型（SLO/告警/灰度/灾备 + 经济告警联动）与阻断接口 `enforce_longrun_operability_release_gate`。
 - ROUND-016 进展: `TASK-GAME-018` 已立项，进入 viewer 体验层改造与手动截图验收阶段。
-- ROUND-017 进展: `TASK-GAME-018` 已进入执行中，`TASK-GAMEPLAY-MLF-005/006/007` 已完成（控制结果显著条 + 玩家模式默认减负 + 世界可读性增强首轮实现）；`TASK-GAMEPLAY-MLF-008` 已完成 runtime_live 节奏修正与 ROUND-009 viewer 侧视觉证据采集（baseline / 3D / 2D / console / state / 录屏），下一步由 `qa_engineer` 刷新卡片并给出最终 verdict。
+- ROUND-017 进展: `TASK-GAME-018` 已进入执行中，`TASK-GAMEPLAY-MLF-005/006/007` 已完成（控制结果显著条 + 玩家模式默认减负 + 世界可读性增强首轮实现）；`TASK-GAMEPLAY-MLF-008` 已完成 runtime_live 节奏修正与 ROUND-009 viewer 侧视觉证据采集（baseline / 3D / 2D / console / state / 录屏），并已移交 `qa_engineer`。
+- ROUND-018 进展: `qa_engineer` 已基于 `doc/game/gameplay/gameplay-micro-loop-visual-closure-evidence-2026-03-10-round009.md` 完成复核并回写 `doc/playability_test_result/card_2026_03_10_23_27_43.md`；`TASK-GAME-018` 已完成。
 - 说明: 本文档仅维护 game 设计执行状态；过程记录在 `doc/devlog/2026-03-05.md`、`doc/devlog/2026-03-06.md` 与 `doc/devlog/2026-03-07.md`。
 
 ## 阶段收口角色交接
@@ -78,14 +80,14 @@
 - Expected ETA: `待接收方确认`
 
 ## Objective
-- 目标描述：完成微循环可玩性视觉优化二期，并产出能直接进入发布评审的截图闭环证据。
-- 成功标准：控制结果显著化、玩家模式减负、世界可读性增强三项同时完成，且 `qa_engineer` 可据此复核。
+- 目标描述：完成微循环可玩性视觉优化二期，并把可直接进入发布评审的截图闭环证据沉淀到跨模块证据链。
+- 成功标准：控制结果显著化、玩家模式减负、世界可读性增强三项已完成，且 `qa_engineer` 已基于证据完成复核。
 - 非目标：不在本轮新增 launcher / explorer 体验功能，不扩展与微循环无关的 Viewer 大改。
 
 ## Current State
-- 当前实现 / 文档状态：`TASK-GAME-018` 为模块唯一未完成主任务，当前已完成 `TASK-GAMEPLAY-MLF-005/006/007`，并已有一轮 `TASK-GAMEPLAY-MLF-008` runtime_live 节奏收口。
-- 已确认事实：core 阶段收口将玩法微循环列为 `P0`，未完成前不得给出玩法收口 `go` 结论。
-- 待确认假设：`TASK-GAMEPLAY-MLF-008` 是否还需要补拍更多视角对照图，才能覆盖 `MLF-007` 清单中的常用视角辨识度。
+- 当前实现 / 文档状态：`TASK-GAME-018` 已完成，`TASK-GAMEPLAY-MLF-005/006/007/008` 均已闭环，当前待做的是把已完成结论回填到 release gate 证据链。
+- 已确认事实：core 阶段收口将玩法微循环列为 `P0`；虽然任务已关闭，但若缺少跨模块证据互链，仍不得给出最终发布 `go` 结论。
+- 待确认假设：现有 ROUND-009 录屏是否足以覆盖发布评审抽样；若不足，则在 release gate 阶段补拍，不回滚当前任务关闭结论。
 - 当前失败信号 / 用户反馈：当前项目仍偏“能展示”，需要把“更好玩”变成明确证据。
 
 ## Scope
@@ -128,6 +130,6 @@
 - 回归影响范围：game / viewer / playability 体验层。
 
 ## Handoff Acknowledgement
-- 接收方确认范围：`viewer_engineer 已完成 TASK-GAMEPLAY-MLF-008 的 ROUND-009 viewer 侧证据采集，并已向 qa_engineer 发起复核交接`
-- 接收方确认 ETA：`viewer_engineer 阶段已完成；下一步等待 qa_engineer 输出 verdict`
-- 接收方新增风险：`若 qa_engineer 认为现有录屏不足以覆盖常用视角切换，仍需补拍更长对照录屏`
+- 接收方确认范围：`qa_engineer 已接收 ROUND-009 证据并完成复核；TASK-GAME-018 已具备任务关闭结论`
+- 接收方确认 ETA：`TASK-GAME-018 已完成；下一步转入 evidence linkage 回填`
+- 接收方新增风险：`更长录屏仍建议在后续 release gate 抽样中复看，但不构成当前任务阻断`
