@@ -17,7 +17,7 @@
     - `test -f doc/core/templates/prd-id-test-evidence-mapping.md`
     - `rg -n "PRD-ID|任务ID|测试层级|命令|证据路径|结论" doc/core/templates/prd-id-test-evidence-mapping.md`
     - `./scripts/doc-governance-check.sh`
-- [ ] TASK-CORE-005 (PRD-CORE-003) [test_tier_required]: 对模块 PRD 按轮次进行一致性审查并形成审查记录（含轮次状态与文档级审计轮次字段，缺省按 0 处理）。
+- [x] TASK-CORE-005 (PRD-CORE-003) [test_tier_required]: 对模块 PRD 按轮次进行一致性审查并形成审查记录（含轮次状态与文档级审计轮次字段，缺省按 0 处理）。
 - 模块设计总览：`doc/core/design.md`
   - 产物文件: `doc/core/reviews/consistency-review-round-001.md`
   - 验收命令 (`test_tier_required`):
@@ -164,12 +164,12 @@
 - 模块进展补充（2026-03-10 / runtime）: 已向 `runtime_engineer` 发起 `doc/world-runtime/runtime-p0-candidate-evidence-handoff-2026-03-10.md`，要求优先补齐候选级 runtime P0 实测证据。
 
 ## 状态
-- 更新日期: 2026-03-10
-- 当前状态: active
-- 下一任务: TASK-CORE-005
+- 更新日期: 2026-03-11
+- 当前状态: completed
+- 下一任务: 无（当前模块主项目无未完成任务）
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
-- 最新完成: `TASK-CORE-015`（已完成阶段收口首轮抽样审查，形成缺口清单与 handoff 建议）。
-- 说明: 本文档仅维护 core 设计执行状态；过程记录在 `doc/devlog/2026-03-06.md`（历史记录见同目录其他日期文件）。
+- 最新完成: `TASK-CORE-005`（已完成 ROUND-001~ROUND-008 一致性审查链路收口、任务归档与 QA handoff）。
+- 说明: 本文档仅维护 core 设计执行状态；过程记录在 `doc/devlog/2026-03-06.md`、`doc/devlog/2026-03-09.md`、`doc/devlog/2026-03-10.md` 与 `doc/devlog/2026-03-11.md`。
 
 ## 阶段收口执行顺序（PRD-CORE-004）
 1. `TASK-CORE-013`: 对齐模块级下一任务与阻断条件，确保 P0/P1/P2 在各自 project 中可执行。

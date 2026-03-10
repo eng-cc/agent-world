@@ -82,3 +82,9 @@
 | A8-003 | 完成缺口专题复杂度分级 | 各模块 owner | 待定 | `rg -n "must_backfill|should_backfill|defer_allowed" doc/core/reviews/round-008-design-backfill-priority-list.md` | done |
 | A8-004 | 执行高优先级专题 `Design` 补齐与互链回写 | 各模块 owner | 待定 | `find doc -type f -name "*.design.md" ! -path "doc/*/design.md" ! -path "doc/devlog/*" | wc -l` | done |
 | A8-005 | ROUND-008 复审与验收 | `qa_engineer` | 待定 | `./scripts/doc-governance-check.sh` | done |
+
+
+## 复审结果
+- 复审时间：2026-03-10
+- 复审结论：ROUND-008 completed（缺口专题已完成全量分级与高优先级 `Design` 补齐，门禁通过）。
+- 当前进展：后续新增专题若再次出现 `PRD + Project` 无 `Design` 缺口，转入 engineering 增量治理，不回退本轮完成结论。
