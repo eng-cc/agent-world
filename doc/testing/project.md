@@ -102,9 +102,80 @@
 - 更新日期: 2026-03-10
 - 当前状态: active
 - 下一任务: TASK-TESTING-002
+- 阶段收口优先级: `P0`
+- 阶段 owner: `qa_engineer`（联审：`producer_system_designer`）
+- 阻断条件: 在 `TASK-TESTING-002/003` 完成前，跨模块发布评审不得声称“测试范围明确且证据齐备”。
+- 承接约束: `TASK-TESTING-002` 完成后进入 `TASK-TESTING-003`；`TASK-TESTING-004` 作为趋势化建设保留在其后。
 - 专题映射状态: 2026-03-02 批次 3/3 已纳入模块项目管理文档。
 - 专题映射状态补充: 2026-03-06 批次 1/1 已纳入模块项目管理文档。
 - 专题映射状态补充: 2026-03-08 批次 1/1 已完成（启动器全功能可用性审查）。
 - 专题映射状态补充: 2026-03-10 批次 1/1 已完成（启动器人工测试清单建档）。
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - 说明: 本文档仅维护 testing 模块设计执行状态；过程记录在 `doc/devlog/2026-03-10.md`。
+
+## 阶段收口角色交接
+## Meta
+- Handoff ID: `HO-CORE-20260310-TEST-001`
+- Date: `2026-03-10`
+- From Role: `producer_system_designer`
+- To Role: `qa_engineer`
+- Related Module: `testing`
+- Related PRD-ID: `PRD-TESTING-001/002/003`
+- Related Task ID: `TASK-TESTING-002/003`
+- Priority: `P0`
+- Expected ETA: `待接收方确认`
+
+## Objective
+- 目标描述：建立统一的测试触发矩阵与发布证据包模板，使发布评审不再依赖临时判断。
+- 成功标准：任一任务都能反推必跑测试，证据包字段统一且可映射到 PRD-ID / 任务 / 结论。
+- 非目标：本轮不要求先完成长期趋势统计。
+
+## Current State
+- 当前实现 / 文档状态：`TASK-TESTING-002/003/004` 仍未完成，但近期 launcher / viewer 闭环证据已有积累。
+- 已确认事实：core 已将 testing 触发矩阵与证据包列为 `P0`。
+- 待确认假设：S0~S10 触发矩阵是否需要对现有专题任务映射做进一步合并。
+- 当前失败信号 / 用户反馈：测试可跑但“该跑什么、结果怎么看、能不能放”仍缺统一模板。
+
+## Scope
+- In Scope: `TASK-TESTING-002`、`TASK-TESTING-003`。
+- Out of Scope: 本轮不优先做 `TASK-TESTING-004` 趋势统计面板。
+
+## Inputs
+- 关键文件：`doc/testing/project.md`、`doc/testing/prd.md`、`testing-manual.md`。
+- 关键命令：`scripts/ci-tests.sh`、现有 viewer / launcher / playability 闭环命令。
+- 上游依赖：各模块现有 `test_tier_required/full` 定义与证据产物。
+- 现有测试 / 证据：`2026-03-08` / `2026-03-10` 的 launcher / viewer 闭环与人工清单结果。
+
+## Requested Work
+- 工作项 1：完成 S0~S10 与改动路径触发矩阵。
+- 工作项 2：建立发布证据包模板（命令、日志、截图、结论）。
+- 工作项 3：与 core PRD-ID 映射模板对齐引用方式。
+
+## Expected Outputs
+- 代码改动：如需，仅限测试脚本或模板支撑变更。
+- 文档回写：`doc/testing/project.md`、相关 testing 分册。
+- 测试记录：补齐 `test_tier_required` 的模板验证证据。
+- devlog 记录：记录矩阵、模板和遗留趋势项。
+
+## Done Definition
+- [ ] 输出满足目标与成功标准
+- [ ] 影响面已核对 `producer_system_designer` 与关键模块 owner
+- [ ] 对应 `prd.md` / `project.md` 已回写
+- [ ] 对应 `doc/devlog/YYYY-MM-DD.md` 已记录
+- [ ] required 证据已补齐
+
+## Risks / Decisions
+- 已知风险：若先做趋势统计而不先统一触发矩阵与证据包，数据口径会继续漂移。
+- 待拍板事项：证据包目录结构是否需要与现有 `output/` 产物强绑定。
+- 建议决策：先完成 `002/003`，再推进 `004` 趋势统计。
+
+## Validation Plan
+- 测试层级：`test_tier_required`
+- 验证命令：以 `rg` 抽样矩阵 / 模板字段，并结合现有闭环产物路径做引用验证。
+- 预期结果：任一阶段收口任务都能映射到统一测试范围与证据包格式。
+- 回归影响范围：全模块测试治理与发布评审流程。
+
+## Handoff Acknowledgement
+- 接收方确认范围：`待 qa_engineer 回写`
+- 接收方确认 ETA：`待 qa_engineer 回写`
+- 接收方新增风险：`待 qa_engineer 回写`

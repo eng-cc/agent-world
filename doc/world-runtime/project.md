@@ -41,9 +41,13 @@
 - `.agents/skills/prd/check.md`
 
 ## 状态
-- 更新日期: 2026-03-08
+- 更新日期: 2026-03-10
 - 当前状态: active
-- 下一任务: TASK-WORLD_RUNTIME-033（进入专题子任务 T7.2）
+- 下一任务: TASK-WORLD_RUNTIME-002（runtime 核心边界验收清单）
+- 阶段收口优先级: `P0`
+- 阶段 owner: `runtime_engineer`（联审：`producer_system_designer`；验证：`qa_engineer`）
+- 阻断条件: 在 `TASK-WORLD_RUNTIME-002/003/004` 完成前，`TASK-WORLD_RUNTIME-033` 不再作为当前版本的首要发布驱动项。
+- 承接约束: `TASK-WORLD_RUNTIME-002` 完成后方可进入 `TASK-WORLD_RUNTIME-003` 与 `TASK-WORLD_RUNTIME-004`；`TASK-WORLD_RUNTIME-033` 保留为后续联合验证切片。
 - 实施备注:
   - `TASK-WORLD_RUNTIME-028` 已完成：新增节点侧固定验收入口 `scripts/module-release-node-acceptance.sh` 并将 S11 运行手册切换为“脚本入口 + 等价拆分命令 + 证据目录”；同时收敛 `sync-m1/m4/m5` 非 `--check` 写入授权为“CI 禁止、仅本地显式授权（`AGENT_WORLD_WASM_SYNC_WRITE_ALLOW=local-dev`）”，主 CI 不再具备生产发布写入/激活路径。
   - `TASK-WORLD_RUNTIME-029` 已完成：新增 `scripts/world-runtime-finality-baseline.sh` 固定基准入口，输出 `stake/epoch` 验签耗时聚合指标与 `2 epoch` 收敛状态（`summary.md`/`summary.json` 可归档）；S11 运行手册已补齐命令与产物路径。
@@ -79,3 +83,70 @@
   - `TASK-WORLD_RUNTIME-033` 已启动并完成 T7.1：新增 `runtime::tests::storage_footprint_fixture` 作为 `2500` 记录级基线样本，后续默认 profile 体积预算、restart recovery 与 replay gate 将直接复用该输入。
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - 说明: 本文档仅维护 world-runtime 模块设计执行状态；过程记录在 `doc/devlog/2026-03-03.md`、`doc/devlog/2026-03-06.md` 与 `doc/devlog/2026-03-08.md`。
+
+## 阶段收口角色交接
+## Meta
+- Handoff ID: `HO-CORE-20260310-WR-001`
+- Date: `2026-03-10`
+- From Role: `producer_system_designer`
+- To Role: `runtime_engineer`
+- Related Module: `world-runtime`
+- Related PRD-ID: `PRD-WORLD_RUNTIME-001/002/003`
+- Related Task ID: `TASK-WORLD_RUNTIME-002/003/004`
+- Priority: `P0`
+- Expected ETA: `待接收方确认`
+
+## Objective
+- 目标描述：先补齐 runtime 核心边界验收、回归模板与发布门禁指标，再恢复更大范围的联合验证主路径。
+- 成功标准：确定性 / WASM / 治理边界形成验收清单，安全与数值语义有模板，runtime 质量指标可进入发布评审。
+- 非目标：本轮不要求完成所有 footprint / GC / 重启恢复联合验证切片。
+
+## Current State
+- 当前实现 / 文档状态：`TASK-WORLD_RUNTIME-033` 已有 T7.1 基线，但核心边界验收与发布门禁项仍未收口。
+- 已确认事实：core 已将 runtime 验收列为 `P0`，优先级高于后续 soak / footprint 扩展。
+- 待确认假设：`TASK-WORLD_RUNTIME-002` 的验收项是否需要拆到更细专题文档。
+- 当前失败信号 / 用户反馈：如果 runtime 规则只能描述不能验证，发布评审会退化为口头判断。
+
+## Scope
+- In Scope: `TASK-WORLD_RUNTIME-002`、`TASK-WORLD_RUNTIME-003`、`TASK-WORLD_RUNTIME-004` 的文档与执行承接。
+- Out of Scope: 非本轮必需的性能拓展、额外 P2 功能扩张。
+
+## Inputs
+- 关键文件：`doc/world-runtime/project.md`、`doc/world-runtime/prd.md`、相关 runtime / wasm / governance 专题文档。
+- 关键命令：沿用 runtime 定向回归与 required/full 套件命令。
+- 上游依赖：`producer_system_designer` 提供规则边界裁剪，`qa_engineer` 负责后续验证模板与门禁复核。
+- 现有测试 / 证据：`TASK-WORLD_RUNTIME-033` 的 T7.1 基线输入、现有 runtime 定向回归结果。
+
+## Requested Work
+- 工作项 1：完成 `TASK-WORLD_RUNTIME-002` 的核心边界验收清单。
+- 工作项 2：建立 `TASK-WORLD_RUNTIME-003` 的安全 / 数值语义回归模板。
+- 工作项 3：完成 `TASK-WORLD_RUNTIME-004` 的发布门禁指标接入方案。
+
+## Expected Outputs
+- 代码改动：如需，仅限支撑 runtime 验收与指标暴露的必要实现。
+- 文档回写：`doc/world-runtime/project.md` 与相关专题文档。
+- 测试记录：补齐 runtime `test_tier_required`，必要时标注后续 `test_tier_full`。
+- devlog 记录：记录验收项、风险与下一切片。
+
+## Done Definition
+- [ ] 输出满足目标与成功标准
+- [ ] 影响面已核对 `producer_system_designer` / `qa_engineer`
+- [ ] 对应 `prd.md` / `project.md` 已回写
+- [ ] 对应 `doc/devlog/YYYY-MM-DD.md` 已记录
+- [ ] required/full 测试证据已补齐或明确挂起原因
+
+## Risks / Decisions
+- 已知风险：若继续先推 `TASK-WORLD_RUNTIME-033`，会把更关键的边界验收继续后置。
+- 待拍板事项：哪些 runtime 指标必须成为本轮 go/no-go 阻断项。
+- 建议决策：先完成 `002/003/004`，再恢复 `033` 作为更大范围联合验证任务。
+
+## Validation Plan
+- 测试层级：`test_tier_required`（必要时补 `test_tier_full`）
+- 验证命令：沿用 runtime 定向回归 / required / soak 相关命令并回写证据路径。
+- 预期结果：runtime 规则边界、回归模板、门禁指标可直接用于发布评审。
+- 回归影响范围：world-runtime / testing / launcher-chain-runtime 接口。
+
+## Handoff Acknowledgement
+- 接收方确认范围：`待 runtime_engineer 回写`
+- 接收方确认 ETA：`待 runtime_engineer 回写`
+- 接收方新增风险：`待 runtime_engineer 回写`

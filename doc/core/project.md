@@ -117,6 +117,29 @@
     - `test -f doc/core/reviews/round-006-audit-progress-log.md`
     - `rg -n "doc-structure-standard|结构治理|当前类型|目标类型|改造动作|未完成不升轮次" doc/core/reviews/consistency-review-round-006.md doc/core/reviews/round-006-reviewed-files.md doc/core/reviews/round-006-kickoff-worklist.md`
     - `./scripts/doc-governance-check.sh`
+- [x] TASK-CORE-011 (PRD-CORE-004) [test_tier_required]: 在 core PRD 中建立当前阶段收口优先级（P0/P1/P2）唯一口径，明确玩法 / runtime / testing / playability / headless 的发布前排序原则。
+  - 产物文件:
+    - `doc/core/prd.md`
+  - 验收命令 (`test_tier_required`):
+    - `rg -n "PRD-CORE-004|阶段收口优先级|P0|P1|P2" doc/core/prd.md`
+    - `./scripts/doc-governance-check.sh`
+- [x] TASK-CORE-012 (PRD-CORE-004) [test_tier_required]: 在 core PRD 中建立跨角色 owner / 输入 / 输出 / 完成定义矩阵，确保后续实现与交接有统一入口。
+  - 产物文件:
+    - `doc/core/prd.md`
+  - 验收命令 (`test_tier_required`):
+    - `rg -n "owner|输入|输出|完成定义|跨角色交付矩阵" doc/core/prd.md`
+    - `./scripts/doc-governance-check.sh`
+- [x] TASK-CORE-013 (PRD-CORE-004) [test_tier_required]: 按 core 收口优先级回写并对齐 `game` / `world-runtime` / `testing` / `playability_test_result` / `headless-runtime` 的下一任务与阻断条件。
+  - 产物文件:
+    - `doc/game/project.md`
+    - `doc/world-runtime/project.md`
+    - `doc/testing/project.md`
+    - `doc/playability_test_result/project.md`
+    - `doc/headless-runtime/project.md`
+  - 验收命令 (`test_tier_required`):
+    - `rg -n "阶段收口优先级|阶段 owner|阻断条件|阶段收口角色交接|Handoff ID:" doc/game/project.md doc/world-runtime/project.md doc/testing/project.md doc/playability_test_result/project.md doc/headless-runtime/project.md`
+- [ ] TASK-CORE-014 (PRD-CORE-004) [test_tier_required]: 建立阶段收口 go/no-go 评审模板，固化 P0 必备证据、P1 风险附注与例外升级规则。
+- [ ] TASK-CORE-015 (PRD-CORE-004) [test_tier_required]: 对阶段收口 owner 分工与模块承接状态进行首轮抽样审查，并形成缺口清单与 handoff 建议。
 
 ## 依赖
 - doc/core/prd.index.md
@@ -127,9 +150,14 @@
 - 各模块 `doc/<module>/prd.md` 与 `doc/<module>/project.md`
 
 ## 状态
-- 更新日期: 2026-03-09
+- 更新日期: 2026-03-10
 - 当前状态: active
-- 下一任务: TASK-CORE-005
+- 下一任务: TASK-CORE-014
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
-- 最新完成: `TASK-CORE-010`（ROUND-006 已升级为结构治理执行台账，待冻结范围后按批次逐文档改造）。
+- 最新完成: `TASK-CORE-013`（已对齐五个关键模块的阶段优先级、owner、阻断条件与角色交接模板）。
 - 说明: 本文档仅维护 core 设计执行状态；过程记录在 `doc/devlog/2026-03-06.md`（历史记录见同目录其他日期文件）。
+
+## 阶段收口执行顺序（PRD-CORE-004）
+1. `TASK-CORE-013`: 对齐模块级下一任务与阻断条件，确保 P0/P1/P2 在各自 project 中可执行。
+2. `TASK-CORE-014`: 建立 go/no-go 模板，统一发布前证据与例外升级规则。
+3. `TASK-CORE-015`: 做首轮抽样审查，确认 owner 分工、handoff 与承接缺口。
