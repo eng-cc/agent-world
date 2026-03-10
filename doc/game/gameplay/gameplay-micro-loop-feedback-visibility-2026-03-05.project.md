@@ -76,6 +76,7 @@
 ### TASK-GAMEPLAY-MLF-007
 - 选中强调 halo 与 2D marker 在玩家常用视角下可稳定辨识。
 - 可读性增强不触发渲染退化门禁。
+- 检查清单：`doc/game/gameplay/gameplay-micro-loop-readable-world-checklist-2026-03-10.md`。
 - 关键测试：
   - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer camera_controls_tests:: -- --nocapture`
   - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer selection_emphasis::tests:: -- --nocapture`。
@@ -125,7 +126,7 @@
 - 当前状态: active
 - 当前完成: `TASK-GAMEPLAY-MLF-000`、`TASK-GAMEPLAY-MLF-001`、`TASK-GAMEPLAY-MLF-002`、`TASK-GAMEPLAY-MLF-003`、`TASK-GAMEPLAY-MLF-004`、`TASK-GAMEPLAY-MLF-005`、`TASK-GAMEPLAY-MLF-006`
 - 当前证据骨架: `doc/game/gameplay/gameplay-micro-loop-visual-closure-evidence-template-2026-03-10.md`
-- 下一任务: `TASK-GAMEPLAY-MLF-007`（世界可读性增强）
+- 下一任务: `TASK-GAMEPLAY-MLF-007`（世界可读性增强；按可读性检查清单执行）
 - 阻塞项: 无
 - 说明: 过程记录在 `doc/devlog/2026-03-06.md` 与 `doc/devlog/2026-03-07.md`
 

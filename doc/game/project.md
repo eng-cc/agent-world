@@ -98,7 +98,7 @@
 - 现有测试 / 证据：现有手动截图验收记录与 `runtime_live` 节奏修正结果。
 
 ## Requested Work
-- 工作项 1：收口 `TASK-GAMEPLAY-MLF-007`，完成世界可读性增强。
+- 工作项 1：收口 `TASK-GAMEPLAY-MLF-007`，按 `doc/game/gameplay/gameplay-micro-loop-readable-world-checklist-2026-03-10.md` 完成世界可读性增强。
 - 工作项 2：复核并统一 `TASK-GAMEPLAY-MLF-005/006/008` 证据格式。
 - 工作项 3：产出可直接进入发布评审的截图 / 视频 / 结论证据包，并回写项目状态。
 
