@@ -53,6 +53,9 @@
   - PRD-SITE-002: As a 技术用户, I want trustworthy download and docs links, so that I can install and verify efficiently.
   - PRD-SITE-003: As a 维护者, I want measurable quality gates, so that releases are predictable.
   - PRD-SITE-004: As a 对外内容维护者, I want marketing copy to match real product readiness, so that user trust is not damaged by over-claiming.
+- PRD-SITE-005: As a 新访问者, I want the public site to distinguish preview build notes from formal public release messaging, so that I do not mistake technical artifacts for a live launch.
+- PRD-SITE-006: As a `liveops_community`, I want a public placeholder for upcoming release communication, so that formal announcement rollout has a stable site anchor.
+- PRD-SITE-007: As a `producer_system_designer`, I want public site copy to remain aligned with candidate posture, so that release promises never outrun internal review status.
 - Critical User Flows:
   1. Flow-SITE-001: `访问首页 -> 理解价值与入口 -> 跳转安装/文档`
   2. Flow-SITE-002: `发布前执行链接检查 -> 处理断链 -> 复测通过`
@@ -122,6 +125,9 @@
 | PRD-SITE-002 | TASK-SITE-002/003/005/006 | `test_tier_required` | 下载与文档链接巡检、手册镜像语义对齐校验 | 安装与文档可用性 |
 | PRD-SITE-003 | TASK-SITE-003/004/005/007 | `test_tier_required` + `test_tier_full` | 发布门禁与回归节奏复核、项目状态回写核对 | 发布稳定性与回滚能力 |
 | PRD-SITE-004 | TASK-SITE-008/009 | `test_tier_required` | 中英文首页与文档入口页状态文案一致性核验 | 对外信任与信息准确性 |
+| PRD-SITE-005 | TASK-SITE-010 | `test_tier_required` | 首页/下载区已区分构建说明与正式公告 | 公开站点状态理解 |
+| PRD-SITE-006 | TASK-SITE-010 | `test_tier_required` | 站点存在统一“公开说明准备态”占位 | 发布沟通入口一致性 |
+| PRD-SITE-007 | TASK-SITE-010 | `test_tier_required` | 技术预览主口径与新占位并存且无冲突 | 对外承诺边界控制 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |
@@ -129,3 +135,4 @@
 | DEC-SITE-002 | 下载链路绑定版本与校验信息 | 仅展示下载地址 | 可提升来源可信度。 |
 | DEC-SITE-003 | 站点口径与 readme 联动维护 | 独立维护站点文案 | 可降低对外口径漂移。 |
 | DEC-SITE-004 | 对外“可玩状态”按真实产品状态保守表达（未可玩即明确预览） | 继续使用高承诺营销口径 | 可避免误导用户并降低信任风险。 |
+| DEC-SITE-005 | 站点先补“说明准备态”占位，再等待正式公告入口 | 直接在公开站点暗示正式发布已临近 | 站点公开承诺必须保持晚于内部正式沟通动作。 |

@@ -12,6 +12,7 @@
 - [x] TASK-SITE-007 (PRD-SITE-003) [test_tier_required]: 回写站点项目状态文档（release pipeline + module 主项目）并与 CI 实况对齐。
 - [x] TASK-SITE-008 (PRD-SITE-004) [test_tier_required]: 修复首页与文档入口“可玩状态”口径，明确当前为开发中技术预览（尚不可玩）。
 - [x] TASK-SITE-009 (PRD-SITE-001/004) [test_tier_required]: 在保持真实状态口径前提下重排 CTA 与信息层级（预览体验优先、构建路径次级）。
+- [x] TASK-SITE-010 (PRD-SITE-005/006/007) [test_tier_required]: 在公开首页与文档入口补齐“正式公告仍在准备中”的安全占位，并区分构建说明与正式公告。
   - 产物文件:
     - `site/index.html`
     - `site/en/index.html`
@@ -45,4 +46,5 @@
 - ROUND-004 进展: 已识别首页“已可玩/赛季运行中”叙事与真实状态不一致，进入 TASK-SITE-008 修复口径。
 - ROUND-004 进展: TASK-SITE-008 已完成；`site/index.html`、`site/en/index.html`、`site/doc/cn/index.html`、`site/doc/en/index.html` 已统一为“技术预览（尚不可玩）”口径。
 - ROUND-005 进展: TASK-SITE-009 已完成；首页与文档入口 CTA 已调整为“预览验证优先、完整构建/长文档次级”的同构层级。
+- ROUND-005 进展: TASK-SITE-010 已完成；首页/下载区与 docs hub 已补“正式公告仍在准备中”的公开说明占位，并明确 release notes 仅代表构建说明。
 - 说明: 本文档仅维护 site 模块设计执行状态；过程记录在 `doc/devlog/2026-03-03.md` 与 `doc/devlog/2026-03-11.md`。
