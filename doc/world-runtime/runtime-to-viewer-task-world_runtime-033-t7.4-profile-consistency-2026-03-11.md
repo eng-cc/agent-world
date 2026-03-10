@@ -46,10 +46,10 @@
 - devlog 记录：必填
 
 ## Done Definition
-- [ ] 三档 profile 跨 launcher / bundle / runtime 口径一致
-- [ ] 正式 evidence 已生成
-- [ ] `project.md` / `devlog` 已回写
-- [ ] 回归证据已补齐
+- [x] 三档 profile 跨 launcher / bundle / runtime 口径一致
+- [x] 正式 evidence 已生成
+- [x] `project.md` / `devlog` 已回写
+- [x] 回归证据已补齐
 
 ## Risks / Decisions
 - 已知风险：若 bundle wrapper 与二进制默认值漂移，可能只会在实测中暴露。
@@ -63,6 +63,6 @@
 - 回归影响范围：launcher / bundle / runtime profile governance
 
 ## Handoff Acknowledgement
-- 接收方确认范围：`待 viewer_engineer 回填`
-- 接收方确认 ETA：`待 viewer_engineer 回填`
-- 接收方新增风险：`待 viewer_engineer 回填`
+- 接收方确认范围：`已完成 bundle wrapper 静态/动态透传核对，并回写 T7.4 正式 evidence`
+- 接收方确认 ETA：`2026-03-11 01:05 CST 已完成`
+- 接收方新增风险：`当前 bundle 实测已覆盖 wrapper 参数注入；若后续要扩到完整浏览器闭环，可在 T7.5/testing-manual 再补 Web 操作步骤`

@@ -179,3 +179,5 @@
 - 接收方新增风险：`当前模板统一了字段与门禁规则，但部分指标仍依赖后续真实样本与 soak 结果填值`
 
 - 模块进展补充（2026-03-11 / T7.4 启动）: 已为 `world_game_launcher` 与 `world_web_launcher` 新增三档 storage profile 参数透传回归，并发起 `runtime_engineer -> viewer_engineer` handoff `doc/world-runtime/runtime-to-viewer-task-world_runtime-033-t7.4-profile-consistency-2026-03-11.md`，下一步补 bundle/launcher 实测证据。
+
+- 模块进展补充（2026-03-11 / T7.4 收口）: `viewer_engineer` 已通过 bundle 产物与 `bash -x` trace 确认 `AGENT_WORLD_CHAIN_STORAGE_PROFILE` 在 `run-game.sh` / `run-web-launcher.sh` / `run-chain-runtime.sh` 中分别映射到 `--chain-storage-profile` / `--storage-profile`，T7.4 已完成。
