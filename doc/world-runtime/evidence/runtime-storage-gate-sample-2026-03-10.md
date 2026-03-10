@@ -8,7 +8,7 @@
 - 执行角色: `runtime_engineer`
 - 关联任务: `TASK-WORLD_RUNTIME-033 / T7.2`
 - 关联脚本: `scripts/world-runtime-storage-gate.sh`
-- 总结论: `fail -> root-cause-updated`
+- 总结论: `pass_after_fix`
 
 ## 输入
 - 运行命令: `env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_chain_runtime -- --node-id t72-node --world-id t72-world --storage-profile release_default --status-bind 127.0.0.1:5221 --execution-world-dir .tmp/runtime_t72_sample/execution-world --execution-records-dir .tmp/runtime_t72_sample/execution-records --storage-root .tmp/runtime_t72_sample/storage-root --execution-bridge-state .tmp/runtime_t72_sample/execution-bridge-state.json`
@@ -39,3 +39,21 @@
 - 读码与扩展实测共同证明：生产 `world_chain_runtime` 的 execution bridge 没有吃到 `StorageProfileConfig`，仍落回硬编码 `EXECUTION_BRIDGE_DEFAULT_HOT_WINDOW_HEIGHTS=32`、`EXECUTION_BRIDGE_DEFAULT_CHECKPOINT_INTERVAL_HEIGHTS=32`、`EXECUTION_BRIDGE_DEFAULT_CHECKPOINT_KEEP_LATEST=4`。
 - 这解释了为何 status `effective_budget` 声称 `release_default.execution_checkpoint_interval=64`，但真实样本在 `height=32` 左右已经出现 checkpoint。
 - 同时确认不存在可外部触发的显式 `save/flush/checkpoint` API；可推进 commit 的公开入口仍只有 `POST /v1/chain/feedback/submit` 与 `POST /v1/chain/transfer/submit`。
+
+
+## QA 复验（修复后）
+- 执行角色: `qa_engineer`
+- 真实样本命令: `env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_chain_runtime -- --node-id t72-qa-posfast --world-id t72-world --node-tick-ms 5 --pos-slot-duration-ms 20 --pos-ticks-per-slot 1 --pos-proposal-tick-phase 0 --storage-profile release_default --status-bind 127.0.0.1:5226 --execution-world-dir .tmp/runtime_t72_qa_posfast_20260311-002402/execution-world --execution-records-dir .tmp/runtime_t72_qa_posfast_20260311-002402/execution-records --storage-root .tmp/runtime_t72_qa_posfast_20260311-002402/storage-root --execution-bridge-state .tmp/runtime_t72_qa_posfast_20260311-002402/execution-bridge-state.json`
+- `pre64` 状态样本: `.tmp/runtime_t72_qa_posfast_20260311-002402/artifacts/status-pre64.json`
+- `post64` 状态样本: `.tmp/runtime_t72_qa_posfast_20260311-002402/artifacts/status-post64.json`
+- `pre64` gate 摘要: `.tmp/runtime_t72_qa_posfast_20260311-002402/gate-pre64/20260311-002427/summary.md`
+- `post64` gate 摘要: `.tmp/runtime_t72_qa_posfast_20260311-002402/gate-post64/20260311-002427/summary.md`
+
+### 复验结果
+- `latest_retained_height=47` 时，`checkpoint_count=0`，`replay_summary.mode=full_log_only`，符合“`<64` 不提前出现 checkpoint”的预期。
+- `latest_retained_height=65` 时，`checkpoint_count=1`，`replay_summary.mode=checkpoint_plus_log`，符合“达到 `64` 后生成首个 checkpoint”的预期。
+- `pre64` gate 仍显示 `FAIL`，原因是 `checkpoint_count=0`（预期失败）且该采样点观察到一次瞬时 `orphan_blob_count=1`；继续推进到 `65` 后，`orphan_blob_count` 收敛为 `0`，gate 转为 `PASS`。
+
+### QA 结论
+- `runtime_engineer` 的 profile 透传修复已生效：真实 `release_default` 样本的 execution bridge cadence 与 status `effective_budget.execution_checkpoint_interval=64` 对齐。
+- `TASK-WORLD_RUNTIME-033 / T7.2` 的“真实 runtime storage gate 接线 + cadence 一致性验证”可视为完成，后续应继续推进 T7.3~T7.5。

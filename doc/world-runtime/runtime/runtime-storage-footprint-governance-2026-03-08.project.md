@@ -82,8 +82,8 @@
 - 更新日期: 2026-03-08
 - 当前状态: active
 - 已完成: T0、T0.1、T1.1、T1.2、T1.3、T1.4、T1.5、T2.1、T2.2、T2.3、T2.4、T2.5、T3.1、T3.2、T3.3、T3.4、T4.1、T4.2、T4.3、T4.4、T5.1、T5.2、T5.3、T5.4、T6.1、T6.2、T6.3、T6.4、T6.5、T7.1
-- 已拆解待执行: T7.2 ~ T7.5
-- 进行中: T7.2
+- 已拆解待执行: T7.3 ~ T7.5
+- 进行中: T7.3
 - 阻塞项: 无；但 T2 / T3 / T6 / T7 的实现必须以前置 T1 契约冻结为准。
 - 本轮新增: T6.1 已完成共享 `StorageProfileConfig` 协议、`world_chain_runtime --storage-profile`、`world_game_launcher --chain-storage-profile`、`world_web_launcher` / launcher UI 同名透传入口，并先将 replication 热窗口预算接入 profile 默认值。
 - 本轮新增: T6.2 已在 `world_chain_runtime` 中新增共享 `StorageMetricsSnapshot`，按秒写出 `reward-runtime-storage-metrics.json`，并把 storage section 接到 `/v1/chain/status`，当前至少覆盖 bytes、blob_counts、ref_count、pin_count、checkpoint_count、orphan_blob_count 与 GC 最近结果。
@@ -92,6 +92,7 @@
 - 本轮新增: T6.5 已补齐定向测试：`world_chain_runtime` status payload 现锁住 `last_gc_error` / `degraded_reason` / `replay_summary` 字段，`world_game_launcher` 与 `world_web_launcher` 也分别补上未知 profile 拒绝与 profile 透传回归。
 - 本轮新增: T7.1 已在 `crates/agent_world/src/runtime/tests/storage_footprint_fixture.rs` 新增可复现实验基线：通过 `2500` 次 `World::step()` + `save_to_dir()` 生成 archive/snapshot 样本，并锁住 `tick_consensus_total_record_count`、archive index 与范围读回，供后续 footprint gate / replay regression 复用。
 - 本轮新增（2026-03-10 / T7.2）: 已新增 `scripts/world-runtime-storage-gate.sh`，可直接消费 `reward-runtime-storage-metrics.json` 或 `/v1/chain/status` JSON，校验 `storage_profile/effective_budget/checkpoint_count/orphan_blob_count/replay_summary/last_gc_result/degraded_reason` 并输出 `summary.md/json`。
-- 本轮验证样本: `.tmp/world_runtime_storage_gate/20260310-234359/summary.md`（合成 `release_default` 样本通过）与 `doc/world-runtime/evidence/runtime-storage-gate-sample-2026-03-10.md`（真实 `world_chain_runtime` 样本已将根因从“未达 64”更新为“execution bridge 未绑定 profile cadence（已修复，待 QA 复验）”）。
+- 本轮验证样本: `.tmp/world_runtime_storage_gate/20260310-234359/summary.md`（合成 `release_default` 样本通过）与 `doc/world-runtime/evidence/runtime-storage-gate-sample-2026-03-10.md`（真实 `world_chain_runtime` 样本已将根因从“未达 64”更新为“execution bridge 未绑定 profile cadence（已修复并完成 QA 复验）”）。
 - 本轮新增（2026-03-10 / T7.2 root cause）: 真实 probe 已在 `height=32` 观察到 `checkpoint_count=1`，并结合读码确认 `world_chain_runtime` 仍使用 execution bridge 的硬编码 `32/4` retention 默认值，而不是 `release_default` 的 `64/8`。
-- 下一任务: T7.2（由 qa_engineer 复跑真实 gate，确认修复后 checkpoint cadence 与 budget 对齐）
+- 本轮新增（2026-03-11 / T7.2 QA）: `qa_engineer` 已用真实 `release_default` 样本确认 `height=47` 时 `checkpoint_count=0/full_log_only`，`height=65` 时 `checkpoint_count=1/checkpoint_plus_log`，说明修复后 cadence 与 budget 对齐。
+- 下一任务: T7.3（补齐 GC fail-safe 与 footprint/orphan 窗口验证证据）
