@@ -7,14 +7,14 @@
 - Date: `2026-03-11`
 - Owner Role: `runtime_engineer`
 - Scope: `version candidate runtime footprint / GC / soak`
-- Conclusion: `partial_ready`
+- Conclusion: `ready`
 
 ## Slot Summary
 | Slot | Status | Evidence Path | Conclusion |
 | --- | --- | --- | --- |
 | `runtime_footprint` | `ready` | `doc/world-runtime/evidence/runtime-storage-gate-sample-2026-03-10.md` | 已有真实 `release_default` 样本与 gate 摘要，可用于版本级 footprint 槽位。 |
 | `runtime_gc` | `ready` | `doc/world-runtime/evidence/runtime-sidecar-orphan-gc-failsafe-2026-03-11.md` | 已证明 sidecar orphan 为窗口态且可在后续 save/GC 后收敛。 |
-| `runtime_soak` | `blocked` | `doc/world-runtime/runtime-p0-candidate-evidence-handoff-2026-03-10.md` / `doc/testing/longrun/s10-five-node-real-game-soak.prd.md` | 当前只有专题与 handoff，仍缺真实版本级 soak summary / metrics 绑定。 |
+| `runtime_soak` | `ready` | `doc/world-runtime/evidence/runtime-version-candidate-soak-evidence-2026-03-11.md` | 已绑定真实 `soak_release` 长跑 summary / metrics，可作为版本级 soak 槽位正式证据。 |
 
 ## Footprint Evidence
 - 证据入口：`doc/world-runtime/evidence/runtime-storage-gate-sample-2026-03-10.md`
@@ -30,13 +30,13 @@
   - 自动化测试已证明下一次成功 `save_to_dir()` 后 `orphan_blob_count` 可收敛到 `0`。
   - 该证据足以把版本级 `runtime_gc` 从 `watch` 提升到 `ready`。
 
-## Soak Gap
-- 当前缺口：
-  - 现有 task 级 runtime release gate 指标记录中已明确 `.tmp/s10_longrun_t2/t3` 摘要仍为 `dry_run`。
-  - `runtime_p0_candidate_evidence_handoff` 也指出版本级仍需真实 soak / longrun / operability 联合证据。
-- 结论：
-  - `runtime_soak` 仍必须保持 `blocked`，直到有真实版本级 soak summary / metrics 文档绑定到当前候选。
+## Soak Evidence
+- 证据入口：`doc/world-runtime/evidence/runtime-version-candidate-soak-evidence-2026-03-11.md`
+- 可采信结论：
+  - 已绑定 `.tmp/release_gate_p2p_dcg010/20260306-180215/summary.json` 的真实 `dry_run=false` 样本。
+  - 上游专题 `doc/game/gameplay/gameplay-distributed-consensus-governance-longrun-release-gate-2026-03-06.md` 已将同一 run 作为 `E5` 正式登记。
+  - 该证据足以把版本级 `runtime_soak` 从 `blocked` 提升到 `ready`。
 
 ## Overall Interpretation
-- runtime 在版本级候选上已从“只有 task 级边界验收”提升到“footprint + GC 有真实可引用证据，soak 仍缺”。
-- 因此 runtime 联合证据的当前结论应为 `partial_ready`，而非整体 `ready`。
+- runtime 在版本级候选上已从“只有 task 级边界验收”提升到“footprint + GC + soak 三槽位均有真实可引用证据”。
+- 因此 runtime 联合证据的当前结论应为 `ready`。

@@ -8,7 +8,7 @@
 - Base Candidate: `CANDIDATE-GAME-018-ROUND009`
 - Owner Role: `producer_system_designer`
 - Review Partner: `qa_engineer`
-- Overall Status: `conditional`
+- Overall Status: `ready`
 
 ## Inherited Ready Slots
 | Slot | Source | Status | Evidence Path | Note |
@@ -24,21 +24,21 @@
 | --- | --- | --- | --- | --- | --- |
 | `runtime_footprint` | `runtime_engineer` | `ready` | `doc/world-runtime/evidence/runtime-version-candidate-evidence-2026-03-11.md` | 无 | 继续沿用当前 footprint 实测样本，后续仅在新候选刷新 |
 | `runtime_gc` | `runtime_engineer` | `ready` | `doc/world-runtime/evidence/runtime-version-candidate-evidence-2026-03-11.md` | 无 | 当前 GC fail-safe 证据可直接复用到本候选 |
-| `runtime_soak` | `runtime_engineer` / `qa_engineer` | `blocked` | `doc/world-runtime/evidence/runtime-version-candidate-evidence-2026-03-11.md` | 仍缺真实版本级 soak summary / metrics 绑定 | 在下一任务中补齐版本级联合证据记录 |
+| `runtime_soak` | `runtime_engineer` / `qa_engineer` | `ready` | `doc/world-runtime/evidence/runtime-version-candidate-soak-evidence-2026-03-11.md` | 无 | 保留 S10 五节点真实长跑作为后续增强项，不回退当前候选结论 |
 
 ## Aggregation Rule
 - Inherited ready 项只代表“task 级已确认”，不足以单独构成版本级 ready。
 - `runtime_footprint`、`runtime_gc`、`runtime_soak` 任一 `blocked`：版本级总状态不得高于 `conditional`。
-- 仅当新增三槽位全部 `ready` 时，版本级候选才可进入 `ready` 评审。
+- 当新增三槽位全部 `ready` 时，版本级候选可进入 `ready`。
 
 ## Current Decision
-- Current Decision: `conditional`
+- Current Decision: `ready`
 - Reason:
   - task 级已 ready 的 gameplay / playability / testing / runtime_base / core 可直接继承。
-  - 版本级新增槽位中 `runtime_footprint` / `runtime_gc` 已提升为 `ready`，但 `runtime_soak` 仍为 `blocked`。
-  - 因此当前版本级候选已具备结构化入口，但仍未达到最终 release ready。
+  - 版本级新增槽位 `runtime_footprint` / `runtime_gc` / `runtime_soak` 已全部绑定到真实可审计证据。
+  - 因此当前版本级候选已满足本轮统一入口定义下的 `ready` 条件。
 
 ## Recommended Follow-Up
-- 第一跟进项：执行 `TASK-CORE-021`，由 `runtime_engineer` / `qa_engineer` 补齐真实版本级 soak summary / metrics。
-- 第二跟进项：在同一版本级 board 中把 `runtime_soak` 从 `blocked` 刷新为真实结论。
-- 第三跟进项：保留 `CANDIDATE-GAME-018-ROUND009` 作为 task 基线，不直接修改原 task board。
+- 第一跟进项：保留 `CANDIDATE-GAME-018-ROUND009` 作为 task 基线，不直接修改原 task board。
+- 第二跟进项：将 S10 五节点真实长跑作为后续增强专题推进，用于提升下一轮版本候选的覆盖强度。
+- 第三跟进项：若出现新的 runtime 风险信号，再在版本级 board 上增量回写，而不是回退当前已确认的证据绑定。

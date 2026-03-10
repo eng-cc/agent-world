@@ -147,6 +147,10 @@
 - [x] TASK-CORE-015 (PRD-CORE-004) [test_tier_required]: 对阶段收口 owner 分工与模块承接状态进行首轮抽样审查，并形成缺口清单与 handoff 建议。
 - [x] TASK-CORE-016 (PRD-CORE-005) [test_tier_required]: 形成下一轮跨模块优先级清单，并将第一优先级固定为“发布候选 readiness 统一入口”。
 - [x] TASK-CORE-017 (PRD-CORE-005) [test_tier_required]: 建立“发布候选 readiness 统一入口”专题 PRD / Design / Project 与首个 handoff。
+- [x] TASK-CORE-018 (PRD-CORE-005) [test_tier_required]: 基于 `TASK-GAME-018 / ROUND-009` 实例化首份候选级 readiness 看板。
+- [x] TASK-CORE-019 (PRD-CORE-005) [test_tier_required]: 将候选级看板扩展为版本级 board，并新增 `runtime_footprint` / `runtime_gc` / `runtime_soak` 槽位。
+- [x] TASK-CORE-020 (PRD-CORE-005) [test_tier_required]: 绑定版本级 runtime 联合证据首轮输入，完成 `runtime_footprint` / `runtime_gc` 槽位提升。
+- [x] TASK-CORE-021 (PRD-CORE-005) [test_tier_required]: 绑定真实版本级 soak 样本，解除版本级候选唯一主阻断并刷新总状态。
   - 产物文件:
     - `doc/core/reviews/stage-closure-sampling-review-2026-03-10.md`
   - 验收命令 (`test_tier_required`):
@@ -167,8 +171,8 @@
 
 ## 状态
 - 更新日期: 2026-03-11
-- 当前状态: active
-- 下一任务: TASK-CORE-021（runtime soak 真实样本补齐）
+- 当前状态: completed
+- 下一任务: 无
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - 最新完成: `TASK-CORE-005`（已完成 ROUND-001~ROUND-008 一致性审查链路收口、任务归档与 QA handoff）。
 - 最新完成: `TASK-CORE-016`（已完成下一轮跨模块优先级清单与第一优先级选择）。
@@ -176,6 +180,7 @@
 - 最新完成: `TASK-CORE-018`（已完成首份候选级 readiness 看板实例化）。
 - 最新完成: `TASK-CORE-019`（已完成版本级候选扩展与首份 version board）。
 - 最新完成: `TASK-CORE-020`（已完成版本级 runtime 联合证据首轮绑定）。
+- 最新完成: `TASK-CORE-021`（已完成真实版本级 soak 样本绑定，并将版本级候选总状态提升为 `ready`）。
 - 说明: 本文档仅维护 core 设计执行状态；过程记录在 `doc/devlog/2026-03-06.md`、`doc/devlog/2026-03-09.md`、`doc/devlog/2026-03-10.md` 与 `doc/devlog/2026-03-11.md`。
 
 ## 阶段收口执行顺序（PRD-CORE-004）
