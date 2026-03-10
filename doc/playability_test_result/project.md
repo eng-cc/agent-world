@@ -5,7 +5,11 @@
 ## 任务拆解（含 PRD-ID 映射）
 - [x] TASK-PLAYABILITY_TEST_RESULT-001 (PRD-PLAYABILITY_TEST_RESULT-001) [test_tier_required]: 完成可玩性结果模块 PRD 改写。
 - 模块设计总览：`doc/playability_test_result/design.md`
-- [ ] TASK-PLAYABILITY_TEST_RESULT-002 (PRD-PLAYABILITY_TEST_RESULT-001/002) [test_tier_required]: 固化反馈卡片标准字段与评分口径。
+- [x] TASK-PLAYABILITY_TEST_RESULT-002 (PRD-PLAYABILITY_TEST_RESULT-001/002) [test_tier_required]: 固化反馈卡片标准字段与评分口径。
+  - 产物文件:
+    - `doc/playability_test_result/playability_test_card.md`
+  - 验收命令 (`test_tier_required`):
+    - `rg -n "标准字段|评分口径|继续可玩|需观察|高优先级阻断" doc/playability_test_result/playability_test_card.md`
 - [ ] TASK-PLAYABILITY_TEST_RESULT-003 (PRD-PLAYABILITY_TEST_RESULT-002/003) [test_tier_required]: 建立高优先级问题闭环追踪模板。
 - [ ] TASK-PLAYABILITY_TEST_RESULT-004 (PRD-PLAYABILITY_TEST_RESULT-003) [test_tier_required]: 对接发布门禁中的可玩性证据包格式。
 - [x] TASK-PLAYABILITY_TEST_RESULT-005 (PRD-PLAYABILITY_TEST_RESULT-001/002) [test_tier_required]: 将 `game-test` 与卡片模板文档迁入模块目录并完成根目录兼容跳转。
@@ -21,7 +25,7 @@
 ## 状态
 - 更新日期: 2026-03-10
 - 当前状态: active
-- 下一任务: TASK-PLAYABILITY_TEST_RESULT-002
+- 下一任务: TASK-PLAYABILITY_TEST_RESULT-003
 - 阶段收口优先级: `P0`
 - 阶段 owner: `qa_engineer`（联审：`producer_system_designer`）
 - 阻断条件: 在 `TASK-PLAYABILITY_TEST_RESULT-002/003` 完成前，可玩性问题不得作为统一格式证据进入发布 go/no-go 评审。
@@ -93,6 +97,6 @@
 - 回归影响范围：game / testing / 发布评审体验证据链。
 
 ## Handoff Acknowledgement
-- 接收方确认范围：`待 qa_engineer 回写`
-- 接收方确认 ETA：`待 qa_engineer 回写`
-- 接收方新增风险：`待 qa_engineer 回写`
+- 接收方确认范围：`已接收 TASK-PLAYABILITY_TEST_RESULT-002；当前提交覆盖反馈卡标准字段与评分口径，不含高优问题闭环模板`
+- 接收方确认 ETA：`本轮已完成 TASK-PLAYABILITY_TEST_RESULT-002，下一步进入 TASK-PLAYABILITY_TEST_RESULT-003`
+- 接收方新增风险：`现有历史卡片仍可能缺少新字段；本轮先固化模板，不批量回填历史样本`
