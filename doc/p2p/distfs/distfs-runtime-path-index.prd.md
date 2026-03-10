@@ -1,5 +1,8 @@
 # Agent World Runtime：DistFS 路径索引接入 execution_storage
 
+- 对应设计文档: `doc/p2p/distfs/distfs-runtime-path-index.design.md`
+- 对应项目管理文档: `doc/p2p/distfs/distfs-runtime-path-index.project.md`
+
 审计轮次: 5
 ## 1. Executive Summary
 - Problem Statement: 将 `agent_world_distfs::FileStore` 接入 `agent_world_net::execution_storage`，为执行产物提供稳定路径索引。

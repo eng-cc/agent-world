@@ -1,7 +1,9 @@
 # Viewer 视觉外发就绪硬化（2026-03-01）
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-visual-release-readiness-hardening-2026-03-01.design.md`
+- 对应项目管理文档: `doc/world-simulator/viewer/viewer-visual-release-readiness-hardening-2026-03-01.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-visual-release-readiness-hardening-2026-03-01.project.md
 
 ## 1. Executive Summary
 - 把当前 Viewer 从“技术演示可看”推进到“可对外展示可控”的视觉验收状态。

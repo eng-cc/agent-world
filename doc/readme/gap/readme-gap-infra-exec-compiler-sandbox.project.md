@@ -1,5 +1,8 @@
 # README 收口：基础设施模块执行引擎 + 编译 Sandbox 隔离（项目管理文档）
 
+- 对应设计文档: `doc/readme/gap/readme-gap-infra-exec-compiler-sandbox.design.md`
+- 对应需求文档: `doc/readme/gap/readme-gap-infra-exec-compiler-sandbox.prd.md`
+
 审计轮次: 4
 
 ## 审计备注

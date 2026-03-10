@@ -1,8 +1,10 @@
 # Viewer Texture Inspector 框架合理性治理（2026-02-28）
 
+- 对应设计文档: `doc/scripts/viewer-tools/viewer-texture-inspector-framework-rationalization-2026-02-28.design.md`
+- 对应项目管理文档: `doc/scripts/viewer-tools/viewer-texture-inspector-framework-rationalization-2026-02-28.project.md`
+
 审计轮次: 4
 
-- 对应项目管理文档: doc/scripts/viewer-tools/viewer-texture-inspector-framework-rationalization-2026-02-28.project.md
 
 ## 目标
 - 从“参数可调”升级为“框架可验证”：将截图链路拆为可观测、可门禁、可回退三层。

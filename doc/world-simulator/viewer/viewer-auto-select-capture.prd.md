@@ -1,7 +1,9 @@
 # Viewer 启动自动化步骤（相机/选中，用于截图闭环）
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-auto-select-capture.design.md`
+- 对应项目管理文档: `doc/world-simulator/viewer/viewer-auto-select-capture.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-auto-select-capture.project.md
 
 ## 1. Executive Summary
 - 在 viewer 启动后支持“自动执行步骤”，覆盖相机模式切换、聚焦、平移、缩放、轨道旋转与对象选中。

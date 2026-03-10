@@ -1,7 +1,9 @@
 # Gameplay Base Runtime / WASM Layer Split（设计文档）
+
+- 对应设计文档: `doc/game/gameplay/gameplay-base-runtime-wasm-layer-split.design.md`
+- 对应项目管理文档: `doc/game/gameplay/gameplay-base-runtime-wasm-layer-split.project.md`
 审计轮次: 4
 
-- 对应项目管理文档: doc/game/gameplay/gameplay-base-runtime-wasm-layer-split.project.md
 
 ## ROUND-002 主从口径
 - 主入口：`doc/game/gameplay/gameplay-top-level-design.prd.md`

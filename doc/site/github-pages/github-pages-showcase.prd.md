@@ -1,8 +1,10 @@
 # GitHub Pages 对外展示站点设计
 
+- 对应设计文档: `doc/site/github-pages/github-pages-showcase.design.md`
+- 对应项目管理文档: `doc/site/github-pages/github-pages-showcase.project.md`
+
 审计轮次: 5
 
-- 对应项目管理文档: doc/site/github-pages/github-pages-showcase.project.md
 - 对应标准执行入口: `doc/site/github-pages/github-pages-showcase.project.md`
 
 ## ROUND-002 主从口径

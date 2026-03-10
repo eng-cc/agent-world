@@ -1,5 +1,8 @@
 # Agent World Runtime：Observer 同步源统计桥接
 
+- 对应设计文档: `doc/p2p/observer/observer-sync-mode-metrics-runtime-bridge.design.md`
+- 对应项目管理文档: `doc/p2p/observer/observer-sync-mode-metrics-runtime-bridge.project.md`
+
 审计轮次: 5
 ## ROUND-002 主从口径
 - 当前文档降级为增量子文档，仅维护“统计桥接”专题增量约束。

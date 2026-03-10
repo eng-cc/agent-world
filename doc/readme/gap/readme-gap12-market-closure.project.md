@@ -1,5 +1,8 @@
 # README 高优先级缺口收口：模块交易 + 动态电价（项目管理文档）
 
+- 对应设计文档: `doc/readme/gap/readme-gap12-market-closure.design.md`
+- 对应需求文档: `doc/readme/gap/readme-gap12-market-closure.prd.md`
+
 审计轮次: 4
 
 ## 审计备注

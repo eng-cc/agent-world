@@ -1,8 +1,10 @@
 # Agent World Runtime：WASM 模块设计对齐增强（agent-os 借鉴）
 
+- 对应设计文档: `doc/world-runtime/wasm/wasm-agent-os-alignment-hardening.design.md`
+- 对应项目管理文档: `doc/world-runtime/wasm/wasm-agent-os-alignment-hardening.project.md`
+
 审计轮次: 4
 
-- 对应项目管理文档: doc/world-runtime/wasm/wasm-agent-os-alignment-hardening.project.md
 
 ## 1. Executive Summary
 - 在保持 `agent_world` 现有 wasm-1 运行时兼容性的前提下，补齐一批可直接借鉴 `third_party/agent-os` 的能力。

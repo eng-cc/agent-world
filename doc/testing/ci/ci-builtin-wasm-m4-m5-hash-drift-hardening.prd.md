@@ -1,8 +1,10 @@
 # Agent World: Builtin Wasm m4/m5 Hash 漂移治理与发布链路收敛
 
+- 对应设计文档: `doc/testing/ci/ci-builtin-wasm-m4-m5-hash-drift-hardening.design.md`
+- 对应项目管理文档: `doc/testing/ci/ci-builtin-wasm-m4-m5-hash-drift-hardening.project.md`
+
 审计轮次: 1
 
-- 对应项目管理文档: doc/testing/ci/ci-builtin-wasm-m4-m5-hash-drift-hardening.project.md
 
 ## 1. Executive Summary
 - Problem Statement: 目前 m4/m5 仍使用 legacy 单 token hash 清单，且发布/校验链路对 local 与 CI 的职责边界不够明确，导致 hash 结果在不同 runner 上容易出现漂移覆盖与回归困难。

@@ -1,5 +1,8 @@
 # Agent World Runtime：零信任多节点治理与签名加固（项目管理）
 
+- 对应设计文档: `doc/world-runtime/governance/zero-trust-governance-receipt-hardening-2026-02-26.design.md`
+- 对应需求文档: `doc/world-runtime/governance/zero-trust-governance-receipt-hardening-2026-02-26.prd.md`
+
 审计轮次: 4
 
 ## 任务拆解（含 PRD-ID 映射）
@@ -12,6 +15,7 @@
 - [x] T5 回归测试、文档回写、devlog 收口
 
 ## 依赖
+- `doc/world-runtime/governance/zero-trust-governance-receipt-hardening-2026-02-26.design.md`
 - `doc/world-runtime/governance/zero-trust-governance-receipt-hardening-2026-02-26.prd.md`
 - `crates/agent_world/src/runtime/world/base_layer.rs`
 - `crates/agent_world/src/runtime/world/persistence.rs`

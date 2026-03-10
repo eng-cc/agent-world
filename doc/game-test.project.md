@@ -1,5 +1,8 @@
 # Legacy Redirect: game-test.project
 
+- 对应设计文档: `doc/game-test.design.md`
+- 对应需求文档: `doc/game-test.prd.md`
+
 审计轮次: 4
 
 ## 任务拆解

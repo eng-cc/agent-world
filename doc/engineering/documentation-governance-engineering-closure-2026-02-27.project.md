@@ -1,5 +1,8 @@
 # 文档治理工程化全量优化（2026-02-27）项目管理文档
 
+- 对应设计文档: `doc/engineering/documentation-governance-engineering-closure-2026-02-27.design.md`
+- 对应需求文档: `doc/engineering/documentation-governance-engineering-closure-2026-02-27.prd.md`
+
 审计轮次: 4
 
 ## 任务拆解
@@ -11,6 +14,7 @@
 - [x] T5 回归验证、项目文档状态收口、补齐当日 devlog
 
 ## 依赖
+- `doc/engineering/documentation-governance-engineering-closure-2026-02-27.design.md`
 - doc/engineering/documentation-governance-engineering-closure-2026-02-27.prd.md
 - `scripts/ci-tests.sh`
 - `testing-manual.md`

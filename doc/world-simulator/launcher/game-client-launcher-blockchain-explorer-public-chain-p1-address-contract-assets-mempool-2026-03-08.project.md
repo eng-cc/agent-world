@@ -1,7 +1,9 @@
 # 客户端启动器区块链浏览器公共主链视角 P1（地址/合约/资产/内存池，2026-03-08）项目管理文档
 
+- 对应设计文档: `doc/world-simulator/launcher/game-client-launcher-blockchain-explorer-public-chain-p1-address-contract-assets-mempool-2026-03-08.design.md`
+- 对应需求文档: `doc/world-simulator/launcher/game-client-launcher-blockchain-explorer-public-chain-p1-address-contract-assets-mempool-2026-03-08.prd.md`
+
 审计轮次: 1
-- 对应设计文档: `doc/world-simulator/launcher/game-client-launcher-blockchain-explorer-public-chain-p1-address-contract-assets-mempool-2026-03-08.prd.md`
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0 (PRD-WORLD_SIMULATOR-026) [test_tier_required]: 完成专题 PRD 建模、验收标准冻结与模块文档树回写。
@@ -9,6 +11,7 @@
 - [x] T2 (PRD-WORLD_SIMULATOR-026) [test_tier_required]: 扩展启动器 explorer P1 面板（Address/Contracts/Assets/Mempool）并完成 native/web 回归。
 
 ## 依赖
+- `doc/world-simulator/launcher/game-client-launcher-blockchain-explorer-public-chain-p1-address-contract-assets-mempool-2026-03-08.design.md`
 - `doc/world-simulator/prd.md`
 - `doc/world-simulator/project.md`
 - `doc/world-simulator/prd.index.md`

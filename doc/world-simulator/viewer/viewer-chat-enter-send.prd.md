@@ -1,7 +1,9 @@
 # Agent World Viewer：Chat 输入回车发送（设计文档）
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-chat-enter-send.design.md`
+- 对应项目管理文档: `doc/world-simulator/viewer/viewer-chat-enter-send.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-chat-enter-send.project.md
 
 ## 1. Executive Summary
 - 在 Viewer 右侧独立 Chat 面板中支持“回车发送”。

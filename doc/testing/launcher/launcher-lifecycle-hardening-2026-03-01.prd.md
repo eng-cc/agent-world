@@ -1,8 +1,10 @@
 # Agent World: 启动器生命周期与就绪硬化（2026-03-01）
 
+- 对应设计文档: `doc/testing/launcher/launcher-lifecycle-hardening-2026-03-01.design.md`
+- 对应项目管理文档: `doc/testing/launcher/launcher-lifecycle-hardening-2026-03-01.project.md`
+
 审计轮次: 4
 
-- 对应项目管理文档: doc/testing/launcher/launcher-lifecycle-hardening-2026-03-01.project.md
 
 ## 1. Executive Summary
 - Problem Statement: `world_game_launcher` 在启动失败、外部停止和就绪探针场景存在生命周期缺陷，可能残留子进程或产生“已就绪”假阳性，影响测试门禁与人工验收可信度。

@@ -27,3 +27,7 @@
 ## 维护约定
 - 无界面运行链路行为变更，优先回写 `prd.md` 与 `project.md`。
 - 历史专题文件名可保留 `nonviewer-*`，但新文档优先使用 `headless-runtime-*` 前缀。
+- `doc/headless-runtime/nonviewer/nonviewer-design-alignment-closure-2026-02-25.design.md`
+- `doc/headless-runtime/nonviewer/nonviewer-design-alignment-review-2026-02-25.design.md`
+- `doc/headless-runtime/nonviewer/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.design.md`
+- `doc/headless-runtime/nonviewer/nonviewer-onchain-auth-protocol-hardening.design.md`

@@ -1,5 +1,8 @@
 # Agent World Runtime：Observer 同步源策略化（DHT 组合链路，设计文档）
 
+- 对应设计文档: `doc/p2p/observer/observer-sync-source-dht-mode.design.md`
+- 对应项目管理文档: `doc/p2p/observer/observer-sync-source-dht-mode.project.md`
+
 审计轮次: 5
 ## ROUND-002 主从口径（2026-03-05）
 - 本文档在 ROUND-002 判定为 `observer-sync-source-mode` 的 DHT 增量子文档。

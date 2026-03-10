@@ -1,5 +1,8 @@
 # Agent World Runtime：PoS 时间锚定控制面参数与可观测口径对齐
 
+- 对应设计文档: `doc/p2p/node/node-pos-time-anchor-control-plane-alignment-2026-03-07.design.md`
+- 对应项目管理文档: `doc/p2p/node/node-pos-time-anchor-control-plane-alignment-2026-03-07.project.md`
+
 审计轮次: 2
 
 ## 1. Executive Summary

@@ -1,7 +1,9 @@
 # 客户端启动器可用性与体验硬化（2026-03-08）
 
-审计轮次: 3
+- 对应设计文档: `doc/world-simulator/launcher/game-client-launcher-availability-ux-hardening-2026-03-08.design.md`
 - 对应项目管理文档: `doc/world-simulator/launcher/game-client-launcher-availability-ux-hardening-2026-03-08.project.md`
+
+审计轮次: 3
 
 ## 1. Executive Summary
 - Problem Statement: 启动器在源码直接运行场景存在默认静态目录失效问题，且 Web 端仍有若干体验与可诊断性缺口（禁用态提示缺失、查询参数未编码、移动端布局拥挤、无效控制台噪声）；同时主界面长期展开低频配置表单，挤占高频启停与状态区域，影响日常操作效率。

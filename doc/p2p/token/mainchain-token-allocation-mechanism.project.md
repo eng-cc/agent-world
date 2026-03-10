@@ -1,5 +1,8 @@
 # Agent World 主链 Token 分配与发行机制（项目管理文档）
 
+- 对应设计文档: `doc/p2p/token/mainchain-token-allocation-mechanism.design.md`
+- 对应需求文档: `doc/p2p/token/mainchain-token-allocation-mechanism.prd.md`
+
 审计轮次: 5
 ## 任务拆解（含 PRD-ID 映射）
 - [x] TAM-0 (PRD-P2P-MIG-112)：完成设计文档与项目管理文档建档。

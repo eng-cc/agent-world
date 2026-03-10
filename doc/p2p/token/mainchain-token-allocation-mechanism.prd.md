@@ -1,5 +1,8 @@
 # Agent World 主链 Token 分配与发行机制（已实现）
 
+- 对应设计文档: `doc/p2p/token/mainchain-token-allocation-mechanism.design.md`
+- 对应项目管理文档: `doc/p2p/token/mainchain-token-allocation-mechanism.project.md`
+
 审计轮次: 5
 ## 1. Executive Summary
 - Problem Statement: 建立主链 Token 经济闭环：创世分配、解锁领取、epoch 增发、费用销毁、治理参数更新。

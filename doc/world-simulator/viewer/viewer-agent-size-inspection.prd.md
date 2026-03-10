@@ -1,7 +1,9 @@
 # Viewer Agent 尺寸可观测与比例校验
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-agent-size-inspection.design.md`
+- 对应项目管理文档: `doc/world-simulator/viewer/viewer-agent-size-inspection.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-agent-size-inspection.project.md
 
 ## 1. Executive Summary
 - 回答并可视化验证「Agent 与 Location 的比例是否符合数据口径」。

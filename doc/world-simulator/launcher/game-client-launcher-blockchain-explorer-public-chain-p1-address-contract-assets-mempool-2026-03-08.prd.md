@@ -1,7 +1,9 @@
 # 客户端启动器区块链浏览器公共主链视角 P1（地址/合约/资产/内存池，2026-03-08）
 
-审计轮次: 1
+- 对应设计文档: `doc/world-simulator/launcher/game-client-launcher-blockchain-explorer-public-chain-p1-address-contract-assets-mempool-2026-03-08.design.md`
 - 对应项目管理文档: `doc/world-simulator/launcher/game-client-launcher-blockchain-explorer-public-chain-p1-address-contract-assets-mempool-2026-03-08.project.md`
+
+审计轮次: 1
 
 ## 1. Executive Summary
 - Problem Statement: 当前启动器浏览器已具备 `blocks/txs/search`，但缺少地址页、合约页、Token/NFT 资产页与 mempool 视图，仍不足以支持“公共主链状态全景查询”。

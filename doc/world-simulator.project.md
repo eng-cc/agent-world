@@ -1,5 +1,8 @@
 # Legacy Redirect: world-simulator.project
 
+- 对应设计文档: `doc/world-simulator.design.md`
+- 对应需求文档: `doc/world-simulator.prd.md`
+
 审计轮次: 4
 ## 任务拆解
 - [x] REDIRECT-001: 根目录 `world-simulator` / `world-simulator.project` 已迁移为 `.prd` 命名 redirect 入口。

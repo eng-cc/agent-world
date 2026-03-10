@@ -1,5 +1,8 @@
 # Viewer Frag 实际比例与选中显示修复（项目管理文档）
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-frag-scale-selection-stability.design.md`
+- 对应需求文档: `doc/world-simulator/viewer/viewer-frag-scale-selection-stability.prd.md`
+
 审计轮次: 5
 ## 任务拆解（含 PRD-ID 映射）
 - [x] FSF1.1 输出设计文档（`doc/world-simulator/viewer/viewer-frag-scale-selection-stability.prd.md`）

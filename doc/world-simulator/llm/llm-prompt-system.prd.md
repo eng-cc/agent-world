@@ -1,7 +1,9 @@
 # Agent World Simulator：Agent-LLM Prompt 模块交互系统（设计文档）
 
+- 对应设计文档: `doc/world-simulator/llm/llm-prompt-system.design.md`
+- 对应项目管理文档: `doc/world-simulator/llm/llm-prompt-system.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/llm/llm-prompt-system.project.md
 
 ## 1. Executive Summary
 - 构建一套可扩展的 Agent-LLM Prompt 交互机制，让 LLM 不只“看见观测”，还能通过机器人模块按需查询上下文。

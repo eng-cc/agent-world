@@ -1,8 +1,10 @@
 # Agent World: CI 安装 wasm32-unknown-unknown target
 
+- 对应设计文档: `doc/testing/ci/ci-wasm32-target-install.design.md`
+- 对应项目管理文档: `doc/testing/ci/ci-wasm32-target-install.project.md`
+
 审计轮次: 4
 
-- 对应项目管理文档: doc/testing/ci/ci-wasm32-target-install.project.md
 
 ## 1. Executive Summary
 - Problem Statement: CI 在执行 builtin wasm 工件校验时依赖 `wasm32-unknown-unknown` target，若 runner 未预装会导致 required/full 门禁随机失败。

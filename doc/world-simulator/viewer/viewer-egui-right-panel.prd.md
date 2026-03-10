@@ -1,7 +1,9 @@
 # Viewer 右侧 2D UI 迁移到 bevy_egui（SidePanel）设计
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-egui-right-panel.design.md`
+- 对应项目管理文档: `doc/world-simulator/viewer/viewer-egui-right-panel.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-egui-right-panel.project.md
 
 ## 1. Executive Summary
 - 将 `agent_world_viewer` 当前右侧全部 2D UI 从 Bevy UI (`Node/Text/Button`) 迁移到 `bevy_egui`。

@@ -1,7 +1,9 @@
 # Viewer 右侧面板模块开关与本地缓存设计
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-right-panel-module-visibility.design.md`
+- 对应项目管理文档: `doc/world-simulator/viewer/viewer-right-panel-module-visibility.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-right-panel-module-visibility.project.md
 
 ## 1. Executive Summary
 - 为 `agent_world_viewer` 右侧 `egui` 面板中的每个业务模块提供独立开关，支持按需隐藏。

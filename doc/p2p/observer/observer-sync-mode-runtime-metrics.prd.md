@@ -1,5 +1,8 @@
 # Agent World Runtime：Observer 同步源运行态统计
 
+- 对应设计文档: `doc/p2p/observer/observer-sync-mode-runtime-metrics.design.md`
+- 对应项目管理文档: `doc/p2p/observer/observer-sync-mode-runtime-metrics.project.md`
+
 审计轮次: 5
 ## ROUND-002 主从口径
 - 主入口：`doc/p2p/observer/observer-sync-mode-runtime-metrics.prd.md`。

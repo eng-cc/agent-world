@@ -1,5 +1,8 @@
 # 客户端启动器 LLM 设置入口（2026-03-02）项目管理
 
+- 对应设计文档: `doc/world-simulator/launcher/game-client-launcher-llm-settings-panel-2026-03-02.design.md`
+- 对应需求文档: `doc/world-simulator/launcher/game-client-launcher-llm-settings-panel-2026-03-02.prd.md`
+
 审计轮次: 5
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0 (PRD-WORLD_SIMULATOR-001)：建档（设计文档 + 项目管理文档）。
@@ -8,6 +11,7 @@
 - [x] T3 (PRD-WORLD_SIMULATOR-007)：设置窗口升级为完整设置中心（游戏/区块链/LLM 一体化配置入口）。
 
 ## 依赖
+- `doc/world-simulator/launcher/game-client-launcher-llm-settings-panel-2026-03-02.design.md`
 - doc/world-simulator/launcher/game-client-launcher-llm-settings-panel-2026-03-02.prd.md
 - `crates/agent_world_client_launcher/src/main.rs`
 - `crates/agent_world_client_launcher/src/tests.rs`

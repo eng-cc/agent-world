@@ -1,8 +1,10 @@
 # Gameplay 发行收口（社会经济治理 + 压测门禁 + 联盟战争生命周期）
 
+- 对应设计文档: `doc/game/gameplay/gameplay-release-production-closure.design.md`
+- 对应项目管理文档: `doc/game/gameplay/gameplay-release-production-closure.project.md`
+
 审计轮次: 4
 
-- 对应项目管理文档: doc/game/gameplay/gameplay-release-production-closure.project.md
 
 ## ROUND-002 主从口径
 - 主入口文档：`doc/game/gameplay/gameplay-top-level-design.prd.md`。

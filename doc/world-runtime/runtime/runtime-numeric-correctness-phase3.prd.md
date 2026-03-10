@@ -1,8 +1,10 @@
 # Agent World Runtime：节点高度/Slot 递进与复制补洞数值语义硬化（15 点清单第三阶段）
 
+- 对应设计文档: `doc/world-runtime/runtime/runtime-numeric-correctness-phase3.design.md`
+- 对应项目管理文档: `doc/world-runtime/runtime/runtime-numeric-correctness-phase3.project.md`
+
 审计轮次: 4
 
-- 对应项目管理文档: doc/world-runtime/runtime/runtime-numeric-correctness-phase3.project.md
 
 ## 1. Executive Summary
 - 延续前两阶段“正确性优先”原则，收口 `agent_world_node` 中长期运行最敏感的高度/slot 计数器路径。

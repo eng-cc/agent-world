@@ -1,7 +1,9 @@
 # 客户端启动器区块链浏览器公共主链视角 P0（2026-03-07）
 
-审计轮次: 1
+- 对应设计文档: `doc/world-simulator/launcher/game-client-launcher-blockchain-explorer-public-chain-p0-2026-03-07.design.md`
 - 对应项目管理文档: `doc/world-simulator/launcher/game-client-launcher-blockchain-explorer-public-chain-p0-2026-03-07.project.md`
+
+审计轮次: 1
 
 ## 1. Executive Summary
 - Problem Statement: 当前启动器浏览器仅覆盖 `overview/transactions/transaction(action_id)`，缺少区块分页、`tx_hash` 视图、统一搜索与重启可保留的索引，不满足“公共主链浏览器”最小可观测能力。

@@ -1,5 +1,8 @@
 # World Runtime：Builtin Wasm DistFS 存储与提交前校验
 
+- 对应设计文档: `doc/p2p/distfs/distfs-builtin-wasm-storage.design.md`
+- 对应项目管理文档: `doc/p2p/distfs/distfs-builtin-wasm-storage.project.md`
+
 审计轮次: 5
 ## 1. Executive Summary
 - Problem Statement: 将内置 builtin wasm 二进制从 git 跟踪中移出，避免仓库长期携带二进制大文件。

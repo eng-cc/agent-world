@@ -1,7 +1,9 @@
 # Compound/Hardware 硬迁移：从内建 ResourceKind 移除并转向 WASM 定义（设计文档）
 
+- 对应设计文档: `doc/world-simulator/kernel/resource-kind-compound-hardware-hard-migration.design.md`
+- 对应项目管理文档: `doc/world-simulator/kernel/resource-kind-compound-hardware-hard-migration.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/kernel/resource-kind-compound-hardware-hard-migration.project.md
 
 ## 1. Executive Summary
 - 按“直接迁移、直接移除、无兼容方案”原则，移除内建 `ResourceKind` 中的 `Compound` / `Hardware`。

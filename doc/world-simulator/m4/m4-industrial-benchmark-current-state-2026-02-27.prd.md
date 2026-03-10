@@ -1,7 +1,9 @@
 # M4 产业链借鉴点（结合当前实现现状，2026-02-27）
 
+- 对应设计文档: `doc/world-simulator/m4/m4-industrial-benchmark-current-state-2026-02-27.design.md`
+- 对应项目管理文档: `doc/world-simulator/m4/m4-industrial-benchmark-current-state-2026-02-27.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/m4/m4-industrial-benchmark-current-state-2026-02-27.project.md
 
 ## 1. Executive Summary
 - 基于当前 `agent_world` 已落地机制，整理一份可直接进入实现排期的产业链借鉴清单。

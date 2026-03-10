@@ -1,7 +1,9 @@
 # 启动器 chain runtime execution world 输出路径收敛（2026-03-09）
 
-审计轮次: 1
+- 对应设计文档: `doc/world-simulator/launcher/game-client-launcher-chain-runtime-execution-world-dir-output-hardening-2026-03-09.design.md`
 - 对应项目管理文档: `doc/world-simulator/launcher/game-client-launcher-chain-runtime-execution-world-dir-output-hardening-2026-03-09.project.md`
+
+审计轮次: 1
 
 ## 1. Executive Summary
 - Problem Statement: 当前 `world_chain_runtime` 的 `explorer-index.json` 持久化路径受 `execution_world_dir` 影响；当启动链路依赖默认工作目录且 cwd 偏离时，运行时文件可能落到源码目录。

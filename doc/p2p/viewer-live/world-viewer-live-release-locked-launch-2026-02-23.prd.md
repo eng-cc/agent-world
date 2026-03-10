@@ -1,5 +1,8 @@
 # world_viewer_live 发行锁定启动（P2P）设计文档（2026-02-23）
 
+- 对应设计文档: `doc/p2p/viewer-live/world-viewer-live-release-locked-launch-2026-02-23.design.md`
+- 对应项目管理文档: `doc/p2p/viewer-live/world-viewer-live-release-locked-launch-2026-02-23.project.md`
+
 审计轮次: 5
 > 状态更新（2026-03-08）:
 > - `world_viewer_live` 已移除 `--release-config` 与 `--node-*` 控制面参数。

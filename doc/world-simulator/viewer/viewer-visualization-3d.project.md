@@ -1,5 +1,8 @@
 # Agent World：M6 3D 可视化（项目管理文档）
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-visualization-3d.design.md`
+- 对应需求文档: `doc/world-simulator/viewer/viewer-visualization-3d.prd.md`
+
 审计轮次: 5
 ## 任务拆解（含 PRD-ID 映射）
 - [x] 输出 3D 可视化设计文档与项目管理文档（`doc/world-simulator/viewer/viewer-visualization-3d.prd.md`）

@@ -1,8 +1,10 @@
 # M4 资源与产品系统：合理性与可玩性一体化设计（2026-02-27）
 
+- 对应设计文档: `doc/world-simulator/m4/m4-resource-product-system-playability-2026-02-27.design.md`
+- 对应项目管理文档: `doc/world-simulator/m4/m4-resource-product-system-playability-2026-02-27.project.md`
+
 审计轮次: 5
 
-- 对应项目管理文档: doc/world-simulator/m4/m4-resource-product-system-playability-2026-02-27.project.md
 
 ## 1. Executive Summary
 - 设计一套既符合当前架构约束、又能持续产生策略决策的资源与产品系统。

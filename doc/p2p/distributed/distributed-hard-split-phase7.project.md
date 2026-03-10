@@ -1,5 +1,8 @@
 # Agent World Runtime：分布式能力彻底拆分（Phase 7 项目管理）（项目管理文档）
 
+- 对应设计文档: `doc/p2p/distributed/distributed-hard-split-phase7.design.md`
+- 对应需求文档: `doc/p2p/distributed/distributed-hard-split-phase7.prd.md`
+
 审计轮次: 5
 ## 任务拆解（含 PRD-ID 映射）
 - [x] R7-1 (PRD-P2P-MIG-081)：新建 `agent_world_distfs`，迁移 CAS/分片/组装能力并接入 runtime 基础路径。

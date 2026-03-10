@@ -1,7 +1,9 @@
 # Viewer `step` Completion Ack（2026-02-28）
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-step-completion-ack-2026-02-28.design.md`
+- 对应项目管理文档: `doc/world-simulator/viewer/viewer-step-completion-ack-2026-02-28.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-step-completion-ack-2026-02-28.project.md
 
 ## 1. Executive Summary
 - 为 `step` 控制增加 completion ack：服务端按 `request_id` 回传“已推进/超时无推进”。

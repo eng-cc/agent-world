@@ -1,8 +1,10 @@
 # Agent World Runtime：Membership Recovery 调度门控与计数聚合算术语义硬化（15 点清单第十二阶段）
 
+- 对应设计文档: `doc/world-runtime/runtime/runtime-numeric-correctness-phase12.design.md`
+- 对应项目管理文档: `doc/world-runtime/runtime/runtime-numeric-correctness-phase12.project.md`
+
 审计轮次: 4
 
-- 对应项目管理文档: doc/world-runtime/runtime/runtime-numeric-correctness-phase12.project.md
 
 ## 1. Executive Summary
 - 收口 `membership_recovery/mod.rs` 中仍使用饱和算术的调度门控与关键计数聚合路径。

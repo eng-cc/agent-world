@@ -1,8 +1,10 @@
 # Agent World: CI 测试分级细化到 Test Case
 
+- 对应设计文档: `doc/testing/ci/ci-testcase-tiering.design.md`
+- 对应项目管理文档: `doc/testing/ci/ci-testcase-tiering.project.md`
+
 审计轮次: 4
 
-- 对应项目管理文档: doc/testing/ci/ci-testcase-tiering.project.md
 
 ## ROUND-002 口径归属（2026-03-05）
 - 本文档是 `test_tier_required` / `test_tier_full` 标签语义与分配规则的权威入口。

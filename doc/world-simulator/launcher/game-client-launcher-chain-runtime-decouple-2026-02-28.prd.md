@@ -1,7 +1,9 @@
 # 启动器链路重构：链运行时与游戏进程解耦（2026-02-28）
 
+- 对应设计文档: `doc/world-simulator/launcher/game-client-launcher-chain-runtime-decouple-2026-02-28.design.md`
+- 对应项目管理文档: `doc/world-simulator/launcher/game-client-launcher-chain-runtime-decouple-2026-02-28.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/launcher/game-client-launcher-chain-runtime-decouple-2026-02-28.project.md
 
 ## 1. Executive Summary
 - 将 P2P 节点/链运行时从游戏进程层（`world_viewer_live`）中拆出，改为独立进程承载。

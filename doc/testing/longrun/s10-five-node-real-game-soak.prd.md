@@ -1,5 +1,8 @@
 # Agent World：S10 五节点真实游戏数据在线长跑套件
 
+- 对应设计文档: `doc/testing/longrun/s10-five-node-real-game-soak.design.md`
+- 对应项目管理文档: `doc/testing/longrun/s10-five-node-real-game-soak.project.md`
+
 审计轮次: 4
 
 ## 1. Executive Summary

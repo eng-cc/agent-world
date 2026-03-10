@@ -1,7 +1,9 @@
 # M4 内置 WASM 模块可维护性收口（2026-02-26）
 
+- 对应设计文档: `doc/world-simulator/m4/m4-builtin-wasm-maintainability-2026-02-26.design.md`
+- 对应项目管理文档: `doc/world-simulator/m4/m4-builtin-wasm-maintainability-2026-02-26.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/m4/m4-builtin-wasm-maintainability-2026-02-26.project.md
 
 ## 1. Executive Summary
 - 在不改变现有 M4 经济模块行为与协议的前提下，完成两项工程收口：

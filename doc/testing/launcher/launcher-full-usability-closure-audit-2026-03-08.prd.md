@@ -1,8 +1,10 @@
 # Agent World: 启动器全功能可用性审查与闭环验收（2026-03-08）
 
+- 对应设计文档: `doc/testing/launcher/launcher-full-usability-closure-audit-2026-03-08.design.md`
+- 对应项目管理文档: `doc/testing/launcher/launcher-full-usability-closure-audit-2026-03-08.project.md`
+
 审计轮次: 1
 
-- 对应项目管理文档: doc/testing/launcher/launcher-full-usability-closure-audit-2026-03-08.project.md
 
 ## 1. Executive Summary
 - Problem Statement: 启动器相关能力已分批完成（脚本迁移、生命周期硬化、鉴权自动继承），但缺少“一次性横向全链路可用性复核 + 实际闭环复现”证据，难以快速判断当前可发布性。

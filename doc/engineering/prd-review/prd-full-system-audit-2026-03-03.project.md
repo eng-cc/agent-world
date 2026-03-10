@@ -1,5 +1,8 @@
 # 全量 PRD 体系审读与对齐（2026-03-03）项目管理文档
 
+- 对应设计文档: `doc/engineering/prd-review/prd-full-system-audit-2026-03-03.design.md`
+- 对应需求文档: `doc/engineering/prd-review/prd-full-system-audit-2026-03-03.prd.md`
+
 审计轮次: 4
 
 ## 任务拆解（含 PRD-ID 映射）
@@ -25,6 +28,7 @@
   - `doc/engineering/prd-review/checklists/active-world-simulator.md`
   - `doc/engineering/prd-review/checklists/active-root-legacy.md`
 ## 依赖
+- `doc/engineering/prd-review/prd-full-system-audit-2026-03-03.design.md`
 - `doc/engineering/prd-review/prd-full-system-audit-2026-03-03.prd.md`
 - `doc/engineering/prd.md`
 - `doc/engineering/project.md`

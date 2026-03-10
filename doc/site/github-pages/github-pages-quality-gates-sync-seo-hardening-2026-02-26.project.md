@@ -1,5 +1,8 @@
 # GitHub Pages 质量门禁 + 文档镜像同步 + SEO 元信息加固（2026-02-26）项目管理文档
 
+- 对应设计文档: `doc/site/github-pages/github-pages-quality-gates-sync-seo-hardening-2026-02-26.design.md`
+- 对应需求文档: `doc/site/github-pages/github-pages-quality-gates-sync-seo-hardening-2026-02-26.prd.md`
+
 审计轮次: 5
 
 ## 审计备注

@@ -1,8 +1,10 @@
 # Gameplay Long-Run P0 Production Hardening（2026-03-06）
 
+- 对应设计文档: `doc/game/gameplay/gameplay-longrun-p0-production-hardening-2026-03-06.design.md`
+- 对应项目管理文档: `doc/game/gameplay/gameplay-longrun-p0-production-hardening-2026-03-06.project.md`
+
 审计轮次: 1
 
-- 对应项目管理文档: `doc/game/gameplay/gameplay-longrun-p0-production-hardening-2026-03-06.project.md`
 
 ## 1. Executive Summary
 - Problem Statement: 长期在线的区块链 + P2P 多人模拟在高并发与对抗环境下，易出现状态分叉、作弊放大、经济失衡与运维失控，现有文档缺少统一 P0 基线。

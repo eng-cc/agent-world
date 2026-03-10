@@ -1,5 +1,8 @@
 # Agent World Runtime：Observer 同步源策略化（DHT 组合链路，项目管理文档）（项目管理文档）
 
+- 对应设计文档: `doc/p2p/observer/observer-sync-source-dht-mode.design.md`
+- 对应需求文档: `doc/p2p/observer/observer-sync-source-dht-mode.prd.md`
+
 审计轮次: 5
 ## 任务拆解（含 PRD-ID 映射）
 - [x] OSDM-1 (PRD-P2P-MIG-109)：设计文档与项目管理文档落地。

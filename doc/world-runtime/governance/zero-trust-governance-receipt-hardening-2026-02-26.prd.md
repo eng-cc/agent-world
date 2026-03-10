@@ -1,8 +1,10 @@
 # Agent World Runtime：零信任多节点治理与签名加固（2026-02-26）
 
+- 对应设计文档: `doc/world-runtime/governance/zero-trust-governance-receipt-hardening-2026-02-26.design.md`
+- 对应项目管理文档: `doc/world-runtime/governance/zero-trust-governance-receipt-hardening-2026-02-26.project.md`
+
 审计轮次: 4
 
-- 对应项目管理文档: doc/world-runtime/governance/zero-trust-governance-receipt-hardening-2026-02-26.project.md
 
 ## 1. Executive Summary
 - 在“不可信多节点/对抗环境”前提下，补齐 runtime 在工件真实性、治理落地原子性、收据签名可信度、执行错误可观测性上的关键缺口。

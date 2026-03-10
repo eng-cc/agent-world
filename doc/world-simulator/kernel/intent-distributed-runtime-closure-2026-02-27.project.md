@@ -1,6 +1,10 @@
 # Intent/分布式/生产物流闭环落地（项目管理）
 
+- 对应设计文档: `doc/world-simulator/kernel/intent-distributed-runtime-closure-2026-02-27.design.md`
+- 对应需求文档: `doc/world-simulator/kernel/intent-distributed-runtime-closure-2026-02-27.prd.md`
+
 审计轮次: 5
+
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0 文档建档（设计文档 + 项目管理文档）

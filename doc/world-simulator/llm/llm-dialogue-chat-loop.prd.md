@@ -1,7 +1,9 @@
 # Agent World Simulator：LLM 对话轮次驱动与右侧 Chat 面板（设计文档）
 
+- 对应设计文档: `doc/world-simulator/llm/llm-dialogue-chat-loop.design.md`
+- 对应项目管理文档: `doc/world-simulator/llm/llm-dialogue-chat-loop.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/llm/llm-dialogue-chat-loop.project.md
 
 ## 1. Executive Summary
 - 将当前 LLM Agent 从“step 概念驱动”收敛为“会话轮次驱动”，避免在 prompt/trace 中暴露 `step_index/step_type` 语义。

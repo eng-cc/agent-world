@@ -1,7 +1,9 @@
 # Agent World Simulator：LLM 多场景评测基线（设计文档）
 
+- 对应设计文档: `doc/world-simulator/llm/llm-multi-scenario-evaluation.design.md`
+- 对应项目管理文档: `doc/world-simulator/llm/llm-multi-scenario-evaluation.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/llm/llm-multi-scenario-evaluation.project.md
 
 ## 1. Executive Summary
 - 解决仅使用 `llm_bootstrap` 单场景评测导致的样本偏差问题，建立可复用的多场景评测基线。

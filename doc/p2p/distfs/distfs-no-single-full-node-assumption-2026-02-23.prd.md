@@ -1,5 +1,8 @@
 # Agent World Runtime：分布式存储去单机完整依赖改造（2026-02-23）
 
+- 对应设计文档: `doc/p2p/distfs/distfs-no-single-full-node-assumption-2026-02-23.design.md`
+- 对应项目管理文档: `doc/p2p/distfs/distfs-no-single-full-node-assumption-2026-02-23.project.md`
+
 审计轮次: 5
 ## 1. Executive Summary
 - Problem Statement: 明确移除“任意单机可独立提供完整执行数据”的隐含假设。

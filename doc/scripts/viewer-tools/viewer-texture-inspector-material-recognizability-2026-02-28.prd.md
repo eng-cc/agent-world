@@ -1,8 +1,10 @@
 # Viewer Texture Inspector 材质可辨识增强（2026-02-28）
 
+- 对应设计文档: `doc/scripts/viewer-tools/viewer-texture-inspector-material-recognizability-2026-02-28.design.md`
+- 对应项目管理文档: `doc/scripts/viewer-tools/viewer-texture-inspector-material-recognizability-2026-02-28.project.md`
+
 审计轮次: 4
 
-- 对应项目管理文档: doc/scripts/viewer-tools/viewer-texture-inspector-material-recognizability-2026-02-28.project.md
 
 ## 目标
 - 从“截图可连通”升级到“材质可评审”，让 `default/matte/glossy` 在美术视角下具备稳定可辨识差异。

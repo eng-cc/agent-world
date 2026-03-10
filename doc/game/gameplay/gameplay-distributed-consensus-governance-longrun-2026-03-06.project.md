@@ -1,5 +1,8 @@
 # Gameplay Distributed Consensus Governance Long-Run（项目管理文档）
 
+- 对应设计文档: `doc/game/gameplay/gameplay-distributed-consensus-governance-longrun-2026-03-06.design.md`
+- 对应需求文档: `doc/game/gameplay/gameplay-distributed-consensus-governance-longrun-2026-03-06.prd.md`
+
 审计轮次: 3
 
 ## 审计备注

@@ -1,11 +1,13 @@
 # Viewer Live 完全事件驱动改造 Phase 10（2026-02-27）
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-live-full-event-driven-phase10-2026-02-27.design.md`
+- 对应项目管理文档: `doc/world-simulator/viewer/viewer-live-full-event-driven-phase10-2026-02-27.project.md`
+
 审计轮次: 5
 
 ## ROUND-002 物理合并
 - 本文件为主文档（当前权威入口）。
 - `phase8/phase9` 内容已物理合并入本文件，对应阶段文档已合并并从仓库移除（不再保留 archive 目录）。
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-live-full-event-driven-phase10-2026-02-27.project.md
 
 ## 1. Executive Summary
 - 清理 `agent_world::viewer` 活跃运行链路中残留的 tick 轮询逻辑，统一为事件驱动推进。

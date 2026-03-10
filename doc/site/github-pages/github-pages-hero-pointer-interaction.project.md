@@ -1,4 +1,7 @@
 # GitHub Pages Hero 指针微交互（四期增量）项目管理文档
+
+- 对应设计文档: `doc/site/github-pages/github-pages-hero-pointer-interaction.design.md`
+- 对应需求文档: `doc/site/github-pages/github-pages-hero-pointer-interaction.prd.md`
 审计轮次: 5
 
 ## 审计备注

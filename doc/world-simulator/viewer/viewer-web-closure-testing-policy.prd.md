@@ -1,8 +1,10 @@
 # Viewer Web 端闭环测试策略
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-web-closure-testing-policy.design.md`
+- 对应项目管理文档: `doc/world-simulator/viewer/viewer-web-closure-testing-policy.project.md`
+
 审计轮次: 5
 
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-web-closure-testing-policy.project.md
 
 ## 1. Executive Summary
 - 将 `agent_world_viewer` 的闭环测试默认路径统一到 Web 端：`trunk serve + Playwright`。

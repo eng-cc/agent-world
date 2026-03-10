@@ -1,8 +1,10 @@
 # Agent World：Web UI Playwright 闭环测试手册（2026-02-28）
 
+- 对应设计文档: `doc/testing/manual/web-ui-playwright-closure-manual.design.md`
+- 对应项目管理文档: `doc/testing/manual/web-ui-playwright-closure-manual.project.md`
+
 审计轮次: 4
 
-- 对应项目管理文档: doc/testing/manual/web-ui-playwright-closure-manual.project.md
 
 ## 1. Executive Summary
 - Problem Statement: Web UI 验收若缺少统一启动、采样、门禁与故障分级，容易出现“看起来可用但证据不可复现”的假通过。

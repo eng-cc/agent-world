@@ -1,5 +1,8 @@
 # Agent World Runtime：节点密钥 config.toml 自举
 
+- 对应设计文档: `doc/p2p/node/node-keypair-config-bootstrap.design.md`
+- 对应项目管理文档: `doc/p2p/node/node-keypair-config-bootstrap.project.md`
+
 审计轮次: 5
 ## 1. Executive Summary
 - Problem Statement: 在节点启动时确保根目录 `config.toml` 存在可用的节点密钥字段（公钥/私钥）。

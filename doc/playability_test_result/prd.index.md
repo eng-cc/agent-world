@@ -10,9 +10,9 @@
 - 模块标准执行入口：`doc/playability_test_result/project.md`
 - 模块兼容项目管理：`doc/playability_test_result/project.md`
 
-| 专题 PRD | 专题项目文档 |
-| --- | --- |
-| `doc/playability_test_result/game-test.prd.md` | `doc/playability_test_result/game-test.project.md` |
+| 专题 PRD | 专题设计文档 | 专题项目文档 |
+| --- | --- | --- |
+| `doc/playability_test_result/game-test.prd.md` | `doc/playability_test_result/game-test.design.md` | `doc/playability_test_result/game-test.project.md` |
 
 ## 说明
 - 本索引用于保证模块专题文档在根入口文档树中可达。

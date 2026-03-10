@@ -1,7 +1,9 @@
 # viewer-web-playability-unblock-2026-02-26
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-web-playability-unblock-2026-02-26.design.md`
+- 对应项目管理文档: `doc/world-simulator/viewer/viewer-web-playability-unblock-2026-02-26.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-web-playability-unblock-2026-02-26.project.md
 
 ## 1. Executive Summary
 - 修复 Web 玩家链路中“已连接但无法正常游玩”的主阻塞问题。

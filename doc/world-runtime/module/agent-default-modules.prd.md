@@ -1,8 +1,10 @@
 # Agent World Runtime：Agent 默认模块体系（Body/Power/Sense/Move/Memory/Storage）
 
+- 对应设计文档: `doc/world-runtime/module/agent-default-modules.design.md`
+- 对应项目管理文档: `doc/world-runtime/module/agent-default-modules.project.md`
+
 审计轮次: 4
 
-- 对应项目管理文档: doc/world-runtime/module/agent-default-modules.project.md
 
 ## 1. Executive Summary
 - 定义 Agent 的 **默认模块包（Default Module Package v1）**，保证个体在无外部工业设施时可最小生存与行动。

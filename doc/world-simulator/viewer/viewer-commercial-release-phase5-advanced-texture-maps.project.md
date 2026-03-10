@@ -1,6 +1,10 @@
 # Viewer 商业化发行缺口收敛 Phase 5（项目管理）
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-commercial-release-phase5-advanced-texture-maps.design.md`
+- 对应需求文档: `doc/world-simulator/viewer/viewer-commercial-release-phase5-advanced-texture-maps.prd.md`
+
 审计轮次: 5
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] VCR5-0 文档建档：设计文档 + 项目管理文档
 - [x] VCR5-1 扩展高级贴图覆盖配置（环境变量解析）

@@ -1,0 +1,26 @@
+# Agent 默认模块设计
+
+- 对应需求文档: `doc/world-runtime/module/agent-default-modules.prd.md`
+- 对应项目管理文档: `doc/world-runtime/module/agent-default-modules.project.md`
+
+## 1. 设计定位
+定义 Agent 出厂默认模块的安装方式、模块角色划分、生命周期与治理挂接方式。
+
+## 2. 设计结构
+- 默认模块集合：定义最小默认启用模块与对应职责。
+- 安装链路：通过治理事件完成 register / activate，并保证幂等。
+- 生命周期：支持首次安装、重装激活、版本替换与停用恢复。
+
+## 3. 关键接口 / 入口
+- 世界安装入口与模块清单声明
+- module manifest / module changeset / governance apply
+- 事件：模块启用、停用、状态变更
+
+## 4. 约束与边界
+- 默认模块必须保持最小可信集合，不直接固化业务扩展。
+- 世界初始状态与模块能力边界必须通过治理链路显式落地。
+- 重复安装必须幂等，不允许重复 register。
+
+## 5. 设计演进计划
+- 先完成设计补齐与互链回写。
+- 再按项目文档任务拆解推进实现与验证。

@@ -1,7 +1,9 @@
 # Agent World Simulator：分块世界生成与碎片元素/化合物池（设计文档）
 
+- 对应设计文档: `doc/world-simulator/scenario/chunked-fragment-generation.design.md`
+- 对应项目管理文档: `doc/world-simulator/scenario/chunked-fragment-generation.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/scenario/chunked-fragment-generation.project.md
 
 本分册定义“按探索触发”的世界分块生成流程，并补充碎片的几何与物理量模型（体积/密度/质量）、化合物主导组成、块状分布表达。
 

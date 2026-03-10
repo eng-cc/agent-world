@@ -1,5 +1,8 @@
 # Agent World Viewer：面向开放世界沙盒的可玩化准备（阶段计划）
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-open-world-sandbox-readiness.design.md`
+- 对应项目管理文档: `doc/world-simulator/viewer/viewer-open-world-sandbox-readiness.project.md`
+
 审计轮次: 5
 ## 1. Executive Summary
 - 在不引入“玩家直接动作输入”（移动/建造/采集等）的前提下，把现有 viewer 从“调试器优先”提升到“可运营的沙盒观察与干预终端”。

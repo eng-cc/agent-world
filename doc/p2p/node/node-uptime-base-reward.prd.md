@@ -1,5 +1,8 @@
 # Agent World Runtime：节点基础在线时长奖励
 
+- 对应设计文档: `doc/p2p/node/node-uptime-base-reward.design.md`
+- 对应项目管理文档: `doc/p2p/node/node-uptime-base-reward.project.md`
+
 审计轮次: 5
 ## 1. Executive Summary
 - Problem Statement: 在现有节点贡献积分（Node Points）中加入“基础在线时长奖励”可运行实现。

@@ -1,5 +1,8 @@
 # World Runtime：Builtin Wasm DistFS API 闭环
 
+- 对应设计文档: `doc/p2p/distfs/distfs-builtin-wasm-api-closure.design.md`
+- 对应项目管理文档: `doc/p2p/distfs/distfs-builtin-wasm-api-closure.project.md`
+
 审计轮次: 5
 ## 1. Executive Summary
 - Problem Statement: 将 builtin wasm 的“写入/读取”统一走 `agent_world_distfs` API，避免旁路文件操作。

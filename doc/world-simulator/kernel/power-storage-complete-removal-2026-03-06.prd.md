@@ -1,8 +1,10 @@
 # PowerStorage 全量下线（2026-03-06）
 
+- 对应设计文档: `doc/world-simulator/kernel/power-storage-complete-removal-2026-03-06.design.md`
+- 对应项目管理文档: `doc/world-simulator/kernel/power-storage-complete-removal-2026-03-06.project.md`
+
 审计轮次: 3
 
-- 对应项目管理文档: `doc/world-simulator/kernel/power-storage-complete-removal-2026-03-06.project.md`
 
 ## 1. Executive Summary
 - Problem Statement: 当前 simulator / viewer / 脚本仍保留 `PowerStorage` 语义与入口，导致设计层“已删除储能设施”与实现层不一致，增加维护和评审噪音。

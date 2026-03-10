@@ -1,5 +1,8 @@
 # P2P Builtin Wasm 身份共识与跨平台构建方案
 
+- 对应设计文档: `doc/p2p/consensus/builtin-wasm-identity-consensus.design.md`
+- 对应项目管理文档: `doc/p2p/consensus/builtin-wasm-identity-consensus.project.md`
+
 审计轮次: 5
 ## 1. Executive Summary
 - Problem Statement: 解决“不同宿主构建产物 hash 漂移导致门禁不稳定”的生产问题，同时保留节点本地可构建能力。

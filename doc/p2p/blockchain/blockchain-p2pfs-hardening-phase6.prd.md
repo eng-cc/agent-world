@@ -1,5 +1,8 @@
 # Agent World Runtime：区块链 + P2P FS 硬改造（Phase 6）设计文档
 
+- 对应设计文档: `doc/p2p/blockchain/blockchain-p2pfs-hardening-phase6.design.md`
+- 对应项目管理文档: `doc/p2p/blockchain/blockchain-p2pfs-hardening-phase6.project.md`
+
 审计轮次: 5
 ## 1. Executive Summary
 - Problem Statement: 在 Phase 5 signer 公钥白名单治理基础上，补齐**生产可运维**所需的策略配置校验能力。

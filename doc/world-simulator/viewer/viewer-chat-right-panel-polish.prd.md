@@ -1,7 +1,9 @@
 # Agent World Simulator：Viewer Chat 右侧收敛布局与闭环验收（设计文档）
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-chat-right-panel-polish.design.md`
+- 对应项目管理文档: `doc/world-simulator/viewer/viewer-chat-right-panel-polish.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-chat-right-panel-polish.project.md
 
 ## 1. Executive Summary
 - 将 Chat UI 收敛为“最右侧单区块”的稳定布局，避免左右分裂导致的信息跳跃。

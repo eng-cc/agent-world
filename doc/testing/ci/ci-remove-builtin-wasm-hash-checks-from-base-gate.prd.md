@@ -1,8 +1,10 @@
 # Agent World: 基础 CI 门禁移除 Builtin Wasm Hash 校验
 
+- 对应设计文档: `doc/testing/ci/ci-remove-builtin-wasm-hash-checks-from-base-gate.design.md`
+- 对应项目管理文档: `doc/testing/ci/ci-remove-builtin-wasm-hash-checks-from-base-gate.project.md`
+
 审计轮次: 4
 
-- 对应项目管理文档: doc/testing/ci/ci-remove-builtin-wasm-hash-checks-from-base-gate.project.md
 
 ## 1. Executive Summary
 - Problem Statement: 基础门禁若同时承担格式/测试与 builtin wasm hash 校验，容易拉高日常反馈成本并与分层测试职责耦合。

@@ -1,7 +1,9 @@
 # Agent World Simulator：LLM 请求层迁移至 async-openai Responses API（设计文档）
 
+- 对应设计文档: `doc/world-simulator/llm/llm-async-openai-responses.design.md`
+- 对应项目管理文档: `doc/world-simulator/llm/llm-async-openai-responses.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/llm/llm-async-openai-responses.project.md
 
 ## 1. Executive Summary
 - 将现有 OpenAI 兼容 `chat/completions` 请求层替换为 `async-openai` SDK，并统一走 Responses API。

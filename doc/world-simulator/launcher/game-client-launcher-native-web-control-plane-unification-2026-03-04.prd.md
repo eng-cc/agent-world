@@ -1,7 +1,9 @@
 # 客户端启动器 native/web 同控制面与客户端服务端分离（2026-03-04）
 
+- 对应设计文档: `doc/world-simulator/launcher/game-client-launcher-native-web-control-plane-unification-2026-03-04.design.md`
+- 对应项目管理文档: `doc/world-simulator/launcher/game-client-launcher-native-web-control-plane-unification-2026-03-04.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/launcher/game-client-launcher-native-web-control-plane-unification-2026-03-04.project.md
 
 ## 1. Executive Summary
 - Problem Statement: 当前启动器 native 端直接本地拉起游戏/区块链进程，而 web 端通过 `world_web_launcher` 间接控制，导致两端状态机与按钮行为不一致，链路回归成本高。

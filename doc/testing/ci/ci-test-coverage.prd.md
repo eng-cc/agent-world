@@ -1,8 +1,10 @@
 # Agent World: 测试覆盖与 CI 扩展
 
+- 对应设计文档: `doc/testing/ci/ci-test-coverage.design.md`
+- 对应项目管理文档: `doc/testing/ci/ci-test-coverage.project.md`
+
 审计轮次: 4
 
-- 对应项目管理文档: doc/testing/ci/ci-test-coverage.project.md
 
 ## ROUND-002 口径归属（2026-03-05）
 - 本文档是 required/full 具体覆盖命令矩阵与覆盖边界的权威入口。

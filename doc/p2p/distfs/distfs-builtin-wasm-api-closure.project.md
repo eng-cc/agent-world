@@ -1,5 +1,8 @@
 # World Runtime：Builtin Wasm DistFS API 闭环（项目管理文档）
 
+- 对应设计文档: `doc/p2p/distfs/distfs-builtin-wasm-api-closure.design.md`
+- 对应需求文档: `doc/p2p/distfs/distfs-builtin-wasm-api-closure.prd.md`
+
 审计轮次: 5
 ## 任务拆解（含 PRD-ID 映射）
 - [x] DAC-1 输出设计文档（`doc/p2p/distfs/distfs-builtin-wasm-api-closure.prd.md`）与项目管理文档（本文件）。 (PRD-P2P-MIG-059)
@@ -9,6 +12,7 @@
 - [x] DAC-5 执行 required 回归并回写文档/devlog。 (PRD-P2P-MIG-059)
 
 ## 依赖
+- `doc/p2p/distfs/distfs-builtin-wasm-api-closure.design.md`
 - `crates/agent_world_distfs/src/lib.rs`
 - `crates/agent_world_distfs/src/bin/`
 - `scripts/sync-m1-builtin-wasm-artifacts.sh`

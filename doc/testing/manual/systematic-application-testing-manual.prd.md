@@ -1,8 +1,10 @@
 # Agent World：系统性应用测试手册工程化收口（2026-02-26）
 
+- 对应设计文档: `doc/testing/manual/systematic-application-testing-manual.design.md`
+- 对应项目管理文档: `doc/testing/manual/systematic-application-testing-manual.project.md`
+
 审计轮次: 4
 
-- 对应项目管理文档: doc/testing/manual/systematic-application-testing-manual.project.md
 
 ## 1. Executive Summary
 - Problem Statement: 测试分层模型、触发矩阵与证据标准若分散在多处文档/脚本，容易出现执行口径漂移，导致“通过门禁但风险未覆盖”。

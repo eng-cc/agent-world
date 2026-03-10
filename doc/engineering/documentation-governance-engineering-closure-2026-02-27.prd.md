@@ -1,8 +1,10 @@
 # 文档治理工程化全量优化（2026-02-27）
 
+- 对应设计文档: `doc/engineering/documentation-governance-engineering-closure-2026-02-27.design.md`
+- 对应项目管理文档: `doc/engineering/documentation-governance-engineering-closure-2026-02-27.project.md`
+
 审计轮次: 4
 
-- 对应项目管理文档: doc/engineering/documentation-governance-engineering-closure-2026-02-27.project.md
 - 对应标准执行入口: `doc/engineering/documentation-governance-engineering-closure-2026-02-27.project.md`
 
 ## 目标

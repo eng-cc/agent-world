@@ -1,5 +1,8 @@
 # Agent World: 基于 world_chain_runtime 的长跑脚本可用化（2026-02-28）
 
+- 对应设计文档: `doc/testing/longrun/chain-runtime-soak-script-reactivation-2026-02-28.design.md`
+- 对应项目管理文档: `doc/testing/longrun/chain-runtime-soak-script-reactivation-2026-02-28.project.md`
+
 审计轮次: 4
 
 ## 1. Executive Summary

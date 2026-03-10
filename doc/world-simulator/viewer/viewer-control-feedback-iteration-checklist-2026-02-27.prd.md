@@ -1,7 +1,9 @@
 # Viewer 控制反馈迭代清单（2026-02-27）
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-control-feedback-iteration-checklist-2026-02-27.design.md`
+- 对应项目管理文档: `doc/world-simulator/viewer/viewer-control-feedback-iteration-checklist-2026-02-27.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-control-feedback-iteration-checklist-2026-02-27.project.md
 
 ## 1. Executive Summary
 - 基于 `card_2026_02_27_19_47_08.md` 的玩家反馈，聚焦修复“指令 accepted 但不推进”的控制黑盒问题。

@@ -1,5 +1,8 @@
 # Agent World Runtime：异构节点分布式存储最优稳定性改造（2026-02-23）
 
+- 对应设计文档: `doc/p2p/distfs/distfs-heterogeneous-node-optimal-stability-2026-02-23.design.md`
+- 对应项目管理文档: `doc/p2p/distfs/distfs-heterogeneous-node-optimal-stability-2026-02-23.project.md`
+
 审计轮次: 5
 ## 1. Executive Summary
 - Problem Statement: 面向“1000+ 节点、容量与在线时长显著异构”的场景，构建可长期稳定运行的分布式存储策略。

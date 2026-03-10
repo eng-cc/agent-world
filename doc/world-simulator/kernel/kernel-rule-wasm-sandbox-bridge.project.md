@@ -1,5 +1,8 @@
 # Agent World Simulator：规则 Wasm Sandbox 桥接（第四阶段）项目管理文档
 
+- 对应设计文档: `doc/world-simulator/kernel/kernel-rule-wasm-sandbox-bridge.design.md`
+- 对应需求文档: `doc/world-simulator/kernel/kernel-rule-wasm-sandbox-bridge.prd.md`
+
 审计轮次: 5
 ## 任务拆解（含 PRD-ID 映射）
 - [x] KWS-0 输出设计文档（`doc/world-simulator/kernel/kernel-rule-wasm-sandbox-bridge.prd.md`）与项目管理文档（本文件）。
@@ -8,6 +11,7 @@
 - [x] KWS-3 回归验证、文档与 devlog 回写。
 
 ## 依赖
+- `doc/world-simulator/kernel/kernel-rule-wasm-sandbox-bridge.design.md`
 - `crates/agent_world/src/simulator/kernel/mod.rs`
 - `crates/agent_world/src/simulator/kernel/step.rs`
 - `crates/agent_world/src/simulator/kernel/types.rs`

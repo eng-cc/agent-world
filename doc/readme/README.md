@@ -24,3 +24,18 @@
 
 ## 维护约定
 - 对外口径变更需同步 `README.md` 与本模块文档。
+- `doc/readme/gap/readme-gap-distributed-prod-hardening-gap12345.design.md`
+- `doc/readme/gap/readme-gap-infra-exec-compiler-sandbox.design.md`
+- `doc/readme/gap/readme-gap-wasm-live-persistence-instance-upgrade.design.md`
+- `doc/readme/gap/readme-gap12-consensus-market-lifecycle-closure.design.md`
+- `doc/readme/gap/readme-gap12-market-closure.design.md`
+- `doc/readme/gap/readme-gap123-runtime-consensus-metering.design.md`
+- `doc/readme/gap/readme-gap2-llm-wasm-lifecycle.design.md`
+- `doc/readme/gap/readme-gap3-install-target-infrastructure.design.md`
+- `doc/readme/gap/readme-gap34-lifecycle-orderbook-closure.design.md`
+- `doc/readme/governance/readme-resource-model-layering.design.md`
+- `doc/readme/governance/readme-world-rules-consolidation.design.md`
+- `doc/readme/production/readme-llm-p1p2-production-closure.design.md`
+- `doc/readme/production/readme-p0-p1-closure.design.md`
+- `doc/readme/production/readme-prod-closure-llm-distfs-consensus.design.md`
+- `doc/readme/production/readme-prod-gap1245-wasm-repl-topology-player.design.md`

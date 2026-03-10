@@ -1,7 +1,9 @@
 # Agent World Simulator：世界初始化（设计分册）
 
+- 对应设计文档: `doc/world-simulator/scenario/world-initialization.design.md`
+- 对应项目管理文档: `doc/world-simulator/scenario/world-initialization.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/scenario/world-initialization.project.md
 
 本分册描述世界初始化（World Initialization）的最小实现，用于在不依赖外部输入的情况下生成可运行的初始世界状态。
 

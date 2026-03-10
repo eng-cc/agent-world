@@ -1,5 +1,8 @@
 # Fix Pre-commit（预提交失败修复脚本）（项目管理文档）
 
+- 对应设计文档: `doc/scripts/precommit/precommit-remediation-playbook.design.md`
+- 对应需求文档: `doc/scripts/precommit/precommit-remediation-playbook.prd.md`
+
 审计轮次: 4
 
 ## 任务拆解

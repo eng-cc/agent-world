@@ -1,7 +1,9 @@
 # Agent World Simulator：规则 Wasm Sandbox 桥接（第四阶段）设计文档
 
+- 对应设计文档: `doc/world-simulator/kernel/kernel-rule-wasm-sandbox-bridge.design.md`
+- 对应项目管理文档: `doc/world-simulator/kernel/kernel-rule-wasm-sandbox-bridge.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/kernel/kernel-rule-wasm-sandbox-bridge.project.md
 
 ## 1. Executive Summary
 - 将模拟器内核已有的可选 wasm pre-action evaluator，与 runtime 的 `ModuleSandbox` 调用链打通。

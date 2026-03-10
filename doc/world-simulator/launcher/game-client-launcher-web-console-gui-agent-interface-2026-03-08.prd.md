@@ -1,7 +1,9 @@
 # 客户端启动器 Web Console GUI Agent 全量接口（2026-03-08）
 
-审计轮次: 1
+- 对应设计文档: `doc/world-simulator/launcher/game-client-launcher-web-console-gui-agent-interface-2026-03-08.design.md`
 - 对应项目管理文档: `doc/world-simulator/launcher/game-client-launcher-web-console-gui-agent-interface-2026-03-08.project.md`
+
+审计轮次: 1
 
 ## 1. Executive Summary
 - Problem Statement: 当前 `world_web_launcher` 已有多组分散 API（启停、反馈、转账、浏览器查询），但缺少面向 GUI Agent 的“单一机器接口”与能力声明，导致自动化代理需要手工拼接多路端点与状态语义。

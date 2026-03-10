@@ -1,5 +1,8 @@
 # Agent World Runtime：区块链 + P2P FS 硬改造（Phase 7）设计文档
 
+- 对应设计文档: `doc/p2p/blockchain/blockchain-p2pfs-hardening-phase7.design.md`
+- 对应项目管理文档: `doc/p2p/blockchain/blockchain-p2pfs-hardening-phase7.project.md`
+
 审计轮次: 5
 ## 1. Executive Summary
 - Problem Statement: 将 sequencer `accepted_action_signer_public_keys` 升级为生产级治理语义：配置合法性校验、规范化比较、重复项拒绝。

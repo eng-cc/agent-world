@@ -1,7 +1,9 @@
 # Viewer 商业化发行缺口收敛 Phase 8：运行中主题切换/热重载与 industrial_v2 资产包
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-commercial-release-phase8-runtime-theme-hot-reload-and-asset-v2.design.md`
+- 对应项目管理文档: `doc/world-simulator/viewer/viewer-commercial-release-phase8-runtime-theme-hot-reload-and-asset-v2.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-commercial-release-phase8-runtime-theme-hot-reload-and-asset-v2.project.md
 
 ## 1. Executive Summary
 - 将 Phase 7 的“脚本预览链路”升级为运行中可操作能力：在 Viewer 内直接切换主题预设，并支持本地预设文件热重载。

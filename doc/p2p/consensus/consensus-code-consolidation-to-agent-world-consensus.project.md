@@ -1,5 +1,8 @@
 # Agent World Runtime：共识代码统一收敛到 agent_world_consensus（项目管理文档）
 
+- 对应设计文档: `doc/p2p/consensus/consensus-code-consolidation-to-agent-world-consensus.design.md`
+- 对应需求文档: `doc/p2p/consensus/consensus-code-consolidation-to-agent-world-consensus.prd.md`
+
 审计轮次: 5
 ## 任务拆解（含 PRD-ID 映射）
 - [x] CCG-0 (PRD-P2P-MIG-058)：完成设计文档与项目管理文档。

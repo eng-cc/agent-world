@@ -1,5 +1,8 @@
 # Viewer Texture Inspector 框架合理性优化（2026-03-01）（项目管理文档）
 
+- 对应设计文档: `doc/scripts/viewer-tools/viewer-texture-inspector-framework-rationalization-2026-03-01.design.md`
+- 对应需求文档: `doc/scripts/viewer-tools/viewer-texture-inspector-framework-rationalization-2026-03-01.prd.md`
+
 审计轮次: 4
 
 ## 任务拆解

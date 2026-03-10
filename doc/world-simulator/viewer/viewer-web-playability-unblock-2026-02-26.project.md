@@ -1,5 +1,8 @@
 # viewer-web-playability-unblock-2026-02-26 项目管理
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-web-playability-unblock-2026-02-26.design.md`
+- 对应需求文档: `doc/world-simulator/viewer/viewer-web-playability-unblock-2026-02-26.prd.md`
+
 审计轮次: 5
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0 建立设计文档与项目管理文档

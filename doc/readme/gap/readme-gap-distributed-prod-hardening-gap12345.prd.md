@@ -1,12 +1,14 @@
 # README 分布式计算与存储生产级收口（Gap 1/2/3/4/5）设计文档
 
+- 对应设计文档: `doc/readme/gap/readme-gap-distributed-prod-hardening-gap12345.design.md`
+- 对应项目管理文档: `doc/readme/gap/readme-gap-distributed-prod-hardening-gap12345.project.md`
+
 审计轮次: 4
 
 ## ROUND-002 主从口径
 - 本文件为 readme/gap 主文档。
 - 其余 gap 专题文档为增量子文档。
 
-- 对应项目管理文档: doc/readme/gap/readme-gap-distributed-prod-hardening-gap12345.project.md
 - 对应标准执行入口: `doc/readme/gap/readme-gap-distributed-prod-hardening-gap12345.project.md`
 
 ## 目标

@@ -1,5 +1,8 @@
 # GitHub Pages 内容状态同步（2026-02-25）设计文档
 
+- 对应设计文档: `doc/site/github-pages/github-pages-content-sync-2026-02-25.design.md`
+- 对应项目管理文档: `doc/site/github-pages/github-pages-content-sync-2026-02-25.project.md`
+
 审计轮次: 5
 > 状态更新（2026-03-08）:
 > - `world_viewer_live` 已移除 `--release-config`、`--runtime-world` 与 `--node-*` legacy 控制面参数。
@@ -8,7 +11,6 @@
 ## ROUND-002 主从口径
 - 主入口统一指向 `doc/site/github-pages/github-pages-game-engine-reposition-2026-02-25.prd.md`，本文仅维护增量。
 
-- 对应项目管理文档: doc/site/github-pages/github-pages-content-sync-2026-02-25.project.md
 - 对应标准执行入口: `doc/site/github-pages/github-pages-content-sync-2026-02-25.project.md`
 
 ## 目标

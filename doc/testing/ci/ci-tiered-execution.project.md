@@ -1,5 +1,8 @@
 # Agent World: CI 与提交钩子测试分级（项目管理）
 
+- 对应设计文档: `doc/testing/ci/ci-tiered-execution.design.md`
+- 对应需求文档: `doc/testing/ci/ci-tiered-execution.prd.md`
+
 审计轮次: 4
 
 ## 任务拆解（含 PRD-ID 映射）

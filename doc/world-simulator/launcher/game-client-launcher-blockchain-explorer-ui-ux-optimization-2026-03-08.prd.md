@@ -1,7 +1,9 @@
 # 客户端启动器区块链浏览器视觉与交互优化（2026-03-08）
 
-审计轮次: 1
+- 对应设计文档: `doc/world-simulator/launcher/game-client-launcher-blockchain-explorer-ui-ux-optimization-2026-03-08.design.md`
 - 对应项目管理文档: `doc/world-simulator/launcher/game-client-launcher-blockchain-explorer-ui-ux-optimization-2026-03-08.project.md`
+
+审计轮次: 1
 
 ## 1. Executive Summary
 - Problem Statement: 启动器区块链浏览器已覆盖查询能力，但当前信息呈现偏“日志行”，视觉层级弱、列表与详情切换成本高，导致高频排障与核查效率偏低。

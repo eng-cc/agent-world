@@ -1,5 +1,8 @@
 # M4 电力子系统（项目管理文档）
 
+- 对应设计文档: `doc/world-simulator/m4/m4-power-system.design.md`
+- 对应需求文档: `doc/world-simulator/m4/m4-power-system.prd.md`
+
 审计轮次: 5
 
 > 注：本项目文档对应历史实现阶段。`PowerStorage` 能力已于 2026-03-06 全量下线，当前执行状态以 `doc/world-simulator/kernel/power-storage-complete-removal-2026-03-06.project.md` 为准。

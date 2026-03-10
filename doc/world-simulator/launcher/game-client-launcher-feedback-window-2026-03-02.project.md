@@ -1,6 +1,10 @@
 # 客户端启动器反馈窗口化（2026-03-02）项目管理
 
+- 对应设计文档: `doc/world-simulator/launcher/game-client-launcher-feedback-window-2026-03-02.design.md`
+- 对应需求文档: `doc/world-simulator/launcher/game-client-launcher-feedback-window-2026-03-02.prd.md`
+
 审计轮次: 5
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0 (PRD-WORLD_SIMULATOR-001)：建档（设计文档 + 项目管理文档）。
 - [x] T1 (PRD-WORLD_SIMULATOR-002)：改造实现（反馈入口按钮 + 反馈弹窗，移除主面板内嵌反馈区域，完成回归测试）。

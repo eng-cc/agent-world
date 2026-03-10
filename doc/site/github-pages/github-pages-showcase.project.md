@@ -1,5 +1,8 @@
 # GitHub Pages 对外展示站点（项目管理文档）
 
+- 对应设计文档: `doc/site/github-pages/github-pages-showcase.design.md`
+- 对应需求文档: `doc/site/github-pages/github-pages-showcase.prd.md`
+
 审计轮次: 5
 
 ## 审计备注

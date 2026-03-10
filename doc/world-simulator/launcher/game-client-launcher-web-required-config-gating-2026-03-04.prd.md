@@ -1,7 +1,9 @@
 # 客户端启动器 Web 必填配置校验分流修复（2026-03-04）
 
+- 对应设计文档: `doc/world-simulator/launcher/game-client-launcher-web-required-config-gating-2026-03-04.design.md`
+- 对应项目管理文档: `doc/world-simulator/launcher/game-client-launcher-web-required-config-gating-2026-03-04.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/launcher/game-client-launcher-web-required-config-gating-2026-03-04.project.md
 
 ## 1. Executive Summary
 - Problem Statement: 启动器 Web 端当前沿用 native 必填校验，错误要求 `launcher_bin` 与 `chain_runtime_bin`，导致浏览器场景出现误报并阻断启动提示。

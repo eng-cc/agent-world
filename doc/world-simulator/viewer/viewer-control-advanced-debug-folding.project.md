@@ -1,6 +1,10 @@
 # Viewer 控制区精简与高级调试折叠（项目管理文档）
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-control-advanced-debug-folding.design.md`
+- 对应需求文档: `doc/world-simulator/viewer/viewer-control-advanced-debug-folding.prd.md`
+
 审计轮次: 5
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] ADF1 输出设计文档（`doc/world-simulator/viewer/viewer-control-advanced-debug-folding.prd.md`）
 - [x] ADF2 输出项目管理文档（本文件）

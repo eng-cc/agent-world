@@ -1,5 +1,8 @@
 # Agent World：P2P 长跑 180 分钟 Chaos 模板方案（2026-02-25）
 
+- 对应设计文档: `doc/testing/longrun/p2p-longrun-endurance-chaos-template-2026-02-25.design.md`
+- 对应项目管理文档: `doc/testing/longrun/p2p-longrun-endurance-chaos-template-2026-02-25.project.md`
+
 审计轮次: 4
 
 ## 1. Executive Summary

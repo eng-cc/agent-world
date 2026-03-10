@@ -1,5 +1,8 @@
 # Legacy Redirect: world-runtime.prd
 
+- 对应设计文档: `doc/world-runtime.design.md`
+- 对应项目管理文档: `doc/world-runtime.project.md`
+
 审计轮次: 6
 - 对应标准执行入口: `doc/world-runtime.project.md`
 ## 目标

@@ -1,8 +1,10 @@
 # Agent World Runtime：PoS 超多数比率边界数值语义硬化（15 点清单第七阶段）
 
+- 对应设计文档: `doc/world-runtime/runtime/runtime-numeric-correctness-phase7.design.md`
+- 对应项目管理文档: `doc/world-runtime/runtime/runtime-numeric-correctness-phase7.project.md`
+
 审计轮次: 4
 
-- 对应项目管理文档: doc/world-runtime/runtime/runtime-numeric-correctness-phase7.project.md
 
 ## 1. Executive Summary
 - 收口 PoS 配置校验中 `supermajority_numerator * 2` 的饱和乘法语义，避免极端大整数比率下出现“本应合法却被误拒绝”的隐性数值失真。

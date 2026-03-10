@@ -1,8 +1,10 @@
 # Agent World Runtime：Membership Recovery Federated 聚合扫描与游标计数算术语义硬化（15 点清单第十五阶段）
 
+- 对应设计文档: `doc/world-runtime/runtime/runtime-numeric-correctness-phase15.design.md`
+- 对应项目管理文档: `doc/world-runtime/runtime/runtime-numeric-correctness-phase15.project.md`
+
 审计轮次: 4
 
-- 对应项目管理文档: doc/world-runtime/runtime/runtime-numeric-correctness-phase15.project.md
 
 ## 1. Executive Summary
 - 收口 `membership_recovery/replay_archive_federated.rs` 中剩余的关键聚合计数饱和算术。

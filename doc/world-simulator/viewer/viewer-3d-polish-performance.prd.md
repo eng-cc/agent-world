@@ -1,7 +1,9 @@
 # Viewer 3D 精致化与性能优化设计
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-3d-polish-performance.design.md`
+- 对应项目管理文档: `doc/world-simulator/viewer/viewer-3d-polish-performance.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-3d-polish-performance.project.md
 
 ## 1. Executive Summary
 - 将当前偏“调试风格”的 3D 画面升级为更稳定、层次更清晰、视觉更统一的观察界面。

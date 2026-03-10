@@ -1,6 +1,10 @@
 # Viewer 控制面拆分：回放/Live 分离（2026-02-27）项目管理
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-control-plane-split-live-playback-2026-02-27.design.md`
+- 对应需求文档: `doc/world-simulator/viewer/viewer-control-plane-split-live-playback-2026-02-27.prd.md`
+
 审计轮次: 5
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0 建立设计文档与项目管理文档
 - [x] T1 协议层与 server/live 控制处理拆分（含兼容桥接）

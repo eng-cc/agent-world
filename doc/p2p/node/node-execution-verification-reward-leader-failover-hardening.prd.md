@@ -1,5 +1,8 @@
 # Agent World Runtime：节点执行校验与奖励 Leader/Failover 生产化收口
 
+- 对应设计文档: `doc/p2p/node/node-execution-verification-reward-leader-failover-hardening.design.md`
+- 对应项目管理文档: `doc/p2p/node/node-execution-verification-reward-leader-failover-hardening.project.md`
+
 审计轮次: 5
 ## 1. Executive Summary
 - Problem Statement: 收口执行一致性缺口：将节点对等 commit 的执行绑定从“仅透传/记录”提升为“可校验、可拒绝、可在补洞路径重放验证”。

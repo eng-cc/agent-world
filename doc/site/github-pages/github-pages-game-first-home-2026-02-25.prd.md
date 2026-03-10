@@ -1,11 +1,13 @@
 # GitHub Pages 首页“游戏优先”分层重构（2026-02-25）设计文档
 
+- 对应设计文档: `doc/site/github-pages/github-pages-game-first-home-2026-02-25.design.md`
+- 对应项目管理文档: `doc/site/github-pages/github-pages-game-first-home-2026-02-25.project.md`
+
 审计轮次: 5
 
 ## ROUND-002 主从口径
 - 主入口统一指向 `doc/site/github-pages/github-pages-game-engine-reposition-2026-02-25.prd.md`，本文仅维护增量。
 
-- 对应项目管理文档: doc/site/github-pages/github-pages-game-first-home-2026-02-25.project.md
 - 对应标准执行入口: `doc/site/github-pages/github-pages-game-first-home-2026-02-25.project.md`
 
 ## 目标

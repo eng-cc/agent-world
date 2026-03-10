@@ -1,5 +1,8 @@
 # Agent World Runtime：PoS 固定时间槽（Slot/Epoch）真实时钟驱动
 
+- 对应设计文档: `doc/p2p/node/node-pos-slot-clock-real-time-2026-03-07.design.md`
+- 对应项目管理文档: `doc/p2p/node/node-pos-slot-clock-real-time-2026-03-07.project.md`
+
 审计轮次: 1
 
 ## 1. Executive Summary

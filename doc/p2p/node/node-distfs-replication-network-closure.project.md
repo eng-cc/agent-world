@@ -1,5 +1,8 @@
 # Agent World Runtime：Node DistFS 复制网络化收敛（项目管理文档）
 
+- 对应设计文档: `doc/p2p/node/node-distfs-replication-network-closure.design.md`
+- 对应需求文档: `doc/p2p/node/node-distfs-replication-network-closure.prd.md`
+
 审计轮次: 5
 ## 任务拆解（含 PRD-ID 映射）
 - [x] NRX-0 (PRD-P2P-MIG-092)：输出设计文档与项目管理文档。

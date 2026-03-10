@@ -1,7 +1,9 @@
 # Viewer UI 多语言支持设计（中文 / 英文）
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-i18n.design.md`
+- 对应项目管理文档: `doc/world-simulator/viewer/viewer-i18n.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-i18n.project.md
 
 ## 1. Executive Summary
 - 为 `agent_world_viewer` UI 系统引入可扩展的多语言机制，首批支持 `zh-CN` 与 `en-US`。

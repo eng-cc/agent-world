@@ -1,5 +1,8 @@
 # World Runtime：Builtin Wasm 先拉取后编译回退
 
+- 对应设计文档: `doc/p2p/node/node-builtin-wasm-fetch-fallback-compile.design.md`
+- 对应项目管理文档: `doc/p2p/node/node-builtin-wasm-fetch-fallback-compile.project.md`
+
 审计轮次: 5
 ## 1. Executive Summary
 - Problem Statement: 在节点运行时装载 builtin wasm 时，优先从网络拉取已构建产物；拉取失败后再触发本地编译回退。

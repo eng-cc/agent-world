@@ -1,5 +1,8 @@
 # M4 资源与产品系统 P3：分层档案化与链路扩展实现（项目管理文档）
 
+- 对应设计文档: `doc/world-simulator/m4/m4-resource-product-system-p3-layer-profile-chain-expansion-2026-02-27.design.md`
+- 对应需求文档: `doc/world-simulator/m4/m4-resource-product-system-p3-layer-profile-chain-expansion-2026-02-27.prd.md`
+
 审计轮次: 5
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0：输出 P3 设计文档与项目管理文档。

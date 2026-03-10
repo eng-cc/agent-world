@@ -1,8 +1,10 @@
 # README 生产级收口：LLM 制度动作 + DistFS 状态主路径 + 去中心化默认拓扑（设计文档）
 
+- 对应设计文档: `doc/readme/production/readme-prod-closure-llm-distfs-consensus.design.md`
+- 对应项目管理文档: `doc/readme/production/readme-prod-closure-llm-distfs-consensus.project.md`
+
 审计轮次: 4
 
-- 对应项目管理文档: doc/readme/production/readme-prod-closure-llm-distfs-consensus.project.md
 - 对应标准执行入口: `doc/readme/production/readme-prod-closure-llm-distfs-consensus.project.md`
 
 ## 目标

@@ -1,7 +1,9 @@
 # 间接控制链路 + WASM Tick 生命周期 + 长期记忆持久化（设计文档）
 
+- 对应设计文档: `doc/world-simulator/llm/indirect-control-tick-lifecycle-long-term-memory.design.md`
+- 对应项目管理文档: `doc/world-simulator/llm/indirect-control-tick-lifecycle-long-term-memory.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/llm/indirect-control-tick-lifecycle-long-term-memory.project.md
 
 ## 1. Executive Summary
 - 收口 README 对“玩家间接控制”的约束：玩家不能直接提交世界动作操控 Agent，只能通过间接链路（提示词/对话）影响 Agent 决策。

@@ -1,5 +1,8 @@
 # Viewer 发行体验改造（项目管理文档）
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.design.md`
+- 对应需求文档: `doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.md`
+
 审计轮次: 5
 
 ## ROUND-002 物理合并

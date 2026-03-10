@@ -1,7 +1,9 @@
 # 客户端启动器 Native 遗留代码清理（2026-03-06）
 
-审计轮次: 5
+- 对应设计文档: `doc/world-simulator/launcher/game-client-launcher-native-legacy-cleanup-2026-03-06.design.md`
 - 对应项目管理文档: `doc/world-simulator/launcher/game-client-launcher-native-legacy-cleanup-2026-03-06.project.md`
+
+审计轮次: 5
 
 ## 1. Executive Summary
 - Problem Statement: 启动器 native 已完成“客户端 + 控制面服务”迁移，但代码中仍保留部分无读写路径的历史状态字段与未被编译入口引用的旧测试文件，持续增加维护噪声。

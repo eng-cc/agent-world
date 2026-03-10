@@ -1,5 +1,8 @@
 # P2P Mobile Light Client 权威状态架构（项目管理文档）
 
+- 对应设计文档: `doc/p2p/network/p2p-mobile-light-client-authoritative-state-2026-03-06.design.md`
+- 对应需求文档: `doc/p2p/network/p2p-mobile-light-client-authoritative-state-2026-03-06.prd.md`
+
 审计轮次: 5
 
 ## 任务拆解（含 PRD-ID 映射）

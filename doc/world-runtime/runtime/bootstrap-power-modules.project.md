@@ -1,5 +1,8 @@
 # Agent World Runtime：生命出厂电力模块（项目管理文档）
 
+- 对应设计文档: `doc/world-runtime/runtime/bootstrap-power-modules.design.md`
+- 对应需求文档: `doc/world-runtime/runtime/bootstrap-power-modules.prd.md`
+
 审计轮次: 4
 
 ## 任务拆解（含 PRD-ID 映射）
@@ -26,6 +29,7 @@
 - [x] 回写本项目管理文档状态与当日 devlog
 
 ## 依赖
+- `doc/world-runtime/runtime/bootstrap-power-modules.design.md`
 - runtime 模块治理链路（`propose -> shadow -> approve -> apply`）
 - `ModuleSandbox` 抽象与 wasm-only 执行链路（`WasmExecutor`）
 - `WorldEventBody::ModuleEmitted/ModuleStateUpdated` 事件语义

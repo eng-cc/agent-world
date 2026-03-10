@@ -1,5 +1,8 @@
 # Non-Viewer 设计一致性修复（项目管理）
 
+- 对应设计文档: `doc/headless-runtime/nonviewer/nonviewer-design-alignment-closure-2026-02-25.design.md`
+- 对应需求文档: `doc/headless-runtime/nonviewer/nonviewer-design-alignment-closure-2026-02-25.prd.md`
+
 审计轮次: 4
 
 ## 任务拆解（含 PRD-ID 映射）

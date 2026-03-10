@@ -1,5 +1,8 @@
 # README 世界规则文档收敛整合（项目管理文档）
 
+- 对应设计文档: `doc/readme/governance/readme-world-rules-consolidation.design.md`
+- 对应需求文档: `doc/readme/governance/readme-world-rules-consolidation.prd.md`
+
 审计轮次: 4
 
 ## 任务拆解

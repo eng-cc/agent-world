@@ -1,7 +1,9 @@
 # Agent World：M5 可视化与调试（Bevy）
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-visualization.design.md`
+- 对应项目管理文档: `doc/world-simulator/viewer/viewer-visualization.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-visualization.project.md
 
 ## 1. Executive Summary
 - 提供一个独立的可视化客户端（Bevy），通过网络连接世界数据源。

@@ -1,5 +1,8 @@
 # Agent World Runtime：节点贡献积分运行时闭环（项目管理文档）
 
+- 对应设计文档: `doc/p2p/node/node-contribution-points-runtime-closure.design.md`
+- 对应需求文档: `doc/p2p/node/node-contribution-points-runtime-closure.prd.md`
+
 审计轮次: 5
 ## 审计备注
 - 项目管理主入口：`doc/p2p/node/node-contribution-points.project.md`。

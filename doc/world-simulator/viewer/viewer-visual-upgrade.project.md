@@ -1,5 +1,8 @@
 # Viewer 视觉升级（Phase 10 后增量强化）项目管理文档
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-visual-upgrade.design.md`
+- 对应需求文档: `doc/world-simulator/viewer/viewer-visual-upgrade.prd.md`
+
 审计轮次: 5
 ## 任务拆解（含 PRD-ID 映射）
 - [x] VVU-P0：修订设计文档，完成 Phase 10 后增量定位与数据语义对齐。

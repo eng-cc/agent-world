@@ -1,5 +1,8 @@
 # Agent World Simulator：内核不变量回归与规则 Hook 基座（项目管理文档）
 
+- 对应设计文档: `doc/world-simulator/kernel/kernel-rule-hook-foundation.design.md`
+- 对应需求文档: `doc/world-simulator/kernel/kernel-rule-hook-foundation.prd.md`
+
 审计轮次: 5
 ## 任务拆解（含 PRD-ID 映射）
 - [x] KRH-1 补充内核动作行为回归测试（以当前行为为基线，不改语义）。
@@ -8,6 +11,7 @@
 - [x] KRH-4 回归验证、文档与 devlog 回写。
 
 ## 依赖
+- `doc/world-simulator/kernel/kernel-rule-hook-foundation.design.md`
 - doc/world-simulator/kernel/kernel-rule-hook-foundation.prd.md
 - `crates/agent_world/src/simulator/kernel/actions.rs`
 - `crates/agent_world/src/simulator/kernel/step.rs`

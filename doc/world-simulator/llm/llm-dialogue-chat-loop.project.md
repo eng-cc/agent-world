@@ -1,5 +1,8 @@
 # Agent World Simulator：LLM 对话轮次驱动与右侧 Chat 面板（项目管理文档）
 
+- 对应设计文档: `doc/world-simulator/llm/llm-dialogue-chat-loop.design.md`
+- 对应需求文档: `doc/world-simulator/llm/llm-dialogue-chat-loop.prd.md`
+
 审计轮次: 5
 ## 任务拆解（含 PRD-ID 映射）
 - [x] LDC1 输出设计文档（`doc/world-simulator/llm/llm-dialogue-chat-loop.prd.md`）

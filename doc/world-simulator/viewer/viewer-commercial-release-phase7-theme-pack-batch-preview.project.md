@@ -1,6 +1,10 @@
 # Viewer 商业化发行缺口收敛 Phase 7（项目管理）
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-commercial-release-phase7-theme-pack-batch-preview.design.md`
+- 对应需求文档: `doc/world-simulator/viewer/viewer-commercial-release-phase7-theme-pack-batch-preview.prd.md`
+
 审计轮次: 5
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] VCR7-0 文档建档：设计文档 + 项目管理文档
 - [x] VCR7-1 工业风主题包资产落地（mesh + PBR 贴图）

@@ -1,7 +1,9 @@
 # 社会系统生产级方案：事实账本 + 声明式关系层（设计文档）
 
+- 对应设计文档: `doc/world-simulator/kernel/social-fact-ledger-declarative-reputation.design.md`
+- 对应项目管理文档: `doc/world-simulator/kernel/social-fact-ledger-declarative-reputation.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/kernel/social-fact-ledger-declarative-reputation.project.md
 
 ## 1. Executive Summary
 - 在不预设单一“正确声誉模型”的前提下，为世界提供生产级社会系统底座。

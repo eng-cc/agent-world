@@ -1,7 +1,9 @@
 # Viewer 商业化发行缺口收敛 Phase 1：资产管线基础层
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-commercial-release-phase1-asset-pipeline.design.md`
+- 对应项目管理文档: `doc/world-simulator/viewer/viewer-commercial-release-phase1-asset-pipeline.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-commercial-release-phase1-asset-pipeline.project.md
 
 ## 1. Executive Summary
 - 为 `agent_world_viewer` 建立“可渐进替换”的外部资产接入底座，让当前程序化几何可以被 GLTF/GLB mesh 逐步替换。

@@ -1,8 +1,10 @@
 # Non-Viewer 设计一致性修复（2026-02-25）
 
+- 对应设计文档: `doc/headless-runtime/nonviewer/nonviewer-design-alignment-closure-2026-02-25.design.md`
+- 对应项目管理文档: `doc/headless-runtime/nonviewer/nonviewer-design-alignment-closure-2026-02-25.project.md`
+
 审计轮次: 4
 
-- 对应项目管理文档: doc/headless-runtime/nonviewer/nonviewer-design-alignment-closure-2026-02-25.project.md
 
 ## 1. Executive Summary
 - 修复 non-viewer 两处“实现偏离设计语义”的问题，确保线上行为与文档约束一致：

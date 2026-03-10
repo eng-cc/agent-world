@@ -1,5 +1,8 @@
 # README 高优先级缺口收口（三期）：世界内编译 + 共识动作载荷 + WASM 运行计费（项目管理文档）
 
+- 对应设计文档: `doc/readme/gap/readme-gap123-runtime-consensus-metering.design.md`
+- 对应需求文档: `doc/readme/gap/readme-gap123-runtime-consensus-metering.prd.md`
+
 审计轮次: 4
 
 ## 审计备注

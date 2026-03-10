@@ -1,8 +1,10 @@
 # Intent/分布式/生产物流闭环落地（2026-02-27）
 
+- 对应设计文档: `doc/world-simulator/kernel/intent-distributed-runtime-closure-2026-02-27.design.md`
+- 对应项目管理文档: `doc/world-simulator/kernel/intent-distributed-runtime-closure-2026-02-27.project.md`
+
 审计轮次: 5
 
-- 对应项目管理文档: doc/world-simulator/kernel/intent-distributed-runtime-closure-2026-02-27.project.md
 
 ## 1. Executive Summary
 - 将 simulator 从“动作提交即执行”升级为“tick 内 Intent 收集、冲突裁决、统一提交”，保证同 tick 冲突可复现、可解释、可回放。

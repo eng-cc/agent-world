@@ -1,7 +1,9 @@
 # 启动器 chain runtime execution world 输出路径收敛（2026-03-09）项目管理文档
 
+- 对应设计文档: `doc/world-simulator/launcher/game-client-launcher-chain-runtime-execution-world-dir-output-hardening-2026-03-09.design.md`
+- 对应需求文档: `doc/world-simulator/launcher/game-client-launcher-chain-runtime-execution-world-dir-output-hardening-2026-03-09.prd.md`
+
 审计轮次: 1
-- 对应设计文档: `doc/world-simulator/launcher/game-client-launcher-chain-runtime-execution-world-dir-output-hardening-2026-03-09.prd.md`
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0 (PRD-WORLD_SIMULATOR-033) [test_tier_required]: 完成“launcher execution world 输出路径收敛”PRD 建模与模块文档树回写。

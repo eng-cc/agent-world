@@ -1,5 +1,8 @@
 # README P1 缺口收口：分布式网络主路径生产化
 
+- 对应设计文档: `doc/p2p/network/readme-p1-network-production-hardening.design.md`
+- 对应项目管理文档: `doc/p2p/network/readme-p1-network-production-hardening.project.md`
+
 审计轮次: 5
 ## 1. Executive Summary
 - Problem Statement: 收口 P1-1：将 Node 共识消息（proposal/attestation/commit）从“仅 UDP gossip”升级为“libp2p pubsub 主路径”，保留 UDP 兼容兜底。

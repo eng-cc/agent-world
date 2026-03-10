@@ -1,5 +1,8 @@
 # Agent World Runtime：分布式计算与存储
 
+- 对应设计文档: `doc/p2p/distributed/distributed-runtime.design.md`
+- 对应项目管理文档: `doc/p2p/distributed/distributed-runtime.project.md`
+
 审计轮次: 5
 ## 1. Executive Summary
 - Problem Statement: 将**计算与存储拆分**为不同节点角色，计算侧专注确定性执行，存储侧专注内容寻址与持久化。

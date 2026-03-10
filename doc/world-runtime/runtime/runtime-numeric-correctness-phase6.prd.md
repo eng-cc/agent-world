@@ -1,8 +1,10 @@
 # Agent World Runtime：Membership 协调租约与时间源窄化数值语义硬化（15 点清单第六阶段）
 
+- 对应设计文档: `doc/world-runtime/runtime/runtime-numeric-correctness-phase6.design.md`
+- 对应项目管理文档: `doc/world-runtime/runtime/runtime-numeric-correctness-phase6.project.md`
+
 审计轮次: 4
 
-- 对应项目管理文档: doc/world-runtime/runtime/runtime-numeric-correctness-phase6.project.md
 
 ## 1. Executive Summary
 - 收口 `agent_world_consensus` 中 membership 协调租约主路径的饱和加法语义，避免长期运行后出现静默夹逼并继续调度。

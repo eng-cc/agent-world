@@ -1,8 +1,10 @@
 # 游戏可玩性设计总纲 v0.1  
 
+- 对应设计文档: `doc/game/gameplay/gameplay-top-level-design.design.md`
+- 对应项目管理文档: `doc/game/gameplay/gameplay-top-level-design.project.md`
+
 审计轮次: 4
 
-- 对应项目管理文档: doc/game/gameplay/gameplay-top-level-design.project.md
 
 ## ROUND-002 主从口径
 - 本文件为 gameplay 主文档，其余 gameplay 专题为增量子文档。

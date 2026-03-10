@@ -1,8 +1,10 @@
 # Gameplay 发行差距收口（Prompt 触发 + Gate 覆盖 + 经济动作 + 规则深度）
 
+- 对应设计文档: `doc/game/gameplay/gameplay-release-gap-closure-2026-02-21.design.md`
+- 对应项目管理文档: `doc/game/gameplay/gameplay-release-gap-closure-2026-02-21.project.md`
+
 审计轮次: 4
 
-- 对应项目管理文档: doc/game/gameplay/gameplay-release-gap-closure-2026-02-21.project.md
 
 ## ROUND-002 主从口径
 - 主入口：`doc/game/gameplay/gameplay-top-level-design.prd.md`

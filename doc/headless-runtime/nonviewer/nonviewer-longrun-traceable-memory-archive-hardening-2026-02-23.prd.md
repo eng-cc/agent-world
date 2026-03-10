@@ -1,8 +1,10 @@
 # Non-Viewer 长稳运行内存安全与可追溯冷归档硬化（2026-02-23）
 
+- 对应设计文档: `doc/headless-runtime/nonviewer/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.design.md`
+- 对应项目管理文档: `doc/headless-runtime/nonviewer/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.project.md`
+
 审计轮次: 4
 
-- 对应项目管理文档: doc/headless-runtime/nonviewer/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.project.md
 
 ## 1. Executive Summary
 - 针对 non-viewer 代码路径的 6 个长稳风险点完成治理：

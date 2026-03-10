@@ -1,8 +1,10 @@
 # LLM 配置 TOML 风格统一（2026-03-02）
 
+- 对应设计文档: `doc/world-simulator/llm/llm-config-toml-style-unification-2026-03-02.design.md`
+- 对应项目管理文档: `doc/world-simulator/llm/llm-config-toml-style-unification-2026-03-02.project.md`
+
 审计轮次: 5
 
-- 对应项目管理文档: doc/world-simulator/llm/llm-config-toml-style-unification-2026-03-02.project.md
 
 ## 1. Executive Summary
 - 将 `config.toml` 中 LLM 配置从 `AGENT_WORLD_LLM_*` 形态统一为小写、结构化 TOML 字段。

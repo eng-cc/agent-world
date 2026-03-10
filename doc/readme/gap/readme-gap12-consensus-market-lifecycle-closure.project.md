@@ -1,5 +1,8 @@
 # README 缺口 1/2 收口：Live 共识提交主路径 + LLM/Simulator 模块市场生命周期（项目管理文档）
 
+- 对应设计文档: `doc/readme/gap/readme-gap12-consensus-market-lifecycle-closure.design.md`
+- 对应需求文档: `doc/readme/gap/readme-gap12-consensus-market-lifecycle-closure.prd.md`
+
 审计轮次: 4
 
 ## 审计备注

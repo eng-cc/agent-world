@@ -1,7 +1,9 @@
 # Viewer 发行体验改造（第七阶段：整体布局重构与指挥优先）
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase7.design.md`
+- 对应项目管理文档: `doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase7.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase7.project.md
 
 ## 1. Executive Summary
 - 以“游戏世界优先 + 指挥能力不丢失”为核心，重构 Player 模式布局，不再让右侧工具式面板主导体验。

@@ -1,8 +1,10 @@
 # Agent World Runtime：无限时长运行的序列号滚动与数值防溢出
 
+- 对应设计文档: `doc/world-runtime/runtime/runtime-infinite-sequence-rollover.design.md`
+- 对应项目管理文档: `doc/world-runtime/runtime/runtime-infinite-sequence-rollover.project.md`
+
 审计轮次: 4
 
-- 对应项目管理文档: doc/world-runtime/runtime/runtime-infinite-sequence-rollover.project.md
 
 ## 1. Executive Summary
 - 让 Runtime 在超长时间运行场景下保持可持续，不因计数器上溢导致 panic 或静默回绕。

@@ -1,5 +1,8 @@
 # 文档迁移并行协作方案（2026-03-03）
 
+- 对应设计文档: `doc/engineering/doc-migration/legacy-doc-migration-collaboration-2026-03-03.design.md`
+- 对应项目管理文档: `doc/engineering/doc-migration/legacy-doc-migration-collaboration-2026-03-03.project.md`
+
 审计轮次: 4
 - 对应标准执行入口: `doc/engineering/doc-migration/legacy-doc-migration-collaboration-2026-03-03.project.md`
 

@@ -1,5 +1,8 @@
 # PowerStorage 全量下线（项目管理，2026-03-06）
 
+- 对应设计文档: `doc/world-simulator/kernel/power-storage-complete-removal-2026-03-06.design.md`
+- 对应需求文档: `doc/world-simulator/kernel/power-storage-complete-removal-2026-03-06.prd.md`
+
 审计轮次: 3
 
 ## 任务拆解（含 PRD-ID 映射）

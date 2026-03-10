@@ -1,5 +1,8 @@
 # Agent World: 启动器 Viewer 鉴权自动继承 Node 配置（2026-03-02）（项目管理）
 
+- 对应设计文档: `doc/testing/launcher/launcher-viewer-auth-node-config-autowire-2026-03-02.design.md`
+- 对应需求文档: `doc/testing/launcher/launcher-viewer-auth-node-config-autowire-2026-03-02.prd.md`
+
 审计轮次: 5
 
 ## 任务拆解（含 PRD-ID 映射）

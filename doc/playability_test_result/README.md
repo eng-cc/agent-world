@@ -26,3 +26,4 @@
 - `card_2026_02_28_21_22_51.md`
 - `card_2026_02_28_22_47_14.md`
 - `card_2026_02_28_23_27_06.md`
+- `doc/playability_test_result/game-test.design.md`

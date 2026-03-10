@@ -1,5 +1,8 @@
 # Agent World: CI 拆分 Builtin Wasm m1 多 Runner 校验（项目管理）
 
+- 对应设计文档: `doc/testing/ci/ci-builtin-wasm-m1-multi-runner.design.md`
+- 对应需求文档: `doc/testing/ci/ci-builtin-wasm-m1-multi-runner.prd.md`
+
 审计轮次: 4
 
 ## 任务拆解（含 PRD-ID 映射）

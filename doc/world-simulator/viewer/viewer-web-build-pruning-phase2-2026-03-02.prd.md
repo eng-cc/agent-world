@@ -1,7 +1,9 @@
 # Viewer Web 构建体积裁剪 Phase 2（2026-03-02）
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-web-build-pruning-phase2-2026-03-02.design.md`
+- 对应项目管理文档: `doc/world-simulator/viewer/viewer-web-build-pruning-phase2-2026-03-02.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-web-build-pruning-phase2-2026-03-02.project.md
 
 ## 1. Executive Summary
 - 在 Phase 1 模块裁剪基础上，进一步降低 web 产物体积，重点压缩 wasm 主体大小。

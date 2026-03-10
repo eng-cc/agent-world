@@ -1,8 +1,10 @@
 # Agent World Runtime：Membership Sync 与 Mempool 批处理计数算术语义硬化（15 点清单第十四阶段）
 
+- 对应设计文档: `doc/world-runtime/runtime/runtime-numeric-correctness-phase14.design.md`
+- 对应项目管理文档: `doc/world-runtime/runtime/runtime-numeric-correctness-phase14.project.md`
+
 审计轮次: 4
 
-- 对应项目管理文档: doc/world-runtime/runtime/runtime-numeric-correctness-phase14.project.md
 
 ## 1. Executive Summary
 - 收口 `membership.rs` 与 `mempool.rs` 中剩余的关键计数/容量饱和算术，统一到受检语义。

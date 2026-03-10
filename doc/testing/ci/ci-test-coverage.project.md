@@ -1,5 +1,8 @@
 # Agent World: 测试覆盖与 CI 扩展（项目管理）
 
+- 对应设计文档: `doc/testing/ci/ci-test-coverage.design.md`
+- 对应需求文档: `doc/testing/ci/ci-test-coverage.prd.md`
+
 审计轮次: 4
 
 ## 任务拆解（含 PRD-ID 映射）

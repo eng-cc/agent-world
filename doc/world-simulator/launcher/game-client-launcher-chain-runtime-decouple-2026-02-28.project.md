@@ -1,5 +1,8 @@
 # 启动器链路重构：链运行时与游戏进程解耦（2026-02-28）项目管理
 
+- 对应设计文档: `doc/world-simulator/launcher/game-client-launcher-chain-runtime-decouple-2026-02-28.design.md`
+- 对应需求文档: `doc/world-simulator/launcher/game-client-launcher-chain-runtime-decouple-2026-02-28.prd.md`
+
 审计轮次: 5
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0 建档：设计文档 + 项目管理文档。
@@ -10,6 +13,7 @@
 - [x] T5 残留语义修正：对齐 PoS 时间锚定参数（`--chain-pos-*`）与 `world_viewer_live` 纯观察服务边界描述。
 
 ## 依赖
+- `doc/world-simulator/launcher/game-client-launcher-chain-runtime-decouple-2026-02-28.design.md`
 - doc/world-simulator/launcher/game-client-launcher-chain-runtime-decouple-2026-02-28.prd.md
 - `agent_world_node`（NodeRuntime/PoS/P2P）
 - `agent_world::runtime::World`（execution world 读取余额）

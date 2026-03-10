@@ -1,5 +1,8 @@
 # Agent World Runtime：节点执行桥接与奖励共识触发闭环
 
+- 对应设计文档: `doc/p2p/node/node-execution-reward-consensus-bridge.design.md`
+- 对应项目管理文档: `doc/p2p/node/node-execution-reward-consensus-bridge.project.md`
+
 审计轮次: 5
 ## 1. Executive Summary
 - Problem Statement: 把 `agent_world_node` 的共识提交高度与 `agent_world` 运行时执行状态打通，补齐“提交高度 -> 执行状态 -> 存储落盘”的桥接链路。

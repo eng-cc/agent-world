@@ -1,5 +1,8 @@
 # Agent World Runtime：分布式存储自愈控制面（项目管理）（项目管理文档）
 
+- 对应设计文档: `doc/p2p/distfs/distfs-self-healing-control-plane-2026-02-23.design.md`
+- 对应需求文档: `doc/p2p/distfs/distfs-self-healing-control-plane-2026-02-23.prd.md`
+
 审计轮次: 5
 ## ROUND-002 主从口径
 - 本文档为 distfs-self-healing 项目管理主入口（master）。

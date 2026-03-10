@@ -1,8 +1,10 @@
 # Gameplay Distributed Consensus Governance Long-Run（生产级详细设计）
 
+- 对应设计文档: `doc/game/gameplay/gameplay-distributed-consensus-governance-longrun-2026-03-06.design.md`
+- 对应项目管理文档: `doc/game/gameplay/gameplay-distributed-consensus-governance-longrun-2026-03-06.project.md`
+
 审计轮次: 3
 
-- 对应项目管理文档: `doc/game/gameplay/gameplay-distributed-consensus-governance-longrun-2026-03-06.project.md`
 
 ## ROUND-002 主从口径
 - 主入口文档：`doc/game/gameplay/gameplay-top-level-design.prd.md`。

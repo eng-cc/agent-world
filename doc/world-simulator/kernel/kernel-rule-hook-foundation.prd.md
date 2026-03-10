@@ -1,7 +1,9 @@
 # Agent World Simulator：内核不变量回归与规则 Hook 基座（设计文档）
 
+- 对应设计文档: `doc/world-simulator/kernel/kernel-rule-hook-foundation.design.md`
+- 对应项目管理文档: `doc/world-simulator/kernel/kernel-rule-hook-foundation.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/kernel/kernel-rule-hook-foundation.project.md
 
 ## 1. Executive Summary
 - 固化 `WorldKernel` 当前动作语义边界，先保证“现有行为不变”。

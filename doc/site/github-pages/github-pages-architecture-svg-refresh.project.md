@@ -1,5 +1,8 @@
 # GitHub Pages 架构图 SVG 精修（四期增量）项目管理文档
 
+- 对应设计文档: `doc/site/github-pages/github-pages-architecture-svg-refresh.design.md`
+- 对应需求文档: `doc/site/github-pages/github-pages-architecture-svg-refresh.prd.md`
+
 审计轮次: 5
 
 ## 审计备注

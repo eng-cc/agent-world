@@ -1,5 +1,8 @@
 # GitHub Pages 对标优化（三期）设计文档
 
+- 对应设计文档: `doc/site/github-pages/github-pages-benchmark-polish-v3.design.md`
+- 对应项目管理文档: `doc/site/github-pages/github-pages-benchmark-polish-v3.project.md`
+
 审计轮次: 5
 - 对应标准执行入口: `doc/site/github-pages/github-pages-benchmark-polish-v3.project.md`
 

@@ -1,7 +1,9 @@
 # 客户端启动器转账产品级体验与跨端同层前端（2026-03-06）
 
-审计轮次: 5
+- 对应设计文档: `doc/world-simulator/launcher/game-client-launcher-transfer-product-grade-parity-2026-03-06.design.md`
 - 对应项目管理文档: `doc/world-simulator/launcher/game-client-launcher-transfer-product-grade-parity-2026-03-06.project.md`
+
+审计轮次: 5
 
 ## 1. Executive Summary
 - Problem Statement: 当前启动器转账能力仍偏工程调试态，native 与 web 行为存在差异（门控策略、交互反馈与提交流程口径不一致），且仅返回 `action_id` 缺少交易历史与最终确认可视化。

@@ -1,5 +1,8 @@
 # Gameplay 发行收口（项目管理文档）
 
+- 对应设计文档: `doc/game/gameplay/gameplay-release-production-closure.design.md`
+- 对应需求文档: `doc/game/gameplay/gameplay-release-production-closure.prd.md`
+
 审计轮次: 4
 
 ## 审计备注

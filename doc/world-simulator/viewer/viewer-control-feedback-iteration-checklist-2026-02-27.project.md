@@ -1,6 +1,10 @@
 # Viewer 控制反馈迭代清单（2026-02-27）项目管理文档
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-control-feedback-iteration-checklist-2026-02-27.design.md`
+- 对应需求文档: `doc/world-simulator/viewer/viewer-control-feedback-iteration-checklist-2026-02-27.prd.md`
+
 审计轮次: 5
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T1 基于最新可玩性卡片提炼问题画像与优先级目标
 - [x] T2 输出设计师视角迭代清单（P0/P1/P2）与里程碑

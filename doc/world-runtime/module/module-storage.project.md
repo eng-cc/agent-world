@@ -1,5 +1,8 @@
 # Agent World Runtime：模块存储持久化（项目管理文档）
 
+- 对应设计文档: `doc/world-runtime/module/module-storage.design.md`
+- 对应需求文档: `doc/world-runtime/module/module-storage.prd.md`
+
 审计轮次: 4
 
 ## 任务拆解（含 PRD-ID 映射）
@@ -14,6 +17,7 @@
 - [x] 单元测试（World 一体化保存/加载）
 
 ## 依赖
+- `doc/world-runtime/module/module-storage.design.md`
 - Rust workspace（`crates/agent_world`）
 - 本地文件系统
 

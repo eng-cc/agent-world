@@ -1,5 +1,8 @@
 # README P2 缺口收口：Node Replication 统一到 agent_world_net 网络栈
 
+- 对应设计文档: `doc/p2p/node/node-net-stack-unification-readme.design.md`
+- 对应项目管理文档: `doc/p2p/node/node-net-stack-unification-readme.project.md`
+
 审计轮次: 5
 ## 1. Executive Summary
 - Problem Statement: 收口此前评估中的“网络栈分裂”问题：将 `agent_world_node` 的 replication libp2p 实现从独立 swarm 线程迁移为复用 `agent_world_net::Libp2pNetwork`。

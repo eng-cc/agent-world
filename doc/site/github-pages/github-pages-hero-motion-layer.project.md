@@ -1,5 +1,8 @@
 # GitHub Pages Hero 动态背景层（四期增量）项目管理文档
 
+- 对应设计文档: `doc/site/github-pages/github-pages-hero-motion-layer.design.md`
+- 对应需求文档: `doc/site/github-pages/github-pages-hero-motion-layer.prd.md`
+
 审计轮次: 5
 
 ## 审计备注

@@ -1,8 +1,10 @@
 # README 生产级缺口收口（二次）：默认 WASM 执行 + Replication RR + 分布式 Triad + 玩家节点身份（设计文档）
 
+- 对应设计文档: `doc/readme/production/readme-prod-gap1245-wasm-repl-topology-player.design.md`
+- 对应项目管理文档: `doc/readme/production/readme-prod-gap1245-wasm-repl-topology-player.project.md`
+
 审计轮次: 4
 
-- 对应项目管理文档: doc/readme/production/readme-prod-gap1245-wasm-repl-topology-player.project.md
 - 对应标准执行入口: `doc/readme/production/readme-prod-gap1245-wasm-repl-topology-player.project.md`
 
 ## 目标

@@ -1,5 +1,8 @@
 # Agent World Runtime：共识代码统一收敛到 agent_world_consensus
 
+- 对应设计文档: `doc/p2p/consensus/consensus-code-consolidation-to-agent-world-consensus.design.md`
+- 对应项目管理文档: `doc/p2p/consensus/consensus-code-consolidation-to-agent-world-consensus.project.md`
+
 审计轮次: 5
 ## 1. Executive Summary
 - Problem Statement: 将 `agent_world_node` 中 PoS 共识核心状态机（proposal/attestation/decision）迁移到 `agent_world_consensus`，避免同语义双实现长期漂移。

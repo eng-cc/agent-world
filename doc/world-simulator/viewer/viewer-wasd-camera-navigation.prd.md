@@ -1,7 +1,9 @@
 # Viewer 2D/3D WASD 相机移动设计
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-wasd-camera-navigation.design.md`
+- 对应项目管理文档: `doc/world-simulator/viewer/viewer-wasd-camera-navigation.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-wasd-camera-navigation.project.md
 
 ## 1. Executive Summary
 - 为 `agent_world_viewer` 增加键盘 `W/A/S/D` 相机移动能力，降低仅依赖鼠标拖拽的交互成本。

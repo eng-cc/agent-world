@@ -1,8 +1,10 @@
 # Agent World Runtime：WASM SDK no_std 优先化设计
 
+- 对应设计文档: `doc/world-runtime/wasm/wasm-sdk-no-std.design.md`
+- 对应项目管理文档: `doc/world-runtime/wasm/wasm-sdk-no-std.project.md`
+
 审计轮次: 4
 
-- 对应项目管理文档: doc/world-runtime/wasm/wasm-sdk-no-std.project.md
 
 ## 1. Executive Summary
 - 将 `crates/agent_world_wasm_sdk` 调整为 no_std 优先，实现与 `third_party/agent-os` wasm sdk 在运行时约束上的基础对齐。

@@ -1,5 +1,8 @@
 # 文档迁移并行协作方案（2026-03-03）项目管理文档
 
+- 对应设计文档: `doc/engineering/doc-migration/legacy-doc-migration-collaboration-2026-03-03.design.md`
+- 对应需求文档: `doc/engineering/doc-migration/legacy-doc-migration-collaboration-2026-03-03.prd.md`
+
 审计轮次: 4
 
 ## 任务拆解（含 PRD-ID 映射）
@@ -16,6 +19,7 @@
 - [ ] TASK-ENGINEERING-015 (PRD-ENGINEERING-007): 执行全量收口复核（命名一致性、引用可达、模块追踪同步、燃尽归零）。
 
 ## 依赖
+- `doc/engineering/doc-migration/legacy-doc-migration-collaboration-2026-03-03.design.md`
 - `doc/engineering/doc-migration/legacy-doc-migration-collaboration-2026-03-03.prd.md`
 - `doc/engineering/doc-migration/legacy-doc-migration-backlog-2026-03-03.md`
 - `doc/engineering/prd.md`

@@ -1,7 +1,9 @@
 # M4 资源与产品系统 P1：维护压力与本地稀缺供给延迟（2026-02-27）
 
+- 对应设计文档: `doc/world-simulator/m4/m4-resource-product-system-p1-maintenance-scarcity-pressure-2026-02-27.design.md`
+- 对应项目管理文档: `doc/world-simulator/m4/m4-resource-product-system-p1-maintenance-scarcity-pressure-2026-02-27.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/m4/m4-resource-product-system-p1-maintenance-scarcity-pressure-2026-02-27.project.md
 
 ## 1. Executive Summary
 - 在 P0 基础上强化“维护成本压力”，让高负载产线更快折旧，形成持续维护决策。

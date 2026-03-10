@@ -1,8 +1,10 @@
 # README 世界规则文档收敛整合（设计文档）
 
+- 对应设计文档: `doc/readme/governance/readme-world-rules-consolidation.design.md`
+- 对应项目管理文档: `doc/readme/governance/readme-world-rules-consolidation.project.md`
+
 审计轮次: 4
 
-- 对应项目管理文档: doc/readme/governance/readme-world-rules-consolidation.project.md
 - 对应标准执行入口: `doc/readme/governance/readme-world-rules-consolidation.project.md`
 
 ## 目标

@@ -1,5 +1,8 @@
 # Agent World Runtime：分布式存储自愈定时轮询（2026-02-23）
 
+- 对应设计文档: `doc/p2p/distfs/distfs-self-healing-polling-loop-2026-02-23.design.md`
+- 对应项目管理文档: `doc/p2p/distfs/distfs-self-healing-polling-loop-2026-02-23.project.md`
+
 审计轮次: 5
 ## ROUND-002 主从口径
 - 本文档为增量子文档（slave），主入口为 `doc/p2p/distfs/distfs-self-healing-control-plane-2026-02-23.prd.md`。

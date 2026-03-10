@@ -1,8 +1,10 @@
 # 游戏发布前的测试手册(你不能改这个文档)
 
+- 对应设计文档: `doc/playability_test_result/game-test.design.md`
+- 对应项目管理文档: `doc/playability_test_result/game-test.project.md`
+
 审计轮次: 5
 
-- 对应项目管理文档: doc/playability_test_result/game-test.project.md
 - 对应标准执行入口: `doc/playability_test_result/game-test.project.md`
 
 ## 可玩性测试

@@ -1,5 +1,8 @@
 # Viewer 玩家模式 UI 去拥挤优化项目管理文档（2026-02-24）
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-player-ui-declutter-2026-02-24.design.md`
+- 对应需求文档: `doc/world-simulator/viewer/viewer-player-ui-declutter-2026-02-24.prd.md`
+
 审计轮次: 5
 ## 任务拆解（含 PRD-ID 映射）
 - [x] UDC-0：完成玩家模式浮层去拥挤改造（顶部 toast/成就重排、右下角 chatter 与小地图解耦、右侧面板展开时小地图抑制）并完成回归验证。

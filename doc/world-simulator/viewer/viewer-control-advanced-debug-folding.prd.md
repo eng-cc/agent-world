@@ -1,7 +1,9 @@
 # Agent World Simulator：Viewer 控制区精简与高级调试折叠（设计文档）
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-control-advanced-debug-folding.design.md`
+- 对应项目管理文档: `doc/world-simulator/viewer/viewer-control-advanced-debug-folding.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-control-advanced-debug-folding.project.md
 
 ## 1. Executive Summary
 - 面向 chat 驱动 Agent 的日常操作，简化控制区：默认仅保留一个“播放/暂停”切换按钮。

@@ -1,5 +1,8 @@
 # Agent World Runtime：Observer/Bootstrap 路径索引读取接入
 
+- 对应设计文档: `doc/p2p/distfs/distfs-path-index-observer-bootstrap.design.md`
+- 对应项目管理文档: `doc/p2p/distfs/distfs-path-index-observer-bootstrap.project.md`
+
 审计轮次: 5
 ## 1. Executive Summary
 - Problem Statement: 将 DistFS 路径索引读取能力接入 `agent_world_net` 的 bootstrap/observer 调用链。

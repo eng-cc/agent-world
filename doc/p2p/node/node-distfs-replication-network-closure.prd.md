@@ -1,5 +1,8 @@
 # Agent World Runtime：Node DistFS 复制网络化收敛
 
+- 对应设计文档: `doc/p2p/node/node-distfs-replication-network-closure.design.md`
+- 对应项目管理文档: `doc/p2p/node/node-distfs-replication-network-closure.project.md`
+
 审计轮次: 5
 ## 1. Executive Summary
 - Problem Statement: 将 `agent_world_distfs` 中已具备的 `FileReplicationRecord` 能力接入 node 运行时网络路径，形成“可广播、可验签、可恢复”的最小跨节点复制闭环。

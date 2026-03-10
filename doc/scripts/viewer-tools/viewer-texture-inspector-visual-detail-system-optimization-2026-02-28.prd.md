@@ -1,8 +1,10 @@
 # Viewer Texture Inspector 视觉细节系统优化（2026-02-28）
 
+- 对应设计文档: `doc/scripts/viewer-tools/viewer-texture-inspector-visual-detail-system-optimization-2026-02-28.design.md`
+- 对应项目管理文档: `doc/scripts/viewer-tools/viewer-texture-inspector-visual-detail-system-optimization-2026-02-28.project.md`
+
 审计轮次: 4
 
-- 对应项目管理文档: doc/scripts/viewer-tools/viewer-texture-inspector-visual-detail-system-optimization-2026-02-28.project.md
 
 ## 目标
 - 将“细节不足”从一次性参数调整升级为可复用的系统能力。

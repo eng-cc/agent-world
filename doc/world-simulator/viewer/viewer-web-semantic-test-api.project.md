@@ -1,5 +1,8 @@
 # Viewer Web 语义化测试 API（项目管理）
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-web-semantic-test-api.design.md`
+- 对应需求文档: `doc/world-simulator/viewer/viewer-web-semantic-test-api.prd.md`
+
 审计轮次: 5
 ## 任务拆解（含 PRD-ID 映射）
 - [x] WTA-0 文档建档：设计文档 + 项目管理文档
@@ -24,6 +27,7 @@
 - [x] WTA-19 (PRD-WTA-R4-003) [test_tier_required]：执行 round-4 定向回归、更新手册示例与文档状态收口
 
 ## 依赖
+- `doc/world-simulator/viewer/viewer-web-semantic-test-api.design.md`
 - doc/world-simulator/viewer/viewer-web-semantic-test-api.prd.md
 - `crates/agent_world_viewer/src/viewer_automation.rs`
 - `crates/agent_world_viewer/src/app_bootstrap.rs`

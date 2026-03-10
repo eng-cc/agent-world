@@ -1,7 +1,9 @@
 # 客户端启动器全量可用性收口修复（2026-03-08）
 
-审计轮次: 1
+- 对应设计文档: `doc/world-simulator/launcher/game-client-launcher-full-usability-remediation-2026-03-08.design.md`
 - 对应项目管理文档: `doc/world-simulator/launcher/game-client-launcher-full-usability-remediation-2026-03-08.project.md`
+
+审计轮次: 1
 
 ## 1. Executive Summary
 - Problem Statement: 启动器在最近一轮 UI/UX 优化后仍存在残余可用性风险：配置可能被轮询状态回写、全局单 in-flight 造成高频交互串行、反馈窗口会被链状态切换强制关闭、顶栏在窄屏下拥挤、转账历史过滤缺少一键重置。

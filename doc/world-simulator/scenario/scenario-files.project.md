@@ -1,5 +1,8 @@
 # Agent World Simulator：场景文件化（项目管理文档）
 
+- 对应设计文档: `doc/world-simulator/scenario/scenario-files.design.md`
+- 对应需求文档: `doc/world-simulator/scenario/scenario-files.prd.md`
+
 审计轮次: 5
 
 ## 任务拆解（含 PRD-ID 映射）

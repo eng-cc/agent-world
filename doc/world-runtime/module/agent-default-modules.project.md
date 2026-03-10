@@ -1,5 +1,8 @@
 # Agent World Runtime：Agent 默认模块体系（项目管理文档）
 
+- 对应设计文档: `doc/world-runtime/module/agent-default-modules.design.md`
+- 对应需求文档: `doc/world-runtime/module/agent-default-modules.prd.md`
+
 审计轮次: 4
 
 ## 任务拆解（含 PRD-ID 映射）
@@ -31,6 +34,7 @@
 - [x] 文档回写：`doc/world-runtime/prd.md` / 本项目管理文档 / 当日 devlog
 
 ## 依赖
+- `doc/world-runtime/module/agent-default-modules.design.md`
 - 现有模块治理链路（`propose -> shadow -> approve -> apply`）
 - wasm-only 执行链路（`WasmExecutor`）与模块工件安装入口
 - `agent_world_builtin_wasm` 模块常量导出与模块清单结构

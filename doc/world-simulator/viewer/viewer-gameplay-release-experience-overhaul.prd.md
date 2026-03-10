@@ -1,11 +1,13 @@
 # Viewer 发行体验改造（游戏化优先）
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.design.md`
+- 对应项目管理文档: `doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.project.md`
+
 审计轮次: 5
 
 ## ROUND-002 物理合并
 - 本文件为主文档（当前权威入口）。
 - `immersion-phase8~10` 内容已物理合并入本文件，对应阶段文档已合并并从仓库移除（不再保留 archive 目录）。
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.project.md
 
 ## 1. Executive Summary
 - 将 `agent_world_viewer` 默认体验从“调试工具”切换为“可发行游戏前端”。

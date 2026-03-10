@@ -1,8 +1,10 @@
 # Agent World Runtime：Membership Replay 调度/冷却时间门控算术语义硬化（15 点清单第十一阶段）
 
+- 对应设计文档: `doc/world-runtime/runtime/runtime-numeric-correctness-phase11.design.md`
+- 对应项目管理文档: `doc/world-runtime/runtime/runtime-numeric-correctness-phase11.project.md`
+
 审计轮次: 4
 
-- 对应项目管理文档: doc/world-runtime/runtime/runtime-numeric-correctness-phase11.project.md
 
 ## 1. Executive Summary
 - 收口 `membership_recovery/replay.rs` 中调度间隔、策略冷却、rollback 冷却三条时间门控的饱和减法语义。

@@ -1,5 +1,8 @@
 # GitHub Pages 内容状态同步（2026-02-12）项目管理文档
 
+- 对应设计文档: `doc/site/github-pages/github-pages-content-sync-2026-02-12.design.md`
+- 对应需求文档: `doc/site/github-pages/github-pages-content-sync-2026-02-12.prd.md`
+
 审计轮次: 5
 
 ## 审计备注

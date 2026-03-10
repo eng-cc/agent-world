@@ -10,12 +10,12 @@
 - 模块标准执行入口：`doc/headless-runtime/project.md`
 - 模块兼容项目管理：`doc/headless-runtime/project.md`
 
-| 专题 PRD | 专题项目文档 |
-| --- | --- |
-| `doc/headless-runtime/nonviewer/nonviewer-design-alignment-closure-2026-02-25.prd.md` | `doc/headless-runtime/nonviewer/nonviewer-design-alignment-closure-2026-02-25.project.md` |
-| `doc/headless-runtime/nonviewer/nonviewer-design-alignment-review-2026-02-25.prd.md` | `doc/headless-runtime/nonviewer/nonviewer-design-alignment-review-2026-02-25.project.md` |
-| `doc/headless-runtime/nonviewer/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.prd.md` | `doc/headless-runtime/nonviewer/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.project.md` |
-| `doc/headless-runtime/nonviewer/nonviewer-onchain-auth-protocol-hardening.prd.md` | `doc/headless-runtime/nonviewer/nonviewer-onchain-auth-protocol-hardening.project.md` |
+| 专题 PRD | 专题设计文档 | 专题项目文档 |
+| --- | --- | --- |
+| `doc/headless-runtime/nonviewer/nonviewer-design-alignment-closure-2026-02-25.prd.md` | `doc/headless-runtime/nonviewer/nonviewer-design-alignment-closure-2026-02-25.design.md` | `doc/headless-runtime/nonviewer/nonviewer-design-alignment-closure-2026-02-25.project.md` |
+| `doc/headless-runtime/nonviewer/nonviewer-design-alignment-review-2026-02-25.prd.md` | `doc/headless-runtime/nonviewer/nonviewer-design-alignment-review-2026-02-25.design.md` | `doc/headless-runtime/nonviewer/nonviewer-design-alignment-review-2026-02-25.project.md` |
+| `doc/headless-runtime/nonviewer/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.prd.md` | `doc/headless-runtime/nonviewer/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.design.md` | `doc/headless-runtime/nonviewer/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.project.md` |
+| `doc/headless-runtime/nonviewer/nonviewer-onchain-auth-protocol-hardening.prd.md` | `doc/headless-runtime/nonviewer/nonviewer-onchain-auth-protocol-hardening.design.md` | `doc/headless-runtime/nonviewer/nonviewer-onchain-auth-protocol-hardening.project.md` |
 
 ## 说明
 - 本索引用于保证模块专题文档在根入口文档树中可达。

@@ -1,7 +1,9 @@
 # Viewer 双视角（2D/3D）切换设计
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-dual-view-2d-3d.design.md`
+- 对应项目管理文档: `doc/world-simulator/viewer/viewer-dual-view-2d-3d.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-dual-view-2d-3d.project.md
 
 ## 1. Executive Summary
 - 在 `agent_world_viewer` 中提供 **2D 全局视角** 与 **3D 透视视角** 的一键切换。

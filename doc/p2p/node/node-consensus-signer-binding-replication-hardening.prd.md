@@ -1,5 +1,8 @@
 # Node 共识签名身份绑定与复制摄取硬化
 
+- 对应设计文档: `doc/p2p/node/node-consensus-signer-binding-replication-hardening.design.md`
+- 对应项目管理文档: `doc/p2p/node/node-consensus-signer-binding-replication-hardening.project.md`
+
 审计轮次: 5
 ## 1. Executive Summary
 - Problem Statement: 收口 P0：把 node 共识消息签名从“仅校验签名有效”升级为“校验签名有效 + 校验签名公钥与 validator 身份绑定一致”，阻断伪造 validator 身份的空间。

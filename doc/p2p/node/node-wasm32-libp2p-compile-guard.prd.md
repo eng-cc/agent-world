@@ -1,5 +1,8 @@
 # Agent World Runtime：Node libp2p wasm32 编译兼容守卫
 
+- 对应设计文档: `doc/p2p/node/node-wasm32-libp2p-compile-guard.design.md`
+- 对应项目管理文档: `doc/p2p/node/node-wasm32-libp2p-compile-guard.project.md`
+
 审计轮次: 5
 ## 1. Executive Summary
 - Problem Statement: 修复 `agent_world_node` 在 `wasm32-unknown-unknown` 目标上的编译失败，避免阻塞 pre-commit 的 Web Viewer wasm 编译门禁。

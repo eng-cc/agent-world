@@ -1,5 +1,8 @@
 # Viewer 使用手册内容搬迁（2026-02-15）项目管理文档
 
+- 对应设计文档: `doc/site/manual/viewer-manual-content-migration-2026-02-15.design.md`
+- 对应需求文档: `doc/site/manual/viewer-manual-content-migration-2026-02-15.prd.md`
+
 审计轮次: 5
 
 ## 审计备注

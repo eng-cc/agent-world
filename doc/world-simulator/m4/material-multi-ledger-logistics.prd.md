@@ -1,7 +1,9 @@
 # M4 材料多账本与物流约束（设计文档）
 
+- 对应设计文档: `doc/world-simulator/m4/material-multi-ledger-logistics.design.md`
+- 对应项目管理文档: `doc/world-simulator/m4/material-multi-ledger-logistics.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/m4/material-multi-ledger-logistics.project.md
 
 ## 1. Executive Summary
 - 将 runtime 现有 world 级共享材料账本升级为多账本模型，支持 owner/site/factory 维度隔离。

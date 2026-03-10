@@ -1,7 +1,9 @@
 # Agent World Viewer：3D 商业化精致度收敛（资产/材质/光照/后处理）
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-3d-commercial-polish.design.md`
+- 对应项目管理文档: `doc/world-simulator/viewer/viewer-3d-commercial-polish.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-3d-commercial-polish.project.md
 
 ## 1. Executive Summary
 - 把当前 Viewer 3D 从“调试可视化风格”提升到“可对外发行的商业化视觉基线”。

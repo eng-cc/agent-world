@@ -1,5 +1,8 @@
 # Agent World Runtime：Node Replication 迁移到 libp2p 统一网络栈
 
+- 对应设计文档: `doc/p2p/node/node-replication-libp2p-migration.design.md`
+- 对应项目管理文档: `doc/p2p/node/node-replication-libp2p-migration.project.md`
+
 审计轮次: 5
 ## 1. Executive Summary
 - Problem Statement: 将 `crates/agent_world_node` 的 DistFS 复制消息从“仅 UDP gossip”迁移为“优先使用 `distributed_net` 统一网络抽象（可接入 libp2p 实现）”。

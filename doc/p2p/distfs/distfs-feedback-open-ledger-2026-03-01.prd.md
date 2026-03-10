@@ -1,5 +1,8 @@
 # Agent World Runtime：DistFS 公开反馈账本（2026-03-01）设计文档
 
+- 对应设计文档: `doc/p2p/distfs/distfs-feedback-open-ledger-2026-03-01.design.md`
+- 对应项目管理文档: `doc/p2p/distfs/distfs-feedback-open-ledger-2026-03-01.project.md`
+
 审计轮次: 5
 ## 1. Executive Summary
 - Problem Statement: 在不引入数据库的前提下，基于 `agent_world_distfs` 落地可运行的玩家反馈系统。

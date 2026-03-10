@@ -1,7 +1,9 @@
 # Viewer 发行体验改造（第五阶段：沉浸式布局与新手闭环）
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase5.design.md`
+- 对应项目管理文档: `doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase5.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase5.project.md
 
 ## 1. Executive Summary
 - 进一步把 Viewer 的 Player 体验从“工具操作界面”推进到“可发行游戏界面”：

@@ -1,5 +1,8 @@
 # Agent World: m1 多 Runner CI Required Check 保护（项目管理）
 
+- 对应设计文档: `doc/testing/ci/ci-m1-multi-runner-required-check-protection.design.md`
+- 对应需求文档: `doc/testing/ci/ci-m1-multi-runner-required-check-protection.prd.md`
+
 审计轮次: 4
 
 ## 任务拆解（含 PRD-ID 映射）

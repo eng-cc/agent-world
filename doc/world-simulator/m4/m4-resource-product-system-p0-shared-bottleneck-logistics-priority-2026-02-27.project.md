@@ -1,5 +1,8 @@
 # M4 资源与产品系统 P0：共享中间件竞争 + 运输优先级（项目管理文档）
 
+- 对应设计文档: `doc/world-simulator/m4/m4-resource-product-system-p0-shared-bottleneck-logistics-priority-2026-02-27.design.md`
+- 对应需求文档: `doc/world-simulator/m4/m4-resource-product-system-p0-shared-bottleneck-logistics-priority-2026-02-27.prd.md`
+
 审计轮次: 5
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0：输出 P0 设计文档与项目管理文档。

@@ -1,7 +1,9 @@
 # GitHub Pages Hero 指针微交互（四期增量）设计文档
+
+- 对应设计文档: `doc/site/github-pages/github-pages-hero-pointer-interaction.design.md`
+- 对应项目管理文档: `doc/site/github-pages/github-pages-hero-pointer-interaction.project.md`
 审计轮次: 5
 
-- 对应项目管理文档: doc/site/github-pages/github-pages-hero-pointer-interaction.project.md
 - 对应标准执行入口: `doc/site/github-pages/github-pages-hero-pointer-interaction.project.md`
 
 ## ROUND-002 主从口径

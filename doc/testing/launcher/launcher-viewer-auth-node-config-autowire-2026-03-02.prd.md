@@ -1,8 +1,10 @@
 # Agent World: 启动器 Viewer 鉴权自动继承 Node 配置（2026-03-02）
 
+- 对应设计文档: `doc/testing/launcher/launcher-viewer-auth-node-config-autowire-2026-03-02.design.md`
+- 对应项目管理文档: `doc/testing/launcher/launcher-viewer-auth-node-config-autowire-2026-03-02.project.md`
+
 审计轮次: 5
 
-- 对应项目管理文档: doc/testing/launcher/launcher-viewer-auth-node-config-autowire-2026-03-02.project.md
 
 ## 1. Executive Summary
 - Problem Statement: 通过启动器打开 Web Viewer 时，聊天与 Prompt 控制鉴权依赖手工设置 `AGENT_WORLD_VIEWER_AUTH_PUBLIC_KEY/PRIVATE_KEY`，导致易错且与节点配置割裂。且 `agent_chat` 业务拒绝会被 Viewer 误判为连接失败，造成“发送消息后连接异常”的错误反馈。

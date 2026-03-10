@@ -1,7 +1,9 @@
 # Viewer 商业化发行缺口收敛 Phase 4：贴图风格覆盖层
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-commercial-release-phase4-texture-style-layer.design.md`
+- 对应项目管理文档: `doc/world-simulator/viewer/viewer-commercial-release-phase4-texture-style-layer.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-commercial-release-phase4-texture-style-layer.project.md
 
 ## 1. Executive Summary
 - 在 Phase 1（外部 mesh）与 Phase 3（外部颜色）基础上，补齐基础贴图覆盖能力，减少“纯色材质”导致的质感不足。

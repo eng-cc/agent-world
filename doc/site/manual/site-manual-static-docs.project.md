@@ -1,5 +1,8 @@
 # Site 使用手册静态化（CN/EN）项目管理文档
 
+- 对应设计文档: `doc/site/manual/site-manual-static-docs.design.md`
+- 对应需求文档: `doc/site/manual/site-manual-static-docs.prd.md`
+
 审计轮次: 5
 
 ## ROUND-002 主从口径

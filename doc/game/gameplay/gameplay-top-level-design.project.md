@@ -1,4 +1,7 @@
 # 游戏可玩性顶层设计（项目管理文档）
+
+- 对应设计文档: `doc/game/gameplay/gameplay-top-level-design.design.md`
+- 对应需求文档: `doc/game/gameplay/gameplay-top-level-design.prd.md`
 审计轮次: 4
 
 ## ROUND-002 主从口径

@@ -1,5 +1,8 @@
 # Agent World: Builtin Wasm 构建确定性护栏（项目管理）
 
+- 对应设计文档: `doc/testing/governance/wasm-build-determinism-guard.design.md`
+- 对应需求文档: `doc/testing/governance/wasm-build-determinism-guard.prd.md`
+
 审计轮次: 4
 
 ## 任务拆解（含 PRD-ID 映射）

@@ -1,5 +1,8 @@
 # Viewer Live 完全事件驱动改造 Phase 10（项目管理）
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-live-full-event-driven-phase10-2026-02-27.design.md`
+- 对应需求文档: `doc/world-simulator/viewer/viewer-live-full-event-driven-phase10-2026-02-27.prd.md`
+
 审计轮次: 5
 
 ## ROUND-002 物理合并

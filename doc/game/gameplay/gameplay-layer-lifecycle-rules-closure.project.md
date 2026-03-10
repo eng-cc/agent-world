@@ -1,5 +1,8 @@
 # Gameplay Layer Lifecycle Rules Closure（项目管理文档）
 
+- 对应设计文档: `doc/game/gameplay/gameplay-layer-lifecycle-rules-closure.design.md`
+- 对应需求文档: `doc/game/gameplay/gameplay-layer-lifecycle-rules-closure.prd.md`
+
 审计轮次: 4
 
 ## 审计备注

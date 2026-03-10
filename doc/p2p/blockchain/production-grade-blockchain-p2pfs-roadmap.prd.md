@@ -1,5 +1,8 @@
 # Agent World Runtime：生产级区块链 + P2P FS 路线图
 
+- 对应设计文档: `doc/p2p/blockchain/production-grade-blockchain-p2pfs-roadmap.design.md`
+- 对应项目管理文档: `doc/p2p/blockchain/production-grade-blockchain-p2pfs-roadmap.project.md`
+
 审计轮次: 5
 ## 1. Executive Summary
 - Problem Statement: 将当前“可演示的区块链 + P2P FS + 节点收益”实现推进到可生产部署形态。

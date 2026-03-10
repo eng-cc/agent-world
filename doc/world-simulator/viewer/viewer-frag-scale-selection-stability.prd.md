@@ -1,7 +1,9 @@
 # Viewer Frag 实际比例与选中显示修复（设计文档）
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-frag-scale-selection-stability.design.md`
+- 对应项目管理文档: `doc/world-simulator/viewer/viewer-frag-scale-selection-stability.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-frag-scale-selection-stability.project.md
 
 ## 1. Executive Summary
 - 修复 Viewer 中 frag 分块显示比例失真问题，使渲染尺度与 snapshot 数据尺寸保持一致。

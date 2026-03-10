@@ -1,5 +1,8 @@
 # README 缺口 3 收口：模块安装目标语义（自身 / 基础设施）（项目管理文档）
 
+- 对应设计文档: `doc/readme/gap/readme-gap3-install-target-infrastructure.design.md`
+- 对应需求文档: `doc/readme/gap/readme-gap3-install-target-infrastructure.prd.md`
+
 审计轮次: 4
 
 ## 审计备注

@@ -1,5 +1,8 @@
 # Agent World Runtime：`agent_world_net` runtime_bridge 可编译闭环
 
+- 对应设计文档: `doc/p2p/network/net-runtime-bridge-closure.design.md`
+- 对应项目管理文档: `doc/p2p/network/net-runtime-bridge-closure.project.md`
+
 审计轮次: 5
 ## 1. Executive Summary
 - Problem Statement: 让 `agent_world_net --features runtime_bridge` 在当前拆分架构下可独立编译通过。

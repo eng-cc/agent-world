@@ -1,5 +1,8 @@
 # Agent World Runtime：DistFS 标准文件读写接口
 
+- 对应设计文档: `doc/p2p/distfs/distfs-standard-file-io.design.md`
+- 对应项目管理文档: `doc/p2p/distfs/distfs-standard-file-io.project.md`
+
 审计轮次: 5
 ## 1. Executive Summary
 - Problem Statement: 在 `agent_world_distfs` 内提供最小可用的“标准文件读写接口”，补齐当前仅有 blob/CAS 接口的缺口。

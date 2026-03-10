@@ -19,3 +19,22 @@
 
 ## 维护约定
 - 站点信息架构变更需同步更新 PRD 与发布检查口径。
+- `doc/site/github-pages/github-pages-architecture-svg-refresh.design.md`
+- `doc/site/github-pages/github-pages-benchmark-polish-v3.design.md`
+- `doc/site/github-pages/github-pages-content-sync-2026-02-12.design.md`
+- `doc/site/github-pages/github-pages-content-sync-2026-02-25.design.md`
+- `doc/site/github-pages/github-pages-game-engine-reposition-2026-02-25.design.md`
+- `doc/site/github-pages/github-pages-game-first-home-2026-02-25.design.md`
+- `doc/site/github-pages/github-pages-hero-cta-simplify-2026-02-26.design.md`
+- `doc/site/github-pages/github-pages-hero-motion-layer.design.md`
+- `doc/site/github-pages/github-pages-hero-pointer-interaction.design.md`
+- `doc/site/github-pages/github-pages-home-conversion-i18n-screenshot-refresh-2026-02-26.design.md`
+- `doc/site/github-pages/github-pages-home-radical-redesign-2026-02-26.design.md`
+- `doc/site/github-pages/github-pages-lean-tech-refresh.design.md`
+- `doc/site/github-pages/github-pages-quality-gates-sync-seo-hardening-2026-02-26.design.md`
+- `doc/site/github-pages/github-pages-release-download-pipeline-2026-03-01.design.md`
+- `doc/site/github-pages/github-pages-showcase.design.md`
+- `doc/site/github-pages/github-pages-user-perspective-adjustments-2026-02-26.design.md`
+- `doc/site/github-pages/github-pages-visual-polish-v2-2026-02-12.design.md`
+- `doc/site/manual/site-manual-static-docs.design.md`
+- `doc/site/manual/viewer-manual-content-migration-2026-02-15.design.md`

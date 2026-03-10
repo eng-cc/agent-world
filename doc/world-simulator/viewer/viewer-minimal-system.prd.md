@@ -1,7 +1,9 @@
 # Agent World: Minimal System Run (Viewer Demo)
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-minimal-system.design.md`
+- 对应项目管理文档: `doc/world-simulator/viewer/viewer-minimal-system.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-minimal-system.project.md
 
 ## 1. Executive Summary
 - Provide a deterministic, low-friction way to generate `snapshot.json` + `journal.json` for the viewer.

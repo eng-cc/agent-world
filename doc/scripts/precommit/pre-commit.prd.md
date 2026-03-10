@@ -1,8 +1,10 @@
 # Pre-commit Checks（本地提交前测试脚本）
 
+- 对应设计文档: `doc/scripts/precommit/pre-commit.design.md`
+- 对应项目管理文档: `doc/scripts/precommit/pre-commit.project.md`
+
 审计轮次: 4
 
-- 对应项目管理文档: doc/scripts/precommit/pre-commit.project.md
 
 ## 目标
 - 在本地提交前执行必跑门禁（required tier），尽快反馈常见回归。

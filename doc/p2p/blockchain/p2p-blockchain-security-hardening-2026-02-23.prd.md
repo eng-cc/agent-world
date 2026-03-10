@@ -1,5 +1,8 @@
 # P2P/区块链链路安全硬化（2026-02-23，设计文档）
 
+- 对应设计文档: `doc/p2p/blockchain/p2p-blockchain-security-hardening-2026-02-23.design.md`
+- 对应项目管理文档: `doc/p2p/blockchain/p2p-blockchain-security-hardening-2026-02-23.project.md`
+
 审计轮次: 5
 ## 1. Executive Summary
 - Problem Statement: 修复 replication 写入链路中的“先推进 guard 后写入”状态污染问题，保证失败不产生半更新。

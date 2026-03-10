@@ -1,5 +1,8 @@
 # Agent World: LLM 跳过 Tick 占比指标（项目管理）
 
+- 对应设计文档: `doc/testing/governance/llm-skip-tick-ratio-metric.design.md`
+- 对应需求文档: `doc/testing/governance/llm-skip-tick-ratio-metric.prd.md`
+
 审计轮次: 4
 
 ## 任务拆解（含 PRD-ID 映射）

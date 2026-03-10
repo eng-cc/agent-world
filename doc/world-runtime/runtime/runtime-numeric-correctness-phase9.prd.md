@@ -1,8 +1,10 @@
 # Agent World Runtime：Governance Drill/Retention 时间算术数值语义硬化（15 点清单第九阶段）
 
+- 对应设计文档: `doc/world-runtime/runtime/runtime-numeric-correctness-phase9.design.md`
+- 对应项目管理文档: `doc/world-runtime/runtime/runtime-numeric-correctness-phase9.project.md`
+
 审计轮次: 4
 
-- 对应项目管理文档: doc/world-runtime/runtime/runtime-numeric-correctness-phase9.project.md
 
 ## 1. Executive Summary
 - 收口 `membership_recovery/replay_archive` 中治理审计保留与恢复演练调度的时间算术饱和语义。

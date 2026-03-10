@@ -1,5 +1,8 @@
 # Agent World Runtime：奖励结算切换到网络共识主路径原生交易
 
+- 对应设计文档: `doc/p2p/node/node-reward-settlement-native-transaction.design.md`
+- 对应项目管理文档: `doc/p2p/node/node-reward-settlement-native-transaction.project.md`
+
 审计轮次: 5
 ## 1. Executive Summary
 - Problem Statement: 将当前 reward runtime 的“旁路直写结算（`apply_node_points_settlement_mint_v2` 直接调用）”切换为世界主执行路径可消费的原生 `Action` 交易。

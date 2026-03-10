@@ -1,7 +1,9 @@
 # 客户端启动器区块链浏览器面板（2026-03-07）
 
-审计轮次: 1
+- 对应设计文档: `doc/world-simulator/launcher/game-client-launcher-blockchain-explorer-panel-2026-03-07.design.md`
 - 对应项目管理文档: `doc/world-simulator/launcher/game-client-launcher-blockchain-explorer-panel-2026-03-07.project.md`
+
+审计轮次: 1
 
 ## 1. Executive Summary
 - Problem Statement: 启动器当前虽有转账入口，但缺少“链浏览器”可视化入口，玩家无法在同一界面查看链高度、区块哈希与交易状态明细，排障与验证依赖命令行。

@@ -1,5 +1,8 @@
 # Agent World Runtime：生产级收口（Gap 1/2/3/4/5/6/8）设计文档
 
+- 对应设计文档: `doc/p2p/distributed/distributed-production-runtime-gap1234568-closure.design.md`
+- 对应项目管理文档: `doc/p2p/distributed/distributed-production-runtime-gap1234568-closure.project.md`
+
 审计轮次: 5
 ## 1. Executive Summary
 - Problem Statement: 收口 Gap 1：将节点状态复制从“本地目录侧车”推进为“网络优先拉取 + 本地持久化兜底”。

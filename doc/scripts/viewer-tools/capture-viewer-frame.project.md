@@ -1,5 +1,8 @@
 # Capture Viewer Frame（Agent UI截图闭环调试脚本）（项目管理文档）
 
+- 对应设计文档: `doc/scripts/viewer-tools/capture-viewer-frame.design.md`
+- 对应需求文档: `doc/scripts/viewer-tools/capture-viewer-frame.prd.md`
+
 审计轮次: 4
 
 ## 任务拆解

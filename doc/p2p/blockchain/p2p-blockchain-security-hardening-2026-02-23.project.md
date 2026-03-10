@@ -1,5 +1,8 @@
 # P2P/区块链链路安全硬化（2026-02-23，项目管理文档）（项目管理文档）
 
+- 对应设计文档: `doc/p2p/blockchain/p2p-blockchain-security-hardening-2026-02-23.design.md`
+- 对应需求文档: `doc/p2p/blockchain/p2p-blockchain-security-hardening-2026-02-23.prd.md`
+
 审计轮次: 5
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0 (PRD-P2P-MIG-053)：完成设计文档与项目管理文档建档。

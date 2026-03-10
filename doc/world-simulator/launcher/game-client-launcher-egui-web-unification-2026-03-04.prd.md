@@ -1,8 +1,10 @@
 # 客户端启动器 egui Web 同层复用与静态资源服务（2026-03-04）
 
+- 对应设计文档: `doc/world-simulator/launcher/game-client-launcher-egui-web-unification-2026-03-04.design.md`
+- 对应项目管理文档: `doc/world-simulator/launcher/game-client-launcher-egui-web-unification-2026-03-04.project.md`
+
 审计轮次: 5
 
-- 对应项目管理文档: doc/world-simulator/launcher/game-client-launcher-egui-web-unification-2026-03-04.project.md
 
 ## 1. Executive Summary
 - Problem Statement: 当前无 GUI 服务器场景的 `world_web_launcher` 使用独立 HTML 控制台，未与 `agent_world_client_launcher` 的 egui UI 层复用，导致交互行为与文案演进仍存在双端分叉风险。

@@ -1,5 +1,8 @@
 # Agent World Runtime：节点奖励运行时生产化加固（Phase 1）设计文档
 
+- 对应设计文档: `doc/p2p/node/node-reward-runtime-production-hardening-phase1.design.md`
+- 对应项目管理文档: `doc/p2p/node/node-reward-runtime-production-hardening-phase1.project.md`
+
 审计轮次: 5
 ## 1. Executive Summary
 - Problem Statement: 将现有奖励链路从“演示可跑”提升为“可持续运行、可恢复、可审计”的生产化基础能力。

@@ -1,5 +1,8 @@
 # Agent World Runtime：Observer 同步源策略可观测性
 
+- 对应设计文档: `doc/p2p/observer/observer-sync-mode-observability.design.md`
+- 对应项目管理文档: `doc/p2p/observer/observer-sync-mode-observability.project.md`
+
 审计轮次: 5
 ## ROUND-002 主从口径
 - 当前文档降级为增量子文档，仅维护“策略可观测性”专题增量约束。

@@ -1,5 +1,8 @@
 # README 缺口 2 收口：LLM 直连 WASM 生命周期（项目管理文档）
 
+- 对应设计文档: `doc/readme/gap/readme-gap2-llm-wasm-lifecycle.design.md`
+- 对应需求文档: `doc/readme/gap/readme-gap2-llm-wasm-lifecycle.prd.md`
+
 审计轮次: 4
 
 ## 审计备注

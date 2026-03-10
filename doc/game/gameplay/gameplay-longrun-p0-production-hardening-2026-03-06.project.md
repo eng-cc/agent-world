@@ -1,5 +1,8 @@
 # Gameplay Long-Run P0 Production Hardening（项目管理文档）
 
+- 对应设计文档: `doc/game/gameplay/gameplay-longrun-p0-production-hardening-2026-03-06.design.md`
+- 对应需求文档: `doc/game/gameplay/gameplay-longrun-p0-production-hardening-2026-03-06.prd.md`
+
 审计轮次: 1
 
 ## 审计备注

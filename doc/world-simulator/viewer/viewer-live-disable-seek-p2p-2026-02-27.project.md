@@ -1,5 +1,8 @@
 # Viewer Live 禁用 Seek（P2P 不可回退）2026-02-27 项目管理
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-live-disable-seek-p2p-2026-02-27.design.md`
+- 对应需求文档: `doc/world-simulator/viewer/viewer-live-disable-seek-p2p-2026-02-27.prd.md`
+
 审计轮次: 5
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0 建立设计文档与项目管理文档

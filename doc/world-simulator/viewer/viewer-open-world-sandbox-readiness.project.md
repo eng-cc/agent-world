@@ -1,5 +1,8 @@
 # Viewer 面向开放世界沙盒可玩化准备（项目管理文档）
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-open-world-sandbox-readiness.design.md`
+- 对应需求文档: `doc/world-simulator/viewer/viewer-open-world-sandbox-readiness.prd.md`
+
 审计轮次: 5
 ## 任务拆解（含 PRD-ID 映射）
 
@@ -42,6 +45,7 @@
 - [x] OWR5.4 按任务粒度提交 git commit
 
 ## 依赖
+- `doc/world-simulator/viewer/viewer-open-world-sandbox-readiness.design.md`
 - 协议与服务端：`crates/agent_world/src/viewer/protocol.rs`、`crates/agent_world/src/viewer/live.rs`
 - viewer：`crates/agent_world_viewer/src/main.rs`、`egui_right_panel.rs`、`scene_helpers.rs`、`world_overlay.rs`
 - 既有 3D 优化基线：`doc/world-simulator/viewer/viewer-3d-polish-performance*.md`

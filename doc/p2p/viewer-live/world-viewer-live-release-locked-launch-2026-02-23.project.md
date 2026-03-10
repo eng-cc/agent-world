@@ -1,5 +1,8 @@
 # world_viewer_live 发行锁定启动（P2P）项目管理文档（2026-02-23）（项目管理文档）
 
+- 对应设计文档: `doc/p2p/viewer-live/world-viewer-live-release-locked-launch-2026-02-23.design.md`
+- 对应需求文档: `doc/p2p/viewer-live/world-viewer-live-release-locked-launch-2026-02-23.prd.md`
+
 审计轮次: 5
 > 状态更新（2026-03-08）:
 > - 对应功能已从 `world_viewer_live` 下线（`--release-config` 不再支持）。

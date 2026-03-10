@@ -1,5 +1,8 @@
 # Agent World Runtime：Replication Writer Epoch/Sequence 数值语义硬化（15 点清单第四阶段）项目管理文档
 
+- 对应设计文档: `doc/world-runtime/runtime/runtime-numeric-correctness-phase4.design.md`
+- 对应需求文档: `doc/world-runtime/runtime/runtime-numeric-correctness-phase4.prd.md`
+
 审计轮次: 4
 
 ## 任务拆解（含 PRD-ID 映射）

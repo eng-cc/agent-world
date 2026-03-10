@@ -1,7 +1,9 @@
 # Viewer 贴图查看器（可截图）设计文档
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-texture-inspector.design.md`
+- 对应项目管理文档: `doc/world-simulator/viewer/viewer-texture-inspector.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-texture-inspector.project.md
 
 ## 1. Executive Summary
 - 提供一个“专门看贴图效果”的查看器入口，避免在完整世界场景里手动找角度。

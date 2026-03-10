@@ -1,5 +1,8 @@
 # Agent World Runtime：DistFS 生产化增强（Phase 1）项目管理文档（项目管理文档）
 
+- 对应设计文档: `doc/p2p/distfs/distfs-production-hardening-phase1.design.md`
+- 对应需求文档: `doc/p2p/distfs/distfs-production-hardening-phase1.prd.md`
+
 审计轮次: 5
 
 ## ROUND-002 主从口径

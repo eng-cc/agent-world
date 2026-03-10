@@ -1,5 +1,8 @@
 # Agent World Runtime：DistFS 反馈 P2P 广播与拉取桥接（2026-03-01）项目管理文档（项目管理文档）
 
+- 对应设计文档: `doc/p2p/distfs/distfs-feedback-p2p-bridge-2026-03-01.design.md`
+- 对应需求文档: `doc/p2p/distfs/distfs-feedback-p2p-bridge-2026-03-01.prd.md`
+
 审计轮次: 5
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0 (PRD-P2P-MIG-063)：完成设计文档与项目管理文档。

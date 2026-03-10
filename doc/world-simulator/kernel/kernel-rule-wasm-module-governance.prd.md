@@ -1,7 +1,9 @@
 # Agent World Simulator：规则 Wasm 模块装载治理（第五阶段）设计文档
 
+- 对应设计文档: `doc/world-simulator/kernel/kernel-rule-wasm-module-governance.design.md`
+- 对应项目管理文档: `doc/world-simulator/kernel/kernel-rule-wasm-module-governance.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/kernel/kernel-rule-wasm-module-governance.project.md
 
 ## 1. Executive Summary
 - 让 `WorldKernel` 的 wasm pre-action 规则调用不再依赖每次手工传入 `wasm_bytes`，改为“先注册 artifact，再按 hash 激活模块”。

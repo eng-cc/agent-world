@@ -1,5 +1,8 @@
 # Viewer 发行全覆盖验收 Gate（项目管理）
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-release-full-coverage-gate.design.md`
+- 对应需求文档: `doc/world-simulator/viewer/viewer-release-full-coverage-gate.prd.md`
+
 审计轮次: 5
 ## 任务拆解（含 PRD-ID 映射）
 - [x] RFCG-0 文档建档：设计文档 + 项目管理文档

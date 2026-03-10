@@ -1,5 +1,8 @@
 # Agent World Runtime：以太坊风格 PoS Head 共识
 
+- 对应设计文档: `doc/p2p/distributed/distributed-pos-consensus.design.md`
+- 对应项目管理文档: `doc/p2p/distributed/distributed-pos-consensus.project.md`
+
 审计轮次: 5
 ## 1. Executive Summary
 - Problem Statement: 在现有 `QuorumConsensus` 基础上新增一套“类以太坊 PoS”的 Head 共识引擎。

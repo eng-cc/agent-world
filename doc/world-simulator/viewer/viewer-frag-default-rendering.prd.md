@@ -1,7 +1,9 @@
 # Agent World Simulator：Viewer 默认渲染 Frag 且不渲染 Location（设计文档）
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-frag-default-rendering.design.md`
+- 对应项目管理文档: `doc/world-simulator/viewer/viewer-frag-default-rendering.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-frag-default-rendering.project.md
 
 ## 1. Executive Summary
 - Viewer 场景中不再渲染 location 外层几何与标签，降低遮挡与视觉噪声。

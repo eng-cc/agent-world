@@ -1,7 +1,9 @@
 # Viewer Web 可操作性与舒适度加固（2026-02-22）
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-web-usability-hardening-2026-02-22.design.md`
+- 对应项目管理文档: `doc/world-simulator/viewer/viewer-web-usability-hardening-2026-02-22.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-web-usability-hardening-2026-02-22.project.md
 
 ## 1. Executive Summary
 - 修复 Web Viewer 在窄屏条件下主画布被右侧双面板挤压的问题，确保最小可操作画布宽度。

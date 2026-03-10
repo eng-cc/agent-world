@@ -1,5 +1,8 @@
 # Agent World Runtime：节点贡献积分多节点闭环测试
 
+- 对应设计文档: `doc/p2p/node/node-contribution-points-multi-node-closure-test.design.md`
+- 对应项目管理文档: `doc/p2p/node/node-contribution-points-multi-node-closure-test.project.md`
+
 审计轮次: 5
 ## ROUND-002 主从口径
 - 主入口文档：`doc/p2p/node/node-contribution-points.prd.md`。

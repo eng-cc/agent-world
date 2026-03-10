@@ -1,7 +1,9 @@
 # Agent World Simulator：Viewer Location 细粒度渲染（设计文档）
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-location-fine-grained-rendering.design.md`
+- 对应项目管理文档: `doc/world-simulator/viewer/viewer-location-fine-grained-rendering.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-location-fine-grained-rendering.project.md
 
 ## 1. Executive Summary
 - 为 `location` 增加可解释的细粒度几何层级（表面细节 + 辐射外环），避免仅靠单一球体难以区分不同地点状态。

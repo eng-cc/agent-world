@@ -1,5 +1,8 @@
 # Non-Viewer 长稳运行内存安全与可追溯冷归档硬化（项目管理）
 
+- 对应设计文档: `doc/headless-runtime/nonviewer/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.design.md`
+- 对应需求文档: `doc/headless-runtime/nonviewer/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.prd.md`
+
 审计轮次: 4
 
 ## 任务拆解（含 PRD-ID 映射）

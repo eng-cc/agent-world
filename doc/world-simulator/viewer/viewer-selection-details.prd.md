@@ -1,7 +1,9 @@
 # Viewer 选中对象详情面板（含 LLM 决策 I/O）
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-selection-details.design.md`
+- 对应项目管理文档: `doc/world-simulator/viewer/viewer-selection-details.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-selection-details.project.md
 
 ## 1. Executive Summary
 - 在 viewer 中新增“选中对象详情”面板：点击对象后显示尽量详细的信息。

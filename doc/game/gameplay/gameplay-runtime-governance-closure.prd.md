@@ -1,8 +1,10 @@
 # Gameplay Runtime Governance Closure（生产级设计）
 
+- 对应设计文档: `doc/game/gameplay/gameplay-runtime-governance-closure.design.md`
+- 对应项目管理文档: `doc/game/gameplay/gameplay-runtime-governance-closure.project.md`
+
 审计轮次: 4
 
-- 对应项目管理文档: doc/game/gameplay/gameplay-runtime-governance-closure.project.md
 
 ## ROUND-002 主从口径
 - 主入口文档：`doc/game/gameplay/gameplay-top-level-design.prd.md`。

@@ -2,7 +2,7 @@
 
 审计轮次: 6
 
-更新时间：2026-03-09
+更新时间：2026-03-10
 
 ## 入口
 - 模块 PRD：`doc/testing/prd.md`
@@ -10,38 +10,38 @@
 - 模块标准执行入口：`doc/testing/project.md`
 - 模块兼容项目管理：`doc/testing/project.md`
 
-| 专题 PRD | 专题项目文档 |
-| --- | --- |
-| `doc/testing/ci/ci-builtin-wasm-m1-multi-runner.prd.md` | `doc/testing/ci/ci-builtin-wasm-m1-multi-runner.project.md` |
-| `doc/testing/ci/ci-builtin-wasm-m4-m5-hash-drift-hardening.prd.md` | `doc/testing/ci/ci-builtin-wasm-m4-m5-hash-drift-hardening.project.md` |
-| `doc/testing/ci/ci-m1-multi-runner-required-check-protection.prd.md` | `doc/testing/ci/ci-m1-multi-runner-required-check-protection.project.md` |
-| `doc/testing/ci/ci-remove-builtin-wasm-hash-checks-from-base-gate.prd.md` | `doc/testing/ci/ci-remove-builtin-wasm-hash-checks-from-base-gate.project.md` |
-| `doc/testing/ci/ci-test-coverage.prd.md` | `doc/testing/ci/ci-test-coverage.project.md` |
-| `doc/testing/ci/ci-testcase-tiering.prd.md` | `doc/testing/ci/ci-testcase-tiering.project.md` |
-| `doc/testing/ci/ci-tiered-execution.prd.md` | `doc/testing/ci/ci-tiered-execution.project.md` |
-| `doc/testing/ci/ci-wasm32-target-install.prd.md` | `doc/testing/ci/ci-wasm32-target-install.project.md` |
-| `doc/testing/governance/llm-skip-tick-ratio-metric.prd.md` | `doc/testing/governance/llm-skip-tick-ratio-metric.project.md` |
-| `doc/testing/governance/release-gate-metric-policy-alignment-2026-02-28.prd.md` | `doc/testing/governance/release-gate-metric-policy-alignment-2026-02-28.project.md` |
-| `doc/testing/governance/wasm-build-determinism-guard.prd.md` | `doc/testing/governance/wasm-build-determinism-guard.project.md` |
-| `doc/testing/launcher/launcher-chain-script-migration-2026-02-28.prd.md` | `doc/testing/launcher/launcher-chain-script-migration-2026-02-28.project.md` |
-| `doc/testing/launcher/launcher-full-usability-closure-audit-2026-03-08.prd.md` | `doc/testing/launcher/launcher-full-usability-closure-audit-2026-03-08.project.md` |
-| `doc/testing/launcher/launcher-lifecycle-hardening-2026-03-01.prd.md` | `doc/testing/launcher/launcher-lifecycle-hardening-2026-03-01.project.md` |
-| `doc/testing/launcher/launcher-viewer-auth-node-config-autowire-2026-03-02.prd.md` | `doc/testing/launcher/launcher-viewer-auth-node-config-autowire-2026-03-02.project.md` |
-| `doc/testing/longrun/chain-runtime-feedback-replication-network-autowire-2026-03-02.prd.md` | `doc/testing/longrun/chain-runtime-feedback-replication-network-autowire-2026-03-02.project.md` |
-| `doc/testing/longrun/chain-runtime-soak-script-reactivation-2026-02-28.prd.md` | `doc/testing/longrun/chain-runtime-soak-script-reactivation-2026-02-28.project.md` |
-| `doc/testing/longrun/p2p-longrun-continuous-chaos-injection-2026-02-24.prd.md` | `doc/testing/longrun/p2p-longrun-continuous-chaos-injection-2026-02-24.project.md` |
-| `doc/testing/longrun/p2p-longrun-endurance-chaos-template-2026-02-25.prd.md` | `doc/testing/longrun/p2p-longrun-endurance-chaos-template-2026-02-25.project.md` |
-| `doc/testing/longrun/p2p-longrun-feedback-event-injection-2026-03-02.prd.md` | `doc/testing/longrun/p2p-longrun-feedback-event-injection-2026-03-02.project.md` |
-| `doc/testing/longrun/p2p-storage-consensus-longrun-online-stability-2026-02-24.prd.md` | `doc/testing/longrun/p2p-storage-consensus-longrun-online-stability-2026-02-24.project.md` |
-| `doc/testing/longrun/s10-distfs-probe-bootstrap-2026-02-28.prd.md` | `doc/testing/longrun/s10-distfs-probe-bootstrap-2026-02-28.project.md` |
-| `doc/testing/longrun/s10-five-node-real-game-soak.prd.md` | `doc/testing/longrun/s10-five-node-real-game-soak.project.md` |
-| `doc/testing/manual/systematic-application-testing-manual.prd.md` | `doc/testing/manual/systematic-application-testing-manual.project.md` |
-| `doc/testing/manual/web-ui-playwright-closure-manual.prd.md` | `doc/testing/manual/web-ui-playwright-closure-manual.project.md` |
-| `doc/testing/performance/runtime-performance-observability-foundation-2026-02-25.prd.md` | `doc/testing/performance/runtime-performance-observability-foundation-2026-02-25.project.md` |
-| `doc/testing/performance/runtime-performance-observability-llm-api-decoupling-2026-02-25.prd.md` | `doc/testing/performance/runtime-performance-observability-llm-api-decoupling-2026-02-25.project.md` |
-| `doc/testing/performance/viewer-perf-bottleneck-observability-2026-02-25.prd.md` | `doc/testing/performance/viewer-perf-bottleneck-observability-2026-02-25.project.md` |
-| `doc/testing/performance/viewer-performance-methodology-closure-2026-02-25.prd.md` | `doc/testing/performance/viewer-performance-methodology-closure-2026-02-25.project.md` |
+| 专题 PRD | 专题设计文档 | 专题项目文档 |
+| --- | --- | --- |
+| `doc/testing/ci/ci-builtin-wasm-m1-multi-runner.prd.md` | `doc/testing/ci/ci-builtin-wasm-m1-multi-runner.design.md` | `doc/testing/ci/ci-builtin-wasm-m1-multi-runner.project.md` |
+| `doc/testing/ci/ci-builtin-wasm-m4-m5-hash-drift-hardening.prd.md` | `doc/testing/ci/ci-builtin-wasm-m4-m5-hash-drift-hardening.design.md` | `doc/testing/ci/ci-builtin-wasm-m4-m5-hash-drift-hardening.project.md` |
+| `doc/testing/ci/ci-m1-multi-runner-required-check-protection.prd.md` | `doc/testing/ci/ci-m1-multi-runner-required-check-protection.design.md` | `doc/testing/ci/ci-m1-multi-runner-required-check-protection.project.md` |
+| `doc/testing/ci/ci-remove-builtin-wasm-hash-checks-from-base-gate.prd.md` | `doc/testing/ci/ci-remove-builtin-wasm-hash-checks-from-base-gate.design.md` | `doc/testing/ci/ci-remove-builtin-wasm-hash-checks-from-base-gate.project.md` |
+| `doc/testing/ci/ci-test-coverage.prd.md` | `doc/testing/ci/ci-test-coverage.design.md` | `doc/testing/ci/ci-test-coverage.project.md` |
+| `doc/testing/ci/ci-testcase-tiering.prd.md` | `doc/testing/ci/ci-testcase-tiering.design.md` | `doc/testing/ci/ci-testcase-tiering.project.md` |
+| `doc/testing/ci/ci-tiered-execution.prd.md` | `doc/testing/ci/ci-tiered-execution.design.md` | `doc/testing/ci/ci-tiered-execution.project.md` |
+| `doc/testing/ci/ci-wasm32-target-install.prd.md` | `doc/testing/ci/ci-wasm32-target-install.design.md` | `doc/testing/ci/ci-wasm32-target-install.project.md` |
+| `doc/testing/governance/llm-skip-tick-ratio-metric.prd.md` | `doc/testing/governance/llm-skip-tick-ratio-metric.design.md` | `doc/testing/governance/llm-skip-tick-ratio-metric.project.md` |
+| `doc/testing/governance/release-gate-metric-policy-alignment-2026-02-28.prd.md` | `doc/testing/governance/release-gate-metric-policy-alignment-2026-02-28.design.md` | `doc/testing/governance/release-gate-metric-policy-alignment-2026-02-28.project.md` |
+| `doc/testing/governance/wasm-build-determinism-guard.prd.md` | `doc/testing/governance/wasm-build-determinism-guard.design.md` | `doc/testing/governance/wasm-build-determinism-guard.project.md` |
+| `doc/testing/launcher/launcher-chain-script-migration-2026-02-28.prd.md` | `doc/testing/launcher/launcher-chain-script-migration-2026-02-28.design.md` | `doc/testing/launcher/launcher-chain-script-migration-2026-02-28.project.md` |
+| `doc/testing/launcher/launcher-full-usability-closure-audit-2026-03-08.prd.md` | `doc/testing/launcher/launcher-full-usability-closure-audit-2026-03-08.design.md` | `doc/testing/launcher/launcher-full-usability-closure-audit-2026-03-08.project.md` |
+| `doc/testing/launcher/launcher-lifecycle-hardening-2026-03-01.prd.md` | `doc/testing/launcher/launcher-lifecycle-hardening-2026-03-01.design.md` | `doc/testing/launcher/launcher-lifecycle-hardening-2026-03-01.project.md` |
+| `doc/testing/launcher/launcher-viewer-auth-node-config-autowire-2026-03-02.prd.md` | `doc/testing/launcher/launcher-viewer-auth-node-config-autowire-2026-03-02.design.md` | `doc/testing/launcher/launcher-viewer-auth-node-config-autowire-2026-03-02.project.md` |
+| `doc/testing/longrun/chain-runtime-feedback-replication-network-autowire-2026-03-02.prd.md` | `doc/testing/longrun/chain-runtime-feedback-replication-network-autowire-2026-03-02.design.md` | `doc/testing/longrun/chain-runtime-feedback-replication-network-autowire-2026-03-02.project.md` |
+| `doc/testing/longrun/chain-runtime-soak-script-reactivation-2026-02-28.prd.md` | `doc/testing/longrun/chain-runtime-soak-script-reactivation-2026-02-28.design.md` | `doc/testing/longrun/chain-runtime-soak-script-reactivation-2026-02-28.project.md` |
+| `doc/testing/longrun/p2p-longrun-continuous-chaos-injection-2026-02-24.prd.md` | `doc/testing/longrun/p2p-longrun-continuous-chaos-injection-2026-02-24.design.md` | `doc/testing/longrun/p2p-longrun-continuous-chaos-injection-2026-02-24.project.md` |
+| `doc/testing/longrun/p2p-longrun-endurance-chaos-template-2026-02-25.prd.md` | `doc/testing/longrun/p2p-longrun-endurance-chaos-template-2026-02-25.design.md` | `doc/testing/longrun/p2p-longrun-endurance-chaos-template-2026-02-25.project.md` |
+| `doc/testing/longrun/p2p-longrun-feedback-event-injection-2026-03-02.prd.md` | `doc/testing/longrun/p2p-longrun-feedback-event-injection-2026-03-02.design.md` | `doc/testing/longrun/p2p-longrun-feedback-event-injection-2026-03-02.project.md` |
+| `doc/testing/longrun/p2p-storage-consensus-longrun-online-stability-2026-02-24.prd.md` | `doc/testing/longrun/p2p-storage-consensus-longrun-online-stability-2026-02-24.design.md` | `doc/testing/longrun/p2p-storage-consensus-longrun-online-stability-2026-02-24.project.md` |
+| `doc/testing/longrun/s10-distfs-probe-bootstrap-2026-02-28.prd.md` | `doc/testing/longrun/s10-distfs-probe-bootstrap-2026-02-28.design.md` | `doc/testing/longrun/s10-distfs-probe-bootstrap-2026-02-28.project.md` |
+| `doc/testing/longrun/s10-five-node-real-game-soak.prd.md` | `doc/testing/longrun/s10-five-node-real-game-soak.design.md` | `doc/testing/longrun/s10-five-node-real-game-soak.project.md` |
+| `doc/testing/manual/systematic-application-testing-manual.prd.md` | `doc/testing/manual/systematic-application-testing-manual.design.md` | `doc/testing/manual/systematic-application-testing-manual.project.md` |
+| `doc/testing/manual/web-ui-playwright-closure-manual.prd.md` | `doc/testing/manual/web-ui-playwright-closure-manual.design.md` | `doc/testing/manual/web-ui-playwright-closure-manual.project.md` |
+| `doc/testing/performance/runtime-performance-observability-foundation-2026-02-25.prd.md` | `doc/testing/performance/runtime-performance-observability-foundation-2026-02-25.design.md` | `doc/testing/performance/runtime-performance-observability-foundation-2026-02-25.project.md` |
+| `doc/testing/performance/runtime-performance-observability-llm-api-decoupling-2026-02-25.prd.md` | `doc/testing/performance/runtime-performance-observability-llm-api-decoupling-2026-02-25.design.md` | `doc/testing/performance/runtime-performance-observability-llm-api-decoupling-2026-02-25.project.md` |
+| `doc/testing/performance/viewer-perf-bottleneck-observability-2026-02-25.prd.md` | `doc/testing/performance/viewer-perf-bottleneck-observability-2026-02-25.design.md` | `doc/testing/performance/viewer-perf-bottleneck-observability-2026-02-25.project.md` |
+| `doc/testing/performance/viewer-performance-methodology-closure-2026-02-25.prd.md` | `doc/testing/performance/viewer-performance-methodology-closure-2026-02-25.design.md` | `doc/testing/performance/viewer-performance-methodology-closure-2026-02-25.project.md` |
 
 ## 说明
 - 本索引用于保证模块专题文档在根入口文档树中可达。
-- 文档配对规则：`*.prd.md` 与同名 `*.project.md`。
+- 文档配对规则：`*.prd.md`、`*.design.md` 与同名 `*.project.md`。

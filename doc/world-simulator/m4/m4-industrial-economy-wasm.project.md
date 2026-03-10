@@ -1,5 +1,8 @@
 # M4 社会经济系统：工业链路与 WASM 模块化（项目管理文档）
 
+- 对应设计文档: `doc/world-simulator/m4/m4-industrial-economy-wasm.design.md`
+- 对应需求文档: `doc/world-simulator/m4/m4-industrial-economy-wasm.prd.md`
+
 审计轮次: 5
 ## 任务拆解（含 PRD-ID 映射）
 

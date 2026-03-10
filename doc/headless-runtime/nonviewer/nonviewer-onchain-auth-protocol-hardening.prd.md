@@ -1,8 +1,10 @@
 # Non-Viewer 链上鉴权协议重构（生产级）
 
+- 对应设计文档: `doc/headless-runtime/nonviewer/nonviewer-onchain-auth-protocol-hardening.design.md`
+- 对应项目管理文档: `doc/headless-runtime/nonviewer/nonviewer-onchain-auth-protocol-hardening.project.md`
+
 审计轮次: 4
 
-- 对应项目管理文档: doc/headless-runtime/nonviewer/nonviewer-onchain-auth-protocol-hardening.project.md
 
 ## 1. Executive Summary
 - 将 Viewer Live 控制链路从“`player_id + public_key` 字符串绑定”升级为“可验签、可防重放、可持久化”的生产级链上鉴权协议。

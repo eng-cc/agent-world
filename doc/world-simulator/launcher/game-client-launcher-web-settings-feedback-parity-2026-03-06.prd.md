@@ -1,7 +1,9 @@
 # 客户端启动器 Web 设置/反馈功能对齐（2026-03-06）
 
-审计轮次: 5
+- 对应设计文档: `doc/world-simulator/launcher/game-client-launcher-web-settings-feedback-parity-2026-03-06.design.md`
 - 对应项目管理文档: `doc/world-simulator/launcher/game-client-launcher-web-settings-feedback-parity-2026-03-06.project.md`
+
+审计轮次: 5
 
 ## 1. Executive Summary
 - Problem Statement: 启动器 native 与 web 已共用统一控制面，但 Web 端 `设置` 与 `反馈` 入口仍为禁用，占位实现导致跨端体验不一致。

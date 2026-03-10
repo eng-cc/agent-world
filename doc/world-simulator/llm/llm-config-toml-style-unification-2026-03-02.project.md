@@ -1,5 +1,8 @@
 # LLM 配置 TOML 风格统一（2026-03-02）项目管理
 
+- 对应设计文档: `doc/world-simulator/llm/llm-config-toml-style-unification-2026-03-02.design.md`
+- 对应需求文档: `doc/world-simulator/llm/llm-config-toml-style-unification-2026-03-02.prd.md`
+
 审计轮次: 5
 
 ## 任务拆解（含 PRD-ID 映射）

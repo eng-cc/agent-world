@@ -1,8 +1,10 @@
 # Viewer 资产管线与 UI 体系硬化（2026-03-05）（项目管理文档）
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-asset-pipeline-ui-system-hardening-2026-03-05.design.md`
+- 对应需求文档: `doc/world-simulator/viewer/viewer-asset-pipeline-ui-system-hardening-2026-03-05.prd.md`
+
 审计轮次: 5
 
-- 对应设计文档: `doc/world-simulator/viewer/viewer-asset-pipeline-ui-system-hardening-2026-03-05.prd.md`
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] TASK-WORLD_SIMULATOR-040 (PRD-WORLD_SIMULATOR-018 / PRD-VAPUI-001/002/003) [test_tier_required]: 输出专题 PRD 与项目管理文档，完成三步改造拆解与依赖梳理。

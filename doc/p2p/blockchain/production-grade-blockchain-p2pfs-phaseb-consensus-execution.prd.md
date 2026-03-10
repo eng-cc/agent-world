@@ -1,5 +1,8 @@
 # Agent World Runtime：生产级区块链 + P2P FS 路线图 Phase B（共识内生执行）
 
+- 对应设计文档: `doc/p2p/blockchain/production-grade-blockchain-p2pfs-phaseb-consensus-execution.design.md`
+- 对应项目管理文档: `doc/p2p/blockchain/production-grade-blockchain-p2pfs-phaseb-consensus-execution.project.md`
+
 审计轮次: 5
 ## 1. Executive Summary
 - Problem Statement: 将当前“reward runtime 外围 execution bridge 驱动执行”的模式推进为“节点共识主循环内生执行”。

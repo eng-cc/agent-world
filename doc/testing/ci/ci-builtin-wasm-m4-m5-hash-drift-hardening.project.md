@@ -1,5 +1,8 @@
 # Agent World: Builtin Wasm m4/m5 Hash 漂移治理与发布链路收敛（项目管理）
 
+- 对应设计文档: `doc/testing/ci/ci-builtin-wasm-m4-m5-hash-drift-hardening.design.md`
+- 对应需求文档: `doc/testing/ci/ci-builtin-wasm-m4-m5-hash-drift-hardening.prd.md`
+
 审计轮次: 1
 
 ## 任务拆解（含 PRD-ID 映射）

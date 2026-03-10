@@ -1,7 +1,9 @@
 # Viewer Live runtime/world 接管 Phase 2（LLM/chat/prompt）（2026-03-05）
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase2-2026-03-05.design.md`
+- 对应项目管理文档: `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase2-2026-03-05.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase2-2026-03-05.project.md
 
 ## 1. Executive Summary
 - Problem Statement: Phase 1 下 `world_viewer_live --runtime-world` 仅支持脚本驱动，`PromptControl` 与 `AgentChat` 直接返回 `unsupported_in_runtime_live_phase1`，导致 runtime 与 simulator 在 LLM 体验上断裂。

@@ -1,5 +1,8 @@
 # world_viewer_live `--no-llm` 关闭开关设计文档（2026-02-23）
 
+- 对应设计文档: `doc/p2p/viewer-live/world-viewer-live-no-llm-flag-2026-02-23.design.md`
+- 对应项目管理文档: `doc/p2p/viewer-live/world-viewer-live-no-llm-flag-2026-02-23.project.md`
+
 审计轮次: 5
 > 状态更新（2026-03-08）:
 > - `world_viewer_live` 已下线 `--release-config`/`--node-*` 控制面入口。

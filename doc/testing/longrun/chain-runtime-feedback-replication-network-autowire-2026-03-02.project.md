@@ -1,5 +1,8 @@
 # Agent World: Chain Runtime 反馈网络复制层自动挂载修复（2026-03-02）（项目管理）
 
+- 对应设计文档: `doc/testing/longrun/chain-runtime-feedback-replication-network-autowire-2026-03-02.design.md`
+- 对应需求文档: `doc/testing/longrun/chain-runtime-feedback-replication-network-autowire-2026-03-02.prd.md`
+
 审计轮次: 4
 
 ## 任务拆解（含 PRD-ID 映射）

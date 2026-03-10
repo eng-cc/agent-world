@@ -1,7 +1,9 @@
 # Agent World Runtime：Observer 同步源策略化
 
-审计轮次: 5
+- 对应设计文档: `doc/p2p/observer/observer-sync-source-mode.design.md`
 - 对应项目管理文档: `doc/p2p/observer/observer-sync-source-mode.project.md`
+
+审计轮次: 5
 
 ## ROUND-002 主从口径（2026-03-05）
 - 本文档为 Observer 同步源策略化的基线主文档（非 DHT 链路）。

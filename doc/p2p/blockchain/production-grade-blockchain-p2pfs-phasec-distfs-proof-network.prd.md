@@ -1,5 +1,8 @@
 # Agent World Runtime：生产级区块链 + P2P FS 路线图 Phase C（PRG-M5 跨节点 DistFS 挑战证明网络化）
 
+- 对应设计文档: `doc/p2p/blockchain/production-grade-blockchain-p2pfs-phasec-distfs-proof-network.design.md`
+- 对应项目管理文档: `doc/p2p/blockchain/production-grade-blockchain-p2pfs-phasec-distfs-proof-network.project.md`
+
 审计轮次: 5
 ## 1. Executive Summary
 - Problem Statement: 将存储可用性证明从“本地 self-challenge/self-answer”升级为“跨节点 challenge-response 网络证明”。

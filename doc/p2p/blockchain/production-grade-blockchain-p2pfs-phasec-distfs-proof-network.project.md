@@ -1,5 +1,8 @@
 # Agent World Runtime：生产级区块链 + P2P FS 路线图 Phase C（项目管理文档）
 
+- 对应设计文档: `doc/p2p/blockchain/production-grade-blockchain-p2pfs-phasec-distfs-proof-network.design.md`
+- 对应需求文档: `doc/p2p/blockchain/production-grade-blockchain-p2pfs-phasec-distfs-proof-network.prd.md`
+
 审计轮次: 5
 ## 任务拆解（含 PRD-ID 映射）
 - [x] PRG-C1 (PRD-P2P-MIG-055)：完成 Phase C 设计文档与项目管理文档；同步删除 PRG-M6 设计方向。
@@ -8,6 +11,7 @@
 - [x] PRG-C4 (PRD-P2P-MIG-055)：补齐测试并执行 `test_tier_required` 回归，回写文档与 devlog。
 
 ## 依赖
+- `doc/p2p/blockchain/production-grade-blockchain-p2pfs-phasec-distfs-proof-network.design.md`
 - `doc/p2p/blockchain/production-grade-blockchain-p2pfs-roadmap.prd.md`
 - `doc/p2p/blockchain/production-grade-blockchain-p2pfs-phasec-distfs-proof-network.prd.md`
 - `crates/agent_world/src/bin/world_viewer_live.rs`

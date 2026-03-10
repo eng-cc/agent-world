@@ -1,7 +1,9 @@
 # GitHub Pages 精简科技感升级（四期）设计文档
+
+- 对应设计文档: `doc/site/github-pages/github-pages-lean-tech-refresh.design.md`
+- 对应项目管理文档: `doc/site/github-pages/github-pages-lean-tech-refresh.project.md`
 审计轮次: 5
 
-- 对应项目管理文档: doc/site/github-pages/github-pages-lean-tech-refresh.project.md
 - 对应标准执行入口: `doc/site/github-pages/github-pages-lean-tech-refresh.project.md`
 
 ## ROUND-002 主从口径

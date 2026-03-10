@@ -1,5 +1,8 @@
 # Agent World Runtime：可兑现节点资产与电力兑换闭环（二期审计与签名加固，项目管理文档）（项目管理文档）
 
+- 对应设计文档: `doc/p2p/node/node-redeemable-power-asset-audit-hardening.design.md`
+- 对应需求文档: `doc/p2p/node/node-redeemable-power-asset-audit-hardening.prd.md`
+
 审计轮次: 5
 ## 审计备注
 - 项目主入口文档：`doc/p2p/node/node-redeemable-power-asset.project.md`。

@@ -1,11 +1,13 @@
 # README 高优先级差距收口（二期）：模块生命周期 + 单一订单簿撮合（设计文档）
 
+- 对应设计文档: `doc/readme/gap/readme-gap34-lifecycle-orderbook-closure.design.md`
+- 对应项目管理文档: `doc/readme/gap/readme-gap34-lifecycle-orderbook-closure.project.md`
+
 审计轮次: 4
 
 ## ROUND-002 主从口径
 - 主入口统一指向 `doc/readme/gap/readme-gap-distributed-prod-hardening-gap12345.prd.md`，本文仅维护增量。
 
-- 对应项目管理文档: doc/readme/gap/readme-gap34-lifecycle-orderbook-closure.project.md
 - 对应标准执行入口: `doc/readme/gap/readme-gap34-lifecycle-orderbook-closure.project.md`
 
 ## 目标

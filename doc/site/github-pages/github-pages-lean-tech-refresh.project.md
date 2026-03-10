@@ -1,4 +1,7 @@
 # GitHub Pages 精简科技感升级（四期）项目管理文档
+
+- 对应设计文档: `doc/site/github-pages/github-pages-lean-tech-refresh.design.md`
+- 对应需求文档: `doc/site/github-pages/github-pages-lean-tech-refresh.prd.md`
 审计轮次: 5
 
 ## 审计备注

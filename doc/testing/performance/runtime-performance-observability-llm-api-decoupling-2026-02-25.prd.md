@@ -1,5 +1,8 @@
 # Agent World Runtime：LLM API 延迟与代码执行耗时解耦（2026-02-25）
 
+- 对应设计文档: `doc/testing/performance/runtime-performance-observability-llm-api-decoupling-2026-02-25.design.md`
+- 对应项目管理文档: `doc/testing/performance/runtime-performance-observability-llm-api-decoupling-2026-02-25.project.md`
+
 审计轮次: 4
 
 ## 1. Executive Summary

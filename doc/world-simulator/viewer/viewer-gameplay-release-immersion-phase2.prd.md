@@ -1,7 +1,9 @@
 # Viewer 发行体验改造（第二阶段：沉浸与引导）
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase2.design.md`
+- 对应项目管理文档: `doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase2.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase2.project.md
 
 ## 1. Executive Summary
 - 在已完成的 Player 默认降噪基础上，继续提升“可玩感”：

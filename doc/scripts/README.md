@@ -20,3 +20,12 @@
 
 ## 维护约定
 - 脚本行为变化需同步更新对应文档与测试口径。
+- `doc/scripts/precommit/pre-commit.design.md`
+- `doc/scripts/precommit/precommit-remediation-playbook.design.md`
+- `doc/scripts/viewer-tools/capture-viewer-frame.design.md`
+- `doc/scripts/viewer-tools/viewer-texture-inspector-art-capture-2026-02-28.design.md`
+- `doc/scripts/viewer-tools/viewer-texture-inspector-framework-rationalization-2026-02-28.design.md`
+- `doc/scripts/viewer-tools/viewer-texture-inspector-framework-rationalization-2026-03-01.design.md`
+- `doc/scripts/viewer-tools/viewer-texture-inspector-material-recognizability-2026-02-28.design.md`
+- `doc/scripts/viewer-tools/viewer-texture-inspector-visual-detail-system-optimization-2026-02-28.design.md`
+- `doc/scripts/wasm/builtin-wasm-nightly-build-std.design.md`

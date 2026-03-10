@@ -1,8 +1,10 @@
 # Gameplay Layer Lifecycle Rules Closure（生产级设计）
 
+- 对应设计文档: `doc/game/gameplay/gameplay-layer-lifecycle-rules-closure.design.md`
+- 对应项目管理文档: `doc/game/gameplay/gameplay-layer-lifecycle-rules-closure.project.md`
+
 审计轮次: 4
 
-- 对应项目管理文档: doc/game/gameplay/gameplay-layer-lifecycle-rules-closure.project.md
 
 ## ROUND-002 主从口径
 - 主入口：`doc/game/gameplay/gameplay-top-level-design.prd.md`

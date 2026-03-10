@@ -1,7 +1,9 @@
 # Viewer Live runtime/world 接管 Phase 1（2026-03-04）
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase1-2026-03-04.design.md`
+- 对应项目管理文档: `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase1-2026-03-04.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase1-2026-03-04.project.md
 
 ## 1. Executive Summary
 - Problem Statement: `world_viewer_live` 当前主执行链路仍使用 `simulator::WorldKernel`，而 `runtime::World` 已承载核心玩法规则，导致 live 体验与规则层长期双轨。

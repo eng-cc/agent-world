@@ -1,5 +1,8 @@
 # Agent World Runtime：区块链 + P2P FS 硬改造（Phase 3）设计文档
 
+- 对应设计文档: `doc/p2p/blockchain/blockchain-p2pfs-hardening-phase3.design.md`
+- 对应项目管理文档: `doc/p2p/blockchain/blockchain-p2pfs-hardening-phase3.project.md`
+
 审计轮次: 5
 ## 1. Executive Summary
 - Problem Statement: 将 `ActionEnvelope` 与 `WorldHeadAnnounce` 从 HMAC-only 过渡到 ed25519 可验签路径，形成跨 crate 一致的签名语义。

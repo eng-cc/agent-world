@@ -1,6 +1,10 @@
 # Viewer 控制反馈 P0：Step 卡住恢复与强反馈（2026-02-27）项目管理文档
 
+- 对应设计文档: `doc/world-simulator/viewer/viewer-control-feedback-step-recovery-p0-2026-02-27.design.md`
+- 对应需求文档: `doc/world-simulator/viewer/viewer-control-feedback-step-recovery-p0-2026-02-27.prd.md`
+
 审计轮次: 5
+
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0 建立设计文档与项目管理文档，明确 P0 边界与验收口径
 - [x] T1 实现 `step` 卡住自动恢复（`seek(tick+1)`）+ Cause/Next 强反馈文案

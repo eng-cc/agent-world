@@ -1,5 +1,8 @@
 # Agent World Runtime：节点存储系统奖励池
 
+- 对应设计文档: `doc/p2p/node/node-storage-system-reward-pool.design.md`
+- 对应项目管理文档: `doc/p2p/node/node-storage-system-reward-pool.project.md`
+
 审计轮次: 5
 ## 1. Executive Summary
 - Problem Statement: 在 Node Points 结算中新增“存储系统奖励池”，使存储奖励和在线奖励一样由协议固定池发放。

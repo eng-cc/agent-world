@@ -1,0 +1,30 @@
+# 共识代码收敛到 agent_world_consensus 设计
+
+- 对应需求文档: `doc/p2p/consensus/consensus-code-consolidation-to-agent-world-consensus.prd.md`
+- 对应项目管理文档: `doc/p2p/consensus/consensus-code-consolidation-to-agent-world-consensus.project.md`
+
+## 1. 设计定位
+定义共识相关实现向 `agent_world_consensus` 统一收敛的方案，减少重复代码、跨 crate 漂移和一致性维护成本。
+
+## 2. 设计结构
+- 模块收敛层：把分散的共识逻辑归并到统一 crate。
+- 接口边界层：明确外部 crate 只依赖稳定共识接口，而不是复制实现。
+- 回归保护层：在收敛过程中用 targeted 测试兜底语义一致性。
+- 迁移闭环层：配套文档、依赖和调用点同步回写。
+
+## 3. 关键接口 / 入口
+- `agent_world_consensus`
+- 外部调用接口
+- 共识逻辑迁移边界
+- 回归测试矩阵
+
+## 4. 约束与边界
+- 目标是代码收敛，不是重写共识算法。
+- 外部 crate 依赖要逐步迁移，避免一次性大爆炸。
+- 共识语义必须保持稳定，不能因目录迁移引入行为漂移。
+- 文档需要把“权威实现位置”讲清楚。
+
+## 5. 设计演进计划
+- 先冻结收敛目标和边界。
+- 再迁移分散实现到统一 crate。
+- 最后通过回归和文档互链完成收口。

@@ -1,7 +1,9 @@
 # Agent World Simulator：LLM 驱动 Agent 行为落地（设计文档）
 
+- 对应设计文档: `doc/world-simulator/llm/llm-agent-behavior.design.md`
+- 对应项目管理文档: `doc/world-simulator/llm/llm-agent-behavior.project.md`
+
 审计轮次: 5
-- 对应项目管理文档: doc/world-simulator/llm/llm-agent-behavior.project.md
 
 ## 1. Executive Summary
 - 在现有 `AgentBehavior` 抽象上落地一套可运行的 **LLM Agent 行为实现**，用于替代纯规则型 `decide` 逻辑。

@@ -8,8 +8,10 @@ doc/engineering/design.md
 doc/engineering/doc-structure-standard.design.md
 doc/engineering/doc-structure-standard.prd.md
 doc/engineering/doc-structure-standard.project.md
+doc/engineering/documentation-governance-engineering-closure-2026-02-27.design.md
 doc/engineering/documentation-governance-engineering-closure-2026-02-27.prd.md
 doc/engineering/documentation-governance-engineering-closure-2026-02-27.project.md
+doc/engineering/oversized-rust-file-splitting-2026-02-23.design.md
 doc/engineering/oversized-rust-file-splitting-2026-02-23.prd.md
 doc/engineering/oversized-rust-file-splitting-2026-02-23.project.md
 doc/engineering/prd.index.md
@@ -39,6 +41,7 @@ doc/playability_test_result/card_2026_03_01_00_20_13.md
 doc/playability_test_result/card_2026_03_06_12_43_31.md
 doc/playability_test_result/card_2026_03_06_18_40_48.md
 doc/playability_test_result/design.md
+doc/playability_test_result/game-test.design.md
 doc/playability_test_result/game-test.prd.md
 doc/playability_test_result/game-test.project.md
 doc/playability_test_result/playability_test_card.md
