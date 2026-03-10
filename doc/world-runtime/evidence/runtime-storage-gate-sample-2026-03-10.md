@@ -33,3 +33,8 @@
 ## 后续动作
 - 下一步优先补齐默认 profile 下 checkpoint 生成/保留样本，再复跑 gate。
 - 若后续样本仍保持 `full_log_only`，需评估是阈值设置问题还是 checkpoint 生成链路未触发。
+
+## 根因判断
+- `crates/agent_world/src/bin/world_chain_runtime/execution_bridge.rs` 中 `maybe_persist_execution_checkpoint_for_record(...)` 明确要求 `record.height % checkpoint_interval_heights == 0` 才会落盘 checkpoint。
+- `release_default` profile 的 `execution_checkpoint_interval=64`；当前真实样本在 feedback 注入后仅推进到 `latest_retained_height=16`，因此 `checkpoint_count=0` 更像“尚未达到阈值”，而不是 checkpoint 链路必然失效。
+- 下一步优先方案不是盲修代码，而是把样本推进到 `height >= 64` 或引入显式 save/flush 场景，再复跑 gate。
