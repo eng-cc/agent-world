@@ -138,7 +138,12 @@
     - `doc/headless-runtime/project.md`
   - 验收命令 (`test_tier_required`):
     - `rg -n "阶段收口优先级|阶段 owner|阻断条件|阶段收口角色交接|Handoff ID:" doc/game/project.md doc/world-runtime/project.md doc/testing/project.md doc/playability_test_result/project.md doc/headless-runtime/project.md`
-- [ ] TASK-CORE-014 (PRD-CORE-004) [test_tier_required]: 建立阶段收口 go/no-go 评审模板，固化 P0 必备证据、P1 风险附注与例外升级规则。
+- [x] TASK-CORE-014 (PRD-CORE-004) [test_tier_required]: 建立阶段收口 go/no-go 评审模板，固化 P0 必备证据、P1 风险附注与例外升级规则。
+  - 产物文件:
+    - `doc/core/templates/stage-closure-go-no-go-template.md`
+  - 验收命令 (`test_tier_required`):
+    - `test -f doc/core/templates/stage-closure-go-no-go-template.md`
+    - `rg -n "go/no-go|conditional-go|P0 必备证据|P1 风险附注|例外升级规则" doc/core/templates/stage-closure-go-no-go-template.md`
 - [ ] TASK-CORE-015 (PRD-CORE-004) [test_tier_required]: 对阶段收口 owner 分工与模块承接状态进行首轮抽样审查，并形成缺口清单与 handoff 建议。
 
 ## 依赖
@@ -152,9 +157,9 @@
 ## 状态
 - 更新日期: 2026-03-10
 - 当前状态: active
-- 下一任务: TASK-CORE-014
+- 下一任务: TASK-CORE-015
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
-- 最新完成: `TASK-CORE-013`（已对齐五个关键模块的阶段优先级、owner、阻断条件与角色交接模板）。
+- 最新完成: `TASK-CORE-014`（已建立阶段收口 go/no-go 评审模板，固化 P0 证据、P1 风险附注与例外升级规则）。
 - 说明: 本文档仅维护 core 设计执行状态；过程记录在 `doc/devlog/2026-03-06.md`（历史记录见同目录其他日期文件）。
 
 ## 阶段收口执行顺序（PRD-CORE-004）
