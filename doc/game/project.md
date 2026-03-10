@@ -21,6 +21,10 @@
 - [x] TASK-GAME-016 (PRD-GAME-006) [test_tier_required]: 建立经济源汇审计与通胀/套利告警阈值门禁。
 - [x] TASK-GAME-017 (PRD-GAME-006) [test_tier_required]: 补齐可运维性能力（SLO、告警、灰度、灾备演练）与发布阻断规则。
 - [ ] TASK-GAME-018 (PRD-GAME-004) [test_tier_required]: 执行微循环可玩性视觉优化二期（控制结果显著化、玩家模式减负、世界可读性增强）并以手动截图闭环验收（见 `TASK-GAMEPLAY-MLF-005/006/007/008`）。
+  - 当前收口骨架:
+    - `doc/game/gameplay/gameplay-micro-loop-visual-closure-evidence-template-2026-03-10.md`
+  - 当前缺口:
+    - `TASK-GAMEPLAY-MLF-007` 仍未完成，`MLF-008` 证据包暂不可判定 `pass`。
 
 ## 依赖
 - 模块设计总览：`doc/game/design.md`

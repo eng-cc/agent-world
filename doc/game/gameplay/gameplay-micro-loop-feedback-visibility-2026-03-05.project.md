@@ -84,6 +84,7 @@
 - 每个实现任务完成后执行一轮手动实操并截图，输出视觉评估结论。
 - 产物至少包含：baseline + 每轮改动后对照图 + 简要结论。
 - 关键验证：截图人工审阅通过并归档。
+- 统一证据模板：`doc/game/gameplay/gameplay-micro-loop-visual-closure-evidence-template-2026-03-10.md`。
 - 2026-03-07 ROUND-008 迭代记录：
   - 证据目录：`output/playwright/playability/manual-20260307-round008/`
   - 关键截图：
@@ -123,6 +124,7 @@
 - 更新日期: 2026-03-07
 - 当前状态: active
 - 当前完成: `TASK-GAMEPLAY-MLF-000`、`TASK-GAMEPLAY-MLF-001`、`TASK-GAMEPLAY-MLF-002`、`TASK-GAMEPLAY-MLF-003`、`TASK-GAMEPLAY-MLF-004`、`TASK-GAMEPLAY-MLF-005`、`TASK-GAMEPLAY-MLF-006`
+- 当前证据骨架: `doc/game/gameplay/gameplay-micro-loop-visual-closure-evidence-template-2026-03-10.md`
 - 下一任务: `TASK-GAMEPLAY-MLF-007`（世界可读性增强）
 - 阻塞项: 无
 - 说明: 过程记录在 `doc/devlog/2026-03-06.md` 与 `doc/devlog/2026-03-07.md`
