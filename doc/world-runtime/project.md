@@ -167,6 +167,8 @@
 
 - 模块进展补充（2026-03-10 / T7.2）: 已新增 `scripts/world-runtime-storage-gate.sh` 作为 storage/GC/replay gate 固定入口，当前已用 `release_default` 样本生成 `.tmp/world_runtime_storage_gate/20260310-234359/summary.md`，下一步接真实 runtime 状态样本。
 
+- 模块进展补充（2026-03-10 / T7.2 实测）: 已用真实 `world_chain_runtime --storage-profile release_default` 样本跑通 `scripts/world-runtime-storage-gate.sh`，当前 gate 失败点为 `checkpoint_count=0`；详见 `doc/world-runtime/evidence/runtime-storage-gate-sample-2026-03-10.md`。
+
 ## Handoff Acknowledgement
 - 接收方确认范围：`已接收 TASK-WORLD_RUNTIME-002/003/004；当前提交完成边界清单、回归模板与发布门禁指标模板`
 - 接收方确认 ETA：`TASK-WORLD_RUNTIME-002/003/004 已完成；本轮已补齐 task 级 runtime P0 证据，下一步继续推进 TASK-WORLD_RUNTIME-033 的 T7.2~T7.5`
