@@ -2,7 +2,7 @@
 
 审计轮次: 6
 
-更新时间：2026-03-10
+更新时间：2026-03-11
 
 ## 入口
 - 模块 PRD：`doc/scripts/prd.md`
@@ -21,6 +21,8 @@
 | `doc/scripts/viewer-tools/viewer-texture-inspector-material-recognizability-2026-02-28.prd.md` | `doc/scripts/viewer-tools/viewer-texture-inspector-material-recognizability-2026-02-28.design.md` | `doc/scripts/viewer-tools/viewer-texture-inspector-material-recognizability-2026-02-28.project.md` |
 | `doc/scripts/viewer-tools/viewer-texture-inspector-visual-detail-system-optimization-2026-02-28.prd.md` | `doc/scripts/viewer-tools/viewer-texture-inspector-visual-detail-system-optimization-2026-02-28.design.md` | `doc/scripts/viewer-tools/viewer-texture-inspector-visual-detail-system-optimization-2026-02-28.project.md` |
 | `doc/scripts/wasm/builtin-wasm-nightly-build-std.prd.md` | `doc/scripts/wasm/builtin-wasm-nightly-build-std.design.md` | `doc/scripts/wasm/builtin-wasm-nightly-build-std.project.md` |
+
+| `doc/scripts/governance/script-entry-layering-2026-03-11.prd.md` | `doc/scripts/governance/script-entry-layering-2026-03-11.design.md` | `doc/scripts/governance/script-entry-layering-2026-03-11.project.md` |
 
 ## 说明
 - 本索引用于保证模块专题文档在根入口文档树中可达。

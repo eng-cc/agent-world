@@ -4,7 +4,15 @@
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] TASK-SCRIPTS-001 (PRD-SCRIPTS-001) [test_tier_required]: 完成 scripts PRD 改写，建立脚本治理主入口。
-- [ ] TASK-SCRIPTS-002 (PRD-SCRIPTS-001/002) [test_tier_required]: 梳理脚本分层并标注主入口与 fallback 入口。
+- [x] TASK-SCRIPTS-002 (PRD-SCRIPTS-001/002) [test_tier_required]: 梳理脚本分层并标注主入口与 fallback 入口。
+  - 产物文件:
+    - `doc/scripts/governance/script-entry-layering-2026-03-11.prd.md`
+    - `doc/scripts/governance/script-entry-layering-2026-03-11.design.md`
+    - `doc/scripts/governance/script-entry-layering-2026-03-11.project.md`
+    - `doc/scripts/governance/runtime-to-qa-task-scripts-002-entry-layering-2026-03-11.md`
+  - 验收命令 (`test_tier_required`):
+    - `rg -n "ci-tests.sh|release-gate.sh|run-viewer-web.sh|capture-viewer-frame.sh|site-link-check.sh" doc/scripts/governance/script-entry-layering-2026-03-11.prd.md doc/scripts/governance/script-entry-layering-2026-03-11.project.md`
+    - `./scripts/doc-governance-check.sh`
 - [ ] TASK-SCRIPTS-003 (PRD-SCRIPTS-002/003) [test_tier_required]: 补齐高频脚本参数契约与失败语义说明。
 - [ ] TASK-SCRIPTS-004 (PRD-SCRIPTS-003) [test_tier_required]: 建立脚本稳定性趋势跟踪指标。
 - [x] TASK-SCRIPTS-005 (PRD-SCRIPTS-001/002/003) [test_tier_required]: 对齐 strict PRD schema，补齐关键流程/规格矩阵/边界异常/NFR/验证与决策记录。
@@ -18,8 +26,9 @@
 - `.agents/skills/prd/check.md`
 
 ## 状态
-- 更新日期: 2026-03-03
+- 更新日期: 2026-03-11
 - 当前状态: active
-- 下一任务: TASK-SCRIPTS-002
+- 下一任务: TASK-SCRIPTS-003
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
-- 说明: 本文档仅维护 scripts 模块设计执行状态；过程记录在 `doc/devlog/2026-03-03.md`。
+- 模块进展补充（2026-03-11）: 已新增 scripts 分层专题，明确 `ci-tests.sh`、`release-gate.sh`、`run-viewer-web.sh` 等主入口，以及 `capture-viewer-frame.sh` 的 fallback 围栏。
+- 说明: 本文档仅维护 scripts 模块设计执行状态；过程记录在 `doc/devlog/2026-03-03.md` 与 `doc/devlog/2026-03-11.md`。
