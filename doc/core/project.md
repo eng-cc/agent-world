@@ -168,12 +168,13 @@
 ## 状态
 - 更新日期: 2026-03-11
 - 当前状态: active
-- 下一任务: TASK-CORE-019（版本级候选扩展）
+- 下一任务: TASK-CORE-020（runtime 联合证据补齐）
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - 最新完成: `TASK-CORE-005`（已完成 ROUND-001~ROUND-008 一致性审查链路收口、任务归档与 QA handoff）。
 - 最新完成: `TASK-CORE-016`（已完成下一轮跨模块优先级清单与第一优先级选择）。
 - 最新完成: `TASK-CORE-017`（已完成发布候选 readiness 统一入口定义）。
 - 最新完成: `TASK-CORE-018`（已完成首份候选级 readiness 看板实例化）。
+- 最新完成: `TASK-CORE-019`（已完成版本级候选扩展与首份 version board）。
 - 说明: 本文档仅维护 core 设计执行状态；过程记录在 `doc/devlog/2026-03-06.md`、`doc/devlog/2026-03-09.md`、`doc/devlog/2026-03-10.md` 与 `doc/devlog/2026-03-11.md`。
 
 ## 阶段收口执行顺序（PRD-CORE-004）
