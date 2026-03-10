@@ -13,20 +13,21 @@
 ## 输入
 - 运行命令: `env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_chain_runtime -- --node-id t72-node --world-id t72-world --storage-profile release_default --status-bind 127.0.0.1:5221 --execution-world-dir .tmp/runtime_t72_sample/execution-world --execution-records-dir .tmp/runtime_t72_sample/execution-records --storage-root .tmp/runtime_t72_sample/storage-root --execution-bridge-state .tmp/runtime_t72_sample/execution-bridge-state.json`
 - 状态样本: `.tmp/runtime_t72_sample/artifacts/status.json`
-- gate 摘要: `.tmp/world_runtime_storage_gate/20260310-234544/summary.md`
+- gate 摘要: `.tmp/world_runtime_storage_gate/20260310-234544/summary.md`（fresh sample） / `.tmp/world_runtime_storage_gate/20260310-234829/summary.md`（feedback 注入后）
 
 ## 关键观察
 - `storage_profile=release_default`
 - `effective_budget.profile=release_default`
 - `checkpoint_count=0`
 - `replay_summary.mode=full_log_only`
+- feedback 注入后 `latest_retained_height=16`（仍未生成 checkpoint）
 - `orphan_blob_count=0`
 - `last_gc_result=success`
 - `degraded_reason=null`
 
 ## 当前结论
 - 本轮真实 `world_chain_runtime` 样本已成功接入 `scripts/world-runtime-storage-gate.sh`。
-- gate 当前失败原因是 `checkpoint_count=0`，说明 fresh sample 尚未形成 T7.2 期望的 checkpoint 保留基线。
+- gate 当前失败原因持续为 `checkpoint_count=0`；即使在 feedback 注入后 `latest_retained_height` 已推进到 `16`，仍保持 `full_log_only`，尚未形成 checkpoint 保留基线。
 - 该结果符合当前专题状态：T7.2 入口已落地，但真实样本下的默认 profile 目录/指标差异仍需继续补齐。
 
 ## 后续动作
