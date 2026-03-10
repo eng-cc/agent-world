@@ -42,6 +42,7 @@
 - [x] TASK-README-008 (PRD-README-006) [test_tier_required]: 基于简报与模板生成 announcement / changelog 底稿，作为后续正式外部文案的安全起点。
 - [x] TASK-README-009 (PRD-README-007) [test_tier_required]: 将首份 announcement / changelog 底稿抽象为复用模板，固定 source links 与 review status 字段。
 - [x] TASK-README-010 (PRD-README-008/009) [test_tier_required]: 对齐根 README 项目状态段，使仓库首页与 site / release communication 口径一致。
+- [x] TASK-README-011 (PRD-README-003) [test_tier_required]: 同步 `doc/readme/README.md` 目录索引，补齐最新治理与发布沟通专题入口。
 
 ## 依赖
 - doc/readme/prd.index.md
@@ -67,4 +68,5 @@
 - 模块进展补充（2026-03-11 / announcement-draft）: 已新增版本候选 announcement / changelog 底稿，作为后续正式外部文案的安全起点。
 - 模块进展补充（2026-03-11 / announcement-template）: 已新增公告 / changelog 模板，后续候选可直接复用相同结构与审核状态字段。
 - 模块进展补充（2026-03-11 / root-status）: 已对齐根 README 项目状态段，统一为“技术预览（尚不可玩）+ 正式公告准备态”口径。
+- 模块进展补充（2026-03-11 / module-readme-index）: 已同步模块目录索引，补齐 release communication、announcement 与 root-status 专题入口。
 - 说明: 本文档仅维护 readme 模块设计执行状态；过程记录在 `doc/devlog/2026-03-03.md` 与 `doc/devlog/2026-03-11.md`。
