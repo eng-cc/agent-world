@@ -235,6 +235,23 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_full world_i
 ```
 - 配套文档：`doc/world-simulator/scenario/scenario-files.prd.md` 的“场景测试覆盖矩阵”。
 
+### S6.5：Chain Runtime Storage Profile / Gate 核验（L4/L5 补充）
+```bash
+env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_chain_runtime node_runtime_execution_driver_uses_storage_profile_checkpoint_interval -- --nocapture
+./scripts/world-runtime-storage-gate.sh --status-json <status.json> --expected-profile release_default --min-checkpoint-count 1 --max-orphan-blob-count 0 --require-no-degraded
+AGENT_WORLD_CHAIN_STORAGE_PROFILE=release_default bash -x <bundle>/run-game.sh --help
+AGENT_WORLD_CHAIN_STORAGE_PROFILE=soak_forensics bash -x <bundle>/run-web-launcher.sh --help
+AGENT_WORLD_CHAIN_STORAGE_PROFILE=dev_local bash -x <bundle>/run-chain-runtime.sh --help
+```
+- 说明：
+  - 用于 `TASK-WORLD_RUNTIME-033` 的 storage profile / storage gate / bundle wrapper 一致性核验；
+  - 若验证真实 `release_default` cadence，优先对比 `<64` 与 `>=64` 两个采样点，确认 `full_log_only -> checkpoint_plus_log` 切换；
+  - 若验证 bundle 入口，只需保留 `bash -x` trace 作为“wrapper 实际注入了正确 profile 参数”的证据；
+  - 参考证据：
+    - `doc/world-runtime/evidence/runtime-storage-gate-sample-2026-03-10.md`
+    - `doc/world-runtime/evidence/runtime-sidecar-orphan-gc-failsafe-2026-03-11.md`
+    - `doc/world-runtime/evidence/runtime-launcher-profile-consistency-2026-03-11.md`
+
 ### S8：长稳与压力套件（L5）
 - Viewer 压测：
 ```bash

@@ -41,7 +41,7 @@
 - [x] TASK-WORLD_RUNTIME-030 (PRD-WORLD_RUNTIME-013/014/015) [test_tier_required]: 建立运行态存储体积治理专题 PRD / project，并回写模块主 PRD、项目文档与索引。
 - [x] TASK-WORLD_RUNTIME-031 (PRD-WORLD_RUNTIME-013/014) [test_tier_required]: 落地 execution bridge / execution world retention policy（head window、稀疏 checkpoint、manifest-aware GC）并验证 latest-state 恢复不回退。
 - [x] TASK-WORLD_RUNTIME-032 (PRD-WORLD_RUNTIME-013/015) [test_tier_required]: 实现 `tick_consensus_records` 热冷分层与 storage metrics/status 输出，建立 snapshot size regression 与 archive read 回归。
-- [ ] TASK-WORLD_RUNTIME-033 (PRD-WORLD_RUNTIME-014/015) [test_tier_required + test_tier_full]: 建立 launcher / chain runtime / soak profile 的 footprint gate、GC fail-safe 与重启恢复联合验证。
+- [x] TASK-WORLD_RUNTIME-033 (PRD-WORLD_RUNTIME-014/015) [test_tier_required + test_tier_full]: 建立 launcher / chain runtime / soak profile 的 footprint gate、GC fail-safe 与重启恢复联合验证。
 - [x] TASK-WORLD_RUNTIME-034 (PRD-WORLD_RUNTIME-013/014/015) [test_tier_required]: 输出详细技术设计文档，明确 canonical replay log / checkpoint / GC / metrics / migration 方案。
 - [x] TASK-WORLD_RUNTIME-035 (PRD-WORLD_RUNTIME-013/014/015) [test_tier_required]: 将专题项目进一步拆解为 T1.1 ~ T7.5 子任务，明确执行顺序、依赖边界与测试闭环。
 
@@ -181,3 +181,5 @@
 - 模块进展补充（2026-03-11 / T7.4 启动）: 已为 `world_game_launcher` 与 `world_web_launcher` 新增三档 storage profile 参数透传回归，并发起 `runtime_engineer -> viewer_engineer` handoff `doc/world-runtime/runtime-to-viewer-task-world_runtime-033-t7.4-profile-consistency-2026-03-11.md`，下一步补 bundle/launcher 实测证据。
 
 - 模块进展补充（2026-03-11 / T7.4 收口）: `viewer_engineer` 已通过 bundle 产物与 `bash -x` trace 确认 `AGENT_WORLD_CHAIN_STORAGE_PROFILE` 在 `run-game.sh` / `run-web-launcher.sh` / `run-chain-runtime.sh` 中分别映射到 `--chain-storage-profile` / `--storage-profile`，T7.4 已完成。
+
+- 模块进展补充（2026-03-11 / T7.5 收口）: `TASK-WORLD_RUNTIME-033` 已随 T7.2~T7.4 的 runtime / qa / viewer 证据链闭环完成；当前专题后续仅保留更大范围的 soak/版本迭代，不再作为未完成任务阻断。
