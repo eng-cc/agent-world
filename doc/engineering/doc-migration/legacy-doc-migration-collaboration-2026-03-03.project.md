@@ -16,7 +16,7 @@
 - [x] TASK-ENGINEERING-014 (PRD-ENGINEERING-006): Owner-D 迁移 `doc/site/**`、`doc/readme/**`、`doc/scripts/**`、`doc/game/**`、`doc/engineering/**` 及根入口遗留文档（57 篇；D1/D2 已完成）。
 - [x] TASK-ENGINEERING-014-D1 (PRD-ENGINEERING-006): Owner-D 已完成非根入口 54 篇迁移（不含 3 份根入口 redirect project 文档）。
 - [x] TASK-ENGINEERING-014-D2 (PRD-ENGINEERING-006): Owner-D 完成 3 份根入口 redirect project 文档收口（`doc/game-test.project.md`、`doc/world-runtime.project.md`、`doc/world-simulator.project.md`）。
-- [ ] TASK-ENGINEERING-015 (PRD-ENGINEERING-007): 执行全量收口复核（命名一致性、引用可达、模块追踪同步、燃尽归零）。
+- [x] TASK-ENGINEERING-015 (PRD-ENGINEERING-007): 执行全量收口复核（命名一致性、引用可达、模块追踪同步、燃尽归零）。
 
 ## 依赖
 - `doc/engineering/doc-migration/legacy-doc-migration-collaboration-2026-03-03.design.md`
@@ -28,8 +28,8 @@
 - `./scripts/doc-governance-check.sh`
 
 ## 状态
-- 更新日期: 2026-03-03
-- 当前状态: active
-- 当前完成: 10 / 11（完成协作入口冻结 + Owner-A/B 目录迁移 + Owner-C 全批次迁移收口 + Owner-D D1/D2 与总任务收口）
-- 下一任务: TASK-ENGINEERING-015（执行全量收口复核）
-- 风险备注: 大目录迁移期间需每日同步燃尽，防止 Owner 负载失衡。
+- 更新日期: 2026-03-11
+- 当前状态: completed
+- 当前完成: 11 / 11（完成协作入口冻结 + Owner-A/B/C/D 全部迁移批次 + 根入口 redirect 收口 + 全量收口复核）
+- 下一任务: 无（当前迁移协作子项目已完成）
+- 风险备注: 迁移专项已收口；后续若新增 legacy 迁移需求，应新开专题而非回滚本子项目完成态。

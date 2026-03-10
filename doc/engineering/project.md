@@ -22,7 +22,7 @@
 - [x] TASK-ENGINEERING-014 (PRD-ENGINEERING-006) [test_tier_required]: Owner-D 迁移 `doc/site/**`、`doc/readme/**`、`doc/scripts/**`、`doc/game/**`、`doc/engineering/**` 与根入口遗留文档（57 篇，D1/D2 已完成）。
 - [x] TASK-ENGINEERING-014-D1 (PRD-ENGINEERING-006) [test_tier_required]: Owner-D 已完成非根入口 54 篇 legacy 迁移（`*.md/*.project.md -> *.prd.md/*.project.md`）。
 - [x] TASK-ENGINEERING-014-D2 (PRD-ENGINEERING-006) [test_tier_required]: 完成 3 份根入口 redirect project 文档收口（`doc/game-test.project.md`、`doc/world-runtime.project.md`、`doc/world-simulator.project.md`）。
-- [ ] TASK-ENGINEERING-015 (PRD-ENGINEERING-007) [test_tier_required]: 执行全量迁移收口复核（命名一致性、引用可达、模块追踪同步、燃尽归零）。
+- [x] TASK-ENGINEERING-015 (PRD-ENGINEERING-007) [test_tier_required]: 执行全量迁移收口复核（命名一致性、引用可达、模块追踪同步、燃尽归零）。
 - [x] TASK-ENGINEERING-016 (PRD-ENGINEERING-008) [test_tier_required]: 为 12 个模块补齐文件级 PRD 索引，并从模块入口文档建立可达引用。
 - [x] TASK-ENGINEERING-017 (PRD-ENGINEERING-009) [test_tier_required]: 在 `scripts/doc-governance-check.sh` 新增专题 `*.prd.md <-> *.project.md` 双向互链门禁。
 - [x] TASK-ENGINEERING-018 (PRD-ENGINEERING-010) [test_tier_required]: 在 12 个模块 `project.md` 的任务项显式标注 `test_tier_required/full`。
@@ -67,9 +67,9 @@
 - `doc/*/README.md`
 
 ## 状态
-- 更新日期: 2026-03-10
+- 更新日期: 2026-03-11
 - 当前状态: active
-- 下一任务: TASK-ENGINEERING-015（全量迁移收口复核）
+- 下一任务: TASK-ENGINEERING-003（工程门禁趋势统计）
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - 当前整改批次: R2（引用路径可达门禁）已完成（019）；R3（全量 PRD 审读机制）已完成（020-024，清单覆盖 708/708）。
 - 当前规范补充: 已完成 `TASK-ENGINEERING-025/026/027`，冻结“目录按对象、文件按职责”的文档建模方案、稳定专题命名，并补齐测试相关文档分工规则。
@@ -80,4 +80,5 @@
 - 最新完成: `TASK-ENGINEERING-034`（角色名白名单门禁与模板枚举接入）。
 - 最新完成: `TASK-ENGINEERING-035`（ROUND-006 改为按 `doc-structure-standard` 逐文档治理的执行轮）。
 - 最新完成: `TASK-ENGINEERING-036`（角色职责卡补齐推荐技能与角色/技能关系口径）。
+- 最新完成: `TASK-ENGINEERING-015`（legacy 文档迁移专项完成全量收口复核）。
 - 说明: 本文档仅维护 engineering 设计执行状态；过程记录在 `doc/devlog/2026-03-03.md`、`doc/devlog/2026-03-04.md` 与 `doc/devlog/2026-03-09.md`。
