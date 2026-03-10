@@ -48,10 +48,10 @@
 - devlog 记录：必填
 
 ## Done Definition
-- [ ] orphan 窗口来源已解释清楚
-- [ ] 收敛到 `0` 的证据可重复
-- [ ] `project.md` / `devlog` 已回写
-- [ ] 测试证据已补齐
+- [x] orphan 窗口来源已解释清楚
+- [x] 收敛到 `0` 的证据可重复
+- [x] `project.md` / `devlog` 已回写
+- [x] 测试证据已补齐
 
 ## Risks / Decisions
 - 已知风险：若 orphan 不是短暂窗口而是实际泄漏，T7.3 可能升级为实现修复任务。
@@ -65,6 +65,6 @@
 - 回归影响范围：runtime storage metrics / release gate / QA sampling policy
 
 ## Handoff Acknowledgement
-- 接收方确认范围：`待 runtime_engineer 回填`
-- 接收方确认 ETA：`待 runtime_engineer 回填`
-- 接收方新增风险：`待 runtime_engineer 回填`
+- 接收方确认范围：`已完成 orphan / GC fail-safe 解释、定向回归与文档回写`
+- 接收方确认 ETA：`2026-03-11 00:45 CST 已完成`
+- 接收方新增风险：`若后续要把该窗口直接编码进 gate 采样策略，仍需在 T7.4/T7.5 进一步统一 QA 取样口径`

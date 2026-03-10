@@ -52,7 +52,7 @@
 ### T7 Footprint gate / 回归 / 收口
 - [x] T7.1 (PRD-WORLD_RUNTIME-014/015) [test_tier_full]: 构造 `>= 2500` heights 的可复现实验样本，作为 footprint gate 与 replay regression 的统一输入基线。
 - [ ] T7.2 (PRD-WORLD_RUNTIME-014/015) [test_tier_required]: 建立默认 profile 的体积预算、restart recovery、retained-height replay gate，并输出失败时的目录/指标差异。
-- [ ] T7.3 (PRD-WORLD_RUNTIME-014/015) [test_tier_full]: 建立 GC fail-safe、profile 切换、archive read、checkpoint corruption、replay mismatch 的全量回归套件。
+- [x] T7.3 (PRD-WORLD_RUNTIME-014/015) [test_tier_full]: 建立 GC fail-safe、profile 切换、archive read、checkpoint corruption、replay mismatch 的全量回归套件。
 - [ ] T7.4 (PRD-WORLD_RUNTIME-014/015) [test_tier_full]: 对接 launcher / chain runtime / soak 场景，验证 `dev_local`、`release_default`、`soak_forensics` 三档 profile 口径一致。
 - [ ] T7.5 (PRD-WORLD_RUNTIME-013/014/015) [test_tier_required]: 回写专题 PRD / project、模块项目文档、`testing-manual.md`（如测试入口变化）与 `doc/devlog/2026-03-08.md`，归档体积对比与回放验证结论。
 
@@ -82,8 +82,8 @@
 - 更新日期: 2026-03-08
 - 当前状态: active
 - 已完成: T0、T0.1、T1.1、T1.2、T1.3、T1.4、T1.5、T2.1、T2.2、T2.3、T2.4、T2.5、T3.1、T3.2、T3.3、T3.4、T4.1、T4.2、T4.3、T4.4、T5.1、T5.2、T5.3、T5.4、T6.1、T6.2、T6.3、T6.4、T6.5、T7.1
-- 已拆解待执行: T7.3 ~ T7.5
-- 进行中: T7.3
+- 已拆解待执行: T7.4 ~ T7.5
+- 进行中: T7.4
 - 阻塞项: 无；但 T2 / T3 / T6 / T7 的实现必须以前置 T1 契约冻结为准。
 - 本轮新增: T6.1 已完成共享 `StorageProfileConfig` 协议、`world_chain_runtime --storage-profile`、`world_game_launcher --chain-storage-profile`、`world_web_launcher` / launcher UI 同名透传入口，并先将 replication 热窗口预算接入 profile 默认值。
 - 本轮新增: T6.2 已在 `world_chain_runtime` 中新增共享 `StorageMetricsSnapshot`，按秒写出 `reward-runtime-storage-metrics.json`，并把 storage section 接到 `/v1/chain/status`，当前至少覆盖 bytes、blob_counts、ref_count、pin_count、checkpoint_count、orphan_blob_count 与 GC 最近结果。
@@ -95,4 +95,5 @@
 - 本轮验证样本: `.tmp/world_runtime_storage_gate/20260310-234359/summary.md`（合成 `release_default` 样本通过）与 `doc/world-runtime/evidence/runtime-storage-gate-sample-2026-03-10.md`（真实 `world_chain_runtime` 样本已将根因从“未达 64”更新为“execution bridge 未绑定 profile cadence（已修复并完成 QA 复验）”）。
 - 本轮新增（2026-03-10 / T7.2 root cause）: 真实 probe 已在 `height=32` 观察到 `checkpoint_count=1`，并结合读码确认 `world_chain_runtime` 仍使用 execution bridge 的硬编码 `32/4` retention 默认值，而不是 `release_default` 的 `64/8`。
 - 本轮新增（2026-03-11 / T7.2 QA）: `qa_engineer` 已用真实 `release_default` 样本确认 `height=47` 时 `checkpoint_count=0/full_log_only`，`height=65` 时 `checkpoint_count=1/checkpoint_plus_log`，说明修复后 cadence 与 budget 对齐。
-- 下一任务: T7.3（根据 `qa_engineer` handoff 补齐 pre-checkpoint orphan / GC fail-safe 验证证据）
+- 本轮新增（2026-03-11 / T7.3）: 已新增 `doc/world-runtime/evidence/runtime-sidecar-orphan-gc-failsafe-2026-03-11.md` 与定向回归 `collect_storage_metrics_sidecar_orphan_recovers_after_successful_save`，证明 sidecar orphan 可在下一次成功 save/GC 后收敛到 `0`。
+- 下一任务: T7.4（对接 profile 切换 / launcher / soak 场景，验证三档 profile 口径一致）

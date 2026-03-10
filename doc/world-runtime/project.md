@@ -171,6 +171,7 @@
 - 模块进展补充（2026-03-10 / T7.2 根因）: 已定位 `world_chain_runtime` 的 execution bridge 仍使用硬编码 `32/4` retention 默认值，尚未绑定 `StorageProfileConfig`；当前真实 gate 的 `qa_engineer` 复跑已完成：真实 `release_default` 样本在 `47` 仍为 `full_log_only`，在 `65` 切到 `checkpoint_plus_log`，T7.2 已完成闭环。
 - 模块进展补充（2026-03-11 / T7.2 QA 复验）: `qa_engineer` 已基于真实 `world_chain_runtime` 样本完成修复后复验，`doc/world-runtime/evidence/runtime-storage-gate-sample-2026-03-10.md` 已确认 `<64` 无 checkpoint、`>=64` 生成首个 checkpoint，下一步转入 T7.3 的 GC fail-safe / orphan 证据补齐。
 - 模块进展补充（2026-03-11 / T7.3 handoff）: `qa_engineer` 已新增 `doc/world-runtime/qa-to-runtime-task-world_runtime-033-t7.3-orphan-gc-failsafe-2026-03-11.md`，将 pre-checkpoint 窗口瞬时 `orphan_blob_count=1` 交接给 `runtime_engineer` 作为下一步闭环目标。
+- 模块进展补充（2026-03-11 / T7.3 收口）: `runtime_engineer` 已新增 `doc/world-runtime/evidence/runtime-sidecar-orphan-gc-failsafe-2026-03-11.md` 与定向回归 `collect_storage_metrics_sidecar_orphan_recovers_after_successful_save`，将该 orphan 信号收敛为“可被下一次成功 save/GC 清零的窗口态”。
 
 ## Handoff Acknowledgement
 - 接收方确认范围：`已接收 TASK-WORLD_RUNTIME-002/003/004；当前提交完成边界清单、回归模板与发布门禁指标模板`

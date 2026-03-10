@@ -506,6 +506,7 @@ mod tests {
     use std::path::{Path, PathBuf};
     use std::time::{SystemTime, UNIX_EPOCH};
 
+    use agent_world::runtime::World as RuntimeWorld;
     use agent_world_proto::storage_profile::StorageProfile;
 
     use super::super::RuntimePaths;
@@ -676,6 +677,51 @@ mod tests {
             snapshot.blob_counts.get("replication_blobs").copied(),
             Some(1)
         );
+    }
+
+    #[test]
+    fn collect_storage_metrics_sidecar_orphan_recovers_after_successful_save() {
+        let root = temp_dir("sidecar-orphan-recovery");
+        let paths = RuntimePaths {
+            runtime_root: root.clone(),
+            execution_bridge_state_path: root.join("bridge-state.json"),
+            execution_world_dir: root.join("reward-runtime-execution-world"),
+            execution_records_dir: root.join("reward-runtime-execution-records"),
+            storage_root: root.join("store"),
+            replication_root: root.join("replication"),
+            reward_runtime_state_path: root.join("reward-runtime-state.json"),
+            reward_runtime_distfs_probe_state_path: root
+                .join("reward-runtime-distfs-probe-state.json"),
+            reward_runtime_report_dir: root.join("reward-runtime-report"),
+            reward_runtime_storage_metrics_path: root.join("reward-runtime-storage-metrics.json"),
+        };
+        fs::create_dir_all(paths.execution_world_dir.as_path())
+            .expect("create execution world dir");
+
+        let world = RuntimeWorld::new();
+        world
+            .save_to_dir(paths.execution_world_dir.as_path())
+            .expect("initial save should succeed");
+
+        let sidecar_root = paths.execution_world_dir.join(".distfs-state");
+        write_blob(
+            sidecar_root.as_path(),
+            "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        );
+
+        let before_recovery = collect_storage_metrics(&paths, StorageProfile::ReleaseDefault, None);
+        assert!(before_recovery.orphan_blob_count > 0);
+
+        world
+            .save_to_dir(paths.execution_world_dir.as_path())
+            .expect("save should sweep injected orphan");
+
+        let recovered = collect_storage_metrics(&paths, StorageProfile::ReleaseDefault, None);
+        assert_eq!(recovered.orphan_blob_count, 0);
+        assert_eq!(recovered.last_gc_result, "success");
+        assert!(recovered.pin_count > 0);
+
+        let _ = fs::remove_dir_all(root);
     }
 
     #[test]
