@@ -116,8 +116,17 @@ ab_log_note() {
   printf '### [%s] %s\n' "$1" "$(date '+%H:%M:%S')" | tee -a "$AB_LOG" >/dev/null
 }
 
+reopen_game_page() {
+  ab_log_note reopen_after_record
+  ab_cmd "$SESSION" close >>"$AB_LOG" 2>&1 || true
+  ab_open "$SESSION" "$HEADED" "$GAME_URL" >>"$AB_LOG" 2>&1 || return 1
+  ab_cmd "$SESSION" wait --load networkidle >>"$AB_LOG" 2>&1 || true
+  wait_for_api 20000 >/dev/null || return 1
+  wait_for_connected 60000
+}
+
 ab_state() {
-  ab_eval "$SESSION" 'JSON.stringify(window.__AW_TEST__?.getState?.() ?? null)'
+  ab_eval "$SESSION" 'window.__AW_TEST__?.getState?.() ?? null'
 }
 
 state_tick() { json_get "$1" tick; }
@@ -129,7 +138,7 @@ wait_for_api() {
   local timeout_ms=${1:-20000}
   local deadline=$((SECONDS * 1000 + timeout_ms))
   while (( SECONDS * 1000 < deadline )); do
-    if [[ "$(ab_eval "$SESSION" 'typeof window.__AW_TEST__ === "object" ? "ready" : "missing"')" == "ready" ]]; then
+    if [[ "$(ab_eval "$SESSION" 'typeof window.__AW_TEST__ === "object"')" == "true" ]]; then
       return 0
     fi
     sleep_ms 200
@@ -164,7 +173,7 @@ send_control_probe() {
   before=$(ab_state)
   before_tick=$(state_tick "$before"); before_tick=${before_tick:-0}
   before_event=$(state_event_seq "$before"); before_event=${before_event:-0}
-  feedback=$(ab_eval "$SESSION" "JSON.stringify((() => { try { return window.__AW_TEST__?.sendControl?.($(json_quote "$action"), ${payload_json}) ?? null; } catch (err) { return { accepted: false, reason: String(err), effect: 'exception on sendControl' }; } })())")
+  feedback=$(ab_eval "$SESSION" "(() => { try { return window.__AW_TEST__?.sendControl?.($(json_quote "$action"), ${payload_json}) ?? null; } catch (err) { return { accepted: false, reason: String(err), effect: 'exception on sendControl' }; } })()")
   accepted=$(json_get "$feedback" accepted)
   reason=$(json_get "$feedback" reason)
   effect=$(json_get "$feedback" effect)
@@ -330,7 +339,11 @@ if [[ -z "$GAME_URL" ]]; then
     echo
   } | tee -a "$AB_LOG" >/dev/null
 
-  ./scripts/run-game-test.sh "${STACK_ARGS[@]}" >"$RUN_GAME_TEST_LOG" 2>&1 &
+  if command -v stdbuf >/dev/null 2>&1; then
+    stdbuf -oL -eL ./scripts/run-game-test.sh "${STACK_ARGS[@]}" >"$RUN_GAME_TEST_LOG" 2>&1 &
+  else
+    ./scripts/run-game-test.sh "${STACK_ARGS[@]}" >"$RUN_GAME_TEST_LOG" 2>&1 &
+  fi
   STACK_PID=$!
 
   for ((i = 0; i < STARTUP_TIMEOUT_SECS; i++)); do
@@ -378,12 +391,31 @@ if [[ "$SNAPSHOT_OK" -ne 1 ]]; then
   echo "warning: snapshot still failing after retries; continue with eval path" | tee -a "$AB_LOG" >/dev/null
 fi
 
-ab_log_note record_start
-ab_cmd "$SESSION" record start "$OUT_DIR/playthrough.webm" >>"$AB_LOG" 2>&1 || true
-
-wait_for_api 20000 >/dev/null || { echo "error: __AW_TEST__ unavailable" >&2; exit 1; }
-initial=$(wait_for_connected 20000)
+wait_for_api 20000 >/dev/null || { echo "error: __AW_TEST__ unavailable before initial connect" >&2; exit 1; }
+if ! initial=$(wait_for_connected 60000); then
+  echo "error: initial connection failed (status=$(state_connection "$initial"), lastFeedback=$(state_last_feedback_json "$initial"))" >&2
+  exit 1
+fi
 ab_cmd "$SESSION" screenshot "$OUT_DIR/step0-home.png" >>"$AB_LOG" 2>&1 || true
+
+RECORDING_ACTIVE=0
+ab_log_note record_start
+if ab_cmd "$SESSION" record start "$OUT_DIR/playthrough.webm" >>"$AB_LOG" 2>&1; then
+  RECORDING_ACTIVE=1
+fi
+wait_for_api 20000 >/dev/null || true
+if ! initial_after_record=$(wait_for_connected 15000); then
+  echo "warning: record_start disrupted connection; retry without recording" | tee -a "$AB_LOG" >/dev/null
+  if [[ "$RECORDING_ACTIVE" -eq 1 ]]; then
+    ab_log_note record_stop_recover
+    ab_cmd "$SESSION" record stop >>"$AB_LOG" 2>&1 || true
+    RECORDING_ACTIVE=0
+  fi
+  if ! initial_after_record=$(reopen_game_page); then
+    echo "error: connection failed after record_start recovery (status=$(state_connection "$initial_after_record"), lastFeedback=$(state_last_feedback_json "$initial_after_record"))" >&2
+    exit 1
+  fi
+fi
 
 phaseA_play=$(send_control_probe phase_a_play play '{}' true 12000)
 no_progress_observation=$(observe_no_progress_window 6000)
@@ -394,152 +426,13 @@ phaseB_step_primary=$(send_control_probe phase_b_step_primary step '{"count":8}'
 phaseB_step_followup=$(send_control_probe phase_b_step_followup step '{"count":2}' true 6000)
 ab_cmd "$SESSION" screenshot "$OUT_DIR/step2-phase-b.png" >>"$AB_LOG" 2>&1 || true
 
-final_state=$(wait_for_connected 8000)
+if ! final_state=$(wait_for_connected 8000); then
+  echo "error: final connection failed (status=$(state_connection "$final_state"), lastFeedback=$(state_last_feedback_json "$final_state"))" >&2
+  exit 1
+fi
 ab_cmd "$SESSION" screenshot "$OUT_DIR/step3-final.png" >>"$AB_LOG" 2>&1 || true
 
-AB_RESULT_JSON=$(python3 - <<'PY' \
-  "$RUN_ID" "$GAME_URL" "$initial" "$final_state" \
-  "$phaseA_play" "$phaseA_pause" "$phaseB_step_primary" "$phaseB_step_followup" "$no_progress_observation"
-import json, sys
-run_id, url, initial_raw, final_raw, play_raw, pause_raw, step1_raw, step2_raw, nop_raw = sys.argv[1:10]
-initial = json.loads(initial_raw)
-final = json.loads(final_raw)
-play = json.loads(play_raw)
-pause = json.loads(pause_raw)
-step1 = json.loads(step1_raw)
-step2 = json.loads(step2_raw)
-no_progress = json.loads(nop_raw)
-commands = [play, pause, step1, step2]
-expected = [item for item in commands if item.get('expectProgress')]
-progressed = [item for item in expected if item.get('progressed')]
-accepted = [item for item in commands if item.get('accepted')]
-result = {
-    'runId': run_id,
-    'url': url,
-    'states': {
-        'initial': initial,
-        'final': final,
-    },
-    'phases': {
-        'phaseA': {
-            'play': play,
-            'pause': pause,
-            'noProgressObservation': no_progress,
-            'pass': bool(play.get('progressed') and pause.get('accepted')),
-        },
-        'phaseB': {
-            'stepPrimary': step1,
-            'stepFollowup': step2,
-            'pass': bool(step1.get('progressed') and step2.get('progressed')),
-        },
-    },
-    'commands': commands,
-    'metrics': {
-        'ttfcMs': play.get('firstProgressMs'),
-        'totalControls': len(commands),
-        'acceptedControls': len(accepted),
-        'expectedProgressControls': len(expected),
-        'effectiveProgressControls': len(progressed),
-        'effectiveControlHitRate': (len(progressed) / len(expected)) if expected else 0,
-        'maxNoProgressWindowMs': int(no_progress.get('maxNoProgressWindowMs', 0)),
-        'initialTick': int(float(initial.get('tick', 0) or 0)),
-        'finalTick': int(float(final.get('tick', 0) or 0)),
-        'initialEventSeq': int(float(initial.get('eventSeq', 0) or 0)),
-        'finalEventSeq': int(float(final.get('eventSeq', 0) or 0)),
-    },
-}
-print(json.dumps(result, ensure_ascii=False))
-PY
-)
-
-python3 - "$AB_RESULT_JSON" "$AB_METRICS_JSON" "$AB_METRICS_MD" "$CARD_METRICS_MD" <<'PY'
-import datetime as dt
-import json
-import pathlib
-import sys
-
-raw = sys.argv[1]
-metrics_path = pathlib.Path(sys.argv[2])
-summary_path = pathlib.Path(sys.argv[3])
-card_path = pathlib.Path(sys.argv[4])
-
-data = json.loads(raw)
-metrics = data.get("metrics", {})
-phases = data.get("phases", {})
-commands = data.get("commands", [])
-
-metrics_path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-
-ttfc = metrics.get("ttfcMs")
-effective = metrics.get("effectiveControlHitRate", 0)
-effective_pct = f"{effective * 100:.1f}%"
-expected_progress = int(metrics.get("expectedProgressControls", 0))
-effective_progress = int(metrics.get("effectiveProgressControls", 0))
-accepted = int(metrics.get("acceptedControls", 0))
-total = int(metrics.get("totalControls", 0))
-max_stall = int(metrics.get("maxNoProgressWindowMs", 0))
-initial_tick = int(metrics.get("initialTick", 0))
-final_tick = int(metrics.get("finalTick", 0))
-initial_event_seq = int(metrics.get("initialEventSeq", 0))
-final_event_seq = int(metrics.get("finalEventSeq", 0))
-
-phase_a = phases.get("phaseA", {})
-phase_b = phases.get("phaseB", {})
-phase_a_pass = bool(phase_a.get("pass"))
-phase_b_pass = bool(phase_b.get("pass"))
-
-cmd_lines = []
-for item in commands:
-    cmd_lines.append(
-        f"- `{item.get('name')}` action=`{item.get('action')}` "
-        f"accepted={item.get('accepted')} progressed={item.get('progressed')} "
-        f"category=`{item.get('failCategory')}` "
-        f"tick `{item.get('beforeTick')}` -> `{item.get('afterTick')}` "
-        f"eventSeq `{item.get('beforeEventSeq')}` -> `{item.get('afterEventSeq')}` "
-        f"stage=`{item.get('feedbackStage')}` reason=`{item.get('feedbackReason')}`"
-    )
-
-summary_lines = [
-    "# Playability A/B Metrics",
-    "",
-    f"- Timestamp: {dt.datetime.now().astimezone().strftime('%Y-%m-%d %H:%M:%S %Z')}",
-    f"- Run ID: `{data.get('runId')}`",
-    f"- URL: `{data.get('url')}`",
-    "",
-    "## Quant Metrics",
-    f"- TTFC(ms): `{ttfc}`" if ttfc is not None else "- TTFC(ms): `null`",
-    f"- Effective control hit-rate: `{effective_progress}/{expected_progress}` (`{effective_pct}`)",
-    f"- Accepted control rate: `{accepted}/{total}`",
-    f"- Max no-progress window(ms): `{max_stall}`",
-    f"- Tick: `{initial_tick}` -> `{final_tick}`",
-    f"- EventSeq: `{initial_event_seq}` -> `{final_event_seq}`",
-    "",
-    "## A/B Verdict",
-    f"- A (play/pause): `{'PASS' if phase_a_pass else 'FAIL'}`",
-    f"- B (step chain): `{'PASS' if phase_b_pass else 'FAIL'}`",
-    f"- B step primary category: `{phase_b.get('stepPrimary', {}).get('failCategory')}`",
-    f"- B step followup category: `{phase_b.get('stepFollowup', {}).get('failCategory')}`",
-    "",
-    "## Control Probes",
-] + cmd_lines + [""]
-
-summary_path.write_text("\n".join(summary_lines), encoding="utf-8")
-
-card_lines = [
-    "# 量化指标（自动填写）",
-    "",
-    f"- TTFC（首次可控时间，ms）：`{ttfc}`" if ttfc is not None else "- TTFC（首次可控时间，ms）：`null`",
-    f"- 有效控制命中率（有效推进控制次数 / 预期推进控制次数）：`{effective_progress}/{expected_progress}`（`{effective_pct}`）",
-    f"- 无进展窗口时长（ms，connected 下 tick 不变最长窗口）：`{max_stall}`",
-    "- A/B 分段结论：",
-    f"  - A（play/pause）：`{'PASS' if phase_a_pass else 'FAIL'}`",
-    f"  - B（step链路）：`{'PASS' if phase_b_pass else 'FAIL'}`",
-    f"  - B primary 失败分类：`{phase_b.get('stepPrimary', {}).get('failCategory')}`",
-    f"  - B followup 失败分类：`{phase_b.get('stepFollowup', {}).get('failCategory')}`",
-    "",
-]
-card_path.write_text("\n".join(card_lines), encoding="utf-8")
-PY
+AB_RESULT_JSON=$(python3 scripts/render-ab-metrics.py   "$RUN_ID" "$GAME_URL" "$initial" "$final_state"   "$phaseA_play" "$phaseA_pause" "$phaseB_step_primary" "$phaseB_step_followup" "$no_progress_observation"   "$AB_METRICS_JSON" "$AB_METRICS_MD" "$CARD_METRICS_MD")
 
 ab_log_note console_all
 ab_cmd "$SESSION" console >"$CONSOLE_ALL_LOG" 2>&1 || true
@@ -554,8 +447,10 @@ else:
     out.write_text("", encoding='utf-8')
 PY
 
-ab_log_note record_stop
-ab_cmd "$SESSION" record stop >>"$AB_LOG" 2>&1 || true
+if [[ "${RECORDING_ACTIVE:-0}" -eq 1 ]]; then
+  ab_log_note record_stop
+  ab_cmd "$SESSION" record stop >>"$AB_LOG" 2>&1 || true
+fi
 ab_log_note close
 ab_cmd "$SESSION" close >>"$AB_LOG" 2>&1 || true
 

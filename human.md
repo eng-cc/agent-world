@@ -14,3 +14,8 @@
 
 output/release/game-launcher-local/run-client.sh
 ```
+
+## env
+
+npm install -g agent-browser
+agent-browser install  # Download Chromium

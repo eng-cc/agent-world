@@ -91,3 +91,52 @@ else:
     out.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 PY
 }
+
+
+resolve_viewer_static_dir_for_web_closure() {
+  local repo_root=$1
+  local requested_dir=$2
+  local out_dir=$3
+
+  if [[ "$requested_dir" != "web" ]]; then
+    printf '%s
+' "$requested_dir"
+    return 0
+  fi
+
+  local dist_dir="$repo_root/crates/agent_world_viewer/dist"
+  local dist_index="$dist_dir/index.html"
+  local newest_source=0
+  local dist_mtime=0
+  local rebuilt_dir
+
+  if [[ "$out_dir" = /* ]]; then
+    rebuilt_dir="$out_dir/web-dist"
+  else
+    rebuilt_dir="$repo_root/$out_dir/web-dist"
+  fi
+
+  if [[ -f "$dist_index" ]]; then
+    dist_mtime=$(stat -c %Y "$dist_index" 2>/dev/null || echo 0)
+  fi
+
+  newest_source=$(find     "$repo_root/crates/agent_world_viewer/src"     "$repo_root/crates/agent_world_proto/src"     -type f \( -name '*.rs' -o -name '*.html' -o -name 'Trunk.toml' -o -name 'Cargo.toml' \)     -printf '%T@
+' 2>/dev/null | sort -nr | head -n 1 | cut -d. -f1)
+  newest_source=${newest_source:-0}
+
+  if [[ -f "$dist_index" && "$dist_mtime" -ge "$newest_source" ]]; then
+    printf '%s
+' "$dist_dir"
+    return 0
+  fi
+
+  require_cmd trunk
+  mkdir -p "$rebuilt_dir"
+  echo "+ env -u NO_COLOR trunk build --dist $rebuilt_dir" >&2
+  (
+    cd "$repo_root/crates/agent_world_viewer"
+    env -u NO_COLOR trunk build --dist "$rebuilt_dir"
+  ) >&2
+  printf '%s
+' "$rebuilt_dir"
+}

@@ -70,7 +70,7 @@ log_note() {
 }
 
 ab_state() {
-  ab_eval "$session" 'JSON.stringify(window.__AW_TEST__?.getState?.() ?? null)'
+  ab_eval "$session" 'window.__AW_TEST__?.getState?.() ?? null'
 }
 
 ab_send_control() {
@@ -78,14 +78,14 @@ ab_send_control() {
   local payload_json=${2:-null}
   local action_json
   action_json=$(json_quote "$action")
-  ab_eval "$session" "JSON.stringify((() => { try { return window.__AW_TEST__?.sendControl?.(${action_json}, ${payload_json}) ?? null; } catch (err) { return { accepted: false, reason: String(err), effect: 'exception on sendControl' }; } })())"
+  ab_eval "$session" "(() => { try { return window.__AW_TEST__?.sendControl?.(${action_json}, ${payload_json}) ?? null; } catch (err) { return { accepted: false, reason: String(err), effect: 'exception on sendControl' }; } })()"
 }
 
 ab_run_steps() {
   local steps=$1
   local steps_json
   steps_json=$(json_quote "$steps")
-  ab_eval "$session" "JSON.stringify((() => { try { return window.__AW_TEST__?.runSteps?.(${steps_json}) ?? null; } catch (err) { return { ok: false, reason: String(err) }; } })())"
+  ab_eval "$session" "(() => { try { return window.__AW_TEST__?.runSteps?.(${steps_json}) ?? null; } catch (err) { return { ok: false, reason: String(err) }; } })()"
 }
 
 state_tick() {
@@ -119,8 +119,10 @@ state_camera_radius() {
 wait_for_api() {
   local timeout_ms=${1:-20000}
   local deadline=$((SECONDS * 1000 + timeout_ms))
+  local ready='false'
   while (( SECONDS * 1000 < deadline )); do
-    if [[ "$(ab_eval "$session" 'typeof window.__AW_TEST__ === "object" ? "ready" : "missing"')" == "ready" ]]; then
+    ready=$(ab_eval "$session" 'typeof window.__AW_TEST__ === "object"')
+    if [[ "$ready" == "true" ]]; then
       return 0
     fi
     sleep_ms 200
@@ -288,6 +290,12 @@ if [[ "$skip_visual_baseline" -eq 0 ]]; then
   echo "+ ./scripts/viewer-visual-baseline.sh"
   ./scripts/viewer-visual-baseline.sh
 fi
+
+resolved_viewer_static_dir=$(resolve_viewer_static_dir_for_web_closure \
+  "$repo_root" \
+  "$viewer_static_dir" \
+  "$out_dir")
+viewer_static_dir="$resolved_viewer_static_dir"
 
 live_host=${live_bind%:*}
 live_port=${live_bind##*:}

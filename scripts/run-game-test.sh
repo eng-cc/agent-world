@@ -2,12 +2,14 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$ROOT_DIR/scripts/agent-browser-lib.sh"
 
 VIEWER_HOST="127.0.0.1"
 VIEWER_PORT="4173"
 LIVE_BIND_ADDR="127.0.0.1:5023"
 WEB_BRIDGE_ADDR="127.0.0.1:5011"
 ENABLE_LLM="1"
+VIEWER_STATIC_DIR="web"
 
 usage() {
   cat <<'USAGE'
@@ -21,6 +23,7 @@ Options:
   --viewer-port <port>     Viewer HTTP port (default: 4173)
   --live-bind <addr:port>  world_game_launcher live TCP bind (default: 127.0.0.1:5023)
   --web-bind <addr:port>   WebSocket bridge bind (default: 127.0.0.1:5011)
+  --viewer-static-dir <p> Viewer static dir or `web` freshness build (default: web)
   --with-llm               Enable LLM mode (default: enabled)
   --no-llm                 Disable LLM mode (fallback to built-in script)
   -h, --help               Show this help
@@ -45,6 +48,10 @@ while [[ $# -gt 0 ]]; do
       WEB_BRIDGE_ADDR="${2:-}"
       shift 2
       ;;
+    --viewer-static-dir)
+      VIEWER_STATIC_DIR="${2:-}"
+      shift 2
+      ;;
     --with-llm)
       ENABLE_LLM="1"
       shift
@@ -65,7 +72,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ -z "$VIEWER_HOST" || -z "$VIEWER_PORT" || -z "$LIVE_BIND_ADDR" || -z "$WEB_BRIDGE_ADDR" ]]; then
+if [[ -z "$VIEWER_HOST" || -z "$VIEWER_PORT" || -z "$LIVE_BIND_ADDR" || -z "$WEB_BRIDGE_ADDR" || -z "$VIEWER_STATIC_DIR" ]]; then
   echo "error: empty argument is not allowed" >&2
   exit 1
 fi
@@ -174,6 +181,8 @@ RUN_ID="$(date +%Y%m%d-%H%M%S)"
 OUTPUT_DIR="$ROOT_DIR/output/playwright/playability/startup-${RUN_ID}"
 mkdir -p "$OUTPUT_DIR"
 
+RESOLVED_VIEWER_STATIC_DIR=$(resolve_viewer_static_dir_for_web_closure "$ROOT_DIR" "$VIEWER_STATIC_DIR" "$OUTPUT_DIR")
+
 WORLD_LOG="$OUTPUT_DIR/world_viewer_live.log"
 WEB_LOG="$OUTPUT_DIR/web_viewer.log"
 META_FILE="$OUTPUT_DIR/session.meta"
@@ -200,6 +209,7 @@ WORLD_ARGS=(
   --web-bind "$WEB_BRIDGE_ADDR"
   --viewer-host "$VIEWER_HOST"
   --viewer-port "$VIEWER_PORT"
+  --viewer-static-dir "$RESOLVED_VIEWER_STATIC_DIR"
   --no-open-browser
 )
 if [[ "$ENABLE_LLM" == "1" ]]; then
