@@ -36,6 +36,11 @@
 - 运营信号能回流到 PRD / project / backlog
 - 对外说明不与 `README` / PRD 主口径冲突
 
+## Recommended Skills
+- 主技能：`documentation-writer`、`agent-browser`，用于整理对外口径、复现玩家路径与沉淀事故/反馈记录。
+- 常复用技能：`game-changing-features`、`game-design-theory`，用于把社区信号转成高价值改进建议与体验洞察。
+- 使用约定：当前暂无完全专属的 LiveOps 技能；角色决定 owner，技能决定方法，涉及规则承诺或技术修复优先级时需回流 `producer_system_designer` 与对应工程 owner。
+
 ## Checklist
 - 是否记录玩家/社区/节点侧的核心问题与频次
 - 是否区分“质量缺陷”与“运营/沟通问题”

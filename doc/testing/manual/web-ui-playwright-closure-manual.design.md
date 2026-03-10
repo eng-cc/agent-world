@@ -1,7 +1,7 @@
 # Agent World：Web UI Playwright 闭环测试手册（2026-02-28）设计
 
-- 对应需求文档: `doc/testing/manual/web-ui-playwright-closure-manual.prd.md`
-- 对应项目管理文档: `doc/testing/manual/web-ui-playwright-closure-manual.project.md`
+- 对应需求文档: `doc/testing/manual/web-ui-agent-browser-closure-manual.prd.md`
+- 对应项目管理文档: `doc/testing/manual/web-ui-agent-browser-closure-manual.project.md`
 
 ## 1. 设计定位
 定义测试手册专题设计，统一系统性测试、Web UI Playwright 闭环与工程化维护方式。

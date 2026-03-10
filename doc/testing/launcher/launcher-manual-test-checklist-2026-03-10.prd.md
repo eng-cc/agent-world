@@ -67,7 +67,7 @@
   - `crates/agent_world/src/bin/world_web_launcher/gui_agent_api.rs`
   - `crates/agent_world_client_launcher/src/main.rs`
   - `doc/testing/launcher/launcher-full-usability-closure-audit-2026-03-08.prd.md`
-  - `doc/testing/manual/web-ui-playwright-closure-manual.prd.md`
+  - `doc/testing/manual/web-ui-agent-browser-closure-manual.prd.md`
   - `testing-manual.md`
   - `scripts/run-game-test.sh`
   - `scripts/viewer-release-qa-loop.sh`

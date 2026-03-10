@@ -1,7 +1,7 @@
 # Web UI agent-browser 闭环测试手册（项目管理文档）
 
 - 对应设计文档: `doc/testing/manual/web-ui-playwright-closure-manual.design.md`
-- 对应需求文档: `doc/testing/manual/web-ui-playwright-closure-manual.prd.md`
+- 对应需求文档: `doc/testing/manual/web-ui-agent-browser-closure-manual.prd.md`
 
 审计轮次: 4
 

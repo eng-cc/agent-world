@@ -15,7 +15,7 @@
 - `doc/testing/prd.index.md`
 - `testing-manual.md`
 - `doc/testing/launcher/launcher-full-usability-closure-audit-2026-03-08.prd.md`
-- `doc/testing/manual/web-ui-playwright-closure-manual.prd.md`
+- `doc/testing/manual/web-ui-agent-browser-closure-manual.prd.md`
 - `doc/devlog/2026-03-10.md`
 
 ## 状态
