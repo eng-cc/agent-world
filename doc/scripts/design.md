@@ -30,23 +30,23 @@
 - precommit 类规则进入 `precommit/`
 - launcher / chain / wasm 等专题保持同目录同 basename 管理
 
-## 目标
+## 设计目标
 - 提供 `scripts` 模块的总体设计入口。
 
-## 范围
+## 设计范围
 - 覆盖模块级结构、主链路、分层与专题导航。
 - 不替代专题 `*.design.md` 的细化设计。
 
-## 接口 / 数据
+## 关键接口 / 入口
 - 需求入口：`doc/scripts/prd.md`
 - 执行入口：`doc/scripts/project.md`
 - 兼容执行入口：`doc/scripts/project.md`
 - 索引入口：`doc/scripts/prd.index.md`
 
-## 里程碑
+## 设计演进计划
 - M1 (2026-03-09): 在 ROUND-006 中补齐模块级 `design.md` 标准入口。
 - M2: 按专题继续补齐高复杂度主题的 `*.design.md`。
 
-## 风险
+## 设计风险
 - 若专题级设计未及时补齐，模块级 `design.md` 可能承载过多导航职责。
 - 若 legacy `*.project.md` 长期保留，执行入口会继续双轨并存。

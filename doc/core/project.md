@@ -46,6 +46,16 @@
     - `doc/core/reviews/round-006-reviewed-files.md`
     - `doc/core/reviews/round-006-kickoff-worklist.md`
     - `doc/core/reviews/round-006-audit-progress-log.md`
+  - ROUND-007 启动产物（2026-03-09，内容职责边界复核轮）:
+    - `doc/core/reviews/consistency-review-round-007.md`
+    - `doc/core/reviews/round-007-reviewed-files.md`
+    - `doc/core/reviews/round-007-kickoff-worklist.md`
+    - `doc/core/reviews/round-007-audit-progress-log.md`
+  - ROUND-007 进展（2026-03-10）:
+    - 已完成全量范围 `874/874` 内容职责边界复核。
+    - 已完成 12 份模块 `design.md` 的旧模板段落命名收敛。
+    - 专题 `PRD/Project/Design` 全量自动扫描与重点抽查未发现新增高信号职责串层问题。
+    - ROUND-007 已收口为 `completed`。
   - ROUND-002 进展（2026-03-05）:
     - 已完成 A/B/C/D-E 分区重复簇盘点并回写到 ROUND-002 台账。
     - 已完成首批执行 `C2-007`：`viewer-chat-agent-prompt-default-values-inline-input` 并入 `prefill` 且旧文档已删除，替代链与索引已回写。
