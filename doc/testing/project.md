@@ -4,7 +4,11 @@
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] TASK-TESTING-001 (PRD-TESTING-001) [test_tier_required]: 完成 testing PRD 改写，建立分层测试设计入口。
-- [ ] TASK-TESTING-002 (PRD-TESTING-001/002) [test_tier_required]: 对齐 S0~S10 与改动路径触发矩阵。
+- [x] TASK-TESTING-002 (PRD-TESTING-001/002) [test_tier_required]: 对齐 S0~S10 与改动路径触发矩阵。
+  - 产物文件:
+    - `testing-manual.md`
+  - 验收命令 (`test_tier_required`):
+    - `rg -n "套件触发总表|改动路径矩阵|选择规则|S0|S10" testing-manual.md`
 - [ ] TASK-TESTING-003 (PRD-TESTING-002/003) [test_tier_required]: 建立发布证据包模板（命令、日志、截图、结论）。
 - [ ] TASK-TESTING-004 (PRD-TESTING-003) [test_tier_required]: 建立测试质量趋势跟踪（通过率/逃逸率/修复时长）。
 - [x] TASK-TESTING-005 (PRD-TESTING-002/003) [test_tier_required]: 建立模块级专题任务映射索引（2026-03-02 批次）。
@@ -101,7 +105,7 @@
 ## 状态
 - 更新日期: 2026-03-10
 - 当前状态: active
-- 下一任务: TASK-TESTING-002
+- 下一任务: TASK-TESTING-003
 - 阶段收口优先级: `P0`
 - 阶段 owner: `qa_engineer`（联审：`producer_system_designer`）
 - 阻断条件: 在 `TASK-TESTING-002/003` 完成前，跨模块发布评审不得声称“测试范围明确且证据齐备”。

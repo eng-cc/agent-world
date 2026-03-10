@@ -403,22 +403,48 @@ rg -n "conflicting attestation already exists|attestation threshold not met|faul
 
 ## 改动路径 -> 必跑套件矩阵（针对性执行）
 
-| 改动路径 | 必跑 | 推荐追加 |
-|---|---|---|
-| `crates/agent_world/src/runtime/**` | S0 + S1 | S2 + S3 + S7 |
-| `crates/agent_world/src/simulator/**` | S0 + S1 | S2 + S3 + S7 + S8 |
-| `crates/agent_world/src/viewer/**` 或 `src/bin/world_viewer_live.rs` | S0 + S1 + S6 | S2 + S3 + S5 |
-| `crates/agent_world_viewer/**` | S0 + S5 + S6 | S2 + S8 |
-| `crates/agent_world_node/**` | S0 + S4（node） + S9/S10（按改动面至少一条） | S2 + S3 + S8 + 另一条在线长跑（S9 或 S10） |
-| `crates/agent_world_net/**` | S0 + S4（net） + S9/S10（按改动面至少一条） | S2 + runtime_bridge 变体 + S8 + 另一条在线长跑（S9 或 S10） |
-| `crates/agent_world_consensus/**` | S0 + S4（consensus） + S9/S10（按改动面至少一条） | S2 + S8 + 另一条在线长跑（S9 或 S10） |
-| `crates/agent_world_distfs/**` | S0 + S4（distfs） + S9/S10（按改动面至少一条） | S2 + S8 + 另一条在线长跑（S9 或 S10） |
-| `scripts/ci-tests.sh` / `.github/workflows/rust.yml` | S0（含 `./scripts/doc-governance-check.sh`） + S1 + `./scripts/viewer-visual-baseline.sh` + （full）`./scripts/llm-baseline-fixture-smoke.sh` | S2 + S4 + S6（抽样） |
-| `scripts/release-gate.sh` / `.github/workflows/release-packages.yml` | `./scripts/ci-tests.sh full` + `sync-m1/m4/m5 --check` + Web strict + S9 + S10 | `./scripts/release-gate.sh --quick` / `--dry-run` |
-| `scripts/ci-m1-wasm-summary.sh` / `scripts/ci-verify-m1-wasm-summaries.py` / `.github/workflows/builtin-wasm-m1-multi-runner.yml` / `.github/workflows/builtin-wasm-m4-m5-multi-runner.yml` | `S0` + `./scripts/ci-m1-wasm-summary.sh --module-set m4 --runner-label darwin-arm64 --out output/ci/m4-wasm-summary/darwin-arm64.json` + `./scripts/ci-verify-m1-wasm-summaries.py --module-set m4 --summary-dir output/ci/m4-wasm-summary --expected-runners darwin-arm64` | `workflow_dispatch` 触发 m1/m4/m5 双 runner（`linux-x86_64,darwin-arm64`）对账 |
-| `scripts/run-viewer-web.sh` / `scripts/capture-viewer-frame.sh` | S0 + S6 | S5 + S8 |
-| `scripts/p2p-longrun-soak.sh` / `doc/testing/p2p-storage-consensus-longrun-online-stability-2026-02-24*` | S0 + S9 smoke（含 summary/timeline 校验） | S9 endurance（含 chaos） |
-| `scripts/s10-five-node-game-soak.sh` / `doc/testing/s10-five-node-real-game-soak*` | S0 + S10 smoke（含 summary/timeline 校验） | S10 默认长窗（30min+） |
+### 套件触发总表（S0~S10）
+
+| 套件 | 主要覆盖面 | 默认触发条件 | 最小证据 |
+|---|---|---|---|
+| S0 | 基础门禁 / 文档 / shell / 格式 / 快速健康检查 | 任何代码、脚本、文档、工作流改动 | 命令日志 + 通过/失败结论 |
+| S1 | 核心 required | `agent_world` 主链路代码改动 | required 测试日志 |
+| S2 | 核心 full | 发布前、协议/规则高风险改动、required 无法充分覆盖时 | full 测试日志 |
+| S3 | 应用主链定向 | runtime / simulator / viewer live / web bridge 定向改动 | 定向 cargo test 日志 |
+| S4 | 分布式子系统 | node / net / consensus / distfs / P2P 链路改动 | 子系统测试日志 |
+| S5 | viewer crate / wasm 编译 | `crates/agent_world_viewer/**` 或 viewer wasm 构建链路改动 | viewer 单测 + wasm 编译日志 |
+| S6 | Web UI 闭环 smoke | Viewer / launcher / Web 控制台 / 交互链路改动 | 截图、console、语义结果 |
+| S7 | 场景矩阵回归 | scenario / gameplay 初始化 / 场景 ID 与稳定性改动 | 场景测试日志 |
+| S8 | 长稳与压力 | 性能、内存、恢复、资源压力或 soak 相关改动 | stress/soak 目录与 summary |
+| S9 | P2P/存储/共识在线长跑 | 分布式一致性、存储、共识、在线网络改动 | S9 summary / timeline / failures |
+| S10 | 五节点真实游戏在线长跑 | 真实游戏链路、结算、mint、验证器编排改动 | S10 summary / timeline / failures |
+
+### 改动路径矩阵
+
+| 改动路径 | 必跑 | 推荐追加 | 升级规则 |
+|---|---|---|---|
+| `crates/agent_world/src/runtime/**` | S0 + S1 | S2 + S3 + S7 | 若涉及确定性 / 治理 / 持久化，追加 S8；若触达在线状态复制，追加 S9 |
+| `crates/agent_world/src/simulator/**` | S0 + S1 | S2 + S3 + S7 + S8 | 若触达 UI 表达或交互入口，追加 S6 |
+| `crates/agent_world/src/viewer/**` 或 `src/bin/world_viewer_live.rs` | S0 + S1 + S6 | S2 + S3 + S5 | 若改动 viewer 协议或 wasm 构建链路，S5 变为必跑 |
+| `crates/agent_world_viewer/**` | S0 + S5 + S6 | S2 + S8 | 若改动只影响静态资源 / 样式，可抽样 S1；若影响 bridge，追加 S3 |
+| `crates/agent_world_node/**` | S0 + S4（node） + S9/S10（按改动面至少一条） | S2 + S3 + S8 + 另一条在线长跑（S9 或 S10） | 共识推进 / 节点编排改动优先加 S10；网络 / 复制改动优先加 S9 |
+| `crates/agent_world_net/**` | S0 + S4（net） + S9/S10（按改动面至少一条） | S2 + runtime_bridge 变体 + S8 + 另一条在线长跑（S9 或 S10） | 若仅桥接层改动，可用 S3 + S9 smoke；若影响真实联机，补 S10 |
+| `crates/agent_world_consensus/**` | S0 + S4（consensus） + S9/S10（按改动面至少一条） | S2 + S8 + 另一条在线长跑（S9 或 S10） | epoch / attest / finality 逻辑改动优先补 S10 |
+| `crates/agent_world_distfs/**` | S0 + S4（distfs） + S9/S10（按改动面至少一条） | S2 + S8 + 另一条在线长跑（S9 或 S10） | 存储复制 / challenge / 修复逻辑改动优先补 S9 |
+| `doc/**`（非 `doc/devlog/**`） | S0（含 `./scripts/doc-governance-check.sh`） | 命中模块的抽样 required 证据核验 | 若文档改变发布 / 测试口径，追加对应模块的最小必跑集 |
+| `scripts/ci-tests.sh` / `.github/workflows/rust.yml` | S0（含 `./scripts/doc-governance-check.sh`） + S1 + `./scripts/viewer-visual-baseline.sh` + （full）`./scripts/llm-baseline-fixture-smoke.sh` | S2 + S4 + S6（抽样） | 若更改默认 gate 组合，需抽样至少一条 S9 或 S10 |
+| `scripts/release-gate.sh` / `.github/workflows/release-packages.yml` | `./scripts/ci-tests.sh full` + `sync-m1/m4/m5 --check` + Web strict + S9 + S10 | `./scripts/release-gate.sh --quick` / `--dry-run` | 任何发布 gate 逻辑变更均不允许跳过 S9/S10 |
+| `scripts/ci-m1-wasm-summary.sh` / `scripts/ci-verify-m1-wasm-summaries.py` / `.github/workflows/builtin-wasm-m1-multi-runner.yml` / `.github/workflows/builtin-wasm-m4-m5-multi-runner.yml` | `S0` + `./scripts/ci-m1-wasm-summary.sh --module-set m4 --runner-label darwin-arm64 --out output/ci/m4-wasm-summary/darwin-arm64.json` + `./scripts/ci-verify-m1-wasm-summaries.py --module-set m4 --summary-dir output/ci/m4-wasm-summary --expected-runners darwin-arm64` | `workflow_dispatch` 触发 m1/m4/m5 双 runner（`linux-x86_64,darwin-arm64`）对账 | 若改动 hash/summary 格式，双 runner 对账变为必跑 |
+| `scripts/run-viewer-web.sh` / `scripts/capture-viewer-frame.sh` | S0 + S6 | S5 + S8 | 若涉及 native 图形链路 fallback，补 native 截图证据 |
+| `scripts/p2p-longrun-soak.sh` / `doc/testing/p2p-storage-consensus-longrun-online-stability-2026-02-24*` | S0 + S9 smoke（含 summary/timeline 校验） | S9 endurance（含 chaos） | 任何阈值/summary 字段变更必须补 endurance |
+| `scripts/s10-five-node-game-soak.sh` / `doc/testing/s10-five-node-real-game-soak*` | S0 + S10 smoke（含 summary/timeline 校验） | S10 默认长窗（30min+） | 任何门禁字段 / 结算 / mint 改动都需补长窗 |
+
+### 选择规则
+1. 先按“改动路径”命中一行矩阵，执行“必跑”。
+2. 若同一变更命中多行，取并集，不取其一。
+3. 若改动同时触达协议 / UI / 分布式链路，必须把 S6 与 S9/S10 同时纳入。
+4. 若发布 / 文档口径改变了测试边界，至少补一条对应模块的抽样 required 证据，避免只改文档不改验证。
+5. `S11` 属于 world-runtime 去中心化模块发布专题，不纳入本 `S0~S10` 触发矩阵，但若改动触及该链路，需叠加执行 `S11` 专题手册。
 
 ## Human/AI 共用执行剧本
 
