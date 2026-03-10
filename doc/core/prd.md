@@ -60,6 +60,7 @@
   - PRD-CORE-003: As a 发布负责人, I want unified release/test governance, so that go/no-go decisions are auditable.
   - PRD-CORE-004: As a `producer_system_designer`, I want a stage-closure source of truth, so that the team aligns on what must ship first, who owns it, and what evidence is required before release.
   - PRD-CORE-005: As a `producer_system_designer`, I want a ranked next-round priority slate, so that the team starts the new cycle from one agreed execution path instead of diffusing effort.
+- PRD-CORE-006: As a `producer_system_designer`, I want a formal version-candidate go/no-go entry after readiness reaches `ready`, so that release approval, residual risks, and role handoff are explicit and auditable.
 - Critical User Flows:
   1. Flow-CORE-001: `读取模块地图 -> 识别改动所属模块 -> 定位上下游依赖 -> 形成影响面清单`
   2. Flow-CORE-002: `读取关键链路 -> 映射到模块 PRD-ID -> 对照测试分层 -> 输出发布风险判断`
@@ -202,6 +203,7 @@
   - v2.1 (2026-03-06): 启动 ROUND-005，专项收敛文档状态时效字段、完成态字段、命名一致性与索引覆盖规则。
   - v2.2 (当前阶段): 建立阶段收口优先级、跨角色交付矩阵与发布前 P0 必备闭环。
   - v2.3 (下一阶段): 建立下一轮优先级清单，并把第一优先级固定到正式专题入口。
+  - v2.4 (当前推进): 在版本级 readiness 达到 `ready` 后，建立正式 go/no-go 裁决入口与角色交接链。
 - Technical Risks:
   - 风险-1: 模块新增能力未及时回填全局链路。
   - 风险-2: 总览与分册的口径同步依赖人工流程。
@@ -220,7 +222,8 @@
 | PRD-CORE-003 | TASK-CORE-008 | `test_tier_required` | `审计轮次 > 5` 漂移扫描、ROUND-005 基线回写、devlog 与 git 证据核对 | 审计标记口径恢复为正式台账语义 |
 | PRD-CORE-003 | TASK-CORE-009 | `test_tier_required` | 全仓 `审计轮次 > 5` 扫描清零、缺失标记补齐为 5、devlog 与 git 证据核对 | 审计标记口径对齐到“全仓不高于 ROUND-005 基线” |
 | PRD-CORE-004 | TASK-CORE-011/012/013/014 | `test_tier_required` | 阶段收口优先级、owner 分工、交付矩阵、go/no-go 模板与模块 project 映射抽样核验 | 当前阶段发布前闭环目标与责任边界一致性 |
-| PRD-CORE-005 | TASK-CORE-016/017 | `test_tier_required` | 下一轮优先级清单、第一优先级回写与专题入口抽样核验 | 新一轮跨模块执行一致性 |
+| PRD-CORE-005 | TASK-CORE-016/017/018/019/020/021 | `test_tier_required` | 下一轮优先级清单、候选级入口、版本级扩展与 runtime 联合证据抽样核验 | 新一轮跨模块执行一致性 |
+| PRD-CORE-006 | TASK-CORE-022 | `test_tier_required` | 正式版本候选 go/no-go 记录、风险附注与角色交接抽样核验 | 版本候选正式裁决一致性 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |
@@ -230,3 +233,4 @@
 | DEC-CORE-004 | 在 ROUND-006 正式台账落档前，统一将脱离台账的高位 `审计轮次` 回写到 5 | 保留局部 `审计轮次: 6` 作为“专题修订痕迹” | `审计轮次` 的定义是“最近完成的正式审计轮次”，局部修订应通过 `最近更新` 和 devlog 追踪，而不是抬高正式轮次字段。 |
 | DEC-CORE-005 | 将“阶段收口优先级”纳入 core 主 PRD 统一管理，而不是散落在多个模块 project 的状态说明里 | 仅在各模块 project 中维护各自优先级 | 阶段优先级本质是跨模块发布策略，需要由 `producer_system_designer` 在 core 层统一裁剪与仲裁。 |
 | DEC-CORE-006 | 新一轮先冻结优先级清单，再启动第一优先级专题 | 主项目收口后直接随机挑模块继续推进 | 先统一排序，才能避免重新扩散资源。 |
+| DEC-CORE-007 | readiness 达到 `ready` 后必须再落正式 go/no-go 记录 | 将 readiness board 直接作为最终放行记录 | readiness 与正式裁决是两个层级，必须分开留痕。 |
