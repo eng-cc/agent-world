@@ -16,7 +16,12 @@
   - 验收命令 (`test_tier_required`):
     - `test -f doc/playability_test_result/templates/high-priority-issue-closure-template.md`
     - `rg -n "Issue ID|当前状态|归因标签|复测记录|发布影响" doc/playability_test_result/templates/high-priority-issue-closure-template.md`
-- [ ] TASK-PLAYABILITY_TEST_RESULT-004 (PRD-PLAYABILITY_TEST_RESULT-003) [test_tier_required]: 对接发布门禁中的可玩性证据包格式。
+- [x] TASK-PLAYABILITY_TEST_RESULT-004 (PRD-PLAYABILITY_TEST_RESULT-003) [test_tier_required]: 对接发布门禁中的可玩性证据包格式。
+  - 产物文件:
+    - `doc/playability_test_result/templates/playability-release-evidence-bundle-template.md`
+  - 验收命令 (`test_tier_required`):
+    - `test -f doc/playability_test_result/templates/playability-release-evidence-bundle-template.md`
+    - `rg -n "关联 testing 证据包|高优问题摘要|建议结论|pass|blocked" doc/playability_test_result/templates/playability-release-evidence-bundle-template.md`
 - [x] TASK-PLAYABILITY_TEST_RESULT-005 (PRD-PLAYABILITY_TEST_RESULT-001/002) [test_tier_required]: 将 `game-test` 与卡片模板文档迁入模块目录并完成根目录兼容跳转。
 - [x] TASK-PLAYABILITY_TEST_RESULT-006 (PRD-PLAYABILITY_TEST_RESULT-001/002/003) [test_tier_required]: 对齐 strict PRD schema，补齐关键流程/规格矩阵/边界异常/NFR/验证与决策记录。
 
@@ -30,7 +35,7 @@
 ## 状态
 - 更新日期: 2026-03-10
 - 当前状态: active
-- 下一任务: TASK-PLAYABILITY_TEST_RESULT-004
+- 下一任务: TASK-PLAYABILITY_TEST_RESULT-004（已完成，待后续新需求）
 - 阶段收口优先级: `P0`
 - 阶段 owner: `qa_engineer`（联审：`producer_system_designer`）
 - 阻断条件: 在 `TASK-PLAYABILITY_TEST_RESULT-002/003` 完成前，可玩性问题不得作为统一格式证据进入发布 go/no-go 评审。
@@ -102,6 +107,6 @@
 - 回归影响范围：game / testing / 发布评审体验证据链。
 
 ## Handoff Acknowledgement
-- 接收方确认范围：`已接收 TASK-PLAYABILITY_TEST_RESULT-002/003；当前提交覆盖反馈字段、评分口径与高优问题闭环模板`
-- 接收方确认 ETA：`TASK-PLAYABILITY_TEST_RESULT-002/003 已完成，下一步进入 TASK-PLAYABILITY_TEST_RESULT-004`
-- 接收方新增风险：`历史卡片与新闭环模板之间暂未建立自动映射，需在后续聚合阶段补引用`
+- 接收方确认范围：`已接收 TASK-PLAYABILITY_TEST_RESULT-002/003/004；当前提交完成反馈字段、评分口径、高优问题闭环模板与发布证据包格式`
+- 接收方确认 ETA：`TASK-PLAYABILITY_TEST_RESULT-002/003/004 已完成`
+- 接收方新增风险：`历史卡片与 testing 证据包之间仍需靠人工绑定；当前模板先统一引用字段`
