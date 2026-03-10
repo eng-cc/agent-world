@@ -84,12 +84,17 @@
               但这不是对外可玩版本，也不代表赛季已上线。首次本地运行需先完成 Rust 构建（常见 5~15 分钟，视机器而定）。
             </p>
             <div class="cta-row">
-              <a class="button primary" href="#roadmap">查看开发路线</a>
+              <a class="button primary" href="#demo">先看技术预览路径</a>
               <a class="button secondary" href="doc/cn/index.html">查看完整手册</a>
+            </div>
+            <div class="proof-strip">
+              <span class="proof-chip is-highlight">推荐顺序：先预览验证，再决定是否本地构建</span>
+              <span class="proof-chip">预览入口：3 步技术验证</span>
+              <span class="proof-chip">构建路径：仍需 Rust 初次编译</span>
             </div>
             <ul class="hero-signals">
               <li>当前状态：技术预览（Not playable yet）</li>
-              <li>重点：引擎能力验证与证据可追溯</li>
+              <li>重点：先看预览验证路径，再深入构建与手册</li>
               <li>目标：逐步收敛到可玩发布版本</li>
             </ul>
             <div class="hero-stats">
@@ -140,7 +145,7 @@
 
       <section id="matrix" class="section" data-reveal>
         <h2>目标玩法设计的四条系统支柱</h2>
-        <p class="section-intro">以下为目标能力设计，不代表当前已向玩家开放。</p>
+        <p class="section-intro">建议先走预览验证路径确认当前技术预览能否在你的机器上跑通；若需要深入调试，再进入完整构建与文档。以下为目标能力设计，不代表当前已向玩家开放。</p>
         <div class="game-lattice">
           <article class="lattice-feature is-primary">
             <h3>三层循环统一驱动</h3>
@@ -167,7 +172,7 @@
 
       <section id="scenarios" class="section" data-reveal>
         <h2>目标体验样例（设计中）</h2>
-        <p class="section-intro">这些样例用于说明目标节奏与设计方向，不代表当前可玩流程。</p>
+        <p class="section-intro">建议先走预览验证路径确认当前技术预览能否在你的机器上跑通；若需要深入调试，再进入完整构建与文档。这些样例用于说明目标节奏与设计方向，不代表当前可玩流程。</p>
         <div class="grid cards-3">
           <article class="card">
             <h3>短循环目标（5~15 分钟）</h3>
@@ -255,7 +260,7 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023</code></p
 
       <section id="download" class="section" data-reveal>
         <h2>开发预览构建包下载（非正式可玩版）</h2>
-        <p class="section-intro">当前包体用于开发验证与联调，不代表面向玩家的可玩发布版本。</p>
+        <p class="section-intro">建议先走预览验证路径确认当前技术预览能否在你的机器上跑通；若需要深入调试，再进入完整构建与文档。当前包体用于开发验证与联调，不代表面向玩家的可玩发布版本。</p>
         <p class="release-meta">
           当前版本：<strong data-release-tag>latest</strong>
           <span data-release-date data-release-date-prefix="发布时间">发布时间待同步</span>
@@ -294,7 +299,7 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023</code></p
 
       <section id="proof" class="section" data-reveal>
         <h2>技术证据链：可复现、可审计</h2>
-        <p class="section-intro">以下内容证明当前开发链路可复跑、可回放、可审计；不等同于已开放玩家体验。</p>
+        <p class="section-intro">建议先走预览验证路径确认当前技术预览能否在你的机器上跑通；若需要深入调试，再进入完整构建与文档。以下内容证明当前开发链路可复跑、可回放、可审计；不等同于已开放玩家体验。</p>
         <div class="proof-switcher" data-proof-switcher>
           <p class="proof-switcher-label">切换证据场景</p>
           <div class="proof-switcher-controls" role="group" aria-label="切换证据场景" data-proof-controls>
@@ -394,7 +399,7 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023</code></p
 
       <section id="architecture" class="section" data-reveal>
         <h2>引擎底座（给工程读者）</h2>
-        <p class="section-intro">如果你关注可扩展性与治理边界，这里是底层：玩法模块如何在 Runtime 约束下安全演进。</p>
+        <p class="section-intro">建议先走预览验证路径确认当前技术预览能否在你的机器上跑通；若需要深入调试，再进入完整构建与文档。如果你关注可扩展性与治理边界，这里是底层：玩法模块如何在 Runtime 约束下安全演进。</p>
         <figure class="architecture-figure">
           <img src="assets/images/architecture-flow.svg" alt="agent-world 引擎架构流示意图" loading="lazy" />
           <figcaption>Gameplay Layer -> Runtime Kernel -> Viewer/Tooling -> Governance，确保扩展可控且结果可审计。</figcaption>

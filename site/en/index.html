@@ -85,12 +85,17 @@
               First local run requires an initial Rust build (commonly 5-15 minutes, machine-dependent).
             </p>
             <div class="cta-row">
-              <a class="button primary" href="#roadmap">View Development Roadmap</a>
+              <a class="button primary" href="#demo">See Preview Verification Path</a>
               <a class="button secondary" href="../doc/en/index.html">Open Full Manuals</a>
+            </div>
+            <div class="proof-strip">
+              <span class="proof-chip is-highlight">Recommended order: verify the preview path first, then decide on a full local build</span>
+              <span class="proof-chip">Preview entry: 3-step technical verification</span>
+              <span class="proof-chip">Build path: still requires an initial Rust compile</span>
             </div>
             <ul class="hero-signals">
               <li>Current status: technical preview (Not playable yet)</li>
-              <li>Focus: engine validation and reproducible evidence</li>
+              <li>Focus: preview verification first, deeper build/docs second</li>
               <li>Goal: converge toward a playable release</li>
             </ul>
             <div class="hero-stats">
@@ -141,7 +146,7 @@
 
       <section id="matrix" class="section" data-reveal>
         <h2>Four Target Design Pillars</h2>
-        <p class="section-intro">These are target capabilities under development, not currently live player features.</p>
+        <p class="section-intro">Recommended order: verify the current technical preview path on your machine first; only then move into the full build/docs path if you need deeper inspection.These are target capabilities under development, not currently live player features.</p>
         <div class="game-lattice">
           <article class="lattice-feature is-primary">
             <h3>Three Loops, One Strategic Arc</h3>
@@ -168,7 +173,7 @@
 
       <section id="scenarios" class="section" data-reveal>
         <h2>Target Experience Samples (Design Stage)</h2>
-        <p class="section-intro">These samples illustrate intended pacing only; they are not currently playable user flow.</p>
+        <p class="section-intro">Recommended order: verify the current technical preview path on your machine first; only then move into the full build/docs path if you need deeper inspection.These samples illustrate intended pacing only; they are not currently playable user flow.</p>
         <div class="grid cards-3">
           <article class="card">
             <h3>Short-loop Target (5-15 min)</h3>
@@ -221,7 +226,7 @@
       </section>
 
       <section id="demo" class="section" data-reveal>
-        <h2>Local 3-Step Technical Verification</h2>
+        <h2>Preview First: Local 3-Step Technical Verification</h2>
         <div class="grid cards-2">
           <article class="card">
             <h3>Offline Verification (Recommended)</h3>
@@ -256,7 +261,7 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023</code></p
 
       <section id="download" class="section" data-reveal>
         <h2>Download Preview Builds (Not a Playable Release)</h2>
-        <p class="section-intro">Current packages are for development and technical validation, not for end-user playable release.</p>
+        <p class="section-intro">Recommended order: verify the current technical preview path on your machine first; only then move into the full build/docs path if you need deeper inspection.Current packages are for development and technical validation, not for end-user playable release.</p>
         <p class="release-meta">
           Current version: <strong data-release-tag>latest</strong>
           <span data-release-date data-release-date-prefix="Published">publish time pending</span>
@@ -295,7 +300,7 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023</code></p
 
       <section id="proof" class="section" data-reveal>
         <h2>Technical Proof Chain: Reproducible and Auditable</h2>
-        <p class="section-intro">This section proves engineering closure and event traceability, not public gameplay readiness.</p>
+        <p class="section-intro">Recommended order: verify the current technical preview path on your machine first; only then move into the full build/docs path if you need deeper inspection.This section proves engineering closure and event traceability, not public gameplay readiness.</p>
         <div class="proof-switcher" data-proof-switcher>
           <p class="proof-switcher-label">Switch Evidence Scenario</p>
           <div class="proof-switcher-controls" role="group" aria-label="Switch evidence scenario" data-proof-controls>
@@ -395,7 +400,7 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023</code></p
 
       <section id="architecture" class="section" data-reveal>
         <h2>Engine Layer (For Engineering Readers)</h2>
-        <p class="section-intro">If extensibility and governance boundaries matter to you, this is the foundation stack.</p>
+        <p class="section-intro">Recommended order: verify the current technical preview path on your machine first; only then move into the full build/docs path if you need deeper inspection.If extensibility and governance boundaries matter to you, this is the foundation stack.</p>
         <figure class="architecture-figure">
           <img src="../assets/images/architecture-flow.svg" alt="agent-world engine architecture flow" loading="lazy" />
           <figcaption>Gameplay Layer -> Runtime Kernel -> Viewer/Tooling -> Governance, balancing extension power with hard constraints.</figcaption>
