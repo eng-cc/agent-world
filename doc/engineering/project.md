@@ -7,7 +7,7 @@
 - [x] TASK-ENGINEERING-002 (PRD-ENGINEERING-001/002) [test_tier_required]: 补齐高频违规（超行数/超文档长度/文档平铺新增）自动诊断与门禁建议。
 - [x] TASK-ENGINEERING-005 (PRD-ENGINEERING-001/002) [test_tier_required]: 执行文档平铺存量迁移批次（world-simulator/p2p），并更新 allowlist 与引用路径。
 - [x] TASK-ENGINEERING-006 (PRD-ENGINEERING-001/002) [test_tier_required]: 执行文档平铺存量迁移批次（world-runtime/testing/site/readme/scripts/game/headless-runtime），并更新 allowlist 与引用路径。
-- [ ] TASK-ENGINEERING-003 (PRD-ENGINEERING-002/003) [test_tier_required]: 建立工程门禁趋势统计（违规率、修复时长）。
+- [x] TASK-ENGINEERING-003 (PRD-ENGINEERING-002/003) [test_tier_required]: 建立工程门禁趋势统计（违规率、修复时长）。
 - [ ] TASK-ENGINEERING-004 (PRD-ENGINEERING-003) [test_tier_required]: 增加工程规范季度审查流程与记录模板。
 - [x] TASK-ENGINEERING-007 (PRD-ENGINEERING-001/002/003) [test_tier_required]: 对齐 strict PRD schema，补齐关键流程/规格矩阵/边界异常/NFR/验证与决策记录。
 - [x] TASK-ENGINEERING-008 (PRD-ENGINEERING-004) [test_tier_required]: 按“逐篇阅读 + 人工重写”完成老格式文档迁移试点（`oversized-rust-file-splitting-2026-02-23`）并补齐内容保真映射。
@@ -69,7 +69,7 @@
 ## 状态
 - 更新日期: 2026-03-11
 - 当前状态: active
-- 下一任务: TASK-ENGINEERING-003（工程门禁趋势统计）
+- 下一任务: TASK-ENGINEERING-004（工程规范季度审查流程与记录模板）
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - 当前整改批次: R2（引用路径可达门禁）已完成（019）；R3（全量 PRD 审读机制）已完成（020-024，清单覆盖 708/708）。
 - 当前规范补充: 已完成 `TASK-ENGINEERING-025/026/027`，冻结“目录按对象、文件按职责”的文档建模方案、稳定专题命名，并补齐测试相关文档分工规则。
@@ -81,4 +81,5 @@
 - 最新完成: `TASK-ENGINEERING-035`（ROUND-006 改为按 `doc-structure-standard` 逐文档治理的执行轮）。
 - 最新完成: `TASK-ENGINEERING-036`（角色职责卡补齐推荐技能与角色/技能关系口径）。
 - 最新完成: `TASK-ENGINEERING-015`（legacy 文档迁移专项完成全量收口复核）。
+- 最新完成: `TASK-ENGINEERING-003`（工程门禁趋势统计与首份 baseline）。
 - 说明: 本文档仅维护 engineering 设计执行状态；过程记录在 `doc/devlog/2026-03-03.md`、`doc/devlog/2026-03-04.md` 与 `doc/devlog/2026-03-09.md`。
