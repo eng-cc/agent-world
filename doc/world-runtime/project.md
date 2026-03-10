@@ -165,6 +165,8 @@
 
 - 模块进展补充（2026-03-10 / candidate）: 已新增 `doc/world-runtime/evidence/runtime-release-gate-metrics-task-game-018-2026-03-10.md`，将 `TASK-GAME-018` 所需 runtime P0 候选级实测证据实例化，并绑定到 core go/no-go 记录。
 
+- 模块进展补充（2026-03-10 / T7.2）: 已新增 `scripts/world-runtime-storage-gate.sh` 作为 storage/GC/replay gate 固定入口，当前已用 `release_default` 样本生成 `.tmp/world_runtime_storage_gate/20260310-234359/summary.md`，下一步接真实 runtime 状态样本。
+
 ## Handoff Acknowledgement
 - 接收方确认范围：`已接收 TASK-WORLD_RUNTIME-002/003/004；当前提交完成边界清单、回归模板与发布门禁指标模板`
 - 接收方确认 ETA：`TASK-WORLD_RUNTIME-002/003/004 已完成；本轮已补齐 task 级 runtime P0 证据，下一步继续推进 TASK-WORLD_RUNTIME-033 的 T7.2~T7.5`
