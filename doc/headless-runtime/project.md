@@ -4,7 +4,12 @@
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] TASK-NONVIEWER-001 (PRD-NONVIEWER-001) [test_tier_required]: 完成 headless-runtime PRD 改写，建立无界面链路设计入口。
-- [ ] TASK-NONVIEWER-002 (PRD-NONVIEWER-001/002) [test_tier_required]: 补齐生命周期与鉴权协议的一致性检查清单。
+- [x] TASK-NONVIEWER-002 (PRD-NONVIEWER-001/002) [test_tier_required]: 补齐生命周期与鉴权协议的一致性检查清单。
+  - 产物文件:
+    - `doc/headless-runtime/checklists/lifecycle-auth-consistency-checklist.md`
+  - 验收命令 (`test_tier_required`):
+    - `test -f doc/headless-runtime/checklists/lifecycle-auth-consistency-checklist.md`
+    - `rg -n "生命周期阶段一致性|鉴权协议一致性|异常恢复与升级条件|阻断条件|结论记录模板" doc/headless-runtime/checklists/lifecycle-auth-consistency-checklist.md`
 - [ ] TASK-NONVIEWER-003 (PRD-NONVIEWER-002/003) [test_tier_required]: 建立长稳归档与故障追溯证据模板。
 - [ ] TASK-NONVIEWER-004 (PRD-NONVIEWER-003) [test_tier_required]: 联动 testing 模块完善 headless-runtime 长稳门禁。
 - [x] TASK-NONVIEWER-005 (PRD-NONVIEWER-001/002/003) [test_tier_required]: 对齐 strict PRD schema，补齐关键流程/规格矩阵/边界异常/NFR/验证与决策记录。
@@ -20,7 +25,7 @@
 ## 状态
 - 更新日期: 2026-03-10
 - 当前状态: active
-- 下一任务: TASK-NONVIEWER-002
+- 下一任务: TASK-NONVIEWER-003
 - 阶段收口优先级: `P1`
 - 阶段 owner: `runtime_engineer`（验证：`qa_engineer`；排序裁剪：`producer_system_designer`）
 - 阻断条件: 在当前阶段 `P0`（玩法 / runtime / testing / playability）未收口前，headless-runtime 不作为首要发布驱动项；但若发现生命周期 / 鉴权阻断性缺口，需升级回 `P0` 评审。
@@ -91,6 +96,6 @@
 - 回归影响范围：headless-runtime / testing / 长稳与鉴权链路。
 
 ## Handoff Acknowledgement
-- 接收方确认范围：`待 runtime_engineer 回写`
-- 接收方确认 ETA：`待 runtime_engineer 回写`
-- 接收方新增风险：`待 runtime_engineer 回写`
+- 接收方确认范围：`已接收 TASK-NONVIEWER-002；当前提交覆盖生命周期与鉴权一致性检查清单，不含长稳归档模板与门禁对接`
+- 接收方确认 ETA：`本轮已完成 TASK-NONVIEWER-002，下一步进入 TASK-NONVIEWER-003`
+- 接收方新增风险：`升级为 P0 的失败信号已列入检查清单，但仍需在后续门禁模板中落最终判定口径`
