@@ -15,7 +15,16 @@
   - 验收命令 (`test_tier_required`):
     - `test -f doc/testing/templates/release-evidence-bundle-template.md`
     - `rg -n "执行命令|UI / 体验证据|长跑 / 在线证据|结论摘要|PRD-ID" doc/testing/templates/release-evidence-bundle-template.md`
-- [ ] TASK-TESTING-004 (PRD-TESTING-003) [test_tier_required]: 建立测试质量趋势跟踪（通过率/逃逸率/修复时长）。
+- [x] TASK-TESTING-004 (PRD-TESTING-003) [test_tier_required]: 建立测试质量趋势跟踪（通过率/逃逸率/修复时长）。
+  - 产物文件:
+    - `doc/testing/governance/testing-quality-trend-tracking-2026-03-11.prd.md`
+    - `doc/testing/governance/testing-quality-trend-tracking-2026-03-11.design.md`
+    - `doc/testing/governance/testing-quality-trend-tracking-2026-03-11.project.md`
+    - `doc/testing/evidence/testing-quality-trend-baseline-2026-03-11.md`
+  - 验收命令 (`test_tier_required`):
+    - `test -f doc/testing/governance/testing-quality-trend-tracking-2026-03-11.prd.md`
+    - `test -f doc/testing/evidence/testing-quality-trend-baseline-2026-03-11.md`
+    - `rg -n "首次通过率|阶段内逃逸率|平均修复时长|红黄绿阈值" doc/testing/governance/testing-quality-trend-tracking-2026-03-11.prd.md doc/testing/evidence/testing-quality-trend-baseline-2026-03-11.md`
 - [x] TASK-TESTING-005 (PRD-TESTING-002/003) [test_tier_required]: 建立模块级专题任务映射索引（2026-03-02 批次）。
 - [x] TASK-TESTING-006 (PRD-TESTING-001/002/003) [test_tier_required]: 对齐 strict PRD schema，补齐关键流程/规格矩阵/边界异常/NFR/验证与决策记录。
 - [x] TASK-TESTING-007 (PRD-TESTING-004) [test_tier_required]: 完成 `ci-wasm32-target-install` 专题文档逐篇人工迁移到 strict schema，并统一 `.prd` 命名。
@@ -108,9 +117,9 @@
 - `.agents/skills/prd/check.md`
 
 ## 状态
-- 更新日期: 2026-03-10
-- 当前状态: active
-- 下一任务: TASK-TESTING-004
+- 更新日期: 2026-03-11
+- 当前状态: completed
+- 下一任务: 无（当前模块主项目无未完成任务）
 - 阶段收口优先级: `P0`
 - 阶段 owner: `qa_engineer`（联审：`producer_system_designer`）
 - 阻断条件: 在 `TASK-TESTING-002/003` 完成前，跨模块发布评审不得声称“测试范围明确且证据齐备”。
@@ -121,7 +130,8 @@
 - 专题映射状态补充: 2026-03-10 批次 1/1 已完成（启动器人工测试清单建档）。
 - headless-runtime 长稳门禁联动: 已通过 `doc/headless-runtime/templates/headless-runtime-release-gate-linkage.md` 约定证据包字段映射。
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
-- 说明: 本文档仅维护 testing 模块设计执行状态；过程记录在 `doc/devlog/2026-03-10.md`。
+- 模块进展补充（2026-03-11）: 已新增 `doc/testing/evidence/testing-quality-trend-baseline-2026-03-11.md`，以 launcher / game / runtime 三个近期样本建立首次通过率、阶段内逃逸率与修复时长 baseline。
+- 说明: 本文档仅维护 testing 模块设计执行状态；过程记录在 `doc/devlog/2026-03-10.md` 与 `doc/devlog/2026-03-11.md`。
 
 ## 阶段收口角色交接
 ## Meta
@@ -141,14 +151,14 @@
 - 非目标：本轮不要求先完成长期趋势统计。
 
 ## Current State
-- 当前实现 / 文档状态：`TASK-TESTING-002/003/004` 仍未完成，但近期 launcher / viewer 闭环证据已有积累。
+- 当前实现 / 文档状态：`TASK-TESTING-002/003/004` 已完成；testing 模块现已具备触发矩阵、证据包模板与首份趋势 baseline。
 - 已确认事实：core 已将 testing 触发矩阵与证据包列为 `P0`。
 - 待确认假设：S0~S10 触发矩阵是否需要对现有专题任务映射做进一步合并。
 - 当前失败信号 / 用户反馈：测试可跑但“该跑什么、结果怎么看、能不能放”仍缺统一模板。
 
 ## Scope
-- In Scope: `TASK-TESTING-002`、`TASK-TESTING-003`。
-- Out of Scope: 本轮不优先做 `TASK-TESTING-004` 趋势统计面板。
+- In Scope: `TASK-TESTING-002`、`TASK-TESTING-003`、`TASK-TESTING-004`（已完成）。
+- Out of Scope: 本轮不实现自动趋势面板或脚本化采集。
 
 ## Inputs
 - 关键文件：`doc/testing/project.md`、`doc/testing/prd.md`、`testing-manual.md`。
@@ -189,5 +199,5 @@
 
 ## Handoff Acknowledgement
 - 接收方确认范围：`已接收 TASK-TESTING-002/003；本轮覆盖触发矩阵与发布证据包模板，不含趋势统计`
-- 接收方确认 ETA：`TASK-TESTING-002/003 已完成，下一步进入 TASK-TESTING-004`
+- 接收方确认 ETA：`TASK-TESTING-002/003/004 已完成，模块主项目已收口`
 - 接收方新增风险：`长跑 / UI 产物目录在不同脚本间仍有差异，当前模板先统一字段，不强制统一物理目录`

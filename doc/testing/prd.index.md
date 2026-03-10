@@ -2,7 +2,7 @@
 
 审计轮次: 6
 
-更新时间：2026-03-10
+更新时间：2026-03-11
 
 ## 入口
 - 模块 PRD：`doc/testing/prd.md`
@@ -22,6 +22,7 @@
 | `doc/testing/ci/ci-wasm32-target-install.prd.md` | `doc/testing/ci/ci-wasm32-target-install.design.md` | `doc/testing/ci/ci-wasm32-target-install.project.md` |
 | `doc/testing/governance/llm-skip-tick-ratio-metric.prd.md` | `doc/testing/governance/llm-skip-tick-ratio-metric.design.md` | `doc/testing/governance/llm-skip-tick-ratio-metric.project.md` |
 | `doc/testing/governance/release-gate-metric-policy-alignment-2026-02-28.prd.md` | `doc/testing/governance/release-gate-metric-policy-alignment-2026-02-28.design.md` | `doc/testing/governance/release-gate-metric-policy-alignment-2026-02-28.project.md` |
+| `doc/testing/governance/testing-quality-trend-tracking-2026-03-11.prd.md` | `doc/testing/governance/testing-quality-trend-tracking-2026-03-11.design.md` | `doc/testing/governance/testing-quality-trend-tracking-2026-03-11.project.md` |
 | `doc/testing/governance/wasm-build-determinism-guard.prd.md` | `doc/testing/governance/wasm-build-determinism-guard.design.md` | `doc/testing/governance/wasm-build-determinism-guard.project.md` |
 | `doc/testing/launcher/launcher-chain-script-migration-2026-02-28.prd.md` | `doc/testing/launcher/launcher-chain-script-migration-2026-02-28.design.md` | `doc/testing/launcher/launcher-chain-script-migration-2026-02-28.project.md` |
 | `doc/testing/launcher/launcher-full-usability-closure-audit-2026-03-08.prd.md` | `doc/testing/launcher/launcher-full-usability-closure-audit-2026-03-08.design.md` | `doc/testing/launcher/launcher-full-usability-closure-audit-2026-03-08.project.md` |
