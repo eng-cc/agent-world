@@ -144,7 +144,12 @@
   - 验收命令 (`test_tier_required`):
     - `test -f doc/core/templates/stage-closure-go-no-go-template.md`
     - `rg -n "go/no-go|conditional-go|P0 必备证据|P1 风险附注|例外升级规则" doc/core/templates/stage-closure-go-no-go-template.md`
-- [ ] TASK-CORE-015 (PRD-CORE-004) [test_tier_required]: 对阶段收口 owner 分工与模块承接状态进行首轮抽样审查，并形成缺口清单与 handoff 建议。
+- [x] TASK-CORE-015 (PRD-CORE-004) [test_tier_required]: 对阶段收口 owner 分工与模块承接状态进行首轮抽样审查，并形成缺口清单与 handoff 建议。
+  - 产物文件:
+    - `doc/core/reviews/stage-closure-sampling-review-2026-03-10.md`
+  - 验收命令 (`test_tier_required`):
+    - `test -f doc/core/reviews/stage-closure-sampling-review-2026-03-10.md`
+    - `rg -n "GAP-SC-|HO-SUG-|抽样表|建议结论" doc/core/reviews/stage-closure-sampling-review-2026-03-10.md`
 
 ## 依赖
 - doc/core/prd.index.md
@@ -157,9 +162,9 @@
 ## 状态
 - 更新日期: 2026-03-10
 - 当前状态: active
-- 下一任务: TASK-CORE-015
+- 下一任务: TASK-CORE-005
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
-- 最新完成: `TASK-CORE-014`（已建立阶段收口 go/no-go 评审模板，固化 P0 证据、P1 风险附注与例外升级规则）。
+- 最新完成: `TASK-CORE-015`（已完成阶段收口首轮抽样审查，形成缺口清单与 handoff 建议）。
 - 说明: 本文档仅维护 core 设计执行状态；过程记录在 `doc/devlog/2026-03-06.md`（历史记录见同目录其他日期文件）。
 
 ## 阶段收口执行顺序（PRD-CORE-004）
