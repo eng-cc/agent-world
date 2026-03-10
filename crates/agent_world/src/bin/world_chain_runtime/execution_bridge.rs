@@ -17,6 +17,7 @@ use agent_world_node::{
     compute_consensus_action_root, NodeExecutionCommitContext, NodeExecutionCommitResult,
     NodeExecutionHook, NodeSnapshot,
 };
+use agent_world_proto::storage_profile::StorageProfileConfig;
 use agent_world_wasm_abi::ModuleSandbox;
 use agent_world_wasm_executor::{WasmExecutor, WasmExecutorConfig};
 use serde::{Deserialize, Serialize};
@@ -1336,6 +1337,9 @@ pub(super) struct NodeRuntimeExecutionDriver {
     execution_world: RuntimeWorld,
     simulator_mirror: WorldKernel,
     execution_sandbox: Box<dyn ModuleSandbox + Send>,
+    hot_window_heights: u64,
+    checkpoint_interval_heights: u64,
+    checkpoint_keep_latest: usize,
 }
 
 impl NodeRuntimeExecutionDriver {
@@ -1344,6 +1348,22 @@ impl NodeRuntimeExecutionDriver {
         world_dir: std::path::PathBuf,
         records_dir: std::path::PathBuf,
         storage_root: std::path::PathBuf,
+    ) -> Result<Self, String> {
+        Self::new_with_storage_profile(
+            state_path,
+            world_dir,
+            records_dir,
+            storage_root,
+            &StorageProfileConfig::default(),
+        )
+    }
+
+    pub(super) fn new_with_storage_profile(
+        state_path: std::path::PathBuf,
+        world_dir: std::path::PathBuf,
+        records_dir: std::path::PathBuf,
+        storage_root: std::path::PathBuf,
+        storage_profile: &StorageProfileConfig,
     ) -> Result<Self, String> {
         let state = load_execution_bridge_state(state_path.as_path())?;
         let execution_world = load_execution_world(world_dir.as_path())?;
@@ -1357,6 +1377,9 @@ impl NodeRuntimeExecutionDriver {
             state,
             execution_world,
             execution_sandbox,
+            storage_profile.execution_hot_head_heights,
+            storage_profile.execution_checkpoint_interval,
+            storage_profile.execution_checkpoint_keep as usize,
         );
         driver.simulator_mirror =
             load_simulator_execution_world(driver.simulator_world_dir.as_path())?;
@@ -1371,6 +1394,9 @@ impl NodeRuntimeExecutionDriver {
         state: ExecutionBridgeState,
         execution_world: RuntimeWorld,
         execution_sandbox: Box<dyn ModuleSandbox + Send>,
+        hot_window_heights: u64,
+        checkpoint_interval_heights: u64,
+        checkpoint_keep_latest: usize,
     ) -> Self {
         let simulator_world_dir = simulator_world_dir_from_execution_world_dir(world_dir.as_path());
         Self {
@@ -1383,6 +1409,9 @@ impl NodeRuntimeExecutionDriver {
             execution_world,
             simulator_mirror: WorldKernel::new(),
             execution_sandbox,
+            hot_window_heights,
+            checkpoint_interval_heights,
+            checkpoint_keep_latest,
         }
     }
 
@@ -1608,8 +1637,8 @@ impl NodeExecutionHook for NodeRuntimeExecutionDriver {
         record.checkpoint_ref = maybe_persist_execution_checkpoint_for_record(
             self.records_dir.as_path(),
             &record,
-            EXECUTION_BRIDGE_DEFAULT_CHECKPOINT_INTERVAL_HEIGHTS,
-            EXECUTION_BRIDGE_DEFAULT_CHECKPOINT_KEEP_LATEST,
+            self.checkpoint_interval_heights,
+            self.checkpoint_keep_latest,
         )?;
         persist_execution_bridge_record(self.records_dir.as_path(), &record)?;
 
@@ -1623,7 +1652,7 @@ impl NodeExecutionHook for NodeRuntimeExecutionDriver {
         if let Err(err) = run_execution_bridge_retention_maintenance(
             self.records_dir.as_path(),
             &self.execution_store,
-            EXECUTION_BRIDGE_DEFAULT_HOT_WINDOW_HEIGHTS,
+            self.hot_window_heights,
         ) {
             eprintln!(
                 "execution driver retention pin-set sync failed at height {}: {}",
@@ -1750,6 +1779,32 @@ pub(super) fn bridge_committed_heights(
     execution_records_dir: &Path,
     state: &mut ExecutionBridgeState,
 ) -> Result<Vec<ExecutionBridgeRecord>, String> {
+    bridge_committed_heights_with_policy(
+        snapshot,
+        observed_at_unix_ms,
+        execution_world,
+        execution_sandbox,
+        execution_store,
+        execution_records_dir,
+        state,
+        EXECUTION_BRIDGE_DEFAULT_HOT_WINDOW_HEIGHTS,
+        EXECUTION_BRIDGE_DEFAULT_CHECKPOINT_INTERVAL_HEIGHTS,
+        EXECUTION_BRIDGE_DEFAULT_CHECKPOINT_KEEP_LATEST,
+    )
+}
+
+fn bridge_committed_heights_with_policy(
+    snapshot: &NodeSnapshot,
+    observed_at_unix_ms: i64,
+    execution_world: &mut RuntimeWorld,
+    execution_sandbox: &mut dyn ModuleSandbox,
+    execution_store: &LocalCasStore,
+    execution_records_dir: &Path,
+    state: &mut ExecutionBridgeState,
+    hot_window_heights: u64,
+    checkpoint_interval_heights: u64,
+    checkpoint_keep_latest: usize,
+) -> Result<Vec<ExecutionBridgeRecord>, String> {
     let target_height = snapshot.consensus.committed_height;
     if target_height <= state.last_applied_committed_height {
         return Ok(Vec::new());
@@ -1821,8 +1876,8 @@ pub(super) fn bridge_committed_heights(
         record.checkpoint_ref = maybe_persist_execution_checkpoint_for_record(
             execution_records_dir,
             &record,
-            EXECUTION_BRIDGE_DEFAULT_CHECKPOINT_INTERVAL_HEIGHTS,
-            EXECUTION_BRIDGE_DEFAULT_CHECKPOINT_KEEP_LATEST,
+            checkpoint_interval_heights,
+            checkpoint_keep_latest,
         )?;
         persist_execution_bridge_record(execution_records_dir, &record)?;
 
@@ -1837,7 +1892,7 @@ pub(super) fn bridge_committed_heights(
         if let Err(err) = run_execution_bridge_retention_maintenance(
             execution_records_dir,
             execution_store,
-            EXECUTION_BRIDGE_DEFAULT_HOT_WINDOW_HEIGHTS,
+            hot_window_heights,
         ) {
             eprintln!(
                 "execution bridge retention pin-set sync failed after height {}: {}",
@@ -3140,6 +3195,9 @@ mod tests {
             ExecutionBridgeState::default(),
             world,
             Box::new(sandbox.clone()),
+            EXECUTION_BRIDGE_DEFAULT_HOT_WINDOW_HEIGHTS,
+            EXECUTION_BRIDGE_DEFAULT_CHECKPOINT_INTERVAL_HEIGHTS,
+            EXECUTION_BRIDGE_DEFAULT_CHECKPOINT_KEEP_LATEST,
         );
 
         let empty_action_root = compute_consensus_action_root(&[]).expect("empty action root");
@@ -3384,6 +3442,59 @@ mod tests {
         let state = load_execution_bridge_state(state_path.as_path()).expect("load state");
         assert_eq!(state.last_applied_committed_height, 34);
         assert_eq!(state.last_node_block_hash.as_deref(), Some("node-h34"));
+
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn node_runtime_execution_driver_uses_storage_profile_checkpoint_interval() {
+        use agent_world_proto::storage_profile::StorageProfile;
+
+        let dir = temp_dir("execution-driver-storage-profile-checkpoint");
+        let state_path = dir.join("state.json");
+        let world_dir = dir.join("world");
+        let records_dir = dir.join("records");
+        let storage_root = dir.join("store");
+        let storage_profile = StorageProfileConfig::for_profile(StorageProfile::ReleaseDefault);
+        let mut driver = NodeRuntimeExecutionDriver::new_with_storage_profile(
+            state_path.clone(),
+            world_dir.clone(),
+            records_dir.clone(),
+            storage_root.clone(),
+            &storage_profile,
+        )
+        .expect("driver");
+        let empty_action_root = compute_consensus_action_root(&[]).expect("empty action root");
+
+        for height in 1..=64 {
+            driver
+                .on_commit(NodeExecutionCommitContext {
+                    world_id: "w1".to_string(),
+                    node_id: "node-a".to_string(),
+                    height,
+                    slot: height.saturating_sub(1),
+                    epoch: 0,
+                    node_block_hash: format!("node-h{height}"),
+                    action_root: empty_action_root.clone(),
+                    committed_actions: Vec::new(),
+                    committed_at_unix_ms: height as i64 * 1_000,
+                })
+                .expect("commit with release_default profile");
+        }
+
+        let record_32 = load_execution_bridge_record(
+            execution_bridge_record_path(records_dir.as_path(), 32).as_path(),
+        )
+        .expect("load record 32");
+        let record_64 = load_execution_bridge_record(
+            execution_bridge_record_path(records_dir.as_path(), 64).as_path(),
+        )
+        .expect("load record 64");
+        assert!(record_32.checkpoint_ref.is_none());
+        assert_eq!(
+            record_64.checkpoint_ref.as_deref(),
+            Some(execution_checkpoint_manifest_rel_path(64).as_str())
+        );
 
         let _ = fs::remove_dir_all(dir);
     }

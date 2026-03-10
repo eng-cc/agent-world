@@ -63,16 +63,28 @@ mod execution_bridge {
     use agent_world_node::{
         NodeExecutionCommitContext, NodeExecutionCommitResult, NodeExecutionHook,
     };
+    use agent_world_proto::storage_profile::StorageProfileConfig;
 
     #[derive(Debug)]
     pub(super) struct NodeRuntimeExecutionDriver;
 
+    #[allow(dead_code)]
     impl NodeRuntimeExecutionDriver {
         pub(super) fn new(
             _state_path: std::path::PathBuf,
             _world_dir: std::path::PathBuf,
             _records_dir: std::path::PathBuf,
             _storage_root: std::path::PathBuf,
+        ) -> Result<Self, String> {
+            Ok(Self)
+        }
+
+        pub(super) fn new_with_storage_profile(
+            _state_path: std::path::PathBuf,
+            _world_dir: std::path::PathBuf,
+            _records_dir: std::path::PathBuf,
+            _storage_root: std::path::PathBuf,
+            _storage_profile: &StorageProfileConfig,
         ) -> Result<Self, String> {
             Ok(Self)
         }
@@ -354,11 +366,12 @@ fn run_chain_runtime(options: CliOptions) -> Result<(), String> {
 
     let mut runtime = NodeRuntime::new(config);
     if require_execution {
-        let execution_driver = NodeRuntimeExecutionDriver::new(
+        let execution_driver = NodeRuntimeExecutionDriver::new_with_storage_profile(
             paths.execution_bridge_state_path.clone(),
             paths.execution_world_dir.clone(),
             paths.execution_records_dir.clone(),
             paths.storage_root.clone(),
+            &storage_profile_config,
         )
         .map_err(|err| format!("failed to initialize execution driver: {err}"))?;
         runtime = runtime.with_execution_hook(execution_driver);

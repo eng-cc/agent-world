@@ -167,7 +167,8 @@
 
 - 模块进展补充（2026-03-10 / T7.2）: 已新增 `scripts/world-runtime-storage-gate.sh` 作为 storage/GC/replay gate 固定入口，当前已用 `release_default` 样本生成 `.tmp/world_runtime_storage_gate/20260310-234359/summary.md`，下一步接真实 runtime 状态样本。
 
-- 模块进展补充（2026-03-10 / T7.2 实测）: 已用真实 `world_chain_runtime --storage-profile release_default` 样本跑通 `scripts/world-runtime-storage-gate.sh`，当前 gate 失败点仍为 `checkpoint_count=0`；在 feedback 注入后 `latest_retained_height` 已推进到 `16`，但按 `release_default.execution_checkpoint_interval=64` 仍未达到 checkpoint 落盘阈值。详见 `doc/world-runtime/evidence/runtime-storage-gate-sample-2026-03-10.md`。
+- 模块进展补充（2026-03-10 / T7.2 实测）: 已用真实 `world_chain_runtime --storage-profile release_default` 样本跑通 `scripts/world-runtime-storage-gate.sh`，且在扩展 probe 中确认 `checkpoint_count` 会在 `height=32` 左右出现，而不是 status budget 声明的 `64`。详见 `doc/world-runtime/evidence/runtime-storage-gate-sample-2026-03-10.md`。
+- 模块进展补充（2026-03-10 / T7.2 根因）: 已定位 `world_chain_runtime` 的 execution bridge 仍使用硬编码 `32/4` retention 默认值，尚未绑定 `StorageProfileConfig`；当前真实 gate 的下一步已切换为 `qa_engineer` 复跑真实样本，确认修复后的 profile cadence 与 status budget 对齐。
 
 ## Handoff Acknowledgement
 - 接收方确认范围：`已接收 TASK-WORLD_RUNTIME-002/003/004；当前提交完成边界清单、回归模板与发布门禁指标模板`

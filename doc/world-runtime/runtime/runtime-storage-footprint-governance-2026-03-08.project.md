@@ -92,5 +92,6 @@
 - 本轮新增: T6.5 已补齐定向测试：`world_chain_runtime` status payload 现锁住 `last_gc_error` / `degraded_reason` / `replay_summary` 字段，`world_game_launcher` 与 `world_web_launcher` 也分别补上未知 profile 拒绝与 profile 透传回归。
 - 本轮新增: T7.1 已在 `crates/agent_world/src/runtime/tests/storage_footprint_fixture.rs` 新增可复现实验基线：通过 `2500` 次 `World::step()` + `save_to_dir()` 生成 archive/snapshot 样本，并锁住 `tick_consensus_total_record_count`、archive index 与范围读回，供后续 footprint gate / replay regression 复用。
 - 本轮新增（2026-03-10 / T7.2）: 已新增 `scripts/world-runtime-storage-gate.sh`，可直接消费 `reward-runtime-storage-metrics.json` 或 `/v1/chain/status` JSON，校验 `storage_profile/effective_budget/checkpoint_count/orphan_blob_count/replay_summary/last_gc_result/degraded_reason` 并输出 `summary.md/json`。
-- 本轮验证样本: `.tmp/world_runtime_storage_gate/20260310-234359/summary.md`（合成 `release_default` 样本通过）与 `doc/world-runtime/evidence/runtime-storage-gate-sample-2026-03-10.md`（真实 `world_chain_runtime` 样本失败，当前暴露 `checkpoint_count=0`）。
-- 下一任务: T7.2（把该 gate 接到真实 `world_chain_runtime` 样本，补齐默认 profile 的目录/指标差异记录）
+- 本轮验证样本: `.tmp/world_runtime_storage_gate/20260310-234359/summary.md`（合成 `release_default` 样本通过）与 `doc/world-runtime/evidence/runtime-storage-gate-sample-2026-03-10.md`（真实 `world_chain_runtime` 样本已将根因从“未达 64”更新为“execution bridge 未绑定 profile cadence（已修复，待 QA 复验）”）。
+- 本轮新增（2026-03-10 / T7.2 root cause）: 真实 probe 已在 `height=32` 观察到 `checkpoint_count=1`，并结合读码确认 `world_chain_runtime` 仍使用 execution bridge 的硬编码 `32/4` retention 默认值，而不是 `release_default` 的 `64/8`。
+- 下一任务: T7.2（由 qa_engineer 复跑真实 gate，确认修复后 checkpoint cadence 与 budget 对齐）

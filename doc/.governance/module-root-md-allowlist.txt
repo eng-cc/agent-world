@@ -40,6 +40,7 @@ doc/playability_test_result/card_2026_02_28_23_27_06.md
 doc/playability_test_result/card_2026_03_01_00_20_13.md
 doc/playability_test_result/card_2026_03_06_12_43_31.md
 doc/playability_test_result/card_2026_03_06_18_40_48.md
+doc/playability_test_result/card_2026_03_10_23_27_43.md
 doc/playability_test_result/design.md
 doc/playability_test_result/game-test.design.md
 doc/playability_test_result/game-test.prd.md
@@ -77,6 +78,8 @@ doc/world-runtime/design.md
 doc/world-runtime/prd.index.md
 doc/world-runtime/prd.md
 doc/world-runtime/project.md
+doc/world-runtime/runtime-p0-candidate-evidence-handoff-2026-03-10.md
+doc/world-runtime/runtime-to-qa-task-world_runtime-033-t72.2-storage-profile-checkpoint-2026-03-10.md
 doc/world-simulator/README.md
 doc/world-simulator/design.md
 doc/world-simulator/prd.index.md
