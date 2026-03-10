@@ -36,14 +36,15 @@
 - [x] TASK-TESTING-031 (PRD-TESTING-004) [test_tier_required]: 完成 `viewer-perf-bottleneck-observability-2026-02-25` 专题文档逐篇人工迁移到 strict schema，并统一 `.prd` 命名。
 - [x] TASK-TESTING-032 (PRD-TESTING-004) [test_tier_required]: 完成 `viewer-performance-methodology-closure-2026-02-25` 专题文档逐篇人工迁移到 strict schema，并统一 `.prd` 命名。
 - [x] TASK-TESTING-033 (PRD-TESTING-004) [test_tier_required]: 完成 `systematic-application-testing-manual` 专题文档逐篇人工迁移到 strict schema，并统一 `.prd` 命名。
-- [x] TASK-TESTING-034 (PRD-TESTING-004) [test_tier_required]: 完成 `web-ui-playwright-closure-manual` 专题文档逐篇人工迁移到 strict schema，并补齐 `.project.md` 管理文档。
+- [x] TASK-TESTING-034 (PRD-TESTING-004) [test_tier_required]: 完成 `web-ui-agent-browser-closure-manual` 专题文档逐篇人工迁移到 strict schema，并补齐 `.project.md` 管理文档。
+- [x] TASK-TESTING-042 (PRD-TESTING-002/003/004) [test_tier_required]: 将 Web UI 闭环默认工具口径统一收口到 `agent-browser`，同步主手册、专题分册、Viewer 手册、站内镜像与门禁脚本。
 - [x] TASK-TESTING-035 (PRD-TESTING-004) [test_tier_required]: 完成 archive 专题 `ci-required-m1-wasm-hash-check` 文档迁移到 strict schema，并统一 `.prd` 命名。
 - [x] TASK-TESTING-036 (PRD-TESTING-004) [test_tier_required]: 完成 archive 专题 `wasm-platform-canonical-hash-manifest` 文档迁移到 strict schema，并统一 `.prd` 命名。
 - [x] TASK-TESTING-037 (PRD-TESTING-005) [test_tier_required]: 完成 `ci-builtin-wasm-m4-m5-hash-drift-hardening` 专题 PRD 与项目管理文档建档，建立 1-6 治理项映射。
 - [x] TASK-TESTING-038 (PRD-TESTING-005) [test_tier_required]: 落地 m4/m5 keyed hash manifest 迁移与 sync strict 模式（禁 legacy 写回）。
 - [x] TASK-TESTING-039 (PRD-TESTING-005) [test_tier_required]: 收敛 builtin wasm identity 的 `source_hash` 输入范围并移除 workspace 根 `Cargo.lock` 依赖。
 - [x] TASK-TESTING-040 (PRD-TESTING-005) [test_tier_required]: 增加 m4/m5 多 runner 对账 workflow、required checks 保护与本地只读校验策略。
-- [x] TASK-TESTING-041 (PRD-TESTING-002/003) [test_tier_required]: 完成“启动器全功能可用性审查与闭环验收（2026-03-08）”专题执行（脚本审查 + Playwright 真闭环 + 风险分级结论）。
+- [x] TASK-TESTING-041 (PRD-TESTING-002/003) [test_tier_required]: 完成“启动器全功能可用性审查与闭环验收（2026-03-08）”专题执行（脚本审查 + agent-browser 真闭环 + 风险分级结论）。
 
 ## 专题任务映射（2026-03-02 批次）
 - [x] SUBTASK-TESTING-20260302-001 (PRD-TESTING-002/003) [test_tier_required]: `doc/testing/longrun/chain-runtime-feedback-replication-network-autowire-2026-03-02.project.md`
@@ -77,7 +78,7 @@
 - [x] SUBTASK-TESTING-20260303-024 (PRD-TESTING-004) [test_tier_required]: `doc/testing/performance/viewer-perf-bottleneck-observability-2026-02-25.project.md`
 - [x] SUBTASK-TESTING-20260303-025 (PRD-TESTING-004) [test_tier_required]: `doc/testing/performance/viewer-performance-methodology-closure-2026-02-25.project.md`
 - [x] SUBTASK-TESTING-20260303-026 (PRD-TESTING-004) [test_tier_required]: `doc/testing/manual/systematic-application-testing-manual.project.md`
-- [x] SUBTASK-TESTING-20260303-027 (PRD-TESTING-004) [test_tier_required]: `doc/testing/manual/web-ui-playwright-closure-manual.project.md`
+- [x] SUBTASK-TESTING-20260303-027 (PRD-TESTING-004) [test_tier_required]: `doc/testing/manual/web-ui-agent-browser-closure-manual.project.md`
 
 ## 专题任务映射（2026-03-06 批次）
 - [x] SUBTASK-TESTING-20260306-001 (PRD-TESTING-005) [test_tier_required]: `doc/testing/ci/ci-builtin-wasm-m4-m5-hash-drift-hardening.project.md`
@@ -92,7 +93,7 @@
 - 模块设计总览：`doc/testing/design.md`
 - doc/testing/prd.index.md
 - `testing-manual.md`
-- `doc/testing/manual/web-ui-playwright-closure-manual.prd.md`
+- `doc/testing/manual/web-ui-agent-browser-closure-manual.prd.md`
 - `scripts/ci-tests.sh`
 - `.github/workflows/*`
 - `.agents/skills/prd/check.md`

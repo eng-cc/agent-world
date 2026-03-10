@@ -49,7 +49,7 @@
 
 #### S3：质量与验收阶段
 - required-tier 与 full-tier 测试收口。
-- Web 闭环（Playwright）与性能回归收口，纳入 `testing-manual.md` 约束。
+- Web 闭环（agent-browser）与性能回归收口，纳入 `testing-manual.md` 约束。
 
 ### 不包含内容
 - 新主题美术风格大迁移（继续以 industrial_v2 为主）。
@@ -172,7 +172,7 @@ AGENT_WORLD_VIEWER_ASSET_TYPE_COLOR=1|0
 
 ### M4：验收收口（S3）
 - required/full 测试通过。
-- Playwright Web 闭环与性能基线通过。
+- agent-browser Web 闭环与性能基线通过。
 - 文档、手册、项目状态与 devlog 收口。
 
 ---
@@ -189,7 +189,7 @@ AGENT_WORLD_VIEWER_ASSET_TYPE_COLOR=1|0
 
 ### 一致性风险
 - 风险：新增配置在 native/web 行为不一致。
-- 缓解：统一走 `viewer_3d_config` 解析，Web 闭环用 Playwright 复测。
+- 缓解：统一走 `viewer_3d_config` 解析，Web 闭环用 agent-browser 复测。
 
 ### 兼容风险
 - 风险：新增模拟字段影响历史快照反序列化。

@@ -73,7 +73,7 @@
   - 不替换现有设置中心与高级配置窗口，仅增强可达性与引导层。
 
 ## 3. AI System Requirements (If Applicable)
-- Tool Requirements: 不新增 AI 模块；仅复用现有 launcher UI 渲染、控制面 API 与 Playwright 测试链路。
+- Tool Requirements: 不新增 AI 模块；仅复用现有 launcher UI 渲染、控制面 API 与 agent-browser 测试链路。
 - Evaluation Strategy: 不适用（本专题以 UX 引导可达性、任务完成率与本地计数验证为主）。
 
 ## 4. Technical Specifications
@@ -122,7 +122,7 @@
 - Test Plan & Traceability:
 | PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |
 | --- | --- | --- | --- | --- |
-| PRD-WORLD_SIMULATOR-030 | TASK-WORLD_SIMULATOR-072/073/074/075/076/077/078/079/080/081/082/083/084 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown` + Playwright（桌面+390x844）验证首次引导、任务流、CTA、转账预设、快捷跳转、演示模式与计数展示 | 启动器自引导可用性、跨端一致性与新用户首日留存路径 |
+| PRD-WORLD_SIMULATOR-030 | TASK-WORLD_SIMULATOR-072/073/074/075/076/077/078/079/080/081/082/083/084 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown` + agent-browser（桌面+390x844）验证首次引导、任务流、CTA、转账预设、快捷跳转、演示模式与计数展示 | 启动器自引导可用性、跨端一致性与新用户首日留存路径 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |

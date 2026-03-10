@@ -17,8 +17,8 @@
 - [x] 明确实施范围：Pages 门禁、手册镜像同步、SEO 元信息
 
 ### T1 手册镜像路径修复与一致性检查
-- [x] 修复 `site/doc/cn/viewer-manual.html` 过时 Playwright 路径
-- [x] 修复 `site/doc/en/viewer-manual.html` 过时 Playwright 路径
+- [x] 修复 `site/doc/cn/viewer-manual.html` 过时 agent-browser 路径
+- [x] 修复 `site/doc/en/viewer-manual.html` 过时 agent-browser 路径
 - [x] 新增 `scripts/site-manual-sync-check.sh`（关键口径一致性校验）
 - [x] 任务测试与提交
 

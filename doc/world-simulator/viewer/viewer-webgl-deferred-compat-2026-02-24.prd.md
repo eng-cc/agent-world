@@ -9,7 +9,7 @@
 - 解决 Web 3D 路径在当前环境（WebGL2 + SwiftShader）偶发的致命崩溃：
   - `wgpu error: Validation Error`
   - `Device::create_render_pipeline label = copy_deferred_lighting_id_pipeline`
-- 保证 Playwright 3D 闭环可稳定执行，不因该管线创建失败导致 `RuntimeError: unreachable`。
+- 保证 agent-browser 3D 闭环可稳定执行，不因该管线创建失败导致 `RuntimeError: unreachable`。
 
 ## 2. User Experience & Functionality
 - 仅调整 `agent_world_viewer` 的 wasm 启动渲染插件配置。
@@ -31,7 +31,7 @@
 ## 5. Risks & Roadmap
 - M0：完成设计与项目管理文档建档。
 - M1：完成 wasm 渲染插件兼容降级代码改造。
-- M2：完成 `cargo check`（native + wasm target）与 Playwright 3D 闭环验证。
+- M2：完成 `cargo check`（native + wasm target）与 agent-browser 3D 闭环验证。
 - M3：回写文档状态与 devlog 收口。
 
 ### Technical Risks

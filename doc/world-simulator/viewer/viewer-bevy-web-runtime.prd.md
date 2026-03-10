@@ -9,18 +9,18 @@
 - 为 `agent_world_viewer` 增加一条可执行的浏览器运行路径（`wasm32-unknown-unknown`），让 Viewer 支持在浏览器中启动与渲染。
 - 保持现有桌面运行方式不受影响：桌面仍支持在线 TCP 连接 `world_viewer_live`。
 - 建立最小闭环：`wasm32` 编译可通过、可通过统一脚本启动本地 Web 调试服务、文档可直接指引使用。
-- 将 Web 路径设为 Viewer 闭环默认路径，闭环证据统一走 `Playwright` 产物（截图 + console）。
+- 将 Web 路径设为 Viewer 闭环默认路径，闭环证据统一走 `agent-browser` 产物（截图 + console）。
 
 ## 2. User Experience & Functionality
 - 范围内：
   - 修复 `agent_world`/`agent_world_viewer` 在 `wasm32` 目标下的编译不兼容点。
   - 在 Viewer 中引入 Web 平台路径：浏览器端通过 WebSocket bridge 在线连接 live server（不做 TCP 直连）。
   - 新增基于 `trunk` 的浏览器启动入口（脚本 + `index.html`）。
-  - 更新使用手册，补充 Web 运行步骤、Playwright 闭环步骤与限制说明。
+  - 更新使用手册，补充 Web 运行步骤、agent-browser 闭环步骤与限制说明。
 - 范围外：
   - 不在本任务重构 Viewer 业务协议字段，沿用既有 JSON line 协议映射。
   - 不重构 Viewer 业务逻辑，不新增 Web 专属 UI 功能。
-  - 不引入重型 Playwright test suite（仅保留 CLI 级最小闭环）。
+  - 不引入重型 agent-browser test suite（仅保留 CLI 级最小闭环）。
 
 ## 3. AI System Requirements (If Applicable)
 - N/A: 本专题不新增 AI 专属要求。
@@ -36,7 +36,7 @@
 
 ### 1.1) 默认闭环入口（策略约束）
 - Web 启动：`./scripts/run-viewer-web.sh --address 127.0.0.1 --port 4173`
-- Playwright CLI 闭环：
+- agent-browser CLI 闭环：
   - `open http://127.0.0.1:4173`
   - `snapshot`
   - `console`

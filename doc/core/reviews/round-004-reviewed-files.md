@@ -399,8 +399,8 @@
 - `doc/testing/longrun/s10-five-node-real-game-soak.project.md`
 - `doc/testing/manual/systematic-application-testing-manual.prd.md`
 - `doc/testing/manual/systematic-application-testing-manual.project.md`
-- `doc/testing/manual/web-ui-playwright-closure-manual.prd.md`
-- `doc/testing/manual/web-ui-playwright-closure-manual.project.md`
+- `doc/testing/manual/web-ui-agent-browser-closure-manual.prd.md`
+- `doc/testing/manual/web-ui-agent-browser-closure-manual.project.md`
 - `doc/testing/performance/runtime-performance-observability-foundation-2026-02-25.prd.md`
 - `doc/testing/performance/runtime-performance-observability-foundation-2026-02-25.project.md`
 - `doc/testing/performance/runtime-performance-observability-llm-api-decoupling-2026-02-25.prd.md`

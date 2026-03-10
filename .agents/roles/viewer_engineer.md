@@ -25,7 +25,7 @@
 - Viewer / Web UI 实现与文档
 - 可观测性与调试能力设计
 - 玩家交互路径与错误反馈
-- Playwright/Web-first 闭环测试入口
+- agent-browser/Web-first 闭环测试入口
 
 ## Decisions
 - 可独立决定表现层结构、信息布局和前端实现细节
@@ -40,7 +40,7 @@
 
 ## Checklist
 - 是否更新 `doc/world-simulator/prd.md` 或子专题文档
-- 是否优先走 Playwright / Web-first 验证
+- 是否优先走 agent-browser / Web-first 验证
 - 是否提供结构化错误和状态反馈
 - 是否保证关键 UI 行为可自动化测试
 - 是否同步维护 Viewer/Launcher 使用说明

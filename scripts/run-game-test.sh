@@ -256,9 +256,9 @@ Game test stack is ready.
 - URL: $GAME_URL
 - Logs: $OUTPUT_DIR
 
-Playwright example:
-  PLAYWRIGHT_CLI_SESSION=game-test-open \\
-  "${CODEX_HOME:-$HOME/.codex}/skills/playwright/scripts/playwright_cli.sh" open "$GAME_URL" --headed
+agent-browser example:
+  AGENT_BROWSER_SESSION=game-test-open \
+  agent-browser --headed open "$GAME_URL"
 
 Press Ctrl+C to stop launcher process.
 INFO

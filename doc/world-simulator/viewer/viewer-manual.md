@@ -8,7 +8,7 @@
 ## 适用范围
 - 可视化客户端：`crates/agent_world_viewer`
 - 联调服务端：`crates/agent_world --bin world_viewer_live`
-- Web 闭环入口：`scripts/run-viewer-web.sh` + Playwright CLI
+- Web 闭环入口：`scripts/run-viewer-web.sh` + agent-browser CLI
 - native fallback 脚本：`scripts/capture-viewer-frame.sh`
 - 角色边界：Web 端定位为 Viewer（观察/调试/间接控制），不承担完整分布式节点职责；共识与复制由后端节点进程负责。
 
@@ -426,7 +426,7 @@ python3 scripts/generate-viewer-industrial-theme-assets.py --quality v1 --out-di
 说明：该闭环用于可视化观察与交互取证，不等价于“浏览器作为完整分布式节点运行”。
 
 ### 前置要求
-- Node.js 20+（需 `npx` 可用）
+- 已安装 `agent-browser`（默认直接使用 `agent-browser` 命令）
 - `trunk`（`cargo install trunk`）
 - `wasm32-unknown-unknown`（`rustup target add wasm32-unknown-unknown`）
 
@@ -441,25 +441,26 @@ env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_boo
 env -u NO_COLOR ./scripts/run-viewer-web.sh --address 127.0.0.1 --port 4173
 ```
 
-3) 执行 Playwright 闭环采样（终端 C）
+3) 执行 agent-browser 闭环采样（终端 C）
 ```bash
-export PWCLI="${CODEX_HOME:-$HOME/.codex}/skills/playwright/scripts/playwright_cli.sh"
-[ -f "$PWCLI" ] || { echo "missing playwright cli wrapper: $PWCLI" >&2; exit 1; }
-# 仓库开发副本: .agents/skills/playwright/scripts/playwright_cli.sh
+command -v agent-browser >/dev/null || { echo "missing agent-browser" >&2; exit 1; }
 mkdir -p output/playwright/viewer
-bash "$PWCLI" open "http://127.0.0.1:4173/?ws=ws://127.0.0.1:5011"
-bash "$PWCLI" snapshot
-bash "$PWCLI" console
-bash "$PWCLI" screenshot --filename output/playwright/viewer/viewer-web.png
-bash "$PWCLI" close
+agent-browser --headed open "http://127.0.0.1:4173/?ws=ws://127.0.0.1:5011"
+agent-browser wait --load networkidle
+agent-browser snapshot -i
+agent-browser eval "JSON.stringify(window.__AW_TEST__?.getState?.() ?? null)"
+agent-browser console | tee output/playwright/viewer/console.log
+agent-browser screenshot output/playwright/viewer/viewer-web.png
+agent-browser close
 ```
+注：证据目录当前沿用历史路径 `output/playwright/viewer/`，以兼容现有脚本与归档结构。
 
 ### 输出目录
 - `output/playwright/viewer/*.png`
-- `.playwright-cli/console-*.log`（或 CLI 控制台输出）
+- `output/playwright/viewer/console.log`（或等价的 agent-browser 控制台重定向日志）
 
 ### 最小验收口径
-- 页面加载成功（`snapshot` 可见 `canvas`）。
+- 页面加载成功（`snapshot -i` 可见交互树，且主视区正常渲染）。
 - `console error = 0`。
 - 至少产出 1 张截图。
 
@@ -535,7 +536,7 @@ bash "$PWCLI" close
 
 ## 常见问题排查
 - Web 页面空白：等待 `trunk` 首轮编译完成，确认访问端口与 `run-viewer-web.sh` 参数一致。
-- Playwright 启动失败：先检查 `node --version`、`npm --version`、`npx` 是否可用。
+- `agent-browser` 启动失败：先检查 `agent-browser --version` 与本地浏览器依赖是否可用。
 - Console 有 wasm 报错：先修复运行时错误再看视觉问题，避免误判为渲染缺陷。
 - 看不到细节：切换 3D，放大并移动视角；必要时使用 `F` 聚焦目标。
 - 自动聚焦无效：确认 target 存在，或先使用 `first_fragment` 排除 ID 输入问题。

@@ -32,7 +32,7 @@
 - [x] M8：新增 `--auto-select-target` 参数并透传 `AGENT_WORLD_VIEWER_AUTO_SELECT*`
 - [x] M8：新增 `--automation-steps` 参数并透传 `AGENT_WORLD_VIEWER_AUTOMATION_STEPS`
 - [x] M8：更新帮助信息与日志输出，便于确认自动化参数是否生效
-- [x] M9：文档口径切换为 Web 默认闭环（`run-viewer-web.sh + Playwright`）
+- [x] M9：文档口径切换为 Web 默认闭环（`run-viewer-web.sh + agent-browser`）
 - [x] M9：`capture-viewer-frame` 明确降级为 native fallback，应急排障专用
 
 ## 依赖

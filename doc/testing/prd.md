@@ -79,14 +79,14 @@
   - 不承诺所有测试都进入 CI 默认路径。
 
 ## 3. AI System Requirements (If Applicable)
-- Tool Requirements: `scripts/ci-tests.sh`、Playwright 闭环工具、长跑脚本、结果汇总工具。
+- Tool Requirements: `scripts/ci-tests.sh`、agent-browser 闭环工具、长跑脚本、结果汇总工具。
 - Evaluation Strategy: 通过门禁通过率、缺陷逃逸率、回归定位时长、证据完整度衡量测试体系质量。
 
 ## 4. Technical Specifications
 - Architecture Overview: testing 模块是仓库级验证层，负责连接代码改动、测试触发、证据产物与发布门禁。
 - Integration Points:
   - `testing-manual.md`
-  - `doc/testing/manual/web-ui-playwright-closure-manual.prd.md`
+  - `doc/testing/manual/web-ui-agent-browser-closure-manual.prd.md`
   - `doc/testing/ci/ci-builtin-wasm-m4-m5-hash-drift-hardening.prd.md`
   - `scripts/ci-tests.sh`
   - `scripts/sync-m1-builtin-wasm-artifacts.sh`

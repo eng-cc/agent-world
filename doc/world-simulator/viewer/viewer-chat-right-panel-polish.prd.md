@@ -8,7 +8,7 @@
 ## 1. Executive Summary
 - 将 Chat UI 收敛为“最右侧单区块”的稳定布局，避免左右分裂导致的信息跳跃。
 - 聊天记录固定放在右侧 Chat 区上方，Agent 选择与输入发送区域放在聊天记录下方。
-- 通过 Web 闭环调试（Playwright）产出截图，验证布局与交互可用性。
+- 通过 Web 闭环调试（agent-browser）产出截图，验证布局与交互可用性。
 
 ## 2. User Experience & Functionality
 

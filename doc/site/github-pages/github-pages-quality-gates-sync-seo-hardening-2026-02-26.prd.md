@@ -18,7 +18,7 @@
 
 ## 范围
 - 范围内
-  - 修复 `site/doc/cn/viewer-manual.html` 与 `site/doc/en/viewer-manual.html` 中已过时的 Playwright 路径口径。
+  - 修复 `site/doc/cn/viewer-manual.html` 与 `site/doc/en/viewer-manual.html` 中已过时的 agent-browser 路径口径。
   - 新增站点校验脚本（链接可达、镜像关键口径一致）。
   - 将校验脚本接入 `.github/workflows/pages.yml`，作为部署前门禁。
   - 更新 `site/index.html` 与 `site/en/index.html` 的 SEO/社交元信息（`og:url`、`twitter:title/description/image`、`theme-color`，并统一 `og:image` 绝对 URL）。
@@ -30,7 +30,7 @@
 ## 接口/数据
 - 校验脚本接口：
   - `scripts/site-link-check.sh`：校验 `site/*.html` 与 `site/doc/**/*.html` 的本地相对链接存在性。
-- `scripts/site-manual-sync-check.sh`：校验站内手册镜像与主手册关键路径口径一致（统一校验 `$CODEX_HOME/skills/playwright/scripts/playwright_cli.sh`，并保留仓库开发副本 `.agents/...` 说明）。
+- `scripts/site-manual-sync-check.sh`：校验站内手册镜像与主手册关键路径口径一致（统一校验 `agent-browser`，并保留仓库开发副本 `.agents/...` 说明）。
 - CI 接口：
   - `.github/workflows/pages.yml` 在 `Upload Pages artifact` 之前执行上述校验。
 - SEO 字段：

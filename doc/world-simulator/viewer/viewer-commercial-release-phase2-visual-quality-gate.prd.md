@@ -20,7 +20,7 @@
 
 ### Out of Scope
 - 本阶段不引入真实美术资源包（模型/贴图/动画）批量导入。
-- 本阶段不实现 Playwright 全自动在线链路门禁（保留手动/agent 闭环）。
+- 本阶段不实现 agent-browser 全自动在线链路门禁（保留手动/agent 闭环）。
 - 本阶段不调整 Viewer 协议与运行时语义。
 
 ## 3. AI System Requirements (If Applicable)

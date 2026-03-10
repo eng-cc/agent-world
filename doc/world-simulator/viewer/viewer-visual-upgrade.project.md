@@ -12,7 +12,7 @@
 - [x] VVU-P4：按 `fragment_budget` 落地 Location 破损映射，移除旧口径分支。
 - [x] VVU-P5：完成材料差异化增强（重点收敛 Carbon/Composite 专属效果）。
 - [x] VVU-P6：补齐新增视觉配置项解析与运行时兼容逻辑（含非法值回退测试）。
-- [x] VVU-P7：执行 required/full 回归、Playwright Web 闭环与性能收口。
+- [x] VVU-P7：执行 required/full 回归、agent-browser Web 闭环与性能收口。
 
 ## 依赖
 - `doc/world-simulator/viewer/viewer-visual-upgrade.prd.md`

@@ -48,8 +48,8 @@
 - `doc/testing/ci/ci-remove-builtin-wasm-hash-checks-from-base-gate.prd.md`
 - `doc/testing/launcher/launcher-lifecycle-hardening-2026-03-01.prd.md`
 - `doc/testing/launcher/launcher-lifecycle-hardening-2026-03-01.project.md`
-- `doc/testing/manual/web-ui-playwright-closure-manual.prd.md`
-- `doc/testing/manual/web-ui-playwright-closure-manual.project.md`
+- `doc/testing/manual/web-ui-agent-browser-closure-manual.prd.md`
+- `doc/testing/manual/web-ui-agent-browser-closure-manual.project.md`
 - `doc/world-runtime/governance/audit-export.md`
 - `doc/world-runtime/governance/governance-events.md`
 - `doc/world-runtime/module/module-lifecycle.md`

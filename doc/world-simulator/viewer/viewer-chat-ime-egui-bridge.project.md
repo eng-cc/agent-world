@@ -10,7 +10,7 @@
 - [x] CIB2 输出项目管理文档（本文件）
 - [x] CIB3 实现 wasm EGUI IME bridge（DOM 事件桥接 + EGUI 事件注入）
 - [x] CIB4 接入启动流程并完成本地编译/测试回归
-- [x] CIB5 Web 闭环验证（Playwright 快照、console、截图）
+- [x] CIB5 Web 闭环验证（agent-browser 快照、console、截图）
 - [x] CIB6 文档回写、devlog、提交收口
 - [x] CIB7 现场反馈回修：桥接焦点判定改为 `wants_keyboard_input`，并使用 IME Commit 事件
 - [x] CIB8 回归验证与提交收口（CIB7）

@@ -48,7 +48,7 @@
 - Non-Goals:
   - 不引入 GPU timestamp/drawcall/VRAM 真实采样。
   - 不接入外部时序系统（Prometheus/Otel）。
-  - 不重写 Playwright Web 性能框架。
+  - 不重写 agent-browser Web 性能框架。
 
 ## 3. AI System Requirements (If Applicable)
 - Tool Requirements: 不适用（本专题为 viewer 性能观测口径扩展，不涉及 AI 系统改造）。

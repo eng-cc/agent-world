@@ -142,7 +142,7 @@
 - 回归结果：
   - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer` 通过（325 tests）。
   - `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-unknown` 通过。
-- Web 闭环（Playwright，按 `testing-manual.md` S6）：
+- Web 闭环（agent-browser，按 `testing-manual.md` S6）：
   - 使用 `?test_api=1` 访问 viewer，`window.__AW_TEST__` 可用，状态采样为已连接且 tick 正常推进。
   - 完成隐藏态、聚焦态、面板展开态（紧凑任务 HUD）与再次收起态截图采样。
   - Console 汇总：`Total messages: 12 (Errors: 0, Warnings: 2)`，无新增功能错误。
@@ -151,7 +151,7 @@
   - `output/playwright/viewer/phase8/phase8-hidden-focused.png`
   - `output/playwright/viewer/phase8/phase8-panel-open-compact.png`
   - `output/playwright/viewer/phase8/phase8-panel-hidden-after-toggle.png`
-  - `.playwright-cli/console-2026-02-23T12-40-54-234Z.log`
+  - `output/playwright/viewer/console-2026-02-23T12-40-54-234Z.log`
 - 结论：
   - 目标提示与引导提示的重复展示已消除。
   - 任务 HUD 在展开态的体量显著收敛，隐藏态与引导卡不再发生叠压。
@@ -215,7 +215,7 @@
 - 回归结果：
   - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer` 通过（328 tests）。
   - `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-unknown` 通过。
-- Web 闭环（Playwright，按 `testing-manual.md` S6）：
+- Web 闭环（agent-browser，按 `testing-manual.md` S6）：
   - 使用 `?test_api=1` 访问 viewer，`window.__AW_TEST__` 可用。
   - 执行 `runSteps(...)` 与 `Tab` 展开/收起链路，采样 `getState()` 为已连接。
   - Console 汇总：`Total messages: 11 (Errors: 0, Warnings: 1)`，无功能错误。
@@ -224,7 +224,7 @@
   - `output/playwright/viewer/phase9/phase9-hidden-focused.png`
   - `output/playwright/viewer/phase9/phase9-panel-open-command.png`
   - `output/playwright/viewer/phase9/phase9-panel-hidden-after-toggle.png`
-  - `.playwright-cli/console-2026-02-23T13-04-48-150Z.log`
+  - `output/playwright/viewer/console-2026-02-23T13-04-48-150Z.log`
 - 结论：
   - 隐藏态已移除布局预设条，首屏顶部竞争减弱。
   - 展开态布局预设条下移后不再与 compact HUD 同位叠压。
@@ -277,7 +277,7 @@
 - M1：第十阶段建档完成（设计 + 项管）。
 - M2：教程进度门槛与第 4 步动作文案改造完成并有单测覆盖。
 - M3：隐藏态减噪策略完成并有定向验证。
-- M4：回归测试、Playwright 新手流程复测与文档收口完成。
+- M4：回归测试、agent-browser 新手流程复测与文档收口完成。
 
 ##### Technical Risks
 - 风险 1：第 4 步门槛提高后，部分场景下完成速度下降。
@@ -291,9 +291,9 @@
 - 回归命令：
   - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer`
   - `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-unknown`
-- Web 闭环（Playwright）：
-  - 使用 `world_viewer_live + run-viewer-web.sh + playwright_cli.sh` 复测新手流程（隐藏态 -> 展开面板 -> 选择目标 -> 隐藏态复查）。
-  - 控制台记录：`.playwright-cli/console-2026-02-23T13-41-21-606Z.log`（`Errors: 0`）。
+- Web 闭环（agent-browser）：
+  - 使用 `world_viewer_live + run-viewer-web.sh + agent-browser` 复测新手流程（隐藏态 -> 展开面板 -> 选择目标 -> 隐藏态复查）。
+  - 控制台记录：`output/playwright/viewer/console-2026-02-23T13-41-21-606Z.log`（`Errors: 0`）。
   - 截图产物：
     - `output/playwright/viewer/phase10/step0-hidden-initial.png`
     - `output/playwright/viewer/phase10/step1-open-panel-tab.png`

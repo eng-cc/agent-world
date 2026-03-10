@@ -7,7 +7,7 @@
 
 ## 1. Executive Summary
 - 修复 Web 语义测试 API `window.__AW_TEST__.sendControl("step")` 无效的问题。
-- 保障 Playwright 可按“逐步操作（step-by-step）”模拟用户流程，而不是只能依赖 `play/pause/seek`。
+- 保障 agent-browser 可按“逐步操作（step-by-step）”模拟用户流程，而不是只能依赖 `play/pause/seek`。
 - 保持现有 `sendControl` 兼容性：`play`、`pause`、`seek` 行为不变。
 
 ## 2. User Experience & Functionality
@@ -17,7 +17,7 @@
 - 为 `sendControl` 增加 `step` 动作解析：
   - 支持 `sendControl("step")`（默认 `count=1`）。
   - 支持 `sendControl("step", { count: n })` 与数值 payload。
-- 执行 Web 闭环回归（Playwright）：验证 `step` 能触发 `tick/eventCount/traceCount` 增长。
+- 执行 Web 闭环回归（agent-browser）：验证 `step` 能触发 `tick/eventCount/traceCount` 增长。
 
 ### Out of Scope
 - 不修改 viewer 协议定义（`ViewerControl::Step` 已存在）。
@@ -40,7 +40,7 @@
 ## 5. Risks & Roadmap
 - M0：问题复现与根因定位（`step` 未在 `parse_control_action` 中支持）。
 - M1：代码修复（补齐 `step` 解析 + 默认 count 规则）。
-- M2：回归验证（`cargo check` + Playwright Web 闭环）。
+- M2：回归验证（`cargo check` + agent-browser Web 闭环）。
 - M3：文档/devlog 回写收口。
 
 ### Technical Risks

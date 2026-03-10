@@ -102,7 +102,7 @@
   - SC-14: 启动器支持无 GUI 服务器 Web 控制台，允许远程启动/停止并查看状态日志。
   - SC-15: 启动器 native 与 web 表单字段由同一份 UI schema 驱动，避免配置项漂移。
   - SC-16: 启动器 web 端改为复用同一套 egui UI 代码并以静态资源方式托管，消除独立 HTML 控制台分叉。
-  - SC-17: 启动器 wasm 页面初始化不得触发 `time not implemented` 崩溃，Playwright headed 闭环必须可稳定采证。
+  - SC-17: 启动器 wasm 页面初始化不得触发 `time not implemented` 崩溃，`agent-browser --headed` 闭环必须可稳定采证。
   - SC-18: 启动器 Web 端不得要求 native-only 二进制路径必填，且 native 端仍保持对应必填校验。
   - SC-19: 启动器 native 与 web 必须通过同一控制面 API 编排游戏/区块链进程，并保持状态与按钮行为一致。
   - SC-20: `world_viewer_live` 必须支持 runtime/world 驱动模式，并在不改 viewer 协议前提下输出可消费的 live 快照与事件。
@@ -194,7 +194,7 @@
   10. Flow-WS-010（Launcher egui Web 同层复用）:
      `构建 launcher wasm 静态资源 -> world_web_launcher 托管静态目录 -> 浏览器加载同一 egui UI -> 调用 /api/state|start|stop`
   11. Flow-WS-011（Launcher wasm 时间兼容闭环）:
-     `Playwright headed 打开 launcher Web 页面 -> wasm 初始化 -> 无 time panic -> snapshot/console/screenshot 采证`
+     `headed `agent-browser` 打开 launcher Web 页面 -> wasm 初始化 -> 无 time panic -> snapshot/console/screenshot 采证`
   12. Flow-WS-012（Launcher Web 必填校验分流）:
      `浏览器加载配置 -> 必填校验 -> 不再提示 launcher/chain runtime bin 必填 -> 继续启动流程`
   13. Flow-WS-013（Launcher native/web 同控制面）:
@@ -290,7 +290,7 @@
   - AC-17: `world_web_launcher` 支持在无 GUI 服务器上通过浏览器完成启动/停止、状态查询与日志查看，且打包产物提供独立入口脚本。
   - AC-18: `agent_world_client_launcher` 与 `world_web_launcher` 必须消费同一份 launcher UI schema；web 控制台表单字段通过 `/api/ui/schema` 动态渲染。
   - AC-19: 启动器 web UI 必须由 `agent_world_client_launcher` 的 egui wasm 产物提供；`world_web_launcher` 默认托管该静态目录且保持 API 闭环可用。
-  - AC-20: 启动器 wasm 页面在 Playwright headed 打开后不得出现 `time not implemented on this platform` 或 `RuntimeError: unreachable`，并需输出 snapshot/console/screenshot 证据。
+  - AC-20: 启动器 wasm 页面在 `agent-browser --headed` 打开后不得出现 `time not implemented on this platform` 或 `RuntimeError: unreachable`，并需输出 snapshot/console/screenshot 证据。
   - AC-21: 启动器 Web 端不得再提示 `launcher bin` 与 `chain runtime bin` 必填；native 端保留对应必填校验。
   - AC-22: 启动器 native 与 web 必须统一消费 `world_web_launcher` 控制面 API，并支持链/游戏独立启停及一致状态展示。
   - AC-23: `world_viewer_live` 可启动 runtime 驱动 live server，并保持现有 viewer 协议兼容（`WorldSnapshot/WorldEvent`）。
@@ -320,7 +320,7 @@
   - 不在主 PRD 中展开专题实现细节（转账细节迁移至分册）。
 
 ## 3. AI System Requirements (If Applicable)
-- Tool Requirements: LLM 回归脚本、Playwright 闭环、场景矩阵测试、启动器集成测试。
+- Tool Requirements: LLM 回归脚本、agent-browser 闭环、场景矩阵测试、启动器集成测试。
 - Evaluation Strategy: 以场景启动成功率、关键交互完成率、LLM 链路稳定性、闭环缺陷收敛时间评估。
 
 ## 4. Technical Specifications
@@ -445,7 +445,7 @@
 | PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |
 | --- | --- | --- | --- | --- |
 | PRD-WORLD_SIMULATOR-001 | TASK-WORLD_SIMULATOR-001/002/010/011/018 | `test_tier_required` | 文档结构校验、统一验收清单覆盖检查、关键入口引用可达检查 | 场景系统基线、模块导航与入口一致性 |
-| PRD-WORLD_SIMULATOR-002 | TASK-WORLD_SIMULATOR-002/003/012/013/018 | `test_tier_required` | Playwright Web 闭环、反馈回退回归、链状态探针单测 | Viewer 交互、Launcher 状态提示、故障诊断可见性 |
+| PRD-WORLD_SIMULATOR-002 | TASK-WORLD_SIMULATOR-002/003/012/013/018 | `test_tier_required` | agent-browser Web 闭环、反馈回退回归、链状态探针单测 | Viewer 交互、Launcher 状态提示、故障诊断可见性 |
 | PRD-WORLD_SIMULATOR-003 | TASK-WORLD_SIMULATOR-003/004/010/018 | `test_tier_required` + `test_tier_full` | LLM 证据模板审查、趋势指标周报抽样、长稳回归 | LLM 链路稳定性、发布证据完整性 |
 | PRD-WORLD_SIMULATOR-004 | TASK-WORLD_SIMULATOR-005/006/008/009/018 | `test_tier_required` | 转账 API 单测、启动器转账提交流程测试、闭环证据归档 | Launcher 转账入口、runtime API 契约 |
 | PRD-WORLD_SIMULATOR-005 | TASK-WORLD_SIMULATOR-005/007/009/018 | `test_tier_required` + `test_tier_full` | runtime main token 转账语义测试（余额/nonce anti-replay）、多轮回归 | 账本一致性、反重放策略、发布前链路风险 |
@@ -456,9 +456,9 @@
 | PRD-WORLD_SIMULATOR-010 | TASK-WORLD_SIMULATOR-023/024 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher` + 启动 `world_web_launcher` 后通过 `/api/start`/`/api/stop`/`/api/state` 回归 + `bash -n scripts/build-game-launcher-bundle.sh` 校验打包入口脚本 | 无 GUI 服务器远程运维、launcher Web 控制能力 |
 | PRD-WORLD_SIMULATOR-011 | TASK-WORLD_SIMULATOR-025/026 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p agent_world_launcher_ui` + `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher` + `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher`，验证 shared schema 定义、native/web 同源渲染与接口输出 | 启动器 UI 一致性、跨端配置项治理能力 |
 | PRD-WORLD_SIMULATOR-012 | TASK-WORLD_SIMULATOR-027/028 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown` + `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher` + `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher` + `bash -n scripts/build-game-launcher-bundle.sh`，验证同层 egui 复用、静态托管与打包入口 | 启动器 UI 统一维护能力、headless 运维体验一致性 |
-| PRD-WORLD_SIMULATOR-013 | TASK-WORLD_SIMULATOR-029/030/097 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown` + headed Playwright 打开 `world_web_launcher` 控制台并校验 `console error` 无 `time not implemented` + 归档 screenshot/console/snapshot 证据 | 启动器 Web 端可用性、wasm 运行时兼容稳定性 |
-| PRD-WORLD_SIMULATOR-014 | TASK-WORLD_SIMULATOR-031/032 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher` + `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown` + headed Playwright 打开 launcher web 并回归 `/api/start` `/api/stop`，验证 Web 端不再受 native-only 必填项阻断 | 启动器 Web 配置校验准确性、跨端校验边界一致性 |
-| PRD-WORLD_SIMULATOR-015 | TASK-WORLD_SIMULATOR-033/034/035 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher` + `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher` + `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown` + headed Playwright 覆盖链/游戏独立启停 | 启动器 native/web 控制面一致性、链路维护成本与回归稳定性 |
+| PRD-WORLD_SIMULATOR-013 | TASK-WORLD_SIMULATOR-029/030/097 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown` + headed agent-browser 打开 `world_web_launcher` 控制台并校验 `console error` 无 `time not implemented` + 归档 screenshot/console/snapshot 证据 | 启动器 Web 端可用性、wasm 运行时兼容稳定性 |
+| PRD-WORLD_SIMULATOR-014 | TASK-WORLD_SIMULATOR-031/032 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher` + `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown` + headed agent-browser 打开 launcher web 并回归 `/api/start` `/api/stop`，验证 Web 端不再受 native-only 必填项阻断 | 启动器 Web 配置校验准确性、跨端校验边界一致性 |
+| PRD-WORLD_SIMULATOR-015 | TASK-WORLD_SIMULATOR-033/034/035 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher` + `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher` + `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown` + headed agent-browser 覆盖链/游戏独立启停 | 启动器 native/web 控制面一致性、链路维护成本与回归稳定性 |
 | PRD-WORLD_SIMULATOR-016 | TASK-WORLD_SIMULATOR-036/037 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_viewer_live` + `env -u RUSTC_WRAPPER cargo check -p agent_world --bin world_viewer_live`，验证 runtime 驱动 live 链路与协议兼容适配 | viewer live runtime/simulator 双模式一致性与迁移风险可控 |
 | PRD-WORLD_SIMULATOR-017 | TASK-WORLD_SIMULATOR-038/039 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_viewer_live` + `env -u RUSTC_WRAPPER cargo check -p agent_world --bin world_viewer_live`，验证 runtime llm/chat/prompt 控制链路打通与脚本模式边界错误码 | viewer live runtime llm/script 体验连续性、鉴权与桥接稳定性 |
 | PRD-WORLD_SIMULATOR-018 | TASK-WORLD_SIMULATOR-040/041 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_viewer_live` + `env -u RUSTC_WRAPPER cargo check -p agent_world --bin world_viewer_live`，验证 action 映射覆盖扩展、等价回归与 runtime-only 启动分支收敛 | viewer live runtime 映射覆盖稳定性、旧分支移除风险与体验一致性 |
@@ -470,10 +470,10 @@
 | PRD-WORLD_SIMULATOR-024 | TASK-WORLD_SIMULATOR-054/055/056 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_chain_runtime transfer_submit_api::tests:: -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown`，验证 explorer RPC、控制面代理与启动器面板闭环 | 启动器区块链浏览器可用性、跨端一致性与发布前诊断效率 |
 | PRD-WORLD_SIMULATOR-025 | TASK-WORLD_SIMULATOR-057/058/059 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_chain_runtime transfer_submit_api::tests:: -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown`，验证 explorer P0 API（blocks/block/txs/tx/search）、持久化索引与跨端分页搜索 UI | 启动器区块链浏览器公共主链视角 P0 能力、可观测性与跨端一致性 |
 | PRD-WORLD_SIMULATOR-026 | TASK-WORLD_SIMULATOR-060/061/062 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_chain_runtime transfer_submit_api::tests:: -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown`，验证 explorer P1 API（address/contracts/contract/assets/mempool）与启动器四视图闭环 | 启动器区块链浏览器公共主链视角 P1 能力、可观测性与跨端一致性 |
-| PRD-WORLD_SIMULATOR-027 | TASK-WORLD_SIMULATOR-063/064/065/066 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown` + Playwright（桌面 + 390x844）采证，验证路径回退、禁用态提示、参数编码、stop no-op 语义、移动端可读性、favicon 噪声治理与启动阻断引导 | 启动器可用性稳定性、跨端体验一致性与运维可诊断性 |
+| PRD-WORLD_SIMULATOR-027 | TASK-WORLD_SIMULATOR-063/064/065/066 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown` + agent-browser（桌面 + 390x844）采证，验证路径回退、禁用态提示、参数编码、stop no-op 语义、移动端可读性、favicon 噪声治理与启动阻断引导 | 启动器可用性稳定性、跨端体验一致性与运维可诊断性 |
 | PRD-WORLD_SIMULATOR-028 | TASK-WORLD_SIMULATOR-067/068 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown` + `env -u RUSTC_WRAPPER cargo fmt --all`，验证浏览器面板视觉层级、状态可视化、筛选恢复与列表-详情协同交互 | 启动器区块链浏览器日常核查效率、跨端体验一致性 |
 | PRD-WORLD_SIMULATOR-029 | TASK-WORLD_SIMULATOR-069/070/071 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown`，验证配置防回写、请求按域并发、反馈草稿保护、顶栏响应式与转账过滤清空 | 启动器高频交互稳定性、并发可用性与窄屏可读性 |
-| PRD-WORLD_SIMULATOR-030 | TASK-WORLD_SIMULATOR-072/073/074/075/076/077/078/079/080/081/082/083/084/085/086/087/088/089/090 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown` + Playwright（桌面 + 390x844）采证 + `wc -l crates/agent_world_client_launcher/src/main.rs crates/agent_world_client_launcher/src/explorer_window.rs`，验证首次引导、任务流、错误恢复、preflight、持续轻提示、术语解释、快捷入口、成功配置画像、演示模式、本地计数与超长文件治理 | 启动器新用户自引导闭环、失败恢复效率、跨端一致性与代码维护可持续性 |
+| PRD-WORLD_SIMULATOR-030 | TASK-WORLD_SIMULATOR-072/073/074/075/076/077/078/079/080/081/082/083/084/085/086/087/088/089/090 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown` + agent-browser（桌面 + 390x844）采证 + `wc -l crates/agent_world_client_launcher/src/main.rs crates/agent_world_client_launcher/src/explorer_window.rs`，验证首次引导、任务流、错误恢复、preflight、持续轻提示、术语解释、快捷入口、成功配置画像、演示模式、本地计数与超长文件治理 | 启动器新用户自引导闭环、失败恢复效率、跨端一致性与代码维护可持续性 |
 | PRD-WORLD_SIMULATOR-031 | TASK-WORLD_SIMULATOR-091/092 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p agent_world --bin world_web_launcher`，验证 GUI Agent 能力声明、统一动作执行与结构化响应稳定性 | Web Console 机器控制面、人工操作可替代性、既有控制面兼容性 |
 | PRD-WORLD_SIMULATOR-032 | TASK-WORLD_SIMULATOR-093/094 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p agent_world --tests --features test_tier_required`，验证 10 项已知失败用例临时下线后 required 测试链路恢复可执行且白名单外覆盖保持有效 | runtime required 回归可用性、pre-commit 稳定性、测试资产可追溯性 |
 | PRD-WORLD_SIMULATOR-033 | TASK-WORLD_SIMULATOR-095/096 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_game_launcher world_game_launcher_tests::build_world_chain_runtime_args_includes_storage_profile -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher world_web_launcher_tests::build_chain_runtime_args_includes_chain_overrides_when_on -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p agent_world --bin world_game_launcher --bin world_web_launcher`，验证双启动器均显式传递 `--execution-world-dir` 并固定到 `output/chain-runtime/<node_id>/reward-runtime-execution-world` | 运行时产物路径可控性、源码目录洁净度、launcher 对 runtime 参数透传稳定性 |
@@ -490,7 +490,7 @@
 | DEC-WS-006 | 新增 `world_web_launcher` 作为 headless 场景控制平面 | 仅保留桌面 GUI / 仅依赖 CLI 手工操作 | headless 服务器无图形会话，Web 控制台可在浏览器统一操作并保留日志可观察性；由 `TASK-WORLD_SIMULATOR-024` 落地。 |
 | DEC-WS-007 | 采用共享 launcher UI schema，由 native 与 web 双端适配渲染 | 继续维持 native/web 双端字段硬编码 | 单点维护字段与文案可显著降低配置漂移风险，且可保持 UI 行为一致性；由 `TASK-WORLD_SIMULATOR-026` 落地。 |
 | DEC-WS-008 | 采用 `agent_world_client_launcher` 同一套 egui UI 跨 native/wasm 双目标，并由 `world_web_launcher` 托管 launcher 静态资源 | 继续维护独立 HTML 控制台并与 native 并行演进 | 可彻底消除 UI 双栈分叉，降低维护与验收成本；由 `TASK-WORLD_SIMULATOR-028` 落地。 |
-| DEC-WS-009 | launcher wasm 轮询计时切换到 Web 兼容时间实现，并将 Playwright headed 闭环作为回归门禁 | 接受已知 panic 并仅做文档告警 | 该问题会直接导致 Web UI 不可用，必须通过代码修复 + 自动化采证闭环防止回归；由 `TASK-WORLD_SIMULATOR-030` 落地。 |
+| DEC-WS-009 | launcher wasm 轮询计时切换到 Web 兼容时间实现，并将 `agent-browser --headed` 闭环作为回归门禁 | 接受已知 panic 并仅做文档告警 | 该问题会直接导致 Web UI 不可用，必须通过代码修复 + 自动化采证闭环防止回归；由 `TASK-WORLD_SIMULATOR-030` 落地。 |
 | DEC-WS-010 | 启动器必填校验按平台分流（Web 排除 native-only binary 必填；native 保持阻断） | 在 Web 端注入伪二进制路径默认值 | 分流更符合字段语义边界，避免伪配置污染与误导；由 `TASK-WORLD_SIMULATOR-032` 落地。 |
 | DEC-WS-011 | native 客户端改为“客户端 + 本地 world_web_launcher 服务端”，与 web 客户端共用同一控制面 API | 继续维护 native 直连本地进程 + web API 双路径 | 单一控制面可保证行为一致并降低并行回归成本；由 `TASK-WORLD_SIMULATOR-035` 落地。 |
 | DEC-WS-012 | viewer live 采用“runtime 驱动 + simulator 协议兼容适配”的 Phase 1 迁移 | 一次性替换 viewer 协议与前端模型 | 先切 runtime 主驱动可快速降低双轨风险，同时控制改动面与回归成本；由 `TASK-WORLD_SIMULATOR-037` 落地。 |

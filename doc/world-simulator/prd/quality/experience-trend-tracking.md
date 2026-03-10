@@ -20,7 +20,7 @@
 | 维度 | 指标 | 目标/阈值 | 数据来源 |
 | --- | --- | --- | --- |
 | 启动可用性 | `web_launch_success_rate` | 最近 7 次 >= 99% | `viewer-release-qa-loop` 摘要 |
-| 闭环稳定性 | `web_console_error_count` | 每次 S6 必须为 0 | `.playwright-cli/console-*.log` |
+| 闭环稳定性 | `web_console_error_count` | 每次 S6 必须为 0 | `output/playwright/viewer/console.log` |
 | 交互有效性 | `semantic_step_pass_rate` | 最近 7 次 >= 95% | `output/playwright/viewer/release-qa-summary-*.md` |
 | LLM 稳定性 | `llm_metric_gate_pass_rate` | 最近 7 次 >= 95% | `.tmp/llm_stress/*/summary.txt` |
 | LLM 健康度 | `llm_parse_error_rate` | 每次 run <= 阈值（按脚本 gate） | `.tmp/llm_stress/*/report.json` |

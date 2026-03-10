@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content="agent-world Viewer 使用手册：启动、交互、自动聚焦、自动步骤与 Web 闭环。" />
     <meta property="og:title" content="Viewer 使用手册 | agent-world" />
-    <meta property="og:description" content="覆盖 live server、Web Viewer、Playwright 闭环、详情面板与常见排查路径。" />
+    <meta property="og:description" content="覆盖 live server、Web Viewer、agent-browser 闭环、详情面板与常见排查路径。" />
     <meta property="og:type" content="article" />
     <meta property="og:image" content="../../assets/images/og-cover.png" />
     <meta property="og:locale" content="zh_CN" />
@@ -138,26 +138,27 @@
         <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011</code></pre>
         <p>终端 B：启动 Web Viewer。</p>
         <pre><code>env -u NO_COLOR ./scripts/run-viewer-web.sh --address 127.0.0.1 --port 4173</code></pre>
-        <p>终端 C：执行 Playwright 闭环采样。</p>
-        <pre><code>export PWCLI="${CODEX_HOME:-$HOME/.codex}/skills/playwright/scripts/playwright_cli.sh"
-	[ -f "$PWCLI" ] || { echo "missing playwright cli wrapper: $PWCLI" >&2; exit 1; }
-	# 仓库开发副本: .agents/skills/playwright/scripts/playwright_cli.sh
-	mkdir -p output/playwright/viewer
-	bash "$PWCLI" open "http://127.0.0.1:4173/?ws=ws://127.0.0.1:5011"
-	bash "$PWCLI" snapshot
-bash "$PWCLI" console
-bash "$PWCLI" screenshot --filename output/playwright/viewer/viewer-web.png
-bash "$PWCLI" close</code></pre>
+        <p>终端 C：执行 agent-browser 闭环采样。</p>
+        <pre><code>command -v agent-browser >/dev/null || { echo "missing agent-browser" >&2; exit 1; }
+mkdir -p output/playwright/viewer
+agent-browser --headed open "http://127.0.0.1:4173/?ws=ws://127.0.0.1:5011"
+agent-browser wait --load networkidle
+agent-browser snapshot -i
+agent-browser eval "JSON.stringify(window.__AW_TEST__?.getState?.() ?? null)"
+agent-browser console | tee output/playwright/viewer/console.log
+agent-browser screenshot output/playwright/viewer/viewer-web.png
+agent-browser close</code></pre>
+        <p>注：产物目录当前沿用历史路径 <code>output/playwright/viewer/</code>。</p>
 
         <h3>`sendControl(\"step\")` 语义校验</h3>
-        <p>可在浏览器控制台或 Playwright evaluate 中执行以下调用，验证逐步推进生效：</p>
+        <p>可在浏览器控制台或 agent-browser evaluate 中执行以下调用，验证逐步推进生效：</p>
         <pre><code>window.__AW_TEST__.sendControl("step");
 window.__AW_TEST__.sendControl("step", { count: 3 });
 window.__AW_TEST__.getState();</code></pre>
 
         <h3>输出目录与最小验收</h3>
         <ul>
-          <li>输出：`output/playwright/viewer/*.png`、`.playwright-cli/console-*.log`。</li>
+          <li>输出：`output/playwright/viewer/*.png`、`output/playwright/viewer/console.log`（或等价重定向日志）。</li>
           <li>验收：页面加载成功（含 `canvas`）、`console error = 0`、至少 1 张截图，且 `step` 调用可推动 tick 前进。</li>
         </ul>
 
@@ -237,7 +238,7 @@ window.__AW_TEST__.getState();</code></pre>
         <h2>常见问题排查</h2>
         <ul>
           <li>Web 页面空白：先等 `trunk` 首轮编译完成，检查端口与 URL 是否一致。</li>
-          <li>Playwright 启动失败：检查 `node --version`、`npm --version`、`npx`。</li>
+          <li>`agent-browser` 启动失败：检查 `agent-browser --version` 与浏览器依赖。</li>
           <li>Console 出现 wasm 报错：先修复运行时错误，再判断视觉问题。</li>
           <li>看不到细节：切换 3D，放大并移动视角，或按 `F` 聚焦。</li>
           <li>自动聚焦无效：先用 `first_fragment` 排除目标 ID 输入问题。</li>

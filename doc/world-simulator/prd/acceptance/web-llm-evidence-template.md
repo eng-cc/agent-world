@@ -6,7 +6,7 @@
 - 为 `TASK-WORLD_SIMULATOR-003` 提供可直接复制的结果卡片格式。
 
 ## 适用范围
-- Web-first 闭环：`doc/testing/manual/web-ui-playwright-closure-manual.prd.md`
+- Web-first 闭环：`doc/testing/manual/web-ui-agent-browser-closure-manual.prd.md`
 - LLM 链路压力/覆盖：`testing-manual.md` 的 S8（`scripts/llm-longrun-stress.sh`）
 
 ## 模板 A：Web-first 闭环证据卡（S6）
@@ -18,11 +18,12 @@
 - 启动命令：
   - `env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_game_launcher -- ...`
 - 闭环命令：
-  - `bash "$PWCLI" open "$URL" --headed`
-  - `bash "$PWCLI" snapshot`
-  - `bash "$PWCLI" eval '() => window.__AW_TEST__.getState()'`
-  - `bash "$PWCLI" screenshot --filename output/playwright/viewer/<name>.png`
-  - `bash "$PWCLI" console`
+  - `agent-browser --headed open "$URL"`
+  - `agent-browser wait --load networkidle`
+  - `agent-browser snapshot -i`
+  - `agent-browser eval "JSON.stringify(window.__AW_TEST__?.getState?.() ?? null)"`
+  - `agent-browser screenshot output/playwright/viewer/<name>.png`
+  - `agent-browser console | tee output/playwright/viewer/console.log`
 - 结果：
   - 页面加载：pass/fail
   - `window.__AW_TEST__` 可用：pass/fail
@@ -30,7 +31,7 @@
   - 截图产物存在：pass/fail
 - 证据路径：
   - 截图：`output/playwright/viewer/<name>.png`
-  - console：`.playwright-cli/console-<timestamp>.log`
+  - console：`output/playwright/viewer/console.log`（或等价重定向日志）
 - 结论：
 ```
 

@@ -35,7 +35,7 @@
 - [x] VRI10P0：建立第十阶段设计文档与项目管理文档。
 - [x] VRI10P1：修复教程进度跳步并强化第 4 步动作文案（含单测）。
 - [x] VRI10P2：实现隐藏态引导层减噪策略并完成定向验证。
-- [x] VRI10P3：执行回归与 Playwright 新手流程复测并完成文档收口。
+- [x] VRI10P3：执行回归与 agent-browser 新手流程复测并完成文档收口。
 
 ## 依赖
 - doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.md

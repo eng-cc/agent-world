@@ -36,7 +36,7 @@
 - [x] 新增 Proof 切换的键盘可访问性（按钮组）
 
 ### 4. 验证与收口
-- [x] 使用 Playwright 进行页面截图回归（中英文）
+- [x] 使用 agent-browser 进行页面截图回归（中英文）
 - [x] 执行 `env -u RUSTC_WRAPPER cargo check`
 - [x] 更新 `README.md` 展示站说明（补充三期亮点）
 - [x] 回写本项目管理文档状态

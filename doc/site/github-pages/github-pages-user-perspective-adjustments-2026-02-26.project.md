@@ -26,7 +26,7 @@
 - [x] 优化字体加载，减少英文首页不必要的外部字体请求
 
 ### 3. 验证与收口
-- [x] Playwright 关键路径回归（首页、语言切换、文档入口、移动端）
+- [x] agent-browser 关键路径回归（首页、语言切换、文档入口、移动端）
 - [x] 执行 `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer`
 - [x] 回写本项目管理文档状态
 - [x] 写任务日志（`doc/devlog/2026-02-26.md`）
@@ -34,7 +34,7 @@
 ## 依赖
 - 站点静态结构：`site/` 与 `.github/workflows/pages.yml`。
 - 现有交互脚本：`site/assets/app.js`。
-- 回归工具链：Playwright CLI 与本地静态服务器。
+- 回归工具链：agent-browser CLI 与本地静态服务器。
 
 ## 状态
 - 当前阶段：已完成（任务 0/1/2/3 全部完成）

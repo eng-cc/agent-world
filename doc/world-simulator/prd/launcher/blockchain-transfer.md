@@ -77,7 +77,7 @@
   - 不实现手续费市场、交易排序策略和复杂 mempool 策略。
 
 ## 3. AI System Requirements (If Applicable)
-- Tool Requirements: Playwright Web 闭环、启动器集成测试、链运行时接口契约测试、运行时单元测试。
+- Tool Requirements: agent-browser Web 闭环、启动器集成测试、链运行时接口契约测试、运行时单元测试。
 - Evaluation Strategy:
   - 指标-1：转账提交成功率（合法请求） >= 99%（测试样本口径）。
   - 指标-2：非法请求拒绝准确率（余额不足/nonce 重放/参数非法） = 100%。

@@ -22,7 +22,7 @@
 - **范围外**
   - 不在本阶段重写 viewer 渲染管线（PBR 模型保持不变）。
   - 不在本阶段改 world_viewer_live 协议结构。
-  - 不在本阶段引入新的截图框架（沿用 Playwright + capture-viewer-frame 链路）。
+  - 不在本阶段引入新的截图框架（沿用 agent-browser + capture-viewer-frame 链路）。
 
 ## 接口 / 数据
 - 脚本：`scripts/viewer-texture-inspector.sh`

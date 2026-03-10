@@ -11,7 +11,7 @@
 - [x] WTA-3 `app_bootstrap` 接入命令消费/状态发布系统
 - [x] WTA-4 回归测试与编译验证（`agent_world_viewer`）
 - [x] WTA-5 状态回写与 devlog 收口
-- [x] WTA-6 `testing-manual.md` S6 Playwright 示例切换到 `window.__AW_TEST__`
+- [x] WTA-6 `testing-manual.md` S6 agent-browser 示例切换到 `window.__AW_TEST__`
 - [x] WTA-7 `getState()` 增补相机语义字段（`cameraMode/cameraRadius/cameraOrthoScale`）
 - [x] WTA-8 (PRD-WTA-R1-001) [test_tier_required]：round-1 补齐文档建模（人类高频操作缺口盘点 + 语义步骤设计 + 任务拆解）
 - [x] WTA-9 (PRD-WTA-R1-002) [test_tier_required]：扩展 `viewer_automation` round-1 语义步骤（`panel/module/focus_selection/material_variant`）并补齐解析/映射测试

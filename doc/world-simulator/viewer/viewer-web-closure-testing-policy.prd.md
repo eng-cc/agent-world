@@ -7,7 +7,7 @@
 
 
 ## 1. Executive Summary
-- 将 `agent_world_viewer` 的闭环测试默认路径统一到 Web 端：`trunk serve + Playwright`。
+- 将 `agent_world_viewer` 的闭环测试默认路径统一到 Web 端：`trunk serve + agent-browser`。
 - 把“可复现、可自动化、可留证据”作为闭环基线，减少桌面端窗口捕获差异导致的不稳定性。
 - 保留原生截图链路作为历史兼容/应急方案，但不再作为默认流程。
 
@@ -28,12 +28,12 @@
 
 ### 1) 默认闭环入口
 - 启动 Web viewer：`./scripts/run-viewer-web.sh --port 4173 --address 127.0.0.1`
-- 闭环自动化：Playwright CLI（建议 Node 20+）
+- 闭环自动化：`agent-browser` CLI（建议确保 `agent-browser --version` 可用）
   - `open/snapshot/screenshot/console/eval`
 
 ### 2) 闭环产物标准
 - 截图：`output/playwright/*.png`
-- 控制台日志：`.playwright-cli/console-*.log`
+- 控制台日志：`output/playwright/console.log`（或等价重定向日志）
 - 通过基线：
   - 页面可加载（title/canvas 存在）
   - `console error = 0`
@@ -50,8 +50,8 @@
 - WCT3：完成最小回归验证并更新状态、日志、提交收口。
 
 ### Technical Risks
-- Node/Playwright 版本差异风险：旧 Node 版本可能导致 Playwright CLI 不稳定。
-  - 缓解：文档显式要求 Node 20+，并提供版本检查命令。
+- agent-browser / 浏览器依赖差异风险：环境不一致可能导致闭环命令不稳定。
+  - 缓解：文档显式要求 `agent-browser --version` 可用，并提供浏览器依赖检查步骤。
 - Web 离线模式边界风险：当前浏览器端默认离线。
   - 缓解：在文档中明确“闭环主要验证渲染/UI/交互稳定性”，在线链路单独规划。
 - 历史习惯迁移风险：团队仍可能使用 native 截图脚本。

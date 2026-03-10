@@ -12,7 +12,7 @@
   - SC-1: Web 端不再出现“启动器二进制路径（launcher bin）是必填项”。
   - SC-2: Web 端不再出现“链运行时二进制路径（chain runtime bin）是必填项”。
   - SC-3: Native 端仍保持上述二进制路径必填校验。
-  - SC-4: Playwright headed 闭环页面可加载且状态轮询/启动停止流程可用。
+  - SC-4: `agent-browser --headed` 闭环页面可加载且状态轮询/启动停止流程可用。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -30,7 +30,7 @@
   2. Flow-LAUNCHER-WEB-REQ-002（Native 校验）:
      `打开 native launcher -> 清空二进制路径 -> 显示必填错误`
   3. Flow-LAUNCHER-WEB-REQ-003（闭环回归）:
-     `Playwright headed open -> snapshot/screenshot/console -> /api/start + /api/stop`
+     `agent-browser --headed open -> snapshot/screenshot/console -> /api/start + /api/stop`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
@@ -42,7 +42,7 @@
   - AC-2: native 编译产物中上述必填校验保持有效。
   - AC-3: Web 端 UI 字段渲染不展示 binary path 字段。
   - AC-4: `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown` 通过。
-  - AC-5: Playwright headed 闭环与 `/api/start` `/api/stop` 回归通过并归档证据。
+  - AC-5: `agent-browser --headed` 闭环与 `/api/start` `/api/stop` 回归通过并归档证据。
 - Non-Goals:
   - 不重构 `world_web_launcher` API 协议。
   - 不新增启动器配置字段。
@@ -74,7 +74,7 @@
 - Phased Rollout:
   - M1: PRD 建模与任务拆解。
   - M2: 校验与渲染分流代码修复。
-  - M3: Playwright 闭环回归与文档收口。
+  - M3: agent-browser 闭环回归与文档收口。
 - Technical Risks:
   - 风险-1: 分流条件遗漏导致某端校验退化。
   - 风险-2: 字段渲染源切换后引入 section 空渲染副作用。

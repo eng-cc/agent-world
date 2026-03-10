@@ -62,8 +62,8 @@
   - AC-2: Web 端在 `disabled/not_started/starting/unreachable/config_error` 任一非 `ready` 状态时，必须显示反馈不可用原因。
   - AC-3: `app_process.rs` 与 `app_process_web.rs` 所有 explorer/transfer/search 查询参数构造均使用统一编码函数。
   - AC-4: `/api/stop` 与 `/api/chain/stop` 在 no-op 场景不覆盖 `StartFailed/QueryFailed/Unreachable/ConfigError` 等错误态。
-  - AC-5: Playwright 在 390x844 视口截图中，配置区字段可逐项读取且关键控制按钮可见。
-  - AC-6: Playwright console 采样不再出现 `favicon.ico 404`。
+  - AC-5: agent-browser 在 390x844 视口截图中，配置区字段可逐项读取且关键控制按钮可见。
+  - AC-6: agent-browser console 采样不再出现 `favicon.ico 404`。
   - AC-7: 主界面默认不展示低频配置字段；存在非法配置时主界面提供可见摘要，并可一键打开高级配置弹窗定位修复。
   - AC-8: 点击“启动游戏/启动区块链”时，若存在阻断配置，按钮行为必须弹出配置引导窗口（而非仅被动提示或静默禁用）。
   - AC-9: 配置引导窗口必须直接提供对应字段输入框（不是仅文本提示），用户可在窗口内完成修复并再次触发启动。
@@ -74,7 +74,7 @@
   - 不在本专题改变 world/runtime 协议。
 
 ## 3. AI System Requirements (If Applicable)
-- Tool Requirements: 不涉及 AI 新能力，仅依赖现有 Playwright 与 Rust 回归测试工具链。
+- Tool Requirements: 不涉及 AI 新能力，仅依赖现有 agent-browser 与 Rust 回归测试工具链。
 - Evaluation Strategy: 不适用（以功能可用性、回归结果与 UI 证据为主）。
 
 ## 4. Technical Specifications
@@ -130,7 +130,7 @@
 - Test Plan & Traceability:
 | PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |
 | --- | --- | --- | --- | --- |
-| PRD-WORLD_SIMULATOR-027 | TASK-WORLD_SIMULATOR-063/064/065/066 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown` + Playwright headed（桌面 + 390x844）采证 | 启动器控制面可用性、web 体验、native/web 请求一致性 |
+| PRD-WORLD_SIMULATOR-027 | TASK-WORLD_SIMULATOR-063/064/065/066 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown` + `agent-browser --headed`（桌面 + 390x844）采证 | 启动器控制面可用性、web 体验、native/web 请求一致性 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |

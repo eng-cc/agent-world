@@ -489,8 +489,8 @@
 | `doc/testing/longrun/s10-five-node-real-game-soak.project.md` | `project` | `project` | 待判定 | no | 待判定 | done | done | `keep` | `producer_system_designer` | `done` | ROUND-006 已完成最终收口 |
 | `doc/testing/manual/systematic-application-testing-manual.prd.md` | `prd` | `prd` | 待判定 | 待判定 | 待判定 | done | done | `keep` | `producer_system_designer` | `done` | ROUND-006 已完成最终收口 |
 | `doc/testing/manual/systematic-application-testing-manual.project.md` | `project` | `project` | 待判定 | no | 待判定 | done | done | `keep` | `producer_system_designer` | `done` | ROUND-006 已完成最终收口 |
-| `doc/testing/manual/web-ui-playwright-closure-manual.prd.md` | `prd` | `prd` | 待判定 | 待判定 | 待判定 | done | done | `keep` | `producer_system_designer` | `done` | ROUND-006 已完成最终收口 |
-| `doc/testing/manual/web-ui-playwright-closure-manual.project.md` | `project` | `project` | 待判定 | no | 待判定 | done | done | `keep` | `producer_system_designer` | `done` | ROUND-006 已完成最终收口 |
+| `doc/testing/manual/web-ui-agent-browser-closure-manual.prd.md` | `prd` | `prd` | 待判定 | 待判定 | 待判定 | done | done | `keep` | `producer_system_designer` | `done` | ROUND-006 已完成最终收口 |
+| `doc/testing/manual/web-ui-agent-browser-closure-manual.project.md` | `project` | `project` | 待判定 | no | 待判定 | done | done | `keep` | `producer_system_designer` | `done` | ROUND-006 已完成最终收口 |
 | `doc/testing/performance/runtime-performance-observability-foundation-2026-02-25.prd.md` | `prd` | `prd` | 待判定 | 待判定 | 待判定 | done | done | `keep` | `producer_system_designer` | `done` | ROUND-006 已完成最终收口 |
 | `doc/testing/performance/runtime-performance-observability-foundation-2026-02-25.project.md` | `project` | `project` | 待判定 | no | 待判定 | done | done | `keep` | `producer_system_designer` | `done` | ROUND-006 已完成最终收口 |
 | `doc/testing/performance/runtime-performance-observability-llm-api-decoupling-2026-02-25.prd.md` | `prd` | `prd` | 待判定 | 待判定 | 待判定 | done | done | `keep` | `producer_system_designer` | `done` | ROUND-006 已完成最终收口 |

@@ -68,7 +68,7 @@
   - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer sync_player_achievements_ -- --nocapture`
   - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer sync_agent_chatter_bubbles_ -- --nocapture`
   - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer feedback_ -- --nocapture`
-- Web 闭环（Playwright）：
+- Web 闭环（agent-browser）：
   - `window.__AW_TEST__.getState()` 可访问，`connectionStatus=connected`；
   - 页面基础语义正常（`title=Agent World Viewer (Web)`，`canvasCount=1`，`hasTestApi=true`）；
   - `Tab` 面板开关可用，Player HUD/引导层与右侧面板切换可观察。

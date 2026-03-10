@@ -40,11 +40,11 @@
 - M0：建档与任务拆解。
 - M1：完成导航 sticky + 移动端可点击性/无障碍修复。
 - M2：完成语言重定向时机与字体加载优化。
-- M3：完成 Playwright 回归与 `cargo check` 验证，回写文档与日志。
+- M3：完成 agent-browser 回归与 `cargo check` 验证，回写文档与日志。
 
 ## 风险
 - 风险：去除横向 overflow 限制可能引入偶发横向滚动。
-  - 缓解：以 Playwright 在 1280/900/360 宽度校验 `scrollWidth === clientWidth`。
+  - 缓解：以 agent-browser 在 1280/900/360 宽度校验 `scrollWidth === clientWidth`。
 - 风险：调整语言重定向逻辑后，已有用户本地状态行为变化。
   - 缓解：保持手动语言选择优先级不变，仅修正首次自动判定时机。
 - 风险：字体策略调整影响中文页面观感一致性。

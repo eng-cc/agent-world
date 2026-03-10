@@ -118,7 +118,7 @@
 ### 全局术语（Glossary）
 - PRD-ID: 需求追踪主键，连接 PRD、任务、测试与发布证据。
 - required/full: 分层测试的两级核心门禁。
-- Web-first 闭环: 默认 UI 验证路径（Playwright 优先）。
+- Web-first 闭环: 默认 UI 验证路径（agent-browser 优先）。
 - Effect/Receipt: 运行时外部副作用与回执审计机制。
 - Snapshot/Replay: 世界状态持久化与可重放能力。
 

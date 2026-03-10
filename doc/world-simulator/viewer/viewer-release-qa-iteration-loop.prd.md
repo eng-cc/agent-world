@@ -13,7 +13,7 @@
 ## 2. User Experience & Functionality
 
 ### In Scope
-- 固化一条可执行链路：`viewer-visual-baseline` + Web 语义化闭环（Playwright + `__AW_TEST__`）。
+- 固化一条可执行链路：`viewer-visual-baseline` + Web 语义化闭环（agent-browser + `__AW_TEST__`）。
 - 对 Web 闭环增加语义断言：
   - `__AW_TEST__` 可用性
   - 连接状态/tick 进展
@@ -58,7 +58,7 @@
 
 ### 产物
 - 截图：`output/playwright/viewer/*.png`
-- 控制台：`.playwright-cli/console-*.log`
+- 控制台：`output/playwright/viewer/console.log`（或等价重定向日志）
 - 汇总报告：`output/playwright/viewer/release-qa-summary-*.md`
 
 ## 5. Risks & Roadmap
@@ -76,9 +76,9 @@
 - Web 状态异步波动导致误判：
   - 缓解：加入轮询等待与超时机制，不用瞬时状态判定通过。
 - WebGL canvas 直接读回可能出现黑帧（与浏览器缓冲策略相关）：
-  - 缓解：改为对 Playwright 截图进行像素分析，避免直接 `drawImage(canvas)` 误判。
-- Playwright/Node 环境差异风险：
-  - 缓解：复用仓库既有 `playwright_cli.sh` 包装层，保持 Node 版本前置检查。
+  - 缓解：改为对 agent-browser 截图进行像素分析，避免直接 `drawImage(canvas)` 误判。
+- agent-browser/浏览器依赖差异风险：
+  - 缓解：统一要求 `agent-browser --version` 可用，并在执行前完成本机浏览器依赖检查。
 
 ## 6. Validation & Decision Record
 - 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

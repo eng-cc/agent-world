@@ -27,7 +27,7 @@
 | 2026-03-06 11:42:20 +0800 | codex | `doc/p2p/distfs/distfs-production-hardening-phase1.project.md` | issue_open | I4-003 | 任务含回归描述但未落地为可执行验收命令清单。 |
 | 2026-03-06 11:42:20 +0800 | codex | `doc/p2p/distributed/distributed-production-runtime-gap1234568-closure.project.md` | issue_open | I4-008 | 已完成状态缺最近更新日期字段，时效性不可审计。 |
 | 2026-03-06 11:42:26 +0800 | Codex-G4-001 | `doc/core/prd.md` | pass | - | 入口层级与术语口径清晰，未发现 D4 高中风险。 |
-| 2026-03-06 11:42:43 +0800 | codex | `doc/site/github-pages/github-pages-quality-gates-sync-seo-hardening-2026-02-26.prd.md` | issue_open | I4-003,I4-004 | 同文并存 `审计轮次: 4` 与列表项 `- 审计轮次: 2`，且脚本口径依赖 `$CODEX_HOME/.../playwright_cli.sh` 非仓内可达路径。 |
+| 2026-03-06 11:42:43 +0800 | codex | `doc/site/github-pages/github-pages-quality-gates-sync-seo-hardening-2026-02-26.prd.md` | issue_open | I4-003,I4-004 | 同文并存 `审计轮次: 4` 与列表项 `- 审计轮次: 2`，且脚本口径依赖 `$CODEX_HOME/.../agent-browser` 非仓内可达路径。 |
 | 2026-03-06 11:42:43 +0800 | Codex-G4-001 | `doc/core/prd.index.md` | pass | - | 索引入口单一且与主文档互链明确，可达性正常。 |
 | 2026-03-06 11:42:49 +0800 | codex | `doc/testing/longrun/chain-runtime-feedback-replication-network-autowire-2026-03-02.prd.md` | issue_open | I4-002 | 验证命令写为 cargo test/check + cargo run，命令表达不具可执行性。 |
 | 2026-03-06 11:48:00 +0800 | codex | `doc/world-runtime/governance/zero-trust-governance-receipt-hardening-2026-02-26.prd.md` | issue_open | I4-014 | Traceability 表将“对应任务”写为“文档内既有任务条目”，缺 PRD-ID -> TASK -> 验收证据的可反查链。 |
@@ -237,7 +237,7 @@
 | 2026-03-06 11:48:55 +0800 | Codex-G4-001 | `doc/engineering/project.md` | issue_open | I4-201 | 任务项未形成 PRD-ID->TASK->验收命令->测试证据完整链，存在高风险断链。 |
 | 2026-03-06 11:48:55 +0800 | Codex-G4-001 | `doc/core/reviews/round-004-audit-progress-log.md` | pass | - | 审计进度日志结构正常，已按逐篇即时回写机制持续记录。 |
 | 2026-03-06 11:48:55 +0800 | codex | `doc/site/github-pages/github-pages-showcase.prd.md` | issue_open | I4-003 | 同文并存 `审计轮次: 4` 与列表项 `- 审计轮次: 2`，审计字段重复导致轮次统计口径不唯一。 |
-| 2026-03-06 11:48:58 +0800 | codex | `doc/playability_test_result/game-test.prd.md` | issue_open | I4-004 | Playwright 命令依赖 `$CODEX_HOME/.codex` 外部路径，当前仓库内未提供可直接执行的本地兜底入口。 |
+| 2026-03-06 11:48:58 +0800 | codex | `doc/playability_test_result/game-test.prd.md` | issue_open | I4-004 | agent-browser 命令依赖 `$CODEX_HOME/.codex` 外部路径，当前仓库内未提供可直接执行的本地兜底入口。 |
 | 2026-03-06 11:49:15 +0800 | codex | `doc/site/github-pages/github-pages-showcase.project.md` | issue_open | I4-003,I4-006 | 同文并存 `审计轮次: 4` 与 `- 审计轮次: 2`；状态“最近更新 2026-02-10”与当前轮次审计时间差较大，时效维护不足。 |
 | 2026-03-06 11:49:16 +0800 | codex | `doc/playability_test_result/game-test.project.md` | issue_open | I4-003,I4-008 | 任务仅 G1~G5 未映射 PRD-ID，且依赖路径 `.codex/skills/playwright/SKILL.md` 在仓库内不可达。 |
 | 2026-03-06 11:49:35 +0800 | codex | `doc/playability_test_result/README.md` | issue_open | I4-006 | 文档声明“仅保留最近一天样本”，但活跃卡片同时列出 2026-02-28 与 2026-03-01 多日样本，状态口径不一致。 |
@@ -250,11 +250,11 @@
 | 2026-03-06 11:51:01 +0800 | codex | `doc/site/github-pages/github-pages-visual-polish-v2-2026-02-12.project.md` | issue_open | I4-003,I4-006 | 存在重复审计字段 `- 审计轮次: 2`；状态最近更新时间停在 2026-02-12，缺本轮审计后的时效说明。 |
 | 2026-03-06 11:51:27 +0800 | codex | `doc/site/manual/site-manual-static-docs.prd.md` | issue_open | I4-001,I4-002 | 接口路径写成 `site/site/doc/cn/index.html` 不可达；里程碑验收命令写为裸 `cargo check`，与仓库执行口径不一致。 |
 | 2026-03-06 11:51:46 +0800 | codex | `doc/site/manual/site-manual-static-docs.project.md` | issue_open | I4-001,I4-006 | 任务项仍使用 `site/site/doc/cn/index.html` 错误路径；状态更新时间停在 2026-02-15，缺本轮审计后的时效标注。 |
-| 2026-03-06 11:51:46 +0800 | codex | `doc/testing/manual/web-ui-playwright-closure-manual.prd.md` | issue_open | I4-004 | 验收标准要求“可直接复制命令”，但正文未给出任何可执行命令示例，无法直接按文复现。 |
+| 2026-03-06 11:51:46 +0800 | codex | `doc/testing/manual/web-ui-agent-browser-closure-manual.prd.md` | issue_open | I4-004 | 验收标准要求“可直接复制命令”，但正文未给出任何可执行命令示例，无法直接按文复现。 |
 | 2026-03-06 11:52:07 +0800 | codex | `doc/site/manual/viewer-manual-content-migration-2026-02-15.prd.md` | issue_open | I4-002 | 里程碑验收写为裸 `cargo check`，未与仓库统一命令 `env -u RUSTC_WRAPPER cargo check` 对齐。 |
 | 2026-03-06 11:52:20 +0800 | G4-002-Aristotle | doc/world-simulator/viewer/viewer-asset-pipeline-ui-system-hardening-2026-03-05.prd.md | pass | - | PRD 目标态与验证闭环完整，未发现本文件内新增 D4 高中风险分工问题。 |
 | 2026-03-06 11:52:33 +0800 | codex | `doc/site/manual/viewer-manual-content-migration-2026-02-15.project.md` | pass | - | 任务、依赖、状态与验收命令口径一致，未发现 D4-001~D4-008 的新增高/中风险问题。 |
-| 2026-03-06 11:52:38 +0800 | codex | `doc/testing/manual/web-ui-playwright-closure-manual.project.md` | issue_open | I4-005 | WPCM-5 映射到 `PRD-TESTING-004`，与主 PRD 使用的 `PRD-TESTING-WEB-*` 编号体系不一致，追踪链路断裂。 |
+| 2026-03-06 11:52:38 +0800 | codex | `doc/testing/manual/web-ui-agent-browser-closure-manual.project.md` | issue_open | I4-005 | WPCM-5 映射到 `PRD-TESTING-004`，与主 PRD 使用的 `PRD-TESTING-WEB-*` 编号体系不一致，追踪链路断裂。 |
 | 2026-03-06 11:52:45 +0800 | G4-002-Aristotle | doc/world-simulator/viewer/viewer-asset-pipeline-ui-system-hardening-2026-03-05.project.md | pass | - | 任务拆解含 PRD-ID 映射与状态时间，项目口径与 PRD 分工一致。 |
 | 2026-03-06 11:53:03 +0800 | G4-002-Aristotle | doc/world-simulator/viewer/viewer-web-closure-testing-policy.prd.md | pass | - | 闭环策略文档与配套 project 分工清晰，未发现新增 D4 高中风险问题。 |
 | 2026-03-06 11:53:02 +0800 | codex | `doc/testing/manual/systematic-application-testing-manual.prd.md` | issue_open | I4-004 | 文档定义 required/full 口径与脚本入口，但未给出可直接执行的命令示例，验收复现需跨文档跳转。 |

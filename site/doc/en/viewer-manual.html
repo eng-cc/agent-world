@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content="agent-world Viewer manual: startup, interactions, auto focus, automation steps, web loop, and troubleshooting." />
     <meta property="og:title" content="Viewer User Manual | agent-world" />
-    <meta property="og:description" content="Covers live server setup, web viewer loop, Playwright capture, detail panels, and troubleshooting paths." />
+    <meta property="og:description" content="Covers live server setup, web viewer loop, agent-browser capture, detail panels, and troubleshooting paths." />
     <meta property="og:type" content="article" />
     <meta property="og:image" content="../../assets/images/og-cover.png" />
     <meta property="og:locale" content="en_US" />
@@ -138,26 +138,27 @@
         <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011</code></pre>
         <p>Terminal B: start web viewer.</p>
         <pre><code>env -u NO_COLOR ./scripts/run-viewer-web.sh --address 127.0.0.1 --port 4173</code></pre>
-        <p>Terminal C: run Playwright capture loop.</p>
-        <pre><code>export PWCLI="${CODEX_HOME:-$HOME/.codex}/skills/playwright/scripts/playwright_cli.sh"
-	[ -f "$PWCLI" ] || { echo "missing playwright cli wrapper: $PWCLI" >&2; exit 1; }
-	# Repo dev copy: .agents/skills/playwright/scripts/playwright_cli.sh
-	mkdir -p output/playwright/viewer
-	bash "$PWCLI" open "http://127.0.0.1:4173/?ws=ws://127.0.0.1:5011"
-	bash "$PWCLI" snapshot
-bash "$PWCLI" console
-bash "$PWCLI" screenshot --filename output/playwright/viewer/viewer-web.png
-bash "$PWCLI" close</code></pre>
+        <p>Terminal C: run the agent-browser capture loop.</p>
+        <pre><code>command -v agent-browser >/dev/null || { echo "missing agent-browser" >&2; exit 1; }
+mkdir -p output/playwright/viewer
+agent-browser --headed open "http://127.0.0.1:4173/?ws=ws://127.0.0.1:5011"
+agent-browser wait --load networkidle
+agent-browser snapshot -i
+agent-browser eval "JSON.stringify(window.__AW_TEST__?.getState?.() ?? null)"
+agent-browser console | tee output/playwright/viewer/console.log
+agent-browser screenshot output/playwright/viewer/viewer-web.png
+agent-browser close</code></pre>
+        <p>Note: the artifact directory currently keeps the legacy path <code>output/playwright/viewer/</code> for compatibility.</p>
 
         <h3>`sendControl(\"step\")` semantic check</h3>
-        <p>Run the following in browser console or Playwright evaluate to verify step-by-step control:</p>
+        <p>Run the following in browser console or agent-browser evaluate to verify step-by-step control:</p>
         <pre><code>window.__AW_TEST__.sendControl("step");
 window.__AW_TEST__.sendControl("step", { count: 3 });
 window.__AW_TEST__.getState();</code></pre>
 
         <h3>Outputs and Minimum Acceptance</h3>
         <ul>
-          <li>Outputs: `output/playwright/viewer/*.png`, `.playwright-cli/console-*.log`.</li>
+          <li>Outputs: `output/playwright/viewer/*.png`, `output/playwright/viewer/console.log` (or equivalent redirected log).</li>
           <li>Acceptance: page loads with `canvas`, `console error = 0`, at least one screenshot artifact, and `step` advances tick.</li>
         </ul>
 
@@ -237,7 +238,7 @@ window.__AW_TEST__.getState();</code></pre>
         <h2>Troubleshooting</h2>
         <ul>
           <li>Blank web page: wait for first `trunk` build and verify port/URL consistency.</li>
-          <li>Playwright startup failure: check `node --version`, `npm --version`, and `npx` availability.</li>
+          <li>`agent-browser` startup failure: check `agent-browser --version` and local browser dependencies.</li>
           <li>Wasm errors in console: fix runtime initialization errors before debugging visuals.</li>
           <li>Cannot see detail: switch to 3D, zoom and move camera, or use `F` focus.</li>
           <li>Auto focus not working: verify target existence, start from `first_fragment`.</li>

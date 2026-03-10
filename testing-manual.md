@@ -36,7 +36,7 @@
   - UI/相机/事件联动等单测散布在 `src/*.rs` 与 `src/tests_*.rs`
   - 快照基线：`crates/agent_world_viewer/tests/snapshots/*.png`
   - Web 启动入口：`world_game_launcher`（内置静态服务，`run-viewer-web.sh` 仅保留为兼容/排障工具）
-  - Web 闭环采样：Playwright CLI（详见 `doc/testing/manual/web-ui-playwright-closure-manual.prd.md`）
+  - Web 闭环采样：agent-browser CLI（详见 `doc/testing/manual/web-ui-agent-browser-closure-manual.prd.md`）
 
 ### 分布式与共识子系统
 - Node：`crates/agent_world_node`
@@ -83,7 +83,7 @@
   - 汇总 job 对账：`./scripts/ci-verify-m1-wasm-summaries.py --module-set <m4|m5> --summary-dir ... --expected-runners linux-x86_64,darwin-arm64`
 
 ### 当前 CI 未直接覆盖（需手册补齐）
-- Web UI Playwright 闭环（现为手动/agent 流程，不在 CI 默认路径中）。
+- Web UI agent-browser 闭环（现为手动/agent 流程，不在 CI 默认路径中）。
 - `m4/m5` builtin wasm hash 校验（`scripts/ci-tests.sh` 已移除 `sync-m4/m5 --check`）。
 
 结论：
@@ -113,7 +113,7 @@
 
 ### L4 UI 闭环层（Web 为默认）
 - 目标：验证真实用户路径可用性（加载、交互、状态可见、无 console error）。
-- 默认：`world_game_launcher + Playwright`。
+- 默认：`world_game_launcher + agent-browser`。
 - native 抓图：仅 fallback（Web 无法复现或 native 图形链路问题）。
 
 ### L5 长稳与压力层
@@ -210,8 +210,8 @@ env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-u
   - 该套件已并入 `S1/S2` 的默认 gate。
 
 ### S6：Web UI 闭环 smoke 套件（L4）
-- S6 详细执行步骤、Playwright 命令、发布门禁与补充约定已拆分到：
-  - `doc/testing/manual/web-ui-playwright-closure-manual.prd.md`
+- S6 详细执行步骤、agent-browser 命令、发布门禁与补充约定已拆分到：
+  - `doc/testing/manual/web-ui-agent-browser-closure-manual.prd.md`
   - `doc/testing/launcher/launcher-manual-test-checklist-2026-03-10.prd.md`（发布前人工体验与异常恢复检查清单）
 - 本手册仅保留分层与触发矩阵，执行时按上述文档操作。
 - 对 `world_web_launcher` 这类 Web 控制面，默认优先使用 GUI Agent 驱动产品动作，再用 Web 页面做状态与字段校验；Canvas 直点仅作补充。
@@ -461,7 +461,7 @@ rg -n "conflicting attestation already exists|attestation threshold not met|faul
 
 ### 推荐证据目录
 - `output/playwright/viewer/*.png`
-- `.playwright-cli/console-*.log`
+- `output/playwright/viewer/console.log`（或等价重定向日志）
 - `.tmp/viewer_owr4_stress/<timestamp>/`
 - `.tmp/llm_stress/`
 - `.tmp/p2p_longrun/<timestamp>/`

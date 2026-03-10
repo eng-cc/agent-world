@@ -6,7 +6,7 @@
 审计轮次: 5
 
 ## 任务拆解
-- [x] G1 按 `doc/playability_test_result/game-test.prd.md` 执行真实玩家闭环（Playwright + 录屏）
+- [x] G1 按 `doc/playability_test_result/game-test.prd.md` 执行真实玩家闭环（agent-browser + 录屏）
 - [x] G2 填写卡片并沉淀证据到 `doc/playability_test_result/` 与 `output/playwright/playability/`
 - [x] G3 维护“活跃样本/归档样本”分层，降低历史噪音对当前测试的干扰
 - [x] G4 校验卡片与 `doc/playability_test_result/playability_test_card.md` 最新模板一致性

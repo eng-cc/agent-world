@@ -15,7 +15,7 @@
 ## 依赖
 - doc/testing/manual/systematic-application-testing-manual.prd.md
 - `testing-manual.md`
-- `doc/testing/manual/web-ui-playwright-closure-manual.prd.md`
+- `doc/testing/manual/web-ui-agent-browser-closure-manual.prd.md`
 - `scripts/ci-tests.sh`
 - `scripts/viewer-release-qa-loop.sh`
 - `scripts/viewer-release-full-coverage.sh`

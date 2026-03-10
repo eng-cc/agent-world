@@ -6,7 +6,7 @@
 审计轮次: 4
 
 
-> 状态说明（2026-02-15）：该脚本已降级为 **native fallback**。默认闭环路径为 Web 端：`scripts/run-viewer-web.sh + Playwright`。
+> 状态说明（2026-02-15）：该脚本已降级为 **native fallback**。默认闭环路径为 Web 端：`scripts/run-viewer-web.sh + agent-browser`。
 
 ## 目标
 - 提供一个面向 agent 的 native 图形链路应急入口：`启动服务 -> 启动虚拟显示与 viewer -> 抓图 -> 留存日志`。
@@ -26,14 +26,14 @@
   - 输出统一日志与窗口几何信息（`live_server.log`/`viewer.log`/`window_geom.txt`）。
   - 默认清空 `.tmp/`，可通过 `--keep-tmp` 保留。
 - **范围外**：
-  - 不作为默认闭环路径（默认闭环改为 `scripts/run-viewer-web.sh + Playwright`）。
+  - 不作为默认闭环路径（默认闭环改为 `scripts/run-viewer-web.sh + agent-browser`）。
   - 不提供自动鼠标键盘交互回放。
   - 不替代完整 UI 自动化测试（仍以现有单测/联测为准）。
 
 ## 接口 / 数据
 - 默认 Web 闭环入口（本脚本外）：
   - `./scripts/run-viewer-web.sh --address 127.0.0.1 --port 4173`
-  - Playwright CLI：`open/snapshot/console/screenshot`
+  - agent-browser CLI：`open/snapshot/console/screenshot`
 - 脚本路径：`scripts/capture-viewer-frame.sh`
 - 典型调用：
   - `./scripts/capture-viewer-frame.sh`

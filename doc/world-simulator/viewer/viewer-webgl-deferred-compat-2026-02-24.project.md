@@ -7,7 +7,7 @@
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0：设计文档与项目管理文档建档。
 - [x] T1：实现 wasm 路径关闭默认 deferred lighting 插件。
-- [x] T2：执行定向回归（native + wasm check、Playwright 3D 闭环）。
+- [x] T2：执行定向回归（native + wasm check、agent-browser 3D 闭环）。
 - [x] T3：回写文档状态与 devlog，完成收口。
 
 ## 依赖

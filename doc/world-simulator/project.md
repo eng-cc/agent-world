@@ -32,12 +32,12 @@
 - [x] TASK-WORLD_SIMULATOR-027 (PRD-WORLD_SIMULATOR-012) [test_tier_required]: 完成“启动器 egui Web 同层复用与静态资源服务”PRD 建模与任务拆解。
 - [x] TASK-WORLD_SIMULATOR-028 (PRD-WORLD_SIMULATOR-012) [test_tier_required]: 落地 launcher egui wasm 复用、`world_web_launcher` 静态托管与 bundle `web-launcher/` 打包链路。
 - [x] TASK-WORLD_SIMULATOR-029 (PRD-WORLD_SIMULATOR-013) [test_tier_required]: 完成“启动器 wasm 时间兼容与 Web 闭环修复”PRD 建模与任务拆解。
-- [x] TASK-WORLD_SIMULATOR-030 (PRD-WORLD_SIMULATOR-013) [test_tier_required]: 修复 launcher wasm `time not implemented` 崩溃并完成 Playwright headed 闭环采证。
+- [x] TASK-WORLD_SIMULATOR-030 (PRD-WORLD_SIMULATOR-013) [test_tier_required]: 修复 launcher wasm `time not implemented` 崩溃并完成 `agent-browser --headed` 闭环采证。
 - [x] TASK-WORLD_SIMULATOR-031 (PRD-WORLD_SIMULATOR-014) [test_tier_required]: 完成“启动器 Web 必填校验分流修复”PRD 建模与任务拆解。
-- [x] TASK-WORLD_SIMULATOR-032 (PRD-WORLD_SIMULATOR-014) [test_tier_required]: 修复 Web 端 native-only 必填项误报（launcher/chain runtime bin）并完成 Playwright 回归。
+- [x] TASK-WORLD_SIMULATOR-032 (PRD-WORLD_SIMULATOR-014) [test_tier_required]: 修复 Web 端 native-only 必填项误报（launcher/chain runtime bin）并完成 agent-browser 回归。
 - [x] TASK-WORLD_SIMULATOR-033 (PRD-WORLD_SIMULATOR-015) [test_tier_required]: 完成“启动器 native/web 同控制面 + native 客户端服务端分离”PRD 建模与任务拆解。
 - [x] TASK-WORLD_SIMULATOR-034 (PRD-WORLD_SIMULATOR-015) [test_tier_required]: 升级 `world_web_launcher` 为游戏/区块链独立编排控制面，新增链独立启停 API 与状态快照。
-- [x] TASK-WORLD_SIMULATOR-035 (PRD-WORLD_SIMULATOR-015) [test_tier_required]: `agent_world_client_launcher` native 改为客户端-服务端分离并复用同一 API 控制链路，恢复 web 端链启停与状态对齐并完成 Playwright 回归。
+- [x] TASK-WORLD_SIMULATOR-035 (PRD-WORLD_SIMULATOR-015) [test_tier_required]: `agent_world_client_launcher` native 改为客户端-服务端分离并复用同一 API 控制链路，恢复 web 端链启停与状态对齐并完成 agent-browser 回归。
 - [x] TASK-WORLD_SIMULATOR-036 (PRD-WORLD_SIMULATOR-016) [test_tier_required]: 完成“viewer live runtime/world 接管 Phase 1”PRD 建模与任务拆解。
 - [x] TASK-WORLD_SIMULATOR-037 (PRD-WORLD_SIMULATOR-016) [test_tier_required]: 落地 `world_viewer_live --runtime-world`、runtime live 兼容适配与 required 回归收口。
 - [x] TASK-WORLD_SIMULATOR-038 (PRD-WORLD_SIMULATOR-017) [test_tier_required]: 完成“viewer live runtime/world 接管 Phase 2（LLM/chat/prompt）”PRD 建模与任务拆解。

@@ -13,7 +13,7 @@
   - SC-2: `agent_world_client_launcher` native 与 wasm 统一消费同一 API 契约，不再维护双套进程编排逻辑。
   - SC-3: Web 端“启动区块链/停止区块链”按钮恢复可用，状态文案与 native 对齐。
   - SC-4: native 端功能行为与历史桌面版一致（自动拉起链、独立控制游戏/区块链、链状态门控）。
-  - SC-5: Playwright headed 闭环可覆盖链/游戏独立启停并输出证据。
+  - SC-5: `agent-browser --headed` 闭环可覆盖链/游戏独立启停并输出证据。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -36,7 +36,7 @@
   4. Flow-LAUNCHER-CP-004（native 客户端服务端分离）:
      `打开 native 启动器 -> 本地拉起 world_web_launcher -> 后续全部操作经 HTTP API`
   5. Flow-LAUNCHER-CP-005（功能对齐回归）:
-     `Playwright headed 打开 web 启动器 -> 链/游戏独立启停 -> 状态与按钮反馈一致`
+     ``agent-browser --headed` 打开 web 启动器 -> 链/游戏独立启停 -> 状态与按钮反馈一致`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
@@ -49,7 +49,7 @@
   - AC-3: `agent_world_client_launcher` native 不再直接拉起 `world_game_launcher` / `world_chain_runtime`，改为通过 `world_web_launcher` API 控制。
   - AC-4: wasm/web 启动器的“启动区块链/停止区块链”按钮恢复可操作，并与 native 同状态语义。
   - AC-5: native 与 web 在“自动拉起链 + 游戏/链独立启停 + 状态展示”行为上保持一致。
-  - AC-6: `test_tier_required` 通过：`cargo test/check` + Playwright headed 闭环证据。
+  - AC-6: `test_tier_required` 通过：`cargo test/check` + `agent-browser --headed` 闭环证据。
 - Non-Goals:
   - 不改造 `world_chain_runtime` 转账/反馈协议本身。
   - 不在本轮扩展新的链上业务动作。

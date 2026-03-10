@@ -23,7 +23,7 @@
 
 ### WLB4 文档与闭环收口
 - [x] WLB4.1 更新 AGENTS/手册/运行路径文档（含 llm_bootstrap Web 命令）
-- [x] WLB4.2 执行 Web 端闭环验证（live server + web viewer + Playwright）
+- [x] WLB4.2 执行 Web 端闭环验证（live server + web viewer + agent-browser）
 - [x] WLB4.3 更新项目状态、开发日志并收口
 
 ### WLB5 连接稳定性修复

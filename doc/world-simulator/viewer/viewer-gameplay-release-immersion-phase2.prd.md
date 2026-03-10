@@ -43,7 +43,7 @@
 - HUD 来源：连接状态、tick、事件数、选择状态。
 
 ### 可用性约束
-- 所有新增交互都必须可在 Web 闭环中验证（Playwright + `window.__AW_TEST__`）。
+- 所有新增交互都必须可在 Web 闭环中验证（agent-browser + `window.__AW_TEST__`）。
 - 快捷键行为在聊天输入聚焦时不得干扰输入。
 
 ## 5. Risks & Roadmap
@@ -70,7 +70,7 @@
 
 ## 验收结论
 - Web 闭环链路可用：`window.__AW_TEST__` 可访问，`connectionStatus=connected`，`canvasCount=1`。
-- 关键视觉产物（Playwright 截图）：
+- 关键视觉产物（agent-browser 截图）：
   - `output/playwright/viewer/viewer-web-vri4-player-hud-hidden.png`
   - `output/playwright/viewer/viewer-web-vri4-player-hud-panel-open.png`
   - `output/playwright/viewer/viewer-web-vri4-player-hud-panel-closed-again.png`

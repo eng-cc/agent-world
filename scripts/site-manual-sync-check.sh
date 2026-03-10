@@ -11,14 +11,13 @@ MIRROR_MANUALS=(
 )
 
 REQUIRED_PATTERNS=(
-  'export PWCLI="${CODEX_HOME:-$HOME/.codex}/skills/playwright/scripts/playwright_cli.sh"'
-  '[ -f "$PWCLI" ] || { echo "missing playwright cli wrapper: $PWCLI" >&2; exit 1; }'
+  'command -v agent-browser >/dev/null || { echo "missing agent-browser" >&2; exit 1; }'
+  'agent-browser --headed open "http://127.0.0.1:4173/?ws=ws://127.0.0.1:5011"'
+  'agent-browser snapshot -i'
 )
 
 FORBIDDEN_PATTERNS=(
   'export REPO_ROOT="$(pwd)"'
-  '$REPO_ROOT/.codex/skills/playwright/scripts/playwright_cli.sh'
-  './.codex/skills/playwright/scripts/playwright_cli.sh'
 )
 
 SOURCE_REFERENCE_REQUIRED_PATTERNS=(
@@ -90,4 +89,4 @@ for mirror in "${MIRROR_MANUALS[@]}"; do
   check_forbidden_patterns "${mirror}" "${MIRROR_REFERENCE_FORBIDDEN_PATTERNS[@]}"
 done
 
-echo "ok: viewer manual static mirrors are synced with Playwright path and reference link baseline"
+echo "ok: viewer manual static mirrors are synced with agent-browser command baseline and reference links"

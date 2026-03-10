@@ -18,7 +18,7 @@
   - `agent_world_viewer` wasm 路径接入 WebSocket 客户端，替代“固定 offline”。
   - 更新使用手册与闭环策略文档，补充 `llm_bootstrap + web` 命令。
 - 范围外：
-  - 不在本阶段新增浏览器端重型 E2E 套件（保持 Playwright CLI 最小闭环）。
+  - 不在本阶段新增浏览器端重型 E2E 套件（保持 agent-browser CLI 最小闭环）。
   - 不改造 Viewer 业务协议字段（沿用现有 `ViewerRequest/ViewerResponse` JSON 协议）。
   - 不引入多租户会话管理或鉴权（默认本地开发地址）。
   - 不在浏览器端实现 `agent_world_node` 的完整分布式能力（gossip/replication/共识）。
@@ -52,7 +52,7 @@
 - `WLB1`：文档建模（设计 + 项目管理 + 总项目入口）。
 - `WLB2`：后端 bridge 与 `world_viewer_live --web-bind` 落地。
 - `WLB3`：web viewer wasm WebSocket 接入并通过 wasm 编译回归。
-- `WLB4`：文档口径迁移 + Web 端闭环验证（Playwright）+ 状态收口。
+- `WLB4`：文档口径迁移 + Web 端闭环验证（agent-browser）+ 状态收口。
 
 ### Technical Risks
 - 协议阻塞风险：bridge 任一侧阻塞可能导致另一侧堆积。

@@ -55,10 +55,10 @@
 - 执行cargo命令需要如下形式 env -u RUSTC_WRAPPER cargo check
 - 使用手册都放在site/doc(cn/en)，可作为静态站内容
 
-## Agent 专用：UI Web 闭环调试（给 Codex 用，Playwright 优先）
+## Agent 专用：UI Web 闭环调试（给 Codex 用，agent-browser 优先）
 - 目标与完整流程已迁移至 `testing-manual.md`（S6 及其补充约定）。
 - 约束保持不变：
-  - Web 闭环为默认链路（Playwright 优先）。
+  - Web 闭环为默认链路（agent-browser 优先）。
   - `capture-viewer-frame.sh` 仅在 native 图形链路问题或 Web 无法复现时使用。
 
 # Project Agents

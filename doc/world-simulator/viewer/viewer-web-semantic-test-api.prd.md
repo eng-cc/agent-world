@@ -6,7 +6,7 @@
 审计轮次: 5
 
 ## 1. Executive Summary
-- 为 Web 端 `agent_world_viewer` 注入一套稳定的语义化测试 API，降低 Playwright 对像素坐标点击的依赖。
+- 为 Web 端 `agent_world_viewer` 注入一套稳定的语义化测试 API，降低 agent-browser 对像素坐标点击的依赖。
 - 复用现有 `viewer_automation` 步骤执行器，统一测试动作语义（`mode/focus/select/zoom/orbit/wait`）。
 - 在不暴露生产攻击面的前提下，提供测试模式专用入口：`window.__AW_TEST__`。
 - 补齐 round-1 目标：对齐人类高频操作中的“面板显隐 / 模块显隐 / 选中聚焦 / 材质预览切换”四类语义动作，减少脚本对键盘事件与像素点击的耦合。
@@ -55,7 +55,7 @@
 ### Out of Scope
 - 不改 Viewer 协议（`ViewerRequest/ViewerResponse` 语义不变）。
 - 不扩展到通用远程控制协议（仅用于 Web UI 测试辅助）。
-- 不在本阶段引入完整 Playwright E2E 套件重写（先提供 API 与最小回归）。
+- 不在本阶段引入完整 agent-browser E2E 套件重写（先提供 API 与最小回归）。
 - 不在本轮覆盖文本输入、鼠标拖拽轨迹细节、IME 组合输入等低层“逐事件复刻”能力。
 
 ## 3. AI System Requirements (If Applicable)
