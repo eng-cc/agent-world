@@ -100,6 +100,7 @@
 - [x] TASK-WORLD_SIMULATOR-095 (PRD-WORLD_SIMULATOR-033) [test_tier_required]: 完成“launcher execution world 输出路径收敛”PRD 建模、任务拆解与模块文档树回写。
 - [x] TASK-WORLD_SIMULATOR-096 (PRD-WORLD_SIMULATOR-033) [test_tier_required]: 在 `world_game_launcher` / `world_web_launcher` 显式传递 `--execution-world-dir` 到 `output/chain-runtime/<node_id>/reward-runtime-execution-world`，并补齐定向回归测试。
 - [x] TASK-WORLD_SIMULATOR-097 (PRD-WORLD_SIMULATOR-013) [test_tier_required]: 修复启动器 `self_guided` wasm 时间回归（`SystemTime::now`）并完成 Web 启动器启停闭环复验（`time not implemented` 零命中）。
+- [x] TASK-WORLD_SIMULATOR-098 (PRD-WORLD_SIMULATOR-001) [test_tier_required]: 同步 `doc/world-simulator/README.md` 与 `doc/world-simulator/prd.index.md` 的模块入口索引，补齐近期专题、模块职责与根目录收口口径。
 
 ## 专题任务映射（2026-03-02 批次）
 - [x] SUBTASK-WORLD_SIMULATOR-20260302-001 (PRD-WORLD_SIMULATOR-001/002/003) [test_tier_required]: `doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.project.md`
@@ -214,9 +215,10 @@
 - `testing-manual.md`
 
 ## 状态
-- 更新日期: 2026-03-09
+- 更新日期: 2026-03-11
 - 当前状态: completed
 - 下一任务: 无（当前模块主项目无未完成任务）
+- 最新完成: `TASK-WORLD_SIMULATOR-098`（world-simulator 模块 README / PRD 索引入口同步）。
 - 当前优先任务: 无
 - 并行待办: 无
 - 专题映射状态: 2026-03-02 批次 9/9、2026-03-03 批次 4/4、2026-03-04 批次 7/7、2026-03-05 批次 4/4、2026-03-06 批次 6/6 已纳入模块项目管理文档；`TASK-WORLD_SIMULATOR-057~097` 已完成。
