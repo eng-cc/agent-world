@@ -16,7 +16,12 @@
   - 验收命令 (`test_tier_required`):
     - `test -f doc/headless-runtime/templates/longrun-archive-incident-template.md`
     - `rg -n "归档证据|故障追溯|复盘摘要|失败签名|恢复动作" doc/headless-runtime/templates/longrun-archive-incident-template.md`
-- [ ] TASK-NONVIEWER-004 (PRD-NONVIEWER-003) [test_tier_required]: 联动 testing 模块完善 headless-runtime 长稳门禁。
+- [x] TASK-NONVIEWER-004 (PRD-NONVIEWER-003) [test_tier_required]: 联动 testing 模块完善 headless-runtime 长稳门禁。
+  - 产物文件:
+    - `doc/headless-runtime/templates/headless-runtime-release-gate-linkage.md`
+  - 验收命令 (`test_tier_required`):
+    - `test -f doc/headless-runtime/templates/headless-runtime-release-gate-linkage.md`
+    - `rg -n "对接规则|引用字段映射|testing 证据包|core go/no-go" doc/headless-runtime/templates/headless-runtime-release-gate-linkage.md`
 - [x] TASK-NONVIEWER-005 (PRD-NONVIEWER-001/002/003) [test_tier_required]: 对齐 strict PRD schema，补齐关键流程/规格矩阵/边界异常/NFR/验证与决策记录。
 
 ## 依赖
@@ -30,7 +35,7 @@
 ## 状态
 - 更新日期: 2026-03-10
 - 当前状态: active
-- 下一任务: TASK-NONVIEWER-004
+- 下一任务: TASK-NONVIEWER-004（已完成，待后续新需求）
 - 阶段收口优先级: `P1`
 - 阶段 owner: `runtime_engineer`（验证：`qa_engineer`；排序裁剪：`producer_system_designer`）
 - 阻断条件: 在当前阶段 `P0`（玩法 / runtime / testing / playability）未收口前，headless-runtime 不作为首要发布驱动项；但若发现生命周期 / 鉴权阻断性缺口，需升级回 `P0` 评审。
@@ -101,6 +106,6 @@
 - 回归影响范围：headless-runtime / testing / 长稳与鉴权链路。
 
 ## Handoff Acknowledgement
-- 接收方确认范围：`已接收 TASK-NONVIEWER-002/003；当前提交覆盖生命周期鉴权清单与长稳归档 / 故障追溯模板`
-- 接收方确认 ETA：`TASK-NONVIEWER-002/003 已完成，下一步进入 TASK-NONVIEWER-004`
-- 接收方新增风险：`长稳模板已统一字段，但与 testing 门禁的最终耦合仍需在 TASK-NONVIEWER-004 中补齐`
+- 接收方确认范围：`已接收 TASK-NONVIEWER-002/003/004；当前提交完成生命周期鉴权清单、长稳归档模板与 testing 门禁对接说明`
+- 接收方确认 ETA：`TASK-NONVIEWER-002/003/004 已完成`
+- 接收方新增风险：`真实运行阈值仍需在后续实际样本中填充，当前先统一对接口径`

@@ -119,6 +119,7 @@
 - 专题映射状态补充: 2026-03-06 批次 1/1 已纳入模块项目管理文档。
 - 专题映射状态补充: 2026-03-08 批次 1/1 已完成（启动器全功能可用性审查）。
 - 专题映射状态补充: 2026-03-10 批次 1/1 已完成（启动器人工测试清单建档）。
+- headless-runtime 长稳门禁联动: 已通过 `doc/headless-runtime/templates/headless-runtime-release-gate-linkage.md` 约定证据包字段映射。
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - 说明: 本文档仅维护 testing 模块设计执行状态；过程记录在 `doc/devlog/2026-03-10.md`。
 
