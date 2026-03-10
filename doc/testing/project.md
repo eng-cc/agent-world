@@ -9,7 +9,12 @@
     - `testing-manual.md`
   - 验收命令 (`test_tier_required`):
     - `rg -n "套件触发总表|改动路径矩阵|选择规则|S0|S10" testing-manual.md`
-- [ ] TASK-TESTING-003 (PRD-TESTING-002/003) [test_tier_required]: 建立发布证据包模板（命令、日志、截图、结论）。
+- [x] TASK-TESTING-003 (PRD-TESTING-002/003) [test_tier_required]: 建立发布证据包模板（命令、日志、截图、结论）。
+  - 产物文件:
+    - `doc/testing/templates/release-evidence-bundle-template.md`
+  - 验收命令 (`test_tier_required`):
+    - `test -f doc/testing/templates/release-evidence-bundle-template.md`
+    - `rg -n "执行命令|UI / 体验证据|长跑 / 在线证据|结论摘要|PRD-ID" doc/testing/templates/release-evidence-bundle-template.md`
 - [ ] TASK-TESTING-004 (PRD-TESTING-003) [test_tier_required]: 建立测试质量趋势跟踪（通过率/逃逸率/修复时长）。
 - [x] TASK-TESTING-005 (PRD-TESTING-002/003) [test_tier_required]: 建立模块级专题任务映射索引（2026-03-02 批次）。
 - [x] TASK-TESTING-006 (PRD-TESTING-001/002/003) [test_tier_required]: 对齐 strict PRD schema，补齐关键流程/规格矩阵/边界异常/NFR/验证与决策记录。
@@ -105,7 +110,7 @@
 ## 状态
 - 更新日期: 2026-03-10
 - 当前状态: active
-- 下一任务: TASK-TESTING-003
+- 下一任务: TASK-TESTING-004
 - 阶段收口优先级: `P0`
 - 阶段 owner: `qa_engineer`（联审：`producer_system_designer`）
 - 阻断条件: 在 `TASK-TESTING-002/003` 完成前，跨模块发布评审不得声称“测试范围明确且证据齐备”。
@@ -180,6 +185,6 @@
 - 回归影响范围：全模块测试治理与发布评审流程。
 
 ## Handoff Acknowledgement
-- 接收方确认范围：`待 qa_engineer 回写`
-- 接收方确认 ETA：`待 qa_engineer 回写`
-- 接收方新增风险：`待 qa_engineer 回写`
+- 接收方确认范围：`已接收 TASK-TESTING-002/003；本轮覆盖触发矩阵与发布证据包模板，不含趋势统计`
+- 接收方确认 ETA：`TASK-TESTING-002/003 已完成，下一步进入 TASK-TESTING-004`
+- 接收方新增风险：`长跑 / UI 产物目录在不同脚本间仍有差异，当前模板先统一字段，不强制统一物理目录`
