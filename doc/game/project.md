@@ -21,6 +21,7 @@
 - [x] TASK-GAME-016 (PRD-GAME-006) [test_tier_required]: 建立经济源汇审计与通胀/套利告警阈值门禁。
 - [x] TASK-GAME-017 (PRD-GAME-006) [test_tier_required]: 补齐可运维性能力（SLO、告警、灰度、灾备演练）与发布阻断规则。
 - [x] TASK-GAME-018 (PRD-GAME-004) [test_tier_required]: 执行微循环可玩性视觉优化二期（控制结果显著化、玩家模式减负、世界可读性增强）并以手动截图闭环验收（见 `TASK-GAMEPLAY-MLF-005/006/007/008`）。
+- [x] TASK-GAME-019 (PRD-GAME-001) [test_tier_required]: 同步 `doc/game/README.md` 与 `doc/game/prd.index.md` 的模块入口索引，补齐近期 gameplay 专题与根目录收口口径。
   - 收口证据:
     - `doc/game/gameplay/gameplay-micro-loop-visual-closure-evidence-2026-03-10-round009.md`
     - `doc/playability_test_result/card_2026_03_10_23_27_43.md`
@@ -43,6 +44,7 @@
 - 更新日期: 2026-03-11
 - 当前状态: completed
 - 下一任务: 无（`TASK-GAME-018` 证据回填链路已完成）
+- 最新完成: `TASK-GAME-019`（game 模块 README / PRD 索引入口同步）。
 - 阶段收口优先级: `P0`
 - 阶段 owner: `viewer_engineer`（发起/裁剪：`producer_system_designer`；验证：`qa_engineer`）
 - 阻断条件: 若后续 release gate 缺少 playability / testing / core 的证据互链，当前版本仍不得以“玩法体验已收口”为前提给出发布 `go` 结论。
