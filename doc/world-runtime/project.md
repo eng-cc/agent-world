@@ -163,7 +163,9 @@
 
 - 模块进展补充（2026-03-10）: 已新增 `doc/world-runtime/runtime-p0-candidate-evidence-handoff-2026-03-10.md`，明确当前 core `blocked` 的剩余缺口是 runtime 候选级实测证据绑定，而非模板缺失。
 
+- 模块进展补充（2026-03-10 / candidate）: 已新增 `doc/world-runtime/evidence/runtime-release-gate-metrics-task-game-018-2026-03-10.md`，将 `TASK-GAME-018` 所需 runtime P0 候选级实测证据实例化，并绑定到 core go/no-go 记录。
+
 ## Handoff Acknowledgement
 - 接收方确认范围：`已接收 TASK-WORLD_RUNTIME-002/003/004；当前提交完成边界清单、回归模板与发布门禁指标模板`
-- 接收方确认 ETA：`TASK-WORLD_RUNTIME-002/003/004 已完成，下一步回到 TASK-WORLD_RUNTIME-033`
+- 接收方确认 ETA：`TASK-WORLD_RUNTIME-002/003/004 已完成；本轮已补齐 task 级 runtime P0 证据，下一步继续推进 TASK-WORLD_RUNTIME-033 的 T7.2~T7.5`
 - 接收方新增风险：`当前模板统一了字段与门禁规则，但部分指标仍依赖后续真实样本与 soak 结果填值`

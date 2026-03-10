@@ -9,13 +9,13 @@
 - 评审人: `producer_system_designer`
 - 关联 `PRD-ID`: `PRD-GAME-004`
 - 关联任务: `TASK-GAME-018`
-- 总结论: `blocked`
+- 总结论: `conditional-go`
 
 ## P0 评审表
 | 项目 | owner | 任务 / PRD-ID | 证据路径 | 当前状态 (`ready` / `not_ready` / `blocked`) | 阻断原因 | 复审时间 |
 | --- | --- | --- | --- | --- | --- | --- |
 | 玩法微循环收口 | `viewer_engineer` / `qa_engineer` | `TASK-GAME-018` / `PRD-GAME-004` | `doc/game/gameplay/gameplay-micro-loop-visual-closure-evidence-2026-03-10-round009.md` / `doc/playability_test_result/card_2026_03_10_23_27_43.md` | `ready` |  | `2026-03-10` |
-| runtime 核心边界验收 | `runtime_engineer` | `TASK-WORLD_RUNTIME-002/003/004` | `doc/world-runtime/checklists/runtime-core-boundary-acceptance-checklist.md` / `doc/world-runtime/templates/runtime-release-gate-metrics-template.md` | `blocked` | 当前记录仅补齐 game 侧闭环，未绑定同一候选的 runtime 实测证据 | `待 runtime 复审` |
+| runtime 核心边界验收 | `runtime_engineer` | `TASK-WORLD_RUNTIME-002/003/004/033` | `doc/world-runtime/evidence/runtime-release-gate-metrics-task-game-018-2026-03-10.md` | `ready` |  | `2026-03-10` |
 | testing 触发矩阵与证据包 | `qa_engineer` | `TASK-TESTING-002/003` | `doc/testing/evidence/release-evidence-bundle-task-game-018-2026-03-10.md` | `ready` |  | `2026-03-10` |
 | playability 反馈闭环 | `qa_engineer` | `TASK-PLAYABILITY_TEST_RESULT-002/003/004` | `doc/playability_test_result/evidence/playability-release-evidence-bundle-task-game-018-2026-03-10.md` | `ready` |  | `2026-03-10` |
 
@@ -38,6 +38,6 @@
 | `N/A` |  |  |  |  |  | 当前未申请例外放行 |
 
 ## 结论摘要
-- `TASK-GAME-018` 对应的玩法微循环收口已 `ready`，且 playability / testing 证据链已完成互链。
-- 当前总评仍为 `blocked`，原因不是 game 任务未完成，而是同一候选的 runtime P0 实测证据尚未在本记录中绑定。
-- 下一步应由 `producer_system_designer` 在更大候选范围内汇总 runtime / testing / playability / game 四类 P0 证据后，再给出最终 `go` / `conditional-go` / `no-go`。
+- `TASK-GAME-018` 对应的玩法微循环收口已 `ready`，且 playability / testing / runtime 证据链已完成互链。
+- 当前 task 级总评更新为 `conditional-go`：本记录范围内全部 P0 已 `ready`，但更大候选范围的 runtime footprint/GC/soak 联合验证仍在 `TASK-WORLD_RUNTIME-033` 后续切片中持续推进。
+- 下一步应由 `producer_system_designer` 在更大候选范围内沿用本记录，并按候选需要追加真实 soak / footprint 长跑证据。
