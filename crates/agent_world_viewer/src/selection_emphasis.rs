@@ -3,11 +3,11 @@ use bevy::prelude::*;
 use super::{SelectionKind, Viewer3dConfig, Viewer3dScene, ViewerSelection};
 
 const HALO_BASE_RADIUS: f32 = 0.65;
-const HALO_RADIUS_MULTIPLIER: f32 = 1.9;
-const HALO_HEIGHT_FACTOR: f32 = 0.34;
-const HALO_THICKNESS_FACTOR: f32 = 0.16;
+const HALO_RADIUS_MULTIPLIER: f32 = 2.25;
+const HALO_HEIGHT_FACTOR: f32 = 0.42;
+const HALO_THICKNESS_FACTOR: f32 = 0.2;
 const HALO_BOB_SPEED: f32 = 2.4;
-const HALO_BOB_AMPLITUDE: f32 = 0.045;
+const HALO_BOB_AMPLITUDE: f32 = 0.055;
 
 #[derive(Component)]
 pub(super) struct SelectionEmphasisHalo;
@@ -144,10 +144,12 @@ mod tests {
     fn halo_transform_scales_and_offsets_from_target() {
         let target = Transform::from_xyz(2.0, 1.0, -3.0).with_scale(Vec3::new(1.2, 2.0, 1.0));
         let halo = halo_transform_for_target(&target, 0.0);
+        let target_radius = target.scale.max_element().max(HALO_BASE_RADIUS);
 
-        assert!(halo.scale.x > target.scale.max_element());
+        assert!(halo.scale.x >= target_radius * 2.0);
+        assert!(halo.scale.y >= 0.08);
         assert!(halo.scale.y < halo.scale.x);
-        assert!(halo.translation.y > target.translation.y);
+        assert!(halo.translation.y > target.translation.y + target_radius * 0.3);
     }
 
     #[test]

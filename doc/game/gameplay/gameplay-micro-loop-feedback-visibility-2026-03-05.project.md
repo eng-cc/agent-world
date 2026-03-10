@@ -23,7 +23,7 @@
 | TASK-GAMEPLAY-MLF-004 | PRD-GAME-004-03 | test-release-owner | D3 | required/full 回归与卡片评分复核，形成门禁证据包 | 测试日志 + playability 卡片 + 结论 | `test_tier_required` + `test_tier_full` | completed |
 | TASK-GAMEPLAY-MLF-005 | PRD-GAME-004-04 | viewer-owner | D4 | Mission HUD 增加控制结果显著条，压缩重复反馈信息 | `egui_right_panel_player_guide.rs` + 任务回归测试 | `test_tier_required` | completed |
 | TASK-GAMEPLAY-MLF-006 | PRD-GAME-004-04 | viewer-owner | D4 | 玩家模式默认 Mission 预设 + 模块开关渐进披露 + 可见性持久化缺字段默认策略修正 | `egui_right_panel.rs` + `right_panel_module_visibility.rs` + 回归测试 | `test_tier_required` | completed |
-| TASK-GAMEPLAY-MLF-007 | PRD-GAME-004-05 | viewer-owner | D4-D5 | 选中强调与 2D marker 可见性/尺寸增强 | `selection_emphasis.rs` / `camera_controls.rs` / `scene_helpers_entities.rs` + 回归测试 | `test_tier_required` | planned |
+| TASK-GAMEPLAY-MLF-007 | PRD-GAME-004-05 | viewer-owner | D4-D5 | 选中强调与 2D marker 可见性/尺寸增强 | `selection_emphasis.rs` / `camera_controls.rs` / `scene_helpers_entities.rs` + 回归测试 | `test_tier_required` | completed |
 | TASK-GAMEPLAY-MLF-008 | PRD-GAME-004-03/04/05 | test-release-owner | D5 | 手动实操迭代截图（每任务后）并给出视觉评估结论 | `output/playwright/playability/manual-*` 证据集 + 结论摘要 | `test_tier_required` | in_progress |
 
 ## 执行顺序与依赖
@@ -122,12 +122,12 @@
 - `testing-manual.md`
 
 ## 状态
-- 更新日期: 2026-03-07
+- 更新日期: 2026-03-10
 - 当前状态: active
-- 当前完成: `TASK-GAMEPLAY-MLF-000`、`TASK-GAMEPLAY-MLF-001`、`TASK-GAMEPLAY-MLF-002`、`TASK-GAMEPLAY-MLF-003`、`TASK-GAMEPLAY-MLF-004`、`TASK-GAMEPLAY-MLF-005`、`TASK-GAMEPLAY-MLF-006`
+- 当前完成: `TASK-GAMEPLAY-MLF-000`、`TASK-GAMEPLAY-MLF-001`、`TASK-GAMEPLAY-MLF-002`、`TASK-GAMEPLAY-MLF-003`、`TASK-GAMEPLAY-MLF-004`、`TASK-GAMEPLAY-MLF-005`、`TASK-GAMEPLAY-MLF-006`、`TASK-GAMEPLAY-MLF-007`
 - 当前证据骨架: `doc/game/gameplay/gameplay-micro-loop-visual-closure-evidence-template-2026-03-10.md`
-- 下一任务: `TASK-GAMEPLAY-MLF-007`（世界可读性增强；按可读性检查清单执行）
-- 阻塞项: 无
-- 说明: 过程记录在 `doc/devlog/2026-03-06.md` 与 `doc/devlog/2026-03-07.md`
+- 下一任务: `TASK-GAMEPLAY-MLF-008`（按统一视觉证据模板补齐截图/录屏/结论）
+- 阻塞项: `TASK-GAME-018` 仍待 `MLF-008` 证据收口
+- 说明: 过程记录在 `doc/devlog/2026-03-06.md`、`doc/devlog/2026-03-07.md` 与 `doc/devlog/2026-03-10.md`
 
 审计轮次: 4

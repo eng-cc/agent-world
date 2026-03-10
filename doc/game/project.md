@@ -62,7 +62,7 @@
 - ROUND-014 进展: `TASK-GAME-016` 已完成，main token 新增经济源汇审计报表与通胀/套利阈值 gate（`main_token_economy_audit_report/enforce_main_token_economy_gate`），并通过定向回归。
 - ROUND-015 进展: `TASK-GAME-017` 已完成，新增 long-run 可运维发布门禁模型（SLO/告警/灰度/灾备 + 经济告警联动）与阻断接口 `enforce_longrun_operability_release_gate`。
 - ROUND-016 进展: `TASK-GAME-018` 已立项，进入 viewer 体验层改造与手动截图验收阶段。
-- ROUND-017 进展: `TASK-GAME-018` 已进入执行中，`TASK-GAMEPLAY-MLF-005/006` 已完成（控制结果显著条 + 玩家模式默认减负）；`TASK-GAMEPLAY-MLF-008` 已完成一轮 runtime_live 节奏修正并通过手动截图验收（播放稳态由 `+11~12 tick/s` 降至 `+1 tick/s`，暂停 `+0 tick/s`），后续继续收口 `TASK-GAMEPLAY-MLF-007`。
+- ROUND-017 进展: `TASK-GAME-018` 已进入执行中，`TASK-GAMEPLAY-MLF-005/006/007` 已完成（控制结果显著条 + 玩家模式默认减负 + 世界可读性增强首轮实现）；`TASK-GAMEPLAY-MLF-008` 已完成一轮 runtime_live 节奏修正并通过手动截图验收（播放稳态由 `+11~12 tick/s` 降至 `+1 tick/s`，暂停 `+0 tick/s`），下一步补齐统一视觉证据包。
 - 说明: 本文档仅维护 game 设计执行状态；过程记录在 `doc/devlog/2026-03-05.md`、`doc/devlog/2026-03-06.md` 与 `doc/devlog/2026-03-07.md`。
 
 ## 阶段收口角色交接
@@ -83,9 +83,9 @@
 - 非目标：不在本轮新增 launcher / explorer 体验功能，不扩展与微循环无关的 Viewer 大改。
 
 ## Current State
-- 当前实现 / 文档状态：`TASK-GAME-018` 为模块唯一未完成主任务，当前已完成 `TASK-GAMEPLAY-MLF-005/006` 与一轮 `TASK-GAMEPLAY-MLF-008` 收口。
+- 当前实现 / 文档状态：`TASK-GAME-018` 为模块唯一未完成主任务，当前已完成 `TASK-GAMEPLAY-MLF-005/006/007`，并已有一轮 `TASK-GAMEPLAY-MLF-008` runtime_live 节奏收口。
 - 已确认事实：core 阶段收口将玩法微循环列为 `P0`，未完成前不得给出玩法收口 `go` 结论。
-- 待确认假设：`TASK-GAMEPLAY-MLF-007` 是否仍需额外 Viewer 表达改造才能达成“世界可读性增强”。
+- 待确认假设：`TASK-GAMEPLAY-MLF-008` 是否还需要补拍更多视角对照图，才能覆盖 `MLF-007` 清单中的常用视角辨识度。
 - 当前失败信号 / 用户反馈：当前项目仍偏“能展示”，需要把“更好玩”变成明确证据。
 
 ## Scope
@@ -99,7 +99,7 @@
 - 现有测试 / 证据：现有手动截图验收记录与 `runtime_live` 节奏修正结果。
 
 ## Requested Work
-- 工作项 1：收口 `TASK-GAMEPLAY-MLF-007`，按 `doc/game/gameplay/gameplay-micro-loop-readable-world-checklist-2026-03-10.md` 完成世界可读性增强。
+- 工作项 1：按统一视觉证据模板复核 `TASK-GAMEPLAY-MLF-007` 的常用视角截图/录屏证据。
 - 工作项 2：复核并统一 `TASK-GAMEPLAY-MLF-005/006/008` 证据格式。
 - 工作项 3：产出可直接进入发布评审的截图 / 视频 / 结论证据包，并回写项目状态。
 
@@ -128,6 +128,6 @@
 - 回归影响范围：game / viewer / playability 体验层。
 
 ## Handoff Acknowledgement
-- 接收方确认范围：`待 viewer_engineer 回写`
-- 接收方确认 ETA：`待 viewer_engineer 回写`
-- 接收方新增风险：`待 viewer_engineer 回写`
+- 接收方确认范围：`viewer_engineer 已接收并完成 TASK-GAMEPLAY-MLF-007 首轮实现；当前进入 TASK-GAMEPLAY-MLF-008 证据收口与后续 qa_engineer 复核交接准备`
+- 接收方确认 ETA：`TASK-GAMEPLAY-MLF-007 已完成；下一步继续推进 TASK-GAMEPLAY-MLF-008`
+- 接收方新增风险：`若缺少固定视角 baseline / 对照图，qa_engineer 仍无法直接判定世界可读性已收口`

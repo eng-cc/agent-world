@@ -1,10 +1,10 @@
 use super::*;
 use agent_world::simulator::{AssetKind, ResourceKind};
 
-const TWO_D_AGENT_MARKER_MIN_RADIUS_WORLD: f32 = 0.0003;
-const TWO_D_AGENT_MARKER_MIN_THICKNESS_WORLD: f32 = 0.00004;
+const TWO_D_AGENT_MARKER_MIN_RADIUS_WORLD: f32 = 0.00045;
+const TWO_D_AGENT_MARKER_MIN_THICKNESS_WORLD: f32 = 0.00006;
 const TWO_D_AGENT_MARKER_MAX_THICKNESS_WORLD: f32 = 0.0016;
-const TWO_D_AGENT_MARKER_MIN_LIFT_M: f32 = 0.18;
+const TWO_D_AGENT_MARKER_MIN_LIFT_M: f32 = 0.22;
 const TWO_D_AGENT_MARKER_MAX_LIFT_M: f32 = 0.85;
 const FACILITY_MARKER_MIN_SCALE_M: f32 = 4.8;
 const POWER_PLANT_SCALE_RATIO_TO_LOCATION_RADIUS: f32 = 0.88;
@@ -33,7 +33,7 @@ pub(super) fn spawn_agent_two_d_map_marker(
     let module_ratio =
         module_count.min(AGENT_MODULE_MARKER_MAX) as f32 / AGENT_MODULE_MARKER_MAX as f32;
     if module_ratio > 0.0 {
-        let outer_radius = world_radius * (1.10 + module_ratio * 0.45);
+        let outer_radius = world_radius * (1.18 + module_ratio * 0.52);
         let outer_scale = Vec3::new(outer_radius * 2.0, thickness * 0.55, outer_radius * 2.0);
         parent.spawn((
             Mesh3d(assets.agent_module_marker_mesh.clone()),
@@ -51,8 +51,8 @@ pub(super) fn spawn_agent_two_d_map_marker(
         Mesh3d(assets.location_mesh.clone()),
         MeshMaterial3d(assets.agent_material.clone()),
         Transform::from_translation(Vec3::new(0.0, y + thickness * 0.65, 0.0))
-            .with_scale(Vec3::splat(world_radius * 0.58)),
-        BaseScale(Vec3::splat(world_radius * 0.58)),
+            .with_scale(Vec3::splat(world_radius * 0.68)),
+        BaseScale(Vec3::splat(world_radius * 0.68)),
         Visibility::Visible,
         Name::new(format!("map2d:agent:center:{agent_id}")),
         TwoDMapMarker,
@@ -603,6 +603,14 @@ mod tests {
         assert!(thickness >= TWO_D_AGENT_MARKER_MIN_THICKNESS_WORLD);
         assert!(thickness <= TWO_D_AGENT_MARKER_MAX_THICKNESS_WORLD);
         assert!(y > 0.0);
+    }
+
+    #[test]
+    fn two_d_agent_marker_profile_boosts_small_scale_readability() {
+        let (radius, thickness, y) = two_d_agent_marker_profile(100, 0.00001);
+        assert!(radius >= 0.00045);
+        assert!(thickness >= 0.00006);
+        assert!(y >= 0.00006);
     }
 }
 
