@@ -22,9 +22,9 @@
 ## Version Runtime Extension Slots
 | Slot | Owner | Status | Evidence Path | Blocker | Next Action |
 | --- | --- | --- | --- | --- | --- |
-| `runtime_footprint` | `runtime_engineer` | `watch` | `doc/world-runtime/runtime/runtime-storage-footprint-governance-2026-03-08.prd.md` | 当前只有治理专题与目标态，无候选级实测样本摘要 | 产出版本级 footprint 实测记录 |
-| `runtime_gc` | `runtime_engineer` | `watch` | `doc/world-runtime/runtime/runtime-storage-footprint-governance-2026-03-08.prd.md` | 当前只有 GC/retention 目标与契约，无候选级结果归档 | 产出候选级 GC 结果与恢复摘要 |
-| `runtime_soak` | `runtime_engineer` / `qa_engineer` | `blocked` | `doc/world-runtime/runtime-p0-candidate-evidence-handoff-2026-03-10.md` / `doc/testing/longrun/s10-five-node-real-game-soak.prd.md` / `doc/game/gameplay/gameplay-longrun-p0-production-hardening-2026-03-06.prd.md` | 尚未把版本级 soak / longrun / operability 联合证据绑定到当前候选 | 在下一任务中补齐版本级联合证据记录 |
+| `runtime_footprint` | `runtime_engineer` | `ready` | `doc/world-runtime/evidence/runtime-version-candidate-evidence-2026-03-11.md` | 无 | 继续沿用当前 footprint 实测样本，后续仅在新候选刷新 |
+| `runtime_gc` | `runtime_engineer` | `ready` | `doc/world-runtime/evidence/runtime-version-candidate-evidence-2026-03-11.md` | 无 | 当前 GC fail-safe 证据可直接复用到本候选 |
+| `runtime_soak` | `runtime_engineer` / `qa_engineer` | `blocked` | `doc/world-runtime/evidence/runtime-version-candidate-evidence-2026-03-11.md` | 仍缺真实版本级 soak summary / metrics 绑定 | 在下一任务中补齐版本级联合证据记录 |
 
 ## Aggregation Rule
 - Inherited ready 项只代表“task 级已确认”，不足以单独构成版本级 ready。
@@ -35,10 +35,10 @@
 - Current Decision: `conditional`
 - Reason:
   - task 级已 ready 的 gameplay / playability / testing / runtime_base / core 可直接继承。
-  - 版本级新增槽位中 `runtime_soak` 仍为 `blocked`，`runtime_footprint` / `runtime_gc` 仍为 `watch`。
+  - 版本级新增槽位中 `runtime_footprint` / `runtime_gc` 已提升为 `ready`，但 `runtime_soak` 仍为 `blocked`。
   - 因此当前版本级候选已具备结构化入口，但仍未达到最终 release ready。
 
 ## Recommended Follow-Up
-- 第一跟进项：执行 `TASK-CORE-020`，由 `runtime_engineer` / `qa_engineer` 绑定版本级 footprint / GC / soak 联合证据。
-- 第二跟进项：在同一版本级 board 中把 `watch`/`blocked` 三槽位刷新为真实结论。
+- 第一跟进项：执行 `TASK-CORE-021`，由 `runtime_engineer` / `qa_engineer` 补齐真实版本级 soak summary / metrics。
+- 第二跟进项：在同一版本级 board 中把 `runtime_soak` 从 `blocked` 刷新为真实结论。
 - 第三跟进项：保留 `CANDIDATE-GAME-018-ROUND009` 作为 task 基线，不直接修改原 task board。
