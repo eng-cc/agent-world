@@ -38,6 +38,7 @@
     - `./scripts/doc-governance-check.sh`
 - [x] TASK-README-005 (PRD-README-001/002/003) [test_tier_required]: 对齐 strict PRD schema，补齐关键流程/规格矩阵/边界异常/NFR/验证与决策记录。
 - [x] TASK-README-006 (PRD-README-004) [test_tier_required]: 形成版本候选对外口径简报，固化 `liveops_community` 的状态摘要、禁用表述、风险边界与回滚口径。
+- [x] TASK-README-007 (PRD-README-005) [test_tier_required]: 将首份版本候选简报抽象为复用模板，固定 evidence-link 字段与审核链。
 
 ## 依赖
 - doc/readme/prd.index.md
@@ -59,4 +60,5 @@
 - 模块进展补充（2026-03-11 / links）: 已新增 `scripts/readme-link-check.sh`，自动校验 `README.md` 与 `doc/README.md` 的本地 Markdown 入口链接。
 - 模块进展补充（2026-03-11 / quarterly）: 已新增季度口径审查节奏与模板，固定季度审查、重大变更加审与修复记录闭环。
 - 模块进展补充（2026-03-11 / communication）: 已新增版本候选对外口径简报，承接内部 `go/no-go` 结论并固化禁用表述、风险边界与回滚说明。
+- 模块进展补充（2026-03-11 / communication-template）: 已新增对外口径简报模板，后续候选可直接复用相同结构与审核链。
 - 说明: 本文档仅维护 readme 模块设计执行状态；过程记录在 `doc/devlog/2026-03-03.md` 与 `doc/devlog/2026-03-11.md`。
