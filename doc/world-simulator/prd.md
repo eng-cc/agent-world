@@ -17,7 +17,7 @@
 - PRD 主入口: `doc/world-simulator/prd.md`
 - 项目管理入口: `doc/world-simulator/project.md`
 - 根级兼容执行入口: `doc/world-simulator.project.md`
-- 文件级索引: doc/world-simulator/prd.index.md
+- 文件级索引: `doc/world-simulator/prd.index.md`
 - 追踪主键: `PRD-WORLD_SIMULATOR-xxx`
 - 测试与发布参考: `testing-manual.md`
 - UI 视觉评审列表: `doc/ui_review_result/ui_review_list.md`

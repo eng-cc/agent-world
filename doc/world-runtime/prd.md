@@ -15,7 +15,7 @@
 - PRD 主入口: `doc/world-runtime/prd.md`
 - 项目管理入口: `doc/world-runtime/project.md`
 - 根级兼容执行入口: `doc/world-runtime.project.md`
-- 文件级索引: doc/world-runtime/prd.index.md
+- 文件级索引: `doc/world-runtime/prd.index.md`
 - 追踪主键: `PRD-WORLD_RUNTIME-xxx`
 - 测试与发布参考: `testing-manual.md`
 
