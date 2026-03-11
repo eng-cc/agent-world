@@ -24,8 +24,11 @@ use super::{
     UiLanguage, WebRequestDomain, WebStateSnapshot, EGUI_CJK_FONT_NAME,
 };
 use eframe::egui;
+use std::fs;
 use std::io::{Read, Write};
 use std::net::TcpListener;
+use std::path::PathBuf;
+use std::time::{SystemTime, UNIX_EPOCH};
 #[test]
 fn parse_port_rejects_zero() {
     let err = parse_port("0", "viewer port").expect_err("should fail");
@@ -671,6 +674,35 @@ fn collect_required_config_issues_accepts_valid_required_fields() {
 }
 
 #[test]
+fn collect_required_config_issues_accepts_bundle_relative_web_path_from_launcher_bin() {
+    let bundle_root = make_temp_dir("client_launcher_bundle_relative");
+    let bundle_bin = bundle_root.join("bin");
+    let launcher_bin = bundle_bin.join("world_game_launcher");
+    let bundle_web = bundle_root.join("web");
+    fs::create_dir_all(&bundle_bin).expect("create bundle bin dir");
+    fs::create_dir_all(&bundle_web).expect("create bundle web dir");
+    fs::write(&launcher_bin, b"#!/bin/sh\n").expect("write fake launcher bin");
+
+    let config = LaunchConfig {
+        scenario: "llm_bootstrap".to_string(),
+        live_bind: "127.0.0.1:5023".to_string(),
+        web_bind: "127.0.0.1:5011".to_string(),
+        viewer_host: "127.0.0.1".to_string(),
+        viewer_port: "4173".to_string(),
+        viewer_static_dir: "web".to_string(),
+        chain_enabled: false,
+        launcher_bin: launcher_bin.to_string_lossy().to_string(),
+        ..LaunchConfig::default()
+    };
+
+    let issues = collect_required_config_issues(&config);
+    assert!(!issues.contains(&ConfigIssue::ViewerStaticDirMissing));
+    assert!(!issues.contains(&ConfigIssue::LauncherBinMissing));
+
+    let _ = fs::remove_dir_all(bundle_root);
+}
+
+#[test]
 fn collect_chain_required_config_issues_accepts_valid_required_fields() {
     let chain_runtime_bin = std::env::current_exe()
         .expect("current exe")
@@ -1045,4 +1077,19 @@ fn guidance_counters_increase_for_open_demo_and_quick_actions() {
 
     app.apply_explorer_quick_shortcut(ExplorerQuickShortcut::RecentTxs);
     assert_eq!(app.ux_state.quick_action_click_count, 1);
+}
+
+fn make_temp_dir(label: &str) -> PathBuf {
+    let mut path = std::env::temp_dir();
+    let stamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("time")
+        .as_nanos();
+    path.push(format!(
+        "agent_world_client_launcher_test_{label}_{}_{}",
+        std::process::id(),
+        stamp
+    ));
+    fs::create_dir_all(&path).expect("create temp dir");
+    path
 }

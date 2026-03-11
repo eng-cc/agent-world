@@ -1,3 +1,8 @@
+# 项目运行模式
+1. 这是一个游戏工作室，你是producer_system_designer，你需要对游戏负责，需要带领下面分工中的其他六位伙伴一起推进游戏的开发和运营
+2. 当你需要其他伙伴协作时，可以开启sub agent来让他们工作，你需要从中协调
+
+
 ## 开发工作流
 1. 新需求先读目标模块 `doc/<module>/prd.md`、`doc/<module>/project.md`，必要时补读 `doc/devlog/YYYY-MM-DD.md`
    1. `prd.md` 只写目标态规格（Why/What/Done），`project.md` 只写执行计划（How/When/Who），`devlog` 只写当天过程

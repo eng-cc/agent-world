@@ -12,6 +12,7 @@ use std::time::{Duration, Instant};
 const CHAIN_TRANSFER_SUBMIT_PATH: &str = "/v1/chain/transfer/submit";
 const CHAIN_FEEDBACK_SUBMIT_PATH: &str = "/v1/chain/feedback/submit";
 const CHAIN_TRANSFER_PROXY_TIMEOUT_MS: u64 = 1_500;
+const GAME_STATIC_DIR_ENV: &str = "AGENT_WORLD_GAME_STATIC_DIR";
 
 pub(super) fn parse_config_request(body: &[u8], action: &str) -> Result<LauncherConfig, String> {
     serde_json::from_slice(body).map_err(|err| format!("parse {action} request JSON failed: {err}"))
@@ -432,7 +433,8 @@ pub(super) fn start_process(
         return Err("world_game_launcher is already running".to_string());
     }
 
-    let issues = validate_game_config(&config);
+    let launcher_bin = resolve_launcher_bin_from_config(&config, state.launcher_bin.as_str());
+    let issues = validate_game_config_with_launcher_bin(&config, launcher_bin.as_str());
     if !issues.is_empty() {
         let detail = issues.join("; ");
         state.process_state = ProcessState::InvalidConfig(detail.clone());
@@ -441,7 +443,7 @@ pub(super) fn start_process(
         return Err(detail);
     }
 
-    let args = match build_launcher_args(&config) {
+    let args = match build_launcher_args_with_launcher_bin(&config, launcher_bin.as_str()) {
         Ok(args) => args,
         Err(err) => {
             state.process_state = ProcessState::InvalidConfig(err.clone());
@@ -451,13 +453,21 @@ pub(super) fn start_process(
         }
     };
 
-    let launcher_bin = resolve_launcher_bin_from_config(&config, state.launcher_bin.as_str());
     if !Path::new(launcher_bin.as_str()).is_file() {
         let err = format!("launcher binary does not exist: {launcher_bin}");
         state.process_state = ProcessState::StartFailed(err.clone());
         state.append_log(format!("start failed: {err}"));
         state.mark_updated();
         return Err(err);
+    }
+
+    let mut config = config;
+    config.launcher_bin = launcher_bin.clone();
+    if let Some(viewer_static_dir) = resolve_viewer_static_dir_for_launcher(
+        config.viewer_static_dir.trim(),
+        launcher_bin.as_str(),
+    ) {
+        config.viewer_static_dir = viewer_static_dir.to_string_lossy().to_string();
     }
 
     match spawn_child_process(launcher_bin.as_str(), args.as_slice(), "game") {
@@ -688,7 +698,70 @@ pub(super) fn host_for_url(host: &str) -> String {
     }
 }
 
+fn resolve_viewer_static_dir_candidate_for_launcher(
+    raw: &str,
+    launcher_bin: &str,
+) -> Option<std::path::PathBuf> {
+    let user_path = std::path::PathBuf::from(raw);
+    if user_path.is_dir() {
+        return Some(user_path);
+    }
+
+    if user_path.is_relative() {
+        let launcher_bin = launcher_bin.trim();
+        if !launcher_bin.is_empty() {
+            if let Some(bin_dir) = Path::new(launcher_bin).parent() {
+                let sibling_candidate = bin_dir.join("..").join(&user_path);
+                if sibling_candidate.is_dir() {
+                    return Some(sibling_candidate);
+                }
+            }
+        }
+    }
+
+    None
+}
+
+fn resolve_viewer_static_dir_for_launcher(
+    raw: &str,
+    launcher_bin: &str,
+) -> Option<std::path::PathBuf> {
+    if raw == DEFAULT_VIEWER_STATIC_DIR {
+        if let Ok(override_path) = std::env::var(GAME_STATIC_DIR_ENV) {
+            let override_path = override_path.trim();
+            if !override_path.is_empty() {
+                return resolve_viewer_static_dir_candidate_for_launcher(
+                    override_path,
+                    launcher_bin,
+                );
+            }
+        }
+    }
+
+    if let Some(dir) = resolve_viewer_static_dir_candidate_for_launcher(raw, launcher_bin) {
+        return Some(dir);
+    }
+
+    let dev_fallback = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("..")
+        .join("agent_world_viewer")
+        .join("dist");
+    if raw == DEFAULT_VIEWER_STATIC_DIR && dev_fallback.is_dir() {
+        return Some(dev_fallback);
+    }
+
+    None
+}
+
 pub(super) fn validate_game_config(config: &LauncherConfig) -> Vec<String> {
+    let launcher_bin = resolve_launcher_bin_from_config(config, config.launcher_bin.as_str());
+    validate_game_config_with_launcher_bin(config, launcher_bin.as_str())
+}
+
+pub(super) fn validate_game_config_with_launcher_bin(
+    config: &LauncherConfig,
+    launcher_bin: &str,
+) -> Vec<String> {
     let mut issues = Vec::new();
     if config.scenario.trim().is_empty() {
         issues.push("scenario is required".to_string());
@@ -709,7 +782,7 @@ pub(super) fn validate_game_config(config: &LauncherConfig) -> Vec<String> {
     let viewer_static_dir = config.viewer_static_dir.trim();
     if viewer_static_dir.is_empty() {
         issues.push("viewer static directory is required".to_string());
-    } else if !Path::new(viewer_static_dir).is_dir() {
+    } else if resolve_viewer_static_dir_for_launcher(viewer_static_dir, launcher_bin).is_none() {
         issues.push(format!(
             "viewer static directory does not exist or is not a directory: {viewer_static_dir}"
         ));
@@ -805,6 +878,14 @@ pub(super) fn validate_chain_config(config: &LauncherConfig) -> Vec<String> {
 }
 
 pub(super) fn build_launcher_args(config: &LauncherConfig) -> Result<Vec<String>, String> {
+    let launcher_bin = resolve_launcher_bin_from_config(config, config.launcher_bin.as_str());
+    build_launcher_args_with_launcher_bin(config, launcher_bin.as_str())
+}
+
+pub(super) fn build_launcher_args_with_launcher_bin(
+    config: &LauncherConfig,
+    launcher_bin: &str,
+) -> Result<Vec<String>, String> {
     if config.scenario.trim().is_empty() {
         return Err("scenario cannot be empty".to_string());
     }
@@ -817,6 +898,14 @@ pub(super) fn build_launcher_args(config: &LauncherConfig) -> Result<Vec<String>
     if config.viewer_static_dir.trim().is_empty() {
         return Err("viewer static dir cannot be empty".to_string());
     }
+    let viewer_static_dir =
+        resolve_viewer_static_dir_for_launcher(config.viewer_static_dir.trim(), launcher_bin)
+            .ok_or_else(|| {
+                format!(
+                    "viewer static directory does not exist or is not a directory: {}",
+                    config.viewer_static_dir.trim()
+                )
+            })?;
 
     let mut args = vec![
         "--scenario".to_string(),
@@ -830,7 +919,7 @@ pub(super) fn build_launcher_args(config: &LauncherConfig) -> Result<Vec<String>
         "--viewer-port".to_string(),
         viewer_port.to_string(),
         "--viewer-static-dir".to_string(),
-        config.viewer_static_dir.trim().to_string(),
+        viewer_static_dir.to_string_lossy().to_string(),
     ];
 
     if config.llm_enabled {

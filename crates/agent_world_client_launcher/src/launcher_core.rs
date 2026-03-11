@@ -1,4 +1,67 @@
 use super::*;
+
+#[cfg(not(target_arch = "wasm32"))]
+const GAME_STATIC_DIR_ENV: &str = "AGENT_WORLD_GAME_STATIC_DIR";
+#[cfg(not(target_arch = "wasm32"))]
+const DEFAULT_VIEWER_STATIC_DIR: &str = "web";
+
+#[cfg(not(target_arch = "wasm32"))]
+fn resolve_viewer_static_dir_candidate_for_launcher(
+    raw: &str,
+    launcher_bin: &str,
+) -> Option<std::path::PathBuf> {
+    let user_path = std::path::PathBuf::from(raw);
+    if user_path.is_dir() {
+        return Some(user_path);
+    }
+
+    if user_path.is_relative() {
+        let launcher_bin = launcher_bin.trim();
+        if !launcher_bin.is_empty() {
+            if let Some(bin_dir) = Path::new(launcher_bin).parent() {
+                let sibling_candidate = bin_dir.join("..").join(&user_path);
+                if sibling_candidate.is_dir() {
+                    return Some(sibling_candidate);
+                }
+            }
+        }
+    }
+
+    None
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn resolve_viewer_static_dir_for_launcher(
+    raw: &str,
+    launcher_bin: &str,
+) -> Option<std::path::PathBuf> {
+    if raw == DEFAULT_VIEWER_STATIC_DIR {
+        if let Ok(override_path) = std::env::var(GAME_STATIC_DIR_ENV) {
+            let override_path = override_path.trim();
+            if !override_path.is_empty() {
+                return resolve_viewer_static_dir_candidate_for_launcher(
+                    override_path,
+                    launcher_bin,
+                );
+            }
+        }
+    }
+
+    if let Some(dir) = resolve_viewer_static_dir_candidate_for_launcher(raw, launcher_bin) {
+        return Some(dir);
+    }
+
+    let dev_fallback = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("..")
+        .join("agent_world_viewer")
+        .join("dist");
+    if raw == DEFAULT_VIEWER_STATIC_DIR && dev_fallback.is_dir() {
+        return Some(dev_fallback);
+    }
+
+    None
+}
+
 pub(super) fn launcher_text_field_mut<'a>(
     config: &'a mut LaunchConfig,
     field_id: &str,
@@ -68,7 +131,10 @@ pub(super) fn collect_required_config_issues(config: &LaunchConfig) -> Vec<Confi
         issues.push(ConfigIssue::ViewerStaticDirRequired);
     }
     #[cfg(not(target_arch = "wasm32"))]
-    if !viewer_static_dir.is_empty() && !Path::new(viewer_static_dir).is_dir() {
+    if !viewer_static_dir.is_empty()
+        && resolve_viewer_static_dir_for_launcher(viewer_static_dir, config.launcher_bin.as_str())
+            .is_none()
+    {
         issues.push(ConfigIssue::ViewerStaticDirMissing);
     }
 

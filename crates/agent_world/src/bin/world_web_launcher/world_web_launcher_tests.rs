@@ -4,11 +4,13 @@ use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::{
-    build_chain_runtime_args, build_game_url, build_launcher_args, execute_gui_agent_action,
+    build_chain_runtime_args, build_game_url, build_launcher_args,
+    build_launcher_args_with_launcher_bin, execute_gui_agent_action,
     gui_agent_capabilities_response, parse_chain_validators, parse_host_port, parse_options,
     parse_port, remap_transfer_runtime_target, stop_chain_process, stop_process,
-    validate_chain_config, validate_game_config, ChainRuntimeStatus, CliOptions, LauncherConfig,
-    ProcessState, ServiceState, DEFAULT_CHAIN_STATUS_BIND, DEFAULT_LISTEN_BIND, DEFAULT_SCENARIO,
+    validate_chain_config, validate_game_config, validate_game_config_with_launcher_bin,
+    ChainRuntimeStatus, CliOptions, LauncherConfig, ProcessState, ServiceState,
+    DEFAULT_CHAIN_STATUS_BIND, DEFAULT_LISTEN_BIND, DEFAULT_SCENARIO,
 };
 use agent_world_proto::storage_profile::StorageProfile;
 
@@ -368,6 +370,66 @@ fn validate_game_config_accepts_minimal_valid_setup() {
     let issues = validate_game_config(&config);
     assert!(issues.is_empty());
     let _ = fs::remove_dir_all(static_dir);
+}
+
+#[test]
+fn validate_game_config_accepts_default_web_alias_using_service_launcher_path() {
+    let bundle_root = make_temp_dir("world_web_launcher_bundle");
+    let bin_dir = bundle_root.join("bin");
+    let web_dir = bundle_root.join("web");
+    fs::create_dir_all(&bin_dir).expect("create bin dir");
+    fs::create_dir_all(&web_dir).expect("create web dir");
+    let launcher_bin = bin_dir.join("world_game_launcher");
+    fs::write(&launcher_bin, b"").expect("create launcher stub");
+
+    let config = LauncherConfig {
+        viewer_static_dir: "web".to_string(),
+        launcher_bin: String::new(),
+        chain_enabled: false,
+        ..LauncherConfig::default()
+    };
+
+    let issues =
+        validate_game_config_with_launcher_bin(&config, launcher_bin.to_string_lossy().as_ref());
+    assert!(issues.is_empty());
+
+    let args =
+        build_launcher_args_with_launcher_bin(&config, launcher_bin.to_string_lossy().as_ref())
+            .expect("launcher args");
+    let viewer_static_index = args
+        .iter()
+        .position(|arg| arg == "--viewer-static-dir")
+        .expect("viewer static flag");
+    assert_eq!(
+        fs::canonicalize(PathBuf::from(args[viewer_static_index + 1].as_str()))
+            .expect("canonicalize resolved static dir"),
+        fs::canonicalize(&web_dir).expect("canonicalize expected static dir")
+    );
+
+    let _ = fs::remove_dir_all(bundle_root);
+}
+
+#[test]
+fn validate_game_config_accepts_bundle_relative_web_path_from_launcher_bin() {
+    let bundle_root = make_temp_dir("world_web_launcher_bundle_relative");
+    let bundle_bin = bundle_root.join("bin");
+    let launcher_bin = bundle_bin.join("world_game_launcher");
+    let bundle_web = bundle_root.join("web");
+    fs::create_dir_all(&bundle_bin).expect("create bundle bin dir");
+    fs::create_dir_all(&bundle_web).expect("create bundle web dir");
+    fs::write(&launcher_bin, b"#!/bin/sh\n").expect("write fake launcher bin");
+
+    let config = LauncherConfig {
+        launcher_bin: launcher_bin.to_string_lossy().to_string(),
+        viewer_static_dir: "web".to_string(),
+        chain_enabled: false,
+        ..LauncherConfig::default()
+    };
+
+    let issues = validate_game_config(&config);
+    assert!(issues.is_empty());
+
+    let _ = fs::remove_dir_all(bundle_root);
 }
 
 #[test]

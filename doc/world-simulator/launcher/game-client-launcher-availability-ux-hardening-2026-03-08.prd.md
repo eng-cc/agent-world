@@ -9,7 +9,7 @@
 - Problem Statement: 启动器在源码直接运行场景存在默认静态目录失效问题，且 Web 端仍有若干体验与可诊断性缺口（禁用态提示缺失、查询参数未编码、移动端布局拥挤、无效控制台噪声）；同时主界面长期展开低频配置表单，挤占高频启停与状态区域，影响日常操作效率。
 - Proposed Solution: 统一修复 launcher 控制面与客户端的可用性短板，补齐路径回退、状态语义、Web 提示、参数编码与移动端可读性；并引入“高频主面板 + 低频高级配置弹窗”的渐进披露结构，以 native/web 一致回归收口。
 - Success Criteria:
-  - SC-1: 源码直接运行 `world_web_launcher` 时，默认 `viewer_static_dir` 可落到有效目录或返回明确可操作的错误提示，不再出现无提示假启动。
+  - SC-1: 源码直接运行 `world_web_launcher` 时，默认 `viewer_static_dir` 可落到有效目录或返回明确可操作的错误提示，不再出现无提示假启动；当配置为相对路径 `web` 时，预校验必须与 `world_game_launcher` 的 bundle 相对解析语义一致。
   - SC-2: Web 端在链未就绪/已禁用时必须展示可读原因提示，用户可明确知道反馈/转账/浏览器入口禁用原因。
   - SC-3: explorer/transfer/search 相关查询参数统一完成 URL 编码，包含 `&`、空格、`:`、`?` 的输入不再破坏请求语义。
   - SC-4: 控制面 stop 空操作不覆盖既有错误态，状态机保持“未启动/已停止/失败态”语义稳定。
@@ -59,6 +59,7 @@
 | favicon 噪声抑制 | 默认 favicon 声明 | 页面加载不再触发 `favicon.ico` 404 | `page_load -> console_clean` | 统一静态入口模板 | 无权限变化 |
 - Acceptance Criteria:
   - AC-1: `world_web_launcher` 在源码直跑场景（无 bundle `web/`）下可通过默认回退路径启动，或返回可操作错误信息。
+  - AC-1a: `world_web_launcher` 与 `agent_world_client_launcher` 对 `viewer_static_dir=web` 的预校验必须按目标 `launcher_bin` 的 bundle 相对路径解析，不得仅按当前工作目录判定缺失。
   - AC-2: Web 端在 `disabled/not_started/starting/unreachable/config_error` 任一非 `ready` 状态时，必须显示反馈不可用原因。
   - AC-3: `app_process.rs` 与 `app_process_web.rs` 所有 explorer/transfer/search 查询参数构造均使用统一编码函数。
   - AC-4: `/api/stop` 与 `/api/chain/stop` 在 no-op 场景不覆盖 `StartFailed/QueryFailed/Unreachable/ConfigError` 等错误态。
@@ -95,6 +96,7 @@
   - `testing-manual.md`
 - Edge Cases & Error Handling:
   - 启动路径不存在：按候选路径继续回退，全部失败时返回结构化 `invalid_config`。
+  - bundle 相对静态目录：当 `viewer_static_dir` 为 `web` 等相对路径时，必须按目标 `launcher_bin` 邻接 bundle 目录解析，避免控制面/客户端预校验与子进程实际启动语义漂移。
   - 特殊字符查询：编码后发起请求，避免 query 截断与多参数污染。
   - stop no-op：保留当前错误态，仅增加“进程未运行”的日志记录。
   - 移动小屏：布局拥挤时优先保证字段可读与按钮可触达。
