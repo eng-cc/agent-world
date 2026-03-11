@@ -23,7 +23,6 @@
   - `doc/viewer-manual.md` -> `doc/world-simulator/viewer/viewer-manual.md`
   - `doc/game-test.prd.md` -> `doc/playability_test_result/game-test.prd.md`
   - `doc/game-test.project.md` -> `doc/playability_test_result/game-test.project.md`
-  - `doc/game-test.project.md` -> `doc/playability_test_result/game-test.project.md`
   - `doc/playability_test_card.md` -> `doc/playability_test_result/playability_test_card.md`
   - `doc/playability_test_manual.md` -> `doc/playability_test_result/playability_test_manual.md`
 
