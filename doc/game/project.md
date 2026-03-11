@@ -70,7 +70,7 @@
 - 说明: 本文档仅维护 game 设计执行状态；过程记录在 `doc/devlog/2026-03-05.md`、`doc/devlog/2026-03-06.md` 与 `doc/devlog/2026-03-07.md`。
 
 ## 阶段收口角色交接
-## Meta
+### Meta
 - Handoff ID: `HO-CORE-20260310-GAME-001`
 - Date: `2026-03-10`
 - From Role: `producer_system_designer`

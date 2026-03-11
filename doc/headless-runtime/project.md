@@ -46,7 +46,7 @@
 - 说明: 本文档仅维护 headless-runtime（原 nonviewer）设计执行状态；过程记录在 `doc/devlog/2026-03-03.md`。
 
 ## 阶段收口角色交接
-## Meta
+### Meta
 - Handoff ID: `HO-CORE-20260310-HR-001`
 - Date: `2026-03-10`
 - From Role: `producer_system_designer`

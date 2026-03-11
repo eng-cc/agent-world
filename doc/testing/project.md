@@ -136,7 +136,7 @@
 - 说明: 本文档仅维护 testing 模块设计执行状态；过程记录在 `doc/devlog/2026-03-10.md` 与 `doc/devlog/2026-03-11.md`。
 
 ## 阶段收口角色交接
-## Meta
+### Meta
 - Handoff ID: `HO-CORE-20260310-TEST-001`
 - Date: `2026-03-10`
 - From Role: `producer_system_designer`
