@@ -96,6 +96,7 @@
 - 最新完成: `TASK-ENGINEERING-042`（模块 README 根目录收口口径统一补入 design.md）。
 - 最新完成: `TASK-ENGINEERING-043`（跨模块 README 重复兼容执行入口去重）。
 - 最新完成: `TASK-ENGINEERING-044`（跨模块 project 审计轮次标记统一到 ROUND-006）。
+- 最新完成: `TASK-ENGINEERING-045`（跨模块主 PRD 审计轮次标记统一到 ROUND-006）。
 - 最新完成: `TASK-ENGINEERING-015`（legacy 文档迁移专项完成全量收口复核）。
 - 最新完成: `TASK-ENGINEERING-003`（工程门禁趋势统计与首份 baseline）。
 - 最新完成: `TASK-ENGINEERING-004`（engineering 季度治理审查流程与模板）。
