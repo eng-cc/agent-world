@@ -45,6 +45,7 @@
 - [x] TASK-WORLD_RUNTIME-034 (PRD-WORLD_RUNTIME-013/014/015) [test_tier_required]: 输出详细技术设计文档，明确 canonical replay log / checkpoint / GC / metrics / migration 方案。
 - [x] TASK-WORLD_RUNTIME-035 (PRD-WORLD_RUNTIME-013/014/015) [test_tier_required]: 将专题项目进一步拆解为 T1.1 ~ T7.5 子任务，明确执行顺序、依赖边界与测试闭环。
 - [x] TASK-WORLD_RUNTIME-036 (PRD-WORLD_RUNTIME-001) [test_tier_required]: 同步 `doc/world-runtime/README.md` 与 `doc/world-runtime/prd.index.md` 的模块入口索引，补齐近期专题、模块职责与根目录收口口径。
+- [x] TASK-WORLD_RUNTIME-037 (PRD-WORLD_RUNTIME-001) [test_tier_required]: 清理 `doc/world-runtime/prd.md` 顶部重复的根级兼容执行入口，保持接口区导航唯一。
 
 ## 依赖
 - 模块设计总览：`doc/world-runtime/design.md`
@@ -61,6 +62,7 @@
 - 当前状态: completed
 - 下一任务: 无（当前模块主项目无未完成任务）
 - 最新完成: `TASK-WORLD_RUNTIME-036`（world-runtime 模块 README / PRD 索引入口同步）。
+- 最新完成: `TASK-WORLD_RUNTIME-037`（world-runtime PRD 顶部重复兼容执行入口清理）。
 - 阶段收口优先级: `P0`
 - 阶段 owner: `runtime_engineer`（联审：`producer_system_designer`；验证：`qa_engineer`）
 - 阻断条件: 在 `TASK-WORLD_RUNTIME-002/003/004` 完成前，`TASK-WORLD_RUNTIME-033` 不再作为当前版本的首要发布驱动项。
