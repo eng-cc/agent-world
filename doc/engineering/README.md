@@ -6,7 +6,6 @@
 - PRD: `doc/engineering/prd.md`
 - 设计总览: `doc/engineering/design.md`
 - 标准执行入口: `doc/engineering/project.md`
-- 兼容执行入口: `doc/engineering/project.md`
 - 文件级索引: `doc/engineering/prd.index.md`
 
 ## 模块职责

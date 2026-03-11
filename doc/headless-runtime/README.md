@@ -11,7 +11,6 @@
 - PRD: `doc/headless-runtime/prd.md`
 - 设计总览: `doc/headless-runtime/design.md`
 - 标准执行入口: `doc/headless-runtime/project.md`
-- 兼容执行入口: `doc/headless-runtime/project.md`
 - 文件级索引: `doc/headless-runtime/prd.index.md`
 
 ## 模块职责

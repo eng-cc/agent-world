@@ -6,7 +6,6 @@
 - PRD: `doc/playability_test_result/prd.md`
 - 设计总览: `doc/playability_test_result/design.md`
 - 标准执行入口: `doc/playability_test_result/project.md`
-- 兼容执行入口: `doc/playability_test_result/project.md`
 - 文件级索引: `doc/playability_test_result/prd.index.md`
 
 ## 模块职责

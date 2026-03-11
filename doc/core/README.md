@@ -6,7 +6,6 @@
 - PRD: `doc/core/prd.md`
 - 设计总览: `doc/core/design.md`
 - 标准执行入口: `doc/core/project.md`
-- 兼容执行入口: `doc/core/project.md`
 - 文件级索引: `doc/core/prd.index.md`
 
 ## 模块职责

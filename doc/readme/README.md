@@ -6,7 +6,6 @@
 - PRD: `doc/readme/prd.md`
 - 设计总览: `doc/readme/design.md`
 - 标准执行入口: `doc/readme/project.md`
-- 兼容执行入口: `doc/readme/project.md`
 - 文件级索引: `doc/readme/prd.index.md`
 
 ## 模块职责

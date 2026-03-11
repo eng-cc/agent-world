@@ -6,7 +6,6 @@
 - PRD: `doc/site/prd.md`
 - 设计总览: `doc/site/design.md`
 - 标准执行入口: `doc/site/project.md`
-- 兼容执行入口: `doc/site/project.md`
 - 文件级索引: `doc/site/prd.index.md`
 
 ## 主题文档
