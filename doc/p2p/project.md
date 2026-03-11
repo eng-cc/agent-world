@@ -78,6 +78,7 @@
 - [x] TASK-P2P-016-T1 [test_tier_required]: 替换历史专题 PRD/project 中 `world_viewer_live` 子目录旧路径为现行入口路径。
 - [x] TASK-P2P-016-T2 [test_tier_required]: 执行文档门禁与旧路径 grep 清理校验（排除 `doc/devlog/**` 过程记录）。
 - [x] TASK-P2P-016-T3 [test_tier_required]: 回写主项目状态并关闭任务链。
+- [x] TASK-P2P-017 (PRD-P2P-001) [test_tier_required]: 同步 `doc/p2p/README.md` 与 `doc/p2p/prd.index.md` 的模块入口索引，补齐近期专题、模块职责与根目录收口口径。
 
 ## 依赖
 - 模块设计总览：`doc/p2p/design.md`
@@ -103,9 +104,10 @@
 - `.agents/skills/prd/check.md`
 
 ## 状态
-- 更新日期: 2026-03-08
+- 更新日期: 2026-03-11
 - 当前状态: completed（ROUND-012）
 - 下一任务: 无（等待新需求）
+- 最新完成: `TASK-P2P-017`（p2p 模块 README / PRD 索引入口同步）。
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - 本轮新增: `TASK-P2P-006` 已完成，专题文档 `p2p-mobile-light-client-authoritative-state-2026-03-06` 已纳入索引和模块追踪映射。
 - 本轮新增: `TASK-P2P-008` 已建档，专题文档 `node-pos-slot-clock-real-time-2026-03-07` 已纳入模块追踪映射。
