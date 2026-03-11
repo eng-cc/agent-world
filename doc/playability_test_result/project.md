@@ -24,6 +24,7 @@
     - `rg -n "关联 testing 证据包|高优问题摘要|建议结论|pass|blocked" doc/playability_test_result/templates/playability-release-evidence-bundle-template.md`
 - [x] TASK-PLAYABILITY_TEST_RESULT-005 (PRD-PLAYABILITY_TEST_RESULT-001/002) [test_tier_required]: 将 `game-test` 与卡片模板文档迁入模块目录并完成根目录兼容跳转。
 - [x] TASK-PLAYABILITY_TEST_RESULT-006 (PRD-PLAYABILITY_TEST_RESULT-001/002/003) [test_tier_required]: 对齐 strict PRD schema，补齐关键流程/规格矩阵/边界异常/NFR/验证与决策记录。
+- [x] TASK-PLAYABILITY_TEST_RESULT-007 (PRD-PLAYABILITY_TEST_RESULT-001) [test_tier_required]: 同步 `doc/playability_test_result/README.md` 与 `doc/playability_test_result/prd.index.md` 的模块入口索引，补齐模块职责与根目录收口口径。
 
 ## 依赖
 - doc/playability_test_result/prd.index.md
@@ -36,6 +37,7 @@
 - 更新日期: 2026-03-11
 - 当前状态: completed
 - 下一任务: 无（当前模块主项目无未完成任务）
+- 最新完成: `TASK-PLAYABILITY_TEST_RESULT-007`（playability_test_result 模块 README / PRD 索引入口同步）。
 - 阶段收口优先级: `P0`
 - 阶段 owner: `qa_engineer`（联审：`producer_system_designer`）
 - 阻断条件: 在 `TASK-PLAYABILITY_TEST_RESULT-002/003` 完成前，可玩性问题不得作为统一格式证据进入发布 go/no-go 评审。

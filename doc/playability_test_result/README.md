@@ -1,29 +1,34 @@
-# playability_test_result 目录说明
+# playability_test_result 文档索引
 
 审计轮次: 6
 
 ## 入口
-- `doc/playability_test_result/prd.md`
-- `doc/playability_test_result/design.md`
-- `doc/playability_test_result/project.md`
-- `doc/playability_test_result/project.md`
-- `doc/playability_test_result/prd.index.md`
+- PRD: `doc/playability_test_result/prd.md`
+- 设计总览: `doc/playability_test_result/design.md`
+- 标准执行入口: `doc/playability_test_result/project.md`
+- 兼容执行入口: `doc/playability_test_result/project.md`
+- 文件级索引: `doc/playability_test_result/prd.index.md`
 
-- 主目录仅保留当前活跃轮次（当前策略：保留最近一天样本，便于真实玩家最新口径复核）。
-- 历史卡片不再保留在仓库（archive 目录已移除）。
-- 当前执行入口：
-  - `doc/playability_test_result/game-test.prd.md`
-  - `doc/playability_test_result/game-test.project.md`
+## 模块职责
+- 维护可玩性反馈卡、评分口径、高优问题闭环与发布证据包格式。
+- 承接 game / testing / core 之间的体验证据互链。
+- 统一最近活跃轮次的卡片与正式模板入口。
+
+## 关键文档
+- `doc/playability_test_result/game-test.prd.md`
 - `doc/playability_test_result/game-test.project.md`
-  - `doc/playability_test_result/playability_test_card.md`
-  - `doc/playability_test_result/playability_test_manual.md`
+- `doc/playability_test_result/playability_test_card.md`
+- `doc/playability_test_result/playability_test_manual.md`
+- `doc/playability_test_result/templates/`
+- `doc/playability_test_result/evidence/`
 
-当前主目录活跃卡片：
-- `card_2026_03_06_18_40_48.md`
-- `card_2026_03_06_12_43_31.md`
-- `card_2026_03_01_00_20_13.md`
-- `card_2026_02_28_19_22_20.md`
-- `card_2026_02_28_21_22_51.md`
-- `card_2026_02_28_22_47_14.md`
-- `card_2026_02_28_23_27_06.md`
-- `doc/playability_test_result/game-test.design.md`
+## 近期专题
+- `doc/playability_test_result/game-test.prd.md`
+
+## 根目录收口
+- 模块根目录仅保留：`README.md`、`prd.md`、`project.md`、`prd.index.md` 及当前活跃轮次卡片样本。
+- 历史卡片不再保留在仓库（`archive/` 目录已移除）。
+
+## 维护约定
+- 可玩性模板、评分口径或发布引用格式变化时，需同步更新 `prd.md` 与 `project.md`。
+- 新增专题后，需同步回写 `doc/playability_test_result/prd.index.md` 与本目录索引。
