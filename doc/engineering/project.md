@@ -1,6 +1,6 @@
 # engineering PRD Project
 
-审计轮次: 4
+审计轮次: 6
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] TASK-ENGINEERING-001 (PRD-ENGINEERING-001) [test_tier_required]: 完成 engineering PRD 改写，建立工程治理主文档。
@@ -48,6 +48,7 @@
 - [x] TASK-ENGINEERING-041 (PRD-ENGINEERING-016) [test_tier_required]: 统一跨模块 handoff 段内子标题层级，将 `Objective/Current State/Scope/...` 从 `##` 收敛为 `###`。
 - [x] TASK-ENGINEERING-042 (PRD-ENGINEERING-016) [test_tier_required]: 统一模块 `README.md` 的根目录收口口径，显式把 `design.md` 列为模块根入口保留文件。
 - [x] TASK-ENGINEERING-043 (PRD-ENGINEERING-016) [test_tier_required]: 清理多模块 `README.md` 中与标准执行入口重复的 `兼容执行入口` 条目，保持入口导航唯一。
+- [x] TASK-ENGINEERING-044 (PRD-ENGINEERING-016) [test_tier_required]: 统一各模块 `project.md` 顶部审计轮次标记到 ROUND-006，消除与模块 `README.md` 的轮次口径漂移。
 
 ## 依赖
 - 模块设计总览：`doc/engineering/design.md`
@@ -94,6 +95,7 @@
 - 最新完成: `TASK-ENGINEERING-041`（跨模块 handoff 子标题层级统一）。
 - 最新完成: `TASK-ENGINEERING-042`（模块 README 根目录收口口径统一补入 design.md）。
 - 最新完成: `TASK-ENGINEERING-043`（跨模块 README 重复兼容执行入口去重）。
+- 最新完成: `TASK-ENGINEERING-044`（跨模块 project 审计轮次标记统一到 ROUND-006）。
 - 最新完成: `TASK-ENGINEERING-015`（legacy 文档迁移专项完成全量收口复核）。
 - 最新完成: `TASK-ENGINEERING-003`（工程门禁趋势统计与首份 baseline）。
 - 最新完成: `TASK-ENGINEERING-004`（engineering 季度治理审查流程与模板）。

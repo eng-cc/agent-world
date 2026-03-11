@@ -1,6 +1,6 @@
 # readme PRD Project
 
-审计轮次: 4
+审计轮次: 6
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] TASK-README-001 (PRD-README-001) [test_tier_required]: 完成 readme PRD 改写，建立对外口径主控入口。

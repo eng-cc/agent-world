@@ -1,6 +1,6 @@
 # p2p PRD Project
 
-审计轮次: 5
+审计轮次: 6
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] TASK-P2P-001 (PRD-P2P-001) [test_tier_required]: 完成 p2p PRD 改写，建立分布式系统设计入口。

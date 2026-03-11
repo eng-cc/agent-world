@@ -1,6 +1,6 @@
 # headless-runtime PRD Project（原 nonviewer）
 
-审计轮次: 4
+审计轮次: 6
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] TASK-NONVIEWER-001 (PRD-NONVIEWER-001) [test_tier_required]: 完成 headless-runtime PRD 改写，建立无界面链路设计入口。

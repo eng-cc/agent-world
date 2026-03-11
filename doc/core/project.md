@@ -1,6 +1,6 @@
 # core PRD Project
 
-审计轮次: 4
+审计轮次: 6
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] TASK-CORE-001 (PRD-CORE-001) [test_tier_required]: 完成 core PRD 改写，固化跨模块治理基线。
