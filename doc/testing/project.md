@@ -106,6 +106,7 @@
 
 ## 专题任务映射（2026-03-10 批次）
 - [x] SUBTASK-TESTING-20260310-001 (PRD-TESTING-LAUNCHER-MANUAL-001/002/003) [test_tier_required]: `doc/testing/launcher/launcher-manual-test-checklist-2026-03-10.project.md`
+- [x] TASK-TESTING-006 (PRD-TESTING-001) [test_tier_required]: 同步 `doc/testing/README.md` 的模块入口索引，补齐近期专题、模块职责与根目录收口口径。
 
 ## 依赖
 - 模块设计总览：`doc/testing/design.md`
@@ -120,6 +121,7 @@
 - 更新日期: 2026-03-11
 - 当前状态: completed
 - 下一任务: 无（当前模块主项目无未完成任务）
+- 最新完成: `TASK-TESTING-006`（testing 模块 README 入口索引同步）。
 - 阶段收口优先级: `P0`
 - 阶段 owner: `qa_engineer`（联审：`producer_system_designer`）
 - 阻断条件: 在 `TASK-TESTING-002/003` 完成前，跨模块发布评审不得声称“测试范围明确且证据齐备”。

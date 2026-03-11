@@ -7,7 +7,12 @@
 - 设计总览: `doc/testing/design.md`
 - 标准执行入口: `doc/testing/project.md`
 - 兼容执行入口: `doc/testing/project.md`
-- 文件级索引: doc/testing/prd.index.md
+- 文件级索引: `doc/testing/prd.index.md`
+
+## 模块职责
+- 维护系统测试手册、required/full 分层门禁与发布证据包口径。
+- 汇总 CI、启动器、长稳、性能、人工手册与治理专题。
+- 承接跨模块测试范围定义、证据归档与趋势基线建设。
 
 ## 关键文档
 - 系统测试手册：`testing-manual.md`
@@ -17,38 +22,17 @@
 - 长稳与压力测试：`doc/testing/longrun/`、`doc/testing/performance/`
 - 门禁策略与治理：`doc/testing/governance/`、`doc/testing/chaos-plans/`
 
+## 近期专题
+- `doc/testing/governance/testing-quality-trend-tracking-2026-03-11.prd.md`
+- `doc/testing/launcher/launcher-manual-test-checklist-2026-03-10.prd.md`
+- `doc/testing/launcher/launcher-full-usability-closure-audit-2026-03-08.prd.md`
+- `doc/testing/longrun/chain-runtime-feedback-replication-network-autowire-2026-03-02.prd.md`
+- `doc/testing/manual/web-ui-agent-browser-closure-manual.prd.md`
+
 ## 根目录收口
 - 模块根目录仅保留：`README.md`、`prd.md`、`project.md`、`prd.index.md`。
-- 其余专题文档按主题下沉到 `ci/launcher/longrun/performance/manual/governance`。
+- 其余专题文档按主题下沉到 `ci/`、`launcher/`、`longrun/`、`performance/`、`manual/`、`governance/`。
 
 ## 维护约定
-- 测试门禁变更需同步 required/full 分层口径与对应脚本。
-- `doc/testing/ci/ci-builtin-wasm-m1-multi-runner.design.md`
-- `doc/testing/ci/ci-builtin-wasm-m4-m5-hash-drift-hardening.design.md`
-- `doc/testing/ci/ci-m1-multi-runner-required-check-protection.design.md`
-- `doc/testing/ci/ci-remove-builtin-wasm-hash-checks-from-base-gate.design.md`
-- `doc/testing/ci/ci-test-coverage.design.md`
-- `doc/testing/ci/ci-testcase-tiering.design.md`
-- `doc/testing/ci/ci-tiered-execution.design.md`
-- `doc/testing/ci/ci-wasm32-target-install.design.md`
-- `doc/testing/governance/llm-skip-tick-ratio-metric.design.md`
-- `doc/testing/governance/release-gate-metric-policy-alignment-2026-02-28.design.md`
-- `doc/testing/governance/wasm-build-determinism-guard.design.md`
-- `doc/testing/launcher/launcher-chain-script-migration-2026-02-28.design.md`
-- `doc/testing/launcher/launcher-full-usability-closure-audit-2026-03-08.design.md`
-- `doc/testing/launcher/launcher-lifecycle-hardening-2026-03-01.design.md`
-- `doc/testing/launcher/launcher-viewer-auth-node-config-autowire-2026-03-02.design.md`
-- `doc/testing/longrun/chain-runtime-feedback-replication-network-autowire-2026-03-02.design.md`
-- `doc/testing/longrun/chain-runtime-soak-script-reactivation-2026-02-28.design.md`
-- `doc/testing/longrun/p2p-longrun-continuous-chaos-injection-2026-02-24.design.md`
-- `doc/testing/longrun/p2p-longrun-endurance-chaos-template-2026-02-25.design.md`
-- `doc/testing/longrun/p2p-longrun-feedback-event-injection-2026-03-02.design.md`
-- `doc/testing/longrun/p2p-storage-consensus-longrun-online-stability-2026-02-24.design.md`
-- `doc/testing/longrun/s10-distfs-probe-bootstrap-2026-02-28.design.md`
-- `doc/testing/longrun/s10-five-node-real-game-soak.design.md`
-- `doc/testing/manual/systematic-application-testing-manual.design.md`
-- `doc/testing/manual/web-ui-playwright-closure-manual.design.md`
-- `doc/testing/performance/runtime-performance-observability-foundation-2026-02-25.design.md`
-- `doc/testing/performance/runtime-performance-observability-llm-api-decoupling-2026-02-25.design.md`
-- `doc/testing/performance/viewer-perf-bottleneck-observability-2026-02-25.design.md`
-- `doc/testing/performance/viewer-performance-methodology-closure-2026-02-25.design.md`
+- 测试门禁变更需同步 required/full 分层口径、对应脚本与证据模板。
+- 新增专题后，需同步回写 `doc/testing/prd.index.md` 与本目录索引。
