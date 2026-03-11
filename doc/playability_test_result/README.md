@@ -22,9 +22,6 @@
 - `doc/playability_test_result/templates/`
 - `doc/playability_test_result/evidence/`
 
-## 近期专题
-- `doc/playability_test_result/game-test.prd.md`
-
 ## 根目录收口
 - 模块根目录仅保留：`README.md`、`prd.md`、`project.md`、`prd.index.md` 及当前活跃轮次卡片样本。
 - 历史卡片不再保留在仓库（`archive/` 目录已移除）。
