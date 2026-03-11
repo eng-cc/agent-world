@@ -33,6 +33,7 @@
     - `rg -n "主入口覆盖率|参数契约覆盖率|fallback 围栏覆盖率|100%|0d" doc/scripts/evidence/script-stability-trend-baseline-2026-03-11.md doc/scripts/governance/script-stability-trend-tracking-2026-03-11.prd.md`
     - `./scripts/doc-governance-check.sh`
 - [x] TASK-SCRIPTS-005 (PRD-SCRIPTS-001/002/003) [test_tier_required]: 对齐 strict PRD schema，补齐关键流程/规格矩阵/边界异常/NFR/验证与决策记录。
+- [x] TASK-SCRIPTS-006 (PRD-SCRIPTS-001) [test_tier_required]: 同步 `doc/scripts/README.md` 的模块入口索引，补齐近期专题、模块职责与根目录收口口径。
 
 ## 依赖
 - 模块设计总览：`doc/scripts/design.md`
@@ -46,6 +47,7 @@
 - 更新日期: 2026-03-11
 - 当前状态: completed
 - 下一任务: 无（当前模块主项目无未完成任务）
+- 最新完成: `TASK-SCRIPTS-006`（scripts 模块 README 入口索引同步）。
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - 模块进展补充（2026-03-11）: 已新增 scripts 分层专题，明确 `ci-tests.sh`、`release-gate.sh`、`run-viewer-web.sh` 等主入口，以及 `capture-viewer-frame.sh` 的 fallback 围栏。
 - 模块进展补充（2026-03-11 / contracts）: 已新增高频脚本参数契约专题，冻结 `ci-tests.sh`、`release-gate.sh`、`build-game-launcher-bundle.sh`、`run-viewer-web.sh`、`site-link-check.sh` 的最小调用、默认值与失败语义。
