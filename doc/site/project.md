@@ -23,6 +23,7 @@
   - 验收命令 (`test_tier_required`):
     - `rg -n "先看技术预览路径|See Preview Verification Path|优先级：预览体验入口优先|Priority: preview experience first" site/index.html site/en/index.html site/doc/cn/index.html site/doc/en/index.html`
     - `./scripts/doc-governance-check.sh`
+- [x] TASK-SITE-012 (PRD-SITE-003) [test_tier_required]: 为 completed 状态的 `doc/site/project.md` 补齐“最新完成”摘要，保持模块项目状态栏格式一致。
 
 ## 依赖
 - 模块设计总览：`doc/site/design.md`
@@ -38,6 +39,7 @@
 - 更新日期: 2026-03-11
 - 当前状态: completed
 - 下一任务: 无（当前模块主项目无未完成任务）
+- 最新完成: `TASK-SITE-011`（site 模块 README 目录索引同步）。
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - ROUND-002 进展: manual 子簇主从化已完成（`site-manual-static-docs` 主入口，`viewer-manual-content-migration-2026-02-15` 增量维护）。
 - ROUND-002 进展: github-pages 子簇主从化已完成（`github-pages-game-engine-reposition-2026-02-25` 主入口，其余专题增量维护）。
