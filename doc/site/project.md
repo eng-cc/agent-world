@@ -40,6 +40,7 @@
 - 当前状态: completed
 - 下一任务: 无（当前模块主项目无未完成任务）
 - 最新完成: `TASK-SITE-011`（site 模块 README 目录索引同步）。
+- 最新完成: `TASK-SITE-012`（site 模块 completed 状态摘要补齐）。
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - ROUND-002 进展: manual 子簇主从化已完成（`site-manual-static-docs` 主入口，`viewer-manual-content-migration-2026-02-15` 增量维护）。
 - ROUND-002 进展: github-pages 子簇主从化已完成（`github-pages-game-engine-reposition-2026-02-25` 主入口，其余专题增量维护）。

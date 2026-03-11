@@ -43,6 +43,7 @@
 - [x] TASK-ENGINEERING-036 (PRD-ENGINEERING-016) [test_tier_required]: 为 7 个组合角色职责卡补齐推荐技能与典型使用场景，统一“角色决定 owner、技能决定方法”的口径。
 - [x] TASK-ENGINEERING-037 (PRD-ENGINEERING-016) [test_tier_required]: 同步 `doc/engineering/README.md` 与 `doc/engineering/prd.index.md` 的模块入口索引，补齐近期治理专题与根目录收口口径。
 - [x] TASK-ENGINEERING-038 (PRD-ENGINEERING-016) [test_tier_required]: 统一跨模块 `prd.index.md` 的文档配对规则文案，确保存在 design 列的索引均显式声明 `prd/design/project` 三件套。
+- [x] TASK-ENGINEERING-039 (PRD-ENGINEERING-016) [test_tier_required]: 对齐 `readme/site` 模块状态栏中的“最新完成”摘要，使其覆盖新增的 completed 状态补齐任务。
 
 ## 依赖
 - 模块设计总览：`doc/engineering/design.md`
@@ -84,6 +85,7 @@
 - 最新完成: `TASK-ENGINEERING-036`（角色职责卡补齐推荐技能与角色/技能关系口径）。
 - 最新完成: `TASK-ENGINEERING-037`（engineering 模块 README / PRD 索引入口同步）。
 - 最新完成: `TASK-ENGINEERING-038`（跨模块 prd.index 配对规则文案统一）。
+- 最新完成: `TASK-ENGINEERING-039`（readme/site 状态栏最新完成摘要对齐）。
 - 最新完成: `TASK-ENGINEERING-015`（legacy 文档迁移专项完成全量收口复核）。
 - 最新完成: `TASK-ENGINEERING-003`（工程门禁趋势统计与首份 baseline）。
 - 最新完成: `TASK-ENGINEERING-004`（engineering 季度治理审查流程与模板）。
