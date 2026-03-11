@@ -27,7 +27,7 @@
 - `doc/engineering/prd-review/prd-full-system-audit-2026-03-03.prd.md`
 
 ## 根目录收口
-- 模块根目录仅保留：`README.md`、`prd.md`、`project.md`、`prd.index.md`。
+- 模块根目录主入口保留：`README.md`、`prd.md`、`design.md`、`project.md`、`prd.index.md`。
 - 其余专题文档按主题下沉到 `governance/`、`doc-migration/`、`prd-review/`。
 
 ## 维护约定

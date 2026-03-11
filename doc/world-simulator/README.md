@@ -29,7 +29,7 @@
 - `doc/world-simulator/kernel/power-storage-complete-removal-2026-03-06.prd.md`
 
 ## 根目录收口
-- 模块根目录仅保留：`README.md`、`prd.md`、`project.md`、`prd.index.md`。
+- 模块根目录主入口保留：`README.md`、`prd.md`、`design.md`、`project.md`、`prd.index.md`。
 - 其余专题文档已迁移到对应主题目录（`viewer/`、`llm/`、`launcher/`、`scenario/`、`kernel/`、`m4/`）。
 
 ## 专项手册

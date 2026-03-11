@@ -30,7 +30,7 @@
 - `doc/readme/governance/readme-root-status-alignment-2026-03-11.prd.md`
 
 ## 根目录收口
-- 模块根目录仅保留：`README.md`、`prd.md`、`project.md`、`prd.index.md`。
+- 模块根目录主入口保留：`README.md`、`prd.md`、`design.md`、`project.md`、`prd.index.md`。
 - 其余专题文档按主题下沉到 `gap/production/governance`。
 
 ## 维护约定
