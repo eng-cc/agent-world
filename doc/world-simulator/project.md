@@ -102,6 +102,7 @@
 - [x] TASK-WORLD_SIMULATOR-097 (PRD-WORLD_SIMULATOR-013) [test_tier_required]: 修复启动器 `self_guided` wasm 时间回归（`SystemTime::now`）并完成 Web 启动器启停闭环复验（`time not implemented` 零命中）。
 - [x] TASK-WORLD_SIMULATOR-098 (PRD-WORLD_SIMULATOR-001) [test_tier_required]: 同步 `doc/world-simulator/README.md` 与 `doc/world-simulator/prd.index.md` 的模块入口索引，补齐近期专题、模块职责与根目录收口口径。
 - [x] TASK-WORLD_SIMULATOR-099 (PRD-WORLD_SIMULATOR-001) [test_tier_required]: 同步 `doc/ui_review_result/README.md` 的目录说明，补齐入口、职责与维护约定，明确其作为 `world-simulator` UI 评审结果入口的口径。
+- [x] TASK-WORLD_SIMULATOR-100 (PRD-WORLD_SIMULATOR-001) [test_tier_required]: 修正 `doc/world-simulator/prd.index.md` 中 4 处误留的 `待补齐` 占位，补回真实 design 文档路径。
 
 ## 专题任务映射（2026-03-02 批次）
 - [x] SUBTASK-WORLD_SIMULATOR-20260302-001 (PRD-WORLD_SIMULATOR-001/002/003) [test_tier_required]: `doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.project.md`
@@ -221,6 +222,7 @@
 - 下一任务: 无（当前模块主项目无未完成任务）
 - 最新完成: `TASK-WORLD_SIMULATOR-098`（world-simulator 模块 README / PRD 索引入口同步）。
 - 最新完成: `TASK-WORLD_SIMULATOR-099`（ui_review_result 目录说明与 world-simulator UI 评审入口同步）。
+- 最新完成: `TASK-WORLD_SIMULATOR-100`（world-simulator 文件级索引 design 链接补齐）。
 - 当前优先任务: 无
 - 并行待办: 无
 - 专题映射状态: 2026-03-02 批次 9/9、2026-03-03 批次 4/4、2026-03-04 批次 7/7、2026-03-05 批次 4/4、2026-03-06 批次 6/6 已纳入模块项目管理文档；`TASK-WORLD_SIMULATOR-057~097` 已完成。
