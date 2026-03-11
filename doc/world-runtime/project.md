@@ -113,51 +113,51 @@
 - Priority: `P0`
 - Expected ETA: `待接收方确认`
 
-## Objective
+### Objective
 - 目标描述：先补齐 runtime 核心边界验收、回归模板与发布门禁指标，再恢复更大范围的联合验证主路径。
 - 成功标准：确定性 / WASM / 治理边界形成验收清单，安全与数值语义有模板，runtime 质量指标可进入发布评审。
 - 非目标：本轮不要求完成所有 footprint / GC / 重启恢复联合验证切片。
 
-## Current State
+### Current State
 - 当前实现 / 文档状态：`TASK-WORLD_RUNTIME-033` 已有 T7.1 基线，但核心边界验收与发布门禁项仍未收口。
 - 已确认事实：core 已将 runtime 验收列为 `P0`，优先级高于后续 soak / footprint 扩展。
 - 待确认假设：`TASK-WORLD_RUNTIME-002` 的验收项是否需要拆到更细专题文档。
 - 当前失败信号 / 用户反馈：如果 runtime 规则只能描述不能验证，发布评审会退化为口头判断。
 
-## Scope
+### Scope
 - In Scope: `TASK-WORLD_RUNTIME-002`、`TASK-WORLD_RUNTIME-003`、`TASK-WORLD_RUNTIME-004` 的文档与执行承接。
 - Out of Scope: 非本轮必需的性能拓展、额外 P2 功能扩张。
 
-## Inputs
+### Inputs
 - 关键文件：`doc/world-runtime/project.md`、`doc/world-runtime/prd.md`、相关 runtime / wasm / governance 专题文档。
 - 关键命令：沿用 runtime 定向回归与 required/full 套件命令。
 - 上游依赖：`producer_system_designer` 提供规则边界裁剪，`qa_engineer` 负责后续验证模板与门禁复核。
 - 现有测试 / 证据：`TASK-WORLD_RUNTIME-033` 的 T7.1 基线输入、现有 runtime 定向回归结果。
 
-## Requested Work
+### Requested Work
 - 工作项 1：完成 `TASK-WORLD_RUNTIME-002` 的核心边界验收清单。
 - 工作项 2：建立 `TASK-WORLD_RUNTIME-003` 的安全 / 数值语义回归模板。
 - 工作项 3：完成 `TASK-WORLD_RUNTIME-004` 的发布门禁指标接入方案。
 
-## Expected Outputs
+### Expected Outputs
 - 代码改动：如需，仅限支撑 runtime 验收与指标暴露的必要实现。
 - 文档回写：`doc/world-runtime/project.md` 与相关专题文档。
 - 测试记录：补齐 runtime `test_tier_required`，必要时标注后续 `test_tier_full`。
 - devlog 记录：记录验收项、风险与下一切片。
 
-## Done Definition
+### Done Definition
 - [ ] 输出满足目标与成功标准
 - [ ] 影响面已核对 `producer_system_designer` / `qa_engineer`
 - [ ] 对应 `prd.md` / `project.md` 已回写
 - [ ] 对应 `doc/devlog/YYYY-MM-DD.md` 已记录
 - [ ] required/full 测试证据已补齐或明确挂起原因
 
-## Risks / Decisions
+### Risks / Decisions
 - 已知风险：若继续先推 `TASK-WORLD_RUNTIME-033`，会把更关键的边界验收继续后置。
 - 待拍板事项：哪些 runtime 指标必须成为本轮 go/no-go 阻断项。
 - 建议决策：先完成 `002/003/004`，再恢复 `033` 作为更大范围联合验证任务。
 
-## Validation Plan
+### Validation Plan
 - 测试层级：`test_tier_required`（必要时补 `test_tier_full`）
 - 验证命令：沿用 runtime 定向回归 / required / soak 相关命令并回写证据路径。
 - 预期结果：runtime 规则边界、回归模板、门禁指标可直接用于发布评审。
@@ -175,7 +175,7 @@
 - 模块进展补充（2026-03-11 / T7.3 handoff）: `qa_engineer` 已新增 `doc/world-runtime/qa-to-runtime-task-world_runtime-033-t7.3-orphan-gc-failsafe-2026-03-11.md`，将 pre-checkpoint 窗口瞬时 `orphan_blob_count=1` 交接给 `runtime_engineer` 作为下一步闭环目标。
 - 模块进展补充（2026-03-11 / T7.3 收口）: `runtime_engineer` 已新增 `doc/world-runtime/evidence/runtime-sidecar-orphan-gc-failsafe-2026-03-11.md` 与定向回归 `collect_storage_metrics_sidecar_orphan_recovers_after_successful_save`，将该 orphan 信号收敛为“可被下一次成功 save/GC 清零的窗口态”。
 
-## Handoff Acknowledgement
+### Handoff Acknowledgement
 - 接收方确认范围：`已接收 TASK-WORLD_RUNTIME-002/003/004；当前提交完成边界清单、回归模板与发布门禁指标模板`
 - 接收方确认 ETA：`TASK-WORLD_RUNTIME-002/003/004 已完成；本轮已补齐 task 级 runtime P0 证据，下一步继续推进 TASK-WORLD_RUNTIME-033 的 T7.2~T7.5`
 - 接收方新增风险：`当前模板统一了字段与门禁规则，但部分指标仍依赖后续真实样本与 soak 结果填值`

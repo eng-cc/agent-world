@@ -147,51 +147,51 @@
 - Priority: `P0`
 - Expected ETA: `待接收方确认`
 
-## Objective
+### Objective
 - 目标描述：建立统一的测试触发矩阵与发布证据包模板，使发布评审不再依赖临时判断。
 - 成功标准：任一任务都能反推必跑测试，证据包字段统一且可映射到 PRD-ID / 任务 / 结论。
 - 非目标：本轮不要求先完成长期趋势统计。
 
-## Current State
+### Current State
 - 当前实现 / 文档状态：`TASK-TESTING-002/003/004` 已完成；testing 模块现已具备触发矩阵、证据包模板与首份趋势 baseline。
 - 已确认事实：core 已将 testing 触发矩阵与证据包列为 `P0`。
 - 待确认假设：S0~S10 触发矩阵是否需要对现有专题任务映射做进一步合并。
 - 当前失败信号 / 用户反馈：测试可跑但“该跑什么、结果怎么看、能不能放”仍缺统一模板。
 
-## Scope
+### Scope
 - In Scope: `TASK-TESTING-002`、`TASK-TESTING-003`、`TASK-TESTING-004`（已完成）。
 - Out of Scope: 本轮不实现自动趋势面板或脚本化采集。
 
-## Inputs
+### Inputs
 - 关键文件：`doc/testing/project.md`、`doc/testing/prd.md`、`testing-manual.md`。
 - 关键命令：`scripts/ci-tests.sh`、现有 viewer / launcher / playability 闭环命令。
 - 上游依赖：各模块现有 `test_tier_required/full` 定义与证据产物。
 - 现有测试 / 证据：`2026-03-08` / `2026-03-10` 的 launcher / viewer 闭环与人工清单结果。
 
-## Requested Work
+### Requested Work
 - 工作项 1：完成 S0~S10 与改动路径触发矩阵。
 - 工作项 2：建立发布证据包模板（命令、日志、截图、结论）。
 - 工作项 3：与 core PRD-ID 映射模板对齐引用方式。
 
-## Expected Outputs
+### Expected Outputs
 - 代码改动：如需，仅限测试脚本或模板支撑变更。
 - 文档回写：`doc/testing/project.md`、相关 testing 分册。
 - 测试记录：补齐 `test_tier_required` 的模板验证证据。
 - devlog 记录：记录矩阵、模板和遗留趋势项。
 
-## Done Definition
+### Done Definition
 - [ ] 输出满足目标与成功标准
 - [ ] 影响面已核对 `producer_system_designer` 与关键模块 owner
 - [ ] 对应 `prd.md` / `project.md` 已回写
 - [ ] 对应 `doc/devlog/YYYY-MM-DD.md` 已记录
 - [ ] required 证据已补齐
 
-## Risks / Decisions
+### Risks / Decisions
 - 已知风险：若先做趋势统计而不先统一触发矩阵与证据包，数据口径会继续漂移。
 - 待拍板事项：证据包目录结构是否需要与现有 `output/` 产物强绑定。
 - 建议决策：先完成 `002/003`，再推进 `004` 趋势统计。
 
-## Validation Plan
+### Validation Plan
 - 测试层级：`test_tier_required`
 - 验证命令：以 `rg` 抽样矩阵 / 模板字段，并结合现有闭环产物路径做引用验证。
 - 预期结果：任一阶段收口任务都能映射到统一测试范围与证据包格式。
@@ -199,7 +199,7 @@
 
 - 模块进展补充（2026-03-10）: 已新增 `doc/testing/evidence/release-evidence-bundle-task-game-018-2026-03-10.md`，把 `TASK-GAME-018` 的 S6 证据、viewer 定向回归与 playability 卡片纳入统一 testing 证据包。
 
-## Handoff Acknowledgement
+### Handoff Acknowledgement
 - 接收方确认范围：`已接收 TASK-TESTING-002/003；本轮覆盖触发矩阵与发布证据包模板，不含趋势统计`
 - 接收方确认 ETA：`TASK-TESTING-002/003/004 已完成，模块主项目已收口`
 - 接收方新增风险：`长跑 / UI 产物目录在不同脚本间仍有差异，当前模板先统一字段，不强制统一物理目录`

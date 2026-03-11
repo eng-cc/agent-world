@@ -81,57 +81,57 @@
 - Priority: `P0`
 - Expected ETA: `待接收方确认`
 
-## Objective
+### Objective
 - 目标描述：完成微循环可玩性视觉优化二期，并把可直接进入发布评审的截图闭环证据沉淀到跨模块证据链。
 - 成功标准：控制结果显著化、玩家模式减负、世界可读性增强三项已完成，且 `qa_engineer` 已基于证据完成复核。
 - 非目标：不在本轮新增 launcher / explorer 体验功能，不扩展与微循环无关的 Viewer 大改。
 
-## Current State
+### Current State
 - 当前实现 / 文档状态：`TASK-GAME-018` 已完成，`TASK-GAMEPLAY-MLF-005/006/007/008` 均已闭环，当前待做的是把已完成结论回填到 release gate 证据链。
 - 已确认事实：core 阶段收口将玩法微循环列为 `P0`；虽然任务已关闭，但若缺少跨模块证据互链，仍不得给出最终发布 `go` 结论。
 - 待确认假设：现有 ROUND-009 录屏是否足以覆盖发布评审抽样；若不足，则在 release gate 阶段补拍，不回滚当前任务关闭结论。
 - 当前失败信号 / 用户反馈：当前项目仍偏“能展示”，需要把“更好玩”变成明确证据。
 
-## Scope
+### Scope
 - In Scope: `TASK-GAME-018`、`TASK-GAMEPLAY-MLF-005/006/007/008`、截图 / 视频 / 结论证据回写。
 - Out of Scope: 新玩法分支、新区块链浏览器功能、与微循环无关的全局 UI 重构。
 
-## Inputs
+### Inputs
 - 关键文件：`doc/game/project.md`、`doc/game/prd.md`、相关 `gameplay-micro-loop-*` 专题文档。
 - 关键命令：沿用现有 Viewer / playability 截图闭环命令与手动验收流程。
 - 上游依赖：`producer_system_designer` 已在 `core` 层确定该项为 `P0`；`qa_engineer` 后续复核证据。
 - 现有测试 / 证据：现有手动截图验收记录与 `runtime_live` 节奏修正结果。
 
-## Requested Work
+### Requested Work
 - 工作项 1：由 `qa_engineer` 复核 `doc/game/gameplay/gameplay-micro-loop-visual-closure-evidence-2026-03-10-round009.md` 的截图、录屏与语义状态。
 - 工作项 2：刷新 playability 卡片与 `TASK-GAME-018` 阻断结论。
 - 工作项 3：若结论通过，把 evidence linkage 回填到 playability / testing / core 证据链。
 
-## Expected Outputs
+### Expected Outputs
 - 代码改动：如需，仅限支撑 `TASK-GAME-018` 的 Viewer 表达层改动。
 - 文档回写：`doc/game/project.md`、必要时相关专题 `project/prd`。
 - 测试记录：至少补齐 `test_tier_required` 的截图闭环与结论。
 - devlog 记录：在 `doc/devlog/YYYY-MM-DD.md` 中记载结果与遗留项。
 
-## Done Definition
+### Done Definition
 - [ ] 输出满足目标与成功标准
 - [ ] 影响面已核对 `producer_system_designer` / `qa_engineer`
 - [ ] 对应 `prd.md` / `project.md` 已回写
 - [ ] 对应 `doc/devlog/YYYY-MM-DD.md` 已记录
 - [ ] required 证据已补齐
 
-## Risks / Decisions
+### Risks / Decisions
 - 已知风险：如果只做视觉 polish 而不统一证据格式，玩法收口仍无法进入 go/no-go 评审。
 - 待拍板事项：是否需要把 `TASK-GAMEPLAY-MLF-007` 进一步拆小给 `viewer_engineer`。
 - 建议决策：先以最小体验闭环完成 `TASK-GAME-018`，不引入额外玩法范围扩张。
 
-## Validation Plan
+### Validation Plan
 - 测试层级：`test_tier_required`
 - 验证命令：沿用现有截图闭环与手动验收命令，并回写证据路径。
 - 预期结果：微循环视觉增强可被截图 / 视频直接观察到，且 QA 可复核。
 - 回归影响范围：game / viewer / playability 体验层。
 
-## Handoff Acknowledgement
+### Handoff Acknowledgement
 - 接收方确认范围：`qa_engineer 已接收 ROUND-009 证据并完成复核；TASK-GAME-018 已具备任务关闭结论`
 - 接收方确认 ETA：`TASK-GAME-018 已完成；下一步转入 evidence linkage 回填`
 - 接收方新增风险：`更长录屏仍建议在后续 release gate 抽样中复看，但不构成当前任务阻断`
