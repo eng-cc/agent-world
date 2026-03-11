@@ -26,6 +26,7 @@
 - [x] TASK-PLAYABILITY_TEST_RESULT-006 (PRD-PLAYABILITY_TEST_RESULT-001/002/003) [test_tier_required]: 对齐 strict PRD schema，补齐关键流程/规格矩阵/边界异常/NFR/验证与决策记录。
 - [x] TASK-PLAYABILITY_TEST_RESULT-007 (PRD-PLAYABILITY_TEST_RESULT-001) [test_tier_required]: 同步 `doc/playability_test_result/README.md` 与 `doc/playability_test_result/prd.index.md` 的模块入口索引，补齐模块职责与根目录收口口径。
 - [x] TASK-PLAYABILITY_TEST_RESULT-008 (PRD-PLAYABILITY_TEST_RESULT-001) [test_tier_required]: 清理 `doc/playability_test_result/README.md` 中重复的专题入口，保持结果模块导航精简唯一。
+- [x] TASK-PLAYABILITY_TEST_RESULT-009 (PRD-PLAYABILITY_TEST_RESULT-001) [test_tier_required]: 对齐 `README.md` 根目录收口口径，显式补入 `design.md` 并保留活跃轮次卡片样本例外。
 
 ## 依赖
 - doc/playability_test_result/prd.index.md
@@ -38,8 +39,8 @@
 - 更新日期: 2026-03-11
 - 当前状态: completed
 - 下一任务: 无（当前模块主项目无未完成任务）
-- 最新完成: `TASK-PLAYABILITY_TEST_RESULT-007`（playability_test_result 模块 README / PRD 索引入口同步）。
 - 最新完成: `TASK-PLAYABILITY_TEST_RESULT-008`（playability_test_result README 重复专题入口清理）。
+- 最新完成: `TASK-PLAYABILITY_TEST_RESULT-009`（playability_test_result 根目录收口口径补入 design.md 并保留活跃卡片例外）。
 - 阶段收口优先级: `P0`
 - 阶段 owner: `qa_engineer`（联审：`producer_system_designer`）
 - 阻断条件: 在 `TASK-PLAYABILITY_TEST_RESULT-002/003` 完成前，可玩性问题不得作为统一格式证据进入发布 go/no-go 评审。
