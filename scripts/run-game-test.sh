@@ -13,23 +13,32 @@ VIEWER_STATIC_DIR="web"
 CHAIN_ENABLED="1"
 CHAIN_NODE_ID=""
 CHAIN_STATUS_BIND_ADDR=""
+BUNDLE_DIR=""
+VIEWER_STATIC_DIR_EXPLICIT="0"
 
 usage() {
   cat <<'USAGE'
 Usage: ./scripts/run-game-test.sh [options]
 
-Start a stable web playability test stack with safe defaults:
-- world_game_launcher: --scenario llm_bootstrap --live-bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011 --viewer-host 127.0.0.1 --viewer-port 4173 --no-open-browser
+Start a stable web playability test stack with safe defaults.
+
+Preferred producer/release path:
+- ./scripts/build-game-launcher-bundle.sh --out-dir output/release/game-launcher-local
+- ./scripts/run-game-test.sh --bundle-dir output/release/game-launcher-local
+
+Development fallback:
+- source world_game_launcher via cargo run with the same runtime defaults
 
 Options:
+  --bundle-dir <path>      Use packaged bundle <path>/run-game.sh (recommended for producer/release playtests)
   --viewer-host <host>     Viewer HTTP host (default: 127.0.0.1)
   --viewer-port <port>     Viewer HTTP port (default: 4173)
   --live-bind <addr:port>  world_game_launcher live TCP bind (default: 127.0.0.1:5023)
   --web-bind <addr:port>   WebSocket bridge bind (default: 127.0.0.1:5011)
-  --viewer-static-dir <p> Viewer static dir or `web` freshness build (default: web)
-  --chain-enable            Enable chain runtime (default)
-  --chain-disable           Disable chain runtime
-  --chain-node-id <id>      Override chain node id (default: fresh per run)
+  --viewer-static-dir <p>  Override viewer static dir; source mode defaults to fresh `web`, bundle mode only uses this as an advanced override
+  --chain-enable           Enable chain runtime (default)
+  --chain-disable          Disable chain runtime
+  --chain-node-id <id>     Override chain node id (default: fresh per run)
   --chain-status-bind <a:p> Override chain status HTTP bind (default: web-bind port + 110)
   --with-llm               Enable LLM mode (default: enabled)
   --no-llm                 Disable LLM mode (fallback to built-in script)
@@ -39,6 +48,10 @@ USAGE
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --bundle-dir)
+      BUNDLE_DIR="${2:-}"
+      shift 2
+      ;;
     --viewer-host)
       VIEWER_HOST="${2:-}"
       shift 2
@@ -57,6 +70,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     --viewer-static-dir)
       VIEWER_STATIC_DIR="${2:-}"
+      VIEWER_STATIC_DIR_EXPLICIT="1"
       shift 2
       ;;
     --chain-enable)
@@ -123,6 +137,18 @@ fi
 if ! [[ "$LIVE_BIND_PORT" =~ ^[0-9]+$ && "$WEB_BRIDGE_PORT" =~ ^[0-9]+$ ]]; then
   echo "error: bind ports must be numeric" >&2
   exit 1
+fi
+
+if [[ -n "$BUNDLE_DIR" ]]; then
+  if [[ ! -d "$BUNDLE_DIR" ]]; then
+    echo "error: --bundle-dir path does not exist: $BUNDLE_DIR" >&2
+    exit 1
+  fi
+  BUNDLE_DIR="$(cd "$BUNDLE_DIR" && pwd)"
+  if [[ ! -f "$BUNDLE_DIR/run-game.sh" ]]; then
+    echo "error: bundle is missing run-game.sh: $BUNDLE_DIR" >&2
+    exit 1
+  fi
 fi
 
 if [[ -n "$CHAIN_STATUS_BIND_ADDR" ]]; then
@@ -239,7 +265,19 @@ fi
 OUTPUT_DIR="$ROOT_DIR/output/playwright/playability/startup-${RUN_ID}"
 mkdir -p "$OUTPUT_DIR"
 
-RESOLVED_VIEWER_STATIC_DIR=$(resolve_viewer_static_dir_for_web_closure "$ROOT_DIR" "$VIEWER_STATIC_DIR" "$OUTPUT_DIR")
+if [[ -n "$BUNDLE_DIR" ]]; then
+  if [[ "$VIEWER_STATIC_DIR_EXPLICIT" == "1" ]]; then
+    if [[ "$VIEWER_STATIC_DIR" == /* ]]; then
+      RESOLVED_VIEWER_STATIC_DIR="$VIEWER_STATIC_DIR"
+    else
+      RESOLVED_VIEWER_STATIC_DIR="$ROOT_DIR/$VIEWER_STATIC_DIR"
+    fi
+  else
+    RESOLVED_VIEWER_STATIC_DIR=""
+  fi
+else
+  RESOLVED_VIEWER_STATIC_DIR=$(resolve_viewer_static_dir_for_web_closure "$ROOT_DIR" "$VIEWER_STATIC_DIR" "$OUTPUT_DIR")
+fi
 
 WORLD_LOG="$OUTPUT_DIR/world_viewer_live.log"
 WEB_LOG="$OUTPUT_DIR/web_viewer.log"
@@ -267,9 +305,11 @@ WORLD_ARGS=(
   --web-bind "$WEB_BRIDGE_ADDR"
   --viewer-host "$VIEWER_HOST"
   --viewer-port "$VIEWER_PORT"
-  --viewer-static-dir "$RESOLVED_VIEWER_STATIC_DIR"
   --no-open-browser
 )
+if [[ -n "$RESOLVED_VIEWER_STATIC_DIR" ]]; then
+  WORLD_ARGS+=(--viewer-static-dir "$RESOLVED_VIEWER_STATIC_DIR")
+fi
 if [[ "$CHAIN_ENABLED" == "1" ]]; then
   WORLD_ARGS+=(
     --chain-enable
@@ -283,10 +323,21 @@ if [[ "$ENABLE_LLM" == "1" ]]; then
   WORLD_ARGS+=(--with-llm)
 fi
 
-(
-  cd "$ROOT_DIR"
-  env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_game_launcher -- "${WORLD_ARGS[@]}" >"$WORLD_LOG" 2>&1
-) &
+if [[ -n "$BUNDLE_DIR" ]]; then
+  LAUNCH_MODE="bundle"
+  LAUNCH_CMD="$BUNDLE_DIR/run-game.sh"
+  (
+    cd "$BUNDLE_DIR"
+    "$BUNDLE_DIR/run-game.sh" "${WORLD_ARGS[@]}" >"$WORLD_LOG" 2>&1
+  ) &
+else
+  LAUNCH_MODE="source"
+  LAUNCH_CMD="cargo run -p agent_world --bin world_game_launcher"
+  (
+    cd "$ROOT_DIR"
+    env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_game_launcher -- "${WORLD_ARGS[@]}" >"$WORLD_LOG" 2>&1
+  ) &
+fi
 LAUNCHER_PID=$!
 cat <<'INFO' >"$WEB_LOG"
 run-viewer-web.sh no longer runs as a standalone process in this stack.
@@ -306,6 +357,9 @@ INFO
   echo "CHAIN_ENABLED=$CHAIN_ENABLED"
   echo "CHAIN_NODE_ID=$CHAIN_NODE_ID"
   echo "CHAIN_STATUS_BIND_ADDR=$CHAIN_STATUS_BIND_ADDR"
+  echo "LAUNCH_MODE=$LAUNCH_MODE"
+  echo "LAUNCH_CMD=$LAUNCH_CMD"
+  echo "BUNDLE_DIR=$BUNDLE_DIR"
 } >"$META_FILE"
 
 if ! wait_for_http_ready "http://${VIEWER_HOST}:${VIEWER_PORT}/" 180; then
@@ -333,11 +387,18 @@ GAME_URL="http://${URL_VIEWER_HOST}:${VIEWER_PORT}/?ws=ws://${URL_WS_HOST}:${WEB
 
 cat <<INFO
 Game test stack is ready.
+- Mode: $LAUNCH_MODE
+- Launcher: $LAUNCH_CMD
+- Bundle dir: ${BUNDLE_DIR:-disabled}
 - URL: $GAME_URL
 - Logs: $OUTPUT_DIR
 - Chain enabled: $CHAIN_ENABLED
 - Chain node id: ${CHAIN_NODE_ID:-disabled}
 - Chain status bind: ${CHAIN_STATUS_BIND_ADDR:-disabled}
+
+Recommended use:
+- producer/release playtests: pass --bundle-dir <bundle>
+- source mode remains for development/debug only
 
 agent-browser example:
   AGENT_BROWSER_SESSION=game-test-open \

@@ -23,6 +23,7 @@
 
 ## 近期专题
 - `doc/testing/governance/testing-quality-trend-tracking-2026-03-11.prd.md`
+- `doc/testing/launcher/launcher-bundle-first-playtest-entry-2026-03-12.prd.md`
 - `doc/testing/launcher/launcher-manual-test-checklist-2026-03-10.prd.md`
 - `doc/testing/launcher/launcher-full-usability-closure-audit-2026-03-08.prd.md`
 - `doc/testing/longrun/chain-runtime-feedback-replication-network-autowire-2026-03-02.prd.md`

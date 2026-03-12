@@ -29,6 +29,9 @@ Options:
 If --url is omitted, the script starts:
   ./scripts/run-game-test.sh [remaining args...]
 
+Preferred producer/release example:
+  ./scripts/run-game-test-ab.sh --bundle-dir output/release/game-launcher-local --no-llm
+
 Artifacts:
   <out-dir>/<run-id>/agent-browser.log
   <out-dir>/<run-id>/playthrough.webm
