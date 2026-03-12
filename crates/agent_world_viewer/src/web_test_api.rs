@@ -26,7 +26,7 @@ use wasm_bindgen::closure::Closure;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::{JsCast, JsValue};
 #[cfg(target_arch = "wasm32")]
-use web_sys::js_sys::{Array, Object, Reflect as JsReflect};
+use web_sys::js_sys::{Array, Function, Object, Reflect as JsReflect};
 #[cfg(target_arch = "wasm32")]
 use web_sys::UrlSearchParams;
 #[cfg(target_arch = "wasm32")]
@@ -138,6 +138,7 @@ thread_local! {
     static WEB_TEST_API_STATE_SNAPSHOT: RefCell<WebTestApiStateSnapshot> = RefCell::new(WebTestApiStateSnapshot::default());
     static WEB_TEST_API_COMPLETION_ACKS: RefCell<HashMap<u64, agent_world::viewer::ControlCompletionAck>> = RefCell::new(HashMap::new());
     static WEB_TEST_API_CONTROL_FEEDBACK_ID: RefCell<u64> = const { RefCell::new(0) };
+    static WEB_TEST_API_RUNTIME_FATAL_ERROR: RefCell<Option<String>> = const { RefCell::new(None) };
 }
 #[cfg(target_arch = "wasm32")]
 pub(super) struct WebTestApiBindings {
@@ -149,7 +150,9 @@ pub(super) struct WebTestApiBindings {
     _describe_controls: Closure<dyn FnMut() -> JsValue>,
     _fill_control_example: Closure<dyn FnMut(JsValue) -> JsValue>,
     _send_control: Closure<dyn FnMut(JsValue, JsValue) -> JsValue>,
+    _report_fatal_error: Closure<dyn FnMut(JsValue, JsValue)>,
     _get_state: Closure<dyn FnMut() -> JsValue>,
+    _runtime_diag_installer: Function,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -341,6 +344,92 @@ fn update_last_control_feedback(feedback: WebTestApiControlFeedback) {
     WEB_TEST_API_STATE_SNAPSHOT.with(|slot| {
         slot.borrow_mut().last_control_feedback = Some(feedback);
     });
+}
+
+#[cfg(target_arch = "wasm32")]
+fn normalize_runtime_error_text(value: &str) -> String {
+    value
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .trim()
+        .to_string()
+}
+
+#[cfg(target_arch = "wasm32")]
+fn record_runtime_fatal_error(source: &str, message: &str) {
+    let message = normalize_runtime_error_text(message);
+    if message.is_empty() {
+        return;
+    }
+    let source = normalize_runtime_error_text(source);
+    let formatted = if source.is_empty() {
+        message
+    } else {
+        format!("{source}: {message}")
+    };
+    WEB_TEST_API_RUNTIME_FATAL_ERROR.with(|slot| {
+        *slot.borrow_mut() = Some(formatted);
+    });
+}
+
+#[cfg(target_arch = "wasm32")]
+fn current_runtime_fatal_error() -> Option<String> {
+    WEB_TEST_API_RUNTIME_FATAL_ERROR.with(|slot| slot.borrow().clone())
+}
+
+#[cfg(target_arch = "wasm32")]
+fn install_runtime_diagnostic_hooks() -> Function {
+    let installer = Function::new_no_args(
+        r#"
+const aw = window.__AW_TEST__;
+if (!aw || aw.__runtimeDiagInstalled) {
+  return;
+}
+aw.__runtimeDiagInstalled = true;
+const stringify = (value) => {
+  if (typeof value === 'string') {
+    return value;
+  }
+  try {
+    return JSON.stringify(value);
+  } catch (_) {
+    return String(value);
+  }
+};
+const report = (source, message) => {
+  try {
+    aw.reportFatalError(String(message || source || 'unknown runtime error'), String(source || 'runtime'));
+  } catch (_) {}
+};
+window.addEventListener('error', (event) => {
+  const message = event?.message || event?.error?.message || stringify(event?.error || 'window error');
+  report('window.error', message);
+});
+window.addEventListener('unhandledrejection', (event) => {
+  const reason = event?.reason?.message || stringify(event?.reason || 'unhandled rejection');
+  report('window.unhandledrejection', reason);
+});
+const originalError = console.error.bind(console);
+console.error = function(...args) {
+  try {
+    const text = args.map(stringify).join(' ');
+    if (/copy_deferred_lighting_id_pipeline|Shader compilation failed|wgpu error|Validation Error|CONTEXT_LOST_WEBGL|context lost/i.test(text)) {
+      report('console.error', text);
+    }
+  } catch (_) {}
+  return originalError(...args);
+};
+const canvas = typeof document !== 'undefined' && document.querySelector ? document.querySelector('canvas') : null;
+if (canvas && canvas.addEventListener) {
+  canvas.addEventListener('webglcontextlost', () => {
+    report('webglcontextlost', 'WebGL context lost');
+  });
+}
+"#,
+    );
+    let _ = installer.call0(&JsValue::NULL);
+    installer
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -916,6 +1005,21 @@ pub(super) fn setup_web_test_api(world: &mut World) {
         send_control.as_ref().unchecked_ref(),
     );
 
+    let report_fatal_error = Closure::wrap(Box::new(move |message: JsValue, source: JsValue| {
+        let message = parse_string_payload(&message)
+            .or_else(|| message.as_string())
+            .unwrap_or_else(|| "unknown runtime error".to_string());
+        let source = parse_string_payload(&source)
+            .or_else(|| source.as_string())
+            .unwrap_or_else(|| "runtime".to_string());
+        record_runtime_fatal_error(source.as_str(), message.as_str());
+    }) as Box<dyn FnMut(JsValue, JsValue)>);
+    let _ = JsReflect::set(
+        &api,
+        &JsValue::from_str("reportFatalError"),
+        report_fatal_error.as_ref().unchecked_ref(),
+    );
+
     let get_state = Closure::wrap(Box::new(move || -> JsValue {
         WEB_TEST_API_STATE_SNAPSHOT.with(|slot| build_state_js_value(&slot.borrow()))
     }) as Box<dyn FnMut() -> JsValue>);
@@ -926,6 +1030,7 @@ pub(super) fn setup_web_test_api(world: &mut World) {
     );
 
     let _ = JsReflect::set(&window, &JsValue::from_str(TEST_API_GLOBAL_NAME), &api);
+    let runtime_diag_installer = install_runtime_diagnostic_hooks();
 
     world.insert_non_send_resource(WebTestApiBindings {
         _api: api,
@@ -936,7 +1041,9 @@ pub(super) fn setup_web_test_api(world: &mut World) {
         _describe_controls: describe_controls,
         _fill_control_example: fill_control_example,
         _send_control: send_control,
+        _report_fatal_error: report_fatal_error,
         _get_state: get_state,
+        _runtime_diag_installer: runtime_diag_installer,
     });
 }
 
@@ -1027,10 +1134,15 @@ pub(super) fn publish_web_test_api_state(
 ) {
     WEB_TEST_API_STATE_SNAPSHOT.with(|slot| {
         let mut snapshot = slot.borrow_mut();
-        snapshot.connection_status = match &state.status {
-            ConnectionStatus::Connecting => "connecting",
-            ConnectionStatus::Connected => "connected",
-            ConnectionStatus::Error(_) => "error",
+        let runtime_fatal_error = current_runtime_fatal_error();
+        snapshot.connection_status = if runtime_fatal_error.is_some() {
+            "error"
+        } else {
+            match &state.status {
+                ConnectionStatus::Connecting => "connecting",
+                ConnectionStatus::Connected => "connected",
+                ConnectionStatus::Error(_) => "error",
+            }
         };
         let snapshot_tick = state
             .snapshot
@@ -1065,17 +1177,16 @@ pub(super) fn publish_web_test_api_state(
             .map(str::to_string);
         snapshot.selected_id = selection.current.as_ref().map(|info| info.id.clone());
 
-        match &state.status {
-            ConnectionStatus::Error(message) => {
-                if snapshot.last_error.as_deref() != Some(message.as_str()) {
-                    snapshot.error_count = snapshot.error_count.saturating_add(1);
-                }
-                snapshot.last_error = Some(message.clone());
-            }
-            _ => {
-                snapshot.last_error = None;
+        let next_error = runtime_fatal_error.or_else(|| match &state.status {
+            ConnectionStatus::Error(message) => Some(message.clone()),
+            _ => None,
+        });
+        if snapshot.last_error.as_deref() != next_error.as_deref() {
+            if next_error.is_some() {
+                snapshot.error_count = snapshot.error_count.saturating_add(1);
             }
         }
+        snapshot.last_error = next_error;
 
         snapshot.camera_mode = match *camera_mode {
             ViewerCameraMode::TwoD => "2d",

@@ -107,6 +107,8 @@
 - [x] TASK-WORLD_SIMULATOR-102 (PRD-WORLD_SIMULATOR-031) [test_tier_required]: 同步 `doc/world-simulator/viewer/viewer-manual.md` 的适用边界，明确其仅覆盖 Viewer 页面；`world_web_launcher` / launcher Web 控制面产品动作默认走 GUI Agent。
 - [x] TASK-WORLD_SIMULATOR-103 (PRD-WORLD_SIMULATOR-034) [test_tier_required]: 完成“launcher stale execution world 恢复”PRD/Design/Project 建模，并回写模块主文档与索引。
 - [x] TASK-WORLD_SIMULATOR-104 (PRD-WORLD_SIMULATOR-034) [test_tier_required]: 为 launcher / GUI Agent 增加 stale execution world 识别与 fresh node id 恢复链路，并补齐 `start_chain -> query_explorer_overview -> start_game` 定向回归。
+- [x] TASK-WORLD_SIMULATOR-105 (PRD-WORLD_SIMULATOR-035) [test_tier_required]: 完成“Viewer Web runtime fatal 透出与 SwiftShader 口径对齐”PRD/Design/Project 建模，并回写模块主文档与索引。
+- [x] TASK-WORLD_SIMULATOR-106 (PRD-WORLD_SIMULATOR-035) [test_tier_required]: 为 Viewer Web `__AW_TEST__` 与 `run-game-test-ab.sh` 增加浏览器 fatal 快失败链路，并同步 Viewer / testing 手册。
 
 ## 专题任务映射（2026-03-02 批次）
 - [x] SUBTASK-WORLD_SIMULATOR-20260302-001 (PRD-WORLD_SIMULATOR-001/002/003) [test_tier_required]: `doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.project.md`
@@ -231,9 +233,11 @@
 - 最新完成: `TASK-WORLD_SIMULATOR-102`（Viewer 手册补齐 launcher Web 控制面 GUI Agent 优先边界）。
 - 最新完成: `TASK-WORLD_SIMULATOR-103`（launcher stale execution world 恢复专题建档）。
 - 最新完成: `TASK-WORLD_SIMULATOR-104`（launcher stale execution world 识别 / 恢复实现与定向回归）。
+- 最新完成: `TASK-WORLD_SIMULATOR-105`（Viewer Web runtime fatal 透出专题建档）。
+- 最新完成: `TASK-WORLD_SIMULATOR-106`（Viewer Web fatal 透出、脚本快失败与手册同步）。
 - 当前优先任务: `待新需求`
 - 并行待办: 无
-- 专题映射状态: 2026-03-02 批次 9/9、2026-03-03 批次 4/4、2026-03-04 批次 7/7、2026-03-05 批次 4/4、2026-03-06 批次 6/6 已纳入模块项目管理文档；`TASK-WORLD_SIMULATOR-057~097` 已完成。
+- 专题映射状态: 2026-03-02 批次 9/9、2026-03-03 批次 4/4、2026-03-04 批次 7/7、2026-03-05 批次 4/4、2026-03-06 批次 6/6 已纳入模块项目管理文档；`TASK-WORLD_SIMULATOR-057~106` 已完成。
 - 手册入口状态: `doc/world-simulator/viewer/viewer-manual.md` 为唯一活跃手册入口。
 - 视觉评分模板状态: `doc/world-simulator/prd/acceptance/visual-review-score-card.md` 已纳入文档树，采用卡片式评审覆盖 llm_bootstrap 场景 18 张截图。
 - UI 评审结果状态: `doc/ui_review_result/ui_review_list.md` 已建立，首张待打分卡片为 `doc/ui_review_result/card_2026_03_06_11_50_29.md`。

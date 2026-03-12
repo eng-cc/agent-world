@@ -48,6 +48,7 @@
   - `doc/world-simulator/kernel/runtime-required-failing-tests-offline-2026-03-09.prd.md`（PRD-WORLD_SIMULATOR-032）
   - `doc/world-simulator/launcher/game-client-launcher-chain-runtime-execution-world-dir-output-hardening-2026-03-09.prd.md`（PRD-WORLD_SIMULATOR-033）
   - `doc/world-simulator/launcher/game-client-launcher-chain-runtime-stale-execution-world-recovery-2026-03-12.prd.md`（PRD-WORLD_SIMULATOR-034）
+  - `doc/world-simulator/viewer/viewer-web-runtime-fatal-surfacing-2026-03-12.prd.md`（PRD-WORLD_SIMULATOR-035）
   - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase1-2026-03-04.prd.md`（PRD-WORLD_SIMULATOR-016）
   - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase2-2026-03-05.prd.md`（PRD-WORLD_SIMULATOR-017）
   - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase3-2026-03-05.prd.md`（PRD-WORLD_SIMULATOR-018）
@@ -174,6 +175,7 @@
   - PRD-WORLD_SIMULATOR-032: As a runtime 维护者, I want known required failing tests to be temporarily offlined with explicit traceability, so that pre-commit can proceed while keeping recovery signals.
   - PRD-WORLD_SIMULATOR-033: As a 启动器维护者, I want launcher to pass an explicit execution world output path to chain runtime, so that runtime-generated explorer index files always stay under `output/`.
   - PRD-WORLD_SIMULATOR-034: As a 启动器用户, I want launcher to detect and recover from stale chain execution-world conflicts, so that I can restart chain-enabled flows without reading raw runtime logs or manually changing node IDs.
+  - PRD-WORLD_SIMULATOR-035: As a Web Viewer 调试者/制作人, I want browser-side fatal render failures to surface immediately in `__AW_TEST__` and scripts, so that I can distinguish graphics-environment blockers from gameplay or protocol bugs without guessing.
 - Critical User Flows:
   1. Flow-WS-001（Web-first 闭环）:
      `选择场景 -> 启动 Viewer Web -> 执行关键交互 -> 采集日志/截图/指标 -> 产出 test_tier_required 结论`
@@ -480,6 +482,7 @@
 | PRD-WORLD_SIMULATOR-032 | TASK-WORLD_SIMULATOR-093/094 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p agent_world --tests --features test_tier_required`，验证 10 项已知失败用例临时下线后 required 测试链路恢复可执行且白名单外覆盖保持有效 | runtime required 回归可用性、pre-commit 稳定性、测试资产可追溯性 |
 | PRD-WORLD_SIMULATOR-033 | TASK-WORLD_SIMULATOR-095/096 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_game_launcher world_game_launcher_tests::build_world_chain_runtime_args_includes_storage_profile -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher world_web_launcher_tests::build_chain_runtime_args_includes_chain_overrides_when_on -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p agent_world --bin world_game_launcher --bin world_web_launcher`，验证双启动器均显式传递 `--execution-world-dir` 并固定到 `output/chain-runtime/<node_id>/reward-runtime-execution-world` | 运行时产物路径可控性、源码目录洁净度、launcher 对 runtime 参数透传稳定性 |
 | PRD-WORLD_SIMULATOR-034 | TASK-WORLD_SIMULATOR-103/104 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_game_launcher -- --nocapture` + GUI Agent 闭环（默认 node id stale 失败 + fresh node id 恢复 + explorer overview 查询成功） | launcher 链启动恢复体验、GUI Agent 契约、chain-enabled 试玩可达性 |
+| PRD-WORLD_SIMULATOR-035 | TASK-WORLD_SIMULATOR-105/106 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer` + `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-unknown` + agent-browser Web 闭环（验证 `__AW_TEST__.getState().lastError` 能命中浏览器 fatal 并触发快失败） | Viewer Web 图形链路可诊断性、producer/QA 闭环失败透明度、手册与脚本口径一致性 |
 
 - Decision Log:
 

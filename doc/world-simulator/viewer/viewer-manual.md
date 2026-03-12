@@ -448,10 +448,10 @@ env -u NO_COLOR ./scripts/run-viewer-web.sh --address 127.0.0.1 --port 4173
 ```bash
 command -v agent-browser >/dev/null || { echo "missing agent-browser" >&2; exit 1; }
 mkdir -p output/playwright/viewer
-agent-browser --headed open "http://127.0.0.1:4173/?ws=ws://127.0.0.1:5011"
+agent-browser --headed open "http://127.0.0.1:4173/?ws=ws://127.0.0.1:5011&test_api=1"
 agent-browser wait --load networkidle
 agent-browser snapshot -i
-agent-browser eval "JSON.stringify(window.__AW_TEST__?.getState?.() ?? null)"
+agent-browser eval "JSON.stringify(window.__AW_TEST__?.getState?.() ?? null)" | tee output/playwright/viewer/state.json
 agent-browser console | tee output/playwright/viewer/console.log
 agent-browser screenshot output/playwright/viewer/viewer-web.png
 agent-browser close
@@ -460,12 +460,20 @@ agent-browser close
 
 ### 输出目录
 - `output/playwright/viewer/*.png`
+- `output/playwright/viewer/state.json`（`window.__AW_TEST__.getState()` 采样）
 - `output/playwright/viewer/console.log`（或等价的 agent-browser 控制台重定向日志）
 
 ### 最小验收口径
 - 页面加载成功（`snapshot -i` 可见交互树，且主视区正常渲染）。
-- `console error = 0`。
+- `window.__AW_TEST__.getState()` 返回 `connectionStatus=connected` 且 `lastError=null`。
+- `console.log` 中不得出现 `SwiftShader` / `copy_deferred_lighting_id_pipeline` / `CONTEXT_LOST_WEBGL` 等图形 fatal 签名。
 - 至少产出 1 张截图。
+
+### Web 图形门禁提示
+- Viewer Web 闭环必须在 headed、硬件加速可用的浏览器环境下执行。
+- 若 `state.json` 中长期停留 `connectionStatus="connecting"`、`logicalTime=0`，先检查 `lastError`。
+- 若 `lastError` 或控制台包含 `copy_deferred_lighting_id_pipeline`、`CONTEXT_LOST_WEBGL`、`Shader compilation failed`，应判定为浏览器图形链路失败，而不是玩法/协议失败。
+- 若控制台明确出现 `SwiftShader` / software renderer 信号，应停止用该浏览器环境继续给出玩法结论，改用硬件加速浏览器或走下面的 native fallback。
 
 ### native fallback（仅在 Web 无法复现或排查图形链路）
 基础调用：
@@ -540,7 +548,7 @@ agent-browser close
 ## 常见问题排查
 - Web 页面空白：等待 `trunk` 首轮编译完成，确认访问端口与 `run-viewer-web.sh` 参数一致。
 - `agent-browser` 启动失败：先检查 `agent-browser --version` 与本地浏览器依赖是否可用。
-- Console 有 wasm 报错：先修复运行时错误再看视觉问题，避免误判为渲染缺陷。
+- Console 有 wasm 报错：先看 `output/playwright/viewer/state.json` 的 `lastError`；若命中 `copy_deferred_lighting_id_pipeline` / `CONTEXT_LOST_WEBGL` / `SwiftShader`，按图形链路失败处理。
 - 看不到细节：切换 3D，放大并移动视角；必要时使用 `F` 聚焦目标。
 - 自动聚焦无效：确认 target 存在，或先使用 `first_fragment` 排除 ID 输入问题。
 - 连接失败：检查 `world_viewer_live` 是否运行、端口与 viewer 地址是否一致。
