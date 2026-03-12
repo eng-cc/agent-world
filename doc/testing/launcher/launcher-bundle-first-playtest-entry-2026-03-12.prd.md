@@ -2,6 +2,34 @@
 
 审计轮次: 1
 
+## 目标
+- 建立启动器 bundle-first 试玩入口专题规格，统一制作人试玩、发布前人工验收与开发源码回归之间的使用边界。
+- 确保启动器 bundle 入口、手册、自动化与人工清单的执行口径可追溯到同一组 PRD-ID / task / 证据链。
+
+## 范围
+- 覆盖 `scripts/run-game-test.sh --bundle-dir`、`scripts/run-producer-playtest.sh`、`scripts/run-game-test-ab.sh` 在启动器 bundle-first 场景中的职责划分。
+- 覆盖 `testing-manual.md`、启动器人工测试清单、`doc/testing/project.md`、`doc/testing/prd.index.md` 与本专题项目文档的回写要求。
+- 不覆盖 `world_game_launcher` / `world_web_launcher` 的业务功能扩展，也不新增独立第四条自动化链路。
+
+## 接口 / 数据
+- PRD 主入口: `doc/testing/launcher/launcher-bundle-first-playtest-entry-2026-03-12.prd.md`
+- 项目管理入口: `doc/testing/launcher/launcher-bundle-first-playtest-entry-2026-03-12.project.md`
+- 模块主 PRD: `doc/testing/prd.md`
+- 模块主项目: `doc/testing/project.md`
+- 文件级索引: `doc/testing/prd.index.md`
+- 操作手册: `testing-manual.md`
+- 关联清单: `doc/testing/launcher/launcher-manual-test-checklist-2026-03-10.prd.md`
+
+## 里程碑
+- M1 (2026-03-12): 建立启动器 bundle-first 专题三件套并回写 testing 索引。
+- M2 (2026-03-12): 为 bundle-first 试玩入口补齐 headed / renderer / freshness guardrail 口径与验证。
+- M3: 继续观察不同图形环境下的 bundle-first 默认稳定性，必要时再拆专项治理。
+
+## 风险
+- 若专题 PRD 缺少 paired project 追溯或 legacy 头部章节，将直接触发文档门禁失败，导致测试结论无法放行。
+- 若 bundle-first 与源码模式口径再次混淆，制作人试玩仍可能退回开发态链路，削弱证据可信度。
+- 若 freshness / renderer 阻断规则未同步到手册与自动化，容易重复出现环境阻断与真实玩法回归混淆。
+
 ## 1. Executive Summary
 - Problem Statement: 当前 `testing-manual.md` 与 `scripts/run-game-test.sh` 都把 `world_game_launcher` 说成默认 Web 闭环入口，但没有明确区分“源码直接运行”与“打包后 bundle 产物运行”。这会让制作人试玩、发布前人工验收和开发回归混用同一口径，导致操作者更容易直接走 `cargo run`，偏离真实交付物体验，也放大静态资源、执行目录与本地状态混杂带来的误判。
 - Proposed Solution: 将启动器试玩入口明确收敛为“双模”策略：`bundle-first` 作为制作人试玩、发布前人工验收和对外交付样张的默认入口；`scripts/run-game-test.sh` 保留，但降级为开发回归 bootstrap，并新增 `--bundle-dir` 以直接消费打包产物。进一步提供 `scripts/run-producer-playtest.sh` 作为制作人一键入口，自动准备 bundle 后再进入 bundle 模式启动。

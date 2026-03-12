@@ -53,6 +53,7 @@
 - [x] TASK-ENGINEERING-046 (PRD-ENGINEERING-016) [test_tier_required]: 回填 `TASK-ENGINEERING-045` 在 `engineering/project.md` 的任务映射缺口，恢复任务区与状态区追踪一致性。
 - [x] TASK-ENGINEERING-047 (PRD-ENGINEERING-016) [test_tier_required]: 统一各模块主 `prd.md` 接口区中“文件级索引”路径的反引号格式，保持入口字段样式一致。
 - [x] TASK-ENGINEERING-048 (PRD-ENGINEERING-016) [test_tier_required]: 回写 `module-root-md-allowlist`，补齐近期新增模块根级专题文档与交接记录路径，恢复 allowlist 与真实目录一致。
+- [x] TASK-ENGINEERING-049 (PRD-ENGINEERING-018) [test_tier_required]: 将根 `AGENTS.md` 顶部协作执行口径从“可开启 sub agent”收敛为“切换到标准角色视角并加载职责卡”，消除机制表述与现行角色协作工作流的不一致。
 
 ## 依赖
 - 模块设计总览：`doc/engineering/design.md`
@@ -79,12 +80,13 @@
 - `doc/*/README.md`
 
 ## 状态
-- 更新日期: 2026-03-11
+- 更新日期: 2026-03-12
 - 当前状态: completed
 - 下一任务: 无（当前 engineering 主项目已完成）
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - 当前整改批次: R2（引用路径可达门禁）已完成（019）；R3（全量 PRD 审读机制）已完成（020-024，清单覆盖 708/708）。
 - 当前规范补充: 已完成 `TASK-ENGINEERING-025/026/027`，冻结“目录按对象、文件按职责”的文档建模方案、稳定专题命名，并补齐测试相关文档分工规则。
+- 最新完成: `TASK-ENGINEERING-049`（根 `AGENTS.md` 顶部协作执行语义收敛为角色视角切换）。
 - 最新完成: `TASK-ENGINEERING-030`（角色职责卡收口与根 `AGENTS.md` 入口改造）。
 - 最新完成: `TASK-ENGINEERING-031`（角色统一交接模板建档与入口接入）。
 - 最新完成: `TASK-ENGINEERING-032`（开发工作流升级为角色协作版）。
@@ -108,4 +110,4 @@
 - 最新完成: `TASK-ENGINEERING-003`（工程门禁趋势统计与首份 baseline）。
 - 最新完成: `TASK-ENGINEERING-004`（engineering 季度治理审查流程与模板）。
 - 最新完成: `TASK-ENGINEERING-009`（活跃老格式文档分批迁移 umbrella 收口）。
-- 说明: 本文档仅维护 engineering 设计执行状态；过程记录在 `doc/devlog/2026-03-03.md`、`doc/devlog/2026-03-04.md` 与 `doc/devlog/2026-03-09.md`。
+- 说明: 本文档仅维护 engineering 设计执行状态；过程记录在 `doc/devlog/2026-03-03.md`、`doc/devlog/2026-03-04.md`、`doc/devlog/2026-03-09.md` 与 `doc/devlog/2026-03-12.md`。
