@@ -46,8 +46,9 @@
 - 当前风险：
   - `run-game-test.sh` 依赖 `crates/agent_world_viewer/dist`，若 dist 目录未及时重建，可能出现协议枚举漂移导致 Web 端 decode error。
   - LLM 前置配置缺失时，`run-game-test.sh` 仍可能启动失败（可用 `--no-llm` 回退）。
+  - `agent-browser record start` 当前会为 Viewer Web 创建 fresh browser context，并把页面重置到冷启动；闭环脚本会立即 reopen 恢复连接，但 `playthrough.webm` 仅能作为 best-effort 片段，截图 / `__AW_TEST__` 状态 / 量化指标仍是主证据。
   - 历史文档虽已归档，但旧日志中的历史路径仍可能被误引用。
-- 最近更新：2026-03-06
+- 最近更新：2026-03-12
 
 ## 迁移记录（2026-03-03）
 - 已按 `TASK-ENGINEERING-014-D1 (PRD-ENGINEERING-006)` 从 legacy 命名迁移为 `.prd.md/.project.md`。

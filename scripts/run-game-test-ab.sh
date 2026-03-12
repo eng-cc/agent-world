@@ -107,6 +107,7 @@ CONSOLE_ALL_LOG="$OUT_DIR/console_all_messages.log"
 AB_METRICS_JSON="$OUT_DIR/ab_metrics.json"
 AB_METRICS_MD="$OUT_DIR/ab_metrics.md"
 CARD_METRICS_MD="$OUT_DIR/card_quant_metrics.md"
+RECORDING_STATUS_FILE="$OUT_DIR/recording_status.txt"
 SESSION="playability-ab-$RUN_ID"
 
 STACK_PID=""
@@ -417,34 +418,23 @@ RECORDING_ACTIVE=0
 ab_log_note record_start
 if ab_cmd "$SESSION" record start "$OUT_DIR/playthrough.webm" >>"$AB_LOG" 2>&1; then
   RECORDING_ACTIVE=1
-fi
-wait_for_api 20000 >/dev/null || true
-set +e
-initial_after_record=$(wait_for_connected 15000)
-initial_after_record_status=$?
-set -e
-if [[ "$initial_after_record_status" -ne 0 ]]; then
-  echo "warning: record_start disrupted connection; retry without recording" | tee -a "$AB_LOG" >/dev/null
-  if [[ "$initial_after_record_status" -eq 2 ]]; then
-    echo "warning: viewer reported fatal error after record_start: $(state_last_error "$initial_after_record")" | tee -a "$AB_LOG" >/dev/null
-  fi
-  if [[ "$RECORDING_ACTIVE" -eq 1 ]]; then
-    ab_log_note record_stop_recover
-    ab_cmd "$SESSION" record stop >>"$AB_LOG" 2>&1 || true
-    RECORDING_ACTIVE=0
-  fi
+  echo "info: record_start resets Viewer Web session; reopen immediately to keep recorded run connected" | tee -a "$AB_LOG" >/dev/null
+  ab_log_note record_reopen_sync
   set +e
   initial_after_record=$(reopen_game_page)
   initial_after_record_status=$?
   set -e
   if [[ "$initial_after_record_status" -ne 0 ]]; then
     if [[ "$initial_after_record_status" -eq 2 ]]; then
-      echo "error: connection failed after record_start recovery due to viewer fatal error: $(state_last_error "$initial_after_record")" >&2
+      echo "error: connection failed after record_start sync due to viewer fatal error: $(state_last_error "$initial_after_record")" >&2
     else
-      echo "error: connection failed after record_start recovery (status=$(state_connection "$initial_after_record"), lastFeedback=$(state_last_feedback_json "$initial_after_record"), lastError=$(state_last_error "$initial_after_record"))" >&2
+      echo "error: connection failed after record_start sync (status=$(state_connection "$initial_after_record"), lastFeedback=$(state_last_feedback_json "$initial_after_record"), lastError=$(state_last_error "$initial_after_record"))" >&2
     fi
     exit 1
   fi
+  printf '%s
+' 'agent-browser record start creates a fresh browser context for Viewer Web; the forced reopen needed to recover connection also ends that recording. playthrough.webm is therefore a best-effort pre-sync clip, while screenshots/state/metrics remain the authoritative closure evidence.' >"$RECORDING_STATUS_FILE"
+  RECORDING_ACTIVE=0
 fi
 
 phaseA_play=$(send_control_probe phase_a_play play '{}' true 12000)
