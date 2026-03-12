@@ -3,6 +3,8 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
+source "$ROOT_DIR/scripts/agent-browser-lib.sh"
+source "$ROOT_DIR/scripts/bundle-freshness-lib.sh"
 
 BUNDLE_DIR="output/release/game-launcher-producer-local"
 PROFILE="release"
@@ -19,16 +21,19 @@ Usage: ./scripts/run-producer-playtest.sh [options] [run-game-test options...]
 Prepare a bundle-first Web stack for producer manual play.
 
 Default behavior:
-- reuse `output/release/game-launcher-producer-local` if it already exists
-- otherwise build a fresh bundle there
+- reuse `output/release/game-launcher-producer-local` if it already exists and is fresh
+- otherwise build or rebuild a fresh bundle there
 - then start `./scripts/run-game-test.sh --bundle-dir <bundle>`
+- when `--open-headed` is used, `agent-browser` defaults to hardware WebGL args
+  `--use-angle=gl,--ignore-gpu-blocklist` (override with `AGENT_BROWSER_ARGS`)
 
 Options:
   --bundle-dir <path>      Bundle directory to reuse/build (default: output/release/game-launcher-producer-local)
   --profile <name>         Bundle build profile: release|dev (default: release)
   --rebuild                Force rebuild even if bundle already exists
   --open-headed            After stack ready, auto-open the Viewer URL in headed `agent-browser`
-                           and close that browser session when the script exits
+                           with default hardware WebGL args, and close that browser session when
+                           the script exits
   --session <name>         `agent-browser` session name for `--open-headed` (default: producer-playtest)
   --startup-timeout <secs> Wait timeout for stack URL when `--open-headed` is used (default: 120)
   -h, --help               Show this help
@@ -39,14 +44,6 @@ Examples:
   ./scripts/run-producer-playtest.sh --no-llm --open-headed
   ./scripts/run-producer-playtest.sh --bundle-dir output/release/game-launcher-local --no-llm
 USAGE
-}
-
-require_cmd() {
-  local cmd=$1
-  command -v "$cmd" >/dev/null 2>&1 || {
-    echo "error: missing required command: $cmd" >&2
-    exit 1
-  }
 }
 
 while [[ $# -gt 0 ]]; do
@@ -97,8 +94,18 @@ else
   ABS_BUNDLE_DIR="$BUNDLE_DIR"
 fi
 
-if [[ "$REBUILD" == "1" || ! -x "$ABS_BUNDLE_DIR/run-game.sh" ]]; then
-  echo "info: preparing producer playtest bundle at $ABS_BUNDLE_DIR (profile=$PROFILE)"
+BUNDLE_REBUILD_REASON=""
+if [[ "$REBUILD" == "1" ]]; then
+  BUNDLE_REBUILD_REASON="forced by --rebuild"
+elif [[ ! -x "$ABS_BUNDLE_DIR/run-game.sh" ]]; then
+  BUNDLE_REBUILD_REASON="bundle missing run-game.sh"
+elif ! freshness_note=$(bundle_check_freshness "$ROOT_DIR" "$ABS_BUNDLE_DIR" 2>&1); then
+  echo "info: stale producer bundle detected: $freshness_note"
+  BUNDLE_REBUILD_REASON="workspace drift detected"
+fi
+
+if [[ -n "$BUNDLE_REBUILD_REASON" ]]; then
+  echo "info: preparing producer playtest bundle at $ABS_BUNDLE_DIR (profile=$PROFILE, reason=$BUNDLE_REBUILD_REASON)"
   ./scripts/build-game-launcher-bundle.sh --profile "$PROFILE" --out-dir "$ABS_BUNDLE_DIR"
 else
   echo "info: reusing existing producer playtest bundle at $ABS_BUNDLE_DIR"
@@ -108,7 +115,7 @@ if [[ "$OPEN_HEADED" != "1" ]]; then
   exec ./scripts/run-game-test.sh --bundle-dir "$ABS_BUNDLE_DIR" "${STACK_ARGS[@]}"
 fi
 
-require_cmd agent-browser
+ab_require
 mkdir -p "$ROOT_DIR/output/playwright/playability"
 RUN_ID="$(date +%Y%m%d-%H%M%S)"
 RUN_LOG="$ROOT_DIR/output/playwright/playability/producer-launch-${RUN_ID}.log"
@@ -123,7 +130,7 @@ cleanup() {
     wait "$STACK_PID" >/dev/null 2>&1 || true
   fi
   if [[ "$BROWSER_OPENED" == "1" ]]; then
-    AGENT_BROWSER_SESSION="$SESSION_NAME" agent-browser close >/dev/null 2>&1 || true
+    ab_cmd "$SESSION_NAME" close >/dev/null 2>&1 || true
   fi
   exit "$exit_code"
 }
@@ -156,10 +163,16 @@ if [[ -z "$GAME_URL" ]]; then
   exit 1
 fi
 
+BROWSER_ARGS=$(ab_browser_args)
 echo "info: opening headed browser session '$SESSION_NAME' -> $GAME_URL"
-AGENT_BROWSER_SESSION="$SESSION_NAME" agent-browser --headed open "$GAME_URL"
+if [[ -n "$BROWSER_ARGS" ]]; then
+  echo "info: agent-browser args: $BROWSER_ARGS"
+else
+  echo "info: agent-browser args: <none>"
+fi
+ab_open "$SESSION_NAME" 1 "$GAME_URL"
 BROWSER_OPENED=1
-AGENT_BROWSER_SESSION="$SESSION_NAME" agent-browser wait --load networkidle >/dev/null 2>&1 || true
+ab_cmd "$SESSION_NAME" wait --load networkidle >/dev/null 2>&1 || true
 
 echo "info: browser session: $SESSION_NAME"
 echo "info: startup log: $RUN_LOG"

@@ -13,6 +13,14 @@ ab_require() {
   require_cmd python3
 }
 
+ab_browser_args() {
+  if [[ ${AGENT_BROWSER_ARGS+x} ]]; then
+    printf '%s\n' "$AGENT_BROWSER_ARGS"
+  else
+    printf '%s\n' '--use-angle=gl,--ignore-gpu-blocklist'
+  fi
+}
+
 ab_cmd() {
   local session=$1
   shift
@@ -23,11 +31,20 @@ ab_open() {
   local session=$1
   local headed=$2
   local url=$3
-  if [[ "$headed" -eq 1 ]]; then
-    AGENT_BROWSER_SESSION="$session" agent-browser --headed open "$url"
-  else
-    AGENT_BROWSER_SESSION="$session" agent-browser open "$url"
+  local browser_args
+  local cmd=(agent-browser)
+
+  browser_args=$(ab_browser_args)
+  if [[ -n "$browser_args" ]]; then
+    cmd+=(--args "$browser_args")
   fi
+  if [[ "$headed" -eq 1 ]]; then
+    cmd+=(--headed)
+  fi
+  cmd+=(open "$url")
+
+  AGENT_BROWSER_SESSION="$session" agent-browser close >/dev/null 2>&1 || true
+  AGENT_BROWSER_SESSION="$session" "${cmd[@]}"
 }
 
 ab_eval() {

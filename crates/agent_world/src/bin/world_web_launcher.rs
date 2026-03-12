@@ -64,6 +64,14 @@ const CHAIN_STATUS_PROBE_INTERVAL_MS: u64 = 1000;
 const CHAIN_STATUS_PROBE_TIMEOUT_MS: u64 = 300;
 const CHAIN_STATUS_STARTING_GRACE_SECS: u64 = 8;
 
+fn default_chain_node_id() -> String {
+    format!(
+        "{DEFAULT_CHAIN_NODE_ID}-fresh-{}-{}",
+        process::id(),
+        runtime_paths::now_unix_ms()
+    )
+}
+
 static TERMINATION_REQUESTED: AtomicBool = AtomicBool::new(false);
 static SIGNAL_HANDLER_INSTALL: OnceLock<Result<(), String>> = OnceLock::new();
 
@@ -110,7 +118,7 @@ impl Default for LauncherConfig {
             llm_enabled: false,
             chain_enabled: true,
             chain_status_bind: DEFAULT_CHAIN_STATUS_BIND.to_string(),
-            chain_node_id: DEFAULT_CHAIN_NODE_ID.to_string(),
+            chain_node_id: default_chain_node_id(),
             chain_storage_profile: StorageProfile::DevLocal.as_str().to_string(),
             chain_world_id: String::new(),
             chain_node_role: DEFAULT_CHAIN_NODE_ROLE.to_string(),

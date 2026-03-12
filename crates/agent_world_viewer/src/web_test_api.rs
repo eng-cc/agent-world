@@ -369,7 +369,15 @@ fn record_runtime_fatal_error(source: &str, message: &str) {
         format!("{source}: {message}")
     };
     WEB_TEST_API_RUNTIME_FATAL_ERROR.with(|slot| {
-        *slot.borrow_mut() = Some(formatted);
+        *slot.borrow_mut() = Some(formatted.clone());
+    });
+    WEB_TEST_API_STATE_SNAPSHOT.with(|slot| {
+        let mut snapshot = slot.borrow_mut();
+        if snapshot.last_error.as_deref() != Some(formatted.as_str()) {
+            snapshot.error_count = snapshot.error_count.saturating_add(1);
+        }
+        snapshot.connection_status = "error";
+        snapshot.last_error = Some(formatted.clone());
     });
 }
 
@@ -382,11 +390,10 @@ fn current_runtime_fatal_error() -> Option<String> {
 fn install_runtime_diagnostic_hooks() -> Function {
     let installer = Function::new_no_args(
         r#"
-const aw = window.__AW_TEST__;
-if (!aw || aw.__runtimeDiagInstalled) {
+if (!window.__AW_TEST__ || window.__AW_RUNTIME_DIAG_INSTALLED) {
   return;
 }
-aw.__runtimeDiagInstalled = true;
+window.__AW_RUNTIME_DIAG_INSTALLED = true;
 const stringify = (value) => {
   if (typeof value === 'string') {
     return value;
@@ -397,9 +404,31 @@ const stringify = (value) => {
     return String(value);
   }
 };
+const reloadKey = '__AW_RUNTIME_FATAL_RELOAD_ONCE__';
+const knownFatal = /copy_deferred_lighting_id_pipeline|Shader compilation failed|wgpu error|Validation Error|CONTEXT_LOST_WEBGL|context lost/i;
+const maybeReloadOnce = (message) => {
+  try {
+    const text = String(message || '');
+    if (!knownFatal.test(text) || !window.sessionStorage) {
+      return;
+    }
+    const marker = `${window.location.href}::fatal-reload`;
+    if (window.sessionStorage.getItem(reloadKey) === marker) {
+      return;
+    }
+    window.sessionStorage.setItem(reloadKey, marker);
+    window.setTimeout(() => window.location.reload(), 0);
+  } catch (_) {}
+};
 const report = (source, message) => {
   try {
-    aw.reportFatalError(String(message || source || 'unknown runtime error'), String(source || 'runtime'));
+    const text = String(message || source || 'unknown runtime error');
+    maybeReloadOnce(text);
+    const currentAw = window.__AW_TEST__;
+    if (!currentAw || typeof currentAw.reportFatalError !== 'function') {
+      return;
+    }
+    currentAw.reportFatalError(text, String(source || 'runtime'));
   } catch (_) {}
 };
 window.addEventListener('error', (event) => {

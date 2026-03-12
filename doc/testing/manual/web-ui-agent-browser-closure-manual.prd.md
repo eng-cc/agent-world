@@ -7,10 +7,10 @@
 
 ## 1. Executive Summary
 - Problem Statement: Web UI 验收若缺少统一启动、采样、门禁与故障分级，且未区分 Viewer 页面与 launcher 控制面的驱动优先级，容易出现“看起来可用但证据不可复现”的假通过。
-- Proposed Solution: 保留 agent-browser 作为 Viewer 页面默认闭环手册，同时显式规定 `world_web_launcher` / launcher Web 控制面先用 GUI Agent 驱动产品动作，再用页面做状态与字段校验，并统一接入发布脚本与 fail-fast 处置。
+- Proposed Solution: 保留 agent-browser 作为 Viewer 页面默认闭环手册，同时显式规定 `world_web_launcher` / launcher Web 控制面先用 GUI Agent 驱动产品动作，再用页面做状态与字段校验，并统一接入发布脚本与 fail-fast 处置；Viewer Web 默认通过 `--use-angle=gl,--ignore-gpu-blocklist` 固定硬件 WebGL 路径，若 headed 仍落到 software renderer 则继续按环境阻断。
 - Success Criteria:
   - SC-1: S6 Web 闭环流程可由手册命令一键复现，并明确区分 Viewer 与 launcher 控制面两类 surface。
-  - SC-2: 验收口径强制 `open ... --headed`，并阻断 `SwiftShader/software rendering`。
+  - SC-2: 验收口径强制 `open ... --headed`，并默认附带 `--use-angle=gl,--ignore-gpu-blocklist`；若仍命中 `SwiftShader/software rendering` 继续阻断。
   - SC-3: 至少输出 `snapshot + console + screenshot + state` 证据。
   - SC-4: 发布验收脚本（`viewer-release-qa-loop/full-coverage`）可直接复用手册约束。
   - SC-5: 文档迁移后统一 `.prd.md/.project.md` 命名并通过治理检查。
@@ -43,7 +43,7 @@
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
 | 启动与自检 | `--live-bind`、`--web-bind`、viewer URL、端口监听 | 启动 launcher 并检查 4173/5011 与主页可达 | `booting -> ready` | 先端口后 URL，再进入采样 | 执行者可操作 |
-| GPU 硬门禁 | `--headed`、console 关键字 (`SwiftShader` 等) | 采样前执行硬门禁检查 | `gating -> pass/fail` | 发现软件渲染即 fail | 发布/测试共同遵循 |
+| GPU 硬门禁 | `--headed`、`--use-angle=gl,--ignore-gpu-blocklist`、renderer/console 关键字 (`SwiftShader` 等) | 采样前执行硬门禁检查 | `gating -> pass/fail` | headed 若仍是软件渲染也 fail | 发布/测试共同遵循 |
 | agent-browser 采样 | `snapshot`、`eval`、`console`、`screenshot`、`getState` | 基于 `__AW_TEST__` 执行语义步骤 | `sampling -> evidence` | 至少 1 张截图 + state 字段完整 | 执行者产出，发布者审阅 |
 | launcher 控制面驱动 | `/api/gui-agent/capabilities`、`/api/gui-agent/state`、`/api/gui-agent/action`、页面字段快照 | 先通过 GUI Agent 执行动作，再用浏览器页面校验结果 | `action_requested -> applied -> verified` | launcher 控制面默认优先，不得被 canvas 直点替代 | 执行者与发布负责人共同审阅 |
 | 会话防抖 | `close-all`、fail-fast 预检查 | 每轮清理残留会话并快速失败 | `cleanup -> opened -> stable` | 先清会话后 open，减少残留干扰 | 执行者维护 |
@@ -51,7 +51,7 @@
 | 故障分级 | F1~F4 签名、处置动作、证据清单 | 识别错误并匹配处置流程 | `detected -> triaged -> archived` | 连接问题优先于可玩性判定 | 值守与维护者执行 |
 - Acceptance Criteria:
   - AC-1: 手册提供可直接复制的启动/采样/门禁命令。
-  - AC-2: 明确禁止 headless 验收与软件渲染口径。
+  - AC-2: 明确禁止 headless 验收与软件渲染口径，并声明 headed 若仍落到 SwiftShader 也不得放行。
   - AC-3: 定义最小通过标准（canvas、`__AW_TEST__`、`console error=0`、截图）。
   - AC-4: 提供 F1~F4 分级与对应处置动作。
   - AC-5: 发布脚本产物路径与门禁规则可追溯到本手册。
@@ -63,7 +63,7 @@
   - 不在本专题扩展非 Web 场景测试规范。
 
 ## 3. AI System Requirements (If Applicable)
-- Tool Requirements: `agent-browser` CLI（二进制命令）用于 Viewer 页面自动化；`world_web_launcher` 的 GUI Agent 接口用于 launcher 控制面动作驱动；执行环境需保证两者均可直接调用。
+- Tool Requirements: `agent-browser` CLI（二进制命令）用于 Viewer 页面自动化，默认通过 `--use-angle=gl,--ignore-gpu-blocklist` 固定硬件 WebGL 路径（可用 `AGENT_BROWSER_ARGS` 覆盖）；`world_web_launcher` 的 GUI Agent 接口用于 launcher 控制面动作驱动；执行环境需保证两者均可直接调用。
 - Evaluation Strategy: 通过语义动作成功率（`__AW_TEST__` 可用性）、门禁通过率和故障分级命中率评估闭环质量。
 
 ## 4. Technical Specifications
@@ -81,13 +81,15 @@
   - F2 渲染初始化崩溃（如 `RuntimeError: unreachable`、`CONTEXT_LOST_WEBGL`）：立即归档证据并标记失败。
   - F3 `connecting + tick=0` 长时间不推进：先执行 `play` 并额外观察约 12 秒，仍无推进则失败。
   - F4 URL 在 `source` 场景解析失败：强制使用带引号 URL，避免 `&` 被 shell 截断。
-  - 会话残留：每轮前 `close-all`，降低 daemon/session 干扰。
+  - 会话残留：每轮前 `close-all`，同名 session 在重新 `open` 前也应先执行 `close`，降低 daemon/session 干扰。
+  - headed 仍落到 SwiftShader/software renderer：按环境阻断处理，不得把“窗口能打开”误判成可玩性通过；默认先尝试 `--use-angle=gl,--ignore-gpu-blocklist`，并归档 `browser_env.json`。
   - 视觉门禁假通过：full coverage 需额外校验 `capture_status.txt` 的 `connection_status=connected` 与 `snapshot_ready=1`。
 - Non-Functional Requirements:
   - NFR-WEB-1: 首轮 Web smoke 在环境就绪后 5 分钟内完成首个 verdict。
   - NFR-WEB-2: 证据产物当前固定在历史兼容目录 `output/playwright/`，并在手册中显式标注。
   - NFR-WEB-3: 门禁误报率可控，必须通过 fail-fast 分类输出原因。
   - NFR-WEB-4: 关键脚本参数/命令口径在主手册与分册中保持一致。
+  - NFR-WEB-5: Viewer Web 验收必须归档 renderer 证据（如 `browser_env.json`），确保能区分硬件路径与 software renderer。
 - Security & Privacy: 采样日志与截图不得包含凭据，控制台输出仅保留问题定位所需信息。
 
 ## 5. Risks & Roadmap
@@ -118,6 +120,7 @@
 | DEC-WEB-003 | 语义化 `__AW_TEST__` 操作优先 | 纯坐标点击脚本 | 减少 UI 变动导致的脆弱性。 |
 | DEC-WEB-004 | 失败分级 F1~F4 + 证据归档 | 仅记录通用失败日志 | 缩短定位时间并提升复盘质量。 |
 | DEC-WEB-005 | legacy 文档逐篇人工迁移 | 脚本批量改写 | 保证历史约束和执行语义完整。 |
+| DEC-WEB-006 | Viewer Web 默认固定 `--use-angle=gl,--ignore-gpu-blocklist`，若 headed 仍是 software renderer 则继续阻断 | 仅要求 `--headed` 不固定后端 | 当前环境中 headed 默认仍可能回退 SwiftShader，必须把硬件后端策略写进脚本与手册。 |
 
 ## 原文约束点映射（内容保真）
 - 原“目标：统一 Web 闭环启动、采样、门禁、排障” -> 第 1 章 Problem/Solution/SC。

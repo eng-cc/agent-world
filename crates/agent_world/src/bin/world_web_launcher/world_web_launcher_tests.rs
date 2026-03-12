@@ -11,7 +11,7 @@ use super::{
     chain_error_code_for_state, finalize_chain_start_outcome, snapshot_from_state,
     validate_chain_config, validate_game_config, validate_game_config_with_launcher_bin,
     ChainRecoverySnapshot, ChainRuntimeStatus, CliOptions, LauncherConfig, ProcessState,
-    ServiceState,
+    ServiceState, DEFAULT_CHAIN_NODE_ID,
     DEFAULT_CHAIN_STATUS_BIND, DEFAULT_LISTEN_BIND, DEFAULT_SCENARIO,
 };
 use agent_world_proto::storage_profile::StorageProfile;
@@ -45,6 +45,12 @@ fn parse_options_defaults() {
     assert!(!options.initial_config.llm_enabled);
     assert!(options.initial_config.chain_enabled);
     assert!(!options.initial_config.auto_open_browser);
+    assert!(
+        options
+            .initial_config
+            .chain_node_id
+            .starts_with(&format!("{DEFAULT_CHAIN_NODE_ID}-fresh-"))
+    );
 }
 
 #[test]

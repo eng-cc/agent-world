@@ -12,7 +12,7 @@ use std::process::{Child, Command, Stdio};
 use std::sync::mpsc::TryRecvError;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::Instant;
 
@@ -116,6 +116,14 @@ const NATIVE_UI_SECTIONS: &[&str] = &[
 #[cfg(target_arch = "wasm32")]
 const WEB_CANVAS_ID: &str = "agent-world-launcher-canvas";
 const WEB_POLL_INTERVAL_MS: u64 = 1000;
+
+fn default_chain_node_id() -> String {
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis();
+    format!("{DEFAULT_CHAIN_NODE_ID}-fresh-{}-{now}", std::process::id())
+}
 
 #[cfg(not(target_arch = "wasm32"))]
 fn main() -> eframe::Result<()> {
@@ -315,7 +323,7 @@ impl Default for LaunchConfig {
             llm_enabled: true,
             chain_enabled: true,
             chain_status_bind: DEFAULT_CHAIN_STATUS_BIND.to_string(),
-            chain_node_id: DEFAULT_CHAIN_NODE_ID.to_string(),
+            chain_node_id: default_chain_node_id(),
             chain_world_id: String::new(),
             chain_node_role: DEFAULT_CHAIN_NODE_ROLE.to_string(),
             chain_node_tick_ms: DEFAULT_CHAIN_NODE_TICK_MS.to_string(),

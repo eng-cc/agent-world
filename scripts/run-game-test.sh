@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$ROOT_DIR/scripts/agent-browser-lib.sh"
+source "$ROOT_DIR/scripts/bundle-freshness-lib.sh"
 
 VIEWER_HOST="127.0.0.1"
 VIEWER_PORT="4173"
@@ -15,6 +16,7 @@ CHAIN_NODE_ID=""
 CHAIN_STATUS_BIND_ADDR=""
 BUNDLE_DIR=""
 VIEWER_STATIC_DIR_EXPLICIT="0"
+ALLOW_STALE_BUNDLE="0"
 
 usage() {
   cat <<'USAGE'
@@ -25,6 +27,7 @@ Start a stable web playability test stack with safe defaults.
 Preferred producer/release path:
 - ./scripts/build-game-launcher-bundle.sh --out-dir output/release/game-launcher-local
 - ./scripts/run-game-test.sh --bundle-dir output/release/game-launcher-local
+- stale or manifest-less bundles fail fast unless `--allow-stale-bundle` is passed
 
 Development fallback:
 - source world_game_launcher via cargo run with the same runtime defaults
@@ -36,6 +39,7 @@ Options:
   --live-bind <addr:port>  world_game_launcher live TCP bind (default: 127.0.0.1:5023)
   --web-bind <addr:port>   WebSocket bridge bind (default: 127.0.0.1:5011)
   --viewer-static-dir <p>  Override viewer static dir; source mode defaults to fresh `web`, bundle mode only uses this as an advanced override
+  --allow-stale-bundle    Skip workspace freshness guard for --bundle-dir (advanced / explicit override)
   --chain-enable           Enable chain runtime (default)
   --chain-disable          Disable chain runtime
   --chain-node-id <id>     Override chain node id (default: fresh per run)
@@ -72,6 +76,10 @@ while [[ $# -gt 0 ]]; do
       VIEWER_STATIC_DIR="${2:-}"
       VIEWER_STATIC_DIR_EXPLICIT="1"
       shift 2
+      ;;
+    --allow-stale-bundle)
+      ALLOW_STALE_BUNDLE="1"
+      shift
       ;;
     --chain-enable)
       CHAIN_ENABLED="1"
@@ -148,6 +156,13 @@ if [[ -n "$BUNDLE_DIR" ]]; then
   if [[ ! -f "$BUNDLE_DIR/run-game.sh" ]]; then
     echo "error: bundle is missing run-game.sh: $BUNDLE_DIR" >&2
     exit 1
+  fi
+  if [[ "$ALLOW_STALE_BUNDLE" != "1" ]]; then
+    if ! freshness_note=$(bundle_check_freshness "$ROOT_DIR" "$BUNDLE_DIR" 2>&1); then
+      echo "error: $freshness_note" >&2
+      echo "hint: rebuild via ./scripts/build-game-launcher-bundle.sh --out-dir $BUNDLE_DIR or rerun producer entry with --rebuild; use --allow-stale-bundle only when intentionally validating an older artifact" >&2
+      exit 1
+    fi
   fi
 fi
 

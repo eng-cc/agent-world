@@ -4,6 +4,7 @@ use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
 
+use tungstenite::error::ProtocolError;
 use tungstenite::handshake::HandshakeError;
 use tungstenite::protocol::Message;
 use tungstenite::{accept, Error as WsError};
@@ -61,7 +62,9 @@ impl ViewerWebBridge {
                 }
             };
             if let Err(err) = self.serve_stream(stream) {
-                eprintln!("viewer web bridge error: {err:?}");
+                if !is_expected_bridge_disconnect(&err) {
+                    eprintln!("viewer web bridge error: {err:?}");
+                }
             }
         }
         Ok(())
@@ -169,6 +172,32 @@ fn map_handshake_error(
             io::ErrorKind::Interrupted,
             "websocket handshake interrupted",
         )),
+    }
+}
+
+fn is_expected_bridge_disconnect(err: &ViewerWebBridgeError) -> bool {
+    match err {
+        ViewerWebBridgeError::Io(io_err) => matches!(
+            io_err.kind(),
+            io::ErrorKind::ConnectionReset
+                | io::ErrorKind::ConnectionAborted
+                | io::ErrorKind::BrokenPipe
+                | io::ErrorKind::UnexpectedEof
+                | io::ErrorKind::NotConnected
+        ),
+        ViewerWebBridgeError::WebSocket(ws_err) => match ws_err {
+            WsError::ConnectionClosed | WsError::AlreadyClosed => true,
+            WsError::Protocol(ProtocolError::HandshakeIncomplete) => true,
+            WsError::Io(io_err) => matches!(
+                io_err.kind(),
+                io::ErrorKind::ConnectionReset
+                    | io::ErrorKind::ConnectionAborted
+                    | io::ErrorKind::BrokenPipe
+                    | io::ErrorKind::UnexpectedEof
+                    | io::ErrorKind::NotConnected
+            ),
+            _ => false,
+        },
     }
 }
 
@@ -289,6 +318,21 @@ mod tests {
         );
 
         upstream_thread.join().expect("join upstream thread");
+    }
+
+    #[test]
+    fn expected_bridge_disconnect_classifies_handshake_and_reset_noise() {
+        assert!(is_expected_bridge_disconnect(&ViewerWebBridgeError::WebSocket(
+            WsError::Protocol(ProtocolError::HandshakeIncomplete),
+        )));
+        assert!(is_expected_bridge_disconnect(&ViewerWebBridgeError::Io(io::Error::new(
+            io::ErrorKind::ConnectionReset,
+            "reset",
+        ))));
+        assert!(!is_expected_bridge_disconnect(&ViewerWebBridgeError::Io(io::Error::new(
+            io::ErrorKind::AddrInUse,
+            "real failure",
+        ))));
     }
 
     fn run_ws_session(bridge: &ViewerWebBridge, payload: &str) {

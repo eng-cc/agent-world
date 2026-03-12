@@ -2,6 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$ROOT_DIR/scripts/bundle-freshness-lib.sh"
 OUT_DIR=""
 PROFILE="release"
 TARGET_TRIPLE="native"
@@ -245,6 +246,8 @@ else
   run bash -lc "cd '$ROOT_DIR/crates/agent_world_client_launcher' && env -u NO_COLOR trunk build --dist '$BUNDLE_WEB_LAUNCHER_DIR'"
 fi
 
+bundle_write_manifest "$ROOT_DIR" "$OUT_DIR"
+
 # 4) Generate desktop client wrapper + one-command CLI wrapper and readme.
 run bash -lc "cat > '$OUT_DIR/run-client.sh' <<'LAUNCH'
 #!/usr/bin/env bash
@@ -328,6 +331,7 @@ Bundle layout:
 - bin/world_chain_runtime
 - web/
 - web-launcher/
+- .agent-world-bundle-manifest.json
 - run-client.sh
 - run-web-launcher.sh
 - run-game.sh

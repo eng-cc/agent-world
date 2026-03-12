@@ -63,6 +63,8 @@
 - [x] TASK-TESTING-047 (PRD-TESTING-LAUNCHER-BUNDLE-001/002) [test_tier_required]: 新增 `run-producer-playtest.sh`，把制作人 bundle-first 试玩收敛成单命令入口，并同步主手册与人工清单。
 - [x] TASK-TESTING-048 (PRD-TESTING-LAUNCHER-BUNDLE-001/002) [test_tier_required]: 为 `run-producer-playtest.sh` 增加 `--open-headed`，使制作人可在起栈后自动打开 headed 浏览器，并同步主手册/日志口径。
 - [x] TASK-TESTING-049 (PRD-TESTING-LAUNCHER-BUNDLE-001/002) [test_tier_required]: 修复 `run-producer-playtest.sh --open-headed` 退出后残留浏览器窗口的问题，为脚本补充自动关会话收尾，并同步手册/日志口径。
+- [x] TASK-TESTING-050 (PRD-TESTING-LAUNCHER-BUNDLE-001/002) [test_tier_required]: 固化 headed Viewer Web 的默认硬件 WebGL 启动参数，并把 headed 命中 `SwiftShader` / software renderer 统一收口为环境阻断，同步脚本/手册/专题文档。
+- [x] TASK-TESTING-051 (PRD-TESTING-LAUNCHER-BUNDLE-001/002) [test_tier_required]: 为 bundle-first 试玩入口增加 freshness manifest 守卫，默认阻断或自动重建 stale bundle，避免旧 Viewer Web 产物与新 runtime 二进制混跑。
 - [x] TASK-TESTING-035 (PRD-TESTING-004) [test_tier_required]: 完成 archive 专题 `ci-required-m1-wasm-hash-check` 文档迁移到 strict schema，并统一 `.prd` 命名。
 - [x] TASK-TESTING-036 (PRD-TESTING-004) [test_tier_required]: 完成 archive 专题 `wasm-platform-canonical-hash-manifest` 文档迁移到 strict schema，并统一 `.prd` 命名。
 - [x] TASK-TESTING-037 (PRD-TESTING-005) [test_tier_required]: 完成 `ci-builtin-wasm-m4-m5-hash-drift-hardening` 专题 PRD 与项目管理文档建档，建立 1-6 治理项映射。
@@ -125,9 +127,11 @@
 - `.agents/skills/prd/check.md`
 
 ## 状态
-- 更新日期: 2026-03-11
+- 更新日期: 2026-03-12
 - 当前状态: completed
 - 下一任务: 无（当前模块主项目无未完成任务）
+- 最新完成: `TASK-TESTING-051`（为 bundle-first 试玩入口增加 freshness manifest 守卫，默认阻断或自动重建 stale bundle）。
+- 最新完成: `TASK-TESTING-050`（固化 headed Viewer Web 的默认硬件 WebGL 启动参数，并把 headed 命中 `SwiftShader` / software renderer 统一收口为环境阻断）。
 - 最新完成: `TASK-TESTING-049`（修复 `run-producer-playtest.sh --open-headed` 退出后残留浏览器窗口的问题，为脚本补充自动关会话收尾）。
 - 最新完成: `TASK-TESTING-006`（testing 模块 README 入口索引同步）。
 - 阶段收口优先级: `P0`

@@ -24,7 +24,11 @@ fn parse_options_defaults() {
     assert_eq!(options.viewer_static_dir, "web");
     assert!(options.chain_enabled);
     assert_eq!(options.chain_status_bind, DEFAULT_CHAIN_STATUS_BIND);
-    assert_eq!(options.chain_node_id, DEFAULT_CHAIN_NODE_ID);
+    assert!(
+        options
+            .chain_node_id
+            .starts_with(&format!("{DEFAULT_CHAIN_NODE_ID}-fresh-"))
+    );
     assert_eq!(options.chain_storage_profile, StorageProfile::DevLocal);
     assert_eq!(options.chain_node_role, "sequencer");
     assert_eq!(options.chain_pos_slot_duration_ms, 12_000);

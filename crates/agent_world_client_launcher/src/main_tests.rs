@@ -107,6 +107,7 @@ fn launch_config_defaults_enable_llm() {
     let config = LaunchConfig::default();
     assert!(config.llm_enabled);
     assert!(config.chain_enabled);
+    assert!(config.chain_node_id.starts_with("viewer-live-node-fresh-"));
 }
 #[test]
 fn build_launcher_args_keeps_chain_disabled_even_when_chain_config_is_set() {

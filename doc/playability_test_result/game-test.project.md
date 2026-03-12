@@ -17,11 +17,14 @@
 - `doc/playability_test_result/game-test.prd.md`（用户锁定，不修改）
 - `doc/playability_test_result/playability_test_card.md`
 - `doc/playability_test_result/README.md`
+- `.agents/skills/agent-browser/SKILL.md`
 - `.codex/skills/playwright/SKILL.md`
 - `scripts/run-game-test.sh`
 
 ## 测试记录
 - 活跃卡片（主目录）：
+  - `card_2026_03_12_18_00_30.md`
+  - `card_2026_03_12_15_29_33.md`
   - `card_2026_03_06_18_40_48.md`
   - `card_2026_03_06_12_43_31.md`
   - `card_2026_03_01_00_20_13.md`
@@ -30,6 +33,8 @@
   - `card_2026_02_28_22_47_14.md`
   - `card_2026_02_28_23_27_06.md`
 - 活跃产物目录：
+  - `output/playwright/playability/20260312-producer-play-2/`
+  - `output/playwright/playability/20260312-producer-play/`
   - `output/playwright/playability/20260306-184048/`
   - `output/playwright/playability/20260306-124312/`
   - `output/playwright/playability/startup-20260306-123100/`
@@ -42,11 +47,13 @@
 - 历史归档：
 
 ## 状态
-- 当前阶段：现行视图 + 历史归档模式下持续复测（2026-03-06）
+- 当前阶段：现行视图 + 历史归档模式下持续复测（2026-03-12，producer 默认链产品路径亲玩补样）
 - 当前风险：
   - `run-game-test.sh` 依赖 `crates/agent_world_viewer/dist`，若 dist 目录未及时重建，可能出现协议枚举漂移导致 Web 端 decode error。
   - LLM 前置配置缺失时，`run-game-test.sh` 仍可能启动失败（可用 `--no-llm` 回退）。
   - `agent-browser record start` 当前会为 Viewer Web 创建 fresh browser context，并把页面重置到冷启动；闭环脚本会立即 reopen 恢复连接，但 `playthrough.webm` 仅能作为 best-effort 片段，截图 / `__AW_TEST__` 状态 / 量化指标仍是主证据。
+  - 默认链启用的 launcher 产品路径已在 fresh `chain_node_id` 下通过本轮 producer 样本，不再是当前主阻断；但若显式复用旧 node id，仍可能复现 `stale_execution_world`，需继续避免回归。
+  - 当前 Web Viewer 在 SwiftShader/WebGL2 环境下首开仍可能先命中 `copy_deferred_lighting_id_pipeline` / `CONTEXT_LOST_WEBGL`；本轮已改为浏览器端自动 reload 一次并成功恢复到 `connected`，不再要求制作人手动 reopen，但图形环境差异仍需继续观察。
   - 历史文档虽已归档，但旧日志中的历史路径仍可能被误引用。
 - 最近更新：2026-03-12
 

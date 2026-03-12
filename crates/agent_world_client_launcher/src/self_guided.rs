@@ -435,7 +435,7 @@ impl ClientLauncherApp {
         self.config.viewer_port = DEFAULT_VIEWER_PORT.to_string();
         self.config.chain_enabled = true;
         self.config.chain_status_bind = DEFAULT_CHAIN_STATUS_BIND.to_string();
-        self.config.chain_node_id = DEFAULT_CHAIN_NODE_ID.to_string();
+        self.config.chain_node_id = default_chain_node_id();
         self.config.chain_node_role = DEFAULT_CHAIN_NODE_ROLE.to_string();
         self.config.chain_node_tick_ms = DEFAULT_CHAIN_NODE_TICK_MS.to_string();
         self.config.chain_pos_slot_duration_ms = DEFAULT_CHAIN_POS_SLOT_DURATION_MS.to_string();

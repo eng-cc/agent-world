@@ -11,6 +11,8 @@
 - [x] LBFP-6 (PRD-TESTING-LAUNCHER-BUNDLE-001/002): 新增 `run-producer-playtest.sh`，把制作人 bundle-first 试玩收敛成单命令入口，并同步手册/帮助文本。
 - [x] LBFP-7 (PRD-TESTING-LAUNCHER-BUNDLE-001/002): 为 `run-producer-playtest.sh` 增加 `--open-headed`，在 URL 就绪后自动打开 headed 浏览器并保留起栈日志。
 - [x] LBFP-8 (PRD-TESTING-LAUNCHER-BUNDLE-001/002): 为 `run-producer-playtest.sh --open-headed` 增加退出自动关浏览器收尾，并补充手册/日志验证口径。
+- [x] LBFP-9 (PRD-TESTING-LAUNCHER-BUNDLE-001/002): 固化 headed 浏览器的默认硬件 WebGL 启动参数，并把 headed 命中 software renderer 统一收口为环境阻断。
+- [x] LBFP-10 (PRD-TESTING-LAUNCHER-BUNDLE-001/002): 为 bundle-first 入口增加 freshness manifest 守卫，自动识别并阻断/重建 stale bundle。
 
 ## 依赖
 - `doc/testing/launcher/launcher-bundle-first-playtest-entry-2026-03-12.prd.md`
@@ -26,6 +28,6 @@
 
 ## 状态
 - 更新日期：2026-03-12
-- 当前阶段：已完成（入口、文档、headed 自动打开与 headless 环境 guardrail 已收敛）
-- 阻塞项：无新的代码阻塞；当前已确认此前阻断主要由 `headless + SwiftShader` 环境导致。
-- 下一步：后续如需真正退役源码模式，再单开专题迁移 `run-game-test-ab.sh` 与其他下游脚本；当前先保留源码模式作为开发复现入口。
+- 当前阶段：已完成（入口、文档、headed 自动打开、硬件 WebGL 默认参数、software renderer guardrail 与 stale bundle freshness 守卫已收敛）
+- 阻塞项：无新的代码阻塞；当前已确认此前阻断来自默认 headed Chrome 仍可能回退到 `SwiftShader`，现已在脚本层固定硬件参数并保留阻断兜底。
+- 下一步：继续观察不同图形环境下 `--use-angle=gl` 是否仍有例外；若有，再单开专题追默认 ANGLE/Vulkan 回退原因。

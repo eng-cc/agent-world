@@ -9,7 +9,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 use std::sync::{Arc, OnceLock};
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use agent_world_proto::storage_profile::StorageProfile;
 
@@ -39,6 +39,14 @@ const NODE_PRIVATE_KEY_FIELD: &str = "private_key";
 const NODE_PUBLIC_KEY_FIELD: &str = "public_key";
 static TERMINATION_REQUESTED: AtomicBool = AtomicBool::new(false);
 static SIGNAL_HANDLER_INSTALL: OnceLock<Result<(), String>> = OnceLock::new();
+
+fn default_chain_node_id() -> String {
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis();
+    format!("{DEFAULT_CHAIN_NODE_ID}-fresh-{}-{now}", process::id())
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct ViewerAuthBootstrap {
@@ -86,7 +94,7 @@ impl Default for CliOptions {
             open_browser: true,
             chain_enabled: true,
             chain_status_bind: DEFAULT_CHAIN_STATUS_BIND.to_string(),
-            chain_node_id: DEFAULT_CHAIN_NODE_ID.to_string(),
+            chain_node_id: default_chain_node_id(),
             chain_storage_profile: StorageProfile::DevLocal,
             chain_world_id: None,
             chain_node_role: DEFAULT_CHAIN_NODE_ROLE.to_string(),

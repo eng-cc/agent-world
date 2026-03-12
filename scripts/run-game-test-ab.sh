@@ -22,8 +22,11 @@ Options:
   --url <url>               Use an existing viewer URL; skip stack bootstrap
   --out-dir <path>          Artifact root (default: output/playwright/playability)
   --startup-timeout <secs>  Wait timeout for stack URL (default: 240)
-  --headed                  Open browser in headed mode (default, recommended for Viewer Web)
-  --headless                Open browser in headless mode; fails fast when WebGL falls back to SwiftShader/software rendering
+  --headed                  Open browser in headed mode (default, recommended for Viewer Web);
+                            defaults to `--use-angle=gl,--ignore-gpu-blocklist` unless
+                            `AGENT_BROWSER_ARGS` overrides it
+  --headless                Open browser in headless mode; fails fast when WebGL falls back to
+                            SwiftShader/software rendering
   -h, --help                Show this help
 
 If --url is omitted, the script starts:
@@ -128,7 +131,7 @@ reopen_game_page() {
   ab_open "$SESSION" "$HEADED" "$GAME_URL" >>"$AB_LOG" 2>&1 || return 1
   ab_cmd "$SESSION" wait --load networkidle >>"$AB_LOG" 2>&1 || true
   wait_for_api 20000 >/dev/null || return 1
-  fail_if_software_headless_renderer || return 1
+  fail_if_software_renderer || return 1
   wait_for_connected 60000
 }
 
@@ -175,14 +178,25 @@ browser_env() {
   })()'
 }
 
-fail_if_software_headless_renderer() {
-  local env_json renderer user_agent
+renderer_is_software() {
+  local renderer=${1:-}
+  [[ "$renderer" == *SwiftShader* || "$renderer" == *llvmpipe* || "$renderer" == *"Software Rasterizer"* || "$renderer" == *"Basic Render Driver"* ]]
+}
+
+fail_if_software_renderer() {
+  local env_json renderer user_agent browser_args mode_label
   env_json=$(browser_env)
   json_to_file "$env_json" "$BROWSER_ENV_JSON"
   renderer=$(json_get "$env_json" renderer)
   user_agent=$(json_get "$env_json" userAgent)
-  if [[ "$HEADED" -eq 0 ]] && [[ "$renderer" == *SwiftShader* ]]; then
-    echo "error: headless browser is using SwiftShader/software WebGL; Viewer Web playability probes require headed mode or a hardware-backed headless browser (see $BROWSER_ENV_JSON, renderer=$renderer, userAgent=$user_agent)" >&2
+  browser_args=$(ab_browser_args)
+  if renderer_is_software "$renderer"; then
+    if [[ "$HEADED" -eq 1 ]]; then
+      mode_label='headed'
+    else
+      mode_label='headless'
+    fi
+    echo "error: ${mode_label} browser is using SwiftShader/software WebGL; Viewer Web playability probes require a hardware-backed renderer even in headed mode (see $BROWSER_ENV_JSON, renderer=$renderer, userAgent=$user_agent, agentBrowserArgs=${browser_args:-<none>})" >&2
     return 1
   fi
   return 0
@@ -452,7 +466,7 @@ if [[ "$SNAPSHOT_OK" -ne 1 ]]; then
 fi
 
 wait_for_api 20000 >/dev/null || { echo "error: __AW_TEST__ unavailable before initial connect" >&2; exit 1; }
-fail_if_software_headless_renderer || exit 1
+fail_if_software_renderer || exit 1
 set +e
 initial=$(wait_for_connected 60000)
 initial_wait_status=$?
