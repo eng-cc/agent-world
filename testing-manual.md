@@ -113,7 +113,7 @@
 
 ### L4 UI 闭环层（Web 为默认）
 - 目标：验证真实用户路径可用性（加载、交互、状态可见、无 console error）。
-- 默认：制作人试玩 / 发布前人工验收优先使用 `./scripts/run-producer-playtest.sh`；其内部会自动准备/复用 bundle 并进入 `run-game-test.sh --bundle-dir <bundle>`。`scripts/run-game-test.sh` 保留为开发回归 bootstrap，并支持 `--bundle-dir <bundle>` 复用产物入口。
+- 默认：制作人试玩 / 发布前人工验收优先使用 `./scripts/run-producer-playtest.sh`（需要自动打开浏览器时加 `--open-headed`）；其内部会自动准备/复用 bundle 并进入 `run-game-test.sh --bundle-dir <bundle>`。`scripts/run-game-test.sh` 保留为开发回归 bootstrap，并支持 `--bundle-dir <bundle>` 复用产物入口。
 - native 抓图：仅 fallback（Web 无法复现或 native 图形链路问题）。
 
 ### L5 长稳与压力层
@@ -216,7 +216,7 @@ env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-u
 - 本手册仅保留分层与触发矩阵，执行时按上述文档操作。
 - `world_viewer_live` / Viewer 页面：默认使用 `agent-browser` 驱动页面与采集证据。
 - 若 Viewer 页面长期停在 `connecting` 且 `logicalTime=0`，必须查看 `window.__AW_TEST__.getState().lastError`；命中 `copy_deferred_lighting_id_pipeline` / `CONTEXT_LOST_WEBGL` / `SwiftShader` 时，按图形环境门禁失败处理，不进入玩法结论。
-- `world_web_launcher` / launcher Web 控制面：默认优先使用 GUI Agent 驱动产品动作，再用 Web 页面做状态与字段校验；Canvas 直点仅作补充。制作人试玩与发布前人工验收若要进入真实产品路径，优先直接执行 `./scripts/run-producer-playtest.sh`；如需手动控制 bundle，再使用 `<bundle>/run-game.sh` 或 `./scripts/run-game-test.sh --bundle-dir <bundle>` 启动。
+- `world_web_launcher` / launcher Web 控制面：默认优先使用 GUI Agent 驱动产品动作，再用 Web 页面做状态与字段校验；Canvas 直点仅作补充。制作人试玩与发布前人工验收若要进入真实产品路径，优先直接执行 `./scripts/run-producer-playtest.sh`（需要自动打开浏览器时加 `--open-headed`）；如需手动控制 bundle，再使用 `<bundle>/run-game.sh` 或 `./scripts/run-game-test.sh --bundle-dir <bundle>` 启动。
 - 不要把 Viewer 页面专用的 `agent-browser` 操作步骤直接套用到 launcher 控制面动作执行上。
 - 涉及 `Explorer / Transfer` 的闭环时，先准备可观测数据，再执行查询与字段断言；不得只以“页面打开了/接口返回 200”判定通过。
 - 防误用约束：
@@ -227,6 +227,7 @@ env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-u
 - 快速入口：
 ```bash
 ./scripts/run-producer-playtest.sh --no-llm
+./scripts/run-producer-playtest.sh --no-llm --open-headed
 ./scripts/build-game-launcher-bundle.sh --out-dir output/release/game-launcher-local
 ./scripts/run-game-test.sh --bundle-dir output/release/game-launcher-local --no-llm
 ./scripts/run-game-test-ab.sh --bundle-dir output/release/game-launcher-local --no-llm

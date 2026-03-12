@@ -11,6 +11,7 @@
   - SC-3: `scripts/run-game-test-ab.sh` 无需额外适配即可透传 `--bundle-dir`，并在帮助口径中明确其作为 bundle 自动化哨兵的用法。
   - SC-4: 至少完成一轮 bundle 构建 + `run-game-test-ab.sh --bundle-dir <bundle>` 闭环验证，并输出明确的通过或阻断证据，避免口径停留在纸面。
   - SC-5: 提供单命令制作人试玩入口，默认可复用或自动构建本地 bundle，再进入 bundle 模式启动。
+  - SC-6: 单命令入口支持可选的 `--open-headed`，在 URL 就绪后自动打开 headed 浏览器，避免制作人再手动复制 URL。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -24,7 +25,7 @@
   - PRD-TESTING-LAUNCHER-BUNDLE-001: As a `producer_system_designer`, I want manual playtests to start from packaged launcher artifacts, so that my verdict reflects the real product handoff.
   - PRD-TESTING-LAUNCHER-BUNDLE-002: As a `qa_engineer`, I want the existing `run-game-test.sh` bootstrap to consume a bundle via one flag, so that automation and manual validation share one script surface.
 - Critical User Flows:
-  1. Flow-LBFP-001: `run-producer-playtest.sh -> 自动准备/复用 bundle -> run-game-test.sh --bundle-dir -> agent-browser/GUI Agent -> 记录人工结论`
+  1. Flow-LBFP-001: `run-producer-playtest.sh --open-headed -> 自动准备/复用 bundle -> run-game-test.sh --bundle-dir -> 自动打开 headed agent-browser -> 记录人工结论`
   2. Flow-LBFP-002: `run-game-test.sh --bundle-dir <bundle> -> 输出 URL/日志 -> run-game-test-ab.sh 采样`
   3. Flow-LBFP-003: `run-game-test.sh (源码模式) -> 开发者快速复现 -> 不作为发布结论`
 
@@ -81,8 +82,8 @@
 - Test Plan & Traceability:
 | PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |
 | --- | --- | --- | --- | --- |
-| PRD-TESTING-LAUNCHER-BUNDLE-001 | LBFP-1/3/6 | `test_tier_required` | 手册、人工清单、README、索引互链审阅 | 人工验收口径、一键试玩入口说明 |
-| PRD-TESTING-LAUNCHER-BUNDLE-002 | LBFP-2/4/5/6 | `test_tier_required` | `bash -n` + `--help` + bundle 构建 + `run-producer-playtest.sh` + `run-game-test-ab.sh --bundle-dir`，记录通过或阻断证据 | 启动脚本 bootstrap、bundle 试玩闭环 |
+| PRD-TESTING-LAUNCHER-BUNDLE-001 | LBFP-1/3/6/7 | `test_tier_required` | 手册、人工清单、README、索引互链审阅 | 人工验收口径、一键试玩入口说明 |
+| PRD-TESTING-LAUNCHER-BUNDLE-002 | LBFP-2/4/5/6/7 | `test_tier_required` | `bash -n` + `--help` + bundle 构建 + `run-producer-playtest.sh --open-headed` + `run-game-test-ab.sh --bundle-dir`，记录通过或阻断证据 | 启动脚本 bootstrap、bundle 试玩闭环 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |
@@ -90,3 +91,4 @@
 | DEC-LBFP-002 | 用 `--bundle-dir` 把 bundle 入口并入现有脚本 | 新建独立 bundle 脚本 | 共享端口、日志、URL 输出与 agent-browser 接口，更易维护。 |
 | DEC-LBFP-003 | 制作人试玩/发布前验收默认走 bundle | 继续默认源码态 `cargo run` | 前者更贴近真实交付物，也更能暴露 bundle 级问题。 |
 | DEC-LBFP-004 | 提供 `run-producer-playtest.sh` 作为 bundle-first 一键入口 | 要求制作人手动执行 build + bootstrap 两条命令 | 单命令更符合制作人实际使用路径，也更不容易退回源码模式。 |
+| DEC-LBFP-005 | `--open-headed` 做成可选模式 | 默认总是自动打开浏览器 | 让脚本既能服务纯起栈，也能服务制作人直接入场，避免强绑浏览器副作用。 |
