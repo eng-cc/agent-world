@@ -9,6 +9,8 @@
 - [x] T0 (PRD-WORLD_SIMULATOR-034) [test_tier_required]: 完成“launcher stale execution world 恢复”PRD/Design/Project 建模与模块文档树回写。
 - [x] T1 (PRD-WORLD_SIMULATOR-034) [test_tier_required]: 为 launcher / GUI Agent 增加 stale execution world 结构化错误识别，并在状态层暴露恢复建议。
 - [x] T2 (PRD-WORLD_SIMULATOR-034) [test_tier_required]: 实现 fresh node id 恢复链路与回归验证，覆盖 `start_chain -> query_explorer_overview -> start_game` 最小闭环。
+- [x] T3 (PRD-WORLD_SIMULATOR-034) [test_tier_required]: 为 `scripts/run-game-test.sh` 增加 fresh `chain_node_id` 默认值与链参数透传，避免一键试玩复用脏 execution world。
+- [x] T4 (PRD-WORLD_SIMULATOR-034) [test_tier_required]: 复验 chain-enabled 一键试玩栈与 agent-browser Web 闭环，确认 fresh node id 默认值可消除 stale execution world 启动阻断。
 
 ## 依赖
 - `doc/world-simulator/prd.md`
@@ -25,4 +27,4 @@
 - 当前任务: `none`
 - owner: `viewer_engineer`
 - 联审: `runtime_engineer`
-- 备注: `T0/T1/T2` 已完成；`world_web_launcher` 已新增 stale execution world 结构化状态、GUI Agent `recover_chain` 动作与 fresh node id 恢复建议，`agent_world_client_launcher` 已补齐一键恢复 CTA 与状态映射。
+- 备注: `T0/T1/T2/T3/T4` 已完成；`world_web_launcher` 已新增 stale execution world 结构化状态、GUI Agent `recover_chain` 动作与 fresh node id 恢复建议；`scripts/run-game-test.sh` 已默认使用 fresh `chain_node_id` 并显式透传链参数，减少一键试玩栈复用脏 execution world 的概率。

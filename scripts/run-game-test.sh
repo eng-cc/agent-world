@@ -10,6 +10,9 @@ LIVE_BIND_ADDR="127.0.0.1:5023"
 WEB_BRIDGE_ADDR="127.0.0.1:5011"
 ENABLE_LLM="1"
 VIEWER_STATIC_DIR="web"
+CHAIN_ENABLED="1"
+CHAIN_NODE_ID=""
+CHAIN_STATUS_BIND_ADDR=""
 
 usage() {
   cat <<'USAGE'
@@ -24,6 +27,10 @@ Options:
   --live-bind <addr:port>  world_game_launcher live TCP bind (default: 127.0.0.1:5023)
   --web-bind <addr:port>   WebSocket bridge bind (default: 127.0.0.1:5011)
   --viewer-static-dir <p> Viewer static dir or `web` freshness build (default: web)
+  --chain-enable            Enable chain runtime (default)
+  --chain-disable           Disable chain runtime
+  --chain-node-id <id>      Override chain node id (default: fresh per run)
+  --chain-status-bind <a:p> Override chain status HTTP bind (default: web-bind port + 110)
   --with-llm               Enable LLM mode (default: enabled)
   --no-llm                 Disable LLM mode (fallback to built-in script)
   -h, --help               Show this help
@@ -50,6 +57,22 @@ while [[ $# -gt 0 ]]; do
       ;;
     --viewer-static-dir)
       VIEWER_STATIC_DIR="${2:-}"
+      shift 2
+      ;;
+    --chain-enable)
+      CHAIN_ENABLED="1"
+      shift
+      ;;
+    --chain-disable)
+      CHAIN_ENABLED="0"
+      shift
+      ;;
+    --chain-node-id)
+      CHAIN_NODE_ID="${2:-}"
+      shift 2
+      ;;
+    --chain-status-bind)
+      CHAIN_STATUS_BIND_ADDR="${2:-}"
       shift 2
       ;;
     --with-llm)
@@ -100,6 +123,26 @@ fi
 if ! [[ "$LIVE_BIND_PORT" =~ ^[0-9]+$ && "$WEB_BRIDGE_PORT" =~ ^[0-9]+$ ]]; then
   echo "error: bind ports must be numeric" >&2
   exit 1
+fi
+
+if [[ -n "$CHAIN_STATUS_BIND_ADDR" ]]; then
+  if [[ "$CHAIN_STATUS_BIND_ADDR" != *:* ]]; then
+    echo "error: --chain-status-bind must be in <host:port> format" >&2
+    exit 1
+  fi
+  CHAIN_STATUS_BIND_HOST="${CHAIN_STATUS_BIND_ADDR%:*}"
+  CHAIN_STATUS_BIND_PORT="${CHAIN_STATUS_BIND_ADDR##*:}"
+  if [[ -z "$CHAIN_STATUS_BIND_HOST" || -z "$CHAIN_STATUS_BIND_PORT" ]]; then
+    echo "error: invalid --chain-status-bind" >&2
+    exit 1
+  fi
+  if ! [[ "$CHAIN_STATUS_BIND_PORT" =~ ^[0-9]+$ ]]; then
+    echo "error: --chain-status-bind port must be numeric" >&2
+    exit 1
+  fi
+else
+  CHAIN_STATUS_BIND_HOST=""
+  CHAIN_STATUS_BIND_PORT=""
 fi
 
 port_in_use() {
@@ -178,6 +221,21 @@ check_port_free "$VIEWER_PORT"
 check_port_free "$WEB_BRIDGE_PORT"
 
 RUN_ID="$(date +%Y%m%d-%H%M%S)"
+if [[ "$CHAIN_ENABLED" == "1" ]]; then
+  if [[ -z "$CHAIN_STATUS_BIND_ADDR" ]]; then
+    CHAIN_STATUS_BIND_PORT=$((WEB_BRIDGE_PORT + 110))
+    if (( CHAIN_STATUS_BIND_PORT > 65535 )); then
+      echo "error: derived --chain-status-bind port exceeds 65535" >&2
+      exit 1
+    fi
+    CHAIN_STATUS_BIND_HOST="127.0.0.1"
+    CHAIN_STATUS_BIND_ADDR="${CHAIN_STATUS_BIND_HOST}:${CHAIN_STATUS_BIND_PORT}"
+  fi
+  check_port_free "$CHAIN_STATUS_BIND_PORT"
+  if [[ -z "$CHAIN_NODE_ID" ]]; then
+    CHAIN_NODE_ID="viewer-live-node-playtest-${RUN_ID}"
+  fi
+fi
 OUTPUT_DIR="$ROOT_DIR/output/playwright/playability/startup-${RUN_ID}"
 mkdir -p "$OUTPUT_DIR"
 
@@ -212,6 +270,15 @@ WORLD_ARGS=(
   --viewer-static-dir "$RESOLVED_VIEWER_STATIC_DIR"
   --no-open-browser
 )
+if [[ "$CHAIN_ENABLED" == "1" ]]; then
+  WORLD_ARGS+=(
+    --chain-enable
+    --chain-node-id "$CHAIN_NODE_ID"
+    --chain-status-bind "$CHAIN_STATUS_BIND_ADDR"
+  )
+else
+  WORLD_ARGS+=(--chain-disable)
+fi
 if [[ "$ENABLE_LLM" == "1" ]]; then
   WORLD_ARGS+=(--with-llm)
 fi
@@ -236,6 +303,9 @@ INFO
   echo "WEB_BRIDGE_ADDR=$WEB_BRIDGE_ADDR"
   echo "VIEWER_HOST=$VIEWER_HOST"
   echo "VIEWER_PORT=$VIEWER_PORT"
+  echo "CHAIN_ENABLED=$CHAIN_ENABLED"
+  echo "CHAIN_NODE_ID=$CHAIN_NODE_ID"
+  echo "CHAIN_STATUS_BIND_ADDR=$CHAIN_STATUS_BIND_ADDR"
 } >"$META_FILE"
 
 if ! wait_for_http_ready "http://${VIEWER_HOST}:${VIEWER_PORT}/" 180; then
@@ -265,6 +335,9 @@ cat <<INFO
 Game test stack is ready.
 - URL: $GAME_URL
 - Logs: $OUTPUT_DIR
+- Chain enabled: $CHAIN_ENABLED
+- Chain node id: ${CHAIN_NODE_ID:-disabled}
+- Chain status bind: ${CHAIN_STATUS_BIND_ADDR:-disabled}
 
 agent-browser example:
   AGENT_BROWSER_SESSION=game-test-open \

@@ -13,6 +13,7 @@
   - SC-2: Web 控制面、GUI Agent 与桌面/网页启动器界面对该类问题提供一致的恢复提示与结构化错误码。
   - SC-3: 至少一种受支持恢复路径可在不手工改 CLI 的前提下完成恢复（如 fresh node id 或受控清理后重试）。
   - SC-4: 恢复完成后，`start_chain -> query_explorer_overview -> start_game` 最小闭环可重新通过。
+  - SC-5: `scripts/run-game-test.sh` 这类一键试玩包装脚本默认不再复用固定 `viewer-live-node`，而是使用 fresh `chain_node_id` 与明确的 `chain_status_bind`，避免把历史 execution world 脏状态带进新的试玩会话。
 
 ## 2. User Experience & Functionality
 - User Personas:

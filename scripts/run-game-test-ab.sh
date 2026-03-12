@@ -399,8 +399,10 @@ if [[ "$SNAPSHOT_OK" -ne 1 ]]; then
 fi
 
 wait_for_api 20000 >/dev/null || { echo "error: __AW_TEST__ unavailable before initial connect" >&2; exit 1; }
+set +e
 initial=$(wait_for_connected 60000)
 initial_wait_status=$?
+set -e
 if [[ "$initial_wait_status" -ne 0 ]]; then
   if [[ "$initial_wait_status" -eq 2 ]]; then
     echo "error: initial connection failed due to viewer fatal error: $(state_last_error "$initial")" >&2
@@ -417,8 +419,10 @@ if ab_cmd "$SESSION" record start "$OUT_DIR/playthrough.webm" >>"$AB_LOG" 2>&1; 
   RECORDING_ACTIVE=1
 fi
 wait_for_api 20000 >/dev/null || true
+set +e
 initial_after_record=$(wait_for_connected 15000)
 initial_after_record_status=$?
+set -e
 if [[ "$initial_after_record_status" -ne 0 ]]; then
   echo "warning: record_start disrupted connection; retry without recording" | tee -a "$AB_LOG" >/dev/null
   if [[ "$initial_after_record_status" -eq 2 ]]; then
@@ -429,8 +433,10 @@ if [[ "$initial_after_record_status" -ne 0 ]]; then
     ab_cmd "$SESSION" record stop >>"$AB_LOG" 2>&1 || true
     RECORDING_ACTIVE=0
   fi
+  set +e
   initial_after_record=$(reopen_game_page)
   initial_after_record_status=$?
+  set -e
   if [[ "$initial_after_record_status" -ne 0 ]]; then
     if [[ "$initial_after_record_status" -eq 2 ]]; then
       echo "error: connection failed after record_start recovery due to viewer fatal error: $(state_last_error "$initial_after_record")" >&2
@@ -450,8 +456,10 @@ phaseB_step_primary=$(send_control_probe phase_b_step_primary step '{"count":8}'
 phaseB_step_followup=$(send_control_probe phase_b_step_followup step '{"count":2}' true 6000)
 ab_cmd "$SESSION" screenshot "$OUT_DIR/step2-phase-b.png" >>"$AB_LOG" 2>&1 || true
 
+set +e
 final_state=$(wait_for_connected 8000)
 final_wait_status=$?
+set -e
 if [[ "$final_wait_status" -ne 0 ]]; then
   if [[ "$final_wait_status" -eq 2 ]]; then
     echo "error: final connection failed due to viewer fatal error: $(state_last_error "$final_state")" >&2
