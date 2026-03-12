@@ -2,7 +2,7 @@ use super::*;
 
 use agent_world_proto::storage_profile::StorageProfile;
 use std::io::{BufRead, BufReader, Read};
-use std::net::{TcpStream, ToSocketAddrs};
+use std::net::{TcpListener, TcpStream, ToSocketAddrs};
 use std::path::Path;
 use std::process::{Child, Command, Stdio};
 use std::sync::mpsc::{self, Sender, TryRecvError};
@@ -12,6 +12,9 @@ use std::time::{Duration, Instant};
 const CHAIN_TRANSFER_SUBMIT_PATH: &str = "/v1/chain/transfer/submit";
 const CHAIN_FEEDBACK_SUBMIT_PATH: &str = "/v1/chain/feedback/submit";
 const CHAIN_TRANSFER_PROXY_TIMEOUT_MS: u64 = 1_500;
+const CHAIN_RECOVERY_MODE_FRESH_NODE_ID: &str = "fresh_node_id";
+const CHAIN_RECOVERY_PORT_SCAN_LIMIT: u16 = 32;
+const DEFAULT_CHAIN_STATUS_BIND_PORT: u16 = 5121;
 const GAME_STATIC_DIR_ENV: &str = "AGENT_WORLD_GAME_STATIC_DIR";
 
 pub(super) fn parse_config_request(body: &[u8], action: &str) -> Result<LauncherConfig, String> {
@@ -155,9 +158,13 @@ pub(super) fn poll_chain_process_state(state: &mut ServiceState) {
         return;
     };
 
+    let mut recent_chain_logs = Vec::new();
     loop {
         match running.log_rx.try_recv() {
-            Ok(line) => state.append_log(line),
+            Ok(line) => {
+                recent_chain_logs.push(line.clone());
+                state.append_log(line);
+            }
             Err(TryRecvError::Empty) | Err(TryRecvError::Disconnected) => break,
         }
     }
@@ -166,9 +173,21 @@ pub(super) fn poll_chain_process_state(state: &mut ServiceState) {
         Ok(Some(status)) => {
             state.chain_started_at = None;
             state.last_chain_probe_at = None;
-            state.chain_runtime_status =
-                ChainRuntimeStatus::Unreachable(format!("world_chain_runtime exited: {status}"));
-            state.append_log(format!("world_chain_runtime exited: {status}"));
+            let exit_line = format!("world_chain_runtime exited: {status}");
+            state.append_log(exit_line.clone());
+            if let Some(recovery) = classify_stale_execution_world(state, recent_chain_logs.as_slice()) {
+                let reason = recovery.reason.clone();
+                let node_id = recovery.node_id.clone();
+                let fresh_node_id = recovery.fresh_node_id.clone();
+                state.chain_runtime_status = ChainRuntimeStatus::StaleExecutionWorld(reason);
+                state.chain_recovery = Some(recovery);
+                state.append_log(format!(
+                    "world_chain_runtime stale execution world detected for node `{node_id}`; suggested fresh node id `{fresh_node_id}`"
+                ));
+            } else {
+                state.chain_runtime_status = ChainRuntimeStatus::Unreachable(exit_line);
+                state.chain_recovery = None;
+            }
             state.mark_updated();
         }
         Ok(None) => {
@@ -179,6 +198,7 @@ pub(super) fn poll_chain_process_state(state: &mut ServiceState) {
             state.last_chain_probe_at = None;
             state.chain_runtime_status =
                 ChainRuntimeStatus::Unreachable(format!("query chain runtime failed: {err}"));
+            state.chain_recovery = None;
             state.append_log(format!("query chain runtime status failed: {err}"));
             state.mark_updated();
         }
@@ -188,6 +208,7 @@ pub(super) fn poll_chain_process_state(state: &mut ServiceState) {
 pub(super) fn update_chain_runtime_status(state: &mut ServiceState) {
     if !state.config.chain_enabled {
         state.chain_runtime_status = ChainRuntimeStatus::Disabled;
+        state.chain_recovery = None;
         state.last_chain_probe_at = None;
         return;
     }
@@ -195,9 +216,12 @@ pub(super) fn update_chain_runtime_status(state: &mut ServiceState) {
     if state.chain_running.is_none() {
         if !matches!(
             state.chain_runtime_status,
-            ChainRuntimeStatus::ConfigError(_) | ChainRuntimeStatus::Unreachable(_)
+            ChainRuntimeStatus::ConfigError(_)
+                | ChainRuntimeStatus::StaleExecutionWorld(_)
+                | ChainRuntimeStatus::Unreachable(_)
         ) {
             state.chain_runtime_status = ChainRuntimeStatus::NotStarted;
+            state.chain_recovery = None;
         }
         state.last_chain_probe_at = None;
         return;
@@ -215,6 +239,7 @@ pub(super) fn update_chain_runtime_status(state: &mut ServiceState) {
     match probe_chain_status_endpoint(state.config.chain_status_bind.as_str()) {
         Ok(()) => {
             state.chain_runtime_status = ChainRuntimeStatus::Ready;
+            state.chain_recovery = None;
         }
         Err(err) => {
             let within_grace = state.chain_started_at.is_some_and(|started_at| {
@@ -225,10 +250,100 @@ pub(super) fn update_chain_runtime_status(state: &mut ServiceState) {
                 state.chain_runtime_status = ChainRuntimeStatus::Starting;
             } else if err.contains("chain status bind") {
                 state.chain_runtime_status = ChainRuntimeStatus::ConfigError(err);
+                state.chain_recovery = None;
             } else {
                 state.chain_runtime_status = ChainRuntimeStatus::Unreachable(err);
+                state.chain_recovery = None;
             }
         }
+    }
+}
+
+fn classify_stale_execution_world(
+    state: &ServiceState,
+    recent_chain_logs: &[String],
+) -> Option<ChainRecoverySnapshot> {
+    let recent_log_text = state
+        .logs
+        .iter()
+        .rev()
+        .take(64)
+        .rev()
+        .cloned()
+        .chain(recent_chain_logs.iter().cloned())
+        .collect::<Vec<_>>()
+        .join("\n")
+        .to_ascii_lowercase();
+    let has_distributed_validation_failed = recent_log_text.contains("distributedvalidationfailed");
+    let has_state_root_mismatch = recent_log_text.contains("latest state root mismatch");
+    if !has_distributed_validation_failed || !has_state_root_mismatch {
+        return None;
+    }
+
+    let node_id = state.config.chain_node_id.trim();
+    let fresh_node_id = suggest_fresh_chain_node_id(node_id);
+    let fresh_chain_status_bind = suggest_fresh_chain_status_bind(state.config.chain_status_bind.as_str());
+    let mut suggested_config = state.config.clone();
+    suggested_config.chain_node_id = fresh_node_id.clone();
+    suggested_config.chain_status_bind = fresh_chain_status_bind.clone();
+    let reason = format!(
+        "stale execution world detected for node `{}`: latest state root mismatch from prior persisted chain state",
+        if node_id.is_empty() { DEFAULT_CHAIN_NODE_ID } else { node_id }
+    );
+
+    Some(ChainRecoverySnapshot {
+        error_code: "stale_execution_world".to_string(),
+        reason,
+        node_id: if node_id.is_empty() {
+            DEFAULT_CHAIN_NODE_ID.to_string()
+        } else {
+            node_id.to_string()
+        },
+        execution_world_dir: chain_execution_world_dir(if node_id.is_empty() {
+            DEFAULT_CHAIN_NODE_ID
+        } else {
+            node_id
+        }),
+        recovery_mode: CHAIN_RECOVERY_MODE_FRESH_NODE_ID.to_string(),
+        reset_required: false,
+        fresh_node_id,
+        fresh_chain_status_bind,
+        suggested_config,
+    })
+}
+
+fn suggest_fresh_chain_node_id(node_id: &str) -> String {
+    let base = node_id.trim();
+    let base = if base.is_empty() {
+        DEFAULT_CHAIN_NODE_ID
+    } else {
+        base
+    };
+    format!("{base}-fresh-{}", runtime_paths::now_unix_ms())
+}
+
+fn suggest_fresh_chain_status_bind(bind: &str) -> String {
+    let (host, port) = parse_host_port(bind, "chain status bind")
+        .unwrap_or_else(|_| ("127.0.0.1".to_string(), DEFAULT_CHAIN_STATUS_BIND_PORT));
+    let normalized_host = runtime_paths::normalize_bind_host_for_local_access(host.as_str());
+    let mut candidate = if port == u16::MAX { port } else { port.saturating_add(1) };
+    for _ in 0..CHAIN_RECOVERY_PORT_SCAN_LIMIT {
+        if candidate != port && TcpListener::bind((normalized_host.as_str(), candidate)).is_ok() {
+            return format_host_port(host.as_str(), candidate);
+        }
+        if candidate == u16::MAX {
+            break;
+        }
+        candidate = candidate.saturating_add(1);
+    }
+    format_host_port(host.as_str(), if port == u16::MAX { port } else { port.saturating_add(1) })
+}
+
+fn format_host_port(host: &str, port: u16) -> String {
+    if host.contains(':') && !host.starts_with('[') && !host.ends_with(']') {
+        format!("[{host}]:{port}")
+    } else {
+        format!("{host}:{port}")
     }
 }
 
@@ -498,6 +613,7 @@ pub(super) fn start_chain_process(
     if !config.chain_enabled {
         state.config = config;
         state.chain_runtime_status = ChainRuntimeStatus::Disabled;
+        state.chain_recovery = None;
         state.chain_running = None;
         state.chain_started_at = None;
         state.last_chain_probe_at = None;
@@ -513,6 +629,7 @@ pub(super) fn start_chain_process(
     if !issues.is_empty() {
         let detail = issues.join("; ");
         state.chain_runtime_status = ChainRuntimeStatus::ConfigError(detail.clone());
+        state.chain_recovery = None;
         state.append_log(format!("chain config validation failed: {detail}"));
         state.mark_updated();
         return Err(detail);
@@ -522,6 +639,7 @@ pub(super) fn start_chain_process(
         Ok(args) => args,
         Err(err) => {
             state.chain_runtime_status = ChainRuntimeStatus::ConfigError(err.clone());
+            state.chain_recovery = None;
             state.append_log(format!("invalid chain runtime args: {err}"));
             state.mark_updated();
             return Err(err);
@@ -533,6 +651,7 @@ pub(super) fn start_chain_process(
     if !Path::new(chain_runtime_bin.as_str()).is_file() {
         let err = format!("chain runtime binary does not exist: {chain_runtime_bin}");
         state.chain_runtime_status = ChainRuntimeStatus::Unreachable(err.clone());
+        state.chain_recovery = None;
         state.append_log(format!("chain runtime start failed: {err}"));
         state.mark_updated();
         return Err(err);
@@ -546,6 +665,7 @@ pub(super) fn start_chain_process(
             state.chain_started_at = Some(Instant::now());
             state.last_chain_probe_at = None;
             state.chain_runtime_status = ChainRuntimeStatus::Starting;
+            state.chain_recovery = None;
             state.append_log(format!(
                 "world_chain_runtime started (pid={pid}, bin={chain_runtime_bin})"
             ));
@@ -555,6 +675,7 @@ pub(super) fn start_chain_process(
         Err(err) => {
             state.chain_started_at = None;
             state.chain_runtime_status = ChainRuntimeStatus::Unreachable(err.clone());
+            state.chain_recovery = None;
             state.append_log(format!("chain runtime start failed: {err}"));
             state.mark_updated();
             Err(err)
@@ -592,7 +713,9 @@ pub(super) fn stop_chain_process(state: &mut ServiceState) -> Result<(), String>
     let Some(mut running) = state.chain_running.take() else {
         if !matches!(
             state.chain_runtime_status,
-            ChainRuntimeStatus::Unreachable(_) | ChainRuntimeStatus::ConfigError(_)
+            ChainRuntimeStatus::StaleExecutionWorld(_)
+                | ChainRuntimeStatus::Unreachable(_)
+                | ChainRuntimeStatus::ConfigError(_)
         ) {
             state.chain_runtime_status = if state.config.chain_enabled {
                 ChainRuntimeStatus::NotStarted
@@ -602,6 +725,7 @@ pub(super) fn stop_chain_process(state: &mut ServiceState) -> Result<(), String>
         }
         state.chain_started_at = None;
         state.last_chain_probe_at = None;
+        state.chain_recovery = None;
         state.append_log("world_chain_runtime stop requested but process is not running");
         state.mark_updated();
         return Ok(());
@@ -616,12 +740,14 @@ pub(super) fn stop_chain_process(state: &mut ServiceState) -> Result<(), String>
             } else {
                 ChainRuntimeStatus::Disabled
             };
+            state.chain_recovery = None;
             state.append_log("world_chain_runtime stopped");
             state.mark_updated();
             Ok(())
         }
         Err(err) => {
             state.chain_runtime_status = ChainRuntimeStatus::Unreachable(err.clone());
+            state.chain_recovery = None;
             state.append_log(format!("world_chain_runtime stop failed: {err}"));
             state.mark_updated();
             Err(err)
@@ -651,6 +777,7 @@ pub(super) fn snapshot_from_state(
             &state.config,
             state.chain_runtime_bin.as_str(),
         ),
+        chain_recovery: state.chain_recovery.clone(),
         game_url,
         config: state.config.clone(),
         logs: state.logs.iter().cloned().collect(),
@@ -1021,6 +1148,46 @@ fn chain_execution_world_dir(node_id: &str) -> String {
         .join("reward-runtime-execution-world")
         .to_string_lossy()
         .into_owned()
+}
+
+pub(super) fn finalize_chain_start_outcome(
+    state: &ServiceState,
+    outcome: Result<(), String>,
+) -> Result<(), String> {
+    match outcome {
+        Err(err) => Err(err),
+        Ok(()) => match &state.chain_runtime_status {
+            ChainRuntimeStatus::Disabled => Err("chain runtime is disabled".to_string()),
+            ChainRuntimeStatus::ConfigError(detail)
+            | ChainRuntimeStatus::StaleExecutionWorld(detail)
+            | ChainRuntimeStatus::Unreachable(detail) => Err(detail.clone()),
+            ChainRuntimeStatus::NotStarted if state.chain_running.is_none() => {
+                Err("world_chain_runtime did not remain running".to_string())
+            }
+            ChainRuntimeStatus::NotStarted | ChainRuntimeStatus::Starting | ChainRuntimeStatus::Ready => Ok(()),
+        },
+    }
+}
+
+pub(super) fn chain_error_code_for_state(state: &ServiceState, error: &str) -> &'static str {
+    if matches!(state.chain_runtime_status, ChainRuntimeStatus::StaleExecutionWorld(_))
+        || error.to_ascii_lowercase().contains("latest state root mismatch")
+    {
+        "stale_execution_world"
+    } else if error.contains("chain runtime is disabled") {
+        "chain_disabled"
+    } else if error.contains("proxy") {
+        "proxy_error"
+    } else {
+        "action_failed"
+    }
+}
+
+pub(super) fn chain_error_data_for_state(state: &ServiceState) -> Option<serde_json::Value> {
+    state
+        .chain_recovery
+        .as_ref()
+        .and_then(|value| serde_json::to_value(value).ok())
 }
 
 fn resolve_chain_world_id(config: &LauncherConfig) -> String {

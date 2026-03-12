@@ -48,6 +48,22 @@ impl ClientLauncherApp {
         self.tr("自动补全默认值", "Autofill Safe Defaults")
     }
 
+    fn stale_chain_recovery_action_text(&self) -> &'static str {
+        self.tr("使用 fresh node 恢复", "Recover With Fresh Node")
+    }
+
+    fn apply_chain_recovery_config(&mut self) -> Option<WebChainRecoverySnapshot> {
+        let recovery = self.chain_recovery.clone()?;
+        self.config = recovery.suggested_config.clone();
+        self.config_dirty = false;
+        self.append_log(self.tr(
+            "已应用 stale execution world 恢复建议，准备使用 fresh node id 重试。",
+            "Applied stale execution world recovery suggestion; retrying with a fresh node id.",
+        ));
+        Some(recovery)
+    }
+
+
     fn render_startup_error_issue_lines(&self, ui: &mut egui::Ui, issues: &[ConfigIssue]) {
         for issue in issues.iter().take(3) {
             ui.small(format!("- {}", issue.text(self.ui_language)));
@@ -120,7 +136,9 @@ impl ClientLauncherApp {
         }
         let has_runtime_failure = matches!(
             self.chain_runtime_status,
-            ChainRuntimeStatus::ConfigError(_) | ChainRuntimeStatus::Unreachable(_)
+            ChainRuntimeStatus::StaleExecutionWorld(_)
+                | ChainRuntimeStatus::ConfigError(_)
+                | ChainRuntimeStatus::Unreachable(_)
         );
         if issues.is_empty() && !has_runtime_failure {
             return;
@@ -143,6 +161,26 @@ impl ClientLauncherApp {
                     "区块链启动异常，请执行修复后重试。",
                     "Blockchain startup failed. Fix and retry.",
                 ));
+            }
+            if issues.is_empty()
+                && matches!(self.chain_runtime_status, ChainRuntimeStatus::StaleExecutionWorld(_))
+            {
+                if let Some(recovery) = self.chain_recovery.clone() {
+                    ui.separator();
+                    ui.small(format!(
+                        "{}: {} · {}: {}",
+                        self.tr("建议 fresh node", "Suggested fresh node"),
+                        recovery.fresh_node_id,
+                        self.tr("建议状态端口", "Suggested status bind"),
+                        recovery.fresh_chain_status_bind,
+                    ));
+                    if ui.button(self.stale_chain_recovery_action_text()).clicked() {
+                        self.record_guided_quick_action_click();
+                        if self.apply_chain_recovery_config().is_some() {
+                            self.handle_start_chain_click(issues);
+                        }
+                    }
+                }
             }
             self.render_startup_error_actions(ui, StartupGuideTarget::Chain, issues);
         });
@@ -189,6 +227,7 @@ impl ClientLauncherApp {
                 self.config.chain_pos_proposal_tick_phase = defaults.chain_pos_proposal_tick_phase;
                 self.config.chain_pos_max_past_slot_lag = defaults.chain_pos_max_past_slot_lag;
                 self.chain_runtime_status = ChainRuntimeStatus::NotStarted;
+                self.chain_recovery = None;
                 self.append_log(self.tr(
                     "已为区块链启动链路自动补全安全默认值。",
                     "Autofilled safe defaults for blockchain startup flow.",

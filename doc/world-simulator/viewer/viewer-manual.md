@@ -11,6 +11,7 @@
 - Web 闭环入口：`scripts/run-viewer-web.sh` + agent-browser CLI
 - native fallback 脚本：`scripts/capture-viewer-frame.sh`
 - 角色边界：Web 端定位为 Viewer（观察/调试/间接控制），不承担完整分布式节点职责；共识与复制由后端节点进程负责。
+- 边界说明：本手册仅适用于 Viewer 页面（`world_viewer_live` / Web Viewer），不适用于 `world_web_launcher` / launcher Web 控制面；后者产品动作默认应走 GUI Agent，再用页面校验状态与字段。
 
 ## 快速开始
 
@@ -422,6 +423,8 @@ python3 scripts/generate-viewer-industrial-theme-assets.py --quality v1 --out-di
 - `capture_status.txt` 必须为 `connection_status=connected` 且 `snapshot_ready=1`（否则脚本失败）
 
 ## Web 闭环（默认，推荐调试/回归）
+
+说明：本节仅适用于 Viewer 页面，不适用于 `world_web_launcher` / launcher 控制台。对 launcher 产品动作，应优先调用 GUI Agent 接口（`/api/gui-agent/*`），`agent-browser` 只用于页面加载、状态与字段校验。
 
 说明：该闭环用于可视化观察与交互取证，不等价于“浏览器作为完整分布式节点运行”。
 

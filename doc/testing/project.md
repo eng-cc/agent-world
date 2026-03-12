@@ -56,6 +56,7 @@
 - [x] TASK-TESTING-033 (PRD-TESTING-004) [test_tier_required]: 完成 `systematic-application-testing-manual` 专题文档逐篇人工迁移到 strict schema，并统一 `.prd` 命名。
 - [x] TASK-TESTING-034 (PRD-TESTING-004) [test_tier_required]: 完成 `web-ui-agent-browser-closure-manual` 专题文档逐篇人工迁移到 strict schema，并补齐 `.project.md` 管理文档。
 - [x] TASK-TESTING-042 (PRD-TESTING-002/003/004) [test_tier_required]: 将 Web UI 闭环默认工具口径统一收口到 `agent-browser`，同步主手册、专题分册、Viewer 手册、站内镜像与门禁脚本。
+- [x] TASK-TESTING-043 (PRD-TESTING-002/003) [test_tier_required]: 修正文档边界歧义，明确 `Viewer` 页面默认走 `agent-browser`，`world_web_launcher` / launcher Web 控制面默认走 GUI Agent，再用页面做状态与字段校验。
 - [x] TASK-TESTING-035 (PRD-TESTING-004) [test_tier_required]: 完成 archive 专题 `ci-required-m1-wasm-hash-check` 文档迁移到 strict schema，并统一 `.prd` 命名。
 - [x] TASK-TESTING-036 (PRD-TESTING-004) [test_tier_required]: 完成 archive 专题 `wasm-platform-canonical-hash-manifest` 文档迁移到 strict schema，并统一 `.prd` 命名。
 - [x] TASK-TESTING-037 (PRD-TESTING-005) [test_tier_required]: 完成 `ci-builtin-wasm-m4-m5-hash-drift-hardening` 专题 PRD 与项目管理文档建档，建立 1-6 治理项映射。
@@ -121,6 +122,7 @@
 - 更新日期: 2026-03-11
 - 当前状态: completed
 - 下一任务: 无（当前模块主项目无未完成任务）
+- 最新完成: `TASK-TESTING-043`（S6 手册补齐 Viewer/launcher 驱动分流，明确 launcher Web 控制面走 GUI Agent 优先）。
 - 最新完成: `TASK-TESTING-006`（testing 模块 README 入口索引同步）。
 - 阶段收口优先级: `P0`
 - 阶段 owner: `qa_engineer`（联审：`producer_system_designer`）

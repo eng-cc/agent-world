@@ -8,8 +8,10 @@ use super::{
     build_launcher_args_with_launcher_bin, execute_gui_agent_action,
     gui_agent_capabilities_response, parse_chain_validators, parse_host_port, parse_options,
     parse_port, remap_transfer_runtime_target, stop_chain_process, stop_process,
+    chain_error_code_for_state, finalize_chain_start_outcome, snapshot_from_state,
     validate_chain_config, validate_game_config, validate_game_config_with_launcher_bin,
-    ChainRuntimeStatus, CliOptions, LauncherConfig, ProcessState, ServiceState,
+    ChainRecoverySnapshot, ChainRuntimeStatus, CliOptions, LauncherConfig, ProcessState,
+    ServiceState,
     DEFAULT_CHAIN_STATUS_BIND, DEFAULT_LISTEN_BIND, DEFAULT_SCENARIO,
 };
 use agent_world_proto::storage_profile::StorageProfile;
@@ -657,6 +659,58 @@ fn gui_agent_action_response_includes_state_snapshot_fields() {
         .and_then(|value| value.get("chain_status"))
         .and_then(serde_json::Value::as_str)
         .is_some());
+}
+
+
+#[test]
+fn finalize_chain_start_outcome_reports_stale_execution_world() {
+    let mut state = ServiceState::new(
+        "launcher".to_string(),
+        "chain".to_string(),
+        PathBuf::from("."),
+        LauncherConfig::default(),
+    );
+    state.chain_runtime_status =
+        ChainRuntimeStatus::StaleExecutionWorld("stale execution world detected".to_string());
+    state.chain_recovery = Some(ChainRecoverySnapshot {
+        error_code: "stale_execution_world".to_string(),
+        reason: "stale execution world detected".to_string(),
+        node_id: "viewer-live-node".to_string(),
+        execution_world_dir: "output/chain-runtime/viewer-live-node/reward-runtime-execution-world"
+            .to_string(),
+        recovery_mode: "fresh_node_id".to_string(),
+        reset_required: false,
+        fresh_node_id: "viewer-live-node-fresh-1".to_string(),
+        fresh_chain_status_bind: "127.0.0.1:5122".to_string(),
+        suggested_config: LauncherConfig {
+            chain_node_id: "viewer-live-node-fresh-1".to_string(),
+            chain_status_bind: "127.0.0.1:5122".to_string(),
+            ..LauncherConfig::default()
+        },
+    });
+
+    let err = finalize_chain_start_outcome(&state, Ok(())).expect_err("should surface stale error");
+    assert!(err.contains("stale execution world"));
+    assert_eq!(chain_error_code_for_state(&state, err.as_str()), "stale_execution_world");
+
+    let snapshot = snapshot_from_state(&state, Some("127.0.0.1"));
+    let encoded = serde_json::to_value(&snapshot).expect("serialize snapshot");
+    assert_eq!(encoded["chain_status"], serde_json::json!("stale_execution_world"));
+    assert_eq!(
+        encoded["chain_recovery"]["fresh_node_id"],
+        serde_json::json!("viewer-live-node-fresh-1")
+    );
+}
+
+#[test]
+fn gui_agent_capabilities_include_recover_chain_action() {
+    let capabilities = gui_agent_capabilities_response();
+    let encoded = serde_json::to_value(&capabilities).expect("serialize capabilities");
+    let actions = encoded
+        .get("actions")
+        .and_then(serde_json::Value::as_array)
+        .expect("actions array");
+    assert!(actions.iter().any(|item| item.as_str() == Some("recover_chain")));
 }
 
 fn make_temp_dir(label: &str) -> PathBuf {

@@ -32,7 +32,7 @@
 - Success Criteria:
   - SC-1: 关键改动路径均可映射到明确测试层级（S0~S10）。
   - SC-2: required/full 门禁持续可用且与手册口径一致。
-  - SC-3: Web UI 闭环与分布式长跑在发布流程中有可追溯证据。
+  - SC-3: Web UI 闭环与分布式长跑在发布流程中有可追溯证据，且明确区分 `Viewer(agent-browser)` 与 `launcher(GUI Agent first)` 两条驱动链路。
   - SC-4: 测试任务 100% 映射 PRD-TESTING-ID。
   - SC-5: 活跃 testing 专题文档按批次完成人工迁移到 strict schema，并统一 `*.prd.md` / `*.project.md` 命名。
   - SC-6: builtin wasm（m1/m4/m5）hash 发布链路具备跨 runner 对账、required check 保护与本地只读校验策略。
@@ -55,7 +55,7 @@
   - PRD-TESTING-005: As a 发布工程维护者, I want builtin wasm hash chain hardened end-to-end, so that hash drift can be blocked and traced before release.
 - Critical User Flows:
   1. Flow-TST-001: `识别改动类型 -> 匹配 S0~S10 -> 执行 required -> 输出结果`
-  2. Flow-TST-002: `发布前执行 full 套件 -> 汇总命令/日志/截图 -> 生成证据包`
+  2. Flow-TST-002: `发布前执行 full 套件 -> 按 Viewer/launcher 选择正确驱动链路 -> 汇总命令/日志/截图 -> 生成证据包`
   3. Flow-TST-003: `线上问题复盘 -> 回填触发矩阵 -> 增加回归用例 -> 验证闭环`
   4. Flow-TST-004: `逐篇阅读 legacy 专题文档 -> 按 strict schema 人工重写 -> 改名为 .prd/.project -> 回归校验`
   5. Flow-TST-005: `触发 wasm hash 校验 -> 跨 runner 对账 -> required check 放行/阻断 -> 发布链路收口`
@@ -63,6 +63,7 @@
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
 | 分层测试触发 | 改动类型、测试层级、命令集合 | 依据矩阵选择最小必跑集合 | `planned -> running -> passed/failed` | 默认 required 优先，发布加跑 full | 开发者可执行，发布者可放行 |
+| Web UI 驱动分流 | `surface_type`、`driver`、`evidence_mode` | Viewer 页面默认走 `agent-browser`；`world_web_launcher` 产品动作默认走 GUI Agent，页面仅做状态/字段校验 | `selected -> driven -> verified` | 先按 surface 分流，再决定是否补充 Canvas/页面采样 | QA/发布与产品 owner 共同遵循 |
 | 证据包归档 | 命令、日志、截图、结论、责任人 | 执行后归档并建立索引 | `collecting -> archived -> reviewed` | 按版本与模块分层索引 | 测试维护者负责最终校验 |
 | 缺陷回归闭环 | 缺陷ID、触发条件、修复提交、复测结论 | 缺陷关闭前必须绑定回归记录 | `opened -> fixed -> regressed -> closed` | 高风险缺陷优先回归 | QA/维护者可更新状态 |
 | 文档格式迁移 | 旧文档路径、约束点清单、目标命名 | 人工重写并更名，补全映射与验证证据 | `inventory -> migrated -> validated` | 先迁移活跃文档、后迁移归档文档 | 维护者审批迁移质量，贡献者执行 |
@@ -74,12 +75,13 @@
   - AC-4: 新增测试流程需标注 `test_tier_required` 或 `test_tier_full`。
   - AC-5: 每个迁移批次必须提供“原文约束点 -> 新章节映射”并通过文档治理检查。
   - AC-6: builtin wasm hash 发布链路治理（m4/m5 keyed + strict + multi-runner + required check + identity 输入收敛）具备独立专题与任务追踪。
+  - AC-7: `world_web_launcher` / launcher Web 控制面必须显式标注 GUI Agent 优先，`agent-browser` 仅作为状态、字段与页面加载校验补充。
 - Non-Goals:
   - 不在本 PRD 中替代业务模块的功能设计。
   - 不承诺所有测试都进入 CI 默认路径。
 
 ## 3. AI System Requirements (If Applicable)
-- Tool Requirements: `scripts/ci-tests.sh`、agent-browser 闭环工具、长跑脚本、结果汇总工具。
+- Tool Requirements: `scripts/ci-tests.sh`、agent-browser 闭环工具、`world_web_launcher` GUI Agent 接口、长跑脚本、结果汇总工具。
 - Evaluation Strategy: 通过门禁通过率、缺陷逃逸率、回归定位时长、证据完整度衡量测试体系质量。
 
 ## 4. Technical Specifications

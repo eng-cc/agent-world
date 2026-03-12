@@ -164,6 +164,14 @@ impl ClientLauncherApp {
                 "Feedback/Transfer/Explorer are unavailable while blockchain is starting"
                     .to_string()
             }
+            (ChainRuntimeStatus::StaleExecutionWorld(detail), UiLanguage::ZhCn) => {
+                format!("反馈/转账/浏览器功能暂不可用：检测到旧执行世界冲突（{detail}）")
+            }
+            (ChainRuntimeStatus::StaleExecutionWorld(detail), UiLanguage::EnUs) => {
+                format!(
+                    "Feedback/Transfer/Explorer are unavailable: stale execution world detected ({detail})"
+                )
+            }
             (ChainRuntimeStatus::Unreachable(detail), UiLanguage::ZhCn) => {
                 format!("反馈/转账/浏览器功能暂不可用：区块链不可达（{detail}）")
             }

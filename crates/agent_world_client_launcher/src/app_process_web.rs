@@ -496,6 +496,7 @@ impl ClientLauncherApp {
             snapshot.chain_status.as_str(),
             snapshot.chain_detail.as_deref(),
         );
+        self.chain_recovery = snapshot.chain_recovery;
         self.web_game_url = Some(snapshot.game_url);
         if self.config_dirty {
             if self.config == snapshot.config {

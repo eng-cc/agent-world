@@ -207,12 +207,26 @@ impl ProcessState {
     }
 }
 
+#[derive(Debug, Clone, Serialize)]
+struct ChainRecoverySnapshot {
+    error_code: String,
+    reason: String,
+    node_id: String,
+    execution_world_dir: String,
+    recovery_mode: String,
+    reset_required: bool,
+    fresh_node_id: String,
+    fresh_chain_status_bind: String,
+    suggested_config: LauncherConfig,
+}
+
 #[derive(Debug, Clone)]
 enum ChainRuntimeStatus {
     Disabled,
     NotStarted,
     Starting,
     Ready,
+    StaleExecutionWorld(String),
     Unreachable(String),
     ConfigError(String),
 }
@@ -224,6 +238,7 @@ impl ChainRuntimeStatus {
             Self::NotStarted => "not_started",
             Self::Starting => "starting",
             Self::Ready => "ready",
+            Self::StaleExecutionWorld(_) => "stale_execution_world",
             Self::Unreachable(_) => "unreachable",
             Self::ConfigError(_) => "config_error",
         }
@@ -231,7 +246,9 @@ impl ChainRuntimeStatus {
 
     fn detail(&self) -> Option<String> {
         match self {
-            Self::Unreachable(detail) | Self::ConfigError(detail) => Some(detail.clone()),
+            Self::StaleExecutionWorld(detail)
+            | Self::Unreachable(detail)
+            | Self::ConfigError(detail) => Some(detail.clone()),
             Self::Disabled | Self::NotStarted | Self::Starting | Self::Ready => None,
         }
     }
@@ -246,6 +263,7 @@ struct ServiceState {
     process_state: ProcessState,
     running: Option<RunningProcess>,
     chain_runtime_status: ChainRuntimeStatus,
+    chain_recovery: Option<ChainRecoverySnapshot>,
     chain_running: Option<RunningProcess>,
     chain_started_at: Option<Instant>,
     last_chain_probe_at: Option<Instant>,
@@ -273,6 +291,7 @@ impl ServiceState {
             process_state: ProcessState::Idle,
             running: None,
             chain_runtime_status,
+            chain_recovery: None,
             chain_running: None,
             chain_started_at: None,
             last_chain_probe_at: None,
@@ -305,6 +324,8 @@ struct StateSnapshot {
     chain_pid: Option<u32>,
     chain_running: bool,
     chain_runtime_bin: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    chain_recovery: Option<ChainRecoverySnapshot>,
     game_url: String,
     config: LauncherConfig,
     logs: Vec<String>,
@@ -314,7 +335,12 @@ struct StateSnapshot {
 #[derive(Debug, Serialize)]
 struct ApiResponse {
     ok: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    error_code: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     error: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    data: Option<serde_json::Value>,
     state: StateSnapshot,
 }
 
@@ -569,7 +595,9 @@ fn handle_connection(
             let snapshot = snapshot_from_state(&state, request_host.as_deref());
             let response = ApiResponse {
                 ok: outcome.is_ok(),
+                error_code: None,
                 error: outcome.err(),
+                data: None,
                 state: snapshot,
             };
             write_json_response(&mut stream, 200, &response)
@@ -583,7 +611,9 @@ fn handle_connection(
             let snapshot = snapshot_from_state(&state, request_host.as_deref());
             let response = ApiResponse {
                 ok: outcome.is_ok(),
+                error_code: None,
                 error: outcome.err(),
+                data: None,
                 state: snapshot,
             };
             write_json_response(&mut stream, 200, &response)
@@ -595,10 +625,22 @@ fn handle_connection(
             poll_service_state(&mut state);
             let outcome = start_chain_process(&mut state, config);
             poll_service_state(&mut state);
+            let outcome = finalize_chain_start_outcome(&state, outcome);
             let snapshot = snapshot_from_state(&state, request_host.as_deref());
+            let error = outcome.err();
+            let error_code = error
+                .as_deref()
+                .map(|detail| chain_error_code_for_state(&state, detail).to_string());
+            let data = if error.is_some() {
+                chain_error_data_for_state(&state)
+            } else {
+                None
+            };
             let response = ApiResponse {
-                ok: outcome.is_ok(),
-                error: outcome.err(),
+                ok: error.is_none(),
+                error_code,
+                error,
+                data,
                 state: snapshot,
             };
             write_json_response(&mut stream, 200, &response)
@@ -612,7 +654,9 @@ fn handle_connection(
             let snapshot = snapshot_from_state(&state, request_host.as_deref());
             let response = ApiResponse {
                 ok: outcome.is_ok(),
+                error_code: None,
                 error: outcome.err(),
+                data: None,
                 state: snapshot,
             };
             write_json_response(&mut stream, 200, &response)

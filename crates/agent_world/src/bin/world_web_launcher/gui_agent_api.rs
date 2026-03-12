@@ -10,6 +10,7 @@ const ACTION_START_GAME: &str = "start_game";
 const ACTION_STOP_GAME: &str = "stop_game";
 const ACTION_START_CHAIN: &str = "start_chain";
 const ACTION_STOP_CHAIN: &str = "stop_chain";
+const ACTION_RECOVER_CHAIN: &str = "recover_chain";
 const ACTION_SUBMIT_TRANSFER: &str = "submit_transfer";
 const ACTION_SUBMIT_FEEDBACK: &str = "submit_feedback";
 
@@ -17,6 +18,7 @@ const GUI_AGENT_ACTIONS: &[&str] = &[
     ACTION_START_GAME,
     ACTION_STOP_GAME,
     ACTION_START_CHAIN,
+    ACTION_RECOVER_CHAIN,
     ACTION_STOP_CHAIN,
     ACTION_SUBMIT_TRANSFER,
     ACTION_SUBMIT_FEEDBACK,
@@ -274,15 +276,55 @@ pub(super) fn execute_gui_agent_action(
             };
             let outcome = start_chain_process(state, config);
             poll_service_state(state);
+            let outcome = finalize_chain_start_outcome(state, outcome);
             match outcome {
                 Ok(()) => action_ok(state, action, request_host, None),
                 Err(err) => action_error(
                     state,
                     action,
                     request_host,
-                    classify_runtime_error_code(err.as_str()),
+                    chain_error_code_for_state(state, err.as_str()),
                     err,
+                    chain_error_data_for_state(state),
+                ),
+            }
+        }
+        ACTION_RECOVER_CHAIN => {
+            if let Err(err) = ensure_empty_payload(request.payload.as_ref(), action) {
+                return action_error(state, action, request_host, "invalid_request", err, None);
+            }
+            let Some(recovery) = state.chain_recovery.clone() else {
+                return action_error(
+                    state,
+                    action,
+                    request_host,
+                    "action_failed",
+                    "no stale execution world recovery is currently available",
                     None,
+                );
+            };
+            if recovery.recovery_mode != "fresh_node_id" {
+                return action_error(
+                    state,
+                    action,
+                    request_host,
+                    "action_failed",
+                    format!("unsupported chain recovery mode: {}", recovery.recovery_mode),
+                    Some(to_json_value(&recovery)),
+                );
+            }
+            let outcome = start_chain_process(state, recovery.suggested_config.clone());
+            poll_service_state(state);
+            let outcome = finalize_chain_start_outcome(state, outcome);
+            match outcome {
+                Ok(()) => action_ok(state, action, request_host, Some(to_json_value(&recovery))),
+                Err(err) => action_error(
+                    state,
+                    action,
+                    request_host,
+                    chain_error_code_for_state(state, err.as_str()),
+                    err,
+                    chain_error_data_for_state(state).or_else(|| Some(to_json_value(&recovery))),
                 ),
             }
         }
@@ -506,10 +548,15 @@ fn build_query_runtime_target(
 }
 
 fn classify_runtime_error_code(error: &str) -> &'static str {
+    let error_lower = error.to_ascii_lowercase();
     if error.contains("chain runtime is disabled") {
         "chain_disabled"
     } else if error.contains("proxy") {
         "proxy_error"
+    } else if error_lower.contains("stale execution world")
+        || error_lower.contains("latest state root mismatch")
+    {
+        "stale_execution_world"
     } else {
         "action_failed"
     }

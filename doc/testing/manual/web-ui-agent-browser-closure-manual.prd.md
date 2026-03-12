@@ -6,22 +6,25 @@
 审计轮次: 4
 
 ## 1. Executive Summary
-- Problem Statement: Web UI 验收若缺少统一启动、采样、门禁与故障分级，容易出现“看起来可用但证据不可复现”的假通过。
-- Proposed Solution: 建立 agent-browser Web 闭环唯一手册，强制 GPU + headed 口径、语义化 `__AW_TEST__` 采样和 fail-fast 分级处置，并接入发布脚本。
+- Problem Statement: Web UI 验收若缺少统一启动、采样、门禁与故障分级，且未区分 Viewer 页面与 launcher 控制面的驱动优先级，容易出现“看起来可用但证据不可复现”的假通过。
+- Proposed Solution: 保留 agent-browser 作为 Viewer 页面默认闭环手册，同时显式规定 `world_web_launcher` / launcher Web 控制面先用 GUI Agent 驱动产品动作，再用页面做状态与字段校验，并统一接入发布脚本与 fail-fast 处置。
 - Success Criteria:
-  - SC-1: S6 Web 闭环流程可由手册命令一键复现。
+  - SC-1: S6 Web 闭环流程可由手册命令一键复现，并明确区分 Viewer 与 launcher 控制面两类 surface。
   - SC-2: 验收口径强制 `open ... --headed`，并阻断 `SwiftShader/software rendering`。
   - SC-3: 至少输出 `snapshot + console + screenshot + state` 证据。
   - SC-4: 发布验收脚本（`viewer-release-qa-loop/full-coverage`）可直接复用手册约束。
   - SC-5: 文档迁移后统一 `.prd.md/.project.md` 命名并通过治理检查。
+  - SC-6: `world_web_launcher` 的产品动作路径默认走 GUI Agent，不再把 canvas 直点或纯 agent-browser 动作作为首选执行链路。
 
 ## 2. User Experience & Functionality
 - User Personas:
   - Web 闭环执行者：按手册运行 agent-browser 并归档证据。
+  - 启动器控制面执行者：通过 GUI Agent 驱动 `world_web_launcher` 产品动作，并用页面做结果核对。
   - 发布负责人：用一键脚本快速判断是否可放行。
   - 故障值守人员：根据 fail-fast 等级快速定位问题归属。
 - User Scenarios & Frequency:
   - 每次 Viewer Web 相关改动后执行 S6 smoke。
+  - 每次 launcher Web 控制面或 GUI Agent 接口改动后，先执行 GUI Agent 动作闭环，再做页面状态核验。
   - 每次候选发布前执行 `viewer-release-qa-loop.sh`。
   - 关键版本执行 `viewer-release-full-coverage.sh`（含玩法与视觉）。
   - 连接失败或渲染崩溃时按 F1~F4 处置并归档证据。
@@ -31,7 +34,8 @@
   - PRD-TESTING-WEB-003: As a 故障值守人员, I want fail-fast taxonomy with actions, so that incident triage is fast and consistent.
 - Critical User Flows:
   1. Flow-WEB-001: `启动 world_game_launcher -> 端口/主页自检 -> 打开 Web 页`
-  2. Flow-WEB-002: `执行 agent-browser 语义步骤 -> 采集状态/日志/截图 -> 关闭会话`
+  2. Flow-WEB-002: `Viewer 页面执行 agent-browser 语义步骤 -> 采集状态/日志/截图 -> 关闭会话`
+  3. Flow-WEB-002A: `launcher 控制面执行 GUI Agent 动作 -> 页面核对状态/字段 -> 归档响应与截图`
   3. Flow-WEB-003: `执行 GPU/headed 硬门禁 -> 检测软件渲染关键字 -> pass/fail`
   4. Flow-WEB-004: `触发 F1~F4 -> 输出分级结论 -> 归档证据并阻断放行`
   5. Flow-WEB-005: `运行 qa-loop/full-coverage -> 汇总产物 -> 发布评审`
@@ -41,6 +45,7 @@
 | 启动与自检 | `--live-bind`、`--web-bind`、viewer URL、端口监听 | 启动 launcher 并检查 4173/5011 与主页可达 | `booting -> ready` | 先端口后 URL，再进入采样 | 执行者可操作 |
 | GPU 硬门禁 | `--headed`、console 关键字 (`SwiftShader` 等) | 采样前执行硬门禁检查 | `gating -> pass/fail` | 发现软件渲染即 fail | 发布/测试共同遵循 |
 | agent-browser 采样 | `snapshot`、`eval`、`console`、`screenshot`、`getState` | 基于 `__AW_TEST__` 执行语义步骤 | `sampling -> evidence` | 至少 1 张截图 + state 字段完整 | 执行者产出，发布者审阅 |
+| launcher 控制面驱动 | `/api/gui-agent/capabilities`、`/api/gui-agent/state`、`/api/gui-agent/action`、页面字段快照 | 先通过 GUI Agent 执行动作，再用浏览器页面校验结果 | `action_requested -> applied -> verified` | launcher 控制面默认优先，不得被 canvas 直点替代 | 执行者与发布负责人共同审阅 |
 | 会话防抖 | `close-all`、fail-fast 预检查 | 每轮清理残留会话并快速失败 | `cleanup -> opened -> stable` | 先清会话后 open，减少残留干扰 | 执行者维护 |
 | 发行验收脚本 | `viewer-release-qa-loop.sh`、`viewer-release-full-coverage.sh`、`--quick` | 一键执行发布门禁并输出总结 | `running -> summarized` | 先 QA loop，再 full coverage | 发布负责人触发 |
 | 故障分级 | F1~F4 签名、处置动作、证据清单 | 识别错误并匹配处置流程 | `detected -> triaged -> archived` | 连接问题优先于可玩性判定 | 值守与维护者执行 |
@@ -51,23 +56,25 @@
   - AC-4: 提供 F1~F4 分级与对应处置动作。
   - AC-5: 发布脚本产物路径与门禁规则可追溯到本手册。
   - AC-6: 本专题迁移后引用更新到新命名并通过治理检查。
+  - AC-7: 手册必须显式声明 `Viewer(agent-browser)` 与 `launcher(GUI Agent first)` 的执行边界，不得让执行者误把 launcher 控制面当作纯 agent-browser 页面驱动对象。
 - Non-Goals:
   - 不在本专题替代 native 抓图应急链路。
   - 不在本专题重构 Viewer 业务逻辑或渲染实现。
   - 不在本专题扩展非 Web 场景测试规范。
 
 ## 3. AI System Requirements (If Applicable)
-- Tool Requirements: `agent-browser` CLI（二进制命令）用于浏览器自动化；执行环境需保证本机可直接调用 `agent-browser`。
+- Tool Requirements: `agent-browser` CLI（二进制命令）用于 Viewer 页面自动化；`world_web_launcher` 的 GUI Agent 接口用于 launcher 控制面动作驱动；执行环境需保证两者均可直接调用。
 - Evaluation Strategy: 通过语义动作成功率（`__AW_TEST__` 可用性）、门禁通过率和故障分级命中率评估闭环质量。
 
 ## 4. Technical Specifications
-- Architecture Overview: Web 闭环由 `world_game_launcher` 提供 live/runtime + web 静态服务，agent-browser CLI 负责页面驱动与证据采样，发布脚本承载标准化验收与总结。
+- Architecture Overview: Web 闭环按 surface 分为两条路径：`world_viewer_live` / Viewer 页面由 agent-browser 负责页面驱动与证据采样；`world_web_launcher` / launcher Web 控制面由 GUI Agent 负责产品动作驱动，再由页面校验状态与字段；发布脚本承载标准化验收与总结。
 - Integration Points:
   - `testing-manual.md`
   - `scripts/run-viewer-web.sh`
   - `scripts/viewer-release-qa-loop.sh`
   - `scripts/viewer-release-full-coverage.sh`
   - `agent-browser` CLI（通过 `PATH` 调用）
+  - `world_web_launcher` GUI Agent 接口（`/api/gui-agent/*`）
   - `window.__AW_TEST__`（`runSteps/setMode/focus/select/sendControl/getState`）
 - Edge Cases & Error Handling:
   - F1 `ERR_CONNECTION_REFUSED`: launcher 未就绪或已退出；先确认端口监听再重试。
@@ -106,7 +113,7 @@
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |
-| DEC-WEB-001 | Web 闭环默认链路，agent-browser 优先 | 继续以 native 抓图为默认 | Web 链路更贴近发布场景且可自动化。 |
+| DEC-WEB-001 | Viewer 页面默认走 agent-browser；launcher 控制面默认走 GUI Agent | 继续以 native 抓图为默认；或让 launcher 控制面也直接走纯 agent-browser/canvas | 不同 surface 已具备不同机器接口，按边界分流才能同时获得稳定动作驱动与可审计页面证据。 |
 | DEC-WEB-002 | 验收强制 headed + GPU | 允许 headless 或软件渲染 | 避免性能/视觉口径失真。 |
 | DEC-WEB-003 | 语义化 `__AW_TEST__` 操作优先 | 纯坐标点击脚本 | 减少 UI 变动导致的脆弱性。 |
 | DEC-WEB-004 | 失败分级 F1~F4 + 证据归档 | 仅记录通用失败日志 | 缩短定位时间并提升复盘质量。 |

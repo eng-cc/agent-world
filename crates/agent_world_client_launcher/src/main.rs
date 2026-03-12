@@ -388,12 +388,26 @@ impl WebRequestInflight {
     }
 }
 
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+struct WebChainRecoverySnapshot {
+    error_code: String,
+    reason: String,
+    node_id: String,
+    execution_world_dir: String,
+    recovery_mode: String,
+    reset_required: bool,
+    fresh_node_id: String,
+    fresh_chain_status_bind: String,
+    suggested_config: LaunchConfig,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 struct WebStateSnapshot {
     status: String,
     detail: Option<String>,
     chain_status: String,
     chain_detail: Option<String>,
+    chain_recovery: Option<WebChainRecoverySnapshot>,
     game_url: String,
     config: LaunchConfig,
     logs: Vec<String>,
@@ -484,6 +498,7 @@ enum ChainRuntimeStatus {
     NotStarted,
     Starting,
     Ready,
+    StaleExecutionWorld(String),
     Unreachable(String),
     ConfigError(String),
 }
@@ -499,6 +514,8 @@ impl ChainRuntimeStatus {
             (Self::Starting, UiLanguage::EnUs) => "Starting",
             (Self::Ready, UiLanguage::ZhCn) => "已就绪",
             (Self::Ready, UiLanguage::EnUs) => "Ready",
+            (Self::StaleExecutionWorld(_), UiLanguage::ZhCn) => "旧执行世界冲突",
+            (Self::StaleExecutionWorld(_), UiLanguage::EnUs) => "Stale World Conflict",
             (Self::Unreachable(_), UiLanguage::ZhCn) => "不可达",
             (Self::Unreachable(_), UiLanguage::EnUs) => "Unreachable",
             (Self::ConfigError(_), UiLanguage::ZhCn) => "配置错误",
@@ -511,13 +528,16 @@ impl ChainRuntimeStatus {
             Self::Disabled | Self::NotStarted => egui::Color32::from_rgb(130, 130, 130),
             Self::Starting => egui::Color32::from_rgb(201, 146, 44),
             Self::Ready => egui::Color32::from_rgb(62, 152, 92),
+            Self::StaleExecutionWorld(_) => egui::Color32::from_rgb(196, 84, 84),
             Self::Unreachable(_) | Self::ConfigError(_) => egui::Color32::from_rgb(196, 84, 84),
         }
     }
 
     fn detail(&self) -> Option<&str> {
         match self {
-            Self::Unreachable(detail) | Self::ConfigError(detail) => Some(detail.as_str()),
+            Self::StaleExecutionWorld(detail)
+            | Self::Unreachable(detail)
+            | Self::ConfigError(detail) => Some(detail.as_str()),
             Self::Disabled | Self::NotStarted | Self::Starting | Self::Ready => None,
         }
     }
@@ -542,6 +562,9 @@ fn chain_runtime_status_from_web(status: &str, detail: Option<&str>) -> ChainRun
         "not_started" => ChainRuntimeStatus::NotStarted,
         "starting" => ChainRuntimeStatus::Starting,
         "ready" => ChainRuntimeStatus::Ready,
+        "stale_execution_world" => {
+            ChainRuntimeStatus::StaleExecutionWorld(detail.unwrap_or("unknown").to_string())
+        }
         "unreachable" => ChainRuntimeStatus::Unreachable(detail.unwrap_or("unknown").to_string()),
         "config_error" => ChainRuntimeStatus::ConfigError(detail.unwrap_or("unknown").to_string()),
         _ => ChainRuntimeStatus::Unreachable(format!("unknown chain status: {status}")),
@@ -786,6 +809,7 @@ struct ClientLauncherApp {
     ui_language: UiLanguage,
     status: LauncherStatus,
     chain_runtime_status: ChainRuntimeStatus,
+    chain_recovery: Option<WebChainRecoverySnapshot>,
     #[cfg(not(target_arch = "wasm32"))]
     running: Option<RunningProcess>,
     chain_auto_start_attempted: bool,
@@ -863,6 +887,7 @@ impl Default for ClientLauncherApp {
             ui_language: UiLanguage::detect_from_env(),
             status: LauncherStatus::Idle,
             chain_runtime_status,
+            chain_recovery: None,
             #[cfg(not(target_arch = "wasm32"))]
             running: None,
             chain_auto_start_attempted: false,

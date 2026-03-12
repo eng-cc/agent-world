@@ -11,6 +11,7 @@
 - [x] WPCM-3 (PRD-TESTING-WEB-002): 固化 GPU + headed 硬门禁与软件渲染阻断规则。
 - [x] WPCM-4 (PRD-TESTING-WEB-002/003): 对齐 `viewer-release-qa-loop.sh` 与 `viewer-release-full-coverage.sh` 的门禁口径和产物要求。
 - [x] WPCM-5 (PRD-TESTING-004): 专题文档人工迁移到 strict schema，并统一 `.prd.md/.project.md` 命名。
+- [x] WPCM-6 (PRD-TESTING-WEB-001/002): 明确 Viewer 页面与 `world_web_launcher` 控制面的执行边界：前者 `agent-browser` 优先，后者 GUI Agent 优先。
 
 ## 依赖
 - doc/testing/manual/web-ui-agent-browser-closure-manual.prd.md
@@ -24,7 +25,7 @@
 - `doc/testing/project.md`
 
 ## 状态
-- 更新日期：2026-03-03
+- 更新日期：2026-03-11
 - 当前阶段：已完成
 - 阻塞项：无
 - 下一步：无（manual 批次迁移收口）

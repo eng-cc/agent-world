@@ -2,7 +2,7 @@
 
 审计轮次: 6
 
-更新时间：2026-03-11
+更新时间：2026-03-12
 
 ## 入口
 - 模块 PRD：`doc/world-simulator/prd.md`
@@ -52,6 +52,7 @@
 | `doc/world-simulator/launcher/game-client-launcher-self-guided-experience-2026-03-08.prd.md` | `doc/world-simulator/launcher/game-client-launcher-self-guided-experience-2026-03-08.design.md` | `doc/world-simulator/launcher/game-client-launcher-self-guided-experience-2026-03-08.project.md` |
 | `doc/world-simulator/launcher/game-client-launcher-web-console-gui-agent-interface-2026-03-08.prd.md` | `doc/world-simulator/launcher/game-client-launcher-web-console-gui-agent-interface-2026-03-08.design.md` | `doc/world-simulator/launcher/game-client-launcher-web-console-gui-agent-interface-2026-03-08.project.md` |
 | `doc/world-simulator/launcher/game-client-launcher-chain-runtime-execution-world-dir-output-hardening-2026-03-09.prd.md` | `doc/world-simulator/launcher/game-client-launcher-chain-runtime-execution-world-dir-output-hardening-2026-03-09.design.md` | `doc/world-simulator/launcher/game-client-launcher-chain-runtime-execution-world-dir-output-hardening-2026-03-09.project.md` |
+| `doc/world-simulator/launcher/game-client-launcher-chain-runtime-stale-execution-world-recovery-2026-03-12.prd.md` | `doc/world-simulator/launcher/game-client-launcher-chain-runtime-stale-execution-world-recovery-2026-03-12.design.md` | `doc/world-simulator/launcher/game-client-launcher-chain-runtime-stale-execution-world-recovery-2026-03-12.project.md` |
 | `doc/world-simulator/launcher/game-client-launcher-ui-schema-share-2026-03-04.prd.md` | `doc/world-simulator/launcher/game-client-launcher-ui-schema-share-2026-03-04.design.md` | `doc/world-simulator/launcher/game-client-launcher-ui-schema-share-2026-03-04.project.md` |
 | `doc/world-simulator/launcher/game-client-launcher-web-console-2026-03-04.prd.md` | `doc/world-simulator/launcher/game-client-launcher-web-console-2026-03-04.design.md` | `doc/world-simulator/launcher/game-client-launcher-web-console-2026-03-04.project.md` |
 | `doc/world-simulator/launcher/game-client-launcher-chain-runtime-decouple-2026-02-28.prd.md` | `doc/world-simulator/launcher/game-client-launcher-chain-runtime-decouple-2026-02-28.design.md` | `doc/world-simulator/launcher/game-client-launcher-chain-runtime-decouple-2026-02-28.project.md` |

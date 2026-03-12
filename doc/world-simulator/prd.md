@@ -47,6 +47,7 @@
   - `doc/world-simulator/launcher/game-client-launcher-web-console-gui-agent-interface-2026-03-08.prd.md`（PRD-WORLD_SIMULATOR-031）
   - `doc/world-simulator/kernel/runtime-required-failing-tests-offline-2026-03-09.prd.md`（PRD-WORLD_SIMULATOR-032）
   - `doc/world-simulator/launcher/game-client-launcher-chain-runtime-execution-world-dir-output-hardening-2026-03-09.prd.md`（PRD-WORLD_SIMULATOR-033）
+  - `doc/world-simulator/launcher/game-client-launcher-chain-runtime-stale-execution-world-recovery-2026-03-12.prd.md`（PRD-WORLD_SIMULATOR-034）
   - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase1-2026-03-04.prd.md`（PRD-WORLD_SIMULATOR-016）
   - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase2-2026-03-05.prd.md`（PRD-WORLD_SIMULATOR-017）
   - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase3-2026-03-05.prd.md`（PRD-WORLD_SIMULATOR-018）
@@ -124,6 +125,7 @@
   - SC-37: 启动器 Web Console 需提供一套面向 GUI Agent 的机器接口（能力发现 + 统一动作执行），覆盖人工可达全部功能并返回稳定结构化结果。
   - SC-38: runtime required 测试链路需支持“已知基线失败项临时下线但资产保留”的精确治理机制，避免 pre-commit 长期阻塞并保持后续恢复可追踪。
   - SC-39: 启动器托管的 `world_chain_runtime` 必须显式传递 `--execution-world-dir` 到 `output/chain-runtime/<node_id>/reward-runtime-execution-world`，避免 `explorer-index.json` 落到源码目录。
+  - SC-40: 启动器默认链启动在命中 stale execution world / state root mismatch 时，必须提供结构化恢复语义与至少一条非 CLI 恢复路径，避免用户只能通过底层日志手工换 node id。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -171,6 +173,7 @@
   - PRD-WORLD_SIMULATOR-031: As a GUI Agent 编排器, I want one machine-oriented API surface in web console, so that I can execute every manual launcher operation without UI-dependent parsing.
   - PRD-WORLD_SIMULATOR-032: As a runtime 维护者, I want known required failing tests to be temporarily offlined with explicit traceability, so that pre-commit can proceed while keeping recovery signals.
   - PRD-WORLD_SIMULATOR-033: As a 启动器维护者, I want launcher to pass an explicit execution world output path to chain runtime, so that runtime-generated explorer index files always stay under `output/`.
+  - PRD-WORLD_SIMULATOR-034: As a 启动器用户, I want launcher to detect and recover from stale chain execution-world conflicts, so that I can restart chain-enabled flows without reading raw runtime logs or manually changing node IDs.
 - Critical User Flows:
   1. Flow-WS-001（Web-first 闭环）:
      `选择场景 -> 启动 Viewer Web -> 执行关键交互 -> 采集日志/截图/指标 -> 产出 test_tier_required 结论`
@@ -476,6 +479,7 @@
 | PRD-WORLD_SIMULATOR-031 | TASK-WORLD_SIMULATOR-091/092 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p agent_world --bin world_web_launcher`，验证 GUI Agent 能力声明、统一动作执行与结构化响应稳定性 | Web Console 机器控制面、人工操作可替代性、既有控制面兼容性 |
 | PRD-WORLD_SIMULATOR-032 | TASK-WORLD_SIMULATOR-093/094 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p agent_world --tests --features test_tier_required`，验证 10 项已知失败用例临时下线后 required 测试链路恢复可执行且白名单外覆盖保持有效 | runtime required 回归可用性、pre-commit 稳定性、测试资产可追溯性 |
 | PRD-WORLD_SIMULATOR-033 | TASK-WORLD_SIMULATOR-095/096 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_game_launcher world_game_launcher_tests::build_world_chain_runtime_args_includes_storage_profile -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher world_web_launcher_tests::build_chain_runtime_args_includes_chain_overrides_when_on -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p agent_world --bin world_game_launcher --bin world_web_launcher`，验证双启动器均显式传递 `--execution-world-dir` 并固定到 `output/chain-runtime/<node_id>/reward-runtime-execution-world` | 运行时产物路径可控性、源码目录洁净度、launcher 对 runtime 参数透传稳定性 |
+| PRD-WORLD_SIMULATOR-034 | TASK-WORLD_SIMULATOR-103/104 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_game_launcher -- --nocapture` + GUI Agent 闭环（默认 node id stale 失败 + fresh node id 恢复 + explorer overview 查询成功） | launcher 链启动恢复体验、GUI Agent 契约、chain-enabled 试玩可达性 |
 
 - Decision Log:
 
@@ -503,3 +507,4 @@
 | DEC-WS-020 | 启动器采用“默认自引导 + 专家模式可切换 + 本地可复盘计数”策略 | 保持纯按钮面板 + 外链文档说明 | 新用户首会话需在产品内闭环完成关键任务，且要兼顾专家用户效率与后续迭代可观测性；对应 `TASK-WORLD_SIMULATOR-072~084`。 |
 | DEC-WS-021 | 在 `world_web_launcher` 增加 `/api/gui-agent/*` 统一机器接口并复用既有控制面能力 | 要求 GUI Agent 直接拼接分散 `/api/*` 旧路由 | 单入口 + 统一响应结构可显著降低自动化复杂度，并保持与人工功能的一致映射；对应 `TASK-WORLD_SIMULATOR-091/092`。 |
 | DEC-WS-022 | 对 runtime required 已知 10 项失败测试执行函数级 `#[ignore]` 临时下线，并保留恢复追踪 | 模块级屏蔽整组测试或删除失败测试 | 函数级白名单可最小化影响面，保证 required 链路恢复执行的同时保留测试资产与回收路径；对应 `TASK-WORLD_SIMULATOR-093/094`。 |
+| DEC-WS-023 | 将默认 node id 命中 stale execution world 视为 launcher 级可恢复错误，并优先提供 fresh node id 恢复 | 保持底层日志直出，由用户手工改 node id 或删目录 | 默认试玩/QA 路径会高频复用默认 node id；若不提升为产品级恢复问题，链模式体验难以稳定复跑。 |

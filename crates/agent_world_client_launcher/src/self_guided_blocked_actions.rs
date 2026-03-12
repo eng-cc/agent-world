@@ -26,6 +26,10 @@ pub(super) fn resolve_disabled_cta_plan(
             Some(DisabledActionCta::RetryChainStatus),
             Some(DisabledActionCta::StartChain),
         ),
+        ChainRuntimeStatus::StaleExecutionWorld(_) => (
+            Some(DisabledActionCta::StartChain),
+            Some(DisabledActionCta::RetryChainStatus),
+        ),
         ChainRuntimeStatus::Unreachable(_) => (
             Some(DisabledActionCta::RetryChainStatus),
             Some(DisabledActionCta::StartChain),
@@ -69,6 +73,12 @@ impl ClientLauncherApp {
             (ChainRuntimeStatus::Starting, UiLanguage::EnUs) => {
                 Some("Blockchain is starting: auto-retry is running, or probe now manually.")
             }
+            (ChainRuntimeStatus::StaleExecutionWorld(_), UiLanguage::ZhCn) => {
+                Some("检测到旧执行世界冲突：建议使用 fresh node 恢复后重试。")
+            }
+            (ChainRuntimeStatus::StaleExecutionWorld(_), UiLanguage::EnUs) => Some(
+                "Stale execution world detected: recover with a fresh node, then retry.",
+            ),
             (ChainRuntimeStatus::Unreachable(_), UiLanguage::ZhCn) => {
                 Some("区块链当前不可达：可先重试状态探测，再决定是否重新启动。")
             }

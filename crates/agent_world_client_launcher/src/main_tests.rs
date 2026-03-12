@@ -7,8 +7,8 @@ use super::{
         resolve_explorer_my_account_candidate, ExplorerQuickShortcut, ExplorerStatusFilter,
         WebExplorerOverviewResponse,
     },
-    install_cjk_font, normalize_host_for_url, parse_chain_role, parse_chain_validators,
-    parse_host_port, parse_port, probe_chain_status_endpoint,
+    chain_runtime_status_from_web, install_cjk_font, normalize_host_for_url, parse_chain_role,
+    parse_chain_validators, parse_host_port, parse_port, probe_chain_status_endpoint,
     self_guided::{
         resolve_config_guide_target, resolve_next_task_hint, resolve_primary_disabled_cta,
         ConfigGuideTargetHint, DemoModePhase, DisabledActionCta, NextTaskHint, OnboardingStep,
@@ -21,7 +21,8 @@ use super::{
         WebTransferLifecycleStatus,
     },
     ChainRuntimeStatus, ClientLauncherApp, ConfigIssue, GlossaryTerm, LaunchConfig, LauncherStatus,
-    UiLanguage, WebRequestDomain, WebStateSnapshot, EGUI_CJK_FONT_NAME,
+    UiLanguage, WebChainRecoverySnapshot, WebRequestDomain, WebStateSnapshot,
+    EGUI_CJK_FONT_NAME,
 };
 use eframe::egui;
 use std::fs;
@@ -509,6 +510,62 @@ fn web_request_inflight_domains_are_independent() {
     assert!(!app.any_transfer_request_inflight());
 }
 
+
+#[test]
+fn chain_runtime_status_from_web_maps_stale_execution_world() {
+    let status = chain_runtime_status_from_web(
+        "stale_execution_world",
+        Some("stale execution world detected"),
+    );
+    assert!(matches!(
+        status,
+        ChainRuntimeStatus::StaleExecutionWorld(ref detail)
+            if detail == "stale execution world detected"
+    ));
+}
+
+#[test]
+fn apply_web_snapshot_tracks_chain_recovery_payload() {
+    let mut app = ClientLauncherApp::default();
+    let snapshot = WebStateSnapshot {
+        status: "idle".to_string(),
+        detail: None,
+        chain_status: "stale_execution_world".to_string(),
+        chain_detail: Some("stale execution world detected".to_string()),
+        chain_recovery: Some(WebChainRecoverySnapshot {
+            error_code: "stale_execution_world".to_string(),
+            reason: "stale execution world detected".to_string(),
+            node_id: "viewer-live-node".to_string(),
+            execution_world_dir:
+                "output/chain-runtime/viewer-live-node/reward-runtime-execution-world".to_string(),
+            recovery_mode: "fresh_node_id".to_string(),
+            reset_required: false,
+            fresh_node_id: "viewer-live-node-fresh-1".to_string(),
+            fresh_chain_status_bind: "127.0.0.1:5122".to_string(),
+            suggested_config: LaunchConfig {
+                chain_node_id: "viewer-live-node-fresh-1".to_string(),
+                chain_status_bind: "127.0.0.1:5122".to_string(),
+                ..LaunchConfig::default()
+            },
+        }),
+        game_url: "http://127.0.0.1:4173/".to_string(),
+        config: LaunchConfig::default(),
+        logs: vec![],
+    };
+
+    app.apply_web_snapshot(snapshot);
+    assert!(matches!(
+        app.chain_runtime_status,
+        ChainRuntimeStatus::StaleExecutionWorld(_)
+    ));
+    assert_eq!(
+        app.chain_recovery
+            .as_ref()
+            .map(|value| value.fresh_node_id.as_str()),
+        Some("viewer-live-node-fresh-1")
+    );
+}
+
 #[test]
 fn apply_web_snapshot_preserves_local_dirty_config_when_snapshot_differs() {
     let mut app = ClientLauncherApp::default();
@@ -522,6 +579,7 @@ fn apply_web_snapshot_preserves_local_dirty_config_when_snapshot_differs() {
         detail: None,
         chain_status: "not_started".to_string(),
         chain_detail: None,
+        chain_recovery: None,
         game_url: "http://127.0.0.1:4173/".to_string(),
         config: remote_config,
         logs: vec!["snapshot".to_string()],
@@ -542,6 +600,7 @@ fn apply_web_snapshot_clears_dirty_flag_when_snapshot_matches_local_config() {
         detail: None,
         chain_status: "not_started".to_string(),
         chain_detail: None,
+        chain_recovery: None,
         game_url: "http://127.0.0.1:4173/".to_string(),
         config: app.config.clone(),
         logs: vec!["snapshot".to_string()],
