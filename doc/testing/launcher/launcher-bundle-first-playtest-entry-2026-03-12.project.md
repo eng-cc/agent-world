@@ -8,11 +8,13 @@
 - [x] LBFP-3 (PRD-TESTING-LAUNCHER-BUNDLE-001): 同步 `testing-manual.md`、启动器人工测试清单、README 与帮助文本，明确 bundle-first 口径。
 - [x] LBFP-4 (PRD-TESTING-LAUNCHER-BUNDLE-002): 完成 bundle 构建、headed/headless 对照验证、SwiftShader 阻断证据归档与 devlog 回写。
 - [x] LBFP-5 (PRD-TESTING-LAUNCHER-BUNDLE-002): 为 `run-game-test-ab.sh` 增加 `headless + SwiftShader` 环境快失败与 `browser_env.json` 证据落盘，避免误把环境阻断记成 fresh Web 回归。
+- [x] LBFP-6 (PRD-TESTING-LAUNCHER-BUNDLE-001/002): 新增 `run-producer-playtest.sh`，把制作人 bundle-first 试玩收敛成单命令入口，并同步手册/帮助文本。
 
 ## 依赖
 - `doc/testing/launcher/launcher-bundle-first-playtest-entry-2026-03-12.prd.md`
 - `scripts/run-game-test.sh`
 - `scripts/run-game-test-ab.sh`
+- `scripts/run-producer-playtest.sh`
 - `scripts/build-game-launcher-bundle.sh`
 - `testing-manual.md`
 - `doc/testing/launcher/launcher-manual-test-checklist-2026-03-10.prd.md`

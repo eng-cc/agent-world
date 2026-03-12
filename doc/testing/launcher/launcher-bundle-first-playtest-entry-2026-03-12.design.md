@@ -4,10 +4,11 @@
 
 ## 1. Overview
 - 目标：在不打断现有自动化和开发回归的前提下，把制作人试玩、发布前人工验收和自动化哨兵统一切到 bundle-first 口径。
-- 范围：`scripts/run-game-test.sh`、`scripts/run-game-test-ab.sh`、`testing-manual.md`、启动器人工测试清单与 testing 索引。
+- 范围：`scripts/run-game-test.sh`、`scripts/run-game-test-ab.sh`、`scripts/run-producer-playtest.sh`、`testing-manual.md`、启动器人工测试清单与 testing 索引。
 
 ## 2. Design
 - 启动模式分层：
+  - `producer wrapper`：`run-producer-playtest.sh` 负责自动准备或复用本地 bundle，然后转入 `run-game-test.sh --bundle-dir <bundle>`；这是制作人日常试玩的最短入口。
   - `bundle mode`：由 `--bundle-dir <bundle>` 触发，执行 `<bundle>/run-game.sh`，默认使用 bundle 自带 `web/` 静态资源。
   - `source mode`：未传 `--bundle-dir` 时沿用 `cargo run -p agent_world --bin world_game_launcher`，并保留 fresh `web` 构建兜底。
 - 参数策略：
@@ -27,8 +28,10 @@
 
 ## 4. Validation
 - `bash -n scripts/run-game-test.sh scripts/run-game-test-ab.sh`
+- `./scripts/run-producer-playtest.sh --help`
 - `./scripts/run-game-test.sh --help`
 - `./scripts/run-game-test-ab.sh --help`
+- `timeout 30s ./scripts/run-producer-playtest.sh --profile dev --no-llm`
 - `./scripts/build-game-launcher-bundle.sh --out-dir output/release/game-launcher-bundle-first-20260312`
 - `./scripts/run-game-test-ab.sh --bundle-dir output/release/game-launcher-bundle-first-20260312 --no-llm --headless`（若命中 SwiftShader，应快失败并输出 `browser_env.json`）
 - `./scripts/run-game-test-ab.sh --bundle-dir output/release/game-launcher-bundle-first-20260312 --no-llm`
