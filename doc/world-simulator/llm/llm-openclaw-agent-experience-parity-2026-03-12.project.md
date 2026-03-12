@@ -1,0 +1,30 @@
+# OpenClaw 与内置 Agent 体验等价（parity）验收方案（2026-03-12）项目管理文档
+
+- 对应设计文档: `doc/world-simulator/llm/llm-openclaw-agent-experience-parity-2026-03-12.design.md`
+- 对应需求文档: `doc/world-simulator/llm/llm-openclaw-agent-experience-parity-2026-03-12.prd.md`
+
+审计轮次: 1
+
+## 任务拆解（含 PRD-ID 映射）
+- [x] T0 (PRD-WORLD_SIMULATOR-038) [test_tier_required]: 完成 `OpenClaw` 与内置 agent 体验等价（parity）专题 PRD / Design / Project 建模，并回写模块主文档、索引与 devlog。
+- [ ] T1 (PRD-WORLD_SIMULATOR-038) [test_tier_required]: 冻结 `P0/P1/P2` 场景集、评分项、通过线与阻断线。
+- [ ] T2 (PRD-WORLD_SIMULATOR-038) [test_tier_required]: 为 builtin 与 OpenClaw provider 落地统一 fixture benchmark、trace 汇总与分数聚合。
+- [ ] T3 (PRD-WORLD_SIMULATOR-038) [test_tier_required]: 将 `OpenClaw(Local HTTP)` 专题与 `Decision Provider` 专题的实施任务改挂到 parity 目标，确保“接通”不等于“完成”。
+- [ ] T4 (PRD-WORLD_SIMULATOR-038) [test_tier_full]: 完成真实 `OpenClaw(Local HTTP)` 的 `P0` parity 对标试玩，输出 QA/producer 双签结论。
+- [ ] T5 (PRD-WORLD_SIMULATOR-038) [test_tier_full]: 在 `P0` 通过后推进 `P1`/`P2`，并依据结果决定是否允许默认启用或扩大覆盖范围。
+
+## 依赖
+- `doc/world-simulator/llm/llm-decision-provider-standard-openclaw-feasibility-2026-03-12.prd.md`
+- `doc/world-simulator/llm/llm-openclaw-local-http-provider-integration-2026-03-12.prd.md`
+- `doc/world-simulator/prd.md`
+- `doc/world-simulator/project.md`
+- `doc/world-simulator/prd.index.md`
+
+## 状态
+- 最近更新：2026-03-12
+- 当前阶段: T1 pending
+- 当前任务: `冻结 parity 场景层级、指标阈值与阻断线`
+- owner: `agent_engineer`
+- 联审: `qa_engineer`、`viewer_engineer`、`runtime_engineer`
+- 发起建模: `producer_system_designer`
+- 备注: 本专题将“体验等价”提升为上线门禁；后续若 `OpenClaw` 未达到 parity，只允许保留在 `experimental`，不得标记为默认体验。

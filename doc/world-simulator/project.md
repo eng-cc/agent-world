@@ -112,6 +112,9 @@
 - [x] TASK-WORLD_SIMULATOR-107 (PRD-WORLD_SIMULATOR-034) [test_tier_required]: 为 `run-game-test.sh` 建模并落地 fresh `chain_node_id` 默认值与链参数透传，避免一键试玩栈复用脏 execution world。
 - [x] TASK-WORLD_SIMULATOR-108 (PRD-WORLD_SIMULATOR-034) [test_tier_required]: 复验 chain-enabled 一键试玩栈与 agent-browser Web 闭环，确认 fresh node id 默认值后可实际进入游戏。
 - [x] TASK-WORLD_SIMULATOR-109 (PRD-WORLD_SIMULATOR-034) [test_tier_required]: 将 `world_web_launcher` / `agent_world_client_launcher` / `world_game_launcher` 的默认链配置改为 fresh `chain_node_id`，消除默认产品入口继续命中旧 `viewer-live-node` 目录的风险。
+- [x] TASK-WORLD_SIMULATOR-112 (PRD-WORLD_SIMULATOR-036) [test_tier_required]: 完成 `Decision Provider` 标准层 + `OpenClaw` 外部适配可行性 PRD / Design / Project 建模，并回写模块入口、索引与 devlog。
+- [x] TASK-WORLD_SIMULATOR-113 (PRD-WORLD_SIMULATOR-037) [test_tier_required]: 完成 `OpenClaw(Local HTTP)` 用户机接入方案 PRD / Design / Project 建模，并回写模块入口、索引与 devlog。
+- [x] TASK-WORLD_SIMULATOR-114 (PRD-WORLD_SIMULATOR-038) [test_tier_required]: 完成 `OpenClaw` 与内置 agent 体验等价（parity）专题 PRD / Design / Project 建模，并回写模块入口、索引与 devlog。
 - [x] TASK-WORLD_SIMULATOR-110 (PRD-WORLD_SIMULATOR-035) [test_tier_required]: 为 `agent_world_viewer` 的 Web runtime fatal hook 增加“已知图形 fatal 仅自动 reload 一次”的恢复路径，收敛首开必须手动 reopen 的摩擦。
 - [x] TASK-WORLD_SIMULATOR-111 (PRD-WORLD_SIMULATOR-035) [test_tier_required]: 修复 `__AW_TEST__` runtime fatal 快照即时落盘，并复验 Viewer 首开不再以假性 `connecting` 掩盖图形 fatal。
 
@@ -197,6 +200,12 @@
 - `doc/world-simulator/launcher/game-client-launcher-chain-runtime-execution-world-dir-output-hardening-2026-03-09.project.md`
 - `doc/world-simulator/kernel/runtime-required-failing-tests-offline-2026-03-09.prd.md`
 - `doc/world-simulator/kernel/runtime-required-failing-tests-offline-2026-03-09.project.md`
+- `doc/world-simulator/llm/llm-decision-provider-standard-openclaw-feasibility-2026-03-12.prd.md`
+- `doc/world-simulator/llm/llm-decision-provider-standard-openclaw-feasibility-2026-03-12.project.md`
+- `doc/world-simulator/llm/llm-openclaw-local-http-provider-integration-2026-03-12.prd.md`
+- `doc/world-simulator/llm/llm-openclaw-local-http-provider-integration-2026-03-12.project.md`
+- `doc/world-simulator/llm/llm-openclaw-agent-experience-parity-2026-03-12.prd.md`
+- `doc/world-simulator/llm/llm-openclaw-agent-experience-parity-2026-03-12.project.md`
 - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase1-2026-03-04.prd.md`
 - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase2-2026-03-05.prd.md`
 - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase3-2026-03-05.prd.md`
@@ -243,6 +252,9 @@
 - 最新完成: `TASK-WORLD_SIMULATOR-107`（run-game-test fresh chain node id 默认值与链参数透传）。
 - 最新完成: `TASK-WORLD_SIMULATOR-108`（chain-enabled 一键试玩栈与 Web 闭环复验）。
 - 最新完成: `TASK-WORLD_SIMULATOR-109`（launcher 产品默认链配置切换为 fresh chain node id）。
+- 最新完成: `TASK-WORLD_SIMULATOR-112`（`Decision Provider` 标准层 + `OpenClaw` 外部适配可行性建模）。
+- 最新完成: `TASK-WORLD_SIMULATOR-113`（`OpenClaw(Local HTTP)` 用户机接入方案建模）。
+- 最新完成: `TASK-WORLD_SIMULATOR-114`（`OpenClaw` 与内置 agent 体验等价（parity）专题建模）。
 - 当前优先任务: `待新需求`
 - 并行待办: 无
 - 专题映射状态: 2026-03-02 批次 9/9、2026-03-03 批次 4/4、2026-03-04 批次 7/7、2026-03-05 批次 4/4、2026-03-06 批次 6/6 已纳入模块项目管理文档；`TASK-WORLD_SIMULATOR-057~108` 已完成。

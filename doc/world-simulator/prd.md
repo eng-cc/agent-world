@@ -49,6 +49,9 @@
   - `doc/world-simulator/launcher/game-client-launcher-chain-runtime-execution-world-dir-output-hardening-2026-03-09.prd.md`（PRD-WORLD_SIMULATOR-033）
   - `doc/world-simulator/launcher/game-client-launcher-chain-runtime-stale-execution-world-recovery-2026-03-12.prd.md`（PRD-WORLD_SIMULATOR-034）
   - `doc/world-simulator/viewer/viewer-web-runtime-fatal-surfacing-2026-03-12.prd.md`（PRD-WORLD_SIMULATOR-035）
+  - `doc/world-simulator/llm/llm-decision-provider-standard-openclaw-feasibility-2026-03-12.prd.md`（PRD-WORLD_SIMULATOR-036）
+  - `doc/world-simulator/llm/llm-openclaw-local-http-provider-integration-2026-03-12.prd.md`（PRD-WORLD_SIMULATOR-037）
+  - `doc/world-simulator/llm/llm-openclaw-agent-experience-parity-2026-03-12.prd.md`（PRD-WORLD_SIMULATOR-038）
   - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase1-2026-03-04.prd.md`（PRD-WORLD_SIMULATOR-016）
   - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase2-2026-03-05.prd.md`（PRD-WORLD_SIMULATOR-017）
   - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase3-2026-03-05.prd.md`（PRD-WORLD_SIMULATOR-018）
@@ -77,6 +80,9 @@
 - M19 (2026-03-08): 完成 Web Console GUI Agent 全量接口（能力声明 + 统一动作执行）建模与落地。
 - M20 (2026-03-09): 完成 runtime required 已知失败用例临时下线（精准白名单 `#[ignore]`）并恢复 required 测试链路可执行。
 - M21 (2026-03-09): 完成 launcher 显式 execution world 输出路径收敛，确保 explorer 索引落在 `output/chain-runtime/<node_id>/reward-runtime-execution-world`。
+- M22 (2026-03-12): 完成 `Decision Provider` 标准层与 `OpenClaw` 外部适配可行性建模，冻结“provider advisory / runtime authoritative”边界。
+- M23 (2026-03-12): 完成 `OpenClaw(Local HTTP)` 用户机接入方案建模，明确本地发现、握手、配置、决策与回退路径。
+- M24 (2026-03-12): 完成 `OpenClaw` 与内置 agent 体验等价（parity）验收方案建模，把 parity 升级为上线门禁。
 
 ## 风险
 - 模块边界演进快，文档同步可能滞后。
@@ -127,6 +133,9 @@
   - SC-38: runtime required 测试链路需支持“已知基线失败项临时下线但资产保留”的精确治理机制，避免 pre-commit 长期阻塞并保持后续恢复可追踪。
   - SC-39: 启动器托管的 `world_chain_runtime` 必须显式传递 `--execution-world-dir` 到 `output/chain-runtime/<node_id>/reward-runtime-execution-world`，避免 `explorer-index.json` 落到源码目录。
   - SC-40: 启动器默认链启动在命中 stale execution world / state root mismatch 时，必须提供结构化恢复语义与至少一条非 CLI 恢复路径，避免用户只能通过底层日志手工换 node id。
+  - SC-41: world-simulator 的 Agent 决策层必须支持 provider-agnostic 标准接口，使外部 agent framework（如 `OpenClaw`）可经 adapter 参与模拟，同时保持 runtime 权威、trace 连续性与可离线 required 测试。
+  - SC-42: world-simulator 必须提供 `OpenClaw(Local HTTP)` 首期接入路径，使安装在用户机器上的 `OpenClaw` 可通过 localhost 驱动低频 agent，并具备发现、绑定、错误提示与安全回退能力。
+  - SC-43: `OpenClaw` provider 在纳入范围的 agent 场景中必须达到与内置 agent 可感知等价的用户体验；若未通过 parity 验收，不得默认启用或扩大覆盖范围。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -176,6 +185,9 @@
   - PRD-WORLD_SIMULATOR-033: As a 启动器维护者, I want launcher to pass an explicit execution world output path to chain runtime, so that runtime-generated explorer index files always stay under `output/`.
   - PRD-WORLD_SIMULATOR-034: As a 启动器用户, I want launcher to detect and recover from stale chain execution-world conflicts, so that I can restart chain-enabled flows without reading raw runtime logs or manually changing node IDs.
   - PRD-WORLD_SIMULATOR-035: As a Web Viewer 调试者/制作人, I want browser-side fatal render failures to surface immediately in `__AW_TEST__` and scripts, so that I can distinguish graphics-environment blockers from gameplay or protocol bugs without guessing.
+  - PRD-WORLD_SIMULATOR-036: As an `agent_engineer`, I want a provider-agnostic decision layer between world-simulator and external agent frameworks such as `OpenClaw`, so that I can evaluate or swap external agent runtimes without weakening runtime authority, traceability, or QA contracts.
+  - PRD-WORLD_SIMULATOR-037: As a 玩家 / 制作人, I want an `OpenClaw(Local HTTP)` provider mode on my machine, so that I can let locally installed `OpenClaw` drive low-frequency game agents through localhost without deploying remote services.
+  - PRD-WORLD_SIMULATOR-038: As a 玩家 / 制作人, I want `OpenClaw`-driven agents to feel equivalent to built-in agents in scoped gameplay scenarios, so that switching provider does not noticeably degrade the game experience.
 - Critical User Flows:
   1. Flow-WS-001（Web-first 闭环）:
      `选择场景 -> 启动 Viewer Web -> 执行关键交互 -> 采集日志/截图/指标 -> 产出 test_tier_required 结论`
