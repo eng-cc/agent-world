@@ -10,6 +10,7 @@
 - [x] LBFP-5 (PRD-TESTING-LAUNCHER-BUNDLE-002): 为 `run-game-test-ab.sh` 增加 `headless + SwiftShader` 环境快失败与 `browser_env.json` 证据落盘，避免误把环境阻断记成 fresh Web 回归。
 - [x] LBFP-6 (PRD-TESTING-LAUNCHER-BUNDLE-001/002): 新增 `run-producer-playtest.sh`，把制作人 bundle-first 试玩收敛成单命令入口，并同步手册/帮助文本。
 - [x] LBFP-7 (PRD-TESTING-LAUNCHER-BUNDLE-001/002): 为 `run-producer-playtest.sh` 增加 `--open-headed`，在 URL 就绪后自动打开 headed 浏览器并保留起栈日志。
+- [x] LBFP-8 (PRD-TESTING-LAUNCHER-BUNDLE-001/002): 为 `run-producer-playtest.sh --open-headed` 增加退出自动关浏览器收尾，并补充手册/日志验证口径。
 
 ## 依赖
 - `doc/testing/launcher/launcher-bundle-first-playtest-entry-2026-03-12.prd.md`

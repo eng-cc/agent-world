@@ -28,6 +28,7 @@ Options:
   --profile <name>         Bundle build profile: release|dev (default: release)
   --rebuild                Force rebuild even if bundle already exists
   --open-headed            After stack ready, auto-open the Viewer URL in headed `agent-browser`
+                           and close that browser session when the script exits
   --session <name>         `agent-browser` session name for `--open-headed` (default: producer-playtest)
   --startup-timeout <secs> Wait timeout for stack URL when `--open-headed` is used (default: 120)
   -h, --help               Show this help
@@ -112,6 +113,7 @@ mkdir -p "$ROOT_DIR/output/playwright/playability"
 RUN_ID="$(date +%Y%m%d-%H%M%S)"
 RUN_LOG="$ROOT_DIR/output/playwright/playability/producer-launch-${RUN_ID}.log"
 STACK_PID=""
+BROWSER_OPENED=0
 
 cleanup() {
   local exit_code=$?
@@ -119,6 +121,9 @@ cleanup() {
   if [[ -n "$STACK_PID" ]] && kill -0 "$STACK_PID" >/dev/null 2>&1; then
     kill "$STACK_PID" >/dev/null 2>&1 || true
     wait "$STACK_PID" >/dev/null 2>&1 || true
+  fi
+  if [[ "$BROWSER_OPENED" == "1" ]]; then
+    AGENT_BROWSER_SESSION="$SESSION_NAME" agent-browser close >/dev/null 2>&1 || true
   fi
   exit "$exit_code"
 }
@@ -153,11 +158,12 @@ fi
 
 echo "info: opening headed browser session '$SESSION_NAME' -> $GAME_URL"
 AGENT_BROWSER_SESSION="$SESSION_NAME" agent-browser --headed open "$GAME_URL"
+BROWSER_OPENED=1
 AGENT_BROWSER_SESSION="$SESSION_NAME" agent-browser wait --load networkidle >/dev/null 2>&1 || true
 
 echo "info: browser session: $SESSION_NAME"
 echo "info: startup log: $RUN_LOG"
 echo "info: stack logs: ${STACK_OUTPUT_DIR:-unknown}"
 
-echo "Press Ctrl+C to stop the producer playtest stack."
+echo "Press Ctrl+C to stop the producer playtest stack and close the opened browser session."
 wait "$STACK_PID"

@@ -62,6 +62,7 @@
 - [x] TASK-TESTING-046 (PRD-TESTING-LAUNCHER-BUNDLE-002) [test_tier_required]: 查明 `run-game-test-ab.sh --headless` 的阻断根因是 `SwiftShader` software renderer，并新增环境快失败与 `browser_env.json` 证据落盘，避免把环境问题误判成 fresh Web 回归。
 - [x] TASK-TESTING-047 (PRD-TESTING-LAUNCHER-BUNDLE-001/002) [test_tier_required]: 新增 `run-producer-playtest.sh`，把制作人 bundle-first 试玩收敛成单命令入口，并同步主手册与人工清单。
 - [x] TASK-TESTING-048 (PRD-TESTING-LAUNCHER-BUNDLE-001/002) [test_tier_required]: 为 `run-producer-playtest.sh` 增加 `--open-headed`，使制作人可在起栈后自动打开 headed 浏览器，并同步主手册/日志口径。
+- [x] TASK-TESTING-049 (PRD-TESTING-LAUNCHER-BUNDLE-001/002) [test_tier_required]: 修复 `run-producer-playtest.sh --open-headed` 退出后残留浏览器窗口的问题，为脚本补充自动关会话收尾，并同步手册/日志口径。
 - [x] TASK-TESTING-035 (PRD-TESTING-004) [test_tier_required]: 完成 archive 专题 `ci-required-m1-wasm-hash-check` 文档迁移到 strict schema，并统一 `.prd` 命名。
 - [x] TASK-TESTING-036 (PRD-TESTING-004) [test_tier_required]: 完成 archive 专题 `wasm-platform-canonical-hash-manifest` 文档迁移到 strict schema，并统一 `.prd` 命名。
 - [x] TASK-TESTING-037 (PRD-TESTING-005) [test_tier_required]: 完成 `ci-builtin-wasm-m4-m5-hash-drift-hardening` 专题 PRD 与项目管理文档建档，建立 1-6 治理项映射。
@@ -127,7 +128,7 @@
 - 更新日期: 2026-03-11
 - 当前状态: completed
 - 下一任务: 无（当前模块主项目无未完成任务）
-- 最新完成: `TASK-TESTING-048`（为 `run-producer-playtest.sh` 增加 `--open-headed`，把起栈与打开 headed 浏览器收成单命令）。
+- 最新完成: `TASK-TESTING-049`（修复 `run-producer-playtest.sh --open-headed` 退出后残留浏览器窗口的问题，为脚本补充自动关会话收尾）。
 - 最新完成: `TASK-TESTING-006`（testing 模块 README 入口索引同步）。
 - 阶段收口优先级: `P0`
 - 阶段 owner: `qa_engineer`（联审：`producer_system_designer`）
