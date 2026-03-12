@@ -16,6 +16,7 @@
 - 文档策略：
   - `testing-manual.md` 明确 bundle-first 是“制作人试玩 / 发布前人工验收默认入口”。
   - `scripts/run-game-test-ab.sh --help` 明确其可透传 `--bundle-dir`，但仍仅是自动化哨兵。
+  - `--headless` 命中 `SwiftShader` 时，脚本立即按环境阻断失败，并将 headed 标为 Viewer Web 的默认建议模式。
   - 启动器人工清单把 bundle-first 写进执行说明，避免人工验收仍走开发态脚本默认值。
 
 ## 3. Failure Model
@@ -29,4 +30,5 @@
 - `./scripts/run-game-test.sh --help`
 - `./scripts/run-game-test-ab.sh --help`
 - `./scripts/build-game-launcher-bundle.sh --out-dir output/release/game-launcher-bundle-first-20260312`
-- `./scripts/run-game-test-ab.sh --bundle-dir output/release/game-launcher-bundle-first-20260312 --no-llm --headless`
+- `./scripts/run-game-test-ab.sh --bundle-dir output/release/game-launcher-bundle-first-20260312 --no-llm --headless`（若命中 SwiftShader，应快失败并输出 `browser_env.json`）
+- `./scripts/run-game-test-ab.sh --bundle-dir output/release/game-launcher-bundle-first-20260312 --no-llm`

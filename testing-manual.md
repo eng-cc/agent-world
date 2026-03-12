@@ -221,6 +221,7 @@ env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-u
 - 涉及 `Explorer / Transfer` 的闭环时，先准备可观测数据，再执行查询与字段断言；不得只以“页面打开了/接口返回 200”判定通过。
 - 防误用约束：
   - `scripts/run-game-test-ab.sh` 仅用于自动化回归哨兵（TTFC/命中率/无进展窗口）；推荐与 `--bundle-dir <bundle>` 搭配做产物态 smoke，但仍不等价于“真实玩家长玩评测”。
+- `run-game-test-ab.sh --headless` 若命中 `SwiftShader` / software renderer，应按环境阻断处理，不得把 `connectionStatus=connecting` 误判为 fresh Web 构建或玩法回归；Viewer Web 默认继续使用 headed 模式。
   - 发布前结论仍需补充手动长玩与卡片填写（按 `doc/playability_test_result/game-test.prd.md` 执行）。
   - 对外样张链路需使用 strict 语义门禁，不得以 `off` / `soft` 结果作为发布判定证据。
 - 快速入口：

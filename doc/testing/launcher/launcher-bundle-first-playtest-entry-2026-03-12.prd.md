@@ -54,11 +54,13 @@
   - `--bundle-dir` 指向不存在目录：脚本必须 fail-fast 并提示目录路径。
   - `--bundle-dir` 缺少 `run-game.sh`：脚本必须明确提示 bundle 不完整。
   - bundle 模式下未显式传 `--viewer-static-dir`：默认使用 bundle 自带 `web/`，不再偷偷 fresh build 源码目录。
+  - `--headless` 若命中 `SwiftShader` / software renderer：必须按浏览器环境阻断快失败，并输出可操作提示，不得误判成 fresh Web 构建或玩法回归。
   - 开发者仍需源码回归：保留现有 `cargo run` 分支，但帮助文本与手册必须标注其仅供开发排障。
 - Non-Functional Requirements:
   - NFR-LBFP-1: 新增 bundle 模式不能破坏现有 `run-game-test-ab.sh` 透传契约。
   - NFR-LBFP-2: 脚本帮助、手册和人工清单的口径必须 0 冲突。
   - NFR-LBFP-3: bundle-first 入口的失败必须在一次执行中能定位到“目录错误 / 产物不完整 / 端口冲突 / 运行时失败”中的至少一类。
+  - NFR-LBFP-4: `--headless` 下若浏览器退化到 `SwiftShader`，自动化必须给出环境级阻断，而不是返回模糊的 `connecting` 超时。
 - Security & Privacy: 不新增敏感数据采集，仅调整启动入口与文档口径。
 
 ## 5. Risks & Roadmap

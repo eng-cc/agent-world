@@ -22,8 +22,8 @@ Options:
   --url <url>               Use an existing viewer URL; skip stack bootstrap
   --out-dir <path>          Artifact root (default: output/playwright/playability)
   --startup-timeout <secs>  Wait timeout for stack URL (default: 240)
-  --headed                  Open browser in headed mode (default)
-  --headless                Open browser in headless mode
+  --headed                  Open browser in headed mode (default, recommended for Viewer Web)
+  --headless                Open browser in headless mode; fails fast when WebGL falls back to SwiftShader/software rendering
   -h, --help                Show this help
 
 If --url is omitted, the script starts:
@@ -42,6 +42,7 @@ Artifacts:
   <out-dir>/<run-id>/ab_metrics.json
   <out-dir>/<run-id>/ab_metrics.md
   <out-dir>/<run-id>/card_quant_metrics.md
+  <out-dir>/<run-id>/browser_env.json
 USAGE
 }
 
@@ -110,6 +111,7 @@ CONSOLE_ALL_LOG="$OUT_DIR/console_all_messages.log"
 AB_METRICS_JSON="$OUT_DIR/ab_metrics.json"
 AB_METRICS_MD="$OUT_DIR/ab_metrics.md"
 CARD_METRICS_MD="$OUT_DIR/card_quant_metrics.md"
+BROWSER_ENV_JSON="$OUT_DIR/browser_env.json"
 RECORDING_STATUS_FILE="$OUT_DIR/recording_status.txt"
 SESSION="playability-ab-$RUN_ID"
 
@@ -126,6 +128,7 @@ reopen_game_page() {
   ab_open "$SESSION" "$HEADED" "$GAME_URL" >>"$AB_LOG" 2>&1 || return 1
   ab_cmd "$SESSION" wait --load networkidle >>"$AB_LOG" 2>&1 || true
   wait_for_api 20000 >/dev/null || return 1
+  fail_if_software_headless_renderer || return 1
   wait_for_connected 60000
 }
 
@@ -138,6 +141,52 @@ state_event_seq() { json_get "$1" eventSeq; }
 state_connection() { json_get "$1" connectionStatus; }
 state_last_error() { json_get "$1" lastError; }
 state_last_feedback_json() { json_get "$1" lastControlFeedback; }
+
+browser_env() {
+  ab_eval "$SESSION" '(() => {
+    const canvas = document.createElement("canvas");
+    let gl = null;
+    let renderer = null;
+    let vendor = null;
+    let webglVersion = null;
+    try {
+      gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
+      if (gl) {
+        webglVersion = gl.getParameter(gl.VERSION);
+        const dbg = gl.getExtension("WEBGL_debug_renderer_info");
+        if (dbg) {
+          renderer = gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL);
+          vendor = gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL);
+        }
+      }
+    } catch (err) {
+      renderer = `error:${String(err)}`;
+    }
+    return {
+      userAgent: navigator.userAgent,
+      webdriver: navigator.webdriver,
+      visibilityState: document.visibilityState,
+      hasTestApi: typeof window.__AW_TEST__ === "object",
+      state: window.__AW_TEST__?.getState?.() ?? null,
+      webglVersion,
+      renderer,
+      vendor,
+    };
+  })()'
+}
+
+fail_if_software_headless_renderer() {
+  local env_json renderer user_agent
+  env_json=$(browser_env)
+  json_to_file "$env_json" "$BROWSER_ENV_JSON"
+  renderer=$(json_get "$env_json" renderer)
+  user_agent=$(json_get "$env_json" userAgent)
+  if [[ "$HEADED" -eq 0 ]] && [[ "$renderer" == *SwiftShader* ]]; then
+    echo "error: headless browser is using SwiftShader/software WebGL; Viewer Web playability probes require headed mode or a hardware-backed headless browser (see $BROWSER_ENV_JSON, renderer=$renderer, userAgent=$user_agent)" >&2
+    return 1
+  fi
+  return 0
+}
 
 wait_for_api() {
   local timeout_ms=${1:-20000}
@@ -403,6 +452,7 @@ if [[ "$SNAPSHOT_OK" -ne 1 ]]; then
 fi
 
 wait_for_api 20000 >/dev/null || { echo "error: __AW_TEST__ unavailable before initial connect" >&2; exit 1; }
+fail_if_software_headless_renderer || exit 1
 set +e
 initial=$(wait_for_connected 60000)
 initial_wait_status=$?
