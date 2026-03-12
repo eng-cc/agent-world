@@ -198,3 +198,5 @@
 ## 补充验收模板
 - `doc/world-simulator/prd/acceptance/openclaw-agent-parity-scenario-matrix-2026-03-12.md`
 - `doc/world-simulator/prd/acceptance/openclaw-agent-parity-score-card-2026-03-12.md`
+- `doc/world-simulator/prd/acceptance/openclaw-agent-parity-benchmark-protocol-2026-03-12.md`
+- `doc/world-simulator/prd/acceptance/openclaw-agent-parity-aggregation-template-2026-03-12.md`

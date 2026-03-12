@@ -116,6 +116,7 @@
 - [x] TASK-WORLD_SIMULATOR-113 (PRD-WORLD_SIMULATOR-037) [test_tier_required]: 完成 `OpenClaw(Local HTTP)` 用户机接入方案 PRD / Design / Project 建模，并回写模块入口、索引与 devlog。
 - [x] TASK-WORLD_SIMULATOR-114 (PRD-WORLD_SIMULATOR-038) [test_tier_required]: 完成 `OpenClaw` 与内置 agent 体验等价（parity）专题 PRD / Design / Project 建模，并回写模块入口、索引与 devlog。
 - [x] TASK-WORLD_SIMULATOR-115 (PRD-WORLD_SIMULATOR-038) [test_tier_required]: 冻结 `OpenClaw` parity 的 `P0/P1/P2` 场景矩阵与评分卡模板，并回写分册索引、模块入口与 devlog。
+- [x] TASK-WORLD_SIMULATOR-116 (PRD-WORLD_SIMULATOR-038) [test_tier_required]: 冻结 builtin/OpenClaw 的统一 fixture benchmark 协议、trace 汇总字段与分数聚合模板，并回写 parity 专题、模块入口与 devlog。
 - [x] TASK-WORLD_SIMULATOR-110 (PRD-WORLD_SIMULATOR-035) [test_tier_required]: 为 `agent_world_viewer` 的 Web runtime fatal hook 增加“已知图形 fatal 仅自动 reload 一次”的恢复路径，收敛首开必须手动 reopen 的摩擦。
 - [x] TASK-WORLD_SIMULATOR-111 (PRD-WORLD_SIMULATOR-035) [test_tier_required]: 修复 `__AW_TEST__` runtime fatal 快照即时落盘，并复验 Viewer 首开不再以假性 `connecting` 掩盖图形 fatal。
 
@@ -257,6 +258,7 @@
 - 最新完成: `TASK-WORLD_SIMULATOR-113`（`OpenClaw(Local HTTP)` 用户机接入方案建模）。
 - 最新完成: `TASK-WORLD_SIMULATOR-114`（`OpenClaw` 与内置 agent 体验等价（parity）专题建模）。
 - 最新完成: `TASK-WORLD_SIMULATOR-115`（冻结 `OpenClaw` parity 的 `P0/P1/P2` 场景矩阵与评分卡模板）。
+- 最新完成: `TASK-WORLD_SIMULATOR-116`（冻结 builtin/OpenClaw 的统一 fixture benchmark 协议与分数聚合模板）。
 - 当前优先任务: `待新需求`
 - 并行待办: 无
 - 专题映射状态: 2026-03-02 批次 9/9、2026-03-03 批次 4/4、2026-03-04 批次 7/7、2026-03-05 批次 4/4、2026-03-06 批次 6/6 已纳入模块项目管理文档；`TASK-WORLD_SIMULATOR-057~108` 已完成。
