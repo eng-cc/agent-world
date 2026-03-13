@@ -1945,8 +1945,8 @@ mod tests {
     use super::*;
     use agent_world::consensus_action_payload::encode_consensus_action_payload;
     use agent_world::runtime::{
-        Action as RuntimeAction, ModuleArtifactIdentity, ModuleKind, ModuleLimits, ModuleManifest,
-        ModuleRole, ModuleSubscription, ModuleSubscriptionStage,
+        Action as RuntimeAction, DomainEvent, ModuleArtifactIdentity, ModuleKind, ModuleLimits,
+        ModuleManifest, ModuleRole, ModuleSubscription, ModuleSubscriptionStage, WorldEventBody,
     };
     use agent_world::simulator::{Action as SimulatorAction, ActionSubmitter};
     use agent_world_node::{NodeConsensusSnapshot, NodeRole};
@@ -3148,6 +3148,17 @@ mod tests {
         };
         let manifest = tick_manifest(&wasm_hash);
         let mut world = RuntimeWorld::new();
+        let signer_public_key_hex = hex::encode(
+            test_module_artifact_signing_key()
+                .verifying_key()
+                .to_bytes(),
+        );
+        world
+            .bind_node_identity(
+                TEST_MODULE_ARTIFACT_SIGNER_NODE_ID,
+                signer_public_key_hex.as_str(),
+            )
+            .expect("bind test module signer");
         world.submit_action(RuntimeAction::RegisterAgent {
             agent_id: "agent-0".to_string(),
             pos: agent_world::geometry::GeoPos::new(0.0, 0.0, 0.0),
@@ -3176,10 +3187,36 @@ mod tests {
         });
         world.step().expect("install");
 
+        let instance_id = {
+            let event = world.journal().events.last().expect("install event");
+            let WorldEventBody::Domain(DomainEvent::ModuleInstalled { instance_id, .. }) =
+                &event.body
+            else {
+                panic!("expected module installed event: {:?}", event.body);
+            };
+            instance_id.clone()
+        };
+        let instance = world
+            .state()
+            .module_instances
+            .get(&instance_id)
+            .expect("installed module instance");
+        assert!(
+            instance.active,
+            "installed module instance should be active"
+        );
+        assert!(
+            world
+                .snapshot()
+                .module_tick_schedule
+                .contains_key(&instance_id),
+            "installed tick module should be scheduled"
+        );
+
         let expected_trace = format!(
             "tick-{}-{}",
             world.state().time.saturating_add(1),
-            manifest.module_id
+            instance_id
         );
         let sandbox = FixedSandbox::fail(ModuleCallFailure {
             module_id: manifest.module_id.clone(),

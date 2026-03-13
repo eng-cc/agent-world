@@ -80,6 +80,11 @@
 - [x] 调整 `crates/agent_world_node/src/tests_split_part2.rs`：为 UDP gossip 双节点都启用 `with_auto_attest_all_validators(true)`，避免测试依赖跨节点 attestation 时序抖动；同时把等待窗口从 5s 提升到 8s，吸收 GitHub runner 高负载波动。
 - [x] 本地回归该用例的精确重跑，并在回写 `project/devlog` 后继续通过新 tag 观察 `Release Packages` 是否彻底放行。
 
+### T3I Release gate execution bridge signer allowlist 热修
+- [x] 复盘 `Release Packages` run `23055068064`，确认 `v0.0.8` 的新阻断点为 `world_chain_runtime` 单测 `node_runtime_execution_driver_commit_routes_modules_via_step_with_modules`；其前置 `InstallModuleFromArtifact` 实际被拒，因为 binary unit test 环境不会自动注入 `test.module.release.signer` 到 `World::new()` 的 `node_identity_bindings`。
+- [x] 调整 `crates/agent_world/src/bin/world_chain_runtime/execution_bridge.rs`：在该测试里显式 `bind_node_identity(TEST_MODULE_ARTIFACT_SIGNER_NODE_ID, ...)`，并补充 `ModuleInstalled` / `module_tick_schedule` 前置断言，确保断言真正覆盖“commit 走 `step_with_modules` 并冒泡模块失败”。
+- [x] 本地回归 `world_chain_runtime` 定向用例，并与相邻 execution bridge 持久化用例一起校验通过；继续通过新 tag 观察 `Release Packages` 是否越过 `release-gate`。
+
 ### T3F Release Packages macOS runner 配置热修
 - [x] 复现并定位 `Release Packages` run `22545989082` / job `65309292458` 失败根因：`macos-13-us-default` 不受当前仓库支持
 - [x] 修复 `.github/workflows/release-packages.yml`：macOS 矩阵 runner 改为 `macos-14`，并显式配置 `target_triple=x86_64-apple-darwin`
@@ -92,9 +97,9 @@
 - 站点入口文件：`site/index.html`、`site/en/index.html`
 
 ## 状态
-- 当前阶段：已完成（T0A/T0/T1/T2/T3/T3A/T3B/T3C/T3D/T3E/T3F/T3G/T3H）
-- 最近更新：2026-03-13 已继续补 `T3H` release gate 稳定性热修（修正 UDP gossip peer-head 用例的提交/等待时序），并将在下一轮 release tag 上与 `T3G` 编译提速一起观察放行效果。
-- 下一步：push `main` 并打新 release tag，观察 `Release Packages` 是否先通过 `release-gate`，以及 `T3G` 编译提速是否明显缩短总时长。
+- 当前阶段：已完成（T0A/T0/T1/T2/T3/T3A/T3B/T3C/T3D/T3E/T3F/T3G/T3H/T3I）
+- 最近更新：2026-03-13 已继续补 `T3I` release gate 执行桥接 signer allowlist 热修（显式给 binary unit test 绑定测试模块 signer，并把模块安装/tick schedule 前置写实），接下来在下一轮 release tag 上继续验证是否能越过 `release-gate`。
+- 下一步：push `main` 并打新 release tag，继续观察 `Release Packages` 是否越过 `release-gate` 进入 `build-web-dist/package-native/publish-release`，并复盘 `T3G` 提速收益是否仍需进一步并行化。
 
 ## 迁移记录（2026-03-03）
 - 已按 `TASK-ENGINEERING-014-D1 (PRD-ENGINEERING-006)` 从 legacy 命名迁移为 `.prd.md/.project.md`。
