@@ -349,7 +349,10 @@ impl AgentInvoker for OpenClawCliInvoker {
     fn invoke(&self, invocation: AgentInvocation) -> Result<AgentInvocationOutput, String> {
         let params = build_gateway_agent_params(&invocation)
             .map_err(|err| format!("serialize gateway call params failed: {err}"))?;
-        let rpc_timeout_ms = invocation.timeout_seconds.saturating_mul(1000).saturating_add(2000);
+        let rpc_timeout_ms = invocation
+            .timeout_seconds
+            .saturating_mul(1000)
+            .saturating_add(2000);
         let output = Command::new(invocation.openclaw_bin.as_str())
             .arg("gateway")
             .arg("call")
@@ -384,7 +387,8 @@ impl AgentInvoker for OpenClawCliInvoker {
             .into_iter()
             .find_map(|entry| entry.text)
             .ok_or_else(|| {
-                "openclaw gateway call agent json did not contain result.payloads[].text".to_string()
+                "openclaw gateway call agent json did not contain result.payloads[].text"
+                    .to_string()
             })?;
         Ok(AgentInvocationOutput {
             prompt: invocation.prompt,
@@ -1334,11 +1338,17 @@ mod tests {
             Some("agent:main:subagent:world-simulator:test")
         );
         assert_eq!(value.get("agentId").and_then(Value::as_str), Some("main"));
-        assert_eq!(value.get("channel").and_then(Value::as_str), Some("webchat"));
+        assert_eq!(
+            value.get("channel").and_then(Value::as_str),
+            Some("webchat")
+        );
         assert_eq!(value.get("lane").and_then(Value::as_str), Some("nested"));
         assert_eq!(value.get("thinking").and_then(Value::as_str), Some("off"));
         assert_eq!(value.get("timeout").and_then(Value::as_u64), Some(15));
-        assert_eq!(value.get("idempotencyKey").and_then(Value::as_str), Some("idem-1"));
+        assert_eq!(
+            value.get("idempotencyKey").and_then(Value::as_str),
+            Some("idem-1")
+        );
     }
 
     #[test]

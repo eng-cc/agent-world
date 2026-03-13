@@ -1,8 +1,8 @@
 use super::*;
 
 use super::super::auth::{
-    PromptControlAuthIntent, VerifiedPlayerAuth, verify_agent_chat_auth_proof,
-    verify_prompt_control_apply_auth_proof, verify_prompt_control_rollback_auth_proof,
+    verify_agent_chat_auth_proof, verify_prompt_control_apply_auth_proof,
+    verify_prompt_control_rollback_auth_proof, PromptControlAuthIntent, VerifiedPlayerAuth,
 };
 use super::super::protocol::{
     AgentChatAck, AgentChatError, AgentChatRequest, PromptControlAck, PromptControlApplyRequest,
@@ -16,13 +16,13 @@ use sha2::{Digest, Sha256};
 
 mod llm_sidecar;
 pub(super) use llm_sidecar::{
-    RuntimeLlmSidecar, simulator_action_label, simulator_action_to_runtime,
+    simulator_action_label, simulator_action_to_runtime, RuntimeLlmSidecar,
 };
 
 #[cfg(test)]
 #[allow(dead_code)]
-pub(in crate::viewer::runtime_live) fn runtime_openclaw_settings_from_env()
--> Result<Option<llm_sidecar::OpenClawDecisionSettings>, String> {
+pub(in crate::viewer::runtime_live) fn runtime_openclaw_settings_from_env(
+) -> Result<Option<llm_sidecar::OpenClawDecisionSettings>, String> {
     llm_sidecar::openclaw_settings_from_env()
 }
 

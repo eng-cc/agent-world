@@ -5,14 +5,13 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::{
     build_chain_runtime_args, build_game_url, build_launcher_args,
-    build_launcher_args_with_launcher_bin, execute_gui_agent_action,
-    gui_agent_capabilities_response, parse_chain_validators, parse_host_port, parse_options,
-    parse_port, remap_transfer_runtime_target, stop_chain_process, stop_process,
-    chain_error_code_for_state, finalize_chain_start_outcome, snapshot_from_state,
-    validate_chain_config, validate_game_config, validate_game_config_with_launcher_bin,
-    ChainRecoverySnapshot, ChainRuntimeStatus, CliOptions, LauncherConfig, ProcessState,
-    ServiceState, DEFAULT_CHAIN_NODE_ID,
-    DEFAULT_CHAIN_STATUS_BIND, DEFAULT_LISTEN_BIND, DEFAULT_SCENARIO,
+    build_launcher_args_with_launcher_bin, chain_error_code_for_state, execute_gui_agent_action,
+    finalize_chain_start_outcome, gui_agent_capabilities_response, parse_chain_validators,
+    parse_host_port, parse_options, parse_port, remap_transfer_runtime_target, snapshot_from_state,
+    stop_chain_process, stop_process, validate_chain_config, validate_game_config,
+    validate_game_config_with_launcher_bin, ChainRecoverySnapshot, ChainRuntimeStatus, CliOptions,
+    LauncherConfig, ProcessState, ServiceState, DEFAULT_CHAIN_NODE_ID, DEFAULT_CHAIN_STATUS_BIND,
+    DEFAULT_LISTEN_BIND, DEFAULT_SCENARIO,
 };
 use agent_world_proto::storage_profile::StorageProfile;
 
@@ -45,12 +44,10 @@ fn parse_options_defaults() {
     assert!(!options.initial_config.llm_enabled);
     assert!(options.initial_config.chain_enabled);
     assert!(!options.initial_config.auto_open_browser);
-    assert!(
-        options
-            .initial_config
-            .chain_node_id
-            .starts_with(&format!("{DEFAULT_CHAIN_NODE_ID}-fresh-"))
-    );
+    assert!(options
+        .initial_config
+        .chain_node_id
+        .starts_with(&format!("{DEFAULT_CHAIN_NODE_ID}-fresh-")));
 }
 
 #[test]
@@ -667,7 +664,6 @@ fn gui_agent_action_response_includes_state_snapshot_fields() {
         .is_some());
 }
 
-
 #[test]
 fn finalize_chain_start_outcome_reports_stale_execution_world() {
     let mut state = ServiceState::new(
@@ -697,11 +693,17 @@ fn finalize_chain_start_outcome_reports_stale_execution_world() {
 
     let err = finalize_chain_start_outcome(&state, Ok(())).expect_err("should surface stale error");
     assert!(err.contains("stale execution world"));
-    assert_eq!(chain_error_code_for_state(&state, err.as_str()), "stale_execution_world");
+    assert_eq!(
+        chain_error_code_for_state(&state, err.as_str()),
+        "stale_execution_world"
+    );
 
     let snapshot = snapshot_from_state(&state, Some("127.0.0.1"));
     let encoded = serde_json::to_value(&snapshot).expect("serialize snapshot");
-    assert_eq!(encoded["chain_status"], serde_json::json!("stale_execution_world"));
+    assert_eq!(
+        encoded["chain_status"],
+        serde_json::json!("stale_execution_world")
+    );
     assert_eq!(
         encoded["chain_recovery"]["fresh_node_id"],
         serde_json::json!("viewer-live-node-fresh-1")
@@ -716,7 +718,9 @@ fn gui_agent_capabilities_include_recover_chain_action() {
         .get("actions")
         .and_then(serde_json::Value::as_array)
         .expect("actions array");
-    assert!(actions.iter().any(|item| item.as_str() == Some("recover_chain")));
+    assert!(actions
+        .iter()
+        .any(|item| item.as_str() == Some("recover_chain")));
 }
 
 fn make_temp_dir(label: &str) -> PathBuf {

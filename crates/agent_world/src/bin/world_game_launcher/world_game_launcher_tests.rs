@@ -4,14 +4,14 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::{
-    BUILTIN_LLM_PROVIDER_MODE, CliOptions, DEFAULT_CHAIN_NODE_ID, DEFAULT_CHAIN_STATUS_BIND,
-    DEFAULT_LIVE_BIND, DEFAULT_OPENCLAW_AGENT_PROFILE, DEFAULT_SCENARIO, DEFAULT_VIEWER_STATIC_DIR,
-    OPENCLAW_LOCAL_HTTP_PROVIDER_MODE, VIEWER_AUTH_BOOTSTRAP_OBJECT, VIEWER_AUTH_PRIVATE_KEY_ENV,
-    VIEWER_AUTH_PUBLIC_KEY_ENV, VIEWER_PLAYER_ID_ENV, ViewerAuthBootstrap, build_game_url,
-    build_viewer_auth_bootstrap_script, build_world_chain_runtime_args, content_type_for_path,
-    parse_host_port, parse_options, resolve_static_asset_path,
+    build_game_url, build_viewer_auth_bootstrap_script, build_world_chain_runtime_args,
+    content_type_for_path, parse_host_port, parse_options, resolve_static_asset_path,
     resolve_viewer_auth_bootstrap_from_path, resolve_viewer_static_dir_with_override,
-    sanitize_index_html_for_embedded_server, sanitize_relative_request_path,
+    sanitize_index_html_for_embedded_server, sanitize_relative_request_path, CliOptions,
+    ViewerAuthBootstrap, BUILTIN_LLM_PROVIDER_MODE, DEFAULT_CHAIN_NODE_ID,
+    DEFAULT_CHAIN_STATUS_BIND, DEFAULT_LIVE_BIND, DEFAULT_OPENCLAW_AGENT_PROFILE, DEFAULT_SCENARIO,
+    DEFAULT_VIEWER_STATIC_DIR, OPENCLAW_LOCAL_HTTP_PROVIDER_MODE, VIEWER_AUTH_BOOTSTRAP_OBJECT,
+    VIEWER_AUTH_PRIVATE_KEY_ENV, VIEWER_AUTH_PUBLIC_KEY_ENV, VIEWER_PLAYER_ID_ENV,
 };
 use agent_world_proto::storage_profile::StorageProfile;
 
@@ -30,11 +30,9 @@ fn parse_options_defaults() {
     assert_eq!(options.viewer_static_dir, "web");
     assert!(options.chain_enabled);
     assert_eq!(options.chain_status_bind, DEFAULT_CHAIN_STATUS_BIND);
-    assert!(
-        options
-            .chain_node_id
-            .starts_with(&format!("{DEFAULT_CHAIN_NODE_ID}-fresh-"))
-    );
+    assert!(options
+        .chain_node_id
+        .starts_with(&format!("{DEFAULT_CHAIN_NODE_ID}-fresh-")));
     assert_eq!(options.chain_storage_profile, StorageProfile::DevLocal);
     assert_eq!(options.chain_node_role, "sequencer");
     assert_eq!(options.chain_pos_slot_duration_ms, 12_000);

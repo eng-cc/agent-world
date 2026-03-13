@@ -906,11 +906,9 @@ fn runtime_authoritative_challenge_resolve_fraud_slashes_and_blocks_finality() {
     let updates = server
         .advance_authoritative_batch_finality(pending.final_height.saturating_add(10))
         .expect("advance after slash");
-    assert!(
-        updates
-            .iter()
-            .all(|update| update.batch_id != pending.batch_id)
-    );
+    assert!(updates
+        .iter()
+        .all(|update| update.batch_id != pending.batch_id));
     let stored = server.authoritative_batches.back().expect("stored batch");
     assert_eq!(
         stored.challenge_state,
@@ -1049,12 +1047,10 @@ fn runtime_authoritative_recovery_reconnect_detects_reorg_epoch_mismatch() {
         .expect("stale reconnect sync");
     assert!(!emit_snapshot_after_ack);
     assert_eq!(stale_ack.status, AuthoritativeRecoveryStatus::CatchUpReady);
-    assert!(
-        stale_ack
-            .message
-            .as_deref()
-            .is_some_and(|message| message.contains("snapshot_reload_required"))
-    );
+    assert!(stale_ack
+        .message
+        .as_deref()
+        .is_some_and(|message| message.contains("snapshot_reload_required")));
 }
 
 #[test]

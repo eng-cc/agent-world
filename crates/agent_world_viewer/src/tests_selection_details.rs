@@ -106,7 +106,6 @@ fn update_ui_populates_agent_selection_details_with_llm_trace() {
     assert!(details_text.contains("retries: 1"));
 }
 
-
 #[test]
 fn provider_debug_summary_filters_openclaw_and_errors() {
     let state = ViewerState {

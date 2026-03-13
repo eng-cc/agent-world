@@ -322,17 +322,15 @@ mod tests {
 
     #[test]
     fn expected_bridge_disconnect_classifies_handshake_and_reset_noise() {
-        assert!(is_expected_bridge_disconnect(&ViewerWebBridgeError::WebSocket(
-            WsError::Protocol(ProtocolError::HandshakeIncomplete),
+        assert!(is_expected_bridge_disconnect(
+            &ViewerWebBridgeError::WebSocket(WsError::Protocol(ProtocolError::HandshakeIncomplete),)
+        ));
+        assert!(is_expected_bridge_disconnect(&ViewerWebBridgeError::Io(
+            io::Error::new(io::ErrorKind::ConnectionReset, "reset",)
         )));
-        assert!(is_expected_bridge_disconnect(&ViewerWebBridgeError::Io(io::Error::new(
-            io::ErrorKind::ConnectionReset,
-            "reset",
-        ))));
-        assert!(!is_expected_bridge_disconnect(&ViewerWebBridgeError::Io(io::Error::new(
-            io::ErrorKind::AddrInUse,
-            "real failure",
-        ))));
+        assert!(!is_expected_bridge_disconnect(&ViewerWebBridgeError::Io(
+            io::Error::new(io::ErrorKind::AddrInUse, "real failure",)
+        )));
     }
 
     fn run_ws_session(bridge: &ViewerWebBridge, payload: &str) {

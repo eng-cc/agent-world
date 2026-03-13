@@ -175,7 +175,9 @@ pub(super) fn poll_chain_process_state(state: &mut ServiceState) {
             state.last_chain_probe_at = None;
             let exit_line = format!("world_chain_runtime exited: {status}");
             state.append_log(exit_line.clone());
-            if let Some(recovery) = classify_stale_execution_world(state, recent_chain_logs.as_slice()) {
+            if let Some(recovery) =
+                classify_stale_execution_world(state, recent_chain_logs.as_slice())
+            {
                 let reason = recovery.reason.clone();
                 let node_id = recovery.node_id.clone();
                 let fresh_node_id = recovery.fresh_node_id.clone();
@@ -282,7 +284,8 @@ fn classify_stale_execution_world(
 
     let node_id = state.config.chain_node_id.trim();
     let fresh_node_id = suggest_fresh_chain_node_id(node_id);
-    let fresh_chain_status_bind = suggest_fresh_chain_status_bind(state.config.chain_status_bind.as_str());
+    let fresh_chain_status_bind =
+        suggest_fresh_chain_status_bind(state.config.chain_status_bind.as_str());
     let mut suggested_config = state.config.clone();
     suggested_config.chain_node_id = fresh_node_id.clone();
     suggested_config.chain_status_bind = fresh_chain_status_bind.clone();
@@ -326,7 +329,11 @@ fn suggest_fresh_chain_status_bind(bind: &str) -> String {
     let (host, port) = parse_host_port(bind, "chain status bind")
         .unwrap_or_else(|_| ("127.0.0.1".to_string(), DEFAULT_CHAIN_STATUS_BIND_PORT));
     let normalized_host = runtime_paths::normalize_bind_host_for_local_access(host.as_str());
-    let mut candidate = if port == u16::MAX { port } else { port.saturating_add(1) };
+    let mut candidate = if port == u16::MAX {
+        port
+    } else {
+        port.saturating_add(1)
+    };
     for _ in 0..CHAIN_RECOVERY_PORT_SCAN_LIMIT {
         if candidate != port && TcpListener::bind((normalized_host.as_str(), candidate)).is_ok() {
             return format_host_port(host.as_str(), candidate);
@@ -336,7 +343,14 @@ fn suggest_fresh_chain_status_bind(bind: &str) -> String {
         }
         candidate = candidate.saturating_add(1);
     }
-    format_host_port(host.as_str(), if port == u16::MAX { port } else { port.saturating_add(1) })
+    format_host_port(
+        host.as_str(),
+        if port == u16::MAX {
+            port
+        } else {
+            port.saturating_add(1)
+        },
+    )
 }
 
 fn format_host_port(host: &str, port: u16) -> String {
@@ -1164,14 +1178,20 @@ pub(super) fn finalize_chain_start_outcome(
             ChainRuntimeStatus::NotStarted if state.chain_running.is_none() => {
                 Err("world_chain_runtime did not remain running".to_string())
             }
-            ChainRuntimeStatus::NotStarted | ChainRuntimeStatus::Starting | ChainRuntimeStatus::Ready => Ok(()),
+            ChainRuntimeStatus::NotStarted
+            | ChainRuntimeStatus::Starting
+            | ChainRuntimeStatus::Ready => Ok(()),
         },
     }
 }
 
 pub(super) fn chain_error_code_for_state(state: &ServiceState, error: &str) -> &'static str {
-    if matches!(state.chain_runtime_status, ChainRuntimeStatus::StaleExecutionWorld(_))
-        || error.to_ascii_lowercase().contains("latest state root mismatch")
+    if matches!(
+        state.chain_runtime_status,
+        ChainRuntimeStatus::StaleExecutionWorld(_)
+    ) || error
+        .to_ascii_lowercase()
+        .contains("latest state root mismatch")
     {
         "stale_execution_world"
     } else if error.contains("chain runtime is disabled") {

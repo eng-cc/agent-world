@@ -309,7 +309,10 @@ pub(super) fn execute_gui_agent_action(
                     action,
                     request_host,
                     "action_failed",
-                    format!("unsupported chain recovery mode: {}", recovery.recovery_mode),
+                    format!(
+                        "unsupported chain recovery mode: {}",
+                        recovery.recovery_mode
+                    ),
                     Some(to_json_value(&recovery)),
                 );
             }

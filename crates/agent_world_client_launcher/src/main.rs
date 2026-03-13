@@ -6,10 +6,10 @@ use std::io::{BufRead, BufReader};
 use std::path::Path;
 #[cfg(not(target_arch = "wasm32"))]
 use std::process::{Child, Command, Stdio};
-use std::sync::Arc;
 #[cfg(not(target_arch = "wasm32"))]
 use std::sync::mpsc::TryRecvError;
 use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::Arc;
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::Instant;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -30,9 +30,9 @@ use transfer_entry::TransferDraft;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen_futures::spawn_local;
 #[cfg(target_arch = "wasm32")]
-use web_sys::HtmlCanvasElement;
-#[cfg(target_arch = "wasm32")]
 use web_sys::wasm_bindgen::JsCast;
+#[cfg(target_arch = "wasm32")]
+use web_sys::HtmlCanvasElement;
 #[cfg(target_arch = "wasm32")]
 use web_time::Instant;
 

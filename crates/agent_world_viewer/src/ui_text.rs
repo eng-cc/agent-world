@@ -931,9 +931,7 @@ fn provider_trace_matches(filter: ProviderDebugFilter, trace: &AgentDecisionTrac
     match filter {
         ProviderDebugFilter::All => true,
         ProviderDebugFilter::OpenClawOnly => is_openclaw_trace(trace),
-        ProviderDebugFilter::ErrorsOnly => {
-            trace.llm_error.is_some() || trace.parse_error.is_some()
-        }
+        ProviderDebugFilter::ErrorsOnly => trace.llm_error.is_some() || trace.parse_error.is_some(),
     }
 }
 
@@ -979,16 +977,18 @@ fn decision_summary(decision: &AgentDecision) -> String {
                 target_kind,
                 interaction,
                 ..
-            } => format!(
-                "simple_interact {target_kind} {target_id} {interaction}"
-            ),
+            } => format!("simple_interact {target_kind} {target_id} {interaction}"),
             other => format!("{:?}", other),
         },
     }
 }
 
 fn recent_trace_summary(trace: &AgentDecisionTrace) -> String {
-    if let Some(err) = trace.llm_error.as_deref().or_else(|| trace.parse_error.as_deref()) {
+    if let Some(err) = trace
+        .llm_error
+        .as_deref()
+        .or_else(|| trace.parse_error.as_deref())
+    {
         return format!("error:{}", truncate_text(err, 80));
     }
     if let Some(output) = trace.llm_output.as_deref() {

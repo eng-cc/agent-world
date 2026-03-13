@@ -82,4 +82,3 @@ pub(super) fn build_provider_debug_text(
 ) -> String {
     provider_debug_summary(&state.decision_traces, filter)
 }
-

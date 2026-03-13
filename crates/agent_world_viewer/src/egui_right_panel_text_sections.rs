@@ -129,12 +129,20 @@ pub(super) fn render_text_sections(
         ui.selectable_value(
             provider_debug_filter,
             ProviderDebugFilter::OpenClawOnly,
-            if locale.is_zh() { "仅 OpenClaw" } else { "OpenClaw Only" },
+            if locale.is_zh() {
+                "仅 OpenClaw"
+            } else {
+                "OpenClaw Only"
+            },
         );
         ui.selectable_value(
             provider_debug_filter,
             ProviderDebugFilter::ErrorsOnly,
-            if locale.is_zh() { "仅错误" } else { "Errors Only" },
+            if locale.is_zh() {
+                "仅错误"
+            } else {
+                "Errors Only"
+            },
         );
     });
 
