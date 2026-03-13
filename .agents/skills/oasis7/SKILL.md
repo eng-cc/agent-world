@@ -1,6 +1,6 @@
 ---
 name: oasis7
-description: OpenClaw real-play and parity workflow for Agent World. Use when the user wants to configure, start, validate, or debug a real local OpenClaw gameplay path, including installing the lightweight runtime agent, starting the local bridge, launching `world_game_launcher`, probing `openclaw_local_http`, or running parity smoke for OpenClaw NPC behavior.
+description: OpenClaw real-play and parity workflow for Agent World. Use when the user wants to configure, start, validate, or debug a real local OpenClaw gameplay path, including downloading a GitHub Release game bundle, installing the lightweight runtime agent, starting the local bridge, launching `world_game_launcher`, probing `openclaw_local_http`, or running parity smoke for OpenClaw NPC behavior.
 ---
 
 # Oasis7
@@ -10,11 +10,14 @@ description: OpenClaw real-play and parity workflow for Agent World. Use when th
 `oasis7` is the repo-local workflow for running a real OpenClaw-backed Agent World NPC.
 Use it for “能不能真跑起来”, “怎么配 OpenClaw 试玩”, “起 bridge / launcher / parity”, and first-line debugging of the local `openclaw_local_http` path.
 
+默认推荐 `bundle-first`：先下载 GitHub Release 的游戏包，再把 OpenClaw provider 配到该 bundle 的 `run-game.sh`，避免把试玩路径绑死在 repo 内的相对目录结构上。
+
 ## When To Use
 
 Use this skill when the task involves any of these:
 
 - Configure a real OpenClaw gameplay run instead of mock provider tests
+- Download a playable Agent World bundle from GitHub Release
 - Install or refresh the lightweight OpenClaw runtime agent
 - Start or debug `world_openclaw_local_bridge`
 - Launch the product path with `world_game_launcher` in `openclaw_local_http` mode
@@ -47,7 +50,27 @@ curl -sS http://127.0.0.1:18789/health
 
 For exact field values and launch examples, read `references/real-play-config.md`.
 
-### 2. Install the lightweight runtime agent
+### 2. Download a playable game bundle
+
+Use the release bundle as the default operator entry:
+
+```bash
+bundle_dir="$(.agents/skills/oasis7/scripts/oasis7-run.sh download)"
+printf '%s\n' "$bundle_dir"
+```
+
+By default it downloads the latest asset from `eng-cc/agent-world` GitHub Releases, verifies `agent-world-checksums.txt` when available, extracts the archive, and returns a directory that contains `run-game.sh`.
+
+Useful overrides:
+
+```bash
+.agents/skills/oasis7/scripts/oasis7-run.sh download \
+  --release-platform linux-x64 \
+  --release-tag latest \
+  --download-dir ~/.cache/oasis7/releases
+```
+
+### 3. Install the lightweight runtime agent
 
 For real gameplay or parity, prefer the repo-owned lightweight agent instead of the user’s default OpenClaw workspace.
 
@@ -63,7 +86,7 @@ Defaults:
 
 The runtime workspace is intentionally slim and is not meant for daily chat.
 
-## 3. Start the bridge
+### 4. Start the bridge
 
 Run the local compatibility bridge that exposes world-simulator provider endpoints:
 
@@ -82,12 +105,26 @@ curl -sS http://127.0.0.1:5841/v1/provider/info | jq .
 curl -sS http://127.0.0.1:5841/v1/provider/health | jq .
 ```
 
-## 4. Launch a real gameplay run
+### 5. Launch a real gameplay run
 
-Use the product path, not just ad-hoc provider calls:
+You can launch from either the source tree or a downloaded release bundle.
+
+Repo source path:
 
 ```bash
 env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_game_launcher -- \
+  --scenario llm_bootstrap \
+  --with-llm \
+  --agent-provider-mode openclaw_local_http \
+  --openclaw-base-url http://127.0.0.1:5841 \
+  --openclaw-connect-timeout-ms 15000 \
+  --openclaw-agent-profile agent_world_p0_low_freq_npc
+```
+
+Release bundle path:
+
+```bash
+./run-game.sh \
   --scenario llm_bootstrap \
   --with-llm \
   --agent-provider-mode openclaw_local_http \
@@ -103,7 +140,7 @@ Required real-play settings:
 - `openclaw_connect_timeout_ms=15000`
 - `openclaw_agent_profile=agent_world_p0_low_freq_npc`
 
-## 5. Run parity smoke
+### 6. Run parity smoke
 
 Use this as the fastest real verification path:
 
@@ -129,16 +166,29 @@ Primary success target today:
 
 Use the bundled wrapper when you want the skill to do the repetitive setup for you.
 
-### Real play
+### Download
 
 ```bash
-.agents/skills/oasis7/scripts/oasis7-run.sh play --no-open-browser
+.agents/skills/oasis7/scripts/oasis7-run.sh download
+```
+
+### Real play from release bundle
+
+```bash
+bundle_dir="$(.agents/skills/oasis7/scripts/oasis7-run.sh download)"
+.agents/skills/oasis7/scripts/oasis7-run.sh play --bundle-dir "$bundle_dir" --no-open-browser
+```
+
+### Real play from source tree
+
+```bash
+.agents/skills/oasis7/scripts/oasis7-run.sh play --repo-root /path/to/agent-world --no-open-browser
 ```
 
 ### Smoke
 
 ```bash
-.agents/skills/oasis7/scripts/oasis7-run.sh smoke
+.agents/skills/oasis7/scripts/oasis7-run.sh smoke --repo-root /path/to/agent-world
 ```
 
 ### Doctor
@@ -150,8 +200,10 @@ Use the bundled wrapper when you want the skill to do the repetitive setup for y
 
 What it does:
 
-- `doctor`: checks command availability, Gateway health, bridge health, provider info, and whether the configured OpenClaw runtime agent exists; add `--json` for machine-readable output
-- `play` / `smoke`: bootstrap `agent_world_runtime` unless you disable it, verify Gateway health, start the local bridge unless you pass `--reuse-bridge`, then run launcher or parity smoke
+- `download`: downloads and extracts the GitHub Release bundle, then prints the usable bundle directory
+- `doctor`: checks command availability, Gateway health, bridge health, provider info, runtime agent presence, and optional `--bundle-dir` validity; add `--json` for machine-readable output
+- `play`: bootstrap `agent_world_runtime` unless you disable it, verify Gateway health, start the local bridge unless you pass `--reuse-bridge`, then run launcher from the bundle or source tree
+- `smoke`: remains repo-backed because the parity harness lives under `scripts/openclaw-parity-p0.sh`
 
 ## Debug Checklist
 
@@ -160,8 +212,9 @@ If the run fails, inspect in this order:
 1. Gateway health: `http://127.0.0.1:18789/health`
 2. Bridge health: `http://127.0.0.1:5841/v1/provider/health`
 3. Wrong provider mode or missing profile
-4. Bridge not started with the lightweight agent
-5. Parity artifacts under `artifacts/openclaw_parity_*`
+4. Bundle missing `run-game.sh` or wrong extracted directory
+5. Bridge not started with the lightweight agent
+6. Parity artifacts under `artifacts/openclaw_parity_*`
 
 For common failure strings and what to check next, read `references/failure-signatures.md`. Run `doctor` first when you need a fast local diagnosis summary.
 
@@ -189,4 +242,5 @@ When using this skill:
 - Prefer exact commands over abstract advice
 - State which process provides `127.0.0.1:18789` and which provides `127.0.0.1:5841`
 - Distinguish “runtime agent workspace/profile” from Codex repo skills
+- Distinguish “downloaded release bundle” from “repo-backed bridge/smoke tooling”
 - If you changed behavior or tooling, update `doc/world-simulator/project.md` and `doc/devlog/YYYY-MM-DD.md`

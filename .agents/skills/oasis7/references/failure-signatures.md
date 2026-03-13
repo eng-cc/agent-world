@@ -1,5 +1,17 @@
 # Failure Signatures
 
+## `bundle_missing_or_incomplete`
+
+Meaning:
+
+- extracted release bundle is wrong, incomplete, or you pointed `--bundle-dir` at the wrong directory
+
+Check:
+
+1. `run-game.sh` exists under the chosen bundle root
+2. the archive extracted into `agent-world-<platform>/` or an equivalent directory that contains `run-game.sh`
+3. rerun `.agents/skills/oasis7/scripts/oasis7-run.sh download --force-download`
+
 ## `provider_unreachable`
 
 Meaning:
@@ -69,7 +81,6 @@ Current boundary:
 - real NPC autoplay path is supported
 - direct player-side hot control is not yet supported
 
-
 ## `doctor` mode
 
 Use this first when the local OpenClaw path is not obviously healthy:
@@ -86,5 +97,6 @@ It reports:
 - whether the configured runtime agent exists
 - whether the bridge/provider responds on `127.0.0.1:5841`
 - whether `provider/info` is readable
+- whether an optional `--bundle-dir` looks usable
 
 Use `--json` when another script or UI needs a machine-readable JSON summary.
