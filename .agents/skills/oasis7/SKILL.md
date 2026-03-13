@@ -45,6 +45,8 @@ openclaw --version
 curl -sS http://127.0.0.1:18789/health
 ```
 
+For exact field values and launch examples, read `references/real-play-config.md`.
+
 ### 2. Install the lightweight runtime agent
 
 For real gameplay or parity, prefer the repo-owned lightweight agent instead of the user’s default OpenClaw workspace.
@@ -123,6 +125,29 @@ Primary success target today:
 - `goal_completed=true`
 - `invalid_action_count=0`
 
+## One-Command Helpers
+
+Use the bundled wrapper when you want the skill to do the repetitive setup for you.
+
+### Real play
+
+```bash
+.agents/skills/oasis7/scripts/oasis7-run.sh play --no-open-browser
+```
+
+### Smoke
+
+```bash
+.agents/skills/oasis7/scripts/oasis7-run.sh smoke
+```
+
+What it does:
+
+- bootstraps `agent_world_runtime` unless you disable it
+- verifies Gateway health on `127.0.0.1:18789`
+- starts the local bridge unless you pass `--reuse-bridge`
+- runs either the product launcher or parity smoke
+
 ## Debug Checklist
 
 If the run fails, inspect in this order:
@@ -132,6 +157,8 @@ If the run fails, inspect in this order:
 3. Wrong provider mode or missing profile
 4. Bridge not started with the lightweight agent
 5. Parity artifacts under `artifacts/openclaw_parity_*`
+
+For common failure strings and what to check next, read `references/failure-signatures.md`.
 
 Current known reality:
 
