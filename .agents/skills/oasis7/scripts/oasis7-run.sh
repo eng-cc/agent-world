@@ -6,6 +6,7 @@ usage() {
 Usage:
   oasis7-run.sh play [options]
   oasis7-run.sh smoke [options]
+  oasis7-run.sh doctor [options]
 
 Options:
   --base-url <url>                OpenClaw local provider base url (default: http://127.0.0.1:5841)
@@ -31,6 +32,11 @@ require_cmd() {
   }
 }
 
+http_get() {
+  local url="$1"
+  curl -fsS "$url"
+}
+
 wait_for_http() {
   local url="$1"
   local attempts="${2:-40}"
@@ -44,6 +50,13 @@ wait_for_http() {
   done
   echo "timed out waiting for $url" >&2
   return 1
+}
+
+print_doctor_status() {
+  local level="$1"
+  local label="$2"
+  local detail="$3"
+  printf '[%s] %s: %s\n' "$level" "$label" "$detail"
 }
 
 mode="${1:-}"
@@ -131,7 +144,9 @@ done
 
 require_cmd openclaw
 require_cmd curl
-require_cmd cargo
+if [[ "$mode" != "doctor" ]]; then
+  require_cmd cargo
+fi
 mkdir -p "$(dirname "$bridge_log")"
 
 cleanup_bridge_pid=""
@@ -142,6 +157,113 @@ cleanup() {
   fi
 }
 trap cleanup EXIT
+
+run_doctor() {
+  local failures=0
+  local gateway_json=""
+  local bridge_health_json=""
+  local provider_info_json=""
+  local agents_json=""
+
+  print_doctor_status INFO config "base_url=$base_url agent_id=$agent_id agent_profile=$agent_profile scenario=$scenario"
+
+  if command -v openclaw >/dev/null 2>&1; then
+    print_doctor_status OK command "openclaw=$(command -v openclaw)"
+  else
+    print_doctor_status FAIL command "openclaw not found"
+    failures=$((failures + 1))
+  fi
+
+  if command -v cargo >/dev/null 2>&1; then
+    print_doctor_status OK command "cargo=$(command -v cargo)"
+  else
+    print_doctor_status FAIL command "cargo not found"
+    failures=$((failures + 1))
+  fi
+
+  if gateway_json="$(http_get 'http://127.0.0.1:18789/health' 2>/dev/null)"; then
+    print_doctor_status OK gateway "$gateway_json"
+  else
+    print_doctor_status FAIL gateway "cannot reach http://127.0.0.1:18789/health"
+    failures=$((failures + 1))
+  fi
+
+  if agents_json="$(openclaw agents list --json 2>/dev/null)"; then
+    if AGENTS_JSON="$agents_json" AGENT_ID="$agent_id" python - <<'PY'
+import json, os, sys
+agent_id = os.environ['AGENT_ID']
+items = json.loads(os.environ['AGENTS_JSON'])
+for item in items:
+    if item.get('id') == agent_id:
+        print(f"workspace={item.get('workspace','')} model={item.get('model','')}")
+        sys.exit(0)
+sys.exit(1)
+PY
+    then
+      local agent_summary
+      agent_summary="$(AGENTS_JSON="$agents_json" AGENT_ID="$agent_id" python - <<'PY'
+import json, os
+agent_id = os.environ['AGENT_ID']
+items = json.loads(os.environ['AGENTS_JSON'])
+for item in items:
+    if item.get('id') == agent_id:
+        print(f"workspace={item.get('workspace','')} model={item.get('model','')}")
+        break
+PY
+)"
+      print_doctor_status OK runtime-agent "$agent_summary"
+    else
+      print_doctor_status FAIL runtime-agent "OpenClaw agent '$agent_id' not found; run scripts/setup-openclaw-agent-world-runtime.sh $agent_id"
+      failures=$((failures + 1))
+    fi
+  else
+    print_doctor_status FAIL runtime-agent "failed to query 'openclaw agents list --json'"
+    failures=$((failures + 1))
+  fi
+
+  if bridge_health_json="$(http_get "$base_url/v1/provider/health" 2>/dev/null)"; then
+    print_doctor_status OK bridge-health "$bridge_health_json"
+  else
+    print_doctor_status FAIL bridge-health "cannot reach $base_url/v1/provider/health"
+    failures=$((failures + 1))
+  fi
+
+  if provider_info_json="$(http_get "$base_url/v1/provider/info" 2>/dev/null)"; then
+    local provider_summary
+    provider_summary="$(PROVIDER_INFO_JSON="$provider_info_json" python - <<'PY'
+import json, os
+value = json.loads(os.environ['PROVIDER_INFO_JSON'])
+provider_id = value.get('provider_id', '')
+provider_version = value.get('provider_version', '')
+protocol_version = value.get('protocol_version', '')
+print(f"provider_id={provider_id} provider_version={provider_version} protocol_version={protocol_version}")
+PY
+)"
+    print_doctor_status OK provider-info "$provider_summary"
+  else
+    print_doctor_status FAIL provider-info "cannot reach $base_url/v1/provider/info"
+    failures=$((failures + 1))
+  fi
+
+  if [[ -f "$bridge_log" ]]; then
+    print_doctor_status INFO bridge-log "$bridge_log"
+  else
+    print_doctor_status INFO bridge-log "not created yet ($bridge_log)"
+  fi
+
+  if [[ "$failures" -eq 0 ]]; then
+    print_doctor_status OK summary "doctor checks passed"
+    return 0
+  fi
+
+  print_doctor_status FAIL summary "$failures check(s) failed"
+  return 1
+}
+
+if [[ "$mode" == "doctor" ]]; then
+  run_doctor
+  exit $?
+fi
 
 if [[ "$skip_agent_setup" != "1" ]]; then
   "$repo_root/scripts/setup-openclaw-agent-world-runtime.sh" "$agent_id"

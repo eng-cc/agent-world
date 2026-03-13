@@ -68,3 +68,20 @@ Current boundary:
 
 - real NPC autoplay path is supported
 - direct player-side hot control is not yet supported
+
+
+## `doctor` mode
+
+Use this first when the local OpenClaw path is not obviously healthy:
+
+```bash
+.agents/skills/oasis7/scripts/oasis7-run.sh doctor
+```
+
+It reports:
+
+- whether `openclaw` and `cargo` are available
+- whether Gateway responds on `127.0.0.1:18789`
+- whether the configured runtime agent exists
+- whether the bridge/provider responds on `127.0.0.1:5841`
+- whether `provider/info` is readable

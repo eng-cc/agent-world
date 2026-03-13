@@ -141,12 +141,16 @@ Use the bundled wrapper when you want the skill to do the repetitive setup for y
 .agents/skills/oasis7/scripts/oasis7-run.sh smoke
 ```
 
+### Doctor
+
+```bash
+.agents/skills/oasis7/scripts/oasis7-run.sh doctor
+```
+
 What it does:
 
-- bootstraps `agent_world_runtime` unless you disable it
-- verifies Gateway health on `127.0.0.1:18789`
-- starts the local bridge unless you pass `--reuse-bridge`
-- runs either the product launcher or parity smoke
+- `doctor`: checks command availability, Gateway health, bridge health, provider info, and whether the configured OpenClaw runtime agent exists
+- `play` / `smoke`: bootstrap `agent_world_runtime` unless you disable it, verify Gateway health, start the local bridge unless you pass `--reuse-bridge`, then run launcher or parity smoke
 
 ## Debug Checklist
 
@@ -158,7 +162,7 @@ If the run fails, inspect in this order:
 4. Bridge not started with the lightweight agent
 5. Parity artifacts under `artifacts/openclaw_parity_*`
 
-For common failure strings and what to check next, read `references/failure-signatures.md`.
+For common failure strings and what to check next, read `references/failure-signatures.md`. Run `doctor` first when you need a fast local diagnosis summary.
 
 Current known reality:
 
