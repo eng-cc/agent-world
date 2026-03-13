@@ -76,6 +76,7 @@ Use this first when the local OpenClaw path is not obviously healthy:
 
 ```bash
 .agents/skills/oasis7/scripts/oasis7-run.sh doctor
+.agents/skills/oasis7/scripts/oasis7-run.sh doctor --json
 ```
 
 It reports:
@@ -85,3 +86,5 @@ It reports:
 - whether the configured runtime agent exists
 - whether the bridge/provider responds on `127.0.0.1:5841`
 - whether `provider/info` is readable
+
+Use `--json` when another script or UI needs a machine-readable JSON summary.

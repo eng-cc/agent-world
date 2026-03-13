@@ -145,11 +145,12 @@ Use the bundled wrapper when you want the skill to do the repetitive setup for y
 
 ```bash
 .agents/skills/oasis7/scripts/oasis7-run.sh doctor
+.agents/skills/oasis7/scripts/oasis7-run.sh doctor --json
 ```
 
 What it does:
 
-- `doctor`: checks command availability, Gateway health, bridge health, provider info, and whether the configured OpenClaw runtime agent exists
+- `doctor`: checks command availability, Gateway health, bridge health, provider info, and whether the configured OpenClaw runtime agent exists; add `--json` for machine-readable output
 - `play` / `smoke`: bootstrap `agent_world_runtime` unless you disable it, verify Gateway health, start the local bridge unless you pass `--reuse-bridge`, then run launcher or parity smoke
 
 ## Debug Checklist

@@ -21,6 +21,7 @@ Options:
   --skip-agent-setup              Skip runtime agent bootstrap
   --reuse-bridge                  Reuse existing bridge at --base-url
   --no-open-browser               Pass through to world_game_launcher
+  --json                          Emit machine-readable JSON for doctor mode
   -h, --help                      Show help
 USAGE
 }
@@ -52,11 +53,30 @@ wait_for_http() {
   return 1
 }
 
+encode_json_string() {
+  python - <<'PY' "$1"
+import json, sys
+print(json.dumps(sys.argv[1]))
+PY
+}
+
+encode_b64() {
+  python - <<'PY' "$1"
+import base64, sys
+print(base64.b64encode(sys.argv[1].encode()).decode())
+PY
+}
+
 print_doctor_status() {
   local level="$1"
   local label="$2"
   local detail="$3"
-  printf '[%s] %s: %s\n' "$level" "$label" "$detail"
+  if [[ "$json_output" != "1" ]]; then
+    printf '[%s] %s: %s\n' "$level" "$label" "$detail"
+  fi
+  if [[ -n "$doctor_records_file" ]]; then
+    printf '%s\t%s\t%s\n' "$level" "$label" "$(encode_b64 "$detail")" >>"$doctor_records_file"
+  fi
 }
 
 mode="${1:-}"
@@ -79,6 +99,8 @@ bridge_log="$repo_root/.tmp/oasis7-bridge.log"
 skip_agent_setup="0"
 reuse_bridge="0"
 open_browser="1"
+json_output="0"
+doctor_records_file=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -130,6 +152,10 @@ while [[ $# -gt 0 ]]; do
       open_browser="0"
       shift
       ;;
+    --json)
+      json_output="1"
+      shift
+      ;;
     -h|--help)
       usage
       exit 0
@@ -155,8 +181,34 @@ cleanup() {
     kill "$cleanup_bridge_pid" >/dev/null 2>&1 || true
     wait "$cleanup_bridge_pid" >/dev/null 2>&1 || true
   fi
+  if [[ -n "$doctor_records_file" && -f "$doctor_records_file" ]]; then
+    rm -f "$doctor_records_file"
+  fi
 }
 trap cleanup EXIT
+
+emit_doctor_json() {
+  local failures="$1"
+  python - <<'PY' "$doctor_records_file" "$failures" "$base_url" "$agent_id" "$agent_profile" "$scenario"
+import base64, json, sys
+records_path, failures, base_url, agent_id, agent_profile, scenario = sys.argv[1:]
+checks = []
+with open(records_path, "r", encoding="utf-8") as handle:
+    for line in handle:
+        level, label, detail_b64 = line.rstrip("\n").split("\t", 2)
+        detail = base64.b64decode(detail_b64.encode()).decode()
+        checks.append({"level": level, "label": label, "detail": detail})
+print(json.dumps({
+    "ok": int(failures) == 0,
+    "failures": int(failures),
+    "base_url": base_url,
+    "agent_id": agent_id,
+    "agent_profile": agent_profile,
+    "scenario": scenario,
+    "checks": checks,
+}, ensure_ascii=False))
+PY
+}
 
 run_doctor() {
   local failures=0
@@ -164,6 +216,7 @@ run_doctor() {
   local bridge_health_json=""
   local provider_info_json=""
   local agents_json=""
+  doctor_records_file="$(mktemp)"
 
   print_doctor_status INFO config "base_url=$base_url agent_id=$agent_id agent_profile=$agent_profile scenario=$scenario"
 
@@ -189,13 +242,12 @@ run_doctor() {
   fi
 
   if agents_json="$(openclaw agents list --json 2>/dev/null)"; then
-    if AGENTS_JSON="$agents_json" AGENT_ID="$agent_id" python - <<'PY'
+    if AGENTS_JSON="$agents_json" AGENT_ID="$agent_id" python - <<'PY' >/dev/null
 import json, os, sys
 agent_id = os.environ['AGENT_ID']
 items = json.loads(os.environ['AGENTS_JSON'])
 for item in items:
     if item.get('id') == agent_id:
-        print(f"workspace={item.get('workspace','')} model={item.get('model','')}")
         sys.exit(0)
 sys.exit(1)
 PY
@@ -253,10 +305,16 @@ PY
 
   if [[ "$failures" -eq 0 ]]; then
     print_doctor_status OK summary "doctor checks passed"
+    if [[ "$json_output" == "1" ]]; then
+      emit_doctor_json "$failures"
+    fi
     return 0
   fi
 
   print_doctor_status FAIL summary "$failures check(s) failed"
+  if [[ "$json_output" == "1" ]]; then
+    emit_doctor_json "$failures"
+  fi
   return 1
 }
 
