@@ -272,6 +272,7 @@
 - 最新完成: `TASK-WORLD_SIMULATOR-121`（`OpenClawAdapter` + phase-1 六类白名单动作 + runner/feedback 闭环回归）。
 - 最新完成: `TASK-WORLD_SIMULATOR-122`（launcher OpenClaw probe 延迟/错误摘要 + viewer provider debug 摘要/筛选入口）。
 - 当前优先任务: `PRD-WORLD_SIMULATOR-038` parity 采证
+- parity 执行入口: `scripts/openclaw-parity-p0.sh` + `world_openclaw_parity_bench` 已落地，可先跑 openclaw-only/mock smoke，再接真实 builtin/OpenClaw 双边样本。
 - 并行待办: 真实 `OpenClaw(Local HTTP)` 单 NPC 闭环试点（T5 / experimental）
 - 专题映射状态: 2026-03-02 批次 9/9、2026-03-03 批次 4/4、2026-03-04 批次 7/7、2026-03-05 批次 4/4、2026-03-06 批次 6/6 已纳入模块项目管理文档；`TASK-WORLD_SIMULATOR-057~108` 已完成。
 - 手册入口状态: `doc/world-simulator/viewer/viewer-manual.md` 为唯一活跃手册入口。

@@ -25,10 +25,12 @@
 - `doc/world-simulator/prd.index.md`
 
 ## 状态
-- 最近更新：2026-03-12
-- 当前阶段: T4 pending
-- 当前任务: `完成真实 OpenClaw(Local HTTP) 的 P0 parity 对标试玩并输出 QA/producer 双签结论`
+- 最近更新：2026-03-13
+- 当前阶段: T4 in_progress
+- 当前任务: `使用 scripts/openclaw-parity-p0.sh 采集真实 OpenClaw(Local HTTP) 的 P0 parity 证据，并补齐 QA/producer 双签材料`
 - owner: `agent_engineer`
 - 联审: `qa_engineer`、`viewer_engineer`、`runtime_engineer`
 - 发起建模: `producer_system_designer`
 - 备注: 本专题将“体验等价”提升为上线门禁；后续若 `OpenClaw` 未达到 parity，只允许保留在 `experimental`，不得标记为默认体验。
+
+- T4 进展备注: 已落地 `crates/agent_world/src/bin/world_openclaw_parity_bench.rs` 与 `scripts/openclaw-parity-p0.sh`，用于按 `PRD-WORLD_SIMULATOR-038` benchmark 协议输出 `raw/*.jsonl`、单样本 summary、聚合 `combined.csv`、`failures.md` 与 `scorecard-links.md`；已通过 `openclaw_local_http` mock localhost smoke 验证产物结构，真实 builtin/OpenClaw 对标仍待本机 provider 与 QA/producer 实测。
