@@ -173,15 +173,16 @@ impl ProviderState {
             .cloned()
             .collect::<Vec<_>>();
         let prompt = build_decision_prompt(&request, recent_feedback.as_slice());
-        let session_id = build_session_id(&request);
+        let session_key = build_session_key(&request, self.options.openclaw_agent_id.as_str());
         let timeout_seconds = timeout_seconds_from_budget(request.timeout_budget_ms);
         let invoke_result = invoker.invoke(AgentInvocation {
             openclaw_bin: self.options.openclaw_bin.clone(),
             agent_id: self.options.openclaw_agent_id.clone(),
             thinking: self.options.openclaw_thinking.clone(),
-            session_id,
+            session_key: session_key.clone(),
             timeout_seconds,
             prompt,
+            idempotency_key: format!("{session_key}-{timeout_seconds}"),
         });
         self.active_requests.fetch_sub(1, Ordering::SeqCst);
         let latency_ms = started_at.elapsed().as_millis() as u64;
@@ -320,9 +321,10 @@ struct AgentInvocation {
     openclaw_bin: String,
     agent_id: String,
     thinking: String,
-    session_id: String,
+    session_key: String,
     timeout_seconds: u64,
     prompt: String,
+    idempotency_key: String,
 }
 
 #[derive(Debug, Clone)]
@@ -345,21 +347,21 @@ struct OpenClawCliInvoker;
 
 impl AgentInvoker for OpenClawCliInvoker {
     fn invoke(&self, invocation: AgentInvocation) -> Result<AgentInvocationOutput, String> {
+        let params = build_gateway_agent_params(&invocation)
+            .map_err(|err| format!("serialize gateway call params failed: {err}"))?;
+        let rpc_timeout_ms = invocation.timeout_seconds.saturating_mul(1000).saturating_add(2000);
         let output = Command::new(invocation.openclaw_bin.as_str())
+            .arg("gateway")
+            .arg("call")
             .arg("agent")
+            .arg("--expect-final")
             .arg("--json")
-            .arg("--agent")
-            .arg(invocation.agent_id.as_str())
-            .arg("--session-id")
-            .arg(invocation.session_id.as_str())
-            .arg("--thinking")
-            .arg(invocation.thinking.as_str())
             .arg("--timeout")
-            .arg(invocation.timeout_seconds.to_string())
-            .arg("--message")
-            .arg(invocation.prompt.as_str())
+            .arg(rpc_timeout_ms.to_string())
+            .arg("--params")
+            .arg(params)
             .output()
-            .map_err(|err| format!("spawn openclaw agent failed: {err}"))?;
+            .map_err(|err| format!("spawn openclaw gateway call agent failed: {err}"))?;
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(output.stderr.as_slice())
                 .trim()
@@ -368,21 +370,21 @@ impl AgentInvoker for OpenClawCliInvoker {
                 .trim()
                 .to_string();
             return Err(format!(
-                "openclaw agent exited with status {}: stderr={} stdout={}",
+                "openclaw gateway call agent exited with status {}: stderr={} stdout={}",
                 output.status, stderr, stdout,
             ));
         }
         let payload = String::from_utf8(output.stdout)
-            .map_err(|err| format!("openclaw agent stdout was not utf8: {err}"))?;
+            .map_err(|err| format!("openclaw gateway call agent stdout was not utf8: {err}"))?;
         let parsed: OpenClawAgentCliOutput = serde_json::from_str(payload.as_str())
-            .map_err(|err| format!("parse openclaw agent json failed: {err}"))?;
+            .map_err(|err| format!("parse openclaw gateway call agent json failed: {err}"))?;
         let text = parsed
             .result
             .payloads
             .into_iter()
             .find_map(|entry| entry.text)
             .ok_or_else(|| {
-                "openclaw agent json did not contain result.payloads[].text".to_string()
+                "openclaw gateway call agent json did not contain result.payloads[].text".to_string()
             })?;
         Ok(AgentInvocationOutput {
             prompt: invocation.prompt,
@@ -901,9 +903,23 @@ fn timeout_seconds_from_budget(timeout_budget_ms: u64) -> u64 {
     ((timeout_budget_ms.max(1000) + 999) / 1000).max(1)
 }
 
-fn build_session_id(request: &DecisionRequest) -> String {
+fn build_gateway_agent_params(invocation: &AgentInvocation) -> Result<String, serde_json::Error> {
+    serde_json::to_string(&json!({
+        "message": invocation.prompt,
+        "agentId": invocation.agent_id,
+        "sessionKey": invocation.session_key,
+        "deliver": false,
+        "channel": "webchat",
+        "lane": "nested",
+        "thinking": invocation.thinking,
+        "timeout": invocation.timeout_seconds,
+        "idempotencyKey": invocation.idempotency_key,
+    }))
+}
+
+fn build_session_key(request: &DecisionRequest, openclaw_agent_id: &str) -> String {
     let raw = format!(
-        "world-simulator:{}:{}:{}",
+        "agent:{openclaw_agent_id}:webchat:world-simulator:{}:{}:{}",
         request
             .provider_config_ref
             .as_deref()
@@ -1287,17 +1303,42 @@ mod tests {
     }
 
     #[test]
-    fn build_session_id_uses_provider_config_ref_to_avoid_cross_talk() {
+    fn build_session_key_uses_provider_config_ref_to_avoid_cross_talk() {
         let mut request = sample_request();
         request.provider_config_ref =
             Some("openclaw://local-http/parity/run-a/agent-0".to_string());
-        let session_a = build_session_id(&request);
+        let session_a = build_session_key(&request, "main");
         request.provider_config_ref =
             Some("openclaw://local-http/parity/run-b/agent-0".to_string());
-        let session_b = build_session_id(&request);
+        let session_b = build_session_key(&request, "main");
         assert_ne!(session_a, session_b);
         assert!(session_a.contains("run-a"));
         assert!(session_b.contains("run-b"));
+    }
+
+    #[test]
+    fn build_gateway_agent_params_uses_session_key_and_timeout() {
+        let invocation = AgentInvocation {
+            openclaw_bin: "openclaw".to_string(),
+            agent_id: "main".to_string(),
+            thinking: "off".to_string(),
+            session_key: "agent:main:webchat:world-simulator:test".to_string(),
+            timeout_seconds: 15,
+            prompt: "{\"action\":\"wait\"}".to_string(),
+            idempotency_key: "idem-1".to_string(),
+        };
+        let params = build_gateway_agent_params(&invocation).expect("params");
+        let value: Value = serde_json::from_str(params.as_str()).expect("json");
+        assert_eq!(
+            value.get("sessionKey").and_then(Value::as_str),
+            Some("agent:main:webchat:world-simulator:test")
+        );
+        assert_eq!(value.get("agentId").and_then(Value::as_str), Some("main"));
+        assert_eq!(value.get("channel").and_then(Value::as_str), Some("webchat"));
+        assert_eq!(value.get("lane").and_then(Value::as_str), Some("nested"));
+        assert_eq!(value.get("thinking").and_then(Value::as_str), Some("off"));
+        assert_eq!(value.get("timeout").and_then(Value::as_u64), Some(15));
+        assert_eq!(value.get("idempotencyKey").and_then(Value::as_str), Some("idem-1"));
     }
 
     #[test]

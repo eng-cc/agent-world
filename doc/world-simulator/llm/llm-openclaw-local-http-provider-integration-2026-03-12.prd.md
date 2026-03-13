@@ -154,6 +154,7 @@
   - NFR-7: `world_openclaw_local_bridge` 只能绑定 `127.0.0.1`，且必须支持显式端口/agent/profile 配置，默认地址保持 `127.0.0.1:5841`。
   - NFR-8: 兼容桥必须把 `OpenClaw` 原始文本输出保存在 `trace_payload.transcript/output_summary`，并把 parse/repair 结果反映到 `schema_repair_count` 与最近错误。
   - NFR-9: 兼容桥派生的 OpenClaw session id 必须带上 `provider_config_ref` 作用域，至少要把 benchmark run / runtime live 进程彼此隔离，避免 `loc-2` 之类的历史上下文泄漏到新的世界样本。
+  - NFR-10: 仓库必须提供可复用的轻量 OpenClaw runtime agent bootstrap（workspace 模板 + setup 脚本），用于把 world-simulator 决策路径与用户日常聊天/运营 workspace 隔离，降低 system prompt 体积与 session 污染风险。
 - Security & Privacy:
   - 仅接受 loopback 地址；launcher 对 base URL 做 host allowlist 校验。
   - 不向 provider 暴露私钥、完整 auth proof 或内部存储路径。

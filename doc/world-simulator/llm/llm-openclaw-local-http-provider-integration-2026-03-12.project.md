@@ -27,7 +27,7 @@
 ## 状态
 - 最近更新：2026-03-13
 - 当前阶段: T5 pending
-- 当前任务: `继续扩面真实本机 OpenClaw parity 样本，并在收敛高延迟后准备 QA/producer 签收（experimental）`
+- 当前任务: `继续压缩 OpenClaw system prompt / session 负载并扩面真实 parity 样本，收敛高延迟后准备 QA/producer 签收（experimental）`
 - owner: `agent_engineer`
 - 联审: `viewer_engineer`、`runtime_engineer`
 - 发起建模: `producer_system_designer`
@@ -39,5 +39,6 @@
 - T5 bridge 预热: 本机已确认 `OpenClaw Gateway` 正在 `127.0.0.1:18789` 运行，但默认安装未直接暴露 world-simulator provider 协议；因此追加 `world_openclaw_local_bridge` 作为 loopback-only 兼容桥，负责把 `openclaw agent --json` 转译成 `/v1/provider/info|health|/v1/world-simulator/decision|feedback`。
 - T5 bridge 完成备注: `world_openclaw_local_bridge` 已落地到 `crates/agent_world/src/bin/world_openclaw_local_bridge.rs`，实机验证 `GET /v1/provider/info`、`GET /v1/provider/health`、`POST /v1/world-simulator/decision`、`POST /v1/world-simulator/feedback` 均可通过已安装的 `OpenClaw Gateway/CLI` 工作；真实 `P0` parity smoke 已能完成 2 步 decision 并产出 trace，但当前样本仍表现为 `wait` x2、`goal_completed=false`、`median_latency_ms≈4799`，所以 T5 仍保持 `experimental`，后续重点转向 prompt/profile 优化与更长样本采证。
 - T5 session/guardrail 完成备注: 已补 `provider_config_ref` run-scoped session id，避免 bridge 把历史 `loc-2` 等旧样本上下文泄漏到新 benchmark；同时为 `P0-001` 补齐 scenario memory hint、reachable patrol guardrail 与“最近可见 location = 当前点”估算修正。实机 `P0-001` smoke（`artifacts/openclaw_parity_20260313_170850/...`）现已达到 `goal_completed=true`、`move_agent=4`、`invalid_action_count=0`，但 `llm_api median_latency_ms≈4781` 仍高于最终 parity 通过线，所以 T5 依然保持 `experimental`。
+- T5 runtime-agent 补充: 已在 repo 内新增 `tools/openclaw/agent_world_runtime_workspace/*` 与 `scripts/setup-openclaw-agent-world-runtime.sh`，可一键安装轻量 `agent_world_runtime` OpenClaw agent；同时 bridge 的决策调用已切到 `openclaw gateway call agent --expect-final --json` + `sessionKey` 官方 RPC 形态。实机简单 probe 下，轻量 agent 已把 `promptTokens` 从约 `11885` 压到约 `9590`，`result.meta.durationMs` 从约 `4169ms` 降到约 `2191ms`；进一步压缩 repo-owned `BOOTSTRAP/TOOLS/IDENTITY/USER/HEARTBEAT` 后，真实 `P0-001` parity `median_latency_ms` 也从约 `5401` 小幅降到约 `5264`，但仍高于最终门禁，因此 T5 依然保持 `experimental`，下一步继续裁剪 system prompt / bootstrap 注入。
 - T5 主链路补充: `agent_world_client_launcher` 已把 `agent_provider_mode/openclaw_base_url/openclaw_auth_token/openclaw_connect_timeout_ms/openclaw_agent_profile` 正式透传到 `world_game_launcher`；后者再通过环境变量把 OpenClaw 设置注入 `world_viewer_live` 的 runtime live sidecar，OpenClaw 现在可以走产品默认启动链路进入真实运行时。
 - 当前边界: runtime live 的 `agent_chat` / `prompt_control` 在 OpenClaw 模式下仍显式报 `unsupported`，避免对外误报“已支持玩家直连操控”。
