@@ -7,7 +7,7 @@
 
 ## 1. Executive Summary
 - Problem Statement: `Decision Provider` 标准层已经明确了“外部 provider 可参与 Agent 决策，但不得替代 runtime 权威”的边界；但若要回答“安装在用户机器上的 `OpenClaw` 怎么玩这个游戏”，还缺一份面向真实用户安装场景的接入方案，尤其是本地发现、握手、配置、玩家-agent 绑定、决策接口、失败恢复与最小可玩范围。
-- Proposed Solution: 首期采用“`OpenClaw` 本地进程 + `localhost HTTP/JSON`”方案。`OpenClaw` 在用户机器上以本地服务形式运行，仅监听 `127.0.0.1`；world-simulator 侧通过 `OpenClawAdapter` 调用其本地 HTTP API，发送结构化 `DecisionRequest`，接收结构化 `DecisionResponse`。运行时仍由本地 runtime/kernel 权威执行动作、校验规则并产出 trace。Launcher / Viewer 仅负责配置、发现与可观测性展示。
+- Proposed Solution: 首期采用“`OpenClaw` 本地进程 + `localhost HTTP/JSON`”方案。`OpenClaw` 在用户机器上以本地服务形式运行，仅监听 `127.0.0.1`；world-simulator 侧通过 `OpenClawAdapter` 调用其本地 HTTP API，发送结构化 `DecisionRequest`，接收结构化 `DecisionResponse`。运行时仍由本地 runtime/kernel 权威执行动作、校验规则并产出 trace。Launcher / Viewer 仅负责配置、发现与可观测性展示。 在真实用户机缺少原生 world-simulator provider 时，允许通过 `world_openclaw_local_bridge` 这一 loopback-only 兼容桥，把已安装的 `OpenClaw Gateway/CLI` 转译成 `/v1/provider/info`、`/v1/provider/health`、`/v1/world-simulator/decision`、`/v1/world-simulator/feedback` 四个端点，作为 `experimental` 的首期可跑实现。
 - Success Criteria:
   - SC-1: 用户在本机安装并启动 `OpenClaw` 后，可在 launcher 中发现并选择 `OpenClaw(Local HTTP)` 作为 agent provider。
   - SC-2: 首期 `test_tier_required` 依赖 `localhost HTTP/JSON` 完成单一低频 NPC 的 `wait` / `wait_ticks` / `move_agent` / `speak_to_nearby` / `inspect_target` / `simple_interact` 决策闭环；其中后三者先以 lightweight event 语义落地，并继续受 parity 门禁约束。
@@ -141,6 +141,8 @@
   - `unsupported_agent_profile`: provider 标记为 `misconfigured`，launcher / parity bench 必须提示用户切回 builtin 或修正 profile。
   - `agent_provider_chat_unsupported` / `agent_provider_prompt_control_unsupported`: 在当前主链路下，OpenClaw 模式尚不支持 runtime live 的 `agent_chat` 与 `prompt_control` 直接注入，必须显式报错而不是伪装成功。
   - `auth_failed`: provider 标记为 `unauthorized`，要求用户更新本地 token。
+  - `openclaw_gateway_unreachable`: 本地兼容桥无法通过 `openclaw agent` / Gateway 拿到响应时，provider health 需暴露最近错误，launcher / parity bench 必须明确提示“OpenClaw Gateway 未就绪”。
+  - `bridge_model_output_invalid`: 兼容桥若拿到非 JSON、缺字段或超出 phase-1 白名单的输出，必须在 provider 侧降级为 `Wait` 并附带结构化 diagnostics/trace，禁止向 runtime 返回畸形 action。
 - Non-Functional Requirements:
   - NFR-1: 本地 HTTP 仅绑定 `127.0.0.1`，默认不使用 `0.0.0.0`。
   - NFR-2: `GET /info` 与 `GET /health` 本地探测 `p95 <= 200ms`。
@@ -148,6 +150,8 @@
   - NFR-4: 首期 provider 错误不得使 runtime tick 卡死；超时后必须回落为可继续推进的状态。
   - NFR-5: mock local HTTP provider 必须可用于 CI / required regression。
   - NFR-6: `DecisionRequest.agent_profile` 必须可经 `ProviderBackedAgentBehavior -> OpenClawAdapter -> local HTTP` 完整透传，并体现在 parity summary / trace 归档中。
+  - NFR-7: `world_openclaw_local_bridge` 只能绑定 `127.0.0.1`，且必须支持显式端口/agent/profile 配置，默认地址保持 `127.0.0.1:5841`。
+  - NFR-8: 兼容桥必须把 `OpenClaw` 原始文本输出保存在 `trace_payload.transcript/output_summary`，并把 parse/repair 结果反映到 `schema_repair_count` 与最近错误。
 - Security & Privacy:
   - 仅接受 loopback 地址；launcher 对 base URL 做 host allowlist 校验。
   - 不向 provider 暴露私钥、完整 auth proof 或内部存储路径。
@@ -160,7 +164,7 @@
   - M2: 落地 provider config、discovery/health-check 与 mock local HTTP contract tests。
   - M3: 实现 `OpenClawAdapter` request/response/feedback 映射。
   - M4: 在 launcher / viewer 加入 provider 状态、错误与 trace 摘要面板。
-  - M5: 单低频 NPC 实机试点，并决定是否扩展动作集。
+  - M5: 补齐 `world_openclaw_local_bridge`，先把已安装 `OpenClaw Gateway/CLI` 转成 world-simulator 兼容 provider，再执行单低频 NPC 实机试点并决定是否扩展动作集。
 - Technical Risks:
   - 风险-1: 本地 `OpenClaw` 的实际接口与假定协议不完全一致，需要 adapter 额外归一化。
   - 风险-2: 用户机上本地端口冲突、杀毒软件、权限限制可能导致 provider 探测失败。

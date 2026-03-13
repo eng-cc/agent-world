@@ -27,7 +27,7 @@
 ## 状态
 - 最近更新：2026-03-13
 - 当前阶段: T5 pending
-- 当前任务: `准备真实 OpenClaw(Local HTTP) 单 NPC parity 试点（experimental）`
+- 当前任务: `继续采集真实本机 OpenClaw parity 样本，并收敛“全 Wait / 高延迟”问题后准备 QA/producer 签收（experimental）`
 - owner: `agent_engineer`
 - 联审: `viewer_engineer`、`runtime_engineer`
 - 发起建模: `producer_system_designer`
@@ -36,5 +36,7 @@
 - T4 预热进展: 已在 `agent_world_proto` / `viewer::protocol` 补齐 `AgentSpoke`、`TargetInspected`、`SimpleInteractionPerformed` 事件筛选枚举与匹配测试，为后续 Viewer 侧 provider 最近动作展示预留过滤入口。
 - T4 完成备注: launcher 已补 `OpenClaw(Local HTTP)` 顶栏状态徽标、probe info/health/total 延迟、最近错误与队列深度摘要；viewer 已补 `Provider Debug` 文本卡片，输出最近 provider/model、最近延迟、最近动作/trace 摘要，并提供 `全部 / 仅 OpenClaw / 仅错误` 三档调试筛选入口。required 回归已覆盖 launcher probe 与 viewer provider debug summary。
 - T5 预热补充: 已新增 `doc/world-simulator/llm/openclaw-agent-profile-agent_world_p0_low_freq_npc-2026-03-13.md`，并把 `DecisionRequest.agent_profile` 接通到 `ProviderBackedAgentBehavior -> OpenClawAdapter -> local HTTP` 与 parity bench / batch 脚本，首期 `P0` 默认 profile 固定为 `agent_world_p0_low_freq_npc`。
+- T5 bridge 预热: 本机已确认 `OpenClaw Gateway` 正在 `127.0.0.1:18789` 运行，但默认安装未直接暴露 world-simulator provider 协议；因此追加 `world_openclaw_local_bridge` 作为 loopback-only 兼容桥，负责把 `openclaw agent --json` 转译成 `/v1/provider/info|health|/v1/world-simulator/decision|feedback`。
+- T5 bridge 完成备注: `world_openclaw_local_bridge` 已落地到 `crates/agent_world/src/bin/world_openclaw_local_bridge.rs`，实机验证 `GET /v1/provider/info`、`GET /v1/provider/health`、`POST /v1/world-simulator/decision`、`POST /v1/world-simulator/feedback` 均可通过已安装的 `OpenClaw Gateway/CLI` 工作；真实 `P0` parity smoke 已能完成 2 步 decision 并产出 trace，但当前样本仍表现为 `wait` x2、`goal_completed=false`、`median_latency_ms≈4799`，所以 T5 仍保持 `experimental`，后续重点转向 prompt/profile 优化与更长样本采证。
 - T5 主链路补充: `agent_world_client_launcher` 已把 `agent_provider_mode/openclaw_base_url/openclaw_auth_token/openclaw_connect_timeout_ms/openclaw_agent_profile` 正式透传到 `world_game_launcher`；后者再通过环境变量把 OpenClaw 设置注入 `world_viewer_live` 的 runtime live sidecar，OpenClaw 现在可以走产品默认启动链路进入真实运行时。
 - 当前边界: runtime live 的 `agent_chat` / `prompt_control` 在 OpenClaw 模式下仍显式报 `unsupported`，避免对外误报“已支持玩家直连操控”。
