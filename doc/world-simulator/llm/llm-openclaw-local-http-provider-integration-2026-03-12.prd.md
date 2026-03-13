@@ -142,7 +142,8 @@
   - `agent_provider_chat_unsupported` / `agent_provider_prompt_control_unsupported`: 在当前主链路下，OpenClaw 模式尚不支持 runtime live 的 `agent_chat` 与 `prompt_control` 直接注入，必须显式报错而不是伪装成功。
   - `auth_failed`: provider 标记为 `unauthorized`，要求用户更新本地 token。
   - `openclaw_gateway_unreachable`: 本地兼容桥无法通过 `openclaw agent` / Gateway 拿到响应时，provider health 需暴露最近错误，launcher / parity bench 必须明确提示“OpenClaw Gateway 未就绪”。
-  - `bridge_model_output_invalid`: 兼容桥若拿到非 JSON、缺字段或超出 phase-1 白名单的输出，必须在 provider 侧降级为 `Wait` 并附带结构化 diagnostics/trace，禁止向 runtime 返回畸形 action。
+  - `bridge_model_output_invalid`: 兼容桥若拿到非 JSON、缺字段或超出 phase-1 白名单的输出，必须在 provider 侧记录结构化 diagnostics/trace；若当前 profile/fixture 已明确给出低风险可达动作（如 `P0-001` 巡游移动），允许通过 profile guardrail 把无效输出重路由到最近可达的合法动作，否则才降级为 `Wait`。
+  - `session_cross_talk`: 兼容桥必须使用 `provider_config_ref + agent_profile + agent_id` 派生 OpenClaw session scope，防止不同 benchmark run / runtime live 进程复用同一 session 造成旧世界状态串线。
 - Non-Functional Requirements:
   - NFR-1: 本地 HTTP 仅绑定 `127.0.0.1`，默认不使用 `0.0.0.0`。
   - NFR-2: `GET /info` 与 `GET /health` 本地探测 `p95 <= 200ms`。
@@ -152,6 +153,7 @@
   - NFR-6: `DecisionRequest.agent_profile` 必须可经 `ProviderBackedAgentBehavior -> OpenClawAdapter -> local HTTP` 完整透传，并体现在 parity summary / trace 归档中。
   - NFR-7: `world_openclaw_local_bridge` 只能绑定 `127.0.0.1`，且必须支持显式端口/agent/profile 配置，默认地址保持 `127.0.0.1:5841`。
   - NFR-8: 兼容桥必须把 `OpenClaw` 原始文本输出保存在 `trace_payload.transcript/output_summary`，并把 parse/repair 结果反映到 `schema_repair_count` 与最近错误。
+  - NFR-9: 兼容桥派生的 OpenClaw session id 必须带上 `provider_config_ref` 作用域，至少要把 benchmark run / runtime live 进程彼此隔离，避免 `loc-2` 之类的历史上下文泄漏到新的世界样本。
 - Security & Privacy:
   - 仅接受 loopback 地址；launcher 对 base URL 做 host allowlist 校验。
   - 不向 provider 暴露私钥、完整 auth proof 或内部存储路径。

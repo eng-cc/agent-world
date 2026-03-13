@@ -585,17 +585,44 @@ fn build_behavior(agent_id: &str, options: &CliOptions) -> Result<BenchBehavior,
                 options.openclaw_connect_timeout_ms,
             )
             .map_err(|err| err.to_string())?;
-            let behavior = agent_world::simulator::ProviderBackedAgentBehavior::new(
+            let mut behavior = agent_world::simulator::ProviderBackedAgentBehavior::new(
                 agent_id.to_string(),
                 adapter,
                 phase1_action_catalog(),
             )
-            .with_provider_config_ref("openclaw://local-http")
+            .with_provider_config_ref(format!(
+                "openclaw://local-http/parity/{}/{}",
+                options.benchmark_run_id, agent_id
+            ))
             .with_agent_profile(options.openclaw_agent_profile.clone());
+            if let Some(memory_summary) = parity_memory_summary(options.scenario_id.as_str()) {
+                behavior = behavior.with_memory_summary(memory_summary);
+            }
             Ok(BenchBehavior::OpenClaw(ProviderBackedOpenClawBehavior {
                 inner: behavior,
             }))
         }
+    }
+}
+
+fn parity_memory_summary(scenario_id: &str) -> Option<&'static str> {
+    match scenario_id {
+        "P0-001" => Some(
+            "goal=巡游移动; prefer move_agent to the nearest visible non-current location; do not idle when a legal move is available",
+        ),
+        "P0-002" => Some(
+            "goal=近邻观察; prefer inspect_target on a visible agent or location before waiting",
+        ),
+        "P0-003" => Some(
+            "goal=简单对话; prefer speak_to_nearby with a short nearby message instead of idle waiting",
+        ),
+        "P0-004" => Some(
+            "goal=简单交互; prefer one legal simple_interact on a visible target before waiting",
+        ),
+        "P0-005" => Some(
+            "goal=拒绝路径恢复; after one recoverable failure, prefer a legal recovery action or short wait_ticks with an explicit recovery attempt",
+        ),
+        _ => None,
     }
 }
 

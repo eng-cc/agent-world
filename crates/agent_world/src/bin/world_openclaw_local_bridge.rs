@@ -20,10 +20,11 @@ use serde_json::{json, Value};
 
 const DEFAULT_BIND_ADDR: &str = "127.0.0.1:5841";
 const DEFAULT_OPENCLAW_AGENT_ID: &str = "main";
-const DEFAULT_OPENCLAW_THINKING: &str = "minimal";
+const DEFAULT_OPENCLAW_THINKING: &str = "off";
 const DEFAULT_PROVIDER_ID: &str = "openclaw_local_bridge";
 const DEFAULT_PROTOCOL_VERSION: &str = "world-simulator-openclaw-local-http-v1";
 const MAX_RECENT_FEEDBACK: usize = 8;
+const MAX_MOVE_DISTANCE_CM_PER_TICK: i64 = 1_000_000;
 
 #[derive(Debug, Clone)]
 struct CliOptions {
@@ -192,6 +193,7 @@ impl ProviderState {
                 output.text.as_str(),
             ) {
                 Ok((decision, schema_repair_count)) => {
+                    let (decision, guardrail_note) = apply_profile_guardrails(&request, decision);
                     self.set_last_error(None);
                     DecisionResponse {
                         decision,
@@ -205,7 +207,14 @@ impl ProviderState {
                         trace_payload: ProviderTraceEnvelope {
                             provider_id: Some(DEFAULT_PROVIDER_ID.to_string()),
                             input_summary: Some(summarize_text(output.prompt.as_str(), 512)),
-                            output_summary: Some(summarize_text(output.text.as_str(), 512)),
+                            output_summary: Some(match &guardrail_note {
+                                Some(note) => format!(
+                                    "{}; model_output={}",
+                                    note,
+                                    summarize_text(output.text.as_str(), 512)
+                                ),
+                                None => summarize_text(output.text.as_str(), 512),
+                            }),
                             latency_ms: Some(latency_ms.max(output.duration_ms.unwrap_or(0))),
                             transcript: vec![
                                 ProviderTranscriptEntry {
@@ -217,7 +226,7 @@ impl ProviderState {
                                     content: summarize_text(output.text.as_str(), 4000),
                                 },
                             ],
-                            tool_trace: Vec::new(),
+                            tool_trace: guardrail_note.into_iter().collect(),
                             token_usage: Some(ProviderTokenUsage {
                                 prompt_tokens: output.prompt_tokens,
                                 completion_tokens: output.completion_tokens,
@@ -232,8 +241,14 @@ impl ProviderState {
                 Err(err) => {
                     let detail = format!("bridge_model_output_invalid: {err}");
                     self.set_last_error(Some(detail.clone()));
+                    let (decision, guardrail_note) =
+                        apply_profile_guardrails(&request, ProviderDecision::Wait);
+                    let mut tool_trace = vec![detail.clone()];
+                    if let Some(note) = guardrail_note.clone() {
+                        tool_trace.push(note);
+                    }
                     DecisionResponse {
-                        decision: ProviderDecision::Wait,
+                        decision,
                         provider_error: None,
                         diagnostics: ProviderDiagnostics {
                             provider_id: Some(DEFAULT_PROVIDER_ID.to_string()),
@@ -244,11 +259,19 @@ impl ProviderState {
                         trace_payload: ProviderTraceEnvelope {
                             provider_id: Some(DEFAULT_PROVIDER_ID.to_string()),
                             input_summary: Some(summarize_text(output.prompt.as_str(), 512)),
-                            output_summary: Some(format!(
-                                "invalid_model_output: {}; raw={}",
-                                detail,
-                                summarize_text(output.text.as_str(), 512)
-                            )),
+                            output_summary: Some(match guardrail_note {
+                                Some(note) => format!(
+                                    "invalid_model_output: {}; {}; raw={}",
+                                    detail,
+                                    note,
+                                    summarize_text(output.text.as_str(), 512)
+                                ),
+                                None => format!(
+                                    "invalid_model_output: {}; raw={}",
+                                    detail,
+                                    summarize_text(output.text.as_str(), 512)
+                                ),
+                            }),
                             latency_ms: Some(latency_ms.max(output.duration_ms.unwrap_or(0))),
                             transcript: vec![
                                 ProviderTranscriptEntry {
@@ -260,7 +283,7 @@ impl ProviderState {
                                     content: summarize_text(output.text.as_str(), 4000),
                                 },
                             ],
-                            tool_trace: vec![detail],
+                            tool_trace,
                             token_usage: Some(ProviderTokenUsage {
                                 prompt_tokens: output.prompt_tokens,
                                 completion_tokens: output.completion_tokens,
@@ -534,7 +557,7 @@ fn required_value<'a>(
 
 fn print_help() {
     eprintln!(
-        "Usage: world_openclaw_local_bridge [options]\n\n  --bind <host:port>            Loopback bind address (default: 127.0.0.1:5841)\n  --openclaw-bin <path>         OpenClaw CLI path (default: openclaw)\n  --openclaw-agent <id>         OpenClaw agent id (default: main)\n  --openclaw-thinking <level>   OpenClaw thinking level (default: minimal)\n  --gateway-health-url <url>    OpenClaw Gateway health URL\n  --auth-token <token>          Optional bearer token for bridge endpoints\n"
+        "Usage: world_openclaw_local_bridge [options]\n\n  --bind <host:port>            Loopback bind address (default: 127.0.0.1:5841)\n  --openclaw-bin <path>         OpenClaw CLI path (default: openclaw)\n  --openclaw-agent <id>         OpenClaw agent id (default: main)\n  --openclaw-thinking <level>   OpenClaw thinking level (default: off)\n  --gateway-health-url <url>    OpenClaw Gateway health URL\n  --auth-token <token>          Optional bearer token for bridge endpoints\n"
     );
 }
 
@@ -775,6 +798,31 @@ fn build_decision_prompt(request: &DecisionRequest, recent_feedback: &[String]) 
         .iter()
         .map(|entry| json!({"action_ref": entry.action_ref, "summary": entry.summary}))
         .collect::<Vec<_>>();
+    let current_location_id = observation
+        .observation
+        .visible_locations
+        .iter()
+        .find(|location| location.distance_cm == 0)
+        .map(|location| location.location_id.clone());
+    let nearest_non_current_location_id = observation
+        .observation
+        .visible_locations
+        .iter()
+        .filter(|location| {
+            location.distance_cm > 0 && location.distance_cm <= MAX_MOVE_DISTANCE_CM_PER_TICK
+        })
+        .min_by_key(|location| location.distance_cm)
+        .map(|location| location.location_id.clone());
+    let can_legally_move_to_visible_non_current_location = observation
+        .action_catalog
+        .iter()
+        .any(|entry| entry.action_ref == "move_agent")
+        && nearest_non_current_location_id.is_some();
+    let profile_guidance = profile_guidance(
+        request,
+        current_location_id.as_deref(),
+        nearest_non_current_location_id.as_deref(),
+    );
     let context = json!({
         "agent_profile": request.agent_profile,
         "agent_id": observation.agent_id,
@@ -784,6 +832,9 @@ fn build_decision_prompt(request: &DecisionRequest, recent_feedback: &[String]) 
         "resources": resources,
         "visible_agents": visible_agents,
         "visible_locations": visible_locations,
+        "current_location_id": current_location_id,
+        "nearest_non_current_location_id": nearest_non_current_location_id,
+        "can_legally_move_to_visible_non_current_location": can_legally_move_to_visible_non_current_location,
         "recent_event_summary": observation.recent_event_summary,
         "memory_summary": observation.memory_summary,
         "recent_feedback": recent_feedback,
@@ -793,7 +844,11 @@ fn build_decision_prompt(request: &DecisionRequest, recent_feedback: &[String]) 
         concat!(
             "You are controlling a low-frequency NPC in agent-world. ",
             "Return ONLY one minified JSON object with no markdown, no prose, and no code fences. ",
-            "If uncertain, choose wait. Respect the profile and only use actions from action_catalog. ",
+            "Respect the profile and only use actions from action_catalog. ",
+            "For profile agent_world_p0_low_freq_npc, prefer legal forward progress over idle waiting. ",
+            "If move_agent is legal and a visible non-current location exists, prefer move_agent to the nearest such location. ",
+            "Never choose move_agent.to equal to the current location. ",
+            "Choose wait or wait_ticks only when no legal progress action exists or a recoverable error just happened. ",
             "Output schema:\n",
             "{{\"decision\":\"wait\"}}\n",
             "{{\"decision\":\"wait_ticks\",\"ticks\":<u64>}}\n",
@@ -801,10 +856,45 @@ fn build_decision_prompt(request: &DecisionRequest, recent_feedback: &[String]) 
             "{{\"decision\":\"act\",\"action_ref\":\"speak_to_nearby\",\"args\":{{\"message\":\"<short text>\",\"target_agent_id\":\"<optional agent id>\"}}}}\n",
             "{{\"decision\":\"act\",\"action_ref\":\"inspect_target\",\"args\":{{\"target_kind\":\"agent|location|object\",\"target_id\":\"<id>\"}}}}\n",
             "{{\"decision\":\"act\",\"action_ref\":\"simple_interact\",\"args\":{{\"target_kind\":\"agent|location|object\",\"target_id\":\"<id>\",\"interaction\":\"<verb>\"}}}}\n",
+            "Profile guidance:\n{}\n",
             "Do not invent ids. Keep messages short. Context JSON follows:\n{}"
         ),
+        profile_guidance,
         context
     )
+}
+
+fn profile_guidance(
+    request: &DecisionRequest,
+    current_location_id: Option<&str>,
+    nearest_non_current_location_id: Option<&str>,
+) -> String {
+    match request.agent_profile.as_deref() {
+        Some("agent_world_p0_low_freq_npc") => {
+            let current_location = current_location_id.unwrap_or("unknown");
+            let next_location = nearest_non_current_location_id.unwrap_or("none");
+            format!(
+                concat!(
+                    "- Goal priority: keep making low-risk forward progress and avoid repeated idle wait.
+",
+                    "- If a visible non-current location exists, moving there counts as progress for patrol parity.
+",
+                    "- Current visible location: {current_location}.
+",
+                    "- Preferred next visible non-current location: {next_location}.
+",
+                    "- Do not output wait if move_agent to that preferred location is legal and no recoverable failure blocks it.
+",
+                    "- Use inspect_target before wait when the target is ambiguous.
+"
+                ),
+                current_location = current_location,
+                next_location = next_location,
+            )
+        }
+        Some(profile) => format!("- Active profile: {profile}"),
+        None => "- No explicit profile provided; stay conservative and legal.".to_string(),
+    }
 }
 
 fn timeout_seconds_from_budget(timeout_budget_ms: u64) -> u64 {
@@ -813,7 +903,11 @@ fn timeout_seconds_from_budget(timeout_budget_ms: u64) -> u64 {
 
 fn build_session_id(request: &DecisionRequest) -> String {
     let raw = format!(
-        "world-simulator:{}:{}",
+        "world-simulator:{}:{}:{}",
+        request
+            .provider_config_ref
+            .as_deref()
+            .unwrap_or("default-config"),
         request
             .agent_profile
             .as_deref()
@@ -935,6 +1029,104 @@ fn build_action_from_args(
         }),
         other => Err(format!("unsupported action_ref `{other}`")),
     }
+}
+
+fn apply_profile_guardrails(
+    request: &DecisionRequest,
+    decision: ProviderDecision,
+) -> (ProviderDecision, Option<String>) {
+    if !request
+        .observation
+        .memory_summary
+        .as_deref()
+        .unwrap_or_default()
+        .contains("goal=巡游移动")
+    {
+        return (decision, None);
+    }
+    let current_location_id = estimated_current_location_id(&request.observation.observation);
+    let preferred_location =
+        nearest_reachable_non_current_location_id(&request.observation.observation);
+    let Some(preferred_location) = preferred_location else {
+        return (decision, None);
+    };
+    let move_available = request
+        .observation
+        .action_catalog
+        .iter()
+        .any(|entry| entry.action_ref == "move_agent");
+    if !move_available {
+        return (decision, None);
+    }
+    match decision {
+        ProviderDecision::Wait | ProviderDecision::WaitTicks { .. } => (
+            ProviderDecision::Act {
+                action_ref: "move_agent".to_string(),
+                action: Action::MoveAgent {
+                    agent_id: request.observation.agent_id.clone(),
+                    to: preferred_location.clone(),
+                },
+            },
+            Some(format!(
+                "profile_guardrail_reroute: patrol goal converted passive decision into move_agent(to={})",
+                preferred_location
+            )),
+        ),
+        ProviderDecision::Act { action_ref, action } => match action {
+            Action::MoveAgent { agent_id, to }
+                if to == current_location_id.unwrap_or_default()
+                    || !request
+                        .observation
+                        .observation
+                        .visible_locations
+                        .iter()
+                        .any(|location| location.location_id == to) =>
+            {
+                (
+                    ProviderDecision::Act {
+                        action_ref: "move_agent".to_string(),
+                        action: Action::MoveAgent {
+                            agent_id,
+                            to: preferred_location.clone(),
+                        },
+                    },
+                    Some(format!(
+                        "profile_guardrail_reroute: invalid move target replaced with move_agent(to={})",
+                        preferred_location
+                    )),
+                )
+            }
+            _ => (
+                ProviderDecision::Act { action_ref, action },
+                None,
+            ),
+        },
+    }
+}
+
+fn estimated_current_location_id(
+    observation: &agent_world::simulator::Observation,
+) -> Option<&str> {
+    observation
+        .visible_locations
+        .iter()
+        .min_by_key(|location| location.distance_cm)
+        .map(|location| location.location_id.as_str())
+}
+
+fn nearest_reachable_non_current_location_id(
+    observation: &agent_world::simulator::Observation,
+) -> Option<String> {
+    let current_location_id = estimated_current_location_id(observation);
+    observation
+        .visible_locations
+        .iter()
+        .filter(|location| {
+            location.distance_cm <= MAX_MOVE_DISTANCE_CM_PER_TICK
+                && Some(location.location_id.as_str()) != current_location_id
+        })
+        .min_by_key(|location| location.distance_cm)
+        .map(|location| location.location_id.clone())
 }
 
 fn required_string(value: &Value, key: &str) -> Result<String, String> {
@@ -1085,6 +1277,51 @@ mod tests {
         );
     }
 
+    #[test]
+    fn build_decision_prompt_embeds_preferred_visible_move_hint() {
+        let prompt = build_decision_prompt(&sample_request(), &[]);
+        assert!(prompt.contains("Preferred next visible non-current location: loc-2"));
+        assert!(
+            prompt.contains("Do not output wait if move_agent to that preferred location is legal")
+        );
+    }
+
+    #[test]
+    fn build_session_id_uses_provider_config_ref_to_avoid_cross_talk() {
+        let mut request = sample_request();
+        request.provider_config_ref =
+            Some("openclaw://local-http/parity/run-a/agent-0".to_string());
+        let session_a = build_session_id(&request);
+        request.provider_config_ref =
+            Some("openclaw://local-http/parity/run-b/agent-0".to_string());
+        let session_b = build_session_id(&request);
+        assert_ne!(session_a, session_b);
+        assert!(session_a.contains("run-a"));
+        assert!(session_b.contains("run-b"));
+    }
+
+    #[test]
+    fn apply_profile_guardrails_reroutes_patrol_wait_to_move() {
+        let mut request = sample_request();
+        request.observation.memory_summary = Some(
+            "goal=巡游移动; prefer move_agent to nearest visible non-current location".to_string(),
+        );
+        let (decision, note) = apply_profile_guardrails(&request, ProviderDecision::Wait);
+        assert_eq!(
+            decision,
+            ProviderDecision::Act {
+                action_ref: "move_agent".to_string(),
+                action: Action::MoveAgent {
+                    agent_id: "agent-1".to_string(),
+                    to: "loc-2".to_string(),
+                },
+            }
+        );
+        assert!(note
+            .unwrap_or_default()
+            .contains("profile_guardrail_reroute"));
+    }
+
     fn sample_request() -> DecisionRequest {
         let mut stock = ResourceStock::default();
         let _ = stock.add(ResourceKind::Electricity, 24);
@@ -1108,17 +1345,30 @@ mod tests {
                 },
                 distance_cm: 100,
             }],
-            visible_locations: vec![ObservedLocation {
-                location_id: "loc-2".to_string(),
-                name: "neighbor".to_string(),
-                pos: GeoPos {
-                    x_cm: 100.0,
-                    y_cm: 0.0,
-                    z_cm: 0.0,
+            visible_locations: vec![
+                ObservedLocation {
+                    location_id: "loc-1".to_string(),
+                    name: "current".to_string(),
+                    pos: GeoPos {
+                        x_cm: 0.0,
+                        y_cm: 0.0,
+                        z_cm: 0.0,
+                    },
+                    profile: Default::default(),
+                    distance_cm: 0,
                 },
-                profile: Default::default(),
-                distance_cm: 100,
-            }],
+                ObservedLocation {
+                    location_id: "loc-2".to_string(),
+                    name: "neighbor".to_string(),
+                    pos: GeoPos {
+                        x_cm: 100.0,
+                        y_cm: 0.0,
+                        z_cm: 0.0,
+                    },
+                    profile: Default::default(),
+                    distance_cm: 100,
+                },
+            ],
             module_lifecycle: Default::default(),
             module_market: Default::default(),
             power_market: Default::default(),

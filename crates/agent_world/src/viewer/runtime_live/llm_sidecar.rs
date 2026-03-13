@@ -9,10 +9,10 @@ use crate::runtime::{
 };
 use crate::simulator::{
     Action as SimulatorAction, ActionCatalogEntry, ActionResult, AgentDecision, AgentDecisionTrace,
-    AgentPromptProfile, AgentRunner, CHUNK_GENERATION_SCHEMA_VERSION, ChunkRuntimeConfig,
-    LlmAgentBehavior, OpenAiChatCompletionClient, OpenClawAdapter, ProviderBackedAgentBehavior,
-    ResourceOwner, SNAPSHOT_VERSION, WorldConfig, WorldEvent, WorldEventKind, WorldJournal,
-    WorldKernel, WorldSnapshot,
+    AgentPromptProfile, AgentRunner, ChunkRuntimeConfig, LlmAgentBehavior,
+    OpenAiChatCompletionClient, OpenClawAdapter, ProviderBackedAgentBehavior, ResourceOwner,
+    WorldConfig, WorldEvent, WorldEventKind, WorldJournal, WorldKernel, WorldSnapshot,
+    CHUNK_GENERATION_SCHEMA_VERSION, SNAPSHOT_VERSION,
 };
 use crate::viewer::live::ViewerLiveDecisionMode;
 use crate::viewer::protocol::{AgentChatAck, AgentChatError};
@@ -63,8 +63,8 @@ fn env_requests_openclaw_provider() -> bool {
         .is_some_and(|value| value == OPENCLAW_LOCAL_HTTP_PROVIDER_MODE)
 }
 
-pub(in crate::viewer::runtime_live) fn openclaw_settings_from_env()
--> Result<Option<OpenClawDecisionSettings>, String> {
+pub(in crate::viewer::runtime_live) fn openclaw_settings_from_env(
+) -> Result<Option<OpenClawDecisionSettings>, String> {
     let provider_mode = env::var(VIEWER_AGENT_PROVIDER_MODE_ENV).unwrap_or_default();
     let provider_mode = provider_mode.trim();
     if provider_mode.is_empty() || provider_mode == BUILTIN_LLM_PROVIDER_MODE {
@@ -650,7 +650,11 @@ impl RuntimeLlmSidecar {
                         adapter,
                         openclaw_phase1_action_catalog(),
                     )
-                    .with_provider_config_ref("openclaw://local-http")
+                    .with_provider_config_ref(format!(
+                        "openclaw://local-http/runtime-live/pid-{}/{}",
+                        std::process::id(),
+                        agent_id
+                    ))
                     .with_agent_profile(settings.agent_profile.clone());
                     runner.register(behavior);
                 }
