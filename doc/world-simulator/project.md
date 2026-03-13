@@ -128,6 +128,7 @@
 - [x] TASK-WORLD_SIMULATOR-125 (PRD-WORLD_SIMULATOR-037/038) [test_tier_required]: 新增 `world_openclaw_local_bridge`，把本机已安装的 `OpenClaw Gateway/CLI` 转成 loopback-only world-simulator provider（`127.0.0.1:5841`），并完成真实 OpenClaw 主链路 / parity 冒烟。
 - [x] TASK-WORLD_SIMULATOR-126 (PRD-WORLD_SIMULATOR-037/038) [test_tier_required]: 为 OpenClaw bridge / parity 主链路补 `provider_config_ref` session scope、`P0-001` 巡游 guardrail 与 scenario memory hint，消除 session cross-talk、当前 location 误判与无效 patrol wait，跑通真实 `P0-001` smoke。
 - [x] TASK-WORLD_SIMULATOR-127 (PRD-WORLD_SIMULATOR-037/038) [test_tier_required]: 为 OpenClaw 增加 repo-owned 轻量 runtime agent bootstrap（`agent_world_runtime` workspace + setup 脚本），并把本地 bridge 决策调用切到 `gateway call agent --expect-final` / `sessionKey` 官方 RPC 形态，补齐真实轻量 agent probe。
+- [x] TASK-WORLD_SIMULATOR-128 (PRD-WORLD_SIMULATOR-037/038) [test_tier_required]: 把 OpenClaw bridge 的 `sessionKey` 改成 `subagent:` 形态，显式触发 OpenClaw minimal prompt mode，并补齐真实 direct probe / parity 采证。
 - [x] TASK-WORLD_SIMULATOR-110 (PRD-WORLD_SIMULATOR-035) [test_tier_required]: 为 `agent_world_viewer` 的 Web runtime fatal hook 增加“已知图形 fatal 仅自动 reload 一次”的恢复路径，收敛首开必须手动 reopen 的摩擦。
 - [x] TASK-WORLD_SIMULATOR-111 (PRD-WORLD_SIMULATOR-035) [test_tier_required]: 修复 `__AW_TEST__` runtime fatal 快照即时落盘，并复验 Viewer 首开不再以假性 `connecting` 掩盖图形 fatal。
 
@@ -282,6 +283,7 @@
 - 最新完成: `TASK-WORLD_SIMULATOR-125`（`world_openclaw_local_bridge` + 真实 OpenClaw Gateway/CLI 到 world-simulator provider 的 loopback 兼容桥 + 主链路/parity 冒烟）。
 - 最新完成: `TASK-WORLD_SIMULATOR-126`（OpenClaw bridge session scope 隔离 + `P0-001` patrol guardrail / scenario memory hint + 真实 parity smoke 通过）。
 - 最新完成: `TASK-WORLD_SIMULATOR-127`（repo-owned 轻量 OpenClaw runtime agent bootstrap + bridge 改走官方 gateway `agent` RPC + 真实 lightweight probe）。
+- 最新完成: `TASK-WORLD_SIMULATOR-128`（OpenClaw bridge 改用 `subagent:` sessionKey 触发 minimal prompt mode + 真实 probe/parity 采证）。
 - 当前优先任务: `PRD-WORLD_SIMULATOR-038` parity 采证
 - parity 执行入口: `scripts/openclaw-parity-p0.sh` + `world_openclaw_parity_bench` 已落地，可先跑 openclaw-only/mock smoke，再接真实 builtin/OpenClaw 双边样本。
 - OpenClaw 首期 profile: `agent_world_p0_low_freq_npc` 已冻结，并由 `DecisionRequest.agent_profile` / parity summary / 产品 launcher 主链路统一透传。

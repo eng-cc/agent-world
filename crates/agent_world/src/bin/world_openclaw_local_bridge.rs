@@ -919,7 +919,7 @@ fn build_gateway_agent_params(invocation: &AgentInvocation) -> Result<String, se
 
 fn build_session_key(request: &DecisionRequest, openclaw_agent_id: &str) -> String {
     let raw = format!(
-        "agent:{openclaw_agent_id}:webchat:world-simulator:{}:{}:{}",
+        "agent:{openclaw_agent_id}:subagent:world-simulator:{}:{}:{}",
         request
             .provider_config_ref
             .as_deref()
@@ -1322,7 +1322,7 @@ mod tests {
             openclaw_bin: "openclaw".to_string(),
             agent_id: "main".to_string(),
             thinking: "off".to_string(),
-            session_key: "agent:main:webchat:world-simulator:test".to_string(),
+            session_key: "agent:main:subagent:world-simulator:test".to_string(),
             timeout_seconds: 15,
             prompt: "{\"action\":\"wait\"}".to_string(),
             idempotency_key: "idem-1".to_string(),
@@ -1331,7 +1331,7 @@ mod tests {
         let value: Value = serde_json::from_str(params.as_str()).expect("json");
         assert_eq!(
             value.get("sessionKey").and_then(Value::as_str),
-            Some("agent:main:webchat:world-simulator:test")
+            Some("agent:main:subagent:world-simulator:test")
         );
         assert_eq!(value.get("agentId").and_then(Value::as_str), Some("main"));
         assert_eq!(value.get("channel").and_then(Value::as_str), Some("webchat"));
