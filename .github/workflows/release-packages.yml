@@ -14,7 +14,13 @@ on:
 env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
+  CARGO_NET_RETRY: 10
+  CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
+  CARGO_PROFILE_DEV_DEBUG: 0
+  CARGO_PROFILE_TEST_DEBUG: 0
   RUST_TOOLCHAIN: 1.92.0
+  BUILTIN_WASM_TOOLCHAIN: nightly-2025-12-11
+  BUILTIN_WASM_TARGET: wasm32-unknown-unknown
 
 jobs:
   release-gate:
@@ -43,6 +49,14 @@ jobs:
             libxinerama-dev \
             libasound2-dev \
             libudev-dev
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: release-packages-release-gate-v1
+          cache-on-failure: true
+      - name: Install canonical builtin wasm toolchain
+        run: |
+          rustup toolchain install "${BUILTIN_WASM_TOOLCHAIN}" --profile minimal --component rust-src
+          rustup target add "${BUILTIN_WASM_TARGET}" --toolchain "${BUILTIN_WASM_TOOLCHAIN}"
       - name: Run release gate
         run: ./scripts/release-gate.sh
 
@@ -56,6 +70,10 @@ jobs:
           rustup toolchain install "${RUST_TOOLCHAIN}" --profile default
           rustup target add wasm32-unknown-unknown --toolchain "${RUST_TOOLCHAIN}"
           rustup default "${RUST_TOOLCHAIN}"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: release-packages-build-web-dist-v1
+          cache-on-failure: true
       - name: Install trunk
         run: cargo install trunk --locked
       - name: Build viewer web dist
@@ -117,6 +135,10 @@ jobs:
             libxinerama-dev \
             libasound2-dev \
             libudev-dev
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: release-packages-package-native-${{ runner.os }}-${{ matrix.target_triple }}-v1
+          cache-on-failure: true
       - name: Download web dist artifact
         uses: actions/download-artifact@v5
         with:
