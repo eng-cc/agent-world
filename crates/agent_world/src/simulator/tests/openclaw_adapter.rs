@@ -26,7 +26,8 @@ fn openclaw_adapter_decides_and_pushes_feedback_via_local_http() {
         .into_iter()
         .next()
         .expect("fixture");
-    let request = fixture.request.clone();
+    let mut request = fixture.request.clone();
+    request.agent_profile = Some("agent_world_p0_low_freq_npc".to_string());
     let feedback = FeedbackEnvelope {
         action_id: 9,
         success: true,
@@ -227,11 +228,19 @@ fn provider_backed_behavior_executes_openclaw_adapter_move_and_records_feedback(
     let response_for_server = response.clone();
     let base_url = spawn_mock_http_server(2, move |incoming| {
         match (incoming.method.as_str(), incoming.path.as_str()) {
-            ("POST", "/v1/world-simulator/decision") => MockHttpResponse {
-                status_code: 200,
-                body: serde_json::to_string(&response_for_server)
-                    .expect("encode decision response"),
-            },
+            ("POST", "/v1/world-simulator/decision") => {
+                let decoded: DecisionRequest = serde_json::from_slice(incoming.body.as_slice())
+                    .expect("decode decision request");
+                assert_eq!(
+                    decoded.agent_profile.as_deref(),
+                    Some("agent_world_p0_low_freq_npc")
+                );
+                MockHttpResponse {
+                    status_code: 200,
+                    body: serde_json::to_string(&response_for_server)
+                        .expect("encode decision response"),
+                }
+            }
             ("POST", "/v1/world-simulator/feedback") => MockHttpResponse {
                 status_code: 200,
                 body: serde_json::json!({"ok": true}).to_string(),
@@ -247,6 +256,7 @@ fn provider_backed_behavior_executes_openclaw_adapter_move_and_records_feedback(
     let behavior =
         ProviderBackedAgentBehavior::new("agent-1", adapter, openclaw_phase1_action_catalog())
             .with_provider_config_ref("openclaw://local-http")
+            .with_agent_profile("agent_world_p0_low_freq_npc")
             .with_memory_summary("goal=move");
     let mut runner: AgentRunner<ProviderBackedAgentBehavior<OpenClawAdapter>> = AgentRunner::new();
     runner.register(behavior);

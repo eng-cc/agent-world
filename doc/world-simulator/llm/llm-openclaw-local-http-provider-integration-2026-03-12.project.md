@@ -18,6 +18,7 @@
 - `doc/world-simulator/prd.md`
 - `doc/world-simulator/project.md`
 - `doc/world-simulator/prd.index.md`
+- `doc/world-simulator/llm/openclaw-agent-profile-agent_world_p0_low_freq_npc-2026-03-13.md`
 - `crates/agent_world/src/simulator/agent.rs`
 - `crates/agent_world/src/simulator/memory.rs`
 - `crates/agent_world_proto/src/viewer.rs`
@@ -34,3 +35,4 @@
 - 进展备注: `T3` 的实现范围已落地：`OpenClawAdapter` 已完成 mock local HTTP binding、`ProviderBackedAgentBehavior -> runtime -> feedback` 闭环回归，并补齐 `wait` / `wait_ticks` / `move_agent` / `speak_to_nearby` / `inspect_target` / `simple_interact` 六类 phase-1 白名单动作；其中后三者当前以 lightweight event 语义执行。`T3` 的最终签收仍继续挂到 `PRD-WORLD_SIMULATOR-038` parity 通过线，因此项目阶段前移到 `T4`。
 - T4 预热进展: 已在 `agent_world_proto` / `viewer::protocol` 补齐 `AgentSpoke`、`TargetInspected`、`SimpleInteractionPerformed` 事件筛选枚举与匹配测试，为后续 Viewer 侧 provider 最近动作展示预留过滤入口。
 - T4 完成备注: launcher 已补 `OpenClaw(Local HTTP)` 顶栏状态徽标、probe info/health/total 延迟、最近错误与队列深度摘要；viewer 已补 `Provider Debug` 文本卡片，输出最近 provider/model、最近延迟、最近动作/trace 摘要，并提供 `全部 / 仅 OpenClaw / 仅错误` 三档调试筛选入口。required 回归已覆盖 launcher probe 与 viewer provider debug summary。
+- T5 预热补充: 已新增 `doc/world-simulator/llm/openclaw-agent-profile-agent_world_p0_low_freq_npc-2026-03-13.md`，并把 `DecisionRequest.agent_profile` 接通到 `ProviderBackedAgentBehavior -> OpenClawAdapter -> local HTTP` 与 parity bench / batch 脚本，首期 `P0` 默认 profile 固定为 `agent_world_p0_low_freq_npc`。

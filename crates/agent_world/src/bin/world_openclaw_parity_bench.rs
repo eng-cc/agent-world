@@ -19,6 +19,7 @@ const DEFAULT_ADAPTER_VERSION: &str = "openclaw_phase1_adapter_v1";
 const DEFAULT_TIMEOUT_MS: u64 = 3_000;
 const DEFAULT_TICKS: u64 = 20;
 const DEFAULT_PROVIDER_CONNECT_TIMEOUT_MS: u64 = 3_000;
+const DEFAULT_OPENCLAW_AGENT_PROFILE: &str = "agent_world_p0_low_freq_npc";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -42,7 +43,7 @@ impl BenchProviderKind {
             Self::OpenclawLocalHttp => "openclaw_local_http",
         }
     }
-    
+
     fn summary_suffix(self) -> &'static str {
         self.as_str()
     }
@@ -64,6 +65,7 @@ struct CliOptions {
     openclaw_base_url: Option<String>,
     openclaw_auth_token: Option<String>,
     openclaw_connect_timeout_ms: u64,
+    openclaw_agent_profile: String,
 }
 
 impl Default for CliOptions {
@@ -83,6 +85,7 @@ impl Default for CliOptions {
             openclaw_base_url: None,
             openclaw_auth_token: None,
             openclaw_connect_timeout_ms: DEFAULT_PROVIDER_CONNECT_TIMEOUT_MS,
+            openclaw_agent_profile: DEFAULT_OPENCLAW_AGENT_PROFILE.to_string(),
         }
     }
 }
@@ -99,6 +102,8 @@ struct ProviderRunInfo {
     provider_last_error: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     provider_queue_depth: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    agent_profile: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -280,7 +285,10 @@ fn main() {
         process::exit(1);
     }
     if let Err(err) = fs::create_dir_all(&summary_dir) {
-        eprintln!("failed to create summary dir {}: {err}", summary_dir.display());
+        eprintln!(
+            "failed to create summary dir {}: {err}",
+            summary_dir.display()
+        );
         process::exit(1);
     }
 
@@ -473,8 +481,14 @@ fn main() {
         action_kind_counts,
         error_counts,
         fixture_refs: FixtureRefs {
-            initial_world_snapshot_ref: format!("scenario://{}/snapshot", options.scenario.as_str()),
-            observation_sequence_ref: format!("scenario://{}/observations", options.scenario.as_str()),
+            initial_world_snapshot_ref: format!(
+                "scenario://{}/snapshot",
+                options.scenario.as_str()
+            ),
+            observation_sequence_ref: format!(
+                "scenario://{}/observations",
+                options.scenario.as_str()
+            ),
             goal_definition: format!("parity://{}/{}", options.parity_tier, options.scenario_id),
             action_catalog_ref: "catalog://openclaw/phase1".to_string(),
             player_context_ref: "player://default".to_string(),
@@ -501,7 +515,10 @@ fn main() {
     println!("summary_json: {}", summary_path.display());
     println!("raw_jsonl: {}", raw_path.display());
     println!("status: {}", summary.status);
-    println!("goal_completed: {}", if summary.goal_completed { 1 } else { 0 });
+    println!(
+        "goal_completed: {}",
+        if summary.goal_completed { 1 } else { 0 }
+    );
     println!("decision_steps: {}", summary.decision_steps);
     println!("invalid_action_count: {}", summary.invalid_action_count);
     println!("timeout_count: {}", summary.timeout_count);
@@ -523,12 +540,12 @@ fn prepare_provider_info(options: &CliOptions) -> Result<ProviderRunInfo, String
             provider_status: None,
             provider_last_error: None,
             provider_queue_depth: None,
+            agent_profile: None,
         }),
         BenchProviderKind::OpenclawLocalHttp => {
-            let base_url = options
-                .openclaw_base_url
-                .as_deref()
-                .ok_or_else(|| "--openclaw-base-url is required for openclaw_local_http".to_string())?;
+            let base_url = options.openclaw_base_url.as_deref().ok_or_else(|| {
+                "--openclaw-base-url is required for openclaw_local_http".to_string()
+            })?;
             let client = OpenClawLocalHttpClient::new(
                 base_url,
                 options.openclaw_auth_token.as_deref(),
@@ -547,6 +564,7 @@ fn prepare_provider_info(options: &CliOptions) -> Result<ProviderRunInfo, String
                 provider_status: health.status,
                 provider_last_error: health.last_error,
                 provider_queue_depth: health.queue_depth,
+                agent_profile: Some(options.openclaw_agent_profile.clone()),
             })
         }
     }
@@ -558,10 +576,9 @@ fn build_behavior(agent_id: &str, options: &CliOptions) -> Result<BenchBehavior,
             .map(BenchBehavior::Builtin)
             .map_err(|err| err.to_string()),
         BenchProviderKind::OpenclawLocalHttp => {
-            let base_url = options
-                .openclaw_base_url
-                .as_deref()
-                .ok_or_else(|| "--openclaw-base-url is required for openclaw_local_http".to_string())?;
+            let base_url = options.openclaw_base_url.as_deref().ok_or_else(|| {
+                "--openclaw-base-url is required for openclaw_local_http".to_string()
+            })?;
             let adapter = OpenClawAdapter::new(
                 base_url,
                 options.openclaw_auth_token.as_deref(),
@@ -573,7 +590,8 @@ fn build_behavior(agent_id: &str, options: &CliOptions) -> Result<BenchBehavior,
                 adapter,
                 phase1_action_catalog(),
             )
-            .with_provider_config_ref("openclaw://local-http");
+            .with_provider_config_ref("openclaw://local-http")
+            .with_agent_profile(options.openclaw_agent_profile.clone());
             Ok(BenchBehavior::OpenClaw(ProviderBackedOpenClawBehavior {
                 inner: behavior,
             }))
@@ -587,7 +605,10 @@ fn phase1_action_catalog() -> Vec<ActionCatalogEntry> {
         ActionCatalogEntry::new("wait_ticks", "sleep for a bounded number of ticks"),
         ActionCatalogEntry::new("move_agent", "move to a neighboring location"),
         ActionCatalogEntry::new("speak_to_nearby", "emit a lightweight nearby speech event"),
-        ActionCatalogEntry::new("inspect_target", "emit a lightweight target inspection event"),
+        ActionCatalogEntry::new(
+            "inspect_target",
+            "emit a lightweight target inspection event",
+        ),
         ActionCatalogEntry::new(
             "simple_interact",
             "emit a lightweight single-step interaction event",
@@ -630,8 +651,8 @@ fn classify_trace_error(
             return Some("action_rejected".to_string());
         }
     }
-    let err = trace
-        .and_then(|value| value.llm_error.as_deref().or(value.parse_error.as_deref()))?;
+    let err =
+        trace.and_then(|value| value.llm_error.as_deref().or(value.parse_error.as_deref()))?;
     let lowered = err.to_ascii_lowercase();
     if lowered.contains("timeout") {
         Some("timeout".to_string())
@@ -656,8 +677,20 @@ fn scenario_goal_completed(
 ) -> bool {
     match scenario_id {
         "P0-001" => action_kind_counts.get("move_agent").copied().unwrap_or(0) >= 3,
-        "P0-002" => action_kind_counts.get("inspect_target").copied().unwrap_or(0) >= 1,
-        "P0-003" => action_kind_counts.get("speak_to_nearby").copied().unwrap_or(0) >= 2,
+        "P0-002" => {
+            action_kind_counts
+                .get("inspect_target")
+                .copied()
+                .unwrap_or(0)
+                >= 1
+        }
+        "P0-003" => {
+            action_kind_counts
+                .get("speak_to_nearby")
+                .copied()
+                .unwrap_or(0)
+                >= 2
+        }
         "P0-004" => {
             action_kind_counts
                 .get("simple_interact")
@@ -693,7 +726,9 @@ fn ratio_ppm(numerator: u64, denominator: u64) -> u64 {
     if denominator == 0 {
         0
     } else {
-        numerator.saturating_mul(1_000_000).saturating_div(denominator)
+        numerator
+            .saturating_mul(1_000_000)
+            .saturating_div(denominator)
     }
 }
 
@@ -721,8 +756,8 @@ fn sanitize_filename(input: &str) -> String {
 }
 
 fn write_jsonl(path: &Path, records: &[StepTraceRecord]) -> Result<(), String> {
-    let mut file = File::create(path)
-        .map_err(|err| format!("create {} failed: {err}", path.display()))?;
+    let mut file =
+        File::create(path).map_err(|err| format!("create {} failed: {err}", path.display()))?;
     for record in records {
         let line = serde_json::to_string(record)
             .map_err(|err| format!("serialize record failed: {err}"))?;
@@ -838,6 +873,12 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
                     "--openclaw-connect-timeout-ms",
                 )?;
             }
+            "--openclaw-agent-profile" => {
+                options.openclaw_agent_profile = iter
+                    .next()
+                    .ok_or_else(|| "--openclaw-agent-profile requires a value".to_string())?
+                    .to_string();
+            }
             "-h" | "--help" => {
                 print_help();
                 process::exit(0);
@@ -866,6 +907,11 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
     {
         return Err("--openclaw-base-url is required for openclaw_local_http".to_string());
     }
+    if options.provider == BenchProviderKind::OpenclawLocalHttp
+        && options.openclaw_agent_profile.trim().is_empty()
+    {
+        return Err("--openclaw-agent-profile cannot be empty".to_string());
+    }
     Ok(options)
 }
 
@@ -892,6 +938,7 @@ Options:\n\
   --openclaw-base-url <url>\n\
   --openclaw-auth-token <token>\n\
   --openclaw-connect-timeout-ms <n>\n\
+  --openclaw-agent-profile <id>\n\
   --protocol-version <str>\n\
   --adapter-version <str>\n\
   -h, --help\n"
@@ -927,6 +974,10 @@ mod tests {
             options.openclaw_base_url.as_deref(),
             Some("http://127.0.0.1:5841")
         );
+        assert_eq!(
+            options.openclaw_agent_profile,
+            DEFAULT_OPENCLAW_AGENT_PROFILE
+        );
     }
 
     #[test]
@@ -942,6 +993,25 @@ mod tests {
         )
         .expect_err("missing base url should fail");
         assert!(err.contains("--openclaw-base-url"));
+    }
+
+    #[test]
+    fn parse_options_accepts_custom_openclaw_agent_profile() {
+        let options = parse_options(
+            [
+                "--provider",
+                "openclaw_local_http",
+                "--benchmark-run-id",
+                "run-2",
+                "--openclaw-base-url",
+                "http://127.0.0.1:5841",
+                "--openclaw-agent-profile",
+                "agent_world_p1_memory_loop",
+            ]
+            .into_iter(),
+        )
+        .expect("parse custom profile");
+        assert_eq!(options.openclaw_agent_profile, "agent_world_p1_memory_loop");
     }
 
     #[test]

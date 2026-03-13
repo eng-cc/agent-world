@@ -7,13 +7,14 @@
 
 ## 1. Executive Summary
 - Problem Statement: 现有 `Decision Provider` 与 `OpenClaw(Local HTTP)` 方案已经回答了“如何接入”和“首期如何启动 PoC”，但尚未把“对玩家来说必须获得与内置 agent 层等价的游戏体验”写成硬性目标。若没有独立的 parity 目标、场景矩阵和阻断线，`OpenClaw` 可能在技术上可接，却在体验上长期低于内置 agent。
-- Proposed Solution: 新增 `OpenClaw vs 内置 Agent 体验等价（parity）` 专题，定义体验等价的范围、分层指标、场景矩阵、通过线与阻断线，并将 `OpenClaw(Local HTTP)` 的交付目标从“可玩 PoC”升级为“在指定场景下达到用户可感知等价”。本专题引用 `doc/world-simulator/prd/acceptance/openclaw-agent-parity-scenario-matrix-2026-03-12.md`、`doc/world-simulator/prd/acceptance/openclaw-agent-parity-score-card-2026-03-12.md`、`doc/world-simulator/prd/acceptance/openclaw-agent-parity-benchmark-protocol-2026-03-12.md` 与 `doc/world-simulator/prd/acceptance/openclaw-agent-parity-aggregation-template-2026-03-12.md` 作为统一场景、评分与聚合模板。只有通过 parity 验收的 provider 才允许进入默认体验或更大范围试点。
+- Proposed Solution: 新增 `OpenClaw vs 内置 Agent 体验等价（parity）` 专题，定义体验等价的范围、分层指标、场景矩阵、通过线与阻断线，并将 `OpenClaw(Local HTTP)` 的交付目标从“可玩 PoC”升级为“在指定场景下达到用户可感知等价”。本专题引用 `doc/world-simulator/prd/acceptance/openclaw-agent-parity-scenario-matrix-2026-03-12.md`、`doc/world-simulator/prd/acceptance/openclaw-agent-parity-score-card-2026-03-12.md`、`doc/world-simulator/prd/acceptance/openclaw-agent-parity-benchmark-protocol-2026-03-12.md`、`doc/world-simulator/prd/acceptance/openclaw-agent-parity-aggregation-template-2026-03-12.md` 与 `doc/world-simulator/llm/openclaw-agent-profile-agent_world_p0_low_freq_npc-2026-03-13.md` 作为统一场景、评分、聚合与玩法口径模板。只有通过 parity 验收的 provider 才允许进入默认体验或更大范围试点。
 - Success Criteria:
   - SC-1: 对首期纳入范围的场景，`OpenClaw` 与内置 agent 的任务完成率差值不超过 5 个百分点。
   - SC-2: 对首期纳入范围的场景，`OpenClaw` 的玩家可感知额外等待时间中位数不超过 500ms，`p95` 不超过 1.5s。
   - SC-3: `OpenClaw` 的无效动作率、超时率、非法 schema 率均不得高于内置 agent 基线 2 倍以上，且绝对值必须低于阻断线。
   - SC-4: viewer/QA 对两类 provider 的 trace 可解释性与错误恢复路径保持一致，不出现“OpenClaw 模式下无法定位问题”的观测断层。
   - SC-5: 未达到 parity 的场景不得标记为默认体验，只能保留在实验开关或有限试点范围。
+  - SC-6: 首期 `P0` parity 样本必须使用固定的 OpenClaw 玩法 profile（当前为 `agent_world_p0_low_freq_npc`），并在 summary / scorecard 中保留该 profile 标识，避免“同场景不同 skill”造成假性通过。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -23,13 +24,14 @@
   - `producer_system_designer`：需要把“体验等价”作为产品目标，而不是纯技术可行性。
 - User Scenarios & Frequency:
   - 版本候选评审：每次计划扩大 `OpenClaw` 覆盖范围前，至少执行一轮 parity 评审。
-  - 核心玩法回归：每次 OpenClaw adapter、动作白名单、记忆注入或 prompt 协议变化后执行。
+  - 核心玩法回归：每次 OpenClaw adapter、动作白名单、记忆注入、profile/skill 协议或 prompt 协议变化后执行。
   - 发布阻断判定：当目标场景未达 parity 时，明确给出“不允许默认启用”的结论。
 - User Stories:
   - PRD-WORLD_SIMULATOR-038: As a 玩家 / 制作人, I want `OpenClaw`-driven agents to feel equivalent to built-in agents in scoped gameplay scenarios, so that switching provider does not noticeably degrade the game experience.
+  - PRD-WORLD_SIMULATOR-038A: As an `agent_engineer`, I want parity harnesses and provider requests to carry a stable gameplay profile / skill id, so that benchmark evidence reflects a fixed玩法口径 instead of accidental prompt drift.
 - Critical User Flows:
   1. Flow-PARITY-001（单场景对标）:
-     `同一 observation fixture / 场景脚本 -> 内置 agent 运行 -> OpenClaw provider 运行 -> 对比完成率、延迟、无效动作率、trace 完整度`。
+     `同一 observation fixture / 场景脚本 -> 内置 agent 运行 -> OpenClaw provider（固定 `agent_profile`）运行 -> 对比完成率、延迟、无效动作率、trace 完整度`。
   2. Flow-PARITY-002（玩家试玩盲测）:
      `制作人或 QA 使用同一场景分别试玩 builtin / OpenClaw 模式 -> 记录主观评分与关键阻断差异 -> 汇总 parity 结论`。
   3. Flow-PARITY-003（阻断判定）:

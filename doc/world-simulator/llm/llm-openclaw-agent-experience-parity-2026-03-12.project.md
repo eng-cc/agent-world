@@ -23,6 +23,7 @@
 - `doc/world-simulator/prd.md`
 - `doc/world-simulator/project.md`
 - `doc/world-simulator/prd.index.md`
+- `doc/world-simulator/llm/openclaw-agent-profile-agent_world_p0_low_freq_npc-2026-03-13.md`
 
 ## 状态
 - 最近更新：2026-03-13
@@ -34,3 +35,4 @@
 - 备注: 本专题将“体验等价”提升为上线门禁；后续若 `OpenClaw` 未达到 parity，只允许保留在 `experimental`，不得标记为默认体验。
 
 - T4 进展备注: 已落地 `crates/agent_world/src/bin/world_openclaw_parity_bench.rs` 与 `scripts/openclaw-parity-p0.sh`，用于按 `PRD-WORLD_SIMULATOR-038` benchmark 协议输出 `raw/*.jsonl`、单样本 summary、聚合 `combined.csv`、`failures.md` 与 `scorecard-links.md`；已通过 `openclaw_local_http` mock localhost smoke 验证产物结构，真实 builtin/OpenClaw 对标仍待本机 provider 与 QA/producer 实测。
+- T4 口径补充: parity harness 已新增 `--openclaw-agent-profile` 并默认固定到 `agent_world_p0_low_freq_npc`；`DecisionRequest.agent_profile`、summary provider 信息与批处理脚本现已保留该 profile，便于 QA/producer 确认样本不是在“未知通用 skill”下跑出来的结果。

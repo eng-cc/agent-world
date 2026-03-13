@@ -51,6 +51,8 @@ pub struct DecisionRequest {
     pub observation: ObservationEnvelope,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub provider_config_ref: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent_profile: Option<String>,
     pub timeout_budget_ms: u64,
 }
 
@@ -260,6 +262,7 @@ pub fn golden_decision_provider_fixtures() -> Vec<GoldenDecisionFixture> {
                 timeout_budget_ms: DEFAULT_PROVIDER_TIMEOUT_BUDGET_MS,
             },
             provider_config_ref: Some("golden/mock-provider".to_string()),
+            agent_profile: None,
             timeout_budget_ms: DEFAULT_PROVIDER_TIMEOUT_BUDGET_MS,
         },
         expected_decision: ProviderDecision::Act {
@@ -323,6 +326,7 @@ pub struct ProviderBackedAgentBehavior<P: DecisionProvider> {
     provider: P,
     action_catalog: Vec<ActionCatalogEntry>,
     provider_config_ref: Option<String>,
+    agent_profile: Option<String>,
     timeout_budget_ms: u64,
     memory_summary: Option<String>,
     recent_event_summary: VecDeque<String>,
@@ -340,6 +344,7 @@ impl<P: DecisionProvider> ProviderBackedAgentBehavior<P> {
             provider,
             action_catalog,
             provider_config_ref: None,
+            agent_profile: None,
             timeout_budget_ms: DEFAULT_PROVIDER_TIMEOUT_BUDGET_MS,
             memory_summary: None,
             recent_event_summary: VecDeque::new(),
@@ -349,6 +354,11 @@ impl<P: DecisionProvider> ProviderBackedAgentBehavior<P> {
 
     pub fn with_provider_config_ref(mut self, provider_config_ref: impl Into<String>) -> Self {
         self.provider_config_ref = Some(provider_config_ref.into());
+        self
+    }
+
+    pub fn with_agent_profile(mut self, agent_profile: impl Into<String>) -> Self {
+        self.agent_profile = Some(agent_profile.into());
         self
     }
 
@@ -381,6 +391,7 @@ impl<P: DecisionProvider> ProviderBackedAgentBehavior<P> {
                 timeout_budget_ms: self.timeout_budget_ms,
             },
             provider_config_ref: self.provider_config_ref.clone(),
+            agent_profile: self.agent_profile.clone(),
             timeout_budget_ms: self.timeout_budget_ms,
         }
     }

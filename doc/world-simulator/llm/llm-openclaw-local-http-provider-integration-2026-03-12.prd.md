@@ -106,14 +106,16 @@
     - `openclaw_auto_discover`
     - `openclaw_connect_timeout_ms`
     - `openclaw_agent_profile`
+  - profile 约定：首期 `P0` / parity / experimental 试点默认使用 `agent_world_p0_low_freq_npc`；若 provider 不识别该 profile，必须返回结构化 `unsupported_agent_profile`，禁止静默改用通用玩法。
   - 发现逻辑：优先读取显式配置；若未配置且开启 auto-discover，则探测默认地址。
 - DecisionRequest Shape:
-  - 顶层字段：`request_id/agent_id/world_time/provider_session_id?/timeout_ms`
+  - 顶层字段：`request_id/agent_id/world_time/provider_session_id?/provider_config_ref?/agent_profile?/timeout_ms`
   - `observation`: 当前可见世界状态摘要、附近实体、最近事件、目标与资源摘要。
   - `memory`: 短期记忆摘要、长期记忆命中结果、最近失败动作。
   - `action_catalog`: 动作白名单、参数 schema、枚举值范围、cooldown / cost hint。
   - `player_context`: `player_id`、是否允许外部 provider 接管、绑定关系版本。
   - `trace_context`: 是否要求 provider 返回 transcript/tool summary/diagnostics。
+  - `agent_profile`: provider-side 玩法 profile / skill 标识；首期 required 路径至少支持 `agent_world_p0_low_freq_npc`。
 - DecisionResponse Shape:
   - `ok`
   - `decision`: `wait` / `wait_ticks` / `act`
@@ -135,6 +137,7 @@
   - `timeout`: 本轮决策降级为 `Wait`，若连续超时达到阈值则 provider 状态变 `degraded`。
   - `invalid_action_schema`: 直接 `ActionRejected` 并记录到 trace。
   - `unsupported_semantic_action`: 对于不在 phase-1 白名单内、或 target_kind / payload 不满足当前 lightweight 语义约束的 intent，required 路径必须降级为 `Wait` 并记录结构化错误，禁止伪装为已执行成功。
+  - `unsupported_agent_profile`: provider 标记为 `misconfigured`，launcher / parity bench 必须提示用户切回 builtin 或修正 profile。
   - `auth_failed`: provider 标记为 `unauthorized`，要求用户更新本地 token。
 - Non-Functional Requirements:
   - NFR-1: 本地 HTTP 仅绑定 `127.0.0.1`，默认不使用 `0.0.0.0`。
@@ -142,6 +145,7 @@
   - NFR-3: 首期单次 `decision` 本地请求 `p95 <= 3s`。
   - NFR-4: 首期 provider 错误不得使 runtime tick 卡死；超时后必须回落为可继续推进的状态。
   - NFR-5: mock local HTTP provider 必须可用于 CI / required regression。
+  - NFR-6: `DecisionRequest.agent_profile` 必须可经 `ProviderBackedAgentBehavior -> OpenClawAdapter -> local HTTP` 完整透传，并体现在 parity summary / trace 归档中。
 - Security & Privacy:
   - 仅接受 loopback 地址；launcher 对 base URL 做 host allowlist 校验。
   - 不向 provider 暴露私钥、完整 auth proof 或内部存储路径。

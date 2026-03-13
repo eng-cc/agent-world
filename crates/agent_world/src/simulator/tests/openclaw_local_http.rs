@@ -27,7 +27,8 @@ fn openclaw_local_http_client_round_trips_info_health_decision_and_feedback() {
         .into_iter()
         .next()
         .expect("golden fixture");
-    let expected_request = fixture.request.clone();
+    let mut expected_request = fixture.request.clone();
+    expected_request.agent_profile = Some("agent_world_p0_low_freq_npc".to_string());
     let expected_feedback = FeedbackEnvelope {
         action_id: 7,
         success: true,

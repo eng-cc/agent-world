@@ -91,6 +91,7 @@ fn provider_backed_agent_behavior_executes_mocked_move_and_records_feedback() {
     let shared_state = provider.shared_state();
     let behavior = ProviderBackedAgentBehavior::new("agent-1", provider, provider_action_catalog())
         .with_provider_config_ref("mock://openclaw-local-http")
+        .with_agent_profile("agent_world_p0_low_freq_npc")
         .with_memory_summary("goal=move");
 
     let mut runner: AgentRunner<ProviderBackedAgentBehavior<MockDecisionProvider>> =
@@ -125,6 +126,10 @@ fn provider_backed_agent_behavior_executes_mocked_move_and_records_feedback() {
     assert_eq!(
         snapshot.recorded_requests[0].provider_config_ref.as_deref(),
         Some("mock://openclaw-local-http")
+    );
+    assert_eq!(
+        snapshot.recorded_requests[0].agent_profile.as_deref(),
+        Some("agent_world_p0_low_freq_npc")
     );
     assert!(snapshot.recorded_requests[0]
         .observation
