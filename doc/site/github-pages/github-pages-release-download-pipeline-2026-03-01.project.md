@@ -75,6 +75,11 @@
 - [x] 调整 workflow 顶层 cargo 环境：启用 sparse registry、提高 network retry、关闭 dev/test debug info，进一步降低 CI 编译与下载开销。
 - [x] 本地校验 workflow 结构与文档回写，继续观察新一轮 release tag 实跑表现。
 
+### T3H Release gate UDP gossip flake 热修
+- [x] 复盘 `Release Packages` run `23053414184`，确认阻断点不是打包脚本，而是 `agent_world_node::tests::runtime_gossip_tracks_peer_committed_heads` 在 CI 高负载下 5 秒窗口内偶发未观测到 peer heads。
+- [x] 调整 `crates/agent_world_node/src/tests_split_part2.rs`：为 UDP gossip 双节点都启用 `with_auto_attest_all_validators(true)`，避免测试依赖跨节点 attestation 时序抖动；同时把等待窗口从 5s 提升到 8s，吸收 GitHub runner 高负载波动。
+- [x] 本地回归该用例的精确重跑，并在回写 `project/devlog` 后继续通过新 tag 观察 `Release Packages` 是否彻底放行。
+
 ### T3F Release Packages macOS runner 配置热修
 - [x] 复现并定位 `Release Packages` run `22545989082` / job `65309292458` 失败根因：`macos-13-us-default` 不受当前仓库支持
 - [x] 修复 `.github/workflows/release-packages.yml`：macOS 矩阵 runner 改为 `macos-14`，并显式配置 `target_triple=x86_64-apple-darwin`
@@ -87,9 +92,9 @@
 - 站点入口文件：`site/index.html`、`site/en/index.html`
 
 ## 状态
-- 当前阶段：已完成（T0A/T0/T1/T2/T3/T3A/T3B/T3C/T3D/T3E/T3F/T3G）
-- 最近更新：2026-03-13 已继续补 `T3G` 编译提速改造（cargo cache + canonical builtin wasm toolchain 预热 + CI cargo env 优化），后续通过新 release tag 实跑继续验证收益。
-- 下一步：观察 `Release Packages` 新一轮 tag run 的 `release-gate` 耗时与是否继续放行到 `build-web-dist/package-native/publish-release`。
+- 当前阶段：已完成（T0A/T0/T1/T2/T3/T3A/T3B/T3C/T3D/T3E/T3F/T3G/T3H）
+- 最近更新：2026-03-13 已继续补 `T3H` release gate 稳定性热修（修正 UDP gossip peer-head 用例的提交/等待时序），并将在下一轮 release tag 上与 `T3G` 编译提速一起观察放行效果。
+- 下一步：push `main` 并打新 release tag，观察 `Release Packages` 是否先通过 `release-gate`，以及 `T3G` 编译提速是否明显缩短总时长。
 
 ## 迁移记录（2026-03-03）
 - 已按 `TASK-ENGINEERING-014-D1 (PRD-ENGINEERING-006)` 从 legacy 命名迁移为 `.prd.md/.project.md`。

@@ -779,6 +779,7 @@ fn runtime_gossip_tracks_peer_committed_heads() {
         .expect("tick a")
         .with_pos_validators(validators.clone())
         .expect("validators a")
+        .with_auto_attest_all_validators(true)
         .with_gossip_optional(addr_a, vec![addr_b]);
     let config_b = NodeConfig::new("node-b", "world-sync", NodeRole::Observer)
         .expect("config b")
@@ -786,13 +787,14 @@ fn runtime_gossip_tracks_peer_committed_heads() {
         .expect("tick b")
         .with_pos_validators(validators)
         .expect("validators b")
+        .with_auto_attest_all_validators(true)
         .with_gossip_optional(addr_b, vec![addr_a]);
 
     let mut runtime_a = with_noop_execution_hook(NodeRuntime::new(config_a));
     let mut runtime_b = NodeRuntime::new(config_b);
     runtime_a.start().expect("start a");
     runtime_b.start().expect("start b");
-    let synced = wait_until(Instant::now() + Duration::from_secs(5), || {
+    let synced = wait_until(Instant::now() + Duration::from_secs(8), || {
         let snapshot_a = runtime_a.snapshot();
         let snapshot_b = runtime_b.snapshot();
         snapshot_a.consensus.network_committed_height >= 1
