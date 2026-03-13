@@ -43,6 +43,7 @@ pub(super) fn issue_field_ids(issue: ConfigIssue) -> &'static [&'static str] {
         | ConfigIssue::OpenClawBaseUrlInvalid
         | ConfigIssue::OpenClawBaseUrlLoopbackRequired => &["openclaw_base_url"],
         ConfigIssue::OpenClawConnectTimeoutMsInvalid => &["openclaw_connect_timeout_ms"],
+        ConfigIssue::OpenClawAgentProfileRequired => &["openclaw_agent_profile"],
         ConfigIssue::LauncherBinRequired | ConfigIssue::LauncherBinMissing => &["launcher_bin"],
         ConfigIssue::ChainRuntimeBinRequired | ConfigIssue::ChainRuntimeBinMissing => {
             &["chain_runtime_bin"]

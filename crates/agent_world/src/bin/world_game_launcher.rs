@@ -20,6 +20,16 @@ const DEFAULT_VIEWER_HOST: &str = "127.0.0.1";
 const DEFAULT_VIEWER_PORT: u16 = 4173;
 const DEFAULT_VIEWER_STATIC_DIR: &str = "web";
 const GAME_STATIC_DIR_ENV: &str = "AGENT_WORLD_GAME_STATIC_DIR";
+const BUILTIN_LLM_PROVIDER_MODE: &str = "builtin_llm";
+const OPENCLAW_LOCAL_HTTP_PROVIDER_MODE: &str = "openclaw_local_http";
+const DEFAULT_OPENCLAW_BASE_URL: &str = "http://127.0.0.1:5841";
+const DEFAULT_OPENCLAW_CONNECT_TIMEOUT_MS: u64 = 3_000;
+const DEFAULT_OPENCLAW_AGENT_PROFILE: &str = "agent_world_p0_low_freq_npc";
+const VIEWER_AGENT_PROVIDER_MODE_ENV: &str = "AGENT_WORLD_AGENT_PROVIDER_MODE";
+const VIEWER_OPENCLAW_BASE_URL_ENV: &str = "AGENT_WORLD_OPENCLAW_BASE_URL";
+const VIEWER_OPENCLAW_AUTH_TOKEN_ENV: &str = "AGENT_WORLD_OPENCLAW_AUTH_TOKEN";
+const VIEWER_OPENCLAW_CONNECT_TIMEOUT_MS_ENV: &str = "AGENT_WORLD_OPENCLAW_CONNECT_TIMEOUT_MS";
+const VIEWER_OPENCLAW_AGENT_PROFILE_ENV: &str = "AGENT_WORLD_OPENCLAW_AGENT_PROFILE";
 const DEFAULT_VIEWER_PLAYER_ID: &str = "viewer-player";
 const DEFAULT_CHAIN_STATUS_BIND: &str = "127.0.0.1:5121";
 const DEFAULT_CHAIN_NODE_ID: &str = "viewer-live-node";
@@ -64,6 +74,11 @@ struct CliOptions {
     viewer_port: u16,
     viewer_static_dir: String,
     with_llm: bool,
+    agent_provider_mode: String,
+    openclaw_base_url: String,
+    openclaw_auth_token: String,
+    openclaw_connect_timeout_ms: u64,
+    openclaw_agent_profile: String,
     open_browser: bool,
     chain_enabled: bool,
     chain_status_bind: String,
@@ -91,6 +106,11 @@ impl Default for CliOptions {
             viewer_port: DEFAULT_VIEWER_PORT,
             viewer_static_dir: DEFAULT_VIEWER_STATIC_DIR.to_string(),
             with_llm: false,
+            agent_provider_mode: BUILTIN_LLM_PROVIDER_MODE.to_string(),
+            openclaw_base_url: DEFAULT_OPENCLAW_BASE_URL.to_string(),
+            openclaw_auth_token: String::new(),
+            openclaw_connect_timeout_ms: DEFAULT_OPENCLAW_CONNECT_TIMEOUT_MS,
+            openclaw_agent_profile: DEFAULT_OPENCLAW_AGENT_PROFILE.to_string(),
             open_browser: true,
             chain_enabled: true,
             chain_status_bind: DEFAULT_CHAIN_STATUS_BIND.to_string(),
@@ -242,8 +262,37 @@ fn spawn_world_viewer_live(path: &Path, options: &CliOptions) -> Result<Child, S
         .arg(options.live_bind.as_str())
         .arg("--web-bind")
         .arg(options.web_bind.as_str());
+    command.env_remove(VIEWER_AGENT_PROVIDER_MODE_ENV);
+    command.env_remove(VIEWER_OPENCLAW_BASE_URL_ENV);
+    command.env_remove(VIEWER_OPENCLAW_AUTH_TOKEN_ENV);
+    command.env_remove(VIEWER_OPENCLAW_CONNECT_TIMEOUT_MS_ENV);
+    command.env_remove(VIEWER_OPENCLAW_AGENT_PROFILE_ENV);
     if options.with_llm {
         command.arg("--llm");
+        if options.agent_provider_mode == OPENCLAW_LOCAL_HTTP_PROVIDER_MODE {
+            command.env(
+                VIEWER_AGENT_PROVIDER_MODE_ENV,
+                OPENCLAW_LOCAL_HTTP_PROVIDER_MODE,
+            );
+            command.env(
+                VIEWER_OPENCLAW_BASE_URL_ENV,
+                options.openclaw_base_url.as_str(),
+            );
+            if !options.openclaw_auth_token.trim().is_empty() {
+                command.env(
+                    VIEWER_OPENCLAW_AUTH_TOKEN_ENV,
+                    options.openclaw_auth_token.as_str(),
+                );
+            }
+            command.env(
+                VIEWER_OPENCLAW_CONNECT_TIMEOUT_MS_ENV,
+                options.openclaw_connect_timeout_ms.to_string(),
+            );
+            command.env(
+                VIEWER_OPENCLAW_AGENT_PROFILE_ENV,
+                options.openclaw_agent_profile.as_str(),
+            );
+        }
     } else {
         command.arg("--no-llm");
     }
@@ -913,6 +962,32 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
             "--with-llm" => {
                 options.with_llm = true;
             }
+            "--agent-provider-mode" => {
+                options.agent_provider_mode =
+                    parse_required_value(&mut iter, "--agent-provider-mode")?;
+            }
+            "--openclaw-base-url" => {
+                options.openclaw_base_url = parse_required_value(&mut iter, "--openclaw-base-url")?;
+            }
+            "--openclaw-auth-token" => {
+                options.openclaw_auth_token =
+                    parse_required_value(&mut iter, "--openclaw-auth-token")?;
+            }
+            "--openclaw-connect-timeout-ms" => {
+                let raw = parse_required_value(&mut iter, "--openclaw-connect-timeout-ms")?;
+                options.openclaw_connect_timeout_ms = raw.parse::<u64>().map_err(|_| {
+                    format!("--openclaw-connect-timeout-ms must be a positive integer, got `{raw}`")
+                })?;
+                if options.openclaw_connect_timeout_ms == 0 {
+                    return Err(
+                        "--openclaw-connect-timeout-ms must be a positive integer".to_string()
+                    );
+                }
+            }
+            "--openclaw-agent-profile" => {
+                options.openclaw_agent_profile =
+                    parse_required_value(&mut iter, "--openclaw-agent-profile")?;
+            }
             "--no-open-browser" => {
                 options.open_browser = false;
             }
@@ -1010,6 +1085,15 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
 
     let _ = parse_host_port(options.live_bind.as_str(), "--live-bind")?;
     let _ = parse_host_port(options.web_bind.as_str(), "--web-bind")?;
+    validate_agent_provider_mode(options.agent_provider_mode.as_str())?;
+    if options.agent_provider_mode == OPENCLAW_LOCAL_HTTP_PROVIDER_MODE {
+        if options.openclaw_base_url.trim().is_empty() {
+            return Err("--openclaw-base-url requires a non-empty value".to_string());
+        }
+        if options.openclaw_agent_profile.trim().is_empty() {
+            return Err("--openclaw-agent-profile requires a non-empty value".to_string());
+        }
+    }
     normalize_http_target(
         options.viewer_host.as_str(),
         options.viewer_port,
@@ -1042,6 +1126,13 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
     }
 
     Ok(options)
+}
+
+fn validate_agent_provider_mode(raw: &str) -> Result<(), String> {
+    match raw.trim() {
+        BUILTIN_LLM_PROVIDER_MODE | OPENCLAW_LOCAL_HTTP_PROVIDER_MODE => Ok(()),
+        _ => Err("--agent-provider-mode must be builtin_llm or openclaw_local_http".to_string()),
+    }
 }
 
 fn parse_required_value<'a, I>(

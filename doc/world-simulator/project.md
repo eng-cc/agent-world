@@ -124,6 +124,7 @@
 - [x] TASK-WORLD_SIMULATOR-121 (PRD-WORLD_SIMULATOR-036/037) [test_tier_required]: 在 simulator 落地 `OpenClawAdapter`，把本地 HTTP contract 绑定到 `DecisionProvider`，并补齐 `wait` / `wait_ticks` / `move_agent` / `speak_to_nearby` / `inspect_target` / `simple_interact` 六类 phase-1 白名单动作。
 - [x] TASK-WORLD_SIMULATOR-122 (PRD-WORLD_SIMULATOR-037) [test_tier_required]: 在 launcher / viewer 落地 OpenClaw provider 状态、最近延迟、最近动作 / trace 摘要展示，并补齐调试筛选入口。
 - [x] TASK-WORLD_SIMULATOR-123 (PRD-WORLD_SIMULATOR-037/038) [test_tier_required]: 冻结 `OpenClaw` 首期专用玩法 profile `agent_world_p0_low_freq_npc`，并把 `DecisionRequest.agent_profile`、parity bench 与批处理脚本接通到本地 HTTP provider。
+- [x] TASK-WORLD_SIMULATOR-124 (PRD-WORLD_SIMULATOR-037) [test_tier_required]: 打通 `agent_world_client_launcher -> world_game_launcher -> world_viewer_live` 的 OpenClaw 参数透传，让产品主链路可把 `openclaw_agent_profile` 与本地 HTTP 配置送到 runtime live sidecar。
 - [x] TASK-WORLD_SIMULATOR-110 (PRD-WORLD_SIMULATOR-035) [test_tier_required]: 为 `agent_world_viewer` 的 Web runtime fatal hook 增加“已知图形 fatal 仅自动 reload 一次”的恢复路径，收敛首开必须手动 reopen 的摩擦。
 - [x] TASK-WORLD_SIMULATOR-111 (PRD-WORLD_SIMULATOR-035) [test_tier_required]: 修复 `__AW_TEST__` runtime fatal 快照即时落盘，并复验 Viewer 首开不再以假性 `connecting` 掩盖图形 fatal。
 
@@ -274,9 +275,10 @@
 - 最新完成: `TASK-WORLD_SIMULATOR-121`（`OpenClawAdapter` + phase-1 六类白名单动作 + runner/feedback 闭环回归）。
 - 最新完成: `TASK-WORLD_SIMULATOR-122`（launcher OpenClaw probe 延迟/错误摘要 + viewer provider debug 摘要/筛选入口）。
 - 最新完成: `TASK-WORLD_SIMULATOR-123`（OpenClaw 专用 `agent_profile` 规格 + runtime/provider/parity harness 接线）。
+- 最新完成: `TASK-WORLD_SIMULATOR-124`（OpenClaw 产品主链路参数透传 + runtime live sidecar 接线）。
 - 当前优先任务: `PRD-WORLD_SIMULATOR-038` parity 采证
 - parity 执行入口: `scripts/openclaw-parity-p0.sh` + `world_openclaw_parity_bench` 已落地，可先跑 openclaw-only/mock smoke，再接真实 builtin/OpenClaw 双边样本。
-- OpenClaw 首期 profile: `agent_world_p0_low_freq_npc` 已冻结，并由 `DecisionRequest.agent_profile` / parity summary 统一透传。
+- OpenClaw 首期 profile: `agent_world_p0_low_freq_npc` 已冻结，并由 `DecisionRequest.agent_profile` / parity summary / 产品 launcher 主链路统一透传。
 - 并行待办: 真实 `OpenClaw(Local HTTP)` 单 NPC 闭环试点（T5 / experimental）
 - 专题映射状态: 2026-03-02 批次 9/9、2026-03-03 批次 4/4、2026-03-04 批次 7/7、2026-03-05 批次 4/4、2026-03-06 批次 6/6 已纳入模块项目管理文档；`TASK-WORLD_SIMULATOR-057~108` 已完成。
 - 手册入口状态: `doc/world-simulator/viewer/viewer-manual.md` 为唯一活跃手册入口。

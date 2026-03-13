@@ -36,3 +36,4 @@
 
 - T4 进展备注: 已落地 `crates/agent_world/src/bin/world_openclaw_parity_bench.rs` 与 `scripts/openclaw-parity-p0.sh`，用于按 `PRD-WORLD_SIMULATOR-038` benchmark 协议输出 `raw/*.jsonl`、单样本 summary、聚合 `combined.csv`、`failures.md` 与 `scorecard-links.md`；已通过 `openclaw_local_http` mock localhost smoke 验证产物结构，真实 builtin/OpenClaw 对标仍待本机 provider 与 QA/producer 实测。
 - T4 口径补充: parity harness 已新增 `--openclaw-agent-profile` 并默认固定到 `agent_world_p0_low_freq_npc`；`DecisionRequest.agent_profile`、summary provider 信息与批处理脚本现已保留该 profile，便于 QA/producer 确认样本不是在“未知通用 skill”下跑出来的结果。
+- T4 主链路补充: 产品 launcher 主链路现已可把同一 profile 透传到真实 runtime live，因此后续 builtin/OpenClaw 双边 parity 样本可直接复用 GUI launcher 配置，而不必只依赖 bench harness。

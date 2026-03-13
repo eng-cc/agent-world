@@ -36,3 +36,5 @@
 - T4 预热进展: 已在 `agent_world_proto` / `viewer::protocol` 补齐 `AgentSpoke`、`TargetInspected`、`SimpleInteractionPerformed` 事件筛选枚举与匹配测试，为后续 Viewer 侧 provider 最近动作展示预留过滤入口。
 - T4 完成备注: launcher 已补 `OpenClaw(Local HTTP)` 顶栏状态徽标、probe info/health/total 延迟、最近错误与队列深度摘要；viewer 已补 `Provider Debug` 文本卡片，输出最近 provider/model、最近延迟、最近动作/trace 摘要，并提供 `全部 / 仅 OpenClaw / 仅错误` 三档调试筛选入口。required 回归已覆盖 launcher probe 与 viewer provider debug summary。
 - T5 预热补充: 已新增 `doc/world-simulator/llm/openclaw-agent-profile-agent_world_p0_low_freq_npc-2026-03-13.md`，并把 `DecisionRequest.agent_profile` 接通到 `ProviderBackedAgentBehavior -> OpenClawAdapter -> local HTTP` 与 parity bench / batch 脚本，首期 `P0` 默认 profile 固定为 `agent_world_p0_low_freq_npc`。
+- T5 主链路补充: `agent_world_client_launcher` 已把 `agent_provider_mode/openclaw_base_url/openclaw_auth_token/openclaw_connect_timeout_ms/openclaw_agent_profile` 正式透传到 `world_game_launcher`；后者再通过环境变量把 OpenClaw 设置注入 `world_viewer_live` 的 runtime live sidecar，OpenClaw 现在可以走产品默认启动链路进入真实运行时。
+- 当前边界: runtime live 的 `agent_chat` / `prompt_control` 在 OpenClaw 模式下仍显式报 `unsupported`，避免对外误报“已支持玩家直连操控”。

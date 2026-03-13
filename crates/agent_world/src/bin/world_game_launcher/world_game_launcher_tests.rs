@@ -4,13 +4,14 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::{
-    build_game_url, build_viewer_auth_bootstrap_script, build_world_chain_runtime_args,
-    content_type_for_path, parse_host_port, parse_options, resolve_static_asset_path,
+    BUILTIN_LLM_PROVIDER_MODE, CliOptions, DEFAULT_CHAIN_NODE_ID, DEFAULT_CHAIN_STATUS_BIND,
+    DEFAULT_LIVE_BIND, DEFAULT_OPENCLAW_AGENT_PROFILE, DEFAULT_SCENARIO, DEFAULT_VIEWER_STATIC_DIR,
+    OPENCLAW_LOCAL_HTTP_PROVIDER_MODE, VIEWER_AUTH_BOOTSTRAP_OBJECT, VIEWER_AUTH_PRIVATE_KEY_ENV,
+    VIEWER_AUTH_PUBLIC_KEY_ENV, VIEWER_PLAYER_ID_ENV, ViewerAuthBootstrap, build_game_url,
+    build_viewer_auth_bootstrap_script, build_world_chain_runtime_args, content_type_for_path,
+    parse_host_port, parse_options, resolve_static_asset_path,
     resolve_viewer_auth_bootstrap_from_path, resolve_viewer_static_dir_with_override,
-    sanitize_index_html_for_embedded_server, sanitize_relative_request_path, CliOptions,
-    ViewerAuthBootstrap, DEFAULT_CHAIN_NODE_ID, DEFAULT_CHAIN_STATUS_BIND, DEFAULT_LIVE_BIND,
-    DEFAULT_SCENARIO, DEFAULT_VIEWER_STATIC_DIR, VIEWER_AUTH_BOOTSTRAP_OBJECT,
-    VIEWER_AUTH_PRIVATE_KEY_ENV, VIEWER_AUTH_PUBLIC_KEY_ENV, VIEWER_PLAYER_ID_ENV,
+    sanitize_index_html_for_embedded_server, sanitize_relative_request_path,
 };
 use agent_world_proto::storage_profile::StorageProfile;
 
@@ -20,6 +21,11 @@ fn parse_options_defaults() {
     assert_eq!(options.scenario, DEFAULT_SCENARIO);
     assert_eq!(options.live_bind, DEFAULT_LIVE_BIND);
     assert!(!options.with_llm);
+    assert_eq!(options.agent_provider_mode, BUILTIN_LLM_PROVIDER_MODE);
+    assert_eq!(
+        options.openclaw_agent_profile,
+        DEFAULT_OPENCLAW_AGENT_PROFILE
+    );
     assert!(options.open_browser);
     assert_eq!(options.viewer_static_dir, "web");
     assert!(options.chain_enabled);
@@ -81,6 +87,16 @@ fn parse_options_accepts_overrides() {
             "--chain-node-validator",
             "chain-a:55",
             "--with-llm",
+            "--agent-provider-mode",
+            "openclaw_local_http",
+            "--openclaw-base-url",
+            "http://127.0.0.1:5841",
+            "--openclaw-auth-token",
+            "secret-token",
+            "--openclaw-connect-timeout-ms",
+            "3000",
+            "--openclaw-agent-profile",
+            "agent_world_p0_low_freq_npc",
             "--no-open-browser",
         ]
         .into_iter(),
@@ -113,6 +129,17 @@ fn parse_options_accepts_overrides() {
         vec!["chain-a:55".to_string()]
     );
     assert!(options.with_llm);
+    assert_eq!(
+        options.agent_provider_mode,
+        OPENCLAW_LOCAL_HTTP_PROVIDER_MODE
+    );
+    assert_eq!(options.openclaw_base_url, "http://127.0.0.1:5841");
+    assert_eq!(options.openclaw_auth_token, "secret-token");
+    assert_eq!(options.openclaw_connect_timeout_ms, 3000);
+    assert_eq!(
+        options.openclaw_agent_profile,
+        "agent_world_p0_low_freq_npc"
+    );
     assert!(!options.open_browser);
 }
 
@@ -147,6 +174,14 @@ fn parse_options_rejects_proposal_tick_phase_out_of_range() {
 fn parse_options_rejects_unknown_option() {
     let err = parse_options(["--unknown"].into_iter()).expect_err("should fail");
     assert!(err.contains("unknown option"));
+}
+
+#[test]
+fn parse_options_rejects_unknown_agent_provider_mode() {
+    let err = parse_options(["--agent-provider-mode", "wat-provider"].into_iter())
+        .expect_err("should fail");
+    assert!(err.contains("builtin_llm"));
+    assert!(err.contains("openclaw_local_http"));
 }
 
 #[test]

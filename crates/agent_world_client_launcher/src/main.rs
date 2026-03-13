@@ -6,10 +6,10 @@ use std::io::{BufRead, BufReader};
 use std::path::Path;
 #[cfg(not(target_arch = "wasm32"))]
 use std::process::{Child, Command, Stdio};
+use std::sync::Arc;
 #[cfg(not(target_arch = "wasm32"))]
 use std::sync::mpsc::TryRecvError;
 use std::sync::mpsc::{self, Receiver, Sender};
-use std::sync::Arc;
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::Instant;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -30,9 +30,9 @@ use transfer_entry::TransferDraft;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen_futures::spawn_local;
 #[cfg(target_arch = "wasm32")]
-use web_sys::wasm_bindgen::JsCast;
-#[cfg(target_arch = "wasm32")]
 use web_sys::HtmlCanvasElement;
+#[cfg(target_arch = "wasm32")]
+use web_sys::wasm_bindgen::JsCast;
 #[cfg(target_arch = "wasm32")]
 use web_time::Instant;
 
@@ -78,6 +78,7 @@ const DEFAULT_VIEWER_PORT: &str = "4173";
 const DEFAULT_AGENT_PROVIDER_MODE: &str = "builtin_llm";
 const DEFAULT_OPENCLAW_BASE_URL: &str = "http://127.0.0.1:5841";
 const DEFAULT_OPENCLAW_CONNECT_TIMEOUT_MS: &str = "200";
+const DEFAULT_OPENCLAW_AGENT_PROFILE: &str = "agent_world_p0_low_freq_npc";
 const DEFAULT_CHAIN_STATUS_BIND: &str = "127.0.0.1:5121";
 const DEFAULT_CHAIN_NODE_ID: &str = "viewer-live-node";
 const DEFAULT_CHAIN_NODE_ROLE: &str = "sequencer";
@@ -332,7 +333,7 @@ impl Default for LaunchConfig {
             openclaw_base_url: DEFAULT_OPENCLAW_BASE_URL.to_string(),
             openclaw_auth_token: String::new(),
             openclaw_connect_timeout_ms: DEFAULT_OPENCLAW_CONNECT_TIMEOUT_MS.to_string(),
-            openclaw_agent_profile: String::new(),
+            openclaw_agent_profile: DEFAULT_OPENCLAW_AGENT_PROFILE.to_string(),
             llm_enabled: true,
             openclaw_auto_discover: true,
             chain_enabled: true,
@@ -602,10 +603,7 @@ impl OpenClawProbeStatus {
                 snapshot.info_latency_ms,
                 snapshot.health_latency_ms,
                 snapshot.total_latency_ms,
-                snapshot
-                    .last_error
-                    .as_deref()
-                    .unwrap_or("none")
+                snapshot.last_error.as_deref().unwrap_or("none")
             )),
             Self::Unsupported(detail)
             | Self::InvalidConfig(detail)
@@ -724,6 +722,7 @@ enum ConfigIssue {
     OpenClawBaseUrlInvalid,
     OpenClawBaseUrlLoopbackRequired,
     OpenClawConnectTimeoutMsInvalid,
+    OpenClawAgentProfileRequired,
     LauncherBinRequired,
     LauncherBinMissing,
     ChainRuntimeBinRequired,
@@ -797,6 +796,12 @@ impl ConfigIssue {
             }
             (Self::OpenClawConnectTimeoutMsInvalid, UiLanguage::EnUs) => {
                 "OpenClaw connect timeout milliseconds must be a positive integer"
+            }
+            (Self::OpenClawAgentProfileRequired, UiLanguage::ZhCn) => {
+                "启用 OpenClaw(Local HTTP) 时，OpenClaw Agent Profile 不能为空"
+            }
+            (Self::OpenClawAgentProfileRequired, UiLanguage::EnUs) => {
+                "OpenClaw agent profile is required when OpenClaw(Local HTTP) is enabled"
             }
             (Self::LauncherBinRequired, UiLanguage::ZhCn) => {
                 "启动器二进制路径（launcher bin）是必填项"

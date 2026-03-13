@@ -108,6 +108,7 @@
     - `openclaw_agent_profile`
   - profile 约定：首期 `P0` / parity / experimental 试点默认使用 `agent_world_p0_low_freq_npc`；若 provider 不识别该 profile，必须返回结构化 `unsupported_agent_profile`，禁止静默改用通用玩法。
   - 发现逻辑：优先读取显式配置；若未配置且开启 auto-discover，则探测默认地址。
+  - 产品主链路：`agent_world_client_launcher -> world_game_launcher -> world_viewer_live` 现已透传 `agent_provider_mode/openclaw_*` 参数，并通过子进程环境把 OpenClaw 设置送入 runtime live sidecar。
 - DecisionRequest Shape:
   - 顶层字段：`request_id/agent_id/world_time/provider_session_id?/provider_config_ref?/agent_profile?/timeout_ms`
   - `observation`: 当前可见世界状态摘要、附近实体、最近事件、目标与资源摘要。
@@ -138,6 +139,7 @@
   - `invalid_action_schema`: 直接 `ActionRejected` 并记录到 trace。
   - `unsupported_semantic_action`: 对于不在 phase-1 白名单内、或 target_kind / payload 不满足当前 lightweight 语义约束的 intent，required 路径必须降级为 `Wait` 并记录结构化错误，禁止伪装为已执行成功。
   - `unsupported_agent_profile`: provider 标记为 `misconfigured`，launcher / parity bench 必须提示用户切回 builtin 或修正 profile。
+  - `agent_provider_chat_unsupported` / `agent_provider_prompt_control_unsupported`: 在当前主链路下，OpenClaw 模式尚不支持 runtime live 的 `agent_chat` 与 `prompt_control` 直接注入，必须显式报错而不是伪装成功。
   - `auth_failed`: provider 标记为 `unauthorized`，要求用户更新本地 token。
 - Non-Functional Requirements:
   - NFR-1: 本地 HTTP 仅绑定 `127.0.0.1`，默认不使用 `0.0.0.0`。

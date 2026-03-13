@@ -1,27 +1,28 @@
 use super::{
-    build_chain_runtime_args, build_game_url, build_launcher_args, chain_runtime_status_from_web,
-    collect_chain_required_config_issues, collect_required_config_issues,
-    config_ui::{issue_field_ids, StartupGuideTarget},
+    ChainRuntimeStatus, ClientLauncherApp, ConfigIssue, EGUI_CJK_FONT_NAME, GlossaryTerm,
+    LaunchConfig, LauncherStatus, UiLanguage, WebChainRecoverySnapshot, WebRequestDomain,
+    WebStateSnapshot, build_chain_runtime_args, build_game_url, build_launcher_args,
+    chain_runtime_status_from_web, collect_chain_required_config_issues,
+    collect_required_config_issues,
+    config_ui::{StartupGuideTarget, issue_field_ids},
     encode_query_value, encoded_query_pair,
     explorer_window::{
-        resolve_explorer_my_account_candidate, ExplorerQuickShortcut, ExplorerStatusFilter,
-        WebExplorerOverviewResponse,
+        ExplorerQuickShortcut, ExplorerStatusFilter, WebExplorerOverviewResponse,
+        resolve_explorer_my_account_candidate,
     },
     install_cjk_font, normalize_host_for_url, parse_chain_role, parse_chain_validators,
     parse_host_port, parse_port, probe_chain_status_endpoint, probe_openclaw_local_http,
     self_guided::{
-        resolve_config_guide_target, resolve_next_task_hint, resolve_primary_disabled_cta,
         ConfigGuideTargetHint, DemoModePhase, DisabledActionCta, NextTaskHint, OnboardingStep,
+        resolve_config_guide_target, resolve_next_task_hint, resolve_primary_disabled_cta,
     },
     self_guided_blocked_actions::resolve_disabled_cta_plan,
-    self_guided_preflight::{resolve_chain_runtime_preflight_state, PreflightCheckState},
+    self_guided_preflight::{PreflightCheckState, resolve_chain_runtime_preflight_state},
     transfer_window::{
+        TransferTimelineState, WebTransferAccountEntry, WebTransferLifecycleStatus,
         recommend_default_from_account, recommend_transfer_account_ids, resolve_transfer_timeline,
-        transfer_amount_presets, TransferTimelineState, WebTransferAccountEntry,
-        WebTransferLifecycleStatus,
+        transfer_amount_presets,
     },
-    ChainRuntimeStatus, ClientLauncherApp, ConfigIssue, GlossaryTerm, LaunchConfig, LauncherStatus,
-    UiLanguage, WebChainRecoverySnapshot, WebRequestDomain, WebStateSnapshot, EGUI_CJK_FONT_NAME,
 };
 use eframe::egui;
 use std::fs;
@@ -60,6 +61,8 @@ fn build_launcher_args_contains_llm_and_no_open_switches() {
     };
     let args = build_launcher_args(&config).expect("args should build");
     assert!(args.contains(&"--with-llm".to_string()));
+    assert!(args.contains(&"--agent-provider-mode".to_string()));
+    assert!(args.contains(&"builtin_llm".to_string()));
     assert!(args.contains(&"--no-open-browser".to_string()));
     assert!(args.contains(&"--viewer-static-dir".to_string()));
     assert!(args.contains(&"--chain-disable".to_string()));
@@ -72,6 +75,30 @@ fn build_launcher_args_rejects_empty_static_dir() {
     };
     let err = build_launcher_args(&config).expect_err("should fail");
     assert!(err.contains("static dir"));
+}
+
+#[test]
+fn build_launcher_args_includes_openclaw_profile_flags() {
+    let config = LaunchConfig {
+        llm_enabled: true,
+        agent_provider_mode: "openclaw_local_http".to_string(),
+        openclaw_base_url: "http://127.0.0.1:5841".to_string(),
+        openclaw_auth_token: "secret-token".to_string(),
+        openclaw_connect_timeout_ms: "3000".to_string(),
+        openclaw_agent_profile: "agent_world_p0_low_freq_npc".to_string(),
+        ..LaunchConfig::default()
+    };
+    let args = build_launcher_args(&config).expect("args should build");
+    assert!(args.contains(&"--agent-provider-mode".to_string()));
+    assert!(args.contains(&"openclaw_local_http".to_string()));
+    assert!(args.contains(&"--openclaw-base-url".to_string()));
+    assert!(args.contains(&"http://127.0.0.1:5841".to_string()));
+    assert!(args.contains(&"--openclaw-auth-token".to_string()));
+    assert!(args.contains(&"secret-token".to_string()));
+    assert!(args.contains(&"--openclaw-connect-timeout-ms".to_string()));
+    assert!(args.contains(&"3000".to_string()));
+    assert!(args.contains(&"--openclaw-agent-profile".to_string()));
+    assert!(args.contains(&"agent_world_p0_low_freq_npc".to_string()));
 }
 #[test]
 fn build_game_url_rewrites_zero_host() {
@@ -108,6 +135,7 @@ fn launch_config_defaults_enable_llm() {
     assert!(config.chain_enabled);
     assert_eq!(config.agent_provider_mode, "builtin_llm");
     assert_eq!(config.openclaw_base_url, "http://127.0.0.1:5841");
+    assert_eq!(config.openclaw_agent_profile, "agent_world_p0_low_freq_npc");
     assert!(config.openclaw_auto_discover);
     assert!(config.chain_node_id.starts_with("viewer-live-node-fresh-"));
 }
@@ -703,6 +731,7 @@ fn collect_required_config_issues_reports_openclaw_specific_fields() {
     let issues = collect_required_config_issues(&config);
     assert!(issues.contains(&ConfigIssue::OpenClawBaseUrlRequired));
     assert!(issues.contains(&ConfigIssue::OpenClawConnectTimeoutMsInvalid));
+    assert!(!issues.contains(&ConfigIssue::OpenClawAgentProfileRequired));
 }
 
 #[test]
@@ -714,6 +743,17 @@ fn collect_required_config_issues_rejects_non_loopback_openclaw_base_url() {
     };
     let issues = collect_required_config_issues(&config);
     assert!(issues.contains(&ConfigIssue::OpenClawBaseUrlLoopbackRequired));
+}
+
+#[test]
+fn collect_required_config_issues_requires_openclaw_agent_profile() {
+    let config = LaunchConfig {
+        agent_provider_mode: "openclaw_local_http".to_string(),
+        openclaw_agent_profile: String::new(),
+        ..LaunchConfig::default()
+    };
+    let issues = collect_required_config_issues(&config);
+    assert!(issues.contains(&ConfigIssue::OpenClawAgentProfileRequired));
 }
 #[test]
 fn collect_required_config_issues_reports_missing_required_fields() {

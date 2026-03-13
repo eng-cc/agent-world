@@ -1,6 +1,7 @@
 use super::*;
 use crate::simulator::ResourceOwner;
 use ed25519_dalek::SigningKey;
+use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
 
 fn test_signer(seed: u8) -> (String, String) {
@@ -19,6 +20,19 @@ fn set_test_llm_env() {
         "https://api.openai.com/v1",
     );
     std::env::set_var(crate::simulator::ENV_LLM_API_KEY, "test-api-key");
+}
+
+fn clear_runtime_openclaw_env() {
+    std::env::remove_var("AGENT_WORLD_AGENT_PROVIDER_MODE");
+    std::env::remove_var("AGENT_WORLD_OPENCLAW_BASE_URL");
+    std::env::remove_var("AGENT_WORLD_OPENCLAW_AUTH_TOKEN");
+    std::env::remove_var("AGENT_WORLD_OPENCLAW_CONNECT_TIMEOUT_MS");
+    std::env::remove_var("AGENT_WORLD_OPENCLAW_AGENT_PROFILE");
+}
+
+fn runtime_openclaw_env_lock() -> &'static Mutex<()> {
+    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    LOCK.get_or_init(|| Mutex::new(()))
 }
 
 fn signed_prompt_control_apply_request(
@@ -56,6 +70,37 @@ fn signed_agent_chat_request(
             .expect("sign agent chat auth");
     request.auth = Some(proof);
     request
+}
+
+#[test]
+fn openclaw_settings_from_env_defaults_to_none() {
+    let _guard = runtime_openclaw_env_lock().lock().expect("env lock");
+    clear_runtime_openclaw_env();
+    let settings =
+        super::control_plane::runtime_openclaw_settings_from_env().expect("settings parse");
+    assert_eq!(settings, None);
+}
+
+#[test]
+fn openclaw_settings_from_env_parses_profile_and_timeout() {
+    let _guard = runtime_openclaw_env_lock().lock().expect("env lock");
+    clear_runtime_openclaw_env();
+    std::env::set_var("AGENT_WORLD_AGENT_PROVIDER_MODE", "openclaw_local_http");
+    std::env::set_var("AGENT_WORLD_OPENCLAW_BASE_URL", "http://127.0.0.1:5841");
+    std::env::set_var("AGENT_WORLD_OPENCLAW_CONNECT_TIMEOUT_MS", "4200");
+    std::env::set_var(
+        "AGENT_WORLD_OPENCLAW_AGENT_PROFILE",
+        "agent_world_p0_low_freq_npc",
+    );
+    std::env::set_var("AGENT_WORLD_OPENCLAW_AUTH_TOKEN", "secret-token");
+    let settings = super::control_plane::runtime_openclaw_settings_from_env()
+        .expect("settings parse")
+        .expect("openclaw settings");
+    assert_eq!(settings.base_url, "http://127.0.0.1:5841");
+    assert_eq!(settings.connect_timeout_ms, 4200);
+    assert_eq!(settings.agent_profile, "agent_world_p0_low_freq_npc");
+    assert_eq!(settings.auth_token.as_deref(), Some("secret-token"));
+    clear_runtime_openclaw_env();
 }
 
 #[test]
@@ -311,6 +356,54 @@ fn runtime_prompt_control_script_mode_requires_llm_mode() {
 }
 
 #[test]
+fn runtime_prompt_control_openclaw_mode_reports_unsupported() {
+    let _guard = runtime_openclaw_env_lock().lock().expect("env lock");
+    clear_runtime_openclaw_env();
+    std::env::set_var("AGENT_WORLD_AGENT_PROVIDER_MODE", "openclaw_local_http");
+    std::env::set_var("AGENT_WORLD_OPENCLAW_BASE_URL", "http://127.0.0.1:5841");
+    std::env::set_var(
+        "AGENT_WORLD_OPENCLAW_AGENT_PROFILE",
+        "agent_world_p0_low_freq_npc",
+    );
+    let mut server = ViewerRuntimeLiveServer::new(
+        ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal)
+            .with_decision_mode(ViewerLiveDecisionMode::Llm),
+    )
+    .expect("runtime server");
+    let agent_id = server
+        .world
+        .state()
+        .agents
+        .keys()
+        .next()
+        .cloned()
+        .expect("seed agent");
+    let (public_key, private_key) = test_signer(31);
+    let request = signed_prompt_control_apply_request(
+        crate::viewer::PromptControlApplyRequest {
+            agent_id: agent_id.clone(),
+            player_id: "player-a".to_string(),
+            public_key: None,
+            auth: None,
+            expected_version: Some(0),
+            updated_by: None,
+            system_prompt_override: Some(Some("system".to_string())),
+            short_term_goal_override: None,
+            long_term_goal_override: None,
+        },
+        crate::viewer::PromptControlAuthIntent::Apply,
+        31,
+        public_key.as_str(),
+        private_key.as_str(),
+    );
+    let err = server
+        .handle_prompt_control(crate::viewer::PromptControlCommand::Apply { request })
+        .expect_err("openclaw mode should reject prompt control");
+    assert_eq!(err.code, "agent_provider_prompt_control_unsupported");
+    clear_runtime_openclaw_env();
+}
+
+#[test]
 fn runtime_prompt_control_apply_updates_snapshot_and_bindings() {
     let mut server = ViewerRuntimeLiveServer::new(
         ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal)
@@ -400,6 +493,44 @@ fn runtime_agent_chat_script_mode_requires_llm_mode() {
         })
         .expect_err("script mode should reject chat");
     assert_eq!(err.code, "llm_mode_required");
+}
+
+#[test]
+fn runtime_agent_chat_openclaw_mode_reports_unsupported() {
+    let _guard = runtime_openclaw_env_lock().lock().expect("env lock");
+    clear_runtime_openclaw_env();
+    std::env::set_var("AGENT_WORLD_AGENT_PROVIDER_MODE", "openclaw_local_http");
+    std::env::set_var("AGENT_WORLD_OPENCLAW_BASE_URL", "http://127.0.0.1:5841");
+    std::env::set_var(
+        "AGENT_WORLD_OPENCLAW_AGENT_PROFILE",
+        "agent_world_p0_low_freq_npc",
+    );
+    let mut server = ViewerRuntimeLiveServer::new(
+        ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal)
+            .with_decision_mode(ViewerLiveDecisionMode::Llm),
+    )
+    .expect("runtime server");
+    let agent_id = server
+        .world
+        .state()
+        .agents
+        .keys()
+        .next()
+        .cloned()
+        .expect("seed agent");
+    let err = server
+        .handle_agent_chat(crate::viewer::AgentChatRequest {
+            agent_id,
+            player_id: Some("player-a".to_string()),
+            public_key: None,
+            auth: None,
+            message: "hello".to_string(),
+            intent_tick: None,
+            intent_seq: None,
+        })
+        .expect_err("openclaw mode should reject chat");
+    assert_eq!(err.code, "agent_provider_chat_unsupported");
+    clear_runtime_openclaw_env();
 }
 
 #[test]
@@ -775,9 +906,11 @@ fn runtime_authoritative_challenge_resolve_fraud_slashes_and_blocks_finality() {
     let updates = server
         .advance_authoritative_batch_finality(pending.final_height.saturating_add(10))
         .expect("advance after slash");
-    assert!(updates
-        .iter()
-        .all(|update| update.batch_id != pending.batch_id));
+    assert!(
+        updates
+            .iter()
+            .all(|update| update.batch_id != pending.batch_id)
+    );
     let stored = server.authoritative_batches.back().expect("stored batch");
     assert_eq!(
         stored.challenge_state,
@@ -916,10 +1049,12 @@ fn runtime_authoritative_recovery_reconnect_detects_reorg_epoch_mismatch() {
         .expect("stale reconnect sync");
     assert!(!emit_snapshot_after_ack);
     assert_eq!(stale_ack.status, AuthoritativeRecoveryStatus::CatchUpReady);
-    assert!(stale_ack
-        .message
-        .as_deref()
-        .is_some_and(|message| message.contains("snapshot_reload_required")));
+    assert!(
+        stale_ack
+            .message
+            .as_deref()
+            .is_some_and(|message| message.contains("snapshot_reload_required"))
+    );
 }
 
 #[test]

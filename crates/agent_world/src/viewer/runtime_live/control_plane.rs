@@ -1,8 +1,8 @@
 use super::*;
 
 use super::super::auth::{
-    verify_agent_chat_auth_proof, verify_prompt_control_apply_auth_proof,
-    verify_prompt_control_rollback_auth_proof, PromptControlAuthIntent, VerifiedPlayerAuth,
+    PromptControlAuthIntent, VerifiedPlayerAuth, verify_agent_chat_auth_proof,
+    verify_prompt_control_apply_auth_proof, verify_prompt_control_rollback_auth_proof,
 };
 use super::super::protocol::{
     AgentChatAck, AgentChatError, AgentChatRequest, PromptControlAck, PromptControlApplyRequest,
@@ -16,8 +16,15 @@ use sha2::{Digest, Sha256};
 
 mod llm_sidecar;
 pub(super) use llm_sidecar::{
-    simulator_action_label, simulator_action_to_runtime, RuntimeLlmSidecar,
+    RuntimeLlmSidecar, simulator_action_label, simulator_action_to_runtime,
 };
+
+#[cfg(test)]
+#[allow(dead_code)]
+pub(in crate::viewer::runtime_live) fn runtime_openclaw_settings_from_env()
+-> Result<Option<llm_sidecar::OpenClawDecisionSettings>, String> {
+    llm_sidecar::openclaw_settings_from_env()
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct ResolvedAgentChatIntent {
@@ -48,6 +55,27 @@ impl ViewerRuntimeLiveServer {
                 message,
                 agent_id: Some(agent_id.clone()),
                 current_version: self.current_prompt_version(agent_id.as_str()),
+            });
+        }
+        if !self.llm_sidecar.supports_prompt_control() {
+            let (agent_id, current_version) = match &command {
+                PromptControlCommand::Preview { request }
+                | PromptControlCommand::Apply { request } => (
+                    request.agent_id.clone(),
+                    self.current_prompt_version(request.agent_id.as_str()),
+                ),
+                PromptControlCommand::Rollback { request } => (
+                    request.agent_id.clone(),
+                    self.current_prompt_version(request.agent_id.as_str()),
+                ),
+            };
+            return Err(PromptControlError {
+                code: "agent_provider_prompt_control_unsupported".to_string(),
+                message:
+                    "prompt_control is not yet supported when runtime live uses OpenClaw(Local HTTP)"
+                        .to_string(),
+                agent_id: Some(agent_id),
+                current_version,
             });
         }
 
@@ -283,6 +311,15 @@ impl ViewerRuntimeLiveServer {
             return Err(AgentChatError {
                 code: "llm_mode_required".to_string(),
                 message: "agent chat requires runtime live server running with --llm".to_string(),
+                agent_id: Some(agent_id),
+            });
+        }
+        if !self.llm_sidecar.supports_agent_chat() {
+            return Err(AgentChatError {
+                code: "agent_provider_chat_unsupported".to_string(),
+                message:
+                    "agent chat is not yet supported when runtime live uses OpenClaw(Local HTTP)"
+                        .to_string(),
                 agent_id: Some(agent_id),
             });
         }

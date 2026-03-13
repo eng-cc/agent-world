@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::env;
 
 use crate::geometry::GeoPos;
 use crate::runtime::{
@@ -7,10 +8,11 @@ use crate::runtime::{
     WorldEventBody as RuntimeWorldEventBody,
 };
 use crate::simulator::{
-    Action as SimulatorAction, ActionResult, AgentDecision, AgentDecisionTrace, AgentPromptProfile,
-    AgentRunner, ChunkRuntimeConfig, LlmAgentBehavior, OpenAiChatCompletionClient, ResourceOwner,
-    WorldConfig, WorldEvent, WorldEventKind, WorldJournal, WorldKernel, WorldSnapshot,
-    CHUNK_GENERATION_SCHEMA_VERSION, SNAPSHOT_VERSION,
+    Action as SimulatorAction, ActionCatalogEntry, ActionResult, AgentDecision, AgentDecisionTrace,
+    AgentPromptProfile, AgentRunner, CHUNK_GENERATION_SCHEMA_VERSION, ChunkRuntimeConfig,
+    LlmAgentBehavior, OpenAiChatCompletionClient, OpenClawAdapter, ProviderBackedAgentBehavior,
+    ResourceOwner, SNAPSHOT_VERSION, WorldConfig, WorldEvent, WorldEventKind, WorldJournal,
+    WorldKernel, WorldSnapshot,
 };
 use crate::viewer::live::ViewerLiveDecisionMode;
 use crate::viewer::protocol::{AgentChatAck, AgentChatError};
@@ -29,6 +31,113 @@ pub(super) struct RuntimeLlmDecision {
     pub(super) agent_id: String,
     pub(super) decision: AgentDecision,
     pub(super) decision_trace: Option<AgentDecisionTrace>,
+}
+
+const BUILTIN_LLM_PROVIDER_MODE: &str = "builtin_llm";
+const OPENCLAW_LOCAL_HTTP_PROVIDER_MODE: &str = "openclaw_local_http";
+const DEFAULT_OPENCLAW_CONNECT_TIMEOUT_MS: u64 = 3_000;
+const DEFAULT_OPENCLAW_AGENT_PROFILE: &str = "agent_world_p0_low_freq_npc";
+const VIEWER_AGENT_PROVIDER_MODE_ENV: &str = "AGENT_WORLD_AGENT_PROVIDER_MODE";
+const VIEWER_OPENCLAW_BASE_URL_ENV: &str = "AGENT_WORLD_OPENCLAW_BASE_URL";
+const VIEWER_OPENCLAW_AUTH_TOKEN_ENV: &str = "AGENT_WORLD_OPENCLAW_AUTH_TOKEN";
+const VIEWER_OPENCLAW_CONNECT_TIMEOUT_MS_ENV: &str = "AGENT_WORLD_OPENCLAW_CONNECT_TIMEOUT_MS";
+const VIEWER_OPENCLAW_AGENT_PROFILE_ENV: &str = "AGENT_WORLD_OPENCLAW_AGENT_PROFILE";
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(in crate::viewer::runtime_live) struct OpenClawDecisionSettings {
+    pub(in crate::viewer::runtime_live) base_url: String,
+    pub(in crate::viewer::runtime_live) auth_token: Option<String>,
+    pub(in crate::viewer::runtime_live) connect_timeout_ms: u64,
+    pub(in crate::viewer::runtime_live) agent_profile: String,
+}
+
+enum RuntimeDecisionRunner {
+    Builtin(AgentRunner<LlmAgentBehavior<OpenAiChatCompletionClient>>),
+    OpenClaw(AgentRunner<ProviderBackedAgentBehavior<OpenClawAdapter>>),
+}
+
+fn env_requests_openclaw_provider() -> bool {
+    env::var(VIEWER_AGENT_PROVIDER_MODE_ENV)
+        .ok()
+        .map(|value| value.trim().to_string())
+        .is_some_and(|value| value == OPENCLAW_LOCAL_HTTP_PROVIDER_MODE)
+}
+
+pub(in crate::viewer::runtime_live) fn openclaw_settings_from_env()
+-> Result<Option<OpenClawDecisionSettings>, String> {
+    let provider_mode = env::var(VIEWER_AGENT_PROVIDER_MODE_ENV).unwrap_or_default();
+    let provider_mode = provider_mode.trim();
+    if provider_mode.is_empty() || provider_mode == BUILTIN_LLM_PROVIDER_MODE {
+        return Ok(None);
+    }
+    if provider_mode != OPENCLAW_LOCAL_HTTP_PROVIDER_MODE {
+        return Err(format!(
+            "unsupported agent provider mode `{provider_mode}`; expected builtin_llm or openclaw_local_http"
+        ));
+    }
+
+    let base_url = env::var(VIEWER_OPENCLAW_BASE_URL_ENV).unwrap_or_default();
+    let base_url = base_url.trim();
+    if base_url.is_empty() {
+        return Err(format!(
+            "{VIEWER_OPENCLAW_BASE_URL_ENV} is required for openclaw_local_http"
+        ));
+    }
+
+    let connect_timeout_ms = env::var(VIEWER_OPENCLAW_CONNECT_TIMEOUT_MS_ENV)
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .map(|value| {
+            value.parse::<u64>().map_err(|err| {
+                format!("invalid {VIEWER_OPENCLAW_CONNECT_TIMEOUT_MS_ENV} value `{value}`: {err}")
+            })
+        })
+        .transpose()?
+        .unwrap_or(DEFAULT_OPENCLAW_CONNECT_TIMEOUT_MS);
+    if connect_timeout_ms == 0 {
+        return Err(format!(
+            "{VIEWER_OPENCLAW_CONNECT_TIMEOUT_MS_ENV} must be greater than zero"
+        ));
+    }
+
+    let agent_profile = env::var(VIEWER_OPENCLAW_AGENT_PROFILE_ENV)
+        .unwrap_or_else(|_| DEFAULT_OPENCLAW_AGENT_PROFILE.to_string());
+    let agent_profile = agent_profile.trim();
+    if agent_profile.is_empty() {
+        return Err(format!(
+            "{VIEWER_OPENCLAW_AGENT_PROFILE_ENV} cannot be empty for openclaw_local_http"
+        ));
+    }
+
+    let auth_token = env::var(VIEWER_OPENCLAW_AUTH_TOKEN_ENV)
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty());
+
+    Ok(Some(OpenClawDecisionSettings {
+        base_url: base_url.to_string(),
+        auth_token,
+        connect_timeout_ms,
+        agent_profile: agent_profile.to_string(),
+    }))
+}
+
+fn openclaw_phase1_action_catalog() -> Vec<ActionCatalogEntry> {
+    vec![
+        ActionCatalogEntry::new("wait", "yield current turn without acting"),
+        ActionCatalogEntry::new("wait_ticks", "sleep for a bounded number of ticks"),
+        ActionCatalogEntry::new("move_agent", "move to a neighboring location"),
+        ActionCatalogEntry::new("speak_to_nearby", "emit a lightweight nearby speech event"),
+        ActionCatalogEntry::new(
+            "inspect_target",
+            "emit a lightweight target inspection event",
+        ),
+        ActionCatalogEntry::new(
+            "simple_interact",
+            "emit a lightweight simple interaction event",
+        ),
+    ]
 }
 
 #[derive(Clone, Debug)]
@@ -81,7 +190,7 @@ pub(in crate::viewer::runtime_live) struct RuntimeLlmSidecar {
     pub(in crate::viewer::runtime_live) player_auth_last_nonce: BTreeMap<String, u64>,
     player_chat_intent_acks: BTreeMap<(String, String, u64), RuntimeChatIntentAckRecord>,
     llm_decision_mailbox: u64,
-    runner: Option<AgentRunner<LlmAgentBehavior<OpenAiChatCompletionClient>>>,
+    runner: Option<RuntimeDecisionRunner>,
     shadow_kernel: Option<WorldKernel>,
     pending_actions: BTreeMap<u64, RuntimePendingAction>,
 }
@@ -105,6 +214,14 @@ impl RuntimeLlmSidecar {
 
     pub(super) fn is_llm_mode(&self) -> bool {
         matches!(self.decision_mode, ViewerLiveDecisionMode::Llm)
+    }
+
+    pub(super) fn supports_prompt_control(&self) -> bool {
+        !env_requests_openclaw_provider()
+    }
+
+    pub(super) fn supports_agent_chat(&self) -> bool {
+        !env_requests_openclaw_provider()
     }
 
     pub(super) fn consume_player_auth_nonce(
@@ -262,6 +379,9 @@ impl RuntimeLlmSidecar {
         let Some(runner) = self.runner.as_mut() else {
             return;
         };
+        let RuntimeDecisionRunner::Builtin(runner) = runner else {
+            return;
+        };
         let Some(agent) = runner.get_mut(profile.agent_id.as_str()) else {
             return;
         };
@@ -309,6 +429,15 @@ impl RuntimeLlmSidecar {
                     agent_id: Some(agent_id.to_string()),
                 });
             }
+        };
+        let RuntimeDecisionRunner::Builtin(runner) = runner else {
+            return Err(AgentChatError {
+                code: "agent_provider_chat_unsupported".to_string(),
+                message:
+                    "agent chat is not yet supported when runtime live uses OpenClaw(Local HTTP)"
+                        .to_string(),
+                agent_id: Some(agent_id.to_string()),
+            });
         };
         let Some(agent) = runner.get_mut(agent_id) else {
             return Err(AgentChatError {
@@ -364,8 +493,14 @@ impl RuntimeLlmSidecar {
                 ));
             }
         };
-        let result = runner.tick_decide_only(kernel);
-        sync_llm_runner_long_term_memory(kernel, runner);
+        let result = match runner {
+            RuntimeDecisionRunner::Builtin(runner) => {
+                let result = runner.tick_decide_only(kernel);
+                sync_llm_runner_long_term_memory(kernel, runner);
+                result
+            }
+            RuntimeDecisionRunner::OpenClaw(runner) => runner.tick_decide_only(kernel),
+        };
         result.map(|tick| RuntimeLlmDecision {
             agent_id: tick.agent_id,
             decision: tick.decision,
@@ -400,7 +535,14 @@ impl RuntimeLlmSidecar {
             event,
         };
         if let Some(runner) = self.runner.as_mut() {
-            let _ = runner.notify_action_result(pending.agent_id.as_str(), &action_result);
+            match runner {
+                RuntimeDecisionRunner::Builtin(runner) => {
+                    let _ = runner.notify_action_result(pending.agent_id.as_str(), &action_result);
+                }
+                RuntimeDecisionRunner::OpenClaw(runner) => {
+                    let _ = runner.notify_action_result(pending.agent_id.as_str(), &action_result);
+                }
+            }
         }
     }
 
@@ -455,8 +597,12 @@ impl RuntimeLlmSidecar {
             .shadow_kernel
             .as_ref()
             .ok_or_else(|| "shadow kernel not initialized".to_string())?;
+        let openclaw_settings = openclaw_settings_from_env()?;
         if self.runner.is_none() {
-            self.runner = Some(AgentRunner::new());
+            self.runner = Some(match openclaw_settings.as_ref() {
+                Some(_) => RuntimeDecisionRunner::OpenClaw(AgentRunner::new()),
+                None => RuntimeDecisionRunner::Builtin(AgentRunner::new()),
+            });
         }
         let runner = self
             .runner
@@ -465,20 +611,50 @@ impl RuntimeLlmSidecar {
         let mut agent_ids: Vec<String> = kernel.model().agents.keys().cloned().collect();
         agent_ids.sort();
         for agent_id in agent_ids {
-            if runner.get(agent_id.as_str()).is_some() {
-                continue;
+            match runner {
+                RuntimeDecisionRunner::Builtin(runner) => {
+                    if runner.get(agent_id.as_str()).is_some() {
+                        continue;
+                    }
+                    let mut behavior = LlmAgentBehavior::from_env(agent_id.clone())
+                        .map_err(|err| format!("llm init failed for {}: {err}", agent_id))?;
+                    if let Some(profile) = self.prompt_profiles.get(agent_id.as_str()) {
+                        behavior.apply_prompt_overrides(
+                            profile.system_prompt_override.clone(),
+                            profile.short_term_goal_override.clone(),
+                            profile.long_term_goal_override.clone(),
+                        );
+                    }
+                    restore_behavior_long_term_memory_from_model(
+                        &mut behavior,
+                        kernel,
+                        agent_id.as_str(),
+                    );
+                    runner.register(behavior);
+                }
+                RuntimeDecisionRunner::OpenClaw(runner) => {
+                    if runner.get(agent_id.as_str()).is_some() {
+                        continue;
+                    }
+                    let settings = openclaw_settings.as_ref().ok_or_else(|| {
+                        "openclaw runner selected without resolved settings".to_string()
+                    })?;
+                    let adapter = OpenClawAdapter::new(
+                        settings.base_url.as_str(),
+                        settings.auth_token.as_deref(),
+                        settings.connect_timeout_ms,
+                    )
+                    .map_err(|err| format!("openclaw init failed for {}: {}", agent_id, err))?;
+                    let behavior = ProviderBackedAgentBehavior::new(
+                        agent_id.clone(),
+                        adapter,
+                        openclaw_phase1_action_catalog(),
+                    )
+                    .with_provider_config_ref("openclaw://local-http")
+                    .with_agent_profile(settings.agent_profile.clone());
+                    runner.register(behavior);
+                }
             }
-            let mut behavior = LlmAgentBehavior::from_env(agent_id.clone())
-                .map_err(|err| format!("llm init failed for {}: {err}", agent_id))?;
-            if let Some(profile) = self.prompt_profiles.get(agent_id.as_str()) {
-                behavior.apply_prompt_overrides(
-                    profile.system_prompt_override.clone(),
-                    profile.short_term_goal_override.clone(),
-                    profile.long_term_goal_override.clone(),
-                );
-            }
-            restore_behavior_long_term_memory_from_model(&mut behavior, kernel, agent_id.as_str());
-            runner.register(behavior);
         }
         Ok(())
     }
