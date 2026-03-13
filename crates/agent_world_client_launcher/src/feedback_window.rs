@@ -4,6 +4,19 @@ use crate::feedback_entry::{
     FeedbackDraftIssue, FeedbackKind, FeedbackSubmitResult,
 };
 
+fn sanitized_launch_config_snapshot(config: &LaunchConfig) -> Result<serde_json::Value, String> {
+    let mut value =
+        serde_json::to_value(config).map_err(|err| format!("config serialization error: {err}"))?;
+    if let Some(object) = value.as_object_mut() {
+        if let Some(token) = object.get_mut("openclaw_auth_token") {
+            if !token.as_str().unwrap_or_default().is_empty() {
+                *token = serde_json::Value::String("<redacted>".to_string());
+            }
+        }
+    }
+    Ok(value)
+}
+
 impl ClientLauncherApp {
     pub(super) fn feedback_kind_label(&self, kind: FeedbackKind) -> &'static str {
         match (kind, self.ui_language) {
@@ -62,7 +75,7 @@ impl ClientLauncherApp {
             return;
         }
 
-        let config_snapshot = match serde_json::to_value(&self.config) {
+        let config_snapshot = match sanitized_launch_config_snapshot(&self.config) {
             Ok(value) => value,
             Err(err) => {
                 self.feedback_submit_state = FeedbackSubmitState::Failed(format!(
@@ -221,5 +234,26 @@ impl ClientLauncherApp {
             });
 
         self.feedback_window_open = window_open;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::sanitized_launch_config_snapshot;
+    use crate::LaunchConfig;
+
+    #[test]
+    fn sanitized_launch_config_snapshot_redacts_openclaw_auth_token() {
+        let config = LaunchConfig {
+            openclaw_auth_token: "secret-token".to_string(),
+            ..LaunchConfig::default()
+        };
+        let snapshot = sanitized_launch_config_snapshot(&config).expect("snapshot");
+        assert_eq!(
+            snapshot
+                .get("openclaw_auth_token")
+                .and_then(|value| value.as_str()),
+            Some("<redacted>")
+        );
     }
 }

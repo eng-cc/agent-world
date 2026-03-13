@@ -159,6 +159,24 @@ pub enum WorldEventKind {
         distance_cm: i64,
         electricity_cost: i64,
     },
+    AgentSpoke {
+        agent_id: AgentId,
+        location_id: LocationId,
+        message: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        target_agent_id: Option<AgentId>,
+    },
+    TargetInspected {
+        agent_id: AgentId,
+        target_kind: String,
+        target_id: String,
+    },
+    SimpleInteractionPerformed {
+        agent_id: AgentId,
+        target_kind: String,
+        target_id: String,
+        interaction: String,
+    },
     ResourceTransferred {
         from: ResourceOwner,
         to: ResourceOwner,

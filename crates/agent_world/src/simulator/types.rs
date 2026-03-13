@@ -437,6 +437,23 @@ pub enum Action {
         agent_id: AgentId,
         to: LocationId,
     },
+    SpeakToNearby {
+        agent_id: AgentId,
+        message: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        target_agent_id: Option<AgentId>,
+    },
+    InspectTarget {
+        agent_id: AgentId,
+        target_kind: String,
+        target_id: String,
+    },
+    SimpleInteract {
+        agent_id: AgentId,
+        target_kind: String,
+        target_id: String,
+        interaction: String,
+    },
     HarvestRadiation {
         agent_id: AgentId,
         max_amount: i64,

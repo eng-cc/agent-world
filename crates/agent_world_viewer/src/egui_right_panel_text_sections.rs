@@ -8,6 +8,7 @@ pub(super) fn render_text_sections(
     timeline: &TimelineUiState,
     viewer_3d_config: &Option<Res<Viewer3dConfig>>,
     industry_zoom_level: IndustrySemanticZoomLevel,
+    provider_debug_filter: &mut ProviderDebugFilter,
 ) {
     let focus = if timeline.manual_override || timeline.drag_active {
         Some(timeline.target_tick)
@@ -54,6 +55,7 @@ pub(super) fn render_text_sections(
         locale,
     );
     let events = localize_events_summary_block(events_summary(&state.events, focus), locale);
+    let provider_debug = provider_debug_summary(&state.decision_traces, *provider_debug_filter);
 
     let mut sections: Vec<(&str, String)> = vec![
         (
@@ -112,6 +114,38 @@ pub(super) fn render_text_sections(
         details,
     ));
     sections.push((if locale.is_zh() { "事件" } else { "Events" }, events));
+
+    ui.horizontal_wrapped(|ui| {
+        ui.small(if locale.is_zh() {
+            "Provider 调试筛选"
+        } else {
+            "Provider Debug Filter"
+        });
+        ui.selectable_value(
+            provider_debug_filter,
+            ProviderDebugFilter::All,
+            if locale.is_zh() { "全部" } else { "All" },
+        );
+        ui.selectable_value(
+            provider_debug_filter,
+            ProviderDebugFilter::OpenClawOnly,
+            if locale.is_zh() { "仅 OpenClaw" } else { "OpenClaw Only" },
+        );
+        ui.selectable_value(
+            provider_debug_filter,
+            ProviderDebugFilter::ErrorsOnly,
+            if locale.is_zh() { "仅错误" } else { "Errors Only" },
+        );
+    });
+
+    sections.push((
+        if locale.is_zh() {
+            "Provider 调试"
+        } else {
+            "Provider Debug"
+        },
+        provider_debug,
+    ));
 
     let product_style = is_product_style_enabled();
     let product_style_motion = product_style && is_product_style_motion_enabled();

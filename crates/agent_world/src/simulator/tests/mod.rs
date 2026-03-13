@@ -55,6 +55,7 @@ mod boundary_extremes;
 mod chunking;
 mod conservation;
 mod consistency;
+mod decision_provider;
 mod fragment_physics;
 mod init;
 mod init_agent_frag_spawn;
@@ -67,6 +68,10 @@ mod memory;
 mod module_lifecycle;
 mod module_visual;
 mod monotonicity;
+#[cfg(not(target_arch = "wasm32"))]
+mod openclaw_adapter;
+#[cfg(not(target_arch = "wasm32"))]
+mod openclaw_local_http;
 mod persist;
 mod physics_parameters;
 mod power;

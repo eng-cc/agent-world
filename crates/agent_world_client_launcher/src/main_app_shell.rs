@@ -38,6 +38,23 @@ impl eframe::App for ClientLauncherApp {
                 if let Some(detail) = self.chain_runtime_status.detail() {
                     response.on_hover_text(detail);
                 }
+                if is_openclaw_local_http_mode(&self.config) {
+                    ui.separator();
+                    let provider_status = match &self.openclaw_probe_status {
+                        OpenClawProbeStatus::Disabled => OpenClawProbeStatus::Idle,
+                        other => other.clone(),
+                    };
+                    let provider_label = format!(
+                        "{}: {}",
+                        self.tr("OpenClaw", "OpenClaw"),
+                        provider_status.text(self.ui_language)
+                    );
+                    let response =
+                        ui.colored_label(provider_status.color(), provider_label.as_str());
+                    if let Some(detail) = provider_status.detail() {
+                        response.on_hover_text(detail);
+                    }
+                }
                 ui.separator();
                 ui.label(self.tr("语言", "Language"));
                 egui::ComboBox::from_id_salt("launcher_language")

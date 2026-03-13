@@ -13,6 +13,7 @@
 mod agent;
 mod asteroid_fragment;
 mod chunking;
+mod decision_provider;
 mod frag_spawn;
 mod fragment_physics;
 mod init;
@@ -23,6 +24,10 @@ mod llm_agent;
 mod llm_defaults;
 mod memory;
 mod module_visual;
+#[cfg(not(target_arch = "wasm32"))]
+mod openclaw_adapter;
+#[cfg(not(target_arch = "wasm32"))]
+mod openclaw_local_http;
 mod persist;
 mod power;
 mod runner;
@@ -45,6 +50,13 @@ pub use asteroid_fragment::generate_fragments;
 pub use chunking::{
     chunk_bounds, chunk_coord_of, chunk_coords, chunk_grid_dims, chunk_seed, ChunkBounds,
     ChunkCoord, CHUNK_SIZE_X_CM, CHUNK_SIZE_Y_CM, CHUNK_SIZE_Z_CM,
+};
+pub use decision_provider::{
+    golden_decision_provider_fixtures, ActionCatalogEntry, DecisionProvider, DecisionProviderError,
+    DecisionRequest, DecisionResponse, FeedbackEnvelope, GoldenDecisionFixture, MemoryWriteIntent,
+    MockDecisionProvider, MockDecisionProviderState, ObservationEnvelope,
+    ProviderBackedAgentBehavior, ProviderDecision, ProviderDiagnostics, ProviderErrorEnvelope,
+    ProviderTokenUsage, ProviderTraceEnvelope, ProviderTranscriptEntry,
 };
 pub use fragment_physics::{
     infer_element_ppm, mass_grams_from_volume_density, synthesize_fragment_budget,
@@ -82,6 +94,13 @@ pub use memory::{
     AgentMemory, LongTermMemory, LongTermMemoryEntry, MemoryEntry, MemoryEntryKind, ShortTermMemory,
 };
 pub use module_visual::{ModuleVisualAnchor, ModuleVisualEntity};
+#[cfg(not(target_arch = "wasm32"))]
+pub use openclaw_adapter::OpenClawAdapter;
+#[cfg(not(target_arch = "wasm32"))]
+pub use openclaw_local_http::{
+    validate_openclaw_local_http_base_url, OpenClawFeedbackAck, OpenClawLocalHttpClient,
+    OpenClawLocalHttpError, OpenClawProviderHealth, OpenClawProviderInfo,
+};
 pub use persist::{PersistError, WorldJournal, WorldSnapshot};
 pub use runner::{
     AgentQuota, AgentRunner, AgentStats, AgentTickResult, RateLimitPolicy, RateLimitState,

@@ -9,7 +9,7 @@
 - [x] T0 (PRD-WORLD_SIMULATOR-038) [test_tier_required]: 完成 `OpenClaw` 与内置 agent 体验等价（parity）专题 PRD / Design / Project 建模，并回写模块主文档、索引与 devlog。
 - [x] T1 (PRD-WORLD_SIMULATOR-038) [test_tier_required]: 冻结 `P0/P1/P2` 场景集、评分项、通过线与阻断线，并新增 parity 场景矩阵与评分卡模板。
 - [x] T2 (PRD-WORLD_SIMULATOR-038) [test_tier_required]: 为 builtin 与 OpenClaw provider 冻结统一 fixture benchmark 协议、trace 汇总字段与分数聚合模板。
-- [ ] T3 (PRD-WORLD_SIMULATOR-038) [test_tier_required]: 将 `OpenClaw(Local HTTP)` 专题与 `Decision Provider` 专题的实施任务改挂到 parity 目标，确保“接通”不等于“完成”。
+- [x] T3 (PRD-WORLD_SIMULATOR-038) [test_tier_required]: 将 `OpenClaw(Local HTTP)` 专题与 `Decision Provider` 专题的实施任务改挂到 parity 目标，确保“接通”不等于“完成”。
 - [ ] T4 (PRD-WORLD_SIMULATOR-038) [test_tier_full]: 完成真实 `OpenClaw(Local HTTP)` 的 `P0` parity 对标试玩，输出 QA/producer 双签结论。
 - [ ] T5 (PRD-WORLD_SIMULATOR-038) [test_tier_full]: 在 `P0` 通过后推进 `P1`/`P2`，并依据结果决定是否允许默认启用或扩大覆盖范围。
 
@@ -26,8 +26,8 @@
 
 ## 状态
 - 最近更新：2026-03-12
-- 当前阶段: T3 pending
-- 当前任务: `将 OpenClaw(Local HTTP) 与 Decision Provider 实施任务改挂到 parity 目标`
+- 当前阶段: T4 pending
+- 当前任务: `完成真实 OpenClaw(Local HTTP) 的 P0 parity 对标试玩并输出 QA/producer 双签结论`
 - owner: `agent_engineer`
 - 联审: `qa_engineer`、`viewer_engineer`、`runtime_engineer`
 - 发起建模: `producer_system_designer`

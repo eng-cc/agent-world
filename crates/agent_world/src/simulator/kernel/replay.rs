@@ -138,6 +138,9 @@ impl WorldKernel {
                 agent.location_id = to.clone();
                 agent.pos = location.pos;
             }
+            WorldEventKind::AgentSpoke { .. }
+            | WorldEventKind::TargetInspected { .. }
+            | WorldEventKind::SimpleInteractionPerformed { .. } => {}
             WorldEventKind::ResourceTransferred {
                 from,
                 to,

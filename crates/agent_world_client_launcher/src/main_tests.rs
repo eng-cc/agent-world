@@ -1,5 +1,5 @@
 use super::{
-    build_chain_runtime_args, build_game_url, build_launcher_args,
+    build_chain_runtime_args, build_game_url, build_launcher_args, chain_runtime_status_from_web,
     collect_chain_required_config_issues, collect_required_config_issues,
     config_ui::{issue_field_ids, StartupGuideTarget},
     encode_query_value, encoded_query_pair,
@@ -7,8 +7,8 @@ use super::{
         resolve_explorer_my_account_candidate, ExplorerQuickShortcut, ExplorerStatusFilter,
         WebExplorerOverviewResponse,
     },
-    chain_runtime_status_from_web, install_cjk_font, normalize_host_for_url, parse_chain_role,
-    parse_chain_validators, parse_host_port, parse_port, probe_chain_status_endpoint,
+    install_cjk_font, normalize_host_for_url, parse_chain_role, parse_chain_validators,
+    parse_host_port, parse_port, probe_chain_status_endpoint, probe_openclaw_local_http,
     self_guided::{
         resolve_config_guide_target, resolve_next_task_hint, resolve_primary_disabled_cta,
         ConfigGuideTargetHint, DemoModePhase, DisabledActionCta, NextTaskHint, OnboardingStep,
@@ -21,8 +21,7 @@ use super::{
         WebTransferLifecycleStatus,
     },
     ChainRuntimeStatus, ClientLauncherApp, ConfigIssue, GlossaryTerm, LaunchConfig, LauncherStatus,
-    UiLanguage, WebChainRecoverySnapshot, WebRequestDomain, WebStateSnapshot,
-    EGUI_CJK_FONT_NAME,
+    UiLanguage, WebChainRecoverySnapshot, WebRequestDomain, WebStateSnapshot, EGUI_CJK_FONT_NAME,
 };
 use eframe::egui;
 use std::fs;
@@ -107,6 +106,9 @@ fn launch_config_defaults_enable_llm() {
     let config = LaunchConfig::default();
     assert!(config.llm_enabled);
     assert!(config.chain_enabled);
+    assert_eq!(config.agent_provider_mode, "builtin_llm");
+    assert_eq!(config.openclaw_base_url, "http://127.0.0.1:5841");
+    assert!(config.openclaw_auto_discover);
     assert!(config.chain_node_id.starts_with("viewer-live-node-fresh-"));
 }
 #[test]
@@ -511,7 +513,6 @@ fn web_request_inflight_domains_are_independent() {
     assert!(!app.any_transfer_request_inflight());
 }
 
-
 #[test]
 fn chain_runtime_status_from_web_maps_stale_execution_world() {
     let status = chain_runtime_status_from_web(
@@ -650,6 +651,69 @@ fn probe_chain_status_endpoint_reports_connect_failure() {
 
     let err = probe_chain_status_endpoint(bind.as_str()).expect_err("probe should fail");
     assert!(err.contains("connect chain status server failed"));
+}
+
+#[test]
+fn probe_openclaw_local_http_accepts_info_and_health_responses() {
+    let listener = TcpListener::bind("127.0.0.1:0").expect("bind test listener");
+    let bind = listener.local_addr().expect("listener addr");
+    let serve = std::thread::spawn(move || {
+        for _ in 0..2 {
+            let (mut stream, _) = listener.accept().expect("accept probe connection");
+            let mut request = [0_u8; 1024];
+            let bytes = stream.read(&mut request).expect("read request");
+            let request_text = String::from_utf8_lossy(&request[..bytes]);
+            let body = if request_text.contains("GET /v1/provider/info") {
+                r#"{"provider_id":"openclaw-local","name":"OpenClaw","version":"0.1.0","protocol_version":"v1"}"#
+            } else {
+                r#"{"ok":true,"status":"ready","uptime_ms":42,"last_error":null,"queue_depth":0}"#
+            };
+            let response = format!(
+                "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                body.len(),
+                body
+            );
+            let _ = stream.write_all(response.as_bytes());
+        }
+    });
+
+    let snapshot = probe_openclaw_local_http(format!("http://{}", bind).as_str(), None, 200)
+        .expect("probe should pass");
+    assert_eq!(snapshot.provider_id, "openclaw-local");
+    assert_eq!(snapshot.name, "OpenClaw");
+    assert_eq!(snapshot.version, "0.1.0");
+    assert_eq!(snapshot.protocol_version, "v1");
+    assert_eq!(snapshot.status, "ready");
+    assert_eq!(snapshot.queue_depth, Some(0));
+    assert_eq!(snapshot.last_error, None);
+    assert!(snapshot.info_latency_ms <= snapshot.total_latency_ms);
+    assert!(snapshot.health_latency_ms <= snapshot.total_latency_ms);
+    serve.join().expect("server thread should finish");
+}
+
+#[test]
+fn collect_required_config_issues_reports_openclaw_specific_fields() {
+    let config = LaunchConfig {
+        agent_provider_mode: "openclaw_local_http".to_string(),
+        openclaw_base_url: String::new(),
+        openclaw_auto_discover: false,
+        openclaw_connect_timeout_ms: "0".to_string(),
+        ..LaunchConfig::default()
+    };
+    let issues = collect_required_config_issues(&config);
+    assert!(issues.contains(&ConfigIssue::OpenClawBaseUrlRequired));
+    assert!(issues.contains(&ConfigIssue::OpenClawConnectTimeoutMsInvalid));
+}
+
+#[test]
+fn collect_required_config_issues_rejects_non_loopback_openclaw_base_url() {
+    let config = LaunchConfig {
+        agent_provider_mode: "openclaw_local_http".to_string(),
+        openclaw_base_url: "http://192.168.0.5:5841".to_string(),
+        ..LaunchConfig::default()
+    };
+    let issues = collect_required_config_issues(&config);
+    assert!(issues.contains(&ConfigIssue::OpenClawBaseUrlLoopbackRequired));
 }
 #[test]
 fn collect_required_config_issues_reports_missing_required_fields() {

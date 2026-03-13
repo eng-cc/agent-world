@@ -416,6 +416,18 @@ fn reject_reason_for_agent_submitter(agent_id: &str, action: &Action) -> Option<
             agent_id: action_agent_id,
             ..
         }
+        | Action::SpeakToNearby {
+            agent_id: action_agent_id,
+            ..
+        }
+        | Action::InspectTarget {
+            agent_id: action_agent_id,
+            ..
+        }
+        | Action::SimpleInteract {
+            agent_id: action_agent_id,
+            ..
+        }
         | Action::HarvestRadiation {
             agent_id: action_agent_id,
             ..

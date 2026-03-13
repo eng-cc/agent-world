@@ -1,9 +1,7 @@
 use std::collections::VecDeque;
 use std::env;
 #[cfg(not(target_arch = "wasm32"))]
-use std::io::{BufRead, BufReader, Read, Write};
-#[cfg(not(target_arch = "wasm32"))]
-use std::net::{TcpStream, ToSocketAddrs};
+use std::io::{BufRead, BufReader};
 #[cfg(not(target_arch = "wasm32"))]
 use std::path::Path;
 #[cfg(not(target_arch = "wasm32"))]
@@ -12,9 +10,9 @@ use std::process::{Child, Command, Stdio};
 use std::sync::mpsc::TryRecvError;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::Arc;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::Instant;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use eframe::egui;
 #[cfg(not(target_arch = "wasm32"))]
@@ -77,6 +75,9 @@ const DEFAULT_LIVE_BIND: &str = "127.0.0.1:5023";
 const DEFAULT_WEB_BIND: &str = "127.0.0.1:5011";
 const DEFAULT_VIEWER_HOST: &str = "127.0.0.1";
 const DEFAULT_VIEWER_PORT: &str = "4173";
+const DEFAULT_AGENT_PROVIDER_MODE: &str = "builtin_llm";
+const DEFAULT_OPENCLAW_BASE_URL: &str = "http://127.0.0.1:5841";
+const DEFAULT_OPENCLAW_CONNECT_TIMEOUT_MS: &str = "200";
 const DEFAULT_CHAIN_STATUS_BIND: &str = "127.0.0.1:5121";
 const DEFAULT_CHAIN_NODE_ID: &str = "viewer-live-node";
 const DEFAULT_CHAIN_NODE_ROLE: &str = "sequencer";
@@ -107,6 +108,7 @@ const DEFAULT_CLIENT_LAUNCHER_CONTROL_BIND: &str = "127.0.0.1:5410";
 const NATIVE_UI_SECTIONS: &[&str] = &[
     "game_core",
     "viewer_core",
+    "agent_provider",
     "chain_identity",
     "chain_runtime",
     "binaries",
@@ -280,7 +282,13 @@ struct LaunchConfig {
     viewer_host: String,
     viewer_port: String,
     viewer_static_dir: String,
+    agent_provider_mode: String,
+    openclaw_base_url: String,
+    openclaw_auth_token: String,
+    openclaw_connect_timeout_ms: String,
+    openclaw_agent_profile: String,
     llm_enabled: bool,
+    openclaw_auto_discover: bool,
     chain_enabled: bool,
     chain_status_bind: String,
     chain_node_id: String,
@@ -320,7 +328,13 @@ impl Default for LaunchConfig {
             viewer_host: DEFAULT_VIEWER_HOST.to_string(),
             viewer_port: DEFAULT_VIEWER_PORT.to_string(),
             viewer_static_dir,
+            agent_provider_mode: DEFAULT_AGENT_PROVIDER_MODE.to_string(),
+            openclaw_base_url: DEFAULT_OPENCLAW_BASE_URL.to_string(),
+            openclaw_auth_token: String::new(),
+            openclaw_connect_timeout_ms: DEFAULT_OPENCLAW_CONNECT_TIMEOUT_MS.to_string(),
+            openclaw_agent_profile: String::new(),
             llm_enabled: true,
+            openclaw_auto_discover: true,
             chain_enabled: true,
             chain_status_bind: DEFAULT_CHAIN_STATUS_BIND.to_string(),
             chain_node_id: default_chain_node_id(),
@@ -511,6 +525,97 @@ enum ChainRuntimeStatus {
     ConfigError(String),
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct OpenClawProviderSnapshot {
+    provider_id: String,
+    name: String,
+    version: String,
+    protocol_version: String,
+    status: String,
+    queue_depth: Option<u64>,
+    last_error: Option<String>,
+    info_latency_ms: u64,
+    health_latency_ms: u64,
+    total_latency_ms: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[allow(dead_code)]
+enum OpenClawProbeStatus {
+    Disabled,
+    Idle,
+    Probing,
+    Healthy(OpenClawProviderSnapshot),
+    Unsupported(String),
+    InvalidConfig(String),
+    Unreachable(String),
+    Unauthorized(String),
+}
+
+impl OpenClawProbeStatus {
+    fn text(&self, language: UiLanguage) -> String {
+        match (self, language) {
+            (Self::Disabled, UiLanguage::ZhCn) => "未启用".to_string(),
+            (Self::Disabled, UiLanguage::EnUs) => "Disabled".to_string(),
+            (Self::Idle, UiLanguage::ZhCn) => "待探测".to_string(),
+            (Self::Idle, UiLanguage::EnUs) => "Idle".to_string(),
+            (Self::Probing, UiLanguage::ZhCn) => "探测中".to_string(),
+            (Self::Probing, UiLanguage::EnUs) => "Probing".to_string(),
+            (Self::Healthy(_), UiLanguage::ZhCn) => "已就绪".to_string(),
+            (Self::Healthy(_), UiLanguage::EnUs) => "Healthy".to_string(),
+            (Self::Unsupported(_), UiLanguage::ZhCn) => "当前端不支持".to_string(),
+            (Self::Unsupported(_), UiLanguage::EnUs) => "Unsupported".to_string(),
+            (Self::InvalidConfig(_), UiLanguage::ZhCn) => "配置错误".to_string(),
+            (Self::InvalidConfig(_), UiLanguage::EnUs) => "Invalid Config".to_string(),
+            (Self::Unreachable(_), UiLanguage::ZhCn) => "不可达".to_string(),
+            (Self::Unreachable(_), UiLanguage::EnUs) => "Unreachable".to_string(),
+            (Self::Unauthorized(_), UiLanguage::ZhCn) => "认证失败".to_string(),
+            (Self::Unauthorized(_), UiLanguage::EnUs) => "Unauthorized".to_string(),
+        }
+    }
+
+    fn color(&self) -> egui::Color32 {
+        match self {
+            Self::Disabled | Self::Idle => egui::Color32::from_rgb(130, 130, 130),
+            Self::Probing => egui::Color32::from_rgb(201, 146, 44),
+            Self::Healthy(_) => egui::Color32::from_rgb(62, 152, 92),
+            Self::Unsupported(_) => egui::Color32::from_rgb(130, 130, 130),
+            Self::InvalidConfig(_) | Self::Unreachable(_) | Self::Unauthorized(_) => {
+                egui::Color32::from_rgb(196, 84, 84)
+            }
+        }
+    }
+
+    fn detail(&self) -> Option<String> {
+        match self {
+            Self::Healthy(snapshot) => Some(format!(
+                "provider_id={} name={} version={} protocol={} status={} queue_depth={} probe_latency_ms={{info:{}, health:{}, total:{}}} last_error={}",
+                snapshot.provider_id,
+                snapshot.name,
+                snapshot.version,
+                snapshot.protocol_version,
+                snapshot.status,
+                snapshot
+                    .queue_depth
+                    .map(|value| value.to_string())
+                    .unwrap_or_else(|| "n/a".to_string()),
+                snapshot.info_latency_ms,
+                snapshot.health_latency_ms,
+                snapshot.total_latency_ms,
+                snapshot
+                    .last_error
+                    .as_deref()
+                    .unwrap_or("none")
+            )),
+            Self::Unsupported(detail)
+            | Self::InvalidConfig(detail)
+            | Self::Unreachable(detail)
+            | Self::Unauthorized(detail) => Some(detail.clone()),
+            Self::Disabled | Self::Idle | Self::Probing => None,
+        }
+    }
+}
+
 impl ChainRuntimeStatus {
     fn text(&self, language: UiLanguage) -> &'static str {
         match (self, language) {
@@ -614,6 +719,11 @@ enum ConfigIssue {
     ViewerPortInvalid,
     ViewerStaticDirRequired,
     ViewerStaticDirMissing,
+    AgentProviderModeInvalid,
+    OpenClawBaseUrlRequired,
+    OpenClawBaseUrlInvalid,
+    OpenClawBaseUrlLoopbackRequired,
+    OpenClawConnectTimeoutMsInvalid,
     LauncherBinRequired,
     LauncherBinMissing,
     ChainRuntimeBinRequired,
@@ -657,6 +767,36 @@ impl ConfigIssue {
             (Self::ViewerStaticDirMissing, UiLanguage::ZhCn) => "前端静态资源目录不存在或不是目录",
             (Self::ViewerStaticDirMissing, UiLanguage::EnUs) => {
                 "Viewer static directory does not exist or is not a directory"
+            }
+            (Self::AgentProviderModeInvalid, UiLanguage::ZhCn) => {
+                "Agent Provider 模式必须是 builtin_llm 或 openclaw_local_http"
+            }
+            (Self::AgentProviderModeInvalid, UiLanguage::EnUs) => {
+                "Agent provider mode must be builtin_llm or openclaw_local_http"
+            }
+            (Self::OpenClawBaseUrlRequired, UiLanguage::ZhCn) => {
+                "启用 OpenClaw(Local HTTP) 且关闭自动发现时，必须填写 OpenClaw Base URL"
+            }
+            (Self::OpenClawBaseUrlRequired, UiLanguage::EnUs) => {
+                "OpenClaw base URL is required when auto-discover is disabled"
+            }
+            (Self::OpenClawBaseUrlInvalid, UiLanguage::ZhCn) => {
+                "OpenClaw Base URL 必须是有效的 http://<host>:<port>"
+            }
+            (Self::OpenClawBaseUrlInvalid, UiLanguage::EnUs) => {
+                "OpenClaw base URL must be a valid http://<host>:<port>"
+            }
+            (Self::OpenClawBaseUrlLoopbackRequired, UiLanguage::ZhCn) => {
+                "OpenClaw Base URL 仅允许使用 loopback 地址（127.0.0.1 / localhost / ::1）"
+            }
+            (Self::OpenClawBaseUrlLoopbackRequired, UiLanguage::EnUs) => {
+                "OpenClaw base URL must use a loopback host (127.0.0.1 / localhost / ::1)"
+            }
+            (Self::OpenClawConnectTimeoutMsInvalid, UiLanguage::ZhCn) => {
+                "OpenClaw 连接超时毫秒必须是正整数"
+            }
+            (Self::OpenClawConnectTimeoutMsInvalid, UiLanguage::EnUs) => {
+                "OpenClaw connect timeout milliseconds must be a positive integer"
             }
             (Self::LauncherBinRequired, UiLanguage::ZhCn) => {
                 "启动器二进制路径（launcher bin）是必填项"
@@ -813,6 +953,7 @@ enum TransferSubmitState {
 struct ClientLauncherApp {
     config: LaunchConfig,
     config_dirty: bool,
+    openclaw_probe_status: OpenClawProbeStatus,
     llm_settings_panel: LlmSettingsPanel,
     ui_language: UiLanguage,
     status: LauncherStatus,
@@ -891,6 +1032,7 @@ impl Default for ClientLauncherApp {
         Self {
             config,
             config_dirty: false,
+            openclaw_probe_status: OpenClawProbeStatus::Disabled,
             llm_settings_panel: LlmSettingsPanel::new(LlmSettingsPanel::default_path()),
             ui_language: UiLanguage::detect_from_env(),
             status: LauncherStatus::Idle,

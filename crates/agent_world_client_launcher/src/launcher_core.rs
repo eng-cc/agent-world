@@ -1,9 +1,104 @@
 use super::*;
+#[cfg(not(target_arch = "wasm32"))]
+use serde::de::DeserializeOwned;
+#[cfg(not(target_arch = "wasm32"))]
+use std::io::{Read, Write};
+#[cfg(not(target_arch = "wasm32"))]
+use std::net::{TcpStream, ToSocketAddrs};
+#[cfg(not(target_arch = "wasm32"))]
+use std::time::{Duration, Instant};
 
 #[cfg(not(target_arch = "wasm32"))]
 const GAME_STATIC_DIR_ENV: &str = "AGENT_WORLD_GAME_STATIC_DIR";
 #[cfg(not(target_arch = "wasm32"))]
 const DEFAULT_VIEWER_STATIC_DIR: &str = "web";
+pub(super) const OPENCLAW_LOCAL_HTTP_PROVIDER_MODE: &str = "openclaw_local_http";
+pub(super) const BUILTIN_LLM_PROVIDER_MODE: &str = "builtin_llm";
+pub(super) const DEFAULT_OPENCLAW_DISCOVERY_BASE_URL: &str = DEFAULT_OPENCLAW_BASE_URL;
+
+#[cfg(not(target_arch = "wasm32"))]
+#[derive(Debug, Clone, Deserialize)]
+struct OpenClawProviderInfoResponse {
+    provider_id: String,
+    #[serde(default)]
+    name: Option<String>,
+    #[serde(default)]
+    version: Option<String>,
+    #[serde(default)]
+    protocol_version: Option<String>,
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[derive(Debug, Clone, Deserialize)]
+struct OpenClawProviderHealthResponse {
+    ok: bool,
+    #[serde(default)]
+    status: Option<String>,
+    #[serde(default)]
+    last_error: Option<String>,
+    #[serde(default)]
+    queue_depth: Option<u64>,
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) enum OpenClawProbeError {
+    InvalidConfig(String),
+    Unauthorized(String),
+    Unreachable(String),
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl std::fmt::Display for OpenClawProbeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::InvalidConfig(detail)
+            | Self::Unauthorized(detail)
+            | Self::Unreachable(detail) => write!(f, "{detail}"),
+        }
+    }
+}
+
+pub(super) fn is_openclaw_local_http_mode(config: &LaunchConfig) -> bool {
+    config.agent_provider_mode.trim() == OPENCLAW_LOCAL_HTTP_PROVIDER_MODE
+}
+
+pub(super) fn validate_agent_provider_mode(raw: &str) -> Result<(), String> {
+    match raw.trim() {
+        BUILTIN_LLM_PROVIDER_MODE | OPENCLAW_LOCAL_HTTP_PROVIDER_MODE => Ok(()),
+        _ => Err("agent provider mode must be builtin_llm or openclaw_local_http".to_string()),
+    }
+}
+
+pub(super) fn effective_openclaw_base_url(config: &LaunchConfig) -> Result<String, String> {
+    let base_url = config.openclaw_base_url.trim();
+    if !base_url.is_empty() {
+        return Ok(base_url.to_string());
+    }
+    if config.openclaw_auto_discover {
+        return Ok(DEFAULT_OPENCLAW_DISCOVERY_BASE_URL.to_string());
+    }
+    Err("openclaw base url is required when auto-discover is disabled".to_string())
+}
+
+pub(super) fn parse_agent_provider_connect_timeout_ms(
+    config: &LaunchConfig,
+) -> Result<u64, String> {
+    parse_positive_u64(
+        config.openclaw_connect_timeout_ms.as_str(),
+        "openclaw connect timeout ms",
+    )
+}
+
+pub(super) fn validate_openclaw_base_url(base_url: &str) -> Result<(String, u16), String> {
+    let (host, port) = parse_http_base_url(base_url, "openclaw base url")?;
+    if !is_loopback_host(host.as_str()) {
+        return Err(
+            "openclaw base url must use a loopback host (127.0.0.1 / localhost / ::1)".to_string(),
+        );
+    }
+    Ok((host, port))
+}
 
 #[cfg(not(target_arch = "wasm32"))]
 fn resolve_viewer_static_dir_candidate_for_launcher(
@@ -72,6 +167,11 @@ pub(super) fn launcher_text_field_mut<'a>(
         "web_bind" => Some(&mut config.web_bind),
         "viewer_host" => Some(&mut config.viewer_host),
         "viewer_port" => Some(&mut config.viewer_port),
+        "agent_provider_mode" => Some(&mut config.agent_provider_mode),
+        "openclaw_base_url" => Some(&mut config.openclaw_base_url),
+        "openclaw_auth_token" => Some(&mut config.openclaw_auth_token),
+        "openclaw_connect_timeout_ms" => Some(&mut config.openclaw_connect_timeout_ms),
+        "openclaw_agent_profile" => Some(&mut config.openclaw_agent_profile),
         "chain_status_bind" => Some(&mut config.chain_status_bind),
         "chain_node_id" => Some(&mut config.chain_node_id),
         "chain_world_id" => Some(&mut config.chain_world_id),
@@ -98,6 +198,7 @@ pub(super) fn launcher_checkbox_field_mut<'a>(
 ) -> Option<&'a mut bool> {
     match field_id {
         "llm_enabled" => Some(&mut config.llm_enabled),
+        "openclaw_auto_discover" => Some(&mut config.openclaw_auto_discover),
         "chain_enabled" => Some(&mut config.chain_enabled),
         "chain_pos_adaptive_tick_scheduler_enabled" => {
             Some(&mut config.chain_pos_adaptive_tick_scheduler_enabled)
@@ -109,6 +210,27 @@ pub(super) fn launcher_checkbox_field_mut<'a>(
 
 pub(super) fn collect_required_config_issues(config: &LaunchConfig) -> Vec<ConfigIssue> {
     let mut issues = Vec::new();
+
+    if validate_agent_provider_mode(config.agent_provider_mode.as_str()).is_err() {
+        issues.push(ConfigIssue::AgentProviderModeInvalid);
+    }
+
+    if is_openclaw_local_http_mode(config) {
+        if effective_openclaw_base_url(config).is_err() {
+            issues.push(ConfigIssue::OpenClawBaseUrlRequired);
+        } else if let Ok(base_url) = effective_openclaw_base_url(config) {
+            match validate_openclaw_base_url(base_url.as_str()) {
+                Ok(_) => {}
+                Err(err) if err.contains("loopback") => {
+                    issues.push(ConfigIssue::OpenClawBaseUrlLoopbackRequired);
+                }
+                Err(_) => issues.push(ConfigIssue::OpenClawBaseUrlInvalid),
+            }
+        }
+        if parse_agent_provider_connect_timeout_ms(config).is_err() {
+            issues.push(ConfigIssue::OpenClawConnectTimeoutMsInvalid);
+        }
+    }
 
     if config.scenario.trim().is_empty() {
         issues.push(ConfigIssue::ScenarioRequired);
@@ -424,6 +546,45 @@ pub(super) fn probe_chain_status_endpoint(bind: &str) -> Result<(), String> {
     Ok(())
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+pub(super) fn probe_openclaw_local_http(
+    base_url: &str,
+    auth_token: Option<&str>,
+    timeout_ms: u64,
+) -> Result<OpenClawProviderSnapshot, OpenClawProbeError> {
+    let (host, _) =
+        validate_openclaw_base_url(base_url).map_err(OpenClawProbeError::InvalidConfig)?;
+    let info_started_at = Instant::now();
+    let info: OpenClawProviderInfoResponse =
+        http_json_request_with_timeout(base_url, "/v1/provider/info", auth_token, timeout_ms)?;
+    let info_latency_ms = info_started_at.elapsed().as_millis().min(u64::MAX as u128) as u64;
+    let health_started_at = Instant::now();
+    let health: OpenClawProviderHealthResponse =
+        http_json_request_with_timeout(base_url, "/v1/provider/health", auth_token, timeout_ms)?;
+    let health_latency_ms = health_started_at.elapsed().as_millis().min(u64::MAX as u128) as u64;
+    if !health.ok {
+        return Err(OpenClawProbeError::Unreachable(
+            health
+                .last_error
+                .unwrap_or_else(|| format!("openclaw provider on {host} is not healthy")),
+        ));
+    }
+    Ok(OpenClawProviderSnapshot {
+        provider_id: info.provider_id,
+        name: info.name.unwrap_or_else(|| "OpenClaw".to_string()),
+        version: info.version.unwrap_or_else(|| "unknown".to_string()),
+        protocol_version: info
+            .protocol_version
+            .unwrap_or_else(|| "unknown".to_string()),
+        status: health.status.unwrap_or_else(|| "ok".to_string()),
+        queue_depth: health.queue_depth,
+        last_error: health.last_error,
+        info_latency_ms,
+        health_latency_ms,
+        total_latency_ms: info_latency_ms.saturating_add(health_latency_ms),
+    })
+}
+
 pub(super) fn normalize_host_for_connect(host: &str) -> String {
     let host = host.trim();
     if host == "0.0.0.0" {
@@ -433,6 +594,10 @@ pub(super) fn normalize_host_for_connect(host: &str) -> String {
     } else {
         host.to_string()
     }
+}
+
+pub(super) fn is_loopback_host(host: &str) -> bool {
+    matches!(host.trim(), "127.0.0.1" | "localhost" | "::1" | "[::1]")
 }
 
 pub(super) fn normalize_host_for_url(host: &str) -> String {
@@ -450,6 +615,131 @@ pub(super) fn host_for_url(host: &str) -> String {
     } else {
         host.to_string()
     }
+}
+
+pub(super) fn parse_http_base_url(base_url: &str, label: &str) -> Result<(String, u16), String> {
+    let mut raw = base_url.trim();
+    if let Some(stripped) = raw.strip_prefix("http://") {
+        raw = stripped;
+    } else if raw.starts_with("https://") {
+        return Err(format!("{label} must use http:// for localhost provider"));
+    }
+    raw = raw.trim_end_matches('/');
+    let authority = raw
+        .split('/')
+        .next()
+        .ok_or_else(|| format!("invalid {label}: {base_url}"))?
+        .trim();
+    if authority.is_empty() {
+        return Err(format!("invalid {label}: {base_url}"));
+    }
+    if authority.starts_with('[') || authority.contains(':') {
+        parse_host_port(authority, label)
+    } else {
+        Ok((authority.to_string(), 80))
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn http_json_request_with_timeout<T: DeserializeOwned>(
+    base_url: &str,
+    path: &str,
+    auth_token: Option<&str>,
+    timeout_ms: u64,
+) -> Result<T, OpenClawProbeError> {
+    let (status_code, response_body) =
+        http_request_with_timeout(base_url, path, auth_token, timeout_ms)?;
+    if status_code == 401 {
+        return Err(OpenClawProbeError::Unauthorized(format!(
+            "openclaw probe returned HTTP 401 for {path}"
+        )));
+    }
+    if !(200..=299).contains(&status_code) {
+        let body_text = String::from_utf8_lossy(response_body.as_slice());
+        return Err(OpenClawProbeError::Unreachable(format!(
+            "openclaw probe {path} failed with HTTP {status_code}: {body_text}"
+        )));
+    }
+    serde_json::from_slice(response_body.as_slice()).map_err(|err| {
+        OpenClawProbeError::Unreachable(format!(
+            "decode openclaw probe {path} response failed: {err}"
+        ))
+    })
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn http_request_with_timeout(
+    base_url: &str,
+    path: &str,
+    auth_token: Option<&str>,
+    timeout_ms: u64,
+) -> Result<(u16, Vec<u8>), OpenClawProbeError> {
+    let (host, port) = parse_http_base_url(base_url, "openclaw base url")
+        .map_err(OpenClawProbeError::InvalidConfig)?;
+    let connect_host = normalize_host_for_connect(host.as_str());
+    let socket_addr = (connect_host.as_str(), port)
+        .to_socket_addrs()
+        .map_err(|err| {
+            OpenClawProbeError::Unreachable(format!("resolve openclaw provider failed: {err}"))
+        })?
+        .next()
+        .ok_or_else(|| {
+            OpenClawProbeError::Unreachable(
+                "resolve openclaw provider failed: no socket address".to_string(),
+            )
+        })?;
+    let mut stream =
+        TcpStream::connect_timeout(&socket_addr, Duration::from_millis(timeout_ms.max(1)))
+            .map_err(|err| {
+                OpenClawProbeError::Unreachable(format!("connect openclaw provider failed: {err}"))
+            })?;
+    let timeout = Some(Duration::from_millis(timeout_ms.max(1)));
+    let _ = stream.set_read_timeout(timeout);
+    let _ = stream.set_write_timeout(timeout);
+
+    let host_header = host_for_url(host.as_str());
+    let mut request =
+        format!("GET {path} HTTP/1.1\r\nHost: {host_header}:{port}\r\nConnection: close\r\n");
+    if let Some(token) = auth_token.filter(|value| !value.trim().is_empty()) {
+        request.push_str(&format!("Authorization: Bearer {}\r\n", token.trim()));
+    }
+    request.push_str("\r\n");
+    stream.write_all(request.as_bytes()).map_err(|err| {
+        OpenClawProbeError::Unreachable(format!("write openclaw probe failed: {err}"))
+    })?;
+    let mut response_bytes = Vec::new();
+    stream.read_to_end(&mut response_bytes).map_err(|err| {
+        OpenClawProbeError::Unreachable(format!("read openclaw probe failed: {err}"))
+    })?;
+    parse_http_response(response_bytes.as_slice())
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn parse_http_response(bytes: &[u8]) -> Result<(u16, Vec<u8>), OpenClawProbeError> {
+    let Some(boundary) = bytes.windows(4).position(|window| window == b"\r\n\r\n") else {
+        return Err(OpenClawProbeError::Unreachable(
+            "invalid HTTP response: missing header terminator".to_string(),
+        ));
+    };
+    let header = std::str::from_utf8(&bytes[..boundary]).map_err(|_| {
+        OpenClawProbeError::Unreachable("invalid HTTP response: header is not UTF-8".to_string())
+    })?;
+    let body = bytes[(boundary + 4)..].to_vec();
+    let Some(status_line) = header.lines().next() else {
+        return Err(OpenClawProbeError::Unreachable(
+            "invalid HTTP response: missing status line".to_string(),
+        ));
+    };
+    let Some(status_code) = status_line
+        .split_whitespace()
+        .nth(1)
+        .and_then(|token| token.parse::<u16>().ok())
+    else {
+        return Err(OpenClawProbeError::Unreachable(format!(
+            "invalid HTTP response status line: {status_line}"
+        )));
+    };
+    Ok((status_code, body))
 }
 
 pub(super) fn parse_port(raw: &str, label: &str) -> Result<u16, String> {

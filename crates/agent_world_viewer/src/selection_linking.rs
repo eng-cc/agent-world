@@ -785,6 +785,9 @@ pub(super) fn event_primary_target(
         }),
         WorldEventKind::AgentRegistered { agent_id, .. }
         | WorldEventKind::AgentMoved { agent_id, .. }
+        | WorldEventKind::AgentSpoke { agent_id, .. }
+        | WorldEventKind::TargetInspected { agent_id, .. }
+        | WorldEventKind::SimpleInteractionPerformed { agent_id, .. }
         | WorldEventKind::RadiationHarvested { agent_id, .. }
         | WorldEventKind::LlmEffectQueued { agent_id, .. }
         | WorldEventKind::LlmReceiptAppended { agent_id, .. } => Some(SelectionTarget {

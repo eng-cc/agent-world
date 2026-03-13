@@ -34,7 +34,7 @@ use crate::ui_locale_text::{
 use crate::ui_text::{
     agent_activity_summary, build_industry_graph_view_model, economy_dashboard_summary_with_zoom,
     events_summary, industrial_ops_summary_with_zoom, ops_navigation_alert_summary_with_zoom,
-    selection_details_summary, world_summary,
+    provider_debug_summary, selection_details_summary, world_summary, ProviderDebugFilter,
 };
 use crate::world_overlay::overlay_status_text_public;
 use crate::{
@@ -172,6 +172,7 @@ pub(super) fn render_right_side_panel_egui(
     mut onboarding_state: Local<PlayerOnboardingState>,
     mut player_layout_initialized: Local<bool>,
     mut module_switches_expanded: Local<bool>,
+    mut provider_debug_filter: Local<ProviderDebugFilter>,
     params: RightPanelParams,
 ) {
     let RightPanelParams {
@@ -622,6 +623,7 @@ pub(super) fn render_right_side_panel_egui(
                         timeline.as_ref(),
                         &viewer_3d_config,
                         industry_zoom.level,
+                        &mut *provider_debug_filter,
                     );
 
                     ui.separator();

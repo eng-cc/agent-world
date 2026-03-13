@@ -63,7 +63,6 @@ impl ClientLauncherApp {
         Some(recovery)
     }
 
-
     fn render_startup_error_issue_lines(&self, ui: &mut egui::Ui, issues: &[ConfigIssue]) {
         for issue in issues.iter().take(3) {
             ui.small(format!("- {}", issue.text(self.ui_language)));
@@ -163,7 +162,10 @@ impl ClientLauncherApp {
                 ));
             }
             if issues.is_empty()
-                && matches!(self.chain_runtime_status, ChainRuntimeStatus::StaleExecutionWorld(_))
+                && matches!(
+                    self.chain_runtime_status,
+                    ChainRuntimeStatus::StaleExecutionWorld(_)
+                )
             {
                 if let Some(recovery) = self.chain_recovery.clone() {
                     ui.separator();

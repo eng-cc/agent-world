@@ -106,6 +106,85 @@ fn update_ui_populates_agent_selection_details_with_llm_trace() {
     assert!(details_text.contains("retries: 1"));
 }
 
+
+#[test]
+fn provider_debug_summary_filters_openclaw_and_errors() {
+    let state = ViewerState {
+        status: ConnectionStatus::Connected,
+        snapshot: None,
+        events: Vec::new(),
+        decision_traces: vec![
+            agent_world::simulator::AgentDecisionTrace {
+                agent_id: "agent-1".to_string(),
+                time: 12,
+                decision: agent_world::simulator::AgentDecision::Act(
+                    agent_world::simulator::Action::MoveAgent {
+                        agent_id: "agent-1".to_string(),
+                        to: "loc-2".to_string(),
+                    },
+                ),
+                llm_input: Some("provider request".to_string()),
+                llm_output: Some("move to loc-2".to_string()),
+                llm_error: None,
+                parse_error: None,
+                llm_diagnostics: Some(agent_world::simulator::LlmDecisionDiagnostics {
+                    model: Some("openclaw-local".to_string()),
+                    latency_ms: Some(87),
+                    prompt_tokens: None,
+                    completion_tokens: None,
+                    total_tokens: None,
+                    retry_count: 0,
+                }),
+                llm_effect_intents: Vec::new(),
+                llm_effect_receipts: Vec::new(),
+                llm_step_trace: Vec::new(),
+                llm_prompt_section_trace: Vec::new(),
+                llm_chat_messages: Vec::new(),
+            },
+            agent_world::simulator::AgentDecisionTrace {
+                agent_id: "agent-2".to_string(),
+                time: 13,
+                decision: agent_world::simulator::AgentDecision::Wait,
+                llm_input: Some("builtin request".to_string()),
+                llm_output: None,
+                llm_error: Some("provider timeout".to_string()),
+                parse_error: None,
+                llm_diagnostics: Some(agent_world::simulator::LlmDecisionDiagnostics {
+                    model: Some("builtin-llm".to_string()),
+                    latency_ms: Some(3010),
+                    prompt_tokens: None,
+                    completion_tokens: None,
+                    total_tokens: None,
+                    retry_count: 1,
+                }),
+                llm_effect_intents: Vec::new(),
+                llm_effect_receipts: Vec::new(),
+                llm_step_trace: Vec::new(),
+                llm_prompt_section_trace: Vec::new(),
+                llm_chat_messages: Vec::new(),
+            },
+        ],
+        metrics: None,
+    };
+
+    let openclaw_text = super::tests_ui_text::build_provider_debug_text(
+        &state,
+        crate::ui_text::ProviderDebugFilter::OpenClawOnly,
+    );
+    assert!(openclaw_text.contains("filter=openclaw_only"));
+    assert!(openclaw_text.contains("provider=openclaw-local"));
+    assert!(openclaw_text.contains("move_agent -> loc-2"));
+    assert!(openclaw_text.contains("Recent Latency: t12=87ms"));
+
+    let error_text = super::tests_ui_text::build_provider_debug_text(
+        &state,
+        crate::ui_text::ProviderDebugFilter::ErrorsOnly,
+    );
+    assert!(error_text.contains("filter=errors_only"));
+    assert!(error_text.contains("Last Error: provider timeout"));
+    assert!(error_text.contains("provider=builtin-llm"));
+}
+
 #[test]
 fn update_ui_populates_location_selection_details() {
     let mut viewer_config = Viewer3dConfig::default();

@@ -29,6 +29,12 @@ pub fn viewer_event_kind_matches(filter: &ViewerEventKind, kind: &WorldEventKind
         (ViewerEventKind::LocationRegistered, WorldEventKind::LocationRegistered { .. }) => true,
         (ViewerEventKind::AgentRegistered, WorldEventKind::AgentRegistered { .. }) => true,
         (ViewerEventKind::AgentMoved, WorldEventKind::AgentMoved { .. }) => true,
+        (ViewerEventKind::AgentSpoke, WorldEventKind::AgentSpoke { .. }) => true,
+        (ViewerEventKind::TargetInspected, WorldEventKind::TargetInspected { .. }) => true,
+        (
+            ViewerEventKind::SimpleInteractionPerformed,
+            WorldEventKind::SimpleInteractionPerformed { .. },
+        ) => true,
         (ViewerEventKind::ResourceTransferred, WorldEventKind::ResourceTransferred { .. }) => true,
         (ViewerEventKind::RadiationHarvested, WorldEventKind::RadiationHarvested { .. }) => true,
         (ViewerEventKind::ActionRejected, WorldEventKind::ActionRejected { .. }) => true,
@@ -74,6 +80,32 @@ mod tests {
                 to: "loc-b".to_string(),
                 distance_cm: 100,
                 electricity_cost: 1,
+            },
+        ));
+        assert!(viewer_event_kind_matches(
+            &ViewerEventKind::AgentSpoke,
+            &WorldEventKind::AgentSpoke {
+                agent_id: "a1".to_string(),
+                location_id: "loc-a".to_string(),
+                message: "hi".to_string(),
+                target_agent_id: None,
+            },
+        ));
+        assert!(viewer_event_kind_matches(
+            &ViewerEventKind::TargetInspected,
+            &WorldEventKind::TargetInspected {
+                agent_id: "a1".to_string(),
+                target_kind: "location".to_string(),
+                target_id: "loc-a".to_string(),
+            },
+        ));
+        assert!(viewer_event_kind_matches(
+            &ViewerEventKind::SimpleInteractionPerformed,
+            &WorldEventKind::SimpleInteractionPerformed {
+                agent_id: "a1".to_string(),
+                target_kind: "location".to_string(),
+                target_id: "loc-a".to_string(),
+                interaction: "press_console".to_string(),
             },
         ));
         assert!(viewer_event_kind_matches(

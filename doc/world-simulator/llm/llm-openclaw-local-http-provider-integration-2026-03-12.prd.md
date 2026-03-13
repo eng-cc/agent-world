@@ -10,7 +10,7 @@
 - Proposed Solution: 首期采用“`OpenClaw` 本地进程 + `localhost HTTP/JSON`”方案。`OpenClaw` 在用户机器上以本地服务形式运行，仅监听 `127.0.0.1`；world-simulator 侧通过 `OpenClawAdapter` 调用其本地 HTTP API，发送结构化 `DecisionRequest`，接收结构化 `DecisionResponse`。运行时仍由本地 runtime/kernel 权威执行动作、校验规则并产出 trace。Launcher / Viewer 仅负责配置、发现与可观测性展示。
 - Success Criteria:
   - SC-1: 用户在本机安装并启动 `OpenClaw` 后，可在 launcher 中发现并选择 `OpenClaw(Local HTTP)` 作为 agent provider。
-  - SC-2: 首期仅依赖 `localhost HTTP/JSON` 即可完成单一低频 NPC 的 `wait/move/chat/inspect/simple interact` 决策闭环。
+  - SC-2: 首期 `test_tier_required` 依赖 `localhost HTTP/JSON` 完成单一低频 NPC 的 `wait` / `wait_ticks` / `move_agent` / `speak_to_nearby` / `inspect_target` / `simple_interact` 决策闭环；其中后三者先以 lightweight event 语义落地，并继续受 parity 门禁约束。
   - SC-3: 若本机未安装、未启动、版本不兼容或握手失败，launcher 必须提供明确诊断与回退路径，不得阻断内置 provider 使用。
   - SC-4: 所有 `OpenClaw` 输出必须经 action schema 白名单和 runtime 校验后才能执行；非法输出一律映射为 `Wait` 或 `ActionRejected`。
   - SC-5: `OpenClaw` 决策过程可映射到 `AgentDecisionTrace`，在 viewer / QA 调试面中可见 provider 名称、延迟、错误与最近一次结构化决策。
@@ -126,14 +126,15 @@
   - `wait`
   - `wait_ticks`
   - `move_agent`
-  - `speak_to_nearby`
-  - `inspect_target`
-  - `simple_interact`
+  - `speak_to_nearby`（lightweight speech event）
+  - `inspect_target`（lightweight inspection event）
+  - `simple_interact`（lightweight interaction event）
 - Error Handling & Fallback:
   - `connection_refused` / `provider_unreachable`: launcher 显示“本地 OpenClaw 未启动”，允许一键切回内置 provider。
   - `version_mismatch`: 阻止启用该 provider，并显示期望协议版本。
   - `timeout`: 本轮决策降级为 `Wait`，若连续超时达到阈值则 provider 状态变 `degraded`。
   - `invalid_action_schema`: 直接 `ActionRejected` 并记录到 trace。
+  - `unsupported_semantic_action`: 对于不在 phase-1 白名单内、或 target_kind / payload 不满足当前 lightweight 语义约束的 intent，required 路径必须降级为 `Wait` 并记录结构化错误，禁止伪装为已执行成功。
   - `auth_failed`: provider 标记为 `unauthorized`，要求用户更新本地 token。
 - Non-Functional Requirements:
   - NFR-1: 本地 HTTP 仅绑定 `127.0.0.1`，默认不使用 `0.0.0.0`。

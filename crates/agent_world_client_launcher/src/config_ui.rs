@@ -38,6 +38,11 @@ pub(super) fn issue_field_ids(issue: ConfigIssue) -> &'static [&'static str] {
         ConfigIssue::ViewerStaticDirRequired | ConfigIssue::ViewerStaticDirMissing => {
             &["viewer_static_dir"]
         }
+        ConfigIssue::AgentProviderModeInvalid => &["agent_provider_mode"],
+        ConfigIssue::OpenClawBaseUrlRequired
+        | ConfigIssue::OpenClawBaseUrlInvalid
+        | ConfigIssue::OpenClawBaseUrlLoopbackRequired => &["openclaw_base_url"],
+        ConfigIssue::OpenClawConnectTimeoutMsInvalid => &["openclaw_connect_timeout_ms"],
         ConfigIssue::LauncherBinRequired | ConfigIssue::LauncherBinMissing => &["launcher_bin"],
         ConfigIssue::ChainRuntimeBinRequired | ConfigIssue::ChainRuntimeBinMissing => {
             &["chain_runtime_bin"]
@@ -83,7 +88,11 @@ impl ClientLauncherApp {
                             ui.label(label);
                             let response = ui.add_sized(
                                 [ui.available_width(), 0.0],
-                                egui::TextEdit::singleline(value),
+                                if field.id == "openclaw_auth_token" {
+                                    egui::TextEdit::singleline(value).password(true)
+                                } else {
+                                    egui::TextEdit::singleline(value)
+                                },
                             );
                             if response.changed() {
                                 self.config_dirty = true;
@@ -92,7 +101,12 @@ impl ClientLauncherApp {
                     } else {
                         ui.horizontal(|ui| {
                             ui.label(label);
-                            if ui.text_edit_singleline(value).changed() {
+                            let response = if field.id == "openclaw_auth_token" {
+                                ui.add(egui::TextEdit::singleline(value).password(true))
+                            } else {
+                                ui.text_edit_singleline(value)
+                            };
+                            if response.changed() {
                                 self.config_dirty = true;
                             }
                         });
@@ -162,6 +176,8 @@ impl ClientLauncherApp {
                 .color(egui::Color32::from_rgb(201, 146, 44)),
             );
         }
+
+        self.render_openclaw_provider_summary(ui);
 
         if !has_issue {
             ui.colored_label(
@@ -464,6 +480,144 @@ impl ClientLauncherApp {
             }
         }
         fields
+    }
+
+    fn render_openclaw_provider_summary(&mut self, ui: &mut egui::Ui) {
+        if !is_openclaw_local_http_mode(&self.config) {
+            return;
+        }
+
+        ui.separator();
+        ui.horizontal_wrapped(|ui| {
+            ui.label(self.tr("OpenClaw(Local HTTP) 探测", "OpenClaw(Local HTTP) Probe"));
+            let status = match &self.openclaw_probe_status {
+                OpenClawProbeStatus::Disabled => OpenClawProbeStatus::Idle,
+                other => other.clone(),
+            };
+            ui.colored_label(status.color(), status.text(self.ui_language));
+            if let Some(detail) = status.detail() {
+                ui.small(detail);
+            }
+        });
+
+        match effective_openclaw_base_url(&self.config) {
+            Ok(base_url) => ui.small(format!(
+                "{}: {}",
+                self.tr("当前探测地址", "Probe URL"),
+                base_url
+            )),
+            Err(err) => ui.small(format!("{}: {err}", self.tr("当前探测地址", "Probe URL"))),
+        };
+
+        ui.horizontal_wrapped(|ui| {
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                if ui.button(self.tr("探测 OpenClaw", "Probe OpenClaw")).clicked() {
+                    self.probe_openclaw_local_provider();
+                }
+            }
+            #[cfg(target_arch = "wasm32")]
+            {
+                ui.add_enabled(
+                    false,
+                    egui::Button::new(self.tr("探测 OpenClaw", "Probe OpenClaw")),
+                );
+                ui.small(self.tr(
+                    "Web 启动器暂不执行本地 TCP health-check，请使用 native launcher。",
+                    "Web launcher does not run local TCP health-check yet; use the native launcher.",
+                ));
+            }
+        });
+
+        if let OpenClawProbeStatus::Healthy(snapshot) = &self.openclaw_probe_status {
+            ui.small(format!(
+                "{}: {} / {} / {}",
+                self.tr("Provider", "Provider"),
+                snapshot.provider_id,
+                snapshot.name,
+                snapshot.version,
+            ));
+            ui.small(format!(
+                "{}: {} | {}: {}",
+                self.tr("协议", "Protocol"),
+                snapshot.protocol_version,
+                self.tr("队列深度", "Queue Depth"),
+                snapshot
+                    .queue_depth
+                    .map(|value| value.to_string())
+                    .unwrap_or_else(|| "n/a".to_string())
+            ));
+            ui.small(format!(
+                "{}: info={}ms health={}ms total={}ms",
+                self.tr("探测延迟", "Probe Latency"),
+                snapshot.info_latency_ms,
+                snapshot.health_latency_ms,
+                snapshot.total_latency_ms,
+            ));
+            if let Some(last_error) = snapshot.last_error.as_deref() {
+                if !last_error.trim().is_empty() {
+                    ui.small(format!(
+                        "{}: {}",
+                        self.tr("最近错误", "Last Error"),
+                        last_error
+                    ));
+                }
+            }
+        }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn probe_openclaw_local_provider(&mut self) {
+        self.openclaw_probe_status = OpenClawProbeStatus::Probing;
+        let base_url = match effective_openclaw_base_url(&self.config) {
+            Ok(value) => value,
+            Err(err) => {
+                self.openclaw_probe_status = OpenClawProbeStatus::InvalidConfig(err.clone());
+                self.append_log(format!("openclaw probe invalid config: {err}"));
+                return;
+            }
+        };
+        let timeout_ms = match parse_agent_provider_connect_timeout_ms(&self.config) {
+            Ok(value) => value,
+            Err(err) => {
+                self.openclaw_probe_status = OpenClawProbeStatus::InvalidConfig(err.clone());
+                self.append_log(format!("openclaw probe invalid timeout: {err}"));
+                return;
+            }
+        };
+        match probe_openclaw_local_http(
+            base_url.as_str(),
+            Some(self.config.openclaw_auth_token.as_str()),
+            timeout_ms,
+        ) {
+            Ok(snapshot) => {
+                let provider_id = snapshot.provider_id.clone();
+                let version = snapshot.version.clone();
+                self.openclaw_probe_status = OpenClawProbeStatus::Healthy(snapshot);
+                self.append_log(format!(
+                    "openclaw probe succeeded: provider_id={provider_id} version={version} base_url={base_url}"
+                ));
+            }
+            Err(OpenClawProbeError::InvalidConfig(detail)) => {
+                self.openclaw_probe_status = OpenClawProbeStatus::InvalidConfig(detail.clone());
+                self.append_log(format!("openclaw probe invalid config: {detail}"));
+            }
+            Err(OpenClawProbeError::Unauthorized(detail)) => {
+                self.openclaw_probe_status = OpenClawProbeStatus::Unauthorized(detail.clone());
+                self.append_log(format!("openclaw probe unauthorized: {base_url}"));
+            }
+            Err(OpenClawProbeError::Unreachable(detail)) => {
+                self.openclaw_probe_status = OpenClawProbeStatus::Unreachable(detail.clone());
+                self.append_log(format!("openclaw probe failed: {detail}"));
+            }
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn probe_openclaw_local_provider(&mut self) {
+        self.openclaw_probe_status = OpenClawProbeStatus::Unsupported(
+            "web launcher does not support native localhost TCP probe".to_string(),
+        );
     }
 
     fn render_config_field_by_id(

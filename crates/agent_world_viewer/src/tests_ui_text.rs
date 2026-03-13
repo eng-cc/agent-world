@@ -2,7 +2,8 @@ use super::*;
 use crate::i18n::{locale_or_default, UiLocale};
 use crate::ui_locale_text::{selection_line, status_line};
 use crate::ui_text::{
-    agent_activity_summary, events_summary, selection_details_summary, world_summary,
+    agent_activity_summary, events_summary, provider_debug_summary, selection_details_summary,
+    world_summary, ProviderDebugFilter,
 };
 
 pub(super) fn default_locale() -> UiLocale {
@@ -74,3 +75,11 @@ pub(super) fn build_selection_details_text(
         locale,
     )
 }
+
+pub(super) fn build_provider_debug_text(
+    state: &ViewerState,
+    filter: ProviderDebugFilter,
+) -> String {
+    provider_debug_summary(&state.decision_traces, filter)
+}
+

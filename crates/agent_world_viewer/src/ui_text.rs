@@ -1,9 +1,10 @@
 use crate::industry_graph_view_model::{IndustryGraphViewModel, IndustrySemanticZoomLevel};
 use agent_world::geometry::GeoPos;
 use agent_world::simulator::{
-    chunk_bounds, AgentDecisionTrace, Asset, AssetKind, ChunkCoord, ChunkState,
-    FragmentElementKind, FragmentResourceBudget, ModuleVisualAnchor, PowerEvent, PowerPlant,
-    ResourceKind, ResourceOwner, RunnerMetrics, WorldEvent, WorldEventKind, WorldSnapshot,
+    chunk_bounds, Action, AgentDecision, AgentDecisionTrace, Asset, AssetKind, ChunkCoord,
+    ChunkState, FragmentElementKind, FragmentResourceBudget, ModuleVisualAnchor, PowerEvent,
+    PowerPlant, ResourceKind, ResourceOwner, RunnerMetrics, WorldEvent, WorldEventKind,
+    WorldSnapshot,
 };
 
 use super::viewer_3d_config::ViewerPhysicalRenderConfig;
@@ -139,6 +140,98 @@ pub(super) fn events_summary(events: &[WorldEvent], focus_tick: Option<u64>) -> 
             prefix, event.id, event.time, event.kind
         ));
     }
+    lines.join("\n")
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub(super) enum ProviderDebugFilter {
+    #[default]
+    All,
+    OpenClawOnly,
+    ErrorsOnly,
+}
+
+impl ProviderDebugFilter {
+    pub(super) fn label(self) -> &'static str {
+        match self {
+            Self::All => "all",
+            Self::OpenClawOnly => "openclaw_only",
+            Self::ErrorsOnly => "errors_only",
+        }
+    }
+}
+
+pub(super) fn provider_debug_summary(
+    traces: &[AgentDecisionTrace],
+    filter: ProviderDebugFilter,
+) -> String {
+    let filtered: Vec<&AgentDecisionTrace> = traces
+        .iter()
+        .rev()
+        .filter(|trace| provider_trace_matches(filter, trace))
+        .take(4)
+        .collect();
+
+    let mut lines = Vec::new();
+    lines.push(format!("Provider Debug: filter={}", filter.label()));
+    lines.push(format!("Trace Count: {}", filtered.len()));
+
+    let Some(latest) = filtered.first().copied() else {
+        lines.push("(no matching decision trace yet)".to_string());
+        return lines.join("\n");
+    };
+
+    lines.push(format!(
+        "Latest: t{} provider={} decision={} latency_ms={}",
+        latest.time,
+        provider_label_for_trace(latest),
+        decision_summary(&latest.decision),
+        latest
+            .llm_diagnostics
+            .as_ref()
+            .and_then(|value| value.latency_ms)
+            .map(|value| value.to_string())
+            .unwrap_or_else(|| "n/a".to_string())
+    ));
+
+    if let Some(err) = latest
+        .llm_error
+        .as_deref()
+        .or_else(|| latest.parse_error.as_deref())
+    {
+        lines.push(format!("Last Error: {}", truncate_text(err, 160)));
+    }
+
+    let recent_latency = filtered
+        .iter()
+        .filter_map(|trace| {
+            trace
+                .llm_diagnostics
+                .as_ref()
+                .and_then(|value| value.latency_ms)
+                .map(|latency| format!("t{}={}ms", trace.time, latency))
+        })
+        .collect::<Vec<_>>();
+    lines.push(format!(
+        "Recent Latency: {}",
+        if recent_latency.is_empty() {
+            "n/a".to_string()
+        } else {
+            recent_latency.join(", ")
+        }
+    ));
+
+    lines.push("Recent Decisions:".to_string());
+    for trace in filtered {
+        lines.push(format!(
+            "- t{} {} | provider={} | trace={}",
+            trace.time,
+            decision_summary(&trace.decision),
+            provider_label_for_trace(trace),
+            recent_trace_summary(trace)
+        ));
+    }
+
     lines.join("\n")
 }
 
@@ -832,6 +925,82 @@ fn module_visual_recent_events(
         })
         .take(limit)
         .collect()
+}
+
+fn provider_trace_matches(filter: ProviderDebugFilter, trace: &AgentDecisionTrace) -> bool {
+    match filter {
+        ProviderDebugFilter::All => true,
+        ProviderDebugFilter::OpenClawOnly => is_openclaw_trace(trace),
+        ProviderDebugFilter::ErrorsOnly => {
+            trace.llm_error.is_some() || trace.parse_error.is_some()
+        }
+    }
+}
+
+fn is_openclaw_trace(trace: &AgentDecisionTrace) -> bool {
+    provider_label_for_trace(trace)
+        .to_ascii_lowercase()
+        .contains("openclaw")
+}
+
+fn provider_label_for_trace(trace: &AgentDecisionTrace) -> String {
+    trace
+        .llm_diagnostics
+        .as_ref()
+        .and_then(|value| value.model.as_deref())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or("unknown")
+        .to_string()
+}
+
+fn decision_summary(decision: &AgentDecision) -> String {
+    match decision {
+        AgentDecision::Wait => "wait".to_string(),
+        AgentDecision::WaitTicks(ticks) => format!("wait_ticks {ticks}"),
+        AgentDecision::Act(action) => match action {
+            Action::MoveAgent { to, .. } => format!("move_agent -> {to}"),
+            Action::SpeakToNearby {
+                message,
+                target_agent_id,
+                ..
+            } => format!(
+                "speak_to_nearby target={} message={}",
+                target_agent_id.as_deref().unwrap_or("nearby"),
+                truncate_text(message, 48)
+            ),
+            Action::InspectTarget {
+                target_id,
+                target_kind,
+                ..
+            } => format!("inspect_target {target_kind} {target_id}"),
+            Action::SimpleInteract {
+                target_id,
+                target_kind,
+                interaction,
+                ..
+            } => format!(
+                "simple_interact {target_kind} {target_id} {interaction}"
+            ),
+            other => format!("{:?}", other),
+        },
+    }
+}
+
+fn recent_trace_summary(trace: &AgentDecisionTrace) -> String {
+    if let Some(err) = trace.llm_error.as_deref().or_else(|| trace.parse_error.as_deref()) {
+        return format!("error:{}", truncate_text(err, 80));
+    }
+    if let Some(output) = trace.llm_output.as_deref() {
+        return truncate_text(output, 96);
+    }
+    if let Some(input) = trace.llm_input.as_deref() {
+        return truncate_text(input, 96);
+    }
+    if !trace.llm_step_trace.is_empty() {
+        return format!("steps={}", trace.llm_step_trace.len());
+    }
+    "(no trace payload)".to_string()
 }
 
 fn agent_recent_traces(agent_id: &str, traces: &[AgentDecisionTrace], limit: usize) -> Vec<String> {

@@ -1,0 +1,273 @@
+use std::error::Error;
+use std::fmt;
+use std::time::Duration;
+
+use reqwest::blocking::{Client, RequestBuilder};
+use reqwest::{Method, StatusCode, Url};
+use serde::de::DeserializeOwned;
+use serde::{Deserialize, Serialize};
+
+use super::{DecisionRequest, DecisionResponse, FeedbackEnvelope};
+
+const DEFAULT_OPENCLAW_LOCAL_HTTP_PROVIDER_ID: &str = "openclaw_local_http";
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct OpenClawProviderInfo {
+    pub provider_id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub version: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub protocol_version: Option<String>,
+    #[serde(default)]
+    pub capabilities: Vec<String>,
+    #[serde(default)]
+    pub supported_action_sets: Vec<String>,
+}
+
+impl OpenClawProviderInfo {
+    pub fn resolved_provider_id(&self) -> &str {
+        if self.provider_id.trim().is_empty() {
+            DEFAULT_OPENCLAW_LOCAL_HTTP_PROVIDER_ID
+        } else {
+            self.provider_id.as_str()
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct OpenClawProviderHealth {
+    pub ok: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub status: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub uptime_ms: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_error: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub queue_depth: Option<u64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct OpenClawFeedbackAck {
+    pub ok: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error_code: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+}
+
+#[derive(Debug)]
+pub enum OpenClawLocalHttpError {
+    InvalidBaseUrl(String),
+    RequestFailed {
+        path: String,
+        detail: String,
+    },
+    Unauthorized {
+        path: String,
+        detail: String,
+    },
+    UnexpectedStatus {
+        path: String,
+        status_code: u16,
+        body: String,
+    },
+    DecodeFailed {
+        path: String,
+        detail: String,
+    },
+}
+
+impl fmt::Display for OpenClawLocalHttpError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::InvalidBaseUrl(detail) => write!(f, "invalid openclaw base url: {detail}"),
+            Self::RequestFailed { path, detail } => {
+                write!(f, "openclaw request {path} failed: {detail}")
+            }
+            Self::Unauthorized { path, detail } => {
+                write!(f, "openclaw request {path} unauthorized: {detail}")
+            }
+            Self::UnexpectedStatus {
+                path,
+                status_code,
+                body,
+            } => write!(
+                f,
+                "openclaw request {path} returned HTTP {status_code}: {body}"
+            ),
+            Self::DecodeFailed { path, detail } => {
+                write!(f, "decode openclaw response {path} failed: {detail}")
+            }
+        }
+    }
+}
+
+impl Error for OpenClawLocalHttpError {}
+
+#[derive(Debug)]
+pub struct OpenClawLocalHttpClient {
+    base_url: Url,
+    auth_token: Option<String>,
+    http: Client,
+}
+
+impl OpenClawLocalHttpClient {
+    pub fn new(
+        base_url: &str,
+        auth_token: Option<&str>,
+        timeout_ms: u64,
+    ) -> Result<Self, OpenClawLocalHttpError> {
+        let base_url = validate_openclaw_local_http_base_url(base_url)?;
+        let http = Client::builder()
+            .timeout(Duration::from_millis(timeout_ms.max(1)))
+            .build()
+            .map_err(|err| OpenClawLocalHttpError::RequestFailed {
+                path: "<client>".to_string(),
+                detail: err.to_string(),
+            })?;
+        Ok(Self {
+            base_url,
+            auth_token: auth_token
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+                .map(ToOwned::to_owned),
+            http,
+        })
+    }
+
+    pub fn provider_info(&self) -> Result<OpenClawProviderInfo, OpenClawLocalHttpError> {
+        self.get_json("/v1/provider/info")
+    }
+
+    pub fn provider_health(&self) -> Result<OpenClawProviderHealth, OpenClawLocalHttpError> {
+        self.get_json("/v1/provider/health")
+    }
+
+    pub fn request_decision(
+        &self,
+        request: &DecisionRequest,
+    ) -> Result<DecisionResponse, OpenClawLocalHttpError> {
+        self.post_json("/v1/world-simulator/decision", request)
+    }
+
+    pub fn submit_feedback(
+        &self,
+        feedback: &FeedbackEnvelope,
+    ) -> Result<OpenClawFeedbackAck, OpenClawLocalHttpError> {
+        self.post_json("/v1/world-simulator/feedback", feedback)
+    }
+
+    fn get_json<Response>(&self, path: &str) -> Result<Response, OpenClawLocalHttpError>
+    where
+        Response: DeserializeOwned,
+    {
+        let request = self.build_request(Method::GET, path)?;
+        self.send_json(request, path)
+    }
+
+    fn post_json<Request, Response>(
+        &self,
+        path: &str,
+        payload: &Request,
+    ) -> Result<Response, OpenClawLocalHttpError>
+    where
+        Request: Serialize + ?Sized,
+        Response: DeserializeOwned,
+    {
+        let request = self.build_request(Method::POST, path)?.json(payload);
+        self.send_json(request, path)
+    }
+
+    fn build_request(
+        &self,
+        method: Method,
+        path: &str,
+    ) -> Result<RequestBuilder, OpenClawLocalHttpError> {
+        let url = self
+            .base_url
+            .join(path.trim_start_matches('/'))
+            .map_err(|err| OpenClawLocalHttpError::InvalidBaseUrl(err.to_string()))?;
+        let mut request = self.http.request(method, url);
+        if let Some(token) = &self.auth_token {
+            request = request.bearer_auth(token);
+        }
+        Ok(request)
+    }
+
+    fn send_json<Response>(
+        &self,
+        request: RequestBuilder,
+        path: &str,
+    ) -> Result<Response, OpenClawLocalHttpError>
+    where
+        Response: DeserializeOwned,
+    {
+        let response = request
+            .send()
+            .map_err(|err| OpenClawLocalHttpError::RequestFailed {
+                path: path.to_string(),
+                detail: err.to_string(),
+            })?;
+        let status = response.status();
+        let body = response
+            .bytes()
+            .map_err(|err| OpenClawLocalHttpError::RequestFailed {
+                path: path.to_string(),
+                detail: err.to_string(),
+            })?;
+        if status == StatusCode::UNAUTHORIZED {
+            let detail = String::from_utf8_lossy(body.as_ref()).trim().to_string();
+            return Err(OpenClawLocalHttpError::Unauthorized {
+                path: path.to_string(),
+                detail: if detail.is_empty() {
+                    "HTTP 401".to_string()
+                } else {
+                    detail
+                },
+            });
+        }
+        if !status.is_success() {
+            return Err(OpenClawLocalHttpError::UnexpectedStatus {
+                path: path.to_string(),
+                status_code: status.as_u16(),
+                body: String::from_utf8_lossy(body.as_ref()).trim().to_string(),
+            });
+        }
+        serde_json::from_slice(body.as_ref()).map_err(|err| OpenClawLocalHttpError::DecodeFailed {
+            path: path.to_string(),
+            detail: err.to_string(),
+        })
+    }
+}
+
+pub fn validate_openclaw_local_http_base_url(
+    base_url: &str,
+) -> Result<Url, OpenClawLocalHttpError> {
+    let trimmed = base_url.trim();
+    if trimmed.is_empty() {
+        return Err(OpenClawLocalHttpError::InvalidBaseUrl(
+            "base url cannot be empty".to_string(),
+        ));
+    }
+    let url = Url::parse(trimmed)
+        .map_err(|err| OpenClawLocalHttpError::InvalidBaseUrl(err.to_string()))?;
+    if url.scheme() != "http" {
+        return Err(OpenClawLocalHttpError::InvalidBaseUrl(
+            "scheme must be http for localhost provider".to_string(),
+        ));
+    }
+    let Some(host) = url.host_str() else {
+        return Err(OpenClawLocalHttpError::InvalidBaseUrl(
+            "host is required".to_string(),
+        ));
+    };
+    if !matches!(host, "127.0.0.1" | "localhost" | "::1") {
+        return Err(OpenClawLocalHttpError::InvalidBaseUrl(
+            "host must be loopback (127.0.0.1 / localhost / ::1)".to_string(),
+        ));
+    }
+    Ok(url)
+}

@@ -344,6 +344,187 @@ impl WorldKernel {
                     electricity_cost,
                 }
             }
+            Action::SpeakToNearby {
+                agent_id,
+                message,
+                target_agent_id,
+            } => {
+                let message = message.trim().to_string();
+                if message.is_empty() {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::RuleDenied {
+                            notes: vec!["speak_to_nearby requires non-empty message".to_string()],
+                        },
+                    };
+                }
+                let location_id = {
+                    let Some(agent) = self.model.agents.get(&agent_id) else {
+                        return WorldEventKind::ActionRejected {
+                            reason: RejectReason::AgentNotFound { agent_id },
+                        };
+                    };
+                    if agent.power.is_shutdown() {
+                        return WorldEventKind::ActionRejected {
+                            reason: RejectReason::AgentShutdown {
+                                agent_id: agent.id.clone(),
+                            },
+                        };
+                    }
+                    agent.location_id.clone()
+                };
+                if let Some(target_agent_id) = target_agent_id.as_ref() {
+                    let Some(target_agent) = self.model.agents.get(target_agent_id) else {
+                        return WorldEventKind::ActionRejected {
+                            reason: RejectReason::AgentNotFound {
+                                agent_id: target_agent_id.clone(),
+                            },
+                        };
+                    };
+                    if target_agent.location_id != location_id {
+                        return WorldEventKind::ActionRejected {
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![format!(
+                                    "target agent {} is not co-located with speaker {}",
+                                    target_agent_id, agent_id
+                                )],
+                            },
+                        };
+                    }
+                }
+                WorldEventKind::AgentSpoke {
+                    agent_id,
+                    location_id,
+                    message,
+                    target_agent_id,
+                }
+            }
+            Action::InspectTarget {
+                agent_id,
+                target_kind,
+                target_id,
+            } => {
+                let target_kind = target_kind.trim().to_string();
+                let target_id = target_id.trim().to_string();
+                if target_kind.is_empty() || target_id.is_empty() {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![
+                                "inspect_target requires non-empty target_kind and target_id"
+                                    .to_string(),
+                            ],
+                        },
+                    };
+                }
+                let Some(agent) = self.model.agents.get(&agent_id) else {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::AgentNotFound { agent_id },
+                    };
+                };
+                if agent.power.is_shutdown() {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::AgentShutdown {
+                            agent_id: agent.id.clone(),
+                        },
+                    };
+                }
+                let target_exists = match target_kind.as_str() {
+                    "agent" => self.model.agents.contains_key(&target_id),
+                    "location" => self.model.locations.contains_key(&target_id),
+                    "factory" => self.model.factories.contains_key(&target_id),
+                    "power_plant" => self.model.power_plants.contains_key(&target_id),
+                    "module_visual_entity" => {
+                        self.model.module_visual_entities.contains_key(&target_id)
+                    }
+                    _ => {
+                        return WorldEventKind::ActionRejected {
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![format!(
+                                    "inspect_target does not support target_kind={target_kind}"
+                                )],
+                            },
+                        };
+                    }
+                };
+                if !target_exists {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "inspect_target target not found: kind={target_kind} id={target_id}"
+                            )],
+                        },
+                    };
+                }
+                WorldEventKind::TargetInspected {
+                    agent_id,
+                    target_kind,
+                    target_id,
+                }
+            }
+            Action::SimpleInteract {
+                agent_id,
+                target_kind,
+                target_id,
+                interaction,
+            } => {
+                let target_kind = target_kind.trim().to_string();
+                let target_id = target_id.trim().to_string();
+                let interaction = interaction.trim().to_string();
+                if target_kind.is_empty() || target_id.is_empty() || interaction.is_empty() {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![
+                                "simple_interact requires non-empty target_kind, target_id, and interaction"
+                                    .to_string(),
+                            ],
+                        },
+                    };
+                }
+                let Some(agent) = self.model.agents.get(&agent_id) else {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::AgentNotFound { agent_id },
+                    };
+                };
+                if agent.power.is_shutdown() {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::AgentShutdown {
+                            agent_id: agent.id.clone(),
+                        },
+                    };
+                }
+                let target_exists = match target_kind.as_str() {
+                    "agent" => self.model.agents.contains_key(&target_id),
+                    "location" => self.model.locations.contains_key(&target_id),
+                    "factory" => self.model.factories.contains_key(&target_id),
+                    "power_plant" => self.model.power_plants.contains_key(&target_id),
+                    "module_visual_entity" => {
+                        self.model.module_visual_entities.contains_key(&target_id)
+                    }
+                    _ => {
+                        return WorldEventKind::ActionRejected {
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![format!(
+                                    "simple_interact does not support target_kind={target_kind}"
+                                )],
+                            },
+                        };
+                    }
+                };
+                if !target_exists {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "simple_interact target not found: kind={target_kind} id={target_id}"
+                            )],
+                        },
+                    };
+                }
+                WorldEventKind::SimpleInteractionPerformed {
+                    agent_id,
+                    target_kind,
+                    target_id,
+                    interaction,
+                }
+            }
             Action::HarvestRadiation {
                 agent_id,
                 max_amount,
