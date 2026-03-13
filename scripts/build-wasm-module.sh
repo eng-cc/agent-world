@@ -76,7 +76,7 @@ enforce_deterministic_build_inputs() {
   require_env_value_or_unset "RUSTUP_TOOLCHAIN" "$CANONICAL_WASM_TOOLCHAIN"
 }
 
-prepare_nightly_build_std() {
+prepare_nightly_build_std_impl() {
   if ! command -v rustup >/dev/null 2>&1; then
     echo "error: AGENT_WORLD_WASM_BUILD_STD=1 requires rustup in PATH" >&2
     exit 1
@@ -96,6 +96,44 @@ prepare_nightly_build_std() {
   export AGENT_WORLD_WASM_BUILD_STD=1
   export AGENT_WORLD_WASM_BUILD_STD_COMPONENTS="$WASM_BUILD_STD_COMPONENTS"
   export AGENT_WORLD_WASM_BUILD_STD_FEATURES="$WASM_BUILD_STD_FEATURES"
+}
+
+prepare_nightly_build_std() {
+  local rustup_home_dir="${RUSTUP_HOME:-}"
+  if [[ -z "$rustup_home_dir" && -n "${HOME:-}" ]]; then
+    rustup_home_dir="$HOME/.rustup"
+  fi
+  if [[ -z "$rustup_home_dir" ]]; then
+    rustup_home_dir="/tmp"
+  fi
+  mkdir -p "$rustup_home_dir"
+  local lock_file="$rustup_home_dir/.agent-world-wasm-rustup.lock"
+
+  if command -v flock >/dev/null 2>&1; then
+    exec 9>"$lock_file"
+    flock 9
+    local status=0
+    prepare_nightly_build_std_impl || status=$?
+    flock -u 9 || true
+    exec 9>&-
+    return "$status"
+  fi
+
+  local lock_dir="${lock_file}.d"
+  local waited_s=0
+  while ! mkdir "$lock_dir" 2>/dev/null; do
+    sleep 1
+    waited_s=$((waited_s + 1))
+    if (( waited_s >= 180 )); then
+      echo "error: timed out waiting for rustup lock: $lock_file" >&2
+      return 1
+    fi
+  done
+
+  local status=0
+  prepare_nightly_build_std_impl || status=$?
+  rmdir "$lock_dir" >/dev/null 2>&1 || true
+  return "$status"
 }
 
 append_rustflag_once() {
