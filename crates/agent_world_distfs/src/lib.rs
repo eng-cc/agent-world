@@ -784,18 +784,27 @@ struct BlobEntry {
     modified: SystemTime,
 }
 
+fn unique_atomic_temp_path(path: &Path) -> PathBuf {
+    let pid = std::process::id();
+    let nanos = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_nanos();
+    path.with_extension(format!("tmp-{pid}-{nanos}"))
+}
+
 fn write_bytes_atomic(path: &Path, bytes: &[u8]) -> Result<(), WorldError> {
-    let tmp = path.with_extension("tmp");
+    let tmp = unique_atomic_temp_path(path);
     fs::write(&tmp, bytes)?;
-    fs::rename(tmp, path)?;
+    fs::rename(&tmp, path)?;
     Ok(())
 }
 
 fn write_json_atomic<T: Serialize>(value: &T, path: &Path) -> Result<(), WorldError> {
-    let tmp = path.with_extension("tmp");
+    let tmp = unique_atomic_temp_path(path);
     let bytes = serde_json::to_vec_pretty(value)?;
     fs::write(&tmp, bytes)?;
-    fs::rename(tmp, path)?;
+    fs::rename(&tmp, path)?;
     Ok(())
 }
 
