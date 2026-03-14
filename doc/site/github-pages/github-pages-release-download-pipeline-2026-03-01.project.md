@@ -166,14 +166,20 @@
 - [x] 本地执行 `bash -n scripts/build-game-launcher-bundle.sh`，并复核 helper 调用顺序，确认 `ensure_rust_target_installed` 位于 `trunk build` 之前。
 - [ ] 推送修复并打新 tag，继续观察 `package-native` 三平台是否全部完成打包，并验证 `publish-release` 是否成功发布 release。
 
+### T3W Bundle 脚本 wasm target 判定去脆弱化（2026-03-14）
+- [x] 复盘 `Release Packages` run `23084980185`，确认 `package-native` 的 `macos-14` 已在 `Build launcher bundle` 中执行了 `rustup target add wasm32-unknown-unknown --toolchain 1.92.0-aarch64-apple-darwin`，并得到 `component ... is up to date`，但脚本随后仍因 `rustup target list --installed` 判定失败而退出；说明阻断点已收敛为 bundle 脚本对 rustup 输出格式的脆弱依赖，而非 target 真正缺失。
+- [x] 调整 `scripts/build-game-launcher-bundle.sh`：保留 active toolchain 解析，但将 `ensure_rust_target_installed` 改为直接执行幂等的 `rustup target add`，不再二次解析 `target list --installed` 输出，避免 macOS runner/toolchain 组合下的假阴性。
+- [x] 本地执行 `bash -n scripts/build-game-launcher-bundle.sh`，并复核 `ensure_rust_target_installed` 仍位于 `trunk build` 之前。
+- [ ] 推送修复并打新 tag，继续观察 `package-native` 三平台是否全部完成打包，并验证 `publish-release` 是否成功发布 release。
+
 ## 依赖
 - 打包基础脚本：`scripts/build-game-launcher-bundle.sh`
 - 站点发布流程：`.github/workflows/pages.yml`
 - 站点入口文件：`site/index.html`、`site/en/index.html`
 
 ## 状态
-- 当前阶段：进行中（T0A/T0/T1/T2/T3/T3A/T3B/T3C/T3D/T3E/T3F/T3G/T3H/T3I/T3J/T3K/T3L/T3M/T3N/T3O/T3P/T3Q/T3R/T3S/T3T/T3U/T3V 已完成；下一轮验证 `package-native` 三平台与 `publish-release` 是否稳定放行）
-- 最近更新：2026-03-14 已完成 `T3V` bundle 脚本 wasm 目标自愈修复：workflow 已补齐 `trunk` 后，剩余阻断进一步收敛为 bundle 脚本运行时缺失 `wasm32-unknown-unknown`，现已在脚本内自动自检并补装。
+- 当前阶段：进行中（T0A/T0/T1/T2/T3/T3A/T3B/T3C/T3D/T3E/T3F/T3G/T3H/T3I/T3J/T3K/T3L/T3M/T3N/T3O/T3P/T3Q/T3R/T3S/T3T/T3U/T3V/T3W 已完成；下一轮验证 `package-native` 三平台与 `publish-release` 是否稳定放行）
+- 最近更新：2026-03-14 已完成 `T3W` bundle 脚本 wasm target 判定去脆弱化：macOS runner 上 `rustup target add` 已成功但 `target list --installed` 仍会误报缺失，现已改为直接使用幂等的 `rustup target add` 收口。
 - 下一步：push `main` 并打新 release tag，继续观察 `package-native` 三平台是否全部通过，随后再看 `publish-release` 是否成功发布 release。
 
 ## 迁移记录（2026-03-03）

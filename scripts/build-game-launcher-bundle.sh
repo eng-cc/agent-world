@@ -67,27 +67,11 @@ active_rust_toolchain() {
 ensure_rust_target_installed() {
   local target="$1"
   local toolchain="${2:-}"
-  local list_args=(target list --installed)
   local add_args=(target add "$target")
   if [[ -n "$toolchain" ]]; then
-    list_args+=(--toolchain "$toolchain")
     add_args+=(--toolchain "$toolchain")
   fi
-  if rustup "${list_args[@]}" | rg -x "$target" >/dev/null 2>&1; then
-    return 0
-  fi
   run rustup "${add_args[@]}"
-  if [[ "$DRY_RUN" == "1" ]]; then
-    return 0
-  fi
-  if ! rustup "${list_args[@]}" | rg -x "$target" >/dev/null 2>&1; then
-    if [[ -n "$toolchain" ]]; then
-      echo "error: rust target $target is not installed for toolchain $toolchain" >&2
-    else
-      echo "error: rust target $target is not installed" >&2
-    fi
-    exit 1
-  fi
 }
 
 validate_web_dist_source() {
