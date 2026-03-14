@@ -116,13 +116,21 @@ state_camera_radius() {
   json_get "$1" cameraRadius
 }
 
+normalize_eval_token() {
+  local raw=${1:-}
+  raw=$(printf '%s' "$raw" | tr -d '\r\n')
+  raw=${raw#\"}
+  raw=${raw%\"}
+  printf '%s' "$raw"
+}
+
 wait_for_api() {
   local timeout_ms=${1:-20000}
   local deadline=$((SECONDS * 1000 + timeout_ms))
-  local ready='false'
+  local ready='missing'
   while (( SECONDS * 1000 < deadline )); do
-    ready=$(ab_eval "$session" 'typeof window.__AW_TEST__ === "object"')
-    if [[ "$ready" == "true" ]]; then
+    ready=$(normalize_eval_token "$(ab_eval "$session" 'typeof window.__AW_TEST__ === "object" ? "ready" : "missing"')")
+    if [[ "$ready" == "ready" || "$ready" == "true" ]]; then
       return 0
     fi
     sleep_ms 200

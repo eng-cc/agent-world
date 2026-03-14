@@ -130,14 +130,20 @@
 - [x] 本地回归 `bash -n scripts/viewer-release-qa-loop.sh`，确认等待窗口与失败诊断输出语法正确。
 - [ ] 推送修复并打新 tag，继续观察 `release-gate-web` 是否终于越过 Web Test API 初始化阶段。
 
+### T3Q Release gate web test API readiness 兼容修复（2026-03-14）
+- [x] 复盘 `Release Packages` run `23081035902` 与既往 `2026-03-10` Web QA 记录，确认 `wait_for_api` 不是单纯超时，而是会把 `agent-browser eval` 返回的 `"ready"` 误判为未就绪；当前 CI 日志中页面已打开、launcher stack 已 ready、console/errors 为空，与这一旧签名一致。
+- [x] 调整 `scripts/viewer-release-qa-loop.sh`：新增 `normalize_eval_token`，将 `wait_for_api` 改为评估 `typeof window.__AW_TEST__ === "object" ? "ready" : "missing"`，并兼容 `ready/"ready"/true` 三种返回形态，避免被 agent-browser 的字符串化输出误伤。
+- [x] 本地回归 `bash -n scripts/viewer-release-qa-loop.sh`，确认 readiness 兼容逻辑与现有超时/console 采集分支可同时生效。
+- [ ] 推送修复并打新 tag，继续观察 `release-gate-web` 是否终于越过 Web Test API readiness 检查并进入语义交互断言。
+
 ## 依赖
 - 打包基础脚本：`scripts/build-game-launcher-bundle.sh`
 - 站点发布流程：`.github/workflows/pages.yml`
 - 站点入口文件：`site/index.html`、`site/en/index.html`
 
 ## 状态
-- 当前阶段：进行中（T0A/T0/T1/T2/T3/T3A/T3B/T3C/T3D/T3E/T3F/T3G/T3H/T3I/T3J/T3K/T3L/T3M/T3N/T3O/T3P 已完成；下一轮验证并行 `release_gate_*` 与 aggregate gate 是否稳定放行）
-- 最近更新：2026-03-14 已完成 `T3P` Web Test API 冷启动窗口放宽：`release-gate-web` 已能拉起 launcher，但 CI 上 release Web 初始化慢于原 20s 窗口，现已放宽到 60s 并补抓 console / errors 线索。
+- 当前阶段：进行中（T0A/T0/T1/T2/T3/T3A/T3B/T3C/T3D/T3E/T3F/T3G/T3H/T3I/T3J/T3K/T3L/T3M/T3N/T3O/T3P/T3Q 已完成；下一轮验证并行 `release_gate_*` 与 aggregate gate 是否稳定放行）
+- 最近更新：2026-03-14 已完成 `T3Q` Web Test API readiness 兼容修复：`release-gate-web` 的失败进一步定位到 agent-browser 将 `ready` 字符串化后被 `wait_for_api` 误判，现已做兼容归一化。
 - 下一步：push `main` 并打新 release tag，继续观察 `release_gate_runtime/web/soak` 是否全部通过并进入 aggregate `release_gate`，随后再看 `build-web-dist/package-native/publish-release`。
 
 ## 迁移记录（2026-03-03）
