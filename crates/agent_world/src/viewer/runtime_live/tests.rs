@@ -13,13 +13,16 @@ fn test_signer(seed: u8) -> (String, String) {
     )
 }
 
-fn set_test_llm_env() {
+fn lock_test_llm_env() -> std::sync::MutexGuard<'static, ()> {
+    let guard = runtime_openclaw_env_lock().lock().expect("env lock");
+    clear_runtime_openclaw_env();
     std::env::set_var(crate::simulator::ENV_LLM_MODEL, "gpt-4o-mini");
     std::env::set_var(
         crate::simulator::ENV_LLM_BASE_URL,
         "https://api.openai.com/v1",
     );
     std::env::set_var(crate::simulator::ENV_LLM_API_KEY, "test-api-key");
+    guard
 }
 
 fn clear_runtime_openclaw_env() {
@@ -535,7 +538,7 @@ fn runtime_agent_chat_openclaw_mode_reports_unsupported() {
 
 #[test]
 fn runtime_agent_chat_replay_returns_idempotent_ack() {
-    set_test_llm_env();
+    let _guard = lock_test_llm_env();
     let mut server = ViewerRuntimeLiveServer::new(
         ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal)
             .with_decision_mode(ViewerLiveDecisionMode::Llm),
@@ -594,7 +597,7 @@ fn runtime_agent_chat_replay_returns_idempotent_ack() {
 
 #[test]
 fn runtime_agent_chat_rejects_intent_seq_conflict_on_payload_change() {
-    set_test_llm_env();
+    let _guard = lock_test_llm_env();
     let mut server = ViewerRuntimeLiveServer::new(
         ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal)
             .with_decision_mode(ViewerLiveDecisionMode::Llm),
@@ -1055,7 +1058,7 @@ fn runtime_authoritative_recovery_reconnect_detects_reorg_epoch_mismatch() {
 
 #[test]
 fn runtime_authoritative_recovery_rotate_and_revoke_session_enforced_for_agent_chat() {
-    set_test_llm_env();
+    let _guard = lock_test_llm_env();
     let mut server = ViewerRuntimeLiveServer::new(
         ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal)
             .with_decision_mode(ViewerLiveDecisionMode::Llm),
