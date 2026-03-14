@@ -259,6 +259,7 @@ jobs:
         run: |
           rustup toolchain install "${RUST_TOOLCHAIN}" --profile default
           rustup default "${RUST_TOOLCHAIN}"
+          rustup target add wasm32-unknown-unknown --toolchain "${RUST_TOOLCHAIN}"
           if [[ "${{ matrix.target_triple }}" != "native" ]]; then
             rustup target add "${{ matrix.target_triple }}" --toolchain "${RUST_TOOLCHAIN}"
           fi
@@ -280,8 +281,11 @@ jobs:
             libudev-dev
       - uses: Swatinem/rust-cache@v2
         with:
-          shared-key: release-packages-package-native-${{ runner.os }}-${{ matrix.target_triple }}-v1
+          shared-key: release-packages-package-native-${{ runner.os }}-${{ matrix.target_triple }}-v2
           cache-on-failure: true
+      - name: Install trunk
+        shell: bash
+        run: env -u RUSTC_WRAPPER cargo install trunk --locked
       - name: Download web dist artifact
         uses: actions/download-artifact@v5
         with:

@@ -154,15 +154,21 @@
 - [x] 本地定向回归 `viewer::runtime_live::tests::runtime_agent_chat_replay_returns_idempotent_ack`、`viewer::runtime_live::tests::runtime_agent_chat_rejects_intent_seq_conflict_on_payload_change`、`viewer::runtime_live::tests::runtime_authoritative_recovery_rotate_and_revoke_session_enforced_for_agent_chat`，均已通过。
 - [ ] 推送修复并打新 tag，继续观察 `release-gate-runtime` 是否绿，并让 aggregate `release_gate` 真正放行到打包阶段。
 
+### T3U Package-native 前端工具链自给自足（2026-03-14）
+- [x] 复盘 `Release Packages` run `23082925680`，确认 aggregate `release-gate` 首次放行后，`package-native (macos-14, macos-x64, agent-world-macos-x64.tar.gz, x86_64-apple-darwin)` 在 `Build launcher bundle` 失败；失败签名为 `error: required command not found: trunk`。
+- [x] 更新 `.github/workflows/release-packages.yml`：在 `package-native` 的工具链安装步骤中显式追加 `rustup target add wasm32-unknown-unknown`，并在缓存后新增 `Install trunk`，让 `scripts/build-game-launcher-bundle.sh` 为 `web-launcher/` 运行 `trunk build` 时不再依赖其他 job 的预装环境。
+- [x] 本地校验 workflow 关键片段，确认 `Install trunk` 位于 `Build launcher bundle` 之前，且 `shared-key` 已滚动到 `v2` 以避免复用旧缓存语义。
+- [ ] 推送修复并打新 tag，继续观察 `package-native` 三平台是否全部产出资产，并验证后续 `publish-release` 是否成功发布 release。
+
 ## 依赖
 - 打包基础脚本：`scripts/build-game-launcher-bundle.sh`
 - 站点发布流程：`.github/workflows/pages.yml`
 - 站点入口文件：`site/index.html`、`site/en/index.html`
 
 ## 状态
-- 当前阶段：进行中（T0A/T0/T1/T2/T3/T3A/T3B/T3C/T3D/T3E/T3F/T3G/T3H/T3I/T3J/T3K/T3L/T3M/T3N/T3O/T3P/T3Q/T3R/T3S/T3T 已完成；下一轮验证并行 `release_gate_*` 与 aggregate gate 是否稳定放行）
-- 最近更新：2026-03-14 已完成 `T3T` runtime agent chat env 串味修复：`release-gate-runtime` 的唯一阻断已定位为 OpenClaw env 泄漏到 LLM chat 测试，现统一纳入同一 env 锁。
-- 下一步：push `main` 并打新 release tag，继续观察 `release_gate_runtime/web/soak` 是否全部通过并进入 aggregate `release_gate`，随后再看 `build-web-dist/package-native/publish-release`。
+- 当前阶段：进行中（T0A/T0/T1/T2/T3/T3A/T3B/T3C/T3D/T3E/T3F/T3G/T3H/T3I/T3J/T3K/T3L/T3M/T3N/T3O/T3P/T3Q/T3R/T3S/T3T/T3U 已完成；下一轮验证 `package-native` 三平台与 `publish-release` 是否稳定放行）
+- 最近更新：2026-03-14 已完成 `T3U` package-native 前端工具链自给自足修复：`package-native` 的真实阻断已定位为 trunk / wasm 目标缺失，现已把 `trunk + wasm32-unknown-unknown` 显式收回各平台打包 job。
+- 下一步：push `main` 并打新 release tag，继续观察 `package-native` 三平台是否全部通过，随后再看 `publish-release` 是否成功发布 release。
 
 ## 迁移记录（2026-03-03）
 - 已按 `TASK-ENGINEERING-014-D1 (PRD-ENGINEERING-006)` 从 legacy 命名迁移为 `.prd.md/.project.md`。
