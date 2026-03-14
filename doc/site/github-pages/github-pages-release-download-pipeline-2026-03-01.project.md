@@ -160,14 +160,20 @@
 - [x] 本地校验 workflow 关键片段，确认 `Install trunk` 位于 `Build launcher bundle` 之前，且 `shared-key` 已滚动到 `v2` 以避免复用旧缓存语义。
 - [ ] 推送修复并打新 tag，继续观察 `package-native` 三平台是否全部产出资产，并验证后续 `publish-release` 是否成功发布 release。
 
+### T3V Bundle 脚本 wasm 目标自愈（2026-03-14）
+- [x] 复盘 `Release Packages` run `23083927815`，确认 `package-native` 已越过 `Install trunk`，但 `macos-14` 仍在 `Build launcher bundle` 内报 `error: rust target wasm32-unknown-unknown is not installed`；说明仅在 workflow 层执行 `rustup target add` 仍不足以覆盖 bundle 脚本实际运行时的 toolchain 解析。
+- [x] 调整 `scripts/build-game-launcher-bundle.sh`：新增 active toolchain 解析与 `ensure_rust_target_installed`，在 `web-launcher/` 的 `trunk build` 前自动自检并补装缺失的 `wasm32-unknown-unknown`，把 wasm 前端目标依赖收回脚本内部。
+- [x] 本地执行 `bash -n scripts/build-game-launcher-bundle.sh`，并复核 helper 调用顺序，确认 `ensure_rust_target_installed` 位于 `trunk build` 之前。
+- [ ] 推送修复并打新 tag，继续观察 `package-native` 三平台是否全部完成打包，并验证 `publish-release` 是否成功发布 release。
+
 ## 依赖
 - 打包基础脚本：`scripts/build-game-launcher-bundle.sh`
 - 站点发布流程：`.github/workflows/pages.yml`
 - 站点入口文件：`site/index.html`、`site/en/index.html`
 
 ## 状态
-- 当前阶段：进行中（T0A/T0/T1/T2/T3/T3A/T3B/T3C/T3D/T3E/T3F/T3G/T3H/T3I/T3J/T3K/T3L/T3M/T3N/T3O/T3P/T3Q/T3R/T3S/T3T/T3U 已完成；下一轮验证 `package-native` 三平台与 `publish-release` 是否稳定放行）
-- 最近更新：2026-03-14 已完成 `T3U` package-native 前端工具链自给自足修复：`package-native` 的真实阻断已定位为 trunk / wasm 目标缺失，现已把 `trunk + wasm32-unknown-unknown` 显式收回各平台打包 job。
+- 当前阶段：进行中（T0A/T0/T1/T2/T3/T3A/T3B/T3C/T3D/T3E/T3F/T3G/T3H/T3I/T3J/T3K/T3L/T3M/T3N/T3O/T3P/T3Q/T3R/T3S/T3T/T3U/T3V 已完成；下一轮验证 `package-native` 三平台与 `publish-release` 是否稳定放行）
+- 最近更新：2026-03-14 已完成 `T3V` bundle 脚本 wasm 目标自愈修复：workflow 已补齐 `trunk` 后，剩余阻断进一步收敛为 bundle 脚本运行时缺失 `wasm32-unknown-unknown`，现已在脚本内自动自检并补装。
 - 下一步：push `main` 并打新 release tag，继续观察 `package-native` 三平台是否全部通过，随后再看 `publish-release` 是否成功发布 release。
 
 ## 迁移记录（2026-03-03）

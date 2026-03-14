@@ -46,7 +46,7 @@
   - `release-gate-soak`：执行 `S9 + S10` soak
   - `release-gate`：聚合三个子门结果，作为 `build-web-dist` 的唯一前置依赖
 - 打包 runner 与目标三元组（release workflow）：
-  - `package-native` 在各平台 job 内显式 provision `trunk + wasm32-unknown-unknown`，确保 `web-launcher/` 构建不依赖其他 job 残留环境
+  - `package-native` 在各平台 job 内显式 provision `trunk + wasm32-unknown-unknown`，同时 `scripts/build-game-launcher-bundle.sh` 会在执行 `trunk build` 前自检并补装缺失的 `wasm32-unknown-unknown`，确保 `web-launcher/` 构建不依赖 runner 初始状态
   - linux：`ubuntu-24.04` + `native`
   - macOS：`macos-14` + `x86_64-apple-darwin`（避免仓库不支持的 `macos-13` 配置）
   - windows：`windows-2022` + `native`
@@ -69,7 +69,7 @@
 - 风险：跨平台构建在 GitHub Runner 上依赖差异较大，可能导致单平台失败。
   - 缓解：Web 资源单独构建后复用；native 构建采用矩阵分离，失败平台可独立定位。
 - 风险：将 runtime、web、soak 关卡串成单个长 job 会放大基础设施抖动与缺依赖问题，导致定位慢且重复重跑成本高。
-  - 缓解：拆分为并行子门，分别上传 gate summary artifact，并在 web 子门与 package-native job 内显式 provision 必需前端工具链（`node + trunk`、`wasm32-unknown-unknown`），减少“未预装工具”导致的假红。
+  - 缓解：拆分为并行子门，分别上传 gate summary artifact，并在 web 子门、package-native job 与 bundle 脚本内部显式 provision/自检必需前端工具链（`node + trunk`、`wasm32-unknown-unknown`），减少“未预装工具”导致的假红。
 - 风险：固定资产名若被误改，页面直链会失效。
   - 缓解：新增下载入口校验脚本并接入 CI。
 - 风险：`latest` 语义受 prerelease 影响，用户可能下载到非稳定版。
