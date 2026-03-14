@@ -342,12 +342,14 @@ ab_cmd "$session" wait --load networkidle 2>&1 | tee -a "$pw_log" >/dev/null || 
 log_note snapshot
 ab_cmd "$session" snapshot -i 2>&1 | tee -a "$pw_log" >/dev/null || true
 
-if ! wait_for_api 20000 >/dev/null; then
-  echo "error: __AW_TEST__ is unavailable" >&2
+if ! wait_for_api 60000 >/dev/null; then
+  ab_cmd "$session" console >"$console_log" 2>&1 || true
+  ab_cmd "$session" errors >"$console_errors_log" 2>&1 || true
+  echo "error: __AW_TEST__ is unavailable (see $console_log, $console_errors_log)" >&2
   exit 1
 fi
 
-initial_state=$(wait_for_connected 15000) || {
+initial_state=$(wait_for_connected 30000) || {
   echo "error: initial connection failed (status=$(state_connection "$initial_state"), lastError=$(state_last_error "$initial_state"))" >&2
   exit 1
 }

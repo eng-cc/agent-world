@@ -124,14 +124,20 @@
 - [x] 本地回归 `bash -n scripts/viewer-release-qa-loop.sh`，并确认预热命令已位于 `cargo run -p agent_world --bin world_game_launcher` 之前。
 - [ ] 推送修复并打新 tag，继续观察 `release-gate-web` 是否越过 launcher 启动阶段，并进一步验证 aggregate `release_gate` 与后续打包链路。
 
+### T3P Release gate web test API 冷启动窗口放宽（2026-03-14）
+- [x] 复盘 `Release Packages` run `23080686951`，确认 `release-gate-web` 已越过 sibling binary 缺失，但页面在 GH runner 上打开后 20 秒内仍未暴露 `window.__AW_TEST__`，导致 `web_strict` 以 `__AW_TEST__ is unavailable` 退出；launcher 与 bridge 已正常就绪，说明问题落在 Web 端冷启动窗口而非服务拉起。
+- [x] 调整 `scripts/viewer-release-qa-loop.sh`：将 `wait_for_api` 从 20s 提升到 60s、将初始 `wait_for_connected` 从 15s 提升到 30s，并在 `__AW_TEST__` 超时前自动抓取 `console` / `errors` 日志，便于下一轮若仍失败时直接定位浏览器端异常。
+- [x] 本地回归 `bash -n scripts/viewer-release-qa-loop.sh`，确认等待窗口与失败诊断输出语法正确。
+- [ ] 推送修复并打新 tag，继续观察 `release-gate-web` 是否终于越过 Web Test API 初始化阶段。
+
 ## 依赖
 - 打包基础脚本：`scripts/build-game-launcher-bundle.sh`
 - 站点发布流程：`.github/workflows/pages.yml`
 - 站点入口文件：`site/index.html`、`site/en/index.html`
 
 ## 状态
-- 当前阶段：进行中（T0A/T0/T1/T2/T3/T3A/T3B/T3C/T3D/T3E/T3F/T3G/T3H/T3I/T3J/T3K/T3L/T3M/T3N/T3O 已完成；下一轮验证并行 `release_gate_*` 与 aggregate gate 是否稳定放行）
-- 最近更新：2026-03-14 已完成 `T3O` web sibling binary 预热回补：`release-gate-web` 独立后暴露 `world_game_launcher` 找不到 `world_viewer_live`，现由 `viewer-release-qa-loop.sh` 自行预热 `world_viewer_live + world_chain_runtime`。
+- 当前阶段：进行中（T0A/T0/T1/T2/T3/T3A/T3B/T3C/T3D/T3E/T3F/T3G/T3H/T3I/T3J/T3K/T3L/T3M/T3N/T3O/T3P 已完成；下一轮验证并行 `release_gate_*` 与 aggregate gate 是否稳定放行）
+- 最近更新：2026-03-14 已完成 `T3P` Web Test API 冷启动窗口放宽：`release-gate-web` 已能拉起 launcher，但 CI 上 release Web 初始化慢于原 20s 窗口，现已放宽到 60s 并补抓 console / errors 线索。
 - 下一步：push `main` 并打新 release tag，继续观察 `release_gate_runtime/web/soak` 是否全部通过并进入 aggregate `release_gate`，随后再看 `build-web-dist/package-native/publish-release`。
 
 ## 迁移记录（2026-03-03）
