@@ -136,14 +136,20 @@
 - [x] 本地回归 `bash -n scripts/viewer-release-qa-loop.sh`，确认 readiness 兼容逻辑与现有超时/console 采集分支可同时生效。
 - [ ] 推送修复并打新 tag，继续观察 `release-gate-web` 是否终于越过 Web Test API readiness 检查并进入语义交互断言。
 
+### T3R Release gate web headed Xvfb 执行链回补（2026-03-14）
+- [x] 复盘 `Release Packages` run `23081472315`，确认 `release-gate-web` 已越过 readiness 误判修复，但在 headless CI 中仍无法拿到 `__AW_TEST__`；结合既有手册与 `2026-03-10` headed smoke，可判断当前 GitHub runner 更接近“需要 headed 浏览器窗口才能稳定完成 Viewer Web 初始化”的路径。
+- [x] 更新 `.github/workflows/release-packages.yml`：为 `release_gate_web` 增加 `xvfb + xauth` 系统依赖，并通过 `xvfb-run -a ./scripts/release-gate.sh --web-headed` 执行 Web 严格闭环，让 CI 走与现有 Web 闭环手册一致的 headed 路径。
+- [x] 本地校验 workflow YAML 解析通过，并确认 `release_gate_web` 的命令链已携带 `--web-headed`。
+- [ ] 推送修复并打新 tag，继续观察 `release-gate-web` 是否终于完成 Viewer Web 初始化并进入后续断言。
+
 ## 依赖
 - 打包基础脚本：`scripts/build-game-launcher-bundle.sh`
 - 站点发布流程：`.github/workflows/pages.yml`
 - 站点入口文件：`site/index.html`、`site/en/index.html`
 
 ## 状态
-- 当前阶段：进行中（T0A/T0/T1/T2/T3/T3A/T3B/T3C/T3D/T3E/T3F/T3G/T3H/T3I/T3J/T3K/T3L/T3M/T3N/T3O/T3P/T3Q 已完成；下一轮验证并行 `release_gate_*` 与 aggregate gate 是否稳定放行）
-- 最近更新：2026-03-14 已完成 `T3Q` Web Test API readiness 兼容修复：`release-gate-web` 的失败进一步定位到 agent-browser 将 `ready` 字符串化后被 `wait_for_api` 误判，现已做兼容归一化。
+- 当前阶段：进行中（T0A/T0/T1/T2/T3/T3A/T3B/T3C/T3D/T3E/T3F/T3G/T3H/T3I/T3J/T3K/T3L/T3M/T3N/T3O/T3P/T3Q/T3R 已完成；下一轮验证并行 `release_gate_*` 与 aggregate gate 是否稳定放行）
+- 最近更新：2026-03-14 已完成 `T3R` Web headed Xvfb 回补：`release-gate-web` 在 headless CI 中仍无法稳定初始化 Viewer Web，现改为 `xvfb-run + --web-headed` 执行。
 - 下一步：push `main` 并打新 release tag，继续观察 `release_gate_runtime/web/soak` 是否全部通过并进入 aggregate `release_gate`，随后再看 `build-web-dist/package-native/publish-release`。
 
 ## 迁移记录（2026-03-03）

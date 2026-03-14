@@ -92,6 +92,8 @@ jobs:
           sudo apt-get install -y \
             netcat-openbsd \
             pkg-config \
+            xvfb \
+            xauth \
             libwayland-dev \
             wayland-protocols \
             libxkbcommon-dev \
@@ -110,12 +112,13 @@ jobs:
         run: env -u RUSTC_WRAPPER cargo install trunk --locked
       - name: Run web strict release gate
         run: |
-          ./scripts/release-gate.sh \
+          xvfb-run -a ./scripts/release-gate.sh \
             --out-dir .tmp/release_gate_web \
             --skip-ci-full \
             --skip-sync \
             --skip-s9 \
-            --skip-s10
+            --skip-s10 \
+            --web-headed
       - name: Upload web gate summary
         if: always()
         uses: actions/upload-artifact@v4
