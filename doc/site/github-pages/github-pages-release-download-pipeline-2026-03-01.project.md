@@ -118,14 +118,20 @@
 - [x] 本地回归 workflow 语法与 soak job 关键片段，确认 `Prewarm soak runtime binary` 已位于 `Run soak release gate` 之前。
 - [ ] 推送修复并打新 tag，继续观察并行 gate 是否能全部进入 aggregate `release_gate`。
 
+### T3O Release gate web sibling binary 预热回补（2026-03-14）
+- [x] 复盘 `Release Packages` run `23080255868`，确认 `release-gate-web` 已越过 `trunk` 安装，但 `web_strict` 在 `world_game_launcher` 启动阶段因独立 job 缺少 `target/debug/world_viewer_live` 而失败；失败签名为 `failed to locate \`world_viewer_live\` binary; build it first or set AGENT_WORLD_WORLD_VIEWER_LIVE_BIN`。
+- [x] 调整 `scripts/viewer-release-qa-loop.sh`：在启动 `world_game_launcher` 前显式执行 `env -u RUSTC_WRAPPER cargo build -p agent_world --bin world_viewer_live --bin world_chain_runtime`，把原先依赖其他步骤隐式生成 sibling binaries 的前置条件收回到脚本内部。
+- [x] 本地回归 `bash -n scripts/viewer-release-qa-loop.sh`，并确认预热命令已位于 `cargo run -p agent_world --bin world_game_launcher` 之前。
+- [ ] 推送修复并打新 tag，继续观察 `release-gate-web` 是否越过 launcher 启动阶段，并进一步验证 aggregate `release_gate` 与后续打包链路。
+
 ## 依赖
 - 打包基础脚本：`scripts/build-game-launcher-bundle.sh`
 - 站点发布流程：`.github/workflows/pages.yml`
 - 站点入口文件：`site/index.html`、`site/en/index.html`
 
 ## 状态
-- 当前阶段：进行中（T0A/T0/T1/T2/T3/T3A/T3B/T3C/T3D/T3E/T3F/T3G/T3H/T3I/T3J/T3K/T3L/T3M 已完成；下一轮验证并行 `release_gate_*` 与 aggregate gate 是否稳定放行）
-- 最近更新：2026-03-14 已完成 `T3N` soak 预热回补：首轮并行 gate 暴露 `release_gate_soak` 失去 `ci_full` 预热后找不到 `target/debug/world_chain_runtime`，现已在 soak job 内显式预热该二进制。
+- 当前阶段：进行中（T0A/T0/T1/T2/T3/T3A/T3B/T3C/T3D/T3E/T3F/T3G/T3H/T3I/T3J/T3K/T3L/T3M/T3N/T3O 已完成；下一轮验证并行 `release_gate_*` 与 aggregate gate 是否稳定放行）
+- 最近更新：2026-03-14 已完成 `T3O` web sibling binary 预热回补：`release-gate-web` 独立后暴露 `world_game_launcher` 找不到 `world_viewer_live`，现由 `viewer-release-qa-loop.sh` 自行预热 `world_viewer_live + world_chain_runtime`。
 - 下一步：push `main` 并打新 release tag，继续观察 `release_gate_runtime/web/soak` 是否全部通过并进入 aggregate `release_gate`，随后再看 `build-web-dist/package-native/publish-release`。
 
 ## 迁移记录（2026-03-03）
