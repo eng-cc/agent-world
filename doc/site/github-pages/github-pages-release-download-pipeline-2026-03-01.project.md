@@ -95,6 +95,11 @@
 - [x] 调整 `scripts/agent-browser-lib.sh`：优先使用本机 `agent-browser`，当 CLI 不存在时自动回退到 `npx --yes agent-browser`；保持 `AGENT_BROWSER_SESSION` 透传，避免 CI 因为“没全局安装”而把 Web 严格闭环整段跳红。
 - [x] 本地回归脚本级 fallback：在无 `agent-browser`、仅有伪造 `npx` 的 PATH 下，执行 `source scripts/agent-browser-lib.sh && ab_require && ab_cmd fallback-session get url`，确认实际走到 `--yes agent-browser get url`。
 
+### T3L Release gate trunk-missing dist fallback 热修
+- [x] 复盘 `Release Packages` run `23078512672`，确认 `v0.0.11` 已经真正越过 `agent-browser` CLI 入口，但 `web_strict` 在解析 Viewer 静态资源目录时，因为 runner 没有安装 `trunk` 而退出；失败签名为 `error: missing required command: trunk`。
+- [x] 调整 `scripts/agent-browser-lib.sh`：当请求 `web` 别名、`crates/agent_world_viewer/dist/index.html` 已存在但 `trunk` 不可用时，回退到仓库已提交的 `crates/agent_world_viewer/dist`，只在 `dist` 也不存在时才继续报错；避免 CI 因缺少前端构建器而阻断 Web 闭环。
+- [x] 本地回归脚本级 fallback：在无 `trunk` 的 PATH 下 source `scripts/agent-browser-lib.sh`，并通过桩掉 `find` 强制进入 fallback 分支，确认返回 `crates/agent_world_viewer/dist` 且打印 `warning: trunk missing; falling back to committed viewer dist`。
+
 ### T3F Release Packages macOS runner 配置热修
 - [x] 复现并定位 `Release Packages` run `22545989082` / job `65309292458` 失败根因：`macos-13-us-default` 不受当前仓库支持
 - [x] 修复 `.github/workflows/release-packages.yml`：macOS 矩阵 runner 改为 `macos-14`，并显式配置 `target_triple=x86_64-apple-darwin`
@@ -107,9 +112,9 @@
 - 站点入口文件：`site/index.html`、`site/en/index.html`
 
 ## 状态
-- 当前阶段：进行中（T0A/T0/T1/T2/T3/T3A/T3B/T3C/T3D/T3E/T3F/T3G/T3H/T3I/T3K 已完成；T3J 继续由远端 release gate 验证）
-- 最近更新：2026-03-13 已继续补 `T3K` release gate Web 严格闭环 CLI 兼容热修（`agent-browser` 缺失时自动回退 `npx`），下一轮 release tag 将继续验证是否终于越过 `web_strict`。
-- 下一步：push `main` 并打新 release tag，继续观察 `Release Packages` 是否越过 `web_strict` 并开始进入 `build-web-dist/package-native/publish-release`。
+- 当前阶段：进行中（T0A/T0/T1/T2/T3/T3A/T3B/T3C/T3D/T3E/T3F/T3G/T3H/T3I/T3J/T3K/T3L 已完成；下一轮继续验证是否越过 `web_strict`）
+- 最近更新：2026-03-14 已继续补 `T3L` release gate Web 资源解析兼容热修（`trunk` 缺失时回退仓库内 `dist`），下一轮 release tag 将继续验证是否终于越过 `web_strict`。
+- 下一步：push `main` 并打新 release tag，继续观察 `Release Packages` 是否越过 `web_strict` 并首次进入 `build-web-dist/package-native/publish-release`。
 
 ## 迁移记录（2026-03-03）
 - 已按 `TASK-ENGINEERING-014-D1 (PRD-ENGINEERING-006)` 从 legacy 命名迁移为 `.prd.md/.project.md`。

@@ -168,7 +168,17 @@ resolve_viewer_static_dir_for_web_closure() {
     return 0
   fi
 
-  require_cmd trunk
+  if ! command -v trunk >/dev/null 2>&1; then
+    if [[ -f "$dist_index" ]]; then
+      echo "warning: trunk missing; falling back to committed viewer dist: $dist_dir" >&2
+      printf '%s
+' "$dist_dir"
+      return 0
+    fi
+    echo "error: missing required command: trunk" >&2
+    return 1
+  fi
+
   mkdir -p "$rebuilt_dir"
   echo "+ env -u NO_COLOR trunk build --dist $rebuilt_dir" >&2
   (
