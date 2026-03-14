@@ -153,6 +153,8 @@ jobs:
         with:
           shared-key: release-packages-release-gate-soak-v1
           cache-on-failure: true
+      - name: Prewarm soak runtime binary
+        run: env -u RUSTC_WRAPPER cargo build -p agent_world --bin world_chain_runtime
       - name: Run soak release gate
         run: |
           ./scripts/release-gate.sh \

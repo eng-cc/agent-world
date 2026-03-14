@@ -112,6 +112,12 @@
 - [x] 更新 `.github/workflows/release-packages.yml`：在 `release_gate_web` 内显式 provision `actions/setup-node@v4 + trunk`，并为三个子门分别上传 `.tmp/release_gate_*` summary artifact，缩短 CI 缺依赖与长时间黑盒失败的定位链路。
 - [x] 本地校验 workflow 语法、`release-gate.sh` dry-run 组合与文档回写后，再进入下一轮远端 release tag 验证。
 
+### T3N Release gate soak 预热依赖回补（2026-03-14）
+- [x] 复盘 `Release Packages` run `23080174183` 新架构首轮结果，确认 `release-gate-soak` 在 1 秒内失败并非 soak 逻辑本身回归，而是拆分后仍沿用 `--no-prewarm`，导致 `s9` 失去来自 `ci_full` 的 `target/debug/world_chain_runtime` 预热前置。
+- [x] 更新 `.github/workflows/release-packages.yml`：在 `release_gate_soak` 中新增 `env -u RUSTC_WRAPPER cargo build -p agent_world --bin world_chain_runtime` 预热步骤，使 soak 子门在独立 job 中重新自洽，同时保持 `release-gate.sh` 现有参数与 release 语义不变。
+- [x] 本地回归 workflow 语法与 soak job 关键片段，确认 `Prewarm soak runtime binary` 已位于 `Run soak release gate` 之前。
+- [ ] 推送修复并打新 tag，继续观察并行 gate 是否能全部进入 aggregate `release_gate`。
+
 ## 依赖
 - 打包基础脚本：`scripts/build-game-launcher-bundle.sh`
 - 站点发布流程：`.github/workflows/pages.yml`
@@ -119,8 +125,8 @@
 
 ## 状态
 - 当前阶段：进行中（T0A/T0/T1/T2/T3/T3A/T3B/T3C/T3D/T3E/T3F/T3G/T3H/T3I/T3J/T3K/T3L/T3M 已完成；下一轮验证并行 `release_gate_*` 与 aggregate gate 是否稳定放行）
-- 最近更新：2026-03-14 已完成 `T3M` release gate 架构收口：将单一长 job 拆成 runtime/sync、web strict、S9/S10 soak 三个并行 gate，并补 aggregate job + summary artifact + web 依赖显式 provision。
-- 下一步：push `main` 并打新 release tag，继续观察 `Release Packages` 是否以并行 gate 形态稳定越过 `release_gate`，并重新验证 `build-web-dist/package-native/publish-release`。
+- 最近更新：2026-03-14 已完成 `T3N` soak 预热回补：首轮并行 gate 暴露 `release_gate_soak` 失去 `ci_full` 预热后找不到 `target/debug/world_chain_runtime`，现已在 soak job 内显式预热该二进制。
+- 下一步：push `main` 并打新 release tag，继续观察 `release_gate_runtime/web/soak` 是否全部通过并进入 aggregate `release_gate`，随后再看 `build-web-dist/package-native/publish-release`。
 
 ## 迁移记录（2026-03-03）
 - 已按 `TASK-ENGINEERING-014-D1 (PRD-ENGINEERING-006)` 从 legacy 命名迁移为 `.prd.md/.project.md`。
