@@ -3,7 +3,7 @@
 - 对应设计文档: `doc/site/github-pages/github-pages-release-download-pipeline-2026-03-01.design.md`
 - 对应项目管理文档: `doc/site/github-pages/github-pages-release-download-pipeline-2026-03-01.project.md`
 
-审计轮次: 5
+审计轮次: 6
 
 - 对应标准执行入口: `doc/site/github-pages/github-pages-release-download-pipeline-2026-03-01.project.md`
 
@@ -19,6 +19,7 @@
 ## 范围
 - 范围内
   - 新增 Release 发布工作流（tag 触发 + 手动触发）。
+  - Release gate 拆分为 runtime/sync、web strict、S9/S10 soak 三个并行子门，并通过 aggregate job 统一决定是否放行打包。
   - 自动构建桌面启动器安装包并上传到 GitHub Release。
   - 生成并上传校验文件（SHA256）。
   - 在 `site/index.html` 与 `site/en/index.html` 增加下载入口和直链（`releases/latest/download/...`）。
@@ -39,6 +40,11 @@
 - 工作流触发：
   - `push tags: v*`
   - `workflow_dispatch`
+- Release gate 拓扑：
+  - `release-gate-runtime`：执行 `ci_full + sync_m1/m4/m5`
+  - `release-gate-web`：执行 `web_strict`，并显式预装 `node + trunk`
+  - `release-gate-soak`：执行 `S9 + S10` soak
+  - `release-gate`：聚合三个子门结果，作为 `build-web-dist` 的唯一前置依赖
 - 打包 runner 与目标三元组（release workflow）：
   - linux：`ubuntu-24.04` + `native`
   - macOS：`macos-14` + `x86_64-apple-darwin`（避免仓库不支持的 `macos-13` 配置）
@@ -61,6 +67,8 @@
 ## 风险
 - 风险：跨平台构建在 GitHub Runner 上依赖差异较大，可能导致单平台失败。
   - 缓解：Web 资源单独构建后复用；native 构建采用矩阵分离，失败平台可独立定位。
+- 风险：将 runtime、web、soak 关卡串成单个长 job 会放大基础设施抖动与缺依赖问题，导致定位慢且重复重跑成本高。
+  - 缓解：拆分为并行子门，分别上传 gate summary artifact，并在 web 子门内显式 provision `node + trunk`，减少“未预装工具”导致的假红。
 - 风险：固定资产名若被误改，页面直链会失效。
   - 缓解：新增下载入口校验脚本并接入 CI。
 - 风险：`latest` 语义受 prerelease 影响，用户可能下载到非稳定版。

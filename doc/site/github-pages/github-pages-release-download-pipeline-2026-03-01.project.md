@@ -3,7 +3,7 @@
 - 对应设计文档: `doc/site/github-pages/github-pages-release-download-pipeline-2026-03-01.design.md`
 - 对应需求文档: `doc/site/github-pages/github-pages-release-download-pipeline-2026-03-01.prd.md`
 
-审计轮次: 5
+审计轮次: 6
 
 ## 审计备注
 - 主项目入口：`doc/site/github-pages/github-pages-game-engine-reposition-2026-02-25.project.md`
@@ -106,15 +106,21 @@
 - [x] 扩展打包脚本参数链路：`release-prepare-bundle.sh` / `build-game-launcher-bundle.sh` 支持 `--target-triple` 并正确定位 `target/<triple>/<profile>` 产物
 - [x] 本地回归脚本语法与 dry-run，推送后重新触发 `Release Packages` 验证
 
+### T3M Release gate 并行拆分与聚合收口（2026-03-14）
+- [x] 复盘 `Release Packages` 连续多轮失败，确认主要问题已不再是单一业务缺陷，而是所有 release blocker 串在单个 `release-gate` job 中，导致 runtime/sync、web strict、S9/S10 soak 彼此阻塞，后续 `build-web-dist/package-native/publish-release` 长期无法进入。
+- [x] 更新 `.github/workflows/release-packages.yml`：将 gate 拆为 `release_gate_runtime` / `release_gate_web` / `release_gate_soak` 三个并行 job，并新增 `release_gate` aggregate job 统一汇总 `needs.*.result`，继续保持“全部通过才放行打包”的语义。
+- [x] 更新 `.github/workflows/release-packages.yml`：在 `release_gate_web` 内显式 provision `actions/setup-node@v4 + trunk`，并为三个子门分别上传 `.tmp/release_gate_*` summary artifact，缩短 CI 缺依赖与长时间黑盒失败的定位链路。
+- [x] 本地校验 workflow 语法、`release-gate.sh` dry-run 组合与文档回写后，再进入下一轮远端 release tag 验证。
+
 ## 依赖
 - 打包基础脚本：`scripts/build-game-launcher-bundle.sh`
 - 站点发布流程：`.github/workflows/pages.yml`
 - 站点入口文件：`site/index.html`、`site/en/index.html`
 
 ## 状态
-- 当前阶段：进行中（T0A/T0/T1/T2/T3/T3A/T3B/T3C/T3D/T3E/T3F/T3G/T3H/T3I/T3J/T3K/T3L 已完成；下一轮继续验证是否越过 `web_strict`）
-- 最近更新：2026-03-14 已继续补 `T3L` release gate Web 资源解析兼容热修（`trunk` 缺失时回退仓库内 `dist`），下一轮 release tag 将继续验证是否终于越过 `web_strict`。
-- 下一步：push `main` 并打新 release tag，继续观察 `Release Packages` 是否越过 `web_strict` 并首次进入 `build-web-dist/package-native/publish-release`。
+- 当前阶段：进行中（T0A/T0/T1/T2/T3/T3A/T3B/T3C/T3D/T3E/T3F/T3G/T3H/T3I/T3J/T3K/T3L/T3M 已完成；下一轮验证并行 `release_gate_*` 与 aggregate gate 是否稳定放行）
+- 最近更新：2026-03-14 已完成 `T3M` release gate 架构收口：将单一长 job 拆成 runtime/sync、web strict、S9/S10 soak 三个并行 gate，并补 aggregate job + summary artifact + web 依赖显式 provision。
+- 下一步：push `main` 并打新 release tag，继续观察 `Release Packages` 是否以并行 gate 形态稳定越过 `release_gate`，并重新验证 `build-web-dist/package-native/publish-release`。
 
 ## 迁移记录（2026-03-03）
 - 已按 `TASK-ENGINEERING-014-D1 (PRD-ENGINEERING-006)` 从 legacy 命名迁移为 `.prd.md/.project.md`。
