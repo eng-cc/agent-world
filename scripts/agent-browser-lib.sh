@@ -48,6 +48,43 @@ ab_cmd() {
   ab_run "$session" "$@"
 }
 
+ab_screenshot() {
+  local session=$1
+  local out_path=$2
+  local output
+  local status=0
+
+  output=$(ab_run "$session" screenshot "$out_path" 2>&1) || status=$?
+  printf '%s
+' "$output"
+
+  if [[ "$status" -eq 0 && ! -f "$out_path" ]]; then
+    python3 - "$output" "$out_path" <<'PY2'
+import os
+import pathlib
+import re
+import shutil
+import sys
+
+raw = sys.argv[1]
+out_path = pathlib.Path(sys.argv[2])
+ansi = re.compile(r'\[[0-9;]*m')
+clean = ansi.sub('', raw)
+match = re.search(r'Screenshot saved to\s+(.+)', clean)
+if not match:
+    raise SystemExit(0)
+source = pathlib.Path(match.group(1).strip())
+if not source.exists():
+    raise SystemExit(0)
+out_path.parent.mkdir(parents=True, exist_ok=True)
+if source.resolve() != out_path.resolve():
+    shutil.copy2(source, out_path)
+PY2
+  fi
+
+  return "$status"
+}
+
 ab_open() {
   local session=$1
   local headed=$2

@@ -485,7 +485,7 @@ if expect == 'increase' and not (after > before * 1.05):
     raise SystemExit(1)
 PY
   log_note "screenshot_${stage}"
-  ab_cmd "$session" screenshot "$shot" 2>&1 | tee -a "$pw_log" >/dev/null || zoom_ok=0
+  ab_screenshot "$session" "$shot" 2>&1 | tee -a "$pw_log" >/dev/null || zoom_ok=0
   zoom_results=$(python3 - "$zoom_results" "$stage" "$shot" "$camera_mode" "$camera_radius" <<'PY'
 import json, sys
 raw, stage, shot, mode, radius = sys.argv[1:6]
@@ -507,7 +507,7 @@ ab_cmd "$session" console >"$console_log" 2>&1 || true
 log_note errors
 ab_cmd "$session" errors >"$console_errors_log" 2>&1 || true
 log_note screenshot_main
-ab_cmd "$session" screenshot "$shot_path" >>"$pw_log" 2>&1 || true
+ab_screenshot "$session" "$shot_path" >>"$pw_log" 2>&1 || true
 log_note close
 ab_cmd "$session" close >>"$pw_log" 2>&1 || true
 

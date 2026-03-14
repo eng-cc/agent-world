@@ -142,14 +142,20 @@
 - [x] 本地校验 workflow YAML 解析通过，并确认 `release_gate_web` 的命令链已携带 `--web-headed`。
 - [ ] 推送修复并打新 tag，继续观察 `release-gate-web` 是否终于完成 Viewer Web 初始化并进入后续断言。
 
+### T3S Release gate web screenshot artifact 路径兼容修复（2026-03-14）
+- [x] 复盘 `Release Packages` run `23081885506`，确认 `release-gate-web` 在 `xvfb-run + --web-headed` 下已越过 Web 初始化，并通过 semantic / zoom gate；新的唯一阻断点是截图产物未落到脚本期望路径，而是被 `agent-browser` 保存到自身 tmp 目录，导致 `Screenshot artifact: failed`。
+- [x] 调整 `scripts/agent-browser-lib.sh` 与 `scripts/viewer-release-qa-loop.sh`：新增 `ab_screenshot`，在 `agent-browser screenshot <target>` 成功但目标文件不存在时，自动从 CLI 输出解析真实落盘路径并回拷到请求路径；Viewer release QA loop 的主截图与 zoom 截图统一改走该 helper。
+- [x] 本地回归 `bash -n scripts/agent-browser-lib.sh`、`bash -n scripts/viewer-release-qa-loop.sh`，确认 helper 与调用点语法通过。
+- [ ] 推送修复并打新 tag，继续观察 `release-gate-web` 是否终于全绿并让 aggregate `release_gate` 进入后续打包链路。
+
 ## 依赖
 - 打包基础脚本：`scripts/build-game-launcher-bundle.sh`
 - 站点发布流程：`.github/workflows/pages.yml`
 - 站点入口文件：`site/index.html`、`site/en/index.html`
 
 ## 状态
-- 当前阶段：进行中（T0A/T0/T1/T2/T3/T3A/T3B/T3C/T3D/T3E/T3F/T3G/T3H/T3I/T3J/T3K/T3L/T3M/T3N/T3O/T3P/T3Q/T3R 已完成；下一轮验证并行 `release_gate_*` 与 aggregate gate 是否稳定放行）
-- 最近更新：2026-03-14 已完成 `T3R` Web headed Xvfb 回补：`release-gate-web` 在 headless CI 中仍无法稳定初始化 Viewer Web，现改为 `xvfb-run + --web-headed` 执行。
+- 当前阶段：进行中（T0A/T0/T1/T2/T3/T3A/T3B/T3C/T3D/T3E/T3F/T3G/T3H/T3I/T3J/T3K/T3L/T3M/T3N/T3O/T3P/T3Q/T3R/T3S 已完成；下一轮验证并行 `release_gate_*` 与 aggregate gate 是否稳定放行）
+- 最近更新：2026-03-14 已完成 `T3S` screenshot artifact 路径兼容修复：`release-gate-web` 已通过语义与 zoom gate，现补齐 agent-browser 截图落盘路径与脚本期望路径的对接。
 - 下一步：push `main` 并打新 release tag，继续观察 `release_gate_runtime/web/soak` 是否全部通过并进入 aggregate `release_gate`，随后再看 `build-web-dist/package-native/publish-release`。
 
 ## 迁移记录（2026-03-03）
