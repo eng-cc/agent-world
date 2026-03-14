@@ -8,9 +8,30 @@ require_cmd() {
   fi
 }
 
+ab_npx_package() {
+  printf '%s\n' "${AGENT_BROWSER_NPX_PACKAGE:-agent-browser}"
+}
+
+ab_has_cli() {
+  command -v agent-browser >/dev/null 2>&1 || command -v npx >/dev/null 2>&1
+}
+
 ab_require() {
-  require_cmd agent-browser
+  if ! ab_has_cli; then
+    echo "error: missing required command: agent-browser (or npx fallback)" >&2
+    exit 1
+  fi
   require_cmd python3
+}
+
+ab_run() {
+  local session=$1
+  shift
+  if command -v agent-browser >/dev/null 2>&1; then
+    AGENT_BROWSER_SESSION="$session" agent-browser "$@"
+    return
+  fi
+  AGENT_BROWSER_SESSION="$session" npx --yes "$(ab_npx_package)" "$@"
 }
 
 ab_browser_args() {
@@ -24,7 +45,7 @@ ab_browser_args() {
 ab_cmd() {
   local session=$1
   shift
-  AGENT_BROWSER_SESSION="$session" agent-browser "$@"
+  ab_run "$session" "$@"
 }
 
 ab_open() {
@@ -32,7 +53,7 @@ ab_open() {
   local headed=$2
   local url=$3
   local browser_args
-  local cmd=(agent-browser)
+  local cmd=()
 
   browser_args=$(ab_browser_args)
   if [[ -n "$browser_args" ]]; then
@@ -43,14 +64,14 @@ ab_open() {
   fi
   cmd+=(open "$url")
 
-  AGENT_BROWSER_SESSION="$session" agent-browser close >/dev/null 2>&1 || true
-  AGENT_BROWSER_SESSION="$session" "${cmd[@]}"
+  ab_run "$session" close >/dev/null 2>&1 || true
+  ab_run "$session" "${cmd[@]}"
 }
 
 ab_eval() {
   local session=$1
   local script=$2
-  AGENT_BROWSER_SESSION="$session" agent-browser eval --stdin <<<"$script"
+  ab_run "$session" eval --stdin <<<"$script"
 }
 
 json_quote() {

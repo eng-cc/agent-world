@@ -90,6 +90,11 @@
 - [x] 更新 `crates/agent_world/src/runtime/world/artifacts/m5_builtin_modules.sha256` 与 `crates/agent_world/src/runtime/world/artifacts/m5_builtin_modules.identity.json`：将 `m5.gameplay.economic.overlay` 的 `linux-x86_64` hash token 对齐到当前 canonical 产物；该模块现已与 `darwin-arm64` 共用同一 canonical hash。
 - [ ] 本地回归 `./scripts/sync-m5-builtin-wasm-artifacts.sh --check`，并通过新 tag 继续观察 `Release Packages` 是否终于越过 `release-gate`。
 
+### T3K Release gate agent-browser CLI fallback 热修
+- [x] 复盘 `Release Packages` run `23059581794`，确认 `v0.0.10` 已越过 `ci_full/sync_m1/sync_m4/sync_m5`，但在 `web_strict` 触发 `./scripts/viewer-release-qa-loop.sh` 时，GitHub runner 缺少全局 `agent-browser` 命令，直接导致 `missing required command: agent-browser`。
+- [x] 调整 `scripts/agent-browser-lib.sh`：优先使用本机 `agent-browser`，当 CLI 不存在时自动回退到 `npx --yes agent-browser`；保持 `AGENT_BROWSER_SESSION` 透传，避免 CI 因为“没全局安装”而把 Web 严格闭环整段跳红。
+- [x] 本地回归脚本级 fallback：在无 `agent-browser`、仅有伪造 `npx` 的 PATH 下，执行 `source scripts/agent-browser-lib.sh && ab_require && ab_cmd fallback-session get url`，确认实际走到 `--yes agent-browser get url`。
+
 ### T3F Release Packages macOS runner 配置热修
 - [x] 复现并定位 `Release Packages` run `22545989082` / job `65309292458` 失败根因：`macos-13-us-default` 不受当前仓库支持
 - [x] 修复 `.github/workflows/release-packages.yml`：macOS 矩阵 runner 改为 `macos-14`，并显式配置 `target_triple=x86_64-apple-darwin`
@@ -102,9 +107,9 @@
 - 站点入口文件：`site/index.html`、`site/en/index.html`
 
 ## 状态
-- 当前阶段：进行中（T0A/T0/T1/T2/T3/T3A/T3B/T3C/T3D/T3E/T3F/T3G/T3H/T3I 已完成；T3J 待本地/远端回归）
-- 最近更新：2026-03-13 已继续补 `T3J` release gate m5 canonical hash 热修（对齐 `m5.gameplay.economic.overlay` 的 Linux token），正继续执行本地 `sync_m5 --check` 与下一轮 release tag 验证。
-- 下一步：完成 `T3J` 本地校验后 push `main` 并打新 release tag，继续观察 `Release Packages` 是否终于越过 `release-gate` 进入 `build-web-dist/package-native/publish-release`。
+- 当前阶段：进行中（T0A/T0/T1/T2/T3/T3A/T3B/T3C/T3D/T3E/T3F/T3G/T3H/T3I/T3K 已完成；T3J 继续由远端 release gate 验证）
+- 最近更新：2026-03-13 已继续补 `T3K` release gate Web 严格闭环 CLI 兼容热修（`agent-browser` 缺失时自动回退 `npx`），下一轮 release tag 将继续验证是否终于越过 `web_strict`。
+- 下一步：push `main` 并打新 release tag，继续观察 `Release Packages` 是否越过 `web_strict` 并开始进入 `build-web-dist/package-native/publish-release`。
 
 ## 迁移记录（2026-03-03）
 - 已按 `TASK-ENGINEERING-014-D1 (PRD-ENGINEERING-006)` 从 legacy 命名迁移为 `.prd.md/.project.md`。
