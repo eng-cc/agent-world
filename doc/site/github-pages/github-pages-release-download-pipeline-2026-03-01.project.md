@@ -158,19 +158,19 @@
 - [x] 复盘 `Release Packages` run `23082925680`，确认 aggregate `release-gate` 首次放行后，`package-native (macos-14, macos-x64, agent-world-macos-x64.tar.gz, x86_64-apple-darwin)` 在 `Build launcher bundle` 失败；失败签名为 `error: required command not found: trunk`。
 - [x] 更新 `.github/workflows/release-packages.yml`：在 `package-native` 的工具链安装步骤中显式追加 `rustup target add wasm32-unknown-unknown`，并在缓存后新增 `Install trunk`，让 `scripts/build-game-launcher-bundle.sh` 为 `web-launcher/` 运行 `trunk build` 时不再依赖其他 job 的预装环境。
 - [x] 本地校验 workflow 关键片段，确认 `Install trunk` 位于 `Build launcher bundle` 之前，且 `shared-key` 已滚动到 `v2` 以避免复用旧缓存语义。
-- [ ] 推送修复并打新 tag，继续观察 `package-native` 三平台是否全部产出资产，并验证后续 `publish-release` 是否成功发布 release。
+- [x] 已推送修复并以 `v0.0.23` 触发远端验证；`Release Packages` run `23086016214` 已确认三平台 `package-native` 与 `publish-release` 全部通过。
 
 ### T3V Bundle 脚本 wasm 目标自愈（2026-03-14）
 - [x] 复盘 `Release Packages` run `23083927815`，确认 `package-native` 已越过 `Install trunk`，但 `macos-14` 仍在 `Build launcher bundle` 内报 `error: rust target wasm32-unknown-unknown is not installed`；说明仅在 workflow 层执行 `rustup target add` 仍不足以覆盖 bundle 脚本实际运行时的 toolchain 解析。
 - [x] 调整 `scripts/build-game-launcher-bundle.sh`：新增 active toolchain 解析与 `ensure_rust_target_installed`，在 `web-launcher/` 的 `trunk build` 前自动自检并补装缺失的 `wasm32-unknown-unknown`，把 wasm 前端目标依赖收回脚本内部。
 - [x] 本地执行 `bash -n scripts/build-game-launcher-bundle.sh`，并复核 helper 调用顺序，确认 `ensure_rust_target_installed` 位于 `trunk build` 之前。
-- [ ] 推送修复并打新 tag，继续观察 `package-native` 三平台是否全部完成打包，并验证 `publish-release` 是否成功发布 release。
+- [x] 已推送修复并以 `v0.0.23` 触发远端验证；`Release Packages` run `23086016214` 已确认 bundle 脚本自愈后，三平台 `package-native` 与 `publish-release` 全部通过。
 
 ### T3W Bundle 脚本 wasm target 判定去脆弱化（2026-03-14）
 - [x] 复盘 `Release Packages` run `23084980185`，确认 `package-native` 的 `macos-14` 已在 `Build launcher bundle` 中执行了 `rustup target add wasm32-unknown-unknown --toolchain 1.92.0-aarch64-apple-darwin`，并得到 `component ... is up to date`，但脚本随后仍因 `rustup target list --installed` 判定失败而退出；说明阻断点已收敛为 bundle 脚本对 rustup 输出格式的脆弱依赖，而非 target 真正缺失。
 - [x] 调整 `scripts/build-game-launcher-bundle.sh`：保留 active toolchain 解析，但将 `ensure_rust_target_installed` 改为直接执行幂等的 `rustup target add`，不再二次解析 `target list --installed` 输出，避免 macOS runner/toolchain 组合下的假阴性。
 - [x] 本地执行 `bash -n scripts/build-game-launcher-bundle.sh`，并复核 `ensure_rust_target_installed` 仍位于 `trunk build` 之前。
-- [ ] 推送修复并打新 tag，继续观察 `package-native` 三平台是否全部完成打包，并验证 `publish-release` 是否成功发布 release。
+- [x] 已推送修复并以 `v0.0.23` 触发远端验证；`Release Packages` run `23086016214` 已确认 bundle 脚本自愈后，三平台 `package-native` 与 `publish-release` 全部通过。
 
 ## 依赖
 - 打包基础脚本：`scripts/build-game-launcher-bundle.sh`
@@ -178,9 +178,9 @@
 - 站点入口文件：`site/index.html`、`site/en/index.html`
 
 ## 状态
-- 当前阶段：进行中（T0A/T0/T1/T2/T3/T3A/T3B/T3C/T3D/T3E/T3F/T3G/T3H/T3I/T3J/T3K/T3L/T3M/T3N/T3O/T3P/T3Q/T3R/T3S/T3T/T3U/T3V/T3W 已完成；下一轮验证 `package-native` 三平台与 `publish-release` 是否稳定放行）
-- 最近更新：2026-03-14 已完成 `T3W` bundle 脚本 wasm target 判定去脆弱化：macOS runner 上 `rustup target add` 已成功但 `target list --installed` 仍会误报缺失，现已改为直接使用幂等的 `rustup target add` 收口。
-- 下一步：push `main` 并打新 release tag，继续观察 `package-native` 三平台是否全部通过，随后再看 `publish-release` 是否成功发布 release。
+- 当前阶段：进行中（T0A/T0/T1/T2/T3/T3A/T3B/T3C/T3D/T3E/T3F/T3G/T3H/T3I/T3J/T3K/T3L/T3M/T3N/T3O/T3P/T3Q/T3R/T3S/T3T/T3U/T3V/T3W 已完成；`v0.0.23` 的 `Release Packages` run `23086016214` 已稳定放行到成功发布）
+- 最近更新：2026-03-14 `v0.0.23` 的 `Release Packages` run `23086016214` 已完成成功发布：`release_gate_*`、`build-web-dist`、三平台 `package-native` 与 `publish-release` 全绿。
+- 下一步：回到下载入口与真实试玩链路的后续事项；当前 release 打包链路已恢复到可持续成功发布。
 
 ## 迁移记录（2026-03-03）
 - 已按 `TASK-ENGINEERING-014-D1 (PRD-ENGINEERING-006)` 从 legacy 命名迁移为 `.prd.md/.project.md`。
