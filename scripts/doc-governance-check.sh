@@ -59,6 +59,10 @@ readonly DOC_ROOT_MD_ALLOWLIST_FILE="doc/.governance/doc-root-md-allowlist.txt"
 readonly MODULE_ROOT_MD_ALLOWLIST_FILE="doc/.governance/module-root-md-allowlist.txt"
 
 mapfile -t CANONICAL_ROLE_NAMES < <(find .agents/roles -mindepth 1 -maxdepth 1 -type f -name '*.md' -printf '%f\n' | sed 's/\.md$//' | sort)
+declare -A CANONICAL_ROLE_NAME_SET=()
+for role_name in "${CANONICAL_ROLE_NAMES[@]}"; do
+  CANONICAL_ROLE_NAME_SET["$role_name"]=1
+done
 
 fail() {
   echo "doc-governance-check: FAIL: $*"
@@ -95,19 +99,36 @@ contains_literal() {
   grep -Fq -- "$needle" "$file"
 }
 
-has_heading() {
+collect_headings() {
   local file="$1"
+  if command -v rg >/dev/null 2>&1; then
+    rg '^#{1,6}[[:space:]].*$' "$file" || true
+    return
+  fi
+  grep -E '^#{1,6}[[:space:]].*$' "$file" || true
+}
+
+headings_match_pattern() {
+  local headings="$1"
   local pattern="$2"
-  regex_match_file "^#{1,6}[[:space:]]*([0-9]+([.][0-9]+)*[.]?[[:space:]]*)?${pattern}.*$" "$file"
+  local regex="^#{1,6}[[:space:]]*([0-9]+([.][0-9]+)*[.]?[[:space:]]*)?${pattern}.*$"
+  local line
+  while IFS= read -r line; do
+    if [[ "$line" =~ $regex ]]; then
+      return 0
+    fi
+  done <<< "$headings"
+  return 1
 }
 
 check_required_sections() {
   local file="$1"
-  shift
+  local headings="$2"
+  shift 2
   local missing=()
   local token
   for token in "$@"; do
-    if ! has_heading "$file" "$token"; then
+    if ! headings_match_pattern "$headings" "$token"; then
       missing+=("$token")
     fi
   done
@@ -117,13 +138,8 @@ check_required_sections() {
 }
 
 has_strict_prd_sections() {
-  local file="$1"
-  has_heading "$file" "Executive Summary" \
-    && has_heading "$file" "User Experience[[:space:]]*&[[:space:]]*Functionality" \
-    && has_heading "$file" "AI System Requirements[[:space:]]*\\(If Applicable\\)" \
-    && has_heading "$file" "Technical Specifications" \
-    && has_heading "$file" "Risks[[:space:]]*&[[:space:]]*Roadmap" \
-    && has_heading "$file" "Validation[[:space:]]*&[[:space:]]*Decision Record"
+  local headings="$1"
+  headings_match_pattern "$headings" "Executive Summary"     && headings_match_pattern "$headings" "User Experience[[:space:]]*&[[:space:]]*Functionality"     && headings_match_pattern "$headings" "AI System Requirements[[:space:]]*\(If Applicable\)"     && headings_match_pattern "$headings" "Technical Specifications"     && headings_match_pattern "$headings" "Risks[[:space:]]*&[[:space:]]*Roadmap"     && headings_match_pattern "$headings" "Validation[[:space:]]*&[[:space:]]*Decision Record"
 }
 
 check_allowlist_match() {
@@ -265,13 +281,15 @@ check_doc_path_references() {
 
 is_canonical_role_name() {
   local role_name="$1"
-  local candidate
-  for candidate in "${CANONICAL_ROLE_NAMES[@]}"; do
-    if [[ "$candidate" == "$role_name" ]]; then
-      return 0
-    fi
-  done
-  return 1
+  [[ -n "${CANONICAL_ROLE_NAME_SET[$role_name]:-}" ]]
+}
+
+trim_whitespace() {
+  local value="$1"
+  value="${value#"${value%%[![:space:]]*}"}"
+  value="${value%"${value##*[![:space:]]}"}"
+  printf '%s
+' "$value"
 }
 
 check_devlog_role_labels() {
@@ -280,12 +298,17 @@ check_devlog_role_labels() {
   local role_name
 
   while IFS= read -r line; do
-    role_name=$(printf '%s\n' "$line" | sed -n 's/^## .*\/ `\([^`][^`]*\)`$/\1/p')
+    [[ "$line" == '## '* ]] || continue
+    [[ "$line" == *' / '* ]] || continue
+    role_name="${line##* / }"
+    role_name="${role_name#\`}"
+    role_name="${role_name%\`}"
+    role_name="$(trim_whitespace "$role_name")"
     [[ -z "$role_name" ]] && continue
     if ! is_canonical_role_name "$role_name"; then
       fail "$file uses unknown role label in heading: $role_name"
     fi
-  done < "$file"
+  done < <(if command -v rg >/dev/null 2>&1; then rg '^## ' "$file" || true; else grep '^## ' "$file" || true; fi)
 }
 
 check_handoff_role_fields() {
@@ -295,16 +318,21 @@ check_handoff_role_fields() {
   local role_name
 
   while IFS= read -r line; do
-    payload=$(printf '%s\n' "$line" | sed -n 's/^-[[:space:]]*\(From Role\|To Role\): `\(.*\)`$/\2/p')
-    [[ -z "$payload" ]] && continue
+    if [[ "$line" =~ ^-[[:space:]]*(From\ Role|To\ Role):[[:space:]]*\`(.*)\`$ ]]; then
+      payload="${BASH_REMATCH[2]}"
+    else
+      continue
+    fi
     while IFS= read -r role_name; do
-      role_name=$(printf '%s' "$role_name" | sed 's/^ *//; s/ *$//')
+      role_name="$(trim_whitespace "$role_name")"
       [[ -z "$role_name" ]] && continue
       if ! is_canonical_role_name "$role_name"; then
         fail "$file references unknown canonical role name: $role_name"
       fi
-    done < <(printf '%s\n' "$payload" | tr '|' '\n')
-  done < "$file"
+    done < <(printf '%s
+' "$payload" | tr '|' '
+')
+  done < <(if command -v rg >/dev/null 2>&1; then rg '^-[[:space:]]*(From Role|To Role): ' "$file" || true; else grep -E '^-[[:space:]]*(From Role|To Role): ' "$file" || true; fi)
 }
 
 mapfile -t all_doc_files < <(find doc -type f -name '*.md' ! -path 'doc/devlog/*' ! -path '*/archive/*' | sort)
@@ -337,7 +365,8 @@ done
 
 # 3) project docs required sections + paired design required sections
 for project_doc in "${project_docs[@]}"; do
-  check_required_sections "$project_doc" "任务拆解" "依赖" "状态"
+  project_headings="$(collect_headings "$project_doc")"
+  check_required_sections "$project_doc" "$project_headings" "任务拆解" "依赖" "状态"
 
   design_doc="$(paired_design_doc "$project_doc")"
   if [[ ! -f "$design_doc" ]]; then
@@ -358,16 +387,11 @@ for project_doc in "${project_docs[@]}"; do
     continue
   fi
 
-  if has_strict_prd_sections "$design_doc"; then
-    check_required_sections "$design_doc" \
-      "Executive Summary" \
-      "User Experience[[:space:]]*&[[:space:]]*Functionality" \
-      "AI System Requirements[[:space:]]*\\(If Applicable\\)" \
-      "Technical Specifications" \
-      "Risks[[:space:]]*&[[:space:]]*Roadmap" \
-      "Validation[[:space:]]*&[[:space:]]*Decision Record"
+  design_headings="$(collect_headings "$design_doc")"
+  if has_strict_prd_sections "$design_headings"; then
+    check_required_sections "$design_doc" "$design_headings"       "Executive Summary"       "User Experience[[:space:]]*&[[:space:]]*Functionality"       "AI System Requirements[[:space:]]*\(If Applicable\)"       "Technical Specifications"       "Risks[[:space:]]*&[[:space:]]*Roadmap"       "Validation[[:space:]]*&[[:space:]]*Decision Record"
   else
-    check_required_sections "$design_doc" "目标" "范围" "接口[[:space:]]*/[[:space:]]*数据" "里程碑" "风险"
+    check_required_sections "$design_doc" "$design_headings" "目标" "范围" "接口[[:space:]]*/[[:space:]]*数据" "里程碑" "风险"
   fi
 done
 
