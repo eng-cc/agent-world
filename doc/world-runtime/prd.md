@@ -57,6 +57,7 @@
   - PRD-WORLD_RUNTIME-013: As a Runtime 维护者, I want bounded execution-state retention and sidecar GC, so that默认运行链路的磁盘占用受控。
   - PRD-WORLD_RUNTIME-014: As a QA / 审计维护者, I want GC 后仍可 latest-state 恢复并保留检查点取证能力, so that体积优化不破坏恢复与审计。
   - PRD-WORLD_RUNTIME-015: As a 发布工程师, I want profile-based storage policies and metrics, so that dev/release/soak 能执行不同磁盘预算。
+  - PRD-WORLD_RUNTIME-019: As a Runtime 维护者 / Viewer / QA, I want factory production blocked/resumed/completed state to be explicit and replayable, so that early industrial onboarding can explain why production advanced or stalled.
 - Critical User Flows:
   1. Flow-WR-001: `提交 runtime 变更 -> 执行回放一致性验证 -> 对比事件链 -> 输出兼容结论`
   2. Flow-WR-002: `WASM 模块注册/升级 -> 生命周期治理校验 -> 沙箱执行 -> 审计事件归档`
@@ -135,6 +136,7 @@
 | PRD-WORLD_RUNTIME-013 | TASK-WORLD_RUNTIME-030/031/032/034 | `test_tier_required` | retention / GC / footprint budget 回归 | execution bridge、execution world、CAS 持久化 |
 | PRD-WORLD_RUNTIME-014 | TASK-WORLD_RUNTIME-030/031/032/033/034 | `test_tier_required` + `test_tier_full` | latest-state restart、checkpoint replay、GC fail-safe、checkpoint 保留验证 | 恢复能力与审计链路 |
 | PRD-WORLD_RUNTIME-015 | TASK-WORLD_RUNTIME-030/032/033/034 | `test_tier_required` | storage profile / metrics / archive read / launcher 脚本透传验证 | 发布链路可观测性与环境预算治理 |
+| PRD-WORLD_RUNTIME-019 | TASK-WORLD_RUNTIME-038 | `test_tier_required` | 工厂生产阻塞/恢复/完成状态回归、事件历史可解释性断言 | 前期工业引导、Viewer 工业反馈、QA playability 解释链 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |

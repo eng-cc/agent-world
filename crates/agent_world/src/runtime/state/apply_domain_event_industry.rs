@@ -158,6 +158,7 @@ impl WorldState {
                         input_ledger: site_ledger.clone(),
                         output_ledger: site_ledger,
                         durability_ppm: 1_000_000,
+                        production: FactoryProductionState::default(),
                         built_at: now,
                     },
                 );
@@ -283,6 +284,13 @@ impl WorldState {
                         .latest_market_quotes
                         .insert(quote.kind.clone(), quote.clone());
                 }
+                if let Some(factory) = self.factories.get_mut(factory_id) {
+                    factory.production.active_jobs = factory.production.active_jobs.saturating_add(1);
+                    factory.production.current_job_id = Some(*job_id);
+                    factory.production.current_recipe_id = Some(recipe_id.clone());
+                    factory.production.last_started_at = Some(now);
+                    factory.production.status = FactoryProductionStatus::Running;
+                }
                 if let Some(cell) = self.agents.get_mut(requester_agent_id) {
                     cell.last_active = now;
                 }
@@ -290,6 +298,7 @@ impl WorldState {
             DomainEvent::RecipeCompleted {
                 job_id,
                 requester_agent_id,
+                factory_id,
                 produce,
                 byproducts,
                 output_ledger,
@@ -322,7 +331,57 @@ impl WorldState {
                     .industry_progress
                     .completed_recipe_jobs
                     .saturating_add(1);
+                if let Some(factory) = self.factories.get_mut(factory_id) {
+                    factory.production.active_jobs = factory.production.active_jobs.saturating_sub(1);
+                    if factory.production.current_job_id == Some(*job_id) {
+                        factory.production.current_job_id = None;
+                    }
+                    factory.production.current_recipe_id = None;
+                    factory.production.last_completed_at = Some(now);
+                    factory.production.completed_jobs = factory.production.completed_jobs.saturating_add(1);
+                    if factory.production.active_jobs == 0 {
+                        factory.production.status = FactoryProductionStatus::Idle;
+                    }
+                }
                 self.refresh_industry_progress_stage(now);
+                if let Some(cell) = self.agents.get_mut(requester_agent_id) {
+                    cell.last_active = now;
+                }
+            }
+            DomainEvent::FactoryProductionBlocked {
+                requester_agent_id,
+                factory_id,
+                blocker_kind,
+                blocker_detail,
+                ..
+            } => {
+                if let Some(factory) = self.factories.get_mut(factory_id) {
+                    factory.production.status = FactoryProductionStatus::Blocked;
+                    factory.production.last_blocked_at = Some(now);
+                    factory.production.current_blocker_kind = Some(blocker_kind.clone());
+                    factory.production.current_blocker_detail = Some(blocker_detail.clone());
+                    factory.production.current_job_id = None;
+                    factory.production.current_recipe_id = None;
+                }
+                if let Some(cell) = self.agents.get_mut(requester_agent_id) {
+                    cell.last_active = now;
+                }
+            }
+            DomainEvent::FactoryProductionResumed {
+                requester_agent_id,
+                factory_id,
+                ..
+            } => {
+                if let Some(factory) = self.factories.get_mut(factory_id) {
+                    factory.production.status = if factory.production.active_jobs > 0 {
+                        FactoryProductionStatus::Running
+                    } else {
+                        FactoryProductionStatus::Idle
+                    };
+                    factory.production.last_resumed_at = Some(now);
+                    factory.production.current_blocker_kind = None;
+                    factory.production.current_blocker_detail = None;
+                }
                 if let Some(cell) = self.agents.get_mut(requester_agent_id) {
                     cell.last_active = now;
                 }

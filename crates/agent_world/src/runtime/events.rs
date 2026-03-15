@@ -1144,6 +1144,26 @@ pub enum DomainEvent {
         #[serde(default)]
         bottleneck_tags: Vec<String>,
     },
+    FactoryProductionBlocked {
+        action_id: ActionId,
+        requester_agent_id: String,
+        factory_id: String,
+        recipe_id: String,
+        blocker_kind: String,
+        blocker_detail: String,
+    },
+    FactoryProductionResumed {
+        job_id: ActionId,
+        requester_agent_id: String,
+        factory_id: String,
+        recipe_id: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        previous_blocked_at: Option<WorldTime>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        previous_blocker_kind: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        previous_blocker_detail: Option<String>,
+    },
     GameplayPolicyUpdated {
         operator_agent_id: String,
         electricity_tax_bps: u16,
@@ -1422,6 +1442,12 @@ impl DomainEvent {
                 requester_agent_id, ..
             } => Some(requester_agent_id.as_str()),
             DomainEvent::RecipeCompleted {
+                requester_agent_id, ..
+            } => Some(requester_agent_id.as_str()),
+            DomainEvent::FactoryProductionBlocked {
+                requester_agent_id, ..
+            } => Some(requester_agent_id.as_str()),
+            DomainEvent::FactoryProductionResumed {
                 requester_agent_id, ..
             } => Some(requester_agent_id.as_str()),
             DomainEvent::GameplayPolicyUpdated {

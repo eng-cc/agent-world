@@ -72,6 +72,10 @@ fn default_factory_durability_ppm() -> i64 {
     1_000_000
 }
 
+fn default_factory_production_state() -> FactoryProductionState {
+    FactoryProductionState::default()
+}
+
 fn default_module_release_required_roles() -> Vec<String> {
     vec![
         "security".to_string(),
@@ -81,6 +85,64 @@ fn default_module_release_required_roles() -> Vec<String> {
 }
 
 const ALLIANCE_MIN_MEMBER_COUNT: usize = 2;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum FactoryProductionStatus {
+    Idle,
+    Running,
+    Blocked,
+}
+
+impl Default for FactoryProductionStatus {
+    fn default() -> Self {
+        Self::Idle
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct FactoryProductionState {
+    #[serde(default)]
+    pub status: FactoryProductionStatus,
+    #[serde(default)]
+    pub active_jobs: u16,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub current_job_id: Option<ActionId>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub current_recipe_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_started_at: Option<WorldTime>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_completed_at: Option<WorldTime>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_blocked_at: Option<WorldTime>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_resumed_at: Option<WorldTime>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub current_blocker_kind: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub current_blocker_detail: Option<String>,
+    #[serde(default)]
+    pub completed_jobs: u64,
+}
+
+impl Default for FactoryProductionState {
+    fn default() -> Self {
+        Self {
+            status: FactoryProductionStatus::Idle,
+            active_jobs: 0,
+            current_job_id: None,
+            current_recipe_id: None,
+            last_started_at: None,
+            last_completed_at: None,
+            last_blocked_at: None,
+            last_resumed_at: None,
+            current_blocker_kind: None,
+            current_blocker_detail: None,
+            completed_jobs: 0,
+        }
+    }
+}
 
 /// Persisted factory instance state.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -95,6 +157,8 @@ pub struct FactoryState {
     pub output_ledger: MaterialLedgerId,
     #[serde(default = "default_factory_durability_ppm")]
     pub durability_ppm: i64,
+    #[serde(default = "default_factory_production_state")]
+    pub production: FactoryProductionState,
     pub built_at: WorldTime,
 }
 
@@ -820,6 +884,8 @@ impl WorldState {
             | DomainEvent::FactoryRecycled { .. }
             | DomainEvent::RecipeStarted { .. }
             | DomainEvent::RecipeCompleted { .. }
+            | DomainEvent::FactoryProductionBlocked { .. }
+            | DomainEvent::FactoryProductionResumed { .. }
             | DomainEvent::MaterialProfileGoverned { .. }
             | DomainEvent::ProductProfileGoverned { .. }
             | DomainEvent::RecipeProfileGoverned { .. }

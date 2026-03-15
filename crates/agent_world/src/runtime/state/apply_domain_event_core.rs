@@ -1501,6 +1501,12 @@ impl WorldState {
             event @ DomainEvent::RecipeCompleted { .. } => {
                 self.apply_domain_event_industry(event, now)?;
             }
+            event @ DomainEvent::FactoryProductionBlocked { .. } => {
+                self.apply_domain_event_industry(event, now)?;
+            }
+            event @ DomainEvent::FactoryProductionResumed { .. } => {
+                self.apply_domain_event_industry(event, now)?;
+            }
             DomainEvent::MaterialProfileGoverned {
                 operator_agent_id,
                 proposal_id,

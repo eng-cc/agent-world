@@ -46,6 +46,7 @@
 - [x] TASK-WORLD_RUNTIME-035 (PRD-WORLD_RUNTIME-013/014/015) [test_tier_required]: 将专题项目进一步拆解为 T1.1 ~ T7.5 子任务，明确执行顺序、依赖边界与测试闭环。
 - [x] TASK-WORLD_RUNTIME-036 (PRD-WORLD_RUNTIME-001) [test_tier_required]: 同步 `doc/world-runtime/README.md` 与 `doc/world-runtime/prd.index.md` 的模块入口索引，补齐近期专题、模块职责与根目录收口口径。
 - [x] TASK-WORLD_RUNTIME-037 (PRD-WORLD_RUNTIME-001) [test_tier_required]: 清理 `doc/world-runtime/prd.md` 顶部重复的根级兼容执行入口，保持接口区导航唯一。
+- [x] TASK-WORLD_RUNTIME-038 (PRD-WORLD_RUNTIME-019) [test_tier_required]: 为工厂补齐生产阻塞/恢复状态与审计事件，确保前期工业引导能由 runtime 状态与事件历史解释。
 
 ## 依赖
 - 模块设计总览：`doc/world-runtime/design.md`
@@ -58,11 +59,10 @@
 - `.agents/skills/prd/check.md`
 
 ## 状态
-- 更新日期: 2026-03-11
+- 更新日期: 2026-03-15
 - 当前状态: completed
-- 下一任务: 无（当前模块主项目无未完成任务）
-- 最新完成: `TASK-WORLD_RUNTIME-036`（world-runtime 模块 README / PRD 索引入口同步）。
-- 最新完成: `TASK-WORLD_RUNTIME-037`（world-runtime PRD 顶部重复兼容执行入口清理）。
+- 下一任务: 无（runtime 当前轮工业状态闭环已完成，后续交给 viewer / qa 承接）。
+- 最新完成: `TASK-WORLD_RUNTIME-038`（工厂生产阻塞/恢复状态与事件闭环）；上一轮为 `TASK-WORLD_RUNTIME-037`（world-runtime PRD 顶部重复兼容执行入口清理）。
 - 阶段收口优先级: `P0`
 - 阶段 owner: `runtime_engineer`（联审：`producer_system_designer`；验证：`qa_engineer`）
 - 阻断条件: 在 `TASK-WORLD_RUNTIME-002/003/004` 完成前，`TASK-WORLD_RUNTIME-033` 不再作为当前版本的首要发布驱动项。

@@ -1218,3 +1218,127 @@ fn validate_product_with_module_rejects_when_module_denies() {
         other => panic!("expected ActionRejected, got {other:?}"),
     }
 }
+
+#[test]
+fn schedule_recipe_marks_factory_blocked_and_resumes_after_inputs_recover() {
+    let mut world = World::new();
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "builder-a".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.step().expect("register builder");
+
+    world
+        .set_material_balance("steel_plate", 20)
+        .expect("seed build steel");
+    world
+        .set_material_balance("circuit_board", 4)
+        .expect("seed build circuits");
+    world.submit_action(Action::BuildFactory {
+        builder_agent_id: "builder-a".to_string(),
+        site_id: "site-1".to_string(),
+        spec: factory_spec("factory.blocked_resume", 1, 1),
+    });
+    world.step().expect("start build");
+    world.step().expect("finish build");
+
+    let plan = RecipeExecutionPlan::accepted(
+        1,
+        vec![MaterialStack::new("iron_ingot", 2)],
+        vec![MaterialStack::new("motor_mk1", 1)],
+        Vec::new(),
+        1,
+        1,
+    );
+    world.set_resource_balance(ResourceKind::Electricity, 5);
+    world.submit_action(Action::ScheduleRecipe {
+        requester_agent_id: "builder-a".to_string(),
+        factory_id: "factory.blocked_resume".to_string(),
+        recipe_id: "recipe.blocked_resume".to_string(),
+        plan: plan.clone(),
+    });
+    world.step().expect("blocked schedule");
+
+    let blocked_event = world.journal().events.last().expect("blocked event");
+    match &blocked_event.body {
+        WorldEventBody::Domain(DomainEvent::FactoryProductionBlocked {
+            factory_id,
+            recipe_id,
+            blocker_kind,
+            blocker_detail,
+            ..
+        }) => {
+            assert_eq!(factory_id, "factory.blocked_resume");
+            assert_eq!(recipe_id, "recipe.blocked_resume");
+            assert_eq!(blocker_kind, "material_shortage");
+            assert!(blocker_detail.contains("iron_ingot"));
+        }
+        other => panic!("expected FactoryProductionBlocked, got {other:?}"),
+    }
+
+    let factory = world
+        .state()
+        .factories
+        .get("factory.blocked_resume")
+        .expect("factory state");
+    assert_eq!(
+        factory.production.status,
+        crate::runtime::FactoryProductionStatus::Blocked
+    );
+    assert_eq!(factory.production.active_jobs, 0);
+    assert_eq!(
+        factory.production.current_blocker_kind.as_deref(),
+        Some("material_shortage")
+    );
+
+    world
+        .set_ledger_material_balance(MaterialLedgerId::site("site-1"), "iron_ingot", 2)
+        .expect("seed recovery iron");
+    world.submit_action(Action::ScheduleRecipe {
+        requester_agent_id: "builder-a".to_string(),
+        factory_id: "factory.blocked_resume".to_string(),
+        recipe_id: "recipe.blocked_resume".to_string(),
+        plan,
+    });
+    world.step().expect("resume schedule");
+
+    let resumed_event = world.journal().events.last().expect("resumed event");
+    match &resumed_event.body {
+        WorldEventBody::Domain(DomainEvent::FactoryProductionResumed {
+            factory_id,
+            recipe_id,
+            previous_blocker_kind,
+            ..
+        }) => {
+            assert_eq!(factory_id, "factory.blocked_resume");
+            assert_eq!(recipe_id, "recipe.blocked_resume");
+            assert_eq!(previous_blocker_kind.as_deref(), Some("material_shortage"));
+        }
+        other => panic!("expected FactoryProductionResumed, got {other:?}"),
+    }
+
+    let running_factory = world
+        .state()
+        .factories
+        .get("factory.blocked_resume")
+        .expect("factory state after resume");
+    assert_eq!(
+        running_factory.production.status,
+        crate::runtime::FactoryProductionStatus::Running
+    );
+    assert_eq!(running_factory.production.active_jobs, 1);
+    assert!(running_factory.production.current_blocker_kind.is_none());
+
+    world.step().expect("complete resumed recipe");
+    let completed_factory = world
+        .state()
+        .factories
+        .get("factory.blocked_resume")
+        .expect("factory state after completion");
+    assert_eq!(
+        completed_factory.production.status,
+        crate::runtime::FactoryProductionStatus::Idle
+    );
+    assert_eq!(completed_factory.production.active_jobs, 0);
+    assert_eq!(completed_factory.production.completed_jobs, 1);
+}
