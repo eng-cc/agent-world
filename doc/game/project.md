@@ -28,7 +28,7 @@
     - `doc/game/gameplay/gameplay-visual-evidence-linkage-2026-03-10.md`
   - QA 结论:
     - `TASK-GAMEPLAY-MLF-005/006/007/008` 已全部完成，当前未见高优先级阻断；更长录屏留给后续 release gate 抽样继续观察。
-- [ ] TASK-GAME-020 (PRD-GAME-001/002) [test_tier_required]: 冻结前期工业引导闭环（首个制成品/工厂），并拆出 runtime / viewer / QA 落地任务与验收指标。
+- [x] TASK-GAME-020 (PRD-GAME-001/002) [test_tier_required]: 冻结前期工业引导闭环（首个制成品/工厂），并拆出 runtime / viewer / QA 落地任务与验收指标。
 
 ## 依赖
 - 模块设计总览：`doc/game/design.md`
@@ -43,11 +43,12 @@
 
 ## 状态
 - 更新日期: 2026-03-15
-- 当前状态: in_progress
-- 下一任务: `TASK-GAME-020`（前期工业引导闭环的 runtime / viewer / QA 落地）。
-- 最新完成: `TASK-GAME-019`（game 模块 README / PRD 索引入口同步）；`TASK-GAME-020` 已完成文档冻结并进入执行阶段。
+- 当前状态: completed
+- 下一任务: 无（当前模块主项目无未完成任务）。
+- 最新完成: `TASK-GAME-020`（前期工业引导闭环的 runtime / viewer / QA 落地与 required-tier 证据链）。
+- 最新完成: `TASK-GAME-019`（game 模块 README / PRD 索引入口同步）。
 - 阶段收口优先级: `P0`
-- 阶段 owner: `viewer_engineer`（发起/裁剪：`producer_system_designer`；验证：`qa_engineer`）
+- 阶段 owner: `qa_engineer`（发起/裁剪：`producer_system_designer`；实现：`runtime_engineer` / `viewer_engineer`）
 - 阻断条件: 若后续 release gate 缺少 playability / testing / core 的证据互链，当前版本仍不得以“玩法体验已收口”为前提给出发布 `go` 结论。
 - 承接约束: `TASK-GAMEPLAY-MLF-005/006/007/008` 必须统一回写到同一轮视觉优化证据包，并同步引用 `playability_test_result` 模块的反馈口径。
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
@@ -69,6 +70,7 @@
 - ROUND-017 进展: `TASK-GAME-018` 已进入执行中，`TASK-GAMEPLAY-MLF-005/006/007` 已完成（控制结果显著条 + 玩家模式默认减负 + 世界可读性增强首轮实现）；`TASK-GAMEPLAY-MLF-008` 已完成 runtime_live 节奏修正与 ROUND-009 viewer 侧视觉证据采集（baseline / 3D / 2D / console / state / 录屏），并已移交 `qa_engineer`。
 - ROUND-018 进展: `qa_engineer` 已基于 `doc/game/gameplay/gameplay-micro-loop-visual-closure-evidence-2026-03-10-round009.md` 完成复核并回写 `doc/playability_test_result/card_2026_03_10_23_27_43.md`；`TASK-GAME-018` 已完成。
 - ROUND-019 进展: `producer_system_designer` 已在 `doc/game/gameplay/gameplay-top-level-design.prd.md` 冻结前期工业引导闭环，把“首个制成品 -> 工厂”设为新手前期主成就链，并在 `doc/game/gameplay/gameplay-top-level-design.project.md` 拆出 `runtime_engineer / viewer_engineer / qa_engineer` 后续执行项。
+- ROUND-020 进展: `runtime_engineer` 已补齐工厂 `blocked/resumed/completed` 状态与审计事件，`viewer_engineer` 已把工业运行态和玩家友好反馈接入主界面，`qa_engineer` 已新增 `doc/playability_test_result/industrial-onboarding-required-tier-cards-2026-03-15.md` 并把 required-tier 手动回归链路挂入 `testing-manual.md`；`TASK-GAME-020` 收口完成。
 - 说明: 本文档仅维护 game 设计执行状态；过程记录在 `doc/devlog/2026-03-05.md`、`doc/devlog/2026-03-06.md`、`doc/devlog/2026-03-07.md` 与 `doc/devlog/2026-03-15.md`。
 
 ## 阶段收口角色交接

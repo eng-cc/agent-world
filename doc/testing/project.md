@@ -116,6 +116,12 @@
 ## 专题任务映射（2026-03-10 批次）
 - [x] SUBTASK-TESTING-20260310-001 (PRD-TESTING-LAUNCHER-MANUAL-001/002/003) [test_tier_required]: `doc/testing/launcher/launcher-manual-test-checklist-2026-03-10.project.md`
 - [x] TASK-TESTING-006 (PRD-TESTING-001) [test_tier_required]: 同步 `doc/testing/README.md` 的模块入口索引，补齐近期专题、模块职责与根目录收口口径。
+- [x] TASK-TESTING-052 (PRD-TESTING-002/003) [test_tier_required]: 把前期工业引导的 required-tier 人工回归链路挂入 `testing-manual.md`，并与 playability 卡组互链，覆盖 `首个制成品 / 停机恢复 / 首座工厂单元`。
+  - 产物文件:
+    - `testing-manual.md`
+    - `doc/playability_test_result/industrial-onboarding-required-tier-cards-2026-03-15.md`
+  - 验收命令 (`test_tier_required`):
+    - `rg -n 'industrial-onboarding-required-tier-cards-2026-03-15|首个制成品|停机恢复|首座工厂单元' testing-manual.md doc/playability_test_result/industrial-onboarding-required-tier-cards-2026-03-15.md`
 
 ## 依赖
 - 模块设计总览：`doc/testing/design.md`
@@ -127,9 +133,10 @@
 - `.agents/skills/prd/check.md`
 
 ## 状态
-- 更新日期: 2026-03-12
+- 更新日期: 2026-03-15
 - 当前状态: completed
 - 下一任务: 无（当前模块主项目无未完成任务）
+- 最新完成: `TASK-TESTING-052`（补前期工业引导 required-tier 手动卡组互链与 testing-manual 跳转入口）。
 - 最新完成: `TASK-TESTING-051`（为 bundle-first 试玩入口增加 freshness manifest 守卫，默认阻断或自动重建 stale bundle）。
 - 最新完成: `TASK-TESTING-050`（固化 headed Viewer Web 的默认硬件 WebGL 启动参数，并把 headed 命中 `SwiftShader` / software renderer 统一收口为环境阻断）。
 - 最新完成: `TASK-TESTING-049`（修复 `run-producer-playtest.sh --open-headed` 退出后残留浏览器窗口的问题，为脚本补充自动关会话收尾）。

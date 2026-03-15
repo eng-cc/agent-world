@@ -47,6 +47,7 @@
   - 发布候选验证：每个候选版本执行 required + full 组合。
   - 专项长跑：高风险链路按周执行并沉淀趋势结果。
   - 失效复盘：出现逃逸缺陷后补齐回归与触发矩阵。
+  - 前期工业体验回归：影响 `首个制成品 / 停机恢复 / 首座工厂单元` 时，补跑 required-tier 手动卡组。
 - User Stories:
   - PRD-TESTING-001: As a 测试维护者, I want one canonical testing strategy, so that suite evolution stays coherent.
   - PRD-TESTING-002: As a 开发者, I want clear trigger matrices, so that I can run the right tests efficiently.
@@ -59,6 +60,7 @@
   3. Flow-TST-003: `线上问题复盘 -> 回填触发矩阵 -> 增加回归用例 -> 验证闭环`
   4. Flow-TST-004: `逐篇阅读 legacy 专题文档 -> 按 strict schema 人工重写 -> 改名为 .prd/.project -> 回归校验`
   5. Flow-TST-005: `触发 wasm hash 校验 -> 跨 runner 对账 -> required check 放行/阻断 -> 发布链路收口`
+  6. Flow-TST-006: `识别工业引导体验改动 -> 运行自动化前置 -> 执行 playability 卡组 -> 回写 QA 阻断结论`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
@@ -76,6 +78,7 @@
   - AC-5: 每个迁移批次必须提供“原文约束点 -> 新章节映射”并通过文档治理检查。
   - AC-6: builtin wasm hash 发布链路治理（m4/m5 keyed + strict + multi-runner + required check + identity 输入收敛）具备独立专题与任务追踪。
   - AC-7: `world_web_launcher` / launcher Web 控制面必须显式标注 GUI Agent 优先，`agent-browser` 仅作为状态、字段与页面加载校验补充。
+  - AC-8: 对前期工业引导体验的改动，必须能从 `testing-manual.md` 直接跳转到对应 required-tier 手动卡组。
 - Non-Goals:
   - 不在本 PRD 中替代业务模块的功能设计。
   - 不承诺所有测试都进入 CI 默认路径。
@@ -89,6 +92,7 @@
 - Integration Points:
   - `testing-manual.md`
   - `doc/testing/manual/web-ui-agent-browser-closure-manual.prd.md`
+  - `doc/playability_test_result/industrial-onboarding-required-tier-cards-2026-03-15.md`
   - `doc/testing/ci/ci-builtin-wasm-m4-m5-hash-drift-hardening.prd.md`
   - `scripts/ci-tests.sh`
   - `scripts/sync-m1-builtin-wasm-artifacts.sh`

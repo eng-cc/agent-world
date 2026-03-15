@@ -45,6 +45,7 @@
   - 版本对比：每个候选版本至少一次横向对比。
   - 缺陷闭环复核：高优先级问题修复后必须复测。
   - 发布门禁引用：发布评审阶段统一引用同一证据包。
+- 新手工业引导回归：影响首个制成品/停机恢复/首座工厂单元时，按专题卡组执行 required-tier 手动复核。
 - User Stories:
   - PRD-PLAYABILITY_TEST_RESULT-001: As an 评测者, I want a normalized feedback template, so that results are comparable across sessions.
   - PRD-PLAYABILITY_TEST_RESULT-002: As a 玩法负责人, I want issue severity and ownership, so that follow-up is actionable.
@@ -53,17 +54,20 @@
   1. Flow-PLY-001: `启动体验会话 -> 填写标准卡片 -> 提交归档 -> 进入问题池`
   2. Flow-PLY-002: `对比多版本卡片 -> 提取高频问题 -> 指派修复 -> 回填结果`
   3. Flow-PLY-003: `汇总证据包 -> 绑定发布候选 -> 输出可玩性放行结论`
+  4. Flow-PLY-004: `识别工业引导改动 -> 选择首产出/停机恢复/首座工厂卡片 -> 执行手动回归 -> 回写正式卡片与阻断结论`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
 | 反馈卡片采集 | 场景、步骤、问题描述、截图、等级 | 提交卡片并自动归档 | `draft -> submitted -> archived` | 按版本与时间排序 | 评测者可创建，负责人可编辑等级 |
 | 问题闭环追踪 | 问题ID、责任人、修复提交、复测结论 | 更新状态并写入闭环记录 | `opened -> fixing -> verified -> closed` | 高严重级优先处理 | 玩法负责人可变更状态 |
 | 发布证据包 | 卡片集合、缺陷清单、结论 | 生成证据包供发布引用 | `collecting -> bundled -> approved` | 按候选版本唯一绑定 | 发布负责人审批 |
+| 工业引导卡组 | 首个制成品、停机恢复、首座工厂单元、失败签名、证据路径 | 按场景卡选择手动回归链路 | `planned -> executed -> closed/blocked` | 影响首产出/停机/建厂体验时优先执行 | `qa_engineer` 维护，`producer_system_designer` 联审口径 |
 - Acceptance Criteria:
   - AC-1: PRD 明确卡片字段、评分口径、问题分级标准。
   - AC-2: project 文档定义采集、汇总、复盘三类任务。
   - AC-3: 与 `doc/playability_test_result/game-test.prd.md`、`testing-manual.md` 口径一致。
   - AC-4: 历史卡片可按版本进行检索与对比。
+  - AC-5: 前期工业引导的 `首个制成品 / 停机恢复 / 首座工厂单元` 具备可重复执行的专题卡组与 required-tier 手动回归链路。
 - Non-Goals:
   - 不在本 PRD 中定义玩法实现细节。
   - 不替代自动化压测脚本的设计文档。
@@ -77,6 +81,7 @@
 - Integration Points:
   - `doc/playability_test_result/README.md`
   - `doc/playability_test_result/game-test.prd.md`
+  - `doc/playability_test_result/industrial-onboarding-required-tier-cards-2026-03-15.md`
   - `testing-manual.md`
 - Edge Cases & Error Handling:
   - 空卡片：缺关键字段时禁止提交并提示必填项。

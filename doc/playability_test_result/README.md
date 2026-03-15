@@ -18,6 +18,7 @@
 - `doc/playability_test_result/game-test.project.md`
 - `doc/playability_test_result/playability_test_card.md`
 - `doc/playability_test_result/playability_test_manual.md`
+- `doc/playability_test_result/industrial-onboarding-required-tier-cards-2026-03-15.md`
 - `doc/playability_test_result/templates/`
 - `doc/playability_test_result/evidence/`
 
@@ -26,5 +27,5 @@
 - 历史卡片不再保留在仓库（`archive/` 目录已移除）。
 
 ## 维护约定
-- 可玩性模板、评分口径或发布引用格式变化时，需同步更新 `prd.md` 与 `project.md`。
+- 可玩性模板、评分口径、专题卡组或发布引用格式变化时，需同步更新 `prd.md` 与 `project.md`。
 - 新增专题后，需同步回写 `doc/playability_test_result/prd.index.md` 与本目录索引。
