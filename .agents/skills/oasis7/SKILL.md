@@ -60,6 +60,7 @@ printf '%s\n' "$bundle_dir"
 ```
 
 By default it downloads the latest asset from `eng-cc/agent-world` GitHub Releases, verifies `agent-world-checksums.txt` when available, extracts the archive, and returns a directory that contains `run-game.sh`.
+Current-user `~` in `--download-dir` is expanded before use, and the returned `bundle_dir` is an absolute path.
 
 Useful overrides:
 

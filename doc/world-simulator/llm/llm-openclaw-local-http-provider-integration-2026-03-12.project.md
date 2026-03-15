@@ -25,7 +25,7 @@
 - `crates/agent_world_client_launcher/src/*`
 
 ## 状态
-- 最近更新：2026-03-13
+- 最近更新：2026-03-15
 - 当前阶段: T5 pending
 - 当前任务: `继续压缩 OpenClaw system prompt / session 负载并扩面真实 parity 样本，收敛高延迟后准备 QA/producer 签收（experimental）`
 - owner: `agent_engineer`
@@ -42,4 +42,5 @@
 - T5 runtime-agent 补充: 已在 repo 内新增 `tools/openclaw/agent_world_runtime_workspace/*` 与 `scripts/setup-openclaw-agent-world-runtime.sh`，可一键安装轻量 `agent_world_runtime` OpenClaw agent；同时 bridge 的决策调用已切到 `openclaw gateway call agent --expect-final --json` + `sessionKey` 官方 RPC 形态。实机简单 probe 下，轻量 agent 已把 `promptTokens` 从约 `11885` 压到约 `9590`，`result.meta.durationMs` 从约 `4169ms` 降到约 `2191ms`；进一步压缩 repo-owned `BOOTSTRAP/TOOLS/IDENTITY/USER/HEARTBEAT` 后，真实 `P0-001` parity `median_latency_ms` 也从约 `5401` 小幅降到约 `5264`，但仍高于最终门禁，因此 T5 依然保持 `experimental`，下一步继续裁剪 system prompt / bootstrap 注入。
 - T5 主链路补充: `agent_world_client_launcher` 已把 `agent_provider_mode/openclaw_base_url/openclaw_auth_token/openclaw_connect_timeout_ms/openclaw_agent_profile` 正式透传到 `world_game_launcher`；后者再通过环境变量把 OpenClaw 设置注入 `world_viewer_live` 的 runtime live sidecar，OpenClaw 现在可以走产品默认启动链路进入真实运行时。
 - T5 操作流补充: `oasis7` 已新增 GitHub Release bundle-first 下载入口，`oasis7-run.sh download` 可直接下载并解压 `agent-world-<platform>` 发行包，`play` 则支持 `--bundle-dir` 与 `--repo-root` 显式路径策略；当前真实试玩推荐先拿 release bundle 跑 `run-game.sh`，再按需复用 repo 内 bridge / runtime-agent / parity tooling。
+- T5 路径修复补充: `oasis7-run.sh` 现已在 `normalize_path` 中显式展开当前用户 `~`，修复默认 `--download-dir ~/.cache/oasis7/releases` 被误写到 repo-local `~/...` 的问题；同时新增 `.agents/skills/oasis7/scripts/oasis7-run-path-test.sh` 回归脚本，覆盖默认下载目录与 `~/custom-cache` override。
 - 当前边界: runtime live 的 `agent_chat` / `prompt_control` 在 OpenClaw 模式下仍显式报 `unsupported`，避免对外误报“已支持玩家直连操控”。

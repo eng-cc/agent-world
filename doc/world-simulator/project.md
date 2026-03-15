@@ -134,6 +134,7 @@
 - [x] TASK-WORLD_SIMULATOR-131 (PRD-WORLD_SIMULATOR-037/038) [test_tier_required]: 为 `oasis7-run.sh` 增加 `doctor` 模式，输出 OpenClaw 本地试玩链路的快速诊断摘要（Gateway / bridge / provider info / runtime agent）。
 - [x] TASK-WORLD_SIMULATOR-132 (PRD-WORLD_SIMULATOR-037/038) [test_tier_required]: 为 `oasis7-run.sh doctor` 增加 `--json` 机读输出，便于后续 launcher/UI/自动化脚本直接消费诊断结果。
 - [x] TASK-WORLD_SIMULATOR-133 (PRD-WORLD_SIMULATOR-037/038) [test_tier_required]: 为 `oasis7` 增加 GitHub Release bundle-first 下载入口与 `--bundle-dir/--repo-root` 路径策略，避免把真实试玩工作流绑死在 skill 相对路径上。
+- [x] TASK-WORLD_SIMULATOR-134 (PRD-WORLD_SIMULATOR-037) [test_tier_required]: 修复 `oasis7-run.sh` 对默认 `--download-dir ~/.cache/oasis7/releases` 的当前用户 `~` 展开，避免 bundle-first 下载产物误写到 repo-local `~/...`，并补路径回归脚本。
 - [x] TASK-WORLD_SIMULATOR-110 (PRD-WORLD_SIMULATOR-035) [test_tier_required]: 为 `agent_world_viewer` 的 Web runtime fatal hook 增加“已知图形 fatal 仅自动 reload 一次”的恢复路径，收敛首开必须手动 reopen 的摩擦。
 - [x] TASK-WORLD_SIMULATOR-111 (PRD-WORLD_SIMULATOR-035) [test_tier_required]: 修复 `__AW_TEST__` runtime fatal 快照即时落盘，并复验 Viewer 首开不再以假性 `connecting` 掩盖图形 fatal。
 
@@ -293,6 +294,7 @@
 - 最新完成: `TASK-WORLD_SIMULATOR-130`（为 `oasis7` 新增故障签名 references 与一键 real-play/smoke 脚本封装）。
 - 最新完成: `TASK-WORLD_SIMULATOR-131`（为 `oasis7-run.sh` 新增 `doctor` 诊断模式）。
 - 最新完成: `TASK-WORLD_SIMULATOR-132`（为 `oasis7-run.sh doctor` 增加 `--json` 机读输出）。
+- 最新完成: `TASK-WORLD_SIMULATOR-134`（修复 `oasis7-run.sh` 默认下载目录的 `~` 展开，并补 bundle-first 路径回归脚本）。
 - 最新完成: `TASK-WORLD_SIMULATOR-133`（为 `oasis7` 增加 GitHub Release bundle-first 下载入口与显式路径策略）。
 - 当前优先任务: `PRD-WORLD_SIMULATOR-038` parity 采证
 - parity 执行入口: `scripts/openclaw-parity-p0.sh` + `world_openclaw_parity_bench` 已落地，可先跑 openclaw-only/mock smoke，再接真实 builtin/OpenClaw 双边样本。

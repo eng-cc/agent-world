@@ -31,6 +31,7 @@ printf '%s\n' "$bundle_dir"
 ```
 
 The returned directory must contain `run-game.sh`.
+If you use `--download-dir ~/.cache/oasis7/releases`, the helper expands the current user's `~` and returns an absolute bundle path.
 
 ## Preferred Runtime Agent
 

@@ -81,16 +81,25 @@ print_doctor_status() {
   fi
 }
 
+expand_current_user_home_path() {
+  local value="$1"
+  if [[ "$value" == "~" ]]; then
+    printf '%s' "$HOME"
+  elif [[ "${value:0:2}" == "~/" ]]; then
+    printf '%s/%s' "$HOME" "${value:2}"
+  else
+    printf '%s' "$value"
+  fi
+}
+
 normalize_path() {
   local value="$1"
-  if [[ "$value" == ~* ]]; then
-    eval "printf '%s' \"$value\""
-    return 0
-  fi
-  if [[ "$value" == /* ]]; then
-    printf '%s' "$value"
+  local expanded
+  expanded="$(expand_current_user_home_path "$value")"
+  if [[ "$expanded" == /* ]]; then
+    printf '%s' "$expanded"
   else
-    printf '%s/%s' "$PWD" "$value"
+    printf '%s/%s' "$PWD" "$expanded"
   fi
 }
 
@@ -495,6 +504,7 @@ PY
   return 1
 }
 
+main() {
 mode="${1:-}"
 if [[ -z "$mode" || "$mode" == "-h" || "$mode" == "--help" ]]; then
   usage
@@ -783,3 +793,8 @@ case "$mode" in
     "${cmd[@]}"
     ;;
 esac
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  main "$@"
+fi
