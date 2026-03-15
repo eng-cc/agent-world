@@ -297,6 +297,18 @@ fn sample_agent_moved_event(id: u64, time: u64) -> WorldEvent {
     }
 }
 
+fn sample_runtime_event(id: u64, time: u64, kind: &str, summary: &str) -> WorldEvent {
+    WorldEvent {
+        id,
+        time,
+        kind: WorldEventKind::RuntimeEvent {
+            kind: kind.to_string(),
+            domain_kind: Some(summary.to_string()),
+        },
+        runtime_event: None,
+    }
+}
+
 fn sample_viewer_state(
     status: crate::ConnectionStatus,
     events: Vec<WorldEvent>,
@@ -656,6 +668,22 @@ fn feedback_tone_for_event_maps_warning_positive_and_info() {
     let positive = feedback_tone_for_event(&sample_agent_moved_event(2, 2).kind);
     assert_eq!(positive, FeedbackTone::Positive);
 
+    let runtime_warning = feedback_tone_for_event(
+        &sample_runtime_event(3, 3, "runtime.economy.factory_production_blocked", "factory=factory.alpha recipe=recipe.motor reason=material_shortage detail=material_shortage:iron_ingot").kind,
+    );
+    assert_eq!(runtime_warning, FeedbackTone::Warning);
+
+    let runtime_positive = feedback_tone_for_event(
+        &sample_runtime_event(
+            4,
+            4,
+            "runtime.economy.recipe_completed",
+            "factory=factory.alpha recipe=recipe.motor outputs=motor_mk1x2",
+        )
+        .kind,
+    );
+    assert_eq!(runtime_positive, FeedbackTone::Positive);
+
     let info = feedback_tone_for_event(&WorldEventKind::LocationRegistered {
         location_id: "loc-1".to_string(),
         name: "alpha".to_string(),
@@ -681,6 +709,23 @@ fn push_feedback_toast_clamps_queue_and_removes_oldest() {
     assert_eq!(feedback_toast_len(&feedback), feedback_toast_cap());
     let ids = feedback_toast_ids(&feedback);
     assert_eq!(ids, vec![3, 4, 5]);
+}
+
+#[test]
+fn push_feedback_toast_uses_runtime_industry_friendly_detail() {
+    let mut feedback = FeedbackToastState::default();
+    let locale = crate::i18n::UiLocale::ZhCn;
+    let event = sample_runtime_event(9, 9, "runtime.economy.factory_production_blocked", "factory=factory.alpha recipe=recipe.motor requester=agent.alpha reason=material_shortage detail=material_shortage:iron_ingot");
+
+    push_feedback_toast(&mut feedback, &event, 12.0, locale);
+
+    assert_eq!(
+        feedback_toast_snapshot(&feedback, 0),
+        Some((9, FeedbackTone::Warning, "操作受阻"))
+    );
+    let detail = feedback_toast_detail(&feedback, 0).expect("runtime toast detail");
+    assert!(detail.contains("产线停机"));
+    assert!(detail.contains("factory.alpha"));
 }
 
 #[test]

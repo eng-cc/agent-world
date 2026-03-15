@@ -34,8 +34,13 @@ pub(super) fn render_text_sections(
         locale,
     );
     let industry_graph = build_industry_graph_view_model(state.snapshot.as_ref(), &state.events);
-    let industrial = industrial_ops_summary_with_zoom(&industry_graph, industry_zoom_level)
-        .map(|text| localize_industrial_ops_block(text, locale));
+    let industrial = industrial_ops_summary_with_zoom(
+        &industry_graph,
+        state.snapshot.as_ref(),
+        &state.events,
+        industry_zoom_level,
+    )
+    .map(|text| localize_industrial_ops_block(text, locale));
     let economy = economy_dashboard_summary_with_zoom(&industry_graph, industry_zoom_level)
         .map(|text| localize_economy_dashboard_block(text, locale));
     let ops_navigation = if is_ops_nav_panel_enabled() {

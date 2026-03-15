@@ -38,6 +38,34 @@ fn sync_agent_chatter_bubbles_skips_history_then_tracks_new_events_only() {
 }
 
 #[test]
+fn sync_agent_chatter_bubbles_formats_runtime_industry_feedback() {
+    let mut achievements = PlayerAchievementState::default();
+    let mut state = sample_viewer_state(
+        crate::ConnectionStatus::Connected,
+        vec![sample_runtime_event(
+            1,
+            1,
+            "runtime.economy.recipe_started",
+            "factory=factory.alpha recipe=recipe.motor requester=agent.alpha outputs=motor_mk1x2",
+        )],
+    );
+    let locale = crate::i18n::UiLocale::ZhCn;
+
+    sync_agent_chatter_bubbles(&mut achievements, &state, 10.0, locale);
+    assert_eq!(player_agent_chatter_len(&achievements), 0);
+
+    state.events.push(sample_runtime_event(2, 2, "runtime.economy.factory_production_blocked", "factory=factory.alpha recipe=recipe.motor requester=agent.alpha reason=material_shortage detail=material_shortage:iron_ingot"));
+    sync_agent_chatter_bubbles(&mut achievements, &state, 11.0, locale);
+
+    let snapshot = player_agent_chatter_snapshot(&achievements, 0)
+        .expect("expected one chatter bubble after runtime industry event");
+    assert_eq!(snapshot.0, 2);
+    assert_eq!(snapshot.1, FeedbackTone::Warning);
+    assert!(snapshot.2.contains("factory.alpha"));
+    assert!(snapshot.3.contains("产线停机"));
+}
+
+#[test]
 fn sync_agent_chatter_bubbles_clamps_queue_and_expires() {
     let mut achievements = PlayerAchievementState::default();
     let mut state = sample_viewer_state(

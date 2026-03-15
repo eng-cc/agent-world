@@ -1258,14 +1258,16 @@ pub(super) fn industrial_ops_summary(
     events: &[WorldEvent],
 ) -> Option<String> {
     let graph = build_industry_graph_view_model(snapshot, events);
-    industrial_ops_summary_with_zoom(&graph, IndustrySemanticZoomLevel::Node)
+    industrial_ops_summary_with_zoom(&graph, snapshot, events, IndustrySemanticZoomLevel::Node)
 }
 
 pub(super) fn industrial_ops_summary_with_zoom(
     graph: &IndustryGraphViewModel,
+    snapshot: Option<&WorldSnapshot>,
+    events: &[WorldEvent],
     zoom: IndustrySemanticZoomLevel,
 ) -> Option<String> {
-    ui_text_industrial::industrial_ops_summary_with_zoom(graph, zoom)
+    ui_text_industrial::industrial_ops_summary_with_zoom(graph, snapshot, events, zoom)
 }
 
 #[allow(dead_code)]

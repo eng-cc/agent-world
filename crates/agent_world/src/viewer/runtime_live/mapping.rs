@@ -1,7 +1,8 @@
 use crate::geometry::space_distance_cm;
 use crate::runtime::{
-    DomainEvent as RuntimeDomainEvent, RejectReason as RuntimeRejectReason,
-    WorldEvent as RuntimeWorldEvent, WorldEventBody as RuntimeWorldEventBody,
+    DomainEvent as RuntimeDomainEvent, MaterialStack as RuntimeMaterialStack,
+    RejectReason as RuntimeRejectReason, WorldEvent as RuntimeWorldEvent,
+    WorldEventBody as RuntimeWorldEventBody,
 };
 use crate::simulator::{
     Agent, Location, RejectReason as SimulatorRejectReason, ResourceOwner, WorldConfig, WorldEvent,
@@ -285,6 +286,90 @@ pub(super) fn map_runtime_domain_event(
                 achievement_id.as_deref().unwrap_or("none"),
             ),
         )),
+        RuntimeDomainEvent::FactoryBuilt {
+            builder_agent_id,
+            site_id,
+            spec,
+            ..
+        } => Some(runtime_structured_event(
+            "runtime.economy.factory_built",
+            format!(
+                "factory={} builder={} site={}",
+                fallback_non_empty(&spec.factory_id, "unknown_factory"),
+                fallback_non_empty(builder_agent_id, "unknown_builder"),
+                fallback_non_empty(site_id, "unknown_site"),
+            ),
+        )),
+        RuntimeDomainEvent::RecipeStarted {
+            requester_agent_id,
+            factory_id,
+            recipe_id,
+            accepted_batches,
+            produce,
+            ..
+        } => Some(runtime_structured_event(
+            "runtime.economy.recipe_started",
+            format!(
+                "factory={} recipe={} requester={} batches={accepted_batches} outputs={}",
+                fallback_non_empty(factory_id, "unknown_factory"),
+                fallback_non_empty(recipe_id, "unknown_recipe"),
+                fallback_non_empty(requester_agent_id, "unknown_requester"),
+                material_stack_summary(produce),
+            ),
+        )),
+        RuntimeDomainEvent::RecipeCompleted {
+            requester_agent_id,
+            factory_id,
+            recipe_id,
+            accepted_batches,
+            produce,
+            ..
+        } => Some(runtime_structured_event(
+            "runtime.economy.recipe_completed",
+            format!(
+                "factory={} recipe={} requester={} batches={accepted_batches} outputs={}",
+                fallback_non_empty(factory_id, "unknown_factory"),
+                fallback_non_empty(recipe_id, "unknown_recipe"),
+                fallback_non_empty(requester_agent_id, "unknown_requester"),
+                material_stack_summary(produce),
+            ),
+        )),
+        RuntimeDomainEvent::FactoryProductionBlocked {
+            requester_agent_id,
+            factory_id,
+            recipe_id,
+            blocker_kind,
+            blocker_detail,
+            ..
+        } => Some(runtime_structured_event(
+            "runtime.economy.factory_production_blocked",
+            format!(
+                "factory={} recipe={} requester={} reason={} detail={}",
+                fallback_non_empty(factory_id, "unknown_factory"),
+                fallback_non_empty(recipe_id, "unknown_recipe"),
+                fallback_non_empty(requester_agent_id, "unknown_requester"),
+                fallback_non_empty(blocker_kind, "unknown_reason"),
+                fallback_non_empty(blocker_detail, "none"),
+            ),
+        )),
+        RuntimeDomainEvent::FactoryProductionResumed {
+            requester_agent_id,
+            factory_id,
+            recipe_id,
+            previous_blocker_kind,
+            previous_blocker_detail,
+            ..
+        } => Some(runtime_structured_event(
+            "runtime.economy.factory_production_resumed",
+            format!(
+                "factory={} recipe={} requester={} previous_reason={} previous_detail={}",
+                fallback_non_empty(factory_id, "unknown_factory"),
+                fallback_non_empty(recipe_id, "unknown_recipe"),
+                fallback_non_empty(requester_agent_id, "unknown_requester"),
+                previous_blocker_kind.as_deref().unwrap_or("none"),
+                previous_blocker_detail.as_deref().unwrap_or("none"),
+            ),
+        )),
         _ => None,
     }
 }
@@ -350,6 +435,24 @@ fn runtime_structured_event(kind: &str, domain_kind: String) -> WorldEventKind {
     }
 }
 
+fn material_stack_summary(stacks: &[RuntimeMaterialStack]) -> String {
+    if stacks.is_empty() {
+        return "none".to_string();
+    }
+
+    stacks
+        .iter()
+        .map(|stack| {
+            format!(
+                "{}x{}",
+                fallback_non_empty(&stack.kind, "unknown_material"),
+                stack.amount
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(",")
+}
+
 fn fallback_non_empty<'a>(value: &'a str, fallback: &'a str) -> &'a str {
     let trimmed = value.trim();
     if trimmed.is_empty() {
@@ -384,7 +487,7 @@ fn runtime_event_kind_label(body: &RuntimeWorldEventBody) -> (String, Option<Str
 mod tests {
     use super::*;
     use crate::geometry::GeoPos;
-    use crate::runtime::SnapshotMeta;
+    use crate::runtime::{FactoryModuleSpec, MaterialLedgerId, MaterialStack, SnapshotMeta};
     use crate::simulator::WorldScenario;
     use crate::viewer::runtime_live::{ViewerRuntimeLiveServer, ViewerRuntimeLiveServerConfig};
 
@@ -453,6 +556,137 @@ mod tests {
                 assert!(summary.contains("eta_ticks=3"));
             }
             other => panic!("unexpected mapped event: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn map_runtime_domain_event_factory_built_emits_structured_runtime_event() {
+        let event = RuntimeDomainEvent::FactoryBuilt {
+            job_id: 11,
+            builder_agent_id: "builder.alpha".to_string(),
+            site_id: "site.alpha".to_string(),
+            spec: FactoryModuleSpec {
+                factory_id: "factory.alpha".to_string(),
+                display_name: "Alpha Plant".to_string(),
+                tier: 1,
+                tags: vec!["assembly".to_string()],
+                build_cost: vec![MaterialStack::new("steel_plate", 10)],
+                build_time_ticks: 4,
+                base_power_draw: 8,
+                recipe_slots: 1,
+                throughput_bps: 10_000,
+                maintenance_per_tick: 1,
+            },
+        };
+        let mapped =
+            map_runtime_domain_event(&event, &WorldConfig::default()).expect("mapped event");
+        match mapped {
+            WorldEventKind::RuntimeEvent { kind, domain_kind } => {
+                assert_eq!(kind, "runtime.economy.factory_built");
+                let summary = domain_kind.expect("domain summary");
+                assert!(summary.contains("factory=factory.alpha"));
+                assert!(summary.contains("builder=builder.alpha"));
+                assert!(summary.contains("site=site.alpha"));
+            }
+            other => panic!("unexpected mapped event: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn map_runtime_domain_event_recipe_started_and_completed_emit_structured_runtime_events() {
+        let started = RuntimeDomainEvent::RecipeStarted {
+            job_id: 21,
+            requester_agent_id: "agent.alpha".to_string(),
+            factory_id: "factory.alpha".to_string(),
+            recipe_id: "recipe.motor".to_string(),
+            accepted_batches: 2,
+            consume: vec![MaterialStack::new("iron_ingot", 4)],
+            produce: vec![MaterialStack::new("motor_mk1", 2)],
+            byproducts: Vec::new(),
+            power_required: 12,
+            duration_ticks: 3,
+            consume_ledger: MaterialLedgerId::world(),
+            output_ledger: MaterialLedgerId::world(),
+            bottleneck_tags: Vec::new(),
+            market_quotes: Vec::new(),
+            ready_at: 99,
+        };
+        let completed = RuntimeDomainEvent::RecipeCompleted {
+            job_id: 21,
+            requester_agent_id: "agent.alpha".to_string(),
+            factory_id: "factory.alpha".to_string(),
+            recipe_id: "recipe.motor".to_string(),
+            accepted_batches: 2,
+            produce: vec![MaterialStack::new("motor_mk1", 2)],
+            byproducts: Vec::new(),
+            output_ledger: MaterialLedgerId::world(),
+            bottleneck_tags: Vec::new(),
+        };
+
+        for (event, expected_kind) in [
+            (started, "runtime.economy.recipe_started"),
+            (completed, "runtime.economy.recipe_completed"),
+        ] {
+            let mapped =
+                map_runtime_domain_event(&event, &WorldConfig::default()).expect("mapped event");
+            match mapped {
+                WorldEventKind::RuntimeEvent { kind, domain_kind } => {
+                    assert_eq!(kind, expected_kind);
+                    let summary = domain_kind.expect("domain summary");
+                    assert!(summary.contains("factory=factory.alpha"));
+                    assert!(summary.contains("recipe=recipe.motor"));
+                    assert!(summary.contains("requester=agent.alpha"));
+                    assert!(summary.contains("outputs=motor_mk1x2"));
+                }
+                other => panic!("unexpected mapped event: {other:?}"),
+            }
+        }
+    }
+
+    #[test]
+    fn map_runtime_domain_event_factory_blocked_and_resumed_emit_structured_runtime_events() {
+        let blocked = RuntimeDomainEvent::FactoryProductionBlocked {
+            action_id: 31,
+            requester_agent_id: "agent.alpha".to_string(),
+            factory_id: "factory.alpha".to_string(),
+            recipe_id: "recipe.motor".to_string(),
+            blocker_kind: "material_shortage".to_string(),
+            blocker_detail: "material_shortage:iron_ingot".to_string(),
+        };
+        let resumed = RuntimeDomainEvent::FactoryProductionResumed {
+            job_id: 32,
+            requester_agent_id: "agent.alpha".to_string(),
+            factory_id: "factory.alpha".to_string(),
+            recipe_id: "recipe.motor".to_string(),
+            previous_blocked_at: Some(88),
+            previous_blocker_kind: Some("material_shortage".to_string()),
+            previous_blocker_detail: Some("material_shortage:iron_ingot".to_string()),
+        };
+
+        for (event, expected_kind, expected_fragment) in [
+            (
+                blocked,
+                "runtime.economy.factory_production_blocked",
+                "reason=material_shortage",
+            ),
+            (
+                resumed,
+                "runtime.economy.factory_production_resumed",
+                "previous_reason=material_shortage",
+            ),
+        ] {
+            let mapped =
+                map_runtime_domain_event(&event, &WorldConfig::default()).expect("mapped event");
+            match mapped {
+                WorldEventKind::RuntimeEvent { kind, domain_kind } => {
+                    assert_eq!(kind, expected_kind);
+                    let summary = domain_kind.expect("domain summary");
+                    assert!(summary.contains("factory=factory.alpha"));
+                    assert!(summary.contains("recipe=recipe.motor"));
+                    assert!(summary.contains(expected_fragment));
+                }
+                other => panic!("unexpected mapped event: {other:?}"),
+            }
         }
     }
 

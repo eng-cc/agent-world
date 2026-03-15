@@ -99,11 +99,11 @@ use egui_right_panel_player_experience::build_player_hud_snapshot;
 #[cfg(test)]
 use egui_right_panel_player_experience::{
     dismiss_player_onboarding_step, feedback_action_feedback_seen, feedback_last_seen_event_id,
-    feedback_toast_cap, feedback_toast_ids, feedback_toast_len, feedback_toast_snapshot,
-    feedback_tone_for_event, player_achievement_is_unlocked, player_achievement_popup_cap,
-    player_achievement_popup_len, player_achievement_popup_milestones, push_feedback_toast,
-    should_show_player_goal_hint, should_show_player_onboarding_card, FeedbackTone,
-    PlayerAchievementMilestone, PlayerGuideStep,
+    feedback_toast_cap, feedback_toast_detail, feedback_toast_ids, feedback_toast_len,
+    feedback_toast_snapshot, feedback_tone_for_event, player_achievement_is_unlocked,
+    player_achievement_popup_cap, player_achievement_popup_len,
+    player_achievement_popup_milestones, push_feedback_toast, should_show_player_goal_hint,
+    should_show_player_onboarding_card, FeedbackTone, PlayerAchievementMilestone, PlayerGuideStep,
 };
 use egui_right_panel_player_experience::{
     player_action_feedback_seen, render_feedback_toasts, render_player_experience_layers,

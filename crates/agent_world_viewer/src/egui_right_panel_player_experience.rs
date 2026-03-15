@@ -155,6 +155,9 @@ pub(super) struct PlayerAtmosphereSnapshot {
 
 pub(super) fn feedback_tone_for_event(event: &WorldEventKind) -> FeedbackTone {
     match event {
+        WorldEventKind::RuntimeEvent { kind, .. } => {
+            runtime_feedback_tone(kind).unwrap_or(FeedbackTone::Info)
+        }
         WorldEventKind::ActionRejected { .. } => FeedbackTone::Warning,
         WorldEventKind::FactoryBuilt { .. }
         | WorldEventKind::RecipeScheduled { .. }
@@ -185,7 +188,9 @@ pub(super) fn push_feedback_toast(
     locale: crate::i18n::UiLocale,
 ) {
     let tone = feedback_tone_for_event(&event.kind);
-    let detail = super::truncate_observe_text(&event_row_label(event, false, locale), 64);
+    let detail = friendly_feedback_detail_for_event(event, locale)
+        .unwrap_or_else(|| event_row_label(event, false, locale));
+    let detail = super::truncate_observe_text(&detail, 64);
     feedback.toasts.push(FeedbackToast {
         id: event.id,
         title: feedback_title_for_event(tone, locale),
@@ -601,6 +606,15 @@ fn chatter_line_for_event(
                 FeedbackTone::Info,
             )
         }),
+        WorldEventKind::RuntimeEvent { kind, domain_kind } => {
+            runtime_feedback_line(kind, domain_kind.as_deref(), locale).map(|line| {
+                (
+                    runtime_feedback_speaker(domain_kind.as_deref(), locale),
+                    line,
+                    runtime_feedback_tone(kind).unwrap_or(FeedbackTone::Info),
+                )
+            })
+        }
         WorldEventKind::ActionRejected { .. } => Some((
             if locale.is_zh() {
                 "系统".to_string()
@@ -611,6 +625,127 @@ fn chatter_line_for_event(
             FeedbackTone::Warning,
         )),
         _ => None,
+    }
+}
+
+fn friendly_feedback_detail_for_event(
+    event: &WorldEvent,
+    locale: crate::i18n::UiLocale,
+) -> Option<String> {
+    match &event.kind {
+        WorldEventKind::RuntimeEvent { kind, domain_kind } => {
+            runtime_feedback_line(kind, domain_kind.as_deref(), locale)
+        }
+        _ => chatter_line_for_event(event, locale).map(|(_, line, _)| line),
+    }
+}
+
+fn runtime_feedback_tone(kind: &str) -> Option<FeedbackTone> {
+    match kind {
+        "runtime.economy.factory_production_blocked" => Some(FeedbackTone::Warning),
+        "runtime.economy.factory_built"
+        | "runtime.economy.recipe_completed"
+        | "runtime.economy.factory_production_resumed" => Some(FeedbackTone::Positive),
+        "runtime.economy.recipe_started" => Some(FeedbackTone::Info),
+        _ => None,
+    }
+}
+
+fn runtime_feedback_speaker(summary: Option<&str>, locale: crate::i18n::UiLocale) -> String {
+    let fallback = if locale.is_zh() {
+        "工业线"
+    } else {
+        "Industry"
+    };
+    summary
+        .and_then(|value| runtime_summary_value(value, "factory"))
+        .or_else(|| summary.and_then(|value| runtime_summary_value(value, "builder")))
+        .or_else(|| summary.and_then(|value| runtime_summary_value(value, "requester")))
+        .map(|value| super::truncate_observe_text(value, 14))
+        .unwrap_or_else(|| fallback.to_string())
+}
+
+fn runtime_feedback_line(
+    kind: &str,
+    summary: Option<&str>,
+    locale: crate::i18n::UiLocale,
+) -> Option<String> {
+    let summary = summary?;
+    let factory = runtime_summary_label(summary, "factory", "factory");
+    let recipe = runtime_summary_label(summary, "recipe", "recipe");
+    let outputs = runtime_summary_label(summary, "outputs", "outputs");
+    let reason = runtime_summary_label(summary, "reason", "reason");
+    let detail = runtime_summary_value(summary, "detail");
+    let previous_reason = runtime_summary_value(summary, "previous_reason");
+
+    let line = match (kind, locale.is_zh()) {
+        ("runtime.economy.recipe_started", true) => {
+            format!("已接受并执行中 {} @ {}", recipe, factory)
+        }
+        ("runtime.economy.recipe_started", false) => {
+            format!("Accepted and executing {} @ {}", recipe, factory)
+        }
+        ("runtime.economy.recipe_completed", true) => {
+            format!("制成品已产出 {} @ {}", outputs, factory)
+        }
+        ("runtime.economy.recipe_completed", false) => {
+            format!("Produced {} @ {}", outputs, factory)
+        }
+        ("runtime.economy.factory_production_blocked", true) => match detail {
+            Some(detail) if detail != reason => {
+                format!("产线停机 {}：{} ({detail})", factory, reason)
+            }
+            _ => format!("产线停机 {}：{}", factory, reason),
+        },
+        ("runtime.economy.factory_production_blocked", false) => match detail {
+            Some(detail) if detail != reason => {
+                format!("Line blocked {}: {} ({detail})", factory, reason)
+            }
+            _ => format!("Line blocked {}: {}", factory, reason),
+        },
+        ("runtime.economy.factory_production_resumed", true) => match previous_reason {
+            Some(previous_reason) if previous_reason != "none" => {
+                format!(
+                    "产线恢复 {}：继续 {}，解除 {}",
+                    factory, recipe, previous_reason
+                )
+            }
+            _ => format!("产线恢复 {}：继续 {}", factory, recipe),
+        },
+        ("runtime.economy.factory_production_resumed", false) => match previous_reason {
+            Some(previous_reason) if previous_reason != "none" => {
+                format!(
+                    "Line resumed {}: continuing {} after {}",
+                    factory, recipe, previous_reason
+                )
+            }
+            _ => format!("Line resumed {}: continuing {}", factory, recipe),
+        },
+        ("runtime.economy.factory_built", true) => format!("工厂落成 {}", factory),
+        ("runtime.economy.factory_built", false) => format!("Factory ready {}", factory),
+        _ => return None,
+    };
+
+    Some(line)
+}
+
+fn runtime_summary_label(summary: &str, key: &str, fallback: &str) -> String {
+    runtime_summary_value(summary, key)
+        .unwrap_or(fallback)
+        .to_string()
+}
+
+fn runtime_summary_value<'a>(summary: &'a str, key: &str) -> Option<&'a str> {
+    let needle = format!("{key}=");
+    let start = summary.find(needle.as_str())?;
+    let value_start = start + needle.len();
+    let rest = &summary[value_start..];
+    let value_end = rest.find(' ').unwrap_or(rest.len());
+    let value = rest[..value_end].trim();
+    if value.is_empty() {
+        None
+    } else {
+        Some(value)
     }
 }
 
@@ -1171,6 +1306,11 @@ pub(super) fn feedback_toast_snapshot(
         .toasts
         .get(index)
         .map(|toast| (toast.id, toast.tone, toast.title))
+}
+
+#[cfg(test)]
+pub(super) fn feedback_toast_detail(feedback: &FeedbackToastState, index: usize) -> Option<String> {
+    feedback.toasts.get(index).map(|toast| toast.detail.clone())
 }
 
 #[cfg(test)]
