@@ -73,6 +73,8 @@ env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_game_launcher -- \
 bundle_dir="$(.agents/skills/oasis7/scripts/oasis7-run.sh download)"
 .agents/skills/oasis7/scripts/oasis7-run.sh play \
   --bundle-dir "$bundle_dir" \
+  --reuse-bridge \
+  --skip-agent-setup \
   --no-open-browser
 ```
 
@@ -84,7 +86,7 @@ Current boundary:
 - local compatibility bridge is repo-backed: `world_openclaw_local_bridge`
 - parity smoke is repo-backed: `scripts/openclaw-parity-p0.sh`
 
-So a downloaded game bundle is enough for real play, but `smoke` and auto bridge bootstrap still need repo access unless you pass `--reuse-bridge --skip-agent-setup`.
+So a downloaded game bundle is enough for real play. If bridge and runtime agent are already running, prefer `--reuse-bridge --skip-agent-setup` as the no-`cargo` path; only auto bridge bootstrap, runtime-agent install, source-tree launch, and `smoke` still need repo access + `cargo`.
 
 ## Fast Smoke Command
 
@@ -98,3 +100,10 @@ bash scripts/openclaw-parity-p0.sh \
   --openclaw-connect-timeout-ms 15000 \
   --openclaw-agent-profile agent_world_p0_low_freq_npc
 ```
+
+## Doctor Contract
+
+`oasis7-run.sh doctor` now reports two operator-facing readiness tracks separately:
+
+- `bundle-play`: whether a valid bundle plus reachable bridge can support no-`cargo` real play via `--reuse-bridge --skip-agent-setup`
+- `repo-bootstrap`: whether repo root + `cargo` are available for auto runtime-agent/bootstrap work

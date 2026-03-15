@@ -81,6 +81,18 @@ Current boundary:
 - real NPC autoplay path is supported
 - direct player-side hot control is not yet supported
 
+## `repo_bootstrap_unavailable`
+
+Meaning:
+
+- bundle-first no-`cargo` play may still be fine, but repo-backed bridge/bootstrap cannot be auto-started because `cargo` or repo root is unavailable
+
+Check:
+
+1. if bridge is already running, use `--reuse-bridge --skip-agent-setup` with a valid `--bundle-dir`
+2. otherwise install `cargo` and provide `--repo-root <path>` so `oasis7` can bootstrap the runtime agent and bridge
+3. use `doctor --json` and compare `bundle-play` vs `repo-bootstrap` statuses
+
 ## `doctor` mode
 
 Use this first when the local OpenClaw path is not obviously healthy:
@@ -92,11 +104,14 @@ Use this first when the local OpenClaw path is not obviously healthy:
 
 It reports:
 
-- whether `openclaw` and `cargo` are available
+- whether `openclaw` is available
+- whether `cargo` is available for repo-backed bootstrap
 - whether Gateway responds on `127.0.0.1:18789`
 - whether the configured runtime agent exists
 - whether the bridge/provider responds on `127.0.0.1:5841`
 - whether `provider/info` is readable
 - whether an optional `--bundle-dir` looks usable
+- whether `bundle-play` is ready for no-`cargo` reuse-bridge play
+- whether `repo-bootstrap` is available for auto setup
 
 Use `--json` when another script or UI needs a machine-readable JSON summary.

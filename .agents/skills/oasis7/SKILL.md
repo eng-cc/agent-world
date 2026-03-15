@@ -11,6 +11,7 @@ description: OpenClaw real-play and parity workflow for Agent World. Use when th
 Use it for “能不能真跑起来”, “怎么配 OpenClaw 试玩”, “起 bridge / launcher / parity”, and first-line debugging of the local `openclaw_local_http` path.
 
 默认推荐 `bundle-first`：先下载 GitHub Release 的游戏包，再把 OpenClaw provider 配到该 bundle 的 `run-game.sh`，避免把试玩路径绑死在 repo 内的相对目录结构上。
+当 bundle 已就绪且本地 bridge 已在运行时，`play --bundle-dir ... --reuse-bridge --skip-agent-setup` 是一条一等公民的无 `cargo` real-play 路径；`doctor` 也会把这条路径与 repo-backed bridge/bootstrap readiness 分开报告。
 
 ## When To Use
 
@@ -38,7 +39,8 @@ Check these first:
 
 - `openclaw` CLI exists in `PATH`
 - OpenClaw Gateway is live on `127.0.0.1:18789`
-- Repo bridge will bind to `127.0.0.1:5841`
+- Agent World bridge is or can be made available on `127.0.0.1:5841`
+- `cargo` is only required for repo-backed runtime-agent bootstrap, auto bridge startup, source-tree launch, and smoke
 - Cargo commands use `env -u RUSTC_WRAPPER cargo ...`
 
 Useful probes:
@@ -177,7 +179,11 @@ Use the bundled wrapper when you want the skill to do the repetitive setup for y
 
 ```bash
 bundle_dir="$(.agents/skills/oasis7/scripts/oasis7-run.sh download)"
-.agents/skills/oasis7/scripts/oasis7-run.sh play --bundle-dir "$bundle_dir" --no-open-browser
+.agents/skills/oasis7/scripts/oasis7-run.sh play \
+  --bundle-dir "$bundle_dir" \
+  --reuse-bridge \
+  --skip-agent-setup \
+  --no-open-browser
 ```
 
 ### Real play from source tree

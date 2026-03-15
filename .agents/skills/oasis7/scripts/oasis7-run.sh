@@ -378,6 +378,8 @@ run_doctor() {
   local agents_json=""
   local resolved_repo_root=""
   local resolved_bundle_dir=""
+  local cargo_available="0"
+  local bridge_health_ok="0"
   doctor_records_file="$(mktemp)"
 
   print_doctor_status INFO config "base_url=$base_url agent_id=$agent_id agent_profile=$agent_profile scenario=$scenario release_repo=$release_repo release_tag=$release_tag"
@@ -410,10 +412,10 @@ run_doctor() {
   fi
 
   if command -v cargo >/dev/null 2>&1; then
+    cargo_available="1"
     print_doctor_status OK command "cargo=$(command -v cargo)"
   else
-    print_doctor_status FAIL command "cargo not found"
-    failures=$((failures + 1))
+    print_doctor_status WARN command "cargo not found (repo-backed bridge/bootstrap unavailable; bundle-first play can still reuse an existing bridge via --reuse-bridge --skip-agent-setup)"
   fi
 
   if gateway_json="$(http_get 'http://127.0.0.1:18789/health' 2>/dev/null)"; then
@@ -460,6 +462,7 @@ PY
   fi
 
   if http_get "$base_url/v1/provider/health" >/dev/null 2>&1; then
+    bridge_health_ok="1"
     print_doctor_status OK bridge-health "$base_url/v1/provider/health reachable"
   else
     print_doctor_status FAIL bridge-health "cannot reach $base_url/v1/provider/health"
@@ -481,6 +484,36 @@ PY
   else
     print_doctor_status FAIL provider-info "cannot reach $base_url/v1/provider/info"
     failures=$((failures + 1))
+  fi
+
+  if [[ -n "$resolved_repo_root" && "$cargo_available" == "1" ]]; then
+    print_doctor_status OK repo-bootstrap "repo-backed bridge/bootstrap available"
+  else
+    local repo_bootstrap_reason=""
+    if [[ -z "$resolved_repo_root" && "$cargo_available" != "1" ]]; then
+      repo_bootstrap_reason="repo root not resolved and cargo not found"
+    elif [[ -z "$resolved_repo_root" ]]; then
+      repo_bootstrap_reason="repo root not resolved"
+    else
+      repo_bootstrap_reason="cargo not found"
+    fi
+    print_doctor_status WARN repo-bootstrap "$repo_bootstrap_reason; auto bridge/runtime bootstrap needs repo root + cargo. Bundle-first no-cargo play can reuse an existing bridge via --reuse-bridge --skip-agent-setup"
+  fi
+
+  if [[ -n "$resolved_bundle_dir" ]]; then
+    if [[ "$bridge_health_ok" == "1" ]]; then
+      print_doctor_status OK bundle-play "bundle-first no-cargo play ready; run play --bundle-dir $resolved_bundle_dir --reuse-bridge --skip-agent-setup"
+    else
+      print_doctor_status WARN bundle-play "bundle is valid, but no bridge is reachable at $base_url; start or reuse a bridge, then run play --bundle-dir $resolved_bundle_dir --reuse-bridge --skip-agent-setup"
+    fi
+  elif [[ "$download_release" == "1" ]]; then
+    if [[ "$bridge_health_ok" == "1" ]]; then
+      print_doctor_status INFO bundle-play "download-on-demand + running bridge can support no-cargo play via --download-release --reuse-bridge --skip-agent-setup"
+    else
+      print_doctor_status INFO bundle-play "download-on-demand enabled; bridge still needs to be reachable at $base_url for no-cargo bundle play"
+    fi
+  else
+    print_doctor_status INFO bundle-play "not configured; pass --bundle-dir <path> or --download-release to evaluate bundle-first no-cargo readiness"
   fi
 
   if [[ -f "$bridge_log" ]]; then
@@ -710,7 +743,12 @@ esac
 if [[ "$repo_required" == "1" ]]; then
   repo_root="$(discover_repo_root || true)"
   if [[ -z "$repo_root" ]]; then
-    echo "error: repo root is required for '$mode'; pass --repo-root <path>" >&2
+    if [[ "$mode" == "play" && "$use_bundle_play" == "1" ]]; then
+      echo "error: bundle is valid at $bundle_dir, but repo-backed bridge/bootstrap for '$mode' still needs the repo root" >&2
+      echo "hint: pass --repo-root <path>, or reuse an already running bridge via --reuse-bridge --skip-agent-setup" >&2
+    else
+      echo "error: repo root is required for '$mode'; pass --repo-root <path>" >&2
+    fi
     exit 1
   fi
 fi
@@ -722,7 +760,19 @@ if [[ "$need_openclaw" == "1" ]]; then
   require_cmd openclaw
 fi
 if [[ "$need_cargo" == "1" ]]; then
-  require_cmd cargo
+  if ! command -v cargo >/dev/null 2>&1; then
+    if [[ "$mode" == "play" ]]; then
+      if [[ "$use_bundle_play" == "1" ]]; then
+        echo "error: bundle is valid at $bundle_dir, but repo-backed bridge/bootstrap for '$mode' requires cargo" >&2
+        echo "hint: install cargo so oasis7 can auto-start the bridge/bootstrap path, or reuse an already running bridge via --reuse-bridge --skip-agent-setup" >&2
+      else
+        echo "error: source-tree '$mode' requires cargo to launch world_game_launcher or the repo-backed bridge/bootstrap path" >&2
+        echo "hint: install cargo, or switch to a downloaded bundle and reuse an already running bridge via --bundle-dir <path> --reuse-bridge --skip-agent-setup" >&2
+      fi
+      exit 1
+    fi
+    require_cmd cargo
+  fi
 fi
 
 if [[ "$mode" == "doctor" ]]; then
