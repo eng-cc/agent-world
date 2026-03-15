@@ -13,6 +13,7 @@ Use it for “能不能真跑起来”, “怎么配 OpenClaw 试玩”, “起 
 默认推荐 `bundle-first`：先下载 GitHub Release 的游戏包，再把 OpenClaw provider 配到该 bundle 的 `run-game.sh`，避免把试玩路径绑死在 repo 内的相对目录结构上。
 当 bundle 已就绪且本地 bridge 已在运行时，`play --bundle-dir ... --reuse-bridge --skip-agent-setup` 是一条一等公民的无 `cargo` real-play 路径；`doctor` 也会把这条路径与 repo-backed bridge/bootstrap readiness 分开报告。
 停止 `oasis7-run.sh play` 时，wrapper 现在会一并终止它启动的 launcher 子树，避免残留 `world_game_launcher` / `world_chain_runtime` / `world_viewer_live`。
+同时要注意：当前 `run-game.sh` / `world_game_launcher` 默认会启动 `world_chain_runtime`，因此所选 `chain storage profile` 下的 node private key 属于重要资产；`oasis7` 文档只描述管理规则，不会输出或托管真实私钥。
 
 ## When To Use
 
@@ -143,6 +144,16 @@ Required real-play settings:
 - `openclaw_base_url=http://127.0.0.1:5841`
 - `openclaw_connect_timeout_ms=15000`
 - `openclaw_agent_profile=agent_world_p0_low_freq_npc`
+
+### 5.1 Chain Key Safety
+
+`oasis7` 的 OpenClaw real-play 只是替换 agent provider；当前产品默认启动链路仍会拉起 `world_chain_runtime`，除非你显式传 `--chain-disable`。这意味着：
+
+- node private key 是高敏资产，绝不能写进 git、issue、devlog、截图、共享 shell 历史或 CI 日志
+- node public key 不是秘密，但仍属于节点身份资产，应按环境（local temp / persistent / release / soak）标注来源
+- 本地临时试玩优先使用一次性/可丢弃的 `chain storage profile`，避免把持久节点身份混进录屏、直播或共享机器
+- 若需要复用持久 `chain storage profile`，先确认操作者知道该 profile 下会继续使用同一 node key material
+- `oasis7` / release bundle 不应导出、回显或要求粘贴真实 node private key；只允许说明如何保护它
 
 ### 6. Run parity smoke
 

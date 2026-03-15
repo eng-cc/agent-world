@@ -137,6 +137,7 @@
 - [x] TASK-WORLD_SIMULATOR-134 (PRD-WORLD_SIMULATOR-037) [test_tier_required]: 修复 `oasis7-run.sh` 对默认 `--download-dir ~/.cache/oasis7/releases` 的当前用户 `~` 展开，避免 bundle-first 下载产物误写到 repo-local `~/...`，并补路径回归脚本。
 - [x] TASK-WORLD_SIMULATOR-135 (PRD-WORLD_SIMULATOR-037) [test_tier_required]: 收口 `oasis7` 的 bundle-first / repo-bootstrap operator 契约，让 `doctor` 分开汇报 no-`cargo` bundle-play readiness 与 repo-backed bootstrap 能力，并为 `play` 补齐缺少 `cargo` / repo root 时的可执行指引。
 - [x] TASK-WORLD_SIMULATOR-136 (PRD-WORLD_SIMULATOR-037) [test_tier_required]: 修复 `oasis7-run.sh play` 在 wrapper 被终止后可能残留 `world_game_launcher` / `world_chain_runtime` / `world_viewer_live` 的问题；为 play launcher 子树增加进程组级清理，并补 shutdown 回归脚本。
+- [x] TASK-WORLD_SIMULATOR-137 (PRD-WORLD_SIMULATOR-037) [test_tier_required]: 为 `oasis7` 补齐 chain node 公私钥资产说明，明确 OpenClaw real-play 默认仍可能启动 `world_chain_runtime`，并把 node private key 的存储/共享/录屏/日志禁令写成 operator contract。
 - [x] TASK-WORLD_SIMULATOR-110 (PRD-WORLD_SIMULATOR-035) [test_tier_required]: 为 `agent_world_viewer` 的 Web runtime fatal hook 增加“已知图形 fatal 仅自动 reload 一次”的恢复路径，收敛首开必须手动 reopen 的摩擦。
 - [x] TASK-WORLD_SIMULATOR-111 (PRD-WORLD_SIMULATOR-035) [test_tier_required]: 修复 `__AW_TEST__` runtime fatal 快照即时落盘，并复验 Viewer 首开不再以假性 `connecting` 掩盖图形 fatal。
 
@@ -296,6 +297,7 @@
 - 最新完成: `TASK-WORLD_SIMULATOR-130`（为 `oasis7` 新增故障签名 references 与一键 real-play/smoke 脚本封装）。
 - 最新完成: `TASK-WORLD_SIMULATOR-131`（为 `oasis7-run.sh` 新增 `doctor` 诊断模式）。
 - 最新完成: `TASK-WORLD_SIMULATOR-132`（为 `oasis7-run.sh doctor` 增加 `--json` 机读输出）。
+- 最新完成: `TASK-WORLD_SIMULATOR-137`（为 `oasis7` 补齐 chain node 公私钥资产说明与 operator contract）。
 - 最新完成: `TASK-WORLD_SIMULATOR-136`（修复 `oasis7-run.sh play` wrapper 停止后 launcher 子树残留的问题，并补 shutdown 回归脚本）。
 - 最新完成: `TASK-WORLD_SIMULATOR-135`（收口 `oasis7` 的 bundle-first / repo-bootstrap operator 契约，并补 no-`cargo` / 缺 repo root 的可执行指引）。
 - 最新完成: `TASK-WORLD_SIMULATOR-134`（修复 `oasis7-run.sh` 默认下载目录的 `~` 展开，并补 bundle-first 路径回归脚本）。

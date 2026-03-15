@@ -163,6 +163,7 @@
   - 仅接受 loopback 地址；launcher 对 base URL 做 host allowlist 校验。
   - 不向 provider 暴露私钥、完整 auth proof 或内部存储路径。
   - `openclaw_auth_token` 如启用，只存本地配置，不回显在 viewer / logs。
+- 若 OpenClaw 玩法链路沿用产品默认 `world_game_launcher` 启动栈并拉起 `world_chain_runtime`，则所选 chain profile 下的 node private key 必须按高敏资产处理：禁止提交到仓库、回显到诊断日志/截图/issue，并要求操作者优先使用临时 profile 或明确的资产归属 profile。
   - 用户必须显式开启 `OpenClaw(Local HTTP)` 模式，默认仍使用内置 provider。
 
 ## 5. Risks & Roadmap

@@ -14,6 +14,18 @@ Use these exact values for a real local OpenClaw gameplay run:
 - `127.0.0.1:18789`: OpenClaw Gateway
 - `127.0.0.1:5841`: Agent World local compatibility bridge
 
+## Chain Default and Node Key Safety
+
+Current default: the `run-game.sh` / `world_game_launcher` product path still starts `world_chain_runtime` unless you explicitly pass `--chain-disable`. So even in OpenClaw mode, the selected chain profile may load node key material.
+
+Operator rules:
+
+- `node private key`: secret / asset-bearing / never paste into docs, git, issues, chat logs, screenshots, or CI output
+- `node public key`: shareable when needed, but still treat it as environment-specific node identity metadata
+- local real-play / debugging should prefer disposable `chain storage profile` data when you do not need a persistent on-chain identity
+- if you intentionally reuse a persistent profile, treat it like a wallet/validator identity and confirm backup + rotation ownership before recording or screen sharing
+- if you only want OpenClaw NPC behavior and do not need chain state, add `--chain-disable` when launching outside the current `oasis7-run.sh play` helper
+
 ## Bundle-First Entry
 
 For a real试玩，先下载 GitHub Release 的游戏包，再把 OpenClaw provider 配到 bundle：
