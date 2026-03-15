@@ -28,6 +28,7 @@
     - `doc/game/gameplay/gameplay-visual-evidence-linkage-2026-03-10.md`
   - QA 结论:
     - `TASK-GAMEPLAY-MLF-005/006/007/008` 已全部完成，当前未见高优先级阻断；更长录屏留给后续 release gate 抽样继续观察。
+- [ ] TASK-GAME-020 (PRD-GAME-001/002) [test_tier_required]: 冻结前期工业引导闭环（首个制成品/工厂），并拆出 runtime / viewer / QA 落地任务与验收指标。
 
 ## 依赖
 - 模块设计总览：`doc/game/design.md`
@@ -41,10 +42,10 @@
 - `.agents/skills/prd/check.md`
 
 ## 状态
-- 更新日期: 2026-03-11
-- 当前状态: completed
-- 下一任务: 无（`TASK-GAME-018` 证据回填链路已完成）
-- 最新完成: `TASK-GAME-019`（game 模块 README / PRD 索引入口同步）。
+- 更新日期: 2026-03-15
+- 当前状态: in_progress
+- 下一任务: `TASK-GAME-020`（前期工业引导闭环的 runtime / viewer / QA 落地）。
+- 最新完成: `TASK-GAME-019`（game 模块 README / PRD 索引入口同步）；`TASK-GAME-020` 已完成文档冻结并进入执行阶段。
 - 阶段收口优先级: `P0`
 - 阶段 owner: `viewer_engineer`（发起/裁剪：`producer_system_designer`；验证：`qa_engineer`）
 - 阻断条件: 若后续 release gate 缺少 playability / testing / core 的证据互链，当前版本仍不得以“玩法体验已收口”为前提给出发布 `go` 结论。
@@ -67,7 +68,8 @@
 - ROUND-016 进展: `TASK-GAME-018` 已立项，进入 viewer 体验层改造与手动截图验收阶段。
 - ROUND-017 进展: `TASK-GAME-018` 已进入执行中，`TASK-GAMEPLAY-MLF-005/006/007` 已完成（控制结果显著条 + 玩家模式默认减负 + 世界可读性增强首轮实现）；`TASK-GAMEPLAY-MLF-008` 已完成 runtime_live 节奏修正与 ROUND-009 viewer 侧视觉证据采集（baseline / 3D / 2D / console / state / 录屏），并已移交 `qa_engineer`。
 - ROUND-018 进展: `qa_engineer` 已基于 `doc/game/gameplay/gameplay-micro-loop-visual-closure-evidence-2026-03-10-round009.md` 完成复核并回写 `doc/playability_test_result/card_2026_03_10_23_27_43.md`；`TASK-GAME-018` 已完成。
-- 说明: 本文档仅维护 game 设计执行状态；过程记录在 `doc/devlog/2026-03-05.md`、`doc/devlog/2026-03-06.md` 与 `doc/devlog/2026-03-07.md`。
+- ROUND-019 进展: `producer_system_designer` 已在 `doc/game/gameplay/gameplay-top-level-design.prd.md` 冻结前期工业引导闭环，把“首个制成品 -> 工厂”设为新手前期主成就链，并在 `doc/game/gameplay/gameplay-top-level-design.project.md` 拆出 `runtime_engineer / viewer_engineer / qa_engineer` 后续执行项。
+- 说明: 本文档仅维护 game 设计执行状态；过程记录在 `doc/devlog/2026-03-05.md`、`doc/devlog/2026-03-06.md`、`doc/devlog/2026-03-07.md` 与 `doc/devlog/2026-03-15.md`。
 
 ## 阶段收口角色交接
 ### Meta

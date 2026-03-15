@@ -29,6 +29,13 @@
 - [x] 拆解 War/Governance/Crisis/Economic/Meta 模块 MVP 任务，并完成协议与模块生产实现（`doc/game/gameplay/gameplay-layer-war-governance-crisis-meta-closure.prd.md`、`doc/game/gameplay/gameplay-module-driven-production-closure.prd.md`）
 - [x] 为每个模块定义 `test_tier_required` 与 `test_tier_full` 测试矩阵（见下文“Gameplay 模块测试矩阵引用”）
 
+### T4 前期工业引导闭环（2026-03-15）
+- [x] 冻结“首个制成品 -> 首条稳定生产链 -> 首座工厂单元 -> 可交易工业品 -> 受保护工业节点”作为新手前期主引导链。
+- [x] 将前 30 天体验路径改写为“工业成长优先，联盟/治理/战争后接”，并同步评审与指标口径。
+- [ ] `runtime_engineer`：补齐工业里程碑所需的生产完成、停机、恢复状态与审计事件，确保结果可由状态与事件历史解释。
+- [ ] `viewer_engineer`：把 `已接受 / 执行中 / 已产出 / 停机原因` 做成主界面显式反馈，优先覆盖首个制成品与工厂开工场景。
+- [ ] `qa_engineer`：新增“首个制成品 / 停机恢复 / 首座工厂单元”playability 卡片与 `test_tier_required` 手动回归链路。
+
 ## 依赖
 
 - 运行时与模块治理基线：`doc/world-runtime/prd.md`
@@ -48,10 +55,10 @@
 
 ## 状态
 
-- 当前状态：`已完成`
-- 已完成：文档归位、命名语义化、必备字段补齐、工程分册格式修复、Gameplay Runtime/模块化/协议扩展任务拆解与落地、Gameplay 模块测试矩阵引用固化、设计评审准备与战争/政治数值基线补齐
-- 未完成：无
-- 阻塞项：无
+- 当前状态：`进行中`
+- 已完成：文档归位、命名语义化、必备字段补齐、工程分册格式修复、Gameplay Runtime/模块化/协议扩展任务拆解与落地、Gameplay 模块测试矩阵引用固化、设计评审准备与战争/政治数值基线补齐、前期工业引导闭环文档冻结（首个制成品/工厂主链）。
+- 未完成：`T4` 的 runtime 事件与状态、viewer 主反馈、QA 工业链路回归。
+- 阻塞项：无（待相关 owner 按 `T4` 执行）
 
 ## 迁移记录（2026-03-03）
 - 已按 `TASK-ENGINEERING-014-D1 (PRD-ENGINEERING-006)` 从 legacy 命名迁移为 `.prd.md/.project.md`。
