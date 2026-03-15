@@ -28,11 +28,12 @@
 - [x] TASK-PLAYABILITY_TEST_RESULT-008 (PRD-PLAYABILITY_TEST_RESULT-001) [test_tier_required]: 清理 `doc/playability_test_result/README.md` 中重复的专题入口，保持结果模块导航精简唯一。
 - [x] TASK-PLAYABILITY_TEST_RESULT-009 (PRD-PLAYABILITY_TEST_RESULT-001) [test_tier_required]: 对齐 `README.md` 根目录收口口径，显式补入 `design.md` 并保留活跃轮次卡片样本例外。
 - [x] TASK-PLAYABILITY_TEST_RESULT-010 (PRD-PLAYABILITY_TEST_RESULT-001/002/003) [test_tier_required]: 为 `TASK-GAME-020` 新增前期工业引导专题卡组，覆盖 `首个制成品 / 停机恢复 / 首座工厂单元` 三张 QA playability 卡，并给出 required-tier 手动回归链路。
+- [x] TASK-PLAYABILITY_TEST_RESULT-011 (PRD-PLAYABILITY_TEST_RESULT-001/002/003) [test_tier_required]: 将前期工业引导专题卡组迁入 `topics/` 子目录，明确其为专题回归卡组而非单次结果卡，并同步更新 playability/testing/game 的引用入口。
   - 产物文件:
-    - `doc/playability_test_result/industrial-onboarding-required-tier-cards-2026-03-15.md`
+    - `doc/playability_test_result/topics/industrial-onboarding-required-tier-cards-2026-03-15.md`
   - 验收命令 (`test_tier_required`):
-    - `test -f doc/playability_test_result/industrial-onboarding-required-tier-cards-2026-03-15.md`
-    - `rg -n "首个制成品|停机恢复|首座工厂单元|test_tier_required 前置命令|收口规则" doc/playability_test_result/industrial-onboarding-required-tier-cards-2026-03-15.md`
+    - `test -f doc/playability_test_result/topics/industrial-onboarding-required-tier-cards-2026-03-15.md`
+    - `rg -n "首个制成品|停机恢复|首座工厂单元|test_tier_required 前置命令|收口规则" doc/playability_test_result/topics/industrial-onboarding-required-tier-cards-2026-03-15.md`
 
 ## 依赖
 - doc/playability_test_result/prd.index.md
@@ -45,6 +46,7 @@
 - 更新日期: 2026-03-15
 - 当前状态: completed
 - 下一任务: 无（当前模块主项目无未完成任务）
+- 最新完成: `TASK-PLAYABILITY_TEST_RESULT-011`（将前期工业引导专题卡组迁入 `topics/`，统一引用与根目录收口口径）。
 - 最新完成: `TASK-PLAYABILITY_TEST_RESULT-010`（新增前期工业引导 required-tier QA 卡组与手动回归链路）。
 - 最新完成: `TASK-PLAYABILITY_TEST_RESULT-009`（playability_test_result 根目录收口口径补入 design.md 并保留活跃卡片例外）。
 - 阶段收口优先级: `P0`

@@ -18,12 +18,14 @@
 - `doc/playability_test_result/game-test.project.md`
 - `doc/playability_test_result/playability_test_card.md`
 - `doc/playability_test_result/playability_test_manual.md`
-- `doc/playability_test_result/industrial-onboarding-required-tier-cards-2026-03-15.md`
+- `doc/playability_test_result/topics/industrial-onboarding-required-tier-cards-2026-03-15.md`
 - `doc/playability_test_result/templates/`
 - `doc/playability_test_result/evidence/`
+- `doc/playability_test_result/topics/`
 
 ## 根目录收口
-- 模块根目录主入口保留：`README.md`、`prd.md`、`design.md`、`project.md`、`prd.index.md`，并允许保留当前活跃轮次卡片样本。
+- 模块根目录主入口保留：`README.md`、`prd.md`、`design.md`、`project.md`、`prd.index.md`，并允许保留当前活跃轮次的单次结果卡。
+- 专题回归卡组与专题执行资产放入子目录（如 `topics/`），避免继续把根目录当作专题方案堆放区。
 - 历史卡片不再保留在仓库（`archive/` 目录已移除）。
 
 ## 维护约定

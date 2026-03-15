@@ -116,12 +116,12 @@
 ## 专题任务映射（2026-03-10 批次）
 - [x] SUBTASK-TESTING-20260310-001 (PRD-TESTING-LAUNCHER-MANUAL-001/002/003) [test_tier_required]: `doc/testing/launcher/launcher-manual-test-checklist-2026-03-10.project.md`
 - [x] TASK-TESTING-006 (PRD-TESTING-001) [test_tier_required]: 同步 `doc/testing/README.md` 的模块入口索引，补齐近期专题、模块职责与根目录收口口径。
-- [x] TASK-TESTING-052 (PRD-TESTING-002/003) [test_tier_required]: 把前期工业引导的 required-tier 人工回归链路挂入 `testing-manual.md`，并与 playability 卡组互链，覆盖 `首个制成品 / 停机恢复 / 首座工厂单元`。
+- [x] TASK-TESTING-052 (PRD-TESTING-002/003) [test_tier_required]: 把前期工业引导的 required-tier 人工回归链路挂入 `testing-manual.md`，并与 playability 专题卡组互链，覆盖 `首个制成品 / 停机恢复 / 首座工厂单元`。
   - 产物文件:
     - `testing-manual.md`
-    - `doc/playability_test_result/industrial-onboarding-required-tier-cards-2026-03-15.md`
+    - `doc/playability_test_result/topics/industrial-onboarding-required-tier-cards-2026-03-15.md`
   - 验收命令 (`test_tier_required`):
-    - `rg -n 'industrial-onboarding-required-tier-cards-2026-03-15|首个制成品|停机恢复|首座工厂单元' testing-manual.md doc/playability_test_result/industrial-onboarding-required-tier-cards-2026-03-15.md`
+    - `rg -n 'industrial-onboarding-required-tier-cards-2026-03-15|首个制成品|停机恢复|首座工厂单元' testing-manual.md doc/playability_test_result/topics/industrial-onboarding-required-tier-cards-2026-03-15.md`
 
 ## 依赖
 - 模块设计总览：`doc/testing/design.md`

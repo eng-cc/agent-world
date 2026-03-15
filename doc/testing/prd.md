@@ -92,7 +92,7 @@
 - Integration Points:
   - `testing-manual.md`
   - `doc/testing/manual/web-ui-agent-browser-closure-manual.prd.md`
-  - `doc/playability_test_result/industrial-onboarding-required-tier-cards-2026-03-15.md`
+  - `doc/playability_test_result/topics/industrial-onboarding-required-tier-cards-2026-03-15.md`
   - `doc/testing/ci/ci-builtin-wasm-m4-m5-hash-drift-hardening.prd.md`
   - `scripts/ci-tests.sh`
   - `scripts/sync-m1-builtin-wasm-artifacts.sh`

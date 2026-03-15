@@ -81,7 +81,7 @@
 - Integration Points:
   - `doc/playability_test_result/README.md`
   - `doc/playability_test_result/game-test.prd.md`
-  - `doc/playability_test_result/industrial-onboarding-required-tier-cards-2026-03-15.md`
+  - `doc/playability_test_result/topics/industrial-onboarding-required-tier-cards-2026-03-15.md`
   - `testing-manual.md`
 - Edge Cases & Error Handling:
   - 空卡片：缺关键字段时禁止提交并提示必填项。
