@@ -285,7 +285,8 @@ impl WorldState {
                         .insert(quote.kind.clone(), quote.clone());
                 }
                 if let Some(factory) = self.factories.get_mut(factory_id) {
-                    factory.production.active_jobs = factory.production.active_jobs.saturating_add(1);
+                    factory.production.active_jobs =
+                        factory.production.active_jobs.saturating_add(1);
                     factory.production.current_job_id = Some(*job_id);
                     factory.production.current_recipe_id = Some(recipe_id.clone());
                     factory.production.last_started_at = Some(now);
@@ -332,13 +333,15 @@ impl WorldState {
                     .completed_recipe_jobs
                     .saturating_add(1);
                 if let Some(factory) = self.factories.get_mut(factory_id) {
-                    factory.production.active_jobs = factory.production.active_jobs.saturating_sub(1);
+                    factory.production.active_jobs =
+                        factory.production.active_jobs.saturating_sub(1);
                     if factory.production.current_job_id == Some(*job_id) {
                         factory.production.current_job_id = None;
                     }
                     factory.production.current_recipe_id = None;
                     factory.production.last_completed_at = Some(now);
-                    factory.production.completed_jobs = factory.production.completed_jobs.saturating_add(1);
+                    factory.production.completed_jobs =
+                        factory.production.completed_jobs.saturating_add(1);
                     if factory.production.active_jobs == 0 {
                         factory.production.status = FactoryProductionStatus::Idle;
                     }

@@ -69,8 +69,12 @@ pub(super) fn event_kind_label(body: &WorldEventBody) -> &'static str {
             DomainEvent::FactoryRecycled { .. } => "domain.economy.factory_recycled",
             DomainEvent::RecipeStarted { .. } => "domain.economy.recipe_started",
             DomainEvent::RecipeCompleted { .. } => "domain.economy.recipe_completed",
-            DomainEvent::FactoryProductionBlocked { .. } => "domain.economy.factory_production_blocked",
-            DomainEvent::FactoryProductionResumed { .. } => "domain.economy.factory_production_resumed",
+            DomainEvent::FactoryProductionBlocked { .. } => {
+                "domain.economy.factory_production_blocked"
+            }
+            DomainEvent::FactoryProductionResumed { .. } => {
+                "domain.economy.factory_production_resumed"
+            }
             DomainEvent::GameplayPolicyUpdated { .. } => "domain.gameplay.policy_updated",
             DomainEvent::EconomicContractOpened { .. } => {
                 "domain.gameplay.economic_contract_opened"
