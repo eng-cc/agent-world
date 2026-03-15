@@ -80,6 +80,38 @@ fn approved_manifest_proposal(world: &mut World, author: &str) -> u64 {
     proposal_id
 }
 
+fn latest_action_rejected_message(world: &World) -> String {
+    world
+        .journal()
+        .events
+        .iter()
+        .rev()
+        .find_map(|event| match &event.body {
+            WorldEventBody::Domain(DomainEvent::ActionRejected { reason, .. }) => {
+                Some(format!("{reason:?}"))
+            }
+            _ => None,
+        })
+        .expect("action rejected")
+}
+
+fn latest_factory_production_block(world: &World) -> (String, String) {
+    world
+        .journal()
+        .events
+        .iter()
+        .rev()
+        .find_map(|event| match &event.body {
+            WorldEventBody::Domain(DomainEvent::FactoryProductionBlocked {
+                blocker_kind,
+                blocker_detail,
+                ..
+            }) => Some((blocker_kind.clone(), blocker_detail.clone())),
+            _ => None,
+        })
+        .expect("factory production blocked")
+}
+
 #[test]
 fn due_recipe_jobs_prioritize_survival_over_expansion() {
     let mut world = World::new();
@@ -551,20 +583,15 @@ fn schedule_recipe_rejects_when_profile_stage_gate_exceeds_current_stage() {
     });
     world.step().expect("schedule blocked by stage gate");
 
-    let rejected = world
-        .journal()
-        .events
-        .last()
-        .and_then(|event| match &event.body {
-            WorldEventBody::Domain(DomainEvent::ActionRejected { reason, .. }) => Some(reason),
-            _ => None,
-        })
-        .expect("action rejected");
-    let message = format!("{rejected:?}");
+    let message = latest_action_rejected_message(&world);
     assert!(
         message.contains("stage gate denied"),
         "expected stage gate reject, got {message}"
     );
+
+    let (blocker_kind, blocker_detail) = latest_factory_production_block(&world);
+    assert_eq!(blocker_kind, "governance_gate");
+    assert!(blocker_detail.contains("stage gate denied"));
 }
 
 #[test]
@@ -633,20 +660,15 @@ fn schedule_recipe_rejects_when_product_unlock_stage_exceeds_current_stage() {
         .step()
         .expect("schedule blocked by product unlock stage");
 
-    let rejected = world
-        .journal()
-        .events
-        .last()
-        .and_then(|event| match &event.body {
-            WorldEventBody::Domain(DomainEvent::ActionRejected { reason, .. }) => Some(reason),
-            _ => None,
-        })
-        .expect("action rejected");
-    let message = format!("{rejected:?}");
+    let message = latest_action_rejected_message(&world);
     assert!(
         message.contains("product unlock_stage denied"),
         "expected product unlock_stage reject, got {message}"
     );
+
+    let (blocker_kind, blocker_detail) = latest_factory_production_block(&world);
+    assert_eq!(blocker_kind, "governance_gate");
+    assert!(blocker_detail.contains("product unlock_stage denied"));
 }
 
 #[test]
@@ -697,20 +719,15 @@ fn schedule_recipe_rejects_when_factory_tags_conflict_with_recipe_profile() {
     });
     world.step().expect("schedule blocked by preferred tag");
 
-    let rejected = world
-        .journal()
-        .events
-        .last()
-        .and_then(|event| match &event.body {
-            WorldEventBody::Domain(DomainEvent::ActionRejected { reason, .. }) => Some(reason),
-            _ => None,
-        })
-        .expect("action rejected");
-    let message = format!("{rejected:?}");
+    let message = latest_action_rejected_message(&world);
     assert!(
         message.contains("preferred_factory_tags mismatch"),
         "expected preferred tag reject, got {message}"
     );
+
+    let (blocker_kind, blocker_detail) = latest_factory_production_block(&world);
+    assert_eq!(blocker_kind, "governance_gate");
+    assert!(blocker_detail.contains("preferred_factory_tags mismatch"));
 }
 
 #[test]
