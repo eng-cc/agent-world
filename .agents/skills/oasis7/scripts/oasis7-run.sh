@@ -81,6 +81,77 @@ print_doctor_status() {
   fi
 }
 
+process_alive() {
+  local pid="$1"
+  kill -0 "$pid" >/dev/null 2>&1
+}
+
+process_group_alive() {
+  local pgid="$1"
+  kill -0 -- "-$pgid" >/dev/null 2>&1
+}
+
+terminate_pid() {
+  local pid="$1"
+  local signal="$2"
+  kill -s "$signal" "$pid" >/dev/null 2>&1 || true
+}
+
+terminate_process_group() {
+  local pgid="$1"
+  local signal="$2"
+  kill -s "$signal" -- "-$pgid" >/dev/null 2>&1 || true
+}
+
+wait_for_pid_exit() {
+  local pid="$1"
+  local attempts="${2:-20}"
+  local sleep_s="${3:-0.1}"
+  local i
+  for ((i=0; i<attempts; i+=1)); do
+    if ! process_alive "$pid"; then
+      return 0
+    fi
+    sleep "$sleep_s"
+  done
+  return 1
+}
+
+wait_for_process_group_exit() {
+  local pgid="$1"
+  local attempts="${2:-20}"
+  local sleep_s="${3:-0.1}"
+  local i
+  for ((i=0; i<attempts; i+=1)); do
+    if ! process_group_alive "$pgid"; then
+      return 0
+    fi
+    sleep "$sleep_s"
+  done
+  return 1
+}
+
+cleanup_process_tree() {
+  local pid="$1"
+  local pgid="$2"
+  if [[ -n "$pgid" && "$pgid" =~ ^[0-9]+$ ]]; then
+    terminate_process_group "$pgid" TERM
+    if ! wait_for_process_group_exit "$pgid" 20 0.1; then
+      terminate_process_group "$pgid" KILL
+      wait_for_process_group_exit "$pgid" 20 0.1 || true
+    fi
+  elif [[ -n "$pid" && "$pid" =~ ^[0-9]+$ ]]; then
+    terminate_pid "$pid" TERM
+    if ! wait_for_pid_exit "$pid" 20 0.1; then
+      terminate_pid "$pid" KILL
+      wait_for_pid_exit "$pid" 20 0.1 || true
+    fi
+  fi
+  if [[ -n "$pid" && "$pid" =~ ^[0-9]+$ ]]; then
+    wait "$pid" >/dev/null 2>&1 || true
+  fi
+}
+
 expand_current_user_home_path() {
   local value="$1"
   if [[ "$value" == "~" ]]; then
@@ -570,6 +641,9 @@ doctor_records_file=""
 repo_root=""
 bridge_log=""
 cleanup_bridge_pid=""
+cleanup_play_pid=""
+cleanup_play_pgid=""
+cleanup_done="0"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -670,15 +744,33 @@ while [[ $# -gt 0 ]]; do
 done
 
 cleanup() {
+  if [[ "$cleanup_done" == "1" ]]; then
+    return
+  fi
+  cleanup_done="1"
+  if [[ -n "$cleanup_play_pid" ]]; then
+    cleanup_process_tree "$cleanup_play_pid" "$cleanup_play_pgid"
+    cleanup_play_pid=""
+    cleanup_play_pgid=""
+  fi
   if [[ -n "$cleanup_bridge_pid" ]]; then
     kill "$cleanup_bridge_pid" >/dev/null 2>&1 || true
     wait "$cleanup_bridge_pid" >/dev/null 2>&1 || true
+    cleanup_bridge_pid=""
   fi
   if [[ -n "$doctor_records_file" && -f "$doctor_records_file" ]]; then
     rm -f "$doctor_records_file"
   fi
 }
+
+handle_termination() {
+  cleanup
+  trap - EXIT
+  exit 143
+}
+
 trap cleanup EXIT
+trap handle_termination INT TERM HUP
 
 if [[ -n "$bundle_dir" ]]; then
   bundle_dir="$(normalize_path "$bundle_dir")"
@@ -826,7 +918,22 @@ case "$mode" in
     fi
     printf 'Running: %q ' "${cmd[@]}"
     printf '\n'
-    "${cmd[@]}"
+    if command -v setsid >/dev/null 2>&1; then
+      setsid "${cmd[@]}" &
+      cleanup_play_pid="$!"
+      cleanup_play_pgid="$cleanup_play_pid"
+    else
+      "${cmd[@]}" &
+      cleanup_play_pid="$!"
+      cleanup_play_pgid=""
+    fi
+    set +e
+    wait "$cleanup_play_pid"
+    play_status=$?
+    set -e
+    cleanup_play_pid=""
+    cleanup_play_pgid=""
+    exit "$play_status"
     ;;
   smoke)
     cd "$repo_root"

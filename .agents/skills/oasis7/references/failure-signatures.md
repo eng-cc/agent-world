@@ -93,6 +93,23 @@ Check:
 2. otherwise install `cargo` and provide `--repo-root <path>` so `oasis7` can bootstrap the runtime agent and bridge
 3. use `doctor --json` and compare `bundle-play` vs `repo-bootstrap` statuses
 
+## `play_wrapper_orphan_subtree`
+
+Meaning:
+
+- stopping the wrapper used to leave launcher/runtime/viewer children alive in the background
+
+Current behavior:
+
+- `oasis7-run.sh play` now starts the launcher under a supervised process group when possible
+- on `INT` / `TERM` / `HUP` / wrapper exit, it tears down the launcher subtree before returning
+
+If you still suspect leftovers:
+
+1. inspect `ps -ef | grep -E 'world_game_launcher|world_chain_runtime|world_viewer_live'`
+2. rerun `.agents/skills/oasis7/scripts/oasis7-run-shutdown-test.sh`
+3. confirm no stale bridge or launcher ports remain occupied
+
 ## `doctor` mode
 
 Use this first when the local OpenClaw path is not obviously healthy:

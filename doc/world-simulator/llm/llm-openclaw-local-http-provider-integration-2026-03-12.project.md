@@ -44,4 +44,5 @@
 - T5 操作流补充: `oasis7` 已新增 GitHub Release bundle-first 下载入口，`oasis7-run.sh download` 可直接下载并解压 `agent-world-<platform>` 发行包，`play` 则支持 `--bundle-dir` 与 `--repo-root` 显式路径策略；当前真实试玩推荐先拿 release bundle 跑 `run-game.sh`，再按需复用 repo 内 bridge / runtime-agent / parity tooling。
 - T5 路径修复补充: `oasis7-run.sh` 现已在 `normalize_path` 中显式展开当前用户 `~`，修复默认 `--download-dir ~/.cache/oasis7/releases` 被误写到 repo-local `~/...` 的问题；同时新增 `.agents/skills/oasis7/scripts/oasis7-run-path-test.sh` 回归脚本，覆盖默认下载目录与 `~/custom-cache` override。
 - T5 operator 契约补充: `oasis7-run.sh doctor` 现在会把 `bundle-play`（bundle + bridge 的 no-`cargo` real-play readiness）与 `repo-bootstrap`（repo root + `cargo` 的自动 bridge/runtime bootstrap 能力）分开汇报；`play` 若因缺少 repo root / `cargo` 无法自动 bootstrap，会直接提示改走 `--reuse-bridge --skip-agent-setup`。
+- T5 停止收敛补充: `oasis7-run.sh play` 现已在 wrapper 层记录 launcher pid / process group，并在 `INT`/`TERM`/`HUP`/`EXIT` 时做 best-effort 子树清理，避免 bundle/source 启动后残留 `world_game_launcher` / `world_chain_runtime` / `world_viewer_live` 常驻。
 - 当前边界: runtime live 的 `agent_chat` / `prompt_control` 在 OpenClaw 模式下仍显式报 `unsupported`，避免对外误报“已支持玩家直连操控”。

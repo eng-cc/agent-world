@@ -107,3 +107,7 @@ bash scripts/openclaw-parity-p0.sh \
 
 - `bundle-play`: whether a valid bundle plus reachable bridge can support no-`cargo` real play via `--reuse-bridge --skip-agent-setup`
 - `repo-bootstrap`: whether repo root + `cargo` are available for auto runtime-agent/bootstrap work
+
+## Shutdown Contract
+
+Killing `oasis7-run.sh play` now performs best-effort teardown of the launched play subtree. In the bundle-backed path this includes the wrapper-started launcher stack instead of leaving residual `world_game_launcher` / `world_chain_runtime` / `world_viewer_live` behind.
