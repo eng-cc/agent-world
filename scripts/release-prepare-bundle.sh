@@ -121,6 +121,7 @@ mkdir -p "${OUT_DIR}"
   --out-dir "${BUNDLE_DIR}" \
   --profile "${PROFILE}" \
   --target-triple "${TARGET_TRIPLE}" \
-  --web-dist "${WEB_DIST}"
+  --web-dist "${WEB_DIST}" \
+  --web-launcher-dist "${WEB_LAUNCHER_DIST}"
 
 echo "Prepared bundle directory: ${BUNDLE_DIR}"
