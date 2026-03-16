@@ -578,10 +578,14 @@ fn sanitize_index_html_for_embedded_server(
     body: &[u8],
     viewer_auth_bootstrap: Option<&ViewerAuthBootstrap>,
 ) -> Vec<u8> {
-    if path.file_name() != Some(OsStr::new("index.html")) {
+    if path.extension() != Some(OsStr::new("html")) {
         return body.to_vec();
     }
-    let sanitized = strip_trunk_autoreload_script(body);
+    let sanitized = if path.file_name() == Some(OsStr::new("index.html")) {
+        strip_trunk_autoreload_script(body)
+    } else {
+        body.to_vec()
+    };
     if let Some(viewer_auth_bootstrap) = viewer_auth_bootstrap {
         inject_viewer_auth_bootstrap_script(sanitized.as_slice(), viewer_auth_bootstrap)
     } else {

@@ -385,6 +385,26 @@ fn sanitize_index_html_for_embedded_server_injects_viewer_auth_bootstrap() {
 }
 
 #[test]
+fn sanitize_index_html_for_embedded_server_injects_viewer_auth_bootstrap_into_non_index_html() {
+    let html = "<html><head></head><body><div id=\"safe\"></div></body></html>";
+    let auth = ViewerAuthBootstrap {
+        player_id: "viewer-player".to_string(),
+        public_key: "pub-hex".to_string(),
+        private_key: "priv-hex".to_string(),
+    };
+    let sanitized = sanitize_index_html_for_embedded_server(
+        Path::new("software_safe.html"),
+        html.as_bytes(),
+        Some(&auth),
+    );
+    let sanitized = String::from_utf8(sanitized).expect("utf-8");
+    assert!(sanitized.contains(VIEWER_AUTH_BOOTSTRAP_OBJECT));
+    assert!(sanitized.contains("viewer-player"));
+    assert!(sanitized.contains("pub-hex"));
+    assert!(sanitized.contains("priv-hex"));
+}
+
+#[test]
 fn build_viewer_auth_bootstrap_script_contains_expected_window_object() {
     let auth = ViewerAuthBootstrap {
         player_id: "viewer-player".to_string(),
