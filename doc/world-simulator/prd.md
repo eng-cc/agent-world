@@ -52,6 +52,7 @@
   - `doc/world-simulator/llm/llm-decision-provider-standard-openclaw-feasibility-2026-03-12.prd.md`（PRD-WORLD_SIMULATOR-036）
   - `doc/world-simulator/llm/llm-openclaw-local-http-provider-integration-2026-03-12.prd.md`（PRD-WORLD_SIMULATOR-037）
   - `doc/world-simulator/llm/llm-openclaw-agent-experience-parity-2026-03-12.prd.md`（PRD-WORLD_SIMULATOR-038）
+  - `doc/world-simulator/llm/llm-openclaw-agent-dual-mode-2026-03-16.prd.md`（PRD-WORLD_SIMULATOR-040）
   - `doc/world-simulator/viewer/viewer-web-software-safe-mode-2026-03-16.prd.md`（PRD-WORLD_SIMULATOR-039）
   - `doc/world-simulator/prd/acceptance/openclaw-agent-parity-scenario-matrix-2026-03-12.md`（PRD-WORLD_SIMULATOR-038）
   - `doc/world-simulator/prd/acceptance/openclaw-agent-parity-score-card-2026-03-12.md`（PRD-WORLD_SIMULATOR-038）
@@ -195,6 +196,7 @@
   - PRD-WORLD_SIMULATOR-037: As a 玩家 / 制作人, I want an `OpenClaw(Local HTTP)` provider mode on my machine, so that I can let locally installed `OpenClaw` drive low-frequency game agents through localhost without deploying remote services.
   - PRD-WORLD_SIMULATOR-038: As a 玩家 / 制作人, I want `OpenClaw`-driven agents to feel equivalent to built-in agents in scoped gameplay scenarios, so that switching provider does not noticeably degrade the game experience.
   - PRD-WORLD_SIMULATOR-039: As a 玩家 / QA / 制作人, I want a Web Viewer software-safe mode that does not depend on hardware GPU capability, so that I can still complete the minimal gameplay and validation loop in software-rendered or restricted browser environments.
+  - PRD-WORLD_SIMULATOR-040: As a 玩家 / 制作人 / QA, I want OpenClaw agents to support both player-parity and headless execution modes, so that we can separate player-feel validation from GUI-dependent automation and keep gameplay regression runnable without graphics dependencies.
 - Critical User Flows:
   1. Flow-WS-001（Web-first 闭环）:
      `选择场景 -> 启动 Viewer Web -> 执行关键交互 -> 采集日志/截图/指标 -> 产出 test_tier_required 结论`
@@ -503,6 +505,7 @@
 | PRD-WORLD_SIMULATOR-034 | TASK-WORLD_SIMULATOR-103/104/107/108 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_game_launcher -- --nocapture` + GUI Agent 闭环（默认 node id stale 失败 + fresh node id 恢复 + explorer overview 查询成功） + `./scripts/run-game-test.sh --no-llm` / agent-browser Web 闭环（fresh `chain_node_id` 默认值） | launcher 链启动恢复体验、GUI Agent 契约、chain-enabled 试玩可达性与一键试玩栈稳定性 |
 | PRD-WORLD_SIMULATOR-035 | TASK-WORLD_SIMULATOR-105/106 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer` + `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-unknown` + agent-browser Web 闭环（验证 `__AW_TEST__.getState().lastError` 能命中浏览器 fatal 并触发快失败） | Viewer Web 图形链路可诊断性、producer/QA 闭环失败透明度、手册与脚本口径一致性 |
 | PRD-WORLD_SIMULATOR-039 | TASK-WORLD_SIMULATOR-139/140/141/142/143 | `test_tier_required` | `./scripts/doc-governance-check.sh` + Web agent-browser 闭环（software renderer 环境下验证 `render_mode=software_safe` 可加载、选中目标、推进 tick、看到新反馈） + 定向 viewer/runtime 协议回归 | Web Viewer 无 GPU 硬件依赖兜底、弱图形环境最小玩法闭环与 `#39` 收口路径 |
+| PRD-WORLD_SIMULATOR-040 | TASK-WORLD_SIMULATOR-148/149/150/151 | `test_tier_required` / `test_tier_full` | `./scripts/doc-governance-check.sh` + 双模式 contract review + headless smoke + player_parity/headless 对照采证 | OpenClaw 双轨模式、无 GUI 回归主链路、Viewer 旁路调试边界与默认模式策略 |
 
 - Decision Log:
 

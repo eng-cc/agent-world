@@ -2,7 +2,7 @@
 
 审计轮次: 6
 
-更新时间：2026-03-12
+更新时间：2026-03-16
 
 ## 入口
 - 模块 PRD：`doc/world-simulator/prd.md`
@@ -65,6 +65,7 @@
 | `doc/world-simulator/llm/llm-dialogue-chat-loop.prd.md` | `doc/world-simulator/llm/llm-dialogue-chat-loop.design.md` | `doc/world-simulator/llm/llm-dialogue-chat-loop.project.md` |
 | `doc/world-simulator/llm/llm-openclaw-local-http-provider-integration-2026-03-12.prd.md` | `doc/world-simulator/llm/llm-openclaw-local-http-provider-integration-2026-03-12.design.md` | `doc/world-simulator/llm/llm-openclaw-local-http-provider-integration-2026-03-12.project.md` |
 | `doc/world-simulator/llm/llm-openclaw-agent-experience-parity-2026-03-12.prd.md` | `doc/world-simulator/llm/llm-openclaw-agent-experience-parity-2026-03-12.design.md` | `doc/world-simulator/llm/llm-openclaw-agent-experience-parity-2026-03-12.project.md` |
+| `doc/world-simulator/llm/llm-openclaw-agent-dual-mode-2026-03-16.prd.md` | `—` | `doc/world-simulator/llm/llm-openclaw-agent-dual-mode-2026-03-16.project.md` |
 | `doc/world-simulator/llm/llm-factory-strategy-optimization.prd.md` | `doc/world-simulator/llm/llm-factory-strategy-optimization.design.md` | `doc/world-simulator/llm/llm-factory-strategy-optimization.project.md` |
 | `doc/world-simulator/llm/llm-industrial-mining-debug-tools.prd.md` | `doc/world-simulator/llm/llm-industrial-mining-debug-tools.design.md` | `doc/world-simulator/llm/llm-industrial-mining-debug-tools.project.md` |
 | `doc/world-simulator/llm/llm-lmso29-stability.prd.md` | `doc/world-simulator/llm/llm-lmso29-stability.design.md` | `doc/world-simulator/llm/llm-lmso29-stability.project.md` |
