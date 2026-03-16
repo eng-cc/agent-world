@@ -79,6 +79,7 @@
   - AC-2: `player_parity` 与 `headless_agent` 共用同一动作 contract 与 runtime 校验，不得出现“某模式专属捷径”。
   - AC-3: `debug_viewer` 必须是旁路层，关闭 Viewer 不影响 Agent 权威执行、回放与 summary 产出。
   - AC-4: 回放 / summary / benchmark 产物中必须带有 `mode`、`observation_schema_version`、`action_schema_version`。
+  - AC-4.1: `software_safe` / Web Viewer 必须显式展示 `debug_viewer` 订阅状态，以及选中 Agent 当前 `headless_agent` lane 的 `mode/schema/environment/fallback` 摘要，避免把观战层误解成执行依赖。
   - AC-5: QA 可以对同一场景同时产出 `player_parity` 与 `headless_agent` 对照证据，并给出偏差结论。
   - AC-6: 若 `player_parity` 未通过而 `headless_agent` 通过，系统仍不得宣称“玩家体验等价”；两条口径必须分开汇报。
 - Non-Goals:

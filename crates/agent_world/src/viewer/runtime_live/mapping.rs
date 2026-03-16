@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use crate::geometry::space_distance_cm;
 use crate::runtime::{
     DomainEvent as RuntimeDomainEvent, MaterialStack as RuntimeMaterialStack,
@@ -5,12 +7,15 @@ use crate::runtime::{
     WorldEventBody as RuntimeWorldEventBody,
 };
 use crate::simulator::{
-    Agent, Location, RejectReason as SimulatorRejectReason, ResourceOwner, WorldConfig, WorldEvent,
-    WorldEventKind, WorldModel,
+    Agent, AgentExecutionDebugContext, Location, ProviderExecutionMode,
+    RejectReason as SimulatorRejectReason, ResourceOwner, WorldConfig, WorldEvent, WorldEventKind,
+    WorldModel, DEFAULT_PROVIDER_ACTION_SCHEMA_VERSION,
+    DEFAULT_PROVIDER_OBSERVATION_SCHEMA_VERSION,
 };
 
-use super::control_plane::RuntimeLlmSidecar;
+use super::control_plane::{runtime_openclaw_settings_from_env, RuntimeLlmSidecar};
 use super::location_id_for_pos;
+use super::ViewerLiveDecisionMode;
 
 pub(super) fn runtime_state_to_simulator_model(
     state: &crate::runtime::WorldState,
@@ -40,8 +45,47 @@ pub(super) fn runtime_state_to_simulator_model(
     model.agent_prompt_profiles = sidecar.prompt_profiles.clone();
     model.agent_player_bindings = sidecar.agent_player_bindings.clone();
     model.agent_player_public_key_bindings = sidecar.agent_public_key_bindings.clone();
+    model.agent_execution_debug_contexts = collect_agent_execution_debug_contexts(state, sidecar);
     model.player_auth_last_nonce = sidecar.player_auth_last_nonce.clone();
     model
+}
+
+fn collect_agent_execution_debug_contexts(
+    state: &crate::runtime::WorldState,
+    sidecar: &RuntimeLlmSidecar,
+) -> BTreeMap<String, AgentExecutionDebugContext> {
+    if !matches!(sidecar.decision_mode, ViewerLiveDecisionMode::Llm) {
+        return BTreeMap::new();
+    }
+
+    let Ok(Some(settings)) = runtime_openclaw_settings_from_env() else {
+        return BTreeMap::new();
+    };
+
+    state
+        .agents
+        .keys()
+        .map(|agent_id| {
+            (
+                agent_id.clone(),
+                AgentExecutionDebugContext {
+                    provider_mode: Some("openclaw_local_http".to_string()),
+                    execution_mode: Some(ProviderExecutionMode::HeadlessAgent.as_str().to_string()),
+                    observation_schema_version: Some(
+                        DEFAULT_PROVIDER_OBSERVATION_SCHEMA_VERSION.to_string(),
+                    ),
+                    action_schema_version: Some(DEFAULT_PROVIDER_ACTION_SCHEMA_VERSION.to_string()),
+                    environment_class: Some("runtime_live".to_string()),
+                    fallback_reason: None,
+                    provider_config_ref: Some(format!(
+                        "openclaw://local-http/runtime-live/{}",
+                        agent_id
+                    )),
+                    agent_profile: Some(settings.agent_profile.clone()),
+                },
+            )
+        })
+        .collect()
 }
 
 pub(super) fn map_runtime_event(

@@ -1,5 +1,8 @@
 use super::*;
 use crate::simulator::ResourceOwner;
+use crate::simulator::{
+    DEFAULT_PROVIDER_ACTION_SCHEMA_VERSION, DEFAULT_PROVIDER_OBSERVATION_SCHEMA_VERSION,
+};
 use ed25519_dalek::SigningKey;
 use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
@@ -500,6 +503,57 @@ fn runtime_agent_chat_script_mode_requires_llm_mode() {
 }
 
 #[test]
+fn runtime_openclaw_compat_snapshot_exposes_agent_execution_debug_contexts() {
+    let _guard = runtime_openclaw_env_lock().lock().expect("env lock");
+    clear_runtime_openclaw_env();
+    std::env::set_var("AGENT_WORLD_AGENT_PROVIDER_MODE", "openclaw_local_http");
+    std::env::set_var("AGENT_WORLD_OPENCLAW_BASE_URL", "http://127.0.0.1:5841");
+    std::env::set_var(
+        "AGENT_WORLD_OPENCLAW_AGENT_PROFILE",
+        "agent_world_p0_low_freq_npc",
+    );
+    let server = ViewerRuntimeLiveServer::new(
+        ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal)
+            .with_decision_mode(ViewerLiveDecisionMode::Llm),
+    )
+    .expect("runtime server");
+
+    let agent_id = server
+        .world
+        .state()
+        .agents
+        .keys()
+        .next()
+        .cloned()
+        .expect("seed agent");
+    let snapshot = server.compat_snapshot();
+    let context = snapshot
+        .model
+        .agent_execution_debug_contexts
+        .get(agent_id.as_str())
+        .expect("debug context in snapshot");
+    assert_eq!(
+        context.provider_mode.as_deref(),
+        Some("openclaw_local_http")
+    );
+    assert_eq!(context.execution_mode.as_deref(), Some("headless_agent"));
+    assert_eq!(
+        context.observation_schema_version.as_deref(),
+        Some(DEFAULT_PROVIDER_OBSERVATION_SCHEMA_VERSION)
+    );
+    assert_eq!(
+        context.action_schema_version.as_deref(),
+        Some(DEFAULT_PROVIDER_ACTION_SCHEMA_VERSION)
+    );
+    assert_eq!(context.environment_class.as_deref(), Some("runtime_live"));
+    assert_eq!(
+        context.agent_profile.as_deref(),
+        Some("agent_world_p0_low_freq_npc")
+    );
+    clear_runtime_openclaw_env();
+}
+
+#[test]
 fn runtime_agent_chat_openclaw_mode_reports_unsupported() {
     let _guard = runtime_openclaw_env_lock().lock().expect("env lock");
     clear_runtime_openclaw_env();
@@ -595,7 +649,6 @@ fn runtime_agent_chat_replay_returns_idempotent_ack() {
         Some(5)
     );
 }
-
 
 #[test]
 fn runtime_agent_chat_echo_env_enqueues_agent_spoke_virtual_event() {

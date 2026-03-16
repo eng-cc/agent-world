@@ -40,6 +40,8 @@ const state = {
   vendor: null,
   webglVersion: null,
   controlProfile: "playback",
+  debugViewerMode: "debug_viewer",
+  debugViewerStatus: "detached",
   worldId: null,
   server: null,
   wsUrl: null,
@@ -246,6 +248,8 @@ function getState() {
     vendor: state.vendor,
     webglVersion: state.webglVersion,
     controlProfile: state.controlProfile,
+    debugViewerMode: state.debugViewerMode,
+    debugViewerStatus: state.debugViewerStatus,
     worldId: state.worldId,
     server: state.server,
     wsUrl: state.wsUrl,
@@ -253,6 +257,8 @@ function getState() {
     authPlayerId: state.auth.playerId,
     authPublicKey: state.auth.publicKey,
     authError: state.auth.error,
+    selectedAgentInteractionMode: selectedAgentInteractionMode(),
+    selectedAgentDebug: clone(selectedAgentExecutionDebugContext()),
     selectedPromptVersion: state.promptDraft.currentVersion || 0,
     promptRollbackTargetVersion: state.promptDraft.rollbackTargetVersion || 0,
     chatHistoryCount: state.chatHistory.length,
@@ -266,6 +272,7 @@ function reportFatalError(message, source = "runtime") {
     state.errorCount += 1;
   }
   state.connectionStatus = "error";
+  state.debugViewerStatus = "error";
   state.lastError = text;
   render();
 }
@@ -329,6 +336,22 @@ function selectedAgentBindingInfo() {
     playerId: state.snapshot?.model?.agent_player_bindings?.[agentId] || null,
     publicKey: state.snapshot?.model?.agent_player_public_key_bindings?.[agentId] || null,
   };
+}
+
+function selectedAgentExecutionDebugContext() {
+  const agentId = selectedAgentId();
+  if (!agentId) {
+    return null;
+  }
+  return state.snapshot?.model?.agent_execution_debug_contexts?.[agentId] || null;
+}
+
+function selectedAgentInteractionMode() {
+  const debugContext = selectedAgentExecutionDebugContext();
+  if (debugContext?.provider_mode === "openclaw_local_http") {
+    return "observer_only";
+  }
+  return "interactive";
 }
 
 function syncAgentInteractionDrafts(force = false) {
@@ -459,6 +482,10 @@ function describeControls() {
       },
     ],
     usage: "Use fillControlExample(action), sendControl(action), sendAgentChat(agentId, message), sendPromptControl(mode, payload).",
+    notes: [
+      "software_safe acts as a debug_viewer lane: it subscribes to runtime snapshots/events and does not own world authority",
+      "when selectedAgentDebug.provider_mode=openclaw_local_http, prompt/chat stay observer-only in runtime live",
+    ],
   };
 }
 
@@ -1236,6 +1263,7 @@ function handleViewerMessage(message) {
       state.server = message.server || null;
       state.worldId = message.world_id || null;
       state.controlProfile = message.control_profile || "playback";
+      state.debugViewerStatus = "subscribed";
       break;
     case "snapshot":
       handleSnapshot(message.snapshot);
@@ -1281,6 +1309,7 @@ function handleViewerMessage(message) {
 function attachSocket(ws) {
   ws.addEventListener("open", () => {
     state.connectionStatus = "connected";
+    state.debugViewerStatus = "detached";
     state.lastError = null;
     sendJson({ type: "hello", client: "software_safe_viewer", version: 1 });
     sendJson({ type: "subscribe", streams: ["snapshot", "events", "metrics"], event_kinds: [] });
@@ -1303,6 +1332,7 @@ function attachSocket(ws) {
 
   ws.addEventListener("close", () => {
     state.connectionStatus = "connecting";
+    state.debugViewerStatus = "detached";
     render();
     if (reconnectTimer) {
       window.clearTimeout(reconnectTimer);
@@ -1440,11 +1470,13 @@ function renderSummary() {
   const promptFeedback = snapshotSemanticFeedback(state.lastPromptFeedback);
   const chatFeedback = snapshotSemanticFeedback(state.lastChatFeedback);
   const authBadgeClass = state.auth.available ? "badge badge--good" : "badge badge--warn";
+  const selectedDebug = selectedAgentExecutionDebugContext();
   elements.centerPanel.innerHTML = `
     <div class="stack">
       <div class="badge-row">
         <span class="badge badge--accent">software_safe</span>
         <span class="${connectionBadgeClass()}">${escapeHtml(state.connectionStatus)}</span>
+        <span class="badge">debugViewer=${escapeHtml(`${state.debugViewerMode}:${state.debugViewerStatus}`)}</span>
         <span class="badge">rendererClass=${escapeHtml(state.rendererClass)}</span>
         <span class="badge">controlProfile=${escapeHtml(state.controlProfile)}</span>
       </div>
@@ -1458,6 +1490,33 @@ function renderSummary() {
         <span class="badge">ws=${escapeHtml(state.wsUrl || "-")}</span>
         <span class="badge">reason=${escapeHtml(state.softwareSafeReason || "-")}</span>
         <span class="badge">renderer=${escapeHtml(state.renderer || "n/a")}</span>
+      </div>
+      <div class="panel panel--nested" style="background:rgba(255,255,255,0.02);">
+        <div class="panel__header"><div class="panel__title">Execution Lanes</div></div>
+        <div class="panel__body stack">
+          <div class="badge-row">
+            <span class="badge badge--accent">debug_viewer</span>
+            <span class="badge">status=${escapeHtml(state.debugViewerStatus)}</span>
+            <span class="badge">renderMode=${escapeHtml(state.renderMode)}</span>
+            <span class="badge">fallback=${escapeHtml(state.softwareSafeReason || "-")}</span>
+          </div>
+          <div class="empty" style="margin-top:-2px;">debug_viewer is a read-only subscription lane for runtime snapshots/events; closing the viewer does not stop the agent lane.</div>
+          ${selectedDebug
+            ? `<div class="badge-row">
+                <span class="badge badge--accent">selected agent lane</span>
+                <span class="badge">provider=${escapeHtml(selectedDebug.provider_mode || "-")}</span>
+                <span class="badge">mode=${escapeHtml(selectedDebug.execution_mode || "-")}</span>
+                <span class="badge">env=${escapeHtml(selectedDebug.environment_class || "-")}</span>
+              </div>
+              <div class="badge-row">
+                <span class="badge">obs=${escapeHtml(selectedDebug.observation_schema_version || "-")}</span>
+                <span class="badge">act=${escapeHtml(selectedDebug.action_schema_version || "-")}</span>
+                <span class="badge">agentProfile=${escapeHtml(selectedDebug.agent_profile || "-")}</span>
+                <span class="badge">fallback=${escapeHtml(selectedDebug.fallback_reason || "-")}</span>
+              </div>
+              <pre class="json">${escapeHtml(JSON.stringify(selectedDebug, null, 2))}</pre>`
+            : '<div class="empty">Select an agent to compare the headless execution lane against this debug_viewer observer lane.</div>'}
+        </div>
       </div>
       <div class="badge-row">
         <span class="${authBadgeClass}">auth=${state.auth.available ? "ready" : "missing"}</span>
@@ -1534,12 +1593,17 @@ function renderInteractionPanel() {
     return '<div class="empty">Select an agent to unlock prompt/chat controls.</div>';
   }
   const binding = selectedAgentBindingInfo();
+  const debugContext = selectedAgentExecutionDebugContext();
   const promptFeedback = snapshotSemanticFeedback(state.lastPromptFeedback);
   const chatFeedback = snapshotSemanticFeedback(state.lastChatFeedback);
   const authReady = state.auth.available;
-  const authNotice = authReady
-    ? `<div class="badge-row"><span class="badge badge--good">auth bootstrap ready</span><span class="badge">player=${escapeHtml(state.auth.playerId)}</span></div>`
-    : `<div class="empty">Prompt/chat require viewer auth bootstrap. Current status: ${escapeHtml(state.auth.error || "missing")}</div>`;
+  const observerOnly = debugContext?.provider_mode === "openclaw_local_http";
+  const interactionEnabled = authReady && !observerOnly;
+  const authNotice = observerOnly
+    ? `<div class="empty">Selected agent currently runs through OpenClaw(Local HTTP) in ${escapeHtml(debugContext?.execution_mode || "headless_agent")}; software_safe stays in debug_viewer observer-only mode, so prompt/chat are intentionally disabled here.</div>`
+    : authReady
+      ? `<div class="badge-row"><span class="badge badge--good">auth bootstrap ready</span><span class="badge">player=${escapeHtml(state.auth.playerId)}</span></div>`
+      : `<div class="empty">Prompt/chat require viewer auth bootstrap. Current status: ${escapeHtml(state.auth.error || "missing")}</div>`;
   const chatHistory = state.chatHistory
     .filter((entry) => entry.agentId === agentId || entry.targetAgentId === agentId)
     .slice(0, 12);
@@ -1561,26 +1625,26 @@ function renderInteractionPanel() {
         <div class="panel__body stack">
           <div class="field">
             <label for="prompt-system">System Prompt Override</label>
-            <textarea id="prompt-system" rows="4" ${authReady ? "" : "disabled"}>${escapeHtml(state.promptDraft.systemPrompt)}</textarea>
+            <textarea id="prompt-system" rows="4" ${interactionEnabled ? "" : "disabled"}>${escapeHtml(state.promptDraft.systemPrompt)}</textarea>
           </div>
           <div class="field">
             <label for="prompt-short">Short-Term Goal Override</label>
-            <textarea id="prompt-short" rows="3" ${authReady ? "" : "disabled"}>${escapeHtml(state.promptDraft.shortTermGoal)}</textarea>
+            <textarea id="prompt-short" rows="3" ${interactionEnabled ? "" : "disabled"}>${escapeHtml(state.promptDraft.shortTermGoal)}</textarea>
           </div>
           <div class="field">
             <label for="prompt-long">Long-Term Goal Override</label>
-            <textarea id="prompt-long" rows="3" ${authReady ? "" : "disabled"}>${escapeHtml(state.promptDraft.longTermGoal)}</textarea>
+            <textarea id="prompt-long" rows="3" ${interactionEnabled ? "" : "disabled"}>${escapeHtml(state.promptDraft.longTermGoal)}</textarea>
           </div>
           <div class="toolbar">
-            <button data-prompt-action="preview" ${authReady ? "" : "disabled"}>Preview Prompt</button>
-            <button data-prompt-action="apply" ${authReady ? "" : "disabled"}>Apply Prompt</button>
+            <button data-prompt-action="preview" ${interactionEnabled ? "" : "disabled"}>Preview Prompt</button>
+            <button data-prompt-action="apply" ${interactionEnabled ? "" : "disabled"}>Apply Prompt</button>
           </div>
           <div class="toolbar">
             <div class="field" style="margin:0; min-width:180px; flex:1;">
               <label for="prompt-rollback-version">Rollback Target Version</label>
-              <input id="prompt-rollback-version" type="number" min="0" step="1" value="${Number(state.promptDraft.rollbackTargetVersion || 0)}" ${authReady ? "" : "disabled"} />
+              <input id="prompt-rollback-version" type="number" min="0" step="1" value="${Number(state.promptDraft.rollbackTargetVersion || 0)}" ${interactionEnabled ? "" : "disabled"} />
             </div>
-            <button data-prompt-action="rollback" ${authReady ? "" : "disabled"}>Rollback Prompt</button>
+            <button data-prompt-action="rollback" ${interactionEnabled ? "" : "disabled"}>Rollback Prompt</button>
           </div>
           ${promptFeedback
             ? `<div class="badge-row"><span class="${feedbackBadgeClass(promptFeedback)}">${escapeHtml(promptFeedback.stage)}</span></div>
@@ -1593,10 +1657,10 @@ function renderInteractionPanel() {
         <div class="panel__body stack">
           <div class="field">
             <label for="agent-chat-message">Message</label>
-            <textarea id="agent-chat-message" rows="4" placeholder="Send a message to the selected agent" ${authReady ? "" : "disabled"}>${escapeHtml(state.chatDraft.message)}</textarea>
+            <textarea id="agent-chat-message" rows="4" placeholder="Send a message to the selected agent" ${interactionEnabled ? "" : "disabled"}>${escapeHtml(state.chatDraft.message)}</textarea>
           </div>
           <div class="toolbar">
-            <button data-chat-send="1" ${authReady ? "" : "disabled"}>Send Chat</button>
+            <button data-chat-send="1" ${interactionEnabled ? "" : "disabled"}>Send Chat</button>
           </div>
           ${chatFeedback
             ? `<div class="badge-row"><span class="${feedbackBadgeClass(chatFeedback)}">${escapeHtml(chatFeedback.stage)}</span></div>
@@ -1652,6 +1716,7 @@ function renderDetails() {
                 agents: Object.keys(state.snapshot?.model?.agents || {}).length,
                 locations: Object.keys(state.snapshot?.model?.locations || {}).length,
                 promptProfiles: Object.keys(state.snapshot?.model?.agent_prompt_profiles || {}).length,
+                executionDebugContexts: Object.keys(state.snapshot?.model?.agent_execution_debug_contexts || {}).length,
               },
               metrics: state.metrics,
             },

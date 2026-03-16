@@ -84,6 +84,26 @@ impl AgentKinematics {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct AgentExecutionDebugContext {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub provider_mode: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub execution_mode: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub observation_schema_version: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub action_schema_version: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub environment_class: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fallback_reason: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub provider_config_ref: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent_profile: Option<String>,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Agent {
     pub id: AgentId,
@@ -243,6 +263,8 @@ pub struct WorldModel {
     pub agent_prompt_profiles: BTreeMap<AgentId, AgentPromptProfile>,
     #[serde(default)]
     pub agent_player_bindings: BTreeMap<AgentId, String>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub agent_execution_debug_contexts: BTreeMap<AgentId, AgentExecutionDebugContext>,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub agent_player_public_key_bindings: BTreeMap<AgentId, String>,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]

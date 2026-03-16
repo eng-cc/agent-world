@@ -25,6 +25,7 @@
 
 ## 状态
 - 当前阶段：T0~T9 已完成，software-safe 已具备 prompt/chat、rollback、消息流、QA 回归与稳定 `agent_spoke` 触发闭环。
+- 联动状态：已承接 `PRD-WORLD_SIMULATOR-040 T3`，在 software-safe 页面补齐 `debug_viewer` 旁路订阅标识、选中 Agent 的 headless lane 元数据展示，以及 OpenClaw runtime live 下的 observer-only 提示。
 - 最近更新：2026-03-16（`runtime_engineer` / `viewer_engineer` 已补齐稳定 `agent_spoke` 触发链路与 runtime 事件兼容解析，并通过手工 Web 闭环复验消息流）。
 - 阻塞项：无；后续仅保留交互体验扩展与更多自动化覆盖。
 

@@ -117,6 +117,7 @@
 - AC-5: 当硬件 WebGL 可用时，`auto` 不得错误降级到 `software_safe`，以免影响正常画面验收。
 - AC-6: 在带 viewer auth bootstrap 的 software-safe 页面中，玩家可对选中 Agent 发起最小 `prompt/chat` 闭环：发送一条 chat，并完成一次 prompt preview/apply，且 `__AW_TEST__` 能返回对应 ack/error 反馈。
 - AC-7: software-safe 的选中 Agent 控制面支持一次 prompt rollback，并能把玩家出站 chat ack 与 `agent_spoke` 事件汇成可见消息流；rollback 成功后需要刷新 prompt 版本/状态。
+- AC-8: 当 runtime live 使用 `OpenClaw(Local HTTP)` 驱动 Agent 时，software-safe 页面必须显式标识自身处于 `debug_viewer` 旁路订阅层，并展示选中 Agent 的 `mode/schema/environment/fallback` 摘要；此时 prompt/chat 控制面需要明确提示 observer-only 边界。
 
 ## 6. Non-Functional Requirements
 - NFR-1: `software_safe` 模式不得依赖硬件 GPU；在 software renderer / 无 WebGL / 受限 WebGL 环境下仍可启动。

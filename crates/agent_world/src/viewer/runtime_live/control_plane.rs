@@ -22,7 +22,6 @@ pub(super) use llm_sidecar::{
 const RUNTIME_AGENT_CHAT_ECHO_ENV: &str = "AGENT_WORLD_RUNTIME_AGENT_CHAT_ECHO";
 const RUNTIME_AGENT_CHAT_ECHO_PREFIX: &str = "[qa-echo]";
 
-#[cfg(test)]
 #[allow(dead_code)]
 pub(in crate::viewer::runtime_live) fn runtime_openclaw_settings_from_env(
 ) -> Result<Option<llm_sidecar::OpenClawDecisionSettings>, String> {
@@ -34,7 +33,6 @@ struct ResolvedAgentChatIntent {
     intent_tick: Option<u64>,
     intent_seq: u64,
 }
-
 
 fn runtime_agent_chat_echo_enabled_from_env() -> bool {
     std::env::var(RUNTIME_AGENT_CHAT_ECHO_ENV)
@@ -666,7 +664,6 @@ impl ViewerRuntimeLiveServer {
             runtime_event: None,
         });
     }
-
 
     fn enqueue_agent_chat_echo_event_if_enabled(&mut self, agent_id: &str, message: &str) {
         if !runtime_agent_chat_echo_enabled_from_env() {
