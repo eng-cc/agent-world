@@ -8,10 +8,12 @@ tier="${1:-full}"
 
 usage() {
   cat <<'USAGE'
-Usage: ./scripts/ci-tests.sh [required|full]
+Usage: ./scripts/ci-tests.sh [required|full|full-core|full-support]
 
-  required  Run fast required checks for local commit and PR gate.
-  full      Run required checks plus extended feature/integration tests.
+  required      Run fast required checks for local commit and PR gate.
+  full          Run required checks plus all extended feature/integration tests.
+  full-core     Run doc/fmt plus the heaviest `agent_world` full-tier shard.
+  full-support  Run the remaining full-tier support crates/viewer shard.
 
 Default: full
 USAGE
@@ -23,7 +25,7 @@ if [[ $# -gt 1 ]]; then
 fi
 
 case "$tier" in
-  required|full) ;;
+  required|full|full-core|full-support) ;;
   *)
     usage
     exit 1
@@ -113,16 +115,13 @@ run_required_gate_checks() {
   run env -u RUSTC_WRAPPER cargo fmt --all -- --check
 }
 
-echo "+ ci test tier: $tier"
-run_required_gate_checks
-if [[ "$tier" == "required" ]]; then
-  run_agent_world_required_tier_tests
-  run_agent_world_consensus_tests
-  run_agent_world_distfs_tests
-  run_agent_world_viewer_tests
-  run_agent_world_viewer_wasm_check
-else
+run_full_core_tier_tests() {
+  run_required_gate_checks
   run_agent_world_full_tier_tests
+  run_cargo test -p agent_world --features wasmtime --lib --bins
+}
+
+run_full_support_tier_tests() {
   run_agent_world_consensus_tests
   run_agent_world_distfs_tests
   run_agent_world_node_tests
@@ -131,5 +130,30 @@ else
   run_agent_world_llm_baseline_fixture_smoke
   run_agent_world_viewer_tests
   run_agent_world_viewer_wasm_check
-  run_cargo test -p agent_world --features wasmtime --lib --bins
-fi
+}
+
+echo "+ ci test tier: $tier"
+case "$tier" in
+  required)
+    run_required_gate_checks
+    run_agent_world_required_tier_tests
+    run_agent_world_consensus_tests
+    run_agent_world_distfs_tests
+    run_agent_world_viewer_tests
+    run_agent_world_viewer_wasm_check
+    ;;
+  full)
+    run_full_core_tier_tests
+    run_full_support_tier_tests
+    ;;
+  full-core)
+    run_full_core_tier_tests
+    ;;
+  full-support)
+    run_full_support_tier_tests
+    ;;
+  *)
+    usage
+    exit 1
+    ;;
+ esac
