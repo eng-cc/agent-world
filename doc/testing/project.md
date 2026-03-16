@@ -156,6 +156,16 @@
   - 验收命令 (`test_tier_required`):
     - `bash -n scripts/ci-tests.sh`
     - `rg -n "full-core|full-support|agent_world --features wasmtime --lib --bins" scripts/ci-tests.sh doc/testing/prd.md doc/testing/project.md`
+- [x] TASK-TESTING-057 (PRD-TESTING-WEB-001/002/003) [test_tier_required]: 为 `renderMode=software_safe` 补专用 prompt/chat 回归方案与 `viewer-software-safe-chat-regression.sh`，覆盖 apply/rollback/chat ack、消息流采样以及 `agent_spoke` 缺失签名。
+  - 产物文件:
+    - `scripts/viewer-software-safe-chat-regression.sh`
+    - `testing-manual.md`
+    - `doc/testing/manual/web-ui-agent-browser-closure-manual.prd.md`
+    - `doc/testing/manual/web-ui-agent-browser-closure-manual.project.md`
+  - 验收命令 (`test_tier_required`):
+    - `bash -n scripts/viewer-software-safe-chat-regression.sh`
+    - `./scripts/viewer-software-safe-chat-regression.sh --help`
+    - `./scripts/viewer-software-safe-chat-regression.sh --viewer-static-dir /tmp/aw-viewer-dist-promptchat3 --viewer-port 4373 --live-bind 127.0.0.1:5323 --web-bind 127.0.0.1:5311`
 
 ## 依赖
 - 模块设计总览：`doc/testing/design.md`
@@ -170,6 +180,7 @@
 - 更新日期: 2026-03-16
 - 当前状态: completed
 - 下一任务: 无（当前模块主项目无未完成任务）
+- 最新完成: `TASK-TESTING-057`（为 `renderMode=software_safe` 补专用 prompt/chat 回归方案与执行脚本，沉淀 `agent_spoke` 缺失签名与证据包）。
 - 最新完成: `TASK-TESTING-056`（基于 `runtime-core` 热点复盘重平衡 shard，把 `agent_world --lib --bins` 从 `full-core` 挪到 `full-support`，降低最长 runtime shard）。
 - 最新完成: `TASK-TESTING-055`（拆分 `release-gate-runtime` 为 core/support/sync 三个并行 job，并给 `ci-tests.sh` 增加 `full-core` / `full-support` shard 入口）。
 - 最新完成: `TASK-TESTING-054`（继续优化 release 关键路径，让 `release-gate-web`/`build-web-dist` 共享 Web wasm cache，并把 bundle 原生二进制构建收敛到单次 cargo 调用）。

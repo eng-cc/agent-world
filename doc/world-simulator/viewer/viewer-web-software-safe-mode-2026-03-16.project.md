@@ -13,6 +13,7 @@
 - [x] T5 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 在 software renderer / SwiftShader 环境复验“加载 -> 选择目标 -> step -> 新反馈”最小闭环，并据此判断 `#39` 是否收口。
 - [x] T6 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 为 `software_safe` 补选中 Agent 的 `prompt/chat` MVP（含 auth bootstrap 签名、ack/error 可观测性与自动化接口），并复验一次真实交互。
 - [x] T7 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 为 `software_safe` 补 prompt rollback 与 chat history/message flow，确保 rollback 后能刷新 prompt 状态，且玩家出站消息与事件侧消息都能汇入统一消息流并被脚本读取。
+- [x] T8 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 由 `qa_engineer` 为 `software_safe` 补 prompt/chat/rollback/message-flow 回归方案与专用 agent-browser 脚本，沉淀 `agent_spoke` 缺失的失败签名。
 
 ## 依赖
 - `doc/world-simulator/viewer/viewer-web-software-safe-mode-2026-03-16.prd.md`
@@ -22,8 +23,8 @@
 - `oasis7` / `run-game-test-ab` 现有脚本与 Web 闭环证据路径
 
 ## 状态
-- 当前阶段：T0~T7 已完成，software-safe 已具备 prompt/chat、rollback 与消息流闭环。
-- 最近更新：2026-03-16（viewer_engineer 已补齐 `software_safe` prompt rollback、chat history/message flow，并继续做真实交互复验）。
+- 当前阶段：T0~T8 已完成，software-safe 已具备 prompt/chat、rollback、消息流与 QA 回归闭环。
+- 最近更新：2026-03-16（`qa_engineer` 已补齐 `software_safe` prompt/chat/rollback/message-flow 回归方案与专用脚本，并完成一次真实 smoke）。
 - 阻塞项：无；后续仅保留交互体验扩展与更多自动化覆盖。
 
 ## 备注

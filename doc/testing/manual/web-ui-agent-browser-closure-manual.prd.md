@@ -15,6 +15,7 @@
   - SC-4: 发布验收脚本（`viewer-release-qa-loop/full-coverage`）可直接复用手册约束。
   - SC-5: 文档迁移后统一 `.prd.md/.project.md` 命名并通过治理检查。
   - SC-6: `world_web_launcher` 的产品动作路径默认走 GUI Agent，不再把 canvas 直点或纯 agent-browser 动作作为首选执行链路。
+  - SC-7: 当 Viewer 进入 `renderMode=software_safe` 且 auth bootstrap 可用时，QA 可通过专用脚本稳定复验 prompt apply/rollback、chat ack 与消息流采样，并将 `agent_spoke` 缺失分级为可追溯失败签名。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -39,6 +40,7 @@
   3. Flow-WEB-003: `执行 GPU/headed 硬门禁 -> 检测软件渲染关键字 -> pass/fail`
   4. Flow-WEB-004: `触发 F1~F4 -> 输出分级结论 -> 归档证据并阻断放行`
   5. Flow-WEB-005: `运行 qa-loop/full-coverage -> 汇总产物 -> 发布评审`
+  6. Flow-WEB-006: `强制 software_safe -> 选择 Agent -> prompt apply/rollback -> agent chat -> 采集 chatHistory / agent_spoke 签名`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
@@ -48,6 +50,7 @@
 | launcher 控制面驱动 | `/api/gui-agent/capabilities`、`/api/gui-agent/state`、`/api/gui-agent/action`、页面字段快照 | 先通过 GUI Agent 执行动作，再用浏览器页面校验结果 | `action_requested -> applied -> verified` | launcher 控制面默认优先，不得被 canvas 直点替代 | 执行者与发布负责人共同审阅 |
 | 会话防抖 | `close-all`、fail-fast 预检查 | 每轮清理残留会话并快速失败 | `cleanup -> opened -> stable` | 先清会话后 open，减少残留干扰 | 执行者维护 |
 | 发行验收脚本 | `viewer-release-qa-loop.sh`、`viewer-release-full-coverage.sh`、`--quick` | 一键执行发布门禁并输出总结 | `running -> summarized` | 先 QA loop，再 full coverage | 发布负责人触发 |
+| software_safe prompt/chat 回归 | `scripts/viewer-software-safe-chat-regression.sh`、`chatHistory`、`lastPromptFeedback`、`lastChatFeedback` | 强制进入 `software_safe` 并执行 apply/rollback/chat smoke | `bootstrapped -> acked -> evidenced` | 先验 apply/rollback/chat ack，再看 `agent_spoke` 是否在时限内出现 | QA/Viewer owner 共审 |
 | 故障分级 | F1~F4 签名、处置动作、证据清单 | 识别错误并匹配处置流程 | `detected -> triaged -> archived` | 连接问题优先于可玩性判定 | 值守与维护者执行 |
 - Acceptance Criteria:
   - AC-1: 手册提供可直接复制的启动/采样/门禁命令。
@@ -57,6 +60,7 @@
   - AC-5: 发布脚本产物路径与门禁规则可追溯到本手册。
   - AC-6: 本专题迁移后引用更新到新命名并通过治理检查。
   - AC-7: 手册必须显式声明 `Viewer(agent-browser)` 与 `launcher(GUI Agent first)` 的执行边界，不得让执行者误把 launcher 控制面当作纯 agent-browser 页面驱动对象。
+  - AC-8: `scripts/viewer-software-safe-chat-regression.sh` 能产出 `software-safe-chat-summary.json/md`、浏览器环境快照与状态快照，稳定覆盖 prompt apply/rollback、chat ack 与玩家出站消息流；若在时限内未观测到 `agent_spoke`，必须输出可追溯 warning/fail 签名。
 - Non-Goals:
   - 不在本专题替代 native 抓图应急链路。
   - 不在本专题重构 Viewer 业务逻辑或渲染实现。
