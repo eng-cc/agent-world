@@ -59,15 +59,16 @@
 - `.agents/skills/prd/check.md`
 
 ## 状态
-- 更新日期: 2026-03-15
+- 更新日期: 2026-03-16
 - 当前状态: completed
 - 下一任务: 无（runtime 当前轮工业状态闭环已完成，后续交给 viewer / qa 承接）。
-- 最新完成: `TASK-WORLD_RUNTIME-038`（工厂生产阻塞/恢复状态与事件闭环）；上一轮为 `TASK-WORLD_RUNTIME-037`（world-runtime PRD 顶部重复兼容执行入口清理）。
+- 最新完成: `TASK-WORLD_RUNTIME-039`（为 viewer live runtime 增加 env-gated `agent_chat -> AgentSpoke` 测试态回声，支撑 software_safe 消息流回归）；上一轮为 `TASK-WORLD_RUNTIME-038`（工厂生产阻塞/恢复状态与事件闭环）。
 - 阶段收口优先级: `P0`
 - 阶段 owner: `runtime_engineer`（联审：`producer_system_designer`；验证：`qa_engineer`）
 - 阻断条件: 在 `TASK-WORLD_RUNTIME-002/003/004` 完成前，`TASK-WORLD_RUNTIME-033` 不再作为当前版本的首要发布驱动项。
 - 承接约束: `TASK-WORLD_RUNTIME-002` 完成后方可进入 `TASK-WORLD_RUNTIME-003` 与 `TASK-WORLD_RUNTIME-004`；`TASK-WORLD_RUNTIME-033` 保留为后续联合验证切片。
 - 实施备注:
+  - `TASK-WORLD_RUNTIME-039` 已完成：为 `world_viewer_live` / runtime live 增加 `AGENT_WORLD_RUNTIME_AGENT_CHAT_ECHO=1` 测试态回声开关，在 `agent_chat` 被接受后可注入一条标准 `WorldEventKind::AgentSpoke` 事件，供 Viewer / QA 在不依赖自然 LLM 回话的情况下稳定采样消息流。
   - `TASK-WORLD_RUNTIME-028` 已完成：新增节点侧固定验收入口 `scripts/module-release-node-acceptance.sh` 并将 S11 运行手册切换为“脚本入口 + 等价拆分命令 + 证据目录”；同时收敛 `sync-m1/m4/m5` 非 `--check` 写入授权为“CI 禁止、仅本地显式授权（`AGENT_WORLD_WASM_SYNC_WRITE_ALLOW=local-dev`）”，主 CI 不再具备生产发布写入/激活路径。
   - `TASK-WORLD_RUNTIME-029` 已完成：新增 `scripts/world-runtime-finality-baseline.sh` 固定基准入口，输出 `stake/epoch` 验签耗时聚合指标与 `2 epoch` 收敛状态（`summary.md`/`summary.json` 可归档）；S11 运行手册已补齐命令与产物路径。
   - `TASK-WORLD_RUNTIME-034` 已完成：补齐 `runtime-storage-footprint-governance-2026-03-08.design.md`，明确 replay contract、checkpoint、GC、metrics 与迁移边界。

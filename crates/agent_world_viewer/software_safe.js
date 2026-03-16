@@ -924,7 +924,8 @@ function pushChatHistory(entry) {
 
 function extractAgentSpokeEntry(event) {
   const kind = event?.kind;
-  if (kind?.type !== "agent_spoke") {
+  const kindType = String(kind?.type || "");
+  if (!["agent_spoke", "AgentSpoke"].includes(kindType)) {
     return null;
   }
   const data = kind.data || {};

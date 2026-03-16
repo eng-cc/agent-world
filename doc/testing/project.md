@@ -166,6 +166,16 @@
     - `bash -n scripts/viewer-software-safe-chat-regression.sh`
     - `./scripts/viewer-software-safe-chat-regression.sh --help`
     - `./scripts/viewer-software-safe-chat-regression.sh --viewer-static-dir /tmp/aw-viewer-dist-promptchat3 --viewer-port 4373 --live-bind 127.0.0.1:5323 --web-bind 127.0.0.1:5311`
+- [x] TASK-TESTING-058 (PRD-TESTING-WEB-001/002/003) [test_tier_required]: 为 software-safe 消息流回归补 `agent_chat -> AgentSpoke` 的 env-gated runtime echo 验证路径，并修正 runtime 事件形状兼容解析。
+  - 产物文件:
+    - `crates/agent_world/src/viewer/runtime_live/control_plane.rs`
+    - `crates/agent_world/src/viewer/runtime_live/tests.rs`
+    - `crates/agent_world_viewer/software_safe.js`
+    - `doc/testing/manual/web-ui-agent-browser-closure-manual.prd.md`
+  - 验收命令 (`test_tier_required`):
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world runtime_agent_chat_echo_env_enqueues_agent_spoke_virtual_event -- --nocapture`
+    - `node --check crates/agent_world_viewer/software_safe.js`
+    - `agent-browser` 手工链路：`open software_safe -> sendAgentChat -> runSteps -> getState().chatHistory` 观察 `source=event` 的 `AgentSpoke` 记录
 
 ## 依赖
 - 模块设计总览：`doc/testing/design.md`
@@ -180,6 +190,7 @@
 - 更新日期: 2026-03-16
 - 当前状态: completed
 - 下一任务: 无（当前模块主项目无未完成任务）
+- 最新完成: `TASK-TESTING-058`（为 software-safe 消息流回归补 env-gated runtime echo 与 runtime 事件兼容解析，手工链路已能稳定观测 `AgentSpoke` 进入 `chatHistory`）。
 - 最新完成: `TASK-TESTING-057`（为 `renderMode=software_safe` 补专用 prompt/chat 回归方案与执行脚本，沉淀 `agent_spoke` 缺失签名与证据包）。
 - 最新完成: `TASK-TESTING-056`（基于 `runtime-core` 热点复盘重平衡 shard，把 `agent_world --lib --bins` 从 `full-core` 挪到 `full-support`，降低最长 runtime shard）。
 - 最新完成: `TASK-TESTING-055`（拆分 `release-gate-runtime` 为 core/support/sync 三个并行 job，并给 `ci-tests.sh` 增加 `full-core` / `full-support` shard 入口）。

@@ -37,6 +37,7 @@
   - SC-4: 数值语义硬化议题持续收敛并形成阶段性里程碑。
   - SC-5: 运行态持久化具备可观测的存储预算、保留策略与恢复验证，不再在默认链路中无界增长。
   - SC-6: retention policy 保留范围内的目标高度必须具备可验证的 replay contract，可由 checkpoint + canonical log 重建并校验 `execution_state_root`。
+  - SC-7: 面向 Viewer / QA 的运行时测试钩子必须显式 env-gated，并输出可回放的标准世界事件，避免测试态捷径泄漏到默认产品路径。
 
 ## 2. User Experience & Functionality
 - User Personas:

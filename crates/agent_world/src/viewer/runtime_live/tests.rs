@@ -31,6 +31,7 @@ fn clear_runtime_openclaw_env() {
     std::env::remove_var("AGENT_WORLD_OPENCLAW_AUTH_TOKEN");
     std::env::remove_var("AGENT_WORLD_OPENCLAW_CONNECT_TIMEOUT_MS");
     std::env::remove_var("AGENT_WORLD_OPENCLAW_AGENT_PROFILE");
+    std::env::remove_var("AGENT_WORLD_RUNTIME_AGENT_CHAT_ECHO");
 }
 
 fn runtime_openclaw_env_lock() -> &'static Mutex<()> {
@@ -593,6 +594,51 @@ fn runtime_agent_chat_replay_returns_idempotent_ack() {
             .copied(),
         Some(5)
     );
+}
+
+
+#[test]
+fn runtime_agent_chat_echo_env_enqueues_agent_spoke_virtual_event() {
+    let _guard = lock_test_llm_env();
+    std::env::set_var("AGENT_WORLD_RUNTIME_AGENT_CHAT_ECHO", "1");
+    let mut server = ViewerRuntimeLiveServer::new(
+        ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal)
+            .with_decision_mode(ViewerLiveDecisionMode::Llm),
+    )
+    .expect("runtime server");
+    let agent_id = server
+        .world
+        .state()
+        .agents
+        .keys()
+        .next()
+        .cloned()
+        .expect("seed agent");
+    let (public_key, private_key) = test_signer(31);
+    let request = signed_agent_chat_request(
+        crate::viewer::AgentChatRequest {
+            agent_id: agent_id.clone(),
+            player_id: Some("player-a".to_string()),
+            public_key: None,
+            auth: None,
+            message: "hello runtime echo".to_string(),
+            intent_tick: Some(9),
+            intent_seq: Some(31),
+        },
+        31,
+        public_key.as_str(),
+        private_key.as_str(),
+    );
+
+    let ack = server.handle_agent_chat(request).expect("chat accepted");
+    assert_eq!(ack.agent_id, agent_id);
+
+    let events: Vec<_> = server.pending_virtual_events.drain(..).collect();
+    assert!(events.iter().any(|event| matches!(
+        &event.kind,
+        crate::simulator::WorldEventKind::AgentSpoke { agent_id: event_agent_id, message, .. }
+            if event_agent_id == &agent_id && message == "[qa-echo] hello runtime echo"
+    )));
 }
 
 #[test]

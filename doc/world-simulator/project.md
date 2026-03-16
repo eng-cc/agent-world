@@ -147,6 +147,7 @@
 - [x] TASK-WORLD_SIMULATOR-144 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 为 `software_safe` 增加选中 Agent 的 `prompt/chat` MVP、auth bootstrap 签名链路与 `__AW_TEST__` 可观测反馈，并复验真实交互。
 - [x] TASK-WORLD_SIMULATOR-145 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 为 `software_safe` 补 prompt rollback 与 chat history/message flow，确保 rollback 刷新 prompt 状态且玩家出站消息与事件侧消息都能汇入统一消息流并被脚本读取。
 - [x] TASK-WORLD_SIMULATOR-146 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 由 `qa_engineer` 为 `software_safe` 增加 prompt/chat/rollback/message-flow 专用回归脚本与失败签名，沉淀 `agent_spoke` 缺失的证据包。
+- [x] TASK-WORLD_SIMULATOR-147 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 由 `runtime_engineer` / `viewer_engineer` 补齐 `agent_chat -> AgentSpoke` 的测试态稳定触发与 runtime 事件兼容解析，让 software_safe 消息流回归不再依赖自然 LLM 回话。
 - [x] TASK-WORLD_SIMULATOR-110 (PRD-WORLD_SIMULATOR-035) [test_tier_required]: 为 `agent_world_viewer` 的 Web runtime fatal hook 增加“已知图形 fatal 仅自动 reload 一次”的恢复路径，收敛首开必须手动 reopen 的摩擦。
 - [x] TASK-WORLD_SIMULATOR-111 (PRD-WORLD_SIMULATOR-035) [test_tier_required]: 修复 `__AW_TEST__` runtime fatal 快照即时落盘，并复验 Viewer 首开不再以假性 `connecting` 掩盖图形 fatal。
 

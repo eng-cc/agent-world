@@ -22,10 +22,13 @@ Options:
   --startup-timeout <secs>       Wait timeout for stack URL (default: 240)
   --agent-id <id>                Target agent id (default: agent-0)
   --chat-message <text>          Chat message override (default: auto-generated)
-  --agent-spoke-timeout-ms <ms>  Wait for inbound `agent_spoke` (default: 12000)
+  --agent-spoke-timeout-ms <ms>  Wait for inbound `agent_spoke` (default: 45000)
   --require-agent-spoke          Treat missing inbound `agent_spoke` as failure
-  --headed                       Open browser in headed mode (default)
-  --headless                     Open browser in headless mode
+  --headed                       Open browser in headed mode
+  Note: when the script bootstraps its own stack, it enables
+  `AGENT_WORLD_RUNTIME_AGENT_CHAT_ECHO=1` automatically and treats missing
+  inbound `agent_spoke` as a blocking failure.
+  --headless                     Open browser in headless mode (default)
   -h, --help                     Show this help
 
 If --url is omitted, the script starts:
@@ -64,6 +67,49 @@ query["test_api"] = "1"
 print(urlunparse(parts._replace(query=urlencode(query))))
 PY
 }
+extract_ws_host_port() {
+  python3 - "$1" <<'PY'
+from urllib.parse import urlparse, parse_qs
+import sys
+raw = sys.argv[1]
+parts = urlparse(raw)
+ws_values = parse_qs(parts.query).get("ws", [])
+if not ws_values:
+    raise SystemExit(1)
+ws = urlparse(ws_values[0])
+host = ws.hostname or ""
+port = ws.port or 0
+if not host or not port:
+    raise SystemExit(1)
+print(f"{host} {port}")
+PY
+}
+
+wait_for_tcp_listener() {
+  local host=$1
+  local port=$2
+  local timeout_secs=${3:-20}
+  local step
+  for step in $(seq 1 "$timeout_secs"); do
+    if python3 - "$host" "$port" <<'PY'
+import socket
+import sys
+host = sys.argv[1]
+port = int(sys.argv[2])
+try:
+    with socket.create_connection((host, port), timeout=1):
+        pass
+except OSError:
+    raise SystemExit(1)
+raise SystemExit(0)
+PY
+    then
+      return 0
+    fi
+    sleep 1
+  done
+  return 1
+}
 
 normalize_eval_token() {
   local raw=${1:-}
@@ -85,6 +131,8 @@ state_connection() { json_get "$1" connectionStatus; }
 state_render_mode() { json_get "$1" renderMode; }
 state_auth_ready() { json_get "$1" authReady; }
 state_last_error() { json_get "$1" lastError; }
+state_logical_time() { json_get "$1" logicalTime; }
+state_event_seq() { json_get "$1" eventSeq; }
 
 wait_for_api() {
   local timeout_ms=${1:-20000}
@@ -199,10 +247,13 @@ OUT_ROOT="output/playwright/viewer-software-safe"
 STARTUP_TIMEOUT_SECS=240
 AGENT_ID="agent-0"
 CHAT_MESSAGE=""
-AGENT_SPOKE_TIMEOUT_MS=12000
+AGENT_SPOKE_TIMEOUT_MS=45000
 REQUIRE_AGENT_SPOKE=0
-HEADED=1
+REQUIRE_AGENT_SPOKE_EXPLICIT=0
+HEADED=0
 STACK_ARGS=()
+BOOTSTRAPPED_STACK=0
+BOOTSTRAP_USES_BUNDLE=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -232,6 +283,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     --require-agent-spoke)
       REQUIRE_AGENT_SPOKE=1
+      REQUIRE_AGENT_SPOKE_EXPLICIT=1
       shift
       ;;
     --headed)
@@ -246,6 +298,11 @@ while [[ $# -gt 0 ]]; do
       usage
       exit 0
       ;;
+    --bundle-dir)
+      BOOTSTRAP_USES_BUNDLE=1
+      STACK_ARGS+=("$1" "${2:-}")
+      shift 2
+      ;;
     *)
       STACK_ARGS+=("$1")
       shift
@@ -259,6 +316,7 @@ done
 
 require_cmd python3
 require_cmd rg
+: "${AGENT_BROWSER_ARGS:=}"
 ab_require
 
 run_id="$(date +%Y%m%d-%H%M%S)"
@@ -303,10 +361,18 @@ if [[ -z "$GAME_URL" ]]; then
     echo
   } | tee -a "$ab_log" >/dev/null
 
+  BOOTSTRAPPED_STACK=1
+  if [[ "$BOOTSTRAP_USES_BUNDLE" -ne 1 ]]; then
+    log_note build_world_viewer_live
+    env -u RUSTC_WRAPPER cargo build -p agent_world --bin world_viewer_live >>"$ab_log" 2>&1
+  fi
+  if [[ "$REQUIRE_AGENT_SPOKE_EXPLICIT" -ne 1 && "$BOOTSTRAP_USES_BUNDLE" -ne 1 ]]; then
+    REQUIRE_AGENT_SPOKE=1
+  fi
   if command -v stdbuf >/dev/null 2>&1; then
-    stdbuf -oL -eL ./scripts/run-game-test.sh "${STACK_ARGS[@]}" >"$run_game_test_log" 2>&1 &
+    stdbuf -oL -eL env AGENT_WORLD_RUNTIME_AGENT_CHAT_ECHO=1 ./scripts/run-game-test.sh "${STACK_ARGS[@]}" >"$run_game_test_log" 2>&1 &
   else
-    ./scripts/run-game-test.sh "${STACK_ARGS[@]}" >"$run_game_test_log" 2>&1 &
+    env AGENT_WORLD_RUNTIME_AGENT_CHAT_ECHO=1 ./scripts/run-game-test.sh "${STACK_ARGS[@]}" >"$run_game_test_log" 2>&1 &
   fi
   stack_pid=$!
 
@@ -329,6 +395,14 @@ if [[ -z "$GAME_URL" ]]; then
 fi
 
 GAME_URL="$(append_query_params "$GAME_URL")"
+if ws_host_port=$(extract_ws_host_port "$GAME_URL" 2>/dev/null); then
+  read -r ws_host ws_port <<<"$ws_host_port"
+  wait_for_tcp_listener "$ws_host" "$ws_port" 20 || {
+    echo "error: websocket bridge did not become ready: ${ws_host}:${ws_port}" >&2
+    exit 1
+  }
+fi
+sleep 4
 if [[ -z "$CHAT_MESSAGE" ]]; then
   CHAT_MESSAGE="qa software-safe chat ${run_id}"
 fi
@@ -337,6 +411,7 @@ PROMPT_GOAL="qa software-safe rollback ${run_id}"
 log_note open
 ab_open "$session" "$HEADED" "$GAME_URL" >>"$ab_log" 2>&1
 ab_cmd "$session" wait --load networkidle >>"$ab_log" 2>&1 || true
+sleep_ms 2500
 
 wait_for_api 20000 || { echo "error: __AW_TEST__ unavailable" >&2; exit 1; }
 initial_state=$(wait_for_connected 30000) || {
@@ -389,12 +464,65 @@ wait_for_js_true "(() => { const h = window.__AW_TEST__?.getState?.()?.chatHisto
 after_chat_ack_state=$(ab_state)
 write_json_file "$after_chat_ack_state" "$after_chat_ack_state_json"
 
-ab_eval "$session" 'window.__AW_TEST__.runSteps(12)' >>"$ab_log" 2>&1 || true
 agent_spoke_seen=false
-if wait_for_js_true "(() => { const h = window.__AW_TEST__?.getState?.()?.chatHistory ?? []; return h.some((entry) => entry && entry.source === 'event' && entry.agentId === ${AGENT_ID@Q}); })()" "$AGENT_SPOKE_TIMEOUT_MS"; then
-  agent_spoke_seen=true
-elif [[ "$REQUIRE_AGENT_SPOKE" -eq 1 ]]; then
-  echo "error: inbound agent_spoke not observed within timeout" >&2
+agent_spoke_deadline_ms=$((SECONDS * 1000 + AGENT_SPOKE_TIMEOUT_MS))
+agent_spoke_expected_message=""
+if [[ "$BOOTSTRAPPED_STACK" -eq 1 && "$BOOTSTRAP_USES_BUNDLE" -eq 0 ]]; then
+  agent_spoke_expected_message="[qa-echo] ${CHAT_MESSAGE}"
+fi
+
+agent_spoke_match_script="(() => { const h = window.__AW_TEST__?.getState?.()?.chatHistory ?? []; return h.some((entry) => entry && entry.source === 'event' && entry.agentId === ${AGENT_ID@Q}); })()"
+if [[ -n "$agent_spoke_expected_message" ]]; then
+  agent_spoke_match_script="(() => { const h = window.__AW_TEST__?.getState?.()?.chatHistory ?? []; return h.some((entry) => entry && entry.source === 'event' && entry.agentId === ${AGENT_ID@Q} && entry.message === ${agent_spoke_expected_message@Q}); })()"
+fi
+
+for step_batch in 1 2 3 4; do
+  if wait_for_js_true "$agent_spoke_match_script" 500; then
+    agent_spoke_seen=true
+    break
+  fi
+
+  remaining_ms=$((agent_spoke_deadline_ms - SECONDS * 1000))
+  if (( remaining_ms <= 0 )); then
+    break
+  fi
+
+  batch_state_before=$(ab_state)
+  batch_baseline_logical_time=$(state_logical_time "$batch_state_before")
+  batch_baseline_event_seq=$(state_event_seq "$batch_state_before")
+  log_note "step_batch_${step_batch}"
+  ab_eval "$session" 'window.__AW_TEST__.runSteps(4)' >>"$ab_log" 2>&1 || true
+
+  step_wait_ms=18000
+  if (( remaining_ms < step_wait_ms )); then
+    step_wait_ms=$remaining_ms
+  fi
+  wait_for_js_true "(() => {
+    const snapshot = window.__AW_TEST__?.getState?.();
+    const feedback = snapshot?.lastControlFeedback;
+    const stage = String(feedback?.stage || '');
+    return Number(snapshot?.logicalTime || 0) > ${batch_baseline_logical_time:-0}
+      || Number(snapshot?.eventSeq || 0) > ${batch_baseline_event_seq:-0}
+      || stage === 'completed_advanced'
+      || stage === 'completed_timeout';
+  })()" "$step_wait_ms" >>"$ab_log" 2>&1 || true
+
+  remaining_ms=$((agent_spoke_deadline_ms - SECONDS * 1000))
+  if (( remaining_ms <= 0 )); then
+    break
+  fi
+  probe_wait_ms=2000
+  if (( remaining_ms < probe_wait_ms )); then
+    probe_wait_ms=$remaining_ms
+  fi
+  if wait_for_js_true "$agent_spoke_match_script" "$probe_wait_ms"; then
+    agent_spoke_seen=true
+    break
+  fi
+done
+
+if [[ "$agent_spoke_seen" != true && "$REQUIRE_AGENT_SPOKE" -eq 1 ]]; then
+  echo "error: inbound agent_spoke not observed within timeout (bootstrapped_stack=$BOOTSTRAPPED_STACK, bootstrap_uses_bundle=$BOOTSTRAP_USES_BUNDLE, expected_message=${agent_spoke_expected_message:-<any>})" >&2
   exit 1
 fi
 

@@ -16,6 +16,7 @@
   - SC-5: 文档迁移后统一 `.prd.md/.project.md` 命名并通过治理检查。
   - SC-6: `world_web_launcher` 的产品动作路径默认走 GUI Agent，不再把 canvas 直点或纯 agent-browser 动作作为首选执行链路。
   - SC-7: 当 Viewer 进入 `renderMode=software_safe` 且 auth bootstrap 可用时，QA 可通过专用脚本稳定复验 prompt apply/rollback、chat ack 与消息流采样，并将 `agent_spoke` 缺失分级为可追溯失败签名。
+  - SC-8: 当 runtime 以 `AGENT_WORLD_RUNTIME_AGENT_CHAT_ECHO=1` 启动时，software-safe Web 闭环应能稳定看到标准 `AgentSpoke` 事件，并将其汇入统一消息流。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -41,6 +42,7 @@
   4. Flow-WEB-004: `触发 F1~F4 -> 输出分级结论 -> 归档证据并阻断放行`
   5. Flow-WEB-005: `运行 qa-loop/full-coverage -> 汇总产物 -> 发布评审`
   6. Flow-WEB-006: `强制 software_safe -> 选择 Agent -> prompt apply/rollback -> agent chat -> 采集 chatHistory / agent_spoke 签名`
+  7. Flow-WEB-007: `以 env-gated runtime echo 启动 viewer live -> 发送 agent_chat -> step 推进 -> 观测标准 AgentSpoke 进入消息流`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
@@ -61,6 +63,7 @@
   - AC-6: 本专题迁移后引用更新到新命名并通过治理检查。
   - AC-7: 手册必须显式声明 `Viewer(agent-browser)` 与 `launcher(GUI Agent first)` 的执行边界，不得让执行者误把 launcher 控制面当作纯 agent-browser 页面驱动对象。
   - AC-8: `scripts/viewer-software-safe-chat-regression.sh` 能产出 `software-safe-chat-summary.json/md`、浏览器环境快照与状态快照，稳定覆盖 prompt apply/rollback、chat ack 与玩家出站消息流；若在时限内未观测到 `agent_spoke`，必须输出可追溯 warning/fail 签名。
+  - AC-9: 当 runtime 开启 `AGENT_WORLD_RUNTIME_AGENT_CHAT_ECHO=1` 时，手工或自动化 Web 闭环都能观测到一条标准 `AgentSpoke` 事件进入 `chatHistory`，且不依赖自然 LLM 回复。
 - Non-Goals:
   - 不在本专题替代 native 抓图应急链路。
   - 不在本专题重构 Viewer 业务逻辑或渲染实现。
