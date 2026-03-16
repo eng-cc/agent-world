@@ -217,12 +217,20 @@ BUNDLE_WEB_LAUNCHER_DIR="$OUT_DIR/web-launcher"
 run mkdir -p "$BUNDLE_BIN_DIR" "$BUNDLE_WEB_DIR" "$BUNDLE_WEB_LAUNCHER_DIR"
 
 # 1) Build native binaries for launcher/live/client launcher.
+BUNDLE_NATIVE_BUILD_ARGS=(
+  "${CARGO_TARGET_ARGS[@]}"
+  -p agent_world
+  -p agent_world_client_launcher
+  --bin world_game_launcher
+  --bin world_web_launcher
+  --bin world_viewer_live
+  --bin world_chain_runtime
+  --bin agent_world_client_launcher
+)
 if [[ "$PROFILE" == "release" ]]; then
-  run env -u RUSTC_WRAPPER cargo build --release "${CARGO_TARGET_ARGS[@]}" -p agent_world --bin world_game_launcher --bin world_web_launcher --bin world_viewer_live --bin world_chain_runtime
-  run env -u RUSTC_WRAPPER cargo build --release "${CARGO_TARGET_ARGS[@]}" -p agent_world_client_launcher
+  run env -u RUSTC_WRAPPER cargo build --release "${BUNDLE_NATIVE_BUILD_ARGS[@]}"
 else
-  run env -u RUSTC_WRAPPER cargo build "${CARGO_TARGET_ARGS[@]}" -p agent_world --bin world_game_launcher --bin world_web_launcher --bin world_viewer_live --bin world_chain_runtime
-  run env -u RUSTC_WRAPPER cargo build "${CARGO_TARGET_ARGS[@]}" -p agent_world_client_launcher
+  run env -u RUSTC_WRAPPER cargo build "${BUNDLE_NATIVE_BUILD_ARGS[@]}"
 fi
 
 LAUNCHER_SRC="$ROOT_DIR/target/$TARGET_OUTPUT_SUBDIR/$LAUNCHER_BIN_NAME"

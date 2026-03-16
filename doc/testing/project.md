@@ -131,6 +131,15 @@
     - `bash -n scripts/release-prepare-bundle.sh scripts/build-game-launcher-bundle.sh`
     - `python -c "import pathlib, yaml; yaml.safe_load(pathlib.Path('.github/workflows/release-packages.yml').read_text())"`
     - `tmpdir=$(mktemp -d) && mkdir -p "$tmpdir/viewer" "$tmpdir/launcher" "$tmpdir/out" && printf "<html></html>" > "$tmpdir/viewer/index.html" && printf "<html></html>" > "$tmpdir/launcher/index.html" && ./scripts/build-game-launcher-bundle.sh --dry-run --out-dir "$tmpdir/out" --web-dist "$tmpdir/viewer" --web-launcher-dist "$tmpdir/launcher" >/dev/null`
+- [x] TASK-TESTING-054 (PRD-TESTING-002/003) [test_tier_required]: 继续压缩 release 关键路径，让 `release-gate-web` 与 `build-web-dist` 共享同一组 Web wasm/cargo cache，并把 bundle 原生二进制构建收敛到单次 cargo 调用，减少重复 bootstrap 与 metadata 解析。
+  - 产物文件:
+    - `.github/workflows/release-packages.yml`
+    - `scripts/build-game-launcher-bundle.sh`
+    - `doc/testing/prd.md`
+  - 验收命令 (`test_tier_required`):
+    - `bash -n scripts/build-game-launcher-bundle.sh`
+    - `python -c "import pathlib, yaml; yaml.safe_load(pathlib.Path('.github/workflows/release-packages.yml').read_text())"`
+    - `rg -n "release-packages-web-wasm-v2|BUNDLE_NATIVE_BUILD_ARGS|agent_world_client_launcher" .github/workflows/release-packages.yml scripts/build-game-launcher-bundle.sh doc/testing/prd.md`
 
 ## 依赖
 - 模块设计总览：`doc/testing/design.md`
@@ -145,6 +154,7 @@
 - 更新日期: 2026-03-16
 - 当前状态: completed
 - 下一任务: 无（当前模块主项目无未完成任务）
+- 最新完成: `TASK-TESTING-054`（继续优化 release 关键路径，让 `release-gate-web`/`build-web-dist` 共享 Web wasm cache，并把 bundle 原生二进制构建收敛到单次 cargo 调用）。
 - 最新完成: `TASK-TESTING-053`（优化 release packaging Web 资产复用链路，避免 package-native 每平台重复 trunk 安装与构建）。
 - 最新完成: `TASK-TESTING-052`（补前期工业引导 required-tier 手动卡组互链与 testing-manual 跳转入口）。
 - 最新完成: `TASK-TESTING-051`（为 bundle-first 试玩入口增加 freshness manifest 守卫，默认阻断或自动重建 stale bundle）。

@@ -106,7 +106,7 @@ jobs:
             libudev-dev
       - uses: Swatinem/rust-cache@v2
         with:
-          shared-key: release-packages-release-gate-web-v1
+          shared-key: release-packages-web-wasm-v2
           cache-on-failure: true
       - name: Install trunk
         run: env -u RUSTC_WRAPPER cargo install trunk --locked
@@ -215,7 +215,7 @@ jobs:
           rustup default "${RUST_TOOLCHAIN}"
       - uses: Swatinem/rust-cache@v2
         with:
-          shared-key: release-packages-build-web-dist-v1
+          shared-key: release-packages-web-wasm-v2
           cache-on-failure: true
       - name: Install trunk
         run: env -u RUSTC_WRAPPER cargo install trunk --locked
