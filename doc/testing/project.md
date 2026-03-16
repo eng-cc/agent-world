@@ -122,6 +122,15 @@
     - `doc/playability_test_result/topics/industrial-onboarding-required-tier-cards-2026-03-15.md`
   - 验收命令 (`test_tier_required`):
     - `rg -n 'industrial-onboarding-required-tier-cards-2026-03-15|首个制成品|停机恢复|首座工厂单元' testing-manual.md doc/playability_test_result/topics/industrial-onboarding-required-tier-cards-2026-03-15.md`
+- [x] TASK-TESTING-053 (PRD-TESTING-002/003) [test_tier_required]: 优化 release packaging Web 资产复用链路，在 `build-web-dist` 一次性产出 viewer/launcher 两份静态包，并让 `package-native` 直接复用 artifact，避免每个平台重复 `trunk install` / `trunk build`。
+  - 产物文件:
+    - `.github/workflows/release-packages.yml`
+    - `scripts/release-prepare-bundle.sh`
+    - `scripts/build-game-launcher-bundle.sh`
+  - 验收命令 (`test_tier_required`):
+    - `bash -n scripts/release-prepare-bundle.sh scripts/build-game-launcher-bundle.sh`
+    - `python -c "import pathlib, yaml; yaml.safe_load(pathlib.Path('.github/workflows/release-packages.yml').read_text())"`
+    - `tmpdir=$(mktemp -d) && mkdir -p "$tmpdir/viewer" "$tmpdir/launcher" "$tmpdir/out" && printf "<html></html>" > "$tmpdir/viewer/index.html" && printf "<html></html>" > "$tmpdir/launcher/index.html" && ./scripts/build-game-launcher-bundle.sh --dry-run --out-dir "$tmpdir/out" --web-dist "$tmpdir/viewer" --web-launcher-dist "$tmpdir/launcher" >/dev/null`
 
 ## 依赖
 - 模块设计总览：`doc/testing/design.md`
@@ -133,9 +142,10 @@
 - `.agents/skills/prd/check.md`
 
 ## 状态
-- 更新日期: 2026-03-15
+- 更新日期: 2026-03-16
 - 当前状态: completed
 - 下一任务: 无（当前模块主项目无未完成任务）
+- 最新完成: `TASK-TESTING-053`（优化 release packaging Web 资产复用链路，避免 package-native 每平台重复 trunk 安装与构建）。
 - 最新完成: `TASK-TESTING-052`（补前期工业引导 required-tier 手动卡组互链与 testing-manual 跳转入口）。
 - 最新完成: `TASK-TESTING-051`（为 bundle-first 试玩入口增加 freshness manifest 守卫，默认阻断或自动重建 stale bundle）。
 - 最新完成: `TASK-TESTING-050`（固化 headed Viewer Web 的默认硬件 WebGL 启动参数，并把 headed 命中 `SwiftShader` / software renderer 统一收口为环境阻断）。

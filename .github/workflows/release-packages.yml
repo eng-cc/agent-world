@@ -219,18 +219,24 @@ jobs:
           cache-on-failure: true
       - name: Install trunk
         run: env -u RUSTC_WRAPPER cargo install trunk --locked
-      - name: Build viewer web dist
+      - name: Build web dists
         run: |
-          mkdir -p output/release
+          mkdir -p output/release/web-dist output/release/web-launcher-dist
           (
             cd crates/agent_world_viewer
             env -u NO_COLOR trunk build --release --dist ../../output/release/web-dist
           )
-      - name: Upload web dist artifact
+          (
+            cd crates/agent_world_client_launcher
+            env -u NO_COLOR trunk build --release --dist ../../output/release/web-launcher-dist
+          )
+      - name: Upload web dist artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: web-dist
-          path: output/release/web-dist
+          name: release-web-dists
+          path: |
+            output/release/web-dist
+            output/release/web-launcher-dist
           if-no-files-found: error
 
   package-native:
@@ -259,7 +265,6 @@ jobs:
         run: |
           rustup toolchain install "${RUST_TOOLCHAIN}" --profile default
           rustup default "${RUST_TOOLCHAIN}"
-          rustup target add wasm32-unknown-unknown --toolchain "${RUST_TOOLCHAIN}"
           if [[ "${{ matrix.target_triple }}" != "native" ]]; then
             rustup target add "${{ matrix.target_triple }}" --toolchain "${RUST_TOOLCHAIN}"
           fi
@@ -283,14 +288,11 @@ jobs:
         with:
           shared-key: release-packages-package-native-${{ runner.os }}-${{ matrix.target_triple }}-v2
           cache-on-failure: true
-      - name: Install trunk
-        shell: bash
-        run: env -u RUSTC_WRAPPER cargo install trunk --locked
-      - name: Download web dist artifact
+      - name: Download web dist artifacts
         uses: actions/download-artifact@v5
         with:
-          name: web-dist
-          path: output/release/web-dist
+          name: release-web-dists
+          path: output/release
       - name: Build launcher bundle
         shell: bash
         run: |
@@ -298,6 +300,7 @@ jobs:
             --platform "${{ matrix.platform }}" \
             --target-triple "${{ matrix.target_triple }}" \
             --web-dist output/release/web-dist \
+            --web-launcher-dist output/release/web-launcher-dist \
             --out-dir output/release/assets \
             --profile release
       - name: Archive bundle (tar.gz)

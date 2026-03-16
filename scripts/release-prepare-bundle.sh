@@ -5,6 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PLATFORM=""
 TARGET_TRIPLE="native"
 WEB_DIST=""
+WEB_LAUNCHER_DIST=""
 OUT_DIR=""
 PROFILE="release"
 
@@ -18,6 +19,8 @@ Options:
   --platform <id>        required: linux-x64 | macos-x64 | windows-x64
   --target-triple <id>   optional rust target triple (default: native)
   --web-dist <path>      required: prebuilt viewer web dist directory
+  --web-launcher-dist <path>
+                         required: prebuilt launcher web dist directory
   --out-dir <path>       required: output root for prepared bundle directory
   --profile <name>       cargo profile: release|dev (default: release)
   -h, --help             show this help
@@ -36,6 +39,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --web-dist)
       WEB_DIST="${2:-}"
+      shift 2
+      ;;
+    --web-launcher-dist)
+      WEB_LAUNCHER_DIST="${2:-}"
       shift 2
       ;;
     --out-dir)
@@ -70,6 +77,10 @@ if [[ -z "${WEB_DIST}" ]]; then
   echo "error: --web-dist is required" >&2
   exit 1
 fi
+if [[ -z "${WEB_LAUNCHER_DIST}" ]]; then
+  echo "error: --web-launcher-dist is required" >&2
+  exit 1
+fi
 if [[ -z "${OUT_DIR}" ]]; then
   echo "error: --out-dir is required" >&2
   exit 1
@@ -86,12 +97,19 @@ fi
 if [[ "${WEB_DIST}" != /* ]]; then
   WEB_DIST="${ROOT_DIR}/${WEB_DIST}"
 fi
+if [[ "${WEB_LAUNCHER_DIST}" != /* ]]; then
+  WEB_LAUNCHER_DIST="${ROOT_DIR}/${WEB_LAUNCHER_DIST}"
+fi
 if [[ "${OUT_DIR}" != /* ]]; then
   OUT_DIR="${ROOT_DIR}/${OUT_DIR}"
 fi
 
 if [[ ! -d "${WEB_DIST}" ]]; then
   echo "error: web dist path does not exist: ${WEB_DIST}" >&2
+  exit 1
+fi
+if [[ ! -d "${WEB_LAUNCHER_DIST}" ]]; then
+  echo "error: web launcher dist path does not exist: ${WEB_LAUNCHER_DIST}" >&2
   exit 1
 fi
 

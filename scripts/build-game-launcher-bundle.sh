@@ -7,6 +7,7 @@ OUT_DIR=""
 PROFILE="release"
 TARGET_TRIPLE="native"
 WEB_DIST_SOURCE=""
+WEB_LAUNCHER_DIST_SOURCE=""
 DRY_RUN=0
 
 usage() {
@@ -30,7 +31,9 @@ Options:
   --out-dir <path>       output directory (default: output/release/game-launcher-<timestamp>)
   --profile <name>       cargo profile: release|dev (default: release)
   --target-triple <id>   rust target triple (default: native)
-  --web-dist <path>      use existing prebuilt web dist instead of trunk build
+  --web-dist <path>      use existing prebuilt viewer web dist instead of trunk build
+  --web-launcher-dist <path>
+                         use existing prebuilt launcher web dist instead of trunk build
   --dry-run              print commands only; do not execute
   -h, --help             show this help
 USAGE
@@ -74,13 +77,20 @@ ensure_rust_target_installed() {
   run rustup "${add_args[@]}"
 }
 
+validate_prebuilt_dist_has_index() {
+  local option_name="$1"
+  local web_dist="$2"
+  local index_html="$web_dist/index.html"
+  if [[ ! -f "$index_html" ]]; then
+    echo "error: ${option_name} must contain index.html: $web_dist" >&2
+    exit 1
+  fi
+}
+
 validate_web_dist_source() {
   local web_dist="$1"
   local index_html="$web_dist/index.html"
-  if [[ ! -f "$index_html" ]]; then
-    echo "error: --web-dist must contain index.html: $web_dist" >&2
-    exit 1
-  fi
+  validate_prebuilt_dist_has_index "--web-dist" "$web_dist"
 
   # Guardrail: this script often gets pointed at top-level `site/`, which is
   # docs/marketing pages and will open GitHub Pages instead of the game viewer.
@@ -90,6 +100,10 @@ validate_web_dist_source() {
     echo "      or pass a dist directory built from crates/agent_world_viewer." >&2
     exit 1
   fi
+}
+
+validate_web_launcher_dist_source() {
+  validate_prebuilt_dist_has_index "--web-launcher-dist" "$1"
 }
 
 resolve_binary_name() {
@@ -122,6 +136,10 @@ while [[ $# -gt 0 ]]; do
       WEB_DIST_SOURCE="${2:-}"
       shift 2
       ;;
+    --web-launcher-dist)
+      WEB_LAUNCHER_DIST_SOURCE="${2:-}"
+      shift 2
+      ;;
     --dry-run)
       DRY_RUN=1
       shift
@@ -145,6 +163,12 @@ fi
 if [[ "$OUT_DIR" != /* ]]; then
   OUT_DIR="$ROOT_DIR/$OUT_DIR"
 fi
+if [[ -n "$WEB_DIST_SOURCE" && "$WEB_DIST_SOURCE" != /* ]]; then
+  WEB_DIST_SOURCE="$ROOT_DIR/$WEB_DIST_SOURCE"
+fi
+if [[ -n "$WEB_LAUNCHER_DIST_SOURCE" && "$WEB_LAUNCHER_DIST_SOURCE" != /* ]]; then
+  WEB_LAUNCHER_DIST_SOURCE="$ROOT_DIR/$WEB_LAUNCHER_DIST_SOURCE"
+fi
 
 if [[ "$PROFILE" != "release" && "$PROFILE" != "dev" ]]; then
   echo "error: --profile must be release or dev" >&2
@@ -161,6 +185,13 @@ if [[ -n "$WEB_DIST_SOURCE" && ! -d "$WEB_DIST_SOURCE" ]]; then
 fi
 if [[ -n "$WEB_DIST_SOURCE" ]]; then
   validate_web_dist_source "$WEB_DIST_SOURCE"
+fi
+if [[ -n "$WEB_LAUNCHER_DIST_SOURCE" && ! -d "$WEB_LAUNCHER_DIST_SOURCE" ]]; then
+  echo "error: --web-launcher-dist path does not exist: $WEB_LAUNCHER_DIST_SOURCE" >&2
+  exit 1
+fi
+if [[ -n "$WEB_LAUNCHER_DIST_SOURCE" ]]; then
+  validate_web_launcher_dist_source "$WEB_LAUNCHER_DIST_SOURCE"
 fi
 
 LAUNCHER_BIN_NAME="$(resolve_binary_name world_game_launcher "$TARGET_TRIPLE")"
@@ -240,18 +271,24 @@ else
   fi
 fi
 
-# 3) Prepare launcher web dist (always built from agent_world_client_launcher).
-ensure_command trunk
-ensure_command rustup
-ACTIVE_RUST_TOOLCHAIN="$(active_rust_toolchain)"
-ensure_rust_target_installed "wasm32-unknown-unknown" "$ACTIVE_RUST_TOOLCHAIN"
-
-run rm -rf "$BUNDLE_WEB_LAUNCHER_DIR"
-run mkdir -p "$BUNDLE_WEB_LAUNCHER_DIR"
-if [[ "$PROFILE" == "release" ]]; then
-  run bash -lc "cd '$ROOT_DIR/crates/agent_world_client_launcher' && env -u NO_COLOR trunk build --release --dist '$BUNDLE_WEB_LAUNCHER_DIR'"
+# 3) Prepare launcher web dist (prebuilt artifact preferred; trunk build fallback).
+if [[ -n "$WEB_LAUNCHER_DIST_SOURCE" ]]; then
+  run rm -rf "$BUNDLE_WEB_LAUNCHER_DIR"
+  run mkdir -p "$BUNDLE_WEB_LAUNCHER_DIR"
+  run cp -R "$WEB_LAUNCHER_DIST_SOURCE/." "$BUNDLE_WEB_LAUNCHER_DIR/"
 else
-  run bash -lc "cd '$ROOT_DIR/crates/agent_world_client_launcher' && env -u NO_COLOR trunk build --dist '$BUNDLE_WEB_LAUNCHER_DIR'"
+  ensure_command trunk
+  ensure_command rustup
+  ACTIVE_RUST_TOOLCHAIN="$(active_rust_toolchain)"
+  ensure_rust_target_installed "wasm32-unknown-unknown" "$ACTIVE_RUST_TOOLCHAIN"
+
+  run rm -rf "$BUNDLE_WEB_LAUNCHER_DIR"
+  run mkdir -p "$BUNDLE_WEB_LAUNCHER_DIR"
+  if [[ "$PROFILE" == "release" ]]; then
+    run bash -lc "cd '$ROOT_DIR/crates/agent_world_client_launcher' && env -u NO_COLOR trunk build --release --dist '$BUNDLE_WEB_LAUNCHER_DIR'"
+  else
+    run bash -lc "cd '$ROOT_DIR/crates/agent_world_client_launcher' && env -u NO_COLOR trunk build --dist '$BUNDLE_WEB_LAUNCHER_DIR'"
+  fi
 fi
 
 bundle_write_manifest "$ROOT_DIR" "$OUT_DIR"
