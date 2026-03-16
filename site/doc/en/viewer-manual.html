@@ -154,7 +154,11 @@ agent-browser close</code></pre>
         <p>Run the following in browser console or agent-browser evaluate to verify step-by-step control:</p>
         <pre><code>window.__AW_TEST__.sendControl("step");
 window.__AW_TEST__.sendControl("step", { count: 3 });
+window.__AW_TEST__.sendPromptControl("preview", { agentId: "agent-0", shortTermGoal: "software-safe preview" });
+window.__AW_TEST__.sendPromptControl("apply", { agentId: "agent-0", shortTermGoal: "software-safe apply" });
+window.__AW_TEST__.sendAgentChat("agent-0", "hello from software_safe");
 window.__AW_TEST__.getState();</code></pre>
+        <p>When the page is served by <code>world_game_launcher</code> with viewer auth bootstrap injected, <code>software_safe</code> also exposes a minimal selected-agent prompt/chat surface. The matching automation methods are <code>sendPromptControl(mode, payload)</code> and <code>sendAgentChat(agentId, message)</code>.</p>
 
         <h3>Outputs and Minimum Acceptance</h3>
         <ul>

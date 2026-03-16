@@ -154,7 +154,11 @@ agent-browser close</code></pre>
         <p>可在浏览器控制台或 agent-browser evaluate 中执行以下调用，验证逐步推进生效：</p>
         <pre><code>window.__AW_TEST__.sendControl("step");
 window.__AW_TEST__.sendControl("step", { count: 3 });
+window.__AW_TEST__.sendPromptControl("preview", { agentId: "agent-0", shortTermGoal: "software-safe preview" });
+window.__AW_TEST__.sendPromptControl("apply", { agentId: "agent-0", shortTermGoal: "software-safe apply" });
+window.__AW_TEST__.sendAgentChat("agent-0", "hello from software_safe");
 window.__AW_TEST__.getState();</code></pre>
+        <p>当页面由 <code>world_game_launcher</code> 提供并注入 viewer auth bootstrap 时，<code>software_safe</code> 还会开放选中 Agent 的最小 prompt/chat 控制面；对应自动化接口为 <code>sendPromptControl(mode, payload)</code> 与 <code>sendAgentChat(agentId, message)</code>。</p>
 
         <h3>输出目录与最小验收</h3>
         <ul>

@@ -115,13 +115,16 @@
       }
       button:hover { border-color: rgba(99, 179, 255, 0.55); }
       button:disabled { opacity: 0.5; cursor: not-allowed; }
-      input[type="number"], input[type="search"] {
+      input[type="number"], input[type="search"], textarea {
         width: 100%;
         border-radius: 10px;
         border: 1px solid var(--border);
         background: rgba(255, 255, 255, 0.04);
         color: var(--text);
         padding: 9px 10px;
+        resize: vertical;
+        min-height: 44px;
+        font: inherit;
       }
       .list {
         display: flex;

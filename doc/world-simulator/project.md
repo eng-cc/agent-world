@@ -144,6 +144,7 @@
 - [x] TASK-WORLD_SIMULATOR-141 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 落地不依赖 WGPU/WebGL 的 `software_safe` MVP 前端，覆盖连接/选择/step/反馈最小闭环。
 - [x] TASK-WORLD_SIMULATOR-142 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 为 `__AW_TEST__`、`oasis7`、`run-game-test-ab.sh` 补 render mode / fallback reason 可观测性与脚本口径。
 - [x] TASK-WORLD_SIMULATOR-143 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 在 software renderer 环境完成 real-play/Web 闭环复验，判断 issue `#39` 是否收口。
+- [x] TASK-WORLD_SIMULATOR-144 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 为 `software_safe` 增加选中 Agent 的 `prompt/chat` MVP、auth bootstrap 签名链路与 `__AW_TEST__` 可观测反馈，并复验真实交互。
 - [x] TASK-WORLD_SIMULATOR-110 (PRD-WORLD_SIMULATOR-035) [test_tier_required]: 为 `agent_world_viewer` 的 Web runtime fatal hook 增加“已知图形 fatal 仅自动 reload 一次”的恢复路径，收敛首开必须手动 reopen 的摩擦。
 - [x] TASK-WORLD_SIMULATOR-111 (PRD-WORLD_SIMULATOR-035) [test_tier_required]: 修复 `__AW_TEST__` runtime fatal 快照即时落盘，并复验 Viewer 首开不再以假性 `connecting` 掩盖图形 fatal。
 
