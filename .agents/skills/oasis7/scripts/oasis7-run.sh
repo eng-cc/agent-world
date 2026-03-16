@@ -47,6 +47,68 @@ http_get() {
   curl -fsS "$url"
 }
 
+stderr_is_tty() {
+  [[ -t 2 ]]
+}
+
+file_size_bytes() {
+  local path="$1"
+  wc -c <"$path" | tr -d '[:space:]'
+}
+
+run_with_heartbeat() {
+  local label="$1"
+  shift
+
+  local heartbeat_s="${OASIS7_DOWNLOAD_HEARTBEAT_SECS:-10}"
+  if ! [[ "$heartbeat_s" =~ ^[0-9]+$ ]] || [[ "$heartbeat_s" -le 0 ]]; then
+    heartbeat_s=10
+  fi
+
+  if stderr_is_tty; then
+    "$@"
+    return $?
+  fi
+
+  "$@" &
+  local cmd_pid="$!"
+  local start_s
+  start_s="$(date +%s 2>/dev/null || printf "0")"
+
+  while kill -0 "$cmd_pid" >/dev/null 2>&1; do
+    sleep "$heartbeat_s"
+    if ! kill -0 "$cmd_pid" >/dev/null 2>&1; then
+      break
+    fi
+    local now_s elapsed_s
+    now_s="$(date +%s 2>/dev/null || printf "0")"
+    if [[ "$start_s" =~ ^[0-9]+$ && "$now_s" =~ ^[0-9]+$ && "$now_s" -ge "$start_s" ]]; then
+      elapsed_s=$((now_s - start_s))
+      printf '%s (elapsed=%ss)\n' "$label" "$elapsed_s" >&2
+    else
+      printf '%s\n' "$label" >&2
+    fi
+  done
+
+  wait "$cmd_pid"
+}
+
+curl_download_file() {
+  local url="$1"
+  local output_path="$2"
+  local heartbeat_label="$3"
+  local curl_args=(-L --fail --show-error -o "$output_path")
+
+  if stderr_is_tty; then
+    curl_args+=(--progress-bar)
+    curl "${curl_args[@]}" "$url"
+    return $?
+  fi
+
+  curl_args+=(--silent)
+  run_with_heartbeat "$heartbeat_label" curl "${curl_args[@]}" "$url"
+}
+
 wait_for_http() {
   local url="$1"
   local attempts="${2:-40}"
@@ -370,6 +432,7 @@ download_release_bundle() {
   checksum_url="$(release_download_url "$release_repo" "$release_tag" "agent-world-checksums.txt")"
 
   if [[ "$force_download" != "1" && -x "$bundle_root/run-game.sh" ]]; then
+    echo "Reusing cached release bundle: $bundle_root" >&2
     printf '%s\n' "$bundle_root"
     return 0
   fi
@@ -378,9 +441,14 @@ download_release_bundle() {
   mkdir -p "$target_root" "$extract_root"
 
   echo "Downloading release asset: $asset_url" >&2
-  curl -L --fail --show-error --silent -o "$archive_path" "$asset_url"
+  echo "- target archive: $archive_path" >&2
+  curl_download_file "$asset_url" "$archive_path" "Downloading release asset…"
+  local archive_size_bytes
+  archive_size_bytes="$(file_size_bytes "$archive_path")"
+  echo "Downloaded archive: $archive_path (bytes=$archive_size_bytes)" >&2
 
-  if curl -L --fail --show-error --silent -o "$checksum_path" "$checksum_url"; then
+  echo "Fetching release checksums: $checksum_url" >&2
+  if curl_download_file "$checksum_url" "$checksum_path" "Fetching release checksums…"; then
     if checksum_value="$(verify_release_checksum "$checksum_path" "$archive_path" 2>/dev/null)"; then
       echo "Verified SHA256: $checksum_value" >&2
     else
@@ -396,6 +464,7 @@ download_release_bundle() {
     echo "warning: could not download release checksums; skipped verification" >&2
   fi
 
+  echo "Extracting bundle archive into: $extract_root" >&2
   case "$asset_name" in
     *.tar.gz)
       require_cmd tar
@@ -413,9 +482,11 @@ download_release_bundle() {
 
   local detected_bundle
   detected_bundle="$(find_extracted_bundle_dir "$extract_root" "$platform")"
+  echo "Preparing bundle directory: $bundle_root" >&2
   rm -rf "$bundle_root"
   mkdir -p "$bundle_root"
   cp -R "$detected_bundle/." "$bundle_root/"
+  echo "Bundle ready: $bundle_root" >&2
   printf '%s\n' "$bundle_root"
 }
 
