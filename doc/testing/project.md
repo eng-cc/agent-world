@@ -177,6 +177,8 @@
     - `node --check crates/agent_world_viewer/software_safe.js`
     - `agent-browser` 手工链路：`open software_safe -> sendAgentChat -> runSteps -> getState().chatHistory` 观察 `source=event` 的 `AgentSpoke` 记录
 
+- 当前阻断摘要：`doc/testing/openclaw-dual-mode-t4-blocker-2026-03-16.md`
+
 ## 依赖
 - 模块设计总览：`doc/testing/design.md`
 - doc/testing/prd.index.md

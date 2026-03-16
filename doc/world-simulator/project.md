@@ -325,6 +325,7 @@
 - 最新完成: `TASK-WORLD_SIMULATOR-150`（为 `OpenClaw` 双轨模式补齐 mode/schema/environment/fixture/replay 元数据透传与 summary traceability）。
 - 最新完成: `TASK-WORLD_SIMULATOR-149`（冻结 `OpenClaw` 双轨 observation/action contract、schema version 与禁止泄露真值边界）。
 - 当前优先任务: `PRD-WORLD_SIMULATOR-040` T4 player_parity/headless 对照采证 + `PRD-WORLD_SIMULATOR-038` parity 采证
+- 当前阻断说明: `PRD-WORLD_SIMULATOR-040 T4` 已完成 `headless_agent` 真实 smoke，但 `player_parity` 产品执行 lane 未落地，正式对照采证暂阻断；详见 `doc/testing/openclaw-dual-mode-t4-blocker-2026-03-16.md`。
 - parity 执行入口: `scripts/openclaw-parity-p0.sh` + `world_openclaw_parity_bench` 已落地，可先跑 openclaw-only/mock smoke，再接真实 builtin/OpenClaw 双边样本。
 - OpenClaw 首期 profile: `agent_world_p0_low_freq_npc` 已冻结，并由 `DecisionRequest.agent_profile` / parity summary / 产品 launcher 主链路统一透传。
 - 并行待办: 真实 `OpenClaw(Local HTTP)` 单 NPC 闭环试点（T5 / experimental） + 双轨模式 runtime/viewer 落地（T2/T3）

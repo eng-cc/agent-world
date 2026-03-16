@@ -9,6 +9,7 @@
 - 模块设计总览：`doc/testing/design.md`
 - 模块标准执行入口：`doc/testing/project.md`
 - 模块兼容项目管理：`doc/testing/project.md`
+- 当前 QA 阻断摘要：`doc/testing/openclaw-dual-mode-t4-blocker-2026-03-16.md`
 
 | 专题 PRD | 专题设计文档 | 专题项目文档 |
 | --- | --- | --- |

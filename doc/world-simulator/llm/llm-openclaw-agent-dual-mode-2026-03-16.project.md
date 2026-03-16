@@ -35,3 +35,4 @@
 - 联审: `agent_engineer`、`runtime_engineer`、`viewer_engineer`、`qa_engineer`
 - 发起建模: `producer_system_designer`
 - 备注: 本专题只定义“双轨模式”的产品目标与执行边界；它不替代 `PRD-WORLD_SIMULATOR-038` 的 parity 门禁，而是为 parity/回归/观战拆出各自清晰口径。
+- 当前阻断: T4 已取得 `headless_agent` 真实 smoke 证据，但 `player_parity` 产线执行 lane 尚未接线；正式对照采证暂阻断，详见 `doc/testing/openclaw-dual-mode-t4-blocker-2026-03-16.md`。
