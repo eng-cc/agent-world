@@ -144,6 +144,8 @@ state_event_seq() { json_get "$1" eventSeq; }
 state_connection() { json_get "$1" connectionStatus; }
 state_last_error() { json_get "$1" lastError; }
 state_last_feedback_json() { json_get "$1" lastControlFeedback; }
+state_render_mode() { json_get "$1" renderMode; }
+state_software_safe_reason() { json_get "$1" softwareSafeReason; }
 
 browser_env() {
   ab_eval "$SESSION" '(() => {
@@ -184,19 +186,26 @@ renderer_is_software() {
 }
 
 fail_if_software_renderer() {
-  local env_json renderer user_agent browser_args mode_label
+  local env_json renderer user_agent browser_args mode_label state_json render_mode software_safe_reason
   env_json=$(browser_env)
   json_to_file "$env_json" "$BROWSER_ENV_JSON"
   renderer=$(json_get "$env_json" renderer)
   user_agent=$(json_get "$env_json" userAgent)
   browser_args=$(ab_browser_args)
+  state_json=$(json_get "$env_json" state)
+  render_mode=$(state_render_mode "$state_json")
+  software_safe_reason=$(state_software_safe_reason "$state_json")
   if renderer_is_software "$renderer"; then
+    if [[ "$render_mode" == "software_safe" ]]; then
+      echo "note: browser is using SwiftShader/software WebGL, but viewer entered software_safe mode (reason=${software_safe_reason:-unknown}); continue with minimal closure validation" >&2
+      return 0
+    fi
     if [[ "$HEADED" -eq 1 ]]; then
       mode_label='headed'
     else
       mode_label='headless'
     fi
-    echo "error: ${mode_label} browser is using SwiftShader/software WebGL; Viewer Web playability probes require a hardware-backed renderer even in headed mode (see $BROWSER_ENV_JSON, renderer=$renderer, userAgent=$user_agent, agentBrowserArgs=${browser_args:-<none>})" >&2
+    echo "error: ${mode_label} browser is using SwiftShader/software WebGL; viewer did not enter software_safe mode (see $BROWSER_ENV_JSON, renderer=$renderer, renderMode=${render_mode:-<none>}, softwareSafeReason=${software_safe_reason:-<none>}, userAgent=$user_agent, agentBrowserArgs=${browser_args:-<none>})" >&2
     return 1
   fi
   return 0

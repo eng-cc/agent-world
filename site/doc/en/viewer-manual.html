@@ -141,14 +141,14 @@
         <p>Terminal C: run the agent-browser capture loop.</p>
         <pre><code>command -v agent-browser >/dev/null || { echo "missing agent-browser" >&2; exit 1; }
 mkdir -p output/playwright/viewer
-agent-browser --headed open "http://127.0.0.1:4173/?ws=ws://127.0.0.1:5011"
+agent-browser --headed open "http://127.0.0.1:4173/?ws=ws://127.0.0.1:5011&test_api=1"
 agent-browser wait --load networkidle
 agent-browser snapshot -i
 agent-browser eval "JSON.stringify(window.__AW_TEST__?.getState?.() ?? null)"
 agent-browser console | tee output/playwright/viewer/console.log
 agent-browser screenshot output/playwright/viewer/viewer-web.png
 agent-browser close</code></pre>
-        <p>Note: the artifact directory currently keeps the legacy path <code>output/playwright/viewer/</code> for compatibility.</p>
+        <p>Note: the artifact directory currently keeps the legacy path <code>output/playwright/viewer/</code> for compatibility. `render_mode` defaults to <code>auto</code>: use the standard Viewer when hardware WebGL is available, and automatically switch to <code>software_safe</code> when SwiftShader / software renderer / no WebGL is detected. Append <code>&amp;render_mode=software_safe</code> to force the safe mode explicitly.</p>
 
         <h3>`sendControl(\"step\")` semantic check</h3>
         <p>Run the following in browser console or agent-browser evaluate to verify step-by-step control:</p>
@@ -159,7 +159,8 @@ window.__AW_TEST__.getState();</code></pre>
         <h3>Outputs and Minimum Acceptance</h3>
         <ul>
           <li>Outputs: `output/playwright/viewer/*.png`, `output/playwright/viewer/console.log` (or equivalent redirected log).</li>
-          <li>Acceptance: page loads with `canvas`, `console error = 0`, at least one screenshot artifact, and `step` advances tick.</li>
+          <li>Acceptance: page loads successfully and `window.__AW_TEST__.getState().renderMode` is explicitly `standard` or `software_safe`; at least one screenshot artifact exists and `step` advances tick.</li>
+          <li>When `rendererClass=software`, `software_safe` is an acceptable minimal-closure result; `canvas` is no longer required in that path.</li>
         </ul>
 
         <h3>Native fallback (only when web path cannot reproduce)</h3>

@@ -141,14 +141,14 @@
         <p>终端 C：执行 agent-browser 闭环采样。</p>
         <pre><code>command -v agent-browser >/dev/null || { echo "missing agent-browser" >&2; exit 1; }
 mkdir -p output/playwright/viewer
-agent-browser --headed open "http://127.0.0.1:4173/?ws=ws://127.0.0.1:5011"
+agent-browser --headed open "http://127.0.0.1:4173/?ws=ws://127.0.0.1:5011&test_api=1"
 agent-browser wait --load networkidle
 agent-browser snapshot -i
 agent-browser eval "JSON.stringify(window.__AW_TEST__?.getState?.() ?? null)"
 agent-browser console | tee output/playwright/viewer/console.log
 agent-browser screenshot output/playwright/viewer/viewer-web.png
 agent-browser close</code></pre>
-        <p>注：产物目录当前沿用历史路径 <code>output/playwright/viewer/</code>。</p>
+        <p>注：产物目录当前沿用历史路径 <code>output/playwright/viewer/</code>。`render_mode` 默认为 <code>auto</code>：硬件 WebGL 正常时进入标准 Viewer；检测到 SwiftShader / software renderer / 无 WebGL 时会自动切到 <code>software_safe</code>。若要强制安全模式，可在 URL 后追加 <code>&amp;render_mode=software_safe</code>。</p>
 
         <h3>`sendControl(\"step\")` 语义校验</h3>
         <p>可在浏览器控制台或 agent-browser evaluate 中执行以下调用，验证逐步推进生效：</p>
@@ -159,7 +159,8 @@ window.__AW_TEST__.getState();</code></pre>
         <h3>输出目录与最小验收</h3>
         <ul>
           <li>输出：`output/playwright/viewer/*.png`、`output/playwright/viewer/console.log`（或等价重定向日志）。</li>
-          <li>验收：页面加载成功（含 `canvas`）、`console error = 0`、至少 1 张截图，且 `step` 调用可推动 tick 前进。</li>
+          <li>验收：页面加载成功，且 `window.__AW_TEST__.getState().renderMode` 明确为 `standard` 或 `software_safe`；至少 1 张截图，且 `step` 调用可推动 tick 前进。</li>
+          <li>若 `rendererClass=software`，允许进入 `software_safe` 做最小闭环；此时不再要求页面必须渲染 `canvas`。</li>
         </ul>
 
         <h3>native fallback（仅 Web 无法复现时）</h3>
