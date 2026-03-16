@@ -12,8 +12,8 @@ Usage: ./scripts/ci-tests.sh [required|full|full-core|full-support]
 
   required      Run fast required checks for local commit and PR gate.
   full          Run required checks plus all extended feature/integration tests.
-  full-core     Run doc/fmt plus the heaviest `agent_world` full-tier shard.
-  full-support  Run the remaining full-tier support crates/viewer shard.
+  full-core     Run doc/fmt plus the heaviest `agent_world --tests` full-tier shard.
+  full-support  Run the remaining support crates/viewer shard plus `agent_world --lib --bins`.
 
 Default: full
 USAGE
@@ -118,7 +118,6 @@ run_required_gate_checks() {
 run_full_core_tier_tests() {
   run_required_gate_checks
   run_agent_world_full_tier_tests
-  run_cargo test -p agent_world --features wasmtime --lib --bins
 }
 
 run_full_support_tier_tests() {
@@ -130,6 +129,7 @@ run_full_support_tier_tests() {
   run_agent_world_llm_baseline_fixture_smoke
   run_agent_world_viewer_tests
   run_agent_world_viewer_wasm_check
+  run_cargo test -p agent_world --features wasmtime --lib --bins
 }
 
 echo "+ ci test tier: $tier"

@@ -149,6 +149,13 @@
     - `bash -n scripts/ci-tests.sh`
     - `python -c "import pathlib, yaml; yaml.safe_load(pathlib.Path('.github/workflows/release-packages.yml').read_text())"`
     - `rg -n "full-core|full-support|release-gate-runtime-core|release-gate-runtime-support|release-gate-runtime-sync" scripts/ci-tests.sh .github/workflows/release-packages.yml doc/testing/prd.md`
+- [x] TASK-TESTING-056 (PRD-TESTING-002/003) [test_tier_required]: 基于 `runtime-core` 热点复盘重平衡 shard，把 `agent_world --features wasmtime --lib --bins` 从 `full-core` 挪到 `full-support`，降低最长 runtime shard。
+  - 产物文件:
+    - `scripts/ci-tests.sh`
+    - `doc/testing/prd.md`
+  - 验收命令 (`test_tier_required`):
+    - `bash -n scripts/ci-tests.sh`
+    - `rg -n "full-core|full-support|agent_world --features wasmtime --lib --bins" scripts/ci-tests.sh doc/testing/prd.md doc/testing/project.md`
 
 ## 依赖
 - 模块设计总览：`doc/testing/design.md`
@@ -163,6 +170,7 @@
 - 更新日期: 2026-03-16
 - 当前状态: completed
 - 下一任务: 无（当前模块主项目无未完成任务）
+- 最新完成: `TASK-TESTING-056`（基于 `runtime-core` 热点复盘重平衡 shard，把 `agent_world --lib --bins` 从 `full-core` 挪到 `full-support`，降低最长 runtime shard）。
 - 最新完成: `TASK-TESTING-055`（拆分 `release-gate-runtime` 为 core/support/sync 三个并行 job，并给 `ci-tests.sh` 增加 `full-core` / `full-support` shard 入口）。
 - 最新完成: `TASK-TESTING-054`（继续优化 release 关键路径，让 `release-gate-web`/`build-web-dist` 共享 Web wasm cache，并把 bundle 原生二进制构建收敛到单次 cargo 调用）。
 - 最新完成: `TASK-TESTING-053`（优化 release packaging Web 资产复用链路，避免 package-native 每平台重复 trunk 安装与构建）。
