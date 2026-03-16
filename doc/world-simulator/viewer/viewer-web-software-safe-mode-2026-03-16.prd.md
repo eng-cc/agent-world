@@ -1,0 +1,152 @@
+# Viewer Web Software-Safe Mode（无 GPU 硬件依赖模式，2026-03-16）
+
+- 对应设计文档: `doc/world-simulator/viewer/viewer-web-software-safe-mode-2026-03-16.design.md`
+- 对应项目管理文档: `doc/world-simulator/viewer/viewer-web-software-safe-mode-2026-03-16.project.md`
+
+审计轮次: 1
+
+## 目标
+- 为 Web Viewer 新增一个不依赖 GPU 硬件能力的 `software_safe` 模式，保障 software renderer / 受限浏览器环境下的最小玩法闭环。
+- 将 issue `#39` 从“环境一旦弱就整体阻断”改为“标准模式失败时可显式降级到安全模式”。
+- 为后续研发冻结 mode contract、能力地板、测试口径与任务拆解。
+
+## 范围
+- 覆盖 Web 端 `standard/auto/software_safe` 三态渲染模式设计。
+- 覆盖 bootstrap shell、轻量 software-safe frontend、共享 control/test API 与 `oasis7`/testing 手册口径。
+- 不覆盖 native Viewer 图形重构，不覆盖高保真视觉等价实现。
+
+## 接口 / 数据
+- render mode 入口：URL query、launcher CLI、环境变量。
+- 前端状态输出：`__AW_TEST__.getState().renderMode/rendererClass/softwareSafeReason`。
+- 共享数据面：现有 viewer/runtime 协议，必要时新增安全模式友好的聚合 view model。
+- 相关文档：`testing-manual.md`、`doc/world-simulator/viewer/viewer-manual.md`、`oasis7` real-play 工作流。
+
+## 1. Executive Summary
+- `#39` 暴露的问题说明：当前 Web Viewer 即使已经补了 fatal 透出与 SwiftShader 快失败口径，仍然把“环境不支持硬件 WebGL/WGPU”视为阻断条件，无法完成真实 `oasis7` 玩家闭环。
+- 单纯继续在现有 Bevy/WGPU Web Viewer 中关闭特效、降 shader 复杂度，并不能从根上消除对图形硬件/驱动路径的依赖；在 SwiftShader / software renderer / 受限 WebGL 环境下，初始化阶段仍可能直接失败。
+- 本专题新增一个 **Software-Safe Mode**：在 Web 端提供一个不依赖 WGPU / 硬件 WebGL 的安全模式前端，用于保障“连接、观测、选择目标、推进世界、查看反馈、执行基础控制”最小玩法闭环。
+
+## 2. User Experience & Functionality
+
+### In Scope
+- 文件范围（目标态）：
+  - `crates/agent_world/src/bin/world_game_launcher.rs`
+  - `crates/agent_world_viewer/**` 或新增轻量 Web viewer frontend 目录
+  - `scripts/run-game-test-ab.sh`
+  - `.agents/skills/oasis7/scripts/oasis7-run.sh`
+  - `testing-manual.md`
+  - `doc/world-simulator/viewer/viewer-manual.md`
+- Web Viewer 新增三种 render mode：
+  - `standard`：现有高保真模式（默认产品态）
+  - `auto`：根据环境自动在 `standard` / `software_safe` 间选路
+  - `software_safe`：不依赖 GPU 硬件能力的安全模式
+- `software_safe` 模式下必须保留的能力：
+  - 连接状态、`tick/logicalTime/eventSeq/error` 可见
+  - 基础世界观察能力：目标列表、地点/Agent 语义概览、最近事件/反馈
+  - 基础交互能力：选中 1 个 Agent/地点、`play/pause/step`、查看控制反馈
+  - `__AW_TEST__` /脚本采证能力：agent-browser 可以在无硬件 GPU 的浏览器环境下完成最小闭环
+- `oasis7`、`run-game-test-ab.sh`、制作人/QA 手册必须能显式声明或自动落到 `software_safe`，避免再次把环境图形故障误判为玩法故障。
+
+### Out of Scope
+- 不要求 `software_safe` 模式保留 3D 视觉效果、PBR、后处理、粒子或完整美术表现。
+- 不要求 `software_safe` 与标准 Viewer 在视觉质量上等价。
+- 不要求本轮修改 native Viewer 图形栈。
+- 不修改 `third_party` 或 Bevy 上游实现。
+
+## 3. User Stories
+- As a 制作人/玩家, I want `oasis7` real-play to remain usable on machines/browsers without hardware-backed WebGL, so that I can验证 Agent 与玩法闭环而不是被图形环境阻断。
+- As a QA/自动化执行者, I want agent-browser 在 software renderer 环境下仍能完成最小 Web 闭环, so that 环境门禁与玩法回归可以明确分流，而不是“全黑屏=全部失败”。
+- As a viewer_engineer, I want a clearly bounded software-safe surface, so that 我能控制维护成本并避免把高保真图形复杂度带进低能力环境。
+
+## 4. Technical Specifications
+
+### 4.1 Mode Selection Contract
+- 新增 `render_mode` 选择入口：
+  - URL query: `?render_mode=standard|auto|software_safe`
+  - launcher / product path: `--viewer-render-mode standard|auto|software_safe`
+  - 环境变量（开发/脚本可选）: `AGENT_WORLD_VIEWER_RENDER_MODE`
+- `auto` 为推荐默认：
+  1. 显式 query / CLI / env 优先级最高。
+  2. 若未显式指定，bootstrap shell 先探测浏览器环境。
+  3. 若探测到 `SwiftShader` / `llvmpipe` / software renderer / WebGL 不可用 / 已知 fatal 签名，则自动转入 `software_safe`。
+
+### 4.2 Architecture Decision
+- **不采用**“继续在同一 Bevy/WGPU Web Viewer 中只关特效”的方案作为根治手段。
+- **采用**“双前端模式”方案：
+  - 标准模式：沿用现有 Bevy/WGPU Web Viewer。
+  - 安全模式：新增一个 **不依赖 WGPU/WebGL** 的轻量 Web frontend（DOM/SVG/Canvas2D 优先）。
+- 原因：只有把 `software_safe` 模式从图形后端层面与 WGPU 解耦，才能真正满足“无 GPU 硬件依赖”。
+
+### 4.3 Software-Safe Mode Capability Floor
+- 必须保留：
+  - 世界连接状态条
+  - 顶部世界摘要：`tick/logicalTime/eventSeq/connectionStatus/provider info`
+  - 目标列表 / 语义地图（2D 简化视图即可）
+  - 最近事件流 / 控制反馈
+  - `play/pause/step` 控制
+  - 选中对象详情（Agent / Location）
+- 可延后/不保留：
+  - 3D 摄像机、2D/3D 切换
+  - 粒子、氛围、光照、景深、环境图生成
+  - 高级 selection halo / 复杂 label LOD
+  - 依赖 GPU shader 的视觉增强
+
+### 4.4 Shared Data Plane
+- `software_safe` 模式必须复用现有 runtime / viewer 协议，而不是发明新后端协议。
+- 允许新增一个“安全模式友好”的聚合快照接口，但必须由现有 viewer/runtime 状态推导，并维持 `__AW_TEST__`/自动化消费一致性。
+- `__AW_TEST__.getState()` 至少新增：
+  - `renderMode`
+  - `rendererClass` (`hardware` / `software` / `none`)
+  - `softwareSafeReason`
+
+### 4.5 Bootstrap / Product Contract
+- `world_game_launcher` 的 Web 静态入口先加载一个轻量 bootstrap shell：
+  - 探测浏览器 WebGL / renderer 环境
+  - 决定加载标准 Viewer 还是 `software_safe` bundle
+  - 在页面中显式显示当前模式与切换原因
+- `oasis7` / `run-game-test-ab.sh`：
+  - 在 `auto` 模式下允许落到 `software_safe`
+  - 仅当 `standard` 与 `software_safe` 都不可用时，才视为产品级阻断
+
+## 5. Acceptance Criteria
+- AC-1: 在 `SwiftShader` / software renderer 环境中，Web 路径不再只剩黑屏或直接 fatal；应能进入 `software_safe` 并显示明确模式标识。
+- AC-2: `software_safe` 模式下，agent-browser 可以完成最小闭环：加载页面 -> 连接世界 -> 选择目标 -> `step` 推进 -> 观察新反馈。
+- AC-3: `__AW_TEST__.getState()` 能明确区分 `standard` / `software_safe`，并给出 fallback 原因。
+- AC-4: `oasis7` 与 testing 手册明确说明 `software_safe` 是“玩法/验证兜底模式”，不是视觉质量签收模式。
+- AC-5: 当硬件 WebGL 可用时，`auto` 不得错误降级到 `software_safe`，以免影响正常画面验收。
+
+## 6. Non-Functional Requirements
+- NFR-1: `software_safe` 模式不得依赖硬件 GPU；在 software renderer / 无 WebGL / 受限 WebGL 环境下仍可启动。
+- NFR-2: `software_safe` 模式首页可见状态（连接状态或错误）应在 2 秒内可观测。
+- NFR-3: `software_safe` 模式必须保持 `console fatal = 0` 的目标；若失败，必须给出结构化错误而不是黑屏。
+- NFR-4: `software_safe` 模式与标准模式共享同一套世界 authority / 控制语义，禁止出现“安全模式能做的控制与标准模式行为不一致”。
+
+## 7. Risks & Roadmap
+- 风险 1：双前端模式增加维护成本。
+  - 缓解：严格限定 `software_safe` 能力地板，只做闭环必需功能；复用 shared schema / control contract。
+- 风险 2：如果继续复用 Bevy/WGPU，仍可能被图形后端阻断。
+  - 缓解：明确要求 `software_safe` 前端与 WGPU/WebGL 解耦。
+- 风险 3：自动 fallback 可能掩盖标准模式问题。
+  - 缓解：页面与 `__AW_TEST__` 必须显式标识当前模式与 fallback 原因；视觉验收仍要求 `standard`。
+
+### Milestones
+- M0: 完成 PRD / Design / Project 建模与索引回写。
+- M1: 落地 bootstrap shell 与 render mode 选路。
+- M2: 落地 `software_safe` MVP（连接/观察/选择/step/反馈）。
+- M3: 打通 `oasis7` / `run-game-test-ab.sh` / 手册口径。
+- M4: 完成 Web 闭环验证与 issue `#39` 收口判断。
+
+## 里程碑
+- M0: 完成 PRD / Design / Project 建模与索引回写。
+- M1: 落地 bootstrap shell 与 render mode 选路。
+- M2: 落地 `software_safe` MVP（连接/观察/选择/step/反馈）。
+- M3: 打通 `oasis7` / `run-game-test-ab.sh` / 手册口径。
+- M4: 完成 Web 闭环验证与 issue `#39` 收口判断。
+
+## 风险
+- 风险 1：双前端模式增加维护成本。
+  - 缓解：严格限定 `software_safe` 能力地板并复用 shared schema / control contract。
+- 风险 2：若继续复用 Bevy/WGPU，则仍可能被图形后端阻断。
+  - 缓解：明确要求 `software_safe` 前端与 WGPU/WebGL 解耦。
+- 风险 3：自动 fallback 可能掩盖标准模式问题。
+  - 缓解：页面与 `__AW_TEST__` 必须显式标识当前模式与 fallback 原因。
