@@ -13,6 +13,7 @@ use super::{
     DEFAULT_VIEWER_STATIC_DIR, OPENCLAW_LOCAL_HTTP_PROVIDER_MODE, VIEWER_AUTH_BOOTSTRAP_OBJECT,
     VIEWER_AUTH_PRIVATE_KEY_ENV, VIEWER_AUTH_PUBLIC_KEY_ENV, VIEWER_PLAYER_ID_ENV,
 };
+use agent_world::simulator::ProviderExecutionMode;
 use agent_world_proto::storage_profile::StorageProfile;
 
 #[test]
@@ -25,6 +26,10 @@ fn parse_options_defaults() {
     assert_eq!(
         options.openclaw_agent_profile,
         DEFAULT_OPENCLAW_AGENT_PROFILE
+    );
+    assert_eq!(
+        options.openclaw_execution_mode,
+        ProviderExecutionMode::HeadlessAgent
     );
     assert!(options.open_browser);
     assert_eq!(options.viewer_static_dir, "web");
@@ -95,6 +100,8 @@ fn parse_options_accepts_overrides() {
             "3000",
             "--openclaw-agent-profile",
             "agent_world_p0_low_freq_npc",
+            "--openclaw-execution-mode",
+            "player_parity",
             "--no-open-browser",
         ]
         .into_iter(),
@@ -138,6 +145,10 @@ fn parse_options_accepts_overrides() {
         options.openclaw_agent_profile,
         "agent_world_p0_low_freq_npc"
     );
+    assert_eq!(
+        options.openclaw_execution_mode,
+        ProviderExecutionMode::PlayerParity
+    );
     assert!(!options.open_browser);
 }
 
@@ -180,6 +191,23 @@ fn parse_options_rejects_unknown_agent_provider_mode() {
         .expect_err("should fail");
     assert!(err.contains("builtin_llm"));
     assert!(err.contains("openclaw_local_http"));
+}
+
+#[test]
+fn parse_options_rejects_invalid_openclaw_execution_mode() {
+    let err = parse_options(
+        [
+            "--with-llm",
+            "--agent-provider-mode",
+            "openclaw_local_http",
+            "--openclaw-execution-mode",
+            "gpu_only",
+        ]
+        .into_iter(),
+    )
+    .expect_err("should fail");
+    assert!(err.contains("player_parity"));
+    assert!(err.contains("headless_agent"));
 }
 
 #[test]

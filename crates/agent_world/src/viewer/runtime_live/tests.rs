@@ -1,7 +1,8 @@
 use super::*;
 use crate::simulator::ResourceOwner;
 use crate::simulator::{
-    DEFAULT_PROVIDER_ACTION_SCHEMA_VERSION, DEFAULT_PROVIDER_OBSERVATION_SCHEMA_VERSION,
+    ProviderExecutionMode, DEFAULT_PROVIDER_ACTION_SCHEMA_VERSION,
+    DEFAULT_PROVIDER_OBSERVATION_SCHEMA_VERSION,
 };
 use ed25519_dalek::SigningKey;
 use std::sync::{Mutex, OnceLock};
@@ -34,6 +35,7 @@ fn clear_runtime_openclaw_env() {
     std::env::remove_var("AGENT_WORLD_OPENCLAW_AUTH_TOKEN");
     std::env::remove_var("AGENT_WORLD_OPENCLAW_CONNECT_TIMEOUT_MS");
     std::env::remove_var("AGENT_WORLD_OPENCLAW_AGENT_PROFILE");
+    std::env::remove_var("AGENT_WORLD_OPENCLAW_EXECUTION_MODE");
     std::env::remove_var("AGENT_WORLD_RUNTIME_AGENT_CHAT_ECHO");
 }
 
@@ -99,6 +101,7 @@ fn openclaw_settings_from_env_parses_profile_and_timeout() {
         "AGENT_WORLD_OPENCLAW_AGENT_PROFILE",
         "agent_world_p0_low_freq_npc",
     );
+    std::env::set_var("AGENT_WORLD_OPENCLAW_EXECUTION_MODE", "player_parity");
     std::env::set_var("AGENT_WORLD_OPENCLAW_AUTH_TOKEN", "secret-token");
     let settings = super::control_plane::runtime_openclaw_settings_from_env()
         .expect("settings parse")
@@ -106,6 +109,7 @@ fn openclaw_settings_from_env_parses_profile_and_timeout() {
     assert_eq!(settings.base_url, "http://127.0.0.1:5841");
     assert_eq!(settings.connect_timeout_ms, 4200);
     assert_eq!(settings.agent_profile, "agent_world_p0_low_freq_npc");
+    assert_eq!(settings.execution_mode, ProviderExecutionMode::PlayerParity);
     assert_eq!(settings.auth_token.as_deref(), Some("secret-token"));
     clear_runtime_openclaw_env();
 }
@@ -512,6 +516,7 @@ fn runtime_openclaw_compat_snapshot_exposes_agent_execution_debug_contexts() {
         "AGENT_WORLD_OPENCLAW_AGENT_PROFILE",
         "agent_world_p0_low_freq_npc",
     );
+    std::env::set_var("AGENT_WORLD_OPENCLAW_EXECUTION_MODE", "player_parity");
     let server = ViewerRuntimeLiveServer::new(
         ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal)
             .with_decision_mode(ViewerLiveDecisionMode::Llm),
@@ -536,7 +541,7 @@ fn runtime_openclaw_compat_snapshot_exposes_agent_execution_debug_contexts() {
         context.provider_mode.as_deref(),
         Some("openclaw_local_http")
     );
-    assert_eq!(context.execution_mode.as_deref(), Some("headless_agent"));
+    assert_eq!(context.execution_mode.as_deref(), Some("player_parity"));
     assert_eq!(
         context.observation_schema_version.as_deref(),
         Some(DEFAULT_PROVIDER_OBSERVATION_SCHEMA_VERSION)

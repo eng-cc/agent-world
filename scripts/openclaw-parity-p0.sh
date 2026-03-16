@@ -16,6 +16,7 @@ OPENCLAW_BASE_URL="http://127.0.0.1:5841"
 OPENCLAW_AUTH_TOKEN=""
 OPENCLAW_CONNECT_TIMEOUT_MS=3000
 OPENCLAW_AGENT_PROFILE="agent_world_p0_low_freq_npc"
+OPENCLAW_EXECUTION_MODE="headless_agent"
 RUN_BUILTIN=1
 RUN_OPENCLAW=1
 
@@ -39,6 +40,7 @@ Options:
   --openclaw-auth-token <token>         OpenClaw bearer token
   --openclaw-connect-timeout-ms <n>     OpenClaw connect timeout (default: 3000)
   --openclaw-agent-profile <id>          OpenClaw gameplay profile/skill id
+  --execution-mode <mode>                OpenClaw execution mode (default: headless_agent)
   --builtin-only                        Run only builtin provider
   --openclaw-only                       Run only OpenClaw provider
   -h, --help                            Show help
@@ -101,6 +103,10 @@ while [[ $# -gt 0 ]]; do
       OPENCLAW_AGENT_PROFILE="${2:-}"
       shift 2
       ;;
+    --execution-mode)
+      OPENCLAW_EXECUTION_MODE="${2:-}"
+      shift 2
+      ;;
     --builtin-only)
       RUN_BUILTIN=1
       RUN_OPENCLAW=0
@@ -129,6 +135,7 @@ done
 [[ "$TIMEOUT_MS" =~ ^[0-9]+$ ]] || { echo "error: --timeout-ms must be numeric" >&2; exit 1; }
 [[ "$OPENCLAW_CONNECT_TIMEOUT_MS" =~ ^[0-9]+$ ]] || { echo "error: --openclaw-connect-timeout-ms must be numeric" >&2; exit 1; }
 [[ -n "$OPENCLAW_AGENT_PROFILE" ]] || { echo "error: --openclaw-agent-profile cannot be empty" >&2; exit 1; }
+[[ "$OPENCLAW_EXECUTION_MODE" == "headless_agent" || "$OPENCLAW_EXECUTION_MODE" == "player_parity" ]] || { echo "error: --execution-mode must be headless_agent or player_parity" >&2; exit 1; }
 
 if [[ -z "$OUT_DIR" ]]; then
   OUT_DIR="artifacts/$RUN_ID"
@@ -159,6 +166,7 @@ run_sample() {
     fi
     cmd+=(--openclaw-connect-timeout-ms "$OPENCLAW_CONNECT_TIMEOUT_MS")
     cmd+=(--openclaw-agent-profile "$OPENCLAW_AGENT_PROFILE")
+    cmd+=(--execution-mode "$OPENCLAW_EXECUTION_MODE")
   fi
 
   echo "+ ${cmd[*]}"

@@ -7,10 +7,9 @@ use crate::runtime::{
     WorldEventBody as RuntimeWorldEventBody,
 };
 use crate::simulator::{
-    Agent, AgentExecutionDebugContext, Location, ProviderExecutionMode,
-    RejectReason as SimulatorRejectReason, ResourceOwner, WorldConfig, WorldEvent, WorldEventKind,
-    WorldModel, DEFAULT_PROVIDER_ACTION_SCHEMA_VERSION,
-    DEFAULT_PROVIDER_OBSERVATION_SCHEMA_VERSION,
+    Agent, AgentExecutionDebugContext, Location, RejectReason as SimulatorRejectReason,
+    ResourceOwner, WorldConfig, WorldEvent, WorldEventKind, WorldModel,
+    DEFAULT_PROVIDER_ACTION_SCHEMA_VERSION, DEFAULT_PROVIDER_OBSERVATION_SCHEMA_VERSION,
 };
 
 use super::control_plane::{runtime_openclaw_settings_from_env, RuntimeLlmSidecar};
@@ -70,7 +69,7 @@ fn collect_agent_execution_debug_contexts(
                 agent_id.clone(),
                 AgentExecutionDebugContext {
                     provider_mode: Some("openclaw_local_http".to_string()),
-                    execution_mode: Some(ProviderExecutionMode::HeadlessAgent.as_str().to_string()),
+                    execution_mode: Some(settings.execution_mode.as_str().to_string()),
                     observation_schema_version: Some(
                         DEFAULT_PROVIDER_OBSERVATION_SCHEMA_VERSION.to_string(),
                     ),

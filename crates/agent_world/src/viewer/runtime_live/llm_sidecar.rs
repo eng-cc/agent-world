@@ -42,6 +42,7 @@ const VIEWER_OPENCLAW_BASE_URL_ENV: &str = "AGENT_WORLD_OPENCLAW_BASE_URL";
 const VIEWER_OPENCLAW_AUTH_TOKEN_ENV: &str = "AGENT_WORLD_OPENCLAW_AUTH_TOKEN";
 const VIEWER_OPENCLAW_CONNECT_TIMEOUT_MS_ENV: &str = "AGENT_WORLD_OPENCLAW_CONNECT_TIMEOUT_MS";
 const VIEWER_OPENCLAW_AGENT_PROFILE_ENV: &str = "AGENT_WORLD_OPENCLAW_AGENT_PROFILE";
+const VIEWER_OPENCLAW_EXECUTION_MODE_ENV: &str = "AGENT_WORLD_OPENCLAW_EXECUTION_MODE";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(in crate::viewer::runtime_live) struct OpenClawDecisionSettings {
@@ -49,6 +50,7 @@ pub(in crate::viewer::runtime_live) struct OpenClawDecisionSettings {
     pub(in crate::viewer::runtime_live) auth_token: Option<String>,
     pub(in crate::viewer::runtime_live) connect_timeout_ms: u64,
     pub(in crate::viewer::runtime_live) agent_profile: String,
+    pub(in crate::viewer::runtime_live) execution_mode: ProviderExecutionMode,
 }
 
 enum RuntimeDecisionRunner {
@@ -115,11 +117,26 @@ pub(in crate::viewer::runtime_live) fn openclaw_settings_from_env(
         .map(|value| value.trim().to_string())
         .filter(|value| !value.is_empty());
 
+    let execution_mode = env::var(VIEWER_OPENCLAW_EXECUTION_MODE_ENV)
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .map(|value| {
+            ProviderExecutionMode::parse(value.as_str()).ok_or_else(|| {
+                format!(
+                    "invalid {VIEWER_OPENCLAW_EXECUTION_MODE_ENV} value `{value}`: expected player_parity or headless_agent"
+                )
+            })
+        })
+        .transpose()?
+        .unwrap_or(ProviderExecutionMode::HeadlessAgent);
+
     Ok(Some(OpenClawDecisionSettings {
         base_url: base_url.to_string(),
         auth_token,
         connect_timeout_ms,
         agent_profile: agent_profile.to_string(),
+        execution_mode,
     }))
 }
 
@@ -656,7 +673,7 @@ impl RuntimeLlmSidecar {
                         agent_id
                     ))
                     .with_agent_profile(settings.agent_profile.clone())
-                    .with_execution_mode(ProviderExecutionMode::HeadlessAgent)
+                    .with_execution_mode(settings.execution_mode)
                     .with_environment_class("runtime_live");
                     runner.register(behavior);
                 }

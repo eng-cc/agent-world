@@ -28,6 +28,14 @@ pub enum ProviderExecutionMode {
 }
 
 impl ProviderExecutionMode {
+    pub fn parse(raw: &str) -> Option<Self> {
+        match raw.trim().to_ascii_lowercase().as_str() {
+            "player_parity" | "player-parity" | "player" => Some(Self::PlayerParity),
+            "headless_agent" | "headless-agent" | "headless" => Some(Self::HeadlessAgent),
+            _ => None,
+        }
+    }
+
     pub const fn as_str(self) -> &'static str {
         match self {
             Self::PlayerParity => "player_parity",

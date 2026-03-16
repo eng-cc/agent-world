@@ -24,7 +24,7 @@
 - 关联 software-safe 专题: `doc/world-simulator/viewer/viewer-web-software-safe-mode-2026-03-16.prd.md`
 - supporting contract: `doc/world-simulator/llm/openclaw-agent-dual-mode-contract-2026-03-16.md`
 - 追踪主键: `PRD-WORLD_SIMULATOR-040`
-- 执行追踪: `TASK-WORLD_SIMULATOR-148`（建模）与后续 T1~T4
+- 执行追踪: `TASK-WORLD_SIMULATOR-148/149/150/151/152` 与后续 T4 正式对照采证
 
 
 ## 1. Executive Summary
@@ -149,7 +149,7 @@
 | --- | --- | --- | --- | --- |
 | PRD-WORLD_SIMULATOR-040 | TASK-WORLD_SIMULATOR-148 | `test_tier_required` | `./scripts/doc-governance-check.sh` | 双轨模式产品口径、模块索引、owner 边界 |
 | PRD-WORLD_SIMULATOR-040 | T1 | `test_tier_required` | contract schema review + fixture diff | observation/action contract、一致性约束 |
-| PRD-WORLD_SIMULATOR-040 | T2/T3 | `test_tier_required` | headless smoke + replay metadata verification | 无 GUI 回归主链路、mode metadata |
+| PRD-WORLD_SIMULATOR-040 | T2/T3/T3.5 (`TASK-WORLD_SIMULATOR-150/151/152`) | `test_tier_required` | `headless_agent` / `player_parity` 真实 smoke + replay metadata verification | 无 GUI 回归主链路、mode metadata、真实 player_parity lane |
 | PRD-WORLD_SIMULATOR-040 | T4 | `test_tier_full` | `player_parity` vs `headless_agent` 对照采证 + QA/producer 评审 | 玩家体验口径、Viewer 旁路调试与默认模式策略 |
 
 - Decision Log:

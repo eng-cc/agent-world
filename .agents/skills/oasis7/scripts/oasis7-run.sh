@@ -21,6 +21,7 @@ Options:
   --base-url <url>                OpenClaw local provider base url (default: http://127.0.0.1:5841)
   --agent-id <id>                 OpenClaw runtime agent id (default: agent_world_runtime)
   --agent-profile <profile>       OpenClaw agent profile (default: agent_world_p0_low_freq_npc)
+  --execution-mode <mode>         OpenClaw execution mode (default: headless_agent)
   --scenario <name>               Gameplay scenario (default: llm_bootstrap)
   --timeout-ms <ms>               Smoke timeout budget (default: 15000)
   --connect-timeout-ms <ms>       Provider connect timeout (default: 15000)
@@ -698,6 +699,7 @@ force_download="0"
 base_url="http://127.0.0.1:5841"
 agent_id="agent_world_runtime"
 agent_profile="agent_world_p0_low_freq_npc"
+execution_mode="headless_agent"
 scenario="llm_bootstrap"
 timeout_ms="15000"
 connect_timeout_ms="15000"
@@ -760,6 +762,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --agent-profile)
       agent_profile="$2"
+      shift 2
+      ;;
+    --execution-mode)
+      execution_mode="$2"
       shift 2
       ;;
     --scenario)
@@ -859,6 +865,11 @@ repo_required="0"
 need_cargo="0"
 need_openclaw="0"
 use_bundle_play="0"
+
+if [[ "$execution_mode" != "headless_agent" && "$execution_mode" != "player_parity" ]]; then
+  echo "error: --execution-mode must be headless_agent or player_parity" >&2
+  exit 1
+fi
 
 case "$mode" in
   download)
@@ -973,7 +984,8 @@ case "$mode" in
         --agent-provider-mode openclaw_local_http
         --openclaw-base-url "$base_url"
         --openclaw-connect-timeout-ms "$connect_timeout_ms"
-        --openclaw-agent-profile "$agent_profile")
+        --openclaw-agent-profile "$agent_profile"
+        --openclaw-execution-mode "$execution_mode")
     else
       cd "$repo_root"
       cmd=(env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_game_launcher --
@@ -982,7 +994,8 @@ case "$mode" in
         --agent-provider-mode openclaw_local_http
         --openclaw-base-url "$base_url"
         --openclaw-connect-timeout-ms "$connect_timeout_ms"
-        --openclaw-agent-profile "$agent_profile")
+        --openclaw-agent-profile "$agent_profile"
+        --openclaw-execution-mode "$execution_mode")
     fi
     if [[ "$open_browser" != "1" ]]; then
       cmd+=(--no-open-browser)
@@ -1015,7 +1028,8 @@ case "$mode" in
       --timeout-ms "$timeout_ms"
       --openclaw-base-url "$base_url"
       --openclaw-connect-timeout-ms "$connect_timeout_ms"
-      --openclaw-agent-profile "$agent_profile")
+      --openclaw-agent-profile "$agent_profile"
+      --execution-mode "$execution_mode")
     printf 'Running: %q ' "${cmd[@]}"
     printf '\n'
     "${cmd[@]}"

@@ -67,6 +67,7 @@ struct CliOptions {
     openclaw_auth_token: Option<String>,
     openclaw_connect_timeout_ms: u64,
     openclaw_agent_profile: String,
+    execution_mode: ProviderExecutionMode,
 }
 
 impl Default for CliOptions {
@@ -87,6 +88,7 @@ impl Default for CliOptions {
             openclaw_auth_token: None,
             openclaw_connect_timeout_ms: DEFAULT_PROVIDER_CONNECT_TIMEOUT_MS,
             openclaw_agent_profile: DEFAULT_OPENCLAW_AGENT_PROFILE.to_string(),
+            execution_mode: ProviderExecutionMode::HeadlessAgent,
         }
     }
 }
@@ -425,10 +427,10 @@ fn main() {
 
         step_records.push(StepTraceRecord {
             benchmark_run_id: options.benchmark_run_id.clone(),
-            mode: ProviderExecutionMode::HeadlessAgent.as_str().to_string(),
+            mode: options.execution_mode.as_str().to_string(),
             observation_schema_version: DEFAULT_PROVIDER_OBSERVATION_SCHEMA_VERSION.to_string(),
             action_schema_version: DEFAULT_PROVIDER_ACTION_SCHEMA_VERSION.to_string(),
-            environment_class: "headless_linux".to_string(),
+            environment_class: execution_environment_class(options.execution_mode).to_string(),
             fallback_reason: None,
             parity_tier: options.parity_tier.clone(),
             scenario_id: options.scenario_id.clone(),
@@ -475,10 +477,10 @@ fn main() {
     let trace_completeness_ratio_ppm = ratio_ppm(trace_present_count, decision_steps);
     let summary = SampleSummary {
         benchmark_run_id: options.benchmark_run_id.clone(),
-        mode: ProviderExecutionMode::HeadlessAgent.as_str().to_string(),
+        mode: options.execution_mode.as_str().to_string(),
         observation_schema_version: DEFAULT_PROVIDER_OBSERVATION_SCHEMA_VERSION.to_string(),
         action_schema_version: DEFAULT_PROVIDER_ACTION_SCHEMA_VERSION.to_string(),
-        environment_class: "headless_linux".to_string(),
+        environment_class: execution_environment_class(options.execution_mode).to_string(),
         fallback_reason: None,
         parity_tier: options.parity_tier.clone(),
         scenario_id: options.scenario_id.clone(),
@@ -553,6 +555,13 @@ fn main() {
     println!("p95_latency_ms: {}", summary.p95_latency_ms);
 }
 
+fn execution_environment_class(mode: ProviderExecutionMode) -> &'static str {
+    match mode {
+        ProviderExecutionMode::PlayerParity => "player_parity_linux",
+        ProviderExecutionMode::HeadlessAgent => "headless_linux",
+    }
+}
+
 fn prepare_provider_info(options: &CliOptions) -> Result<ProviderRunInfo, String> {
     match options.provider {
         BenchProviderKind::Builtin => Ok(ProviderRunInfo {
@@ -599,9 +608,17 @@ fn build_behavior(
     fixture_id: &str,
 ) -> Result<BenchBehavior, String> {
     match options.provider {
-        BenchProviderKind::Builtin => LlmAgentBehavior::from_env(agent_id.to_string())
-            .map(BenchBehavior::Builtin)
-            .map_err(|err| err.to_string()),
+        BenchProviderKind::Builtin => {
+            if options.execution_mode != ProviderExecutionMode::HeadlessAgent {
+                return Err(
+                    "--execution-mode=player_parity is only supported with --provider openclaw_local_http"
+                        .to_string(),
+                );
+            }
+            LlmAgentBehavior::from_env(agent_id.to_string())
+                .map(BenchBehavior::Builtin)
+                .map_err(|err| err.to_string())
+        }
         BenchProviderKind::OpenclawLocalHttp => {
             let base_url = options.openclaw_base_url.as_deref().ok_or_else(|| {
                 "--openclaw-base-url is required for openclaw_local_http".to_string()
@@ -622,8 +639,8 @@ fn build_behavior(
                 options.benchmark_run_id, agent_id
             ))
             .with_agent_profile(options.openclaw_agent_profile.clone())
-            .with_execution_mode(ProviderExecutionMode::HeadlessAgent)
-            .with_environment_class("headless_linux")
+            .with_execution_mode(options.execution_mode)
+            .with_environment_class(execution_environment_class(options.execution_mode))
             .with_fixture_id(fixture_id)
             .with_replay_id(format!("{}:{}", options.benchmark_run_id, fixture_id));
             if let Some(memory_summary) = parity_memory_summary(options.scenario_id.as_str()) {
@@ -937,6 +954,16 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
                     .ok_or_else(|| "--openclaw-agent-profile requires a value".to_string())?
                     .to_string();
             }
+            "--execution-mode" => {
+                let raw = iter
+                    .next()
+                    .ok_or_else(|| "--execution-mode requires a value".to_string())?;
+                options.execution_mode = ProviderExecutionMode::parse(raw).ok_or_else(|| {
+                    format!(
+                        "invalid --execution-mode `{raw}`: expected player_parity or headless_agent"
+                    )
+                })?;
+            }
             "-h" | "--help" => {
                 print_help();
                 process::exit(0);
@@ -970,6 +997,14 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
     {
         return Err("--openclaw-agent-profile cannot be empty".to_string());
     }
+    if options.provider == BenchProviderKind::Builtin
+        && options.execution_mode != ProviderExecutionMode::HeadlessAgent
+    {
+        return Err(
+            "--execution-mode=player_parity is only supported with --provider openclaw_local_http"
+                .to_string(),
+        );
+    }
     Ok(options)
 }
 
@@ -997,6 +1032,7 @@ Options:\n\
   --openclaw-auth-token <token>\n\
   --openclaw-connect-timeout-ms <n>\n\
   --openclaw-agent-profile <id>\n\
+  --execution-mode <player_parity|headless_agent>\n\
   --protocol-version <str>\n\
   --adapter-version <str>\n\
   -h, --help\n"
@@ -1070,6 +1106,42 @@ mod tests {
         )
         .expect("parse custom profile");
         assert_eq!(options.openclaw_agent_profile, "agent_world_p1_memory_loop");
+    }
+
+    #[test]
+    fn parse_options_accepts_openclaw_player_parity_execution_mode() {
+        let options = parse_options(
+            [
+                "--provider",
+                "openclaw_local_http",
+                "--benchmark-run-id",
+                "run-3",
+                "--openclaw-base-url",
+                "http://127.0.0.1:5841",
+                "--execution-mode",
+                "player_parity",
+            ]
+            .into_iter(),
+        )
+        .expect("parse parity execution mode");
+        assert_eq!(options.execution_mode, ProviderExecutionMode::PlayerParity);
+    }
+
+    #[test]
+    fn parse_options_rejects_builtin_player_parity_execution_mode() {
+        let err = parse_options(
+            [
+                "--provider",
+                "builtin",
+                "--benchmark-run-id",
+                "run-4",
+                "--execution-mode",
+                "player_parity",
+            ]
+            .into_iter(),
+        )
+        .expect_err("builtin parity mode should fail");
+        assert!(err.contains("openclaw_local_http"));
     }
 
     #[test]

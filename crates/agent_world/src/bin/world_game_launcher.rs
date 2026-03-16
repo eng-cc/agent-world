@@ -11,6 +11,7 @@ use std::sync::{Arc, OnceLock};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
+use agent_world::simulator::ProviderExecutionMode;
 use agent_world_proto::storage_profile::StorageProfile;
 
 const DEFAULT_SCENARIO: &str = "llm_bootstrap";
@@ -30,6 +31,7 @@ const VIEWER_OPENCLAW_BASE_URL_ENV: &str = "AGENT_WORLD_OPENCLAW_BASE_URL";
 const VIEWER_OPENCLAW_AUTH_TOKEN_ENV: &str = "AGENT_WORLD_OPENCLAW_AUTH_TOKEN";
 const VIEWER_OPENCLAW_CONNECT_TIMEOUT_MS_ENV: &str = "AGENT_WORLD_OPENCLAW_CONNECT_TIMEOUT_MS";
 const VIEWER_OPENCLAW_AGENT_PROFILE_ENV: &str = "AGENT_WORLD_OPENCLAW_AGENT_PROFILE";
+const VIEWER_OPENCLAW_EXECUTION_MODE_ENV: &str = "AGENT_WORLD_OPENCLAW_EXECUTION_MODE";
 const DEFAULT_VIEWER_PLAYER_ID: &str = "viewer-player";
 const DEFAULT_CHAIN_STATUS_BIND: &str = "127.0.0.1:5121";
 const DEFAULT_CHAIN_NODE_ID: &str = "viewer-live-node";
@@ -79,6 +81,7 @@ struct CliOptions {
     openclaw_auth_token: String,
     openclaw_connect_timeout_ms: u64,
     openclaw_agent_profile: String,
+    openclaw_execution_mode: ProviderExecutionMode,
     open_browser: bool,
     chain_enabled: bool,
     chain_status_bind: String,
@@ -111,6 +114,7 @@ impl Default for CliOptions {
             openclaw_auth_token: String::new(),
             openclaw_connect_timeout_ms: DEFAULT_OPENCLAW_CONNECT_TIMEOUT_MS,
             openclaw_agent_profile: DEFAULT_OPENCLAW_AGENT_PROFILE.to_string(),
+            openclaw_execution_mode: ProviderExecutionMode::HeadlessAgent,
             open_browser: true,
             chain_enabled: true,
             chain_status_bind: DEFAULT_CHAIN_STATUS_BIND.to_string(),
@@ -267,6 +271,7 @@ fn spawn_world_viewer_live(path: &Path, options: &CliOptions) -> Result<Child, S
     command.env_remove(VIEWER_OPENCLAW_AUTH_TOKEN_ENV);
     command.env_remove(VIEWER_OPENCLAW_CONNECT_TIMEOUT_MS_ENV);
     command.env_remove(VIEWER_OPENCLAW_AGENT_PROFILE_ENV);
+    command.env_remove(VIEWER_OPENCLAW_EXECUTION_MODE_ENV);
     if options.with_llm {
         command.arg("--llm");
         if options.agent_provider_mode == OPENCLAW_LOCAL_HTTP_PROVIDER_MODE {
@@ -291,6 +296,10 @@ fn spawn_world_viewer_live(path: &Path, options: &CliOptions) -> Result<Child, S
             command.env(
                 VIEWER_OPENCLAW_AGENT_PROFILE_ENV,
                 options.openclaw_agent_profile.as_str(),
+            );
+            command.env(
+                VIEWER_OPENCLAW_EXECUTION_MODE_ENV,
+                options.openclaw_execution_mode.as_str(),
             );
         }
     } else {
@@ -992,6 +1001,15 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
                 options.openclaw_agent_profile =
                     parse_required_value(&mut iter, "--openclaw-agent-profile")?;
             }
+            "--openclaw-execution-mode" => {
+                let raw = parse_required_value(&mut iter, "--openclaw-execution-mode")?;
+                options.openclaw_execution_mode = ProviderExecutionMode::parse(raw.as_str())
+                    .ok_or_else(|| {
+                        format!(
+                            "--openclaw-execution-mode must be one of player_parity or headless_agent, got `{raw}`"
+                        )
+                    })?;
+            }
             "--no-open-browser" => {
                 options.open_browser = false;
             }
@@ -1444,6 +1462,15 @@ Options:\n\
                                world_chain_runtime max accepted stale slot lag (default: {DEFAULT_CHAIN_POS_MAX_PAST_SLOT_LAG})\n\
   --chain-node-validator <v:s> world_chain_runtime validator (repeatable)\n\
   --with-llm                   enable llm mode\n\
+  --agent-provider-mode <mode> agent provider: builtin_llm|openclaw_local_http\n\
+  --openclaw-base-url <url>    OpenClaw local provider base URL (default: {DEFAULT_OPENCLAW_BASE_URL})\n\
+  --openclaw-auth-token <tok>  OpenClaw bearer token\n\
+  --openclaw-connect-timeout-ms <ms>\n\
+                               OpenClaw connect timeout ms (default: {DEFAULT_OPENCLAW_CONNECT_TIMEOUT_MS})\n\
+  --openclaw-agent-profile <id>\n\
+                               OpenClaw agent profile (default: {DEFAULT_OPENCLAW_AGENT_PROFILE})\n\
+  --openclaw-execution-mode <mode>\n\
+                               OpenClaw execution mode: player_parity|headless_agent (default: headless_agent)\n\
   --no-open-browser            do not auto open browser\n\
   -h, --help                   show help\n\n\
 Env:\n\
