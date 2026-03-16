@@ -16,6 +16,37 @@ use crate::geometry::GeoPos;
 
 const DEFAULT_PROVIDER_TIMEOUT_BUDGET_MS: u64 = 3_000;
 const MAX_RECENT_EVENT_SUMMARIES: usize = 8;
+pub const DEFAULT_PROVIDER_OBSERVATION_SCHEMA_VERSION: &str = "oc_dual_obs_v1";
+pub const DEFAULT_PROVIDER_ACTION_SCHEMA_VERSION: &str = "oc_dual_act_v1";
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum ProviderExecutionMode {
+    PlayerParity,
+    #[default]
+    HeadlessAgent,
+}
+
+impl ProviderExecutionMode {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::PlayerParity => "player_parity",
+            Self::HeadlessAgent => "headless_agent",
+        }
+    }
+}
+
+fn default_provider_execution_mode() -> ProviderExecutionMode {
+    ProviderExecutionMode::HeadlessAgent
+}
+
+fn default_observation_schema_version() -> String {
+    DEFAULT_PROVIDER_OBSERVATION_SCHEMA_VERSION.to_string()
+}
+
+fn default_action_schema_version() -> String {
+    DEFAULT_PROVIDER_ACTION_SCHEMA_VERSION.to_string()
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ActionCatalogEntry {
@@ -36,6 +67,16 @@ impl ActionCatalogEntry {
 pub struct ObservationEnvelope {
     pub agent_id: String,
     pub world_time: WorldTime,
+    #[serde(default = "default_provider_execution_mode")]
+    pub mode: ProviderExecutionMode,
+    #[serde(default = "default_observation_schema_version")]
+    pub observation_schema_version: String,
+    #[serde(default = "default_action_schema_version")]
+    pub action_schema_version: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub environment_class: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fallback_reason: Option<String>,
     pub observation: Observation,
     #[serde(default)]
     pub recent_event_summary: Vec<String>,
@@ -53,6 +94,10 @@ pub struct DecisionRequest {
     pub provider_config_ref: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub agent_profile: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fixture_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub replay_id: Option<String>,
     pub timeout_budget_ms: u64,
 }
 
@@ -250,6 +295,11 @@ pub fn golden_decision_provider_fixtures() -> Vec<GoldenDecisionFixture> {
             observation: ObservationEnvelope {
                 agent_id: "agent-1".to_string(),
                 world_time: observation.time,
+                mode: ProviderExecutionMode::HeadlessAgent,
+                observation_schema_version: DEFAULT_PROVIDER_OBSERVATION_SCHEMA_VERSION.to_string(),
+                action_schema_version: DEFAULT_PROVIDER_ACTION_SCHEMA_VERSION.to_string(),
+                environment_class: Some("golden_fixture".to_string()),
+                fallback_reason: None,
                 observation,
                 recent_event_summary: vec![
                     "event: AgentRegistered(agent-1 @ loc-1)".to_string(),
@@ -263,6 +313,8 @@ pub fn golden_decision_provider_fixtures() -> Vec<GoldenDecisionFixture> {
             },
             provider_config_ref: Some("golden/mock-provider".to_string()),
             agent_profile: None,
+            fixture_id: Some("golden.move.visible_location.v1".to_string()),
+            replay_id: None,
             timeout_budget_ms: DEFAULT_PROVIDER_TIMEOUT_BUDGET_MS,
         },
         expected_decision: ProviderDecision::Act {
@@ -327,6 +379,13 @@ pub struct ProviderBackedAgentBehavior<P: DecisionProvider> {
     action_catalog: Vec<ActionCatalogEntry>,
     provider_config_ref: Option<String>,
     agent_profile: Option<String>,
+    execution_mode: ProviderExecutionMode,
+    observation_schema_version: String,
+    action_schema_version: String,
+    environment_class: Option<String>,
+    fallback_reason: Option<String>,
+    fixture_id: Option<String>,
+    replay_id: Option<String>,
     timeout_budget_ms: u64,
     memory_summary: Option<String>,
     recent_event_summary: VecDeque<String>,
@@ -345,6 +404,13 @@ impl<P: DecisionProvider> ProviderBackedAgentBehavior<P> {
             action_catalog,
             provider_config_ref: None,
             agent_profile: None,
+            execution_mode: ProviderExecutionMode::HeadlessAgent,
+            observation_schema_version: DEFAULT_PROVIDER_OBSERVATION_SCHEMA_VERSION.to_string(),
+            action_schema_version: DEFAULT_PROVIDER_ACTION_SCHEMA_VERSION.to_string(),
+            environment_class: None,
+            fallback_reason: None,
+            fixture_id: None,
+            replay_id: None,
             timeout_budget_ms: DEFAULT_PROVIDER_TIMEOUT_BUDGET_MS,
             memory_summary: None,
             recent_event_summary: VecDeque::new(),
@@ -359,6 +425,44 @@ impl<P: DecisionProvider> ProviderBackedAgentBehavior<P> {
 
     pub fn with_agent_profile(mut self, agent_profile: impl Into<String>) -> Self {
         self.agent_profile = Some(agent_profile.into());
+        self
+    }
+
+    pub fn with_execution_mode(mut self, execution_mode: ProviderExecutionMode) -> Self {
+        self.execution_mode = execution_mode;
+        self
+    }
+
+    pub fn with_observation_schema_version(
+        mut self,
+        observation_schema_version: impl Into<String>,
+    ) -> Self {
+        self.observation_schema_version = observation_schema_version.into();
+        self
+    }
+
+    pub fn with_action_schema_version(mut self, action_schema_version: impl Into<String>) -> Self {
+        self.action_schema_version = action_schema_version.into();
+        self
+    }
+
+    pub fn with_environment_class(mut self, environment_class: impl Into<String>) -> Self {
+        self.environment_class = Some(environment_class.into());
+        self
+    }
+
+    pub fn with_fallback_reason(mut self, fallback_reason: impl Into<String>) -> Self {
+        self.fallback_reason = Some(fallback_reason.into());
+        self
+    }
+
+    pub fn with_fixture_id(mut self, fixture_id: impl Into<String>) -> Self {
+        self.fixture_id = Some(fixture_id.into());
+        self
+    }
+
+    pub fn with_replay_id(mut self, replay_id: impl Into<String>) -> Self {
+        self.replay_id = Some(replay_id.into());
         self
     }
 
@@ -384,6 +488,11 @@ impl<P: DecisionProvider> ProviderBackedAgentBehavior<P> {
             observation: ObservationEnvelope {
                 agent_id: self.agent_id.clone(),
                 world_time: observation.time,
+                mode: self.execution_mode,
+                observation_schema_version: self.observation_schema_version.clone(),
+                action_schema_version: self.action_schema_version.clone(),
+                environment_class: self.environment_class.clone(),
+                fallback_reason: self.fallback_reason.clone(),
                 observation: observation.clone(),
                 recent_event_summary: self.recent_event_summary.iter().cloned().collect(),
                 memory_summary: self.memory_summary.clone(),
@@ -392,6 +501,8 @@ impl<P: DecisionProvider> ProviderBackedAgentBehavior<P> {
             },
             provider_config_ref: self.provider_config_ref.clone(),
             agent_profile: self.agent_profile.clone(),
+            fixture_id: self.fixture_id.clone(),
+            replay_id: self.replay_id.clone(),
             timeout_budget_ms: self.timeout_budget_ms,
         }
     }

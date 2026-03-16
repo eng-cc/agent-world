@@ -9,8 +9,9 @@ use std::time::Instant;
 use agent_world::simulator::{
     initialize_kernel, Action, ActionCatalogEntry, ActionResult, AgentBehavior, AgentDecision,
     AgentDecisionTrace, AgentRunner, LlmAgentBehavior, Observation, OpenAiChatCompletionClient,
-    OpenClawAdapter, OpenClawLocalHttpClient, RuntimePerfSnapshot, WorldConfig, WorldEvent,
-    WorldInitConfig, WorldScenario,
+    OpenClawAdapter, OpenClawLocalHttpClient, ProviderExecutionMode, RuntimePerfSnapshot,
+    WorldConfig, WorldEvent, WorldInitConfig, WorldScenario,
+    DEFAULT_PROVIDER_ACTION_SCHEMA_VERSION, DEFAULT_PROVIDER_OBSERVATION_SCHEMA_VERSION,
 };
 use serde::{Deserialize, Serialize};
 
@@ -119,6 +120,12 @@ struct FixtureRefs {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 struct StepTraceRecord {
     benchmark_run_id: String,
+    mode: String,
+    observation_schema_version: String,
+    action_schema_version: String,
+    environment_class: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    fallback_reason: Option<String>,
     parity_tier: String,
     scenario_id: String,
     fixture_id: String,
@@ -147,6 +154,12 @@ struct StepTraceRecord {
 #[derive(Debug, Clone, PartialEq, Serialize)]
 struct SampleSummary {
     benchmark_run_id: String,
+    mode: String,
+    observation_schema_version: String,
+    action_schema_version: String,
+    environment_class: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    fallback_reason: Option<String>,
     parity_tier: String,
     scenario_id: String,
     fixture_id: String,
@@ -312,7 +325,7 @@ fn main() {
     }
 
     for agent_id in &agent_ids {
-        let behavior = match build_behavior(agent_id.as_str(), &options) {
+        let behavior = match build_behavior(agent_id.as_str(), &options, fixture_id.as_str()) {
             Ok(value) => value,
             Err(err) => {
                 eprintln!("failed to build behavior for {agent_id}: {err}");
@@ -412,6 +425,11 @@ fn main() {
 
         step_records.push(StepTraceRecord {
             benchmark_run_id: options.benchmark_run_id.clone(),
+            mode: ProviderExecutionMode::HeadlessAgent.as_str().to_string(),
+            observation_schema_version: DEFAULT_PROVIDER_OBSERVATION_SCHEMA_VERSION.to_string(),
+            action_schema_version: DEFAULT_PROVIDER_ACTION_SCHEMA_VERSION.to_string(),
+            environment_class: "headless_linux".to_string(),
+            fallback_reason: None,
             parity_tier: options.parity_tier.clone(),
             scenario_id: options.scenario_id.clone(),
             fixture_id: fixture_id.clone(),
@@ -457,6 +475,11 @@ fn main() {
     let trace_completeness_ratio_ppm = ratio_ppm(trace_present_count, decision_steps);
     let summary = SampleSummary {
         benchmark_run_id: options.benchmark_run_id.clone(),
+        mode: ProviderExecutionMode::HeadlessAgent.as_str().to_string(),
+        observation_schema_version: DEFAULT_PROVIDER_OBSERVATION_SCHEMA_VERSION.to_string(),
+        action_schema_version: DEFAULT_PROVIDER_ACTION_SCHEMA_VERSION.to_string(),
+        environment_class: "headless_linux".to_string(),
+        fallback_reason: None,
         parity_tier: options.parity_tier.clone(),
         scenario_id: options.scenario_id.clone(),
         fixture_id,
@@ -570,7 +593,11 @@ fn prepare_provider_info(options: &CliOptions) -> Result<ProviderRunInfo, String
     }
 }
 
-fn build_behavior(agent_id: &str, options: &CliOptions) -> Result<BenchBehavior, String> {
+fn build_behavior(
+    agent_id: &str,
+    options: &CliOptions,
+    fixture_id: &str,
+) -> Result<BenchBehavior, String> {
     match options.provider {
         BenchProviderKind::Builtin => LlmAgentBehavior::from_env(agent_id.to_string())
             .map(BenchBehavior::Builtin)
@@ -594,7 +621,11 @@ fn build_behavior(agent_id: &str, options: &CliOptions) -> Result<BenchBehavior,
                 "openclaw://local-http/parity/{}/{}",
                 options.benchmark_run_id, agent_id
             ))
-            .with_agent_profile(options.openclaw_agent_profile.clone());
+            .with_agent_profile(options.openclaw_agent_profile.clone())
+            .with_execution_mode(ProviderExecutionMode::HeadlessAgent)
+            .with_environment_class("headless_linux")
+            .with_fixture_id(fixture_id)
+            .with_replay_id(format!("{}:{}", options.benchmark_run_id, fixture_id));
             if let Some(memory_summary) = parity_memory_summary(options.scenario_id.as_str()) {
                 behavior = behavior.with_memory_summary(memory_summary);
             }

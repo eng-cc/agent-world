@@ -227,11 +227,17 @@ for provider in providers:
       if error_codes.get("session_cross_talk", 0) > 0:
         benchmark_status = "blocked"
 
+    metadata_source = valid_samples[0] if valid_samples else (samples[0] if samples else {})
     aggregated = {
       "benchmark_run_id": run_id,
       "parity_tier": parity_tier,
       "scenario_id": scenario_id,
       "provider_kind": provider,
+      "mode": metadata_source.get("mode", "unknown"),
+      "observation_schema_version": metadata_source.get("observation_schema_version", "unknown"),
+      "action_schema_version": metadata_source.get("action_schema_version", "unknown"),
+      "environment_class": metadata_source.get("environment_class", "unknown"),
+      "fallback_reason": metadata_source.get("fallback_reason"),
       "sample_count": len(samples),
       "valid_samples": len(valid_samples),
       "invalid_fixture": len(samples) - len(valid_samples),
@@ -264,6 +270,11 @@ with combined_csv.open("w", newline="") as handle:
       "timeout_rate",
       "median_extra_wait_ms",
       "p95_extra_wait_ms",
+      "mode",
+      "observation_schema_version",
+      "action_schema_version",
+      "environment_class",
+      "fallback_reason",
       "trace_completeness",
       "recoverable_error_resolution_rate",
       "context_drift_count",

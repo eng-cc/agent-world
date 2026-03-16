@@ -46,6 +46,26 @@ fn golden_decision_provider_fixture_round_trips() {
         .action_catalog
         .iter()
         .any(|entry| entry.action_ref == "move_agent"));
+    assert_eq!(
+        decoded.request.observation.mode,
+        ProviderExecutionMode::HeadlessAgent
+    );
+    assert_eq!(
+        decoded.request.observation.observation_schema_version,
+        DEFAULT_PROVIDER_OBSERVATION_SCHEMA_VERSION
+    );
+    assert_eq!(
+        decoded.request.observation.action_schema_version,
+        DEFAULT_PROVIDER_ACTION_SCHEMA_VERSION
+    );
+    assert_eq!(
+        decoded.request.observation.environment_class.as_deref(),
+        Some("golden_fixture")
+    );
+    assert_eq!(
+        decoded.request.fixture_id.as_deref(),
+        Some("golden.move.visible_location.v1")
+    );
 }
 
 #[test]
@@ -92,6 +112,11 @@ fn provider_backed_agent_behavior_executes_mocked_move_and_records_feedback() {
     let behavior = ProviderBackedAgentBehavior::new("agent-1", provider, provider_action_catalog())
         .with_provider_config_ref("mock://openclaw-local-http")
         .with_agent_profile("agent_world_p0_low_freq_npc")
+        .with_execution_mode(ProviderExecutionMode::PlayerParity)
+        .with_environment_class("unit_test")
+        .with_fallback_reason("parity_probe")
+        .with_fixture_id("fixture.agent-1")
+        .with_replay_id("replay.agent-1")
         .with_memory_summary("goal=move");
 
     let mut runner: AgentRunner<ProviderBackedAgentBehavior<MockDecisionProvider>> =
@@ -136,6 +161,44 @@ fn provider_backed_agent_behavior_executes_mocked_move_and_records_feedback() {
         .action_catalog
         .iter()
         .any(|entry| entry.action_ref == "move_agent"));
+    assert_eq!(
+        snapshot.recorded_requests[0].observation.mode,
+        ProviderExecutionMode::PlayerParity
+    );
+    assert_eq!(
+        snapshot.recorded_requests[0]
+            .observation
+            .observation_schema_version,
+        DEFAULT_PROVIDER_OBSERVATION_SCHEMA_VERSION
+    );
+    assert_eq!(
+        snapshot.recorded_requests[0]
+            .observation
+            .action_schema_version,
+        DEFAULT_PROVIDER_ACTION_SCHEMA_VERSION
+    );
+    assert_eq!(
+        snapshot.recorded_requests[0]
+            .observation
+            .environment_class
+            .as_deref(),
+        Some("unit_test")
+    );
+    assert_eq!(
+        snapshot.recorded_requests[0]
+            .observation
+            .fallback_reason
+            .as_deref(),
+        Some("parity_probe")
+    );
+    assert_eq!(
+        snapshot.recorded_requests[0].fixture_id.as_deref(),
+        Some("fixture.agent-1")
+    );
+    assert_eq!(
+        snapshot.recorded_requests[0].replay_id.as_deref(),
+        Some("replay.agent-1")
+    );
 }
 
 #[test]

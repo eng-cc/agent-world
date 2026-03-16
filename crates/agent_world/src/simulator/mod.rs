@@ -56,7 +56,8 @@ pub use decision_provider::{
     DecisionRequest, DecisionResponse, FeedbackEnvelope, GoldenDecisionFixture, MemoryWriteIntent,
     MockDecisionProvider, MockDecisionProviderState, ObservationEnvelope,
     ProviderBackedAgentBehavior, ProviderDecision, ProviderDiagnostics, ProviderErrorEnvelope,
-    ProviderTokenUsage, ProviderTraceEnvelope, ProviderTranscriptEntry,
+    ProviderExecutionMode, ProviderTokenUsage, ProviderTraceEnvelope, ProviderTranscriptEntry,
+    DEFAULT_PROVIDER_ACTION_SCHEMA_VERSION, DEFAULT_PROVIDER_OBSERVATION_SCHEMA_VERSION,
 };
 pub use fragment_physics::{
     infer_element_ppm, mass_grams_from_volume_density, synthesize_fragment_budget,

@@ -1220,7 +1220,8 @@ mod tests {
     use agent_world::geometry::GeoPos;
     use agent_world::simulator::{
         ActionCatalogEntry, Observation, ObservationEnvelope, ObservedAgent, ObservedLocation,
-        ResourceKind, ResourceStock, WorldTime,
+        ProviderExecutionMode, ResourceKind, ResourceStock, WorldTime,
+        DEFAULT_PROVIDER_ACTION_SCHEMA_VERSION, DEFAULT_PROVIDER_OBSERVATION_SCHEMA_VERSION,
     };
 
     #[derive(Debug, Clone)]
@@ -1429,6 +1430,11 @@ mod tests {
             observation: ObservationEnvelope {
                 agent_id: "agent-1".to_string(),
                 world_time: 7,
+                mode: ProviderExecutionMode::HeadlessAgent,
+                observation_schema_version: DEFAULT_PROVIDER_OBSERVATION_SCHEMA_VERSION.to_string(),
+                action_schema_version: DEFAULT_PROVIDER_ACTION_SCHEMA_VERSION.to_string(),
+                environment_class: Some("openclaw_local_bridge".to_string()),
+                fallback_reason: None,
                 observation,
                 recent_event_summary: vec!["event: AgentRegistered".to_string()],
                 memory_summary: Some("prefer safe low-frequency actions".to_string()),
@@ -1440,6 +1446,8 @@ mod tests {
             },
             provider_config_ref: Some("openclaw://local-bridge".to_string()),
             agent_profile: Some("agent_world_p0_low_freq_npc".to_string()),
+            fixture_id: None,
+            replay_id: None,
             timeout_budget_ms: 7000,
         }
     }

@@ -10,9 +10,9 @@ use crate::runtime::{
 use crate::simulator::{
     Action as SimulatorAction, ActionCatalogEntry, ActionResult, AgentDecision, AgentDecisionTrace,
     AgentPromptProfile, AgentRunner, ChunkRuntimeConfig, LlmAgentBehavior,
-    OpenAiChatCompletionClient, OpenClawAdapter, ProviderBackedAgentBehavior, ResourceOwner,
-    WorldConfig, WorldEvent, WorldEventKind, WorldJournal, WorldKernel, WorldSnapshot,
-    CHUNK_GENERATION_SCHEMA_VERSION, SNAPSHOT_VERSION,
+    OpenAiChatCompletionClient, OpenClawAdapter, ProviderBackedAgentBehavior,
+    ProviderExecutionMode, ResourceOwner, WorldConfig, WorldEvent, WorldEventKind, WorldJournal,
+    WorldKernel, WorldSnapshot, CHUNK_GENERATION_SCHEMA_VERSION, SNAPSHOT_VERSION,
 };
 use crate::viewer::live::ViewerLiveDecisionMode;
 use crate::viewer::protocol::{AgentChatAck, AgentChatError};
@@ -655,7 +655,9 @@ impl RuntimeLlmSidecar {
                         std::process::id(),
                         agent_id
                     ))
-                    .with_agent_profile(settings.agent_profile.clone());
+                    .with_agent_profile(settings.agent_profile.clone())
+                    .with_execution_mode(ProviderExecutionMode::HeadlessAgent)
+                    .with_environment_class("runtime_live");
                     runner.register(behavior);
                 }
             }

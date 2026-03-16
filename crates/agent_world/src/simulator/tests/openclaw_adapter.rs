@@ -235,6 +235,24 @@ fn provider_backed_behavior_executes_openclaw_adapter_move_and_records_feedback(
                     decoded.agent_profile.as_deref(),
                     Some("agent_world_p0_low_freq_npc")
                 );
+                assert_eq!(
+                    decoded.observation.mode,
+                    ProviderExecutionMode::HeadlessAgent
+                );
+                assert_eq!(
+                    decoded.observation.observation_schema_version,
+                    DEFAULT_PROVIDER_OBSERVATION_SCHEMA_VERSION
+                );
+                assert_eq!(
+                    decoded.observation.action_schema_version,
+                    DEFAULT_PROVIDER_ACTION_SCHEMA_VERSION
+                );
+                assert_eq!(
+                    decoded.observation.environment_class.as_deref(),
+                    Some("adapter_test")
+                );
+                assert_eq!(decoded.fixture_id.as_deref(), Some("fixture.adapter.move"));
+                assert_eq!(decoded.replay_id.as_deref(), Some("replay.adapter.move"));
                 MockHttpResponse {
                     status_code: 200,
                     body: serde_json::to_string(&response_for_server)
@@ -257,6 +275,9 @@ fn provider_backed_behavior_executes_openclaw_adapter_move_and_records_feedback(
         ProviderBackedAgentBehavior::new("agent-1", adapter, openclaw_phase1_action_catalog())
             .with_provider_config_ref("openclaw://local-http")
             .with_agent_profile("agent_world_p0_low_freq_npc")
+            .with_environment_class("adapter_test")
+            .with_fixture_id("fixture.adapter.move")
+            .with_replay_id("replay.adapter.move")
             .with_memory_summary("goal=move");
     let mut runner: AgentRunner<ProviderBackedAgentBehavior<OpenClawAdapter>> = AgentRunner::new();
     runner.register(behavior);
