@@ -149,6 +149,7 @@
 - [x] TASK-WORLD_SIMULATOR-146 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 由 `qa_engineer` 为 `software_safe` 增加 prompt/chat/rollback/message-flow 专用回归脚本与失败签名，沉淀 `agent_spoke` 缺失的证据包。
 - [x] TASK-WORLD_SIMULATOR-147 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 由 `runtime_engineer` / `viewer_engineer` 补齐 `agent_chat -> AgentSpoke` 的测试态稳定触发与 runtime 事件兼容解析，让 software_safe 消息流回归不再依赖自然 LLM 回话。
 - [x] TASK-WORLD_SIMULATOR-148 (PRD-WORLD_SIMULATOR-040) [test_tier_required]: 完成 `OpenClaw` 双轨模式（`player_parity` / `headless_agent` / `debug_viewer`）专题 PRD / Project 建模，并回写模块主文档、索引与 devlog。
+- [x] TASK-WORLD_SIMULATOR-149 (PRD-WORLD_SIMULATOR-040) [test_tier_required]: 由 `agent_engineer` 冻结 `player_parity` / `headless_agent` 的 observation/action contract、schema version、模式元数据与禁止泄露真值边界，并形成 supporting spec。
 - [x] TASK-WORLD_SIMULATOR-110 (PRD-WORLD_SIMULATOR-035) [test_tier_required]: 为 `agent_world_viewer` 的 Web runtime fatal hook 增加“已知图形 fatal 仅自动 reload 一次”的恢复路径，收敛首开必须手动 reopen 的摩擦。
 - [x] TASK-WORLD_SIMULATOR-111 (PRD-WORLD_SIMULATOR-035) [test_tier_required]: 修复 `__AW_TEST__` runtime fatal 快照即时落盘，并复验 Viewer 首开不再以假性 `connecting` 掩盖图形 fatal。
 
@@ -242,6 +243,7 @@
 - `doc/world-simulator/llm/llm-openclaw-agent-experience-parity-2026-03-12.project.md`
 - `doc/world-simulator/llm/llm-openclaw-agent-dual-mode-2026-03-16.prd.md`
 - `doc/world-simulator/llm/llm-openclaw-agent-dual-mode-2026-03-16.project.md`
+- `doc/world-simulator/llm/openclaw-agent-dual-mode-contract-2026-03-16.md`
 - `doc/world-simulator/llm/openclaw-agent-profile-agent_world_p0_low_freq_npc-2026-03-13.md`
 - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase1-2026-03-04.prd.md`
 - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase2-2026-03-05.prd.md`
@@ -276,7 +278,7 @@
 ## 状态
 - 更新日期: 2026-03-16
 - 当前状态: active
-- 下一任务: `PRD-WORLD_SIMULATOR-040 T1（冻结 OpenClaw 双轨 observation/action contract 与模式元数据）`
+- 下一任务: `PRD-WORLD_SIMULATOR-040 T2（runtime mode metadata / replay-summary traceability）`
 - 最新完成: `TASK-WORLD_SIMULATOR-098`（world-simulator 模块 README / PRD 索引入口同步）。
 - 最新完成: `TASK-WORLD_SIMULATOR-099`（ui_review_result 目录说明与 world-simulator UI 评审入口同步）。
 - 最新完成: `TASK-WORLD_SIMULATOR-100`（world-simulator 文件级索引 design 链接补齐）。
@@ -317,10 +319,11 @@
 - 最新完成: `TASK-WORLD_SIMULATOR-134`（修复 `oasis7-run.sh` 默认下载目录的 `~` 展开，并补 bundle-first 路径回归脚本）。
 - 最新完成: `TASK-WORLD_SIMULATOR-133`（为 `oasis7` 增加 GitHub Release bundle-first 下载入口与显式路径策略）。
 - 最新完成: `TASK-WORLD_SIMULATOR-148`（`OpenClaw` 双轨模式（`player_parity` / `headless_agent` / `debug_viewer`）专题建模）。
-- 当前优先任务: `PRD-WORLD_SIMULATOR-040` 双轨 contract 建模 + `PRD-WORLD_SIMULATOR-038` parity 采证
+- 最新完成: `TASK-WORLD_SIMULATOR-149`（冻结 `OpenClaw` 双轨 observation/action contract、schema version 与禁止泄露真值边界）。
+- 当前优先任务: `PRD-WORLD_SIMULATOR-040` T2 mode metadata / replay traceability + `PRD-WORLD_SIMULATOR-038` parity 采证
 - parity 执行入口: `scripts/openclaw-parity-p0.sh` + `world_openclaw_parity_bench` 已落地，可先跑 openclaw-only/mock smoke，再接真实 builtin/OpenClaw 双边样本。
 - OpenClaw 首期 profile: `agent_world_p0_low_freq_npc` 已冻结，并由 `DecisionRequest.agent_profile` / parity summary / 产品 launcher 主链路统一透传。
-- 并行待办: 真实 `OpenClaw(Local HTTP)` 单 NPC 闭环试点（T5 / experimental） + 双轨模式 contract 落地（T1/T2/T3）
+- 并行待办: 真实 `OpenClaw(Local HTTP)` 单 NPC 闭环试点（T5 / experimental） + 双轨模式 runtime/viewer 落地（T2/T3）
 - 专题映射状态: 2026-03-02 批次 9/9、2026-03-03 批次 4/4、2026-03-04 批次 7/7、2026-03-05 批次 4/4、2026-03-06 批次 6/6 已纳入模块项目管理文档；`TASK-WORLD_SIMULATOR-057~108` 已完成。
 - 手册入口状态: `doc/world-simulator/viewer/viewer-manual.md` 为唯一活跃手册入口。
 - 视觉评分模板状态: `doc/world-simulator/prd/acceptance/visual-review-score-card.md` 已纳入文档树，采用卡片式评审覆盖 llm_bootstrap 场景 18 张截图。

@@ -22,6 +22,7 @@
 - 项目管理文档: `doc/world-simulator/llm/llm-openclaw-agent-dual-mode-2026-03-16.project.md`
 - 关联 parity 专题: `doc/world-simulator/llm/llm-openclaw-agent-experience-parity-2026-03-12.prd.md`
 - 关联 software-safe 专题: `doc/world-simulator/viewer/viewer-web-software-safe-mode-2026-03-16.prd.md`
+- supporting contract: `doc/world-simulator/llm/openclaw-agent-dual-mode-contract-2026-03-16.md`
 - 追踪主键: `PRD-WORLD_SIMULATOR-040`
 - 执行追踪: `TASK-WORLD_SIMULATOR-148`（建模）与后续 T1~T4
 
