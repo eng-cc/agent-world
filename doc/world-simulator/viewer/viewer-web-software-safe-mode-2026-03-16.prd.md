@@ -85,7 +85,7 @@
   - 最近事件流 / 控制反馈
   - `play/pause/step` 控制
   - 选中对象详情（Agent / Location）
-  - 当页面带有 viewer auth bootstrap 时，选中 Agent 的最小 `prompt/chat` 控制面（至少覆盖 Agent Chat 发送，以及 prompt override 的 preview/apply）
+  - 当页面带有 viewer auth bootstrap 时，选中 Agent 的最小 `prompt/chat` 控制面（至少覆盖 Agent Chat 发送、消息流展示，以及 prompt override 的 preview/apply/rollback）
 - 可延后/不保留：
   - 3D 摄像机、2D/3D 切换
   - 粒子、氛围、光照、景深、环境图生成
@@ -116,6 +116,7 @@
 - AC-4: `oasis7` 与 testing 手册明确说明 `software_safe` 是“玩法/验证兜底模式”，不是视觉质量签收模式。
 - AC-5: 当硬件 WebGL 可用时，`auto` 不得错误降级到 `software_safe`，以免影响正常画面验收。
 - AC-6: 在带 viewer auth bootstrap 的 software-safe 页面中，玩家可对选中 Agent 发起最小 `prompt/chat` 闭环：发送一条 chat，并完成一次 prompt preview/apply，且 `__AW_TEST__` 能返回对应 ack/error 反馈。
+- AC-7: software-safe 的选中 Agent 控制面支持一次 prompt rollback，并能把玩家出站 chat ack 与 `agent_spoke` 事件汇成可见消息流；rollback 成功后需要刷新 prompt 版本/状态。
 
 ## 6. Non-Functional Requirements
 - NFR-1: `software_safe` 模式不得依赖硬件 GPU；在 software renderer / 无 WebGL / 受限 WebGL 环境下仍可启动。

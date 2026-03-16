@@ -49,6 +49,7 @@ const state = {
   snapshot: null,
   metrics: null,
   recentEvents: [],
+  chatHistory: [],
   selectedObject: null,
   auth: {
     available: false,
@@ -60,6 +61,7 @@ const state = {
   promptDraft: {
     agentId: null,
     currentVersion: 0,
+    rollbackTargetVersion: 0,
     updatedBy: "",
     updatedAtTick: 0,
     systemPrompt: "",
@@ -252,6 +254,9 @@ function getState() {
     authPublicKey: state.auth.publicKey,
     authError: state.auth.error,
     selectedPromptVersion: state.promptDraft.currentVersion || 0,
+    promptRollbackTargetVersion: state.promptDraft.rollbackTargetVersion || 0,
+    chatHistoryCount: state.chatHistory.length,
+    chatHistory: clone(state.chatHistory),
   };
 }
 
@@ -330,9 +335,11 @@ function syncAgentInteractionDrafts(force = false) {
   const agentId = selectedAgentId();
   const profile = selectedAgentPromptProfile();
   if (force || state.promptDraft.agentId !== agentId || (!state.promptDraft.dirty && agentId)) {
+    const currentVersion = Number(profile?.version || 0);
     state.promptDraft = {
       agentId,
-      currentVersion: Number(profile?.version || 0),
+      currentVersion,
+      rollbackTargetVersion: Math.max(0, currentVersion - 1),
       updatedBy: String(profile?.updated_by || ""),
       updatedAtTick: Number(profile?.updated_at_tick || 0),
       systemPrompt: String(profile?.system_prompt_override || ""),
@@ -448,7 +455,7 @@ function describeControls() {
       },
       {
         action: "sendPromptControl",
-        description: "Preview or apply prompt overrides for an agent",
+        description: "Preview, apply, or rollback prompt overrides for an agent",
       },
     ],
     usage: "Use fillControlExample(action), sendControl(action), sendAgentChat(agentId, message), sendPromptControl(mode, payload).",
@@ -816,6 +823,28 @@ async function buildPromptControlAuthProof(mode, request, auth) {
   };
 }
 
+async function buildPromptRollbackAuthProof(request, auth) {
+  const nonce = nextAuthNonce();
+  const payload = {
+    operation: "prompt_control_rollback",
+    agent_id: request.agent_id,
+    player_id: auth.playerId,
+    public_key: auth.publicKey,
+    nonce,
+    to_version: request.to_version,
+    expected_version: request.expected_version ?? null,
+    updated_by: request.updated_by ?? null,
+  };
+  const signingPayload = buildAuthEnvelope(payload);
+  return {
+    scheme: "ed25519",
+    player_id: auth.playerId,
+    public_key: auth.publicKey,
+    nonce,
+    signature: await signAuthPayload(signingPayload, auth),
+  };
+}
+
 function buildPromptRequestFromDraft(agentId, draftOverrides) {
   const currentProfile = selectedAgentPromptProfile();
   if (!agentId || !currentProfile) {
@@ -853,6 +882,69 @@ function encodePromptRequestForJson(request) {
     short_term_goal_override: encodePatch(request.short_term_goal_override),
     long_term_goal_override: encodePatch(request.long_term_goal_override),
   };
+}
+
+function buildPromptRollbackRequest(agentId, toVersion) {
+  const profile = selectedAgentPromptProfile();
+  const targetVersion = Number(toVersion);
+  if (!agentId || !profile) {
+    throw new Error("select an agent before rolling back prompt overrides");
+  }
+  if (!Number.isInteger(targetVersion) || targetVersion < 0) {
+    throw new Error("prompt rollback requires integer toVersion >= 0");
+  }
+  return {
+    agent_id: agentId,
+    player_id: state.auth.playerId,
+    public_key: state.auth.publicKey,
+    to_version: targetVersion,
+    expected_version: Number(profile.version || 0),
+    updated_by: state.auth.playerId,
+  };
+}
+
+function pushChatHistory(entry) {
+  if (!entry) {
+    return;
+  }
+  state.chatHistory.unshift({
+    id: entry.id || `${entry.source || "chat"}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    source: entry.source || "event",
+    agentId: entry.agentId || null,
+    locationId: entry.locationId || null,
+    message: String(entry.message || ""),
+    tick: Number(entry.tick || 0),
+    speaker: entry.speaker || null,
+    playerId: entry.playerId || null,
+    targetAgentId: entry.targetAgentId || null,
+    intentSeq: entry.intentSeq || null,
+  });
+  state.chatHistory = state.chatHistory.slice(0, 40);
+}
+
+function extractAgentSpokeEntry(event) {
+  const kind = event?.kind;
+  if (kind?.type !== "agent_spoke") {
+    return null;
+  }
+  const data = kind.data || {};
+  return {
+    id: `event-${event.id}`,
+    source: "event",
+    agentId: data.agent_id || null,
+    locationId: data.location_id || null,
+    message: data.message || "",
+    tick: Number(event.time || 0),
+    speaker: data.agent_id || null,
+    targetAgentId: data.target_agent_id || null,
+  };
+}
+
+function requestSnapshotSafe() {
+  try {
+    sendJson({ type: "request_snapshot" });
+  } catch (_) {
+  }
 }
 
 function createSemanticFeedback(kind, action, agentId, extra = {}) {
@@ -929,6 +1021,8 @@ function sendAgentChat(agentIdOrPayload, maybeMessage) {
   }
   const feedback = createSemanticFeedback("chat", "agent_chat", agentId, {
     effect: "queued for signing and send",
+    pendingMessage: message,
+    pendingPlayerId: state.auth.playerId || null,
   });
   state.lastChatFeedback = feedback;
   enqueueSemanticCommand({
@@ -961,8 +1055,8 @@ function sendAgentChat(agentIdOrPayload, maybeMessage) {
 
 function sendPromptControl(mode, payload = null) {
   const normalizedMode = String(mode || "").trim().toLowerCase();
-  if (!["preview", "apply"].includes(normalizedMode)) {
-    return { ok: false, reason: "prompt control mode must be preview or apply" };
+  if (!["preview", "apply", "rollback"].includes(normalizedMode)) {
+    return { ok: false, reason: "prompt control mode must be preview, apply, or rollback" };
   }
   const selectedId = selectedAgentId();
   const agentId = String(payload?.agentId || payload?.agent_id || selectedId || "");
@@ -971,17 +1065,25 @@ function sendPromptControl(mode, payload = null) {
   }
   let request;
   try {
-    request = buildPromptRequestFromDraft(agentId, {
-      systemPrompt: payload?.systemPrompt ?? payload?.system_prompt_override ?? state.promptDraft.systemPrompt,
-      shortTermGoal: payload?.shortTermGoal ?? payload?.short_term_goal_override ?? state.promptDraft.shortTermGoal,
-      longTermGoal: payload?.longTermGoal ?? payload?.long_term_goal_override ?? state.promptDraft.longTermGoal,
-    });
+    if (normalizedMode === "rollback") {
+      const currentVersion = Number(state.promptDraft.currentVersion || selectedAgentPromptProfile()?.version || 0);
+      const fallbackVersion = Math.max(0, currentVersion - 1);
+      const toVersion = payload?.toVersion ?? payload?.to_version ?? fallbackVersion;
+      request = buildPromptRollbackRequest(agentId, toVersion);
+    } else {
+      request = buildPromptRequestFromDraft(agentId, {
+        systemPrompt: payload?.systemPrompt ?? payload?.system_prompt_override ?? state.promptDraft.systemPrompt,
+        shortTermGoal: payload?.shortTermGoal ?? payload?.short_term_goal_override ?? state.promptDraft.shortTermGoal,
+        longTermGoal: payload?.longTermGoal ?? payload?.long_term_goal_override ?? state.promptDraft.longTermGoal,
+      });
+    }
   } catch (error) {
     return { ok: false, reason: String(error) };
   }
 
   const feedback = createSemanticFeedback("prompt", `prompt_${normalizedMode}`, agentId, {
     effect: "queued for signing and send",
+    toVersion: request.to_version ?? null,
   });
   state.lastPromptFeedback = feedback;
   enqueueSemanticCommand({
@@ -992,8 +1094,16 @@ function sendPromptControl(mode, payload = null) {
       feedback.stage = "signing";
       feedback.effect = "building auth proof";
       render();
-      const jsonRequest = encodePromptRequestForJson(request);
-      jsonRequest.auth = await buildPromptControlAuthProof(normalizedMode, request, state.auth);
+      let commandRequest;
+      if (normalizedMode === "rollback") {
+        commandRequest = {
+          ...request,
+          auth: await buildPromptRollbackAuthProof(request, state.auth),
+        };
+      } else {
+        commandRequest = encodePromptRequestForJson(request);
+        commandRequest.auth = await buildPromptControlAuthProof(normalizedMode, request, state.auth);
+      }
       feedback.stage = "sent";
       feedback.effect = `prompt ${normalizedMode} request sent; waiting for ack`;
       state.lastPromptFeedback = feedback;
@@ -1001,7 +1111,7 @@ function sendPromptControl(mode, payload = null) {
         type: "prompt_control",
         command: {
           mode: normalizedMode,
-          request: jsonRequest,
+          request: commandRequest,
         },
       });
       render();
@@ -1037,6 +1147,7 @@ function applyPromptAckLocally(ack) {
     state.promptDraft = {
       agentId,
       currentVersion: nextProfile.version,
+      rollbackTargetVersion: Math.max(0, Number(nextProfile.version || 0) - 1),
       updatedBy: nextProfile.updated_by,
       updatedAtTick: nextProfile.updated_at_tick,
       systemPrompt: String(nextProfile.system_prompt_override || ""),
@@ -1049,18 +1160,29 @@ function applyPromptAckLocally(ack) {
 
 function handlePromptControlAck(ack) {
   const feedback = state.lastPromptFeedback || createSemanticFeedback("prompt", "prompt_ack", ack?.agent_id || null);
-  feedback.stage = ack?.preview ? "preview_ack" : "apply_ack";
+  const operation = String(ack?.operation || (ack?.preview ? "preview" : "apply"));
+  feedback.stage = ack?.preview ? "preview_ack" : operation === "rollback" ? "rollback_ack" : "apply_ack";
   feedback.ok = true;
   feedback.accepted = true;
   feedback.reason = null;
   feedback.effect = ack?.preview
     ? `prompt preview ready: version=${ack.version}`
-    : `prompt applied: version=${ack.version}`;
+    : operation === "rollback"
+      ? `prompt rolled back via version=${ack.version} → target=${Number(ack?.rolled_back_to_version || 0)}`
+      : `prompt applied: version=${ack.version}`;
   feedback.response = clone(ack);
   state.lastPromptFeedback = feedback;
-  if (!ack?.preview) {
-    applyPromptAckLocally(ack);
+  if (ack?.preview) {
+    return;
   }
+  if (operation === "rollback") {
+    state.promptDraft.currentVersion = Number(ack?.version || state.promptDraft.currentVersion || 0);
+    state.promptDraft.rollbackTargetVersion = Math.max(0, state.promptDraft.currentVersion - 1);
+    state.promptDraft.dirty = false;
+    requestSnapshotSafe();
+    return;
+  }
+  applyPromptAckLocally(ack);
 }
 
 function handlePromptControlError(error) {
@@ -1083,6 +1205,17 @@ function handleAgentChatAck(ack) {
   feedback.effect = `chat accepted at tick ${Number(ack?.accepted_at_tick || state.logicalTime)}`;
   feedback.response = clone(ack);
   state.lastChatFeedback = feedback;
+  pushChatHistory({
+    id: `chat-ack-${feedback.id}`,
+    source: "player",
+    agentId: ack?.agent_id || feedback.agentId || null,
+    message: feedback.pendingMessage || "",
+    tick: Number(ack?.accepted_at_tick || state.logicalTime || 0),
+    speaker: feedback.pendingPlayerId || state.auth.playerId || null,
+    playerId: feedback.pendingPlayerId || state.auth.playerId || null,
+    targetAgentId: ack?.agent_id || feedback.agentId || null,
+    intentSeq: ack?.intent_seq || null,
+  });
 }
 
 function handleAgentChatError(error) {
@@ -1106,11 +1239,16 @@ function handleViewerMessage(message) {
     case "snapshot":
       handleSnapshot(message.snapshot);
       break;
-    case "event":
+    case "event": {
       addRecentEvent(message.event);
+      const chatEntry = extractAgentSpokeEntry(message.event);
+      if (chatEntry) {
+        pushChatHistory(chatEntry);
+      }
       state.logicalTime = Math.max(state.logicalTime, Number(message.event?.time || 0));
       state.tick = state.logicalTime;
       break;
+    }
     case "metrics":
       handleMetrics(message.time, message.metrics);
       break;
@@ -1401,6 +1539,9 @@ function renderInteractionPanel() {
   const authNotice = authReady
     ? `<div class="badge-row"><span class="badge badge--good">auth bootstrap ready</span><span class="badge">player=${escapeHtml(state.auth.playerId)}</span></div>`
     : `<div class="empty">Prompt/chat require viewer auth bootstrap. Current status: ${escapeHtml(state.auth.error || "missing")}</div>`;
+  const chatHistory = state.chatHistory
+    .filter((entry) => entry.agentId === agentId || entry.targetAgentId === agentId)
+    .slice(0, 12);
 
   return `
     <div class="stack">
@@ -1433,6 +1574,13 @@ function renderInteractionPanel() {
             <button data-prompt-action="preview" ${authReady ? "" : "disabled"}>Preview Prompt</button>
             <button data-prompt-action="apply" ${authReady ? "" : "disabled"}>Apply Prompt</button>
           </div>
+          <div class="toolbar">
+            <div class="field" style="margin:0; min-width:180px; flex:1;">
+              <label for="prompt-rollback-version">Rollback Target Version</label>
+              <input id="prompt-rollback-version" type="number" min="0" step="1" value="${Number(state.promptDraft.rollbackTargetVersion || 0)}" ${authReady ? "" : "disabled"} />
+            </div>
+            <button data-prompt-action="rollback" ${authReady ? "" : "disabled"}>Rollback Prompt</button>
+          </div>
           ${promptFeedback
             ? `<div class="badge-row"><span class="${feedbackBadgeClass(promptFeedback)}">${escapeHtml(promptFeedback.stage)}</span></div>
                <pre class="json">${escapeHtml(JSON.stringify(promptFeedback, null, 2))}</pre>`
@@ -1453,6 +1601,26 @@ function renderInteractionPanel() {
             ? `<div class="badge-row"><span class="${feedbackBadgeClass(chatFeedback)}">${escapeHtml(chatFeedback.stage)}</span></div>
                <pre class="json">${escapeHtml(JSON.stringify(chatFeedback, null, 2))}</pre>`
             : '<div class="empty">No chat feedback yet.</div>'}
+          <div>
+            <div class="panel__title" style="margin-bottom:10px;">Message Flow</div>
+            <div class="event-list">
+              ${chatHistory.length
+                ? chatHistory
+                    .map(
+                      (entry) => `
+                        <div class="event-card">
+                          <div class="event-card__title">
+                            <span>${escapeHtml(entry.source === "player" ? `player → ${entry.targetAgentId || entry.agentId || "agent"}` : `${entry.agentId || "agent"} spoke`)}</span>
+                            <span>tick=${Number(entry.tick || 0)}</span>
+                          </div>
+                          <div class="event-card__meta">speaker=${escapeHtml(entry.speaker || entry.playerId || "-")} · location=${escapeHtml(entry.locationId || "-")}</div>
+                          <pre class="json">${escapeHtml(JSON.stringify(entry, null, 2))}</pre>
+                        </div>`,
+                    )
+                    .join("")
+                : '<div class="empty">No chat history for this agent yet.</div>'}
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1553,9 +1721,23 @@ function bindEvents() {
       state.promptDraft.dirty = true;
     });
   }
+  const promptRollbackVersion = document.getElementById("prompt-rollback-version");
+  if (promptRollbackVersion) {
+    promptRollbackVersion.addEventListener("input", (event) => {
+      const nextValue = Number(event.target.value || 0);
+      state.promptDraft.rollbackTargetVersion = Math.max(0, Math.floor(nextValue || 0));
+    });
+  }
   document.querySelectorAll("[data-prompt-action]").forEach((button) => {
     button.addEventListener("click", () => {
-      sendPromptControl(button.getAttribute("data-prompt-action"), null);
+      const action = button.getAttribute("data-prompt-action");
+      if (action === "rollback") {
+        sendPromptControl("rollback", {
+          toVersion: Number(state.promptDraft.rollbackTargetVersion || 0),
+        });
+        return;
+      }
+      sendPromptControl(action, null);
     });
   });
 
