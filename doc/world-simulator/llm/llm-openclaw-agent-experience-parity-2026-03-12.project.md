@@ -26,14 +26,14 @@
 - `doc/world-simulator/llm/openclaw-agent-profile-agent_world_p0_low_freq_npc-2026-03-13.md`
 
 ## 状态
-- 最近更新：2026-03-13
+- 最近更新：2026-03-17
 - 当前阶段: T4 in_progress
-- 当前任务: `使用 scripts/openclaw-parity-p0.sh 采集真实 OpenClaw(Local HTTP) 的 P0 parity 证据，并补齐 QA/producer 双签材料`
-- owner: `agent_engineer`
+- 当前任务: `在 PRD-WORLD_SIMULATOR-040 已冻结双轨默认模式后，继续采集真实 builtin/OpenClaw 的 P0 parity 证据，并补齐 QA/producer 双签材料`
+- owner: `qa_engineer`
 - 联审: `qa_engineer`、`viewer_engineer`、`runtime_engineer`
 - 发起建模: `producer_system_designer`
 - 备注: 本专题将“体验等价”提升为上线门禁；后续若 `OpenClaw` 未达到 parity，只允许保留在 `experimental`，不得标记为默认体验。
 
-- T4 进展备注: 已落地 `crates/agent_world/src/bin/world_openclaw_parity_bench.rs` 与 `scripts/openclaw-parity-p0.sh`，用于按 `PRD-WORLD_SIMULATOR-038` benchmark 协议输出 `raw/*.jsonl`、单样本 summary、聚合 `combined.csv`、`failures.md` 与 `scorecard-links.md`；已通过 `openclaw_local_http` mock localhost smoke 验证产物结构，真实 builtin/OpenClaw 对标仍待本机 provider 与 QA/producer 实测。
+- T4 进展备注: 已落地 `crates/agent_world/src/bin/world_openclaw_parity_bench.rs` 与 `scripts/openclaw-parity-p0.sh`，用于按 `PRD-WORLD_SIMULATOR-038` benchmark 协议输出 `raw/*.jsonl`、单样本 summary、聚合 `combined.csv`、`failures.md` 与 `scorecard-links.md`；`PRD-WORLD_SIMULATOR-040` 已于 `2026-03-17` 完成 `headless_agent` vs `player_parity` 双模式默认策略冻结，真实 builtin/OpenClaw 对标现在成为唯一剩余 T4 缺口。
 - T4 口径补充: parity harness 已新增 `--openclaw-agent-profile` 并默认固定到 `agent_world_p0_low_freq_npc`；`DecisionRequest.agent_profile`、summary provider 信息与批处理脚本现已保留该 profile，便于 QA/producer 确认样本不是在“未知通用 skill”下跑出来的结果。
 - T4 主链路补充: 产品 launcher 主链路现已可把同一 profile 透传到真实 runtime live，因此后续 builtin/OpenClaw 双边 parity 样本可直接复用 GUI launcher 配置，而不必只依赖 bench harness。

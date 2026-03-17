@@ -59,11 +59,27 @@
 
 ### 3.2 对 T4 的当前影响
 - “缺少真实 `player_parity` lane”这一代码阻断已经解除。
-- T4 现在具备正式执行前提，剩余工作是由 `qa_engineer` / `producer_system_designer` 基于真实双模式样本给出默认模式与阻断结论。
+- T4 已完成正式执行；双模式默认策略与阻断结论已在本文件第 4 节冻结。
 
-## 4. QA 建议
+## 4. QA / Producer 对照结论（2026-03-17）
+### 4.1 同场景样本对比
+- 对照场景：`P0-001` / `llm_bootstrap` / `seed=5` / `4 ticks` / `agent_profile=agent_world_p0_low_freq_npc`。
+- `headless_agent`：`completion_time_ms=23894`、`decision_steps=4`、`invalid_action_count=0`、`timeout_count=0`、`trace_completeness_ratio_ppm=1000000`、`median_latency_ms=5890`、`p95_latency_ms=6316`。
+- `player_parity`：`completion_time_ms=23829`、`decision_steps=4`、`invalid_action_count=0`、`timeout_count=0`、`trace_completeness_ratio_ppm=1000000`、`median_latency_ms=5914`、`p95_latency_ms=6236`。
+- 差值结论：`decision_steps`、`invalid_action_count`、`timeout_count`、`trace_completeness_ratio_ppm`、`context_drift_count` 全部一致；`median_latency_ms` 差值 `+24ms`，`p95_latency_ms` 差值 `-80ms`，未观察到足以改变玩法判定的体验偏差。
+
+### 4.2 QA 结论
+- 结论：`pass`。当前样本已满足 `PRD-WORLD_SIMULATOR-040` T4 对“同一 OpenClaw 场景、双模式对照采证、输出默认模式与阻断结论”的要求。
+- 风险评语：本轮结论只覆盖 `P0-001` 单场景、单样本，不替代 `PRD-WORLD_SIMULATOR-038` 对 builtin/OpenClaw 多样本 parity 的统计门禁。
+- 回归口径：`headless_agent` 继续作为无 GUI / 无 GPU / 无浏览器环境下的回归主链路；`player_parity` 保留为体验对照 lane。
+
+### 4.3 Producer 结论
+- 默认模式策略：冻结 `headless_agent` 为 CI / server / 自动回归默认模式；冻结 `player_parity` 为制作人 / QA 的体验对照与准入门禁；`debug_viewer` 继续保持 observer-only 旁路层。
+- 放行边界：只有当后续 `player_parity` 在目标场景内持续维持与 `headless_agent` 一致的结果口径时，才允许把“玩家体验等价”口径外推到 `PRD-WORLD_SIMULATOR-038`。
+
+## 5. 后续建议
+- 下一必需动作：推进 `PRD-WORLD_SIMULATOR-038` 的真实 builtin/OpenClaw parity 扩面采证与 QA/producer 双签。
 - 当前口径：
   - `headless_agent`：继续作为无 GUI / 无 GPU 回归主链路。
   - `debug_viewer`：继续作为旁路观战/解释层。
-  - `player_parity`：已具备真实运行 lane，可进入正式对照采证。
-- 下一个必需动作：由 `qa_engineer` / `producer_system_designer` 在同一 OpenClaw 场景上重跑并对比 `player_parity` vs `headless_agent`，回写 T4 默认模式与阻断结论。
+  - `player_parity`：作为体验对照 lane 保留，不作为默认回归主链路。

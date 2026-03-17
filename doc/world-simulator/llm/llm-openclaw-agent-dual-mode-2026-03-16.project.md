@@ -13,7 +13,7 @@
 - [x] T2 (PRD-WORLD_SIMULATOR-040) [test_tier_required]: 由 `runtime_engineer` 落地 mode metadata、统一 replay/summary 追踪字段，并确保所有模式共享权威动作校验。
 - [x] T3 (PRD-WORLD_SIMULATOR-040) [test_tier_required]: 由 `viewer_engineer` 把 `debug_viewer` 明确收口为旁路订阅层，并补 mode/fallback 可观测性与 software-safe 对照入口。
 - [x] T3.5 (PRD-WORLD_SIMULATOR-040) [test_tier_required]: 由 `agent_engineer` 接通真实 `player_parity` 执行 lane 到 runtime live / `world_game_launcher` / `world_openclaw_parity_bench` / `oasis7`，并完成 `headless_agent` / `player_parity` 双 smoke 采证，解除 T4 代码阻断。
-- [ ] T4 (PRD-WORLD_SIMULATOR-040) [test_tier_full]: 由 `qa_engineer` / `producer_system_designer` 对同一 OpenClaw 场景执行 `player_parity` vs `headless_agent` 对照采证，形成默认模式与阻断结论。
+- [x] T4 (PRD-WORLD_SIMULATOR-040) [test_tier_full]: 由 `qa_engineer` / `producer_system_designer` 对同一 OpenClaw 场景执行 `player_parity` vs `headless_agent` 对照采证，形成默认模式与阻断结论。
 
 ## 依赖
 - `doc/world-simulator/llm/llm-openclaw-agent-experience-parity-2026-03-12.prd.md`
@@ -30,10 +30,10 @@
 
 ## 状态
 - 最近更新：2026-03-17
-- 当前阶段: T4 pending（代码阻断已解除）
-- 当前任务: 由 `qa_engineer` / `producer_system_designer` 基于真实 `player_parity` / `headless_agent` 样本执行正式对照采证，并形成默认模式结论。
+- 当前阶段: completed
+- 当前任务: `none`（T4 已完成；后续转入 `PRD-WORLD_SIMULATOR-038` 的 builtin/OpenClaw parity 扩面采证）。
 - owner: `qa_engineer`
 - 联审: `agent_engineer`、`runtime_engineer`、`viewer_engineer`、`qa_engineer`
 - 发起建模: `producer_system_designer`
 - 备注: 本专题只定义“双轨模式”的产品目标与执行边界；它不替代 `PRD-WORLD_SIMULATOR-038` 的 parity 门禁，而是为 parity/回归/观战拆出各自清晰口径。
-- 当前阻断: 原“`player_parity` 产线执行 lane 尚未接线”阻断已由 `TASK-WORLD_SIMULATOR-152` 解除；`2026-03-17` 已通过 `.agents/skills/oasis7/scripts/oasis7-run.sh smoke --execution-mode <mode>` 分别采到 `headless_agent` / `player_parity` 真实 smoke，T4 当前仅剩 QA / producer 正式对照结论。详见 `doc/testing/openclaw-dual-mode-t4-blocker-2026-03-16.md`。
+- 当前阻断: `none`。T4 已基于 `2026-03-17` 的真实 `headless_agent` / `player_parity` 双样本完成 QA / producer 对照采证，并冻结默认模式：`headless_agent` 作为 CI / server / 回归默认，`player_parity` 作为体验对照与准入门禁。详见 `doc/testing/openclaw-dual-mode-t4-blocker-2026-03-16.md`。
