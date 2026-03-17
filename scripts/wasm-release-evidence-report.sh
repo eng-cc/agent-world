@@ -28,6 +28,10 @@ Options:
   --module-sets <csv>        Module sets to process (default: m1,m4,m5)
   --runner-label <label>     Runner label used for collection (default: detected host platform)
   --expected-runners <csv>   Expected runner labels for verify (default: current runner only)
+  --summary-import-dir <path>
+                             Import pre-collected summary jsons before verify.
+                             Accepts either <path>/<module-set>/*.json or, when only one
+                             module set is requested, a flat <path>/*.json directory.
   --skip-collect             Verify/report only; do not collect current-runner summaries
   --dry-run                  Print actions and write placeholder report without execution
   -h, --help                 Show help
@@ -83,10 +87,47 @@ format_cmd() {
   printf '%s' "$formatted"
 }
 
+copy_summary_imports() {
+  local module_set="$1"
+  local import_root="$2"
+  local target_dir="$3"
+  local module_set_count="$4"
+
+  [[ -n "$import_root" ]] || return 0
+  [[ -d "$import_root" ]] || {
+    echo "error: summary import dir not found: $import_root" >&2
+    exit 2
+  }
+
+  local source_dir="$import_root/$module_set"
+  if [[ ! -d "$source_dir" ]]; then
+    if [[ "$module_set_count" -eq 1 ]]; then
+      source_dir="$import_root"
+    else
+      return 0
+    fi
+  fi
+
+  local found=0
+  local path=""
+  shopt -s nullglob
+  for path in "$source_dir"/*.json; do
+    found=1
+    cp "$path" "$target_dir/$(basename "$path")"
+  done
+  shopt -u nullglob
+
+  if [[ "$found" -eq 0 && "$module_set_count" -eq 1 && "$source_dir" == "$import_root" ]]; then
+    echo "error: summary import dir has no .json files: $import_root" >&2
+    exit 2
+  fi
+}
+
 out_dir=".tmp/wasm_release_evidence_report"
 module_sets_csv="m1,m4,m5"
 runner_label=""
 expected_runners_csv=""
+summary_import_dir=""
 skip_collect=0
 dry_run=0
 
@@ -106,6 +147,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --expected-runners)
       expected_runners_csv=${2:-}
+      shift 2
+      ;;
+    --summary-import-dir)
+      summary_import_dir=${2:-}
       shift 2
       ;;
     --skip-collect)
@@ -150,6 +195,12 @@ mkdir -p "$logs_dir" "$summaries_dir"
 overall_status="PASS"
 
 IFS=',' read -r -a module_sets <<< "$module_sets_csv"
+module_set_count=0
+for module_set in "${module_sets[@]}"; do
+  module_set="$(echo "$module_set" | xargs)"
+  [[ -n "$module_set" ]] || continue
+  module_set_count=$((module_set_count + 1))
+done
 
 for module_set in "${module_sets[@]}"; do
   module_set="$(echo "$module_set" | xargs)"
@@ -181,11 +232,15 @@ for module_set in "${module_sets[@]}"; do
     echo "module_set=$module_set"
     echo "runner_label=$runner_label"
     echo "expected_runners=$expected_runners_csv"
+    echo "summary_import_dir=$summary_import_dir"
     echo "collect_cmd=$(format_cmd "${collect_cmd[@]}")"
     echo "verify_cmd=$(format_cmd "${verify_cmd[@]}")"
   } > "$verify_log"
 
   if [[ "$dry_run" -eq 1 ]]; then
+    if [[ -n "$summary_import_dir" ]]; then
+      echo "+ import summaries from $summary_import_dir (dry-run)"
+    fi
     if [[ "$skip_collect" -eq 0 ]]; then
       echo "+ $(format_cmd "${collect_cmd[@]}") (dry-run)"
       collect_status="dry_run"
@@ -194,6 +249,8 @@ for module_set in "${module_sets[@]}"; do
     verify_status="dry_run"
     module_note="dry_run"
   else
+    copy_summary_imports "$module_set" "$summary_import_dir" "$module_summary_dir" "$module_set_count"
+
     if [[ "$skip_collect" -eq 0 ]]; then
       collect_status="passed"
       set +e
@@ -238,12 +295,12 @@ for module_set in "${module_sets[@]}"; do
     >> "$module_sets_tsv"
 done
 
-python3 - "$module_sets_tsv" "$summary_json" "$run_dir" "$runner_label" "$expected_runners_csv" "$overall_status" "$skip_collect" "$dry_run" <<'PY'
+python3 - "$module_sets_tsv" "$summary_json" "$run_dir" "$runner_label" "$expected_runners_csv" "$overall_status" "$skip_collect" "$dry_run" "$summary_import_dir" <<'PY'
 import json
 import pathlib
 import sys
 
-module_sets_tsv, summary_json, run_dir, runner_label, expected_runners_csv, overall_status, skip_collect, dry_run = sys.argv[1:]
+module_sets_tsv, summary_json, run_dir, runner_label, expected_runners_csv, overall_status, skip_collect, dry_run, summary_import_dir = sys.argv[1:]
 
 module_sets = []
 with open(module_sets_tsv, "r", encoding="utf-8") as fh:
@@ -279,6 +336,7 @@ payload = {
     "overall_status": overall_status,
     "skip_collect": skip_collect == "1",
     "dry_run": dry_run == "1",
+    "summary_import_dir": summary_import_dir or None,
     "module_sets": module_sets,
 }
 with open(summary_json, "w", encoding="utf-8") as fh:
@@ -292,6 +350,7 @@ PY
   echo "- Run dir: \`$run_dir\`"
   echo "- Runner label: \`$runner_label\`"
   echo "- Expected runners: \`$expected_runners_csv\`"
+  echo "- Summary import dir: \`${summary_import_dir:-none}\`"
   echo "- Skip collect: \`$skip_collect\`"
   echo "- Dry run: \`$dry_run\`"
   echo "- Overall: $overall_status"

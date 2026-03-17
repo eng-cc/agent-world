@@ -81,7 +81,7 @@
   - runner 矩阵：`(m4|m5) x (ubuntu-24.04/linux-x86_64, macos-14/darwin-arm64)`
   - 每个 runner 执行：`./scripts/ci-m1-wasm-summary.sh --module-set <m4|m5> --runner-label ... --out ...`
   - 汇总 job 对账：`./scripts/ci-verify-m1-wasm-summaries.py --module-set <m4|m5> --summary-dir ... --expected-runners linux-x86_64,darwin-arm64`
-  - 固定证据归档入口：`./scripts/wasm-release-evidence-report.sh --skip-collect --expected-runners linux-x86_64,darwin-arm64`（对已收集的 m1/m4/m5 多 runner summary 统一出具 `summary.md/json`）
+  - 固定证据归档入口：`./scripts/wasm-release-evidence-report.sh --skip-collect --summary-import-dir <downloaded-summary-dir> --expected-runners linux-x86_64,darwin-arm64`（对已收集的 m1/m4/m5 多 runner summary 统一出具 `summary.md/json`）
 
 ### 当前 CI 未直接覆盖（需手册补齐）
 - Web UI agent-browser 闭环（现为手动/agent 流程，不在 CI 默认路径中）。
@@ -408,6 +408,11 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required lon
 ./scripts/module-release-node-acceptance.sh
 ./scripts/module-release-node-acceptance.sh --include-full
 ./scripts/wasm-release-evidence-report.sh --expected-runners linux-x86_64,darwin-arm64
+./scripts/wasm-release-evidence-report.sh \
+  --skip-collect \
+  --summary-import-dir output/ci/m1-wasm-summary \
+  --module-sets m1 \
+  --expected-runners linux-x86_64,darwin-arm64
 ```
 - 产物与证据：
   - 默认输出目录：`.tmp/module_release_node_acceptance/<timestamp>/`
