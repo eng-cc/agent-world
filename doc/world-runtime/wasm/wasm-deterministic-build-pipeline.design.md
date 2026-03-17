@@ -96,12 +96,10 @@ canonical packaged wasm
 - 绑定只读源码挂载与可写输出目录。
 - 把 `module_id`、`manifest_path`、`profile` 转交给容器内 build suite。
 
-建议保留一条显式的实验入口：
-- `AGENT_WORLD_WASM_EXPERIMENTAL_NATIVE_BUILD=1`
-
-但约束是：
-- 这条 native path 不能写发布级 manifest。
-- 也不能作为 CI / release gate 的成功依据。
+约束改为：
+- 不再保留 host-native fallback。
+- Docker 不可用时直接失败，避免任何宿主直编结果进入发布链路。
+- wrapper 只接受同一 workspace root 下的 `manifest_path + out_dir`，并统一映射到容器内 `/workspace`。
 
 ### 5.3 Containerized Build Suite
 `tools/wasm_build_suite` 不需要被替换，但需要重新定位：
@@ -180,7 +178,7 @@ CI 需要改成比较容器输出，而不是比较 host-native 输出。
 release gate 需要新增的固定结论：
 - `builder image digest matched`
 - `canonical token matched`
-- `host-native path not used`
+- `docker-only path enforced`
 
 ### 5.7 Runtime Consumption
 runtime 的最终消费模型不变，仍是 binary-first：

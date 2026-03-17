@@ -44,7 +44,7 @@
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
 | canonical Docker builder | `builder_image_ref`、`builder_image_digest`、`container_platform=linux-x86_64`、`workspace_mount`、`out_dir` | host wrapper 统一调用 `docker run`，所有 publishable 构建都走容器 | `requested -> container_started -> built/failed` | 同一源码与镜像 digest 必须输出同一 canonical hash | 发布级构建只能由受控 builder image 执行 |
-| host wrapper script | `module_id`、`manifest_path`、`profile`、`out_dir`、`docker_binary` | 本地与 CI 都执行同一 wrapper，而不是各自直接跑 cargo | `raw_host -> wrapper -> containerized` | host OS 不进入 publish hash 计算 | dev 可有 opt-out，本地 host-native 结果不得进入发布链路 |
+| host wrapper script | `module_id`、`manifest_path`、`profile`、`out_dir`、`docker_binary` | 本地与 CI 都执行同一 wrapper，而不是各自直接跑 cargo | `raw_host -> wrapper -> containerized` | host OS 不进入 publish hash 计算 | publishable 构建只允许 Docker path；无 host-native fallback |
 | build receipt | `source_hash`、`build_manifest_hash`、`builder_image_digest`、`container_platform`、`canonicalizer_version`、`wasm_hash` | 容器构建结束后写出 receipt 并供 identity / release evidence 消费 | `built -> receipted -> verified` | 任一字段变化都必须改变 `build_manifest_hash` 或 receipt digest | receipt 为发布与审计必需，不是可选日志 |
 | publish hash manifest | `module_id linux-x86_64=<sha256>` | sync/check 仅更新和验证 canonical container hash | `built -> checked/synced -> published` | 发布级 manifest 只允许一个 canonical token；`darwin-arm64` 不再写入发布清单 | 本地默认只读；CI 不写 manifest |
 | identity / release evidence | `module_id`、`source_hash`、`build_manifest_hash`、`builder_image_digest`、`wasm_hash` | 生成 identity manifest、attestation、release manifest 引用 | `metadata-ready -> signed/verified` | identity 绑定容器镜像与源码输入，不绑定宿主平台 | 生产验证由 release/trust root 决定 |
@@ -52,7 +52,7 @@
 - Acceptance Criteria:
   - AC-1 (PRD-WORLD_RUNTIME-020): 必须新增并固定一份 WASM builder Docker image，镜像引用必须以 digest pin；所有 publishable wasm 构建都通过 `docker run` 进入该镜像。
   - AC-2 (PRD-WORLD_RUNTIME-020): builder image 必须封装 Rust toolchain、`rust-src`、`wasm32-unknown-unknown` 目标、linker/canonicalizer 所需依赖，并把这些版本信息收敛到 `build_manifest_hash`。
-  - AC-3 (PRD-WORLD_RUNTIME-020): `scripts/build-wasm-module.sh` 的 canonical path 必须改为 Docker wrapper；host-native cargo 路径只能作为显式 opt-out 的本地实验工具。
+  - AC-3 (PRD-WORLD_RUNTIME-020): `scripts/build-wasm-module.sh` 的 canonical path 必须改为 Docker wrapper；publishable 构建不再保留 host-native cargo fallback。
   - AC-4 (PRD-WORLD_RUNTIME-021): 发布级 hash manifest 目标态只允许写入单个 canonical token：`linux-x86_64=<sha256>`；`darwin-arm64` 不再作为发布 hash 来源。
   - AC-5 (PRD-WORLD_RUNTIME-021): build receipt 至少绑定 `builder_image_digest + container_platform + source_hash + build_manifest_hash + wasm_hash + canonicalizer_version`，并进入 identity/release evidence。
   - AC-6 (PRD-WORLD_RUNTIME-022): multi-runner CI 必须比较“相同 Docker builder 在不同宿主上产出的 canonical hash”，而不是继续比较 host-native cargo 输出。

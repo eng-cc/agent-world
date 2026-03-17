@@ -1,0 +1,12 @@
+**
+!docker/
+!docker/wasm-builder/
+!docker/wasm-builder/Dockerfile
+!docker/wasm-builder/README.md
+!scripts/
+!scripts/build-wasm-module.sh
+!tools/
+!tools/wasm_build_suite/
+!tools/wasm_build_suite/**
+tools/wasm_build_suite/target
+tools/wasm_build_suite/templates/minimal_module/target
