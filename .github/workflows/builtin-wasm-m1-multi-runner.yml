@@ -62,7 +62,15 @@ jobs:
           merge-multiple: true
       - name: Verify multi-runner summaries
         run: |
-          ./scripts/ci-verify-m1-wasm-summaries.py \
-            --module-set m1 \
-            --summary-dir output/ci/m1-wasm-summary \
+          ./scripts/wasm-release-evidence-report.sh \
+            --module-sets m1 \
+            --skip-collect \
+            --summary-import-dir output/ci/m1-wasm-summary \
+            --out-dir output/ci/m1-wasm-release-evidence \
             --expected-runners linux-x86_64,darwin-arm64
+      - name: Upload m1 release evidence report
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-wasm-release-evidence-report
+          path: output/ci/m1-wasm-release-evidence
+          if-no-files-found: error

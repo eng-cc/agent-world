@@ -70,10 +70,18 @@ jobs:
           merge-multiple: true
       - name: Verify m4 multi-runner summaries
         run: |
-          ./scripts/ci-verify-m1-wasm-summaries.py \
-            --module-set m4 \
-            --summary-dir output/ci/m4-wasm-summary \
+          ./scripts/wasm-release-evidence-report.sh \
+            --module-sets m4 \
+            --skip-collect \
+            --summary-import-dir output/ci/m4-wasm-summary \
+            --out-dir output/ci/m4-wasm-release-evidence \
             --expected-runners linux-x86_64,darwin-arm64
+      - name: Upload m4 release evidence report
+        uses: actions/upload-artifact@v4
+        with:
+          name: m4-wasm-release-evidence-report
+          path: output/ci/m4-wasm-release-evidence
+          if-no-files-found: error
 
   verify-m5-multi-runner-summary:
     needs: m4-m5-multi-runner-check
@@ -88,7 +96,15 @@ jobs:
           merge-multiple: true
       - name: Verify m5 multi-runner summaries
         run: |
-          ./scripts/ci-verify-m1-wasm-summaries.py \
-            --module-set m5 \
-            --summary-dir output/ci/m5-wasm-summary \
+          ./scripts/wasm-release-evidence-report.sh \
+            --module-sets m5 \
+            --skip-collect \
+            --summary-import-dir output/ci/m5-wasm-summary \
+            --out-dir output/ci/m5-wasm-release-evidence \
             --expected-runners linux-x86_64,darwin-arm64
+      - name: Upload m5 release evidence report
+        uses: actions/upload-artifact@v4
+        with:
+          name: m5-wasm-release-evidence-report
+          path: output/ci/m5-wasm-release-evidence
+          if-no-files-found: error
