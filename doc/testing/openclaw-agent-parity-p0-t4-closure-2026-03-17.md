@@ -44,12 +44,12 @@
 | completion_rate_gap_exceeded | 1 | 0 | [x] | builtin 未完成 `P0-001` 巡游移动，OpenClaw 完成 |
 
 ## 5. 关键证据
-- 自动 benchmark 证据路径: `artifacts/openclaw_builtin_parity_20260317_t4d/summary`
-- 聚合对比: `artifacts/openclaw_builtin_parity_20260317_t4d/summary/combined.csv`
-- 失败摘要: `artifacts/openclaw_builtin_parity_20260317_t4d/summary/failures.md`
-- builtin 样本 summary: `artifacts/openclaw_builtin_parity_20260317_t4d/samples/builtin/sample_1/summary/P0-001.builtin.json`
-- OpenClaw 样本 summary: `artifacts/openclaw_builtin_parity_20260317_t4d/samples/openclaw_local_http/sample_1/summary/P0-001.openclaw_local_http.json`
-- scorecard links: `artifacts/openclaw_builtin_parity_20260317_t4d/scorecard-links.md`
+- 自动 benchmark 证据路径: `output/openclaw_parity/openclaw_builtin_parity_20260317_t4d/summary`
+- 聚合对比: `output/openclaw_parity/openclaw_builtin_parity_20260317_t4d/summary/combined.csv`
+- 失败摘要: `output/openclaw_parity/openclaw_builtin_parity_20260317_t4d/summary/failures.md`
+- builtin 样本 summary: `output/openclaw_parity/openclaw_builtin_parity_20260317_t4d/samples/builtin/sample_1/summary/P0-001.builtin.json`
+- OpenClaw 样本 summary: `output/openclaw_parity/openclaw_builtin_parity_20260317_t4d/samples/openclaw_local_http/sample_1/summary/P0-001.openclaw_local_http.json`
+- scorecard links: `output/openclaw_parity/openclaw_builtin_parity_20260317_t4d/scorecard-links.md`
 
 ## 6. QA 结论
 - 自动指标结论：`failed`。

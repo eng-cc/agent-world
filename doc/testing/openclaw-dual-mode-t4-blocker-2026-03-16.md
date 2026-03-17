@@ -21,9 +21,9 @@
 - 历史执行：`.agents/skills/oasis7/scripts/oasis7-run.sh smoke --samples 1 --ticks 4 --timeout-ms 15000`
 - 历史结果：自动拉起 bridge 后，`openclaw_local_http` smoke 通过。
 - 历史产物：
-  - `artifacts/openclaw_parity_20260316_235632/summary/P0-001.openclaw_local_http.json`
-  - `artifacts/openclaw_parity_20260316_235632/samples/openclaw_local_http/sample_1/summary/P0-001.openclaw_local_http.json`
-  - `artifacts/openclaw_parity_20260316_235632/samples/openclaw_local_http/sample_1/raw/P0-001_sample_1.openclaw_local_http.jsonl`
+  - `output/openclaw_parity/openclaw_parity_20260316_235632/summary/P0-001.openclaw_local_http.json`
+  - `output/openclaw_parity/openclaw_parity_20260316_235632/samples/openclaw_local_http/sample_1/summary/P0-001.openclaw_local_http.json`
+  - `output/openclaw_parity/openclaw_parity_20260316_235632/samples/openclaw_local_http/sample_1/raw/P0-001_sample_1.openclaw_local_http.jsonl`
 - 历史关键指标：
   - `status=passed`
   - `goal_completed=1`
@@ -36,11 +36,11 @@
 - headless 执行：`.agents/skills/oasis7/scripts/oasis7-run.sh smoke --samples 1 --ticks 4 --timeout-ms 15000 --execution-mode headless_agent`
 - player parity 执行：`.agents/skills/oasis7/scripts/oasis7-run.sh smoke --samples 1 --ticks 4 --timeout-ms 15000 --execution-mode player_parity`
 - headless 产物：
-  - `artifacts/openclaw_parity_20260317_002147/summary/P0-001.openclaw_local_http.json`
-  - `artifacts/openclaw_parity_20260317_002147/samples/openclaw_local_http/sample_1/summary/P0-001.openclaw_local_http.json`
+  - `output/openclaw_parity/openclaw_parity_20260317_002147/summary/P0-001.openclaw_local_http.json`
+  - `output/openclaw_parity/openclaw_parity_20260317_002147/samples/openclaw_local_http/sample_1/summary/P0-001.openclaw_local_http.json`
 - player parity 产物：
-  - `artifacts/openclaw_parity_20260317_002217/summary/P0-001.openclaw_local_http.json`
-  - `artifacts/openclaw_parity_20260317_002217/samples/openclaw_local_http/sample_1/summary/P0-001.openclaw_local_http.json`
+  - `output/openclaw_parity/openclaw_parity_20260317_002217/summary/P0-001.openclaw_local_http.json`
+  - `output/openclaw_parity/openclaw_parity_20260317_002217/samples/openclaw_local_http/sample_1/summary/P0-001.openclaw_local_http.json`
 - 两条链路共同指标：
   - `status=passed`
   - `goal_completed=1`
