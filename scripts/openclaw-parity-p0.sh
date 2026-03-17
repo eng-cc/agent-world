@@ -25,7 +25,7 @@ usage() {
 Usage: ./scripts/openclaw-parity-p0.sh [options]
 
 Run a repeatable P0 parity batch for builtin and/or OpenClaw(Local HTTP).
-This script emits protocol-aligned artifacts under artifacts/<run_id>/.
+This script emits protocol-aligned artifacts under output/openclaw_parity/<run_id>/.
 
 Options:
   --run-id <id>                         Override benchmark run id
@@ -35,7 +35,7 @@ Options:
   --samples <n>                         Sample count per provider (default: 3)
   --ticks <n>                           Ticks per sample (default: 20)
   --timeout-ms <n>                      Timeout budget per sample (default: 15000)
-  --out-dir <path>                      Artifact root (default: artifacts/<run_id>)
+  --out-dir <path>                      Artifact root (default: output/openclaw_parity/<run_id>)
   --openclaw-base-url <url>             OpenClaw local HTTP base URL
   --openclaw-auth-token <token>         OpenClaw bearer token
   --openclaw-connect-timeout-ms <n>     OpenClaw connect timeout (default: 15000)
@@ -138,7 +138,7 @@ done
 [[ "$OPENCLAW_EXECUTION_MODE" == "headless_agent" || "$OPENCLAW_EXECUTION_MODE" == "player_parity" ]] || { echo "error: --execution-mode must be headless_agent or player_parity" >&2; exit 1; }
 
 if [[ -z "$OUT_DIR" ]]; then
-  OUT_DIR="artifacts/$RUN_ID"
+  OUT_DIR="output/openclaw_parity/$RUN_ID"
 fi
 mkdir -p "$OUT_DIR/raw" "$OUT_DIR/summary" "$OUT_DIR/samples"
 

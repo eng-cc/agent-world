@@ -23,6 +23,7 @@ target
 # Local demo outputs
 .data/
 output/
+artifacts/
 
 # Local runtime config
 config.toml
@@ -43,3 +44,4 @@ artifacts/owr4_baseline/
 .playwright
 .playwright-cli
 crates/agent_world_viewer/dist
+tools/openclaw/agent_world_runtime_workspace/.openclaw/

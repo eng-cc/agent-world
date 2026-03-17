@@ -84,7 +84,7 @@ impl Default for CliOptions {
             adapter_version: DEFAULT_ADAPTER_VERSION.to_string(),
             ticks: DEFAULT_TICKS,
             timeout_ms: DEFAULT_TIMEOUT_MS,
-            out_dir: PathBuf::from("artifacts/manual"),
+            out_dir: PathBuf::from("output/openclaw_parity/manual"),
             openclaw_base_url: None,
             openclaw_auth_token: None,
             openclaw_connect_timeout_ms: DEFAULT_PROVIDER_CONNECT_TIMEOUT_MS,
