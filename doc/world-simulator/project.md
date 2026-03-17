@@ -325,6 +325,7 @@
 - 最新完成: `TASK-WORLD_SIMULATOR-134`（修复 `oasis7-run.sh` 默认下载目录的 `~` 展开，并补 bundle-first 路径回归脚本）。
 - 最新完成: `TASK-WORLD_SIMULATOR-133`（为 `oasis7` 增加 GitHub Release bundle-first 下载入口与显式路径策略）。
 - 最新完成: `TASK-WORLD_SIMULATOR-155`（修复 builtin parity `P0-001` 巡游基线退化、对齐 parity 默认 timeout，并在 `fix2` 批次确认 builtin 已恢复 `move_agent=4`）。
+- 最新完成: `TASK-WORLD_SIMULATOR-156`（为 `world_openclaw_local_bridge` 增加 gateway timeout → local embedded agent fallback，修复 `OpenClaw(Local HTTP)` 连续 timeout，并在 `fix3` 批次恢复 `move_agent=4`）。
 - 最新完成: `TASK-WORLD_SIMULATOR-154`（完成 builtin/OpenClaw `P0-001` parity T4 结论，当前口径为 `failed / keep experimental`）。
 - 最新完成: `TASK-WORLD_SIMULATOR-153`（完成 `player_parity` vs `headless_agent` 的 T4 QA/producer 对照采证，并冻结默认模式与阻断结论）。
 - 最新完成: `TASK-WORLD_SIMULATOR-152`（接通真实 `player_parity` 执行 lane 到 runtime live / launcher / parity bench / `oasis7`，并完成双模式真实 smoke）。
@@ -332,11 +333,11 @@
 - 最新完成: `TASK-WORLD_SIMULATOR-151`（为 software-safe / runtime live 补齐 `debug_viewer` 旁路订阅标识、headless lane 元数据展示与 OpenClaw observer-only 对照入口）。
 - 最新完成: `TASK-WORLD_SIMULATOR-150`（为 `OpenClaw` 双轨模式补齐 mode/schema/environment/fixture/replay 元数据透传与 summary traceability）。
 - 最新完成: `TASK-WORLD_SIMULATOR-149`（冻结 `OpenClaw` 双轨 observation/action contract、schema version 与禁止泄露真值边界）。
-- 当前优先任务: builtin 基线退化与 parity 默认 connect-timeout 风险已修复，继续定位 `OpenClaw(Local HTTP)` 在 `P0-001` 上的连续 timeout，再重跑 `P0` parity
-- 当前阻断说明: `PRD-WORLD_SIMULATOR-040` 已完成 T4 对照采证并解除阻断；`PRD-WORLD_SIMULATOR-038` 的 builtin 基线退化已在 `openclaw_builtin_parity_20260317_fix2` 中修复，但真实 OpenClaw 样本仍出现 `timeout=4`，因此整体 parity 仍未通过，当前必须保持 `experimental`，详见 `doc/testing/openclaw-agent-parity-p0-t4-closure-2026-03-17.md`。
+- 当前优先任务: builtin 基线退化与 `OpenClaw(Local HTTP)` timeout 已修复；继续压缩 absolute wait latency，争取把 `median/p95 extra wait` 拉回 `P0` 通过线后再推进下一层 parity
+- 当前阻断说明: `PRD-WORLD_SIMULATOR-040` 已完成 T4 对照采证并解除阻断；`PRD-WORLD_SIMULATOR-038` 的 builtin 基线退化与 OpenClaw timeout 已分别在 `fix2` / `fix3` 中修复，但 `openclaw_builtin_parity_20260317_fix3` 仍显示 builtin `median_extra_wait_ms=9900`、OpenClaw `median_extra_wait_ms=13957`，明显高于 `P0` 通过线 `<=500ms`，因此整体 parity 仍未通过，当前必须保持 `experimental`。
 - parity 执行入口: `scripts/openclaw-parity-p0.sh` + `world_openclaw_parity_bench` 已落地，可先跑 openclaw-only/mock smoke，再接真实 builtin/OpenClaw 双边样本。
 - OpenClaw 首期 profile: `agent_world_p0_low_freq_npc` 已冻结，并由 `DecisionRequest.agent_profile` / parity summary / 产品 launcher 主链路统一透传。
-- 并行待办: 真实 `OpenClaw(Local HTTP)` 单 NPC 闭环试点（T5 / experimental） + 继续追查 OpenClaw parity timeout，并在 timeout 收敛后重跑 `PRD-WORLD_SIMULATOR-038` `P0`
+- 并行待办: 真实 `OpenClaw(Local HTTP)` 单 NPC 闭环试点（T5 / experimental） + 继续优化 builtin/OpenClaw absolute wait latency，并在 latency 收敛后重跑 `PRD-WORLD_SIMULATOR-038` `P0`
 - 专题映射状态: 2026-03-02 批次 9/9、2026-03-03 批次 4/4、2026-03-04 批次 7/7、2026-03-05 批次 4/4、2026-03-06 批次 6/6 已纳入模块项目管理文档；`TASK-WORLD_SIMULATOR-057~108` 已完成。
 - 手册入口状态: `doc/world-simulator/viewer/viewer-manual.md` 为唯一活跃手册入口。
 - 视觉评分模板状态: `doc/world-simulator/prd/acceptance/visual-review-score-card.md` 已纳入文档树，采用卡片式评审覆盖 llm_bootstrap 场景 18 张截图。

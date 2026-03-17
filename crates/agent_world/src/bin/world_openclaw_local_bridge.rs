@@ -5,6 +5,8 @@ use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::PathBuf;
 use std::process::Command;
+
+use sha2::{Digest, Sha256};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -196,6 +198,13 @@ impl ProviderState {
                 Ok((decision, schema_repair_count)) => {
                     let (decision, guardrail_note) = apply_profile_guardrails(&request, decision);
                     self.set_last_error(None);
+                    let mut tool_trace = Vec::new();
+                    if let Some(route_note) = output.route_note.clone() {
+                        tool_trace.push(route_note);
+                    }
+                    if let Some(note) = guardrail_note.clone() {
+                        tool_trace.push(note);
+                    }
                     DecisionResponse {
                         decision,
                         provider_error: None,
@@ -208,13 +217,24 @@ impl ProviderState {
                         trace_payload: ProviderTraceEnvelope {
                             provider_id: Some(DEFAULT_PROVIDER_ID.to_string()),
                             input_summary: Some(summarize_text(output.prompt.as_str(), 512)),
-                            output_summary: Some(match &guardrail_note {
-                                Some(note) => format!(
+                            output_summary: Some(match (&output.route_note, &guardrail_note) {
+                                (Some(route_note), Some(note)) => format!(
+                                    "{}; {}; model_output={}",
+                                    route_note,
+                                    note,
+                                    summarize_text(output.text.as_str(), 512)
+                                ),
+                                (Some(route_note), None) => format!(
+                                    "{}; model_output={}",
+                                    route_note,
+                                    summarize_text(output.text.as_str(), 512)
+                                ),
+                                (None, Some(note)) => format!(
                                     "{}; model_output={}",
                                     note,
                                     summarize_text(output.text.as_str(), 512)
                                 ),
-                                None => summarize_text(output.text.as_str(), 512),
+                                (None, None) => summarize_text(output.text.as_str(), 512),
                             }),
                             latency_ms: Some(latency_ms.max(output.duration_ms.unwrap_or(0))),
                             transcript: vec![
@@ -227,7 +247,7 @@ impl ProviderState {
                                     content: summarize_text(output.text.as_str(), 4000),
                                 },
                             ],
-                            tool_trace: guardrail_note.into_iter().collect(),
+                            tool_trace,
                             token_usage: Some(ProviderTokenUsage {
                                 prompt_tokens: output.prompt_tokens,
                                 completion_tokens: output.completion_tokens,
@@ -244,7 +264,11 @@ impl ProviderState {
                     self.set_last_error(Some(detail.clone()));
                     let (decision, guardrail_note) =
                         apply_profile_guardrails(&request, ProviderDecision::Wait);
-                    let mut tool_trace = vec![detail.clone()];
+                    let mut tool_trace = Vec::new();
+                    if let Some(route_note) = output.route_note.clone() {
+                        tool_trace.push(route_note);
+                    }
+                    tool_trace.push(detail.clone());
                     if let Some(note) = guardrail_note.clone() {
                         tool_trace.push(note);
                     }
@@ -336,6 +360,7 @@ struct AgentInvocationOutput {
     prompt_tokens: Option<u64>,
     completion_tokens: Option<u64>,
     total_tokens: Option<u64>,
+    route_note: Option<String>,
 }
 
 trait AgentInvoker: Send + Sync {
@@ -347,97 +372,171 @@ struct OpenClawCliInvoker;
 
 impl AgentInvoker for OpenClawCliInvoker {
     fn invoke(&self, invocation: AgentInvocation) -> Result<AgentInvocationOutput, String> {
-        let params = build_gateway_agent_params(&invocation)
-            .map_err(|err| format!("serialize gateway call params failed: {err}"))?;
-        let rpc_timeout_ms = invocation
-            .timeout_seconds
-            .saturating_mul(1000)
-            .saturating_add(2000);
-        let output = Command::new(invocation.openclaw_bin.as_str())
-            .arg("gateway")
-            .arg("call")
-            .arg("agent")
-            .arg("--expect-final")
-            .arg("--json")
-            .arg("--timeout")
-            .arg(rpc_timeout_ms.to_string())
-            .arg("--params")
-            .arg(params)
-            .output()
-            .map_err(|err| format!("spawn openclaw gateway call agent failed: {err}"))?;
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(output.stderr.as_slice())
-                .trim()
-                .to_string();
-            let stdout = String::from_utf8_lossy(output.stdout.as_slice())
-                .trim()
-                .to_string();
-            return Err(format!(
-                "openclaw gateway call agent exited with status {}: stderr={} stdout={}",
-                output.status, stderr, stdout,
-            ));
+        match invoke_gateway_agent(invocation.clone()) {
+            Ok(output) => Ok(output),
+            Err(err) if should_fallback_to_local_agent(err.as_str()) => {
+                invoke_local_agent(invocation, err.as_str())
+            }
+            Err(err) => Err(err),
         }
-        let payload = String::from_utf8(output.stdout)
-            .map_err(|err| format!("openclaw gateway call agent stdout was not utf8: {err}"))?;
-        let parsed: OpenClawAgentCliOutput = serde_json::from_str(payload.as_str())
-            .map_err(|err| format!("parse openclaw gateway call agent json failed: {err}"))?;
-        let text = parsed
-            .result
-            .payloads
-            .into_iter()
-            .find_map(|entry| entry.text)
-            .ok_or_else(|| {
-                "openclaw gateway call agent json did not contain result.payloads[].text"
-                    .to_string()
-            })?;
-        Ok(AgentInvocationOutput {
-            prompt: invocation.prompt,
-            text,
-            provider_version: parsed
-                .result
-                .meta
-                .as_ref()
-                .and_then(|meta| meta.agent_meta.as_ref())
-                .map(
-                    |agent_meta| match (&agent_meta.provider, &agent_meta.model) {
-                        (Some(provider), Some(model)) => format!("{provider}/{model}"),
-                        (Some(provider), None) => provider.clone(),
-                        (None, Some(model)) => model.clone(),
-                        (None, None) => DEFAULT_PROVIDER_ID.to_string(),
-                    },
-                ),
-            duration_ms: parsed
-                .result
-                .meta
-                .as_ref()
-                .and_then(|meta| meta.duration_ms),
-            prompt_tokens: parsed
-                .result
-                .meta
-                .as_ref()
-                .and_then(|meta| meta.agent_meta.as_ref())
-                .and_then(|agent_meta| agent_meta.prompt_tokens),
-            completion_tokens: parsed
-                .result
-                .meta
-                .as_ref()
-                .and_then(|meta| meta.agent_meta.as_ref())
-                .and_then(|agent_meta| agent_meta.usage.as_ref())
-                .and_then(|usage| usage.output),
-            total_tokens: parsed
-                .result
-                .meta
-                .as_ref()
-                .and_then(|meta| meta.agent_meta.as_ref())
-                .and_then(|agent_meta| agent_meta.usage.as_ref())
-                .and_then(|usage| usage.total),
-        })
     }
+}
+
+fn invoke_gateway_agent(invocation: AgentInvocation) -> Result<AgentInvocationOutput, String> {
+    let params = build_gateway_agent_params(&invocation)
+        .map_err(|err| format!("serialize gateway call params failed: {err}"))?;
+    let rpc_timeout_ms = invocation
+        .timeout_seconds
+        .saturating_mul(1000)
+        .saturating_add(2000);
+    let output = Command::new(invocation.openclaw_bin.as_str())
+        .arg("gateway")
+        .arg("call")
+        .arg("agent")
+        .arg("--expect-final")
+        .arg("--json")
+        .arg("--timeout")
+        .arg(rpc_timeout_ms.to_string())
+        .arg("--params")
+        .arg(params)
+        .output()
+        .map_err(|err| format!("spawn openclaw gateway call agent failed: {err}"))?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(output.stderr.as_slice())
+            .trim()
+            .to_string();
+        let stdout = String::from_utf8_lossy(output.stdout.as_slice())
+            .trim()
+            .to_string();
+        return Err(format!(
+            "openclaw gateway call agent exited with status {}: stderr={} stdout={}",
+            output.status, stderr, stdout,
+        ));
+    }
+    let payload = String::from_utf8(output.stdout)
+        .map_err(|err| format!("openclaw gateway call agent stdout was not utf8: {err}"))?;
+    agent_output_from_json(invocation.prompt, payload.as_str(), None)
+}
+
+fn invoke_local_agent(
+    invocation: AgentInvocation,
+    gateway_error: &str,
+) -> Result<AgentInvocationOutput, String> {
+    let session_id = local_session_id_from_session_key(invocation.session_key.as_str());
+    let output = Command::new(invocation.openclaw_bin.as_str())
+        .arg("agent")
+        .arg("--agent")
+        .arg(invocation.agent_id.as_str())
+        .arg("--message")
+        .arg(invocation.prompt.as_str())
+        .arg("--local")
+        .arg("--session-id")
+        .arg(session_id.as_str())
+        .arg("--thinking")
+        .arg(invocation.thinking.as_str())
+        .arg("--timeout")
+        .arg(invocation.timeout_seconds.to_string())
+        .arg("--json")
+        .output()
+        .map_err(|err| format!("spawn openclaw local agent failed: {err}"))?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(output.stderr.as_slice())
+            .trim()
+            .to_string();
+        let stdout = String::from_utf8_lossy(output.stdout.as_slice())
+            .trim()
+            .to_string();
+        return Err(format!(
+            "openclaw gateway fallback failed after `{}`; local agent exited with status {}: stderr={} stdout={}",
+            gateway_error, output.status, stderr, stdout,
+        ));
+    }
+    let payload = String::from_utf8(output.stdout)
+        .map_err(|err| format!("openclaw local agent stdout was not utf8: {err}"))?;
+    agent_output_from_json(
+        invocation.prompt,
+        payload.as_str(),
+        Some(format!(
+            "invocation_fallback=local_embedded; reason={}",
+            summarize_text(gateway_error, 240)
+        )),
+    )
+}
+
+fn should_fallback_to_local_agent(error: &str) -> bool {
+    error.to_ascii_lowercase().contains("gateway timeout")
+}
+
+fn local_session_id_from_session_key(session_key: &str) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(session_key.as_bytes());
+    format!("ws-{}", hex::encode(hasher.finalize()))
+}
+
+fn agent_output_from_json(
+    prompt: String,
+    payload: &str,
+    route_note: Option<String>,
+) -> Result<AgentInvocationOutput, String> {
+    let parsed = parse_openclaw_agent_command_output(payload)?;
+    let text = parsed
+        .payloads
+        .into_iter()
+        .find_map(|entry| entry.text)
+        .ok_or_else(|| "openclaw agent json did not contain payloads[].text".to_string())?;
+    Ok(AgentInvocationOutput {
+        prompt,
+        text,
+        provider_version: parsed
+            .meta
+            .as_ref()
+            .and_then(|meta| meta.agent_meta.as_ref())
+            .map(|agent_meta| match (&agent_meta.provider, &agent_meta.model) {
+                (Some(provider), Some(model)) => format!("{provider}/{model}"),
+                (Some(provider), None) => provider.clone(),
+                (None, Some(model)) => model.clone(),
+                (None, None) => DEFAULT_PROVIDER_ID.to_string(),
+            }),
+        duration_ms: parsed.meta.as_ref().and_then(|meta| meta.duration_ms),
+        prompt_tokens: parsed
+            .meta
+            .as_ref()
+            .and_then(|meta| meta.agent_meta.as_ref())
+            .and_then(|agent_meta| agent_meta.prompt_tokens),
+        completion_tokens: parsed
+            .meta
+            .as_ref()
+            .and_then(|meta| meta.agent_meta.as_ref())
+            .and_then(|agent_meta| agent_meta.usage.as_ref())
+            .and_then(|usage| usage.output),
+        total_tokens: parsed
+            .meta
+            .as_ref()
+            .and_then(|meta| meta.agent_meta.as_ref())
+            .and_then(|agent_meta| agent_meta.usage.as_ref())
+            .and_then(|usage| usage.total),
+        route_note,
+    })
 }
 
 #[derive(Debug, Deserialize)]
 struct OpenClawAgentCliOutput {
     result: OpenClawAgentCliResult,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum OpenClawAgentCommandOutput {
+    Gateway(OpenClawAgentCliOutput),
+    Local(OpenClawAgentCliResult),
+}
+
+fn parse_openclaw_agent_command_output(payload: &str) -> Result<OpenClawAgentCliResult, String> {
+    match serde_json::from_str::<OpenClawAgentCommandOutput>(payload) {
+        Ok(OpenClawAgentCommandOutput::Gateway(output)) => Ok(output.result),
+        Ok(OpenClawAgentCommandOutput::Local(result)) => Ok(result),
+        Err(err) => Err(format!("parse openclaw agent json failed: {err}")),
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -1266,6 +1365,7 @@ mod tests {
                 prompt_tokens: Some(11),
                 completion_tokens: Some(7),
                 total_tokens: Some(18),
+                route_note: None,
             }),
         };
         let response = state.handle_decision(sample_request(), &invoker);
@@ -1319,6 +1419,42 @@ mod tests {
         assert_ne!(session_a, session_b);
         assert!(session_a.contains("run-a"));
         assert!(session_b.contains("run-b"));
+    }
+
+    #[test]
+    fn parse_openclaw_agent_command_output_accepts_local_shape() {
+        let parsed = parse_openclaw_agent_command_output(
+            r#"{"payloads":[{"text":"{\"decision\":\"wait\"}"}],"meta":{"durationMs":2484,"agentMeta":{"provider":"custom-right-codes","model":"gpt-5.4","promptTokens":9885,"usage":{"output":9,"total":9894}}}}"#,
+        )
+        .expect("parse local output");
+        assert_eq!(parsed.payloads.len(), 1);
+        assert_eq!(parsed.meta.as_ref().and_then(|meta| meta.duration_ms), Some(2484));
+        assert_eq!(
+            parsed
+                .meta
+                .as_ref()
+                .and_then(|meta| meta.agent_meta.as_ref())
+                .and_then(|details| details.model.as_deref()),
+            Some("gpt-5.4")
+        );
+    }
+
+    #[test]
+    fn local_session_id_from_session_key_hashes_invalid_chars() {
+        let session_id = local_session_id_from_session_key(
+            "agent:agent_world_runtime:subagent:world-simulator:manual:agent-1",
+        );
+        assert!(session_id.starts_with("ws-"));
+        assert!(session_id.chars().all(|ch| ch.is_ascii_hexdigit() || ch == '-' || ch == 'w' || ch == 's'));
+        assert_eq!(session_id.len(), 67);
+    }
+
+    #[test]
+    fn should_fallback_to_local_agent_matches_gateway_timeout() {
+        assert!(should_fallback_to_local_agent(
+            "openclaw gateway call agent exited with status 1: stderr=Gateway call failed: Error: gateway timeout after 17000ms stdout="
+        ));
+        assert!(!should_fallback_to_local_agent("openclaw agent not found"));
     }
 
     #[test]

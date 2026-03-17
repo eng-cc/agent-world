@@ -28,7 +28,7 @@
 ## 状态
 - 最近更新：2026-03-17
 - 当前阶段: T5 blocked（T4 已完成并给出 `failed` 结论）
-- 当前任务: `builtin 基线退化已修复；继续定位 OpenClaw local_http timeout，并在 timeout 收敛后重跑 P0 parity`
+- 当前任务: `builtin 基线退化与 OpenClaw local_http timeout 已修复；继续压缩 absolute wait latency，并在满足 P0 latency 通过线后重跑 P0 parity 结论`
 - owner: `qa_engineer`
 - 联审: `qa_engineer`、`agent_engineer`、`viewer_engineer`、`runtime_engineer`
 - 发起建模: `producer_system_designer`
@@ -39,3 +39,4 @@
 - T4 主链路补充: 产品 launcher 主链路现已可把同一 profile 透传到真实 runtime live，因此后续 builtin/OpenClaw 双边 parity 样本可直接复用 GUI launcher 配置，而不必只依赖 bench harness。
 - T4 结论（2026-03-17）: 真实批次 `openclaw_builtin_parity_20260317_t4d` 显示 builtin `completion_rate=0%`、OpenClaw `completion_rate=100%`，`P0-001` completion gap 为 `100pp`，当前 parity 结论为 `failed`，必须保持 `experimental`；详见 `doc/testing/openclaw-agent-parity-p0-t4-closure-2026-03-17.md`。
 - T4 后续修复进展（2026-03-17 / `fix2`）: `agent_engineer` 已在 `world_openclaw_parity_bench` 为 builtin lane 补 `P0-001` patrol guardrail，并将 bench / `scripts/openclaw-parity-p0.sh` 默认 connect-timeout 对齐到 `15000ms`；真实批次 `openclaw_builtin_parity_20260317_fix2` 已显示 builtin `completion_rate=100%`、`move_agent=4`，但 OpenClaw 样本仍为 `timeout=4` / `completion_rate=0%`，因此整体状态仍为 `T5 blocked`。
+- T4 后续修复进展（2026-03-17 / `fix3`）: `agent_engineer` 已为 `world_openclaw_local_bridge` 增加 `gateway call agent` timeout 到 `openclaw agent --local` 的 fallback，并用稳定 hash session-id 保持会话隔离；真实批次 `openclaw_builtin_parity_20260317_fix3` 已显示 builtin/OpenClaw 均为 `completion_rate=100%`、`timeout_rate=0%`、`move_agent=4`。但该批次 builtin `median_extra_wait_ms=9900`、OpenClaw `median_extra_wait_ms=13957`，仍显著高于 `P0` 通过线 `<=500ms`，因此专题状态继续保持 `T5 blocked / experimental`。
