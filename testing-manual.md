@@ -73,15 +73,11 @@
 - 入口 B：`.github/workflows/rust.yml`（required-gate）
   - `CI_VERBOSE=1 ./scripts/ci-tests.sh required`
   - `./scripts/viewer-visual-baseline.sh`
-- 入口 C：`.github/workflows/builtin-wasm-m1-multi-runner.yml`（构建 hash 链路独立 gate）
-  - runner 矩阵：`ubuntu-24.04 (linux-x86_64)` + `macos-14 (darwin-arm64)`
-  - 每个 runner 仅执行：`./scripts/ci-m1-wasm-summary.sh --module-set m1 --runner-label ... --out ...`
-  - 汇总 job 对账：`./scripts/ci-verify-m1-wasm-summaries.py --module-set m1 --summary-dir ... --expected-runners linux-x86_64,darwin-arm64`
-- 入口 D：`.github/workflows/builtin-wasm-m4-m5-multi-runner.yml`（m4/m5 构建 hash 链路独立 gate）
-  - runner 矩阵：`(m4|m5) x (ubuntu-24.04/linux-x86_64, macos-14/darwin-arm64)`
-  - 每个 runner 执行：`./scripts/ci-m1-wasm-summary.sh --module-set <m4|m5> --runner-label ... --out ...`
-  - 汇总 job 对账：`./scripts/ci-verify-m1-wasm-summaries.py --module-set <m4|m5> --summary-dir ... --expected-runners linux-x86_64,darwin-arm64`
-  - 固定证据归档入口：`./scripts/wasm-release-evidence-report.sh --skip-collect --summary-import-dir <downloaded-summary-dir> --expected-runners linux-x86_64,darwin-arm64`（对已收集的 m1/m4/m5 多 runner summary 统一出具 `summary.md/json`）
+- 入口 C：`.github/workflows/wasm-determinism-gate.yml`（构建 hash / receipt evidence 独立 gate）
+  - runner 矩阵：`(m1|m4|m5) x (ubuntu-24.04/linux-x86_64, macos-14/darwin-arm64)`
+  - 每个 runner 执行：`./scripts/ci-m1-wasm-summary.sh --module-set <m1|m4|m5> --runner-label ... --out ...`
+  - verify job 会按 `module_set` 下载 summaries，并执行：`./scripts/wasm-release-evidence-report.sh --module-sets <m1|m4|m5> --skip-collect --summary-import-dir <downloaded-summary-dir> --expected-runners linux-x86_64,darwin-arm64`
+  - verify job 同时上传 `summary.md/json + logs + module_sets.tsv` 的 release evidence report artifact
 
 ### 当前 CI 未直接覆盖（需手册补齐）
 - Web UI agent-browser 闭环（现为手动/agent 流程，不在 CI 默认路径中）。
@@ -90,7 +86,7 @@
 结论：
 - `required/full` 是“核心链路测试层”的主入口（required 含 `agent_world + consensus + distfs + viewer`，full 追加 `node + net/libp2p`）；
 - `required-gate` 已补充 viewer 视觉基线脚本（snapshot 基线 + 定向测试）；
-- `builtin-wasm-m1-multi-runner` 与 `builtin-wasm-m4-m5-multi-runner` 共同负责 `m1/m4/m5` hash 链路独立 gate；
+- `wasm-determinism-gate` 负责 `m1/m4/m5` hash / receipt evidence 独立 gate；
 - 若目标是“整应用充分测试”，仍需在此基础上叠加 UI 闭环层（S6）与压力层（S8）。
 
 ## 分层模型（针对当前仓库）
@@ -480,7 +476,7 @@ rg -n "conflicting attestation already exists|attestation threshold not met|atte
 | `doc/**`（非 `doc/devlog/**`） | S0（含 `./scripts/doc-governance-check.sh`） | 命中模块的抽样 required 证据核验 | 若文档改变发布 / 测试口径，追加对应模块的最小必跑集 |
 | `scripts/ci-tests.sh` / `.github/workflows/rust.yml` | S0（含 `./scripts/doc-governance-check.sh`） + S1 + `./scripts/viewer-visual-baseline.sh` + （full）`./scripts/llm-baseline-fixture-smoke.sh` | S2 + S4 + S6（抽样） | 若更改默认 gate 组合，需抽样至少一条 S9 或 S10 |
 | `scripts/release-gate.sh` / `.github/workflows/release-packages.yml` | `./scripts/ci-tests.sh full` + `sync-m1/m4/m5 --check` + Web strict + S9 + S10 | `./scripts/release-gate.sh --quick` / `--dry-run` | 任何发布 gate 逻辑变更均不允许跳过 S9/S10 |
-| `scripts/ci-m1-wasm-summary.sh` / `scripts/ci-verify-m1-wasm-summaries.py` / `.github/workflows/builtin-wasm-m1-multi-runner.yml` / `.github/workflows/builtin-wasm-m4-m5-multi-runner.yml` | `S0` + `./scripts/ci-m1-wasm-summary.sh --module-set m4 --runner-label darwin-arm64 --out output/ci/m4-wasm-summary/darwin-arm64.json` + `./scripts/ci-verify-m1-wasm-summaries.py --module-set m4 --summary-dir output/ci/m4-wasm-summary --expected-runners darwin-arm64` | `workflow_dispatch` 触发 m1/m4/m5 双 runner（`linux-x86_64,darwin-arm64`）对账 | 若改动 hash/summary 格式，双 runner 对账变为必跑 |
+| `scripts/ci-m1-wasm-summary.sh` / `scripts/ci-verify-m1-wasm-summaries.py` / `scripts/wasm-release-evidence-report.sh` / `.github/workflows/wasm-determinism-gate.yml` | `S0` + `./scripts/ci-m1-wasm-summary.sh --module-set m4 --runner-label darwin-arm64 --out output/ci/m4-wasm-summary/darwin-arm64.json` + `./scripts/wasm-release-evidence-report.sh --module-sets m4 --skip-collect --summary-import-dir output/ci/m4-wasm-summary --expected-runners darwin-arm64` | `workflow_dispatch` 触发 m1/m4/m5 双 runner（`linux-x86_64,darwin-arm64`）对账 | 若改动 hash/summary/evidence report 格式，双 runner 对账变为必跑 |
 | `scripts/run-viewer-web.sh` / `scripts/capture-viewer-frame.sh` | S0 + S6 | S5 + S8 | 若涉及 native 图形链路 fallback，补 native 截图证据 |
 | `scripts/p2p-longrun-soak.sh` / `doc/testing/p2p-storage-consensus-longrun-online-stability-2026-02-24*` | S0 + S9 smoke（含 summary/timeline 校验） | S9 endurance（含 chaos） | 任何阈值/summary 字段变更必须补 endurance |
 | `scripts/s10-five-node-game-soak.sh` / `doc/testing/s10-five-node-real-game-soak*` | S0 + S10 smoke（含 summary/timeline 校验） | S10 默认长窗（30min+） | 任何门禁字段 / 结算 / mint 改动都需补长窗 |
