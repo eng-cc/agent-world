@@ -158,6 +158,8 @@ pub struct ReleaseSecurityPolicy {
     pub allow_identity_hash_signature: bool,
     #[serde(default = "default_allow_local_finality_signing")]
     pub allow_local_finality_signing: bool,
+    #[serde(default = "default_allow_runtime_source_compile")]
+    pub allow_runtime_source_compile: bool,
 }
 
 impl Default for ReleaseSecurityPolicy {
@@ -166,6 +168,7 @@ impl Default for ReleaseSecurityPolicy {
             allow_builtin_manifest_fallback: default_allow_builtin_manifest_fallback(),
             allow_identity_hash_signature: default_allow_identity_hash_signature(),
             allow_local_finality_signing: default_allow_local_finality_signing(),
+            allow_runtime_source_compile: default_allow_runtime_source_compile(),
         }
     }
 }
@@ -193,6 +196,10 @@ fn default_allow_identity_hash_signature() -> bool {
 }
 
 fn default_allow_local_finality_signing() -> bool {
+    true
+}
+
+fn default_allow_runtime_source_compile() -> bool {
     true
 }
 
@@ -469,6 +476,7 @@ impl World {
             allow_builtin_manifest_fallback: false,
             allow_identity_hash_signature: false,
             allow_local_finality_signing: false,
+            allow_runtime_source_compile: false,
         };
     }
 

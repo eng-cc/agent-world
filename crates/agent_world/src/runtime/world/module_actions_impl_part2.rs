@@ -38,6 +38,21 @@ impl World {
                     )?;
                     return Ok(true);
                 }
+                if !self.release_security_policy.allow_runtime_source_compile {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![
+                                    "compile module source rejected: runtime source compile is disabled by production release policy; use external Docker builder and deploy binary + receipt"
+                                        .to_string(),
+                                ],
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                }
 
                 let source_bytes_len = source_package.files.values().map(Vec::len).sum::<usize>();
                 let compiled_bytes =

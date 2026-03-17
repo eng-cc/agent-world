@@ -418,6 +418,39 @@ fn compile_module_artifact_from_source_registers_compiled_artifact() {
 }
 
 #[test]
+fn compile_module_artifact_from_source_rejects_in_production_release_policy() {
+    let _env_lock = SOURCE_COMPILER_ENV_LOCK.lock().expect("lock compile env");
+    let _env_guard = EnvVarGuard::capture(SOURCE_COMPILER_ENV);
+
+    let temp_root = temp_dir("compile-module-artifact-production-disabled");
+    fs::create_dir_all(&temp_root).expect("create temp dir");
+    let compiler_script = temp_root.join("compiler.sh");
+    write_fake_source_compiler(compiler_script.as_path(), "compiled-in-production");
+    std::env::set_var(SOURCE_COMPILER_ENV, compiler_script.as_os_str());
+
+    let mut world = World::new();
+    world.enable_production_release_policy();
+    register_agent(&mut world, "publisher-1");
+
+    let action_id = world.submit_action(Action::CompileModuleArtifactFromSource {
+        publisher_agent_id: "publisher-1".to_string(),
+        module_id: "m.loop.source.production-disabled".to_string(),
+        source_package: sample_module_source_package(),
+    });
+    world
+        .step()
+        .expect("compile source rejected by production policy");
+
+    assert_last_rejection_note(
+        &world,
+        action_id,
+        "runtime source compile is disabled by production release policy",
+    );
+
+    let _ = fs::remove_dir_all(temp_root);
+}
+
+#[test]
 fn compile_module_artifact_from_source_rejects_when_manifest_path_missing_in_files() {
     let mut world = World::new();
     register_agent(&mut world, "publisher-1");
