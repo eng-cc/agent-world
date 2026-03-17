@@ -81,6 +81,7 @@
   - runner 矩阵：`(m4|m5) x (ubuntu-24.04/linux-x86_64, macos-14/darwin-arm64)`
   - 每个 runner 执行：`./scripts/ci-m1-wasm-summary.sh --module-set <m4|m5> --runner-label ... --out ...`
   - 汇总 job 对账：`./scripts/ci-verify-m1-wasm-summaries.py --module-set <m4|m5> --summary-dir ... --expected-runners linux-x86_64,darwin-arm64`
+  - 固定证据归档入口：`./scripts/wasm-release-evidence-report.sh --skip-collect --expected-runners linux-x86_64,darwin-arm64`（对已收集的 m1/m4/m5 多 runner summary 统一出具 `summary.md/json`）
 
 ### 当前 CI 未直接覆盖（需手册补齐）
 - Web UI agent-browser 闭环（现为手动/agent 流程，不在 CI 默认路径中）。
@@ -406,15 +407,21 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required lon
 ```bash
 ./scripts/module-release-node-acceptance.sh
 ./scripts/module-release-node-acceptance.sh --include-full
+./scripts/wasm-release-evidence-report.sh --expected-runners linux-x86_64,darwin-arm64
 ```
 - 产物与证据：
   - 默认输出目录：`.tmp/module_release_node_acceptance/<timestamp>/`
   - 最小归档：`summary.md`、`summary.json`、各 step log（含 triage 信号检索）
+  - WASM release evidence 默认输出目录：`.tmp/wasm_release_evidence_report/<timestamp>/`
+  - WASM release evidence 最小归档：`summary.md`、`summary.json`、`module_sets.tsv`、各 module set verify log 与 per-runner summary json
 - 等价拆分命令（便于定向排障）：
 ```bash
 env -u RUSTC_WRAPPER cargo test -p agent_world module_release_submit_attestation_ --features test_tier_required -- --nocapture
 env -u RUSTC_WRAPPER cargo test -p agent_world module_release_apply_rejects_when_attestation_threshold_not_met --features test_tier_required -- --nocapture
+env -u RUSTC_WRAPPER cargo test -p agent_world module_release_apply_rejects_when_attestation_receipt_evidence_mismatches --features test_tier_required -- --nocapture
 env -u RUSTC_WRAPPER cargo test -p agent_world power_bootstrap_release_manifest_full --features test_tier_full -- --nocapture
+./scripts/ci-m1-wasm-summary.sh --module-set m1 --runner-label linux-x86_64 --out <summary-dir>/m1/linux-x86_64.json
+python3 ./scripts/ci-verify-m1-wasm-summaries.py --module-set m1 --summary-dir <summary-dir>/m1 --expected-runners linux-x86_64,darwin-arm64
 ```
 - finality 基准固定入口（`stake/epoch` 验签耗时 + 2 epoch 收敛）：
 ```bash
@@ -426,7 +433,7 @@ env -u RUSTC_WRAPPER cargo test -p agent_world power_bootstrap_release_manifest_
   - 归档文件：`summary.md`（人读）与 `summary.json`（机器读）
 - 运行时分诊检索（日志/审计）：
 ```bash
-rg -n "conflicting attestation already exists|attestation threshold not met|fault_signature=builtin_release_manifest_" output .tmp
+rg -n "conflicting attestation already exists|attestation threshold not met|attestation receipt evidence mismatch|fault_signature=builtin_release_manifest_" output .tmp
 ```
 - 告警策略（发布阻断）：
 | 场景 | 识别信号（日志/事件） | 阻断策略 | 首轮处置 |
