@@ -119,3 +119,4 @@ doc/world-simulator/design.md
 doc/world-simulator/prd.index.md
 doc/world-simulator/prd.md
 doc/world-simulator/project.md
+doc/testing/openclaw-agent-parity-p0-t4-closure-2026-03-17.md

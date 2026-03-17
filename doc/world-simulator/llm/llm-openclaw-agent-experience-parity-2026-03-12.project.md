@@ -10,7 +10,7 @@
 - [x] T1 (PRD-WORLD_SIMULATOR-038) [test_tier_required]: 冻结 `P0/P1/P2` 场景集、评分项、通过线与阻断线，并新增 parity 场景矩阵与评分卡模板。
 - [x] T2 (PRD-WORLD_SIMULATOR-038) [test_tier_required]: 为 builtin 与 OpenClaw provider 冻结统一 fixture benchmark 协议、trace 汇总字段与分数聚合模板。
 - [x] T3 (PRD-WORLD_SIMULATOR-038) [test_tier_required]: 将 `OpenClaw(Local HTTP)` 专题与 `Decision Provider` 专题的实施任务改挂到 parity 目标，确保“接通”不等于“完成”。
-- [ ] T4 (PRD-WORLD_SIMULATOR-038) [test_tier_full]: 完成真实 `OpenClaw(Local HTTP)` 的 `P0` parity 对标试玩，输出 QA/producer 双签结论。
+- [x] T4 (PRD-WORLD_SIMULATOR-038) [test_tier_full]: 完成真实 `OpenClaw(Local HTTP)` 的 `P0` parity 对标试玩，输出 QA/producer 双签结论。
 - [ ] T5 (PRD-WORLD_SIMULATOR-038) [test_tier_full]: 在 `P0` 通过后推进 `P1`/`P2`，并依据结果决定是否允许默认启用或扩大覆盖范围。
 
 ## 依赖
@@ -27,8 +27,8 @@
 
 ## 状态
 - 最近更新：2026-03-17
-- 当前阶段: T4 in_progress
-- 当前任务: `在 PRD-WORLD_SIMULATOR-040 已冻结双轨默认模式后，继续采集真实 builtin/OpenClaw 的 P0 parity 证据，并补齐 QA/producer 双签材料`
+- 当前阶段: T5 blocked（T4 已完成并给出 `failed` 结论）
+- 当前任务: `修复 builtin 基线退化与 OpenClaw parity 默认 connect-timeout 风险后，重跑 P0 parity`
 - owner: `qa_engineer`
 - 联审: `qa_engineer`、`viewer_engineer`、`runtime_engineer`
 - 发起建模: `producer_system_designer`
@@ -37,3 +37,4 @@
 - T4 进展备注: 已落地 `crates/agent_world/src/bin/world_openclaw_parity_bench.rs` 与 `scripts/openclaw-parity-p0.sh`，用于按 `PRD-WORLD_SIMULATOR-038` benchmark 协议输出 `raw/*.jsonl`、单样本 summary、聚合 `combined.csv`、`failures.md` 与 `scorecard-links.md`；`PRD-WORLD_SIMULATOR-040` 已于 `2026-03-17` 完成 `headless_agent` vs `player_parity` 双模式默认策略冻结，真实 builtin/OpenClaw 对标现在成为唯一剩余 T4 缺口。
 - T4 口径补充: parity harness 已新增 `--openclaw-agent-profile` 并默认固定到 `agent_world_p0_low_freq_npc`；`DecisionRequest.agent_profile`、summary provider 信息与批处理脚本现已保留该 profile，便于 QA/producer 确认样本不是在“未知通用 skill”下跑出来的结果。
 - T4 主链路补充: 产品 launcher 主链路现已可把同一 profile 透传到真实 runtime live，因此后续 builtin/OpenClaw 双边 parity 样本可直接复用 GUI launcher 配置，而不必只依赖 bench harness。
+- T4 结论（2026-03-17）: 真实批次 `openclaw_builtin_parity_20260317_t4d` 显示 builtin `completion_rate=0%`、OpenClaw `completion_rate=100%`，`P0-001` completion gap 为 `100pp`，当前 parity 结论为 `failed`，必须保持 `experimental`；详见 `doc/testing/openclaw-agent-parity-p0-t4-closure-2026-03-17.md`。
