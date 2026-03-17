@@ -1,6 +1,6 @@
 # OpenClaw vs 内置 Agent parity 聚合结论模板（2026-03-12）
 
-审计轮次: 1
+审计轮次: 2
 
 适用范围: `PRD-WORLD_SIMULATOR-038` 的 `T2/T4/T5`，用于汇总自动 benchmark、trace 统计和 QA/producer 评分卡结论。
 
@@ -12,6 +12,7 @@
 - provider_version:
 - adapter_version:
 - protocol_version:
+- agent_profile:
 - 执行日期:
 - 执行人:
 
@@ -29,6 +30,9 @@
 | timeout_rate |  |  |  | [ ] |
 | median_extra_wait_ms |  |  |  | [ ] |
 | p95_extra_wait_ms |  |  |  | [ ] |
+| relative_wait_gap_median_ms |  |  |  | [ ] |
+| relative_wait_gap_p95_ms |  |  |  | [ ] |
+| latency_class |  |  | `A/B/C` | [ ] |
 | trace_completeness |  |  |  | [ ] |
 | recoverable_error_resolution_rate |  |  |  | [ ] |
 | context_drift_count |  |  |  | [ ] |
@@ -48,17 +52,26 @@
 - 关键截图/trace 证据路径:
 - 自动 benchmark 证据路径:
 
-## 六、阻断项结论
-- [ ] 未触发阻断项
+## 六、行为等价结论
+- [ ] 行为等价硬门禁全部通过
 - [ ] completion gap 超线
-- [ ] timeout / latency 超线
+- [ ] invalid_action_rate / timeout_rate 超线
+- [ ] `relative_wait_gap` 超线
 - [ ] trace 不完整导致无法诊断
 - [ ] 记忆连续性明显漂移
 - [ ] 会话串线 / provider session 污染
-- [ ] 其他:
+- 备注:
 
-## 七、最终结论
-- 结论: [ ]blocked [ ]failed [ ]conditional_pass [ ]pass
+## 七、发布 / 默认启用结论
+- latency_class: [ ]A(default-candidate) [ ]B(experimental-only) [ ]C(blocked)
+- [ ] 可进入默认启用候选
+- [ ] 仅允许保持 experimental / 受限试点
+- [ ] 必须阻断
+- 备注:
+
+## 八、最终结论
+- 行为等价结论: [ ]blocked [ ]failed [ ]conditional_pass [ ]pass
+- 发布 / 默认启用结论: [ ]blocked [ ]experimental_only [ ]default_candidate
 - 建议状态: [ ]保持 experimental [ ]进入下一层 parity [ ]允许默认启用
 - 必修项:
 - 建议优化项:

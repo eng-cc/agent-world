@@ -87,3 +87,11 @@
 - 仍未达线项：builtin `median_extra_wait_ms=9900`、`p95_extra_wait_ms=10597`；OpenClaw `median_extra_wait_ms=13957`、`p95_extra_wait_ms=14062`，两侧都显著高于 `P0` 通过线 `median<=500 / p95<=1500`。
 - 结论变化：timeout 阻断已收口，completion gap 也已回到 `0pp`；但由于 absolute wait latency 仍远高于 `P0` 通过线，正式 T4/T5 口径继续保持 `failed / experimental`。
 - 后续建议：优先压缩 builtin / OpenClaw 的 prompt 体积与调用链开销，避免在 `P0-001` 上继续以 >9s 的单步等待进入下一层 parity。
+
+## 11. 审计轮次 2 / 分层 latency gate 追加结论（2026-03-17）
+- 适用口径：按 `PRD-WORLD_SIMULATOR-038` 审计轮次 2，真实在线 LLM provider 先看行为等价硬门禁（`completion_rate` / `invalid_action_rate` / `timeout_rate` / `relative_wait_gap`），再看发布 / 默认启用附加门槛（`latency_class`）。
+- `fix3` 复验批次：`output/openclaw_parity/openclaw_builtin_parity_20260317_fix3`。
+- 关键数值：builtin `median_extra_wait_ms=9900`、`p95_extra_wait_ms=10597`；OpenClaw `median_extra_wait_ms=13957`、`p95_extra_wait_ms=14062`；相对 gap 为 `median=4057ms`、`p95=3465ms`。
+- 追加 QA 结论：`fix3` 已满足行为等价硬门禁，故“behavior parity”可记为 `pass`；但 OpenClaw 绝对等待仅达到 `latency_class B (experimental-only)`，默认启用门槛仍为 `not passed`。
+- 追加 Producer 结论：保留原始 `t4d` `failed` 历史结论用于问题追踪，不做删除；在审计轮次 2 下，`fix3` 的正式产品口径更新为 `behavior_parity_pass / latency_class B / keep experimental`，允许受限试点，不允许默认启用。
+- 后续建议：继续压缩 OpenClaw prompt/调用链开销，把 `median_extra_wait_ms` / `p95_extra_wait_ms` 收敛到 `latency_class A`（`median<=500ms`、`p95<=1500ms`）后，再重签默认启用与扩面结论。
