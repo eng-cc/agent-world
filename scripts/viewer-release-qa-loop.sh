@@ -116,6 +116,14 @@ state_camera_radius() {
   json_get "$1" cameraRadius
 }
 
+state_render_mode() {
+  json_get "$1" renderMode
+}
+
+state_software_safe_reason() {
+  json_get "$1" softwareSafeReason
+}
+
 normalize_eval_token() {
   local raw=${1:-}
   raw=$(printf '%s' "$raw" | tr -d '\r\n')
@@ -364,6 +372,12 @@ initial_state=$(wait_for_connected 30000) || {
 
 initial_tick=$(state_tick "$initial_state")
 initial_tick=${initial_tick:-0}
+render_mode=$(state_render_mode "$initial_state")
+software_safe_reason=$(state_software_safe_reason "$initial_state")
+software_safe_mode=0
+if [[ "$render_mode" == "software_safe" ]]; then
+  software_safe_mode=1
+fi
 control_before="$initial_state"
 after_play='null'
 paused_state='null'
@@ -402,12 +416,24 @@ if (( ${paused_followup_tick%%.*} > ${paused_tick%%.*} + 2 )); then
 fi
 
 log_note run_steps
-ab_run_steps 'mode=3d;focus=first_location;zoom=0.85;select=first_agent;wait=0.3' 2>&1 | tee -a "$pw_log" >/dev/null || true
+if [[ "$software_safe_mode" -eq 1 ]]; then
+  ab_run_steps '4' 2>&1 | tee -a "$pw_log" >/dev/null || true
+else
+  ab_run_steps 'mode=3d;focus=first_location;zoom=0.85;select=first_agent;wait=0.3' 2>&1 | tee -a "$pw_log" >/dev/null || true
+fi
 if ! selected_state=$(wait_for_selected_kind agent 6000); then
   semantic_ok=0
 fi
-if ! final_state=$(wait_for_connected 6000); then
-  semantic_ok=0
+if [[ "$software_safe_mode" -eq 1 ]]; then
+  paused_followup_tick=$(state_tick "$paused_followup")
+  paused_followup_tick=${paused_followup_tick:-0}
+  if ! final_state=$(wait_for_tick_advance "${paused_followup_tick%%.*}" 6000); then
+    semantic_ok=0
+  fi
+else
+  if ! final_state=$(wait_for_connected 6000); then
+    semantic_ok=0
+  fi
 fi
 if [[ -n "$(state_last_error "$final_state")" ]]; then
   semantic_ok=0
@@ -435,44 +461,48 @@ out.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="
 PY
 
 zoom_ok=1
+zoom_status="passed"
 zoom_results='[]'
-for stage in near mid far; do
-  case "$stage" in
-    near)
-      steps='mode=3d;focus=first_location;zoom=0.65;wait=0.3'
-      shot="$zoom_shot_near"
-      expect='decrease'
-      ;;
-    mid)
-      steps='mode=3d;focus=first_location;zoom=0.85;wait=0.3'
-      shot="$zoom_shot_mid"
-      expect='baseline'
-      ;;
-    far)
-      steps='mode=3d;focus=first_location;zoom=1.25;wait=0.3'
-      shot="$zoom_shot_far"
-      expect='increase'
-      ;;
-  esac
+if [[ "$software_safe_mode" -eq 1 ]]; then
+  zoom_status="skipped (software_safe: ${software_safe_reason:-unknown})"
+else
+  for stage in near mid far; do
+    case "$stage" in
+      near)
+        steps='mode=3d;focus=first_location;zoom=0.65;wait=0.3'
+        shot="$zoom_shot_near"
+        expect='decrease'
+        ;;
+      mid)
+        steps='mode=3d;focus=first_location;zoom=0.85;wait=0.3'
+        shot="$zoom_shot_mid"
+        expect='baseline'
+        ;;
+      far)
+        steps='mode=3d;focus=first_location;zoom=1.25;wait=0.3'
+        shot="$zoom_shot_far"
+        expect='increase'
+        ;;
+    esac
 
-  before_state=$(ab_state)
-  before_radius=$(state_camera_radius "$before_state")
-  before_radius=${before_radius:-0}
-  log_note "zoom_${stage}"
-  ab_run_steps "$steps" 2>&1 | tee -a "$pw_log" >/dev/null || true
-  sleep_ms 700
-  stage_state=$(wait_for_connected 5000 || true)
-  if [[ -z "$stage_state" ]]; then
-    stage_state=$(ab_state)
-    zoom_ok=0
-  fi
-  camera_mode=$(state_camera_mode "$stage_state")
-  camera_radius=$(state_camera_radius "$stage_state")
-  camera_radius=${camera_radius:-0}
-  if [[ "$camera_mode" != "3d" ]]; then
-    zoom_ok=0
-  fi
-  python3 - "$before_radius" "$camera_radius" "$expect" <<'PY' || zoom_ok=0
+    before_state=$(ab_state)
+    before_radius=$(state_camera_radius "$before_state")
+    before_radius=${before_radius:-0}
+    log_note "zoom_${stage}"
+    ab_run_steps "$steps" 2>&1 | tee -a "$pw_log" >/dev/null || true
+    sleep_ms 700
+    stage_state=$(wait_for_connected 5000 || true)
+    if [[ -z "$stage_state" ]]; then
+      stage_state=$(ab_state)
+      zoom_ok=0
+    fi
+    camera_mode=$(state_camera_mode "$stage_state")
+    camera_radius=$(state_camera_radius "$stage_state")
+    camera_radius=${camera_radius:-0}
+    if [[ "$camera_mode" != "3d" ]]; then
+      zoom_ok=0
+    fi
+    python3 - "$before_radius" "$camera_radius" "$expect" <<'PY' || zoom_ok=0
 import sys
 before = float(sys.argv[1] or 0)
 after = float(sys.argv[2] or 0)
@@ -484,9 +514,9 @@ if expect == 'decrease' and not (after < before * 0.95):
 if expect == 'increase' and not (after > before * 1.05):
     raise SystemExit(1)
 PY
-  log_note "screenshot_${stage}"
-  ab_screenshot "$session" "$shot" 2>&1 | tee -a "$pw_log" >/dev/null || zoom_ok=0
-  zoom_results=$(python3 - "$zoom_results" "$stage" "$shot" "$camera_mode" "$camera_radius" <<'PY'
+    log_note "screenshot_${stage}"
+    ab_screenshot "$session" "$shot" 2>&1 | tee -a "$pw_log" >/dev/null || zoom_ok=0
+    zoom_results=$(python3 - "$zoom_results" "$stage" "$shot" "$camera_mode" "$camera_radius" <<'PY'
 import json, sys
 raw, stage, shot, mode, radius = sys.argv[1:6]
 data = json.loads(raw)
@@ -499,7 +529,8 @@ data.append({
 print(json.dumps(data, ensure_ascii=False))
 PY
 )
-done
+  done
+fi
 json_to_file "$zoom_results" "$zoom_log"
 
 log_note console
@@ -555,10 +586,12 @@ overall_pass=1
   echo "- Scenario: \`$scenario\`"
   echo "- Viewer URL: \`$viewer_url\`"
   echo "- Viewer static dir: \`$viewer_static_dir\`"
+  echo "- Render mode: \`$render_mode\`"
+  echo "- Software-safe reason: \`${software_safe_reason:-n/a}\`"
   echo "- Browser automation: \`agent-browser\`"
   echo "- Visual baseline: $visual_baseline_status"
   echo "- Semantic web gate: $([[ "$semantic_ok" -eq 1 ]] && echo passed || echo failed)"
-  echo "- Zoom texture gate: $([[ "$zoom_ok" -eq 1 ]] && echo passed || echo failed)"
+  echo "- Zoom texture gate: $([[ "$zoom_ok" -eq 1 ]] && echo "$zoom_status" || echo failed)"
   echo "- Screenshot artifact: $([[ "$screenshot_ok" -eq 1 ]] && echo passed || echo failed)"
   echo "- Bevy \`[ERROR]\` logs in console dump: $bevy_error_count"
   echo "- Overall: $([[ "$overall_pass" -eq 1 ]] && echo PASS || echo FAIL)"
