@@ -10,7 +10,7 @@
 - [x] WDBP-1 (PRD-WORLD_RUNTIME-020/021) [test_tier_required]: 新增 pinned WASM builder image（`docker/wasm-builder/Dockerfile`）与 host wrapper，固定 `linux-x86_64` container platform 作为 canonical publish build 平台。
 - [x] WDBP-2 (PRD-WORLD_RUNTIME-020/021) [test_tier_required]: 将现有 `tools/wasm_build_suite` 收敛到容器内执行，输出 build receipt，并把 manifest 从多宿主 keyed token 迁移为单 canonical token `linux-x86_64=<sha256>`。
 - [ ] WDBP-3 (PRD-WORLD_RUNTIME-021/022) [test_tier_required + test_tier_full]: 将 identity / release evidence / CI summary / release gate 全面切换为 Docker canonical hash，对 macOS/Linux 只比较容器输出，不再比较 host-native 输出。
-- [ ] WDBP-4 (PRD-WORLD_RUNTIME-022) [test_tier_required]: 把 `compile_module_artifact_from_source` 的生产路径外移到 external Docker builder 或 production 默认禁用，runtime 只消费 binary + build receipt。
+- [x] WDBP-4 (PRD-WORLD_RUNTIME-022) [test_tier_required]: 把 `compile_module_artifact_from_source` 的生产路径外移到 external Docker builder 或 production 默认禁用，runtime 只消费 binary + build receipt。
 
 ## 依赖
 - `doc/world-runtime/wasm/wasm-deterministic-build-pipeline.prd.md`
@@ -28,11 +28,11 @@
 
 ## 状态
 - 更新日期: 2026-03-17
-- 当前阶段: WDBP-3 待执行
+- 当前阶段: WDBP-3 跨宿主 evidence 收口中（WDBP-4 已完成）
 - owner role: `wasm_platform_engineer`
 - 联审角色: `producer_system_designer`、`runtime_engineer`
 - 验证角色: `qa_engineer`
-- 阻塞项: release evidence / release gate 仍未完全切换到 receipt 驱动；`compile_module_artifact_from_source` 生产路径也尚未外移或默认禁用
+- 阻塞项: release evidence / release gate 仍需补齐真实 Linux + macOS full-tier 证据归档
 - 实施备注:
   - `docker/wasm-builder/Dockerfile` 与 `scripts/build-wasm-module.sh` 已落地，当前 canonical build 已收敛为 Docker-only path，不再提供 host-native fallback。
   - `tools/wasm_build_suite` 已新增 `build receipt`、`source_hash`、`build_manifest_hash`、`builder_image_digest` 与 `container_platform` 输出；builtin `m1/m4/m5` hash manifest 已全部改写为单 canonical token `linux-x86_64=<sha256>`。
@@ -41,4 +41,4 @@
   - runtime `ModuleReleaseSubmitAttestation -> apply` 现已显式绑定 `builder_image_digest + container_platform + canonicalizer_version`；release gate 会拒绝阈值 attestation 间的 receipt evidence 不一致，且要求 attestation 的 `source_hash/build_manifest_hash/wasm_hash` 与 manifest identity 对齐。
   - `ModuleReleaseManifestMappingState` 与节点验收脚本现已补齐 release evidence 摘要：映射状态会落盘 `release_{wasm,source,build_manifest}_hash + builder_image_digest + container_platform + canonicalizer_version + attestation_platforms + proof_cids + receipt_evidence_conflict`，`scripts/module-release-node-acceptance.sh` 也已纳入 receipt mismatch 阻断用例。
   - 新增 `scripts/wasm-release-evidence-report.sh` 作为多 runner fixed entry，可统一收集/校验 `m1/m4/m5` summary 并输出 `summary.md/json`，为后续 Linux + macOS full-tier 证据归档提供固定落点。
-  - `compile_module_artifact_from_source` 是 Docker-first 迁移中的最大结构性变更点，因为 production runtime 不应默认持有 Docker daemon 权限。
+  - `compile_module_artifact_from_source` 现已完成 production gate：`ReleaseSecurityPolicy` 新增 `allow_runtime_source_compile`，production 默认关闭该路径并要求改走 external Docker builder + deploy binary；dev/test 保留该 action 以支撑现有回归。

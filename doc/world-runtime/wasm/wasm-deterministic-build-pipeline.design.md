@@ -14,7 +14,7 @@
 | 构建入口 | `scripts/build-wasm-module.sh` 目前直接在 host 上固定 toolchain/env/path remap。 | 入口仍然依赖宿主机 Rust 安装与本地 shell 环境。 |
 | 构建工具 | `tools/wasm_build_suite` 已做 `--locked`、workspace compile-time guard、canonical packaging。 | 工具本身可复用，但应转移到容器内执行。 |
 | manifest 策略 | 现有 builtin manifest 以 keyed platform token 记录 `darwin-arm64` / `linux-x86_64`。 | 这是 drift 兜底，不是 drift 消除；Docker-first 的目标是只保留一个 canonical publish hash。 |
-| source compile | `compile_module_artifact_from_source` 仍在 runtime 进程里直接调用 host builder。 | 这与“发布级构建必须走同一容器镜像”相冲突。 |
+| source compile | `compile_module_artifact_from_source` 仍保留源码包编译能力，但 production `ReleaseSecurityPolicy` 已默认拒绝该 action；仅 dev/test 可显式使用。 | external builder worker 仍未落地，当前以 production default-disable 先收敛 runtime 权限面。 |
 | CI 校验 | 现有 multi-runner workflow 比较不同宿主平台各自产出的 hash/identity。 | 应改为比较“不同宿主跑同一 Docker builder 的输出”是否一致。 |
 
 ## 3. 设计原则
@@ -148,13 +148,13 @@ Identity manifest 需要扩展：
 这是本设计最大的边界调整。
 
 当前问题：
-- `compile_module_artifact_from_source` 在 runtime 进程里直接调用 host builder。
-- 即使 builder script 以后转成 Docker wrapper，也意味着 runtime 生产节点默认要有 Docker daemon 权限。
+- `compile_module_artifact_from_source` 仍存在于 runtime 代码面，但 production 路径已经不能再直接执行它。
+- external builder worker 还未落地，因此当前阶段通过 production policy default-disable 来阻断 Docker daemon 进入 runtime 热路径。
 
-目标态：
-- 生产态 source compile 外移到发布节点或专用 builder worker。
-- runtime 只接收已经构建好的 wasm artifact + build receipt。
-- 如果短期不能外移，则 production config 必须默认禁用该路径，只允许 dev/test 显式开启。
+当前落地态：
+- 生产态 source compile 已被 `ReleaseSecurityPolicy` 默认禁用。
+- runtime 生产路径只接收已经构建好的 wasm artifact；源码包编译 action 会被拒绝并要求使用 external Docker builder。
+- dev/test 仍可显式使用该路径，便于保留现有回归与实验工作流。
 
 推荐两段式流程：
 1. runtime / 发布层提交 `ModuleSourcePackage`

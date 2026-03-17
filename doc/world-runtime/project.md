@@ -52,7 +52,7 @@
 - [x] TASK-WORLD_RUNTIME-041 (PRD-WORLD_RUNTIME-020/021/022) [test_tier_required]: 将 `WASM 确定性构建与工件治理管线` 专题修正为 Docker-first canonical builder 目标态，并回写 world-runtime 根 PRD、项目索引、README 与当日 devlog。
 - [x] TASK-WORLD_RUNTIME-042 (PRD-WORLD_RUNTIME-020/021) [test_tier_required]: 新增 pinned WASM builder image 与 host wrapper，固定 `linux-x86_64` container platform 为唯一 publish build 平台；构建入口改为 Docker-only，不再保留 host-native fallback。
 - [ ] TASK-WORLD_RUNTIME-043 (PRD-WORLD_RUNTIME-021/022) [test_tier_required + test_tier_full]: 将 manifest / identity / CI summary / release evidence 切换为 Docker canonical hash，对不同宿主只比较容器输出，不再比较 host-native 发布 hash。
-- [ ] TASK-WORLD_RUNTIME-044 (PRD-WORLD_RUNTIME-022) [test_tier_required]: 将 `compile_module_artifact_from_source` 的生产路径外移到 external Docker builder 或 production 默认禁用，runtime 仅消费 binary + receipt。
+- [x] TASK-WORLD_RUNTIME-044 (PRD-WORLD_RUNTIME-022) [test_tier_required]: 将 `compile_module_artifact_from_source` 的生产路径外移到 external Docker builder 或 production 默认禁用，runtime 仅消费 binary + receipt。
 
 ## 依赖
 - 模块设计总览：`doc/world-runtime/design.md`
@@ -69,9 +69,9 @@
 
 ## 状态
 - 更新日期: 2026-03-17
-- 当前状态: in_progress（OpenClaw/runtime live traceability 子切片已完成；WASM Docker builder image 与 wrapper 已落地，`TASK-WORLD_RUNTIME-043` 已完成 build receipt / canonical token / identity / CI summary / receipt-aware release gate 子切片，当前剩余跨宿主 full-tier 证据收口）
+- 当前状态: in_progress（OpenClaw/runtime live traceability 子切片已完成；WASM Docker builder image 与 wrapper 已落地，`TASK-WORLD_RUNTIME-043` 已完成 build receipt / canonical token / identity / CI summary / receipt-aware release gate 子切片并进入跨宿主 full-tier 证据收口；`TASK-WORLD_RUNTIME-044` 已完成 production source compile gate）
 - 下一任务: `TASK-WORLD_RUNTIME-043`
-- 最新完成: `TASK-WORLD_RUNTIME-042`（新增 Docker-only WASM builder image 与 host wrapper，固定 `linux-x86_64` canonical build 平台）；上一轮为 `TASK-WORLD_RUNTIME-041`（将 `WASM 确定性构建与工件治理管线` 专题修正为 Docker-first canonical builder 目标态，并回写根入口），再上一轮为 `TASK-WORLD_RUNTIME-040`（为 OpenClaw 双轨模式补齐 mode/schema/environment/fixture/replay 元数据透传，并统一 replay/summary traceability）。
+- 最新完成: `TASK-WORLD_RUNTIME-044`（production `ReleaseSecurityPolicy` 默认禁用 runtime source compile，`CompileModuleArtifactFromSource` 改为仅 dev/test 可用并要求 external Docker builder + deploy binary + receipt）；上一轮为 `TASK-WORLD_RUNTIME-042`（新增 Docker-only WASM builder image 与 host wrapper，固定 `linux-x86_64` canonical build 平台），`TASK-WORLD_RUNTIME-043` 当前仍待真实跨宿主 full-tier release evidence 归档。
 - 阶段收口优先级: `P0`
 - 阶段 owner: `wasm_platform_engineer`（联审：`producer_system_designer`、`runtime_engineer`；验证：`qa_engineer`）
 - 阻断条件: 在 `TASK-WORLD_RUNTIME-002/003/004` 完成前，`TASK-WORLD_RUNTIME-033` 不再作为当前版本的首要发布驱动项。
@@ -79,6 +79,9 @@
 - 实施备注:
   - `TASK-WORLD_RUNTIME-042` 已完成：新增 `docker/wasm-builder/Dockerfile`、`docker/wasm-builder/README.md` 与 Docker-only `scripts/build-wasm-module.sh` wrapper；当前 canonical build 平台固定为 `linux-x86_64`（Docker `linux/amd64`），脚本不再保留 host-native fallback。
   - `TASK-WORLD_RUNTIME-043` 进行中：`tools/wasm_build_suite` 已输出 `build receipt` 与 `source_hash/build_manifest_hash`；`sync_builtin_wasm_identity` 已切换为 receipt 驱动；builtin `m1/m4/m5` manifest/identity 已收敛为单 canonical token `linux-x86_64=<sha256>`；`scripts/ci-m1-wasm-summary.sh` / `scripts/ci-verify-m1-wasm-summaries.py` 已纳入 `receipt_evidence + identity_build_recipe` 对账；runtime module release attestation/apply gate 已显式校验 `builder_image_digest + container_platform + canonicalizer_version` 与 manifest identity 一致性；`ModuleReleaseManifestMappingState` 与 `scripts/module-release-node-acceptance.sh` 已补齐 release evidence 摘要和 receipt mismatch 阻断证据；`scripts/wasm-release-evidence-report.sh` 已提供多 runner 统一归档入口；下一步继续收口节点侧真实执行归档与跨宿主 full-tier release evidence。
+  - `TASK-WORLD_RUNTIME-042` 已完成：新增 `docker/wasm-builder/Dockerfile`、`docker/wasm-builder/README.md` 与 Docker-only `scripts/build-wasm-module.sh` wrapper；当前 canonical build 平台固定为 `linux-x86_64`（Docker `linux/amd64`），脚本不再保留 host-native fallback。
+  - `TASK-WORLD_RUNTIME-043` 进行中：`tools/wasm_build_suite` 已输出 `build receipt` 与 `source_hash/build_manifest_hash`；`sync_builtin_wasm_identity` 已切换为 receipt 驱动；builtin `m1/m4/m5` manifest/identity 已收敛为单 canonical token `linux-x86_64=<sha256>`；`scripts/ci-m1-wasm-summary.sh` / `scripts/ci-verify-m1-wasm-summaries.py` 已纳入 `receipt_evidence + identity_build_recipe` 对账；runtime module release attestation/apply gate 已显式校验 `builder_image_digest + container_platform + canonicalizer_version` 与 manifest identity 一致性；`ModuleReleaseManifestMappingState` 与 `scripts/module-release-node-acceptance.sh` 已补齐 release evidence 摘要和 receipt mismatch 阻断证据；`scripts/wasm-release-evidence-report.sh` 已提供多 runner 统一归档入口；下一步继续收口节点侧真实执行归档与跨宿主 full-tier release evidence。
+  - `TASK-WORLD_RUNTIME-044` 已完成：`ReleaseSecurityPolicy` 新增 `allow_runtime_source_compile`，production policy 默认关闭 runtime 内源码编译；`CompileModuleArtifactFromSource` 在 production 下会直接拒绝并提示改走 external Docker builder + `DeployModuleArtifact`，从而把 Docker daemon 依赖移出 runtime 热路径。
   - `TASK-WORLD_RUNTIME-039` 已完成：为 `world_viewer_live` / runtime live 增加 `AGENT_WORLD_RUNTIME_AGENT_CHAT_ECHO=1` 测试态回声开关，在 `agent_chat` 被接受后可注入一条标准 `WorldEventKind::AgentSpoke` 事件，供 Viewer / QA 在不依赖自然 LLM 回话的情况下稳定采样消息流。
   - `TASK-WORLD_RUNTIME-040` 已完成：在 `DecisionRequest` / `ObservationEnvelope` 中补齐 `mode`、`observation_schema_version`、`action_schema_version`、`environment_class`、`fallback_reason`、`fixture_id`、`replay_id`，并将其接入 `world_openclaw_parity_bench`、`world_openclaw_local_bridge`、`runtime_live llm_sidecar` 与聚合脚本，确保 headless parity 与 runtime live 产物可追溯到统一 replay/summary 元数据。
   - `TASK-WORLD_RUNTIME-041` 已完成：根据最新需求将专题从“host deterministic guard + keyed 平台 hash 对账”修正为“Docker-first canonical builder + single canonical publish hash”，并明确 `compile_module_artifact_from_source` 生产路径需要外移或 gated。
