@@ -45,7 +45,7 @@
   - AC-4: 变更验证与收口记录完整。
 - Non-Goals:
   - 不新增 m4/m5 独立 workflow。
-  - 不变更 `builtin-wasm-m1-multi-runner` workflow 行为。
+  - 不变更 `wasm-determinism-gate` 独立 gate 的职责边界。
   - 不修改 `sync-m*-builtin-wasm-artifacts.sh` 脚本实现。
 
 ## 3. AI System Requirements (If Applicable)

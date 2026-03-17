@@ -32,8 +32,8 @@
 - [x] TASK-TESTING-009 (PRD-TESTING-004) [test_tier_required]: 完成 `ci-testcase-tiering` 专题文档逐篇人工迁移到 strict schema，并统一 `.prd` 命名。
 - [x] TASK-TESTING-010 (PRD-TESTING-004) [test_tier_required]: 完成 `ci-tiered-execution` 专题文档逐篇人工迁移到 strict schema，并统一 `.prd` 命名。
 - [x] TASK-TESTING-011 (PRD-TESTING-004) [test_tier_required]: 完成 `ci-test-coverage` 专题文档逐篇人工迁移到 strict schema，并统一 `.prd` 命名。
-- [x] TASK-TESTING-012 (PRD-TESTING-004) [test_tier_required]: 完成 `ci-builtin-wasm-m1-multi-runner` 专题文档逐篇人工迁移到 strict schema，并统一 `.prd` 命名。
-- [x] TASK-TESTING-013 (PRD-TESTING-004) [test_tier_required]: 完成 `ci-m1-multi-runner-required-check-protection` 专题文档逐篇人工迁移到 strict schema，并统一 `.prd` 命名。
+- [x] TASK-TESTING-012 (PRD-TESTING-004) [test_tier_required]: 完成 `ci-builtin-wasm-determinism-gate-m1` 专题文档逐篇人工迁移到 strict schema，并统一 `.prd` 命名。
+- [x] TASK-TESTING-013 (PRD-TESTING-004) [test_tier_required]: 完成 `ci-builtin-wasm-determinism-gate-required-check-protection` 专题文档逐篇人工迁移到 strict schema，并统一 `.prd` 命名。
 - [x] TASK-TESTING-014 (PRD-TESTING-004) [test_tier_required]: 完成 `ci-remove-builtin-wasm-hash-checks-from-base-gate` 专题文档逐篇人工迁移到 strict schema，并统一 `.prd` 命名。
 - [x] TASK-TESTING-015 (PRD-TESTING-004) [test_tier_required]: 完成 `wasm-build-determinism-guard` 专题文档逐篇人工迁移到 strict schema，并统一 `.prd` 命名。
 - [x] TASK-TESTING-016 (PRD-TESTING-004) [test_tier_required]: 完成 `release-gate-metric-policy-alignment-2026-02-28` 专题文档逐篇人工迁移到 strict schema，并统一 `.prd` 命名。
@@ -67,10 +67,10 @@
 - [x] TASK-TESTING-051 (PRD-TESTING-LAUNCHER-BUNDLE-001/002) [test_tier_required]: 为 bundle-first 试玩入口增加 freshness manifest 守卫，默认阻断或自动重建 stale bundle，避免旧 Viewer Web 产物与新 runtime 二进制混跑。
 - [x] TASK-TESTING-035 (PRD-TESTING-004) [test_tier_required]: 完成 archive 专题 `ci-required-m1-wasm-hash-check` 文档迁移到 strict schema，并统一 `.prd` 命名。
 - [x] TASK-TESTING-036 (PRD-TESTING-004) [test_tier_required]: 完成 archive 专题 `wasm-platform-canonical-hash-manifest` 文档迁移到 strict schema，并统一 `.prd` 命名。
-- [x] TASK-TESTING-037 (PRD-TESTING-005) [test_tier_required]: 完成 `ci-builtin-wasm-m4-m5-hash-drift-hardening` 专题 PRD 与项目管理文档建档，建立 1-6 治理项映射。
+- [x] TASK-TESTING-037 (PRD-TESTING-005) [test_tier_required]: 完成 `ci-builtin-wasm-docker-canonical-gate` 专题 PRD 与项目管理文档建档，建立 1-6 治理项映射。
 - [x] TASK-TESTING-038 (PRD-TESTING-005) [test_tier_required]: 落地 m4/m5 keyed hash manifest 迁移与 sync strict 模式（禁 legacy 写回）。
 - [x] TASK-TESTING-039 (PRD-TESTING-005) [test_tier_required]: 收敛 builtin wasm identity 的 `source_hash` 输入范围并移除 workspace 根 `Cargo.lock` 依赖。
-- [x] TASK-TESTING-040 (PRD-TESTING-005) [test_tier_required]: 增加 m4/m5 多 runner 对账 workflow、required checks 保护与本地只读校验策略。
+- [x] TASK-TESTING-040 (PRD-TESTING-005) [test_tier_required]: 收敛 builtin wasm 独立 gate 到 `wasm-determinism-gate` / required checks 保护与本地只读校验策略；GitHub-hosted 默认 runner 为 Linux，外部 Docker-capable macOS summary 作为 full-tier 补充证据。
 - [x] TASK-TESTING-041 (PRD-TESTING-002/003) [test_tier_required]: 完成“启动器全功能可用性审查与闭环验收（2026-03-08）”专题执行（脚本审查 + agent-browser 真闭环 + 风险分级结论）。
 
 ## 专题任务映射（2026-03-02 批次）
@@ -83,8 +83,8 @@
 - [x] SUBTASK-TESTING-20260303-002 (PRD-TESTING-004) [test_tier_required]: `doc/testing/ci/ci-testcase-tiering.project.md`
 - [x] SUBTASK-TESTING-20260303-003 (PRD-TESTING-004) [test_tier_required]: `doc/testing/ci/ci-tiered-execution.project.md`
 - [x] SUBTASK-TESTING-20260303-004 (PRD-TESTING-004) [test_tier_required]: `doc/testing/ci/ci-test-coverage.project.md`
-- [x] SUBTASK-TESTING-20260303-005 (PRD-TESTING-004) [test_tier_required]: `doc/testing/ci/ci-builtin-wasm-m1-multi-runner.project.md`
-- [x] SUBTASK-TESTING-20260303-006 (PRD-TESTING-004) [test_tier_required]: `doc/testing/ci/ci-m1-multi-runner-required-check-protection.project.md`
+- [x] SUBTASK-TESTING-20260303-005 (PRD-TESTING-004) [test_tier_required]: `doc/testing/ci/ci-builtin-wasm-determinism-gate-m1.project.md`
+- [x] SUBTASK-TESTING-20260303-006 (PRD-TESTING-004) [test_tier_required]: `doc/testing/ci/ci-builtin-wasm-determinism-gate-required-check-protection.project.md`
 - [x] SUBTASK-TESTING-20260303-007 (PRD-TESTING-004) [test_tier_required]: `doc/testing/ci/ci-remove-builtin-wasm-hash-checks-from-base-gate.project.md`
 - [x] SUBTASK-TESTING-20260303-008 (PRD-TESTING-004) [test_tier_required]: `doc/testing/governance/wasm-build-determinism-guard.project.md`
 - [x] SUBTASK-TESTING-20260303-009 (PRD-TESTING-004) [test_tier_required]: `doc/testing/governance/release-gate-metric-policy-alignment-2026-02-28.project.md`
@@ -108,7 +108,7 @@
 - [x] SUBTASK-TESTING-20260303-027 (PRD-TESTING-004) [test_tier_required]: `doc/testing/manual/web-ui-agent-browser-closure-manual.project.md`
 
 ## 专题任务映射（2026-03-06 批次）
-- [x] SUBTASK-TESTING-20260306-001 (PRD-TESTING-005) [test_tier_required]: `doc/testing/ci/ci-builtin-wasm-m4-m5-hash-drift-hardening.project.md`
+- [x] SUBTASK-TESTING-20260306-001 (PRD-TESTING-005) [test_tier_required]: `doc/testing/ci/ci-builtin-wasm-docker-canonical-gate.project.md`
 
 ## 专题任务映射（2026-03-08 批次）
 - [x] SUBTASK-TESTING-20260308-001 (PRD-TESTING-002/003) [test_tier_required]: `doc/testing/launcher/launcher-full-usability-closure-audit-2026-03-08.project.md`

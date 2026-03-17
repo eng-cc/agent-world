@@ -1,13 +1,7 @@
-# Agent World: Builtin Wasm Docker 确定性 Gate 与发布链路收敛（历史文件名归档提示 / 项目管理）
+# Agent World: Builtin Wasm Docker Canonical Gate（项目管理）
 
-- 对应设计文档: `doc/testing/ci/ci-builtin-wasm-m4-m5-hash-drift-hardening.design.md`
-- 对应需求文档: `doc/testing/ci/ci-builtin-wasm-m4-m5-hash-drift-hardening.prd.md`
-- 当前活跃设计文档: `doc/testing/ci/ci-builtin-wasm-docker-canonical-gate.design.md`
-- 当前活跃需求文档: `doc/testing/ci/ci-builtin-wasm-docker-canonical-gate.prd.md`
-
-> 状态更新（2026-03-17）:
-> - 该旧项目文件名仅保留为历史追溯入口。
-> - 当前活跃项目文档见 `doc/testing/ci/ci-builtin-wasm-docker-canonical-gate.project.md`。
+- 对应设计文档: `doc/testing/ci/ci-builtin-wasm-docker-canonical-gate.design.md`
+- 对应需求文档: `doc/testing/ci/ci-builtin-wasm-docker-canonical-gate.prd.md`
 
 审计轮次: 2
 
@@ -22,7 +16,7 @@
 - [x] T8 (PRD-TESTING-CI-WASMHARD-003): 落地“本地仅 `--check`、写入需显式授权”策略并同步测试手册。
 
 ## 依赖
-- `doc/testing/ci/ci-builtin-wasm-m4-m5-hash-drift-hardening.prd.md`
+- `doc/testing/ci/ci-builtin-wasm-docker-canonical-gate.prd.md`
 - `scripts/sync-m1-builtin-wasm-artifacts.sh`
 - `scripts/sync-m4-builtin-wasm-artifacts.sh`
 - `scripts/sync-m5-builtin-wasm-artifacts.sh`

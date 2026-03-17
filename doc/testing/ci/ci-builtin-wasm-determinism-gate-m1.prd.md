@@ -1,16 +1,9 @@
-# Agent World: Builtin Wasm 确定性 Gate（m1 历史文件名归档提示）
+# Agent World: Builtin Wasm Determinism Gate（m1）
 
-- 对应设计文档: `doc/testing/ci/ci-builtin-wasm-m1-multi-runner.design.md`
-- 对应项目管理文档: `doc/testing/ci/ci-builtin-wasm-m1-multi-runner.project.md`
-- 当前活跃需求文档: `doc/testing/ci/ci-builtin-wasm-determinism-gate-m1.prd.md`
-- 当前活跃设计文档: `doc/testing/ci/ci-builtin-wasm-determinism-gate-m1.design.md`
-- 当前活跃项目管理文档: `doc/testing/ci/ci-builtin-wasm-determinism-gate-m1.project.md`
+- 对应设计文档: `doc/testing/ci/ci-builtin-wasm-determinism-gate-m1.design.md`
+- 对应项目管理文档: `doc/testing/ci/ci-builtin-wasm-determinism-gate-m1.project.md`
 
 审计轮次: 5
-
-> 状态更新（2026-03-17）:
-> - 该旧文件名仅保留为历史追溯入口，不再作为当前专题主入口。
-> - 当前活跃文档集合已迁移到 `ci-builtin-wasm-determinism-gate-m1.*.md`。
 
 ## 1. Executive Summary
 - Problem Statement: `m1` 曾经使用独立 multi-runner workflow 观察宿主差异，但 builtin wasm 发布级构建已经切到 Docker canonical build；如果继续把旧 workflow 当成现行口径，会把已下线的 host-native hash 对账重新带回 testing 文档。

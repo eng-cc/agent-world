@@ -69,7 +69,7 @@
 | 证据包归档 | 命令、日志、截图、结论、责任人 | 执行后归档并建立索引 | `collecting -> archived -> reviewed` | 按版本与模块分层索引 | 测试维护者负责最终校验 |
 | 缺陷回归闭环 | 缺陷ID、触发条件、修复提交、复测结论 | 缺陷关闭前必须绑定回归记录 | `opened -> fixed -> regressed -> closed` | 高风险缺陷优先回归 | QA/维护者可更新状态 |
 | 文档格式迁移 | 旧文档路径、约束点清单、目标命名 | 人工重写并更名，补全映射与验证证据 | `inventory -> migrated -> validated` | 先迁移活跃文档、后迁移归档文档 | 维护者审批迁移质量，贡献者执行 |
-| Builtin wasm hash 治理 | 模块集、平台 token、runner 摘要、required check context | 执行 `sync --check`、摘要导出与对账、分支保护同步 | `check-only -> reconciled -> protected` | keyed token 仅允许 canonical 平台，identity 输入使用白名单 | 本地默认只读校验，写路径限定 CI bot |
+| Builtin wasm hash 治理 | 模块集、canonical token、runner 摘要、required check context、release evidence | 执行 Docker canonical `sync --check`、摘要导出与证据对账、分支保护同步 | `check-only -> reconciled -> protected` | 发布清单仅允许 `linux-x86_64` canonical token，identity 输入使用 receipt + 白名单 | 本地默认只读校验，写路径限定非 CI 的显式授权 |
 | Release 资产预构建复用 | web dist artifact、cargo cache key、bundle build command set | 同一 release workflow 先产出 viewer/launcher 静态包并复用 warm cache；后续打包不得重复 bootstrap 相同 Web 产物 | `bootstrapped -> reused -> packaged` | 先复用同轮 artifact / cache，再允许脚本 fallback；原生 bundle 构建优先单次 cargo 调用 | QA / 发布维护者维护 release 时延口径 |
 | Runtime gate 分片执行 | full-suite shard、sync check、runner capability、日志 artifact | 将 release runtime gate 拆成 core/support/sync 并行 job；聚合 gate 统一裁决是否放行 | `planned -> sharded -> aggregated` | 重型 `agent_world` full-tier 优先单独成 shard，其余 support / sync 独立并行；最终必须全部成功 | QA / 发布维护者维护 runtime 关键路径 |
 - Acceptance Criteria:
@@ -78,7 +78,7 @@
   - AC-3: 与 `testing-manual.md` 保持一致且互相引用。
   - AC-4: 新增测试流程需标注 `test_tier_required` 或 `test_tier_full`。
   - AC-5: 每个迁移批次必须提供“原文约束点 -> 新章节映射”并通过文档治理检查。
-  - AC-6: builtin wasm hash 发布链路治理（m4/m5 keyed + strict + multi-runner + required check + identity 输入收敛）具备独立专题与任务追踪。
+  - AC-6: builtin wasm 发布链路治理（Docker canonical build + single canonical token + wasm-determinism-gate + required check + identity/release evidence 输入收敛）具备独立专题与任务追踪。
   - AC-7: `world_web_launcher` / launcher Web 控制面必须显式标注 GUI Agent 优先，`agent-browser` 仅作为状态、字段与页面加载校验补充。
   - AC-8: 对前期工业引导体验的改动，必须能从 `testing-manual.md` 直接跳转到对应 required-tier 手动卡组。
   - AC-9: 同一 release workflow 内，Web release gate 与 `build-web-dist` 必须复用同一组 wasm/cargo cache，bundle 原生二进制构建默认收敛为单次 cargo 调用，避免重复 bootstrap。
@@ -98,7 +98,7 @@
   - `testing-manual.md`
   - `doc/testing/manual/web-ui-agent-browser-closure-manual.prd.md`
   - `doc/playability_test_result/topics/industrial-onboarding-required-tier-cards-2026-03-15.md`
-  - `doc/testing/ci/ci-builtin-wasm-m4-m5-hash-drift-hardening.prd.md`
+  - `doc/testing/ci/ci-builtin-wasm-docker-canonical-gate.prd.md`
   - `scripts/ci-tests.sh`
   - `scripts/sync-m1-builtin-wasm-artifacts.sh`
   - `scripts/ci-m1-wasm-summary.sh`

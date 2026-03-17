@@ -1,16 +1,9 @@
-# Agent World: Builtin Wasm m4/m5 Hash 漂移治理与发布链路收敛（历史文件名归档提示）
+# Agent World: Builtin Wasm Docker Canonical Gate
 
-- 对应设计文档: `doc/testing/ci/ci-builtin-wasm-m4-m5-hash-drift-hardening.design.md`
-- 对应项目管理文档: `doc/testing/ci/ci-builtin-wasm-m4-m5-hash-drift-hardening.project.md`
-- 当前活跃需求文档: `doc/testing/ci/ci-builtin-wasm-docker-canonical-gate.prd.md`
-- 当前活跃设计文档: `doc/testing/ci/ci-builtin-wasm-docker-canonical-gate.design.md`
-- 当前活跃项目管理文档: `doc/testing/ci/ci-builtin-wasm-docker-canonical-gate.project.md`
+- 对应设计文档: `doc/testing/ci/ci-builtin-wasm-docker-canonical-gate.design.md`
+- 对应项目管理文档: `doc/testing/ci/ci-builtin-wasm-docker-canonical-gate.project.md`
 
 审计轮次: 2
-
-> 状态更新（2026-03-17）:
-> - 该旧文件名仅保留为历史追溯入口，不再作为当前专题主入口。
-> - 当前活跃文档集合已迁移到 `ci-builtin-wasm-docker-canonical-gate.*.md`。
 
 ## 1. Executive Summary
 - Problem Statement: builtin wasm 发布链路已经切到 Docker canonical build，但 testing 侧专题仍保留 keyed multi-runner、旧 required check 与旧 workflow 叙事，导致现行 Linux-only canonical gate 与历史 host-native 多 runner 对账口径混杂。

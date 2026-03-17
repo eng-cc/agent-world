@@ -53,7 +53,7 @@
 - [x] 本地回归：正常 PATH + 无 `rg` PATH 双路径校验
 
 ### T3C Builtin Wasm m1 identity 清单回收敛
-- [x] 复现并定位 `Builtin Wasm m1 Multi Runner` 失败根因：`m1.body.core` source_hash 失配
+- [x] 复现并定位 `Wasm Determinism Gate / verify-wasm-determinism (m1)` 的前身独立 gate 失败根因：`m1.body.core` source_hash 失配
 - [x] 执行 `scripts/sync-m1-builtin-wasm-artifacts.sh` 更新 hash/identity manifest
 - [x] 本地回归 `scripts/ci-m1-wasm-summary.sh`（至少当前平台）并确认通过
 

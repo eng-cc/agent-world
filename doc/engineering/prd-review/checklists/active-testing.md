@@ -10,10 +10,10 @@
 - 如发现与代码不一致，按代码实现回写文档，并在“处理动作”注明提交。
 - 如发现与其他文档重复或上下游不对齐，先记录问题，再在对应文档修订并回填状态。
 
-- [x] 2026-03-04 00:18:15 CST | doc/testing/ci/ci-builtin-wasm-m1-multi-runner.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
-- [x] 2026-03-04 00:18:15 CST | doc/testing/ci/ci-builtin-wasm-m1-multi-runner.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
-- [x] 2026-03-04 00:18:15 CST | doc/testing/ci/ci-m1-multi-runner-required-check-protection.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
-- [x] 2026-03-04 00:18:15 CST | doc/testing/ci/ci-m1-multi-runner-required-check-protection.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/testing/ci/ci-builtin-wasm-determinism-gate-m1.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/testing/ci/ci-builtin-wasm-determinism-gate-m1.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/testing/ci/ci-builtin-wasm-determinism-gate-required-check-protection.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/testing/ci/ci-builtin-wasm-determinism-gate-required-check-protection.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
 - [x] 2026-03-04 00:18:15 CST | doc/testing/ci/ci-remove-builtin-wasm-hash-checks-from-base-gate.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
 - [x] 2026-03-04 00:18:15 CST | doc/testing/ci/ci-remove-builtin-wasm-hash-checks-from-base-gate.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
 - [x] 2026-03-04 00:18:15 CST | doc/testing/ci/ci-test-coverage.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验

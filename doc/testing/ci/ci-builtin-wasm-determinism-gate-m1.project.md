@@ -1,13 +1,7 @@
-# Agent World: Builtin Wasm 确定性 Gate（m1 历史文件名归档提示 / 项目管理）
+# Agent World: Builtin Wasm Determinism Gate（m1 / 项目管理）
 
-- 对应设计文档: `doc/testing/ci/ci-builtin-wasm-m1-multi-runner.design.md`
-- 对应需求文档: `doc/testing/ci/ci-builtin-wasm-m1-multi-runner.prd.md`
-- 当前活跃设计文档: `doc/testing/ci/ci-builtin-wasm-determinism-gate-m1.design.md`
-- 当前活跃需求文档: `doc/testing/ci/ci-builtin-wasm-determinism-gate-m1.prd.md`
-
-> 状态更新（2026-03-17）:
-> - 该旧项目文件名仅保留为历史追溯入口。
-> - 当前活跃项目文档见 `doc/testing/ci/ci-builtin-wasm-determinism-gate-m1.project.md`。
+- 对应设计文档: `doc/testing/ci/ci-builtin-wasm-determinism-gate-m1.design.md`
+- 对应需求文档: `doc/testing/ci/ci-builtin-wasm-determinism-gate-m1.prd.md`
 
 审计轮次: 5
 
@@ -18,7 +12,7 @@
 - [x] T4 (PRD-TESTING-CI-M1RUNNER-003): testing-manual / project / devlog 同步。
 
 ## 依赖
-- `doc/testing/ci/ci-builtin-wasm-m1-multi-runner.prd.md`
+- `doc/testing/ci/ci-builtin-wasm-determinism-gate-m1.prd.md`
 - `.github/workflows/wasm-determinism-gate.yml`
 - `scripts/ci-m1-wasm-summary.sh`
 - `scripts/ci-verify-m1-wasm-summaries.py`

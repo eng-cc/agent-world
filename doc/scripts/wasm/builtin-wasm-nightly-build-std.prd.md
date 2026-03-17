@@ -19,7 +19,7 @@
   - 重新同步 `m1/m4` hash 清单并回归 `sync --check` 与 required tier。
 - Out of Scope：
   - runtime ABI、DistFS 协议、hash 算法与 manifest 文件格式改动。
-  - 引入容器化 canonical 构建路径（本方案明确不采用）。
+  - 定义发布级 Docker canonical builder 目标态；当前发布口径由 `doc/world-runtime/wasm/wasm-deterministic-build-pipeline.prd.md` 管理。
 
 ## 接口 / 数据
 - 构建入口：

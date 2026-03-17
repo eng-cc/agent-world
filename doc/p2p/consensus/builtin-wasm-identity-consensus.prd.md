@@ -8,7 +8,7 @@
 - Problem Statement: 解决“不同宿主构建产物 hash 漂移导致门禁不稳定”的生产问题，同时保留节点本地可构建能力。
 - Proposed Solution: 将一致性目标从“跨平台产物字节 hash 必须一致”升级为“跨平台模块身份（identity）一致”。
 - Success Criteria:
-  - SC-1: 在不依赖 Docker/Podman 的前提下，支持多节点构建、验证与产物复用。
+  - SC-1: 在不要求 runtime 节点执行前本机重编源码的前提下，支持多节点验证、产物复用与 identity 一致性校验。
 
 ## 2. User Experience & Functionality
 - User Personas: 协议维护者、任务执行者、质量复核者。
@@ -28,7 +28,7 @@
   - AC-6: runtime builtin materializer 支持非 canonical 平台节点的本地回退编译与缓存复用，不再把“hash 必须命中清单”作为唯一可用条件。
 - Non-Goals:
   - 修改 wasm ABI 协议版本与 runtime 模块执行语义。
-  - 引入中心化构建服务或强制容器化构建路径。
+  - 将 identity 共识专题扩展为发布级 Docker builder 设计；当前 canonical build 目标态由 `doc/world-runtime/wasm/wasm-deterministic-build-pipeline.prd.md` 管理。
   - 替换现有 `sha256` 算法。
 
 ## 3. AI System Requirements (If Applicable)

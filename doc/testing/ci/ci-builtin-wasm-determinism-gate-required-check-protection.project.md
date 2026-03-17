@@ -1,13 +1,7 @@
-# Agent World: Wasm Determinism Gate Required Check 保护（历史文件名归档提示 / 项目管理）
+# Agent World: Builtin Wasm Determinism Gate Required Check 保护（项目管理）
 
-- 对应设计文档: `doc/testing/ci/ci-m1-multi-runner-required-check-protection.design.md`
-- 对应需求文档: `doc/testing/ci/ci-m1-multi-runner-required-check-protection.prd.md`
-- 当前活跃设计文档: `doc/testing/ci/ci-builtin-wasm-determinism-gate-required-check-protection.design.md`
-- 当前活跃需求文档: `doc/testing/ci/ci-builtin-wasm-determinism-gate-required-check-protection.prd.md`
-
-> 状态更新（2026-03-17）:
-> - 该旧项目文件名仅保留为历史追溯入口。
-> - 当前活跃项目文档见 `doc/testing/ci/ci-builtin-wasm-determinism-gate-required-check-protection.project.md`。
+- 对应设计文档: `doc/testing/ci/ci-builtin-wasm-determinism-gate-required-check-protection.design.md`
+- 对应需求文档: `doc/testing/ci/ci-builtin-wasm-determinism-gate-required-check-protection.prd.md`
 
 审计轮次: 5
 
@@ -18,7 +12,7 @@
 - [x] T4 (PRD-TESTING-CI-REQUIRED-003): 测试手册同步、回归验证与收口。
 
 ## 依赖
-- `doc/testing/ci/ci-m1-multi-runner-required-check-protection.prd.md`
+- `doc/testing/ci/ci-builtin-wasm-determinism-gate-required-check-protection.prd.md`
 - `.github/workflows/wasm-determinism-gate.yml`
 - `scripts/ci-m1-wasm-summary.sh`
 - `scripts/ci-verify-m1-wasm-summaries.py`

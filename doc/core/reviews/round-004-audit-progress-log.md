@@ -453,10 +453,10 @@
 | 2026-03-06 12:05:09 +0800 | codex | `doc/playability_test_result/card_2026_02_28_22_47_14.md` | pass | - | 卡片包含完整采样与结论字段，未发现 D4-001~D4-008 命令问题。 |
 | 2026-03-06 12:05:34 +0800 | codex | `doc/playability_test_result/card_2026_02_28_23_27_06.md` | pass | - | 该卡片回填了访问地址/证据/量化指标，审计未见 D4 命令问题。 |
 | 2026-03-06 12:06:01 +0800 | codex | `doc/playability_test_result/card_2026_03_01_00_20_13.md` | issue_open | I4-006 | 量化指标 `TTFC` 记录为 `null`，该卡片关键可比字段缺失会削弱版本横向对比有效性。 |
-| 2026-03-06 12:07:03 +0800 | codex | `doc/testing/ci/ci-builtin-wasm-m1-multi-runner.prd.md` | pass | - | AC 中 `sync-m1 --check` 命令与 workflow 路径清晰，可直接用于校验。 |
-| 2026-03-06 12:07:27 +0800 | codex | `doc/testing/ci/ci-builtin-wasm-m1-multi-runner.project.md` | pass | - | 任务映射与依赖链路可达，未发现命令可执行性异常。 |
-| 2026-03-06 12:07:50 +0800 | codex | `doc/testing/ci/ci-m1-multi-runner-required-check-protection.prd.md` | pass | - | required-check 注入脚本目标与 dry-run/幂等口径明确，未见不可执行命令表达。 |
-| 2026-03-06 12:08:20 +0800 | codex | `doc/testing/ci/ci-m1-multi-runner-required-check-protection.project.md` | pass | - | 任务映射与 `gh api` 依赖关系清晰，未发现 D4 命令问题。 |
+| 2026-03-06 12:07:03 +0800 | codex | `doc/testing/ci/ci-builtin-wasm-determinism-gate-m1.prd.md` | pass | - | AC 中 `sync-m1 --check` 命令与 workflow 路径清晰；后续活跃入口已统一到 determinism gate 命名。 |
+| 2026-03-06 12:07:27 +0800 | codex | `doc/testing/ci/ci-builtin-wasm-determinism-gate-m1.project.md` | pass | - | 任务映射与依赖链路可达，未发现命令可执行性异常。 |
+| 2026-03-06 12:07:50 +0800 | codex | `doc/testing/ci/ci-builtin-wasm-determinism-gate-required-check-protection.prd.md` | pass | - | required-check 注入脚本目标与 dry-run/幂等口径明确，未见不可执行命令表达。 |
+| 2026-03-06 12:08:20 +0800 | codex | `doc/testing/ci/ci-builtin-wasm-determinism-gate-required-check-protection.project.md` | pass | - | 任务映射与 `gh api` 依赖关系清晰，未发现 D4 命令问题。 |
 | 2026-03-06 12:08:49 +0800 | codex | `doc/testing/ci/ci-remove-builtin-wasm-hash-checks-from-base-gate.prd.md` | pass | - | 门禁变更范围与保留路径描述清晰，未见不可执行命令写法。 |
 | 2026-03-06 12:09:29 +0800 | codex | `doc/testing/ci/ci-remove-builtin-wasm-hash-checks-from-base-gate.project.md` | pass | - | 项目任务与依赖收敛到脚本/手册改造，审计未见 D4 问题。 |
 | 2026-03-06 12:09:53 +0800 | codex | `doc/testing/ci/ci-test-coverage.prd.md` | pass | - | required/full 覆盖与降级路径定义明确，可执行口径无歧义。 |

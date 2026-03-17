@@ -43,8 +43,8 @@
 - `doc/scripts/precommit/pre-commit.project.md`
 - `doc/site/prd.md`
 - `doc/site/project.md`
-- `doc/testing/ci/ci-builtin-wasm-m1-multi-runner.prd.md`
-- `doc/testing/ci/ci-m1-multi-runner-required-check-protection.prd.md`
+- `doc/testing/ci/ci-builtin-wasm-determinism-gate-m1.prd.md`
+- `doc/testing/ci/ci-builtin-wasm-determinism-gate-required-check-protection.prd.md`
 - `doc/testing/ci/ci-remove-builtin-wasm-hash-checks-from-base-gate.prd.md`
 - `doc/testing/launcher/launcher-lifecycle-hardening-2026-03-01.prd.md`
 - `doc/testing/launcher/launcher-lifecycle-hardening-2026-03-01.project.md`

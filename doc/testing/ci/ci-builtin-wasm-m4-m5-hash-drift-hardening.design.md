@@ -1,7 +1,13 @@
-# Agent World: Builtin Wasm m4/m5 Hash 漂移治理与发布链路收敛设计
+# Agent World: Builtin Wasm m4/m5 Hash 漂移治理与发布链路收敛设计（历史文件名归档提示）
 
 - 对应需求文档: `doc/testing/ci/ci-builtin-wasm-m4-m5-hash-drift-hardening.prd.md`
 - 对应项目管理文档: `doc/testing/ci/ci-builtin-wasm-m4-m5-hash-drift-hardening.project.md`
+- 当前活跃需求文档: `doc/testing/ci/ci-builtin-wasm-docker-canonical-gate.prd.md`
+- 当前活跃项目管理文档: `doc/testing/ci/ci-builtin-wasm-docker-canonical-gate.project.md`
+
+> 状态更新（2026-03-17）:
+> - 该旧设计文件名仅保留为追溯提示。
+> - 当前活跃设计文档见 `doc/testing/ci/ci-builtin-wasm-docker-canonical-gate.design.md`。
 
 ## 1. 设计定位
 定义 CI 与测试门禁专题设计，统一流水线分层、门禁策略、产物校验与失败保护。

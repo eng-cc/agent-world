@@ -339,10 +339,10 @@
 - `doc/site/prd.md`
 - `doc/site/project.md`
 - `doc/testing/README.md`
-- `doc/testing/ci/ci-builtin-wasm-m1-multi-runner.prd.md`
-- `doc/testing/ci/ci-builtin-wasm-m1-multi-runner.project.md`
-- `doc/testing/ci/ci-m1-multi-runner-required-check-protection.prd.md`
-- `doc/testing/ci/ci-m1-multi-runner-required-check-protection.project.md`
+- `doc/testing/ci/ci-builtin-wasm-determinism-gate-m1.prd.md`
+- `doc/testing/ci/ci-builtin-wasm-determinism-gate-m1.project.md`
+- `doc/testing/ci/ci-builtin-wasm-determinism-gate-required-check-protection.prd.md`
+- `doc/testing/ci/ci-builtin-wasm-determinism-gate-required-check-protection.project.md`
 - `doc/testing/ci/ci-remove-builtin-wasm-hash-checks-from-base-gate.prd.md`
 - `doc/testing/ci/ci-remove-builtin-wasm-hash-checks-from-base-gate.project.md`
 - `doc/testing/ci/ci-test-coverage.prd.md`

@@ -417,12 +417,12 @@
 | `doc/site/prd.md` | `prd` | `pass` | `none` | `keep` | `n/a` | `n/a` | `producer_system_designer` | `done` | PRD 目标态边界复核通过 |
 | `doc/site/project.md` | `project` | `pass` | `none` | `keep` | `n/a` | `n/a` | `producer_system_designer` | `done` | Project 执行闭环边界复核通过 |
 | `doc/testing/README.md` | `readme` | `pass` | `none` | `keep` | `n/a` | `n/a` | `producer_system_designer` | `done` | 导航/索引文档，未发现越权承载需求/设计/项目权威内容 |
-| `doc/testing/ci/ci-builtin-wasm-m1-multi-runner.prd.md` | `prd` | `pass` | `none` | `keep` | `n/a` | `n/a` | `producer_system_designer` | `done` | PRD 目标态边界复核通过 |
-| `doc/testing/ci/ci-builtin-wasm-m1-multi-runner.project.md` | `project` | `pass` | `none` | `keep` | `n/a` | `n/a` | `producer_system_designer` | `done` | Project 执行闭环边界复核通过 |
-| `doc/testing/ci/ci-builtin-wasm-m4-m5-hash-drift-hardening.prd.md` | `prd` | `pass` | `none` | `keep` | `n/a` | `n/a` | `producer_system_designer` | `done` | PRD 目标态边界复核通过 |
-| `doc/testing/ci/ci-builtin-wasm-m4-m5-hash-drift-hardening.project.md` | `project` | `pass` | `none` | `keep` | `n/a` | `n/a` | `producer_system_designer` | `done` | Project 执行闭环边界复核通过 |
-| `doc/testing/ci/ci-m1-multi-runner-required-check-protection.prd.md` | `prd` | `pass` | `none` | `keep` | `n/a` | `n/a` | `producer_system_designer` | `done` | PRD 目标态边界复核通过 |
-| `doc/testing/ci/ci-m1-multi-runner-required-check-protection.project.md` | `project` | `pass` | `none` | `keep` | `n/a` | `n/a` | `producer_system_designer` | `done` | Project 执行闭环边界复核通过 |
+| `doc/testing/ci/ci-builtin-wasm-determinism-gate-m1.prd.md` | `prd` | `pass` | `none` | `keep` | `n/a` | `n/a` | `producer_system_designer` | `done` | PRD 目标态边界复核通过 |
+| `doc/testing/ci/ci-builtin-wasm-determinism-gate-m1.project.md` | `project` | `pass` | `none` | `keep` | `n/a` | `n/a` | `producer_system_designer` | `done` | Project 执行闭环边界复核通过 |
+| `doc/testing/ci/ci-builtin-wasm-docker-canonical-gate.prd.md` | `prd` | `pass` | `none` | `keep` | `n/a` | `n/a` | `producer_system_designer` | `done` | PRD 目标态边界复核通过 |
+| `doc/testing/ci/ci-builtin-wasm-docker-canonical-gate.project.md` | `project` | `pass` | `none` | `keep` | `n/a` | `n/a` | `producer_system_designer` | `done` | Project 执行闭环边界复核通过 |
+| `doc/testing/ci/ci-builtin-wasm-determinism-gate-required-check-protection.prd.md` | `prd` | `pass` | `none` | `keep` | `n/a` | `n/a` | `producer_system_designer` | `done` | PRD 目标态边界复核通过 |
+| `doc/testing/ci/ci-builtin-wasm-determinism-gate-required-check-protection.project.md` | `project` | `pass` | `none` | `keep` | `n/a` | `n/a` | `producer_system_designer` | `done` | Project 执行闭环边界复核通过 |
 | `doc/testing/ci/ci-remove-builtin-wasm-hash-checks-from-base-gate.prd.md` | `prd` | `pass` | `none` | `keep` | `n/a` | `n/a` | `producer_system_designer` | `done` | PRD 目标态边界复核通过 |
 | `doc/testing/ci/ci-remove-builtin-wasm-hash-checks-from-base-gate.project.md` | `project` | `pass` | `none` | `keep` | `n/a` | `n/a` | `producer_system_designer` | `done` | Project 执行闭环边界复核通过 |
 | `doc/testing/ci/ci-test-coverage.prd.md` | `prd` | `pass` | `none` | `keep` | `n/a` | `n/a` | `producer_system_designer` | `done` | PRD 目标态边界复核通过 |

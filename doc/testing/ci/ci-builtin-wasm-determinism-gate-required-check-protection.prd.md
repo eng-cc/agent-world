@@ -1,16 +1,9 @@
-# Agent World: Wasm Determinism Gate Required Check 保护（历史文件名归档提示）
+# Agent World: Builtin Wasm Determinism Gate Required Check 保护
 
-- 对应设计文档: `doc/testing/ci/ci-m1-multi-runner-required-check-protection.design.md`
-- 对应项目管理文档: `doc/testing/ci/ci-m1-multi-runner-required-check-protection.project.md`
-- 当前活跃需求文档: `doc/testing/ci/ci-builtin-wasm-determinism-gate-required-check-protection.prd.md`
-- 当前活跃设计文档: `doc/testing/ci/ci-builtin-wasm-determinism-gate-required-check-protection.design.md`
-- 当前活跃项目管理文档: `doc/testing/ci/ci-builtin-wasm-determinism-gate-required-check-protection.project.md`
+- 对应设计文档: `doc/testing/ci/ci-builtin-wasm-determinism-gate-required-check-protection.design.md`
+- 对应项目管理文档: `doc/testing/ci/ci-builtin-wasm-determinism-gate-required-check-protection.project.md`
 
 审计轮次: 5
-
-> 状态更新（2026-03-17）:
-> - 该旧文件名仅保留为历史追溯入口，不再作为当前专题主入口。
-> - 当前活跃文档集合已迁移到 `ci-builtin-wasm-determinism-gate-required-check-protection.*.md`。
 
 ## 1. Executive Summary
 - Problem Statement: `Wasm Determinism Gate / verify-wasm-determinism (m1|m4|m5)` 若未被固化为 required checks，会导致分支保护配置依赖手工操作并产生漂移风险。

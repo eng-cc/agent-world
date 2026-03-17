@@ -440,12 +440,12 @@
 | `doc/site/project.md` | `project` | `project` | no | no | n/a | done | done | `backfill` | `producer_system_designer` | `done` | B6-002 已补标准专题 project 入口 |
 | `doc/site/project.md` | `project` | `project` | no | no | n/a | done | done | `backfill` | `producer_system_designer` | `done` | B6-001 新增模块 project 标准入口 |
 | `doc/testing/README.md` | `readme_entry` | `readme_entry` | no | no | n/a | done | done | `backfill` | `producer_system_designer` | `done` | B6-001 已接入模块 design / project 入口 |
-| `doc/testing/ci/ci-builtin-wasm-m1-multi-runner.prd.md` | `prd` | `prd` | 待判定 | 待判定 | 待判定 | done | done | `keep` | `producer_system_designer` | `done` | ROUND-006 已完成最终收口 |
-| `doc/testing/ci/ci-builtin-wasm-m1-multi-runner.project.md` | `project` | `project` | 待判定 | no | 待判定 | done | done | `keep` | `producer_system_designer` | `done` | ROUND-006 已完成最终收口 |
-| `doc/testing/ci/ci-builtin-wasm-m4-m5-hash-drift-hardening.prd.md` | `prd` | `prd` | 待判定 | 待判定 | 待判定 | done | done | `keep` | `producer_system_designer` | `done` | ROUND-006 已完成最终收口 |
-| `doc/testing/ci/ci-builtin-wasm-m4-m5-hash-drift-hardening.project.md` | `project` | `project` | 待判定 | no | 待判定 | done | done | `keep` | `producer_system_designer` | `done` | ROUND-006 已完成最终收口 |
-| `doc/testing/ci/ci-m1-multi-runner-required-check-protection.prd.md` | `prd` | `prd` | 待判定 | 待判定 | 待判定 | done | done | `keep` | `producer_system_designer` | `done` | ROUND-006 已完成最终收口 |
-| `doc/testing/ci/ci-m1-multi-runner-required-check-protection.project.md` | `project` | `project` | 待判定 | no | 待判定 | done | done | `keep` | `producer_system_designer` | `done` | ROUND-006 已完成最终收口 |
+| `doc/testing/ci/ci-builtin-wasm-determinism-gate-m1.prd.md` | `prd` | `prd` | 待判定 | 待判定 | 待判定 | done | done | `keep` | `producer_system_designer` | `done` | ROUND-006 已完成最终收口 |
+| `doc/testing/ci/ci-builtin-wasm-determinism-gate-m1.project.md` | `project` | `project` | 待判定 | no | 待判定 | done | done | `keep` | `producer_system_designer` | `done` | ROUND-006 已完成最终收口 |
+| `doc/testing/ci/ci-builtin-wasm-docker-canonical-gate.prd.md` | `prd` | `prd` | 待判定 | 待判定 | 待判定 | done | done | `keep` | `producer_system_designer` | `done` | ROUND-006 已完成最终收口 |
+| `doc/testing/ci/ci-builtin-wasm-docker-canonical-gate.project.md` | `project` | `project` | 待判定 | no | 待判定 | done | done | `keep` | `producer_system_designer` | `done` | ROUND-006 已完成最终收口 |
+| `doc/testing/ci/ci-builtin-wasm-determinism-gate-required-check-protection.prd.md` | `prd` | `prd` | 待判定 | 待判定 | 待判定 | done | done | `keep` | `producer_system_designer` | `done` | ROUND-006 已完成最终收口 |
+| `doc/testing/ci/ci-builtin-wasm-determinism-gate-required-check-protection.project.md` | `project` | `project` | 待判定 | no | 待判定 | done | done | `keep` | `producer_system_designer` | `done` | ROUND-006 已完成最终收口 |
 | `doc/testing/ci/ci-remove-builtin-wasm-hash-checks-from-base-gate.prd.md` | `prd` | `prd` | 待判定 | 待判定 | 待判定 | done | done | `keep` | `producer_system_designer` | `done` | ROUND-006 已完成最终收口 |
 | `doc/testing/ci/ci-remove-builtin-wasm-hash-checks-from-base-gate.project.md` | `project` | `project` | 待判定 | no | 待判定 | done | done | `keep` | `producer_system_designer` | `done` | ROUND-006 已完成最终收口 |
 | `doc/testing/ci/ci-test-coverage.prd.md` | `prd` | `prd` | 待判定 | 待判定 | 待判定 | done | done | `keep` | `producer_system_designer` | `done` | ROUND-006 已完成最终收口 |

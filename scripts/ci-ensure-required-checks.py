@@ -15,9 +15,9 @@ from typing import Any
 DEFAULT_BRANCH = "main"
 DEFAULT_STRICT = True
 DEFAULT_REQUIRED_CHECKS = [
-    "Builtin Wasm m1 Multi Runner / verify-m1-multi-runner-summary",
-    "Builtin Wasm m4 m5 Multi Runner / verify-m4-multi-runner-summary",
-    "Builtin Wasm m4 m5 Multi Runner / verify-m5-multi-runner-summary",
+    "Wasm Determinism Gate / verify-wasm-determinism (m1)",
+    "Wasm Determinism Gate / verify-wasm-determinism (m4)",
+    "Wasm Determinism Gate / verify-wasm-determinism (m5)",
 ]
 
 
