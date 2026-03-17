@@ -23,7 +23,6 @@ target
 # Local demo outputs
 .data/
 output/
-artifacts/
 
 # Local runtime config
 config.toml
