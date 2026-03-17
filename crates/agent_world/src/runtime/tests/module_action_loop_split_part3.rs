@@ -2,6 +2,10 @@ use crate::runtime::state::ModuleReleaseRequestStatus;
 
 const LOCAL_FINALITY_SIGNER_1: &str = "governance.local.finality.signer.1";
 const LOCAL_FINALITY_SIGNER_2: &str = "governance.local.finality.signer.2";
+const TEST_RELEASE_BUILDER_IMAGE_DIGEST: &str =
+    "sha256:1111111111111111111111111111111111111111111111111111111111111111";
+const TEST_RELEASE_CONTAINER_PLATFORM: &str = "linux-x86_64";
+const TEST_RELEASE_CANONICALIZER_VERSION: &str = "strip-custom-sections-v1";
 
 fn bind_release_roles(
     world: &mut World,
@@ -35,6 +39,52 @@ fn assert_rule_denied_note_for_action(world: &World, action_id: ActionId, expect
         notes.iter().any(|note| note.contains(expected)),
         "missing expected note `{expected}` in {notes:?}"
     );
+}
+
+fn request_manifest_identity(world: &World, request_id: u64) -> ModuleArtifactIdentity {
+    world
+        .state()
+        .module_release_requests
+        .get(&request_id)
+        .expect("module release request state")
+        .manifest
+        .artifact_identity
+        .clone()
+        .expect("module release request artifact identity")
+}
+
+fn submit_test_module_release_attestation(
+    world: &mut World,
+    operator_agent_id: &str,
+    request_id: u64,
+    signer_node_id: &str,
+    platform: &str,
+    proof_cid: &str,
+) {
+    let request = world
+        .state()
+        .module_release_requests
+        .get(&request_id)
+        .expect("module release request state")
+        .clone();
+    let identity = request
+        .manifest
+        .artifact_identity
+        .clone()
+        .expect("module release request artifact identity");
+    world.submit_action(Action::ModuleReleaseSubmitAttestation {
+        operator_agent_id: operator_agent_id.to_string(),
+        request_id,
+        signer_node_id: signer_node_id.to_string(),
+        platform: platform.to_string(),
+        build_manifest_hash: identity.build_manifest_hash,
+        source_hash: identity.source_hash,
+        wasm_hash: request.manifest.wasm_hash,
+        proof_cid: proof_cid.to_string(),
+        builder_image_digest: TEST_RELEASE_BUILDER_IMAGE_DIGEST.to_string(),
+        container_platform: TEST_RELEASE_CONTAINER_PLATFORM.to_string(),
+        canonicalizer_version: TEST_RELEASE_CANONICALIZER_VERSION.to_string(),
+    });
 }
 
 fn sample_profile_changes() -> ModuleProfileChanges {
@@ -208,20 +258,14 @@ fn prepare_module_release_apply_ready_request(
         .iter()
         .enumerate()
     {
-        world.submit_action(Action::ModuleReleaseSubmitAttestation {
-            operator_agent_id: operator_agent_id.to_string(),
+        submit_test_module_release_attestation(
+            world,
+            operator_agent_id,
             request_id,
-            signer_node_id: signer_node_id.to_string(),
-            platform: "linux-x86_64".to_string(),
-            build_manifest_hash: util::sha256_hex(
-                format!("release-ready-build-{request_id}-{index}").as_bytes(),
-            ),
-            source_hash: util::sha256_hex(
-                format!("release-ready-source-{request_id}-{index}").as_bytes(),
-            ),
-            wasm_hash: wasm_hash.clone(),
-            proof_cid: format!("bafyreadyapply{request_id}{index:02}"),
-        });
+            signer_node_id,
+            "linux-x86_64",
+            format!("bafyreadyapply{request_id}{index:02}").as_str(),
+        );
         world
             .step()
             .expect("submit module release attestation before apply");
@@ -362,29 +406,23 @@ fn module_release_state_machine_runs_submit_shadow_approve_apply() {
             .map(|item| item.status),
         Some(ModuleReleaseRequestStatus::Approved)
     ));
-    let build_manifest_hash = util::sha256_hex(b"state-machine-build-manifest");
-    let source_hash = util::sha256_hex(b"state-machine-source-hash");
-    world.submit_action(Action::ModuleReleaseSubmitAttestation {
-        operator_agent_id: "operator-1".to_string(),
+    submit_test_module_release_attestation(
+        &mut world,
+        "operator-1",
         request_id,
-        signer_node_id: LOCAL_FINALITY_SIGNER_1.to_string(),
-        platform: "linux-x86_64".to_string(),
-        build_manifest_hash: build_manifest_hash.clone(),
-        source_hash: source_hash.clone(),
-        wasm_hash: wasm_hash.clone(),
-        proof_cid: "bafyreleaseattestsm001".to_string(),
-    });
+        LOCAL_FINALITY_SIGNER_1,
+        "linux-x86_64",
+        "bafyreleaseattestsm001",
+    );
     world.step().expect("submit attestation signer1");
-    world.submit_action(Action::ModuleReleaseSubmitAttestation {
-        operator_agent_id: "operator-1".to_string(),
+    submit_test_module_release_attestation(
+        &mut world,
+        "operator-1",
         request_id,
-        signer_node_id: LOCAL_FINALITY_SIGNER_2.to_string(),
-        platform: "linux-x86_64".to_string(),
-        build_manifest_hash,
-        source_hash,
-        wasm_hash: wasm_hash.clone(),
-        proof_cid: "bafyreleaseattestsm002".to_string(),
-    });
+        LOCAL_FINALITY_SIGNER_2,
+        "linux-x86_64",
+        "bafyreleaseattestsm002",
+    );
     world.step().expect("submit attestation signer2");
     assert_eq!(
         world
@@ -525,17 +563,19 @@ fn module_release_submit_attestation_persists_audit_evidence() {
         other => panic!("expected module release requested event: {other:?}"),
     };
 
-    let build_manifest_hash = util::sha256_hex(b"attest-build-manifest");
-    let source_hash = util::sha256_hex(b"attest-source-hash");
+    let identity = request_manifest_identity(&world, request_id);
     world.submit_action(Action::ModuleReleaseSubmitAttestation {
         operator_agent_id: "operator-1".to_string(),
         request_id,
         signer_node_id: "attestor-node-1".to_string(),
         platform: "linux-x86_64".to_string(),
-        build_manifest_hash: build_manifest_hash.clone(),
-        source_hash: source_hash.clone(),
+        build_manifest_hash: identity.build_manifest_hash.clone(),
+        source_hash: identity.source_hash.clone(),
         wasm_hash: wasm_hash.clone(),
         proof_cid: "bafyreleaseattest0001".to_string(),
+        builder_image_digest: TEST_RELEASE_BUILDER_IMAGE_DIGEST.to_string(),
+        container_platform: TEST_RELEASE_CONTAINER_PLATFORM.to_string(),
+        canonicalizer_version: TEST_RELEASE_CANONICALIZER_VERSION.to_string(),
     });
     world.step().expect("submit module release attestation");
 
@@ -555,15 +595,21 @@ fn module_release_submit_attestation_persists_audit_evidence() {
             source_hash: event_source_hash,
             wasm_hash: event_wasm_hash,
             proof_cid,
+            builder_image_digest,
+            container_platform,
+            canonicalizer_version,
         }) => {
             assert_eq!(*event_request_id, request_id);
             assert_eq!(operator_agent_id, "operator-1");
             assert_eq!(signer_node_id, "attestor-node-1");
             assert_eq!(platform, "linux-x86_64");
-            assert_eq!(event_build_manifest_hash, &build_manifest_hash);
-            assert_eq!(event_source_hash, &source_hash);
+            assert_eq!(event_build_manifest_hash, &identity.build_manifest_hash);
+            assert_eq!(event_source_hash, &identity.source_hash);
             assert_eq!(event_wasm_hash, &wasm_hash);
             assert_eq!(proof_cid, "bafyreleaseattest0001");
+            assert_eq!(builder_image_digest, TEST_RELEASE_BUILDER_IMAGE_DIGEST);
+            assert_eq!(container_platform, TEST_RELEASE_CONTAINER_PLATFORM);
+            assert_eq!(canonicalizer_version, TEST_RELEASE_CANONICALIZER_VERSION);
         }
         other => panic!("expected module release attested event: {other:?}"),
     }
@@ -579,6 +625,18 @@ fn module_release_submit_attestation_persists_audit_evidence() {
         .expect("attestation state");
     assert_eq!(attestation.proof_cid, "bafyreleaseattest0001");
     assert_eq!(attestation.wasm_hash, wasm_hash);
+    assert_eq!(
+        attestation.builder_image_digest,
+        TEST_RELEASE_BUILDER_IMAGE_DIGEST
+    );
+    assert_eq!(
+        attestation.container_platform,
+        TEST_RELEASE_CONTAINER_PLATFORM
+    );
+    assert_eq!(
+        attestation.canonicalizer_version,
+        TEST_RELEASE_CANONICALIZER_VERSION
+    );
     let mapping = world
         .state()
         .module_release_manifest_mappings
@@ -619,17 +677,19 @@ fn module_release_submit_attestation_rejects_conflicting_duplicate() {
         other => panic!("expected module release requested event: {other:?}"),
     };
 
-    let build_manifest_hash = util::sha256_hex(b"attest-dup-build-manifest");
-    let source_hash = util::sha256_hex(b"attest-dup-source-hash");
+    let identity = request_manifest_identity(&world, request_id);
     world.submit_action(Action::ModuleReleaseSubmitAttestation {
         operator_agent_id: "operator-1".to_string(),
         request_id,
         signer_node_id: "attestor-node-1".to_string(),
         platform: "linux-x86_64".to_string(),
-        build_manifest_hash: build_manifest_hash.clone(),
-        source_hash: source_hash.clone(),
+        build_manifest_hash: identity.build_manifest_hash.clone(),
+        source_hash: identity.source_hash.clone(),
         wasm_hash: wasm_hash.clone(),
         proof_cid: "bafyreleaseattestdup0001".to_string(),
+        builder_image_digest: TEST_RELEASE_BUILDER_IMAGE_DIGEST.to_string(),
+        container_platform: TEST_RELEASE_CONTAINER_PLATFORM.to_string(),
+        canonicalizer_version: TEST_RELEASE_CANONICALIZER_VERSION.to_string(),
     });
     world.step().expect("submit first attestation");
 
@@ -638,10 +698,13 @@ fn module_release_submit_attestation_rejects_conflicting_duplicate() {
         request_id,
         signer_node_id: "attestor-node-1".to_string(),
         platform: "linux-x86_64".to_string(),
-        build_manifest_hash,
-        source_hash,
+        build_manifest_hash: identity.build_manifest_hash,
+        source_hash: identity.source_hash,
         wasm_hash,
         proof_cid: "bafyreleaseattestdup0002".to_string(),
+        builder_image_digest: TEST_RELEASE_BUILDER_IMAGE_DIGEST.to_string(),
+        container_platform: TEST_RELEASE_CONTAINER_PLATFORM.to_string(),
+        canonicalizer_version: TEST_RELEASE_CANONICALIZER_VERSION.to_string(),
     });
     world.step().expect("submit conflicting attestation");
 
@@ -708,16 +771,14 @@ fn module_release_apply_rejects_when_attestation_threshold_not_met() {
         role: "security".to_string(),
     });
     world.step().expect("approve required role");
-    world.submit_action(Action::ModuleReleaseSubmitAttestation {
-        operator_agent_id: "operator-1".to_string(),
+    submit_test_module_release_attestation(
+        &mut world,
+        "operator-1",
         request_id,
-        signer_node_id: LOCAL_FINALITY_SIGNER_1.to_string(),
-        platform: "linux-x86_64".to_string(),
-        build_manifest_hash: util::sha256_hex(b"threshold-build-manifest"),
-        source_hash: util::sha256_hex(b"threshold-source-hash"),
-        wasm_hash,
-        proof_cid: "bafyreleaseattestthreshold001".to_string(),
-    });
+        LOCAL_FINALITY_SIGNER_1,
+        "linux-x86_64",
+        "bafyreleaseattestthreshold001",
+    );
     world.step().expect("submit single attestation");
 
     let action_id = world.submit_action(Action::ModuleReleaseApply {
@@ -781,16 +842,14 @@ fn module_release_apply_rejects_when_attestor_not_in_epoch_snapshot() {
         role: "security".to_string(),
     });
     world.step().expect("approve required role");
-    world.submit_action(Action::ModuleReleaseSubmitAttestation {
-        operator_agent_id: "operator-1".to_string(),
+    submit_test_module_release_attestation(
+        &mut world,
+        "operator-1",
         request_id,
-        signer_node_id: LOCAL_FINALITY_SIGNER_2.to_string(),
-        platform: "linux-x86_64".to_string(),
-        build_manifest_hash: util::sha256_hex(b"snapshot-filter-build-manifest"),
-        source_hash: util::sha256_hex(b"snapshot-filter-source-hash"),
-        wasm_hash,
-        proof_cid: "bafyreleaseattestsnapshot001".to_string(),
-    });
+        LOCAL_FINALITY_SIGNER_2,
+        "linux-x86_64",
+        "bafyreleaseattestsnapshot001",
+    );
     world.step().expect("submit out-of-snapshot attestation");
 
     let action_id = world.submit_action(Action::ModuleReleaseApply {
@@ -800,6 +859,95 @@ fn module_release_apply_rejects_when_attestor_not_in_epoch_snapshot() {
     world.step().expect("apply module release request");
 
     assert_rule_denied_note_for_action(&world, action_id, "attestation threshold not met");
+}
+
+#[test]
+fn module_release_apply_rejects_when_attestation_receipt_evidence_mismatches() {
+    let mut world = World::new();
+    register_agent(&mut world, "publisher-1");
+    register_agent(&mut world, "operator-1");
+    set_module_release_attestation_epoch_snapshot(
+        &mut world,
+        2,
+        &[LOCAL_FINALITY_SIGNER_1, LOCAL_FINALITY_SIGNER_2],
+    );
+
+    let wasm_bytes = b"module-release-attestation-receipt-mismatch".to_vec();
+    let wasm_hash = util::sha256_hex(&wasm_bytes);
+    world.submit_action(Action::DeployModuleArtifact {
+        publisher_agent_id: "publisher-1".to_string(),
+        wasm_hash: wasm_hash.clone(),
+        wasm_bytes,
+    });
+    world.step().expect("deploy module artifact");
+
+    world.submit_action(Action::ModuleReleaseSubmit {
+        requester_agent_id: "publisher-1".to_string(),
+        manifest: base_manifest("m.loop.release.receipt.mismatch", "0.1.0", &wasm_hash),
+        activate: true,
+        install_target: ModuleInstallTarget::SelfAgent,
+        required_roles: vec!["security".to_string()],
+        profile_changes: ModuleProfileChanges::default(),
+    });
+    world.step().expect("submit module release request");
+    let request_id = match &world.journal().events.last().expect("submit event").body {
+        WorldEventBody::Domain(DomainEvent::ModuleReleaseRequested { request_id, .. }) => {
+            *request_id
+        }
+        other => panic!("expected module release requested event: {other:?}"),
+    };
+
+    world.submit_action(Action::ModuleReleaseShadow {
+        operator_agent_id: "operator-1".to_string(),
+        request_id,
+    });
+    world.step().expect("shadow module release request");
+    bind_release_roles(&mut world, "operator-1", "operator-1", &["security"]);
+    world.submit_action(Action::ModuleReleaseApproveRole {
+        approver_agent_id: "operator-1".to_string(),
+        request_id,
+        role: "security".to_string(),
+    });
+    world.step().expect("approve required role");
+
+    let identity = request_manifest_identity(&world, request_id);
+    world.submit_action(Action::ModuleReleaseSubmitAttestation {
+        operator_agent_id: "operator-1".to_string(),
+        request_id,
+        signer_node_id: LOCAL_FINALITY_SIGNER_1.to_string(),
+        platform: "darwin-arm64".to_string(),
+        build_manifest_hash: identity.build_manifest_hash.clone(),
+        source_hash: identity.source_hash.clone(),
+        wasm_hash: wasm_hash.clone(),
+        proof_cid: "bafyreleaseattestreceiptmismatch001".to_string(),
+        builder_image_digest: TEST_RELEASE_BUILDER_IMAGE_DIGEST.to_string(),
+        container_platform: TEST_RELEASE_CONTAINER_PLATFORM.to_string(),
+        canonicalizer_version: TEST_RELEASE_CANONICALIZER_VERSION.to_string(),
+    });
+    world.step().expect("submit first attestation");
+    world.submit_action(Action::ModuleReleaseSubmitAttestation {
+        operator_agent_id: "operator-1".to_string(),
+        request_id,
+        signer_node_id: LOCAL_FINALITY_SIGNER_2.to_string(),
+        platform: "linux-x86_64".to_string(),
+        build_manifest_hash: identity.build_manifest_hash,
+        source_hash: identity.source_hash,
+        wasm_hash,
+        proof_cid: "bafyreleaseattestreceiptmismatch002".to_string(),
+        builder_image_digest:
+            "sha256:2222222222222222222222222222222222222222222222222222222222222222".to_string(),
+        container_platform: TEST_RELEASE_CONTAINER_PLATFORM.to_string(),
+        canonicalizer_version: TEST_RELEASE_CANONICALIZER_VERSION.to_string(),
+    });
+    world.step().expect("submit second attestation");
+
+    let action_id = world.submit_action(Action::ModuleReleaseApply {
+        operator_agent_id: "operator-1".to_string(),
+        request_id,
+    });
+    world.step().expect("apply module release request");
+
+    assert_rule_denied_note_for_action(&world, action_id, "attestation receipt evidence mismatch");
 }
 
 #[test]

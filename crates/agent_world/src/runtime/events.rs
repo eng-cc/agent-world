@@ -235,6 +235,12 @@ pub enum Action {
         source_hash: String,
         wasm_hash: String,
         proof_cid: String,
+        #[serde(default)]
+        builder_image_digest: String,
+        #[serde(default)]
+        container_platform: String,
+        #[serde(default)]
+        canonicalizer_version: String,
     },
     ModuleReleaseApproveRole {
         approver_agent_id: String,
@@ -849,6 +855,12 @@ pub enum DomainEvent {
         source_hash: String,
         wasm_hash: String,
         proof_cid: String,
+        #[serde(default)]
+        builder_image_digest: String,
+        #[serde(default)]
+        container_platform: String,
+        #[serde(default)]
+        canonicalizer_version: String,
     },
     ModuleReleaseRoleApproved {
         request_id: u64,

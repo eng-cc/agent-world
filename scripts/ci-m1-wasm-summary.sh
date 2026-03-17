@@ -205,18 +205,64 @@ identity_payload = json.loads(identity_manifest_path.read_text())
 identity_modules = identity_payload.get("modules", [])
 if not isinstance(identity_modules, list):
     raise SystemExit(f"error: invalid identity manifest modules field in {identity_manifest_path}")
+identity_build_recipe = identity_payload.get("build_recipe")
+if not isinstance(identity_build_recipe, dict):
+    raise SystemExit(f"error: invalid identity manifest build_recipe in {identity_manifest_path}")
 
 identity_hashes = {}
+identity_source_hashes = {}
+identity_build_manifest_hashes = {}
 for entry in identity_modules:
     module_id = entry.get("module_id")
     identity_hash = entry.get("identity_hash")
-    if not module_id or not identity_hash:
+    source_hash = entry.get("source_hash")
+    build_manifest_hash = entry.get("build_manifest_hash")
+    if not module_id or not identity_hash or not source_hash or not build_manifest_hash:
         raise SystemExit(
-            f"error: identity manifest entry missing module_id/identity_hash in {identity_manifest_path}"
+            f"error: identity manifest entry missing module_id/identity_hash/source_hash/build_manifest_hash in {identity_manifest_path}"
         )
     if module_id not in manifest_module_ids:
         continue
     identity_hashes[module_id] = identity_hash
+    identity_source_hashes[module_id] = source_hash
+    identity_build_manifest_hashes[module_id] = build_manifest_hash
+
+receipt_files = sorted(glob.glob(str(metadata_dir / "*.build-receipt.json")))
+if not receipt_files:
+    raise SystemExit(f"error: no build receipt files found in {metadata_dir}")
+
+receipt_evidence = {}
+for path in receipt_files:
+    payload = json.loads(pathlib.Path(path).read_text())
+    module_id = payload.get("module_id")
+    source_hash = payload.get("source_hash")
+    build_manifest_hash = payload.get("build_manifest_hash")
+    wasm_hash = payload.get("wasm_hash_sha256")
+    builder_image_digest = payload.get("builder_image_digest")
+    container_platform = payload.get("container_platform")
+    canonicalizer_version = payload.get("canonicalizer_version")
+    if not all(
+        [
+            module_id,
+            source_hash,
+            build_manifest_hash,
+            wasm_hash,
+            builder_image_digest,
+            container_platform,
+            canonicalizer_version,
+        ]
+    ):
+        raise SystemExit(f"error: invalid build receipt payload in {path}")
+    if module_id not in manifest_module_ids:
+        continue
+    receipt_evidence[module_id] = {
+        "source_hash": source_hash,
+        "build_manifest_hash": build_manifest_hash,
+        "wasm_hash": wasm_hash,
+        "builder_image_digest": builder_image_digest,
+        "container_platform": container_platform,
+        "canonicalizer_version": canonicalizer_version,
+    }
 
 metadata_module_ids = set(module_hashes.keys())
 if metadata_module_ids != manifest_module_ids:
@@ -232,12 +278,63 @@ if metadata_module_ids != identity_module_ids:
     raise SystemExit(
         f"error: module set mismatch between metadata and identity manifest missing={missing} extra={extra}"
     )
+receipt_module_ids = set(receipt_evidence.keys())
+if metadata_module_ids != receipt_module_ids:
+    missing = sorted(metadata_module_ids - receipt_module_ids)
+    extra = sorted(receipt_module_ids - metadata_module_ids)
+    raise SystemExit(
+        f"error: module set mismatch between metadata and build receipts missing={missing} extra={extra}"
+    )
 
 for module_id, built_hash in sorted(module_hashes.items()):
     expected_hash = manifest_platform_hashes[module_id]
     if built_hash != expected_hash:
         raise SystemExit(
             f"error: built hash does not match manifest for module {module_id} built={built_hash} expected={expected_hash}"
+        )
+    receipt = receipt_evidence[module_id]
+    if receipt["wasm_hash"] != built_hash:
+        raise SystemExit(
+            f"error: build receipt wasm hash mismatch for module {module_id} receipt={receipt['wasm_hash']} built={built_hash}"
+        )
+    if receipt["source_hash"] != identity_source_hashes[module_id]:
+        raise SystemExit(
+            f"error: build receipt source hash mismatch for module {module_id} receipt={receipt['source_hash']} identity={identity_source_hashes[module_id]}"
+        )
+    if receipt["build_manifest_hash"] != identity_build_manifest_hashes[module_id]:
+        raise SystemExit(
+            f"error: build receipt build manifest hash mismatch for module {module_id} receipt={receipt['build_manifest_hash']} identity={identity_build_manifest_hashes[module_id]}"
+        )
+    if receipt["container_platform"] != canonical_platform:
+        raise SystemExit(
+            f"error: build receipt container platform mismatch for module {module_id} receipt={receipt['container_platform']} canonical={canonical_platform}"
+        )
+
+build_recipe_container_platform = identity_build_recipe.get("container_platform")
+build_recipe_builder_image_digest = identity_build_recipe.get("builder_image_digest")
+build_recipe_canonicalizer_version = identity_build_recipe.get("canonicalizer_version")
+if not all(
+    [
+        build_recipe_container_platform,
+        build_recipe_builder_image_digest,
+        build_recipe_canonicalizer_version,
+    ]
+):
+    raise SystemExit(
+        f"error: identity build_recipe missing container_platform/builder_image_digest/canonicalizer_version in {identity_manifest_path}"
+    )
+if build_recipe_container_platform != canonical_platform:
+    raise SystemExit(
+        f"error: identity build_recipe container platform mismatch recipe={build_recipe_container_platform} canonical={canonical_platform}"
+    )
+for module_id, receipt in sorted(receipt_evidence.items()):
+    if receipt["builder_image_digest"] != build_recipe_builder_image_digest:
+        raise SystemExit(
+            f"error: build receipt builder image digest mismatch for module {module_id} receipt={receipt['builder_image_digest']} recipe={build_recipe_builder_image_digest}"
+        )
+    if receipt["canonicalizer_version"] != build_recipe_canonicalizer_version:
+        raise SystemExit(
+            f"error: build receipt canonicalizer version mismatch for module {module_id} receipt={receipt['canonicalizer_version']} recipe={build_recipe_canonicalizer_version}"
         )
 
 summary = {
@@ -252,6 +349,8 @@ summary = {
     "module_hashes": dict(sorted(module_hashes.items())),
     "manifest_platform_hashes": dict(sorted(manifest_platform_hashes.items())),
     "identity_hashes": dict(sorted(identity_hashes.items())),
+    "identity_build_recipe": identity_build_recipe,
+    "receipt_evidence": dict(sorted(receipt_evidence.items())),
     "canonical_platforms": sorted(canonical_platforms),
     "hash_manifest_path": str(hash_manifest_path),
     "identity_manifest_path": str(identity_manifest_path),

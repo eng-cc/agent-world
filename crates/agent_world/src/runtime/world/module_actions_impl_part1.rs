@@ -244,6 +244,43 @@ impl World {
         Ok(normalized)
     }
 
+    fn normalize_module_release_attestation_builder_image_digest(
+        raw: &str,
+    ) -> Result<String, String> {
+        let normalized = raw.trim().to_ascii_lowercase();
+        let Some(digest_hex) = normalized.strip_prefix("sha256:") else {
+            return Err(
+                "module release attestation rejected: builder_image_digest must be sha256:<64-hex>"
+                    .to_string(),
+            );
+        };
+        if digest_hex.len() != 64 || !digest_hex.chars().all(|ch| ch.is_ascii_hexdigit()) {
+            return Err(
+                "module release attestation rejected: builder_image_digest must be sha256:<64-hex>"
+                    .to_string(),
+            );
+        }
+        Ok(normalized)
+    }
+
+    fn normalize_module_release_attestation_label(
+        raw: &str,
+        field: &str,
+    ) -> Result<String, String> {
+        let normalized = raw.trim().to_string();
+        if normalized.is_empty() {
+            return Err(format!(
+                "module release attestation rejected: {field} is empty"
+            ));
+        }
+        if normalized.len() > 128 {
+            return Err(format!(
+                "module release attestation rejected: {field} exceeds 128 chars"
+            ));
+        }
+        Ok(normalized)
+    }
+
     fn normalize_module_release_attestation_proof_cid(proof_cid: &str) -> Option<String> {
         let normalized = proof_cid.trim().to_string();
         if normalized.is_empty() {

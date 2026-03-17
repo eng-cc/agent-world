@@ -335,6 +335,9 @@ impl WorldState {
                 source_hash,
                 wasm_hash,
                 proof_cid,
+                builder_image_digest,
+                container_platform,
+                canonicalizer_version,
             } => {
                 if !self.agents.contains_key(operator_agent_id) {
                     return Err(WorldError::AgentNotFound {
@@ -405,6 +408,9 @@ impl WorldState {
                     source_hash: source_hash.clone(),
                     wasm_hash: wasm_hash.clone(),
                     proof_cid: proof_cid.clone(),
+                    builder_image_digest: builder_image_digest.clone(),
+                    container_platform: container_platform.clone(),
+                    canonicalizer_version: canonicalizer_version.clone(),
                     submitted_at: now,
                 };
                 if let Some(existing) = request.attestations.get(attestation_key.as_str()) {
@@ -414,7 +420,10 @@ impl WorldState {
                         && existing.build_manifest_hash == next_attestation.build_manifest_hash
                         && existing.source_hash == next_attestation.source_hash
                         && existing.wasm_hash == next_attestation.wasm_hash
-                        && existing.proof_cid == next_attestation.proof_cid;
+                        && existing.proof_cid == next_attestation.proof_cid
+                        && existing.builder_image_digest == next_attestation.builder_image_digest
+                        && existing.container_platform == next_attestation.container_platform
+                        && existing.canonicalizer_version == next_attestation.canonicalizer_version;
                     if !same_payload {
                         return Err(WorldError::ResourceBalanceInvalid {
                             reason: format!(
