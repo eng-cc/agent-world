@@ -28,11 +28,11 @@
 
 ## 状态
 - 更新日期: 2026-03-17
-- 当前阶段: WDBP-3 跨宿主 evidence 收口中（WDBP-4 已完成）
+- 当前阶段: WDBP-3 跨宿主 evidence 收口中（GitHub-hosted gate 已先收敛为 Linux-only，WDBP-4 已完成）
 - owner role: `wasm_platform_engineer`
 - 联审角色: `producer_system_designer`、`runtime_engineer`
 - 验证角色: `qa_engineer`
-- 阻塞项: release evidence / release gate 仍需补齐真实 Linux + macOS full-tier 证据归档
+- 阻塞项: GitHub-hosted `macos-14` runner 当前无 Docker daemon，release evidence / release gate 仍需补齐真实 Linux + Docker-capable macOS full-tier 证据归档
 - 实施备注:
   - `docker/wasm-builder/Dockerfile` 与 `scripts/build-wasm-module.sh` 已落地，当前 canonical build 已收敛为 Docker-only path，不再提供 host-native fallback。
   - `tools/wasm_build_suite` 已新增 `build receipt`、`source_hash`、`build_manifest_hash`、`builder_image_digest` 与 `container_platform` 输出；builtin `m1/m4/m5` hash manifest 已全部改写为单 canonical token `linux-x86_64=<sha256>`。
@@ -41,4 +41,5 @@
   - runtime `ModuleReleaseSubmitAttestation -> apply` 现已显式绑定 `builder_image_digest + container_platform + canonicalizer_version`；release gate 会拒绝阈值 attestation 间的 receipt evidence 不一致，且要求 attestation 的 `source_hash/build_manifest_hash/wasm_hash` 与 manifest identity 对齐。
   - `ModuleReleaseManifestMappingState` 与节点验收脚本现已补齐 release evidence 摘要：映射状态会落盘 `release_{wasm,source,build_manifest}_hash + builder_image_digest + container_platform + canonicalizer_version + attestation_platforms + proof_cids + receipt_evidence_conflict`，`scripts/module-release-node-acceptance.sh` 也已纳入 receipt mismatch 阻断用例。
   - 新增 `scripts/wasm-release-evidence-report.sh` 作为多 runner fixed entry，可统一收集/校验 `m1/m4/m5` summary 并输出 `summary.md/json`；当前 `.github/workflows/wasm-determinism-gate.yml` 已切换到 `--summary-import-dir` 模式，会把下载下来的 runner summaries 统一收口为可归档 evidence artifact。
+  - GitHub-hosted `macos-14` runner 当前不提供 Docker daemon，而 canonical build 已变为 Docker-only path；因此 workflow 已临时收敛为 Linux-only gate，跨宿主对账继续通过导入外部 Docker-capable macOS summary 的方式完成。
   - `compile_module_artifact_from_source` 现已完成 production gate：`ReleaseSecurityPolicy` 新增 `allow_runtime_source_compile`，production 默认关闭该路径并要求改走 external Docker builder + deploy binary；dev/test 保留该 action 以支撑现有回归。

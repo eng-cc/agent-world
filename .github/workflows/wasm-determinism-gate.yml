@@ -25,21 +25,12 @@ jobs:
           - module_set: m1
             runner_os: ubuntu-24.04
             runner_label: linux-x86_64
-          - module_set: m1
-            runner_os: macos-14
-            runner_label: darwin-arm64
           - module_set: m4
             runner_os: ubuntu-24.04
             runner_label: linux-x86_64
-          - module_set: m4
-            runner_os: macos-14
-            runner_label: darwin-arm64
           - module_set: m5
             runner_os: ubuntu-24.04
             runner_label: linux-x86_64
-          - module_set: m5
-            runner_os: macos-14
-            runner_label: darwin-arm64
     runs-on: ${{ matrix.runner_os }}
     steps:
       - uses: actions/checkout@v6
@@ -88,7 +79,7 @@ jobs:
             --skip-collect \
             --summary-import-dir "output/ci/${{ matrix.module_set }}-wasm-summary" \
             --out-dir "output/ci/${{ matrix.module_set }}-wasm-release-evidence" \
-            --expected-runners linux-x86_64,darwin-arm64
+            --expected-runners linux-x86_64
       - name: Upload ${{ matrix.module_set }} release evidence report
         uses: actions/upload-artifact@v4
         with:

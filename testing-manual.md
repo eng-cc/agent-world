@@ -74,10 +74,11 @@
   - `CI_VERBOSE=1 ./scripts/ci-tests.sh required`
   - `./scripts/viewer-visual-baseline.sh`
 - 入口 C：`.github/workflows/wasm-determinism-gate.yml`（构建 hash / receipt evidence 独立 gate）
-  - runner 矩阵：`(m1|m4|m5) x (ubuntu-24.04/linux-x86_64, macos-14/darwin-arm64)`
+  - GitHub-hosted runner 矩阵：`(m1|m4|m5) x (ubuntu-24.04/linux-x86_64)`
   - 每个 runner 执行：`./scripts/ci-m1-wasm-summary.sh --module-set <m1|m4|m5> --runner-label ... --out ...`
-  - verify job 会按 `module_set` 下载 summaries，并执行：`./scripts/wasm-release-evidence-report.sh --module-sets <m1|m4|m5> --skip-collect --summary-import-dir <downloaded-summary-dir> --expected-runners linux-x86_64,darwin-arm64`
+  - verify job 会按 `module_set` 下载 summaries，并执行：`./scripts/wasm-release-evidence-report.sh --module-sets <m1|m4|m5> --skip-collect --summary-import-dir <downloaded-summary-dir> --expected-runners linux-x86_64`
   - verify job 同时上传 `summary.md/json + logs + module_sets.tsv` 的 release evidence report artifact
+  - 若要补跨宿主 full-tier 证据，可把外部 Docker-capable macOS runner 产出的 summary 作为额外 import 输入，再以 `--expected-runners linux-x86_64,darwin-arm64` 做离线对账
 
 ### 当前 CI 未直接覆盖（需手册补齐）
 - Web UI agent-browser 闭环（现为手动/agent 流程，不在 CI 默认路径中）。
@@ -403,7 +404,12 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required lon
 ```bash
 ./scripts/module-release-node-acceptance.sh
 ./scripts/module-release-node-acceptance.sh --include-full
-./scripts/wasm-release-evidence-report.sh --expected-runners linux-x86_64,darwin-arm64
+./scripts/wasm-release-evidence-report.sh --expected-runners linux-x86_64
+./scripts/wasm-release-evidence-report.sh \
+  --skip-collect \
+  --summary-import-dir output/ci/m1-wasm-summary \
+  --module-sets m1 \
+  --expected-runners linux-x86_64
 ./scripts/wasm-release-evidence-report.sh \
   --skip-collect \
   --summary-import-dir output/ci/m1-wasm-summary \
@@ -422,7 +428,7 @@ env -u RUSTC_WRAPPER cargo test -p agent_world module_release_apply_rejects_when
 env -u RUSTC_WRAPPER cargo test -p agent_world module_release_apply_rejects_when_attestation_receipt_evidence_mismatches --features test_tier_required -- --nocapture
 env -u RUSTC_WRAPPER cargo test -p agent_world power_bootstrap_release_manifest_full --features test_tier_full -- --nocapture
 ./scripts/ci-m1-wasm-summary.sh --module-set m1 --runner-label linux-x86_64 --out <summary-dir>/m1/linux-x86_64.json
-python3 ./scripts/ci-verify-m1-wasm-summaries.py --module-set m1 --summary-dir <summary-dir>/m1 --expected-runners linux-x86_64,darwin-arm64
+python3 ./scripts/ci-verify-m1-wasm-summaries.py --module-set m1 --summary-dir <summary-dir>/m1 --expected-runners linux-x86_64
 ```
 - finality 基准固定入口（`stake/epoch` 验签耗时 + 2 epoch 收敛）：
 ```bash
@@ -476,7 +482,7 @@ rg -n "conflicting attestation already exists|attestation threshold not met|atte
 | `doc/**`（非 `doc/devlog/**`） | S0（含 `./scripts/doc-governance-check.sh`） | 命中模块的抽样 required 证据核验 | 若文档改变发布 / 测试口径，追加对应模块的最小必跑集 |
 | `scripts/ci-tests.sh` / `.github/workflows/rust.yml` | S0（含 `./scripts/doc-governance-check.sh`） + S1 + `./scripts/viewer-visual-baseline.sh` + （full）`./scripts/llm-baseline-fixture-smoke.sh` | S2 + S4 + S6（抽样） | 若更改默认 gate 组合，需抽样至少一条 S9 或 S10 |
 | `scripts/release-gate.sh` / `.github/workflows/release-packages.yml` | `./scripts/ci-tests.sh full` + `sync-m1/m4/m5 --check` + Web strict + S9 + S10 | `./scripts/release-gate.sh --quick` / `--dry-run` | 任何发布 gate 逻辑变更均不允许跳过 S9/S10 |
-| `scripts/ci-m1-wasm-summary.sh` / `scripts/ci-verify-m1-wasm-summaries.py` / `scripts/wasm-release-evidence-report.sh` / `.github/workflows/wasm-determinism-gate.yml` | `S0` + `./scripts/ci-m1-wasm-summary.sh --module-set m4 --runner-label darwin-arm64 --out output/ci/m4-wasm-summary/darwin-arm64.json` + `./scripts/wasm-release-evidence-report.sh --module-sets m4 --skip-collect --summary-import-dir output/ci/m4-wasm-summary --expected-runners darwin-arm64` | `workflow_dispatch` 触发 m1/m4/m5 双 runner（`linux-x86_64,darwin-arm64`）对账 | 若改动 hash/summary/evidence report 格式，双 runner 对账变为必跑 |
+| `scripts/ci-m1-wasm-summary.sh` / `scripts/ci-verify-m1-wasm-summaries.py` / `scripts/wasm-release-evidence-report.sh` / `.github/workflows/wasm-determinism-gate.yml` | `S0` + `./scripts/ci-m1-wasm-summary.sh --module-set m4 --runner-label linux-x86_64 --out output/ci/m4-wasm-summary/linux-x86_64.json` + `./scripts/wasm-release-evidence-report.sh --module-sets m4 --skip-collect --summary-import-dir output/ci/m4-wasm-summary --expected-runners linux-x86_64` | `workflow_dispatch` 触发 GitHub-hosted Linux runner gate；若补入外部 macOS summary，可再用 `--expected-runners linux-x86_64,darwin-arm64` 做双宿主对账 | 若改动 hash/summary/evidence report 格式，Linux gate 必跑；跨宿主 full-tier 在有 Docker-capable macOS summary 时追加 |
 | `scripts/run-viewer-web.sh` / `scripts/capture-viewer-frame.sh` | S0 + S6 | S5 + S8 | 若涉及 native 图形链路 fallback，补 native 截图证据 |
 | `scripts/p2p-longrun-soak.sh` / `doc/testing/p2p-storage-consensus-longrun-online-stability-2026-02-24*` | S0 + S9 smoke（含 summary/timeline 校验） | S9 endurance（含 chaos） | 任何阈值/summary 字段变更必须补 endurance |
 | `scripts/s10-five-node-game-soak.sh` / `doc/testing/s10-five-node-real-game-soak*` | S0 + S10 smoke（含 summary/timeline 校验） | S10 默认长窗（30min+） | 任何门禁字段 / 结算 / mint 改动都需补长窗 |
