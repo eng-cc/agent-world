@@ -7,7 +7,7 @@ use super::super::{
 fn builtin_identity_manifest_resolves_m1_entry() {
     let identity = m1_builtin_module_artifact_identity(
         "m1.rule.move",
-        "67ece2dc881cf5136d07a7eb7f4992b3dde8f0d0e59d6cb26caf56624dcb11e1",
+        "a56595b357bbfb34533c571c2651e2c81cd5a9fcce839ffd712e1655d82179bf",
     )
     .expect("resolve m1 identity");
     assert!(identity.is_complete());
@@ -37,7 +37,7 @@ fn builtin_identity_manifest_resolves_m1_entry() {
 fn builtin_identity_manifest_resolves_m4_entry() {
     let identity = m4_builtin_module_artifact_identity(
         "m4.factory.miner.mk1",
-        "6e4573f87d6c723c7a472ad1857746c3f3ea0cdaf0944851e22f9a2d7fbb28ef",
+        "83207ca136c01c7ee1b2eda9262332b2e73fcfd72fb035a149bfbee9b4c656a4",
     )
     .expect("resolve m4 identity");
     assert!(identity.is_complete());
@@ -67,7 +67,7 @@ fn builtin_identity_manifest_resolves_m4_entry() {
 fn builtin_identity_manifest_resolves_m5_entry() {
     let identity = m5_builtin_module_artifact_identity(
         "m5.gameplay.war.core",
-        "9c19a832b28ddb8ee4db1dcc73dd41fe34b34c077a0f9386599e45bf466f8c15",
+        "464de0c01d34102e0835f4c3ccd8aaaadea9bed3741b5a2d3a5c368ac758b8b2",
     )
     .expect("resolve m5 identity");
     assert!(identity.is_complete());
@@ -97,7 +97,7 @@ fn builtin_identity_manifest_resolves_m5_entry() {
 fn builtin_identity_manifest_rejects_missing_module() {
     let err = m1_builtin_module_artifact_identity(
         "m1.rule.missing",
-        "67ece2dc881cf5136d07a7eb7f4992b3dde8f0d0e59d6cb26caf56624dcb11e1",
+        "a56595b357bbfb34533c571c2651e2c81cd5a9fcce839ffd712e1655d82179bf",
     )
     .expect_err("missing module should fail");
 
