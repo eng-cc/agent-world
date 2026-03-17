@@ -48,15 +48,26 @@ ab_cmd() {
   ab_run "$session" "$@"
 }
 
+ab_resolve_output_path() {
+  python3 - "$1" <<'PY'
+from pathlib import Path
+import sys
+
+print(Path(sys.argv[1]).expanduser().resolve(strict=False))
+PY
+}
+
 ab_screenshot() {
   local session=$1
   local out_path=$2
+  local resolved_out_path
   local output
   local status=0
 
-  output=$(ab_run "$session" screenshot "$out_path" 2>&1) || status=$?
-  printf '%s
-' "$output"
+  resolved_out_path=$(ab_resolve_output_path "$out_path")
+  mkdir -p "$(dirname "$resolved_out_path")"
+  output=$(ab_run "$session" screenshot "$resolved_out_path" 2>&1) || status=$?
+  printf '%s\n' "$output"
 
   if [[ "$status" -eq 0 && ! -f "$out_path" ]]; then
     python3 - "$output" "$out_path" <<'PY2'

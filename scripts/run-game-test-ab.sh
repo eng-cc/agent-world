@@ -488,7 +488,7 @@ if [[ "$initial_wait_status" -ne 0 ]]; then
   fi
   exit 1
 fi
-ab_cmd "$SESSION" screenshot "$OUT_DIR/step0-home.png" >>"$AB_LOG" 2>&1 || true
+ab_screenshot "$SESSION" "$OUT_DIR/step0-home.png" >>"$AB_LOG" 2>&1 || true
 
 RECORDING_ACTIVE=0
 ab_log_note record_start
@@ -516,11 +516,11 @@ fi
 phaseA_play=$(send_control_probe phase_a_play play '{}' true 12000)
 no_progress_observation=$(observe_no_progress_window 6000)
 phaseA_pause=$(send_control_probe phase_a_pause pause '{}' false 2500)
-ab_cmd "$SESSION" screenshot "$OUT_DIR/step1-phase-a.png" >>"$AB_LOG" 2>&1 || true
+ab_screenshot "$SESSION" "$OUT_DIR/step1-phase-a.png" >>"$AB_LOG" 2>&1 || true
 
 phaseB_step_primary=$(send_control_probe phase_b_step_primary step '{"count":8}' true 6000)
 phaseB_step_followup=$(send_control_probe phase_b_step_followup step '{"count":2}' true 6000)
-ab_cmd "$SESSION" screenshot "$OUT_DIR/step2-phase-b.png" >>"$AB_LOG" 2>&1 || true
+ab_screenshot "$SESSION" "$OUT_DIR/step2-phase-b.png" >>"$AB_LOG" 2>&1 || true
 
 set +e
 final_state=$(wait_for_connected 8000)
@@ -534,7 +534,7 @@ if [[ "$final_wait_status" -ne 0 ]]; then
   fi
   exit 1
 fi
-ab_cmd "$SESSION" screenshot "$OUT_DIR/step3-final.png" >>"$AB_LOG" 2>&1 || true
+ab_screenshot "$SESSION" "$OUT_DIR/step3-final.png" >>"$AB_LOG" 2>&1 || true
 
 AB_RESULT_JSON=$(python3 scripts/render-ab-metrics.py   "$RUN_ID" "$GAME_URL" "$initial" "$final_state"   "$phaseA_play" "$phaseA_pause" "$phaseB_step_primary" "$phaseB_step_followup" "$no_progress_observation"   "$AB_METRICS_JSON" "$AB_METRICS_MD" "$CARD_METRICS_MD")
 
