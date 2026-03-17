@@ -345,6 +345,24 @@ pub struct ModuleReleaseManifestMappingState {
     #[serde(default)]
     pub attestation_count: u32,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub release_wasm_hash: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub release_source_hash: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub release_build_manifest_hash: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub release_builder_image_digest: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub release_container_platform: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub release_canonicalizer_version: Option<String>,
+    #[serde(default)]
+    pub attestation_platforms: Vec<String>,
+    #[serde(default)]
+    pub attestation_proof_cids: Vec<String>,
+    #[serde(default)]
+    pub receipt_evidence_conflict: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub shadow_manifest_hash: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub applied_manifest_hash: Option<String>,

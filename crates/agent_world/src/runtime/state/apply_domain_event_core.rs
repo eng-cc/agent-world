@@ -272,6 +272,15 @@ impl WorldState {
                         release_id: format!("release-{request_id}"),
                         module_id: manifest.module_id.clone(),
                         attestation_count: 0,
+                        release_wasm_hash: None,
+                        release_source_hash: None,
+                        release_build_manifest_hash: None,
+                        release_builder_image_digest: None,
+                        release_container_platform: None,
+                        release_canonicalizer_version: None,
+                        attestation_platforms: Vec::new(),
+                        attestation_proof_cids: Vec::new(),
+                        receipt_evidence_conflict: false,
                         shadow_manifest_hash: None,
                         applied_manifest_hash: None,
                         applied_proposal_id: None,
@@ -435,7 +444,7 @@ impl WorldState {
                 } else {
                     request
                         .attestations
-                        .insert(attestation_key, next_attestation);
+                        .insert(attestation_key, next_attestation.clone());
                 }
                 request.updated_at = now;
                 let mapping = self
@@ -447,6 +456,57 @@ impl WorldState {
                         ),
                     })?;
                 mapping.attestation_count = request.attestations.len() as u32;
+                if !mapping
+                    .attestation_platforms
+                    .iter()
+                    .any(|platform_name| platform_name == &next_attestation.platform)
+                {
+                    mapping
+                        .attestation_platforms
+                        .push(next_attestation.platform.clone());
+                    mapping.attestation_platforms.sort();
+                }
+                if !mapping
+                    .attestation_proof_cids
+                    .iter()
+                    .any(|existing_cid| existing_cid == &next_attestation.proof_cid)
+                {
+                    mapping
+                        .attestation_proof_cids
+                        .push(next_attestation.proof_cid.clone());
+                    mapping.attestation_proof_cids.sort();
+                }
+                match mapping.release_wasm_hash.as_ref() {
+                    None => {
+                        mapping.release_wasm_hash = Some(next_attestation.wasm_hash.clone());
+                        mapping.release_source_hash = Some(next_attestation.source_hash.clone());
+                        mapping.release_build_manifest_hash =
+                            Some(next_attestation.build_manifest_hash.clone());
+                        mapping.release_builder_image_digest =
+                            Some(next_attestation.builder_image_digest.clone());
+                        mapping.release_container_platform =
+                            Some(next_attestation.container_platform.clone());
+                        mapping.release_canonicalizer_version =
+                            Some(next_attestation.canonicalizer_version.clone());
+                    }
+                    Some(existing_wasm_hash) => {
+                        let same_release_evidence = existing_wasm_hash
+                            == &next_attestation.wasm_hash
+                            && mapping.release_source_hash.as_ref()
+                                == Some(&next_attestation.source_hash)
+                            && mapping.release_build_manifest_hash.as_ref()
+                                == Some(&next_attestation.build_manifest_hash)
+                            && mapping.release_builder_image_digest.as_ref()
+                                == Some(&next_attestation.builder_image_digest)
+                            && mapping.release_container_platform.as_ref()
+                                == Some(&next_attestation.container_platform)
+                            && mapping.release_canonicalizer_version.as_ref()
+                                == Some(&next_attestation.canonicalizer_version);
+                        if !same_release_evidence {
+                            mapping.receipt_evidence_conflict = true;
+                        }
+                    }
+                }
                 mapping.updated_at = now;
                 if let Some(cell) = self.agents.get_mut(operator_agent_id) {
                     cell.last_active = now;
