@@ -114,6 +114,7 @@
 ### L4 UI 闭环层（Web 为默认）
 - 目标：验证真实用户路径可用性（加载、交互、状态可见、无 console error）。
 - 默认：制作人试玩 / 发布前人工验收优先使用 `./scripts/run-producer-playtest.sh`（需要自动打开浏览器时加 `--open-headed`）；其内部会自动准备/复用 bundle 并进入 `run-game-test.sh --bundle-dir <bundle>`，且该脚本退出时会自动关闭自己拉起的 `agent-browser` 会话。`--open-headed` 与 `run-game-test-ab.sh` 默认会通过 `agent-browser --args '--use-angle=gl,--ignore-gpu-blocklist'` 固定硬件 WebGL 路径；如需覆盖，再显式设置 `AGENT_BROWSER_ARGS`。`scripts/run-game-test.sh` 保留为开发回归 bootstrap，并支持 `--bundle-dir <bundle>` 复用产物入口；当 bundle 缺少 freshness manifest 或已落后于当前工作区源码时，脚本会默认阻断，制作人入口则会自动重建。
+- source-tree `oasis7-run.sh play` 与 `run-game-test.sh` 的 Viewer Web 开发态入口都必须走 freshness gate；当 `crates/agent_world_viewer/index.html`、`software_safe.html`、`software_safe.js` 或相关静态资源比 `dist/` 更新时，默认应优先重建 fresh dist，而不是继续拿 stale `dist` 给 Web 闭环下结论。
 - native 抓图：仅 fallback（Web 无法复现或 native 图形链路问题）。
 
 ### L5 长稳与压力层

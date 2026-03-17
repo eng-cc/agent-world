@@ -148,6 +148,7 @@
 - [x] TASK-WORLD_SIMULATOR-145 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 为 `software_safe` 补 prompt rollback 与 chat history/message flow，确保 rollback 刷新 prompt 状态且玩家出站消息与事件侧消息都能汇入统一消息流并被脚本读取。
 - [x] TASK-WORLD_SIMULATOR-146 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 由 `qa_engineer` 为 `software_safe` 增加 prompt/chat/rollback/message-flow 专用回归脚本与失败签名，沉淀 `agent_spoke` 缺失的证据包。
 - [x] TASK-WORLD_SIMULATOR-147 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 由 `runtime_engineer` / `viewer_engineer` 补齐 `agent_chat -> AgentSpoke` 的测试态稳定触发与 runtime 事件兼容解析，让 software_safe 消息流回归不再依赖自然 LLM 回话。
+- [x] TASK-WORLD_SIMULATOR-158 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 为 source-tree Viewer Web 入口补齐 dist freshness gate，覆盖 `index.html`、`software_safe.*` 与静态资源漂移；让 `oasis7-run.sh play` 在 Web root 入口更新后优先重建 fresh dist，而不是继续消费 stale `crates/agent_world_viewer/dist`。
 - [x] TASK-WORLD_SIMULATOR-148 (PRD-WORLD_SIMULATOR-040) [test_tier_required]: 完成 `OpenClaw` 双轨模式（`player_parity` / `headless_agent` / `debug_viewer`）专题 PRD / Project 建模，并回写模块主文档、索引与 devlog。
 - [x] TASK-WORLD_SIMULATOR-149 (PRD-WORLD_SIMULATOR-040) [test_tier_required]: 由 `agent_engineer` 冻结 `player_parity` / `headless_agent` 的 observation/action contract、schema version、模式元数据与禁止泄露真值边界，并形成 supporting spec。
 - [x] TASK-WORLD_SIMULATOR-150 (PRD-WORLD_SIMULATOR-040) [test_tier_required]: 由 `runtime_engineer` 为 OpenClaw 双轨模式落地 mode/schema/environment/fixture/replay 元数据透传、summary 聚合与 runtime live/headless traceability。

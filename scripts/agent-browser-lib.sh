@@ -195,8 +195,42 @@ resolve_viewer_static_dir_for_web_closure() {
     dist_mtime=$(stat -c %Y "$dist_index" 2>/dev/null || echo 0)
   fi
 
-  newest_source=$(find     "$repo_root/crates/agent_world_viewer/src"     "$repo_root/crates/agent_world_proto/src"     -type f \( -name '*.rs' -o -name '*.html' -o -name 'Trunk.toml' -o -name 'Cargo.toml' \)     -printf '%T@
-' 2>/dev/null | sort -nr | head -n 1 | cut -d. -f1)
+  newest_source=$(python3 - "$repo_root" <<'PY'
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+repo_root = Path(sys.argv[1]).resolve()
+scope = [
+    "Cargo.lock",
+    "crates/agent_world_viewer/Cargo.toml",
+    "crates/agent_world_viewer/Trunk.toml",
+    "crates/agent_world_viewer/index.html",
+    "crates/agent_world_viewer/software_safe.html",
+    "crates/agent_world_viewer/software_safe.js",
+    "crates/agent_world_viewer/favicon.ico",
+    "crates/agent_world_viewer/src",
+    "crates/agent_world_viewer/assets",
+    "crates/agent_world_proto/Cargo.toml",
+    "crates/agent_world_proto/src",
+]
+
+latest = 0
+for entry in scope:
+    path = repo_root / entry
+    if path.is_dir():
+        candidates = sorted(candidate for candidate in path.rglob("*") if candidate.is_file())
+    elif path.is_file():
+        candidates = [path]
+    else:
+        candidates = []
+    for candidate in candidates:
+        latest = max(latest, int(candidate.stat().st_mtime))
+
+print(latest)
+PY
+)
   newest_source=${newest_source:-0}
 
   if [[ -f "$dist_index" && "$dist_mtime" -ge "$newest_source" ]]; then

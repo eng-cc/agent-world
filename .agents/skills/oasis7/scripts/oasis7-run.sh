@@ -237,6 +237,15 @@ normalize_path() {
   fi
 }
 
+resolve_source_tree_viewer_static_dir() {
+  local repo_root="$1"
+  local out_dir="$2"
+
+  # shellcheck source=/dev/null
+  source "$repo_root/scripts/agent-browser-lib.sh"
+  resolve_viewer_static_dir_for_web_closure "$repo_root" "web" "$out_dir"
+}
+
 validate_repo_root() {
   local candidate="$1"
   [[ -f "$candidate/Cargo.toml" ]] &&
@@ -987,6 +996,8 @@ case "$mode" in
         --openclaw-agent-profile "$agent_profile"
         --openclaw-execution-mode "$execution_mode")
     else
+      viewer_static_out_dir="$repo_root/output/oasis7/viewer-static-$(date +%Y%m%d-%H%M%S)"
+      resolved_viewer_static_dir="$(resolve_source_tree_viewer_static_dir "$repo_root" "$viewer_static_out_dir")"
       cd "$repo_root"
       cmd=(env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_game_launcher --
         --scenario "$scenario"
@@ -995,7 +1006,8 @@ case "$mode" in
         --openclaw-base-url "$base_url"
         --openclaw-connect-timeout-ms "$connect_timeout_ms"
         --openclaw-agent-profile "$agent_profile"
-        --openclaw-execution-mode "$execution_mode")
+        --openclaw-execution-mode "$execution_mode"
+        --viewer-static-dir "$resolved_viewer_static_dir")
     fi
     if [[ "$open_browser" != "1" ]]; then
       cmd+=(--no-open-browser)

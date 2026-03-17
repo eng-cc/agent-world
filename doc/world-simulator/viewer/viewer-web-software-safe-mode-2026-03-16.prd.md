@@ -46,6 +46,7 @@
   - 基础交互能力：选中 1 个 Agent/地点、`play/pause/step`、查看控制反馈
   - `__AW_TEST__` /脚本采证能力：agent-browser 可以在无硬件 GPU 的浏览器环境下完成最小闭环
 - `oasis7`、`run-game-test-ab.sh`、制作人/QA 手册必须能显式声明或自动落到 `software_safe`，避免再次把环境图形故障误判为玩法故障。
+- source-tree 入口（如 `oasis7-run.sh play`、开发态 `world_game_launcher` Web 闭环）不得悄悄消费过期 Viewer Web dist；若 `index.html` / `software_safe.*` / wasm 输入已比 `dist/` 新，必须重建或阻断并给出明确指引。
 
 ### Out of Scope
 - 不要求 `software_safe` 模式保留 3D 视觉效果、PBR、后处理、粒子或完整美术表现。
@@ -124,6 +125,7 @@
 - NFR-2: `software_safe` 模式首页可见状态（连接状态或错误）应在 2 秒内可观测。
 - NFR-3: `software_safe` 模式必须保持 `console fatal = 0` 的目标；若失败，必须给出结构化错误而不是黑屏。
 - NFR-4: `software_safe` 模式与标准模式共享同一套世界 authority / 控制语义，禁止出现“安全模式能做的控制与标准模式行为不一致”。
+- NFR-5: Viewer Web freshness gate 必须覆盖 `crates/agent_world_viewer/` 根入口文件（至少 `index.html`、`software_safe.html`、`software_safe.js`）与静态资源，避免 stale dist 重新放出 issue `#39` 的黑屏表象。
 
 ## 7. Risks & Roadmap
 - 风险 1：双前端模式增加维护成本。
