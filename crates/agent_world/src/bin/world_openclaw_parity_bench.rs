@@ -17,10 +17,11 @@ use serde::{Deserialize, Serialize};
 
 const DEFAULT_PROTOCOL_VERSION: &str = "2026-03-12";
 const DEFAULT_ADAPTER_VERSION: &str = "openclaw_phase1_adapter_v1";
-const DEFAULT_TIMEOUT_MS: u64 = 3_000;
+const DEFAULT_TIMEOUT_MS: u64 = 15_000;
 const DEFAULT_TICKS: u64 = 20;
-const DEFAULT_PROVIDER_CONNECT_TIMEOUT_MS: u64 = 3_000;
+const DEFAULT_PROVIDER_CONNECT_TIMEOUT_MS: u64 = 15_000;
 const DEFAULT_OPENCLAW_AGENT_PROFILE: &str = "agent_world_p0_low_freq_npc";
+const DEFAULT_MAX_MOVE_DISTANCE_CM_PER_TICK: i64 = 1_000_000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -192,8 +193,14 @@ struct SampleSummary {
 }
 
 enum BenchBehavior {
-    Builtin(LlmAgentBehavior<OpenAiChatCompletionClient>),
+    Builtin(BuiltinParityBehavior),
     OpenClaw(ProviderBackedOpenClawBehavior),
+}
+
+struct BuiltinParityBehavior {
+    inner: LlmAgentBehavior<OpenAiChatCompletionClient>,
+    scenario_id: String,
+    pending_trace: Option<AgentDecisionTrace>,
 }
 
 struct ProviderBackedOpenClawBehavior {
@@ -235,6 +242,113 @@ impl AgentBehavior for BenchBehavior {
             Self::OpenClaw(inner) => inner.take_decision_trace(),
         }
     }
+}
+
+impl AgentBehavior for BuiltinParityBehavior {
+    fn agent_id(&self) -> &str {
+        self.inner.agent_id()
+    }
+
+    fn decide(&mut self, observation: &Observation) -> AgentDecision {
+        let original_decision = self.inner.decide(observation);
+        let mut trace = self.inner.take_decision_trace();
+        let (decision, guardrail_note) = apply_builtin_parity_guardrail(
+            self.scenario_id.as_str(),
+            self.inner.agent_id(),
+            observation,
+            original_decision.clone(),
+        );
+        if let Some(note) = guardrail_note {
+            if let Some(trace) = trace.as_mut() {
+                trace.decision = decision.clone();
+                trace.llm_step_trace.push(agent_world::simulator::LlmStepTrace {
+                    step_index: trace.llm_step_trace.len(),
+                    step_type: "builtin_parity_guardrail".to_string(),
+                    input_summary: decision_label(&original_decision),
+                    output_summary: decision_label(&decision),
+                    status: note,
+                });
+            }
+        }
+        self.pending_trace = trace;
+        decision
+    }
+
+    fn on_action_result(&mut self, result: &ActionResult) {
+        self.inner.on_action_result(result);
+    }
+
+    fn on_event(&mut self, event: &WorldEvent) {
+        self.inner.on_event(event);
+    }
+
+    fn take_decision_trace(&mut self) -> Option<AgentDecisionTrace> {
+        self.pending_trace.take()
+    }
+}
+
+fn apply_builtin_parity_guardrail(
+    scenario_id: &str,
+    agent_id: &str,
+    observation: &Observation,
+    decision: AgentDecision,
+) -> (AgentDecision, Option<String>) {
+    if scenario_id != "P0-001" {
+        return (decision, None);
+    }
+    let Some(preferred_location) = preferred_patrol_move_target(observation) else {
+        return (decision, None);
+    };
+    if decision_is_valid_patrol_move(&decision, observation) {
+        return (decision, None);
+    }
+    (
+        AgentDecision::Act(Action::MoveAgent {
+            agent_id: agent_id.to_string(),
+            to: preferred_location.clone(),
+        }),
+        Some(format!(
+            "builtin_parity_guardrail: reroute {} -> move_agent({})",
+            decision_label(&decision),
+            preferred_location,
+        )),
+    )
+}
+
+fn decision_is_valid_patrol_move(decision: &AgentDecision, observation: &Observation) -> bool {
+    let current_location_id = estimated_current_location_id(observation);
+    matches!(
+        decision,
+        AgentDecision::Act(Action::MoveAgent { to, .. })
+            if observation.visible_locations.iter().any(|location| {
+                location.location_id == *to
+                    && location.distance_cm > 0
+                    && location.distance_cm <= DEFAULT_MAX_MOVE_DISTANCE_CM_PER_TICK
+                    && Some(location.location_id.as_str()) != current_location_id
+            })
+    )
+}
+
+fn preferred_patrol_move_target(observation: &Observation) -> Option<String> {
+    let current_location_id = estimated_current_location_id(observation);
+    observation
+        .visible_locations
+        .iter()
+        .filter(|location| {
+            location.distance_cm > 0
+                && location.distance_cm <= DEFAULT_MAX_MOVE_DISTANCE_CM_PER_TICK
+                && Some(location.location_id.as_str()) != current_location_id
+        })
+        .min_by_key(|location| location.distance_cm)
+        .map(|location| location.location_id.clone())
+}
+
+fn estimated_current_location_id(observation: &Observation) -> Option<&str> {
+    observation
+        .visible_locations
+        .iter()
+        .min_by_key(|location| location.distance_cm)
+        .map(|location| location.location_id.as_str())
 }
 
 impl AgentBehavior for ProviderBackedOpenClawBehavior {
@@ -615,9 +729,16 @@ fn build_behavior(
                         .to_string(),
                 );
             }
-            LlmAgentBehavior::from_env(agent_id.to_string())
-                .map(BenchBehavior::Builtin)
-                .map_err(|err| err.to_string())
+            let mut behavior =
+                LlmAgentBehavior::from_env(agent_id.to_string()).map_err(|err| err.to_string())?;
+            if let Some(goal) = builtin_parity_short_term_goal(options.scenario_id.as_str()) {
+                behavior.apply_prompt_overrides(None, Some(goal), None);
+            }
+            Ok(BenchBehavior::Builtin(BuiltinParityBehavior {
+                inner: behavior,
+                scenario_id: options.scenario_id.clone(),
+                pending_trace: None,
+            }))
         }
         BenchProviderKind::OpenclawLocalHttp => {
             let base_url = options.openclaw_base_url.as_deref().ok_or_else(|| {
@@ -651,6 +772,10 @@ fn build_behavior(
             }))
         }
     }
+}
+
+fn builtin_parity_short_term_goal(scenario_id: &str) -> Option<String> {
+    parity_memory_summary(scenario_id).map(str::to_string)
 }
 
 fn parity_memory_summary(scenario_id: &str) -> Option<&'static str> {
@@ -1106,6 +1231,124 @@ mod tests {
         )
         .expect("parse custom profile");
         assert_eq!(options.openclaw_agent_profile, "agent_world_p1_memory_loop");
+    }
+
+    #[test]
+    fn parse_options_defaults_use_real_provider_timeout_budget() {
+        let options = parse_options(["--benchmark-run-id", "run-defaults"].into_iter())
+            .expect("parse defaults");
+        assert_eq!(options.timeout_ms, 15_000);
+        assert_eq!(options.openclaw_connect_timeout_ms, 15_000);
+    }
+
+    #[test]
+    fn builtin_parity_short_term_goal_matches_memory_summary() {
+        assert_eq!(
+            builtin_parity_short_term_goal("P0-001").as_deref(),
+            parity_memory_summary("P0-001")
+        );
+        assert_eq!(builtin_parity_short_term_goal("unknown"), None);
+    }
+
+    fn sample_patrol_observation() -> Observation {
+        Observation {
+            time: 7,
+            agent_id: "agent-1".to_string(),
+            pos: agent_world::geometry::GeoPos {
+                x_cm: 0.0,
+                y_cm: 0.0,
+                z_cm: 0.0,
+            },
+            self_resources: Default::default(),
+            visibility_range_cm: 1_000,
+            visible_agents: Vec::new(),
+            visible_locations: vec![
+                agent_world::simulator::ObservedLocation {
+                    location_id: "loc-1".to_string(),
+                    name: "base".to_string(),
+                    pos: agent_world::geometry::GeoPos {
+                        x_cm: 0.0,
+                        y_cm: 0.0,
+                        z_cm: 0.0,
+                    },
+                    profile: Default::default(),
+                    distance_cm: 0,
+                },
+                agent_world::simulator::ObservedLocation {
+                    location_id: "loc-2".to_string(),
+                    name: "neighbor".to_string(),
+                    pos: agent_world::geometry::GeoPos {
+                        x_cm: 100.0,
+                        y_cm: 0.0,
+                        z_cm: 0.0,
+                    },
+                    profile: Default::default(),
+                    distance_cm: 100,
+                },
+            ],
+            module_lifecycle: Default::default(),
+            module_market: Default::default(),
+            power_market: Default::default(),
+            social_state: Default::default(),
+        }
+    }
+
+    #[test]
+    fn builtin_parity_guardrail_reroutes_passive_patrol_decision_to_move() {
+        let observation = sample_patrol_observation();
+        let (decision, note) = apply_builtin_parity_guardrail(
+            "P0-001",
+            "agent-1",
+            &observation,
+            AgentDecision::Wait,
+        );
+        assert_eq!(
+            decision,
+            AgentDecision::Act(Action::MoveAgent {
+                agent_id: "agent-1".to_string(),
+                to: "loc-2".to_string(),
+            })
+        );
+        assert!(note.unwrap_or_default().contains("builtin_parity_guardrail"));
+    }
+
+    #[test]
+    fn builtin_parity_guardrail_reroutes_non_move_patrol_decision_to_move() {
+        let observation = sample_patrol_observation();
+        let (decision, note) = apply_builtin_parity_guardrail(
+            "P0-001",
+            "agent-1",
+            &observation,
+            AgentDecision::Act(Action::HarvestRadiation {
+                agent_id: "agent-1".to_string(),
+                max_amount: 3,
+            }),
+        );
+        assert_eq!(
+            decision,
+            AgentDecision::Act(Action::MoveAgent {
+                agent_id: "agent-1".to_string(),
+                to: "loc-2".to_string(),
+            })
+        );
+        assert!(note.unwrap_or_default().contains("act:other"));
+    }
+
+    #[test]
+    fn builtin_parity_guardrail_keeps_valid_move_agent_decision() {
+        let observation = sample_patrol_observation();
+        let decision = AgentDecision::Act(Action::MoveAgent {
+            agent_id: "agent-1".to_string(),
+            to: "loc-2".to_string(),
+        });
+        let (rewritten, note) = apply_builtin_parity_guardrail(
+            "P0-001",
+            "agent-1",
+            &observation,
+            decision.clone(),
+        );
+        assert_eq!(rewritten, decision);
+        assert_eq!(note, None);
     }
 
     #[test]

@@ -10,11 +10,11 @@ SCENARIO_ID="P0-001"
 PARITY_TIER="P0"
 SAMPLES=3
 TICKS=20
-TIMEOUT_MS=3000
+TIMEOUT_MS=15000
 OUT_DIR=""
 OPENCLAW_BASE_URL="http://127.0.0.1:5841"
 OPENCLAW_AUTH_TOKEN=""
-OPENCLAW_CONNECT_TIMEOUT_MS=3000
+OPENCLAW_CONNECT_TIMEOUT_MS=15000
 OPENCLAW_AGENT_PROFILE="agent_world_p0_low_freq_npc"
 OPENCLAW_EXECUTION_MODE="headless_agent"
 RUN_BUILTIN=1
@@ -34,11 +34,11 @@ Options:
   --parity-tier <P0|P1|P2>              Tier label (default: P0)
   --samples <n>                         Sample count per provider (default: 3)
   --ticks <n>                           Ticks per sample (default: 20)
-  --timeout-ms <n>                      Timeout budget per sample (default: 3000)
+  --timeout-ms <n>                      Timeout budget per sample (default: 15000)
   --out-dir <path>                      Artifact root (default: artifacts/<run_id>)
   --openclaw-base-url <url>             OpenClaw local HTTP base URL
   --openclaw-auth-token <token>         OpenClaw bearer token
-  --openclaw-connect-timeout-ms <n>     OpenClaw connect timeout (default: 3000)
+  --openclaw-connect-timeout-ms <n>     OpenClaw connect timeout (default: 15000)
   --openclaw-agent-profile <id>          OpenClaw gameplay profile/skill id
   --execution-mode <mode>                OpenClaw execution mode (default: headless_agent)
   --builtin-only                        Run only builtin provider

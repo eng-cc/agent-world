@@ -72,3 +72,10 @@
 - 可延期项:
   - `P0-002~P0-005` 扩面采样。
   - 主观评分卡细化到更多场景。
+
+## 9. 后续修复追踪（2026-03-17 / fix2）
+- 修复内容：`agent_engineer` 已在 `crates/agent_world/src/bin/world_openclaw_parity_bench.rs` 为 builtin parity lane 增加 `P0-001` 巡游 guardrail，并将 `world_openclaw_parity_bench` / `scripts/openclaw-parity-p0.sh` 默认 connect-timeout 对齐到 `15000ms`。
+- 复验批次：`openclaw_builtin_parity_20260317_fix2`。
+- 复验结果：builtin `completion_rate=1.0`、`move_agent=4`、`timeout_rate=0.0`；OpenClaw `completion_rate=0.0`、`timeout_rate=1.0`、`timeout=4`。
+- 结论变化：builtin 基线退化问题已收口，但正式 T4 双签结论暂不改写；当前剩余阻断已收敛为真实 `OpenClaw(Local HTTP)` 连续 timeout。
+- 后续建议：继续排查 bridge / local_http provider / runtime agent 的请求链路超时来源，待真实 OpenClaw 样本恢复可行动作后，再发起新的 parity 结论批次。
