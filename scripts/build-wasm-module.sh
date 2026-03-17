@@ -11,6 +11,7 @@ CANONICAL_CONTAINER_PLATFORM_TOKEN="linux-x86_64"
 CONTAINER_WORKSPACE_DIR="/workspace"
 DEFAULT_BUILDER_IMAGE="agent-world/wasm-builder:${CANONICAL_WASM_TOOLCHAIN}"
 DEFAULT_BUILDER_DOCKERFILE="$ROOT_DIR/docker/wasm-builder/Dockerfile"
+DEFAULT_CANONICALIZER_VERSION="strip-custom-sections-v1"
 
 WASM_TOOLCHAIN="${AGENT_WORLD_WASM_TOOLCHAIN:-$CANONICAL_WASM_TOOLCHAIN}"
 WASM_TARGET="${AGENT_WORLD_WASM_TARGET:-$CANONICAL_WASM_TARGET}"
@@ -24,6 +25,7 @@ WASM_BUILDER_IMAGE="${AGENT_WORLD_WASM_BUILDER_IMAGE:-$DEFAULT_BUILDER_IMAGE}"
 WASM_BUILDER_DOCKERFILE="${AGENT_WORLD_WASM_BUILDER_DOCKERFILE:-$DEFAULT_BUILDER_DOCKERFILE}"
 WASM_BUILDER_AUTO_BUILD="${AGENT_WORLD_WASM_BUILDER_AUTO_BUILD:-1}"
 WASM_BUILD_SUITE_BIN="${AGENT_WORLD_WASM_BUILD_SUITE_BIN:-}"
+WASM_CANONICALIZER_VERSION="${AGENT_WORLD_WASM_CANONICALIZER_VERSION:-$DEFAULT_CANONICALIZER_VERSION}"
 
 RUSTFLAGS_EFFECTIVE=""
 
@@ -366,6 +368,10 @@ ensure_builder_image() {
   build_local_builder_image
 }
 
+builder_image_digest() {
+  docker image inspect "$WASM_BUILDER_IMAGE" --format '{{.Id}}'
+}
+
 parse_host_paths() {
   local cwd="$1"
   shift
@@ -498,6 +504,8 @@ run_docker_wrapper() {
   mkdir -p "$HOST_OUT_DIR"
   require_docker
   ensure_builder_image
+  local builder_image_digest_value
+  builder_image_digest_value="$(builder_image_digest)"
 
   docker run \
     --rm \
@@ -514,6 +522,9 @@ run_docker_wrapper() {
     --env "AGENT_WORLD_WASM_BUILD_STD_FEATURES=$WASM_BUILD_STD_FEATURES" \
     --env "AGENT_WORLD_WASM_DETERMINISTIC_GUARD=$WASM_DETERMINISTIC_GUARD" \
     --env "AGENT_WORLD_WASM_CANONICAL_CONTAINER_PLATFORM=$CANONICAL_CONTAINER_PLATFORM_TOKEN" \
+    --env "AGENT_WORLD_WASM_CANONICALIZER_VERSION=$WASM_CANONICALIZER_VERSION" \
+    --env "AGENT_WORLD_WASM_BUILDER_IMAGE_REF=$WASM_BUILDER_IMAGE" \
+    --env "AGENT_WORLD_WASM_BUILDER_IMAGE_DIGEST=$builder_image_digest_value" \
     --env HOME=/tmp/agent-world-home \
     --env CARGO_HOME=/tmp/agent-world-cargo-home \
     --env RUSTUP_HOME=/rustup \

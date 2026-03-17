@@ -4,6 +4,7 @@ use std::env;
 use std::ffi::OsStr;
 use std::fmt;
 use std::fs;
+use std::io;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use wasm_encoder::{Module, RawSection};
@@ -12,6 +13,8 @@ use wasmparser::Parser;
 pub const DEFAULT_TARGET: &str = "wasm32-unknown-unknown";
 pub const DEFAULT_PROFILE: &str = "release";
 pub const DEFAULT_OUT_DIR: &str = ".tmp/wasm-build-suite";
+pub const DEFAULT_CANONICALIZER_VERSION: &str = "strip-custom-sections-v1";
+pub const DEFAULT_CONTAINER_PLATFORM: &str = "linux-x86_64";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BuildRequest {
@@ -41,9 +44,46 @@ pub struct BuildMetadata {
     pub module_id: String,
     pub target: String,
     pub profile: String,
+    pub wasm_toolchain: String,
+    pub wasm_build_std: String,
+    pub wasm_build_std_components: String,
+    pub wasm_build_std_features: String,
+    pub wasm_deterministic_guard: String,
     pub source_manifest_path: String,
     pub source_artifact_path: String,
     pub packaged_wasm_path: String,
+    pub build_receipt_path: String,
+    pub source_hash: String,
+    pub build_manifest_hash: String,
+    pub canonicalizer_version: String,
+    pub container_platform: String,
+    pub builder_image_ref: String,
+    pub builder_image_digest: String,
+    pub wasm_hash_sha256: String,
+    pub wasm_size_bytes: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BuildReceipt {
+    pub schema_version: u32,
+    pub module_id: String,
+    pub target: String,
+    pub profile: String,
+    pub wasm_toolchain: String,
+    pub wasm_build_std: String,
+    pub wasm_build_std_components: String,
+    pub wasm_build_std_features: String,
+    pub wasm_deterministic_guard: String,
+    pub build_suite_version: String,
+    pub source_manifest_path: String,
+    pub source_artifact_path: String,
+    pub packaged_wasm_path: String,
+    pub source_hash: String,
+    pub build_manifest_hash: String,
+    pub canonicalizer_version: String,
+    pub container_platform: String,
+    pub builder_image_ref: String,
+    pub builder_image_digest: String,
     pub wasm_hash_sha256: String,
     pub wasm_size_bytes: u64,
 }
@@ -54,7 +94,10 @@ pub struct BuildOutput {
     pub source_artifact_path: PathBuf,
     pub packaged_wasm_path: PathBuf,
     pub metadata_path: PathBuf,
+    pub receipt_path: PathBuf,
     pub wasm_hash_sha256: Option<String>,
+    pub source_hash: Option<String>,
+    pub build_manifest_hash: Option<String>,
     pub wasm_size_bytes: Option<u64>,
     pub dry_run: bool,
 }
@@ -165,6 +208,22 @@ struct BuildStdConfig {
     features: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+struct BuildManifest {
+    profile: String,
+    target: String,
+    wasm_toolchain: String,
+    wasm_build_std: String,
+    wasm_build_std_components: String,
+    wasm_build_std_features: String,
+    wasm_deterministic_guard: String,
+    canonicalizer_version: String,
+    container_platform: String,
+    builder_image_ref: String,
+    builder_image_digest: String,
+    build_suite_version: String,
+}
+
 impl BuildStdConfig {
     fn from_env() -> Self {
         let enabled = env::var("AGENT_WORLD_WASM_BUILD_STD")
@@ -223,6 +282,9 @@ pub fn run_build(request: &BuildRequest) -> Result<BuildOutput, BuildError> {
     let metadata_path = request
         .out_dir
         .join(format!("{}.metadata.json", request.module_id.as_str()));
+    let receipt_path = request
+        .out_dir
+        .join(format!("{}.build-receipt.json", request.module_id.as_str()));
 
     if request.dry_run {
         return Ok(BuildOutput {
@@ -230,7 +292,10 @@ pub fn run_build(request: &BuildRequest) -> Result<BuildOutput, BuildError> {
             source_artifact_path: artifact_path,
             packaged_wasm_path,
             metadata_path,
+            receipt_path,
             wasm_hash_sha256: None,
+            source_hash: None,
+            build_manifest_hash: None,
             wasm_size_bytes: None,
             dry_run: true,
         });
@@ -254,6 +319,38 @@ pub fn run_build(request: &BuildRequest) -> Result<BuildOutput, BuildError> {
         BuildError::MetadataInvalid("wasm size overflow while converting usize to u64".to_string())
     })?;
     let wasm_hash_sha256 = sha256_hex(&canonical_wasm_bytes);
+    let source_manifest_path = manifest_path.to_string_lossy().to_string();
+    let source_hash = compute_source_hash(package, &metadata, &manifest_path)?;
+    let wasm_toolchain = env_value_or_default("AGENT_WORLD_WASM_TOOLCHAIN", "");
+    let wasm_build_std = env_value_or_default("AGENT_WORLD_WASM_BUILD_STD", "0");
+    let wasm_build_std_components =
+        env_value_or_default("AGENT_WORLD_WASM_BUILD_STD_COMPONENTS", "std,panic_abort");
+    let wasm_build_std_features = env_value_or_default("AGENT_WORLD_WASM_BUILD_STD_FEATURES", "");
+    let wasm_deterministic_guard =
+        env_value_or_default("AGENT_WORLD_WASM_DETERMINISTIC_GUARD", "1");
+    let canonicalizer_version = env_value_or_default(
+        "AGENT_WORLD_WASM_CANONICALIZER_VERSION",
+        DEFAULT_CANONICALIZER_VERSION,
+    );
+    let container_platform = env_value_or_default(
+        "AGENT_WORLD_WASM_CANONICAL_CONTAINER_PLATFORM",
+        DEFAULT_CONTAINER_PLATFORM,
+    );
+    let builder_image_ref = env_value_or_default("AGENT_WORLD_WASM_BUILDER_IMAGE_REF", "");
+    let builder_image_digest = env_value_or_default("AGENT_WORLD_WASM_BUILDER_IMAGE_DIGEST", "");
+    let build_manifest_hash = compute_build_manifest_hash(
+        request.profile.as_str(),
+        request.target.as_str(),
+        wasm_toolchain.as_str(),
+        wasm_build_std.as_str(),
+        wasm_build_std_components.as_str(),
+        wasm_build_std_features.as_str(),
+        wasm_deterministic_guard.as_str(),
+        canonicalizer_version.as_str(),
+        container_platform.as_str(),
+        builder_image_ref.as_str(),
+        builder_image_digest.as_str(),
+    )?;
 
     if let Some(parent) = packaged_wasm_path.parent() {
         fs::create_dir_all(parent).map_err(|source| BuildError::Io {
@@ -267,13 +364,58 @@ pub fn run_build(request: &BuildRequest) -> Result<BuildOutput, BuildError> {
         source,
     })?;
 
+    let receipt_payload = BuildReceipt {
+        schema_version: 1,
+        module_id: request.module_id.clone(),
+        target: request.target.clone(),
+        profile: request.profile.clone(),
+        wasm_toolchain: wasm_toolchain.clone(),
+        wasm_build_std: wasm_build_std.clone(),
+        wasm_build_std_components: wasm_build_std_components.clone(),
+        wasm_build_std_features: wasm_build_std_features.clone(),
+        wasm_deterministic_guard: wasm_deterministic_guard.clone(),
+        build_suite_version: env!("CARGO_PKG_VERSION").to_string(),
+        source_manifest_path: source_manifest_path.clone(),
+        source_artifact_path: artifact_path.to_string_lossy().to_string(),
+        packaged_wasm_path: packaged_wasm_path.to_string_lossy().to_string(),
+        source_hash: source_hash.clone(),
+        build_manifest_hash: build_manifest_hash.clone(),
+        canonicalizer_version: canonicalizer_version.clone(),
+        container_platform: container_platform.clone(),
+        builder_image_ref: builder_image_ref.clone(),
+        builder_image_digest: builder_image_digest.clone(),
+        wasm_hash_sha256: wasm_hash_sha256.clone(),
+        wasm_size_bytes,
+    };
+    let receipt_json =
+        serde_json::to_vec_pretty(&receipt_payload).map_err(|source| BuildError::Json {
+            source,
+            context: "serialize build receipt".to_string(),
+        })?;
+    fs::write(&receipt_path, receipt_json).map_err(|source| BuildError::Io {
+        path: Some(receipt_path.clone()),
+        source,
+    })?;
+
     let metadata_payload = BuildMetadata {
         module_id: request.module_id.clone(),
         target: request.target.clone(),
         profile: request.profile.clone(),
-        source_manifest_path: manifest_path.to_string_lossy().to_string(),
+        wasm_toolchain,
+        wasm_build_std,
+        wasm_build_std_components,
+        wasm_build_std_features,
+        wasm_deterministic_guard,
+        source_manifest_path,
         source_artifact_path: artifact_path.to_string_lossy().to_string(),
         packaged_wasm_path: packaged_wasm_path.to_string_lossy().to_string(),
+        build_receipt_path: receipt_path.to_string_lossy().to_string(),
+        source_hash: source_hash.clone(),
+        build_manifest_hash: build_manifest_hash.clone(),
+        canonicalizer_version,
+        container_platform,
+        builder_image_ref,
+        builder_image_digest,
         wasm_hash_sha256: wasm_hash_sha256.clone(),
         wasm_size_bytes,
     };
@@ -293,7 +435,10 @@ pub fn run_build(request: &BuildRequest) -> Result<BuildOutput, BuildError> {
         source_artifact_path: artifact_path,
         packaged_wasm_path,
         metadata_path,
+        receipt_path,
         wasm_hash_sha256: Some(wasm_hash_sha256),
+        source_hash: Some(source_hash),
+        build_manifest_hash: Some(build_manifest_hash),
         wasm_size_bytes: Some(wasm_size_bytes),
         dry_run: false,
     })
@@ -394,6 +539,156 @@ fn resolve_artifact_path(
         .join(target)
         .join(profile_dir)
         .join(format!("{target_name}.wasm"))
+}
+
+fn env_value_or_default(key: &str, default: &str) -> String {
+    env::var(key)
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| default.to_string())
+}
+
+fn compute_build_manifest_hash(
+    profile: &str,
+    target: &str,
+    wasm_toolchain: &str,
+    wasm_build_std: &str,
+    wasm_build_std_components: &str,
+    wasm_build_std_features: &str,
+    wasm_deterministic_guard: &str,
+    canonicalizer_version: &str,
+    container_platform: &str,
+    builder_image_ref: &str,
+    builder_image_digest: &str,
+) -> Result<String, BuildError> {
+    let payload = BuildManifest {
+        profile: profile.to_string(),
+        target: target.to_string(),
+        wasm_toolchain: wasm_toolchain.to_string(),
+        wasm_build_std: wasm_build_std.to_string(),
+        wasm_build_std_components: wasm_build_std_components.to_string(),
+        wasm_build_std_features: wasm_build_std_features.to_string(),
+        wasm_deterministic_guard: wasm_deterministic_guard.to_string(),
+        canonicalizer_version: canonicalizer_version.to_string(),
+        container_platform: container_platform.to_string(),
+        builder_image_ref: builder_image_ref.to_string(),
+        builder_image_digest: builder_image_digest.to_string(),
+        build_suite_version: env!("CARGO_PKG_VERSION").to_string(),
+    };
+    let bytes = serde_json::to_vec(&payload).map_err(|source| BuildError::Json {
+        source,
+        context: "serialize build manifest".to_string(),
+    })?;
+    Ok(sha256_hex(bytes.as_slice()))
+}
+
+fn compute_source_hash(
+    _package: &CargoPackage,
+    _metadata: &CargoMetadata,
+    manifest_path: &Path,
+) -> Result<String, BuildError> {
+    let module_manifest_path = canonical_or_original(manifest_path);
+    let Some(module_dir) = module_manifest_path.parent() else {
+        return Err(BuildError::MetadataInvalid(format!(
+            "manifest has no parent: {}",
+            module_manifest_path.display()
+        )));
+    };
+    let source_manifest_rel = module_manifest_path
+        .strip_prefix(module_dir)
+        .unwrap_or(module_manifest_path.as_path())
+        .to_string_lossy()
+        .to_string();
+
+    let files = collect_source_files_for_hash(module_dir)?;
+    let mut hasher = Sha256::new();
+    hasher.update(format!("source_manifest_rel={source_manifest_rel}\n").as_bytes());
+    for file in files {
+        let rel = file.strip_prefix(module_dir).map_err(|_| {
+            BuildError::MetadataInvalid(format!(
+                "failed to strip module dir prefix path={} module_dir={}",
+                file.display(),
+                module_dir.display()
+            ))
+        })?;
+        let bytes = fs::read(&file).map_err(|source| BuildError::Io {
+            path: Some(file.clone()),
+            source,
+        })?;
+        hasher.update(
+            format!(
+                "module_file:{}:{}\n",
+                rel.to_string_lossy(),
+                sha256_hex(&bytes)
+            )
+            .as_bytes(),
+        );
+    }
+
+    Ok(format!("{:x}", hasher.finalize()))
+}
+
+fn collect_source_files_for_hash(module_dir: &Path) -> Result<Vec<PathBuf>, BuildError> {
+    let mut files = Vec::new();
+
+    for root_file in ["Cargo.toml", "Cargo.lock", "build.rs"] {
+        let path = module_dir.join(root_file);
+        if path.is_file() {
+            files.push(path);
+        }
+    }
+
+    for whitelisted_dir in ["src", "wit", ".cargo", "assets"] {
+        let root = module_dir.join(whitelisted_dir);
+        collect_files_recursively(root.as_path(), &mut files)?;
+    }
+
+    files.sort_by(|left, right| left.to_string_lossy().cmp(&right.to_string_lossy()));
+    files.dedup();
+
+    if files.is_empty() {
+        return Err(BuildError::MetadataInvalid(format!(
+            "source whitelist produced no files under {}",
+            module_dir.display()
+        )));
+    }
+
+    Ok(files)
+}
+
+fn collect_files_recursively(dir: &Path, output: &mut Vec<PathBuf>) -> Result<(), BuildError> {
+    let entries = match fs::read_dir(dir) {
+        Ok(entries) => entries,
+        Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(()),
+        Err(source) => {
+            return Err(BuildError::Io {
+                path: Some(dir.to_path_buf()),
+                source,
+            });
+        }
+    };
+
+    for entry in entries {
+        let entry = entry.map_err(|source| BuildError::Io {
+            path: Some(dir.to_path_buf()),
+            source,
+        })?;
+        let path = entry.path();
+        let file_type = entry.file_type().map_err(|source| BuildError::Io {
+            path: Some(path.clone()),
+            source,
+        })?;
+        if file_type.is_dir() {
+            collect_files_recursively(path.as_path(), output)?;
+            continue;
+        }
+        if file_type.is_file() {
+            output.push(path);
+        }
+    }
+
+    Ok(())
 }
 
 fn run_cargo_build(manifest_path: &Path, target: &str, profile: &str) -> Result<(), BuildError> {

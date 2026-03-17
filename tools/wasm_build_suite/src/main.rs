@@ -112,9 +112,16 @@ fn print_build_output(output: &BuildOutput) {
         output.packaged_wasm_path.to_string_lossy()
     );
     println!("metadata_path={}", output.metadata_path.to_string_lossy());
+    println!("receipt_path={}", output.receipt_path.to_string_lossy());
     if output.dry_run {
         println!("mode=dry-run");
     } else {
+        if let Some(source_hash) = &output.source_hash {
+            println!("source_hash={source_hash}");
+        }
+        if let Some(build_manifest_hash) = &output.build_manifest_hash {
+            println!("build_manifest_hash={build_manifest_hash}");
+        }
         if let Some(hash) = &output.wasm_hash_sha256 {
             println!("wasm_hash_sha256={hash}");
         }

@@ -4,7 +4,7 @@ use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 use wasmparser::Payload;
 
-use wasm_build_suite::{run_build, BuildMetadata, BuildRequest, DEFAULT_TARGET};
+use wasm_build_suite::{run_build, BuildMetadata, BuildReceipt, BuildRequest, DEFAULT_TARGET};
 
 fn template_manifest_path() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -67,7 +67,13 @@ fn minimal_template_dry_run_resolves_paths() {
         output.metadata_path,
         out_dir.join(format!("{module_id}.metadata.json"))
     );
+    assert_eq!(
+        output.receipt_path,
+        out_dir.join(format!("{module_id}.build-receipt.json"))
+    );
     assert!(output.wasm_hash_sha256.is_none());
+    assert!(output.source_hash.is_none());
+    assert!(output.build_manifest_hash.is_none());
     assert!(output.wasm_size_bytes.is_none());
 }
 
@@ -95,6 +101,7 @@ fn minimal_template_real_build_writes_wasm_and_metadata() {
     assert!(!output.dry_run);
     assert!(output.packaged_wasm_path.exists());
     assert!(output.metadata_path.exists());
+    assert!(output.receipt_path.exists());
     assert_eq!(
         output.wasm_size_bytes,
         Some(
@@ -123,6 +130,19 @@ fn minimal_template_real_build_writes_wasm_and_metadata() {
         metadata.packaged_wasm_path,
         output.packaged_wasm_path.to_string_lossy()
     );
+    assert_eq!(
+        metadata.build_receipt_path,
+        output.receipt_path.to_string_lossy()
+    );
+
+    let receipt_bytes = fs::read(&output.receipt_path).expect("read build receipt json");
+    let receipt: BuildReceipt =
+        serde_json::from_slice(&receipt_bytes).expect("parse build receipt json");
+    assert_eq!(receipt.module_id, module_id);
+    assert_eq!(receipt.target, DEFAULT_TARGET);
+    assert_eq!(receipt.profile, "dev");
+    assert_eq!(receipt.wasm_hash_sha256, metadata.wasm_hash_sha256);
+    assert_eq!(receipt.build_manifest_hash, metadata.build_manifest_hash);
 
     let _ = fs::remove_dir_all(out_dir);
 }
