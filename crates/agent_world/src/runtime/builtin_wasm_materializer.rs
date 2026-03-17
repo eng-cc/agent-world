@@ -384,7 +384,7 @@ fn temp_build_dir(module_id: &str) -> PathBuf {
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()
         .as_nanos();
-    std::env::temp_dir().join(format!(
+    repo_root().join(".tmp").join(format!(
         "agent-world-builtin-wasm-{module_id}-{}-{now}",
         std::process::id()
     ))
@@ -437,5 +437,15 @@ mod tests {
         );
 
         let _ = fs::remove_dir_all(&temp_root);
+    }
+
+    #[test]
+    fn temp_build_dir_stays_under_repo_tmp_root() {
+        let temp_dir = temp_build_dir("m1.rule.move");
+        assert!(
+            temp_dir.starts_with(repo_root().join(".tmp")),
+            "temp build dir should stay under repo .tmp, got {}",
+            temp_dir.display()
+        );
     }
 }

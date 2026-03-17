@@ -416,6 +416,7 @@ fn runtime_prompt_control_openclaw_mode_reports_unsupported() {
 
 #[test]
 fn runtime_prompt_control_apply_updates_snapshot_and_bindings() {
+    let _guard = lock_test_llm_env();
     let mut server = ViewerRuntimeLiveServer::new(
         ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal)
             .with_decision_mode(ViewerLiveDecisionMode::Llm),
