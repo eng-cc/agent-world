@@ -49,29 +49,37 @@
 - [x] TASK-WORLD_RUNTIME-038 (PRD-WORLD_RUNTIME-019) [test_tier_required]: 为工厂补齐生产阻塞/恢复状态与审计事件，确保前期工业引导能由 runtime 状态与事件历史解释。
 - [x] TASK-WORLD_RUNTIME-039 (PRD-WORLD_RUNTIME-001) [test_tier_required]: 为 viewer live runtime 增加 env-gated `agent_chat -> AgentSpoke` 测试态回声，支撑 software_safe 消息流回归。
 - [x] TASK-WORLD_RUNTIME-040 (PRD-WORLD_RUNTIME-001) [test_tier_required]: 为 OpenClaw 双轨模式补齐 mode/schema/environment/fixture/replay 元数据透传，并统一 replay/summary traceability。
+- [x] TASK-WORLD_RUNTIME-041 (PRD-WORLD_RUNTIME-020/021/022) [test_tier_required]: 将 `WASM 确定性构建与工件治理管线` 专题修正为 Docker-first canonical builder 目标态，并回写 world-runtime 根 PRD、项目索引、README 与当日 devlog。
+- [ ] TASK-WORLD_RUNTIME-042 (PRD-WORLD_RUNTIME-020/021) [test_tier_required]: 新增 pinned WASM builder image 与 host wrapper，固定 `linux-x86_64` container platform 为唯一 publish build 平台，并输出 build receipt。
+- [ ] TASK-WORLD_RUNTIME-043 (PRD-WORLD_RUNTIME-021/022) [test_tier_required + test_tier_full]: 将 manifest / identity / CI summary / release evidence 切换为 Docker canonical hash，对不同宿主只比较容器输出，不再比较 host-native 发布 hash。
+- [ ] TASK-WORLD_RUNTIME-044 (PRD-WORLD_RUNTIME-022) [test_tier_required]: 将 `compile_module_artifact_from_source` 的生产路径外移到 external Docker builder 或 production 默认禁用，runtime 仅消费 binary + receipt。
 
 ## 依赖
 - 模块设计总览：`doc/world-runtime/design.md`
 - doc/world-runtime/prd.index.md
 - `doc/world-runtime/runtime/runtime-integration.md`
 - `doc/world-runtime/runtime/runtime-storage-footprint-governance-2026-03-08.prd.md`
+- `doc/world-runtime/wasm/wasm-deterministic-build-pipeline.prd.md`
 - `doc/world-runtime/wasm/wasm-interface.md`
+- `scripts/build-wasm-module.sh`
+- `tools/wasm_build_suite/src/lib.rs`
 - `doc/world-runtime/governance/governance-events.md`
 - `testing-manual.md`
 - `.agents/skills/prd/check.md`
 
 ## 状态
-- 更新日期: 2026-03-16
-- 当前状态: completed
-- 下一任务: 配合 `viewer_engineer` 承接 `PRD-WORLD_SIMULATOR-040 T3` 的 `debug_viewer` 旁路可观测性收口。
-- 最新完成: `TASK-WORLD_RUNTIME-040`（为 OpenClaw 双轨模式补齐 mode/schema/environment/fixture/replay 元数据透传，并统一 replay/summary traceability）；上一轮为 `TASK-WORLD_RUNTIME-039`（为 viewer live runtime 增加 env-gated `agent_chat -> AgentSpoke` 测试态回声）。
+- 更新日期: 2026-03-17
+- 当前状态: in_progress（OpenClaw/runtime live traceability 子切片已完成，WASM Docker deterministic pipeline 文档基线已完成，进入实施拆解阶段）
+- 下一任务: `TASK-WORLD_RUNTIME-042`
+- 最新完成: `TASK-WORLD_RUNTIME-041`（将 `WASM 确定性构建与工件治理管线` 专题修正为 Docker-first canonical builder 目标态，并回写根入口）；上一轮为 `TASK-WORLD_RUNTIME-040`（为 OpenClaw 双轨模式补齐 mode/schema/environment/fixture/replay 元数据透传，并统一 replay/summary traceability），再上一轮为 `TASK-WORLD_RUNTIME-039`（为 viewer live runtime 增加 env-gated `agent_chat -> AgentSpoke` 测试态回声，支撑 software_safe 消息流回归）。
 - 阶段收口优先级: `P0`
-- 阶段 owner: `runtime_engineer`（联审：`producer_system_designer`；验证：`qa_engineer`）
+- 阶段 owner: `wasm_platform_engineer`（联审：`producer_system_designer`、`runtime_engineer`；验证：`qa_engineer`）
 - 阻断条件: 在 `TASK-WORLD_RUNTIME-002/003/004` 完成前，`TASK-WORLD_RUNTIME-033` 不再作为当前版本的首要发布驱动项。
 - 承接约束: `TASK-WORLD_RUNTIME-002` 完成后方可进入 `TASK-WORLD_RUNTIME-003` 与 `TASK-WORLD_RUNTIME-004`；`TASK-WORLD_RUNTIME-033` 保留为后续联合验证切片。
 - 实施备注:
   - `TASK-WORLD_RUNTIME-039` 已完成：为 `world_viewer_live` / runtime live 增加 `AGENT_WORLD_RUNTIME_AGENT_CHAT_ECHO=1` 测试态回声开关，在 `agent_chat` 被接受后可注入一条标准 `WorldEventKind::AgentSpoke` 事件，供 Viewer / QA 在不依赖自然 LLM 回话的情况下稳定采样消息流。
   - `TASK-WORLD_RUNTIME-040` 已完成：在 `DecisionRequest` / `ObservationEnvelope` 中补齐 `mode`、`observation_schema_version`、`action_schema_version`、`environment_class`、`fallback_reason`、`fixture_id`、`replay_id`，并将其接入 `world_openclaw_parity_bench`、`world_openclaw_local_bridge`、`runtime_live llm_sidecar` 与聚合脚本，确保 headless parity 与 runtime live 产物可追溯到统一 replay/summary 元数据。
+  - `TASK-WORLD_RUNTIME-041` 已完成：根据最新需求将专题从“host deterministic guard + keyed 平台 hash 对账”修正为“Docker-first canonical builder + single canonical publish hash”，并明确 `compile_module_artifact_from_source` 生产路径需要外移或 gated。
   - `TASK-WORLD_RUNTIME-028` 已完成：新增节点侧固定验收入口 `scripts/module-release-node-acceptance.sh` 并将 S11 运行手册切换为“脚本入口 + 等价拆分命令 + 证据目录”；同时收敛 `sync-m1/m4/m5` 非 `--check` 写入授权为“CI 禁止、仅本地显式授权（`AGENT_WORLD_WASM_SYNC_WRITE_ALLOW=local-dev`）”，主 CI 不再具备生产发布写入/激活路径。
   - `TASK-WORLD_RUNTIME-029` 已完成：新增 `scripts/world-runtime-finality-baseline.sh` 固定基准入口，输出 `stake/epoch` 验签耗时聚合指标与 `2 epoch` 收敛状态（`summary.md`/`summary.json` 可归档）；S11 运行手册已补齐命令与产物路径。
   - `TASK-WORLD_RUNTIME-034` 已完成：补齐 `runtime-storage-footprint-governance-2026-03-08.design.md`，明确 replay contract、checkpoint、GC、metrics 与迁移边界。

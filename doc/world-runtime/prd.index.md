@@ -2,7 +2,7 @@
 
 审计轮次: 6
 
-更新时间：2026-03-11
+更新时间：2026-03-17
 
 ## 入口
 - 模块 PRD：`doc/world-runtime/prd.md`
@@ -36,6 +36,7 @@
 | `doc/world-runtime/runtime/runtime-numeric-correctness-phase8.prd.md` | `doc/world-runtime/runtime/runtime-numeric-correctness-phase8.design.md` | `doc/world-runtime/runtime/runtime-numeric-correctness-phase8.project.md` |
 | `doc/world-runtime/runtime/runtime-numeric-correctness-phase9.prd.md` | `doc/world-runtime/runtime/runtime-numeric-correctness-phase9.design.md` | `doc/world-runtime/runtime/runtime-numeric-correctness-phase9.project.md` |
 | `doc/world-runtime/wasm/wasm-agent-os-alignment-hardening.prd.md` | `doc/world-runtime/wasm/wasm-agent-os-alignment-hardening.design.md` | `doc/world-runtime/wasm/wasm-agent-os-alignment-hardening.project.md` |
+| `doc/world-runtime/wasm/wasm-deterministic-build-pipeline.prd.md` | `doc/world-runtime/wasm/wasm-deterministic-build-pipeline.design.md` | `doc/world-runtime/wasm/wasm-deterministic-build-pipeline.project.md` |
 | `doc/world-runtime/wasm/wasm-executor.prd.md` | `doc/world-runtime/wasm/wasm-executor.design.md` | `doc/world-runtime/wasm/wasm-executor.project.md` |
 | `doc/world-runtime/wasm/wasm-sandbox-security-hardening.prd.md` | `doc/world-runtime/wasm/wasm-sandbox-security-hardening.design.md` | `doc/world-runtime/wasm/wasm-sandbox-security-hardening.project.md` |
 | `doc/world-runtime/wasm/wasm-sdk-no-std.prd.md` | `doc/world-runtime/wasm/wasm-sdk-no-std.design.md` | `doc/world-runtime/wasm/wasm-sdk-no-std.project.md` |

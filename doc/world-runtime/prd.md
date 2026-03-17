@@ -39,6 +39,7 @@
   - SC-6: retention policy 保留范围内的目标高度必须具备可验证的 replay contract，可由 checkpoint + canonical log 重建并校验 `execution_state_root`。
   - SC-7: 面向 Viewer / QA 的运行时测试钩子必须显式 env-gated，并输出可回放的标准世界事件，避免测试态捷径泄漏到默认产品路径。
   - SC-8: OpenClaw `player_parity` / `headless_agent` 共用同一 runtime 权威动作校验，且 mode/schema/environment/fixture/replay 元数据可稳定写入 request、summary 与 benchmark 产物。
+  - SC-9: WASM 构建与发布链路必须通过 pinned Docker canonical builder 收敛为单一 publish hash，保证 `builder_image_digest/source_hash/build_manifest_hash/wasm_hash` 可追溯，且执行层默认只认 canonical binary。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -46,12 +47,14 @@
   - 模块开发者：需要稳定 ABI/执行语义与治理流程。
   - 审计与安全评审者：需要完整可追溯的事件与收据链路。
   - QA / 发布运维：需要可预测的运行态磁盘预算、恢复能力与状态指标。
+  - 发布节点运营者 / 构建审计者：需要区分哪些校验属于 Docker canonical build evidence，哪些属于线上发布合法性。
 - User Scenarios & Frequency:
   - 运行时语义评审：每次核心行为改动前执行，确认确定性与兼容边界。
   - WASM 接口变更：每个接口变更至少进行一次兼容核验与回放验证。
   - 治理事件审计：发布前执行，检查关键治理事件链路完整性。
   - 安全回归复核：按周执行，验证沙箱、签名、权限约束无回退。
   - 运行态存储复核：每次持久化 / 启动器 / 链路改动后执行，确认 footprint、GC 与恢复能力符合预算。
+  - WASM 构建/发布复核：每次涉及 builder image、canonicalizer、manifest/identity、source compile 或 release materializer 时执行，确认 Docker canonical hash 与社会层审计字段保持一致。
 - User Stories:
   - PRD-WORLD_RUNTIME-001: As a 架构师, I want deterministic world execution semantics, so that replay and audit remain trustworthy.
   - PRD-WORLD_RUNTIME-002: As a 模块开发者, I want stable WASM interfaces and lifecycle governance, so that upgrades are safe.
@@ -60,12 +63,16 @@
   - PRD-WORLD_RUNTIME-014: As a QA / 审计维护者, I want GC 后仍可 latest-state 恢复并保留检查点取证能力, so that体积优化不破坏恢复与审计。
   - PRD-WORLD_RUNTIME-015: As a 发布工程师, I want profile-based storage policies and metrics, so that dev/release/soak 能执行不同磁盘预算。
   - PRD-WORLD_RUNTIME-019: As a Runtime 维护者 / Viewer / QA, I want factory production blocked/resumed/completed state to be explicit and replayable, so that early industrial onboarding can explain why production advanced or stalled.
+  - PRD-WORLD_RUNTIME-020: As a `wasm_platform_engineer`, I want publishable WASM to be built only inside a pinned Docker builder image, so that host platform differences stop influencing release hashes.
+  - PRD-WORLD_RUNTIME-021: As a 模块发布者 / 发布节点运营者, I want build receipt and release evidence to bind `builder_image_digest + source_hash + build_manifest_hash + wasm_hash`, so that binary trust can be socially verified without relying on host-native builds.
+  - PRD-WORLD_RUNTIME-022: As a `runtime_engineer` / `qa_engineer`, I want runtime to consume only Docker-canonical binaries and production source compile to leave the runtime hot path, so that build drift is blocked before execution.
 - Critical User Flows:
   1. Flow-WR-001: `提交 runtime 变更 -> 执行回放一致性验证 -> 对比事件链 -> 输出兼容结论`
   2. Flow-WR-002: `WASM 模块注册/升级 -> 生命周期治理校验 -> 沙箱执行 -> 审计事件归档`
   3. Flow-WR-003: `安全异常发现 -> 回溯 receipt -> 定位策略缺口 -> 补回归与发布阻断`
   4. Flow-WR-004: `运行一段时间 -> 采集 storage metrics -> 执行 retention / GC -> 重启恢复 -> 对比 latest state 与审计链`
   5. Flow-WR-005: `选择 retention policy 保留的目标高度 -> 定位 checkpoint -> 回放 canonical log -> 校验 execution_state_root -> 输出 replay 结论`
+  6. Flow-WR-006: `源码/manifest 变更 -> pinned Docker builder image 构建 canonical packaged wasm -> canonical hash/identity/release evidence -> DistFS/release manifest -> runtime 仅按 binary hash 装载执行`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
@@ -74,6 +81,7 @@
 | 审计与收据链路 | effect、receipt、签名、cause | 导出审计记录并验证签名 | `emitted -> signed -> verified/rejected` | 按事件时间与重要级别检索 | 安全评审者可查看完整链路 |
 | 运行态存储治理 | `storage_profile`、snapshot/journal refs、GC 结果、目录字节数 | 启动时加载策略，运行时发布指标并执行 retention / GC | `configured -> active -> degraded/failed` | latest head 永远 pin；checkpoint 按高度排序；metrics 按目录聚合 | 仅运行时维护者 / 发布配置可放宽预算 |
 | 回放契约治理 | `canonical_log`、`checkpoint_anchor`、`retained_heights`、`execution_state_root` | 对保留范围内目标高度执行 replay 验证 | `requested -> replaying -> matched/mismatched` | 以 checkpoint + canonical log 为重建基准 | QA / 审计维护者可读取结果 |
+| WASM Docker 确定性构建与工件治理 | `builder_image_digest`、`source_hash`、`build_manifest_hash`、`wasm_hash`、`canonicalizer_version`、`canonical_token` | 统一 Docker canonical build、manifest/identity、DistFS 与 runtime binary-only 消费 | `source -> container-built -> canonicalized -> manifested -> verified/executed` | 发布级只允许一个 canonical hash；宿主差异不得进入发布 hash 空间 | `wasm_platform_engineer` 定义 builder image；CI 仅校验；生产发布不由 CI 写入 |
 - Acceptance Criteria:
   - AC-1: world-runtime PRD 覆盖内核、WASM、治理、安全四条主线。
   - AC-2: world-runtime project 文档任务映射 PRD-ID 并维护状态。
@@ -82,6 +90,7 @@
   - AC-5: 内置 WASM 工件 `sha256` 清单与 identity manifest 保持一致，CI 不得出现 hash token 漂移。
   - AC-6: 运行态存储治理具备专题 PRD / project、预算口径、恢复验证与测试映射，默认链路不得出现无界磁盘增长。
   - AC-7: 运行态持久化专题必须明确 replay contract、canonical log 与 checkpoint 语义，并通过 retained-height replay 测试验证。
+  - AC-8: WASM deterministic pipeline 专题必须明确 Docker builder image、canonicalizer version、single canonical publish hash、identity/release evidence、source compile 外移或 gated 与 runtime binary-only 消费边界，并具备独立任务与验证映射。
 - Non-Goals:
   - 不在本 PRD 中展开每个阶段的实现代码细节。
   - 不替代 p2p 网络拓扑或 site 发布策略设计。
@@ -96,6 +105,7 @@
   - `doc/world-runtime/runtime/runtime-integration.md`
   - `doc/world-runtime/wasm/wasm-interface.md`
   - `doc/world-runtime/wasm/wasm-executor.prd.md`
+  - `doc/world-runtime/wasm/wasm-deterministic-build-pipeline.prd.md`
   - `doc/world-runtime/governance/governance-events.md`
   - `doc/world-runtime/module/player-published-entities-2026-03-05.prd.md`
   - `doc/world-runtime/runtime/runtime-storage-footprint-governance-2026-03-08.prd.md`
@@ -109,6 +119,7 @@
   - 并发冲突：治理操作并发时按版本序列化处理，拒绝乱序变更。
   - 数据异常：receipt 校验失败时不得推进状态并触发安全告警。
   - 存储异常：GC/保存中断时必须保留 latest recoverable head，禁止“先删后写”导致不可恢复状态。
+  - 构建漂移：若同一 Docker builder 在不同宿主上产出不同 canonical hash，或 receipt/identity 不一致，必须在进入 runtime 执行前被 gate 阻断。
 - Non-Functional Requirements:
   - NFR-WR-1: 同一输入回放结果一致率 100%。
   - NFR-WR-2: 关键治理事件审计链路完整率 100%。
@@ -117,6 +128,7 @@
   - NFR-WR-5: 核心运行时异常可在 30 分钟内完成初步定位。
   - NFR-WR-6: 默认开发/启动器 profile 必须定义明确磁盘预算、保留窗口与 metrics 输出，不得依赖手工清目录维持可用性。
   - NFR-WR-7: retention policy 保留范围内的 replay success rate 必须为 `100%`，且重建 `execution_state_root` 与原记录一致。
+  - NFR-WR-8: 同一 commit、同一 Docker builder image digest 下的 canonical packaged wasm hash 可复现率必须为 `100%`，且 drift 失败输出必须定位到 `module_id/builder_image_digest/expected/actual`。
 - Security & Privacy: 强制最小权限、签名校验、审计留痕；禁止未授权模块绕过规则层直接修改世界状态。
 
 ## 5. Risks & Roadmap
@@ -139,6 +151,9 @@
 | PRD-WORLD_RUNTIME-014 | TASK-WORLD_RUNTIME-030/031/032/033/034 | `test_tier_required` + `test_tier_full` | latest-state restart、checkpoint replay、GC fail-safe、checkpoint 保留验证 | 恢复能力与审计链路 |
 | PRD-WORLD_RUNTIME-015 | TASK-WORLD_RUNTIME-030/032/033/034 | `test_tier_required` | storage profile / metrics / archive read / launcher 脚本透传验证 | 发布链路可观测性与环境预算治理 |
 | PRD-WORLD_RUNTIME-019 | TASK-WORLD_RUNTIME-038 | `test_tier_required` | 工厂生产阻塞/恢复/完成状态回归、事件历史可解释性断言 | 前期工业引导、Viewer 工业反馈、QA playability 解释链 |
+| PRD-WORLD_RUNTIME-020 | TASK-WORLD_RUNTIME-041/042 | `test_tier_required` | Docker builder image、containerized canonical packaging、single canonical token 验证 | wasm publish build entry、容器环境收敛 |
+| PRD-WORLD_RUNTIME-021 | TASK-WORLD_RUNTIME-041/042/043 | `test_tier_required` | build receipt / identity / release evidence 绑定验证 | 工件治理、发布证据与社会层可验证性 |
+| PRD-WORLD_RUNTIME-022 | TASK-WORLD_RUNTIME-041/043/044 | `test_tier_required` + `test_tier_full` | multi-runner Docker compare、source compile 外移或 gated、runtime binary-only policy 验证 | build drift 阻断、执行前合法性与源码包发布边界 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |

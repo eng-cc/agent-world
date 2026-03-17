@@ -10,6 +10,7 @@
 
 ## 模块职责
 - 维护运行时主链路、存储治理、WASM 执行与模块发布口径。
+- 维护 WASM Docker 确定性构建、工件 hash/identity/DistFS 分发与 runtime binary-first 消费口径。
 - 汇总 runtime / wasm / module / governance / integration / testing 六类专题。
 - 承接候选级证据、发布门禁指标与跨模块 runtime 收口事项。
 
@@ -22,6 +23,7 @@
 - `testing/`：运行时专用测试分册。
 
 ## 近期专题
+- `doc/world-runtime/wasm/wasm-deterministic-build-pipeline.prd.md`
 - `doc/world-runtime/runtime/runtime-storage-footprint-governance-2026-03-08.prd.md`
 - `doc/world-runtime/module/online-module-release-legality-closure-2026-03-08.prd.md`
 - `doc/world-runtime/module/player-published-entities-2026-03-05.prd.md`
@@ -40,4 +42,5 @@
 
 ## 维护约定
 - runtime 行为、发布门禁或候选级证据口径变化时，优先回写 `doc/world-runtime/prd.md`。
+- WASM Docker builder image、canonicalizer、hash/identity manifest 或 source compile 边界变化时，优先回写 `doc/world-runtime/wasm/wasm-deterministic-build-pipeline.prd.md`。
 - 新增专题后，需同步回写 `doc/world-runtime/prd.index.md` 与本目录索引。
