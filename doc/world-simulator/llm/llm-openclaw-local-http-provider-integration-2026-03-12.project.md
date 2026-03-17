@@ -46,5 +46,6 @@
 - T5 operator 契约补充: `oasis7-run.sh doctor` 现在会把 `bundle-play`（bundle + bridge 的 no-`cargo` real-play readiness）与 `repo-bootstrap`（repo root + `cargo` 的自动 bridge/runtime bootstrap 能力）分开汇报；`play` 若因缺少 repo root / `cargo` 无法自动 bootstrap，会直接提示改走 `--reuse-bridge --skip-agent-setup`。
 - T5 停止收敛补充: `oasis7-run.sh play` 现已在 wrapper 层记录 launcher pid / process group，并在 `INT`/`TERM`/`HUP`/`EXIT` 时做 best-effort 子树清理，避免 bundle/source 启动后残留 `world_game_launcher` / `world_chain_runtime` / `world_viewer_live` 常驻。
 - T5 下载可观测性补充: `oasis7-run.sh download` 现在会输出下载/校验/解压/bundle ready 阶段日志；交互式终端走 `curl --progress-bar`，非 TTY 则改为周期性 heartbeat（默认 10s，可由 `OASIS7_DOWNLOAD_HEARTBEAT_SECS` 覆盖），避免 bundle-first 首次拉包长时间静默。
+- T5 bundle cache 安全补充: 已为 `oasis7-run.sh download` 增加“bundle 检测失败即退出”的硬保护；当解压目录缺少 `run-game.sh` 时，脚本现在会保留失败并拒绝填充 `bundle/`，同时新增 `.agents/skills/oasis7/scripts/oasis7-run-download-test.sh` 负向回归，覆盖“无 extracted `run-game.sh`”路径，防止再次把 `/.` 误拷到缓存。
 - T5 资产口径补充: 由于 `oasis7` 当前 real-play 仍沿用产品默认链启动路径，OpenClaw 试玩也可能加载 chain profile 下的 node key material；skill / references 现已显式要求把 node private key 当高敏资产处理，并建议临时试玩优先使用 disposable profile。
 - 当前边界: runtime live 的 `agent_chat` / `prompt_control` 在 OpenClaw 模式下仍显式报 `unsupported`，避免对外误报“已支持玩家直连操控”。

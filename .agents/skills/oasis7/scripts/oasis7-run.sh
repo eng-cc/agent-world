@@ -474,6 +474,11 @@ download_release_bundle() {
     echo "warning: could not download release checksums; skipped verification" >&2
   fi
 
+  [[ -f "$archive_path" ]] || {
+    echo "error: release archive missing before extraction: $archive_path" >&2
+    exit 1
+  }
+
   echo "Extracting bundle archive into: $extract_root" >&2
   case "$asset_name" in
     *.tar.gz)
@@ -491,7 +496,22 @@ download_release_bundle() {
   esac
 
   local detected_bundle
-  detected_bundle="$(find_extracted_bundle_dir "$extract_root" "$platform")"
+  if ! detected_bundle="$(find_extracted_bundle_dir "$extract_root" "$platform")"; then
+    echo "error: bundle detection failed; refusing to populate cache bundle dir from an unresolved path" >&2
+    exit 1
+  fi
+  [[ -n "$detected_bundle" ]] || {
+    echo "error: bundle detection returned an empty path; refusing to populate cache bundle dir" >&2
+    exit 1
+  }
+  [[ "$detected_bundle" == /* ]] || {
+    echo "error: bundle detection returned a non-absolute path: $detected_bundle" >&2
+    exit 1
+  }
+  [[ -x "$detected_bundle/run-game.sh" ]] || {
+    echo "error: detected bundle is missing run-game.sh: $detected_bundle" >&2
+    exit 1
+  }
   echo "Preparing bundle directory: $bundle_root" >&2
   rm -rf "$bundle_root"
   mkdir -p "$bundle_root"

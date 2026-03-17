@@ -122,4 +122,63 @@ if [[ "$(tr -d '\n' < "$second_stdout")" != "$expected_bundle" ]]; then
   exit 1
 fi
 
+missing_extract_tar="$tmp_dir/bin/tar-missing"
+cat > "$missing_extract_tar" <<'TAR'
+#!/usr/bin/env bash
+set -euo pipefail
+extract_root=""
+args=("$@")
+for ((i=0; i<${#args[@]}; i+=1)); do
+  if [[ "${args[$i]}" == "-C" ]]; then
+    extract_root="${args[$((i + 1))]}"
+    break
+  fi
+done
+[[ -n "$extract_root" ]] || { echo "missing tar extract root" >&2; exit 2; }
+mkdir -p "$extract_root/agent-world-linux-x64/bin"
+printf 'no launcher here
+' > "$extract_root/agent-world-linux-x64/README.txt"
+TAR
+chmod +x "$missing_extract_tar"
+
+failure_bin="$tmp_dir/bin-failure"
+mkdir -p "$failure_bin"
+cp "$fake_bin/curl" "$failure_bin/curl"
+cp "$missing_extract_tar" "$failure_bin/tar"
+
+failure_cache_dir="$tmp_dir/cache-failure"
+mkdir -p "$failure_cache_dir"
+failure_stderr="$tmp_dir/download-failure.stderr"
+failure_stdout="$tmp_dir/download-failure.stdout"
+if (
+  cd "$repo_root"
+  PATH="$failure_bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"   FAKE_ARCHIVE_PAYLOAD="$archive_payload"   FAKE_ARCHIVE_SHA256="$archive_sha256"   bash "$script_path" download --download-dir "$failure_cache_dir" >"$failure_stdout" 2>"$failure_stderr"
+); then
+  echo "expected download without extracted run-game.sh to fail" >&2
+  exit 1
+fi
+
+failure_bundle="$failure_cache_dir/eng-cc-agent-world/latest/linux-x64/bundle"
+if [[ -e "$failure_bundle/dev" || -e "$failure_bundle/usr" || -e "$failure_bundle/lib" ]]; then
+  echo "unexpected host-root paths copied into failed bundle cache" >&2
+  find "$failure_bundle" -maxdepth 2 -mindepth 1 -print >&2 || true
+  exit 1
+fi
+if [[ -e "$failure_bundle/run-game.sh" ]]; then
+  echo "failed bundle cache should not contain run-game.sh" >&2
+  exit 1
+fi
+for needle in   "error: extracted release bundle does not contain run-game.sh under"   "error: bundle detection failed; refusing to populate cache bundle dir from an unresolved path"; do
+  if ! grep -Fq "$needle" "$failure_stderr"; then
+    echo "missing expected failure log line: $needle" >&2
+    cat "$failure_stderr" >&2
+    exit 1
+  fi
+done
+if [[ -s "$failure_stdout" ]]; then
+  echo "failed download should not print bundle path to stdout" >&2
+  cat "$failure_stdout" >&2
+  exit 1
+fi
+
 echo "oasis7-run download tests passed"

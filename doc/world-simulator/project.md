@@ -139,6 +139,7 @@
 - [x] TASK-WORLD_SIMULATOR-136 (PRD-WORLD_SIMULATOR-037) [test_tier_required]: 修复 `oasis7-run.sh play` 在 wrapper 被终止后可能残留 `world_game_launcher` / `world_chain_runtime` / `world_viewer_live` 的问题；为 play launcher 子树增加进程组级清理，并补 shutdown 回归脚本。
 - [x] TASK-WORLD_SIMULATOR-137 (PRD-WORLD_SIMULATOR-037) [test_tier_required]: 为 `oasis7` 补齐 chain node 公私钥资产说明，明确 OpenClaw real-play 默认仍可能启动 `world_chain_runtime`，并把 node private key 的存储/共享/录屏/日志禁令写成 operator contract。
 - [x] TASK-WORLD_SIMULATOR-138 (PRD-WORLD_SIMULATOR-037) [test_tier_required]: 为 `oasis7-run.sh download` 增加 bundle-first 下载阶段日志、交互式进度条与非 TTY heartbeat，并补 bundle 下载可观测性回归脚本。
+- [x] TASK-WORLD_SIMULATOR-159 (PRD-WORLD_SIMULATOR-037) [test_tier_required]: 修复 `oasis7-run.sh download` 在 bundle 检测失败时仍可能把宿主 `/.` 误拷进缓存的问题；为 `detected_bundle` 增加显式失败保护、归档存在性校验与“无 extracted `run-game.sh`”负向回归。
 - [x] TASK-WORLD_SIMULATOR-139 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 完成“Viewer Web Software-Safe Mode”PRD / Design / Project 建模，并回写模块主文档、索引与 devlog。
 - [x] TASK-WORLD_SIMULATOR-140 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 为 Web 静态入口增加 bootstrap shell 与 `render_mode=standard|auto|software_safe` 模式选路。
 - [x] TASK-WORLD_SIMULATOR-141 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 落地不依赖 WGPU/WebGL 的 `software_safe` MVP 前端，覆盖连接/选择/step/反馈最小闭环。

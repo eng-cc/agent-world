@@ -160,6 +160,7 @@
   - NFR-9: 兼容桥派生的 OpenClaw session id 必须带上 `provider_config_ref` 作用域，至少要把 benchmark run / runtime live 进程彼此隔离，避免 `loc-2` 之类的历史上下文泄漏到新的世界样本。
   - NFR-10: 仓库必须提供可复用的轻量 OpenClaw runtime agent bootstrap（workspace 模板 + setup 脚本），用于把 world-simulator 决策路径与用户日常聊天/运营 workspace 隔离，降低 system prompt 体积与 session 污染风险。
   - NFR-11: world-simulator 兼容桥派生的 OpenClaw `sessionKey` 应优先使用 `subagent:` 作用域，显式触发 OpenClaw minimal prompt mode，避免把 NPC 决策误走成 full personal-assistant prompt。
+  - NFR-12: `oasis7-run.sh download` 在 release bundle 检测失败时必须立即非零退出；禁止在 `detected_bundle` 为空、非绝对路径或缺少 `run-game.sh` 时创建/填充缓存 `bundle/`，避免误复制宿主 `/.`。
 - Security & Privacy:
   - 仅接受 loopback 地址；launcher 对 base URL 做 host allowlist 校验。
   - 不向 provider 暴露私钥、完整 auth proof 或内部存储路径。
