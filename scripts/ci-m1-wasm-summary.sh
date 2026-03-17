@@ -45,7 +45,7 @@ normalize_platform_arch() {
   esac
 }
 
-detect_current_platform() {
+detect_host_platform() {
   local os arch
   os="$(normalize_platform_os "$(uname -s)")"
   arch="$(normalize_platform_arch "$(uname -m)")"
@@ -118,16 +118,17 @@ if [[ -z "$out_path" ]]; then
 fi
 
 configure_module_set
-current_platform="$(detect_current_platform)"
+host_platform="$(detect_host_platform)"
+canonical_platform="${AGENT_WORLD_WASM_CANONICAL_CONTAINER_PLATFORM:-linux-x86_64}"
 if [[ -z "$runner_label" ]]; then
-  runner_label="$current_platform"
+  runner_label="$host_platform"
 fi
 
 "$sync_script_path" --check
 
 mkdir -p "$(dirname "$out_path")"
 
-python3 - "$module_set" "$metadata_dir" "$hash_manifest_path" "$identity_manifest_path" "$out_path" "$runner_label" "$current_platform" <<'PY'
+python3 - "$module_set" "$metadata_dir" "$hash_manifest_path" "$identity_manifest_path" "$out_path" "$runner_label" "$host_platform" "$canonical_platform" <<'PY'
 import datetime as dt
 import glob
 import json
@@ -140,7 +141,8 @@ hash_manifest_path = pathlib.Path(sys.argv[3])
 identity_manifest_path = pathlib.Path(sys.argv[4])
 out_path = pathlib.Path(sys.argv[5])
 runner_label = sys.argv[6]
-current_platform = sys.argv[7]
+host_platform = sys.argv[7]
+canonical_platform = sys.argv[8]
 
 manifest_platform_hashes = {}
 canonical_platforms = set()
@@ -173,12 +175,12 @@ for lineno, raw_line in enumerate(hash_manifest_path.read_text().splitlines(), s
                 f"error: empty platform key in hash manifest line {lineno} token {token}"
             )
         canonical_platforms.add(platform_key)
-        if platform_key == current_platform:
+        if platform_key == canonical_platform:
             selected_hash = hash_value
 
     if selected_hash is None:
         raise SystemExit(
-            f"error: hash manifest missing platform {current_platform} for module {module_id}"
+            f"error: hash manifest missing canonical platform {canonical_platform} for module {module_id}"
         )
     manifest_platform_hashes[module_id] = selected_hash
 
@@ -242,7 +244,9 @@ summary = {
     "schema_version": 1,
     "module_set": module_set,
     "runner": runner_label,
-    "current_platform": current_platform,
+    "current_platform": canonical_platform,
+    "host_platform": host_platform,
+    "canonical_platform": canonical_platform,
     "generated_at_utc": dt.datetime.now(dt.timezone.utc).isoformat().replace("+00:00", "Z"),
     "module_count": len(module_hashes),
     "module_hashes": dict(sorted(module_hashes.items())),

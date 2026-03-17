@@ -11,9 +11,9 @@ HASH_MANIFEST_PATH="$ROOT_DIR/crates/agent_world/src/runtime/world/artifacts/m1_
 IDENTITY_MANIFEST_PATH=""
 DISTFS_ROOT="$ROOT_DIR/.distfs/builtin_wasm"
 DISTFS_BLOBS_DIR="$DISTFS_ROOT/blobs"
-CANONICAL_PLATFORMS_CSV="${AGENT_WORLD_WASM_CANONICAL_PLATFORMS:-darwin-arm64,linux-x86_64}"
-CURRENT_PLATFORM=""
-CURRENT_PLATFORM_IS_CANONICAL=0
+CANONICAL_PLATFORMS_CSV="${AGENT_WORLD_WASM_CANONICAL_PLATFORMS:-linux-x86_64}"
+CURRENT_PLATFORM="${AGENT_WORLD_WASM_CANONICAL_CONTAINER_PLATFORM:-linux-x86_64}"
+HOST_PLATFORM=""
 
 declare -a MODULE_IDS=()
 declare -a CANONICAL_PLATFORMS=()
@@ -41,7 +41,7 @@ Options:
 Env:
   AGENT_WORLD_WASM_CANONICAL_PLATFORMS
       Comma-separated canonical platforms in <os>-<arch> format.
-      Default: darwin-arm64,linux-x86_64
+      Default: linux-x86_64
   AGENT_WORLD_WASM_SYNC_WRITE_ALLOW
       Required when writing manifest/identity (non --check mode).
       Must be set to local-dev.
@@ -94,7 +94,7 @@ normalize_platform_arch() {
   esac
 }
 
-detect_current_platform() {
+detect_host_platform() {
   local os arch
   os="$(normalize_platform_os "$(uname -s)")"
   arch="$(normalize_platform_arch "$(uname -m)")"
@@ -118,17 +118,14 @@ read_canonical_platforms() {
     exit 2
   fi
 
-  if array_contains "$CURRENT_PLATFORM" "${CANONICAL_PLATFORMS[@]-}"; then
-    CURRENT_PLATFORM_IS_CANONICAL=1
-  fi
 }
 
 require_current_platform_supported() {
-  if [[ "$CURRENT_PLATFORM_IS_CANONICAL" -ne 1 ]]; then
+  if ! array_contains "$CURRENT_PLATFORM" "${CANONICAL_PLATFORMS[@]-}"; then
     echo "error: current platform is not in canonical platform set" >&2
     echo "  current_platform=$CURRENT_PLATFORM" >&2
     echo "  canonical_platforms=${CANONICAL_PLATFORMS[*]}" >&2
-    echo "hint: set AGENT_WORLD_WASM_CANONICAL_PLATFORMS to include current platform" >&2
+    echo "hint: set AGENT_WORLD_WASM_CANONICAL_CONTAINER_PLATFORM or AGENT_WORLD_WASM_CANONICAL_PLATFORMS consistently" >&2
     exit 1
   fi
 }
@@ -318,9 +315,10 @@ if [[ -z "$IDENTITY_MANIFEST_PATH" ]]; then
   fi
 fi
 
-CURRENT_PLATFORM="$(detect_current_platform)"
+HOST_PLATFORM="$(detect_host_platform)"
 read_canonical_platforms
 require_local_write_authorization
+require_current_platform_supported
 
 read_module_ids
 mkdir -p "$OUT_DIR"
@@ -443,7 +441,8 @@ if [[ "$CHECK_ONLY" -eq 1 ]]; then
 
   echo "check ok: hash manifest is in sync with built wasm"
   echo "  module_count=${#MODULE_IDS[@]}"
-  echo "  current_platform=$CURRENT_PLATFORM"
+  echo "  host_platform=$HOST_PLATFORM"
+  echo "  canonical_platform=$CURRENT_PLATFORM"
   echo "  canonical_platforms=${CANONICAL_PLATFORMS[*]}"
   echo "  hash_manifest=$HASH_MANIFEST_PATH"
   echo "  identity_manifest=$IDENTITY_MANIFEST_PATH"
@@ -485,9 +484,7 @@ for module_id in "${MODULE_IDS[@]}"; do
     if [[ -n "$platform_key" ]]; then
       keyed_tokens=$((keyed_tokens + 1))
       if ! array_contains "$platform_key" "${CANONICAL_PLATFORMS[@]-}"; then
-        echo "error: manifest platform is not allowed module_id=$module_id platform=$platform_key" >&2
-        echo "  allowed_platforms=${CANONICAL_PLATFORMS[*]}" >&2
-        exit 1
+        continue
       fi
       if array_contains "$platform_key" "${platform_keys[@]-}"; then
         echo "error: duplicate manifest platform entry module_id=$module_id platform=$platform_key" >&2
@@ -548,7 +545,8 @@ hydrate_distfs_blobs
 
 echo "synced builtin wasm hash/identity manifest + DistFS blobs"
 echo "  module_count=${#MODULE_IDS[@]}"
-echo "  current_platform=$CURRENT_PLATFORM"
+echo "  host_platform=$HOST_PLATFORM"
+echo "  canonical_platform=$CURRENT_PLATFORM"
 echo "  canonical_platforms=${CANONICAL_PLATFORMS[*]}"
 echo "  hash_manifest=$HASH_MANIFEST_PATH"
 echo "  identity_manifest=$IDENTITY_MANIFEST_PATH"

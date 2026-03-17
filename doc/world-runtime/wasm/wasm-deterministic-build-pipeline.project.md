@@ -8,7 +8,7 @@
 ## 任务拆解（含 PRD-ID 映射）
 - [x] WDBP-0 (PRD-WORLD_RUNTIME-020/021/022) [test_tier_required]: 将专题目标从“host deterministic guard + keyed 平台 hash 对账”修正为“Docker-first canonical builder”，并回写 root PRD / project / README / devlog。
 - [x] WDBP-1 (PRD-WORLD_RUNTIME-020/021) [test_tier_required]: 新增 pinned WASM builder image（`docker/wasm-builder/Dockerfile`）与 host wrapper，固定 `linux-x86_64` container platform 作为 canonical publish build 平台。
-- [ ] WDBP-2 (PRD-WORLD_RUNTIME-020/021) [test_tier_required]: 将现有 `tools/wasm_build_suite` 收敛到容器内执行，输出 build receipt，并把 manifest 从多宿主 keyed token 迁移为单 canonical token `linux-x86_64=<sha256>`。
+- [x] WDBP-2 (PRD-WORLD_RUNTIME-020/021) [test_tier_required]: 将现有 `tools/wasm_build_suite` 收敛到容器内执行，输出 build receipt，并把 manifest 从多宿主 keyed token 迁移为单 canonical token `linux-x86_64=<sha256>`。
 - [ ] WDBP-3 (PRD-WORLD_RUNTIME-021/022) [test_tier_required + test_tier_full]: 将 identity / release evidence / CI summary / release gate 全面切换为 Docker canonical hash，对 macOS/Linux 只比较容器输出，不再比较 host-native 输出。
 - [ ] WDBP-4 (PRD-WORLD_RUNTIME-022) [test_tier_required]: 把 `compile_module_artifact_from_source` 的生产路径外移到 external Docker builder 或 production 默认禁用，runtime 只消费 binary + build receipt。
 
@@ -28,12 +28,14 @@
 
 ## 状态
 - 更新日期: 2026-03-17
-- 当前阶段: WDBP-2 待执行
+- 当前阶段: WDBP-3 待执行
 - owner role: `wasm_platform_engineer`
 - 联审角色: `producer_system_designer`、`runtime_engineer`
 - 验证角色: `qa_engineer`
-- 阻塞项: 当前仓库仍未输出 build receipt，也尚未完成 canonical token / identity / CI 迁移
+- 阻塞项: release evidence / release gate 仍未完全切换到 receipt 驱动；`compile_module_artifact_from_source` 生产路径也尚未外移或默认禁用
 - 实施备注:
   - `docker/wasm-builder/Dockerfile` 与 `scripts/build-wasm-module.sh` 已落地，当前 canonical build 已收敛为 Docker-only path，不再提供 host-native fallback。
-  - 现有 keyed manifest / multi-runner workflow 需要保留读路径兼容，但写路径目标应切换为单 canonical token。
+  - `tools/wasm_build_suite` 已新增 `build receipt`、`source_hash`、`build_manifest_hash`、`builder_image_digest` 与 `container_platform` 输出；builtin `m1/m4/m5` hash manifest 已全部改写为单 canonical token `linux-x86_64=<sha256>`。
+  - `crates/agent_world_distfs/src/bin/sync_builtin_wasm_identity.rs` 已切换为 receipt 驱动 identity 生成；写路径只输出 canonical token，读路径仍兼容 legacy multi-token manifest。
+  - `scripts/ci-m1-wasm-summary.sh` 已区分 `host_platform` 与 `canonical_platform`，当前 CI 对账口径改为“不同宿主只比较 Docker canonical 输出”。
   - `compile_module_artifact_from_source` 是 Docker-first 迁移中的最大结构性变更点，因为 production runtime 不应默认持有 Docker daemon 权限。

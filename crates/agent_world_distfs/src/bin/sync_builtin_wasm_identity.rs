@@ -3,16 +3,8 @@ use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
 use std::env;
 use std::fs;
+use std::io;
 use std::path::{Path, PathBuf};
-use std::process::Command;
-
-const DEFAULT_WASM_TOOLCHAIN: &str = "nightly-2025-12-11";
-const DEFAULT_WASM_TARGET: &str = "wasm32-unknown-unknown";
-const DEFAULT_WASM_BUILD_STD: &str = "1";
-const DEFAULT_WASM_BUILD_STD_COMPONENTS: &str = "std,panic_abort";
-const DEFAULT_WASM_BUILD_STD_FEATURES: &str = "";
-const DEFAULT_WASM_DETERMINISTIC_GUARD: &str = "1";
-const DEFAULT_CANONICALIZER_VERSION: &str = "strip-custom-sections-v1";
 
 #[derive(Debug)]
 struct Options {
@@ -37,6 +29,10 @@ struct BuildRecipe {
     wasm_build_std_features: String,
     wasm_deterministic_guard: String,
     canonicalizer_version: String,
+    container_platform: String,
+    builder_image_ref: String,
+    builder_image_digest: String,
+    build_suite_version: String,
     canonical_platforms: Vec<String>,
 }
 
@@ -58,8 +54,22 @@ struct IdentityManifest {
 }
 
 #[derive(Debug, Deserialize)]
-struct BuildMetadata {
+struct BuildReceipt {
     module_id: String,
+    target: String,
+    profile: String,
+    wasm_toolchain: String,
+    wasm_build_std: String,
+    wasm_build_std_components: String,
+    wasm_build_std_features: String,
+    wasm_deterministic_guard: String,
+    build_suite_version: String,
+    source_hash: String,
+    build_manifest_hash: String,
+    canonicalizer_version: String,
+    container_platform: String,
+    builder_image_ref: String,
+    builder_image_digest: String,
     wasm_hash_sha256: String,
 }
 
@@ -273,14 +283,6 @@ fn sha256_hex(bytes: &[u8]) -> String {
     format!("{:x}", hasher.finalize())
 }
 
-fn env_or_default(key: &str, default_value: &str) -> String {
-    env::var(key)
-        .ok()
-        .map(|value| value.trim().to_string())
-        .filter(|value| !value.is_empty())
-        .unwrap_or_else(|| default_value.to_string())
-}
-
 fn parse_canonical_platforms(raw_csv: &str) -> Vec<String> {
     let mut seen = BTreeSet::new();
     let mut items = Vec::new();
@@ -294,58 +296,6 @@ fn parse_canonical_platforms(raw_csv: &str) -> Vec<String> {
         }
     }
     items
-}
-
-fn run_git_ls_files(module_dir: &Path, workspace_root: &Path) -> Result<Vec<PathBuf>, String> {
-    let module_rel = module_dir.strip_prefix(workspace_root).map_err(|error| {
-        format!(
-            "failed to compute module relative path module_dir={} workspace_root={} err={error}",
-            module_dir.display(),
-            workspace_root.display()
-        )
-    })?;
-    let module_rel_arg = if module_rel.as_os_str().is_empty() {
-        PathBuf::from(".")
-    } else {
-        module_rel.to_path_buf()
-    };
-
-    let output = Command::new("git")
-        .arg("-C")
-        .arg(workspace_root)
-        .arg("ls-files")
-        .arg("--")
-        .arg(&module_rel_arg)
-        .output()
-        .map_err(|error| {
-            format!(
-                "failed to execute git ls-files for module_dir={} err={error}",
-                module_dir.display()
-            )
-        })?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!(
-            "git ls-files failed for module_dir={} status={} stderr={}",
-            module_dir.display(),
-            output.status,
-            stderr.trim()
-        ));
-    }
-
-    let stdout = String::from_utf8(output.stdout)
-        .map_err(|error| format!("git ls-files returned invalid utf-8: {error}"))?;
-
-    let mut files = Vec::new();
-    for line in stdout.lines() {
-        let rel = line.trim();
-        if rel.is_empty() {
-            continue;
-        }
-        files.push(workspace_root.join(rel));
-    }
-    Ok(files)
 }
 
 fn is_whitelisted_source_file(module_rel: &Path) -> bool {
@@ -365,34 +315,18 @@ fn is_whitelisted_source_file(module_rel: &Path) -> bool {
     )
 }
 
-fn collect_source_files_for_hash(
-    module_dir: &Path,
-    workspace_root: &Path,
-) -> Result<Vec<PathBuf>, String> {
-    let tracked_files = run_git_ls_files(module_dir, workspace_root)?;
+fn collect_source_files_for_hash(module_dir: &Path) -> Result<Vec<PathBuf>, String> {
     let mut files = Vec::new();
 
-    for file in tracked_files {
-        if !file.starts_with(module_dir) {
-            continue;
+    for rel in ["Cargo.toml", "Cargo.lock", "build.rs"] {
+        let path = module_dir.join(rel);
+        if path.is_file() {
+            files.push(path);
         }
+    }
 
-        let rel = file.strip_prefix(module_dir).map_err(|error| {
-            format!(
-                "failed to strip module dir prefix path={} module_dir={} err={error}",
-                file.display(),
-                module_dir.display()
-            )
-        })?;
-        if !is_whitelisted_source_file(rel) {
-            continue;
-        }
-
-        let metadata = fs::metadata(&file)
-            .map_err(|error| format!("failed to stat source file {}: {error}", file.display()))?;
-        if metadata.is_file() {
-            files.push(file);
-        }
+    for root in ["src", "wit", ".cargo", "assets"] {
+        collect_files_recursively(module_dir, module_dir.join(root).as_path(), &mut files)?;
     }
 
     if files.is_empty() {
@@ -412,12 +346,8 @@ fn collect_source_files_for_hash(
     Ok(files)
 }
 
-fn compute_source_hash(
-    module_dir: &Path,
-    source_manifest_rel: &str,
-    workspace_root: &Path,
-) -> Result<String, String> {
-    let files = collect_source_files_for_hash(module_dir, workspace_root)?;
+fn compute_source_hash(module_dir: &Path, source_manifest_rel: &str) -> Result<String, String> {
+    let files = collect_source_files_for_hash(module_dir)?;
 
     let mut hasher = Sha256::new();
     hasher.update(format!("source_manifest_rel={source_manifest_rel}\n").as_bytes());
@@ -434,21 +364,52 @@ fn compute_source_hash(
         let digest = sha256_hex(&bytes);
         hasher.update(format!("module_file:{}:{}\n", rel.to_string_lossy(), digest).as_bytes());
     }
+    Ok(format!("{:x}", hasher.finalize()))
+}
 
-    let module_lock_path = module_dir.join("Cargo.lock");
-    if module_lock_path.exists() {
-        let lock_bytes = fs::read(&module_lock_path).map_err(|error| {
+fn collect_files_recursively(
+    module_dir: &Path,
+    dir: &Path,
+    output: &mut Vec<PathBuf>,
+) -> Result<(), String> {
+    let entries = match fs::read_dir(dir) {
+        Ok(entries) => entries,
+        Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(()),
+        Err(error) => {
+            return Err(format!(
+                "failed to read source dir {}: {error}",
+                dir.display()
+            ))
+        }
+    };
+
+    for entry in entries {
+        let entry = entry
+            .map_err(|error| format!("failed to iterate source dir {}: {error}", dir.display()))?;
+        let path = entry.path();
+        let file_type = entry
+            .file_type()
+            .map_err(|error| format!("failed to stat source path {}: {error}", path.display()))?;
+        if file_type.is_dir() {
+            collect_files_recursively(module_dir, path.as_path(), output)?;
+            continue;
+        }
+        if !file_type.is_file() {
+            continue;
+        }
+        let rel = path.strip_prefix(module_dir).map_err(|error| {
             format!(
-                "failed to read module Cargo.lock {}: {error}",
-                module_lock_path.display()
+                "failed to strip source root prefix path={} module_dir={} err={error}",
+                path.display(),
+                module_dir.display()
             )
         })?;
-        hasher.update(format!("module_file:Cargo.lock:{}\n", sha256_hex(&lock_bytes)).as_bytes());
-    } else {
-        hasher.update(b"module_file:Cargo.lock:none\n");
+        if is_whitelisted_source_file(rel) {
+            output.push(path);
+        }
     }
 
-    Ok(format!("{:x}", hasher.finalize()))
+    Ok(())
 }
 
 fn module_set_from_ids(module_ids: &[String]) -> String {
@@ -477,34 +438,9 @@ fn expected_manifest(options: &Options) -> Result<IdentityManifest, String> {
         return Err("canonical platforms list is empty".to_string());
     }
 
-    let build_recipe = BuildRecipe {
-        profile: options.profile.clone(),
-        wasm_toolchain: env_or_default("AGENT_WORLD_WASM_TOOLCHAIN", DEFAULT_WASM_TOOLCHAIN),
-        wasm_target: env_or_default("AGENT_WORLD_WASM_TARGET", DEFAULT_WASM_TARGET),
-        wasm_build_std: env_or_default("AGENT_WORLD_WASM_BUILD_STD", DEFAULT_WASM_BUILD_STD),
-        wasm_build_std_components: env_or_default(
-            "AGENT_WORLD_WASM_BUILD_STD_COMPONENTS",
-            DEFAULT_WASM_BUILD_STD_COMPONENTS,
-        ),
-        wasm_build_std_features: env_or_default(
-            "AGENT_WORLD_WASM_BUILD_STD_FEATURES",
-            DEFAULT_WASM_BUILD_STD_FEATURES,
-        ),
-        wasm_deterministic_guard: env_or_default(
-            "AGENT_WORLD_WASM_DETERMINISTIC_GUARD",
-            DEFAULT_WASM_DETERMINISTIC_GUARD,
-        ),
-        canonicalizer_version: DEFAULT_CANONICALIZER_VERSION.to_string(),
-        canonical_platforms,
-    };
-
-    let build_manifest_hash = sha256_hex(
-        serde_json::to_vec(&build_recipe)
-            .map_err(|error| format!("failed to serialize build recipe: {error}"))?
-            .as_slice(),
-    );
-
     let mut modules = Vec::new();
+    let mut expected_build_recipe: Option<BuildRecipe> = None;
+    let mut expected_build_manifest_hash: Option<String> = None;
 
     for module_id in &module_ids {
         let source_manifest_rel = module_manifest_map
@@ -548,61 +484,142 @@ fn expected_manifest(options: &Options) -> Result<IdentityManifest, String> {
             }
         }
 
-        let metadata_path = options
+        let receipt_path = options
             .metadata_dir
-            .join(format!("{module_id}.metadata.json"));
-        let metadata_content = fs::read(&metadata_path).map_err(|error| {
+            .join(format!("{module_id}.build-receipt.json"));
+        let receipt_content = fs::read(&receipt_path).map_err(|error| {
             format!(
-                "failed to read build metadata module_id={} path={} err={error}",
+                "failed to read build receipt module_id={} path={} err={error}",
                 module_id,
-                metadata_path.display()
+                receipt_path.display()
             )
         })?;
 
-        let metadata: BuildMetadata =
-            serde_json::from_slice(&metadata_content).map_err(|error| {
-                format!(
-                    "failed to parse build metadata module_id={} path={} err={error}",
-                    module_id,
-                    metadata_path.display()
-                )
-            })?;
-
-        if metadata.module_id != *module_id {
-            return Err(format!(
-                "build metadata module id mismatch expected={} actual={} path={}",
+        let receipt: BuildReceipt = serde_json::from_slice(&receipt_content).map_err(|error| {
+            format!(
+                "failed to parse build receipt module_id={} path={} err={error}",
                 module_id,
-                metadata.module_id,
-                metadata_path.display()
+                receipt_path.display()
+            )
+        })?;
+
+        if receipt.module_id != *module_id {
+            return Err(format!(
+                "build receipt module id mismatch expected={} actual={} path={}",
+                module_id,
+                receipt.module_id,
+                receipt_path.display()
+            ));
+        }
+        if receipt.profile != options.profile {
+            return Err(format!(
+                "build receipt profile mismatch module_id={} expected={} actual={} path={}",
+                module_id,
+                options.profile,
+                receipt.profile,
+                receipt_path.display()
             ));
         }
 
         if !hash_tokens
             .iter()
             .map(|token| parse_hash_value(token))
-            .any(|value| value == metadata.wasm_hash_sha256)
+            .any(|value| value == receipt.wasm_hash_sha256)
         {
             return Err(format!(
-                "build metadata hash missing from hash manifest module_id={} built_hash={} hash_tokens=[{}]",
+                "build receipt hash missing from hash manifest module_id={} built_hash={} hash_tokens=[{}]",
                 module_id,
-                metadata.wasm_hash_sha256,
+                receipt.wasm_hash_sha256,
                 hash_tokens.join(",")
             ));
         }
 
-        let source_hash =
-            compute_source_hash(module_dir, source_manifest_rel, &options.workspace_root)?;
-        let identity_hash =
-            sha256_hex(format!("{module_id}:{source_hash}:{build_manifest_hash}").as_bytes());
+        let source_manifest_rel = module_manifest_path
+            .strip_prefix(module_dir)
+            .unwrap_or(module_manifest_path.as_path())
+            .to_string_lossy()
+            .to_string();
+        let source_hash = compute_source_hash(module_dir, source_manifest_rel.as_str())?;
+        if source_hash != receipt.source_hash {
+            return Err(format!(
+                "build receipt source_hash mismatch module_id={} expected={} actual={} path={}",
+                module_id,
+                source_hash,
+                receipt.source_hash,
+                receipt_path.display()
+            ));
+        }
+        if !canonical_platforms
+            .iter()
+            .any(|platform| platform == &receipt.container_platform)
+        {
+            return Err(format!(
+                "build receipt container platform is not canonical module_id={} platform={} canonical_platforms=[{}]",
+                module_id,
+                receipt.container_platform,
+                canonical_platforms.join(",")
+            ));
+        }
+
+        let current_build_recipe = BuildRecipe {
+            profile: receipt.profile.clone(),
+            wasm_toolchain: receipt.wasm_toolchain.clone(),
+            wasm_target: receipt.target.clone(),
+            wasm_build_std: receipt.wasm_build_std.clone(),
+            wasm_build_std_components: receipt.wasm_build_std_components.clone(),
+            wasm_build_std_features: receipt.wasm_build_std_features.clone(),
+            wasm_deterministic_guard: receipt.wasm_deterministic_guard.clone(),
+            canonicalizer_version: receipt.canonicalizer_version.clone(),
+            container_platform: receipt.container_platform.clone(),
+            builder_image_ref: receipt.builder_image_ref.clone(),
+            builder_image_digest: receipt.builder_image_digest.clone(),
+            build_suite_version: receipt.build_suite_version.clone(),
+            canonical_platforms: canonical_platforms.clone(),
+        };
+
+        match &expected_build_recipe {
+            Some(existing) if existing != &current_build_recipe => {
+                return Err(format!(
+                    "build recipe mismatch across modules baseline_module={} current_module={}",
+                    modules
+                        .first()
+                        .map(|entry: &ModuleIdentityEntry| entry.module_id.as_str())
+                        .unwrap_or("unknown"),
+                    module_id
+                ));
+            }
+            None => expected_build_recipe = Some(current_build_recipe),
+            _ => {}
+        }
+
+        match &expected_build_manifest_hash {
+            Some(existing) if existing != &receipt.build_manifest_hash => {
+                return Err(format!(
+                    "build_manifest_hash mismatch across modules baseline={} current={} module_id={}",
+                    existing,
+                    receipt.build_manifest_hash,
+                    module_id
+                ));
+            }
+            None => expected_build_manifest_hash = Some(receipt.build_manifest_hash.clone()),
+            _ => {}
+        }
+
+        let identity_hash = sha256_hex(
+            format!("{module_id}:{source_hash}:{}", receipt.build_manifest_hash).as_bytes(),
+        );
 
         modules.push(ModuleIdentityEntry {
             module_id: module_id.clone(),
             hash_tokens,
             source_hash,
-            build_manifest_hash: build_manifest_hash.clone(),
+            build_manifest_hash: receipt.build_manifest_hash,
             identity_hash,
         });
     }
+
+    let build_recipe = expected_build_recipe
+        .ok_or_else(|| "failed to derive build recipe from receipts".to_string())?;
 
     Ok(IdentityManifest {
         schema_version: 1,
