@@ -12,6 +12,7 @@ Purpose:
   Run decentralized node-side module release acceptance checks:
   - required attestation submission regression
   - required attestation threshold rejection regression
+  - required receipt evidence mismatch rejection regression
   - optional full-tier manifest fault signature regression
   - triage signature grep summary
 
@@ -43,8 +44,8 @@ declare -A step_note=()
 declare -A step_log=()
 declare -A step_cmd=()
 
-all_steps=(required_attestation required_threshold full_manifest_faults triage_signals)
-selected_steps=(required_attestation required_threshold triage_signals)
+all_steps=(required_attestation required_threshold required_receipt_evidence full_manifest_faults triage_signals)
+selected_steps=(required_attestation required_threshold required_receipt_evidence triage_signals)
 
 out_dir=".tmp/module_release_node_acceptance"
 include_full=0
@@ -77,7 +78,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ "$include_full" -eq 1 ]]; then
-  selected_steps=(required_attestation required_threshold full_manifest_faults triage_signals)
+  selected_steps=(required_attestation required_threshold required_receipt_evidence full_manifest_faults triage_signals)
 fi
 
 timestamp=$(date '+%Y%m%d-%H%M%S')
@@ -161,6 +162,14 @@ for step in "${selected_steps[@]}"; do
         -- --nocapture
       )
       ;;
+    required_receipt_evidence)
+      cmd=(
+        env -u RUSTC_WRAPPER cargo test -p agent_world
+        module_release_apply_rejects_when_attestation_receipt_evidence_mismatches
+        --features test_tier_required
+        -- --nocapture
+      )
+      ;;
     full_manifest_faults)
       cmd=(
         env -u RUSTC_WRAPPER cargo test -p agent_world
@@ -172,7 +181,7 @@ for step in "${selected_steps[@]}"; do
     triage_signals)
       cmd=(
         bash -lc
-        "set +e; rc=0; if [[ -d output ]]; then rg -n \"conflicting attestation already exists|attestation threshold not met|fault_signature=builtin_release_manifest_\" output; r=\$?; if [[ \$r -gt 1 ]]; then rc=\$r; fi; fi; if [[ -d .tmp ]]; then rg -n \"conflicting attestation already exists|attestation threshold not met|fault_signature=builtin_release_manifest_\" .tmp --glob '!.tmp/module_release_node_acceptance/**' --glob '!module_release_node_acceptance/**'; r=\$?; if [[ \$r -gt 1 ]]; then rc=\$r; fi; fi; exit \$rc"
+        "set +e; rc=0; if [[ -d output ]]; then rg -n \"conflicting attestation already exists|attestation threshold not met|attestation receipt evidence mismatch|fault_signature=builtin_release_manifest_\" output; r=\$?; if [[ \$r -gt 1 ]]; then rc=\$r; fi; fi; if [[ -d .tmp ]]; then rg -n \"conflicting attestation already exists|attestation threshold not met|attestation receipt evidence mismatch|fault_signature=builtin_release_manifest_\" .tmp --glob '!.tmp/module_release_node_acceptance/**' --glob '!module_release_node_acceptance/**'; r=\$?; if [[ \$r -gt 1 ]]; then rc=\$r; fi; fi; exit \$rc"
       )
       ;;
     *)

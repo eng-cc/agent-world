@@ -337,6 +337,10 @@ fn module_release_state_machine_runs_submit_shadow_approve_apply() {
     assert_eq!(mapping.status, ModuleReleaseRequestStatus::Requested);
     assert_eq!(mapping.module_id, "m.loop.release");
     assert_eq!(mapping.release_id, format!("release-{request_id}"));
+    assert_eq!(mapping.attestation_count, 0);
+    assert!(mapping.release_wasm_hash.is_none());
+    assert!(mapping.attestation_platforms.is_empty());
+    assert!(!mapping.receipt_evidence_conflict);
 
     world.submit_action(Action::ModuleReleaseShadow {
         operator_agent_id: "operator-1".to_string(),
@@ -424,15 +428,51 @@ fn module_release_state_machine_runs_submit_shadow_approve_apply() {
         "bafyreleaseattestsm002",
     );
     world.step().expect("submit attestation signer2");
+    let mapping = world
+        .state()
+        .module_release_manifest_mappings
+        .get(&request_id)
+        .expect("module release manifest mapping state");
+    assert_eq!(mapping.attestation_count, 2);
+    let identity = world
+        .state()
+        .module_release_requests
+        .get(&request_id)
+        .expect("module release request state")
+        .manifest
+        .artifact_identity
+        .as_ref()
+        .expect("artifact identity");
     assert_eq!(
-        world
-            .state()
-            .module_release_manifest_mappings
-            .get(&request_id)
-            .expect("module release manifest mapping state")
-            .attestation_count,
-        2
+        mapping.release_wasm_hash.as_deref(),
+        Some(wasm_hash.as_str())
     );
+    assert_eq!(
+        mapping.release_source_hash.as_deref(),
+        Some(identity.source_hash.as_str())
+    );
+    assert_eq!(
+        mapping.release_build_manifest_hash.as_deref(),
+        Some(identity.build_manifest_hash.as_str())
+    );
+    assert_eq!(
+        mapping.release_builder_image_digest.as_deref(),
+        Some(TEST_RELEASE_BUILDER_IMAGE_DIGEST)
+    );
+    assert_eq!(
+        mapping.release_container_platform.as_deref(),
+        Some(TEST_RELEASE_CONTAINER_PLATFORM)
+    );
+    assert_eq!(
+        mapping.release_canonicalizer_version.as_deref(),
+        Some(TEST_RELEASE_CANONICALIZER_VERSION)
+    );
+    assert_eq!(
+        mapping.attestation_platforms,
+        vec!["linux-x86_64".to_string()]
+    );
+    assert_eq!(mapping.attestation_proof_cids.len(), 2);
+    assert!(!mapping.receipt_evidence_conflict);
 
     world.submit_action(Action::ModuleReleaseApply {
         operator_agent_id: "operator-1".to_string(),
@@ -643,6 +683,15 @@ fn module_release_submit_attestation_persists_audit_evidence() {
         .get(&request_id)
         .expect("module release mapping state");
     assert_eq!(mapping.attestation_count, 1);
+    assert_eq!(
+        mapping.attestation_platforms,
+        vec!["linux-x86_64".to_string()]
+    );
+    assert_eq!(
+        mapping.attestation_proof_cids,
+        vec!["bafyreleaseattest0001".to_string()]
+    );
+    assert!(!mapping.receipt_evidence_conflict);
 }
 
 #[test]
@@ -721,6 +770,15 @@ fn module_release_submit_attestation_rejects_conflicting_duplicate() {
         .get(&request_id)
         .expect("module release mapping state");
     assert_eq!(mapping.attestation_count, 1);
+    assert_eq!(
+        mapping.attestation_platforms,
+        vec!["linux-x86_64".to_string()]
+    );
+    assert_eq!(
+        mapping.attestation_proof_cids,
+        vec!["bafyreleaseattestdup0001".to_string()]
+    );
+    assert!(!mapping.receipt_evidence_conflict);
 }
 
 #[test]
@@ -948,6 +1006,18 @@ fn module_release_apply_rejects_when_attestation_receipt_evidence_mismatches() {
     world.step().expect("apply module release request");
 
     assert_rule_denied_note_for_action(&world, action_id, "attestation receipt evidence mismatch");
+    let mapping = world
+        .state()
+        .module_release_manifest_mappings
+        .get(&request_id)
+        .expect("module release mapping state after receipt mismatch");
+    assert_eq!(mapping.attestation_count, 2);
+    assert_eq!(
+        mapping.attestation_platforms,
+        vec!["darwin-arm64".to_string(), "linux-x86_64".to_string()]
+    );
+    assert_eq!(mapping.attestation_proof_cids.len(), 2);
+    assert!(mapping.receipt_evidence_conflict);
 }
 
 #[test]
