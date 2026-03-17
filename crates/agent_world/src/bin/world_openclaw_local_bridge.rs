@@ -491,12 +491,14 @@ fn agent_output_from_json(
             .meta
             .as_ref()
             .and_then(|meta| meta.agent_meta.as_ref())
-            .map(|agent_meta| match (&agent_meta.provider, &agent_meta.model) {
-                (Some(provider), Some(model)) => format!("{provider}/{model}"),
-                (Some(provider), None) => provider.clone(),
-                (None, Some(model)) => model.clone(),
-                (None, None) => DEFAULT_PROVIDER_ID.to_string(),
-            }),
+            .map(
+                |agent_meta| match (&agent_meta.provider, &agent_meta.model) {
+                    (Some(provider), Some(model)) => format!("{provider}/{model}"),
+                    (Some(provider), None) => provider.clone(),
+                    (None, Some(model)) => model.clone(),
+                    (None, None) => DEFAULT_PROVIDER_ID.to_string(),
+                },
+            ),
         duration_ms: parsed.meta.as_ref().and_then(|meta| meta.duration_ms),
         prompt_tokens: parsed
             .meta
@@ -1428,7 +1430,10 @@ mod tests {
         )
         .expect("parse local output");
         assert_eq!(parsed.payloads.len(), 1);
-        assert_eq!(parsed.meta.as_ref().and_then(|meta| meta.duration_ms), Some(2484));
+        assert_eq!(
+            parsed.meta.as_ref().and_then(|meta| meta.duration_ms),
+            Some(2484)
+        );
         assert_eq!(
             parsed
                 .meta
@@ -1445,7 +1450,9 @@ mod tests {
             "agent:agent_world_runtime:subagent:world-simulator:manual:agent-1",
         );
         assert!(session_id.starts_with("ws-"));
-        assert!(session_id.chars().all(|ch| ch.is_ascii_hexdigit() || ch == '-' || ch == 'w' || ch == 's'));
+        assert!(session_id
+            .chars()
+            .all(|ch| ch.is_ascii_hexdigit() || ch == '-' || ch == 'w' || ch == 's'));
         assert_eq!(session_id.len(), 67);
     }
 

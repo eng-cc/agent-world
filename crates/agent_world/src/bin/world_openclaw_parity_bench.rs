@@ -261,13 +261,15 @@ impl AgentBehavior for BuiltinParityBehavior {
         if let Some(note) = guardrail_note {
             if let Some(trace) = trace.as_mut() {
                 trace.decision = decision.clone();
-                trace.llm_step_trace.push(agent_world::simulator::LlmStepTrace {
-                    step_index: trace.llm_step_trace.len(),
-                    step_type: "builtin_parity_guardrail".to_string(),
-                    input_summary: decision_label(&original_decision),
-                    output_summary: decision_label(&decision),
-                    status: note,
-                });
+                trace
+                    .llm_step_trace
+                    .push(agent_world::simulator::LlmStepTrace {
+                        step_index: trace.llm_step_trace.len(),
+                        step_type: "builtin_parity_guardrail".to_string(),
+                        input_summary: decision_label(&original_decision),
+                        output_summary: decision_label(&decision),
+                        status: note,
+                    });
             }
         }
         self.pending_trace = trace;
@@ -1296,12 +1298,8 @@ mod tests {
     #[test]
     fn builtin_parity_guardrail_reroutes_passive_patrol_decision_to_move() {
         let observation = sample_patrol_observation();
-        let (decision, note) = apply_builtin_parity_guardrail(
-            "P0-001",
-            "agent-1",
-            &observation,
-            AgentDecision::Wait,
-        );
+        let (decision, note) =
+            apply_builtin_parity_guardrail("P0-001", "agent-1", &observation, AgentDecision::Wait);
         assert_eq!(
             decision,
             AgentDecision::Act(Action::MoveAgent {
@@ -1309,7 +1307,9 @@ mod tests {
                 to: "loc-2".to_string(),
             })
         );
-        assert!(note.unwrap_or_default().contains("builtin_parity_guardrail"));
+        assert!(note
+            .unwrap_or_default()
+            .contains("builtin_parity_guardrail"));
     }
 
     #[test]
@@ -1341,12 +1341,8 @@ mod tests {
             agent_id: "agent-1".to_string(),
             to: "loc-2".to_string(),
         });
-        let (rewritten, note) = apply_builtin_parity_guardrail(
-            "P0-001",
-            "agent-1",
-            &observation,
-            decision.clone(),
-        );
+        let (rewritten, note) =
+            apply_builtin_parity_guardrail("P0-001", "agent-1", &observation, decision.clone());
         assert_eq!(rewritten, decision);
         assert_eq!(note, None);
     }
