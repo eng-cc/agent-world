@@ -74,14 +74,6 @@ fn shadow_approve_and_apply_request(world: &mut World, operator_agent_id: &str, 
         role: "security".to_string(),
     });
     world.step().expect("approve module release role");
-    let wasm_hash = world
-        .state()
-        .module_release_requests
-        .get(&request_id)
-        .expect("module release request state")
-        .manifest
-        .wasm_hash
-        .clone();
     set_module_release_attestation_epoch_snapshot(
         world,
         2,
@@ -91,20 +83,14 @@ fn shadow_approve_and_apply_request(world: &mut World, operator_agent_id: &str, 
         .iter()
         .enumerate()
     {
-        let build_manifest_hash =
-            util::sha256_hex(format!("shadow-apply-build-{request_id}-{index}").as_bytes());
-        let source_hash =
-            util::sha256_hex(format!("shadow-apply-source-{request_id}-{index}").as_bytes());
-        world.submit_action(Action::ModuleReleaseSubmitAttestation {
-            operator_agent_id: operator_agent_id.to_string(),
+        submit_test_module_release_attestation(
+            world,
+            operator_agent_id,
             request_id,
-            signer_node_id: signer_node_id.to_string(),
-            platform: "linux-x86_64".to_string(),
-            build_manifest_hash,
-            source_hash,
-            wasm_hash: wasm_hash.clone(),
-            proof_cid: format!("bafyshadowapply{request_id}{index:02}"),
-        });
+            signer_node_id,
+            "linux-x86_64",
+            format!("bafyshadowapply{request_id}{index:02}").as_str(),
+        );
         world
             .step()
             .expect("submit module release attestation before apply");
@@ -312,28 +298,14 @@ fn module_release_apply_rechecks_and_rejects_existing_profile_overwrite() {
             .iter()
             .enumerate()
         {
-            let wasm_hash = world
-                .state()
-                .module_release_requests
-                .get(&request_id)
-                .expect("module release request state")
-                .manifest
-                .wasm_hash
-                .clone();
-            world.submit_action(Action::ModuleReleaseSubmitAttestation {
-                operator_agent_id: "operator-1".to_string(),
+            submit_test_module_release_attestation(
+                &mut world,
+                "operator-1",
                 request_id,
-                signer_node_id: signer_node_id.to_string(),
-                platform: "linux-x86_64".to_string(),
-                build_manifest_hash: util::sha256_hex(
-                    format!("apply-recheck-build-{request_id}-{index}").as_bytes(),
-                ),
-                source_hash: util::sha256_hex(
-                    format!("apply-recheck-source-{request_id}-{index}").as_bytes(),
-                ),
-                wasm_hash,
-                proof_cid: format!("bafyapplyrecheck{request_id}{index:02}"),
-            });
+                signer_node_id,
+                "linux-x86_64",
+                format!("bafyapplyrecheck{request_id}{index:02}").as_str(),
+            );
             world
                 .step()
                 .expect("submit module release attestation for apply recheck");

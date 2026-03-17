@@ -481,6 +481,9 @@ impl World {
                 source_hash,
                 wasm_hash,
                 proof_cid,
+                builder_image_digest,
+                container_platform,
+                canonicalizer_version,
             } => {
                 if !self.state.agents.contains_key(operator_agent_id) {
                     self.append_event(
@@ -659,6 +662,56 @@ impl World {
                     )?;
                     return Ok(true);
                 };
+                let normalized_builder_image_digest =
+                    match Self::normalize_module_release_attestation_builder_image_digest(
+                        builder_image_digest.as_str(),
+                    ) {
+                        Ok(digest) => digest,
+                        Err(note) => {
+                            self.append_event(
+                                WorldEventBody::Domain(DomainEvent::ActionRejected {
+                                    action_id,
+                                    reason: RejectReason::RuleDenied { notes: vec![note] },
+                                }),
+                                Some(CausedBy::Action(action_id)),
+                            )?;
+                            return Ok(true);
+                        }
+                    };
+                let normalized_container_platform =
+                    match Self::normalize_module_release_attestation_label(
+                        container_platform.as_str(),
+                        "container_platform",
+                    ) {
+                        Ok(value) => value,
+                        Err(note) => {
+                            self.append_event(
+                                WorldEventBody::Domain(DomainEvent::ActionRejected {
+                                    action_id,
+                                    reason: RejectReason::RuleDenied { notes: vec![note] },
+                                }),
+                                Some(CausedBy::Action(action_id)),
+                            )?;
+                            return Ok(true);
+                        }
+                    };
+                let normalized_canonicalizer_version =
+                    match Self::normalize_module_release_attestation_label(
+                        canonicalizer_version.as_str(),
+                        "canonicalizer_version",
+                    ) {
+                        Ok(value) => value,
+                        Err(note) => {
+                            self.append_event(
+                                WorldEventBody::Domain(DomainEvent::ActionRejected {
+                                    action_id,
+                                    reason: RejectReason::RuleDenied { notes: vec![note] },
+                                }),
+                                Some(CausedBy::Action(action_id)),
+                            )?;
+                            return Ok(true);
+                        }
+                    };
                 let attestation_key = Self::module_release_attestation_key(
                     normalized_signer_node_id.as_str(),
                     normalized_platform.as_str(),
@@ -668,7 +721,10 @@ impl World {
                         == normalized_build_manifest_hash
                         && existing.source_hash == normalized_source_hash
                         && existing.wasm_hash == normalized_wasm_hash
-                        && existing.proof_cid == normalized_proof_cid;
+                        && existing.proof_cid == normalized_proof_cid
+                        && existing.builder_image_digest == normalized_builder_image_digest
+                        && existing.container_platform == normalized_container_platform
+                        && existing.canonicalizer_version == normalized_canonicalizer_version;
                     if !same_payload {
                         self.append_event(
                             WorldEventBody::Domain(DomainEvent::ActionRejected {
@@ -709,6 +765,9 @@ impl World {
                         source_hash: normalized_source_hash,
                         wasm_hash: normalized_wasm_hash,
                         proof_cid: normalized_proof_cid,
+                        builder_image_digest: normalized_builder_image_digest,
+                        container_platform: normalized_container_platform,
+                        canonicalizer_version: normalized_canonicalizer_version,
                     }),
                     Some(CausedBy::Action(action_id)),
                 )?;
@@ -1678,6 +1737,11 @@ impl World {
                 }
             })
             .collect();
+        let eligible_attestations: Vec<_> = request
+            .attestations
+            .values()
+            .filter(|attestation| snapshot_signers.contains(attestation.signer_node_id.trim()))
+            .collect();
         let min_unique_signers = snapshot.effective_min_unique_signers();
         let aggregated_stake_bps = if snapshot.signer_node_ids.is_empty() {
             0
@@ -1708,6 +1772,64 @@ impl World {
                 Some(CausedBy::Action(action_id)),
             )?;
             return Ok(true);
+        }
+        let receipt_evidence_keys: BTreeSet<_> = eligible_attestations
+            .iter()
+            .map(|attestation| {
+                (
+                    attestation.wasm_hash.clone(),
+                    attestation.source_hash.clone(),
+                    attestation.build_manifest_hash.clone(),
+                    attestation.builder_image_digest.clone(),
+                    attestation.container_platform.clone(),
+                    attestation.canonicalizer_version.clone(),
+                )
+            })
+            .collect();
+        if receipt_evidence_keys.len() > 1 {
+            self.append_event(
+                WorldEventBody::Domain(DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::RuleDenied {
+                        notes: vec![format!(
+                            "module release apply rejected: attestation receipt evidence mismatch request_id={} unique_receipt_variants={}",
+                            request_id,
+                            receipt_evidence_keys.len()
+                        )],
+                    },
+                }),
+                Some(CausedBy::Action(action_id)),
+            )?;
+            return Ok(true);
+        }
+        if let (Some(identity), Some(attestation)) = (
+            request.manifest.artifact_identity.as_ref(),
+            eligible_attestations.first(),
+        ) {
+            if attestation.source_hash != identity.source_hash
+                || attestation.build_manifest_hash != identity.build_manifest_hash
+                || attestation.wasm_hash != request.manifest.wasm_hash
+            {
+                self.append_event(
+                    WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "module release apply rejected: attestation receipt identity mismatch request_id={} expected_wasm_hash={} actual_wasm_hash={} expected_source_hash={} actual_source_hash={} expected_build_manifest_hash={} actual_build_manifest_hash={}",
+                                request_id,
+                                request.manifest.wasm_hash,
+                                attestation.wasm_hash,
+                                identity.source_hash,
+                                attestation.source_hash,
+                                identity.build_manifest_hash,
+                                attestation.build_manifest_hash
+                            )],
+                        },
+                    }),
+                    Some(CausedBy::Action(action_id)),
+                )?;
+                return Ok(true);
+            }
         }
         if let Err(reason) = self.validate_module_release_profile_changes(&request.profile_changes)
         {

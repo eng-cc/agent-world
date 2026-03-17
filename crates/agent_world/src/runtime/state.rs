@@ -294,6 +294,12 @@ pub struct ModuleReleaseAttestationState {
     pub wasm_hash: String,
     pub proof_cid: String,
     #[serde(default)]
+    pub builder_image_digest: String,
+    #[serde(default)]
+    pub container_platform: String,
+    #[serde(default)]
+    pub canonicalizer_version: String,
+    #[serde(default)]
     pub submitted_at: WorldTime,
 }
 

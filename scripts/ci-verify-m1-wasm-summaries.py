@@ -43,10 +43,14 @@ def load_summary(path: pathlib.Path) -> dict:
         "module_set",
         "runner",
         "current_platform",
+        "host_platform",
+        "canonical_platform",
         "module_count",
         "module_hashes",
         "manifest_platform_hashes",
         "identity_hashes",
+        "identity_build_recipe",
+        "receipt_evidence",
     }
     missing = sorted(required_keys - set(payload.keys()))
     if missing:
@@ -65,13 +69,20 @@ def verify_summary_shape(path: pathlib.Path, payload: dict, module_set: str) -> 
             )
         )
 
-    for key in ("module_hashes", "manifest_platform_hashes", "identity_hashes"):
+    for key in (
+        "module_hashes",
+        "manifest_platform_hashes",
+        "identity_hashes",
+        "identity_build_recipe",
+        "receipt_evidence",
+    ):
         if not isinstance(payload[key], dict):
             fail(f"summary {path} field {key} must be an object")
 
     module_hashes = payload["module_hashes"]
     manifest_hashes = payload["manifest_platform_hashes"]
     identity_hashes = payload["identity_hashes"]
+    receipt_evidence = payload["receipt_evidence"]
 
     if len(module_hashes) != payload["module_count"]:
         fail(
@@ -84,6 +95,19 @@ def verify_summary_shape(path: pathlib.Path, payload: dict, module_set: str) -> 
     if set(module_hashes.keys()) != set(identity_hashes.keys()):
         fail(f"summary {path} module set mismatch between module_hashes and identity_hashes")
 
+    if set(module_hashes.keys()) != set(receipt_evidence.keys()):
+        fail(f"summary {path} module set mismatch between module_hashes and receipt_evidence")
+
+    build_recipe = payload["identity_build_recipe"]
+    for key in ("builder_image_digest", "container_platform", "canonicalizer_version"):
+        value = build_recipe.get(key)
+        if not isinstance(value, str) or not value:
+            fail(f"summary {path} identity_build_recipe missing {key}")
+    if payload["canonical_platform"] != build_recipe["container_platform"]:
+        fail(
+            f"summary {path} canonical_platform mismatch: summary={payload['canonical_platform']} recipe={build_recipe['container_platform']}"
+        )
+
     for module_id, module_hash in module_hashes.items():
         expected_hash = manifest_hashes[module_id]
         if module_hash != expected_hash:
@@ -91,6 +115,38 @@ def verify_summary_shape(path: pathlib.Path, payload: dict, module_set: str) -> 
                 "summary {} module {} hash mismatch built={} manifest={}".format(
                     path, module_id, module_hash, expected_hash
                 )
+            )
+        evidence = receipt_evidence[module_id]
+        if not isinstance(evidence, dict):
+            fail(f"summary {path} receipt evidence for module {module_id} must be an object")
+        required_evidence_keys = {
+            "source_hash",
+            "build_manifest_hash",
+            "wasm_hash",
+            "builder_image_digest",
+            "container_platform",
+            "canonicalizer_version",
+        }
+        missing_evidence = sorted(required_evidence_keys - set(evidence.keys()))
+        if missing_evidence:
+            fail(
+                f"summary {path} receipt evidence for module {module_id} missing keys: {missing_evidence}"
+            )
+        if evidence["wasm_hash"] != module_hash:
+            fail(
+                f"summary {path} receipt wasm_hash mismatch for module {module_id}: receipt={evidence['wasm_hash']} built={module_hash}"
+            )
+        if evidence["builder_image_digest"] != build_recipe["builder_image_digest"]:
+            fail(
+                f"summary {path} receipt builder_image_digest mismatch for module {module_id}"
+            )
+        if evidence["container_platform"] != build_recipe["container_platform"]:
+            fail(
+                f"summary {path} receipt container_platform mismatch for module {module_id}"
+            )
+        if evidence["canonicalizer_version"] != build_recipe["canonicalizer_version"]:
+            fail(
+                f"summary {path} receipt canonicalizer_version mismatch for module {module_id}"
             )
 
 
@@ -135,6 +191,9 @@ def main() -> None:
     baseline = summaries_by_runner[baseline_runner]
     baseline_module_keys = set(baseline["module_hashes"].keys())
     baseline_identity_hashes = baseline["identity_hashes"]
+    baseline_receipt_evidence = baseline["receipt_evidence"]
+    baseline_canonical_platform = baseline["canonical_platform"]
+    baseline_build_recipe = baseline["identity_build_recipe"]
 
     for runner in sorted(found_runners):
         payload = summaries_by_runner[runner]
@@ -147,6 +206,18 @@ def main() -> None:
         if payload["identity_hashes"] != baseline_identity_hashes:
             fail(
                 f"identity hash mismatch between runners baseline={baseline_runner} runner={runner}"
+            )
+        if payload["receipt_evidence"] != baseline_receipt_evidence:
+            fail(
+                f"receipt evidence mismatch between runners baseline={baseline_runner} runner={runner}"
+            )
+        if payload["canonical_platform"] != baseline_canonical_platform:
+            fail(
+                f"canonical platform mismatch between runners baseline={baseline_runner} runner={runner}"
+            )
+        if payload["identity_build_recipe"] != baseline_build_recipe:
+            fail(
+                f"identity build recipe mismatch between runners baseline={baseline_runner} runner={runner}"
             )
 
     print(
