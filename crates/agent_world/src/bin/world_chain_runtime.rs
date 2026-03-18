@@ -34,6 +34,8 @@ mod execution_bridge;
 mod explorer_p0_api;
 #[path = "world_chain_runtime/feedback_submit_api.rs"]
 mod feedback_submit_api;
+#[path = "world_chain_runtime/module_release_attestation_submit_api.rs"]
+mod module_release_attestation_submit_api;
 #[path = "world_chain_runtime/node_keypair_config.rs"]
 mod node_keypair_config;
 #[path = "world_chain_runtime/reward_runtime_settlement.rs"]
@@ -483,6 +485,10 @@ fn run_chain_runtime(options: CliOptions) -> Result<(), String> {
         status_host, status_port
     );
     println!(
+        "- module_release_attestation_submit: http://{}:{}/v1/chain/module-release/attestation/submit",
+        status_host, status_port
+    );
+    println!(
         "- reward_runtime: {} ({})",
         if options.reward_runtime_enabled {
             "enabled"
@@ -729,6 +735,16 @@ fn handle_chain_status_connection(
         node_id,
         world_id,
         execution_world_dir,
+    )? {
+        return Ok(());
+    }
+
+    if module_release_attestation_submit_api::maybe_handle_module_release_attestation_submit_request(
+        &mut stream,
+        &buffer[..bytes],
+        &runtime,
+        method,
+        path,
     )? {
         return Ok(());
     }

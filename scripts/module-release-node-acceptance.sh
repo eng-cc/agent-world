@@ -10,6 +10,7 @@ Usage: ./scripts/module-release-node-acceptance.sh [options]
 
 Purpose:
   Run decentralized node-side module release acceptance checks:
+  - required attestation submit API regression
   - required attestation submission regression
   - required attestation threshold rejection regression
   - required receipt evidence mismatch rejection regression
@@ -45,8 +46,8 @@ declare -A step_note=()
 declare -A step_log=()
 declare -A step_cmd=()
 
-all_steps=(required_attestation required_threshold required_receipt_evidence required_release_policy full_manifest_faults triage_signals)
-selected_steps=(required_attestation required_threshold required_receipt_evidence required_release_policy triage_signals)
+all_steps=(required_submit_api required_attestation required_threshold required_receipt_evidence required_release_policy full_manifest_faults triage_signals)
+selected_steps=(required_submit_api required_attestation required_threshold required_receipt_evidence required_release_policy triage_signals)
 
 out_dir=".tmp/module_release_node_acceptance"
 include_full=0
@@ -79,7 +80,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ "$include_full" -eq 1 ]]; then
-  selected_steps=(required_attestation required_threshold required_receipt_evidence required_release_policy full_manifest_faults triage_signals)
+  selected_steps=(required_submit_api required_attestation required_threshold required_receipt_evidence required_release_policy full_manifest_faults triage_signals)
 fi
 
 timestamp=$(date '+%Y%m%d-%H%M%S')
@@ -147,6 +148,14 @@ run_step() {
 
 for step in "${selected_steps[@]}"; do
   case "$step" in
+    required_submit_api)
+      cmd=(
+        env -u RUSTC_WRAPPER cargo test -p agent_world
+        module_release_attestation_submit
+        --bin world_chain_runtime
+        -- --nocapture
+      )
+      ;;
     required_attestation)
       cmd=(
         env -u RUSTC_WRAPPER cargo test -p agent_world

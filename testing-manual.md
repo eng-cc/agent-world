@@ -404,6 +404,8 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required lon
 ```bash
 ./scripts/module-release-node-acceptance.sh
 ./scripts/module-release-node-acceptance.sh --include-full
+./scripts/package-module-release-attestation-proof.sh --help
+./scripts/submit-module-release-attestation.sh --help
 ./scripts/wasm-release-evidence-report.sh --expected-runners linux-x86_64
 ./scripts/wasm-release-evidence-report.sh \
   --skip-collect \
@@ -419,6 +421,8 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required lon
 - 产物与证据：
   - 默认输出目录：`.tmp/module_release_node_acceptance/<timestamp>/`
   - 最小归档：`summary.md`、`summary.json`、各 step log（含 triage 信号检索）
+  - attestation proof payload 默认输出目录：`.tmp/module_release_attestation_proof/<timestamp>/`
+  - attestation proof 最小归档：`proof_payload.json`、`submit_request.json`、`evidence/` 附件目录或对应 archive、稳定 `proof_cid`
   - WASM release evidence 默认输出目录：`.tmp/wasm_release_evidence_report/<timestamp>/`
   - WASM release evidence 最小归档：`summary.md`、`summary.json`、`module_sets.tsv`、各 module set verify log 与 per-runner summary json
 - 等价拆分命令（便于定向排障）：
@@ -427,6 +431,8 @@ env -u RUSTC_WRAPPER cargo test -p agent_world module_release_submit_attestation
 env -u RUSTC_WRAPPER cargo test -p agent_world module_release_apply_rejects_when_attestation_threshold_not_met --features test_tier_required -- --nocapture
 env -u RUSTC_WRAPPER cargo test -p agent_world module_release_apply_rejects_when_attestation_receipt_evidence_mismatches --features test_tier_required -- --nocapture
 env -u RUSTC_WRAPPER cargo test -p agent_world power_bootstrap_release_manifest_full --features test_tier_full -- --nocapture
+./scripts/package-module-release-attestation-proof.sh --help
+./scripts/submit-module-release-attestation.sh --help
 ./scripts/ci-m1-wasm-summary.sh --module-set m1 --runner-label linux-x86_64 --out <summary-dir>/m1/linux-x86_64.json
 python3 ./scripts/ci-verify-m1-wasm-summaries.py --module-set m1 --summary-dir <summary-dir>/m1 --expected-runners linux-x86_64
 ```
@@ -447,6 +453,7 @@ rg -n "conflicting attestation already exists|attestation threshold not met|atte
 | --- | --- | --- | --- |
 | 证明冲突 | `module release attestation rejected: conflicting attestation already exists for signer=<id> platform=<platform>` | 阻断对应 `request_id` 的继续激活 | 冻结该 `request_id`，核对 `build_manifest_hash/source_hash/wasm_hash/proof_cid`，保留首条证据并重新发起发布单。 |
 | 阈值不足 | `module release apply rejected: attestation threshold not met epoch_id=<id> threshold=<n> aggregated_signers=<m>` | 阻断 `ModuleReleaseApply`，保持旧 `active_manifest_hash` | 对齐当前 `epoch` 快照 signer 集，补齐缺失 signer 证明后重试 apply。 |
+| 证明未入链 | 只有 CI / workflow artifact，缺少 node-side `proof_payload.json` 或未执行 attestation submit | 不得进入 `ModuleReleaseApply` | 先用 proof 脚本打包正式证据，生成稳定 `proof_cid`，再由发布节点提交 `ModuleReleaseSubmitAttestation`。 |
 | manifest 不可达/回滚/漂移 | `fault_signature=builtin_release_manifest_unreachable` / `fault_signature=builtin_release_manifest_missing_or_rolled_back` / `fault_signature=builtin_release_manifest_identity_drift` | 阻断 builtin 新版本加载，维持旧版本 | 检查 distfs artifact 可达性、release manifest 条目与 identity 是否一致，修复后再触发加载。 |
 
 ## 改动路径 -> 必跑套件矩阵（针对性执行）

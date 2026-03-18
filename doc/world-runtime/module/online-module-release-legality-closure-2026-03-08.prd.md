@@ -16,6 +16,7 @@
   - SC-4: 建立去中心化发布流水（提案、复构建证明、阈值签名、清单激活），生产路径不依赖 CI 服务可用性。
   - SC-5: 多平台构建差异在发布阶段可收敛为“同平台可复现 + 清单签名确认”，上线前不可复现构建必须阻断。
   - SC-6: 主 CI 不承载生产发布写入与激活；CI 仅做开发回归，生产发布由发布节点流水完成且可审计。
+  - SC-7: `proof_cid` 必须指向一份可归档、可重放的 attestation proof payload；发布节点要能在 node-side 直接提交 `ModuleReleaseSubmitAttestation`，而不是依赖 CI workflow 代替生产提交流水。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -50,6 +51,7 @@
 | finality 证书 | `proposal_id`、`manifest_hash`、`consensus_height`、`epoch_id`、`threshold_bps`、`min_unique_signers`、`signatures` | 外部提交证书后执行 apply | `approved -> queued -> finalized -> applied` | 校验 `stake_signed_bps >= threshold_bps` 且 `unique_signers >= min_unique_signers`；签名集合去重 | 仅 epoch 快照内验证者签名计入阈值并可签发 |
 | 运行时加载策略 | `trust_root_version`、`active_manifest_hash`、`allow_local_fallback`（prod=false） | 节点启动/热更新时校验并拉取模块 | `bootstrap -> sync -> enforce` | 先验签再加载，失败不降级到未授权字节 | 生产节点禁止本地未授权 fallback |
 | 去中心化发布证据流程 | `proposal_tx`、`request_id`、`build_attestations{signer_node_id,platform,build_manifest_hash,source_hash,wasm_hash,proof_cid}`、`finality_cert`、`audit_log_cid` | 节点提交复构建证明并聚合签名；证明必须显式绑定 `request_id` 与 `wasm_hash` | `proposed -> attested -> threshold_reached -> finalized` | 证明按 `signer_node_id + platform` 去重聚合，冲突提交拒绝并保留首条审计证据 | 仅信任根内 signer 且已绑定 node identity 的证明计入阈值 |
+| attestation proof payload | `proof_schema_version`、`request_id`、`signer_node_id`、`platform`、`evidence_summary`、`attached_files[]`、`payload_sha256` | 节点先打包 proof payload，再以其内容地址作为 `proof_cid` 提交 attestation | `evidence_collected -> packaged -> submitted -> archived` | `payload_sha256` 必须稳定对应 payload 内容；同一 payload 重放不得改变 `proof_cid` | payload 可由任意合规节点生成，但提交 attestation 仍需受信 node identity |
 | 兼容状态机映射 | `module_release_request_id`、`release_id`、`shadow_manifest_hash`、`applied_manifest_hash`、`applied_proposal_id` | `ModuleRelease*` 事件驱动写入发布清单映射 | `requested/shadowed/approved/applied -> draft/finalized/active` | 映射关系 append-only；同 `request_id` 不可重写 | 仅治理 apply 与发布流水写入 |
 - Acceptance Criteria:
   - AC-1 (PRD-WORLD_RUNTIME-016): 生产路径移除 builtin 模块清单 `include_str!` 作为主真源，改为线上发布清单驱动；本地内置仅允许作为应急 bootstrap 且默认关闭。
@@ -67,6 +69,8 @@
   - AC-13 (PRD-WORLD_RUNTIME-018): `proposal -> attestation` 证明落盘必须包含 `signer_node_id/platform/build_manifest_hash/source_hash/wasm_hash/proof_cid`，并强校验 `wasm_hash == release request manifest.wasm_hash`，冲突重复证明拒绝。
   - AC-14 (PRD-WORLD_RUNTIME-018): `ModuleReleaseApply` 必须按当前 epoch 快照 signer 集做 attestation 阈值聚合，且仅快照内 signer 计入阈值；阈值不足不得激活 release manifest。
   - AC-15 (PRD-WORLD_RUNTIME-018): 发布运行手册必须定义并可执行分诊“证明冲突、attestation 阈值不足、manifest 不可达/回滚/漂移”三类阻断场景，并明确主 CI 仅做开发回归与对账，不承担生产发布写入/激活。
+  - AC-16 (PRD-WORLD_RUNTIME-018): `world_chain_runtime` 必须提供 node-side `ModuleReleaseSubmitAttestation` 提交入口，使发布节点能够直接提交 attestation action 到共识队列，而不是依赖 CI 或手工改状态。
+  - AC-17 (PRD-WORLD_RUNTIME-018): proof payload 打包脚本必须能输出可归档目录与稳定 `proof_cid`，并把 `request_id/signer_node_id/platform/build_manifest_hash/source_hash/wasm_hash/builder_image_digest/container_platform/canonicalizer_version` 与 release evidence 摘要绑定到同一 payload。
 - Non-Goals:
   - 不在本期引入全新加密算法（继续以 ed25519 为主）。
   - 不在本期重构模块业务 ABI 或 gameplay 逻辑。
@@ -108,6 +112,7 @@
   - 复构建节点对同平台 hash 结论不一致：标记为 release fault，禁止产生活跃清单。
   - 同 `signer_node_id + platform` 的复构建证明出现不同 hash/cid：拒绝冲突写入并保留首条证明作为审计锚点。
   - attestation signer 不在当前 epoch 快照 signer 集：该证明不计入阈值聚合，若聚合不足则拒绝 `ModuleReleaseApply`。
+  - 证据只停留在 CI artifact、无法形成 node-side `proof_cid`：不得视为正式发布证明，必须补 proof payload 打包与 attestation 提交。
   - 清单回滚：仅允许通过治理撤销事件推进，不允许节点本地手工回滚。
   - 生产节点误开本地 fallback：启动即告警并拒绝进入 `enforce` 状态。
   - 生产路径误调用 `apply_proposal()`：立即拒绝并输出“本地自签路径禁用”错误，禁止 silent fallback。
@@ -118,6 +123,7 @@
   - 主 CI 误触发非 `--check` builtin manifest 写入：必须被脚本门禁拒绝（CI write-disabled），避免 CI 成为生产发布写入路径。
 - Non-Functional Requirements:
   - NFR-OMR-1: 节点模块校验（manifest + identity + signature）单模块验证耗时 `p95 <= 200ms`（本地缓存命中）。
+  - NFR-OMR-6: node-side attestation submit API 必须返回结构化成功/失败响应，并在无效请求、payload 编码失败、共识队列提交失败三类路径上给出可分诊错误码。
   - NFR-OMR-2: 发布证据（清单、证明签名、证书、链上高度）可追溯完整率 100%。
   - NFR-OMR-3: 信任根变更具备版本号与生效高度，所有节点在 `<= 2` 治理 epoch 内收敛。
   - NFR-OMR-4: 生产环境下未签名/伪签名模块误接纳率 0。

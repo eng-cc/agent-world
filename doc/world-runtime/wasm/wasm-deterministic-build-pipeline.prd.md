@@ -16,6 +16,7 @@
   - SC-5: `ModuleSourcePackage` 的生产发布路径不得继续依赖 runtime 进程在宿主机直接编译；必须迁移到同一 Docker builder 或显式 gated 为 dev/test only。
   - SC-6: 发布候选要宣称“跨宿主 determinism 已收口”时，必须归档至少一条 `linux-x86_64` 与一条 Docker-capable `darwin-arm64` 的 canonical summary / release evidence；Linux-only gate 只能代表稳定基线，不能代表跨宿主 closure。
   - SC-7: 生产 runtime / node 入口必须默认关闭 builtin manifest fallback、本地 identity hash 签名、本地 finality signing 与 runtime source compile，保证 binary-only policy 是生产默认行为而不是测试显式开关。
+  - SC-8: 跨宿主 Docker release evidence 必须可被包装成 node-side attestation proof payload，并进入 `ModuleReleaseSubmitAttestation.proof_cid`；仅存在于 CI artifact 的 report 不能单独视为生产 closure。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -63,6 +64,7 @@
   - AC-8 (PRD-WORLD_RUNTIME-022): `compile_module_artifact_from_source` 的生产路径必须迁移到外部 Docker builder 或直接禁用；runtime 进程内 host 直编只允许在 dev/test 模式下显式开启。
   - AC-9 (PRD-WORLD_RUNTIME-021/022): 若 GitHub-hosted CI 因 runner 能力不足只能保留 Linux-only stable gate，PRD / project / evidence 报告必须把跨宿主 evidence 标记为 pending，直到导入 Docker-capable macOS summary 为止。
   - AC-10 (PRD-WORLD_RUNTIME-022): production 运行入口必须提供 release security policy 绑定证据，证明 fallback / 本地签名 / runtime source compile 默认关闭；仅在测试里调用 `enable_production_release_policy()` 不足以视为完成。
+  - AC-11 (PRD-WORLD_RUNTIME-021/022): release evidence 除了 CI/report 汇总外，还必须存在 node-side proof payload 打包与 attestation submit 入口，使 `builder_image_digest/container_platform/canonicalizer_version` 可作为发布节点提交的正式证明字段进入共识链路。
 - Non-Goals:
   - 不在本专题中要求所有节点运行 Docker 再执行模块；Docker 只解决发布级构建，不进入 runtime 执行热路径。
   - 不在本专题中实现语义等价 canonical hash；当前仍以容器内 canonical packaging 的 byte hash 为准。
@@ -103,6 +105,7 @@
   - runtime 仍尝试生产态 host 编译源码包：必须被配置门禁拒绝，并输出“source compile requires external Docker builder”。
   - Docker Desktop / engine 版本不同：只要同一 builder image 输出 hash 一致即可通过；engine 版本作为诊断信息而不是发布 identity 的一部分。
   - GitHub-hosted `macos-14` runner 无 Docker daemon：允许 CI 暂时退化为 Linux-only stable gate，但 release evidence 必须保留“cross-host pending”状态，并继续要求导入外部 Docker-capable macOS summary，不得静默降级目标态。
+  - 外部 `darwin-arm64` evidence 只生成 workflow artifact、未进入 attestation proof payload：不得宣称 production release evidence 已闭环，只能算开发期对账完成。
   - production runtime / node 未启用 hardened release policy：必须在节点验收或 release gate 中直接阻断，因为此时 builtin manifest fallback / 本地签名 / runtime source compile 仍可能穿透 binary-only 契约。
 - Non-Functional Requirements:
   - NFR-WDBP-1: 同一源码、同一 builder image digest、同一 `linux-x86_64` container platform 的 canonical wasm hash 可复现率必须为 `100%`。
