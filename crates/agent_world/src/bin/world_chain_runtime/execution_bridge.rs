@@ -2,6 +2,8 @@ use std::collections::BTreeSet;
 use std::fs;
 use std::path::Path;
 
+use crate::release_security_policy_for_storage_profile;
+
 #[cfg(test)]
 use agent_world::consensus_action_payload::ConsensusActionPayloadEnvelope;
 use agent_world::consensus_action_payload::{
@@ -1366,7 +1368,10 @@ impl NodeRuntimeExecutionDriver {
         storage_profile: &StorageProfileConfig,
     ) -> Result<Self, String> {
         let state = load_execution_bridge_state(state_path.as_path())?;
-        let execution_world = load_execution_world(world_dir.as_path())?;
+        let mut execution_world = load_execution_world(world_dir.as_path())?;
+        execution_world.set_release_security_policy(release_security_policy_for_storage_profile(
+            storage_profile.profile,
+        ));
         let execution_sandbox: Box<dyn ModuleSandbox + Send> =
             Box::new(WasmExecutor::new(WasmExecutorConfig::default()));
         let mut driver = Self::new_with_sandbox(
@@ -3532,6 +3537,38 @@ mod tests {
             record_64.checkpoint_ref.as_deref(),
             Some(execution_checkpoint_manifest_rel_path(64).as_str())
         );
+
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn production_release_policy_release_default_applies_hardened_policy() {
+        use agent_world::runtime::ReleaseSecurityPolicy;
+        use agent_world_proto::storage_profile::StorageProfile;
+
+        let dir = temp_dir("execution-driver-release-policy-release-default");
+        let state_path = dir.join("state.json");
+        let world_dir = dir.join("world");
+        let records_dir = dir.join("records");
+        let storage_root = dir.join("store");
+        let storage_profile = StorageProfileConfig::for_profile(StorageProfile::ReleaseDefault);
+        let driver = NodeRuntimeExecutionDriver::new_with_storage_profile(
+            state_path,
+            world_dir,
+            records_dir,
+            storage_root,
+            &storage_profile,
+        )
+        .expect("driver");
+
+        assert_eq!(
+            driver.execution_world.release_security_policy(),
+            &ReleaseSecurityPolicy::production_hardened()
+        );
+        assert!(driver
+            .execution_world
+            .release_security_policy()
+            .is_production_hardened());
 
         let _ = fs::remove_dir_all(dir);
     }

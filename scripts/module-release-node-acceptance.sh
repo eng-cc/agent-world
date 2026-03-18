@@ -13,6 +13,7 @@ Purpose:
   - required attestation submission regression
   - required attestation threshold rejection regression
   - required receipt evidence mismatch rejection regression
+  - required production release policy binding/status regression
   - optional full-tier manifest fault signature regression
   - triage signature grep summary
 
@@ -44,8 +45,8 @@ declare -A step_note=()
 declare -A step_log=()
 declare -A step_cmd=()
 
-all_steps=(required_attestation required_threshold required_receipt_evidence full_manifest_faults triage_signals)
-selected_steps=(required_attestation required_threshold required_receipt_evidence triage_signals)
+all_steps=(required_attestation required_threshold required_receipt_evidence required_release_policy full_manifest_faults triage_signals)
+selected_steps=(required_attestation required_threshold required_receipt_evidence required_release_policy triage_signals)
 
 out_dir=".tmp/module_release_node_acceptance"
 include_full=0
@@ -78,7 +79,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ "$include_full" -eq 1 ]]; then
-  selected_steps=(required_attestation required_threshold required_receipt_evidence full_manifest_faults triage_signals)
+  selected_steps=(required_attestation required_threshold required_receipt_evidence required_release_policy full_manifest_faults triage_signals)
 fi
 
 timestamp=$(date '+%Y%m%d-%H%M%S')
@@ -167,6 +168,13 @@ for step in "${selected_steps[@]}"; do
         env -u RUSTC_WRAPPER cargo test -p agent_world
         module_release_apply_rejects_when_attestation_receipt_evidence_mismatches
         --features test_tier_required
+        -- --nocapture
+      )
+      ;;
+    required_release_policy)
+      cmd=(
+        env -u RUSTC_WRAPPER cargo test -p agent_world
+        production_release_policy_
         -- --nocapture
       )
       ;;

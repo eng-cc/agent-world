@@ -162,6 +162,24 @@ pub struct ReleaseSecurityPolicy {
     pub allow_runtime_source_compile: bool,
 }
 
+impl ReleaseSecurityPolicy {
+    pub fn production_hardened() -> Self {
+        Self {
+            allow_builtin_manifest_fallback: false,
+            allow_identity_hash_signature: false,
+            allow_local_finality_signing: false,
+            allow_runtime_source_compile: false,
+        }
+    }
+
+    pub fn is_production_hardened(&self) -> bool {
+        !self.allow_builtin_manifest_fallback
+            && !self.allow_identity_hash_signature
+            && !self.allow_local_finality_signing
+            && !self.allow_runtime_source_compile
+    }
+}
+
 impl Default for ReleaseSecurityPolicy {
     fn default() -> Self {
         Self {
@@ -472,12 +490,7 @@ impl World {
     }
 
     pub fn enable_production_release_policy(&mut self) {
-        self.release_security_policy = ReleaseSecurityPolicy {
-            allow_builtin_manifest_fallback: false,
-            allow_identity_hash_signature: false,
-            allow_local_finality_signing: false,
-            allow_runtime_source_compile: false,
-        };
+        self.release_security_policy = ReleaseSecurityPolicy::production_hardened();
     }
 
     pub fn with_runtime_memory_limits(mut self, limits: WorldRuntimeMemoryLimits) -> Self {

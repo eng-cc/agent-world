@@ -1,9 +1,10 @@
 use super::{
-    build_chain_balances_payload_from_world, build_default_replication_network_config,
-    build_node_replication_config, node_keypair_config, parse_options, parse_validator_spec,
-    CliOptions, DEFAULT_NODE_ID, DEFAULT_REPLICATION_NETWORK_LISTEN, DEFAULT_STATUS_BIND,
+    build_chain_balances_payload_from_world, build_chain_status_payload,
+    build_default_replication_network_config, build_node_replication_config, node_keypair_config,
+    parse_options, parse_validator_spec, release_security_policy_for_storage_profile, CliOptions,
+    DEFAULT_NODE_ID, DEFAULT_REPLICATION_NETWORK_LISTEN, DEFAULT_STATUS_BIND,
 };
-use agent_world::runtime::World as RuntimeWorld;
+use agent_world::runtime::{ReleaseSecurityPolicy, World as RuntimeWorld};
 use agent_world_node::{NodeConsensusSnapshot, NodeRole, NodeSnapshot};
 use agent_world_proto::storage_profile::{StorageProfile, StorageProfileConfig};
 use ed25519_dalek::SigningKey;
@@ -268,9 +269,10 @@ fn build_chain_status_payload_includes_storage_metrics() {
         degraded_reason: Some("storage degraded".to_string()),
     };
 
-    let payload = super::build_chain_status_payload(
+    let payload = build_chain_status_payload(
         snapshot,
         Path::new("/tmp/execution-world"),
+        ReleaseSecurityPolicy::default(),
         reward_runtime,
         storage.clone(),
     );
@@ -294,4 +296,74 @@ fn build_chain_status_payload_includes_storage_metrics() {
         payload.storage.degraded_reason.as_deref(),
         Some("storage degraded")
     );
+    assert_eq!(
+        payload.release_security_policy,
+        ReleaseSecurityPolicy::default()
+    );
+}
+
+#[test]
+fn production_release_policy_status_payload_reports_effective_policy() {
+    let snapshot = NodeSnapshot {
+        node_id: "node-a".to_string(),
+        player_id: "player-a".to_string(),
+        world_id: "live-a".to_string(),
+        role: NodeRole::Sequencer,
+        running: true,
+        tick_count: 1,
+        last_tick_unix_ms: Some(1_700_000_000_000),
+        consensus: NodeConsensusSnapshot::default(),
+        last_error: None,
+    };
+    let reward_runtime = super::reward_runtime_worker::RewardRuntimeMetricsSnapshot {
+        enabled: true,
+        metrics_available: true,
+        report_dir: "/tmp/reports".to_string(),
+        report_count: 0,
+        latest_epoch_index: 0,
+        latest_report_observed_at_unix_ms: 0,
+        latest_total_distributed_points: 0,
+        latest_minted_record_count: 0,
+        cumulative_minted_record_count: 0,
+        distfs_total_checks: 0,
+        distfs_failed_checks: 0,
+        distfs_failure_ratio: 0.0,
+        settlement_apply_attempts_total: 0,
+        settlement_apply_failures_total: 0,
+        settlement_apply_failure_ratio: 0.0,
+        invariant_ok: true,
+        last_error: None,
+    };
+    let storage = super::storage_metrics::StorageMetricsSnapshot {
+        storage_profile: "release_default".to_string(),
+        effective_budget: StorageProfileConfig::from(StorageProfile::ReleaseDefault),
+        bytes_by_dir: BTreeMap::new(),
+        blob_counts: BTreeMap::new(),
+        ref_count: 0,
+        pin_count: 0,
+        retained_heights: Vec::new(),
+        checkpoint_count: 0,
+        replay_summary: super::storage_metrics::StorageReplaySummary::default(),
+        orphan_blob_count: 0,
+        last_gc_at_ms: None,
+        last_gc_result: "not_available".to_string(),
+        last_gc_error: None,
+        degraded_reason: None,
+    };
+    let release_security_policy =
+        release_security_policy_for_storage_profile(StorageProfile::ReleaseDefault);
+
+    let payload = build_chain_status_payload(
+        snapshot,
+        Path::new("/tmp/execution-world"),
+        release_security_policy.clone(),
+        reward_runtime,
+        storage,
+    );
+
+    assert_eq!(
+        payload.release_security_policy,
+        ReleaseSecurityPolicy::production_hardened()
+    );
+    assert!(payload.release_security_policy.is_production_hardened());
 }

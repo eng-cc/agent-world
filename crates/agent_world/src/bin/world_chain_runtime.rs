@@ -10,7 +10,9 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use agent_world::runtime::{NodeAssetBalance, NodeRewardMintRecord, RewardAssetConfig};
+use agent_world::runtime::{
+    NodeAssetBalance, NodeRewardMintRecord, ReleaseSecurityPolicy, RewardAssetConfig,
+};
 use agent_world_node::{
     Libp2pReplicationNetwork, Libp2pReplicationNetworkConfig, NodeConfig, NodeFeedbackP2pConfig,
     NodePosConfig, NodeReplicationConfig, NodeReplicationNetworkHandle, NodeRole, NodeRuntime,
@@ -240,6 +242,7 @@ struct ChainStatusResponse {
     consensus: ChainConsensusStatus,
     last_error: Option<String>,
     execution_world_dir: String,
+    release_security_policy: ReleaseSecurityPolicy,
     reward_runtime: reward_runtime_worker::RewardRuntimeMetricsSnapshot,
     storage: storage_metrics::StorageMetricsSnapshot,
 }
@@ -311,6 +314,8 @@ fn run_chain_runtime(options: CliOptions) -> Result<(), String> {
         options.config_path.as_str(),
     ))?;
     let storage_profile_config = StorageProfileConfig::from(options.storage_profile);
+    let release_security_policy =
+        release_security_policy_for_storage_profile(options.storage_profile);
 
     let mut config = NodeConfig::new(
         options.node_id.clone(),
@@ -454,6 +459,7 @@ fn run_chain_runtime(options: CliOptions) -> Result<(), String> {
         options.node_id.clone(),
         options.world_id.clone(),
         paths.execution_world_dir.clone(),
+        release_security_policy,
         Arc::clone(&reward_runtime_metrics),
         Arc::clone(&storage_metrics),
         feedback_submit_signer,
@@ -586,6 +592,7 @@ fn start_chain_status_server(
     node_id: String,
     world_id: String,
     execution_world_dir: PathBuf,
+    release_security_policy: ReleaseSecurityPolicy,
     reward_runtime_metrics: SharedRewardRuntimeMetrics,
     storage_metrics: storage_metrics::SharedStorageMetrics,
     feedback_submit_signer: FeedbackSubmitSigner,
@@ -607,6 +614,7 @@ fn start_chain_status_server(
             node_id,
             world_id,
             execution_world_dir,
+            release_security_policy,
             reward_runtime_metrics,
             storage_metrics,
             feedback_submit_signer,
@@ -629,6 +637,7 @@ fn run_chain_status_server_loop(
     node_id: String,
     world_id: String,
     execution_world_dir: PathBuf,
+    release_security_policy: ReleaseSecurityPolicy,
     reward_runtime_metrics: SharedRewardRuntimeMetrics,
     storage_metrics: storage_metrics::SharedStorageMetrics,
     feedback_submit_signer: FeedbackSubmitSigner,
@@ -645,6 +654,7 @@ fn run_chain_status_server_loop(
                 let node_id = node_id.clone();
                 let world_id = world_id.clone();
                 let execution_world_dir = execution_world_dir.clone();
+                let release_security_policy = release_security_policy.clone();
                 let reward_runtime_metrics = Arc::clone(&reward_runtime_metrics);
                 let storage_metrics = Arc::clone(&storage_metrics);
                 let feedback_submit_signer = feedback_submit_signer.clone();
@@ -655,6 +665,7 @@ fn run_chain_status_server_loop(
                         node_id.as_str(),
                         world_id.as_str(),
                         execution_world_dir.as_path(),
+                        &release_security_policy,
                         reward_runtime_metrics,
                         storage_metrics,
                         &feedback_submit_signer,
@@ -679,6 +690,7 @@ fn handle_chain_status_connection(
     node_id: &str,
     world_id: &str,
     execution_world_dir: &Path,
+    release_security_policy: &ReleaseSecurityPolicy,
     reward_runtime_metrics: SharedRewardRuntimeMetrics,
     storage_metrics: storage_metrics::SharedStorageMetrics,
     feedback_submit_signer: &FeedbackSubmitSigner,
@@ -800,6 +812,7 @@ fn handle_chain_status_connection(
             let payload = build_chain_status_payload(
                 snapshot,
                 execution_world_dir,
+                release_security_policy.clone(),
                 snapshot_metrics(&reward_runtime_metrics),
                 storage_metrics::snapshot_storage_metrics(&storage_metrics),
             );
@@ -827,6 +840,7 @@ fn handle_chain_status_connection(
 fn build_chain_status_payload(
     snapshot: NodeSnapshot,
     execution_world_dir: &Path,
+    release_security_policy: ReleaseSecurityPolicy,
     reward_runtime_metrics: reward_runtime_worker::RewardRuntimeMetricsSnapshot,
     storage_metrics: storage_metrics::StorageMetricsSnapshot,
 ) -> ChainStatusResponse {
@@ -868,8 +882,19 @@ fn build_chain_status_payload(
         },
         last_error: snapshot.last_error,
         execution_world_dir: execution_world_dir.display().to_string(),
+        release_security_policy,
         reward_runtime: reward_runtime_metrics,
         storage: storage_metrics,
+    }
+}
+
+pub(crate) fn release_security_policy_for_storage_profile(
+    storage_profile: StorageProfile,
+) -> ReleaseSecurityPolicy {
+    if matches!(storage_profile, StorageProfile::ReleaseDefault) {
+        ReleaseSecurityPolicy::production_hardened()
+    } else {
+        ReleaseSecurityPolicy::default()
     }
 }
 
