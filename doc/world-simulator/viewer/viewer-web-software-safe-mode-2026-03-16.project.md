@@ -17,6 +17,7 @@
 - [x] T9 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 由 `runtime_engineer` / `viewer_engineer` 补齐 `agent_chat -> AgentSpoke` 的测试态稳定触发链路，并修正 software-safe 对 runtime 事件形状的兼容解析。
 - [x] T10 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 为 source-tree Viewer Web 入口补齐 dist freshness gate，确保 `oasis7-run.sh play` / Web 闭环在 `index.html`、`software_safe.*` 或静态资源漂移时优先重建 fresh dist，而不是继续消费 stale `crates/agent_world_viewer/dist`。
 - [x] T11 (PRD-WORLD_SIMULATOR-039/040) [test_tier_required]: 重构 `oasis7` operator 口径，明确 `headless_agent` 是 OpenClaw 主执行/回归 lane，Viewer 仅承担 `player_parity` / `debug_viewer` / `software_safe` 的体验、观战与弱图形观察职责，并写清当前 OpenClaw real-play 下 `prompt/chat` 的 observer-only 边界。
+- [x] T12 (PRD-WORLD_SIMULATOR-039/040) [test_tier_required]: 将 `oasis7` 主入口中的 UI/observer 细节拆到独立 reference，保持主 skill 聚焦执行闭环，仅保留最小 UI 结论与跳转关系。
 
 ## 依赖
 - `doc/world-simulator/viewer/viewer-web-software-safe-mode-2026-03-16.prd.md`
@@ -28,8 +29,9 @@
 ## 状态
 - 当前阶段：T0~T10 已完成，software-safe 已具备 prompt/chat、rollback、消息流、QA 回归、稳定 `agent_spoke` 触发闭环，以及 source-tree Viewer dist freshness gate。
 - 当前阶段：T0~T11 已完成，software-safe 已具备 prompt/chat、rollback、消息流、QA 回归、稳定 `agent_spoke` 触发闭环，以及面向 `oasis7` 的 observer/debug/operator 口径收口。
+- 当前阶段：T0~T12 已完成，`oasis7` 主入口已回到执行主链路，UI/observer 细节改由独立 reference 承接。
 - 联动状态：已承接 `PRD-WORLD_SIMULATOR-040 T3`，在 software-safe 页面补齐 `debug_viewer` 旁路订阅标识、选中 Agent 的 headless lane 元数据展示，以及 OpenClaw runtime live 下的 observer-only 提示。
-- 最近更新：2026-03-18（`producer_system_designer` 已按 issue `#47` 重构 `oasis7` 入口文案，明确 `software_safe` 是 observer/debug 兜底而非主玩家体验模式，并把 `headless_agent` / `player_parity` / `debug_viewer` 分层写回 operator 文档）。
+- 最近更新：2026-03-18（`producer_system_designer` 已将 `oasis7` 主入口中的 UI/observer 细节拆分到 `references/viewer-ui-lanes.md`，让主 skill 聚焦 OpenClaw 执行闭环，UI 细节改为按需阅读）。
 - 阻塞项：无；后续仅保留交互体验扩展与更多自动化覆盖。
 
 ## 备注

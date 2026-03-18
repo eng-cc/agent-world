@@ -33,24 +33,15 @@ Do not use this skill for:
 - Editing OpenClaw third-party source under `third_party/`
 - Viewer-only UI styling tasks with no OpenClaw runtime involvement
 
-## Execution Modes And UI Contract
+## Execution Lanes
 
 Read `oasis7` with one product rule in mind: OpenClaw real-play can run without a Viewer.
-The Viewer is for player-feel validation, observation, and debugging; it is not the authority execution path.
-
-Choose the lane that matches the job:
 
 - `headless_agent`: default for smoke, CI, servers, low-spec machines, and “does the agent still complete the loop” checks
 - `player_parity`: use when a producer/QA/operator wants to judge “does this feel like a player-facing run”
-- `debug_viewer`: treat the Viewer page as a read-mostly observer/debug layer for OpenClaw real-play
-- `software_safe`: use when the browser cannot sustain the standard Viewer (`SwiftShader`, software renderer, no WebGL, DOM-first observation, or similar weak graphics paths)
 
-Current boundary:
-
-- real OpenClaw autoplay is supported in `headless_agent` and `player_parity`
-- the Viewer helps humans watch state, inspect targets, and capture evidence, but the agent should keep running even if the Viewer is closed or unavailable
-- `software_safe` is a minimal observer/verification lane, not the primary player-experience lane
-- in current `runtime live + openclaw_local_http` real-play, do not treat `sendAgentChat` / `sendPromptControl` as an end-to-end supported player-authority path; the surface may exist, but today this lane should be read as observer-only for OpenClaw
+The Viewer is optional and is not the authority execution path.
+If you need `debug_viewer`, `software_safe`, or other UI/observer guidance, read `references/viewer-ui-lanes.md`.
 
 ## Core Workflow
 
@@ -72,6 +63,7 @@ curl -sS http://127.0.0.1:18789/health
 ```
 
 For exact field values and launch examples, read `references/real-play-config.md`.
+For Viewer / `software_safe` / observer-only UI boundaries, read `references/viewer-ui-lanes.md`.
 
 ### 2. Download a playable game bundle
 
@@ -164,7 +156,7 @@ Required real-play settings:
 - `openclaw_connect_timeout_ms=15000`
 - `openclaw_agent_profile=agent_world_p0_low_freq_npc`
 
-### 5.1 Choose execution lane and Viewer usage
+### 5.1 Choose execution lane
 
 Default no-UI / regression lane:
 
@@ -196,13 +188,8 @@ bundle_dir="$(.agents/skills/oasis7/scripts/oasis7-run.sh download)"
   --skip-agent-setup
 ```
 
-Viewer guidance:
-
-- prefer `player_parity` when a human is judging feel, pacing, or player-facing clarity
-- prefer `headless_agent` when you only need stable agent execution, replay, or server-side regression
-- let the Viewer stay in `auto` by default; if the printed Viewer URL already has query params, append `&render_mode=software_safe`; otherwise append `?render_mode=software_safe`
-- force `render_mode=software_safe` when you need a DOM-friendly observer/debug lane, weak-graphics fallback, or the dedicated QA chat/prompt regression path
-- for QA-specific software-safe prompt/chat evidence, use `./scripts/viewer-software-safe-chat-regression.sh`
+UI is optional here.
+If you need Viewer / `software_safe` behavior, fallback rules, or current observer-only boundaries, read `references/viewer-ui-lanes.md`.
 
 ### 5.2 Chain Key Safety
 
