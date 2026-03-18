@@ -260,7 +260,31 @@ report 聚合时必须输出：
 }
 ```
 
-#### 5.8.3 证据来源分层
+#### 5.8.3 External Evidence Dispatch Runbook
+当真实 Docker-capable `darwin-arm64` runner 可用后，full-tier 证据归档流程固定为：
+
+1. 在外部 runner 上收集 `m1/m4/m5` summary，并生成标准 bundle：
+   - `./scripts/package-wasm-summary-bundle.sh --out-dir <bundle-dir> --archive <bundle.tar.gz> --runner-label darwin-arm64`
+2. 将 `<bundle.tar.gz>` 上传到 GitHub Actions runner 可访问的 URL（例如 release asset、对象存储或受控静态下载地址）。
+3. 在仓库内触发 workflow_dispatch：
+   - `./scripts/dispatch-wasm-determinism-gate.sh --bundle-url <https-url> --runner-label darwin-arm64`
+4. verify job 会自动执行：
+   - 下载 GitHub-hosted `linux-x86_64` summaries
+   - `stage-wasm-summary-imports.sh` 合并本地 Linux summary 与外部 bundle
+   - `wasm-release-evidence-report.sh` 生成 `summary.md/json`
+5. 只有当 `summary.json` 同时满足以下条件时，才可把 `WDBP-3.2` 视为完成：
+   - `received_runners` 覆盖 `linux-x86_64,darwin-arm64`
+   - `cross_host_evidence_pending=false`
+   - `gate_result=cross-host-closed`
+   - `canonical_hash_consistent=true`
+   - `receipt_evidence_consistent=true`
+
+交付约束：
+- bundle URL 必须可被 GitHub-hosted verify job 直接下载。
+- 外部 runner 必须实际跑 Docker canonical builder，不能只转存 host-native 结果。
+- 正式 closure 证据应归档 workflow run URL 与对应 report artifact，供 `qa_engineer` 回归复核。
+
+#### 5.8.4 证据来源分层
 为避免把开发回归、CI 回归、生产候选证据混写，evidence source 需要分层：
 - `ci-hosted-linux`
 - `external-builder-macos`
