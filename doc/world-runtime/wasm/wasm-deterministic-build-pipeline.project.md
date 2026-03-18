@@ -3,13 +3,16 @@
 - 对应设计文档: `doc/world-runtime/wasm/wasm-deterministic-build-pipeline.design.md`
 - 对应需求文档: `doc/world-runtime/wasm/wasm-deterministic-build-pipeline.prd.md`
 
-审计轮次: 2
+审计轮次: 3
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] WDBP-0 (PRD-WORLD_RUNTIME-020/021/022) [test_tier_required]: 将专题目标从“host deterministic guard + keyed 平台 hash 对账”修正为“Docker-first canonical builder”，并回写 root PRD / project / README / devlog。
 - [x] WDBP-1 (PRD-WORLD_RUNTIME-020/021) [test_tier_required]: 新增 pinned WASM builder image（`docker/wasm-builder/Dockerfile`）与 host wrapper，固定 `linux-x86_64` container platform 作为 canonical publish build 平台。
 - [x] WDBP-2 (PRD-WORLD_RUNTIME-020/021) [test_tier_required]: 将现有 `tools/wasm_build_suite` 收敛到容器内执行，输出 build receipt，并把 manifest 从多宿主 keyed token 迁移为单 canonical token `linux-x86_64=<sha256>`。
 - [ ] WDBP-3 (PRD-WORLD_RUNTIME-021/022) [test_tier_required + test_tier_full]: 将 identity / release evidence / CI summary / release gate 全面切换为 Docker canonical hash，对 macOS/Linux 只比较容器输出，不再比较 host-native 输出。
+  - [ ] WDBP-3.1 (PRD-WORLD_RUNTIME-021) [test_tier_required]: 固化 stable gate / full-tier cross-host evidence 的双层结论模型，并让 `wasm-release-evidence-report` 输出 `expected_runners/received_runners/cross_host_evidence_pending`。
+  - [ ] WDBP-3.2 (PRD-WORLD_RUNTIME-021/022) [test_tier_full]: 补齐真实 Docker-capable `darwin-arm64` summary 导入链路，使 release evidence 至少包含 `linux-x86_64 + darwin-arm64` 两类 runner 输入。
+  - [ ] WDBP-3.3 (PRD-WORLD_RUNTIME-022) [test_tier_required]: 在 production runtime / node 主入口绑定 hardened `ReleaseSecurityPolicy`，并把 effective policy 写入 status / acceptance evidence。
 - [x] WDBP-4 (PRD-WORLD_RUNTIME-022) [test_tier_required]: 把 `compile_module_artifact_from_source` 的生产路径外移到 external Docker builder 或 production 默认禁用，runtime 只消费 binary + build receipt。
 
 ## 依赖
@@ -29,10 +32,16 @@
 ## 状态
 - 更新日期: 2026-03-17
 - 当前阶段: WDBP-3 跨宿主 evidence 收口中（GitHub-hosted gate 已先收敛为 Linux-only，WDBP-4 已完成）
+- WDBP-3 剩余设计切片:
+  - `WDBP-3.1`: report 结论模型需要把 `linux-only stable` 与 `cross-host closed` 分开。
+  - `WDBP-3.2`: 需要一条真实 Docker-capable `darwin-arm64` summary/evidence 输入，而不是仅保留导入接口。
+  - `WDBP-3.3`: 需要 production 入口 hardened policy 绑定证据，避免 binary-only 仅停留在测试辅助调用。
 - owner role: `wasm_platform_engineer`
 - 联审角色: `producer_system_designer`、`runtime_engineer`
 - 验证角色: `qa_engineer`
-- 阻塞项: GitHub-hosted `macos-14` runner 当前无 Docker daemon，release evidence / release gate 仍需补齐真实 Linux + Docker-capable macOS full-tier 证据归档
+- 阻塞项:
+  - GitHub-hosted `macos-14` runner 当前无 Docker daemon，release evidence / release gate 仍需补齐真实 Linux + Docker-capable macOS full-tier 证据归档。
+  - production 主运行入口尚未给出 hardened `ReleaseSecurityPolicy` 默认绑定证据。
 - 实施备注:
   - `docker/wasm-builder/Dockerfile` 与 `scripts/build-wasm-module.sh` 已落地，当前 canonical build 已收敛为 Docker-only path，不再提供 host-native fallback。
   - `tools/wasm_build_suite` 已新增 `build receipt`、`source_hash`、`build_manifest_hash`、`builder_image_digest` 与 `container_platform` 输出；builtin `m1/m4/m5` hash manifest 已全部改写为单 canonical token `linux-x86_64=<sha256>`。

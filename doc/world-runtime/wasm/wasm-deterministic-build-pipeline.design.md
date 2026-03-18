@@ -3,19 +3,22 @@
 - 对应需求文档: `doc/world-runtime/wasm/wasm-deterministic-build-pipeline.prd.md`
 - 对应项目管理文档: `doc/world-runtime/wasm/wasm-deterministic-build-pipeline.project.md`
 
+审计轮次: 3
+
 ## 1. 设计定位
 本设计把 Agent World 的 WASM 发布级构建从“宿主机护栏 + keyed hash 对账”升级为“Docker canonical builder”。设计目标不是否定现有脚本和 build suite，而是把它们放进同一个 pinned 容器镜像里，让宿主平台不再参与发布 hash 的生成。
 
 ## 2. 现状盘点
 
-| 层级 | 当前实现事实（2026-03-17） | 与 Docker-first 目标的差距 |
+| 层级 | 当前实现事实（2026-03-18） | 与 Docker-first 目标的差距 |
 | --- | --- | --- |
-| 容器基础设施 | 仓库内当前没有 `Dockerfile`、`.dockerignore` 或专用容器构建脚本。 | 还没有真正的 canonical builder image。 |
-| 构建入口 | `scripts/build-wasm-module.sh` 目前直接在 host 上固定 toolchain/env/path remap。 | 入口仍然依赖宿主机 Rust 安装与本地 shell 环境。 |
-| 构建工具 | `tools/wasm_build_suite` 已做 `--locked`、workspace compile-time guard、canonical packaging。 | 工具本身可复用，但应转移到容器内执行。 |
-| manifest 策略 | 现有 builtin manifest 以 keyed platform token 记录 `darwin-arm64` / `linux-x86_64`。 | 这是 drift 兜底，不是 drift 消除；Docker-first 的目标是只保留一个 canonical publish hash。 |
+| 容器基础设施 | `docker/wasm-builder/Dockerfile`、`scripts/build-wasm-module.sh` 与 canonical builder digest 已落地。 | canonical builder 已存在，但跨宿主证据仍未完整归档。 |
+| 构建入口 | `scripts/build-wasm-module.sh` 已强制 `docker run --platform linux/amd64`，且显式拒绝 host-native fallback。 | 入口已收敛，但仍需把“stable gate”和“cross-host full closure”严格区分。 |
+| 构建工具 | `tools/wasm_build_suite` 已在容器内输出 `build receipt`、`source_hash`、`build_manifest_hash`、`builder_image_digest` 与 `container_platform`。 | receipt 语义基本完成，剩余重点在 evidence 汇总与 release gate 结论。 |
+| manifest 策略 | builtin hash manifest 已改为单 canonical token `linux-x86_64=<sha256>`；identity 生成已切换为 receipt 驱动。 | 写路径已收敛，但 cross-host report 还未拿到真实 `darwin-arm64` Docker evidence。 |
 | source compile | `compile_module_artifact_from_source` 仍保留源码包编译能力，但 production `ReleaseSecurityPolicy` 已默认拒绝该 action；仅 dev/test 可显式使用。 | external builder worker 仍未落地，当前以 production default-disable 先收敛 runtime 权限面。 |
-| CI 校验 | 现有 multi-runner workflow 比较不同宿主平台各自产出的 hash/identity。 | 应改为比较“不同宿主跑同一 Docker builder 的输出”是否一致。 |
+| CI 校验 | `.github/workflows/wasm-determinism-gate.yml` 当前已收敛为 GitHub-hosted `linux-x86_64` stable gate，并支持导入外部 summaries。 | 真实 Docker-capable `darwin-arm64` summary 仍未进入正式 evidence 报告，`WDBP-3` 未完成。 |
+| runtime 消费策略 | runtime 侧已支持 production policy 关闭 source compile / local signing / builtin fallback，但主要通过显式启用 production policy 进入。 | 主运行入口尚缺“默认 hardened policy”绑定证据，binary-only 仍未完全提升为产品默认事实。 |
 
 ## 3. 设计原则
 - 原则-1：publish hash 只来自 canonical container，不来自宿主机。
@@ -179,6 +182,8 @@ release gate 需要新增的固定结论：
 - `builder image digest matched`
 - `canonical token matched`
 - `docker-only path enforced`
+- `cross-host evidence complete` 或 `cross-host evidence pending`
+- `production release policy hardened by default`
 
 ### 5.7 Runtime Consumption
 runtime 的最终消费模型不变，仍是 binary-first：
@@ -191,14 +196,134 @@ runtime 的最终消费模型不变，仍是 binary-first：
 - canonical hash 现在来自 Docker builder。
 - runtime 不再需要解释多个宿主平台发布 hash。
 
+### 5.8 Cross-Host Evidence Closure Design
+这是当前 `WDBP-3` 的 P0 剩余切片。设计目标不是让 GitHub-hosted CI 假装跨宿主完成，而是把“稳定 gate”和“最终证据”分层。
+
+#### 5.8.1 双层 gate 模型
+- `stable gate`
+  - 运行环境：GitHub-hosted `ubuntu-24.04`
+  - 目的：持续验证 canonical builder、receipt、identity、single token、report 脚本本身没有回退。
+  - 结论上限：`linux-only stable`
+- `full-tier cross-host evidence`
+  - 运行环境：`linux-x86_64` + 至少一条 Docker-capable `darwin-arm64`
+  - 目的：验证“相同 builder image digest + 相同源码输入”在真实跨宿主 Docker 环境下仍收敛到同一 canonical hash。
+  - 结论上限：`cross-host closed`
+
+设计约束：
+- 任何缺少 `darwin-arm64` Docker canonical summary 的发布候选，都只能得到 `stable gate passed / cross-host pending`。
+- 不允许把 `linux-x86_64` 单宿主结果写成 `SC-1 fulfilled`。
+
+#### 5.8.2 Summary Import Contract
+`scripts/wasm-release-evidence-report.sh` 的导入语义需要成为正式证据协议，而不是临时绕行。
+
+每个导入 summary 必须至少包含：
+- `runner_label`
+- `host_platform`
+- `canonical_platform=linux-x86_64`
+- `builder_image_digest`
+- `canonicalizer_version`
+- `module_set`
+- `module -> wasm_hash`
+- `receipt_evidence`
+
+report 聚合时必须输出：
+- `expected_runners`
+- `received_runners`
+- `missing_runners`
+- `cross_host_evidence_pending`
+- `canonical_hash_consistent`
+- `receipt_evidence_consistent`
+
+推荐 machine-readable 结论：
+
+```json
+{
+  "module_set": "m1",
+  "stable_gate_passed": true,
+  "cross_host_evidence_pending": true,
+  "expected_runners": ["linux-x86_64", "darwin-arm64"],
+  "received_runners": ["linux-x86_64"],
+  "gate_result": "conditional-go"
+}
+```
+
+#### 5.8.3 证据来源分层
+为避免把开发回归、CI 回归、生产候选证据混写，evidence source 需要分层：
+- `ci-hosted-linux`
+- `external-builder-macos`
+- `release-node-attestation`
+
+排序原则：
+1. 先验证所有 source 的 `builder_image_digest`、`build_manifest_hash`、`canonicalizer_version` 一致。
+2. 再比较 canonical wasm hash。
+3. 最后才允许给出 `cross-host closed`。
+
+若任一步失败：
+- 保留已有 Linux stable gate 结果；
+- 将 cross-host 状态标为 `blocked`；
+- 不回滚到 host-keyed manifest。
+
+### 5.9 Production Release Policy Binding
+这是另一个 P0 剩余切片。当前代码已具备 hardened policy 结构体与 helper，但“默认生产入口启用”还缺显式绑定证据。
+
+#### 5.9.1 策略矩阵
+
+| 运行形态 | `allow_builtin_manifest_fallback` | `allow_identity_hash_signature` | `allow_local_finality_signing` | `allow_runtime_source_compile` | 预期用途 |
+| --- | --- | --- | --- | --- | --- |
+| dev | `true` | `true` | `true` | `true` | 本地调试、实验工作流 |
+| test | `true` 或按用例覆写 | `true` 或按用例覆写 | `true` 或按用例覆写 | `true` 或按用例覆写 | 定向回归、拒绝路径测试 |
+| production | `false` | `false` | `false` | `false` | 节点执行、发布候选、线上验收 |
+
+设计要求：
+- production 不是“调用方约定”；必须在主运行入口自动绑定。
+- dev/test 的放宽必须是显式 opt-in，不能继续复用默认值伪装成产品路径。
+
+#### 5.9.2 主运行入口绑定点
+本轮设计要求至少覆盖以下入口：
+- `world_chain_runtime`
+- 任何由 launcher 拉起的 chain runtime 生产路径
+- runtime 相关 release / acceptance 脚本入口
+
+绑定策略：
+1. 入口解析出运行模式或发布配置。
+2. 若模式属于 release / prod / candidate，创建 `World` 后立即应用 hardened policy。
+3. 在 status / evidence 输出中打印实际生效的四个布尔值。
+4. 若入口没有进入 hardened policy，不允许给出 production-ready 结论。
+
+#### 5.9.3 可验证证据面
+除了行为拒绝测试，还需要有显式配置证据：
+- `status.json` / `summary.md` / release gate 报告中写出 effective policy
+- 节点验收脚本断言四个布尔值均为 `false`
+- 若任一值为 `true`，报告必须输出 `production_release_policy_not_hardened`
+
+推荐 evidence 字段：
+
+```json
+{
+  "release_security_policy": {
+    "allow_builtin_manifest_fallback": false,
+    "allow_identity_hash_signature": false,
+    "allow_local_finality_signing": false,
+    "allow_runtime_source_compile": false
+  }
+}
+```
+
+#### 5.9.4 与 source compile gate 的关系
+`WDBP-4` 解决的是“source compile 在 production 默认被拒绝”；`WDBP-3` 当前剩余的是“把同类 hardened policy 变成主入口默认事实并写出证据”。
+
+边界：
+- `WDBP-4` 不再新增 source compile 业务设计。
+- `WDBP-3` 只负责入口绑定与证据化，不改变 source compile reject 语义本身。
+
 ## 6. 角色分工
 
 | 角色 | 负责内容 |
 | --- | --- |
 | `producer_system_designer` | 明确“容器解决漂移、runtime 不再直接编译源码”的目标边界 |
-| `wasm_platform_engineer` | builder image、wrapper、receipt、manifest migration 设计与实现 |
-| `runtime_engineer` | source compile 外移或 gating、release manifest 消费、runtime 拒绝路径 |
-| `qa_engineer` | multi-runner Docker compare、失败签名、门禁矩阵 |
+| `wasm_platform_engineer` | builder image、wrapper、receipt、manifest migration、cross-host evidence 协议与报告字段 |
+| `runtime_engineer` | source compile 外移或 gating、release manifest 消费、production entry hardened policy 绑定 |
+| `qa_engineer` | multi-runner Docker compare、失败签名、stable/full-tier 结论区分、policy 绑定复验 |
 
 ## 7. 失败模型与阻断点
 
@@ -209,13 +334,16 @@ runtime 的最终消费模型不变，仍是 binary-first：
 | container output 与 tracked canonical token 不一致 | sync/check | 阻断并报告 `module_id + expected + actual` |
 | macOS/Linux 跑同一容器得出不同 hash | CI compare | 阻断并归类为 builder reproducibility defect |
 | production runtime 仍启用 host source compile | runtime config gate | 启动即拒绝或 action rejected |
+| GitHub-hosted gate 仅有 Linux summary | release evidence report | 允许 stable gate 通过，但 cross-host 结论必须保持 `pending` |
+| production entry 未绑定 hardened release policy | runtime status / acceptance script | 直接 `no-go`，不得以测试辅助调用替代 |
 
 ## 8. 迁移计划
 - M0：修正文档为 Docker-first 目标态。
 - M1：新增 builder image 与 wrapper，保留读路径兼容。
 - M2：manifest/identity 只写 canonical token。
 - M3：runtime source compile 外移到 external builder 或 production 默认禁用。
-- M4：CI / release gate 全量切换到 Docker reproducibility compare。
+- M4：CI / release gate 全量切换到 Docker reproducibility compare，并引入 stable gate 与 full-tier evidence 分层。
+- M5：主运行入口默认绑定 hardened release policy，并把 effective policy 输出到 release evidence / acceptance report。
 
 ## 9. 设计边界
 - Docker 只解决发布级构建确定性，不进入 wasm 执行期 sandbox。
