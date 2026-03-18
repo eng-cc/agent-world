@@ -1,0 +1,212 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$repo_root"
+
+usage() {
+  cat <<'USAGE'
+Usage: ./scripts/stage-wasm-summary-imports.sh [options]
+
+Purpose:
+  Merge local GitHub-hosted summaries with an optional external summary bundle
+  into one verify-ready directory for `wasm-release-evidence-report.sh`.
+
+Options:
+  --module-set <name>               Module set to stage (required)
+  --local-summary-dir <path>        Local summary directory to seed from (required)
+  --out-dir <path>                  Output directory with merged summaries (required)
+  --external-summary-bundle <path>  Optional external bundle path/URL (.tar/.tar.gz/.tgz/.zip or dir)
+  --expected-external-runner <id>   Expected external runner label (default: darwin-arm64)
+  -h, --help                        Show help
+USAGE
+}
+
+module_set=""
+local_summary_dir=""
+out_dir=""
+external_summary_bundle=""
+expected_external_runner="darwin-arm64"
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --module-set)
+      module_set=${2:-}
+      shift 2
+      ;;
+    --local-summary-dir)
+      local_summary_dir=${2:-}
+      shift 2
+      ;;
+    --out-dir)
+      out_dir=${2:-}
+      shift 2
+      ;;
+    --external-summary-bundle)
+      external_summary_bundle=${2:-}
+      shift 2
+      ;;
+    --expected-external-runner)
+      expected_external_runner=${2:-}
+      shift 2
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "error: unknown option: $1" >&2
+      usage >&2
+      exit 2
+      ;;
+  esac
+done
+
+if [[ -z "$module_set" || -z "$local_summary_dir" || -z "$out_dir" ]]; then
+  echo "error: --module-set, --local-summary-dir and --out-dir are required" >&2
+  usage >&2
+  exit 2
+fi
+
+if [[ ! -d "$local_summary_dir" ]]; then
+  echo "error: local summary dir not found: $local_summary_dir" >&2
+  exit 2
+fi
+
+mkdir -p "$out_dir"
+shopt -s nullglob
+local_files=("$local_summary_dir"/*.json)
+shopt -u nullglob
+if [[ "${#local_files[@]}" -eq 0 ]]; then
+  echo "error: no local summary json files found in $local_summary_dir" >&2
+  exit 2
+fi
+cp "${local_files[@]}" "$out_dir/"
+
+if [[ -z "$external_summary_bundle" ]]; then
+  echo "staged wasm summaries: $out_dir"
+  exit 0
+fi
+
+tmp_root="$(mktemp -d "${TMPDIR:-/tmp}/wasm-summary-stage.XXXXXX")"
+cleanup() {
+  rm -rf "$tmp_root"
+}
+trap cleanup EXIT
+
+bundle_source="$external_summary_bundle"
+if [[ "$external_summary_bundle" =~ ^https?:// ]]; then
+  bundle_name="$(basename "${external_summary_bundle%%\?*}")"
+  if [[ -z "$bundle_name" || "$bundle_name" == "/" ]]; then
+    bundle_name="external-summary-bundle.tar.gz"
+  fi
+  bundle_source="$tmp_root/$bundle_name"
+  curl -fsSL "$external_summary_bundle" -o "$bundle_source"
+fi
+
+python3 - "$bundle_source" "$tmp_root/extracted" <<'PY'
+import pathlib
+import shutil
+import sys
+import tarfile
+import zipfile
+
+source = pathlib.Path(sys.argv[1])
+extract_root = pathlib.Path(sys.argv[2])
+extract_root.mkdir(parents=True, exist_ok=True)
+
+if source.is_dir():
+    shutil.copytree(source, extract_root / "bundle", dirs_exist_ok=True)
+    print(extract_root / "bundle")
+    raise SystemExit(0)
+
+if not source.exists():
+    raise SystemExit(f"error: external summary bundle not found: {source}")
+
+name = source.name.lower()
+target = extract_root / "bundle"
+target.mkdir(parents=True, exist_ok=True)
+if name.endswith((".tar.gz", ".tgz", ".tar")):
+    with tarfile.open(source) as archive:
+        try:
+            archive.extractall(target, filter="data")
+        except TypeError:
+            archive.extractall(target)
+elif name.endswith(".zip"):
+    with zipfile.ZipFile(source) as archive:
+        archive.extractall(target)
+else:
+    raise SystemExit(
+        "error: external summary bundle must be a directory or archive (.tar/.tar.gz/.tgz/.zip)"
+    )
+print(target)
+PY
+
+bundle_root="$(python3 - "$bundle_source" "$tmp_root/extracted" <<'PY'
+import pathlib
+import sys
+
+extract_root = pathlib.Path(sys.argv[2]) / "bundle"
+manifest_candidates = [extract_root / "bundle_manifest.json"]
+manifest_candidates.extend(extract_root.glob("*/bundle_manifest.json"))
+for candidate in manifest_candidates:
+    if candidate.is_file():
+        print(candidate.parent)
+        raise SystemExit(0)
+raise SystemExit("error: bundle_manifest.json not found after extraction")
+PY
+)"
+
+python3 - "$bundle_root" "$module_set" "$expected_external_runner" "$out_dir" <<'PY'
+import json
+import pathlib
+import shutil
+import sys
+
+bundle_root = pathlib.Path(sys.argv[1])
+module_set = sys.argv[2]
+expected_runner = sys.argv[3]
+out_dir = pathlib.Path(sys.argv[4])
+
+manifest_path = bundle_root / "bundle_manifest.json"
+manifest = json.loads(manifest_path.read_text())
+if manifest.get("schema_version") != 1:
+    raise SystemExit(f"error: unsupported bundle manifest schema: {manifest.get('schema_version')}")
+
+runner_label = manifest.get("runner_label")
+if not runner_label:
+    raise SystemExit(f"error: bundle manifest missing runner_label: {manifest_path}")
+if expected_runner and runner_label != expected_runner:
+    raise SystemExit(
+        f"error: external bundle runner mismatch expected={expected_runner} actual={runner_label}"
+    )
+
+summary_files = manifest.get("summary_files")
+if not isinstance(summary_files, dict):
+    raise SystemExit(f"error: bundle manifest missing summary_files object: {manifest_path}")
+relative_summary = summary_files.get(module_set)
+if not relative_summary:
+    raise SystemExit(
+        f"error: bundle manifest missing module_set={module_set} summary entry: {manifest_path}"
+    )
+
+summary_path = (bundle_root / relative_summary).resolve()
+if not summary_path.is_file():
+    raise SystemExit(f"error: bundle summary file missing: {summary_path}")
+
+payload = json.loads(summary_path.read_text())
+if payload.get("module_set") != module_set:
+    raise SystemExit(
+        f"error: external summary module_set mismatch expected={module_set} actual={payload.get('module_set')}"
+    )
+if payload.get("runner") != runner_label:
+    raise SystemExit(
+        f"error: external summary runner mismatch expected={runner_label} actual={payload.get('runner')}"
+    )
+
+target_path = out_dir / f"{runner_label}.json"
+shutil.copyfile(summary_path, target_path)
+print(target_path)
+PY
+
+echo "staged wasm summaries: $out_dir"

@@ -216,6 +216,12 @@ runtime 的最终消费模型不变，仍是 binary-first：
 #### 5.8.2 Summary Import Contract
 `scripts/wasm-release-evidence-report.sh` 的导入语义需要成为正式证据协议，而不是临时绕行。
 
+外部 Docker-capable runner 推荐先产出一个标准 bundle，再进入 verify/report：
+- `scripts/package-wasm-summary-bundle.sh`
+  - 负责把 `m1/m4/m5` summary 规范化为同一 bundle 目录或 `.tar.gz`
+- `scripts/stage-wasm-summary-imports.sh`
+  - 负责把 GitHub-hosted Linux summary 与外部 bundle 合并到同一 verify 输入目录
+
 每个导入 summary 必须至少包含：
 - `runner_label`
 - `host_platform`
@@ -225,6 +231,13 @@ runtime 的最终消费模型不变，仍是 binary-first：
 - `module_set`
 - `module -> wasm_hash`
 - `receipt_evidence`
+
+外部 bundle manifest 至少包含：
+- `schema_version`
+- `runner_label`
+- `host_platform`
+- `module_sets`
+- `summary_files`
 
 report 聚合时必须输出：
 - `expected_runners`

@@ -6,6 +6,16 @@ on:
   pull_request:
     branches: ["main"]
   workflow_dispatch:
+    inputs:
+      external_summary_bundle_url:
+        description: Optional URL to a Docker-capable external summary bundle archive/directory snapshot for darwin-arm64 full-tier evidence
+        required: false
+        type: string
+      external_summary_runner_label:
+        description: Runner label expected from the external summary bundle
+        required: false
+        default: darwin-arm64
+        type: string
 
 env:
   CARGO_TERM_COLOR: always
@@ -72,12 +82,30 @@ jobs:
           pattern: ${{ matrix.module_set }}-wasm-summary-*
           path: output/ci/${{ matrix.module_set }}-wasm-summary
           merge-multiple: true
+      - name: Stage ${{ matrix.module_set }} summaries for evidence verify
+        env:
+          EXTERNAL_WASM_SUMMARY_BUNDLE_URL: ${{ github.event_name == 'workflow_dispatch' && inputs.external_summary_bundle_url || '' }}
+          EXTERNAL_WASM_SUMMARY_RUNNER_LABEL: ${{ github.event_name == 'workflow_dispatch' && inputs.external_summary_runner_label || 'darwin-arm64' }}
+        run: |
+          cmd=(
+            ./scripts/stage-wasm-summary-imports.sh
+            --module-set "${{ matrix.module_set }}"
+            --local-summary-dir "output/ci/${{ matrix.module_set }}-wasm-summary"
+            --out-dir "output/ci/${{ matrix.module_set }}-staged-wasm-summary"
+          )
+          if [[ -n "$EXTERNAL_WASM_SUMMARY_BUNDLE_URL" ]]; then
+            cmd+=(
+              --external-summary-bundle "$EXTERNAL_WASM_SUMMARY_BUNDLE_URL"
+              --expected-external-runner "$EXTERNAL_WASM_SUMMARY_RUNNER_LABEL"
+            )
+          fi
+          "${cmd[@]}"
       - name: Verify ${{ matrix.module_set }} multi-runner summaries and write evidence report
         run: |
           ./scripts/wasm-release-evidence-report.sh \
             --module-sets "${{ matrix.module_set }}" \
             --skip-collect \
-            --summary-import-dir "output/ci/${{ matrix.module_set }}-wasm-summary" \
+            --summary-import-dir "output/ci/${{ matrix.module_set }}-staged-wasm-summary" \
             --out-dir "output/ci/${{ matrix.module_set }}-wasm-release-evidence" \
             --required-runners linux-x86_64 \
             --expected-runners linux-x86_64,darwin-arm64
