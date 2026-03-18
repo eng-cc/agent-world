@@ -10,6 +10,7 @@ Usage: ./scripts/module-release-node-acceptance.sh [options]
 
 Purpose:
   Run decentralized node-side module release acceptance checks:
+  - required node-side attestation flow smoke
   - required attestation submit API regression
   - required attestation submission regression
   - required attestation threshold rejection regression
@@ -46,8 +47,8 @@ declare -A step_note=()
 declare -A step_log=()
 declare -A step_cmd=()
 
-all_steps=(required_submit_api required_attestation required_threshold required_receipt_evidence required_release_policy full_manifest_faults triage_signals)
-selected_steps=(required_submit_api required_attestation required_threshold required_receipt_evidence required_release_policy triage_signals)
+all_steps=(required_attestation_flow required_submit_api required_attestation required_threshold required_receipt_evidence required_release_policy full_manifest_faults triage_signals)
+selected_steps=(required_attestation_flow required_submit_api required_attestation required_threshold required_receipt_evidence required_release_policy triage_signals)
 
 out_dir=".tmp/module_release_node_acceptance"
 include_full=0
@@ -80,7 +81,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ "$include_full" -eq 1 ]]; then
-  selected_steps=(required_submit_api required_attestation required_threshold required_receipt_evidence required_release_policy full_manifest_faults triage_signals)
+  selected_steps=(required_attestation_flow required_submit_api required_attestation required_threshold required_receipt_evidence required_release_policy full_manifest_faults triage_signals)
 fi
 
 timestamp=$(date '+%Y%m%d-%H%M%S')
@@ -148,6 +149,88 @@ run_step() {
 
 for step in "${selected_steps[@]}"; do
   case "$step" in
+    required_attestation_flow)
+      cmd=(
+        bash -lc
+        "set -euo pipefail
+tmp_root=\$(mktemp -d \"\${TMPDIR:-/tmp}/module-release-flow-smoke.XXXXXX\")
+trap 'rm -rf \"\$tmp_root\"' EXIT
+mkdir -p \"\$tmp_root/import/m1\"
+python3 - \"\$tmp_root/import/m1/linux-x86_64.json\" \"\$tmp_root/import/m1/darwin-arm64.json\" <<'PY'
+import json
+import pathlib
+import sys
+
+linux_path = pathlib.Path(sys.argv[1])
+darwin_path = pathlib.Path(sys.argv[2])
+
+wasm_hash = 'a' * 64
+source_hash = 'b' * 64
+build_manifest_hash = 'c' * 64
+builder_image_digest = 'sha256:' + ('d' * 64)
+identity_hash = 'sha256:' + ('e' * 64)
+canonicalizer_version = 'strip-custom-sections-v1'
+
+base = {
+    'schema_version': 1,
+    'module_set': 'm1',
+    'current_platform': 'linux-x86_64',
+    'canonical_platform': 'linux-x86_64',
+    'module_count': 1,
+    'module_hashes': {'m1_demo': wasm_hash},
+    'manifest_platform_hashes': {'m1_demo': wasm_hash},
+    'identity_hashes': {'m1_demo': identity_hash},
+    'identity_build_recipe': {
+        'builder_image_digest': builder_image_digest,
+        'container_platform': 'linux-x86_64',
+        'canonicalizer_version': canonicalizer_version,
+    },
+    'receipt_evidence': {
+        'm1_demo': {
+            'source_hash': source_hash,
+            'build_manifest_hash': build_manifest_hash,
+            'wasm_hash': wasm_hash,
+            'builder_image_digest': builder_image_digest,
+            'container_platform': 'linux-x86_64',
+            'canonicalizer_version': canonicalizer_version,
+        }
+    },
+}
+
+for path, runner, host_platform in (
+    (linux_path, 'linux-x86_64', 'linux-x86_64'),
+    (darwin_path, 'darwin-arm64', 'darwin-arm64'),
+):
+    payload = dict(base)
+    payload['runner'] = runner
+    payload['host_platform'] = host_platform
+    path.write_text(json.dumps(payload, ensure_ascii=True, indent=2, sort_keys=True) + '\\n')
+PY
+./scripts/module-release-node-attestation-flow.sh \
+  --out-dir \"\$tmp_root/out\" \
+  --module-sets m1 \
+  --summary-import-dir \"\$tmp_root/import\" \
+  --skip-local-collect \
+  --required-runners linux-x86_64 \
+  --expected-runners linux-x86_64,darwin-arm64 \
+  --require-cross-host-closed \
+  --request-id 17 \
+  --operator-agent-id operator-1 \
+  --signer-node-id attestor-node-1 \
+  --platform darwin-arm64 \
+  --build-manifest-hash cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc \
+  --source-hash bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb \
+  --wasm-hash aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
+  --builder-image-digest sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd \
+  --container-platform linux-x86_64 \
+  --canonicalizer-version strip-custom-sections-v1
+run_dir=\$(find \"\$tmp_root/out\" -mindepth 1 -maxdepth 1 -type d | sort | tail -n 1)
+test -f \"\$run_dir/proof/proof_payload.json\"
+test -f \"\$run_dir/proof/submit_request.json\"
+jq -e '.gate_result == \"cross-host-closed\"' \"\$run_dir/proof_inputs/release_evidence_summary.json\" >/dev/null
+jq -e '.proof_cid | startswith(\"sha256:\")' \"\$run_dir/proof/proof_payload.json\" >/dev/null"
+      )
+      ;;
     required_submit_api)
       cmd=(
         env -u RUSTC_WRAPPER cargo test -p agent_world

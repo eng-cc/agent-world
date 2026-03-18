@@ -33,7 +33,7 @@
 - 更新日期: 2026-03-18
 - 当前阶段: WDBP-3 跨宿主 evidence 收口中（WDBP-3.1 / WDBP-3.3 已完成，WDBP-4 已完成）
 - WDBP-3 剩余设计切片:
-  - `WDBP-3.2`: 需要一条真实 Docker-capable `darwin-arm64` summary/evidence 输入，并将其包装进 node-side attestation proof payload，而不是仅保留 CI 导入接口。
+  - `WDBP-3.2`: 需要一条真实 Docker-capable `darwin-arm64` summary/evidence 输入，并通过节点侧固定入口生成正式 proof payload / attestation；当前剩余的是 live 证据本身，不是导入、打包或提交工具。
 - owner role: `wasm_platform_engineer`
 - 联审角色: `producer_system_designer`、`runtime_engineer`
 - 验证角色: `qa_engineer`
@@ -50,7 +50,8 @@
   - `scripts/ci-verify-m1-wasm-summaries.py` 与 `scripts/wasm-release-evidence-report.sh` 现已把 `required_runners`（stable gate）与 `expected_runners`（full-tier cross-host evidence）拆开；GitHub-hosted workflow 当前以 `linux-x86_64` 作为 required runner，但 summary/report 会显式输出 `received_runners + missing_runners + cross_host_evidence_pending + gate_result=conditional-go`。
   - `WDBP-3.2` 的导入链路现已落地：`scripts/package-wasm-summary-bundle.sh` 可把外部 Docker-capable runner 的 `m1/m4/m5` summary 打成标准 bundle，`scripts/stage-wasm-summary-imports.sh` 可在 verify 前把 GitHub-hosted Linux summary 与外部 bundle 合并到同一 import dir；`workflow_dispatch` 也新增了 `external_summary_bundle_url` / `external_summary_runner_label` 入口。
   - 仓库内已补 `scripts/dispatch-wasm-determinism-gate.sh` 作为 operator 入口，用于以 `gh workflow run` 触发带外部 bundle URL 的 full-tier evidence run；待真实 `darwin-arm64` bundle 到位后即可直接归档正式 closure artifact。
-  - 下一步收口不再停留在 CI artifact：需要把 release evidence 打包成可归档 proof payload，并通过 node-side `ModuleReleaseSubmitAttestation` 提交入口把 `proof_cid`、receipt evidence 与 attestation 流绑定起来。
+  - 节点侧 proof 收口已落地：`scripts/module-release-node-attestation-flow.sh` 现可在发布节点本地执行 `summary collect/import -> evidence verify -> canonical proof inputs -> proof payload -> attestation submit`，并刻意剥离 summary/report 中的时间戳与本地路径，避免把非语义字段写入 `proof_cid`。
+  - `scripts/module-release-node-acceptance.sh` 现已新增 `required_attestation_flow` smoke，基于合成 `linux-x86_64 + darwin-arm64` summary 验证节点侧固定入口可以稳定生成 `proof_payload.json + submit_request.json`。
   - GitHub-hosted `macos-14` runner 当前不提供 Docker daemon，而 canonical build 已变为 Docker-only path；因此 workflow 已临时收敛为 Linux-only gate，跨宿主对账继续通过导入外部 Docker-capable macOS summary 的方式完成。
   - builtin wasm fallback materializer 现已把临时输出目录收敛到仓库内 `.tmp/`，避免与 Docker-only wrapper 的 workspace-root 约束冲突；同时 canonical builder receipt 默认复用受控 `builder_image_digest`，避免 CI 本地 image id 漂移直接打穿 identity manifest 对账。
   - `compile_module_artifact_from_source` 现已完成 production gate：`ReleaseSecurityPolicy` 新增 `allow_runtime_source_compile`，production 默认关闭该路径并要求改走 external Docker builder + deploy binary；dev/test 保留该 action 以支撑现有回归。

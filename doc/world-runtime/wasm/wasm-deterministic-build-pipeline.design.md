@@ -300,6 +300,28 @@ report 聚合时必须输出：
 - 将 cross-host 状态标为 `blocked`；
 - 不回滚到 host-keyed manifest。
 
+#### 5.8.5 Node-Side Proof Assembly
+CI/report 只能提供开发期或候选期证据；真正进入 `ModuleReleaseSubmitAttestation.proof_cid` 的 payload 需要由发布节点本地重新装配。
+
+固定入口：
+- `scripts/module-release-node-attestation-flow.sh`
+
+节点侧固定流程：
+1. 从本机收集 summary，或导入预收集 summary / 外部 bundle。
+2. 运行 `scripts/wasm-release-evidence-report.sh` 做多 runner verify，输出人读/机读报告。
+3. 将报告依赖的 per-runner summary 做 canonicalize，剥离 `generated_at_utc`、本地路径、run dir 等非语义字段。
+4. 生成稳定的 `proof_inputs/release_evidence_summary.json`，只保留：
+   - `required_runners / expected_runners / received_runners`
+   - `stable_gate_passed / cross_host_evidence_pending / cross_host_closed / gate_result`
+   - 每个 `module_set` 的 gate 结论与 canonical summary 文件 `sha256`
+5. 再调用 `scripts/package-module-release-attestation-proof.sh` 生成正式 `proof_payload.json + submit_request.json`。
+6. 如需直接入链，再调用 `scripts/submit-module-release-attestation.sh`。
+
+设计约束：
+- `proof_cid` 不得依赖 report 运行时目录、日志时间戳或宿主机临时路径。
+- 人读报告与 verify log 可以保留在 run dir 内供排障，但默认不进入 proof payload 的 canonical evidence 集。
+- 发布节点可选择 `--require-cross-host-closed`，在 full-tier 候选阶段把 `conditional-go` 直接升级为阻断。
+
 ### 5.9 Production Release Policy Binding
 这是另一个 P0 剩余切片。当前代码已具备 hardened policy 结构体与 helper，但“默认生产入口启用”还缺显式绑定证据。
 

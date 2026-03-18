@@ -20,7 +20,7 @@
 - [x] TASK-WORLD_RUNTIME-027 (PRD-WORLD_RUNTIME-016) [test_tier_required]: 为现有 `ModuleRelease*` 状态机补齐 `release manifest` 映射关系与回放一致性测试，保障迁移期兼容。
 - [x] TASK-WORLD_RUNTIME-028 (PRD-WORLD_RUNTIME-018) [test_tier_required]: 从主 CI 移除生产发布写入/激活职责，仅保留 `--check` 类回归；补齐节点侧发布运行手册与验收脚本。
 - [x] TASK-WORLD_RUNTIME-029 (PRD-WORLD_RUNTIME-018) [test_tier_required + test_tier_full]: 增加 `stake/epoch` 验签耗时与“2 epoch 收敛”固定基准入口，产出可归档性能与收敛报告。
-- [ ] TASK-WORLD_RUNTIME-030 (PRD-WORLD_RUNTIME-018) [test_tier_required]: 为 `ModuleReleaseSubmitAttestation` 增加 node-side submit API 与 proof payload 打包脚本，使 `proof_cid` 对应可归档正式证据，而不是停留在 CI artifact。
+- [x] TASK-WORLD_RUNTIME-030 (PRD-WORLD_RUNTIME-018) [test_tier_required]: 为 `ModuleReleaseSubmitAttestation` 增加 node-side submit API、proof payload 打包脚本与节点侧固定入口，使 `proof_cid` 对应可归档正式证据，而不是停留在 CI artifact。
 
 ## 依赖
 - `doc/world-runtime/module/online-module-release-legality-closure-2026-03-08.prd.md`
@@ -30,9 +30,9 @@
 - `testing-manual.md`
 
 ## 状态
-- 更新日期: 2026-03-08
-- 当前状态: active
-- 下一任务: `TASK-WORLD_RUNTIME-030`
+- 更新日期: 2026-03-18
+- 当前状态: complete（`TASK-WORLD_RUNTIME-030` 已完成；后续真实 `darwin-arm64` 跨宿主证据归档转由 `WDBP-3.2` 承接）
+- 下一任务: `none`（后续 live 证据闭环见 `doc/world-runtime/wasm/wasm-deterministic-build-pipeline.project.md`）
 - 实施备注:
   - `TASK-WORLD_RUNTIME-019` 已完成：新增故障签名 `builtin_release_manifest_unreachable`、`builtin_release_manifest_missing_or_rolled_back`、`builtin_release_manifest_identity_drift`，并补齐 `test_tier_full` 回归。
   - `TASK-WORLD_RUNTIME-021` 已完成：finality 校验新增按 epoch 快照阈值与 signer 集校验，拒绝快照外 signer，并补齐轮换回归（旧 signer 拒绝、新 signer 通过）。
@@ -43,4 +43,4 @@
   - `TASK-WORLD_RUNTIME-026` 已完成：新增 `Install/Upgrade/Rollback/ModuleReleaseApply` 的 `*WithFinality` 动作变体并统一接入外部证书 apply helper；生产策略下旧动作路径继续保留兼容但会被“local finality path is disabled”拒绝，补齐 required 回归覆盖“无证书拒绝/带证书通过”。
   - `TASK-WORLD_RUNTIME-028` 已完成：新增节点侧固定验收脚本 `scripts/module-release-node-acceptance.sh`（required + 可选 full + triage 信号检索）并在 `testing-manual.md` 的 S11 固化入口与证据路径；`scripts/sync-m1-builtin-wasm-artifacts.sh` 非 `--check` 写入改为“CI 禁止 + 本地显式授权（`AGENT_WORLD_WASM_SYNC_WRITE_ALLOW=local-dev`）”，确保主 CI 不参与生产发布写入/激活。
   - `TASK-WORLD_RUNTIME-029` 已完成：新增 finality 固定基准脚本 `scripts/world-runtime-finality-baseline.sh`，固定执行 `stake_root/epoch_snapshot` 验签与 `2 epoch` 收敛回归，输出 `summary.md + summary.json`；`testing-manual.md` 的 S11 新增该脚本入口与归档口径。
-  - `TASK-WORLD_RUNTIME-030` 进行中：补 node-side `ModuleReleaseSubmitAttestation` 提交入口与 proof payload 打包脚本，把 `proof_cid` 从“任意审计字符串”收敛成“可归档 evidence payload 的稳定内容地址”，并让发布节点不依赖 CI workflow 即可提交正式证明。
+  - `TASK-WORLD_RUNTIME-030` 已完成：`world_chain_runtime` 已补 node-side `ModuleReleaseSubmitAttestation` submit API，新增 `scripts/package-module-release-attestation-proof.sh` / `scripts/submit-module-release-attestation.sh` 与 `scripts/module-release-node-attestation-flow.sh` 固定入口；proof 流水现会先把 release evidence canonicalize 成稳定 proof inputs，再生成 `proof_payload.json + submit_request.json` 并可由发布节点直接提交，不再要求 CI/workflow 代为承载正式证明。

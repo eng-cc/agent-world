@@ -404,6 +404,7 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required lon
 ```bash
 ./scripts/module-release-node-acceptance.sh
 ./scripts/module-release-node-acceptance.sh --include-full
+./scripts/module-release-node-attestation-flow.sh --help
 ./scripts/package-module-release-attestation-proof.sh --help
 ./scripts/submit-module-release-attestation.sh --help
 ./scripts/wasm-release-evidence-report.sh --expected-runners linux-x86_64
@@ -417,10 +418,27 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required lon
   --summary-import-dir output/ci/m1-wasm-summary \
   --module-sets m1 \
   --expected-runners linux-x86_64,darwin-arm64
+./scripts/module-release-node-attestation-flow.sh \
+  --module-sets m1 \
+  --summary-import-dir output/ci/m1-wasm-summary \
+  --skip-local-collect \
+  --required-runners linux-x86_64 \
+  --expected-runners linux-x86_64,darwin-arm64 \
+  --request-id 17 \
+  --operator-agent-id operator-1 \
+  --signer-node-id attestor-node-1 \
+  --build-manifest-hash <hex> \
+  --source-hash <hex> \
+  --wasm-hash <hex> \
+  --builder-image-digest <sha256:digest> \
+  --container-platform linux-x86_64 \
+  --canonicalizer-version strip-custom-sections-v1
 ```
 - 产物与证据：
   - 默认输出目录：`.tmp/module_release_node_acceptance/<timestamp>/`
   - 最小归档：`summary.md`、`summary.json`、各 step log（含 triage 信号检索）
+  - node-side attestation flow 默认输出目录：`.tmp/module_release_node_attestation_flow/<timestamp>/`
+  - node-side attestation flow 最小归档：`flow_summary.md`、`flow_summary.json`、`staged_summaries/`、`proof_inputs/`、`proof/proof_payload.json`、`proof/submit_request.json`
   - attestation proof payload 默认输出目录：`.tmp/module_release_attestation_proof/<timestamp>/`
   - attestation proof 最小归档：`proof_payload.json`、`submit_request.json`、`evidence/` 附件目录或对应 archive、稳定 `proof_cid`
   - WASM release evidence 默认输出目录：`.tmp/wasm_release_evidence_report/<timestamp>/`
@@ -431,6 +449,7 @@ env -u RUSTC_WRAPPER cargo test -p agent_world module_release_submit_attestation
 env -u RUSTC_WRAPPER cargo test -p agent_world module_release_apply_rejects_when_attestation_threshold_not_met --features test_tier_required -- --nocapture
 env -u RUSTC_WRAPPER cargo test -p agent_world module_release_apply_rejects_when_attestation_receipt_evidence_mismatches --features test_tier_required -- --nocapture
 env -u RUSTC_WRAPPER cargo test -p agent_world power_bootstrap_release_manifest_full --features test_tier_full -- --nocapture
+./scripts/module-release-node-attestation-flow.sh --help
 ./scripts/package-module-release-attestation-proof.sh --help
 ./scripts/submit-module-release-attestation.sh --help
 ./scripts/ci-m1-wasm-summary.sh --module-set m1 --runner-label linux-x86_64 --out <summary-dir>/m1/linux-x86_64.json
