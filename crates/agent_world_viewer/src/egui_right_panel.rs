@@ -38,9 +38,9 @@ use crate::ui_text::{
 };
 use crate::world_overlay::overlay_status_text_public;
 use crate::{
-    grid_line_thickness, CopyableTextPanelState, DiagnosisState, EventObjectLinkState,
-    GridLineKind, RenderPerfSummary, RightPanelLayoutState, RightPanelWidthState,
-    TimelineMarkFilterState, Viewer3dConfig, ViewerCameraMode, ViewerClient,
+    grid_line_thickness, viewer_seek_supported, CopyableTextPanelState, DiagnosisState,
+    EventObjectLinkState, GridLineKind, RenderPerfSummary, RightPanelLayoutState,
+    RightPanelWidthState, TimelineMarkFilterState, Viewer3dConfig, ViewerCameraMode, ViewerClient,
     ViewerControlProfileState, ViewerExperienceMode, ViewerSelection, ViewerState,
     WorldOverlayConfig,
 };
@@ -1128,7 +1128,8 @@ fn render_timeline_section(
             timeline.target_tick = timeline.target_tick.saturating_add(10);
             timeline.manual_override = true;
         }
-        if ui.button(seek_button_label(locale)).clicked() {
+        if viewer_seek_supported(control_profile) && ui.button(seek_button_label(locale)).clicked()
+        {
             timeline_seek_action(timeline, client, control_profile);
         }
     });

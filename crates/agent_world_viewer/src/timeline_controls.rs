@@ -14,7 +14,8 @@ use crate::web_test_api::{
     latest_web_test_api_control_feedback, WebTestApiControlFeedbackSnapshot,
 };
 use crate::{
-    dispatch_viewer_control, ControlButton, ViewerClient, ViewerControlProfileState, ViewerState,
+    dispatch_viewer_control, viewer_seek_supported, ControlButton, ViewerClient,
+    ViewerControlProfileState, ViewerState,
 };
 
 const DENSITY_BINS: usize = 16;
@@ -688,6 +689,7 @@ pub(super) fn handle_timeline_bar_drag(
 pub(super) fn update_timeline_ui(
     state: Res<ViewerState>,
     timeline: Res<TimelineUiState>,
+    control_profile: Option<Res<ViewerControlProfileState>>,
     i18n: Option<Res<UiI18n>>,
     mark_filters: Option<Res<TimelineMarkFilterState>>,
     mut last_feedback_digest: Local<Option<String>>,
@@ -698,7 +700,17 @@ pub(super) fn update_timeline_ui(
         Query<(&TimelineMarkJumpLabel, &mut Text)>,
         Query<&mut Text, With<TimelineSeekLabel>>,
         Query<&mut Text, With<TimelineControlFeedbackText>>,
-        Query<&mut Node, With<TimelineRecoveryActionsRow>>,
+        Query<
+            (
+                &mut Node,
+                Has<TimelineRecoveryActionsRow>,
+                Has<TimelineSeekSubmitButton>,
+            ),
+            Or<(
+                With<TimelineRecoveryActionsRow>,
+                With<TimelineSeekSubmitButton>,
+            )>,
+        >,
         Query<(&TimelineRecoveryActionLabel, &mut Text)>,
     )>,
 ) {
@@ -725,6 +737,7 @@ pub(super) fn update_timeline_ui(
     *last_feedback_digest = feedback_digest;
 
     let locale = locale_or_default(i18n.as_deref());
+    let seek_supported = viewer_seek_supported(control_profile.as_deref());
 
     let current_tick = current_tick_from_state(&state);
     let axis_max = timeline_axis_max(&timeline, current_tick);
@@ -789,12 +802,21 @@ pub(super) fn update_timeline_ui(
     }
 
     let show_recovery = timeline_should_show_recovery_actions(control_feedback.as_ref());
-    for mut row in &mut queries.p6() {
-        row.display = if show_recovery {
-            Display::Flex
-        } else {
-            Display::None
-        };
+    for (mut node, is_recovery_row, is_seek_button) in &mut queries.p6() {
+        if is_recovery_row {
+            node.display = if show_recovery {
+                Display::Flex
+            } else {
+                Display::None
+            };
+        }
+        if is_seek_button {
+            node.display = if seek_supported {
+                Display::Flex
+            } else {
+                Display::None
+            };
+        }
     }
 
     for (label, mut text) in &mut queries.p7() {
@@ -1143,6 +1165,18 @@ mod tests {
     use agent_world::simulator::{
         AgentDecision, AgentDecisionTrace, ConsumeReason, PowerEvent, RejectReason,
     };
+    use agent_world::viewer::ViewerControlProfile;
+
+    #[test]
+    fn timeline_seek_button_is_disabled_for_live_profile_only() {
+        assert!(viewer_seek_supported(None));
+        assert!(viewer_seek_supported(Some(&ViewerControlProfileState {
+            profile: Some(ViewerControlProfile::Playback),
+        })));
+        assert!(!viewer_seek_supported(Some(&ViewerControlProfileState {
+            profile: Some(ViewerControlProfile::Live),
+        })));
+    }
 
     #[test]
     fn key_insights_collects_error_llm_and_peaks() {

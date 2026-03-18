@@ -643,6 +643,9 @@ fn apply_timeline_seek_step(
     timeline.drag_active = false;
 
     if let Some(client) = viewer_client {
+        if !viewer_seek_supported(control_profile) {
+            return;
+        }
         let _ = dispatch_viewer_control(
             client,
             control_profile,

@@ -152,17 +152,75 @@ fn control_request_for_profile(
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) enum ViewerControlDispatchResult {
+    Sent,
+    UnsupportedForProfile {
+        profile: ViewerControlProfile,
+        control: ViewerControl,
+    },
+    ClientChannelSendFailed,
+}
+
+pub(super) fn viewer_control_profile(
+    profile_state: Option<&ViewerControlProfileState>,
+) -> Option<ViewerControlProfile> {
+    profile_state.and_then(|state| state.profile)
+}
+
+#[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
+pub(super) fn viewer_control_profile_name(
+    profile: Option<ViewerControlProfile>,
+) -> Option<&'static str> {
+    match profile {
+        Some(ViewerControlProfile::Playback) => Some("playback"),
+        Some(ViewerControlProfile::Live) => Some("live"),
+        None => None,
+    }
+}
+
+pub(super) fn viewer_control_supported_for_profile(
+    profile: Option<ViewerControlProfile>,
+    control: &ViewerControl,
+) -> bool {
+    !matches!(
+        (profile, control),
+        (Some(ViewerControlProfile::Live), ViewerControl::Seek { .. })
+    )
+}
+
+pub(super) fn viewer_control_supported(
+    profile_state: Option<&ViewerControlProfileState>,
+    control: &ViewerControl,
+) -> bool {
+    viewer_control_supported_for_profile(viewer_control_profile(profile_state), control)
+}
+
+pub(super) fn viewer_seek_supported(profile_state: Option<&ViewerControlProfileState>) -> bool {
+    viewer_control_supported(profile_state, &ViewerControl::Seek { tick: 0 })
+}
+
 pub(super) fn dispatch_viewer_control(
     client: &ViewerClient,
     profile_state: Option<&ViewerControlProfileState>,
     control: ViewerControl,
     request_id: Option<u64>,
-) -> bool {
-    let profile = profile_state.and_then(|state| state.profile);
+) -> ViewerControlDispatchResult {
+    let profile = viewer_control_profile(profile_state);
+    if !viewer_control_supported_for_profile(profile, &control) {
+        return ViewerControlDispatchResult::UnsupportedForProfile {
+            profile: profile.expect("live profile required for unsupported control"),
+            control,
+        };
+    }
     let Some(request) = control_request_for_profile(profile, control, request_id) else {
-        return false;
+        return ViewerControlDispatchResult::ClientChannelSendFailed;
     };
-    client.tx.send(request).is_ok()
+    if client.tx.send(request).is_ok() {
+        ViewerControlDispatchResult::Sent
+    } else {
+        ViewerControlDispatchResult::ClientChannelSendFailed
+    }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -555,6 +613,7 @@ pub(super) fn attempt_viewer_reconnect(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Mutex;
 
     #[test]
     fn control_request_defaults_to_legacy_before_hello_profile() {
@@ -611,5 +670,73 @@ mod tests {
             Some(9),
         );
         assert_eq!(request, None);
+    }
+
+    #[test]
+    fn dispatch_viewer_control_reports_live_seek_as_unsupported() {
+        let (tx, _rx) = mpsc::channel();
+        let (_response_tx, response_rx) = mpsc::channel();
+        let client = ViewerClient {
+            tx,
+            rx: Mutex::new(response_rx),
+        };
+        let profile = ViewerControlProfileState {
+            profile: Some(ViewerControlProfile::Live),
+        };
+
+        let result = dispatch_viewer_control(
+            &client,
+            Some(&profile),
+            ViewerControl::Seek { tick: 9 },
+            Some(9),
+        );
+
+        assert_eq!(
+            result,
+            ViewerControlDispatchResult::UnsupportedForProfile {
+                profile: ViewerControlProfile::Live,
+                control: ViewerControl::Seek { tick: 9 },
+            }
+        );
+    }
+
+    #[test]
+    fn dispatch_viewer_control_sends_playback_seek_to_profile_channel() {
+        let (tx, rx) = mpsc::channel();
+        let (_response_tx, response_rx) = mpsc::channel();
+        let client = ViewerClient {
+            tx,
+            rx: Mutex::new(response_rx),
+        };
+        let profile = ViewerControlProfileState {
+            profile: Some(ViewerControlProfile::Playback),
+        };
+
+        let result = dispatch_viewer_control(
+            &client,
+            Some(&profile),
+            ViewerControl::Seek { tick: 42 },
+            Some(7),
+        );
+
+        assert_eq!(result, ViewerControlDispatchResult::Sent);
+        assert_eq!(
+            rx.recv().expect("request should be sent"),
+            ViewerRequest::PlaybackControl {
+                mode: agent_world::viewer::PlaybackControl::Seek { tick: 42 },
+                request_id: Some(7),
+            }
+        );
+    }
+
+    #[test]
+    fn viewer_seek_supported_blocks_live_profile_only() {
+        assert!(viewer_seek_supported(None));
+        assert!(viewer_seek_supported(Some(&ViewerControlProfileState {
+            profile: Some(ViewerControlProfile::Playback),
+        })));
+        assert!(!viewer_seek_supported(Some(&ViewerControlProfileState {
+            profile: Some(ViewerControlProfile::Live),
+        })));
     }
 }

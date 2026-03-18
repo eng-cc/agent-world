@@ -4,18 +4,21 @@ use crate::viewer_automation::{
 };
 #[cfg(target_arch = "wasm32")]
 use crate::{
-    dispatch_viewer_control, ViewerAutomationState, ViewerClient, ViewerControlProfileState,
+    dispatch_viewer_control, viewer_control_profile_name, viewer_control_supported_for_profile,
+    ViewerAutomationState, ViewerClient, ViewerControlDispatchResult, ViewerControlProfileState,
     ViewerSelection, ViewerState,
+};
+#[cfg(not(target_arch = "wasm32"))]
+use crate::{
+    viewer_control_supported_for_profile, ViewerAutomationState, ViewerClient,
+    ViewerControlProfileState, ViewerSelection, ViewerState,
 };
 #[cfg(target_arch = "wasm32")]
 use crate::{ConnectionStatus, SelectionKind};
 use crate::{OrbitCamera, Viewer3dCamera, ViewerCameraMode};
-#[cfg(not(target_arch = "wasm32"))]
-use crate::{
-    ViewerAutomationState, ViewerClient, ViewerControlProfileState, ViewerSelection, ViewerState,
-};
 #[cfg(target_arch = "wasm32")]
-use agent_world::viewer::{ControlCompletionStatus, ViewerControl};
+use agent_world::viewer::ControlCompletionStatus;
+use agent_world::viewer::{ViewerControl, ViewerControlProfile};
 use bevy::prelude::*;
 #[cfg(target_arch = "wasm32")]
 use std::cell::RefCell;
@@ -33,8 +36,8 @@ use web_sys::UrlSearchParams;
 const TEST_API_QUERY_KEY: &str = "test_api";
 #[cfg(target_arch = "wasm32")]
 const TEST_API_GLOBAL_NAME: &str = "__AW_TEST__";
-#[cfg(target_arch = "wasm32")]
 const WEB_TEST_API_CONTROL_ACTIONS: [&str; 4] = ["play", "pause", "step", "seek"];
+const WEB_TEST_API_CONTROL_ACTIONS_LIVE: [&str; 3] = ["play", "pause", "step"];
 #[cfg(target_arch = "wasm32")]
 const CONTROL_STALL_FRAME_RATE_FALLBACK: f64 = 60.0;
 #[cfg(target_arch = "wasm32")]
@@ -99,6 +102,7 @@ pub(super) struct WebTestApiControlFeedbackSnapshot {
 #[derive(Clone, Debug)]
 struct WebTestApiStateSnapshot {
     connection_status: &'static str,
+    control_profile: Option<ViewerControlProfile>,
     logical_time: u64,
     event_seq: u64,
     selected_kind: Option<String>,
@@ -117,6 +121,7 @@ impl Default for WebTestApiStateSnapshot {
     fn default() -> Self {
         Self {
             connection_status: "connecting",
+            control_profile: None,
             logical_time: 0,
             event_seq: 0,
             selected_kind: None,
@@ -139,6 +144,89 @@ thread_local! {
     static WEB_TEST_API_COMPLETION_ACKS: RefCell<HashMap<u64, agent_world::viewer::ControlCompletionAck>> = RefCell::new(HashMap::new());
     static WEB_TEST_API_CONTROL_FEEDBACK_ID: RefCell<u64> = const { RefCell::new(0) };
     static WEB_TEST_API_RUNTIME_FATAL_ERROR: RefCell<Option<String>> = const { RefCell::new(None) };
+}
+
+fn probe_control_for_action(action: &str) -> Option<ViewerControl> {
+    match action {
+        "play" => Some(ViewerControl::Play),
+        "pause" => Some(ViewerControl::Pause),
+        "step" => Some(ViewerControl::Step { count: 1 }),
+        "seek" => Some(ViewerControl::Seek { tick: 0 }),
+        _ => None,
+    }
+}
+
+fn supported_control_actions_for_profile(
+    profile: Option<ViewerControlProfile>,
+) -> &'static [&'static str] {
+    match profile {
+        Some(ViewerControlProfile::Live) => &WEB_TEST_API_CONTROL_ACTIONS_LIVE,
+        Some(ViewerControlProfile::Playback) | None => &WEB_TEST_API_CONTROL_ACTIONS,
+    }
+}
+
+fn control_action_supported_for_profile(
+    action: &str,
+    profile: Option<ViewerControlProfile>,
+) -> bool {
+    probe_control_for_action(action)
+        .is_some_and(|control| viewer_control_supported_for_profile(profile, &control))
+}
+
+fn supported_action_list(profile: Option<ViewerControlProfile>) -> String {
+    supported_control_actions_for_profile(profile).join(", ")
+}
+
+fn unsupported_control_reason(
+    profile: ViewerControlProfile,
+    control: &ViewerControl,
+    locale_zh: bool,
+) -> Option<String> {
+    match (profile, control, locale_zh) {
+        (ViewerControlProfile::Live, ViewerControl::Seek { .. }, true) => {
+            Some("live 控制模式不支持 seek".to_string())
+        }
+        (ViewerControlProfile::Live, ViewerControl::Seek { .. }, false) => {
+            Some("seek is not supported in live control mode".to_string())
+        }
+        _ => None,
+    }
+}
+
+fn unsupported_control_hint(
+    profile: ViewerControlProfile,
+    control: &ViewerControl,
+    locale_zh: bool,
+) -> Option<String> {
+    match (profile, control, locale_zh) {
+        (ViewerControlProfile::Live, ViewerControl::Seek { .. }, true) => {
+            Some("live 模式请使用 play / pause / step".to_string())
+        }
+        (ViewerControlProfile::Live, ViewerControl::Seek { .. }, false) => {
+            Some("use play/pause/step in live mode".to_string())
+        }
+        _ => None,
+    }
+}
+
+fn unsupported_action_reason(
+    action: &str,
+    profile: Option<ViewerControlProfile>,
+    locale_zh: bool,
+) -> Option<String> {
+    let control = probe_control_for_action(action)?;
+    let profile = profile?;
+    unsupported_control_reason(profile, &control, locale_zh)
+}
+
+fn unsupported_action_hint(
+    action: &str,
+    profile: Option<ViewerControlProfile>,
+    locale_zh: bool,
+) -> Option<String> {
+    let control = probe_control_for_action(action)?;
+    let profile = profile?;
+    unsupported_control_hint(profile, &control, locale_zh)
 }
 #[cfg(target_arch = "wasm32")]
 pub(super) struct WebTestApiBindings {
@@ -275,11 +363,12 @@ fn control_description(action: &str, is_zh: bool) -> &'static str {
     }
 }
 #[cfg(target_arch = "wasm32")]
-fn build_control_catalog_js_value() -> JsValue {
+fn build_control_catalog_js_value(profile: Option<ViewerControlProfile>) -> JsValue {
     let object = Object::new();
     let controls = Array::new();
     for action in WEB_TEST_API_CONTROL_ACTIONS {
         let entry = Object::new();
+        let supported = control_action_supported_for_profile(action, profile);
         let _ = JsReflect::set(
             &entry,
             &JsValue::from_str("action"),
@@ -300,13 +389,41 @@ fn build_control_catalog_js_value() -> JsValue {
             &JsValue::from_str("examplePayload"),
             &control_payload_example(action),
         );
+        let _ = JsReflect::set(
+            &entry,
+            &JsValue::from_str("supported"),
+            &JsValue::from_bool(supported),
+        );
+        let _ = JsReflect::set(
+            &entry,
+            &JsValue::from_str("reason"),
+            &unsupported_action_reason(action, profile, false)
+                .map(|value| JsValue::from_str(value.as_str()))
+                .unwrap_or(JsValue::NULL),
+        );
+        let _ = JsReflect::set(
+            &entry,
+            &JsValue::from_str("hint"),
+            &unsupported_action_hint(action, profile, false)
+                .map(|value| JsValue::from_str(value.as_str()))
+                .unwrap_or(JsValue::NULL),
+        );
         controls.push(&entry);
     }
     let _ = JsReflect::set(&object, &JsValue::from_str("controls"), &controls);
     let _ = JsReflect::set(
         &object,
+        &JsValue::from_str("controlProfile"),
+        &viewer_control_profile_name(profile)
+            .map(JsValue::from_str)
+            .unwrap_or(JsValue::NULL),
+    );
+    let _ = JsReflect::set(
+        &object,
         &JsValue::from_str("usage"),
-        &JsValue::from_str("Use fillControlExample(action) then sendControl(action, payload)."),
+        &JsValue::from_str(
+            "Use getState().controlProfile to inspect current mode, then fillControlExample(action) and sendControl(action, payload).",
+        ),
     );
     JsValue::from(object)
 }
@@ -329,15 +446,24 @@ fn parse_control_action_label(control: &ViewerControl) -> String {
     }
 }
 #[cfg(target_arch = "wasm32")]
-fn control_action_hint(action: &str, locale_zh: bool) -> String {
+fn control_action_hint(
+    action: &str,
+    locale_zh: bool,
+    profile: Option<ViewerControlProfile>,
+) -> String {
     match (action, locale_zh) {
         ("step", true) => "示例 payload: {\"count\": 5}".to_string(),
         ("step", false) => "Example payload: {\"count\": 5}".to_string(),
         ("seek", true) => "示例 payload: {\"tick\": 120}".to_string(),
         ("seek", false) => "Example payload: {\"tick\": 120}".to_string(),
-        (_, true) => "可用动作: play, pause, step, seek".to_string(),
-        (_, false) => "Valid actions: play, pause, step, seek".to_string(),
+        (_, true) => format!("可用动作: {}", supported_action_list(profile)),
+        (_, false) => format!("Valid actions: {}", supported_action_list(profile)),
     }
+}
+
+#[cfg(target_arch = "wasm32")]
+fn current_web_test_api_control_profile() -> Option<ViewerControlProfile> {
+    WEB_TEST_API_STATE_SNAPSHOT.with(|slot| slot.borrow().control_profile)
 }
 #[cfg(target_arch = "wasm32")]
 fn update_last_control_feedback(feedback: WebTestApiControlFeedback) {
@@ -742,6 +868,13 @@ fn build_state_js_value(snapshot: &WebTestApiStateSnapshot) -> JsValue {
     );
     let _ = JsReflect::set(
         &object,
+        &JsValue::from_str("controlProfile"),
+        &viewer_control_profile_name(snapshot.control_profile)
+            .map(JsValue::from_str)
+            .unwrap_or(JsValue::NULL),
+    );
+    let _ = JsReflect::set(
+        &object,
         &JsValue::from_str("logicalTime"),
         &JsValue::from_f64(snapshot.logical_time as f64),
     );
@@ -907,11 +1040,9 @@ pub(super) fn setup_web_test_api(world: &mut World) {
         select.as_ref().unchecked_ref(),
     );
 
-    let describe_controls =
-        Closure::wrap(
-            Box::new(move || -> JsValue { build_control_catalog_js_value() })
-                as Box<dyn FnMut() -> JsValue>,
-        );
+    let describe_controls = Closure::wrap(Box::new(move || -> JsValue {
+        build_control_catalog_js_value(current_web_test_api_control_profile())
+    }) as Box<dyn FnMut() -> JsValue>);
     let _ = JsReflect::set(
         &api,
         &JsValue::from_str("describeControls"),
@@ -923,6 +1054,7 @@ pub(super) fn setup_web_test_api(world: &mut World) {
             log_api_warning("web test api: fillControlExample ignored (invalid action)");
             return JsValue::NULL;
         };
+        let profile = current_web_test_api_control_profile();
         let object = Object::new();
         let _ = JsReflect::set(
             &object,
@@ -933,6 +1065,35 @@ pub(super) fn setup_web_test_api(world: &mut World) {
             &object,
             &JsValue::from_str("payload"),
             &control_payload_example(action.as_str()),
+        );
+        let _ = JsReflect::set(
+            &object,
+            &JsValue::from_str("supported"),
+            &JsValue::from_bool(control_action_supported_for_profile(
+                action.as_str(),
+                profile,
+            )),
+        );
+        let _ = JsReflect::set(
+            &object,
+            &JsValue::from_str("controlProfile"),
+            &viewer_control_profile_name(profile)
+                .map(JsValue::from_str)
+                .unwrap_or(JsValue::NULL),
+        );
+        let _ = JsReflect::set(
+            &object,
+            &JsValue::from_str("reason"),
+            &unsupported_action_reason(action.as_str(), profile, false)
+                .map(|value| JsValue::from_str(value.as_str()))
+                .unwrap_or(JsValue::NULL),
+        );
+        let _ = JsReflect::set(
+            &object,
+            &JsValue::from_str("hint"),
+            &unsupported_action_hint(action.as_str(), profile, false)
+                .map(|value| JsValue::from_str(value.as_str()))
+                .unwrap_or(JsValue::NULL),
         );
         JsValue::from(object)
     }) as Box<dyn FnMut(JsValue) -> JsValue>);
@@ -950,7 +1111,11 @@ pub(super) fn setup_web_test_api(world: &mut World) {
                     false,
                     None,
                     Some("action must be a non-empty string".to_string()),
-                    Some(control_action_hint("unknown", false)),
+                    Some(control_action_hint(
+                        "unknown",
+                        false,
+                        current_web_test_api_control_profile(),
+                    )),
                     "rejected before enqueue".to_string(),
                     false,
                 );
@@ -962,6 +1127,7 @@ pub(super) fn setup_web_test_api(world: &mut World) {
             };
 
             let action = normalize_control_action(raw_action.as_str());
+            let control_profile = current_web_test_api_control_profile();
             if !WEB_TEST_API_CONTROL_ACTIONS
                 .iter()
                 .any(|candidate| *candidate == action.as_str())
@@ -971,13 +1137,35 @@ pub(super) fn setup_web_test_api(world: &mut World) {
                     false,
                     None,
                     Some(format!("unsupported action: {}", action)),
-                    Some(control_action_hint("unknown", false)),
+                    Some(control_action_hint("unknown", false, control_profile)),
                     "rejected before enqueue".to_string(),
                     false,
                 );
                 update_last_control_feedback(feedback.clone());
                 let warning =
                     format!("web test api: sendControl ignored (unsupported action: {action})");
+                log_api_warning(warning.as_str());
+                return build_control_feedback_js_value(&feedback);
+            }
+
+            if !control_action_supported_for_profile(action.as_str(), control_profile) {
+                let feedback = build_control_feedback(
+                    action.clone(),
+                    false,
+                    None,
+                    unsupported_action_reason(action.as_str(), control_profile, false),
+                    unsupported_action_hint(action.as_str(), control_profile, false),
+                    "rejected before enqueue".to_string(),
+                    false,
+                );
+                update_last_control_feedback(feedback.clone());
+                let warning = format!(
+                    "web test api: sendControl ignored ({})",
+                    feedback
+                        .reason
+                        .as_deref()
+                        .unwrap_or("unsupported control for current profile")
+                );
                 log_api_warning(warning.as_str());
                 return build_control_feedback_js_value(&feedback);
             }
@@ -993,7 +1181,7 @@ pub(super) fn setup_web_test_api(world: &mut World) {
                     false,
                     None,
                     Some(reason.to_string()),
-                    Some(control_action_hint(action.as_str(), false)),
+                    Some(control_action_hint(action.as_str(), false, control_profile)),
                     "rejected before enqueue".to_string(),
                     false,
                 );
@@ -1116,19 +1304,32 @@ pub(super) fn consume_web_test_api_commands(
                     });
                     continue;
                 };
-                let sent = dispatch_viewer_control(
+                let dispatch_result = dispatch_viewer_control(
                     client,
                     control_profile.as_deref(),
                     control,
                     request_id,
                 );
-                mutate_last_control_feedback(feedback_id, |feedback| {
-                    if sent {
+                mutate_last_control_feedback(feedback_id, |feedback| match dispatch_result {
+                    ViewerControlDispatchResult::Sent => {
                         feedback.stage = CONTROL_STAGE_EXECUTING.to_string();
                         feedback.enqueued = true;
                         feedback.hint =
                             Some("dispatch accepted, waiting for world delta".to_string());
-                    } else {
+                    }
+                    ViewerControlDispatchResult::UnsupportedForProfile {
+                        profile,
+                        ref control,
+                    } => {
+                        feedback.accepted = false;
+                        feedback.enqueued = false;
+                        feedback.stage = CONTROL_STAGE_BLOCKED.to_string();
+                        feedback.reason = unsupported_control_reason(profile, control, false);
+                        feedback.hint = unsupported_control_hint(profile, control, false);
+                        feedback.effect = "dropped before dispatch".to_string();
+                        feedback.awaiting_effect = false;
+                    }
+                    ViewerControlDispatchResult::ClientChannelSendFailed => {
                         feedback.accepted = false;
                         feedback.enqueued = false;
                         feedback.stage = CONTROL_STAGE_BLOCKED.to_string();
@@ -1159,7 +1360,7 @@ pub(super) fn publish_web_test_api_state(
     camera_mode: Res<ViewerCameraMode>,
     cameras: Query<(&OrbitCamera, &Projection), With<Viewer3dCamera>>,
     _client: Option<Res<ViewerClient>>,
-    _control_profile: Option<Res<ViewerControlProfileState>>,
+    control_profile: Option<Res<ViewerControlProfileState>>,
 ) {
     WEB_TEST_API_STATE_SNAPSHOT.with(|slot| {
         let mut snapshot = slot.borrow_mut();
@@ -1173,6 +1374,7 @@ pub(super) fn publish_web_test_api_state(
                 ConnectionStatus::Error(_) => "error",
             }
         };
+        snapshot.control_profile = control_profile.as_deref().and_then(|state| state.profile);
         let snapshot_tick = state
             .snapshot
             .as_ref()
@@ -1324,7 +1526,11 @@ pub(super) fn publish_web_test_api_state(
                                 "Next: keep play and wait for sync, or retry play after reconnect"
                                     .to_string()
                             } else {
-                                control_action_hint(feedback.action.as_str(), false)
+                                control_action_hint(
+                                    feedback.action.as_str(),
+                                    false,
+                                    snapshot.control_profile,
+                                )
                             });
                             feedback.effect = "accepted without observed progress".to_string();
                             feedback.awaiting_effect = false;
@@ -1349,5 +1555,52 @@ pub(super) fn publish_web_test_api_state(
     _camera_mode: Res<ViewerCameraMode>,
     _cameras: Query<(&OrbitCamera, &Projection), With<Viewer3dCamera>>,
     _client: Option<Res<ViewerClient>>,
+    _control_profile: Option<Res<ViewerControlProfileState>>,
 ) {
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn live_profile_catalog_hides_seek_support() {
+        assert!(control_action_supported_for_profile("seek", None));
+        assert!(control_action_supported_for_profile(
+            "seek",
+            Some(ViewerControlProfile::Playback),
+        ));
+        assert!(!control_action_supported_for_profile(
+            "seek",
+            Some(ViewerControlProfile::Live),
+        ));
+        assert_eq!(
+            supported_control_actions_for_profile(Some(ViewerControlProfile::Live)),
+            &WEB_TEST_API_CONTROL_ACTIONS_LIVE
+        );
+    }
+
+    #[test]
+    fn live_seek_rejection_reason_is_explicit() {
+        assert_eq!(
+            unsupported_action_reason("seek", Some(ViewerControlProfile::Live), false),
+            Some("seek is not supported in live control mode".to_string())
+        );
+        assert_eq!(
+            unsupported_action_hint("seek", Some(ViewerControlProfile::Live), false),
+            Some("use play/pause/step in live mode".to_string())
+        );
+    }
+
+    #[test]
+    fn supported_action_list_tracks_profile() {
+        assert_eq!(
+            supported_action_list(Some(ViewerControlProfile::Live)),
+            "play, pause, step"
+        );
+        assert_eq!(
+            supported_action_list(Some(ViewerControlProfile::Playback)),
+            "play, pause, step, seek"
+        );
+    }
 }
