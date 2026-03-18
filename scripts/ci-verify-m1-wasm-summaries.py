@@ -20,9 +20,14 @@ def parse_args() -> argparse.Namespace:
         help="Directory containing per-runner summary JSON files.",
     )
     parser.add_argument(
+        "--required-runners",
+        default="linux-x86_64",
+        help="Comma-separated runner labels required for the stable gate.",
+    )
+    parser.add_argument(
         "--expected-runners",
         default="linux-x86_64,darwin-arm64",
-        help="Comma-separated runner labels expected to be present.",
+        help="Comma-separated runner labels expected for full cross-host evidence.",
     )
     return parser.parse_args()
 
@@ -160,11 +165,21 @@ def main() -> None:
     if not summary_dir.exists():
         fail(f"summary dir does not exist: {summary_dir}")
 
+    required_runners = {
+        value.strip() for value in args.required_runners.split(",") if value.strip()
+    }
+    if not required_runners:
+        fail("--required-runners has no valid entries")
+
     expected_runners = {
         value.strip() for value in args.expected_runners.split(",") if value.strip()
     }
     if not expected_runners:
         fail("--expected-runners has no valid entries")
+    if not required_runners.issubset(expected_runners):
+        fail(
+            "--required-runners must be a subset of --expected-runners"
+        )
 
     summary_paths = sorted(summary_dir.glob("*.json"))
     if not summary_paths:
@@ -180,10 +195,11 @@ def main() -> None:
         summaries_by_runner[runner] = payload
 
     found_runners = set(summaries_by_runner.keys())
+    missing_required_runners = sorted(required_runners - found_runners)
     missing_runners = sorted(expected_runners - found_runners)
     extra_runners = sorted(found_runners - expected_runners)
-    if missing_runners:
-        fail(f"missing expected runner summaries: {missing_runners}")
+    if missing_required_runners:
+        fail(f"missing required runner summaries: {missing_required_runners}")
     if extra_runners:
         fail(f"found unexpected runner summaries: {extra_runners}")
 
@@ -221,8 +237,11 @@ def main() -> None:
             )
 
     print(
-        "{} multi-runner summary verify ok: runners={} module_count={}".format(
-            module_set, ",".join(sorted(found_runners)), len(baseline_module_keys)
+        "{} multi-runner summary verify ok: runners={} module_count={} missing_optional_runners={}".format(
+            module_set,
+            ",".join(sorted(found_runners)),
+            len(baseline_module_keys),
+            ",".join(missing_runners) if missing_runners else "none",
         )
     )
 

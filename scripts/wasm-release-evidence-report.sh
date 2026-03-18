@@ -27,7 +27,10 @@ Options:
   --out-dir <path>           Output root (default: .tmp/wasm_release_evidence_report)
   --module-sets <csv>        Module sets to process (default: m1,m4,m5)
   --runner-label <label>     Runner label used for collection (default: detected host platform)
-  --expected-runners <csv>   Expected runner labels for verify (default: current runner only)
+  --required-runners <csv>   Runner labels required for the stable gate
+                             (default: current runner only)
+  --expected-runners <csv>   Runner labels expected for full cross-host evidence
+                             (default: same as required runners)
   --summary-import-dir <path>
                              Import pre-collected summary jsons before verify.
                              Accepts either <path>/<module-set>/*.json or, when only one
@@ -126,6 +129,7 @@ copy_summary_imports() {
 out_dir=".tmp/wasm_release_evidence_report"
 module_sets_csv="m1,m4,m5"
 runner_label=""
+required_runners_csv=""
 expected_runners_csv=""
 summary_import_dir=""
 skip_collect=0
@@ -143,6 +147,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --runner-label)
       runner_label=${2:-}
+      shift 2
+      ;;
+    --required-runners)
+      required_runners_csv=${2:-}
       shift 2
       ;;
     --expected-runners)
@@ -176,10 +184,14 @@ done
 if [[ -z "$runner_label" ]]; then
   runner_label="$(detect_host_platform)"
 fi
+if [[ -z "$required_runners_csv" ]]; then
+  required_runners_csv="$runner_label"
+fi
 if [[ -z "$expected_runners_csv" ]]; then
-  expected_runners_csv="$runner_label"
+  expected_runners_csv="$required_runners_csv"
 fi
 ensure_csv_non_empty "--module-sets" "$module_sets_csv"
+ensure_csv_non_empty "--required-runners" "$required_runners_csv"
 ensure_csv_non_empty "--expected-runners" "$expected_runners_csv"
 
 timestamp=$(date '+%Y%m%d-%H%M%S')
@@ -221,6 +233,7 @@ for module_set in "${module_sets[@]}"; do
     python3 ./scripts/ci-verify-m1-wasm-summaries.py
     --module-set "$module_set"
     --summary-dir "$module_summary_dir"
+    --required-runners "$required_runners_csv"
     --expected-runners "$expected_runners_csv"
   )
 
@@ -231,6 +244,7 @@ for module_set in "${module_sets[@]}"; do
   {
     echo "module_set=$module_set"
     echo "runner_label=$runner_label"
+    echo "required_runners=$required_runners_csv"
     echo "expected_runners=$expected_runners_csv"
     echo "summary_import_dir=$summary_import_dir"
     echo "collect_cmd=$(format_cmd "${collect_cmd[@]}")"
@@ -295,14 +309,28 @@ for module_set in "${module_sets[@]}"; do
     >> "$module_sets_tsv"
 done
 
-python3 - "$module_sets_tsv" "$summary_json" "$run_dir" "$runner_label" "$expected_runners_csv" "$overall_status" "$skip_collect" "$dry_run" "$summary_import_dir" <<'PY'
+python3 - "$module_sets_tsv" "$summary_json" "$run_dir" "$runner_label" "$required_runners_csv" "$expected_runners_csv" "$overall_status" "$skip_collect" "$dry_run" "$summary_import_dir" <<'PY'
 import json
 import pathlib
 import sys
 
-module_sets_tsv, summary_json, run_dir, runner_label, expected_runners_csv, overall_status, skip_collect, dry_run, summary_import_dir = sys.argv[1:]
+module_sets_tsv, summary_json, run_dir, runner_label, required_runners_csv, expected_runners_csv, overall_status, skip_collect, dry_run, summary_import_dir = sys.argv[1:]
+
+
+def parse_csv(raw: str) -> list[str]:
+    return [item for item in (value.strip() for value in raw.split(",")) if item]
+
+
+required_runners = parse_csv(required_runners_csv)
+expected_runners = parse_csv(expected_runners_csv)
+required_runner_set = set(required_runners)
+expected_runner_set = set(expected_runners)
 
 module_sets = []
+received_runner_union = set()
+missing_required_union = set()
+missing_expected_union = set()
+extra_runner_union = set()
 with open(module_sets_tsv, "r", encoding="utf-8") as fh:
     for raw in fh:
         module_set, collect_status, verify_status, note, summary_dir, verify_log = raw.rstrip("\n").split("\t")
@@ -316,6 +344,21 @@ with open(module_sets_tsv, "r", encoding="utf-8") as fh:
             except Exception:
                 module_count = None
             found_runners = [path.stem for path in summary_paths]
+        found_runner_set = set(found_runners)
+        missing_required_runners = sorted(required_runner_set - found_runner_set)
+        missing_runners = sorted(expected_runner_set - found_runner_set)
+        extra_runners = sorted(found_runner_set - expected_runner_set)
+        stable_gate_passed = verify_status == "passed" and not missing_required_runners
+        cross_host_evidence_pending = stable_gate_passed and bool(missing_runners)
+        cross_host_closed = stable_gate_passed and not missing_runners
+        if stable_gate_passed:
+            gate_result = "conditional-go" if cross_host_evidence_pending else "cross-host-closed"
+        else:
+            gate_result = "no-go"
+        received_runner_union |= found_runner_set
+        missing_required_union |= set(missing_required_runners)
+        missing_expected_union |= set(missing_runners)
+        extra_runner_union |= set(extra_runners)
         module_sets.append(
             {
                 "module_set": module_set,
@@ -324,15 +367,43 @@ with open(module_sets_tsv, "r", encoding="utf-8") as fh:
                 "note": note,
                 "summary_dir": summary_dir,
                 "verify_log": verify_log,
-                "found_runners": found_runners,
+                "required_runners": required_runners,
+                "expected_runners": expected_runners,
+                "received_runners": found_runners,
+                "missing_required_runners": missing_required_runners,
+                "missing_runners": missing_runners,
+                "extra_runners": extra_runners,
+                "stable_gate_passed": stable_gate_passed,
+                "cross_host_evidence_pending": cross_host_evidence_pending,
+                "cross_host_closed": cross_host_closed,
+                "canonical_hash_consistent": verify_status == "passed",
+                "receipt_evidence_consistent": verify_status == "passed",
+                "gate_result": gate_result,
                 "module_count": module_count,
             }
         )
 
+stable_gate_passed = overall_status == "PASS" and not missing_required_union
+cross_host_evidence_pending = stable_gate_passed and bool(missing_expected_union)
+cross_host_closed = stable_gate_passed and not missing_expected_union
+if stable_gate_passed:
+    gate_result = "conditional-go" if cross_host_evidence_pending else "cross-host-closed"
+else:
+    gate_result = "no-go"
+
 payload = {
     "run_dir": run_dir,
     "runner_label": runner_label,
-    "expected_runners": [item for item in expected_runners_csv.split(",") if item],
+    "required_runners": required_runners,
+    "expected_runners": expected_runners,
+    "received_runners": sorted(received_runner_union),
+    "missing_required_runners": sorted(missing_required_union),
+    "missing_runners": sorted(missing_expected_union),
+    "extra_runners": sorted(extra_runner_union),
+    "stable_gate_passed": stable_gate_passed,
+    "cross_host_evidence_pending": cross_host_evidence_pending,
+    "cross_host_closed": cross_host_closed,
+    "gate_result": gate_result,
     "overall_status": overall_status,
     "skip_collect": skip_collect == "1",
     "dry_run": dry_run == "1",
@@ -349,16 +420,29 @@ PY
   echo "- Timestamp: $(date '+%Y-%m-%d %H:%M:%S %Z')"
   echo "- Run dir: \`$run_dir\`"
   echo "- Runner label: \`$runner_label\`"
+  echo "- Required runners: \`$required_runners_csv\`"
   echo "- Expected runners: \`$expected_runners_csv\`"
   echo "- Summary import dir: \`${summary_import_dir:-none}\`"
   echo "- Skip collect: \`$skip_collect\`"
   echo "- Dry run: \`$dry_run\`"
   echo "- Overall: $overall_status"
+  echo "- Stable gate passed: \`$(jq -r '.stable_gate_passed' "$summary_json")\`"
+  echo "- Cross-host evidence pending: \`$(jq -r '.cross_host_evidence_pending' "$summary_json")\`"
+  echo "- Gate result: \`$(jq -r '.gate_result' "$summary_json")\`"
+  echo "- Received runners: \`$(jq -r '.received_runners | join(",")' "$summary_json")\`"
+  echo "- Missing runners: \`$(jq -r '.missing_runners | join(",")' "$summary_json")\`"
   echo ""
   echo "## Module Sets"
   while IFS=$'\t' read -r module_set collect_status verify_status note summary_dir verify_log; do
     [[ -n "$module_set" ]] || continue
-    echo "- $module_set: collect=$collect_status verify=$verify_status note=$note"
+    module_json="$(jq -c --arg module_set "$module_set" '.module_sets[] | select(.module_set == $module_set)' "$summary_json")"
+    echo "- $module_set: collect=$collect_status verify=$verify_status gate=$(jq -r '.gate_result' <<< "$module_json") note=$note"
+    echo "  required_runners: \`$(jq -r '.required_runners | join(",")' <<< "$module_json")\`"
+    echo "  expected_runners: \`$(jq -r '.expected_runners | join(",")' <<< "$module_json")\`"
+    echo "  received_runners: \`$(jq -r '.received_runners | join(",")' <<< "$module_json")\`"
+    echo "  missing_runners: \`$(jq -r '.missing_runners | join(",")' <<< "$module_json")\`"
+    echo "  stable_gate_passed: \`$(jq -r '.stable_gate_passed' <<< "$module_json")\`"
+    echo "  cross_host_evidence_pending: \`$(jq -r '.cross_host_evidence_pending' <<< "$module_json")\`"
     echo "  summary_dir: \`$summary_dir\`"
     echo "  verify_log: \`$verify_log\`"
   done < "$module_sets_tsv"
