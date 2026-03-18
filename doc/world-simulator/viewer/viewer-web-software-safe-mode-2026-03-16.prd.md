@@ -156,3 +156,25 @@
   - 缓解：明确要求 `software_safe` 前端与 WGPU/WebGL 解耦。
 - 风险 3：自动 fallback 可能掩盖标准模式问题。
   - 缓解：页面与 `__AW_TEST__` 必须显式标识当前模式与 fallback 原因。
+
+## 增量需求（2026-03-18）
+- PRD-ID: `PRD-WORLD_SIMULATOR-039`
+- Problem Statement:
+  - 标准 Web Viewer 的 bootstrap shell 当前会在 `body` 中保留 `Loading standard viewer...` overlay；当标准模式 wasm 已启动并可交互时，该 overlay 仍可能继续可见并占据左侧布局，造成“世界已在运行但页面仍显示 loading”的假阻塞体验。
+- Proposed Solution:
+  - 为标准模式 bootstrap 增加显式 loading overlay 生命周期管理：
+    - overlay 仅在标准模式 wasm 启动前短暂显示；
+    - 一旦标准 Viewer 完成 bootstrap 并进入可绘制状态，overlay 必须淡出并从布局中移除；
+    - overlay 呈现不得再与 canvas 并排占位，不得压缩真实 Viewer 视口。
+- Functional Constraints:
+  - 不改变 `render_mode=standard|auto|software_safe` 的选路语义。
+  - 不改变 software-safe 的 fallback 判定与 URL 重定向逻辑。
+  - 不以“仅隐藏文案”替代真实收口；必须保证 overlay 不再持续占布局。
+- Acceptance Criteria:
+  - AC-9: 标准模式页面在 wasm bootstrap 完成后，`Loading standard viewer...` overlay 必须自动隐藏或移除，且不再作为持续可见状态保留在页面正文中。
+  - AC-10: loading overlay 可见时不得与主 canvas 并排占位；标准模式进入运行态后，Viewer 视口宽度不得再被左侧 loading 栏压缩。
+  - AC-11: `test_tier_required` 至少覆盖一条 bootstrap 生命周期回归，验证标准模式启动后会执行 overlay cleanup，且不影响 software-safe fallback。
+
+## 8. Validation & Decision Record
+- Traceability:
+  - `PRD-WORLD_SIMULATOR-039 -> T13 / TASK-WORLD_SIMULATOR-162 -> test_tier_required`

@@ -72,3 +72,20 @@
 - Phase 2：software-safe MVP（状态、列表、step、反馈）
 - Phase 3：selection / semantic map / `oasis7` & testing tooling 对齐
 - Phase 4：根据使用数据决定是否补更多 viewer 能力，而不是一开始追求完全视觉等价
+
+## 8. 标准模式 Loading Overlay 生命周期（2026-03-18）
+- overlay 继续由静态 `index.html` 提供，但职责仅限于标准模式 wasm 尚未启动前的短暂引导。
+- overlay 层必须改为独立覆盖层：
+  - 不能再依赖 `body` flex 排版与 canvas 并排；
+  - 默认覆盖在页面中心，可淡出，但不可继续吃掉标准 Viewer 的宽度。
+- bootstrap shell 负责注册一次性 cleanup：
+  - 优先监听 `TrunkApplicationStarted`；
+  - 若事件先于 canvas 插入，则用轻量轮询或 `requestAnimationFrame` 等待标准 canvas 出现；
+  - cleanup 触发后，将 overlay 标记为 hidden，并在过渡结束后从 DOM 移除。
+- software-safe 路径不复用该 cleanup：
+  - `render_mode=software_safe` 或 auto fallback 重定向仍由新页面负责自身初始态；
+  - 本次只收口标准模式 overlay 残留，不改变 software-safe 的引导页面。
+- 回归重点：
+  - 标准模式启动后 overlay 会被 cleanup；
+  - cleanup 不依赖连接态 `connected`，避免“Viewer 已可交互但 runtime 尚未连上时仍一直显示 loading”；
+  - cleanup 后 `body` 不再保留 loading 文案的持续可见节点。

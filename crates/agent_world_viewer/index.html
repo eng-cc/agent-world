@@ -18,18 +18,27 @@
       }
 
       body {
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        position: relative;
       }
 
       .viewer-loading {
+        position: fixed;
+        inset: 0;
         display: flex;
         flex-direction: column;
         gap: 8px;
         align-items: center;
         justify-content: center;
         color: #9cb3c9;
+        background: rgba(10, 15, 23, 0.94);
+        z-index: 20;
+        transition: opacity 180ms ease, visibility 180ms ease;
+      }
+
+      .viewer-loading.is-hidden {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
       }
 
       .viewer-loading__title {
@@ -58,11 +67,53 @@
         const SOFTWARE_SAFE_RENDER_MODE = "software_safe";
         const metaKey = "__AW_VIEWER_RENDER_META__";
         const bootstrapWrappedKey = "__awRenderMetaWrapped";
+        const loadingOverlayHiddenKey = "__awLoadingOverlayHidden";
+        const loadingOverlaySelector = ".viewer-loading";
 
         const params = new URLSearchParams(window.location.search);
         const requestedMode = String(params.get("render_mode") || "auto")
           .trim()
           .toLowerCase();
+
+        const hideLoadingOverlay = () => {
+          if (window[loadingOverlayHiddenKey]) {
+            return;
+          }
+          const overlay = document.querySelector(loadingOverlaySelector);
+          window[loadingOverlayHiddenKey] = true;
+          if (!overlay) {
+            return;
+          }
+          let finalized = false;
+          const finalize = () => {
+            if (finalized) {
+              return;
+            }
+            finalized = true;
+            overlay.remove();
+          };
+          overlay.classList.add("is-hidden");
+          overlay.addEventListener("transitionend", finalize, { once: true });
+          window.setTimeout(finalize, 260);
+        };
+
+        const waitForStandardCanvasThenHideOverlay = () => {
+          let attempts = 0;
+          const maxAttempts = 120;
+          const pump = () => {
+            if (document.querySelector("canvas")) {
+              hideLoadingOverlay();
+              return;
+            }
+            attempts += 1;
+            if (attempts >= maxAttempts) {
+              hideLoadingOverlay();
+              return;
+            }
+            window.requestAnimationFrame(pump);
+          };
+          window.requestAnimationFrame(pump);
+        };
 
         const detectRenderer = () => {
           const result = {
@@ -139,6 +190,13 @@
 
         renderMeta.renderMode = STANDARD_RENDER_MODE;
         window[metaKey] = Object.freeze({ ...renderMeta });
+        window.addEventListener(
+          "TrunkApplicationStarted",
+          () => {
+            waitForStandardCanvasThenHideOverlay();
+          },
+          { once: true }
+        );
 
         const augmentTestApi = () => {
           const api = window.__AW_TEST__;

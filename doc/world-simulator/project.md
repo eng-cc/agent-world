@@ -152,6 +152,7 @@
 - [x] TASK-WORLD_SIMULATOR-146 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 由 `qa_engineer` 为 `software_safe` 增加 prompt/chat/rollback/message-flow 专用回归脚本与失败签名，沉淀 `agent_spoke` 缺失的证据包。
 - [x] TASK-WORLD_SIMULATOR-147 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 由 `runtime_engineer` / `viewer_engineer` 补齐 `agent_chat -> AgentSpoke` 的测试态稳定触发与 runtime 事件兼容解析，让 software_safe 消息流回归不再依赖自然 LLM 回话。
 - [x] TASK-WORLD_SIMULATOR-158 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 为 source-tree Viewer Web 入口补齐 dist freshness gate，覆盖 `index.html`、`software_safe.*` 与静态资源漂移；让 `oasis7-run.sh play` 在 Web root 入口更新后优先重建 fresh dist，而不是继续消费 stale `crates/agent_world_viewer/dist`。
+- [x] TASK-WORLD_SIMULATOR-162 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 修复标准模式 bootstrap `Loading standard viewer...` overlay 在 wasm 已启动后仍残留并压缩左侧视口的问题，补齐 cleanup 生命周期与最小回归验证。
 - [x] TASK-WORLD_SIMULATOR-148 (PRD-WORLD_SIMULATOR-040) [test_tier_required]: 完成 `OpenClaw` 双轨模式（`player_parity` / `headless_agent` / `debug_viewer`）专题 PRD / Project 建模，并回写模块主文档、索引与 devlog。
 - [x] TASK-WORLD_SIMULATOR-149 (PRD-WORLD_SIMULATOR-040) [test_tier_required]: 由 `agent_engineer` 冻结 `player_parity` / `headless_agent` 的 observation/action contract、schema version、模式元数据与禁止泄露真值边界，并形成 supporting spec。
 - [x] TASK-WORLD_SIMULATOR-150 (PRD-WORLD_SIMULATOR-040) [test_tier_required]: 由 `runtime_engineer` 为 OpenClaw 双轨模式落地 mode/schema/environment/fixture/replay 元数据透传、summary 聚合与 runtime live/headless traceability。
@@ -326,6 +327,7 @@
 - 最新完成: `TASK-WORLD_SIMULATOR-132`（为 `oasis7-run.sh doctor` 增加 `--json` 机读输出）。
 - 最新完成: `TASK-WORLD_SIMULATOR-137`（为 `oasis7` 补齐 chain node 公私钥资产说明与 operator contract）。
 - 最新完成: `TASK-WORLD_SIMULATOR-138`（为 `oasis7-run.sh download` 补 bundle-first 下载阶段日志、进度条与非 TTY heartbeat，并新增下载可观测性回归脚本）。
+- 最新完成: `TASK-WORLD_SIMULATOR-162`（收口标准模式 bootstrap loading overlay 生命周期，修复 wasm 启动后仍残留并压缩左侧视口的问题，并补齐 `agent-browser` 回归脚本）。
 - 最新完成: `TASK-WORLD_SIMULATOR-161`（将 `oasis7` 主入口中的 UI/observer 细节拆到独立 reference，保持主 skill 聚焦 OpenClaw 执行闭环）。
 - 最新完成: `TASK-WORLD_SIMULATOR-160`（重构 `oasis7` operator 口径，明确 `headless_agent` / `player_parity` / `debug_viewer` / `software_safe` 分层，并写清 OpenClaw 当前 observer-only UI 边界）。
 - 最新完成: `TASK-WORLD_SIMULATOR-136`（修复 `oasis7-run.sh play` wrapper 停止后 launcher 子树残留的问题，并补 shutdown 回归脚本）。
