@@ -1,7 +1,7 @@
 # game PRD 文件级索引
 审计轮次: 6
 
-更新时间：2026-03-11
+更新时间：2026-03-18
 
 ## 入口
 - 模块 PRD：`doc/game/prd.md`
@@ -19,6 +19,7 @@
 | `doc/game/gameplay/gameplay-longrun-p0-production-hardening-2026-03-06.prd.md` | `doc/game/gameplay/gameplay-longrun-p0-production-hardening-2026-03-06.design.md` | `doc/game/gameplay/gameplay-longrun-p0-production-hardening-2026-03-06.project.md` |
 | `doc/game/gameplay/gameplay-micro-loop-feedback-visibility-2026-03-05.prd.md` | `doc/game/gameplay/gameplay-micro-loop-feedback-visibility-2026-03-05.design.md` | `doc/game/gameplay/gameplay-micro-loop-feedback-visibility-2026-03-05.project.md` |
 | `doc/game/gameplay/gameplay-module-driven-production-closure.prd.md` | `doc/game/gameplay/gameplay-module-driven-production-closure.design.md` | `doc/game/gameplay/gameplay-module-driven-production-closure.project.md` |
+| `doc/game/gameplay/gameplay-post-onboarding-stage-2026-03-18.prd.md` | `doc/game/gameplay/gameplay-post-onboarding-stage-2026-03-18.design.md` | `doc/game/gameplay/gameplay-post-onboarding-stage-2026-03-18.project.md` |
 | `doc/game/gameplay/gameplay-release-gap-closure-2026-02-21.prd.md` | `doc/game/gameplay/gameplay-release-gap-closure-2026-02-21.design.md` | `doc/game/gameplay/gameplay-release-gap-closure-2026-02-21.project.md` |
 | `doc/game/gameplay/gameplay-release-production-closure.prd.md` | `doc/game/gameplay/gameplay-release-production-closure.design.md` | `doc/game/gameplay/gameplay-release-production-closure.project.md` |
 | `doc/game/gameplay/gameplay-runtime-governance-closure.prd.md` | `doc/game/gameplay/gameplay-runtime-governance-closure.design.md` | `doc/game/gameplay/gameplay-runtime-governance-closure.project.md` |
