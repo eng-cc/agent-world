@@ -74,6 +74,7 @@
 - ROUND-019 进展: `producer_system_designer` 已在 `doc/game/gameplay/gameplay-top-level-design.prd.md` 冻结前期工业引导闭环，把“首个制成品 -> 工厂”设为新手前期主成就链，并在 `doc/game/gameplay/gameplay-top-level-design.project.md` 拆出 `runtime_engineer / viewer_engineer / qa_engineer` 后续执行项。
 - ROUND-020 进展: `runtime_engineer` 已补齐工厂 `blocked/resumed/completed` 状态与审计事件，`viewer_engineer` 已把工业运行态和玩家友好反馈接入主界面，`qa_engineer` 已新增 `doc/playability_test_result/topics/industrial-onboarding-required-tier-cards-2026-03-15.md` 并把 required-tier 手动回归链路挂入 `testing-manual.md`；`TASK-GAME-020` 收口完成。
 - ROUND-021 进展: `producer_system_designer` 已新增 `doc/game/gameplay/gameplay-post-onboarding-stage-2026-03-18.{prd,design,project}.md`，将 `FirstSessionLoop -> PostOnboarding -> MidLoop` 的阶段承接口径正式挂入 `game` 根 PRD、`gameplay-top-level-design` 主文档、索引与 devlog，用于承接 `#46` 的后续实现与验收。
+- ROUND-022 进展: `viewer_engineer` 已完成 `TASK-GAMEPLAY-POD-002/003` 的首个实现切片：Viewer 在 `4/4` 后切入 `PostOnboarding` 阶段卡，基于工业事件与控制反馈输出默认目标、阻塞解释、下一步建议与分支解锁；当前只剩 `qa_engineer` 的 `TASK-GAMEPLAY-POD-004` Web / playability 证据待补。
 - 说明: 本文档仅维护 game 设计执行状态；过程记录在 `doc/devlog/2026-03-05.md`、`doc/devlog/2026-03-06.md`、`doc/devlog/2026-03-07.md`、`doc/devlog/2026-03-15.md` 与 `doc/devlog/2026-03-18.md`。
 
 ## 阶段收口角色交接

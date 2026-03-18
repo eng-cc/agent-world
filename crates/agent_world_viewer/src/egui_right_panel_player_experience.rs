@@ -141,7 +141,7 @@ pub(super) struct PlayerFirstSessionSummarySnapshot {
     pub(super) event_gain: usize,
     pub(super) title: &'static str,
     pub(super) detail: String,
-    pub(super) next_tip: &'static str,
+    pub(super) next_tip: String,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -1197,23 +1197,27 @@ pub(super) fn build_player_first_session_summary_snapshot(
             duration_secs,
             tick_gain,
             event_gain,
-            title: "首局回顾：行动闭环已建立",
+            title: "首局回顾：已进入 PostOnboarding 阶段",
             detail: format!(
                 "用时约 {} 秒，世界推进 +{} tick，新增 {} 条反馈事件。",
                 duration_secs, tick_gain, event_gain
             ),
-            next_tip: "下一步建议：继续在 Command 视图发出 2~3 条策略指令并观察变化。",
+            next_tip:
+                "下一阶段目标：建立第一项持续工业能力。优先做出首个产出、恢复一次停机，或让第一条产线稳定运转。"
+                    .to_string(),
         },
         false => PlayerFirstSessionSummarySnapshot {
             duration_secs,
             tick_gain,
             event_gain,
-            title: "First Session Recap: action loop established",
+            title: "First Session Recap: PostOnboarding unlocked",
             detail: format!(
                 "About {}s, world advanced +{} ticks, and {} new feedback events.",
                 duration_secs, tick_gain, event_gain
             ),
-            next_tip: "Next: stay in Command view and issue 2-3 strategy commands.",
+            next_tip:
+                "Next stage goal: establish your first sustainable industrial capability by producing output, recovering one blocker, or stabilizing the first line."
+                    .to_string(),
         },
     })
 }
@@ -1256,13 +1260,13 @@ fn render_player_first_session_summary(
                     );
                     ui.strong(summary.title);
                     ui.small(summary.detail.as_str());
-                    ui.small(summary.next_tip);
+                    ui.small(summary.next_tip.as_str());
                     ui.horizontal_wrapped(|ui| {
                         close_clicked = ui
                             .button(if locale.is_zh() {
-                                "继续游戏"
+                                "进入下一阶段"
                             } else {
-                                "Continue"
+                                "Enter Next Stage"
                             })
                             .clicked();
                     });
@@ -1540,7 +1544,8 @@ pub(super) fn render_player_experience_layers(
         build_player_stuck_hint_with_diagnosis(guide_step, locale, idle, stuck_diagnosis.as_ref())
     });
     sync_player_first_session_summary_state(onboarding, state, guide_progress, now_secs);
-    let onboarding_visible = should_show_player_onboarding_card(onboarding, guide_step);
+    let onboarding_visible =
+        !guide_progress.explore_ready && should_show_player_onboarding_card(onboarding, guide_step);
     sync_player_guide_transition(&mut onboarding.guide_transition, guide_step, now_secs);
     render_player_cinematic_intro(context, state, guide_step, locale, now_secs);
     render_player_compact_hud(context, state, selection, guide_step, locale, now_secs);
@@ -1569,7 +1574,7 @@ pub(super) fn render_player_experience_layers(
         now_secs,
     );
     render_player_first_session_summary(context, onboarding, state, locale, now_secs);
-    if should_show_player_goal_hint(onboarding, guide_step, layout_state) {
+    if !guide_progress.explore_ready && should_show_player_goal_hint(onboarding, guide_step, layout_state) {
         render_player_goal_hint(
             context,
             onboarding,

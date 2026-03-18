@@ -1,15 +1,18 @@
 use super::egui_right_panel_player_experience::PlayerGuideStep;
 use super::egui_right_panel_player_guide::{
     build_player_mission_loop_snapshot, build_player_mission_remaining_hint,
+    build_player_post_onboarding_snapshot,
     player_control_stage_color, player_control_stage_label,
+    player_post_onboarding_status_label,
     player_control_stage_shows_recovery_actions, player_mission_hud_anchor_y,
     player_mission_hud_compact_mode, player_mission_hud_minimap_reserved_bottom,
     player_mission_hud_show_command_action, player_mission_hud_show_minimap,
-    PlayerGuideProgressSnapshot,
+    PlayerGuideProgressSnapshot, PlayerPostOnboardingStatus,
 };
 use super::egui_right_panel_player_micro_loop::{
     build_player_micro_loop_snapshot, format_due_timer_line,
 };
+use crate::web_test_api::WebTestApiControlFeedbackSnapshot;
 use agent_world::simulator::{WorldEvent, WorldEventKind};
 
 #[test]
@@ -241,4 +244,95 @@ fn player_micro_loop_snapshot_exposes_due_timer_lines() {
     let timer_line = format_due_timer_line(&snapshot.due_timers[0], crate::i18n::UiLocale::EnUs);
     assert!(timer_line.contains("Governance gov-main"));
     assert!(timer_line.contains("T-10"));
+}
+
+#[test]
+fn build_player_post_onboarding_snapshot_defaults_to_first_capability_goal() {
+    let state = super::sample_viewer_state(crate::ConnectionStatus::Connected, Vec::new());
+    let snapshot =
+        build_player_post_onboarding_snapshot(&state, None, crate::i18n::UiLocale::EnUs);
+
+    assert_eq!(snapshot.status, PlayerPostOnboardingStatus::Active);
+    assert_eq!(
+        snapshot.title,
+        "PostOnboarding: Establish Your First Sustainable Capability"
+    );
+    assert!(snapshot.objective.contains("first sustainable industrial result"));
+    assert_eq!(snapshot.progress_percent, 20);
+    assert!(snapshot.blocker_detail.is_none());
+}
+
+#[test]
+fn build_player_post_onboarding_snapshot_surfaces_factory_blockers() {
+    let state = super::sample_viewer_state(
+        crate::ConnectionStatus::Connected,
+        vec![super::sample_runtime_event(
+            7,
+            7,
+            "runtime.economy.factory_production_blocked",
+            "factory=factory.alpha recipe=recipe.motor requester=agent.alpha reason=material_shortage detail=material_shortage:iron_ingot",
+        )],
+    );
+    let snapshot =
+        build_player_post_onboarding_snapshot(&state, None, crate::i18n::UiLocale::EnUs);
+
+    assert_eq!(snapshot.status, PlayerPostOnboardingStatus::Blocked);
+    assert!(snapshot
+        .blocker_detail
+        .expect("blocked detail")
+        .contains("missing materials"));
+    assert!(snapshot.next_step.contains("replenish upstream materials"));
+}
+
+#[test]
+fn build_player_post_onboarding_snapshot_uses_feedback_blocker_when_no_runtime_blocker_exists() {
+    let state = super::sample_viewer_state(crate::ConnectionStatus::Connected, Vec::new());
+    let feedback = WebTestApiControlFeedbackSnapshot {
+        action: "step".to_string(),
+        stage: "completed_no_progress".to_string(),
+        reason: Some("line stalled".to_string()),
+        hint: Some("retry after restoring energy".to_string()),
+        effect: "no visible change".to_string(),
+        delta_logical_time: 0,
+        delta_event_seq: 0,
+        delta_trace_count: 0,
+    };
+    let snapshot = build_player_post_onboarding_snapshot(
+        &state,
+        Some(&feedback),
+        crate::i18n::UiLocale::EnUs,
+    );
+
+    assert_eq!(snapshot.status, PlayerPostOnboardingStatus::Blocked);
+    assert!(snapshot
+        .blocker_detail
+        .expect("blocked detail")
+        .contains("power or energy"));
+    assert!(snapshot.next_step.contains("restore energy first"));
+}
+
+#[test]
+fn build_player_post_onboarding_snapshot_unlocks_branches_after_first_output() {
+    let state = super::sample_viewer_state(
+        crate::ConnectionStatus::Connected,
+        vec![super::sample_runtime_event(
+            12,
+            12,
+            "runtime.economy.recipe_completed",
+            "factory=factory.alpha recipe=recipe.motor requester=agent.alpha batches=1 outputs=motor_mk1x2",
+        )],
+    );
+    let snapshot =
+        build_player_post_onboarding_snapshot(&state, None, crate::i18n::UiLocale::EnUs);
+
+    assert_eq!(snapshot.status, PlayerPostOnboardingStatus::BranchReady);
+    assert_eq!(
+        player_post_onboarding_status_label(snapshot.status, crate::i18n::UiLocale::EnUs),
+        "Branch Ready"
+    );
+    assert!(snapshot
+        .branch_hint
+        .expect("branch hint")
+        .contains("Production Expansion"));
+    assert_eq!(snapshot.progress_percent, 100);
 }
