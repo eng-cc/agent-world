@@ -1,6 +1,6 @@
 # world-runtime PRD
 
-审计轮次: 6
+审计轮次: 7
 
 ## 目标
 - 建立 world-runtime 模块设计主文档，统一需求边界、技术方案与验收标准。
@@ -40,6 +40,8 @@
   - SC-7: 面向 Viewer / QA 的运行时测试钩子必须显式 env-gated，并输出可回放的标准世界事件，避免测试态捷径泄漏到默认产品路径。
   - SC-8: OpenClaw `player_parity` / `headless_agent` 共用同一 runtime 权威动作校验，且 mode/schema/environment/fixture/replay 元数据可稳定写入 request、summary 与 benchmark 产物。
   - SC-9: WASM 构建与发布链路必须通过 pinned Docker canonical builder 收敛为单一 publish hash，保证 `builder_image_digest/source_hash/build_manifest_hash/wasm_hash` 可追溯，且执行层默认只认 canonical binary。
+  - SC-10: 生产运行入口必须默认启用 release security policy，关闭 builtin manifest fallback、本地 identity hash 签名、本地 finality signing 与 runtime source compile，保证“只认 canonical binary”不是测试态约定而是产品默认路径。
+  - SC-11: `TASK-WORLD_RUNTIME-043` 收口时必须归档真实跨宿主 Docker canonical evidence，至少覆盖 `linux-x86_64` 与一条 Docker-capable `darwin-arm64` 证据输入，不能以 Linux-only gate 宣称跨宿主 closure。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -91,6 +93,8 @@
   - AC-6: 运行态存储治理具备专题 PRD / project、预算口径、恢复验证与测试映射，默认链路不得出现无界磁盘增长。
   - AC-7: 运行态持久化专题必须明确 replay contract、canonical log 与 checkpoint 语义，并通过 retained-height replay 测试验证。
   - AC-8: WASM deterministic pipeline 专题必须明确 Docker builder image、canonicalizer version、single canonical publish hash、identity/release evidence、source compile 外移或 gated 与 runtime binary-only 消费边界，并具备独立任务与验证映射。
+  - AC-9: 生产 runtime / node 入口必须有可验证的 release policy 绑定证据，证明 fallback / 本地签名 / runtime source compile 默认关闭；若仅测试调用 `enable_production_release_policy()`，不得视为收口。
+  - AC-10: 发布候选的 wasm determinism evidence 必须显式区分“当前稳定 gate”和“最终跨宿主 gate”；当 GitHub-hosted runner 缺 Docker daemon 时，必须补外部 Docker-capable macOS evidence，不能把 `linux-x86_64` 单宿主结果等同于跨宿主 closure。
 - Non-Goals:
   - 不在本 PRD 中展开每个阶段的实现代码细节。
   - 不替代 p2p 网络拓扑或 site 发布策略设计。
@@ -120,6 +124,8 @@
   - 数据异常：receipt 校验失败时不得推进状态并触发安全告警。
   - 存储异常：GC/保存中断时必须保留 latest recoverable head，禁止“先删后写”导致不可恢复状态。
   - 构建漂移：若同一 Docker builder 在不同宿主上产出不同 canonical hash，或 receipt/identity 不一致，必须在进入 runtime 执行前被 gate 阻断。
+  - 生产入口未启用 release security policy：必须在发布验证中被标记为 `no-go`，因为此时 builtin manifest fallback / 本地签名 / runtime source compile 仍可能留在热路径。
+  - GitHub-hosted macOS runner 无 Docker daemon：允许将 CI 临时收敛为 Linux-only stable gate，但必须把跨宿主 canonical evidence 标记为未完成，并要求外部 Docker-capable macOS summary/import 继续补证。
 - Non-Functional Requirements:
   - NFR-WR-1: 同一输入回放结果一致率 100%。
   - NFR-WR-2: 关键治理事件审计链路完整率 100%。
@@ -129,6 +135,8 @@
   - NFR-WR-6: 默认开发/启动器 profile 必须定义明确磁盘预算、保留窗口与 metrics 输出，不得依赖手工清目录维持可用性。
   - NFR-WR-7: retention policy 保留范围内的 replay success rate 必须为 `100%`，且重建 `execution_state_root` 与原记录一致。
   - NFR-WR-8: 同一 commit、同一 Docker builder image digest 下的 canonical packaged wasm hash 可复现率必须为 `100%`，且 drift 失败输出必须定位到 `module_id/builder_image_digest/expected/actual`。
+  - NFR-WR-9: production runtime / node 默认策略必须保证 `allow_builtin_manifest_fallback=false`、`allow_identity_hash_signature=false`、`allow_local_finality_signing=false`、`allow_runtime_source_compile=false`；任何放宽都必须通过显式 dev/test 配置进入。
+  - NFR-WR-10: `TASK-WORLD_RUNTIME-043` 完成前，发布文档与 gate 摘要必须明确标示“Linux-only stable gate”与“cross-host evidence pending”的区别，避免误报 closure。
 - Security & Privacy: 强制最小权限、签名校验、审计留痕；禁止未授权模块绕过规则层直接修改世界状态。
 
 ## 5. Risks & Roadmap
@@ -139,6 +147,8 @@
 - Technical Risks:
   - 风险-1: 运行时复杂度提升导致验证成本增加。
   - 风险-2: ABI/治理策略变更引发兼容性断裂。
+  - 风险-3（2026-03-18，P0 未收口）: `TASK-WORLD_RUNTIME-043` 当前只有 GitHub-hosted `linux-x86_64` stable gate，缺少真实 Docker-capable `darwin-arm64` full-tier evidence；若不显式记录，会把“单宿主稳定”误读成“跨宿主完成”。
+  - 风险-4（2026-03-18，P0 未收口）: `ReleaseSecurityPolicy` 的生产禁 fallback / 禁本地签名 / 禁 runtime source compile 目前仍主要依赖显式调用 `enable_production_release_policy()`；若主运行入口未绑定，将导致 binary-only 保证停留在约定层而非默认产品路径。
 
 ## 6. Validation & Decision Record
 - Test Plan & Traceability:
@@ -153,7 +163,7 @@
 | PRD-WORLD_RUNTIME-019 | TASK-WORLD_RUNTIME-038 | `test_tier_required` | 工厂生产阻塞/恢复/完成状态回归、事件历史可解释性断言 | 前期工业引导、Viewer 工业反馈、QA playability 解释链 |
 | PRD-WORLD_RUNTIME-020 | TASK-WORLD_RUNTIME-041/042 | `test_tier_required` | Docker builder image、containerized canonical packaging、single canonical token 验证 | wasm publish build entry、容器环境收敛 |
 | PRD-WORLD_RUNTIME-021 | TASK-WORLD_RUNTIME-041/042/043 | `test_tier_required` | build receipt / identity / release evidence 绑定验证 | 工件治理、发布证据与社会层可验证性 |
-| PRD-WORLD_RUNTIME-022 | TASK-WORLD_RUNTIME-041/043/044 | `test_tier_required` + `test_tier_full` | multi-runner Docker compare、source compile 外移或 gated、runtime binary-only policy 验证 | build drift 阻断、执行前合法性与源码包发布边界 |
+| PRD-WORLD_RUNTIME-022 | TASK-WORLD_RUNTIME-041/043/044 | `test_tier_required` + `test_tier_full` | multi-runner Docker compare、source compile 外移或 gated、runtime binary-only policy 验证；production entry 必须补 release policy 绑定证据 | build drift 阻断、执行前合法性与源码包发布边界 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |

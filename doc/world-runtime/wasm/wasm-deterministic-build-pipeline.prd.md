@@ -3,7 +3,7 @@
 - 对应设计文档: `doc/world-runtime/wasm/wasm-deterministic-build-pipeline.design.md`
 - 对应项目管理文档: `doc/world-runtime/wasm/wasm-deterministic-build-pipeline.project.md`
 
-审计轮次: 2
+审计轮次: 3
 
 ## 1. Executive Summary
 - Problem Statement: 当前仓库已经有 host 侧 deterministic guard、canonical packaging、keyed hash manifest、identity manifest、DistFS 与 multi-runner 对账，但这些机制本质上仍是在“接受不同宿主平台会产出不同 wasm，然后用治理和对账去兜底”。如果目标是从源头解决 `darwin-arm64` / `linux-x86_64` 的 hash 漂移，仅靠 host 原生构建护栏不够，必须把发布级构建环境收敛到同一容器镜像。
@@ -14,6 +14,8 @@
   - SC-3: build receipt 必须能追溯 `builder_image_ref + builder_image_digest + container_platform + source_hash + build_manifest_hash + wasm_hash + canonicalizer_version`。
   - SC-4: runtime 与节点执行路径默认只接受 Docker canonical build 产生的 wasm binary 与其 identity/release evidence，不要求节点重新编译源码。
   - SC-5: `ModuleSourcePackage` 的生产发布路径不得继续依赖 runtime 进程在宿主机直接编译；必须迁移到同一 Docker builder 或显式 gated 为 dev/test only。
+  - SC-6: 发布候选要宣称“跨宿主 determinism 已收口”时，必须归档至少一条 `linux-x86_64` 与一条 Docker-capable `darwin-arm64` 的 canonical summary / release evidence；Linux-only gate 只能代表稳定基线，不能代表跨宿主 closure。
+  - SC-7: 生产 runtime / node 入口必须默认关闭 builtin manifest fallback、本地 identity hash 签名、本地 finality signing 与 runtime source compile，保证 binary-only policy 是生产默认行为而不是测试显式开关。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -49,6 +51,7 @@
 | publish hash manifest | `module_id linux-x86_64=<sha256>` | sync/check 仅更新和验证 canonical container hash | `built -> checked/synced -> published` | 发布级 manifest 只允许一个 canonical token；`darwin-arm64` 不再写入发布清单 | 本地默认只读；CI 不写 manifest |
 | identity / release evidence | `module_id`、`source_hash`、`build_manifest_hash`、`builder_image_digest`、`wasm_hash` | 生成 identity manifest、attestation、release manifest 引用 | `metadata-ready -> signed/verified` | identity 绑定容器镜像与源码输入，不绑定宿主平台 | 生产验证由 release/trust root 决定 |
 | source package policy | `source_bundle_hash`、`compile_mode=external-builder|dev-only` | 生产路径提交到外部 builder；runtime 直编仅限 dev/test | `submitted -> queued_for_build -> built/rejected` | 生产不得继续走 runtime host compile；dev/test 路径显式 gated | 仅受控发布节点可产出 publishable artifact |
+| production release policy | `allow_builtin_manifest_fallback`、`allow_identity_hash_signature`、`allow_local_finality_signing`、`allow_runtime_source_compile` | 生产入口启动时必须切到 fallback-off / local-signing-off / source-compile-off | `dev-default -> production-hardened` | 仅显式 dev/test 配置可放宽；不能依赖测试中手工调用作为生产证据 | `runtime_engineer` 负责入口绑定，`wasm_platform_engineer` / `qa_engineer` 负责 gate |
 - Acceptance Criteria:
   - AC-1 (PRD-WORLD_RUNTIME-020): 必须新增并固定一份 WASM builder Docker image，镜像引用必须以 digest pin；所有 publishable wasm 构建都通过 `docker run` 进入该镜像。
   - AC-2 (PRD-WORLD_RUNTIME-020): builder image 必须封装 Rust toolchain、`rust-src`、`wasm32-unknown-unknown` 目标、linker/canonicalizer 所需依赖，并把这些版本信息收敛到 `build_manifest_hash`。
@@ -58,6 +61,8 @@
   - AC-6 (PRD-WORLD_RUNTIME-022): multi-runner CI 必须比较“相同 Docker builder 在不同宿主上产出的 canonical hash”，而不是继续比较 host-native cargo 输出。
   - AC-7 (PRD-WORLD_RUNTIME-022): runtime 与节点执行路径默认只接受 canonical Docker build 产物；节点不通过重新编译源码参与执行合法性判断。
   - AC-8 (PRD-WORLD_RUNTIME-022): `compile_module_artifact_from_source` 的生产路径必须迁移到外部 Docker builder 或直接禁用；runtime 进程内 host 直编只允许在 dev/test 模式下显式开启。
+  - AC-9 (PRD-WORLD_RUNTIME-021/022): 若 GitHub-hosted CI 因 runner 能力不足只能保留 Linux-only stable gate，PRD / project / evidence 报告必须把跨宿主 evidence 标记为 pending，直到导入 Docker-capable macOS summary 为止。
+  - AC-10 (PRD-WORLD_RUNTIME-022): production 运行入口必须提供 release security policy 绑定证据，证明 fallback / 本地签名 / runtime source compile 默认关闭；仅在测试里调用 `enable_production_release_policy()` 不足以视为完成。
 - Non-Goals:
   - 不在本专题中要求所有节点运行 Docker 再执行模块；Docker 只解决发布级构建，不进入 runtime 执行热路径。
   - 不在本专题中实现语义等价 canonical hash；当前仍以容器内 canonical packaging 的 byte hash 为准。
@@ -97,12 +102,16 @@
   - macOS/Linux Docker 输出不一致：multi-runner compare 直接阻断；此时问题归因到 builder image / container path，而不是允许回写两个平台 token。
   - runtime 仍尝试生产态 host 编译源码包：必须被配置门禁拒绝，并输出“source compile requires external Docker builder”。
   - Docker Desktop / engine 版本不同：只要同一 builder image 输出 hash 一致即可通过；engine 版本作为诊断信息而不是发布 identity 的一部分。
+  - GitHub-hosted `macos-14` runner 无 Docker daemon：允许 CI 暂时退化为 Linux-only stable gate，但 release evidence 必须保留“cross-host pending”状态，并继续要求导入外部 Docker-capable macOS summary，不得静默降级目标态。
+  - production runtime / node 未启用 hardened release policy：必须在节点验收或 release gate 中直接阻断，因为此时 builtin manifest fallback / 本地签名 / runtime source compile 仍可能穿透 binary-only 契约。
 - Non-Functional Requirements:
   - NFR-WDBP-1: 同一源码、同一 builder image digest、同一 `linux-x86_64` container platform 的 canonical wasm hash 可复现率必须为 `100%`。
   - NFR-WDBP-2: Docker canonical build 失败日志必须在一次执行内定位到 `builder_image_digest`、`module_id`、`expected`、`actual` 或容器入口失败原因。
   - NFR-WDBP-3: 发布级 hash manifest 不再依赖宿主平台集合扩容；宿主平台差异不应影响发布 hash 空间。
   - NFR-WDBP-4: 本地默认路径在无显式授权时不得修改 tracked manifest / identity；CI 也不得写入。
   - NFR-WDBP-5: 生产态 `ModuleSourcePackage` 不得要求 runtime 节点本地具备 Docker 才能执行共识路径。
+  - NFR-WDBP-6: 发布证据报告若缺少 `darwin-arm64` Docker canonical summary，必须在机器可读输出中明确标示 `cross_host_evidence_pending=true` 或同等阻断状态，避免把 Linux-only 结果误判为 full closure。
+  - NFR-WDBP-7: 生产入口 hardened release policy 的默认值必须可由自动化验证，不允许依赖人工约定或测试专用辅助调用。
 - Security & Privacy:
   - 工件信任锚点升级为 `builder_image_digest + wasm_hash + artifact identity`，而不是开发机环境。
   - Docker socket 权限只应出现在受控 builder 节点或本地开发机，不应进入普通 runtime 节点的默认生产权限面。
@@ -117,6 +126,8 @@
   - 风险-1: Docker builder image 维护成本上升，需要明确镜像版本、digest 与升级节奏。
   - 风险-2: 现有 keyed manifest / runtime loader / source compile 路径存在兼容债务，迁移时需要过渡窗口。
   - 风险-3: macOS 开发机在 `linux-x86_64` 容器上构建会更慢，但这是为换取 canonical publish hash 的必要代价。
+  - 风险-4（2026-03-18，P0 未收口）: GitHub-hosted workflow 当前仅稳定覆盖 `linux-x86_64`，真实 Docker-capable `darwin-arm64` evidence 仍需外部补证；如果不持续显式追踪，WDBP-3 会被误认为已完成。
+  - 风险-5（2026-03-18，P0 未收口）: runtime 生产入口尚未形成“默认 hardened release policy”证据闭环；若只在测试中显式启用生产策略，会让 binary-only / no-fallback 契约停留在文档层。
 
 ## 6. Validation & Decision Record
 - Test Plan & Traceability:
@@ -125,7 +136,7 @@
 | --- | --- | --- | --- | --- |
 | PRD-WORLD_RUNTIME-020 | WDBP-0/WDBP-1/WDBP-2 | `test_tier_required` | Docker builder image + wrapper script + canonical container output 验证 | publishable wasm 构建入口、容器环境收敛 |
 | PRD-WORLD_RUNTIME-021 | WDBP-0/WDBP-2/WDBP-3 | `test_tier_required` | build receipt、single canonical token manifest、identity/release evidence 绑定验证 | 工件治理、发布证据与社会层可验证性 |
-| PRD-WORLD_RUNTIME-022 | WDBP-0/WDBP-3/WDBP-4 | `test_tier_required` + `test_tier_full` | multi-runner Docker compare、source package 外部 builder / dev-only gate、runtime binary-only consumption 验证 | build drift 阻断、源码包发布边界、执行前合法性 |
+| PRD-WORLD_RUNTIME-022 | WDBP-0/WDBP-3/WDBP-4 | `test_tier_required` + `test_tier_full` | multi-runner Docker compare、source package 外部 builder / dev-only gate、runtime binary-only consumption 验证、production release policy 绑定验证 | build drift 阻断、源码包发布边界、执行前合法性 |
 - Decision Log:
 
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
