@@ -140,6 +140,7 @@
 - [x] TASK-WORLD_SIMULATOR-137 (PRD-WORLD_SIMULATOR-037) [test_tier_required]: 为 `oasis7` 补齐 chain node 公私钥资产说明，明确 OpenClaw real-play 默认仍可能启动 `world_chain_runtime`，并把 node private key 的存储/共享/录屏/日志禁令写成 operator contract。
 - [x] TASK-WORLD_SIMULATOR-138 (PRD-WORLD_SIMULATOR-037) [test_tier_required]: 为 `oasis7-run.sh download` 增加 bundle-first 下载阶段日志、交互式进度条与非 TTY heartbeat，并补 bundle 下载可观测性回归脚本。
 - [x] TASK-WORLD_SIMULATOR-159 (PRD-WORLD_SIMULATOR-037) [test_tier_required]: 修复 `oasis7-run.sh download` 在 bundle 检测失败时仍可能把宿主 `/.` 误拷进缓存的问题；为 `detected_bundle` 增加显式失败保护、归档存在性校验与“无 extracted `run-game.sh`”负向回归。
+- [x] TASK-WORLD_SIMULATOR-160 (PRD-WORLD_SIMULATOR-039/040) [test_tier_required]: 重构 `oasis7` operator 口径，明确 `headless_agent` 是 OpenClaw 主执行/回归 lane，Viewer 仅用于 `player_parity` / `debug_viewer` / `software_safe` 的体验、观战与弱图形观察，并写清当前 OpenClaw real-play 下 `agent_chat` / `prompt_control` 的 observer-only 边界。
 - [x] TASK-WORLD_SIMULATOR-139 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 完成“Viewer Web Software-Safe Mode”PRD / Design / Project 建模，并回写模块主文档、索引与 devlog。
 - [x] TASK-WORLD_SIMULATOR-140 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 为 Web 静态入口增加 bootstrap shell 与 `render_mode=standard|auto|software_safe` 模式选路。
 - [x] TASK-WORLD_SIMULATOR-141 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 落地不依赖 WGPU/WebGL 的 `software_safe` MVP 前端，覆盖连接/选择/step/反馈最小闭环。
@@ -324,6 +325,7 @@
 - 最新完成: `TASK-WORLD_SIMULATOR-132`（为 `oasis7-run.sh doctor` 增加 `--json` 机读输出）。
 - 最新完成: `TASK-WORLD_SIMULATOR-137`（为 `oasis7` 补齐 chain node 公私钥资产说明与 operator contract）。
 - 最新完成: `TASK-WORLD_SIMULATOR-138`（为 `oasis7-run.sh download` 补 bundle-first 下载阶段日志、进度条与非 TTY heartbeat，并新增下载可观测性回归脚本）。
+- 最新完成: `TASK-WORLD_SIMULATOR-160`（重构 `oasis7` operator 口径，明确 `headless_agent` / `player_parity` / `debug_viewer` / `software_safe` 分层，并写清 OpenClaw 当前 observer-only UI 边界）。
 - 最新完成: `TASK-WORLD_SIMULATOR-136`（修复 `oasis7-run.sh play` wrapper 停止后 launcher 子树残留的问题，并补 shutdown 回归脚本）。
 - 最新完成: `TASK-WORLD_SIMULATOR-135`（收口 `oasis7` 的 bundle-first / repo-bootstrap operator 契约，并补 no-`cargo` / 缺 repo root 的可执行指引）。
 - 最新完成: `TASK-WORLD_SIMULATOR-134`（修复 `oasis7-run.sh` 默认下载目录的 `~` 展开，并补 bundle-first 路径回归脚本）。

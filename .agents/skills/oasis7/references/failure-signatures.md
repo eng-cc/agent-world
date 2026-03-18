@@ -80,6 +80,7 @@ Current boundary:
 
 - real NPC autoplay path is supported
 - direct player-side hot control is not yet supported
+- treat current software-safe prompt/chat surfaces as observer/debug-only for OpenClaw real-play, not as a supported player-authority lane
 
 ## `repo_bootstrap_unavailable`
 

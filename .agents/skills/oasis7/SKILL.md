@@ -33,6 +33,25 @@ Do not use this skill for:
 - Editing OpenClaw third-party source under `third_party/`
 - Viewer-only UI styling tasks with no OpenClaw runtime involvement
 
+## Execution Modes And UI Contract
+
+Read `oasis7` with one product rule in mind: OpenClaw real-play can run without a Viewer.
+The Viewer is for player-feel validation, observation, and debugging; it is not the authority execution path.
+
+Choose the lane that matches the job:
+
+- `headless_agent`: default for smoke, CI, servers, low-spec machines, and “does the agent still complete the loop” checks
+- `player_parity`: use when a producer/QA/operator wants to judge “does this feel like a player-facing run”
+- `debug_viewer`: treat the Viewer page as a read-mostly observer/debug layer for OpenClaw real-play
+- `software_safe`: use when the browser cannot sustain the standard Viewer (`SwiftShader`, software renderer, no WebGL, DOM-first observation, or similar weak graphics paths)
+
+Current boundary:
+
+- real OpenClaw autoplay is supported in `headless_agent` and `player_parity`
+- the Viewer helps humans watch state, inspect targets, and capture evidence, but the agent should keep running even if the Viewer is closed or unavailable
+- `software_safe` is a minimal observer/verification lane, not the primary player-experience lane
+- in current `runtime live + openclaw_local_http` real-play, do not treat `sendAgentChat` / `sendPromptControl` as an end-to-end supported player-authority path; the surface may exist, but today this lane should be read as observer-only for OpenClaw
+
 ## Core Workflow
 
 ### 1. Verify local prerequisites
@@ -145,7 +164,47 @@ Required real-play settings:
 - `openclaw_connect_timeout_ms=15000`
 - `openclaw_agent_profile=agent_world_p0_low_freq_npc`
 
-### 5.1 Chain Key Safety
+### 5.1 Choose execution lane and Viewer usage
+
+Default no-UI / regression lane:
+
+```bash
+.agents/skills/oasis7/scripts/oasis7-run.sh smoke \
+  --execution-mode headless_agent
+```
+
+Real play without depending on a browser:
+
+```bash
+bundle_dir="$(.agents/skills/oasis7/scripts/oasis7-run.sh download)"
+.agents/skills/oasis7/scripts/oasis7-run.sh play \
+  --bundle-dir "$bundle_dir" \
+  --execution-mode headless_agent \
+  --reuse-bridge \
+  --skip-agent-setup \
+  --no-open-browser
+```
+
+Player-feel / producer / QA run:
+
+```bash
+bundle_dir="$(.agents/skills/oasis7/scripts/oasis7-run.sh download)"
+.agents/skills/oasis7/scripts/oasis7-run.sh play \
+  --bundle-dir "$bundle_dir" \
+  --execution-mode player_parity \
+  --reuse-bridge \
+  --skip-agent-setup
+```
+
+Viewer guidance:
+
+- prefer `player_parity` when a human is judging feel, pacing, or player-facing clarity
+- prefer `headless_agent` when you only need stable agent execution, replay, or server-side regression
+- let the Viewer stay in `auto` by default; if the printed Viewer URL already has query params, append `&render_mode=software_safe`; otherwise append `?render_mode=software_safe`
+- force `render_mode=software_safe` when you need a DOM-friendly observer/debug lane, weak-graphics fallback, or the dedicated QA chat/prompt regression path
+- for QA-specific software-safe prompt/chat evidence, use `./scripts/viewer-software-safe-chat-regression.sh`
+
+### 5.2 Chain Key Safety
 
 `oasis7` 的 OpenClaw real-play 只是替换 agent provider；当前产品默认启动链路仍会拉起 `world_chain_runtime`，除非你显式传 `--chain-disable`。这意味着：
 
@@ -241,7 +300,9 @@ Current known reality:
 
 - Correctness is largely working for `P0-001`
 - Latency is still high in real parity, so treat the path as `experimental`
-- `agent_chat` and `prompt_control` are still unsupported in OpenClaw mode
+- `headless_agent` is the default execution/regression lane; `player_parity` is the player-feel lane
+- `software_safe` is the weak-graphics observer/debug fallback, not the main player-experience mode
+- `agent_chat` and `prompt_control` are still unsupported as end-to-end player authority in current OpenClaw mode
 
 ## Repo Anchors
 
