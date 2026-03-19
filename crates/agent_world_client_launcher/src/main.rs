@@ -136,7 +136,7 @@ fn main() -> eframe::Result<()> {
     };
 
     eframe::run_native(
-        "Agent World Client Launcher",
+        "oasis7 Client Launcher",
         native_options,
         Box::new(|cc| {
             configure_egui_fonts(&cc.egui_ctx);

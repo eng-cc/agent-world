@@ -345,6 +345,7 @@
   - AC-44: Viewer 活跃手册、原生窗口标题、Web 页面 `<title>` 与弱图形页标题必须统一使用 `oasis7 Viewer` 品牌；旧 `Agent World Viewer` 仅可作为脚本兼容匹配或历史证据上下文保留，不得继续作为当前公开标题。
   - AC-45: `doc/world-simulator/**` 仍可读历史专题的首行标题必须统一切换到 `oasis7` / `oasis7 Simulator` / `oasis7 Viewer` 品牌；旧 `Agent World*` 标题仅允许出现在正文历史上下文中，不改动内部实现兼容名与历史证据正文。
   - AC-46: `agent_world_client_launcher` Web 静态入口 `<title>` 必须使用 `oasis7 Launcher (Web)`；旧 `Agent World Launcher (Web)` 不得继续作为当前公开标题。
+  - AC-47: `agent_world_client_launcher` 原生窗口标题与应用内主标题必须统一使用 `oasis7 Client Launcher` / `oasis7 客户端启动器`；旧 `Agent World Client Launcher` 文案不得继续作为当前公开标题。
 - Non-Goals:
   - 不在本 PRD 中详细列出每个 UI 像素级规范。
   - 不替代 world-runtime/p2p 的底层协议设计。

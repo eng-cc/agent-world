@@ -20,7 +20,7 @@ impl eframe::App for ClientLauncherApp {
 
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             ui.horizontal_wrapped(|ui| {
-                ui.heading(self.tr("Agent World 客户端启动器", "Agent World Client Launcher"));
+                ui.heading(self.tr("oasis7 客户端启动器", "oasis7 Client Launcher"));
                 ui.separator();
                 ui.label(format!(
                     "{}: {}",
