@@ -235,14 +235,14 @@
 env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_server -- .data/world_viewer_data 127.0.0.1:5010
 env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010</code></pre>
           </article>
-          <article class="card">
-            <h3>Online Verification (LLM default)</h3>
-            <p>Run continuously to verify real-time events, panel updates, and control flow.</p>
-            <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011
+	          <article class="card">
+	            <h3>Online Verification (`standard_3d` / `software_safe`)</h3>
+	            <p>Run continuously to verify real-time events, panel updates, and control flow; use `standard_3d` on the normal hardware path and fall back to `software_safe` on weak-graphics environments.</p>
+	            <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011
 # Optional: fallback to scripted decisions
 env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --no-llm --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011
 env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023</code></pre>
-          </article>
+	          </article>
         </div>
         <article class="quickstart card">
           <h3>Three Steps for Local Technical Verification (First build: ~5-15 min)</h3>
@@ -251,12 +251,13 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023</code></p
             <li>Run `env -u RUSTC_WRAPPER cargo check` to validate setup.</li>
             <li>Replay to verify closure, then switch to live mode for runtime checks.</li>
           </ol>
-          <p class="doc-entry-note">
-            Full parameters, troubleshooting, and test matrix live in the
-            <a href="../doc/en/index.html">documentation hub (EN)</a>.
-          </p>
-          <p class="doc-entry-note">After the first build, repeated local runs are usually ready in minutes.</p>
-        </article>
+	          <p class="doc-entry-note">
+	            Full parameters, troubleshooting, and test matrix live in the
+	            <a href="../doc/en/index.html">documentation hub (EN)</a>.
+	          </p>
+	          <p class="doc-entry-note">The current technical preview exposes three public access surfaces: `standard_3d`, `software_safe`, and `pure_api`. LLM/script decisions and OpenClaw lanes describe execution style, not extra public modes.</p>
+	          <p class="doc-entry-note">After the first build, repeated local runs are usually ready in minutes.</p>
+	        </article>
       </section>
 
       <section id="download" class="section" data-reveal>
@@ -338,12 +339,12 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023</code></p
           </article>
         </div>
 
-        <div class="proof-strip">
-          <span class="proof-chip">Coverage: replay + live runtime + audit trace</span>
-          <span class="proof-chip">Runtime: Offline Replay + Live LLM/Script</span>
-          <span class="proof-chip">Artifacts: commands + events + screenshots</span>
-          <span class="proof-chip is-highlight">Current status: technical preview (not playable yet)</span>
-        </div>
+	        <div class="proof-strip">
+	          <span class="proof-chip">Coverage: replay + live runtime + audit trace</span>
+	          <span class="proof-chip">Access Surfaces: standard_3d / software_safe / pure_api</span>
+	          <span class="proof-chip">Artifacts: commands + events + screenshots</span>
+	          <span class="proof-chip is-highlight">Current status: technical preview (not playable yet)</span>
+	        </div>
 
         <div class="proof-timeline" data-proof-timeline>
           <article class="proof-timeline-item" data-proof-event="minimal" data-proof-visible="true">

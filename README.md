@@ -223,16 +223,19 @@ Web 端默认定位为 Viewer/间接控制客户端，通过 `world_viewer_live 
 
 ---
 
-## 四、运行模式
+## 四、当前预览访问面
 
 ### 摘要
 
-- 离线回放模式：用于调试、可视化与历史分析（生成数据 + viewer 回放）。
-- 在线脚本模式：持续运行世界，使用 bootstrap 初始化并实时观察状态。
-- 在线 LLM 模式：由 LLM 驱动决策，但不能绕过资源约束与运行时执行路径。
+- 当前技术预览对齐三种访问面：`standard_3d`、`software_safe`、`pure_api`。
+- `standard_3d`：面向标准 3D / headed Web 验证路径，用于高保真交互、截图语义与视觉验收；当前仍属于技术预览验证面，不代表已开放玩家版本。
+- `software_safe`：面向弱图形或无 GPU 硬件依赖环境的 Web 安全入口，用于最小玩法闭环与调试兜底，不代表标准 3D 画面通过。
+- `pure_api`：面向无 UI 的正式接口入口，用于 canonical 玩家语义、持续推进与 no-LLM parity 验证，不承诺视觉表现等价。
+- 离线回放、在线 live runtime、LLM / script 决策，以及 `player_parity / headless_agent / debug_viewer` 等字段，属于验证链路或 execution lane，不是额外的对外玩家访问模式。
 
 细则入口：
 
+- [`doc/core/player-access-mode-contract-2026-03-19.prd.md`](./doc/core/player-access-mode-contract-2026-03-19.prd.md)
 - [`doc/world-simulator/viewer/viewer-manual.md`](./doc/world-simulator/viewer/viewer-manual.md)
 - [`testing-manual.md`](./testing-manual.md)
 

@@ -235,8 +235,8 @@ env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_server -- .data
 env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010</code></pre>
           </article>
           <article class="card">
-            <h3>在线验证（LLM 默认）</h3>
-            <p>进入持续运行模式，验证实时事件流、观测面板与控制链路。</p>
+            <h3>在线验证（standard_3d / software_safe）</h3>
+            <p>进入持续运行模式，验证实时事件流、观测面板与控制链路；硬件路径正常时走 `standard_3d`，弱图形环境下可降到 `software_safe`。</p>
             <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011
 # 可选：回退脚本决策
 env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --no-llm --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011
@@ -254,6 +254,7 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023</code></p
             参数说明、排障路径与测试矩阵请前往
             <a href="doc/cn/index.html">文档中心（中文）</a>。
           </p>
+          <p class="doc-entry-note">当前技术预览公开的三种访问面为 `standard_3d`、`software_safe`、`pure_api`；其中 LLM / script 决策与 OpenClaw lane 只描述执行方式，不构成额外公开模式。</p>
           <p class="doc-entry-note">首次构建完成后，后续重复启动通常可收敛到分钟级。</p>
         </article>
       </section>
@@ -339,7 +340,7 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023</code></p
 
         <div class="proof-strip">
           <span class="proof-chip">覆盖：离线回放 + 在线运行 + 审计校验</span>
-          <span class="proof-chip">运行：Offline Replay + Live LLM/Script</span>
+          <span class="proof-chip">访问面：standard_3d / software_safe / pure_api</span>
           <span class="proof-chip">产物：命令 + 事件 + 截图</span>
           <span class="proof-chip is-highlight">当前状态：技术预览（尚不可玩）</span>
         </div>

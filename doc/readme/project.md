@@ -44,6 +44,7 @@
 - [x] TASK-README-010 (PRD-README-008/009) [test_tier_required]: 对齐根 README 项目状态段，使仓库首页与 site / release communication 口径一致。
 - [x] TASK-README-011 (PRD-README-003) [test_tier_required]: 同步 `doc/readme/README.md` 目录索引，补齐最新治理与发布沟通专题入口。
 - [x] TASK-README-012 (PRD-README-003) [test_tier_required]: 为 completed 状态的 `doc/readme/project.md` 补齐“最新完成”摘要，保持模块项目状态栏格式一致。
+- [x] TASK-README-013 (PRD-README-009) [test_tier_required]: 同步根 `README.md` 的公开入口口径，把旧“运行模式”改写为与 `standard_3d / software_safe / pure_api` 三模式一致的技术预览访问面说明。
 
 ## 依赖
 - doc/readme/prd.index.md
@@ -61,6 +62,7 @@
 - 下一任务: 无（当前模块主项目无未完成任务）
 - 最新完成: `TASK-README-011`（readme 模块 README 目录索引同步）。
 - 最新完成: `TASK-README-012`（readme 模块 completed 状态摘要补齐）。
+- 最新完成: `TASK-README-013`（根 README 已对齐三模式技术预览访问面口径，移除旧运行模式歧义）。
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - ROUND-002 进展: gap 子簇主从化已完成（gap12345 主入口，其它 gap 专题增量维护）。
 - 模块进展补充（2026-03-11）: 已新增 README 口径一致性巡检清单，明确顶层叙事、状态口径、术语边界、入口链接与触发条件五类高优检查项。
