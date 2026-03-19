@@ -229,6 +229,8 @@ env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-u
   - 发布前结论仍需补充手动长玩与卡片填写（按 `doc/playability_test_result/game-test.prd.md` 执行）。
 - 若改动影响前期工业引导（`首个制成品 / 停机恢复 / 首座工厂单元`），必须补跑 `doc/playability_test_result/topics/industrial-onboarding-required-tier-cards-2026-03-15.md` 中对应卡片，并把结论回写正式 playability 卡。
   - 对外样张链路需使用 strict 语义门禁，不得以 `off` / `soft` 结果作为发布判定证据。
+- 若需要为 `#46 PostOnboarding` 补无 UI / 非浏览器验证，执行 `./scripts/viewer-post-onboarding-headless-smoke.sh`。
+  - 该脚本只验证 live TCP 协议、快照推进、控制完成 ack 与 runtime event feed；不替代 headed Web/UI 截图复核。
 - 快速入口：
 ```bash
 ./scripts/run-producer-playtest.sh --no-llm
@@ -237,6 +239,7 @@ env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-u
 ./scripts/run-game-test.sh --bundle-dir output/release/game-launcher-local --no-llm
 ./scripts/run-game-test-ab.sh --bundle-dir output/release/game-launcher-local --no-llm
 ./scripts/viewer-post-onboarding-qa.sh --bundle-dir output/release/game-launcher-local --no-llm
+./scripts/viewer-post-onboarding-headless-smoke.sh --bundle-dir output/release/game-launcher-local --no-llm
 ./scripts/viewer-software-safe-chat-regression.sh --bundle-dir output/release/game-launcher-local
 ./scripts/viewer-release-qa-loop.sh
 ./scripts/viewer-release-full-coverage.sh --quick
