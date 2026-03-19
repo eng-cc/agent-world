@@ -27,6 +27,7 @@
 - `doc/readme/governance/readme-release-announcement-draft-2026-03-11.prd.md`
 - `doc/readme/governance/readme-release-announcement-template-2026-03-11.prd.md`
 - `doc/readme/governance/readme-root-status-alignment-2026-03-11.prd.md`
+- `doc/readme/governance/readme-moltbook-promotion-plan-2026-03-19.prd.md`
 
 ## 根目录收口
 - 模块根目录主入口保留：`README.md`、`prd.md`、`design.md`、`project.md`、`prd.index.md`。

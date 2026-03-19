@@ -2,7 +2,7 @@
 
 审计轮次: 6
 
-更新时间：2026-03-11
+更新时间：2026-03-19
 
 ## 入口
 - 模块 PRD：`doc/readme/prd.md`
@@ -30,6 +30,7 @@
 | `doc/readme/governance/readme-release-announcement-draft-2026-03-11.prd.md` | `doc/readme/governance/readme-release-announcement-draft-2026-03-11.design.md` | `doc/readme/governance/readme-release-announcement-draft-2026-03-11.project.md` |
 | `doc/readme/governance/readme-release-announcement-template-2026-03-11.prd.md` | `doc/readme/governance/readme-release-announcement-template-2026-03-11.design.md` | `doc/readme/governance/readme-release-announcement-template-2026-03-11.project.md` |
 | `doc/readme/governance/readme-root-status-alignment-2026-03-11.prd.md` | `doc/readme/governance/readme-root-status-alignment-2026-03-11.design.md` | `doc/readme/governance/readme-root-status-alignment-2026-03-11.project.md` |
+| `doc/readme/governance/readme-moltbook-promotion-plan-2026-03-19.prd.md` | `doc/readme/governance/readme-moltbook-promotion-plan-2026-03-19.design.md` | `doc/readme/governance/readme-moltbook-promotion-plan-2026-03-19.project.md` |
 | `doc/readme/governance/readme-world-rules-consolidation.prd.md` | `doc/readme/governance/readme-world-rules-consolidation.design.md` | `doc/readme/governance/readme-world-rules-consolidation.project.md` |
 | `doc/readme/production/readme-llm-p1p2-production-closure.prd.md` | `doc/readme/production/readme-llm-p1p2-production-closure.design.md` | `doc/readme/production/readme-llm-p1p2-production-closure.project.md` |
 | `doc/readme/production/readme-p0-p1-closure.prd.md` | `doc/readme/production/readme-p0-p1-closure.design.md` | `doc/readme/production/readme-p0-p1-closure.project.md` |

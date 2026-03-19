@@ -55,24 +55,29 @@
 - PRD-README-007: As a `liveops_community`, I want a reusable announcement/changelog template, so that future external drafts follow the same sections, source links, and review states.
 - PRD-README-008: As a 仓库访客, I want the root README to reflect the current preview posture, so that I do not mistake the repo for a live release landing page.
 - PRD-README-009: As a `producer_system_designer`, I want repo-home copy aligned with site and communication docs, so that public promises stay consistent.
+- PRD-README-010: As a `liveops_community`, I want platform-specific promotion plans anchored to third-party channel mechanics and internal claim envelopes, so that outbound seeding can fit channel culture without over-promising.
 - Critical User Flows:
   1. Flow-RM-001: `阅读 README -> 跳转模块入口 -> 快速定位目标能力`
   2. Flow-RM-002: `检测口径变更 -> 更新入口文档 -> 校验链接 -> 发布同步`
   3. Flow-RM-003: `发布前执行巡检 -> 汇总冲突 -> 修复后复核`
+  4. Flow-RM-004: `读取第三方平台当前机制 -> 绑定内部 claim envelope -> 生成平台适配推广方案 -> 回流 owner 审核`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
 | 顶层入口导航 | 模块名称、入口链接、摘要 | 点击跳转模块文档 | `draft -> published -> refreshed` | 入口按模块矩阵排序 | 所有人可读，维护者可更新 |
 | 口径一致性同步 | 术语、架构描述、更新时间 | 检测冲突并回写更新 | `detected -> synced -> verified` | 核心入口优先同步 | 文档 owner 审核生效 |
 | 链接可用性巡检 | 链接地址、状态、修复建议 | 自动检查并输出报告 | `checked -> broken/fixed` | 断链优先修复 | 维护者可处理 |
+| 平台化推广方案 | `platform`、`audience`、`content_pillars`、`claim_boundary`、`cta`、`signal_tags` | 生成渠道适配的推广/运营方案 | `draft -> reviewed -> approved` | 先写平台机制，再写口径边界，再写动作节奏 | `liveops_community` 起草，`producer_system_designer` 审核 |
 - Acceptance Criteria:
   - AC-1: readme PRD 明确入口文档职责边界。
   - AC-2: readme project 文档维护同步任务与状态。
   - AC-3: README 与 `world-rule.md`、`testing-manual.md`、模块 PRD 的链接链路可用。
   - AC-4: 口径更新有明确触发条件与同步时限。
+  - AC-5: 渠道化推广方案必须显式绑定内部公开口径边界，不得把 generic marketing 文案直接外推到第三方平台。
 - Non-Goals:
   - 不在 readme PRD 中替代各模块详细设计。
   - 不在 readme PRD 中定义测试用例细节。
+  - 不在 readme PRD 中直接执行第三方平台广告采买或投放。
 
 ## 3. AI System Requirements (If Applicable)
 - Tool Requirements: 文档链接检查、术语一致性校验、入口巡检脚本。
@@ -122,6 +127,7 @@
 | PRD-README-007 | TASK-README-009 | `test_tier_required` | 公告模板、source links 与 review status 抽样复核 | 公告底稿模板复用性 |
 | PRD-README-008 | TASK-README-010 | `test_tier_required` | 根 README 状态段含技术预览 / 尚不可玩 / 公告准备态 | 仓库首页状态理解 |
 | PRD-README-009 | TASK-README-010 | `test_tier_required` | README 与 site / brief 口径一致 | 公开口径一致性 |
+| PRD-README-010 | TASK-README-014 | `test_tier_required` | Moltbook 推广方案含平台现状、内容支柱、节奏、禁宣称项与回流机制 | 第三方渠道推广口径一致性 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |
@@ -133,3 +139,4 @@
 | DEC-RM-006 | 在简报之后先落 announcement/changelog draft，再决定是否正式发布 | 直接将简报对外公开 | 底稿更接近外部文风，同时仍保留 draft 审核缓冲层。 |
 | DEC-RM-007 | 将 announcement/changelog 底稿继续模板化 | 每个候选手写公告底稿 | 模板化能降低重写成本，并稳定审核结构。 |
 | DEC-RM-008 | 根 README 只对齐状态段，不重写整份首页 | 为修正口径重做全部 README 文案 | 最小变更即可消除仓库首页与 site 的状态分叉。 |
+| DEC-RM-009 | 用平台专题文档承接第三方渠道推广方案 | 直接复用一份通用社媒文案覆盖全部平台 | 第三方平台机制和社区文化差异明显，必须保留渠道化约束。 |

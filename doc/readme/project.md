@@ -45,6 +45,16 @@
 - [x] TASK-README-011 (PRD-README-003) [test_tier_required]: 同步 `doc/readme/README.md` 目录索引，补齐最新治理与发布沟通专题入口。
 - [x] TASK-README-012 (PRD-README-003) [test_tier_required]: 为 completed 状态的 `doc/readme/project.md` 补齐“最新完成”摘要，保持模块项目状态栏格式一致。
 - [x] TASK-README-013 (PRD-README-009) [test_tier_required]: 同步根 `README.md` 的公开入口口径，把旧“运行模式”改写为与 `standard_3d / software_safe / pure_api` 三模式一致的技术预览访问面说明。
+- [x] TASK-README-014 (PRD-README-010) [test_tier_required]: 形成 `liveops_community` 视角的 Moltbook 推广方案，绑定平台当前机制、内容节奏、禁宣称项与 owner 审核链。
+  - 产物文件:
+    - `doc/readme/governance/readme-moltbook-promotion-plan-2026-03-19.prd.md`
+    - `doc/readme/governance/readme-moltbook-promotion-plan-2026-03-19.design.md`
+    - `doc/readme/governance/readme-moltbook-promotion-plan-2026-03-19.project.md`
+    - `doc/readme/governance/readme-moltbook-promotion-plan-2026-03-19.md`
+    - `doc/readme/governance/liveops-to-producer-task-readme-014-moltbook-promotion-plan-2026-03-19.md`
+  - 验收命令 (`test_tier_required`):
+    - `rg -n "Moltbook|内容支柱|禁宣称项|30 天执行节奏|反馈回流" doc/readme/governance/readme-moltbook-promotion-plan-2026-03-19.md doc/readme/governance/readme-moltbook-promotion-plan-2026-03-19.prd.md`
+    - `./scripts/doc-governance-check.sh`
 
 ## 依赖
 - doc/readme/prd.index.md
@@ -57,12 +67,13 @@
 - `.agents/skills/prd/check.md`
 
 ## 状态
-- 更新日期: 2026-03-11
+- 更新日期: 2026-03-19
 - 当前状态: completed
 - 下一任务: 无（当前模块主项目无未完成任务）
 - 最新完成: `TASK-README-011`（readme 模块 README 目录索引同步）。
 - 最新完成: `TASK-README-012`（readme 模块 completed 状态摘要补齐）。
 - 最新完成: `TASK-README-013`（根 README 已对齐三模式技术预览访问面口径，移除旧运行模式歧义）。
+- 最新完成: `TASK-README-014`（已新增 Moltbook 平台化推广方案，固化渠道节奏、禁宣称项与 producer 审核链）。
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - ROUND-002 进展: gap 子簇主从化已完成（gap12345 主入口，其它 gap 专题增量维护）。
 - 模块进展补充（2026-03-11）: 已新增 README 口径一致性巡检清单，明确顶层叙事、状态口径、术语边界、入口链接与触发条件五类高优检查项。
@@ -74,4 +85,5 @@
 - 模块进展补充（2026-03-11 / announcement-template）: 已新增公告 / changelog 模板，后续候选可直接复用相同结构与审核状态字段。
 - 模块进展补充（2026-03-11 / root-status）: 已对齐根 README 项目状态段，统一为“技术预览（尚不可玩）+ 正式公告准备态”口径。
 - 模块进展补充（2026-03-11 / module-readme-index）: 已同步模块目录索引，补齐 release communication、announcement 与 root-status 专题入口。
+- 模块进展补充（2026-03-19 / moltbook-promotion）: 已新增第三方渠道专题，面向 Moltbook 当前 agent-native / verified / submolt / early-access 机制输出 `liveops_community` 视角的推广方案与审核链。
 - 说明: 本文档仅维护 readme 模块设计执行状态；过程记录在 `doc/devlog/2026-03-03.md` 与 `doc/devlog/2026-03-11.md`。
