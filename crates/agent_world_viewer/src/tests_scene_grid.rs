@@ -163,7 +163,7 @@ fn sample_snapshot() -> WorldSnapshot {
         pending_actions: Vec::new(),
         journal_len: 0,
         runtime_snapshot: None,
-            player_gameplay: None,
+        player_gameplay: None,
     }
 }
 

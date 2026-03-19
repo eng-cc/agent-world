@@ -60,7 +60,7 @@ fn reject_reason_facility_maps_to_plant_target() {
         pending_actions: Vec::new(),
         journal_len: 0,
         runtime_snapshot: None,
-            player_gameplay: None,
+        player_gameplay: None,
     };
 
     let event = WorldEvent {
@@ -118,7 +118,7 @@ fn selection_related_ticks_match_agent_events() {
         pending_actions: Vec::new(),
         journal_len: 0,
         runtime_snapshot: None,
-            player_gameplay: None,
+        player_gameplay: None,
     };
 
     let events = vec![

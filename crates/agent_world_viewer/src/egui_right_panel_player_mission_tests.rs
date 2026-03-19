@@ -1,13 +1,11 @@
 use super::egui_right_panel_player_experience::PlayerGuideStep;
 use super::egui_right_panel_player_guide::{
     build_player_mission_loop_snapshot, build_player_mission_remaining_hint,
-    build_player_post_onboarding_snapshot,
-    player_control_stage_color, player_control_stage_label,
-    player_post_onboarding_status_label,
+    build_player_post_onboarding_snapshot, player_control_stage_color, player_control_stage_label,
     player_control_stage_shows_recovery_actions, player_mission_hud_anchor_y,
     player_mission_hud_compact_mode, player_mission_hud_minimap_reserved_bottom,
     player_mission_hud_show_command_action, player_mission_hud_show_minimap,
-    PlayerGuideProgressSnapshot, PlayerPostOnboardingStatus,
+    player_post_onboarding_status_label, PlayerGuideProgressSnapshot, PlayerPostOnboardingStatus,
 };
 use super::egui_right_panel_player_micro_loop::{
     build_player_micro_loop_snapshot, format_due_timer_line,
@@ -22,8 +20,7 @@ fn sample_post_onboarding_viewer_state(gameplay: PlayerGameplaySnapshot) -> crat
     let mut state = super::sample_viewer_state(crate::ConnectionStatus::Connected, Vec::new());
     let snapshot = agent_world::simulator::WorldSnapshot {
         version: agent_world::simulator::SNAPSHOT_VERSION,
-        chunk_generation_schema_version:
-            agent_world::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
+        chunk_generation_schema_version: agent_world::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
         time: 0,
         config: agent_world::simulator::WorldConfig::default(),
         model: agent_world::simulator::WorldModel::default(),
@@ -273,15 +270,16 @@ fn player_micro_loop_snapshot_exposes_due_timer_lines() {
 #[test]
 fn build_player_post_onboarding_snapshot_defaults_to_first_capability_goal() {
     let state = super::sample_viewer_state(crate::ConnectionStatus::Connected, Vec::new());
-    let snapshot =
-        build_player_post_onboarding_snapshot(&state, None, crate::i18n::UiLocale::EnUs);
+    let snapshot = build_player_post_onboarding_snapshot(&state, None, crate::i18n::UiLocale::EnUs);
 
     assert_eq!(snapshot.status, PlayerPostOnboardingStatus::Active);
     assert_eq!(
         snapshot.title,
         "PostOnboarding: Establish Your First Sustainable Capability"
     );
-    assert!(snapshot.objective.contains("first sustainable industrial result"));
+    assert!(snapshot
+        .objective
+        .contains("first sustainable industrial result"));
     assert_eq!(snapshot.progress_percent, 20);
     assert!(snapshot.blocker_detail.is_none());
 }
@@ -297,8 +295,7 @@ fn build_player_post_onboarding_snapshot_surfaces_factory_blockers() {
             "factory=factory.alpha recipe=recipe.motor requester=agent.alpha reason=material_shortage detail=material_shortage:iron_ingot",
         )],
     );
-    let snapshot =
-        build_player_post_onboarding_snapshot(&state, None, crate::i18n::UiLocale::EnUs);
+    let snapshot = build_player_post_onboarding_snapshot(&state, None, crate::i18n::UiLocale::EnUs);
 
     assert_eq!(snapshot.status, PlayerPostOnboardingStatus::Blocked);
     assert!(snapshot
@@ -321,11 +318,8 @@ fn build_player_post_onboarding_snapshot_uses_feedback_blocker_when_no_runtime_b
         delta_event_seq: 0,
         delta_trace_count: 0,
     };
-    let snapshot = build_player_post_onboarding_snapshot(
-        &state,
-        Some(&feedback),
-        crate::i18n::UiLocale::EnUs,
-    );
+    let snapshot =
+        build_player_post_onboarding_snapshot(&state, Some(&feedback), crate::i18n::UiLocale::EnUs);
 
     assert_eq!(snapshot.status, PlayerPostOnboardingStatus::Blocked);
     assert!(snapshot
@@ -346,8 +340,7 @@ fn build_player_post_onboarding_snapshot_unlocks_branches_after_first_output() {
             "factory=factory.alpha recipe=recipe.motor requester=agent.alpha batches=1 outputs=motor_mk1x2",
         )],
     );
-    let snapshot =
-        build_player_post_onboarding_snapshot(&state, None, crate::i18n::UiLocale::EnUs);
+    let snapshot = build_player_post_onboarding_snapshot(&state, None, crate::i18n::UiLocale::EnUs);
 
     assert_eq!(snapshot.status, PlayerPostOnboardingStatus::BranchReady);
     assert_eq!(
@@ -379,8 +372,7 @@ fn build_player_post_onboarding_snapshot_prefers_canonical_player_gameplay_snaps
         available_actions: Vec::new(),
         recent_feedback: None,
     });
-    let snapshot =
-        build_player_post_onboarding_snapshot(&state, None, crate::i18n::UiLocale::EnUs);
+    let snapshot = build_player_post_onboarding_snapshot(&state, None, crate::i18n::UiLocale::EnUs);
 
     assert_eq!(snapshot.status, PlayerPostOnboardingStatus::BranchReady);
     assert_eq!(snapshot.title, "Next Stage: Choose Your Mid-loop Path");
@@ -407,8 +399,7 @@ fn build_player_post_onboarding_snapshot_uses_canonical_blocker_fields() {
         available_actions: Vec::new(),
         recent_feedback: None,
     });
-    let snapshot =
-        build_player_post_onboarding_snapshot(&state, None, crate::i18n::UiLocale::EnUs);
+    let snapshot = build_player_post_onboarding_snapshot(&state, None, crate::i18n::UiLocale::EnUs);
 
     assert_eq!(snapshot.status, PlayerPostOnboardingStatus::Blocked);
     assert!(snapshot

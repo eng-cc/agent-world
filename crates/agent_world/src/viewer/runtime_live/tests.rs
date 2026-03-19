@@ -81,6 +81,24 @@ fn signed_agent_chat_request(
     request
 }
 
+fn signed_gameplay_action_request(
+    mut request: crate::viewer::GameplayActionRequest,
+    nonce: u64,
+    public_key_hex: &str,
+    private_key_hex: &str,
+) -> crate::viewer::GameplayActionRequest {
+    request.public_key = Some(public_key_hex.to_string());
+    let proof = crate::viewer::sign_gameplay_action_auth_proof(
+        &request,
+        nonce,
+        public_key_hex,
+        private_key_hex,
+    )
+    .expect("sign gameplay action auth");
+    request.auth = Some(proof);
+    request
+}
+
 #[test]
 fn openclaw_settings_from_env_defaults_to_none() {
     let _guard = runtime_openclaw_env_lock().lock().expect("env lock");
@@ -561,45 +579,63 @@ fn runtime_openclaw_compat_snapshot_exposes_agent_execution_debug_contexts() {
 
 #[test]
 fn compat_snapshot_exposes_player_gameplay_snapshot() {
-    let server = ViewerRuntimeLiveServer::new(ViewerRuntimeLiveServerConfig::new(
-        WorldScenario::Minimal,
-    ))
-    .expect("runtime server");
+    let server =
+        ViewerRuntimeLiveServer::new(ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal))
+            .expect("runtime server");
 
     let snapshot = server.compat_snapshot();
     let gameplay = snapshot
         .player_gameplay
         .as_ref()
         .expect("player gameplay snapshot");
-    assert_eq!(gameplay.stage_id, crate::simulator::PlayerGameplayStageId::FirstSessionLoop);
-    assert_eq!(gameplay.goal_id, "first_session_loop.create_first_world_feedback");
-    assert_eq!(gameplay.available_actions[0].protocol_action, "request_snapshot");
+    assert_eq!(
+        gameplay.stage_id,
+        crate::simulator::PlayerGameplayStageId::FirstSessionLoop
+    );
+    assert_eq!(
+        gameplay.goal_id,
+        "first_session_loop.create_first_world_feedback"
+    );
+    assert_eq!(
+        gameplay.available_actions[0].protocol_action,
+        "request_snapshot"
+    );
+    if super::player_gameplay::supports_runtime_gameplay_actions() {
+        assert!(gameplay
+            .available_actions
+            .iter()
+            .any(|action| action.action_id == "build_factory_smelter_mk1"));
+    }
+    assert!(!gameplay
+        .available_actions
+        .iter()
+        .any(|action| action.action_id == "chat_first_agent"));
     assert!(gameplay.recent_feedback.is_none());
 }
 
 #[test]
 fn compat_snapshot_promotes_to_post_onboarding_after_control_feedback() {
-    let mut server = ViewerRuntimeLiveServer::new(ViewerRuntimeLiveServerConfig::new(
-        WorldScenario::Minimal,
-    ))
-    .expect("runtime server");
-    server.latest_player_gameplay_feedback = Some(
-        crate::simulator::PlayerGameplayRecentFeedback {
-            action: "step".to_string(),
-            stage: "completed_advanced".to_string(),
-            effect: "world advanced: logicalTime +1, eventSeq +1".to_string(),
-            reason: None,
-            hint: None,
-            delta_logical_time: 1,
-            delta_event_seq: 1,
-        },
-    );
+    let mut server =
+        ViewerRuntimeLiveServer::new(ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal))
+            .expect("runtime server");
+    server.latest_player_gameplay_feedback = Some(crate::simulator::PlayerGameplayRecentFeedback {
+        action: "step".to_string(),
+        stage: "completed_advanced".to_string(),
+        effect: "world advanced: logicalTime +1, eventSeq +1".to_string(),
+        reason: None,
+        hint: None,
+        delta_logical_time: 1,
+        delta_event_seq: 1,
+    });
     let snapshot = server.compat_snapshot();
     let gameplay = snapshot
         .player_gameplay
         .as_ref()
         .expect("player gameplay snapshot");
-    assert_eq!(gameplay.stage_id, crate::simulator::PlayerGameplayStageId::PostOnboarding);
+    assert_eq!(
+        gameplay.stage_id,
+        crate::simulator::PlayerGameplayStageId::PostOnboarding
+    );
     assert!(gameplay.goal_id.starts_with("post_onboarding."));
     assert_eq!(
         gameplay
@@ -609,6 +645,99 @@ fn compat_snapshot_promotes_to_post_onboarding_after_control_feedback() {
             .stage,
         "completed_advanced"
     );
+}
+
+#[test]
+fn runtime_gameplay_action_requires_auth() {
+    let mut server =
+        ViewerRuntimeLiveServer::new(ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal))
+            .expect("runtime server");
+    let agent_id = server
+        .world
+        .state()
+        .agents
+        .keys()
+        .next()
+        .cloned()
+        .expect("seed agent");
+    let err = server
+        .handle_gameplay_action(crate::viewer::GameplayActionRequest {
+            action_id: "build_factory_smelter_mk1".to_string(),
+            target_agent_id: agent_id,
+            player_id: "player-a".to_string(),
+            public_key: None,
+            auth: None,
+        })
+        .expect_err("missing auth should fail");
+    assert_eq!(err.code, "auth_proof_required");
+}
+
+#[test]
+fn runtime_gameplay_action_can_reach_first_capability_milestone_without_ui() {
+    let mut server =
+        ViewerRuntimeLiveServer::new(ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal))
+            .expect("runtime server");
+    let agent_id = server
+        .world
+        .state()
+        .agents
+        .keys()
+        .next()
+        .cloned()
+        .expect("seed agent");
+    let (public_key, private_key) = test_signer(31);
+
+    let build_request = signed_gameplay_action_request(
+        crate::viewer::GameplayActionRequest {
+            action_id: "build_factory_smelter_mk1".to_string(),
+            target_agent_id: agent_id.clone(),
+            player_id: "player-a".to_string(),
+            public_key: None,
+            auth: None,
+        },
+        31,
+        public_key.as_str(),
+        private_key.as_str(),
+    );
+    let build_ack = server
+        .handle_gameplay_action(build_request)
+        .expect("queue smelter build");
+    assert_eq!(build_ack.action_id, "build_factory_smelter_mk1");
+    for _ in 0..2 {
+        server.world.step().expect("settle smelter build");
+    }
+    assert!(server.world.has_factory("factory.smelter.mk1"));
+
+    let recipe_request = signed_gameplay_action_request(
+        crate::viewer::GameplayActionRequest {
+            action_id: "schedule_recipe_smelter_iron_ingot".to_string(),
+            target_agent_id: agent_id,
+            player_id: "player-a".to_string(),
+            public_key: None,
+            auth: None,
+        },
+        32,
+        public_key.as_str(),
+        private_key.as_str(),
+    );
+    let recipe_ack = server
+        .handle_gameplay_action(recipe_request)
+        .expect("queue iron ingot recipe");
+    assert_eq!(recipe_ack.action_id, "schedule_recipe_smelter_iron_ingot");
+    for _ in 0..4 {
+        server.world.step().expect("settle recipe");
+        if server.world.material_balance("iron_ingot") > 0 {
+            break;
+        }
+    }
+
+    assert!(server.world.material_balance("iron_ingot") > 0);
+    let snapshot = server.compat_snapshot();
+    let gameplay = snapshot
+        .player_gameplay
+        .expect("player gameplay after industrial progress");
+    assert_eq!(gameplay.goal_id, "post_onboarding.choose_midloop_path");
+    assert_eq!(gameplay.progress_percent, 100);
 }
 
 #[test]

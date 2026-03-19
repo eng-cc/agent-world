@@ -5,6 +5,8 @@ use crate::simulator::{
 };
 use crate::viewer::{ControlCompletionAck, ControlCompletionStatus, ViewerControl};
 
+use super::player_gameplay::extend_available_actions;
+
 pub(super) fn player_gameplay_feedback_from_control_ack(
     mode: &ViewerControl,
     ack: &ControlCompletionAck,
@@ -21,7 +23,10 @@ pub(super) fn player_gameplay_feedback_from_control_ack(
         ControlCompletionStatus::TimeoutNoProgress => (
             "completed_no_progress".to_string(),
             Some("latest live control did not create forward progress".to_string()),
-            Some("inspect blockers or restore energy/material flow before stepping again".to_string()),
+            Some(
+                "inspect blockers or restore energy/material flow before stepping again"
+                    .to_string(),
+            ),
         ),
     };
     let effect = match ack.status {
@@ -48,9 +53,12 @@ pub(super) fn player_gameplay_feedback_from_control_ack(
 pub(super) fn build_player_gameplay_snapshot(
     state: &WorldState,
     recent_feedback: Option<&PlayerGameplayRecentFeedback>,
+    supports_agent_chat: bool,
 ) -> PlayerGameplaySnapshot {
     let first_agent_id = state.agents.keys().next().cloned();
-    let mut available_actions = base_available_actions(first_agent_id.as_deref());
+    let mut available_actions =
+        base_available_actions(first_agent_id.as_deref(), supports_agent_chat);
+    extend_available_actions(state, first_agent_id.as_deref(), &mut available_actions);
     let latest_blocker = state.factories.iter().find_map(|(factory_id, factory)| {
         let kind = factory.production.current_blocker_kind.as_ref()?;
         let detail = factory
@@ -64,17 +72,15 @@ pub(super) fn build_player_gameplay_snapshot(
         matches!(feedback.stage.as_str(), "blocked" | "completed_no_progress").then(|| {
             (
                 "no_progress".to_string(),
-                feedback
-                    .reason
-                    .clone()
-                    .unwrap_or_else(|| "latest command did not create forward progress".to_string()),
+                feedback.reason.clone().unwrap_or_else(|| {
+                    "latest command did not create forward progress".to_string()
+                }),
             )
         })
     });
 
-    let has_first_session_feedback = recent_feedback.is_some_and(|feedback| {
-        feedback.delta_logical_time > 0 || feedback.delta_event_seq > 0
-    });
+    let has_first_session_feedback = recent_feedback
+        .is_some_and(|feedback| feedback.delta_logical_time > 0 || feedback.delta_event_seq > 0);
     let has_material_flow = state.industry_progress.completed_material_transits > 0;
     let has_factory_ready = !state.factories.is_empty();
     let has_recipe_running = state
@@ -90,7 +96,8 @@ pub(super) fn build_player_gameplay_snapshot(
         && !has_first_output
         && latest_blocker.is_none()
     {
-        available_actions[0].label = "Advance 1 step to create the first world feedback".to_string();
+        available_actions[0].label =
+            "Advance 1 step to create the first world feedback".to_string();
         return PlayerGameplaySnapshot {
             stage_id: PlayerGameplayStageId::FirstSessionLoop,
             stage_status: PlayerGameplayStageStatus::Active,
@@ -138,8 +145,12 @@ pub(super) fn build_player_gameplay_snapshot(
             goal_id: "post_onboarding.recover_capability".to_string(),
             goal_kind: PlayerGameplayGoalKind::RecoverCapability,
             goal_title: "Recover sustainable capability".to_string(),
-            objective: "Recover the blocked line or capability chain instead of repeating one-off actions.".to_string(),
-            progress_detail: "Stage progress: you are in the management phase, but the primary line is blocked.".to_string(),
+            objective:
+                "Recover the blocked line or capability chain instead of repeating one-off actions."
+                    .to_string(),
+            progress_detail:
+                "Stage progress: you are in the management phase, but the primary line is blocked."
+                    .to_string(),
             progress_percent: 68,
             blocker_kind: Some(blocker_kind.clone()),
             blocker_detail: Some(blocker_detail.clone()),
@@ -225,7 +236,10 @@ pub(super) fn build_player_gameplay_snapshot(
     }
 }
 
-fn base_available_actions(first_agent_id: Option<&str>) -> Vec<PlayerGameplayAction> {
+fn base_available_actions(
+    first_agent_id: Option<&str>,
+    supports_agent_chat: bool,
+) -> Vec<PlayerGameplayAction> {
     let mut actions = vec![
         PlayerGameplayAction {
             action_id: "request_snapshot".to_string(),
@@ -249,14 +263,16 @@ fn base_available_actions(first_agent_id: Option<&str>) -> Vec<PlayerGameplayAct
             disabled_reason: None,
         },
     ];
-    if let Some(agent_id) = first_agent_id {
-        actions.push(PlayerGameplayAction {
-            action_id: "chat_first_agent".to_string(),
-            label: "Send one chat/command to the first available agent".to_string(),
-            protocol_action: "agent_chat".to_string(),
-            target_agent_id: Some(agent_id.to_string()),
-            disabled_reason: None,
-        });
+    if supports_agent_chat {
+        if let Some(agent_id) = first_agent_id {
+            actions.push(PlayerGameplayAction {
+                action_id: "chat_first_agent".to_string(),
+                label: "Send one chat/command to the first available agent".to_string(),
+                protocol_action: "agent_chat".to_string(),
+                target_agent_id: Some(agent_id.to_string()),
+                disabled_reason: None,
+            });
+        }
     }
     actions
 }

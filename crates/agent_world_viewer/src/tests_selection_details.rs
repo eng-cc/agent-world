@@ -42,7 +42,7 @@ fn update_ui_populates_agent_selection_details_with_llm_trace() {
         pending_actions: Vec::new(),
         journal_len: 0,
         runtime_snapshot: None,
-            player_gameplay: None,
+        player_gameplay: None,
     };
 
     let events = vec![WorldEvent {
@@ -232,7 +232,7 @@ fn update_ui_populates_location_selection_details() {
         pending_actions: Vec::new(),
         journal_len: 0,
         runtime_snapshot: None,
-            player_gameplay: None,
+        player_gameplay: None,
     };
 
     let state = ViewerState {

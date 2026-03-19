@@ -655,7 +655,7 @@ impl ViewerRuntimeLiveServer {
         Ok(())
     }
 
-    fn enqueue_virtual_event(&mut self, kind: WorldEventKind) {
+    pub(super) fn enqueue_virtual_event(&mut self, kind: WorldEventKind) {
         let id = self.next_virtual_event_id();
         self.pending_virtual_events.push_back(WorldEvent {
             id,

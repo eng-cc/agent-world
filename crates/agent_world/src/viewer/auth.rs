@@ -2,8 +2,8 @@ use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use serde::Serialize;
 
 use super::protocol::{
-    AgentChatRequest, PlayerAuthProof, PlayerAuthScheme, PromptControlApplyRequest,
-    PromptControlRollbackRequest,
+    AgentChatRequest, GameplayActionRequest, PlayerAuthProof, PlayerAuthScheme,
+    PromptControlApplyRequest, PromptControlRollbackRequest,
 };
 
 const VIEWER_PLAYER_AUTH_PAYLOAD_VERSION: u8 = 1;
@@ -75,6 +75,16 @@ struct AgentChatSigningPayload<'a> {
     intent_tick: Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     intent_seq: Option<u64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+struct GameplayActionSigningPayload<'a> {
+    operation: &'static str,
+    action_id: &'a str,
+    target_agent_id: &'a str,
+    player_id: &'a str,
+    public_key: &'a str,
+    nonce: u64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -350,6 +360,92 @@ pub fn verify_agent_chat_auth_proof(
     })
 }
 
+pub fn sign_gameplay_action_auth_proof(
+    request: &GameplayActionRequest,
+    nonce: u64,
+    signer_public_key_hex: &str,
+    signer_private_key_hex: &str,
+) -> Result<PlayerAuthProof, String> {
+    if nonce == 0 {
+        return Err("auth nonce must be greater than zero".to_string());
+    }
+    let player_id =
+        normalize_required_field(request.player_id.as_str(), "gameplay_action player_id")?;
+    let request_public_key = normalize_required_optional_public_key(
+        request.public_key.as_deref(),
+        "gameplay_action public_key",
+    )?;
+    let signer_public_key =
+        normalize_public_key_field(signer_public_key_hex, "gameplay_action signer public key")?;
+    if signer_public_key != request_public_key {
+        return Err("gameplay_action public_key does not match signer public key".to_string());
+    }
+
+    let signing_key =
+        signing_key_from_hex(signer_private_key_hex, "gameplay_action signer private key")?;
+    verify_keypair_match(
+        &signing_key,
+        signer_public_key.as_str(),
+        "gameplay_action signer public key",
+    )?;
+
+    let signing_payload = build_gameplay_action_signing_payload(
+        request,
+        player_id.as_str(),
+        request_public_key.as_str(),
+        nonce,
+    )?;
+    sign_player_auth_proof(
+        signing_key,
+        player_id,
+        signer_public_key,
+        nonce,
+        signing_payload,
+    )
+}
+
+pub fn verify_gameplay_action_auth_proof(
+    request: &GameplayActionRequest,
+    proof: &PlayerAuthProof,
+) -> Result<VerifiedPlayerAuth, String> {
+    verify_proof_scheme(proof)?;
+    let request_player_id =
+        normalize_required_field(request.player_id.as_str(), "gameplay_action player_id")?;
+    let request_public_key = normalize_required_optional_public_key(
+        request.public_key.as_deref(),
+        "gameplay_action public_key",
+    )?;
+    let proof_player_id =
+        normalize_required_field(proof.player_id.as_str(), "auth proof player_id")?;
+    let proof_public_key =
+        normalize_public_key_field(proof.public_key.as_str(), "auth proof public key")?;
+    if request_player_id != proof_player_id {
+        return Err("auth proof player_id does not match request player_id".to_string());
+    }
+    if request_public_key != proof_public_key {
+        return Err("auth proof public_key does not match request public_key".to_string());
+    }
+    if proof.nonce == 0 {
+        return Err("auth nonce must be greater than zero".to_string());
+    }
+    let signing_payload = build_gameplay_action_signing_payload(
+        request,
+        proof_player_id.as_str(),
+        proof_public_key.as_str(),
+        proof.nonce,
+    )?;
+    verify_player_auth_signature(
+        proof_public_key.as_str(),
+        proof.signature.as_str(),
+        signing_payload.as_slice(),
+    )?;
+    Ok(VerifiedPlayerAuth {
+        player_id: proof_player_id,
+        public_key: proof_public_key,
+        nonce: proof.nonce,
+    })
+}
+
 fn build_prompt_control_apply_signing_payload(
     intent: PromptControlAuthIntent,
     request: &PromptControlApplyRequest,
@@ -413,6 +509,29 @@ fn build_agent_chat_signing_payload(
         message: request.message.as_str(),
         intent_tick: request.intent_tick,
         intent_seq,
+    };
+    encode_signing_payload(payload)
+}
+
+fn build_gameplay_action_signing_payload(
+    request: &GameplayActionRequest,
+    player_id: &str,
+    public_key: &str,
+    nonce: u64,
+) -> Result<Vec<u8>, String> {
+    let action_id =
+        normalize_required_field(request.action_id.as_str(), "gameplay_action action_id")?;
+    let target_agent_id = normalize_required_field(
+        request.target_agent_id.as_str(),
+        "gameplay_action target_agent_id",
+    )?;
+    let payload = GameplayActionSigningPayload {
+        operation: "gameplay_action",
+        action_id: action_id.as_str(),
+        target_agent_id: target_agent_id.as_str(),
+        player_id,
+        public_key,
+        nonce,
     };
     encode_signing_payload(payload)
 }
@@ -695,5 +814,52 @@ mod tests {
             sign_agent_chat_auth_proof(&request, 17, public_key.as_str(), private_key.as_str())
                 .expect_err("zero intent_seq should fail");
         assert!(err.contains("intent_seq"));
+    }
+
+    #[test]
+    fn gameplay_action_auth_sign_and_verify_roundtrip() {
+        let (public_key, private_key) = test_signer();
+        let request = GameplayActionRequest {
+            action_id: "build_factory_smelter_mk1".to_string(),
+            target_agent_id: "agent-0".to_string(),
+            player_id: "player-a".to_string(),
+            public_key: Some(public_key.clone()),
+            auth: None,
+        };
+        let proof = sign_gameplay_action_auth_proof(
+            &request,
+            21,
+            public_key.as_str(),
+            private_key.as_str(),
+        )
+        .expect("sign proof");
+        let verified = verify_gameplay_action_auth_proof(&request, &proof).expect("verify proof");
+        assert_eq!(verified.player_id, "player-a");
+        assert_eq!(verified.public_key, public_key);
+        assert_eq!(verified.nonce, 21);
+    }
+
+    #[test]
+    fn gameplay_action_auth_verify_rejects_tampered_action_id() {
+        let (public_key, private_key) = test_signer();
+        let request = GameplayActionRequest {
+            action_id: "build_factory_smelter_mk1".to_string(),
+            target_agent_id: "agent-0".to_string(),
+            player_id: "player-a".to_string(),
+            public_key: Some(public_key.clone()),
+            auth: None,
+        };
+        let proof = sign_gameplay_action_auth_proof(
+            &request,
+            22,
+            public_key.as_str(),
+            private_key.as_str(),
+        )
+        .expect("sign proof");
+        let mut tampered = request.clone();
+        tampered.action_id = "schedule_recipe_smelter_iron_ingot".to_string();
+        let err =
+            verify_gameplay_action_auth_proof(&tampered, &proof).expect_err("tamper must fail");
+        assert!(err.contains("verify auth signature failed"));
     }
 }

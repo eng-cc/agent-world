@@ -32,6 +32,7 @@ use super::protocol::{
 mod control_plane;
 mod gameplay_snapshot;
 mod mapping;
+mod player_gameplay;
 #[cfg(test)]
 mod tests;
 
@@ -642,6 +643,15 @@ impl ViewerRuntimeLiveServer {
                     send_response(writer, &ViewerResponse::AgentChatError { error })?;
                 }
             },
+            ViewerRequest::GameplayAction { request } => match self.handle_gameplay_action(request)
+            {
+                Ok(ack) => {
+                    send_response(writer, &ViewerResponse::GameplayActionAck { ack })?;
+                }
+                Err(error) => {
+                    send_response(writer, &ViewerResponse::GameplayActionError { error })?;
+                }
+            },
             ViewerRequest::AuthoritativeChallenge { command } => {
                 match self.handle_authoritative_challenge(command) {
                     Ok((ack, maybe_batch_update)) => {
@@ -816,17 +826,11 @@ impl ViewerRuntimeLiveServer {
                 delta_logical_time,
                 delta_event_seq,
             };
-            self.latest_player_gameplay_feedback =
-                Some(player_gameplay_feedback_from_control_ack(
-                    &ViewerControl::Step { count: step_count },
-                    &ack,
-                ));
-            send_response(
-                writer,
-                &ViewerResponse::ControlCompletionAck {
-                    ack,
-                },
-            )?;
+            self.latest_player_gameplay_feedback = Some(player_gameplay_feedback_from_control_ack(
+                &ViewerControl::Step { count: step_count },
+                &ack,
+            ));
+            send_response(writer, &ViewerResponse::ControlCompletionAck { ack })?;
         }
 
         Ok(())
@@ -1743,6 +1747,7 @@ impl ViewerRuntimeLiveServer {
             player_gameplay: Some(build_player_gameplay_snapshot(
                 self.world.state(),
                 self.latest_player_gameplay_feedback.as_ref(),
+                self.llm_sidecar.is_llm_mode() && self.llm_sidecar.supports_agent_chat(),
             )),
             chunk_runtime: ChunkRuntimeConfig::default(),
             next_event_id,
@@ -1896,6 +1901,28 @@ fn bootstrap_runtime_world(scenario: WorldScenario) -> Result<(RuntimeWorld, Wor
         .map_err(|err| format!("runtime live bootstrap build_world_model failed: {err:?}"))?;
 
     let mut world = RuntimeWorld::new();
+    world.set_resource_balance(ResourceKind::Electricity, 400);
+    for (material, amount) in [
+        ("structural_frame", 40),
+        ("circuit_board", 4),
+        ("servo_motor", 2),
+        ("heat_coil", 6),
+        ("refractory_brick", 8),
+        ("iron_ore", 60),
+        ("carbon_fuel", 20),
+        ("copper_ore", 60),
+        ("silicate_ore", 20),
+        ("hardware_part", 40),
+    ] {
+        world
+            .set_material_balance(material, amount)
+            .map_err(|err| {
+                format!(
+                    "runtime live bootstrap set material balance failed material={} err={err:?}",
+                    material
+                )
+            })?;
+    }
     let mut seed_agents: Vec<(String, GeoPos, i64, i64)> = model
         .agents
         .iter()

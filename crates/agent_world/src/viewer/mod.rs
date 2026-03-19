@@ -12,8 +12,9 @@ mod server;
 mod web_bridge;
 
 pub use auth::{
-    sign_agent_chat_auth_proof, sign_prompt_control_apply_auth_proof,
-    sign_prompt_control_rollback_auth_proof, verify_agent_chat_auth_proof,
+    sign_agent_chat_auth_proof, sign_gameplay_action_auth_proof,
+    sign_prompt_control_apply_auth_proof, sign_prompt_control_rollback_auth_proof,
+    verify_agent_chat_auth_proof, verify_gameplay_action_auth_proof,
     verify_prompt_control_apply_auth_proof, verify_prompt_control_rollback_auth_proof,
     PromptControlAuthIntent, VerifiedPlayerAuth, VIEWER_PLAYER_AUTH_SIGNATURE_V1_PREFIX,
 };
@@ -31,10 +32,11 @@ pub use protocol::{
     AuthoritativeReconnectSyncRequest, AuthoritativeRecoveryAck, AuthoritativeRecoveryCommand,
     AuthoritativeRecoveryError, AuthoritativeRecoveryStatus, AuthoritativeRollbackRequest,
     AuthoritativeSessionRevokeRequest, AuthoritativeSessionRotateRequest, ControlCompletionAck,
-    ControlCompletionStatus, LiveControl, PlaybackControl, PlayerAuthProof, PlayerAuthScheme,
-    PromptControlAck, PromptControlApplyRequest, PromptControlCommand, PromptControlError,
-    PromptControlOperation, PromptControlRollbackRequest, ViewerControl, ViewerControlProfile,
-    ViewerRequest, ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
+    ControlCompletionStatus, GameplayActionAck, GameplayActionError, GameplayActionRequest,
+    LiveControl, PlaybackControl, PlayerAuthProof, PlayerAuthScheme, PromptControlAck,
+    PromptControlApplyRequest, PromptControlCommand, PromptControlError, PromptControlOperation,
+    PromptControlRollbackRequest, ViewerControl, ViewerControlProfile, ViewerRequest,
+    ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
 };
 #[cfg(not(target_arch = "wasm32"))]
 pub use runtime_live::{

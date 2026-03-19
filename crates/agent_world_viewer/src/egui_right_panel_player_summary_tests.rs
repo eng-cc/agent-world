@@ -82,6 +82,11 @@ fn first_session_summary_snapshot_reports_duration_and_gains() {
     assert_eq!(snapshot.duration_secs, 9);
     assert_eq!(snapshot.tick_gain, 8);
     assert_eq!(snapshot.event_gain, 3);
-    assert_eq!(snapshot.title, "First Session Recap: PostOnboarding unlocked");
-    assert!(snapshot.next_tip.contains("sustainable industrial capability"));
+    assert_eq!(
+        snapshot.title,
+        "First Session Recap: PostOnboarding unlocked"
+    );
+    assert!(snapshot
+        .next_tip
+        .contains("sustainable industrial capability"));
 }

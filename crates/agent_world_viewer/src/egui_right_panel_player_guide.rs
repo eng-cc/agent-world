@@ -738,11 +738,7 @@ fn build_player_post_onboarding_snapshot_from_events(
     }
 
     let blocked_feedback = control_feedback.and_then(|feedback| {
-        matches!(
-            feedback.stage.as_str(),
-            "blocked" | "completed_no_progress"
-        )
-        .then(|| {
+        matches!(feedback.stage.as_str(), "blocked" | "completed_no_progress").then(|| {
             (
                 feedback.reason.clone().unwrap_or_else(|| {
                     if locale.is_zh() {
@@ -881,8 +877,7 @@ fn build_player_post_onboarding_snapshot_from_events(
             objective: if locale.is_zh() {
                 "把已建成的工厂推进成真正运转的持续能力。".to_string()
             } else {
-                "Turn the factory you built into a running, repeatable capability."
-                    .to_string()
+                "Turn the factory you built into a running, repeatable capability.".to_string()
             },
             progress_detail: if locale.is_zh() {
                 "阶段进展：工厂已就绪，还差一次可见的生产推进。".to_string()
@@ -1031,11 +1026,7 @@ fn build_player_post_onboarding_snapshot_from_gameplay(
             gameplay.objective.clone()
         },
         progress_detail: if locale.is_zh() {
-            localized_post_onboarding_progress_detail_for_goal(
-                gameplay.goal_kind,
-                status,
-                locale,
-            )
+            localized_post_onboarding_progress_detail_for_goal(gameplay.goal_kind, status, locale)
         } else {
             gameplay.progress_detail.clone()
         },
@@ -1355,8 +1346,7 @@ fn post_onboarding_blocker_next_step(
         if locale.is_zh() {
             "建议下一步：先补能源，再继续推进工厂或配方。".to_string()
         } else {
-            "Next: restore energy first, then continue advancing the factory or recipe."
-                .to_string()
+            "Next: restore energy first, then continue advancing the factory or recipe.".to_string()
         }
     } else if normalized.contains("logistics") {
         if locale.is_zh() {

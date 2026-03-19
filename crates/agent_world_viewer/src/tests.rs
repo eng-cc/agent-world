@@ -101,7 +101,7 @@ fn update_ui_populates_world_summary_and_metrics() {
         pending_actions: Vec::new(),
         journal_len: 0,
         runtime_snapshot: None,
-            player_gameplay: None,
+        player_gameplay: None,
     };
 
     let metrics = RunnerMetrics {
@@ -199,7 +199,7 @@ fn update_ui_populates_agent_activity_panel() {
         pending_actions: Vec::new(),
         journal_len: 0,
         runtime_snapshot: None,
-            player_gameplay: None,
+        player_gameplay: None,
     };
 
     let events = vec![WorldEvent {

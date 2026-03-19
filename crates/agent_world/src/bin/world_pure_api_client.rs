@@ -5,12 +5,13 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use agent_world::simulator::WorldSnapshot;
 use agent_world::viewer::{
-    sign_agent_chat_auth_proof, sign_prompt_control_apply_auth_proof,
-    sign_prompt_control_rollback_auth_proof, AgentChatRequest, AuthoritativeReconnectSyncRequest,
-    AuthoritativeRecoveryCommand, AuthoritativeSessionRevokeRequest,
-    AuthoritativeSessionRotateRequest, LiveControl, PromptControlApplyRequest,
-    PromptControlAuthIntent, PromptControlCommand, PromptControlRollbackRequest, ViewerRequest,
-    ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
+    sign_agent_chat_auth_proof, sign_gameplay_action_auth_proof,
+    sign_prompt_control_apply_auth_proof, sign_prompt_control_rollback_auth_proof,
+    AgentChatRequest, AuthoritativeReconnectSyncRequest, AuthoritativeRecoveryCommand,
+    AuthoritativeSessionRevokeRequest, AuthoritativeSessionRotateRequest, GameplayActionRequest,
+    LiveControl, PromptControlApplyRequest, PromptControlAuthIntent, PromptControlCommand,
+    PromptControlRollbackRequest, ViewerRequest, ViewerResponse, ViewerStream,
+    VIEWER_PROTOCOL_VERSION,
 };
 use ed25519_dalek::SigningKey;
 use rand_core::OsRng;
@@ -45,13 +46,16 @@ fn run() -> Result<(), String> {
             print_json(&keygen_output()?)?;
             Ok(())
         }
-        Command::Snapshot { player_gameplay_only } => {
+        Command::Snapshot {
+            player_gameplay_only,
+        } => {
             let mut conn = ViewerConnection::connect(addr.as_str(), client.as_str(), timeout)?;
             conn.send(&ViewerRequest::RequestSnapshot)?;
             let response =
                 conn.collect_until(timeout, terminal_snapshot, "waiting for snapshot response")?;
-            let latest_snapshot = latest_snapshot(&response)
-                .ok_or_else(|| "snapshot response did not include a snapshot payload".to_string())?;
+            let latest_snapshot = latest_snapshot(&response).ok_or_else(|| {
+                "snapshot response did not include a snapshot payload".to_string()
+            })?;
             if player_gameplay_only {
                 print_json(
                     &serde_json::to_value(latest_snapshot.player_gameplay.clone())
@@ -139,6 +143,32 @@ fn run() -> Result<(), String> {
                 timeout,
                 terminal_agent_chat,
                 "waiting for agent_chat ack/error",
+            )?;
+            maybe_request_snapshot(&mut conn, with_snapshot, &mut responses, timeout)?;
+            print_json(&command_output(&conn.hello_ack, &responses))?;
+            Ok(())
+        }
+        Command::GameplayAction {
+            action_id,
+            target_agent_id,
+            player_id,
+            private_key_hex,
+            public_key_hex,
+            with_snapshot,
+        } => {
+            let mut conn = ViewerConnection::connect(addr.as_str(), client.as_str(), timeout)?;
+            let request = build_signed_gameplay_action_request(
+                action_id.as_str(),
+                target_agent_id.as_str(),
+                player_id.as_str(),
+                private_key_hex.as_str(),
+                public_key_hex.as_deref(),
+            )?;
+            conn.send(&ViewerRequest::GameplayAction { request })?;
+            let mut responses = conn.collect_until(
+                timeout,
+                terminal_gameplay_action,
+                "waiting for gameplay_action ack/error",
             )?;
             maybe_request_snapshot(&mut conn, with_snapshot, &mut responses, timeout)?;
             print_json(&command_output(&conn.hello_ack, &responses))?;
@@ -341,6 +371,14 @@ enum Command {
         intent_seq: Option<u64>,
         with_snapshot: bool,
     },
+    GameplayAction {
+        action_id: String,
+        target_agent_id: String,
+        player_id: String,
+        private_key_hex: String,
+        public_key_hex: Option<String>,
+        with_snapshot: bool,
+    },
     PromptApply {
         agent_id: String,
         player_id: String,
@@ -535,10 +573,7 @@ fn parse_cli(args: &mut ArgCursor) -> Result<CliConfig, String> {
             _ => break,
         }
     }
-    let subcommand = args
-        .next()
-        .ok_or_else(usage)?
-        .to_ascii_lowercase();
+    let subcommand = args.next().ok_or_else(usage)?.to_ascii_lowercase();
     let command = match subcommand.as_str() {
         "keygen" => Command::Keygen,
         "snapshot" => {
@@ -570,7 +605,8 @@ fn parse_cli(args: &mut ArgCursor) -> Result<CliConfig, String> {
                     }
                     "--request-id" => {
                         args.next();
-                        request_id = Some(parse_u64_flag(args.value("--request-id")?, "--request-id")?);
+                        request_id =
+                            Some(parse_u64_flag(args.value("--request-id")?, "--request-id")?);
                     }
                     "--events" => {
                         args.next();
@@ -632,8 +668,10 @@ fn parse_cli(args: &mut ArgCursor) -> Result<CliConfig, String> {
                     }
                     "--intent-tick" => {
                         args.next();
-                        intent_tick =
-                            Some(parse_u64_flag(args.value("--intent-tick")?, "--intent-tick")?);
+                        intent_tick = Some(parse_u64_flag(
+                            args.value("--intent-tick")?,
+                            "--intent-tick",
+                        )?);
                     }
                     "--intent-seq" => {
                         args.next();
@@ -656,6 +694,52 @@ fn parse_cli(args: &mut ArgCursor) -> Result<CliConfig, String> {
                 message: required_flag(message, "--message")?,
                 intent_tick,
                 intent_seq,
+                with_snapshot,
+            }
+        }
+        "gameplay-action" => {
+            let mut action_id = None;
+            let mut target_agent_id = None;
+            let mut player_id = None;
+            let mut private_key_hex = None;
+            let mut public_key_hex = None;
+            let mut with_snapshot = false;
+            while let Some(flag) = args.peek() {
+                match flag {
+                    "--action-id" => {
+                        args.next();
+                        action_id = Some(args.value("--action-id")?);
+                    }
+                    "--target-agent-id" => {
+                        args.next();
+                        target_agent_id = Some(args.value("--target-agent-id")?);
+                    }
+                    "--player-id" => {
+                        args.next();
+                        player_id = Some(args.value("--player-id")?);
+                    }
+                    "--private-key-hex" => {
+                        args.next();
+                        private_key_hex = Some(args.value("--private-key-hex")?);
+                    }
+                    "--public-key-hex" => {
+                        args.next();
+                        public_key_hex = Some(args.value("--public-key-hex")?);
+                    }
+                    "--with-snapshot" => {
+                        args.next();
+                        with_snapshot = true;
+                    }
+                    "-h" | "--help" => return Err(usage()),
+                    _ => return Err(format!("unknown gameplay-action flag `{flag}`")),
+                }
+            }
+            Command::GameplayAction {
+                action_id: required_flag(action_id, "--action-id")?,
+                target_agent_id: required_flag(target_agent_id, "--target-agent-id")?,
+                player_id: required_flag(player_id, "--player-id")?,
+                private_key_hex: required_flag(private_key_hex, "--private-key-hex")?,
+                public_key_hex,
                 with_snapshot,
             }
         }
@@ -702,8 +786,7 @@ fn parse_cli(args: &mut ArgCursor) -> Result<CliConfig, String> {
                     }
                     "--system-prompt" => {
                         args.next();
-                        system_prompt_override =
-                            Some(Some(args.value("--system-prompt")?));
+                        system_prompt_override = Some(Some(args.value("--system-prompt")?));
                     }
                     "--clear-system-prompt" => {
                         args.next();
@@ -711,8 +794,7 @@ fn parse_cli(args: &mut ArgCursor) -> Result<CliConfig, String> {
                     }
                     "--short-term-goal" => {
                         args.next();
-                        short_term_goal_override =
-                            Some(Some(args.value("--short-term-goal")?));
+                        short_term_goal_override = Some(Some(args.value("--short-term-goal")?));
                     }
                     "--clear-short-term-goal" => {
                         args.next();
@@ -720,8 +802,7 @@ fn parse_cli(args: &mut ArgCursor) -> Result<CliConfig, String> {
                     }
                     "--long-term-goal" => {
                         args.next();
-                        long_term_goal_override =
-                            Some(Some(args.value("--long-term-goal")?));
+                        long_term_goal_override = Some(Some(args.value("--long-term-goal")?));
                     }
                     "--clear-long-term-goal" => {
                         args.next();
@@ -778,7 +859,8 @@ fn parse_cli(args: &mut ArgCursor) -> Result<CliConfig, String> {
                     }
                     "--to-version" => {
                         args.next();
-                        to_version = Some(parse_u64_flag(args.value("--to-version")?, "--to-version")?);
+                        to_version =
+                            Some(parse_u64_flag(args.value("--to-version")?, "--to-version")?);
                     }
                     "--expected-version" => {
                         args.next();
@@ -1015,6 +1097,30 @@ fn build_signed_agent_chat_request(
     })
 }
 
+fn build_signed_gameplay_action_request(
+    action_id: &str,
+    target_agent_id: &str,
+    player_id: &str,
+    private_key_hex: &str,
+    public_key_hex: Option<&str>,
+) -> Result<GameplayActionRequest, String> {
+    let public_key = resolve_public_key_hex(private_key_hex, public_key_hex)?;
+    let nonce = next_u64_id();
+    let request = GameplayActionRequest {
+        action_id: action_id.to_string(),
+        target_agent_id: target_agent_id.to_string(),
+        player_id: player_id.to_string(),
+        public_key: Some(public_key.clone()),
+        auth: None,
+    };
+    let proof =
+        sign_gameplay_action_auth_proof(&request, nonce, public_key.as_str(), private_key_hex)?;
+    Ok(GameplayActionRequest {
+        auth: Some(proof),
+        ..request
+    })
+}
+
 fn build_signed_prompt_apply_request(
     agent_id: &str,
     player_id: &str,
@@ -1090,7 +1196,10 @@ fn build_signed_prompt_rollback_request(
     })
 }
 
-fn resolve_public_key_hex(private_key_hex: &str, public_key_hex: Option<&str>) -> Result<String, String> {
+fn resolve_public_key_hex(
+    private_key_hex: &str,
+    public_key_hex: Option<&str>,
+) -> Result<String, String> {
     match public_key_hex {
         Some(value) => Ok(value.to_string()),
         None => derive_public_key_hex(private_key_hex),
@@ -1125,7 +1234,8 @@ fn keygen_output() -> Result<Value, String> {
 }
 
 fn command_output(hello_ack: &Value, responses: &[CollectedResponse]) -> Value {
-    let latest_snapshot = latest_snapshot(responses).and_then(|snapshot| serde_json::to_value(snapshot).ok());
+    let latest_snapshot =
+        latest_snapshot(responses).and_then(|snapshot| serde_json::to_value(snapshot).ok());
     let player_gameplay = latest_snapshot
         .as_ref()
         .and_then(|snapshot| snapshot.get("player_gameplay").cloned());
@@ -1138,10 +1248,13 @@ fn command_output(hello_ack: &Value, responses: &[CollectedResponse]) -> Value {
 }
 
 fn latest_snapshot<'a>(responses: &'a [CollectedResponse]) -> Option<&'a WorldSnapshot> {
-    responses.iter().rev().find_map(|item| match &item.response {
-        ViewerResponse::Snapshot { snapshot } => Some(snapshot),
-        _ => None,
-    })
+    responses
+        .iter()
+        .rev()
+        .find_map(|item| match &item.response {
+            ViewerResponse::Snapshot { snapshot } => Some(snapshot),
+            _ => None,
+        })
 }
 
 fn print_json(value: &Value) -> Result<(), String> {
@@ -1196,6 +1309,13 @@ fn terminal_agent_chat(response: &ViewerResponse) -> bool {
     )
 }
 
+fn terminal_gameplay_action(response: &ViewerResponse) -> bool {
+    matches!(
+        response,
+        ViewerResponse::GameplayActionAck { .. } | ViewerResponse::GameplayActionError { .. }
+    )
+}
+
 fn terminal_prompt_control(response: &ViewerResponse) -> bool {
     matches!(
         response,
@@ -1235,6 +1355,9 @@ Commands:\n\
   chat --agent-id <id> --player-id <id> --private-key-hex <hex> --message <text>\n\
        [--public-key-hex <hex>] [--intent-tick <n>] [--intent-seq <n>] [--with-snapshot]\n\
     Send one signed agent_chat request.\n\n\
+  gameplay-action --action-id <id> --target-agent-id <id> --player-id <id>\n\
+       --private-key-hex <hex> [--public-key-hex <hex>] [--with-snapshot]\n\
+    Send one signed canonical gameplay_action request.\n\n\
   prompt-apply --agent-id <id> --player-id <id> --private-key-hex <hex>\n\
        [--public-key-hex <hex>] [--expected-version <n>] [--updated-by <name>]\n\
        [--system-prompt <text>|--clear-system-prompt]\n\
@@ -1259,6 +1382,8 @@ Examples:\n\
   world_pure_api_client step --count 8 --events\n\
   world_pure_api_client chat --agent-id agent-0 --player-id player-1 \\\n\
     --private-key-hex <hex> --message 'build the first stable line' --with-snapshot\n\
+  world_pure_api_client gameplay-action --action-id build_factory_smelter_mk1 \\\n\
+    --target-agent-id runtime-agent-0 --player-id player-1 --private-key-hex <hex> --with-snapshot\n\
   world_pure_api_client prompt-apply --agent-id agent-0 --player-id player-1 \\\n\
     --private-key-hex <hex> --short-term-goal 'turn iron into output'\n\
   world_pure_api_client reconnect-sync --player-id player-1 --session-pubkey <hex> --with-snapshot"
@@ -1364,6 +1489,24 @@ mod tests {
             Some(Some("system".to_string()))
         );
         assert_eq!(request.short_term_goal_override, Some(None));
+        assert!(request.auth.is_some());
+    }
+
+    #[test]
+    fn build_signed_gameplay_action_request_attaches_auth() {
+        let private_key_hex = fixed_private_key_hex(10);
+        let request = build_signed_gameplay_action_request(
+            "build_factory_smelter_mk1",
+            "runtime-agent-0",
+            "player-1",
+            private_key_hex.as_str(),
+            None,
+        )
+        .expect("signed gameplay action request");
+        assert_eq!(request.action_id, "build_factory_smelter_mk1");
+        assert_eq!(request.target_agent_id, "runtime-agent-0");
+        assert_eq!(request.player_id, "player-1");
+        assert!(request.public_key.is_some());
         assert!(request.auth.is_some());
     }
 }

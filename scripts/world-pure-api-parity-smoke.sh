@@ -15,8 +15,10 @@ Default flow:
 1. bootstrap a fresh stack via ./scripts/run-game-test.sh
 2. build the local `world_pure_api_client` binary
 3. capture initial player_gameplay snapshot
-4. step the world twice in the same session
-5. capture reconnect-sync recovery ack
+4. submit canonical `gameplay_action` to build the first smelter
+5. advance until the smelter is ready, then submit the first iron-ingot recipe
+6. advance until the first sustainable capability milestone is visible
+7. capture reconnect-sync recovery ack
 6. emit JSON/Markdown summary plus raw command outputs
 
 Options:
@@ -25,9 +27,9 @@ Options:
   --bundle-dir <path>         Pass through to run-game-test for fresh bundle validation
   --out-dir <path>            Artifact root (default: output/playwright/playability)
   --startup-timeout <secs>    Wait timeout for stack startup / TCP listener (default: 240)
-  --step-a <count>            First step count (default: 8)
-  --step-b <count>            Second step count (default: 24)
-  --step-c <count>            Extra full-tier step count (default: 96)
+  --step-a <count>            Steps to settle the first factory build (default: 2)
+  --step-b <count>            Steps to settle the first recipe run (default: 2)
+  --step-c <count>            Extra full-tier follow-up steps after milestone (default: 8)
   --player-id <id>            Player id for reconnect-sync (default: player-api-smoke)
   -h, --help                  Show this help
 
@@ -69,9 +71,9 @@ live_addr=""
 bundle_dir=""
 out_root="output/playwright/playability"
 startup_timeout_secs=240
-step_a=8
-step_b=24
-step_c=96
+step_a=2
+step_b=2
+step_c=8
 player_id="player-api-smoke"
 stack_args=()
 
@@ -171,6 +173,8 @@ initial_snapshot_path="$out_dir/snapshot-initial.json"
 step_a_path="$out_dir/step-a.json"
 step_b_path="$out_dir/step-b.json"
 step_c_path="$out_dir/step-c.json"
+build_action_path="$out_dir/gameplay-build-smelter.json"
+recipe_action_path="$out_dir/gameplay-iron-ingot.json"
 recovery_path="$out_dir/reconnect-sync.json"
 keygen_path="$out_dir/keygen.json"
 
@@ -230,10 +234,64 @@ fi
 
 "$client_bin" keygen >"$keygen_path"
 "$client_bin" --addr "$probe_live_addr" snapshot --player-gameplay-only >"$initial_snapshot_path"
-"$client_bin" --addr "$probe_live_addr" step --count "$step_a" --events >"$step_a_path"
-"$client_bin" --addr "$probe_live_addr" step --count "$step_b" --events >"$step_b_path"
+
+json_field() {
+  local path=$1
+  local key=$2
+  python3 - "$path" "$key" <<'PY'
+import json
+import sys
+
+payload = json.load(open(sys.argv[1], encoding="utf-8"))
+value = payload.get(sys.argv[2], "")
+if value is None:
+    value = ""
+print(value)
+PY
+}
+
+find_action_target() {
+  local path=$1
+  local action_id=$2
+  python3 - "$path" "$action_id" <<'PY'
+import json
+import sys
+
+payload = json.load(open(sys.argv[1], encoding="utf-8"))
+for action in payload.get("available_actions", []):
+    if action.get("action_id") == sys.argv[2]:
+        print(action.get("target_agent_id") or "")
+        raise SystemExit(0)
+raise SystemExit(1)
+PY
+}
+
+public_key_hex=$(json_field "$keygen_path" "public_key_hex")
+private_key_hex=$(json_field "$keygen_path" "private_key_hex")
+target_agent_id=$(find_action_target "$initial_snapshot_path" "build_factory_smelter_mk1")
+[[ -n "$public_key_hex" && -n "$private_key_hex" && -n "$target_agent_id" ]] || {
+  echo "error: failed to resolve gameplay_action bootstrap inputs" >&2
+  exit 1
+}
+
+"$client_bin" --addr "$probe_live_addr" gameplay-action \
+  --action-id build_factory_smelter_mk1 \
+  --target-agent-id "$target_agent_id" \
+  --player-id "$player_id" \
+  --private-key-hex "$private_key_hex" \
+  --public-key-hex "$public_key_hex" \
+  --with-snapshot >"$build_action_path"
+"$client_bin" --addr "$probe_live_addr" step --count "$step_a" >"$step_a_path"
+"$client_bin" --addr "$probe_live_addr" gameplay-action \
+  --action-id schedule_recipe_smelter_iron_ingot \
+  --target-agent-id "$target_agent_id" \
+  --player-id "$player_id" \
+  --private-key-hex "$private_key_hex" \
+  --public-key-hex "$public_key_hex" \
+  --with-snapshot >"$recipe_action_path"
+"$client_bin" --addr "$probe_live_addr" step --count "$step_b" >"$step_b_path"
 if [[ "$tier" == "full" ]]; then
-  "$client_bin" --addr "$probe_live_addr" step --count "$step_c" --events >"$step_c_path"
+  "$client_bin" --addr "$probe_live_addr" step --count "$step_c" >"$step_c_path"
 fi
 "$client_bin" --addr "$probe_live_addr" reconnect-sync --player-id "$player_id" --with-snapshot >"$recovery_path"
 
@@ -242,7 +300,9 @@ python3 - "$tier" \
   "$player_id" \
   "$keygen_path" \
   "$initial_snapshot_path" \
+  "$build_action_path" \
   "$step_a_path" \
+  "$recipe_action_path" \
   "$step_b_path" \
   "$step_c_path" \
   "$recovery_path" \
@@ -258,17 +318,21 @@ live_addr = sys.argv[2]
 player_id = sys.argv[3]
 keygen_path = pathlib.Path(sys.argv[4])
 initial_snapshot_path = pathlib.Path(sys.argv[5])
-step_a_path = pathlib.Path(sys.argv[6])
-step_b_path = pathlib.Path(sys.argv[7])
-step_c_path = pathlib.Path(sys.argv[8])
-recovery_path = pathlib.Path(sys.argv[9])
-summary_json_path = pathlib.Path(sys.argv[10])
-summary_md_path = pathlib.Path(sys.argv[11])
-stack_logs_dir = sys.argv[12]
+build_action_path = pathlib.Path(sys.argv[6])
+step_a_path = pathlib.Path(sys.argv[7])
+recipe_action_path = pathlib.Path(sys.argv[8])
+step_b_path = pathlib.Path(sys.argv[9])
+step_c_path = pathlib.Path(sys.argv[10])
+recovery_path = pathlib.Path(sys.argv[11])
+summary_json_path = pathlib.Path(sys.argv[12])
+summary_md_path = pathlib.Path(sys.argv[13])
+stack_logs_dir = sys.argv[14]
 
 keygen = json.loads(keygen_path.read_text(encoding="utf-8"))
 initial_snapshot = json.loads(initial_snapshot_path.read_text(encoding="utf-8"))
+build_action = json.loads(build_action_path.read_text(encoding="utf-8"))
 step_a = json.loads(step_a_path.read_text(encoding="utf-8"))
+recipe_action = json.loads(recipe_action_path.read_text(encoding="utf-8"))
 step_b = json.loads(step_b_path.read_text(encoding="utf-8"))
 step_c = (
     json.loads(step_c_path.read_text(encoding="utf-8"))
@@ -289,12 +353,22 @@ def has_protocol_action(payload, action_name):
             return True
     return False
 
+def has_action_id(payload, action_id):
+    for item in payload.get("available_actions", []):
+        if item.get("action_id") == action_id:
+            return True
+    return False
+
+build_ack = response_by_type(build_action, "gameplay_action_ack")
 step_a_ack = response_by_type(step_a, "control_completion_ack")
+recipe_ack = response_by_type(recipe_action, "gameplay_action_ack")
 step_b_ack = response_by_type(step_b, "control_completion_ack")
 step_c_ack = response_by_type(step_c, "control_completion_ack") if step_c else None
 recovery_ack = response_by_type(recovery, "authoritative_recovery_ack")
 
 initial_stage = initial_snapshot.get("stage_id")
+build_snapshot = build_action.get("latest_snapshot") or {}
+step_a_gameplay = step_a.get("player_gameplay") or {}
 followup_gameplay = step_b.get("player_gameplay") or {}
 followup_stage = followup_gameplay.get("stage_id")
 followup_feedback = followup_gameplay.get("recent_feedback") or {}
@@ -308,9 +382,16 @@ checks = {
     "initial_actions_include_snapshot": has_protocol_action(initial_snapshot, "request_snapshot"),
     "initial_actions_include_step": has_protocol_action(initial_snapshot, "live_control.step"),
     "initial_actions_include_play": has_protocol_action(initial_snapshot, "live_control.play"),
+    "initial_actions_include_build_smelter": has_action_id(initial_snapshot, "build_factory_smelter_mk1"),
+    "build_action_ack": (build_ack or {}).get("ack", {}).get("action_id") == "build_factory_smelter_mk1",
+    "build_snapshot_present": bool(build_snapshot),
+    "step_a_offers_recipe": has_action_id(step_a_gameplay, "schedule_recipe_smelter_iron_ingot"),
     "step_a_advanced": (step_a_ack or {}).get("ack", {}).get("status") == "advanced",
+    "recipe_action_ack": (recipe_ack or {}).get("ack", {}).get("action_id") == "schedule_recipe_smelter_iron_ingot",
     "step_b_advanced": (step_b_ack or {}).get("ack", {}).get("status") == "advanced",
     "followup_stage_post_onboarding": followup_stage == "post_onboarding",
+    "followup_goal_midloop_ready": followup_gameplay.get("goal_id") == "post_onboarding.choose_midloop_path",
+    "followup_progress_complete": followup_gameplay.get("progress_percent") == 100,
     "followup_has_next_step": bool(followup_gameplay.get("next_step_hint")),
     "followup_has_recent_feedback": bool(followup_feedback.get("stage")),
     "reconnect_sync_ack": (recovery_ack or {}).get("ack", {}).get("status") == "catch_up_ready",
@@ -334,6 +415,7 @@ summary = {
     "initial_stage": initial_stage,
     "followup_stage": followup_stage,
     "followup_goal_id": followup_gameplay.get("goal_id"),
+    "followup_progress_percent": followup_gameplay.get("progress_percent"),
     "followup_next_step_hint": followup_gameplay.get("next_step_hint"),
     "followup_recent_feedback_stage": followup_feedback.get("stage"),
     "followup_time": followup_time,
@@ -358,6 +440,7 @@ lines = [
     f"- 初始阶段: `{initial_stage}`",
     f"- 跟进阶段: `{followup_stage}`",
     f"- 跟进目标: `{summary['followup_goal_id']}`",
+    f"- 跟进进度: `{summary['followup_progress_percent']}`",
     f"- 最近反馈: `{summary['followup_recent_feedback_stage']}`",
     f"- 恢复状态: `{summary['recovery_status']}`",
     "",

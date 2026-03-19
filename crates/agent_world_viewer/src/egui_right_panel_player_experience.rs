@@ -1574,7 +1574,9 @@ pub(super) fn render_player_experience_layers(
         now_secs,
     );
     render_player_first_session_summary(context, onboarding, state, locale, now_secs);
-    if !guide_progress.explore_ready && should_show_player_goal_hint(onboarding, guide_step, layout_state) {
+    if !guide_progress.explore_ready
+        && should_show_player_goal_hint(onboarding, guide_step, layout_state)
+    {
         render_player_goal_hint(
             context,
             onboarding,

@@ -229,19 +229,19 @@ impl RuntimeLlmSidecar {
         }
     }
 
-    pub(super) fn is_llm_mode(&self) -> bool {
+    pub(in crate::viewer::runtime_live) fn is_llm_mode(&self) -> bool {
         matches!(self.decision_mode, ViewerLiveDecisionMode::Llm)
     }
 
-    pub(super) fn supports_prompt_control(&self) -> bool {
+    pub(in crate::viewer::runtime_live) fn supports_prompt_control(&self) -> bool {
         !env_requests_openclaw_provider()
     }
 
-    pub(super) fn supports_agent_chat(&self) -> bool {
+    pub(in crate::viewer::runtime_live) fn supports_agent_chat(&self) -> bool {
         !env_requests_openclaw_provider()
     }
 
-    pub(super) fn consume_player_auth_nonce(
+    pub(in crate::viewer::runtime_live) fn consume_player_auth_nonce(
         &mut self,
         player_id: &str,
         nonce: u64,
@@ -332,7 +332,7 @@ impl RuntimeLlmSidecar {
             .retain(|(record_player_id, _, _), _| record_player_id != player_id);
     }
 
-    pub(super) fn bind_agent_player(
+    pub(in crate::viewer::runtime_live) fn bind_agent_player(
         &mut self,
         agent_id: &str,
         player_id: &str,

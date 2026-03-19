@@ -256,6 +256,20 @@ impl<'a> ViewerSession<'a> {
                     },
                 )?;
             }
+            ViewerRequest::GameplayAction { request } => {
+                send_response(
+                    writer,
+                    &ViewerResponse::GameplayActionError {
+                        error: crate::viewer::GameplayActionError {
+                            code: "unsupported_in_offline_server".to_string(),
+                            message: "gameplay_action is only available in runtime live mode"
+                                .to_string(),
+                            action_id: Some(request.action_id),
+                            target_agent_id: Some(request.target_agent_id),
+                        },
+                    },
+                )?;
+            }
             ViewerRequest::AuthoritativeChallenge { command: _ } => {
                 send_response(
                     writer,

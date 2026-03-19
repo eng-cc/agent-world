@@ -54,6 +54,9 @@ pub enum ViewerRequest {
     AgentChat {
         request: AgentChatRequest,
     },
+    GameplayAction {
+        request: GameplayActionRequest,
+    },
     AuthoritativeChallenge {
         command: AuthoritativeChallengeCommand,
     },
@@ -145,6 +148,17 @@ pub struct AgentChatRequest {
     pub intent_tick: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub intent_seq: Option<u64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GameplayActionRequest {
+    pub action_id: String,
+    pub target_agent_id: String,
+    pub player_id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub public_key: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub auth: Option<PlayerAuthProof>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -455,6 +469,12 @@ pub enum ViewerResponse<Snapshot, Event, DecisionTrace, Metrics, Time> {
     AgentChatError {
         error: AgentChatError,
     },
+    GameplayActionAck {
+        ack: GameplayActionAck<Time>,
+    },
+    GameplayActionError {
+        error: GameplayActionError,
+    },
     Error {
         message: String,
     },
@@ -530,6 +550,27 @@ pub struct AgentChatError {
     pub message: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub agent_id: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GameplayActionAck<Time> {
+    pub action_id: String,
+    pub target_agent_id: String,
+    pub player_id: String,
+    pub runtime_action_id: u64,
+    pub accepted_at_tick: Time,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub message: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GameplayActionError {
+    pub code: String,
+    pub message: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub action_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub target_agent_id: Option<String>,
 }
 
 impl From<PlaybackControl> for ViewerControl {
@@ -685,6 +726,28 @@ mod tests {
                 }),
                 intent_tick: Some(42),
                 intent_seq: Some(9),
+            },
+        };
+        let json = serde_json::to_string(&request).expect("serialize request");
+        let parsed: ViewerRequest = serde_json::from_str(&json).expect("deserialize request");
+        assert_eq!(parsed, request);
+    }
+
+    #[test]
+    fn viewer_gameplay_action_request_round_trip() {
+        let request = ViewerRequest::GameplayAction {
+            request: GameplayActionRequest {
+                action_id: "build_factory_smelter_mk1".to_string(),
+                target_agent_id: "agent-0".to_string(),
+                player_id: "player-1".to_string(),
+                public_key: Some("pk-1".to_string()),
+                auth: Some(PlayerAuthProof {
+                    scheme: PlayerAuthScheme::Ed25519,
+                    player_id: "player-1".to_string(),
+                    public_key: "pk-1".to_string(),
+                    nonce: 11,
+                    signature: "awviewauth:v1:deadbeef".to_string(),
+                }),
             },
         };
         let json = serde_json::to_string(&request).expect("serialize request");
@@ -849,6 +912,37 @@ mod tests {
                 intent_tick: Some(42),
                 intent_seq: Some(17),
                 idempotent_replay: true,
+            },
+        };
+        let json = serde_json::to_string(&response).expect("serialize response");
+        let parsed: ViewerResponse<
+            serde_json::Value,
+            serde_json::Value,
+            serde_json::Value,
+            serde_json::Value,
+            u64,
+        > = serde_json::from_str(&json).expect("deserialize response");
+        assert_eq!(parsed, response);
+    }
+
+    #[test]
+    fn viewer_response_round_trip_gameplay_action_ack() {
+        let response = ViewerResponse::<
+            serde_json::Value,
+            serde_json::Value,
+            serde_json::Value,
+            serde_json::Value,
+            u64,
+        >::GameplayActionAck {
+            ack: GameplayActionAck {
+                action_id: "build_factory_smelter_mk1".to_string(),
+                target_agent_id: "agent-0".to_string(),
+                player_id: "player-1".to_string(),
+                runtime_action_id: 41,
+                accepted_at_tick: 42,
+                message: Some(
+                    "advance 1-2 steps to apply the queued industrial action".to_string(),
+                ),
             },
         };
         let json = serde_json::to_string(&response).expect("serialize response");

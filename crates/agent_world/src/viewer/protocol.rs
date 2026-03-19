@@ -12,16 +12,17 @@ pub use proto::{
     AuthoritativeReconnectSyncRequest, AuthoritativeRecoveryAck, AuthoritativeRecoveryCommand,
     AuthoritativeRecoveryError, AuthoritativeRecoveryStatus, AuthoritativeRollbackRequest,
     AuthoritativeSessionRevokeRequest, AuthoritativeSessionRotateRequest, ControlCompletionStatus,
-    LiveControl, PlaybackControl, PlayerAuthProof, PlayerAuthScheme, PromptControlApplyRequest,
-    PromptControlCommand, PromptControlError, PromptControlOperation, PromptControlRollbackRequest,
-    ViewerControl, ViewerControlProfile, ViewerEventKind, ViewerRequest, ViewerStream,
-    VIEWER_PROTOCOL_VERSION,
+    GameplayActionError, GameplayActionRequest, LiveControl, PlaybackControl, PlayerAuthProof,
+    PlayerAuthScheme, PromptControlApplyRequest, PromptControlCommand, PromptControlError,
+    PromptControlOperation, PromptControlRollbackRequest, ViewerControl, ViewerControlProfile,
+    ViewerEventKind, ViewerRequest, ViewerStream, VIEWER_PROTOCOL_VERSION,
 };
 
 pub type ViewerResponse =
     proto::ViewerResponse<WorldSnapshot, WorldEvent, AgentDecisionTrace, RunnerMetrics, WorldTime>;
 pub type PromptControlAck = proto::PromptControlAck<WorldTime>;
 pub type AgentChatAck = proto::AgentChatAck<WorldTime>;
+pub type GameplayActionAck = proto::GameplayActionAck<WorldTime>;
 pub type ControlCompletionAck = proto::ControlCompletionAck<WorldTime>;
 
 pub fn viewer_event_kind_matches(filter: &ViewerEventKind, kind: &WorldEventKind) -> bool {

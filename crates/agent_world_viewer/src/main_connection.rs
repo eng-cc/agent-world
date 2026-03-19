@@ -532,6 +532,8 @@ pub(super) fn poll_viewer_messages(
                 ViewerResponse::PromptControlAck { .. } => {}
                 ViewerResponse::PromptControlError { .. } => {}
                 ViewerResponse::AgentChatAck { .. } => {}
+                ViewerResponse::GameplayActionAck { .. } => {}
+                ViewerResponse::GameplayActionError { .. } => {}
                 ViewerResponse::AuthoritativeChallengeAck { .. } => {}
                 ViewerResponse::AuthoritativeChallengeError { .. } => {}
                 ViewerResponse::AuthoritativeRecoveryAck { .. } => {}
