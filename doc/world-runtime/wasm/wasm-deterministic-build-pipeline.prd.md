@@ -17,6 +17,7 @@
   - SC-6: 发布候选要宣称“跨宿主 determinism 已收口”时，必须归档至少一条 `linux-x86_64` 与一条 Docker-capable `darwin-arm64` 的 canonical summary / release evidence；Linux-only gate 只能代表稳定基线，不能代表跨宿主 closure。
   - SC-7: 生产 runtime / node 入口必须默认关闭 builtin manifest fallback、本地 identity hash 签名、本地 finality signing 与 runtime source compile，保证 binary-only policy 是生产默认行为而不是测试显式开关。
   - SC-8: 跨宿主 Docker release evidence 必须可被包装成 node-side attestation proof payload，并进入 `ModuleReleaseSubmitAttestation.proof_cid`；仅存在于 CI artifact 的 report 不能单独视为生产 closure。
+  - SC-9: Docker-first canonical build 链路的 operator env key 必须优先统一到 `OASIS7_WASM_*`，同时兼容旧 `AGENT_WORLD_WASM_*` fallback，避免 host wrapper、builder image、sync/check 与 build receipt 采集口径分叉。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -65,6 +66,7 @@
   - AC-9 (PRD-WORLD_RUNTIME-021/022): 若 GitHub-hosted CI 因 runner 能力不足只能保留 Linux-only stable gate，PRD / project / evidence 报告必须把跨宿主 evidence 标记为 pending，直到导入 Docker-capable macOS summary 为止。
   - AC-10 (PRD-WORLD_RUNTIME-022): production 运行入口必须提供 release security policy 绑定证据，证明 fallback / 本地签名 / runtime source compile 默认关闭；仅在测试里调用 `enable_production_release_policy()` 不足以视为完成。
   - AC-11 (PRD-WORLD_RUNTIME-021/022): release evidence 除了 CI/report 汇总外，还必须存在 node-side proof payload 打包与 attestation submit 入口，使 `builder_image_digest/container_platform/canonicalizer_version` 可作为发布节点提交的正式证明字段进入共识链路。
+  - AC-12 (PRD-WORLD_RUNTIME-020/021): `scripts/build-wasm-module.sh`、`scripts/sync-m1-builtin-wasm-artifacts.sh`、`scripts/ci-m1-wasm-summary.sh`、`tools/wasm_build_suite` 与 `docker/wasm-builder/Dockerfile` 必须默认写入或读取 `OASIS7_WASM_*`，并继续兼容旧 `AGENT_WORLD_WASM_*`；wrapper usage、错误提示、容器注入 env 与 build receipt 元数据采集不得再只暴露旧前缀。
 - Non-Goals:
   - 不在本专题中要求所有节点运行 Docker 再执行模块；Docker 只解决发布级构建，不进入 runtime 执行热路径。
   - 不在本专题中实现语义等价 canonical hash；当前仍以容器内 canonical packaging 的 byte hash 为准。

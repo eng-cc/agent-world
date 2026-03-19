@@ -12,6 +12,32 @@ identity_manifest_path=""
 runner_label=""
 out_path=""
 
+wasm_env_key() {
+  local suffix=$1
+  printf 'OASIS7_WASM_%s\n' "$suffix"
+}
+
+wasm_legacy_env_key() {
+  local suffix=$1
+  printf 'AGENT_WORLD_WASM_%s\n' "$suffix"
+}
+
+wasm_env_or_default() {
+  local suffix=$1
+  local default_value=${2-}
+  local key
+  local legacy_key
+  key=$(wasm_env_key "$suffix")
+  legacy_key=$(wasm_legacy_env_key "$suffix")
+  if [[ -n "${!key+x}" ]]; then
+    printf '%s\n' "${!key}"
+  elif [[ -n "${!legacy_key+x}" ]]; then
+    printf '%s\n' "${!legacy_key}"
+  else
+    printf '%s\n' "$default_value"
+  fi
+}
+
 usage() {
   cat <<'USAGE'
 Usage:
@@ -119,7 +145,7 @@ fi
 
 configure_module_set
 host_platform="$(detect_host_platform)"
-canonical_platform="${AGENT_WORLD_WASM_CANONICAL_CONTAINER_PLATFORM:-linux-x86_64}"
+canonical_platform="$(wasm_env_or_default CANONICAL_CONTAINER_PLATFORM "linux-x86_64")"
 if [[ -z "$runner_label" ]]; then
   runner_label="$host_platform"
 fi

@@ -15,6 +15,8 @@ pub const DEFAULT_PROFILE: &str = "release";
 pub const DEFAULT_OUT_DIR: &str = ".tmp/wasm-build-suite";
 pub const DEFAULT_CANONICALIZER_VERSION: &str = "strip-custom-sections-v1";
 pub const DEFAULT_CONTAINER_PLATFORM: &str = "linux-x86_64";
+const WASM_ENV_PREFIX: &str = "OASIS7_WASM_";
+const LEGACY_WASM_ENV_PREFIX: &str = "AGENT_WORLD_WASM_";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BuildRequest {
@@ -226,13 +228,11 @@ struct BuildManifest {
 
 impl BuildStdConfig {
     fn from_env() -> Self {
-        let enabled = env::var("AGENT_WORLD_WASM_BUILD_STD")
-            .ok()
+        let enabled = wasm_env_value("BUILD_STD")
             .map(|value| parse_truthy(value.as_str()))
             .unwrap_or(false);
-        let components = env::var("AGENT_WORLD_WASM_BUILD_STD_COMPONENTS")
-            .unwrap_or_else(|_| "std,panic_abort".to_string());
-        let features = env::var("AGENT_WORLD_WASM_BUILD_STD_FEATURES").unwrap_or_default();
+        let components = wasm_env_value_or_default("BUILD_STD_COMPONENTS", "std,panic_abort");
+        let features = wasm_env_value_or_default("BUILD_STD_FEATURES", "");
         Self {
             enabled,
             components,
@@ -321,23 +321,17 @@ pub fn run_build(request: &BuildRequest) -> Result<BuildOutput, BuildError> {
     let wasm_hash_sha256 = sha256_hex(&canonical_wasm_bytes);
     let source_manifest_path = manifest_path.to_string_lossy().to_string();
     let source_hash = compute_source_hash(package, &metadata, &manifest_path)?;
-    let wasm_toolchain = env_value_or_default("AGENT_WORLD_WASM_TOOLCHAIN", "");
-    let wasm_build_std = env_value_or_default("AGENT_WORLD_WASM_BUILD_STD", "0");
-    let wasm_build_std_components =
-        env_value_or_default("AGENT_WORLD_WASM_BUILD_STD_COMPONENTS", "std,panic_abort");
-    let wasm_build_std_features = env_value_or_default("AGENT_WORLD_WASM_BUILD_STD_FEATURES", "");
-    let wasm_deterministic_guard =
-        env_value_or_default("AGENT_WORLD_WASM_DETERMINISTIC_GUARD", "1");
-    let canonicalizer_version = env_value_or_default(
-        "AGENT_WORLD_WASM_CANONICALIZER_VERSION",
-        DEFAULT_CANONICALIZER_VERSION,
-    );
-    let container_platform = env_value_or_default(
-        "AGENT_WORLD_WASM_CANONICAL_CONTAINER_PLATFORM",
-        DEFAULT_CONTAINER_PLATFORM,
-    );
-    let builder_image_ref = env_value_or_default("AGENT_WORLD_WASM_BUILDER_IMAGE_REF", "");
-    let builder_image_digest = env_value_or_default("AGENT_WORLD_WASM_BUILDER_IMAGE_DIGEST", "");
+    let wasm_toolchain = wasm_env_value_or_default("TOOLCHAIN", "");
+    let wasm_build_std = wasm_env_value_or_default("BUILD_STD", "0");
+    let wasm_build_std_components = wasm_env_value_or_default("BUILD_STD_COMPONENTS", "std,panic_abort");
+    let wasm_build_std_features = wasm_env_value_or_default("BUILD_STD_FEATURES", "");
+    let wasm_deterministic_guard = wasm_env_value_or_default("DETERMINISTIC_GUARD", "1");
+    let canonicalizer_version =
+        wasm_env_value_or_default("CANONICALIZER_VERSION", DEFAULT_CANONICALIZER_VERSION);
+    let container_platform =
+        wasm_env_value_or_default("CANONICAL_CONTAINER_PLATFORM", DEFAULT_CONTAINER_PLATFORM);
+    let builder_image_ref = wasm_env_value_or_default("BUILDER_IMAGE_REF", "");
+    let builder_image_digest = wasm_env_value_or_default("BUILDER_IMAGE_DIGEST", "");
     let build_manifest_hash = compute_build_manifest_hash(
         request.profile.as_str(),
         request.target.as_str(),
@@ -541,9 +535,22 @@ fn resolve_artifact_path(
         .join(format!("{target_name}.wasm"))
 }
 
-fn env_value_or_default(key: &str, default: &str) -> String {
-    env::var(key)
+fn wasm_env_key(suffix: &str) -> String {
+    format!("{WASM_ENV_PREFIX}{suffix}")
+}
+
+fn legacy_wasm_env_key(suffix: &str) -> String {
+    format!("{LEGACY_WASM_ENV_PREFIX}{suffix}")
+}
+
+fn wasm_env_value(suffix: &str) -> Option<String> {
+    env::var(wasm_env_key(suffix))
         .ok()
+        .or_else(|| env::var(legacy_wasm_env_key(suffix)).ok())
+}
+
+fn wasm_env_value_or_default(suffix: &str, default: &str) -> String {
+    wasm_env_value(suffix)
         .map(|value| value.trim().to_string())
         .filter(|value| !value.is_empty())
         .unwrap_or_else(|| default.to_string())
@@ -712,8 +719,7 @@ fn validate_workspace_compile_time_determinism(
     metadata: &CargoMetadata,
     manifest_path: &Path,
 ) -> Result<(), BuildError> {
-    let enabled = env::var("AGENT_WORLD_WASM_VALIDATE_WORKSPACE_COMPILETIME")
-        .ok()
+    let enabled = wasm_env_value("VALIDATE_WORKSPACE_COMPILETIME")
         .map(|raw| parse_truthy(raw.as_str()))
         .unwrap_or(true);
     if !enabled {
@@ -861,15 +867,16 @@ mod tests {
     use wasmparser::Payload;
 
     struct EnvVarGuard {
-        key: &'static str,
+        key: String,
         previous: Option<String>,
     }
 
     impl EnvVarGuard {
-        fn capture(key: &'static str) -> Self {
+        fn capture(key: impl Into<String>) -> Self {
+            let key = key.into();
             Self {
+                previous: env::var(&key).ok(),
                 key,
-                previous: env::var(key).ok(),
             }
         }
     }
@@ -877,9 +884,9 @@ mod tests {
     impl Drop for EnvVarGuard {
         fn drop(&mut self) {
             if let Some(value) = self.previous.take() {
-                env::set_var(self.key, value);
+                env::set_var(&self.key, value);
             } else {
-                env::remove_var(self.key);
+                env::remove_var(&self.key);
             }
         }
     }
@@ -970,8 +977,11 @@ mod tests {
 
     #[test]
     fn compile_time_guard_rejects_workspace_build_script_target() {
-        let _guard = EnvVarGuard::capture("AGENT_WORLD_WASM_VALIDATE_WORKSPACE_COMPILETIME");
-        env::set_var("AGENT_WORLD_WASM_VALIDATE_WORKSPACE_COMPILETIME", "1");
+        let _guard = EnvVarGuard::capture(wasm_env_key("VALIDATE_WORKSPACE_COMPILETIME"));
+        let _legacy_guard =
+            EnvVarGuard::capture(legacy_wasm_env_key("VALIDATE_WORKSPACE_COMPILETIME"));
+        env::set_var(wasm_env_key("VALIDATE_WORKSPACE_COMPILETIME"), "1");
+        env::remove_var(legacy_wasm_env_key("VALIDATE_WORKSPACE_COMPILETIME"));
 
         let metadata = CargoMetadata {
             workspace_root: "/workspace".to_string(),
@@ -1001,8 +1011,11 @@ mod tests {
 
     #[test]
     fn compile_time_guard_allows_external_proc_macro_package() {
-        let _guard = EnvVarGuard::capture("AGENT_WORLD_WASM_VALIDATE_WORKSPACE_COMPILETIME");
-        env::set_var("AGENT_WORLD_WASM_VALIDATE_WORKSPACE_COMPILETIME", "1");
+        let _guard = EnvVarGuard::capture(wasm_env_key("VALIDATE_WORKSPACE_COMPILETIME"));
+        let _legacy_guard =
+            EnvVarGuard::capture(legacy_wasm_env_key("VALIDATE_WORKSPACE_COMPILETIME"));
+        env::set_var(wasm_env_key("VALIDATE_WORKSPACE_COMPILETIME"), "1");
+        env::remove_var(legacy_wasm_env_key("VALIDATE_WORKSPACE_COMPILETIME"));
 
         let metadata = CargoMetadata {
             workspace_root: "/workspace".to_string(),
@@ -1088,5 +1101,31 @@ mod tests {
         for value in ["0", "false", "off", "", "random"] {
             assert!(!parse_truthy(value), "value should be falsey: {value}");
         }
+    }
+
+    #[test]
+    fn wasm_env_value_or_default_prefers_oasis7_prefix() {
+        let _primary = EnvVarGuard::capture(wasm_env_key("BUILD_STD"));
+        let _legacy = EnvVarGuard::capture(legacy_wasm_env_key("BUILD_STD"));
+        env::set_var(wasm_env_key("BUILD_STD"), "1");
+        env::set_var(legacy_wasm_env_key("BUILD_STD"), "0");
+
+        assert_eq!(wasm_env_value_or_default("BUILD_STD", "missing"), "1");
+    }
+
+    #[test]
+    fn wasm_env_value_or_default_falls_back_to_legacy_prefix() {
+        let _primary = EnvVarGuard::capture(wasm_env_key("BUILD_STD_COMPONENTS"));
+        let _legacy = EnvVarGuard::capture(legacy_wasm_env_key("BUILD_STD_COMPONENTS"));
+        env::remove_var(wasm_env_key("BUILD_STD_COMPONENTS"));
+        env::set_var(
+            legacy_wasm_env_key("BUILD_STD_COMPONENTS"),
+            "std,panic_abort",
+        );
+
+        assert_eq!(
+            wasm_env_value_or_default("BUILD_STD_COMPONENTS", "missing"),
+            "std,panic_abort"
+        );
     }
 }

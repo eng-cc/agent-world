@@ -43,6 +43,7 @@
   - SC-10: 生产运行入口必须默认启用 release security policy，关闭 builtin manifest fallback、本地 identity hash 签名、本地 finality signing 与 runtime source compile，保证“只认 canonical binary”不是测试态约定而是产品默认路径。
   - SC-11: `TASK-WORLD_RUNTIME-043` 收口时必须归档真实跨宿主 Docker canonical evidence，至少覆盖 `linux-x86_64` 与一条 Docker-capable `darwin-arm64` 证据输入，不能以 Linux-only gate 宣称跨宿主 closure。
   - SC-12: `doc/world-runtime/**` 仍可读运行时专题标题统一使用 `oasis7 Runtime` 品牌，不再在模块入口与历史专题中混用 `Agent World Runtime` 标题。
+  - SC-13: WASM 构建、同步、CI summary 与 builder image 的 operator env key 必须优先迁移到 `OASIS7_WASM_*`，同时兼容旧 `AGENT_WORLD_WASM_*` fallback，避免 Docker-first canonical build 链路在品牌迁移时出现本地脚本、容器镜像与 build suite 配置口径分叉。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -98,6 +99,7 @@
   - AC-9: 生产 runtime / node 入口必须有可验证的 release policy 绑定证据，证明 fallback / 本地签名 / runtime source compile 默认关闭；若仅测试调用 `enable_production_release_policy()`，不得视为收口。
   - AC-10: 发布候选的 wasm determinism evidence 必须显式区分“当前稳定 gate”和“最终跨宿主 gate”；当 GitHub-hosted runner 缺 Docker daemon 时，必须补外部 Docker-capable macOS evidence，不能把 `linux-x86_64` 单宿主结果等同于跨宿主 closure。
   - AC-11: `doc/world-runtime/**` 仍可读专题标题统一使用 `oasis7 Runtime` 品牌；旧 `Agent World Runtime` 仅允许保留在正文历史上下文、实现兼容说明与证据原文中。
+  - AC-12: `scripts/build-wasm-module.sh`、`scripts/sync-m1-builtin-wasm-artifacts.sh`、`scripts/ci-m1-wasm-summary.sh`、`tools/wasm_build_suite` 与 `docker/wasm-builder/Dockerfile` 必须默认读取或写入 `OASIS7_WASM_*`，并继续兼容旧 `AGENT_WORLD_WASM_*`；错误提示、usage、容器注入 env 与 build receipt 元数据采集不得再把旧前缀当作唯一真值。
 - Non-Goals:
   - 不在本 PRD 中展开每个阶段的实现代码细节。
   - 不替代 p2p 网络拓扑或 site 发布策略设计。

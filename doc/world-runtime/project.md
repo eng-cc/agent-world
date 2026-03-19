@@ -54,6 +54,25 @@
 - [ ] TASK-WORLD_RUNTIME-043 (PRD-WORLD_RUNTIME-021/022) [test_tier_required + test_tier_full]: 将 manifest / identity / CI summary / release evidence 切换为 Docker canonical hash，对不同宿主只比较容器输出，不再比较 host-native 发布 hash。
 - [x] TASK-WORLD_RUNTIME-044 (PRD-WORLD_RUNTIME-022) [test_tier_required]: 将 `compile_module_artifact_from_source` 的生产路径外移到 external Docker builder 或 production 默认禁用，runtime 仅消费 binary + receipt。
 - [x] TASK-WORLD_RUNTIME-045 (PRD-WORLD_RUNTIME-001) [test_tier_required]: 收口 `doc/world-runtime/**` 仍可读专题标题的 `oasis7 Runtime` 品牌，不改动内部实现兼容名与历史证据正文。
+- [x] TASK-WORLD_RUNTIME-046 (PRD-WORLD_RUNTIME-020/021) [test_tier_required]: 将 WASM 构建、同步、CI summary 与 builder image 的 operator env key 默认优先切到 `OASIS7_WASM_*`，并保留旧 `AGENT_WORLD_WASM_*` fallback，收口 Docker-first canonical build 链路的低风险内部标识迁移。
+  - 产物文件:
+    - `doc/world-runtime/prd.md`
+    - `doc/world-runtime/project.md`
+    - `doc/world-runtime/wasm/wasm-deterministic-build-pipeline.prd.md`
+    - `doc/world-runtime/wasm/wasm-deterministic-build-pipeline.project.md`
+    - `doc/scripts/wasm/builtin-wasm-nightly-build-std.prd.md`
+    - `scripts/build-wasm-module.sh`
+    - `scripts/sync-m1-builtin-wasm-artifacts.sh`
+    - `scripts/ci-m1-wasm-summary.sh`
+    - `tools/wasm_build_suite/src/lib.rs`
+    - `docker/wasm-builder/Dockerfile`
+  - 验收命令 (`test_tier_required`):
+    - `bash -n scripts/build-wasm-module.sh`
+    - `bash -n scripts/sync-m1-builtin-wasm-artifacts.sh`
+    - `bash -n scripts/ci-m1-wasm-summary.sh`
+    - `env -u RUSTC_WRAPPER cargo test --manifest-path tools/wasm_build_suite/Cargo.toml -- --nocapture`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
 
 ## 依赖
 - 模块设计总览：`doc/world-runtime/design.md`
@@ -73,6 +92,7 @@
 - 当前状态: in_progress（OpenClaw/runtime live traceability 子切片已完成；WASM Docker builder image 与 wrapper 已落地，`TASK-WORLD_RUNTIME-043` 已完成 build receipt / canonical token / identity / CI summary / receipt-aware release gate / node-side proof flow 子切片，并先将 GitHub-hosted gate 收敛为 Linux-only；`TASK-WORLD_RUNTIME-044` 已完成 production source compile gate）
 - 下一任务: `TASK-WORLD_RUNTIME-043`
 - 最新完成: `TASK-WORLD_RUNTIME-045`（world-runtime 模块仍可读专题标题统一切到 `oasis7 Runtime` 品牌，保留内部实现兼容名与历史证据正文不变）。
+- 最新完成: `TASK-WORLD_RUNTIME-046`（已将 WASM 构建、同步、CI summary 与 builder image 的 operator env key 默认优先切到 `OASIS7_WASM_*`，并保留旧 `AGENT_WORLD_WASM_*` fallback）。
 - 最新完成: `TASK-WORLD_RUNTIME-044`（production `ReleaseSecurityPolicy` 默认禁用 runtime source compile，`CompileModuleArtifactFromSource` 改为仅 dev/test 可用并要求 external Docker builder + deploy binary + receipt）；上一轮为 `TASK-WORLD_RUNTIME-042`（新增 Docker-only WASM builder image 与 host wrapper，固定 `linux-x86_64` canonical build 平台），`TASK-WORLD_RUNTIME-043` 当前仍待 Docker-capable macOS runner 的真实跨宿主 full-tier release evidence 归档。
 - 阶段收口优先级: `P0`
 - 阶段 owner: `wasm_platform_engineer`（联审：`producer_system_designer`、`runtime_engineer`；验证：`qa_engineer`）
@@ -85,7 +105,7 @@
   - `TASK-WORLD_RUNTIME-039` 已完成：为 `world_viewer_live` / runtime live 增加 `AGENT_WORLD_RUNTIME_AGENT_CHAT_ECHO=1` 测试态回声开关，在 `agent_chat` 被接受后可注入一条标准 `WorldEventKind::AgentSpoke` 事件，供 Viewer / QA 在不依赖自然 LLM 回话的情况下稳定采样消息流。
   - `TASK-WORLD_RUNTIME-040` 已完成：在 `DecisionRequest` / `ObservationEnvelope` 中补齐 `mode`、`observation_schema_version`、`action_schema_version`、`environment_class`、`fallback_reason`、`fixture_id`、`replay_id`，并将其接入 `world_openclaw_parity_bench`、`world_openclaw_local_bridge`、`runtime_live llm_sidecar` 与聚合脚本，确保 headless parity 与 runtime live 产物可追溯到统一 replay/summary 元数据。
   - `TASK-WORLD_RUNTIME-041` 已完成：根据最新需求将专题从“host deterministic guard + keyed 平台 hash 对账”修正为“Docker-first canonical builder + single canonical publish hash”，并明确 `compile_module_artifact_from_source` 生产路径需要外移或 gated。
-  - `TASK-WORLD_RUNTIME-028` 已完成：新增节点侧固定验收入口 `scripts/module-release-node-acceptance.sh` 并将 S11 运行手册切换为“脚本入口 + 等价拆分命令 + 证据目录”；同时收敛 `sync-m1/m4/m5` 非 `--check` 写入授权为“CI 禁止、仅本地显式授权（`AGENT_WORLD_WASM_SYNC_WRITE_ALLOW=local-dev`）”，主 CI 不再具备生产发布写入/激活路径。
+  - `TASK-WORLD_RUNTIME-028` 已完成：新增节点侧固定验收入口 `scripts/module-release-node-acceptance.sh` 并将 S11 运行手册切换为“脚本入口 + 等价拆分命令 + 证据目录”；同时收敛 `sync-m1/m4/m5` 非 `--check` 写入授权为“CI 禁止、仅本地显式授权（`OASIS7_WASM_SYNC_WRITE_ALLOW=local-dev`，兼容旧 `AGENT_WORLD_WASM_SYNC_WRITE_ALLOW=local-dev`）”，主 CI 不再具备生产发布写入/激活路径。
   - `TASK-WORLD_RUNTIME-029` 已完成：新增 `scripts/world-runtime-finality-baseline.sh` 固定基准入口，输出 `stake/epoch` 验签耗时聚合指标与 `2 epoch` 收敛状态（`summary.md`/`summary.json` 可归档）；S11 运行手册已补齐命令与产物路径。
   - `TASK-WORLD_RUNTIME-034` 已完成：补齐 `runtime-storage-footprint-governance-2026-03-08.design.md`，明确 replay contract、checkpoint、GC、metrics 与迁移边界。
   - `TASK-WORLD_RUNTIME-035` 已完成：将专题执行拆解到 T1.1 ~ T7.5，明确实现顺序、依赖边界与测试闭环。

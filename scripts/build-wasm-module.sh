@@ -14,20 +14,57 @@ DEFAULT_BUILDER_IMAGE_DIGEST="sha256:08cb684c3ecc06e4e31e2dc9a4cfdb13bb140ea8861
 DEFAULT_BUILDER_DOCKERFILE="$ROOT_DIR/docker/wasm-builder/Dockerfile"
 DEFAULT_CANONICALIZER_VERSION="strip-custom-sections-v1"
 
-WASM_TOOLCHAIN="${AGENT_WORLD_WASM_TOOLCHAIN:-$CANONICAL_WASM_TOOLCHAIN}"
-WASM_TARGET="${AGENT_WORLD_WASM_TARGET:-$CANONICAL_WASM_TARGET}"
-WASM_BUILD_STD_ENABLED="${AGENT_WORLD_WASM_BUILD_STD:-1}"
-WASM_BUILD_STD_COMPONENTS="${AGENT_WORLD_WASM_BUILD_STD_COMPONENTS:-$CANONICAL_WASM_BUILD_STD_COMPONENTS}"
-WASM_BUILD_STD_FEATURES="${AGENT_WORLD_WASM_BUILD_STD_FEATURES:-$CANONICAL_WASM_BUILD_STD_FEATURES}"
-WASM_DETERMINISTIC_GUARD="${AGENT_WORLD_WASM_DETERMINISTIC_GUARD:-1}"
-WASM_BUILD_IN_CONTAINER="${AGENT_WORLD_WASM_BUILD_IN_CONTAINER:-0}"
-WASM_SOURCE_WORKSPACE_DIR="${AGENT_WORLD_WASM_SOURCE_WORKSPACE_DIR:-$CONTAINER_WORKSPACE_DIR}"
-WASM_BUILDER_IMAGE="${AGENT_WORLD_WASM_BUILDER_IMAGE:-$DEFAULT_BUILDER_IMAGE}"
-WASM_BUILDER_IMAGE_DIGEST="${AGENT_WORLD_WASM_BUILDER_IMAGE_DIGEST:-$DEFAULT_BUILDER_IMAGE_DIGEST}"
-WASM_BUILDER_DOCKERFILE="${AGENT_WORLD_WASM_BUILDER_DOCKERFILE:-$DEFAULT_BUILDER_DOCKERFILE}"
-WASM_BUILDER_AUTO_BUILD="${AGENT_WORLD_WASM_BUILDER_AUTO_BUILD:-1}"
-WASM_BUILD_SUITE_BIN="${AGENT_WORLD_WASM_BUILD_SUITE_BIN:-}"
-WASM_CANONICALIZER_VERSION="${AGENT_WORLD_WASM_CANONICALIZER_VERSION:-$DEFAULT_CANONICALIZER_VERSION}"
+wasm_env_key() {
+  local suffix=$1
+  printf 'OASIS7_WASM_%s\n' "$suffix"
+}
+
+wasm_legacy_env_key() {
+  local suffix=$1
+  printf 'AGENT_WORLD_WASM_%s\n' "$suffix"
+}
+
+wasm_env_or_default() {
+  local suffix=$1
+  local default_value=${2-}
+  local key
+  local legacy_key
+  key=$(wasm_env_key "$suffix")
+  legacy_key=$(wasm_legacy_env_key "$suffix")
+  if [[ -n "${!key+x}" ]]; then
+    printf '%s\n' "${!key}"
+  elif [[ -n "${!legacy_key+x}" ]]; then
+    printf '%s\n' "${!legacy_key}"
+  else
+    printf '%s\n' "$default_value"
+  fi
+}
+
+set_wasm_env() {
+  local suffix=$1
+  local value=${2-}
+  local key
+  local legacy_key
+  key=$(wasm_env_key "$suffix")
+  legacy_key=$(wasm_legacy_env_key "$suffix")
+  export "$key=$value"
+  unset "$legacy_key" || true
+}
+
+WASM_TOOLCHAIN="$(wasm_env_or_default TOOLCHAIN "$CANONICAL_WASM_TOOLCHAIN")"
+WASM_TARGET="$(wasm_env_or_default TARGET "$CANONICAL_WASM_TARGET")"
+WASM_BUILD_STD_ENABLED="$(wasm_env_or_default BUILD_STD "1")"
+WASM_BUILD_STD_COMPONENTS="$(wasm_env_or_default BUILD_STD_COMPONENTS "$CANONICAL_WASM_BUILD_STD_COMPONENTS")"
+WASM_BUILD_STD_FEATURES="$(wasm_env_or_default BUILD_STD_FEATURES "$CANONICAL_WASM_BUILD_STD_FEATURES")"
+WASM_DETERMINISTIC_GUARD="$(wasm_env_or_default DETERMINISTIC_GUARD "1")"
+WASM_BUILD_IN_CONTAINER="$(wasm_env_or_default BUILD_IN_CONTAINER "0")"
+WASM_SOURCE_WORKSPACE_DIR="$(wasm_env_or_default SOURCE_WORKSPACE_DIR "$CONTAINER_WORKSPACE_DIR")"
+WASM_BUILDER_IMAGE="$(wasm_env_or_default BUILDER_IMAGE "$DEFAULT_BUILDER_IMAGE")"
+WASM_BUILDER_IMAGE_DIGEST="$(wasm_env_or_default BUILDER_IMAGE_DIGEST "$DEFAULT_BUILDER_IMAGE_DIGEST")"
+WASM_BUILDER_DOCKERFILE="$(wasm_env_or_default BUILDER_DOCKERFILE "$DEFAULT_BUILDER_DOCKERFILE")"
+WASM_BUILDER_AUTO_BUILD="$(wasm_env_or_default BUILDER_AUTO_BUILD "1")"
+WASM_BUILD_SUITE_BIN="$(wasm_env_or_default BUILD_SUITE_BIN "")"
+WASM_CANONICALIZER_VERSION="$(wasm_env_or_default CANONICALIZER_VERSION "$DEFAULT_CANONICALIZER_VERSION")"
 
 RUSTFLAGS_EFFECTIVE=""
 
@@ -125,23 +162,23 @@ require_env_value_or_unset() {
 
 enforce_deterministic_build_inputs() {
   if [[ "$WASM_TOOLCHAIN" != "$CANONICAL_WASM_TOOLCHAIN" ]]; then
-    echo "error: deterministic wasm build requires AGENT_WORLD_WASM_TOOLCHAIN=$CANONICAL_WASM_TOOLCHAIN (got $WASM_TOOLCHAIN)" >&2
+    echo "error: deterministic wasm build requires OASIS7_WASM_TOOLCHAIN=$CANONICAL_WASM_TOOLCHAIN (legacy: AGENT_WORLD_WASM_TOOLCHAIN, got $WASM_TOOLCHAIN)" >&2
     exit 1
   fi
   if [[ "$WASM_TARGET" != "$CANONICAL_WASM_TARGET" ]]; then
-    echo "error: deterministic wasm build requires AGENT_WORLD_WASM_TARGET=$CANONICAL_WASM_TARGET (got $WASM_TARGET)" >&2
+    echo "error: deterministic wasm build requires OASIS7_WASM_TARGET=$CANONICAL_WASM_TARGET (legacy: AGENT_WORLD_WASM_TARGET, got $WASM_TARGET)" >&2
     exit 1
   fi
   if ! is_truthy "$WASM_BUILD_STD_ENABLED"; then
-    echo "error: deterministic wasm build requires AGENT_WORLD_WASM_BUILD_STD=1" >&2
+    echo "error: deterministic wasm build requires OASIS7_WASM_BUILD_STD=1 (legacy: AGENT_WORLD_WASM_BUILD_STD)" >&2
     exit 1
   fi
   if [[ "$WASM_BUILD_STD_COMPONENTS" != "$CANONICAL_WASM_BUILD_STD_COMPONENTS" ]]; then
-    echo "error: deterministic wasm build requires AGENT_WORLD_WASM_BUILD_STD_COMPONENTS=$CANONICAL_WASM_BUILD_STD_COMPONENTS (got $WASM_BUILD_STD_COMPONENTS)" >&2
+    echo "error: deterministic wasm build requires OASIS7_WASM_BUILD_STD_COMPONENTS=$CANONICAL_WASM_BUILD_STD_COMPONENTS (legacy: AGENT_WORLD_WASM_BUILD_STD_COMPONENTS, got $WASM_BUILD_STD_COMPONENTS)" >&2
     exit 1
   fi
   if [[ "$WASM_BUILD_STD_FEATURES" != "$CANONICAL_WASM_BUILD_STD_FEATURES" ]]; then
-    echo "error: deterministic wasm build requires AGENT_WORLD_WASM_BUILD_STD_FEATURES to be empty (got $WASM_BUILD_STD_FEATURES)" >&2
+    echo "error: deterministic wasm build requires OASIS7_WASM_BUILD_STD_FEATURES to be empty (legacy: AGENT_WORLD_WASM_BUILD_STD_FEATURES, got $WASM_BUILD_STD_FEATURES)" >&2
     exit 1
   fi
 
@@ -168,14 +205,14 @@ prepare_container_build_std() {
   fi
 
   export RUSTUP_TOOLCHAIN="$WASM_TOOLCHAIN"
-  export AGENT_WORLD_WASM_BUILD_STD=1
-  export AGENT_WORLD_WASM_BUILD_STD_COMPONENTS="$WASM_BUILD_STD_COMPONENTS"
-  export AGENT_WORLD_WASM_BUILD_STD_FEATURES="$WASM_BUILD_STD_FEATURES"
+  set_wasm_env "BUILD_STD" "1"
+  set_wasm_env "BUILD_STD_COMPONENTS" "$WASM_BUILD_STD_COMPONENTS"
+  set_wasm_env "BUILD_STD_FEATURES" "$WASM_BUILD_STD_FEATURES"
 }
 
 prepare_nightly_build_std_impl() {
   if ! command -v rustup >/dev/null 2>&1; then
-    echo "error: AGENT_WORLD_WASM_BUILD_STD=1 requires rustup in PATH" >&2
+    echo "error: OASIS7_WASM_BUILD_STD=1 requires rustup in PATH (legacy: AGENT_WORLD_WASM_BUILD_STD)" >&2
     exit 1
   fi
 
@@ -188,9 +225,9 @@ prepare_nightly_build_std_impl() {
   fi
 
   export RUSTUP_TOOLCHAIN="$WASM_TOOLCHAIN"
-  export AGENT_WORLD_WASM_BUILD_STD=1
-  export AGENT_WORLD_WASM_BUILD_STD_COMPONENTS="$WASM_BUILD_STD_COMPONENTS"
-  export AGENT_WORLD_WASM_BUILD_STD_FEATURES="$WASM_BUILD_STD_FEATURES"
+  set_wasm_env "BUILD_STD" "1"
+  set_wasm_env "BUILD_STD_COMPONENTS" "$WASM_BUILD_STD_COMPONENTS"
+  set_wasm_env "BUILD_STD_FEATURES" "$WASM_BUILD_STD_FEATURES"
 }
 
 prepare_nightly_build_std() {
@@ -268,7 +305,7 @@ run_native_build() {
       prepare_nightly_build_std
     fi
   else
-    export AGENT_WORLD_WASM_BUILD_STD=0
+    set_wasm_env "BUILD_STD" "0"
   fi
 
   if ! is_truthy "$WASM_DETERMINISTIC_GUARD"; then
@@ -363,7 +400,7 @@ ensure_builder_image() {
 
   if ! is_truthy "$WASM_BUILDER_AUTO_BUILD"; then
     echo "error: canonical wasm builder image is missing: $WASM_BUILDER_IMAGE" >&2
-    echo "hint: set AGENT_WORLD_WASM_BUILDER_AUTO_BUILD=1 or build the image manually" >&2
+    echo "hint: set OASIS7_WASM_BUILDER_AUTO_BUILD=1 (legacy: AGENT_WORLD_WASM_BUILDER_AUTO_BUILD) or build the image manually" >&2
     exit 1
   fi
 
@@ -519,18 +556,18 @@ run_docker_wrapper() {
     --user "$(id -u):$(id -g)" \
     --workdir "$CONTAINER_WORKSPACE_DIR" \
     --mount "type=bind,src=$host_workspace_root,dst=$CONTAINER_WORKSPACE_DIR" \
-    --env AGENT_WORLD_WASM_BUILD_IN_CONTAINER=1 \
-    --env "AGENT_WORLD_WASM_SOURCE_WORKSPACE_DIR=$CONTAINER_WORKSPACE_DIR" \
-    --env "AGENT_WORLD_WASM_TOOLCHAIN=$WASM_TOOLCHAIN" \
-    --env "AGENT_WORLD_WASM_TARGET=$WASM_TARGET" \
-    --env "AGENT_WORLD_WASM_BUILD_STD=$WASM_BUILD_STD_ENABLED" \
-    --env "AGENT_WORLD_WASM_BUILD_STD_COMPONENTS=$WASM_BUILD_STD_COMPONENTS" \
-    --env "AGENT_WORLD_WASM_BUILD_STD_FEATURES=$WASM_BUILD_STD_FEATURES" \
-    --env "AGENT_WORLD_WASM_DETERMINISTIC_GUARD=$WASM_DETERMINISTIC_GUARD" \
-    --env "AGENT_WORLD_WASM_CANONICAL_CONTAINER_PLATFORM=$CANONICAL_CONTAINER_PLATFORM_TOKEN" \
-    --env "AGENT_WORLD_WASM_CANONICALIZER_VERSION=$WASM_CANONICALIZER_VERSION" \
-    --env "AGENT_WORLD_WASM_BUILDER_IMAGE_REF=$WASM_BUILDER_IMAGE" \
-    --env "AGENT_WORLD_WASM_BUILDER_IMAGE_DIGEST=$builder_image_digest_value" \
+    --env OASIS7_WASM_BUILD_IN_CONTAINER=1 \
+    --env "OASIS7_WASM_SOURCE_WORKSPACE_DIR=$CONTAINER_WORKSPACE_DIR" \
+    --env "OASIS7_WASM_TOOLCHAIN=$WASM_TOOLCHAIN" \
+    --env "OASIS7_WASM_TARGET=$WASM_TARGET" \
+    --env "OASIS7_WASM_BUILD_STD=$WASM_BUILD_STD_ENABLED" \
+    --env "OASIS7_WASM_BUILD_STD_COMPONENTS=$WASM_BUILD_STD_COMPONENTS" \
+    --env "OASIS7_WASM_BUILD_STD_FEATURES=$WASM_BUILD_STD_FEATURES" \
+    --env "OASIS7_WASM_DETERMINISTIC_GUARD=$WASM_DETERMINISTIC_GUARD" \
+    --env "OASIS7_WASM_CANONICAL_CONTAINER_PLATFORM=$CANONICAL_CONTAINER_PLATFORM_TOKEN" \
+    --env "OASIS7_WASM_CANONICALIZER_VERSION=$WASM_CANONICALIZER_VERSION" \
+    --env "OASIS7_WASM_BUILDER_IMAGE_REF=$WASM_BUILDER_IMAGE" \
+    --env "OASIS7_WASM_BUILDER_IMAGE_DIGEST=$builder_image_digest_value" \
     --env HOME=/tmp/oasis7-home \
     --env CARGO_HOME=/tmp/oasis7-cargo-home \
     --env RUSTUP_HOME=/rustup \
