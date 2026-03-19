@@ -15,7 +15,8 @@ const CHAIN_TRANSFER_PROXY_TIMEOUT_MS: u64 = 1_500;
 const CHAIN_RECOVERY_MODE_FRESH_NODE_ID: &str = "fresh_node_id";
 const CHAIN_RECOVERY_PORT_SCAN_LIMIT: u16 = 32;
 const DEFAULT_CHAIN_STATUS_BIND_PORT: u16 = 5121;
-const GAME_STATIC_DIR_ENV: &str = "AGENT_WORLD_GAME_STATIC_DIR";
+const GAME_STATIC_DIR_ENV: &str = "OASIS7_GAME_STATIC_DIR";
+const LEGACY_GAME_STATIC_DIR_ENV: &str = "AGENT_WORLD_GAME_STATIC_DIR";
 
 pub(super) fn parse_config_request(body: &[u8], action: &str) -> Result<LauncherConfig, String> {
     serde_json::from_slice(body).map_err(|err| format!("parse {action} request JSON failed: {err}"))
@@ -868,14 +869,12 @@ fn resolve_viewer_static_dir_for_launcher(
     launcher_bin: &str,
 ) -> Option<std::path::PathBuf> {
     if raw == DEFAULT_VIEWER_STATIC_DIR {
-        if let Ok(override_path) = std::env::var(GAME_STATIC_DIR_ENV) {
-            let override_path = override_path.trim();
-            if !override_path.is_empty() {
-                return resolve_viewer_static_dir_candidate_for_launcher(
-                    override_path,
-                    launcher_bin,
-                );
-            }
+        let primary = std::env::var(GAME_STATIC_DIR_ENV).ok();
+        let legacy = std::env::var(LEGACY_GAME_STATIC_DIR_ENV).ok();
+        if let Some(override_path) =
+            resolve_viewer_static_env_override(primary.as_deref(), legacy.as_deref())
+        {
+            return resolve_viewer_static_dir_candidate_for_launcher(override_path, launcher_bin);
         }
     }
 
@@ -892,6 +891,17 @@ fn resolve_viewer_static_dir_for_launcher(
     }
 
     None
+}
+
+fn resolve_viewer_static_env_override<'a>(
+    primary: Option<&'a str>,
+    legacy: Option<&'a str>,
+) -> Option<&'a str> {
+    [primary, legacy]
+        .into_iter()
+        .flatten()
+        .map(str::trim)
+        .find(|value| !value.is_empty())
 }
 
 pub(super) fn validate_game_config(config: &LauncherConfig) -> Vec<String> {
@@ -1539,5 +1549,19 @@ mod tests {
         assert!(!response.ok);
         assert_eq!(response.error.as_deref(), Some("invalid category"));
         server.join().expect("server thread should finish");
+    }
+
+    #[test]
+    fn resolve_viewer_static_env_override_prefers_oasis7_value() {
+        let resolved =
+            super::resolve_viewer_static_env_override(Some(" web-dist "), Some("legacy-dist"));
+        assert_eq!(resolved, Some("web-dist"));
+    }
+
+    #[test]
+    fn resolve_viewer_static_env_override_falls_back_to_legacy_value() {
+        let resolved =
+            super::resolve_viewer_static_env_override(Some("   "), Some(" legacy-dist "));
+        assert_eq!(resolved, Some("legacy-dist"));
     }
 }

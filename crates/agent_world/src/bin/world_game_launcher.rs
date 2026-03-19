@@ -20,7 +20,12 @@ const DEFAULT_WEB_BIND: &str = "127.0.0.1:5011";
 const DEFAULT_VIEWER_HOST: &str = "127.0.0.1";
 const DEFAULT_VIEWER_PORT: u16 = 4173;
 const DEFAULT_VIEWER_STATIC_DIR: &str = "web";
-const GAME_STATIC_DIR_ENV: &str = "AGENT_WORLD_GAME_STATIC_DIR";
+const GAME_STATIC_DIR_ENV: &str = "OASIS7_GAME_STATIC_DIR";
+const LEGACY_GAME_STATIC_DIR_ENV: &str = "AGENT_WORLD_GAME_STATIC_DIR";
+const WORLD_VIEWER_LIVE_BIN_ENV: &str = "OASIS7_WORLD_VIEWER_LIVE_BIN";
+const LEGACY_WORLD_VIEWER_LIVE_BIN_ENV: &str = "AGENT_WORLD_WORLD_VIEWER_LIVE_BIN";
+const WORLD_CHAIN_RUNTIME_BIN_ENV: &str = "OASIS7_WORLD_CHAIN_RUNTIME_BIN";
+const LEGACY_WORLD_CHAIN_RUNTIME_BIN_ENV: &str = "AGENT_WORLD_WORLD_CHAIN_RUNTIME_BIN";
 const BUILTIN_LLM_PROVIDER_MODE: &str = "builtin_llm";
 const OPENCLAW_LOCAL_HTTP_PROVIDER_MODE: &str = "openclaw_local_http";
 const DEFAULT_OPENCLAW_BASE_URL: &str = "http://127.0.0.1:5841";
@@ -1241,13 +1246,15 @@ fn validate_chain_node_validator(raw: &str) -> Result<(), String> {
 }
 
 fn resolve_world_viewer_live_binary() -> Result<PathBuf, String> {
-    if let Ok(path) = env::var("AGENT_WORLD_WORLD_VIEWER_LIVE_BIN") {
+    if let Some((path, env_name)) =
+        resolve_non_empty_env_override(WORLD_VIEWER_LIVE_BIN_ENV, LEGACY_WORLD_VIEWER_LIVE_BIN_ENV)
+    {
         let candidate = PathBuf::from(path);
         if candidate.is_file() {
             return Ok(candidate);
         }
         return Err(format!(
-            "AGENT_WORLD_WORLD_VIEWER_LIVE_BIN is set but file does not exist: {}",
+            "{env_name} is set but file does not exist: {}",
             candidate.display()
         ));
     }
@@ -1274,17 +1281,22 @@ fn resolve_world_viewer_live_binary() -> Result<PathBuf, String> {
         }
     }
 
-    Err("failed to locate `world_viewer_live` binary; build it first or set AGENT_WORLD_WORLD_VIEWER_LIVE_BIN".to_string())
+    Err(format!(
+        "failed to locate `world_viewer_live` binary; build it first or set {WORLD_VIEWER_LIVE_BIN_ENV} (legacy: {LEGACY_WORLD_VIEWER_LIVE_BIN_ENV})"
+    ))
 }
 
 fn resolve_world_chain_runtime_binary() -> Result<PathBuf, String> {
-    if let Ok(path) = env::var("AGENT_WORLD_WORLD_CHAIN_RUNTIME_BIN") {
+    if let Some((path, env_name)) = resolve_non_empty_env_override(
+        WORLD_CHAIN_RUNTIME_BIN_ENV,
+        LEGACY_WORLD_CHAIN_RUNTIME_BIN_ENV,
+    ) {
         let candidate = PathBuf::from(path);
         if candidate.is_file() {
             return Ok(candidate);
         }
         return Err(format!(
-            "AGENT_WORLD_WORLD_CHAIN_RUNTIME_BIN is set but file does not exist: {}",
+            "{env_name} is set but file does not exist: {}",
             candidate.display()
         ));
     }
@@ -1311,28 +1323,33 @@ fn resolve_world_chain_runtime_binary() -> Result<PathBuf, String> {
         }
     }
 
-    Err("failed to locate `world_chain_runtime` binary; build it first or set AGENT_WORLD_WORLD_CHAIN_RUNTIME_BIN".to_string())
+    Err(format!(
+        "failed to locate `world_chain_runtime` binary; build it first or set {WORLD_CHAIN_RUNTIME_BIN_ENV} (legacy: {LEGACY_WORLD_CHAIN_RUNTIME_BIN_ENV})"
+    ))
 }
 
 fn resolve_viewer_static_dir(raw: &str) -> Result<PathBuf, String> {
-    let env_override = env::var(GAME_STATIC_DIR_ENV)
-        .ok()
-        .map(|value| value.trim().to_string())
-        .filter(|value| !value.is_empty());
-    resolve_viewer_static_dir_with_override(raw, env_override.as_deref())
+    let env_override =
+        resolve_non_empty_env_override(GAME_STATIC_DIR_ENV, LEGACY_GAME_STATIC_DIR_ENV);
+    resolve_viewer_static_dir_with_override(
+        raw,
+        env_override
+            .as_ref()
+            .map(|(value, env_name)| (value.as_str(), *env_name)),
+    )
 }
 
 fn resolve_viewer_static_dir_with_override(
     raw: &str,
-    env_override: Option<&str>,
+    env_override: Option<(&str, &str)>,
 ) -> Result<PathBuf, String> {
     if raw == DEFAULT_VIEWER_STATIC_DIR {
-        if let Some(override_path) = env_override {
+        if let Some((override_path, env_name)) = env_override {
             if let Some(dir) = resolve_viewer_static_dir_candidate(override_path) {
                 return Ok(dir);
             }
             return Err(format!(
-                "{GAME_STATIC_DIR_ENV} is set but viewer static dir not found: `{override_path}`"
+                "{env_name} is set but viewer static dir not found: `{override_path}`"
             ));
         }
     }
@@ -1367,6 +1384,21 @@ fn resolve_viewer_static_dir_candidate(raw: &str) -> Option<PathBuf> {
                 if sibling_candidate.is_dir() {
                     return Some(sibling_candidate);
                 }
+            }
+        }
+    }
+    None
+}
+
+fn resolve_non_empty_env_override(
+    primary: &'static str,
+    legacy: &'static str,
+) -> Option<(String, &'static str)> {
+    for env_name in [primary, legacy] {
+        if let Ok(value) = env::var(env_name) {
+            let trimmed = value.trim();
+            if !trimmed.is_empty() {
+                return Some((trimmed.to_string(), env_name));
             }
         }
     }
@@ -1484,9 +1516,9 @@ Options:\n\
   --no-open-browser            do not auto open browser\n\
   -h, --help                   show help\n\n\
 Env:\n\
-  AGENT_WORLD_WORLD_VIEWER_LIVE_BIN   explicit path of world_viewer_live binary\n\
-  AGENT_WORLD_WORLD_CHAIN_RUNTIME_BIN explicit path of world_chain_runtime binary\n\
-  AGENT_WORLD_GAME_STATIC_DIR         override default viewer static dir when --viewer-static-dir is omitted"
+  OASIS7_WORLD_VIEWER_LIVE_BIN        explicit path of world_viewer_live binary (legacy: AGENT_WORLD_WORLD_VIEWER_LIVE_BIN)\n\
+  OASIS7_WORLD_CHAIN_RUNTIME_BIN      explicit path of world_chain_runtime binary (legacy: AGENT_WORLD_WORLD_CHAIN_RUNTIME_BIN)\n\
+  OASIS7_GAME_STATIC_DIR              override default viewer static dir when --viewer-static-dir is omitted (legacy: AGENT_WORLD_GAME_STATIC_DIR)"
     );
 }
 

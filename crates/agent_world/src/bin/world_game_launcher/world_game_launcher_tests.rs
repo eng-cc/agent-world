@@ -10,7 +10,7 @@ use super::{
     sanitize_index_html_for_embedded_server, sanitize_relative_request_path, CliOptions,
     ViewerAuthBootstrap, BUILTIN_LLM_PROVIDER_MODE, DEFAULT_CHAIN_NODE_ID,
     DEFAULT_CHAIN_STATUS_BIND, DEFAULT_LIVE_BIND, DEFAULT_OPENCLAW_AGENT_PROFILE, DEFAULT_SCENARIO,
-    DEFAULT_VIEWER_STATIC_DIR, LEGACY_VIEWER_AUTH_BOOTSTRAP_OBJECT,
+    DEFAULT_VIEWER_STATIC_DIR, GAME_STATIC_DIR_ENV, LEGACY_VIEWER_AUTH_BOOTSTRAP_OBJECT,
     LEGACY_VIEWER_AUTH_PRIVATE_KEY_ENV, LEGACY_VIEWER_AUTH_PUBLIC_KEY_ENV,
     LEGACY_VIEWER_PLAYER_ID_ENV, OPENCLAW_LOCAL_HTTP_PROVIDER_MODE, VIEWER_AUTH_BOOTSTRAP_OBJECT,
     VIEWER_AUTH_PRIVATE_KEY_ENV, VIEWER_AUTH_PUBLIC_KEY_ENV, VIEWER_PLAYER_ID_ENV,
@@ -483,7 +483,7 @@ fn resolve_viewer_static_dir_with_override_prefers_env_for_default_static_dir() 
 
     let resolved = resolve_viewer_static_dir_with_override(
         DEFAULT_VIEWER_STATIC_DIR,
-        Some(override_raw.as_str()),
+        Some((override_raw.as_str(), GAME_STATIC_DIR_ENV)),
     )
     .expect("resolve should succeed");
 
@@ -498,9 +498,11 @@ fn resolve_viewer_static_dir_with_override_keeps_explicit_path_priority() {
     let explicit_raw = explicit_dir.to_string_lossy().to_string();
     let override_raw = override_dir.to_string_lossy().to_string();
 
-    let resolved =
-        resolve_viewer_static_dir_with_override(explicit_raw.as_str(), Some(override_raw.as_str()))
-            .expect("resolve should succeed");
+    let resolved = resolve_viewer_static_dir_with_override(
+        explicit_raw.as_str(),
+        Some((override_raw.as_str(), GAME_STATIC_DIR_ENV)),
+    )
+    .expect("resolve should succeed");
 
     assert_eq!(resolved, explicit_dir);
     let _ = fs::remove_dir_all(explicit_dir);
@@ -514,11 +516,11 @@ fn resolve_viewer_static_dir_with_override_rejects_missing_env_dir() {
 
     let err = resolve_viewer_static_dir_with_override(
         DEFAULT_VIEWER_STATIC_DIR,
-        Some(missing_raw.as_str()),
+        Some((missing_raw.as_str(), GAME_STATIC_DIR_ENV)),
     )
     .expect_err("missing override path should fail");
 
-    assert!(err.contains("AGENT_WORLD_GAME_STATIC_DIR"));
+    assert!(err.contains(GAME_STATIC_DIR_ENV));
     assert!(err.contains("not found"));
 }
 
