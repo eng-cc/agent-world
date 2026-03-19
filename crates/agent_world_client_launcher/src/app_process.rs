@@ -216,12 +216,12 @@ impl ClientLauncherApp {
             "--chain-runtime-bin".to_string(),
             chain_runtime_bin,
         ];
-        if let Ok(static_dir) = env::var("AGENT_WORLD_WEB_LAUNCHER_STATIC_DIR") {
-            let static_dir = static_dir.trim();
-            if !static_dir.is_empty() {
-                args.push("--console-static-dir".to_string());
-                args.push(static_dir.to_string());
-            }
+        if let Some((_, static_dir)) = read_named_env_value(&[
+            "OASIS7_WEB_LAUNCHER_STATIC_DIR",
+            "AGENT_WORLD_WEB_LAUNCHER_STATIC_DIR",
+        ]) {
+            args.push("--console-static-dir".to_string());
+            args.push(static_dir);
         }
 
         match spawn_child_process(web_launcher_bin.as_str(), args.as_slice(), "control") {
@@ -1099,7 +1099,7 @@ fn parse_http_base_url(base_url: &str) -> Result<(String, u16), String> {
     }
 
     if authority.starts_with('[') || authority.contains(':') {
-        parse_host_port(authority, CLIENT_LAUNCHER_CONTROL_URL_ENV)
+        parse_host_port(authority, OASIS7_CLIENT_LAUNCHER_CONTROL_URL_ENV)
     } else {
         Ok((authority.to_string(), 80))
     }

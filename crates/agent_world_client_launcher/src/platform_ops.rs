@@ -6,7 +6,9 @@ use std::process::Command;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) fn resolve_launcher_binary_path() -> PathBuf {
-    if let Ok(path) = env::var("AGENT_WORLD_GAME_LAUNCHER_BIN") {
+    if let Some((_, path)) =
+        crate::read_named_env_value(&["OASIS7_GAME_LAUNCHER_BIN", "AGENT_WORLD_GAME_LAUNCHER_BIN"])
+    {
         return PathBuf::from(path);
     }
 
@@ -26,7 +28,10 @@ pub(crate) fn resolve_launcher_binary_path() -> PathBuf {
 
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) fn resolve_chain_runtime_binary_path() -> PathBuf {
-    if let Ok(path) = env::var("AGENT_WORLD_WORLD_CHAIN_RUNTIME_BIN") {
+    if let Some((_, path)) = crate::read_named_env_value(&[
+        "OASIS7_WORLD_CHAIN_RUNTIME_BIN",
+        "AGENT_WORLD_WORLD_CHAIN_RUNTIME_BIN",
+    ]) {
         return PathBuf::from(path);
     }
 
@@ -46,7 +51,9 @@ pub(crate) fn resolve_chain_runtime_binary_path() -> PathBuf {
 
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) fn resolve_web_launcher_binary_path() -> PathBuf {
-    if let Ok(path) = env::var("AGENT_WORLD_WEB_LAUNCHER_BIN") {
+    if let Some((_, path)) =
+        crate::read_named_env_value(&["OASIS7_WEB_LAUNCHER_BIN", "AGENT_WORLD_WEB_LAUNCHER_BIN"])
+    {
         return PathBuf::from(path);
     }
 
@@ -66,7 +73,9 @@ pub(crate) fn resolve_web_launcher_binary_path() -> PathBuf {
 
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) fn resolve_static_dir_path() -> PathBuf {
-    if let Ok(path) = env::var("AGENT_WORLD_GAME_STATIC_DIR") {
+    if let Some((_, path)) =
+        crate::read_named_env_value(&["OASIS7_GAME_STATIC_DIR", "AGENT_WORLD_GAME_STATIC_DIR"])
+    {
         return PathBuf::from(path);
     }
 
@@ -195,7 +204,7 @@ mod tests {
             .expect("time")
             .as_nanos();
         path.push(format!(
-            "agent_world_platform_ops_{label}_{}_{}",
+            "oasis7_platform_ops_{label}_{}_{}",
             std::process::id(),
             stamp
         ));

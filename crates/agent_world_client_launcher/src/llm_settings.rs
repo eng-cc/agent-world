@@ -538,7 +538,7 @@ model = "model-a"
             .duration_since(UNIX_EPOCH)
             .expect("system time")
             .as_nanos();
-        let dir = std::env::temp_dir().join(format!("agent_world_launcher_llm_settings_{now}"));
+        let dir = std::env::temp_dir().join(format!("oasis7_launcher_llm_settings_{now}"));
         fs::create_dir_all(&dir).expect("create temp dir");
         dir.join(format!("{test_name}.toml"))
     }

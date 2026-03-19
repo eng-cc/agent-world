@@ -428,7 +428,7 @@ mod tests {
     #[test]
     fn submit_feedback_report_writes_json_bundle() {
         let temp_dir =
-            std::env::temp_dir().join(format!("agent-world-feedback-test-{}", std::process::id()));
+            std::env::temp_dir().join(format!("oasis7-feedback-test-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&temp_dir);
 
         let draft = FeedbackDraft {
@@ -480,7 +480,7 @@ mod tests {
     #[test]
     fn submit_feedback_with_fallback_writes_local_on_remote_failure() {
         let temp_dir = std::env::temp_dir().join(format!(
-            "agent-world-feedback-fallback-test-{}",
+            "oasis7-feedback-fallback-test-{}",
             std::process::id()
         ));
         let _ = std::fs::remove_dir_all(&temp_dir);

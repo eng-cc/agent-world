@@ -2,9 +2,13 @@ use super::*;
 
 const ONBOARDING_STEP_TOTAL: usize = 3;
 #[cfg(not(target_arch = "wasm32"))]
-const UX_STATE_PATH: &str = ".agent_world_launcher_ux_state.json";
+const UX_STATE_PATH: &str = ".oasis7_launcher_ux_state.json";
+#[cfg(not(target_arch = "wasm32"))]
+const LEGACY_UX_STATE_PATH: &str = ".agent_world_launcher_ux_state.json";
 #[cfg(target_arch = "wasm32")]
-const UX_STATE_STORAGE_KEY: &str = "agent_world_launcher_ux_state_v1";
+const UX_STATE_STORAGE_KEY: &str = "oasis7_launcher_ux_state_v1";
+#[cfg(target_arch = "wasm32")]
+const LEGACY_UX_STATE_STORAGE_KEY: &str = "agent_world_launcher_ux_state_v1";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
@@ -230,7 +234,9 @@ impl OnboardingState {
 pub(super) fn load_launcher_ux_state() -> LauncherUxState {
     #[cfg(not(target_arch = "wasm32"))]
     {
-        let Ok(content) = std::fs::read_to_string(UX_STATE_PATH) else {
+        let content = std::fs::read_to_string(UX_STATE_PATH)
+            .or_else(|_| std::fs::read_to_string(LEGACY_UX_STATE_PATH));
+        let Ok(content) = content else {
             return LauncherUxState::default();
         };
         return serde_json::from_str::<LauncherUxState>(content.as_str())
@@ -245,7 +251,10 @@ pub(super) fn load_launcher_ux_state() -> LauncherUxState {
         let Ok(Some(storage)) = window.local_storage() else {
             return LauncherUxState::default();
         };
-        let Ok(Some(content)) = storage.get_item(UX_STATE_STORAGE_KEY) else {
+        let content = storage
+            .get_item(UX_STATE_STORAGE_KEY)
+            .or_else(|_| storage.get_item(LEGACY_UX_STATE_STORAGE_KEY));
+        let Ok(Some(content)) = content else {
             return LauncherUxState::default();
         };
         return serde_json::from_str::<LauncherUxState>(content.as_str())

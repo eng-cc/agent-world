@@ -89,11 +89,21 @@ const DEFAULT_CHAIN_POS_PROPOSAL_TICK_PHASE: &str = "9";
 const DEFAULT_CHAIN_POS_SLOT_CLOCK_GENESIS_UNIX_MS: &str = "";
 const DEFAULT_CHAIN_POS_MAX_PAST_SLOT_LAG: &str = "256";
 const MAX_LOG_LINES: usize = 2000;
-const EGUI_CJK_FONT_NAME: &str = "agent-world-cjk";
+const OASIS7_CJK_FONT_NAME: &str = "oasis7-cjk";
 const EGUI_CJK_FONT_BYTES: &[u8] =
     include_bytes!("../../agent_world_viewer/assets/fonts/ms-yahei.ttf");
-const CLIENT_LAUNCHER_FONT_ENV: &str = "AGENT_WORLD_CLIENT_LAUNCHER_FONT";
-const CLIENT_LAUNCHER_LANG_ENV: &str = "AGENT_WORLD_CLIENT_LAUNCHER_LANG";
+const OASIS7_CLIENT_LAUNCHER_FONT_ENV: &str = "OASIS7_CLIENT_LAUNCHER_FONT";
+const LEGACY_CLIENT_LAUNCHER_FONT_ENV: &str = "AGENT_WORLD_CLIENT_LAUNCHER_FONT";
+const CLIENT_LAUNCHER_FONT_ENV_ALIASES: &[&str] = &[
+    OASIS7_CLIENT_LAUNCHER_FONT_ENV,
+    LEGACY_CLIENT_LAUNCHER_FONT_ENV,
+];
+const OASIS7_CLIENT_LAUNCHER_LANG_ENV: &str = "OASIS7_CLIENT_LAUNCHER_LANG";
+const LEGACY_CLIENT_LAUNCHER_LANG_ENV: &str = "AGENT_WORLD_CLIENT_LAUNCHER_LANG";
+const CLIENT_LAUNCHER_LANG_ENV_ALIASES: &[&str] = &[
+    OASIS7_CLIENT_LAUNCHER_LANG_ENV,
+    LEGACY_CLIENT_LAUNCHER_LANG_ENV,
+];
 #[cfg(not(target_arch = "wasm32"))]
 const GRACEFUL_STOP_TIMEOUT_MS: u64 = 4000;
 #[cfg(not(target_arch = "wasm32"))]
@@ -101,9 +111,23 @@ const STOP_POLL_INTERVAL_MS: u64 = 80;
 #[cfg(not(target_arch = "wasm32"))]
 const CHAIN_STATUS_PROBE_TIMEOUT_MS: u64 = 300;
 #[cfg(not(target_arch = "wasm32"))]
-const CLIENT_LAUNCHER_CONTROL_URL_ENV: &str = "AGENT_WORLD_CLIENT_LAUNCHER_CONTROL_URL";
+const OASIS7_CLIENT_LAUNCHER_CONTROL_URL_ENV: &str = "OASIS7_CLIENT_LAUNCHER_CONTROL_URL";
 #[cfg(not(target_arch = "wasm32"))]
-const CLIENT_LAUNCHER_CONTROL_BIND_ENV: &str = "AGENT_WORLD_CLIENT_LAUNCHER_CONTROL_BIND";
+const LEGACY_CLIENT_LAUNCHER_CONTROL_URL_ENV: &str = "AGENT_WORLD_CLIENT_LAUNCHER_CONTROL_URL";
+#[cfg(not(target_arch = "wasm32"))]
+const CLIENT_LAUNCHER_CONTROL_URL_ENV_ALIASES: &[&str] = &[
+    OASIS7_CLIENT_LAUNCHER_CONTROL_URL_ENV,
+    LEGACY_CLIENT_LAUNCHER_CONTROL_URL_ENV,
+];
+#[cfg(not(target_arch = "wasm32"))]
+const OASIS7_CLIENT_LAUNCHER_CONTROL_BIND_ENV: &str = "OASIS7_CLIENT_LAUNCHER_CONTROL_BIND";
+#[cfg(not(target_arch = "wasm32"))]
+const LEGACY_CLIENT_LAUNCHER_CONTROL_BIND_ENV: &str = "AGENT_WORLD_CLIENT_LAUNCHER_CONTROL_BIND";
+#[cfg(not(target_arch = "wasm32"))]
+const CLIENT_LAUNCHER_CONTROL_BIND_ENV_ALIASES: &[&str] = &[
+    OASIS7_CLIENT_LAUNCHER_CONTROL_BIND_ENV,
+    LEGACY_CLIENT_LAUNCHER_CONTROL_BIND_ENV,
+];
 #[cfg(not(target_arch = "wasm32"))]
 const DEFAULT_CLIENT_LAUNCHER_CONTROL_BIND: &str = "127.0.0.1:5410";
 const NATIVE_UI_SECTIONS: &[&str] = &[
@@ -117,7 +141,7 @@ const NATIVE_UI_SECTIONS: &[&str] = &[
 ];
 
 #[cfg(target_arch = "wasm32")]
-const WEB_CANVAS_ID: &str = "agent-world-launcher-canvas";
+const WEB_CANVAS_ID: &str = "oasis7-launcher-canvas";
 const WEB_POLL_INTERVAL_MS: u64 = 1000;
 
 fn default_chain_node_id() -> String {
@@ -177,7 +201,7 @@ fn configure_egui_fonts(context: &egui::Context) {
         Some((font_name, font_data)) => install_cjk_font(&mut fonts, font_name, font_data),
         None => install_cjk_font(
             &mut fonts,
-            EGUI_CJK_FONT_NAME.to_string(),
+            OASIS7_CJK_FONT_NAME.to_string(),
             egui::FontData::from_static(EGUI_CJK_FONT_BYTES),
         ),
     }
@@ -185,20 +209,16 @@ fn configure_egui_fonts(context: &egui::Context) {
 }
 
 fn load_font_override_from_env() -> Option<(String, egui::FontData)> {
-    let path = env::var(CLIENT_LAUNCHER_FONT_ENV).ok()?;
-    let path = path.trim();
-    if path.is_empty() {
-        return None;
-    }
+    let (env_name, path) = read_named_env_value(CLIENT_LAUNCHER_FONT_ENV_ALIASES)?;
 
-    match std::fs::read(path) {
+    match std::fs::read(path.as_str()) {
         Ok(bytes) => Some((
-            format!("{EGUI_CJK_FONT_NAME}-custom"),
+            format!("{OASIS7_CJK_FONT_NAME}-custom"),
             egui::FontData::from_owned(bytes),
         )),
         Err(err) => {
             eprintln!(
-                "warning: failed to read font from {CLIENT_LAUNCHER_FONT_ENV}={path}: {err}; fallback to embedded CJK font"
+                "warning: failed to read font from {env_name}={path}: {err}; fallback to embedded CJK font"
             );
             None
         }
@@ -227,6 +247,19 @@ fn install_cjk_font(
         .push(font_name);
 }
 
+fn read_named_env_value(env_names: &[&'static str]) -> Option<(&'static str, String)> {
+    for env_name in env_names {
+        let Ok(raw) = env::var(env_name) else {
+            continue;
+        };
+        let trimmed = raw.trim();
+        if !trimmed.is_empty() {
+            return Some((env_name, trimmed.to_string()));
+        }
+    }
+    None
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum UiLanguage {
     ZhCn,
@@ -251,7 +284,7 @@ impl UiLanguage {
     }
 
     fn detect_from_env() -> Self {
-        if let Ok(raw) = env::var(CLIENT_LAUNCHER_LANG_ENV) {
+        if let Some((_, raw)) = read_named_env_value(CLIENT_LAUNCHER_LANG_ENV_ALIASES) {
             if let Some(language) = Self::from_tag(raw.as_str()) {
                 return language;
             }
@@ -1006,21 +1039,17 @@ impl Default for ClientLauncherApp {
         );
         let (web_api_tx, web_api_rx) = mpsc::channel::<WebApiEvent>();
         #[cfg(not(target_arch = "wasm32"))]
-        let control_url_from_env = env::var(CLIENT_LAUNCHER_CONTROL_URL_ENV)
-            .ok()
-            .map(|value| value.trim().to_string())
-            .filter(|value| !value.is_empty());
+        let control_url_from_env =
+            read_named_env_value(CLIENT_LAUNCHER_CONTROL_URL_ENV_ALIASES).map(|(_, value)| value);
         #[cfg(not(target_arch = "wasm32"))]
-        let control_listen_bind = env::var(CLIENT_LAUNCHER_CONTROL_BIND_ENV)
-            .ok()
-            .map(|value| value.trim().to_string())
-            .filter(|value| !value.is_empty())
+        let control_listen_bind = read_named_env_value(CLIENT_LAUNCHER_CONTROL_BIND_ENV_ALIASES)
+            .map(|(_, value)| value)
             .unwrap_or_else(|| DEFAULT_CLIENT_LAUNCHER_CONTROL_BIND.to_string());
         #[cfg(not(target_arch = "wasm32"))]
         let control_api_base = control_url_from_env.clone().unwrap_or_else(|| {
             let (host, port) = parse_host_port(
                 control_listen_bind.as_str(),
-                CLIENT_LAUNCHER_CONTROL_BIND_ENV,
+                OASIS7_CLIENT_LAUNCHER_CONTROL_BIND_ENV,
             )
             .unwrap_or(("127.0.0.1".to_string(), 5410));
             let host = normalize_host_for_url(host.as_str());

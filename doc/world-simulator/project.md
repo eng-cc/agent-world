@@ -202,6 +202,25 @@
     - `rg -n "oasis7 Client Launcher|oasis7 客户端启动器|Agent World Client Launcher|Agent World 客户端启动器" crates/agent_world_client_launcher/src/main.rs crates/agent_world_client_launcher/src/main_app_shell.rs`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
+- [x] TASK-WORLD_SIMULATOR-169 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 `agent_world_client_launcher` 的前端运行时 key / 环境变量 / 状态文件名前缀优先切到 `oasis7`，并保留旧 `Agent World` key 的兼容读取，先完成 launcher 低风险内部标识迁移。
+  - 产物文件:
+    - `doc/world-simulator/prd.md`
+    - `doc/world-simulator/project.md`
+    - `crates/agent_world_client_launcher/index.html`
+    - `crates/agent_world_client_launcher/src/main.rs`
+    - `crates/agent_world_client_launcher/src/platform_ops.rs`
+    - `crates/agent_world_client_launcher/src/launcher_core.rs`
+    - `crates/agent_world_client_launcher/src/app_process.rs`
+    - `crates/agent_world_client_launcher/src/self_guided.rs`
+    - `crates/agent_world_client_launcher/src/llm_settings_web.rs`
+    - `crates/agent_world_client_launcher/src/feedback_entry.rs`
+    - `crates/agent_world_client_launcher/src/llm_settings.rs`
+    - `crates/agent_world_client_launcher/src/main_tests.rs`
+  - 验收命令 (`test_tier_required`):
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
 - [x] TASK-WORLD_SIMULATOR-162 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 修复标准模式 bootstrap `Loading standard viewer...` overlay 在 wasm 已启动后仍残留并压缩左侧视口的问题，补齐 cleanup 生命周期与最小回归验证。
 - [x] TASK-WORLD_SIMULATOR-148 (PRD-WORLD_SIMULATOR-040) [test_tier_required]: 完成 `OpenClaw` 双轨模式（`player_parity` / `headless_agent` / `debug_viewer`）专题 PRD / Project 建模，并回写模块主文档、索引与 devlog。
 - [x] TASK-WORLD_SIMULATOR-149 (PRD-WORLD_SIMULATOR-040) [test_tier_required]: 由 `agent_engineer` 冻结 `player_parity` / `headless_agent` 的 observation/action contract、schema version、模式元数据与禁止泄露真值边界，并形成 supporting spec。
@@ -339,7 +358,7 @@
 - `testing-manual.md`
 
 ## 状态
-- 更新日期: 2026-03-18
+- 更新日期: 2026-03-19
 - 当前状态: active
 - 下一任务: `PRD-WORLD_SIMULATOR-040 T4（qa / producer 对照采证与默认模式结论）`
 - 最新完成: `TASK-WORLD_SIMULATOR-098`（world-simulator 模块 README / PRD 索引入口同步）。
@@ -379,6 +398,7 @@
 - 最新完成: `TASK-WORLD_SIMULATOR-138`（为 `oasis7-run.sh download` 补 bundle-first 下载阶段日志、进度条与非 TTY heartbeat，并新增下载可观测性回归脚本）。
 - 最新完成: `TASK-WORLD_SIMULATOR-167`（已完成 `agent_world_client_launcher` Web 静态入口 `<title>` 的公开品牌收口，当前页面标题统一为 `oasis7 Launcher (Web)`）。
 - 最新完成: `TASK-WORLD_SIMULATOR-168`（已完成 `agent_world_client_launcher` 原生窗口标题与应用内主标题的公开品牌收口，当前统一为 `oasis7 Client Launcher`）。
+- 最新完成: `TASK-WORLD_SIMULATOR-169`（已将 `agent_world_client_launcher` 的前端运行时 key、环境变量别名、状态文件名与测试临时前缀优先切到 `oasis7`，并保留旧 `Agent World` key 的兼容读取）。
 - 最新完成: `TASK-WORLD_SIMULATOR-166`（已完成 `doc/world-simulator/**` 历史专题首行标题的 title-only cleanup，将 `Agent World*` 公开标题统一切到 `oasis7*`，并保留旧品牌只出现在正文历史上下文中）。
 - 最新完成: `TASK-WORLD_SIMULATOR-164`（为 Viewer 首局 `4/4` 之后补 `PostOnboarding` 阶段目标卡、阻塞解释、分支解锁与 summary 文案更新，并通过定向 `test_tier_required` 回归）。
 - 最新完成: `TASK-WORLD_SIMULATOR-165`（已完成 Viewer 活跃手册、原生窗口标题、Web `<title>` 与抓帧脚本窗口匹配的 `oasis7 Viewer` 品牌对齐，并保留旧标题仅作兼容匹配）。

@@ -145,6 +145,7 @@
   - SC-41: world-simulator 的 Agent 决策层必须支持 provider-agnostic 标准接口，使外部 agent framework（如 `OpenClaw`）可经 adapter 参与模拟，同时保持 runtime 权威、trace 连续性与可离线 required 测试。
   - SC-42: world-simulator 必须提供 `OpenClaw(Local HTTP)` 首期接入路径，使安装在用户机器上的 `OpenClaw` 可通过 localhost 驱动低频 agent，并具备发现、绑定、错误提示与安全回退能力。
   - SC-43: `OpenClaw` provider 在纳入范围的 agent 场景中必须达到与内置 agent 可感知等价的用户体验；若未通过 parity 验收，不得默认启用或扩大覆盖范围。
+  - SC-44: 启动器 / Viewer 的浏览器存储键、临时状态文件名、Canvas/字体等公开前端运行时 key 必须优先使用 `oasis7` 前缀；迁移期需兼容读取旧 `Agent World` / `agent_world` / `AGENT_WORLD_*` key，避免现有脚本与本地状态立即失效。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -344,8 +345,9 @@
   - AC-43: `agent_world` required 测试中 10 个已知失败项按白名单临时下线（`#[ignore]`）且保留原因注释；`env -u RUSTC_WRAPPER cargo test -p agent_world --tests --features test_tier_required` 不再因这 10 项失败阻塞。
   - AC-44: Viewer 活跃手册、原生窗口标题、Web 页面 `<title>` 与弱图形页标题必须统一使用 `oasis7 Viewer` 品牌；旧 `Agent World Viewer` 仅可作为脚本兼容匹配或历史证据上下文保留，不得继续作为当前公开标题。
   - AC-45: `doc/world-simulator/**` 仍可读历史专题的首行标题必须统一切换到 `oasis7` / `oasis7 Simulator` / `oasis7 Viewer` 品牌；旧 `Agent World*` 标题仅允许出现在正文历史上下文中，不改动内部实现兼容名与历史证据正文。
-  - AC-46: `agent_world_client_launcher` Web 静态入口 `<title>` 必须使用 `oasis7 Launcher (Web)`；旧 `Agent World Launcher (Web)` 不得继续作为当前公开标题。
-  - AC-47: `agent_world_client_launcher` 原生窗口标题与应用内主标题必须统一使用 `oasis7 Client Launcher` / `oasis7 客户端启动器`；旧 `Agent World Client Launcher` 文案不得继续作为当前公开标题。
+  - AC-46: `agent_world_client_launcher` 在 Web/native 两端对外暴露的新前端运行时 key（如 localStorage key、UX 状态文件名、Canvas id、字体/env key）默认切到 `oasis7` 前缀，同时继续兼容读取旧 key；不得因为改名前缀变更而丢失既有浏览器配置或阻断 bundle/script 现网入口。
+  - AC-47: `agent_world_client_launcher` Web 静态入口 `<title>` 必须使用 `oasis7 Launcher (Web)`；旧 `Agent World Launcher (Web)` 不得继续作为当前公开标题。
+  - AC-48: `agent_world_client_launcher` 原生窗口标题与应用内主标题必须统一使用 `oasis7 Client Launcher` / `oasis7 客户端启动器`；旧 `Agent World Client Launcher` 文案不得继续作为当前公开标题。
 - Non-Goals:
   - 不在本 PRD 中详细列出每个 UI 像素级规范。
   - 不替代 world-runtime/p2p 的底层协议设计。
@@ -424,6 +426,7 @@
   - runtime 映射覆盖不足：runtime `DomainEvent` 未全量映射时，需降级输出可诊断事件并保留序列一致性。
   - runtime llm 桥接缺口：LLM 决策动作若无 runtime 映射实现，需返回结构化拒绝并继续服务循环，禁止 panic/卡死。
   - required 基线失败下线漂移：临时下线必须限定白名单；若 ignore 数量超出已知 10 项需视为异常并阻断合入。
+  - 启动器品牌 key 迁移：浏览器 localStorage、native UX 状态文件、环境变量覆盖与测试临时目录在改名前缀切换后，必须先读 `oasis7` 再回退旧 `AGENT_WORLD_*` / `agent_world*`；禁止一次性硬切导致现有配置、bundle 或 QA 脚本失效。
 - Non-Functional Requirements:
   - 性能目标:
     - NFR-1: 启动器链状态探针刷新周期 <= 1s，状态可见延迟 <= 2s。

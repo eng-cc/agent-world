@@ -21,7 +21,7 @@ use super::{
         WebTransferLifecycleStatus,
     },
     ChainRuntimeStatus, ClientLauncherApp, ConfigIssue, GlossaryTerm, LaunchConfig, LauncherStatus,
-    UiLanguage, WebChainRecoverySnapshot, WebRequestDomain, WebStateSnapshot, EGUI_CJK_FONT_NAME,
+    UiLanguage, WebChainRecoverySnapshot, WebRequestDomain, WebStateSnapshot, OASIS7_CJK_FONT_NAME,
 };
 use eframe::egui;
 use std::fs;
@@ -216,11 +216,11 @@ fn install_cjk_font_registers_font_and_priority() {
     let mut fonts = egui::FontDefinitions::default();
     install_cjk_font(
         &mut fonts,
-        EGUI_CJK_FONT_NAME.to_string(),
+        OASIS7_CJK_FONT_NAME.to_string(),
         egui::FontData::from_static(&[0u8, 1u8]),
     );
 
-    assert!(fonts.font_data.contains_key(EGUI_CJK_FONT_NAME));
+    assert!(fonts.font_data.contains_key(OASIS7_CJK_FONT_NAME));
 
     let proportional = fonts
         .families
@@ -228,14 +228,14 @@ fn install_cjk_font_registers_font_and_priority() {
         .expect("proportional family");
     assert_eq!(
         proportional.first().map(String::as_str),
-        Some(EGUI_CJK_FONT_NAME)
+        Some(OASIS7_CJK_FONT_NAME)
     );
 
     let monospace = fonts
         .families
         .get(&egui::FontFamily::Monospace)
         .expect("monospace family");
-    assert!(monospace.iter().any(|name| name == EGUI_CJK_FONT_NAME));
+    assert!(monospace.iter().any(|name| name == OASIS7_CJK_FONT_NAME));
 }
 #[test]
 fn parse_ui_language_supports_zh_and_en_aliases() {
@@ -1249,7 +1249,7 @@ fn make_temp_dir(label: &str) -> PathBuf {
         .expect("time")
         .as_nanos();
     path.push(format!(
-        "agent_world_client_launcher_test_{label}_{}_{}",
+        "oasis7_client_launcher_test_{label}_{}_{}",
         std::process::id(),
         stamp
     ));

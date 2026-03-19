@@ -9,7 +9,7 @@ use std::net::{TcpStream, ToSocketAddrs};
 use std::time::{Duration, Instant};
 
 #[cfg(not(target_arch = "wasm32"))]
-const GAME_STATIC_DIR_ENV: &str = "AGENT_WORLD_GAME_STATIC_DIR";
+const OASIS7_GAME_STATIC_DIR_ENV: &str = "OASIS7_GAME_STATIC_DIR";
 #[cfg(not(target_arch = "wasm32"))]
 const DEFAULT_VIEWER_STATIC_DIR: &str = "web";
 pub(super) const OPENCLAW_LOCAL_HTTP_PROVIDER_MODE: &str = "openclaw_local_http";
@@ -131,14 +131,13 @@ fn resolve_viewer_static_dir_for_launcher(
     launcher_bin: &str,
 ) -> Option<std::path::PathBuf> {
     if raw == DEFAULT_VIEWER_STATIC_DIR {
-        if let Ok(override_path) = std::env::var(GAME_STATIC_DIR_ENV) {
-            let override_path = override_path.trim();
-            if !override_path.is_empty() {
-                return resolve_viewer_static_dir_candidate_for_launcher(
-                    override_path,
-                    launcher_bin,
-                );
-            }
+        if let Some((_, override_path)) =
+            read_named_env_value(&[OASIS7_GAME_STATIC_DIR_ENV, "AGENT_WORLD_GAME_STATIC_DIR"])
+        {
+            return resolve_viewer_static_dir_candidate_for_launcher(
+                override_path.as_str(),
+                launcher_bin,
+            );
         }
     }
 
