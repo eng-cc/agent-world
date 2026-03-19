@@ -102,7 +102,11 @@ pub use openclaw_local_http::{
     validate_openclaw_local_http_base_url, OpenClawFeedbackAck, OpenClawLocalHttpClient,
     OpenClawLocalHttpError, OpenClawProviderHealth, OpenClawProviderInfo,
 };
-pub use persist::{PersistError, WorldJournal, WorldSnapshot};
+pub use persist::{
+    PersistError, PlayerGameplayAction, PlayerGameplayGoalKind, PlayerGameplayRecentFeedback,
+    PlayerGameplaySnapshot, PlayerGameplayStageId, PlayerGameplayStageStatus, WorldJournal,
+    WorldSnapshot,
+};
 pub use runner::{
     AgentQuota, AgentRunner, AgentStats, AgentTickResult, RateLimitPolicy, RateLimitState,
     RegisteredAgent, RunnerLogEntry, RunnerLogKind, RunnerMetrics, SkippedReason,

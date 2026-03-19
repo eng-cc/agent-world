@@ -42,6 +42,83 @@ fn is_supported_journal_version(version: u32) -> bool {
     version == JOURNAL_VERSION || version == JOURNAL_VERSION.saturating_sub(1)
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PlayerGameplayStageId {
+    FirstSessionLoop,
+    PostOnboarding,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PlayerGameplayStageStatus {
+    Active,
+    Blocked,
+    BranchReady,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PlayerGameplayGoalKind {
+    CreateFirstWorldFeedback,
+    EstablishFirstCapability,
+    TurnMaterialFlowIntoOutput,
+    StartFactoryRun,
+    StabilizeFirstLine,
+    RecoverCapability,
+    ChooseMidLoopPath,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PlayerGameplayAction {
+    pub action_id: String,
+    pub label: String,
+    pub protocol_action: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub target_agent_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub disabled_reason: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PlayerGameplayRecentFeedback {
+    pub action: String,
+    pub stage: String,
+    pub effect: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hint: Option<String>,
+    #[serde(default)]
+    pub delta_logical_time: WorldTime,
+    #[serde(default)]
+    pub delta_event_seq: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PlayerGameplaySnapshot {
+    pub stage_id: PlayerGameplayStageId,
+    pub stage_status: PlayerGameplayStageStatus,
+    pub goal_id: String,
+    pub goal_kind: PlayerGameplayGoalKind,
+    pub goal_title: String,
+    pub objective: String,
+    pub progress_detail: String,
+    #[serde(default)]
+    pub progress_percent: u8,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub blocker_kind: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub blocker_detail: Option<String>,
+    pub next_step_hint: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub branch_hint: Option<String>,
+    #[serde(default)]
+    pub available_actions: Vec<PlayerGameplayAction>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub recent_feedback: Option<PlayerGameplayRecentFeedback>,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct WorldSnapshot {
     #[serde(default = "default_snapshot_version")]
@@ -53,6 +130,8 @@ pub struct WorldSnapshot {
     pub model: WorldModel,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub runtime_snapshot: Option<RuntimeSnapshot>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub player_gameplay: Option<PlayerGameplaySnapshot>,
     #[serde(default)]
     pub chunk_runtime: ChunkRuntimeConfig,
     pub next_event_id: WorldEventId,

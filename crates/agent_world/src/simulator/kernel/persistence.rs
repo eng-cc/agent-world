@@ -15,6 +15,7 @@ impl WorldKernel {
             config: self.config.clone(),
             model: self.model.clone(),
             runtime_snapshot: None,
+            player_gameplay: None,
             chunk_runtime: self.chunk_runtime.clone(),
             next_event_id: self.next_event_id,
             next_action_id: self.next_action_id,

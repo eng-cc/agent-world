@@ -597,6 +597,7 @@ impl RuntimeLlmSidecar {
             config: config.clone(),
             model,
             runtime_snapshot: Some(runtime_snapshot),
+            player_gameplay: None,
             chunk_runtime: ChunkRuntimeConfig::default(),
             next_event_id,
             next_action_id,

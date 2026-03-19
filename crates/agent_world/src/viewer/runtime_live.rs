@@ -10,7 +10,7 @@ use crate::runtime::{
     WorldError as RuntimeWorldError, WorldEventBody as RuntimeWorldEventBody,
 };
 use crate::simulator::{
-    build_world_model, AgentDecisionTrace, ChunkRuntimeConfig,
+    build_world_model, AgentDecisionTrace, ChunkRuntimeConfig, PlayerGameplayRecentFeedback,
     RejectReason as SimulatorRejectReason, ResourceKind, RunnerMetrics, WorldConfig, WorldEvent,
     WorldInitConfig, WorldScenario, WorldSnapshot, CHUNK_GENERATION_SCHEMA_VERSION,
     SNAPSHOT_VERSION,
@@ -30,11 +30,15 @@ use super::protocol::{
 };
 #[path = "runtime_live/control_plane.rs"]
 mod control_plane;
+mod gameplay_snapshot;
 mod mapping;
 #[cfg(test)]
 mod tests;
 
 use control_plane::RuntimeLlmSidecar;
+use gameplay_snapshot::{
+    build_player_gameplay_snapshot, player_gameplay_feedback_from_control_ack,
+};
 use mapping::{map_runtime_event, runtime_state_to_simulator_model};
 
 const AUTHORITATIVE_BATCH_CONFIRM_DELAY_TICKS: u64 = 1;
@@ -455,6 +459,7 @@ pub struct ViewerRuntimeLiveServer {
     reorg_epoch: u64,
     session_policy: RuntimeSessionPolicy,
     settlement_ranking_gate: RuntimeSettlementRankingGate,
+    latest_player_gameplay_feedback: Option<PlayerGameplayRecentFeedback>,
 }
 
 impl ViewerRuntimeLiveServer {
@@ -481,6 +486,7 @@ impl ViewerRuntimeLiveServer {
             reorg_epoch: 0,
             session_policy: RuntimeSessionPolicy::default(),
             settlement_ranking_gate: RuntimeSettlementRankingGate::default(),
+            latest_player_gameplay_feedback: None,
         })
     }
 
@@ -804,15 +810,21 @@ impl ViewerRuntimeLiveServer {
             } else {
                 ControlCompletionStatus::TimeoutNoProgress
             };
+            let ack = ControlCompletionAck {
+                request_id,
+                status,
+                delta_logical_time,
+                delta_event_seq,
+            };
+            self.latest_player_gameplay_feedback =
+                Some(player_gameplay_feedback_from_control_ack(
+                    &ViewerControl::Step { count: step_count },
+                    &ack,
+                ));
             send_response(
                 writer,
                 &ViewerResponse::ControlCompletionAck {
-                    ack: ControlCompletionAck {
-                        request_id,
-                        status,
-                        delta_logical_time,
-                        delta_event_seq,
-                    },
+                    ack,
                 },
             )?;
         }
@@ -1728,6 +1740,10 @@ impl ViewerRuntimeLiveServer {
             config: self.snapshot_config.clone(),
             model: runtime_state_to_simulator_model(self.world.state(), &self.llm_sidecar),
             runtime_snapshot: Some(runtime_snapshot),
+            player_gameplay: Some(build_player_gameplay_snapshot(
+                self.world.state(),
+                self.latest_player_gameplay_feedback.as_ref(),
+            )),
             chunk_runtime: ChunkRuntimeConfig::default(),
             next_event_id,
             next_action_id,

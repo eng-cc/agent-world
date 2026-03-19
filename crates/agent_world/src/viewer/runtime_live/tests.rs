@@ -560,6 +560,58 @@ fn runtime_openclaw_compat_snapshot_exposes_agent_execution_debug_contexts() {
 }
 
 #[test]
+fn compat_snapshot_exposes_player_gameplay_snapshot() {
+    let server = ViewerRuntimeLiveServer::new(ViewerRuntimeLiveServerConfig::new(
+        WorldScenario::Minimal,
+    ))
+    .expect("runtime server");
+
+    let snapshot = server.compat_snapshot();
+    let gameplay = snapshot
+        .player_gameplay
+        .as_ref()
+        .expect("player gameplay snapshot");
+    assert_eq!(gameplay.stage_id, crate::simulator::PlayerGameplayStageId::FirstSessionLoop);
+    assert_eq!(gameplay.goal_id, "first_session_loop.create_first_world_feedback");
+    assert_eq!(gameplay.available_actions[0].protocol_action, "request_snapshot");
+    assert!(gameplay.recent_feedback.is_none());
+}
+
+#[test]
+fn compat_snapshot_promotes_to_post_onboarding_after_control_feedback() {
+    let mut server = ViewerRuntimeLiveServer::new(ViewerRuntimeLiveServerConfig::new(
+        WorldScenario::Minimal,
+    ))
+    .expect("runtime server");
+    server.latest_player_gameplay_feedback = Some(
+        crate::simulator::PlayerGameplayRecentFeedback {
+            action: "step".to_string(),
+            stage: "completed_advanced".to_string(),
+            effect: "world advanced: logicalTime +1, eventSeq +1".to_string(),
+            reason: None,
+            hint: None,
+            delta_logical_time: 1,
+            delta_event_seq: 1,
+        },
+    );
+    let snapshot = server.compat_snapshot();
+    let gameplay = snapshot
+        .player_gameplay
+        .as_ref()
+        .expect("player gameplay snapshot");
+    assert_eq!(gameplay.stage_id, crate::simulator::PlayerGameplayStageId::PostOnboarding);
+    assert!(gameplay.goal_id.starts_with("post_onboarding."));
+    assert_eq!(
+        gameplay
+            .recent_feedback
+            .as_ref()
+            .expect("recent feedback")
+            .stage,
+        "completed_advanced"
+    );
+}
+
+#[test]
 fn runtime_agent_chat_openclaw_mode_reports_unsupported() {
     let _guard = runtime_openclaw_env_lock().lock().expect("env lock");
     clear_runtime_openclaw_env();
