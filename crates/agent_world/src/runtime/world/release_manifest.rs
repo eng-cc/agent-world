@@ -1,16 +1,12 @@
-use std::path::{Path, PathBuf};
-
 use super::super::m1_builtin_wasm_artifact::m1_builtin_wasm_module_artifact_bytes;
 use super::super::m4_builtin_wasm_artifact::m4_builtin_wasm_module_artifact_bytes;
 use super::super::m5_builtin_wasm_artifact::m5_builtin_wasm_module_artifact_bytes;
 use super::super::{
-    load_builtin_wasm_with_fetch_fallback, m1_builtin_module_artifact_identity,
-    m4_builtin_module_artifact_identity, m5_builtin_module_artifact_identity,
-    ModuleArtifactIdentity, WorldError,
+    builtin_wasm_materializer::builtin_wasm_distfs_root, load_builtin_wasm_with_fetch_fallback,
+    m1_builtin_module_artifact_identity, m4_builtin_module_artifact_identity,
+    m5_builtin_module_artifact_identity, ModuleArtifactIdentity, WorldError,
 };
 use super::{BuiltinReleaseManifestEntry, World};
-
-const BUILTIN_WASM_DISTFS_ROOT_ENV: &str = "AGENT_WORLD_BUILTIN_WASM_DISTFS_ROOT";
 const FAULT_SIG_BUILTIN_RELEASE_MANIFEST_UNREACHABLE: &str = "builtin_release_manifest_unreachable";
 const FAULT_SIG_BUILTIN_RELEASE_MANIFEST_MISSING_OR_ROLLED_BACK: &str =
     "builtin_release_manifest_missing_or_rolled_back";
@@ -19,20 +15,6 @@ const FAULT_SIG_BUILTIN_RELEASE_MANIFEST_IDENTITY_DRIFT: &str =
 
 fn with_fault_signature(signature: &str, reason: impl Into<String>) -> String {
     format!("fault_signature={signature} {}", reason.into())
-}
-
-fn builtin_wasm_distfs_root() -> PathBuf {
-    if let Ok(path) = std::env::var(BUILTIN_WASM_DISTFS_ROOT_ENV) {
-        if !path.trim().is_empty() {
-            return PathBuf::from(path);
-        }
-    }
-
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("..")
-        .join("..")
-        .join(".distfs")
-        .join("builtin_wasm")
 }
 
 fn parse_hash_token_value(token: &str) -> &str {

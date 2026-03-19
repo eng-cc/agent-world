@@ -1,13 +1,13 @@
-use std::path::{Path, PathBuf};
-
 #[cfg(all(test, feature = "wasmtime"))]
 use super::world::World;
-use super::{load_builtin_wasm_with_fetch_fallback, ModuleArtifactIdentity, WorldError};
+use super::{
+    builtin_wasm_materializer::builtin_wasm_distfs_root, load_builtin_wasm_with_fetch_fallback,
+    ModuleArtifactIdentity, WorldError,
+};
 
 const M1_BUILTIN_HASH_MANIFEST: &str = include_str!("world/artifacts/m1_builtin_modules.sha256");
 const M1_BUILTIN_IDENTITY_MANIFEST: &str =
     include_str!("world/artifacts/m1_builtin_modules.identity.json");
-const BUILTIN_WASM_DISTFS_ROOT_ENV: &str = "AGENT_WORLD_BUILTIN_WASM_DISTFS_ROOT";
 
 #[cfg(all(test, feature = "wasmtime"))]
 pub(crate) fn m1_builtin_module_ids_manifest() -> Vec<&'static str> {
@@ -16,20 +16,6 @@ pub(crate) fn m1_builtin_module_ids_manifest() -> Vec<&'static str> {
         .map(str::trim)
         .filter(|line| !line.is_empty())
         .collect()
-}
-
-fn builtin_wasm_distfs_root() -> PathBuf {
-    if let Ok(path) = std::env::var(BUILTIN_WASM_DISTFS_ROOT_ENV) {
-        if !path.trim().is_empty() {
-            return PathBuf::from(path);
-        }
-    }
-
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("..")
-        .join("..")
-        .join(".distfs")
-        .join("builtin_wasm")
 }
 
 fn hash_value_from_manifest_token(token: &'static str) -> Option<&'static str> {

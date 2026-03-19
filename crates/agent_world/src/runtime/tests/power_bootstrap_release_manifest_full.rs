@@ -7,8 +7,10 @@ use std::path::PathBuf;
 use std::sync::{Mutex, MutexGuard};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-const BUILTIN_WASM_DISTFS_ROOT_ENV: &str = "AGENT_WORLD_BUILTIN_WASM_DISTFS_ROOT";
-const BUILTIN_WASM_COMPILER_ENV: &str = "AGENT_WORLD_BUILTIN_WASM_COMPILER";
+const BUILTIN_WASM_DISTFS_ROOT_ENV: &str = "OASIS7_BUILTIN_WASM_DISTFS_ROOT";
+const LEGACY_BUILTIN_WASM_DISTFS_ROOT_ENV: &str = "AGENT_WORLD_BUILTIN_WASM_DISTFS_ROOT";
+const BUILTIN_WASM_COMPILER_ENV: &str = "OASIS7_BUILTIN_WASM_COMPILER";
+const LEGACY_BUILTIN_WASM_COMPILER_ENV: &str = "AGENT_WORLD_BUILTIN_WASM_COMPILER";
 const FAULT_SIG_MANIFEST_UNREACHABLE: &str = "fault_signature=builtin_release_manifest_unreachable";
 const FAULT_SIG_MANIFEST_MISSING_OR_ROLLED_BACK: &str =
     "fault_signature=builtin_release_manifest_missing_or_rolled_back";
@@ -24,12 +26,16 @@ fn production_policy_surfaces_fault_signature_when_online_manifest_unreachable()
     fs::create_dir_all(temp_root.join("blobs")).expect("create temp distfs blobs");
 
     let _distfs_guard = EnvVarGuard::capture(BUILTIN_WASM_DISTFS_ROOT_ENV);
+    let _legacy_distfs_guard = EnvVarGuard::capture(LEGACY_BUILTIN_WASM_DISTFS_ROOT_ENV);
     let _compiler_guard = EnvVarGuard::capture(BUILTIN_WASM_COMPILER_ENV);
+    let _legacy_compiler_guard = EnvVarGuard::capture(LEGACY_BUILTIN_WASM_COMPILER_ENV);
     std::env::set_var(BUILTIN_WASM_DISTFS_ROOT_ENV, &temp_root);
+    std::env::remove_var(LEGACY_BUILTIN_WASM_DISTFS_ROOT_ENV);
     std::env::set_var(
         BUILTIN_WASM_COMPILER_ENV,
         temp_root.join("missing-builtin-compiler"),
     );
+    std::env::remove_var(LEGACY_BUILTIN_WASM_COMPILER_ENV);
 
     let mut world = World::new();
     world.enable_production_release_policy();
@@ -108,7 +114,9 @@ fn production_policy_surfaces_fault_signature_when_manifest_identity_drifts() {
 
     let drift_hash = "4444444444444444444444444444444444444444444444444444444444444444";
     let _distfs_guard = EnvVarGuard::capture(BUILTIN_WASM_DISTFS_ROOT_ENV);
+    let _legacy_distfs_guard = EnvVarGuard::capture(LEGACY_BUILTIN_WASM_DISTFS_ROOT_ENV);
     std::env::set_var(BUILTIN_WASM_DISTFS_ROOT_ENV, &temp_root);
+    std::env::remove_var(LEGACY_BUILTIN_WASM_DISTFS_ROOT_ENV);
 
     let mut world = World::new();
     world.enable_production_release_policy();

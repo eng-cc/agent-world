@@ -7,12 +7,8 @@ use std::time::Duration;
 
 use super::{util, BlobStore, HashAlgorithm, LocalCasStore, WorldError};
 
-const BUILTIN_WASM_FETCHER_ENV: &str = "AGENT_WORLD_BUILTIN_WASM_FETCHER";
-#[cfg(not(target_arch = "wasm32"))]
-const BUILTIN_WASM_FETCH_URLS_ENV: &str = "AGENT_WORLD_BUILTIN_WASM_FETCH_URLS";
-const BUILTIN_WASM_COMPILER_ENV: &str = "AGENT_WORLD_BUILTIN_WASM_COMPILER";
-#[cfg(not(target_arch = "wasm32"))]
-const BUILTIN_WASM_FETCH_TIMEOUT_MS_ENV: &str = "AGENT_WORLD_BUILTIN_WASM_FETCH_TIMEOUT_MS";
+const BUILTIN_WASM_ENV_PREFIX: &str = "OASIS7_BUILTIN_WASM_";
+const LEGACY_BUILTIN_WASM_ENV_PREFIX: &str = "AGENT_WORLD_BUILTIN_WASM_";
 
 #[cfg(not(target_arch = "wasm32"))]
 const DEFAULT_FETCH_TIMEOUT_MS: u64 = 1_500;
@@ -24,6 +20,31 @@ const M4_BUILTIN_MODULE_IDS_PATH: &str =
 const M5_BUILTIN_MODULE_IDS_PATH: &str =
     "crates/agent_world/src/runtime/world/artifacts/m5_builtin_module_ids.txt";
 const BUILTIN_MODULE_HASH_INDEX_PATH: &str = "module_hash_index.txt";
+
+fn builtin_wasm_env_key(suffix: &str) -> String {
+    format!("{BUILTIN_WASM_ENV_PREFIX}{suffix}")
+}
+
+fn legacy_builtin_wasm_env_key(suffix: &str) -> String {
+    format!("{LEGACY_BUILTIN_WASM_ENV_PREFIX}{suffix}")
+}
+
+pub(crate) fn builtin_wasm_env_non_empty(suffix: &str) -> Option<String> {
+    env_non_empty(&builtin_wasm_env_key(suffix))
+        .or_else(|| env_non_empty(&legacy_builtin_wasm_env_key(suffix)))
+}
+
+pub(crate) fn builtin_wasm_distfs_root() -> PathBuf {
+    if let Some(path) = builtin_wasm_env_non_empty("DISTFS_ROOT") {
+        return PathBuf::from(path);
+    }
+
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("..")
+        .join("..")
+        .join(".distfs")
+        .join("builtin_wasm")
+}
 
 pub(crate) fn load_builtin_wasm_with_fetch_fallback(
     module_id: &str,
@@ -76,7 +97,7 @@ fn try_fetch_via_fetcher(
     module_id: &str,
     expected_hashes: &[&str],
 ) -> Result<Option<(String, Vec<u8>)>, WorldError> {
-    let Some(fetcher_path) = env_non_empty(BUILTIN_WASM_FETCHER_ENV) else {
+    let Some(fetcher_path) = builtin_wasm_env_non_empty("FETCHER") else {
         return Ok(None);
     };
     let out_path = temp_artifact_path("fetched", module_id);
@@ -113,7 +134,7 @@ fn try_fetch_via_fetcher(
 
 #[cfg(not(target_arch = "wasm32"))]
 fn try_fetch_via_http(expected_hashes: &[&str]) -> Result<Option<(String, Vec<u8>)>, WorldError> {
-    let Some(fetch_urls) = env_non_empty(BUILTIN_WASM_FETCH_URLS_ENV) else {
+    let Some(fetch_urls) = builtin_wasm_env_non_empty("FETCH_URLS") else {
         return Ok(None);
     };
     let timeout = fetch_timeout();
@@ -159,7 +180,7 @@ fn try_fetch_via_http(_expected_hashes: &[&str]) -> Result<Option<(String, Vec<u
 }
 
 fn compile_builtin_wasm(module_id: &str, expected_hashes: &[&str]) -> Result<Vec<u8>, WorldError> {
-    if let Some(compiler_path) = env_non_empty(BUILTIN_WASM_COMPILER_ENV) {
+    if let Some(compiler_path) = builtin_wasm_env_non_empty("COMPILER") {
         return compile_via_command(Path::new(&compiler_path), module_id, expected_hashes);
     }
     compile_via_default_script(module_id, expected_hashes)
@@ -361,7 +382,7 @@ fn is_sha256_hex(value: &str) -> bool {
 
 #[cfg(not(target_arch = "wasm32"))]
 fn fetch_timeout() -> Duration {
-    let timeout_ms = env_non_empty(BUILTIN_WASM_FETCH_TIMEOUT_MS_ENV)
+    let timeout_ms = builtin_wasm_env_non_empty("FETCH_TIMEOUT_MS")
         .and_then(|raw| raw.parse::<u64>().ok())
         .filter(|value| *value > 0)
         .unwrap_or(DEFAULT_FETCH_TIMEOUT_MS);
@@ -447,5 +468,58 @@ mod tests {
             "temp build dir should stay under repo .tmp, got {}",
             temp_dir.display()
         );
+    }
+
+    #[test]
+    fn builtin_wasm_env_non_empty_prefers_oasis7_prefix() {
+        let primary_key = builtin_wasm_env_key("FETCHER");
+        let legacy_key = legacy_builtin_wasm_env_key("FETCHER");
+        let _primary_guard = TestEnvGuard::capture(primary_key.as_str());
+        let _legacy_guard = TestEnvGuard::capture(legacy_key.as_str());
+        std::env::set_var(primary_key.as_str(), "/tmp/oasis7-fetcher");
+        std::env::set_var(legacy_key.as_str(), "/tmp/legacy-fetcher");
+
+        assert_eq!(
+            builtin_wasm_env_non_empty("FETCHER").as_deref(),
+            Some("/tmp/oasis7-fetcher")
+        );
+    }
+
+    #[test]
+    fn builtin_wasm_env_non_empty_falls_back_to_legacy_prefix() {
+        let primary_key = builtin_wasm_env_key("FETCHER");
+        let legacy_key = legacy_builtin_wasm_env_key("FETCHER");
+        let _primary_guard = TestEnvGuard::capture(primary_key.as_str());
+        let _legacy_guard = TestEnvGuard::capture(legacy_key.as_str());
+        std::env::remove_var(primary_key.as_str());
+        std::env::set_var(legacy_key.as_str(), "/tmp/legacy-fetcher");
+
+        assert_eq!(
+            builtin_wasm_env_non_empty("FETCHER").as_deref(),
+            Some("/tmp/legacy-fetcher")
+        );
+    }
+
+    struct TestEnvGuard {
+        key: String,
+        previous: Option<String>,
+    }
+
+    impl TestEnvGuard {
+        fn capture(key: &str) -> Self {
+            Self {
+                key: key.to_string(),
+                previous: std::env::var(key).ok(),
+            }
+        }
+    }
+
+    impl Drop for TestEnvGuard {
+        fn drop(&mut self) {
+            match self.previous.take() {
+                Some(value) => std::env::set_var(&self.key, value),
+                None => std::env::remove_var(&self.key),
+            }
+        }
     }
 }

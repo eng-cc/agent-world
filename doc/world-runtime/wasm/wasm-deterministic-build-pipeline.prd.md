@@ -67,6 +67,7 @@
   - AC-10 (PRD-WORLD_RUNTIME-022): production 运行入口必须提供 release security policy 绑定证据，证明 fallback / 本地签名 / runtime source compile 默认关闭；仅在测试里调用 `enable_production_release_policy()` 不足以视为完成。
   - AC-11 (PRD-WORLD_RUNTIME-021/022): release evidence 除了 CI/report 汇总外，还必须存在 node-side proof payload 打包与 attestation submit 入口，使 `builder_image_digest/container_platform/canonicalizer_version` 可作为发布节点提交的正式证明字段进入共识链路。
   - AC-12 (PRD-WORLD_RUNTIME-020/021): `scripts/build-wasm-module.sh`、`scripts/sync-m1-builtin-wasm-artifacts.sh`、`scripts/ci-m1-wasm-summary.sh`、`tools/wasm_build_suite` 与 `docker/wasm-builder/Dockerfile` 必须默认写入或读取 `OASIS7_WASM_*`，并继续兼容旧 `AGENT_WORLD_WASM_*`；wrapper usage、错误提示、容器注入 env 与 build receipt 元数据采集不得再只暴露旧前缀。
+  - AC-13 (PRD-WORLD_RUNTIME-021/022): builtin wasm materializer、release manifest fallback 与 DistFS root override 的 runtime env key 必须默认优先读取 `OASIS7_BUILTIN_WASM_*`，并继续兼容旧 `AGENT_WORLD_BUILTIN_WASM_*`；Docker-first build 已完成品牌迁移后，runtime 取件/抓取/编译 fallback 不得继续只认旧前缀。
 - Non-Goals:
   - 不在本专题中要求所有节点运行 Docker 再执行模块；Docker 只解决发布级构建，不进入 runtime 执行热路径。
   - 不在本专题中实现语义等价 canonical hash；当前仍以容器内 canonical packaging 的 byte hash 为准。

@@ -73,6 +73,22 @@
     - `env -u RUSTC_WRAPPER cargo test --manifest-path tools/wasm_build_suite/Cargo.toml -- --nocapture`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
+- [x] TASK-WORLD_RUNTIME-047 (PRD-WORLD_RUNTIME-020/021/022) [test_tier_required]: 将 builtin wasm materializer、release manifest fallback 与 DistFS root override 的 runtime env key 默认优先切到 `OASIS7_BUILTIN_WASM_*`，并保留旧 `AGENT_WORLD_BUILTIN_WASM_*` fallback，收口运行时取件/抓取/编译回退链路的低风险内部标识迁移。
+  - 产物文件:
+    - `doc/world-runtime/prd.md`
+    - `doc/world-runtime/project.md`
+    - `crates/agent_world/src/runtime/builtin_wasm_materializer.rs`
+    - `crates/agent_world/src/runtime/m1_builtin_wasm_artifact.rs`
+    - `crates/agent_world/src/runtime/m4_builtin_wasm_artifact.rs`
+    - `crates/agent_world/src/runtime/m5_builtin_wasm_artifact.rs`
+    - `crates/agent_world/src/runtime/world/release_manifest.rs`
+    - `crates/agent_world/src/runtime/tests/builtin_wasm_materializer.rs`
+    - `crates/agent_world/src/runtime/tests/power_bootstrap_release_manifest_full.rs`
+  - 验收命令 (`test_tier_required`):
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_full builtin_wasm_materializer -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_full power_bootstrap_release_manifest_full -- --nocapture`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
 
 ## 依赖
 - 模块设计总览：`doc/world-runtime/design.md`
@@ -93,6 +109,7 @@
 - 下一任务: `TASK-WORLD_RUNTIME-043`
 - 最新完成: `TASK-WORLD_RUNTIME-045`（world-runtime 模块仍可读专题标题统一切到 `oasis7 Runtime` 品牌，保留内部实现兼容名与历史证据正文不变）。
 - 最新完成: `TASK-WORLD_RUNTIME-046`（已将 WASM 构建、同步、CI summary 与 builder image 的 operator env key 默认优先切到 `OASIS7_WASM_*`，并保留旧 `AGENT_WORLD_WASM_*` fallback）。
+- 最新完成: `TASK-WORLD_RUNTIME-047`（已将 builtin wasm materializer、release manifest fallback 与 DistFS root override 的 runtime env key 默认优先切到 `OASIS7_BUILTIN_WASM_*`，并保留旧 `AGENT_WORLD_BUILTIN_WASM_*` fallback）。
 - 最新完成: `TASK-WORLD_RUNTIME-044`（production `ReleaseSecurityPolicy` 默认禁用 runtime source compile，`CompileModuleArtifactFromSource` 改为仅 dev/test 可用并要求 external Docker builder + deploy binary + receipt）；上一轮为 `TASK-WORLD_RUNTIME-042`（新增 Docker-only WASM builder image 与 host wrapper，固定 `linux-x86_64` canonical build 平台），`TASK-WORLD_RUNTIME-043` 当前仍待 Docker-capable macOS runner 的真实跨宿主 full-tier release evidence 归档。
 - 阶段收口优先级: `P0`
 - 阶段 owner: `wasm_platform_engineer`（联审：`producer_system_designer`、`runtime_engineer`；验证：`qa_engineer`）

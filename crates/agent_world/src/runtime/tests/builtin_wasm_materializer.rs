@@ -9,7 +9,10 @@ use super::super::{
     load_builtin_wasm_with_fetch_fallback, util, BlobStore, HashAlgorithm, LocalCasStore,
 };
 
-const FETCHER_ENV: &str = "AGENT_WORLD_BUILTIN_WASM_FETCHER";
+const FETCHER_ENV: &str = "OASIS7_BUILTIN_WASM_FETCHER";
+const LEGACY_FETCHER_ENV: &str = "AGENT_WORLD_BUILTIN_WASM_FETCHER";
+const COMPILER_ENV: &str = "OASIS7_BUILTIN_WASM_COMPILER";
+const LEGACY_COMPILER_ENV: &str = "AGENT_WORLD_BUILTIN_WASM_COMPILER";
 
 static ENV_LOCK: Mutex<()> = Mutex::new(());
 
@@ -25,13 +28,23 @@ fn materializer_fetch_miss_falls_back_to_compile_and_caches_blob() {
     let fetch_log = temp_root.join("fetch.log");
     let fetcher = temp_root.join("fetcher.sh");
     write_fetcher_script(&fetcher, &fetch_log);
+    let compiler = temp_root.join("compiler.sh");
+    let compiled_bytes = b"\0asmfallback-test-builtin".to_vec();
+    let compiled_hash = util::sha256_hex(&compiled_bytes);
+    write_compiler_script(&compiler, compiled_bytes.as_slice());
 
-    let module_id = "m1.rule.move";
-    let expected_hashes = manifest_hashes_for_module(module_id).expect("manifest hashes");
+    let module_id = "m9.test.fallback";
+    let expected_hashes = vec![compiled_hash.clone()];
     let expected_hash_refs: Vec<&str> = expected_hashes.iter().map(String::as_str).collect();
 
     let _fetcher_guard = EnvVarGuard::capture(FETCHER_ENV);
+    let _legacy_fetcher_guard = EnvVarGuard::capture(LEGACY_FETCHER_ENV);
+    let _compiler_guard = EnvVarGuard::capture(COMPILER_ENV);
+    let _legacy_compiler_guard = EnvVarGuard::capture(LEGACY_COMPILER_ENV);
     std::env::set_var(FETCHER_ENV, &fetcher);
+    std::env::set_var(COMPILER_ENV, &compiler);
+    std::env::remove_var(LEGACY_FETCHER_ENV);
+    std::env::remove_var(LEGACY_COMPILER_ENV);
 
     let load_result =
         load_builtin_wasm_with_fetch_fallback(module_id, &expected_hash_refs, &distfs_root);
@@ -115,41 +128,20 @@ fn write_fetcher_script(script_path: &Path, fetch_log: &Path) {
     }
 }
 
-fn manifest_hashes_for_module(module_id: &str) -> Option<Vec<String>> {
-    let manifest_path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("src")
-        .join("runtime")
-        .join("world")
-        .join("artifacts")
-        .join("m1_builtin_modules.sha256");
-    let content = fs::read_to_string(manifest_path).ok()?;
-    content.lines().find_map(|line| {
-        let mut parts = line.split_whitespace();
-        let id = parts.next()?;
-        if id == module_id {
-            let hashes: Vec<String> = parts
-                .filter_map(|token| {
-                    let value = token
-                        .split_once('=')
-                        .map(|(_, hash)| hash)
-                        .unwrap_or(token)
-                        .trim();
-                    if value.is_empty() {
-                        None
-                    } else {
-                        Some(value.to_string())
-                    }
-                })
-                .collect();
-            if hashes.is_empty() {
-                None
-            } else {
-                Some(hashes)
-            }
-        } else {
-            None
-        }
-    })
+fn write_compiler_script(script_path: &Path, wasm_bytes: &[u8]) {
+    let artifact_path = script_path.with_extension("wasm");
+    fs::write(&artifact_path, wasm_bytes).expect("write compiler artifact");
+    let script = format!(
+        "#!/usr/bin/env bash\nset -euo pipefail\ncp \"{}\" \"$3\"\n",
+        artifact_path.display()
+    );
+    fs::write(script_path, script).expect("write compiler script");
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let permissions = fs::Permissions::from_mode(0o755);
+        fs::set_permissions(script_path, permissions).expect("chmod compiler script");
+    }
 }
 
 fn temp_dir(prefix: &str) -> PathBuf {
@@ -164,14 +156,14 @@ fn temp_dir(prefix: &str) -> PathBuf {
 }
 
 struct EnvVarGuard {
-    key: &'static str,
+    key: String,
     previous: Option<String>,
 }
 
 impl EnvVarGuard {
-    fn capture(key: &'static str) -> Self {
+    fn capture(key: &str) -> Self {
         Self {
-            key,
+            key: key.to_string(),
             previous: std::env::var(key).ok(),
         }
     }
@@ -180,8 +172,8 @@ impl EnvVarGuard {
 impl Drop for EnvVarGuard {
     fn drop(&mut self) {
         match self.previous.take() {
-            Some(value) => std::env::set_var(self.key, value),
-            None => std::env::remove_var(self.key),
+            Some(value) => std::env::set_var(&self.key, value),
+            None => std::env::remove_var(&self.key),
         }
     }
 }
