@@ -1,4 +1,4 @@
-# Agent World Specification v0.1  
+# oasis7 Specification v0.1
 ## 硅基小行星文明 · 世界规范说明书（宪法级草案）
 
 > 本文档定义 2050 年硅基小行星带文明模拟系统的基础规则。  

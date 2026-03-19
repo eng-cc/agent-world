@@ -5,30 +5,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="agent-world is a multi-agent civilization war engine preview (in development, not playable yet). This page focuses on architecture, reproducible evidence, and roadmap."
+      content="oasis7 is a multi-agent civilization war engine preview (in development, not playable yet). This page focuses on architecture, reproducible evidence, and roadmap."
     />
-    <meta property="og:title" content="agent-world | Technical Preview (In Development)" />
+    <meta property="og:title" content="oasis7 | Technical Preview (In Development)" />
     <meta
       property="og:description"
       content="Current build is a technical preview: architecture and validation flow are available, but playable experience is not open yet."
     />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://eng-cc.github.io/agent-world/en/" />
-    <meta property="og:image" content="https://eng-cc.github.io/agent-world/assets/images/og-cover.png" />
+    <meta property="og:url" content="https://eng-cc.github.io/oasis7/en/" />
+    <meta property="og:image" content="https://eng-cc.github.io/oasis7/assets/images/og-cover.png" />
     <meta property="og:locale" content="en_US" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="agent-world | Technical Preview (In Development)" />
+    <meta name="twitter:title" content="oasis7 | Technical Preview (In Development)" />
     <meta
       name="twitter:description"
       content="Current build is a technical preview: architecture and validation flow are available, but playable experience is not open yet."
     />
-    <meta name="twitter:image" content="https://eng-cc.github.io/agent-world/assets/images/og-cover.png" />
+    <meta name="twitter:image" content="https://eng-cc.github.io/oasis7/assets/images/og-cover.png" />
     <meta name="theme-color" content="#060b11" />
-    <title>agent-world | Technical Preview (In Development)</title>
-    <link rel="canonical" href="https://eng-cc.github.io/agent-world/en/" />
-    <link rel="alternate" hreflang="zh-CN" href="https://eng-cc.github.io/agent-world/" />
-    <link rel="alternate" hreflang="en" href="https://eng-cc.github.io/agent-world/en/" />
-    <link rel="alternate" hreflang="x-default" href="https://eng-cc.github.io/agent-world/" />
+    <title>oasis7 | Technical Preview (In Development)</title>
+    <link rel="canonical" href="https://eng-cc.github.io/oasis7/en/" />
+    <link rel="alternate" hreflang="zh-CN" href="https://eng-cc.github.io/oasis7/" />
+    <link rel="alternate" hreflang="en" href="https://eng-cc.github.io/oasis7/en/" />
+    <link rel="alternate" hreflang="x-default" href="https://eng-cc.github.io/oasis7/" />
     <link rel="icon" type="image/svg+xml" href="../assets/images/favicon.svg" />
     <link rel="stylesheet" href="../assets/styles.css" />
     <script defer src="../assets/app.js"></script>
@@ -37,7 +37,7 @@
     <header class="topbar">
       <a class="brand" href="#top">
         <span class="brand-mark"></span>
-        <span>agent-world</span>
+        <span>oasis7</span>
       </a>
       <nav class="nav" data-menu data-section-nav>
         <a href="#matrix">Core Loop</a>
@@ -78,7 +78,7 @@
         <div class="hero-grid">
           <div>
             <p class="eyebrow">Technical Preview</p>
-            <h1>agent-world is still in development, and not playable yet.</h1>
+            <h1>oasis7 is still in development, and not playable yet.</h1>
             <p class="subtitle">
               This site documents design goals, architecture, and validation flow for a multi-agent civilization war engine.
               You can run local builds for technical verification, but this is not a public playable release and no season is live yet.
@@ -116,7 +116,7 @@
 
           <aside class="hero-visual">
             <figure class="hero-figure">
-              <img src="../assets/images/world-constellation.svg" alt="agent-world civilization conflict constellation" />
+              <img src="../assets/images/world-constellation.svg" alt="oasis7 civilization conflict constellation" />
               <figcaption>This is an engineering validation view, not a public playable battlefield.</figcaption>
             </figure>
             <div class="pulse-panel">
@@ -266,36 +266,36 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023</code></p
         <p class="release-meta">
           Current version: <strong data-release-tag>latest</strong>
           <span data-release-date data-release-date-prefix="Published">publish time pending</span>
-          <a data-release-notes-link href="https://github.com/eng-cc/agent-world/releases/latest">Release notes</a>
+          <a data-release-notes-link href="https://github.com/eng-cc/oasis7/releases/latest">Release notes</a>
         </p>
         <p class="doc-entry-note">Public note: formal announcement is still being prepared; current release-notes links describe preview build artifacts and verification info, not a player/community launch notice.</p>
         <div class="download-grid">
           <a
             class="download-card"
-            href="https://github.com/eng-cc/agent-world/releases/latest/download/agent-world-windows-x64.zip"
+            href="https://github.com/eng-cc/oasis7/releases/latest/download/oasis7-windows-x64.zip"
           >
             <h3>Windows x64</h3>
-            <p>Download preview build `agent-world-windows-x64.zip` for technical verification.</p>
+            <p>Download preview build `oasis7-windows-x64.zip` for technical verification.</p>
           </a>
           <a
             class="download-card"
-            href="https://github.com/eng-cc/agent-world/releases/latest/download/agent-world-macos-x64.tar.gz"
+            href="https://github.com/eng-cc/oasis7/releases/latest/download/oasis7-macos-x64.tar.gz"
           >
             <h3>macOS x64</h3>
-            <p>Download preview build `agent-world-macos-x64.tar.gz` for technical verification.</p>
+            <p>Download preview build `oasis7-macos-x64.tar.gz` for technical verification.</p>
           </a>
           <a
             class="download-card"
-            href="https://github.com/eng-cc/agent-world/releases/latest/download/agent-world-linux-x64.tar.gz"
+            href="https://github.com/eng-cc/oasis7/releases/latest/download/oasis7-linux-x64.tar.gz"
           >
             <h3>Linux x64</h3>
-            <p>Download preview build `agent-world-linux-x64.tar.gz` for technical verification.</p>
+            <p>Download preview build `oasis7-linux-x64.tar.gz` for technical verification.</p>
           </a>
         </div>
         <p class="download-note">
           Checksum manifest:
-          <a href="https://github.com/eng-cc/agent-world/releases/latest/download/agent-world-checksums.txt">
-            agent-world-checksums.txt
+          <a href="https://github.com/eng-cc/oasis7/releases/latest/download/oasis7-checksums.txt">
+            oasis7-checksums.txt
           </a>
         </p>
       </section>
@@ -404,7 +404,7 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023</code></p
         <h2>Engine Layer (For Engineering Readers)</h2>
         <p class="section-intro">Recommended order: verify the current technical preview path on your machine first; only then move into the full build/docs path if you need deeper inspection.If extensibility and governance boundaries matter to you, this is the foundation stack.</p>
         <figure class="architecture-figure">
-          <img src="../assets/images/architecture-flow.svg" alt="agent-world engine architecture flow" loading="lazy" />
+          <img src="../assets/images/architecture-flow.svg" alt="oasis7 engine architecture flow" loading="lazy" />
           <figcaption>Gameplay Layer -> Runtime Kernel -> Viewer/Tooling -> Governance, balancing extension power with hard constraints.</figcaption>
         </figure>
         <div class="architecture-flow">
@@ -435,20 +435,20 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023</code></p
             <ul class="doc-links">
               <li>
                 <a
-                  href="https://github.com/eng-cc/agent-world/blob/main/doc/game/gameplay/gameplay-top-level-design.prd.md"
+                  href="https://github.com/eng-cc/oasis7/blob/main/doc/game/gameplay/gameplay-top-level-design.prd.md"
                   target="_blank"
                   rel="noreferrer"
                   >Gameplay Top-level Design</a
                 >
               </li>
               <li>
-                <a href="https://github.com/eng-cc/agent-world/blob/main/README.md" target="_blank" rel="noreferrer"
+                <a href="https://github.com/eng-cc/oasis7/blob/main/README.md" target="_blank" rel="noreferrer"
                   >README (project overview)</a
                 >
               </li>
               <li>
                 <a
-                  href="https://github.com/eng-cc/agent-world/blob/main/doc/game/gameplay/gameplay-engineering-architecture.md"
+                  href="https://github.com/eng-cc/oasis7/blob/main/doc/game/gameplay/gameplay-engineering-architecture.md"
                   target="_blank"
                   rel="noreferrer"
                   >Engine and modular architecture doc</a
@@ -461,10 +461,10 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023</code></p
             <h3>Contribute</h3>
             <p>Current priority is engine/tooling/governance hardening and playability-validation methodology.</p>
             <div class="cta-row">
-              <a class="button secondary" href="https://github.com/eng-cc/agent-world/issues" target="_blank" rel="noreferrer"
+              <a class="button secondary" href="https://github.com/eng-cc/oasis7/issues" target="_blank" rel="noreferrer"
                 >Open Issue</a
               >
-              <a class="button primary" href="https://github.com/eng-cc/agent-world/pulls" target="_blank" rel="noreferrer"
+              <a class="button primary" href="https://github.com/eng-cc/oasis7/pulls" target="_blank" rel="noreferrer"
                 >Open PR</a
               >
             </div>
@@ -474,7 +474,7 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023</code></p
     </main>
 
     <footer class="footer">
-      <p>© <span data-year></span> agent-world. This is a technical preview, converging toward a playable release.</p>
+      <p>© <span data-year></span> oasis7. This is a technical preview, converging toward a playable release.</p>
     </footer>
   </body>
 </html>

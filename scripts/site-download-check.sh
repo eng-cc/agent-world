@@ -10,10 +10,10 @@ SITE_ENTRIES=(
 )
 
 RELEASE_ASSET_URLS=(
-  "https://github.com/eng-cc/agent-world/releases/latest/download/agent-world-windows-x64.zip"
-  "https://github.com/eng-cc/agent-world/releases/latest/download/agent-world-macos-x64.tar.gz"
-  "https://github.com/eng-cc/agent-world/releases/latest/download/agent-world-linux-x64.tar.gz"
-  "https://github.com/eng-cc/agent-world/releases/latest/download/agent-world-checksums.txt"
+  "https://github.com/eng-cc/oasis7/releases/latest/download/oasis7-windows-x64.zip"
+  "https://github.com/eng-cc/oasis7/releases/latest/download/oasis7-macos-x64.tar.gz"
+  "https://github.com/eng-cc/oasis7/releases/latest/download/oasis7-linux-x64.tar.gz"
+  "https://github.com/eng-cc/oasis7/releases/latest/download/oasis7-checksums.txt"
 )
 
 contains_fixed_pattern() {
@@ -50,7 +50,7 @@ for entry in "${SITE_ENTRIES[@]}"; do
   fi
 done
 
-if ! contains_fixed_pattern "https://api.github.com/repos/eng-cc/agent-world/releases/latest" "${REPO_ROOT}/site/assets/app.js"; then
+if ! contains_fixed_pattern "https://api.github.com/repos/eng-cc/oasis7/releases/latest" "${REPO_ROOT}/site/assets/app.js"; then
   echo "error: missing latest release api endpoint in site/assets/app.js" >&2
   exit 1
 fi

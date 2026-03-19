@@ -12,7 +12,7 @@ Use these exact values for a real local OpenClaw gameplay run:
 ## Process Ownership
 
 - `127.0.0.1:18789`: OpenClaw Gateway
-- `127.0.0.1:5841`: Agent World local compatibility bridge
+- `127.0.0.1:5841`: oasis7 local compatibility bridge
 
 ## Execution Modes And Viewer Contract
 
@@ -76,10 +76,10 @@ Operator rules:
 
 For a real试玩，先下载 GitHub Release 的游戏包，再把 OpenClaw provider 配到 bundle：
 
-- latest Linux bundle: `https://github.com/eng-cc/agent-world/releases/latest/download/agent-world-linux-x64.tar.gz`
-- latest macOS bundle: `https://github.com/eng-cc/agent-world/releases/latest/download/agent-world-macos-x64.tar.gz`
-- latest Windows bundle: `https://github.com/eng-cc/agent-world/releases/latest/download/agent-world-windows-x64.zip`
-- checksums: `https://github.com/eng-cc/agent-world/releases/latest/download/agent-world-checksums.txt`
+- latest Linux bundle: `https://github.com/eng-cc/oasis7/releases/latest/download/oasis7-linux-x64.tar.gz`
+- latest macOS bundle: `https://github.com/eng-cc/oasis7/releases/latest/download/oasis7-macos-x64.tar.gz`
+- latest Windows bundle: `https://github.com/eng-cc/oasis7/releases/latest/download/oasis7-windows-x64.zip`
+- checksums: `https://github.com/eng-cc/oasis7/releases/latest/download/oasis7-checksums.txt`
 
 One-command download via `oasis7`:
 

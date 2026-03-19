@@ -113,7 +113,7 @@ if [[ ! -d "${WEB_LAUNCHER_DIST}" ]]; then
   exit 1
 fi
 
-BUNDLE_DIR="${OUT_DIR}/agent-world-${PLATFORM}"
+BUNDLE_DIR="${OUT_DIR}/oasis7-${PLATFORM}"
 rm -rf "${BUNDLE_DIR}"
 mkdir -p "${OUT_DIR}"
 

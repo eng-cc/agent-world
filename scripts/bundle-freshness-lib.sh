@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 bundle_manifest_filename() {
-  printf '%s\n' '.agent-world-bundle-manifest.json'
+  printf '%s\n' '.oasis7-bundle-manifest.json'
 }
 
 bundle_manifest_path() {

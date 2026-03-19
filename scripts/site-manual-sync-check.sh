@@ -26,8 +26,8 @@ SOURCE_REFERENCE_REQUIRED_PATTERNS=(
 )
 
 MIRROR_REFERENCE_REQUIRED_PATTERNS=(
-  'https://github.com/eng-cc/agent-world/blob/main/doc/world-simulator/viewer/viewer-location-fine-grained-rendering.prd.md'
-  'https://github.com/eng-cc/agent-world/blob/main/doc/scripts/viewer-tools/capture-viewer-frame.prd.md'
+  'https://github.com/eng-cc/oasis7/blob/main/doc/world-simulator/viewer/viewer-location-fine-grained-rendering.prd.md'
+  'https://github.com/eng-cc/oasis7/blob/main/doc/scripts/viewer-tools/capture-viewer-frame.prd.md'
 )
 
 MIRROR_REFERENCE_FORBIDDEN_PATTERNS=(

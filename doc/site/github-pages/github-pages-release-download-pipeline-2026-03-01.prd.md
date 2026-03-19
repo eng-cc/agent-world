@@ -31,10 +31,10 @@
 
 ## 接口 / 数据
 - Release 产物命名（固定名，保证 `latest/download` 可长期使用）：
-  - `agent-world-windows-x64.zip`
-  - `agent-world-macos-x64.tar.gz`
-  - `agent-world-linux-x64.tar.gz`
-  - `agent-world-checksums.txt`
+  - `oasis7-windows-x64.zip`
+  - `oasis7-macos-x64.tar.gz`
+  - `oasis7-linux-x64.tar.gz`
+  - `oasis7-checksums.txt`
 - 下载直链：
   - `https://github.com/<owner>/<repo>/releases/latest/download/<asset>`
 - 工作流触发：

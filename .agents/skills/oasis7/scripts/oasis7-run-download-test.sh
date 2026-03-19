@@ -33,12 +33,12 @@ done
 [[ -n "$output_path" ]] || { echo "missing -o output path" >&2; exit 2; }
 url="${args[-1]}"
 case "$url" in
-  https://github.com/eng-cc/agent-world/releases/latest/download/agent-world-linux-x64.tar.gz)
+  https://github.com/eng-cc/oasis7/releases/latest/download/oasis7-linux-x64.tar.gz)
     sleep 2
     cp "$FAKE_ARCHIVE_PAYLOAD" "$output_path"
     ;;
-  https://github.com/eng-cc/agent-world/releases/latest/download/agent-world-checksums.txt)
-    printf '%s  agent-world-linux-x64.tar.gz\n' "$FAKE_ARCHIVE_SHA256" > "$output_path"
+  https://github.com/eng-cc/oasis7/releases/latest/download/oasis7-checksums.txt)
+    printf '%s  oasis7-linux-x64.tar.gz\n' "$FAKE_ARCHIVE_SHA256" > "$output_path"
     ;;
   *)
     echo "unexpected curl url: $url" >&2
@@ -60,12 +60,12 @@ for ((i=0; i<${#args[@]}; i+=1)); do
   fi
 done
 [[ -n "$extract_root" ]] || { echo "missing tar extract root" >&2; exit 2; }
-mkdir -p "$extract_root/agent-world-linux-x64/bin"
-cat > "$extract_root/agent-world-linux-x64/run-game.sh" <<'RUN'
+mkdir -p "$extract_root/oasis7-linux-x64/bin"
+cat > "$extract_root/oasis7-linux-x64/run-game.sh" <<'RUN'
 #!/usr/bin/env bash
 exit 0
 RUN
-chmod +x "$extract_root/agent-world-linux-x64/run-game.sh"
+chmod +x "$extract_root/oasis7-linux-x64/run-game.sh"
 TAR
 chmod +x "$fake_bin/tar"
 
@@ -82,7 +82,7 @@ first_stdout="$tmp_dir/download.stdout"
 )
 
 bundle_dir="$(tr -d '\n' < "$first_stdout")"
-expected_bundle="$cache_dir/eng-cc-agent-world/latest/linux-x64/bundle"
+expected_bundle="$cache_dir/eng-cc-oasis7/latest/linux-x64/bundle"
 if [[ "$bundle_dir" != "$expected_bundle" ]]; then
   echo "expected bundle dir '$expected_bundle', got '$bundle_dir'" >&2
   exit 1
@@ -135,9 +135,9 @@ for ((i=0; i<${#args[@]}; i+=1)); do
   fi
 done
 [[ -n "$extract_root" ]] || { echo "missing tar extract root" >&2; exit 2; }
-mkdir -p "$extract_root/agent-world-linux-x64/bin"
+mkdir -p "$extract_root/oasis7-linux-x64/bin"
 printf 'no launcher here
-' > "$extract_root/agent-world-linux-x64/README.txt"
+' > "$extract_root/oasis7-linux-x64/README.txt"
 TAR
 chmod +x "$missing_extract_tar"
 
@@ -158,7 +158,7 @@ if (
   exit 1
 fi
 
-failure_bundle="$failure_cache_dir/eng-cc-agent-world/latest/linux-x64/bundle"
+failure_bundle="$failure_cache_dir/eng-cc-oasis7/latest/linux-x64/bundle"
 if [[ -e "$failure_bundle/dev" || -e "$failure_bundle/usr" || -e "$failure_bundle/lib" ]]; then
   echo "unexpected host-root paths copied into failed bundle cache" >&2
   find "$failure_bundle" -maxdepth 2 -mindepth 1 -print >&2 || true

@@ -9,7 +9,7 @@ Meaning:
 Check:
 
 1. `run-game.sh` exists under the chosen bundle root
-2. the archive extracted into `agent-world-<platform>/` or an equivalent directory that contains `run-game.sh`
+2. the archive extracted into `oasis7-<platform>/` or an equivalent directory that contains `run-game.sh`
 3. rerun `.agents/skills/oasis7/scripts/oasis7-run.sh download --force-download`
 
 ## `provider_unreachable`

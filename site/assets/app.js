@@ -1,6 +1,6 @@
 (() => {
-  const LANGUAGE_REDIRECT_KEY = "agent_world_pages_lang_redirect_done_v1";
-  const LANGUAGE_MANUAL_CHOICE_KEY = "agent_world_pages_lang_manual_choice_v1";
+  const LANGUAGE_REDIRECT_KEY = "oasis7_pages_lang_redirect_done_v1";
+  const LANGUAGE_MANUAL_CHOICE_KEY = "oasis7_pages_lang_manual_choice_v1";
 
   const safeGetStorage = (key) => {
     try {
@@ -684,7 +684,7 @@
       return;
     }
 
-    const apiUrl = "https://api.github.com/repos/eng-cc/agent-world/releases/latest";
+    const apiUrl = "https://api.github.com/repos/eng-cc/oasis7/releases/latest";
     const controller = typeof AbortController === "function" ? new AbortController() : null;
     let timeoutId = 0;
     if (controller) {
@@ -722,7 +722,7 @@
         const releaseUrl =
           typeof release.html_url === "string" && release.html_url.trim().length > 0
             ? release.html_url.trim()
-            : "https://github.com/eng-cc/agent-world/releases/latest";
+            : "https://github.com/eng-cc/oasis7/releases/latest";
         notesLinks.forEach((node) => {
           node.setAttribute("href", releaseUrl);
         });

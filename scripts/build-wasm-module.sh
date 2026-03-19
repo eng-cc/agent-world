@@ -9,7 +9,7 @@ CANONICAL_WASM_BUILD_STD_FEATURES=""
 CANONICAL_DOCKER_PLATFORM="linux/amd64"
 CANONICAL_CONTAINER_PLATFORM_TOKEN="linux-x86_64"
 CONTAINER_WORKSPACE_DIR="/workspace"
-DEFAULT_BUILDER_IMAGE="agent-world/wasm-builder:${CANONICAL_WASM_TOOLCHAIN}"
+DEFAULT_BUILDER_IMAGE="oasis7/wasm-builder:${CANONICAL_WASM_TOOLCHAIN}"
 DEFAULT_BUILDER_IMAGE_DIGEST="sha256:08cb684c3ecc06e4e31e2dc9a4cfdb13bb140ea88619a47fb7a39c2fdab07e9a"
 DEFAULT_BUILDER_DOCKERFILE="$ROOT_DIR/docker/wasm-builder/Dockerfile"
 DEFAULT_CANONICALIZER_VERSION="strip-custom-sections-v1"
@@ -202,7 +202,7 @@ prepare_nightly_build_std() {
     rustup_home_dir="/tmp"
   fi
   mkdir -p "$rustup_home_dir"
-  local lock_file="$rustup_home_dir/.agent-world-wasm-rustup.lock"
+  local lock_file="$rustup_home_dir/.oasis7-wasm-rustup.lock"
 
   if command -v flock >/dev/null 2>&1; then
     exec 9>"$lock_file"
@@ -531,8 +531,8 @@ run_docker_wrapper() {
     --env "AGENT_WORLD_WASM_CANONICALIZER_VERSION=$WASM_CANONICALIZER_VERSION" \
     --env "AGENT_WORLD_WASM_BUILDER_IMAGE_REF=$WASM_BUILDER_IMAGE" \
     --env "AGENT_WORLD_WASM_BUILDER_IMAGE_DIGEST=$builder_image_digest_value" \
-    --env HOME=/tmp/agent-world-home \
-    --env CARGO_HOME=/tmp/agent-world-cargo-home \
+    --env HOME=/tmp/oasis7-home \
+    --env CARGO_HOME=/tmp/oasis7-cargo-home \
     --env RUSTUP_HOME=/rustup \
     "$WASM_BUILDER_IMAGE" \
     "${TRANSLATED_ARGS[@]}"

@@ -1,6 +1,6 @@
 # WASM Builder Image
 
-这个目录定义 Agent World 的 canonical WASM builder image。
+这个目录定义 oasis7 的 canonical WASM builder image。
 
 ## 目标
 - 发布级 WASM 只通过 Docker 构建。
@@ -11,7 +11,7 @@
 ```bash
 docker build \
   --platform linux/amd64 \
-  -t agent-world/wasm-builder:nightly-2025-12-11 \
+  -t oasis7/wasm-builder:nightly-2025-12-11 \
   -f docker/wasm-builder/Dockerfile \
   .
 ```

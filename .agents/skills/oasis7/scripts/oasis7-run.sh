@@ -12,10 +12,10 @@ Usage:
 Options:
   --repo-root <path>              Explicit repo root for repo-backed actions
   --bundle-dir <path>             Extracted release bundle root containing run-game.sh
-  --download-release              Download Agent World bundle from GitHub Release before play
+  --download-release              Download oasis7 bundle from GitHub Release before play
   --release-platform <id>         Release asset platform: linux-x64|macos-x64|windows-x64
   --release-tag <tag>             GitHub release tag or latest (default: latest)
-  --release-repo <owner/repo>     GitHub repo slug for release download (default: eng-cc/agent-world)
+  --release-repo <owner/repo>     GitHub repo slug for release download (default: eng-cc/oasis7)
   --download-dir <path>           Release cache/output root (default: ~/.cache/oasis7/releases)
   --force-download                Redownload bundle even if cached bundle already exists
   --base-url <url>                OpenClaw local provider base url (default: http://127.0.0.1:5841)
@@ -340,13 +340,13 @@ detect_release_platform() {
 release_asset_name() {
   case "$1" in
     linux-x64)
-      printf 'agent-world-linux-x64.tar.gz\n'
+      printf 'oasis7-linux-x64.tar.gz\n'
       ;;
     macos-x64)
-      printf 'agent-world-macos-x64.tar.gz\n'
+      printf 'oasis7-macos-x64.tar.gz\n'
       ;;
     windows-x64)
-      printf 'agent-world-windows-x64.zip\n'
+      printf 'oasis7-windows-x64.zip\n'
       ;;
     *)
       echo "error: unsupported --release-platform: $1" >&2
@@ -404,8 +404,8 @@ find_extracted_bundle_dir() {
     printf '%s\n' "$extract_root"
     return 0
   fi
-  if validate_bundle_dir "$extract_root/agent-world-$platform"; then
-    printf '%s\n' "$extract_root/agent-world-$platform"
+  if validate_bundle_dir "$extract_root/oasis7-$platform"; then
+    printf '%s\n' "$extract_root/oasis7-$platform"
     return 0
   fi
   local marker
@@ -434,12 +434,12 @@ download_release_bundle() {
   local target_root="$cache_root/$repo_key/$release_tag/$platform"
   local bundle_root="$target_root/bundle"
   local archive_path="$target_root/$asset_name"
-  local checksum_path="$target_root/agent-world-checksums.txt"
+  local checksum_path="$target_root/oasis7-checksums.txt"
   local extract_root="$target_root/extracted"
   local asset_url
   asset_url="$(release_download_url "$release_repo" "$release_tag" "$asset_name")"
   local checksum_url
-  checksum_url="$(release_download_url "$release_repo" "$release_tag" "agent-world-checksums.txt")"
+  checksum_url="$(release_download_url "$release_repo" "$release_tag" "oasis7-checksums.txt")"
 
   if [[ "$force_download" != "1" && -x "$bundle_root/run-game.sh" ]]; then
     echo "Reusing cached release bundle: $bundle_root" >&2
@@ -722,7 +722,7 @@ bundle_dir=""
 download_release="0"
 release_platform=""
 release_tag="latest"
-release_repo="eng-cc/agent-world"
+release_repo="eng-cc/oasis7"
 download_dir="~/.cache/oasis7/releases"
 force_download="0"
 base_url="http://127.0.0.1:5841"

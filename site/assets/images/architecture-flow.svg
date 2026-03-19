@@ -1,5 +1,5 @@
 <svg width="1400" height="720" viewBox="0 0 1400 720" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
-  <title id="title">agent-world architecture flow</title>
+  <title id="title">oasis7 architecture flow</title>
   <desc id="desc">Runtime, Simulator, Viewer, and LLM or Modules are connected by evidence and control feedback loops.</desc>
 
   <defs>
@@ -57,7 +57,7 @@
   </g>
 
   <text x="88" y="84" fill="#E6FAFF" font-size="42" font-family="Inter, Arial, sans-serif" font-weight="700">
-    agent-world System Architecture
+    oasis7 System Architecture
   </text>
   <text x="88" y="118" fill="#A7CADD" font-size="21" font-family="Inter, Arial, sans-serif">
     Rule Gate -> State Evolution -> Replay Observability -> Policy Intelligence Extension

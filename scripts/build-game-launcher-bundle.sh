@@ -94,7 +94,7 @@ validate_web_dist_source() {
 
   # Guardrail: this script often gets pointed at top-level `site/`, which is
   # docs/marketing pages and will open GitHub Pages instead of the game viewer.
-  if grep -E -q "eng-cc\.github\.io/agent-world|doc/cn/index.html|会进化的文明战争游戏" "$index_html"; then
+  if grep -E -q "eng-cc\.github\.io/(agent-world|oasis7)|doc/cn/index.html|会进化的文明战争游戏" "$index_html"; then
     echo "error: --web-dist appears to be docs/marketing site, not viewer web dist: $web_dist" >&2
     echo "hint: remove --web-dist to let script run trunk build automatically," >&2
     echo "      or pass a dist directory built from crates/agent_world_viewer." >&2
@@ -358,7 +358,7 @@ LAUNCH"
 run chmod +x "$OUT_DIR/run-game.sh"
 
 run bash -lc "cat > '$OUT_DIR/README.txt' <<'README'
-Agent World Launcher Bundle
+oasis7 Launcher Bundle
 
 Quick start:
 1) Desktop launcher: ./run-client.sh
@@ -384,7 +384,7 @@ Bundle layout:
 - bin/world_chain_runtime
 - web/
 - web-launcher/
-- .agent-world-bundle-manifest.json
+- .oasis7-bundle-manifest.json
 - run-client.sh
 - run-web-launcher.sh
 - run-game.sh

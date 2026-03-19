@@ -12,7 +12,7 @@
 - 本文仅维护本专题增量，不重复主文档口径。
 
 ## 目标
-- 在仓库内新增一个可公开访问的 GitHub Pages 站点，用于对外介绍 `agent-world`。
+- 在仓库内新增一个可公开访问的 GitHub Pages 站点，用于对外介绍 `oasis7`。
 - 让外部访客在 1 分钟内理解项目定位、核心能力、演示入口与参与方式。
 - 采用低维护成本方案，确保后续内容更新可由仓库协作流程持续驱动。
 - 提供中文与英文双版本入口，满足对外展示的国际化基础需求。
@@ -55,8 +55,8 @@
   - 用户点击语言切换后，记录手动选择并停止自动重定向（尊重用户选择）。
   - 页面顶部语言入口使用“最右侧地球图标按钮”，点击后展示语言下拉菜单。
 - 前端本地存储键：
-  - `agent_world_pages_lang_redirect_done_v1`
-  - `agent_world_pages_lang_manual_choice_v1`
+  - `oasis7_pages_lang_redirect_done_v1`
+  - `oasis7_pages_lang_manual_choice_v1`
 - 部署工作流（建议新增）：
   - `.github/workflows/pages.yml`
   - 触发：`push` 到 `main`（限制 `site/**` 与 workflow 相关路径）。

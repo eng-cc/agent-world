@@ -80,6 +80,17 @@
   - 验收命令 (`test_tier_required`):
     - `rg -n "Short-form publish note|technical preview|not playable yet|GitHub issue or PR" doc/readme/governance/readme-moltbook-post-drafts-2026-03-19.md`
     - `./scripts/doc-governance-check.sh`
+- [x] TASK-README-018 (PRD-README-014) [test_tier_required]: 统一根 README、测试手册与世界规则的公开品牌为 `oasis7`，并在根 README 显式说明内部 `agent_world*` / `world_*` 兼容命名仍保留。
+  - 产物文件:
+    - `README.md`
+    - `testing-manual.md`
+    - `world-rule.md`
+    - `.agents/roles/producer_system_designer.md`
+    - `doc/devlog/2026-03-19.md`
+  - 验收命令 (`test_tier_required`):
+    - `rg -n "^# oasis7$|^# oasis7: 系统性应用测试手册|^# oasis7 Specification" README.md testing-manual.md world-rule.md`
+    - `./scripts/readme-link-check.sh`
+    - `./scripts/doc-governance-check.sh`
 
 ## 依赖
 - doc/readme/prd.index.md
@@ -95,6 +106,7 @@
 - 更新日期: 2026-03-19
 - 当前状态: completed
 - 下一任务: 无（当前模块主项目无未完成任务）
+- 最新完成: `TASK-README-018`（根 README / testing-manual / world-rule 已统一为 `oasis7` 品牌，并补 internal naming compatibility 说明）。
 - 最新完成: `TASK-README-011`（readme 模块 README 目录索引同步）。
 - 最新完成: `TASK-README-012`（readme 模块 completed 状态摘要补齐）。
 - 最新完成: `TASK-README-013`（根 README 已对齐三模式技术预览访问面口径，移除旧运行模式歧义）。

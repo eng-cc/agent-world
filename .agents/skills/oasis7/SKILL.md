@@ -1,13 +1,13 @@
 ---
 name: oasis7
-description: OpenClaw real-play and parity workflow for Agent World. Use when the user wants to configure, start, validate, or debug a real local OpenClaw gameplay path, including downloading a GitHub Release game bundle, installing the lightweight runtime agent, starting the local bridge, launching `world_game_launcher`, probing `openclaw_local_http`, or running parity smoke for OpenClaw NPC behavior.
+description: OpenClaw real-play and parity workflow for oasis7. Use when the user wants to configure, start, validate, or debug a real local OpenClaw gameplay path, including downloading a GitHub Release game bundle, installing the lightweight runtime agent, starting the local bridge, launching `world_game_launcher`, probing `openclaw_local_http`, or running parity smoke for OpenClaw NPC behavior.
 ---
 
 # Oasis7
 
 ## Overview
 
-`oasis7` is the repo-local workflow for running a real OpenClaw-backed Agent World NPC.
+`oasis7` is the repo-local workflow for running a real OpenClaw-backed oasis7 NPC.
 Use it for “能不能真跑起来”, “怎么配 OpenClaw 试玩”, “起 bridge / launcher / parity”, and first-line debugging of the local `openclaw_local_http` path.
 
 默认推荐 `bundle-first`：先下载 GitHub Release 的游戏包，再把 OpenClaw provider 配到该 bundle 的 `run-game.sh`，避免把试玩路径绑死在 repo 内的相对目录结构上。
@@ -20,7 +20,7 @@ Use it for “能不能真跑起来”, “怎么配 OpenClaw 试玩”, “起 
 Use this skill when the task involves any of these:
 
 - Configure a real OpenClaw gameplay run instead of mock provider tests
-- Download a playable Agent World bundle from GitHub Release
+- Download a playable oasis7 bundle from GitHub Release
 - Install or refresh the lightweight OpenClaw runtime agent
 - Start or debug `world_openclaw_local_bridge`
 - Launch the product path with `world_game_launcher` in `openclaw_local_http` mode
@@ -51,7 +51,7 @@ Check these first:
 
 - `openclaw` CLI exists in `PATH`
 - OpenClaw Gateway is live on `127.0.0.1:18789`
-- Agent World bridge is or can be made available on `127.0.0.1:5841`
+- oasis7 bridge is or can be made available on `127.0.0.1:5841`
 - `cargo` is only required for repo-backed runtime-agent bootstrap, auto bridge startup, source-tree launch, and smoke
 - Cargo commands use `env -u RUSTC_WRAPPER cargo ...`
 
@@ -74,7 +74,7 @@ bundle_dir="$(.agents/skills/oasis7/scripts/oasis7-run.sh download)"
 printf '%s\n' "$bundle_dir"
 ```
 
-By default it downloads the latest asset from `eng-cc/agent-world` GitHub Releases, verifies `agent-world-checksums.txt` when available, extracts the archive, and returns a directory that contains `run-game.sh`.
+By default it downloads the latest asset from `eng-cc/oasis7` GitHub Releases, verifies `oasis7-checksums.txt` when available, extracts the archive, and returns a directory that contains `run-game.sh`.
 Current-user `~` in `--download-dir` is expanded before use, and the returned `bundle_dir` is an absolute path.
 
 Useful overrides:
@@ -247,13 +247,13 @@ bundle_dir="$(.agents/skills/oasis7/scripts/oasis7-run.sh download)"
 ### Real play from source tree
 
 ```bash
-.agents/skills/oasis7/scripts/oasis7-run.sh play --repo-root /path/to/agent-world --no-open-browser
+.agents/skills/oasis7/scripts/oasis7-run.sh play --repo-root /path/to/oasis7 --no-open-browser
 ```
 
 ### Smoke
 
 ```bash
-.agents/skills/oasis7/scripts/oasis7-run.sh smoke --repo-root /path/to/agent-world
+.agents/skills/oasis7/scripts/oasis7-run.sh smoke --repo-root /path/to/oasis7
 ```
 
 ### Doctor

@@ -36,18 +36,18 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
 RUN rustup toolchain install "${WASM_TOOLCHAIN}" --profile minimal --component rust-src \
     && rustup target add "${WASM_TARGET}" --toolchain "${WASM_TOOLCHAIN}"
 
-WORKDIR /opt/agent-world
-COPY tools/wasm_build_suite /opt/agent-world/tools/wasm_build_suite
-COPY scripts/build-wasm-module.sh /opt/agent-world/scripts/build-wasm-module.sh
+WORKDIR /opt/oasis7
+COPY tools/wasm_build_suite /opt/oasis7/tools/wasm_build_suite
+COPY scripts/build-wasm-module.sh /opt/oasis7/scripts/build-wasm-module.sh
 
-RUN chmod +x /opt/agent-world/scripts/build-wasm-module.sh \
-    && env -u RUSTC_WRAPPER cargo install --locked --path /opt/agent-world/tools/wasm_build_suite \
-    && chmod -R a+rX /cargo /rustup /opt/agent-world
+RUN chmod +x /opt/oasis7/scripts/build-wasm-module.sh \
+    && env -u RUSTC_WRAPPER cargo install --locked --path /opt/oasis7/tools/wasm_build_suite \
+    && chmod -R a+rX /cargo /rustup /opt/oasis7
 
-LABEL org.opencontainers.image.title="agent-world wasm builder"
-LABEL org.opencontainers.image.description="Canonical linux-x86_64 WASM builder for Agent World"
-LABEL org.opencontainers.image.source="https://example.invalid/agent-world"
-LABEL org.opencontainers.image.vendor="Agent World"
+LABEL org.opencontainers.image.title="oasis7 wasm builder"
+LABEL org.opencontainers.image.description="Canonical linux-x86_64 WASM builder for oasis7"
+LABEL org.opencontainers.image.source="https://github.com/eng-cc/oasis7"
+LABEL org.opencontainers.image.vendor="oasis7"
 
 WORKDIR /workspace
-ENTRYPOINT ["/opt/agent-world/scripts/build-wasm-module.sh"]
+ENTRYPOINT ["/opt/oasis7/scripts/build-wasm-module.sh"]
