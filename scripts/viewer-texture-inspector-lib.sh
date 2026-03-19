@@ -103,6 +103,60 @@ set_or_unset_env() {
   fi
 }
 
+viewer_env_key() {
+  local suffix=$1
+  echo "OASIS7_VIEWER_${suffix}"
+}
+
+viewer_legacy_env_key() {
+  local suffix=$1
+  echo "AGENT_WORLD_VIEWER_${suffix}"
+}
+
+set_or_unset_viewer_env() {
+  local suffix=$1
+  local value=$2
+  local key
+  local legacy_key
+  key=$(viewer_env_key "$suffix")
+  legacy_key=$(viewer_legacy_env_key "$suffix")
+  if [[ -n "$value" ]]; then
+    export "$key=$value"
+    unset "$legacy_key" || true
+  else
+    unset "$key" || true
+    unset "$legacy_key" || true
+  fi
+}
+
+viewer_env_value() {
+  local suffix=$1
+  local key
+  local legacy_key
+  key=$(viewer_env_key "$suffix")
+  legacy_key=$(viewer_legacy_env_key "$suffix")
+  if [[ -n "${!key-}" ]]; then
+    printf '%s' "${!key}"
+  else
+    printf '%s' "${!legacy_key-}"
+  fi
+}
+
+promote_legacy_viewer_envs() {
+  local legacy_name
+  local value
+  local suffix
+  local key
+  while IFS='=' read -r legacy_name value; do
+    [[ "$legacy_name" == AGENT_WORLD_VIEWER_* ]] || continue
+    suffix=${legacy_name#AGENT_WORLD_VIEWER_}
+    key=$(viewer_env_key "$suffix")
+    if [[ -z "${!key+x}" ]]; then
+      export "$key=$value"
+    fi
+  done < <(env)
+}
+
 capture_status_value() {
   local status_file=$1
   local key=$2
@@ -609,17 +663,17 @@ variant_pair_ssim_value() {
 }
 
 clear_material_overrides() {
-  set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_AGENT_ROUGHNESS" ""
-  set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_AGENT_METALLIC" ""
-  set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_ASSET_ROUGHNESS" ""
-  set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_ASSET_METALLIC" ""
-  set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_FACILITY_ROUGHNESS" ""
-  set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_FACILITY_METALLIC" ""
-  set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_ROUGHNESS" ""
-  set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_METALLIC" ""
-  set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_EMISSIVE_BOOST" ""
-  set_or_unset_env "AGENT_WORLD_VIEWER_POWER_PLANT_BASE_COLOR" ""
-  set_or_unset_env "AGENT_WORLD_VIEWER_POWER_PLANT_EMISSIVE_COLOR" ""
+  set_or_unset_viewer_env "MATERIAL_AGENT_ROUGHNESS" ""
+  set_or_unset_viewer_env "MATERIAL_AGENT_METALLIC" ""
+  set_or_unset_viewer_env "MATERIAL_ASSET_ROUGHNESS" ""
+  set_or_unset_viewer_env "MATERIAL_ASSET_METALLIC" ""
+  set_or_unset_viewer_env "MATERIAL_FACILITY_ROUGHNESS" ""
+  set_or_unset_viewer_env "MATERIAL_FACILITY_METALLIC" ""
+  set_or_unset_viewer_env "MATERIAL_POWER_PLANT_ROUGHNESS" ""
+  set_or_unset_viewer_env "MATERIAL_POWER_PLANT_METALLIC" ""
+  set_or_unset_viewer_env "MATERIAL_POWER_PLANT_EMISSIVE_BOOST" ""
+  set_or_unset_viewer_env "POWER_PLANT_BASE_COLOR" ""
+  set_or_unset_viewer_env "POWER_PLANT_EMISSIVE_COLOR" ""
 }
 
 apply_variant_material_profile() {
@@ -665,11 +719,11 @@ apply_variant_material_profile() {
         ;;
     esac
 
-    set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_ROUGHNESS" "$roughness"
-    set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_METALLIC" "$metallic"
-    set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_EMISSIVE_BOOST" "$emissive_boost"
-    set_or_unset_env "AGENT_WORLD_VIEWER_POWER_PLANT_BASE_COLOR" "$base_color"
-    set_or_unset_env "AGENT_WORLD_VIEWER_POWER_PLANT_EMISSIVE_COLOR" "$emissive_color"
+    set_or_unset_viewer_env "MATERIAL_POWER_PLANT_ROUGHNESS" "$roughness"
+    set_or_unset_viewer_env "MATERIAL_POWER_PLANT_METALLIC" "$metallic"
+    set_or_unset_viewer_env "MATERIAL_POWER_PLANT_EMISSIVE_BOOST" "$emissive_boost"
+    set_or_unset_viewer_env "POWER_PLANT_BASE_COLOR" "$base_color"
+    set_or_unset_viewer_env "POWER_PLANT_EMISSIVE_COLOR" "$emissive_color"
     return 0
   fi
 
@@ -735,16 +789,16 @@ apply_variant_material_profile() {
 
   case "$material_group" in
     agent)
-      set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_AGENT_ROUGHNESS" "$roughness"
-      set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_AGENT_METALLIC" "$metallic"
+      set_or_unset_viewer_env "MATERIAL_AGENT_ROUGHNESS" "$roughness"
+      set_or_unset_viewer_env "MATERIAL_AGENT_METALLIC" "$metallic"
       ;;
     asset)
-      set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_ASSET_ROUGHNESS" "$roughness"
-      set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_ASSET_METALLIC" "$metallic"
+      set_or_unset_viewer_env "MATERIAL_ASSET_ROUGHNESS" "$roughness"
+      set_or_unset_viewer_env "MATERIAL_ASSET_METALLIC" "$metallic"
       ;;
     facility)
-      set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_FACILITY_ROUGHNESS" "$roughness"
-      set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_FACILITY_METALLIC" "$metallic"
+      set_or_unset_viewer_env "MATERIAL_FACILITY_ROUGHNESS" "$roughness"
+      set_or_unset_viewer_env "MATERIAL_FACILITY_METALLIC" "$metallic"
       ;;
   esac
 }
@@ -756,48 +810,48 @@ apply_art_lighting_profile() {
 
   case "$profile" in
     art_review_v1)
-      set_or_unset_env "AGENT_WORLD_VIEWER_TONEMAPPING" "aces"
-      set_or_unset_env "AGENT_WORLD_VIEWER_BLOOM_ENABLED" "0"
-      set_or_unset_env "AGENT_WORLD_VIEWER_BLOOM_INTENSITY" "0"
-      set_or_unset_env "AGENT_WORLD_VIEWER_COLOR_GRADING_EXPOSURE" "-0.35"
-      set_or_unset_env "AGENT_WORLD_VIEWER_AMBIENT_BRIGHTNESS" "95"
-      set_or_unset_env "AGENT_WORLD_VIEWER_FILL_LIGHT_RATIO" "0.46"
-      set_or_unset_env "AGENT_WORLD_VIEWER_RIM_LIGHT_RATIO" "0.32"
-      set_or_unset_env "AGENT_WORLD_VIEWER_EXPOSURE_EV100" "12.8"
+      set_or_unset_viewer_env "TONEMAPPING" "aces"
+      set_or_unset_viewer_env "BLOOM_ENABLED" "0"
+      set_or_unset_viewer_env "BLOOM_INTENSITY" "0"
+      set_or_unset_viewer_env "COLOR_GRADING_EXPOSURE" "-0.35"
+      set_or_unset_viewer_env "AMBIENT_BRIGHTNESS" "95"
+      set_or_unset_viewer_env "FILL_LIGHT_RATIO" "0.46"
+      set_or_unset_viewer_env "RIM_LIGHT_RATIO" "0.32"
+      set_or_unset_viewer_env "EXPOSURE_EV100" "12.8"
       ;;
     art_review_v2)
-      set_or_unset_env "AGENT_WORLD_VIEWER_TONEMAPPING" "aces"
-      set_or_unset_env "AGENT_WORLD_VIEWER_BLOOM_ENABLED" "0"
-      set_or_unset_env "AGENT_WORLD_VIEWER_BLOOM_INTENSITY" "0"
+      set_or_unset_viewer_env "TONEMAPPING" "aces"
+      set_or_unset_viewer_env "BLOOM_ENABLED" "0"
+      set_or_unset_viewer_env "BLOOM_INTENSITY" "0"
 
       case "$entity" in
         power_plant)
-          set_or_unset_env "AGENT_WORLD_VIEWER_COLOR_GRADING_EXPOSURE" "-0.05"
-          set_or_unset_env "AGENT_WORLD_VIEWER_AMBIENT_BRIGHTNESS" "88"
-          set_or_unset_env "AGENT_WORLD_VIEWER_FILL_LIGHT_RATIO" "0.36"
-          set_or_unset_env "AGENT_WORLD_VIEWER_RIM_LIGHT_RATIO" "0.58"
-          set_or_unset_env "AGENT_WORLD_VIEWER_EXPOSURE_EV100" "12.4"
+          set_or_unset_viewer_env "COLOR_GRADING_EXPOSURE" "-0.05"
+          set_or_unset_viewer_env "AMBIENT_BRIGHTNESS" "88"
+          set_or_unset_viewer_env "FILL_LIGHT_RATIO" "0.36"
+          set_or_unset_viewer_env "RIM_LIGHT_RATIO" "0.58"
+          set_or_unset_viewer_env "EXPOSURE_EV100" "12.4"
           ;;
         asset|agent)
-          set_or_unset_env "AGENT_WORLD_VIEWER_COLOR_GRADING_EXPOSURE" "-0.16"
-          set_or_unset_env "AGENT_WORLD_VIEWER_AMBIENT_BRIGHTNESS" "92"
-          set_or_unset_env "AGENT_WORLD_VIEWER_FILL_LIGHT_RATIO" "0.42"
-          set_or_unset_env "AGENT_WORLD_VIEWER_RIM_LIGHT_RATIO" "0.44"
-          set_or_unset_env "AGENT_WORLD_VIEWER_EXPOSURE_EV100" "12.6"
+          set_or_unset_viewer_env "COLOR_GRADING_EXPOSURE" "-0.16"
+          set_or_unset_viewer_env "AMBIENT_BRIGHTNESS" "92"
+          set_or_unset_viewer_env "FILL_LIGHT_RATIO" "0.42"
+          set_or_unset_viewer_env "RIM_LIGHT_RATIO" "0.44"
+          set_or_unset_viewer_env "EXPOSURE_EV100" "12.6"
           ;;
         *)
-          set_or_unset_env "AGENT_WORLD_VIEWER_COLOR_GRADING_EXPOSURE" "-0.22"
-          set_or_unset_env "AGENT_WORLD_VIEWER_AMBIENT_BRIGHTNESS" "94"
-          set_or_unset_env "AGENT_WORLD_VIEWER_FILL_LIGHT_RATIO" "0.40"
-          set_or_unset_env "AGENT_WORLD_VIEWER_RIM_LIGHT_RATIO" "0.40"
-          set_or_unset_env "AGENT_WORLD_VIEWER_EXPOSURE_EV100" "12.7"
+          set_or_unset_viewer_env "COLOR_GRADING_EXPOSURE" "-0.22"
+          set_or_unset_viewer_env "AMBIENT_BRIGHTNESS" "94"
+          set_or_unset_viewer_env "FILL_LIGHT_RATIO" "0.40"
+          set_or_unset_viewer_env "RIM_LIGHT_RATIO" "0.40"
+          set_or_unset_viewer_env "EXPOSURE_EV100" "12.7"
           ;;
       esac
 
       if [[ "$variant" == "matte" ]]; then
-        set_or_unset_env "AGENT_WORLD_VIEWER_COLOR_GRADING_EXPOSURE" "0.00"
+        set_or_unset_viewer_env "COLOR_GRADING_EXPOSURE" "0.00"
       elif [[ "$variant" == "glossy" ]]; then
-        set_or_unset_env "AGENT_WORLD_VIEWER_COLOR_GRADING_EXPOSURE" "-0.10"
+        set_or_unset_viewer_env "COLOR_GRADING_EXPOSURE" "-0.10"
       fi
       ;;
     *)

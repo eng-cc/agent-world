@@ -54,6 +54,17 @@ run() {
   "$@"
 }
 
+viewer_env_value() {
+  local suffix=$1
+  local primary_key="OASIS7_VIEWER_${suffix}"
+  local legacy_key="AGENT_WORLD_VIEWER_${suffix}"
+  if [[ -n "${!primary_key-}" ]]; then
+    printf '%s' "${!primary_key}"
+  else
+    printf '%s' "${!legacy_key-}"
+  fi
+}
+
 detect_platform() {
   case "$(uname -s)" in
     Linux)
@@ -243,7 +254,7 @@ resolve_capture_max_wait() {
   fi
 
   local extra_wait=20
-  if parse_truthy_flag "${AGENT_WORLD_VIEWER_SHOW_FRAGMENT_ELEMENTS:-}"; then
+  if parse_truthy_flag "$(viewer_env_value "SHOW_FRAGMENT_ELEMENTS")"; then
     extra_wait=60
   fi
 
@@ -291,24 +302,24 @@ capture_linux() {
   sleep 2
 
   if [[ "$auto_focus_enabled" == "1" ]]; then
-    echo "+ DISPLAY=$display AGENT_WORLD_VIEWER_AUTO_FOCUS=1 AGENT_WORLD_VIEWER_AUTO_FOCUS_TARGET=${auto_focus_target:-first_fragment} AGENT_WORLD_VIEWER_AUTO_FOCUS_FORCE_3D=$auto_focus_force_3d ${auto_focus_radius:+AGENT_WORLD_VIEWER_AUTO_FOCUS_RADIUS=$auto_focus_radius }${auto_select_target:+AGENT_WORLD_VIEWER_AUTO_SELECT=1 AGENT_WORLD_VIEWER_AUTO_SELECT_TARGET=$auto_select_target }${automation_steps:+AGENT_WORLD_VIEWER_AUTOMATION_STEPS=$automation_steps }env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- $addr > $viewer_log"
+    echo "+ DISPLAY=$display OASIS7_VIEWER_AUTO_FOCUS=1 OASIS7_VIEWER_AUTO_FOCUS_TARGET=${auto_focus_target:-first_fragment} OASIS7_VIEWER_AUTO_FOCUS_FORCE_3D=$auto_focus_force_3d ${auto_focus_radius:+OASIS7_VIEWER_AUTO_FOCUS_RADIUS=$auto_focus_radius }${auto_select_target:+OASIS7_VIEWER_AUTO_SELECT=1 OASIS7_VIEWER_AUTO_SELECT_TARGET=$auto_select_target }${automation_steps:+OASIS7_VIEWER_AUTOMATION_STEPS=$automation_steps }env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- $addr > $viewer_log"
     DISPLAY="$display" \
-    AGENT_WORLD_VIEWER_CAPTURE_STATUS_PATH="$capture_status_txt" \
-    AGENT_WORLD_VIEWER_AUTO_FOCUS="1" \
-    AGENT_WORLD_VIEWER_AUTO_FOCUS_TARGET="${auto_focus_target:-first_fragment}" \
-    AGENT_WORLD_VIEWER_AUTO_FOCUS_FORCE_3D="$auto_focus_force_3d" \
-    AGENT_WORLD_VIEWER_AUTO_FOCUS_RADIUS="$auto_focus_radius" \
-    AGENT_WORLD_VIEWER_AUTO_SELECT="${auto_select_target:+1}" \
-    AGENT_WORLD_VIEWER_AUTO_SELECT_TARGET="$auto_select_target" \
-    AGENT_WORLD_VIEWER_AUTOMATION_STEPS="$automation_steps" \
+    OASIS7_VIEWER_CAPTURE_STATUS_PATH="$capture_status_txt" \
+    OASIS7_VIEWER_AUTO_FOCUS="1" \
+    OASIS7_VIEWER_AUTO_FOCUS_TARGET="${auto_focus_target:-first_fragment}" \
+    OASIS7_VIEWER_AUTO_FOCUS_FORCE_3D="$auto_focus_force_3d" \
+    OASIS7_VIEWER_AUTO_FOCUS_RADIUS="$auto_focus_radius" \
+    OASIS7_VIEWER_AUTO_SELECT="${auto_select_target:+1}" \
+    OASIS7_VIEWER_AUTO_SELECT_TARGET="$auto_select_target" \
+    OASIS7_VIEWER_AUTOMATION_STEPS="$automation_steps" \
     env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- "$addr" >"$viewer_log" 2>&1 &
   else
-    echo "+ DISPLAY=$display ${auto_select_target:+AGENT_WORLD_VIEWER_AUTO_SELECT=1 AGENT_WORLD_VIEWER_AUTO_SELECT_TARGET=$auto_select_target }${automation_steps:+AGENT_WORLD_VIEWER_AUTOMATION_STEPS=$automation_steps }env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- $addr > $viewer_log"
+    echo "+ DISPLAY=$display ${auto_select_target:+OASIS7_VIEWER_AUTO_SELECT=1 OASIS7_VIEWER_AUTO_SELECT_TARGET=$auto_select_target }${automation_steps:+OASIS7_VIEWER_AUTOMATION_STEPS=$automation_steps }env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- $addr > $viewer_log"
     DISPLAY="$display" \
-    AGENT_WORLD_VIEWER_CAPTURE_STATUS_PATH="$capture_status_txt" \
-    AGENT_WORLD_VIEWER_AUTO_SELECT="${auto_select_target:+1}" \
-    AGENT_WORLD_VIEWER_AUTO_SELECT_TARGET="$auto_select_target" \
-    AGENT_WORLD_VIEWER_AUTOMATION_STEPS="$automation_steps" \
+    OASIS7_VIEWER_CAPTURE_STATUS_PATH="$capture_status_txt" \
+    OASIS7_VIEWER_AUTO_SELECT="${auto_select_target:+1}" \
+    OASIS7_VIEWER_AUTO_SELECT_TARGET="$auto_select_target" \
+    OASIS7_VIEWER_AUTOMATION_STEPS="$automation_steps" \
     env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- "$addr" >"$viewer_log" 2>&1 &
   fi
   VIEWER_PID=$!
@@ -363,28 +374,28 @@ capture_macos() {
 
   local viewer_cmd=(env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- "$addr")
   if [[ "$auto_focus_enabled" == "1" ]]; then
-    echo "+ AGENT_WORLD_VIEWER_CAPTURE_PATH=$window_png AGENT_WORLD_VIEWER_AUTO_FOCUS=1 AGENT_WORLD_VIEWER_AUTO_FOCUS_TARGET=${auto_focus_target:-first_fragment} AGENT_WORLD_VIEWER_AUTO_FOCUS_FORCE_3D=$auto_focus_force_3d ${auto_focus_radius:+AGENT_WORLD_VIEWER_AUTO_FOCUS_RADIUS=$auto_focus_radius }${auto_select_target:+AGENT_WORLD_VIEWER_AUTO_SELECT=1 AGENT_WORLD_VIEWER_AUTO_SELECT_TARGET=$auto_select_target }${automation_steps:+AGENT_WORLD_VIEWER_AUTOMATION_STEPS=$automation_steps }${viewer_cmd[*]} > $viewer_log"
-    AGENT_WORLD_VIEWER_CAPTURE_PATH="$window_png" \
-    AGENT_WORLD_VIEWER_CAPTURE_STATUS_PATH="$capture_status_txt" \
-    AGENT_WORLD_VIEWER_CAPTURE_DELAY_SECS="$viewer_wait" \
-    AGENT_WORLD_VIEWER_CAPTURE_MAX_WAIT_SECS="$capture_max_wait" \
-    AGENT_WORLD_VIEWER_AUTO_FOCUS_FORCE_3D="$auto_focus_force_3d" \
-    AGENT_WORLD_VIEWER_AUTO_FOCUS="1" \
-    AGENT_WORLD_VIEWER_AUTO_FOCUS_TARGET="${auto_focus_target:-first_fragment}" \
-    AGENT_WORLD_VIEWER_AUTO_FOCUS_RADIUS="$auto_focus_radius" \
-    AGENT_WORLD_VIEWER_AUTO_SELECT="${auto_select_target:+1}" \
-    AGENT_WORLD_VIEWER_AUTO_SELECT_TARGET="$auto_select_target" \
-    AGENT_WORLD_VIEWER_AUTOMATION_STEPS="$automation_steps" \
+    echo "+ OASIS7_VIEWER_CAPTURE_PATH=$window_png OASIS7_VIEWER_AUTO_FOCUS=1 OASIS7_VIEWER_AUTO_FOCUS_TARGET=${auto_focus_target:-first_fragment} OASIS7_VIEWER_AUTO_FOCUS_FORCE_3D=$auto_focus_force_3d ${auto_focus_radius:+OASIS7_VIEWER_AUTO_FOCUS_RADIUS=$auto_focus_radius }${auto_select_target:+OASIS7_VIEWER_AUTO_SELECT=1 OASIS7_VIEWER_AUTO_SELECT_TARGET=$auto_select_target }${automation_steps:+OASIS7_VIEWER_AUTOMATION_STEPS=$automation_steps }${viewer_cmd[*]} > $viewer_log"
+    OASIS7_VIEWER_CAPTURE_PATH="$window_png" \
+    OASIS7_VIEWER_CAPTURE_STATUS_PATH="$capture_status_txt" \
+    OASIS7_VIEWER_CAPTURE_DELAY_SECS="$viewer_wait" \
+    OASIS7_VIEWER_CAPTURE_MAX_WAIT_SECS="$capture_max_wait" \
+    OASIS7_VIEWER_AUTO_FOCUS_FORCE_3D="$auto_focus_force_3d" \
+    OASIS7_VIEWER_AUTO_FOCUS="1" \
+    OASIS7_VIEWER_AUTO_FOCUS_TARGET="${auto_focus_target:-first_fragment}" \
+    OASIS7_VIEWER_AUTO_FOCUS_RADIUS="$auto_focus_radius" \
+    OASIS7_VIEWER_AUTO_SELECT="${auto_select_target:+1}" \
+    OASIS7_VIEWER_AUTO_SELECT_TARGET="$auto_select_target" \
+    OASIS7_VIEWER_AUTOMATION_STEPS="$automation_steps" \
     "${viewer_cmd[@]}" >"$viewer_log" 2>&1 &
   else
-    echo "+ AGENT_WORLD_VIEWER_CAPTURE_PATH=$window_png ${auto_select_target:+AGENT_WORLD_VIEWER_AUTO_SELECT=1 AGENT_WORLD_VIEWER_AUTO_SELECT_TARGET=$auto_select_target }${automation_steps:+AGENT_WORLD_VIEWER_AUTOMATION_STEPS=$automation_steps }${viewer_cmd[*]} > $viewer_log"
-    AGENT_WORLD_VIEWER_CAPTURE_PATH="$window_png" \
-    AGENT_WORLD_VIEWER_CAPTURE_STATUS_PATH="$capture_status_txt" \
-    AGENT_WORLD_VIEWER_CAPTURE_DELAY_SECS="$viewer_wait" \
-    AGENT_WORLD_VIEWER_CAPTURE_MAX_WAIT_SECS="$capture_max_wait" \
-    AGENT_WORLD_VIEWER_AUTO_SELECT="${auto_select_target:+1}" \
-    AGENT_WORLD_VIEWER_AUTO_SELECT_TARGET="$auto_select_target" \
-    AGENT_WORLD_VIEWER_AUTOMATION_STEPS="$automation_steps" \
+    echo "+ OASIS7_VIEWER_CAPTURE_PATH=$window_png ${auto_select_target:+OASIS7_VIEWER_AUTO_SELECT=1 OASIS7_VIEWER_AUTO_SELECT_TARGET=$auto_select_target }${automation_steps:+OASIS7_VIEWER_AUTOMATION_STEPS=$automation_steps }${viewer_cmd[*]} > $viewer_log"
+    OASIS7_VIEWER_CAPTURE_PATH="$window_png" \
+    OASIS7_VIEWER_CAPTURE_STATUS_PATH="$capture_status_txt" \
+    OASIS7_VIEWER_CAPTURE_DELAY_SECS="$viewer_wait" \
+    OASIS7_VIEWER_CAPTURE_MAX_WAIT_SECS="$capture_max_wait" \
+    OASIS7_VIEWER_AUTO_SELECT="${auto_select_target:+1}" \
+    OASIS7_VIEWER_AUTO_SELECT_TARGET="$auto_select_target" \
+    OASIS7_VIEWER_AUTOMATION_STEPS="$automation_steps" \
     "${viewer_cmd[@]}" >"$viewer_log" 2>&1 &
   fi
   VIEWER_PID=$!

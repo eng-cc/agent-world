@@ -482,18 +482,19 @@ capture_variant_bundle() {
     if [[ -n "$resource_pack_file" ]]; then
       source "$resource_pack_file"
     fi
+    promote_legacy_viewer_envs
 
     material_variant_preset_for_run="$variant"
     if [[ "$material_profile" == "art_review_v1" ]]; then
       material_variant_preset_for_run="default"
     fi
-    export AGENT_WORLD_VIEWER_MATERIAL_VARIANT_PRESET="$material_variant_preset_for_run"
-    export AGENT_WORLD_VIEWER_RENDER_PROFILE="$render_profile"
-    export AGENT_WORLD_VIEWER_FRAGMENT_MATERIAL_STRATEGY="$fragment_strategy"
+    export OASIS7_VIEWER_MATERIAL_VARIANT_PRESET="$material_variant_preset_for_run"
+    export OASIS7_VIEWER_RENDER_PROFILE="$render_profile"
+    export OASIS7_VIEWER_FRAGMENT_MATERIAL_STRATEGY="$fragment_strategy"
     if [[ "$art_selection_highlight_enabled" -eq 1 ]]; then
-      unset AGENT_WORLD_VIEWER_HIGHLIGHT_SELECTED || true
+      set_or_unset_viewer_env "HIGHLIGHT_SELECTED" ""
     else
-      export AGENT_WORLD_VIEWER_HIGHLIGHT_SELECTED=0
+      set_or_unset_viewer_env "HIGHLIGHT_SELECTED" "0"
     fi
     apply_variant_material_profile "$material_profile" "$entity" "$variant"
     effective_preview_mode="$preview_mode"
@@ -517,14 +518,14 @@ capture_variant_bundle() {
       use_source_mesh=1
     fi
     if [[ "$effective_preview_mode" == "direct_entity" ]]; then
-      export AGENT_WORLD_VIEWER_SHOW_LOCATIONS=0
+      export OASIS7_VIEWER_SHOW_LOCATIONS=0
     else
-      export AGENT_WORLD_VIEWER_SHOW_LOCATIONS=1
+      export OASIS7_VIEWER_SHOW_LOCATIONS=1
     fi
     if [[ "$effective_preview_mode" == "direct_entity" && "$entity" == "agent" ]]; then
-      export AGENT_WORLD_VIEWER_SHOW_AGENTS=1
+      export OASIS7_VIEWER_SHOW_AGENTS=1
     else
-      export AGENT_WORLD_VIEWER_SHOW_AGENTS=0
+      export OASIS7_VIEWER_SHOW_AGENTS=0
     fi
     capture_auto_focus_target="first_location"
     if [[ "$effective_preview_mode" == "direct_entity" ]]; then
@@ -533,33 +534,33 @@ capture_variant_bundle() {
     location_interference_disabled=0
     if [[ "$effective_preview_mode" == "lookdev" || "$effective_preview_mode" == "direct_entity" ]]; then
       location_interference_disabled=1
-      set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_SHELL_ENABLED" "0"
-      set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_RADIATION_GLOW" "0"
-      set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_DAMAGE_VISUAL" "0"
+      set_or_unset_viewer_env "LOCATION_SHELL_ENABLED" "0"
+      set_or_unset_viewer_env "LOCATION_RADIATION_GLOW" "0"
+      set_or_unset_viewer_env "LOCATION_DAMAGE_VISUAL" "0"
     else
-      set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_SHELL_ENABLED" ""
-      set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_RADIATION_GLOW" ""
-      set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_DAMAGE_VISUAL" ""
+      set_or_unset_viewer_env "LOCATION_SHELL_ENABLED" ""
+      set_or_unset_viewer_env "LOCATION_RADIATION_GLOW" ""
+      set_or_unset_viewer_env "LOCATION_DAMAGE_VISUAL" ""
     fi
     if [[ "$art_capture" -eq 1 ]]; then
-      export AGENT_WORLD_VIEWER_EXPERIENCE_MODE="director"
-      export AGENT_WORLD_VIEWER_PANEL_MODE="observe"
-      export AGENT_WORLD_VIEWER_SHOW_OPS_NAV=0
+      export OASIS7_VIEWER_EXPERIENCE_MODE="director"
+      export OASIS7_VIEWER_PANEL_MODE="observe"
+      export OASIS7_VIEWER_SHOW_OPS_NAV=0
       if [[ "$art_panel_hidden" -eq 1 ]]; then
-        export AGENT_WORLD_VIEWER_PANEL_HIDDEN=1
+        set_or_unset_viewer_env "PANEL_HIDDEN" "1"
       else
-        unset AGENT_WORLD_VIEWER_PANEL_HIDDEN || true
+        set_or_unset_viewer_env "PANEL_HIDDEN" ""
       fi
     fi
     if [[ "$art_lighting_enabled" -eq 1 ]]; then
       apply_art_lighting_profile "$lighting_profile" "$entity" "$variant"
     fi
 
-    src_mesh_key="AGENT_WORLD_VIEWER_${src_prefix}_MESH_ASSET"
-    src_base_key="AGENT_WORLD_VIEWER_${src_prefix}_BASE_TEXTURE_ASSET"
-    src_normal_key="AGENT_WORLD_VIEWER_${src_prefix}_NORMAL_TEXTURE_ASSET"
-    src_mr_key="AGENT_WORLD_VIEWER_${src_prefix}_METALLIC_ROUGHNESS_TEXTURE_ASSET"
-    src_emissive_key="AGENT_WORLD_VIEWER_${src_prefix}_EMISSIVE_TEXTURE_ASSET"
+    src_mesh_key=$(viewer_env_key "${src_prefix}_MESH_ASSET")
+    src_base_key=$(viewer_env_key "${src_prefix}_BASE_TEXTURE_ASSET")
+    src_normal_key=$(viewer_env_key "${src_prefix}_NORMAL_TEXTURE_ASSET")
+    src_mr_key=$(viewer_env_key "${src_prefix}_METALLIC_ROUGHNESS_TEXTURE_ASSET")
+    src_emissive_key=$(viewer_env_key "${src_prefix}_EMISSIVE_TEXTURE_ASSET")
 
     src_mesh="${!src_mesh_key:-}"
     src_base="${!src_base_key:-}"
@@ -623,46 +624,46 @@ capture_variant_bundle() {
 
     if [[ "$effective_preview_mode" == "direct_entity" ]]; then
       if [[ "$use_source_mesh" -eq 1 ]]; then
-        set_or_unset_env "AGENT_WORLD_VIEWER_${src_prefix}_MESH_ASSET" "$effective_mesh_asset"
+        set_or_unset_viewer_env "${src_prefix}_MESH_ASSET" "$effective_mesh_asset"
       fi
-      set_or_unset_env "AGENT_WORLD_VIEWER_${src_prefix}_BASE_TEXTURE_ASSET" "$effective_base_texture_asset"
-      set_or_unset_env "AGENT_WORLD_VIEWER_${src_prefix}_NORMAL_TEXTURE_ASSET" "$effective_normal_texture_asset"
-      set_or_unset_env "AGENT_WORLD_VIEWER_${src_prefix}_METALLIC_ROUGHNESS_TEXTURE_ASSET" "$effective_mr_texture_asset"
-      set_or_unset_env "AGENT_WORLD_VIEWER_${src_prefix}_EMISSIVE_TEXTURE_ASSET" "$effective_emissive_texture_asset"
+      set_or_unset_viewer_env "${src_prefix}_BASE_TEXTURE_ASSET" "$effective_base_texture_asset"
+      set_or_unset_viewer_env "${src_prefix}_NORMAL_TEXTURE_ASSET" "$effective_normal_texture_asset"
+      set_or_unset_viewer_env "${src_prefix}_METALLIC_ROUGHNESS_TEXTURE_ASSET" "$effective_mr_texture_asset"
+      set_or_unset_viewer_env "${src_prefix}_EMISSIVE_TEXTURE_ASSET" "$effective_emissive_texture_asset"
     else
       if [[ "$use_source_mesh" -eq 1 ]]; then
-        set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_MESH_ASSET" "$effective_mesh_asset"
+        set_or_unset_viewer_env "LOCATION_MESH_ASSET" "$effective_mesh_asset"
       fi
 
-      set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_BASE_TEXTURE_ASSET" "$effective_base_texture_asset"
-      set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_NORMAL_TEXTURE_ASSET" "$effective_normal_texture_asset"
-      set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_METALLIC_ROUGHNESS_TEXTURE_ASSET" "$effective_mr_texture_asset"
-      set_or_unset_env "AGENT_WORLD_VIEWER_LOCATION_EMISSIVE_TEXTURE_ASSET" "$effective_emissive_texture_asset"
+      set_or_unset_viewer_env "LOCATION_BASE_TEXTURE_ASSET" "$effective_base_texture_asset"
+      set_or_unset_viewer_env "LOCATION_NORMAL_TEXTURE_ASSET" "$effective_normal_texture_asset"
+      set_or_unset_viewer_env "LOCATION_METALLIC_ROUGHNESS_TEXTURE_ASSET" "$effective_mr_texture_asset"
+      set_or_unset_viewer_env "LOCATION_EMISSIVE_TEXTURE_ASSET" "$effective_emissive_texture_asset"
     fi
 
     if [[ "$entity" == "power_plant" ]]; then
       if [[ -n "$pack_roughness_override" ]]; then
-        set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_ROUGHNESS" "$pack_roughness_override"
+        set_or_unset_viewer_env "MATERIAL_POWER_PLANT_ROUGHNESS" "$pack_roughness_override"
       fi
       if [[ -n "$pack_metallic_override" ]]; then
-        set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_METALLIC" "$pack_metallic_override"
+        set_or_unset_viewer_env "MATERIAL_POWER_PLANT_METALLIC" "$pack_metallic_override"
       fi
       if [[ -n "$pack_emissive_boost_override" ]]; then
-        set_or_unset_env "AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_EMISSIVE_BOOST" "$pack_emissive_boost_override"
+        set_or_unset_viewer_env "MATERIAL_POWER_PLANT_EMISSIVE_BOOST" "$pack_emissive_boost_override"
       fi
       if [[ -n "$pack_base_color_override" ]]; then
-        set_or_unset_env "AGENT_WORLD_VIEWER_POWER_PLANT_BASE_COLOR" "$pack_base_color_override"
+        set_or_unset_viewer_env "POWER_PLANT_BASE_COLOR" "$pack_base_color_override"
       fi
       if [[ -n "$pack_emissive_color_override" ]]; then
-        set_or_unset_env "AGENT_WORLD_VIEWER_POWER_PLANT_EMISSIVE_COLOR" "$pack_emissive_color_override"
+        set_or_unset_viewer_env "POWER_PLANT_EMISSIVE_COLOR" "$pack_emissive_color_override"
       fi
     fi
 
-    direct_entity_mesh_key="AGENT_WORLD_VIEWER_${src_prefix}_MESH_ASSET"
-    direct_entity_base_key="AGENT_WORLD_VIEWER_${src_prefix}_BASE_TEXTURE_ASSET"
-    direct_entity_normal_key="AGENT_WORLD_VIEWER_${src_prefix}_NORMAL_TEXTURE_ASSET"
-    direct_entity_mr_key="AGENT_WORLD_VIEWER_${src_prefix}_METALLIC_ROUGHNESS_TEXTURE_ASSET"
-    direct_entity_emissive_key="AGENT_WORLD_VIEWER_${src_prefix}_EMISSIVE_TEXTURE_ASSET"
+    direct_entity_mesh_key=$(viewer_env_key "${src_prefix}_MESH_ASSET")
+    direct_entity_base_key=$(viewer_env_key "${src_prefix}_BASE_TEXTURE_ASSET")
+    direct_entity_normal_key=$(viewer_env_key "${src_prefix}_NORMAL_TEXTURE_ASSET")
+    direct_entity_mr_key=$(viewer_env_key "${src_prefix}_METALLIC_ROUGHNESS_TEXTURE_ASSET")
+    direct_entity_emissive_key=$(viewer_env_key "${src_prefix}_EMISSIVE_TEXTURE_ASSET")
     direct_entity_mesh_asset="${!direct_entity_mesh_key:-}"
     direct_entity_base_texture_asset="${!direct_entity_base_key:-}"
     direct_entity_normal_texture_asset="${!direct_entity_normal_key:-}"
@@ -856,29 +857,29 @@ resource_pack_metallic_override=$pack_metallic_override
 resource_pack_emissive_boost_override=$pack_emissive_boost_override
 resource_pack_base_color_override=$pack_base_color_override
 resource_pack_emissive_color_override=$pack_emissive_color_override
-lighting_tonemapping=${AGENT_WORLD_VIEWER_TONEMAPPING:-}
-lighting_bloom_enabled=${AGENT_WORLD_VIEWER_BLOOM_ENABLED:-}
-lighting_bloom_intensity=${AGENT_WORLD_VIEWER_BLOOM_INTENSITY:-}
-lighting_color_grading_exposure=${AGENT_WORLD_VIEWER_COLOR_GRADING_EXPOSURE:-}
-lighting_ambient_brightness=${AGENT_WORLD_VIEWER_AMBIENT_BRIGHTNESS:-}
-lighting_fill_light_ratio=${AGENT_WORLD_VIEWER_FILL_LIGHT_RATIO:-}
-lighting_rim_light_ratio=${AGENT_WORLD_VIEWER_RIM_LIGHT_RATIO:-}
-lighting_exposure_ev100=${AGENT_WORLD_VIEWER_EXPOSURE_EV100:-}
+lighting_tonemapping=$(viewer_env_value "TONEMAPPING")
+lighting_bloom_enabled=$(viewer_env_value "BLOOM_ENABLED")
+lighting_bloom_intensity=$(viewer_env_value "BLOOM_INTENSITY")
+lighting_color_grading_exposure=$(viewer_env_value "COLOR_GRADING_EXPOSURE")
+lighting_ambient_brightness=$(viewer_env_value "AMBIENT_BRIGHTNESS")
+lighting_fill_light_ratio=$(viewer_env_value "FILL_LIGHT_RATIO")
+lighting_rim_light_ratio=$(viewer_env_value "RIM_LIGHT_RATIO")
+lighting_exposure_ev100=$(viewer_env_value "EXPOSURE_EV100")
 location_interference_disabled=$location_interference_disabled
-lookdev_location_shell_enabled=${AGENT_WORLD_VIEWER_LOCATION_SHELL_ENABLED:-}
-lookdev_location_radiation_glow=${AGENT_WORLD_VIEWER_LOCATION_RADIATION_GLOW:-}
-lookdev_location_damage_visual=${AGENT_WORLD_VIEWER_LOCATION_DAMAGE_VISUAL:-}
-material_agent_roughness_override=${AGENT_WORLD_VIEWER_MATERIAL_AGENT_ROUGHNESS:-}
-material_agent_metallic_override=${AGENT_WORLD_VIEWER_MATERIAL_AGENT_METALLIC:-}
-material_asset_roughness_override=${AGENT_WORLD_VIEWER_MATERIAL_ASSET_ROUGHNESS:-}
-material_asset_metallic_override=${AGENT_WORLD_VIEWER_MATERIAL_ASSET_METALLIC:-}
-material_facility_roughness_override=${AGENT_WORLD_VIEWER_MATERIAL_FACILITY_ROUGHNESS:-}
-material_facility_metallic_override=${AGENT_WORLD_VIEWER_MATERIAL_FACILITY_METALLIC:-}
-material_power_plant_roughness_override=${AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_ROUGHNESS:-}
-material_power_plant_metallic_override=${AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_METALLIC:-}
-material_power_plant_emissive_boost_override=${AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_EMISSIVE_BOOST:-}
-material_power_plant_base_color_override=${AGENT_WORLD_VIEWER_POWER_PLANT_BASE_COLOR:-}
-material_power_plant_emissive_color_override=${AGENT_WORLD_VIEWER_POWER_PLANT_EMISSIVE_COLOR:-}
+lookdev_location_shell_enabled=$(viewer_env_value "LOCATION_SHELL_ENABLED")
+lookdev_location_radiation_glow=$(viewer_env_value "LOCATION_RADIATION_GLOW")
+lookdev_location_damage_visual=$(viewer_env_value "LOCATION_DAMAGE_VISUAL")
+material_agent_roughness_override=$(viewer_env_value "MATERIAL_AGENT_ROUGHNESS")
+material_agent_metallic_override=$(viewer_env_value "MATERIAL_AGENT_METALLIC")
+material_asset_roughness_override=$(viewer_env_value "MATERIAL_ASSET_ROUGHNESS")
+material_asset_metallic_override=$(viewer_env_value "MATERIAL_ASSET_METALLIC")
+material_facility_roughness_override=$(viewer_env_value "MATERIAL_FACILITY_ROUGHNESS")
+material_facility_metallic_override=$(viewer_env_value "MATERIAL_FACILITY_METALLIC")
+material_power_plant_roughness_override=$(viewer_env_value "MATERIAL_POWER_PLANT_ROUGHNESS")
+material_power_plant_metallic_override=$(viewer_env_value "MATERIAL_POWER_PLANT_METALLIC")
+material_power_plant_emissive_boost_override=$(viewer_env_value "MATERIAL_POWER_PLANT_EMISSIVE_BOOST")
+material_power_plant_base_color_override=$(viewer_env_value "POWER_PLANT_BASE_COLOR")
+material_power_plant_emissive_color_override=$(viewer_env_value "POWER_PLANT_EMISSIVE_COLOR")
 base_texture_template_override=$override_base_texture_template
 normal_texture_template_override=$override_normal_texture_template
 mr_texture_template_override=$override_mr_texture_template
@@ -892,11 +893,11 @@ effective_base_texture_asset=$effective_base_texture_asset
 effective_normal_texture_asset=$effective_normal_texture_asset
 effective_mr_texture_asset=$effective_mr_texture_asset
 effective_emissive_texture_asset=$effective_emissive_texture_asset
-location_mesh_asset=${AGENT_WORLD_VIEWER_LOCATION_MESH_ASSET:-}
-location_base_texture_asset=${AGENT_WORLD_VIEWER_LOCATION_BASE_TEXTURE_ASSET:-}
-location_normal_texture_asset=${AGENT_WORLD_VIEWER_LOCATION_NORMAL_TEXTURE_ASSET:-}
-location_metallic_roughness_texture_asset=${AGENT_WORLD_VIEWER_LOCATION_METALLIC_ROUGHNESS_TEXTURE_ASSET:-}
-location_emissive_texture_asset=${AGENT_WORLD_VIEWER_LOCATION_EMISSIVE_TEXTURE_ASSET:-}
+location_mesh_asset=$(viewer_env_value "LOCATION_MESH_ASSET")
+location_base_texture_asset=$(viewer_env_value "LOCATION_BASE_TEXTURE_ASSET")
+location_normal_texture_asset=$(viewer_env_value "LOCATION_NORMAL_TEXTURE_ASSET")
+location_metallic_roughness_texture_asset=$(viewer_env_value "LOCATION_METALLIC_ROUGHNESS_TEXTURE_ASSET")
+location_emissive_texture_asset=$(viewer_env_value "LOCATION_EMISSIVE_TEXTURE_ASSET")
 direct_entity_mesh_asset=$direct_entity_mesh_asset
 direct_entity_base_texture_asset=$direct_entity_base_texture_asset
 direct_entity_normal_texture_asset=$direct_entity_normal_texture_asset
