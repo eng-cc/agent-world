@@ -231,6 +231,15 @@ env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-u
   - 对外样张链路需使用 strict 语义门禁，不得以 `off` / `soft` 结果作为发布判定证据。
 - 若需要为 `#46 PostOnboarding` 补无 UI / 非浏览器验证，执行 `./scripts/viewer-post-onboarding-headless-smoke.sh`。
   - 该脚本只验证 live TCP 协议、快照推进、控制完成 ack 与 runtime event feed；不替代 headed Web/UI 截图复核。
+- 若需要直接以纯 API 客户端操作 live 会话，可使用 `cargo run -q -p agent_world --bin world_pure_api_client -- ...`。
+  - 推荐最小链路：
+```bash
+cargo run -q -p agent_world --bin world_pure_api_client -- --addr 127.0.0.1:5023 snapshot --player-gameplay-only
+cargo run -q -p agent_world --bin world_pure_api_client -- --addr 127.0.0.1:5023 step --count 8 --events
+cargo run -q -p agent_world --bin world_pure_api_client -- keygen
+cargo run -q -p agent_world --bin world_pure_api_client -- --addr 127.0.0.1:5023 reconnect-sync --player-id player-1
+```
+  - 若要覆盖 `agent_chat` / `prompt_control`，需先 `keygen`，再携带 `--player-id` 与 `--private-key-hex` 走签名请求；无 LLM 模式下这两类请求仍会按当前产品约束返回 `llm_mode_required`。
 - 快速入口：
 ```bash
 ./scripts/run-producer-playtest.sh --no-llm
@@ -241,6 +250,7 @@ env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-u
 ./scripts/viewer-post-onboarding-qa.sh --bundle-dir output/release/game-launcher-local --no-llm
 ./scripts/viewer-post-onboarding-headless-smoke.sh --bundle-dir output/release/game-launcher-local --no-llm
 ./scripts/viewer-software-safe-chat-regression.sh --bundle-dir output/release/game-launcher-local
+cargo run -q -p agent_world --bin world_pure_api_client -- --addr 127.0.0.1:5023 snapshot --player-gameplay-only
 ./scripts/viewer-release-qa-loop.sh
 ./scripts/viewer-release-full-coverage.sh --quick
 ./scripts/viewer-release-art-baseline.sh

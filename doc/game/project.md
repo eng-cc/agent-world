@@ -47,7 +47,8 @@
 ## 状态
 - 更新日期: 2026-03-19
 - 当前状态: in_progress
-- 下一任务: `TASK-GAMEPLAY-API-003`（纯 API 正式玩家动作面与持续游玩能力闭环）
+- 下一任务: `TASK-GAMEPLAY-API-004`（UI/API parity matrix 与 pure API required/full 验收）
+- 最新完成: `TASK-GAMEPLAY-API-003`（`world_pure_api_client` 纯 API 正式玩家动作面交付）。
 - 最新完成: `TASK-GAMEPLAY-API-002`（live 协议 `WorldSnapshot.player_gameplay` canonical 玩家语义下沉）。
 - 最新完成: `TASK-GAME-023`（纯 API 客户端等价专题 PRD / design / project 与根入口挂载）。
 - 最新完成: `TASK-GAME-022`（`#46 PostOnboarding` 无 UI live-protocol smoke、证据与手册入口已补齐）。
@@ -84,6 +85,7 @@
 - ROUND-024 进展: `qa_engineer` 已新增 `scripts/viewer-post-onboarding-headless-smoke.sh`，并以 `./scripts/viewer-post-onboarding-headless-smoke.sh --bundle-dir output/release/game-launcher-local --no-llm --viewer-port 4273 --web-bind 127.0.0.1:5111 --live-bind 127.0.0.1:5123 --chain-status-bind 127.0.0.1:5231` 在 fresh bundle 无 UI 路径完成 live-protocol smoke；证据包位于 `output/playwright/playability/post-onboarding-headless-20260319-101444/`，补充确认 `#46` 的同会话控制推进、快照时间推进与 `RuntimeEvent` feed 不依赖浏览器 UI，但屏幕语义仍以 ROUND-023 的 headed Web 证据为准。
 - ROUND-025 进展: `producer_system_designer` 已新增 `doc/game/gameplay/gameplay-pure-api-client-parity-2026-03-19.{prd,design,project}.md`，将“纯 API 客户端在信息粒度、动作能力和持续游玩上与 UI 等价”正式挂入 `game` 根 PRD、`gameplay-top-level-design` 主文档、索引与 devlog；下一步转入 `TASK-GAMEPLAY-API-002`，由 `viewer_engineer / runtime_engineer` 对齐协议级 canonical 玩家语义。
 - ROUND-026 进展: `viewer_engineer` / `runtime_engineer` 已完成 `TASK-GAMEPLAY-API-002` 首个实现切片：live `WorldSnapshot` 新增 `player_gameplay` canonical 玩家快照，向纯 API 客户端直接暴露 `FirstSessionLoop -> PostOnboarding` 的阶段、目标、进度、阻塞、下一步建议、可执行动作和最近控制反馈，并通过 `cargo check`、定向单测与 wasm viewer 编译验证；下一步转入 `TASK-GAMEPLAY-API-003`，补齐纯 API 正式玩家动作面的持续游玩闭环。
+- ROUND-027 进展: `runtime_engineer` / `agent_engineer` / `viewer_engineer` 已完成 `TASK-GAMEPLAY-API-003` 首个实现切片：新增 `crates/agent_world/src/bin/world_pure_api_client.rs` 作为参考纯 API 客户端，直接复用 live TCP 协议与 Ed25519 玩家签名链路，支持 `snapshot / step / play / pause / agent_chat / prompt_control / reconnect_sync / rotate_session / revoke_session`，并在 fresh no-LLM live 会话上跑通 `snapshot / step / reconnect_sync`；下一步转入 `TASK-GAMEPLAY-API-004`，补 parity matrix 与 required/full 纯 API 长玩验收。
 - 说明: 本文档仅维护 game 设计执行状态；过程记录在 `doc/devlog/2026-03-05.md`、`doc/devlog/2026-03-06.md`、`doc/devlog/2026-03-07.md`、`doc/devlog/2026-03-15.md` 与 `doc/devlog/2026-03-18.md`。
   - 最新过程记录补充见 `doc/devlog/2026-03-19.md`。
 
