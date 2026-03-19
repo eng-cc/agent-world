@@ -1,4 +1,4 @@
-# Agent World: 根 README 公开状态口径对齐（2026-03-11）设计
+# oasis7: 根 README 公开状态口径对齐（2026-03-11）设计
 
 - 对应需求文档: `doc/readme/governance/readme-root-status-alignment-2026-03-11.prd.md`
 - 对应项目管理文档: `doc/readme/governance/readme-root-status-alignment-2026-03-11.project.md`

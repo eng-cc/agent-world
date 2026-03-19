@@ -1,4 +1,4 @@
-# Agent World: README 季度口径审查与修复节奏（2026-03-11）
+# oasis7: README 季度口径审查与修复节奏（2026-03-11）
 
 - 对应设计文档: `doc/readme/governance/readme-quarterly-review-cycle-2026-03-11.design.md`
 - 对应项目管理文档: `doc/readme/governance/readme-quarterly-review-cycle-2026-03-11.project.md`

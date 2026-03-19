@@ -1,4 +1,4 @@
-# Agent World: Moltbook 首批发帖草案包（2026-03-19）设计
+# oasis7: Moltbook 首批发帖草案包（2026-03-19）设计
 
 - 对应需求文档: `doc/readme/governance/readme-moltbook-post-drafts-2026-03-19.prd.md`
 - 对应项目管理文档: `doc/readme/governance/readme-moltbook-post-drafts-2026-03-19.project.md`

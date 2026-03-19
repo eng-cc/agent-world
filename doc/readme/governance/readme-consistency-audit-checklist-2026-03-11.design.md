@@ -1,4 +1,4 @@
-# Agent World: README 与模块 PRD 口径一致性巡检清单（2026-03-11）设计
+# oasis7: README 与模块 PRD 口径一致性巡检清单（2026-03-11）设计
 
 - 对应需求文档: `doc/readme/governance/readme-consistency-audit-checklist-2026-03-11.prd.md`
 - 对应项目管理文档: `doc/readme/governance/readme-consistency-audit-checklist-2026-03-11.project.md`

@@ -1,4 +1,4 @@
-# Agent World: Moltbook 推广方案（2026-03-19）设计
+# oasis7: Moltbook 推广方案（2026-03-19）设计
 
 - 对应需求文档: `doc/readme/governance/readme-moltbook-promotion-plan-2026-03-19.prd.md`
 - 对应项目管理文档: `doc/readme/governance/readme-moltbook-promotion-plan-2026-03-19.project.md`

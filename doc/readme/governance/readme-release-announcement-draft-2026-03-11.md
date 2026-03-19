@@ -1,4 +1,4 @@
-# Agent World Release Candidate Update（Draft / 2026-03-11）
+# oasis7 Release Candidate Update（Draft / 2026-03-11）
 
 审计轮次: 4
 

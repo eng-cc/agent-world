@@ -1,4 +1,4 @@
-# Agent World: README 入口链接有效性自动检查（2026-03-11）
+# oasis7: README 入口链接有效性自动检查（2026-03-11）
 
 - 对应设计文档: `doc/readme/governance/readme-link-check-automation-2026-03-11.design.md`
 - 对应项目管理文档: `doc/readme/governance/readme-link-check-automation-2026-03-11.project.md`

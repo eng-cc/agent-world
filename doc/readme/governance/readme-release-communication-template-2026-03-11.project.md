@@ -1,4 +1,4 @@
-# Agent World: 对外口径简报模板（2026-03-11）（项目管理）
+# oasis7: 对外口径简报模板（2026-03-11）（项目管理）
 
 - 对应设计文档: `doc/readme/governance/readme-release-communication-template-2026-03-11.design.md`
 - 对应需求文档: `doc/readme/governance/readme-release-communication-template-2026-03-11.prd.md`

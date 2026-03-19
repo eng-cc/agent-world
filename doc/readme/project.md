@@ -91,6 +91,16 @@
     - `rg -n "^# oasis7$|^# oasis7: 系统性应用测试手册|^# oasis7 Specification" README.md testing-manual.md world-rule.md`
     - `./scripts/readme-link-check.sh`
     - `./scripts/doc-governance-check.sh`
+- [x] TASK-README-019 (PRD-README-014) [test_tier_required]: 对 `doc/readme/governance/**` 的仍可读历史专题执行 title-only cleanup，将首行 `Agent World*` 公开标题统一切到 `oasis7*`，保留正文历史证据原文不动。
+  - 产物文件:
+    - `doc/readme/prd.md`
+    - `doc/readme/project.md`
+    - `doc/readme/governance/*.md`
+    - `doc/devlog/2026-03-19.md`
+  - 验收命令 (`test_tier_required`):
+    - `rg -n "^# Agent World|^# Agent World Runtime|^# Agent World Simulator|^# Agent World Viewer" doc/readme --glob '!third_party/**'`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
 
 ## 依赖
 - doc/readme/prd.index.md
@@ -107,6 +117,7 @@
 - 当前状态: completed
 - 下一任务: 无（当前模块主项目无未完成任务）
 - 最新完成: `TASK-README-018`（根 README / testing-manual / world-rule 已统一为 `oasis7` 品牌，并补 internal naming compatibility 说明）。
+- 最新完成: `TASK-README-019`（已完成 `doc/readme/governance/**` 历史专题首行标题的 title-only cleanup，旧 `Agent World*` 公开标题已统一切到 `oasis7*`）。
 - 最新完成: `TASK-README-011`（readme 模块 README 目录索引同步）。
 - 最新完成: `TASK-README-012`（readme 模块 completed 状态摘要补齐）。
 - 最新完成: `TASK-README-013`（根 README 已对齐三模式技术预览访问面口径，移除旧运行模式歧义）。

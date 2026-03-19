@@ -1,4 +1,4 @@
-# Agent World: 公告 / Changelog 模板（2026-03-11）
+# oasis7: 公告 / Changelog 模板（2026-03-11）
 
 - 对应设计文档: `doc/readme/governance/readme-release-announcement-template-2026-03-11.design.md`
 - 对应项目管理文档: `doc/readme/governance/readme-release-announcement-template-2026-03-11.project.md`

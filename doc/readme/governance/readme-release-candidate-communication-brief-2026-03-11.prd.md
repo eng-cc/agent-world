@@ -1,4 +1,4 @@
-# Agent World: 版本候选对外口径简报（2026-03-11）
+# oasis7: 版本候选对外口径简报（2026-03-11）
 
 - 对应设计文档: `doc/readme/governance/readme-release-candidate-communication-brief-2026-03-11.design.md`
 - 对应项目管理文档: `doc/readme/governance/readme-release-candidate-communication-brief-2026-03-11.project.md`
