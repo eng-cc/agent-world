@@ -1,4 +1,4 @@
-# Agent World Simulator：Viewer Chat 右侧收敛布局与闭环验收（设计文档）
+# oasis7 Simulator：Viewer Chat 右侧收敛布局与闭环验收（设计文档）
 
 - 对应设计文档: `doc/world-simulator/viewer/viewer-chat-right-panel-polish.design.md`
 - 对应项目管理文档: `doc/world-simulator/viewer/viewer-chat-right-panel-polish.project.md`

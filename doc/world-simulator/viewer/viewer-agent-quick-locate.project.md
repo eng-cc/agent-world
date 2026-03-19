@@ -1,4 +1,4 @@
-# Agent World Simulator：Viewer 快速定位 Agent 按钮（项目管理文档）
+# oasis7 Simulator：Viewer 快速定位 Agent 按钮（项目管理文档）
 
 - 对应设计文档: `doc/world-simulator/viewer/viewer-agent-quick-locate.design.md`
 - 对应需求文档: `doc/world-simulator/viewer/viewer-agent-quick-locate.prd.md`

@@ -1,4 +1,4 @@
-# Agent World Simulator：LMSO29 可用性与稳定性收敛（设计文档）设计
+# oasis7 Simulator：LMSO29 可用性与稳定性收敛（设计文档）设计
 
 - 对应需求文档: `doc/world-simulator/llm/llm-lmso29-stability.prd.md`
 - 对应项目管理文档: `doc/world-simulator/llm/llm-lmso29-stability.project.md`

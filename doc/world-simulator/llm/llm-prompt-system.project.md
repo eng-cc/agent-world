@@ -1,4 +1,4 @@
-# Agent World Simulator：Agent-LLM Prompt 模块交互系统（项目管理文档）
+# oasis7 Simulator：Agent-LLM Prompt 模块交互系统（项目管理文档）
 
 - 对应设计文档: `doc/world-simulator/llm/llm-prompt-system.design.md`
 - 对应需求文档: `doc/world-simulator/llm/llm-prompt-system.prd.md`

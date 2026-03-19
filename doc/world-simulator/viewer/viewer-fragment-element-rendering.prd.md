@@ -1,4 +1,4 @@
-# Agent World Simulator：Viewer Fragment 元素材质渲染与开关（设计文档）
+# oasis7 Simulator：Viewer Fragment 元素材质渲染与开关（设计文档）
 
 - 对应设计文档: `doc/world-simulator/viewer/viewer-fragment-element-rendering.design.md`
 - 对应项目管理文档: `doc/world-simulator/viewer/viewer-fragment-element-rendering.project.md`

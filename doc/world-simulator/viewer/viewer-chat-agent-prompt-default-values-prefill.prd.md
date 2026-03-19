@@ -1,4 +1,4 @@
-# Agent World Simulator：Chat Panel Agent Prompt 默认值预填充输入框（设计文档）
+# oasis7 Simulator：Chat Panel Agent Prompt 默认值预填充输入框（设计文档）
 
 - 对应设计文档: `doc/world-simulator/viewer/viewer-chat-agent-prompt-default-values-prefill.design.md`
 - 对应项目管理文档: `doc/world-simulator/viewer/viewer-chat-agent-prompt-default-values-prefill.project.md`

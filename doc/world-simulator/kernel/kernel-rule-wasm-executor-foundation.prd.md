@@ -1,4 +1,4 @@
-# Agent World Simulator：规则 Wasm 执行接线基础（第三阶段）设计文档
+# oasis7 Simulator：规则 Wasm 执行接线基础（第三阶段）设计文档
 
 - 对应设计文档: `doc/world-simulator/kernel/kernel-rule-wasm-executor-foundation.design.md`
 - 对应项目管理文档: `doc/world-simulator/kernel/kernel-rule-wasm-executor-foundation.project.md`

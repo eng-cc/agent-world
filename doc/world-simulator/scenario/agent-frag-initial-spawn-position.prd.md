@@ -1,4 +1,4 @@
-# Agent World Simulator：Agent Frag 初始站位优化（设计文档）
+# oasis7 Simulator：Agent Frag 初始站位优化（设计文档）
 
 - 对应设计文档: `doc/world-simulator/scenario/agent-frag-initial-spawn-position.design.md`
 - 对应项目管理文档: `doc/world-simulator/scenario/agent-frag-initial-spawn-position.project.md`

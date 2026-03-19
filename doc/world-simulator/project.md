@@ -169,6 +169,19 @@
     - `bash -n scripts/capture-viewer-frame.sh`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
+- [x] TASK-WORLD_SIMULATOR-166 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 对 `doc/world-simulator/**` 仍可读历史专题执行 title-only cleanup，将首行 `Agent World*` 标题统一切到 `oasis7*`，并明确旧标题仅允许出现在正文历史上下文中，不改动内部实现兼容名与历史证据正文。
+  - 产物文件:
+    - `doc/world-simulator/prd.md`
+    - `doc/world-simulator/project.md`
+    - `doc/world-simulator/viewer/*.md`
+    - `doc/world-simulator/kernel/*.md`
+    - `doc/world-simulator/scenario/*.md`
+    - `doc/world-simulator/llm/*.md`
+    - `doc/devlog/2026-03-19.md`
+  - 验收命令 (`test_tier_required`):
+    - `rg -n "^# Agent World|^# Agent World：|^# Agent World Simulator：|^# Agent World Simulator:|^# Agent World Viewer：|^# Agent World Viewer:" doc/world-simulator --glob '!third_party/**'`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
 - [x] TASK-WORLD_SIMULATOR-162 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 修复标准模式 bootstrap `Loading standard viewer...` overlay 在 wasm 已启动后仍残留并压缩左侧视口的问题，补齐 cleanup 生命周期与最小回归验证。
 - [x] TASK-WORLD_SIMULATOR-148 (PRD-WORLD_SIMULATOR-040) [test_tier_required]: 完成 `OpenClaw` 双轨模式（`player_parity` / `headless_agent` / `debug_viewer`）专题 PRD / Project 建模，并回写模块主文档、索引与 devlog。
 - [x] TASK-WORLD_SIMULATOR-149 (PRD-WORLD_SIMULATOR-040) [test_tier_required]: 由 `agent_engineer` 冻结 `player_parity` / `headless_agent` 的 observation/action contract、schema version、模式元数据与禁止泄露真值边界，并形成 supporting spec。
@@ -344,6 +357,7 @@
 - 最新完成: `TASK-WORLD_SIMULATOR-132`（为 `oasis7-run.sh doctor` 增加 `--json` 机读输出）。
 - 最新完成: `TASK-WORLD_SIMULATOR-137`（为 `oasis7` 补齐 chain node 公私钥资产说明与 operator contract）。
 - 最新完成: `TASK-WORLD_SIMULATOR-138`（为 `oasis7-run.sh download` 补 bundle-first 下载阶段日志、进度条与非 TTY heartbeat，并新增下载可观测性回归脚本）。
+- 最新完成: `TASK-WORLD_SIMULATOR-166`（已完成 `doc/world-simulator/**` 历史专题首行标题的 title-only cleanup，将 `Agent World*` 公开标题统一切到 `oasis7*`，并保留旧品牌只出现在正文历史上下文中）。
 - 最新完成: `TASK-WORLD_SIMULATOR-164`（为 Viewer 首局 `4/4` 之后补 `PostOnboarding` 阶段目标卡、阻塞解释、分支解锁与 summary 文案更新，并通过定向 `test_tier_required` 回归）。
 - 最新完成: `TASK-WORLD_SIMULATOR-165`（已完成 Viewer 活跃手册、原生窗口标题、Web `<title>` 与抓帧脚本窗口匹配的 `oasis7 Viewer` 品牌对齐，并保留旧标题仅作兼容匹配）。
 - 最新完成: `TASK-WORLD_SIMULATOR-163`（修复 live 模式 seek 语义误报，收口 `dispatch_viewer_control`、`__AW_TEST__`、timeline、egui 与 automation 的 profile 对齐，避免把 unsupported seek 误报成断链重连问题）。

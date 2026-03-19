@@ -1,4 +1,4 @@
-# Agent World Simulator：LLM 多场景评测基线（设计文档）设计
+# oasis7 Simulator：LLM 多场景评测基线（设计文档）设计
 
 - 对应需求文档: `doc/world-simulator/llm/llm-multi-scenario-evaluation.prd.md`
 - 对应项目管理文档: `doc/world-simulator/llm/llm-multi-scenario-evaluation.project.md`

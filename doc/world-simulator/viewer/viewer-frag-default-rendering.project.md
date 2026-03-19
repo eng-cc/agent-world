@@ -1,4 +1,4 @@
-# Agent World Simulator：Viewer 默认渲染 Frag 且不渲染 Location（项目管理文档）
+# oasis7 Simulator：Viewer 默认渲染 Frag 且不渲染 Location（项目管理文档）
 
 - 对应设计文档: `doc/world-simulator/viewer/viewer-frag-default-rendering.design.md`
 - 对应需求文档: `doc/world-simulator/viewer/viewer-frag-default-rendering.prd.md`

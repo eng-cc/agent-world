@@ -1,4 +1,4 @@
-# Agent World Simulator：默认电力设施语义下沉为场景配置设计
+# oasis7 Simulator：默认电力设施语义下沉为场景配置设计
 
 - 对应需求文档: `doc/world-simulator/scenario/scenario-power-facility-baseline.prd.md`
 - 对应项目管理文档: `doc/world-simulator/scenario/scenario-power-facility-baseline.project.md`

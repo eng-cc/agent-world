@@ -1,4 +1,4 @@
-# Agent World Simulator：LLM 对话轮次驱动与右侧 Chat 面板（设计文档）
+# oasis7 Simulator：LLM 对话轮次驱动与右侧 Chat 面板（设计文档）
 
 - 对应设计文档: `doc/world-simulator/llm/llm-dialogue-chat-loop.design.md`
 - 对应项目管理文档: `doc/world-simulator/llm/llm-dialogue-chat-loop.project.md`

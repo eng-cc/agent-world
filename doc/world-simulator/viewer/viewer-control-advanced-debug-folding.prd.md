@@ -1,4 +1,4 @@
-# Agent World Simulator：Viewer 控制区精简与高级调试折叠（设计文档）
+# oasis7 Simulator：Viewer 控制区精简与高级调试折叠（设计文档）
 
 - 对应设计文档: `doc/world-simulator/viewer/viewer-control-advanced-debug-folding.design.md`
 - 对应项目管理文档: `doc/world-simulator/viewer/viewer-control-advanced-debug-folding.project.md`

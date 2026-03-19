@@ -1,4 +1,4 @@
-# Agent World Simulator：Viewer Chat Web IME EGUI 输入桥接（项目管理文档）
+# oasis7 Simulator：Viewer Chat Web IME EGUI 输入桥接（项目管理文档）
 
 - 对应设计文档: `doc/world-simulator/viewer/viewer-chat-ime-egui-bridge.design.md`
 - 对应需求文档: `doc/world-simulator/viewer/viewer-chat-ime-egui-bridge.prd.md`

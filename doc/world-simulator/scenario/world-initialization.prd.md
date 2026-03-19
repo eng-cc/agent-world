@@ -1,4 +1,4 @@
-# Agent World Simulator：世界初始化（设计分册）
+# oasis7 Simulator：世界初始化（设计分册）
 
 - 对应设计文档: `doc/world-simulator/scenario/world-initialization.design.md`
 - 对应项目管理文档: `doc/world-simulator/scenario/world-initialization.project.md`

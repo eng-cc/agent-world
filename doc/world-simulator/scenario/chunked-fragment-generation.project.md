@@ -1,4 +1,4 @@
-# Agent World Simulator：分块世界生成与碎片元素/化合物池（项目管理文档）
+# oasis7 Simulator：分块世界生成与碎片元素/化合物池（项目管理文档）
 
 - 对应设计文档: `doc/world-simulator/scenario/chunked-fragment-generation.design.md`
 - 对应需求文档: `doc/world-simulator/scenario/chunked-fragment-generation.prd.md`

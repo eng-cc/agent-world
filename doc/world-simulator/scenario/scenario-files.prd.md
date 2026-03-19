@@ -1,4 +1,4 @@
-# Agent World Simulator：场景文件化（设计文档）
+# oasis7 Simulator：场景文件化（设计文档）
 
 - 对应设计文档: `doc/world-simulator/scenario/scenario-files.design.md`
 - 对应项目管理文档: `doc/world-simulator/scenario/scenario-files.project.md`

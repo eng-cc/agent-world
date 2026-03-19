@@ -1,4 +1,4 @@
-# Agent World Simulator：Viewer Location 细粒度渲染（设计文档）
+# oasis7 Simulator：Viewer Location 细粒度渲染（设计文档）
 
 - 对应设计文档: `doc/world-simulator/viewer/viewer-location-fine-grained-rendering.design.md`
 - 对应项目管理文档: `doc/world-simulator/viewer/viewer-location-fine-grained-rendering.project.md`

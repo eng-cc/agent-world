@@ -1,4 +1,4 @@
-# Agent World Simulator：LLM 请求层迁移至 async-openai Responses API（设计文档）设计
+# oasis7 Simulator：LLM 请求层迁移至 async-openai Responses API（设计文档）设计
 
 - 对应需求文档: `doc/world-simulator/llm/llm-async-openai-responses.prd.md`
 - 对应项目管理文档: `doc/world-simulator/llm/llm-async-openai-responses.project.md`

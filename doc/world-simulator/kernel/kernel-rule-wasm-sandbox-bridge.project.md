@@ -1,4 +1,4 @@
-# Agent World Simulator：规则 Wasm Sandbox 桥接（第四阶段）项目管理文档
+# oasis7 Simulator：规则 Wasm Sandbox 桥接（第四阶段）项目管理文档
 
 - 对应设计文档: `doc/world-simulator/kernel/kernel-rule-wasm-sandbox-bridge.design.md`
 - 对应需求文档: `doc/world-simulator/kernel/kernel-rule-wasm-sandbox-bridge.prd.md`

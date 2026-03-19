@@ -1,4 +1,4 @@
-# Agent World Simulator：Viewer 自动聚焦（人机共用 + 截图闭环）（项目管理文档）
+# oasis7 Simulator：Viewer 自动聚焦（人机共用 + 截图闭环）（项目管理文档）
 
 - 对应设计文档: `doc/world-simulator/viewer/viewer-auto-focus-capture.design.md`
 - 对应需求文档: `doc/world-simulator/viewer/viewer-auto-focus-capture.prd.md`

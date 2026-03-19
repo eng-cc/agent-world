@@ -1,4 +1,4 @@
-# Agent World Simulator：Asteroid Fragment 命名替换（项目管理文档）
+# oasis7 Simulator：Asteroid Fragment 命名替换（项目管理文档）
 
 - 对应设计文档: `doc/world-simulator/scenario/asteroid-fragment-renaming.design.md`
 - 对应需求文档: `doc/world-simulator/scenario/asteroid-fragment-renaming.prd.md`

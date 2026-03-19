@@ -1,4 +1,4 @@
-# Agent World Simulator：LLM 驱动 Agent 行为落地（设计文档）设计
+# oasis7 Simulator：LLM 驱动 Agent 行为落地（设计文档）设计
 
 - 对应需求文档: `doc/world-simulator/llm/llm-agent-behavior.prd.md`
 - 对应项目管理文档: `doc/world-simulator/llm/llm-agent-behavior.project.md`

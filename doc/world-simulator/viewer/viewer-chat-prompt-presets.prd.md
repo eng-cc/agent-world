@@ -1,4 +1,4 @@
-# Agent World Simulator：Viewer Chat 预设 Prompt 编辑区（设计文档）
+# oasis7 Simulator：Viewer Chat 预设 Prompt 编辑区（设计文档）
 
 - 对应设计文档: `doc/world-simulator/viewer/viewer-chat-prompt-presets.design.md`
 - 对应项目管理文档: `doc/world-simulator/viewer/viewer-chat-prompt-presets.project.md`

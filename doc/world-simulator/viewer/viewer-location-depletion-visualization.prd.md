@@ -1,4 +1,4 @@
-# Agent World Simulator：Viewer Location 开采损耗可视化（设计文档）
+# oasis7 Simulator：Viewer Location 开采损耗可视化（设计文档）
 
 - 对应设计文档: `doc/world-simulator/viewer/viewer-location-depletion-visualization.design.md`
 - 对应项目管理文档: `doc/world-simulator/viewer/viewer-location-depletion-visualization.project.md`

@@ -1,4 +1,4 @@
-# Agent World Simulator：Location 电力池下线与 Agent 辐射电厂（项目管理文档）
+# oasis7 Simulator：Location 电力池下线与 Agent 辐射电厂（项目管理文档）
 
 - 对应设计文档: `doc/world-simulator/kernel/location-electricity-pool-removal-and-radiation-plant.design.md`
 - 对应需求文档: `doc/world-simulator/kernel/location-electricity-pool-removal-and-radiation-plant.prd.md`

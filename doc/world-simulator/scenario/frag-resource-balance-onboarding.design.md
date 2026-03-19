@@ -1,4 +1,4 @@
-# Agent World Simulator：Frag 资源平衡与新手友好生成（设计文档）设计
+# oasis7 Simulator：Frag 资源平衡与新手友好生成（设计文档）设计
 
 - 对应需求文档: `doc/world-simulator/scenario/frag-resource-balance-onboarding.prd.md`
 - 对应项目管理文档: `doc/world-simulator/scenario/frag-resource-balance-onboarding.project.md`

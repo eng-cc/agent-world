@@ -1,4 +1,4 @@
-# Agent World Simulator：LLM 用户文本输出与工具调用分区可视化（设计文档）
+# oasis7 Simulator：LLM 用户文本输出与工具调用分区可视化（设计文档）
 
 - 对应设计文档: `doc/world-simulator/llm/llm-chat-user-message-tool-visualization.design.md`
 - 对应项目管理文档: `doc/world-simulator/llm/llm-chat-user-message-tool-visualization.project.md`

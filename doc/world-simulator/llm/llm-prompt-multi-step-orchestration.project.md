@@ -1,4 +1,4 @@
-# Agent World Simulator：LLM Prompt 组装重构与多步决策机制（项目管理文档）
+# oasis7 Simulator：LLM Prompt 组装重构与多步决策机制（项目管理文档）
 
 - 对应设计文档: `doc/world-simulator/llm/llm-prompt-multi-step-orchestration.design.md`
 - 对应需求文档: `doc/world-simulator/llm/llm-prompt-multi-step-orchestration.prd.md`

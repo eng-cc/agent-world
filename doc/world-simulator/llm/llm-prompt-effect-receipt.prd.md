@@ -1,4 +1,4 @@
-# Agent World Simulator：LLM Prompt ModuleCall Effect/Receipt 可回放链路（设计文档）
+# oasis7 Simulator：LLM Prompt ModuleCall Effect/Receipt 可回放链路（设计文档）
 
 - 对应设计文档: `doc/world-simulator/llm/llm-prompt-effect-receipt.design.md`
 - 对应项目管理文档: `doc/world-simulator/llm/llm-prompt-effect-receipt.project.md`

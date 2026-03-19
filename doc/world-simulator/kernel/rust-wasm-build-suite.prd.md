@@ -1,4 +1,4 @@
-# Agent World Simulator：Rust 到 Wasm 编译套件（KWT）设计文档
+# oasis7 Simulator：Rust 到 Wasm 编译套件（KWT）设计文档
 
 - 对应设计文档: `doc/world-simulator/kernel/rust-wasm-build-suite.design.md`
 - 对应项目管理文档: `doc/world-simulator/kernel/rust-wasm-build-suite.project.md`

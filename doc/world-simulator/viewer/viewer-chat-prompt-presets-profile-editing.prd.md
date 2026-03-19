@@ -1,4 +1,4 @@
-# Agent World Simulator：Chat Panel 预设区扩展 Agent Prompt 字段编辑（设计文档）
+# oasis7 Simulator：Chat Panel 预设区扩展 Agent Prompt 字段编辑（设计文档）
 
 - 对应设计文档: `doc/world-simulator/viewer/viewer-chat-prompt-presets-profile-editing.design.md`
 - 对应项目管理文档: `doc/world-simulator/viewer/viewer-chat-prompt-presets-profile-editing.project.md`

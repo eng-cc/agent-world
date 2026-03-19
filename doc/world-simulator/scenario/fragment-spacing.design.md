@@ -1,4 +1,4 @@
-# Agent World Simulator：小行星碎片最小间距（设计文档）设计
+# oasis7 Simulator：小行星碎片最小间距（设计文档）设计
 
 - 对应需求文档: `doc/world-simulator/scenario/fragment-spacing.prd.md`
 - 对应项目管理文档: `doc/world-simulator/scenario/fragment-spacing.project.md`

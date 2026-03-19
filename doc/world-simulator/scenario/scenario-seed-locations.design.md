@@ -1,4 +1,4 @@
-# Agent World Simulator：场景种子化地点生成（设计文档）设计
+# oasis7 Simulator：场景种子化地点生成（设计文档）设计
 
 - 对应需求文档: `doc/world-simulator/scenario/scenario-seed-locations.prd.md`
 - 对应项目管理文档: `doc/world-simulator/scenario/scenario-seed-locations.project.md`

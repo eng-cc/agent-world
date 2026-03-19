@@ -1,4 +1,4 @@
-# Agent World Simulator：内核不变量回归与规则 Hook 基座（项目管理文档）
+# oasis7 Simulator：内核不变量回归与规则 Hook 基座（项目管理文档）
 
 - 对应设计文档: `doc/world-simulator/kernel/kernel-rule-hook-foundation.design.md`
 - 对应需求文档: `doc/world-simulator/kernel/kernel-rule-hook-foundation.prd.md`

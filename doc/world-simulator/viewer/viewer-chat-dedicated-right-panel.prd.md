@@ -1,4 +1,4 @@
-# Agent World Simulator：Viewer Chat 独立最右侧 Panel（设计文档）
+# oasis7 Simulator：Viewer Chat 独立最右侧 Panel（设计文档）
 
 - 对应设计文档: `doc/world-simulator/viewer/viewer-chat-dedicated-right-panel.design.md`
 - 对应项目管理文档: `doc/world-simulator/viewer/viewer-chat-dedicated-right-panel.project.md`
