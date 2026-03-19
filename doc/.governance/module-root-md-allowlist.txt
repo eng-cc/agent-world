@@ -70,6 +70,7 @@ doc/playability_test_result/card_2026_03_06_18_40_48.md
 doc/playability_test_result/card_2026_03_10_23_27_43.md
 doc/playability_test_result/card_2026_03_12_15_29_33.md
 doc/playability_test_result/card_2026_03_12_18_00_30.md
+doc/playability_test_result/card_2026_03_19_09_40_56.md
 doc/playability_test_result/design.md
 doc/playability_test_result/game-test.design.md
 doc/playability_test_result/game-test.prd.md

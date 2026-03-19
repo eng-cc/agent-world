@@ -236,6 +236,7 @@ env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-u
 ./scripts/build-game-launcher-bundle.sh --out-dir output/release/game-launcher-local
 ./scripts/run-game-test.sh --bundle-dir output/release/game-launcher-local --no-llm
 ./scripts/run-game-test-ab.sh --bundle-dir output/release/game-launcher-local --no-llm
+./scripts/viewer-post-onboarding-qa.sh --bundle-dir output/release/game-launcher-local --no-llm
 ./scripts/viewer-software-safe-chat-regression.sh --bundle-dir output/release/game-launcher-local
 ./scripts/viewer-release-qa-loop.sh
 ./scripts/viewer-release-full-coverage.sh --quick

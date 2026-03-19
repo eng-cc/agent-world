@@ -10,7 +10,7 @@
 - [x] TASK-GAMEPLAY-POD-001 (`PRD-GAME-007`) [test_tier_required]: 冻结 `PostOnboarding` 阶段 PRD / design / project，完成 `game` 根入口、索引、顶层设计主文档与 devlog 挂载。
 - [x] TASK-GAMEPLAY-POD-002 (`PRD-GAME-007`) [test_tier_required]: `viewer_engineer` / `runtime_engineer` 对齐阶段机与目标选择信号契约，明确 `FirstSessionLoop` 完成、主目标来源、阻塞分类与恢复状态。
 - [x] TASK-GAMEPLAY-POD-003 (`PRD-GAME-007`) [test_tier_required]: `viewer_engineer` 落地阶段切换卡、主目标卡、阶段完成卡与恢复逻辑，关闭当前 `#46` 的 UI / 产品缺口。
-- [ ] TASK-GAMEPLAY-POD-004 (`PRD-GAME-007`) [test_tier_required]: `qa_engineer` 新增 `#46` required-tier 验证、Web 闭环脚本 / 证据和 playability 卡片，产出通过 / 阻断结论。
+- [x] TASK-GAMEPLAY-POD-004 (`PRD-GAME-007`) [test_tier_required]: `qa_engineer` 新增 `#46` required-tier 验证、Web 闭环脚本 / 证据和 playability 卡片，产出通过 / 阻断结论。
 
 ## 依赖
 
@@ -21,10 +21,10 @@
 
 ## 状态
 
-- 更新日期: 2026-03-18
-- 当前状态: in_progress
+- 更新日期: 2026-03-19
+- 当前状态: completed
 - 当前 owner: `producer_system_designer`
-- 下一任务: `TASK-GAMEPLAY-POD-004`
+- 下一任务: 无（当前专题已完成，等待新的 `PostOnboarding` 设计 / 实现需求）
 - 阻断条件:
   - 若阶段目标缺少进度 / 阻塞 / 下一步三要素，则不得认定 `#46` 已关闭。
   - 若只有 UI 文案，没有同会话阶段切换与 required-tier 证据，则不得给出 go 结论。
@@ -32,3 +32,4 @@
   - 本 project 文档只承接 `PostOnboarding` 阶段目标链，不重写工业 / 治理 / 战争底层规则。
   - v1 先以工业优先的首个持续能力里程碑关闭 `#46`，再扩展中循环分支表达。
   - 2026-03-18 进展：`viewer_engineer` 已基于既有工业事件 / runtime economy event / `lastControlFeedback` 落地 `PostOnboarding` 目标卡、阻塞解释与分支解锁；QA Web 证据仍待 `TASK-GAMEPLAY-POD-004`。
+  - 2026-03-19 进展：`qa_engineer` 已新增 `scripts/viewer-post-onboarding-qa.sh`，在 fresh bundle Web 会话中完成 `step(8) -> select(first_agent) -> step(24)` 闭环，并沉淀 `output/playwright/playability/post-onboarding-20260319-094056/` 证据包与 `doc/playability_test_result/card_2026_03_19_09_40_56.md`。截图人工复核确认 `4/4` 后左侧 Mission HUD 已切到 `PostOnboarding`，顶部首局总结改为进入下一阶段语义，onboarding 提示不再持续占据主视图，因此 `#46` 的 required-tier / Web 收口完成。

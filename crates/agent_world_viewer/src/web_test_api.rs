@@ -1436,6 +1436,7 @@ pub(super) fn publish_web_test_api_state(
         }
 
         let connection_ready = matches!(state.status, ConnectionStatus::Connected);
+        let control_profile = snapshot.control_profile;
         let latest_logical_time = snapshot.logical_time;
         let latest_event_seq = snapshot.event_seq;
         let latest_trace_count = snapshot.trace_count;
@@ -1529,7 +1530,7 @@ pub(super) fn publish_web_test_api_state(
                                 control_action_hint(
                                     feedback.action.as_str(),
                                     false,
-                                    snapshot.control_profile,
+                                    control_profile,
                                 )
                             });
                             feedback.effect = "accepted without observed progress".to_string();
