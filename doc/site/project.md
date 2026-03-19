@@ -27,6 +27,16 @@
 - [x] TASK-SITE-013 (PRD-SITE-007) [test_tier_required]: 同步中英首页的预览访问面口径，明确 `standard_3d / software_safe / pure_api` 是当前技术验证访问面，`LLM/script` 与 OpenClaw lane 只属于执行方式而非额外公开模式。
 - [x] TASK-SITE-014 (PRD-SITE-003) [test_tier_required]: 修复 `scripts/site-manual-sync-check.sh` 的 viewer manual 基线命令，追平 `test_api=1` 新入口，解除 Pages `Site Quality Gates` 的假失败。
 - [x] TASK-SITE-015 (PRD-SITE-008) [test_tier_required]: 统一 `site/**`、GitHub Release 下载入口、站点检查脚本与 release workflow 的公开品牌为 `oasis7`，并同步 `eng-cc/oasis7` 仓库路径与 `oasis7-*` 资产名。
+- [x] TASK-SITE-016 (PRD-SITE-008) [test_tier_required]: 对 `doc/site/github-pages/**` 的仍可读历史专题执行 title-only cleanup，将首行 `Agent World*` 公开标题统一切到 `oasis7*`，保留正文历史证据原文不动。
+  - 产物文件:
+    - `doc/site/prd.md`
+    - `doc/site/project.md`
+    - `doc/site/github-pages/*.md`
+    - `doc/devlog/2026-03-19.md`
+  - 验收命令 (`test_tier_required`):
+    - `rg -n "^# Agent World|^# Agent World Runtime|^# Agent World Simulator|^# Agent World Viewer" doc/site --glob '!third_party/**'`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
 
 ## 依赖
 - 模块设计总览：`doc/site/design.md`
@@ -43,6 +53,7 @@
 - 当前状态: completed
 - 下一任务: 无（当前模块主项目无未完成任务）
 - 最新完成: `TASK-SITE-015`（公开站点、release 下载入口与站点脚本已统一切换到 `oasis7` 品牌与 `eng-cc/oasis7` 路径）。
+- 最新完成: `TASK-SITE-016`（已完成 `doc/site/github-pages/**` 历史专题首行标题的 title-only cleanup，旧 `Agent World*` 公开标题已统一切到 `oasis7*`）。
 - 最新完成: `TASK-SITE-011`（site 模块 README 目录索引同步）。
 - 最新完成: `TASK-SITE-012`（site 模块 completed 状态摘要补齐）。
 - 最新完成: `TASK-SITE-013`（中英首页已对齐三模式技术预览访问面口径，消除旧“运行模式/LLM 默认模式”歧义）。

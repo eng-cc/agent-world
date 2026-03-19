@@ -1,4 +1,4 @@
-# Agent World: 站点公开发布口径占位（2026-03-11）
+# oasis7: 站点公开发布口径占位（2026-03-11）
 
 - 对应设计文档: `doc/site/github-pages/github-pages-release-communication-placeholder-2026-03-11.design.md`
 - 对应项目管理文档: `doc/site/github-pages/github-pages-release-communication-placeholder-2026-03-11.project.md`

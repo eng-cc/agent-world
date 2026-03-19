@@ -75,6 +75,7 @@
   - AC-3: 与 `site/doc` 与 GitHub Pages 相关设计文档口径一致。
   - AC-4: 发布前完成链接有效性与基础质量检查。
   - AC-5: 首页与文档入口页（`site/index.html`、`site/en/index.html`、`site/doc/cn/index.html`、`site/doc/en/index.html`）对“是否可玩”状态的表达必须一致且与真实状态相符。
+  - AC-6: `doc/site/github-pages/**` 仍可读历史专题的首行标题必须统一使用 `oasis7` 品牌；旧 `Agent World*` 标题仅允许保留在正文历史上下文与证据原文中。
 - Non-Goals:
   - 不在 site PRD 中定义 runtime/p2p 低层实现。
   - 不覆盖内部测试流程细节（由 testing 模块负责）。
@@ -129,7 +130,7 @@
 | PRD-SITE-005 | TASK-SITE-010 | `test_tier_required` | 首页/下载区已区分构建说明与正式公告 | 公开站点状态理解 |
 | PRD-SITE-006 | TASK-SITE-010 | `test_tier_required` | 站点存在统一“公开说明准备态”占位 | 发布沟通入口一致性 |
 | PRD-SITE-007 | TASK-SITE-010 | `test_tier_required` | 技术预览主口径与新占位并存且无冲突 | 对外承诺边界控制 |
-| PRD-SITE-008 | TASK-SITE-015 | `test_tier_required` | `site/**`、release workflow、站点检查脚本与下载 API 全部切换到 `eng-cc/oasis7` 与 `oasis7-*` 资产名 | 对外品牌一致性、下载链路稳定性 |
+| PRD-SITE-008 | TASK-SITE-015/016 | `test_tier_required` | `site/**`、GitHub Release 下载入口与 `doc/site/github-pages/**` 历史专题标题全部切换到 `oasis7` 品牌与 `eng-cc/oasis7` 路径 | 对外品牌一致性、下载链路稳定性 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |
