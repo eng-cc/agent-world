@@ -1,4 +1,4 @@
-# Agent World Runtime：节点执行桥接与奖励共识触发闭环
+# oasis7 Runtime：节点执行桥接与奖励共识触发闭环
 
 - 对应设计文档: `doc/p2p/node/node-execution-reward-consensus-bridge.design.md`
 - 对应项目管理文档: `doc/p2p/node/node-execution-reward-consensus-bridge.project.md`

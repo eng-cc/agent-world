@@ -1,4 +1,4 @@
-# Agent World Runtime：PoS 时间锚定控制面参数与可观测口径对齐设计
+# oasis7 Runtime：PoS 时间锚定控制面参数与可观测口径对齐设计
 
 - 对应需求文档: `doc/p2p/node/node-pos-time-anchor-control-plane-alignment-2026-03-07.prd.md`
 - 对应项目管理文档: `doc/p2p/node/node-pos-time-anchor-control-plane-alignment-2026-03-07.project.md`

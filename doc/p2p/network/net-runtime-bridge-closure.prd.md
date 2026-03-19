@@ -1,4 +1,4 @@
-# Agent World Runtime：`agent_world_net` runtime_bridge 可编译闭环
+# oasis7 Runtime：`agent_world_net` runtime_bridge 可编译闭环
 
 - 对应设计文档: `doc/p2p/network/net-runtime-bridge-closure.design.md`
 - 对应项目管理文档: `doc/p2p/network/net-runtime-bridge-closure.project.md`

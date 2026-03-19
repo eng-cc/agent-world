@@ -1,4 +1,4 @@
-# Agent World Runtime：分布式能力彻底拆分（Phase 7）
+# oasis7 Runtime：分布式能力彻底拆分（Phase 7）
 
 - 对应设计文档: `doc/p2p/distributed/distributed-hard-split-phase7.design.md`
 - 对应项目管理文档: `doc/p2p/distributed/distributed-hard-split-phase7.project.md`

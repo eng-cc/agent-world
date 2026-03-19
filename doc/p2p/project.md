@@ -79,6 +79,23 @@
 - [x] TASK-P2P-016-T2 [test_tier_required]: 执行文档门禁与旧路径 grep 清理校验（排除 `doc/devlog/**` 过程记录）。
 - [x] TASK-P2P-016-T3 [test_tier_required]: 回写主项目状态并关闭任务链。
 - [x] TASK-P2P-017 (PRD-P2P-001) [test_tier_required]: 同步 `doc/p2p/README.md` 与 `doc/p2p/prd.index.md` 的模块入口索引，补齐近期专题、模块职责与根目录收口口径。
+- [x] TASK-P2P-018 (PRD-P2P-012) [test_tier_required]: 对 `doc/p2p/**` 的仍可读历史专题执行 title-only cleanup，将首行 `Agent World*` 公开标题统一切到 `oasis7*`，保留正文历史证据原文不动。
+  - 产物文件:
+    - `doc/p2p/prd.md`
+    - `doc/p2p/project.md`
+    - `doc/p2p/blockchain/*.md`
+    - `doc/p2p/consensus/*.md`
+    - `doc/p2p/distfs/*.md`
+    - `doc/p2p/distributed/*.md`
+    - `doc/p2p/network/*.md`
+    - `doc/p2p/node/*.md`
+    - `doc/p2p/observer/*.md`
+    - `doc/p2p/token/*.md`
+    - `doc/devlog/2026-03-19.md`
+  - 验收命令 (`test_tier_required`):
+    - `rg -n "^# Agent World|^# Agent World Runtime|^# Agent World Simulator|^# Agent World Viewer" doc/p2p --glob '!third_party/**'`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
 
 ## 依赖
 - 模块设计总览：`doc/p2p/design.md`
@@ -107,6 +124,7 @@
 - 更新日期: 2026-03-11
 - 当前状态: completed（ROUND-012）
 - 下一任务: 无（等待新需求）
+- 最新完成: `TASK-P2P-018`（已完成 `doc/p2p/**` 历史专题首行标题的 title-only cleanup，旧 `Agent World*` 公开标题已统一切到 `oasis7*`）。
 - 最新完成: `TASK-P2P-017`（p2p 模块 README / PRD 索引入口同步）。
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - 本轮新增: `TASK-P2P-006` 已完成，专题文档 `p2p-mobile-light-client-authoritative-state-2026-03-06` 已纳入索引和模块追踪映射。

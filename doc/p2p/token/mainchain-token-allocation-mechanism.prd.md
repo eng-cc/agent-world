@@ -1,4 +1,4 @@
-# Agent World 主链 Token 分配与发行机制（已实现）
+# oasis7 主链 Token 分配与发行机制（已实现）
 
 - 对应设计文档: `doc/p2p/token/mainchain-token-allocation-mechanism.design.md`
 - 对应项目管理文档: `doc/p2p/token/mainchain-token-allocation-mechanism.project.md`

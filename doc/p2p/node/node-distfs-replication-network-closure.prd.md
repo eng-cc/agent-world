@@ -1,4 +1,4 @@
-# Agent World Runtime：Node DistFS 复制网络化收敛
+# oasis7 Runtime：Node DistFS 复制网络化收敛
 
 - 对应设计文档: `doc/p2p/node/node-distfs-replication-network-closure.design.md`
 - 对应项目管理文档: `doc/p2p/node/node-distfs-replication-network-closure.project.md`

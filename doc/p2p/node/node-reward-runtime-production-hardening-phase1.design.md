@@ -1,4 +1,4 @@
-# Agent World Runtime：节点奖励运行时生产化加固（Phase 1）设计文档
+# oasis7 Runtime：节点奖励运行时生产化加固（Phase 1）设计文档
 
 - 对应需求文档: `doc/p2p/node/node-reward-runtime-production-hardening-phase1.prd.md`
 - 对应项目管理文档: `doc/p2p/node/node-reward-runtime-production-hardening-phase1.project.md`

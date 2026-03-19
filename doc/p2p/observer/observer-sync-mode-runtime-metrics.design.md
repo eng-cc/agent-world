@@ -1,4 +1,4 @@
-# Agent World Runtime：Observer 同步源运行态统计设计
+# oasis7 Runtime：Observer 同步源运行态统计设计
 
 - 对应需求文档: `doc/p2p/observer/observer-sync-mode-runtime-metrics.prd.md`
 - 对应项目管理文档: `doc/p2p/observer/observer-sync-mode-runtime-metrics.project.md`

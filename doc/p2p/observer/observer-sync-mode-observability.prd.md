@@ -1,4 +1,4 @@
-# Agent World Runtime：Observer 同步源策略可观测性
+# oasis7 Runtime：Observer 同步源策略可观测性
 
 - 对应设计文档: `doc/p2p/observer/observer-sync-mode-observability.design.md`
 - 对应项目管理文档: `doc/p2p/observer/observer-sync-mode-observability.project.md`

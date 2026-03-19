@@ -1,4 +1,4 @@
-# Agent World Runtime：节点贡献积分激励设计
+# oasis7 Runtime：节点贡献积分激励设计
 
 - 对应需求文档: `doc/p2p/node/node-contribution-points.prd.md`
 - 对应项目管理文档: `doc/p2p/node/node-contribution-points.project.md`

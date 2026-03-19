@@ -1,4 +1,4 @@
-# Agent World 主链 Token 分配机制二期（项目管理文档）
+# oasis7 主链 Token 分配机制二期（项目管理文档）
 
 - 对应设计文档: `doc/p2p/token/mainchain-token-allocation-mechanism-phase2-governance-bridge-distribution-2026-02-26.design.md`
 - 对应需求文档: `doc/p2p/token/mainchain-token-allocation-mechanism-phase2-governance-bridge-distribution-2026-02-26.prd.md`

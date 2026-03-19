@@ -1,4 +1,4 @@
-# Agent World Runtime：节点贡献积分多节点闭环测试
+# oasis7 Runtime：节点贡献积分多节点闭环测试
 
 - 对应设计文档: `doc/p2p/node/node-contribution-points-multi-node-closure-test.design.md`
 - 对应项目管理文档: `doc/p2p/node/node-contribution-points-multi-node-closure-test.project.md`

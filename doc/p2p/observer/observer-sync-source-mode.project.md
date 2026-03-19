@@ -1,4 +1,4 @@
-# Agent World Runtime：Observer 同步源策略化（项目管理文档）
+# oasis7 Runtime：Observer 同步源策略化（项目管理文档）
 
 - 对应设计文档: `doc/p2p/observer/observer-sync-source-mode.design.md`
 - 对应需求文档: `doc/p2p/observer/observer-sync-source-mode.prd.md`

@@ -1,4 +1,4 @@
-# Agent World 主链 Token 分配机制二期：地址绑定 + 治理绑定 + 分发闭环（2026-02-26）
+# oasis7 主链 Token 分配机制二期：地址绑定 + 治理绑定 + 分发闭环（2026-02-26）
 
 - 对应设计文档: `doc/p2p/token/mainchain-token-allocation-mechanism-phase2-governance-bridge-distribution-2026-02-26.design.md`
 - 对应项目管理文档: `doc/p2p/token/mainchain-token-allocation-mechanism-phase2-governance-bridge-distribution-2026-02-26.project.md`

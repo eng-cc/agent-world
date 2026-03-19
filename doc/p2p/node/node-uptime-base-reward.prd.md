@@ -1,4 +1,4 @@
-# Agent World Runtime：节点基础在线时长奖励
+# oasis7 Runtime：节点基础在线时长奖励
 
 - 对应设计文档: `doc/p2p/node/node-uptime-base-reward.design.md`
 - 对应项目管理文档: `doc/p2p/node/node-uptime-base-reward.project.md`

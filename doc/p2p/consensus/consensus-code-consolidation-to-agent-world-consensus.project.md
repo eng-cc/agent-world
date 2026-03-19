@@ -1,4 +1,4 @@
-# Agent World Runtime：共识代码统一收敛到 agent_world_consensus（项目管理文档）
+# oasis7 Runtime：共识代码统一收敛到 agent_world_consensus（项目管理文档）
 
 - 对应设计文档: `doc/p2p/consensus/consensus-code-consolidation-to-agent-world-consensus.design.md`
 - 对应需求文档: `doc/p2p/consensus/consensus-code-consolidation-to-agent-world-consensus.prd.md`

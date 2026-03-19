@@ -1,4 +1,4 @@
-# Agent World Runtime：DistFS 路径索引接入 execution_storage
+# oasis7 Runtime：DistFS 路径索引接入 execution_storage
 
 - 对应设计文档: `doc/p2p/distfs/distfs-runtime-path-index.design.md`
 - 对应项目管理文档: `doc/p2p/distfs/distfs-runtime-path-index.project.md`

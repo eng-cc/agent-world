@@ -1,4 +1,4 @@
-# Agent World Runtime：Node libp2p wasm32 编译兼容守卫设计
+# oasis7 Runtime：Node libp2p wasm32 编译兼容守卫设计
 
 - 对应需求文档: `doc/p2p/node/node-wasm32-libp2p-compile-guard.prd.md`
 - 对应项目管理文档: `doc/p2p/node/node-wasm32-libp2p-compile-guard.project.md`

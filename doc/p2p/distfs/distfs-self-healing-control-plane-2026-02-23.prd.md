@@ -1,4 +1,4 @@
-# Agent World Runtime：分布式存储自愈控制面（2026-02-23）
+# oasis7 Runtime：分布式存储自愈控制面（2026-02-23）
 
 - 对应设计文档: `doc/p2p/distfs/distfs-self-healing-control-plane-2026-02-23.design.md`
 - 对应项目管理文档: `doc/p2p/distfs/distfs-self-healing-control-plane-2026-02-23.project.md`

@@ -1,4 +1,4 @@
-# Agent World Runtime：DistFS 标准文件读写接口
+# oasis7 Runtime：DistFS 标准文件读写接口
 
 - 对应设计文档: `doc/p2p/distfs/distfs-standard-file-io.design.md`
 - 对应项目管理文档: `doc/p2p/distfs/distfs-standard-file-io.project.md`

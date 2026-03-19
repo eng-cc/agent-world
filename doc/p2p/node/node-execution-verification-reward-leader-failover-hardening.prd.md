@@ -1,4 +1,4 @@
-# Agent World Runtime：节点执行校验与奖励 Leader/Failover 生产化收口
+# oasis7 Runtime：节点执行校验与奖励 Leader/Failover 生产化收口
 
 - 对应设计文档: `doc/p2p/node/node-execution-verification-reward-leader-failover-hardening.design.md`
 - 对应项目管理文档: `doc/p2p/node/node-execution-verification-reward-leader-failover-hardening.project.md`

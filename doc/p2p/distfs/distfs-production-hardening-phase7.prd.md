@@ -1,4 +1,4 @@
-# Agent World Runtime：DistFS 生产化增强（Phase 7）设计文档
+# oasis7 Runtime：DistFS 生产化增强（Phase 7）设计文档
 
 - 对应设计文档: `doc/p2p/distfs/distfs-production-hardening-phase7.design.md`
 - 对应项目管理文档: `doc/p2p/distfs/distfs-production-hardening-phase7.project.md`

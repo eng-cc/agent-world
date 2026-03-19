@@ -1,4 +1,4 @@
-# Agent World Runtime：可兑现节点资产与电力兑换闭环（三期真实签名与治理闭环，项目管理文档）（项目管理文档）
+# oasis7 Runtime：可兑现节点资产与电力兑换闭环（三期真实签名与治理闭环，项目管理文档）（项目管理文档）
 
 - 对应设计文档: `doc/p2p/node/node-redeemable-power-asset-signature-governance-phase3.design.md`
 - 对应需求文档: `doc/p2p/node/node-redeemable-power-asset-signature-governance-phase3.prd.md`

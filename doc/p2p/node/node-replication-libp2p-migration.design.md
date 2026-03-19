@@ -1,4 +1,4 @@
-# Agent World Runtime：Node Replication 迁移到 libp2p 统一网络栈设计
+# oasis7 Runtime：Node Replication 迁移到 libp2p 统一网络栈设计
 
 - 对应需求文档: `doc/p2p/node/node-replication-libp2p-migration.prd.md`
 - 对应项目管理文档: `doc/p2p/node/node-replication-libp2p-migration.project.md`

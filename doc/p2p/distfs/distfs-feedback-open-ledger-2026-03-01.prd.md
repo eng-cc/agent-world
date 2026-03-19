@@ -1,4 +1,4 @@
-# Agent World Runtime：DistFS 公开反馈账本（2026-03-01）设计文档
+# oasis7 Runtime：DistFS 公开反馈账本（2026-03-01）设计文档
 
 - 对应设计文档: `doc/p2p/distfs/distfs-feedback-open-ledger-2026-03-01.design.md`
 - 对应项目管理文档: `doc/p2p/distfs/distfs-feedback-open-ledger-2026-03-01.project.md`

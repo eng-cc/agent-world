@@ -1,4 +1,4 @@
-# Agent World Runtime：可兑现节点资产与电力兑换闭环
+# oasis7 Runtime：可兑现节点资产与电力兑换闭环
 
 - 对应设计文档: `doc/p2p/node/node-redeemable-power-asset.design.md`
 - 对应项目管理文档: `doc/p2p/node/node-redeemable-power-asset.project.md`

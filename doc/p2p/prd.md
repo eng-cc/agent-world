@@ -119,6 +119,7 @@
   - AC-15: `world_viewer_live` 解析层移除 `--release-config` 与 `--node-*` 参数能力；定向测试覆盖“误传 legacy 参数 -> 启动失败 + 替代提示”路径。
   - AC-16: `world_viewer_live` 进一步移除 `--runtime-world` 兼容别名与旧 split CLI 路径，定向测试覆盖 `--release-config/--runtime-world/--node-*` 拒绝行为。
   - AC-17: 历史文档中 `world_viewer_live` 子目录旧路径完成迁移（对齐 `world_viewer_live.rs` 与 `world_chain_runtime/*` 现行布局），文档门禁通过。
+  - AC-18: `doc/p2p/**` 仍可读历史专题的首行标题必须统一使用 `oasis7 Runtime` 或 `oasis7` 品牌；旧 `Agent World*` 标题仅允许保留在正文历史上下文、证据原文与兼容说明中。
 - Non-Goals:
   - 不在本 PRD 细化 viewer UI 交互。
   - 不替代 runtime 内核的模块执行细节设计。
@@ -199,7 +200,7 @@
 | PRD-P2P-009 | TASK-P2P-013 | `test_tier_required` | 默认值切换到 `12s/10/9` 并回归 CLI/脚本/文档口径 | 时间锚定基线一致性与默认运行节拍 |
 | PRD-P2P-010 | TASK-P2P-014 | `test_tier_required` | `world_viewer_live` legacy 参数拒绝、帮助文案收敛与文档/示例迁移回归 | Viewer/chain 控制面边界一致性 |
 | PRD-P2P-011 | TASK-P2P-015 | `test_tier_required` | `world_viewer_live` 删除 `--runtime-world` 兼容别名、移除旧 split CLI 路径并回归手册/测试口径 | CLI 单一事实源与维护成本收敛 |
-| PRD-P2P-012 | TASK-P2P-016 | `test_tier_required` | 历史文档旧路径替换 + 文档门禁 + 旧路径 grep 零残留校验（过程日志除外） | 文档可追溯性与维护效率 |
+| PRD-P2P-012 | TASK-P2P-016/018 | `test_tier_required` | 历史文档旧路径替换、历史专题标题零残留校验 + 文档门禁（过程日志除外） | 文档可追溯性与维护效率 |
 - S9/S10 长跑结果模板（TASK-P2P-003）:
 | 字段 | 说明 | 来源 |
 | --- | --- | --- |

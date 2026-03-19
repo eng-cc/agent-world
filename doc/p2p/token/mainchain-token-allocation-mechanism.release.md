@@ -1,4 +1,4 @@
-# Agent World Runtime：主链 Token 分配与发行机制（发布说明）
+# oasis7 Runtime：主链 Token 分配与发行机制（发布说明）
 
 审计轮次: 5
 ## 发布范围

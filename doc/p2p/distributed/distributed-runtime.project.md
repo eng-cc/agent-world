@@ -1,4 +1,4 @@
-# Agent World Runtime：分布式计算与存储（项目管理文档）
+# oasis7 Runtime：分布式计算与存储（项目管理文档）
 
 - 对应设计文档: `doc/p2p/distributed/distributed-runtime.design.md`
 - 对应需求文档: `doc/p2p/distributed/distributed-runtime.prd.md`

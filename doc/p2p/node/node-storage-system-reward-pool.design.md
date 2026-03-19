@@ -1,4 +1,4 @@
-# Agent World Runtime：节点存储系统奖励池设计
+# oasis7 Runtime：节点存储系统奖励池设计
 
 - 对应需求文档: `doc/p2p/node/node-storage-system-reward-pool.prd.md`
 - 对应项目管理文档: `doc/p2p/node/node-storage-system-reward-pool.project.md`

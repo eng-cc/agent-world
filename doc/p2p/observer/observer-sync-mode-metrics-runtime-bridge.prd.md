@@ -1,4 +1,4 @@
-# Agent World Runtime：Observer 同步源统计桥接
+# oasis7 Runtime：Observer 同步源统计桥接
 
 - 对应设计文档: `doc/p2p/observer/observer-sync-mode-metrics-runtime-bridge.design.md`
 - 对应项目管理文档: `doc/p2p/observer/observer-sync-mode-metrics-runtime-bridge.project.md`

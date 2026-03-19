@@ -1,4 +1,4 @@
-# Agent World Runtime：PoS 槽内 Tick 相位门控与自适应节拍（10 Tick/Slot）设计
+# oasis7 Runtime：PoS 槽内 Tick 相位门控与自适应节拍（10 Tick/Slot）设计
 
 - 对应需求文档: `doc/p2p/node/node-pos-subslot-tick-pacing-2026-03-07.prd.md`
 - 对应项目管理文档: `doc/p2p/node/node-pos-subslot-tick-pacing-2026-03-07.project.md`

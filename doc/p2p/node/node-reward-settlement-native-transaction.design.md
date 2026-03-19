@@ -1,4 +1,4 @@
-# Agent World Runtime：奖励结算切换到网络共识主路径原生交易设计
+# oasis7 Runtime：奖励结算切换到网络共识主路径原生交易设计
 
 - 对应需求文档: `doc/p2p/node/node-reward-settlement-native-transaction.prd.md`
 - 对应项目管理文档: `doc/p2p/node/node-reward-settlement-native-transaction.project.md`

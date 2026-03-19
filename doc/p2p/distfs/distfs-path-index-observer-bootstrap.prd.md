@@ -1,4 +1,4 @@
-# Agent World Runtime：Observer/Bootstrap 路径索引读取接入
+# oasis7 Runtime：Observer/Bootstrap 路径索引读取接入
 
 - 对应设计文档: `doc/p2p/distfs/distfs-path-index-observer-bootstrap.design.md`
 - 对应项目管理文档: `doc/p2p/distfs/distfs-path-index-observer-bootstrap.project.md`

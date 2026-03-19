@@ -1,4 +1,4 @@
-# Agent World Runtime：节点密钥 config.toml 自举
+# oasis7 Runtime：节点密钥 config.toml 自举
 
 - 对应设计文档: `doc/p2p/node/node-keypair-config-bootstrap.design.md`
 - 对应项目管理文档: `doc/p2p/node/node-keypair-config-bootstrap.project.md`

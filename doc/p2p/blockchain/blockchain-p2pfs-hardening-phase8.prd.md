@@ -1,4 +1,4 @@
-# Agent World Runtime：区块链 + P2P FS 硬改造（Phase 8）设计文档
+# oasis7 Runtime：区块链 + P2P FS 硬改造（Phase 8）设计文档
 
 - 对应设计文档: `doc/p2p/blockchain/blockchain-p2pfs-hardening-phase8.design.md`
 - 对应项目管理文档: `doc/p2p/blockchain/blockchain-p2pfs-hardening-phase8.project.md`

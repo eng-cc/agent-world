@@ -1,4 +1,4 @@
-# Agent World Runtime：Observer 同步源策略化（DHT 组合链路，设计文档）设计
+# oasis7 Runtime：Observer 同步源策略化（DHT 组合链路，设计文档）设计
 
 - 对应需求文档: `doc/p2p/observer/observer-sync-source-dht-mode.prd.md`
 - 对应项目管理文档: `doc/p2p/observer/observer-sync-source-dht-mode.project.md`

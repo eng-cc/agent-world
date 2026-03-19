@@ -1,4 +1,4 @@
-# Agent World Runtime：PoS 固定时间槽（Slot/Epoch）真实时钟驱动（项目管理文档）
+# oasis7 Runtime：PoS 固定时间槽（Slot/Epoch）真实时钟驱动（项目管理文档）
 
 - 对应设计文档: `doc/p2p/node/node-pos-slot-clock-real-time-2026-03-07.design.md`
 - 对应需求文档: `doc/p2p/node/node-pos-slot-clock-real-time-2026-03-07.prd.md`
