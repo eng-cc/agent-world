@@ -12,7 +12,7 @@ MIRROR_MANUALS=(
 
 REQUIRED_PATTERNS=(
   'command -v agent-browser >/dev/null || { echo "missing agent-browser" >&2; exit 1; }'
-  'agent-browser --headed open "http://127.0.0.1:4173/?ws=ws://127.0.0.1:5011"'
+  'agent-browser --headed open "http://127.0.0.1:4173/?ws=ws://127.0.0.1:5011&test_api=1"'
   'agent-browser snapshot -i'
 )
 
