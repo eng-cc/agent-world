@@ -6,13 +6,13 @@
 - Owner Role: `liveops_community`
 - Review Role: `producer_system_designer`
 - Target Platform: `https://www.moltbook.com/`
-- Agent World 当前公开口径: `技术预览（尚不可玩）`；公开访问面仅限 `standard_3d / software_safe / pure_api`
+- oasis7 当前公开口径: `技术预览（尚不可玩）`；公开访问面仅限 `standard_3d / software_safe / pure_api`
 
 ## 一、平台判断
 ### 1.1 当前适合为什么而推
 - Moltbook 主页公开定位是 “A Social Network for AI Agents”，不是泛游戏社区；“Humans welcome to observe” 说明平台叙事主角首先是 agent，其次才是人类围观者。
 - 平台公开强调 `Human-Verified AI Agents`、通过 X/Twitter 认领 agent、`submolts` 社区以及 developer early access，说明这里更吃“agent identity + builder proof + 社区讨论”的内容，而不是传统买量式宣发。
-- `developers` 页面把 Moltbook 明确描述为 agent identity layer，并直接把 `Games` 列为可建设场景之一，意味着 Agent World 可以以“agent-native game / persistent world proof”切入，而不必伪装成纯 infra 产品。
+- `developers` 页面把 Moltbook 明确描述为 agent identity layer，并直接把 `Games` 列为可建设场景之一，意味着 oasis7 可以以“agent-native game / persistent world proof”切入，而不必伪装成纯 infra 产品。
 
 ### 1.2 当前不适合期待什么
 - 不要把 Moltbook 当成熟大流量平台。当前首页公开仍带有 early access / notify me / developer application 信号，首轮目标应是“建立认知 + 拿到高质量互动”，不是大规模拉新。
@@ -24,9 +24,9 @@
 - agent/builders 话题强：内容要 proof-first、build-in-public、少空话。
 - 公开内容标题可见 `skill.md`、verification、on-chain identity、OpenClaw x Telegram 一类议题，说明技术/身份/多 agent 协作是当前高相关语境。
 
-## 二、Agent World 在 Moltbook 的定位
+## 二、oasis7 在 Moltbook 的定位
 ### 2.1 一句话定位
-- `Agent World` 不是“已经开放的成品游戏”，而是“一个可被观察、可被验证、可被多 agent 参与的文明战争引擎技术预览”。
+- `oasis7` 不是“已经开放的成品游戏”，而是“一个可被观察、可被验证、可被多 agent 参与的文明战争引擎技术预览”。
 
 ### 2.2 Moltbook 版主叙事
 - 不是先讲“来玩游戏”。
@@ -45,7 +45,7 @@
 | “已经正式上线 / 已开放玩家版” | 当前仓内主口径仍是技术预览 | “当前为技术预览，适合观察、验证与开发跟进” |
 | “已经与 Moltbook 深度集成” | 当前没有批准过正式集成承诺 | “Moltbook 是高度相关渠道与生态语境，但当前方案只覆盖推广，不代表已完成集成” |
 | “任何人现在就能稳定长期游玩” | 当前不应把验证链路外推成正式玩家承诺 | “当前展示的是可验证访问面和开发中世界能力，不等同于正式可玩发布” |
-| “链上身份 / OpenClaw / 验证身份会马上落地到 Agent World” | 这是潜在线索，不是已批事实 | “若社区反馈集中到此方向，可作为后续合作或设计输入回流评估” |
+| “链上身份 / OpenClaw / 验证身份会马上落地到 oasis7” | 这是潜在线索，不是已批事实 | “若社区反馈集中到此方向，可作为后续合作或设计输入回流评估” |
 
 ## 三、目标受众
 - 第一优先：agent builders / indie hackers。关心 agent 身份、接入、可验证行为、真实世界样例。
@@ -54,7 +54,7 @@
 
 ## 四、账号与内容体系
 ### 4.1 账号策略
-- 采用“Agent World 官方 agent 账号 + 人类 owner 可验证背书”的双层形象。
+- 采用“oasis7 官方 agent 账号 + 人类 owner 可验证背书”的双层形象。
 - 如果 Moltbook 实操允许，优先完成 owner 认领 / X 关联 / verification，再开始首轮重点发帖。
 - 主页链接只保留一个主目标入口，优先选当前对外主口径最稳定的页面：
   - 首选：项目站点首页
@@ -92,7 +92,7 @@
 - 去相关 submolt 或高相关帖子下做 5-8 次高质量回复，不抢话题，只补观点与样例。
 
 建议首发主题：
-1. `What Agent World is`: 说明这是 agent-native persistent world 的技术预览。
+1. `What oasis7 is`: 说明这是 agent-native persistent world 的技术预览。
 2. `Three access surfaces`: 用一贴讲清 `standard_3d / software_safe / pure_api`。
 
 ### Week 2: 证明“不是概念图”
@@ -189,4 +189,4 @@
 - Homepage: `https://www.moltbook.com/`
 - Developers: `https://www.moltbook.com/developers`
 - Help: `https://www.moltbook.com/help`
-- Agent World public claim envelope: `README.md`, `site/index.html`, `doc/core/player-access-mode-contract-2026-03-19.prd.md`
+- oasis7 public claim envelope: `README.md`, `site/index.html`, `doc/core/player-access-mode-contract-2026-03-19.prd.md`

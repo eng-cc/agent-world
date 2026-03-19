@@ -6,7 +6,7 @@
 审计轮次: 6
 
 ## 任务拆解（含 PRD-ID 映射）
-- [x] MOLT-1 (`PRD-README-MOLT-001/002`) [test_tier_required]: 盘点 Moltbook 当前公开定位、平台机制、生态阶段与 Agent World 公开 claim envelope。
+- [x] MOLT-1 (`PRD-README-MOLT-001/002`) [test_tier_required]: 盘点 Moltbook 当前公开定位、平台机制、生态阶段与 oasis7 公开 claim envelope。
 - [x] MOLT-2 (`PRD-README-MOLT-001/002/003`) [test_tier_required]: 形成账号定位、内容支柱、30 天执行节奏、CTA 与反馈回流的完整推广方案。
 - [x] MOLT-3 (`PRD-README-MOLT-002`) [test_tier_required]: 形成 `liveops_community -> producer_system_designer` handoff brief，并回写 readme 主项目与索引。
 

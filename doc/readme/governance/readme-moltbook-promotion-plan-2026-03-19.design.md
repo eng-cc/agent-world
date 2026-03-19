@@ -10,7 +10,7 @@
 
 ## 2. 设计结构
 - Platform Read: 当前平台定位、公开机制、内容重心与生态阶段。
-- Claim Envelope: Agent World 在 Moltbook 上允许说什么、不能说什么。
+- Claim Envelope: oasis7 在 Moltbook 上允许说什么、不能说什么。
 - Content System: 账号定位、内容支柱、样例帖型、CTA 层级。
 - 30-Day Motion: 首月按周推进的认知、互动、合作、转化节奏。
 - Community Ops: 评论回复、合作线索、风险升级与反馈回流。

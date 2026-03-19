@@ -101,6 +101,18 @@
     - `rg -n "^# Agent World|^# Agent World Runtime|^# Agent World Simulator|^# Agent World Viewer" doc/readme --glob '!third_party/**'`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
+- [x] TASK-README-020 (PRD-README-014) [test_tier_required]: 收口 `doc/readme/governance/**` 中仍作为当前公开口径使用的项目名，将 Moltbook 方案、帖文草案与相关治理文档中的 `Agent World` 统一切到 `oasis7`，保留历史证据/外部原文引用边界。
+  - 产物文件:
+    - `doc/readme/prd.md`
+    - `doc/readme/project.md`
+    - `doc/readme/governance/readme-moltbook-promotion-plan-2026-03-19.{prd,design,project,md}`
+    - `doc/readme/governance/readme-moltbook-post-drafts-2026-03-19.{prd,md}`
+    - `doc/readme/governance/liveops-to-producer-task-readme-014-moltbook-promotion-plan-2026-03-19.md`
+    - `doc/readme/governance/readme-resource-model-layering.prd.md`
+  - 验收命令 (`test_tier_required`):
+    - `rg -n "Agent World" doc/readme/governance --glob '!third_party/**'`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
 
 ## 依赖
 - doc/readme/prd.index.md
@@ -118,6 +130,7 @@
 - 下一任务: 无（当前模块主项目无未完成任务）
 - 最新完成: `TASK-README-018`（根 README / testing-manual / world-rule 已统一为 `oasis7` 品牌，并补 internal naming compatibility 说明）。
 - 最新完成: `TASK-README-019`（已完成 `doc/readme/governance/**` 历史专题首行标题的 title-only cleanup，旧 `Agent World*` 公开标题已统一切到 `oasis7*`）。
+- 最新完成: `TASK-README-020`（已完成 `doc/readme/governance/**` 当前公开口径中的项目名收口，Moltbook 方案与草案正文统一改写为 `oasis7`）。
 - 最新完成: `TASK-README-011`（readme 模块 README 目录索引同步）。
 - 最新完成: `TASK-README-012`（readme 模块 completed 状态摘要补齐）。
 - 最新完成: `TASK-README-013`（根 README 已对齐三模式技术预览访问面口径，移除旧运行模式歧义）。

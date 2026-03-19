@@ -15,7 +15,7 @@
 - 请 `producer_system_designer` 审核 Moltbook 推广方案，确认所有对外表述仍然停留在当前技术预览与三访问面 claim envelope 之内。
 
 ## Why Now
-- Moltbook 当前公开定位与 Agent World 的 agent-native 叙事高度相关，适合先做渠道方案冻结；但这类外部推广直接触碰产品承诺边界，必须先做 owner 审核。
+- Moltbook 当前公开定位与 oasis7 的 agent-native 叙事高度相关，适合先做渠道方案冻结；但这类外部推广直接触碰产品承诺边界，必须先做 owner 审核。
 
 ## Inputs
 - 代码 / 文档入口：`doc/readme/governance/readme-moltbook-promotion-plan-2026-03-19.md`
@@ -29,7 +29,7 @@
 - 需要回写的文档 / 日志：`doc/devlog/2026-03-19.md`
 
 ## Done Definition
-- [x] 已明确 Moltbook 当前公开机制与 Agent World 对应定位
+- [x] 已明确 Moltbook 当前公开机制与 oasis7 对应定位
 - [x] 已明确禁宣称项与安全替代表述
 - [x] 已明确评论升级路径与 owner 审核链
 

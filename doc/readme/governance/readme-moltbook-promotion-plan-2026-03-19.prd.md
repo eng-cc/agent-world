@@ -16,9 +16,9 @@
 
 ## 2. User Experience & Functionality
 - User Personas:
-  - `liveops_community`: 需要把 Agent World 讲成适合 Moltbook 的 agent-native 故事，而不是普通游戏广告。
+  - `liveops_community`: 需要把 oasis7 讲成适合 Moltbook 的 agent-native 故事，而不是普通游戏广告。
   - `producer_system_designer`: 需要确保任何对外内容不超出当前技术预览边界。
-  - Moltbook 上的 agent builder / indie hacker / creator: 需要快速理解 Agent World 为什么值得关注，以及下一步应互动什么。
+  - Moltbook 上的 agent builder / indie hacker / creator: 需要快速理解 oasis7 为什么值得关注，以及下一步应互动什么。
 - User Scenarios & Frequency:
   - 建立官方 Moltbook presence 前：用该方案定义账号、内容支柱与首发节奏。
   - 每周复盘时：按内容表现和评论反馈微调选题。
@@ -26,9 +26,9 @@
 - User Stories:
   - PRD-README-MOLT-001: As a `liveops_community`, I want a Moltbook-native promotion plan, so that our outward messaging fits the platform's agent-first culture.
   - PRD-README-MOLT-002: As a `producer_system_designer`, I want clear forbidden claims and review gates, so that public promises stay within current evidence.
-  - PRD-README-MOLT-003: As a creator or builder on Moltbook, I want proof-first posts and clear calls to action, so that I can tell whether Agent World is worth following or testing.
+  - PRD-README-MOLT-003: As a creator or builder on Moltbook, I want proof-first posts and clear calls to action, so that I can tell whether oasis7 is worth following or testing.
 - Critical User Flows:
-  1. `读取 Moltbook 当前公开定位 -> 判断平台受众与语气 -> 绑定 Agent World 现有公开口径`
+  1. `读取 Moltbook 当前公开定位 -> 判断平台受众与语气 -> 绑定 oasis7 现有公开口径`
   2. `生成账号设置 / 首发 / 周更 / 评论互动方案 -> 发布后记录反馈与意向`
   3. `发现高意向合作或高风险提问 -> 升级给 producer_system_designer 或对应工程 owner`
 - Functional Specification Matrix:
@@ -59,7 +59,7 @@
   - 若出现“已正式上线”“已面向玩家开放”“已完成 Moltbook 身份集成”等表述，判为不通过。
 
 ## 4. Technical Specifications
-- Architecture Overview: 本专题位于 `readme/governance`，承接第三方平台推广策划，不修改产品实现；它消费 Moltbook 当前公开页面信息与 Agent World 当前公开口径，输出 `liveops_community` 可直接复用的渠道化推广方案。
+- Architecture Overview: 本专题位于 `readme/governance`，承接第三方平台推广策划，不修改产品实现；它消费 Moltbook 当前公开页面信息与 oasis7 当前公开口径，输出 `liveops_community` 可直接复用的渠道化推广方案。
 - Integration Points:
   - `https://www.moltbook.com/`
   - `https://www.moltbook.com/developers`
@@ -70,7 +70,7 @@
 - Edge Cases & Error Handling:
   - Moltbook 平台机制变化快：方案必须标注日期，后续执行前先复核主页 / developers / help 页面。
   - 若无法确认平台是否支持某一内容格式：优先退回“原生短帖 + 评论补充链接”的保守打法。
-  - 若评论把 Agent World 误解为“已经可玩的正式游戏”：统一回到“技术预览（尚不可玩）”主口径。
+  - 若评论把 oasis7 误解为“已经可玩的正式游戏”：统一回到“技术预览（尚不可玩）”主口径。
   - 若出现对 Moltbook identity / OpenClaw / on-chain 的合作追问：除非内部已批准，不得直接承诺，只记录为合作线索并升级。
 - Non-Functional Requirements:
   - NFR-MOLT-1: 方案必须在 10 分钟内可被运营同学读完并执行。

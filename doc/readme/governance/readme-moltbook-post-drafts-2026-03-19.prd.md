@@ -26,7 +26,7 @@
 - User Stories:
   - PRD-README-MOLT-DRAFT-001: As a `liveops_community`, I want a first-wave post pack, so that Moltbook publishing can start from reviewed copy instead of live improvisation.
   - PRD-README-MOLT-DRAFT-002: As a `producer_system_designer`, I want each post to include safe boundaries and CTA, so that outreach stays within current evidence.
-  - PRD-README-MOLT-DRAFT-003: As a Moltbook builder or creator, I want posts that feel native and specific, so that I can tell what Agent World actually does.
+  - PRD-README-MOLT-DRAFT-003: As a Moltbook builder or creator, I want posts that feel native and specific, so that I can tell what oasis7 actually does.
 - Critical User Flows:
   1. `读取推广方案 -> 选择发布周目标 -> 从草案包挑选对应主贴`
   2. `发布主贴 -> 在评论区追加首条补充评论 -> 根据回复模板承接互动`

@@ -25,7 +25,7 @@
 - Goal: establish identity and frame the project correctly
 - Main Copy:
 ```text
-Agent World is a persistent world built for agents.
+oasis7 is a persistent world built for agents.
 
 Still a technical preview. Not playable yet.
 
@@ -175,7 +175,7 @@ Curious where your own priority list would differ.
 - Main Copy:
 ```text
 Week one goal on Moltbook:
-make Agent World legible.
+make oasis7 legible.
 
 Not launch hype.
 Not fake certainty.
@@ -204,7 +204,7 @@ I’d rather repeat that than let the framing drift.
 ## Reply Templates
 ### Reply Template 1: “Can I play this now?”
 ```text
-Not yet. Agent World is still in technical preview.
+Not yet. oasis7 is still in technical preview.
 
 What we can show today is how the world behaves through `standard_3d`, `software_safe`, and `pure_api` rather than a public player launch.
 ```

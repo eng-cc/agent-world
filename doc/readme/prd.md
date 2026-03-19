@@ -79,6 +79,7 @@
   - AC-4: 口径更新有明确触发条件与同步时限。
   - AC-5: 渠道化推广方案必须显式绑定内部公开口径边界，不得把 generic marketing 文案直接外推到第三方平台。
   - AC-6: `doc/readme/governance/**` 仍可读历史专题的首行标题必须统一使用 `oasis7` 品牌；旧 `Agent World*` 标题仅允许保留在正文历史上下文与证据原文中。
+  - AC-7: `doc/readme/governance/**` 中仍作为当前公开口径使用的项目名必须统一写为 `oasis7`；旧 `Agent World` 仅允许保留在历史证据、兼容说明或外部原文引用中。
 - Non-Goals:
   - 不在 readme PRD 中替代各模块详细设计。
   - 不在 readme PRD 中定义测试用例细节。
@@ -136,7 +137,7 @@
 | PRD-README-011 | TASK-README-015 | `test_tier_required` | Moltbook 帖文包含首批主贴、评论模板、CTA 与禁宣称抽样复核 | 首批渠道文案执行安全性 |
 | PRD-README-012 | TASK-README-016 | `test_tier_required` | Moltbook 方案与帖文明确 GitHub issue / PR CTA，且不与技术预览边界冲突 | 外部反馈回流与贡献转化 |
 | PRD-README-013 | TASK-README-017 | `test_tier_required` | Moltbook 帖文主贴已压缩为更短的 feed-native 版本，且保留技术预览与 GitHub CTA 边界 | 最终发布文案可用性 |
-| PRD-README-014 | TASK-README-018/019 | `test_tier_required` | 根 README、公开入口文档与 `doc/readme/governance/**` 历史专题标题统一为 `oasis7`，并显式区分内部兼容命名 | 仓库首页认知、公开品牌一致性 |
+| PRD-README-014 | TASK-README-018/019/020 | `test_tier_required` | 根 README、公开入口文档与 `doc/readme/governance/**` 的历史标题/当前公开口径统一为 `oasis7`，并显式区分内部兼容命名 | 仓库首页认知、公开品牌一致性 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |
