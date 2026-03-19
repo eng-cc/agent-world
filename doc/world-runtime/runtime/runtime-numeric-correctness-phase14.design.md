@@ -1,4 +1,4 @@
-# Agent World Runtime：Membership Sync 与 Mempool 批处理计数算术语义硬化（15 点清单第十四阶段）设计
+# oasis7 Runtime：Membership Sync 与 Mempool 批处理计数算术语义硬化（15 点清单第十四阶段）设计
 
 - 对应需求文档: `doc/world-runtime/runtime/runtime-numeric-correctness-phase14.prd.md`
 - 对应项目管理文档: `doc/world-runtime/runtime/runtime-numeric-correctness-phase14.project.md`

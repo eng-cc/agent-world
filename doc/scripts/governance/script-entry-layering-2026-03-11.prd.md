@@ -1,4 +1,4 @@
-# Agent World: 脚本分层与主入口 / fallback 入口梳理（2026-03-11）
+# oasis7: 脚本分层与主入口 / fallback 入口梳理（2026-03-11）
 
 - 对应设计文档: `doc/scripts/governance/script-entry-layering-2026-03-11.design.md`
 - 对应项目管理文档: `doc/scripts/governance/script-entry-layering-2026-03-11.project.md`

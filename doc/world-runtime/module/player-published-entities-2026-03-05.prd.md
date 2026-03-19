@@ -1,4 +1,4 @@
-# Agent World Runtime：玩家发布制成品的 WASM 模块与 Profile 治理闭环（2026-03-05）
+# oasis7 Runtime：玩家发布制成品的 WASM 模块与 Profile 治理闭环（2026-03-05）
 
 - 对应设计文档: `doc/world-runtime/module/player-published-entities-2026-03-05.design.md`
 - 对应项目管理文档: `doc/world-runtime/module/player-published-entities-2026-03-05.project.md`

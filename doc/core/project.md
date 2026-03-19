@@ -177,6 +177,24 @@
     - `bash -n scripts/capture-viewer-frame.sh`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
+- [x] TASK-CORE-031 (PRD-CORE-008) [test_tier_required]: 收口 `engineering`、`scripts`、`world-runtime` 的历史专题标题品牌，将仍可读的治理/运行时专题统一切到 `oasis7`，同时保留内部实现命名不变。
+  - 产物文件:
+    - `doc/core/prd.md`
+    - `doc/core/project.md`
+    - `doc/engineering/prd.md`
+    - `doc/engineering/project.md`
+    - `doc/scripts/prd.md`
+    - `doc/scripts/project.md`
+    - `doc/world-runtime/prd.md`
+    - `doc/world-runtime/project.md`
+    - `doc/engineering/**/*.md`
+    - `doc/scripts/**/*.md`
+    - `doc/world-runtime/**/*.md`
+  - 验收命令 (`test_tier_required`):
+    - `rg -n "^# oasis7|^# oasis7 Runtime" doc/engineering doc/scripts doc/world-runtime --glob '!third_party/**'`
+    - `rg -n "^# Agent World|^# Agent World Runtime" doc/engineering doc/scripts doc/world-runtime --glob '!third_party/**'`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
 
 ## 依赖
 - doc/core/prd.index.md
@@ -211,6 +229,7 @@
 - 最新完成: `TASK-CORE-028`（已冻结 `standard_3d / software_safe / pure_api` 三模式总契约，并明确 mode / execution lane 分层口径）。
 - 最新完成: `TASK-CORE-029`（已完成 `testing-manual`、`world-simulator`、`game` 与 `testing` 的下游术语回写，收口三模式与 execution lane 的跨模块口径）。
 - 最新完成: `TASK-CORE-030`（已完成 core 活跃专题标题、Viewer 活跃手册与实际 Viewer 窗口/Web 标题的 `oasis7` 品牌对齐，并保留旧实现名仅作 internal compatibility naming 说明）。
+- 最新完成: `TASK-CORE-031`（已完成 `engineering`、`scripts` 与 `world-runtime` 仍可读历史专题标题的 `oasis7` 品牌收口，未触碰内部实现兼容名）。
 - 说明: 本文档仅维护 core 设计执行状态；过程记录在 `doc/devlog/2026-03-06.md`、`doc/devlog/2026-03-09.md`、`doc/devlog/2026-03-10.md`、`doc/devlog/2026-03-11.md` 与 `doc/devlog/2026-03-19.md`。
 
 ## 阶段收口执行顺序（PRD-CORE-004）

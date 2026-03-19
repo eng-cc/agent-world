@@ -1,4 +1,4 @@
-# Agent World Runtime：WASM SDK no_std 优先化设计
+# oasis7 Runtime：WASM SDK no_std 优先化设计
 
 - 对应设计文档: `doc/world-runtime/wasm/wasm-sdk-no-std.design.md`
 - 对应项目管理文档: `doc/world-runtime/wasm/wasm-sdk-no-std.project.md`

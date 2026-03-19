@@ -1,4 +1,4 @@
-# Agent World Runtime：共识数值语义与原子状态转移硬化（15 点清单第二阶段）设计
+# oasis7 Runtime：共识数值语义与原子状态转移硬化（15 点清单第二阶段）设计
 
 - 对应需求文档: `doc/world-runtime/runtime/runtime-numeric-correctness-phase2.prd.md`
 - 对应项目管理文档: `doc/world-runtime/runtime/runtime-numeric-correctness-phase2.project.md`

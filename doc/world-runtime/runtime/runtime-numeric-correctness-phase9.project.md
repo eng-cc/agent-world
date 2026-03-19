@@ -1,4 +1,4 @@
-# Agent World Runtime：Governance Drill/Retention 时间算术数值语义硬化（15 点清单第九阶段）项目管理文档
+# oasis7 Runtime：Governance Drill/Retention 时间算术数值语义硬化（15 点清单第九阶段）项目管理文档
 
 - 对应设计文档: `doc/world-runtime/runtime/runtime-numeric-correctness-phase9.design.md`
 - 对应需求文档: `doc/world-runtime/runtime/runtime-numeric-correctness-phase9.prd.md`

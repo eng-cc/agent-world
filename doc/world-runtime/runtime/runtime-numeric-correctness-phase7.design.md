@@ -1,4 +1,4 @@
-# Agent World Runtime：PoS 超多数比率边界数值语义硬化（15 点清单第七阶段）设计
+# oasis7 Runtime：PoS 超多数比率边界数值语义硬化（15 点清单第七阶段）设计
 
 - 对应需求文档: `doc/world-runtime/runtime/runtime-numeric-correctness-phase7.prd.md`
 - 对应项目管理文档: `doc/world-runtime/runtime/runtime-numeric-correctness-phase7.project.md`

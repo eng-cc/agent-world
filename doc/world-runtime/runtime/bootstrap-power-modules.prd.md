@@ -1,4 +1,4 @@
-# Agent World Runtime：生命出厂电力模块（辐射发电 + 基础储能）
+# oasis7 Runtime：生命出厂电力模块（辐射发电 + 基础储能）
 
 - 对应设计文档: `doc/world-runtime/runtime/bootstrap-power-modules.design.md`
 - 对应项目管理文档: `doc/world-runtime/runtime/bootstrap-power-modules.project.md`

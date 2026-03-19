@@ -34,6 +34,7 @@
   - SC-2: 新增脚本在合并前通过语法/参数最小校验。
   - SC-3: 脚本入口重复率下降并保留稳定主入口。
   - SC-4: 脚本任务 100% 映射到 PRD-SCRIPTS-ID。
+  - SC-5: scripts 治理专题标题统一使用 `oasis7` 品牌，不再在脚本治理入口中混用 `Agent World` 标题。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -59,11 +60,13 @@
 | 脚本主入口 | 脚本名、参数、返回码、输出路径 | 执行并输出标准化结果 | `idle -> running -> success/failed` | 按命令类型分层执行 | 所有人可执行 |
 | 参数契约 | 必填参数、默认值、失败语义 | 参数校验失败即阻断 | `validating -> accepted/rejected` | 必填项优先校验 | 维护者可更新契约 |
 | fallback 规则 | 触发条件、替代脚本、产物要求 | 满足条件后才允许 fallback | `normal -> fallback -> diagnosed` | 常规链路优先 | 仅排障场景允许触发 |
+| 标题品牌治理 | 标题前缀、适用专题、兼容命名说明 | 将脚本治理专题标题统一切到 `oasis7` | `legacy_title -> oasis7_title -> audited` | 先改治理主入口，再改周边专题 | owner 可改，治理门禁复核 |
 - Acceptance Criteria:
   - AC-1: scripts PRD 明确脚本分类、入口、约束。
   - AC-2: scripts project 文档维护脚本治理任务。
   - AC-3: 与 `doc/scripts/precommit/pre-commit.prd.md`、`testing-manual.md` 口径一致。
   - AC-4: `capture-viewer-frame.sh` 被明确为 fallback 链路使用。
+  - AC-5: `doc/scripts/**` 仍可读治理专题标题统一使用 `oasis7` 品牌；旧标题仅允许出现在正文历史上下文中。
 - Non-Goals:
   - 不在 scripts PRD 中替代业务功能设计。
   - 不承诺所有历史脚本长期向后兼容。

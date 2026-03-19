@@ -1,4 +1,4 @@
-# Agent World Runtime：Sequencer 主循环与 Lease 递进数值语义硬化（15 点清单第五阶段）
+# oasis7 Runtime：Sequencer 主循环与 Lease 递进数值语义硬化（15 点清单第五阶段）
 
 - 对应设计文档: `doc/world-runtime/runtime/runtime-numeric-correctness-phase5.design.md`
 - 对应项目管理文档: `doc/world-runtime/runtime/runtime-numeric-correctness-phase5.project.md`

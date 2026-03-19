@@ -1,4 +1,4 @@
-# Agent World Runtime：无限时长运行的序列号滚动与数值防溢出设计
+# oasis7 Runtime：无限时长运行的序列号滚动与数值防溢出设计
 
 - 对应需求文档: `doc/world-runtime/runtime/runtime-infinite-sequence-rollover.prd.md`
 - 对应项目管理文档: `doc/world-runtime/runtime/runtime-infinite-sequence-rollover.project.md`

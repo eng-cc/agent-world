@@ -1,4 +1,4 @@
-# Agent World Runtime：模块订阅过滤器（项目管理文档）
+# oasis7 Runtime：模块订阅过滤器（项目管理文档）
 
 - 对应设计文档: `doc/world-runtime/module/module-subscription-filters.design.md`
 - 对应需求文档: `doc/world-runtime/module/module-subscription-filters.prd.md`

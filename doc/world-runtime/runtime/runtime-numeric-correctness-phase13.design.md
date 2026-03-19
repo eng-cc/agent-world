@@ -1,4 +1,4 @@
-# Agent World Runtime：Membership Reconciliation 调度门控与对账计数算术语义硬化（15 点清单第十三阶段）设计
+# oasis7 Runtime：Membership Reconciliation 调度门控与对账计数算术语义硬化（15 点清单第十三阶段）设计
 
 - 对应需求文档: `doc/world-runtime/runtime/runtime-numeric-correctness-phase13.prd.md`
 - 对应项目管理文档: `doc/world-runtime/runtime/runtime-numeric-correctness-phase13.project.md`

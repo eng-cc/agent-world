@@ -1,4 +1,4 @@
-# Agent World: engineering 季度治理审查与修复节奏（2026-03-11）设计
+# oasis7: engineering 季度治理审查与修复节奏（2026-03-11）设计
 
 - 对应需求文档: `doc/engineering/governance/engineering-quarterly-governance-review-cycle-2026-03-11.prd.md`
 - 对应项目管理文档: `doc/engineering/governance/engineering-quarterly-governance-review-cycle-2026-03-11.project.md`

@@ -1,4 +1,4 @@
-# Agent World Runtime：Membership Recovery 调度门控与计数聚合算术语义硬化（15 点清单第十二阶段）
+# oasis7 Runtime：Membership Recovery 调度门控与计数聚合算术语义硬化（15 点清单第十二阶段）
 
 - 对应设计文档: `doc/world-runtime/runtime/runtime-numeric-correctness-phase12.design.md`
 - 对应项目管理文档: `doc/world-runtime/runtime/runtime-numeric-correctness-phase12.project.md`

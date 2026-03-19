@@ -1,4 +1,4 @@
-# Agent World Runtime：WASM 执行器接入（设计分册）
+# oasis7 Runtime：WASM 执行器接入（设计分册）
 
 - 对应设计文档: `doc/world-runtime/wasm/wasm-executor.design.md`
 - 对应项目管理文档: `doc/world-runtime/wasm/wasm-executor.project.md`

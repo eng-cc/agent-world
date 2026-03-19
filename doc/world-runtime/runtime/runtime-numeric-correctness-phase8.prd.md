@@ -1,4 +1,4 @@
-# Agent World Runtime：Membership Dead-Letter Replay 重试计数与比率阈值数值语义硬化（15 点清单第八阶段）
+# oasis7 Runtime：Membership Dead-Letter Replay 重试计数与比率阈值数值语义硬化（15 点清单第八阶段）
 
 - 对应设计文档: `doc/world-runtime/runtime/runtime-numeric-correctness-phase8.design.md`
 - 对应项目管理文档: `doc/world-runtime/runtime/runtime-numeric-correctness-phase8.project.md`

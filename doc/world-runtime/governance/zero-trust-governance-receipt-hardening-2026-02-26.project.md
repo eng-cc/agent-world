@@ -1,4 +1,4 @@
-# Agent World Runtime：零信任多节点治理与签名加固（项目管理）
+# oasis7 Runtime：零信任多节点治理与签名加固（项目管理）
 
 - 对应设计文档: `doc/world-runtime/governance/zero-trust-governance-receipt-hardening-2026-02-26.design.md`
 - 对应需求文档: `doc/world-runtime/governance/zero-trust-governance-receipt-hardening-2026-02-26.prd.md`

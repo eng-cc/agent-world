@@ -1,4 +1,4 @@
-# Agent World Runtime：WASM 模块设计对齐增强（agent-os 借鉴）
+# oasis7 Runtime：WASM 模块设计对齐增强（agent-os 借鉴）
 
 - 对应设计文档: `doc/world-runtime/wasm/wasm-agent-os-alignment-hardening.design.md`
 - 对应项目管理文档: `doc/world-runtime/wasm/wasm-agent-os-alignment-hardening.project.md`

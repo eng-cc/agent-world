@@ -1,4 +1,4 @@
-# Agent World Runtime：WASM Docker 确定性构建与工件治理管线（项目管理）
+# oasis7 Runtime：WASM Docker 确定性构建与工件治理管线（项目管理）
 
 - 对应设计文档: `doc/world-runtime/wasm/wasm-deterministic-build-pipeline.design.md`
 - 对应需求文档: `doc/world-runtime/wasm/wasm-deterministic-build-pipeline.prd.md`

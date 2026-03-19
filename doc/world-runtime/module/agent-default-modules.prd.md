@@ -1,4 +1,4 @@
-# Agent World Runtime：Agent 默认模块体系（Body/Power/Sense/Move/Memory/Storage）
+# oasis7 Runtime：Agent 默认模块体系（Body/Power/Sense/Move/Memory/Storage）
 
 - 对应设计文档: `doc/world-runtime/module/agent-default-modules.design.md`
 - 对应项目管理文档: `doc/world-runtime/module/agent-default-modules.project.md`

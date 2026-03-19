@@ -1,4 +1,4 @@
-# Agent World Runtime：模块存储持久化（设计文档）
+# oasis7 Runtime：模块存储持久化（设计文档）
 
 - 对应设计文档: `doc/world-runtime/module/module-storage.design.md`
 - 对应项目管理文档: `doc/world-runtime/module/module-storage.project.md`

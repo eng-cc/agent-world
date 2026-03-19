@@ -1,4 +1,4 @@
-# Agent World Runtime：线上模块发布合法性闭环补齐（2026-03-08）设计
+# oasis7 Runtime：线上模块发布合法性闭环补齐（2026-03-08）设计
 
 - 对应需求文档: `doc/world-runtime/module/online-module-release-legality-closure-2026-03-08.prd.md`
 - 对应项目管理文档: `doc/world-runtime/module/online-module-release-legality-closure-2026-03-08.project.md`

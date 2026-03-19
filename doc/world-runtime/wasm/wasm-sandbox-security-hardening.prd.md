@@ -1,4 +1,4 @@
-# Agent World Runtime：WASM 沙箱安全补强（设计文档）
+# oasis7 Runtime：WASM 沙箱安全补强（设计文档）
 
 - 对应设计文档: `doc/world-runtime/wasm/wasm-sandbox-security-hardening.design.md`
 - 对应项目管理文档: `doc/world-runtime/wasm/wasm-sandbox-security-hardening.project.md`

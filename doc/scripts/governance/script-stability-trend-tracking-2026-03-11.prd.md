@@ -1,4 +1,4 @@
-# Agent World: 脚本稳定性趋势跟踪指标（2026-03-11）
+# oasis7: 脚本稳定性趋势跟踪指标（2026-03-11）
 
 - 对应设计文档: `doc/scripts/governance/script-stability-trend-tracking-2026-03-11.design.md`
 - 对应项目管理文档: `doc/scripts/governance/script-stability-trend-tracking-2026-03-11.project.md`

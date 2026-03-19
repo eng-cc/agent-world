@@ -53,6 +53,7 @@
 - [x] TASK-WORLD_RUNTIME-042 (PRD-WORLD_RUNTIME-020/021) [test_tier_required]: 新增 pinned WASM builder image 与 host wrapper，固定 `linux-x86_64` container platform 为唯一 publish build 平台；构建入口改为 Docker-only，不再保留 host-native fallback。
 - [ ] TASK-WORLD_RUNTIME-043 (PRD-WORLD_RUNTIME-021/022) [test_tier_required + test_tier_full]: 将 manifest / identity / CI summary / release evidence 切换为 Docker canonical hash，对不同宿主只比较容器输出，不再比较 host-native 发布 hash。
 - [x] TASK-WORLD_RUNTIME-044 (PRD-WORLD_RUNTIME-022) [test_tier_required]: 将 `compile_module_artifact_from_source` 的生产路径外移到 external Docker builder 或 production 默认禁用，runtime 仅消费 binary + receipt。
+- [x] TASK-WORLD_RUNTIME-045 (PRD-WORLD_RUNTIME-001) [test_tier_required]: 收口 `doc/world-runtime/**` 仍可读专题标题的 `oasis7 Runtime` 品牌，不改动内部实现兼容名与历史证据正文。
 
 ## 依赖
 - 模块设计总览：`doc/world-runtime/design.md`
@@ -68,9 +69,10 @@
 - `.agents/skills/prd/check.md`
 
 ## 状态
-- 更新日期: 2026-03-18
+- 更新日期: 2026-03-19
 - 当前状态: in_progress（OpenClaw/runtime live traceability 子切片已完成；WASM Docker builder image 与 wrapper 已落地，`TASK-WORLD_RUNTIME-043` 已完成 build receipt / canonical token / identity / CI summary / receipt-aware release gate / node-side proof flow 子切片，并先将 GitHub-hosted gate 收敛为 Linux-only；`TASK-WORLD_RUNTIME-044` 已完成 production source compile gate）
 - 下一任务: `TASK-WORLD_RUNTIME-043`
+- 最新完成: `TASK-WORLD_RUNTIME-045`（world-runtime 模块仍可读专题标题统一切到 `oasis7 Runtime` 品牌，保留内部实现兼容名与历史证据正文不变）。
 - 最新完成: `TASK-WORLD_RUNTIME-044`（production `ReleaseSecurityPolicy` 默认禁用 runtime source compile，`CompileModuleArtifactFromSource` 改为仅 dev/test 可用并要求 external Docker builder + deploy binary + receipt）；上一轮为 `TASK-WORLD_RUNTIME-042`（新增 Docker-only WASM builder image 与 host wrapper，固定 `linux-x86_64` canonical build 平台），`TASK-WORLD_RUNTIME-043` 当前仍待 Docker-capable macOS runner 的真实跨宿主 full-tier release evidence 归档。
 - 阶段收口优先级: `P0`
 - 阶段 owner: `wasm_platform_engineer`（联审：`producer_system_designer`、`runtime_engineer`；验证：`qa_engineer`）

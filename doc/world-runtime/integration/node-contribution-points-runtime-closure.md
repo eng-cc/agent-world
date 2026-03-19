@@ -1,4 +1,4 @@
-# Agent World Runtime：节点贡献积分运行时闭环（设计文档）
+# oasis7 Runtime：节点贡献积分运行时闭环（设计文档）
 
 审计轮次: 4
 

@@ -1,4 +1,4 @@
-# Agent World Runtime：节点高度/Slot 递进与复制补洞数值语义硬化（15 点清单第三阶段）
+# oasis7 Runtime：节点高度/Slot 递进与复制补洞数值语义硬化（15 点清单第三阶段）
 
 - 对应设计文档: `doc/world-runtime/runtime/runtime-numeric-correctness-phase3.design.md`
 - 对应项目管理文档: `doc/world-runtime/runtime/runtime-numeric-correctness-phase3.project.md`

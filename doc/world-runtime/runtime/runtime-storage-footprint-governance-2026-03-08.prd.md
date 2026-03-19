@@ -1,4 +1,4 @@
-# Agent World Runtime：执行桥接与运行态存储体积治理（2026-03-08）
+# oasis7 Runtime：执行桥接与运行态存储体积治理（2026-03-08）
 
 - 对应设计文档: `doc/world-runtime/runtime/runtime-storage-footprint-governance-2026-03-08.design.md`
 - 对应项目管理文档: `doc/world-runtime/runtime/runtime-storage-footprint-governance-2026-03-08.project.md`

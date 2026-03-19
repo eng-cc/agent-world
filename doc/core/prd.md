@@ -46,6 +46,7 @@
   - SC-7: headless-runtime、自动化稳定性、文档一致性收口具备明确 P1 责任划分与交付标准。
   - SC-8: `standard_3d / software_safe / pure_api` 三模式在 core 中具备唯一 taxonomy、claim envelope 与 mode/lane 分层约束。
   - SC-9: core 活跃专题标题、Viewer 活跃手册与实际窗口/Web 标题对齐 `oasis7` 品牌；内部 `agent_world*` / `world_*` 兼容命名仅以实现说明形式保留，不得继续冒充公开标题。
+  - SC-10: `engineering`、`scripts`、`world-runtime` 的历史专题标题在不改动内部实现标识的前提下完成 `oasis7` 品牌收口，减少 active/historical 入口里的旧品牌混用。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -102,6 +103,7 @@
   - AC-11: `PRD-CORE-005` 必须明确下一轮第一优先级、对应 owner role、输入/输出与进入条件。
   - AC-12: `PRD-CORE-009` 必须把 `standard_3d / software_safe / pure_api` 与 `execution lane` 的边界写成唯一 taxonomy，并要求证据与 claim 显式绑定 mode。
   - AC-13: core 活跃专题、Viewer 活跃手册与 Viewer 用户可见标题必须统一使用 `oasis7` 品牌；若为兼容保留旧内部实现名，必须明确标注为 internal compatibility naming。
+  - AC-14: `engineering`、`scripts`、`world-runtime` 下仍可读的历史/治理/运行时专题标题必须改为 `oasis7` 品牌；仅实现标识、环境变量、脚本参数与历史证据正文可继续保留旧内部命名。
 - Non-Goals:
   - 不在 core PRD 中替代模块详细技术分册。
   - 不在 core PRD 中维护逐版本实现变更流水（该信息在 devlog）。

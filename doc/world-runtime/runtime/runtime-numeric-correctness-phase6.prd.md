@@ -1,4 +1,4 @@
-# Agent World Runtime：Membership 协调租约与时间源窄化数值语义硬化（15 点清单第六阶段）
+# oasis7 Runtime：Membership 协调租约与时间源窄化数值语义硬化（15 点清单第六阶段）
 
 - 对应设计文档: `doc/world-runtime/runtime/runtime-numeric-correctness-phase6.design.md`
 - 对应项目管理文档: `doc/world-runtime/runtime/runtime-numeric-correctness-phase6.project.md`
