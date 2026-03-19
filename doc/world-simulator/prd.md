@@ -354,6 +354,7 @@
   - AC-49: `agent_world_viewer` 与 `world_game_launcher` 的 viewer auth/bootstrap 链路必须默认写入并优先读取 `OASIS7_VIEWER_*` 与 `__OASIS7_VIEWER_AUTH_ENV`，但继续兼容旧 `AGENT_WORLD_VIEWER_*` 与 `__AGENT_WORLD_VIEWER_AUTH_ENV`；`software_safe`、chat auth、automation、embedded launcher 注入与右侧面板持久化路径不得因改名失配。
   - AC-50: `world_game_launcher` 与 `world_web_launcher` 必须默认优先读取 `OASIS7_WORLD_VIEWER_LIVE_BIN`、`OASIS7_WORLD_CHAIN_RUNTIME_BIN`、`OASIS7_GAME_STATIC_DIR`、`OASIS7_GAME_LAUNCHER_BIN`、`OASIS7_WEB_LAUNCHER_STATIC_DIR`，并继续兼容对应旧 `AGENT_WORLD_*` key；帮助文案、错误信息和控制面静态目录校验不得再只暴露旧品牌 env 名。
   - AC-51: `agent_world_viewer` 的 3D 配置、theme runtime、panel/headless 控制与 release UI profile 默认必须写入并优先读取 `OASIS7_VIEWER_*`，同时继续兼容旧 `AGENT_WORLD_VIEWER_*`；`viewer_3d_config`、theme preset 解析、无头 auto-play、panel mode/experience mode 与 profile env 文件不得因改名前缀变更而丢失既有本地覆盖或回归脚本能力。
+  - AC-52: `agent_world_viewer` 的 automation、auto-focus、auto-degrade、event window 与 internal capture 默认必须写入并优先读取 `OASIS7_VIEWER_*`，同时继续兼容旧 `AGENT_WORLD_VIEWER_*`；startup automation、聚焦/降级策略、事件抽样与内部抓帧入口不得因改名前缀变更而失效。
 - Non-Goals:
   - 不在本 PRD 中详细列出每个 UI 像素级规范。
   - 不替代 world-runtime/p2p 的底层协议设计。

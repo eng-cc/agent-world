@@ -9,10 +9,10 @@ use super::{
     ViewerSelection, ViewerState,
 };
 
-const CAPTURE_PATH_ENV: &str = "AGENT_WORLD_VIEWER_CAPTURE_PATH";
-const CAPTURE_STATUS_PATH_ENV: &str = "AGENT_WORLD_VIEWER_CAPTURE_STATUS_PATH";
-const CAPTURE_DELAY_SECS_ENV: &str = "AGENT_WORLD_VIEWER_CAPTURE_DELAY_SECS";
-const CAPTURE_MAX_WAIT_SECS_ENV: &str = "AGENT_WORLD_VIEWER_CAPTURE_MAX_WAIT_SECS";
+const CAPTURE_PATH_ENV: &str = "OASIS7_VIEWER_CAPTURE_PATH";
+const CAPTURE_STATUS_PATH_ENV: &str = "OASIS7_VIEWER_CAPTURE_STATUS_PATH";
+const CAPTURE_DELAY_SECS_ENV: &str = "OASIS7_VIEWER_CAPTURE_DELAY_SECS";
+const CAPTURE_MAX_WAIT_SECS_ENV: &str = "OASIS7_VIEWER_CAPTURE_MAX_WAIT_SECS";
 const DEFAULT_CAPTURE_DELAY_SECS: f64 = 2.0;
 const DEFAULT_CAPTURE_MAX_WAIT_SECS: f64 = 15.0;
 
@@ -44,10 +44,10 @@ pub(super) struct InternalCaptureState {
 
 pub(super) fn internal_capture_config_from_env() -> InternalCaptureConfig {
     config_from_values(
-        std::env::var(CAPTURE_PATH_ENV).ok(),
-        std::env::var(CAPTURE_STATUS_PATH_ENV).ok(),
-        std::env::var(CAPTURE_DELAY_SECS_ENV).ok(),
-        std::env::var(CAPTURE_MAX_WAIT_SECS_ENV).ok(),
+        crate::viewer_env::viewer_env_var(CAPTURE_PATH_ENV),
+        crate::viewer_env::viewer_env_var(CAPTURE_STATUS_PATH_ENV),
+        crate::viewer_env::viewer_env_var(CAPTURE_DELAY_SECS_ENV),
+        crate::viewer_env::viewer_env_var(CAPTURE_MAX_WAIT_SECS_ENV),
     )
 }
 

@@ -1,9 +1,9 @@
 use agent_world::simulator::WorldEvent;
 use bevy::prelude::Resource;
 
-const EVENT_WINDOW_SIZE_ENV: &str = "AGENT_WORLD_VIEWER_EVENT_WINDOW_SIZE";
-const EVENT_WINDOW_RECENT_ENV: &str = "AGENT_WORLD_VIEWER_EVENT_WINDOW_RECENT";
-const EVENT_WINDOW_SAMPLE_STRIDE_ENV: &str = "AGENT_WORLD_VIEWER_EVENT_SAMPLE_STRIDE";
+const EVENT_WINDOW_SIZE_ENV: &str = "OASIS7_VIEWER_EVENT_WINDOW_SIZE";
+const EVENT_WINDOW_RECENT_ENV: &str = "OASIS7_VIEWER_EVENT_WINDOW_RECENT";
+const EVENT_WINDOW_SAMPLE_STRIDE_ENV: &str = "OASIS7_VIEWER_EVENT_SAMPLE_STRIDE";
 const DEFAULT_SAMPLE_STRIDE: usize = 4;
 
 #[derive(Resource, Clone, Copy, Debug, PartialEq, Eq)]
@@ -28,9 +28,9 @@ impl EventWindowPolicy {
 
 pub(crate) fn event_window_policy_from_env(default_max_events: usize) -> EventWindowPolicy {
     event_window_policy_from_values(
-        std::env::var(EVENT_WINDOW_SIZE_ENV).ok(),
-        std::env::var(EVENT_WINDOW_RECENT_ENV).ok(),
-        std::env::var(EVENT_WINDOW_SAMPLE_STRIDE_ENV).ok(),
+        crate::viewer_env::viewer_env_var(EVENT_WINDOW_SIZE_ENV),
+        crate::viewer_env::viewer_env_var(EVENT_WINDOW_RECENT_ENV),
+        crate::viewer_env::viewer_env_var(EVENT_WINDOW_SAMPLE_STRIDE_ENV),
         default_max_events,
     )
 }

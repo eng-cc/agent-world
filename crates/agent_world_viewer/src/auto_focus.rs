@@ -9,10 +9,10 @@ use super::{
     ORBIT_MAX_RADIUS,
 };
 
-const AUTO_FOCUS_ENV: &str = "AGENT_WORLD_VIEWER_AUTO_FOCUS";
-const AUTO_FOCUS_TARGET_ENV: &str = "AGENT_WORLD_VIEWER_AUTO_FOCUS_TARGET";
-const AUTO_FOCUS_FORCE_3D_ENV: &str = "AGENT_WORLD_VIEWER_AUTO_FOCUS_FORCE_3D";
-const AUTO_FOCUS_RADIUS_ENV: &str = "AGENT_WORLD_VIEWER_AUTO_FOCUS_RADIUS";
+const AUTO_FOCUS_ENV: &str = "OASIS7_VIEWER_AUTO_FOCUS";
+const AUTO_FOCUS_TARGET_ENV: &str = "OASIS7_VIEWER_AUTO_FOCUS_TARGET";
+const AUTO_FOCUS_FORCE_3D_ENV: &str = "OASIS7_VIEWER_AUTO_FOCUS_FORCE_3D";
+const AUTO_FOCUS_RADIUS_ENV: &str = "OASIS7_VIEWER_AUTO_FOCUS_RADIUS";
 
 const DEFAULT_AUTO_FOCUS_ENABLED: bool = true;
 const DEFAULT_AUTO_FOCUS_FORCE_3D: bool = false;
@@ -70,10 +70,10 @@ enum ResolvedTarget {
 
 pub(super) fn auto_focus_config_from_env() -> AutoFocusConfig {
     config_from_values(
-        std::env::var(AUTO_FOCUS_ENV).ok(),
-        std::env::var(AUTO_FOCUS_TARGET_ENV).ok(),
-        std::env::var(AUTO_FOCUS_FORCE_3D_ENV).ok(),
-        std::env::var(AUTO_FOCUS_RADIUS_ENV).ok(),
+        crate::viewer_env::viewer_env_var(AUTO_FOCUS_ENV),
+        crate::viewer_env::viewer_env_var(AUTO_FOCUS_TARGET_ENV),
+        crate::viewer_env::viewer_env_var(AUTO_FOCUS_FORCE_3D_ENV),
+        crate::viewer_env::viewer_env_var(AUTO_FOCUS_RADIUS_ENV),
     )
 }
 

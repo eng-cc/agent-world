@@ -4,7 +4,7 @@ use super::render_perf_summary::RenderPerfSummary;
 use super::viewer_3d_config::Viewer3dConfig;
 use super::world_overlay::WorldOverlayConfig;
 
-const AUTO_DEGRADE_ENV: &str = "AGENT_WORLD_VIEWER_AUTO_DEGRADE";
+const AUTO_DEGRADE_ENV: &str = "OASIS7_VIEWER_AUTO_DEGRADE";
 const HIGH_P95_FRAME_MS: f32 = 33.0;
 const LOW_P95_FRAME_MS: f32 = 20.0;
 const ESCALATE_STREAK: u32 = 8;
@@ -183,7 +183,7 @@ fn reduced_label_cap(baseline: usize, divisor: usize, floor: usize) -> usize {
 }
 
 fn parse_bool_env(key: &str) -> Option<bool> {
-    std::env::var(key).ok().and_then(|raw| {
+    crate::viewer_env::viewer_env_var(key).and_then(|raw| {
         let normalized = raw.trim().to_ascii_lowercase();
         match normalized.as_str() {
             "1" | "true" | "yes" | "on" => Some(true),

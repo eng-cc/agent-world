@@ -6,9 +6,9 @@ use super::camera_controls::orbit_min_radius;
 use super::selection_linking::apply_selection;
 use super::*;
 
-const AUTOMATION_STEPS_ENV: &str = "AGENT_WORLD_VIEWER_AUTOMATION_STEPS";
-const AUTO_SELECT_ENV: &str = "AGENT_WORLD_VIEWER_AUTO_SELECT";
-const AUTO_SELECT_TARGET_ENV: &str = "AGENT_WORLD_VIEWER_AUTO_SELECT_TARGET";
+const AUTOMATION_STEPS_ENV: &str = "OASIS7_VIEWER_AUTOMATION_STEPS";
+const AUTO_SELECT_ENV: &str = "OASIS7_VIEWER_AUTO_SELECT";
+const AUTO_SELECT_TARGET_ENV: &str = "OASIS7_VIEWER_AUTO_SELECT_TARGET";
 const VIEWER_PLAYER_ID_DEFAULT: &str = "viewer-player";
 const VIEWER_PLAYER_ID_ENV: &str = "OASIS7_VIEWER_PLAYER_ID";
 const LEGACY_VIEWER_PLAYER_ID_ENV: &str = "AGENT_WORLD_VIEWER_PLAYER_ID";
@@ -178,9 +178,9 @@ enum StepSource {
 
 pub(super) fn viewer_automation_config_from_env() -> ViewerAutomationConfig {
     config_from_values(
-        std::env::var(AUTO_SELECT_ENV).ok(),
-        std::env::var(AUTO_SELECT_TARGET_ENV).ok(),
-        std::env::var(AUTOMATION_STEPS_ENV).ok(),
+        crate::viewer_env::viewer_env_var(AUTO_SELECT_ENV),
+        crate::viewer_env::viewer_env_var(AUTO_SELECT_TARGET_ENV),
+        crate::viewer_env::viewer_env_var(AUTOMATION_STEPS_ENV),
     )
 }
 
