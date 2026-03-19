@@ -1,0 +1,34 @@
+# Agent World：玩家访问模式总契约（2026-03-19）项目管理文档
+
+- 对应设计文档: `doc/core/player-access-mode-contract-2026-03-19.design.md`
+- 对应需求文档: `doc/core/player-access-mode-contract-2026-03-19.prd.md`
+
+审计轮次: 6
+
+## 任务拆解
+- [x] T1 (`PRD-CORE-009`) [test_tier_required]: 冻结 `standard_3d / software_safe / pure_api` 三模式总契约，明确 mode/lane 分层、claim envelope、fallback 规则与禁宣称项。
+- [x] T2 (`PRD-CORE-009`) [test_tier_required]: 同步 `doc/core/prd.md`、`doc/core/project.md`、`doc/core/prd.index.md` 与 `doc/core/README.md`，把本专题挂入 core 主入口。
+- [x] T3 (`PRD-CORE-009`) [test_tier_required]: 回写 `doc/devlog/2026-03-19.md`，记录 owner、完成内容、验证方式与后续使用约束。
+
+## 依赖
+- `doc/core/prd.md`
+- `doc/core/project.md`
+- `doc/core/prd.index.md`
+- `doc/core/README.md`
+- `testing-manual.md`
+- `doc/world-simulator/viewer/viewer-web-software-safe-mode-2026-03-16.prd.md`
+- `doc/world-simulator/llm/llm-openclaw-agent-dual-mode-2026-03-16.prd.md`
+- `doc/game/gameplay/gameplay-pure-api-client-parity-2026-03-19.prd.md`
+
+## 验证
+- `./scripts/doc-governance-check.sh`
+- `git diff --check`
+
+## 状态
+- 更新日期: 2026-03-19
+- 当前状态: completed
+- 下一任务: 无
+- 最新完成: `T1/T2/T3`（已完成三模式总契约建模、core 主入口挂载与 devlog 回写）。
+- 备注:
+  - 本专题只冻结 taxonomy 与 claim contract，不替代下游专题实现。
+  - 后续若新增同层玩家访问模式，必须先更新本专题再更新模块文档。

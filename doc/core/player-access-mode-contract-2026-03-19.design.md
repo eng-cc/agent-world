@@ -1,0 +1,80 @@
+# Agent World：玩家访问模式总契约设计（2026-03-19）
+
+- 对应需求文档: `doc/core/player-access-mode-contract-2026-03-19.prd.md`
+- 对应项目管理文档: `doc/core/player-access-mode-contract-2026-03-19.project.md`
+
+审计轮次: 6
+
+## 1. 设计定位
+将 `standard_3d`、`software_safe`、`pure_api` 三种玩家访问模式提升为 `core` 级 taxonomy，并把 `OpenClaw` 的 `player_parity / headless_agent / debug_viewer` 降维到 execution lane，避免项目继续把“玩家入口”“观战旁路”“无 UI 回归”混成一层概念。
+
+## 2. 核心设计决策
+- 保留三种玩家访问模式：
+  - `standard_3d`：高保真主画面、视觉验收、截图语义与交互体验主口径。
+  - `software_safe`：弱图形/无 GPU 下的 Web 最小玩法闭环与观测兜底。
+  - `pure_api`：无 UI、无浏览器、正式 no-LLM 持续游玩入口。
+- 将 `player_parity / headless_agent / debug_viewer` 统一视为 execution lane：
+  - 它们描述的是 Agent 如何执行、如何观察、是否只读；
+  - 它们不能回答“玩家现在走的是哪种产品入口”。
+- 采用 claim-first 设计：
+  - 每个模式先冻结“允许宣称项 / 禁止宣称项”；
+  - 所有 evidence、testing、playability 结论只能在 claim envelope 内输出。
+
+## 3. 设计结构
+
+### 3.1 Mode Registry Layer
+- 在 `core` 维护唯一注册表：
+  - `mode_id`
+  - `surface_type`
+  - `default_use_case`
+  - `fallback_target`
+  - `allowed_claims`
+  - `forbidden_claims`
+- 下游专题只负责实现和定向验收，不再各自发明同层 mode 名称。
+
+### 3.2 Routing Layer
+- 先按用户目标路由：
+  - 视觉与主产品体验 -> `standard_3d`
+  - 弱图形 Web 可玩性 -> `software_safe`
+  - 无 UI / 自动化 / CLI 长玩 -> `pure_api`
+- 再按环境做 fallback：
+  - `standard_3d` 在 `auto` 下可显式降到 `software_safe`
+  - `software_safe` 不负责替代 `pure_api`
+  - `pure_api` 不受浏览器/GPU 问题阻断
+
+### 3.3 Evidence Layer
+- 所有证据包必须挂一个主 `mode_id`。
+- `execution_lane` 作为附加维度记录，不允许提升为主模式。
+- 同一结论若同时涉及视觉与 no-UI 持续游玩，必须拆成两个 claim。
+
+### 3.4 Downstream Ownership
+- `world-simulator/viewer/*`：
+  - 负责 `standard_3d` / `software_safe` 实现与定向验收。
+- `game/*`：
+  - 负责 `pure_api` 的 canonical 玩家语义、动作面与 parity。
+- `world-simulator/llm/*`：
+  - 负责 execution lane 与 provider contract。
+- `testing-manual.md`：
+  - 负责把脚本、证据与放行结论绑定到正确模式。
+
+## 4. 关键约束
+- `software_safe` 不能代签 `standard_3d` 的视觉放行。
+- `pure_api` 不能代签截图、画面、headed Web 语义。
+- `headless_agent` 不能代签 `pure_api` 玩家入口等价。
+- `debug_viewer` 只回答观战/解释，不回答主执行或玩家入口。
+
+## 5. 失败与降级语义
+- `standard_3d` 命中 software renderer：
+  - 若显式 `render_mode=standard` -> `blocked_by=graphics_env`
+  - 若 `render_mode=auto` -> `degraded_to=software_safe`
+- `software_safe` 命中 OpenClaw observer-only：
+  - 结论是“弱图形观战链路可用”，不是“Viewer 是主执行依赖”
+- `pure_api` 缺 canonical 玩家语义：
+  - 降级为 `observer_only`
+- 证据跨模式借用：
+  - 自动收缩到更窄 claim；若无法拆清，直接阻断发布口径
+
+## 6. 演进计划
+- Phase 1：冻结 mode/lane 双层 taxonomy。
+- Phase 2：同步 core 主入口、README、索引与今日 devlog。
+- Phase 3：后续新专题必须按本设计引用模式，不得新增同层别名。

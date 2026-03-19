@@ -17,6 +17,9 @@ doc/core/producer-to-qa-task-core-020-runtime-version-evidence-2026-03-11.md
 doc/core/producer-to-qa-task-core-021-runtime-version-soak-2026-03-11.md
 doc/core/producer-to-qa-task-core-022-version-go-no-go-2026-03-11.md
 doc/core/producer-to-qa-task-core-023-doc-readme-sync-2026-03-11.md
+doc/core/player-access-mode-contract-2026-03-19.design.md
+doc/core/player-access-mode-contract-2026-03-19.prd.md
+doc/core/player-access-mode-contract-2026-03-19.project.md
 doc/core/project.md
 doc/core/qa-to-liveops-task-core-022-version-go-no-go-2026-03-11.md
 doc/core/release-candidate-go-no-go-entry-2026-03-11.design.md

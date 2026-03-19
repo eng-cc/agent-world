@@ -19,12 +19,15 @@
 - 追踪主键: `PRD-CORE-xxx`
 - 模块入口总览: `doc/README.md`
 - 测试与发布参考: `testing-manual.md`
+- 活跃 cross-module 专题:
+  - `doc/core/player-access-mode-contract-2026-03-19.prd.md`（PRD-CORE-009）
 
 ## 里程碑
 - M1 (2026-03-03): 完成模块 PRD 体系重构并建立项目级总览入口。
 - M2: 固化跨模块变更影响检查清单（设计/代码/测试/发布）。
 - M3: 建立 PRD-ID -> Task -> Test 追踪报表。
 - M4 (2026-03-10): 建立阶段收口优先级与跨角色执行口径，统一玩法 / runtime / testing / playability / headless 的发布前闭环目标。
+- M5 (2026-03-19): 冻结 `standard_3d / software_safe / pure_api` 三模式总契约，并明确其与 `execution lane` 的分层边界。
 
 ## 风险
 - 模块并行演进过快时，全局总览可能滞后于真实实现。
@@ -41,6 +44,7 @@
   - SC-5: 当前阶段优先级（P0/P1/P2）在 core PRD 中有唯一口径，并能映射到对应模块任务与角色 owner。
   - SC-6: 发布前必须先完成玩法微循环、runtime 验收、testing 证据、playability 反馈四条 P0 闭环，缺任一项不得给出 go 结论。
   - SC-7: headless-runtime、自动化稳定性、文档一致性收口具备明确 P1 责任划分与交付标准。
+  - SC-8: `standard_3d / software_safe / pure_api` 三模式在 core 中具备唯一 taxonomy、claim envelope 与 mode/lane 分层约束。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -63,6 +67,7 @@
 - PRD-CORE-006: As a `producer_system_designer`, I want a formal version-candidate go/no-go entry after readiness reaches `ready`, so that release approval, residual risks, and role handoff are explicit and auditable.
 - PRD-CORE-007: As a 新协作者, I want `doc/README.md` to include the current public-preview reading path, so that I start from the right entry points.
 - PRD-CORE-008: As a `producer_system_designer`, I want the global docs hub synced with repo/site posture, so that navigation stays consistent.
+- PRD-CORE-009: As a `producer_system_designer`, I want one cross-module contract for `standard_3d / software_safe / pure_api`, so that release, QA, playability, and OpenClaw lane terminology stay aligned.
 - Critical User Flows:
   1. Flow-CORE-001: `读取模块地图 -> 识别改动所属模块 -> 定位上下游依赖 -> 形成影响面清单`
   2. Flow-CORE-002: `读取关键链路 -> 映射到模块 PRD-ID -> 对照测试分层 -> 输出发布风险判断`
@@ -70,6 +75,7 @@
   4. Flow-CORE-004: `评估当前项目状态 -> 划分 P0/P1/P2 -> 指定跨角色 owner / 输入 / 输出 / Done -> 回写对应模块 project`
   5. Flow-CORE-005: `收集玩法 / runtime / testing / playability / headless 证据 -> 对照阶段收口门禁 -> 形成 go / no-go 结论`
   6. Flow-CORE-006: `确认本轮 completed -> 汇总候选缺口 -> 划分 P0/P1/P2 -> 选定下一条执行主路径`
+  7. Flow-CORE-007: `判断结论属于 standard_3d / software_safe / pure_api 哪一模式 -> 绑定 execution lane 与 evidence -> 输出不越界的 claim`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
@@ -80,6 +86,7 @@
 | 跨角色交付矩阵 | 发起角色、接收角色、handoff 输入、产出物、回写位置、验证方式 | 发起方提交 handoff / 接收方确认 done / owner 回写 PRD、project、devlog | `requested -> accepted -> delivered -> verified` | 先按“最先落地代码/文档的 owner”排序，再按发布风险高低排序 | 仅标准角色名可出现在交付矩阵与 devlog |
 | 发布收口门禁 | P0/P1/P2 状态、证据路径、阻断结论、例外说明、复审时间 | 汇总证据并输出 `go/no-go/conditional-go` | `not_ready -> conditionally_ready -> ready -> released` | 缺任一 P0 证据时强制 `not_ready` | 发布负责人给出结论，core owner 负责口径一致性 |
 | 下一轮优先级清单 | 优先级、主题、owner、输入、输出、进入条件 | 收口后排序并选定下一条执行主路径 | `candidate -> ranked -> selected -> planned` | 先看发布影响，再看闭环依赖，再看 owner 就绪度 | `producer_system_designer` 排序，`qa_engineer` 复核 |
+| 玩家访问模式契约 | `mode_id`、`claim_scope`、`fallback_target`、`execution_lane`、`forbidden_claims` | 评审前先给结论绑定模式，再生成对外/QA 结论 | `unclassified -> bounded -> evidenced -> published` | 玩家访问模式只有 `standard_3d / software_safe / pure_api` 三项；lane 只作附加维度 | `producer_system_designer` 冻结 taxonomy，模块 owner 联审 |
 - Acceptance Criteria:
   - AC-1: core PRD 包含模块职责矩阵。
   - AC-2: core PRD 包含至少 4 条关键端到端链路描述。
@@ -92,6 +99,7 @@
   - AC-9: `P2` 仅包含不阻塞发布的体验 polish 与治理补完，不得与 P0/P1 混淆。
   - AC-10: `PRD-CORE-004` 可映射到 `doc/core/project.md` 中的任务与 `test_tier_required` 验证方法。
   - AC-11: `PRD-CORE-005` 必须明确下一轮第一优先级、对应 owner role、输入/输出与进入条件。
+  - AC-12: `PRD-CORE-009` 必须把 `standard_3d / software_safe / pure_api` 与 `execution lane` 的边界写成唯一 taxonomy，并要求证据与 claim 显式绑定 mode。
 - Non-Goals:
   - 不在 core PRD 中替代模块详细技术分册。
   - 不在 core PRD 中维护逐版本实现变更流水（该信息在 devlog）。
@@ -152,6 +160,7 @@
 - WASM 接口与执行: `doc/world-runtime/wasm/wasm-interface.md`, `doc/world-runtime/wasm/wasm-executor.prd.md`
 - 场景矩阵: `doc/world-simulator/scenario/scenario-files.prd.md`
 - Web 闭环测试策略: `doc/world-simulator/viewer/viewer-web-closure-testing-policy.prd.md`
+- 玩家访问模式总契约: `doc/core/player-access-mode-contract-2026-03-19.prd.md`
 - 分布式路线图: `doc/p2p/blockchain/production-grade-blockchain-p2pfs-roadmap.prd.md`
 - 系统性测试手册: `testing-manual.md`
 
@@ -228,6 +237,7 @@
 | PRD-CORE-006 | TASK-CORE-022 | `test_tier_required` | 正式版本候选 go/no-go 记录、风险附注与角色交接抽样核验 | 版本候选正式裁决一致性 |
 | PRD-CORE-007 | TASK-CORE-023 | `test_tier_required` | `doc/README.md` 含根 README / site 阅读入口 | 全局导航准确性 |
 | PRD-CORE-008 | TASK-CORE-023 | `test_tier_required` | 更新时间与新阅读顺序存在 | 公开口径同步性 |
+| PRD-CORE-009 | TASK-CORE-028 | `test_tier_required` | 三模式总契约专题存在、core 主入口/索引互链、文档治理检查通过 | 项目级模式 taxonomy 与 claim 边界一致性 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |
@@ -238,3 +248,4 @@
 | DEC-CORE-005 | 将“阶段收口优先级”纳入 core 主 PRD 统一管理，而不是散落在多个模块 project 的状态说明里 | 仅在各模块 project 中维护各自优先级 | 阶段优先级本质是跨模块发布策略，需要由 `producer_system_designer` 在 core 层统一裁剪与仲裁。 |
 | DEC-CORE-006 | 新一轮先冻结优先级清单，再启动第一优先级专题 | 主项目收口后直接随机挑模块继续推进 | 先统一排序，才能避免重新扩散资源。 |
 | DEC-CORE-007 | readiness 达到 `ready` 后必须再落正式 go/no-go 记录 | 将 readiness board 直接作为最终放行记录 | readiness 与正式裁决是两个层级，必须分开留痕。 |
+| DEC-CORE-008 | 将 `standard_3d / software_safe / pure_api` 定义为玩家访问模式，将 `player_parity / headless_agent / debug_viewer` 定义为 execution lane | 继续把两者混写在不同专题中 | 玩家入口、观战旁路与无 UI 回归本质上属于不同抽象层，必须在 core 统一分层。 |
