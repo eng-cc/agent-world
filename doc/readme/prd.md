@@ -58,6 +58,7 @@
 - PRD-README-010: As a `liveops_community`, I want platform-specific promotion plans anchored to third-party channel mechanics and internal claim envelopes, so that outbound seeding can fit channel culture without over-promising.
 - PRD-README-011: As a `liveops_community`, I want a first-wave Moltbook post pack derived from the approved platform plan, so that we can publish native posts and replies without improvising unsafe copy.
 - PRD-README-012: As a `liveops_community`, I want Moltbook outreach to point builders back to GitHub issues and PRs after they inspect the preview, so that external interest can turn into actionable feedback and contributions.
+- PRD-README-013: As a `liveops_community`, I want shorter feed-native Moltbook variants of the approved post pack, so that final publish copy reads like native posts instead of internal drafts.
 - Critical User Flows:
   1. Flow-RM-001: `阅读 README -> 跳转模块入口 -> 快速定位目标能力`
   2. Flow-RM-002: `检测口径变更 -> 更新入口文档 -> 校验链接 -> 发布同步`
@@ -132,6 +133,7 @@
 | PRD-README-010 | TASK-README-014 | `test_tier_required` | Moltbook 推广方案含平台现状、内容支柱、节奏、禁宣称项与回流机制 | 第三方渠道推广口径一致性 |
 | PRD-README-011 | TASK-README-015 | `test_tier_required` | Moltbook 帖文包含首批主贴、评论模板、CTA 与禁宣称抽样复核 | 首批渠道文案执行安全性 |
 | PRD-README-012 | TASK-README-016 | `test_tier_required` | Moltbook 方案与帖文明确 GitHub issue / PR CTA，且不与技术预览边界冲突 | 外部反馈回流与贡献转化 |
+| PRD-README-013 | TASK-README-017 | `test_tier_required` | Moltbook 帖文主贴已压缩为更短的 feed-native 版本，且保留技术预览与 GitHub CTA 边界 | 最终发布文案可用性 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |
@@ -146,3 +148,4 @@
 | DEC-RM-009 | 用平台专题文档承接第三方渠道推广方案 | 直接复用一份通用社媒文案覆盖全部平台 | 第三方平台机制和社区文化差异明显，必须保留渠道化约束。 |
 | DEC-RM-010 | 在渠道方案之后继续沉淀首批发帖草案与回复模板 | 真实发帖时临场手写文案 | 提前冻结主贴与回复模板，能显著降低 overclaim 风险。 |
 | DEC-RM-011 | 将 GitHub issue / PR 作为 Moltbook builder CTA 的正式回流出口 | 只引导关注或私信，不给公开协作入口 | 仓库已有公开协作面，显式回流更利于把外部兴趣转成可追踪反馈。 |
+| DEC-RM-012 | 在发布前把首批帖文继续压缩成 feed-native 短版 | 保留偏内部草案长度直接外发 | Moltbook 更适合短、硬、单一 CTA 的原生内容。 |

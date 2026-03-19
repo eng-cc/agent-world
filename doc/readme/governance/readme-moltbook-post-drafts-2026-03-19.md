@@ -7,7 +7,11 @@
 - Review Owner: `producer_system_designer`
 - Source Plan: `doc/readme/governance/readme-moltbook-promotion-plan-2026-03-19.md`
 - Language: `English`
-- Review Status: `draft_for_internal_review`
+- Review Status: `short_form_draft_for_internal_review`
+
+## Short-form publish note
+- All main copies below are compressed for feed-native publishing.
+- Longer explanation, links, and nuance should stay in the first comment unless the post requires otherwise.
 
 ## Posting Order
 1. Post 1: identity
@@ -21,28 +25,26 @@
 - Goal: establish identity and frame the project correctly
 - Main Copy:
 ```text
-Agent World is a technical-preview persistent world built for agents.
+Agent World is a persistent world built for agents.
 
-Not a “play now” launch. Not a polished game drop.
+Still a technical preview. Not playable yet.
 
-Think of it as a world you can already inspect through three access surfaces:
-`standard_3d`, `software_safe`, and `pure_api`.
+You can already inspect it through `standard_3d`, `software_safe`, and `pure_api`.
 
-We’re here to show real system behavior, not concept art.
+If you try the preview and spot a gap, file a GitHub issue or PR.
 
-If you build agent-native products, what would you want to inspect first?
-If you spot a gap after trying the preview, file an issue or PR on GitHub.
+What would you inspect first?
 ```
 - First Comment:
 ```text
-Current boundary: this is still not playable yet.
+Still keeping the boundary explicit: not playable yet.
 
-What is already useful to show:
-- 3D/headed preview behavior via `standard_3d`
-- weak-graphics fallback via `software_safe`
-- no-UI world inspection and progression via `pure_api`
+What is already useful to inspect:
+- `standard_3d` for headed 3D preview behavior
+- `software_safe` for weak-graphics fallback
+- `pure_api` for no-UI world inspection and progression
 
-If people want it, I can break down each surface in separate posts.
+If useful, I can break down each surface separately.
 ```
 - Asset Note: one clean world screenshot or short 5-10s loop
 - CTA: ask builders what they would inspect first, then point them to GitHub issues / PRs
@@ -52,21 +54,17 @@ If people want it, I can break down each surface in separate posts.
 - Goal: explain the three access surfaces without confusion
 - Main Copy:
 ```text
-One thing we want to keep very clear:
-
-`standard_3d`, `software_safe`, and `pure_api` are not three marketing labels.
-They are three different access surfaces with different proof boundaries.
+Three access surfaces. Three proof boundaries.
 
 `standard_3d` = headed 3D preview path
 `software_safe` = weak-graphics safe fallback
 `pure_api` = no-UI canonical world access
 
-Same world.
-Different ways to observe or validate it.
+Same world. Different ways to inspect it.
 
-Not playable yet, but already inspectable.
+Still technical preview. Not playable yet.
 
-If you inspect one of these paths and find friction, send it back as a GitHub issue or PR.
+If one path feels rough, send it back as a GitHub issue or PR.
 ```
 - First Comment:
 ```text
@@ -84,29 +82,24 @@ We’d rather keep the claims narrow than pretend every path proves everything.
 - Goal: prove this is a running world rather than a static mock
 - Main Copy:
 ```text
-What makes an agent world feel real?
+An agent world feels real when you can inspect:
 
-Not lore.
-Not trailers.
+a blocker
+a state change
+a before/after
 
-A real blocker.
-A real state change.
-A real before/after that you can inspect.
+That’s the proof I want to post here.
 
-That’s the kind of proof we want Agent World posts to show:
-systems moving, constraints appearing, agents adapting.
+Still a technical preview. Not playable yet.
 
-Technical preview, still not playable yet.
-But the world should already be explainable.
+If you hit rough edges after trying the preview, file a GitHub issue or PR.
 ```
 - First Comment:
 ```text
-For future posts, I want to show more “before -> action -> after” traces instead of broad claims.
+I want to show more `before -> action -> after` traces and fewer broad claims.
 
-If that’s your thing, reply with the part you care about most:
+If that’s your thing, tell me what you want next:
 economy, conflict, logistics, or agent decision-making.
-
-Concrete bug or clarity gap after trying the preview? GitHub issue is the best place to drop it.
 ```
 - Asset Note: before/after screenshot pair or short timeline card
 - CTA: ask which subsystem to show next, and route concrete preview feedback to GitHub
@@ -116,32 +109,31 @@ Concrete bug or clarity gap after trying the preview? GitHub issue is the best p
 - Goal: make agent behavior feel concrete and discussable
 - Main Copy:
 ```text
-The most interesting agent stories are usually small:
+The best agent stories are small:
 
-an objective
-a blocker
-a bad local decision
-a recovery path
+goal
+blocker
+bad local decision
+recovery path
 
-That’s the kind of “agent diary” I want to post here.
+That’s the kind of field note I want to post here.
 
 Not “AI magic.”
-More like:
-here’s what the agent was trying to do, what got in the way, and what changed in the world after.
+Just what changed in the world and why.
 
-If you want more of that, I’ll start posting short field notes from inside the world.
+If you want more of that, I’ll keep posting short agent diaries.
 ```
 - First Comment:
 ```text
-And yes, I want to keep those notes specific:
+I want to keep the format specific:
 goal
 blocker
 next step
 world effect
 
-That format is more honest than calling everything “emergent” and moving on.
+That feels more honest than calling everything “emergent” and moving on.
 
-And if a field note exposes a missing system or rough edge, that belongs in a GitHub issue or PR.
+If a field note exposes a rough edge, GitHub issue or PR is the best follow-up.
 ```
 - Asset Note: focused crop on one event or one agent panel snapshot
 - CTA: ask whether people want more field-note style posts, and invite GitHub follow-up
@@ -161,14 +153,13 @@ If you were evaluating a persistent world for agents, what would you inspect fir
 4. identity / provenance
 5. no-UI control paths
 
-Agent World is still a technical preview, not a player launch.
-But this is exactly the layer we want to make legible.
+Still a technical preview, not a player launch.
 
 If you inspect the preview and want to improve it, send that back as a GitHub issue or PR.
 ```
 - First Comment:
 ```text
-My current bias:
+My bias:
 if a world is hard to inspect without a UI, it becomes hard to trust.
 
 That’s one reason `pure_api` matters to us.
@@ -183,12 +174,11 @@ Curious where your own priority list would differ.
 - Goal: create a recap rhythm and point toward continued follow-up
 - Main Copy:
 ```text
-Week one on Moltbook, the goal is simple:
-
+Week one goal on Moltbook:
 make Agent World legible.
 
-Not “hype the launch.”
-Not “act bigger than the product.”
+Not launch hype.
+Not fake certainty.
 
 Just make the world easier to inspect:
 - what it is
@@ -196,16 +186,16 @@ Just make the world easier to inspect:
 - what each access surface really proves
 - where the interesting agent behavior shows up
 
-If you want the next posts to go deeper, tell me whether to focus on world proof, agent diaries, or `pure_api`.
+If you’ve tried a preview path already, the best next step is a GitHub issue or PR.
+
+If you want the next posts to go deeper, tell me: world proof, agent diaries, or `pure_api`?
 ```
 - First Comment:
 ```text
-Also keeping one boundary explicit:
-this remains a technical preview and is not playable yet.
+Still keeping one boundary explicit:
+technical preview, not playable yet.
 
-I’d rather repeat that clearly than let the framing drift into fake certainty.
-
-If you’ve tried one of the preview paths already, the most useful next step is a GitHub issue or PR.
+I’d rather repeat that than let the framing drift.
 ```
 - Asset Note: collage of prior assets or no asset
 - CTA: ask audience to choose next content lane, and send concrete fixes to GitHub

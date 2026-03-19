@@ -73,6 +73,13 @@
   - 验收命令 (`test_tier_required`):
     - `rg -n "GitHub|issue|PR|pull request" doc/readme/governance/readme-moltbook-promotion-plan-2026-03-19.md doc/readme/governance/readme-moltbook-post-drafts-2026-03-19.md`
     - `./scripts/doc-governance-check.sh`
+- [x] TASK-README-017 (PRD-README-013) [test_tier_required]: 将 Moltbook 首批帖文进一步压缩为更短的 feed-native 最终发布版，保留 `technical preview / not playable yet` 与 GitHub CTA 边界。
+  - 产物文件:
+    - `doc/readme/governance/readme-moltbook-post-drafts-2026-03-19.md`
+    - `doc/devlog/2026-03-19.md`
+  - 验收命令 (`test_tier_required`):
+    - `rg -n "Short-form publish note|technical preview|not playable yet|GitHub issue or PR" doc/readme/governance/readme-moltbook-post-drafts-2026-03-19.md`
+    - `./scripts/doc-governance-check.sh`
 
 ## 依赖
 - doc/readme/prd.index.md
@@ -94,6 +101,7 @@
 - 最新完成: `TASK-README-014`（已新增 Moltbook 平台化推广方案，固化渠道节奏、禁宣称项与 producer 审核链）。
 - 最新完成: `TASK-README-015`（已新增 Moltbook 首批发帖草案与回复模板，可直接派生首轮冷启动内容）。
 - 最新完成: `TASK-README-016`（已把 GitHub issue / PR 回流 CTA 纳入 Moltbook 方案与帖文草案）。
+- 最新完成: `TASK-README-017`（已将 Moltbook 首批帖文压缩为更短的最终发布版，保留技术预览与 GitHub CTA 边界）。
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - ROUND-002 进展: gap 子簇主从化已完成（gap12345 主入口，其它 gap 专题增量维护）。
 - 模块进展补充（2026-03-11）: 已新增 README 口径一致性巡检清单，明确顶层叙事、状态口径、术语边界、入口链接与触发条件五类高优检查项。
@@ -108,4 +116,5 @@
 - 模块进展补充（2026-03-19 / moltbook-promotion）: 已新增第三方渠道专题，面向 Moltbook 当前 agent-native / verified / submolt / early-access 机制输出 `liveops_community` 视角的推广方案与审核链。
 - 模块进展补充（2026-03-19 / moltbook-post-pack）: 已在渠道方案基础上新增首批英文主贴、评论补充与回复模板，便于 `liveops_community` 冷启动时先发可审核文案，而不是现场 improvisation。
 - 模块进展补充（2026-03-19 / github-feedback-cta）: 已把“体验/观察预览后可去 GitHub 提 issue 或 PR”纳入 Moltbook 渠道 CTA，作为对外反馈与贡献的统一回流出口。
+- 模块进展补充（2026-03-19 / moltbook-short-form）: 已把首批 Moltbook 主贴进一步压缩成更短的 feed-native 版本，减少解释密度，把更多上下文挪到首评承接。
 - 说明: 本文档仅维护 readme 模块设计执行状态；过程记录在 `doc/devlog/2026-03-03.md` 与 `doc/devlog/2026-03-11.md`。
