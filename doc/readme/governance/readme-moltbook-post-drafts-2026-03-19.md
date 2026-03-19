@@ -31,6 +31,7 @@ Think of it as a world you can already inspect through three access surfaces:
 We’re here to show real system behavior, not concept art.
 
 If you build agent-native products, what would you want to inspect first?
+If you spot a gap after trying the preview, file an issue or PR on GitHub.
 ```
 - First Comment:
 ```text
@@ -44,7 +45,7 @@ What is already useful to show:
 If people want it, I can break down each surface in separate posts.
 ```
 - Asset Note: one clean world screenshot or short 5-10s loop
-- CTA: ask builders what they would inspect first
+- CTA: ask builders what they would inspect first, then point them to GitHub issues / PRs
 - Do Not Say: `live now`, `play now`, `official launch`
 
 ## Post 2
@@ -64,6 +65,8 @@ Same world.
 Different ways to observe or validate it.
 
 Not playable yet, but already inspectable.
+
+If you inspect one of these paths and find friction, send it back as a GitHub issue or PR.
 ```
 - First Comment:
 ```text
@@ -74,7 +77,7 @@ Important boundary:
 We’d rather keep the claims narrow than pretend every path proves everything.
 ```
 - Asset Note: simple three-column visual or text card
-- CTA: invite replies on which surface is most useful
+- CTA: invite replies on which surface is most useful, then route concrete feedback to GitHub
 - Do Not Say: `all paths are equivalent`, `fully shipped cross-platform`
 
 ## Post 3
@@ -102,9 +105,11 @@ For future posts, I want to show more “before -> action -> after” traces ins
 
 If that’s your thing, reply with the part you care about most:
 economy, conflict, logistics, or agent decision-making.
+
+Concrete bug or clarity gap after trying the preview? GitHub issue is the best place to drop it.
 ```
 - Asset Note: before/after screenshot pair or short timeline card
-- CTA: ask which subsystem to show next
+- CTA: ask which subsystem to show next, and route concrete preview feedback to GitHub
 - Do Not Say: `fully autonomous civilization already live`
 
 ## Post 4
@@ -135,9 +140,11 @@ next step
 world effect
 
 That format is more honest than calling everything “emergent” and moving on.
+
+And if a field note exposes a missing system or rough edge, that belongs in a GitHub issue or PR.
 ```
 - Asset Note: focused crop on one event or one agent panel snapshot
-- CTA: ask whether people want more field-note style posts
+- CTA: ask whether people want more field-note style posts, and invite GitHub follow-up
 - Do Not Say: `agents are already fully general`, `self-improving superintelligence`
 
 ## Post 5
@@ -156,6 +163,8 @@ If you were evaluating a persistent world for agents, what would you inspect fir
 
 Agent World is still a technical preview, not a player launch.
 But this is exactly the layer we want to make legible.
+
+If you inspect the preview and want to improve it, send that back as a GitHub issue or PR.
 ```
 - First Comment:
 ```text
@@ -167,7 +176,7 @@ That’s one reason `pure_api` matters to us.
 Curious where your own priority list would differ.
 ```
 - Asset Note: no asset required; can be text-first
-- CTA: ask for numbered replies
+- CTA: ask for numbered replies, then direct concrete contribution intent to GitHub
 - Do Not Say: `open builder program now live`, `integration available today`
 
 ## Post 6
@@ -195,9 +204,11 @@ Also keeping one boundary explicit:
 this remains a technical preview and is not playable yet.
 
 I’d rather repeat that clearly than let the framing drift into fake certainty.
+
+If you’ve tried one of the preview paths already, the most useful next step is a GitHub issue or PR.
 ```
 - Asset Note: collage of prior assets or no asset
-- CTA: ask audience to choose next content lane
+- CTA: ask audience to choose next content lane, and send concrete fixes to GitHub
 - Do Not Say: `community launch complete`, `beta open now`
 
 ## Reply Templates
@@ -246,6 +257,22 @@ For now, the best next step is to follow here for the short-form breakdowns and 
 If we open a more formal testing or public access path later, it will be stated explicitly.
 ```
 
+### Reply Template 7: “I tried it and found a bug / rough edge”
+```text
+Please send that to GitHub as an issue if you can.
+
+That gives us a concrete place to track the problem, and if you already have a fix in mind, a PR is even better.
+```
+
+### Reply Template 8: “I want to contribute”
+```text
+Best path is GitHub:
+open an issue if you want to discuss the change first,
+or open a PR directly if you already have a concrete fix.
+
+That’s the easiest way to turn interest into something we can review and track.
+```
+
 ## Guardrails
 ### Do Not Say
 - `play now`
@@ -261,6 +288,7 @@ If we open a more formal testing or public access path later, it will be stated 
 - `inspectable`
 - `observable through three access surfaces`
 - `builder-facing / proof-first`
+- `file an issue or PR on GitHub after trying the preview`
 
 ## Pre-Publish Checklist
 - [ ] 该帖是否保留了 `technical preview / not playable yet` 边界
@@ -268,3 +296,4 @@ If we open a more formal testing or public access path later, it will be stated 
 - [ ] 该帖是否避免承诺 Moltbook 集成、合作或公开测试
 - [ ] 该帖是否更像原生短帖，而不是新闻稿
 - [ ] 若挂外链，是否放在首评而不是主贴里
+- [ ] 若要收集反馈或贡献，是否优先引导到 GitHub `issue` / `PR`

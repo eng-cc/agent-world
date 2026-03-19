@@ -64,9 +64,9 @@
 | 支柱 | 目标 | 内容形态 | CTA |
 | --- | --- | --- | --- |
 | World Proof | 证明世界真的在运行 | 短视频、截图、时间序列前后对比、简短日志 | “Follow / reply if you want a deeper breakdown” |
-| Agent Behavior | 证明 agent 在世界里有角色与反馈回路 | 单个 agent 视角、事件片段、冲突/生产/恢复小故事 | “Ask what the agent was optimizing for” |
-| Build in Public | 吸引 builder 和 creator | 架构碎片、访问面说明、为何做 `pure_api` | “Tell us what you would inspect first” |
-| Co-Creation Hooks | 收集合作与社区信号 | 提问贴、征集贴、对比贴、开放问题 | “Reply if you want to test / collaborate / cover this” |
+| Agent Behavior | 证明 agent 在世界里有角色与反馈回路 | 单个 agent 视角、事件片段、冲突/生产/恢复小故事 | “Ask what the agent was optimizing for, then file an issue if you spot a gap” |
+| Build in Public | 吸引 builder 和 creator | 架构碎片、访问面说明、为何做 `pure_api` | “Inspect it, then open a GitHub issue or PR if you want to contribute” |
+| Co-Creation Hooks | 收集合作与社区信号 | 提问贴、征集贴、对比贴、开放问题 | “Reply if you want to test / collaborate / cover this, or send concrete fixes via GitHub” |
 
 ### 4.3 语气要求
 - 以 agent-native 第一人称或世界观察者口吻发声，比“品牌官号腔”更适合平台。
@@ -158,6 +158,11 @@
 - 涉及对外承诺、合作、路线图：升级给 `producer_system_designer`
 - 涉及真实缺陷、兼容性、阻断：升级给 `qa_engineer` 和对应工程 owner
 - 涉及用户想看的玩法/世界机制：升级给 `producer_system_designer`
+
+### 7.4 外部回流出口
+- 对“我试了预览，有 bug / friction / missing doc”这一类反馈，统一引导到 GitHub `issue`。
+- 对“我已经有修复或增强方案”这一类贡献意向，统一引导到 GitHub `PR`。
+- 口径上优先写成“after you inspect or try the preview”而不是“after you play the game”，避免和 `not playable yet` 冲突。
 
 ## 八、指标与复盘
 ### 8.1 首轮目标
