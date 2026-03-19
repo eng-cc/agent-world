@@ -34,7 +34,7 @@ use super::reward_asset::{
     SystemOrderPoolBudget, REWARD_MINT_SIGNATURE_V1_PREFIX, REWARD_MINT_SIGNATURE_V2_PREFIX,
 };
 use super::types::{ActionId, MaterialLedgerId, ProposalId, WorldTime};
-use super::util::hash_json;
+use super::util::{deserialize_btreemap_u64_keys, hash_json};
 
 mod apply_domain_event_core;
 mod apply_domain_event_gameplay;
@@ -397,11 +397,11 @@ pub struct WorldState {
     pub factory_profiles: BTreeMap<String, FactoryProfileV1>,
     #[serde(default)]
     pub factories: BTreeMap<String, FactoryState>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_btreemap_u64_keys")]
     pub pending_factory_builds: BTreeMap<ActionId, FactoryBuildJobState>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_btreemap_u64_keys")]
     pub pending_recipe_jobs: BTreeMap<ActionId, RecipeJobState>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_btreemap_u64_keys")]
     pub pending_material_transits: BTreeMap<ActionId, MaterialTransitJobState>,
     #[serde(default)]
     pub industry_progress: IndustryProgressState,
@@ -443,9 +443,9 @@ pub struct WorldState {
     pub module_artifact_bids: BTreeMap<String, Vec<ModuleArtifactBidState>>,
     #[serde(default)]
     pub module_instances: BTreeMap<String, ModuleInstanceState>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_btreemap_u64_keys")]
     pub module_release_requests: BTreeMap<u64, ModuleReleaseRequestState>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_btreemap_u64_keys")]
     pub module_release_manifest_mappings: BTreeMap<u64, ModuleReleaseManifestMappingState>,
     #[serde(default = "default_next_module_release_request_id")]
     pub next_module_release_request_id: u64,
@@ -467,7 +467,7 @@ pub struct WorldState {
     pub main_token_balances: BTreeMap<String, MainTokenAccountBalance>,
     #[serde(default)]
     pub main_token_genesis_buckets: BTreeMap<String, MainTokenGenesisAllocationBucketState>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_btreemap_u64_keys")]
     pub main_token_epoch_issuance_records: BTreeMap<u64, MainTokenEpochIssuanceRecord>,
     #[serde(default)]
     pub main_token_treasury_balances: BTreeMap<String, u64>,
@@ -475,9 +475,9 @@ pub struct WorldState {
     pub main_token_claim_nonces: BTreeMap<String, u64>,
     #[serde(default)]
     pub main_token_transfer_nonces: BTreeMap<String, u64>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_btreemap_u64_keys")]
     pub main_token_scheduled_policy_updates: BTreeMap<u64, MainTokenScheduledPolicyUpdate>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_btreemap_u64_keys")]
     pub main_token_node_points_bridge_records: BTreeMap<u64, MainTokenNodePointsBridgeEpochRecord>,
     #[serde(default)]
     pub main_token_treasury_distribution_records:
@@ -492,7 +492,7 @@ pub struct WorldState {
     pub reward_mint_records: Vec<NodeRewardMintRecord>,
     #[serde(default)]
     pub node_redeem_nonces: BTreeMap<String, u64>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_btreemap_u64_keys")]
     pub system_order_pool_budgets: BTreeMap<u64, SystemOrderPoolBudget>,
     #[serde(default)]
     pub node_identity_bindings: BTreeMap<String, String>,

@@ -1,4 +1,7 @@
 use super::*;
+use crate::runtime::{
+    FactoryBuildJobState, FactoryModuleSpec, MaterialLedgerId, MaterialStack, World as RuntimeWorld,
+};
 
 #[test]
 fn kernel_snapshot_roundtrip() {
@@ -314,6 +317,44 @@ fn snapshot_agent_kinematics_defaults_when_legacy_field_is_missing() {
         .get("agent-1")
         .expect("restored agent exists");
     assert_eq!(restored.kinematics, AgentKinematics::default());
+}
+
+#[test]
+fn snapshot_runtime_snapshot_accepts_stringified_numeric_map_keys() {
+    let mut snapshot = WorldKernel::new().snapshot();
+    let mut runtime_snapshot = RuntimeWorld::default().snapshot();
+    runtime_snapshot.state.pending_factory_builds.insert(
+        6,
+        FactoryBuildJobState {
+            job_id: 6,
+            builder_agent_id: "agent-0".to_string(),
+            site_id: "site-0".to_string(),
+            spec: FactoryModuleSpec {
+                factory_id: "factory.smelter.mk1".to_string(),
+                display_name: "Smelter MK1".to_string(),
+                tier: 2,
+                tags: vec!["smelter".to_string()],
+                build_cost: vec![MaterialStack::new("structural_frame", 1)],
+                build_time_ticks: 1,
+                base_power_draw: 20,
+                recipe_slots: 2,
+                throughput_bps: 10_000,
+                maintenance_per_tick: 1,
+            },
+            consume_ledger: MaterialLedgerId::world(),
+            ready_at: 2,
+        },
+    );
+    snapshot.runtime_snapshot = Some(runtime_snapshot);
+
+    let restored = WorldSnapshot::from_json(&snapshot.to_json().expect("snapshot to json"))
+        .expect("restore world snapshot");
+
+    let runtime_snapshot = restored.runtime_snapshot.expect("runtime snapshot");
+    assert!(runtime_snapshot
+        .state
+        .pending_factory_builds
+        .contains_key(&6));
 }
 
 #[test]

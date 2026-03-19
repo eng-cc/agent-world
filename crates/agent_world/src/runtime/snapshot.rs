@@ -14,7 +14,7 @@ use super::modules::{ModuleLimits, ModuleRegistry};
 use super::policy::PolicySet;
 use super::state::WorldState;
 use super::types::{ActionId, IntentSeq, ProposalId, WorldEventId, WorldTime};
-use super::util::{read_json_from_path, write_json_to_path};
+use super::util::{deserialize_btreemap_u64_keys, read_json_from_path, write_json_to_path};
 use super::world::{WorldRuntimeBackpressureStats, WorldRuntimeMemoryLimits};
 use super::world_event::WorldEvent;
 
@@ -87,6 +87,7 @@ pub struct Snapshot {
     pub module_tick_schedule: BTreeMap<String, WorldTime>,
     pub capabilities: BTreeMap<String, CapabilityGrant>,
     pub policies: PolicySet,
+    #[serde(deserialize_with = "deserialize_btreemap_u64_keys")]
     pub proposals: BTreeMap<ProposalId, Proposal>,
     pub scheduler_cursor: Option<String>,
     #[serde(default)]
@@ -111,7 +112,7 @@ pub struct Snapshot {
     pub governance_execution_policy: GovernanceExecutionPolicy,
     #[serde(default)]
     pub governance_emergency_brake_until_tick: Option<WorldTime>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_btreemap_u64_keys")]
     pub governance_identity_penalties: BTreeMap<u64, GovernanceIdentityPenaltyRecord>,
     #[serde(default = "default_next_governance_identity_penalty_id")]
     pub next_governance_identity_penalty_id: u64,

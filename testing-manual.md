@@ -251,7 +251,8 @@ cargo run -q -p agent_world --bin world_pure_api_client -- --addr 127.0.0.1:5023
 ./scripts/world-pure-api-parity-smoke.sh --tier full --bundle-dir output/release/game-launcher-local --no-llm
 ```
   - 结果说明：
-    当前脚本能验证 `player_gameplay`、基础推进、`reconnect-sync --with-snapshot` 的恢复快照，不等同于 `parity_verified` 结论；后者仍需结合 `doc/testing/evidence/pure-api-parity-validation-2026-03-19.md` 的 parity matrix，并证明纯 API 可到达首个持续能力里程碑。
+    当前脚本已覆盖 `player_gameplay`、正式 `gameplay_action` 推进、`reconnect-sync --with-snapshot` 恢复，以及 `FirstSessionLoop -> PostOnboarding -> choose_midloop_path` 的 required/full 收口路径。
+    `parity_verified` 正式判定继续以 `doc/testing/evidence/pure-api-parity-validation-2026-03-19.md` 为准；2026-03-19 最新结论已升级为 `parity_verified`。
 - 快速入口：
 ```bash
 ./scripts/run-producer-playtest.sh --no-llm

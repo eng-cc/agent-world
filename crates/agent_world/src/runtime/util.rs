@@ -1,12 +1,30 @@
 //! Utility functions for the runtime module.
 
-use serde::de::DeserializeOwned;
-use serde::Serialize;
+use serde::de::{DeserializeOwned, Deserializer, Error as DeError};
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
 
 use super::error::WorldError;
+
+pub fn deserialize_btreemap_u64_keys<'de, D, V>(
+    deserializer: D,
+) -> Result<BTreeMap<u64, V>, D::Error>
+where
+    D: Deserializer<'de>,
+    V: Deserialize<'de>,
+{
+    let raw = BTreeMap::<String, V>::deserialize(deserializer)?;
+    raw.into_iter()
+        .map(|(key, value)| {
+            key.parse::<u64>()
+                .map(|parsed| (parsed, value))
+                .map_err(|err| D::Error::custom(format!("invalid numeric map key `{key}`: {err}")))
+        })
+        .collect()
+}
 
 /// Compute SHA256 hash of a serializable value.
 pub fn hash_json<T: Serialize>(value: &T) -> Result<String, WorldError> {

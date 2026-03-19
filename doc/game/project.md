@@ -47,7 +47,8 @@
 ## 状态
 - 更新日期: 2026-03-19
 - 当前状态: in_progress
-- 下一任务: `TASK-GAMEPLAY-API-004`（UI/API parity matrix 与 pure API required/full 验收）
+- 下一任务: `待新的 gameplay 闭环需求`
+- 最新完成: `TASK-GAMEPLAY-API-004`（pure API required/full 验收收口，结论升级为 `parity_verified`）。
 - 最新完成: `TASK-GAMEPLAY-API-003`（`world_pure_api_client` 纯 API 正式玩家动作面交付）。
 - 最新完成: `TASK-GAMEPLAY-API-002`（live 协议 `WorldSnapshot.player_gameplay` canonical 玩家语义下沉）。
 - 最新完成: `TASK-GAME-023`（纯 API 客户端等价专题 PRD / design / project 与根入口挂载）。
@@ -88,6 +89,7 @@
 - ROUND-027 进展: `runtime_engineer` / `agent_engineer` / `viewer_engineer` 已完成 `TASK-GAMEPLAY-API-003` 首个实现切片：新增 `crates/agent_world/src/bin/world_pure_api_client.rs` 作为参考纯 API 客户端，直接复用 live TCP 协议与 Ed25519 玩家签名链路，支持 `snapshot / step / play / pause / agent_chat / prompt_control / reconnect_sync / rotate_session / revoke_session`，并在 fresh no-LLM live 会话上跑通 `snapshot / step / reconnect_sync`；下一步转入 `TASK-GAMEPLAY-API-004`，补 parity matrix 与 required/full 纯 API 长玩验收。
 - ROUND-028 进展: `qa_engineer` 已新增 `scripts/world-pure-api-parity-smoke.sh`，并完成 source required、fresh bundle required 与 bundle full 的纯 API 回归，证据位于 `doc/testing/evidence/pure-api-parity-validation-2026-03-19.md` 与 `doc/playability_test_result/card_2026_03_19_13_25_04.md`；初始结论是 pure API 已达到 `playable`，但仍未到 `parity_verified`。
 - ROUND-029 进展: `runtime_engineer` / `viewer_engineer` 已补齐 `TASK-GAMEPLAY-API-004` 的两个收口切片：`world_pure_api_client reconnect-sync --with-snapshot` 现在会直接恢复 `player_gameplay`，Viewer Mission HUD / PostOnboarding 主卡也已优先消费 canonical `snapshot.player_gameplay`；当前剩余阻断只剩 pure API no-LLM required/full 仍未证明能到达首个持续能力里程碑，因此 `TASK-GAMEPLAY-API-004` 继续保持 in_progress。
+- ROUND-030 进展: `runtime_engineer` 已修复 pure API fresh no-LLM 路径中 `runtime_snapshot` 数值键 map 的反序列化阻断，`qa_engineer` 随后通过 `./scripts/world-pure-api-parity-smoke.sh --tier required --no-llm --viewer-port 4297 --web-bind 127.0.0.1:5161 --live-bind 127.0.0.1:5163 --chain-status-bind 127.0.0.1:5249` 与 `./scripts/world-pure-api-parity-smoke.sh --tier full --no-llm --viewer-port 4299 --web-bind 127.0.0.1:5171 --live-bind 127.0.0.1:5173 --chain-status-bind 127.0.0.1:5251` 完成 source required/full 收口复验；pure API 现已能以正式 `gameplay_action` 路径到达 `post_onboarding.choose_midloop_path`，`TASK-GAMEPLAY-API-004` 已完成，专题结论升级为 `parity_verified`。
 - 说明: 本文档仅维护 game 设计执行状态；过程记录在 `doc/devlog/2026-03-05.md`、`doc/devlog/2026-03-06.md`、`doc/devlog/2026-03-07.md`、`doc/devlog/2026-03-15.md` 与 `doc/devlog/2026-03-18.md`。
   - 最新过程记录补充见 `doc/devlog/2026-03-19.md`。
 
