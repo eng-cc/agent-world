@@ -1,6 +1,6 @@
 # game PRD Project
 
-审计轮次: 6
+审计轮次: 7
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] TASK-GAME-001 (PRD-GAME-001) [test_tier_required]: 完成 game PRD 改写，建立玩法设计总入口。
@@ -31,6 +31,7 @@
 - [x] TASK-GAME-020 (PRD-GAME-001/002) [test_tier_required]: 冻结前期工业引导闭环（首个制成品/工厂），并拆出 runtime / viewer / QA 落地任务与验收指标。
 - [x] TASK-GAME-021 (PRD-GAME-007) [test_tier_required]: 新增 `PostOnboarding` 阶段目标链专题 PRD / design / project，并完成 `game` 根 PRD、顶层设计主文档、索引与 devlog 挂载。
 - [x] TASK-GAME-022 (PRD-GAME-007) [test_tier_required]: 为 `#46 PostOnboarding` 补齐无 UI live-protocol smoke、测试手册入口与协议证据回写，明确 headed Web/UI 与 no-UI 验证边界。
+- [x] TASK-GAME-023 (PRD-GAME-008) [test_tier_required]: 新增“纯 API 客户端等价”专题 PRD / design / project，并完成 `game` 根 PRD、顶层设计主文档、索引与 devlog 挂载。
 
 ## 依赖
 - 模块设计总览：`doc/game/design.md`
@@ -46,7 +47,8 @@
 ## 状态
 - 更新日期: 2026-03-19
 - 当前状态: in_progress
-- 下一任务: 无（当前 `game` 模块无已拆未完成任务，等待新的 gameplay 需求进入）
+- 下一任务: `TASK-GAMEPLAY-API-002`（协议级 canonical 玩家语义对齐）
+- 最新完成: `TASK-GAME-023`（纯 API 客户端等价专题 PRD / design / project 与根入口挂载）。
 - 最新完成: `TASK-GAME-022`（`#46 PostOnboarding` 无 UI live-protocol smoke、证据与手册入口已补齐）。
 - 最新完成: `TASK-GAME-021`（`PostOnboarding` 阶段目标链 PRD / design / project 与根入口挂载）。
 - 最新完成: `TASK-GAME-020`（前期工业引导闭环的 runtime / viewer / QA 落地与 required-tier 证据链）。
@@ -79,6 +81,7 @@
 - ROUND-022 进展: `viewer_engineer` 已完成 `TASK-GAMEPLAY-POD-002/003` 的首个实现切片：Viewer 在 `4/4` 后切入 `PostOnboarding` 阶段卡，基于工业事件与控制反馈输出默认目标、阻塞解释、下一步建议与分支解锁；当前只剩 `qa_engineer` 的 `TASK-GAMEPLAY-POD-004` Web / playability 证据待补。
 - ROUND-023 进展: `qa_engineer` 已通过 `scripts/viewer-post-onboarding-qa.sh --bundle-dir output/release/game-launcher-local --no-llm` 在 fresh bundle Web 会话中完成 `#46` 验证，证据包位于 `output/playwright/playability/post-onboarding-20260319-094056/`，正式卡片为 `doc/playability_test_result/card_2026_03_19_09_40_56.md`；人工复核确认 `4/4` 后 Mission HUD 切换到 `PostOnboarding`、首局总结显示进入下一阶段，`TASK-GAMEPLAY-POD-004` 已完成。
 - ROUND-024 进展: `qa_engineer` 已新增 `scripts/viewer-post-onboarding-headless-smoke.sh`，并以 `./scripts/viewer-post-onboarding-headless-smoke.sh --bundle-dir output/release/game-launcher-local --no-llm --viewer-port 4273 --web-bind 127.0.0.1:5111 --live-bind 127.0.0.1:5123 --chain-status-bind 127.0.0.1:5231` 在 fresh bundle 无 UI 路径完成 live-protocol smoke；证据包位于 `output/playwright/playability/post-onboarding-headless-20260319-101444/`，补充确认 `#46` 的同会话控制推进、快照时间推进与 `RuntimeEvent` feed 不依赖浏览器 UI，但屏幕语义仍以 ROUND-023 的 headed Web 证据为准。
+- ROUND-025 进展: `producer_system_designer` 已新增 `doc/game/gameplay/gameplay-pure-api-client-parity-2026-03-19.{prd,design,project}.md`，将“纯 API 客户端在信息粒度、动作能力和持续游玩上与 UI 等价”正式挂入 `game` 根 PRD、`gameplay-top-level-design` 主文档、索引与 devlog；下一步转入 `TASK-GAMEPLAY-API-002`，由 `viewer_engineer / runtime_engineer` 对齐协议级 canonical 玩家语义。
 - 说明: 本文档仅维护 game 设计执行状态；过程记录在 `doc/devlog/2026-03-05.md`、`doc/devlog/2026-03-06.md`、`doc/devlog/2026-03-07.md`、`doc/devlog/2026-03-15.md` 与 `doc/devlog/2026-03-18.md`。
   - 最新过程记录补充见 `doc/devlog/2026-03-19.md`。
 

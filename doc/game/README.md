@@ -1,6 +1,6 @@
 # game 文档索引
 
-审计轮次: 6
+审计轮次: 7
 
 ## 入口
 - PRD: `doc/game/prd.md`
@@ -18,6 +18,7 @@
 
 ## 近期专题
 - `doc/game/gameplay/gameplay-top-level-design.prd.md`
+- `doc/game/gameplay/gameplay-pure-api-client-parity-2026-03-19.prd.md`
 - `doc/game/gameplay/gameplay-post-onboarding-stage-2026-03-18.prd.md`
 - `doc/game/gameplay/gameplay-micro-loop-feedback-visibility-2026-03-05.prd.md`
 - `doc/game/gameplay/gameplay-distributed-consensus-governance-longrun-2026-03-06.prd.md`
