@@ -13,7 +13,31 @@ use super::egui_right_panel_player_micro_loop::{
     build_player_micro_loop_snapshot, format_due_timer_line,
 };
 use crate::web_test_api::WebTestApiControlFeedbackSnapshot;
-use agent_world::simulator::{WorldEvent, WorldEventKind};
+use agent_world::simulator::{
+    PlayerGameplayGoalKind, PlayerGameplaySnapshot, PlayerGameplayStageId,
+    PlayerGameplayStageStatus, WorldEvent, WorldEventKind,
+};
+
+fn sample_post_onboarding_viewer_state(gameplay: PlayerGameplaySnapshot) -> crate::ViewerState {
+    let mut state = super::sample_viewer_state(crate::ConnectionStatus::Connected, Vec::new());
+    let snapshot = agent_world::simulator::WorldSnapshot {
+        version: agent_world::simulator::SNAPSHOT_VERSION,
+        chunk_generation_schema_version:
+            agent_world::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
+        time: 0,
+        config: agent_world::simulator::WorldConfig::default(),
+        model: agent_world::simulator::WorldModel::default(),
+        runtime_snapshot: None,
+        player_gameplay: Some(gameplay),
+        chunk_runtime: agent_world::simulator::ChunkRuntimeConfig::default(),
+        next_event_id: 1,
+        next_action_id: 1,
+        pending_actions: Vec::new(),
+        journal_len: 0,
+    };
+    state.snapshot = Some(snapshot);
+    state
+}
 
 #[test]
 fn build_player_mission_loop_snapshot_open_panel_requires_open_action() {
@@ -335,4 +359,61 @@ fn build_player_post_onboarding_snapshot_unlocks_branches_after_first_output() {
         .expect("branch hint")
         .contains("Production Expansion"));
     assert_eq!(snapshot.progress_percent, 100);
+}
+
+#[test]
+fn build_player_post_onboarding_snapshot_prefers_canonical_player_gameplay_snapshot() {
+    let state = sample_post_onboarding_viewer_state(PlayerGameplaySnapshot {
+        stage_id: PlayerGameplayStageId::PostOnboarding,
+        stage_status: PlayerGameplayStageStatus::BranchReady,
+        goal_id: "post_onboarding.choose_midloop_path".to_string(),
+        goal_kind: PlayerGameplayGoalKind::ChooseMidLoopPath,
+        goal_title: "Choose your mid-loop path".to_string(),
+        objective: "canonical objective".to_string(),
+        progress_detail: "canonical progress".to_string(),
+        progress_percent: 100,
+        blocker_kind: None,
+        blocker_detail: None,
+        next_step_hint: "canonical next step".to_string(),
+        branch_hint: Some("Branches unlocked: production expansion".to_string()),
+        available_actions: Vec::new(),
+        recent_feedback: None,
+    });
+    let snapshot =
+        build_player_post_onboarding_snapshot(&state, None, crate::i18n::UiLocale::EnUs);
+
+    assert_eq!(snapshot.status, PlayerPostOnboardingStatus::BranchReady);
+    assert_eq!(snapshot.title, "Next Stage: Choose Your Mid-loop Path");
+    assert_eq!(snapshot.objective, "canonical objective");
+    assert_eq!(snapshot.progress_detail, "canonical progress");
+    assert_eq!(snapshot.next_step, "canonical next step");
+}
+
+#[test]
+fn build_player_post_onboarding_snapshot_uses_canonical_blocker_fields() {
+    let state = sample_post_onboarding_viewer_state(PlayerGameplaySnapshot {
+        stage_id: PlayerGameplayStageId::PostOnboarding,
+        stage_status: PlayerGameplayStageStatus::Blocked,
+        goal_id: "post_onboarding.recover_capability".to_string(),
+        goal_kind: PlayerGameplayGoalKind::RecoverCapability,
+        goal_title: "Recover sustainable capability".to_string(),
+        objective: "canonical blocked objective".to_string(),
+        progress_detail: "canonical blocked progress".to_string(),
+        progress_percent: 68,
+        blocker_kind: Some("material_shortage".to_string()),
+        blocker_detail: Some("material_shortage:iron_ingot".to_string()),
+        next_step_hint: "canonical blocker next step".to_string(),
+        branch_hint: None,
+        available_actions: Vec::new(),
+        recent_feedback: None,
+    });
+    let snapshot =
+        build_player_post_onboarding_snapshot(&state, None, crate::i18n::UiLocale::EnUs);
+
+    assert_eq!(snapshot.status, PlayerPostOnboardingStatus::Blocked);
+    assert!(snapshot
+        .blocker_detail
+        .expect("blocked detail")
+        .contains("missing materials"));
+    assert!(snapshot.next_step.contains("replenish upstream materials"));
 }

@@ -424,6 +424,7 @@ pub(super) fn rebuild_scene_module_count_test_system(
         pending_actions: Vec::new(),
         journal_len: 0,
         runtime_snapshot: None,
+            player_gameplay: None,
     };
 
     rebuild_scene_from_snapshot(&mut commands, &config, &assets, &mut scene, &snapshot);
@@ -461,6 +462,7 @@ pub(super) fn rebuild_scene_default_module_count_test_system(
         pending_actions: Vec::new(),
         journal_len: 0,
         runtime_snapshot: None,
+            player_gameplay: None,
     };
 
     rebuild_scene_from_snapshot(&mut commands, &config, &assets, &mut scene, &snapshot);

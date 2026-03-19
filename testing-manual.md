@@ -237,9 +237,21 @@ env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-u
 cargo run -q -p agent_world --bin world_pure_api_client -- --addr 127.0.0.1:5023 snapshot --player-gameplay-only
 cargo run -q -p agent_world --bin world_pure_api_client -- --addr 127.0.0.1:5023 step --count 8 --events
 cargo run -q -p agent_world --bin world_pure_api_client -- keygen
-cargo run -q -p agent_world --bin world_pure_api_client -- --addr 127.0.0.1:5023 reconnect-sync --player-id player-1
+cargo run -q -p agent_world --bin world_pure_api_client -- --addr 127.0.0.1:5023 reconnect-sync --player-id player-1 --with-snapshot
 ```
   - 若要覆盖 `agent_chat` / `prompt_control`，需先 `keygen`，再携带 `--player-id` 与 `--private-key-hex` 走签名请求；无 LLM 模式下这两类请求仍会按当前产品约束返回 `llm_mode_required`。
+- 若需要执行 pure API required/full 回归，优先运行 `./scripts/world-pure-api-parity-smoke.sh`。
+  - required-tier 推荐 bundle 口径：
+```bash
+./scripts/build-game-launcher-bundle.sh --out-dir output/release/game-launcher-local
+./scripts/world-pure-api-parity-smoke.sh --tier required --bundle-dir output/release/game-launcher-local --no-llm
+```
+  - full-tier 抽样：
+```bash
+./scripts/world-pure-api-parity-smoke.sh --tier full --bundle-dir output/release/game-launcher-local --no-llm
+```
+  - 结果说明：
+    当前脚本能验证 `player_gameplay`、基础推进、`reconnect-sync --with-snapshot` 的恢复快照，不等同于 `parity_verified` 结论；后者仍需结合 `doc/testing/evidence/pure-api-parity-validation-2026-03-19.md` 的 parity matrix，并证明纯 API 可到达首个持续能力里程碑。
 - 快速入口：
 ```bash
 ./scripts/run-producer-playtest.sh --no-llm
@@ -251,6 +263,7 @@ cargo run -q -p agent_world --bin world_pure_api_client -- --addr 127.0.0.1:5023
 ./scripts/viewer-post-onboarding-headless-smoke.sh --bundle-dir output/release/game-launcher-local --no-llm
 ./scripts/viewer-software-safe-chat-regression.sh --bundle-dir output/release/game-launcher-local
 cargo run -q -p agent_world --bin world_pure_api_client -- --addr 127.0.0.1:5023 snapshot --player-gameplay-only
+./scripts/world-pure-api-parity-smoke.sh --tier required --bundle-dir output/release/game-launcher-local --no-llm
 ./scripts/viewer-release-qa-loop.sh
 ./scripts/viewer-release-full-coverage.sh --quick
 ./scripts/viewer-release-art-baseline.sh

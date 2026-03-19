@@ -120,6 +120,7 @@ mod tests {
             pending_actions: Vec::new(),
             journal_len: 5,
             runtime_snapshot: None,
+            player_gameplay: None,
         };
 
         let events = vec![

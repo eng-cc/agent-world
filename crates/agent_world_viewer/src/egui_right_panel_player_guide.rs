@@ -1,6 +1,9 @@
 use crate::web_test_api::WebTestApiControlFeedbackSnapshot;
 use crate::{RightPanelLayoutState, ViewerSelection, ViewerState};
-use agent_world::simulator::WorldEventKind;
+use agent_world::simulator::{
+    PlayerGameplayGoalKind, PlayerGameplaySnapshot, PlayerGameplayStageId,
+    PlayerGameplayStageStatus, WorldEventKind,
+};
 use bevy_egui::egui;
 use std::collections::HashMap;
 
@@ -664,6 +667,23 @@ pub(super) fn build_player_post_onboarding_snapshot(
     control_feedback: Option<&WebTestApiControlFeedbackSnapshot>,
     locale: crate::i18n::UiLocale,
 ) -> PlayerPostOnboardingSnapshot {
+    if let Some(gameplay) = state
+        .snapshot
+        .as_ref()
+        .and_then(|snapshot| snapshot.player_gameplay.as_ref())
+        .filter(|gameplay| gameplay.stage_id == PlayerGameplayStageId::PostOnboarding)
+    {
+        return build_player_post_onboarding_snapshot_from_gameplay(gameplay, locale);
+    }
+
+    build_player_post_onboarding_snapshot_from_events(state, control_feedback, locale)
+}
+
+fn build_player_post_onboarding_snapshot_from_events(
+    state: &ViewerState,
+    control_feedback: Option<&WebTestApiControlFeedbackSnapshot>,
+    locale: crate::i18n::UiLocale,
+) -> PlayerPostOnboardingSnapshot {
     let mut has_material_flow = false;
     let mut has_factory_ready = false;
     let mut has_recipe_running = false;
@@ -961,6 +981,76 @@ pub(super) fn build_player_post_onboarding_snapshot(
     }
 }
 
+fn build_player_post_onboarding_snapshot_from_gameplay(
+    gameplay: &PlayerGameplaySnapshot,
+    locale: crate::i18n::UiLocale,
+) -> PlayerPostOnboardingSnapshot {
+    let status = match gameplay.stage_status {
+        PlayerGameplayStageStatus::Active => PlayerPostOnboardingStatus::Active,
+        PlayerGameplayStageStatus::Blocked => PlayerPostOnboardingStatus::Blocked,
+        PlayerGameplayStageStatus::BranchReady => PlayerPostOnboardingStatus::BranchReady,
+    };
+    let blocker_reason = gameplay
+        .blocker_kind
+        .as_deref()
+        .or(gameplay.blocker_detail.as_deref())
+        .unwrap_or("unknown");
+    let blocker_detail = matches!(status, PlayerPostOnboardingStatus::Blocked).then(|| {
+        post_onboarding_blocker_detail(
+            blocker_reason,
+            gameplay.blocker_detail.as_deref().unwrap_or_default(),
+            locale,
+        )
+    });
+    let next_step = if matches!(status, PlayerPostOnboardingStatus::Blocked) {
+        post_onboarding_blocker_next_step(
+            blocker_reason,
+            gameplay.blocker_detail.as_deref().unwrap_or_default(),
+            locale,
+        )
+    } else if locale.is_zh() {
+        localized_post_onboarding_next_step_for_goal(gameplay.goal_kind, locale)
+    } else {
+        gameplay.next_step_hint.clone()
+    };
+    let branch_hint = if locale.is_zh() {
+        gameplay
+            .branch_hint
+            .as_ref()
+            .map(|_| "已解锁分支：生产扩张 / 治理影响 / 冲突安全".to_string())
+    } else {
+        gameplay.branch_hint.clone()
+    };
+
+    PlayerPostOnboardingSnapshot {
+        status,
+        title: localized_post_onboarding_title_for_goal(gameplay.goal_kind, status, locale),
+        objective: if locale.is_zh() {
+            localized_post_onboarding_objective_for_goal(gameplay.goal_kind, status, locale)
+        } else {
+            gameplay.objective.clone()
+        },
+        progress_detail: if locale.is_zh() {
+            localized_post_onboarding_progress_detail_for_goal(
+                gameplay.goal_kind,
+                status,
+                locale,
+            )
+        } else {
+            gameplay.progress_detail.clone()
+        },
+        progress_percent: gameplay.progress_percent,
+        blocker_detail,
+        next_step,
+        branch_hint,
+        action_label: if locale.is_zh() {
+            "进入指挥并推进 1 步"
+        } else {
+            "Open command and advance 1 step"
+        },
+    }
+}
+
 fn player_goal_action_sentence(
     step: PlayerGuideStep,
     locale: crate::i18n::UiLocale,
@@ -990,6 +1080,207 @@ fn post_onboarding_summary_value<'a>(summary: &'a str, key: &str) -> Option<&'a 
         None
     } else {
         Some(value)
+    }
+}
+
+fn localized_post_onboarding_title_for_goal(
+    goal_kind: PlayerGameplayGoalKind,
+    status: PlayerPostOnboardingStatus,
+    locale: crate::i18n::UiLocale,
+) -> &'static str {
+    match (goal_kind, status, locale.is_zh()) {
+        (PlayerGameplayGoalKind::ChooseMidLoopPath, _, true) => "下一阶段：选择中循环方向",
+        (PlayerGameplayGoalKind::ChooseMidLoopPath, _, false) => {
+            "Next Stage: Choose Your Mid-loop Path"
+        }
+        (PlayerGameplayGoalKind::RecoverCapability, _, true) => "PostOnboarding：恢复持续能力",
+        (PlayerGameplayGoalKind::RecoverCapability, _, false) => {
+            "PostOnboarding: Recover Sustainable Capability"
+        }
+        (PlayerGameplayGoalKind::StabilizeFirstLine, _, true) => "PostOnboarding：稳定第一条产线",
+        (PlayerGameplayGoalKind::StabilizeFirstLine, _, false) => {
+            "PostOnboarding: Stabilize Your First Line"
+        }
+        (PlayerGameplayGoalKind::StartFactoryRun, _, true) => "PostOnboarding：启动第一座工厂",
+        (PlayerGameplayGoalKind::StartFactoryRun, _, false) => {
+            "PostOnboarding: Start Your First Factory Run"
+        }
+        (PlayerGameplayGoalKind::TurnMaterialFlowIntoOutput, _, true) => {
+            "PostOnboarding：把资源流变成产出"
+        }
+        (PlayerGameplayGoalKind::TurnMaterialFlowIntoOutput, _, false) => {
+            "PostOnboarding: Turn Material Flow Into Output"
+        }
+        (PlayerGameplayGoalKind::EstablishFirstCapability, _, true) => {
+            "PostOnboarding：建立第一项持续能力"
+        }
+        (PlayerGameplayGoalKind::EstablishFirstCapability, _, false) => {
+            "PostOnboarding: Establish Your First Sustainable Capability"
+        }
+        (_, PlayerPostOnboardingStatus::BranchReady, true) => "下一阶段：选择中循环方向",
+        (_, PlayerPostOnboardingStatus::BranchReady, false) => {
+            "Next Stage: Choose Your Mid-loop Path"
+        }
+        (_, PlayerPostOnboardingStatus::Blocked, true) => "PostOnboarding：恢复持续能力",
+        (_, PlayerPostOnboardingStatus::Blocked, false) => {
+            "PostOnboarding: Recover Sustainable Capability"
+        }
+        (_, _, true) => "PostOnboarding：建立第一项持续能力",
+        (_, _, false) => "PostOnboarding: Establish Your First Sustainable Capability",
+    }
+}
+
+fn localized_post_onboarding_objective_for_goal(
+    goal_kind: PlayerGameplayGoalKind,
+    status: PlayerPostOnboardingStatus,
+    locale: crate::i18n::UiLocale,
+) -> String {
+    match (goal_kind, status, locale.is_zh()) {
+        (PlayerGameplayGoalKind::ChooseMidLoopPath, _, true) => {
+            "第一项持续工业能力已建立，开始把它扩张成稳定组织能力。".to_string()
+        }
+        (PlayerGameplayGoalKind::ChooseMidLoopPath, _, false) => {
+            "Your first sustainable industrial capability is online. Turn it into stable organizational momentum.".to_string()
+        }
+        (PlayerGameplayGoalKind::RecoverCapability, _, true) => {
+            "优先恢复被阻塞的产线或能力链，而不是重复单次动作。".to_string()
+        }
+        (PlayerGameplayGoalKind::RecoverCapability, _, false) => {
+            "Recover the blocked line or capability chain instead of repeating one-off actions."
+                .to_string()
+        }
+        (PlayerGameplayGoalKind::StabilizeFirstLine, _, true) => {
+            "让第一条生产线连续推进，直到出现稳定产出或明确阻塞原因。".to_string()
+        }
+        (PlayerGameplayGoalKind::StabilizeFirstLine, _, false) => {
+            "Keep your first production line moving until it produces stable output or exposes a clear blocker."
+                .to_string()
+        }
+        (PlayerGameplayGoalKind::StartFactoryRun, _, true) => {
+            "把已建成的工厂推进成真正运转的持续能力。".to_string()
+        }
+        (PlayerGameplayGoalKind::StartFactoryRun, _, false) => {
+            "Turn the factory you built into a running, repeatable capability.".to_string()
+        }
+        (PlayerGameplayGoalKind::TurnMaterialFlowIntoOutput, _, true) => {
+            "不要停留在一次性采集，继续把资源推进到可见产出。".to_string()
+        }
+        (PlayerGameplayGoalKind::TurnMaterialFlowIntoOutput, _, false) => {
+            "Do not stop at one-off harvesting; push the resource flow into visible output."
+                .to_string()
+        }
+        (_, _, true) => {
+            "首局行动闭环已完成，下一步不是重复教程，而是做出第一项持续工业成果。"
+                .to_string()
+        }
+        (_, _, false) => {
+            "The first-session action loop is complete. The next step is not to repeat the tutorial, but to create your first sustainable industrial result."
+                .to_string()
+        }
+    }
+}
+
+fn localized_post_onboarding_progress_detail_for_goal(
+    goal_kind: PlayerGameplayGoalKind,
+    status: PlayerPostOnboardingStatus,
+    locale: crate::i18n::UiLocale,
+) -> String {
+    match (goal_kind, status, locale.is_zh()) {
+        (PlayerGameplayGoalKind::ChooseMidLoopPath, _, true) => {
+            "阶段进展：已完成首个可见产出/稳定产线里程碑。".to_string()
+        }
+        (PlayerGameplayGoalKind::ChooseMidLoopPath, _, false) => {
+            "Stage progress: your first visible output or stable line milestone is complete."
+                .to_string()
+        }
+        (PlayerGameplayGoalKind::RecoverCapability, _, true) => {
+            "阶段进展：你已经进入经营阶段，但当前主线被阻塞。".to_string()
+        }
+        (PlayerGameplayGoalKind::RecoverCapability, _, false) => {
+            "Stage progress: you are in the management phase, but the primary line is blocked."
+                .to_string()
+        }
+        (PlayerGameplayGoalKind::StabilizeFirstLine, _, true) => {
+            "阶段进展：首条产线已启动，接下来重点看输出与停机原因。".to_string()
+        }
+        (PlayerGameplayGoalKind::StabilizeFirstLine, _, false) => {
+            "Stage progress: the first line is running; now watch for output and stoppage reasons."
+                .to_string()
+        }
+        (PlayerGameplayGoalKind::StartFactoryRun, _, true) => {
+            "阶段进展：工厂已就绪，还差一次可见的生产推进。".to_string()
+        }
+        (PlayerGameplayGoalKind::StartFactoryRun, _, false) => {
+            "Stage progress: the factory is ready; one visible production push remains."
+                .to_string()
+        }
+        (PlayerGameplayGoalKind::TurnMaterialFlowIntoOutput, _, true) => {
+            "阶段进展：基础资源已经动起来，接下来要形成第一项持续能力。".to_string()
+        }
+        (PlayerGameplayGoalKind::TurnMaterialFlowIntoOutput, _, false) => {
+            "Stage progress: base resources are moving; now convert them into the first sustainable capability."
+                .to_string()
+        }
+        (_, PlayerPostOnboardingStatus::Blocked, true) => {
+            "阶段进展：你已经进入经营阶段，但当前主线被阻塞。".to_string()
+        }
+        (_, PlayerPostOnboardingStatus::Blocked, false) => {
+            "Stage progress: you are in the management phase, but the primary line is blocked."
+                .to_string()
+        }
+        (_, _, true) => "阶段进展：你已从“会操作”进入“会经营”的起点。".to_string(),
+        (_, _, false) => {
+            "Stage progress: you have moved from 'can operate' into the start of 'can manage'."
+                .to_string()
+        }
+    }
+}
+
+fn localized_post_onboarding_next_step_for_goal(
+    goal_kind: PlayerGameplayGoalKind,
+    locale: crate::i18n::UiLocale,
+) -> String {
+    match (goal_kind, locale.is_zh()) {
+        (PlayerGameplayGoalKind::ChooseMidLoopPath, true) => {
+            "下一步：保持 Command 视图，继续扩产、推进治理提案，或为关键节点补防护。"
+                .to_string()
+        }
+        (PlayerGameplayGoalKind::ChooseMidLoopPath, false) => {
+            "Next: stay in Command view and either expand production, push governance, or secure a critical node."
+                .to_string()
+        }
+        (PlayerGameplayGoalKind::StabilizeFirstLine, true) => {
+            "下一步：保持 Command 视图，再推进 1~2 次，并观察是否出现产出、恢复或阻塞反馈。"
+                .to_string()
+        }
+        (PlayerGameplayGoalKind::StabilizeFirstLine, false) => {
+            "Next: stay in Command view, advance 1-2 more times, and watch for output, recovery, or blocker feedback."
+                .to_string()
+        }
+        (PlayerGameplayGoalKind::StartFactoryRun, true) => {
+            "下一步：切到 Command 视图并继续推进，直到工厂启动配方、产出结果或返回阻塞原因。"
+                .to_string()
+        }
+        (PlayerGameplayGoalKind::StartFactoryRun, false) => {
+            "Next: switch to Command view and keep advancing until the factory starts a recipe, yields output, or returns a blocker."
+                .to_string()
+        }
+        (PlayerGameplayGoalKind::TurnMaterialFlowIntoOutput, true) => {
+            "下一步：继续在 Command 视图推进采集、精炼、建厂或首个配方，直到出现稳定产出。"
+                .to_string()
+        }
+        (PlayerGameplayGoalKind::TurnMaterialFlowIntoOutput, false) => {
+            "Next: keep using Command view to harvest, refine, build, or start the first recipe until stable output appears."
+                .to_string()
+        }
+        (_, true) => {
+            "下一步：保持 Command 视图，再推进 2~3 次，优先追首个工业产出、首条稳定产线或一次明确的恢复反馈。"
+                .to_string()
+        }
+        (_, false) => {
+            "Next: stay in Command view and advance 2-3 more times, prioritizing the first industrial output, the first stable line, or one clear recovery signal."
+                .to_string()
+        }
     }
 }
 

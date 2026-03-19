@@ -240,10 +240,7 @@ fn run() -> Result<(), String> {
                 terminal_recovery,
                 "waiting for reconnect_sync ack/error",
             )?;
-            if with_snapshot {
-                let extra = conn.collect_for(timeout)?;
-                responses.extend(extra);
-            }
+            maybe_request_snapshot(&mut conn, with_snapshot, &mut responses, timeout)?;
             print_json(&command_output(&conn.hello_ack, &responses))?;
             Ok(())
         }

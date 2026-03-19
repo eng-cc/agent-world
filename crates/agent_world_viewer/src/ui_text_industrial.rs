@@ -424,6 +424,7 @@ mod tests {
             pending_actions: Vec::new(),
             journal_len: 4,
             runtime_snapshot: None,
+            player_gameplay: None,
         };
 
         let events = vec![
@@ -567,6 +568,7 @@ mod tests {
             pending_actions: Vec::new(),
             journal_len: 7,
             runtime_snapshot: Some(runtime_snapshot),
+            player_gameplay: None,
         };
 
         let events = vec![

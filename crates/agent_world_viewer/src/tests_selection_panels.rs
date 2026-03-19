@@ -47,6 +47,7 @@ fn update_ui_populates_asset_selection_details() {
         pending_actions: Vec::new(),
         journal_len: 0,
         runtime_snapshot: None,
+            player_gameplay: None,
     };
 
     let events = vec![WorldEvent {
@@ -130,6 +131,7 @@ fn update_ui_populates_power_plant_selection_details() {
         pending_actions: Vec::new(),
         journal_len: 0,
         runtime_snapshot: None,
+            player_gameplay: None,
     };
 
     let events = vec![WorldEvent {
@@ -201,6 +203,7 @@ fn update_ui_populates_chunk_selection_details() {
         pending_actions: Vec::new(),
         journal_len: 0,
         runtime_snapshot: None,
+            player_gameplay: None,
     };
 
     let events = vec![WorldEvent {
@@ -266,6 +269,7 @@ fn update_ui_populates_fragment_selection_details_with_owner_location() {
         pending_actions: Vec::new(),
         journal_len: 0,
         runtime_snapshot: None,
+            player_gameplay: None,
     };
 
     let state = ViewerState {
