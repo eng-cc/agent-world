@@ -41,10 +41,14 @@ const DEFAULT_CHAIN_POS_SLOT_DURATION_MS: u64 = 12_000;
 const DEFAULT_CHAIN_POS_TICKS_PER_SLOT: u64 = 10;
 const DEFAULT_CHAIN_POS_PROPOSAL_TICK_PHASE: u64 = 9;
 const DEFAULT_CHAIN_POS_MAX_PAST_SLOT_LAG: u64 = 256;
-const VIEWER_PLAYER_ID_ENV: &str = "AGENT_WORLD_VIEWER_PLAYER_ID";
-const VIEWER_AUTH_PUBLIC_KEY_ENV: &str = "AGENT_WORLD_VIEWER_AUTH_PUBLIC_KEY";
-const VIEWER_AUTH_PRIVATE_KEY_ENV: &str = "AGENT_WORLD_VIEWER_AUTH_PRIVATE_KEY";
-const VIEWER_AUTH_BOOTSTRAP_OBJECT: &str = "__AGENT_WORLD_VIEWER_AUTH_ENV";
+const VIEWER_PLAYER_ID_ENV: &str = "OASIS7_VIEWER_PLAYER_ID";
+const LEGACY_VIEWER_PLAYER_ID_ENV: &str = "AGENT_WORLD_VIEWER_PLAYER_ID";
+const VIEWER_AUTH_PUBLIC_KEY_ENV: &str = "OASIS7_VIEWER_AUTH_PUBLIC_KEY";
+const LEGACY_VIEWER_AUTH_PUBLIC_KEY_ENV: &str = "AGENT_WORLD_VIEWER_AUTH_PUBLIC_KEY";
+const VIEWER_AUTH_PRIVATE_KEY_ENV: &str = "OASIS7_VIEWER_AUTH_PRIVATE_KEY";
+const LEGACY_VIEWER_AUTH_PRIVATE_KEY_ENV: &str = "AGENT_WORLD_VIEWER_AUTH_PRIVATE_KEY";
+const VIEWER_AUTH_BOOTSTRAP_OBJECT: &str = "__OASIS7_VIEWER_AUTH_ENV";
+const LEGACY_VIEWER_AUTH_BOOTSTRAP_OBJECT: &str = "__AGENT_WORLD_VIEWER_AUTH_ENV";
 const NODE_CONFIG_FILE_NAME: &str = "config.toml";
 const NODE_TABLE_KEY: &str = "node";
 const NODE_PRIVATE_KEY_FIELD: &str = "private_key";
@@ -639,11 +643,16 @@ fn inject_viewer_auth_bootstrap_script(body: &[u8], auth: &ViewerAuthBootstrap) 
 fn build_viewer_auth_bootstrap_script(auth: &ViewerAuthBootstrap) -> String {
     let payload = serde_json::json!({
         VIEWER_PLAYER_ID_ENV: auth.player_id,
+        LEGACY_VIEWER_PLAYER_ID_ENV: auth.player_id,
         VIEWER_AUTH_PUBLIC_KEY_ENV: auth.public_key,
+        LEGACY_VIEWER_AUTH_PUBLIC_KEY_ENV: auth.public_key,
         VIEWER_AUTH_PRIVATE_KEY_ENV: auth.private_key,
+        LEGACY_VIEWER_AUTH_PRIVATE_KEY_ENV: auth.private_key,
     });
     let payload = serde_json::to_string(&payload).unwrap_or_else(|_| "{}".to_string());
-    format!("<script>window.{VIEWER_AUTH_BOOTSTRAP_OBJECT}=Object.freeze({payload});</script>")
+    format!(
+        "<script>const __oasis7ViewerAuthEnv=Object.freeze({payload});window.{VIEWER_AUTH_BOOTSTRAP_OBJECT}=__oasis7ViewerAuthEnv;window.{LEGACY_VIEWER_AUTH_BOOTSTRAP_OBJECT}=__oasis7ViewerAuthEnv;</script>"
+    )
 }
 
 fn resolve_viewer_auth_bootstrap_from_path(path: &Path) -> Result<ViewerAuthBootstrap, String> {
@@ -660,6 +669,7 @@ fn resolve_viewer_auth_bootstrap_from_path(path: &Path) -> Result<ViewerAuthBoot
     let public_key = resolve_required_toml_string(node, NODE_PUBLIC_KEY_FIELD, "node.public_key")?;
     let player_id = env::var(VIEWER_PLAYER_ID_ENV)
         .ok()
+        .or_else(|| env::var(LEGACY_VIEWER_PLAYER_ID_ENV).ok())
         .map(|raw| raw.trim().to_string())
         .filter(|value| !value.is_empty())
         .unwrap_or_else(|| DEFAULT_VIEWER_PLAYER_ID.to_string());

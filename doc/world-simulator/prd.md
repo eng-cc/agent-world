@@ -146,6 +146,7 @@
   - SC-42: world-simulator 必须提供 `OpenClaw(Local HTTP)` 首期接入路径，使安装在用户机器上的 `OpenClaw` 可通过 localhost 驱动低频 agent，并具备发现、绑定、错误提示与安全回退能力。
   - SC-43: `OpenClaw` provider 在纳入范围的 agent 场景中必须达到与内置 agent 可感知等价的用户体验；若未通过 parity 验收，不得默认启用或扩大覆盖范围。
   - SC-44: 启动器 / Viewer 的浏览器存储键、临时状态文件名、Canvas/字体等公开前端运行时 key 必须优先使用 `oasis7` 前缀；迁移期需兼容读取旧 `Agent World` / `agent_world` / `AGENT_WORLD_*` key，避免现有脚本与本地状态立即失效。
+  - SC-45: Viewer 的 auth bootstrap object、玩家鉴权 env key、右侧面板持久化路径与诊断类 viewer env key 必须优先迁移到 `oasis7` 前缀；迁移期需同时兼容旧 `Agent World` key，避免 software-safe / native / embedded launcher 三条链路出现断裂。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -348,6 +349,7 @@
   - AC-46: `agent_world_client_launcher` 在 Web/native 两端对外暴露的新前端运行时 key（如 localStorage key、UX 状态文件名、Canvas id、字体/env key）默认切到 `oasis7` 前缀，同时继续兼容读取旧 key；不得因为改名前缀变更而丢失既有浏览器配置或阻断 bundle/script 现网入口。
   - AC-47: `agent_world_client_launcher` Web 静态入口 `<title>` 必须使用 `oasis7 Launcher (Web)`；旧 `Agent World Launcher (Web)` 不得继续作为当前公开标题。
   - AC-48: `agent_world_client_launcher` 原生窗口标题与应用内主标题必须统一使用 `oasis7 Client Launcher` / `oasis7 客户端启动器`；旧 `Agent World Client Launcher` 文案不得继续作为当前公开标题。
+  - AC-49: `agent_world_viewer` 与 `world_game_launcher` 的 viewer auth/bootstrap 链路必须默认写入并优先读取 `OASIS7_VIEWER_*` 与 `__OASIS7_VIEWER_AUTH_ENV`，但继续兼容旧 `AGENT_WORLD_VIEWER_*` 与 `__AGENT_WORLD_VIEWER_AUTH_ENV`；`software_safe`、chat auth、automation、embedded launcher 注入与右侧面板持久化路径不得因改名失配。
 - Non-Goals:
   - 不在本 PRD 中详细列出每个 UI 像素级规范。
   - 不替代 world-runtime/p2p 的底层协议设计。
@@ -427,6 +429,7 @@
   - runtime llm 桥接缺口：LLM 决策动作若无 runtime 映射实现，需返回结构化拒绝并继续服务循环，禁止 panic/卡死。
   - required 基线失败下线漂移：临时下线必须限定白名单；若 ignore 数量超出已知 10 项需视为异常并阻断合入。
   - 启动器品牌 key 迁移：浏览器 localStorage、native UX 状态文件、环境变量覆盖与测试临时目录在改名前缀切换后，必须先读 `oasis7` 再回退旧 `AGENT_WORLD_*` / `agent_world*`；禁止一次性硬切导致现有配置、bundle 或 QA 脚本失效。
+  - Viewer auth/bootstrap 迁移：`software_safe.js`、viewer wasm/native 鉴权、`world_game_launcher` 注入脚本与右侧面板持久化路径在切到 `oasis7` 前缀后，必须仍能消费旧 `Agent World` 对象名、env 名和默认目录，避免旧 bundle、旧浏览器缓存和 operator 环境变量同时失效。
 - Non-Functional Requirements:
   - 性能目标:
     - NFR-1: 启动器链状态探针刷新周期 <= 1s，状态可见延迟 <= 2s。

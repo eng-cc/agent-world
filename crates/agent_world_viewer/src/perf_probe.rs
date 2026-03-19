@@ -2,9 +2,12 @@ use bevy::prelude::*;
 
 use super::render_perf_summary::{infer_perf_hotspot, RenderPerfSummary};
 
-const PERF_PROBE_ENV: &str = "AGENT_WORLD_VIEWER_PERF_PROBE";
-const PERF_PROBE_INTERVAL_ENV: &str = "AGENT_WORLD_VIEWER_PERF_PROBE_INTERVAL_SECS";
-const PERF_BUDGET_ENV: &str = "AGENT_WORLD_VIEWER_PERF_BUDGET_MS";
+const PERF_PROBE_ENV: &str = "OASIS7_VIEWER_PERF_PROBE";
+const LEGACY_PERF_PROBE_ENV: &str = "AGENT_WORLD_VIEWER_PERF_PROBE";
+const PERF_PROBE_INTERVAL_ENV: &str = "OASIS7_VIEWER_PERF_PROBE_INTERVAL_SECS";
+const LEGACY_PERF_PROBE_INTERVAL_ENV: &str = "AGENT_WORLD_VIEWER_PERF_PROBE_INTERVAL_SECS";
+const PERF_BUDGET_ENV: &str = "OASIS7_VIEWER_PERF_BUDGET_MS";
+const LEGACY_PERF_BUDGET_ENV: &str = "AGENT_WORLD_VIEWER_PERF_BUDGET_MS";
 
 #[derive(Resource, Clone, Copy, Debug, PartialEq)]
 pub(super) struct PerfProbeConfig {
@@ -33,10 +36,16 @@ pub(super) struct PerfProbeState {
 
 pub(super) fn perf_probe_config_from_env() -> PerfProbeConfig {
     config_from_values(
-        std::env::var(PERF_PROBE_ENV).ok(),
-        std::env::var(PERF_PROBE_INTERVAL_ENV).ok(),
-        std::env::var(PERF_BUDGET_ENV).ok(),
+        read_env_alias(PERF_PROBE_ENV, LEGACY_PERF_PROBE_ENV),
+        read_env_alias(PERF_PROBE_INTERVAL_ENV, LEGACY_PERF_PROBE_INTERVAL_ENV),
+        read_env_alias(PERF_BUDGET_ENV, LEGACY_PERF_BUDGET_ENV),
     )
+}
+
+fn read_env_alias(primary: &str, legacy: &str) -> Option<String> {
+    std::env::var(primary)
+        .ok()
+        .or_else(|| std::env::var(legacy).ok())
 }
 
 pub(super) fn update_perf_probe(
@@ -158,5 +167,31 @@ mod tests {
         assert!(!config.enabled);
         assert!((config.interval_secs - 1.0).abs() < f64::EPSILON);
         assert!((config.budget_ms - 33.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn read_env_alias_prefers_primary_then_legacy() {
+        unsafe {
+            std::env::remove_var(PERF_PROBE_ENV);
+            std::env::remove_var(LEGACY_PERF_PROBE_ENV);
+            std::env::set_var(LEGACY_PERF_PROBE_ENV, "true");
+        }
+        assert_eq!(
+            read_env_alias(PERF_PROBE_ENV, LEGACY_PERF_PROBE_ENV).as_deref(),
+            Some("true")
+        );
+
+        unsafe {
+            std::env::set_var(PERF_PROBE_ENV, "false");
+        }
+        assert_eq!(
+            read_env_alias(PERF_PROBE_ENV, LEGACY_PERF_PROBE_ENV).as_deref(),
+            Some("false")
+        );
+
+        unsafe {
+            std::env::remove_var(PERF_PROBE_ENV);
+            std::env::remove_var(LEGACY_PERF_PROBE_ENV);
+        }
     }
 }

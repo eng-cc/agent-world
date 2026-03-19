@@ -362,8 +362,32 @@ fn resolve_viewer_auth_signer_from_uses_default_player_and_required_keys() {
 }
 
 #[test]
-fn resolve_viewer_auth_signer_from_rejects_missing_private_key() {
+fn resolve_viewer_auth_signer_from_accepts_legacy_key_names() {
     let signer = test_signer(32);
+    let mut env = std::collections::BTreeMap::<String, String>::new();
+    env.insert(
+        LEGACY_VIEWER_AUTH_PUBLIC_KEY_ENV.to_string(),
+        signer.public_key.clone(),
+    );
+    env.insert(
+        LEGACY_VIEWER_AUTH_PRIVATE_KEY_ENV.to_string(),
+        signer.private_key.clone(),
+    );
+    env.insert(
+        LEGACY_VIEWER_PLAYER_ID_ENV.to_string(),
+        "legacy-viewer-player".to_string(),
+    );
+
+    let resolved =
+        resolve_viewer_auth_signer_from(|key| env.get(key).cloned()).expect("resolve signer");
+    assert_eq!(resolved.player_id, "legacy-viewer-player");
+    assert_eq!(resolved.public_key, signer.public_key);
+    assert_eq!(resolved.private_key, signer.private_key);
+}
+
+#[test]
+fn resolve_viewer_auth_signer_from_rejects_missing_private_key() {
+    let signer = test_signer(33);
     let mut env = std::collections::BTreeMap::<String, String>::new();
     env.insert(
         VIEWER_AUTH_PUBLIC_KEY_ENV.to_string(),
@@ -377,7 +401,7 @@ fn resolve_viewer_auth_signer_from_rejects_missing_private_key() {
 
 #[test]
 fn attach_agent_chat_auth_sets_claims_and_verifiable_proof() {
-    let signer = test_signer(33);
+    let signer = test_signer(34);
     let mut request = agent_world::viewer::AgentChatRequest {
         agent_id: "agent-a".to_string(),
         message: "hello".to_string(),
@@ -487,7 +511,7 @@ fn prompt_apply_request_has_patch_returns_false_for_noop_request() {
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn resolve_viewer_auth_signer_from_node_config_reads_node_keypair() {
-    let signer = test_signer(41);
+    let signer = test_signer(42);
     let temp_dir = make_temp_dir("viewer_auth_from_node_config");
     let config_path = temp_dir.join("config.toml");
     fs::write(

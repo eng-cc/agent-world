@@ -10,7 +10,9 @@ use super::{
     sanitize_index_html_for_embedded_server, sanitize_relative_request_path, CliOptions,
     ViewerAuthBootstrap, BUILTIN_LLM_PROVIDER_MODE, DEFAULT_CHAIN_NODE_ID,
     DEFAULT_CHAIN_STATUS_BIND, DEFAULT_LIVE_BIND, DEFAULT_OPENCLAW_AGENT_PROFILE, DEFAULT_SCENARIO,
-    DEFAULT_VIEWER_STATIC_DIR, OPENCLAW_LOCAL_HTTP_PROVIDER_MODE, VIEWER_AUTH_BOOTSTRAP_OBJECT,
+    DEFAULT_VIEWER_STATIC_DIR, LEGACY_VIEWER_AUTH_BOOTSTRAP_OBJECT,
+    LEGACY_VIEWER_AUTH_PRIVATE_KEY_ENV, LEGACY_VIEWER_AUTH_PUBLIC_KEY_ENV,
+    LEGACY_VIEWER_PLAYER_ID_ENV, OPENCLAW_LOCAL_HTTP_PROVIDER_MODE, VIEWER_AUTH_BOOTSTRAP_OBJECT,
     VIEWER_AUTH_PRIVATE_KEY_ENV, VIEWER_AUTH_PUBLIC_KEY_ENV, VIEWER_PLAYER_ID_ENV,
 };
 use agent_world::simulator::ProviderExecutionMode;
@@ -404,9 +406,13 @@ fn sanitize_index_html_for_embedded_server_injects_viewer_auth_bootstrap() {
     );
     let sanitized = String::from_utf8(sanitized).expect("utf-8");
     assert!(sanitized.contains(VIEWER_AUTH_BOOTSTRAP_OBJECT));
+    assert!(sanitized.contains(LEGACY_VIEWER_AUTH_BOOTSTRAP_OBJECT));
     assert!(sanitized.contains(VIEWER_PLAYER_ID_ENV));
+    assert!(sanitized.contains(LEGACY_VIEWER_PLAYER_ID_ENV));
     assert!(sanitized.contains(VIEWER_AUTH_PUBLIC_KEY_ENV));
+    assert!(sanitized.contains(LEGACY_VIEWER_AUTH_PUBLIC_KEY_ENV));
     assert!(sanitized.contains(VIEWER_AUTH_PRIVATE_KEY_ENV));
+    assert!(sanitized.contains(LEGACY_VIEWER_AUTH_PRIVATE_KEY_ENV));
     assert!(sanitized.contains("viewer-player"));
     assert!(sanitized.contains("pub-hex"));
     assert!(sanitized.contains("priv-hex"));
@@ -427,6 +433,7 @@ fn sanitize_index_html_for_embedded_server_injects_viewer_auth_bootstrap_into_no
     );
     let sanitized = String::from_utf8(sanitized).expect("utf-8");
     assert!(sanitized.contains(VIEWER_AUTH_BOOTSTRAP_OBJECT));
+    assert!(sanitized.contains(LEGACY_VIEWER_AUTH_BOOTSTRAP_OBJECT));
     assert!(sanitized.contains("viewer-player"));
     assert!(sanitized.contains("pub-hex"));
     assert!(sanitized.contains("priv-hex"));
@@ -442,9 +449,13 @@ fn build_viewer_auth_bootstrap_script_contains_expected_window_object() {
     let script = build_viewer_auth_bootstrap_script(&auth);
     assert!(script.contains("window."));
     assert!(script.contains(VIEWER_AUTH_BOOTSTRAP_OBJECT));
+    assert!(script.contains(LEGACY_VIEWER_AUTH_BOOTSTRAP_OBJECT));
     assert!(script.contains(VIEWER_PLAYER_ID_ENV));
+    assert!(script.contains(LEGACY_VIEWER_PLAYER_ID_ENV));
     assert!(script.contains(VIEWER_AUTH_PUBLIC_KEY_ENV));
+    assert!(script.contains(LEGACY_VIEWER_AUTH_PUBLIC_KEY_ENV));
     assert!(script.contains(VIEWER_AUTH_PRIVATE_KEY_ENV));
+    assert!(script.contains(LEGACY_VIEWER_AUTH_PRIVATE_KEY_ENV));
 }
 
 #[test]

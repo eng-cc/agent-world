@@ -5,8 +5,10 @@ use std::path::{Path, PathBuf};
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
-const MODULE_VISIBILITY_PATH_ENV: &str = "AGENT_WORLD_VIEWER_MODULE_VISIBILITY_PATH";
-const MODULE_VISIBILITY_DIR: &str = ".agent_world_viewer";
+const MODULE_VISIBILITY_PATH_ENV: &str = "OASIS7_VIEWER_MODULE_VISIBILITY_PATH";
+const LEGACY_MODULE_VISIBILITY_PATH_ENV: &str = "AGENT_WORLD_VIEWER_MODULE_VISIBILITY_PATH";
+const MODULE_VISIBILITY_DIR: &str = ".oasis7_viewer";
+const LEGACY_MODULE_VISIBILITY_DIR: &str = ".agent_world_viewer";
 const MODULE_VISIBILITY_FILE: &str = "right_panel_modules.json";
 const MODULE_VISIBILITY_VERSION: u32 = 1;
 
@@ -123,12 +125,23 @@ pub(super) fn resolve_right_panel_module_visibility_resources(
     RightPanelModuleVisibilityState,
     RightPanelModuleVisibilityPath,
 ) {
-    let path = resolve_visibility_path_from(
-        std::env::var(MODULE_VISIBILITY_PATH_ENV).ok(),
-        std::env::var("HOME").ok(),
-    );
+    let explicit_path = std::env::var(MODULE_VISIBILITY_PATH_ENV)
+        .ok()
+        .or_else(|| std::env::var(LEGACY_MODULE_VISIBILITY_PATH_ENV).ok());
+    let home = std::env::var("HOME").ok();
+    let path =
+        resolve_visibility_path_from(explicit_path.clone(), home.clone(), MODULE_VISIBILITY_DIR);
+    let legacy_path = explicit_path
+        .is_none()
+        .then(|| resolve_visibility_path_from(None, home, LEGACY_MODULE_VISIBILITY_DIR));
 
-    let state = load_right_panel_module_visibility(path.as_path()).unwrap_or(default_state);
+    let state = load_right_panel_module_visibility(path.as_path())
+        .or_else(|| {
+            legacy_path
+                .as_ref()
+                .and_then(|path| load_right_panel_module_visibility(path.as_path()))
+        })
+        .unwrap_or(default_state);
     (state, RightPanelModuleVisibilityPath { path })
 }
 
@@ -159,7 +172,11 @@ pub(super) fn persist_right_panel_module_visibility(
     *last_persisted = Some(current_state);
 }
 
-fn resolve_visibility_path_from(path_value: Option<String>, home_value: Option<String>) -> PathBuf {
+fn resolve_visibility_path_from(
+    path_value: Option<String>,
+    home_value: Option<String>,
+    dir_name: &str,
+) -> PathBuf {
     if let Some(path) = path_value
         .map(|value| value.trim().to_string())
         .filter(|value| !value.is_empty())
@@ -172,11 +189,11 @@ fn resolve_visibility_path_from(path_value: Option<String>, home_value: Option<S
         .filter(|value| !value.is_empty())
     {
         return PathBuf::from(home)
-            .join(MODULE_VISIBILITY_DIR)
+            .join(dir_name)
             .join(MODULE_VISIBILITY_FILE);
     }
 
-    PathBuf::from(MODULE_VISIBILITY_DIR).join(MODULE_VISIBILITY_FILE)
+    PathBuf::from(dir_name).join(MODULE_VISIBILITY_FILE)
 }
 
 fn load_right_panel_module_visibility(path: &Path) -> Option<RightPanelModuleVisibilityState> {
@@ -232,17 +249,37 @@ mod tests {
         let path = resolve_visibility_path_from(
             Some(" .tmp/custom-panel-state.json ".to_string()),
             Some("/Users/tester".to_string()),
+            MODULE_VISIBILITY_DIR,
         );
         assert_eq!(path, PathBuf::from(".tmp/custom-panel-state.json"));
     }
 
     #[test]
     fn resolve_visibility_path_uses_home_when_env_not_set() {
-        let path = resolve_visibility_path_from(None, Some("/Users/tester".to_string()));
+        let path = resolve_visibility_path_from(
+            None,
+            Some("/Users/tester".to_string()),
+            MODULE_VISIBILITY_DIR,
+        );
         assert_eq!(
             path,
             PathBuf::from("/Users/tester")
                 .join(MODULE_VISIBILITY_DIR)
+                .join(MODULE_VISIBILITY_FILE)
+        );
+    }
+
+    #[test]
+    fn resolve_visibility_path_can_target_legacy_dir() {
+        let path = resolve_visibility_path_from(
+            None,
+            Some("/Users/tester".to_string()),
+            LEGACY_MODULE_VISIBILITY_DIR,
+        );
+        assert_eq!(
+            path,
+            PathBuf::from("/Users/tester")
+                .join(LEGACY_MODULE_VISIBILITY_DIR)
                 .join(MODULE_VISIBILITY_FILE)
         );
     }
@@ -285,6 +322,43 @@ mod tests {
         persist_right_panel_module_visibility_to_file(&state, path.as_path())
             .expect("persist visibility state");
         let loaded = load_right_panel_module_visibility(path.as_path()).expect("load visibility");
+        assert_eq!(loaded, state);
+
+        fs::remove_dir_all(base).ok();
+    }
+
+    #[test]
+    fn load_visibility_supports_legacy_default_path() {
+        let base = unique_temp_dir("right_panel_modules_legacy");
+        let legacy_path = base
+            .join(LEGACY_MODULE_VISIBILITY_DIR)
+            .join(MODULE_VISIBILITY_FILE);
+        let state = RightPanelModuleVisibilityState {
+            show_controls: false,
+            show_overview: false,
+            show_chat: true,
+            show_overlay: true,
+            show_diagnosis: true,
+            show_event_link: false,
+            show_timeline: true,
+            show_details: true,
+        };
+        persist_right_panel_module_visibility_to_file(&state, legacy_path.as_path())
+            .expect("persist legacy visibility");
+
+        let path = resolve_visibility_path_from(
+            None,
+            Some(base.to_string_lossy().to_string()),
+            MODULE_VISIBILITY_DIR,
+        );
+        let legacy_path = resolve_visibility_path_from(
+            None,
+            Some(base.to_string_lossy().to_string()),
+            LEGACY_MODULE_VISIBILITY_DIR,
+        );
+        let loaded = load_right_panel_module_visibility(path.as_path())
+            .or_else(|| load_right_panel_module_visibility(legacy_path.as_path()))
+            .expect("load visibility");
         assert_eq!(loaded, state);
 
         fs::remove_dir_all(base).ok();
