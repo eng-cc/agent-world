@@ -244,7 +244,7 @@ fn default_pbr_plugin_for_runtime() -> bevy::pbr::PbrPlugin {
 }
 
 fn resolve_panel_mode_from_env() -> ViewerPanelMode {
-    let Some(raw) = std::env::var("AGENT_WORLD_VIEWER_PANEL_MODE").ok() else {
+    let Some(raw) = crate::viewer_env::viewer_env_var("OASIS7_VIEWER_PANEL_MODE") else {
         return ViewerPanelMode::default();
     };
 
@@ -257,7 +257,7 @@ fn resolve_panel_mode_from_env() -> ViewerPanelMode {
 }
 
 fn resolve_experience_mode_from_env() -> ViewerExperienceMode {
-    let Some(raw) = std::env::var("AGENT_WORLD_VIEWER_EXPERIENCE_MODE").ok() else {
+    let Some(raw) = crate::viewer_env::viewer_env_var("OASIS7_VIEWER_EXPERIENCE_MODE") else {
         return ViewerExperienceMode::default();
     };
 
@@ -281,8 +281,7 @@ fn parse_env_toggle(raw: &str) -> Option<bool> {
 }
 
 fn resolve_panel_hidden_override_from_env() -> Option<bool> {
-    std::env::var("AGENT_WORLD_VIEWER_PANEL_HIDDEN")
-        .ok()
+    crate::viewer_env::viewer_env_var("OASIS7_VIEWER_PANEL_HIDDEN")
         .and_then(|raw| parse_env_toggle(raw.as_str()))
 }
 
@@ -360,16 +359,15 @@ pub(super) fn run_headless(addr: String, offline: bool) {
 
 #[cfg(not(target_arch = "wasm32"))]
 pub(super) fn resolve_addr() -> String {
-    std::env::var("AGENT_WORLD_VIEWER_ADDR")
-        .ok()
+    crate::viewer_env::viewer_env_var("OASIS7_VIEWER_ADDR")
         .or_else(|| std::env::args().nth(1))
         .unwrap_or_else(|| DEFAULT_ADDR.to_string())
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 pub(super) fn resolve_offline(headless: bool) -> bool {
-    let offline_env = std::env::var("AGENT_WORLD_VIEWER_OFFLINE").is_ok();
-    let force_online = std::env::var("AGENT_WORLD_VIEWER_FORCE_ONLINE").is_ok();
+    let offline_env = crate::viewer_env::viewer_env_present("OASIS7_VIEWER_OFFLINE");
+    let force_online = crate::viewer_env::viewer_env_present("OASIS7_VIEWER_FORCE_ONLINE");
     decide_offline(headless, offline_env, force_online)
 }
 

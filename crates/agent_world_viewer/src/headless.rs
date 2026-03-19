@@ -9,8 +9,8 @@ use crate::{
     ViewerControlProfileState, ViewerExperienceMode, ViewerState,
 };
 
-const HEADLESS_AUTO_PLAY_ENV: &str = "AGENT_WORLD_VIEWER_HEADLESS_AUTO_PLAY";
-const AUTO_PLAY_ENV: &str = "AGENT_WORLD_VIEWER_AUTO_PLAY";
+const HEADLESS_AUTO_PLAY_ENV: &str = "OASIS7_VIEWER_HEADLESS_AUTO_PLAY";
+const AUTO_PLAY_ENV: &str = "OASIS7_VIEWER_AUTO_PLAY";
 
 pub(super) fn headless_auto_play_once(
     client: Option<Res<ViewerClient>>,
@@ -65,14 +65,14 @@ fn headless_auto_play_enabled(experience_mode: Option<&ViewerExperienceMode>) ->
     }
     #[cfg(not(target_arch = "wasm32"))]
     let _ = experience_mode;
-    if std::env::var("AGENT_WORLD_VIEWER_HEADLESS").is_ok() {
+    if crate::viewer_env::viewer_env_present("OASIS7_VIEWER_HEADLESS") {
         return parse_bool_env(HEADLESS_AUTO_PLAY_ENV).unwrap_or(true);
     }
     false
 }
 
 fn parse_bool_env(key: &str) -> Option<bool> {
-    let raw = std::env::var(key).ok()?;
+    let raw = crate::viewer_env::viewer_env_var(key)?;
     let normalized = raw.trim().to_ascii_lowercase();
     match normalized.as_str() {
         "1" | "true" | "yes" | "on" => Some(true),

@@ -148,6 +148,7 @@
   - SC-44: 启动器 / Viewer 的浏览器存储键、临时状态文件名、Canvas/字体等公开前端运行时 key 必须优先使用 `oasis7` 前缀；迁移期需兼容读取旧 `Agent World` / `agent_world` / `AGENT_WORLD_*` key，避免现有脚本与本地状态立即失效。
   - SC-45: Viewer 的 auth bootstrap object、玩家鉴权 env key、右侧面板持久化路径与诊断类 viewer env key 必须优先迁移到 `oasis7` 前缀；迁移期需同时兼容旧 `Agent World` key，避免 software-safe / native / embedded launcher 三条链路出现断裂。
   - SC-46: `world_game_launcher` / `world_web_launcher` 的运行时路径覆盖 env key（launcher bin、chain runtime bin、viewer/game static dir、web launcher static dir）必须优先迁移到 `OASIS7_*`，同时兼容旧 `AGENT_WORLD_*`，避免已有 bundle、shell 脚本与运维环境变量在品牌迁移时失效。
+  - SC-47: Viewer 的 3D 配置、theme preset、panel/headless 行为控制与 release profile 脚本中的 `VIEWER_*` env key 必须优先迁移到 `OASIS7_VIEWER_*`，同时兼容旧 `AGENT_WORLD_VIEWER_*`，避免渲染调参、无头回归与 operator 预设在品牌迁移时断链。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -352,6 +353,7 @@
   - AC-48: `agent_world_client_launcher` 原生窗口标题与应用内主标题必须统一使用 `oasis7 Client Launcher` / `oasis7 客户端启动器`；旧 `Agent World Client Launcher` 文案不得继续作为当前公开标题。
   - AC-49: `agent_world_viewer` 与 `world_game_launcher` 的 viewer auth/bootstrap 链路必须默认写入并优先读取 `OASIS7_VIEWER_*` 与 `__OASIS7_VIEWER_AUTH_ENV`，但继续兼容旧 `AGENT_WORLD_VIEWER_*` 与 `__AGENT_WORLD_VIEWER_AUTH_ENV`；`software_safe`、chat auth、automation、embedded launcher 注入与右侧面板持久化路径不得因改名失配。
   - AC-50: `world_game_launcher` 与 `world_web_launcher` 必须默认优先读取 `OASIS7_WORLD_VIEWER_LIVE_BIN`、`OASIS7_WORLD_CHAIN_RUNTIME_BIN`、`OASIS7_GAME_STATIC_DIR`、`OASIS7_GAME_LAUNCHER_BIN`、`OASIS7_WEB_LAUNCHER_STATIC_DIR`，并继续兼容对应旧 `AGENT_WORLD_*` key；帮助文案、错误信息和控制面静态目录校验不得再只暴露旧品牌 env 名。
+  - AC-51: `agent_world_viewer` 的 3D 配置、theme runtime、panel/headless 控制与 release UI profile 默认必须写入并优先读取 `OASIS7_VIEWER_*`，同时继续兼容旧 `AGENT_WORLD_VIEWER_*`；`viewer_3d_config`、theme preset 解析、无头 auto-play、panel mode/experience mode 与 profile env 文件不得因改名前缀变更而丢失既有本地覆盖或回归脚本能力。
 - Non-Goals:
   - 不在本 PRD 中详细列出每个 UI 像素级规范。
   - 不替代 world-runtime/p2p 的底层协议设计。
@@ -433,6 +435,7 @@
   - 启动器品牌 key 迁移：浏览器 localStorage、native UX 状态文件、环境变量覆盖与测试临时目录在改名前缀切换后，必须先读 `oasis7` 再回退旧 `AGENT_WORLD_*` / `agent_world*`；禁止一次性硬切导致现有配置、bundle 或 QA 脚本失效。
   - Viewer auth/bootstrap 迁移：`software_safe.js`、viewer wasm/native 鉴权、`world_game_launcher` 注入脚本与右侧面板持久化路径在切到 `oasis7` 前缀后，必须仍能消费旧 `Agent World` 对象名、env 名和默认目录，避免旧 bundle、旧浏览器缓存和 operator 环境变量同时失效。
   - 服务端 launcher 路径 key 迁移：`world_game_launcher` / `world_web_launcher` 在切到 `OASIS7_*` 路径覆盖 env 后，必须继续接受旧 `AGENT_WORLD_*`，并同步更新 help / validation / error 文案；禁止出现“运行时兼容新旧 key、但诊断仍只提示旧 key”这种半迁移状态。
+  - Viewer 运行时调参 key 迁移：`viewer_3d_config`、theme runtime、panel/headless 行为控制与 release profile 在切到 `OASIS7_VIEWER_*` 后，必须继续消费旧 `AGENT_WORLD_VIEWER_*`；禁止出现“主程序已迁新 key、但旧 preset / 脚本 / 无头回归仍被静默忽略”的半迁移状态。
 - Non-Functional Requirements:
   - 性能目标:
     - NFR-1: 启动器链状态探针刷新周期 <= 1s，状态可见延迟 <= 2s。

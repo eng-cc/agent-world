@@ -573,12 +573,12 @@ fn headless_auto_play_sends_play_once_after_connected() {
     impl Drop for AutoPlayEnvGuard {
         fn drop(&mut self) {
             unsafe {
-                std::env::remove_var("AGENT_WORLD_VIEWER_AUTO_PLAY");
+                std::env::remove_var("OASIS7_VIEWER_AUTO_PLAY");
             }
         }
     }
     unsafe {
-        std::env::set_var("AGENT_WORLD_VIEWER_AUTO_PLAY", "1");
+        std::env::set_var("OASIS7_VIEWER_AUTO_PLAY", "1");
     }
     let _guard = AutoPlayEnvGuard;
 

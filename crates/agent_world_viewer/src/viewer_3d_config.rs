@@ -587,16 +587,14 @@ pub(crate) fn load_viewer_external_mesh_config_from<F>(lookup: F) -> ViewerExter
 where
     F: Fn(&str) -> Option<String>,
 {
+    let lookup = |key: &str| crate::viewer_env::resolve_viewer_env_with(&lookup, key);
     ViewerExternalMeshConfig {
-        agent_mesh_asset: parse_non_empty_string(&lookup, "AGENT_WORLD_VIEWER_AGENT_MESH_ASSET"),
-        location_mesh_asset: parse_non_empty_string(
-            &lookup,
-            "AGENT_WORLD_VIEWER_LOCATION_MESH_ASSET",
-        ),
-        asset_mesh_asset: parse_non_empty_string(&lookup, "AGENT_WORLD_VIEWER_ASSET_MESH_ASSET"),
+        agent_mesh_asset: parse_non_empty_string(&lookup, "OASIS7_VIEWER_AGENT_MESH_ASSET"),
+        location_mesh_asset: parse_non_empty_string(&lookup, "OASIS7_VIEWER_LOCATION_MESH_ASSET"),
+        asset_mesh_asset: parse_non_empty_string(&lookup, "OASIS7_VIEWER_ASSET_MESH_ASSET"),
         power_plant_mesh_asset: parse_non_empty_string(
             &lookup,
-            "AGENT_WORLD_VIEWER_POWER_PLANT_MESH_ASSET",
+            "OASIS7_VIEWER_POWER_PLANT_MESH_ASSET",
         ),
     }
 }
@@ -607,39 +605,34 @@ pub(crate) fn load_viewer_external_material_config_from<F>(
 where
     F: Fn(&str) -> Option<String>,
 {
+    let lookup = |key: &str| crate::viewer_env::resolve_viewer_env_with(&lookup, key);
     ViewerExternalMaterialConfig {
         agent: ViewerExternalMaterialSlotConfig {
-            base_color_srgb: parse_hex_srgb_color(&lookup, "AGENT_WORLD_VIEWER_AGENT_BASE_COLOR"),
+            base_color_srgb: parse_hex_srgb_color(&lookup, "OASIS7_VIEWER_AGENT_BASE_COLOR"),
             emissive_color_srgb: parse_hex_srgb_color(
                 &lookup,
-                "AGENT_WORLD_VIEWER_AGENT_EMISSIVE_COLOR",
+                "OASIS7_VIEWER_AGENT_EMISSIVE_COLOR",
             ),
         },
         location: ViewerExternalMaterialSlotConfig {
-            base_color_srgb: parse_hex_srgb_color(
-                &lookup,
-                "AGENT_WORLD_VIEWER_LOCATION_BASE_COLOR",
-            ),
+            base_color_srgb: parse_hex_srgb_color(&lookup, "OASIS7_VIEWER_LOCATION_BASE_COLOR"),
             emissive_color_srgb: parse_hex_srgb_color(
                 &lookup,
-                "AGENT_WORLD_VIEWER_LOCATION_EMISSIVE_COLOR",
+                "OASIS7_VIEWER_LOCATION_EMISSIVE_COLOR",
             ),
         },
         asset: ViewerExternalMaterialSlotConfig {
-            base_color_srgb: parse_hex_srgb_color(&lookup, "AGENT_WORLD_VIEWER_ASSET_BASE_COLOR"),
+            base_color_srgb: parse_hex_srgb_color(&lookup, "OASIS7_VIEWER_ASSET_BASE_COLOR"),
             emissive_color_srgb: parse_hex_srgb_color(
                 &lookup,
-                "AGENT_WORLD_VIEWER_ASSET_EMISSIVE_COLOR",
+                "OASIS7_VIEWER_ASSET_EMISSIVE_COLOR",
             ),
         },
         power_plant: ViewerExternalMaterialSlotConfig {
-            base_color_srgb: parse_hex_srgb_color(
-                &lookup,
-                "AGENT_WORLD_VIEWER_POWER_PLANT_BASE_COLOR",
-            ),
+            base_color_srgb: parse_hex_srgb_color(&lookup, "OASIS7_VIEWER_POWER_PLANT_BASE_COLOR"),
             emissive_color_srgb: parse_hex_srgb_color(
                 &lookup,
-                "AGENT_WORLD_VIEWER_POWER_PLANT_EMISSIVE_COLOR",
+                "OASIS7_VIEWER_POWER_PLANT_EMISSIVE_COLOR",
             ),
         },
     }
@@ -649,77 +642,78 @@ pub(crate) fn load_viewer_external_texture_config_from<F>(lookup: F) -> ViewerEx
 where
     F: Fn(&str) -> Option<String>,
 {
+    let lookup = |key: &str| crate::viewer_env::resolve_viewer_env_with(&lookup, key);
     ViewerExternalTextureConfig {
         agent: ViewerExternalTextureSlotConfig {
             base_texture_asset: parse_non_empty_string(
                 &lookup,
-                "AGENT_WORLD_VIEWER_AGENT_BASE_TEXTURE_ASSET",
+                "OASIS7_VIEWER_AGENT_BASE_TEXTURE_ASSET",
             ),
             normal_texture_asset: parse_non_empty_string(
                 &lookup,
-                "AGENT_WORLD_VIEWER_AGENT_NORMAL_TEXTURE_ASSET",
+                "OASIS7_VIEWER_AGENT_NORMAL_TEXTURE_ASSET",
             ),
             metallic_roughness_texture_asset: parse_non_empty_string(
                 &lookup,
-                "AGENT_WORLD_VIEWER_AGENT_METALLIC_ROUGHNESS_TEXTURE_ASSET",
+                "OASIS7_VIEWER_AGENT_METALLIC_ROUGHNESS_TEXTURE_ASSET",
             ),
             emissive_texture_asset: parse_non_empty_string(
                 &lookup,
-                "AGENT_WORLD_VIEWER_AGENT_EMISSIVE_TEXTURE_ASSET",
+                "OASIS7_VIEWER_AGENT_EMISSIVE_TEXTURE_ASSET",
             ),
         },
         location: ViewerExternalTextureSlotConfig {
             base_texture_asset: parse_non_empty_string(
                 &lookup,
-                "AGENT_WORLD_VIEWER_LOCATION_BASE_TEXTURE_ASSET",
+                "OASIS7_VIEWER_LOCATION_BASE_TEXTURE_ASSET",
             ),
             normal_texture_asset: parse_non_empty_string(
                 &lookup,
-                "AGENT_WORLD_VIEWER_LOCATION_NORMAL_TEXTURE_ASSET",
+                "OASIS7_VIEWER_LOCATION_NORMAL_TEXTURE_ASSET",
             ),
             metallic_roughness_texture_asset: parse_non_empty_string(
                 &lookup,
-                "AGENT_WORLD_VIEWER_LOCATION_METALLIC_ROUGHNESS_TEXTURE_ASSET",
+                "OASIS7_VIEWER_LOCATION_METALLIC_ROUGHNESS_TEXTURE_ASSET",
             ),
             emissive_texture_asset: parse_non_empty_string(
                 &lookup,
-                "AGENT_WORLD_VIEWER_LOCATION_EMISSIVE_TEXTURE_ASSET",
+                "OASIS7_VIEWER_LOCATION_EMISSIVE_TEXTURE_ASSET",
             ),
         },
         asset: ViewerExternalTextureSlotConfig {
             base_texture_asset: parse_non_empty_string(
                 &lookup,
-                "AGENT_WORLD_VIEWER_ASSET_BASE_TEXTURE_ASSET",
+                "OASIS7_VIEWER_ASSET_BASE_TEXTURE_ASSET",
             ),
             normal_texture_asset: parse_non_empty_string(
                 &lookup,
-                "AGENT_WORLD_VIEWER_ASSET_NORMAL_TEXTURE_ASSET",
+                "OASIS7_VIEWER_ASSET_NORMAL_TEXTURE_ASSET",
             ),
             metallic_roughness_texture_asset: parse_non_empty_string(
                 &lookup,
-                "AGENT_WORLD_VIEWER_ASSET_METALLIC_ROUGHNESS_TEXTURE_ASSET",
+                "OASIS7_VIEWER_ASSET_METALLIC_ROUGHNESS_TEXTURE_ASSET",
             ),
             emissive_texture_asset: parse_non_empty_string(
                 &lookup,
-                "AGENT_WORLD_VIEWER_ASSET_EMISSIVE_TEXTURE_ASSET",
+                "OASIS7_VIEWER_ASSET_EMISSIVE_TEXTURE_ASSET",
             ),
         },
         power_plant: ViewerExternalTextureSlotConfig {
             base_texture_asset: parse_non_empty_string(
                 &lookup,
-                "AGENT_WORLD_VIEWER_POWER_PLANT_BASE_TEXTURE_ASSET",
+                "OASIS7_VIEWER_POWER_PLANT_BASE_TEXTURE_ASSET",
             ),
             normal_texture_asset: parse_non_empty_string(
                 &lookup,
-                "AGENT_WORLD_VIEWER_POWER_PLANT_NORMAL_TEXTURE_ASSET",
+                "OASIS7_VIEWER_POWER_PLANT_NORMAL_TEXTURE_ASSET",
             ),
             metallic_roughness_texture_asset: parse_non_empty_string(
                 &lookup,
-                "AGENT_WORLD_VIEWER_POWER_PLANT_METALLIC_ROUGHNESS_TEXTURE_ASSET",
+                "OASIS7_VIEWER_POWER_PLANT_METALLIC_ROUGHNESS_TEXTURE_ASSET",
             ),
             emissive_texture_asset: parse_non_empty_string(
                 &lookup,
-                "AGENT_WORLD_VIEWER_POWER_PLANT_EMISSIVE_TEXTURE_ASSET",
+                "OASIS7_VIEWER_POWER_PLANT_EMISSIVE_TEXTURE_ASSET",
             ),
         },
     }
@@ -729,165 +723,159 @@ fn load_viewer_3d_config_from<F>(lookup: F) -> Viewer3dConfig
 where
     F: Fn(&str) -> Option<String>,
 {
+    let lookup = |key: &str| crate::viewer_env::resolve_viewer_env_with(&lookup, key);
     let mut config = Viewer3dConfig::default();
-    if let Some(profile) = parse_render_profile(&lookup, "AGENT_WORLD_VIEWER_RENDER_PROFILE") {
+    if let Some(profile) = parse_render_profile(&lookup, "OASIS7_VIEWER_RENDER_PROFILE") {
         config.apply_render_profile(profile);
     }
-    if let Some(level) = parse_visual_effects_level(&lookup, "AGENT_WORLD_VIEWER_VISUAL_EFFECTS") {
+    if let Some(level) = parse_visual_effects_level(&lookup, "OASIS7_VIEWER_VISUAL_EFFECTS") {
         config.visual.apply_level(level);
     }
-    if let Some(value) =
-        parse_agent_variant_palette(&lookup, "AGENT_WORLD_VIEWER_AGENT_VARIANT_PALETTE")
+    if let Some(value) = parse_agent_variant_palette(&lookup, "OASIS7_VIEWER_AGENT_VARIANT_PALETTE")
     {
         config.visual.agent_variant_palette = Some(value);
     }
-    if let Some(value) = parse_bool(&lookup, "AGENT_WORLD_VIEWER_AGENT_DIRECTION_INDICATOR") {
+    if let Some(value) = parse_bool(&lookup, "OASIS7_VIEWER_AGENT_DIRECTION_INDICATOR") {
         config.visual.agent_direction_indicator = value;
     }
-    if let Some(value) = parse_bool(&lookup, "AGENT_WORLD_VIEWER_AGENT_SPEED_EFFECT") {
+    if let Some(value) = parse_bool(&lookup, "OASIS7_VIEWER_AGENT_SPEED_EFFECT") {
         config.visual.agent_speed_effect = value;
     }
-    if let Some(value) = parse_bool(&lookup, "AGENT_WORLD_VIEWER_AGENT_TRAIL_ENABLED") {
+    if let Some(value) = parse_bool(&lookup, "OASIS7_VIEWER_AGENT_TRAIL_ENABLED") {
         config.visual.agent_trail_enabled = value;
     }
-    if let Some(value) = parse_bool(&lookup, "AGENT_WORLD_VIEWER_LOCATION_RADIATION_GLOW") {
+    if let Some(value) = parse_bool(&lookup, "OASIS7_VIEWER_LOCATION_RADIATION_GLOW") {
         config.visual.location_radiation_glow = value;
     }
-    if let Some(value) = parse_bool(&lookup, "AGENT_WORLD_VIEWER_LOCATION_DAMAGE_VISUAL") {
+    if let Some(value) = parse_bool(&lookup, "OASIS7_VIEWER_LOCATION_DAMAGE_VISUAL") {
         config.visual.location_damage_visual = value;
     }
-    if let Some(value) = parse_bool(&lookup, "AGENT_WORLD_VIEWER_ASSET_QUANTITY_VISUAL") {
+    if let Some(value) = parse_bool(&lookup, "OASIS7_VIEWER_ASSET_QUANTITY_VISUAL") {
         config.visual.asset_quantity_visual = value;
     }
-    if let Some(value) = parse_bool(&lookup, "AGENT_WORLD_VIEWER_ASSET_TYPE_COLOR") {
+    if let Some(value) = parse_bool(&lookup, "OASIS7_VIEWER_ASSET_TYPE_COLOR") {
         config.visual.asset_type_color = value;
     }
-    if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_CM_TO_UNIT") {
+    if let Some(value) = parse_f32(&lookup, "OASIS7_VIEWER_CM_TO_UNIT") {
         if value.is_finite() && value > 0.0 {
             config.cm_to_unit = value;
         }
     }
-    if let Some(value) = parse_bool(&lookup, "AGENT_WORLD_VIEWER_SHOW_AGENTS") {
+    if let Some(value) = parse_bool(&lookup, "OASIS7_VIEWER_SHOW_AGENTS") {
         config.show_agents = value;
     }
-    if let Some(value) = parse_bool(&lookup, "AGENT_WORLD_VIEWER_SHOW_LOCATIONS") {
+    if let Some(value) = parse_bool(&lookup, "OASIS7_VIEWER_SHOW_LOCATIONS") {
         config.show_locations = value;
     }
-    if let Some(value) = parse_bool(&lookup, "AGENT_WORLD_VIEWER_HIGHLIGHT_SELECTED") {
+    if let Some(value) = parse_bool(&lookup, "OASIS7_VIEWER_HIGHLIGHT_SELECTED") {
         config.highlight_selected = value;
     }
-    if let Some(value) = parse_geometry_tier(&lookup, "AGENT_WORLD_VIEWER_ASSET_GEOMETRY_TIER") {
+    if let Some(value) = parse_geometry_tier(&lookup, "OASIS7_VIEWER_ASSET_GEOMETRY_TIER") {
         config.assets.geometry_tier = value;
     }
-    if let Some(value) = parse_bool(&lookup, "AGENT_WORLD_VIEWER_LOCATION_SHELL_ENABLED") {
+    if let Some(value) = parse_bool(&lookup, "OASIS7_VIEWER_LOCATION_SHELL_ENABLED") {
         config.assets.location_shell_enabled = value;
     }
     if let Some(value) =
-        parse_fragment_material_strategy(&lookup, "AGENT_WORLD_VIEWER_FRAGMENT_MATERIAL_STRATEGY")
+        parse_fragment_material_strategy(&lookup, "OASIS7_VIEWER_FRAGMENT_MATERIAL_STRATEGY")
     {
         config.materials.fragment.strategy = value;
     }
-    if let Some(value) = parse_bool(&lookup, "AGENT_WORLD_VIEWER_FRAGMENT_UNLIT") {
+    if let Some(value) = parse_bool(&lookup, "OASIS7_VIEWER_FRAGMENT_UNLIT") {
         config.materials.fragment.unlit = value;
     }
-    if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_FRAGMENT_ALPHA") {
+    if let Some(value) = parse_f32(&lookup, "OASIS7_VIEWER_FRAGMENT_ALPHA") {
         if value.is_finite() && (MIN_FRAGMENT_ALPHA..=MAX_FRAGMENT_ALPHA).contains(&value) {
             config.materials.fragment.alpha = value;
         }
     }
-    if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_FRAGMENT_EMISSIVE_BOOST") {
+    if let Some(value) = parse_f32(&lookup, "OASIS7_VIEWER_FRAGMENT_EMISSIVE_BOOST") {
         if value.is_finite() && value >= 0.0 {
             config.materials.fragment.emissive_boost = value;
         }
     }
-    if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_MATERIAL_AGENT_ROUGHNESS") {
+    if let Some(value) = parse_f32(&lookup, "OASIS7_VIEWER_MATERIAL_AGENT_ROUGHNESS") {
         if value.is_finite() && (0.0..=1.0).contains(&value) {
             config.materials.agent.roughness = value;
         }
     }
-    if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_MATERIAL_AGENT_METALLIC") {
+    if let Some(value) = parse_f32(&lookup, "OASIS7_VIEWER_MATERIAL_AGENT_METALLIC") {
         if value.is_finite() && (0.0..=1.0).contains(&value) {
             config.materials.agent.metallic = value;
         }
     }
-    if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_MATERIAL_AGENT_EMISSIVE_BOOST") {
+    if let Some(value) = parse_f32(&lookup, "OASIS7_VIEWER_MATERIAL_AGENT_EMISSIVE_BOOST") {
         if value.is_finite() && value >= 0.0 {
             config.materials.agent.emissive_boost = value;
         }
     }
-    if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_MATERIAL_ASSET_ROUGHNESS") {
+    if let Some(value) = parse_f32(&lookup, "OASIS7_VIEWER_MATERIAL_ASSET_ROUGHNESS") {
         if value.is_finite() && (0.0..=1.0).contains(&value) {
             config.materials.asset.roughness = value;
         }
     }
-    if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_MATERIAL_ASSET_METALLIC") {
+    if let Some(value) = parse_f32(&lookup, "OASIS7_VIEWER_MATERIAL_ASSET_METALLIC") {
         if value.is_finite() && (0.0..=1.0).contains(&value) {
             config.materials.asset.metallic = value;
         }
     }
-    if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_MATERIAL_ASSET_EMISSIVE_BOOST") {
+    if let Some(value) = parse_f32(&lookup, "OASIS7_VIEWER_MATERIAL_ASSET_EMISSIVE_BOOST") {
         if value.is_finite() && value >= 0.0 {
             config.materials.asset.emissive_boost = value;
         }
     }
-    if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_MATERIAL_FACILITY_ROUGHNESS") {
+    if let Some(value) = parse_f32(&lookup, "OASIS7_VIEWER_MATERIAL_FACILITY_ROUGHNESS") {
         if value.is_finite() && (0.0..=1.0).contains(&value) {
             config.materials.facility.roughness = value;
         }
     }
-    if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_MATERIAL_FACILITY_METALLIC") {
+    if let Some(value) = parse_f32(&lookup, "OASIS7_VIEWER_MATERIAL_FACILITY_METALLIC") {
         if value.is_finite() && (0.0..=1.0).contains(&value) {
             config.materials.facility.metallic = value;
         }
     }
-    if let Some(value) = parse_f32(
-        &lookup,
-        "AGENT_WORLD_VIEWER_MATERIAL_FACILITY_EMISSIVE_BOOST",
-    ) {
+    if let Some(value) = parse_f32(&lookup, "OASIS7_VIEWER_MATERIAL_FACILITY_EMISSIVE_BOOST") {
         if value.is_finite() && value >= 0.0 {
             config.materials.facility.emissive_boost = value;
         }
     }
-    if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_ROUGHNESS") {
+    if let Some(value) = parse_f32(&lookup, "OASIS7_VIEWER_MATERIAL_POWER_PLANT_ROUGHNESS") {
         if value.is_finite() && (0.0..=1.0).contains(&value) {
             config.materials.power_plant.roughness = value;
         }
     }
-    if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_METALLIC") {
+    if let Some(value) = parse_f32(&lookup, "OASIS7_VIEWER_MATERIAL_POWER_PLANT_METALLIC") {
         if value.is_finite() && (0.0..=1.0).contains(&value) {
             config.materials.power_plant.metallic = value;
         }
     }
-    if let Some(value) = parse_f32(
-        &lookup,
-        "AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_EMISSIVE_BOOST",
-    ) {
+    if let Some(value) = parse_f32(&lookup, "OASIS7_VIEWER_MATERIAL_POWER_PLANT_EMISSIVE_BOOST") {
         if value.is_finite() && value >= 0.0 {
             config.materials.power_plant.emissive_boost = value;
         }
     }
-    if let Some(value) = parse_tonemapping_mode(&lookup, "AGENT_WORLD_VIEWER_TONEMAPPING") {
+    if let Some(value) = parse_tonemapping_mode(&lookup, "OASIS7_VIEWER_TONEMAPPING") {
         config.post_process.tonemapping = value;
     }
-    if let Some(value) = parse_bool(&lookup, "AGENT_WORLD_VIEWER_DEBAND_DITHER_ENABLED") {
+    if let Some(value) = parse_bool(&lookup, "OASIS7_VIEWER_DEBAND_DITHER_ENABLED") {
         config.post_process.deband_dither_enabled = value;
     }
-    if let Some(value) = parse_bool(&lookup, "AGENT_WORLD_VIEWER_BLOOM_ENABLED") {
+    if let Some(value) = parse_bool(&lookup, "OASIS7_VIEWER_BLOOM_ENABLED") {
         config.post_process.bloom_enabled = value;
     }
-    if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_BLOOM_INTENSITY") {
+    if let Some(value) = parse_f32(&lookup, "OASIS7_VIEWER_BLOOM_INTENSITY") {
         if value.is_finite() && (MIN_BLOOM_INTENSITY..=MAX_BLOOM_INTENSITY).contains(&value) {
             config.post_process.bloom_intensity = value;
         }
     }
-    if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_COLOR_GRADING_EXPOSURE") {
+    if let Some(value) = parse_f32(&lookup, "OASIS7_VIEWER_COLOR_GRADING_EXPOSURE") {
         if value.is_finite()
             && (MIN_COLOR_GRADING_EXPOSURE..=MAX_COLOR_GRADING_EXPOSURE).contains(&value)
         {
             config.post_process.color_grading_exposure = value;
         }
     }
-    if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_COLOR_GRADING_POST_SATURATION") {
+    if let Some(value) = parse_f32(&lookup, "OASIS7_VIEWER_COLOR_GRADING_POST_SATURATION") {
         if value.is_finite()
             && (MIN_COLOR_GRADING_POST_SATURATION..=MAX_COLOR_GRADING_POST_SATURATION)
                 .contains(&value)
@@ -895,110 +883,110 @@ where
             config.post_process.color_grading_post_saturation = value;
         }
     }
-    if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_LABEL_FADE_START") {
+    if let Some(value) = parse_f32(&lookup, "OASIS7_VIEWER_LABEL_FADE_START") {
         if value.is_finite() && value >= 0.0 {
             config.label_lod.fade_start_distance = value;
         }
     }
-    if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_LABEL_FADE_END") {
+    if let Some(value) = parse_f32(&lookup, "OASIS7_VIEWER_LABEL_FADE_END") {
         if value.is_finite() && value > config.label_lod.fade_start_distance {
             config.label_lod.fade_end_distance = value;
         }
     }
-    if let Some(value) = parse_usize(&lookup, "AGENT_WORLD_VIEWER_MAX_VISIBLE_LABELS") {
+    if let Some(value) = parse_usize(&lookup, "OASIS7_VIEWER_MAX_VISIBLE_LABELS") {
         if value > 0 {
             config.label_lod.max_visible_labels = value;
         }
     }
-    if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_LABEL_OCCLUSION_CELL_SPAN") {
+    if let Some(value) = parse_f32(&lookup, "OASIS7_VIEWER_LABEL_OCCLUSION_CELL_SPAN") {
         if value.is_finite() && value > 0.0 {
             config.label_lod.occlusion_cell_span = value;
         }
     }
-    if let Some(value) = parse_usize(&lookup, "AGENT_WORLD_VIEWER_LABEL_OCCLUSION_CAP_PER_CELL") {
+    if let Some(value) = parse_usize(&lookup, "OASIS7_VIEWER_LABEL_OCCLUSION_CAP_PER_CELL") {
         if value > 0 {
             config.label_lod.occlusion_cap_per_cell = value;
         }
     }
-    if let Some(value) = parse_u64(&lookup, "AGENT_WORLD_VIEWER_OVERLAY_REFRESH_TICKS") {
+    if let Some(value) = parse_u64(&lookup, "OASIS7_VIEWER_OVERLAY_REFRESH_TICKS") {
         if value > 0 {
             config.render_budget.overlay_refresh_ticks = value;
         }
     }
-    if let Some(value) = parse_usize(&lookup, "AGENT_WORLD_VIEWER_OVERLAY_MAX_HEAT") {
+    if let Some(value) = parse_usize(&lookup, "OASIS7_VIEWER_OVERLAY_MAX_HEAT") {
         if value > 0 {
             config.render_budget.overlay_max_heat_markers = value;
         }
     }
-    if let Some(value) = parse_usize(&lookup, "AGENT_WORLD_VIEWER_OVERLAY_MAX_FLOW") {
+    if let Some(value) = parse_usize(&lookup, "OASIS7_VIEWER_OVERLAY_MAX_FLOW") {
         if value > 0 {
             config.render_budget.overlay_max_flow_segments = value;
         }
     }
-    if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_GRID_LOD_DISTANCE") {
+    if let Some(value) = parse_f32(&lookup, "OASIS7_VIEWER_GRID_LOD_DISTANCE") {
         if value.is_finite() && value > 0.0 {
             config.render_budget.grid_lod_distance = value;
         }
     }
-    if let Some(value) = parse_bool(&lookup, "AGENT_WORLD_VIEWER_SHADOWS_ENABLED") {
+    if let Some(value) = parse_bool(&lookup, "OASIS7_VIEWER_SHADOWS_ENABLED") {
         config.lighting.shadows_enabled = value;
     }
-    if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_AMBIENT_BRIGHTNESS") {
+    if let Some(value) = parse_f32(&lookup, "OASIS7_VIEWER_AMBIENT_BRIGHTNESS") {
         if value.is_finite() && value > 0.0 {
             config.lighting.ambient_brightness = value;
         }
     }
-    if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_FILL_LIGHT_RATIO") {
+    if let Some(value) = parse_f32(&lookup, "OASIS7_VIEWER_FILL_LIGHT_RATIO") {
         if value.is_finite() && value >= 0.0 {
             config.lighting.fill_light_ratio = value;
         }
     }
-    if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_RIM_LIGHT_RATIO") {
+    if let Some(value) = parse_f32(&lookup, "OASIS7_VIEWER_RIM_LIGHT_RATIO") {
         if value.is_finite() && value >= 0.0 {
             config.lighting.rim_light_ratio = value;
         }
     }
 
     let mut physical = ViewerPhysicalRenderConfig::default();
-    if let Some(value) = parse_bool(&lookup, "AGENT_WORLD_VIEWER_PHYSICAL_RENDER_ENABLED") {
+    if let Some(value) = parse_bool(&lookup, "OASIS7_VIEWER_PHYSICAL_RENDER_ENABLED") {
         physical.enabled = value;
     }
-    if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_METERS_PER_UNIT") {
+    if let Some(value) = parse_f32(&lookup, "OASIS7_VIEWER_METERS_PER_UNIT") {
         if value.is_finite() && value > 0.0 {
             physical.meters_per_unit = value;
         }
     }
-    if let Some(value) = parse_f64(&lookup, "AGENT_WORLD_VIEWER_FLOATING_ORIGIN_STEP_M") {
+    if let Some(value) = parse_f64(&lookup, "OASIS7_VIEWER_FLOATING_ORIGIN_STEP_M") {
         if value.is_finite() && value > 0.0 {
             physical.floating_origin_step_m = value;
         }
     }
-    if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_CAMERA_NEAR_M") {
+    if let Some(value) = parse_f32(&lookup, "OASIS7_VIEWER_CAMERA_NEAR_M") {
         if value.is_finite() && value > 0.0 {
             physical.camera_near_m = value;
         }
     }
-    if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_CAMERA_FAR_M") {
+    if let Some(value) = parse_f32(&lookup, "OASIS7_VIEWER_CAMERA_FAR_M") {
         if value.is_finite() && value > 0.0 {
             physical.camera_far_m = value;
         }
     }
-    if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_STELLAR_DISTANCE_AU") {
+    if let Some(value) = parse_f32(&lookup, "OASIS7_VIEWER_STELLAR_DISTANCE_AU") {
         if value.is_finite() && value > 0.0 {
             physical.stellar_distance_au = value;
         }
     }
-    if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_LUMINOUS_EFFICACY_LM_PER_W") {
+    if let Some(value) = parse_f32(&lookup, "OASIS7_VIEWER_LUMINOUS_EFFICACY_LM_PER_W") {
         if value.is_finite() && value > 0.0 {
             physical.luminous_efficacy_lm_per_w = value;
         }
     }
-    if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_EXPOSURE_EV100") {
+    if let Some(value) = parse_f32(&lookup, "OASIS7_VIEWER_EXPOSURE_EV100") {
         if value.is_finite() {
             physical.exposure_ev100 = value;
         }
     }
-    if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_REFERENCE_RADIATION_AREA_M2") {
+    if let Some(value) = parse_f32(&lookup, "OASIS7_VIEWER_REFERENCE_RADIATION_AREA_M2") {
         if value.is_finite() && value > 0.0 {
             physical.reference_radiation_area_m2 = value;
         }

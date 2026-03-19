@@ -92,6 +92,7 @@ mod ui_state_types;
 mod ui_text;
 mod viewer_3d_config;
 mod viewer_automation;
+mod viewer_env;
 #[cfg(target_arch = "wasm32")]
 mod wasm_egui_input_bridge;
 mod web_test_api;
@@ -192,7 +193,7 @@ const RECONNECT_BACKOFF_MAX_SECS: f64 = 12.0;
 #[cfg(not(target_arch = "wasm32"))]
 fn main() {
     let addr = resolve_addr();
-    let headless = std::env::var("AGENT_WORLD_VIEWER_HEADLESS").is_ok();
+    let headless = viewer_env::viewer_env_present("OASIS7_VIEWER_HEADLESS");
     let offline = resolve_offline(headless);
 
     if headless {
@@ -940,10 +941,11 @@ fn resolve_material_variant_preview_state_from<F>(lookup: F) -> MaterialVariantP
 where
     F: Fn(&str) -> Option<String>,
 {
-    let active = lookup("AGENT_WORLD_VIEWER_MATERIAL_VARIANT_PRESET")
-        .as_deref()
-        .and_then(parse_material_variant_preset)
-        .unwrap_or_default();
+    let active =
+        viewer_env::resolve_viewer_env_with(&lookup, "OASIS7_VIEWER_MATERIAL_VARIANT_PRESET")
+            .as_deref()
+            .and_then(parse_material_variant_preset)
+            .unwrap_or_default();
     MaterialVariantPreviewState { active }
 }
 

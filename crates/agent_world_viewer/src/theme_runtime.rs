@@ -2,9 +2,9 @@ use std::collections::HashMap;
 
 use bevy::prelude::*;
 
-const THEME_PRESET_ENV: &str = "AGENT_WORLD_VIEWER_THEME_PRESET";
-const THEME_PRESET_FILE_ENV: &str = "AGENT_WORLD_VIEWER_THEME_PRESET_FILE";
-const THEME_HOT_RELOAD_ENV: &str = "AGENT_WORLD_VIEWER_THEME_HOT_RELOAD";
+const THEME_PRESET_ENV: &str = "OASIS7_VIEWER_THEME_PRESET";
+const THEME_PRESET_FILE_ENV: &str = "OASIS7_VIEWER_THEME_PRESET_FILE";
+const THEME_HOT_RELOAD_ENV: &str = "OASIS7_VIEWER_THEME_HOT_RELOAD";
 
 const INDUSTRIAL_V3_DEFAULT_PRESET_PATH: &str =
     "crates/agent_world_viewer/assets/themes/industrial_v3/presets/industrial_v3_default.env";
@@ -173,11 +173,11 @@ impl ThemeRuntimeState {
 }
 
 pub(crate) fn resolve_theme_runtime_state() -> ThemeRuntimeState {
-    let preset_selection = std::env::var(THEME_PRESET_ENV)
-        .ok()
+    let preset_selection = crate::viewer_env::viewer_env_var(THEME_PRESET_ENV)
         .and_then(|raw| ThemePresetSelection::from_env(raw.as_str()));
-    let preset_file = std::env::var(THEME_PRESET_FILE_ENV).unwrap_or_default();
-    let hot_reload_enabled = parse_toggle(std::env::var(THEME_HOT_RELOAD_ENV).ok().as_deref());
+    let preset_file = crate::viewer_env::viewer_env_var(THEME_PRESET_FILE_ENV).unwrap_or_default();
+    let hot_reload_enabled =
+        parse_toggle(crate::viewer_env::viewer_env_var(THEME_HOT_RELOAD_ENV).as_deref());
 
     let (selection, custom_preset_path, pending_apply) = if !preset_file.trim().is_empty() {
         (ThemePresetSelection::Custom, preset_file, true)
@@ -289,9 +289,12 @@ fn apply_theme_from_path(
     *external_material = parse_external_material_config(&preset_vars);
     *external_texture = parse_external_texture_config(&preset_vars);
 
-    if let Some(parsed_variant) = preset_vars
-        .get("AGENT_WORLD_VIEWER_MATERIAL_VARIANT_PRESET")
-        .and_then(|raw| crate::parse_material_variant_preset(raw))
+    if let Some(parsed_variant) = crate::viewer_env::resolve_viewer_env_with(
+        &|key| preset_vars.get(key).cloned(),
+        "OASIS7_VIEWER_MATERIAL_VARIANT_PRESET",
+    )
+    .as_deref()
+    .and_then(crate::parse_material_variant_preset)
     {
         variant_preview.active = parsed_variant;
     }
@@ -538,19 +541,19 @@ mod tests {
     fn parse_external_texture_config_reads_all_channels() {
         let mut vars = HashMap::new();
         vars.insert(
-            "AGENT_WORLD_VIEWER_AGENT_BASE_TEXTURE_ASSET".to_string(),
+            "OASIS7_VIEWER_AGENT_BASE_TEXTURE_ASSET".to_string(),
             "base.png".to_string(),
         );
         vars.insert(
-            "AGENT_WORLD_VIEWER_AGENT_NORMAL_TEXTURE_ASSET".to_string(),
+            "OASIS7_VIEWER_AGENT_NORMAL_TEXTURE_ASSET".to_string(),
             "normal.png".to_string(),
         );
         vars.insert(
-            "AGENT_WORLD_VIEWER_AGENT_METALLIC_ROUGHNESS_TEXTURE_ASSET".to_string(),
+            "OASIS7_VIEWER_AGENT_METALLIC_ROUGHNESS_TEXTURE_ASSET".to_string(),
             "mr.png".to_string(),
         );
         vars.insert(
-            "AGENT_WORLD_VIEWER_AGENT_EMISSIVE_TEXTURE_ASSET".to_string(),
+            "OASIS7_VIEWER_AGENT_EMISSIVE_TEXTURE_ASSET".to_string(),
             "emissive.png".to_string(),
         );
         let slot = parse_external_texture_config(&vars).agent;

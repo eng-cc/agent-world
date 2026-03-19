@@ -11,157 +11,154 @@ fn assert_rgb_approx_eq(actual: Option<[f32; 3]>, expected: [f32; 3]) {
 #[test]
 fn load_viewer_3d_config_applies_env_overrides() {
     let env = HashMap::from([
-        ("AGENT_WORLD_VIEWER_CM_TO_UNIT", "0.0002"),
-        ("AGENT_WORLD_VIEWER_RENDER_PROFILE", "debug"),
-        ("AGENT_WORLD_VIEWER_SHOW_AGENTS", "false"),
-        ("AGENT_WORLD_VIEWER_SHOW_LOCATIONS", "0"),
-        ("AGENT_WORLD_VIEWER_HIGHLIGHT_SELECTED", "no"),
-        ("AGENT_WORLD_VIEWER_VISUAL_EFFECTS", "enhanced"),
+        ("OASIS7_VIEWER_CM_TO_UNIT", "0.0002"),
+        ("OASIS7_VIEWER_RENDER_PROFILE", "debug"),
+        ("OASIS7_VIEWER_SHOW_AGENTS", "false"),
+        ("OASIS7_VIEWER_SHOW_LOCATIONS", "0"),
+        ("OASIS7_VIEWER_HIGHLIGHT_SELECTED", "no"),
+        ("OASIS7_VIEWER_VISUAL_EFFECTS", "enhanced"),
         (
-            "AGENT_WORLD_VIEWER_AGENT_VARIANT_PALETTE",
+            "OASIS7_VIEWER_AGENT_VARIANT_PALETTE",
             "#112233,#445566,#778899,#AABBCC",
         ),
-        ("AGENT_WORLD_VIEWER_AGENT_DIRECTION_INDICATOR", "0"),
-        ("AGENT_WORLD_VIEWER_AGENT_SPEED_EFFECT", "1"),
-        ("AGENT_WORLD_VIEWER_AGENT_TRAIL_ENABLED", "1"),
-        ("AGENT_WORLD_VIEWER_LOCATION_RADIATION_GLOW", "0"),
-        ("AGENT_WORLD_VIEWER_LOCATION_DAMAGE_VISUAL", "1"),
-        ("AGENT_WORLD_VIEWER_ASSET_QUANTITY_VISUAL", "1"),
-        ("AGENT_WORLD_VIEWER_ASSET_TYPE_COLOR", "0"),
+        ("OASIS7_VIEWER_AGENT_DIRECTION_INDICATOR", "0"),
+        ("OASIS7_VIEWER_AGENT_SPEED_EFFECT", "1"),
+        ("OASIS7_VIEWER_AGENT_TRAIL_ENABLED", "1"),
+        ("OASIS7_VIEWER_LOCATION_RADIATION_GLOW", "0"),
+        ("OASIS7_VIEWER_LOCATION_DAMAGE_VISUAL", "1"),
+        ("OASIS7_VIEWER_ASSET_QUANTITY_VISUAL", "1"),
+        ("OASIS7_VIEWER_ASSET_TYPE_COLOR", "0"),
         (
-            "AGENT_WORLD_VIEWER_AGENT_MESH_ASSET",
+            "OASIS7_VIEWER_AGENT_MESH_ASSET",
             "models/agents/worker.glb#Mesh0/Primitive0",
         ),
         (
-            "AGENT_WORLD_VIEWER_LOCATION_MESH_ASSET",
+            "OASIS7_VIEWER_LOCATION_MESH_ASSET",
             "models/world/location.glb#Mesh0/Primitive0",
         ),
         (
-            "AGENT_WORLD_VIEWER_ASSET_MESH_ASSET",
+            "OASIS7_VIEWER_ASSET_MESH_ASSET",
             "models/world/asset.glb#Mesh0/Primitive0",
         ),
         (
-            "AGENT_WORLD_VIEWER_POWER_PLANT_MESH_ASSET",
+            "OASIS7_VIEWER_POWER_PLANT_MESH_ASSET",
             "models/facility/power_plant.glb#Mesh0/Primitive0",
         ),
         (
-            "AGENT_WORLD_VIEWER_AGENT_BASE_TEXTURE_ASSET",
+            "OASIS7_VIEWER_AGENT_BASE_TEXTURE_ASSET",
             "textures/agents/worker_albedo.png",
         ),
         (
-            "AGENT_WORLD_VIEWER_AGENT_NORMAL_TEXTURE_ASSET",
+            "OASIS7_VIEWER_AGENT_NORMAL_TEXTURE_ASSET",
             "textures/agents/worker_normal.png",
         ),
         (
-            "AGENT_WORLD_VIEWER_AGENT_METALLIC_ROUGHNESS_TEXTURE_ASSET",
+            "OASIS7_VIEWER_AGENT_METALLIC_ROUGHNESS_TEXTURE_ASSET",
             "textures/agents/worker_metal_rough.png",
         ),
         (
-            "AGENT_WORLD_VIEWER_AGENT_EMISSIVE_TEXTURE_ASSET",
+            "OASIS7_VIEWER_AGENT_EMISSIVE_TEXTURE_ASSET",
             "textures/agents/worker_emissive.png",
         ),
         (
-            "AGENT_WORLD_VIEWER_LOCATION_BASE_TEXTURE_ASSET",
+            "OASIS7_VIEWER_LOCATION_BASE_TEXTURE_ASSET",
             "textures/world/location_albedo.png",
         ),
         (
-            "AGENT_WORLD_VIEWER_LOCATION_NORMAL_TEXTURE_ASSET",
+            "OASIS7_VIEWER_LOCATION_NORMAL_TEXTURE_ASSET",
             "textures/world/location_normal.png",
         ),
         (
-            "AGENT_WORLD_VIEWER_LOCATION_METALLIC_ROUGHNESS_TEXTURE_ASSET",
+            "OASIS7_VIEWER_LOCATION_METALLIC_ROUGHNESS_TEXTURE_ASSET",
             "textures/world/location_metal_rough.png",
         ),
         (
-            "AGENT_WORLD_VIEWER_LOCATION_EMISSIVE_TEXTURE_ASSET",
+            "OASIS7_VIEWER_LOCATION_EMISSIVE_TEXTURE_ASSET",
             "textures/world/location_emissive.png",
         ),
         (
-            "AGENT_WORLD_VIEWER_ASSET_BASE_TEXTURE_ASSET",
+            "OASIS7_VIEWER_ASSET_BASE_TEXTURE_ASSET",
             "textures/world/asset_albedo.png",
         ),
         (
-            "AGENT_WORLD_VIEWER_ASSET_NORMAL_TEXTURE_ASSET",
+            "OASIS7_VIEWER_ASSET_NORMAL_TEXTURE_ASSET",
             "textures/world/asset_normal.png",
         ),
         (
-            "AGENT_WORLD_VIEWER_ASSET_METALLIC_ROUGHNESS_TEXTURE_ASSET",
+            "OASIS7_VIEWER_ASSET_METALLIC_ROUGHNESS_TEXTURE_ASSET",
             "textures/world/asset_metal_rough.png",
         ),
         (
-            "AGENT_WORLD_VIEWER_ASSET_EMISSIVE_TEXTURE_ASSET",
+            "OASIS7_VIEWER_ASSET_EMISSIVE_TEXTURE_ASSET",
             "textures/world/asset_emissive.png",
         ),
         (
-            "AGENT_WORLD_VIEWER_POWER_PLANT_BASE_TEXTURE_ASSET",
+            "OASIS7_VIEWER_POWER_PLANT_BASE_TEXTURE_ASSET",
             "textures/facility/power_plant_albedo.png",
         ),
         (
-            "AGENT_WORLD_VIEWER_POWER_PLANT_NORMAL_TEXTURE_ASSET",
+            "OASIS7_VIEWER_POWER_PLANT_NORMAL_TEXTURE_ASSET",
             "textures/facility/power_plant_normal.png",
         ),
         (
-            "AGENT_WORLD_VIEWER_POWER_PLANT_METALLIC_ROUGHNESS_TEXTURE_ASSET",
+            "OASIS7_VIEWER_POWER_PLANT_METALLIC_ROUGHNESS_TEXTURE_ASSET",
             "textures/facility/power_plant_metal_rough.png",
         ),
         (
-            "AGENT_WORLD_VIEWER_POWER_PLANT_EMISSIVE_TEXTURE_ASSET",
+            "OASIS7_VIEWER_POWER_PLANT_EMISSIVE_TEXTURE_ASSET",
             "textures/facility/power_plant_emissive.png",
         ),
-        ("AGENT_WORLD_VIEWER_AGENT_BASE_COLOR", "#FF6A38"),
-        ("AGENT_WORLD_VIEWER_AGENT_EMISSIVE_COLOR", "#E66230"),
-        ("AGENT_WORLD_VIEWER_LOCATION_BASE_COLOR", "#4B88D9"),
-        ("AGENT_WORLD_VIEWER_LOCATION_EMISSIVE_COLOR", "#B8D8FF"),
-        ("AGENT_WORLD_VIEWER_ASSET_BASE_COLOR", "#D1C35A"),
-        ("AGENT_WORLD_VIEWER_ASSET_EMISSIVE_COLOR", "#FFD45A"),
-        ("AGENT_WORLD_VIEWER_POWER_PLANT_BASE_COLOR", "#F36934"),
-        ("AGENT_WORLD_VIEWER_POWER_PLANT_EMISSIVE_COLOR", "#FF7F4A"),
-        ("AGENT_WORLD_VIEWER_ASSET_GEOMETRY_TIER", "cinematic"),
-        ("AGENT_WORLD_VIEWER_LOCATION_SHELL_ENABLED", "true"),
-        ("AGENT_WORLD_VIEWER_FRAGMENT_MATERIAL_STRATEGY", "fidelity"),
-        ("AGENT_WORLD_VIEWER_FRAGMENT_UNLIT", "false"),
-        ("AGENT_WORLD_VIEWER_FRAGMENT_ALPHA", "0.78"),
-        ("AGENT_WORLD_VIEWER_FRAGMENT_EMISSIVE_BOOST", "0.40"),
-        ("AGENT_WORLD_VIEWER_MATERIAL_AGENT_ROUGHNESS", "0.44"),
-        ("AGENT_WORLD_VIEWER_MATERIAL_AGENT_METALLIC", "0.22"),
-        ("AGENT_WORLD_VIEWER_MATERIAL_ASSET_ROUGHNESS", "0.61"),
-        ("AGENT_WORLD_VIEWER_MATERIAL_ASSET_METALLIC", "0.33"),
-        ("AGENT_WORLD_VIEWER_MATERIAL_FACILITY_ROUGHNESS", "0.53"),
-        ("AGENT_WORLD_VIEWER_MATERIAL_FACILITY_METALLIC", "0.47"),
-        ("AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_ROUGHNESS", "0.29"),
-        ("AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_METALLIC", "0.74"),
-        (
-            "AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_EMISSIVE_BOOST",
-            "0.12",
-        ),
-        ("AGENT_WORLD_VIEWER_TONEMAPPING", "aces"),
-        ("AGENT_WORLD_VIEWER_DEBAND_DITHER_ENABLED", "true"),
-        ("AGENT_WORLD_VIEWER_BLOOM_ENABLED", "false"),
-        ("AGENT_WORLD_VIEWER_BLOOM_INTENSITY", "0.42"),
-        ("AGENT_WORLD_VIEWER_COLOR_GRADING_EXPOSURE", "-0.65"),
-        ("AGENT_WORLD_VIEWER_COLOR_GRADING_POST_SATURATION", "1.24"),
-        ("AGENT_WORLD_VIEWER_LABEL_FADE_START", "44"),
-        ("AGENT_WORLD_VIEWER_LABEL_FADE_END", "110"),
-        ("AGENT_WORLD_VIEWER_MAX_VISIBLE_LABELS", "32"),
-        ("AGENT_WORLD_VIEWER_LABEL_OCCLUSION_CELL_SPAN", "9"),
-        ("AGENT_WORLD_VIEWER_LABEL_OCCLUSION_CAP_PER_CELL", "3"),
-        ("AGENT_WORLD_VIEWER_OVERLAY_REFRESH_TICKS", "5"),
-        ("AGENT_WORLD_VIEWER_OVERLAY_MAX_HEAT", "72"),
-        ("AGENT_WORLD_VIEWER_OVERLAY_MAX_FLOW", "96"),
-        ("AGENT_WORLD_VIEWER_GRID_LOD_DISTANCE", "180"),
-        ("AGENT_WORLD_VIEWER_SHADOWS_ENABLED", "1"),
-        ("AGENT_WORLD_VIEWER_AMBIENT_BRIGHTNESS", "145"),
-        ("AGENT_WORLD_VIEWER_FILL_LIGHT_RATIO", "0.42"),
-        ("AGENT_WORLD_VIEWER_RIM_LIGHT_RATIO", "0.20"),
-        ("AGENT_WORLD_VIEWER_PHYSICAL_RENDER_ENABLED", "true"),
-        ("AGENT_WORLD_VIEWER_METERS_PER_UNIT", "2.5"),
-        ("AGENT_WORLD_VIEWER_FLOATING_ORIGIN_STEP_M", "1500"),
-        ("AGENT_WORLD_VIEWER_CAMERA_NEAR_M", "0.2"),
-        ("AGENT_WORLD_VIEWER_CAMERA_FAR_M", "60000"),
-        ("AGENT_WORLD_VIEWER_STELLAR_DISTANCE_AU", "2.8"),
-        ("AGENT_WORLD_VIEWER_LUMINOUS_EFFICACY_LM_PER_W", "130"),
-        ("AGENT_WORLD_VIEWER_EXPOSURE_EV100", "12.8"),
-        ("AGENT_WORLD_VIEWER_REFERENCE_RADIATION_AREA_M2", "1.2"),
+        ("OASIS7_VIEWER_AGENT_BASE_COLOR", "#FF6A38"),
+        ("OASIS7_VIEWER_AGENT_EMISSIVE_COLOR", "#E66230"),
+        ("OASIS7_VIEWER_LOCATION_BASE_COLOR", "#4B88D9"),
+        ("OASIS7_VIEWER_LOCATION_EMISSIVE_COLOR", "#B8D8FF"),
+        ("OASIS7_VIEWER_ASSET_BASE_COLOR", "#D1C35A"),
+        ("OASIS7_VIEWER_ASSET_EMISSIVE_COLOR", "#FFD45A"),
+        ("OASIS7_VIEWER_POWER_PLANT_BASE_COLOR", "#F36934"),
+        ("OASIS7_VIEWER_POWER_PLANT_EMISSIVE_COLOR", "#FF7F4A"),
+        ("OASIS7_VIEWER_ASSET_GEOMETRY_TIER", "cinematic"),
+        ("OASIS7_VIEWER_LOCATION_SHELL_ENABLED", "true"),
+        ("OASIS7_VIEWER_FRAGMENT_MATERIAL_STRATEGY", "fidelity"),
+        ("OASIS7_VIEWER_FRAGMENT_UNLIT", "false"),
+        ("OASIS7_VIEWER_FRAGMENT_ALPHA", "0.78"),
+        ("OASIS7_VIEWER_FRAGMENT_EMISSIVE_BOOST", "0.40"),
+        ("OASIS7_VIEWER_MATERIAL_AGENT_ROUGHNESS", "0.44"),
+        ("OASIS7_VIEWER_MATERIAL_AGENT_METALLIC", "0.22"),
+        ("OASIS7_VIEWER_MATERIAL_ASSET_ROUGHNESS", "0.61"),
+        ("OASIS7_VIEWER_MATERIAL_ASSET_METALLIC", "0.33"),
+        ("OASIS7_VIEWER_MATERIAL_FACILITY_ROUGHNESS", "0.53"),
+        ("OASIS7_VIEWER_MATERIAL_FACILITY_METALLIC", "0.47"),
+        ("OASIS7_VIEWER_MATERIAL_POWER_PLANT_ROUGHNESS", "0.29"),
+        ("OASIS7_VIEWER_MATERIAL_POWER_PLANT_METALLIC", "0.74"),
+        ("OASIS7_VIEWER_MATERIAL_POWER_PLANT_EMISSIVE_BOOST", "0.12"),
+        ("OASIS7_VIEWER_TONEMAPPING", "aces"),
+        ("OASIS7_VIEWER_DEBAND_DITHER_ENABLED", "true"),
+        ("OASIS7_VIEWER_BLOOM_ENABLED", "false"),
+        ("OASIS7_VIEWER_BLOOM_INTENSITY", "0.42"),
+        ("OASIS7_VIEWER_COLOR_GRADING_EXPOSURE", "-0.65"),
+        ("OASIS7_VIEWER_COLOR_GRADING_POST_SATURATION", "1.24"),
+        ("OASIS7_VIEWER_LABEL_FADE_START", "44"),
+        ("OASIS7_VIEWER_LABEL_FADE_END", "110"),
+        ("OASIS7_VIEWER_MAX_VISIBLE_LABELS", "32"),
+        ("OASIS7_VIEWER_LABEL_OCCLUSION_CELL_SPAN", "9"),
+        ("OASIS7_VIEWER_LABEL_OCCLUSION_CAP_PER_CELL", "3"),
+        ("OASIS7_VIEWER_OVERLAY_REFRESH_TICKS", "5"),
+        ("OASIS7_VIEWER_OVERLAY_MAX_HEAT", "72"),
+        ("OASIS7_VIEWER_OVERLAY_MAX_FLOW", "96"),
+        ("OASIS7_VIEWER_GRID_LOD_DISTANCE", "180"),
+        ("OASIS7_VIEWER_SHADOWS_ENABLED", "1"),
+        ("OASIS7_VIEWER_AMBIENT_BRIGHTNESS", "145"),
+        ("OASIS7_VIEWER_FILL_LIGHT_RATIO", "0.42"),
+        ("OASIS7_VIEWER_RIM_LIGHT_RATIO", "0.20"),
+        ("OASIS7_VIEWER_PHYSICAL_RENDER_ENABLED", "true"),
+        ("OASIS7_VIEWER_METERS_PER_UNIT", "2.5"),
+        ("OASIS7_VIEWER_FLOATING_ORIGIN_STEP_M", "1500"),
+        ("OASIS7_VIEWER_CAMERA_NEAR_M", "0.2"),
+        ("OASIS7_VIEWER_CAMERA_FAR_M", "60000"),
+        ("OASIS7_VIEWER_STELLAR_DISTANCE_AU", "2.8"),
+        ("OASIS7_VIEWER_LUMINOUS_EFFICACY_LM_PER_W", "130"),
+        ("OASIS7_VIEWER_EXPOSURE_EV100", "12.8"),
+        ("OASIS7_VIEWER_REFERENCE_RADIATION_AREA_M2", "1.2"),
     ]);
 
     let config = load_viewer_3d_config_from(|key| env.get(key).map(|v| v.to_string()));
@@ -375,67 +372,75 @@ fn load_viewer_3d_config_applies_env_overrides() {
 }
 
 #[test]
+fn load_viewer_3d_config_prefers_oasis7_key_over_legacy_key() {
+    let env = HashMap::from([
+        ("OASIS7_VIEWER_SHOW_AGENTS", "false"),
+        ("AGENT_WORLD_VIEWER_SHOW_AGENTS", "true"),
+    ]);
+
+    let config = load_viewer_3d_config_from(|key| env.get(key).map(|v| v.to_string()));
+    assert!(!config.show_agents);
+}
+
+#[test]
 fn load_viewer_3d_config_ignores_invalid_values() {
     let env = HashMap::from([
-        ("AGENT_WORLD_VIEWER_CM_TO_UNIT", "0"),
-        ("AGENT_WORLD_VIEWER_RENDER_PROFILE", "invalid"),
-        ("AGENT_WORLD_VIEWER_SHOW_AGENTS", "invalid"),
-        ("AGENT_WORLD_VIEWER_VISUAL_EFFECTS", "hyper"),
+        ("OASIS7_VIEWER_CM_TO_UNIT", "0"),
+        ("OASIS7_VIEWER_RENDER_PROFILE", "invalid"),
+        ("OASIS7_VIEWER_SHOW_AGENTS", "invalid"),
+        ("OASIS7_VIEWER_VISUAL_EFFECTS", "hyper"),
         (
-            "AGENT_WORLD_VIEWER_AGENT_VARIANT_PALETTE",
+            "OASIS7_VIEWER_AGENT_VARIANT_PALETTE",
             "#112233,#445566,#778899",
         ),
-        ("AGENT_WORLD_VIEWER_AGENT_DIRECTION_INDICATOR", "invalid"),
-        ("AGENT_WORLD_VIEWER_AGENT_SPEED_EFFECT", "invalid"),
-        ("AGENT_WORLD_VIEWER_AGENT_TRAIL_ENABLED", "2"),
-        ("AGENT_WORLD_VIEWER_LOCATION_RADIATION_GLOW", "maybe"),
-        ("AGENT_WORLD_VIEWER_LOCATION_DAMAGE_VISUAL", "??"),
-        ("AGENT_WORLD_VIEWER_ASSET_QUANTITY_VISUAL", "on-please"),
-        ("AGENT_WORLD_VIEWER_ASSET_TYPE_COLOR", "nah"),
-        ("AGENT_WORLD_VIEWER_AGENT_NORMAL_TEXTURE_ASSET", " "),
-        ("AGENT_WORLD_VIEWER_AGENT_BASE_COLOR", "#12345"),
-        ("AGENT_WORLD_VIEWER_AGENT_EMISSIVE_COLOR", "123456"),
-        ("AGENT_WORLD_VIEWER_ASSET_GEOMETRY_TIER", "ultra"),
-        ("AGENT_WORLD_VIEWER_LOCATION_SHELL_ENABLED", "maybe"),
-        ("AGENT_WORLD_VIEWER_FRAGMENT_MATERIAL_STRATEGY", "hyper"),
-        ("AGENT_WORLD_VIEWER_FRAGMENT_UNLIT", "idk"),
-        ("AGENT_WORLD_VIEWER_FRAGMENT_ALPHA", "1.5"),
-        ("AGENT_WORLD_VIEWER_FRAGMENT_EMISSIVE_BOOST", "-1"),
-        ("AGENT_WORLD_VIEWER_MATERIAL_AGENT_ROUGHNESS", "4"),
-        ("AGENT_WORLD_VIEWER_MATERIAL_AGENT_METALLIC", "-3"),
-        ("AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_ROUGHNESS", "-0.2"),
-        ("AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_METALLIC", "2"),
-        (
-            "AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_EMISSIVE_BOOST",
-            "-1",
-        ),
-        ("AGENT_WORLD_VIEWER_TONEMAPPING", "ultra-hdr"),
-        ("AGENT_WORLD_VIEWER_DEBAND_DITHER_ENABLED", "???"),
-        ("AGENT_WORLD_VIEWER_BLOOM_ENABLED", "???"),
-        ("AGENT_WORLD_VIEWER_BLOOM_INTENSITY", "99"),
-        ("AGENT_WORLD_VIEWER_COLOR_GRADING_EXPOSURE", "inf"),
-        ("AGENT_WORLD_VIEWER_COLOR_GRADING_POST_SATURATION", "-1"),
-        ("AGENT_WORLD_VIEWER_LABEL_FADE_START", "-5"),
-        ("AGENT_WORLD_VIEWER_LABEL_FADE_END", "2"),
-        ("AGENT_WORLD_VIEWER_MAX_VISIBLE_LABELS", "0"),
-        ("AGENT_WORLD_VIEWER_LABEL_OCCLUSION_CELL_SPAN", "0"),
-        ("AGENT_WORLD_VIEWER_LABEL_OCCLUSION_CAP_PER_CELL", "0"),
-        ("AGENT_WORLD_VIEWER_OVERLAY_REFRESH_TICKS", "0"),
-        ("AGENT_WORLD_VIEWER_OVERLAY_MAX_HEAT", "0"),
-        ("AGENT_WORLD_VIEWER_OVERLAY_MAX_FLOW", "0"),
-        ("AGENT_WORLD_VIEWER_GRID_LOD_DISTANCE", "0"),
-        ("AGENT_WORLD_VIEWER_SHADOWS_ENABLED", "invalid"),
-        ("AGENT_WORLD_VIEWER_AMBIENT_BRIGHTNESS", "0"),
-        ("AGENT_WORLD_VIEWER_FILL_LIGHT_RATIO", "-1"),
-        ("AGENT_WORLD_VIEWER_RIM_LIGHT_RATIO", "-1"),
-        ("AGENT_WORLD_VIEWER_PHYSICAL_RENDER_ENABLED", "1"),
-        ("AGENT_WORLD_VIEWER_METERS_PER_UNIT", "-1"),
-        ("AGENT_WORLD_VIEWER_FLOATING_ORIGIN_STEP_M", "nan"),
-        ("AGENT_WORLD_VIEWER_CAMERA_NEAR_M", "10"),
-        ("AGENT_WORLD_VIEWER_CAMERA_FAR_M", "2"),
-        ("AGENT_WORLD_VIEWER_STELLAR_DISTANCE_AU", "-2"),
-        ("AGENT_WORLD_VIEWER_LUMINOUS_EFFICACY_LM_PER_W", "0"),
-        ("AGENT_WORLD_VIEWER_REFERENCE_RADIATION_AREA_M2", "0"),
+        ("OASIS7_VIEWER_AGENT_DIRECTION_INDICATOR", "invalid"),
+        ("OASIS7_VIEWER_AGENT_SPEED_EFFECT", "invalid"),
+        ("OASIS7_VIEWER_AGENT_TRAIL_ENABLED", "2"),
+        ("OASIS7_VIEWER_LOCATION_RADIATION_GLOW", "maybe"),
+        ("OASIS7_VIEWER_LOCATION_DAMAGE_VISUAL", "??"),
+        ("OASIS7_VIEWER_ASSET_QUANTITY_VISUAL", "on-please"),
+        ("OASIS7_VIEWER_ASSET_TYPE_COLOR", "nah"),
+        ("OASIS7_VIEWER_AGENT_NORMAL_TEXTURE_ASSET", " "),
+        ("OASIS7_VIEWER_AGENT_BASE_COLOR", "#12345"),
+        ("OASIS7_VIEWER_AGENT_EMISSIVE_COLOR", "123456"),
+        ("OASIS7_VIEWER_ASSET_GEOMETRY_TIER", "ultra"),
+        ("OASIS7_VIEWER_LOCATION_SHELL_ENABLED", "maybe"),
+        ("OASIS7_VIEWER_FRAGMENT_MATERIAL_STRATEGY", "hyper"),
+        ("OASIS7_VIEWER_FRAGMENT_UNLIT", "idk"),
+        ("OASIS7_VIEWER_FRAGMENT_ALPHA", "1.5"),
+        ("OASIS7_VIEWER_FRAGMENT_EMISSIVE_BOOST", "-1"),
+        ("OASIS7_VIEWER_MATERIAL_AGENT_ROUGHNESS", "4"),
+        ("OASIS7_VIEWER_MATERIAL_AGENT_METALLIC", "-3"),
+        ("OASIS7_VIEWER_MATERIAL_POWER_PLANT_ROUGHNESS", "-0.2"),
+        ("OASIS7_VIEWER_MATERIAL_POWER_PLANT_METALLIC", "2"),
+        ("OASIS7_VIEWER_MATERIAL_POWER_PLANT_EMISSIVE_BOOST", "-1"),
+        ("OASIS7_VIEWER_TONEMAPPING", "ultra-hdr"),
+        ("OASIS7_VIEWER_DEBAND_DITHER_ENABLED", "???"),
+        ("OASIS7_VIEWER_BLOOM_ENABLED", "???"),
+        ("OASIS7_VIEWER_BLOOM_INTENSITY", "99"),
+        ("OASIS7_VIEWER_COLOR_GRADING_EXPOSURE", "inf"),
+        ("OASIS7_VIEWER_COLOR_GRADING_POST_SATURATION", "-1"),
+        ("OASIS7_VIEWER_LABEL_FADE_START", "-5"),
+        ("OASIS7_VIEWER_LABEL_FADE_END", "2"),
+        ("OASIS7_VIEWER_MAX_VISIBLE_LABELS", "0"),
+        ("OASIS7_VIEWER_LABEL_OCCLUSION_CELL_SPAN", "0"),
+        ("OASIS7_VIEWER_LABEL_OCCLUSION_CAP_PER_CELL", "0"),
+        ("OASIS7_VIEWER_OVERLAY_REFRESH_TICKS", "0"),
+        ("OASIS7_VIEWER_OVERLAY_MAX_HEAT", "0"),
+        ("OASIS7_VIEWER_OVERLAY_MAX_FLOW", "0"),
+        ("OASIS7_VIEWER_GRID_LOD_DISTANCE", "0"),
+        ("OASIS7_VIEWER_SHADOWS_ENABLED", "invalid"),
+        ("OASIS7_VIEWER_AMBIENT_BRIGHTNESS", "0"),
+        ("OASIS7_VIEWER_FILL_LIGHT_RATIO", "-1"),
+        ("OASIS7_VIEWER_RIM_LIGHT_RATIO", "-1"),
+        ("OASIS7_VIEWER_PHYSICAL_RENDER_ENABLED", "1"),
+        ("OASIS7_VIEWER_METERS_PER_UNIT", "-1"),
+        ("OASIS7_VIEWER_FLOATING_ORIGIN_STEP_M", "nan"),
+        ("OASIS7_VIEWER_CAMERA_NEAR_M", "10"),
+        ("OASIS7_VIEWER_CAMERA_FAR_M", "2"),
+        ("OASIS7_VIEWER_STELLAR_DISTANCE_AU", "-2"),
+        ("OASIS7_VIEWER_LUMINOUS_EFFICACY_LM_PER_W", "0"),
+        ("OASIS7_VIEWER_REFERENCE_RADIATION_AREA_M2", "0"),
     ]);
 
     let config = load_viewer_3d_config_from(|key| env.get(key).map(|v| v.to_string()));
@@ -588,7 +593,7 @@ fn load_viewer_3d_config_ignores_invalid_values() {
 
 #[test]
 fn render_profile_sets_asset_defaults_and_allows_explicit_override() {
-    let debug_profile_env = HashMap::from([("AGENT_WORLD_VIEWER_RENDER_PROFILE", "debug")]);
+    let debug_profile_env = HashMap::from([("OASIS7_VIEWER_RENDER_PROFILE", "debug")]);
     let debug_config =
         load_viewer_3d_config_from(|key| debug_profile_env.get(key).map(|v| v.to_string()));
     assert_eq!(debug_config.render_profile, ViewerRenderProfile::Debug);
@@ -608,9 +613,9 @@ fn render_profile_sets_asset_defaults_and_allows_explicit_override() {
     assert!(!debug_config.post_process.bloom_enabled);
 
     let cinematic_with_override_env = HashMap::from([
-        ("AGENT_WORLD_VIEWER_RENDER_PROFILE", "cinematic"),
-        ("AGENT_WORLD_VIEWER_LOCATION_SHELL_ENABLED", "false"),
-        ("AGENT_WORLD_VIEWER_BLOOM_ENABLED", "false"),
+        ("OASIS7_VIEWER_RENDER_PROFILE", "cinematic"),
+        ("OASIS7_VIEWER_LOCATION_SHELL_ENABLED", "false"),
+        ("OASIS7_VIEWER_BLOOM_ENABLED", "false"),
     ]);
     let cinematic_config = load_viewer_3d_config_from(|key| {
         cinematic_with_override_env.get(key).map(|v| v.to_string())
@@ -639,7 +644,7 @@ fn render_profile_sets_asset_defaults_and_allows_explicit_override() {
 
 #[test]
 fn visual_effects_level_sets_baseline_and_allows_explicit_toggle_override() {
-    let minimal_env = HashMap::from([("AGENT_WORLD_VIEWER_VISUAL_EFFECTS", "minimal")]);
+    let minimal_env = HashMap::from([("OASIS7_VIEWER_VISUAL_EFFECTS", "minimal")]);
     let minimal_config =
         load_viewer_3d_config_from(|key| minimal_env.get(key).map(|v| v.to_string()));
     assert_eq!(
@@ -655,9 +660,9 @@ fn visual_effects_level_sets_baseline_and_allows_explicit_toggle_override() {
     assert!(!minimal_config.visual.asset_type_color);
 
     let minimal_override_env = HashMap::from([
-        ("AGENT_WORLD_VIEWER_VISUAL_EFFECTS", "minimal"),
-        ("AGENT_WORLD_VIEWER_AGENT_SPEED_EFFECT", "1"),
-        ("AGENT_WORLD_VIEWER_LOCATION_RADIATION_GLOW", "true"),
+        ("OASIS7_VIEWER_VISUAL_EFFECTS", "minimal"),
+        ("OASIS7_VIEWER_AGENT_SPEED_EFFECT", "1"),
+        ("OASIS7_VIEWER_LOCATION_RADIATION_GLOW", "true"),
     ]);
     let minimal_override_config =
         load_viewer_3d_config_from(|key| minimal_override_env.get(key).map(|v| v.to_string()));
@@ -670,7 +675,7 @@ fn visual_effects_level_sets_baseline_and_allows_explicit_toggle_override() {
     assert!(!minimal_override_config.visual.agent_trail_enabled);
     assert!(minimal_override_config.visual.location_radiation_glow);
 
-    let enhanced_env = HashMap::from([("AGENT_WORLD_VIEWER_VISUAL_EFFECTS", "enhanced")]);
+    let enhanced_env = HashMap::from([("OASIS7_VIEWER_VISUAL_EFFECTS", "enhanced")]);
     let enhanced_config =
         load_viewer_3d_config_from(|key| enhanced_env.get(key).map(|v| v.to_string()));
     assert_eq!(
@@ -689,10 +694,10 @@ fn visual_effects_level_sets_baseline_and_allows_explicit_toggle_override() {
 #[test]
 fn load_viewer_external_mesh_config_ignores_empty_values() {
     let env = HashMap::from([
-        ("AGENT_WORLD_VIEWER_AGENT_MESH_ASSET", "  "),
-        ("AGENT_WORLD_VIEWER_LOCATION_MESH_ASSET", ""),
+        ("OASIS7_VIEWER_AGENT_MESH_ASSET", "  "),
+        ("OASIS7_VIEWER_LOCATION_MESH_ASSET", ""),
         (
-            "AGENT_WORLD_VIEWER_ASSET_MESH_ASSET",
+            "OASIS7_VIEWER_ASSET_MESH_ASSET",
             " models/world/asset.glb#Mesh0/Primitive0 ",
         ),
     ]);
@@ -711,9 +716,9 @@ fn load_viewer_external_mesh_config_ignores_empty_values() {
 #[test]
 fn load_viewer_external_material_config_ignores_empty_or_invalid_values() {
     let env = HashMap::from([
-        ("AGENT_WORLD_VIEWER_AGENT_BASE_COLOR", "   "),
-        ("AGENT_WORLD_VIEWER_AGENT_EMISSIVE_COLOR", "#GG2233"),
-        ("AGENT_WORLD_VIEWER_ASSET_BASE_COLOR", " #D1C35A "),
+        ("OASIS7_VIEWER_AGENT_BASE_COLOR", "   "),
+        ("OASIS7_VIEWER_AGENT_EMISSIVE_COLOR", "#GG2233"),
+        ("OASIS7_VIEWER_ASSET_BASE_COLOR", " #D1C35A "),
     ]);
 
     let external_material =
@@ -731,18 +736,18 @@ fn load_viewer_external_material_config_ignores_empty_or_invalid_values() {
 #[test]
 fn load_viewer_external_texture_config_ignores_empty_values() {
     let env = HashMap::from([
-        ("AGENT_WORLD_VIEWER_AGENT_BASE_TEXTURE_ASSET", " "),
-        ("AGENT_WORLD_VIEWER_AGENT_NORMAL_TEXTURE_ASSET", " "),
+        ("OASIS7_VIEWER_AGENT_BASE_TEXTURE_ASSET", " "),
+        ("OASIS7_VIEWER_AGENT_NORMAL_TEXTURE_ASSET", " "),
         (
-            "AGENT_WORLD_VIEWER_LOCATION_BASE_TEXTURE_ASSET",
+            "OASIS7_VIEWER_LOCATION_BASE_TEXTURE_ASSET",
             " textures/world/location_albedo.png ",
         ),
         (
-            "AGENT_WORLD_VIEWER_LOCATION_NORMAL_TEXTURE_ASSET",
+            "OASIS7_VIEWER_LOCATION_NORMAL_TEXTURE_ASSET",
             " textures/world/location_normal.png ",
         ),
-        ("AGENT_WORLD_VIEWER_ASSET_BASE_TEXTURE_ASSET", ""),
-        ("AGENT_WORLD_VIEWER_ASSET_EMISSIVE_TEXTURE_ASSET", ""),
+        ("OASIS7_VIEWER_ASSET_BASE_TEXTURE_ASSET", ""),
+        ("OASIS7_VIEWER_ASSET_EMISSIVE_TEXTURE_ASSET", ""),
     ]);
 
     let external_texture =
