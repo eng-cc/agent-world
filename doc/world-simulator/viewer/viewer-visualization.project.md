@@ -1,4 +1,4 @@
-# Agent World：M5 可视化与调试（项目管理文档）
+# oasis7：M5 可视化与调试（项目管理文档）
 
 - 对应设计文档: `doc/world-simulator/viewer/viewer-visualization.design.md`
 - 对应需求文档: `doc/world-simulator/viewer/viewer-visualization.prd.md`

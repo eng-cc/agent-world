@@ -4,7 +4,7 @@
 - 对应项目管理文档: `doc/world-simulator/viewer/viewer-visualization.project.md`
 
 ## 1. 设计定位
-定义 Agent World Viewer 从协议、回放、UI 到 3D 基础能力的总体可视化架构：为离线回放、在线 live、时间轴、事件联动和基础调试能力提供统一底座。
+定义 oasis7 Viewer 从协议、回放、UI 到 3D 基础能力的总体可视化架构：为离线回放、在线 live、时间轴、事件联动和基础调试能力提供统一底座。
 
 ## 2. 设计结构
 - 协议与回放层：定义 hello/subscribe/snapshot/event/control 与 offline/live 回放路径。

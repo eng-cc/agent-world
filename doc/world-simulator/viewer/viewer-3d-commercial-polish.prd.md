@@ -1,4 +1,4 @@
-# Agent World Viewer：3D 商业化精致度收敛（资产/材质/光照/后处理）
+# oasis7 Viewer：3D 商业化精致度收敛（资产/材质/光照/后处理）
 
 - 对应设计文档: `doc/world-simulator/viewer/viewer-3d-commercial-polish.design.md`
 - 对应项目管理文档: `doc/world-simulator/viewer/viewer-3d-commercial-polish.project.md`

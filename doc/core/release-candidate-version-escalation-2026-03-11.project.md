@@ -1,4 +1,4 @@
-# Agent World: 版本级候选 readiness 扩展（2026-03-11）（项目管理）
+# oasis7: 版本级候选 readiness 扩展（2026-03-11）（项目管理）
 
 - 对应设计文档: `doc/core/release-candidate-version-escalation-2026-03-11.design.md`
 - 对应需求文档: `doc/core/release-candidate-version-escalation-2026-03-11.prd.md`

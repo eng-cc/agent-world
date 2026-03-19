@@ -1,4 +1,4 @@
-# Agent World: Minimal System Run (Viewer Demo)
+# oasis7: Minimal System Run (Viewer Demo)
 
 - 对应设计文档: `doc/world-simulator/viewer/viewer-minimal-system.design.md`
 - 对应项目管理文档: `doc/world-simulator/viewer/viewer-minimal-system.project.md`

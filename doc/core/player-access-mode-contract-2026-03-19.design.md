@@ -1,4 +1,4 @@
-# Agent World：玩家访问模式总契约设计（2026-03-19）
+# oasis7：玩家访问模式总契约设计（2026-03-19）
 
 - 对应需求文档: `doc/core/player-access-mode-contract-2026-03-19.prd.md`
 - 对应项目管理文档: `doc/core/player-access-mode-contract-2026-03-19.project.md`

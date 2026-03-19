@@ -1,4 +1,4 @@
-# Agent World：M5 可视化与调试（Bevy）
+# oasis7：M5 可视化与调试（Bevy）
 
 - 对应设计文档: `doc/world-simulator/viewer/viewer-visualization.design.md`
 - 对应项目管理文档: `doc/world-simulator/viewer/viewer-visualization.project.md`

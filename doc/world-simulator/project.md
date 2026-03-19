@@ -154,6 +154,21 @@
 - [x] TASK-WORLD_SIMULATOR-158 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 为 source-tree Viewer Web 入口补齐 dist freshness gate，覆盖 `index.html`、`software_safe.*` 与静态资源漂移；让 `oasis7-run.sh play` 在 Web root 入口更新后优先重建 fresh dist，而不是继续消费 stale `crates/agent_world_viewer/dist`。
 - [x] TASK-WORLD_SIMULATOR-163 (PRD-WORLD_SIMULATOR-017/018) [test_tier_required]: 修复 live 模式 seek 语义误报，收口 `dispatch_viewer_control` / `__AW_TEST__` / timeline / egui / automation 的 profile 对齐，让 live seek 返回显式 unsupported 反馈而不是“viewer client channel send failed / retry control after reconnect”。
 - [x] TASK-WORLD_SIMULATOR-164 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 为 Viewer 首局 `4/4` 之后补 `PostOnboarding` 阶段目标卡，基于工业事件与控制反馈输出默认目标 / 阻塞解释 / 分支解锁，并同步更新 summary 语义与定向测试。
+- [x] TASK-WORLD_SIMULATOR-165 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 收口 Viewer 活跃手册、原生窗口标题、Web `<title>` 与抓帧脚本窗口匹配的 `oasis7 Viewer` 品牌，保持 Web-first / native fallback 文档与实际行为一致。
+  - 产物文件:
+    - `doc/world-simulator/prd.md`
+    - `doc/world-simulator/project.md`
+    - `doc/world-simulator/viewer/viewer-manual.md`
+    - `crates/agent_world_viewer/src/app_bootstrap.rs`
+    - `crates/agent_world_viewer/index.html`
+    - `crates/agent_world_viewer/software_safe.html`
+    - `scripts/capture-viewer-frame.sh`
+  - 验收命令 (`test_tier_required`):
+    - `rg -n "oasis7 Viewer|Agent World Viewer" doc/world-simulator/viewer/viewer-manual.md crates/agent_world_viewer/src/app_bootstrap.rs crates/agent_world_viewer/index.html crates/agent_world_viewer/software_safe.html scripts/capture-viewer-frame.sh`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer primary_window_config_sets_title_and_resolution -- --nocapture`
+    - `bash -n scripts/capture-viewer-frame.sh`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
 - [x] TASK-WORLD_SIMULATOR-162 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 修复标准模式 bootstrap `Loading standard viewer...` overlay 在 wasm 已启动后仍残留并压缩左侧视口的问题，补齐 cleanup 生命周期与最小回归验证。
 - [x] TASK-WORLD_SIMULATOR-148 (PRD-WORLD_SIMULATOR-040) [test_tier_required]: 完成 `OpenClaw` 双轨模式（`player_parity` / `headless_agent` / `debug_viewer`）专题 PRD / Project 建模，并回写模块主文档、索引与 devlog。
 - [x] TASK-WORLD_SIMULATOR-149 (PRD-WORLD_SIMULATOR-040) [test_tier_required]: 由 `agent_engineer` 冻结 `player_parity` / `headless_agent` 的 observation/action contract、schema version、模式元数据与禁止泄露真值边界，并形成 supporting spec。
@@ -330,6 +345,7 @@
 - 最新完成: `TASK-WORLD_SIMULATOR-137`（为 `oasis7` 补齐 chain node 公私钥资产说明与 operator contract）。
 - 最新完成: `TASK-WORLD_SIMULATOR-138`（为 `oasis7-run.sh download` 补 bundle-first 下载阶段日志、进度条与非 TTY heartbeat，并新增下载可观测性回归脚本）。
 - 最新完成: `TASK-WORLD_SIMULATOR-164`（为 Viewer 首局 `4/4` 之后补 `PostOnboarding` 阶段目标卡、阻塞解释、分支解锁与 summary 文案更新，并通过定向 `test_tier_required` 回归）。
+- 最新完成: `TASK-WORLD_SIMULATOR-165`（已完成 Viewer 活跃手册、原生窗口标题、Web `<title>` 与抓帧脚本窗口匹配的 `oasis7 Viewer` 品牌对齐，并保留旧标题仅作兼容匹配）。
 - 最新完成: `TASK-WORLD_SIMULATOR-163`（修复 live 模式 seek 语义误报，收口 `dispatch_viewer_control`、`__AW_TEST__`、timeline、egui 与 automation 的 profile 对齐，避免把 unsupported seek 误报成断链重连问题）。
 - 最新完成: `TASK-WORLD_SIMULATOR-162`（收口标准模式 bootstrap loading overlay 生命周期，修复 wasm 启动后仍残留并压缩左侧视口的问题，并补齐 `agent-browser` 回归脚本）。
 - 最新完成: `TASK-WORLD_SIMULATOR-161`（将 `oasis7` 主入口中的 UI/observer 细节拆到独立 reference，保持主 skill 聚焦 OpenClaw 执行闭环）。

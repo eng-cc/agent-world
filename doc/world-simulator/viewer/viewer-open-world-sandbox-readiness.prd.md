@@ -1,4 +1,4 @@
-# Agent World Viewer：面向开放世界沙盒的可玩化准备（阶段计划）
+# oasis7 Viewer：面向开放世界沙盒的可玩化准备（阶段计划）
 
 - 对应设计文档: `doc/world-simulator/viewer/viewer-open-world-sandbox-readiness.design.md`
 - 对应项目管理文档: `doc/world-simulator/viewer/viewer-open-world-sandbox-readiness.project.md`

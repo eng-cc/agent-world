@@ -3,7 +3,7 @@
 审计轮次: 6
 
 ## 目标
-- 作为项目级总 PRD，提供 Agent World 的全局设计全貌入口。
+- 作为项目级总 PRD，提供 oasis7 的全局设计全貌入口。
 - 统一跨模块边界、关键链路、术语口径与验收基线。
 - 确保各模块改动可追溯到 PRD-ID、任务和测试证据。
 
@@ -45,6 +45,7 @@
   - SC-6: 发布前必须先完成玩法微循环、runtime 验收、testing 证据、playability 反馈四条 P0 闭环，缺任一项不得给出 go 结论。
   - SC-7: headless-runtime、自动化稳定性、文档一致性收口具备明确 P1 责任划分与交付标准。
   - SC-8: `standard_3d / software_safe / pure_api` 三模式在 core 中具备唯一 taxonomy、claim envelope 与 mode/lane 分层约束。
+  - SC-9: core 活跃专题标题、Viewer 活跃手册与实际窗口/Web 标题对齐 `oasis7` 品牌；内部 `agent_world*` / `world_*` 兼容命名仅以实现说明形式保留，不得继续冒充公开标题。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -100,6 +101,7 @@
   - AC-10: `PRD-CORE-004` 可映射到 `doc/core/project.md` 中的任务与 `test_tier_required` 验证方法。
   - AC-11: `PRD-CORE-005` 必须明确下一轮第一优先级、对应 owner role、输入/输出与进入条件。
   - AC-12: `PRD-CORE-009` 必须把 `standard_3d / software_safe / pure_api` 与 `execution lane` 的边界写成唯一 taxonomy，并要求证据与 claim 显式绑定 mode。
+  - AC-13: core 活跃专题、Viewer 活跃手册与 Viewer 用户可见标题必须统一使用 `oasis7` 品牌；若为兼容保留旧内部实现名，必须明确标注为 internal compatibility naming。
 - Non-Goals:
   - 不在 core PRD 中替代模块详细技术分册。
   - 不在 core PRD 中维护逐版本实现变更流水（该信息在 devlog）。

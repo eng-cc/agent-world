@@ -162,7 +162,7 @@ wait_linux_window_line() {
   local display=$1
   local line=""
   for _ in $(seq 1 30); do
-    line=$(DISPLAY="$display" xwininfo -root -tree 2>/dev/null | grep "Agent World Viewer" | head -n1 || true)
+    line=$(DISPLAY="$display" xwininfo -root -tree 2>/dev/null | grep -E "oasis7 Viewer|Agent World Viewer" | head -n1 || true)
     if [[ -n "$line" ]]; then
       echo "$line"
       return 0
@@ -315,7 +315,7 @@ capture_linux() {
 
   local window_line
   if ! window_line=$(wait_linux_window_line "$display"); then
-    echo "failed to find window: Agent World Viewer" >&2
+    echo "failed to find window: oasis7 Viewer (compat: Agent World Viewer)" >&2
     exit 2
   fi
   echo "$window_line" > "$window_line_txt"
@@ -358,7 +358,7 @@ capture_macos() {
   capture_max_wait=$(resolve_capture_max_wait "$viewer_wait" "$capture_max_wait_override")
 
   echo "macOS mode: Bevy internal screenshot (no Xvfb)" > "$xvfb_log"
-  echo "bevy_internal_capture Agent World Viewer" > "$window_line_txt"
+  echo "bevy_internal_capture oasis7 Viewer" > "$window_line_txt"
   echo "internal" > "$window_geom_txt"
 
   local viewer_cmd=(env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- "$addr")

@@ -342,6 +342,7 @@
   - AC-41: 启动器代码治理满足工程约束：`agent_world_client_launcher` 单个 Rust 源文件不得超过 1200 行，超限时需模块化拆分且行为不回归。
   - AC-42: `world_web_launcher` 新增 `/api/gui-agent/capabilities|state|action`，并通过统一动作集合覆盖人工操作全功能（启停、反馈、转账、浏览器查询），所有动作返回结构化 `{ok,action,error_code?,error?,data?,state}`。
   - AC-43: `agent_world` required 测试中 10 个已知失败项按白名单临时下线（`#[ignore]`）且保留原因注释；`env -u RUSTC_WRAPPER cargo test -p agent_world --tests --features test_tier_required` 不再因这 10 项失败阻塞。
+  - AC-44: Viewer 活跃手册、原生窗口标题、Web 页面 `<title>` 与弱图形页标题必须统一使用 `oasis7 Viewer` 品牌；旧 `Agent World Viewer` 仅可作为脚本兼容匹配或历史证据上下文保留，不得继续作为当前公开标题。
 - Non-Goals:
   - 不在本 PRD 中详细列出每个 UI 像素级规范。
   - 不替代 world-runtime/p2p 的底层协议设计。

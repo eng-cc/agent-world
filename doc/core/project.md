@@ -159,6 +159,24 @@
 - [x] TASK-CORE-027 (PRD-CORE-003) [test_tier_required]: 清理 `doc/README.md` 兼容跳转入口中的重复条目，保持工程总入口导航唯一且可读。
 - [x] TASK-CORE-028 (PRD-CORE-009) [test_tier_required]: 完成“三模式总契约（`standard_3d / software_safe / pure_api`）”专题 PRD / Design / Project 建模，并同步 core 主入口、索引、README 与 devlog。
 - [x] TASK-CORE-029 (PRD-CORE-009) [test_tier_required]: 对齐 `testing-manual`、`world-simulator`、`game` 与 `testing` 下游文档术语，明确 `standard_3d / software_safe / pure_api` 属于玩家访问模式，`player_parity / headless_agent / debug_viewer` 属于 execution lane。
+- [x] TASK-CORE-030 (PRD-CORE-008/009) [test_tier_required]: 收口 core 活跃专题标题、Viewer 活跃手册与实际 Viewer 窗口/Web 标题的 `oasis7` 品牌，明确旧 `agent_world*` / `world_*` 仅作 internal compatibility naming。
+  - 产物文件:
+    - `doc/core/prd.md`
+    - `doc/core/player-access-mode-contract-2026-03-19.{prd,design,project}.md`
+    - `doc/core/release-candidate-*.{prd,design,project}.md`
+    - `doc/core/next-round-priority-slate-2026-03-11.{prd,design,project}.md`
+    - `doc/core/doc-readme-public-entry-sync-2026-03-11.{prd,design,project}.md`
+    - `doc/world-simulator/viewer/viewer-manual.md`
+    - `crates/agent_world_viewer/src/app_bootstrap.rs`
+    - `crates/agent_world_viewer/index.html`
+    - `crates/agent_world_viewer/software_safe.html`
+    - `scripts/capture-viewer-frame.sh`
+  - 验收命令 (`test_tier_required`):
+    - `rg -n "^# oasis7|oasis7 Viewer|internal compatibility naming" doc/core/*.md doc/core/*.prd.md doc/core/*.design.md doc/core/*.project.md doc/world-simulator/viewer/viewer-manual.md crates/agent_world_viewer/src/app_bootstrap.rs crates/agent_world_viewer/index.html crates/agent_world_viewer/software_safe.html scripts/capture-viewer-frame.sh`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer primary_window_config_sets_title_and_resolution -- --nocapture`
+    - `bash -n scripts/capture-viewer-frame.sh`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
 
 ## 依赖
 - doc/core/prd.index.md
@@ -192,6 +210,7 @@
 - 最新完成: `TASK-CORE-027`（已清理工程总入口兼容跳转重复条目）。
 - 最新完成: `TASK-CORE-028`（已冻结 `standard_3d / software_safe / pure_api` 三模式总契约，并明确 mode / execution lane 分层口径）。
 - 最新完成: `TASK-CORE-029`（已完成 `testing-manual`、`world-simulator`、`game` 与 `testing` 的下游术语回写，收口三模式与 execution lane 的跨模块口径）。
+- 最新完成: `TASK-CORE-030`（已完成 core 活跃专题标题、Viewer 活跃手册与实际 Viewer 窗口/Web 标题的 `oasis7` 品牌对齐，并保留旧实现名仅作 internal compatibility naming 说明）。
 - 说明: 本文档仅维护 core 设计执行状态；过程记录在 `doc/devlog/2026-03-06.md`、`doc/devlog/2026-03-09.md`、`doc/devlog/2026-03-10.md`、`doc/devlog/2026-03-11.md` 与 `doc/devlog/2026-03-19.md`。
 
 ## 阶段收口执行顺序（PRD-CORE-004）

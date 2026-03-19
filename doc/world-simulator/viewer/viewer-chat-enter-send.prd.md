@@ -1,4 +1,4 @@
-# Agent World Viewer：Chat 输入回车发送（设计文档）
+# oasis7 Viewer：Chat 输入回车发送（设计文档）
 
 - 对应设计文档: `doc/world-simulator/viewer/viewer-chat-enter-send.design.md`
 - 对应项目管理文档: `doc/world-simulator/viewer/viewer-chat-enter-send.project.md`

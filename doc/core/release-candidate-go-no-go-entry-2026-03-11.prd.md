@@ -1,4 +1,4 @@
-# Agent World: 版本候选 go/no-go 裁决入口（2026-03-11）
+# oasis7: 版本候选 go/no-go 裁决入口（2026-03-11）
 
 - 对应设计文档: `doc/core/release-candidate-go-no-go-entry-2026-03-11.design.md`
 - 对应项目管理文档: `doc/core/release-candidate-go-no-go-entry-2026-03-11.project.md`

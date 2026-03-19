@@ -1,4 +1,4 @@
-# Agent World: 发布候选 readiness 统一入口（2026-03-11）
+# oasis7: 发布候选 readiness 统一入口（2026-03-11）
 
 - 对应设计文档: `doc/core/release-candidate-readiness-entry-2026-03-11.design.md`
 - 对应项目管理文档: `doc/core/release-candidate-readiness-entry-2026-03-11.project.md`

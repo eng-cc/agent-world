@@ -213,7 +213,7 @@ pub(super) fn run_ui(addr: String, offline: bool) {
 
 fn primary_window_config() -> Window {
     let window = Window {
-        title: "Agent World Viewer".to_string(),
+        title: "oasis7 Viewer".to_string(),
         resolution: (1200, 800).into(),
         ..default()
     };
@@ -391,7 +391,7 @@ mod tests {
     #[test]
     fn primary_window_config_sets_title_and_resolution() {
         let window = primary_window_config();
-        assert_eq!(window.title, "Agent World Viewer");
+        assert_eq!(window.title, "oasis7 Viewer");
         assert_eq!(window.resolution.physical_width(), 1200);
         assert_eq!(window.resolution.physical_height(), 800);
     }

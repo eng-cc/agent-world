@@ -1,4 +1,4 @@
-# Agent World：M6 3D 可视化（项目管理文档）
+# oasis7：M6 3D 可视化（项目管理文档）
 
 - 对应设计文档: `doc/world-simulator/viewer/viewer-visualization-3d.design.md`
 - 对应需求文档: `doc/world-simulator/viewer/viewer-visualization-3d.prd.md`

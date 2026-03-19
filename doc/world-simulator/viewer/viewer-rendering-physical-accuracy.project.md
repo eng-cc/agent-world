@@ -1,4 +1,4 @@
-# Agent World：3D 渲染物理准确性（项目管理文档）
+# oasis7：3D 渲染物理准确性（项目管理文档）
 
 - 对应设计文档: `doc/world-simulator/viewer/viewer-rendering-physical-accuracy.design.md`
 - 对应需求文档: `doc/world-simulator/viewer/viewer-rendering-physical-accuracy.prd.md`

@@ -1,4 +1,4 @@
-# Agent World：玩家访问模式总契约（Standard 3D / Software-Safe / Pure API）（2026-03-19）
+# oasis7：玩家访问模式总契约（Standard 3D / Software-Safe / Pure API）（2026-03-19）
 
 - 对应设计文档: `doc/core/player-access-mode-contract-2026-03-19.design.md`
 - 对应项目管理文档: `doc/core/player-access-mode-contract-2026-03-19.project.md`

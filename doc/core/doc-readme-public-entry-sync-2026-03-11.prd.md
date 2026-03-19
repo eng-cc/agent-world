@@ -1,4 +1,4 @@
-# Agent World: 文档总入口公开阅读路径同步（2026-03-11）
+# oasis7: 文档总入口公开阅读路径同步（2026-03-11）
 
 - 对应设计文档: `doc/core/doc-readme-public-entry-sync-2026-03-11.design.md`
 - 对应项目管理文档: `doc/core/doc-readme-public-entry-sync-2026-03-11.project.md`

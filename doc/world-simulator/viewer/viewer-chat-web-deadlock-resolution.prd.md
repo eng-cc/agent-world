@@ -1,4 +1,4 @@
-# Agent World Viewer：Web Chat 面板锁重入与回车发送闭环修复（设计文档）
+# oasis7 Viewer：Web Chat 面板锁重入与回车发送闭环修复（设计文档）
 
 - 对应设计文档: `doc/world-simulator/viewer/viewer-chat-web-deadlock-resolution.design.md`
 - 对应项目管理文档: `doc/world-simulator/viewer/viewer-chat-web-deadlock-resolution.project.md`

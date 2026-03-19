@@ -1,4 +1,4 @@
-# Agent World: 下一轮跨模块优先级清单（2026-03-11）
+# oasis7: 下一轮跨模块优先级清单（2026-03-11）
 
 - 对应设计文档: `doc/core/next-round-priority-slate-2026-03-11.design.md`
 - 对应项目管理文档: `doc/core/next-round-priority-slate-2026-03-11.project.md`
