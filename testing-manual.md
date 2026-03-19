@@ -213,6 +213,10 @@ env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-u
   - `doc/testing/manual/web-ui-agent-browser-closure-manual.prd.md`
   - `doc/testing/launcher/launcher-manual-test-checklist-2026-03-10.prd.md`（发布前人工体验与异常恢复检查清单）
 - 本手册仅保留分层与触发矩阵，执行时按上述文档操作。
+- 模式总口径（`PRD-CORE-009`）：
+  - `standard_3d` / `software_safe` / `pure_api` 是玩家访问模式，分别对应标准 3D 视觉入口、弱图形安全入口和纯接口正式入口。
+  - `player_parity` / `headless_agent` / `debug_viewer` 是 execution lane，只描述 OpenClaw / agent 的执行或观战方式，不构成额外玩家访问模式。
+  - 任何 QA / release / playability 结论都应先标明玩家访问模式，再补充 execution lane；不得把 `headless_agent` 或 `debug_viewer` 直接当成“第四种入口”。
 - `world_viewer_live` / Viewer 页面：默认使用 `agent-browser` 驱动页面与采集证据；当 `renderMode=software_safe` 且带 viewer auth bootstrap 时，允许继续验证选中 Agent 的最小 `prompt/chat` 闭环。
 - 若需要把 `software_safe` 的 prompt/chat/rollback/message-flow 做成独立 QA smoke，优先执行 `./scripts/viewer-software-safe-chat-regression.sh`；该脚本默认把 `agent_spoke` 缺失记为可追溯 warning，显式加 `--require-agent-spoke` 时再升级为阻断失败。
 - 若需要稳定触发一条标准 `AgentSpoke` 供消息流验收，在 source runtime 启动前显式设置 `AGENT_WORLD_RUNTIME_AGENT_CHAT_ECHO=1`；该开关仅用于 Viewer / QA 测试态，默认产品路径必须保持关闭。
@@ -232,6 +236,7 @@ env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-u
 - 若需要为 `#46 PostOnboarding` 补无 UI / 非浏览器验证，执行 `./scripts/viewer-post-onboarding-headless-smoke.sh`。
   - 该脚本只验证 live TCP 协议、快照推进、控制完成 ack 与 runtime event feed；不替代 headed Web/UI 截图复核。
 - 若需要直接以纯 API 客户端操作 live 会话，可使用 `cargo run -q -p agent_world --bin world_pure_api_client -- ...`。
+  - 该链路属于 `pure_api` 玩家访问模式；若同时牵涉 OpenClaw agent，应额外标注实际 execution lane。
   - 推荐最小链路：
 ```bash
 cargo run -q -p agent_world --bin world_pure_api_client -- --addr 127.0.0.1:5023 snapshot --player-gameplay-only
@@ -241,6 +246,7 @@ cargo run -q -p agent_world --bin world_pure_api_client -- --addr 127.0.0.1:5023
 ```
   - 若要覆盖 `agent_chat` / `prompt_control`，需先 `keygen`，再携带 `--player-id` 与 `--private-key-hex` 走签名请求；无 LLM 模式下这两类请求仍会按当前产品约束返回 `llm_mode_required`。
 - 若需要执行 pure API required/full 回归，优先运行 `./scripts/world-pure-api-parity-smoke.sh`。
+  - 该回归验证的是 `pure_api` 玩家访问模式的正式可玩性，不等同于 OpenClaw `headless_agent` 回归。
   - required-tier 推荐 bundle 口径：
 ```bash
 ./scripts/build-game-launcher-bundle.sh --out-dir output/release/game-launcher-local

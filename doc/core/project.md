@@ -158,6 +158,7 @@
 - [x] TASK-CORE-026 (PRD-CORE-003) [test_tier_required]: 同步 `doc/core/README.md` 目录索引，补齐本轮 core 活跃专题入口。
 - [x] TASK-CORE-027 (PRD-CORE-003) [test_tier_required]: 清理 `doc/README.md` 兼容跳转入口中的重复条目，保持工程总入口导航唯一且可读。
 - [x] TASK-CORE-028 (PRD-CORE-009) [test_tier_required]: 完成“三模式总契约（`standard_3d / software_safe / pure_api`）”专题 PRD / Design / Project 建模，并同步 core 主入口、索引、README 与 devlog。
+- [x] TASK-CORE-029 (PRD-CORE-009) [test_tier_required]: 对齐 `testing-manual`、`world-simulator`、`game` 与 `testing` 下游文档术语，明确 `standard_3d / software_safe / pure_api` 属于玩家访问模式，`player_parity / headless_agent / debug_viewer` 属于 execution lane。
 
 ## 依赖
 - doc/core/prd.index.md
@@ -190,6 +191,7 @@
 - 最新完成: `TASK-CORE-026`（已同步 core 模块目录索引并补齐活跃专题入口）。
 - 最新完成: `TASK-CORE-027`（已清理工程总入口兼容跳转重复条目）。
 - 最新完成: `TASK-CORE-028`（已冻结 `standard_3d / software_safe / pure_api` 三模式总契约，并明确 mode / execution lane 分层口径）。
+- 最新完成: `TASK-CORE-029`（已完成 `testing-manual`、`world-simulator`、`game` 与 `testing` 的下游术语回写，收口三模式与 execution lane 的跨模块口径）。
 - 说明: 本文档仅维护 core 设计执行状态；过程记录在 `doc/devlog/2026-03-06.md`、`doc/devlog/2026-03-09.md`、`doc/devlog/2026-03-10.md`、`doc/devlog/2026-03-11.md` 与 `doc/devlog/2026-03-19.md`。
 
 ## 阶段收口执行顺序（PRD-CORE-004）

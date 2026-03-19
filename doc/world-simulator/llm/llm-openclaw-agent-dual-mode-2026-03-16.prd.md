@@ -4,17 +4,20 @@
 - 关联专题:
   - `doc/world-simulator/llm/llm-openclaw-agent-experience-parity-2026-03-12.prd.md`
   - `doc/world-simulator/viewer/viewer-web-software-safe-mode-2026-03-16.prd.md`
+  - `doc/core/player-access-mode-contract-2026-03-19.prd.md`
 
 审计轮次: 1
 
 ## 目标
 - 建立 OpenClaw Agent 双轨模式（`player_parity` / `headless_agent` / `debug_viewer`）的统一产品口径。
+- 按 `PRD-CORE-009` 明确本专题定义的是 OpenClaw execution lane，而不是新的玩家访问模式；其中 `software_safe` 仅作为相关玩家访问模式引用。
 - 明确图形界面是可选观战/调试层，而不是 OpenClaw Agent 主执行闭环的必需依赖。
 - 为后续 `agent_engineer` / `runtime_engineer` / `viewer_engineer` / `qa_engineer` 的 contract、实现与验证任务提供正式 PRD 边界。
 
 ## 范围
 - 覆盖 OpenClaw Agent 双轨模式的目标态、模式边界、统一动作语义、观测口径与验收标准。
 - 覆盖 headless 回归、玩家视角对照与 Viewer 旁路调试三类使用场景。
+- 覆盖与 `standard_3d` / `software_safe` / `pure_api` 三种玩家访问模式的衔接约束，但不重定义玩家访问模式 taxonomy。
 - 不覆盖本轮具体 runtime/adapter/viewer 实现细节与逐行代码方案。
 
 ## 接口 / 数据
@@ -23,6 +26,7 @@
 - 关联 parity 专题: `doc/world-simulator/llm/llm-openclaw-agent-experience-parity-2026-03-12.prd.md`
 - 关联 software-safe 专题: `doc/world-simulator/viewer/viewer-web-software-safe-mode-2026-03-16.prd.md`
 - supporting contract: `doc/world-simulator/llm/openclaw-agent-dual-mode-contract-2026-03-16.md`
+- core taxonomy: `doc/core/player-access-mode-contract-2026-03-19.prd.md`
 - 追踪主键: `PRD-WORLD_SIMULATOR-040`
 - 执行追踪: `TASK-WORLD_SIMULATOR-148/149/150/151/152/153`
 
@@ -50,6 +54,7 @@
   - 制作人体验验收 / 玩家感知评估：使用 `player_parity`。
   - 线上事故复盘 / 本地调试 / 演示：按需打开 `debug_viewer` 旁路观战。
   - 低配开发机 / 无 GPU 服务器：只运行 `headless_agent`，不要求图形界面。
+  - 若对外描述玩家入口，必须先标明当前对应的玩家访问模式（通常为 `software_safe` 或 `standard_3d`），再附加本专题 lane。
 - User Stories:
   - PRD-WORLD_SIMULATOR-040: As a 玩家 / 制作人, I want OpenClaw agents to support both player-parity and headless execution modes, so that we can separately judge “does it feel like playing” and “can it run stably at scale”.
   - PRD-WORLD_SIMULATOR-040A: As a `qa_engineer`, I want OpenClaw gameplay regression to stay runnable without GUI dependencies, so that graphics environment failures do not block gameplay validation.
@@ -86,6 +91,7 @@
   - 本专题不追求像素级视觉智能 benchmark，也不要求 OpenClaw 首期仅靠屏幕像素完成全部感知。
   - 本专题不允许为 `headless_agent` 提供绕过 runtime 的直接状态改写能力。
   - 本专题不把 Viewer 做成 Agent 的必需输入源。
+  - 本专题不把 `player_parity` / `headless_agent` / `debug_viewer` 升格成新的玩家访问模式。
   - 本专题不在此轮解决全部多 Agent 并发策略，只先定义模式与契约边界。
 
 ## 3. AI System Requirements

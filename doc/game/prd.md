@@ -17,6 +17,7 @@
 - 文件级索引: `doc/game/prd.index.md`
 - 追踪主键: `PRD-GAME-xxx`
 - 测试与发布参考: `testing-manual.md`
+- 跨模块模式 taxonomy: `doc/core/player-access-mode-contract-2026-03-19.prd.md`
 
 ## 里程碑
 - M1 (2026-03-03): 完成模块设计 PRD 主体重写与任务改造。
@@ -61,6 +62,7 @@
   - PRD-GAME-006: As a 运行值守者, I want a P0 production hardening baseline for long-run online operation, so that adversarial and failure scenarios stay controllable.
   - PRD-GAME-007: As a 新玩家, I want a post-onboarding stage objective chain, so that I know what to pursue after the first guided action.
   - PRD-GAME-008: As a 纯 API 玩家, I want the same gameplay information and actions as the UI client, so that I can keep playing without a browser.
+- 模式分层说明：按 `PRD-CORE-009`，`PRD-GAME-008` 所承接的是玩家访问模式 `pure_api`，而不是 OpenClaw `headless_agent` 一类 execution lane。
 - Critical User Flows:
   1. Flow-GAME-001: `玩法需求提出 -> 规则层建模 -> 映射实现边界 -> 进入开发`
   2. Flow-GAME-002: `执行核心循环回归 -> 记录可玩性问题 -> 分级 -> 回填修复任务`

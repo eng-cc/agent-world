@@ -2,6 +2,7 @@
 
 - 对应设计文档: `doc/game/gameplay/gameplay-pure-api-client-parity-2026-03-19.design.md`
 - 对应项目管理文档: `doc/game/gameplay/gameplay-pure-api-client-parity-2026-03-19.project.md`
+- 上游总契约: `doc/core/player-access-mode-contract-2026-03-19.prd.md`
 
 审计轮次: 1
 
@@ -10,6 +11,7 @@
 ### 0.1 目标
 
 - 将“纯 API 客户端”从调试/探针通道提升为正式玩家入口，而不是只能验证协议是否活着。
+- 按 `PRD-CORE-009`，本专题承接的正式玩家入口名为 `pure_api`，不与 OpenClaw `headless_agent` execution lane 混用。
 - 保证纯 API 客户端与 Web/UI 客户端共用同一套世界状态、可执行动作、阶段目标和持续游玩能力。
 - 允许展示形式不同，但不允许信息粒度降级或能力缺失，确保玩家可仅通过 API 长期游玩。
 

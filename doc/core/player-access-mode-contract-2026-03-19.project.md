@@ -9,6 +9,7 @@
 - [x] T1 (`PRD-CORE-009`) [test_tier_required]: 冻结 `standard_3d / software_safe / pure_api` 三模式总契约，明确 mode/lane 分层、claim envelope、fallback 规则与禁宣称项。
 - [x] T2 (`PRD-CORE-009`) [test_tier_required]: 同步 `doc/core/prd.md`、`doc/core/project.md`、`doc/core/prd.index.md` 与 `doc/core/README.md`，把本专题挂入 core 主入口。
 - [x] T3 (`PRD-CORE-009`) [test_tier_required]: 回写 `doc/devlog/2026-03-19.md`，记录 owner、完成内容、验证方式与后续使用约束。
+- [x] T4 (`PRD-CORE-009`) [test_tier_required]: 对齐 `testing-manual`、`doc/world-simulator/**`、`doc/game/**` 与 `doc/testing/**` 的下游术语，要求结论先绑定玩家访问模式，再附加 execution lane。
 
 ## 依赖
 - `doc/core/prd.md`
@@ -28,7 +29,7 @@
 - 更新日期: 2026-03-19
 - 当前状态: completed
 - 下一任务: 无
-- 最新完成: `T1/T2/T3`（已完成三模式总契约建模、core 主入口挂载与 devlog 回写）。
+- 最新完成: `T1/T2/T3/T4`（已完成三模式总契约建模、core 主入口挂载、下游术语回写与 devlog 收口）。
 - 备注:
   - 本专题只冻结 taxonomy 与 claim contract，不替代下游专题实现。
   - 后续若新增同层玩家访问模式，必须先更新本专题再更新模块文档。

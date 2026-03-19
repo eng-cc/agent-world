@@ -20,6 +20,7 @@
 - 文件级索引: `doc/world-simulator/prd.index.md`
 - 追踪主键: `PRD-WORLD_SIMULATOR-xxx`
 - 测试与发布参考: `testing-manual.md`
+- 跨模块模式 taxonomy: `doc/core/player-access-mode-contract-2026-03-19.prd.md`
 - UI 视觉评审列表: `doc/ui_review_result/ui_review_list.md`
 - 分册索引:
   - `doc/world-simulator/prd/acceptance/unified-checklist.md`（PRD-WORLD_SIMULATOR-001/002）
@@ -198,6 +199,7 @@
   - PRD-WORLD_SIMULATOR-038: As a 玩家 / 制作人, I want `OpenClaw`-driven agents to feel equivalent to built-in agents in scoped gameplay scenarios, so that switching provider does not noticeably degrade the game experience.
   - PRD-WORLD_SIMULATOR-039: As a 玩家 / QA / 制作人, I want a Web Viewer software-safe mode that does not depend on hardware GPU capability, so that I can still complete the minimal gameplay and validation loop in software-rendered or restricted browser environments.
   - PRD-WORLD_SIMULATOR-040: As a 玩家 / 制作人 / QA, I want OpenClaw agents to support both player-parity and headless execution modes, so that we can separate player-feel validation from GUI-dependent automation and keep gameplay regression runnable without graphics dependencies.
+- 模式分层说明：按 `PRD-CORE-009`，`PRD-WORLD_SIMULATOR-039` 对应玩家访问模式 `software_safe`，而 `PRD-WORLD_SIMULATOR-040` 定义 `player_parity / headless_agent / debug_viewer` execution lane；两者不得混写为同层模式。
 - Critical User Flows:
   1. Flow-WS-001（Web-first 闭环）:
      `选择场景 -> 启动 Viewer Web -> 执行关键交互 -> 采集日志/截图/指标 -> 产出 test_tier_required 结论`
