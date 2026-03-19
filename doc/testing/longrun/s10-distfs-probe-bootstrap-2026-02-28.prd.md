@@ -1,4 +1,4 @@
-# Agent World：S10 DistFS Probe Bootstrap（2026-02-28）
+# oasis7：S10 DistFS Probe Bootstrap（2026-02-28）
 
 - 对应设计文档: `doc/testing/longrun/s10-distfs-probe-bootstrap-2026-02-28.design.md`
 - 对应项目管理文档: `doc/testing/longrun/s10-distfs-probe-bootstrap-2026-02-28.project.md`

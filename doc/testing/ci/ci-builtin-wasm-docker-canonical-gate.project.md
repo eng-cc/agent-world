@@ -1,4 +1,4 @@
-# Agent World: Builtin Wasm Docker Canonical Gate（项目管理）
+# oasis7: Builtin Wasm Docker Canonical Gate（项目管理）
 
 - 对应设计文档: `doc/testing/ci/ci-builtin-wasm-docker-canonical-gate.design.md`
 - 对应需求文档: `doc/testing/ci/ci-builtin-wasm-docker-canonical-gate.prd.md`

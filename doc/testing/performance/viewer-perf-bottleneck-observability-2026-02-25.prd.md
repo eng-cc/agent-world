@@ -1,4 +1,4 @@
-# Agent World：Viewer 性能瓶颈观测能力补齐（2026-02-25）
+# oasis7：Viewer 性能瓶颈观测能力补齐（2026-02-25）
 
 - 对应设计文档: `doc/testing/performance/viewer-perf-bottleneck-observability-2026-02-25.design.md`
 - 对应项目管理文档: `doc/testing/performance/viewer-perf-bottleneck-observability-2026-02-25.project.md`

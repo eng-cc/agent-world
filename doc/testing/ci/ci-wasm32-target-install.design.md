@@ -1,4 +1,4 @@
-# Agent World: CI 安装 wasm32-unknown-unknown target设计
+# oasis7: CI 安装 wasm32-unknown-unknown target设计
 
 - 对应需求文档: `doc/testing/ci/ci-wasm32-target-install.prd.md`
 - 对应项目管理文档: `doc/testing/ci/ci-wasm32-target-install.project.md`

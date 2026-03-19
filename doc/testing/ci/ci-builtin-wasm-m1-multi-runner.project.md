@@ -1,4 +1,4 @@
-# Agent World: Builtin Wasm 确定性 Gate（m1 历史文件名归档提示 / 项目管理）
+# oasis7: Builtin Wasm 确定性 Gate（m1 历史文件名归档提示 / 项目管理）
 
 - 对应设计文档: `doc/testing/ci/ci-builtin-wasm-m1-multi-runner.design.md`
 - 对应需求文档: `doc/testing/ci/ci-builtin-wasm-m1-multi-runner.prd.md`

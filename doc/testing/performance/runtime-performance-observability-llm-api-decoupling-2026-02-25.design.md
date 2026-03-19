@@ -1,4 +1,4 @@
-# Agent World Runtime：LLM API 延迟与代码执行耗时解耦（2026-02-25）设计
+# oasis7 Runtime：LLM API 延迟与代码执行耗时解耦（2026-02-25）设计
 
 - 对应需求文档: `doc/testing/performance/runtime-performance-observability-llm-api-decoupling-2026-02-25.prd.md`
 - 对应项目管理文档: `doc/testing/performance/runtime-performance-observability-llm-api-decoupling-2026-02-25.project.md`

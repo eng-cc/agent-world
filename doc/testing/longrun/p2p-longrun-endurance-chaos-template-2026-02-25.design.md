@@ -1,4 +1,4 @@
-# Agent World：P2P 长跑 180 分钟 Chaos 模板方案（2026-02-25）设计
+# oasis7：P2P 长跑 180 分钟 Chaos 模板方案（2026-02-25）设计
 
 - 对应需求文档: `doc/testing/longrun/p2p-longrun-endurance-chaos-template-2026-02-25.prd.md`
 - 对应项目管理文档: `doc/testing/longrun/p2p-longrun-endurance-chaos-template-2026-02-25.project.md`

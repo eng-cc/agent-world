@@ -1,4 +1,4 @@
-# Agent World: Wasm Determinism Gate Required Check 保护（历史文件名归档提示 / 项目管理）
+# oasis7: Wasm Determinism Gate Required Check 保护（历史文件名归档提示 / 项目管理）
 
 - 对应设计文档: `doc/testing/ci/ci-m1-multi-runner-required-check-protection.design.md`
 - 对应需求文档: `doc/testing/ci/ci-m1-multi-runner-required-check-protection.prd.md`

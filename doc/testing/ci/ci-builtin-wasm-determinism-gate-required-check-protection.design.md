@@ -1,4 +1,4 @@
-# Agent World: Builtin Wasm Determinism Gate Required Check 保护设计
+# oasis7: Builtin Wasm Determinism Gate Required Check 保护设计
 
 - 对应需求文档: `doc/testing/ci/ci-builtin-wasm-determinism-gate-required-check-protection.prd.md`
 - 对应项目管理文档: `doc/testing/ci/ci-builtin-wasm-determinism-gate-required-check-protection.project.md`

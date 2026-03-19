@@ -1,4 +1,4 @@
-# Agent World：S10 五节点真实游戏数据在线长跑套件设计
+# oasis7：S10 五节点真实游戏数据在线长跑套件设计
 
 - 对应需求文档: `doc/testing/longrun/s10-five-node-real-game-soak.prd.md`
 - 对应项目管理文档: `doc/testing/longrun/s10-five-node-real-game-soak.project.md`

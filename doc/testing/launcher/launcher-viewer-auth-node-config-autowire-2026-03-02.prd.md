@@ -1,4 +1,4 @@
-# Agent World: 启动器 Viewer 鉴权自动继承 Node 配置（2026-03-02）
+# oasis7: 启动器 Viewer 鉴权自动继承 Node 配置（2026-03-02）
 
 - 对应设计文档: `doc/testing/launcher/launcher-viewer-auth-node-config-autowire-2026-03-02.design.md`
 - 对应项目管理文档: `doc/testing/launcher/launcher-viewer-auth-node-config-autowire-2026-03-02.project.md`

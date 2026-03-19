@@ -1,4 +1,4 @@
-# Agent World：P2P/存储/共识在线长跑稳定性测试（项目管理文档）
+# oasis7：P2P/存储/共识在线长跑稳定性测试（项目管理文档）
 
 - 对应设计文档: `doc/testing/longrun/p2p-storage-consensus-longrun-online-stability-2026-02-24.design.md`
 - 对应需求文档: `doc/testing/longrun/p2p-storage-consensus-longrun-online-stability-2026-02-24.prd.md`

@@ -1,4 +1,4 @@
-# Agent World：系统性应用测试手册工程化收口（2026-02-26）设计
+# oasis7：系统性应用测试手册工程化收口（2026-02-26）设计
 
 - 对应需求文档: `doc/testing/manual/systematic-application-testing-manual.prd.md`
 - 对应项目管理文档: `doc/testing/manual/systematic-application-testing-manual.project.md`

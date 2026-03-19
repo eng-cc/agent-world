@@ -1,4 +1,4 @@
-# Agent World: Builtin Wasm Docker 确定性 Gate 与发布链路收敛（历史文件名归档提示 / 项目管理）
+# oasis7: Builtin Wasm Docker 确定性 Gate 与发布链路收敛（历史文件名归档提示 / 项目管理）
 
 - 对应设计文档: `doc/testing/ci/ci-builtin-wasm-m4-m5-hash-drift-hardening.design.md`
 - 对应需求文档: `doc/testing/ci/ci-builtin-wasm-m4-m5-hash-drift-hardening.prd.md`

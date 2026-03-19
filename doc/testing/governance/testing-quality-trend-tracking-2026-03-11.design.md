@@ -1,4 +1,4 @@
-# Agent World: 测试质量趋势跟踪（2026-03-11）设计
+# oasis7: 测试质量趋势跟踪（2026-03-11）设计
 
 - 对应需求文档: `doc/testing/governance/testing-quality-trend-tracking-2026-03-11.prd.md`
 - 对应项目管理文档: `doc/testing/governance/testing-quality-trend-tracking-2026-03-11.project.md`

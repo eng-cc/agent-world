@@ -1,4 +1,4 @@
-# Agent World: 基础 CI 门禁移除 Builtin Wasm Hash 校验设计
+# oasis7: 基础 CI 门禁移除 Builtin Wasm Hash 校验设计
 
 - 对应需求文档: `doc/testing/ci/ci-remove-builtin-wasm-hash-checks-from-base-gate.prd.md`
 - 对应项目管理文档: `doc/testing/ci/ci-remove-builtin-wasm-hash-checks-from-base-gate.project.md`

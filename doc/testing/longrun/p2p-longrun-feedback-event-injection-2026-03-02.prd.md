@@ -1,4 +1,4 @@
-# Agent World：P2P 长跑反馈事件注入（2026-03-02）
+# oasis7：P2P 长跑反馈事件注入（2026-03-02）
 
 - 对应设计文档: `doc/testing/longrun/p2p-longrun-feedback-event-injection-2026-03-02.design.md`
 - 对应项目管理文档: `doc/testing/longrun/p2p-longrun-feedback-event-injection-2026-03-02.project.md`

@@ -1,4 +1,4 @@
-# Agent World Runtime：代码执行性能采集/统计/分析基础（2026-02-25）设计
+# oasis7 Runtime：代码执行性能采集/统计/分析基础（2026-02-25）设计
 
 - 对应需求文档: `doc/testing/performance/runtime-performance-observability-foundation-2026-02-25.prd.md`
 - 对应项目管理文档: `doc/testing/performance/runtime-performance-observability-foundation-2026-02-25.project.md`

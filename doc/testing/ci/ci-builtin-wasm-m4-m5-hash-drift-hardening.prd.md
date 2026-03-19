@@ -1,4 +1,4 @@
-# Agent World: Builtin Wasm m4/m5 Hash 漂移治理与发布链路收敛（历史文件名归档提示）
+# oasis7: Builtin Wasm m4/m5 Hash 漂移治理与发布链路收敛（历史文件名归档提示）
 
 - 对应设计文档: `doc/testing/ci/ci-builtin-wasm-m4-m5-hash-drift-hardening.design.md`
 - 对应项目管理文档: `doc/testing/ci/ci-builtin-wasm-m4-m5-hash-drift-hardening.project.md`

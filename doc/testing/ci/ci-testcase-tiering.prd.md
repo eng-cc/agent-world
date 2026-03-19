@@ -1,4 +1,4 @@
-# Agent World: CI 测试分级细化到 Test Case
+# oasis7: CI 测试分级细化到 Test Case
 
 - 对应设计文档: `doc/testing/ci/ci-testcase-tiering.design.md`
 - 对应项目管理文档: `doc/testing/ci/ci-testcase-tiering.project.md`

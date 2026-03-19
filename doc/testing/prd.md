@@ -84,6 +84,7 @@
   - AC-9: 同一 release workflow 内，Web release gate 与 `build-web-dist` 必须复用同一组 wasm/cargo cache，bundle 原生二进制构建默认收敛为单次 cargo 调用，避免重复 bootstrap。
   - AC-10: `release-gate-runtime` 必须允许将 `ci-tests.sh full` 拆为至少两个并行 shard，并与 builtin wasm sync 检查独立聚合，保证放行语义不变。
   - AC-11: runtime shard 划分必须按关键路径持续重平衡；`agent_world --lib --bins` 等中重量级套件不应长期挤占最重 shard。
+  - AC-12: `doc/testing/**` 仍可读历史专题的首行标题必须统一使用 `oasis7` / `oasis7 Runtime` 品牌；旧 `Agent World*` 标题仅允许保留在正文历史上下文与证据原文中。
 - Non-Goals:
   - 不在本 PRD 中替代业务模块的功能设计。
   - 不承诺所有测试都进入 CI 默认路径。
@@ -142,7 +143,7 @@
 | PRD-TESTING-001 | TASK-TESTING-001/002/005/006 | `test_tier_required` | S0~S10 触发矩阵核验、手册一致性检查 | 分层测试入口与执行标准 |
 | PRD-TESTING-002 | TASK-TESTING-002/003/006/053/054/055/056 | `test_tier_required` + `test_tier_full` | 证据模板抽样、发布前必填字段检查、release workflow 复用链路核验、runtime gate shard 聚合验证 | 发布链路可信性与可复现性 |
 | PRD-TESTING-003 | TASK-TESTING-003/004/006/053/054/055/056 | `test_tier_full` | 趋势指标回顾、缺陷逃逸复盘、release 关键路径对比 | 长期质量治理与发布风险控制 |
-| PRD-TESTING-004 | TASK-TESTING-007/008/009/010/011/012/013/014/015/016/017/018/019/020/021/022/023/024/025/026/027/028/029/030/031/032/033/034/035/036 | `test_tier_required` | 原文约束点映射审查、命名与引用回归检查 | 专题文档可维护性与追溯一致性 |
+| PRD-TESTING-004 | TASK-TESTING-007/008/009/010/011/012/013/014/015/016/017/018/019/020/021/022/023/024/025/026/027/028/029/030/031/032/033/034/035/036/059 | `test_tier_required` | 原文约束点映射审查、命名与引用回归检查、历史专题标题零残留校验 | 专题文档可维护性与追溯一致性 |
 | PRD-TESTING-005 | TASK-TESTING-037/038/039/040 | `test_tier_required` | keyed manifest/strict policy/多 runner required checks/identity 输入收敛回归 | builtin wasm 发布链路稳定性 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |

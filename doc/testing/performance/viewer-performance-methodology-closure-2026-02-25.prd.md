@@ -1,4 +1,4 @@
-# Agent World：Viewer 性能测试方法论能力补齐（2026-02-25）
+# oasis7：Viewer 性能测试方法论能力补齐（2026-02-25）
 
 - 对应设计文档: `doc/testing/performance/viewer-performance-methodology-closure-2026-02-25.design.md`
 - 对应项目管理文档: `doc/testing/performance/viewer-performance-methodology-closure-2026-02-25.project.md`

@@ -1,4 +1,4 @@
-# Agent World: 启动器全功能可用性审查与闭环验收（2026-03-08）（项目管理）
+# oasis7: 启动器全功能可用性审查与闭环验收（2026-03-08）（项目管理）
 
 - 对应设计文档: `doc/testing/launcher/launcher-full-usability-closure-audit-2026-03-08.design.md`
 - 对应需求文档: `doc/testing/launcher/launcher-full-usability-closure-audit-2026-03-08.prd.md`

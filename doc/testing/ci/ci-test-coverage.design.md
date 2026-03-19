@@ -1,4 +1,4 @@
-# Agent World: 测试覆盖与 CI 扩展设计
+# oasis7: 测试覆盖与 CI 扩展设计
 
 - 对应需求文档: `doc/testing/ci/ci-test-coverage.prd.md`
 - 对应项目管理文档: `doc/testing/ci/ci-test-coverage.project.md`

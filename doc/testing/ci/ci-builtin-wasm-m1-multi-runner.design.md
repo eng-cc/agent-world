@@ -1,4 +1,4 @@
-# Agent World: CI 拆分 Builtin Wasm m1 多 Runner 校验设计（历史文件名归档提示）
+# oasis7: CI 拆分 Builtin Wasm m1 多 Runner 校验设计（历史文件名归档提示）
 
 - 对应需求文档: `doc/testing/ci/ci-builtin-wasm-m1-multi-runner.prd.md`
 - 对应项目管理文档: `doc/testing/ci/ci-builtin-wasm-m1-multi-runner.project.md`

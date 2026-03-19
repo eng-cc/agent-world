@@ -1,4 +1,4 @@
-# Agent World：Web UI agent-browser 闭环测试手册（2026-02-28）
+# oasis7：Web UI agent-browser 闭环测试手册（2026-02-28）
 
 - 对应设计文档: `doc/testing/manual/web-ui-playwright-closure-manual.design.md`
 - 对应项目管理文档: `doc/testing/manual/web-ui-agent-browser-closure-manual.project.md`

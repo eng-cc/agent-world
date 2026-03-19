@@ -1,4 +1,4 @@
-# Agent World: 启动链路脚本迁移（2026-02-28）设计
+# oasis7: 启动链路脚本迁移（2026-02-28）设计
 
 - 对应需求文档: `doc/testing/launcher/launcher-chain-script-migration-2026-02-28.prd.md`
 - 对应项目管理文档: `doc/testing/launcher/launcher-chain-script-migration-2026-02-28.project.md`

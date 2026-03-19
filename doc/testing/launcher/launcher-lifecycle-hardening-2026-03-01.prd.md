@@ -1,4 +1,4 @@
-# Agent World: 启动器生命周期与就绪硬化（2026-03-01）
+# oasis7: 启动器生命周期与就绪硬化（2026-03-01）
 
 - 对应设计文档: `doc/testing/launcher/launcher-lifecycle-hardening-2026-03-01.design.md`
 - 对应项目管理文档: `doc/testing/launcher/launcher-lifecycle-hardening-2026-03-01.project.md`

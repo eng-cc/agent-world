@@ -1,4 +1,4 @@
-# Agent World: m1 多 Runner CI Required Check 保护设计（历史文件名归档提示）
+# oasis7: m1 多 Runner CI Required Check 保护设计（历史文件名归档提示）
 
 - 对应需求文档: `doc/testing/ci/ci-m1-multi-runner-required-check-protection.prd.md`
 - 对应项目管理文档: `doc/testing/ci/ci-m1-multi-runner-required-check-protection.project.md`

@@ -1,4 +1,4 @@
-# Agent World: Builtin Wasm 构建确定性护栏（项目管理）
+# oasis7: Builtin Wasm 构建确定性护栏（项目管理）
 
 - 对应设计文档: `doc/testing/governance/wasm-build-determinism-guard.design.md`
 - 对应需求文档: `doc/testing/governance/wasm-build-determinism-guard.prd.md`

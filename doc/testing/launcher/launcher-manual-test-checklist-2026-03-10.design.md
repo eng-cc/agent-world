@@ -1,4 +1,4 @@
-# Agent World：启动器人工测试清单（2026-03-10）设计
+# oasis7：启动器人工测试清单（2026-03-10）设计
 
 - 对应需求文档: `doc/testing/launcher/launcher-manual-test-checklist-2026-03-10.prd.md`
 - 对应项目管理文档: `doc/testing/launcher/launcher-manual-test-checklist-2026-03-10.project.md`

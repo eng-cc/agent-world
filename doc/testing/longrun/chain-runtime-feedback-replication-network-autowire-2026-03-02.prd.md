@@ -1,4 +1,4 @@
-# Agent World: Chain Runtime 反馈网络复制层自动挂载修复（2026-03-02）
+# oasis7: Chain Runtime 反馈网络复制层自动挂载修复（2026-03-02）
 
 - 对应设计文档: `doc/testing/longrun/chain-runtime-feedback-replication-network-autowire-2026-03-02.design.md`
 - 对应项目管理文档: `doc/testing/longrun/chain-runtime-feedback-replication-network-autowire-2026-03-02.project.md`

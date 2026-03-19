@@ -1,4 +1,4 @@
-# Agent World: LLM 跳过 Tick 占比指标（项目管理）
+# oasis7: LLM 跳过 Tick 占比指标（项目管理）
 
 - 对应设计文档: `doc/testing/governance/llm-skip-tick-ratio-metric.design.md`
 - 对应需求文档: `doc/testing/governance/llm-skip-tick-ratio-metric.prd.md`

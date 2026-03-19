@@ -1,4 +1,4 @@
-# Agent World: CI 与提交钩子测试分级设计
+# oasis7: CI 与提交钩子测试分级设计
 
 - 对应需求文档: `doc/testing/ci/ci-tiered-execution.prd.md`
 - 对应项目管理文档: `doc/testing/ci/ci-tiered-execution.project.md`

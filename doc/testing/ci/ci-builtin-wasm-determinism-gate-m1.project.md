@@ -1,4 +1,4 @@
-# Agent World: Builtin Wasm Determinism Gate（m1 / 项目管理）
+# oasis7: Builtin Wasm Determinism Gate（m1 / 项目管理）
 
 - 对应设计文档: `doc/testing/ci/ci-builtin-wasm-determinism-gate-m1.design.md`
 - 对应需求文档: `doc/testing/ci/ci-builtin-wasm-determinism-gate-m1.prd.md`
