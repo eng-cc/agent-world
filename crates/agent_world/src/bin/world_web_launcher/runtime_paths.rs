@@ -4,18 +4,20 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 const DEFAULT_CONSOLE_STATIC_DIR: &str = "web-launcher";
 const GAME_LAUNCHER_BIN_ENV: &str = "OASIS7_GAME_LAUNCHER_BIN";
-const LEGACY_GAME_LAUNCHER_BIN_ENV: &str = "AGENT_WORLD_GAME_LAUNCHER_BIN";
+const COMPAT_OLD_BRAND_GAME_LAUNCHER_BIN_ENV: &str = "AGENT_WORLD_GAME_LAUNCHER_BIN";
 const WORLD_CHAIN_RUNTIME_BIN_ENV: &str = "OASIS7_WORLD_CHAIN_RUNTIME_BIN";
-const LEGACY_WORLD_CHAIN_RUNTIME_BIN_ENV: &str = "AGENT_WORLD_WORLD_CHAIN_RUNTIME_BIN";
+const COMPAT_OLD_BRAND_WORLD_CHAIN_RUNTIME_BIN_ENV: &str = "AGENT_WORLD_WORLD_CHAIN_RUNTIME_BIN";
 const GAME_STATIC_DIR_ENV: &str = "OASIS7_GAME_STATIC_DIR";
-const LEGACY_GAME_STATIC_DIR_ENV: &str = "AGENT_WORLD_GAME_STATIC_DIR";
+const COMPAT_OLD_BRAND_GAME_STATIC_DIR_ENV: &str = "AGENT_WORLD_GAME_STATIC_DIR";
 const WEB_LAUNCHER_STATIC_DIR_ENV: &str = "OASIS7_WEB_LAUNCHER_STATIC_DIR";
-const LEGACY_WEB_LAUNCHER_STATIC_DIR_ENV: &str = "AGENT_WORLD_WEB_LAUNCHER_STATIC_DIR";
+const COMPAT_OLD_BRAND_WEB_LAUNCHER_STATIC_DIR_ENV: &str = "AGENT_WORLD_WEB_LAUNCHER_STATIC_DIR";
 
 pub(super) fn resolve_world_game_launcher_binary() -> PathBuf {
     let primary = env::var(GAME_LAUNCHER_BIN_ENV).ok();
-    let legacy = env::var(LEGACY_GAME_LAUNCHER_BIN_ENV).ok();
-    if let Some(path) = resolve_non_empty_override_values(primary.as_deref(), legacy.as_deref()) {
+    let compat_old_brand = env::var(COMPAT_OLD_BRAND_GAME_LAUNCHER_BIN_ENV).ok();
+    if let Some(path) =
+        resolve_non_empty_override_values(primary.as_deref(), compat_old_brand.as_deref())
+    {
         return PathBuf::from(path);
     }
 
@@ -30,8 +32,10 @@ pub(super) fn resolve_world_game_launcher_binary() -> PathBuf {
 
 pub(super) fn resolve_world_chain_runtime_binary() -> PathBuf {
     let primary = env::var(WORLD_CHAIN_RUNTIME_BIN_ENV).ok();
-    let legacy = env::var(LEGACY_WORLD_CHAIN_RUNTIME_BIN_ENV).ok();
-    if let Some(path) = resolve_non_empty_override_values(primary.as_deref(), legacy.as_deref()) {
+    let compat_old_brand = env::var(COMPAT_OLD_BRAND_WORLD_CHAIN_RUNTIME_BIN_ENV).ok();
+    if let Some(path) =
+        resolve_non_empty_override_values(primary.as_deref(), compat_old_brand.as_deref())
+    {
         return PathBuf::from(path);
     }
 
@@ -46,8 +50,10 @@ pub(super) fn resolve_world_chain_runtime_binary() -> PathBuf {
 
 pub(super) fn resolve_static_dir_path(default_viewer_static_dir: &str) -> PathBuf {
     let primary = env::var(GAME_STATIC_DIR_ENV).ok();
-    let legacy = env::var(LEGACY_GAME_STATIC_DIR_ENV).ok();
-    if let Some(path) = resolve_non_empty_override_values(primary.as_deref(), legacy.as_deref()) {
+    let compat_old_brand = env::var(COMPAT_OLD_BRAND_GAME_STATIC_DIR_ENV).ok();
+    if let Some(path) =
+        resolve_non_empty_override_values(primary.as_deref(), compat_old_brand.as_deref())
+    {
         return PathBuf::from(path);
     }
 
@@ -74,8 +80,10 @@ pub(super) fn viewer_dev_dist_candidates() -> Vec<PathBuf> {
 
 pub(super) fn resolve_console_static_dir_path() -> PathBuf {
     let primary = env::var(WEB_LAUNCHER_STATIC_DIR_ENV).ok();
-    let legacy = env::var(LEGACY_WEB_LAUNCHER_STATIC_DIR_ENV).ok();
-    if let Some(path) = resolve_non_empty_override_values(primary.as_deref(), legacy.as_deref()) {
+    let compat_old_brand = env::var(COMPAT_OLD_BRAND_WEB_LAUNCHER_STATIC_DIR_ENV).ok();
+    if let Some(path) =
+        resolve_non_empty_override_values(primary.as_deref(), compat_old_brand.as_deref())
+    {
         return PathBuf::from(path);
     }
 
@@ -118,9 +126,9 @@ fn first_existing_dir(candidates: Vec<PathBuf>) -> Option<PathBuf> {
 
 fn resolve_non_empty_override_values(
     primary: Option<&str>,
-    legacy: Option<&str>,
+    compat_old_brand: Option<&str>,
 ) -> Option<String> {
-    for value in [primary, legacy].into_iter().flatten() {
+    for value in [primary, compat_old_brand].into_iter().flatten() {
         let trimmed = value.trim();
         if !trimmed.is_empty() {
             return Some(trimmed.to_string());
@@ -161,18 +169,20 @@ mod tests {
 
     #[test]
     fn resolve_non_empty_override_values_prefers_primary_value() {
-        let resolved = resolve_non_empty_override_values(Some(" primary "), Some("legacy"));
+        let resolved =
+            resolve_non_empty_override_values(Some(" primary "), Some("compat-old-brand"));
         assert_eq!(resolved.as_deref(), Some("primary"));
     }
 
     #[test]
-    fn resolve_non_empty_override_values_falls_back_to_legacy_value() {
-        let resolved = resolve_non_empty_override_values(Some("  "), Some(" legacy "));
-        assert_eq!(resolved.as_deref(), Some("legacy"));
+    fn resolve_non_empty_override_values_falls_back_to_compat_old_brand_value() {
+        let resolved =
+            resolve_non_empty_override_values(Some("  "), Some(" compat-old-brand "));
+        assert_eq!(resolved.as_deref(), Some("compat-old-brand"));
     }
 
     #[test]
-    fn viewer_dev_dist_candidates_prefer_oasis7_name_before_legacy_name() {
+    fn viewer_dev_dist_candidates_prefer_oasis7_name_before_compat_old_brand_name() {
         let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
         let candidates = viewer_dev_dist_candidates();
 

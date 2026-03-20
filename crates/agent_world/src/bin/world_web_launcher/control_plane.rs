@@ -17,7 +17,7 @@ const CHAIN_RECOVERY_MODE_FRESH_NODE_ID: &str = "fresh_node_id";
 const CHAIN_RECOVERY_PORT_SCAN_LIMIT: u16 = 32;
 const DEFAULT_CHAIN_STATUS_BIND_PORT: u16 = 5121;
 const GAME_STATIC_DIR_ENV: &str = "OASIS7_GAME_STATIC_DIR";
-const LEGACY_GAME_STATIC_DIR_ENV: &str = "AGENT_WORLD_GAME_STATIC_DIR";
+const COMPAT_OLD_BRAND_GAME_STATIC_DIR_ENV: &str = "AGENT_WORLD_GAME_STATIC_DIR";
 
 pub(super) fn parse_config_request(body: &[u8], action: &str) -> Result<LauncherConfig, String> {
     serde_json::from_slice(body).map_err(|err| format!("parse {action} request JSON failed: {err}"))
@@ -871,9 +871,9 @@ fn resolve_viewer_static_dir_for_launcher(
 ) -> Option<std::path::PathBuf> {
     if raw == DEFAULT_VIEWER_STATIC_DIR {
         let primary = std::env::var(GAME_STATIC_DIR_ENV).ok();
-        let legacy = std::env::var(LEGACY_GAME_STATIC_DIR_ENV).ok();
+        let compat_old_brand = std::env::var(COMPAT_OLD_BRAND_GAME_STATIC_DIR_ENV).ok();
         if let Some(override_path) =
-            resolve_viewer_static_env_override(primary.as_deref(), legacy.as_deref())
+            resolve_viewer_static_env_override(primary.as_deref(), compat_old_brand.as_deref())
         {
             return resolve_viewer_static_dir_candidate_for_launcher(override_path, launcher_bin);
         }
@@ -1556,14 +1556,14 @@ mod tests {
     #[test]
     fn resolve_viewer_static_env_override_prefers_oasis7_value() {
         let resolved =
-            super::resolve_viewer_static_env_override(Some(" web-dist "), Some("legacy-dist"));
+            super::resolve_viewer_static_env_override(Some(" web-dist "), Some("compat-dist"));
         assert_eq!(resolved, Some("web-dist"));
     }
 
     #[test]
-    fn resolve_viewer_static_env_override_falls_back_to_legacy_value() {
+    fn resolve_viewer_static_env_override_falls_back_to_compat_old_brand_value() {
         let resolved =
-            super::resolve_viewer_static_env_override(Some("   "), Some(" legacy-dist "));
-        assert_eq!(resolved, Some("legacy-dist"));
+            super::resolve_viewer_static_env_override(Some("   "), Some(" compat-dist "));
+        assert_eq!(resolved, Some("compat-dist"));
     }
 }
