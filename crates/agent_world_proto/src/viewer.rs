@@ -656,7 +656,7 @@ mod tests {
     }
 
     #[test]
-    fn viewer_control_request_defaults_request_id_to_none_for_legacy_payload() {
+    fn viewer_control_request_defaults_request_id_to_none_for_compat_payload() {
         let request = ViewerRequest::Control {
             mode: ViewerControl::Step { count: 2 },
             request_id: None,
@@ -1061,7 +1061,7 @@ mod tests {
     }
 
     #[test]
-    fn viewer_hello_ack_defaults_to_playback_profile_for_legacy_payload() {
+    fn viewer_hello_ack_defaults_to_playback_profile_for_compat_payload() {
         let json = r#"{
             "type":"hello_ack",
             "server":"agent_world",

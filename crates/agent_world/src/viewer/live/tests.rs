@@ -865,7 +865,7 @@ fn agent_chat_rejects_replayed_nonce() {
 }
 
 #[test]
-fn agent_chat_upgrades_legacy_player_binding_with_public_key() {
+fn agent_chat_upgrades_compat_player_binding_with_public_key() {
     set_test_llm_env();
     let config = WorldConfig::default();
     let init = WorldInitConfig::from_scenario(WorldScenario::Minimal, &config);

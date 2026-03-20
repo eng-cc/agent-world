@@ -618,7 +618,7 @@ mod tests {
     use std::sync::Mutex;
 
     #[test]
-    fn control_request_defaults_to_legacy_before_hello_profile() {
+    fn control_request_defaults_to_compat_pre_hello_profile() {
         let request = control_request_for_profile(None, ViewerControl::Play, None)
             .expect("control request should be produced");
         assert_eq!(

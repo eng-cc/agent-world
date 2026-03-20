@@ -179,6 +179,7 @@
   - SC-75: `build-wasm-module` / `ci-m1-wasm-summary` / `sync-m1-builtin-wasm-artifacts` 脚本中的旧品牌 wasm env helper 与局部变量命名也必须优先使用 `compat` 语义而不是继续沿用 `wasm_legacy_env_key` / `legacy_key` 口径，避免脚本维护层继续把旧品牌当作当前源码真值。
   - SC-76: `setup-openclaw-oasis7-runtime`、`viewer-texture-inspector-lib` 与 `capture-viewer-frame` 脚本中的旧品牌 viewer/OpenClaw env helper 与局部变量命名也必须优先使用 `compat` 语义而不是继续沿用 `legacy_key` / `viewer_legacy_env_key` / `promote_legacy_viewer_envs` 口径，避免脚本维护层继续把旧品牌当作当前源码真值。
   - SC-77: Viewer 兼容回退相关的定向测试函数命名也必须优先使用 `compat` 语义而不是继续沿用 `legacy_text_format` / `legacy_dir` / `legacy_key` 口径，避免 Viewer 测试层继续扩散旧品牌维护语义。
+  - SC-78: Viewer 文本 fallback helper、预 hello profile/协议 payload/player binding 兼容测试命名也必须优先使用 `compat` 语义而不是继续沿用 `legacy_*` 口径，避免协议兼容层继续扩散旧品牌式维护语义。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -415,6 +416,7 @@
   - AC-80: `scripts/{build-wasm-module.sh,ci-m1-wasm-summary.sh,sync-m1-builtin-wasm-artifacts.sh}` 中保留旧 `AGENT_WORLD_WASM_*` fallback literal 的 helper/局部变量名必须改为 `compat` 语义命名；脚本行为保持不变，且源码中不得继续把 `wasm_legacy_env_key` / `legacy_key` 当作当前维护口径。
   - AC-81: `scripts/{setup-openclaw-oasis7-runtime.sh,viewer-texture-inspector-lib.sh,viewer-texture-inspector.sh,capture-viewer-frame.sh}` 中保留旧 `OPENCLAW_AGENT_WORLD_*` / `AGENT_WORLD_VIEWER_*` fallback literal 的 helper/局部变量名与调用点必须改为 `compat` 语义命名；脚本行为保持不变，且源码中不得继续把 `legacy_key` / `viewer_legacy_env_key` / `promote_legacy_viewer_envs` 当作当前维护口径。
   - AC-82: `crates/agent_world_viewer/src/{egui_right_panel_chat_tests.rs,right_panel_module_visibility.rs,viewer_3d_config_profile_tests.rs}` 中涉及 compat fallback 的定向测试函数名必须改为 `compat` 语义命名；Viewer 行为保持不变，但源码中不得继续把 `legacy_text_format` / `legacy_dir` / `legacy_key` 当作当前测试维护口径。
+  - AC-83: `crates/agent_world_viewer/src/{egui_right_panel_chat.rs,main_connection.rs}`、`crates/agent_world_proto/src/viewer.rs` 与 `crates/agent_world/src/viewer/live/tests.rs` 中涉及旧文本 fallback、预 hello profile、协议 payload 与 player binding 的 helper/定向测试名必须改为 `compat` 语义命名；Viewer/协议行为保持不变，但源码中不得继续把 `legacy_*` 当作当前兼容层维护口径。
 - Non-Goals:
   - 不在本 PRD 中详细列出每个 UI 像素级规范。
   - 不替代 world-runtime/p2p 的底层协议设计。

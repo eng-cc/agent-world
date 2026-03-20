@@ -634,7 +634,7 @@ fn parse_tool_call_view(message: &LlmChatMessageTrace) -> ToolCallView {
         }
     }
 
-    parse_legacy_tool_call_view(message.content.as_str()).unwrap_or_else(|| ToolCallView {
+    parse_compat_tool_call_text_fallback(message.content.as_str()).unwrap_or_else(|| ToolCallView {
         module: "-".to_string(),
         status: "-".to_string(),
         args_preview: "-".to_string(),
@@ -643,9 +643,9 @@ fn parse_tool_call_view(message: &LlmChatMessageTrace) -> ToolCallView {
     })
 }
 
-fn parse_legacy_tool_call_view(content: &str) -> Option<ToolCallView> {
-    let module = extract_legacy_field(content, "module")?;
-    let status = extract_legacy_field(content, "status").unwrap_or_else(|| "-".to_string());
+fn parse_compat_tool_call_text_fallback(content: &str) -> Option<ToolCallView> {
+    let module = extract_compat_text_field(content, "module")?;
+    let status = extract_compat_text_field(content, "status").unwrap_or_else(|| "-".to_string());
     let result_preview = content
         .split_once("result=")
         .map(|(_, result)| truncate_text(result, TOOL_CALL_PREVIEW_CHARS))
@@ -660,7 +660,7 @@ fn parse_legacy_tool_call_view(content: &str) -> Option<ToolCallView> {
     })
 }
 
-fn extract_legacy_field(content: &str, key: &str) -> Option<String> {
+fn extract_compat_text_field(content: &str, key: &str) -> Option<String> {
     let marker = format!("{key}=");
     let start = content.find(marker.as_str())?;
     let value = &content[start + marker.len()..];

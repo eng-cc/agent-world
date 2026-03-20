@@ -735,6 +735,20 @@
     - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer -- --nocapture`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
+- [x] TASK-WORLD_SIMULATOR-205 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 Viewer 文本 fallback helper、预 hello profile/协议 payload/player binding 的兼容命名切到 `compat` 语义，收口源码级 helper/测试名里残留的 `legacy_*` 口径。
+  - 产物文件:
+    - `doc/world-simulator/prd.md`
+    - `doc/world-simulator/project.md`
+    - `crates/agent_world_viewer/src/egui_right_panel_chat.rs`
+    - `crates/agent_world_viewer/src/main_connection.rs`
+    - `crates/agent_world_proto/src/viewer.rs`
+    - `crates/agent_world/src/viewer/live/tests.rs`
+  - 验收命令 (`test_tier_required`):
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world_proto --lib -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world agent_chat_upgrades_compat_player_binding_with_public_key -- --nocapture`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
 - [x] TASK-WORLD_SIMULATOR-203 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 viewer/OpenClaw 脚本中的旧品牌 env helper 与局部变量命名切到 `compat` 语义，收口脚本层里残留的 `legacy_key` / `viewer_legacy_env_key` / `promote_legacy_viewer_envs` 口径。
   - 产物文件:
     - `doc/world-simulator/prd.md`
@@ -924,29 +938,8 @@
 - 最新完成: `TASK-WORLD_SIMULATOR-132`（为 `oasis7-run.sh doctor` 增加 `--json` 机读输出）。
 - 最新完成: `TASK-WORLD_SIMULATOR-137`（为 `oasis7` 补齐 chain node 公私钥资产说明与 operator contract）。
 - 最新完成: `TASK-WORLD_SIMULATOR-138`（为 `oasis7-run.sh download` 补 bundle-first 下载阶段日志、进度条与非 TTY heartbeat，并新增下载可观测性回归脚本）。
-- 最新完成: `TASK-WORLD_SIMULATOR-167`（已完成 `agent_world_client_launcher` Web 静态入口 `<title>` 的公开品牌收口，当前页面标题统一为 `oasis7 Launcher (Web)`）。
-- 最新完成: `TASK-WORLD_SIMULATOR-168`（已完成 `agent_world_client_launcher` 原生窗口标题与应用内主标题的公开品牌收口，当前统一为 `oasis7 Client Launcher`）。
-- 最新完成: `TASK-WORLD_SIMULATOR-169`（已将 `agent_world_client_launcher` 的前端运行时 key、环境变量别名、状态文件名与测试临时前缀优先切到 `oasis7`，并保留旧 `Agent World` key 的兼容读取）。
-- 最新完成: `TASK-WORLD_SIMULATOR-170`（已将 Viewer auth/bootstrap、右侧面板持久化路径与诊断类 runtime key 优先切到 `oasis7`，并保留旧 `Agent World` key 的兼容读写）。
-- 最新完成: `TASK-WORLD_SIMULATOR-171`（已将 `world_game_launcher` / `world_web_launcher` 的服务端运行时路径 env key 优先切到 `OASIS7_*`，并保留旧 `AGENT_WORLD_*` fallback，同时统一 help / validation / error 文案）。
-- 最新完成: `TASK-WORLD_SIMULATOR-172`（已将 `agent_world_viewer` 的 3D 配置、theme runtime、panel/headless 控制与 release profile 默认 env key 优先切到 `OASIS7_VIEWER_*`，并保留旧 `AGENT_WORLD_VIEWER_*` fallback）。
-- 最新完成: `TASK-WORLD_SIMULATOR-173`（已将 `agent_world_viewer` 的 automation、auto-focus、auto-degrade、event window 与 internal capture 默认 env key 优先切到 `OASIS7_VIEWER_*`，并保留旧 `AGENT_WORLD_VIEWER_*` fallback）。
-- 最新完成: `TASK-WORLD_SIMULATOR-174`（已将 Viewer 抓帧、材质巡检与压力测试脚本默认 env key 与命令展示优先切到 `OASIS7_VIEWER_*`，并保留旧 `AGENT_WORLD_VIEWER_*` fallback / cleanup）。
-- 最新完成: `TASK-WORLD_SIMULATOR-175`（已将 simulator LLM 配置与 longrun stress 脚本的默认 env key 优先切到 `OASIS7_LLM_*`，并保留旧 `AGENT_WORLD_LLM_*` fallback）。
-- 最新完成: `TASK-WORLD_SIMULATOR-176`（已将 runtime live 的 OpenClaw provider / QA chat echo 默认 env key 优先切到 `OASIS7_AGENT_PROVIDER_MODE`、`OASIS7_OPENCLAW_*` 与 `OASIS7_RUNTIME_AGENT_CHAT_ECHO`，并保留旧 `AGENT_WORLD_*` fallback）。
-- 最新完成: `TASK-WORLD_SIMULATOR-177`（已将 bundle 产物中的 launcher/runtime 路径 env 注入与 storage profile override 默认口径优先切到 `OASIS7_*` / `OASIS7_CHAIN_STORAGE_PROFILE`，并保留旧 `AGENT_WORLD_*` fallback）。
-- 最新完成: `TASK-WORLD_SIMULATOR-178`（已将 viewer theme preset `.env` 文件中的默认导出 env key 优先切到 `OASIS7_VIEWER_*`，收口 theme/operator 预设链路里残留的旧 `AGENT_WORLD_VIEWER_*` 默认口径）。
-- 最新完成: `TASK-WORLD_SIMULATOR-179`（已将 repo-owned OpenClaw lightweight runtime agent 的默认 agent id 与 setup/operator env 命名优先切到 `oasis7_runtime` / `OPENCLAW_OASIS7_*`，并保留旧 `agent_world_runtime` / `OPENCLAW_AGENT_WORLD_*` fallback）。
-- 最新完成: `TASK-WORLD_SIMULATOR-204`（已将 Viewer compat fallback 的定向测试函数命名切到 `compat` 语义，收口测试层里残留的 `legacy_text_format` / `legacy_dir` / `legacy_key` 口径）。
-- 最新完成: `TASK-WORLD_SIMULATOR-203`（已将 viewer/OpenClaw 脚本中的旧品牌 env helper 与局部变量命名切到 `compat` 语义，收口脚本层里残留的 `legacy_key` / `viewer_legacy_env_key` / `promote_legacy_viewer_envs` 口径）。
-- 最新完成: `TASK-WORLD_SIMULATOR-202`（已将 wasm 构建/摘要/同步脚本中的旧品牌 env helper 与局部变量命名切到 `compat` 语义，收口脚本层里残留的 `wasm_legacy_env_key` / `legacy_key` 口径）。
-- 最新完成: `TASK-WORLD_SIMULATOR-201`（已将 `power_bootstrap_release_manifest_full` 的 builtin wasm 兼容 env 常量/测试局部变量命名切到 `compat` 语义，收口 full-tier 测试层里残留的 `LEGACY_*AGENT_WORLD_*` 口径）。
-- 最新完成: `TASK-WORLD_SIMULATOR-200`（已将 `world_web_launcher` 与 `agent_world_client_launcher` 的 launcher 定向测试函数命名切到 `compat` 语义，收口测试层里残留的 `before_legacy` / `legacy_name` 口径）。
-- 最新完成: `TASK-WORLD_SIMULATOR-199`（已将 `world_web_launcher` 与 `agent_world_client_launcher/src/main.rs` 的 launcher path、console static、字体/语言/control bind 兼容 env 常量/辅助函数/定向测试命名切到 `compat` 语义，收口源码级模块名/变量名里残留的 `LEGACY_*AGENT_WORLD_*` 口径）。
-- 最新完成: `TASK-WORLD_SIMULATOR-198`（已将 `world_game_launcher` 与 `viewer/runtime_live` 的 launcher path、viewer auth、OpenClaw/runtime chat echo 兼容 env 常量/辅助函数/定向测试命名切到 `compat` 语义，收口源码级模块名/变量名里残留的 `LEGACY_*AGENT_WORLD_*` 口径）。
-- 最新完成: `TASK-WORLD_SIMULATOR-197`（已将 `agent_world` runtime 的 builtin wasm、module source compile 与 simulator LLM 兼容 env 常量/辅助函数/定向测试命名切到 `compat` 语义，收口源码级模块名/变量名里残留的 `LEGACY_*AGENT_WORLD_*` 口径）。
-- 最新完成: `TASK-WORLD_SIMULATOR-196`（已将 `agent_world_viewer` 的 auth/bootstrap、viewer env alias、automation 与 perf probe 兼容常量命名切到 `compat` 语义，收口 Viewer 源码级模块名/变量名里残留的 `LEGACY_*AGENT_WORLD_VIEWER*` 口径）。
-- 最新完成: `TASK-WORLD_SIMULATOR-195`（已将保留旧品牌 fallback literal 的 client launcher / viewer / OpenClaw bridge 源码常量命名切到 `compat` 语义，收口源码级模块名/变量名里残留的 `LEGACY_*agent_world*` 口径）。
+- 最新完成: `TASK-WORLD_SIMULATOR-167~179`（已完成 launcher/viewer/runtime/OpenClaw 第一轮 `oasis7` 公开品牌与 env/key/profile 兼容迁移，统一以 `oasis7` / `OASIS7_*` / `OPENCLAW_OASIS7_*` 为源码默认口径，并保留旧 `Agent World` / `AGENT_WORLD_*` / `OPENCLAW_AGENT_WORLD_*` fallback）。
+- 最新完成: `TASK-WORLD_SIMULATOR-195~205`（已完成 client launcher/viewer/runtime/launcher/wasm/OpenClaw 兼容命名第二轮清理，将源码常量、helper 与定向测试里的 `LEGACY_*` / `legacy_*` 统一收口到 `compat` 语义，同时保留旧品牌 fallback literal 的兼容行为不变）。
 - 最新完成: `TASK-WORLD_SIMULATOR-194`（已将 `agent_world_net` / `agent_world_node` 的测试临时目录默认前缀切到 `oasis7_*`，收口网络同步、observer、replication 与 node hardening 回归产物里残留的旧 `agent-world` 内部命名）。
 - 最新完成: `TASK-WORLD_SIMULATOR-193`（已将 `agent_world_wasm_executor` / `agent_world_wasm_store` 的测试与缓存临时目录默认前缀切到 `oasis7_*`，收口 wasm 支撑包产物里残留的旧 `agent-world` 内部命名）。
 - 最新完成: `TASK-WORLD_SIMULATOR-192`（已将 `crates/agent_world/tests` 下 module store 集成测试的临时目录前缀与测试 artifact signer seed 切到 `oasis7_*`，收口 integration test 产物与确定性签名种子里残留的旧 `agent-world` 命名）。
