@@ -116,7 +116,7 @@ Prefer the repo-owned lightweight runtime agent:
 ### Repo source path
 
 ```bash
-env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_game_launcher -- \
+env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_game_launcher -- \
   --scenario llm_bootstrap \
   --with-llm \
   --agent-provider-mode openclaw_local_http \

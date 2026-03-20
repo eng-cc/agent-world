@@ -37,6 +37,7 @@
   - SC-5: scripts 治理专题标题统一使用 `oasis7` 品牌，不再在脚本治理入口中混用 `Agent World` 标题。
   - SC-6: `doc/scripts/precommit/**` 等活跃脚本手册中的当前 crate 命令、依赖说明与 CI 帮助文案必须统一使用 `oasis7*` 口径；旧 `agent_world*` 仅允许保留在历史记录或外部原文引用中。
   - SC-7: `doc/scripts/viewer-tools/capture-viewer-frame.{prd,project}.md` 中当前 native fallback viewer 调试说明必须统一使用 `oasis7_viewer` / `OASIS7_VIEWER_*` 口径；旧 `agent_world_viewer` / `AGENT_WORLD_VIEWER_*` 仅允许保留在历史记录或外部原文引用中。
+  - SC-8: repo-owned OpenClaw real-play helper 文档与脚本（`.agents/skills/oasis7/**`）中的当前 cargo 运行命令与入口路径必须统一使用 `oasis7` / `crates/oasis7*`；旧 `agent_world` / `crates/agent_world*` 仅允许保留在兼容说明、历史证据或外部原文引用中。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -71,6 +72,7 @@
   - AC-5: `doc/scripts/**` 仍可读治理专题标题统一使用 `oasis7` 品牌；旧标题仅允许出现在正文历史上下文中。
   - AC-6: `doc/scripts/precommit/pre-commit.{prd,project}.md` 中当前 viewer wasm 编译门禁、依赖说明与 CI 帮助文案必须写为 `oasis7_viewer` / `cargo check -p oasis7_viewer`；旧 `agent_world_viewer` 仅允许保留在历史记录或外部原文引用中。
   - AC-7: `doc/scripts/viewer-tools/capture-viewer-frame.{prd,project}.md` 中当前 native fallback viewer 调试说明必须写为 `oasis7_viewer` / `OASIS7_VIEWER_*`；旧 `agent_world_viewer` / `AGENT_WORLD_VIEWER_*` 仅允许保留在历史记录或外部原文引用中。
+  - AC-8: `.agents/skills/oasis7/SKILL.md`、`.agents/skills/oasis7/references/real-play-config.md` 与 `.agents/skills/oasis7/scripts/oasis7-run.sh` 中当前 `cargo run -p` 命令和入口路径必须写为 `oasis7` / `crates/oasis7*`；旧 `agent_world` / `crates/agent_world*` 仅允许保留在兼容说明、历史证据或外部原文引用中。
 - Non-Goals:
   - 不在 scripts PRD 中替代业务功能设计。
   - 不承诺所有历史脚本长期向后兼容。
@@ -116,7 +118,7 @@
 - Test Plan & Traceability:
 | PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |
 | --- | --- | --- | --- | --- |
-| PRD-SCRIPTS-001 | TASK-SCRIPTS-001/002/005/009 | `test_tier_required` | 脚本分层与入口清单核验 | 日常开发链路稳定性 |
+| PRD-SCRIPTS-001 | TASK-SCRIPTS-001/002/005/009/011 | `test_tier_required` | 脚本分层与入口清单核验 | 日常开发链路稳定性 |
 | PRD-SCRIPTS-002 | TASK-SCRIPTS-002/003/005 | `test_tier_required` + `test_tier_full` | 参数契约与失败语义回归 | CI 稳定性与故障定位效率 |
 | PRD-SCRIPTS-003 | TASK-SCRIPTS-003/004/005/010 | `test_tier_required` | fallback 使用条件抽样检查 | 排障闭环和风险控制 |
 - Decision Log:

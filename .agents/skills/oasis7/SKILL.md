@@ -107,7 +107,7 @@ The runtime workspace is intentionally slim and is not meant for daily chat.
 Run the local compatibility bridge that exposes world-simulator provider endpoints:
 
 ```bash
-env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_openclaw_local_bridge -- --openclaw-agent oasis7_runtime
+env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_openclaw_local_bridge -- --openclaw-agent oasis7_runtime
 ```
 
 Expected local provider URL:
@@ -128,7 +128,7 @@ You can launch from either the source tree or a downloaded release bundle.
 Repo source path:
 
 ```bash
-env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_game_launcher -- \
+env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_game_launcher -- \
   --scenario llm_bootstrap \
   --with-llm \
   --agent-provider-mode openclaw_local_http \
@@ -295,8 +295,8 @@ Current known reality:
 
 Use these files as the source of truth:
 
-- Bridge entry: `crates/agent_world/src/bin/world_openclaw_local_bridge.rs`
-- Launcher entry: `crates/agent_world/src/bin/world_game_launcher.rs`
+- Bridge entry: `crates/oasis7/src/bin/world_openclaw_local_bridge.rs`
+- Launcher entry: `crates/oasis7/src/bin/world_game_launcher.rs`
 - Runtime workspace installer: `scripts/setup-openclaw-oasis7-runtime.sh`
 - Runtime workspace policy: `tools/openclaw/oasis7_runtime_workspace/AGENTS.md`
 - Module tracker: `doc/world-simulator/project.md`

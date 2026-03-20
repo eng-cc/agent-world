@@ -997,7 +997,7 @@ if [[ "$reuse_bridge" != "1" ]]; then
   wait_for_http "http://127.0.0.1:18789/health" 20 0.5
   (
     cd "$repo_root"
-    exec env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_openclaw_local_bridge -- --openclaw-agent "$agent_id"
+    exec env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_openclaw_local_bridge -- --openclaw-agent "$agent_id"
   ) >"$bridge_log" 2>&1 &
   cleanup_bridge_pid="$!"
 fi
@@ -1019,7 +1019,7 @@ case "$mode" in
       viewer_static_out_dir="$repo_root/output/oasis7/viewer-static-$(date +%Y%m%d-%H%M%S)"
       resolved_viewer_static_dir="$(resolve_source_tree_viewer_static_dir "$repo_root" "$viewer_static_out_dir")"
       cd "$repo_root"
-      cmd=(env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_game_launcher --
+      cmd=(env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_game_launcher --
         --scenario "$scenario"
         --with-llm
         --agent-provider-mode openclaw_local_http
