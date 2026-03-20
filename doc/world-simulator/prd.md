@@ -155,6 +155,7 @@
   - SC-51: bundle 产物中的 `run-client.sh` / `run-game.sh` / `run-web-launcher.sh` / `run-chain-runtime.sh` 默认 env 注入与 README 示例必须优先迁移到 `OASIS7_*` / `OASIS7_CHAIN_STORAGE_PROFILE`，同时兼容旧 `AGENT_WORLD_*` fallback；bundle-first operator 路径不得继续把旧前缀当作默认口径。
   - SC-52: viewer theme preset `.env` 文件中的默认导出 key 必须优先迁移到 `OASIS7_VIEWER_*`，避免 theme 预设成为 viewer 配置链路里最后一批仍默认写旧前缀的 operator 入口；迁移期保留 runtime 对旧 `AGENT_WORLD_VIEWER_*` 的兼容读取即可，不再要求 preset 文件继续把旧前缀当作默认值。
   - SC-53: repo-owned OpenClaw lightweight runtime agent 的默认 agent id 与 setup 脚本 operator env key 必须优先迁移到 `oasis7_runtime` 与 `OPENCLAW_OASIS7_*`，同时兼容旧 `agent_world_runtime` / `OPENCLAW_AGENT_WORLD_*`；`oasis7-run.sh`、skill 文档、bridge 示例与 setup 脚本不得继续把旧品牌命名当作当前默认口径。
+  - SC-54: `world_game_launcher` / `world_web_launcher` 相关测试与静态资源测试写入系统临时目录时，默认前缀必须使用 `oasis7_*`，避免本地测试产物与失败签名继续泄露旧 `agent_world_*` 品牌字符串。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -367,6 +368,7 @@
   - AC-56: `scripts/build-game-launcher-bundle.sh` 生成的 wrapper 脚本必须默认写入 `OASIS7_GAME_LAUNCHER_BIN`、`OASIS7_GAME_STATIC_DIR`、`OASIS7_WORLD_CHAIN_RUNTIME_BIN`、`OASIS7_WEB_LAUNCHER_STATIC_DIR` 与 `OASIS7_CHAIN_STORAGE_PROFILE`，同时继续兼容旧 `AGENT_WORLD_*` / `AGENT_WORLD_CHAIN_STORAGE_PROFILE`；README 中的 bundle-first operator 示例不得再把旧前缀作为默认真值。
   - AC-57: `crates/agent_world_viewer/assets/themes/**/presets/*.env` 必须默认导出 `OASIS7_VIEWER_*`，不再把 `AGENT_WORLD_VIEWER_*` 作为当前预设文件真值；同一主题的 default/glossy/matte 预设都必须完成一致迁移，且 theme preset 仍能被现有 viewer env 解析链路消费。
   - AC-58: `scripts/setup-openclaw-agent-world-runtime.sh`、`.agents/skills/oasis7/scripts/oasis7-run.sh`、`.agents/skills/oasis7/**/*.md` 与 `world_openclaw_local_bridge` 相关测试样例必须默认使用 `oasis7_runtime` 与 `OPENCLAW_OASIS7_{AGENT_ID,WORKSPACE,MODEL}`，同时继续兼容旧 `agent_world_runtime` / `OPENCLAW_AGENT_WORLD_*`；现有 `tools/openclaw/agent_world_runtime_workspace` 目录可暂不改名，但 operator-facing 默认说明不得继续把旧品牌作为真值。
+  - AC-59: `crates/agent_world/src/bin/world_game_launcher/world_game_launcher_tests.rs`、`crates/agent_world/src/bin/world_web_launcher/world_web_launcher_tests.rs` 与 `crates/agent_world/src/bin/world_web_launcher/static_files.rs` 里的临时目录前缀必须默认改为 `oasis7_*`；launcher/web-launcher 定向测试通过后，临时目录命名不得继续输出 `agent_world_*` 作为当前默认值。
 - Non-Goals:
   - 不在本 PRD 中详细列出每个 UI 像素级规范。
   - 不替代 world-runtime/p2p 的底层协议设计。
