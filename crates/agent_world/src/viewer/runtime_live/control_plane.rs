@@ -20,7 +20,7 @@ pub(super) use llm_sidecar::{
 };
 
 const RUNTIME_AGENT_CHAT_ECHO_ENV: &str = "OASIS7_RUNTIME_AGENT_CHAT_ECHO";
-const LEGACY_RUNTIME_AGENT_CHAT_ECHO_ENV: &str = "AGENT_WORLD_RUNTIME_AGENT_CHAT_ECHO";
+const COMPAT_OLD_BRAND_RUNTIME_AGENT_CHAT_ECHO_ENV: &str = "AGENT_WORLD_RUNTIME_AGENT_CHAT_ECHO";
 const RUNTIME_AGENT_CHAT_ECHO_PREFIX: &str = "[qa-echo]";
 
 #[allow(dead_code)]
@@ -38,7 +38,7 @@ struct ResolvedAgentChatIntent {
 fn runtime_agent_chat_echo_enabled_from_env() -> bool {
     std::env::var(RUNTIME_AGENT_CHAT_ECHO_ENV)
         .ok()
-        .or_else(|| std::env::var(LEGACY_RUNTIME_AGENT_CHAT_ECHO_ENV).ok())
+        .or_else(|| std::env::var(COMPAT_OLD_BRAND_RUNTIME_AGENT_CHAT_ECHO_ENV).ok())
         .map(|value| {
             matches!(
                 value.trim().to_ascii_lowercase().as_str(),

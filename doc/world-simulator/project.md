@@ -662,6 +662,21 @@
     - `env -u RUSTC_WRAPPER cargo test -p agent_world llm_config_from_env_for_agent_falls_back_to_compat_old_brand_prefix -- --nocapture`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
+- [x] TASK-WORLD_SIMULATOR-198 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 `world_game_launcher` 与 `viewer/runtime_live` 的 launcher path、viewer auth、OpenClaw/runtime chat echo 兼容 env 常量/辅助函数/定向测试命名切到 `compat` 语义，收口源码级模块名/变量名里残留的 `LEGACY_*AGENT_WORLD_*` 口径。
+  - 产物文件:
+    - `doc/world-simulator/prd.md`
+    - `doc/world-simulator/project.md`
+    - `crates/agent_world/src/bin/world_game_launcher.rs`
+    - `crates/agent_world/src/bin/world_game_launcher/world_game_launcher_tests.rs`
+    - `crates/agent_world/src/viewer/runtime_live/control_plane.rs`
+    - `crates/agent_world/src/viewer/runtime_live/llm_sidecar.rs`
+    - `crates/agent_world/src/viewer/runtime_live/tests.rs`
+  - 验收命令 (`test_tier_required`):
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world openclaw_settings_from_env -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world runtime_agent_chat_echo -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_game_launcher -- --nocapture`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
 - [x] TASK-WORLD_SIMULATOR-162 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 修复标准模式 bootstrap `Loading standard viewer...` overlay 在 wasm 已启动后仍残留并压缩左侧视口的问题，补齐 cleanup 生命周期与最小回归验证。
 - [x] TASK-WORLD_SIMULATOR-148 (PRD-WORLD_SIMULATOR-040) [test_tier_required]: 完成 `OpenClaw` 双轨模式（`player_parity` / `headless_agent` / `debug_viewer`）专题 PRD / Project 建模，并回写模块主文档、索引与 devlog。
 - [x] TASK-WORLD_SIMULATOR-149 (PRD-WORLD_SIMULATOR-040) [test_tier_required]: 由 `agent_engineer` 冻结 `player_parity` / `headless_agent` 的 observation/action contract、schema version、模式元数据与禁止泄露真值边界，并形成 supporting spec。
@@ -850,6 +865,7 @@
 - 最新完成: `TASK-WORLD_SIMULATOR-177`（已将 bundle 产物中的 launcher/runtime 路径 env 注入与 storage profile override 默认口径优先切到 `OASIS7_*` / `OASIS7_CHAIN_STORAGE_PROFILE`，并保留旧 `AGENT_WORLD_*` fallback）。
 - 最新完成: `TASK-WORLD_SIMULATOR-178`（已将 viewer theme preset `.env` 文件中的默认导出 env key 优先切到 `OASIS7_VIEWER_*`，收口 theme/operator 预设链路里残留的旧 `AGENT_WORLD_VIEWER_*` 默认口径）。
 - 最新完成: `TASK-WORLD_SIMULATOR-179`（已将 repo-owned OpenClaw lightweight runtime agent 的默认 agent id 与 setup/operator env 命名优先切到 `oasis7_runtime` / `OPENCLAW_OASIS7_*`，并保留旧 `agent_world_runtime` / `OPENCLAW_AGENT_WORLD_*` fallback）。
+- 最新完成: `TASK-WORLD_SIMULATOR-198`（已将 `world_game_launcher` 与 `viewer/runtime_live` 的 launcher path、viewer auth、OpenClaw/runtime chat echo 兼容 env 常量/辅助函数/定向测试命名切到 `compat` 语义，收口源码级模块名/变量名里残留的 `LEGACY_*AGENT_WORLD_*` 口径）。
 - 最新完成: `TASK-WORLD_SIMULATOR-197`（已将 `agent_world` runtime 的 builtin wasm、module source compile 与 simulator LLM 兼容 env 常量/辅助函数/定向测试命名切到 `compat` 语义，收口源码级模块名/变量名里残留的 `LEGACY_*AGENT_WORLD_*` 口径）。
 - 最新完成: `TASK-WORLD_SIMULATOR-196`（已将 `agent_world_viewer` 的 auth/bootstrap、viewer env alias、automation 与 perf probe 兼容常量命名切到 `compat` 语义，收口 Viewer 源码级模块名/变量名里残留的 `LEGACY_*AGENT_WORLD_VIEWER*` 口径）。
 - 最新完成: `TASK-WORLD_SIMULATOR-195`（已将保留旧品牌 fallback literal 的 client launcher / viewer / OpenClaw bridge 源码常量命名切到 `compat` 语义，收口源码级模块名/变量名里残留的 `LEGACY_*agent_world*` 口径）。

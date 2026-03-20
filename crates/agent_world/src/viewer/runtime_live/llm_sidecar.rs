@@ -38,18 +38,18 @@ const OPENCLAW_LOCAL_HTTP_PROVIDER_MODE: &str = "openclaw_local_http";
 const DEFAULT_OPENCLAW_CONNECT_TIMEOUT_MS: u64 = 3_000;
 const DEFAULT_OPENCLAW_AGENT_PROFILE: &str = "oasis7_p0_low_freq_npc";
 const VIEWER_AGENT_PROVIDER_MODE_ENV: &str = "OASIS7_AGENT_PROVIDER_MODE";
-const LEGACY_VIEWER_AGENT_PROVIDER_MODE_ENV: &str = "AGENT_WORLD_AGENT_PROVIDER_MODE";
+const COMPAT_OLD_BRAND_VIEWER_AGENT_PROVIDER_MODE_ENV: &str = "AGENT_WORLD_AGENT_PROVIDER_MODE";
 const VIEWER_OPENCLAW_BASE_URL_ENV: &str = "OASIS7_OPENCLAW_BASE_URL";
-const LEGACY_VIEWER_OPENCLAW_BASE_URL_ENV: &str = "AGENT_WORLD_OPENCLAW_BASE_URL";
+const COMPAT_OLD_BRAND_VIEWER_OPENCLAW_BASE_URL_ENV: &str = "AGENT_WORLD_OPENCLAW_BASE_URL";
 const VIEWER_OPENCLAW_AUTH_TOKEN_ENV: &str = "OASIS7_OPENCLAW_AUTH_TOKEN";
-const LEGACY_VIEWER_OPENCLAW_AUTH_TOKEN_ENV: &str = "AGENT_WORLD_OPENCLAW_AUTH_TOKEN";
+const COMPAT_OLD_BRAND_VIEWER_OPENCLAW_AUTH_TOKEN_ENV: &str = "AGENT_WORLD_OPENCLAW_AUTH_TOKEN";
 const VIEWER_OPENCLAW_CONNECT_TIMEOUT_MS_ENV: &str = "OASIS7_OPENCLAW_CONNECT_TIMEOUT_MS";
-const LEGACY_VIEWER_OPENCLAW_CONNECT_TIMEOUT_MS_ENV: &str =
+const COMPAT_OLD_BRAND_VIEWER_OPENCLAW_CONNECT_TIMEOUT_MS_ENV: &str =
     "AGENT_WORLD_OPENCLAW_CONNECT_TIMEOUT_MS";
 const VIEWER_OPENCLAW_AGENT_PROFILE_ENV: &str = "OASIS7_OPENCLAW_AGENT_PROFILE";
-const LEGACY_VIEWER_OPENCLAW_AGENT_PROFILE_ENV: &str = "AGENT_WORLD_OPENCLAW_AGENT_PROFILE";
+const COMPAT_OLD_BRAND_VIEWER_OPENCLAW_AGENT_PROFILE_ENV: &str = "AGENT_WORLD_OPENCLAW_AGENT_PROFILE";
 const VIEWER_OPENCLAW_EXECUTION_MODE_ENV: &str = "OASIS7_OPENCLAW_EXECUTION_MODE";
-const LEGACY_VIEWER_OPENCLAW_EXECUTION_MODE_ENV: &str = "AGENT_WORLD_OPENCLAW_EXECUTION_MODE";
+const COMPAT_OLD_BRAND_VIEWER_OPENCLAW_EXECUTION_MODE_ENV: &str = "AGENT_WORLD_OPENCLAW_EXECUTION_MODE";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(in crate::viewer::runtime_live) struct OpenClawDecisionSettings {
@@ -68,7 +68,7 @@ enum RuntimeDecisionRunner {
 fn env_requests_openclaw_provider() -> bool {
     named_env_var(
         VIEWER_AGENT_PROVIDER_MODE_ENV,
-        LEGACY_VIEWER_AGENT_PROVIDER_MODE_ENV,
+        COMPAT_OLD_BRAND_VIEWER_AGENT_PROVIDER_MODE_ENV,
     )
     .map(|value| value.trim().to_string())
     .is_some_and(|value| value == OPENCLAW_LOCAL_HTTP_PROVIDER_MODE)
@@ -78,7 +78,7 @@ pub(in crate::viewer::runtime_live) fn openclaw_settings_from_env(
 ) -> Result<Option<OpenClawDecisionSettings>, String> {
     let provider_mode = named_env_var(
         VIEWER_AGENT_PROVIDER_MODE_ENV,
-        LEGACY_VIEWER_AGENT_PROVIDER_MODE_ENV,
+        COMPAT_OLD_BRAND_VIEWER_AGENT_PROVIDER_MODE_ENV,
     )
     .unwrap_or_default();
     let provider_mode = provider_mode.trim();
@@ -93,19 +93,19 @@ pub(in crate::viewer::runtime_live) fn openclaw_settings_from_env(
 
     let base_url = named_env_var(
         VIEWER_OPENCLAW_BASE_URL_ENV,
-        LEGACY_VIEWER_OPENCLAW_BASE_URL_ENV,
+        COMPAT_OLD_BRAND_VIEWER_OPENCLAW_BASE_URL_ENV,
     )
     .unwrap_or_default();
     let base_url = base_url.trim();
     if base_url.is_empty() {
         return Err(format!(
-            "{VIEWER_OPENCLAW_BASE_URL_ENV} is required for openclaw_local_http (legacy: {LEGACY_VIEWER_OPENCLAW_BASE_URL_ENV})"
+            "{VIEWER_OPENCLAW_BASE_URL_ENV} is required for openclaw_local_http (legacy: {COMPAT_OLD_BRAND_VIEWER_OPENCLAW_BASE_URL_ENV})"
         ));
     }
 
     let connect_timeout_ms = named_env_var(
         VIEWER_OPENCLAW_CONNECT_TIMEOUT_MS_ENV,
-        LEGACY_VIEWER_OPENCLAW_CONNECT_TIMEOUT_MS_ENV,
+        COMPAT_OLD_BRAND_VIEWER_OPENCLAW_CONNECT_TIMEOUT_MS_ENV,
     )
     .map(|value| value.trim().to_string())
     .filter(|value| !value.is_empty())
@@ -124,7 +124,7 @@ pub(in crate::viewer::runtime_live) fn openclaw_settings_from_env(
 
     let agent_profile = named_env_var(
         VIEWER_OPENCLAW_AGENT_PROFILE_ENV,
-        LEGACY_VIEWER_OPENCLAW_AGENT_PROFILE_ENV,
+        COMPAT_OLD_BRAND_VIEWER_OPENCLAW_AGENT_PROFILE_ENV,
     )
     .unwrap_or_else(|| DEFAULT_OPENCLAW_AGENT_PROFILE.to_string());
     let agent_profile = agent_profile.trim();
@@ -136,14 +136,14 @@ pub(in crate::viewer::runtime_live) fn openclaw_settings_from_env(
 
     let auth_token = named_env_var(
         VIEWER_OPENCLAW_AUTH_TOKEN_ENV,
-        LEGACY_VIEWER_OPENCLAW_AUTH_TOKEN_ENV,
+        COMPAT_OLD_BRAND_VIEWER_OPENCLAW_AUTH_TOKEN_ENV,
     )
     .map(|value| value.trim().to_string())
     .filter(|value| !value.is_empty());
 
     let execution_mode = named_env_var(
         VIEWER_OPENCLAW_EXECUTION_MODE_ENV,
-        LEGACY_VIEWER_OPENCLAW_EXECUTION_MODE_ENV,
+        COMPAT_OLD_BRAND_VIEWER_OPENCLAW_EXECUTION_MODE_ENV,
     )
         .map(|value| value.trim().to_string())
         .filter(|value| !value.is_empty())
@@ -166,8 +166,10 @@ pub(in crate::viewer::runtime_live) fn openclaw_settings_from_env(
     }))
 }
 
-fn named_env_var(primary: &str, legacy: &str) -> Option<String> {
-    env::var(primary).ok().or_else(|| env::var(legacy).ok())
+fn named_env_var(primary: &str, compat_old_brand: &str) -> Option<String> {
+    env::var(primary)
+        .ok()
+        .or_else(|| env::var(compat_old_brand).ok())
 }
 
 fn openclaw_phase1_action_catalog() -> Vec<ActionCatalogEntry> {
