@@ -192,7 +192,7 @@ fn temp_dir(prefix: &str) -> PathBuf {
         .expect("duration since epoch")
         .as_nanos();
     std::env::temp_dir().join(format!(
-        "agent-world-runtime-tests-{prefix}-{}-{unique}",
+        "oasis7-runtime-tests-{prefix}-{}-{unique}",
         std::process::id()
     ))
 }

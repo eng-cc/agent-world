@@ -113,7 +113,7 @@ fn audit_log_export_writes_file() {
     world.step().unwrap();
 
     let dir = std::env::temp_dir().join(format!(
-        "agent-world-audit-{}",
+        "oasis7-audit-{}",
         SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()

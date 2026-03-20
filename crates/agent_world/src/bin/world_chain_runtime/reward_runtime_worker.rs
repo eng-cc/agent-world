@@ -587,9 +587,7 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .expect("duration")
             .as_nanos();
-        std::env::temp_dir().join(format!(
-            "agent-world-reward-runtime-worker-{prefix}-{unique}"
-        ))
+        std::env::temp_dir().join(format!("oasis7-reward-runtime-worker-{prefix}-{unique}"))
     }
 
     #[test]

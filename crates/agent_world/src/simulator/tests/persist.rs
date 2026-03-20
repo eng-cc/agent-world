@@ -149,7 +149,7 @@ fn kernel_persist_and_restore() {
     });
     kernel.step_until_empty();
 
-    let tmp_dir = std::env::temp_dir().join("agent-world-kernel-test");
+    let tmp_dir = std::env::temp_dir().join("oasis7-kernel-test");
     if tmp_dir.exists() {
         fs::remove_dir_all(&tmp_dir).unwrap();
     }

@@ -2007,7 +2007,7 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .expect("duration")
             .as_nanos();
-        std::env::temp_dir().join(format!("agent-world-{prefix}-{unique}"))
+        std::env::temp_dir().join(format!("oasis7-execution-{prefix}-{unique}"))
     }
 
     fn sample_snapshot(committed_height: u64, block_hash: Option<&str>) -> NodeSnapshot {

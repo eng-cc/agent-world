@@ -548,7 +548,7 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .expect("duration")
             .as_nanos();
-        let path = std::env::temp_dir().join(format!("agent-world-{prefix}-{now}"));
+        let path = std::env::temp_dir().join(format!("oasis7-node-points-{prefix}-{now}"));
         fs::create_dir_all(&path).expect("mkdir");
         path
     }

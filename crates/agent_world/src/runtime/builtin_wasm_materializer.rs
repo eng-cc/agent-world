@@ -406,7 +406,7 @@ fn temp_build_dir(module_id: &str) -> PathBuf {
         .unwrap_or_default()
         .as_nanos();
     repo_root().join(".tmp").join(format!(
-        "agent-world-builtin-wasm-{module_id}-{}-{now}",
+        "oasis7-builtin-wasm-{module_id}-{}-{now}",
         std::process::id()
     ))
 }
@@ -429,7 +429,7 @@ mod tests {
     #[test]
     fn module_hash_index_roundtrip_keeps_latest_hash_per_module() {
         let temp_root = std::env::temp_dir().join(format!(
-            "agent-world-materializer-index-{}-{}",
+            "oasis7-materializer-index-{}-{}",
             std::process::id(),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)

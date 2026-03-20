@@ -10,7 +10,7 @@ fn temp_dir(prefix: &str) -> PathBuf {
         .duration_since(UNIX_EPOCH)
         .expect("duration")
         .as_nanos();
-    std::env::temp_dir().join(format!("agent-world-{prefix}-{unique}"))
+    std::env::temp_dir().join(format!("oasis7-runtime-{prefix}-{unique}"))
 }
 
 fn install_test_module(world: &mut World, module_id: &str, wasm_bytes: &[u8]) -> String {
@@ -1281,7 +1281,7 @@ fn snapshot_file_pruning_removes_old_files() {
     world.set_snapshot_retention(SnapshotRetentionPolicy { max_snapshots: 1 });
 
     let dir = std::env::temp_dir().join(format!(
-        "agent-world-snapshots-{}",
+        "oasis7-snapshots-{}",
         SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()

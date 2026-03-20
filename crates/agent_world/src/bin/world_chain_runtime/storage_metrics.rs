@@ -520,7 +520,7 @@ mod tests {
             .expect("duration")
             .as_nanos();
         let dir = std::env::temp_dir().join(format!(
-            "agent_world_storage_metrics_{label}_{}_{}",
+            "oasis7_storage_metrics_{label}_{}_{}",
             std::process::id(),
             unique
         ));

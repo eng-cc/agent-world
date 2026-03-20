@@ -9,7 +9,7 @@ fn temp_dir(prefix: &str) -> PathBuf {
         .duration_since(UNIX_EPOCH)
         .expect("duration")
         .as_nanos();
-    std::env::temp_dir().join(format!("agent-world-storage-cold-index-{prefix}-{unique}"))
+    std::env::temp_dir().join(format!("oasis7-storage-cold-index-{prefix}-{unique}"))
 }
 
 #[test]

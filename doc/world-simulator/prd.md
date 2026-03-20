@@ -160,6 +160,7 @@
   - SC-56: `world_chain_runtime` 转账提交相关测试写入系统临时目录时，默认前缀必须使用 `oasis7_*`，避免链运行时转账测试产物继续泄露旧 `agent_world_*` 内部命名。
   - SC-57: OpenClaw 首期 `P0` 默认 gameplay profile id 必须优先迁移到 `oasis7_p0_low_freq_npc`，同时兼容旧 `agent_world_p0_low_freq_npc`；launcher、runtime live、parity bench、bridge 与 `oasis7` operator 文档不得继续把旧 profile id 当作当前默认真值。
   - SC-58: `agent_world_distfs` 与 `agent_world_consensus` 的测试临时目录前缀必须默认使用 `oasis7_*`，避免 distfs/consensus 本地回归产物继续泄露旧 `agent-world` / `agent_world` 内部品牌字符串。
+  - SC-59: `agent_world` 主包内 runtime / chain-runtime / simulator 的测试临时目录、缺失路径 helper 与 builtin wasm 临时构建目录必须默认使用 `oasis7_*`，避免主包回归产物与本地 `.tmp` 工作目录继续泄露旧 `agent-world` / `agent_world` 品牌字符串。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -377,6 +378,7 @@
   - AC-61: `crates/agent_world/src/bin/world_chain_runtime/transfer_submit_api_tests.rs` 的临时目录前缀必须默认改为 `oasis7_transfer_submit_api_tests_*`；转账提交/状态/浏览器查询定向测试通过后，不得继续输出 `agent_world_transfer_submit_api_tests_*` 作为当前默认值。
   - AC-62: `world_game_launcher`、`world_openclaw_parity_bench`、`viewer/runtime_live/llm_sidecar`、`agent_world_client_launcher`、`scripts/openclaw-parity-p0.sh` 与 `.agents/skills/oasis7/**` 必须默认使用 `oasis7_p0_low_freq_npc`，同时 `world_openclaw_local_bridge` 继续接受旧 `agent_world_p0_low_freq_npc` 作为兼容别名；定向回归通过后，产品默认与 operator 示例不得再把旧 profile id 作为当前真值。
   - AC-63: `crates/agent_world_distfs/src/{lib.rs,manifest.rs,replication.rs,feedback/tests.rs,feedback_p2p.rs,challenge/tests.rs,challenge_scheduler.rs}` 与 `crates/agent_world_consensus/src/**/*tests*.rs` 中的临时目录前缀必须默认改为 `oasis7_distfs_*` / `oasis7_consensus_*` 系列；对应包测试通过后，不得继续输出 `agent-world-*` 或 `agent_world_*` 作为当前默认值。
+  - AC-64: `crates/agent_world/src/bin/world_chain_runtime/{execution_bridge.rs,reward_runtime_worker.rs,storage_metrics.rs}`、`crates/agent_world/src/runtime/{builtin_wasm_materializer.rs,segmenter.rs,node_points_runtime.rs}`、`crates/agent_world/src/runtime/tests/{audit.rs,builtin_wasm_materializer.rs,gameplay_protocol_split_part1.rs,persistence.rs,power_bootstrap_release_manifest_full.rs,storage_cold_index.rs,storage_footprint_fixture.rs}`、`crates/agent_world/src/simulator/tests/persist.rs` 与 `crates/agent_world/src/bin/world_game_launcher/world_game_launcher_tests.rs` 的临时目录/工作目录前缀必须默认改为 `oasis7_*`；定向回归通过后，主包不得继续输出这些旧 `agent-world-*` / `agent_world_*` 默认值。
 - Non-Goals:
   - 不在本 PRD 中详细列出每个 UI 像素级规范。
   - 不替代 world-runtime/p2p 的底层协议设计。
