@@ -12,7 +12,7 @@
 - 兼容层：保持 native/wasm 两端字体链路与 UI 功能一致。
 
 ## 3. 关键接口 / 入口
-- `agent_world_viewer/Cargo.toml` feature 配置
+- `oasis7_viewer/Cargo.toml` feature 配置
 - `AssetServer` 资源加载链路
 - UI runtime 与 main 入口的字体接线
 

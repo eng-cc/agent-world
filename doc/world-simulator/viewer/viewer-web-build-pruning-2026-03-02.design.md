@@ -12,7 +12,7 @@
 - 验证层：通过 wasm check、trunk build 与体积对比验证收效。
 
 ## 3. 关键接口 / 入口
-- `agent_world` / `agent_world_viewer` 的 wasm 条件编译入口
+- `oasis7` / `oasis7_viewer` 的 wasm 条件编译入口
 - `cargo check --target wasm32-unknown-unknown` 与 `trunk build --release`
 - 体积对比与依赖树观察命令
 

@@ -4,7 +4,7 @@
 - 对应项目管理文档: `doc/world-simulator/viewer/viewer-web-closure-testing-policy.project.md`
 
 ## 1. 设计定位
-定义 `agent_world_viewer` 闭环测试默认切换到 Web 端的执行策略、产物要求与 fallback 边界，统一团队验证入口。
+定义 `oasis7_viewer` 闭环测试默认切换到 Web 端的执行策略、产物要求与 fallback 边界，统一团队验证入口。
 
 ## 2. 设计结构
 - 执行入口层：默认使用 `trunk serve + Playwright` 完成真实浏览器闭环。

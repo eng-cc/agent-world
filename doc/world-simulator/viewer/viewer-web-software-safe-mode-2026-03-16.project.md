@@ -15,7 +15,7 @@
 - [x] T7 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 为 `software_safe` 补 prompt rollback 与 chat history/message flow，确保 rollback 后能刷新 prompt 状态，且玩家出站消息与事件侧消息都能汇入统一消息流并被脚本读取。
 - [x] T8 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 由 `qa_engineer` 为 `software_safe` 补 prompt/chat/rollback/message-flow 回归方案与专用 agent-browser 脚本，沉淀 `agent_spoke` 缺失的失败签名。
 - [x] T9 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 由 `runtime_engineer` / `viewer_engineer` 补齐 `agent_chat -> AgentSpoke` 的测试态稳定触发链路，并修正 software-safe 对 runtime 事件形状的兼容解析。
-- [x] T10 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 为 source-tree Viewer Web 入口补齐 dist freshness gate，确保 `oasis7-run.sh play` / Web 闭环在 `index.html`、`software_safe.*` 或静态资源漂移时优先重建 fresh dist，而不是继续消费 stale `crates/agent_world_viewer/dist`。
+- [x] T10 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 为 source-tree Viewer Web 入口补齐 dist freshness gate，确保 `oasis7-run.sh play` / Web 闭环在 `index.html`、`software_safe.*` 或静态资源漂移时优先重建 fresh dist，而不是继续消费 stale `crates/oasis7_viewer/dist`。
 - [x] T11 (PRD-WORLD_SIMULATOR-039/040) [test_tier_required]: 重构 `oasis7` operator 口径，明确 `headless_agent` 是 OpenClaw 主执行/回归 lane，Viewer 仅承担 `player_parity` / `debug_viewer` / `software_safe` 的体验、观战与弱图形观察职责，并写清当前 OpenClaw real-play 下 `prompt/chat` 的 observer-only 边界。
 - [x] T12 (PRD-WORLD_SIMULATOR-039/040) [test_tier_required]: 将 `oasis7` 主入口中的 UI/observer 细节拆到独立 reference，保持主 skill 聚焦执行闭环，仅保留最小 UI 结论与跳转关系。
 - [x] T13 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 修复标准模式 bootstrap loading overlay 在 wasm 已启动后仍残留并压缩左侧视口的问题，补齐 cleanup 生命周期与最小回归验证。

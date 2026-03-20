@@ -23,7 +23,7 @@
 - 在页面级显式展示：当前模式、fallback 原因、如何切回标准模式
 
 ### 3.2 Standard Viewer
-- 沿用现有 `agent_world_viewer` wasm 路径。
+- 沿用现有 `oasis7_viewer` wasm 路径。
 - 继续承担视觉质量验收、3D 视角、既有艺术表现与高保真交互。
 - `auto` 模式下只有在环境足够好时才进入该路径。
 
