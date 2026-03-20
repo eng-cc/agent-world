@@ -153,6 +153,7 @@
   - SC-49: simulator LLM 配置链路的默认 env key 必须优先迁移到 `OASIS7_LLM_*`，同时兼容旧 `AGENT_WORLD_LLM_*` fallback；`llm_agent`、agent-scoped goal override、runtime live 测试与长稳脚本不得继续把旧前缀当作唯一入口。
   - SC-50: runtime live 的 OpenClaw provider / QA chat echo 链路默认 env key 必须优先迁移到 `OASIS7_AGENT_PROVIDER_MODE`、`OASIS7_OPENCLAW_*` 与 `OASIS7_RUNTIME_AGENT_CHAT_ECHO`，同时兼容旧 `AGENT_WORLD_*` fallback；`world_game_launcher` 注入、runtime_live 读取、software-safe QA 脚本与对应测试不得继续把旧前缀当作唯一入口。
   - SC-51: bundle 产物中的 `run-client.sh` / `run-game.sh` / `run-web-launcher.sh` / `run-chain-runtime.sh` 默认 env 注入与 README 示例必须优先迁移到 `OASIS7_*` / `OASIS7_CHAIN_STORAGE_PROFILE`，同时兼容旧 `AGENT_WORLD_*` fallback；bundle-first operator 路径不得继续把旧前缀当作默认口径。
+  - SC-52: viewer theme preset `.env` 文件中的默认导出 key 必须优先迁移到 `OASIS7_VIEWER_*`，避免 theme 预设成为 viewer 配置链路里最后一批仍默认写旧前缀的 operator 入口；迁移期保留 runtime 对旧 `AGENT_WORLD_VIEWER_*` 的兼容读取即可，不再要求 preset 文件继续把旧前缀当作默认值。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -363,6 +364,7 @@
   - AC-54: `simulator/llm_defaults`、`simulator/llm_agent` 与 `scripts/llm-longrun-stress.sh` 必须默认优先读取或写入 `OASIS7_LLM_MODEL`、`OASIS7_LLM_BASE_URL`、`OASIS7_LLM_API_KEY`、`OASIS7_LLM_TIMEOUT_MS`、`OASIS7_LLM_PROMPT_*`、`OASIS7_LLM_DEBUG_MODE`、`OASIS7_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS`，并继续兼容旧 `AGENT_WORLD_LLM_*`；agent-scoped goal override、调试提示与 longrun stress 命令注入不得因前缀变更而失效。
   - AC-55: `viewer/runtime_live/llm_sidecar`、`viewer/runtime_live/control_plane`、`world_game_launcher`、`viewer/runtime_live/tests` 与 `scripts/viewer-software-safe-chat-regression.sh` 必须默认优先读取或写入 `OASIS7_AGENT_PROVIDER_MODE`、`OASIS7_OPENCLAW_BASE_URL`、`OASIS7_OPENCLAW_AUTH_TOKEN`、`OASIS7_OPENCLAW_CONNECT_TIMEOUT_MS`、`OASIS7_OPENCLAW_AGENT_PROFILE`、`OASIS7_OPENCLAW_EXECUTION_MODE`、`OASIS7_RUNTIME_AGENT_CHAT_ECHO`，并继续兼容旧 `AGENT_WORLD_*`；OpenClaw provider 解析、player_parity 元数据、QA echo 注入与 software-safe Web 回归不得因前缀变更而失效。
   - AC-56: `scripts/build-game-launcher-bundle.sh` 生成的 wrapper 脚本必须默认写入 `OASIS7_GAME_LAUNCHER_BIN`、`OASIS7_GAME_STATIC_DIR`、`OASIS7_WORLD_CHAIN_RUNTIME_BIN`、`OASIS7_WEB_LAUNCHER_STATIC_DIR` 与 `OASIS7_CHAIN_STORAGE_PROFILE`，同时继续兼容旧 `AGENT_WORLD_*` / `AGENT_WORLD_CHAIN_STORAGE_PROFILE`；README 中的 bundle-first operator 示例不得再把旧前缀作为默认真值。
+  - AC-57: `crates/agent_world_viewer/assets/themes/**/presets/*.env` 必须默认导出 `OASIS7_VIEWER_*`，不再把 `AGENT_WORLD_VIEWER_*` 作为当前预设文件真值；同一主题的 default/glossy/matte 预设都必须完成一致迁移，且 theme preset 仍能被现有 viewer env 解析链路消费。
 - Non-Goals:
   - 不在本 PRD 中详细列出每个 UI 像素级规范。
   - 不替代 world-runtime/p2p 的底层协议设计。
