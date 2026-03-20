@@ -182,6 +182,7 @@
   - SC-78: Viewer 文本 fallback helper、预 hello profile/协议 payload/player binding 兼容测试命名也必须优先使用 `compat` 语义而不是继续沿用 `legacy_*` 口径，避免协议兼容层继续扩散旧品牌式维护语义。
   - SC-79: `agent_world` 运行时的 material ledger 迁移 helper、execution bridge 旧 schema 检测 helper 与 module registry fallback 局部变量命名也必须优先使用 `compat` 或更准确的中性语义，而不是继续沿用 `legacy_*` 口径，避免 runtime 源码内部继续把兼容层维护路径表述成当前真值。
   - SC-80: `agent_world_node` commit retention 的 cold index 旧文件名兼容 alias helper、局部变量与定向测试命名也必须优先使用 `compat` 语义，而不是继续沿用 `legacy_*` 口径，避免 node replication 源码继续把旧文件名 alias 当作当前维护真值。
+  - SC-81: `agent_world_distfs` 复制记录/guard 旧 JSON 兼容样例的定向测试命名与局部变量也必须优先使用 `compat` 语义，而不是继续沿用 `legacy_*` 口径，避免存储复制测试层继续扩散旧品牌式兼容维护语义。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -421,6 +422,7 @@
   - AC-83: `crates/agent_world_viewer/src/{egui_right_panel_chat.rs,main_connection.rs}`、`crates/agent_world_proto/src/viewer.rs` 与 `crates/agent_world/src/viewer/live/tests.rs` 中涉及旧文本 fallback、预 hello profile、协议 payload 与 player binding 的 helper/定向测试名必须改为 `compat` 语义命名；Viewer/协议行为保持不变，但源码中不得继续把 `legacy_*` 当作当前兼容层维护口径。
   - AC-84: `crates/agent_world/src/{runtime/state.rs,runtime/world/resources.rs,runtime/world/module_runtime.rs,bin/world_chain_runtime/execution_bridge.rs}` 中 material ledger 迁移、world materials 缓存同步、execution bridge pre-v2 检测与 module registry fallback 的 helper/局部变量名必须改为 `compat_*` 或准确中性命名；运行时行为保持不变，但源码中不得继续把这些兼容层路径写成 `legacy_*` 当前维护口径。
   - AC-85: `crates/agent_world_node/src/replication/{commit_retention.rs,tests.rs}` 中 commit cold index canonical manifest 与旧文件名 alias 的 helper/局部变量/定向测试名必须改为 `compat` 语义命名；节点复制行为保持不变，但源码中不得继续把旧文件名 alias 写成 `legacy_*` 当前维护口径。
+  - AC-86: `crates/agent_world_distfs/src/replication.rs` 中 replication record/guard 旧 JSON 兼容样例的定向测试函数名与局部变量必须改为 `compat` 语义命名；DistFS 反序列化行为保持不变，但源码中不得继续把这些兼容样例写成 `legacy_*` 当前测试维护口径。
 - Non-Goals:
   - 不在本 PRD 中详细列出每个 UI 像素级规范。
   - 不替代 world-runtime/p2p 的底层协议设计。

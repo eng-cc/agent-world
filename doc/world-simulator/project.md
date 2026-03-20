@@ -764,6 +764,12 @@
     - `env -u RUSTC_WRAPPER cargo test -p agent_world_node load_commit_message_cold_index_restores_compat_alias_from_canonical_manifest -- --nocapture`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
+- [x] TASK-WORLD_SIMULATOR-208 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 `agent_world_distfs` 旧 JSON 兼容样例的 replication record/guard 定向测试命名与局部变量切到 `compat` 语义，收口 DistFS 测试层残留的 `legacy_*` 口径。
+  - 产物文件: `doc/world-simulator/prd.md`, `doc/world-simulator/project.md`, `crates/agent_world_distfs/src/replication.rs`
+  - 验收命令 (`test_tier_required`):
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world_distfs replication_record_and_guard_compat_json_default_writer_epoch_to_one -- --nocapture`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
 - [x] TASK-WORLD_SIMULATOR-203 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 viewer/OpenClaw 脚本中的旧品牌 env helper 与局部变量命名切到 `compat` 语义，收口脚本层里残留的 `legacy_key` / `viewer_legacy_env_key` / `promote_legacy_viewer_envs` 口径。
   - 产物文件:
     - `doc/world-simulator/prd.md`
@@ -942,19 +948,11 @@
 - 最新完成: `TASK-WORLD_SIMULATOR-121`（`OpenClawAdapter` + phase-1 六类白名单动作 + runner/feedback 闭环回归）。
 - 最新完成: `TASK-WORLD_SIMULATOR-122`（launcher OpenClaw probe 延迟/错误摘要 + viewer provider debug 摘要/筛选入口）。
 - 最新完成: `TASK-WORLD_SIMULATOR-123`（OpenClaw 专用 `agent_profile` 规格 + runtime/provider/parity harness 接线）。
-- 最新完成: `TASK-WORLD_SIMULATOR-124`（OpenClaw 产品主链路参数透传 + runtime live sidecar 接线）。
-- 最新完成: `TASK-WORLD_SIMULATOR-125`（`world_openclaw_local_bridge` + 真实 OpenClaw Gateway/CLI 到 world-simulator provider 的 loopback 兼容桥 + 主链路/parity 冒烟）。
-- 最新完成: `TASK-WORLD_SIMULATOR-126`（OpenClaw bridge session scope 隔离 + `P0-001` patrol guardrail / scenario memory hint + 真实 parity smoke 通过）。
-- 最新完成: `TASK-WORLD_SIMULATOR-127`（repo-owned 轻量 OpenClaw runtime agent bootstrap + bridge 改走官方 gateway `agent` RPC + 真实 lightweight probe）。
-- 最新完成: `TASK-WORLD_SIMULATOR-128`（OpenClaw bridge 改用 `subagent:` sessionKey 触发 minimal prompt mode + 真实 probe/parity 采证）。
-- 最新完成: `TASK-WORLD_SIMULATOR-129`（新增 `oasis7` skill，收口 OpenClaw 真实试玩/bridge/launcher/parity 工作流）。
-- 最新完成: `TASK-WORLD_SIMULATOR-130`（为 `oasis7` 新增故障签名 references 与一键 real-play/smoke 脚本封装）。
-- 最新完成: `TASK-WORLD_SIMULATOR-131`（为 `oasis7-run.sh` 新增 `doctor` 诊断模式）。
-- 最新完成: `TASK-WORLD_SIMULATOR-132`（为 `oasis7-run.sh doctor` 增加 `--json` 机读输出）。
+- 最新完成: `TASK-WORLD_SIMULATOR-124~132`（已完成 OpenClaw 本地桥、repo-owned runtime agent 与 `oasis7-run.sh` 早期 operator 能力建档和落地，覆盖主链路透传、loopback 兼容桥、轻量 runtime bootstrap、`doctor` / `--json` 诊断与故障签名沉淀）。
 - 最新完成: `TASK-WORLD_SIMULATOR-137`（为 `oasis7` 补齐 chain node 公私钥资产说明与 operator contract）。
 - 最新完成: `TASK-WORLD_SIMULATOR-138`（为 `oasis7-run.sh download` 补 bundle-first 下载阶段日志、进度条与非 TTY heartbeat，并新增下载可观测性回归脚本）。
 - 最新完成: `TASK-WORLD_SIMULATOR-167~179`（已完成 launcher/viewer/runtime/OpenClaw 第一轮 `oasis7` 公开品牌与 env/key/profile 兼容迁移，统一以 `oasis7` / `OASIS7_*` / `OPENCLAW_OASIS7_*` 为源码默认口径，并保留旧 `Agent World` / `AGENT_WORLD_*` / `OPENCLAW_AGENT_WORLD_*` fallback）。
-- 最新完成: `TASK-WORLD_SIMULATOR-195~207`（已完成 client launcher/viewer/runtime/launcher/wasm/OpenClaw/node replication 兼容命名第二轮清理，将源码常量、helper 与定向测试里的 `LEGACY_*` / `legacy_*` 统一收口到 `compat` 或更准确的中性语义，同时保留旧品牌 fallback literal 的兼容行为不变）。
+- 最新完成: `TASK-WORLD_SIMULATOR-195~208`（已完成 client launcher/viewer/runtime/launcher/wasm/OpenClaw/node replication/DistFS 兼容命名第二轮清理，将源码常量、helper 与定向测试里的 `LEGACY_*` / `legacy_*` 统一收口到 `compat` 或更准确的中性语义，同时保留旧品牌 fallback literal 的兼容行为不变）。
 - 最新完成: `TASK-WORLD_SIMULATOR-194`（已将 `agent_world_net` / `agent_world_node` 的测试临时目录默认前缀切到 `oasis7_*`，收口网络同步、observer、replication 与 node hardening 回归产物里残留的旧 `agent-world` 内部命名）。
 - 最新完成: `TASK-WORLD_SIMULATOR-193`（已将 `agent_world_wasm_executor` / `agent_world_wasm_store` 的测试与缓存临时目录默认前缀切到 `oasis7_*`，收口 wasm 支撑包产物里残留的旧 `agent-world` 内部命名）。
 - 最新完成: `TASK-WORLD_SIMULATOR-192`（已将 `crates/agent_world/tests` 下 module store 集成测试的临时目录前缀与测试 artifact signer seed 切到 `oasis7_*`，收口 integration test 产物与确定性签名种子里残留的旧 `agent-world` 命名）。

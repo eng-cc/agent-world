@@ -410,8 +410,8 @@ mod tests {
     }
 
     #[test]
-    fn replication_record_and_guard_legacy_json_default_writer_epoch_to_one() {
-        let legacy_record = serde_json::json!({
+    fn replication_record_and_guard_compat_json_default_writer_epoch_to_one() {
+        let compat_record_json = serde_json::json!({
             "world_id": "w1",
             "writer_id": "writer-a",
             "sequence": 3,
@@ -421,15 +421,15 @@ mod tests {
             "updated_at_ms": 123
         });
         let parsed_record: FileReplicationRecord =
-            serde_json::from_value(legacy_record).expect("parse legacy record");
+            serde_json::from_value(compat_record_json).expect("parse compat record");
         assert_eq!(parsed_record.writer_epoch, 1);
 
-        let legacy_guard = serde_json::json!({
+        let compat_guard_json = serde_json::json!({
             "writer_id": "writer-a",
             "last_sequence": 9
         });
         let parsed_guard: SingleWriterReplicationGuard =
-            serde_json::from_value(legacy_guard).expect("parse legacy guard");
+            serde_json::from_value(compat_guard_json).expect("parse compat guard");
         assert_eq!(parsed_guard.writer_epoch, 1);
     }
 
