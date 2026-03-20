@@ -38,9 +38,9 @@
   - `doc/world-simulator.project.md`
   - `doc/world-simulator/viewer/viewer-generic-focus-targets.prd.md`
   - `doc/world-simulator/viewer/viewer-web-test-api-step-control-2026-02-24.prd.md`
-  - `crates/agent_world/src/bin/world_viewer_live.rs`
-  - `crates/agent_world_viewer/src/web_test_api.rs`
-  - `crates/agent_world_viewer/src/viewer_automation.rs`
+  - `crates/oasis7/src/bin/world_viewer_live.rs`
+  - `crates/oasis7_viewer/src/web_test_api.rs`
+  - `crates/oasis7_viewer/src/viewer_automation.rs`
 - 输出文件
   - `site/index.html`
   - `site/en/index.html`

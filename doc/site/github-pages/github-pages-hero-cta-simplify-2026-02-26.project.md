@@ -19,7 +19,7 @@
 - [x] `site/index.html`：首屏 CTA 收敛为 2 个（主：试玩/演示；次：文档）
 - [x] `site/en/index.html`：首屏 CTA 收敛为 2 个（同构）
 - [x] 重写主按钮文案，去除“30 秒进入首局”承诺性措辞
-- [x] 执行 `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer`
+- [x] 执行 `env -u RUSTC_WRAPPER cargo check -p oasis7_viewer`
 - [x] 回写项目管理文档状态与任务日志
 
 ## 依赖

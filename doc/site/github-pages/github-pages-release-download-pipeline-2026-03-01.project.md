@@ -14,7 +14,7 @@
 ### T0A CI 阻塞修复（先行）
 - [x] 修复 `cargo fmt --all -- --check` 基线（提交仓库内遗留格式化差异）
 - [x] 修复 `world_game_launcher_tests` 被误识别为独立 bin 导致的 `cargo test` 失败
-- [x] 修复 `agent_world_viewer --target wasm32-unknown-unknown` 的 `ctrlc` 目标兼容问题
+- [x] 修复 `oasis7_viewer --target wasm32-unknown-unknown` 的 `ctrlc` 目标兼容问题
 - [x] 回归 `./scripts/ci-tests.sh required` 并确认通过
 
 ### T0 建档与基线
