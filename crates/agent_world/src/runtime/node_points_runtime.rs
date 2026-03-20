@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
 
-use agent_world_node::{NodeRole, NodeSnapshot};
+use oasis7_node::{NodeRole, NodeSnapshot};
 use serde::{Deserialize, Serialize};
 
 use super::{
@@ -538,7 +538,7 @@ mod tests {
         NodePointsRuntimeHeuristics, NodePointsRuntimeObservation,
     };
     use crate::runtime::NodePointsConfig;
-    use agent_world_node::{NodeConsensusSnapshot, NodeRole, NodeSnapshot};
+    use oasis7_node::{NodeConsensusSnapshot, NodeRole, NodeSnapshot};
     use std::fs;
     use std::path::PathBuf;
     use std::time::{SystemTime, UNIX_EPOCH};

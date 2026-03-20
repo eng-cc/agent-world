@@ -6,7 +6,7 @@ use agent_world::consensus_action_payload::{
     encode_consensus_action_payload, ConsensusActionPayloadEnvelope,
 };
 use agent_world::runtime::Action;
-use agent_world_node::NodeRuntime;
+use oasis7_node::NodeRuntime;
 use serde::{Deserialize, Serialize};
 
 const MODULE_RELEASE_ATTESTATION_SUBMIT_PATH: &str = "/v1/chain/module-release/attestation/submit";

@@ -1,0 +1,25 @@
+[package]
+name = "oasis7_net"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+path = "src/lib.rs"
+
+[features]
+default = ["self_tests", "libp2p"]
+libp2p = ["dep:libp2p", "dep:futures", "dep:async-std"]
+# Reserved for backward-compatible feature flags; runtime bridge logic no longer
+# lives in this crate to avoid package-level dependency cycles.
+runtime_bridge = []
+self_tests = []
+
+[dependencies]
+oasis7_distfs = { path = "../oasis7_distfs", optional = true }
+oasis7_proto = { path = "../oasis7_proto" }
+oasis7_wasm_abi = { path = "../oasis7_wasm_abi" }
+serde = { version = "1", features = ["derive"] }
+serde_cbor = "0.11"
+futures = { version = "0.3", optional = true }
+async-std = { version = "1", optional = true }
+libp2p = { version = "0.53", optional = true, default-features = false, features = ["async-std", "cbor", "dns", "gossipsub", "kad", "macros", "noise", "request-response", "tcp", "yamux"] }

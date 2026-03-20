@@ -1,5 +1,5 @@
 use super::*;
-use agent_world_node::{
+use oasis7_node::{
     NodeConfig, NodeExecutionCommitContext, NodeExecutionCommitResult, NodeExecutionHook, NodeRole,
     NodeRuntime,
 };

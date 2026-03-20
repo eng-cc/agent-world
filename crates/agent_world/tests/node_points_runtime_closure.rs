@@ -9,7 +9,7 @@ use agent_world::runtime::{
     measure_directory_storage_bytes, NodePointsConfig, NodePointsRuntimeCollector,
     NodePointsRuntimeHeuristics,
 };
-use agent_world_node::{NodeConfig, NodeReplicationConfig, NodeRole, NodeRuntime};
+use oasis7_node::{NodeConfig, NodeReplicationConfig, NodeRole, NodeRuntime};
 
 #[test]
 fn node_runtime_multi_node_points_closure_settles_rewards() {

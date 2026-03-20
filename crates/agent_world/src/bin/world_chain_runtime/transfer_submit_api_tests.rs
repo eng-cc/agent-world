@@ -18,7 +18,7 @@ use agent_world::runtime::{
     MainTokenConfig, MainTokenSupplyState, World, WorldState,
 };
 use agent_world::simulator::ResourceKind;
-use agent_world_node::{
+use oasis7_node::{
     NodeConfig, NodeExecutionCommitContext, NodeExecutionCommitResult, NodeExecutionHook, NodeRole,
     NodeRuntime,
 };

@@ -19,9 +19,9 @@ ed25519-dalek = { version = "2", features = ["rand_core"] }
 rand_core = { version = "0.6", features = ["getrandom"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-agent_world_distfs = { path = "../agent_world_distfs" }
+oasis7_distfs = { path = "../oasis7_distfs" }
 agent_world_launcher_ui = { path = "../agent_world_launcher_ui" }
-agent_world_node = { path = "../agent_world_node" }
+oasis7_node = { path = "../oasis7_node" }
 oasis7_wasm_executor = { path = "../oasis7_wasm_executor", default-features = false }
 oasis7_wasm_router = { path = "../oasis7_wasm_router" }
 oasis7_wasm_store = { path = "../oasis7_wasm_store" }

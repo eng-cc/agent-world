@@ -9,7 +9,7 @@ use agent_world::consensus_action_payload::{
     ConsensusActionPayloadEnvelope,
 };
 use agent_world::runtime::Action;
-use agent_world_node::NodeRuntime;
+use oasis7_node::NodeRuntime;
 use serde::{Deserialize, Serialize};
 
 #[path = "transfer_submit_explorer_p1_api.rs"]
@@ -274,7 +274,7 @@ impl ChainExplorerOverviewResponse {
     fn success(
         node_id: &str,
         world_id: &str,
-        snapshot: &agent_world_node::NodeSnapshot,
+        snapshot: &oasis7_node::NodeSnapshot,
         counters: TransferLifecycleCounters,
     ) -> Self {
         Self {

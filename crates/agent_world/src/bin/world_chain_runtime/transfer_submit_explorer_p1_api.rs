@@ -4,7 +4,7 @@ use std::path::Path;
 use std::sync::{Arc, Mutex};
 
 use agent_world::runtime::{EconomicContractState, EconomicContractStatus};
-use agent_world_node::NodeRuntime;
+use oasis7_node::NodeRuntime;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 

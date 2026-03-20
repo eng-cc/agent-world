@@ -1,6 +1,6 @@
 use std::net::TcpStream;
 
-use agent_world_distfs::{
+use oasis7_distfs::{
     blake3_hex, sign_feedback_create_request, FeedbackCreateRequest, FeedbackMutationReceipt,
 };
 use serde::{Deserialize, Serialize};
@@ -296,7 +296,7 @@ mod tests {
         parse_feedback_submit_request, ChainFeedbackSubmitRequest, ChainFeedbackSubmitResponse,
         FeedbackSubmitSigner,
     };
-    use agent_world_distfs::{public_key_hex_from_signing_key_hex, FeedbackActionKind};
+    use oasis7_distfs::{public_key_hex_from_signing_key_hex, FeedbackActionKind};
 
     const TEST_SIGNING_KEY_HEX: &str =
         "0101010101010101010101010101010101010101010101010101010101010101";
@@ -352,7 +352,7 @@ mod tests {
 
     #[test]
     fn chain_feedback_submit_response_success_fields() {
-        let receipt = agent_world_distfs::FeedbackMutationReceipt {
+        let receipt = oasis7_distfs::FeedbackMutationReceipt {
             feedback_id: "fb-1".to_string(),
             action: FeedbackActionKind::Create,
             event_id: "event-1".to_string(),

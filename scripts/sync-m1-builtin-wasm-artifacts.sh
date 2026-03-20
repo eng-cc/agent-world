@@ -247,7 +247,7 @@ token_hash_value() {
 }
 
 hydrate_distfs_blobs() {
-  env -u RUSTC_WRAPPER cargo run --quiet -p agent_world_distfs --bin hydrate_builtin_wasm -- \
+  env -u RUSTC_WRAPPER cargo run --quiet -p oasis7_distfs --bin hydrate_builtin_wasm -- \
     --root "$DISTFS_ROOT" \
     --manifest "$HASH_MANIFEST_PATH" \
     --built-dir "$OUT_DIR"
@@ -259,7 +259,7 @@ sync_identity_manifest() {
   canonical_platforms_joined="$(IFS=, ; echo "${CANONICAL_PLATFORMS[*]}")"
 
   cmd=(
-    env -u RUSTC_WRAPPER cargo run --quiet -p agent_world_distfs --bin sync_builtin_wasm_identity --
+    env -u RUSTC_WRAPPER cargo run --quiet -p oasis7_distfs --bin sync_builtin_wasm_identity --
     --module-ids-path "$MODULE_IDS_PATH"
     --module-manifest-map-path "$MODULE_MANIFEST_MAP_PATH"
     --hash-manifest-path "$HASH_MANIFEST_PATH"

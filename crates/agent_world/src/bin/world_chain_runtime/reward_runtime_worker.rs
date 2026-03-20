@@ -12,8 +12,8 @@ use agent_world::runtime::{
     NodePointsRuntimeHeuristics, NodePointsRuntimeObservation, ProtocolPowerReserve,
     RewardAssetConfig, RewardSignatureGovernancePolicy, World as RuntimeWorld,
 };
-use agent_world_distfs::StorageChallengeProbeCursorState;
-use agent_world_node::{NodeRole, NodeRuntime, PosConsensusStatus};
+use oasis7_distfs::StorageChallengeProbeCursorState;
+use oasis7_node::{NodeRole, NodeRuntime, PosConsensusStatus};
 use serde::Serialize;
 
 use super::distfs_probe_runtime::{
@@ -498,7 +498,7 @@ fn update_metrics_snapshot(
 }
 
 fn reward_runtime_consensus_ready_for_settlement(
-    snapshot: &agent_world_node::NodeSnapshot,
+    snapshot: &oasis7_node::NodeSnapshot,
 ) -> bool {
     if matches!(
         snapshot.consensus.last_status,

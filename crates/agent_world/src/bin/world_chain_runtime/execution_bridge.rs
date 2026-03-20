@@ -15,7 +15,7 @@ use agent_world::runtime::{
 use agent_world::simulator::{
     Action as SimulatorAction, ActionSubmitter, WorldEventKind, WorldKernel,
 };
-use agent_world_node::{
+use oasis7_node::{
     compute_consensus_action_root, NodeExecutionCommitContext, NodeExecutionCommitResult,
     NodeExecutionHook, NodeSnapshot,
 };
@@ -1955,7 +1955,7 @@ mod tests {
         ModuleManifest, ModuleRole, ModuleSubscription, ModuleSubscriptionStage, WorldEventBody,
     };
     use agent_world::simulator::{Action as SimulatorAction, ActionSubmitter};
-    use agent_world_node::{NodeConsensusSnapshot, NodeRole};
+    use oasis7_node::{NodeConsensusSnapshot, NodeRole};
     use oasis7_wasm_abi::{ModuleCallFailure, ModuleOutput};
     use oasis7_wasm_executor::FixedSandbox;
     use ed25519_dalek::{Signer, SigningKey};
@@ -3601,7 +3601,7 @@ mod tests {
         )
         .expect("encode simulator payload");
         let committed_action =
-            agent_world_node::NodeConsensusAction::from_payload(1, "node-a", payload)
+            oasis7_node::NodeConsensusAction::from_payload(1, "node-a", payload)
                 .expect("consensus action");
         let action_root =
             compute_consensus_action_root(std::slice::from_ref(&committed_action)).expect("root");

@@ -188,6 +188,12 @@
   - SC-84: `agent_world_wasm_router` 的 crate name、workspace member 与 crate 目录名必须直接切到 `oasis7_wasm_router`，并同步更新 runtime/world 侧依赖名、路径与源码入口，避免继续把旧 `agent_world_wasm_router` 当作真实路由平台入口。
   - SC-85: `agent_world_wasm_executor` 与 `agent_world_wasm_store` 的 crate name、workspace member 与 crate 目录名必须直接切到 `oasis7_wasm_executor` / `oasis7_wasm_store`，并同步更新 runtime、tests 与特性依赖声明，避免继续把旧 `agent_world_wasm_*` 当作真实执行/存储平台入口。
   - SC-86: `agent_world_proto` 的 crate name、workspace member 与 crate 目录名必须直接切到 `oasis7_proto`，并同步更新 distfs/net/consensus/node/runtime/viewer/launcher 与脚本中的依赖名、路径和源码入口，避免继续把旧 `agent_world_proto` 当作真实协议平台入口。
+  - SC-87: `agent_world_{distfs,consensus,net,node}` 的 crate name、workspace member 与 crate 目录名必须直接切到 `oasis7_{distfs,consensus,net,node}`，并同步更新 runtime、chain runtime、viewer live、脚本与网络栈内部依赖，避免继续把旧 `agent_world_*` 当作真实复制/共识/网络/节点平台入口。
+  - SC-88: `agent_world_launcher_ui` 的 crate name、workspace member 与 crate 目录名必须直接切到 `oasis7_launcher_ui`，并同步更新 client launcher / viewer / 脚本侧依赖与路径，避免共享启动器 UI 组件仍以内核旧品牌作为真实包入口。
+  - SC-89: `agent_world_client_launcher` 的 crate name、workspace member 与 crate 目录名必须直接切到 `oasis7_client_launcher`，并同步更新 launcher bundle、脚本、源码态静态入口与相关依赖名，避免客户端启动器继续把旧包名当作当前真值。
+  - SC-90: `agent_world_viewer` 的 crate name、workspace member 与 crate 目录名必须直接切到 `oasis7_viewer`，并同步更新 launcher fallback、Trunk/static root、theme 资产路径与脚本侧源码入口，避免 viewer 源码树仍把旧目录名当作默认运行根。
+  - SC-91: `agent_world` 主 crate 的 crate name、workspace member 与 crate 目录名必须直接切到 `oasis7`，并同步更新 workspace 下游依赖、`cargo -p` 包名、源码 `use agent_world::...` 入口与运行时构建脚本，避免主 runtime 包继续以内核旧品牌作为唯一包身份。
+  - SC-92: `agent_world_builtin_wasm_modules` 目录与其下 `agent_world_builtin_wasm_*` crate name 必须直接切到 `oasis7_builtin_wasm_modules` / `oasis7_builtin_wasm_*`，并同步更新 builtin manifest map、模板、模块锁文件与构建脚本，避免内置模块生态继续以内核旧品牌作为真实产物前缀。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -433,6 +439,12 @@
   - AC-89: workspace 根 `Cargo.toml`、`Cargo.lock`、`crates/oasis7_wasm_router/Cargo.toml` 与 `crates/agent_world/src/runtime/world/{base_layer.rs,module_runtime.rs}` 中的 `agent_world_wasm_router` 依赖/路径/源码入口必须全部改为 `oasis7_wasm_router`，并将目录 `crates/agent_world_wasm_router` 重命名为 `crates/oasis7_wasm_router`；变更后 `cargo` 必须能按新 crate 名解析 router。
   - AC-90: workspace 根 `Cargo.toml`、`Cargo.lock`、`crates/oasis7_wasm_{executor,store}/Cargo.toml` 与 `crates/agent_world/**` 中的 `agent_world_wasm_executor` / `agent_world_wasm_store` 依赖、特性声明、路径与源码入口必须全部改为 `oasis7_wasm_executor` / `oasis7_wasm_store`，并将目录 `crates/agent_world_wasm_{executor,store}` 重命名为 `crates/oasis7_wasm_{executor,store}`；变更后 `cargo` 必须能按新 crate 名解析执行器和存储层。
   - AC-91: workspace 根 `Cargo.toml`、`Cargo.lock`、`crates/oasis7_proto/Cargo.toml`、`crates/{agent_world_distfs,agent_world_net,agent_world_consensus,agent_world_node,agent_world}/**` 与相关脚本中的 `agent_world_proto` 依赖、路径、源码入口和临时 stub 路径必须全部改为 `oasis7_proto`，并将目录 `crates/agent_world_proto` 重命名为 `crates/oasis7_proto`；变更后 `cargo` 必须能按新 crate 名解析协议层。
+  - AC-92: workspace 根 `Cargo.toml`、`Cargo.lock`、`crates/oasis7_{distfs,consensus,net,node}/Cargo.toml`、`crates/agent_world/**` 与相关脚本中的 `agent_world_{distfs,consensus,net,node}` 依赖、路径、源码入口和 `cargo -p` 包名必须全部改为 `oasis7_{distfs,consensus,net,node}`，并将目录 `crates/agent_world_{distfs,consensus,net,node}` 重命名为 `crates/oasis7_{distfs,consensus,net,node}`；变更后 `cargo` 必须能按新 crate 名解析网络栈。
+  - AC-93: workspace 根 `Cargo.toml`、`Cargo.lock`、`crates/oasis7_launcher_ui/Cargo.toml` 与依赖 `launcher_ui` 的 crate / 脚本中的 `agent_world_launcher_ui` 依赖、路径、源码入口和 `cargo -p` 包名必须全部改为 `oasis7_launcher_ui`，并将目录 `crates/agent_world_launcher_ui` 重命名为 `crates/oasis7_launcher_ui`。
+  - AC-94: workspace 根 `Cargo.toml`、`Cargo.lock`、`crates/oasis7_client_launcher/Cargo.toml`、bundle/Trunk/launcher 相关脚本与下游依赖中的 `agent_world_client_launcher` 依赖、路径、源码入口和 `cargo -p` 包名必须全部改为 `oasis7_client_launcher`，并将目录 `crates/agent_world_client_launcher` 重命名为 `crates/oasis7_client_launcher`。
+  - AC-95: workspace 根 `Cargo.toml`、`Cargo.lock`、`crates/oasis7_viewer/Cargo.toml`、launcher fallback、viewer 主题/抓帧/构建脚本与下游依赖中的 `agent_world_viewer` 依赖、路径、源码入口和 `cargo -p` 包名必须全部改为 `oasis7_viewer`，并将目录 `crates/agent_world_viewer` 重命名为 `crates/oasis7_viewer`。
+  - AC-96: workspace 根 `Cargo.toml`、`Cargo.lock`、`crates/oasis7/Cargo.toml`、所有 workspace 下游 crate、测试、脚本与源码入口中的 `agent_world` 依赖、路径、`use agent_world::...` 与 `cargo -p agent_world` 包名必须全部改为 `oasis7`，并将目录 `crates/agent_world` 重命名为 `crates/oasis7`；变更后主 runtime/launcher/chain runtime 必须能按新包名编译。
+  - AC-97: `crates/oasis7_builtin_wasm_modules/**`、各模块 `Cargo.toml` / `Cargo.lock`、builtin manifest map、模板与构建脚本中的 `agent_world_builtin_wasm_modules` / `agent_world_builtin_wasm_*` 路径和包名必须全部改为 `oasis7_builtin_wasm_modules` / `oasis7_builtin_wasm_*`，并将目录 `crates/agent_world_builtin_wasm_modules` 重命名为 `crates/oasis7_builtin_wasm_modules`。
 - Non-Goals:
   - 不在本 PRD 中详细列出每个 UI 像素级规范。
   - 不替代 world-runtime/p2p 的底层协议设计。

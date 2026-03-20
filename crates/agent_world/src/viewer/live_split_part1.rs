@@ -7,7 +7,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use agent_world_node::{NodeCommittedActionBatchesHandle, NodeRuntime};
+use oasis7_node::{NodeCommittedActionBatchesHandle, NodeRuntime};
 
 use crate::geometry::space_distance_cm;
 use crate::simulator::{

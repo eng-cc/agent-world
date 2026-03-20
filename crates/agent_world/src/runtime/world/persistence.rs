@@ -5,7 +5,7 @@ use std::fs;
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use agent_world_distfs::{assemble_journal, assemble_snapshot};
+use oasis7_distfs::{assemble_journal, assemble_snapshot};
 use oasis7_proto::distributed::SnapshotManifest;
 use serde::{Deserialize, Serialize};
 

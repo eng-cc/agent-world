@@ -6,7 +6,7 @@ use super::{
     DEFAULT_REPLICATION_NETWORK_LISTEN, DEFAULT_STATUS_BIND,
 };
 use agent_world::runtime::{ReleaseSecurityPolicy, World as RuntimeWorld};
-use agent_world_node::{NodeConsensusSnapshot, NodeRole, NodeSnapshot};
+use oasis7_node::{NodeConsensusSnapshot, NodeRole, NodeSnapshot};
 use oasis7_proto::storage_profile::{StorageProfile, StorageProfileConfig};
 use ed25519_dalek::SigningKey;
 use std::collections::BTreeMap;

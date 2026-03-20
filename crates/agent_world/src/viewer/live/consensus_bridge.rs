@@ -3,7 +3,7 @@ use crate::consensus_action_payload::{
     decode_consensus_action_payload, encode_consensus_action_payload, ConsensusActionPayloadBody,
     ConsensusActionPayloadEnvelope,
 };
-use agent_world_node::{NodeCommittedActionBatchesHandle, NodeRuntime};
+use oasis7_node::{NodeCommittedActionBatchesHandle, NodeRuntime};
 use std::collections::{HashSet, VecDeque};
 use std::sync::{Arc, Mutex};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};

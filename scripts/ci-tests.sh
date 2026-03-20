@@ -79,23 +79,23 @@ run_oasis7_full_tier_tests() {
 }
 
 run_oasis7_consensus_tests() {
-  run_cargo test -p agent_world_consensus --lib
+  run_cargo test -p oasis7_consensus --lib
 }
 
 run_oasis7_distfs_tests() {
-  run_cargo test -p agent_world_distfs --lib
+  run_cargo test -p oasis7_distfs --lib
 }
 
 run_oasis7_node_tests() {
-  run_cargo test -p agent_world_node --lib
+  run_cargo test -p oasis7_node --lib
 }
 
 run_oasis7_net_tests() {
-  run_cargo test -p agent_world_net --lib
+  run_cargo test -p oasis7_net --lib
 }
 
 run_oasis7_net_libp2p_tests() {
-  run_cargo test -p agent_world_net --features libp2p --lib
+  run_cargo test -p oasis7_net --features libp2p --lib
 }
 
 run_oasis7_llm_baseline_fixture_smoke() {

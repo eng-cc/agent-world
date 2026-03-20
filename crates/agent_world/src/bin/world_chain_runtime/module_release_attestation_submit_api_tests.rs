@@ -7,7 +7,7 @@ use agent_world::consensus_action_payload::{
     decode_consensus_action_payload, ConsensusActionPayloadBody,
 };
 use agent_world::runtime::Action;
-use agent_world_node::{
+use oasis7_node::{
     NodeConfig, NodeExecutionCommitContext, NodeExecutionCommitResult, NodeExecutionHook, NodeRole,
     NodeRuntime,
 };

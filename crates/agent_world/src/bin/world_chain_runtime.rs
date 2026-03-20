@@ -13,7 +13,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use agent_world::runtime::{
     NodeAssetBalance, NodeRewardMintRecord, ReleaseSecurityPolicy, RewardAssetConfig,
 };
-use agent_world_node::{
+use oasis7_node::{
     Libp2pReplicationNetwork, Libp2pReplicationNetworkConfig, NodeConfig, NodeFeedbackP2pConfig,
     NodePosConfig, NodeReplicationConfig, NodeReplicationNetworkHandle, NodeRole, NodeRuntime,
     NodeSnapshot, PosConsensusStatus, PosValidator,
@@ -64,7 +64,7 @@ mod execution_bridge {
     use std::path::Path;
 
     use agent_world::runtime::World as RuntimeWorld;
-    use agent_world_node::{
+    use oasis7_node::{
         NodeExecutionCommitContext, NodeExecutionCommitResult, NodeExecutionHook,
     };
     use oasis7_proto::storage_profile::StorageProfileConfig;

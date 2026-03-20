@@ -2,7 +2,7 @@ use std::iter::Peekable;
 use std::path::Path;
 
 use agent_world::runtime::LocalCasStore;
-use agent_world_distfs::{
+use oasis7_distfs::{
     StorageChallengeAdaptivePolicy, StorageChallengeProbeConfig, StorageChallengeProbeCursorState,
     StorageChallengeProbeReport,
 };
