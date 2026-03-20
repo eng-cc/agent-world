@@ -13,11 +13,11 @@
 
 ## 依赖
 - doc/world-simulator/viewer/viewer-fragment-element-rendering.prd.md
-- `crates/agent_world_viewer/src/material_library.rs`
-- `crates/agent_world_viewer/src/location_fragment_render.rs`
-- `crates/agent_world_viewer/src/scene_helpers.rs`
-- `crates/agent_world_viewer/src/world_overlay.rs`
-- `crates/agent_world_viewer/src/egui_right_panel.rs`
+- `crates/oasis7_viewer/src/material_library.rs`
+- `crates/oasis7_viewer/src/location_fragment_render.rs`
+- `crates/oasis7_viewer/src/scene_helpers.rs`
+- `crates/oasis7_viewer/src/world_overlay.rs`
+- `crates/oasis7_viewer/src/egui_right_panel.rs`
 - `doc/world-simulator/viewer/viewer-manual.md`
 
 ## 状态

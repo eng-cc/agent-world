@@ -30,7 +30,7 @@
 ## 4. Technical Specifications
 - 渲染配置：
   - 删除 `WorldOverlayConfig.show_fragment_elements`。
-  - 删除环境变量 `AGENT_WORLD_VIEWER_SHOW_FRAGMENT_ELEMENTS` 解析。
+  - 删除环境变量 `OASIS7_VIEWER_SHOW_FRAGMENT_ELEMENTS` 解析。
 - 场景构建：
   - `scene_helpers` / `scene_dirty_refresh` 默认尝试渲染 `location.fragment_profile.blocks`。
   - location 实体仅作为锚点保留（`LocationMarker + Transform + BaseScale`），不附加可见几何。

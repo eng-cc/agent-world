@@ -23,8 +23,8 @@
 ### S4 测试与回归
 - [x] 新增/更新 simulator 测试（初始化、action、replay）
 - [x] 新增/更新 viewer 展示测试（详情文本回归）
-- [x] 运行 `env -u RUSTC_WRAPPER cargo test -p agent_world`
-- [x] 运行 `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer`
+- [x] 运行 `env -u RUSTC_WRAPPER cargo test -p oasis7`
+- [x] 运行 `env -u RUSTC_WRAPPER cargo test -p oasis7_viewer`
 
 
 ### S6 交互补齐（增量）

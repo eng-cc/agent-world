@@ -13,9 +13,9 @@
 
 ## 依赖
 - doc/world-simulator/viewer/viewer-location-fine-grained-rendering.prd.md
-- `crates/agent_world_viewer/src/scene_helpers.rs`
-- `crates/agent_world/src/simulator/scenario.rs`
-- `crates/agent_world/scenarios/*.json`
+- `crates/oasis7_viewer/src/scene_helpers.rs`
+- `crates/oasis7/src/simulator/scenario.rs`
+- `crates/oasis7/scenarios/*.json`
 - `scripts/capture-viewer-frame.sh`
 
 ## 状态

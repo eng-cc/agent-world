@@ -23,11 +23,11 @@
 - [x] FSF7.3 更新相机/自动聚焦相关测试并执行 test_tier_required 回归
 
 ## 依赖
-- `crates/agent_world_viewer/src/scene_helpers.rs`
-- `crates/agent_world_viewer/src/location_fragment_render.rs`
-- `crates/agent_world_viewer/src/tests_scene_grid.rs`
-- `crates/agent_world_viewer/src/tests_scene_entities.rs`
-- `crates/agent_world_viewer/src/selection_emphasis.rs`
+- `crates/oasis7_viewer/src/scene_helpers.rs`
+- `crates/oasis7_viewer/src/location_fragment_render.rs`
+- `crates/oasis7_viewer/src/tests_scene_grid.rs`
+- `crates/oasis7_viewer/src/tests_scene_entities.rs`
+- `crates/oasis7_viewer/src/selection_emphasis.rs`
 
 ## 状态
 - 当前阶段：FSF1~FSF7 已完成。

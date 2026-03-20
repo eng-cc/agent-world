@@ -16,7 +16,7 @@
 - 基于 `FragmentPhysicalProfile.blocks.blocks[*]` 逐块生成 3D 子实体。
 - 通过 `infer_element_ppm` 推断每个分块的主导元素，并映射到固定材质色板。
 - 在 Viewer 右侧 Overlay 区新增 fragment 显隐开关（人类交互）。
-- 支持环境变量 `AGENT_WORLD_VIEWER_SHOW_FRAGMENT_ELEMENTS`（脚本/闭环可控）。
+- 支持环境变量 `OASIS7_VIEWER_SHOW_FRAGMENT_ELEMENTS`（脚本/闭环可控）。
 - 新增/更新单元测试覆盖元素材质映射、分块变换、开关配置解析。
 
 ### Out of Scope
@@ -33,7 +33,7 @@
 - 元素色板：为 `FragmentElementKind` 全量建立材质句柄库（`FragmentElementMaterialHandles`）。
 - 显隐控制：
   - UI 开关：`WorldOverlayConfig.show_fragment_elements`。
-  - 启动默认值：`AGENT_WORLD_VIEWER_SHOW_FRAGMENT_ELEMENTS=on|off`。
+  - 启动默认值：`OASIS7_VIEWER_SHOW_FRAGMENT_ELEMENTS=on|off`。
 - 渲染时机：`update_3d_scene` 在 snapshot 变化或开关变化时触发重建。
 
 ## 5. Risks & Roadmap

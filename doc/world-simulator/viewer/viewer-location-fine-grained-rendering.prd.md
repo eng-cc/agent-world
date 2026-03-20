@@ -13,14 +13,14 @@
 ## 2. User Experience & Functionality
 
 ### In Scope
-- `agent_world_viewer`：Location 实体渲染由“单球体”扩展为“主球体 + 细节子节点”。
+- `oasis7_viewer`：Location 实体渲染由“单球体”扩展为“主球体 + 细节子节点”。
 - 细节层级依据 `radius_cm` 与 `radiation_emission_per_tick` 自动分档。
 - 新增 scenario：`asteroid_fragment_detail_bootstrap`，用于密集碎片可视化调试。
 - 补充单元测试，覆盖细节节点数量、辐射外环开关、场景可解析与可初始化。
 
 ### Out of Scope
 - 不引入新渲染管线（实例化/LOD/后处理）。
-- 不改动 `agent_world` 内核物理规则与碎片生成公式。
+- 不改动 `oasis7` 内核物理规则与碎片生成公式。
 - 不新增 UI 面板交互，仅增强 3D 实体表现。
 
 ## 3. AI System Requirements (If Applicable)
@@ -44,7 +44,7 @@
   - `location:detail:halo:<location_id>:<idx>`
 
 ### 3) 测试场景
-- 新增内置场景文件：`crates/agent_world/scenarios/asteroid_fragment_detail_bootstrap.json`
+- 新增内置场景文件：`crates/oasis7/scenarios/asteroid_fragment_detail_bootstrap.json`
 - 特征：
   - `asteroid_fragment.enabled = true`
   - 多 `bootstrap_chunks`

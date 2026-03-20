@@ -21,7 +21,7 @@
 ### Out of Scope
 - 不实现真实布尔切割/体素挖洞等高成本几何重建。
 - 不新增平滑动画插值（先以离散快照更新为主）。
-- 不改动 `agent_world` 的事件协议和世界状态结构。
+- 不改动 `oasis7` 的事件协议和世界状态结构。
 
 ## 3. AI System Requirements (If Applicable)
 - N/A: 本专题不新增 AI 专属要求。

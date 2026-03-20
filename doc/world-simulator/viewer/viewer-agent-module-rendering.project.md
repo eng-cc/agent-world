@@ -19,9 +19,9 @@
 - [x] AMR-11：更新日志并收口本轮任务
 
 ## 依赖
-- `crates/agent_world_viewer/src/main.rs`
-- `crates/agent_world_viewer/src/scene_helpers.rs`
-- `crates/agent_world_viewer/src/tests.rs`
+- `crates/oasis7_viewer/src/main.rs`
+- `crates/oasis7_viewer/src/scene_helpers.rs`
+- `crates/oasis7_viewer/src/tests.rs`
 - `scripts/capture-viewer-frame.sh`
 - `doc/world-simulator/viewer/viewer-agent-module-rendering.prd.md`
 
