@@ -171,6 +171,7 @@
   - SC-67: `agent_world_net` 与 `agent_world_node` 的测试临时目录前缀必须默认使用 `oasis7_*`，避免网络同步、observer、replication 与 node hardening 回归产物继续泄露旧 `agent-world` 内部命名。
   - SC-68: 保留旧品牌 fallback literal 的兼容代码路径中，源码级常量/标识符命名必须优先使用 `compat` 语义而不是继续沿用 `LEGACY_*agent_world*` 口径，避免维护层面的模块名/变量名继续把旧品牌当作当前源码真值。
   - SC-69: `agent_world_viewer` 的 auth bootstrap、viewer env alias、automation 与 perf probe 兼容代码路径中，源码级常量/测试命名必须优先使用 `compat` 语义而不是继续沿用 `LEGACY_*AGENT_WORLD_VIEWER*` 口径，避免 Viewer 维护层的模块名/变量名继续扩散旧品牌。
+  - SC-70: `agent_world` runtime 的 builtin wasm、module source compile 与 simulator LLM 兼容 env 代码路径中，源码级常量/辅助函数/定向测试命名必须优先使用 `compat` 语义而不是继续沿用 `LEGACY_*AGENT_WORLD_*` 口径，避免 runtime 维护层的模块名/变量名继续把旧品牌当作当前源码真值。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -399,6 +400,7 @@
   - AC-72: `crates/agent_world_net/src/{bootstrap.rs,execution_storage.rs,head_validation.rs,observer.rs,observer_metrics.rs,observer_replay.rs}` 的测试临时目录前缀必须改为 `oasis7-net-*`，且 `crates/agent_world_node/src/{tests_split_part1.rs,tests_hardening.rs,replication/tests.rs}` 的测试临时目录前缀必须改为 `oasis7-node-*` / `oasis7-replication-tests-*`；对应包测试通过后，不得继续输出 `agent-world-net-*`、`agent-world-node-*` 或 `agent-world-replication-tests-*` 作为当前默认产物命名。
   - AC-73: `crates/agent_world_client_launcher/src/{self_guided.rs,llm_settings_web.rs}`、`crates/agent_world_viewer/src/right_panel_module_visibility.rs` 与 `crates/agent_world/src/bin/world_openclaw_local_bridge.rs` 中保留旧品牌 fallback literal 的源码常量/测试名必须改为 `compat` 语义命名；兼容读取行为保持不变，但源码中不得继续把 `LEGACY_*agent_world*` 当作当前维护口径。
   - AC-74: `crates/agent_world_viewer/{software_safe.js,src/viewer_automation.rs,src/egui_right_panel_chat.rs,src/egui_right_panel_chat_auth.rs,src/viewer_env.rs,src/perf_probe.rs}` 中保留旧 `AGENT_WORLD_VIEWER_*` / `__AGENT_WORLD_VIEWER_AUTH_ENV` literal 的源码常量与定向测试名必须改为 `compat` 语义命名；Viewer 兼容读取行为保持不变，但源码中不得继续把 `LEGACY_*AGENT_WORLD_VIEWER*` 当作当前维护口径。
+  - AC-75: `crates/agent_world/src/runtime/{builtin_wasm_materializer.rs,module_source_compiler.rs}`、`crates/agent_world/src/simulator/llm_agent.rs` 与对应定向测试中的旧 `AGENT_WORLD_BUILTIN_WASM_*`、`AGENT_WORLD_MODULE_SOURCE_*`、`AGENT_WORLD_LLM_*` fallback literal 必须保留兼容读取，但源码常量/辅助函数/测试名必须改为 `compat` 语义命名；runtime 行为保持不变，且源码中不得继续把 `LEGACY_*AGENT_WORLD_*` 当作当前维护口径。
 - Non-Goals:
   - 不在本 PRD 中详细列出每个 UI 像素级规范。
   - 不替代 world-runtime/p2p 的底层协议设计。

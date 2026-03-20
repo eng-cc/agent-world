@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 use super::{ModuleSourcePackage, WorldError};
 
 const MODULE_SOURCE_ENV_PREFIX: &str = "OASIS7_MODULE_SOURCE_";
-const LEGACY_MODULE_SOURCE_ENV_PREFIX: &str = "AGENT_WORLD_MODULE_SOURCE_";
+const COMPAT_OLD_BRAND_MODULE_SOURCE_ENV_PREFIX: &str = "AGENT_WORLD_MODULE_SOURCE_";
 const MODULE_SOURCE_BUILD_PROFILE: &str = "release";
 
 const DEFAULT_MODULE_SOURCE_MAX_FILES: usize = 128;
@@ -340,13 +340,13 @@ fn module_source_env_key(suffix: &str) -> String {
     format!("{MODULE_SOURCE_ENV_PREFIX}{suffix}")
 }
 
-fn legacy_module_source_env_key(suffix: &str) -> String {
-    format!("{LEGACY_MODULE_SOURCE_ENV_PREFIX}{suffix}")
+fn compat_old_brand_module_source_env_key(suffix: &str) -> String {
+    format!("{COMPAT_OLD_BRAND_MODULE_SOURCE_ENV_PREFIX}{suffix}")
 }
 
 fn module_source_env_non_empty(suffix: &str) -> Option<String> {
     env_non_empty(module_source_env_key(suffix).as_str())
-        .or_else(|| env_non_empty(legacy_module_source_env_key(suffix).as_str()))
+        .or_else(|| env_non_empty(compat_old_brand_module_source_env_key(suffix).as_str()))
 }
 
 fn module_source_env_limit_usize(suffix: &str, default: usize) -> usize {

@@ -627,38 +627,42 @@ fn llm_config_agent_scoped_goal_overrides_global_value() {
 #[test]
 fn llm_env_var_prefers_oasis7_prefix() {
     let _primary_guard = EnvVarGuard::capture(ENV_LLM_MODEL);
-    let _legacy_guard = EnvVarGuard::capture("AGENT_WORLD_LLM_MODEL");
+    let _compat_old_brand_guard = EnvVarGuard::capture("AGENT_WORLD_LLM_MODEL");
     std::env::set_var(ENV_LLM_MODEL, "oasis7-model");
-    std::env::set_var("AGENT_WORLD_LLM_MODEL", "legacy-model");
+    std::env::set_var("AGENT_WORLD_LLM_MODEL", "compat-old-brand-model");
 
     assert_eq!(llm_env_var(ENV_LLM_MODEL).as_deref(), Some("oasis7-model"));
 }
 
 #[test]
-fn llm_config_from_env_for_agent_falls_back_to_legacy_prefix() {
+fn llm_config_from_env_for_agent_falls_back_to_compat_old_brand_prefix() {
     let _model_guard = EnvVarGuard::capture(ENV_LLM_MODEL);
     let _base_url_guard = EnvVarGuard::capture(ENV_LLM_BASE_URL);
     let _api_key_guard = EnvVarGuard::capture(ENV_LLM_API_KEY);
-    let _goal_guard = EnvVarGuard::capture("AGENT_WORLD_LLM_SHORT_TERM_GOAL_AGENT_1");
-    let _legacy_model_guard = EnvVarGuard::capture("AGENT_WORLD_LLM_MODEL");
-    let _legacy_base_url_guard = EnvVarGuard::capture("AGENT_WORLD_LLM_BASE_URL");
-    let _legacy_api_key_guard = EnvVarGuard::capture("AGENT_WORLD_LLM_API_KEY");
+    let _compat_old_brand_goal_guard =
+        EnvVarGuard::capture("AGENT_WORLD_LLM_SHORT_TERM_GOAL_AGENT_1");
+    let _compat_old_brand_model_guard = EnvVarGuard::capture("AGENT_WORLD_LLM_MODEL");
+    let _compat_old_brand_base_url_guard = EnvVarGuard::capture("AGENT_WORLD_LLM_BASE_URL");
+    let _compat_old_brand_api_key_guard = EnvVarGuard::capture("AGENT_WORLD_LLM_API_KEY");
     std::env::remove_var(ENV_LLM_MODEL);
     std::env::remove_var(ENV_LLM_BASE_URL);
     std::env::remove_var(ENV_LLM_API_KEY);
-    std::env::set_var("AGENT_WORLD_LLM_MODEL", "legacy-model");
-    std::env::set_var("AGENT_WORLD_LLM_BASE_URL", "https://legacy.example.com/v1");
-    std::env::set_var("AGENT_WORLD_LLM_API_KEY", "legacy-secret");
+    std::env::set_var("AGENT_WORLD_LLM_MODEL", "compat-old-brand-model");
+    std::env::set_var(
+        "AGENT_WORLD_LLM_BASE_URL",
+        "https://compat-old-brand.example.com/v1",
+    );
+    std::env::set_var("AGENT_WORLD_LLM_API_KEY", "compat-old-brand-secret");
     std::env::set_var(
         "AGENT_WORLD_LLM_SHORT_TERM_GOAL_AGENT_1",
-        "legacy-agent-short",
+        "compat-old-brand-agent-short",
     );
 
     let config = LlmAgentConfig::from_env_for_agent("agent-1").unwrap();
-    assert_eq!(config.model, "legacy-model");
-    assert_eq!(config.base_url, "https://legacy.example.com/v1");
-    assert_eq!(config.api_key, "legacy-secret");
-    assert_eq!(config.short_term_goal, "legacy-agent-short");
+    assert_eq!(config.model, "compat-old-brand-model");
+    assert_eq!(config.base_url, "https://compat-old-brand.example.com/v1");
+    assert_eq!(config.api_key, "compat-old-brand-secret");
+    assert_eq!(config.short_term_goal, "compat-old-brand-agent-short");
 }
 
 #[test]

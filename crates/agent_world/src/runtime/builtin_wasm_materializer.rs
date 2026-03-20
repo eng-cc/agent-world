@@ -8,7 +8,7 @@ use std::time::Duration;
 use super::{util, BlobStore, HashAlgorithm, LocalCasStore, WorldError};
 
 const BUILTIN_WASM_ENV_PREFIX: &str = "OASIS7_BUILTIN_WASM_";
-const LEGACY_BUILTIN_WASM_ENV_PREFIX: &str = "AGENT_WORLD_BUILTIN_WASM_";
+const COMPAT_OLD_BRAND_BUILTIN_WASM_ENV_PREFIX: &str = "AGENT_WORLD_BUILTIN_WASM_";
 
 #[cfg(not(target_arch = "wasm32"))]
 const DEFAULT_FETCH_TIMEOUT_MS: u64 = 1_500;
@@ -25,13 +25,13 @@ fn builtin_wasm_env_key(suffix: &str) -> String {
     format!("{BUILTIN_WASM_ENV_PREFIX}{suffix}")
 }
 
-fn legacy_builtin_wasm_env_key(suffix: &str) -> String {
-    format!("{LEGACY_BUILTIN_WASM_ENV_PREFIX}{suffix}")
+fn compat_old_brand_builtin_wasm_env_key(suffix: &str) -> String {
+    format!("{COMPAT_OLD_BRAND_BUILTIN_WASM_ENV_PREFIX}{suffix}")
 }
 
 pub(crate) fn builtin_wasm_env_non_empty(suffix: &str) -> Option<String> {
     env_non_empty(&builtin_wasm_env_key(suffix))
-        .or_else(|| env_non_empty(&legacy_builtin_wasm_env_key(suffix)))
+        .or_else(|| env_non_empty(&compat_old_brand_builtin_wasm_env_key(suffix)))
 }
 
 pub(crate) fn builtin_wasm_distfs_root() -> PathBuf {
@@ -418,6 +418,9 @@ fn repo_root() -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Mutex;
+
+    static BUILTIN_WASM_ENV_LOCK: Mutex<()> = Mutex::new(());
 
     #[test]
     fn builtin_module_ids_path_supports_m5_prefix() {
@@ -472,12 +475,16 @@ mod tests {
 
     #[test]
     fn builtin_wasm_env_non_empty_prefers_oasis7_prefix() {
+        let _env_lock = BUILTIN_WASM_ENV_LOCK.lock().expect("lock builtin wasm env");
         let primary_key = builtin_wasm_env_key("FETCHER");
-        let legacy_key = legacy_builtin_wasm_env_key("FETCHER");
+        let compat_old_brand_key = compat_old_brand_builtin_wasm_env_key("FETCHER");
         let _primary_guard = TestEnvGuard::capture(primary_key.as_str());
-        let _legacy_guard = TestEnvGuard::capture(legacy_key.as_str());
+        let _compat_old_brand_guard = TestEnvGuard::capture(compat_old_brand_key.as_str());
         std::env::set_var(primary_key.as_str(), "/tmp/oasis7-fetcher");
-        std::env::set_var(legacy_key.as_str(), "/tmp/legacy-fetcher");
+        std::env::set_var(
+            compat_old_brand_key.as_str(),
+            "/tmp/compat-old-brand-fetcher",
+        );
 
         assert_eq!(
             builtin_wasm_env_non_empty("FETCHER").as_deref(),
@@ -486,17 +493,21 @@ mod tests {
     }
 
     #[test]
-    fn builtin_wasm_env_non_empty_falls_back_to_legacy_prefix() {
+    fn builtin_wasm_env_non_empty_falls_back_to_compat_old_brand_prefix() {
+        let _env_lock = BUILTIN_WASM_ENV_LOCK.lock().expect("lock builtin wasm env");
         let primary_key = builtin_wasm_env_key("FETCHER");
-        let legacy_key = legacy_builtin_wasm_env_key("FETCHER");
+        let compat_old_brand_key = compat_old_brand_builtin_wasm_env_key("FETCHER");
         let _primary_guard = TestEnvGuard::capture(primary_key.as_str());
-        let _legacy_guard = TestEnvGuard::capture(legacy_key.as_str());
+        let _compat_old_brand_guard = TestEnvGuard::capture(compat_old_brand_key.as_str());
         std::env::remove_var(primary_key.as_str());
-        std::env::set_var(legacy_key.as_str(), "/tmp/legacy-fetcher");
+        std::env::set_var(
+            compat_old_brand_key.as_str(),
+            "/tmp/compat-old-brand-fetcher",
+        );
 
         assert_eq!(
             builtin_wasm_env_non_empty("FETCHER").as_deref(),
-            Some("/tmp/legacy-fetcher")
+            Some("/tmp/compat-old-brand-fetcher")
         );
     }
 
