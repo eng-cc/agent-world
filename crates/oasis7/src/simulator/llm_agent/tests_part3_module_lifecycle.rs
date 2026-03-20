@@ -381,7 +381,7 @@ fn llm_agent_prompt_mentions_module_lifecycle_decisions() {
 }
 
 #[test]
-fn llm_agent_world_rules_guide_module_returns_stage_playbook() {
+fn llm_agent_oasis7_rules_guide_module_returns_stage_playbook() {
     let behavior = LlmAgentBehavior::new("agent-1", base_config(), MockClient::default());
     let observation = make_observation();
 

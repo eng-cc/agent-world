@@ -798,6 +798,7 @@
 - [x] TASK-WORLD_SIMULATOR-221 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 README、站点首页、Viewer 手册与 `scenario_test_runner` 活跃入口中的当前默认 `agent_world*` crate/path/command/env/path 说明统一切到 `oasis7*` / `OASIS7_VIEWER_*` / `.oasis7_viewer`，并修复 `tools/scenario_test_runner` 对 `crates/oasis7` 的真实依赖路径。
 - [x] TASK-WORLD_SIMULATOR-222 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 `tools/openclaw/oasis7_runtime_workspace/IDENTITY.md` 中仍残留的默认 runtime identity 名称 `agent_world_runtime` 对齐为 `oasis7_runtime`，避免与 `setup-openclaw-oasis7-runtime.sh` 当前默认 `AGENT_ID` 不一致。
 - [x] TASK-WORLD_SIMULATOR-223 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 `tools/wasm_build_suite/src/lib.rs` 中处理 `AGENT_WORLD_WASM_*` fallback 的旧品牌 helper / 常量 / 测试命名统一收口到 `compat_old_brand_*` 语义，保持兼容读取行为不变。
+- [x] TASK-WORLD_SIMULATOR-224 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 `crates/oasis7/src/simulator/llm_agent/tests_part3_module_lifecycle.rs` 中仍残留的测试名 `llm_agent_world_rules_guide_module_returns_stage_playbook` 对齐为 `oasis7` 语义，避免源码内部标识继续混用旧品牌前缀。
 - [x] TASK-WORLD_SIMULATOR-203 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 viewer/OpenClaw 脚本中的旧品牌 env helper 与局部变量命名切到 `compat` 语义，收口脚本层里残留的 `legacy_key` / `viewer_legacy_env_key` / `promote_legacy_viewer_envs` 口径。
   - 产物文件:
     - `doc/world-simulator/prd.md`
@@ -961,6 +962,7 @@
 - 最新完成: `TASK-WORLD_SIMULATOR-221`（已将 README、站点首页、Viewer 手册与 `scenario_test_runner` 活跃入口中的当前默认 `agent_world*` crate/path/command/env/path 说明切到 `oasis7*` / `OASIS7_VIEWER_*` / `.oasis7_viewer`，并修复 `tools/scenario_test_runner` 到 `crates/oasis7` 的真实依赖路径与源码 import。）
 - 最新完成: `TASK-WORLD_SIMULATOR-222`（已将 `tools/openclaw/oasis7_runtime_workspace/IDENTITY.md` 中仍残留的默认 runtime identity 名称从 `agent_world_runtime` 对齐为 `oasis7_runtime`，收口 OpenClaw repo-owned runtime workspace 的默认身份口径。）
 - 最新完成: `TASK-WORLD_SIMULATOR-223`（已将 `tools/wasm_build_suite/src/lib.rs` 中处理 `AGENT_WORLD_WASM_*` fallback 的 helper / 常量 / 测试命名统一收口到 `compat_old_brand_*` 语义，并保留兼容 env 读取行为不变。）
+- 最新完成: `TASK-WORLD_SIMULATOR-224`（已将 `crates/oasis7/src/simulator/llm_agent/tests_part3_module_lifecycle.rs` 中仍残留的测试名 `llm_agent_world_rules_guide_module_returns_stage_playbook` 对齐为 `llm_agent_oasis7_rules_guide_module_returns_stage_playbook`。）
 - 最新完成: `TASK-WORLD_SIMULATOR-189~194`（已完成 viewer dev dist fallback、launcher/node/net/wasm 支撑包与 integration tests 的一组 `oasis7_*` 内部命名迁移，统一 viewer dist 默认口径、测试临时目录前缀与 artifact signer seed，同时保留必要兼容回退）。
 - 最新完成: `TASK-WORLD_SIMULATOR-180~188`（已完成 launcher/CI/runtime/OpenClaw/storage/governance 多模块的第二批 `oasis7_*` 内部命名迁移，统一测试产物前缀、profile 样例、workspace 路径与 signer namespace，并保留必要兼容别名）。
 - 最新完成: `TASK-WORLD_SIMULATOR-160~166`（已完成 `oasis7` operator 口径重构、主入口 UI/reference 拆分、standard bootstrap overlay 收口、live seek profile 对齐、Viewer `PostOnboarding` 目标卡补齐，以及 Viewer 标题/手册和历史专题 title-only cleanup。）
