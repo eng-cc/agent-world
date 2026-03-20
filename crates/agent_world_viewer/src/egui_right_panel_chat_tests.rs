@@ -181,7 +181,7 @@ fn parse_tool_call_view_reads_structured_payload() {
 }
 
 #[test]
-fn parse_tool_call_view_falls_back_to_legacy_text_format() {
+fn parse_tool_call_view_falls_back_to_compat_old_brand_text_format() {
     let tool_message = message(
         "agent-a",
         10,

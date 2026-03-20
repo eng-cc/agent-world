@@ -724,6 +724,17 @@
     - `bash -n scripts/sync-m1-builtin-wasm-artifacts.sh`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
+- [x] TASK-WORLD_SIMULATOR-204 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 Viewer compat fallback 的定向测试函数命名切到 `compat` 语义，收口测试层里残留的 `legacy_text_format` / `legacy_dir` / `legacy_key` 口径。
+  - 产物文件:
+    - `doc/world-simulator/prd.md`
+    - `doc/world-simulator/project.md`
+    - `crates/agent_world_viewer/src/egui_right_panel_chat_tests.rs`
+    - `crates/agent_world_viewer/src/right_panel_module_visibility.rs`
+    - `crates/agent_world_viewer/src/viewer_3d_config_profile_tests.rs`
+  - 验收命令 (`test_tier_required`):
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer -- --nocapture`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
 - [x] TASK-WORLD_SIMULATOR-203 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 viewer/OpenClaw 脚本中的旧品牌 env helper 与局部变量命名切到 `compat` 语义，收口脚本层里残留的 `legacy_key` / `viewer_legacy_env_key` / `promote_legacy_viewer_envs` 口径。
   - 产物文件:
     - `doc/world-simulator/prd.md`
@@ -926,6 +937,7 @@
 - 最新完成: `TASK-WORLD_SIMULATOR-177`（已将 bundle 产物中的 launcher/runtime 路径 env 注入与 storage profile override 默认口径优先切到 `OASIS7_*` / `OASIS7_CHAIN_STORAGE_PROFILE`，并保留旧 `AGENT_WORLD_*` fallback）。
 - 最新完成: `TASK-WORLD_SIMULATOR-178`（已将 viewer theme preset `.env` 文件中的默认导出 env key 优先切到 `OASIS7_VIEWER_*`，收口 theme/operator 预设链路里残留的旧 `AGENT_WORLD_VIEWER_*` 默认口径）。
 - 最新完成: `TASK-WORLD_SIMULATOR-179`（已将 repo-owned OpenClaw lightweight runtime agent 的默认 agent id 与 setup/operator env 命名优先切到 `oasis7_runtime` / `OPENCLAW_OASIS7_*`，并保留旧 `agent_world_runtime` / `OPENCLAW_AGENT_WORLD_*` fallback）。
+- 最新完成: `TASK-WORLD_SIMULATOR-204`（已将 Viewer compat fallback 的定向测试函数命名切到 `compat` 语义，收口测试层里残留的 `legacy_text_format` / `legacy_dir` / `legacy_key` 口径）。
 - 最新完成: `TASK-WORLD_SIMULATOR-203`（已将 viewer/OpenClaw 脚本中的旧品牌 env helper 与局部变量命名切到 `compat` 语义，收口脚本层里残留的 `legacy_key` / `viewer_legacy_env_key` / `promote_legacy_viewer_envs` 口径）。
 - 最新完成: `TASK-WORLD_SIMULATOR-202`（已将 wasm 构建/摘要/同步脚本中的旧品牌 env helper 与局部变量命名切到 `compat` 语义，收口脚本层里残留的 `wasm_legacy_env_key` / `legacy_key` 口径）。
 - 最新完成: `TASK-WORLD_SIMULATOR-201`（已将 `power_bootstrap_release_manifest_full` 的 builtin wasm 兼容 env 常量/测试局部变量命名切到 `compat` 语义，收口 full-tier 测试层里残留的 `LEGACY_*AGENT_WORLD_*` 口径）。

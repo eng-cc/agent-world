@@ -372,7 +372,7 @@ fn load_viewer_3d_config_applies_env_overrides() {
 }
 
 #[test]
-fn load_viewer_3d_config_prefers_oasis7_key_over_legacy_key() {
+fn load_viewer_3d_config_prefers_oasis7_key_over_compat_old_brand_key() {
     let env = HashMap::from([
         ("OASIS7_VIEWER_SHOW_AGENTS", "false"),
         ("AGENT_WORLD_VIEWER_SHOW_AGENTS", "true"),

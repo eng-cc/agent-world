@@ -271,7 +271,7 @@ mod tests {
     }
 
     #[test]
-    fn resolve_visibility_path_can_target_legacy_dir() {
+    fn resolve_visibility_path_can_target_compat_old_brand_dir() {
         let path = resolve_visibility_path_from(
             None,
             Some("/Users/tester".to_string()),
