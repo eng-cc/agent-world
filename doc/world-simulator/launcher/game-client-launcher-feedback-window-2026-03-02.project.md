@@ -12,8 +12,8 @@
 
 ## 依赖
 - doc/world-simulator/launcher/game-client-launcher-feedback-window-2026-03-02.prd.md
-- `crates/agent_world_client_launcher/src/main.rs`
-- `crates/agent_world_client_launcher/src/feedback_entry.rs`
+- `crates/oasis7_client_launcher/src/main.rs`
+- `crates/oasis7_client_launcher/src/feedback_entry.rs`
 - `doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.prd.md`
 
 ## 状态

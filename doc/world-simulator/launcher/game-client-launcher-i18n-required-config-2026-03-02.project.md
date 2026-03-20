@@ -13,7 +13,7 @@
 
 ## 依赖
 - doc/world-simulator/launcher/game-client-launcher-i18n-required-config-2026-03-02.prd.md
-- `crates/agent_world_client_launcher` 现有 GUI 与参数构建链路。
+- `crates/oasis7_client_launcher` 现有 GUI 与参数构建链路。
 - `world_game_launcher` 现有参数语义（用于对齐校验规则）。
 - `testing-manual.md` 的测试分层与记录规范。
 

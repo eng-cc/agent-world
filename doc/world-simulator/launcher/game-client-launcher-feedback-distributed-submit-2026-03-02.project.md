@@ -14,11 +14,11 @@
 
 ## 依赖
 - doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.prd.md
-- `crates/agent_world/src/bin/world_chain_runtime.rs`
-- `crates/agent_world_client_launcher/src/main.rs`
-- `crates/agent_world_client_launcher/src/feedback_entry.rs`
-- `crates/agent_world_node` 既有 `submit_feedback` 能力
-- `crates/agent_world_distfs` 既有 feedback request/signing 数据结构
+- `crates/oasis7/src/bin/world_chain_runtime.rs`
+- `crates/oasis7_client_launcher/src/main.rs`
+- `crates/oasis7_client_launcher/src/feedback_entry.rs`
+- `crates/oasis7_node` 既有 `submit_feedback` 能力
+- `crates/oasis7_distfs` 既有 feedback request/signing 数据结构
 
 ## 状态
 - 最近更新：2026-03-06（ROUND-005 I5-001 字段补齐）

@@ -1,6 +1,5 @@
 # world-simulator PRD Project
 审计轮次: 6
-
 ## 任务拆解（含 PRD-ID 映射）
 - [x] TASK-WORLD_SIMULATOR-001 (PRD-WORLD_SIMULATOR-001) [test_tier_required]: 完成 world-simulator PRD 改写，建立模拟层设计主入口。
 - [x] TASK-WORLD_SIMULATOR-002 (PRD-WORLD_SIMULATOR-001/002) [test_tier_required]: 对齐场景系统、Viewer、启动器的统一验收清单。
@@ -813,6 +812,7 @@
 - [x] TASK-WORLD_SIMULATOR-237 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 收口 `doc/world-simulator/viewer/**` 中仍把 `agent_world_viewer`、`AGENT_WORLD_VIEWER_*` 与 `.agent_world_viewer` 写成当前 crate/path/env 的活跃专题口径，统一到 `oasis7_viewer`、`OASIS7_VIEWER_*` 与 `.oasis7_viewer`。
 - [x] TASK-WORLD_SIMULATOR-238 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 收口一组活跃 launcher 专题中仍把 `agent_world_client_launcher`、`AGENT_WORLD_CLIENT_LAUNCHER_LANG` 与旧 `cargo -p` 包名写成当前 package/env/command 的口径，统一到 `oasis7_client_launcher`、`OASIS7_CLIENT_LAUNCHER_LANG` 与 `cargo -p oasis7_client_launcher`。
 - [x] TASK-WORLD_SIMULATOR-239 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 收口一组 launcher 基础专题中仍把 `agent_world_client_launcher`、`agent_world_launcher_ui` 与旧 `cargo -p` 包名写成当前 package/path/command 的口径，统一到 `oasis7_client_launcher`、`oasis7_launcher_ui` 与当前 `cargo -p oasis7_client_launcher`。
+- [x] TASK-WORLD_SIMULATOR-240 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 收口同批 launcher 专题的 `project/design` 活跃文档中仍把 `agent_world_client_launcher`、`agent_world_launcher_ui` 与旧依赖路径写成当前 package/path 的口径，统一到 `oasis7_client_launcher`、`oasis7_launcher_ui` 与 `crates/oasis7*`。
 - [x] TASK-WORLD_SIMULATOR-203 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 viewer/OpenClaw 脚本中的旧品牌 env helper 与局部变量命名切到 `compat` 语义，收口脚本层里残留的 `legacy_key` / `viewer_legacy_env_key` / `promote_legacy_viewer_envs` 口径。
   - 产物文件:
     - `doc/world-simulator/prd.md`
@@ -963,7 +963,7 @@
 ## 状态
 - 更新日期 / 当前状态: 2026-03-20 / active
 - 下一任务: 无
-- 最新完成: `TASK-WORLD_SIMULATOR-239`（已收口一组 launcher 基础专题中的当前 package/path/command 口径，包括 feedback entry/window/distributed submit、UI schema、Web required config gating 与 native/web control-plane；旧 `agent_world_client_launcher` / `agent_world_launcher_ui` / 旧 `cargo -p` 包名仅保留在历史记录或兼容说明语境中。）
+- 最新完成: `TASK-WORLD_SIMULATOR-240`（已收口同批 launcher 专题的 `project/design` 活跃文档口径，包括 feedback entry/window/distributed submit、launcher i18n、UI schema 与 egui web；旧 `agent_world_client_launcher` / `agent_world_launcher_ui` / 旧依赖路径仅保留在历史记录或兼容说明语境中。）
 - 最新完成: `TASK-WORLD_SIMULATOR-234~235`（已收口 viewer/client/runtime/tooling 源码内嵌负向测试中的旧品牌 helper / fixture 命名，保留必要旧 alias 字面量仅作为“已移除 alias”的负向输入。）
 - 最新完成: `TASK-WORLD_SIMULATOR-233`（已移除 `crates/oasis7/src/bin/world_openclaw_local_bridge.rs` 与相关测试中的旧 profile alias `agent_world_p0_low_freq_npc`，收口 OpenClaw local bridge 当前入口到 `oasis7_p0_low_freq_npc`，并把 compat 测试改为断言旧 alias 已失效。）
 - 最新完成: `TASK-WORLD_SIMULATOR-232`（已移除 `tools/wasm_build_suite/src/lib.rs` 与相关测试中的 `AGENT_WORLD_WASM_*` fallback，收口 wasm build suite library 当前入口到 `OASIS7_WASM_*`，并把 compat 测试改为断言旧 alias 已失效。）

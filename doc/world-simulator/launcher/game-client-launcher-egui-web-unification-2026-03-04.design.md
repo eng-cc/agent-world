@@ -12,7 +12,7 @@
 - 打包层：bundle 产出 `web-launcher/` 并作为 headless 默认入口。
 
 ## 3. 关键接口 / 入口
-- `agent_world_client_launcher` native/wasm 双入口
+- `oasis7_client_launcher` native/wasm 双入口
 - `world_web_launcher` 静态资源目录配置与 `/api/*` 控制面
 - `build-game-launcher-bundle.sh` / `run-web-launcher.sh`
 

@@ -12,7 +12,7 @@
 
 ## 依赖
 - doc/world-simulator/launcher/game-client-launcher-feedback-entry-2026-03-02.prd.md
-- 依赖现有 `agent_world_client_launcher` UI 与日志缓存能力。
+- 依赖现有 `oasis7_client_launcher` UI 与日志缓存能力。
 - 依赖本地文件系统可写权限用于创建反馈目录与 JSON 文件。
 
 ## 状态
