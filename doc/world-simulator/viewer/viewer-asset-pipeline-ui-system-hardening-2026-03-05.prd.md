@@ -69,11 +69,11 @@
   - `scripts/validate-viewer-theme-pack.py`
   - `scripts/viewer-release-full-coverage.sh`
   - `scripts/viewer-texture-inspector.sh`
-  - `crates/agent_world_viewer/src/main_ui_runtime.rs`
-  - `crates/agent_world_viewer/src/right_panel_layout_state.rs`
-  - `crates/agent_world_viewer/src/theme_runtime.rs`
-  - `crates/agent_world_viewer/src/viewer_3d_config.rs`
-  - `crates/agent_world_viewer/src/egui_right_panel.rs`
+  - `crates/oasis7_viewer/src/main_ui_runtime.rs`
+  - `crates/oasis7_viewer/src/right_panel_layout_state.rs`
+  - `crates/oasis7_viewer/src/theme_runtime.rs`
+  - `crates/oasis7_viewer/src/viewer_3d_config.rs`
+  - `crates/oasis7_viewer/src/egui_right_panel.rs`
   - `testing-manual.md`
 - Edge Cases & Error Handling:
   - 主题目录缺失或 profile 不匹配时必须返回结构化错误并退出非零。
@@ -107,11 +107,11 @@
 - Test Plan & Traceability:
 | PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |
 | --- | --- | --- | --- | --- |
-| PRD-VAPUI-001 | TASK-WORLD_SIMULATOR-041 | `test_tier_required` | `python3 scripts/validate-viewer-theme-pack.py --theme-dir crates/agent_world_viewer/assets/themes/industrial_v1 --profile v1` + 同 v2/v3 | 主题资产门禁与发布阻断准确性 |
-| PRD-VAPUI-002 | TASK-WORLD_SIMULATOR-042 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer theme_runtime` + `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer viewer_3d_config` | Viewer 初始化/热更新一致性 |
-| PRD-VAPUI-003 | TASK-WORLD_SIMULATOR-043 | `test_tier_required` + `test_tier_full` | `bash -n scripts/viewer-texture-inspector.sh` + `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer egui_right_panel_tests` + `./scripts/viewer-release-full-coverage.sh --quick` | UI 模块维护性、发布回归稳定性 |
+| PRD-VAPUI-001 | TASK-WORLD_SIMULATOR-041 | `test_tier_required` | `python3 scripts/validate-viewer-theme-pack.py --theme-dir crates/oasis7_viewer/assets/themes/industrial_v1 --profile v1` + 同 v2/v3 | 主题资产门禁与发布阻断准确性 |
+| PRD-VAPUI-002 | TASK-WORLD_SIMULATOR-042 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p oasis7_viewer theme_runtime` + `env -u RUSTC_WRAPPER cargo test -p oasis7_viewer viewer_3d_config` | Viewer 初始化/热更新一致性 |
+| PRD-VAPUI-003 | TASK-WORLD_SIMULATOR-043 | `test_tier_required` + `test_tier_full` | `bash -n scripts/viewer-texture-inspector.sh` + `env -u RUSTC_WRAPPER cargo test -p oasis7_viewer egui_right_panel_tests` + `./scripts/viewer-release-full-coverage.sh --quick` | UI 模块维护性、发布回归稳定性 |
 | PRD-VAPUI-004 | TASK-WORLD_SIMULATOR-044 | `test_tier_required` + `test_tier_full` | `./scripts/ci-tests.sh required` + `./scripts/viewer-release-qa-loop.sh` + `./scripts/viewer-release-art-baseline.sh` | Legacy UI 清理与 Web 端闭环验证 |
-| PRD-VAPUI-005 | TASK-WORLD_SIMULATOR-046 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer` + `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-unknown` | legacy UI 测试收敛与 egui 单路径验证 |
+| PRD-VAPUI-005 | TASK-WORLD_SIMULATOR-046 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p oasis7_viewer` + `env -u RUSTC_WRAPPER cargo check -p oasis7_viewer --target wasm32-unknown-unknown` | legacy UI 测试收敛与 egui 单路径验证 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |

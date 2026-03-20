@@ -30,8 +30,8 @@
 
 ### In Scope
 - 文件范围（目标态）：
-  - `crates/agent_world/src/bin/world_game_launcher.rs`
-  - `crates/agent_world_viewer/**` 或新增轻量 Web viewer frontend 目录
+  - `crates/oasis7/src/bin/world_game_launcher.rs`
+  - `crates/oasis7_viewer/**` 或新增轻量 Web viewer frontend 目录
   - `scripts/run-game-test-ab.sh`
   - `.agents/skills/oasis7/scripts/oasis7-run.sh`
   - `testing-manual.md`
@@ -65,7 +65,7 @@
 - 新增 `render_mode` 选择入口：
   - URL query: `?render_mode=standard|auto|software_safe`
   - launcher / product path: `--viewer-render-mode standard|auto|software_safe`
-  - 环境变量（开发/脚本可选）: `AGENT_WORLD_VIEWER_RENDER_MODE`
+  - 环境变量（开发/脚本可选）: `OASIS7_VIEWER_RENDER_MODE`
 - `auto` 为推荐默认：
   1. 显式 query / CLI / env 优先级最高。
   2. 若未显式指定，bootstrap shell 先探测浏览器环境。
@@ -125,7 +125,7 @@
 - NFR-2: `software_safe` 模式首页可见状态（连接状态或错误）应在 2 秒内可观测。
 - NFR-3: `software_safe` 模式必须保持 `console fatal = 0` 的目标；若失败，必须给出结构化错误而不是黑屏。
 - NFR-4: `software_safe` 模式与标准模式共享同一套世界 authority / 控制语义，禁止出现“安全模式能做的控制与标准模式行为不一致”。
-- NFR-5: Viewer Web freshness gate 必须覆盖 `crates/agent_world_viewer/` 根入口文件（至少 `index.html`、`software_safe.html`、`software_safe.js`）与静态资源，避免 stale dist 重新放出 issue `#39` 的黑屏表象。
+- NFR-5: Viewer Web freshness gate 必须覆盖 `crates/oasis7_viewer/` 根入口文件（至少 `index.html`、`software_safe.html`、`software_safe.js`）与静态资源，避免 stale dist 重新放出 issue `#39` 的黑屏表象。
 
 ## 7. Risks & Roadmap
 - 风险 1：双前端模式增加维护成本。

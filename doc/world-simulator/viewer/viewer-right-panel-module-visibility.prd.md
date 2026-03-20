@@ -6,7 +6,7 @@
 审计轮次: 5
 
 ## 1. Executive Summary
-- 为 `agent_world_viewer` 右侧 `egui` 面板中的每个业务模块提供独立开关，支持按需隐藏。
+- 为 `oasis7_viewer` 右侧 `egui` 面板中的每个业务模块提供独立开关，支持按需隐藏。
 - 将模块开关状态缓存到本地文件，重启 viewer 后保持用户上一次偏好。
 - 保持现有功能逻辑（控制、联动、时间轴、覆盖层）不退化，不影响 headless 模式。
 
@@ -47,9 +47,9 @@
 - 新增 `RightPanelModuleVisibilityPath`（Resource）保存缓存文件路径。
 - 缓存文件格式：JSON（`serde_json`），包含 `version` 与各布尔字段。
 - 路径规则：
-  1. 若设置 `AGENT_WORLD_VIEWER_MODULE_VISIBILITY_PATH`，优先使用。
-  2. 否则使用 `$HOME/.agent_world_viewer/right_panel_modules.json`。
-  3. 若 `HOME` 不可用，则回退到当前目录 `.agent_world_viewer/right_panel_modules.json`。
+  1. 若设置 `OASIS7_VIEWER_MODULE_VISIBILITY_PATH`，优先使用。
+  2. 否则使用 `$HOME/.oasis7_viewer/right_panel_modules.json`。
+  3. 若 `HOME` 不可用，则回退到当前目录 `.oasis7_viewer/right_panel_modules.json`。
 
 ### 3) 调度
 - 启动阶段：加载本地缓存并注入 `RightPanelModuleVisibilityState`。

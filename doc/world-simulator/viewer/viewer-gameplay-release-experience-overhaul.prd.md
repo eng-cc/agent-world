@@ -10,13 +10,13 @@
 - `immersion-phase8~10` 内容已物理合并入本文件，对应阶段文档已合并并从仓库移除（不再保留 archive 目录）。
 
 ## 1. Executive Summary
-- 将 `agent_world_viewer` 默认体验从“调试工具”切换为“可发行游戏前端”。
+- 将 `oasis7_viewer` 默认体验从“调试工具”切换为“可发行游戏前端”。
 - 保持世界画面为第一视觉焦点，隐藏技术细节并改为按需显式唤出。
 - 提升新玩家可上手性：进入后快速知道“当前目标”和“下一步动作”。
 - 增强情绪反馈：关键事件必须有可感知的视觉/文本反馈。
 
 ## 2. User Experience & Functionality
-- 修改 `crates/agent_world_viewer` 的默认 UI 行为与展示优先级。
+- 修改 `crates/oasis7_viewer` 的默认 UI 行为与展示优先级。
 - 引入面向玩家的体验模式（Player）与保留调试能力的模式（Director）。
 - 优化默认模块可见性、默认面板状态、入口可发现性、基础提示层。
 - 在不改协议字段的前提下，重排现有状态信息在 UI 中的展示方式。
@@ -32,7 +32,7 @@
 ## 4. Technical Specifications
 
 ### 环境变量与模式解析
-- 新增环境变量：`AGENT_WORLD_VIEWER_EXPERIENCE_MODE`
+- 新增环境变量：`OASIS7_VIEWER_EXPERIENCE_MODE`
   - `player`：默认玩家模式（世界优先、面板默认隐藏）。
   - `director`：导演/调试模式（保持现有可观测能力）。
 - 未设置或非法值时，默认 `player`。
@@ -78,7 +78,7 @@
 
 ## 当前结论
 - 默认体验已切换至 `Player`：右侧面板默认隐藏，首屏世界视图占比显著提高。
-- 已保留 `Director` 路径：通过 `AGENT_WORLD_VIEWER_EXPERIENCE_MODE=director` 可回到调试导向默认值。
+- 已保留 `Director` 路径：通过 `OASIS7_VIEWER_EXPERIENCE_MODE=director` 可回到调试导向默认值。
 - Web 闭环 smoke 已验证：
   - `window.__AW_TEST__` 可用；
   - `connectionStatus=connected`；
@@ -96,7 +96,7 @@
 - 在面板展开时压缩任务 HUD 体量，确保视线焦点优先回到世界场景和指挥面板。
 
 #### 2. User Experience & Functionality
-- `crates/agent_world_viewer` Player 模式 UI 减负改造：
+- `crates/oasis7_viewer` Player 模式 UI 减负改造：
   - 调整“下一步目标提示卡”与“新手引导卡”的共存策略，消除重复提示。
   - 调整任务 HUD 在不同面板状态下的布局锚点与信息密度（展开态更紧凑）。
   - 保留并强化“任务目标 + 指挥入口 + 世界反馈”三要素的可达性。
@@ -140,8 +140,8 @@
 
 #### 验收结果（VRI8P3）
 - 回归结果：
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer` 通过（325 tests）。
-  - `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-unknown` 通过。
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7_viewer` 通过（325 tests）。
+  - `env -u RUSTC_WRAPPER cargo check -p oasis7_viewer --target wasm32-unknown-unknown` 通过。
 - Web 闭环（agent-browser，按 `testing-manual.md` S6）：
   - 使用 `?test_api=1` 访问 viewer，`window.__AW_TEST__` 可用，状态采样为已连接且 tick 正常推进。
   - 完成隐藏态、聚焦态、面板展开态（紧凑任务 HUD）与再次收起态截图采样。
@@ -168,7 +168,7 @@
 - 在保留布局预设能力的同时，把其从“常驻干扰”改成“展开态高级能力”。
 
 #### 2. User Experience & Functionality
-- `crates/agent_world_viewer` Player 模式体验层调整：
+- `crates/oasis7_viewer` Player 模式体验层调整：
   - 顶部布局预设条从隐藏态移除，仅在面板展开态展示，并下移锚点避免与顶部 HUD 叠压。
   - 在任务 HUD（隐藏态）增加“直接指挥 Agent”动作，点击后直接切到 Command 预设（展开面板+打开 Chat）。
   - 增加纯函数测试覆盖，确保新显示策略与一键指挥策略可回归验证。
@@ -213,8 +213,8 @@
 
 #### 验收结果（VRI9P3）
 - 回归结果：
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer` 通过（328 tests）。
-  - `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-unknown` 通过。
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7_viewer` 通过（328 tests）。
+  - `env -u RUSTC_WRAPPER cargo check -p oasis7_viewer --target wasm32-unknown-unknown` 通过。
 - Web 闭环（agent-browser，按 `testing-manual.md` S6）：
   - 使用 `?test_api=1` 访问 viewer，`window.__AW_TEST__` 可用。
   - 执行 `runSteps(...)` 与 `Tab` 展开/收起链路，采样 `getState()` 为已连接。
@@ -241,7 +241,7 @@
 - 继续压缩隐藏态信息密度，减少首屏多卡片并行发声导致的认知负担。
 
 #### 2. User Experience & Functionality
-- `crates/agent_world_viewer` Player 模式 UI/引导逻辑调整：
+- `crates/oasis7_viewer` Player 模式 UI/引导逻辑调整：
   - 调整 `PlayerGuideProgressSnapshot` 的完成判定，新增“执行反馈”门槛后再允许 4/4 完成。
   - 调整 `ExploreAction` 阶段的任务动作文案，改为具体可执行的控制建议。
   - 调整隐藏态入口信息层级，避免与新手引导卡/任务 HUD 同时形成过多主卡片。
@@ -289,8 +289,8 @@
 
 #### 验收记录（VRI10P3）
 - 回归命令：
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer`
-  - `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-unknown`
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7_viewer`
+  - `env -u RUSTC_WRAPPER cargo check -p oasis7_viewer --target wasm32-unknown-unknown`
 - Web 闭环（agent-browser）：
   - 使用 `world_viewer_live + run-viewer-web.sh + agent-browser` 复测新手流程（隐藏态 -> 展开面板 -> 选择目标 -> 隐藏态复查）。
   - 控制台记录：`output/playwright/viewer/console-2026-02-23T13-41-21-606Z.log`（`Errors: 0`）。

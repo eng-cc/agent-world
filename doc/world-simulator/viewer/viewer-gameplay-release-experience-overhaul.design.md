@@ -13,7 +13,7 @@
 - 阶段治理层：Phase 2~10 子专题承接沉浸、引导、反馈和降噪细化任务，并最终回并到总文档。
 
 ## 3. 关键接口 / 入口
-- `AGENT_WORLD_VIEWER_EXPERIENCE_MODE`
+- `OASIS7_VIEWER_EXPERIENCE_MODE`
 - `ViewerExperienceMode`
 - `RightPanelLayoutState` / `RightPanelModuleVisibilityState`
 - `egui_right_panel.rs` 与相关测试

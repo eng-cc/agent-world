@@ -14,7 +14,7 @@
 
 ## 3. 关键接口 / 入口
 - `ViewerExternalTextureConfig`
-- `AGENT_WORLD_VIEWER_*_BASE_TEXTURE_ASSET`
+- `OASIS7_VIEWER_*_BASE_TEXTURE_ASSET`
 - `AssetServer`
 - `setup_3d_scene`
 - `viewer_3d_config.rs`
