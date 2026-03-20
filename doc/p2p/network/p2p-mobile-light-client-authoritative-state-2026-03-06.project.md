@@ -55,7 +55,7 @@
 - TASK-P2P-MLC-005 收口（2026-03-07）: A/B/C/D 已全部完成（稳定点回滚、重连追平元数据、会话吊销换钥、required 定向回归）。
 - TASK-P2P-MLC-006 收口（2026-03-07）: A/B/C/D 已全部完成（required/full 联合回归、证据映射、发布门禁结论）。
 - 本轮完成:
-  - 在 `agent_world_proto::viewer::AgentChatRequest` 增加 `intent_tick/intent_seq` 字段，并在 `AgentChatAck` 增加 `intent_tick/intent_seq/idempotent_replay`。
+  - 在 `oasis7_proto::viewer::AgentChatRequest` 增加 `intent_tick/intent_seq` 字段，并在 `AgentChatAck` 增加 `intent_tick/intent_seq/idempotent_replay`。
   - `runtime_live` 增加 `intent_seq` 幂等重放语义：同 `(player_id, agent_id, intent_seq)` 重试返回同 ACK，变更载荷触发冲突拒绝。
   - `viewer/auth` 的 agent_chat 签名载荷纳入 `intent_tick/intent_seq`，并校验 `intent_seq > 0`。
   - `runtime_live` 新增权威批次提交记录：每 step 产出并保留 `batch_id/state_root/data_root`，并通过 `authoritative_batch` 响应下发客户端。
@@ -69,24 +69,24 @@
   - `RequestSnapshot` 增加恢复追平元数据（`snapshot_hash/log_cursor/stable_batch_id/reorg_epoch`），用于重连时判断是否需要强制重拉快照。
   - 新增会话策略（active/revoked/session_epoch），实现会话吊销换钥并联动 `agent_chat/prompt_control` 鉴权拦截（旧 key 全拒绝）。
   - 定向回归通过:
-    - `env -u RUSTC_WRAPPER cargo check -p agent_world_proto -p agent_world -p agent_world_viewer`
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world_proto viewer_response_round_trip_authoritative_batch`
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world runtime_authoritative_batch_`
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world_proto viewer_authoritative_challenge_`
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world_proto viewer_response_round_trip_authoritative_`
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_full runtime_authoritative_challenge_`
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world_proto viewer_authoritative_recovery_`
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world_proto viewer_response_round_trip_authoritative_recovery_`
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world runtime_authoritative_recovery_`
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required runtime_authoritative_recovery_`
+    - `env -u RUSTC_WRAPPER cargo check -p oasis7_proto -p oasis7 -p oasis7_viewer`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7_proto viewer_response_round_trip_authoritative_batch`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 runtime_authoritative_batch_`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7_proto viewer_authoritative_challenge_`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7_proto viewer_response_round_trip_authoritative_`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_full runtime_authoritative_challenge_`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7_proto viewer_authoritative_recovery_`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7_proto viewer_response_round_trip_authoritative_recovery_`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 runtime_authoritative_recovery_`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_required runtime_authoritative_recovery_`
   - `TASK-P2P-MLC-006` 联合回归证据（required/full）:
-    - `env -u RUSTC_WRAPPER cargo check -p agent_world_proto -p agent_world -p agent_world_viewer`
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world_proto viewer_authoritative_`
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world_proto viewer_response_round_trip_authoritative_`
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required runtime_authoritative_batch_`
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required runtime_authoritative_recovery_`
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_full runtime_authoritative_challenge_`
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_full runtime_authoritative_recovery_`
+    - `env -u RUSTC_WRAPPER cargo check -p oasis7_proto -p oasis7 -p oasis7_viewer`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7_proto viewer_authoritative_`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7_proto viewer_response_round_trip_authoritative_`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_required runtime_authoritative_batch_`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_required runtime_authoritative_recovery_`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_full runtime_authoritative_challenge_`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_full runtime_authoritative_recovery_`
 - 风险提示:
   - challenge 规则与实时体验存在冲突，需要联动客户端最终性文案。
   - 快照/日志可用性会直接影响重连追平成功率。

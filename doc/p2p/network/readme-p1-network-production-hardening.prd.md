@@ -21,10 +21,10 @@
 | 专题迁移 | 需求/任务/依赖/状态/测试层级 | 逐篇重写并校验 | `draft -> active -> done` | 以原文约束点映射为主线 | 维护者写入，复核者抽检 |
 - Acceptance Criteria:
   - AC-1: In scope
-  - AC-2: `crates/agent_world_node/src/libp2p_replication_network.rs`
+  - AC-2: `crates/oasis7_node/src/libp2p_replication_network.rs`
   - AC-3: request 路由升级为多 peer 轮换 + 失败重试。
   - AC-4: 增加“无 peer 时本地 handler 回退”开关，默认关闭。
-  - AC-5: `crates/agent_world_node/src/network_bridge.rs`
+  - AC-5: `crates/oasis7_node/src/network_bridge.rs`
   - AC-6: 新增共识 topic endpoint（proposal/attestation/commit）。
 - Non-Goals:
   - 不扩展超出原文边界的新需求。

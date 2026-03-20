@@ -17,8 +17,8 @@
 - `aw.<world_id>.consensus.proposal`
 - `aw.<world_id>.consensus.attestation`
 - `aw.<world_id>.consensus.commit`
-- `crates/agent_world_node/src/libp2p_replication_network.rs`
-- `crates/agent_world_node/src/network_bridge.rs`
+- `crates/oasis7_node/src/libp2p_replication_network.rs`
+- `crates/oasis7_node/src/network_bridge.rs`
 
 ## 4. 约束与边界
 - 生产默认链路优先走 libp2p，UDP 仅作兼容兜底。

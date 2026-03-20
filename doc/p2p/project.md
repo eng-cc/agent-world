@@ -97,6 +97,23 @@
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
 - [x] TASK-P2P-019 (PRD-P2P-007/008/009) [test_tier_required]: 收口 `doc/p2p/prd.md` 与 `doc/p2p/project.md` 主入口中仍把旧 `agent_world*` crate/path/command 写成当前控制面与验收真值的口径，统一到 `oasis7*` 与当前 `cargo -p oasis7*`。
+- [x] TASK-P2P-020 (PRD-P2P-001/004) [test_tier_required]: 收口 `p2p` 活跃 `consensus/network` 专题中仍把旧 `agent_world*` crate/path/command 写成当前实现载体的口径，统一到 `oasis7*` 与当前 `cargo -p oasis7*`。
+  - 产物文件:
+    - `doc/p2p/consensus/consensus-code-consolidation-to-agent-world-consensus.prd.md`
+    - `doc/p2p/consensus/consensus-code-consolidation-to-agent-world-consensus.project.md`
+    - `doc/p2p/consensus/consensus-code-consolidation-to-agent-world-consensus.design.md`
+    - `doc/p2p/network/net-runtime-bridge-closure.prd.md`
+    - `doc/p2p/network/net-runtime-bridge-closure.project.md`
+    - `doc/p2p/network/net-runtime-bridge-closure.design.md`
+    - `doc/p2p/network/p2p-mobile-light-client-authoritative-state-2026-03-06.project.md`
+    - `doc/p2p/network/readme-p1-network-production-hardening.prd.md`
+    - `doc/p2p/network/readme-p1-network-production-hardening.project.md`
+    - `doc/p2p/network/readme-p1-network-production-hardening.design.md`
+    - `doc/p2p/project.md`
+  - 验收命令 (`test_tier_required`):
+    - `rg -n "oasis7_(consensus|node|net|distfs|proto|viewer)|cargo (test|check) -p oasis7" doc/p2p/consensus/consensus-code-consolidation-to-agent-world-consensus.* doc/p2p/network/net-runtime-bridge-closure.* doc/p2p/network/p2p-mobile-light-client-authoritative-state-2026-03-06.project.md doc/p2p/network/readme-p1-network-production-hardening.*`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
 
 ## 依赖
 - 模块设计总览：`doc/p2p/design.md`
@@ -125,6 +142,7 @@
 - 更新日期: 2026-03-20
 - 当前状态: completed（ROUND-012）
 - 下一任务: 无（等待新需求）
+- 最新完成: `TASK-P2P-020`（已完成 `consensus/network` 活跃专题中旧 `agent_world*` crate/path/command 当前真值口径的 `oasis7*` 收口。）
 - 最新完成: `TASK-P2P-018~019`（已完成 `doc/p2p/**` 历史专题首行标题的 title-only cleanup，并收口主 `prd/project` 中仍把旧 `agent_world*` crate/path/command 写成当前控制面与验收真值的口径。）
 - 最新完成: `TASK-P2P-017`（p2p 模块 README / PRD 索引入口同步）。
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。

@@ -1,10 +1,10 @@
-# 共识代码收敛到 agent_world_consensus 设计
+# 共识代码收敛到 oasis7_consensus 设计
 
 - 对应需求文档: `doc/p2p/consensus/consensus-code-consolidation-to-agent-world-consensus.prd.md`
 - 对应项目管理文档: `doc/p2p/consensus/consensus-code-consolidation-to-agent-world-consensus.project.md`
 
 ## 1. 设计定位
-定义共识相关实现向 `agent_world_consensus` 统一收敛的方案，减少重复代码、跨 crate 漂移和一致性维护成本。
+定义共识相关实现向 `oasis7_consensus` 统一收敛的方案，减少重复代码、跨 crate 漂移和一致性维护成本。
 
 ## 2. 设计结构
 - 模块收敛层：把分散的共识逻辑归并到统一 crate。
@@ -13,7 +13,7 @@
 - 迁移闭环层：配套文档、依赖和调用点同步回写。
 
 ## 3. 关键接口 / 入口
-- `agent_world_consensus`
+- `oasis7_consensus`
 - 外部调用接口
 - 共识逻辑迁移边界
 - 回归测试矩阵

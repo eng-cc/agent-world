@@ -8,7 +8,7 @@
 - [x] T0 (PRD-P2P-MIG-086)：输出设计文档（`doc/p2p/network/readme-p1-network-production-hardening.prd.md`）与项目管理文档（本文件）。
 - [x] T1 (PRD-P2P-MIG-086)：实现 libp2p request 多 peer 轮换重试 + 无 peer 可控回退策略，并补测试。
 - [x] T2 (PRD-P2P-MIG-086)：实现 node 共识消息 libp2p pubsub 主路径（ingest/broadcast）并补测试。
-- [x] T3 (PRD-P2P-MIG-086)：执行 `env -u RUSTC_WRAPPER cargo test -p agent_world_node` + `env -u RUSTC_WRAPPER cargo check`，回写文档/devlog 收口。
+- [x] T3 (PRD-P2P-MIG-086)：执行 `env -u RUSTC_WRAPPER cargo test -p oasis7_node` + `env -u RUSTC_WRAPPER cargo check`，回写文档/devlog 收口。
 
 ## 依赖
 - T2 依赖 T1（先稳定网络请求层，再接共识主循环）。

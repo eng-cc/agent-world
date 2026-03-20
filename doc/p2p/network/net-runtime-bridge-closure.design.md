@@ -1,10 +1,10 @@
-# oasis7 Runtime：`agent_world_net` runtime_bridge 可编译闭环设计
+# oasis7 Runtime：`oasis7_net` runtime_bridge 可编译闭环设计
 
 - 对应需求文档: `doc/p2p/network/net-runtime-bridge-closure.prd.md`
 - 对应项目管理文档: `doc/p2p/network/net-runtime-bridge-closure.project.md`
 
 ## 1. 设计定位
-定义 `agent_world_net` 在 `runtime_bridge` feature 下的稳定编译闭环设计，确保 runtime bridge 不再依赖已失效的内部路径。
+定义 `oasis7_net` 在 `runtime_bridge` feature 下的稳定编译闭环设计，确保 runtime bridge 不再依赖已失效的内部路径。
 
 ## 2. 设计结构
 - 依赖收敛层：把 blob store、分片组装和协议类型统一切到稳定 crate 依赖。
