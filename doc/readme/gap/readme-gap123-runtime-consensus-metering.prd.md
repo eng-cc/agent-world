@@ -18,11 +18,11 @@
 
 ## 范围
 - In scope
-  - Runtime（`crates/agent_world/src/runtime`）
+  - Runtime（`crates/oasis7/src/runtime`）
     - 新增 `CompileModuleArtifactFromSource` 动作，支持源文件包编译并注册 artifact。
     - 新增源文件编译器（临时工作目录 + 外部编译命令 + 默认脚本回退）。
     - 新增模块调用计费记录事件（world event），并在回放路径应用扣费。
-  - Node（`crates/agent_world_node`）
+  - Node（`crates/oasis7_node`）
     - 新增共识动作载荷类型与动作根（action root）计算。
     - 提案/提交/签名/复制链路携带动作序列与 action root。
     - 执行 hook 上下文携带已提交动作序列。
@@ -85,7 +85,7 @@
 - M5：回归验证、项目文档状态回写、devlog 收口。
 
 ## 风险
-- 工程风险：`agent_world_node` 主文件已接近 1200 行，需要同步拆分实现以满足文件长度约束。
+- 工程风险：`oasis7_node` 主文件已接近 1200 行，需要同步拆分实现以满足文件长度约束。
 - 兼容风险：gossip/replication 消息扩展后，旧消息兼容性依赖 `serde(default)`。
 - 经济风险：计费引入新的失败路径，若测试默认资源不足会触发行为回归，需要补齐测试种子资源。
 - 运行风险：默认编译脚本依赖本机 toolchain；需保留可注入编译器路径，保证 CI/测试稳定。

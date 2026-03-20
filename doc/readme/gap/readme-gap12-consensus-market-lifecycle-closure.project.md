@@ -28,14 +28,14 @@
 
 ## 依赖
 - T1 依赖：
-  - `crates/agent_world_node/src/lib.rs`
-  - `crates/agent_world/src/viewer/live.rs`
-  - `crates/agent_world/src/bin/world_chain_runtime/execution_bridge.rs`
+  - `crates/oasis7_node/src/lib.rs`
+  - `crates/oasis7/src/viewer/live.rs`
+  - `crates/oasis7/src/bin/world_chain_runtime/execution_bridge.rs`
 - T2 依赖：
-  - `crates/agent_world/src/simulator/types.rs`
-  - `crates/agent_world/src/simulator/kernel/*`
-  - `crates/agent_world/src/simulator/world_model.rs`
-  - `crates/agent_world/src/simulator/llm_agent/*`
+  - `crates/oasis7/src/simulator/types.rs`
+  - `crates/oasis7/src/simulator/kernel/*`
+  - `crates/oasis7/src/simulator/world_model.rs`
+  - `crates/oasis7/src/simulator/llm_agent/*`
 - T3 依赖 T1/T2 完成后统一执行。
 
 ## 状态

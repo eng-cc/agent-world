@@ -18,18 +18,18 @@
 
 ## 依赖
 - Runtime world 执行与持久化：
-  - `crates/agent_world/src/runtime/world/step.rs`
-  - `crates/agent_world/src/runtime/world/persistence.rs`
-  - `crates/agent_world/src/runtime/world/module_actions.rs`
-  - `crates/agent_world/src/runtime/world/module_tick_runtime.rs`
-  - `crates/agent_world/src/runtime/state.rs`
-  - `crates/agent_world/src/runtime/events.rs`
+  - `crates/oasis7/src/runtime/world/step.rs`
+  - `crates/oasis7/src/runtime/world/persistence.rs`
+  - `crates/oasis7/src/runtime/world/module_actions.rs`
+  - `crates/oasis7/src/runtime/world/module_tick_runtime.rs`
+  - `crates/oasis7/src/runtime/state.rs`
+  - `crates/oasis7/src/runtime/events.rs`
 - Live bridge：
-  - `crates/agent_world/src/bin/world_chain_runtime/execution_bridge.rs`
-  - `crates/agent_world/src/bin/world_viewer_live.rs`
+  - `crates/oasis7/src/bin/world_chain_runtime/execution_bridge.rs`
+  - `crates/oasis7/src/bin/world_viewer_live.rs`
 - 测试：
-  - `crates/agent_world/src/runtime/tests/*`
-  - `crates/agent_world/src/bin/world_chain_runtime/execution_bridge.rs` 内测试
+  - `crates/oasis7/src/runtime/tests/*`
+  - `crates/oasis7/src/bin/world_chain_runtime/execution_bridge.rs` 内测试
 
 ## 状态
 - 当前阶段：已完成（T0~T4 全部完成）

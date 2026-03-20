@@ -18,8 +18,8 @@
 
 ## 范围
 - In scope
-  - Runtime (`crates/agent_world/src/runtime`)：新增模块上架/购买动作、事件和状态。
-  - Simulator (`crates/agent_world/src/simulator`)：新增动态电价参数、报价逻辑、价格带护栏、事件字段增强。
+  - Runtime (`crates/oasis7/src/runtime`)：新增模块上架/购买动作、事件和状态。
+  - Simulator (`crates/oasis7/src/simulator`)：新增动态电价参数、报价逻辑、价格带护栏、事件字段增强。
   - 测试：新增/更新 `test_tier_required` 测试覆盖新闭环与拒绝路径。
 - Out of scope
   - 世界内 Rust 编译器（仍保持“链下编译后上链/入世界”）。

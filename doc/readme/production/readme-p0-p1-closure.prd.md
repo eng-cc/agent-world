@@ -15,7 +15,7 @@
 - 在不破坏当前主流程的前提下，提供最小可用且可测试的实现。
 
 ## 范围
-- P0：`agent_world_node` 共识 commit/gossip/replication 链路增加执行哈希绑定字段并签名。
+- P0：`oasis7_node` 共识 commit/gossip/replication 链路增加执行哈希绑定字段并签名。
 - P1-A：`world_viewer_live` 增加默认启用的“共识执行高度门控”运行模式。
 - P1-B：`agent_world::runtime` 新增世界内模块部署/安装动作，打通提案-影子-批准-应用闭环。
 
@@ -24,7 +24,7 @@
 - 重写 viewer 在线协议；仅增加可选兼容字段和门控行为。
 
 ## 接口 / 数据
-- `agent_world_node`:
+- `oasis7_node`:
   - `GossipCommitMessage` 新增：
     - `execution_block_hash: Option<String>`
     - `execution_state_root: Option<String>`

@@ -20,11 +20,11 @@
 
 ## 范围
 - In scope
-  - `crates/agent_world/src/simulator/llm_agent`
+  - `crates/oasis7/src/simulator/llm_agent`
     - 扩展 decision schema、parser、prompt schema，支持三类 WASM 生命周期动作。
     - 增加动作参数严格校验（agent 身份、hash、hex 编码、必填字段）。
     - 提供 `module.lifecycle.status` 查询模块，用于 LLM 回合间读取已知 artifact / installed 状态。
-  - `crates/agent_world/src/simulator`
+  - `crates/oasis7/src/simulator`
     - 新增三类 `Action` 变体与对应 kernel 执行语义。
     - 新增生命周期事件（artifact deploy/install）并接入 replay。
     - 在 world model 中持久化 artifact 与 installed module 状态。

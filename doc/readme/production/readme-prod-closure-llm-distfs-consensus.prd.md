@@ -14,15 +14,15 @@
 
 ## 范围
 - In scope
-  - `crates/agent_world/src/simulator/llm_agent`
+  - `crates/oasis7/src/simulator/llm_agent`
     - 扩展 decision schema 与 parser，支持 power 市场与 social 制度动作。
     - 增加参数校验与拒绝路径，避免无效动作进入内核。
     - 新增/更新 `test_tier_required` 用例覆盖新动作解析与提示词契约。
-  - `crates/agent_world/src/runtime/world/persistence.rs`
+  - `crates/oasis7/src/runtime/world/persistence.rs`
     - `save_to_dir` 默认追加 DistFS 分段写入（snapshot manifest + journal segments）。
     - `load_from_dir` 优先使用 DistFS 元数据恢复，失败后回退 JSON。
     - 新增持久化回归测试，覆盖 DistFS 恢复主路径与 JSON 兜底路径。
-  - `crates/agent_world/src/bin/world_viewer_live*`
+  - `crates/oasis7/src/bin/world_viewer_live*`
     - 新增生产默认拓扑（local triad）配置项。
     - 在默认配置下启动 sequencer/storage/observer 三节点，互联 gossip，viewer 绑定主节点门控。
     - 增加 CLI 解析与拓扑构建测试。
@@ -34,8 +34,8 @@
 ## 接口 / 数据
 ### 1) LLM 决策动作扩展
 - 文件
-  - `crates/agent_world/src/simulator/llm_agent/prompt_assembly.rs`
-  - `crates/agent_world/src/simulator/llm_agent/decision_flow.rs`
+  - `crates/oasis7/src/simulator/llm_agent/prompt_assembly.rs`
+  - `crates/oasis7/src/simulator/llm_agent/decision_flow.rs`
 - 新增可解析决策（映射到 `simulator::Action`）
   - `buy_power` / `sell_power`
   - `place_power_order` / `cancel_power_order`
@@ -47,8 +47,8 @@
 
 ### 2) DistFS 状态持久化主路径
 - 文件
-  - `crates/agent_world/src/runtime/world/persistence.rs`
-  - `crates/agent_world/src/runtime/tests/persistence.rs`
+  - `crates/oasis7/src/runtime/world/persistence.rs`
+  - `crates/oasis7/src/runtime/tests/persistence.rs`
 - 新增 sidecar 元数据
   - `snapshot.manifest.json`
   - `journal.segments.json`
@@ -63,9 +63,9 @@
 
 ### 3) 去中心化默认拓扑（live）
 - 文件
-  - `crates/agent_world/src/bin/world_viewer_live.rs`
-  - `crates/agent_world/src/bin/world_viewer_live.rs`
-  - `crates/agent_world/src/bin/world_viewer_live.rs（`#[cfg(test)]`）`
+  - `crates/oasis7/src/bin/world_viewer_live.rs`
+  - `crates/oasis7/src/bin/world_viewer_live.rs`
+  - `crates/oasis7/src/bin/world_viewer_live.rs（`#[cfg(test)]`）`
 - 拓扑模式
   - `single`（兼容旧行为）
   - `triad`（默认，sequencer/storage/observer）

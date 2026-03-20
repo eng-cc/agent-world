@@ -17,9 +17,9 @@
 - [x] T3：回归验证（`cargo check` + 定向 tests）并回写文档/devlog
 
 ## 依赖
-- Runtime：`crates/agent_world/src/runtime/events.rs`、`runtime/world/module_actions.rs`、`runtime/state.rs`
-- Simulator：`crates/agent_world/src/simulator/power.rs`、`simulator/world_model.rs`、`simulator/kernel/actions.rs`
-- 测试：`crates/agent_world/src/runtime/tests/module_action_loop.rs`、`crates/agent_world/src/simulator/tests/power.rs`
+- Runtime：`crates/oasis7/src/runtime/events.rs`、`runtime/world/module_actions.rs`、`runtime/state.rs`
+- Simulator：`crates/oasis7/src/simulator/power.rs`、`simulator/world_model.rs`、`simulator/kernel/actions.rs`
+- 测试：`crates/oasis7/src/runtime/tests/module_action_loop.rs`、`crates/oasis7/src/simulator/tests/power.rs`
 
 ## 状态
 - 当前阶段：已完成（T0~T3 全部完成）

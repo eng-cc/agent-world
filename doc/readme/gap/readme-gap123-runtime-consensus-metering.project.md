@@ -19,25 +19,25 @@
 
 ## 依赖
 - Runtime action/事件：
-  - `crates/agent_world/src/runtime/events.rs`
-  - `crates/agent_world/src/runtime/world/module_actions.rs`
-  - `crates/agent_world/src/runtime/world/module_runtime.rs`
-  - `crates/agent_world/src/runtime/world/event_processing.rs`
+  - `crates/oasis7/src/runtime/events.rs`
+  - `crates/oasis7/src/runtime/world/module_actions.rs`
+  - `crates/oasis7/src/runtime/world/module_runtime.rs`
+  - `crates/oasis7/src/runtime/world/event_processing.rs`
 - Runtime 编译管线：
-  - `crates/agent_world/src/runtime/builtin_wasm_materializer.rs`（参考）
+  - `crates/oasis7/src/runtime/builtin_wasm_materializer.rs`（参考）
   - `scripts/build-wasm-module.sh`
 - Node 共识与复制：
-  - `crates/agent_world_node/src/lib.rs`
-  - `crates/agent_world_node/src/consensus_signature.rs`
-  - `crates/agent_world_node/src/gossip_udp.rs`
-  - `crates/agent_world_node/src/replication.rs`
-  - `crates/agent_world_node/src/execution_hook.rs`
+  - `crates/oasis7_node/src/lib.rs`
+  - `crates/oasis7_consensus/src/node_consensus_signature.rs`
+  - `crates/oasis7_node/src/gossip_udp.rs`
+  - `crates/oasis7_node/src/replication.rs`
+  - `crates/oasis7_node/src/execution_hook.rs`
 - Viewer execution bridge：
-  - `crates/agent_world/src/bin/world_chain_runtime/execution_bridge.rs`
+  - `crates/oasis7/src/bin/world_chain_runtime/execution_bridge.rs`
 - 测试：
-  - `crates/agent_world/src/runtime/tests/module_action_loop.rs`
-  - `crates/agent_world/src/runtime/tests/modules.rs`
-  - `crates/agent_world_node/src/tests.rs`
+  - `crates/oasis7/src/runtime/tests/module_action_loop.rs`
+  - `crates/oasis7/src/runtime/tests/modules.rs`
+  - `crates/oasis7_node/src/tests.rs`
 
 ## 状态
 - 当前阶段：已完成（T0~T4 全部完成）

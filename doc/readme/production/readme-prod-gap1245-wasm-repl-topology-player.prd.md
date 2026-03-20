@@ -9,26 +9,26 @@
 
 ## 目标
 - 收口缺口 1：默认构建启用真实 WASM 执行路径（`wasmtime`），避免默认环境下模块执行退化为 `SandboxUnavailable`。
-- 收口缺口 2：补齐 `agent_world_node` libp2p replication 的 request/handler 通道，实现双向请求-响应能力。
+- 收口缺口 2：补齐 `oasis7_node` libp2p replication 的 request/handler 通道，实现双向请求-响应能力。
 - 收口缺口 4：提供跨主机部署的 triad 拓扑模式，避免仅支持本机嵌入式三节点预设。
 - 收口缺口 5：将玩家-节点身份模型下沉到 node/consensus 层，实现配置、动作、消息、快照的一致身份语义。
 
 ## 范围
 - In scope
-  - `crates/agent_world/Cargo.toml`
+  - `crates/oasis7/Cargo.toml`
     - 默认 feature 启用 `wasmtime`。
-  - `crates/agent_world_node/src/libp2p_replication_network.rs`
+  - `crates/oasis7_node/src/libp2p_replication_network.rs`
     - gossipsub + request_response 双通道行为。
     - `request` 与 `register_handler` 的真实实现与错误映射。
-  - `crates/agent_world/src/bin/world_viewer_live.rs`
-  - `crates/agent_world/src/bin/world_viewer_live.rs`
+  - `crates/oasis7/src/bin/world_viewer_live.rs`
+  - `crates/oasis7/src/bin/world_viewer_live.rs`
     - 新增跨主机 triad 拓扑模式（单进程单节点角色，三角色静态组网）。
     - 保持现有 `triad`（本机嵌入式）与 `single`（手工）兼容。
-  - `crates/agent_world_node/src/types.rs`
-  - `crates/agent_world_node/src/consensus_action.rs`
-  - `crates/agent_world_node/src/gossip_udp.rs`
-  - `crates/agent_world_node/src/lib.rs`
-  - `crates/agent_world/src/viewer/live/consensus_bridge.rs`
+  - `crates/oasis7_node/src/types.rs`
+  - `crates/oasis7_consensus/src/node_consensus_action.rs`
+  - `crates/oasis7_node/src/gossip_udp.rs`
+  - `crates/oasis7_node/src/lib.rs`
+  - `crates/oasis7/src/viewer/live/consensus_bridge.rs`
     - 新增玩家身份字段与校验链路。
   - 覆盖以上变更的 required-tier 测试。
 - Out of scope
@@ -38,7 +38,7 @@
 
 ## 接口 / 数据
 ### 1) 默认 WASM 执行开启
-- `agent_world` crate default features 改为包含 `wasmtime`。
+- `oasis7` crate default features 改为包含 `wasmtime`。
 - 保留 `--no-default-features` 的显式降级路径用于最小构建。
 
 ### 2) Replication request/handler 通道

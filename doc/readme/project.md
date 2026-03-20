@@ -113,6 +113,30 @@
     - `rg -n "Agent World" doc/readme/governance --glob '!third_party/**'`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
+- [x] TASK-README-021 (PRD-README-014) [test_tier_required]: 收口 `doc/readme/gap/**` 与 `doc/readme/production/**` 活跃专题中仍把旧 `agent_world*` crate/path 写成当前实现载体的口径，统一到 `oasis7*` 与当前源码布局。
+  - 产物文件:
+    - `doc/readme/gap/readme-gap-distributed-prod-hardening-gap12345.prd.md`
+    - `doc/readme/gap/readme-gap-distributed-prod-hardening-gap12345.project.md`
+    - `doc/readme/gap/readme-gap-infra-exec-compiler-sandbox.prd.md`
+    - `doc/readme/gap/readme-gap-wasm-live-persistence-instance-upgrade.prd.md`
+    - `doc/readme/gap/readme-gap-wasm-live-persistence-instance-upgrade.project.md`
+    - `doc/readme/gap/readme-gap12-consensus-market-lifecycle-closure.prd.md`
+    - `doc/readme/gap/readme-gap12-consensus-market-lifecycle-closure.project.md`
+    - `doc/readme/gap/readme-gap12-market-closure.prd.md`
+    - `doc/readme/gap/readme-gap12-market-closure.project.md`
+    - `doc/readme/gap/readme-gap123-runtime-consensus-metering.prd.md`
+    - `doc/readme/gap/readme-gap123-runtime-consensus-metering.project.md`
+    - `doc/readme/gap/readme-gap2-llm-wasm-lifecycle.prd.md`
+    - `doc/readme/gap/readme-gap34-lifecycle-orderbook-closure.prd.md`
+    - `doc/readme/production/readme-llm-p1p2-production-closure.prd.md`
+    - `doc/readme/production/readme-p0-p1-closure.prd.md`
+    - `doc/readme/production/readme-prod-closure-llm-distfs-consensus.prd.md`
+    - `doc/readme/production/readme-prod-gap1245-wasm-repl-topology-player.prd.md`
+    - `doc/readme/project.md`
+  - 验收命令 (`test_tier_required`):
+    - `rg -n "oasis7(_node|_consensus|_wasm_abi)?|crates/oasis7|crates/oasis7_node|crates/oasis7_consensus" doc/readme/gap/readme-gap-distributed-prod-hardening-gap12345.prd.md doc/readme/gap/readme-gap-distributed-prod-hardening-gap12345.project.md doc/readme/gap/readme-gap-infra-exec-compiler-sandbox.prd.md doc/readme/gap/readme-gap-wasm-live-persistence-instance-upgrade.prd.md doc/readme/gap/readme-gap-wasm-live-persistence-instance-upgrade.project.md doc/readme/gap/readme-gap12-consensus-market-lifecycle-closure.prd.md doc/readme/gap/readme-gap12-consensus-market-lifecycle-closure.project.md doc/readme/gap/readme-gap12-market-closure.prd.md doc/readme/gap/readme-gap12-market-closure.project.md doc/readme/gap/readme-gap123-runtime-consensus-metering.prd.md doc/readme/gap/readme-gap123-runtime-consensus-metering.project.md doc/readme/gap/readme-gap2-llm-wasm-lifecycle.prd.md doc/readme/gap/readme-gap34-lifecycle-orderbook-closure.prd.md doc/readme/production/readme-llm-p1p2-production-closure.prd.md doc/readme/production/readme-p0-p1-closure.prd.md doc/readme/production/readme-prod-closure-llm-distfs-consensus.prd.md doc/readme/production/readme-prod-gap1245-wasm-repl-topology-player.prd.md`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
 
 ## 依赖
 - doc/readme/prd.index.md
@@ -125,9 +149,10 @@
 - `.agents/skills/prd/check.md`
 
 ## 状态
-- 更新日期: 2026-03-19
+- 更新日期: 2026-03-20
 - 当前状态: completed
 - 下一任务: 无（当前模块主项目无未完成任务）
+- 最新完成: `TASK-README-021`（已完成 `doc/readme/gap/**` 与 `doc/readme/production/**` 活跃专题中旧 `agent_world*` crate/path 当前真值口径与已迁移源码路径的 `oasis7*` 收口。）
 - 最新完成: `TASK-README-018`（根 README / testing-manual / world-rule 已统一为 `oasis7` 品牌，并补 internal naming compatibility 说明）。
 - 最新完成: `TASK-README-019`（已完成 `doc/readme/governance/**` 历史专题首行标题的 title-only cleanup，旧 `Agent World*` 公开标题已统一切到 `oasis7*`）。
 - 最新完成: `TASK-README-020`（已完成 `doc/readme/governance/**` 当前公开口径中的项目名收口，Moltbook 方案与草案正文统一改写为 `oasis7`）。

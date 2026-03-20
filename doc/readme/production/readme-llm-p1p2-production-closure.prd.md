@@ -15,15 +15,15 @@
 
 ## 范围
 ### In scope
-- `crates/agent_world/src/simulator/llm_agent`
+- `crates/oasis7/src/simulator/llm_agent`
   - 补全查询 tool 注册（含 `module.lifecycle.status`）与函数名映射。
   - 扩展查询模块：电力订单簿、模块市场、社会状态。
   - 调整 `run_prompt_module`，将生命周期/市场查询改为读取 observation 快照而非本地缓存。
   - 更新 prompt 协议文案与 schema 约束描述，保持“可调用工具”与“提示词声明”一致。
-- `crates/agent_world/src/simulator/kernel`
+- `crates/oasis7/src/simulator/kernel`
   - 扩展 `Observation` 数据结构，增加模块生命周期、模块市场、电力市场、社会状态快照。
   - 在 `observe` 路径中从 `WorldModel` 构建并返回上述快照。
-- `crates/agent_world/src/bin/world_chain_runtime/execution_bridge.rs`
+- `crates/oasis7/src/bin/world_chain_runtime/execution_bridge.rs`
   - 为共识执行桥接补齐 `SimulatorAction` 执行路径（新增 simulator execution mirror）。
   - 保留 RuntimeWorld 路径兼容；在有 simulator payload 时执行并落审计记录。
 - 测试与回归

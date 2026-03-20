@@ -18,11 +18,11 @@
 
 ## 范围
 - In scope
-  - `crates/agent_world/src/runtime`
+  - `crates/oasis7/src/runtime`
     - `WorldState` 持久化记录模块安装目标（按 `module_id`）。
     - `ModuleInstalled` 事件应用后同步安装目标状态，并驱动 tick 路由选择。
     - tick 执行为基础设施安装目标提供独立 origin 语义（`infrastructure_tick`）。
-  - `crates/agent_world/src/runtime/module_source_compiler.rs`
+  - `crates/oasis7/src/runtime/module_source_compiler.rs`
     - 增加源码包 sandbox 约束（文件数量/大小/路径边界）。
     - 增加编译进程超时控制与最小化环境注入（env 白名单）。
     - 失败路径返回可审计拒绝原因。

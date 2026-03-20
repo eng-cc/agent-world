@@ -21,16 +21,16 @@
 
 ## 范围
 - In scope
-  - `crates/agent_world/src/bin/world_chain_runtime/execution_bridge.rs`
-  - `crates/agent_world/src/bin/world_viewer_live.rs`
-  - `crates/agent_world/src/runtime/world/persistence.rs`
-  - `crates/agent_world/src/runtime/events.rs`
-  - `crates/agent_world/src/runtime/state.rs`
-  - `crates/agent_world/src/runtime/world/module_actions.rs`
-  - `crates/agent_world/src/runtime/world/module_tick_runtime.rs`
-  - `crates/agent_world/src/runtime/tests/*` 与 `crates/agent_world/src/bin/world_chain_runtime/execution_bridge.rs` 内测试
+  - `crates/oasis7/src/bin/world_chain_runtime/execution_bridge.rs`
+  - `crates/oasis7/src/bin/world_viewer_live.rs`
+  - `crates/oasis7/src/runtime/world/persistence.rs`
+  - `crates/oasis7/src/runtime/events.rs`
+  - `crates/oasis7/src/runtime/state.rs`
+  - `crates/oasis7/src/runtime/world/module_actions.rs`
+  - `crates/oasis7/src/runtime/world/module_tick_runtime.rs`
+  - `crates/oasis7/src/runtime/tests/*` 与 `crates/oasis7/src/bin/world_chain_runtime/execution_bridge.rs` 内测试
 - Out of scope
-  - 大规模重写 `agent_world_wasm_abi` 协议结构（尽量通过 runtime 层扩展实现）。
+  - 大规模重写 `oasis7_wasm_abi` 协议结构（尽量通过 runtime 层扩展实现）。
   - 浏览器 wasm32 节点网络能力增强。
   - 变更 third_party 代码。
 

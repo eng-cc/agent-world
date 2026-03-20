@@ -17,12 +17,12 @@
 
 ## 范围
 - In scope
-  - Runtime（`crates/agent_world/src/runtime`）
+  - Runtime（`crates/oasis7/src/runtime`）
     - 新增模块生命周期动作：`DelistModuleArtifact`、`DestroyModuleArtifact`。
     - 新增模块撮合动作：`PlaceModuleArtifactBid`、`CancelModuleArtifactBid`。
     - 新增模块市场状态：bid 订单簿、订单序号、成交序号。
     - 新增模块动作成本事件：统一记账到世界资源池（treasury）。
-  - Simulator（`crates/agent_world/src/simulator`）
+  - Simulator（`crates/oasis7/src/simulator`）
     - 新增电力订单簿动作：`PlacePowerOrder`、`CancelPowerOrder`。
     - 新增单一订单簿状态与撮合事件（价格优先、时间优先、确定性排序）。
     - 撮合成交仍走 `PowerTransferred` 语义，保证与现有功率损耗/动态报价一致。

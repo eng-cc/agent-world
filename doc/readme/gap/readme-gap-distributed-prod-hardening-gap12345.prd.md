@@ -12,7 +12,7 @@
 - 对应标准执行入口: `doc/readme/gap/readme-gap-distributed-prod-hardening-gap12345.project.md`
 
 ## 目标
-- 收口 Gap 1：将 `agent_world_node` 的 PoS 主循环关键算法与阈值判定下沉到 `agent_world_consensus`，避免双轨共识语义漂移。
+- 收口 Gap 1：将 `oasis7_node` 的 PoS 主循环关键算法与阈值判定下沉到 `oasis7_consensus`，避免双轨共识语义漂移。
 - 收口 Gap 2：将存储挑战共识门控从“单点网络比对”升级为“多样本网络挑战 + 匹配阈值”模型，提升抗网络抖动与抗单点异常能力。
 - 收口 Gap 3：将 replication gap sync 从“首错即停”升级为“分高度重试 + 可观测错误”的稳健同步路径。
 - 收口 Gap 4：将 DistFS sidecar 恢复失败从“静默回退”升级为“可审计回退”，保留 JSON 兜底的同时输出失败审计证据。
@@ -20,20 +20,20 @@
 
 ## 范围
 - In scope
-  - `crates/agent_world_consensus`
+  - `crates/oasis7_consensus`
     - 暴露可复用 PoS 判定内核（阈值状态、提议者选择）供 node 主循环调用。
-  - `crates/agent_world_node`
+  - `crates/oasis7_node`
     - 复用 consensus PoS 内核，收敛本地重复算法。
     - replication request 选择策略增强（peer 轮换 / provider 优先）。
     - 存储挑战门控升级为多样本验证与最小匹配阈值。
     - gap sync 升级为按高度重试与错误上报。
     - UDP gossip 自动发现对端地址并动态加入广播 peers。
-  - `crates/agent_world`
+  - `crates/oasis7`
     - `world_viewer_live` 的 `triad_distributed` 参数与启动路径支持“最小引导拓扑”。
-  - `crates/agent_world/src/runtime/world/persistence.rs`
+  - `crates/oasis7/src/runtime/world/persistence.rs`
     - DistFS 恢复失败审计记录落盘。
   - 测试
-    - `agent_world_node` / `agent_world_consensus` / `world_viewer_live` / runtime persistence 的 required-tier 回归。
+    - `oasis7_node` / `oasis7_consensus` / `world_viewer_live` / runtime persistence 的 required-tier 回归。
 - Out of scope
   - wasm32 完整分布式节点协议栈。
   - 共识算法从 PoS 切换到全新协议。
@@ -41,9 +41,9 @@
 
 ## 接口 / 数据
 ### 1) Node 复用 Consensus PoS 内核
-- 新增（或扩展）`agent_world_consensus::distributed_pos_consensus` 导出：
+- 新增（或扩展）`oasis7_consensus::distributed_pos_consensus` 导出：
   - `decide_pos_status(total_stake, required_stake, approved_stake, rejected_stake)`
-- `agent_world_node::PosNodeEngine`：
+- `oasis7_node::PosNodeEngine`：
   - 提议者选择与 epoch 计算统一走 consensus 内核。
   - supermajority 阈值判定统一走 consensus 内核。
 
