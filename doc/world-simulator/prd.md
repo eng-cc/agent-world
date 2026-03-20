@@ -164,6 +164,7 @@
   - SC-60: `world_openclaw_parity_bench` 的自定义 OpenClaw profile 样例必须优先使用 `oasis7_*` 命名，避免 bench 参数解析测试继续把旧 `agent_world_*` profile id 当作非默认样例真值。
   - SC-61: runtime test module signer seed、governance local finality signer seed 与 chain runtime node consensus signer 派生命名空间必须优先使用 `oasis7_*` 口径，避免确定性测试密钥与 validator signer 派生链路继续内嵌旧 `agent-world` 品牌字符串。
   - SC-62: `world_game_launcher` / `world_web_launcher` 的 viewer 开发态 fallback 路径必须优先探测 `oasis7_viewer/dist`，同时保留 `agent_world_viewer/dist` 兼容回退，避免源码态调试链路在品牌迁移期间继续把旧 viewer 目录名当作当前默认真值。
+  - SC-63: `agent_world_client_launcher` 的源码态 viewer static dir 默认探测与 launcher 端配置校验必须优先探测 `oasis7_viewer/dist`，同时保留 `agent_world_viewer/dist` 兼容回退，避免 client launcher 与其他 launcher 在品牌迁移期对 dev fallback 目录名产生分叉。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -385,6 +386,7 @@
   - AC-65: `crates/agent_world/src/bin/world_openclaw_parity_bench.rs` 的 `parse_options_accepts_custom_openclaw_agent_profile` 样例值必须改为 `oasis7_p1_memory_loop`，避免 bench 的自定义 profile 参数解析回归继续把旧 `agent_world_p1_memory_loop` 当作当前样例真值。
   - AC-66: `crates/agent_world/src/runtime/world/{mod.rs,governance.rs}`、`crates/agent_world/src/runtime/tests/{mod.rs,governance.rs,module_action_loop_split_part1.rs}`、`crates/agent_world/src/bin/world_chain_runtime.rs` 与 `crates/agent_world/src/bin/world_chain_runtime/execution_bridge.rs` 中的 deterministic signer seed / namespace 字符串必须改为 `oasis7-test-module-artifact-signer-v1`、`oasis7-governance-local-finality-signer-{1,2}-v1`、`oasis7-governance-test-finality-signer-3-v1` 与 `oasis7-node-consensus-signer-v1`；相关 governance / module / execution 回归通过后，不得继续把旧 `agent-world-*signer*` 当作当前真值。
   - AC-67: `crates/agent_world/src/bin/world_game_launcher.rs`、`crates/agent_world/src/bin/world_web_launcher/{runtime_paths.rs,control_plane.rs}` 与对应测试必须把 viewer 开发态 fallback 候选顺序改为 `oasis7_viewer/dist` 优先、`agent_world_viewer/dist` 次之；`world_viewer_demo` 的 operator 提示不得继续把 `agent_world_viewer` 当作当前连接指引真值。
+  - AC-68: `crates/agent_world_client_launcher/src/{platform_ops.rs,launcher_core.rs,main_tests.rs}` 必须把源码态 viewer fallback 候选顺序统一为 `oasis7_viewer/dist` 优先、`agent_world_viewer/dist` 次之；`resolve_static_dir_path` 与 launcher config 校验不得继续把旧 viewer 目录名当作 client launcher 当前默认真值。
 - Non-Goals:
   - 不在本 PRD 中详细列出每个 UI 像素级规范。
   - 不替代 world-runtime/p2p 的底层协议设计。

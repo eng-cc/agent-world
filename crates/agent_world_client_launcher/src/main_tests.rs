@@ -1,3 +1,4 @@
+use super::platform_ops::viewer_dev_dist_candidates;
 use super::{
     build_chain_runtime_args, build_game_url, build_launcher_args, chain_runtime_status_from_web,
     collect_chain_required_config_issues, collect_required_config_issues,
@@ -121,6 +122,21 @@ fn build_game_url_brackets_ipv6_hosts() {
     let url = build_game_url(&config);
     assert_eq!(url, "http://[::1]:4173/?ws=ws://[::1]:5011");
 }
+
+#[test]
+fn viewer_dev_dist_candidates_prefer_oasis7_name_before_legacy_name() {
+    let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
+    let candidates = viewer_dev_dist_candidates();
+
+    assert_eq!(
+        candidates,
+        vec![
+            repo_root.join("oasis7_viewer").join("dist"),
+            repo_root.join("agent_world_viewer").join("dist"),
+        ]
+    );
+}
+
 #[test]
 fn normalize_host_for_url_maps_empty_and_any() {
     assert_eq!(normalize_host_for_url("0.0.0.0"), "127.0.0.1");

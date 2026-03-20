@@ -86,12 +86,7 @@ pub(crate) fn resolve_static_dir_path() -> PathBuf {
             candidates.push(bin_dir.join("..").join("..").join("web"));
         }
     }
-    candidates.push(
-        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("..")
-            .join("agent_world_viewer")
-            .join("dist"),
-    );
+    candidates.extend(viewer_dev_dist_candidates());
     candidates.push(PathBuf::from("web"));
 
     first_existing_dir(candidates).unwrap_or_else(|| PathBuf::from("web"))
@@ -168,9 +163,17 @@ fn first_existing_dir(candidates: Vec<PathBuf>) -> Option<PathBuf> {
     candidates.into_iter().find(|path| path.is_dir())
 }
 
+pub(crate) fn viewer_dev_dist_candidates() -> Vec<PathBuf> {
+    let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
+    vec![
+        repo_root.join("oasis7_viewer").join("dist"),
+        repo_root.join("agent_world_viewer").join("dist"),
+    ]
+}
+
 #[cfg(test)]
 mod tests {
-    use super::first_existing_dir;
+    use super::{first_existing_dir, viewer_dev_dist_candidates};
     use std::env;
     use std::fs;
     use std::path::PathBuf;
@@ -195,6 +198,20 @@ mod tests {
             make_temp_path("missing_b"),
         ]);
         assert!(resolved.is_none());
+    }
+
+    #[test]
+    fn viewer_dev_dist_candidates_prefer_oasis7_name_before_legacy_name() {
+        let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
+        let candidates = viewer_dev_dist_candidates();
+
+        assert_eq!(
+            candidates,
+            vec![
+                repo_root.join("oasis7_viewer").join("dist"),
+                repo_root.join("agent_world_viewer").join("dist"),
+            ]
+        );
     }
 
     fn make_temp_path(label: &str) -> PathBuf {
