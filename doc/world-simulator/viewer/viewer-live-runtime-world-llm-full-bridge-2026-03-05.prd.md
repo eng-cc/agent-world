@@ -75,13 +75,13 @@
   - runtime 事件/快照被完整映射为 viewer 协议（必要时扩展 `WorldEventKind/WorldSnapshot`）。
   - DecisionTrace 与错误语义同步输出，确保可诊断。
 - Integration Points:
-  - `crates/agent_world/src/viewer/runtime_live.rs`
-  - `crates/agent_world/src/viewer/runtime_live/control_plane.rs`
-  - `crates/agent_world/src/simulator/llm_agent.rs`
-  - `crates/agent_world/src/simulator/runner.rs`
-  - `crates/agent_world/src/runtime/state.rs`
-  - `crates/agent_world/src/runtime/world/domain.rs`
-  - `crates/agent_world/src/viewer/protocol.rs`
+  - `crates/oasis7/src/viewer/runtime_live.rs`
+  - `crates/oasis7/src/viewer/runtime_live/control_plane.rs`
+  - `crates/oasis7/src/simulator/llm_agent.rs`
+  - `crates/oasis7/src/simulator/runner.rs`
+  - `crates/oasis7/src/runtime/state.rs`
+  - `crates/oasis7/src/runtime/world/domain.rs`
+  - `crates/oasis7/src/viewer/protocol.rs`
 - Edge Cases & Error Handling:
   - LLM API 失败/超时：返回 `ActionRejected::LlmFailed`，并输出 DecisionTrace.error。
   - 映射遗漏：单测失败阻止编译通过，不允许运行时静默丢弃。

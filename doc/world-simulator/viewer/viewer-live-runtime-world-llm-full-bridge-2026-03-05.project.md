@@ -16,13 +16,13 @@
 - `doc/world-simulator/prd.md`
 - `doc/world-simulator/project.md`
 - `doc/world-simulator/prd.index.md`
-- `crates/agent_world/src/viewer/runtime_live.rs`
-- `crates/agent_world/src/viewer/runtime_live/control_plane.rs`
-- `crates/agent_world/src/viewer/protocol.rs`
-- `crates/agent_world/src/simulator/llm_agent.rs`
-- `crates/agent_world/src/simulator/runner.rs`
-- `crates/agent_world/src/runtime/state.rs`
-- `crates/agent_world/src/runtime/world/domain.rs`
+- `crates/oasis7/src/viewer/runtime_live.rs`
+- `crates/oasis7/src/viewer/runtime_live/control_plane.rs`
+- `crates/oasis7/src/viewer/protocol.rs`
+- `crates/oasis7/src/simulator/llm_agent.rs`
+- `crates/oasis7/src/simulator/runner.rs`
+- `crates/oasis7/src/runtime/state.rs`
+- `crates/oasis7/src/runtime/world/domain.rs`
 - `doc/world-simulator/viewer/viewer-manual.md`
 
 ## 状态

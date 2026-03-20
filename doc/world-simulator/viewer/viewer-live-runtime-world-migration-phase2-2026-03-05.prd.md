@@ -53,7 +53,7 @@
   - AC-5: runtime live prompt/chat 使用签名校验与 nonce anti-replay；校验失败返回结构化错误码。
   - AC-6: Apply/Rollback 后 snapshot 中可观察到 prompt profile / player 绑定 / nonce 状态更新。
   - AC-7: llm 决策推进 runtime 时，可映射动作成功执行；不可映射动作返回可诊断拒绝。
-  - AC-8: 命令通过：`env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_viewer_live` 与 `env -u RUSTC_WRAPPER cargo check -p agent_world --bin world_viewer_live`。
+  - AC-8: 命令通过：`env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_viewer_live` 与 `env -u RUSTC_WRAPPER cargo check -p oasis7 --bin world_viewer_live`。
 - Non-Goals:
   - 不在 Phase 2 完成 simulator action 到 runtime action 的全量 1:1 映射。
   - 不在 Phase 2 改造 viewer 前端协议或 UI 结构。
@@ -75,11 +75,11 @@
   - 控制面仍由 runtime::World 对外输出兼容快照/事件；llm sidecar 负责 prompt/chat 与决策产出。
   - 决策执行采用“可映射动作直接落 runtime，不可映射动作结构化拒绝”的渐进桥接策略。
 - Integration Points:
-  - `crates/agent_world/src/bin/world_viewer_live.rs`
-  - `crates/agent_world/src/viewer/runtime_live.rs`
-  - `crates/agent_world/src/viewer/auth.rs`
-  - `crates/agent_world/src/viewer/protocol.rs`
-  - `crates/agent_world/src/bin/world_llm_agent_demo/runtime_bridge.rs`
+  - `crates/oasis7/src/bin/world_viewer_live.rs`
+  - `crates/oasis7/src/viewer/runtime_live.rs`
+  - `crates/oasis7/src/viewer/auth.rs`
+  - `crates/oasis7/src/viewer/protocol.rs`
+  - `crates/oasis7/src/bin/world_llm_agent_demo/runtime_bridge.rs`
   - `doc/world-simulator/viewer/viewer-manual.md`
 - Edge Cases & Error Handling:
   - 缺失 auth proof：返回 `auth_proof_required`。

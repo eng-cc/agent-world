@@ -39,15 +39,15 @@
 | 事件兼容适配 | runtime `DomainEvent` -> simulator `WorldEventKind` | 播放/单步后推送映射事件 | `runtime_event -> mapped_event -> client_render` | 保持事件序列单调递增 | 只读推送 |
 | 快照兼容适配 | runtime `WorldState` -> simulator `WorldSnapshot` | `RequestSnapshot` 或事件后更新快照 | `state_change -> snapshot_emit` | 快照时间戳跟随 runtime `state.time` | 只读推送 |
 - Acceptance Criteria:
-  - AC-1: 新增 `crates/agent_world/src/viewer/runtime_live.rs`，实现 runtime 驱动 live server。
+  - AC-1: 新增 `crates/oasis7/src/viewer/runtime_live.rs`，实现 runtime 驱动 live server。
   - AC-2: `world_viewer_live` 新增 `--runtime-world` 参数并正确接线。
   - AC-3: runtime 模式下 `ViewerRequest::Hello/Subscribe/RequestSnapshot/Control` 基础闭环可用。
   - AC-4: runtime 事件至少映射四类：`AgentRegistered`、`AgentMoved`、`ResourceTransferred`、`ActionRejected`。
   - AC-5: simulator 默认模式行为保持不变（未传 `--runtime-world`）。
-  - AC-6: 命令通过：`env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_viewer_live` 与 `env -u RUSTC_WRAPPER cargo check -p agent_world --bin world_viewer_live`。
+  - AC-6: 命令通过：`env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_viewer_live` 与 `env -u RUSTC_WRAPPER cargo check -p oasis7 --bin world_viewer_live`。
 - Non-Goals:
   - 不在 Phase 1 完成 runtime 全量事件 1:1 映射。
-  - 不在 Phase 1 改造 `agent_world_viewer` 前端数据结构。
+  - 不在 Phase 1 改造 `oasis7_viewer` 前端数据结构。
   - 不在 Phase 1 移除 simulator live server 路径。
 
 ## 3. AI System Requirements (If Applicable)
@@ -59,11 +59,11 @@
   - 通过兼容适配层将 runtime 状态/事件转换为 simulator 协议对象。
   - `world_viewer_live` 通过 CLI 选择 runtime 或 simulator server 实例。
 - Integration Points:
-  - `crates/agent_world/src/bin/world_viewer_live.rs`
-  - `crates/agent_world/src/viewer/mod.rs`
-  - `crates/agent_world/src/viewer/runtime_live.rs`
-  - `crates/agent_world/src/viewer/protocol.rs`
-  - `crates/agent_world_viewer/src/main.rs`
+  - `crates/oasis7/src/bin/world_viewer_live.rs`
+  - `crates/oasis7/src/viewer/mod.rs`
+  - `crates/oasis7/src/viewer/runtime_live.rs`
+  - `crates/oasis7/src/viewer/protocol.rs`
+  - `crates/oasis7_viewer/src/main.rs`
 - Edge Cases & Error Handling:
   - runtime 模式收到暂未支持的请求（如 prompt control/chat）时返回结构化错误，不 panic。
   - runtime 模式事件未覆盖映射时降级为 `ActionRejected::RuleDenied` 或忽略（按可诊断优先）。
