@@ -21,7 +21,7 @@
 - 执行内容：
   - 先通过 `git diff --cached --name-only --diff-filter=ACMR -- '*.rs'` 收集已暂存 Rust 文件，再执行 `env -u RUSTC_WRAPPER rustfmt --edition 2021 <files>`，并自动 `git add` 回暂存区。
   - 调用统一测试清单脚本：`./scripts/ci-tests.sh required`（required 具体命令以该脚本与 `doc/testing/ci/ci-test-coverage.prd.md` 为准）。
-  - 执行 viewer wasm 编译门禁：`env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-unknown`。
+  - 执行 viewer wasm 编译门禁：`env -u RUSTC_WRAPPER cargo check -p oasis7_viewer --target wasm32-unknown-unknown`。
 - 规则归属：
   - required/full 分层定义：`doc/testing/ci/ci-tiered-execution.prd.md`
   - case 标签定义（`test_tier_required`/`test_tier_full`）：`doc/testing/ci/ci-testcase-tiering.prd.md`
@@ -30,7 +30,7 @@
 ## 最小验收命令
 - `./scripts/pre-commit.sh`
 - `./scripts/ci-tests.sh required`
-- `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-unknown`
+- `env -u RUSTC_WRAPPER cargo check -p oasis7_viewer --target wasm32-unknown-unknown`
 
 ## Git Hook
 - **注意**：Git hooks 不会随仓库内容一并版本化；克隆到新仓库（或重新初始化 `.git`）后，默认不会自动带上 `pre-commit` hook，需要手动重新注册。
