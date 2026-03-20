@@ -152,6 +152,28 @@
     - `rg -n "oasis7_(net|consensus|distfs|proto|wasm_abi|node)|crates/oasis7/" doc/p2p/distributed/distributed-hard-split-phase7.* doc/p2p/distributed/distributed-pos-consensus.project.md doc/p2p/distributed/distributed-production-runtime-gap1234568-closure.prd.md doc/p2p/distributed/distributed-runtime.prd.md doc/p2p/token/mainchain-token-allocation-mechanism.project.md doc/p2p/token/mainchain-token-allocation-mechanism-phase2-governance-bridge-distribution-2026-02-26.project.md`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
+- [x] TASK-P2P-023 (PRD-P2P-001) [test_tier_required]: 收口 `distfs` 活跃专题中仍把旧 `agent_world*` crate/path/command 写成当前实现载体的口径，统一到 `oasis7*`。
+  - 产物文件:
+    - `doc/p2p/distfs/distfs-heterogeneous-node-optimal-stability-2026-02-23.prd.md`
+    - `doc/p2p/distfs/distfs-heterogeneous-node-optimal-stability-2026-02-23.project.md`
+    - `doc/p2p/distfs/distfs-no-single-full-node-assumption-2026-02-23.prd.md`
+    - `doc/p2p/distfs/distfs-no-single-full-node-assumption-2026-02-23.project.md`
+    - `doc/p2p/distfs/distfs-self-healing-control-plane-2026-02-23.prd.md`
+    - `doc/p2p/distfs/distfs-self-healing-control-plane-2026-02-23.project.md`
+    - `doc/p2p/distfs/distfs-self-healing-runtime-polling-wiring-2026-02-23.prd.md`
+    - `doc/p2p/distfs/distfs-self-healing-runtime-polling-wiring-2026-02-23.project.md`
+    - `doc/p2p/distfs/distfs-path-index-observer-bootstrap.prd.md`
+    - `doc/p2p/distfs/distfs-path-index-observer-bootstrap.project.md`
+    - `doc/p2p/distfs/distfs-feedback-node-runtime-integration-2026-03-01.prd.md`
+    - `doc/p2p/distfs/distfs-feedback-node-runtime-integration-2026-03-01.project.md`
+    - `doc/p2p/distfs/distfs-builtin-wasm-api-closure.prd.md`
+    - `doc/p2p/distfs/distfs-builtin-wasm-api-closure.project.md`
+    - `doc/p2p/distfs/distfs-builtin-wasm-api-closure.design.md`
+    - `doc/p2p/project.md`
+  - 验收命令 (`test_tier_required`):
+    - `rg -n "oasis7_(net|distfs|consensus|proto|node)|crates/oasis7/|cargo run -p oasis7_distfs" doc/p2p/distfs/distfs-heterogeneous-node-optimal-stability-2026-02-23.* doc/p2p/distfs/distfs-no-single-full-node-assumption-2026-02-23.* doc/p2p/distfs/distfs-self-healing-control-plane-2026-02-23.* doc/p2p/distfs/distfs-self-healing-runtime-polling-wiring-2026-02-23.* doc/p2p/distfs/distfs-path-index-observer-bootstrap.* doc/p2p/distfs/distfs-feedback-node-runtime-integration-2026-03-01.* doc/p2p/distfs/distfs-builtin-wasm-api-closure.*`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
 
 ## 依赖
 - 模块设计总览：`doc/p2p/design.md`
@@ -178,8 +200,9 @@
 
 ## 状态
 - 更新日期: 2026-03-20
-- 当前状态: completed（ROUND-013）
+- 当前状态: completed（ROUND-014）
 - 下一任务: 无（等待新需求）
+- 最新完成: `TASK-P2P-023`（已完成 `distfs` 活跃专题中旧 `agent_world*` crate/path/command 当前真值口径的 `oasis7*` 收口。）
 - 最新完成: `TASK-P2P-022`（已完成 `distributed/token` 活跃专题中旧 `agent_world*` crate/path 当前真值口径的 `oasis7*` 收口。）
 - 最新完成: `TASK-P2P-021`（已完成 `observer` 主从专题与 `node-pos-*` 活跃文档中旧 crate/path 当前真值口径的 `oasis7*` 收口。）
 - 最新完成: `TASK-P2P-020`（已完成 `consensus/network` 活跃专题中旧 `agent_world*` crate/path/command 当前真值口径的 `oasis7*` 收口。）

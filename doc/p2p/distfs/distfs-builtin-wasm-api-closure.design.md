@@ -4,7 +4,7 @@
 - 对应项目管理文档: `doc/p2p/distfs/distfs-builtin-wasm-api-closure.project.md`
 
 ## 1. 设计定位
-定义 builtin wasm 工件通过 `agent_world_distfs` API 完成写入、读取、hash 校验与脚本接线的统一路径。
+定义 builtin wasm 工件通过 `oasis7_distfs` API 完成写入、读取、hash 校验与脚本接线的统一路径。
 
 ## 2. 设计结构
 - 存储层：`LocalCasStore` 提供可选 hash 算法策略。

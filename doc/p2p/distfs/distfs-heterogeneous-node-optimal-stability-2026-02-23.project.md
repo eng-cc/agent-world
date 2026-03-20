@@ -11,28 +11,28 @@
 
 ### T1 Provider 能力画像扩展
 - [x] 扩展 `ProviderRecord` 可选能力字段并保持 serde 向后兼容 (PRD-P2P-MIG-064)
-- [x] 更新 `agent_world_net` / `agent_world_consensus` 相关 DHT provider 构造路径 (PRD-P2P-MIG-064)
+- [x] 更新 `oasis7_net` / `oasis7_consensus` 相关 DHT provider 构造路径 (PRD-P2P-MIG-064)
 - [x] 补齐兼容测试 (PRD-P2P-MIG-064)
 
 ### T2 评分排序与重试拉取
 - [x] 新增 provider 评分策略模块（权重 + 归一化） (PRD-P2P-MIG-064)
 - [x] `DistributedClient (PRD-P2P-MIG-064)::fetch_blob_from_dht` 升级为排序后逐 provider 重试
-- [x] 补齐 `agent_world_net` 单测（排序、重试、回退） (PRD-P2P-MIG-064)
+- [x] 补齐 `oasis7_net` 单测（排序、重试、回退） (PRD-P2P-MIG-064)
 
 ### T3 收口
-- [x] 运行回归 (PRD-P2P-MIG-064)：`agent_world_net`、`agent_world_distfs`、`agent_world_consensus`、`agent_world_node`
+- [x] 运行回归 (PRD-P2P-MIG-064)：`oasis7_net`、`oasis7_distfs`、`oasis7_consensus`、`oasis7_node`
 - [x] 更新设计/项目文档状态 (PRD-P2P-MIG-064)
 - [x] 追加 `doc/devlog/2026-02-23.md` 任务日志 (PRD-P2P-MIG-064)
 
 ## 依赖
-- `crates/agent_world_proto/src/distributed_dht.rs`
-- `crates/agent_world_net/src/client.rs`
-- `crates/agent_world_net/src/dht.rs`
-- `crates/agent_world_net/src/dht_cache.rs`
-- `crates/agent_world_net/src/provider_cache.rs`
-- `crates/agent_world_net/src/libp2p_net.rs`
-- `crates/agent_world_net/src/tests.rs`
-- `crates/agent_world_consensus/src/dht.rs`
+- `crates/oasis7_proto/src/distributed_dht.rs`
+- `crates/oasis7_net/src/client.rs`
+- `crates/oasis7_net/src/dht.rs`
+- `crates/oasis7_net/src/dht_cache.rs`
+- `crates/oasis7_net/src/provider_cache.rs`
+- `crates/oasis7_net/src/libp2p_net.rs`
+- `crates/oasis7_net/src/tests.rs`
+- `crates/oasis7_consensus/src/dht.rs`
 
 ## 状态
 - 当前状态：`已完成`

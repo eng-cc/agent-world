@@ -20,12 +20,12 @@
 | --- | --- | --- | --- | --- | --- |
 | 专题迁移 | 需求/任务/依赖/状态/测试层级 | 逐篇重写并校验 | `draft -> active -> done` | 以原文约束点映射为主线 | 维护者写入，复核者抽检 |
 - Acceptance Criteria:
-  - AC-1: `agent_world_net::DistributedClient`
+  - AC-1: `oasis7_net::DistributedClient`
   - AC-2: `fetch_blob_from_dht` 改为严格 DHT provider 模式：
   - AC-3: 无 provider -> 失败；
   - AC-4: provider 全失败 -> 失败；
   - AC-5: 不再回退 `fetch_blob(content_hash)`。
-  - AC-6: `agent_world_net`
+  - AC-6: `oasis7_net`
 - Non-Goals:
   - 自动副本修复调度。
   - 分片迁移与负载重平衡控制面。

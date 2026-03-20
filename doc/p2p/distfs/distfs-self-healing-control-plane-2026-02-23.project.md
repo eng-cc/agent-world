@@ -24,15 +24,15 @@
 - [x] 补齐单测 (PRD-P2P-MIG-077)：成功发布索引 / 失败不污染索引
 
 ### T3 收口
-- [x] 回归 (PRD-P2P-MIG-077)：`agent_world_net`、`agent_world_distfs`、`agent_world_consensus`、`agent_world_node`
+- [x] 回归 (PRD-P2P-MIG-077)：`oasis7_net`、`oasis7_distfs`、`oasis7_consensus`、`oasis7_node`
 - [x] 更新设计/项目文档状态 (PRD-P2P-MIG-077)
 - [x] 追加 `doc/devlog/2026-02-23.md` 任务日志 (PRD-P2P-MIG-077)
 
 ## 依赖
-- `crates/agent_world_net/src/lib.rs`
-- `crates/agent_world_net/src/provider_selection.rs`
-- `crates/agent_world_net/src/dht.rs`
-- `crates/agent_world_net/src/tests.rs`
+- `crates/oasis7_net/src/lib.rs`
+- `crates/oasis7_net/src/provider_selection.rs`
+- `crates/oasis7_net/src/dht.rs`
+- `crates/oasis7_net/src/tests.rs`
 
 ## 状态
 - 当前状态：`已完成`

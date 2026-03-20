@@ -12,12 +12,12 @@
 - [x] T4 (PRD-P2P-MIG-061)：按工程约束拆分 `node/lib.rs`（feedback runtime helper 模块化）并复测。
 
 ## 依赖
-- `crates/agent_world_node/src/types.rs`
-- `crates/agent_world_node/src/lib.rs`
-- `crates/agent_world_node/src/node_runtime_core.rs`
-- `crates/agent_world_node/src/tests*.rs`
-- `crates/agent_world_distfs/src/feedback.rs`
-- `crates/agent_world_distfs/src/feedback_p2p.rs`
+- `crates/oasis7_node/src/types.rs`
+- `crates/oasis7_node/src/lib.rs`
+- `crates/oasis7_node/src/node_runtime_core.rs`
+- `crates/oasis7_node/src/tests*.rs`
+- `crates/oasis7_distfs/src/feedback.rs`
+- `crates/oasis7_distfs/src/feedback_p2p.rs`
 - `doc/p2p/distfs/distfs-feedback-node-runtime-integration-2026-03-01.prd.md`
 
 ## 状态

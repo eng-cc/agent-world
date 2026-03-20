@@ -20,9 +20,9 @@
 | --- | --- | --- | --- | --- | --- |
 | 专题迁移 | 需求/任务/依赖/状态/测试层级 | 逐篇重写并校验 | `draft -> active -> done` | 以原文约束点映射为主线 | 维护者写入，复核者抽检 |
 - Acceptance Criteria:
-  - AC-1: `agent_world_proto`
+  - AC-1: `oasis7_proto`
   - AC-2: 扩展 `ProviderRecord`，新增可选节点能力画像（容量、可用空间、在线率、挑战通过率、负载、延迟）。
-  - AC-3: `agent_world_net`
+  - AC-3: `oasis7_net`
   - AC-4: 新增 provider 评分/排序策略模块。
   - AC-5: `DistributedClient` 的 DHT 拉取路径升级为：按评分排序后逐节点定向重试（失败自动降级）。
   - AC-6: 保留现有无画像节点的兼容行为（按时间新鲜度优先）。

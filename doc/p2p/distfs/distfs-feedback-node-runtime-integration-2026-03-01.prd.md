@@ -5,7 +5,7 @@
 
 审计轮次: 5
 ## 1. Executive Summary
-- Problem Statement: 在不走共识、无中心化服务器前提下，将 feedback 的“提交 + 传播 + 入库”接入 `agent_world_node` 运行时主循环。
+- Problem Statement: 在不走共识、无中心化服务器前提下，将 feedback 的“提交 + 传播 + 入库”接入 `oasis7_node` 运行时主循环。
 - Proposed Solution: 让节点具备两种自动行为：
 - Success Criteria:
   - SC-1: 本地提交 feedback 后自动广播 announce。
@@ -22,7 +22,7 @@
 | --- | --- | --- | --- | --- | --- |
 | 专题迁移 | 需求/任务/依赖/状态/测试层级 | 逐篇重写并校验 | `draft -> active -> done` | 以原文约束点映射为主线 | 维护者写入，复核者抽检 |
 - Acceptance Criteria:
-  - AC-1: `crates/agent_world_node` 新增 feedback p2p 配置：
+  - AC-1: `crates/oasis7_node` 新增 feedback p2p 配置：
   - AC-2: feedback store 限流/大小限制配置（复用 `FeedbackStoreConfig`）。
   - AC-3: 每 tick 的 announce drain/publish 上限。
   - AC-4: `NodeRuntime` 内接入 feedback driver：

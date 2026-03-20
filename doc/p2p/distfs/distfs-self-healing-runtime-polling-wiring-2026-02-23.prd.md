@@ -24,7 +24,7 @@
 | --- | --- | --- | --- | --- | --- |
 | 专题迁移 | 需求/任务/依赖/状态/测试层级 | 逐篇重写并校验 | `draft -> active -> done` | 以原文约束点映射为主线 | 维护者写入，复核者抽检 |
 - Acceptance Criteria:
-  - AC-1: `agent_world_node` 新增 Runtime 级副本维护配置模型（启用开关、采样窗口、维护策略、轮询策略）。
+  - AC-1: `oasis7_node` 新增 Runtime 级副本维护配置模型（启用开关、采样窗口、维护策略、轮询策略）。
   - AC-2: 在 `NodeRuntime` worker tick 中接线维护轮询：
   - AC-3: 按 `poll_interval_ms` 判断是否执行。
   - AC-4: 采集候选 content hash（来自本地复制热数据窗口）。

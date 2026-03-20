@@ -5,7 +5,7 @@
 
 审计轮次: 5
 ## 1. Executive Summary
-- Problem Statement: 将 DistFS 路径索引读取能力接入 `agent_world_net` 的 bootstrap/observer 调用链。
+- Problem Statement: 将 DistFS 路径索引读取能力接入 `oasis7_net` 的 bootstrap/observer 调用链。
 - Proposed Solution: 在“本地已持有执行产物”的场景下，支持不依赖网络拉取完成世界恢复。
 - Success Criteria:
   - SC-1: 保持现有网络路径不变，新增显式路径索引入口，避免影响既有行为。
@@ -69,7 +69,7 @@
 - Phased Rollout:
   - POBI-1：设计文档与项目管理文档落地。
   - POBI-2：bootstrap/head_follow/observer 路径索引入口实现。
-  - POBI-3：单元测试与 `agent_world_net` 回归。
+  - POBI-3：单元测试与 `oasis7_net` 回归。
   - POBI-4：状态文档与 devlog 收口。
 - Technical Risks:
   - 路径索引与 CAS 数据不一致时，恢复流程会失败（可接受，需错误可诊断）。

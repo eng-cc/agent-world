@@ -20,16 +20,16 @@
 - [x] 补齐单测（启用执行/缺失依赖跳过/非法配置） (PRD-P2P-MIG-079)
 
 ### T2 收口
-- [x] 回归 (PRD-P2P-MIG-079)：`agent_world_node`、`agent_world_net`、`agent_world_distfs`、`agent_world_consensus`
+- [x] 回归 (PRD-P2P-MIG-079)：`oasis7_node`、`oasis7_net`、`oasis7_distfs`、`oasis7_consensus`
 - [x] 更新设计/项目文档状态 (PRD-P2P-MIG-079)
 - [x] 追加 `doc/devlog/2026-02-23.md` 任务日志 (PRD-P2P-MIG-079)
 
 ## 依赖
-- `crates/agent_world_node/src/lib.rs`
-- `crates/agent_world_node/src/node_runtime_core.rs`
-- `crates/agent_world_node/src/types.rs`
-- `crates/agent_world_node/src/network_bridge.rs`
-- `crates/agent_world_node/src/tests_split_part1.rs`
+- `crates/oasis7_node/src/lib.rs`
+- `crates/oasis7_node/src/node_runtime_core.rs`
+- `crates/oasis7_node/src/types.rs`
+- `crates/oasis7_node/src/network_bridge.rs`
+- `crates/oasis7_node/src/tests_split_part1.rs`
 
 ## 状态
 - 当前状态：`已完成`

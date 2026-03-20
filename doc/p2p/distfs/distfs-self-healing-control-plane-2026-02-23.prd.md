@@ -25,12 +25,12 @@
 | --- | --- | --- | --- | --- | --- |
 | 专题迁移 | 需求/任务/依赖/状态/测试层级 | 逐篇重写并校验 | `draft -> active -> done` | 以原文约束点映射为主线 | 维护者写入，复核者抽检 |
 - Acceptance Criteria:
-  - AC-1: `agent_world_net` 新增 `replica_maintenance` 模块，提供：
+  - AC-1: `oasis7_net` 新增 `replica_maintenance` 模块，提供：
   - AC-2: 副本维护策略（目标副本数、每轮最大任务、负载阈值等）。
   - AC-3: 维护计划生成器（Repair + Rebalance）。
   - AC-4: 维护计划执行器（执行成功后写回 DHT provider 索引）。
   - AC-5: 对外导出维护计划/报告结构，便于 node/runtime 后续调度接线。
-  - AC-6: `agent_world_net` 单测覆盖：
+  - AC-6: `oasis7_net` 单测覆盖：
 - Non-Goals:
   - 跨机真实数据搬运协议（本轮仅定义执行器接口，不绑定具体传输实现）。
   - 跨 DC 拓扑感知、地域感知放置策略。

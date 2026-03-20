@@ -5,7 +5,7 @@
 
 审计轮次: 5
 ## 1. Executive Summary
-- Problem Statement: 将 builtin wasm 的“写入/读取”统一走 `agent_world_distfs` API，避免旁路文件操作。
+- Problem Statement: 将 builtin wasm 的“写入/读取”统一走 `oasis7_distfs` API，避免旁路文件操作。
 - Proposed Solution: 让后续 wasm 模块扩展复用同一 DistFS API 路径（脚本落盘、运行时读取、hash 校验语义一致）。
 - Success Criteria:
   - SC-1: 保持当前治理边界：git 继续追踪 `module_id -> sha256` 清单，wasm 二进制仍不入 git。
@@ -21,7 +21,7 @@
 | 专题迁移 | 需求/任务/依赖/状态/测试层级 | 逐篇重写并校验 | `draft -> active -> done` | 以原文约束点映射为主线 | 维护者写入，复核者抽检 |
 - Acceptance Criteria:
   - AC-1: In Scope：
-  - AC-2: 为 `agent_world_distfs::LocalCasStore` 增加可选 hash 算法策略（默认 `blake3`，新增 `sha256`）。
+  - AC-2: 为 `oasis7_distfs::LocalCasStore` 增加可选 hash 算法策略（默认 `blake3`，新增 `sha256`）。
   - AC-3: 新增 DistFS 工具入口，用于按 hash manifest + built wasm 目录写入 blob（走 `LocalCasStore::put`）。
   - AC-4: `scripts/sync-m4-builtin-wasm-artifacts.sh` 改为调用 DistFS 工具完成写入。
   - AC-5: runtime builtin wasm 读取改为使用 `LocalCasStore` API（读取并按 sha256 校验）。
@@ -50,7 +50,7 @@
   - `HashAlgorithm::{Blake3,Sha256}`
   - `BlobStore::put/get/has` 在 `LocalCasStore` 上按实例 hash 策略工作。
 - 工具入口：
-  - `cargo run -p agent_world_distfs --bin hydrate_builtin_wasm -- --root <distfs-root> --manifest <sha256-manifest> --built-dir <wasm-dir>`
+  - `cargo run -p oasis7_distfs --bin hydrate_builtin_wasm -- --root <distfs-root> --manifest <sha256-manifest> --built-dir <wasm-dir>`
 - 运行时：
   - `m1/m4` builtin wasm 读取改为 `LocalCasStore` API。
   - 缺失/校验失败仍返回 `ModuleChangeInvalid`，并包含定位信息。
@@ -58,7 +58,7 @@
 ## 5. Risks & Roadmap
 - Phased Rollout:
   - M1：设计文档与项目管理文档。
-  - M2：`agent_world_distfs` hash 策略扩展 + hydrate 工具。
+  - M2：`oasis7_distfs` hash 策略扩展 + hydrate 工具。
   - M3：sync 脚本与 runtime 读取切到 DistFS API。
   - M4：required 回归 + 文档/devlog 收口。
 - Technical Risks:
