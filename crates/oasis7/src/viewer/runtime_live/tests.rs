@@ -15,6 +15,15 @@ const VIEWER_OPENCLAW_CONNECT_TIMEOUT_MS_ENV: &str = "OASIS7_OPENCLAW_CONNECT_TI
 const VIEWER_OPENCLAW_AGENT_PROFILE_ENV: &str = "OASIS7_OPENCLAW_AGENT_PROFILE";
 const VIEWER_OPENCLAW_EXECUTION_MODE_ENV: &str = "OASIS7_OPENCLAW_EXECUTION_MODE";
 const RUNTIME_AGENT_CHAT_ECHO_ENV: &str = "OASIS7_RUNTIME_AGENT_CHAT_ECHO";
+const REMOVED_OLD_BRAND_PROVIDER_MODE_ENV: &str = "AGENT_WORLD_AGENT_PROVIDER_MODE";
+const REMOVED_OLD_BRAND_OPENCLAW_BASE_URL_ENV: &str = "AGENT_WORLD_OPENCLAW_BASE_URL";
+const REMOVED_OLD_BRAND_OPENCLAW_AUTH_TOKEN_ENV: &str = "AGENT_WORLD_OPENCLAW_AUTH_TOKEN";
+const REMOVED_OLD_BRAND_OPENCLAW_TIMEOUT_ENV: &str =
+    "AGENT_WORLD_OPENCLAW_CONNECT_TIMEOUT_MS";
+const REMOVED_OLD_BRAND_OPENCLAW_PROFILE_ENV: &str = "AGENT_WORLD_OPENCLAW_AGENT_PROFILE";
+const REMOVED_OLD_BRAND_OPENCLAW_EXECUTION_MODE_ENV: &str =
+    "AGENT_WORLD_OPENCLAW_EXECUTION_MODE";
+const REMOVED_OLD_BRAND_CHAT_ECHO_ENV: &str = "AGENT_WORLD_RUNTIME_AGENT_CHAT_ECHO";
 
 fn test_signer(seed: u8) -> (String, String) {
     let private_key = [seed; 32];
@@ -46,13 +55,13 @@ fn clear_runtime_openclaw_env() {
         VIEWER_OPENCLAW_AGENT_PROFILE_ENV,
         VIEWER_OPENCLAW_EXECUTION_MODE_ENV,
         RUNTIME_AGENT_CHAT_ECHO_ENV,
-        "AGENT_WORLD_AGENT_PROVIDER_MODE",
-        "AGENT_WORLD_OPENCLAW_BASE_URL",
-        "AGENT_WORLD_OPENCLAW_AUTH_TOKEN",
-        "AGENT_WORLD_OPENCLAW_CONNECT_TIMEOUT_MS",
-        "AGENT_WORLD_OPENCLAW_AGENT_PROFILE",
-        "AGENT_WORLD_OPENCLAW_EXECUTION_MODE",
-        "AGENT_WORLD_RUNTIME_AGENT_CHAT_ECHO",
+        REMOVED_OLD_BRAND_PROVIDER_MODE_ENV,
+        REMOVED_OLD_BRAND_OPENCLAW_BASE_URL_ENV,
+        REMOVED_OLD_BRAND_OPENCLAW_AUTH_TOKEN_ENV,
+        REMOVED_OLD_BRAND_OPENCLAW_TIMEOUT_ENV,
+        REMOVED_OLD_BRAND_OPENCLAW_PROFILE_ENV,
+        REMOVED_OLD_BRAND_OPENCLAW_EXECUTION_MODE_ENV,
+        REMOVED_OLD_BRAND_CHAT_ECHO_ENV,
     ] {
         std::env::remove_var(env_name);
     }
@@ -149,18 +158,21 @@ fn openclaw_settings_from_env_parses_profile_and_timeout() {
 }
 
 #[test]
-fn openclaw_settings_from_env_ignores_compat_old_brand_prefix() {
+fn openclaw_settings_from_env_ignores_removed_old_brand_prefix() {
     let _guard = runtime_openclaw_env_lock().lock().expect("env lock");
     clear_runtime_openclaw_env();
-    std::env::set_var("AGENT_WORLD_AGENT_PROVIDER_MODE", "openclaw_local_http");
-    std::env::set_var("AGENT_WORLD_OPENCLAW_BASE_URL", "http://127.0.0.1:5842");
-    std::env::set_var("AGENT_WORLD_OPENCLAW_CONNECT_TIMEOUT_MS", "4300");
+    std::env::set_var(REMOVED_OLD_BRAND_PROVIDER_MODE_ENV, "openclaw_local_http");
+    std::env::set_var(REMOVED_OLD_BRAND_OPENCLAW_BASE_URL_ENV, "http://127.0.0.1:5842");
+    std::env::set_var(REMOVED_OLD_BRAND_OPENCLAW_TIMEOUT_ENV, "4300");
+    std::env::set_var(REMOVED_OLD_BRAND_OPENCLAW_PROFILE_ENV, "oasis7_p0_low_freq_npc");
     std::env::set_var(
-        "AGENT_WORLD_OPENCLAW_AGENT_PROFILE",
-        "oasis7_p0_low_freq_npc",
+        REMOVED_OLD_BRAND_OPENCLAW_EXECUTION_MODE_ENV,
+        "player_parity",
     );
-    std::env::set_var("AGENT_WORLD_OPENCLAW_EXECUTION_MODE", "player_parity");
-    std::env::set_var("AGENT_WORLD_OPENCLAW_AUTH_TOKEN", "compat-old-brand-token");
+    std::env::set_var(
+        REMOVED_OLD_BRAND_OPENCLAW_AUTH_TOKEN_ENV,
+        "removed-old-brand-token",
+    );
 
     let settings =
         super::control_plane::runtime_openclaw_settings_from_env().expect("settings parse");
@@ -909,9 +921,9 @@ fn runtime_agent_chat_echo_env_enqueues_agent_spoke_virtual_event() {
 }
 
 #[test]
-fn runtime_agent_chat_echo_compat_old_brand_env_is_ignored() {
+fn runtime_agent_chat_echo_removed_old_brand_env_is_ignored() {
     let _guard = lock_test_llm_env();
-    std::env::set_var("AGENT_WORLD_RUNTIME_AGENT_CHAT_ECHO", "1");
+    std::env::set_var(REMOVED_OLD_BRAND_CHAT_ECHO_ENV, "1");
     let mut server = ViewerRuntimeLiveServer::new(
         ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal)
             .with_decision_mode(ViewerLiveDecisionMode::Llm),

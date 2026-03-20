@@ -481,16 +481,14 @@ mod tests {
     }
 
     #[test]
-    fn builtin_wasm_env_non_empty_ignores_compat_old_brand_prefix() {
+    fn builtin_wasm_env_non_empty_ignores_removed_old_brand_prefix() {
         let _env_lock = BUILTIN_WASM_ENV_LOCK.lock().expect("lock builtin wasm env");
         let primary_key = builtin_wasm_env_key("FETCHER");
         let _primary_guard = TestEnvGuard::capture(primary_key.as_str());
-        let _compat_old_brand_guard = TestEnvGuard::capture("AGENT_WORLD_BUILTIN_WASM_FETCHER");
+        let _removed_old_brand_guard =
+            TestEnvGuard::capture("AGENT_WORLD_BUILTIN_WASM_FETCHER");
         std::env::remove_var(primary_key.as_str());
-        std::env::set_var(
-            "AGENT_WORLD_BUILTIN_WASM_FETCHER",
-            "/tmp/compat-old-brand-fetcher",
-        );
+        std::env::set_var("AGENT_WORLD_BUILTIN_WASM_FETCHER", "/tmp/removed-old-brand-fetcher");
 
         assert!(builtin_wasm_env_non_empty("FETCHER").is_none());
     }

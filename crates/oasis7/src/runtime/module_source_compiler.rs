@@ -391,15 +391,16 @@ mod tests {
     }
 
     #[test]
-    fn module_source_env_non_empty_ignores_compat_old_brand_value() {
+    fn module_source_env_non_empty_ignores_removed_old_brand_value() {
         let _guard = module_source_env_lock().lock().expect("env lock");
         let key = module_source_env_key("COMPILER");
         let _env_guard = TestEnvGuard::capture(key.as_str());
-        let _compat_guard = TestEnvGuard::capture("AGENT_WORLD_MODULE_SOURCE_COMPILER");
+        let _removed_old_brand_guard =
+            TestEnvGuard::capture("AGENT_WORLD_MODULE_SOURCE_COMPILER");
         std::env::remove_var(key.as_str());
         std::env::set_var(
             "AGENT_WORLD_MODULE_SOURCE_COMPILER",
-            "/tmp/compat-old-brand-module-source-compiler",
+            "/tmp/removed-old-brand-module-source-compiler",
         );
 
         assert!(module_source_env_non_empty("COMPILER").is_none());

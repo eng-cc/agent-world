@@ -971,7 +971,8 @@ mod tests {
     #[test]
     fn compile_time_guard_rejects_workspace_build_script_target() {
         let _guard = EnvVarGuard::capture(wasm_env_key("VALIDATE_WORKSPACE_COMPILETIME"));
-        let _old_brand_guard = EnvVarGuard::capture("AGENT_WORLD_WASM_VALIDATE_WORKSPACE_COMPILETIME");
+        let _removed_old_brand_guard =
+            EnvVarGuard::capture("AGENT_WORLD_WASM_VALIDATE_WORKSPACE_COMPILETIME");
         env::set_var(wasm_env_key("VALIDATE_WORKSPACE_COMPILETIME"), "1");
         env::remove_var("AGENT_WORLD_WASM_VALIDATE_WORKSPACE_COMPILETIME");
 
@@ -1004,7 +1005,8 @@ mod tests {
     #[test]
     fn compile_time_guard_allows_external_proc_macro_package() {
         let _guard = EnvVarGuard::capture(wasm_env_key("VALIDATE_WORKSPACE_COMPILETIME"));
-        let _old_brand_guard = EnvVarGuard::capture("AGENT_WORLD_WASM_VALIDATE_WORKSPACE_COMPILETIME");
+        let _removed_old_brand_guard =
+            EnvVarGuard::capture("AGENT_WORLD_WASM_VALIDATE_WORKSPACE_COMPILETIME");
         env::set_var(wasm_env_key("VALIDATE_WORKSPACE_COMPILETIME"), "1");
         env::remove_var("AGENT_WORLD_WASM_VALIDATE_WORKSPACE_COMPILETIME");
 
@@ -1097,7 +1099,7 @@ mod tests {
     #[test]
     fn wasm_env_value_or_default_prefers_oasis7_prefix() {
         let _primary = EnvVarGuard::capture(wasm_env_key("BUILD_STD"));
-        let _old_brand = EnvVarGuard::capture("AGENT_WORLD_WASM_BUILD_STD");
+        let _removed_old_brand = EnvVarGuard::capture("AGENT_WORLD_WASM_BUILD_STD");
         env::set_var(wasm_env_key("BUILD_STD"), "1");
         env::set_var("AGENT_WORLD_WASM_BUILD_STD", "0");
 
@@ -1105,9 +1107,10 @@ mod tests {
     }
 
     #[test]
-    fn wasm_env_value_or_default_ignores_old_brand_prefix() {
+    fn wasm_env_value_or_default_ignores_removed_old_brand_prefix() {
         let _primary = EnvVarGuard::capture(wasm_env_key("BUILD_STD_COMPONENTS"));
-        let _old_brand = EnvVarGuard::capture("AGENT_WORLD_WASM_BUILD_STD_COMPONENTS");
+        let _removed_old_brand =
+            EnvVarGuard::capture("AGENT_WORLD_WASM_BUILD_STD_COMPONENTS");
         env::remove_var(wasm_env_key("BUILD_STD_COMPONENTS"));
         env::set_var("AGENT_WORLD_WASM_BUILD_STD_COMPONENTS", "std,panic_abort");
 

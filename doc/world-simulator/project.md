@@ -809,7 +809,7 @@
 - [x] TASK-WORLD_SIMULATOR-232 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 移除 `tools/wasm_build_suite/src/lib.rs` 与相关测试中的 `AGENT_WORLD_WASM_*` compat alias，收口 wasm build suite library 当前入口到 `OASIS7_WASM_*`，并把 compat 测试改为断言旧 alias 已失效。
 - [x] TASK-WORLD_SIMULATOR-233 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 移除 `crates/oasis7/src/bin/world_openclaw_local_bridge.rs` 与相关测试中的旧 profile alias `agent_world_p0_low_freq_npc`，收口 OpenClaw local bridge 当前入口到 `oasis7_p0_low_freq_npc`，并把 compat 测试改为断言旧 alias 已失效。
 - [x] TASK-WORLD_SIMULATOR-234 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 收口 `crates/oasis7_viewer/src/{viewer_env.rs,perf_probe.rs}`、`crates/oasis7_client_launcher/src/self_guided.rs` 等源码内嵌负向测试中的旧品牌 helper / fixture 命名，保留必要旧 alias 字面量仅作为“已移除 alias”的负向输入。
-- [ ] TASK-WORLD_SIMULATOR-235 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 收口 `tools/wasm_build_suite/src/lib.rs`、`crates/oasis7/src/{viewer/runtime_live/tests.rs,runtime/module_source_compiler.rs,runtime/builtin_wasm_materializer.rs,simulator/llm_agent/tests_split_part1.rs,bin/world_openclaw_local_bridge.rs}` 等源码内嵌负向测试中的旧品牌 helper / fixture 命名，保留必要旧 alias 字面量仅作为“已移除 alias”的负向输入。
+- [x] TASK-WORLD_SIMULATOR-235 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 收口 `tools/wasm_build_suite/src/lib.rs`、`crates/oasis7/src/{viewer/runtime_live/tests.rs,runtime/module_source_compiler.rs,runtime/builtin_wasm_materializer.rs,simulator/llm_agent/tests_split_part1.rs,bin/world_openclaw_local_bridge.rs}` 等源码内嵌负向测试中的旧品牌 helper / fixture 命名，保留必要旧 alias 字面量仅作为“已移除 alias”的负向输入。
 - [x] TASK-WORLD_SIMULATOR-203 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 viewer/OpenClaw 脚本中的旧品牌 env helper 与局部变量命名切到 `compat` 语义，收口脚本层里残留的 `legacy_key` / `viewer_legacy_env_key` / `promote_legacy_viewer_envs` 口径。
   - 产物文件:
     - `doc/world-simulator/prd.md`
@@ -963,8 +963,8 @@
 ## 状态
 - 更新日期: 2026-03-20
 - 当前状态: active
-- 下一任务: `TASK-WORLD_SIMULATOR-235`
-- 最新完成: `TASK-WORLD_SIMULATOR-234`（已收口 `crates/oasis7_viewer/src/{viewer_env.rs,perf_probe.rs}` 与 `crates/oasis7_client_launcher/src/self_guided.rs` 等源码内嵌负向测试中的旧品牌 helper / fixture 命名，保留必要旧 alias 字面量仅作为“已移除 alias”的负向输入。）
+- 下一任务: `none`（兼容入口清理已完成；剩余旧品牌字面量仅保留为负向测试输入。）
+- 最新完成: `TASK-WORLD_SIMULATOR-234~235`（已收口 viewer/client/runtime/tooling 源码内嵌负向测试中的旧品牌 helper / fixture 命名，保留必要旧 alias 字面量仅作为“已移除 alias”的负向输入。）
 - 最新完成: `TASK-WORLD_SIMULATOR-233`（已移除 `crates/oasis7/src/bin/world_openclaw_local_bridge.rs` 与相关测试中的旧 profile alias `agent_world_p0_low_freq_npc`，收口 OpenClaw local bridge 当前入口到 `oasis7_p0_low_freq_npc`，并把 compat 测试改为断言旧 alias 已失效。）
 - 最新完成: `TASK-WORLD_SIMULATOR-232`（已移除 `tools/wasm_build_suite/src/lib.rs` 与相关测试中的 `AGENT_WORLD_WASM_*` fallback，收口 wasm build suite library 当前入口到 `OASIS7_WASM_*`，并把 compat 测试改为断言旧 alias 已失效。）
 - 最新完成: `TASK-WORLD_SIMULATOR-230~231`（已移除 wasm build/sync 脚本与 operator 脚本中的 `AGENT_WORLD_WASM_*`、`AGENT_WORLD_VIEWER_*` 与 `AGENT_WORLD_CHAIN_STORAGE_PROFILE` fallback，并收口相关 operator 文案到 `OASIS7_*` 当前入口。）
