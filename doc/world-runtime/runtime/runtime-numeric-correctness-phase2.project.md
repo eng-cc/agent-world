@@ -27,16 +27,16 @@
 
 ## 依赖
 - Runtime：
-  - `crates/agent_world/src/runtime/node_points.rs`
-  - `crates/agent_world/src/runtime/node_points_runtime.rs`
+  - `crates/oasis7/src/runtime/node_points.rs`
+  - `crates/oasis7/src/runtime/node_points_runtime.rs`
 - Consensus/Node：
-  - `crates/agent_world_consensus/src/node_pos.rs`
-  - `crates/agent_world_consensus/src/pos.rs`
-  - `crates/agent_world_node/src/lib.rs`
+  - `crates/oasis7_consensus/src/node_pos.rs`
+  - `crates/oasis7_consensus/src/pos.rs`
+  - `crates/oasis7_node/src/lib.rs`
 - 测试：
-  - `crates/agent_world/src/runtime/node_points.rs`（内联 tests）
-  - `crates/agent_world/src/runtime/node_points_runtime.rs`（内联 tests）
-  - `crates/agent_world_consensus/src/pos.rs`（内联 tests）
+  - `crates/oasis7/src/runtime/node_points.rs`（内联 tests）
+  - `crates/oasis7/src/runtime/node_points_runtime.rs`（内联 tests）
+  - `crates/oasis7_consensus/src/pos.rs`（内联 tests）
 
 ## 状态
 - 当前状态：`已完成`

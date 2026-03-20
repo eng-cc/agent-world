@@ -436,18 +436,18 @@ struct StorageReplaySummary {
 - 回退不允许改变 canonical log 结构。
 
 ## 15. 代码落点建议
-- `crates/agent_world/src/bin/world_viewer_live/execution_bridge.rs`
+- `crates/oasis7/src/bin/world_chain_runtime/execution_bridge.rs`
   - `ExecutionBridgeRecordV2`
   - checkpoint 写入逻辑
   - pin set 计算与 retention manager
-- `crates/agent_world/src/runtime/world/persistence.rs`
+- `crates/oasis7/src/runtime/world/persistence.rs`
   - sidecar generation index
   - manifest-aware sweep
-- `crates/agent_world/src/runtime/snapshot.rs`
+- `crates/oasis7/src/runtime/snapshot.rs`
   - `tick_consensus_records` 热冷分层索引字段
-- `crates/agent_world/src/bin/world_chain_runtime.rs`
+- `crates/oasis7/src/bin/world_chain_runtime.rs`
   - storage profile 配置与 metrics 发布
-- `crates/agent_world_node/src/replication.rs`
+- `crates/oasis7_node/src/replication.rs`
   - hot/cold commit mirror 与 storage profile 对齐
 - `testing-manual.md`
   - footprint / replay contract / GC fail-safe 验收矩阵

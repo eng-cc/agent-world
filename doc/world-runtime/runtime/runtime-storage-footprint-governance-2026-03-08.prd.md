@@ -91,13 +91,13 @@
     - `Cold Metadata`: 小体积索引/记录，允许长期保留。
     - `Orphan / Unpinned Data`: 不再被任一有效 generation / retention class 引用的数据，允许 GC。
 - Integration Points:
-  - `crates/agent_world/src/bin/world_viewer_live/world_viewer_live_split_part2.rs`
-  - `crates/agent_world/src/bin/world_viewer_live/execution_bridge.rs`
-  - `crates/agent_world/src/bin/world_chain_runtime.rs`
-  - `crates/agent_world/src/runtime/world/persistence.rs`
-  - `crates/agent_world/src/runtime/snapshot.rs`
-  - `crates/agent_world_node/src/replication.rs`
-  - `crates/agent_world_distfs/src/lib.rs`
+  - `crates/oasis7/src/bin/world_viewer_live.rs`
+  - `crates/oasis7/src/bin/world_chain_runtime/execution_bridge.rs`
+  - `crates/oasis7/src/bin/world_chain_runtime.rs`
+  - `crates/oasis7/src/runtime/world/persistence.rs`
+  - `crates/oasis7/src/runtime/snapshot.rs`
+  - `crates/oasis7_node/src/replication.rs`
+  - `crates/oasis7_distfs/src/lib.rs`
   - `doc/world-runtime/runtime/runtime-integration.md`
   - `doc/world-runtime/module/module-storage.prd.md`
 - Edge Cases & Error Handling:

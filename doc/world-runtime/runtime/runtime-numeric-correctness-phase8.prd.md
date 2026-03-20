@@ -13,14 +13,14 @@
 
 ## 2. User Experience & Functionality
 ### In Scope（第八阶段）
-- `crates/agent_world_consensus/src/membership_recovery/types.rs`
+- `crates/oasis7_consensus/src/membership_recovery/types.rs`
   - `MembershipRevocationPendingAlert::with_retry_failure` 从饱和递进改为受检递进：
     - `attempt` 递进受检；
     - `next_retry_at_ms = now_ms + retry_backoff_ms` 受检。
-- `crates/agent_world_consensus/src/membership_recovery/mod.rs`
+- `crates/oasis7_consensus/src/membership_recovery/mod.rs`
   - 接线重试失败路径，透传数值越界错误；
   - 保证越界失败时 pending/dead-letter 不发生部分更新。
-- `crates/agent_world_consensus/src/membership_recovery/replay.rs`
+- `crates/oasis7_consensus/src/membership_recovery/replay.rs`
   - 自适应策略中 `* 2` 阈值比较与 `* 1000` 比率换算改为无溢出实现（避免 `saturating_mul` 失真）。
 - 测试：
   - 新增重试计数/回退时间越界拒绝测试；

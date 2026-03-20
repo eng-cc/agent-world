@@ -28,21 +28,21 @@
 
 ## 依赖
 - Runtime world 核心：
-  - `crates/agent_world/src/runtime/world/mod.rs`
-  - `crates/agent_world/src/runtime/world/actions.rs`
-  - `crates/agent_world/src/runtime/world/effects.rs`
-  - `crates/agent_world/src/runtime/world/governance.rs`
-  - `crates/agent_world/src/runtime/world/event_processing.rs`
-  - `crates/agent_world/src/runtime/world/persistence.rs`
+  - `crates/oasis7/src/runtime/world/mod.rs`
+  - `crates/oasis7/src/runtime/world/actions.rs`
+  - `crates/oasis7/src/runtime/world/effects.rs`
+  - `crates/oasis7/src/runtime/world/governance.rs`
+  - `crates/oasis7/src/runtime/world/event_processing.rs`
+  - `crates/oasis7/src/runtime/world/persistence.rs`
 - Snapshot 结构：
-  - `crates/agent_world/src/runtime/snapshot.rs`
+  - `crates/oasis7/src/runtime/snapshot.rs`
 - 相关防溢出路径：
-  - `crates/agent_world/src/runtime/world/resources.rs`
-  - `crates/agent_world/src/runtime/rules.rs`
-  - `crates/agent_world/src/simulator/types.rs`
-  - `crates/agent_world/src/runtime/world/module_runtime.rs`
-  - `crates/agent_world_wasm_executor/src/lib.rs`
-  - `crates/agent_world_net/src/execution_storage.rs`
+  - `crates/oasis7/src/runtime/world/resources.rs`
+  - `crates/oasis7/src/runtime/rules.rs`
+  - `crates/oasis7/src/simulator/types.rs`
+  - `crates/oasis7/src/runtime/world/module_runtime.rs`
+  - `crates/oasis7_wasm_executor/src/lib.rs`
+  - `crates/oasis7_net/src/execution_storage.rs`
 
 ## 状态
 - 当前状态：`已完成`

@@ -13,11 +13,11 @@
 
 ## 2. User Experience & Functionality
 ### In Scope（第七阶段）
-- `agent_world_proto::distributed_pos::required_supermajority_stake`：
+- `oasis7_proto::distributed_pos::required_supermajority_stake`：
   - 将 `numerator.saturating_mul(2) <= denominator` 改为无乘法溢出的判定方式（等价于 `numerator <= denominator / 2`）。
-- `agent_world_consensus::PosConsensus::new`：
+- `oasis7_consensus::PosConsensus::new`：
   - 同步采用无溢出超多数比率判定。
-- `agent_world_node::pos_validation::validated_pos_state`：
+- `oasis7_node::pos_validation::validated_pos_state`：
   - 同步采用无溢出超多数比率判定。
 - 测试：
   - 新增/更新大整数边界测试，覆盖 `denominator = u64::MAX`、`numerator = denominator / 2 + 1` 等场景。

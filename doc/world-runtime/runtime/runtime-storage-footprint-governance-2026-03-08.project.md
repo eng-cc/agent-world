@@ -69,13 +69,13 @@
 - `doc/world-runtime/prd.md`
 - `doc/world-runtime/project.md`
 - `doc/world-runtime/prd.index.md`
-- `crates/agent_world/src/bin/world_viewer_live/world_viewer_live_split_part2.rs`
-- `crates/agent_world/src/bin/world_viewer_live/execution_bridge.rs`
-- `crates/agent_world/src/bin/world_chain_runtime.rs`
-- `crates/agent_world/src/runtime/world/persistence.rs`
-- `crates/agent_world/src/runtime/snapshot.rs`
-- `crates/agent_world_node/src/replication.rs`
-- `crates/agent_world_distfs/src/lib.rs`
+- `crates/oasis7/src/bin/world_viewer_live.rs`
+- `crates/oasis7/src/bin/world_chain_runtime/execution_bridge.rs`
+- `crates/oasis7/src/bin/world_chain_runtime.rs`
+- `crates/oasis7/src/runtime/world/persistence.rs`
+- `crates/oasis7/src/runtime/snapshot.rs`
+- `crates/oasis7_node/src/replication.rs`
+- `crates/oasis7_distfs/src/lib.rs`
 - `testing-manual.md`
 
 ## 状态
@@ -90,7 +90,7 @@
 - 本轮新增: T6.3 已把 `effective_budget` 与 `replay_summary` 接入 `StorageMetricsSnapshot` / `/v1/chain/status.storage`，并把 retained heights / checkpoint heights 收敛为 `latest_only`、`full_log_only`、`checkpoint_plus_log` 三档回放能力摘要，供 launcher / 脚本直接判断治理状态。
 - 本轮新增: T6.4 已在 bundle 中新增 `run-chain-runtime.sh`，并让 `run-game.sh` / `run-web-launcher.sh` 共享 `AGENT_WORLD_CHAIN_STORAGE_PROFILE` 覆盖通道；wrapper 仅在显式设置时注入 profile 参数，默认继续继承底层二进制口径，避免 shell 常量漂移。
 - 本轮新增: T6.5 已补齐定向测试：`world_chain_runtime` status payload 现锁住 `last_gc_error` / `degraded_reason` / `replay_summary` 字段，`world_game_launcher` 与 `world_web_launcher` 也分别补上未知 profile 拒绝与 profile 透传回归。
-- 本轮新增: T7.1 已在 `crates/agent_world/src/runtime/tests/storage_footprint_fixture.rs` 新增可复现实验基线：通过 `2500` 次 `World::step()` + `save_to_dir()` 生成 archive/snapshot 样本，并锁住 `tick_consensus_total_record_count`、archive index 与范围读回，供后续 footprint gate / replay regression 复用。
+- 本轮新增: T7.1 已在 `crates/oasis7/src/runtime/tests/storage_footprint_fixture.rs` 新增可复现实验基线：通过 `2500` 次 `World::step()` + `save_to_dir()` 生成 archive/snapshot 样本，并锁住 `tick_consensus_total_record_count`、archive index 与范围读回，供后续 footprint gate / replay regression 复用。
 - 本轮新增（2026-03-10 / T7.2）: 已新增 `scripts/world-runtime-storage-gate.sh`，可直接消费 `reward-runtime-storage-metrics.json` 或 `/v1/chain/status` JSON，校验 `storage_profile/effective_budget/checkpoint_count/orphan_blob_count/replay_summary/last_gc_result/degraded_reason` 并输出 `summary.md/json`。
 - 本轮验证样本: `.tmp/world_runtime_storage_gate/20260310-234359/summary.md`（合成 `release_default` 样本通过）与 `doc/world-runtime/evidence/runtime-storage-gate-sample-2026-03-10.md`（真实 `world_chain_runtime` 样本已将根因从“未达 64”更新为“execution bridge 未绑定 profile cadence（已修复并完成 QA 复验）”）。
 - 本轮新增（2026-03-10 / T7.2 root cause）: 真实 probe 已在 `height=32` 观察到 `checkpoint_count=1`，并结合读码确认 `world_chain_runtime` 仍使用 execution bridge 的硬编码 `32/4` retention 默认值，而不是 `release_default` 的 `64/8`。

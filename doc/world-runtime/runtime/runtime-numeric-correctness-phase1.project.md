@@ -32,17 +32,17 @@
 
 ## 依赖
 - Runtime 核心：
-  - `crates/agent_world/src/runtime/world/step.rs`
-  - `crates/agent_world/src/runtime/world/resources.rs`
-  - `crates/agent_world/src/runtime/rules.rs`
-  - `crates/agent_world/src/runtime/state/apply_domain_event_core.rs`
-  - `crates/agent_world/src/runtime/state/apply_domain_event_gameplay.rs`
+  - `crates/oasis7/src/runtime/world/step.rs`
+  - `crates/oasis7/src/runtime/world/resources.rs`
+  - `crates/oasis7/src/runtime/rules.rs`
+  - `crates/oasis7/src/runtime/state/apply_domain_event_core.rs`
+  - `crates/oasis7/src/runtime/state/apply_domain_event_gameplay.rs`
 - 资源模型：
-  - `crates/agent_world/src/simulator/types.rs`
+  - `crates/oasis7/src/simulator/types.rs`
 - 测试：
-  - `crates/agent_world/src/runtime/tests/basic.rs`
-  - `crates/agent_world/src/runtime/tests/gameplay_protocol.rs`
-  - `crates/agent_world/src/simulator/tests/basics.rs`
+  - `crates/oasis7/src/runtime/tests/basic.rs`
+  - `crates/oasis7/src/runtime/tests/gameplay_protocol.rs`
+  - `crates/oasis7/src/simulator/tests/basics.rs`
 
 ## 状态
 - 当前状态：`已完成`

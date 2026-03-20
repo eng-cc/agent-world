@@ -7,7 +7,7 @@
 
 
 ## 1. Executive Summary
-- 收口 `agent_world_consensus` 中 membership 协调租约主路径的饱和加法语义，避免长期运行后出现静默夹逼并继续调度。
+- 收口 `oasis7_consensus` 中 membership 协调租约主路径的饱和加法语义，避免长期运行后出现静默夹逼并继续调度。
 - 收口 consensus/net/node 中 `Duration::as_millis() as i64` 的窄化转换风险，避免极端运行时长下的隐式截断。
 - 保持“失败不部分写入”原则：数值计算失败时拒绝当前操作，不污染已有状态。
 

@@ -17,12 +17,12 @@
 ## 依赖
 - `doc/world-runtime/governance/zero-trust-governance-receipt-hardening-2026-02-26.design.md`
 - `doc/world-runtime/governance/zero-trust-governance-receipt-hardening-2026-02-26.prd.md`
-- `crates/agent_world/src/runtime/world/base_layer.rs`
-- `crates/agent_world/src/runtime/world/persistence.rs`
-- `crates/agent_world/src/runtime/world/governance.rs`
-- `crates/agent_world/src/runtime/signer.rs`
-- `crates/agent_world/src/runtime/effect.rs`
-- `crates/agent_world_wasm_executor/src/lib.rs`
+- `crates/oasis7/src/runtime/world/base_layer.rs`
+- `crates/oasis7/src/runtime/world/persistence.rs`
+- `crates/oasis7/src/runtime/world/governance.rs`
+- `crates/oasis7/src/runtime/signer.rs`
+- `crates/oasis7/src/runtime/effect.rs`
+- `crates/oasis7_wasm_executor/src/lib.rs`
 
 ## 状态
 - 当前阶段：已完成（T0~T5）

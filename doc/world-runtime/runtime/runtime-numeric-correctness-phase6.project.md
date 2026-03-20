@@ -22,23 +22,23 @@
 - [x] 新增边界测试覆盖超大 `Duration`。
 
 ### T3 回归与收口
-- [x] 运行 `agent_world_consensus`、`agent_world_net`、`agent_world_node` 定向回归测试。
+- [x] 运行 `oasis7_consensus`、`oasis7_net`、`oasis7_node` 定向回归测试。
 - [x] 回写设计文档状态（M0~M3）。
 - [x] 回写项目状态与 `doc/devlog/2026-02-23.md`。
 
 ## 依赖
-- `crates/agent_world_consensus/src/membership_reconciliation.rs`
-- `crates/agent_world_consensus/src/membership_recovery/stores.rs`
-- `crates/agent_world_consensus/src/membership_reconciliation_tests.rs`
-- `crates/agent_world_consensus/src/membership_recovery_tests.rs`
-- `crates/agent_world_net/src/dht.rs`
-- `crates/agent_world_net/src/provider_cache.rs`
-- `crates/agent_world_net/src/libp2p_net.rs`
-- `crates/agent_world_net/src/gateway.rs`
-- `crates/agent_world_net/src/index_store.rs`
-- `crates/agent_world_net/src/dht_cache.rs`
-- `crates/agent_world_node/src/runtime_util.rs`
-- `crates/agent_world_consensus/src/dht.rs`
+- `crates/oasis7_consensus/src/membership_reconciliation.rs`
+- `crates/oasis7_consensus/src/membership_recovery/stores.rs`
+- `crates/oasis7_consensus/src/membership_reconciliation_tests.rs`
+- `crates/oasis7_consensus/src/membership_recovery_tests.rs`
+- `crates/oasis7_net/src/dht.rs`
+- `crates/oasis7_net/src/provider_cache.rs`
+- `crates/oasis7_net/src/libp2p_net.rs`
+- `crates/oasis7_net/src/gateway.rs`
+- `crates/oasis7_net/src/index_store.rs`
+- `crates/oasis7_net/src/dht_cache.rs`
+- `crates/oasis7_node/src/runtime_util.rs`
+- `crates/oasis7_consensus/src/dht.rs`
 
 ## 状态
 - 当前状态：`已完成`
