@@ -11,11 +11,8 @@ use super::{
     viewer_dev_dist_candidates, CliOptions, ViewerAuthBootstrap, BUILTIN_LLM_PROVIDER_MODE,
     DEFAULT_CHAIN_NODE_ID, DEFAULT_CHAIN_STATUS_BIND, DEFAULT_LIVE_BIND,
     DEFAULT_OPENCLAW_AGENT_PROFILE, DEFAULT_SCENARIO, DEFAULT_VIEWER_STATIC_DIR,
-    COMPAT_OLD_BRAND_VIEWER_AUTH_BOOTSTRAP_OBJECT,
-    COMPAT_OLD_BRAND_VIEWER_AUTH_PRIVATE_KEY_ENV, COMPAT_OLD_BRAND_VIEWER_AUTH_PUBLIC_KEY_ENV,
-    COMPAT_OLD_BRAND_VIEWER_PLAYER_ID_ENV, GAME_STATIC_DIR_ENV,
-    OPENCLAW_LOCAL_HTTP_PROVIDER_MODE, VIEWER_AUTH_BOOTSTRAP_OBJECT, VIEWER_AUTH_PRIVATE_KEY_ENV,
-    VIEWER_AUTH_PUBLIC_KEY_ENV, VIEWER_PLAYER_ID_ENV,
+    GAME_STATIC_DIR_ENV, OPENCLAW_LOCAL_HTTP_PROVIDER_MODE, VIEWER_AUTH_BOOTSTRAP_OBJECT,
+    VIEWER_AUTH_PRIVATE_KEY_ENV, VIEWER_AUTH_PUBLIC_KEY_ENV, VIEWER_PLAYER_ID_ENV,
 };
 use oasis7::simulator::ProviderExecutionMode;
 use oasis7_proto::storage_profile::StorageProfile;
@@ -405,13 +402,13 @@ fn sanitize_index_html_for_embedded_server_injects_viewer_auth_bootstrap() {
     );
     let sanitized = String::from_utf8(sanitized).expect("utf-8");
     assert!(sanitized.contains(VIEWER_AUTH_BOOTSTRAP_OBJECT));
-    assert!(sanitized.contains(COMPAT_OLD_BRAND_VIEWER_AUTH_BOOTSTRAP_OBJECT));
     assert!(sanitized.contains(VIEWER_PLAYER_ID_ENV));
-    assert!(sanitized.contains(COMPAT_OLD_BRAND_VIEWER_PLAYER_ID_ENV));
     assert!(sanitized.contains(VIEWER_AUTH_PUBLIC_KEY_ENV));
-    assert!(sanitized.contains(COMPAT_OLD_BRAND_VIEWER_AUTH_PUBLIC_KEY_ENV));
     assert!(sanitized.contains(VIEWER_AUTH_PRIVATE_KEY_ENV));
-    assert!(sanitized.contains(COMPAT_OLD_BRAND_VIEWER_AUTH_PRIVATE_KEY_ENV));
+    assert!(!sanitized.contains("__AGENT_WORLD_VIEWER_AUTH_ENV"));
+    assert!(!sanitized.contains("AGENT_WORLD_VIEWER_PLAYER_ID"));
+    assert!(!sanitized.contains("AGENT_WORLD_VIEWER_AUTH_PUBLIC_KEY"));
+    assert!(!sanitized.contains("AGENT_WORLD_VIEWER_AUTH_PRIVATE_KEY"));
     assert!(sanitized.contains("viewer-player"));
     assert!(sanitized.contains("pub-hex"));
     assert!(sanitized.contains("priv-hex"));
@@ -432,7 +429,7 @@ fn sanitize_index_html_for_embedded_server_injects_viewer_auth_bootstrap_into_no
     );
     let sanitized = String::from_utf8(sanitized).expect("utf-8");
     assert!(sanitized.contains(VIEWER_AUTH_BOOTSTRAP_OBJECT));
-    assert!(sanitized.contains(COMPAT_OLD_BRAND_VIEWER_AUTH_BOOTSTRAP_OBJECT));
+    assert!(!sanitized.contains("__AGENT_WORLD_VIEWER_AUTH_ENV"));
     assert!(sanitized.contains("viewer-player"));
     assert!(sanitized.contains("pub-hex"));
     assert!(sanitized.contains("priv-hex"));
@@ -448,13 +445,13 @@ fn build_viewer_auth_bootstrap_script_contains_expected_window_object() {
     let script = build_viewer_auth_bootstrap_script(&auth);
     assert!(script.contains("window."));
     assert!(script.contains(VIEWER_AUTH_BOOTSTRAP_OBJECT));
-    assert!(script.contains(COMPAT_OLD_BRAND_VIEWER_AUTH_BOOTSTRAP_OBJECT));
     assert!(script.contains(VIEWER_PLAYER_ID_ENV));
-    assert!(script.contains(COMPAT_OLD_BRAND_VIEWER_PLAYER_ID_ENV));
     assert!(script.contains(VIEWER_AUTH_PUBLIC_KEY_ENV));
-    assert!(script.contains(COMPAT_OLD_BRAND_VIEWER_AUTH_PUBLIC_KEY_ENV));
     assert!(script.contains(VIEWER_AUTH_PRIVATE_KEY_ENV));
-    assert!(script.contains(COMPAT_OLD_BRAND_VIEWER_AUTH_PRIVATE_KEY_ENV));
+    assert!(!script.contains("__AGENT_WORLD_VIEWER_AUTH_ENV"));
+    assert!(!script.contains("AGENT_WORLD_VIEWER_PLAYER_ID"));
+    assert!(!script.contains("AGENT_WORLD_VIEWER_AUTH_PUBLIC_KEY"));
+    assert!(!script.contains("AGENT_WORLD_VIEWER_AUTH_PRIVATE_KEY"));
 }
 
 #[test]
@@ -524,16 +521,13 @@ fn resolve_viewer_static_dir_with_override_rejects_missing_env_dir() {
 }
 
 #[test]
-fn viewer_dev_dist_candidates_prefer_oasis7_name_before_compat_old_brand_name() {
+fn viewer_dev_dist_candidates_only_return_oasis7_path() {
     let repo_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
     let candidates = viewer_dev_dist_candidates();
 
     assert_eq!(
         candidates,
-        vec![
-            repo_root.join("oasis7_viewer").join("dist"),
-            repo_root.join("oasis7_viewer").join("dist"),
-        ]
+        vec![repo_root.join("oasis7_viewer").join("dist")]
     );
 }
 

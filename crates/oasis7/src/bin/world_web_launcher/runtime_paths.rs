@@ -4,20 +4,12 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 const DEFAULT_CONSOLE_STATIC_DIR: &str = "web-launcher";
 const GAME_LAUNCHER_BIN_ENV: &str = "OASIS7_GAME_LAUNCHER_BIN";
-const COMPAT_OLD_BRAND_GAME_LAUNCHER_BIN_ENV: &str = "AGENT_WORLD_GAME_LAUNCHER_BIN";
 const WORLD_CHAIN_RUNTIME_BIN_ENV: &str = "OASIS7_WORLD_CHAIN_RUNTIME_BIN";
-const COMPAT_OLD_BRAND_WORLD_CHAIN_RUNTIME_BIN_ENV: &str = "AGENT_WORLD_WORLD_CHAIN_RUNTIME_BIN";
 const GAME_STATIC_DIR_ENV: &str = "OASIS7_GAME_STATIC_DIR";
-const COMPAT_OLD_BRAND_GAME_STATIC_DIR_ENV: &str = "AGENT_WORLD_GAME_STATIC_DIR";
 const WEB_LAUNCHER_STATIC_DIR_ENV: &str = "OASIS7_WEB_LAUNCHER_STATIC_DIR";
-const COMPAT_OLD_BRAND_WEB_LAUNCHER_STATIC_DIR_ENV: &str = "AGENT_WORLD_WEB_LAUNCHER_STATIC_DIR";
 
 pub(super) fn resolve_world_game_launcher_binary() -> PathBuf {
-    let primary = env::var(GAME_LAUNCHER_BIN_ENV).ok();
-    let compat_old_brand = env::var(COMPAT_OLD_BRAND_GAME_LAUNCHER_BIN_ENV).ok();
-    if let Some(path) =
-        resolve_non_empty_override_values(primary.as_deref(), compat_old_brand.as_deref())
-    {
+    if let Some(path) = resolve_non_empty_override_value(env::var(GAME_LAUNCHER_BIN_ENV).ok()) {
         return PathBuf::from(path);
     }
 
@@ -31,10 +23,7 @@ pub(super) fn resolve_world_game_launcher_binary() -> PathBuf {
 }
 
 pub(super) fn resolve_world_chain_runtime_binary() -> PathBuf {
-    let primary = env::var(WORLD_CHAIN_RUNTIME_BIN_ENV).ok();
-    let compat_old_brand = env::var(COMPAT_OLD_BRAND_WORLD_CHAIN_RUNTIME_BIN_ENV).ok();
-    if let Some(path) =
-        resolve_non_empty_override_values(primary.as_deref(), compat_old_brand.as_deref())
+    if let Some(path) = resolve_non_empty_override_value(env::var(WORLD_CHAIN_RUNTIME_BIN_ENV).ok())
     {
         return PathBuf::from(path);
     }
@@ -49,11 +38,7 @@ pub(super) fn resolve_world_chain_runtime_binary() -> PathBuf {
 }
 
 pub(super) fn resolve_static_dir_path(default_viewer_static_dir: &str) -> PathBuf {
-    let primary = env::var(GAME_STATIC_DIR_ENV).ok();
-    let compat_old_brand = env::var(COMPAT_OLD_BRAND_GAME_STATIC_DIR_ENV).ok();
-    if let Some(path) =
-        resolve_non_empty_override_values(primary.as_deref(), compat_old_brand.as_deref())
-    {
+    if let Some(path) = resolve_non_empty_override_value(env::var(GAME_STATIC_DIR_ENV).ok()) {
         return PathBuf::from(path);
     }
 
@@ -72,17 +57,11 @@ pub(super) fn resolve_static_dir_path(default_viewer_static_dir: &str) -> PathBu
 
 pub(super) fn viewer_dev_dist_candidates() -> Vec<PathBuf> {
     let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
-    vec![
-        repo_root.join("oasis7_viewer").join("dist"),
-        repo_root.join("oasis7_viewer").join("dist"),
-    ]
+    vec![repo_root.join("oasis7_viewer").join("dist")]
 }
 
 pub(super) fn resolve_console_static_dir_path() -> PathBuf {
-    let primary = env::var(WEB_LAUNCHER_STATIC_DIR_ENV).ok();
-    let compat_old_brand = env::var(COMPAT_OLD_BRAND_WEB_LAUNCHER_STATIC_DIR_ENV).ok();
-    if let Some(path) =
-        resolve_non_empty_override_values(primary.as_deref(), compat_old_brand.as_deref())
+    if let Some(path) = resolve_non_empty_override_value(env::var(WEB_LAUNCHER_STATIC_DIR_ENV).ok())
     {
         return PathBuf::from(path);
     }
@@ -124,24 +103,16 @@ fn first_existing_dir(candidates: Vec<PathBuf>) -> Option<PathBuf> {
     candidates.into_iter().find(|path| path.is_dir())
 }
 
-fn resolve_non_empty_override_values(
-    primary: Option<&str>,
-    compat_old_brand: Option<&str>,
-) -> Option<String> {
-    for value in [primary, compat_old_brand].into_iter().flatten() {
+fn resolve_non_empty_override_value(value: Option<String>) -> Option<String> {
+    value.and_then(|value| {
         let trimmed = value.trim();
-        if !trimmed.is_empty() {
-            return Some(trimmed.to_string());
-        }
-    }
-    None
+        (!trimmed.is_empty()).then(|| trimmed.to_string())
+    })
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        first_existing_dir, resolve_non_empty_override_values, viewer_dev_dist_candidates,
-    };
+    use super::{first_existing_dir, resolve_non_empty_override_value, viewer_dev_dist_candidates};
     use std::env;
     use std::fs;
     use std::path::PathBuf;
@@ -168,30 +139,25 @@ mod tests {
     }
 
     #[test]
-    fn resolve_non_empty_override_values_prefers_primary_value() {
-        let resolved =
-            resolve_non_empty_override_values(Some(" primary "), Some("compat-old-brand"));
+    fn resolve_non_empty_override_value_returns_trimmed_current_value() {
+        let resolved = resolve_non_empty_override_value(Some(" primary ".to_string()));
         assert_eq!(resolved.as_deref(), Some("primary"));
     }
 
     #[test]
-    fn resolve_non_empty_override_values_falls_back_to_compat_old_brand_value() {
-        let resolved =
-            resolve_non_empty_override_values(Some("  "), Some(" compat-old-brand "));
-        assert_eq!(resolved.as_deref(), Some("compat-old-brand"));
+    fn resolve_non_empty_override_value_rejects_blank_value() {
+        let resolved = resolve_non_empty_override_value(Some("  ".to_string()));
+        assert!(resolved.is_none());
     }
 
     #[test]
-    fn viewer_dev_dist_candidates_prefer_oasis7_name_before_compat_old_brand_name() {
+    fn viewer_dev_dist_candidates_only_return_oasis7_path() {
         let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
         let candidates = viewer_dev_dist_candidates();
 
         assert_eq!(
             candidates,
-            vec![
-                repo_root.join("oasis7_viewer").join("dist"),
-                repo_root.join("oasis7_viewer").join("dist"),
-            ]
+            vec![repo_root.join("oasis7_viewer").join("dist")]
         );
     }
 

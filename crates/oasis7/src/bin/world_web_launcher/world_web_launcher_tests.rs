@@ -290,16 +290,13 @@ fn build_chain_runtime_args_includes_chain_overrides_when_on() {
 }
 
 #[test]
-fn viewer_dev_dist_candidates_prefer_oasis7_name_before_compat_old_brand_name() {
+fn viewer_dev_dist_candidates_only_return_oasis7_path() {
     let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
     let candidates = viewer_dev_dist_candidates();
 
     assert_eq!(
         candidates,
-        vec![
-            repo_root.join("oasis7_viewer").join("dist"),
-            repo_root.join("oasis7_viewer").join("dist"),
-        ]
+        vec![repo_root.join("oasis7_viewer").join("dist")]
     );
 }
 

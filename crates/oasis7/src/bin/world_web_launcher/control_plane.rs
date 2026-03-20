@@ -17,7 +17,6 @@ const CHAIN_RECOVERY_MODE_FRESH_NODE_ID: &str = "fresh_node_id";
 const CHAIN_RECOVERY_PORT_SCAN_LIMIT: u16 = 32;
 const DEFAULT_CHAIN_STATUS_BIND_PORT: u16 = 5121;
 const GAME_STATIC_DIR_ENV: &str = "OASIS7_GAME_STATIC_DIR";
-const COMPAT_OLD_BRAND_GAME_STATIC_DIR_ENV: &str = "AGENT_WORLD_GAME_STATIC_DIR";
 
 pub(super) fn parse_config_request(body: &[u8], action: &str) -> Result<LauncherConfig, String> {
     serde_json::from_slice(body).map_err(|err| format!("parse {action} request JSON failed: {err}"))
@@ -870,12 +869,13 @@ fn resolve_viewer_static_dir_for_launcher(
     launcher_bin: &str,
 ) -> Option<std::path::PathBuf> {
     if raw == DEFAULT_VIEWER_STATIC_DIR {
-        let primary = std::env::var(GAME_STATIC_DIR_ENV).ok();
-        let compat_old_brand = std::env::var(COMPAT_OLD_BRAND_GAME_STATIC_DIR_ENV).ok();
         if let Some(override_path) =
-            resolve_viewer_static_env_override(primary.as_deref(), compat_old_brand.as_deref())
+            resolve_viewer_static_env_override(std::env::var(GAME_STATIC_DIR_ENV).ok())
         {
-            return resolve_viewer_static_dir_candidate_for_launcher(override_path, launcher_bin);
+            return resolve_viewer_static_dir_candidate_for_launcher(
+                override_path.as_str(),
+                launcher_bin,
+            );
         }
     }
 
@@ -895,15 +895,11 @@ fn resolve_viewer_static_dir_for_launcher(
     None
 }
 
-fn resolve_viewer_static_env_override<'a>(
-    primary: Option<&'a str>,
-    legacy: Option<&'a str>,
-) -> Option<&'a str> {
-    [primary, legacy]
-        .into_iter()
-        .flatten()
-        .map(str::trim)
-        .find(|value| !value.is_empty())
+fn resolve_viewer_static_env_override(value: Option<String>) -> Option<String> {
+    value.and_then(|value| {
+        let trimmed = value.trim();
+        (!trimmed.is_empty()).then(|| trimmed.to_string())
+    })
 }
 
 pub(super) fn validate_game_config(config: &LauncherConfig) -> Vec<String> {
@@ -1554,16 +1550,14 @@ mod tests {
     }
 
     #[test]
-    fn resolve_viewer_static_env_override_prefers_oasis7_value() {
-        let resolved =
-            super::resolve_viewer_static_env_override(Some(" web-dist "), Some("compat-dist"));
-        assert_eq!(resolved, Some("web-dist"));
+    fn resolve_viewer_static_env_override_returns_trimmed_oasis7_value() {
+        let resolved = super::resolve_viewer_static_env_override(Some(" web-dist ".to_string()));
+        assert_eq!(resolved.as_deref(), Some("web-dist"));
     }
 
     #[test]
-    fn resolve_viewer_static_env_override_falls_back_to_compat_old_brand_value() {
-        let resolved =
-            super::resolve_viewer_static_env_override(Some("   "), Some(" compat-dist "));
-        assert_eq!(resolved, Some("compat-dist"));
+    fn resolve_viewer_static_env_override_rejects_blank_value() {
+        let resolved = super::resolve_viewer_static_env_override(Some("   ".to_string()));
+        assert!(resolved.is_none());
     }
 }

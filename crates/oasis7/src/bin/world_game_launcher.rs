@@ -21,29 +21,19 @@ const DEFAULT_VIEWER_HOST: &str = "127.0.0.1";
 const DEFAULT_VIEWER_PORT: u16 = 4173;
 const DEFAULT_VIEWER_STATIC_DIR: &str = "web";
 const GAME_STATIC_DIR_ENV: &str = "OASIS7_GAME_STATIC_DIR";
-const COMPAT_OLD_BRAND_GAME_STATIC_DIR_ENV: &str = "AGENT_WORLD_GAME_STATIC_DIR";
 const WORLD_VIEWER_LIVE_BIN_ENV: &str = "OASIS7_WORLD_VIEWER_LIVE_BIN";
-const COMPAT_OLD_BRAND_WORLD_VIEWER_LIVE_BIN_ENV: &str = "AGENT_WORLD_WORLD_VIEWER_LIVE_BIN";
 const WORLD_CHAIN_RUNTIME_BIN_ENV: &str = "OASIS7_WORLD_CHAIN_RUNTIME_BIN";
-const COMPAT_OLD_BRAND_WORLD_CHAIN_RUNTIME_BIN_ENV: &str = "AGENT_WORLD_WORLD_CHAIN_RUNTIME_BIN";
 const BUILTIN_LLM_PROVIDER_MODE: &str = "builtin_llm";
 const OPENCLAW_LOCAL_HTTP_PROVIDER_MODE: &str = "openclaw_local_http";
 const DEFAULT_OPENCLAW_BASE_URL: &str = "http://127.0.0.1:5841";
 const DEFAULT_OPENCLAW_CONNECT_TIMEOUT_MS: u64 = 3_000;
 const DEFAULT_OPENCLAW_AGENT_PROFILE: &str = "oasis7_p0_low_freq_npc";
 const VIEWER_AGENT_PROVIDER_MODE_ENV: &str = "OASIS7_AGENT_PROVIDER_MODE";
-const COMPAT_OLD_BRAND_VIEWER_AGENT_PROVIDER_MODE_ENV: &str = "AGENT_WORLD_AGENT_PROVIDER_MODE";
 const VIEWER_OPENCLAW_BASE_URL_ENV: &str = "OASIS7_OPENCLAW_BASE_URL";
-const COMPAT_OLD_BRAND_VIEWER_OPENCLAW_BASE_URL_ENV: &str = "AGENT_WORLD_OPENCLAW_BASE_URL";
 const VIEWER_OPENCLAW_AUTH_TOKEN_ENV: &str = "OASIS7_OPENCLAW_AUTH_TOKEN";
-const COMPAT_OLD_BRAND_VIEWER_OPENCLAW_AUTH_TOKEN_ENV: &str = "AGENT_WORLD_OPENCLAW_AUTH_TOKEN";
 const VIEWER_OPENCLAW_CONNECT_TIMEOUT_MS_ENV: &str = "OASIS7_OPENCLAW_CONNECT_TIMEOUT_MS";
-const COMPAT_OLD_BRAND_VIEWER_OPENCLAW_CONNECT_TIMEOUT_MS_ENV: &str =
-    "AGENT_WORLD_OPENCLAW_CONNECT_TIMEOUT_MS";
 const VIEWER_OPENCLAW_AGENT_PROFILE_ENV: &str = "OASIS7_OPENCLAW_AGENT_PROFILE";
-const COMPAT_OLD_BRAND_VIEWER_OPENCLAW_AGENT_PROFILE_ENV: &str = "AGENT_WORLD_OPENCLAW_AGENT_PROFILE";
 const VIEWER_OPENCLAW_EXECUTION_MODE_ENV: &str = "OASIS7_OPENCLAW_EXECUTION_MODE";
-const COMPAT_OLD_BRAND_VIEWER_OPENCLAW_EXECUTION_MODE_ENV: &str = "AGENT_WORLD_OPENCLAW_EXECUTION_MODE";
 const DEFAULT_VIEWER_PLAYER_ID: &str = "viewer-player";
 const DEFAULT_CHAIN_STATUS_BIND: &str = "127.0.0.1:5121";
 const DEFAULT_CHAIN_NODE_ID: &str = "viewer-live-node";
@@ -54,13 +44,9 @@ const DEFAULT_CHAIN_POS_TICKS_PER_SLOT: u64 = 10;
 const DEFAULT_CHAIN_POS_PROPOSAL_TICK_PHASE: u64 = 9;
 const DEFAULT_CHAIN_POS_MAX_PAST_SLOT_LAG: u64 = 256;
 const VIEWER_PLAYER_ID_ENV: &str = "OASIS7_VIEWER_PLAYER_ID";
-const COMPAT_OLD_BRAND_VIEWER_PLAYER_ID_ENV: &str = "AGENT_WORLD_VIEWER_PLAYER_ID";
 const VIEWER_AUTH_PUBLIC_KEY_ENV: &str = "OASIS7_VIEWER_AUTH_PUBLIC_KEY";
-const COMPAT_OLD_BRAND_VIEWER_AUTH_PUBLIC_KEY_ENV: &str = "AGENT_WORLD_VIEWER_AUTH_PUBLIC_KEY";
 const VIEWER_AUTH_PRIVATE_KEY_ENV: &str = "OASIS7_VIEWER_AUTH_PRIVATE_KEY";
-const COMPAT_OLD_BRAND_VIEWER_AUTH_PRIVATE_KEY_ENV: &str = "AGENT_WORLD_VIEWER_AUTH_PRIVATE_KEY";
 const VIEWER_AUTH_BOOTSTRAP_OBJECT: &str = "__OASIS7_VIEWER_AUTH_ENV";
-const COMPAT_OLD_BRAND_VIEWER_AUTH_BOOTSTRAP_OBJECT: &str = "__AGENT_WORLD_VIEWER_AUTH_ENV";
 const NODE_CONFIG_FILE_NAME: &str = "config.toml";
 const NODE_TABLE_KEY: &str = "node";
 const NODE_PRIVATE_KEY_FIELD: &str = "private_key";
@@ -284,17 +270,11 @@ fn spawn_world_viewer_live(path: &Path, options: &CliOptions) -> Result<Child, S
         .arg(options.web_bind.as_str());
     for env_name in [
         VIEWER_AGENT_PROVIDER_MODE_ENV,
-        COMPAT_OLD_BRAND_VIEWER_AGENT_PROVIDER_MODE_ENV,
         VIEWER_OPENCLAW_BASE_URL_ENV,
-        COMPAT_OLD_BRAND_VIEWER_OPENCLAW_BASE_URL_ENV,
         VIEWER_OPENCLAW_AUTH_TOKEN_ENV,
-        COMPAT_OLD_BRAND_VIEWER_OPENCLAW_AUTH_TOKEN_ENV,
         VIEWER_OPENCLAW_CONNECT_TIMEOUT_MS_ENV,
-        COMPAT_OLD_BRAND_VIEWER_OPENCLAW_CONNECT_TIMEOUT_MS_ENV,
         VIEWER_OPENCLAW_AGENT_PROFILE_ENV,
-        COMPAT_OLD_BRAND_VIEWER_OPENCLAW_AGENT_PROFILE_ENV,
         VIEWER_OPENCLAW_EXECUTION_MODE_ENV,
-        COMPAT_OLD_BRAND_VIEWER_OPENCLAW_EXECUTION_MODE_ENV,
     ] {
         command.env_remove(env_name);
     }
@@ -665,15 +645,12 @@ fn inject_viewer_auth_bootstrap_script(body: &[u8], auth: &ViewerAuthBootstrap) 
 fn build_viewer_auth_bootstrap_script(auth: &ViewerAuthBootstrap) -> String {
     let payload = serde_json::json!({
         VIEWER_PLAYER_ID_ENV: auth.player_id,
-        COMPAT_OLD_BRAND_VIEWER_PLAYER_ID_ENV: auth.player_id,
         VIEWER_AUTH_PUBLIC_KEY_ENV: auth.public_key,
-        COMPAT_OLD_BRAND_VIEWER_AUTH_PUBLIC_KEY_ENV: auth.public_key,
         VIEWER_AUTH_PRIVATE_KEY_ENV: auth.private_key,
-        COMPAT_OLD_BRAND_VIEWER_AUTH_PRIVATE_KEY_ENV: auth.private_key,
     });
     let payload = serde_json::to_string(&payload).unwrap_or_else(|_| "{}".to_string());
     format!(
-        "<script>const __oasis7ViewerAuthEnv=Object.freeze({payload});window.{VIEWER_AUTH_BOOTSTRAP_OBJECT}=__oasis7ViewerAuthEnv;window.{COMPAT_OLD_BRAND_VIEWER_AUTH_BOOTSTRAP_OBJECT}=__oasis7ViewerAuthEnv;</script>"
+        "<script>const __oasis7ViewerAuthEnv=Object.freeze({payload});window.{VIEWER_AUTH_BOOTSTRAP_OBJECT}=__oasis7ViewerAuthEnv;</script>"
     )
 }
 
@@ -689,17 +666,19 @@ fn resolve_viewer_auth_bootstrap_from_path(path: &Path) -> Result<ViewerAuthBoot
     let private_key =
         resolve_required_toml_string(node, NODE_PRIVATE_KEY_FIELD, "node.private_key")?;
     let public_key = resolve_required_toml_string(node, NODE_PUBLIC_KEY_FIELD, "node.public_key")?;
-    let player_id = env::var(VIEWER_PLAYER_ID_ENV)
-        .ok()
-        .or_else(|| env::var(COMPAT_OLD_BRAND_VIEWER_PLAYER_ID_ENV).ok())
-        .map(|raw| raw.trim().to_string())
-        .filter(|value| !value.is_empty())
-        .unwrap_or_else(|| DEFAULT_VIEWER_PLAYER_ID.to_string());
+    let player_id = resolve_viewer_player_id_override(env::var(VIEWER_PLAYER_ID_ENV).ok());
     Ok(ViewerAuthBootstrap {
         player_id,
         public_key,
         private_key,
     })
+}
+
+fn resolve_viewer_player_id_override(value: Option<String>) -> String {
+    value
+        .map(|raw| raw.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| DEFAULT_VIEWER_PLAYER_ID.to_string())
 }
 
 fn resolve_required_toml_string(
@@ -1263,11 +1242,7 @@ fn validate_chain_node_validator(raw: &str) -> Result<(), String> {
 }
 
 fn resolve_world_viewer_live_binary() -> Result<PathBuf, String> {
-    if let Some((path, env_name)) = resolve_non_empty_env_override(
-        WORLD_VIEWER_LIVE_BIN_ENV,
-        COMPAT_OLD_BRAND_WORLD_VIEWER_LIVE_BIN_ENV,
-    )
-    {
+    if let Some((path, env_name)) = resolve_non_empty_env_override(WORLD_VIEWER_LIVE_BIN_ENV) {
         let candidate = PathBuf::from(path);
         if candidate.is_file() {
             return Ok(candidate);
@@ -1301,15 +1276,12 @@ fn resolve_world_viewer_live_binary() -> Result<PathBuf, String> {
     }
 
     Err(format!(
-        "failed to locate `world_viewer_live` binary; build it first or set {WORLD_VIEWER_LIVE_BIN_ENV} (legacy: {COMPAT_OLD_BRAND_WORLD_VIEWER_LIVE_BIN_ENV})"
+        "failed to locate `world_viewer_live` binary; build it first or set {WORLD_VIEWER_LIVE_BIN_ENV}"
     ))
 }
 
 fn resolve_world_chain_runtime_binary() -> Result<PathBuf, String> {
-    if let Some((path, env_name)) = resolve_non_empty_env_override(
-        WORLD_CHAIN_RUNTIME_BIN_ENV,
-        COMPAT_OLD_BRAND_WORLD_CHAIN_RUNTIME_BIN_ENV,
-    ) {
+    if let Some((path, env_name)) = resolve_non_empty_env_override(WORLD_CHAIN_RUNTIME_BIN_ENV) {
         let candidate = PathBuf::from(path);
         if candidate.is_file() {
             return Ok(candidate);
@@ -1343,13 +1315,12 @@ fn resolve_world_chain_runtime_binary() -> Result<PathBuf, String> {
     }
 
     Err(format!(
-        "failed to locate `world_chain_runtime` binary; build it first or set {WORLD_CHAIN_RUNTIME_BIN_ENV} (legacy: {COMPAT_OLD_BRAND_WORLD_CHAIN_RUNTIME_BIN_ENV})"
+        "failed to locate `world_chain_runtime` binary; build it first or set {WORLD_CHAIN_RUNTIME_BIN_ENV}"
     ))
 }
 
 fn resolve_viewer_static_dir(raw: &str) -> Result<PathBuf, String> {
-    let env_override =
-        resolve_non_empty_env_override(GAME_STATIC_DIR_ENV, COMPAT_OLD_BRAND_GAME_STATIC_DIR_ENV);
+    let env_override = resolve_non_empty_env_override(GAME_STATIC_DIR_ENV);
     resolve_viewer_static_dir_with_override(
         raw,
         env_override
@@ -1393,10 +1364,7 @@ fn resolve_viewer_static_dir_with_override(
 
 fn viewer_dev_dist_candidates() -> Vec<PathBuf> {
     let repo_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
-    vec![
-        repo_root.join("oasis7_viewer").join("dist"),
-        repo_root.join("oasis7_viewer").join("dist"),
-    ]
+    vec![repo_root.join("oasis7_viewer").join("dist")]
 }
 
 fn resolve_viewer_static_dir_candidate(raw: &str) -> Option<PathBuf> {
@@ -1418,16 +1386,11 @@ fn resolve_viewer_static_dir_candidate(raw: &str) -> Option<PathBuf> {
     None
 }
 
-fn resolve_non_empty_env_override(
-    primary: &'static str,
-    legacy: &'static str,
-) -> Option<(String, &'static str)> {
-    for env_name in [primary, legacy] {
-        if let Ok(value) = env::var(env_name) {
-            let trimmed = value.trim();
-            if !trimmed.is_empty() {
-                return Some((trimmed.to_string(), env_name));
-            }
+fn resolve_non_empty_env_override(env_name: &'static str) -> Option<(String, &'static str)> {
+    if let Ok(value) = env::var(env_name) {
+        let trimmed = value.trim();
+        if !trimmed.is_empty() {
+            return Some((trimmed.to_string(), env_name));
         }
     }
     None
@@ -1544,9 +1507,9 @@ Options:\n\
   --no-open-browser            do not auto open browser\n\
   -h, --help                   show help\n\n\
 Env:\n\
-  OASIS7_WORLD_VIEWER_LIVE_BIN        explicit path of world_viewer_live binary (legacy: AGENT_WORLD_WORLD_VIEWER_LIVE_BIN)\n\
-  OASIS7_WORLD_CHAIN_RUNTIME_BIN      explicit path of world_chain_runtime binary (legacy: AGENT_WORLD_WORLD_CHAIN_RUNTIME_BIN)\n\
-  OASIS7_GAME_STATIC_DIR              override default viewer static dir when --viewer-static-dir is omitted (legacy: AGENT_WORLD_GAME_STATIC_DIR)"
+  OASIS7_WORLD_VIEWER_LIVE_BIN        explicit path of world_viewer_live binary\n\
+  OASIS7_WORLD_CHAIN_RUNTIME_BIN      explicit path of world_chain_runtime binary\n\
+  OASIS7_GAME_STATIC_DIR              override default viewer static dir when --viewer-static-dir is omitted"
     );
 }
 
