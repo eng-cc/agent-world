@@ -553,7 +553,7 @@ impl ViewerRuntimeLiveServer {
                 send_response(
                     writer,
                     &ViewerResponse::HelloAck {
-                        server: "agent_world".to_string(),
+                        server: "oasis7".to_string(),
                         version: VIEWER_PROTOCOL_VERSION,
                         world_id: self.config.world_id.clone(),
                         control_profile: ViewerControlProfile::Live,

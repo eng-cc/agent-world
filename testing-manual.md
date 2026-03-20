@@ -22,31 +22,31 @@
 ## 当前实现分布（2026-02-18 基线）
 
 ### 应用主链（world + runtime + simulator + viewer 协议）
-- 核心 crate：`crates/agent_world`
+- 核心 crate：`crates/oasis7`
 - 主要测试分布：
-  - 运行时：`crates/agent_world/src/runtime/tests/*.rs`
-  - 模拟器：`crates/agent_world/src/simulator/tests/*.rs`
-  - LLM 行为：`crates/agent_world/src/simulator/llm_agent/tests_part2.rs`
-  - Viewer live 服务：`crates/agent_world/src/bin/world_viewer_live.rs`（内置 `#[cfg(test)]`）
-  - 端到端集成：`crates/agent_world/tests/*.rs`
+  - 运行时：`crates/oasis7/src/runtime/tests/*.rs`
+  - 模拟器：`crates/oasis7/src/simulator/tests/*.rs`
+  - LLM 行为：`crates/oasis7/src/simulator/llm_agent/tests_part2.rs`
+  - Viewer live 服务：`crates/oasis7/src/bin/world_viewer_live.rs`（内置 `#[cfg(test)]`）
+  - 端到端集成：`crates/oasis7/tests/*.rs`
 
 ### Viewer 客户端（Bevy/egui + wasm）
-- crate：`crates/agent_world_viewer`
+- crate：`crates/oasis7_viewer`
 - 覆盖：
   - UI/相机/事件联动等单测散布在 `src/*.rs` 与 `src/tests_*.rs`
-  - 快照基线：`crates/agent_world_viewer/tests/snapshots/*.png`
+  - 快照基线：`crates/oasis7_viewer/tests/snapshots/*.png`
   - Web 启动入口：`world_game_launcher`（内置静态服务，`run-viewer-web.sh` 仅保留为兼容/排障工具）
   - Web 闭环采样：agent-browser CLI（详见 `doc/testing/manual/web-ui-agent-browser-closure-manual.prd.md`）
 
 ### 分布式与共识子系统
-- Node：`crates/agent_world_node`
-- Net：`crates/agent_world_net`
-- Consensus：`crates/agent_world_consensus`
-- DistFS：`crates/agent_world_distfs`
+- Node：`crates/oasis7_node`
+- Net：`crates/oasis7_net`
+- Consensus：`crates/oasis7_consensus`
+- DistFS：`crates/oasis7_distfs`
 - 这些子系统有独立测试集，但当前 `scripts/ci-tests.sh` 只覆盖了其中一部分（见下文“CI 现状与缺口”）。
 
 ### 场景系统
-- 场景定义：`crates/agent_world/src/simulator/scenario.rs`
+- 场景定义：`crates/oasis7/src/simulator/scenario.rs`
 - 场景矩阵设计：`doc/world-simulator/scenario/scenario-files.prd.md`
 - 场景是 UI 闭环、协议闭环、压力回归的统一输入源。
 
@@ -57,19 +57,19 @@
 - `required`：
   - `./scripts/doc-governance-check.sh`
   - `cargo fmt --check`
-  - `cargo test -p agent_world --tests --features test_tier_required`
-  - `cargo test -p agent_world_consensus --lib`
-  - `cargo test -p agent_world_distfs --lib`
-  - `cargo test -p agent_world_viewer`
-  - `cargo check -p agent_world_viewer --target wasm32-unknown-unknown`
+  - `cargo test -p oasis7 --tests --features test_tier_required`
+  - `cargo test -p oasis7_consensus --lib`
+  - `cargo test -p oasis7_distfs --lib`
+  - `cargo test -p oasis7_viewer`
+  - `cargo check -p oasis7_viewer --target wasm32-unknown-unknown`
 - `full`：
   - `required` 全部
-  - `cargo test -p agent_world --tests --features test_tier_full,wasmtime,viewer_live_integration`
-  - `cargo test -p agent_world_node --lib`
-  - `cargo test -p agent_world_net --lib`
-  - `cargo test -p agent_world_net --features libp2p --lib`
+  - `cargo test -p oasis7 --tests --features test_tier_full,wasmtime,viewer_live_integration`
+  - `cargo test -p oasis7_node --lib`
+  - `cargo test -p oasis7_net --lib`
+  - `cargo test -p oasis7_net --features libp2p --lib`
   - `./scripts/llm-baseline-fixture-smoke.sh`
-  - `cargo test -p agent_world --features wasmtime --lib --bins`
+  - `cargo test -p oasis7 --features wasmtime --lib --bins`
 - 入口 B：`.github/workflows/rust.yml`（required-gate）
   - `CI_VERBOSE=1 ./scripts/ci-tests.sh required`
   - `./scripts/viewer-visual-baseline.sh`
@@ -85,7 +85,7 @@
 - `m4/m5` builtin wasm hash 校验（`scripts/ci-tests.sh` 已移除 `sync-m4/m5 --check`）。
 
 结论：
-- `required/full` 是“核心链路测试层”的主入口（required 含 `agent_world + consensus + distfs + viewer`，full 追加 `node + net/libp2p`）；
+- `required/full` 是“核心链路测试层”的主入口（required 含 `oasis7 + consensus + distfs + viewer`，full 追加 `node + net/libp2p`）；
 - `required-gate` 已补充 viewer 视觉基线脚本（snapshot 基线 + 定向测试）；
 - `wasm-determinism-gate` 负责 `m1/m4/m5` hash / receipt evidence 独立 gate；
 - 若目标是“整应用充分测试”，仍需在此基础上叠加 UI 闭环层（S6）与压力层（S8）。
@@ -96,9 +96,9 @@
 - 目标：尽早拦截格式漂移、内置 wasm 工件漂移、构建目标缺失。
 - 性质：最快、最确定。
 
-### L1 核心逻辑确定性层（agent_world 主体）
+### L1 核心逻辑确定性层（oasis7 主体）
 - 目标：覆盖 runtime/simulator/world-model/LLM 行为/viewer 协议主逻辑。
-- 入口：`test_tier_required` 与 `test_tier_full`（主要在 `agent_world` crate）。
+- 入口：`test_tier_required` 与 `test_tier_full`（主要在 `oasis7` crate）。
 - 性质：主覆盖层，应承接绝大多数回归风险。
 
 ### L2 协议与联机集成层
@@ -112,7 +112,7 @@
 ### L4 UI 闭环层（Web 为默认）
 - 目标：验证真实用户路径可用性（加载、交互、状态可见、无 console error）。
 - 默认：制作人试玩 / 发布前人工验收优先使用 `./scripts/run-producer-playtest.sh`（需要自动打开浏览器时加 `--open-headed`）；其内部会自动准备/复用 bundle 并进入 `run-game-test.sh --bundle-dir <bundle>`，且该脚本退出时会自动关闭自己拉起的 `agent-browser` 会话。`--open-headed` 与 `run-game-test-ab.sh` 默认会通过 `agent-browser --args '--use-angle=gl,--ignore-gpu-blocklist'` 固定硬件 WebGL 路径；如需覆盖，再显式设置 `AGENT_BROWSER_ARGS`。`scripts/run-game-test.sh` 保留为开发回归 bootstrap，并支持 `--bundle-dir <bundle>` 复用产物入口；当 bundle 缺少 freshness manifest 或已落后于当前工作区源码时，脚本会默认阻断，制作人入口则会自动重建。
-- source-tree `oasis7-run.sh play` 与 `run-game-test.sh` 的 Viewer Web 开发态入口都必须走 freshness gate；当 `crates/agent_world_viewer/index.html`、`software_safe.html`、`software_safe.js` 或相关静态资源比 `dist/` 更新时，默认应优先重建 fresh dist，而不是继续拿 stale `dist` 给 Web 闭环下结论。
+- source-tree `oasis7-run.sh play` 与 `run-game-test.sh` 的 Viewer Web 开发态入口都必须走 freshness gate；当 `crates/oasis7_viewer/index.html`、`software_safe.html`、`software_safe.js` 或相关静态资源比 `dist/` 更新时，默认应优先重建 fresh dist，而不是继续拿 stale `dist` 给 Web 闭环下结论。
 - native 抓图：仅 fallback（Web 无法复现或 native 图形链路问题）。
 
 ### L5 长稳与压力层
@@ -125,7 +125,7 @@
 ```bash
 ./scripts/doc-governance-check.sh
 env -u RUSTC_WRAPPER cargo fmt --all -- --check
-env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-unknown
+env -u RUSTC_WRAPPER cargo check -p oasis7_viewer --target wasm32-unknown-unknown
 ```
 - 可选（按需执行 builtin wasm hash 校验）：
 ```bash
@@ -135,7 +135,7 @@ env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-u
 ```
 - 本地策略（2026-03-08 起）：
   - 主 CI 仅允许 `--check`；生产发布清单写入与激活由发布节点链上流水完成。
-  - 本地非 `--check` 仅允许显式维护清单（需设置 `AGENT_WORLD_WASM_SYNC_WRITE_ALLOW=local-dev`），不属于生产发布路径。
+  - 本地非 `--check` 仅允许显式维护清单（需设置 `OASIS7_WASM_SYNC_WRITE_ALLOW=local-dev`），不属于生产发布路径。
   - `CI=true` 不再作为生产发布写入/激活授权条件；CI 产物仅用于开发回归和可审计对账证据。
 
 ### S1：核心 required 套件（L1）
@@ -146,8 +146,8 @@ env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-u
   - runtime/simulator 大量单元与集成测试
   - `world_viewer_live` 二进制测试
   - viewer offline integration
-  - 分布式基础子系统（轻量）：`agent_world_consensus`、`agent_world_distfs`
-  - `agent_world_viewer` 全量单测 + wasm 编译检查
+  - 分布式基础子系统（轻量）：`oasis7_consensus`、`oasis7_distfs`
+  - `oasis7_viewer` 全量单测 + wasm 编译检查
 
 ### S2：核心 full 套件（L1 + L2）
 ```bash
@@ -157,22 +157,22 @@ env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-u
   - `test_tier_full`
   - `wasmtime` 路径
   - `viewer_live_integration`
-  - `agent_world_node --lib`、`agent_world_net --lib`
-  - `agent_world_net` 的 `libp2p` 路径
+  - `oasis7_node --lib`、`oasis7_net --lib`
+  - `oasis7_net` 的 `libp2p` 路径
   - `llm-baseline-fixture-smoke`（基线加载与离线治理续跑断言）
 
 ### S3：应用主链定向套件（L1 + L2）
 ```bash
-env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required runtime::tests:: -- --nocapture
-env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required simulator::tests:: -- --nocapture
-env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required viewer::live::tests:: -- --nocapture
-env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required viewer::web_bridge::tests:: -- --nocapture
+env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_required runtime::tests:: -- --nocapture
+env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_required simulator::tests:: -- --nocapture
+env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_required viewer::live::tests:: -- --nocapture
+env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_required viewer::web_bridge::tests:: -- --nocapture
 ```
 - 电价/市场机制定向回归（required/full）：
 ```bash
-env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required simulator::tests::power::power_buy_zero_price_ -- --nocapture
-env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required simulator::tests::power::power_order_ -- --nocapture
-env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_full simulator::tests::power:: -- --nocapture
+env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_required simulator::tests::power::power_buy_zero_price_ -- --nocapture
+env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_required simulator::tests::power::power_order_ -- --nocapture
+env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_full simulator::tests::power:: -- --nocapture
 ```
 - 主链 Token / NodePoints 桥接定向回归（required/full）：
 ```bash
@@ -183,28 +183,28 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_full simulat
   - 设计与运行要点：`doc/p2p/token/mainchain-token-allocation-mechanism.prd.md`
   - 发布说明：`doc/p2p/token/mainchain-token-allocation-mechanism.release.md`
 - 用途：
-  - 快速定位 `agent_world` 内部模块回归，不必每次跑全套 full。
+  - 快速定位 `oasis7` 内部模块回归，不必每次跑全套 full。
 
 ### S4：分布式子系统套件（L3）
 ```bash
-env -u RUSTC_WRAPPER cargo test -p agent_world_node
-env -u RUSTC_WRAPPER cargo test -p agent_world_distfs
-env -u RUSTC_WRAPPER cargo test -p agent_world_consensus
-env -u RUSTC_WRAPPER cargo test -p agent_world_net --lib
-env -u RUSTC_WRAPPER cargo test -p agent_world_net --features libp2p --lib
+env -u RUSTC_WRAPPER cargo test -p oasis7_node
+env -u RUSTC_WRAPPER cargo test -p oasis7_distfs
+env -u RUSTC_WRAPPER cargo test -p oasis7_consensus
+env -u RUSTC_WRAPPER cargo test -p oasis7_net --lib
+env -u RUSTC_WRAPPER cargo test -p oasis7_net --features libp2p --lib
 ```
 - 可选增强（涉及 runtime_bridge 改动时）：
 ```bash
-env -u RUSTC_WRAPPER cargo test -p agent_world_net --features runtime_bridge --lib
+env -u RUSTC_WRAPPER cargo test -p oasis7_net --features runtime_bridge --lib
 ```
 
 ### S5：Viewer crate 单测与 wasm 编译套件（L4 前置）
 ```bash
-env -u RUSTC_WRAPPER cargo test -p agent_world_viewer
-env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-unknown
+env -u RUSTC_WRAPPER cargo test -p oasis7_viewer
+env -u RUSTC_WRAPPER cargo check -p oasis7_viewer --target wasm32-unknown-unknown
 ```
 - 说明：
-  - `agent_world_viewer` 内已有大量 UI/相机/交互逻辑测试；
+  - `oasis7_viewer` 内已有大量 UI/相机/交互逻辑测试；
   - 这是 UI 闭环前的稳定性筛网；
   - 该套件已并入 `S1/S2` 的默认 gate。
 
@@ -219,7 +219,7 @@ env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-u
   - 任何 QA / release / playability 结论都应先标明玩家访问模式，再补充 execution lane；不得把 `headless_agent` 或 `debug_viewer` 直接当成“第四种入口”。
 - `world_viewer_live` / Viewer 页面：默认使用 `agent-browser` 驱动页面与采集证据；当 `renderMode=software_safe` 且带 viewer auth bootstrap 时，允许继续验证选中 Agent 的最小 `prompt/chat` 闭环。
 - 若需要把 `software_safe` 的 prompt/chat/rollback/message-flow 做成独立 QA smoke，优先执行 `./scripts/viewer-software-safe-chat-regression.sh`；该脚本默认把 `agent_spoke` 缺失记为可追溯 warning，显式加 `--require-agent-spoke` 时再升级为阻断失败。
-- 若需要稳定触发一条标准 `AgentSpoke` 供消息流验收，在 source runtime 启动前显式设置 `AGENT_WORLD_RUNTIME_AGENT_CHAT_ECHO=1`；该开关仅用于 Viewer / QA 测试态，默认产品路径必须保持关闭。
+- 若需要稳定触发一条标准 `AgentSpoke` 供消息流验收，在 source runtime 启动前显式设置 `OASIS7_RUNTIME_AGENT_CHAT_ECHO=1`；该开关仅用于 Viewer / QA 测试态，默认产品路径必须保持关闭。
 - 若 Viewer 页面长期停在 `connecting` 且 `logicalTime=0`，必须查看 `window.__AW_TEST__.getState().lastError`；命中 `copy_deferred_lighting_id_pipeline` / `CONTEXT_LOST_WEBGL` 等 fatal 时，按图形环境门禁失败处理，不进入玩法结论。
 - `headed` 不是充分条件：若 `browser_env.json` / WebGL renderer 显示 `SwiftShader` 或其他 software renderer，先查看 `window.__AW_TEST__.getState().renderMode`。
   - `renderMode=software_safe`：允许继续做最小闭环验证（连接、选择目标、`step`、新反馈）。
@@ -235,14 +235,14 @@ env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-u
   - 对外样张链路需使用 strict 语义门禁，不得以 `off` / `soft` 结果作为发布判定证据。
 - 若需要为 `#46 PostOnboarding` 补无 UI / 非浏览器验证，执行 `./scripts/viewer-post-onboarding-headless-smoke.sh`。
   - 该脚本只验证 live TCP 协议、快照推进、控制完成 ack 与 runtime event feed；不替代 headed Web/UI 截图复核。
-- 若需要直接以纯 API 客户端操作 live 会话，可使用 `cargo run -q -p agent_world --bin world_pure_api_client -- ...`。
+- 若需要直接以纯 API 客户端操作 live 会话，可使用 `cargo run -q -p oasis7 --bin world_pure_api_client -- ...`。
   - 该链路属于 `pure_api` 玩家访问模式；若同时牵涉 OpenClaw agent，应额外标注实际 execution lane。
   - 推荐最小链路：
 ```bash
-cargo run -q -p agent_world --bin world_pure_api_client -- --addr 127.0.0.1:5023 snapshot --player-gameplay-only
-cargo run -q -p agent_world --bin world_pure_api_client -- --addr 127.0.0.1:5023 step --count 8 --events
-cargo run -q -p agent_world --bin world_pure_api_client -- keygen
-cargo run -q -p agent_world --bin world_pure_api_client -- --addr 127.0.0.1:5023 reconnect-sync --player-id player-1 --with-snapshot
+cargo run -q -p oasis7 --bin world_pure_api_client -- --addr 127.0.0.1:5023 snapshot --player-gameplay-only
+cargo run -q -p oasis7 --bin world_pure_api_client -- --addr 127.0.0.1:5023 step --count 8 --events
+cargo run -q -p oasis7 --bin world_pure_api_client -- keygen
+cargo run -q -p oasis7 --bin world_pure_api_client -- --addr 127.0.0.1:5023 reconnect-sync --player-id player-1 --with-snapshot
 ```
   - 若要覆盖 `agent_chat` / `prompt_control`，需先 `keygen`，再携带 `--player-id` 与 `--private-key-hex` 走签名请求；无 LLM 模式下这两类请求仍会按当前产品约束返回 `llm_mode_required`。
 - 若需要执行 pure API required/full 回归，优先运行 `./scripts/world-pure-api-parity-smoke.sh`。
@@ -269,7 +269,7 @@ cargo run -q -p agent_world --bin world_pure_api_client -- --addr 127.0.0.1:5023
 ./scripts/viewer-post-onboarding-qa.sh --bundle-dir output/release/game-launcher-local --no-llm
 ./scripts/viewer-post-onboarding-headless-smoke.sh --bundle-dir output/release/game-launcher-local --no-llm
 ./scripts/viewer-software-safe-chat-regression.sh --bundle-dir output/release/game-launcher-local
-cargo run -q -p agent_world --bin world_pure_api_client -- --addr 127.0.0.1:5023 snapshot --player-gameplay-only
+cargo run -q -p oasis7 --bin world_pure_api_client -- --addr 127.0.0.1:5023 snapshot --player-gameplay-only
 ./scripts/world-pure-api-parity-smoke.sh --tier required --bundle-dir output/release/game-launcher-local --no-llm
 ./scripts/viewer-release-qa-loop.sh
 ./scripts/viewer-release-full-coverage.sh --quick
@@ -278,19 +278,19 @@ cargo run -q -p agent_world --bin world_pure_api_client -- --addr 127.0.0.1:5023
 
 ### S7：场景矩阵回归套件（L1 + L4）
 ```bash
-env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required scenario_specs_match_ids -- --nocapture
-env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required scenarios_are_stable -- --nocapture
-env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_full world_init_demo_runs_ -- --nocapture
+env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_required scenario_specs_match_ids -- --nocapture
+env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_required scenarios_are_stable -- --nocapture
+env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_full world_init_demo_runs_ -- --nocapture
 ```
 - 配套文档：`doc/world-simulator/scenario/scenario-files.prd.md` 的“场景测试覆盖矩阵”。
 
 ### S6.5：Chain Runtime Storage Profile / Gate 核验（L4/L5 补充）
 ```bash
-env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_chain_runtime node_runtime_execution_driver_uses_storage_profile_checkpoint_interval -- --nocapture
+env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_chain_runtime node_runtime_execution_driver_uses_storage_profile_checkpoint_interval -- --nocapture
 ./scripts/world-runtime-storage-gate.sh --status-json <status.json> --expected-profile release_default --min-checkpoint-count 1 --max-orphan-blob-count 0 --require-no-degraded
-AGENT_WORLD_CHAIN_STORAGE_PROFILE=release_default bash -x <bundle>/run-game.sh --help
-AGENT_WORLD_CHAIN_STORAGE_PROFILE=soak_forensics bash -x <bundle>/run-web-launcher.sh --help
-AGENT_WORLD_CHAIN_STORAGE_PROFILE=dev_local bash -x <bundle>/run-chain-runtime.sh --help
+OASIS7_CHAIN_STORAGE_PROFILE=release_default bash -x <bundle>/run-game.sh --help
+OASIS7_CHAIN_STORAGE_PROFILE=soak_forensics bash -x <bundle>/run-web-launcher.sh --help
+OASIS7_CHAIN_STORAGE_PROFILE=dev_local bash -x <bundle>/run-chain-runtime.sh --help
 ```
 - 说明：
   - 用于 `TASK-WORLD_RUNTIME-033` 的 storage profile / storage gate / bundle wrapper 一致性核验；
@@ -361,7 +361,7 @@ AGENT_WORLD_CHAIN_STORAGE_PROFILE=dev_local bash -x <bundle>/run-chain-runtime.s
   - 如启用 feedback events，`summary.json.totals.feedback_events_total == summary.json.totals.feedback_events_success_total + summary.json.totals.feedback_events_failed_total`，且 `feedback_events.log` 中 `phase=completed/failed` 事件数量与 `feedback_events_total` 一致。
 - 漂移定位/回滚演练门禁（TASK-GAME-014）：
 ```bash
-env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required runtime::tests::persistence::rollback_with_reconciliation_recovers_from_detected_tick_consensus_drift -- --nocapture
+env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_required runtime::tests::persistence::rollback_with_reconciliation_recovers_from_detected_tick_consensus_drift -- --nocapture
 ```
 - 演练通过标准：
   - 能定位 `mismatch_tick`；
@@ -370,8 +370,8 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required run
 - 参考文档：`doc/testing/longrun/chain-runtime-soak-script-reactivation-2026-02-28.prd.md`、`doc/testing/longrun/p2p-storage-consensus-longrun-online-stability-2026-02-24.prd.md`。
 - 反作弊/反女巫证据链门禁（TASK-GAME-015）：
 ```bash
-env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required runtime::tests::governance::governance_identity_penalty_ -- --nocapture
-env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required governance_identity_penalty_and_appeal_drive_vote_rights -- --nocapture
+env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_required runtime::tests::governance::governance_identity_penalty_ -- --nocapture
+env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_required governance_identity_penalty_and_appeal_drive_vote_rights -- --nocapture
 ```
 - 通过标准：
   - 同目标主体 + 同证据哈希的惩罚重放被拒绝（incident 指纹不重复通过）。
@@ -379,9 +379,9 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required gov
   - `governance_identity_penalty_monitor_stats` 输出误伤率与高风险未闭环数量。
 - 经济源汇审计与阈值门禁（TASK-GAME-016）：
 ```bash
-env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required main_token_economy_ -- --nocapture
-env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required main_token_treasury_distribution_applies_closed_loop_and_records_audit -- --nocapture
-env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required main_token_fee_settlement_burns_supply_and_tracks_treasury_buckets -- --nocapture
+env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_required main_token_economy_ -- --nocapture
+env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_required main_token_treasury_distribution_applies_closed_loop_and_records_audit -- --nocapture
+env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_required main_token_fee_settlement_burns_supply_and_tracks_treasury_buckets -- --nocapture
 ```
 - 通过标准：
   - 审计报表输出 `mint_total/burn_total/net_flow` 与当期 `issued/distributed` 指标。
@@ -389,7 +389,7 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required mai
   - 报表中 `exploit_signature` 可用于治理升级与 runbook 分诊。
 - 可运维发布阻断门禁（TASK-GAME-017）：
 ```bash
-env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required longrun_operability_release_gate_ -- --nocapture
+env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_required longrun_operability_release_gate_ -- --nocapture
 ```
 - 通过标准：
   - `evaluate_longrun_operability_release_gate` 产出统一报告，覆盖 `SLO + 告警 + 灾备演练 + 灰度阶段 + 经济告警`。
@@ -479,10 +479,10 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required lon
   - WASM release evidence 最小归档：`summary.md`、`summary.json`、`module_sets.tsv`、各 module set verify log 与 per-runner summary json
 - 等价拆分命令（便于定向排障）：
 ```bash
-env -u RUSTC_WRAPPER cargo test -p agent_world module_release_submit_attestation_ --features test_tier_required -- --nocapture
-env -u RUSTC_WRAPPER cargo test -p agent_world module_release_apply_rejects_when_attestation_threshold_not_met --features test_tier_required -- --nocapture
-env -u RUSTC_WRAPPER cargo test -p agent_world module_release_apply_rejects_when_attestation_receipt_evidence_mismatches --features test_tier_required -- --nocapture
-env -u RUSTC_WRAPPER cargo test -p agent_world power_bootstrap_release_manifest_full --features test_tier_full -- --nocapture
+env -u RUSTC_WRAPPER cargo test -p oasis7 module_release_submit_attestation_ --features test_tier_required -- --nocapture
+env -u RUSTC_WRAPPER cargo test -p oasis7 module_release_apply_rejects_when_attestation_threshold_not_met --features test_tier_required -- --nocapture
+env -u RUSTC_WRAPPER cargo test -p oasis7 module_release_apply_rejects_when_attestation_receipt_evidence_mismatches --features test_tier_required -- --nocapture
+env -u RUSTC_WRAPPER cargo test -p oasis7 power_bootstrap_release_manifest_full --features test_tier_full -- --nocapture
 ./scripts/module-release-node-attestation-flow.sh --help
 ./scripts/package-module-release-attestation-proof.sh --help
 ./scripts/submit-module-release-attestation.sh --help
@@ -516,11 +516,11 @@ rg -n "conflicting attestation already exists|attestation threshold not met|atte
 | 套件 | 主要覆盖面 | 默认触发条件 | 最小证据 |
 |---|---|---|---|
 | S0 | 基础门禁 / 文档 / shell / 格式 / 快速健康检查 | 任何代码、脚本、文档、工作流改动 | 命令日志 + 通过/失败结论 |
-| S1 | 核心 required | `agent_world` 主链路代码改动 | required 测试日志 |
+| S1 | 核心 required | `oasis7` 主链路代码改动 | required 测试日志 |
 | S2 | 核心 full | 发布前、协议/规则高风险改动、required 无法充分覆盖时 | full 测试日志 |
 | S3 | 应用主链定向 | runtime / simulator / viewer live / web bridge 定向改动 | 定向 cargo test 日志 |
 | S4 | 分布式子系统 | node / net / consensus / distfs / P2P 链路改动 | 子系统测试日志 |
-| S5 | viewer crate / wasm 编译 | `crates/agent_world_viewer/**` 或 viewer wasm 构建链路改动 | viewer 单测 + wasm 编译日志 |
+| S5 | viewer crate / wasm 编译 | `crates/oasis7_viewer/**` 或 viewer wasm 构建链路改动 | viewer 单测 + wasm 编译日志 |
 | S6 | Web UI 闭环 smoke | Viewer / launcher / Web 控制台 / 交互链路改动 | 截图、console、语义结果 |
 | S7 | 场景矩阵回归 | scenario / gameplay 初始化 / 场景 ID 与稳定性改动 | 场景测试日志 |
 | S8 | 长稳与压力 | 性能、内存、恢复、资源压力或 soak 相关改动 | stress/soak 目录与 summary |
@@ -531,14 +531,14 @@ rg -n "conflicting attestation already exists|attestation threshold not met|atte
 
 | 改动路径 | 必跑 | 推荐追加 | 升级规则 |
 |---|---|---|---|
-| `crates/agent_world/src/runtime/**` | S0 + S1 | S2 + S3 + S7 | 若涉及确定性 / 治理 / 持久化，追加 S8；若触达在线状态复制，追加 S9 |
-| `crates/agent_world/src/simulator/**` | S0 + S1 | S2 + S3 + S7 + S8 | 若触达 UI 表达或交互入口，追加 S6 |
-| `crates/agent_world/src/viewer/**` 或 `src/bin/world_viewer_live.rs` | S0 + S1 + S6 | S2 + S3 + S5 | 若改动 viewer 协议或 wasm 构建链路，S5 变为必跑 |
-| `crates/agent_world_viewer/**` | S0 + S5 + S6 | S2 + S8 | 若改动只影响静态资源 / 样式，可抽样 S1；若影响 bridge，追加 S3 |
-| `crates/agent_world_node/**` | S0 + S4（node） + S9/S10（按改动面至少一条） | S2 + S3 + S8 + 另一条在线长跑（S9 或 S10） | 共识推进 / 节点编排改动优先加 S10；网络 / 复制改动优先加 S9 |
-| `crates/agent_world_net/**` | S0 + S4（net） + S9/S10（按改动面至少一条） | S2 + runtime_bridge 变体 + S8 + 另一条在线长跑（S9 或 S10） | 若仅桥接层改动，可用 S3 + S9 smoke；若影响真实联机，补 S10 |
-| `crates/agent_world_consensus/**` | S0 + S4（consensus） + S9/S10（按改动面至少一条） | S2 + S8 + 另一条在线长跑（S9 或 S10） | epoch / attest / finality 逻辑改动优先补 S10 |
-| `crates/agent_world_distfs/**` | S0 + S4（distfs） + S9/S10（按改动面至少一条） | S2 + S8 + 另一条在线长跑（S9 或 S10） | 存储复制 / challenge / 修复逻辑改动优先补 S9 |
+| `crates/oasis7/src/runtime/**` | S0 + S1 | S2 + S3 + S7 | 若涉及确定性 / 治理 / 持久化，追加 S8；若触达在线状态复制，追加 S9 |
+| `crates/oasis7/src/simulator/**` | S0 + S1 | S2 + S3 + S7 + S8 | 若触达 UI 表达或交互入口，追加 S6 |
+| `crates/oasis7/src/viewer/**` 或 `src/bin/world_viewer_live.rs` | S0 + S1 + S6 | S2 + S3 + S5 | 若改动 viewer 协议或 wasm 构建链路，S5 变为必跑 |
+| `crates/oasis7_viewer/**` | S0 + S5 + S6 | S2 + S8 | 若改动只影响静态资源 / 样式，可抽样 S1；若影响 bridge，追加 S3 |
+| `crates/oasis7_node/**` | S0 + S4（node） + S9/S10（按改动面至少一条） | S2 + S3 + S8 + 另一条在线长跑（S9 或 S10） | 共识推进 / 节点编排改动优先加 S10；网络 / 复制改动优先加 S9 |
+| `crates/oasis7_net/**` | S0 + S4（net） + S9/S10（按改动面至少一条） | S2 + runtime_bridge 变体 + S8 + 另一条在线长跑（S9 或 S10） | 若仅桥接层改动，可用 S3 + S9 smoke；若影响真实联机，补 S10 |
+| `crates/oasis7_consensus/**` | S0 + S4（consensus） + S9/S10（按改动面至少一条） | S2 + S8 + 另一条在线长跑（S9 或 S10） | epoch / attest / finality 逻辑改动优先补 S10 |
+| `crates/oasis7_distfs/**` | S0 + S4（distfs） + S9/S10（按改动面至少一条） | S2 + S8 + 另一条在线长跑（S9 或 S10） | 存储复制 / challenge / 修复逻辑改动优先补 S9 |
 | `doc/**`（非 `doc/devlog/**`） | S0（含 `./scripts/doc-governance-check.sh`） | 命中模块的抽样 required 证据核验 | 若文档改变发布 / 测试口径，追加对应模块的最小必跑集 |
 | `scripts/ci-tests.sh` / `.github/workflows/rust.yml` | S0（含 `./scripts/doc-governance-check.sh`） + S1 + `./scripts/viewer-visual-baseline.sh` + （full）`./scripts/llm-baseline-fixture-smoke.sh` | S2 + S4 + S6（抽样） | 若更改默认 gate 组合，需抽样至少一条 S9 或 S10 |
 | `scripts/release-gate.sh` / `.github/workflows/release-packages.yml` | `./scripts/ci-tests.sh full` + `sync-m1/m4/m5 --check` + Web strict + S9 + S10 | `./scripts/release-gate.sh --quick` / `--dry-run` | 任何发布 gate 逻辑变更均不允许跳过 S9/S10 |
@@ -627,11 +627,11 @@ rg -n "conflicting attestation already exists|attestation threshold not met|atte
 ## TODO（待收口）
 - [x] TODO-1：修正 S7 场景矩阵回归命令的覆盖口径。
   - 处理结果（2026-03-05）：S7 的 `world_init_demo_runs_` 已切换到 `test_tier_full` 执行档位。
-  - 验收记录：`env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_full world_init_demo_runs_ -- --nocapture` 命中多场景用例（非 1 条）。
+  - 验收记录：`env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_full world_init_demo_runs_ -- --nocapture` 命中多场景用例（非 1 条）。
 
-- [x] TODO-2：修复 S5 `agent_world_viewer` 测试编译阻塞。
-  - 处理结果（2026-02-21）：`agent_world_viewer` 测试集已恢复可编译可执行，并已纳入 `scripts/ci-tests.sh` 的 `required/full` 默认 gate。
-  - 验收记录：`env -u RUSTC_WRAPPER cargo test -p agent_world_viewer` 通过，且 `required-gate` 增加 `./scripts/viewer-visual-baseline.sh`。
+- [x] TODO-2：修复 S5 `oasis7_viewer` 测试编译阻塞。
+  - 处理结果（2026-02-21）：`oasis7_viewer` 测试集已恢复可编译可执行，并已纳入 `scripts/ci-tests.sh` 的 `required/full` 默认 gate。
+  - 验收记录：`env -u RUSTC_WRAPPER cargo test -p oasis7_viewer` 通过，且 `required-gate` 增加 `./scripts/viewer-visual-baseline.sh`。
 
 ## 风险
 - 风险 1：把 `required/full` 当作整应用全覆盖。

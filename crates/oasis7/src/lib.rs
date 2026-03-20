@@ -1,5 +1,3 @@
-extern crate self as agent_world;
-
 #[cfg(not(target_arch = "wasm32"))]
 pub mod consensus_action_payload;
 pub mod geometry;

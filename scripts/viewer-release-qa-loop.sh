@@ -557,7 +557,7 @@ for line in path.read_text(encoding='utf-8', errors='replace').splitlines():
         continue
     if 'Failed to load resource' in line:
         continue
-    if '/bevy_' in line or '/agent_world' in line or 'bevy' in line.lower() or 'wgpu' in line.lower():
+    if '/bevy_' in line or '/oasis7' in line or 'bevy' in line.lower() or 'wgpu' in line.lower():
         count += 1
 print(count)
 PY

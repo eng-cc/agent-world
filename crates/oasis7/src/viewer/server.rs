@@ -173,7 +173,7 @@ impl<'a> ViewerSession<'a> {
         match request {
             ViewerRequest::Hello { .. } => {
                 let response = ViewerResponse::HelloAck {
-                    server: "agent_world".to_string(),
+                    server: "oasis7".to_string(),
                     version: VIEWER_PROTOCOL_VERSION,
                     world_id: world_id.to_string(),
                     control_profile: ViewerControlProfile::Playback,

@@ -12,8 +12,8 @@ Usage: ./scripts/ci-tests.sh [required|full|full-core|full-support]
 
   required      Run fast required checks for local commit and PR gate.
   full          Run required checks plus all extended feature/integration tests.
-  full-core     Run doc/fmt plus the heaviest `agent_world --tests` full-tier shard.
-  full-support  Run the remaining support crates/viewer shard plus `agent_world --lib --bins`.
+  full-core     Run doc/fmt plus the heaviest `oasis7 --tests` full-tier shard.
+  full-support  Run the remaining support crates/viewer shard plus `oasis7 --lib --bins`.
 
 Default: full
 USAGE
