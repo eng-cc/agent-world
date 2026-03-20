@@ -574,7 +574,7 @@
     - `env -u RUSTC_WRAPPER cargo test -p oasis7_viewer resolve_viewer_auth_signer_from_node_config -- --nocapture`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
-- [x] TASK-WORLD_SIMULATOR-192 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 `crates/agent_world/tests` 下 module store 集成测试的临时目录前缀与测试 artifact signer seed 切到 `oasis7_*`，收口 integration test 产物与确定性签名种子里残留的旧 `agent-world` 命名。
+- [x] TASK-WORLD_SIMULATOR-192 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 `crates/oasis7/tests` 下 module store 集成测试的临时目录前缀与测试 artifact signer seed 切到 `oasis7_*`，收口 integration test 产物与确定性签名种子里残留的旧 `agent-world` 命名。
   - 产物文件:
     - `doc/world-simulator/prd.md`
     - `doc/world-simulator/project.md`
@@ -722,68 +722,68 @@
     - `bash -n scripts/sync-m1-builtin-wasm-artifacts.sh`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
-- [x] TASK-WORLD_SIMULATOR-204 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 Viewer compat fallback 的定向测试函数命名切到 `compat` 语义，收口测试层里残留的 `legacy_text_format` / `legacy_dir` / `legacy_key` 口径。
+- [x] TASK-WORLD_SIMULATOR-204 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 `oasis7_viewer` compat fallback 的定向测试函数命名切到 `compat` 语义，收口测试层里残留的 `legacy_text_format` / `legacy_dir` / `legacy_key` 口径。
   - 产物文件:
     - `doc/world-simulator/prd.md`
     - `doc/world-simulator/project.md`
-    - `crates/agent_world_viewer/src/egui_right_panel_chat_tests.rs`
-    - `crates/agent_world_viewer/src/right_panel_module_visibility.rs`
-    - `crates/agent_world_viewer/src/viewer_3d_config_profile_tests.rs`
+    - `crates/oasis7_viewer/src/egui_right_panel_chat_tests.rs`
+    - `crates/oasis7_viewer/src/right_panel_module_visibility.rs`
+    - `crates/oasis7_viewer/src/viewer_3d_config_profile_tests.rs`
   - 验收命令 (`test_tier_required`):
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7_viewer -- --nocapture`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
 - [x] TASK-WORLD_SIMULATOR-205 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 Viewer 文本 fallback helper、预 hello profile/协议 payload/player binding 的兼容命名切到 `compat` 语义，收口源码级 helper/测试名里残留的 `legacy_*` 口径。
   - 产物文件:
     - `doc/world-simulator/prd.md`
     - `doc/world-simulator/project.md`
-    - `crates/agent_world_viewer/src/egui_right_panel_chat.rs`
-    - `crates/agent_world_viewer/src/main_connection.rs`
-    - `crates/agent_world_proto/src/viewer.rs`
-    - `crates/agent_world/src/viewer/live/tests.rs`
+    - `crates/oasis7_viewer/src/egui_right_panel_chat.rs`
+    - `crates/oasis7_viewer/src/main_connection.rs`
+    - `crates/oasis7_proto/src/viewer.rs`
+    - `crates/oasis7/src/viewer/live/tests.rs`
   - 验收命令 (`test_tier_required`):
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer -- --nocapture`
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world_proto --lib -- --nocapture`
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world agent_chat_upgrades_compat_player_binding_with_public_key -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7_viewer -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7_proto --lib -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 agent_chat_upgrades_compat_player_binding_with_public_key -- --nocapture`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
-- [x] TASK-WORLD_SIMULATOR-206 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 `agent_world` 运行时 material ledger 迁移 helper、execution bridge 兼容扫描 helper 与 module registry fallback 局部变量命名切到 `compat` 或准确中性语义，收口源码内部残留的 `legacy_*` 口径。
-  - 产物文件: `doc/world-simulator/prd.md`, `doc/world-simulator/project.md`, `crates/agent_world/src/runtime/state.rs`, `crates/agent_world/src/runtime/world/resources.rs`, `crates/agent_world/src/runtime/world/module_runtime.rs`, `crates/agent_world/src/bin/world_chain_runtime/execution_bridge.rs`
+- [x] TASK-WORLD_SIMULATOR-206 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 `oasis7` 运行时 material ledger 迁移 helper、execution bridge 兼容扫描 helper 与 module registry fallback 局部变量命名切到 `compat` 或准确中性语义，收口源码内部残留的 `legacy_*` 口径。
+  - 产物文件: `doc/world-simulator/prd.md`, `doc/world-simulator/project.md`, `crates/oasis7/src/runtime/state.rs`, `crates/oasis7/src/runtime/world/resources.rs`, `crates/oasis7/src/runtime/world/module_runtime.rs`, `crates/oasis7/src/bin/world_chain_runtime/execution_bridge.rs`
   - 验收命令 (`test_tier_required`):
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world --lib new_world_migrates_legacy_world_materials_into_material_ledgers -- --nocapture`
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world --lib schedule_recipe_reads_and_writes_site_material_ledger -- --nocapture`
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_chain_runtime execution_bridge_record_legacy_payload_defaults_latest_state_ref -- --nocapture`
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_chain_runtime execution_bridge_retention_maintenance_skips_aggressive_sweep_for_legacy_records -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --lib new_world_migrates_legacy_world_materials_into_material_ledgers -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --lib schedule_recipe_reads_and_writes_site_material_ledger -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_chain_runtime execution_bridge_record_legacy_payload_defaults_latest_state_ref -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_chain_runtime execution_bridge_retention_maintenance_skips_aggressive_sweep_for_legacy_records -- --nocapture`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
-- [x] TASK-WORLD_SIMULATOR-207 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 `agent_world_node` commit cold index 旧文件名 alias 的 helper、局部变量与定向测试命名切到 `compat` 语义，收口 node replication 源码内部残留的 `legacy_*` 口径。
-  - 产物文件: `doc/world-simulator/prd.md`, `doc/world-simulator/project.md`, `crates/agent_world_node/src/replication/commit_retention.rs`, `crates/agent_world_node/src/replication/tests.rs`
+- [x] TASK-WORLD_SIMULATOR-207 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 `oasis7_node` commit cold index 旧文件名 alias 的 helper、局部变量与定向测试命名切到 `compat` 语义，收口 node replication 源码内部残留的 `legacy_*` 口径。
+  - 产物文件: `doc/world-simulator/prd.md`, `doc/world-simulator/project.md`, `crates/oasis7_node/src/replication/commit_retention.rs`, `crates/oasis7_node/src/replication/tests.rs`
   - 验收命令 (`test_tier_required`):
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world_node load_commit_message_cold_index_restores_compat_alias_from_canonical_manifest -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7_node load_commit_message_cold_index_restores_compat_alias_from_canonical_manifest -- --nocapture`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
-- [x] TASK-WORLD_SIMULATOR-208 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 `agent_world_distfs` 旧 JSON 兼容样例的 replication record/guard 定向测试命名与局部变量切到 `compat` 语义，收口 DistFS 测试层残留的 `legacy_*` 口径。
-  - 产物文件: `doc/world-simulator/prd.md`, `doc/world-simulator/project.md`, `crates/agent_world_distfs/src/replication.rs`
+- [x] TASK-WORLD_SIMULATOR-208 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 `oasis7_distfs` 旧 JSON 兼容样例的 replication record/guard 定向测试命名与局部变量切到 `compat` 语义，收口 DistFS 测试层残留的 `legacy_*` 口径。
+  - 产物文件: `doc/world-simulator/prd.md`, `doc/world-simulator/project.md`, `crates/oasis7_distfs/src/replication.rs`
   - 验收命令 (`test_tier_required`):
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world_distfs replication_record_and_guard_compat_json_default_writer_epoch_to_one -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7_distfs replication_record_and_guard_compat_json_default_writer_epoch_to_one -- --nocapture`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
-- [x] TASK-WORLD_SIMULATOR-209 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 `agent_world_wasm_sdk` 的 crate name、workspace member 与 crate 目录名直接切到 `oasis7_wasm_sdk`，并同步更新 builtin wasm 模块/模板/锁文件里的依赖名、路径与源码入口。
-  - 产物文件: `Cargo.toml`, `doc/world-simulator/prd.md`, `doc/world-simulator/project.md`, `crates/oasis7_wasm_sdk/**`, `crates/agent_world_builtin_wasm_modules/**`
+- [x] TASK-WORLD_SIMULATOR-209 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 `oasis7_wasm_sdk` 的 crate name、workspace member 与 crate 目录名直接切到 `oasis7_wasm_sdk`，并同步更新 builtin wasm 模块/模板/锁文件里的依赖名、路径与源码入口。
+  - 产物文件: `Cargo.toml`, `doc/world-simulator/prd.md`, `doc/world-simulator/project.md`, `crates/oasis7_wasm_sdk/**`, `crates/oasis7_builtin_wasm_modules/**`
   - 验收命令 (`test_tier_required`):
     - `env -u RUSTC_WRAPPER cargo test -p oasis7_wasm_sdk --lib -- --nocapture`
-    - `env -u RUSTC_WRAPPER cargo check -p agent_world_builtin_wasm_m1_rule_move`
+    - `env -u RUSTC_WRAPPER cargo check -p oasis7_builtin_wasm_m1_rule_move`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
-- [x] TASK-WORLD_SIMULATOR-210 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 `agent_world_wasm_abi` 的 crate name、workspace member 与 crate 目录名直接切到 `oasis7_wasm_abi`，并同步更新执行器、路由、存储、网络、runtime 与测试里的依赖名、路径与源码入口。
-  - 产物文件: `Cargo.toml`, `doc/world-simulator/prd.md`, `doc/world-simulator/project.md`, `crates/oasis7_wasm_abi/**`, `crates/{agent_world,agent_world_net,agent_world_wasm_executor,agent_world_wasm_router,agent_world_wasm_store}/**`
+- [x] TASK-WORLD_SIMULATOR-210 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 `oasis7_wasm_abi` 的 crate name、workspace member 与 crate 目录名直接切到 `oasis7_wasm_abi`，并同步更新执行器、路由、存储、网络、runtime 与测试里的依赖名、路径与源码入口。
+  - 产物文件: `Cargo.toml`, `doc/world-simulator/prd.md`, `doc/world-simulator/project.md`, `crates/oasis7_wasm_abi/**`, `crates/{oasis7,oasis7_net,oasis7_wasm_executor,oasis7_wasm_router,oasis7_wasm_store}/**`
   - 验收命令 (`test_tier_required`):
     - `env -u RUSTC_WRAPPER cargo test -p oasis7_wasm_abi --lib -- --nocapture`
-    - `env -u RUSTC_WRAPPER cargo check -p agent_world_wasm_executor`
+    - `env -u RUSTC_WRAPPER cargo check -p oasis7_wasm_executor`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
-- [x] TASK-WORLD_SIMULATOR-211 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 `agent_world_wasm_router` 的 crate name、workspace member 与 crate 目录名直接切到 `oasis7_wasm_router`，并同步更新 runtime/world 侧依赖名、路径与源码入口。
-  - 验收命令: `env -u RUSTC_WRAPPER cargo test -p oasis7_wasm_router --lib -- --nocapture`, `env -u RUSTC_WRAPPER cargo check -p agent_world`, `./scripts/doc-governance-check.sh`, `git diff --check`
+- [x] TASK-WORLD_SIMULATOR-211 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 `oasis7_wasm_router` 的 crate name、workspace member 与 crate 目录名直接切到 `oasis7_wasm_router`，并同步更新 runtime/world 侧依赖名、路径与源码入口。
+  - 验收命令: `env -u RUSTC_WRAPPER cargo test -p oasis7_wasm_router --lib -- --nocapture`, `env -u RUSTC_WRAPPER cargo check -p oasis7`, `./scripts/doc-governance-check.sh`, `git diff --check`
 - [x] TASK-WORLD_SIMULATOR-212 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 `agent_world_wasm_executor` / `agent_world_wasm_store` 的 crate name、workspace member 与 crate 目录名直接切到 `oasis7_*`，并同步更新 runtime、tests 与特性依赖声明。
 - [x] TASK-WORLD_SIMULATOR-213 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 `agent_world_proto` 的 crate name、workspace member 与 crate 目录名直接切到 `oasis7_proto`，并同步更新协议层下游 crate、runtime 与脚本里的依赖名、路径与源码入口。
 - [x] TASK-WORLD_SIMULATOR-214 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 `agent_world_{distfs,consensus,net,node}` 的 crate name、workspace member 与 crate 目录名直接切到 `oasis7_*`，并同步更新 runtime、chain runtime、viewer live 与脚本里的依赖名、路径、源码入口和 `cargo -p` 包名。
@@ -873,7 +873,7 @@
 ## 专题任务映射（2026-03-05 批次）
 - [x] SUBTASK-WORLD_SIMULATOR-20260305-001 (PRD-WORLD_SIMULATOR-017) [test_tier_required]: `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase2-2026-03-05.project.md`
 - [x] SUBTASK-WORLD_SIMULATOR-20260305-002 (PRD-WORLD_SIMULATOR-018) [test_tier_required]: `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase3-2026-03-05.project.md`
-- [x] SUBTASK-WORLD_SIMULATOR-20260305-003 (PRD-WORLD_SIMULATOR-018) [test_tier_required]: `crates/agent_world/src/viewer/runtime_live/control_plane.rs` + `crates/agent_world/src/bin/world_viewer_live.rs`
+- [x] SUBTASK-WORLD_SIMULATOR-20260305-003 (PRD-WORLD_SIMULATOR-018) [test_tier_required]: `crates/oasis7/src/viewer/runtime_live/control_plane.rs` + `crates/oasis7/src/bin/world_viewer_live.rs`
 - [x] SUBTASK-WORLD_SIMULATOR-20260305-004 (PRD-WORLD_SIMULATOR-019) [test_tier_required]: `doc/world-simulator/viewer/viewer-live-runtime-world-llm-full-bridge-2026-03-05.project.md`
 ## 专题任务映射（2026-03-06 批次）
 - [x] SUBTASK-WORLD_SIMULATOR-20260306-001 (PRD-WORLD_SIMULATOR-001/002/003) [test_tier_required]: `doc/world-simulator/kernel/power-storage-complete-removal-2026-03-06.project.md`（文档建档）
@@ -941,25 +941,25 @@
 - `doc/world-simulator/launcher/game-client-launcher-i18n-required-config-2026-03-02.prd.md`
 - `doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.prd.md`
 - `.agents/skills/prd/check.md`
-- `crates/agent_world/src/bin/world_chain_runtime.rs`
-- `crates/agent_world/src/bin/world_game_launcher.rs`
-- `crates/agent_world/src/bin/world_web_launcher.rs`
-- `crates/agent_world/src/bin/world_web_launcher/gui_agent_api.rs`
-- `crates/agent_world/src/bin/world_chain_runtime/transfer_submit_api.rs`
-- `crates/agent_world/src/bin/world_chain_runtime/transfer_submit_api_tests.rs`
-- `crates/agent_world_launcher_ui/src/lib.rs`
-- `crates/agent_world_client_launcher/src/main.rs`
-- `crates/agent_world_client_launcher/src/main_app_shell.rs`
-- `crates/agent_world_client_launcher/src/main_ui_helpers.rs`
-- `crates/agent_world_client_launcher/src/app_process.rs`
-- `crates/agent_world_client_launcher/src/app_process_web.rs`
-- `crates/agent_world_client_launcher/src/explorer_window.rs`
-- `crates/agent_world_client_launcher/src/explorer_window_view.rs`
-- `crates/agent_world/src/runtime/world/event_processing/action_to_event_core.rs`
-- `crates/agent_world/src/runtime/tests/agent_default_modules.rs`
-- `crates/agent_world/src/runtime/tests/power_bootstrap.rs`
-- `crates/agent_world_viewer/Cargo.toml`
-- `crates/agent_world_viewer/src/main.rs`
+- `crates/oasis7/src/bin/world_chain_runtime.rs`
+- `crates/oasis7/src/bin/world_game_launcher.rs`
+- `crates/oasis7/src/bin/world_web_launcher.rs`
+- `crates/oasis7/src/bin/world_web_launcher/gui_agent_api.rs`
+- `crates/oasis7/src/bin/world_chain_runtime/transfer_submit_api.rs`
+- `crates/oasis7/src/bin/world_chain_runtime/transfer_submit_api_tests.rs`
+- `crates/oasis7_launcher_ui/src/lib.rs`
+- `crates/oasis7_client_launcher/src/main.rs`
+- `crates/oasis7_client_launcher/src/main_app_shell.rs`
+- `crates/oasis7_client_launcher/src/main_ui_helpers.rs`
+- `crates/oasis7_client_launcher/src/app_process.rs`
+- `crates/oasis7_client_launcher/src/app_process_web.rs`
+- `crates/oasis7_client_launcher/src/explorer_window.rs`
+- `crates/oasis7_client_launcher/src/explorer_window_view.rs`
+- `crates/oasis7/src/runtime/world/event_processing/action_to_event_core.rs`
+- `crates/oasis7/src/runtime/tests/agent_default_modules.rs`
+- `crates/oasis7/src/runtime/tests/power_bootstrap.rs`
+- `crates/oasis7_viewer/Cargo.toml`
+- `crates/oasis7_viewer/src/main.rs`
 - `scripts/build-game-launcher-bundle.sh`
 - `scripts/capture-viewer-frame.sh`
 - `testing-manual.md`
