@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use agent_world_proto::world_error::WorldError;
+use oasis7_proto::world_error::WorldError;
 use serde::{Deserialize, Serialize};
 
 use super::{

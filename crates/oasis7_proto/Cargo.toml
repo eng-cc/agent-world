@@ -1,5 +1,5 @@
 [package]
-name = "agent_world_proto"
+name = "oasis7_proto"
 version = "0.1.0"
 edition = "2021"
 

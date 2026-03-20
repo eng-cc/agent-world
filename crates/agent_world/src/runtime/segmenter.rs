@@ -1,13 +1,13 @@
 //! Snapshot/journal segmentation helpers for distributed storage.
 
 use agent_world_distfs as distfs;
-use agent_world_proto::distributed::SnapshotManifest;
+use oasis7_proto::distributed::SnapshotManifest;
 
 use super::blob_store::BlobStore;
 use super::error::WorldError;
 use super::snapshot::{Journal, Snapshot};
 
-pub use agent_world_proto::distributed_storage::{JournalSegmentRef, SegmentConfig};
+pub use oasis7_proto::distributed_storage::{JournalSegmentRef, SegmentConfig};
 
 pub fn segment_snapshot(
     snapshot: &Snapshot,

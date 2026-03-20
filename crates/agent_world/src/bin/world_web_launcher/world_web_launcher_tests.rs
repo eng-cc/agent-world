@@ -14,7 +14,7 @@ use super::{
     LauncherConfig, ProcessState, ServiceState, DEFAULT_CHAIN_NODE_ID, DEFAULT_CHAIN_STATUS_BIND,
     DEFAULT_LISTEN_BIND, DEFAULT_SCENARIO,
 };
-use agent_world_proto::storage_profile::StorageProfile;
+use oasis7_proto::storage_profile::StorageProfile;
 
 #[test]
 fn parse_options_defaults() {

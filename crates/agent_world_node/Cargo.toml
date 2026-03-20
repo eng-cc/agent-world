@@ -9,7 +9,7 @@ path = "src/lib.rs"
 [dependencies]
 agent_world_consensus = { path = "../agent_world_consensus" }
 agent_world_distfs = { path = "../agent_world_distfs" }
-agent_world_proto = { path = "../agent_world_proto" }
+oasis7_proto = { path = "../oasis7_proto" }
 async-std = "1"
 ed25519-dalek = "2"
 futures = "0.3"

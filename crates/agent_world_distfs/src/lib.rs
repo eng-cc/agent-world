@@ -1,6 +1,6 @@
-use agent_world_proto::distributed::{SnapshotManifest, StateChunkRef};
-use agent_world_proto::distributed_storage::{JournalSegmentRef, SegmentConfig};
-use agent_world_proto::world_error::WorldError;
+use oasis7_proto::distributed::{SnapshotManifest, StateChunkRef};
+use oasis7_proto::distributed_storage::{JournalSegmentRef, SegmentConfig};
+use oasis7_proto::world_error::WorldError;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};

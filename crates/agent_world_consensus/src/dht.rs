@@ -2,8 +2,8 @@ use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use agent_world_proto::distributed::WorldHeadAnnounce;
-use agent_world_proto::distributed_dht as proto_dht;
+use oasis7_proto::distributed::WorldHeadAnnounce;
+use oasis7_proto::distributed_dht as proto_dht;
 
 use crate::error::WorldError;
 

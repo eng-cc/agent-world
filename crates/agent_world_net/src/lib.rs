@@ -24,7 +24,7 @@ pub mod distributed_net {
 }
 
 pub mod distributed {
-    pub use agent_world_proto::distributed::*;
+    pub use oasis7_proto::distributed::*;
 }
 
 pub mod distributed_dht {
@@ -63,19 +63,19 @@ pub mod observer_replay_flow {
 }
 
 pub mod distributed_storage {
-    pub use agent_world_proto::distributed_storage::{ExecutionWriteConfig, ExecutionWriteResult};
+    pub use oasis7_proto::distributed_storage::{ExecutionWriteConfig, ExecutionWriteResult};
 }
 
 pub mod error {
-    pub use agent_world_proto::world_error::WorldError;
+    pub use oasis7_proto::world_error::WorldError;
 }
 
 pub mod modules {
     pub use oasis7_wasm_abi::{ModuleArtifact, ModuleManifest};
 }
 
-pub use agent_world_proto::distributed_dht as proto_dht;
-pub use agent_world_proto::distributed_net as proto_net;
+pub use oasis7_proto::distributed_dht as proto_dht;
+pub use oasis7_proto::distributed_net as proto_net;
 pub use client::DistributedClient;
 pub use dht::{DistributedDht, InMemoryDht};
 pub use dht_cache::{CachedDht, DhtCacheConfig};

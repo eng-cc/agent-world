@@ -92,7 +92,7 @@ pub enum WorldError {
         protocol: String,
     },
     NetworkRequestFailed {
-        code: agent_world_proto::distributed::DistributedErrorCode,
+        code: oasis7_proto::distributed::DistributedErrorCode,
         message: String,
         retryable: bool,
     },
@@ -122,13 +122,13 @@ impl From<io::Error> for WorldError {
     }
 }
 
-impl From<agent_world_proto::world_error::WorldError> for WorldError {
-    fn from(error: agent_world_proto::world_error::WorldError) -> Self {
+impl From<oasis7_proto::world_error::WorldError> for WorldError {
+    fn from(error: oasis7_proto::world_error::WorldError) -> Self {
         match error {
-            agent_world_proto::world_error::WorldError::NetworkProtocolUnavailable { protocol } => {
+            oasis7_proto::world_error::WorldError::NetworkProtocolUnavailable { protocol } => {
                 WorldError::NetworkProtocolUnavailable { protocol }
             }
-            agent_world_proto::world_error::WorldError::NetworkRequestFailed {
+            oasis7_proto::world_error::WorldError::NetworkRequestFailed {
                 code,
                 message,
                 retryable,
@@ -137,23 +137,23 @@ impl From<agent_world_proto::world_error::WorldError> for WorldError {
                 message,
                 retryable,
             },
-            agent_world_proto::world_error::WorldError::DistributedValidationFailed { reason } => {
+            oasis7_proto::world_error::WorldError::DistributedValidationFailed { reason } => {
                 WorldError::DistributedValidationFailed { reason }
             }
-            agent_world_proto::world_error::WorldError::BlobNotFound { content_hash } => {
+            oasis7_proto::world_error::WorldError::BlobNotFound { content_hash } => {
                 WorldError::BlobNotFound { content_hash }
             }
-            agent_world_proto::world_error::WorldError::BlobHashMismatch { expected, actual } => {
+            oasis7_proto::world_error::WorldError::BlobHashMismatch { expected, actual } => {
                 WorldError::BlobHashMismatch { expected, actual }
             }
-            agent_world_proto::world_error::WorldError::BlobHashInvalid { content_hash } => {
+            oasis7_proto::world_error::WorldError::BlobHashInvalid { content_hash } => {
                 WorldError::BlobHashInvalid { content_hash }
             }
-            agent_world_proto::world_error::WorldError::SignatureKeyInvalid => {
+            oasis7_proto::world_error::WorldError::SignatureKeyInvalid => {
                 WorldError::SignatureKeyInvalid
             }
-            agent_world_proto::world_error::WorldError::Io(message) => WorldError::Io(message),
-            agent_world_proto::world_error::WorldError::Serde(message) => {
+            oasis7_proto::world_error::WorldError::Io(message) => WorldError::Io(message),
+            oasis7_proto::world_error::WorldError::Serde(message) => {
                 WorldError::Serde(message)
             }
         }

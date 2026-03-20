@@ -1,7 +1,7 @@
 use super::runtime_paths::viewer_dev_dist_candidates;
 use super::*;
 
-use agent_world_proto::storage_profile::StorageProfile;
+use oasis7_proto::storage_profile::StorageProfile;
 use std::io::{BufRead, BufReader, Read};
 use std::net::{TcpListener, TcpStream, ToSocketAddrs};
 use std::path::Path;

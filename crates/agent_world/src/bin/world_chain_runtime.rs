@@ -18,7 +18,7 @@ use agent_world_node::{
     NodePosConfig, NodeReplicationConfig, NodeReplicationNetworkHandle, NodeRole, NodeRuntime,
     NodeSnapshot, PosConsensusStatus, PosValidator,
 };
-use agent_world_proto::storage_profile::{StorageProfile, StorageProfileConfig};
+use oasis7_proto::storage_profile::{StorageProfile, StorageProfileConfig};
 use ed25519_dalek::SigningKey;
 use serde::Serialize;
 use sha2::{Digest, Sha256};
@@ -67,7 +67,7 @@ mod execution_bridge {
     use agent_world_node::{
         NodeExecutionCommitContext, NodeExecutionCommitResult, NodeExecutionHook,
     };
-    use agent_world_proto::storage_profile::StorageProfileConfig;
+    use oasis7_proto::storage_profile::StorageProfileConfig;
 
     #[derive(Debug)]
     pub(super) struct NodeRuntimeExecutionDriver;

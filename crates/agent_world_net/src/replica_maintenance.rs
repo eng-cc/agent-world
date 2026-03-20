@@ -420,7 +420,7 @@ mod tests {
     use std::collections::{HashMap, HashSet};
     use std::sync::{Arc, Mutex};
 
-    use agent_world_proto::distributed as proto_distributed;
+    use oasis7_proto::distributed as proto_distributed;
 
     use super::*;
     use crate::proto_dht;

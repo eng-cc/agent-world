@@ -7,7 +7,7 @@ use super::{
 };
 use agent_world::runtime::{ReleaseSecurityPolicy, World as RuntimeWorld};
 use agent_world_node::{NodeConsensusSnapshot, NodeRole, NodeSnapshot};
-use agent_world_proto::storage_profile::{StorageProfile, StorageProfileConfig};
+use oasis7_proto::storage_profile::{StorageProfile, StorageProfileConfig};
 use ed25519_dalek::SigningKey;
 use std::collections::BTreeMap;
 use std::path::Path;

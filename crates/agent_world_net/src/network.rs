@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 use crate::error::WorldError;
-use agent_world_proto::distributed_net as proto_net;
+use oasis7_proto::distributed_net as proto_net;
 
 pub use proto_net::{NetworkMessage, NetworkRequest, NetworkResponse, NetworkSubscription};
 

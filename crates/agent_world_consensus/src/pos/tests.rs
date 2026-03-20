@@ -3,7 +3,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::super::distributed_dht::InMemoryDht;
 use super::*;
-use agent_world_proto::distributed_dht::DistributedDht as _;
+use oasis7_proto::distributed_dht::DistributedDht as _;
 
 fn validators() -> Vec<PosValidator> {
     vec![

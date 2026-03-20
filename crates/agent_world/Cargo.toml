@@ -7,7 +7,7 @@ edition = "2021"
 path = "src/lib.rs"
 
 [dependencies]
-agent_world_proto = { path = "../agent_world_proto" }
+oasis7_proto = { path = "../oasis7_proto" }
 oasis7_wasm_abi = { path = "../oasis7_wasm_abi" }
 hex = "0.4"
 sha2 = "0.10"

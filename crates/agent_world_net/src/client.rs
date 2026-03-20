@@ -1,8 +1,8 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use agent_world_proto::distributed as proto_distributed;
-use agent_world_proto::distributed::WorldHeadAnnounce;
+use oasis7_proto::distributed as proto_distributed;
+use oasis7_proto::distributed::WorldHeadAnnounce;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 

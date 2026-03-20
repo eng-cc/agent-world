@@ -1,10 +1,10 @@
 use std::collections::BTreeMap;
 use std::convert::TryFrom;
 
-use agent_world_proto::distributed::{
+use oasis7_proto::distributed::{
     StorageChallengeFailureReason, StorageChallengeProofSemantics, StorageChallengeSampleSource,
 };
-use agent_world_proto::world_error::WorldError;
+use oasis7_proto::world_error::WorldError;
 use serde::{Deserialize, Serialize};
 
 use super::{blake3_hex, validate_hash, LocalCasStore};

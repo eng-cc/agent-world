@@ -821,7 +821,7 @@ fn runtime_network_consensus_syncs_peer_heads_without_udp_gossip() {
         },
     ];
     let network: Arc<
-        dyn agent_world_proto::distributed_net::DistributedNetwork<WorldError> + Send + Sync,
+        dyn oasis7_proto::distributed_net::DistributedNetwork<WorldError> + Send + Sync,
     > = Arc::new(TestInMemoryNetwork::default());
 
     let config_a = NodeConfig::new("node-a", "world-network-consensus", NodeRole::Sequencer)
@@ -934,7 +934,7 @@ fn runtime_network_replication_syncs_distfs_commit_files() {
     let pos_config =
         signed_pos_config_with_signer_seeds(validators, &[("node-a", 71), ("node-b", 72)]);
     let network: Arc<
-        dyn agent_world_proto::distributed_net::DistributedNetwork<WorldError> + Send + Sync,
+        dyn oasis7_proto::distributed_net::DistributedNetwork<WorldError> + Send + Sync,
     > = Arc::new(TestInMemoryNetwork::default());
 
     let config_a = NodeConfig::new("node-a", "world-network-repl", NodeRole::Sequencer)
@@ -983,7 +983,7 @@ fn runtime_network_replication_fetch_handlers_serve_commit_and_blob() {
     }];
     let pos_config = signed_pos_config_with_signer_seeds(validators, &[("node-a", 77)]);
     let network: Arc<
-        dyn agent_world_proto::distributed_net::DistributedNetwork<WorldError> + Send + Sync,
+        dyn oasis7_proto::distributed_net::DistributedNetwork<WorldError> + Send + Sync,
     > = Arc::new(TestInMemoryNetwork::default());
 
     let config_a = NodeConfig::new("node-a", "world-network-fetch", NodeRole::Sequencer)
@@ -1065,7 +1065,7 @@ fn runtime_network_replication_gap_sync_fetches_missing_commits() {
         signed_pos_config_with_signer_seeds(validators, &[("node-a", 78), ("node-b", 79)]);
     let network_impl = Arc::new(TestInMemoryNetwork::default());
     let network: Arc<
-        dyn agent_world_proto::distributed_net::DistributedNetwork<WorldError> + Send + Sync,
+        dyn oasis7_proto::distributed_net::DistributedNetwork<WorldError> + Send + Sync,
     > = network_impl.clone();
 
     let config_a = NodeConfig::new("node-a", world_id, NodeRole::Sequencer)
@@ -1231,7 +1231,7 @@ fn runtime_network_replication_gap_sync_not_found_is_non_fatal() {
         signed_pos_config_with_signer_seeds(validators, &[("node-a", 87), ("node-b", 88)]);
     let network_impl = Arc::new(TestInMemoryNetwork::default());
     let network: Arc<
-        dyn agent_world_proto::distributed_net::DistributedNetwork<WorldError> + Send + Sync,
+        dyn oasis7_proto::distributed_net::DistributedNetwork<WorldError> + Send + Sync,
     > = network_impl.clone();
 
     let config_a = NodeConfig::new("node-a", world_id, NodeRole::Sequencer)

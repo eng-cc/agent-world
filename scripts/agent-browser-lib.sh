@@ -223,8 +223,8 @@ scope = [
     "crates/agent_world_viewer/favicon.ico",
     "crates/agent_world_viewer/src",
     "crates/agent_world_viewer/assets",
-    "crates/agent_world_proto/Cargo.toml",
-    "crates/agent_world_proto/src",
+    "crates/oasis7_proto/Cargo.toml",
+    "crates/oasis7_proto/src",
 ]
 
 latest = 0

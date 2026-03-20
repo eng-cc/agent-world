@@ -8,9 +8,9 @@ use agent_world_distfs::{
     public_key_hex_from_signing_key_hex, sign_feedback_create_request, FeedbackCreateRequest,
     FeedbackStore, FeedbackStoreConfig, FileReplicationRecord, LocalCasStore,
 };
-use agent_world_proto::distributed::DistributedErrorCode;
-use agent_world_proto::distributed_net::NetworkSubscription;
-use agent_world_proto::world_error::WorldError;
+use oasis7_proto::distributed::DistributedErrorCode;
+use oasis7_proto::distributed_net::NetworkSubscription;
+use oasis7_proto::world_error::WorldError;
 use ed25519_dalek::{Signer as _, SigningKey};
 use serde::Serialize;
 use std::collections::{BTreeMap, HashMap};
@@ -174,7 +174,7 @@ struct TestInMemoryNetwork {
 
 type TestNetworkInbox = Arc<Mutex<HashMap<String, Vec<Vec<u8>>>>>;
 
-impl agent_world_proto::distributed_net::DistributedNetwork<WorldError> for TestInMemoryNetwork {
+impl oasis7_proto::distributed_net::DistributedNetwork<WorldError> for TestInMemoryNetwork {
     fn publish(&self, topic: &str, payload: &[u8]) -> Result<(), WorldError> {
         self.retained
             .lock()
@@ -486,7 +486,7 @@ fn runtime_replication_ingest_reports_error_and_does_not_advance_network_height_
 
     let network_impl = Arc::new(TestInMemoryNetwork::default());
     let network: Arc<
-        dyn agent_world_proto::distributed_net::DistributedNetwork<WorldError> + Send + Sync,
+        dyn oasis7_proto::distributed_net::DistributedNetwork<WorldError> + Send + Sync,
     > = network_impl.clone();
 
     let config = NodeConfig::new("node-b", world_id, NodeRole::Observer)
@@ -582,7 +582,7 @@ fn runtime_replication_ingest_rejects_signed_writer_outside_allowlist() {
 
     let network_impl = Arc::new(TestInMemoryNetwork::default());
     let network: Arc<
-        dyn agent_world_proto::distributed_net::DistributedNetwork<WorldError> + Send + Sync,
+        dyn oasis7_proto::distributed_net::DistributedNetwork<WorldError> + Send + Sync,
     > = network_impl.clone();
 
     let config = NodeConfig::new("node-b", world_id, NodeRole::Observer)
@@ -645,7 +645,7 @@ fn runtime_fetch_handlers_reject_unsigned_fetch_request_in_signed_mode() {
         &[("node-a", 111)],
     );
     let network: Arc<
-        dyn agent_world_proto::distributed_net::DistributedNetwork<WorldError> + Send + Sync,
+        dyn oasis7_proto::distributed_net::DistributedNetwork<WorldError> + Send + Sync,
     > = Arc::new(TestInMemoryNetwork::default());
 
     let config = NodeConfig::new("node-a", world_id, NodeRole::Observer)
@@ -710,7 +710,7 @@ fn runtime_feedback_submit_publishes_and_peer_ingests() {
 
     let network_impl = Arc::new(TestInMemoryNetwork::default());
     let network: Arc<
-        dyn agent_world_proto::distributed_net::DistributedNetwork<WorldError> + Send + Sync,
+        dyn oasis7_proto::distributed_net::DistributedNetwork<WorldError> + Send + Sync,
     > = network_impl.clone();
 
     let config_a = NodeConfig::new("node-a", world_id, NodeRole::Observer)

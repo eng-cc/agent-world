@@ -3,8 +3,8 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 
-use agent_world_proto::distributed_dht::DistributedDht as ProtoDistributedDht;
-use agent_world_proto::distributed_net::DistributedNetwork as ProtoDistributedNetwork;
+use oasis7_proto::distributed_dht::DistributedDht as ProtoDistributedDht;
+use oasis7_proto::distributed_net::DistributedNetwork as ProtoDistributedNetwork;
 use futures::channel::{mpsc, oneshot};
 use futures::{FutureExt, StreamExt};
 use libp2p::gossipsub::{self, IdentTopic, MessageAuthenticity, TopicHash};
@@ -16,12 +16,12 @@ use libp2p::swarm::{NetworkBehaviour, Swarm, SwarmEvent};
 use libp2p::{Multiaddr, PeerId, StreamProtocol, Transport as _};
 
 use crate::error::WorldError;
-use agent_world_proto::distributed::{
+use oasis7_proto::distributed::{
     dht_membership_key, dht_provider_key, dht_world_head_key, DistributedErrorCode, ErrorResponse,
     WorldHeadAnnounce, RR_PROTOCOL_PREFIX,
 };
-use agent_world_proto::distributed_dht::{MembershipDirectorySnapshot, ProviderRecord};
-use agent_world_proto::distributed_net::{
+use oasis7_proto::distributed_dht::{MembershipDirectorySnapshot, ProviderRecord};
+use oasis7_proto::distributed_net::{
     push_bounded_inbox_message, NetworkMessage, NetworkRequest, NetworkResponse,
     NetworkSubscription, DEFAULT_SUBSCRIPTION_INBOX_MAX_MESSAGES,
 };

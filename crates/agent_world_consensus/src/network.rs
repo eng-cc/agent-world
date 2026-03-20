@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-use agent_world_proto::distributed_net as proto_net;
+use oasis7_proto::distributed_net as proto_net;
 
 use crate::error::WorldError;
 
@@ -83,7 +83,7 @@ impl proto_net::DistributedNetwork<WorldError> for InMemoryNetwork {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use agent_world_proto::distributed_net::DistributedNetwork as _;
+    use oasis7_proto::distributed_net::DistributedNetwork as _;
 
     #[test]
     fn publish_evicts_oldest_messages_when_subscription_inbox_overflows() {

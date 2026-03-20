@@ -1,5 +1,5 @@
-use agent_world_proto::distributed::SnapshotManifest;
-use agent_world_proto::distributed_storage::JournalSegmentRef;
+use oasis7_proto::distributed::SnapshotManifest;
+use oasis7_proto::distributed_storage::JournalSegmentRef;
 
 pub fn load_manifest_and_segments<E>(
     snapshot_ref: &str,

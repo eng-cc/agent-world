@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 use agent_world::runtime::{measure_directory_storage_bytes, LocalCasStore};
-use agent_world_proto::storage_profile::{StorageProfile, StorageProfileConfig};
+use oasis7_proto::storage_profile::{StorageProfile, StorageProfileConfig};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -507,7 +507,7 @@ mod tests {
     use std::time::{SystemTime, UNIX_EPOCH};
 
     use agent_world::runtime::World as RuntimeWorld;
-    use agent_world_proto::storage_profile::StorageProfile;
+    use oasis7_proto::storage_profile::StorageProfile;
 
     use super::super::RuntimePaths;
     use super::{

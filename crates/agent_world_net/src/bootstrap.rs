@@ -11,8 +11,8 @@ use super::distributed_validation::{validate_head_update, HeadValidationResult};
 use super::error::WorldError;
 use agent_world::runtime::{World, WorldError as RuntimeWorldError};
 use agent_world_distfs::{BlobStore, FileStore};
-use agent_world_proto::distributed::SnapshotManifest;
-use agent_world_proto::distributed_storage::JournalSegmentRef;
+use oasis7_proto::distributed::SnapshotManifest;
+use oasis7_proto::distributed_storage::JournalSegmentRef;
 
 pub fn bootstrap_world_from_head(
     head: &WorldHeadAnnounce,
@@ -100,11 +100,11 @@ mod tests {
     use agent_world::runtime::{Action, World};
     use agent_world::GeoPos;
     use agent_world_distfs::{BlobStore as _, LocalCasStore};
-    use agent_world_proto::distributed::{
+    use oasis7_proto::distributed::{
         FetchBlobRequest, FetchBlobResponse, GetBlockRequest, GetBlockResponse, RR_FETCH_BLOB,
         RR_GET_BLOCK,
     };
-    use agent_world_proto::distributed_dht::DistributedDht as _;
+    use oasis7_proto::distributed_dht::DistributedDht as _;
 
     use super::super::distributed_dht::InMemoryDht;
     use super::super::distributed_net::{DistributedNetwork, InMemoryNetwork};
@@ -126,7 +126,7 @@ mod tests {
         network: &Arc<dyn DistributedNetwork + Send + Sync>,
         world_id: &'static str,
         store: &LocalCasStore,
-        block: agent_world_proto::distributed::WorldBlock,
+        block: oasis7_proto::distributed::WorldBlock,
         snapshot_ref: String,
         journal_ref: String,
     ) {

@@ -17,7 +17,7 @@ fn runtime_network_replication_gap_sync_reports_error_after_retries_exhausted() 
         signed_pos_config_with_signer_seeds(validators, &[("node-a", 89), ("node-b", 90)]);
     let network_impl = Arc::new(TestInMemoryNetwork::default());
     let network: Arc<
-        dyn agent_world_proto::distributed_net::DistributedNetwork<WorldError> + Send + Sync,
+        dyn oasis7_proto::distributed_net::DistributedNetwork<WorldError> + Send + Sync,
     > = network_impl.clone();
 
     let config_a = NodeConfig::new("node-a", world_id, NodeRole::Sequencer)
@@ -166,7 +166,7 @@ fn runtime_replication_storage_challenge_gate_blocks_on_local_probe_failure() {
 fn runtime_replication_storage_challenge_gate_blocks_on_network_blob_mismatch() {
     let dir = temp_dir("challenge-gate-network");
     let network: Arc<
-        dyn agent_world_proto::distributed_net::DistributedNetwork<WorldError> + Send + Sync,
+        dyn oasis7_proto::distributed_net::DistributedNetwork<WorldError> + Send + Sync,
     > = Arc::new(TestInMemoryNetwork::default());
     let pos_config = signed_pos_config_with_signer_seeds(
         vec![PosValidator {
@@ -238,7 +238,7 @@ fn runtime_replication_storage_challenge_gate_blocks_on_network_blob_mismatch() 
 fn runtime_replication_storage_challenge_gate_allows_when_network_matches_reach_threshold() {
     let dir = temp_dir("challenge-gate-threshold-pass");
     let network: Arc<
-        dyn agent_world_proto::distributed_net::DistributedNetwork<WorldError> + Send + Sync,
+        dyn oasis7_proto::distributed_net::DistributedNetwork<WorldError> + Send + Sync,
     > = Arc::new(TestInMemoryNetwork::default());
     let pos_config = signed_pos_config_with_signer_seeds(
         vec![PosValidator {
@@ -350,7 +350,7 @@ fn runtime_replication_storage_challenge_gate_allows_when_network_matches_reach_
 #[test]
 fn replication_network_handle_rejects_empty_topic() {
     let network: Arc<
-        dyn agent_world_proto::distributed_net::DistributedNetwork<WorldError> + Send + Sync,
+        dyn oasis7_proto::distributed_net::DistributedNetwork<WorldError> + Send + Sync,
     > = Arc::new(TestInMemoryNetwork::default());
     let err = NodeReplicationNetworkHandle::new(network)
         .with_topic("   ")
@@ -375,7 +375,7 @@ fn runtime_network_replication_respects_topic_isolation() {
     let pos_config =
         signed_pos_config_with_signer_seeds(validators, &[("node-a", 81), ("node-b", 82)]);
     let network: Arc<
-        dyn agent_world_proto::distributed_net::DistributedNetwork<WorldError> + Send + Sync,
+        dyn oasis7_proto::distributed_net::DistributedNetwork<WorldError> + Send + Sync,
     > = Arc::new(TestInMemoryNetwork::default());
 
     let config_a = NodeConfig::new("node-a", "world-topic-repl", NodeRole::Sequencer)
@@ -664,7 +664,7 @@ fn runtime_network_replication_accepts_writer_failover_with_epoch_rotation() {
         &[("node-a", 91), ("node-b", 92), ("node-c", 93)],
     );
     let network: Arc<
-        dyn agent_world_proto::distributed_net::DistributedNetwork<WorldError> + Send + Sync,
+        dyn oasis7_proto::distributed_net::DistributedNetwork<WorldError> + Send + Sync,
     > = Arc::new(TestInMemoryNetwork::default());
 
     let build_observer = || {

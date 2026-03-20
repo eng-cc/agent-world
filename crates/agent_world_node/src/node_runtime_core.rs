@@ -6,8 +6,8 @@ use agent_world_distfs::{
     build_feedback_announce_from_receipt, FeedbackAppendRequest, FeedbackCreateRequest,
     FeedbackMutationReceipt, FeedbackStore, FeedbackTombstoneRequest, LocalCasStore,
 };
-use agent_world_proto::distributed_dht as proto_dht;
-use agent_world_proto::world_error::WorldError as ProtoWorldError;
+use oasis7_proto::distributed_dht as proto_dht;
+use oasis7_proto::world_error::WorldError as ProtoWorldError;
 
 use crate::runtime_util::now_unix_ms;
 use crate::{

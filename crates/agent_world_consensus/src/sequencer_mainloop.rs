@@ -549,7 +549,7 @@ mod tests {
     use super::super::signature::{
         Ed25519SignatureSigner, HmacSha256Signer, ED25519_SIGNATURE_V1_PREFIX,
     };
-    use agent_world_proto::distributed_dht::DistributedDht as _;
+    use oasis7_proto::distributed_dht::DistributedDht as _;
 
     fn action(id: &str, ts: i64) -> ActionEnvelope {
         ActionEnvelope {

@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
-use agent_world_proto::distributed::gossipsub_topic;
-use agent_world_proto::distributed_net::{DistributedNetwork, NetworkSubscription};
-use agent_world_proto::world_error::WorldError;
+use oasis7_proto::distributed::gossipsub_topic;
+use oasis7_proto::distributed_net::{DistributedNetwork, NetworkSubscription};
+use oasis7_proto::world_error::WorldError;
 use serde::{Deserialize, Serialize};
 
 use super::{

@@ -35,9 +35,9 @@ use agent_world_net::{
     run_replica_maintenance_poll, ReplicaMaintenancePolicy, ReplicaMaintenancePollingPolicy,
     ReplicaMaintenancePollingState, ReplicaTransferExecutor, ReplicaTransferTask,
 };
-use agent_world_proto::distributed::DistributedErrorCode;
-use agent_world_proto::distributed_dht as proto_dht;
-use agent_world_proto::world_error::WorldError as ProtoWorldError;
+use oasis7_proto::distributed::DistributedErrorCode;
+use oasis7_proto::distributed_dht as proto_dht;
+use oasis7_proto::world_error::WorldError as ProtoWorldError;
 use serde::Deserialize;
 
 mod error;
@@ -909,7 +909,7 @@ impl proto_dht::DistributedDht<ProtoWorldError> for RuntimeReplicaMaintenanceDht
     fn put_world_head(
         &self,
         world_id: &str,
-        head: &agent_world_proto::distributed::WorldHeadAnnounce,
+        head: &oasis7_proto::distributed::WorldHeadAnnounce,
     ) -> Result<(), ProtoWorldError> {
         self.inner.put_world_head(world_id, head)
     }
@@ -917,7 +917,7 @@ impl proto_dht::DistributedDht<ProtoWorldError> for RuntimeReplicaMaintenanceDht
     fn get_world_head(
         &self,
         world_id: &str,
-    ) -> Result<Option<agent_world_proto::distributed::WorldHeadAnnounce>, ProtoWorldError> {
+    ) -> Result<Option<oasis7_proto::distributed::WorldHeadAnnounce>, ProtoWorldError> {
         self.inner.get_world_head(world_id)
     }
 

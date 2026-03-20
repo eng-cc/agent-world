@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use agent_world_proto::distributed_pos::{
+use oasis7_proto::distributed_pos::{
     decide_pos_status, slot_epoch as shared_slot_epoch, PosDecisionStatus,
 };
 

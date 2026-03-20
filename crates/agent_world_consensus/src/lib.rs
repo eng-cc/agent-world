@@ -22,7 +22,7 @@ mod signature;
 mod tiered_file_log;
 
 pub mod distributed {
-    pub use agent_world_proto::distributed::*;
+    pub use oasis7_proto::distributed::*;
 }
 
 pub mod distributed_dht {
@@ -57,7 +57,7 @@ pub mod distributed_lease {
 }
 
 pub mod error {
-    pub use agent_world_proto::world_error::WorldError;
+    pub use oasis7_proto::world_error::WorldError;
 }
 
 pub mod util {

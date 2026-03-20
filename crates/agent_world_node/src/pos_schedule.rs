@@ -1,4 +1,4 @@
-use agent_world_proto::distributed_pos::{
+use oasis7_proto::distributed_pos::{
     slot_epoch as shared_slot_epoch, weighted_expected_proposer,
 };
 

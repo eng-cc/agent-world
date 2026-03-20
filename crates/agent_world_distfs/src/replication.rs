@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{blake3_hex, FileMetadata, FileStore};
-use agent_world_proto::world_error::WorldError;
+use oasis7_proto::world_error::WorldError;
 
 fn default_writer_epoch() -> u64 {
     1

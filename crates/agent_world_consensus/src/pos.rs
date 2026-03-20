@@ -4,7 +4,7 @@ use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
-use agent_world_proto::distributed_pos::{
+use oasis7_proto::distributed_pos::{
     decide_pos_status as shared_decide_pos_status,
     required_supermajority_stake as shared_required_supermajority_stake,
     slot_epoch as shared_slot_epoch, weighted_expected_proposer,

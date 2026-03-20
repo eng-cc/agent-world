@@ -19,7 +19,7 @@ use agent_world_node::{
     compute_consensus_action_root, NodeExecutionCommitContext, NodeExecutionCommitResult,
     NodeExecutionHook, NodeSnapshot,
 };
-use agent_world_proto::storage_profile::StorageProfileConfig;
+use oasis7_proto::storage_profile::StorageProfileConfig;
 use oasis7_wasm_abi::ModuleSandbox;
 use oasis7_wasm_executor::{WasmExecutor, WasmExecutorConfig};
 use serde::{Deserialize, Serialize};
@@ -3491,7 +3491,7 @@ mod tests {
 
     #[test]
     fn node_runtime_execution_driver_uses_storage_profile_checkpoint_interval() {
-        use agent_world_proto::storage_profile::StorageProfile;
+        use oasis7_proto::storage_profile::StorageProfile;
 
         let dir = temp_dir("execution-driver-storage-profile-checkpoint");
         let state_path = dir.join("state.json");
@@ -3545,7 +3545,7 @@ mod tests {
     #[test]
     fn production_release_policy_release_default_applies_hardened_policy() {
         use agent_world::runtime::ReleaseSecurityPolicy;
-        use agent_world_proto::storage_profile::StorageProfile;
+        use oasis7_proto::storage_profile::StorageProfile;
 
         let dir = temp_dir("execution-driver-release-policy-release-default");
         let state_path = dir.join("state.json");

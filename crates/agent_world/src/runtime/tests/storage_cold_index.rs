@@ -1,5 +1,5 @@
 use super::super::*;
-use agent_world_proto::storage_cold_index::StorageColdIndexRange;
+use oasis7_proto::storage_cold_index::StorageColdIndexRange;
 use std::fs;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};

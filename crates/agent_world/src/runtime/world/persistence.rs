@@ -6,7 +6,7 @@ use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use agent_world_distfs::{assemble_journal, assemble_snapshot};
-use agent_world_proto::distributed::SnapshotManifest;
+use oasis7_proto::distributed::SnapshotManifest;
 use serde::{Deserialize, Serialize};
 
 use super::super::util::{hash_json, read_json_from_path, write_json_to_path};

@@ -10,7 +10,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use agent_world_launcher_ui::launcher_ui_fields_for_web;
-use agent_world_proto::storage_profile::StorageProfile;
+use oasis7_proto::storage_profile::StorageProfile;
 use serde::{Deserialize, Serialize};
 
 #[path = "world_web_launcher/control_plane.rs"]

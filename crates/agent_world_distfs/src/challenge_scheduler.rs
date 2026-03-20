@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
-use agent_world_proto::distributed::StorageChallengeFailureReason;
-use agent_world_proto::world_error::WorldError;
+use oasis7_proto::distributed::StorageChallengeFailureReason;
+use oasis7_proto::world_error::WorldError;
 use serde::{Deserialize, Serialize};
 
 use super::{

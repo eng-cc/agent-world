@@ -1,4 +1,4 @@
-use agent_world_proto::viewer as proto;
+use oasis7_proto::viewer as proto;
 
 use crate::simulator::{
     AgentDecisionTrace, RunnerMetrics, WorldEvent, WorldEventKind, WorldSnapshot, WorldTime,

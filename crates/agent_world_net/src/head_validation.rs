@@ -13,7 +13,7 @@ use agent_world_distfs::{
     assemble_journal as distfs_assemble_journal, assemble_snapshot as distfs_assemble_snapshot,
     blake3_hex, BlobStore,
 };
-use agent_world_proto::distributed_storage::JournalSegmentRef;
+use oasis7_proto::distributed_storage::JournalSegmentRef;
 
 #[derive(Debug, Clone)]
 pub struct HeadValidationResult {

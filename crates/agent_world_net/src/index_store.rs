@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 
-use agent_world_proto::distributed::WorldHeadAnnounce;
+use oasis7_proto::distributed::WorldHeadAnnounce;
 
 use super::distributed_dht::ProviderRecord;
 use super::error::WorldError;

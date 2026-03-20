@@ -7,7 +7,7 @@ use super::ed25519_signer_policy::{
 };
 use super::error::WorldError;
 use super::signature::ED25519_SIGNATURE_V1_PREFIX;
-use agent_world_proto::distributed_dht::MembershipDirectorySnapshot;
+use oasis7_proto::distributed_dht::MembershipDirectorySnapshot;
 
 use super::util::to_canonical_cbor;
 use super::{

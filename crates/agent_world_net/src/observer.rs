@@ -581,7 +581,7 @@ mod tests {
     use agent_world::runtime::{Action, World};
     use agent_world::GeoPos;
     use agent_world_distfs::{BlobStore as _, LocalCasStore};
-    use agent_world_proto::distributed::{
+    use oasis7_proto::distributed::{
         FetchBlobRequest, FetchBlobResponse, GetBlockRequest, GetBlockResponse, RR_FETCH_BLOB,
         RR_GET_BLOCK,
     };

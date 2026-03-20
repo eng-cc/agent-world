@@ -15,7 +15,7 @@ mkdir -p \
   "$tmp_repo/crates/agent_world_viewer/dist" \
   "$tmp_repo/crates/agent_world_viewer/src" \
   "$tmp_repo/crates/agent_world_viewer/assets" \
-  "$tmp_repo/crates/agent_world_proto/src"
+  "$tmp_repo/crates/oasis7_proto/src"
 
 printf '<!doctype html>old dist\n' > "$tmp_repo/crates/agent_world_viewer/dist/index.html"
 printf 'console.log("safe mode changed");\n' > "$tmp_repo/crates/agent_world_viewer/software_safe.js"
@@ -23,8 +23,8 @@ printf '<!doctype html>viewer\n' > "$tmp_repo/crates/agent_world_viewer/index.ht
 printf '<!doctype html>software safe\n' > "$tmp_repo/crates/agent_world_viewer/software_safe.html"
 printf '[package]\nname = "agent_world_viewer"\nversion = "0.0.0"\n' > "$tmp_repo/crates/agent_world_viewer/Cargo.toml"
 printf '[build]\ntarget = "dist"\n' > "$tmp_repo/crates/agent_world_viewer/Trunk.toml"
-printf '[package]\nname = "agent_world_proto"\nversion = "0.0.0"\n' > "$tmp_repo/crates/agent_world_proto/Cargo.toml"
-printf 'pub const VIEWER_PROTOCOL_VERSION: u32 = 1;\n' > "$tmp_repo/crates/agent_world_proto/src/viewer.rs"
+printf '[package]\nname = "oasis7_proto"\nversion = "0.0.0"\n' > "$tmp_repo/crates/oasis7_proto/Cargo.toml"
+printf 'pub const VIEWER_PROTOCOL_VERSION: u32 = 1;\n' > "$tmp_repo/crates/oasis7_proto/src/viewer.rs"
 printf '# lock\n' > "$tmp_repo/Cargo.lock"
 
 touch -d '2026-03-16 00:00:00' "$tmp_repo/crates/agent_world_viewer/dist/index.html"

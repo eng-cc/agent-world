@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use agent_world_proto::distributed_pos::required_supermajority_stake;
+use oasis7_proto::distributed_pos::required_supermajority_stake;
 
 use crate::{NodeError, NodePosConfig};
 

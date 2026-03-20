@@ -7,7 +7,7 @@ members = [
     "crates/agent_world_distfs",
     "crates/agent_world_net",
     "crates/agent_world_node",
-    "crates/agent_world_proto",
+    "crates/oasis7_proto",
     "crates/oasis7_wasm_abi",
     "crates/oasis7_wasm_executor",
     "crates/oasis7_wasm_sdk",

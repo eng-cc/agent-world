@@ -4,7 +4,7 @@ use agent_world_distfs::{
     blake3_hex, ingest_feedback_announce_with_fetcher, FeedbackAnnounce, FeedbackAnnounceBridge,
     FeedbackStore,
 };
-use agent_world_proto::world_error::WorldError as ProtoWorldError;
+use oasis7_proto::world_error::WorldError as ProtoWorldError;
 
 use crate::network_bridge::ReplicationNetworkEndpoint;
 use crate::replication::{

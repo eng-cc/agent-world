@@ -142,7 +142,6 @@ dependencies = [
  "agent_world_distfs",
  "agent_world_launcher_ui",
  "agent_world_node",
- "agent_world_proto",
  "async-openai",
  "blake3",
  "ctrlc",
@@ -150,6 +149,7 @@ dependencies = [
  "getrandom 0.2.17",
  "hex",
  "hmac",
+ "oasis7_proto",
  "oasis7_wasm_abi",
  "oasis7_wasm_executor",
  "oasis7_wasm_router",
@@ -186,11 +186,11 @@ name = "agent_world_consensus"
 version = "0.1.0"
 dependencies = [
  "agent_world_distfs",
- "agent_world_proto",
  "blake3",
  "ed25519-dalek",
  "hex",
  "hmac",
+ "oasis7_proto",
  "serde",
  "serde_cbor",
  "serde_json",
@@ -201,10 +201,10 @@ dependencies = [
 name = "agent_world_distfs"
 version = "0.1.0"
 dependencies = [
- "agent_world_proto",
  "blake3",
  "ed25519-dalek",
  "hex",
+ "oasis7_proto",
  "serde",
  "serde_cbor",
  "serde_json",
@@ -223,10 +223,10 @@ name = "agent_world_net"
 version = "0.1.0"
 dependencies = [
  "agent_world_distfs",
- "agent_world_proto",
  "async-std",
  "futures",
  "libp2p",
+ "oasis7_proto",
  "oasis7_wasm_abi",
  "serde",
  "serde_cbor",
@@ -239,22 +239,12 @@ dependencies = [
  "agent_world_consensus",
  "agent_world_distfs",
  "agent_world_net",
- "agent_world_proto",
  "async-std",
  "ed25519-dalek",
  "futures",
  "hex",
  "libp2p",
- "serde",
- "serde_cbor",
- "serde_json",
-]
-
-[[package]]
-name = "agent_world_proto"
-version = "0.1.0"
-dependencies = [
- "blake3",
+ "oasis7_proto",
  "serde",
  "serde_cbor",
  "serde_json",
@@ -5788,6 +5778,16 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "oasis7_proto"
+version = "0.1.0"
+dependencies = [
+ "blake3",
+ "serde",
+ "serde_cbor",
+ "serde_json",
 ]
 
 [[package]]

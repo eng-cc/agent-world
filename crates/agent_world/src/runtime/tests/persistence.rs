@@ -610,11 +610,11 @@ fn persist_writes_sidecar_generation_index_and_pinset() {
         .and_then(|value| value.as_array())
         .expect("pinned blob hashes");
     assert!(!pinned_blob_hashes.is_empty());
-    let manifest: agent_world_proto::distributed::SnapshotManifest = serde_json::from_slice(
+    let manifest: oasis7_proto::distributed::SnapshotManifest = serde_json::from_slice(
         &fs::read(dir.join("snapshot.manifest.json")).expect("read snapshot manifest"),
     )
     .expect("decode snapshot manifest");
-    let journal_segments: Vec<agent_world_proto::distributed_storage::JournalSegmentRef> =
+    let journal_segments: Vec<oasis7_proto::distributed_storage::JournalSegmentRef> =
         serde_json::from_slice(
             &fs::read(dir.join("journal.segments.json")).expect("read journal segments"),
         )

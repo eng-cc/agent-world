@@ -12,7 +12,7 @@ use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use agent_world::simulator::ProviderExecutionMode;
-use agent_world_proto::storage_profile::StorageProfile;
+use oasis7_proto::storage_profile::StorageProfile;
 
 const DEFAULT_SCENARIO: &str = "llm_bootstrap";
 const DEFAULT_LIVE_BIND: &str = "127.0.0.1:5023";

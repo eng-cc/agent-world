@@ -5,12 +5,12 @@ use agent_world_consensus::node_consensus_signature::{
     verify_commit_message_signature, NodeConsensusMessageSigner as ConsensusMessageSigner,
 };
 use agent_world_distfs::{FileStore as _, LocalCasStore, SingleWriterReplicationGuard};
-use agent_world_proto::distributed::WorldHeadAnnounce;
-use agent_world_proto::distributed_dht::{
+use oasis7_proto::distributed::WorldHeadAnnounce;
+use oasis7_proto::distributed_dht::{
     self as proto_dht, MembershipDirectorySnapshot, ProviderRecord,
 };
-use agent_world_proto::distributed_net::NetworkSubscription;
-use agent_world_proto::world_error::WorldError;
+use oasis7_proto::distributed_net::NetworkSubscription;
+use oasis7_proto::world_error::WorldError;
 use ed25519_dalek::{Signer as _, SigningKey};
 use serde::Serialize;
 use std::collections::{BTreeMap, HashMap};
@@ -376,7 +376,7 @@ impl proto_dht::DistributedDht<WorldError> for TestReplicaMaintenanceDht {
     }
 }
 
-impl agent_world_proto::distributed_net::DistributedNetwork<WorldError> for TestInMemoryNetwork {
+impl oasis7_proto::distributed_net::DistributedNetwork<WorldError> for TestInMemoryNetwork {
     fn publish(&self, topic: &str, payload: &[u8]) -> Result<(), WorldError> {
         self.retained
             .lock()

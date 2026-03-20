@@ -204,7 +204,7 @@ fn now_ms() -> i64 {
 mod tests {
     use std::sync::Arc;
 
-    use agent_world_proto::distributed_dht::DistributedDht as _;
+    use oasis7_proto::distributed_dht::DistributedDht as _;
 
     use super::super::{InMemoryDht, InMemoryIndexStore};
     use super::*;

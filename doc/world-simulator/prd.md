@@ -187,6 +187,7 @@
   - SC-83: `agent_world_wasm_abi` 的 crate name、workspace member 与 crate 目录名必须直接切到 `oasis7_wasm_abi`，并同步更新执行器、路由、存储、网络、runtime 与测试中的依赖名、路径与源码入口，避免继续把旧 `agent_world_wasm_abi` 当作真实 ABI 平台入口。
   - SC-84: `agent_world_wasm_router` 的 crate name、workspace member 与 crate 目录名必须直接切到 `oasis7_wasm_router`，并同步更新 runtime/world 侧依赖名、路径与源码入口，避免继续把旧 `agent_world_wasm_router` 当作真实路由平台入口。
   - SC-85: `agent_world_wasm_executor` 与 `agent_world_wasm_store` 的 crate name、workspace member 与 crate 目录名必须直接切到 `oasis7_wasm_executor` / `oasis7_wasm_store`，并同步更新 runtime、tests 与特性依赖声明，避免继续把旧 `agent_world_wasm_*` 当作真实执行/存储平台入口。
+  - SC-86: `agent_world_proto` 的 crate name、workspace member 与 crate 目录名必须直接切到 `oasis7_proto`，并同步更新 distfs/net/consensus/node/runtime/viewer/launcher 与脚本中的依赖名、路径和源码入口，避免继续把旧 `agent_world_proto` 当作真实协议平台入口。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -431,6 +432,7 @@
   - AC-88: workspace 根 `Cargo.toml`、`crates/oasis7_wasm_abi/Cargo.toml`、`crates/{agent_world,agent_world_net,agent_world_wasm_executor,agent_world_wasm_router,agent_world_wasm_store}` 与相关测试源码中的 `agent_world_wasm_abi` 依赖/路径/源码入口必须全部改为 `oasis7_wasm_abi`，并将目录 `crates/agent_world_wasm_abi` 重命名为 `crates/oasis7_wasm_abi`；变更后 `cargo` 必须能按新 crate 名解析 ABI。
   - AC-89: workspace 根 `Cargo.toml`、`Cargo.lock`、`crates/oasis7_wasm_router/Cargo.toml` 与 `crates/agent_world/src/runtime/world/{base_layer.rs,module_runtime.rs}` 中的 `agent_world_wasm_router` 依赖/路径/源码入口必须全部改为 `oasis7_wasm_router`，并将目录 `crates/agent_world_wasm_router` 重命名为 `crates/oasis7_wasm_router`；变更后 `cargo` 必须能按新 crate 名解析 router。
   - AC-90: workspace 根 `Cargo.toml`、`Cargo.lock`、`crates/oasis7_wasm_{executor,store}/Cargo.toml` 与 `crates/agent_world/**` 中的 `agent_world_wasm_executor` / `agent_world_wasm_store` 依赖、特性声明、路径与源码入口必须全部改为 `oasis7_wasm_executor` / `oasis7_wasm_store`，并将目录 `crates/agent_world_wasm_{executor,store}` 重命名为 `crates/oasis7_wasm_{executor,store}`；变更后 `cargo` 必须能按新 crate 名解析执行器和存储层。
+  - AC-91: workspace 根 `Cargo.toml`、`Cargo.lock`、`crates/oasis7_proto/Cargo.toml`、`crates/{agent_world_distfs,agent_world_net,agent_world_consensus,agent_world_node,agent_world}/**` 与相关脚本中的 `agent_world_proto` 依赖、路径、源码入口和临时 stub 路径必须全部改为 `oasis7_proto`，并将目录 `crates/agent_world_proto` 重命名为 `crates/oasis7_proto`；变更后 `cargo` 必须能按新 crate 名解析协议层。
 - Non-Goals:
   - 不在本 PRD 中详细列出每个 UI 像素级规范。
   - 不替代 world-runtime/p2p 的底层协议设计。

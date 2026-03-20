@@ -3,11 +3,11 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
 use agent_world_net::{Libp2pNetwork, Libp2pNetworkConfig};
-use agent_world_proto::distributed::ErrorResponse;
-use agent_world_proto::distributed_net::{
+use oasis7_proto::distributed::ErrorResponse;
+use oasis7_proto::distributed_net::{
     DistributedNetwork as ProtoDistributedNetwork, NetworkSubscription,
 };
-use agent_world_proto::world_error::WorldError;
+use oasis7_proto::world_error::WorldError;
 use libp2p::identity::Keypair;
 use libp2p::{Multiaddr, PeerId};
 
@@ -203,7 +203,7 @@ fn rotated_peers(peers: &[PeerId], cursor: usize) -> Vec<PeerId> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use agent_world_proto::distributed::DistributedErrorCode;
+    use oasis7_proto::distributed::DistributedErrorCode;
     use std::time::{Duration, Instant};
 
     fn wait_until(what: &str, deadline: Instant, mut condition: impl FnMut() -> bool) {

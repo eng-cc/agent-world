@@ -29,8 +29,8 @@ scope = [
     "crates/agent_world/src/bin/world_game_launcher",
     "crates/agent_world/src/bin/world_web_launcher.rs",
     "crates/agent_world/src/bin/world_web_launcher",
-    "crates/agent_world_proto/Cargo.toml",
-    "crates/agent_world_proto/src",
+    "crates/oasis7_proto/Cargo.toml",
+    "crates/oasis7_proto/src",
     "crates/agent_world_viewer/Cargo.toml",
     "crates/agent_world_viewer/Trunk.toml",
     "crates/agent_world_viewer/index.html",
@@ -67,7 +67,7 @@ for candidate in unique_files:
         latest_mtime_ns = stat.st_mtime_ns
         latest_rel = rel
 
-viewer_proto = (repo_root / "crates/agent_world_proto/src/viewer.rs").read_text(encoding="utf-8")
+viewer_proto = (repo_root / "crates/oasis7_proto/src/viewer.rs").read_text(encoding="utf-8")
 match = re.search(r"pub const VIEWER_PROTOCOL_VERSION: u32 = (\d+);", viewer_proto)
 viewer_protocol_version = int(match.group(1)) if match else None
 

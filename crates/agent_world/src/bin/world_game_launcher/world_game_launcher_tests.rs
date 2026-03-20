@@ -18,7 +18,7 @@ use super::{
     VIEWER_AUTH_PUBLIC_KEY_ENV, VIEWER_PLAYER_ID_ENV,
 };
 use agent_world::simulator::ProviderExecutionMode;
-use agent_world_proto::storage_profile::StorageProfile;
+use oasis7_proto::storage_profile::StorageProfile;
 
 #[test]
 fn parse_options_defaults() {

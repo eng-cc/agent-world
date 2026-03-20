@@ -8,7 +8,7 @@ use agent_world_distfs::{
     FileReplicationRecord, LocalCasStore, SingleWriterReplicationGuard,
     StorageChallengeProbeConfig, StorageChallengeProbeReport,
 };
-use agent_world_proto::world_error::WorldError;
+use oasis7_proto::world_error::WorldError;
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use serde::{Deserialize, Serialize};
 

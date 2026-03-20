@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::error::WorldError;
-use agent_world_proto::distributed as proto_distributed;
+use oasis7_proto::distributed as proto_distributed;
 
 use super::distributed_net::DistributedNetwork;
 use super::util::to_canonical_cbor;

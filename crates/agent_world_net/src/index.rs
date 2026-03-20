@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use agent_world_proto::distributed::WorldHeadAnnounce;
+use oasis7_proto::distributed::WorldHeadAnnounce;
 
 use super::distributed_dht::{DistributedDht, ProviderRecord};
 use super::distributed_provider_cache::ProviderCache;

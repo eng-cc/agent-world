@@ -1,5 +1,5 @@
-use agent_world_proto::distributed_net::{DistributedNetwork, NetworkSubscription};
-use agent_world_proto::world_error::WorldError;
+use oasis7_proto::distributed_net::{DistributedNetwork, NetworkSubscription};
+use oasis7_proto::world_error::WorldError;
 use libp2p::identity::Keypair;
 use libp2p::{Multiaddr, PeerId};
 

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use agent_world_proto::distributed::WorldHeadAnnounce;
-use agent_world_proto::distributed_dht::DistributedDht as ProtoDistributedDht;
+use oasis7_proto::distributed::WorldHeadAnnounce;
+use oasis7_proto::distributed_dht::DistributedDht as ProtoDistributedDht;
 
 use super::distributed_dht::{DistributedDht, MembershipDirectorySnapshot, ProviderRecord};
 use super::distributed_index_store::DistributedIndexStore;
@@ -183,7 +183,7 @@ mod tests {
     use std::collections::BTreeMap;
     use std::sync::{Arc, Mutex};
 
-    use agent_world_proto::distributed_dht::DistributedDht as _;
+    use oasis7_proto::distributed_dht::DistributedDht as _;
 
     use super::super::{HeadIndexRecord, InMemoryDht};
     use super::*;

@@ -2,7 +2,7 @@
 
 use std::collections::{BTreeMap, HashMap, VecDeque};
 
-use agent_world_proto::distributed::{ActionBatch, ActionEnvelope};
+use oasis7_proto::distributed::{ActionBatch, ActionEnvelope};
 use serde::Serialize;
 
 use super::error::WorldError;

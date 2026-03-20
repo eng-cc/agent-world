@@ -87,11 +87,11 @@ mod tests {
     use agent_world::runtime::{Action, World};
     use agent_world::GeoPos;
     use agent_world_distfs::{BlobStore as _, LocalCasStore};
-    use agent_world_proto::distributed::{
+    use oasis7_proto::distributed::{
         FetchBlobRequest, FetchBlobResponse, GetBlockRequest, GetBlockResponse,
         GetWorldHeadRequest, GetWorldHeadResponse, RR_FETCH_BLOB, RR_GET_BLOCK, RR_GET_WORLD_HEAD,
     };
-    use agent_world_proto::distributed_dht::DistributedDht as _;
+    use oasis7_proto::distributed_dht::DistributedDht as _;
 
     use super::super::distributed_dht::InMemoryDht;
     use super::super::distributed_net::{DistributedNetwork, InMemoryNetwork};

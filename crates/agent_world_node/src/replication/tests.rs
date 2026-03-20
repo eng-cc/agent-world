@@ -1,5 +1,5 @@
 use super::*;
-use agent_world_proto::storage_cold_index::{
+use oasis7_proto::storage_cold_index::{
     storage_cold_index_dir_name, STORAGE_COLD_INDEX_MANIFEST_FILE,
 };
 use std::path::PathBuf;
@@ -374,7 +374,7 @@ fn commit_cold_index_uses_canonical_layout_and_refreshes_hot_range() {
     assert_eq!(
         cold_index.manifest.hot_range,
         Some(
-            agent_world_proto::storage_cold_index::StorageColdIndexRange {
+            oasis7_proto::storage_cold_index::StorageColdIndexRange {
                 from_key: 100,
                 to_key: 101,
             }
@@ -383,7 +383,7 @@ fn commit_cold_index_uses_canonical_layout_and_refreshes_hot_range() {
     assert_eq!(
         cold_index.manifest.cold_range_anchor,
         Some(
-            agent_world_proto::storage_cold_index::StorageColdIndexRangeAnchor {
+            oasis7_proto::storage_cold_index::StorageColdIndexRangeAnchor {
                 from_key: 1,
                 to_key: 1,
                 first_content_hash: cold_index

@@ -11,7 +11,7 @@ use super::distributed_dht::DistributedDht;
 use super::distributed_lease::LeaseState;
 use super::error::WorldError;
 use super::util::{read_json_from_path, write_json_to_path};
-pub use agent_world_proto::distributed_consensus::{
+pub use oasis7_proto::distributed_consensus::{
     ConsensusMembershipChange, ConsensusMembershipChangeRequest, ConsensusMembershipChangeResult,
     ConsensusStatus, ConsensusVote, HeadConsensusRecord,
 };

@@ -1,11 +1,11 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 
-use agent_world_proto::distributed as proto_distributed;
-use agent_world_proto::distributed_dht::DistributedDht as _;
-use agent_world_proto::distributed_net as proto_net;
-use agent_world_proto::distributed_net::DistributedNetwork as _;
-use agent_world_proto::distributed_storage as proto_storage;
+use oasis7_proto::distributed as proto_distributed;
+use oasis7_proto::distributed_dht::DistributedDht as _;
+use oasis7_proto::distributed_net as proto_net;
+use oasis7_proto::distributed_net::DistributedNetwork as _;
+use oasis7_proto::distributed_storage as proto_storage;
 use oasis7_wasm_abi::ModuleAbiContract;
 
 use super::*;

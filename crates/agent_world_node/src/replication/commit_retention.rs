@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use agent_world_proto::storage_cold_index::{
+use oasis7_proto::storage_cold_index::{
     storage_cold_index_dir_name, StorageColdIndexManifest, StorageColdIndexRange,
     StorageColdIndexRangeAnchor, STORAGE_COLD_INDEX_KEY_KIND_HEIGHT,
     STORAGE_COLD_INDEX_MANIFEST_FILE, STORAGE_COLD_INDEX_VALUE_KIND_CONTENT_HASH,
