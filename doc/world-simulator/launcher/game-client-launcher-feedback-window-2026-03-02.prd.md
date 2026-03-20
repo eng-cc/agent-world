@@ -12,7 +12,7 @@
 
 ## 2. User Experience & Functionality
 ### In Scope
-- `crates/agent_world_client_launcher/src/main.rs`
+- `crates/oasis7_client_launcher/src/main.rs`
   - 新增“反馈 / Feedback”按钮。
   - 点击后打开反馈窗口，窗口内承载原有反馈表单（类型、标题、描述、反馈目录、提交按钮、校验提示、提交结果）。
   - 主面板移除原内嵌反馈区域。
@@ -56,8 +56,8 @@
   - 提交结果提示
   - `submit_feedback_with_fallback` 提交流程（远端优先，失败回落本地）不变
 - 回归验证通过：
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher`
-  - `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher`
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher`
+  - `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher`
 
 ## 6. Validation & Decision Record
 - 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

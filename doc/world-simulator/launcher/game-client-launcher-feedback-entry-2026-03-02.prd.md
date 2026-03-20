@@ -12,7 +12,7 @@
 
 ## 2. User Experience & Functionality
 ### In Scope
-- 修改 `crates/agent_world_client_launcher`：新增反馈输入区（类型、标题、描述、提交按钮）。
+- 修改 `crates/oasis7_client_launcher`：新增反馈输入区（类型、标题、描述、提交按钮）。
 - 提交行为将反馈写入本地目录（默认 `feedback/`），文件名携带时间戳与类别。
 - 自动附带数据：
   - 启动器当前配置快照（scenario/bind/LLM/chain 等）

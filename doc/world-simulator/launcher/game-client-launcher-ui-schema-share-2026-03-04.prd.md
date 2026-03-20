@@ -50,12 +50,12 @@
 
 ## 4. Technical Specifications
 - Architecture Overview:
-  - 新增共享 crate：`agent_world_launcher_ui`，提供 schema 数据结构与静态字段定义。
-  - `agent_world_client_launcher`：消费 schema 渲染配置输入区。
+  - 新增共享 crate：`oasis7_launcher_ui`，提供 schema 数据结构与静态字段定义。
+  - `oasis7_client_launcher`：消费 schema 渲染配置输入区。
   - `world_web_launcher`：新增 `/api/ui/schema`，前端按 schema 动态构建表单。
 - Integration Points:
-  - `crates/agent_world_client_launcher/src/main.rs`
-  - `crates/agent_world/src/bin/world_web_launcher.rs`
+  - `crates/oasis7_client_launcher/src/main.rs`
+  - `crates/oasis7/src/bin/world_web_launcher.rs`
   - `scripts/build-game-launcher-bundle.sh`
 - Edge Cases & Error Handling:
   - schema 接口失败时，web 页面展示错误并保留最近状态。

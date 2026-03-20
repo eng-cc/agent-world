@@ -41,7 +41,7 @@
   - AC-1: wasm/web 编译产物中必填校验不包含 `LauncherBinRequired/ChainRuntimeBinRequired`。
   - AC-2: native 编译产物中上述必填校验保持有效。
   - AC-3: Web 端 UI 字段渲染不展示 binary path 字段。
-  - AC-4: `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown` 通过。
+  - AC-4: `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown` 通过。
   - AC-5: `agent-browser --headed` 闭环与 `/api/start` `/api/stop` 回归通过并归档证据。
 - Non-Goals:
   - 不重构 `world_web_launcher` API 协议。
@@ -52,13 +52,13 @@
 
 ## 4. Technical Specifications
 - Architecture Overview:
-  - `agent_world_client_launcher` 以 `cfg(target_arch)` 分流配置校验与字段迭代源。
-  - `agent_world_launcher_ui` schema 继续作为字段可见性单一来源。
+  - `oasis7_client_launcher` 以 `cfg(target_arch)` 分流配置校验与字段迭代源。
+  - `oasis7_launcher_ui` schema 继续作为字段可见性单一来源。
 - Integration Points:
-  - `crates/agent_world_client_launcher/src/launcher_core.rs`
-  - `crates/agent_world_client_launcher/src/main.rs`
-  - `crates/agent_world_launcher_ui/src/lib.rs`
-  - `crates/agent_world/src/bin/world_web_launcher.rs`
+  - `crates/oasis7_client_launcher/src/launcher_core.rs`
+  - `crates/oasis7_client_launcher/src/main.rs`
+  - `crates/oasis7_launcher_ui/src/lib.rs`
+  - `crates/oasis7/src/bin/world_web_launcher.rs`
 - Edge Cases & Error Handling:
   - Web API 返回配置中无 binary path 字段时，不得触发 native-only 必填错误。
   - native 若 binary path 为空，必须继续阻断并提示必填。

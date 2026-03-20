@@ -10,7 +10,7 @@
 - Proposed Solution: 将 `world_web_launcher` 升级为统一控制面（游戏/区块链独立编排）；native 启动器改为“客户端 + 本地服务端”模式，和 web 启动器共用同一套 API 状态机。
 - Success Criteria:
   - SC-1: `world_web_launcher` 提供游戏与区块链独立启动/停止 API，并返回独立状态。
-  - SC-2: `agent_world_client_launcher` native 与 wasm 统一消费同一 API 契约，不再维护双套进程编排逻辑。
+  - SC-2: `oasis7_client_launcher` native 与 wasm 统一消费同一 API 契约，不再维护双套进程编排逻辑。
   - SC-3: Web 端“启动区块链/停止区块链”按钮恢复可用，状态文案与 native 对齐。
   - SC-4: native 端功能行为与历史桌面版一致（自动拉起链、独立控制游戏/区块链、链状态门控）。
   - SC-5: `agent-browser --headed` 闭环可覆盖链/游戏独立启停并输出证据。
@@ -46,7 +46,7 @@
 - Acceptance Criteria:
   - AC-1: `world_web_launcher` 支持 `POST /api/chain/start`、`POST /api/chain/stop`，且与游戏启停互不耦合。
   - AC-2: `/api/state` 返回游戏与区块链独立状态字段，客户端不再用 `snapshot.running` 推断链状态。
-  - AC-3: `agent_world_client_launcher` native 不再直接拉起 `world_game_launcher` / `world_chain_runtime`，改为通过 `world_web_launcher` API 控制。
+  - AC-3: `oasis7_client_launcher` native 不再直接拉起 `world_game_launcher` / `world_chain_runtime`，改为通过 `world_web_launcher` API 控制。
   - AC-4: wasm/web 启动器的“启动区块链/停止区块链”按钮恢复可操作，并与 native 同状态语义。
   - AC-5: native 与 web 在“自动拉起链 + 游戏/链独立启停 + 状态展示”行为上保持一致。
   - AC-6: `test_tier_required` 通过：`cargo test/check` + `agent-browser --headed` 闭环证据。
@@ -60,14 +60,14 @@
 ## 4. Technical Specifications
 - Architecture Overview:
   - `world_web_launcher` 升级为统一控制平面：内部维护游戏进程与区块链进程两套状态。
-  - `agent_world_client_launcher` native 与 wasm 共用 API 驱动状态机；native 增加本地服务进程守护。
+  - `oasis7_client_launcher` native 与 wasm 共用 API 驱动状态机；native 增加本地服务进程守护。
   - UI 层继续复用同一套 egui 渲染与 schema 字段映射。
 - Integration Points:
-  - `crates/agent_world/src/bin/world_web_launcher.rs`
-  - `crates/agent_world_client_launcher/src/main.rs`
-  - `crates/agent_world_client_launcher/src/app_process.rs`
-  - `crates/agent_world_client_launcher/src/app_process_web.rs`
-  - `crates/agent_world_client_launcher/src/launcher_core.rs`
+  - `crates/oasis7/src/bin/world_web_launcher.rs`
+  - `crates/oasis7_client_launcher/src/main.rs`
+  - `crates/oasis7_client_launcher/src/app_process.rs`
+  - `crates/oasis7_client_launcher/src/app_process_web.rs`
+  - `crates/oasis7_client_launcher/src/launcher_core.rs`
   - `scripts/build-game-launcher-bundle.sh`
   - `testing-manual.md`
 - Edge Cases & Error Handling:

@@ -16,7 +16,7 @@
   - 启用 `feedback_p2p` 配置（默认参数）。
   - 新增 `POST /v1/chain/feedback/submit` 接口。
   - 接口接收启动器反馈载荷，服务端构造并签名 `FeedbackCreateRequest`，调用 `NodeRuntime::submit_feedback`。
-- `crates/agent_world_client_launcher`
+- `crates/oasis7_client_launcher`
   - 反馈提交流程改为“远端分布式提交优先 + 本地落盘回落”。
   - UI 提示区分“已提交到分布式网络”与“已本地保存（回落）”。
 - 新增/更新单元测试，覆盖请求解析、提交成功与回落路径。
