@@ -54,7 +54,7 @@
   - `bin/world_game_launcher`
   - `bin/world_viewer_live`
   - `bin/world_chain_runtime`
-  - `bin/agent_world_client_launcher`
+  - `bin/oasis7_client_launcher`
   - `web/`（viewer 静态资源）
   - `run-game.sh` / `run-client.sh`（Windows 额外提供 `.cmd`）
   - `README.txt`

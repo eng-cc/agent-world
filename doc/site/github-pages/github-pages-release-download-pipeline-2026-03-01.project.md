@@ -97,8 +97,8 @@
 
 ### T3L Release gate trunk-missing dist fallback 热修
 - [x] 复盘 `Release Packages` run `23078512672`，确认 `v0.0.11` 已经真正越过 `agent-browser` CLI 入口，但 `web_strict` 在解析 Viewer 静态资源目录时，因为 runner 没有安装 `trunk` 而退出；失败签名为 `error: missing required command: trunk`。
-- [x] 调整 `scripts/agent-browser-lib.sh`：当请求 `web` 别名、`crates/agent_world_viewer/dist/index.html` 已存在但 `trunk` 不可用时，回退到仓库已提交的 `crates/agent_world_viewer/dist`，只在 `dist` 也不存在时才继续报错；避免 CI 因缺少前端构建器而阻断 Web 闭环。
-- [x] 本地回归脚本级 fallback：在无 `trunk` 的 PATH 下 source `scripts/agent-browser-lib.sh`，并通过桩掉 `find` 强制进入 fallback 分支，确认返回 `crates/agent_world_viewer/dist` 且打印 `warning: trunk missing; falling back to committed viewer dist`。
+- [x] 调整 `scripts/agent-browser-lib.sh`：当请求 `web` 别名、`crates/oasis7_viewer/dist/index.html` 已存在但 `trunk` 不可用时，回退到仓库已提交的 `crates/oasis7_viewer/dist`，只在 `dist` 也不存在时才继续报错；避免 CI 因缺少前端构建器而阻断 Web 闭环。
+- [x] 本地回归脚本级 fallback：在无 `trunk` 的 PATH 下 source `scripts/agent-browser-lib.sh`，并通过桩掉 `find` 强制进入 fallback 分支，确认返回 `crates/oasis7_viewer/dist` 且打印 `warning: trunk missing; falling back to committed viewer dist`。
 
 ### T3F Release Packages macOS runner 配置热修
 - [x] 复现并定位 `Release Packages` run `22545989082` / job `65309292458` 失败根因：`macos-13-us-default` 不受当前仓库支持
@@ -114,14 +114,14 @@
 
 ### T3N Release gate soak 预热依赖回补（2026-03-14）
 - [x] 复盘 `Release Packages` run `23080174183` 新架构首轮结果，确认 `release-gate-soak` 在 1 秒内失败并非 soak 逻辑本身回归，而是拆分后仍沿用 `--no-prewarm`，导致 `s9` 失去来自 `ci_full` 的 `target/debug/world_chain_runtime` 预热前置。
-- [x] 更新 `.github/workflows/release-packages.yml`：在 `release_gate_soak` 中新增 `env -u RUSTC_WRAPPER cargo build -p agent_world --bin world_chain_runtime` 预热步骤，使 soak 子门在独立 job 中重新自洽，同时保持 `release-gate.sh` 现有参数与 release 语义不变。
+- [x] 更新 `.github/workflows/release-packages.yml`：在 `release_gate_soak` 中新增 `env -u RUSTC_WRAPPER cargo build -p oasis7 --bin world_chain_runtime` 预热步骤，使 soak 子门在独立 job 中重新自洽，同时保持 `release-gate.sh` 现有参数与 release 语义不变。
 - [x] 本地回归 workflow 语法与 soak job 关键片段，确认 `Prewarm soak runtime binary` 已位于 `Run soak release gate` 之前。
 - [ ] 推送修复并打新 tag，继续观察并行 gate 是否能全部进入 aggregate `release_gate`。
 
 ### T3O Release gate web sibling binary 预热回补（2026-03-14）
 - [x] 复盘 `Release Packages` run `23080255868`，确认 `release-gate-web` 已越过 `trunk` 安装，但 `web_strict` 在 `world_game_launcher` 启动阶段因独立 job 缺少 `target/debug/world_viewer_live` 而失败；失败签名为 `failed to locate \`world_viewer_live\` binary; build it first or set AGENT_WORLD_WORLD_VIEWER_LIVE_BIN`。
-- [x] 调整 `scripts/viewer-release-qa-loop.sh`：在启动 `world_game_launcher` 前显式执行 `env -u RUSTC_WRAPPER cargo build -p agent_world --bin world_viewer_live --bin world_chain_runtime`，把原先依赖其他步骤隐式生成 sibling binaries 的前置条件收回到脚本内部。
-- [x] 本地回归 `bash -n scripts/viewer-release-qa-loop.sh`，并确认预热命令已位于 `cargo run -p agent_world --bin world_game_launcher` 之前。
+- [x] 调整 `scripts/viewer-release-qa-loop.sh`：在启动 `world_game_launcher` 前显式执行 `env -u RUSTC_WRAPPER cargo build -p oasis7 --bin world_viewer_live --bin world_chain_runtime`，把原先依赖其他步骤隐式生成 sibling binaries 的前置条件收回到脚本内部。
+- [x] 本地回归 `bash -n scripts/viewer-release-qa-loop.sh`，并确认预热命令已位于 `cargo run -p oasis7 --bin world_game_launcher` 之前。
 - [ ] 推送修复并打新 tag，继续观察 `release-gate-web` 是否越过 launcher 启动阶段，并进一步验证 aggregate `release_gate` 与后续打包链路。
 
 ### T3P Release gate web test API 冷启动窗口放宽（2026-03-14）

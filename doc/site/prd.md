@@ -130,7 +130,7 @@
 | PRD-SITE-005 | TASK-SITE-010 | `test_tier_required` | 首页/下载区已区分构建说明与正式公告 | 公开站点状态理解 |
 | PRD-SITE-006 | TASK-SITE-010 | `test_tier_required` | 站点存在统一“公开说明准备态”占位 | 发布沟通入口一致性 |
 | PRD-SITE-007 | TASK-SITE-010 | `test_tier_required` | 技术预览主口径与新占位并存且无冲突 | 对外承诺边界控制 |
-| PRD-SITE-008 | TASK-SITE-015/016 | `test_tier_required` | `site/**`、GitHub Release 下载入口与 `doc/site/github-pages/**` 历史专题标题全部切换到 `oasis7` 品牌与 `eng-cc/oasis7` 路径 | 对外品牌一致性、下载链路稳定性 |
+| PRD-SITE-008 | TASK-SITE-015/016/017 | `test_tier_required` | `site/**`、GitHub Release 下载入口、release workflow 当前路径/包名与 `doc/site/github-pages/**` 历史专题标题全部切换到 `oasis7` 品牌与 `eng-cc/oasis7` 路径 | 对外品牌一致性、下载链路稳定性 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |

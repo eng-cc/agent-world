@@ -28,6 +28,7 @@
 - [x] TASK-SITE-014 (PRD-SITE-003) [test_tier_required]: 修复 `scripts/site-manual-sync-check.sh` 的 viewer manual 基线命令，追平 `test_api=1` 新入口，解除 Pages `Site Quality Gates` 的假失败。
 - [x] TASK-SITE-015 (PRD-SITE-008) [test_tier_required]: 统一 `site/**`、GitHub Release 下载入口、站点检查脚本与 release workflow 的公开品牌为 `oasis7`，并同步 `eng-cc/oasis7` 仓库路径与 `oasis7-*` 资产名。
 - [x] TASK-SITE-016 (PRD-SITE-008) [test_tier_required]: 对 `doc/site/github-pages/**` 的仍可读历史专题执行 title-only cleanup，将首行 `Agent World*` 公开标题统一切到 `oasis7*`，保留正文历史证据原文不动。
+- [x] TASK-SITE-017 (PRD-SITE-008) [test_tier_required]: 将 `release-packages.yml` 的 Web dist / soak prewarm 当前路径与包名切到 `oasis7*`，并同步 `github-pages-release-download-pipeline` 当前真值文档。
   - 产物文件:
     - `doc/site/prd.md`
     - `doc/site/project.md`
@@ -52,6 +53,7 @@
 - 更新日期: 2026-03-19
 - 当前状态: completed
 - 下一任务: 无（当前模块主项目无未完成任务）
+- 最新完成: `TASK-SITE-017`（`release-packages.yml` 的 Web dist / soak prewarm 当前路径与包名已切到 `oasis7*`，相关 github-pages 发布链路文档已同步。）
 - 最新完成: `TASK-SITE-015`（公开站点、release 下载入口与站点脚本已统一切换到 `oasis7` 品牌与 `eng-cc/oasis7` 路径）。
 - 最新完成: `TASK-SITE-016`（已完成 `doc/site/github-pages/**` 历史专题首行标题的 title-only cleanup，旧 `Agent World*` 公开标题已统一切到 `oasis7*`）。
 - 最新完成: `TASK-SITE-011`（site 模块 README 目录索引同步）。

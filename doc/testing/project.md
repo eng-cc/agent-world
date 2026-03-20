@@ -139,7 +139,7 @@
   - 验收命令 (`test_tier_required`):
     - `bash -n scripts/build-game-launcher-bundle.sh`
     - `python -c "import pathlib, yaml; yaml.safe_load(pathlib.Path('.github/workflows/release-packages.yml').read_text())"`
-    - `rg -n "release-packages-web-wasm-v2|BUNDLE_NATIVE_BUILD_ARGS|agent_world_client_launcher" .github/workflows/release-packages.yml scripts/build-game-launcher-bundle.sh doc/testing/prd.md`
+    - `rg -n "release-packages-web-wasm-v2|BUNDLE_NATIVE_BUILD_ARGS|oasis7_client_launcher" .github/workflows/release-packages.yml scripts/build-game-launcher-bundle.sh doc/testing/prd.md`
 - [x] TASK-TESTING-055 (PRD-TESTING-002/003) [test_tier_required]: 继续拆分 `release-gate-runtime`，把 `ci-tests.sh full` 收敛为 `full-core` / `full-support` 两个 shard，并把 builtin wasm sync 检查独立成第三个并行 job，由聚合 gate 统一裁决放行，压缩 runtime 关键路径。
   - 产物文件:
     - `.github/workflows/release-packages.yml`
