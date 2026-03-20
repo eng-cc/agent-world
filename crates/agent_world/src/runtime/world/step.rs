@@ -1,4 +1,4 @@
-use agent_world_wasm_abi::ModuleSandbox;
+use oasis7_wasm_abi::ModuleSandbox;
 
 use super::super::{
     Action, ActionEnvelope, CausedBy, DomainEvent, FactoryProductionStatus,

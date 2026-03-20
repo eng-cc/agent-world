@@ -184,6 +184,7 @@
   - SC-80: `agent_world_node` commit retention 的 cold index 旧文件名兼容 alias helper、局部变量与定向测试命名也必须优先使用 `compat` 语义，而不是继续沿用 `legacy_*` 口径，避免 node replication 源码继续把旧文件名 alias 当作当前维护真值。
   - SC-81: `agent_world_distfs` 复制记录/guard 旧 JSON 兼容样例的定向测试命名与局部变量也必须优先使用 `compat` 语义，而不是继续沿用 `legacy_*` 口径，避免存储复制测试层继续扩散旧品牌式兼容维护语义。
   - SC-82: `agent_world_wasm_sdk` 的 crate name、workspace member 与 crate 目录名必须直接切到 `oasis7_wasm_sdk`，同时所有 builtin wasm 模块、模板与锁文件里的依赖名/路径/`use` 入口都要同步改名，避免继续把旧 `agent_world_wasm_sdk` 当作真实模块平台入口。
+  - SC-83: `agent_world_wasm_abi` 的 crate name、workspace member 与 crate 目录名必须直接切到 `oasis7_wasm_abi`，并同步更新执行器、路由、存储、网络、runtime 与测试中的依赖名、路径与源码入口，避免继续把旧 `agent_world_wasm_abi` 当作真实 ABI 平台入口。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -425,6 +426,7 @@
   - AC-85: `crates/agent_world_node/src/replication/{commit_retention.rs,tests.rs}` 中 commit cold index canonical manifest 与旧文件名 alias 的 helper/局部变量/定向测试名必须改为 `compat` 语义命名；节点复制行为保持不变，但源码中不得继续把旧文件名 alias 写成 `legacy_*` 当前维护口径。
   - AC-86: `crates/agent_world_distfs/src/replication.rs` 中 replication record/guard 旧 JSON 兼容样例的定向测试函数名与局部变量必须改为 `compat` 语义命名；DistFS 反序列化行为保持不变，但源码中不得继续把这些兼容样例写成 `legacy_*` 当前测试维护口径。
   - AC-87: workspace 根 `Cargo.toml`、`crates/oasis7_wasm_sdk/Cargo.toml`、builtin wasm modules 与模板中的 `agent_world_wasm_sdk` crate 依赖/路径/源码入口必须全部改为 `oasis7_wasm_sdk`，并将目录 `crates/agent_world_wasm_sdk` 重命名为 `crates/oasis7_wasm_sdk`；变更后 `cargo` 必须能按新 crate 名解析 SDK。
+  - AC-88: workspace 根 `Cargo.toml`、`crates/oasis7_wasm_abi/Cargo.toml`、`crates/{agent_world,agent_world_net,agent_world_wasm_executor,agent_world_wasm_router,agent_world_wasm_store}` 与相关测试源码中的 `agent_world_wasm_abi` 依赖/路径/源码入口必须全部改为 `oasis7_wasm_abi`，并将目录 `crates/agent_world_wasm_abi` 重命名为 `crates/oasis7_wasm_abi`；变更后 `cargo` 必须能按新 crate 名解析 ABI。
 - Non-Goals:
   - 不在本 PRD 中详细列出每个 UI 像素级规范。
   - 不替代 world-runtime/p2p 的底层协议设计。

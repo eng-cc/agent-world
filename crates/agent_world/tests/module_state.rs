@@ -8,7 +8,7 @@ use agent_world::runtime::{
     PolicySet, ProposalDecision, World, WorldEventBody,
 };
 use agent_world::GeoPos;
-use agent_world_wasm_abi::{
+use oasis7_wasm_abi::{
     ModuleCallFailure, ModuleCallInput, ModuleCallRequest, ModuleOutput, ModuleSandbox,
 };
 use sha2::{Digest, Sha256};
@@ -16,7 +16,7 @@ use sha2::{Digest, Sha256};
 #[cfg(feature = "test_tier_full")]
 use agent_world::runtime::WorldError;
 #[cfg(feature = "test_tier_full")]
-use agent_world_wasm_abi::ModuleCallErrorCode;
+use oasis7_wasm_abi::ModuleCallErrorCode;
 #[cfg(feature = "test_tier_full")]
 use agent_world_wasm_executor::FixedSandbox;
 

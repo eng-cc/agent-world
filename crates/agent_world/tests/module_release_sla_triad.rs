@@ -5,7 +5,7 @@ mod common;
 use agent_world::runtime::*;
 use agent_world::simulator::{ModuleInstallTarget, ResourceKind};
 use agent_world::GeoPos;
-use agent_world_wasm_abi::MaterialStack;
+use oasis7_wasm_abi::MaterialStack;
 use serde_json::json;
 use sha2::{Digest, Sha256};
 use std::fs;

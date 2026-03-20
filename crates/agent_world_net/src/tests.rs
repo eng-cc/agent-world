@@ -6,7 +6,7 @@ use agent_world_proto::distributed_dht::DistributedDht as _;
 use agent_world_proto::distributed_net as proto_net;
 use agent_world_proto::distributed_net::DistributedNetwork as _;
 use agent_world_proto::distributed_storage as proto_storage;
-use agent_world_wasm_abi::ModuleAbiContract;
+use oasis7_wasm_abi::ModuleAbiContract;
 
 use super::*;
 use crate::util::to_canonical_cbor;
@@ -938,8 +938,8 @@ fn client_fetch_module_manifest_from_dht_uses_provider_list() {
         module_id: "m.weather".to_string(),
         name: "Weather".to_string(),
         version: "0.1.0".to_string(),
-        kind: agent_world_wasm_abi::ModuleKind::Pure,
-        role: agent_world_wasm_abi::ModuleRole::Domain,
+        kind: oasis7_wasm_abi::ModuleKind::Pure,
+        role: oasis7_wasm_abi::ModuleRole::Domain,
         wasm_hash: "wasm-hash".to_string(),
         interface_version: "aw.abi.module.v1".to_string(),
         abi_contract: ModuleAbiContract::default(),
@@ -947,7 +947,7 @@ fn client_fetch_module_manifest_from_dht_uses_provider_list() {
         subscriptions: Vec::new(),
         required_caps: Vec::new(),
         artifact_identity: None,
-        limits: agent_world_wasm_abi::ModuleLimits::unbounded(),
+        limits: oasis7_wasm_abi::ModuleLimits::unbounded(),
     };
     let bytes = to_canonical_cbor(&manifest).expect("cbor");
     spy.set_blob("manifest-hash", bytes);

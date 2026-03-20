@@ -3,7 +3,7 @@
 use super::super::*;
 use super::pos;
 use crate::simulator::ResourceKind;
-use agent_world_wasm_abi::{FactoryModuleSpec, MaterialStack};
+use oasis7_wasm_abi::{FactoryModuleSpec, MaterialStack};
 use agent_world_wasm_executor::{WasmExecutor, WasmExecutorConfig};
 
 fn has_active(world: &World, module_id: &str) -> bool {

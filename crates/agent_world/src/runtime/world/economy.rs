@@ -1,4 +1,4 @@
-use agent_world_wasm_abi::{
+use oasis7_wasm_abi::{
     FactoryBuildDecision, FactoryBuildRequest, MaterialStack, ModuleCallErrorCode,
     ModuleCallFailure, ModuleCallInput, ModuleCallOrigin, ModuleContext, ModuleKind, ModuleOutput,
     ModuleSandbox, ProductValidationDecision, ProductValidationRequest, RecipeExecutionPlan,

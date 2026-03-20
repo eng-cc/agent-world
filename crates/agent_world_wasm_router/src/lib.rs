@@ -1,4 +1,4 @@
-use agent_world_wasm_abi::{ModuleSubscription, ModuleSubscriptionStage};
+use oasis7_wasm_abi::{ModuleSubscription, ModuleSubscriptionStage};
 use serde::Deserialize;
 use serde_json::Value as JsonValue;
 

@@ -8,7 +8,7 @@ use sha2::{Digest, Sha256};
 #[cfg(feature = "test_tier_full")]
 use agent_world::GeoPos;
 #[cfg(feature = "test_tier_full")]
-use agent_world_wasm_abi::{ModuleEmit, ModuleOutput};
+use oasis7_wasm_abi::{ModuleEmit, ModuleOutput};
 #[cfg(feature = "test_tier_full")]
 use agent_world_wasm_executor::FixedSandbox;
 #[cfg(feature = "test_tier_full")]

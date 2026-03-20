@@ -5,7 +5,7 @@ use crate::runtime::{
     ProposalDecision, World,
 };
 use crate::simulator::ResourceKind;
-use agent_world_wasm_abi::{
+use oasis7_wasm_abi::{
     FactoryBuildDecision, FactoryBuildRequest, FactoryModuleSpec, MaterialStack, ModuleCallFailure,
     ModuleCallInput, ModuleCallRequest, ModuleEmit, ModuleOutput, ModuleSandbox,
     RecipeExecutionPlan, RecipeExecutionRequest,

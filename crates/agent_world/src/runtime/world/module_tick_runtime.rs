@@ -1,4 +1,4 @@
-use agent_world_wasm_abi::{
+use oasis7_wasm_abi::{
     ModuleCallInput, ModuleCallOrigin, ModuleSandbox, ModuleSubscriptionStage,
     ModuleTickLifecycleDirective,
 };
@@ -118,7 +118,7 @@ impl World {
                 ModuleKind::Pure => None,
             };
             let input = ModuleCallInput {
-                ctx: agent_world_wasm_abi::ModuleContext {
+                ctx: oasis7_wasm_abi::ModuleContext {
                     v: "wasm-1".to_string(),
                     module_id: module_id.clone(),
                     trace_id: trace_id.clone(),

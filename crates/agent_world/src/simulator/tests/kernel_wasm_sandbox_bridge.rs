@@ -1,5 +1,5 @@
 use super::*;
-use agent_world_wasm_abi::{
+use oasis7_wasm_abi::{
     ModuleCallErrorCode, ModuleCallFailure, ModuleCallInput, ModuleCallRequest, ModuleEmit,
     ModuleLimits, ModuleOutput, ModuleSandbox,
 };

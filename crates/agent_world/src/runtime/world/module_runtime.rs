@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 
-use agent_world_wasm_abi::{
+use oasis7_wasm_abi::{
     ModuleCallErrorCode, ModuleCallFailure, ModuleCallInput, ModuleCallOrigin, ModuleCallRequest,
     ModuleContext, ModuleEmitEvent, ModuleOutput, ModuleSandbox, ModuleStateUpdate,
 };
@@ -730,7 +730,7 @@ impl World {
         module_id: &str,
         trace_id: &str,
         manifest: &ModuleManifest,
-        effect: &agent_world_wasm_abi::ModuleEffectIntent,
+        effect: &oasis7_wasm_abi::ModuleEffectIntent,
         resolved_cap_ref: &str,
         sandbox: &mut dyn ModuleSandbox,
     ) -> Result<(), ModuleCallFailure> {

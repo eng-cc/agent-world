@@ -1,7 +1,7 @@
 //! World event types that wrap all event kinds.
 
 use crate::simulator::ResourceKind;
-use agent_world_wasm_abi::{ModuleCallFailure, ModuleEmitEvent, ModuleStateUpdate};
+use oasis7_wasm_abi::{ModuleCallFailure, ModuleEmitEvent, ModuleStateUpdate};
 use serde::{Deserialize, Serialize};
 
 use super::audit::AuditEventKind;

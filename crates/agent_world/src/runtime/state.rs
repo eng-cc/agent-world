@@ -2,7 +2,7 @@
 
 use crate::models::AgentState;
 use crate::simulator::{ModuleInstallTarget, ResourceKind};
-use agent_world_wasm_abi::{
+use oasis7_wasm_abi::{
     FactoryModuleSpec, FactoryProfileV1, MaterialProfileV1, MaterialStack, ModuleManifest,
     ProductProfileV1, RecipeProfileV1,
 };

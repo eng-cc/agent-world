@@ -1,4 +1,4 @@
-use agent_world_wasm_abi::{ModuleCallErrorCode, ModuleCallFailure, ModuleOutput};
+use oasis7_wasm_abi::{ModuleCallErrorCode, ModuleCallFailure, ModuleOutput};
 
 use super::super::{ModuleManifest, ModuleRuntimeChargeEvent, WorldError, WorldEventBody};
 use super::World;

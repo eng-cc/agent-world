@@ -143,7 +143,6 @@ dependencies = [
  "agent_world_launcher_ui",
  "agent_world_node",
  "agent_world_proto",
- "agent_world_wasm_abi",
  "agent_world_wasm_executor",
  "agent_world_wasm_router",
  "agent_world_wasm_store",
@@ -154,6 +153,7 @@ dependencies = [
  "getrandom 0.2.17",
  "hex",
  "hmac",
+ "oasis7_wasm_abi",
  "rand_core 0.6.4",
  "reqwest",
  "serde",
@@ -224,10 +224,10 @@ version = "0.1.0"
 dependencies = [
  "agent_world_distfs",
  "agent_world_proto",
- "agent_world_wasm_abi",
  "async-std",
  "futures",
  "libp2p",
+ "oasis7_wasm_abi",
  "serde",
  "serde_cbor",
 ]
@@ -284,18 +284,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "agent_world_wasm_abi"
-version = "0.1.0"
-dependencies = [
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "agent_world_wasm_executor"
 version = "0.1.0"
 dependencies = [
- "agent_world_wasm_abi",
+ "oasis7_wasm_abi",
  "serde_cbor",
  "wasmtime",
  "wat",
@@ -305,7 +297,7 @@ dependencies = [
 name = "agent_world_wasm_router"
 version = "0.1.0"
 dependencies = [
- "agent_world_wasm_abi",
+ "oasis7_wasm_abi",
  "regex",
  "serde",
  "serde_json",
@@ -315,7 +307,7 @@ dependencies = [
 name = "agent_world_wasm_store"
 version = "0.1.0"
 dependencies = [
- "agent_world_wasm_abi",
+ "oasis7_wasm_abi",
  "serde",
  "serde_json",
 ]
@@ -5825,6 +5817,14 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "oasis7_wasm_abi"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

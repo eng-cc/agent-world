@@ -6,7 +6,7 @@ use crate::runtime::{
     WorldEventBody,
 };
 use crate::simulator::ResourceKind;
-use agent_world_wasm_abi::{FactoryModuleSpec, MaterialStack, RecipeExecutionPlan};
+use oasis7_wasm_abi::{FactoryModuleSpec, MaterialStack, RecipeExecutionPlan};
 
 fn factory_spec(factory_id: &str, build_time_ticks: u32, recipe_slots: u16) -> FactoryModuleSpec {
     FactoryModuleSpec {

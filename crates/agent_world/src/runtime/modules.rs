@@ -1,6 +1,6 @@
 //! Module types and registry for WASM runtime integration.
 
-pub use agent_world_wasm_abi::{
+pub use oasis7_wasm_abi::{
     EconomyModuleKind, FactoryBuildDecision, FactoryBuildRequest, FactoryModuleApi,
     FactoryModuleSpec, FactoryProfileV1, GameplayContract, GameplayModuleKind,
     MaterialDefaultPriority, MaterialProfileV1, MaterialStack, MaterialTransportLossClass,

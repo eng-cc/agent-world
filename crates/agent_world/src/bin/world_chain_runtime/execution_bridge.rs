@@ -20,7 +20,7 @@ use agent_world_node::{
     NodeExecutionHook, NodeSnapshot,
 };
 use agent_world_proto::storage_profile::StorageProfileConfig;
-use agent_world_wasm_abi::ModuleSandbox;
+use oasis7_wasm_abi::ModuleSandbox;
 use agent_world_wasm_executor::{WasmExecutor, WasmExecutorConfig};
 use serde::{Deserialize, Serialize};
 
@@ -1956,7 +1956,7 @@ mod tests {
     };
     use agent_world::simulator::{Action as SimulatorAction, ActionSubmitter};
     use agent_world_node::{NodeConsensusSnapshot, NodeRole};
-    use agent_world_wasm_abi::{ModuleCallFailure, ModuleOutput};
+    use oasis7_wasm_abi::{ModuleCallFailure, ModuleOutput};
     use agent_world_wasm_executor::FixedSandbox;
     use ed25519_dalek::{Signer, SigningKey};
     use sha2::{Digest, Sha256};
@@ -3124,7 +3124,7 @@ mod tests {
             role: ModuleRole::Rule,
             wasm_hash: wasm_hash.to_string(),
             interface_version: "wasm-1".to_string(),
-            abi_contract: agent_world_wasm_abi::ModuleAbiContract::default(),
+            abi_contract: oasis7_wasm_abi::ModuleAbiContract::default(),
             exports: vec!["reduce".to_string()],
             subscriptions: vec![ModuleSubscription {
                 event_kinds: Vec::new(),
@@ -3227,7 +3227,7 @@ mod tests {
         let sandbox = FixedSandbox::fail(ModuleCallFailure {
             module_id: manifest.module_id.clone(),
             trace_id: expected_trace.clone(),
-            code: agent_world_wasm_abi::ModuleCallErrorCode::PolicyDenied,
+            code: oasis7_wasm_abi::ModuleCallErrorCode::PolicyDenied,
             detail: "forced failure for routing assertion".to_string(),
         });
         let mut driver = NodeRuntimeExecutionDriver::new_with_sandbox(

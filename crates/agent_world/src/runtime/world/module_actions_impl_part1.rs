@@ -13,7 +13,7 @@ impl World {
             .max(2)
     }
 
-    fn module_install_fee_amount(manifest: &agent_world_wasm_abi::ModuleManifest) -> i64 {
+    fn module_install_fee_amount(manifest: &oasis7_wasm_abi::ModuleManifest) -> i64 {
         let export_cost = manifest.exports.len() as i64;
         let subscription_cost = manifest.subscriptions.len() as i64;
         1_i64
@@ -28,8 +28,8 @@ impl World {
     }
 
     fn validate_upgrade_interface_compatible(
-        current: &agent_world_wasm_abi::ModuleManifest,
-        next: &agent_world_wasm_abi::ModuleManifest,
+        current: &oasis7_wasm_abi::ModuleManifest,
+        next: &oasis7_wasm_abi::ModuleManifest,
     ) -> Result<(), String> {
         if current.interface_version != next.interface_version {
             return Err(format!(
@@ -150,7 +150,7 @@ impl World {
                 {
                     return false;
                 }
-                let key = agent_world_wasm_abi::ModuleRegistry::record_key(module_id, version);
+                let key = oasis7_wasm_abi::ModuleRegistry::record_key(module_id, version);
                 self.module_registry
                     .records
                     .get(&key)
@@ -294,11 +294,11 @@ impl World {
 
     fn evaluate_module_release_shadow_hash(
         &self,
-        manifest: &agent_world_wasm_abi::ModuleManifest,
+        manifest: &oasis7_wasm_abi::ModuleManifest,
         activate: bool,
     ) -> Result<String, String> {
         let mut changes = ModuleChangeSet::default();
-        let record_key = agent_world_wasm_abi::ModuleRegistry::record_key(
+        let record_key = oasis7_wasm_abi::ModuleRegistry::record_key(
             manifest.module_id.as_str(),
             manifest.version.as_str(),
         );
@@ -442,7 +442,7 @@ impl World {
         &mut self,
         action_id: u64,
         installer_agent_id: &str,
-        manifest: &agent_world_wasm_abi::ModuleManifest,
+        manifest: &oasis7_wasm_abi::ModuleManifest,
         activate: bool,
         install_target: ModuleInstallTarget,
         finality_certificate: Option<&GovernanceFinalityCertificate>,
@@ -488,7 +488,7 @@ impl World {
         }
 
         let mut changes = ModuleChangeSet::default();
-        let record_key = agent_world_wasm_abi::ModuleRegistry::record_key(
+        let record_key = oasis7_wasm_abi::ModuleRegistry::record_key(
             manifest.module_id.as_str(),
             manifest.version.as_str(),
         );
@@ -655,7 +655,7 @@ impl World {
         upgrader_agent_id: &str,
         instance_id: &str,
         from_module_version: &str,
-        manifest: &agent_world_wasm_abi::ModuleManifest,
+        manifest: &oasis7_wasm_abi::ModuleManifest,
         activate: bool,
         finality_certificate: Option<&GovernanceFinalityCertificate>,
     ) -> Result<bool, WorldError> {
@@ -765,7 +765,7 @@ impl World {
             }
         }
 
-        let current_key = agent_world_wasm_abi::ModuleRegistry::record_key(
+        let current_key = oasis7_wasm_abi::ModuleRegistry::record_key(
             instance.module_id.as_str(),
             instance.module_version.as_str(),
         );
@@ -1020,7 +1020,7 @@ impl World {
             return Ok(true);
         }
 
-        let current_key = agent_world_wasm_abi::ModuleRegistry::record_key(
+        let current_key = oasis7_wasm_abi::ModuleRegistry::record_key(
             instance.module_id.as_str(),
             instance.module_version.as_str(),
         );
@@ -1039,7 +1039,7 @@ impl World {
             )?;
             return Ok(true);
         };
-        let target_key = agent_world_wasm_abi::ModuleRegistry::record_key(
+        let target_key = oasis7_wasm_abi::ModuleRegistry::record_key(
             instance.module_id.as_str(),
             target_module_version,
         );

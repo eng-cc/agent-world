@@ -13,7 +13,7 @@ mod social;
 mod step;
 mod types;
 
-use agent_world_wasm_abi::{
+use oasis7_wasm_abi::{
     ModuleCallInput, ModuleCallOrigin, ModuleCallRequest, ModuleContext, ModuleLimits,
     ModuleOutput, ModuleSandbox,
 };

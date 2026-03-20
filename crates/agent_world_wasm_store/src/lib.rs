@@ -1,4 +1,4 @@
-use agent_world_wasm_abi::{ModuleManifest, ModuleRecord, ModuleRegistry};
+use oasis7_wasm_abi::{ModuleManifest, ModuleRecord, ModuleRegistry};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -223,7 +223,7 @@ fn read_json_from_path<T: DeserializeOwned>(path: &Path) -> Result<T, ModuleStor
 #[cfg(test)]
 mod tests {
     use super::*;
-    use agent_world_wasm_abi::{
+    use oasis7_wasm_abi::{
         ModuleKind, ModuleLimits, ModuleManifest, ModuleRecord, ModuleRole, ModuleSubscription,
     };
 
@@ -244,7 +244,7 @@ mod tests {
             role: ModuleRole::Domain,
             wasm_hash: hash.to_string(),
             interface_version: "wasm-1".to_string(),
-            abi_contract: agent_world_wasm_abi::ModuleAbiContract::default(),
+            abi_contract: oasis7_wasm_abi::ModuleAbiContract::default(),
             exports: vec!["reduce".to_string()],
             subscriptions: Vec::<ModuleSubscription>::new(),
             required_caps: Vec::new(),

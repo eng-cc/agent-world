@@ -1,8 +1,8 @@
 //! Sandbox execution scaffolding for WASM modules.
 
 #[cfg(feature = "wasmtime")]
-use agent_world_wasm_abi::ModuleLimits;
-use agent_world_wasm_abi::{
+use oasis7_wasm_abi::ModuleLimits;
+use oasis7_wasm_abi::{
     ModuleCallErrorCode, ModuleCallFailure, ModuleCallRequest, ModuleOutput, ModuleSandbox,
 };
 #[cfg(feature = "wasmtime")]
@@ -760,7 +760,7 @@ impl CompiledModuleCache {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use agent_world_wasm_abi::ModuleLimits;
+    use oasis7_wasm_abi::ModuleLimits;
     #[cfg(feature = "wasmtime")]
     use std::fs;
     #[cfg(feature = "wasmtime")]

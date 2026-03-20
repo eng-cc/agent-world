@@ -1,7 +1,7 @@
 use super::super::*;
 use super::pos;
 use crate::simulator::{ModuleInstallTarget, ResourceKind};
-use agent_world_wasm_abi::{
+use oasis7_wasm_abi::{
     ModuleCallErrorCode, ModuleCallFailure, ModuleCallInput, ModuleCallRequest, ModuleEffectIntent,
     ModuleEmit, ModuleOutput, ModuleSandbox, ModuleTickLifecycleDirective,
 };

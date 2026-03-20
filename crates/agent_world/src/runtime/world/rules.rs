@@ -1,4 +1,4 @@
-use agent_world_wasm_abi::{
+use oasis7_wasm_abi::{
     ModuleCallErrorCode, ModuleCallFailure, ModuleCallRequest, ModuleOutput, ModuleSandbox,
 };
 

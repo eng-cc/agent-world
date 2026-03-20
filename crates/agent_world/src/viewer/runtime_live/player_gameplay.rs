@@ -7,7 +7,7 @@ use super::control_plane::{
 };
 use crate::runtime::{Action as RuntimeAction, MaterialLedgerId, RecipeExecutionPlan, WorldState};
 use crate::simulator::{PlayerGameplayAction, PlayerGameplayRecentFeedback};
-use agent_world_wasm_abi::{FactoryModuleSpec, MaterialStack};
+use oasis7_wasm_abi::{FactoryModuleSpec, MaterialStack};
 
 const GAMEPLAY_ACTION_PROTOCOL: &str = "gameplay_action.submit";
 const ACTION_BUILD_SMELTER_MK1: &str = "build_factory_smelter_mk1";

@@ -5,7 +5,7 @@ use crate::runtime::{
     PolicySet, ProposalDecision, RejectReason, World, WorldEventBody,
 };
 use crate::simulator::ResourceKind;
-use agent_world_wasm_abi::{
+use oasis7_wasm_abi::{
     FactoryBuildDecision, FactoryModuleSpec, MaterialStack, ModuleEmit, ModuleOutput,
     ProductValidationDecision, RecipeExecutionPlan,
 };

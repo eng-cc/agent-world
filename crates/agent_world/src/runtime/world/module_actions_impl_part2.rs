@@ -1654,7 +1654,7 @@ impl World {
                 self.module_artifacts.remove(wasm_hash);
                 self.module_artifact_bytes.remove(wasm_hash);
                 let max_cached = self.module_cache.max_cached_modules();
-                self.module_cache = agent_world_wasm_abi::ModuleCache::new(max_cached);
+                self.module_cache = oasis7_wasm_abi::ModuleCache::new(max_cached);
                 Ok(true)
             }
             _ => Ok(false),

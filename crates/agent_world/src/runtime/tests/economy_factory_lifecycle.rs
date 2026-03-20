@@ -1,7 +1,7 @@
 use super::pos;
 use crate::runtime::{Action, DomainEvent, MaterialLedgerId, RejectReason, World, WorldEventBody};
 use crate::simulator::ResourceKind;
-use agent_world_wasm_abi::{FactoryModuleSpec, MaterialStack, RecipeExecutionPlan};
+use oasis7_wasm_abi::{FactoryModuleSpec, MaterialStack, RecipeExecutionPlan};
 
 fn factory_spec(
     factory_id: &str,

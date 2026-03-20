@@ -71,7 +71,7 @@ pub mod error {
 }
 
 pub mod modules {
-    pub use agent_world_wasm_abi::{ModuleArtifact, ModuleManifest};
+    pub use oasis7_wasm_abi::{ModuleArtifact, ModuleManifest};
 }
 
 pub use agent_world_proto::distributed_dht as proto_dht;
