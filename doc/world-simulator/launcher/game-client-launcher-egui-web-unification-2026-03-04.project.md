@@ -3,7 +3,7 @@
 - 对应设计文档: `doc/world-simulator/launcher/game-client-launcher-egui-web-unification-2026-03-04.design.md`
 - 对应需求文档: `doc/world-simulator/launcher/game-client-launcher-egui-web-unification-2026-03-04.prd.md`
 
-审计轮次: 5
+审计轮次: 6
 
 
 ## 任务拆解（含 PRD-ID 映射）
@@ -18,7 +18,7 @@
 - `doc/world-simulator/project.md`
 - `doc/world-simulator/prd.index.md`
 - `crates/oasis7_client_launcher/src/main.rs`
-- `crates/agent_world/src/bin/world_web_launcher.rs`
+- `crates/oasis7/src/bin/world_web_launcher.rs`
 - `scripts/build-game-launcher-bundle.sh`
 
 ## 状态

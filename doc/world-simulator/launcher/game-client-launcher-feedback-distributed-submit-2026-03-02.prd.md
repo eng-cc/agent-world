@@ -3,16 +3,16 @@
 - 对应设计文档: `doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.design.md`
 - 对应项目管理文档: `doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.project.md`
 
-审计轮次: 5
+审计轮次: 6
 
 ## 1. Executive Summary
 - 将“给团队提 Bug/建议”能力从“仅本地 JSON 落盘”升级为“启动器优先提交到分布式反馈网络”。
-- 复用已有 `agent_world_node` + `agent_world_distfs` 反馈链路，确保反馈进入 `feedback` append-only 存储并触发 P2P 广播。
+- 复用已有 `oasis7_node` + `oasis7_distfs` 反馈链路，确保反馈进入 `feedback` append-only 存储并触发 P2P 广播。
 - 保持用户可用性：当链运行时不可用或提交失败时，自动回落到本地反馈包落盘，不丢反馈。
 
 ## 2. User Experience & Functionality
 ### In Scope
-- `crates/agent_world/src/bin/world_chain_runtime.rs`
+- `crates/oasis7/src/bin/world_chain_runtime.rs`
   - 启用 `feedback_p2p` 配置（默认参数）。
   - 新增 `POST /v1/chain/feedback/submit` 接口。
   - 接口接收启动器反馈载荷，服务端构造并签名 `FeedbackCreateRequest`，调用 `NodeRuntime::submit_feedback`。

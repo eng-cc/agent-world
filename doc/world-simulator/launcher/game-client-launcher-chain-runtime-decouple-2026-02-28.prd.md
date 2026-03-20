@@ -3,7 +3,7 @@
 - 对应设计文档: `doc/world-simulator/launcher/game-client-launcher-chain-runtime-decouple-2026-02-28.design.md`
 - 对应项目管理文档: `doc/world-simulator/launcher/game-client-launcher-chain-runtime-decouple-2026-02-28.project.md`
 
-审计轮次: 5
+审计轮次: 6
 
 ## 1. Executive Summary
 - 将 P2P 节点/链运行时从游戏进程层（`world_viewer_live`）中拆出，改为独立进程承载。
@@ -11,7 +11,7 @@
 - 在 launcher 链路中提供链配置能力，并暴露可观测接口（含 token 余额视图）。
 
 ## 2. User Experience & Functionality
-- 新增独立二进制：`world_chain_runtime`（归属 `agent_world` crate）。
+- 新增独立二进制：`world_chain_runtime`（归属 `oasis7` crate）。
 - `world_chain_runtime` 负责：
   - 启动/停止 NodeRuntime；
   - 维护执行世界（execution world）落盘路径；
@@ -73,7 +73,7 @@
 - `--chain-node-validator <id:stake>`（repeatable）。
 
 ### 4) 关键链路
-- 桌面入口：`run-client.sh -> agent_world_client_launcher -> world_game_launcher`。
+- 桌面入口：`run-client.sh -> oasis7_client_launcher -> world_game_launcher`。
 - CLI 入口：`run-game.sh -> world_game_launcher`。
 - 启动器编排：`world_game_launcher -> world_chain_runtime + world_viewer_live + static_http`。
 

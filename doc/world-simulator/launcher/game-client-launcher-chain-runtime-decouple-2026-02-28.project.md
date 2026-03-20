@@ -3,7 +3,7 @@
 - 对应设计文档: `doc/world-simulator/launcher/game-client-launcher-chain-runtime-decouple-2026-02-28.design.md`
 - 对应需求文档: `doc/world-simulator/launcher/game-client-launcher-chain-runtime-decouple-2026-02-28.prd.md`
 
-审计轮次: 5
+审计轮次: 6
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0 建档：设计文档 + 项目管理文档。
 - [x] T1 新增 `world_chain_runtime`：节点启动/停止、状态 API、余额 API。
@@ -15,9 +15,9 @@
 ## 依赖
 - `doc/world-simulator/launcher/game-client-launcher-chain-runtime-decouple-2026-02-28.design.md`
 - doc/world-simulator/launcher/game-client-launcher-chain-runtime-decouple-2026-02-28.prd.md
-- `agent_world_node`（NodeRuntime/PoS/P2P）
-- `agent_world::runtime::World`（execution world 读取余额）
-- 现有 `world_game_launcher` 与 `agent_world_client_launcher`
+- `oasis7_node`（NodeRuntime/PoS/P2P）
+- `oasis7::runtime::World`（execution world 读取余额）
+- 现有 `world_game_launcher` 与 `oasis7_client_launcher`
 
 ## 状态
 - 最近更新：2026-03-08（ROUND-006 语义口径回写）

@@ -3,14 +3,14 @@
 - 对应设计文档: `doc/world-simulator/launcher/game-client-launcher-graceful-stop-2026-03-02.design.md`
 - 对应项目管理文档: `doc/world-simulator/launcher/game-client-launcher-graceful-stop-2026-03-02.project.md`
 
-审计轮次: 5
+审计轮次: 6
 
 ## 1. Executive Summary
 - 在桌面启动器点击“停止”或直接关闭窗口时，优先让 `world_game_launcher` 走优雅退出路径。
 - 提升“启动器退出后残留子进程”问题的可控性，尽量确保 `world_viewer_live` 与 `world_chain_runtime` 被一并清理。
 
 ## 2. User Experience & Functionality
-- 改造 `crates/agent_world_client_launcher` 的停止流程：
+- 改造 `crates/oasis7_client_launcher` 的停止流程：
   - 先发送中断信号（Unix 下向 launcher 进程发送 `SIGINT`）。
   - 在限定超时时间内轮询等待 launcher 自行退出。
   - 超时后再执行强制 `kill` 兜底。

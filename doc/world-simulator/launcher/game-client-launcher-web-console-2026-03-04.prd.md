@@ -3,7 +3,7 @@
 - 对应设计文档: `doc/world-simulator/launcher/game-client-launcher-web-console-2026-03-04.design.md`
 - 对应项目管理文档: `doc/world-simulator/launcher/game-client-launcher-web-console-2026-03-04.project.md`
 
-审计轮次: 5
+审计轮次: 6
 
 ## 1. Executive Summary
 - Problem Statement: 当前客户端启动器仅提供桌面 GUI，无法在无图形界面的服务器上直接运行并远程操作。
@@ -52,10 +52,10 @@
 
 ## 4. Technical Specifications
 - Architecture Overview:
-  - 新增二进制：`crates/agent_world/src/bin/world_web_launcher.rs`。
+  - 新增二进制：`crates/oasis7/src/bin/world_web_launcher.rs`。
   - 运行时模型：`world_web_launcher` 托管 `world_game_launcher` 子进程，并通过内置 HTTP 服务暴露 Web 控制台与 API。
 - Integration Points:
-  - `crates/agent_world/src/bin/world_game_launcher.rs`
+  - `crates/oasis7/src/bin/world_game_launcher.rs`
   - `scripts/build-game-launcher-bundle.sh`
 - Edge Cases & Error Handling:
   - 子进程已运行重复启动：返回冲突错误并保持现状。

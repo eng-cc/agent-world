@@ -3,7 +3,7 @@
 - 对应设计文档: `doc/world-simulator/launcher/game-client-launcher-blockchain-explorer-ui-ux-optimization-2026-03-08.design.md`
 - 对应项目管理文档: `doc/world-simulator/launcher/game-client-launcher-blockchain-explorer-ui-ux-optimization-2026-03-08.project.md`
 
-审计轮次: 1
+审计轮次: 6
 
 ## 1. Executive Summary
 - Problem Statement: 启动器区块链浏览器已覆盖查询能力，但当前信息呈现偏“日志行”，视觉层级弱、列表与详情切换成本高，导致高频排障与核查效率偏低。
@@ -13,7 +13,7 @@
   - SC-2: 区块与交易视图支持“列表-详情”并行浏览，点击列表后详情更新可见延迟 <= 1 次轮询周期。
   - SC-3: 交易/搜索/资产相关筛选提供“应用 + 清空”双动作，误筛选恢复步骤 <= 1 次点击。
   - SC-4: 请求中/链未就绪状态在浏览器窗口内可见，不再依赖主面板日志理解当前可操作性。
-  - SC-5: `agent_world_client_launcher` native 测试与 wasm `cargo check` 回归通过。
+  - SC-5: `oasis7_client_launcher` native 测试与 wasm `cargo check` 回归通过。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -60,15 +60,15 @@
 
 ## 4. Technical Specifications
 - Architecture Overview:
-  - UI 层：`agent_world_client_launcher` explorer window 调整信息结构与交互动作。
+  - UI 层：`oasis7_client_launcher` explorer window 调整信息结构与交互动作。
   - 接口层：继续复用 `/api/chain/explorer/*`，不改控制面与 runtime 协议。
   - 跨端：native/wasm 共用同一 Rust UI 渲染逻辑。
 - Integration Points:
-  - `crates/agent_world_client_launcher/src/explorer_window.rs`
-  - `crates/agent_world_client_launcher/src/explorer_window_p1.rs`
-  - `crates/agent_world_client_launcher/src/main.rs`
-  - `crates/agent_world_client_launcher/src/app_process.rs`
-  - `crates/agent_world_client_launcher/src/app_process_web.rs`
+  - `crates/oasis7_client_launcher/src/explorer_window.rs`
+  - `crates/oasis7_client_launcher/src/explorer_window_p1.rs`
+  - `crates/oasis7_client_launcher/src/main.rs`
+  - `crates/oasis7_client_launcher/src/app_process.rs`
+  - `crates/oasis7_client_launcher/src/app_process_web.rs`
 - Edge Cases & Error Handling:
   - 链未就绪：窗口内显示不可用提示，避免“空白窗口 + 无解释”。
   - 请求进行中：显示 `inflight` 状态并保持按钮行为可预测。
@@ -79,7 +79,7 @@
   - NFR-1: 界面改造后不新增 explorer 请求频率（仍保持默认 1s 轮询策略）。
   - NFR-2: native 与 wasm 在 tab、筛选、详情跳转行为一致率 100%。
   - NFR-3: `explorer_window.rs`、`explorer_window_p1.rs` 单文件长度仍控制在 1200 行约束内（必要时拆分）。
-  - NFR-4: `agent_world_client_launcher` 单元测试与 wasm 编译检查通过。
+  - NFR-4: `oasis7_client_launcher` 单元测试与 wasm 编译检查通过。
 - Security & Privacy:
   - 仅变更展示层，不新增敏感信息暴露面。
   - 错误展示继续采用结构化 `error_code + error` 语义。
@@ -99,8 +99,8 @@
   - PRD-WORLD_SIMULATOR-028 -> TASK-WORLD_SIMULATOR-067/068 -> `test_tier_required`。
   - 计划验证命令:
     - `./scripts/doc-governance-check.sh`
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher -- --nocapture`
-    - `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown`
     - `env -u RUSTC_WRAPPER cargo fmt --all`
 - Decision Log:
   - DEC-LAUNCHER-EXPLORER-UX-001: 采用“信息分组 + 状态徽标”而非继续纯文本行堆叠。理由：降低阅读成本并提升异常状态可见性。
