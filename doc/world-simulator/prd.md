@@ -202,6 +202,8 @@
   - SC-98: `world_game_launcher` / `world_web_launcher` 运行时自身不再接受 `AGENT_WORLD_*` 的 launcher compat alias；服务端 launcher/runtime bin 覆盖 env、viewer auth bootstrap 注入对象/键名与 console/viewer static dir 覆盖 env 必须只认 `OASIS7_*` 当前入口，避免旧品牌 alias 继续作为有效运行入口。
   - SC-99: `viewer/runtime_live` 运行时自身不再接受 `AGENT_WORLD_AGENT_PROVIDER_MODE`、`AGENT_WORLD_OPENCLAW_*` 与 `AGENT_WORLD_RUNTIME_AGENT_CHAT_ECHO` compat alias；OpenClaw provider 配置与 QA chat echo 开关必须只认 `OASIS7_*` 当前入口，避免 runtime live 继续保留旧品牌运行入口。
   - SC-100: runtime/simulator 自身不再接受 `AGENT_WORLD_MODULE_SOURCE_*`、`AGENT_WORLD_BUILTIN_WASM_*` 与 `AGENT_WORLD_LLM_*` compat alias；模块源码编译、builtin wasm 获取与 LLM 配置必须只认 `OASIS7_*` 当前入口，避免内核运行链继续保留旧品牌运行入口。
+  - SC-101: repo-owned wasm build / sync 脚本不再接受 `AGENT_WORLD_WASM_*` compat alias；deterministic wasm build、CI summary 与 builtin wasm manifest sync 的当前 operator 入口必须只认 `OASIS7_WASM_*`，避免脚本层继续保留旧品牌运行入口。
+  - SC-102: repo-owned viewer capture / texture inspector / launcher bundle 脚本不再接受 `AGENT_WORLD_VIEWER_*` 与 `AGENT_WORLD_CHAIN_STORAGE_PROFILE` compat alias；Viewer 调试脚本与 bundle wrapper 当前 operator 入口必须只认 `OASIS7_VIEWER_*` / `OASIS7_CHAIN_STORAGE_PROFILE`，避免残留旧品牌脚本入口继续有效。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -461,6 +463,8 @@
   - AC-103: `crates/oasis7/src/bin/{world_game_launcher.rs,world_web_launcher/runtime_paths.rs,world_web_launcher/control_plane.rs}` 必须移除 `AGENT_WORLD_*` launcher/runtime fallback 读取；`world_game_launcher` 只能注入 `__OASIS7_VIEWER_AUTH_ENV` 与 `OASIS7_VIEWER_*` auth key，`world_web_launcher` 只能接受 `OASIS7_*` 的 launcher/runtime/static dir 覆盖 env，相应定向测试必须改为断言旧 alias 已失效，且 `cargo test -p oasis7 --bin world_game_launcher`、`cargo test -p oasis7 --bin world_web_launcher`、`./scripts/doc-governance-check.sh` 与 `git diff --check` 必须通过。
   - AC-104: `crates/oasis7/src/viewer/runtime_live/{llm_sidecar.rs,control_plane.rs,tests.rs}` 必须移除 `AGENT_WORLD_AGENT_PROVIDER_MODE`、`AGENT_WORLD_OPENCLAW_*` 与 `AGENT_WORLD_RUNTIME_AGENT_CHAT_ECHO` fallback 读取；OpenClaw provider 配置与 chat echo 定向测试必须改为断言旧 alias 已失效，且 `cargo test -p oasis7 runtime_live::tests -- --nocapture`、`./scripts/doc-governance-check.sh` 与 `git diff --check` 必须通过。
   - AC-105: `crates/oasis7/src/{runtime/module_source_compiler.rs,runtime/builtin_wasm_materializer.rs,simulator/llm_agent.rs}` 与相关定向测试必须移除 `AGENT_WORLD_MODULE_SOURCE_*`、`AGENT_WORLD_BUILTIN_WASM_*` 与 `AGENT_WORLD_LLM_*` fallback 读取，并把 compat 测试改为断言旧 alias 已失效；变更后至少 `cargo test -p oasis7 builtin_wasm_materializer -- --nocapture`、`cargo test -p oasis7 module_action_loop -- --nocapture`、`cargo test -p oasis7 llm_agent -- --nocapture`、`./scripts/doc-governance-check.sh` 与 `git diff --check` 必须通过。
+  - AC-106: `scripts/{build-wasm-module.sh,ci-m1-wasm-summary.sh,sync-m1-builtin-wasm-artifacts.sh}` 必须移除 `AGENT_WORLD_WASM_*` fallback 读取与旧品牌 operator 文案，使 wasm build/sync 脚本只认 `OASIS7_WASM_*` 当前入口；变更后 `bash -n` 校验这三支脚本、`./scripts/doc-governance-check.sh` 与 `git diff --check` 必须通过。
+  - AC-107: `scripts/{capture-viewer-frame.sh,viewer-texture-inspector-lib.sh,build-game-launcher-bundle.sh}` 必须移除 `AGENT_WORLD_VIEWER_*` 与 `AGENT_WORLD_CHAIN_STORAGE_PROFILE` fallback 读取及相关旧品牌 operator 文案，使 Viewer 调试脚本与 bundle wrapper 只认 `OASIS7_VIEWER_*` / `OASIS7_CHAIN_STORAGE_PROFILE` 当前入口；变更后 `bash -n` 校验这三支脚本、`./scripts/doc-governance-check.sh` 与 `git diff --check` 必须通过。
 - Non-Goals:
   - 不在本 PRD 中详细列出每个 UI 像素级规范。
   - 不替代 world-runtime/p2p 的底层协议设计。

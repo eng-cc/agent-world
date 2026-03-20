@@ -19,22 +19,13 @@ wasm_env_key() {
   printf 'OASIS7_WASM_%s\n' "$suffix"
 }
 
-wasm_compat_old_brand_env_key() {
-  local suffix=$1
-  printf 'AGENT_WORLD_WASM_%s\n' "$suffix"
-}
-
 wasm_env_or_default() {
   local suffix=$1
   local default_value=${2-}
   local key
-  local compat_old_brand_key
   key=$(wasm_env_key "$suffix")
-  compat_old_brand_key=$(wasm_compat_old_brand_env_key "$suffix")
   if [[ -n "${!key+x}" ]]; then
     printf '%s\n' "${!key}"
-  elif [[ -n "${!compat_old_brand_key+x}" ]]; then
-    printf '%s\n' "${!compat_old_brand_key}"
   else
     printf '%s\n' "$default_value"
   fi
@@ -44,11 +35,8 @@ set_wasm_env() {
   local suffix=$1
   local value=${2-}
   local key
-  local compat_old_brand_key
   key=$(wasm_env_key "$suffix")
-  compat_old_brand_key=$(wasm_compat_old_brand_env_key "$suffix")
   export "$key=$value"
-  unset "$compat_old_brand_key" || true
 }
 
 WASM_TOOLCHAIN="$(wasm_env_or_default TOOLCHAIN "$CANONICAL_WASM_TOOLCHAIN")"
@@ -162,23 +150,23 @@ require_env_value_or_unset() {
 
 enforce_deterministic_build_inputs() {
   if [[ "$WASM_TOOLCHAIN" != "$CANONICAL_WASM_TOOLCHAIN" ]]; then
-    echo "error: deterministic wasm build requires OASIS7_WASM_TOOLCHAIN=$CANONICAL_WASM_TOOLCHAIN (legacy: AGENT_WORLD_WASM_TOOLCHAIN, got $WASM_TOOLCHAIN)" >&2
+    echo "error: deterministic wasm build requires OASIS7_WASM_TOOLCHAIN=$CANONICAL_WASM_TOOLCHAIN (got $WASM_TOOLCHAIN)" >&2
     exit 1
   fi
   if [[ "$WASM_TARGET" != "$CANONICAL_WASM_TARGET" ]]; then
-    echo "error: deterministic wasm build requires OASIS7_WASM_TARGET=$CANONICAL_WASM_TARGET (legacy: AGENT_WORLD_WASM_TARGET, got $WASM_TARGET)" >&2
+    echo "error: deterministic wasm build requires OASIS7_WASM_TARGET=$CANONICAL_WASM_TARGET (got $WASM_TARGET)" >&2
     exit 1
   fi
   if ! is_truthy "$WASM_BUILD_STD_ENABLED"; then
-    echo "error: deterministic wasm build requires OASIS7_WASM_BUILD_STD=1 (legacy: AGENT_WORLD_WASM_BUILD_STD)" >&2
+    echo "error: deterministic wasm build requires OASIS7_WASM_BUILD_STD=1" >&2
     exit 1
   fi
   if [[ "$WASM_BUILD_STD_COMPONENTS" != "$CANONICAL_WASM_BUILD_STD_COMPONENTS" ]]; then
-    echo "error: deterministic wasm build requires OASIS7_WASM_BUILD_STD_COMPONENTS=$CANONICAL_WASM_BUILD_STD_COMPONENTS (legacy: AGENT_WORLD_WASM_BUILD_STD_COMPONENTS, got $WASM_BUILD_STD_COMPONENTS)" >&2
+    echo "error: deterministic wasm build requires OASIS7_WASM_BUILD_STD_COMPONENTS=$CANONICAL_WASM_BUILD_STD_COMPONENTS (got $WASM_BUILD_STD_COMPONENTS)" >&2
     exit 1
   fi
   if [[ "$WASM_BUILD_STD_FEATURES" != "$CANONICAL_WASM_BUILD_STD_FEATURES" ]]; then
-    echo "error: deterministic wasm build requires OASIS7_WASM_BUILD_STD_FEATURES to be empty (legacy: AGENT_WORLD_WASM_BUILD_STD_FEATURES, got $WASM_BUILD_STD_FEATURES)" >&2
+    echo "error: deterministic wasm build requires OASIS7_WASM_BUILD_STD_FEATURES to be empty (got $WASM_BUILD_STD_FEATURES)" >&2
     exit 1
   fi
 
@@ -212,7 +200,7 @@ prepare_container_build_std() {
 
 prepare_nightly_build_std_impl() {
   if ! command -v rustup >/dev/null 2>&1; then
-    echo "error: OASIS7_WASM_BUILD_STD=1 requires rustup in PATH (legacy: AGENT_WORLD_WASM_BUILD_STD)" >&2
+    echo "error: OASIS7_WASM_BUILD_STD=1 requires rustup in PATH" >&2
     exit 1
   fi
 
@@ -400,7 +388,7 @@ ensure_builder_image() {
 
   if ! is_truthy "$WASM_BUILDER_AUTO_BUILD"; then
     echo "error: canonical wasm builder image is missing: $WASM_BUILDER_IMAGE" >&2
-    echo "hint: set OASIS7_WASM_BUILDER_AUTO_BUILD=1 (legacy: AGENT_WORLD_WASM_BUILDER_AUTO_BUILD) or build the image manually" >&2
+    echo "hint: set OASIS7_WASM_BUILDER_AUTO_BUILD=1 or build the image manually" >&2
     exit 1
   fi
 

@@ -21,22 +21,13 @@ wasm_env_key() {
   printf 'OASIS7_WASM_%s\n' "$suffix"
 }
 
-wasm_compat_old_brand_env_key() {
-  local suffix=$1
-  printf 'AGENT_WORLD_WASM_%s\n' "$suffix"
-}
-
 wasm_env_or_default() {
   local suffix=$1
   local default_value=${2-}
   local key
-  local compat_old_brand_key
   key=$(wasm_env_key "$suffix")
-  compat_old_brand_key=$(wasm_compat_old_brand_env_key "$suffix")
   if [[ -n "${!key+x}" ]]; then
     printf '%s\n' "${!key}"
-  elif [[ -n "${!compat_old_brand_key+x}" ]]; then
-    printf '%s\n' "${!compat_old_brand_key}"
   else
     printf '%s\n' "$default_value"
   fi
@@ -69,11 +60,10 @@ Options:
 Env:
   OASIS7_WASM_CANONICAL_PLATFORMS
       Comma-separated canonical platforms in <os>-<arch> format.
-      Default: linux-x86_64 (legacy: AGENT_WORLD_WASM_CANONICAL_PLATFORMS)
+      Default: linux-x86_64
   OASIS7_WASM_SYNC_WRITE_ALLOW
       Required when writing manifest/identity (non --check mode).
       Must be set to local-dev.
-      Legacy fallback: AGENT_WORLD_WASM_SYNC_WRITE_ALLOW
   CI
       Non --check writes are rejected when CI=true.
       Production publish is node-driven and does not run via CI write path.
@@ -143,7 +133,7 @@ read_canonical_platforms() {
   done
 
   if [[ "${#CANONICAL_PLATFORMS[@]}" -eq 0 ]]; then
-    echo "error: OASIS7_WASM_CANONICAL_PLATFORMS has no valid entries (legacy: AGENT_WORLD_WASM_CANONICAL_PLATFORMS)" >&2
+    echo "error: OASIS7_WASM_CANONICAL_PLATFORMS has no valid entries" >&2
     exit 2
   fi
 
@@ -154,7 +144,7 @@ require_current_platform_supported() {
     echo "error: current platform is not in canonical platform set" >&2
     echo "  current_platform=$CURRENT_PLATFORM" >&2
     echo "  canonical_platforms=${CANONICAL_PLATFORMS[*]}" >&2
-    echo "hint: set OASIS7_WASM_CANONICAL_CONTAINER_PLATFORM / OASIS7_WASM_CANONICAL_PLATFORMS consistently (legacy: AGENT_WORLD_WASM_*)" >&2
+    echo "hint: set OASIS7_WASM_CANONICAL_CONTAINER_PLATFORM / OASIS7_WASM_CANONICAL_PLATFORMS consistently" >&2
     exit 1
   fi
 }
@@ -178,9 +168,9 @@ require_local_write_authorization() {
 
   echo "error: sync write mode requires explicit local-dev authorization" >&2
   echo "  CI=${CI:-<unset>}" >&2
-  echo "  OASIS7_WASM_SYNC_WRITE_ALLOW=${SYNC_WRITE_ALLOW:-<unset>} (legacy: AGENT_WORLD_WASM_SYNC_WRITE_ALLOW)" >&2
+  echo "  OASIS7_WASM_SYNC_WRITE_ALLOW=${SYNC_WRITE_ALLOW:-<unset>}" >&2
   echo "hint: local development should run scripts/sync-m1-builtin-wasm-artifacts.sh --check" >&2
-  echo "hint: local non --check writes must set OASIS7_WASM_SYNC_WRITE_ALLOW=local-dev (legacy: AGENT_WORLD_WASM_SYNC_WRITE_ALLOW)" >&2
+  echo "hint: local non --check writes must set OASIS7_WASM_SYNC_WRITE_ALLOW=local-dev" >&2
   echo "hint: CI write flow is intentionally disabled; use node-side decentralized publish flow" >&2
   exit 1
 }

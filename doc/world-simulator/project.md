@@ -804,6 +804,8 @@
 - [x] TASK-WORLD_SIMULATOR-227 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 移除 `crates/oasis7/src/bin/{world_game_launcher.rs,world_web_launcher/runtime_paths.rs,world_web_launcher/control_plane.rs}` 中 `AGENT_WORLD_*` 的 launcher/runtime compat alias，收口服务端 launcher 路径、viewer auth 注入与 console static dir 当前入口，并把定向测试改为断言旧 alias 已失效。
 - [x] TASK-WORLD_SIMULATOR-228 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 移除 `crates/oasis7/src/viewer/runtime_live/{llm_sidecar.rs,control_plane.rs,tests.rs}` 中 `AGENT_WORLD_AGENT_PROVIDER_MODE`、`AGENT_WORLD_OPENCLAW_*` 与 `AGENT_WORLD_RUNTIME_AGENT_CHAT_ECHO` 的 runtime compat alias，收口 runtime live 的 OpenClaw provider 配置与 QA chat echo 当前入口，并把定向测试改为断言旧 alias 已失效。
 - [x] TASK-WORLD_SIMULATOR-229 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 移除 `crates/oasis7/src/{runtime/module_source_compiler.rs,runtime/builtin_wasm_materializer.rs,simulator/llm_agent.rs}` 与相关定向测试中的 `AGENT_WORLD_MODULE_SOURCE_*`、`AGENT_WORLD_BUILTIN_WASM_*` 与 `AGENT_WORLD_LLM_*` runtime compat alias，收口模块源码编译、builtin wasm 获取与 LLM 配置当前入口，并把 compat 测试改为断言旧 alias 已失效。
+- [x] TASK-WORLD_SIMULATOR-230 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 移除 `scripts/{build-wasm-module.sh,ci-m1-wasm-summary.sh,sync-m1-builtin-wasm-artifacts.sh}` 中 `AGENT_WORLD_WASM_*` 的脚本 compat alias，收口 deterministic wasm build / summary / sync 当前入口到 `OASIS7_WASM_*`，并删掉旧品牌 operator 文案。
+- [ ] TASK-WORLD_SIMULATOR-231 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 移除 `scripts/{capture-viewer-frame.sh,viewer-texture-inspector-lib.sh,build-game-launcher-bundle.sh}` 中 `AGENT_WORLD_VIEWER_*` 与 `AGENT_WORLD_CHAIN_STORAGE_PROFILE` 的脚本 compat alias，收口 Viewer 调试脚本与 bundle wrapper 当前入口到 `OASIS7_VIEWER_*` / `OASIS7_CHAIN_STORAGE_PROFILE`，并删掉旧品牌 operator 文案。
 - [x] TASK-WORLD_SIMULATOR-203 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 viewer/OpenClaw 脚本中的旧品牌 env helper 与局部变量命名切到 `compat` 语义，收口脚本层里残留的 `legacy_key` / `viewer_legacy_env_key` / `promote_legacy_viewer_envs` 口径。
   - 产物文件:
     - `doc/world-simulator/prd.md`
@@ -957,7 +959,8 @@
 ## 状态
 - 更新日期: 2026-03-20
 - 当前状态: active
-- 下一任务: compat layer 残项梳理（待拆下一条 TASK）
+- 下一任务: `TASK-WORLD_SIMULATOR-231`
+- 最新完成: `TASK-WORLD_SIMULATOR-230`（已移除 `scripts/{build-wasm-module.sh,ci-m1-wasm-summary.sh,sync-m1-builtin-wasm-artifacts.sh}` 中 `AGENT_WORLD_WASM_*` 的脚本 fallback 与旧品牌 operator 文案，收口 deterministic wasm build / summary / sync 当前入口到 `OASIS7_WASM_*`。）
 - 最新完成: `TASK-WORLD_SIMULATOR-229`（已移除 `crates/oasis7/src/{runtime/module_source_compiler.rs,runtime/builtin_wasm_materializer.rs,simulator/llm_agent.rs}` 与相关定向测试中的 `AGENT_WORLD_MODULE_SOURCE_*`、`AGENT_WORLD_BUILTIN_WASM_*` 与 `AGENT_WORLD_LLM_*` 旧品牌 fallback，收口到 `OASIS7_*` 当前入口，并把 compat 测试改为断言旧 alias 已失效。）
 - 最新完成: `TASK-WORLD_SIMULATOR-228`（已移除 `crates/oasis7/src/viewer/runtime_live/{llm_sidecar.rs,control_plane.rs,tests.rs}` 中 OpenClaw provider 配置与 QA chat echo 的旧品牌 fallback，收口到 `OASIS7_*` 当前入口，并把定向测试改为断言旧 alias 已失效。）
 - 最新完成: `TASK-WORLD_SIMULATOR-227`（已移除 `crates/oasis7/src/bin/{world_game_launcher.rs,world_web_launcher/runtime_paths.rs,world_web_launcher/control_plane.rs}` 中服务端 launcher/runtime bin 覆盖 env、viewer auth bootstrap 注入对象/键名与 console/viewer static dir 覆盖 env 的旧品牌 fallback，收口到 `OASIS7_*` / `__OASIS7_VIEWER_AUTH_ENV` 当前入口，并把定向测试改为断言旧 alias 已失效。）
@@ -972,10 +975,7 @@
 - 最新完成: `TASK-WORLD_SIMULATOR-189~194`（已完成 viewer dev dist fallback、launcher/node/net/wasm 支撑包与 integration tests 的一组 `oasis7_*` 内部命名迁移，统一 viewer dist 默认口径、测试临时目录前缀与 artifact signer seed，同时保留必要兼容回退）。
 - 最新完成: `TASK-WORLD_SIMULATOR-180~188`（已完成 launcher/CI/runtime/OpenClaw/storage/governance 多模块的第二批 `oasis7_*` 内部命名迁移，统一测试产物前缀、profile 样例、workspace 路径与 signer namespace，并保留必要兼容别名）。
 - 最新完成: `TASK-WORLD_SIMULATOR-160~166`（已完成 `oasis7` operator 口径重构、主入口 UI/reference 拆分、standard bootstrap overlay 收口、live seek profile 对齐、Viewer `PostOnboarding` 目标卡补齐，以及 Viewer 标题/手册和历史专题 title-only cleanup。）
-- 最新完成: `TASK-WORLD_SIMULATOR-136`（修复 `oasis7-run.sh play` wrapper 停止后 launcher 子树残留的问题，并补 shutdown 回归脚本）。
-- 最新完成: `TASK-WORLD_SIMULATOR-135`（收口 `oasis7` 的 bundle-first / repo-bootstrap operator 契约，并补 no-`cargo` / 缺 repo root 的可执行指引）。
-- 最新完成: `TASK-WORLD_SIMULATOR-134`（修复 `oasis7-run.sh` 默认下载目录的 `~` 展开，并补 bundle-first 路径回归脚本）。
-- 最新完成: `TASK-WORLD_SIMULATOR-133`（为 `oasis7` 增加 GitHub Release bundle-first 下载入口与显式路径策略）。
+- 最新完成: `TASK-WORLD_SIMULATOR-133~136`（已为 `oasis7` 收口 bundle-first / repo-bootstrap 入口、GitHub Release bundle 下载、默认下载目录 `~` 展开与 `play` wrapper shutdown 残留问题。）
 - 最新完成: `TASK-WORLD_SIMULATOR-157`（冻结 `PRD-WORLD_SIMULATOR-038` 的分层 latency gate，并基于 `fix3` 证据回写 `behavior_parity_pass / latency_class B / keep experimental` 口径）。
 - 最新完成: `TASK-WORLD_SIMULATOR-156`（为 `world_openclaw_local_bridge` 增加 gateway timeout → local embedded agent fallback，修复 `OpenClaw(Local HTTP)` 连续 timeout，并在 `fix3` 批次恢复 `move_agent=4`）。
 - 最新完成: `TASK-WORLD_SIMULATOR-155`（修复 builtin parity `P0-001` 巡游基线退化、对齐 parity 默认 timeout，并在 `fix2` 批次确认 builtin 已恢复 `move_agent=4`）。

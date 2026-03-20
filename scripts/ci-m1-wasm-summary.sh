@@ -17,22 +17,13 @@ wasm_env_key() {
   printf 'OASIS7_WASM_%s\n' "$suffix"
 }
 
-wasm_compat_old_brand_env_key() {
-  local suffix=$1
-  printf 'AGENT_WORLD_WASM_%s\n' "$suffix"
-}
-
 wasm_env_or_default() {
   local suffix=$1
   local default_value=${2-}
   local key
-  local compat_old_brand_key
   key=$(wasm_env_key "$suffix")
-  compat_old_brand_key=$(wasm_compat_old_brand_env_key "$suffix")
   if [[ -n "${!key+x}" ]]; then
     printf '%s\n' "${!key}"
-  elif [[ -n "${!compat_old_brand_key+x}" ]]; then
-    printf '%s\n' "${!compat_old_brand_key}"
   else
     printf '%s\n' "$default_value"
   fi
