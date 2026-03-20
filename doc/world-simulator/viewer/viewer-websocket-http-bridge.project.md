@@ -36,9 +36,9 @@
 
 ## 依赖
 - `doc/world-simulator/viewer/viewer-websocket-http-bridge.design.md`
-- `crates/agent_world/src/viewer/live.rs`
-- `crates/agent_world/src/bin/world_viewer_live.rs`
-- `crates/agent_world_viewer/src/main.rs`
+- `crates/oasis7/src/viewer/live.rs`
+- `crates/oasis7/src/bin/world_viewer_live.rs`
+- `crates/oasis7_viewer/src/main.rs`
 - `doc/world-simulator/viewer/viewer-manual.md`
 - `AGENTS.md`
 - `doc/world-simulator/viewer/viewer-bevy-web-runtime.prd.md`

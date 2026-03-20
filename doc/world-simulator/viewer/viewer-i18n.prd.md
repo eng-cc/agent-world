@@ -6,7 +6,7 @@
 审计轮次: 5
 
 ## 1. Executive Summary
-- 为 `agent_world_viewer` UI 系统引入可扩展的多语言机制，首批支持 `zh-CN` 与 `en-US`。
+- 为 `oasis7_viewer` UI 系统引入可扩展的多语言机制，首批支持 `zh-CN` 与 `en-US`。
 - 消除当前 UI 文案硬编码分散在多个模块的问题，统一文本键与翻译入口。
 - 在不改变核心模拟与渲染逻辑的前提下，实现文案可切换、可回退、可测试。
 - 保持现有 headless UI 测试能力，并补充多语言断言，避免后续文案回归。
@@ -14,7 +14,7 @@
 
 ## 2. User Experience & Functionality
 - **范围内**
-  - `crates/agent_world_viewer/src` 下 UI 文案集中治理，覆盖：
+  - `crates/oasis7_viewer/src` 下 UI 文案集中治理，覆盖：
     - `main.rs`（状态栏、面板标题、按钮文案）
     - `ui_text.rs`（摘要、详情、事件文本模板）
     - `diagnosis.rs`（诊断结论文案）

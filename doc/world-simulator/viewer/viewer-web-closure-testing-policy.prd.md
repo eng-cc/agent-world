@@ -7,7 +7,7 @@
 
 
 ## 1. Executive Summary
-- 将 `agent_world_viewer` 的闭环测试默认路径统一到 Web 端：`trunk serve + agent-browser`。
+- 将 `oasis7_viewer` 的闭环测试默认路径统一到 Web 端：`trunk serve + agent-browser`。
 - 把“可复现、可自动化、可留证据”作为闭环基线，减少桌面端窗口捕获差异导致的不稳定性。
 - 保留原生截图链路作为历史兼容/应急方案，但不再作为默认流程。
 

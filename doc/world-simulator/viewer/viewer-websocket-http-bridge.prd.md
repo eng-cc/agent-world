@@ -6,22 +6,22 @@
 审计轮次: 5
 
 ## 1. Executive Summary
-- 为 `agent_world_viewer` 的 Web 端补齐在线连接能力，使浏览器可以观察 `world_viewer_live` 的实时世界演化（含 `llm_bootstrap`）。
+- 为 `oasis7_viewer` 的 Web 端补齐在线连接能力，使浏览器可以观察 `world_viewer_live` 的实时世界演化（含 `llm_bootstrap`）。
 - 在不破坏现有 TCP viewer 协议的前提下，增加一条浏览器可用的桥接通道（WebSocket over HTTP Upgrade）。
 - 建立最小在线闭环：`world_viewer_live --web-bind` 启动后，Web Viewer 能收到 `snapshot/event/metrics` 并可发送 `control/prompt_control`。
 - 明确角色边界：Web 端是 Viewer + 网关接入客户端，不承担完整分布式节点职责。
 
 ## 2. User Experience & Functionality
 - 范围内：
-  - 在 `agent_world` 增加 WebSocket bridge：`ws <-> tcp line protocol` 双向转发。
+  - 在 `oasis7` 增加 WebSocket bridge：`ws <-> tcp line protocol` 双向转发。
   - `world_viewer_live` 增加 bridge 启停参数，支持同进程启动 bridge。
-  - `agent_world_viewer` wasm 路径接入 WebSocket 客户端，替代“固定 offline”。
+  - `oasis7_viewer` wasm 路径接入 WebSocket 客户端，替代“固定 offline”。
   - 更新使用手册与闭环策略文档，补充 `llm_bootstrap + web` 命令。
 - 范围外：
   - 不在本阶段新增浏览器端重型 E2E 套件（保持 agent-browser CLI 最小闭环）。
   - 不改造 Viewer 业务协议字段（沿用现有 `ViewerRequest/ViewerResponse` JSON 协议）。
   - 不引入多租户会话管理或鉴权（默认本地开发地址）。
-  - 不在浏览器端实现 `agent_world_node` 的完整分布式能力（gossip/replication/共识）。
+  - 不在浏览器端实现 `oasis7_node` 的完整分布式能力（gossip/replication/共识）。
 
 ## 3. AI System Requirements (If Applicable)
 - N/A: 本专题不新增 AI 专属要求。

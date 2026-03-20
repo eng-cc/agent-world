@@ -16,12 +16,12 @@
 - [x] CT6：更新项目状态与任务日志
 
 ## 依赖
-- `crates/agent_world_viewer/Cargo.toml`
-- `crates/agent_world_viewer/src/app_bootstrap.rs`
-- `crates/agent_world_viewer/src/main.rs`
-- `crates/agent_world_viewer/src/panel_layout.rs`
-- `crates/agent_world_viewer/src/i18n.rs`
-- `crates/agent_world_viewer/src/copyable_text.rs`
+- `crates/oasis7_viewer/Cargo.toml`
+- `crates/oasis7_viewer/src/app_bootstrap.rs`
+- `crates/oasis7_viewer/src/main.rs`
+- `crates/oasis7_viewer/src/panel_layout.rs`
+- `crates/oasis7_viewer/src/i18n.rs`
+- `crates/oasis7_viewer/src/copyable_text.rs`
 
 ## 状态
 - 当前阶段：CT6 完成（复制面板与开关能力已收口）

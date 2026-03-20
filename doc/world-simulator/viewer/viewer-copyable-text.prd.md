@@ -6,14 +6,14 @@
 审计轮次: 5
 
 ## 1. Executive Summary
-- 让 `agent_world_viewer` 中关键信息文本支持“鼠标选中 + 系统复制快捷键（Cmd/Ctrl+C）”。
+- 让 `oasis7_viewer` 中关键信息文本支持“鼠标选中 + 系统复制快捷键（Cmd/Ctrl+C）”。
 - 在不破坏既有 Bevy UI 布局和交互（时间轴、控制按钮、选中联动）的前提下，提供稳定可复制入口。
 - 保持中文/英文双语一致体验，避免新增硬编码英文提示。
 - 保持现有 UI 文本生成链路不变，降低回归风险。
 
 ## 2. User Experience & Functionality
 - **范围内**
-  - `agent_world_viewer` 引入 `bevy_egui` 可选中文本面板。
+  - `oasis7_viewer` 引入 `bevy_egui` 可选中文本面板。
   - 面板展示并同步以下现有 UI 文本：状态、当前选择、世界摘要、Agent 活动、选中详情、事件列表、诊断结论、事件联动、时间轴状态、覆盖层状态。
   - Top Controls 区新增“显示/隐藏复制面板”开关按钮（中英文文案）。
   - 新增/更新单元测试，覆盖开关按钮行为与语言切换文案刷新。

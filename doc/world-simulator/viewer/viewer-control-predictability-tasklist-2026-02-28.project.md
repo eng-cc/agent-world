@@ -46,10 +46,10 @@
 - `output/playwright/playability/20260228-204632/ab_metrics.json`
 - `output/playwright/playability/t18_2b_20260304/20260304-212503/ab_metrics.json`
 - `output/playwright/playability/t18_2b_20260304/20260304-212503/ab_metrics.md`
-- `crates/agent_world_viewer/src/web_test_api.rs`
-- `crates/agent_world_viewer/src/egui_right_panel_player_guide.rs`
-- `crates/agent_world_viewer/src/egui_right_panel_player_mission_tests.rs`
-- `crates/agent_world/src/viewer/live_split_part1.rs`
+- `crates/oasis7_viewer/src/web_test_api.rs`
+- `crates/oasis7_viewer/src/egui_right_panel_player_guide.rs`
+- `crates/oasis7_viewer/src/egui_right_panel_player_mission_tests.rs`
+- `crates/oasis7/src/viewer/live_split_part1.rs`
 - `scripts/run-game-test-ab.sh`
 
 ## 状态
