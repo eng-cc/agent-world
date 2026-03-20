@@ -5,12 +5,9 @@ use std::time::{Duration, Instant};
 
 use super::{ModuleSourcePackage, WorldError};
 
-const MODULE_SOURCE_COMPILER_ENV: &str = "AGENT_WORLD_MODULE_SOURCE_COMPILER";
+const MODULE_SOURCE_ENV_PREFIX: &str = "OASIS7_MODULE_SOURCE_";
+const LEGACY_MODULE_SOURCE_ENV_PREFIX: &str = "AGENT_WORLD_MODULE_SOURCE_";
 const MODULE_SOURCE_BUILD_PROFILE: &str = "release";
-const MODULE_SOURCE_MAX_FILES_ENV: &str = "AGENT_WORLD_MODULE_SOURCE_MAX_FILES";
-const MODULE_SOURCE_MAX_FILE_BYTES_ENV: &str = "AGENT_WORLD_MODULE_SOURCE_MAX_FILE_BYTES";
-const MODULE_SOURCE_MAX_TOTAL_BYTES_ENV: &str = "AGENT_WORLD_MODULE_SOURCE_MAX_TOTAL_BYTES";
-const MODULE_SOURCE_COMPILE_TIMEOUT_MS_ENV: &str = "AGENT_WORLD_MODULE_SOURCE_COMPILE_TIMEOUT_MS";
 
 const DEFAULT_MODULE_SOURCE_MAX_FILES: usize = 128;
 const DEFAULT_MODULE_SOURCE_MAX_FILE_BYTES: usize = 512 * 1024;
@@ -95,7 +92,7 @@ pub(crate) fn compile_module_artifact_from_source(
         fs::create_dir_all(&out_dir).map_err(WorldError::from)?;
         let out_path = out_dir.join(format!("{module_id}.wasm"));
 
-        if let Some(compiler_path) = env_non_empty(MODULE_SOURCE_COMPILER_ENV) {
+        if let Some(compiler_path) = module_source_env_non_empty("COMPILER") {
             compile_via_custom_command(
                 Path::new(compiler_path.as_str()),
                 module_id,
@@ -236,15 +233,11 @@ fn validate_relative_source_path(raw: &str) -> Result<PathBuf, WorldError> {
 }
 
 fn validate_source_package_limits(source_package: &ModuleSourcePackage) -> Result<(), WorldError> {
-    let max_files = env_limit_usize(MODULE_SOURCE_MAX_FILES_ENV, DEFAULT_MODULE_SOURCE_MAX_FILES);
-    let max_file_bytes = env_limit_usize(
-        MODULE_SOURCE_MAX_FILE_BYTES_ENV,
-        DEFAULT_MODULE_SOURCE_MAX_FILE_BYTES,
-    );
-    let max_total_bytes = env_limit_usize(
-        MODULE_SOURCE_MAX_TOTAL_BYTES_ENV,
-        DEFAULT_MODULE_SOURCE_MAX_TOTAL_BYTES,
-    );
+    let max_files = module_source_env_limit_usize("MAX_FILES", DEFAULT_MODULE_SOURCE_MAX_FILES);
+    let max_file_bytes =
+        module_source_env_limit_usize("MAX_FILE_BYTES", DEFAULT_MODULE_SOURCE_MAX_FILE_BYTES);
+    let max_total_bytes =
+        module_source_env_limit_usize("MAX_TOTAL_BYTES", DEFAULT_MODULE_SOURCE_MAX_TOTAL_BYTES);
 
     if source_package.files.len() > max_files {
         return Err(WorldError::ModuleChangeInvalid {
@@ -336,15 +329,28 @@ fn apply_compiler_environment(command: &mut Command, sandbox_tmp_dir: &Path) {
 }
 
 fn compile_timeout() -> Duration {
-    let timeout_ms = env_non_empty(MODULE_SOURCE_COMPILE_TIMEOUT_MS_ENV)
+    let timeout_ms = module_source_env_non_empty("COMPILE_TIMEOUT_MS")
         .and_then(|raw| raw.parse::<u64>().ok())
         .filter(|value| *value > 0)
         .unwrap_or(DEFAULT_MODULE_SOURCE_COMPILE_TIMEOUT_MS);
     Duration::from_millis(timeout_ms)
 }
 
-fn env_limit_usize(key: &str, default: usize) -> usize {
-    env_non_empty(key)
+fn module_source_env_key(suffix: &str) -> String {
+    format!("{MODULE_SOURCE_ENV_PREFIX}{suffix}")
+}
+
+fn legacy_module_source_env_key(suffix: &str) -> String {
+    format!("{LEGACY_MODULE_SOURCE_ENV_PREFIX}{suffix}")
+}
+
+fn module_source_env_non_empty(suffix: &str) -> Option<String> {
+    env_non_empty(module_source_env_key(suffix).as_str())
+        .or_else(|| env_non_empty(legacy_module_source_env_key(suffix).as_str()))
+}
+
+fn module_source_env_limit_usize(suffix: &str, default: usize) -> usize {
+    module_source_env_non_empty(suffix)
         .and_then(|raw| raw.parse::<usize>().ok())
         .filter(|value| *value > 0)
         .unwrap_or(default)
@@ -363,7 +369,7 @@ fn temp_source_workspace(module_id: &str) -> PathBuf {
         .unwrap_or_default()
         .as_nanos();
     std::env::temp_dir().join(format!(
-        "agent-world-module-source-{module_id}-{}-{now}",
+        "oasis7-module-source-{module_id}-{}-{now}",
         std::process::id()
     ))
 }

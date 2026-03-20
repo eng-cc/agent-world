@@ -5,7 +5,7 @@ use std::fs;
 use std::path::Path;
 use std::sync::{Mutex, OnceLock};
 
-const SOURCE_COMPILER_ENV: &str = "AGENT_WORLD_MODULE_SOURCE_COMPILER";
+const SOURCE_COMPILER_ENV: &str = "OASIS7_MODULE_SOURCE_COMPILER";
 
 fn source_compiler_env_lock() -> &'static Mutex<()> {
     static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
@@ -330,7 +330,7 @@ fn module_lifecycle_compile_from_source_deploys_artifact() {
     let _lock = source_compiler_env_lock().lock().expect("env lock");
     let _guard = EnvVarGuard::capture(SOURCE_COMPILER_ENV);
     let temp_root = std::env::temp_dir().join(format!(
-        "agent-world-sim-compile-{}",
+        "oasis7-sim-compile-{}",
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .expect("clock")
