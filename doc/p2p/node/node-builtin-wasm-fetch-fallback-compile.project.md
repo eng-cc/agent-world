@@ -13,11 +13,11 @@
 - [x] BFC-5 修复 viewer wasm32 编译兼容 (PRD-P2P-MIG-087)：`builtin_wasm_materializer` 在 `wasm32` 下禁用 `reqwest::blocking` HTTP 拉取分支
 
 ## 依赖
-- `crates/agent_world/src/runtime/m1_builtin_wasm_artifact.rs`
-- `crates/agent_world/src/runtime/m4_builtin_wasm_artifact.rs`
-- `crates/agent_world/src/runtime/mod.rs`
-- `crates/agent_world/src/runtime/builtin_wasm_materializer.rs`
-- `crates/agent_world/src/runtime/tests/*`
+- `crates/oasis7/src/runtime/m1_builtin_wasm_artifact.rs`
+- `crates/oasis7/src/runtime/m4_builtin_wasm_artifact.rs`
+- `crates/oasis7/src/runtime/mod.rs`
+- `crates/oasis7/src/runtime/builtin_wasm_materializer.rs`
+- `crates/oasis7/src/runtime/tests/*`
 - `scripts/build-wasm-module.sh`
 - `tools/wasm_build_suite/*`
 

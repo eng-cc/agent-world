@@ -19,10 +19,10 @@
 
 ## 依赖
 - `doc/p2p/node/node-redeemable-power-asset-audit-hardening.prd.md`
-- `crates/agent_world/src/runtime/reward_asset.rs`
-- `crates/agent_world/src/runtime/world/resources.rs`
-- `crates/agent_world/src/runtime/tests/reward_asset.rs`
-- `crates/agent_world/src/bin/world_viewer_live.rs`
+- `crates/oasis7/src/runtime/reward_asset.rs`
+- `crates/oasis7/src/runtime/world/resources.rs`
+- `crates/oasis7/src/runtime/tests/reward_asset.rs`
+- `crates/oasis7/src/bin/world_viewer_live.rs`
 - `doc/devlog/2026-02-16.md`
 
 ## 状态

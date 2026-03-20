@@ -253,6 +253,21 @@
     - `rg -n "oasis7_(net|node|distfs|consensus|proto|viewer)|crates/oasis7/" doc/p2p/node/node-net-stack-unification-readme.* doc/p2p/node/node-redeemable-power-asset.project.md doc/p2p/node/node-redeemable-power-asset-signature-governance-phase3.project.md doc/p2p/node/node-reward-settlement-native-transaction.* doc/p2p/node/node-wasm32-libp2p-compile-guard.* doc/p2p/consensus/builtin-wasm-identity-consensus.*`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
+- [x] TASK-P2P-028 (PRD-P2P-001/004) [test_tier_required]: 收口 `node` 活跃专题第二批中仍把旧 `agent_world*` crate/path 或旧 builtin wasm 环境变量写成当前实现载体的口径，统一到 `oasis7*`。
+  - 产物文件:
+    - `doc/p2p/node/node-reward-runtime-production-hardening-phase1.project.md`
+    - `doc/p2p/node/node-execution-verification-reward-leader-failover-hardening.prd.md`
+    - `doc/p2p/node/node-execution-verification-reward-leader-failover-hardening.project.md`
+    - `doc/p2p/node/node-execution-reward-consensus-bridge.prd.md`
+    - `doc/p2p/node/node-execution-reward-consensus-bridge.project.md`
+    - `doc/p2p/node/node-builtin-wasm-fetch-fallback-compile.prd.md`
+    - `doc/p2p/node/node-builtin-wasm-fetch-fallback-compile.project.md`
+    - `doc/p2p/node/node-redeemable-power-asset-audit-hardening.project.md`
+    - `doc/p2p/project.md`
+  - 验收命令 (`test_tier_required`):
+    - `rg -n "oasis7_(node|distfs)|crates/oasis7/|OASIS7_BUILTIN_WASM_" doc/p2p/node/node-reward-runtime-production-hardening-phase1.project.md doc/p2p/node/node-execution-verification-reward-leader-failover-hardening.* doc/p2p/node/node-execution-reward-consensus-bridge.* doc/p2p/node/node-builtin-wasm-fetch-fallback-compile.* doc/p2p/node/node-redeemable-power-asset-audit-hardening.project.md`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
 
 ## 依赖
 - 模块设计总览：`doc/p2p/design.md`
@@ -279,8 +294,9 @@
 
 ## 状态
 - 更新日期: 2026-03-20
-- 当前状态: completed（ROUND-018）
+- 当前状态: completed（ROUND-019）
 - 下一任务: 无（等待新需求）
+- 最新完成: `TASK-P2P-028`（已完成 `node` 活跃专题第二批中旧 `agent_world*` crate/path 与旧 builtin wasm 环境变量当前真值口径的 `oasis7*` 收口。）
 - 最新完成: `TASK-P2P-027`（已完成 `node/consensus` 活跃专题中旧 `agent_world*` crate/path 当前真值口径的 `oasis7*` 收口。）
 - 最新完成: `TASK-P2P-026`（已完成 `blockchain` 活跃专题中旧 `agent_world*` crate/path 当前真值口径的 `oasis7*` 收口。）
 - 最新完成: `TASK-P2P-025`（已完成 `distfs production-hardening` 活跃专题中旧 `agent_world*` crate/path 当前真值口径的 `oasis7*` 收口。）

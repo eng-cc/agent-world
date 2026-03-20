@@ -21,7 +21,7 @@
 | --- | --- | --- | --- | --- | --- |
 | 专题迁移 | 需求/任务/依赖/状态/测试层级 | 逐篇重写并校验 | `draft -> active -> done` | 以原文约束点映射为主线 | 维护者写入，复核者抽检 |
 - Acceptance Criteria:
-  - AC-1: `crates/agent_world_node`
+  - AC-1: `crates/oasis7_node`
   - AC-2: 增加执行校验策略配置：
   - AC-3: `require_execution_on_commit`
   - AC-4: `require_peer_execution_hashes`
@@ -91,7 +91,7 @@ CliOptions {
 ## 5. Risks & Roadmap
 - Phased Rollout:
   - M0：设计与项目管理文档冻结。
-  - M1：`agent_world_node` 执行校验策略与补洞执行一致性校验落地。
+  - M1：`oasis7_node` 执行校验策略与补洞执行一致性校验落地。
   - M2：`world_viewer_live` leader/failover 策略与运行默认语义收口。
   - M3：测试回归（required-tier 定向）与文档/devlog 收口。
 - Technical Risks:

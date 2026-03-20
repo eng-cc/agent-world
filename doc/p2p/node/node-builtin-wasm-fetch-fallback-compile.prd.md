@@ -46,17 +46,17 @@
 ### 原文技术约束（保真）
 #### 接口 / 数据
 - 运行时入口：
-  - `crates/agent_world/src/runtime/m1_builtin_wasm_artifact.rs`
-  - `crates/agent_world/src/runtime/m4_builtin_wasm_artifact.rs`
+  - `crates/oasis7/src/runtime/m1_builtin_wasm_artifact.rs`
+  - `crates/oasis7/src/runtime/m4_builtin_wasm_artifact.rs`
 - 新增内置装载辅助：
   - 本地验证读取：`sha256` + distfs `get_verified`
   - 网络拉取（可配置）：通过 fetcher/URL 配置尝试获取 `<wasm_hash>` 对应 bytes
   - 回退编译（可配置）：按 `module_id` 在节点本地编译 wasm，写回 distfs
 - 关键环境变量（设计约定）：
-  - `AGENT_WORLD_BUILTIN_WASM_FETCHER`
-  - `AGENT_WORLD_BUILTIN_WASM_FETCH_URLS`
-  - `AGENT_WORLD_BUILTIN_WASM_COMPILER`
-  - `AGENT_WORLD_BUILTIN_WASM_DISTFS_ROOT`
+  - `OASIS7_BUILTIN_WASM_FETCHER`
+  - `OASIS7_BUILTIN_WASM_FETCH_URLS`
+  - `OASIS7_BUILTIN_WASM_COMPILER`
+  - `OASIS7_BUILTIN_WASM_DISTFS_ROOT`
 
 ## 5. Risks & Roadmap
 - Phased Rollout:

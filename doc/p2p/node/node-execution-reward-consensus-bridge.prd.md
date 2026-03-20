@@ -5,7 +5,7 @@
 
 审计轮次: 5
 ## 1. Executive Summary
-- Problem Statement: 把 `agent_world_node` 的共识提交高度与 `agent_world` 运行时执行状态打通，补齐“提交高度 -> 执行状态 -> 存储落盘”的桥接链路。
+- Problem Statement: 把 `oasis7_node` 的共识提交高度与 `oasis7` 运行时执行状态打通，补齐“提交高度 -> 执行状态 -> 存储落盘”的桥接链路。
 - Proposed Solution: 将奖励结算从本地线程直触发升级为“基于网络传播的结算包触发”，使多节点可消费同一结算动作。
 - Success Criteria:
   - SC-1: 为奖励采样引入“多观察者 + 签名轨迹（trace）”输入，降低单观察点自报风险，提升可验证性与审计能力。

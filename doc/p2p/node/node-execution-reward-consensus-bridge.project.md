@@ -14,11 +14,11 @@
 
 ## 依赖
 - `doc/p2p/node/node-execution-reward-consensus-bridge.prd.md`
-- `crates/agent_world/src/bin/world_viewer_live.rs`
-- `crates/agent_world/src/bin/world_chain_runtime/reward_runtime_settlement.rs`
-- `crates/agent_world/src/bin/world_chain_runtime/distfs_probe_runtime.rs`
-- `crates/agent_world/src/runtime/node_points_runtime.rs`
-- `crates/agent_world/src/bin/world_viewer_live.rs（`#[cfg(test)]`）`
+- `crates/oasis7/src/bin/world_viewer_live.rs`
+- `crates/oasis7/src/bin/world_chain_runtime/reward_runtime_settlement.rs`
+- `crates/oasis7/src/bin/world_chain_runtime/distfs_probe_runtime.rs`
+- `crates/oasis7/src/runtime/node_points_runtime.rs`
+- `crates/oasis7/src/bin/world_viewer_live.rs（`#[cfg(test)]`）`
 - `doc/devlog/2026-02-17.md`
 
 ## 状态
