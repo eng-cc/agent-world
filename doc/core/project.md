@@ -167,13 +167,13 @@
     - `doc/core/next-round-priority-slate-2026-03-11.{prd,design,project}.md`
     - `doc/core/doc-readme-public-entry-sync-2026-03-11.{prd,design,project}.md`
     - `doc/world-simulator/viewer/viewer-manual.md`
-    - `crates/agent_world_viewer/src/app_bootstrap.rs`
-    - `crates/agent_world_viewer/index.html`
-    - `crates/agent_world_viewer/software_safe.html`
+    - `crates/oasis7_viewer/src/app_bootstrap.rs`
+    - `crates/oasis7_viewer/index.html`
+    - `crates/oasis7_viewer/software_safe.html`
     - `scripts/capture-viewer-frame.sh`
   - 验收命令 (`test_tier_required`):
-    - `rg -n "^# oasis7|oasis7 Viewer|internal compatibility naming" doc/core/*.md doc/core/*.prd.md doc/core/*.design.md doc/core/*.project.md doc/world-simulator/viewer/viewer-manual.md crates/agent_world_viewer/src/app_bootstrap.rs crates/agent_world_viewer/index.html crates/agent_world_viewer/software_safe.html scripts/capture-viewer-frame.sh`
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer primary_window_config_sets_title_and_resolution -- --nocapture`
+    - `rg -n "^# oasis7|oasis7 Viewer|internal compatibility naming" doc/core/*.md doc/core/*.prd.md doc/core/*.design.md doc/core/*.project.md doc/world-simulator/viewer/viewer-manual.md crates/oasis7_viewer/src/app_bootstrap.rs crates/oasis7_viewer/index.html crates/oasis7_viewer/software_safe.html scripts/capture-viewer-frame.sh`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7_viewer primary_window_config_sets_title_and_resolution -- --nocapture`
     - `bash -n scripts/capture-viewer-frame.sh`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`

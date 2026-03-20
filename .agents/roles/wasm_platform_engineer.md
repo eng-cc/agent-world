@@ -7,7 +7,7 @@
 - WASM ABI、执行器接口、权限模型、资源计费
 - 模块部署、安装、升级、禁用、审计与 identity manifest
 - 第三方扩展安全边界和生命周期治理
-- 相关代码与文档：`crates/agent_world_wasm_*`、`doc/world-runtime/wasm/*`
+- 相关代码与文档：`crates/oasis7_wasm_*`、`doc/world-runtime/wasm/*`
 
 ## Does Not Own
 - 世界规则目标本身

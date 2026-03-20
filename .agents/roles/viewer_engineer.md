@@ -7,7 +7,7 @@
 - Viewer / Launcher / Web 控制台与相关交互
 - 地图、事件流、关系、资源流、模块状态等可视化
 - 玩家入口：观察、发布目标、查看反馈、受控操作面
-- 相关代码与文档：`crates/agent_world_viewer*`、`doc/world-simulator/viewer/*`、`doc/world-simulator/launcher/*`
+- 相关代码与文档：`crates/oasis7_viewer*`、`doc/world-simulator/viewer/*`、`doc/world-simulator/launcher/*`
 
 ## Does Not Own
 - 世界规则和数值平衡定义

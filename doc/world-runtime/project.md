@@ -120,9 +120,9 @@
 - 当前状态: in_progress（OpenClaw/runtime live traceability 子切片已完成；WASM Docker builder image 与 wrapper 已落地，`TASK-WORLD_RUNTIME-043` 已完成 build receipt / canonical token / identity / CI summary / receipt-aware release gate / node-side proof flow 子切片，并先将 GitHub-hosted gate 收敛为 Linux-only；`TASK-WORLD_RUNTIME-044` 已完成 production source compile gate）
 - 下一任务: `TASK-WORLD_RUNTIME-043`
 - 最新完成: `TASK-WORLD_RUNTIME-045`（world-runtime 模块仍可读专题标题统一切到 `oasis7 Runtime` 品牌，保留内部实现兼容名与历史证据正文不变）。
-- 最新完成: `TASK-WORLD_RUNTIME-046`（已将 WASM 构建、同步、CI summary 与 builder image 的 operator env key 默认优先切到 `OASIS7_WASM_*`，并保留旧 `AGENT_WORLD_WASM_*` fallback）。
-- 最新完成: `TASK-WORLD_RUNTIME-047`（已将 builtin wasm materializer、release manifest fallback 与 DistFS root override 的 runtime env key 默认优先切到 `OASIS7_BUILTIN_WASM_*`，并保留旧 `AGENT_WORLD_BUILTIN_WASM_*` fallback）。
-- 最新完成: `TASK-WORLD_RUNTIME-048`（已将 `compile_module_artifact_from_source` 的 compiler/limits/timeout env key 默认优先切到 `OASIS7_MODULE_SOURCE_*`，并保留旧 `AGENT_WORLD_MODULE_SOURCE_*` fallback）。
+- 最新完成: `TASK-WORLD_RUNTIME-046`（已将 WASM 构建、同步、CI summary 与 builder image 的 operator env key 收口到 `OASIS7_WASM_*` 当前入口；旧 `AGENT_WORLD_WASM_*` alias 已从 repo-owned 运行入口移除）。
+- 最新完成: `TASK-WORLD_RUNTIME-047`（已将 builtin wasm materializer、release manifest fallback 与 DistFS root override 的 runtime env key 收口到 `OASIS7_BUILTIN_WASM_*` 当前入口；旧 `AGENT_WORLD_BUILTIN_WASM_*` alias 已从运行时入口移除）。
+- 最新完成: `TASK-WORLD_RUNTIME-048`（已将 `compile_module_artifact_from_source` 的 compiler/limits/timeout env key 收口到 `OASIS7_MODULE_SOURCE_*` 当前入口；旧 `AGENT_WORLD_MODULE_SOURCE_*` alias 已从 runtime/simulator 入口移除）。
 - 最新完成: `TASK-WORLD_RUNTIME-044`（production `ReleaseSecurityPolicy` 默认禁用 runtime source compile，`CompileModuleArtifactFromSource` 改为仅 dev/test 可用并要求 external Docker builder + deploy binary + receipt）；上一轮为 `TASK-WORLD_RUNTIME-042`（新增 Docker-only WASM builder image 与 host wrapper，固定 `linux-x86_64` canonical build 平台），`TASK-WORLD_RUNTIME-043` 当前仍待 Docker-capable macOS runner 的真实跨宿主 full-tier release evidence 归档。
 - 阶段收口优先级: `P0`
 - 阶段 owner: `wasm_platform_engineer`（联审：`producer_system_designer`、`runtime_engineer`；验证：`qa_engineer`）
@@ -132,10 +132,10 @@
   - `TASK-WORLD_RUNTIME-042` 已完成：新增 `docker/wasm-builder/Dockerfile`、`docker/wasm-builder/README.md` 与 Docker-only `scripts/build-wasm-module.sh` wrapper；当前 canonical build 平台固定为 `linux-x86_64`（Docker `linux/amd64`），脚本不再保留 host-native fallback。
   - `TASK-WORLD_RUNTIME-043` 进行中：`tools/wasm_build_suite` 已输出 `build receipt` 与 `source_hash/build_manifest_hash`；`sync_builtin_wasm_identity` 已切换为 receipt 驱动；builtin `m1/m4/m5` manifest/identity 已收敛为单 canonical token `linux-x86_64=<sha256>`；`scripts/ci-m1-wasm-summary.sh` / `scripts/ci-verify-m1-wasm-summaries.py` 已纳入 `receipt_evidence + identity_build_recipe` 对账；runtime module release attestation/apply gate 已显式校验 `builder_image_digest + container_platform + canonicalizer_version` 与 manifest identity 一致性；`ModuleReleaseManifestMappingState`、`scripts/module-release-node-attestation-flow.sh` 与 `scripts/module-release-node-acceptance.sh` 已补齐 release evidence 摘要、canonical proof input、submit API 与 receipt mismatch 阻断证据；当前下一步只剩真实 Docker-capable `darwin-arm64` 节点对真实 `request_id` 产出并提交正式 attestation proof。
   - `TASK-WORLD_RUNTIME-044` 已完成：`ReleaseSecurityPolicy` 新增 `allow_runtime_source_compile`，production policy 默认关闭 runtime 内源码编译；`CompileModuleArtifactFromSource` 在 production 下会直接拒绝并提示改走 external Docker builder + `DeployModuleArtifact`，从而把 Docker daemon 依赖移出 runtime 热路径。
-  - `TASK-WORLD_RUNTIME-039` 已完成：为 `world_viewer_live` / runtime live 增加 `AGENT_WORLD_RUNTIME_AGENT_CHAT_ECHO=1` 测试态回声开关，在 `agent_chat` 被接受后可注入一条标准 `WorldEventKind::AgentSpoke` 事件，供 Viewer / QA 在不依赖自然 LLM 回话的情况下稳定采样消息流。
+  - `TASK-WORLD_RUNTIME-039` 已完成：为 `world_viewer_live` / runtime live 增加 `OASIS7_RUNTIME_AGENT_CHAT_ECHO=1` 测试态回声开关，在 `agent_chat` 被接受后可注入一条标准 `WorldEventKind::AgentSpoke` 事件，供 Viewer / QA 在不依赖自然 LLM 回话的情况下稳定采样消息流。
   - `TASK-WORLD_RUNTIME-040` 已完成：在 `DecisionRequest` / `ObservationEnvelope` 中补齐 `mode`、`observation_schema_version`、`action_schema_version`、`environment_class`、`fallback_reason`、`fixture_id`、`replay_id`，并将其接入 `world_openclaw_parity_bench`、`world_openclaw_local_bridge`、`runtime_live llm_sidecar` 与聚合脚本，确保 headless parity 与 runtime live 产物可追溯到统一 replay/summary 元数据。
   - `TASK-WORLD_RUNTIME-041` 已完成：根据最新需求将专题从“host deterministic guard + keyed 平台 hash 对账”修正为“Docker-first canonical builder + single canonical publish hash”，并明确 `compile_module_artifact_from_source` 生产路径需要外移或 gated。
-  - `TASK-WORLD_RUNTIME-028` 已完成：新增节点侧固定验收入口 `scripts/module-release-node-acceptance.sh` 并将 S11 运行手册切换为“脚本入口 + 等价拆分命令 + 证据目录”；同时收敛 `sync-m1/m4/m5` 非 `--check` 写入授权为“CI 禁止、仅本地显式授权（`OASIS7_WASM_SYNC_WRITE_ALLOW=local-dev`，兼容旧 `AGENT_WORLD_WASM_SYNC_WRITE_ALLOW=local-dev`）”，主 CI 不再具备生产发布写入/激活路径。
+  - `TASK-WORLD_RUNTIME-028` 已完成：新增节点侧固定验收入口 `scripts/module-release-node-acceptance.sh` 并将 S11 运行手册切换为“脚本入口 + 等价拆分命令 + 证据目录”；同时收敛 `sync-m1/m4/m5` 非 `--check` 写入授权为“CI 禁止、仅本地显式授权（`OASIS7_WASM_SYNC_WRITE_ALLOW=local-dev`）”，主 CI 不再具备生产发布写入/激活路径。
   - `TASK-WORLD_RUNTIME-029` 已完成：新增 `scripts/world-runtime-finality-baseline.sh` 固定基准入口，输出 `stake/epoch` 验签耗时聚合指标与 `2 epoch` 收敛状态（`summary.md`/`summary.json` 可归档）；S11 运行手册已补齐命令与产物路径。
   - `TASK-WORLD_RUNTIME-034` 已完成：补齐 `runtime-storage-footprint-governance-2026-03-08.design.md`，明确 replay contract、checkpoint、GC、metrics 与迁移边界。
   - `TASK-WORLD_RUNTIME-035` 已完成：将专题执行拆解到 T1.1 ~ T7.5，明确实现顺序、依赖边界与测试闭环。
@@ -158,13 +158,13 @@
   - `TASK-WORLD_RUNTIME-032` 已继续完成 T4.3：新增显式 archive range read / verify 路径，并能在 index 缺失时回退读取 T4.1 legacy 单文件 archive，保证旧样本迁移可用。
   - `TASK-WORLD_RUNTIME-032` 已继续完成 T4.4：snapshot size regression / archive range read / legacy migration / tampered segment hash verify 回归已补齐，T4 系列任务已闭环。
   - `TASK-WORLD_RUNTIME-032` 已继续完成 T5.1：`replication_commit_messages` 热窗口现按 latest height 回推的连续高度范围裁剪，读路径统一为“热镜像优先 + cold index 归档读回”。
-  - `TASK-WORLD_RUNTIME-032` 已继续完成 T5.2：shared cold index 协议已下沉到 `agent_world_proto`，统一 `<namespace>.cold-index/index.json`、`hot_range` 与 `cold_range_anchor` 元数据字段，并先接到 replication 冷索引写路径。
+  - `TASK-WORLD_RUNTIME-032` 已继续完成 T5.2：shared cold index 协议已下沉到 `oasis7_proto`，统一 `<namespace>.cold-index/index.json`、`hot_range` 与 `cold_range_anchor` 元数据字段，并先接到 replication 冷索引写路径。
   - `TASK-WORLD_RUNTIME-032` 已继续完成 T5.3：replication 冷索引已支持 canonical/legacy 双写与读时回填迁移，旧样本只保留 alias 时仍可读回并自动补出 canonical 目录。
   - `TASK-WORLD_RUNTIME-032` 已继续完成 T5.4：新增 replication cold-index scan 边界回归与 tick archive range seek 回归，验证 shared protocol 在跨模块读回上的边界口径一致。
   - `TASK-WORLD_RUNTIME-032` 已继续完成 T6.1：共享 `StorageProfileConfig` 协议、runtime / launcher / web launcher / launcher UI 的统一 profile 入口已落地，并先让 replication 热窗口预算跟随 profile 默认值。
   - `TASK-WORLD_RUNTIME-032` 已继续完成 T6.2：`world_chain_runtime` 新增共享 `StorageMetricsSnapshot`、`reward-runtime-storage-metrics.json` 状态文件与 `/v1/chain/status.storage` 输出，已先覆盖 bytes、ref_count、pin_count、checkpoint_count、orphan_blob_count 与 GC 最近结果。
   - `TASK-WORLD_RUNTIME-032` 已继续完成 T6.3：storage snapshot/status 现补齐 `effective_budget` 与 `replay_summary`，launcher / 脚本可直接读取 profile 预算、checkpoint 边界与回放模式，无需再扫内部目录。
-  - `TASK-WORLD_RUNTIME-032` 已继续完成 T6.4：bundle 入口新增 `run-chain-runtime.sh`，且 `run-game.sh` / `run-web-launcher.sh` 与 direct chain wrapper 已统一走 `AGENT_WORLD_CHAIN_STORAGE_PROFILE` 覆盖通道，同时显式绑定 bundle 内 `world_chain_runtime`。
+  - `TASK-WORLD_RUNTIME-032` 已继续完成 T6.4：bundle 入口新增 `run-chain-runtime.sh`，且 `run-game.sh` / `run-web-launcher.sh` 与 direct chain wrapper 已统一走 `OASIS7_CHAIN_STORAGE_PROFILE` 覆盖通道，同时显式绑定 bundle 内 `world_chain_runtime`。
   - `TASK-WORLD_RUNTIME-032` 已继续完成 T6.5：定向测试现覆盖 runtime status 的 error fields / replay summary，以及 game/web launcher 的 storage profile 参数校验与透传，`TASK-WORLD_RUNTIME-032` 至此闭环。
   - `TASK-WORLD_RUNTIME-033` 已启动并完成 T7.1：新增 `runtime::tests::storage_footprint_fixture` 作为 `2500` 记录级基线样本，后续默认 profile 体积预算、restart recovery 与 replay gate 将直接复用该输入。
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
@@ -251,6 +251,6 @@
 
 - 模块进展补充（2026-03-11 / T7.4 启动）: 已为 `world_game_launcher` 与 `world_web_launcher` 新增三档 storage profile 参数透传回归，并发起 `runtime_engineer -> viewer_engineer` handoff `doc/world-runtime/runtime-to-viewer-task-world_runtime-033-t7.4-profile-consistency-2026-03-11.md`，下一步补 bundle/launcher 实测证据。
 
-- 模块进展补充（2026-03-11 / T7.4 收口）: `viewer_engineer` 已通过 bundle 产物与 `bash -x` trace 确认 `AGENT_WORLD_CHAIN_STORAGE_PROFILE` 在 `run-game.sh` / `run-web-launcher.sh` / `run-chain-runtime.sh` 中分别映射到 `--chain-storage-profile` / `--storage-profile`，T7.4 已完成。
+- 模块进展补充（2026-03-11 / T7.4 收口）: `viewer_engineer` 已通过 bundle 产物与 `bash -x` trace 确认 `OASIS7_CHAIN_STORAGE_PROFILE` 在 `run-game.sh` / `run-web-launcher.sh` / `run-chain-runtime.sh` 中分别映射到 `--chain-storage-profile` / `--storage-profile`，T7.4 已完成。
 
 - 模块进展补充（2026-03-11 / T7.5 收口）: `TASK-WORLD_RUNTIME-033` 已随 T7.2~T7.4 的 runtime / qa / viewer 证据链闭环完成；当前专题后续仅保留更大范围的 soak/版本迭代，不再作为未完成任务阻断。

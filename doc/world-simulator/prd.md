@@ -208,6 +208,7 @@
   - SC-104: `world_openclaw_local_bridge` 不再接受旧 profile alias `agent_world_p0_low_freq_npc`；bridge 默认与校验入口必须只认 `oasis7_p0_low_freq_npc` 当前 profile，避免 OpenClaw 本地桥继续保留旧品牌 profile 入口。
   - SC-105: 兼容层源码清理完成后，源码内嵌负向测试中的 helper / fixture 命名也必须收口到 `old_brand_removed` / `removed_old_brand` 等中性语义；旧品牌 env/path/profile 字面量仅允许作为“已移除 alias 的负向输入”存在，不得继续作为 helper 主命名或默认 fixture 身份。
   - SC-106: viewer/client 收口后，runtime/tooling 的源码内嵌负向测试 helper / fixture 命名也必须继续收口到 `removed_old_brand` 等中性语义；旧品牌 env/profile 字面量仅允许作为“已移除 alias 的负向输入”存在，不得继续作为测试 helper 主命名或默认 fixture 身份。
+  - SC-107: 活跃角色卡、core 主入口与 world-runtime 主文档必须使用当前 `oasis7*` / `OASIS7_*` 口径描述现行 crate/path/env；旧 `agent_world*` / `AGENT_WORLD_*` 仅允许保留在历史任务、归档专题或负向测试输入中，不得继续作为 owner 文档或模块主入口的当前说明。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -473,6 +474,7 @@
   - AC-109: `crates/oasis7/src/bin/world_openclaw_local_bridge.rs` 与相关测试必须移除 `agent_world_p0_low_freq_npc` compat alias，使 profile 校验、provider diagnostics 与 bridge 默认入口只认 `oasis7_p0_low_freq_npc` 当前 profile；变更后 `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_openclaw_local_bridge -- --nocapture`、`./scripts/doc-governance-check.sh` 与 `git diff --check` 必须通过。
   - AC-110: `crates/oasis7_viewer/src/{viewer_env.rs,perf_probe.rs}`、`crates/oasis7_client_launcher/src/self_guided.rs` 与其他源码内嵌负向测试中围绕旧品牌 alias 的 helper / fixture 命名必须改为 `removed_old_brand` 等中性语义，且旧品牌字面量仅保留为“输入已失效 alias”断言；变更后至少 `env -u RUSTC_WRAPPER cargo test -p oasis7_viewer -- --nocapture`、`env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher --bin oasis7_client_launcher -- --nocapture`、`./scripts/doc-governance-check.sh` 与 `git diff --check` 必须通过。
   - AC-111: `tools/wasm_build_suite/src/lib.rs`、`crates/oasis7/src/{viewer/runtime_live/tests.rs,runtime/module_source_compiler.rs,runtime/builtin_wasm_materializer.rs,simulator/llm_agent/tests_split_part1.rs,bin/world_openclaw_local_bridge.rs}` 等源码内嵌负向测试中围绕旧品牌 alias 的 helper / fixture 命名必须改为 `removed_old_brand` 等中性语义，且旧品牌字面量仅保留为“输入已失效 alias”断言；变更后至少 `cargo test --manifest-path tools/wasm_build_suite/Cargo.toml`、`env -u RUSTC_WRAPPER cargo test -p oasis7 runtime_live::tests -- --nocapture`、`env -u RUSTC_WRAPPER cargo test -p oasis7 builtin_wasm_materializer -- --nocapture`、`env -u RUSTC_WRAPPER cargo test -p oasis7 llm_agent -- --nocapture`、`env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_openclaw_local_bridge -- --nocapture`、`./scripts/doc-governance-check.sh` 与 `git diff --check` 必须通过。
+  - AC-112: `.agents/roles/{wasm_platform_engineer,viewer_engineer}.md`、`doc/core/project.md`、`doc/world-runtime/{prd.md,project.md}` 中作为当前 owner 说明、活跃 artifact/path/command 或模块主入口现行约束使用的 `agent_world*` / `AGENT_WORLD_*` 路径与 env 口径必须更新为 `oasis7*` / `OASIS7_*`；历史任务正文可保留原始记录，但主状态与活跃入口不得继续把旧品牌写成当前真值。变更后 `./scripts/doc-governance-check.sh`、`git diff --check`，以及 `rg -n 'agent_world_|AGENT_WORLD_' .agents/roles/wasm_platform_engineer.md .agents/roles/viewer_engineer.md doc/core/project.md doc/world-runtime/prd.md doc/world-runtime/project.md` 仅允许命中历史任务正文，不得命中当前 owner/path/env 说明。
 - Non-Goals:
   - 不在本 PRD 中详细列出每个 UI 像素级规范。
   - 不替代 world-runtime/p2p 的底层协议设计。
