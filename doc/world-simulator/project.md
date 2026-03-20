@@ -819,6 +819,7 @@
 - [x] TASK-WORLD_SIMULATOR-244 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 收口 launcher runtime/control-plane 活跃专题中仍把 `agent_world_client_launcher`、`agent_world` 与旧 `cargo -p` 包名写成当前 package/path/command 的口径，统一到 `oasis7_client_launcher`、`oasis7` 与当前 `cargo -p oasis7*`。
 - [x] TASK-WORLD_SIMULATOR-245 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 收口 launcher 剩余活跃专题中仍把 `agent_world_client_launcher`、`agent_world_launcher_ui`、`agent_world_node`、`agent_world_distfs`、`agent_world` 与旧 `cargo -p` 包名写成当前 package/path/command 的口径，统一到 `oasis7*` 与当前 `cargo -p oasis7*`。
 - [x] TASK-WORLD_SIMULATOR-246 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 收口 `unified-checklist`、`web-llm-evidence-template`、`blockchain-transfer` 与模块主 PRD 中仍把旧 `agent_world*` crate/path/command 写成当前真值的活跃验收/启动器文档口径，统一到 `oasis7*` 与当前 `cargo -p oasis7*`。
+- [x] TASK-WORLD_SIMULATOR-247 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 收口模块主 PRD 验证矩阵、支撑文件路径与 `visual-review-score-card` 中仍把旧 `agent_world*` crate/path/command 写成当前真值的活跃文档口径，统一到 `oasis7*` 与当前 `cargo -p oasis7*`。
 - [x] TASK-WORLD_SIMULATOR-203 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 viewer/OpenClaw 脚本中的旧品牌 env helper 与局部变量命名切到 `compat` 语义，收口脚本层里残留的 `legacy_key` / `viewer_legacy_env_key` / `promote_legacy_viewer_envs` 口径。
   - 产物文件:
     - `doc/world-simulator/prd.md`
@@ -964,7 +965,7 @@
 - `testing-manual.md`
 ## 状态
 - 更新日期 / 当前状态 / 下一任务: 2026-03-20 / active / 无
-- 最新完成: `TASK-WORLD_SIMULATOR-245~246`（已收口 launcher 剩余活跃专题，以及 `unified-checklist`、`web-llm-evidence-template`、`blockchain-transfer` 和模块主 PRD 中仍把旧 `agent_world*` crate/path/command 写成当前真值的活跃文档口径；旧品牌仅保留在历史记录、兼容说明或负向输入语境中。）
+- 最新完成: `TASK-WORLD_SIMULATOR-245~247`（已收口 launcher 剩余活跃专题，以及 `unified-checklist`、`web-llm-evidence-template`、`blockchain-transfer`、模块主 PRD 验证矩阵/支撑文件路径和 `visual-review-score-card` 中仍把旧 `agent_world*` crate/path/command 写成当前真值的活跃文档口径；旧品牌仅保留在历史记录、兼容说明或负向输入语境中。）
 - 最新完成: `TASK-WORLD_SIMULATOR-233~235`（已移除 `world_openclaw_local_bridge` 的旧 profile alias，并收口 viewer/client/runtime/tooling 源码内嵌负向测试中的旧品牌 helper / fixture 命名；保留必要旧 alias 字面量仅作为“已移除 alias”的负向输入。）
 - 最新完成: `TASK-WORLD_SIMULATOR-232`（已移除 `tools/wasm_build_suite/src/lib.rs` 与相关测试中的 `AGENT_WORLD_WASM_*` fallback，收口 wasm build suite library 当前入口到 `OASIS7_WASM_*`，并把 compat 测试改为断言旧 alias 已失效。）
 - 最新完成: `TASK-WORLD_SIMULATOR-230~231`（已移除 wasm build/sync 脚本与 operator 脚本中的 `AGENT_WORLD_WASM_*`、`AGENT_WORLD_VIEWER_*` 与 `AGENT_WORLD_CHAIN_STORAGE_PROFILE` fallback，并收口相关 operator 文案到 `OASIS7_*` 当前入口。）
@@ -983,8 +984,7 @@
 - 最新完成: `TASK-WORLD_SIMULATOR-133~136`（已为 `oasis7` 收口 bundle-first / repo-bootstrap 入口、GitHub Release bundle 下载、默认下载目录 `~` 展开与 `play` wrapper shutdown 残留问题。）
 - 最新完成: `TASK-WORLD_SIMULATOR-152~157`（已完成 `OpenClaw` 双轨模式真实 lane 接通、T4 QA/producer 对照采证、builtin/OpenClaw parity `P0-001` 收口、gateway timeout fallback 修复与 `latency_class B / keep experimental` 结论冻结。）
 - 最新完成: `TASK-WORLD_SIMULATOR-148`（`OpenClaw` 双轨模式（`player_parity` / `headless_agent` / `debug_viewer`）专题建模）。
-- 最新完成: `TASK-WORLD_SIMULATOR-151`（为 software-safe / runtime live 补齐 `debug_viewer` 旁路订阅标识、headless lane 元数据展示与 OpenClaw observer-only 对照入口）。
-- 最新完成: `TASK-WORLD_SIMULATOR-150`（为 `OpenClaw` 双轨模式补齐 mode/schema/environment/fixture/replay 元数据透传与 summary traceability）。
+- 最新完成: `TASK-WORLD_SIMULATOR-150~151`（为 `OpenClaw` 双轨模式补齐 mode/schema/environment/fixture/replay 元数据透传，以及 software-safe / runtime live 的 `debug_viewer` 旁路订阅标识、headless lane 元数据展示与 observer-only 对照入口）。
 - 最新完成: `TASK-WORLD_SIMULATOR-149`（冻结 `OpenClaw` 双轨 observation/action contract、schema version 与禁止泄露真值边界）。
 - 当前优先任务: `fix3` 已恢复 builtin/OpenClaw 的行为等价基线；继续压缩 OpenClaw absolute wait latency，争取把 `latency_class` 从 `B (experimental-only)` 收敛到 `A (default-candidate)` 后再讨论默认启用。
 - 当前阻断说明: `PRD-WORLD_SIMULATOR-040` 已完成 T4 对照采证并解除阻断；`PRD-WORLD_SIMULATOR-038` 在 `openclaw_builtin_parity_20260317_fix3` 中已恢复 `completion_rate=100%`、`timeout_rate=0%` 与 `move_agent=4`，且 `relative_wait_gap` 满足行为等价硬门禁，但 OpenClaw `median_extra_wait_ms=13957`、`p95_extra_wait_ms=14062` 仅达到 `latency_class B`，因此当前允许保持 `experimental` / 受限试点，仍不得默认启用。

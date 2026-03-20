@@ -230,7 +230,7 @@
 
 ## 五、附件
 - 原始脚本命令:
-  - `python3 scripts/validate-viewer-theme-pack.py --theme-dir crates/agent_world_viewer/assets/themes/industrial_v3 --profile v3`
+  - `python3 scripts/validate-viewer-theme-pack.py --theme-dir crates/oasis7_viewer/assets/themes/industrial_v3 --profile v3`
   - `./scripts/viewer-theme-pack-preview.sh --theme-pack industrial_v3 --variants all`
   - `./scripts/viewer-texture-inspector.sh --inspect all --variants all --scenario llm_bootstrap`
 - 产物目录:
