@@ -306,9 +306,9 @@ run bash -lc "cat > '$OUT_DIR/run-client.sh' <<'LAUNCH'
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT_DIR=\"\$(cd \"\$(dirname \"\${BASH_SOURCE[0]}\")\" && pwd)\"
-AGENT_WORLD_GAME_LAUNCHER_BIN=\"\$ROOT_DIR/bin/$LAUNCHER_BIN_NAME\" \
-AGENT_WORLD_GAME_STATIC_DIR=\"\$ROOT_DIR/web\" \
-AGENT_WORLD_WORLD_CHAIN_RUNTIME_BIN=\"\$ROOT_DIR/bin/$CHAIN_BIN_NAME\" \
+OASIS7_GAME_LAUNCHER_BIN=\"\$ROOT_DIR/bin/$LAUNCHER_BIN_NAME\" \
+OASIS7_GAME_STATIC_DIR=\"\$ROOT_DIR/web\" \
+OASIS7_WORLD_CHAIN_RUNTIME_BIN=\"\$ROOT_DIR/bin/$CHAIN_BIN_NAME\" \
 \"\$ROOT_DIR/bin/$CLIENT_LAUNCHER_BIN_NAME\" \"\$@\"
 LAUNCH"
 run chmod +x "$OUT_DIR/run-client.sh"
@@ -317,15 +317,15 @@ run bash -lc "cat > '$OUT_DIR/run-web-launcher.sh' <<'LAUNCH'
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT_DIR=\"\$(cd \"\$(dirname \"\${BASH_SOURCE[0]}\")\" && pwd)\"
-CHAIN_STORAGE_PROFILE=\"\${AGENT_WORLD_CHAIN_STORAGE_PROFILE:-}\"
+CHAIN_STORAGE_PROFILE=\"\${OASIS7_CHAIN_STORAGE_PROFILE:-\${AGENT_WORLD_CHAIN_STORAGE_PROFILE:-}}\"
 CHAIN_STORAGE_PROFILE_ARGS=()
 if [[ -n \"\$CHAIN_STORAGE_PROFILE\" ]]; then
   CHAIN_STORAGE_PROFILE_ARGS=(--chain-storage-profile \"\$CHAIN_STORAGE_PROFILE\")
 fi
-AGENT_WORLD_GAME_LAUNCHER_BIN=\"\$ROOT_DIR/bin/$LAUNCHER_BIN_NAME\" \
-AGENT_WORLD_GAME_STATIC_DIR=\"\$ROOT_DIR/web\" \
-AGENT_WORLD_WORLD_CHAIN_RUNTIME_BIN=\"\$ROOT_DIR/bin/$CHAIN_BIN_NAME\" \
-AGENT_WORLD_WEB_LAUNCHER_STATIC_DIR=\"\$ROOT_DIR/web-launcher\" \
+OASIS7_GAME_LAUNCHER_BIN=\"\$ROOT_DIR/bin/$LAUNCHER_BIN_NAME\" \
+OASIS7_GAME_STATIC_DIR=\"\$ROOT_DIR/web\" \
+OASIS7_WORLD_CHAIN_RUNTIME_BIN=\"\$ROOT_DIR/bin/$CHAIN_BIN_NAME\" \
+OASIS7_WEB_LAUNCHER_STATIC_DIR=\"\$ROOT_DIR/web-launcher\" \
 \"\$ROOT_DIR/bin/$WEB_LAUNCHER_BIN_NAME\" \"\${CHAIN_STORAGE_PROFILE_ARGS[@]}\" \"\$@\"
 LAUNCH"
 run chmod +x "$OUT_DIR/run-web-launcher.sh"
@@ -334,7 +334,7 @@ run bash -lc "cat > '$OUT_DIR/run-chain-runtime.sh' <<'LAUNCH'
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT_DIR=\"\$(cd \"\$(dirname \"\${BASH_SOURCE[0]}\")\" && pwd)\"
-CHAIN_STORAGE_PROFILE=\"\${AGENT_WORLD_CHAIN_STORAGE_PROFILE:-}\"
+CHAIN_STORAGE_PROFILE=\"\${OASIS7_CHAIN_STORAGE_PROFILE:-\${AGENT_WORLD_CHAIN_STORAGE_PROFILE:-}}\"
 CHAIN_STORAGE_PROFILE_ARGS=()
 if [[ -n \"\$CHAIN_STORAGE_PROFILE\" ]]; then
   CHAIN_STORAGE_PROFILE_ARGS=(--storage-profile \"\$CHAIN_STORAGE_PROFILE\")
@@ -347,12 +347,12 @@ run bash -lc "cat > '$OUT_DIR/run-game.sh' <<'LAUNCH'
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT_DIR=\"\$(cd \"\$(dirname \"\${BASH_SOURCE[0]}\")\" && pwd)\"
-CHAIN_STORAGE_PROFILE=\"\${AGENT_WORLD_CHAIN_STORAGE_PROFILE:-}\"
+CHAIN_STORAGE_PROFILE=\"\${OASIS7_CHAIN_STORAGE_PROFILE:-\${AGENT_WORLD_CHAIN_STORAGE_PROFILE:-}}\"
 CHAIN_STORAGE_PROFILE_ARGS=()
 if [[ -n \"\$CHAIN_STORAGE_PROFILE\" ]]; then
   CHAIN_STORAGE_PROFILE_ARGS=(--chain-storage-profile \"\$CHAIN_STORAGE_PROFILE\")
 fi
-AGENT_WORLD_WORLD_CHAIN_RUNTIME_BIN=\"\$ROOT_DIR/bin/$CHAIN_BIN_NAME\" \
+OASIS7_WORLD_CHAIN_RUNTIME_BIN=\"\$ROOT_DIR/bin/$CHAIN_BIN_NAME\" \
 \"\$ROOT_DIR/bin/$LAUNCHER_BIN_NAME\" --viewer-static-dir \"\$ROOT_DIR/web\" \"\${CHAIN_STORAGE_PROFILE_ARGS[@]}\" \"\$@\"
 LAUNCH"
 run chmod +x "$OUT_DIR/run-game.sh"
@@ -373,8 +373,9 @@ Optional:
 - Enable LLM mode: ./run-game.sh --with-llm
 - Disable auto-open browser: ./run-game.sh --no-open-browser
 - Override chain storage profile without hardcoding wrapper defaults:
-  AGENT_WORLD_CHAIN_STORAGE_PROFILE=release_default ./run-game.sh
-  AGENT_WORLD_CHAIN_STORAGE_PROFILE=soak_forensics ./run-web-launcher.sh --listen-bind 0.0.0.0:5410
+  OASIS7_CHAIN_STORAGE_PROFILE=release_default ./run-game.sh
+  OASIS7_CHAIN_STORAGE_PROFILE=soak_forensics ./run-web-launcher.sh --listen-bind 0.0.0.0:5410
+  Legacy fallback remains supported: AGENT_WORLD_CHAIN_STORAGE_PROFILE=release_default ./run-game.sh
 
 Bundle layout:
 - bin/agent_world_client_launcher
