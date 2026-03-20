@@ -249,7 +249,7 @@ resolve_source_tree_viewer_static_dir() {
 validate_repo_root() {
   local candidate="$1"
   [[ -f "$candidate/Cargo.toml" ]] &&
-    [[ -f "$candidate/scripts/setup-openclaw-agent-world-runtime.sh" ]] &&
+    [[ -f "$candidate/scripts/setup-openclaw-oasis7-runtime.sh" ]] &&
     [[ -f "$candidate/scripts/openclaw-parity-p0.sh" ]]
 }
 
@@ -622,9 +622,9 @@ PY
       print_doctor_status OK runtime-agent "$agent_summary"
     else
       if [[ -n "$resolved_repo_root" ]]; then
-        print_doctor_status FAIL runtime-agent "OpenClaw agent '$agent_id' not found; run $resolved_repo_root/scripts/setup-openclaw-agent-world-runtime.sh $agent_id"
+        print_doctor_status FAIL runtime-agent "OpenClaw agent '$agent_id' not found; run $resolved_repo_root/scripts/setup-openclaw-oasis7-runtime.sh $agent_id"
       else
-        print_doctor_status FAIL runtime-agent "OpenClaw agent '$agent_id' not found; provide --repo-root and run scripts/setup-openclaw-agent-world-runtime.sh $agent_id"
+        print_doctor_status FAIL runtime-agent "OpenClaw agent '$agent_id' not found; provide --repo-root and run scripts/setup-openclaw-oasis7-runtime.sh $agent_id"
       fi
       failures=$((failures + 1))
     fi
@@ -990,7 +990,7 @@ fi
 
 if [[ "$skip_agent_setup" != "1" ]]; then
   wait_for_http "http://127.0.0.1:18789/health" 20 0.5
-  "$repo_root/scripts/setup-openclaw-agent-world-runtime.sh" "$agent_id"
+  "$repo_root/scripts/setup-openclaw-oasis7-runtime.sh" "$agent_id"
 fi
 
 if [[ "$reuse_bridge" != "1" ]]; then

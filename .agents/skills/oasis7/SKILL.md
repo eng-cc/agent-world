@@ -91,13 +91,13 @@ Useful overrides:
 For real gameplay or parity, prefer the repo-owned lightweight agent instead of the user’s default OpenClaw workspace.
 
 ```bash
-scripts/setup-openclaw-agent-world-runtime.sh
+scripts/setup-openclaw-oasis7-runtime.sh
 ```
 
 Defaults:
 
 - agent id: `oasis7_runtime`
-- workspace: `tools/openclaw/agent_world_runtime_workspace`
+- workspace: `tools/openclaw/oasis7_runtime_workspace`
 - model: `custom-right-codes/gpt-5.4`
 
 The runtime workspace is intentionally slim and is not meant for daily chat.
@@ -297,8 +297,8 @@ Use these files as the source of truth:
 
 - Bridge entry: `crates/agent_world/src/bin/world_openclaw_local_bridge.rs`
 - Launcher entry: `crates/agent_world/src/bin/world_game_launcher.rs`
-- Runtime workspace installer: `scripts/setup-openclaw-agent-world-runtime.sh`
-- Runtime workspace policy: `tools/openclaw/agent_world_runtime_workspace/AGENTS.md`
+- Runtime workspace installer: `scripts/setup-openclaw-oasis7-runtime.sh`
+- Runtime workspace policy: `tools/openclaw/oasis7_runtime_workspace/AGENTS.md`
 - Module tracker: `doc/world-simulator/project.md`
 - Daily log: `doc/devlog/2026-03-13.md`
 

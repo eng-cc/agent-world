@@ -96,8 +96,8 @@ If you use `--download-dir ~/.cache/oasis7/releases`, the helper expands the cur
 Prefer the repo-owned lightweight runtime agent:
 
 - agent id: `oasis7_runtime`
-- installer: `scripts/setup-openclaw-agent-world-runtime.sh`
-- workspace: `tools/openclaw/agent_world_runtime_workspace`
+- installer: `scripts/setup-openclaw-oasis7-runtime.sh`
+- workspace: `tools/openclaw/oasis7_runtime_workspace`
 
 ## Product Launch Command
 
@@ -140,7 +140,7 @@ bundle_dir="$(.agents/skills/oasis7/scripts/oasis7-run.sh download)"
 
 Current boundary:
 
-- runtime agent installer is repo-backed: `scripts/setup-openclaw-agent-world-runtime.sh`
+- runtime agent installer is repo-backed: `scripts/setup-openclaw-oasis7-runtime.sh`
 - local compatibility bridge is repo-backed: `world_openclaw_local_bridge`
 - parity smoke is repo-backed: `scripts/openclaw-parity-p0.sh`
 
