@@ -149,7 +149,7 @@
 - [x] TASK-WORLD_SIMULATOR-145 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 为 `software_safe` 补 prompt rollback 与 chat history/message flow，确保 rollback 刷新 prompt 状态且玩家出站消息与事件侧消息都能汇入统一消息流并被脚本读取。
 - [x] TASK-WORLD_SIMULATOR-146 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 由 `qa_engineer` 为 `software_safe` 增加 prompt/chat/rollback/message-flow 专用回归脚本与失败签名，沉淀 `agent_spoke` 缺失的证据包。
 - [x] TASK-WORLD_SIMULATOR-147 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 由 `runtime_engineer` / `viewer_engineer` 补齐 `agent_chat -> AgentSpoke` 的测试态稳定触发与 runtime 事件兼容解析，让 software_safe 消息流回归不再依赖自然 LLM 回话。
-- [x] TASK-WORLD_SIMULATOR-158 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 为 source-tree Viewer Web 入口补齐 dist freshness gate，覆盖 `index.html`、`software_safe.*` 与静态资源漂移；让 `oasis7-run.sh play` 在 Web root 入口更新后优先重建 fresh dist，而不是继续消费 stale `crates/agent_world_viewer/dist`。
+- [x] TASK-WORLD_SIMULATOR-158 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 为 source-tree Viewer Web 入口补齐 dist freshness gate，覆盖 `index.html`、`software_safe.*` 与静态资源漂移；让 `oasis7-run.sh play` 在 Web root 入口更新后优先重建 fresh dist，而不是继续消费 stale `crates/oasis7_viewer/dist`。
 - [x] TASK-WORLD_SIMULATOR-163 (PRD-WORLD_SIMULATOR-017/018) [test_tier_required]: 修复 live 模式 seek 语义误报，收口 `dispatch_viewer_control` / `__AW_TEST__` / timeline / egui / automation 的 profile 对齐，让 live seek 返回显式 unsupported 反馈而不是“viewer client channel send failed / retry control after reconnect”。
 - [x] TASK-WORLD_SIMULATOR-164 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 为 Viewer 首局 `4/4` 之后补 `PostOnboarding` 阶段目标卡，基于工业事件与控制反馈输出默认目标 / 阻塞解释 / 分支解锁，并同步更新 summary 语义与定向测试。
 - [x] TASK-WORLD_SIMULATOR-165 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 收口 Viewer 活跃手册、原生窗口标题、Web `<title>` 与抓帧脚本窗口匹配的 `oasis7 Viewer` 品牌，保持 Web-first / native fallback 文档与实际行为一致。
@@ -157,13 +157,13 @@
     - `doc/world-simulator/prd.md`
     - `doc/world-simulator/project.md`
     - `doc/world-simulator/viewer/viewer-manual.md`
-    - `crates/agent_world_viewer/src/app_bootstrap.rs`
-    - `crates/agent_world_viewer/index.html`
-    - `crates/agent_world_viewer/software_safe.html`
+    - `crates/oasis7_viewer/src/app_bootstrap.rs`
+    - `crates/oasis7_viewer/index.html`
+    - `crates/oasis7_viewer/software_safe.html`
     - `scripts/capture-viewer-frame.sh`
   - 验收命令 (`test_tier_required`):
-    - `rg -n "oasis7 Viewer|Agent World Viewer" doc/world-simulator/viewer/viewer-manual.md crates/agent_world_viewer/src/app_bootstrap.rs crates/agent_world_viewer/index.html crates/agent_world_viewer/software_safe.html scripts/capture-viewer-frame.sh`
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer primary_window_config_sets_title_and_resolution -- --nocapture`
+    - `rg -n "oasis7 Viewer|Agent World Viewer" doc/world-simulator/viewer/viewer-manual.md crates/oasis7_viewer/src/app_bootstrap.rs crates/oasis7_viewer/index.html crates/oasis7_viewer/software_safe.html scripts/capture-viewer-frame.sh`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7_viewer primary_window_config_sets_title_and_resolution -- --nocapture`
     - `bash -n scripts/capture-viewer-frame.sh`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
@@ -180,107 +180,107 @@
     - `rg -n "^# Agent World|^# Agent World：|^# Agent World Simulator：|^# Agent World Simulator:|^# Agent World Viewer：|^# Agent World Viewer:" doc/world-simulator --glob '!third_party/**'`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
-- [x] TASK-WORLD_SIMULATOR-167 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 收口 `agent_world_client_launcher` Web 静态入口 `<title>` 的公开品牌，将 `Agent World Launcher (Web)` 切到 `oasis7 Launcher (Web)`。
+- [x] TASK-WORLD_SIMULATOR-167 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 收口 `oasis7_client_launcher` Web 静态入口 `<title>` 的公开品牌，将 `Agent World Launcher (Web)` 切到 `oasis7 Launcher (Web)`。
   - 产物文件:
     - `doc/world-simulator/prd.md`
     - `doc/world-simulator/project.md`
-    - `crates/agent_world_client_launcher/index.html`
+    - `crates/oasis7_client_launcher/index.html`
     - `doc/devlog/2026-03-19.md`
   - 验收命令 (`test_tier_required`):
-    - `rg -n "oasis7 Launcher \\(Web\\)|Agent World Launcher \\(Web\\)" crates/agent_world_client_launcher/index.html`
+    - `rg -n "oasis7 Launcher \\(Web\\)|Agent World Launcher \\(Web\\)" crates/oasis7_client_launcher/index.html`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
-- [x] TASK-WORLD_SIMULATOR-168 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 收口 `agent_world_client_launcher` 原生窗口标题与应用内主标题的公开品牌，将 `Agent World Client Launcher` 切到 `oasis7 Client Launcher`。
+- [x] TASK-WORLD_SIMULATOR-168 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 收口 `oasis7_client_launcher` 原生窗口标题与应用内主标题的公开品牌，将 `Agent World Client Launcher` 切到 `oasis7 Client Launcher`。
   - 产物文件:
     - `doc/world-simulator/prd.md`
     - `doc/world-simulator/project.md`
-    - `crates/agent_world_client_launcher/src/main.rs`
-    - `crates/agent_world_client_launcher/src/main_app_shell.rs`
+    - `crates/oasis7_client_launcher/src/main.rs`
+    - `crates/oasis7_client_launcher/src/main_app_shell.rs`
   - 验收命令 (`test_tier_required`):
-    - `rg -n "oasis7 Client Launcher|oasis7 客户端启动器|Agent World Client Launcher|Agent World 客户端启动器" crates/agent_world_client_launcher/src/main.rs crates/agent_world_client_launcher/src/main_app_shell.rs`
+    - `rg -n "oasis7 Client Launcher|oasis7 客户端启动器|Agent World Client Launcher|Agent World 客户端启动器" crates/oasis7_client_launcher/src/main.rs crates/oasis7_client_launcher/src/main_app_shell.rs`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
-- [x] TASK-WORLD_SIMULATOR-169 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 `agent_world_client_launcher` 的前端运行时 key / 环境变量 / 状态文件名前缀优先切到 `oasis7`，并保留旧 `Agent World` key 的兼容读取，先完成 launcher 低风险内部标识迁移。
+- [x] TASK-WORLD_SIMULATOR-169 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 `oasis7_client_launcher` 的前端运行时 key / 环境变量 / 状态文件名前缀优先切到 `oasis7`，并保留旧 `Agent World` key 的兼容读取，先完成 launcher 低风险内部标识迁移。
   - 产物文件:
     - `doc/world-simulator/prd.md`
     - `doc/world-simulator/project.md`
-    - `crates/agent_world_client_launcher/index.html`
-    - `crates/agent_world_client_launcher/src/main.rs`
-    - `crates/agent_world_client_launcher/src/platform_ops.rs`
-    - `crates/agent_world_client_launcher/src/launcher_core.rs`
-    - `crates/agent_world_client_launcher/src/app_process.rs`
-    - `crates/agent_world_client_launcher/src/self_guided.rs`
-    - `crates/agent_world_client_launcher/src/llm_settings_web.rs`
-    - `crates/agent_world_client_launcher/src/feedback_entry.rs`
-    - `crates/agent_world_client_launcher/src/llm_settings.rs`
-    - `crates/agent_world_client_launcher/src/main_tests.rs`
+    - `crates/oasis7_client_launcher/index.html`
+    - `crates/oasis7_client_launcher/src/main.rs`
+    - `crates/oasis7_client_launcher/src/platform_ops.rs`
+    - `crates/oasis7_client_launcher/src/launcher_core.rs`
+    - `crates/oasis7_client_launcher/src/app_process.rs`
+    - `crates/oasis7_client_launcher/src/self_guided.rs`
+    - `crates/oasis7_client_launcher/src/llm_settings_web.rs`
+    - `crates/oasis7_client_launcher/src/feedback_entry.rs`
+    - `crates/oasis7_client_launcher/src/llm_settings.rs`
+    - `crates/oasis7_client_launcher/src/main_tests.rs`
   - 验收命令 (`test_tier_required`):
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher -- --nocapture`
-    - `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
-- [x] TASK-WORLD_SIMULATOR-170 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 Viewer auth/bootstrap、右侧面板持久化路径与诊断类 runtime key 优先切到 `oasis7`，并保留旧 `Agent World` key 的兼容读写，先完成 viewer 低风险内部标识迁移。
+- [x] TASK-WORLD_SIMULATOR-170 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 Viewer auth/bootstrap、右侧面板持久化路径与诊断类 runtime key 优先切到 `oasis7`，并保留旧 `Agent World` key 的兼容读写，先完成 `oasis7_viewer` 低风险内部标识迁移。
   - 产物文件:
     - `doc/world-simulator/prd.md`
     - `doc/world-simulator/project.md`
-    - `crates/agent_world_viewer/software_safe.js`
-    - `crates/agent_world_viewer/src/egui_right_panel_chat.rs`
-    - `crates/agent_world_viewer/src/egui_right_panel_chat_auth.rs`
-    - `crates/agent_world_viewer/src/viewer_automation.rs`
-    - `crates/agent_world_viewer/src/right_panel_module_visibility.rs`
-    - `crates/agent_world_viewer/src/perf_probe.rs`
-    - `crates/agent_world_viewer/src/egui_right_panel_chat_tests.rs`
-    - `crates/agent_world/src/bin/world_game_launcher.rs`
-    - `crates/agent_world/src/bin/world_game_launcher/world_game_launcher_tests.rs`
+    - `crates/oasis7_viewer/software_safe.js`
+    - `crates/oasis7_viewer/src/egui_right_panel_chat.rs`
+    - `crates/oasis7_viewer/src/egui_right_panel_chat_auth.rs`
+    - `crates/oasis7_viewer/src/viewer_automation.rs`
+    - `crates/oasis7_viewer/src/right_panel_module_visibility.rs`
+    - `crates/oasis7_viewer/src/perf_probe.rs`
+    - `crates/oasis7_viewer/src/egui_right_panel_chat_tests.rs`
+    - `crates/oasis7/src/bin/world_game_launcher.rs`
+    - `crates/oasis7/src/bin/world_game_launcher/world_game_launcher_tests.rs`
   - 验收命令 (`test_tier_required`):
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer -- --nocapture`
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_game_launcher viewer_auth_bootstrap -- --nocapture`
-    - `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-unknown`
-    - `node --check crates/agent_world_viewer/software_safe.js`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7_viewer -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_game_launcher viewer_auth_bootstrap -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo check -p oasis7_viewer --target wasm32-unknown-unknown`
+    - `node --check crates/oasis7_viewer/software_safe.js`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
 - [x] TASK-WORLD_SIMULATOR-171 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 `world_game_launcher` / `world_web_launcher` 的服务端运行时路径 env key 优先切到 `OASIS7_*`，并保留旧 `AGENT_WORLD_*` fallback，统一 help / validation / error 文案，补齐 launcher 链路的低风险内部标识迁移。
   - 产物文件:
     - `doc/world-simulator/prd.md`
     - `doc/world-simulator/project.md`
-    - `crates/agent_world/src/bin/world_game_launcher.rs`
-    - `crates/agent_world/src/bin/world_game_launcher/world_game_launcher_tests.rs`
-    - `crates/agent_world/src/bin/world_web_launcher/runtime_paths.rs`
-    - `crates/agent_world/src/bin/world_web_launcher/control_plane.rs`
+    - `crates/oasis7/src/bin/world_game_launcher.rs`
+    - `crates/oasis7/src/bin/world_game_launcher/world_game_launcher_tests.rs`
+    - `crates/oasis7/src/bin/world_web_launcher/runtime_paths.rs`
+    - `crates/oasis7/src/bin/world_web_launcher/control_plane.rs`
   - 验收命令 (`test_tier_required`):
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_game_launcher -- --nocapture`
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_game_launcher -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_web_launcher -- --nocapture`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
-- [x] TASK-WORLD_SIMULATOR-172 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 `agent_world_viewer` 的 3D 配置、theme runtime、panel/headless 控制与 release profile 的默认 env key 优先切到 `OASIS7_VIEWER_*`，并保留旧 `AGENT_WORLD_VIEWER_*` fallback，补齐 viewer 配置链路的低风险内部标识迁移。
+- [x] TASK-WORLD_SIMULATOR-172 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 `oasis7_viewer` 的 3D 配置、theme runtime、panel/headless 控制与 release profile 的默认 env key 优先切到 `OASIS7_VIEWER_*`，并保留旧 `AGENT_WORLD_VIEWER_*` fallback，补齐 viewer 配置链路的低风险内部标识迁移。
   - 产物文件:
     - `doc/world-simulator/prd.md`
     - `doc/world-simulator/project.md`
-    - `crates/agent_world_viewer/src/main.rs`
-    - `crates/agent_world_viewer/src/app_bootstrap.rs`
-    - `crates/agent_world_viewer/src/headless.rs`
-    - `crates/agent_world_viewer/src/theme_runtime.rs`
-    - `crates/agent_world_viewer/src/viewer_3d_config.rs`
-    - `crates/agent_world_viewer/src/viewer_3d_config_profile_tests.rs`
-    - `crates/agent_world_viewer/src/viewer_env.rs`
-    - `crates/agent_world_viewer/src/tests.rs`
-    - `crates/agent_world_viewer/src/egui_right_panel.rs`
+    - `crates/oasis7_viewer/src/main.rs`
+    - `crates/oasis7_viewer/src/app_bootstrap.rs`
+    - `crates/oasis7_viewer/src/headless.rs`
+    - `crates/oasis7_viewer/src/theme_runtime.rs`
+    - `crates/oasis7_viewer/src/viewer_3d_config.rs`
+    - `crates/oasis7_viewer/src/viewer_3d_config_profile_tests.rs`
+    - `crates/oasis7_viewer/src/viewer_env.rs`
+    - `crates/oasis7_viewer/src/tests.rs`
+    - `crates/oasis7_viewer/src/egui_right_panel.rs`
     - `scripts/viewer-release-ui-profile.env`
   - 验收命令 (`test_tier_required`):
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7_viewer -- --nocapture`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
-- [x] TASK-WORLD_SIMULATOR-173 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 `agent_world_viewer` 的 automation、auto-focus、auto-degrade、event window 与 internal capture 的默认 env key 优先切到 `OASIS7_VIEWER_*`，并保留旧 `AGENT_WORLD_VIEWER_*` fallback，继续收口 Viewer 行为控制链路的低风险内部标识迁移。
+- [x] TASK-WORLD_SIMULATOR-173 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 `oasis7_viewer` 的 automation、auto-focus、auto-degrade、event window 与 internal capture 的默认 env key 优先切到 `OASIS7_VIEWER_*`，并保留旧 `AGENT_WORLD_VIEWER_*` fallback，继续收口 Viewer 行为控制链路的低风险内部标识迁移。
   - 产物文件:
     - `doc/world-simulator/prd.md`
     - `doc/world-simulator/project.md`
-    - `crates/agent_world_viewer/src/viewer_automation.rs`
-    - `crates/agent_world_viewer/src/auto_focus.rs`
-    - `crates/agent_world_viewer/src/auto_degrade.rs`
-    - `crates/agent_world_viewer/src/event_window.rs`
-    - `crates/agent_world_viewer/src/internal_capture.rs`
+    - `crates/oasis7_viewer/src/viewer_automation.rs`
+    - `crates/oasis7_viewer/src/auto_focus.rs`
+    - `crates/oasis7_viewer/src/auto_degrade.rs`
+    - `crates/oasis7_viewer/src/event_window.rs`
+    - `crates/oasis7_viewer/src/internal_capture.rs`
   - 验收命令 (`test_tier_required`):
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7_viewer -- --nocapture`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
 - [x] TASK-WORLD_SIMULATOR-174 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 Viewer operator 脚本中的抓帧、材质巡检与压力测试 env key 默认写入优先切到 `OASIS7_VIEWER_*`，并保留旧 `AGENT_WORLD_VIEWER_*` fallback / cleanup，继续收口 Viewer 自动化脚本链路的低风险内部标识迁移。
@@ -302,14 +302,14 @@
   - 产物文件:
     - `doc/world-simulator/prd.md`
     - `doc/world-simulator/project.md`
-    - `crates/agent_world/src/simulator/llm_defaults.rs`
-    - `crates/agent_world/src/simulator/llm_agent.rs`
-    - `crates/agent_world/src/simulator/llm_agent/decision_flow.rs`
-    - `crates/agent_world/src/simulator/llm_agent/tests_split_part1.rs`
+    - `crates/oasis7/src/simulator/llm_defaults.rs`
+    - `crates/oasis7/src/simulator/llm_agent.rs`
+    - `crates/oasis7/src/simulator/llm_agent/decision_flow.rs`
+    - `crates/oasis7/src/simulator/llm_agent/tests_split_part1.rs`
     - `scripts/llm-longrun-stress.sh`
   - 验收命令 (`test_tier_required`):
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_full llm_config_ -- --nocapture`
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_full llm_agent_rejects_debug_grant_resource_action_when_debug_mode_disabled -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_full llm_config_ -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_full llm_agent_rejects_debug_grant_resource_action_when_debug_mode_disabled -- --nocapture`
     - `bash -n scripts/llm-longrun-stress.sh`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
@@ -317,14 +317,14 @@
   - 产物文件:
     - `doc/world-simulator/prd.md`
     - `doc/world-simulator/project.md`
-    - `crates/agent_world/src/viewer/runtime_live/llm_sidecar.rs`
-    - `crates/agent_world/src/viewer/runtime_live/control_plane.rs`
-    - `crates/agent_world/src/viewer/runtime_live/tests.rs`
-    - `crates/agent_world/src/bin/world_game_launcher.rs`
+    - `crates/oasis7/src/viewer/runtime_live/llm_sidecar.rs`
+    - `crates/oasis7/src/viewer/runtime_live/control_plane.rs`
+    - `crates/oasis7/src/viewer/runtime_live/tests.rs`
+    - `crates/oasis7/src/bin/world_game_launcher.rs`
     - `scripts/viewer-software-safe-chat-regression.sh`
   - 验收命令 (`test_tier_required`):
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_full openclaw_settings_from_env -- --nocapture`
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_full runtime_agent_chat_echo -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_full openclaw_settings_from_env -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_full runtime_agent_chat_echo -- --nocapture`
     - `bash -n scripts/viewer-software-safe-chat-regression.sh`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
@@ -342,11 +342,11 @@
   - 产物文件:
     - `doc/world-simulator/prd.md`
     - `doc/world-simulator/project.md`
-    - `crates/agent_world_viewer/assets/themes/industrial_v1/presets/*.env`
-    - `crates/agent_world_viewer/assets/themes/industrial_v2/presets/*.env`
-    - `crates/agent_world_viewer/assets/themes/industrial_v3/presets/*.env`
+    - `crates/oasis7_viewer/assets/themes/industrial_v1/presets/*.env`
+    - `crates/oasis7_viewer/assets/themes/industrial_v2/presets/*.env`
+    - `crates/oasis7_viewer/assets/themes/industrial_v3/presets/*.env`
   - 验收命令 (`test_tier_required`):
-    - `rg -n "OASIS7_VIEWER_|AGENT_WORLD_VIEWER_" crates/agent_world_viewer/assets/themes --glob '*/presets/*.env'`
+    - `rg -n "OASIS7_VIEWER_|AGENT_WORLD_VIEWER_" crates/oasis7_viewer/assets/themes --glob '*/presets/*.env'`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
 - [x] TASK-WORLD_SIMULATOR-179 (PRD-WORLD_SIMULATOR-037/038) [test_tier_required]: 将 repo-owned OpenClaw lightweight runtime agent 的默认 agent id 与 setup/operator env 命名优先切到 `oasis7_runtime` / `OPENCLAW_OASIS7_*`，并保留旧 `agent_world_runtime` / `OPENCLAW_AGENT_WORLD_*` fallback，收口 runtime-agent bootstrap 链路里残留的旧品牌默认口径。
@@ -360,10 +360,10 @@
     - `.agents/skills/oasis7/references/failure-signatures.md`
     - `.agents/skills/oasis7/scripts/oasis7-run.sh`
     - `.agents/skills/oasis7/scripts/oasis7-run-bootstrap-test.sh`
-    - `crates/agent_world/src/bin/world_openclaw_local_bridge.rs`
+    - `crates/oasis7/src/bin/world_openclaw_local_bridge.rs`
   - 验收命令 (`test_tier_required`):
     - `bash .agents/skills/oasis7/scripts/oasis7-run-bootstrap-test.sh`
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world local_session_id_from_session_key_hashes_invalid_chars -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 local_session_id_from_session_key_hashes_invalid_chars -- --nocapture`
     - `bash -n scripts/setup-openclaw-agent-world-runtime.sh`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
@@ -371,13 +371,13 @@
   - 产物文件:
     - `doc/world-simulator/prd.md`
     - `doc/world-simulator/project.md`
-    - `crates/agent_world/src/bin/world_game_launcher/world_game_launcher_tests.rs`
-    - `crates/agent_world/src/bin/world_web_launcher/world_web_launcher_tests.rs`
-    - `crates/agent_world/src/bin/world_web_launcher/static_files.rs`
+    - `crates/oasis7/src/bin/world_game_launcher/world_game_launcher_tests.rs`
+    - `crates/oasis7/src/bin/world_web_launcher/world_web_launcher_tests.rs`
+    - `crates/oasis7/src/bin/world_web_launcher/static_files.rs`
   - 验收命令 (`test_tier_required`):
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world resolve_viewer_static_dir_with_override_ -- --nocapture`
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world gui_agent_capabilities_include_recover_chain_action -- --nocapture`
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world load_console_static_asset_ -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 resolve_viewer_static_dir_with_override_ -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 gui_agent_capabilities_include_recover_chain_action -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 load_console_static_asset_ -- --nocapture`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
 - [x] TASK-WORLD_SIMULATOR-181 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 `scripts/ci-tests.sh` 的内部 helper 函数命名统一切到 `run_oasis7_*`，收口 CI 编排脚本里残留的旧 `run_agent_world_*` 内部标识。
@@ -965,7 +965,7 @@
 - `testing-manual.md`
 ## 状态
 - 更新日期 / 当前状态 / 下一任务: 2026-03-20 / active / 无
-- 最新完成: `TASK-WORLD_SIMULATOR-245~247`（已收口 launcher 剩余活跃专题，以及 `unified-checklist`、`web-llm-evidence-template`、`blockchain-transfer`、模块主 PRD 验证矩阵/支撑文件路径和 `visual-review-score-card` 中仍把旧 `agent_world*` crate/path/command 写成当前真值的活跃文档口径；旧品牌仅保留在历史记录、兼容说明或负向输入语境中。）
+- 最新完成: `TASK-WORLD_SIMULATOR-245~248`（已收口 launcher 剩余活跃专题，以及 `unified-checklist`、`web-llm-evidence-template`、`blockchain-transfer`、模块主 PRD 验证矩阵/支撑文件路径、`visual-review-score-card` 和模块主 `project.md` 的 `TASK-WORLD_SIMULATOR-158/165~180` 任务块中仍把旧 `agent_world*` crate/path/command 写成当前真值的活跃文档口径；旧品牌仅保留在历史记录、兼容说明或负向输入语境中。）
 - 最新完成: `TASK-WORLD_SIMULATOR-233~235`（已移除 `world_openclaw_local_bridge` 的旧 profile alias，并收口 viewer/client/runtime/tooling 源码内嵌负向测试中的旧品牌 helper / fixture 命名；保留必要旧 alias 字面量仅作为“已移除 alias”的负向输入。）
 - 最新完成: `TASK-WORLD_SIMULATOR-232`（已移除 `tools/wasm_build_suite/src/lib.rs` 与相关测试中的 `AGENT_WORLD_WASM_*` fallback，收口 wasm build suite library 当前入口到 `OASIS7_WASM_*`，并把 compat 测试改为断言旧 alias 已失效。）
 - 最新完成: `TASK-WORLD_SIMULATOR-230~231`（已移除 wasm build/sync 脚本与 operator 脚本中的 `AGENT_WORLD_WASM_*`、`AGENT_WORLD_VIEWER_*` 与 `AGENT_WORLD_CHAIN_STORAGE_PROFILE` fallback，并收口相关 operator 文案到 `OASIS7_*` 当前入口。）
@@ -985,7 +985,6 @@
 - 最新完成: `TASK-WORLD_SIMULATOR-152~157`（已完成 `OpenClaw` 双轨模式真实 lane 接通、T4 QA/producer 对照采证、builtin/OpenClaw parity `P0-001` 收口、gateway timeout fallback 修复与 `latency_class B / keep experimental` 结论冻结。）
 - 最新完成: `TASK-WORLD_SIMULATOR-148`（`OpenClaw` 双轨模式（`player_parity` / `headless_agent` / `debug_viewer`）专题建模）。
 - 最新完成: `TASK-WORLD_SIMULATOR-150~151`（为 `OpenClaw` 双轨模式补齐 mode/schema/environment/fixture/replay 元数据透传，以及 software-safe / runtime live 的 `debug_viewer` 旁路订阅标识、headless lane 元数据展示与 observer-only 对照入口）。
-- 最新完成: `TASK-WORLD_SIMULATOR-149`（冻结 `OpenClaw` 双轨 observation/action contract、schema version 与禁止泄露真值边界）。
 - 当前优先任务: `fix3` 已恢复 builtin/OpenClaw 的行为等价基线；继续压缩 OpenClaw absolute wait latency，争取把 `latency_class` 从 `B (experimental-only)` 收敛到 `A (default-candidate)` 后再讨论默认启用。
 - 当前阻断说明: `PRD-WORLD_SIMULATOR-040` 已完成 T4 对照采证并解除阻断；`PRD-WORLD_SIMULATOR-038` 在 `openclaw_builtin_parity_20260317_fix3` 中已恢复 `completion_rate=100%`、`timeout_rate=0%` 与 `move_agent=4`，且 `relative_wait_gap` 满足行为等价硬门禁，但 OpenClaw `median_extra_wait_ms=13957`、`p95_extra_wait_ms=14062` 仅达到 `latency_class B`，因此当前允许保持 `experimental` / 受限试点，仍不得默认启用。
 - parity 执行入口: `scripts/openclaw-parity-p0.sh` + `world_openclaw_parity_bench` 已落地，可先跑 openclaw-only/mock smoke，再接真实 builtin/OpenClaw 双边样本。
