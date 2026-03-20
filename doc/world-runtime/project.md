@@ -23,7 +23,7 @@
     - `test -f doc/world-runtime/templates/runtime-release-gate-metrics-template.md`
     - `rg -n "关键指标|runtime 结论|conditional-go|对接规则|state root" doc/world-runtime/templates/runtime-release-gate-metrics-template.md`
 - [x] TASK-WORLD_RUNTIME-005 (PRD-WORLD_RUNTIME-001/002/003) [test_tier_required]: 对齐 strict PRD schema，补齐关键流程/规格矩阵/边界异常/NFR/验证与决策记录。
-- [x] TASK-WORLD_RUNTIME-006 (PRD-WORLD_RUNTIME-002) [test_tier_required]: 同步 m1/m5 builtin wasm 工件 `sha256` 与 identity manifest，修复 CI hash token 不一致导致的运行时加载失败；回归 `env -u RUSTC_WRAPPER cargo test -p agent_world --tests --features test_tier_required`。
+- [x] TASK-WORLD_RUNTIME-006 (PRD-WORLD_RUNTIME-002) [test_tier_required]: 同步 m1/m5 builtin wasm 工件 `sha256` 与 identity manifest，修复 CI hash token 不一致导致的运行时加载失败；回归 `env -u RUSTC_WRAPPER cargo test -p oasis7 --tests --features test_tier_required`。
 - [x] TASK-WORLD_RUNTIME-016 (PRD-WORLD_RUNTIME-016/017/018) [test_tier_required]: 新增“线上模块发布合法性闭环补齐”专题 PRD/项目管理文档并纳入主索引。
 - [x] TASK-WORLD_RUNTIME-017 (PRD-WORLD_RUNTIME-016) [test_tier_required]: 引入线上 builtin 发布清单入口与生产禁 fallback 策略（`ReleaseSecurityPolicy` + online manifest API）。
 - [x] TASK-WORLD_RUNTIME-018 (PRD-WORLD_RUNTIME-016) [test_tier_required]: `m1/m4/m5` bootstrap 加载迁移到治理清单解析路径，保留受控 fallback。
@@ -77,28 +77,34 @@
   - 产物文件:
     - `doc/world-runtime/prd.md`
     - `doc/world-runtime/project.md`
-    - `crates/agent_world/src/runtime/builtin_wasm_materializer.rs`
-    - `crates/agent_world/src/runtime/m1_builtin_wasm_artifact.rs`
-    - `crates/agent_world/src/runtime/m4_builtin_wasm_artifact.rs`
-    - `crates/agent_world/src/runtime/m5_builtin_wasm_artifact.rs`
-    - `crates/agent_world/src/runtime/world/release_manifest.rs`
-    - `crates/agent_world/src/runtime/tests/builtin_wasm_materializer.rs`
-    - `crates/agent_world/src/runtime/tests/power_bootstrap_release_manifest_full.rs`
+    - `crates/oasis7/src/runtime/builtin_wasm_materializer.rs`
+    - `crates/oasis7/src/runtime/m1_builtin_wasm_artifact.rs`
+    - `crates/oasis7/src/runtime/m4_builtin_wasm_artifact.rs`
+    - `crates/oasis7/src/runtime/m5_builtin_wasm_artifact.rs`
+    - `crates/oasis7/src/runtime/world/release_manifest.rs`
+    - `crates/oasis7/src/runtime/tests/builtin_wasm_materializer.rs`
+    - `crates/oasis7/src/runtime/tests/power_bootstrap_release_manifest_full.rs`
   - 验收命令 (`test_tier_required`):
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_full builtin_wasm_materializer -- --nocapture`
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_full power_bootstrap_release_manifest_full -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_full builtin_wasm_materializer -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_full power_bootstrap_release_manifest_full -- --nocapture`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
 - [x] TASK-WORLD_RUNTIME-048 (PRD-WORLD_RUNTIME-022) [test_tier_required]: 将 `compile_module_artifact_from_source` 的 compiler/limits/timeout env key 默认优先切到 `OASIS7_MODULE_SOURCE_*`，并保留旧 `AGENT_WORLD_MODULE_SOURCE_*` fallback，收口 runtime source compile 链路的低风险内部标识迁移。
   - 产物文件:
     - `doc/world-runtime/prd.md`
     - `doc/world-runtime/project.md`
-    - `crates/agent_world/src/runtime/module_source_compiler.rs`
-    - `crates/agent_world/src/runtime/tests/module_action_loop_split_part1.rs`
-    - `crates/agent_world/src/simulator/tests/module_lifecycle.rs`
+    - `crates/oasis7/src/runtime/module_source_compiler.rs`
+    - `crates/oasis7/src/runtime/tests/module_action_loop_split_part1.rs`
+    - `crates/oasis7/src/simulator/tests/module_lifecycle.rs`
   - 验收命令 (`test_tier_required`):
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_full compile_module_artifact_from_source -- --nocapture`
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_full module_lifecycle_compile_from_source_deploys_artifact -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_full compile_module_artifact_from_source -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_full module_lifecycle_compile_from_source_deploys_artifact -- --nocapture`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
+- [x] TASK-WORLD_RUNTIME-049 (PRD-WORLD_RUNTIME-001) [test_tier_required]: 收口 `doc/world-runtime/project.md` 模块主入口中的当前 cargo 回归命令与 crate 路径，统一使用 `oasis7` / `crates/oasis7*` 口径。
+  - 验收命令 (`test_tier_required`):
+    - `rg -n "oasis7|crates/oasis7" doc/world-runtime/project.md`
+    - `pattern="$(printf 'cargo test -p agent_%sworld|crates/agent_%sworld' '' '')"; ! rg -n "$pattern" doc/world-runtime/project.md`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
 
@@ -119,6 +125,7 @@
 - 更新日期: 2026-03-20
 - 当前状态: in_progress（OpenClaw/runtime live traceability 子切片已完成；WASM Docker builder image 与 wrapper 已落地，`TASK-WORLD_RUNTIME-043` 已完成 build receipt / canonical token / identity / CI summary / receipt-aware release gate / node-side proof flow 子切片，并先将 GitHub-hosted gate 收敛为 Linux-only；`TASK-WORLD_RUNTIME-044` 已完成 production source compile gate）
 - 下一任务: `TASK-WORLD_RUNTIME-043`
+- 最新完成: `TASK-WORLD_RUNTIME-049`（world-runtime 模块主 `project.md` 中当前 cargo 回归命令与 crate 路径已统一切到 `oasis7` / `crates/oasis7*` 当前口径。）
 - 最新完成: `TASK-WORLD_RUNTIME-045`（world-runtime 模块仍可读专题标题统一切到 `oasis7 Runtime` 品牌，保留内部实现兼容名与历史证据正文不变）。
 - 最新完成: `TASK-WORLD_RUNTIME-046`（已将 WASM 构建、同步、CI summary 与 builder image 的 operator env key 收口到 `OASIS7_WASM_*` 当前入口；旧 `AGENT_WORLD_WASM_*` alias 已从 repo-owned 运行入口移除）。
 - 最新完成: `TASK-WORLD_RUNTIME-047`（已将 builtin wasm materializer、release manifest fallback 与 DistFS root override 的 runtime env key 收口到 `OASIS7_BUILTIN_WASM_*` 当前入口；旧 `AGENT_WORLD_BUILTIN_WASM_*` alias 已从运行时入口移除）。
