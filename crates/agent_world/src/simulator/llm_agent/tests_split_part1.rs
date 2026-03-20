@@ -19,6 +19,30 @@ struct MockClient {
     err: Option<LlmClientError>,
 }
 
+struct EnvVarGuard {
+    key: String,
+    previous: Option<String>,
+}
+
+impl EnvVarGuard {
+    fn capture(key: impl Into<String>) -> Self {
+        let key = key.into();
+        Self {
+            previous: std::env::var(key.as_str()).ok(),
+            key,
+        }
+    }
+}
+
+impl Drop for EnvVarGuard {
+    fn drop(&mut self) {
+        match self.previous.take() {
+            Some(value) => std::env::set_var(self.key.as_str(), value),
+            None => std::env::remove_var(self.key.as_str()),
+        }
+    }
+}
+
 fn completion_turn_from_value(value: serde_json::Value) -> LlmCompletionTurn {
     if value
         .get("type")
@@ -591,7 +615,7 @@ fn llm_config_agent_scoped_goal_overrides_global_value() {
         "global-short".to_string(),
     );
     vars.insert(
-        "AGENT_WORLD_LLM_SHORT_TERM_GOAL_AGENT_1".to_string(),
+        "OASIS7_LLM_SHORT_TERM_GOAL_AGENT_1".to_string(),
         "agent-short".to_string(),
     );
 
@@ -601,12 +625,49 @@ fn llm_config_agent_scoped_goal_overrides_global_value() {
 }
 
 #[test]
+fn llm_env_var_prefers_oasis7_prefix() {
+    let _primary_guard = EnvVarGuard::capture(ENV_LLM_MODEL);
+    let _legacy_guard = EnvVarGuard::capture("AGENT_WORLD_LLM_MODEL");
+    std::env::set_var(ENV_LLM_MODEL, "oasis7-model");
+    std::env::set_var("AGENT_WORLD_LLM_MODEL", "legacy-model");
+
+    assert_eq!(llm_env_var(ENV_LLM_MODEL).as_deref(), Some("oasis7-model"));
+}
+
+#[test]
+fn llm_config_from_env_for_agent_falls_back_to_legacy_prefix() {
+    let _model_guard = EnvVarGuard::capture(ENV_LLM_MODEL);
+    let _base_url_guard = EnvVarGuard::capture(ENV_LLM_BASE_URL);
+    let _api_key_guard = EnvVarGuard::capture(ENV_LLM_API_KEY);
+    let _goal_guard = EnvVarGuard::capture("AGENT_WORLD_LLM_SHORT_TERM_GOAL_AGENT_1");
+    let _legacy_model_guard = EnvVarGuard::capture("AGENT_WORLD_LLM_MODEL");
+    let _legacy_base_url_guard = EnvVarGuard::capture("AGENT_WORLD_LLM_BASE_URL");
+    let _legacy_api_key_guard = EnvVarGuard::capture("AGENT_WORLD_LLM_API_KEY");
+    std::env::remove_var(ENV_LLM_MODEL);
+    std::env::remove_var(ENV_LLM_BASE_URL);
+    std::env::remove_var(ENV_LLM_API_KEY);
+    std::env::set_var("AGENT_WORLD_LLM_MODEL", "legacy-model");
+    std::env::set_var("AGENT_WORLD_LLM_BASE_URL", "https://legacy.example.com/v1");
+    std::env::set_var("AGENT_WORLD_LLM_API_KEY", "legacy-secret");
+    std::env::set_var(
+        "AGENT_WORLD_LLM_SHORT_TERM_GOAL_AGENT_1",
+        "legacy-agent-short",
+    );
+
+    let config = LlmAgentConfig::from_env_for_agent("agent-1").unwrap();
+    assert_eq!(config.model, "legacy-model");
+    assert_eq!(config.base_url, "https://legacy.example.com/v1");
+    assert_eq!(config.api_key, "legacy-secret");
+    assert_eq!(config.short_term_goal, "legacy-agent-short");
+}
+
+#[test]
 fn llm_config_reads_from_config_file() {
     let unique = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_nanos();
-    let path_buf = std::env::temp_dir().join(format!("agent-world-llm-config-{unique}.toml"));
+    let path_buf = std::env::temp_dir().join(format!("oasis7-llm-config-{unique}.toml"));
     let path = Path::new(&path_buf);
     let content = r#"
 model = "fallback-model"
@@ -663,9 +724,8 @@ fn llm_config_prefers_llm_table_core_fields_over_profile_defaults() {
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_nanos();
-    let path_buf = std::env::temp_dir().join(format!(
-        "agent-world-llm-config-llm-core-priority-{unique}.toml"
-    ));
+    let path_buf =
+        std::env::temp_dir().join(format!("oasis7-llm-config-llm-core-priority-{unique}.toml"));
     let path = Path::new(&path_buf);
     let content = r#"
 model_provider = "ark"
@@ -702,7 +762,7 @@ fn llm_config_reads_agent_scoped_goal_overrides_from_llm_agent_overrides_table()
         .unwrap()
         .as_nanos();
     let path_buf = std::env::temp_dir().join(format!(
-        "agent-world-llm-config-agent-goal-override-{unique}.toml"
+        "oasis7-llm-config-agent-goal-override-{unique}.toml"
     ));
     let path = Path::new(&path_buf);
     let content = r#"

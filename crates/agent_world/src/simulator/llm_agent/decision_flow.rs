@@ -713,7 +713,7 @@ fn parse_llm_decision_value_with_error(
                 return (
                     AgentDecision::Wait,
                     Some(
-                        "debug_grant_resource is disabled; enable AGENT_WORLD_LLM_DEBUG_MODE=true"
+                        "debug_grant_resource is disabled; enable OASIS7_LLM_DEBUG_MODE=true"
                             .to_string(),
                     ),
                 );

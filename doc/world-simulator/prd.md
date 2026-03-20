@@ -150,6 +150,7 @@
   - SC-46: `world_game_launcher` / `world_web_launcher` 的运行时路径覆盖 env key（launcher bin、chain runtime bin、viewer/game static dir、web launcher static dir）必须优先迁移到 `OASIS7_*`，同时兼容旧 `AGENT_WORLD_*`，避免已有 bundle、shell 脚本与运维环境变量在品牌迁移时失效。
   - SC-47: Viewer 的 3D 配置、theme preset、panel/headless 行为控制与 release profile 脚本中的 `VIEWER_*` env key 必须优先迁移到 `OASIS7_VIEWER_*`，同时兼容旧 `AGENT_WORLD_VIEWER_*`，避免渲染调参、无头回归与 operator 预设在品牌迁移时断链。
   - SC-48: Viewer operator 脚本中的抓帧、材质巡检与压力测试默认 env 写入必须优先使用 `OASIS7_VIEWER_*`，并兼容读取或清理旧 `AGENT_WORLD_VIEWER_*`，避免品牌迁移后 capture/inspection/stress 自动化仍依赖旧前缀导致本地预设与 CI 运维脚本分叉。
+  - SC-49: simulator LLM 配置链路的默认 env key 必须优先迁移到 `OASIS7_LLM_*`，同时兼容旧 `AGENT_WORLD_LLM_*` fallback；`llm_agent`、agent-scoped goal override、runtime live 测试与长稳脚本不得继续把旧前缀当作唯一入口。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -357,6 +358,7 @@
   - AC-51: `agent_world_viewer` 的 3D 配置、theme runtime、panel/headless 控制与 release UI profile 默认必须写入并优先读取 `OASIS7_VIEWER_*`，同时继续兼容旧 `AGENT_WORLD_VIEWER_*`；`viewer_3d_config`、theme preset 解析、无头 auto-play、panel mode/experience mode 与 profile env 文件不得因改名前缀变更而丢失既有本地覆盖或回归脚本能力。
   - AC-52: `agent_world_viewer` 的 automation、auto-focus、auto-degrade、event window 与 internal capture 默认必须写入并优先读取 `OASIS7_VIEWER_*`，同时继续兼容旧 `AGENT_WORLD_VIEWER_*`；startup automation、聚焦/降级策略、事件抽样与内部抓帧入口不得因改名前缀变更而失效。
   - AC-53: `scripts/capture-viewer-frame.sh`、`scripts/viewer-texture-inspector*.sh` 与 `scripts/viewer-owr4-stress.sh` 必须默认写入或展示 `OASIS7_VIEWER_*`，同时兼容读取/提升旧 `AGENT_WORLD_VIEWER_*`；脚本输出的运行命令、状态文件、meta 记录与清理逻辑不得再把旧前缀当作唯一真值。
+  - AC-54: `simulator/llm_defaults`、`simulator/llm_agent` 与 `scripts/llm-longrun-stress.sh` 必须默认优先读取或写入 `OASIS7_LLM_MODEL`、`OASIS7_LLM_BASE_URL`、`OASIS7_LLM_API_KEY`、`OASIS7_LLM_TIMEOUT_MS`、`OASIS7_LLM_PROMPT_*`、`OASIS7_LLM_DEBUG_MODE`、`OASIS7_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS`，并继续兼容旧 `AGENT_WORLD_LLM_*`；agent-scoped goal override、调试提示与 longrun stress 命令注入不得因前缀变更而失效。
 - Non-Goals:
   - 不在本 PRD 中详细列出每个 UI 像素级规范。
   - 不替代 world-runtime/p2p 的底层协议设计。

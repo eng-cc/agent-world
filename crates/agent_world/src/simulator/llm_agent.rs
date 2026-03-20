@@ -65,24 +65,27 @@ use openai_payload::{
     output_item_to_completion_turn, responses_tools, responses_tools_with_debug_mode,
 };
 
-pub const ENV_LLM_MODEL: &str = "AGENT_WORLD_LLM_MODEL";
-pub const ENV_LLM_BASE_URL: &str = "AGENT_WORLD_LLM_BASE_URL";
-pub const ENV_LLM_API_KEY: &str = "AGENT_WORLD_LLM_API_KEY";
-pub const ENV_LLM_TIMEOUT_MS: &str = "AGENT_WORLD_LLM_TIMEOUT_MS";
-pub const ENV_LLM_SYSTEM_PROMPT: &str = "AGENT_WORLD_LLM_SYSTEM_PROMPT";
-pub const ENV_LLM_SHORT_TERM_GOAL: &str = "AGENT_WORLD_LLM_SHORT_TERM_GOAL";
-pub const ENV_LLM_LONG_TERM_GOAL: &str = "AGENT_WORLD_LLM_LONG_TERM_GOAL";
-pub const ENV_LLM_MAX_MODULE_CALLS: &str = "AGENT_WORLD_LLM_MAX_MODULE_CALLS";
-pub const ENV_LLM_MAX_DECISION_STEPS: &str = "AGENT_WORLD_LLM_MAX_DECISION_STEPS";
-pub const ENV_LLM_MAX_REPAIR_ROUNDS: &str = "AGENT_WORLD_LLM_MAX_REPAIR_ROUNDS";
-pub const ENV_LLM_PROMPT_MAX_HISTORY_ITEMS: &str = "AGENT_WORLD_LLM_PROMPT_MAX_HISTORY_ITEMS";
-pub const ENV_LLM_PROMPT_PROFILE: &str = "AGENT_WORLD_LLM_PROMPT_PROFILE";
+const LLM_ENV_PREFIX: &str = "OASIS7_LLM_";
+const LEGACY_LLM_ENV_PREFIX: &str = "AGENT_WORLD_LLM_";
+
+pub const ENV_LLM_MODEL: &str = "OASIS7_LLM_MODEL";
+pub const ENV_LLM_BASE_URL: &str = "OASIS7_LLM_BASE_URL";
+pub const ENV_LLM_API_KEY: &str = "OASIS7_LLM_API_KEY";
+pub const ENV_LLM_TIMEOUT_MS: &str = "OASIS7_LLM_TIMEOUT_MS";
+pub const ENV_LLM_SYSTEM_PROMPT: &str = "OASIS7_LLM_SYSTEM_PROMPT";
+pub const ENV_LLM_SHORT_TERM_GOAL: &str = "OASIS7_LLM_SHORT_TERM_GOAL";
+pub const ENV_LLM_LONG_TERM_GOAL: &str = "OASIS7_LLM_LONG_TERM_GOAL";
+pub const ENV_LLM_MAX_MODULE_CALLS: &str = "OASIS7_LLM_MAX_MODULE_CALLS";
+pub const ENV_LLM_MAX_DECISION_STEPS: &str = "OASIS7_LLM_MAX_DECISION_STEPS";
+pub const ENV_LLM_MAX_REPAIR_ROUNDS: &str = "OASIS7_LLM_MAX_REPAIR_ROUNDS";
+pub const ENV_LLM_PROMPT_MAX_HISTORY_ITEMS: &str = "OASIS7_LLM_PROMPT_MAX_HISTORY_ITEMS";
+pub const ENV_LLM_PROMPT_PROFILE: &str = "OASIS7_LLM_PROMPT_PROFILE";
 pub const ENV_LLM_FORCE_REPLAN_AFTER_SAME_ACTION: &str =
-    "AGENT_WORLD_LLM_FORCE_REPLAN_AFTER_SAME_ACTION";
-pub const ENV_LLM_HARVEST_MAX_AMOUNT_CAP: &str = "AGENT_WORLD_LLM_HARVEST_MAX_AMOUNT_CAP";
+    "OASIS7_LLM_FORCE_REPLAN_AFTER_SAME_ACTION";
+pub const ENV_LLM_HARVEST_MAX_AMOUNT_CAP: &str = "OASIS7_LLM_HARVEST_MAX_AMOUNT_CAP";
 pub const ENV_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS: &str =
-    "AGENT_WORLD_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS";
-pub const ENV_LLM_DEBUG_MODE: &str = "AGENT_WORLD_LLM_DEBUG_MODE";
+    "OASIS7_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS";
+pub const ENV_LLM_DEBUG_MODE: &str = "OASIS7_LLM_DEBUG_MODE";
 const TOML_LLM_TABLE: &str = "llm";
 const TOML_LLM_MODEL: &str = "model";
 const TOML_LLM_BASE_URL: &str = "base_url";
@@ -106,8 +109,8 @@ const TOML_MODEL_PROVIDERS_TABLE: &str = "model_providers";
 const TOML_PROFILES_TABLE: &str = "profiles";
 const TOML_MODEL_PROVIDER_AUTH_TOKEN: &str = "auth_token";
 const TOML_LLM_AGENT_OVERRIDES_TABLE: &str = "agent_overrides";
-const ENV_LLM_SHORT_TERM_GOAL_AGENT_PREFIX: &str = "AGENT_WORLD_LLM_SHORT_TERM_GOAL_";
-const ENV_LLM_LONG_TERM_GOAL_AGENT_PREFIX: &str = "AGENT_WORLD_LLM_LONG_TERM_GOAL_";
+const ENV_LLM_SHORT_TERM_GOAL_AGENT_PREFIX: &str = "OASIS7_LLM_SHORT_TERM_GOAL_";
+const ENV_LLM_LONG_TERM_GOAL_AGENT_PREFIX: &str = "OASIS7_LLM_LONG_TERM_GOAL_";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LlmPromptProfile {
@@ -371,7 +374,7 @@ impl LlmAgentConfig {
             })?;
 
         Self::from_env_with(
-            |key| config_value_for_env_key(table, key).or_else(|| std::env::var(key).ok()),
+            |key| config_value_for_env_key(table, key).or_else(|| llm_env_var(key)),
             agent_id,
         )
     }
@@ -381,7 +384,7 @@ impl LlmAgentConfig {
     }
 
     pub fn from_env_for_agent(agent_id: &str) -> Result<Self, LlmConfigError> {
-        Self::from_env_with(|key| std::env::var(key).ok(), agent_id)
+        Self::from_env_with(llm_env_var, agent_id)
     }
 
     fn from_env_with<F>(mut getter: F, agent_id: &str) -> Result<Self, LlmConfigError>
@@ -484,6 +487,17 @@ impl LlmAgentConfig {
     fn memory_selector_config(&self) -> MemorySelectorConfig {
         self.prompt_profile.memory_selector_config()
     }
+}
+
+fn legacy_llm_env_key(key: &str) -> Option<String> {
+    key.strip_prefix(LLM_ENV_PREFIX)
+        .map(|suffix| format!("{LEGACY_LLM_ENV_PREFIX}{suffix}"))
+}
+
+fn llm_env_var(key: &str) -> Option<String> {
+    std::env::var(key)
+        .ok()
+        .or_else(|| legacy_llm_env_key(key).and_then(|legacy| std::env::var(legacy).ok()))
 }
 
 fn llm_table<'a>(table: &'a toml::value::Table) -> Option<&'a toml::value::Table> {

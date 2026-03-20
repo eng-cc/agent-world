@@ -26,7 +26,7 @@ Options:
   --switch-llm-short-goal <text>     Switch short-term goal after --prompt-switch-tick
   --switch-llm-long-goal <text>      Switch long-term goal after --prompt-switch-tick
   --prompt-switches-json <json>      Multi-stage switch plan JSON (array of {"tick":n,"llm_*":...})
-  --llm-execute-until-auto-reenter-ticks <n>  Override AGENT_WORLD_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS
+  --llm-execute-until-auto-reenter-ticks <n>  Override OASIS7_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS
   --runtime-gameplay-bridge          Enable runtime gameplay bridge in demo (default: on)
   --no-runtime-gameplay-bridge       Disable runtime gameplay bridge in demo
   --runtime-gameplay-preset <name>   Seed runtime gameplay events before loop (none|civic_hotspot_v1)
@@ -65,7 +65,7 @@ Notes:
       civic_operator               -> governance + collaboration cadence
       resilience_drill             -> crisis/economic contract pressure test
   - story_balanced 会在 ticks 较长时自动注入多阶段切换计划（通过 --prompt-switches-json 透传）
-  - industrial_baseline 默认设置 AGENT_WORLD_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS=24（可通过参数覆盖）
+  - industrial_baseline 默认设置 OASIS7_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS=24（可通过参数覆盖）
   - runtime gameplay bridge 默认开启：将 simulator 的 runtime-only gameplay/economic 动作接入 runtime World，降低非预期拒绝
   - runtime gameplay preset 可注入可续跑的治理事件句柄（待投票提案/活跃危机/待结算合约）
   - state dir 参数仅支持单场景模式（便于构建/复用同一阶段基线）
@@ -757,7 +757,7 @@ run_scenario_to_log() {
     env -u RUSTC_WRAPPER
   )
   if [[ -n "$llm_execute_until_auto_reenter_ticks" ]]; then
-    cmd+=("AGENT_WORLD_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS=$llm_execute_until_auto_reenter_ticks")
+    cmd+=("OASIS7_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS=$llm_execute_until_auto_reenter_ticks")
   fi
   cmd+=(
     cargo run -p agent_world --bin world_llm_agent_demo --
@@ -1313,7 +1313,7 @@ for scenario in "${scenarios[@]}"; do
       env -u RUSTC_WRAPPER
     )
     if [[ -n "$llm_execute_until_auto_reenter_ticks" ]]; then
-      cmd+=("AGENT_WORLD_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS=$llm_execute_until_auto_reenter_ticks")
+      cmd+=("OASIS7_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS=$llm_execute_until_auto_reenter_ticks")
     fi
     cmd+=(
       cargo run -p agent_world --bin world_llm_agent_demo --
