@@ -13,15 +13,15 @@
 
 ## 2. User Experience & Functionality
 ### In Scope
-- `crates/agent_world_proto`
+- `crates/oasis7_proto`
   - 新增玩家鉴权 proof 数据结构（ed25519 + nonce + signature）。
   - 扩展 `PromptControlApplyRequest` / `PromptControlRollbackRequest` / `AgentChatRequest`，支持携带鉴权 proof。
-- `crates/agent_world`
+- `crates/oasis7`
   - 新增 Viewer 鉴权签名负载规范与验签实现（canonical payload）。
   - live 控制链路强制校验 proof。
   - 增加重放防护状态（按 player 维护已接受最大 nonce）并纳入 snapshot 持久化。
   - 新增错误码：缺失 proof、签名非法、key 不匹配、nonce 重放等。
-- `crates/agent_world_viewer`
+- `crates/oasis7_viewer`
   - 更新非视觉发送路径：按环境变量密钥生成 proof 并附加到请求中。
 - 测试
   - 协议 roundtrip/兼容测试。

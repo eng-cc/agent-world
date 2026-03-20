@@ -21,15 +21,15 @@
 
 ## 2. User Experience & Functionality
 ### In Scope
-- `crates/agent_world_node`：
+- `crates/oasis7_node`：
   - 共识动作队列与引擎缓存双层有界化。
   - gossip 动态 peer TTL + 容量治理。
   - committed batch 内存窗口治理。
   - replication commit message 热窗口 + CAS 冷归档。
-- `crates/agent_world_consensus`：
+- `crates/oasis7_consensus`：
   - 文件型 audit/alert/event 日志热窗口治理。
   - dead-letter archive 从本地无限 append 改为 CAS 分段冷归档。
-- `crates/agent_world_distfs`（复用）：
+- `crates/oasis7_distfs`（复用）：
   - 使用 `LocalCasStore` 作为内容寻址冷归档介质。
 - 文档与测试：
   - 文档更新、devlog、tier-required 测试补齐。

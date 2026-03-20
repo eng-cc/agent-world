@@ -28,10 +28,10 @@
 - [x] 追加 `doc/devlog/2026-02-25.md` 任务日志
 
 ## 依赖
-- `crates/agent_world`
-- `crates/agent_world_node`
-- `crates/agent_world_consensus`
-- `crates/agent_world_distfs`
+- `crates/oasis7`
+- `crates/oasis7_node`
+- `crates/oasis7_consensus`
+- `crates/oasis7_distfs`
 - `doc/testing/*`
 - `doc/p2p/*`
 

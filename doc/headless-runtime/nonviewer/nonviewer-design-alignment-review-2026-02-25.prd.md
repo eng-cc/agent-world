@@ -19,7 +19,7 @@
 - 对本轮确认问题执行一并优化（代码/文档）。
 
 ### Out of Scope
-- `crates/agent_world_viewer` 及 Viewer UI/Web 交互代码。
+- `crates/oasis7_viewer` 及 Viewer UI/Web 交互代码。
 - 仅归档文档的历史一致性回溯重审。
 
 
@@ -52,9 +52,9 @@
 - R2-01（工程约束，high）
   - design_source：`AGENTS.md`（Rust 单文件不超过 1200 行）。
   - implementation：
-    - `crates/agent_world/src/simulator/world_model.rs`（1244）
-    - `crates/agent_world/src/simulator/kernel/actions_impl_part1.rs`（1236）
-    - `crates/agent_world_consensus/src/quorum.rs`（1233）
+    - `crates/oasis7/src/simulator/world_model.rs`（1244）
+    - `crates/oasis7/src/simulator/kernel/actions_impl_part1.rs`（1236）
+    - `crates/oasis7_consensus/src/quorum.rs`（1233）
   - status：已修复
   - notes：
     - `world_model.rs` 抽离 `PhysicsParameterSpec` 与规格常量到 `world_model/world_model_physics_specs.rs`。
@@ -62,9 +62,9 @@
     - `quorum.rs` 测试模块拆分至 `quorum/tests.rs`。
 - R2-02（设计一致性，high）
   - design_source：`doc/p2p/blockchain/p2p-blockchain-security-hardening-2026-02-23.prd.md`（订阅队列有界）。
-  - implementation：`crates/agent_world_consensus/src/network.rs` 在 `publish` 中直接向 `Vec` 追加，存在无界增长风险。
+  - implementation：`crates/oasis7_consensus/src/network.rs` 在 `publish` 中直接向 `Vec` 追加，存在无界增长风险。
   - status：已修复
-  - notes：改为复用 `agent_world_proto::distributed_net::push_bounded_inbox_message`，并新增超限淘汰最旧消息单测。
+  - notes：改为复用 `oasis7_proto::distributed_net::push_bounded_inbox_message`，并新增超限淘汰最旧消息单测。
 
 ## 当前状态
 - 状态：已完成（2026-02-25）

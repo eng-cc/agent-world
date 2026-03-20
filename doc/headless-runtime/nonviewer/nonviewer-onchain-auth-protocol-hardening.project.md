@@ -12,7 +12,7 @@
 - [x] 新建项目管理文档：`doc/headless-runtime/nonviewer/nonviewer-onchain-auth-protocol-hardening.project.md`
 
 ### T1 协议与鉴权内核
-- [x] 扩展 `agent_world_proto::viewer` 请求结构，新增 `PlayerAuthProof`
+- [x] 扩展 `oasis7_proto::viewer` 请求结构，新增 `PlayerAuthProof`
 - [x] 在 `agent_world::viewer` 实现 canonical payload + ed25519 签名/验签工具
 - [x] 补协议与鉴权内核测试（roundtrip + tamper）
 
@@ -22,7 +22,7 @@
 - [x] 补 live/persist 测试（重放拒绝、snapshot 保留）
 
 ### T3 客户端接入与收口
-- [x] `agent_world_viewer` 非视觉发送链路接入签名 proof
+- [x] `oasis7_viewer` 非视觉发送链路接入签名 proof
 - [x] 跑定向回归 + required tier 测试
 - [x] 回写设计/项目文档状态与 devlog 收口
 

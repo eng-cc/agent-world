@@ -12,19 +12,19 @@
 - [x] 项目文档：`doc/headless-runtime/nonviewer/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.project.md`
 
 ### T1 Node 内存边界治理（1/2/3）
-- [x] `agent_world_node`：引擎 pending actions 有界化（不丢追溯）
-- [x] `agent_world_node`：gossip dynamic peer TTL + 容量治理
-- [x] `agent_world_node`：committed batches 热窗口有界化
+- [x] `oasis7_node`：引擎 pending actions 有界化（不丢追溯）
+- [x] `oasis7_node`：gossip dynamic peer TTL + 容量治理
+- [x] `oasis7_node`：committed batches 热窗口有界化
 - [x] 补充/更新单测
 
 ### T2 Consensus 日志与 dead-letter 冷归档（4/5）
-- [x] `agent_world_consensus`：文件型 audit/alert/event 日志热窗口 + CAS 冷归档
-- [x] `agent_world_consensus`：dead-letter archive 改 CAS 冷归档
+- [x] `oasis7_consensus`：文件型 audit/alert/event 日志热窗口 + CAS 冷归档
+- [x] `oasis7_consensus`：dead-letter archive 改 CAS 冷归档
 - [x] 补充/更新单测
 
 ### T3 Node replication commit 冷归档（6）
-- [x] `agent_world_node`：commit message 热窗口 + CAS 冷归档
-- [x] `agent_world_node`：按高度读取回退到 cold refs/CAS
+- [x] `oasis7_node`：commit message 热窗口 + CAS 冷归档
+- [x] `oasis7_node`：按高度读取回退到 cold refs/CAS
 - [x] 补充/更新单测
 
 ### T4 收口
@@ -33,17 +33,17 @@
 - [x] `doc/devlog/2026-02-23.md` 追加任务日志
 
 ## 依赖
-- `crates/agent_world_node/src/node_runtime_core.rs`
-- `crates/agent_world_node/src/lib.rs`
-- `crates/agent_world_node/src/lib_impl_part1.rs`
-- `crates/agent_world_node/src/gossip_udp.rs`
-- `crates/agent_world_node/src/types.rs`
-- `crates/agent_world_node/src/replication.rs`
-- `crates/agent_world_consensus/src/membership_reconciliation.rs`
-- `crates/agent_world_consensus/src/membership_split_part1.rs`
-- `crates/agent_world_consensus/src/membership_recovery/dead_letter.rs`
-- `crates/agent_world_consensus/src/membership_recovery/replay_archive_federated.rs`
-- `crates/agent_world_distfs/src/lib.rs`（复用）
+- `crates/oasis7_node/src/node_runtime_core.rs`
+- `crates/oasis7_node/src/lib.rs`
+- `crates/oasis7_node/src/lib_impl_part1.rs`
+- `crates/oasis7_node/src/gossip_udp.rs`
+- `crates/oasis7_node/src/types.rs`
+- `crates/oasis7_node/src/replication.rs`
+- `crates/oasis7_consensus/src/membership_reconciliation.rs`
+- `crates/oasis7_consensus/src/membership_split_part1.rs`
+- `crates/oasis7_consensus/src/membership_recovery/dead_letter.rs`
+- `crates/oasis7_consensus/src/membership_recovery/replay_archive_federated.rs`
+- `crates/oasis7_distfs/src/lib.rs`（复用）
 
 ## 状态
 - 当前状态：`已完成`

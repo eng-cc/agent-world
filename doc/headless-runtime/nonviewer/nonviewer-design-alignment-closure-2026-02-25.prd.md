@@ -14,11 +14,11 @@
 
 ## 2. User Experience & Functionality
 ### In Scope
-- `crates/agent_world_node`
+- `crates/oasis7_node`
   - `PosNodeEngine::apply_decision` 的 rejected 回灌错误处理。
   - `pending_consensus_action_capacity` 增加 pending proposal 回灌容量预留。
   - 补充回归测试（拒绝分支回灌溢出显式报错、容量预留语义）。
-- `crates/agent_world_consensus`
+- `crates/oasis7_consensus`
   - `FileMembershipRevocationAlertDeadLetterStore` 的 `list`/`list_delivery_metrics` 改为冷热聚合读取。
   - `replace` 同步清理并重建 archive refs，避免 stale cold refs。
   - 补充回归测试（replace 后冷归档无陈旧数据）。
