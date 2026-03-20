@@ -55,14 +55,14 @@
   - 控制面转发到 runtime `/v1/chain/feedback/submit` 并返回结构化响应。
   - 设置窗口在 Web 端复用 native 布局语义，LLM 配置写入浏览器存储。
 - Integration Points:
-  - `crates/agent_world_client_launcher/src/main.rs`
-  - `crates/agent_world_client_launcher/src/app_process_web.rs`
-  - `crates/agent_world_client_launcher/src/app_process.rs`
-  - `crates/agent_world_client_launcher/src/feedback_window_web.rs`
-  - `crates/agent_world_client_launcher/src/llm_settings_web.rs`
-  - `crates/agent_world/src/bin/world_web_launcher.rs`
-  - `crates/agent_world/src/bin/world_web_launcher/control_plane.rs`
-  - `crates/agent_world/src/bin/world_chain_runtime/feedback_submit_api.rs`
+  - `crates/oasis7_client_launcher/src/main.rs`
+  - `crates/oasis7_client_launcher/src/app_process_web.rs`
+  - `crates/oasis7_client_launcher/src/app_process.rs`
+  - `crates/oasis7_client_launcher/src/feedback_window_web.rs`
+  - `crates/oasis7_client_launcher/src/llm_settings_web.rs`
+  - `crates/oasis7/src/bin/world_web_launcher.rs`
+  - `crates/oasis7/src/bin/world_web_launcher/control_plane.rs`
+  - `crates/oasis7/src/bin/world_chain_runtime/feedback_submit_api.rs`
 - Edge Cases & Error Handling:
   - 链未就绪：反馈提交前阻断并提示。
   - 请求并发：存在 in-flight 时拒绝重复提交。
@@ -89,9 +89,9 @@
 - Test Plan & Traceability:
   - PRD-WORLD_SIMULATOR-021 -> TASK-WORLD_SIMULATOR-048/049 -> `test_tier_required`。
   - 计划验证：
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher -- --nocapture`
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher -- --nocapture`
-    - `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_web_launcher -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown`
 - Decision Log:
   - DEC-LAUNCHER-WEB-PARITY-001: Web 反馈采用“wasm -> world_web_launcher -> world_chain_runtime”代理链路，而非 wasm 直连链状态端口。理由：复用既有控制面与跨端一致性。
   - DEC-LAUNCHER-WEB-PARITY-002: Web 设置中心中的 LLM 参数采用浏览器本地存储，不模拟 native 文件写入。理由：遵循 wasm 运行环境能力边界并保持可用。

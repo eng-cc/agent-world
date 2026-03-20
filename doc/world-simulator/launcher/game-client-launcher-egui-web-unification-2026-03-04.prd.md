@@ -7,8 +7,8 @@
 
 
 ## 1. Executive Summary
-- Problem Statement: 当前无 GUI 服务器场景的 `world_web_launcher` 使用独立 HTML 控制台，未与 `agent_world_client_launcher` 的 egui UI 层复用，导致交互行为与文案演进仍存在双端分叉风险。
-- Proposed Solution: 将 `agent_world_client_launcher` 改造为同一套 egui UI 代码跨 native/wasm 双目标运行；`world_web_launcher` 改为托管 launcher wasm 静态资源并继续提供进程控制 API。
+- Problem Statement: 当前无 GUI 服务器场景的 `world_web_launcher` 使用独立 HTML 控制台，未与 `oasis7_client_launcher` 的 egui UI 层复用，导致交互行为与文案演进仍存在双端分叉风险。
+- Proposed Solution: 将 `oasis7_client_launcher` 改造为同一套 egui UI 代码跨 native/wasm 双目标运行；`world_web_launcher` 改为托管 launcher wasm 静态资源并继续提供进程控制 API。
 - Success Criteria:
   - SC-1: native 与 web 启动器使用同一份 egui UI 代码（同一 crate、同一字段映射、同一渲染结构）。
   - SC-2: `world_web_launcher` 不再依赖内嵌 HTML，改为启动静态资源服务并提供 SPA 首页入口。
@@ -39,7 +39,7 @@
 | web 静态资源托管 | `console_static_dir`（CLI/ENV 可配） | GET `/` 返回 index.html，GET 资源路径返回 wasm/js/css | `boot -> static_ready` | 静态资源路径需防目录穿越 | 默认部署于受信网络 |
 | bundle 产物扩展 | `web/` + `web-launcher/` | 构建时分别产出 viewer 与 launcher wasm 资源 | `build -> bundle_ready` | 目录结构固定，脚本入口注入环境变量 | 构建者可写输出目录 |
 - Acceptance Criteria:
-  - AC-1: `agent_world_client_launcher` 可在 `wasm32-unknown-unknown` 目标下编译并运行 egui web 启动器入口。
+  - AC-1: `oasis7_client_launcher` 可在 `wasm32-unknown-unknown` 目标下编译并运行 egui web 启动器入口。
   - AC-2: `world_web_launcher` 支持配置并托管 launcher 静态资源目录，首页返回 launcher wasm 页面。
   - AC-3: `build-game-launcher-bundle.sh` 产物新增 `web-launcher/`，`run-web-launcher.sh` 默认指向该目录。
   - AC-4: `/api/state`、`/api/start`、`/api/stop` 在 egui web UI 上形成可操作闭环。
@@ -53,14 +53,14 @@
 
 ## 4. Technical Specifications
 - Architecture Overview:
-  - `agent_world_client_launcher` 采用 `cfg(target_arch)` 双入口：native `run_native` + wasm `WebRunner`。
+  - `oasis7_client_launcher` 采用 `cfg(target_arch)` 双入口：native `run_native` + wasm `WebRunner`。
   - native 与 wasm 共享 launcher UI 渲染逻辑与 schema 字段映射。
   - `world_web_launcher` 扩展静态文件服务，托管 launcher wasm 产物并保留既有 API。
   - bundle 脚本新增 launcher wasm 构建阶段，输出 `web-launcher/`。
 - Integration Points:
-  - `crates/agent_world_client_launcher/src/main.rs`
-  - `crates/agent_world_client_launcher/src/app_process.rs`
-  - `crates/agent_world/src/bin/world_web_launcher.rs`
+  - `crates/oasis7_client_launcher/src/main.rs`
+  - `crates/oasis7_client_launcher/src/app_process.rs`
+  - `crates/oasis7/src/bin/world_web_launcher.rs`
   - `scripts/build-game-launcher-bundle.sh`
   - `doc/world-simulator/prd.md`
   - `doc/world-simulator/project.md`
@@ -84,7 +84,7 @@
   - M2: launcher egui wasm 化与 world_web_launcher 静态托管。
   - M3: bundle 脚本接入、回归测试与文档收口。
 - Technical Risks:
-  - 风险-1: `agent_world_client_launcher` 现有 native-only 模块在 wasm 构建下出现编译路径冲突。
+  - 风险-1: `oasis7_client_launcher` 现有 native-only 模块在 wasm 构建下出现编译路径冲突。
   - 风险-2: 静态资源托管与 API 路由冲突导致 404 或错误转发。
   - 风险-3: 打包阶段新增 trunk 构建使耗时上升，需要控制失败诊断可读性。
 

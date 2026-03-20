@@ -14,7 +14,7 @@
 
 ## 3. 关键接口 / 入口
 - `UiLanguage` (`ZhCn` / `EnUs`)
-- `AGENT_WORLD_CLIENT_LAUNCHER_LANG`
+- `OASIS7_CLIENT_LAUNCHER_LANG`
 - `collect_required_config_issues(&LaunchConfig)`
 - 启动前错误清单与按钮禁用态
 

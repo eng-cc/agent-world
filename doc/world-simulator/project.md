@@ -812,6 +812,7 @@
 - [x] TASK-WORLD_SIMULATOR-235 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 收口 `tools/wasm_build_suite/src/lib.rs`、`crates/oasis7/src/{viewer/runtime_live/tests.rs,runtime/module_source_compiler.rs,runtime/builtin_wasm_materializer.rs,simulator/llm_agent/tests_split_part1.rs,bin/world_openclaw_local_bridge.rs}` 等源码内嵌负向测试中的旧品牌 helper / fixture 命名，保留必要旧 alias 字面量仅作为“已移除 alias”的负向输入。
 - [x] TASK-WORLD_SIMULATOR-236 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 收口 `.agents/roles/{wasm_platform_engineer,viewer_engineer}.md`、`doc/core/project.md` 与 `doc/world-runtime/{prd.md,project.md}` 中仍把 `agent_world*` / `AGENT_WORLD_*` 写成当前 owner/path/env 说明的活跃文档口径，统一到 `oasis7*` / `OASIS7_*`。
 - [x] TASK-WORLD_SIMULATOR-237 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 收口 `doc/world-simulator/viewer/**` 中仍把 `agent_world_viewer`、`AGENT_WORLD_VIEWER_*` 与 `.agent_world_viewer` 写成当前 crate/path/env 的活跃专题口径，统一到 `oasis7_viewer`、`OASIS7_VIEWER_*` 与 `.oasis7_viewer`。
+- [x] TASK-WORLD_SIMULATOR-238 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 收口一组活跃 launcher 专题中仍把 `agent_world_client_launcher`、`AGENT_WORLD_CLIENT_LAUNCHER_LANG` 与旧 `cargo -p` 包名写成当前 package/env/command 的口径，统一到 `oasis7_client_launcher`、`OASIS7_CLIENT_LAUNCHER_LANG` 与 `cargo -p oasis7_client_launcher`。
 - [x] TASK-WORLD_SIMULATOR-203 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 viewer/OpenClaw 脚本中的旧品牌 env helper 与局部变量命名切到 `compat` 语义，收口脚本层里残留的 `legacy_key` / `viewer_legacy_env_key` / `promote_legacy_viewer_envs` 口径。
   - 产物文件:
     - `doc/world-simulator/prd.md`
@@ -839,7 +840,6 @@
 - [x] TASK-WORLD_SIMULATOR-157 (PRD-WORLD_SIMULATOR-038) [test_tier_required]: 由 `producer_system_designer` 冻结 parity 分层 latency gate（行为等价 hard gate + `latency_class`），并基于 `fix3` 证据回写 `behavior_parity_pass / latency_class B / keep experimental` 口径。
 - [x] TASK-WORLD_SIMULATOR-110 (PRD-WORLD_SIMULATOR-035) [test_tier_required]: 为 `agent_world_viewer` 的 Web runtime fatal hook 增加“已知图形 fatal 仅自动 reload 一次”的恢复路径，收敛首开必须手动 reopen 的摩擦。
 - [x] TASK-WORLD_SIMULATOR-111 (PRD-WORLD_SIMULATOR-035) [test_tier_required]: 修复 `__AW_TEST__` runtime fatal 快照即时落盘，并复验 Viewer 首开不再以假性 `connecting` 掩盖图形 fatal。
-
 ## 专题任务映射（2026-03-02 批次）
 - [x] SUBTASK-WORLD_SIMULATOR-20260302-001 (PRD-WORLD_SIMULATOR-001/002/003) [test_tier_required]: `doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.project.md`
 - [x] SUBTASK-WORLD_SIMULATOR-20260302-002 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: `doc/world-simulator/launcher/game-client-launcher-feedback-entry-2026-03-02.project.md`
@@ -963,7 +963,7 @@
 ## 状态
 - 更新日期 / 当前状态: 2026-03-20 / active
 - 下一任务: 无
-- 最新完成: `TASK-WORLD_SIMULATOR-237`（已收口一组活跃 Viewer 专题中的当前 crate/path/env 口径，包括模块可见性路径、software-safe render mode、体验模式与贴图/主题校验命令；旧 `agent_world_viewer` / `AGENT_WORLD_VIEWER_*` / `.agent_world_viewer` 仅保留在历史记录或兼容说明语境中。）
+- 最新完成: `TASK-WORLD_SIMULATOR-238`（已收口一组活跃 launcher 专题中的当前 package/env/command 口径，包括 launcher i18n、egui web、wasm time、Web transfer 与 Web settings/feedback；旧 `agent_world_client_launcher` / `AGENT_WORLD_CLIENT_LAUNCHER_LANG` / 旧 `cargo -p` 包名仅保留在历史记录或兼容说明语境中。）
 - 最新完成: `TASK-WORLD_SIMULATOR-234~235`（已收口 viewer/client/runtime/tooling 源码内嵌负向测试中的旧品牌 helper / fixture 命名，保留必要旧 alias 字面量仅作为“已移除 alias”的负向输入。）
 - 最新完成: `TASK-WORLD_SIMULATOR-233`（已移除 `crates/oasis7/src/bin/world_openclaw_local_bridge.rs` 与相关测试中的旧 profile alias `agent_world_p0_low_freq_npc`，收口 OpenClaw local bridge 当前入口到 `oasis7_p0_low_freq_npc`，并把 compat 测试改为断言旧 alias 已失效。）
 - 最新完成: `TASK-WORLD_SIMULATOR-232`（已移除 `tools/wasm_build_suite/src/lib.rs` 与相关测试中的 `AGENT_WORLD_WASM_*` fallback，收口 wasm build suite library 当前入口到 `OASIS7_WASM_*`，并把 compat 测试改为断言旧 alias 已失效。）

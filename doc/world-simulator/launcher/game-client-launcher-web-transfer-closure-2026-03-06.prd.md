@@ -54,12 +54,12 @@
   - 控制面服务将请求桥接到 `world_chain_runtime` 的 `/v1/chain/transfer/submit`。
   - 返回结构化响应给 wasm UI，渲染成功/失败状态。
 - Integration Points:
-  - `crates/agent_world_client_launcher/src/main.rs`
-  - `crates/agent_world_client_launcher/src/app_process_web.rs`
-  - `crates/agent_world_client_launcher/src/transfer_window.rs`
-  - `crates/agent_world/src/bin/world_web_launcher.rs`
-  - `crates/agent_world/src/bin/world_web_launcher/control_plane.rs`
-  - `crates/agent_world/src/bin/world_chain_runtime/transfer_submit_api.rs`
+  - `crates/oasis7_client_launcher/src/main.rs`
+  - `crates/oasis7_client_launcher/src/app_process_web.rs`
+  - `crates/oasis7_client_launcher/src/transfer_window.rs`
+  - `crates/oasis7/src/bin/world_web_launcher.rs`
+  - `crates/oasis7/src/bin/world_web_launcher/control_plane.rs`
+  - `crates/oasis7/src/bin/world_chain_runtime/transfer_submit_api.rs`
 - Edge Cases & Error Handling:
   - 链未启动/不可达：返回结构化失败并保留连接错误上下文。
   - 非法 payload：控制面返回 `invalid_request` 语义，UI 展示字段级错误提示。
@@ -88,9 +88,9 @@
 - Test Plan & Traceability:
   - PRD-WORLD_SIMULATOR-020 -> TASK-WORLD_SIMULATOR-046/047 -> `test_tier_required`。
   - 计划验证：
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher -- --nocapture`
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher transfer_entry::tests:: -- --nocapture`
-    - `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_web_launcher -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher transfer_entry::tests:: -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown`
 - Decision Log:
   - DEC-LAUNCHER-WEB-TRANSFER-001: 采用“wasm -> world_web_launcher -> world_chain_runtime”的代理链路，而不是 wasm 直连 `chain_status_bind`。理由：Web 端无法可靠复用 native TCP 直连模型，且控制面代理更符合已有架构。
   - DEC-LAUNCHER-WEB-TRANSFER-002: 保持 runtime 作为转账业务规则唯一来源，控制面不复制账本校验逻辑。理由：避免双份规则导致语义漂移。

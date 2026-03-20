@@ -6,7 +6,7 @@
 审计轮次: 5
 
 ## 1. Executive Summary
-- Problem Statement: `agent_world_client_launcher` Web 端在浏览器启动后触发 `time not implemented on this platform` panic，导致 egui wasm UI 初始化失败，无法完成启动/停止闭环。
+- Problem Statement: `oasis7_client_launcher` Web 端在浏览器启动后触发 `time not implemented on this platform` panic，导致 egui wasm UI 初始化失败，无法完成启动/停止闭环。
 - Proposed Solution: 为 launcher wasm 路径替换为 Web 兼容的计时实现，并将 agent-browser 闭环（open/snapshot/console/state）纳入验收，阻断同类回归。
 - Success Criteria:
   - SC-1: 浏览器打开 launcher Web 页面后不再出现 `time not implemented on this platform` 或 `RuntimeError: unreachable`。
@@ -39,8 +39,8 @@
 | Web 初始化稳定性 | `wasm startup`、`console error` | 页面加载后进入 launcher egui 主界面 | `boot -> interactive` | 初始化失败立即记录错误并阻断验收 | 测试/运维可见 |
 | agent-browser 证据 | `snapshot/console/screenshot/state` | 执行固定命令序列采集证据 | `running -> evidence_ready` | 证据目录固定 `output/playwright/` | 执行者可写 |
 - Acceptance Criteria:
-  - AC-1: `agent_world_client_launcher` wasm 路径使用 Web 兼容时间实现，不再调用不支持的平台时间 API。
-  - AC-2: `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown` 通过。
+  - AC-1: `oasis7_client_launcher` wasm 路径使用 Web 兼容时间实现，不再调用不支持的平台时间 API。
+  - AC-2: `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown` 通过。
   - AC-3: `agent-browser --headed` 打开 launcher 页面后，`console error` 中不包含 `time not implemented on this platform`。
   - AC-4: 闭环证据包含至少 1 份 snapshot、1 份 console、1 张 screenshot。
   - AC-5: `world_web_launcher` API（至少 `/api/state`）在闭环期间保持可用。
@@ -54,14 +54,14 @@
 
 ## 4. Technical Specifications
 - Architecture Overview:
-  - `agent_world_client_launcher` 在 `cfg(target_arch = "wasm32")` 路径使用 Web 兼容时间类型。
+  - `oasis7_client_launcher` 在 `cfg(target_arch = "wasm32")` 路径使用 Web 兼容时间类型。
   - `world_web_launcher` 保持 API 与静态托管职责；验证重点在 wasm UI 初始化与轮询稳定性。
   - agent-browser CLI 作为 Web 闭环执行器，输出标准证据。
 - Integration Points:
-  - `crates/agent_world_client_launcher/src/main.rs`
-  - `crates/agent_world_client_launcher/src/app_process_web.rs`
-  - `crates/agent_world_client_launcher/Cargo.toml`
-  - `crates/agent_world/src/bin/world_web_launcher.rs`
+  - `crates/oasis7_client_launcher/src/main.rs`
+  - `crates/oasis7_client_launcher/src/app_process_web.rs`
+  - `crates/oasis7_client_launcher/Cargo.toml`
+  - `crates/oasis7/src/bin/world_web_launcher.rs`
   - `testing-manual.md`
 - Edge Cases & Error Handling:
   - 浏览器平台不支持 `std` 时间 API：必须使用 Web 兼容计时实现，避免 panic。

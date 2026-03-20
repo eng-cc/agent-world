@@ -10,7 +10,7 @@
 - 在点击启动前提示必填配置项缺失或格式错误，避免启动流程在子进程阶段才失败。
 
 ## 2. User Experience & Functionality
-- 改造 `crates/agent_world_client_launcher` GUI：
+- 改造 `crates/oasis7_client_launcher` GUI：
   - 增加语言状态与切换控件（中文/English）。
   - 将主要可见文案（标题、字段、按钮、状态、提示）纳入双语渲染。
   - 新增“启动前校验”并在 UI 内展示错误列表。
@@ -30,7 +30,7 @@
 - 在 launcher 内引入 `UiLanguage`（`ZhCn`/`EnUs`）状态。
 - 提供界面语言切换控件，切换后立即影响当前帧文本渲染。
 - 默认语言策略：
-  - 优先读取 `AGENT_WORLD_CLIENT_LAUNCHER_LANG`（`zh`/`en`）。
+  - 优先读取 `OASIS7_CLIENT_LAUNCHER_LANG`（`zh`/`en`）。
   - 否则根据 `LANG` 推断。
   - 都无法判断时回落到中文。
 
