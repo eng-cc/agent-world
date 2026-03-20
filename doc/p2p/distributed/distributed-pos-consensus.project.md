@@ -11,9 +11,9 @@
 
 ## 依赖
 - doc/p2p/distributed/distributed-pos-consensus.prd.md
-- `crates/agent_world_consensus/src/quorum.rs`
-- `crates/agent_world_consensus/src/lib.rs`
-- `crates/agent_world_proto/src/distributed_consensus.rs`
+- `crates/oasis7_consensus/src/quorum.rs`
+- `crates/oasis7_consensus/src/lib.rs`
+- `crates/oasis7_proto/src/distributed_consensus.rs`
 
 ## 状态
 - 当前阶段：POS-3 完成，PoS head 共识特性已收口。

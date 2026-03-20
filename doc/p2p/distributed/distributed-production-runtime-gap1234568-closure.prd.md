@@ -22,7 +22,7 @@
 | --- | --- | --- | --- | --- | --- |
 | 专题迁移 | 需求/任务/依赖/状态/测试层级 | 逐篇重写并校验 | `draft -> active -> done` | 以原文约束点映射为主线 | 维护者写入，复核者抽检 |
 - Acceptance Criteria:
-  - AC-1: `crates/agent_world_node`
+  - AC-1: `crates/oasis7_node`
   - AC-2: `PosNodeEngine` 提交/执行强绑定（先执行后落账）。
   - AC-3: 自动投票策略重构：默认仅本节点投票。
   - AC-4: replication record/guard 升级到 writer epoch 语义。

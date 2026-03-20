@@ -20,9 +20,9 @@
 - `world-rule.md`
 - `doc/p2p/node/node-redeemable-power-asset.prd.md`
 - `doc/p2p/node/node-reward-settlement-native-transaction.prd.md`
-- `crates/agent_world/src/runtime/reward_asset.rs`
-- `crates/agent_world/src/runtime/state.rs`
-- `crates/agent_world/src/runtime/world/resources.rs`
+- `crates/oasis7/src/runtime/reward_asset.rs`
+- `crates/oasis7/src/runtime/state.rs`
+- `crates/oasis7/src/runtime/world/resources.rs`
 - `testing-manual.md`
 
 ## 状态

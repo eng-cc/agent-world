@@ -15,14 +15,14 @@
 - doc/p2p/token/mainchain-token-allocation-mechanism-phase2-governance-bridge-distribution-2026-02-26.prd.md
 - `doc/p2p/token/mainchain-token-allocation-mechanism.prd.md`
 - `doc/p2p/token/mainchain-token-allocation-mechanism.project.md`
-- `crates/agent_world/src/runtime/main_token.rs`
-- `crates/agent_world/src/runtime/events.rs`
-- `crates/agent_world/src/runtime/world/event_processing.rs`
-- `crates/agent_world/src/runtime/state.rs`
-- `crates/agent_world/src/runtime/state/apply_domain_event_main_token.rs`
-- `crates/agent_world/src/runtime/world/resources.rs`
-- `crates/agent_world/src/runtime/tests/main_token.rs`
-- `crates/agent_world/src/runtime/tests/reward_asset_settlement_action.rs`
+- `crates/oasis7/src/runtime/main_token.rs`
+- `crates/oasis7/src/runtime/events.rs`
+- `crates/oasis7/src/runtime/world/event_processing.rs`
+- `crates/oasis7/src/runtime/state.rs`
+- `crates/oasis7/src/runtime/state/apply_domain_event_main_token.rs`
+- `crates/oasis7/src/runtime/world/resources.rs`
+- `crates/oasis7/src/runtime/tests/main_token.rs`
+- `crates/oasis7/src/runtime/tests/reward_asset_settlement_action.rs`
 
 ## 状态
 - 当前阶段：T0~T4 全部完成。

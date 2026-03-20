@@ -4,16 +4,16 @@
 - 对应项目管理文档: `doc/p2p/distributed/distributed-hard-split-phase7.project.md`
 
 ## 1. 设计定位
-定义分布式能力从 `agent_world` 向 `agent_world_net / consensus / distfs / proto` 四个基础 crate 的彻底拆分方案，使 `agent_world` 仅保留世界内核与模拟层。
+定义分布式能力向 `oasis7_net / oasis7_consensus / oasis7_distfs / oasis7_proto` 四个基础 crate 的彻底拆分方案，使 `oasis7` 仅保留世界内核与模拟层。
 
 ## 2. 设计结构
 - crate 归位层：net/consensus/distfs/proto 承担分布式主线实现。
-- facade 收敛层：`agent_world` 移除分布式导出，只保留领域边界。
-- 协议迁移层：Viewer 协议迁入 `agent_world_proto`。
+- facade 收敛层：`oasis7` 移除分布式导出，只保留领域边界。
+- 协议迁移层：Viewer 协议迁入 `oasis7_proto`。
 - 工程治理层：WASM ABI 边界收敛与超长文件拆分并行推进。
 
 ## 3. 关键接口 / 入口
-- `agent_world_net` / `agent_world_consensus` / `agent_world_distfs` / `agent_world_proto`
+- `oasis7_net` / `oasis7_consensus` / `oasis7_distfs` / `oasis7_proto`
 - Viewer 协议模块
 - WASM ABI 类型来源
 - 超长文件拆分目标
