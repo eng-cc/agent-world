@@ -1,6 +1,6 @@
 #![allow(improper_ctypes_definitions)]
 
-use agent_world_wasm_sdk::{
+use oasis7_wasm_sdk::{
     export_wasm_module,
     wire::{
         decode_action, decode_input, empty_output, encode_output, ModuleCallInput,
@@ -223,7 +223,7 @@ fn write_bytes_to_memory(bytes: &[u8]) -> (i32, i32) {
     if len <= 0 {
         return (0, 0);
     }
-    let ptr = agent_world_wasm_sdk::default_alloc(len);
+    let ptr = oasis7_wasm_sdk::default_alloc(len);
     if ptr <= 0 {
         return (0, 0);
     }
@@ -253,7 +253,7 @@ impl WasmModuleLifecycle for BuiltinWasmModule {
     }
 
     fn alloc(&mut self, len: i32) -> i32 {
-        agent_world_wasm_sdk::default_alloc(len)
+        oasis7_wasm_sdk::default_alloc(len)
     }
 
     fn on_init(&mut self, _stage: LifecycleStage) {}
