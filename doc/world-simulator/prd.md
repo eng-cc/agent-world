@@ -205,6 +205,7 @@
   - SC-101: repo-owned wasm build / sync 脚本不再接受 `AGENT_WORLD_WASM_*` compat alias；deterministic wasm build、CI summary 与 builtin wasm manifest sync 的当前 operator 入口必须只认 `OASIS7_WASM_*`，避免脚本层继续保留旧品牌运行入口。
   - SC-102: repo-owned viewer capture / texture inspector / launcher bundle 脚本不再接受 `AGENT_WORLD_VIEWER_*` 与 `AGENT_WORLD_CHAIN_STORAGE_PROFILE` compat alias；Viewer 调试脚本与 bundle wrapper 当前 operator 入口必须只认 `OASIS7_VIEWER_*` / `OASIS7_CHAIN_STORAGE_PROFILE`，避免残留旧品牌脚本入口继续有效。
   - SC-103: repo-owned `tools/wasm_build_suite` library 不再接受 `AGENT_WORLD_WASM_*` compat alias；suite 的 manifest build / receipt / metadata 默认入口必须只认 `OASIS7_WASM_*`，避免工具库层继续保留旧品牌运行入口。
+  - SC-104: `world_openclaw_local_bridge` 不再接受旧 profile alias `agent_world_p0_low_freq_npc`；bridge 默认与校验入口必须只认 `oasis7_p0_low_freq_npc` 当前 profile，避免 OpenClaw 本地桥继续保留旧品牌 profile 入口。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -467,6 +468,7 @@
   - AC-106: `scripts/{build-wasm-module.sh,ci-m1-wasm-summary.sh,sync-m1-builtin-wasm-artifacts.sh}` 必须移除 `AGENT_WORLD_WASM_*` fallback 读取与旧品牌 operator 文案，使 wasm build/sync 脚本只认 `OASIS7_WASM_*` 当前入口；变更后 `bash -n` 校验这三支脚本、`./scripts/doc-governance-check.sh` 与 `git diff --check` 必须通过。
   - AC-107: `scripts/{capture-viewer-frame.sh,viewer-texture-inspector-lib.sh,viewer-texture-inspector.sh,build-game-launcher-bundle.sh}` 必须移除 `AGENT_WORLD_VIEWER_*` 与 `AGENT_WORLD_CHAIN_STORAGE_PROFILE` fallback 读取及相关旧品牌 operator 文案，使 Viewer 调试脚本与 bundle wrapper 只认 `OASIS7_VIEWER_*` / `OASIS7_CHAIN_STORAGE_PROFILE` 当前入口；变更后 `bash -n` 校验这四支脚本、`./scripts/doc-governance-check.sh` 与 `git diff --check` 必须通过。
   - AC-108: `tools/wasm_build_suite/src/lib.rs` 与相关测试必须移除 `AGENT_WORLD_WASM_*` fallback 读取，并把 compat 测试改为断言旧 alias 已失效；变更后 `cargo test --manifest-path tools/wasm_build_suite/Cargo.toml`、`./scripts/doc-governance-check.sh` 与 `git diff --check` 必须通过。
+  - AC-109: `crates/oasis7/src/bin/world_openclaw_local_bridge.rs` 与相关测试必须移除 `agent_world_p0_low_freq_npc` compat alias，使 profile 校验、provider diagnostics 与 bridge 默认入口只认 `oasis7_p0_low_freq_npc` 当前 profile；变更后 `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_openclaw_local_bridge -- --nocapture`、`./scripts/doc-governance-check.sh` 与 `git diff --check` 必须通过。
 - Non-Goals:
   - 不在本 PRD 中详细列出每个 UI 像素级规范。
   - 不替代 world-runtime/p2p 的底层协议设计。

@@ -16,7 +16,6 @@ pub const DEFAULT_OUT_DIR: &str = ".tmp/wasm-build-suite";
 pub const DEFAULT_CANONICALIZER_VERSION: &str = "strip-custom-sections-v1";
 pub const DEFAULT_CONTAINER_PLATFORM: &str = "linux-x86_64";
 const WASM_ENV_PREFIX: &str = "OASIS7_WASM_";
-const COMPAT_OLD_BRAND_WASM_ENV_PREFIX: &str = "AGENT_WORLD_WASM_";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BuildRequest {
@@ -539,14 +538,8 @@ fn wasm_env_key(suffix: &str) -> String {
     format!("{WASM_ENV_PREFIX}{suffix}")
 }
 
-fn compat_old_brand_wasm_env_key(suffix: &str) -> String {
-    format!("{COMPAT_OLD_BRAND_WASM_ENV_PREFIX}{suffix}")
-}
-
 fn wasm_env_value(suffix: &str) -> Option<String> {
-    env::var(wasm_env_key(suffix))
-        .ok()
-        .or_else(|| env::var(compat_old_brand_wasm_env_key(suffix)).ok())
+    env::var(wasm_env_key(suffix)).ok()
 }
 
 fn wasm_env_value_or_default(suffix: &str, default: &str) -> String {
@@ -978,13 +971,9 @@ mod tests {
     #[test]
     fn compile_time_guard_rejects_workspace_build_script_target() {
         let _guard = EnvVarGuard::capture(wasm_env_key("VALIDATE_WORKSPACE_COMPILETIME"));
-        let _compat_old_brand_guard = EnvVarGuard::capture(compat_old_brand_wasm_env_key(
-            "VALIDATE_WORKSPACE_COMPILETIME",
-        ));
+        let _old_brand_guard = EnvVarGuard::capture("AGENT_WORLD_WASM_VALIDATE_WORKSPACE_COMPILETIME");
         env::set_var(wasm_env_key("VALIDATE_WORKSPACE_COMPILETIME"), "1");
-        env::remove_var(compat_old_brand_wasm_env_key(
-            "VALIDATE_WORKSPACE_COMPILETIME",
-        ));
+        env::remove_var("AGENT_WORLD_WASM_VALIDATE_WORKSPACE_COMPILETIME");
 
         let metadata = CargoMetadata {
             workspace_root: "/workspace".to_string(),
@@ -1015,13 +1004,9 @@ mod tests {
     #[test]
     fn compile_time_guard_allows_external_proc_macro_package() {
         let _guard = EnvVarGuard::capture(wasm_env_key("VALIDATE_WORKSPACE_COMPILETIME"));
-        let _compat_old_brand_guard = EnvVarGuard::capture(compat_old_brand_wasm_env_key(
-            "VALIDATE_WORKSPACE_COMPILETIME",
-        ));
+        let _old_brand_guard = EnvVarGuard::capture("AGENT_WORLD_WASM_VALIDATE_WORKSPACE_COMPILETIME");
         env::set_var(wasm_env_key("VALIDATE_WORKSPACE_COMPILETIME"), "1");
-        env::remove_var(compat_old_brand_wasm_env_key(
-            "VALIDATE_WORKSPACE_COMPILETIME",
-        ));
+        env::remove_var("AGENT_WORLD_WASM_VALIDATE_WORKSPACE_COMPILETIME");
 
         let metadata = CargoMetadata {
             workspace_root: "/workspace".to_string(),
@@ -1112,27 +1097,23 @@ mod tests {
     #[test]
     fn wasm_env_value_or_default_prefers_oasis7_prefix() {
         let _primary = EnvVarGuard::capture(wasm_env_key("BUILD_STD"));
-        let _compat_old_brand = EnvVarGuard::capture(compat_old_brand_wasm_env_key("BUILD_STD"));
+        let _old_brand = EnvVarGuard::capture("AGENT_WORLD_WASM_BUILD_STD");
         env::set_var(wasm_env_key("BUILD_STD"), "1");
-        env::set_var(compat_old_brand_wasm_env_key("BUILD_STD"), "0");
+        env::set_var("AGENT_WORLD_WASM_BUILD_STD", "0");
 
         assert_eq!(wasm_env_value_or_default("BUILD_STD", "missing"), "1");
     }
 
     #[test]
-    fn wasm_env_value_or_default_falls_back_to_compat_old_brand_prefix() {
+    fn wasm_env_value_or_default_ignores_old_brand_prefix() {
         let _primary = EnvVarGuard::capture(wasm_env_key("BUILD_STD_COMPONENTS"));
-        let _compat_old_brand =
-            EnvVarGuard::capture(compat_old_brand_wasm_env_key("BUILD_STD_COMPONENTS"));
+        let _old_brand = EnvVarGuard::capture("AGENT_WORLD_WASM_BUILD_STD_COMPONENTS");
         env::remove_var(wasm_env_key("BUILD_STD_COMPONENTS"));
-        env::set_var(
-            compat_old_brand_wasm_env_key("BUILD_STD_COMPONENTS"),
-            "std,panic_abort",
-        );
+        env::set_var("AGENT_WORLD_WASM_BUILD_STD_COMPONENTS", "std,panic_abort");
 
         assert_eq!(
             wasm_env_value_or_default("BUILD_STD_COMPONENTS", "missing"),
-            "std,panic_abort"
+            "missing"
         );
     }
 }
