@@ -13,9 +13,9 @@
 
 ## 依赖
 - doc/world-simulator/viewer/viewer-commercial-release-phase1-asset-pipeline.prd.md
-- `crates/agent_world_viewer/src/viewer_3d_config.rs`
-- `crates/agent_world_viewer/src/viewer_3d_config_profile_tests.rs`
-- `crates/agent_world_viewer/src/main.rs`
+- `crates/oasis7_viewer/src/viewer_3d_config.rs`
+- `crates/oasis7_viewer/src/viewer_3d_config_profile_tests.rs`
+- `crates/oasis7_viewer/src/main.rs`
 - `doc/world-simulator/viewer/viewer-manual.md`
 
 ## 状态

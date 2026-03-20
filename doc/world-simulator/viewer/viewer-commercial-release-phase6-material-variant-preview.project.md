@@ -12,9 +12,9 @@
 
 ## 依赖
 - doc/world-simulator/viewer/viewer-commercial-release-phase6-material-variant-preview.prd.md
-- `crates/agent_world_viewer/src/main.rs`
-- `crates/agent_world_viewer/src/app_bootstrap.rs`
-- `crates/agent_world_viewer/src/tests.rs`
+- `crates/oasis7_viewer/src/main.rs`
+- `crates/oasis7_viewer/src/app_bootstrap.rs`
+- `crates/oasis7_viewer/src/tests.rs`
 - `doc/world-simulator/viewer/viewer-manual.md`
 
 ## 状态

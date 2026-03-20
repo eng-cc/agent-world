@@ -13,7 +13,7 @@
 ## 2. User Experience & Functionality
 
 ### In Scope
-- 新增 `agent_world_viewer` 资产目录下的工业风主题包（`industrial_v1`）：
+- 新增 `oasis7_viewer` 资产目录下的工业风主题包（`industrial_v1`）：
   - 四类实体外部 mesh：`agent/location/asset/power_plant`。
   - 五类实体 PBR 贴图：`base/normal/metallic_roughness/emissive`。
 - 新增主题预设环境变量文件，统一管理外部 mesh/贴图映射。
@@ -32,13 +32,13 @@
 
 ## 4. Technical Specifications
 - 资产目录（计划）：
-  - `crates/agent_world_viewer/assets/themes/industrial_v1/meshes/*.gltf|*.bin`
-  - `crates/agent_world_viewer/assets/themes/industrial_v1/textures/*.png`
-  - `crates/agent_world_viewer/assets/themes/industrial_v1/presets/*.env`
+  - `crates/oasis7_viewer/assets/themes/industrial_v1/meshes/*.gltf|*.bin`
+  - `crates/oasis7_viewer/assets/themes/industrial_v1/textures/*.png`
+  - `crates/oasis7_viewer/assets/themes/industrial_v1/presets/*.env`
 - 主题预设入口（脚本 `source` 后生效）：
-  - `AGENT_WORLD_VIEWER_*_MESH_ASSET`
-  - `AGENT_WORLD_VIEWER_*_{BASE,NORMAL,METALLIC_ROUGHNESS,EMISSIVE}_TEXTURE_ASSET`
-  - `AGENT_WORLD_VIEWER_MATERIAL_VARIANT_PRESET`
+  - `OASIS7_VIEWER_*_MESH_ASSET`
+  - `OASIS7_VIEWER_*_{BASE,NORMAL,METALLIC_ROUGHNESS,EMISSIVE}_TEXTURE_ASSET`
+  - `OASIS7_VIEWER_MATERIAL_VARIANT_PRESET`
 - 批量预览脚本（计划）：
   - `scripts/viewer-theme-pack-preview.sh`
   - 输出目录：`output/theme_preview/<timestamp>/<variant>/`

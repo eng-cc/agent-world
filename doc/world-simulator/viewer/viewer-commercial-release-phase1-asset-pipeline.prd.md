@@ -6,7 +6,7 @@
 审计轮次: 5
 
 ## 1. Executive Summary
-- 为 `agent_world_viewer` 建立“可渐进替换”的外部资产接入底座，让当前程序化几何可以被 GLTF/GLB mesh 逐步替换。
+- 为 `oasis7_viewer` 建立“可渐进替换”的外部资产接入底座，让当前程序化几何可以被 GLTF/GLB mesh 逐步替换。
 - 在不破坏现有场景与测试稳定性的前提下，新增统一配置入口与兜底路径（外部资产缺失时仍回退内置基础几何）。
 - 为后续商业化迭代（真实模型、动画、VFX、镜头语言）提供可复用的最小资产管线入口。
 
@@ -16,7 +16,7 @@
 - 在 `Viewer3dConfig` 增加外部 mesh 覆盖配置（按实体类别覆盖）。
 - 新增环境变量入口，支持在运行时指定外部 mesh 资源路径。
 - 启动场景时优先使用外部 mesh，缺省回退到现有程序化几何。
-- 补齐 `agent_world_viewer` 配置解析与回归测试。
+- 补齐 `oasis7_viewer` 配置解析与回归测试。
 - 更新 `doc/world-simulator/viewer/viewer-manual.md` 的资产管线使用说明。
 
 ### Out of Scope
@@ -30,11 +30,11 @@
 ## 4. Technical Specifications
 - 新增配置分组：`ViewerAssetExternalMeshConfig`。
 - 计划新增环境变量：
-  - `AGENT_WORLD_VIEWER_AGENT_MESH_ASSET`
-  - `AGENT_WORLD_VIEWER_LOCATION_MESH_ASSET`
-  - `AGENT_WORLD_VIEWER_ASSET_MESH_ASSET`
-  - `AGENT_WORLD_VIEWER_POWER_PLANT_MESH_ASSET`
-  - `AGENT_WORLD_VIEWER_POWER_STORAGE_MESH_ASSET`
+  - `OASIS7_VIEWER_AGENT_MESH_ASSET`
+  - `OASIS7_VIEWER_LOCATION_MESH_ASSET`
+  - `OASIS7_VIEWER_ASSET_MESH_ASSET`
+  - `OASIS7_VIEWER_POWER_PLANT_MESH_ASSET`
+  - `OASIS7_VIEWER_POWER_STORAGE_MESH_ASSET`
 - 值语义：`<asset_path>#<sub_asset_label>`（例如 `models/agent.glb#Mesh0/Primitive0`）。
 - 运行时策略：
   - 有配置：走 `AssetServer` 加载外部 mesh。

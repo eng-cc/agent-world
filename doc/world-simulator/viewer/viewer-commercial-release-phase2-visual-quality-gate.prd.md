@@ -14,7 +14,7 @@
 
 ### In Scope
 - 新增 `viewer` 视觉基线脚本（基于现有 snapshot 测试与基线文件完整性检查）。
-- 将 `agent_world_viewer` 的单测与 wasm check 纳入 `scripts/ci-tests.sh`。
+- 将 `oasis7_viewer` 的单测与 wasm check 纳入 `scripts/ci-tests.sh`。
 - 在 GitHub Actions 主流程中接入视觉基线脚本（required gate）。
 - 更新测试手册与相关文档状态。
 
@@ -29,9 +29,9 @@
 ## 4. Technical Specifications
 - 新增脚本：`scripts/viewer-visual-baseline.sh`
   - 校验 snapshot 基线文件存在性。
-  - 执行 `cargo test -p agent_world_viewer egui_kittest_snapshot_`。
+  - 执行 `cargo test -p oasis7_viewer egui_kittest_snapshot_`。
 - `scripts/ci-tests.sh` 扩展：
-  - `required/full` 都执行 `agent_world_viewer` 单测与 wasm check。
+  - `required/full` 都执行 `oasis7_viewer` 单测与 wasm check。
 - `.github/workflows/rust.yml` 扩展：
   - `required-gate` job 调用视觉基线脚本。
 

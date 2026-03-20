@@ -20,10 +20,10 @@
 - `scripts/validate-viewer-theme-pack.py`
 - `scripts/viewer-texture-inspector.sh`
 - `scripts/viewer-release-full-coverage.sh`
-- `crates/agent_world_viewer/src/main_ui_runtime.rs`
-- `crates/agent_world_viewer/src/theme_runtime.rs`
-- `crates/agent_world_viewer/src/viewer_3d_config.rs`
-- `crates/agent_world_viewer/src/egui_right_panel.rs`
+- `crates/oasis7_viewer/src/main_ui_runtime.rs`
+- `crates/oasis7_viewer/src/theme_runtime.rs`
+- `crates/oasis7_viewer/src/viewer_3d_config.rs`
+- `crates/oasis7_viewer/src/egui_right_panel.rs`
 - `testing-manual.md`
 
 ## 状态

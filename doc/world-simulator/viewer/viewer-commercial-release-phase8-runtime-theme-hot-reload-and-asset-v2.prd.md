@@ -30,13 +30,13 @@
 ## 4. Technical Specifications
 - 新增运行时状态资源：`ThemeRuntimeState`（预设、路径、热重载状态、应用状态）。
 - 新增预设约定环境变量（用于 preset 文件解析）：
-  - `AGENT_WORLD_VIEWER_*_MESH_ASSET`
-  - `AGENT_WORLD_VIEWER_*_{BASE,NORMAL,METALLIC_ROUGHNESS,EMISSIVE}_TEXTURE_ASSET`
-  - `AGENT_WORLD_VIEWER_MATERIAL_VARIANT_PRESET`
+  - `OASIS7_VIEWER_*_MESH_ASSET`
+  - `OASIS7_VIEWER_*_{BASE,NORMAL,METALLIC_ROUGHNESS,EMISSIVE}_TEXTURE_ASSET`
+  - `OASIS7_VIEWER_MATERIAL_VARIANT_PRESET`
 - 新增主题资产目录：
-  - `crates/agent_world_viewer/assets/themes/industrial_v2/meshes/*.gltf|*.bin`
-  - `crates/agent_world_viewer/assets/themes/industrial_v2/textures/*.png`
-  - `crates/agent_world_viewer/assets/themes/industrial_v2/presets/*.env`
+  - `crates/oasis7_viewer/assets/themes/industrial_v2/meshes/*.gltf|*.bin`
+  - `crates/oasis7_viewer/assets/themes/industrial_v2/textures/*.png`
+  - `crates/oasis7_viewer/assets/themes/industrial_v2/presets/*.env`
 - 新增资产校验入口：
   - `scripts/validate-viewer-theme-pack.py`
 

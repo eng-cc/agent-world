@@ -14,7 +14,7 @@
 
 ## 依赖
 - doc/world-simulator/viewer/viewer-commercial-release-phase7-theme-pack-batch-preview.prd.md
-- `crates/agent_world_viewer/assets/`
+- `crates/oasis7_viewer/assets/`
 - `scripts/capture-viewer-frame.sh`
 - `doc/world-simulator/viewer/viewer-manual.md`
 - `testing-manual.md`

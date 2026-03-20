@@ -15,9 +15,9 @@
 
 ## 依赖
 - doc/world-simulator/viewer/viewer-commercial-release-phase8-runtime-theme-hot-reload-and-asset-v2.prd.md
-- `crates/agent_world_viewer/src/app_bootstrap.rs`
-- `crates/agent_world_viewer/src/egui_right_panel.rs`
-- `crates/agent_world_viewer/src/main.rs`
+- `crates/oasis7_viewer/src/app_bootstrap.rs`
+- `crates/oasis7_viewer/src/egui_right_panel.rs`
+- `crates/oasis7_viewer/src/main.rs`
 - `scripts/generate-viewer-industrial-theme-assets.py`
 - `doc/world-simulator/viewer/viewer-manual.md`
 
