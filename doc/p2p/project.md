@@ -114,6 +114,29 @@
     - `rg -n "oasis7_(consensus|node|net|distfs|proto|viewer)|cargo (test|check) -p oasis7" doc/p2p/consensus/consensus-code-consolidation-to-agent-world-consensus.* doc/p2p/network/net-runtime-bridge-closure.* doc/p2p/network/p2p-mobile-light-client-authoritative-state-2026-03-06.project.md doc/p2p/network/readme-p1-network-production-hardening.*`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
+- [x] TASK-P2P-021 (PRD-P2P-005/006/007) [test_tier_required]: 收口 `observer` 主从专题与 `node-pos-*` 活跃文档中仍把旧 `agent_world_net` / `agent_world_node` / `agent_world_client_launcher` crate/path 写成当前实现载体的口径，统一到 `oasis7*`。
+  - 产物文件:
+    - `doc/p2p/observer/observer-sync-mode-metrics-runtime-bridge.prd.md`
+    - `doc/p2p/observer/observer-sync-mode-metrics-runtime-bridge.project.md`
+    - `doc/p2p/observer/observer-sync-mode-runtime-metrics.prd.md`
+    - `doc/p2p/observer/observer-sync-mode-runtime-metrics.project.md`
+    - `doc/p2p/observer/observer-sync-mode-observability.prd.md`
+    - `doc/p2p/observer/observer-sync-mode-observability.project.md`
+    - `doc/p2p/observer/observer-sync-source-dht-mode.prd.md`
+    - `doc/p2p/observer/observer-sync-source-dht-mode.project.md`
+    - `doc/p2p/observer/observer-sync-source-mode.prd.md`
+    - `doc/p2p/observer/observer-sync-source-mode.project.md`
+    - `doc/p2p/node/node-pos-slot-clock-real-time-2026-03-07.prd.md`
+    - `doc/p2p/node/node-pos-slot-clock-real-time-2026-03-07.project.md`
+    - `doc/p2p/node/node-pos-subslot-tick-pacing-2026-03-07.prd.md`
+    - `doc/p2p/node/node-pos-subslot-tick-pacing-2026-03-07.project.md`
+    - `doc/p2p/node/node-pos-time-anchor-control-plane-alignment-2026-03-07.prd.md`
+    - `doc/p2p/node/node-pos-time-anchor-control-plane-alignment-2026-03-07.project.md`
+    - `doc/p2p/project.md`
+  - 验收命令 (`test_tier_required`):
+    - `rg -n "oasis7_(net|node|client_launcher|launcher_ui)|crates/oasis7/" doc/p2p/observer/*.prd.md doc/p2p/observer/*.project.md doc/p2p/node/node-pos-slot-clock-real-time-2026-03-07.* doc/p2p/node/node-pos-subslot-tick-pacing-2026-03-07.* doc/p2p/node/node-pos-time-anchor-control-plane-alignment-2026-03-07.*`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
 
 ## 依赖
 - 模块设计总览：`doc/p2p/design.md`
@@ -142,6 +165,7 @@
 - 更新日期: 2026-03-20
 - 当前状态: completed（ROUND-012）
 - 下一任务: 无（等待新需求）
+- 最新完成: `TASK-P2P-021`（已完成 `observer` 主从专题与 `node-pos-*` 活跃文档中旧 crate/path 当前真值口径的 `oasis7*` 收口。）
 - 最新完成: `TASK-P2P-020`（已完成 `consensus/network` 活跃专题中旧 `agent_world*` crate/path/command 当前真值口径的 `oasis7*` 收口。）
 - 最新完成: `TASK-P2P-018~019`（已完成 `doc/p2p/**` 历史专题首行标题的 title-only cleanup，并收口主 `prd/project` 中仍把旧 `agent_world*` crate/path/command 写成当前控制面与验收真值的口径。）
 - 最新完成: `TASK-P2P-017`（p2p 模块 README / PRD 索引入口同步）。

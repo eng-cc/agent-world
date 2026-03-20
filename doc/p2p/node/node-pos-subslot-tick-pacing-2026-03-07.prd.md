@@ -61,11 +61,11 @@
 - Integration Points:
   - `doc/p2p/node/node-pos-slot-clock-real-time-2026-03-07.prd.md`
   - `doc/p2p/node/node-pos-subslot-tick-pacing-2026-03-07.project.md`
-  - `crates/agent_world_node/src/types.rs`
-  - `crates/agent_world_node/src/lib.rs`
-  - `crates/agent_world_node/src/lib_impl_part1.rs`
-  - `crates/agent_world_node/src/pos_state_store.rs`
-  - `crates/agent_world_node/src/runtime_util.rs`
+  - `crates/oasis7_node/src/types.rs`
+  - `crates/oasis7_node/src/lib.rs`
+  - `crates/oasis7_node/src/lib_impl_part1.rs`
+  - `crates/oasis7_node/src/pos_state_store.rs`
+  - `crates/oasis7_node/src/runtime_util.rs`
   - `testing-manual.md`
 - Edge Cases & Error Handling:
   - `ticks_per_slot == 0`：配置阶段拒绝。

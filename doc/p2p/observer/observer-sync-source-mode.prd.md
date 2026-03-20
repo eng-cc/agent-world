@@ -20,7 +20,7 @@
 ## 2. User Experience & Functionality
 - User Personas: 协议维护者、任务执行者、质量复核者。
 - User Scenarios & Frequency: 每次专题改动前后执行需求核对、测试回归与状态回写。
-- User Stories: As a 维护者, I want Agent World Runtime：Observer 同步源策略化 的需求结构化, so that implementation is auditable.
+- User Stories: As a 维护者, I want oasis7 Runtime：Observer 同步源策略化 的需求结构化, so that implementation is auditable.
 - Critical User Flows: `阅读旧文档 -> 重写为 strict PRD -> 回写项目文档 -> 校验提交`。
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 动作行为 | 状态转换 | 计算规则 | 权限逻辑 |
@@ -68,7 +68,7 @@
 - Phased Rollout:
   - OSSM-1：设计文档与项目管理文档落地。
   - OSSM-2：策略枚举与 `ObserverClient` 模式化接口实现。
-  - OSSM-3：补齐测试并完成 `agent_world_net` 回归。
+  - OSSM-3：补齐测试并完成 `oasis7_net` 回归。
   - OSSM-4：状态文档与 devlog 收口。
 - Technical Risks:
   - 模式过多可能引入调用歧义，需保持命名清晰。

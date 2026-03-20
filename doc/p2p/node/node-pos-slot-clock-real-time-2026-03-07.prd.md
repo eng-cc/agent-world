@@ -6,7 +6,7 @@
 审计轮次: 1
 
 ## 1. Executive Summary
-- Problem Statement: 当前 `agent_world_node` 以本地循环推进 `next_slot`，slot 语义与 wall-clock 脱钩，重启、卡顿或循环频率变化会导致时间语义漂移。
+- Problem Statement: 当前 `oasis7_node` 以本地循环推进 `next_slot`，slot 语义与 wall-clock 脱钩，重启、卡顿或循环频率变化会导致时间语义漂移。
 - Proposed Solution: 在 PoS 引擎引入统一时钟模型，按 `genesis + slot_duration` 公式计算当前 slot，允许漏槽但禁止槽位倒退，并补齐入站时间窗口校验与可观测指标。
 - Success Criteria:
   - SC-1: 同一 `now_ms/genesis/slot_duration_ms` 输入在多节点上计算出相同 `slot/epoch`。
@@ -58,14 +58,14 @@
 - Evaluation Strategy: 不适用。
 
 ## 4. Technical Specifications
-- Architecture Overview: 在 `agent_world_node::PosNodeEngine` 增加 wall-clock slot 观察与游标对齐逻辑；`slot/epoch` 来源统一为时间函数，`next_slot` 仅作为下一个可提案槽游标。
+- Architecture Overview: 在 `oasis7_node::PosNodeEngine` 增加 wall-clock slot 观察与游标对齐逻辑；`slot/epoch` 来源统一为时间函数，`next_slot` 仅作为下一个可提案槽游标。
 - Integration Points:
   - `doc/p2p/node/node-pos-slot-clock-real-time-2026-03-07.project.md`
-  - `crates/agent_world_node/src/types.rs`
-  - `crates/agent_world_node/src/lib.rs`
-  - `crates/agent_world_node/src/lib_impl_part1.rs`
-  - `crates/agent_world_node/src/lib_impl_part2.rs`
-  - `crates/agent_world_node/src/pos_state_store.rs`
+  - `crates/oasis7_node/src/types.rs`
+  - `crates/oasis7_node/src/lib.rs`
+  - `crates/oasis7_node/src/lib_impl_part1.rs`
+  - `crates/oasis7_node/src/lib_impl_part2.rs`
+  - `crates/oasis7_node/src/pos_state_store.rs`
   - `testing-manual.md`
 - Edge Cases & Error Handling:
   - `slot_duration_ms == 0`：配置阶段拒绝。
@@ -95,7 +95,7 @@
 - Test Plan & Traceability:
 | PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |
 | --- | --- | --- | --- | --- |
-| PRD-P2P-NODE-CLOCK-001 | TASK-P2P-008-T1 | `test_tier_required` | 单元测试：wall-clock slot 计算、漏槽对齐、单调性 | `agent_world_node` 共识主循环 |
+| PRD-P2P-NODE-CLOCK-001 | TASK-P2P-008-T1 | `test_tier_required` | 单元测试：wall-clock slot 计算、漏槽对齐、单调性 | `oasis7_node` 共识主循环 |
 | PRD-P2P-NODE-CLOCK-002 | TASK-P2P-008-T2 | `test_tier_required` | 状态快照与重启恢复测试 | 快照持久化与观测接口 |
 | PRD-P2P-NODE-CLOCK-003 | TASK-P2P-008-T2/T3 | `test_tier_required` + `test_tier_full` | 跨节点 proposal/attestation 时间窗口拒绝回归 | gossip/network 入站处理链路 |
 - Decision Log:

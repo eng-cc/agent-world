@@ -10,14 +10,14 @@
 ## 任务拆解（含 PRD-ID 映射）
 - [x] OSMB-1 (PRD-P2P-MIG-106)：设计文档与项目管理文档落地。
 - [x] OSMB-2 (PRD-P2P-MIG-106)：实现桥接接口与导出。
-- [x] OSMB-3 (PRD-P2P-MIG-106)：补齐桥接接口测试并完成 `agent_world_net` 回归。
+- [x] OSMB-3 (PRD-P2P-MIG-106)：补齐桥接接口测试并完成 `oasis7_net` 回归。
 - [x] OSMB-4 (PRD-P2P-MIG-106)：回写状态文档与 devlog。
 
 ## 依赖
 - doc/p2p/observer/observer-sync-mode-metrics-runtime-bridge.prd.md
-- `crates/agent_world_net/src/observer.rs`
-- `crates/agent_world_net/src/observer_metrics.rs`
-- `crates/agent_world_net/src/lib.rs`
+- `crates/oasis7_net/src/observer.rs`
+- `crates/oasis7_net/src/observer_metrics.rs`
+- `crates/oasis7_net/src/lib.rs`
 - `doc/p2p/observer/observer-sync-mode-runtime-metrics.prd.md`
 
 ## 状态

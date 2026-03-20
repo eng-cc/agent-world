@@ -66,7 +66,7 @@
 - Phased Rollout:
   - OSMB-1：设计文档与项目管理文档落地。
   - OSMB-2：实现桥接接口与导出。
-  - OSMB-3：补齐桥接接口测试并完成 `agent_world_net` 回归。
+  - OSMB-3：补齐桥接接口测试并完成 `oasis7_net` 回归。
   - OSMB-4：回写状态文档与 devlog 收口。
 - Technical Risks:
   - 桥接接口命名过长或语义不清，可能造成调用方误选；需保持“observed + record/metrics”可辨识。
