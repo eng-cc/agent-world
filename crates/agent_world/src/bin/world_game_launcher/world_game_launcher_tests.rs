@@ -7,13 +7,14 @@ use super::{
     build_game_url, build_viewer_auth_bootstrap_script, build_world_chain_runtime_args,
     content_type_for_path, parse_host_port, parse_options, resolve_static_asset_path,
     resolve_viewer_auth_bootstrap_from_path, resolve_viewer_static_dir_with_override,
-    sanitize_index_html_for_embedded_server, sanitize_relative_request_path, CliOptions,
-    ViewerAuthBootstrap, BUILTIN_LLM_PROVIDER_MODE, DEFAULT_CHAIN_NODE_ID,
-    DEFAULT_CHAIN_STATUS_BIND, DEFAULT_LIVE_BIND, DEFAULT_OPENCLAW_AGENT_PROFILE, DEFAULT_SCENARIO,
-    DEFAULT_VIEWER_STATIC_DIR, GAME_STATIC_DIR_ENV, LEGACY_VIEWER_AUTH_BOOTSTRAP_OBJECT,
-    LEGACY_VIEWER_AUTH_PRIVATE_KEY_ENV, LEGACY_VIEWER_AUTH_PUBLIC_KEY_ENV,
-    LEGACY_VIEWER_PLAYER_ID_ENV, OPENCLAW_LOCAL_HTTP_PROVIDER_MODE, VIEWER_AUTH_BOOTSTRAP_OBJECT,
-    VIEWER_AUTH_PRIVATE_KEY_ENV, VIEWER_AUTH_PUBLIC_KEY_ENV, VIEWER_PLAYER_ID_ENV,
+    sanitize_index_html_for_embedded_server, sanitize_relative_request_path,
+    viewer_dev_dist_candidates, CliOptions, ViewerAuthBootstrap, BUILTIN_LLM_PROVIDER_MODE,
+    DEFAULT_CHAIN_NODE_ID, DEFAULT_CHAIN_STATUS_BIND, DEFAULT_LIVE_BIND,
+    DEFAULT_OPENCLAW_AGENT_PROFILE, DEFAULT_SCENARIO, DEFAULT_VIEWER_STATIC_DIR,
+    GAME_STATIC_DIR_ENV, LEGACY_VIEWER_AUTH_BOOTSTRAP_OBJECT, LEGACY_VIEWER_AUTH_PRIVATE_KEY_ENV,
+    LEGACY_VIEWER_AUTH_PUBLIC_KEY_ENV, LEGACY_VIEWER_PLAYER_ID_ENV,
+    OPENCLAW_LOCAL_HTTP_PROVIDER_MODE, VIEWER_AUTH_BOOTSTRAP_OBJECT, VIEWER_AUTH_PRIVATE_KEY_ENV,
+    VIEWER_AUTH_PUBLIC_KEY_ENV, VIEWER_PLAYER_ID_ENV,
 };
 use agent_world::simulator::ProviderExecutionMode;
 use agent_world_proto::storage_profile::StorageProfile;
@@ -143,10 +144,7 @@ fn parse_options_accepts_overrides() {
     assert_eq!(options.openclaw_base_url, "http://127.0.0.1:5841");
     assert_eq!(options.openclaw_auth_token, "secret-token");
     assert_eq!(options.openclaw_connect_timeout_ms, 3000);
-    assert_eq!(
-        options.openclaw_agent_profile,
-        "oasis7_p0_low_freq_npc"
-    );
+    assert_eq!(options.openclaw_agent_profile, "oasis7_p0_low_freq_npc");
     assert_eq!(
         options.openclaw_execution_mode,
         ProviderExecutionMode::PlayerParity
@@ -522,6 +520,20 @@ fn resolve_viewer_static_dir_with_override_rejects_missing_env_dir() {
 
     assert!(err.contains(GAME_STATIC_DIR_ENV));
     assert!(err.contains("not found"));
+}
+
+#[test]
+fn viewer_dev_dist_candidates_prefer_oasis7_name_before_legacy_name() {
+    let repo_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
+    let candidates = viewer_dev_dist_candidates();
+
+    assert_eq!(
+        candidates,
+        vec![
+            repo_root.join("oasis7_viewer").join("dist"),
+            repo_root.join("agent_world_viewer").join("dist"),
+        ]
+    );
 }
 
 fn make_temp_dir(label: &str) -> PathBuf {

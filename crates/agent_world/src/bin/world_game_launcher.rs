@@ -1375,17 +1375,26 @@ fn resolve_viewer_static_dir_with_override(
         return Ok(dir);
     }
 
-    let dev_fallback = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("..")
-        .join("agent_world_viewer")
-        .join("dist");
-    if raw == DEFAULT_VIEWER_STATIC_DIR && dev_fallback.is_dir() {
-        return Ok(dev_fallback);
+    if raw == DEFAULT_VIEWER_STATIC_DIR {
+        if let Some(dev_fallback) = viewer_dev_dist_candidates()
+            .into_iter()
+            .find(|candidate| candidate.is_dir())
+        {
+            return Ok(dev_fallback);
+        }
     }
 
     Err(format!(
         "viewer static dir not found: `{raw}`; provide --viewer-static-dir <path> (expected trunk build output)"
     ))
+}
+
+fn viewer_dev_dist_candidates() -> Vec<PathBuf> {
+    let repo_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
+    vec![
+        repo_root.join("oasis7_viewer").join("dist"),
+        repo_root.join("agent_world_viewer").join("dist"),
+    ]
 }
 
 fn resolve_viewer_static_dir_candidate(raw: &str) -> Option<PathBuf> {

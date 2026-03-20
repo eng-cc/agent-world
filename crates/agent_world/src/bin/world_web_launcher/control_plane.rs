@@ -1,3 +1,4 @@
+use super::runtime_paths::viewer_dev_dist_candidates;
 use super::*;
 
 use agent_world_proto::storage_profile::StorageProfile;
@@ -882,12 +883,13 @@ fn resolve_viewer_static_dir_for_launcher(
         return Some(dir);
     }
 
-    let dev_fallback = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("..")
-        .join("agent_world_viewer")
-        .join("dist");
-    if raw == DEFAULT_VIEWER_STATIC_DIR && dev_fallback.is_dir() {
-        return Some(dev_fallback);
+    if raw == DEFAULT_VIEWER_STATIC_DIR {
+        if let Some(dev_fallback) = viewer_dev_dist_candidates()
+            .into_iter()
+            .find(|candidate| candidate.is_dir())
+        {
+            return Some(dev_fallback);
+        }
     }
 
     None

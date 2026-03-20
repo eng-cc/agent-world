@@ -58,15 +58,18 @@ pub(super) fn resolve_static_dir_path(default_viewer_static_dir: &str) -> PathBu
             candidates.push(bin_dir.join("..").join("..").join("web"));
         }
     }
-    candidates.push(
-        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("..")
-            .join("agent_world_viewer")
-            .join("dist"),
-    );
+    candidates.extend(viewer_dev_dist_candidates());
     candidates.push(PathBuf::from(default_viewer_static_dir));
 
     first_existing_dir(candidates).unwrap_or_else(|| PathBuf::from(default_viewer_static_dir))
+}
+
+pub(super) fn viewer_dev_dist_candidates() -> Vec<PathBuf> {
+    let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
+    vec![
+        repo_root.join("oasis7_viewer").join("dist"),
+        repo_root.join("agent_world_viewer").join("dist"),
+    ]
 }
 
 pub(super) fn resolve_console_static_dir_path() -> PathBuf {
@@ -128,7 +131,9 @@ fn resolve_non_empty_override_values(
 
 #[cfg(test)]
 mod tests {
-    use super::{first_existing_dir, resolve_non_empty_override_values};
+    use super::{
+        first_existing_dir, resolve_non_empty_override_values, viewer_dev_dist_candidates,
+    };
     use std::env;
     use std::fs;
     use std::path::PathBuf;
@@ -164,6 +169,20 @@ mod tests {
     fn resolve_non_empty_override_values_falls_back_to_legacy_value() {
         let resolved = resolve_non_empty_override_values(Some("  "), Some(" legacy "));
         assert_eq!(resolved.as_deref(), Some("legacy"));
+    }
+
+    #[test]
+    fn viewer_dev_dist_candidates_prefer_oasis7_name_before_legacy_name() {
+        let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
+        let candidates = viewer_dev_dist_candidates();
+
+        assert_eq!(
+            candidates,
+            vec![
+                repo_root.join("oasis7_viewer").join("dist"),
+                repo_root.join("agent_world_viewer").join("dist"),
+            ]
+        );
     }
 
     fn make_temp_path(label: &str) -> PathBuf {

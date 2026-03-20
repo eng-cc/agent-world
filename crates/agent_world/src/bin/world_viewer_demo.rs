@@ -74,7 +74,7 @@ fn main() {
     println!("actions: {}", summary.actions);
     println!("events: {}", summary.events);
     println!("output_dir: {}", out_dir);
-    println!("next: run world_viewer_server and agent_world_viewer to connect");
+    println!("next: run world_viewer_server and oasis7 Viewer to connect");
 }
 
 fn print_help() {

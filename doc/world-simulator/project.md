@@ -541,6 +541,21 @@
     - `env -u RUSTC_WRAPPER cargo test -p agent_world derive_node_consensus_signer_keypair_is_deterministic_for_oasis7_namespace -- --nocapture`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
+- [x] TASK-WORLD_SIMULATOR-189 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 `world_game_launcher` / `world_web_launcher` 的 viewer 开发态 fallback 路径优先切到 `oasis7_viewer/dist`，并保留旧 `agent_world_viewer/dist` 兼容回退，收口源码态 launcher 链路里残留的旧 viewer 目录命名。
+  - 产物文件:
+    - `doc/world-simulator/prd.md`
+    - `doc/world-simulator/project.md`
+    - `crates/agent_world/src/bin/world_game_launcher.rs`
+    - `crates/agent_world/src/bin/world_game_launcher/world_game_launcher_tests.rs`
+    - `crates/agent_world/src/bin/world_web_launcher/runtime_paths.rs`
+    - `crates/agent_world/src/bin/world_web_launcher/control_plane.rs`
+    - `crates/agent_world/src/bin/world_web_launcher/world_web_launcher_tests.rs`
+    - `crates/agent_world/src/bin/world_viewer_demo.rs`
+  - 验收命令 (`test_tier_required`):
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_game_launcher viewer_dev_dist_candidates_prefer_oasis7_name_before_legacy_name -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher viewer_dev_dist_candidates_prefer_oasis7_name_before_legacy_name -- --nocapture`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
 - [x] TASK-WORLD_SIMULATOR-162 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 修复标准模式 bootstrap `Loading standard viewer...` overlay 在 wasm 已启动后仍残留并压缩左侧视口的问题，补齐 cleanup 生命周期与最小回归验证。
 - [x] TASK-WORLD_SIMULATOR-148 (PRD-WORLD_SIMULATOR-040) [test_tier_required]: 完成 `OpenClaw` 双轨模式（`player_parity` / `headless_agent` / `debug_viewer`）专题 PRD / Project 建模，并回写模块主文档、索引与 devlog。
 - [x] TASK-WORLD_SIMULATOR-149 (PRD-WORLD_SIMULATOR-040) [test_tier_required]: 由 `agent_engineer` 冻结 `player_parity` / `headless_agent` 的 observation/action contract、schema version、模式元数据与禁止泄露真值边界，并形成 supporting spec。
@@ -729,6 +744,7 @@
 - 最新完成: `TASK-WORLD_SIMULATOR-177`（已将 bundle 产物中的 launcher/runtime 路径 env 注入与 storage profile override 默认口径优先切到 `OASIS7_*` / `OASIS7_CHAIN_STORAGE_PROFILE`，并保留旧 `AGENT_WORLD_*` fallback）。
 - 最新完成: `TASK-WORLD_SIMULATOR-178`（已将 viewer theme preset `.env` 文件中的默认导出 env key 优先切到 `OASIS7_VIEWER_*`，收口 theme/operator 预设链路里残留的旧 `AGENT_WORLD_VIEWER_*` 默认口径）。
 - 最新完成: `TASK-WORLD_SIMULATOR-179`（已将 repo-owned OpenClaw lightweight runtime agent 的默认 agent id 与 setup/operator env 命名优先切到 `oasis7_runtime` / `OPENCLAW_OASIS7_*`，并保留旧 `agent_world_runtime` / `OPENCLAW_AGENT_WORLD_*` fallback）。
+- 最新完成: `TASK-WORLD_SIMULATOR-189`（已将 `world_game_launcher` / `world_web_launcher` 的 viewer 开发态 fallback 路径优先切到 `oasis7_viewer/dist`，并保留旧 `agent_world_viewer/dist` 兼容回退，同时收口 `world_viewer_demo` 的旧 viewer 连接提示）。
 - 最新完成: `TASK-WORLD_SIMULATOR-180`（已将 `world_game_launcher` / `world_web_launcher` 相关测试的系统临时目录默认前缀切到 `oasis7_*`，收口 launcher 测试产物里残留的旧 `agent_world_*` 内部命名）。
 - 最新完成: `TASK-WORLD_SIMULATOR-181`（已将 `scripts/ci-tests.sh` 的内部 helper 函数命名统一切到 `run_oasis7_*`，收口 CI 编排脚本里残留的旧 `run_agent_world_*` 内部标识）。
 - 最新完成: `TASK-WORLD_SIMULATOR-182`（已将 `world_chain_runtime` 转账提交测试的系统临时目录默认前缀切到 `oasis7_*`，收口链运行时转账测试产物里残留的旧 `agent_world_*` 内部命名）。

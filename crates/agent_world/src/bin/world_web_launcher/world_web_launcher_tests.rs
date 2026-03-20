@@ -3,6 +3,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use super::runtime_paths::viewer_dev_dist_candidates;
 use super::{
     build_chain_runtime_args, build_game_url, build_launcher_args,
     build_launcher_args_with_launcher_bin, chain_error_code_for_state, execute_gui_agent_action,
@@ -285,6 +286,20 @@ fn build_chain_runtime_args_includes_chain_overrides_when_on() {
     assert!(args.contains(&"--execution-world-dir".to_string()));
     assert!(
         args.contains(&"output/chain-runtime/chain-a/reward-runtime-execution-world".to_string())
+    );
+}
+
+#[test]
+fn viewer_dev_dist_candidates_prefer_oasis7_name_before_legacy_name() {
+    let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
+    let candidates = viewer_dev_dist_candidates();
+
+    assert_eq!(
+        candidates,
+        vec![
+            repo_root.join("oasis7_viewer").join("dist"),
+            repo_root.join("agent_world_viewer").join("dist"),
+        ]
     );
 }
 
