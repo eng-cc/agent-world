@@ -600,7 +600,7 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .expect("duration since epoch")
             .as_nanos();
-        std::env::temp_dir().join(format!("agent-world-net-{prefix}-{unique}"))
+        std::env::temp_dir().join(format!("oasis7-net-{prefix}-{unique}"))
     }
 
     fn write_world_fixture(world_id: &str, store: &LocalCasStore) -> (ExecutionWriteResult, usize) {

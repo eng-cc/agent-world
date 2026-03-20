@@ -43,7 +43,7 @@ fn temp_dir(prefix: &str) -> PathBuf {
         .duration_since(UNIX_EPOCH)
         .expect("duration")
         .as_nanos();
-    std::env::temp_dir().join(format!("agent-world-node-tests-{prefix}-{unique}"))
+    std::env::temp_dir().join(format!("oasis7-node-tests-{prefix}-{unique}"))
 }
 
 fn deterministic_keypair_hex(seed: u8) -> (String, String) {
