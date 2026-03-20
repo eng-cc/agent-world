@@ -7,14 +7,14 @@
 
 
 ## 1. Executive Summary
-- 将 builtin wasm 模块中重复定义的 `ModuleCallInput/ModuleContext/ModuleOutput` 等协议结构收敛到 `agent_world_wasm_sdk`。
+- 将 builtin wasm 模块中重复定义的 `ModuleCallInput/ModuleContext/ModuleOutput` 等协议结构收敛到 `oasis7_wasm_sdk`。
 - 让各模块仅保留领域业务结构，减少样板代码与协议漂移风险。
 - 在不改变运行时 ABI（`alloc/reduce/call`）与模块行为的前提下完成迁移。
 
 ## 2. User Experience & Functionality
 ### In Scope
-- 在 `crates/agent_world_wasm_sdk` 增加可复用 wire 类型与编解码 helper。
-- `agent_world_builtin_wasm_modules/*` 改为复用 SDK wire 类型，移除本地重复定义。
+- 在 `crates/oasis7_wasm_sdk` 增加可复用 wire 类型与编解码 helper。
+- `oasis7_builtin_wasm_modules/*` 改为复用 SDK wire 类型，移除本地重复定义。
 - 保持 `on_reduce/on_call` 与生命周期 trait 现有语义不变。
 
 ### Out of Scope

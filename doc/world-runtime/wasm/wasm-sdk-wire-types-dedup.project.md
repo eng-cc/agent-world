@@ -12,11 +12,11 @@
 
 ## 依赖
 - doc/world-runtime/wasm/wasm-sdk-wire-types-dedup.prd.md
-- `crates/agent_world_wasm_sdk`
-- `crates/agent_world_builtin_wasm_modules/*`
+- `crates/oasis7_wasm_sdk`
+- `crates/oasis7_builtin_wasm_modules/*`
 - `scripts/sync-m1-builtin-wasm-artifacts.sh`
 - `scripts/sync-m4-builtin-wasm-artifacts.sh`
 
 ## 状态
 - 当前阶段：WIRESDK-1 / WIRESDK-2 已全部完成。
-- 最近更新：`agent_world_wasm_sdk` 新增 `wire` 特性与通用类型/helper，23 模块删除重复协议定义并改为复用 SDK；m1/m4 sync+check 与 required-tier 编译回归通过（2026-02-17）。
+- 最近更新：`oasis7_wasm_sdk` 新增 `wire` 特性与通用类型/helper，23 模块删除重复协议定义并改为复用 SDK；m1/m4 sync+check 与 required-tier 编译回归通过（2026-02-17）。

@@ -88,15 +88,15 @@
 - Integration Points:
   - 现有入口：`scripts/build-wasm-module.sh`
   - 现有构建工具：`tools/wasm_build_suite/src/lib.rs`
-  - 现有源码包编译路径：`crates/agent_world/src/runtime/module_source_compiler.rs`
+  - 现有源码包编译路径：`crates/oasis7/src/runtime/module_source_compiler.rs`
   - 现有工件同步：`scripts/sync-m1-builtin-wasm-artifacts.sh`
   - 现有工件同步：`scripts/sync-m4-builtin-wasm-artifacts.sh`
   - 现有工件同步：`scripts/sync-m5-builtin-wasm-artifacts.sh`
-  - 现有 identity 生成：`crates/agent_world_distfs/src/bin/sync_builtin_wasm_identity.rs`
+  - 现有 identity 生成：`crates/oasis7_distfs/src/bin/sync_builtin_wasm_identity.rs`
   - 现有对账脚本：`scripts/ci-m1-wasm-summary.sh`
   - 现有对账脚本：`scripts/ci-verify-m1-wasm-summaries.py`
-  - 现有 runtime 消费：`crates/agent_world/src/runtime/builtin_wasm_materializer.rs`
-  - 现有 release manifest 消费：`crates/agent_world/src/runtime/world/release_manifest.rs`
+  - 现有 runtime 消费：`crates/oasis7/src/runtime/builtin_wasm_materializer.rs`
+  - 现有 release manifest 消费：`crates/oasis7/src/runtime/world/release_manifest.rs`
   - 计划新增：`docker/wasm-builder/Dockerfile`
   - 计划新增：`docker/wasm-builder/README.md`
 - Edge Cases & Error Handling:

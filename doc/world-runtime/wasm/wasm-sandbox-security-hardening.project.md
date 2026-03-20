@@ -16,8 +16,8 @@
 - doc/world-runtime/wasm/wasm-sandbox-security-hardening.prd.md
 - `doc/world-runtime/wasm/wasm-executor.prd.md`
 - `doc/world-runtime/module/module-storage.prd.md`
-- `crates/agent_world_wasm_executor/src/lib.rs`
-- `crates/agent_world/src/runtime/world/persistence.rs`
+- `crates/oasis7_wasm_executor/src/lib.rs`
+- `crates/oasis7/src/runtime/world/persistence.rs`
 
 ## 状态
 - 当前阶段：已完成

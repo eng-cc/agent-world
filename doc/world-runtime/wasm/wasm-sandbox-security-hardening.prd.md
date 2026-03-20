@@ -34,7 +34,7 @@
 - Evaluation Strategy: 通过文档治理校验、引用扫描与任务日志检查验证迁移质量。
 
 ## 4. Technical Specifications
-### 执行器（`agent_world_wasm_executor`）
+### 执行器（`oasis7_wasm_executor`）
 - `ModuleLimits.max_gas` 解释收敛：
   - 当请求值为 `0` 时，执行器按 `WasmExecutorConfig.max_fuel` 注入 fuel，避免无限执行。
 - epoch 超时抢占：
@@ -45,7 +45,7 @@
   - 使用 `StoreLimitsBuilder::memory_size(max_mem_bytes)` + `Store::limiter`。
   - `trap_on_grow_failure(true)` 使越界增长直接失败而非返回模糊状态。
 
-### 模块存储（`agent_world::runtime::world::persistence`）
+### 模块存储（`oasis7::runtime::world::persistence`）
 - 加载 `module_registry.json` 与 `*.wasm` 工件后，重算 `sha256`。
 - 若重算值与记录的 `wasm_hash` 不一致，立即拒绝加载并返回错误。
 

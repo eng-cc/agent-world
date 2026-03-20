@@ -7,7 +7,7 @@
 
 
 ## 1. Executive Summary
-- 在保持 `agent_world` 现有 wasm-1 运行时兼容性的前提下，补齐一批可直接借鉴 `third_party/agent-os` 的能力。
+- 在保持 `oasis7` 现有 wasm-1 运行时兼容性的前提下，补齐一批可直接借鉴 `third_party/agent-os` 的能力。
 - 本轮聚焦五项落地：
   - 1) ABI/Schema 合约约束增强。
   - 2) effect `cap_slot -> cap_ref` 绑定。
@@ -17,10 +17,10 @@
 
 ## 2. User Experience & Functionality
 - 涉及 crate：
-  - `crates/agent_world_wasm_abi`
-  - `crates/agent_world_wasm_sdk`
-  - `crates/agent_world`
-  - `crates/agent_world_wasm_executor`
+  - `crates/oasis7_wasm_abi`
+  - `crates/oasis7_wasm_sdk`
+  - `crates/oasis7`
+  - `crates/oasis7_wasm_executor`
 - 不修改 `third_party/` 下任何代码（仅参考）。
 - 不改变现有 manifest 主版本与核心治理流程。
 

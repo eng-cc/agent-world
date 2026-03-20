@@ -20,15 +20,15 @@
 - `doc/world-runtime/wasm/wasm-deterministic-build-pipeline.prd.md`
 - `scripts/build-wasm-module.sh`
 - `tools/wasm_build_suite/src/lib.rs`
-- `crates/agent_world/src/runtime/module_source_compiler.rs`
+- `crates/oasis7/src/runtime/module_source_compiler.rs`
 - `scripts/sync-m1-builtin-wasm-artifacts.sh`
 - `scripts/sync-m4-builtin-wasm-artifacts.sh`
 - `scripts/sync-m5-builtin-wasm-artifacts.sh`
-- `crates/agent_world_distfs/src/bin/sync_builtin_wasm_identity.rs`
+- `crates/oasis7_distfs/src/bin/sync_builtin_wasm_identity.rs`
 - `scripts/ci-m1-wasm-summary.sh`
 - `scripts/ci-verify-m1-wasm-summaries.py`
-- `crates/agent_world/src/runtime/builtin_wasm_materializer.rs`
-- `crates/agent_world/src/runtime/world/release_manifest.rs`
+- `crates/oasis7/src/runtime/builtin_wasm_materializer.rs`
+- `crates/oasis7/src/runtime/world/release_manifest.rs`
 
 ## 状态
 - 更新日期: 2026-03-18
@@ -45,7 +45,7 @@
   - `scripts/build-wasm-module.sh`、`scripts/sync-m1-builtin-wasm-artifacts.sh`、`scripts/ci-m1-wasm-summary.sh`、`tools/wasm_build_suite` 与 `docker/wasm-builder/Dockerfile` 现已默认优先读取/写入 `OASIS7_WASM_*`，并继续兼容旧 `AGENT_WORLD_WASM_*` fallback，避免 operator 脚本与容器镜像在品牌迁移期出现配置分叉。
   - runtime `builtin_wasm_materializer`、`m1/m4/m5_builtin_wasm_artifact` 与 `runtime/world/release_manifest` 现已默认优先读取 `OASIS7_BUILTIN_WASM_*`，并继续兼容旧 `AGENT_WORLD_BUILTIN_WASM_*` fallback，避免构建链路已迁移后 runtime materialize/fetch/fallback 仍停留在旧前缀。
   - `tools/wasm_build_suite` 已新增 `build receipt`、`source_hash`、`build_manifest_hash`、`builder_image_digest` 与 `container_platform` 输出；builtin `m1/m4/m5` hash manifest 已全部改写为单 canonical token `linux-x86_64=<sha256>`。
-  - `crates/agent_world_distfs/src/bin/sync_builtin_wasm_identity.rs` 已切换为 receipt 驱动 identity 生成；写路径只输出 canonical token，读路径仍兼容 legacy multi-token manifest。
+  - `crates/oasis7_distfs/src/bin/sync_builtin_wasm_identity.rs` 已切换为 receipt 驱动 identity 生成；写路径只输出 canonical token，读路径仍兼容 legacy multi-token manifest。
   - `scripts/ci-m1-wasm-summary.sh` 与 `scripts/ci-verify-m1-wasm-summaries.py` 已区分 `host_platform` 与 `canonical_platform`，并新增 `receipt_evidence + identity_build_recipe` 对账；当前 CI 对账口径改为“不同宿主只比较 Docker canonical 输出与一致的 receipt/build recipe 证据”。
   - runtime `ModuleReleaseSubmitAttestation -> apply` 现已显式绑定 `builder_image_digest + container_platform + canonicalizer_version`；release gate 会拒绝阈值 attestation 间的 receipt evidence 不一致，且要求 attestation 的 `source_hash/build_manifest_hash/wasm_hash` 与 manifest identity 对齐。
   - `ModuleReleaseManifestMappingState` 与节点验收脚本现已补齐 release evidence 摘要：映射状态会落盘 `release_{wasm,source,build_manifest}_hash + builder_image_digest + container_platform + canonicalizer_version + attestation_platforms + proof_cids + receipt_evidence_conflict`，`scripts/module-release-node-acceptance.sh` 也已纳入 receipt mismatch 阻断用例。

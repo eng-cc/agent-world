@@ -91,7 +91,7 @@
 - pure 模块返回 `new_state` 视为 InvalidOutput。
 
 ### 实现要点（E11）
-- 将 `crates/agent_world/Cargo.toml` 的 `wasmtime` 依赖从 `18` 升级到 `41`，并刷新 `Cargo.lock`。
+- 将 `crates/oasis7/Cargo.toml` 的 `wasmtime` 依赖从 `18` 升级到 `41`，并刷新 `Cargo.lock`。
 - 保持现有 `ModuleSandbox` 的 Wasmtime API 调用路径不变（`Config/Engine/Store/Linker/TypedFunc`），验证升级后可直接兼容。
 - 升级后通过 `--features wasmtime` 执行 `cargo check` 与 `wasm_executor` 相关测试，确保执行器闭环可用。
 
