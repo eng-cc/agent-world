@@ -19,7 +19,7 @@ wasm_env_key() {
   printf 'OASIS7_WASM_%s\n' "$suffix"
 }
 
-wasm_legacy_env_key() {
+wasm_compat_old_brand_env_key() {
   local suffix=$1
   printf 'AGENT_WORLD_WASM_%s\n' "$suffix"
 }
@@ -28,13 +28,13 @@ wasm_env_or_default() {
   local suffix=$1
   local default_value=${2-}
   local key
-  local legacy_key
+  local compat_old_brand_key
   key=$(wasm_env_key "$suffix")
-  legacy_key=$(wasm_legacy_env_key "$suffix")
+  compat_old_brand_key=$(wasm_compat_old_brand_env_key "$suffix")
   if [[ -n "${!key+x}" ]]; then
     printf '%s\n' "${!key}"
-  elif [[ -n "${!legacy_key+x}" ]]; then
-    printf '%s\n' "${!legacy_key}"
+  elif [[ -n "${!compat_old_brand_key+x}" ]]; then
+    printf '%s\n' "${!compat_old_brand_key}"
   else
     printf '%s\n' "$default_value"
   fi
@@ -44,11 +44,11 @@ set_wasm_env() {
   local suffix=$1
   local value=${2-}
   local key
-  local legacy_key
+  local compat_old_brand_key
   key=$(wasm_env_key "$suffix")
-  legacy_key=$(wasm_legacy_env_key "$suffix")
+  compat_old_brand_key=$(wasm_compat_old_brand_env_key "$suffix")
   export "$key=$value"
-  unset "$legacy_key" || true
+  unset "$compat_old_brand_key" || true
 }
 
 WASM_TOOLCHAIN="$(wasm_env_or_default TOOLCHAIN "$CANONICAL_WASM_TOOLCHAIN")"

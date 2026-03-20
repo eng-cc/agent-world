@@ -176,6 +176,7 @@
   - SC-72: `world_web_launcher` 与 `agent_world_client_launcher/src/main.rs` 的 launcher path、console static、字体/语言/control bind 兼容 env 代码路径中，源码级常量/辅助函数/定向测试命名必须优先使用 `compat` 语义而不是继续沿用 `LEGACY_*AGENT_WORLD_*` 口径，避免 launcher 维护层的模块名/变量名继续把旧品牌当作当前源码真值。
   - SC-73: `world_web_launcher` 与 `agent_world_client_launcher` 的 launcher 测试文件中，源码级测试函数命名也必须优先使用 `compat` 语义而不是继续沿用 `before_legacy` / `legacy_name` 口径，避免测试层继续扩散旧品牌维护语义。
   - SC-74: runtime `power_bootstrap_release_manifest_full` 全量回归中的 builtin wasm 兼容 env 常量与测试局部变量命名也必须优先使用 `compat` 语义而不是继续沿用 `LEGACY_*AGENT_WORLD_*` 口径，避免 full-tier 测试层继续扩散旧品牌维护语义。
+  - SC-75: `build-wasm-module` / `ci-m1-wasm-summary` / `sync-m1-builtin-wasm-artifacts` 脚本中的旧品牌 wasm env helper 与局部变量命名也必须优先使用 `compat` 语义而不是继续沿用 `wasm_legacy_env_key` / `legacy_key` 口径，避免脚本维护层继续把旧品牌当作当前源码真值。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -409,6 +410,7 @@
   - AC-77: `crates/agent_world/src/bin/world_web_launcher/{runtime_paths.rs,control_plane.rs,world_web_launcher_tests.rs}` 与 `crates/agent_world_client_launcher/src/{main.rs,platform_ops.rs,main_tests.rs}` 中保留旧 `AGENT_WORLD_GAME_LAUNCHER_BIN`、`AGENT_WORLD_WORLD_CHAIN_RUNTIME_BIN`、`AGENT_WORLD_GAME_STATIC_DIR`、`AGENT_WORLD_WEB_LAUNCHER_STATIC_DIR`、`AGENT_WORLD_CLIENT_LAUNCHER_{FONT,LANG,CONTROL_URL,CONTROL_BIND}` fallback literal 的源码常量/辅助函数/定向测试名必须改为 `compat` 语义命名；launcher 兼容读取行为保持不变，且源码中不得继续把 `LEGACY_*AGENT_WORLD_*` 当作当前维护口径。
   - AC-78: `crates/agent_world/src/bin/world_web_launcher/world_web_launcher_tests.rs`、`crates/agent_world_client_launcher/src/platform_ops.rs` 与 `crates/agent_world_client_launcher/src/main_tests.rs` 中涉及 `viewer_dev_dist_candidates` 的定向测试函数名必须改为 `compat` 语义命名；测试行为保持不变，但源码中不得继续把 `legacy_name` 当作当前测试维护口径。
   - AC-79: `crates/agent_world/src/runtime/tests/power_bootstrap_release_manifest_full.rs` 中保留旧 `AGENT_WORLD_BUILTIN_WASM_{DISTFS_ROOT,COMPILER}` fallback literal 的源码常量与测试局部变量名必须改为 `compat` 语义命名；`test_tier_full` 行为保持不变，且源码中不得继续把 `LEGACY_*AGENT_WORLD_*` 当作当前维护口径。
+  - AC-80: `scripts/{build-wasm-module.sh,ci-m1-wasm-summary.sh,sync-m1-builtin-wasm-artifacts.sh}` 中保留旧 `AGENT_WORLD_WASM_*` fallback literal 的 helper/局部变量名必须改为 `compat` 语义命名；脚本行为保持不变，且源码中不得继续把 `wasm_legacy_env_key` / `legacy_key` 当作当前维护口径。
 - Non-Goals:
   - 不在本 PRD 中详细列出每个 UI 像素级规范。
   - 不替代 world-runtime/p2p 的底层协议设计。
