@@ -10,7 +10,7 @@ fn temp_dir(prefix: &str) -> PathBuf {
         .duration_since(UNIX_EPOCH)
         .expect("duration")
         .as_nanos();
-    std::env::temp_dir().join(format!("agent-world-distfs-challenge-{prefix}-{unique}"))
+    std::env::temp_dir().join(format!("oasis7-distfs-challenge-{prefix}-{unique}"))
 }
 
 fn make_blob(size: usize) -> Vec<u8> {

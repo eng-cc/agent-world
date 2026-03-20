@@ -119,7 +119,7 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .expect("duration")
             .as_nanos();
-        std::env::temp_dir().join(format!("agent-world-distfs-manifest-{prefix}-{unique}"))
+        std::env::temp_dir().join(format!("oasis7-distfs-manifest-{prefix}-{unique}"))
     }
 
     #[test]

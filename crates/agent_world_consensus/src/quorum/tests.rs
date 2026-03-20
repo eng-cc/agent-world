@@ -58,7 +58,7 @@ fn temp_dir(prefix: &str) -> std::path::PathBuf {
         .duration_since(UNIX_EPOCH)
         .expect("time")
         .as_nanos();
-    std::env::temp_dir().join(format!("agent-world-{prefix}-{unique}"))
+    std::env::temp_dir().join(format!("oasis7-consensus-{prefix}-{unique}"))
 }
 
 #[test]

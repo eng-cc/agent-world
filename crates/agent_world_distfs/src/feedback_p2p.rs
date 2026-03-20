@@ -248,7 +248,7 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .expect("duration")
             .as_nanos();
-        std::env::temp_dir().join(format!("agent-world-feedback-p2p-{prefix}-{unique}"))
+        std::env::temp_dir().join(format!("oasis7-feedback-p2p-{prefix}-{unique}"))
     }
 
     fn now_plus(delta_ms: i64) -> i64 {

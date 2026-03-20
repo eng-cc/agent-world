@@ -88,7 +88,7 @@ fn temp_membership_dir(prefix: &str) -> PathBuf {
         .duration_since(UNIX_EPOCH)
         .expect("time")
         .as_nanos();
-    std::env::temp_dir().join(format!("agent_world-{prefix}-{nanos}"))
+    std::env::temp_dir().join(format!("oasis7-consensus-{prefix}-{nanos}"))
 }
 
 #[test]

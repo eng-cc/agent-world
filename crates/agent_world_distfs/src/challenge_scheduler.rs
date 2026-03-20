@@ -540,7 +540,7 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .expect("duration")
             .as_nanos();
-        std::env::temp_dir().join(format!("agent-world-distfs-scheduler-{prefix}-{unique}"))
+        std::env::temp_dir().join(format!("oasis7-distfs-scheduler-{prefix}-{unique}"))
     }
 
     fn blob(size: usize) -> Vec<u8> {

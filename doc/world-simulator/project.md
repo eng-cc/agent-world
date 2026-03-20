@@ -452,6 +452,31 @@
     - `bash .agents/skills/oasis7/scripts/oasis7-run-bootstrap-test.sh`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
+- [x] TASK-WORLD_SIMULATOR-185 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 `agent_world_distfs` / `agent_world_consensus` 回归中的临时目录默认前缀切到 `oasis7_*`，收口存储复制/挑战/成员关系/共识测试产物里残留的旧 `agent-world` / `agent_world` 内部命名。
+  - 产物文件:
+    - `doc/world-simulator/prd.md`
+    - `doc/world-simulator/project.md`
+    - `crates/agent_world_distfs/src/lib.rs`
+    - `crates/agent_world_distfs/src/manifest.rs`
+    - `crates/agent_world_distfs/src/replication.rs`
+    - `crates/agent_world_distfs/src/feedback/tests.rs`
+    - `crates/agent_world_distfs/src/feedback_p2p.rs`
+    - `crates/agent_world_distfs/src/challenge/tests.rs`
+    - `crates/agent_world_distfs/src/challenge_scheduler.rs`
+    - `crates/agent_world_consensus/src/quorum/tests.rs`
+    - `crates/agent_world_consensus/src/pos/tests.rs`
+    - `crates/agent_world_consensus/src/membership_tests.rs`
+    - `crates/agent_world_consensus/src/membership_dead_letter_replay_archive_tests_split_part1.rs`
+    - `crates/agent_world_consensus/src/membership_dead_letter_replay_tests.rs`
+    - `crates/agent_world_consensus/src/membership_reconciliation_tests.rs`
+    - `crates/agent_world_consensus/src/membership_dead_letter_replay_audit_tests_split_part1.rs`
+    - `crates/agent_world_consensus/src/membership_dead_letter_replay_persistence_tests.rs`
+    - `crates/agent_world_consensus/src/membership_recovery_tests_split_part1.rs`
+  - 验收命令 (`test_tier_required`):
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world_distfs --lib -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world_consensus --lib -- --nocapture`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
 - [x] TASK-WORLD_SIMULATOR-162 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 修复标准模式 bootstrap `Loading standard viewer...` overlay 在 wasm 已启动后仍残留并压缩左侧视口的问题，补齐 cleanup 生命周期与最小回归验证。
 - [x] TASK-WORLD_SIMULATOR-148 (PRD-WORLD_SIMULATOR-040) [test_tier_required]: 完成 `OpenClaw` 双轨模式（`player_parity` / `headless_agent` / `debug_viewer`）专题 PRD / Project 建模，并回写模块主文档、索引与 devlog。
 - [x] TASK-WORLD_SIMULATOR-149 (PRD-WORLD_SIMULATOR-040) [test_tier_required]: 由 `agent_engineer` 冻结 `player_parity` / `headless_agent` 的 observation/action contract、schema version、模式元数据与禁止泄露真值边界，并形成 supporting spec。
@@ -645,6 +670,7 @@
 - 最新完成: `TASK-WORLD_SIMULATOR-182`（已将 `world_chain_runtime` 转账提交测试的系统临时目录默认前缀切到 `oasis7_*`，收口链运行时转账测试产物里残留的旧 `agent_world_*` 内部命名）。
 - 最新完成: `TASK-WORLD_SIMULATOR-183`（已将 OpenClaw 首期 `P0` 默认 gameplay profile id 优先切到 `oasis7_p0_low_freq_npc`，并保留旧 `agent_world_p0_low_freq_npc` 兼容别名）。
 - 最新完成: `TASK-WORLD_SIMULATOR-184`（已将 repo-owned OpenClaw runtime workspace 与 setup 主入口优先切到 `oasis7_runtime_workspace` / `setup-openclaw-oasis7-runtime.sh`，并保留旧 `agent_world_*` 路径作为兼容包装层）。
+- 最新完成: `TASK-WORLD_SIMULATOR-185`（已将 `agent_world_distfs` / `agent_world_consensus` 回归中的临时目录默认前缀切到 `oasis7_*`，收口存储复制/挑战/成员关系/共识测试产物里残留的旧 `agent-world` / `agent_world` 内部命名）。
 - 最新完成: `TASK-WORLD_SIMULATOR-166`（已完成 `doc/world-simulator/**` 历史专题首行标题的 title-only cleanup，将 `Agent World*` 公开标题统一切到 `oasis7*`，并保留旧品牌只出现在正文历史上下文中）。
 - 最新完成: `TASK-WORLD_SIMULATOR-164`（为 Viewer 首局 `4/4` 之后补 `PostOnboarding` 阶段目标卡、阻塞解释、分支解锁与 summary 文案更新，并通过定向 `test_tier_required` 回归）。
 - 最新完成: `TASK-WORLD_SIMULATOR-165`（已完成 Viewer 活跃手册、原生窗口标题、Web `<title>` 与抓帧脚本窗口匹配的 `oasis7 Viewer` 品牌对齐，并保留旧标题仅作兼容匹配）。
