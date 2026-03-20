@@ -15,11 +15,11 @@
 - [x] VRPM8：回顾并更新本项目文档状态与任务日志
 
 ## 依赖
-- `crates/agent_world_viewer/src/app_bootstrap.rs`
-- `crates/agent_world_viewer/src/egui_right_panel.rs`
-- `crates/agent_world_viewer/src/i18n.rs`
-- `crates/agent_world_viewer/src/main.rs`
-- `crates/agent_world_viewer/src/egui_right_panel_tests.rs`
+- `crates/oasis7_viewer/src/app_bootstrap.rs`
+- `crates/oasis7_viewer/src/egui_right_panel.rs`
+- `crates/oasis7_viewer/src/i18n.rs`
+- `crates/oasis7_viewer/src/main.rs`
+- `crates/oasis7_viewer/src/egui_right_panel_tests.rs`
 
 ## 状态
 - 当前阶段：VRPM8 完成（模块开关与本地缓存能力已落地）

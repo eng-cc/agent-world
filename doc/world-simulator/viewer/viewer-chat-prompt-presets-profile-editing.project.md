@@ -14,8 +14,8 @@
 - [x] VCPE6 回写状态与 devlog，完成收口提交
 
 ## 依赖
-- `crates/agent_world_viewer/src/egui_right_panel_chat.rs`
-- `crates/agent_world_viewer/src/main.rs`
+- `crates/oasis7_viewer/src/egui_right_panel_chat.rs`
+- `crates/oasis7_viewer/src/main.rs`
 - `doc/world-simulator/viewer/viewer-manual.md`
 - `doc/world-simulator/viewer/viewer-chat-prompt-presets-profile-editing.prd.md`
 

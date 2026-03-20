@@ -13,7 +13,7 @@
 - [x] VCPPF5 回写状态与 devlog，完成收口提交
 
 ## 依赖
-- `crates/agent_world_viewer/src/egui_right_panel_chat.rs`
+- `crates/oasis7_viewer/src/egui_right_panel_chat.rs`
 - `doc/world-simulator/viewer/viewer-manual.md`
 - `doc/world-simulator/viewer/viewer-chat-agent-prompt-default-values-prefill.prd.md`
 

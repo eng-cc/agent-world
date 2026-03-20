@@ -13,7 +13,7 @@
 ## 2. User Experience & Functionality
 
 ### 范围内
-- `agent_world_viewer` Web 运行时稳定性修复：
+- `oasis7_viewer` Web 运行时稳定性修复：
   - 修复 Chat 面板内 `egui::Context` 重入锁路径。
   - 避免 wasm 调试构建触发 `epaint` timed-lock 路径导致的 `Instant`/parking panic。
 - Chat 输入发送判定修复：

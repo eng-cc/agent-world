@@ -11,10 +11,10 @@
 ## 依赖
 - doc/world-simulator/viewer/viewer-chat-web-deadlock-resolution.prd.md
 - `Cargo.toml`
-- `crates/agent_world_viewer/src/egui_right_panel_chat.rs`
-- `crates/agent_world_viewer/src/app_bootstrap.rs`
-- `crates/agent_world_viewer/src/main.rs`
-- `crates/agent_world_viewer/src/wasm_egui_input_bridge.rs`
+- `crates/oasis7_viewer/src/egui_right_panel_chat.rs`
+- `crates/oasis7_viewer/src/app_bootstrap.rs`
+- `crates/oasis7_viewer/src/main.rs`
+- `crates/oasis7_viewer/src/wasm_egui_input_bridge.rs`
 - `doc/devlog/2026-02-16.md`
 
 ## 状态

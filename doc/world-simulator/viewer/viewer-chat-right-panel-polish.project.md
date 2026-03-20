@@ -15,12 +15,12 @@
 - [x] CRP7 回写文档状态与 devlog，提交收口
 
 ## 依赖
-- `crates/agent_world_viewer/src/egui_right_panel.rs`
-- `crates/agent_world_viewer/src/egui_right_panel_chat.rs`
-- `crates/agent_world_viewer/src/ui_state_types.rs`
-- `crates/agent_world_viewer/src/app_bootstrap.rs`
-- `crates/agent_world_viewer/src/camera_controls.rs`
-- `crates/agent_world_viewer/src/selection_linking.rs`
+- `crates/oasis7_viewer/src/egui_right_panel.rs`
+- `crates/oasis7_viewer/src/egui_right_panel_chat.rs`
+- `crates/oasis7_viewer/src/ui_state_types.rs`
+- `crates/oasis7_viewer/src/app_bootstrap.rs`
+- `crates/oasis7_viewer/src/camera_controls.rs`
+- `crates/oasis7_viewer/src/selection_linking.rs`
 - `scripts/run-viewer-web.sh`
 
 ## 状态

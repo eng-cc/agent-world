@@ -6,7 +6,7 @@
 审计轮次: 5
 
 ## 1. Executive Summary
-- 将 `agent_world_viewer` 当前右侧全部 2D UI 从 Bevy UI (`Node/Text/Button`) 迁移到 `bevy_egui`。
+- 将 `oasis7_viewer` 当前右侧全部 2D UI 从 Bevy UI (`Node/Text/Button`) 迁移到 `bevy_egui`。
 - `bevy_egui` 不再使用悬浮窗模式，统一为右侧固定 `SidePanel`。
 - 保持现有业务状态、控制能力与中英文切换能力不退化。
 - 保持 3D 视口交互边界正确（面板区域不触发 3D 相机与拾取）。
