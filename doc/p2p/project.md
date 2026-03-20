@@ -235,6 +235,24 @@
     - `rg -n "oasis7_(consensus|distfs|node|proto)|crates/oasis7/" doc/p2p/blockchain/production-grade-blockchain-p2pfs-roadmap.* doc/p2p/blockchain/production-grade-blockchain-p2pfs-phaseb-consensus-execution.* doc/p2p/blockchain/production-grade-blockchain-p2pfs-phasec-distfs-proof-network.project.md doc/p2p/blockchain/blockchain-p2pfs-hardening-phase2.* doc/p2p/blockchain/blockchain-p2pfs-hardening-phase3.* doc/p2p/blockchain/blockchain-p2pfs-hardening-phase4.project.md doc/p2p/blockchain/blockchain-p2pfs-hardening-phase5.project.md doc/p2p/blockchain/blockchain-p2pfs-hardening-phase6.project.md doc/p2p/blockchain/blockchain-p2pfs-hardening-phase7.project.md doc/p2p/blockchain/blockchain-p2pfs-hardening-phase8.project.md doc/p2p/blockchain/p2p-blockchain-security-hardening-2026-02-23.prd.md`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
+- [x] TASK-P2P-027 (PRD-P2P-001/004) [test_tier_required]: 收口 `node/consensus` 活跃专题中仍把旧 `agent_world*` crate/path 写成当前实现载体的口径，统一到 `oasis7*`。
+  - 产物文件:
+    - `doc/p2p/node/node-net-stack-unification-readme.prd.md`
+    - `doc/p2p/node/node-net-stack-unification-readme.project.md`
+    - `doc/p2p/node/node-net-stack-unification-readme.design.md`
+    - `doc/p2p/node/node-redeemable-power-asset.project.md`
+    - `doc/p2p/node/node-redeemable-power-asset-signature-governance-phase3.project.md`
+    - `doc/p2p/node/node-reward-settlement-native-transaction.prd.md`
+    - `doc/p2p/node/node-reward-settlement-native-transaction.project.md`
+    - `doc/p2p/node/node-wasm32-libp2p-compile-guard.prd.md`
+    - `doc/p2p/node/node-wasm32-libp2p-compile-guard.project.md`
+    - `doc/p2p/consensus/builtin-wasm-identity-consensus.prd.md`
+    - `doc/p2p/consensus/builtin-wasm-identity-consensus.project.md`
+    - `doc/p2p/project.md`
+  - 验收命令 (`test_tier_required`):
+    - `rg -n "oasis7_(net|node|distfs|consensus|proto|viewer)|crates/oasis7/" doc/p2p/node/node-net-stack-unification-readme.* doc/p2p/node/node-redeemable-power-asset.project.md doc/p2p/node/node-redeemable-power-asset-signature-governance-phase3.project.md doc/p2p/node/node-reward-settlement-native-transaction.* doc/p2p/node/node-wasm32-libp2p-compile-guard.* doc/p2p/consensus/builtin-wasm-identity-consensus.*`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
 
 ## 依赖
 - 模块设计总览：`doc/p2p/design.md`
@@ -261,8 +279,9 @@
 
 ## 状态
 - 更新日期: 2026-03-20
-- 当前状态: completed（ROUND-017）
+- 当前状态: completed（ROUND-018）
 - 下一任务: 无（等待新需求）
+- 最新完成: `TASK-P2P-027`（已完成 `node/consensus` 活跃专题中旧 `agent_world*` crate/path 当前真值口径的 `oasis7*` 收口。）
 - 最新完成: `TASK-P2P-026`（已完成 `blockchain` 活跃专题中旧 `agent_world*` crate/path 当前真值口径的 `oasis7*` 收口。）
 - 最新完成: `TASK-P2P-025`（已完成 `distfs production-hardening` 活跃专题中旧 `agent_world*` crate/path 当前真值口径的 `oasis7*` 收口。）
 - 最新完成: `TASK-P2P-024`（已完成 `distfs` 其余活跃专题中旧 `agent_world*` crate/path 当前真值口径的 `oasis7*` 收口。）

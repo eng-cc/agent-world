@@ -5,7 +5,7 @@
 
 审计轮次: 5
 ## 1. Executive Summary
-- Problem Statement: 修复 `agent_world_node` 在 `wasm32-unknown-unknown` 目标上的编译失败，避免阻塞 pre-commit 的 Web Viewer wasm 编译门禁。
+- Problem Statement: 修复 `oasis7_node` 在 `wasm32-unknown-unknown` 目标上的编译失败，避免阻塞 pre-commit 的 Web Viewer wasm 编译门禁。
 - Proposed Solution: 保持 native 目标下现有 libp2p replication 能力不变。
 - Success Criteria:
   - SC-1: 稳定 `viewer::web_bridge` 相关回归测试，消除提交门禁中的偶发 `WouldBlock/Disconnected` 失败。
@@ -21,9 +21,9 @@
 | --- | --- | --- | --- | --- | --- |
 | 专题迁移 | 需求/任务/依赖/状态/测试层级 | 逐篇重写并校验 | `draft -> active -> done` | 以原文约束点映射为主线 | 维护者写入，复核者抽检 |
 - Acceptance Criteria:
-  - AC-1: `crates/agent_world_node/src/lib.rs`
-  - AC-2: `crates/agent_world_node/src/libp2p_replication_network_wasm.rs`（新增）
-  - AC-3: `crates/agent_world/src/viewer/web_bridge.rs`
+  - AC-1: `crates/oasis7_node/src/lib.rs`
+  - AC-2: `crates/oasis7_node/src/libp2p_replication_network_wasm.rs`（新增）
+  - AC-3: `crates/oasis7/src/viewer/web_bridge.rs`
   - AC-4: `doc/p2p/node/node-wasm32-libp2p-compile-guard.project.md`
   - AC-5: `doc/devlog/2026-02-16.md`
   - AC-6: 调整 PoS/gossip 共识业务语义。
@@ -54,8 +54,8 @@
 ## 5. Risks & Roadmap
 - Phased Rollout:
   - M1：完成文档立项与任务拆解。
-  - M2：完成 `agent_world_node` 的 wasm32 编译守卫与占位实现。
-  - M3：稳定 `web_bridge` 重连测试并完成回归验证（`agent_world_node` native check + `agent_world_viewer` wasm32 check）后收口文档。
+  - M2：完成 `oasis7_node` 的 wasm32 编译守卫与占位实现。
+  - M3：稳定 `web_bridge` 重连测试并完成回归验证（`oasis7_node` native check + `oasis7_viewer` wasm32 check）后收口文档。
 - Technical Risks:
   - 若后续在 wasm 侧误用该网络实现，运行期会收到 unavailable 错误；需由调用方按目标区分能力。
   - 占位实现需保持接口稳定，避免对现有 native 调用路径造成回归。

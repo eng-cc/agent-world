@@ -19,12 +19,12 @@
 
 ## 依赖
 - `doc/p2p/node/node-redeemable-power-asset-signature-governance-phase3.prd.md`
-- `crates/agent_world/src/runtime/reward_asset.rs`
-- `crates/agent_world/src/runtime/world/resources.rs`
-- `crates/agent_world/src/runtime/world/event_processing.rs`
-- `crates/agent_world/src/runtime/events.rs`
-- `crates/agent_world/src/runtime/tests/reward_asset.rs`
-- `crates/agent_world/src/bin/world_viewer_live.rs`
+- `crates/oasis7/src/runtime/reward_asset.rs`
+- `crates/oasis7/src/runtime/world/resources.rs`
+- `crates/oasis7/src/runtime/world/event_processing.rs`
+- `crates/oasis7/src/runtime/events.rs`
+- `crates/oasis7/src/runtime/tests/reward_asset.rs`
+- `crates/oasis7/src/bin/world_viewer_live.rs`
 - `doc/devlog/2026-02-17.md`
 
 ## 状态

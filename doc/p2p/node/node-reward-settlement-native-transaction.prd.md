@@ -28,7 +28,7 @@
   - AC-6: 在 `WorldState::apply_domain_event` 中实现 mint 账本写入、系统订单池预算扣减、幂等与守恒校验。
 - Non-Goals:
   - 跨节点奖励调度器与链上提案器（多节点共识下自动发起奖励结算交易）。
-  - 将 NodePoints 采样器直接并入 `agent_world_node` 主循环并跨节点同步。
+  - 将 NodePoints 采样器直接并入 `oasis7_node` 主循环并跨节点同步。
   - 奖励市场化定价、可转账代币化和完整清算系统。
 
 ## 3. AI System Requirements (If Applicable)

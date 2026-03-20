@@ -1,4 +1,4 @@
-# README P2 缺口收口：Node Replication 统一到 agent_world_net 网络栈（项目管理文档）
+# README P2 缺口收口：Node Replication 统一到 oasis7_net 网络栈（项目管理文档）
 
 - 对应设计文档: `doc/p2p/node/node-net-stack-unification-readme.design.md`
 - 对应需求文档: `doc/p2p/node/node-net-stack-unification-readme.prd.md`
@@ -6,7 +6,7 @@
 审计轮次: 5
 ## 任务拆解（含 PRD-ID 映射）
 - [x] NUS-0 (PRD-P2P-MIG-105)：输出设计文档与项目管理文档，并明确 wasm32 非 full node 定位。
-- [x] NUS-1 (PRD-P2P-MIG-105)：根因级打破 `agent_world -> agent_world_node -> agent_world_net -> agent_world` 循环依赖，并完成 `Libp2pReplicationNetwork` 对 `agent_world_net::Libp2pNetwork` 的封装迁移。
+- [x] NUS-1 (PRD-P2P-MIG-105)：根因级打破 `oasis7 -> oasis7_node -> oasis7_net -> oasis7` 循环依赖，并完成 `Libp2pReplicationNetwork` 对 `oasis7_net::Libp2pNetwork` 的封装迁移。
 - [x] NUS-2 (PRD-P2P-MIG-105)：补齐/调整 node replication 单测，覆盖轮换重试与无 peer 回退语义。
 - [x] NUS-3 (PRD-P2P-MIG-105)：执行回归测试、更新文档与 devlog 并收口。
 

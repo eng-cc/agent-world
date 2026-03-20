@@ -27,13 +27,13 @@
 - `scripts/ci-tests.sh`
 - `scripts/pre-commit.sh`
 - `testing-manual.md`
-- `crates/agent_world/src/runtime/builtin_wasm_materializer.rs`
-- `crates/agent_world/src/runtime/m1_builtin_wasm_artifact.rs`
-- `crates/agent_world/src/runtime/m4_builtin_wasm_artifact.rs`
-- `crates/agent_world/src/runtime/m5_builtin_wasm_artifact.rs`
-- `crates/agent_world/src/runtime/world/bootstrap_power.rs`
-- `crates/agent_world/src/runtime/world/bootstrap_economy.rs`
-- `crates/agent_world/src/runtime/world/bootstrap_gameplay.rs`
+- `crates/oasis7/src/runtime/builtin_wasm_materializer.rs`
+- `crates/oasis7/src/runtime/m1_builtin_wasm_artifact.rs`
+- `crates/oasis7/src/runtime/m4_builtin_wasm_artifact.rs`
+- `crates/oasis7/src/runtime/m5_builtin_wasm_artifact.rs`
+- `crates/oasis7/src/runtime/world/bootstrap_power.rs`
+- `crates/oasis7/src/runtime/world/bootstrap_economy.rs`
+- `crates/oasis7/src/runtime/world/bootstrap_gameplay.rs`
 
 ## 状态
 - 当前阶段：已完成（BWI-14）

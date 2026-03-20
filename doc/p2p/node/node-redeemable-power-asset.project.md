@@ -23,14 +23,14 @@
 
 ## 依赖
 - `doc/p2p/node/node-redeemable-power-asset.prd.md`
-- `crates/agent_world/src/runtime/node_points.rs`
-- `crates/agent_world/src/runtime/node_points_runtime.rs`
-- `crates/agent_world/src/runtime/state.rs`
-- `crates/agent_world/src/runtime/events.rs`
-- `crates/agent_world_proto/src/distributed.rs`
-- `crates/agent_world_consensus/src/pos.rs`
-- `crates/agent_world/src/bin/world_viewer_live.rs`
-- `crates/agent_world_distfs/src/lib.rs`
+- `crates/oasis7/src/runtime/node_points.rs`
+- `crates/oasis7/src/runtime/node_points_runtime.rs`
+- `crates/oasis7/src/runtime/state.rs`
+- `crates/oasis7/src/runtime/events.rs`
+- `crates/oasis7_proto/src/distributed.rs`
+- `crates/oasis7_consensus/src/pos.rs`
+- `crates/oasis7/src/bin/world_viewer_live.rs`
+- `crates/oasis7_distfs/src/lib.rs`
 - `doc/devlog/2026-02-16.md`
 
 ## 状态

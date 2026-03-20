@@ -14,12 +14,12 @@
 
 ## 依赖
 - `doc/p2p/node/node-reward-settlement-native-transaction.prd.md`
-- `crates/agent_world/src/runtime/events.rs`
-- `crates/agent_world/src/runtime/world/event_processing.rs`
-- `crates/agent_world/src/runtime/state.rs`
-- `crates/agent_world/src/bin/world_viewer_live.rs`
-- `crates/agent_world/src/runtime/tests/reward_asset.rs`
-- `crates/agent_world/src/bin/world_viewer_live.rs（`#[cfg(test)]`）`
+- `crates/oasis7/src/runtime/events.rs`
+- `crates/oasis7/src/runtime/world/event_processing.rs`
+- `crates/oasis7/src/runtime/state.rs`
+- `crates/oasis7/src/bin/world_viewer_live.rs`
+- `crates/oasis7/src/runtime/tests/reward_asset.rs`
+- `crates/oasis7/src/bin/world_viewer_live.rs（`#[cfg(test)]`）`
 
 ## 状态
 - 当前阶段：NSTX-0~NSTX-5 全部完成；奖励结算已切换为网络共识主路径原生交易。
