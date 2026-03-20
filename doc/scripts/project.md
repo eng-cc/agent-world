@@ -47,6 +47,12 @@
     - `rg -n "agent_world_viewer|cargo check -p agent_world_viewer" doc/scripts/precommit/pre-commit.prd.md doc/scripts/precommit/pre-commit.project.md`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
+- [x] TASK-SCRIPTS-010 (PRD-SCRIPTS-003) [test_tier_required]: 收口 `doc/scripts/viewer-tools/capture-viewer-frame.{prd,project}.md` 中当前 native fallback viewer 调试说明的 crate 与环境变量命名，统一使用 `oasis7_viewer` / `OASIS7_VIEWER_*` 口径。
+  - 验收命令 (`test_tier_required`):
+    - `rg -n "oasis7_viewer|OASIS7_VIEWER_" doc/scripts/viewer-tools/capture-viewer-frame.prd.md doc/scripts/viewer-tools/capture-viewer-frame.project.md`
+    - `rg -n "agent_world_viewer|AGENT_WORLD_VIEWER_" doc/scripts/viewer-tools/capture-viewer-frame.prd.md doc/scripts/viewer-tools/capture-viewer-frame.project.md`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
 
 ## 依赖
 - 模块设计总览：`doc/scripts/design.md`
@@ -60,6 +66,7 @@
 - 更新日期: 2026-03-20
 - 当前状态: completed
 - 下一任务: 无（当前模块主项目无未完成任务）
+- 最新完成: `TASK-SCRIPTS-010`（`capture-viewer-frame` 活跃 fallback 文档中的 viewer crate 与环境变量命名已统一切到 `oasis7_viewer` / `OASIS7_VIEWER_*` 当前口径）。
 - 最新完成: `TASK-SCRIPTS-009`（pre-commit 活跃文档中的 viewer wasm 编译门禁与依赖说明已统一切到 `oasis7_viewer` 当前口径）。
 - 最新完成: `TASK-SCRIPTS-006`（scripts 模块 README 入口索引同步）。
 - 最新完成: `TASK-SCRIPTS-007`（scripts 文件级索引表格格式修正）。
