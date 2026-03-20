@@ -4,7 +4,7 @@ set -euo pipefail
 repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 cd "$repo_root"
 
-snapshot_dir="crates/agent_world_viewer/tests/snapshots"
+snapshot_dir="crates/oasis7_viewer/tests/snapshots"
 
 required_snapshots=(
   "viewer_overview_live.png"
@@ -33,4 +33,4 @@ check_snapshot_baselines() {
 }
 
 check_snapshot_baselines
-run env -u RUSTC_WRAPPER cargo test -p agent_world_viewer egui_kittest_snapshot_
+run env -u RUSTC_WRAPPER cargo test -p oasis7_viewer egui_kittest_snapshot_

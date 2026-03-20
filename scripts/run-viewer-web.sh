@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-VIEWER_DIR="$ROOT_DIR/crates/agent_world_viewer"
+VIEWER_DIR="$ROOT_DIR/crates/oasis7_viewer"
 
 if ! command -v trunk >/dev/null 2>&1; then
   echo "error: trunk is not installed" >&2

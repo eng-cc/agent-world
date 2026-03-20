@@ -31,7 +31,7 @@ Options:
 Behavior:
   - Linux: uses Xvfb + xwininfo + ffmpeg
   - macOS: uses Bevy internal screenshot (no system screen-recording permission)
-  - default prewarm: builds `world_viewer_live` + `agent_world_viewer` first to reduce
+  - default prewarm: builds `world_viewer_live` + `oasis7_viewer` first to reduce
     run-time compile wait and screenshot timeout risk
 
 Output:
@@ -272,7 +272,7 @@ resolve_capture_max_wait() {
 
 prewarm_viewer_binaries() {
   run env -u RUSTC_WRAPPER cargo build -p agent_world --bin world_viewer_live
-  run env -u RUSTC_WRAPPER cargo build -p agent_world_viewer
+  run env -u RUSTC_WRAPPER cargo build -p oasis7_viewer
 }
 
 capture_linux() {
@@ -302,7 +302,7 @@ capture_linux() {
   sleep 2
 
   if [[ "$auto_focus_enabled" == "1" ]]; then
-    echo "+ DISPLAY=$display OASIS7_VIEWER_AUTO_FOCUS=1 OASIS7_VIEWER_AUTO_FOCUS_TARGET=${auto_focus_target:-first_fragment} OASIS7_VIEWER_AUTO_FOCUS_FORCE_3D=$auto_focus_force_3d ${auto_focus_radius:+OASIS7_VIEWER_AUTO_FOCUS_RADIUS=$auto_focus_radius }${auto_select_target:+OASIS7_VIEWER_AUTO_SELECT=1 OASIS7_VIEWER_AUTO_SELECT_TARGET=$auto_select_target }${automation_steps:+OASIS7_VIEWER_AUTOMATION_STEPS=$automation_steps }env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- $addr > $viewer_log"
+    echo "+ DISPLAY=$display OASIS7_VIEWER_AUTO_FOCUS=1 OASIS7_VIEWER_AUTO_FOCUS_TARGET=${auto_focus_target:-first_fragment} OASIS7_VIEWER_AUTO_FOCUS_FORCE_3D=$auto_focus_force_3d ${auto_focus_radius:+OASIS7_VIEWER_AUTO_FOCUS_RADIUS=$auto_focus_radius }${auto_select_target:+OASIS7_VIEWER_AUTO_SELECT=1 OASIS7_VIEWER_AUTO_SELECT_TARGET=$auto_select_target }${automation_steps:+OASIS7_VIEWER_AUTOMATION_STEPS=$automation_steps }env -u RUSTC_WRAPPER cargo run -p oasis7_viewer -- $addr > $viewer_log"
     DISPLAY="$display" \
     OASIS7_VIEWER_CAPTURE_STATUS_PATH="$capture_status_txt" \
     OASIS7_VIEWER_AUTO_FOCUS="1" \
@@ -312,15 +312,15 @@ capture_linux() {
     OASIS7_VIEWER_AUTO_SELECT="${auto_select_target:+1}" \
     OASIS7_VIEWER_AUTO_SELECT_TARGET="$auto_select_target" \
     OASIS7_VIEWER_AUTOMATION_STEPS="$automation_steps" \
-    env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- "$addr" >"$viewer_log" 2>&1 &
+    env -u RUSTC_WRAPPER cargo run -p oasis7_viewer -- "$addr" >"$viewer_log" 2>&1 &
   else
-    echo "+ DISPLAY=$display ${auto_select_target:+OASIS7_VIEWER_AUTO_SELECT=1 OASIS7_VIEWER_AUTO_SELECT_TARGET=$auto_select_target }${automation_steps:+OASIS7_VIEWER_AUTOMATION_STEPS=$automation_steps }env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- $addr > $viewer_log"
+    echo "+ DISPLAY=$display ${auto_select_target:+OASIS7_VIEWER_AUTO_SELECT=1 OASIS7_VIEWER_AUTO_SELECT_TARGET=$auto_select_target }${automation_steps:+OASIS7_VIEWER_AUTOMATION_STEPS=$automation_steps }env -u RUSTC_WRAPPER cargo run -p oasis7_viewer -- $addr > $viewer_log"
     DISPLAY="$display" \
     OASIS7_VIEWER_CAPTURE_STATUS_PATH="$capture_status_txt" \
     OASIS7_VIEWER_AUTO_SELECT="${auto_select_target:+1}" \
     OASIS7_VIEWER_AUTO_SELECT_TARGET="$auto_select_target" \
     OASIS7_VIEWER_AUTOMATION_STEPS="$automation_steps" \
-    env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- "$addr" >"$viewer_log" 2>&1 &
+    env -u RUSTC_WRAPPER cargo run -p oasis7_viewer -- "$addr" >"$viewer_log" 2>&1 &
   fi
   VIEWER_PID=$!
 
@@ -372,7 +372,7 @@ capture_macos() {
   echo "bevy_internal_capture oasis7 Viewer" > "$window_line_txt"
   echo "internal" > "$window_geom_txt"
 
-  local viewer_cmd=(env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- "$addr")
+  local viewer_cmd=(env -u RUSTC_WRAPPER cargo run -p oasis7_viewer -- "$addr")
   if [[ "$auto_focus_enabled" == "1" ]]; then
     echo "+ OASIS7_VIEWER_CAPTURE_PATH=$window_png OASIS7_VIEWER_AUTO_FOCUS=1 OASIS7_VIEWER_AUTO_FOCUS_TARGET=${auto_focus_target:-first_fragment} OASIS7_VIEWER_AUTO_FOCUS_FORCE_3D=$auto_focus_force_3d ${auto_focus_radius:+OASIS7_VIEWER_AUTO_FOCUS_RADIUS=$auto_focus_radius }${auto_select_target:+OASIS7_VIEWER_AUTO_SELECT=1 OASIS7_VIEWER_AUTO_SELECT_TARGET=$auto_select_target }${automation_steps:+OASIS7_VIEWER_AUTOMATION_STEPS=$automation_steps }${viewer_cmd[*]} > $viewer_log"
     OASIS7_VIEWER_CAPTURE_PATH="$window_png" \

@@ -1,7 +1,0 @@
-[package]
-name = "agent_world_launcher_ui"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-serde = { version = "1", features = ["derive"] }

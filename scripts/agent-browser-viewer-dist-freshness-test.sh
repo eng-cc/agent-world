@@ -12,23 +12,23 @@ trap cleanup EXIT
 
 mkdir -p \
   "$tmp_repo/bin" \
-  "$tmp_repo/crates/agent_world_viewer/dist" \
-  "$tmp_repo/crates/agent_world_viewer/src" \
-  "$tmp_repo/crates/agent_world_viewer/assets" \
+  "$tmp_repo/crates/oasis7_viewer/dist" \
+  "$tmp_repo/crates/oasis7_viewer/src" \
+  "$tmp_repo/crates/oasis7_viewer/assets" \
   "$tmp_repo/crates/oasis7_proto/src"
 
-printf '<!doctype html>old dist\n' > "$tmp_repo/crates/agent_world_viewer/dist/index.html"
-printf 'console.log("safe mode changed");\n' > "$tmp_repo/crates/agent_world_viewer/software_safe.js"
-printf '<!doctype html>viewer\n' > "$tmp_repo/crates/agent_world_viewer/index.html"
-printf '<!doctype html>software safe\n' > "$tmp_repo/crates/agent_world_viewer/software_safe.html"
-printf '[package]\nname = "agent_world_viewer"\nversion = "0.0.0"\n' > "$tmp_repo/crates/agent_world_viewer/Cargo.toml"
-printf '[build]\ntarget = "dist"\n' > "$tmp_repo/crates/agent_world_viewer/Trunk.toml"
+printf '<!doctype html>old dist\n' > "$tmp_repo/crates/oasis7_viewer/dist/index.html"
+printf 'console.log("safe mode changed");\n' > "$tmp_repo/crates/oasis7_viewer/software_safe.js"
+printf '<!doctype html>viewer\n' > "$tmp_repo/crates/oasis7_viewer/index.html"
+printf '<!doctype html>software safe\n' > "$tmp_repo/crates/oasis7_viewer/software_safe.html"
+printf '[package]\nname = "oasis7_viewer"\nversion = "0.0.0"\n' > "$tmp_repo/crates/oasis7_viewer/Cargo.toml"
+printf '[build]\ntarget = "dist"\n' > "$tmp_repo/crates/oasis7_viewer/Trunk.toml"
 printf '[package]\nname = "oasis7_proto"\nversion = "0.0.0"\n' > "$tmp_repo/crates/oasis7_proto/Cargo.toml"
 printf 'pub const VIEWER_PROTOCOL_VERSION: u32 = 1;\n' > "$tmp_repo/crates/oasis7_proto/src/viewer.rs"
 printf '# lock\n' > "$tmp_repo/Cargo.lock"
 
-touch -d '2026-03-16 00:00:00' "$tmp_repo/crates/agent_world_viewer/dist/index.html"
-touch -d '2026-03-17 00:00:00' "$tmp_repo/crates/agent_world_viewer/software_safe.js"
+touch -d '2026-03-16 00:00:00' "$tmp_repo/crates/oasis7_viewer/dist/index.html"
+touch -d '2026-03-17 00:00:00' "$tmp_repo/crates/oasis7_viewer/software_safe.js"
 
 cat > "$tmp_repo/bin/trunk" <<'TRUNK'
 #!/usr/bin/env bash

@@ -103,11 +103,11 @@ run_oasis7_llm_baseline_fixture_smoke() {
 }
 
 run_oasis7_viewer_tests() {
-  run_cargo test -p agent_world_viewer
+  run_cargo test -p oasis7_viewer
 }
 
 run_oasis7_viewer_wasm_check() {
-  run_cargo check -p agent_world_viewer --target wasm32-unknown-unknown
+  run_cargo check -p oasis7_viewer --target wasm32-unknown-unknown
 }
 
 run_required_gate_checks() {

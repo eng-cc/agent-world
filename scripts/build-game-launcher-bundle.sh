@@ -15,7 +15,7 @@ usage() {
 Usage: ./scripts/build-game-launcher-bundle.sh [options]
 
 Build a distributable launcher bundle:
-- bin/agent_world_client_launcher
+- bin/oasis7_client_launcher
 - bin/world_game_launcher
 - bin/world_web_launcher
 - bin/world_viewer_live
@@ -97,7 +97,7 @@ validate_web_dist_source() {
   if grep -E -q "eng-cc\.github\.io/(agent-world|oasis7)|doc/cn/index.html|会进化的文明战争游戏" "$index_html"; then
     echo "error: --web-dist appears to be docs/marketing site, not viewer web dist: $web_dist" >&2
     echo "hint: remove --web-dist to let script run trunk build automatically," >&2
-    echo "      or pass a dist directory built from crates/agent_world_viewer." >&2
+    echo "      or pass a dist directory built from crates/oasis7_viewer." >&2
     exit 1
   fi
 }
@@ -198,7 +198,7 @@ LAUNCHER_BIN_NAME="$(resolve_binary_name world_game_launcher "$TARGET_TRIPLE")"
 WEB_LAUNCHER_BIN_NAME="$(resolve_binary_name world_web_launcher "$TARGET_TRIPLE")"
 LIVE_BIN_NAME="$(resolve_binary_name world_viewer_live "$TARGET_TRIPLE")"
 CHAIN_BIN_NAME="$(resolve_binary_name world_chain_runtime "$TARGET_TRIPLE")"
-CLIENT_LAUNCHER_BIN_NAME="$(resolve_binary_name agent_world_client_launcher "$TARGET_TRIPLE")"
+CLIENT_LAUNCHER_BIN_NAME="$(resolve_binary_name oasis7_client_launcher "$TARGET_TRIPLE")"
 TARGET_SUBDIR="$PROFILE"
 if [[ "$PROFILE" == "dev" ]]; then
   TARGET_SUBDIR="debug"
@@ -220,12 +220,12 @@ run mkdir -p "$BUNDLE_BIN_DIR" "$BUNDLE_WEB_DIR" "$BUNDLE_WEB_LAUNCHER_DIR"
 BUNDLE_NATIVE_BUILD_ARGS=(
   "${CARGO_TARGET_ARGS[@]}"
   -p agent_world
-  -p agent_world_client_launcher
+  -p oasis7_client_launcher
   --bin world_game_launcher
   --bin world_web_launcher
   --bin world_viewer_live
   --bin world_chain_runtime
-  --bin agent_world_client_launcher
+  --bin oasis7_client_launcher
 )
 if [[ "$PROFILE" == "release" ]]; then
   run env -u RUSTC_WRAPPER cargo build --release "${BUNDLE_NATIVE_BUILD_ARGS[@]}"
@@ -273,9 +273,9 @@ else
   run rm -rf "$BUNDLE_WEB_DIR"
   run mkdir -p "$BUNDLE_WEB_DIR"
   if [[ "$PROFILE" == "release" ]]; then
-    run bash -lc "cd '$ROOT_DIR/crates/agent_world_viewer' && env -u NO_COLOR trunk build --release --dist '$BUNDLE_WEB_DIR'"
+    run bash -lc "cd '$ROOT_DIR/crates/oasis7_viewer' && env -u NO_COLOR trunk build --release --dist '$BUNDLE_WEB_DIR'"
   else
-    run bash -lc "cd '$ROOT_DIR/crates/agent_world_viewer' && env -u NO_COLOR trunk build --dist '$BUNDLE_WEB_DIR'"
+    run bash -lc "cd '$ROOT_DIR/crates/oasis7_viewer' && env -u NO_COLOR trunk build --dist '$BUNDLE_WEB_DIR'"
   fi
 fi
 
@@ -293,9 +293,9 @@ else
   run rm -rf "$BUNDLE_WEB_LAUNCHER_DIR"
   run mkdir -p "$BUNDLE_WEB_LAUNCHER_DIR"
   if [[ "$PROFILE" == "release" ]]; then
-    run bash -lc "cd '$ROOT_DIR/crates/agent_world_client_launcher' && env -u NO_COLOR trunk build --release --dist '$BUNDLE_WEB_LAUNCHER_DIR'"
+    run bash -lc "cd '$ROOT_DIR/crates/oasis7_client_launcher' && env -u NO_COLOR trunk build --release --dist '$BUNDLE_WEB_LAUNCHER_DIR'"
   else
-    run bash -lc "cd '$ROOT_DIR/crates/agent_world_client_launcher' && env -u NO_COLOR trunk build --dist '$BUNDLE_WEB_LAUNCHER_DIR'"
+    run bash -lc "cd '$ROOT_DIR/crates/oasis7_client_launcher' && env -u NO_COLOR trunk build --dist '$BUNDLE_WEB_LAUNCHER_DIR'"
   fi
 fi
 
@@ -378,7 +378,7 @@ Optional:
   Legacy fallback remains supported: AGENT_WORLD_CHAIN_STORAGE_PROFILE=release_default ./run-game.sh
 
 Bundle layout:
-- bin/agent_world_client_launcher
+- bin/oasis7_client_launcher
 - bin/world_game_launcher
 - bin/world_web_launcher
 - bin/world_viewer_live

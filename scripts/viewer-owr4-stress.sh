@@ -374,7 +374,7 @@ fi
 
 if [[ "$prewarm" == "1" ]]; then
   run env -u RUSTC_WRAPPER cargo build -p agent_world --bin world_viewer_live
-  run env -u RUSTC_WRAPPER cargo build -p agent_world_viewer
+  run env -u RUSTC_WRAPPER cargo build -p oasis7_viewer
 fi
 
 timestamp=$(date +%Y%m%d-%H%M%S)
@@ -437,7 +437,7 @@ for scenario_raw in "${scenarios[@]}"; do
   server_pid=$!
   sleep 2
 
-  viewer_cmd=(env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- "$addr")
+  viewer_cmd=(env -u RUSTC_WRAPPER cargo run -p oasis7_viewer -- "$addr")
   echo "+ OASIS7_VIEWER_HEADLESS=1 OASIS7_VIEWER_FORCE_ONLINE=1 OASIS7_VIEWER_EVENT_WINDOW_SIZE=$event_window_size OASIS7_VIEWER_PERF_PROBE=1 OASIS7_VIEWER_PERF_PROBE_INTERVAL_SECS=1 OASIS7_VIEWER_PERF_BUDGET_MS=$perf_budget_ms ${viewer_cmd[*]} > $viewer_log"
   OASIS7_VIEWER_HEADLESS=1 \
   OASIS7_VIEWER_FORCE_ONLINE=1 \

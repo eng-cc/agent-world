@@ -19,5 +19,5 @@ else
 fi
 
 ./scripts/ci-tests.sh required
-echo "+ env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-unknown"
-env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-unknown
+echo "+ env -u RUSTC_WRAPPER cargo check -p oasis7_viewer --target wasm32-unknown-unknown"
+env -u RUSTC_WRAPPER cargo check -p oasis7_viewer --target wasm32-unknown-unknown

@@ -225,7 +225,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--theme-dir",
-        default="crates/agent_world_viewer/assets/themes/industrial_v2",
+        default="crates/oasis7_viewer/assets/themes/industrial_v2",
         help="Theme directory to validate.",
     )
     parser.add_argument(

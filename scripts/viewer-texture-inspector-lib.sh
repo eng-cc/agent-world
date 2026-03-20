@@ -58,13 +58,13 @@ resolve_entities() {
 resolve_default_preset_file_for_pack() {
   case "$1" in
     industrial_v3)
-      echo "crates/agent_world_viewer/assets/themes/industrial_v3/presets/industrial_v3_default.env"
+      echo "crates/oasis7_viewer/assets/themes/industrial_v3/presets/industrial_v3_default.env"
       ;;
     industrial_v2)
-      echo "crates/agent_world_viewer/assets/themes/industrial_v2/presets/industrial_v2_default.env"
+      echo "crates/oasis7_viewer/assets/themes/industrial_v2/presets/industrial_v2_default.env"
       ;;
     industrial_v1)
-      echo "crates/agent_world_viewer/assets/themes/industrial_v1/presets/industrial_default.env"
+      echo "crates/oasis7_viewer/assets/themes/industrial_v1/presets/industrial_default.env"
       ;;
     *)
       return 1

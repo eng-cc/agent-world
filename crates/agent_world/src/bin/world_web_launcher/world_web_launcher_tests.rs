@@ -298,7 +298,7 @@ fn viewer_dev_dist_candidates_prefer_oasis7_name_before_compat_old_brand_name() 
         candidates,
         vec![
             repo_root.join("oasis7_viewer").join("dist"),
-            repo_root.join("agent_world_viewer").join("dist"),
+            repo_root.join("oasis7_viewer").join("dist"),
         ]
     );
 }

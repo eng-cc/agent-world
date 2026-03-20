@@ -166,45 +166,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "agent_world_client_launcher"
-version = "0.1.0"
-dependencies = [
- "eframe",
- "gloo-net",
- "libc",
- "oasis7_launcher_ui",
- "serde",
- "serde_json",
- "toml 0.8.23",
- "wasm-bindgen-futures",
- "web-sys",
- "web-time",
-]
-
-[[package]]
-name = "agent_world_viewer"
-version = "0.1.0"
-dependencies = [
- "agent_world",
- "bevy",
- "bevy_egui",
- "ed25519-dalek",
- "egui-wgpu",
- "egui_kittest",
- "getrandom 0.2.17",
- "gloo-timers",
- "hex",
- "image",
- "js-sys",
- "pollster",
- "serde",
- "serde_json",
- "toml 0.8.23",
- "wasm-bindgen",
- "web-sys",
-]
-
-[[package]]
 name = "ahash"
 version = "0.8.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5712,6 +5673,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "oasis7_client_launcher"
+version = "0.1.0"
+dependencies = [
+ "eframe",
+ "gloo-net",
+ "libc",
+ "oasis7_launcher_ui",
+ "serde",
+ "serde_json",
+ "toml 0.8.23",
+ "wasm-bindgen-futures",
+ "web-sys",
+ "web-time",
+]
+
+[[package]]
 name = "oasis7_consensus"
 version = "0.1.0"
 dependencies = [
@@ -5788,6 +5765,29 @@ dependencies = [
  "serde",
  "serde_cbor",
  "serde_json",
+]
+
+[[package]]
+name = "oasis7_viewer"
+version = "0.1.0"
+dependencies = [
+ "agent_world",
+ "bevy",
+ "bevy_egui",
+ "ed25519-dalek",
+ "egui-wgpu",
+ "egui_kittest",
+ "getrandom 0.2.17",
+ "gloo-timers",
+ "hex",
+ "image",
+ "js-sys",
+ "pollster",
+ "serde",
+ "serde_json",
+ "toml 0.8.23",
+ "wasm-bindgen",
+ "web-sys",
 ]
 
 [[package]]

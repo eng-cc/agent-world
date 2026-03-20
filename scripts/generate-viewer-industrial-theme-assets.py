@@ -837,7 +837,7 @@ def main() -> int:
     profile = resolve_quality_profile(args.quality)
 
     if args.out_dir is None:
-        out_dir = Path(f"crates/agent_world_viewer/assets/themes/industrial_{profile.quality}")
+        out_dir = Path(f"crates/oasis7_viewer/assets/themes/industrial_{profile.quality}")
     else:
         out_dir = Path(args.out_dir)
     mesh_dir = out_dir / "meshes"

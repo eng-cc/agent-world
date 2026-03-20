@@ -144,15 +144,15 @@ mkdir -p "$out_dir"
 
 case "$theme_pack" in
   industrial_v3)
-    preset_dir="crates/agent_world_viewer/assets/themes/industrial_v3/presets"
+    preset_dir="crates/oasis7_viewer/assets/themes/industrial_v3/presets"
     preset_prefix="industrial_v3"
     ;;
   industrial_v2)
-    preset_dir="crates/agent_world_viewer/assets/themes/industrial_v2/presets"
+    preset_dir="crates/oasis7_viewer/assets/themes/industrial_v2/presets"
     preset_prefix="industrial_v2"
     ;;
   industrial_v1)
-    preset_dir="crates/agent_world_viewer/assets/themes/industrial_v1/presets"
+    preset_dir="crates/oasis7_viewer/assets/themes/industrial_v1/presets"
     preset_prefix="industrial"
     ;;
   *)

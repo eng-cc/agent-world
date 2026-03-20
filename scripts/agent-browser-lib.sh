@@ -190,7 +190,7 @@ resolve_viewer_static_dir_for_web_closure() {
     return 0
   fi
 
-  local dist_dir="$repo_root/crates/agent_world_viewer/dist"
+  local dist_dir="$repo_root/crates/oasis7_viewer/dist"
   local dist_index="$dist_dir/index.html"
   local newest_source=0
   local dist_mtime=0
@@ -215,14 +215,14 @@ from pathlib import Path
 repo_root = Path(sys.argv[1]).resolve()
 scope = [
     "Cargo.lock",
-    "crates/agent_world_viewer/Cargo.toml",
-    "crates/agent_world_viewer/Trunk.toml",
-    "crates/agent_world_viewer/index.html",
-    "crates/agent_world_viewer/software_safe.html",
-    "crates/agent_world_viewer/software_safe.js",
-    "crates/agent_world_viewer/favicon.ico",
-    "crates/agent_world_viewer/src",
-    "crates/agent_world_viewer/assets",
+    "crates/oasis7_viewer/Cargo.toml",
+    "crates/oasis7_viewer/Trunk.toml",
+    "crates/oasis7_viewer/index.html",
+    "crates/oasis7_viewer/software_safe.html",
+    "crates/oasis7_viewer/software_safe.js",
+    "crates/oasis7_viewer/favicon.ico",
+    "crates/oasis7_viewer/src",
+    "crates/oasis7_viewer/assets",
     "crates/oasis7_proto/Cargo.toml",
     "crates/oasis7_proto/src",
 ]
@@ -264,7 +264,7 @@ PY
   mkdir -p "$rebuilt_dir"
   echo "+ env -u NO_COLOR trunk build --dist $rebuilt_dir" >&2
   (
-    cd "$repo_root/crates/agent_world_viewer"
+    cd "$repo_root/crates/oasis7_viewer"
     env -u NO_COLOR trunk build --dist "$rebuilt_dir"
   ) >&2
   printf '%s

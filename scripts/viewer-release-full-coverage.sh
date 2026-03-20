@@ -327,17 +327,17 @@ theme_profile=""
 theme_default_preset_file=""
 case "$theme_pack" in
   industrial_v3)
-    theme_dir="crates/agent_world_viewer/assets/themes/industrial_v3"
+    theme_dir="crates/oasis7_viewer/assets/themes/industrial_v3"
     theme_profile="v3"
     theme_default_preset_file="$theme_dir/presets/industrial_v3_default.env"
     ;;
   industrial_v2)
-    theme_dir="crates/agent_world_viewer/assets/themes/industrial_v2"
+    theme_dir="crates/oasis7_viewer/assets/themes/industrial_v2"
     theme_profile="v2"
     theme_default_preset_file="$theme_dir/presets/industrial_v2_default.env"
     ;;
   industrial_v1)
-    theme_dir="crates/agent_world_viewer/assets/themes/industrial_v1"
+    theme_dir="crates/oasis7_viewer/assets/themes/industrial_v1"
     theme_profile="v1"
     theme_default_preset_file="$theme_dir/presets/industrial_default.env"
     ;;
