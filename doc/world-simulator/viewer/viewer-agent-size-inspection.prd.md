@@ -12,7 +12,7 @@
 
 ## 2. User Experience & Functionality
 ### 范围内
-- `agent_world_viewer` 右侧 Selection Details 的 Agent 分支新增尺寸字段。
+- `oasis7_viewer` 右侧 Selection Details 的 Agent 分支新增尺寸字段。
 - 尺寸信息至少包含：
   - Agent 身高（cm / m）
   - 所在 Location 半径（cm / m，若可用）

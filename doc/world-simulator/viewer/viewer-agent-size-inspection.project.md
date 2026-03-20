@@ -15,9 +15,9 @@
 - [x] ASI-7：执行截图闭环验证与选中详情定向测试验证
 
 ## 依赖
-- `crates/agent_world_viewer/src/ui_text.rs`
-- `crates/agent_world_viewer/src/ui_locale_text.rs`
-- `crates/agent_world_viewer/src/tests_selection_details.rs`
+- `crates/oasis7_viewer/src/ui_text.rs`
+- `crates/oasis7_viewer/src/ui_locale_text.rs`
+- `crates/oasis7_viewer/src/tests_selection_details.rs`
 
 ## 状态
 - 当前阶段：ASI-7 已完成，任务收口。

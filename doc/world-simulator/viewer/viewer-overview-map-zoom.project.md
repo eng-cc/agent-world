@@ -17,10 +17,10 @@
 - [x] OVZ4.1 更新总项目文档状态与开发日志
 
 ## 依赖
-- `crates/agent_world_viewer/src/camera_controls.rs`
-- `crates/agent_world_viewer/src/scene_helpers.rs`
-- `crates/agent_world_viewer/src/location_fragment_render.rs`
-- `crates/agent_world_viewer/src/app_bootstrap.rs`
+- `crates/oasis7_viewer/src/camera_controls.rs`
+- `crates/oasis7_viewer/src/scene_helpers.rs`
+- `crates/oasis7_viewer/src/location_fragment_render.rs`
+- `crates/oasis7_viewer/src/app_bootstrap.rs`
 - `doc/world-simulator.project.md`
 
 ## 状态

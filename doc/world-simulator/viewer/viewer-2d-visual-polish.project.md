@@ -28,11 +28,11 @@
 - [x] V2D3.3 单测补齐与截图闭环
 
 ## 依赖
-- `crates/agent_world_viewer/src/scene_helpers.rs`
-- `crates/agent_world_viewer/src/scene_helpers_entities.rs`
-- `crates/agent_world_viewer/src/camera_controls.rs`
-- `crates/agent_world_viewer/src/label_lod.rs`
-- `crates/agent_world_viewer/src/tests_scene_entities.rs`
+- `crates/oasis7_viewer/src/scene_helpers.rs`
+- `crates/oasis7_viewer/src/scene_helpers_entities.rs`
+- `crates/oasis7_viewer/src/camera_controls.rs`
+- `crates/oasis7_viewer/src/label_lod.rs`
+- `crates/oasis7_viewer/src/tests_scene_entities.rs`
 - `doc/world-simulator/viewer/viewer-dual-view-2d-3d.prd.md`
 
 ## 状态

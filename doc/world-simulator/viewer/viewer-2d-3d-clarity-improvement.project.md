@@ -17,10 +17,10 @@
 - [x] CFX4.3 更新项目文档状态与开发日志
 
 ## 依赖
-- `crates/agent_world_viewer/src/scene_helpers.rs`
-- `crates/agent_world_viewer/src/auto_focus.rs`
-- `crates/agent_world_viewer/src/camera_controls.rs`
-- `crates/agent_world_viewer/src/right_panel_module_visibility.rs`
+- `crates/oasis7_viewer/src/scene_helpers.rs`
+- `crates/oasis7_viewer/src/auto_focus.rs`
+- `crates/oasis7_viewer/src/camera_controls.rs`
+- `crates/oasis7_viewer/src/right_panel_module_visibility.rs`
 - `scripts/capture-viewer-frame.sh`
 
 ## 状态

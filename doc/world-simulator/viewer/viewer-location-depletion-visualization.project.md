@@ -13,9 +13,9 @@
 
 ## 依赖
 - doc/world-simulator/viewer/viewer-location-depletion-visualization.prd.md
-- `crates/agent_world_viewer/src/scene_helpers.rs`
-- `crates/agent_world_viewer/src/ui_text.rs`
-- `crates/agent_world_viewer/src/tests.rs`
+- `crates/oasis7_viewer/src/scene_helpers.rs`
+- `crates/oasis7_viewer/src/ui_text.rs`
+- `crates/oasis7_viewer/src/tests.rs`
 
 ## 状态
 - 当前阶段：已完成
