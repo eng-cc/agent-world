@@ -136,11 +136,11 @@
 | --- | --- | --- |
 | core | 全局设计总览、跨模块治理基线 | `doc/core/*` |
 | engineering | 工程规范、文件约束、质量门禁 | `doc/engineering/*`, `scripts/*`, CI workflows |
-| game | 玩法循环、治理/经济/战争规则设计 | `doc/game/*`, `crates/agent_world` (gameplay相关) |
-| world-runtime | 世界内核、事件溯源、WASM执行与治理 | `doc/world-runtime/*`, `crates/agent_world`, `crates/agent_world_wasm_*` |
-| world-simulator | 场景系统、Viewer/Launcher、LLM交互链路 | `doc/world-simulator/*`, `crates/agent_world_viewer`, `crates/agent_world_client_launcher` |
-| p2p | 网络、共识、DistFS、多节点运行 | `doc/p2p/*`, `crates/agent_world_net`, `crates/agent_world_consensus`, `crates/agent_world_distfs`, `crates/agent_world_node` |
-| headless-runtime | 无界面运行链路、鉴权、长稳运维能力 | `doc/headless-runtime/*`, `crates/agent_world/src/bin/*` |
+| game | 玩法循环、治理/经济/战争规则设计 | `doc/game/*`, `crates/oasis7` (gameplay相关) |
+| world-runtime | 世界内核、事件溯源、WASM执行与治理 | `doc/world-runtime/*`, `crates/oasis7`, `crates/oasis7_wasm_*` |
+| world-simulator | 场景系统、Viewer/Launcher、LLM交互链路 | `doc/world-simulator/*`, `crates/oasis7_viewer`, `crates/oasis7_client_launcher` |
+| p2p | 网络、共识、DistFS、多节点运行 | `doc/p2p/*`, `crates/oasis7_net`, `crates/oasis7_consensus`, `crates/oasis7_distfs`, `crates/oasis7_node` |
+| headless-runtime | 无界面运行链路、鉴权、长稳运维能力 | `doc/headless-runtime/*`, `crates/oasis7/src/bin/*` |
 | testing | 分层测试体系与发布门禁 | `doc/testing/*`, `testing-manual.md`, `scripts/ci-tests.sh` |
 | scripts | 自动化脚本能力与执行约束 | `scripts/*`, `doc/scripts/*` |
 | site | 站点信息架构、发布内容、SEO | `site/*`, `doc/site/*` |

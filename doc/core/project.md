@@ -195,6 +195,14 @@
     - `rg -n "^# Agent World|^# Agent World Runtime" doc/engineering doc/scripts doc/world-runtime --glob '!third_party/**'`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
+- [x] TASK-CORE-032 (PRD-CORE-003/008) [test_tier_required]: 收口 `core` 模块地图中的当前 crate 路径真值，确保跨模块设计入口统一引用 `oasis7*` crate / 目录。
+  - 产物文件:
+    - `doc/core/prd.md`
+    - `doc/core/project.md`
+  - 验收命令 (`test_tier_required`):
+    - `rg -n "crates/oasis7|crates/oasis7_wasm_|crates/oasis7_viewer|crates/oasis7_client_launcher|crates/oasis7_(net|consensus|distfs|node)|crates/oasis7/src/bin" doc/core/prd.md`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
 
 ## 依赖
 - doc/core/prd.index.md
@@ -209,10 +217,11 @@
 - 模块进展补充（2026-03-10 / runtime）: 已向 `runtime_engineer` 发起 `doc/world-runtime/runtime-p0-candidate-evidence-handoff-2026-03-10.md`，要求优先补齐候选级 runtime P0 实测证据。
 
 ## 状态
-- 更新日期: 2026-03-19
+- 更新日期: 2026-03-20
 - 当前状态: completed
 - 下一任务: 无
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
+- 最新完成: `TASK-CORE-032`（已将 core 模块地图中的当前 crate 路径真值统一收口到 `oasis7*` 目录与包名）。
 - 最新完成: `TASK-CORE-005`（已完成 ROUND-001~ROUND-008 一致性审查链路收口、任务归档与 QA handoff）。
 - 最新完成: `TASK-CORE-016`（已完成下一轮跨模块优先级清单与第一优先级选择）。
 - 最新完成: `TASK-CORE-017`（已完成发布候选 readiness 统一入口定义）。
@@ -228,6 +237,8 @@
 - 最新完成: `TASK-CORE-027`（已清理工程总入口兼容跳转重复条目）。
 - 最新完成: `TASK-CORE-028`（已冻结 `standard_3d / software_safe / pure_api` 三模式总契约，并明确 mode / execution lane 分层口径）。
 - 最新完成: `TASK-CORE-029`（已完成 `testing-manual`、`world-simulator`、`game` 与 `testing` 的下游术语回写，收口三模式与 execution lane 的跨模块口径）。
+- 最新完成: `TASK-CORE-030`（已完成 core / viewer 活跃入口与实际窗口标题的 `oasis7` 品牌收口）。
+- 最新完成: `TASK-CORE-031`（已完成 `engineering`、`scripts`、`world-runtime` 的活跃专题品牌收口）。
 - 最新完成: `TASK-CORE-030`（已完成 core 活跃专题标题、Viewer 活跃手册与实际 Viewer 窗口/Web 标题的 `oasis7` 品牌对齐，并保留旧实现名仅作 internal compatibility naming 说明）。
 - 最新完成: `TASK-CORE-031`（已完成 `engineering`、`scripts` 与 `world-runtime` 仍可读历史专题标题的 `oasis7` 品牌收口，未触碰内部实现兼容名）。
 - 说明: 本文档仅维护 core 设计执行状态；过程记录在 `doc/devlog/2026-03-06.md`、`doc/devlog/2026-03-09.md`、`doc/devlog/2026-03-10.md`、`doc/devlog/2026-03-11.md` 与 `doc/devlog/2026-03-19.md`。
