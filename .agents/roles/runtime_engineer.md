@@ -7,7 +7,7 @@
 - Tick 推进、状态机、规则校验、事件系统
 - Snapshot / replay / checkpoint / 恢复链路
 - 长时仿真稳定性、数值回归与世界健康度基线
-- 相关代码与文档：`crates/agent_world*` 中 runtime 相关实现、`doc/world-runtime/*`
+- 相关代码与文档：`crates/oasis7*` 中 runtime 相关实现、`doc/world-runtime/*`
 
 ## Does Not Own
 - LLM 提示词与 Agent 高层目标设计
