@@ -134,7 +134,7 @@ env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_game_launcher -- \
   --agent-provider-mode openclaw_local_http \
   --openclaw-base-url http://127.0.0.1:5841 \
   --openclaw-connect-timeout-ms 15000 \
-  --openclaw-agent-profile agent_world_p0_low_freq_npc
+  --openclaw-agent-profile oasis7_p0_low_freq_npc
 ```
 
 Release bundle path:
@@ -146,7 +146,7 @@ Release bundle path:
   --agent-provider-mode openclaw_local_http \
   --openclaw-base-url http://127.0.0.1:5841 \
   --openclaw-connect-timeout-ms 15000 \
-  --openclaw-agent-profile agent_world_p0_low_freq_npc
+  --openclaw-agent-profile oasis7_p0_low_freq_npc
 ```
 
 Required real-play settings:
@@ -154,7 +154,7 @@ Required real-play settings:
 - `agent_provider_mode=openclaw_local_http`
 - `openclaw_base_url=http://127.0.0.1:5841`
 - `openclaw_connect_timeout_ms=15000`
-- `openclaw_agent_profile=agent_world_p0_low_freq_npc`
+- `openclaw_agent_profile=oasis7_p0_low_freq_npc`
 
 ### 5.1 Choose execution lane
 
@@ -213,7 +213,7 @@ bash scripts/openclaw-parity-p0.sh \
   --timeout-ms 15000 \
   --openclaw-base-url http://127.0.0.1:5841 \
   --openclaw-connect-timeout-ms 15000 \
-  --openclaw-agent-profile agent_world_p0_low_freq_npc
+  --openclaw-agent-profile oasis7_p0_low_freq_npc
 ```
 
 Primary success target today:

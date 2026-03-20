@@ -27,7 +27,7 @@ fn openclaw_adapter_decides_and_pushes_feedback_via_local_http() {
         .next()
         .expect("fixture");
     let mut request = fixture.request.clone();
-    request.agent_profile = Some("agent_world_p0_low_freq_npc".to_string());
+    request.agent_profile = Some("oasis7_p0_low_freq_npc".to_string());
     let feedback = FeedbackEnvelope {
         action_id: 9,
         success: true,
@@ -233,7 +233,7 @@ fn provider_backed_behavior_executes_openclaw_adapter_move_and_records_feedback(
                     .expect("decode decision request");
                 assert_eq!(
                     decoded.agent_profile.as_deref(),
-                    Some("agent_world_p0_low_freq_npc")
+                    Some("oasis7_p0_low_freq_npc")
                 );
                 assert_eq!(
                     decoded.observation.mode,
@@ -274,7 +274,7 @@ fn provider_backed_behavior_executes_openclaw_adapter_move_and_records_feedback(
     let behavior =
         ProviderBackedAgentBehavior::new("agent-1", adapter, openclaw_phase1_action_catalog())
             .with_provider_config_ref("openclaw://local-http")
-            .with_agent_profile("agent_world_p0_low_freq_npc")
+            .with_agent_profile("oasis7_p0_low_freq_npc")
             .with_environment_class("adapter_test")
             .with_fixture_id("fixture.adapter.move")
             .with_replay_id("replay.adapter.move")

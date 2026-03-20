@@ -101,7 +101,7 @@ fn parse_options_accepts_overrides() {
             "--openclaw-connect-timeout-ms",
             "3000",
             "--openclaw-agent-profile",
-            "agent_world_p0_low_freq_npc",
+            "oasis7_p0_low_freq_npc",
             "--openclaw-execution-mode",
             "player_parity",
             "--no-open-browser",
@@ -145,7 +145,7 @@ fn parse_options_accepts_overrides() {
     assert_eq!(options.openclaw_connect_timeout_ms, 3000);
     assert_eq!(
         options.openclaw_agent_profile,
-        "agent_world_p0_low_freq_npc"
+        "oasis7_p0_low_freq_npc"
     );
     assert_eq!(
         options.openclaw_execution_mode,

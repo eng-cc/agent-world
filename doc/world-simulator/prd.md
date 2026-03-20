@@ -60,7 +60,7 @@
   - `doc/world-simulator/prd/acceptance/openclaw-agent-parity-score-card-2026-03-12.md`（PRD-WORLD_SIMULATOR-038）
   - `doc/world-simulator/prd/acceptance/openclaw-agent-parity-benchmark-protocol-2026-03-12.md`（PRD-WORLD_SIMULATOR-038）
   - `doc/world-simulator/prd/acceptance/openclaw-agent-parity-aggregation-template-2026-03-12.md`（PRD-WORLD_SIMULATOR-038）
-  - `doc/world-simulator/llm/openclaw-agent-profile-agent_world_p0_low_freq_npc-2026-03-13.md`（PRD-WORLD_SIMULATOR-037/038 supporting spec）
+  - `doc/world-simulator/llm/openclaw-agent-profile-agent_world_p0_low_freq_npc-2026-03-13.md`（PRD-WORLD_SIMULATOR-037/038 supporting spec；文件路径保留历史命名）
   - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase1-2026-03-04.prd.md`（PRD-WORLD_SIMULATOR-016）
   - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase2-2026-03-05.prd.md`（PRD-WORLD_SIMULATOR-017）
   - `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase3-2026-03-05.prd.md`（PRD-WORLD_SIMULATOR-018）
@@ -158,6 +158,7 @@
   - SC-54: `world_game_launcher` / `world_web_launcher` 相关测试与静态资源测试写入系统临时目录时，默认前缀必须使用 `oasis7_*`，避免本地测试产物与失败签名继续泄露旧 `agent_world_*` 品牌字符串。
   - SC-55: 内部 CI 编排脚本中的 helper 函数名与聚合入口必须优先使用 `oasis7_*` 口径，避免 `scripts/ci-tests.sh` 继续通过 `run_agent_world_*` 这类内部标识扩散旧品牌命名。
   - SC-56: `world_chain_runtime` 转账提交相关测试写入系统临时目录时，默认前缀必须使用 `oasis7_*`，避免链运行时转账测试产物继续泄露旧 `agent_world_*` 内部命名。
+  - SC-57: OpenClaw 首期 `P0` 默认 gameplay profile id 必须优先迁移到 `oasis7_p0_low_freq_npc`，同时兼容旧 `agent_world_p0_low_freq_npc`；launcher、runtime live、parity bench、bridge 与 `oasis7` operator 文档不得继续把旧 profile id 当作当前默认真值。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -373,6 +374,7 @@
   - AC-59: `crates/agent_world/src/bin/world_game_launcher/world_game_launcher_tests.rs`、`crates/agent_world/src/bin/world_web_launcher/world_web_launcher_tests.rs` 与 `crates/agent_world/src/bin/world_web_launcher/static_files.rs` 里的临时目录前缀必须默认改为 `oasis7_*`；launcher/web-launcher 定向测试通过后，临时目录命名不得继续输出 `agent_world_*` 作为当前默认值。
   - AC-60: `scripts/ci-tests.sh` 里的 required/full/support 分层 helper 与分发入口必须默认改为 `run_oasis7_*` 命名；脚本帮助、tier dispatch 与执行行为保持不变，且脚本内不得残留 `run_agent_world_*` 作为当前 helper 真值。
   - AC-61: `crates/agent_world/src/bin/world_chain_runtime/transfer_submit_api_tests.rs` 的临时目录前缀必须默认改为 `oasis7_transfer_submit_api_tests_*`；转账提交/状态/浏览器查询定向测试通过后，不得继续输出 `agent_world_transfer_submit_api_tests_*` 作为当前默认值。
+  - AC-62: `world_game_launcher`、`world_openclaw_parity_bench`、`viewer/runtime_live/llm_sidecar`、`agent_world_client_launcher`、`scripts/openclaw-parity-p0.sh` 与 `.agents/skills/oasis7/**` 必须默认使用 `oasis7_p0_low_freq_npc`，同时 `world_openclaw_local_bridge` 继续接受旧 `agent_world_p0_low_freq_npc` 作为兼容别名；定向回归通过后，产品默认与 operator 示例不得再把旧 profile id 作为当前真值。
 - Non-Goals:
   - 不在本 PRD 中详细列出每个 UI 像素级规范。
   - 不替代 world-runtime/p2p 的底层协议设计。

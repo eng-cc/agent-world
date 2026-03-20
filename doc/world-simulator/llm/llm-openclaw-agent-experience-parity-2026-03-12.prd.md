@@ -14,7 +14,7 @@
   - SC-3: `OpenClaw` 的无效动作率、超时率、非法 schema 率均不得高于内置 agent 基线 2 倍以上，且绝对值必须低于阻断线。
   - SC-4: viewer/QA 对两类 provider 的 trace 可解释性与错误恢复路径保持一致，不出现“OpenClaw 模式下无法定位问题”的观测断层。
   - SC-5: 若行为等价已达标但 `latency_class` 仅达到 `B (experimental)`，则该 provider 只允许保留在 `experimental` 或受限试点，不得默认启用。
-  - SC-6: 首期 `P0` parity 样本必须使用固定的 OpenClaw 玩法 profile（当前为 `agent_world_p0_low_freq_npc`），并在 summary / scorecard 中保留该 profile 标识，避免“同场景不同 skill”造成假性通过。
+  - SC-6: 首期 `P0` parity 样本必须使用固定的 OpenClaw 玩法 profile（当前默认 `oasis7_p0_low_freq_npc`，兼容旧别名 `agent_world_p0_low_freq_npc`），并在 summary / scorecard 中保留该 profile 标识，避免“同场景不同 skill”造成假性通过。
   - SC-7: 只有当行为等价硬门禁通过且 `latency_class` 达到 `A (default-candidate)` 时，才允许把该 provider 作为默认体验或推进更大范围扩面。
 
 ## 2. User Experience & Functionality

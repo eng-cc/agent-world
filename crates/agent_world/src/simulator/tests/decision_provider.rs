@@ -111,7 +111,7 @@ fn provider_backed_agent_behavior_executes_mocked_move_and_records_feedback() {
     let shared_state = provider.shared_state();
     let behavior = ProviderBackedAgentBehavior::new("agent-1", provider, provider_action_catalog())
         .with_provider_config_ref("mock://openclaw-local-http")
-        .with_agent_profile("agent_world_p0_low_freq_npc")
+        .with_agent_profile("oasis7_p0_low_freq_npc")
         .with_execution_mode(ProviderExecutionMode::PlayerParity)
         .with_environment_class("unit_test")
         .with_fallback_reason("parity_probe")
@@ -154,7 +154,7 @@ fn provider_backed_agent_behavior_executes_mocked_move_and_records_feedback() {
     );
     assert_eq!(
         snapshot.recorded_requests[0].agent_profile.as_deref(),
-        Some("agent_world_p0_low_freq_npc")
+        Some("oasis7_p0_low_freq_npc")
     );
     assert!(snapshot.recorded_requests[0]
         .observation

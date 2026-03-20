@@ -402,6 +402,39 @@
     - `env -u RUSTC_WRAPPER cargo test -p agent_world transfer_status_and_history_endpoint_report_confirmed_record -- --nocapture`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
+- [x] TASK-WORLD_SIMULATOR-183 (PRD-WORLD_SIMULATOR-037/038) [test_tier_required]: 将 OpenClaw 首期 `P0` 默认 gameplay profile id 优先切到 `oasis7_p0_low_freq_npc`，并保留旧 `agent_world_p0_low_freq_npc` 兼容别名，收口 launcher/runtime live/parity/skill 文档里的旧 profile 默认口径。
+  - 产物文件:
+    - `doc/world-simulator/prd.md`
+    - `doc/world-simulator/project.md`
+    - `doc/world-simulator/llm/llm-openclaw-local-http-provider-integration-2026-03-12.prd.md`
+    - `doc/world-simulator/llm/llm-openclaw-agent-experience-parity-2026-03-12.prd.md`
+    - `doc/world-simulator/llm/llm-openclaw-agent-experience-parity-2026-03-12.project.md`
+    - `doc/world-simulator/llm/llm-openclaw-local-http-provider-integration-2026-03-12.project.md`
+    - `doc/world-simulator/llm/openclaw-agent-profile-agent_world_p0_low_freq_npc-2026-03-13.md`
+    - `scripts/openclaw-parity-p0.sh`
+    - `.agents/skills/oasis7/SKILL.md`
+    - `.agents/skills/oasis7/references/real-play-config.md`
+    - `.agents/skills/oasis7/references/failure-signatures.md`
+    - `.agents/skills/oasis7/scripts/oasis7-run.sh`
+    - `crates/agent_world/src/bin/world_game_launcher.rs`
+    - `crates/agent_world/src/bin/world_game_launcher/world_game_launcher_tests.rs`
+    - `crates/agent_world/src/viewer/runtime_live/llm_sidecar.rs`
+    - `crates/agent_world/src/viewer/runtime_live/tests.rs`
+    - `crates/agent_world/src/bin/world_openclaw_parity_bench.rs`
+    - `crates/agent_world/src/bin/world_openclaw_local_bridge.rs`
+    - `crates/agent_world_client_launcher/src/main.rs`
+    - `crates/agent_world_client_launcher/src/main_tests.rs`
+    - `crates/agent_world/src/simulator/tests/decision_provider.rs`
+    - `crates/agent_world/src/simulator/tests/openclaw_local_http.rs`
+    - `crates/agent_world/src/simulator/tests/openclaw_adapter.rs`
+  - 验收命令 (`test_tier_required`):
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world parse_options_defaults -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world openclaw_settings_from_env_parses_profile_and_timeout -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world validate_profile_accepts_oasis7_and_legacy_alias -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher build_launcher_args_includes_openclaw_profile_flags -- --nocapture`
+    - `bash -n scripts/openclaw-parity-p0.sh`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
 - [x] TASK-WORLD_SIMULATOR-162 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 修复标准模式 bootstrap `Loading standard viewer...` overlay 在 wasm 已启动后仍残留并压缩左侧视口的问题，补齐 cleanup 生命周期与最小回归验证。
 - [x] TASK-WORLD_SIMULATOR-148 (PRD-WORLD_SIMULATOR-040) [test_tier_required]: 完成 `OpenClaw` 双轨模式（`player_parity` / `headless_agent` / `debug_viewer`）专题 PRD / Project 建模，并回写模块主文档、索引与 devlog。
 - [x] TASK-WORLD_SIMULATOR-149 (PRD-WORLD_SIMULATOR-040) [test_tier_required]: 由 `agent_engineer` 冻结 `player_parity` / `headless_agent` 的 observation/action contract、schema version、模式元数据与禁止泄露真值边界，并形成 supporting spec。
@@ -593,6 +626,7 @@
 - 最新完成: `TASK-WORLD_SIMULATOR-180`（已将 `world_game_launcher` / `world_web_launcher` 相关测试的系统临时目录默认前缀切到 `oasis7_*`，收口 launcher 测试产物里残留的旧 `agent_world_*` 内部命名）。
 - 最新完成: `TASK-WORLD_SIMULATOR-181`（已将 `scripts/ci-tests.sh` 的内部 helper 函数命名统一切到 `run_oasis7_*`，收口 CI 编排脚本里残留的旧 `run_agent_world_*` 内部标识）。
 - 最新完成: `TASK-WORLD_SIMULATOR-182`（已将 `world_chain_runtime` 转账提交测试的系统临时目录默认前缀切到 `oasis7_*`，收口链运行时转账测试产物里残留的旧 `agent_world_*` 内部命名）。
+- 最新完成: `TASK-WORLD_SIMULATOR-183`（已将 OpenClaw 首期 `P0` 默认 gameplay profile id 优先切到 `oasis7_p0_low_freq_npc`，并保留旧 `agent_world_p0_low_freq_npc` 兼容别名）。
 - 最新完成: `TASK-WORLD_SIMULATOR-166`（已完成 `doc/world-simulator/**` 历史专题首行标题的 title-only cleanup，将 `Agent World*` 公开标题统一切到 `oasis7*`，并保留旧品牌只出现在正文历史上下文中）。
 - 最新完成: `TASK-WORLD_SIMULATOR-164`（为 Viewer 首局 `4/4` 之后补 `PostOnboarding` 阶段目标卡、阻塞解释、分支解锁与 summary 文案更新，并通过定向 `test_tier_required` 回归）。
 - 最新完成: `TASK-WORLD_SIMULATOR-165`（已完成 Viewer 活跃手册、原生窗口标题、Web `<title>` 与抓帧脚本窗口匹配的 `oasis7 Viewer` 品牌对齐，并保留旧标题仅作兼容匹配）。
@@ -617,7 +651,7 @@
 - 当前优先任务: `fix3` 已恢复 builtin/OpenClaw 的行为等价基线；继续压缩 OpenClaw absolute wait latency，争取把 `latency_class` 从 `B (experimental-only)` 收敛到 `A (default-candidate)` 后再讨论默认启用。
 - 当前阻断说明: `PRD-WORLD_SIMULATOR-040` 已完成 T4 对照采证并解除阻断；`PRD-WORLD_SIMULATOR-038` 在 `openclaw_builtin_parity_20260317_fix3` 中已恢复 `completion_rate=100%`、`timeout_rate=0%` 与 `move_agent=4`，且 `relative_wait_gap` 满足行为等价硬门禁，但 OpenClaw `median_extra_wait_ms=13957`、`p95_extra_wait_ms=14062` 仅达到 `latency_class B`，因此当前允许保持 `experimental` / 受限试点，仍不得默认启用。
 - parity 执行入口: `scripts/openclaw-parity-p0.sh` + `world_openclaw_parity_bench` 已落地，可先跑 openclaw-only/mock smoke，再接真实 builtin/OpenClaw 双边样本。
-- OpenClaw 首期 profile: `agent_world_p0_low_freq_npc` 已冻结，并由 `DecisionRequest.agent_profile` / parity summary / 产品 launcher 主链路统一透传。
+- OpenClaw 首期 profile: `oasis7_p0_low_freq_npc` 已冻结为当前默认值，并由 `DecisionRequest.agent_profile` / parity summary / 产品 launcher 主链路统一透传；旧 `agent_world_p0_low_freq_npc` 仍作为兼容别名接受。
 - 并行待办: 真实 `OpenClaw(Local HTTP)` 单 NPC 闭环试点（T5 / `experimental`） + 继续优化 OpenClaw absolute wait latency，并在达到 `latency_class A` 后重签 `PRD-WORLD_SIMULATOR-038` 的默认启用结论
 - 专题映射状态: 2026-03-02 批次 9/9、2026-03-03 批次 4/4、2026-03-04 批次 7/7、2026-03-05 批次 4/4、2026-03-06 批次 6/6 已纳入模块项目管理文档；`TASK-WORLD_SIMULATOR-057~108` 已完成。
 - 手册入口状态: `doc/world-simulator/viewer/viewer-manual.md` 为唯一活跃手册入口。

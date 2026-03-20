@@ -20,7 +20,7 @@ const DEFAULT_ADAPTER_VERSION: &str = "openclaw_phase1_adapter_v1";
 const DEFAULT_TIMEOUT_MS: u64 = 15_000;
 const DEFAULT_TICKS: u64 = 20;
 const DEFAULT_PROVIDER_CONNECT_TIMEOUT_MS: u64 = 15_000;
-const DEFAULT_OPENCLAW_AGENT_PROFILE: &str = "agent_world_p0_low_freq_npc";
+const DEFAULT_OPENCLAW_AGENT_PROFILE: &str = "oasis7_p0_low_freq_npc";
 const DEFAULT_MAX_MOVE_DISTANCE_CM_PER_TICK: i64 = 1_000_000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

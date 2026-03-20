@@ -84,7 +84,7 @@ fn build_launcher_args_includes_openclaw_profile_flags() {
         openclaw_base_url: "http://127.0.0.1:5841".to_string(),
         openclaw_auth_token: "secret-token".to_string(),
         openclaw_connect_timeout_ms: "3000".to_string(),
-        openclaw_agent_profile: "agent_world_p0_low_freq_npc".to_string(),
+        openclaw_agent_profile: "oasis7_p0_low_freq_npc".to_string(),
         ..LaunchConfig::default()
     };
     let args = build_launcher_args(&config).expect("args should build");
@@ -97,7 +97,7 @@ fn build_launcher_args_includes_openclaw_profile_flags() {
     assert!(args.contains(&"--openclaw-connect-timeout-ms".to_string()));
     assert!(args.contains(&"3000".to_string()));
     assert!(args.contains(&"--openclaw-agent-profile".to_string()));
-    assert!(args.contains(&"agent_world_p0_low_freq_npc".to_string()));
+    assert!(args.contains(&"oasis7_p0_low_freq_npc".to_string()));
 }
 #[test]
 fn build_game_url_rewrites_zero_host() {
@@ -134,7 +134,7 @@ fn launch_config_defaults_enable_llm() {
     assert!(config.chain_enabled);
     assert_eq!(config.agent_provider_mode, "builtin_llm");
     assert_eq!(config.openclaw_base_url, "http://127.0.0.1:5841");
-    assert_eq!(config.openclaw_agent_profile, "agent_world_p0_low_freq_npc");
+    assert_eq!(config.openclaw_agent_profile, "oasis7_p0_low_freq_npc");
     assert!(config.openclaw_auto_discover);
     assert!(config.chain_node_id.starts_with("viewer-live-node-fresh-"));
 }

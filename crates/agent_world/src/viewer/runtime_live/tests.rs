@@ -144,7 +144,7 @@ fn openclaw_settings_from_env_parses_profile_and_timeout() {
     std::env::set_var(VIEWER_OPENCLAW_CONNECT_TIMEOUT_MS_ENV, "4200");
     std::env::set_var(
         VIEWER_OPENCLAW_AGENT_PROFILE_ENV,
-        "agent_world_p0_low_freq_npc",
+        "oasis7_p0_low_freq_npc",
     );
     std::env::set_var(VIEWER_OPENCLAW_EXECUTION_MODE_ENV, "player_parity");
     std::env::set_var(VIEWER_OPENCLAW_AUTH_TOKEN_ENV, "secret-token");
@@ -153,7 +153,7 @@ fn openclaw_settings_from_env_parses_profile_and_timeout() {
         .expect("openclaw settings");
     assert_eq!(settings.base_url, "http://127.0.0.1:5841");
     assert_eq!(settings.connect_timeout_ms, 4200);
-    assert_eq!(settings.agent_profile, "agent_world_p0_low_freq_npc");
+    assert_eq!(settings.agent_profile, "oasis7_p0_low_freq_npc");
     assert_eq!(settings.execution_mode, ProviderExecutionMode::PlayerParity);
     assert_eq!(settings.auth_token.as_deref(), Some("secret-token"));
     clear_runtime_openclaw_env();
@@ -168,7 +168,7 @@ fn openclaw_settings_from_env_falls_back_to_legacy_prefix() {
     std::env::set_var(LEGACY_VIEWER_OPENCLAW_CONNECT_TIMEOUT_MS_ENV, "4300");
     std::env::set_var(
         LEGACY_VIEWER_OPENCLAW_AGENT_PROFILE_ENV,
-        "agent_world_p0_low_freq_npc",
+        "oasis7_p0_low_freq_npc",
     );
     std::env::set_var(LEGACY_VIEWER_OPENCLAW_EXECUTION_MODE_ENV, "player_parity");
     std::env::set_var(LEGACY_VIEWER_OPENCLAW_AUTH_TOKEN_ENV, "legacy-token");
@@ -178,7 +178,7 @@ fn openclaw_settings_from_env_falls_back_to_legacy_prefix() {
         .expect("openclaw settings");
     assert_eq!(settings.base_url, "http://127.0.0.1:5842");
     assert_eq!(settings.connect_timeout_ms, 4300);
-    assert_eq!(settings.agent_profile, "agent_world_p0_low_freq_npc");
+    assert_eq!(settings.agent_profile, "oasis7_p0_low_freq_npc");
     assert_eq!(settings.execution_mode, ProviderExecutionMode::PlayerParity);
     assert_eq!(settings.auth_token.as_deref(), Some("legacy-token"));
     clear_runtime_openclaw_env();
@@ -444,7 +444,7 @@ fn runtime_prompt_control_openclaw_mode_reports_unsupported() {
     std::env::set_var(VIEWER_OPENCLAW_BASE_URL_ENV, "http://127.0.0.1:5841");
     std::env::set_var(
         VIEWER_OPENCLAW_AGENT_PROFILE_ENV,
-        "agent_world_p0_low_freq_npc",
+        "oasis7_p0_low_freq_npc",
     );
     let mut server = ViewerRuntimeLiveServer::new(
         ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal)
@@ -585,7 +585,7 @@ fn runtime_openclaw_compat_snapshot_exposes_agent_execution_debug_contexts() {
     std::env::set_var(VIEWER_OPENCLAW_BASE_URL_ENV, "http://127.0.0.1:5841");
     std::env::set_var(
         VIEWER_OPENCLAW_AGENT_PROFILE_ENV,
-        "agent_world_p0_low_freq_npc",
+        "oasis7_p0_low_freq_npc",
     );
     std::env::set_var(VIEWER_OPENCLAW_EXECUTION_MODE_ENV, "player_parity");
     let server = ViewerRuntimeLiveServer::new(
@@ -624,7 +624,7 @@ fn runtime_openclaw_compat_snapshot_exposes_agent_execution_debug_contexts() {
     assert_eq!(context.environment_class.as_deref(), Some("runtime_live"));
     assert_eq!(
         context.agent_profile.as_deref(),
-        Some("agent_world_p0_low_freq_npc")
+        Some("oasis7_p0_low_freq_npc")
     );
     clear_runtime_openclaw_env();
 }
@@ -800,7 +800,7 @@ fn runtime_agent_chat_openclaw_mode_reports_unsupported() {
     std::env::set_var(VIEWER_OPENCLAW_BASE_URL_ENV, "http://127.0.0.1:5841");
     std::env::set_var(
         VIEWER_OPENCLAW_AGENT_PROFILE_ENV,
-        "agent_world_p0_low_freq_npc",
+        "oasis7_p0_low_freq_npc",
     );
     let mut server = ViewerRuntimeLiveServer::new(
         ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal)

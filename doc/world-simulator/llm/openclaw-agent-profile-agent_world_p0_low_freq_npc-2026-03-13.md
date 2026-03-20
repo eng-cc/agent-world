@@ -1,4 +1,4 @@
-# OpenClaw 专用玩法 Profile：`agent_world_p0_low_freq_npc`（2026-03-13）
+# OpenClaw 专用玩法 Profile：`oasis7_p0_low_freq_npc`（2026-03-13）
 
 - 关联 PRD: `PRD-WORLD_SIMULATOR-037`、`PRD-WORLD_SIMULATOR-038`
 - owner: `agent_engineer`
@@ -6,8 +6,8 @@
 - 适用范围: `OpenClaw(Local HTTP)` 首期 `P0` 单低频 NPC parity、mock regression、experimental 试点
 
 ## 1. 定义
-- `agent_world_p0_low_freq_npc` 不是 runtime 新动作集，而是发给 `OpenClaw` 的 provider-side 玩法 profile / skill 标识。
-- provider 收到该标识后，应加载与 `Agent World` 首期 `P0` 低频 NPC 相匹配的系统提示、动作偏好、恢复策略与禁行动作约束。
+- `oasis7_p0_low_freq_npc` 是当前默认发给 `OpenClaw` 的 provider-side 玩法 profile / skill 标识；旧 `agent_world_p0_low_freq_npc` 作为兼容别名保留。
+- provider 收到该标识后，应加载与 `oasis7` 首期 `P0` 低频 NPC 相匹配的系统提示、动作偏好、恢复策略与禁行动作约束。
 - 首期通过 `DecisionRequest.agent_profile` 传输；若 provider 不识别该 profile，必须返回结构化失败，而不是静默退回通用 profile。
 
 ## 2. 目标优先级

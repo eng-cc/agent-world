@@ -27,6 +27,8 @@ const DEFAULT_PROVIDER_ID: &str = "openclaw_local_bridge";
 const DEFAULT_PROTOCOL_VERSION: &str = "world-simulator-openclaw-local-http-v1";
 const MAX_RECENT_FEEDBACK: usize = 8;
 const MAX_MOVE_DISTANCE_CM_PER_TICK: i64 = 1_000_000;
+const DEFAULT_OPENCLAW_AGENT_PROFILE: &str = "oasis7_p0_low_freq_npc";
+const LEGACY_OPENCLAW_AGENT_PROFILE: &str = "agent_world_p0_low_freq_npc";
 
 #[derive(Debug, Clone)]
 struct CliOptions {
@@ -858,11 +860,14 @@ fn validate_profile(agent_profile: Option<&str>) -> Option<String> {
     else {
         return None;
     };
-    if agent_profile == "agent_world_p0_low_freq_npc" {
+    if matches!(
+        agent_profile,
+        DEFAULT_OPENCLAW_AGENT_PROFILE | LEGACY_OPENCLAW_AGENT_PROFILE
+    ) {
         None
     } else {
         Some(format!(
-            "unsupported agent_profile `{agent_profile}`; expected agent_world_p0_low_freq_npc"
+            "unsupported agent_profile `{agent_profile}`; expected {DEFAULT_OPENCLAW_AGENT_PROFILE} (legacy alias: {LEGACY_OPENCLAW_AGENT_PROFILE})"
         ))
     }
 }
@@ -952,7 +957,7 @@ fn build_decision_prompt(request: &DecisionRequest, recent_feedback: &[String]) 
             "You are controlling a low-frequency NPC in agent-world. ",
             "Return ONLY one minified JSON object with no markdown, no prose, and no code fences. ",
             "Respect the profile and only use actions from action_catalog. ",
-            "For profile agent_world_p0_low_freq_npc, prefer legal forward progress over idle waiting. ",
+            "For profile oasis7_p0_low_freq_npc, prefer legal forward progress over idle waiting. ",
             "If move_agent is legal and a visible non-current location exists, prefer move_agent to the nearest such location. ",
             "Never choose move_agent.to equal to the current location. ",
             "Choose wait or wait_ticks only when no legal progress action exists or a recoverable error just happened. ",
@@ -977,7 +982,7 @@ fn profile_guidance(
     nearest_non_current_location_id: Option<&str>,
 ) -> String {
     match request.agent_profile.as_deref() {
-        Some("agent_world_p0_low_freq_npc") => {
+        Some(DEFAULT_OPENCLAW_AGENT_PROFILE | LEGACY_OPENCLAW_AGENT_PROFILE) => {
             let current_location = current_location_id.unwrap_or("unknown");
             let next_location = nearest_non_current_location_id.unwrap_or("none");
             format!(
@@ -1517,6 +1522,12 @@ mod tests {
             .contains("profile_guardrail_reroute"));
     }
 
+    #[test]
+    fn validate_profile_accepts_oasis7_and_legacy_alias() {
+        assert_eq!(validate_profile(Some(DEFAULT_OPENCLAW_AGENT_PROFILE)), None);
+        assert_eq!(validate_profile(Some(LEGACY_OPENCLAW_AGENT_PROFILE)), None);
+    }
+
     fn sample_request() -> DecisionRequest {
         let mut stock = ResourceStock::default();
         let _ = stock.add(ResourceKind::Electricity, 24);
@@ -1588,7 +1599,7 @@ mod tests {
                 timeout_budget_ms: 7000,
             },
             provider_config_ref: Some("openclaw://local-bridge".to_string()),
-            agent_profile: Some("agent_world_p0_low_freq_npc".to_string()),
+            agent_profile: Some(DEFAULT_OPENCLAW_AGENT_PROFILE.to_string()),
             fixture_id: None,
             replay_id: None,
             timeout_budget_ms: 7000,

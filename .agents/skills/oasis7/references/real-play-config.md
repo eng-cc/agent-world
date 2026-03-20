@@ -7,7 +7,7 @@ Use these exact values for a real local OpenClaw gameplay run:
 - `agent_provider_mode=openclaw_local_http`
 - `openclaw_base_url=http://127.0.0.1:5841`
 - `openclaw_connect_timeout_ms=15000`
-- `openclaw_agent_profile=agent_world_p0_low_freq_npc`
+- `openclaw_agent_profile=oasis7_p0_low_freq_npc`
 
 ## Process Ownership
 
@@ -110,7 +110,7 @@ Prefer the repo-owned lightweight runtime agent:
   --agent-provider-mode openclaw_local_http \
   --openclaw-base-url http://127.0.0.1:5841 \
   --openclaw-connect-timeout-ms 15000 \
-  --openclaw-agent-profile agent_world_p0_low_freq_npc
+  --openclaw-agent-profile oasis7_p0_low_freq_npc
 ```
 
 ### Repo source path
@@ -122,7 +122,7 @@ env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_game_launcher -- \
   --agent-provider-mode openclaw_local_http \
   --openclaw-base-url http://127.0.0.1:5841 \
   --openclaw-connect-timeout-ms 15000 \
-  --openclaw-agent-profile agent_world_p0_low_freq_npc
+  --openclaw-agent-profile oasis7_p0_low_freq_npc
 ```
 
 ### Bundle + wrapper path
@@ -156,7 +156,7 @@ bash scripts/openclaw-parity-p0.sh \
   --timeout-ms 15000 \
   --openclaw-base-url http://127.0.0.1:5841 \
   --openclaw-connect-timeout-ms 15000 \
-  --openclaw-agent-profile agent_world_p0_low_freq_npc
+  --openclaw-agent-profile oasis7_p0_low_freq_npc
 ```
 
 ## Doctor Contract
