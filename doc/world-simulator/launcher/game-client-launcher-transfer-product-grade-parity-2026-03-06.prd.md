@@ -3,7 +3,7 @@
 - 对应设计文档: `doc/world-simulator/launcher/game-client-launcher-transfer-product-grade-parity-2026-03-06.design.md`
 - 对应项目管理文档: `doc/world-simulator/launcher/game-client-launcher-transfer-product-grade-parity-2026-03-06.project.md`
 
-审计轮次: 5
+审计轮次: 6
 
 ## 1. Executive Summary
 - Problem Statement: 当前启动器转账能力仍偏工程调试态，native 与 web 行为存在差异（门控策略、交互反馈与提交流程口径不一致），且仅返回 `action_id` 缺少交易历史与最终确认可视化。
@@ -65,20 +65,20 @@
 
 ## 4. Technical Specifications
 - Architecture Overview:
-  - 前端层：`agent_world_client_launcher` 提供单一 transfer panel 组件，native/wasm 通过平台适配层复用。
+  - 前端层：`oasis7_client_launcher` 提供单一 transfer panel 组件，native/wasm 通过平台适配层复用。
   - 控制面层：`world_web_launcher` 统一提供转账提交、状态查询、历史查询、余额查询 API。
   - 运行时层：`world_chain_runtime` 继续作为转账业务规则唯一来源，负责 nonce/余额/账户合法性校验与状态推进。
 - Integration Points:
-  - `crates/agent_world_client_launcher/src/main.rs`
-  - `crates/agent_world_client_launcher/src/app_process.rs`
-  - `crates/agent_world_client_launcher/src/app_process_web.rs`
-  - `crates/agent_world_client_launcher/src/transfer_window.rs`
-  - `crates/agent_world/src/bin/world_web_launcher.rs`
-  - `crates/agent_world/src/bin/world_web_launcher/transfer_query_proxy.rs`
-  - `crates/agent_world/src/bin/world_chain_runtime.rs`
-  - `crates/agent_world/src/bin/world_chain_runtime/transfer_submit_api.rs`
-  - `crates/agent_world/src/bin/world_chain_runtime/transfer_submit_api_tests.rs`
-  - `crates/agent_world/src/runtime/world/resources.rs`
+  - `crates/oasis7_client_launcher/src/main.rs`
+  - `crates/oasis7_client_launcher/src/app_process.rs`
+  - `crates/oasis7_client_launcher/src/app_process_web.rs`
+  - `crates/oasis7_client_launcher/src/transfer_window.rs`
+  - `crates/oasis7/src/bin/world_web_launcher.rs`
+  - `crates/oasis7/src/bin/world_web_launcher/transfer_query_proxy.rs`
+  - `crates/oasis7/src/bin/world_chain_runtime.rs`
+  - `crates/oasis7/src/bin/world_chain_runtime/transfer_submit_api.rs`
+  - `crates/oasis7/src/bin/world_chain_runtime/transfer_submit_api_tests.rs`
+  - `crates/oasis7/src/runtime/world/resources.rs`
 - Edge Cases & Error Handling:
   - 链未就绪：入口禁用 + 诊断提示；禁止“点了再报错”的晚失败体验。
   - 余额不足：提交拒绝后保留当前输入并高亮余额差额提示。
@@ -113,11 +113,11 @@
 - Test Plan & Traceability:
   - PRD-WORLD_SIMULATOR-023 -> TASK-WORLD_SIMULATOR-052/053 -> T1/T2/T3 -> `test_tier_required` + `test_tier_full`。
   - 已执行验证（2026-03-07）：
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher -- --nocapture`
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher -- --nocapture`
-    - `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown`
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world --tests --features test_tier_required transfer_submit_api::tests:: -- --nocapture`
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world --tests --features test_tier_full transfer_submit_api::tests:: -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_web_launcher -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --tests --features test_tier_required transfer_submit_api::tests:: -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --tests --features test_tier_full transfer_submit_api::tests:: -- --nocapture`
 - Decision Log:
   - DEC-LAUNCHER-TRANSFER-PRO-001: 转账前端强制单一实现（同层复用），native/web 仅保留 transport 适配差异。理由：从根源消除跨端行为漂移。
   - DEC-LAUNCHER-TRANSFER-PRO-002: nonce 默认自动分配，保留手动覆盖作为高级路径。理由：降低普通用户失败率，同时保留调试能力。

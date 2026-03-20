@@ -3,7 +3,7 @@
 - 对应设计文档: `doc/world-simulator/launcher/game-client-launcher-llm-settings-panel-2026-03-02.design.md`
 - 对应项目管理文档: `doc/world-simulator/launcher/game-client-launcher-llm-settings-panel-2026-03-02.project.md`
 
-审计轮次: 5
+审计轮次: 6
 
 ## 1. Executive Summary
 - 在客户端启动器中提供“完整设置中心”，统一承载游戏、区块链与 LLM 配置入口。
@@ -11,16 +11,16 @@
   - `llm.api_key`
   - `llm.base_url`
   - `llm.model`
-- 统一使用小写 TOML 风格，避免回退到 `AGENT_WORLD_LLM_*` 这类文件内非 TOML 风格写法。
+- 统一使用小写 TOML 风格，避免回退到 `OASIS7_LLM_*` 这类文件内非 TOML 风格写法。
 
 ## 2. User Experience & Functionality
 ### In Scope
-- `crates/agent_world_client_launcher/src/main.rs`
+- `crates/oasis7_client_launcher/src/main.rs`
   - 增加设置入口按钮与设置中心窗口 UI。
   - 设置中心覆盖游戏与区块链核心配置（场景、bind、二进制路径、链参数等）。
   - 增加 LLM 设置状态、保存结果提示。
   - 增加 `config.toml` 的 LLM 字段读取/写回逻辑。
-- `crates/agent_world_client_launcher` 单元测试补充：
+- `crates/oasis7_client_launcher` 单元测试补充：
   - 读取已有 `[llm]` 字段。
   - 写入/更新/清空 `[llm]` 对应键。
   - 非法 TOML 输入时给出错误。
@@ -71,8 +71,8 @@
   - 空字符串保存时移除对应键；
   - 其余 TOML 表（如 `[node]`）保持不变。
 - 单元测试与编译回归通过：
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher`
-  - `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher`
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher`
+  - `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher`
 
 ## 增量完成态（2026-03-03）
 - “设置 / Settings”窗口已升级为完整设置中心：
