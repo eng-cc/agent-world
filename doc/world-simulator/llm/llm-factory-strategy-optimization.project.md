@@ -135,11 +135,11 @@
 
 ### LFO11 实施结果摘要（2026-02-17）
 - 代码变更：
-  - `crates/agent_world/src/simulator/llm_agent/decision_flow.rs`
-  - `crates/agent_world/src/simulator/llm_agent/behavior_loop.rs`
-  - `crates/agent_world/src/simulator/llm_agent.rs`
-  - `crates/agent_world/src/simulator/llm_agent/prompt_assembly.rs`
-  - `crates/agent_world/src/simulator/llm_agent/tests_part2.rs`
+  - `crates/oasis7/src/simulator/llm_agent/decision_flow.rs`
+  - `crates/oasis7/src/simulator/llm_agent/behavior_loop.rs`
+  - `crates/oasis7/src/simulator/llm_agent.rs`
+  - `crates/oasis7/src/simulator/llm_agent/prompt_assembly.rs`
+  - `crates/oasis7/src/simulator/llm_agent/tests_part2.rs`
 - TODO-5 收口：
   - `execute_until.action=wait/wait_ticks` 不再直接 parse error；解析阶段自动改写为最小可执行动作 `harvest_radiation(max_amount=1)`。
   - 线上抽样（LFO8 口径）结果：`output/llm_closed_loop/todo11_lfo8_compare_2026-02-17_121121/report.json`，`parse_errors=0`（此前样本为 20）。
@@ -148,7 +148,7 @@
   - 回执写入 `llm_step_trace` 和 system note，并在下一轮 observation 的 `last_action.decision_rewrite` 回灌给模型。
   - 已覆盖场景：`schedule_recipe -> refine_compound` guardrail 改写、`execute_until(wait) -> harvest_radiation` 语义改写。
 - 回归测试：
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world llm_agent --features test_tier_required -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7 llm_agent --features test_tier_required -- --nocapture`
   - 新增用例：
     - `llm_parse_execute_until_rewrites_wait_action_to_minimal_harvest`
     - `llm_agent_rewrites_execute_until_wait_action_to_actionable_harvest`
@@ -238,12 +238,12 @@
   - TODO-3：模型会在硬件不足时发出 `batches=2` 的排产（`tick=30`，请求16仅有7）；建议在 prompt 增加 `batches <= available_hardware / recipe_hardware_cost_per_batch` 的上界规则。
 
 ## 依赖
-- `crates/agent_world/src/simulator/llm_agent/prompt_assembly.rs`
-- `crates/agent_world/src/simulator/llm_agent/decision_flow.rs`
-- `crates/agent_world/src/simulator/llm_agent/tests.rs`
-- `crates/agent_world/src/simulator/llm_agent/tests_part2.rs`
-- `crates/agent_world/src/bin/world_llm_agent_demo.rs`
-- `crates/agent_world/src/simulator/tests/kernel.rs`
+- `crates/oasis7/src/simulator/llm_agent/prompt_assembly.rs`
+- `crates/oasis7/src/simulator/llm_agent/decision_flow.rs`
+- `crates/oasis7/src/simulator/llm_agent/tests.rs`
+- `crates/oasis7/src/simulator/llm_agent/tests_part2.rs`
+- `crates/oasis7/src/bin/world_llm_agent_demo.rs`
+- `crates/oasis7/src/simulator/tests/kernel.rs`
 
 ## 状态
 - 当前阶段：LFO0-LFO12 全部完成（TODO-5/TODO-6 已收口）。

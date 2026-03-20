@@ -81,11 +81,11 @@
   - `Viewer`：负责展示 trace、provider 状态、最近错误与最近动作摘要。
   - `Runtime/Kernel`：继续负责动作校验、执行、事件与状态演化。
 - Integration Points:
-  - `crates/agent_world/src/simulator/agent.rs`
-  - `crates/agent_world/src/simulator/memory.rs`
-  - `crates/agent_world_proto/src/viewer.rs`
-  - `crates/agent_world_client_launcher/src/*`
-  - `crates/agent_world/src/bin/world_web_launcher/gui_agent_api.rs`
+  - `crates/oasis7/src/simulator/agent.rs`
+  - `crates/oasis7/src/simulator/memory.rs`
+  - `crates/oasis7_proto/src/viewer.rs`
+  - `crates/oasis7_client_launcher/src/*`
+  - `crates/oasis7/src/bin/world_web_launcher/gui_agent_api.rs`
 - Local HTTP Endpoints:
   - `GET /v1/provider/info`
     - 返回 `provider_id/name/version/protocol_version/capabilities/supported_action_sets`。
@@ -108,7 +108,7 @@
     - `openclaw_agent_profile`
   - profile 约定：首期 `P0` / parity / experimental 试点默认使用 `oasis7_p0_low_freq_npc`；兼容旧别名 `agent_world_p0_low_freq_npc`。若 provider 不识别当前默认 profile，必须返回结构化 `unsupported_agent_profile`，禁止静默改用通用玩法。
   - 发现逻辑：优先读取显式配置；若未配置且开启 auto-discover，则探测默认地址。
-  - 产品主链路：`agent_world_client_launcher -> world_game_launcher -> world_viewer_live` 现已透传 `agent_provider_mode/openclaw_*` 参数，并通过子进程环境把 OpenClaw 设置送入 runtime live sidecar。
+  - 产品主链路：`oasis7_client_launcher -> world_game_launcher -> world_viewer_live` 现已透传 `agent_provider_mode/openclaw_*` 参数，并通过子进程环境把 OpenClaw 设置送入 runtime live sidecar。
 - DecisionRequest Shape:
   - 顶层字段：`request_id/agent_id/world_time/provider_session_id?/provider_config_ref?/agent_profile?/timeout_ms`
   - `observation`: 当前可见世界状态摘要、附近实体、最近事件、目标与资源摘要。

@@ -17,14 +17,14 @@
 - [x] LDC10 文档回写、devlog、收口提交
 
 ## 依赖
-- `crates/agent_world/src/simulator/llm_agent.rs`
-- `crates/agent_world/src/simulator/llm_agent/behavior_loop.rs`
-- `crates/agent_world/src/simulator/llm_agent/prompt_assembly.rs`
-- `crates/agent_world/src/simulator/agent.rs`
-- `crates/agent_world_proto/src/viewer.rs`
-- `crates/agent_world/src/viewer/live.rs`
-- `crates/agent_world_viewer/src/egui_right_panel.rs`
-- `crates/agent_world_viewer/src/right_panel_module_visibility.rs`
+- `crates/oasis7/src/simulator/llm_agent.rs`
+- `crates/oasis7/src/simulator/llm_agent/behavior_loop.rs`
+- `crates/oasis7/src/simulator/llm_agent/prompt_assembly.rs`
+- `crates/oasis7/src/simulator/agent.rs`
+- `crates/oasis7_proto/src/viewer.rs`
+- `crates/oasis7/src/viewer/live.rs`
+- `crates/oasis7_viewer/src/egui_right_panel.rs`
+- `crates/oasis7_viewer/src/right_panel_module_visibility.rs`
 
 ## 状态
 - 当前阶段：已完成

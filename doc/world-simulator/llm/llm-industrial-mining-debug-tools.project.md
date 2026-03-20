@@ -172,18 +172,18 @@
   - TODO-17：`wait/wait_ticks` 在三配方全覆盖后自动改写为持续产出动作（优先 `schedule_recipe`，不可执行时沿现有 guardrail 自动回切恢复动作）。
   - TODO-20：为矿点耗尽新增 location 级冷却窗口，冷却期内跳过原矿点并优先替代矿点；冷却过期后允许重试。
 - 代码：
-  - `crates/agent_world/src/simulator/llm_agent.rs`
-  - `crates/agent_world/src/simulator/llm_agent/behavior_loop.rs`
-  - `crates/agent_world/src/simulator/llm_agent/tests_part2.rs`
+  - `crates/oasis7/src/simulator/llm_agent.rs`
+  - `crates/oasis7/src/simulator/llm_agent/behavior_loop.rs`
+  - `crates/oasis7/src/simulator/llm_agent/tests_part2.rs`
 - 单测：
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world llm_agent_rewrites_wait --features test_tier_required -- --nocapture`
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world llm_agent_skips_depleted_location_during_cooldown_window --features test_tier_required -- --nocapture`
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world llm_agent_allows_retry_depleted_location_after_cooldown_expires --features test_tier_required -- --nocapture`
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world llm_agent --features test_tier_required -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7 llm_agent_rewrites_wait --features test_tier_required -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7 llm_agent_skips_depleted_location_during_cooldown_window --features test_tier_required -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7 llm_agent_allows_retry_depleted_location_after_cooldown_expires --features test_tier_required -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7 llm_agent --features test_tier_required -- --nocapture`
 
 ### MMD8.5 验证摘要（2026-02-17）
 - required-tier 回归：
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world llm_agent --features test_tier_required -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7 llm_agent --features test_tier_required -- --nocapture`
   - 结果：`llm_agent` 相关 120 个用例通过（含 MMD8.4 新增“覆盖后 wait 回切”和“采矿冷却窗口”用例）。
 - 在线闭环抽样（120 tick，目标“所有工厂 + 所有制成品 + 覆盖后持续产出”）：
   - 命令：`AGENT_WORLD_LLM_SYSTEM_PROMPT='你是工业闭环调度Agent。必须通过单一tool call输出一个可执行决策，禁止额外文本。主目标：完成所有工厂类型与所有制成品配方，并在覆盖后持续产出。' AGENT_WORLD_LLM_SHORT_TERM_GOAL='120 tick 内至少完成：1) build_factory(factory.power.radiation.mk1) 成功>=1；2) build_factory(factory.assembler.mk1) 成功>=1；3) schedule_recipe(recipe.assembler.control_chip) 成功>=1；4) schedule_recipe(recipe.assembler.motor_mk1) 成功>=1；5) schedule_recipe(recipe.assembler.logistics_drone) 成功>=1。恢复规则：insufficient_resource.electricity -> harvest_radiation；insufficient_resource.hardware -> mine_compound + refine_compound；factory_not_found -> build_factory 或移动到已知工厂；facility_already_exists -> 切换未覆盖 recipe；采矿点若可采为0则切换替代矿点。' AGENT_WORLD_LLM_LONG_TERM_GOAL='形成并保持持续工业链：harvest_radiation -> mine_compound -> refine_compound -> build_factory -> schedule_recipe；全覆盖后持续提升 data，不提前收敛。' env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_llm_agent_demo -- llm_bootstrap --ticks 120 --print-llm-io --llm-io-max-chars 1800 --report-json output/llm_bootstrap/mmd8_opt_all_factory_all_products_2026-02-17_175323/report.json`
@@ -237,15 +237,15 @@
 ### MMD11 收口实施与在线复验（2026-02-19）
 - MMD11.2/MMD11.3 代码与测试：
   - 代码：
-    - `crates/agent_world/src/simulator/llm_agent/behavior_runtime_helpers.rs`
-    - `crates/agent_world/src/simulator/llm_agent/behavior_guardrails.rs`
-    - `crates/agent_world/src/simulator/llm_agent/behavior_prompt.rs`
-    - `crates/agent_world/src/simulator/llm_agent/prompt_assembly.rs`
+    - `crates/oasis7/src/simulator/llm_agent/behavior_runtime_helpers.rs`
+    - `crates/oasis7/src/simulator/llm_agent/behavior_guardrails.rs`
+    - `crates/oasis7/src/simulator/llm_agent/behavior_prompt.rs`
+    - `crates/oasis7/src/simulator/llm_agent/prompt_assembly.rs`
   - 测试：
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world llm_agent_reroutes_schedule_recipe --features test_tier_required -- --nocapture`
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world llm_agent_build_factory_normalizes_unknown_location_to_current_location --features test_tier_required -- --nocapture`
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world llm_agent_user_prompt_preserves_ --features test_tier_required -- --nocapture`
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world llm_agent --features test_tier_required -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 llm_agent_reroutes_schedule_recipe --features test_tier_required -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 llm_agent_build_factory_normalizes_unknown_location_to_current_location --features test_tier_required -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 llm_agent_user_prompt_preserves_ --features test_tier_required -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 llm_agent --features test_tier_required -- --nocapture`
 - MMD11.4 在线复验（120 tick，同 MMD10 口径）：
   - 产物：
     - `output/llm_bootstrap/mmd11_verify_2026-02-19_115519/run.log`
@@ -310,21 +310,21 @@
   - `llm_agent_user_prompt_contains_memory_digest_section`：改为先检查 `section_trace` 中 Memory section 的可观测性；仅在 section 被纳入 prompt 时断言 digest 文本存在。
 - 验证：
   - 4 个目标用例定向执行均通过。
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required llm_agent -- --nocapture`：`159 passed; 0 failed`。
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_required llm_agent -- --nocapture`：`159 passed; 0 failed`。
 
 ## 依赖
-- `crates/agent_world/src/simulator/types.rs`
-- `crates/agent_world/src/simulator/world_model.rs`
-- `crates/agent_world/src/simulator/kernel/actions.rs`
-- `crates/agent_world/src/simulator/kernel/types.rs`
-- `crates/agent_world/src/simulator/kernel/replay.rs`
-- `crates/agent_world/src/simulator/llm_agent.rs`
-- `crates/agent_world/src/simulator/llm_agent/openai_payload.rs`
-- `crates/agent_world/src/simulator/llm_agent/decision_flow.rs`
-- `crates/agent_world/src/simulator/llm_agent/prompt_assembly.rs`
-- `crates/agent_world/src/simulator/llm_agent/tests.rs`
-- `crates/agent_world/src/simulator/llm_agent/tests_part2.rs`
-- `crates/agent_world/scenarios/llm_bootstrap.json`
+- `crates/oasis7/src/simulator/types.rs`
+- `crates/oasis7/src/simulator/world_model.rs`
+- `crates/oasis7/src/simulator/kernel/actions.rs`
+- `crates/oasis7/src/simulator/kernel/types.rs`
+- `crates/oasis7/src/simulator/kernel/replay.rs`
+- `crates/oasis7/src/simulator/llm_agent.rs`
+- `crates/oasis7/src/simulator/llm_agent/openai_payload.rs`
+- `crates/oasis7/src/simulator/llm_agent/decision_flow.rs`
+- `crates/oasis7/src/simulator/llm_agent/prompt_assembly.rs`
+- `crates/oasis7/src/simulator/llm_agent/tests.rs`
+- `crates/oasis7/src/simulator/llm_agent/tests_part2.rs`
+- `crates/oasis7/scenarios/llm_bootstrap.json`
 
 ## 状态
 - 当前阶段：MMD12.1~MMD12.6 已执行完成（含两轮在线复验、历史失败用例修复与回归收口）。
