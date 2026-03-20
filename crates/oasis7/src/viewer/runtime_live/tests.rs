@@ -9,20 +9,12 @@ use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
 
 const VIEWER_AGENT_PROVIDER_MODE_ENV: &str = "OASIS7_AGENT_PROVIDER_MODE";
-const COMPAT_OLD_BRAND_VIEWER_AGENT_PROVIDER_MODE_ENV: &str = "AGENT_WORLD_AGENT_PROVIDER_MODE";
 const VIEWER_OPENCLAW_BASE_URL_ENV: &str = "OASIS7_OPENCLAW_BASE_URL";
-const COMPAT_OLD_BRAND_VIEWER_OPENCLAW_BASE_URL_ENV: &str = "AGENT_WORLD_OPENCLAW_BASE_URL";
 const VIEWER_OPENCLAW_AUTH_TOKEN_ENV: &str = "OASIS7_OPENCLAW_AUTH_TOKEN";
-const COMPAT_OLD_BRAND_VIEWER_OPENCLAW_AUTH_TOKEN_ENV: &str = "AGENT_WORLD_OPENCLAW_AUTH_TOKEN";
 const VIEWER_OPENCLAW_CONNECT_TIMEOUT_MS_ENV: &str = "OASIS7_OPENCLAW_CONNECT_TIMEOUT_MS";
-const COMPAT_OLD_BRAND_VIEWER_OPENCLAW_CONNECT_TIMEOUT_MS_ENV: &str =
-    "AGENT_WORLD_OPENCLAW_CONNECT_TIMEOUT_MS";
 const VIEWER_OPENCLAW_AGENT_PROFILE_ENV: &str = "OASIS7_OPENCLAW_AGENT_PROFILE";
-const COMPAT_OLD_BRAND_VIEWER_OPENCLAW_AGENT_PROFILE_ENV: &str = "AGENT_WORLD_OPENCLAW_AGENT_PROFILE";
 const VIEWER_OPENCLAW_EXECUTION_MODE_ENV: &str = "OASIS7_OPENCLAW_EXECUTION_MODE";
-const COMPAT_OLD_BRAND_VIEWER_OPENCLAW_EXECUTION_MODE_ENV: &str = "AGENT_WORLD_OPENCLAW_EXECUTION_MODE";
 const RUNTIME_AGENT_CHAT_ECHO_ENV: &str = "OASIS7_RUNTIME_AGENT_CHAT_ECHO";
-const COMPAT_OLD_BRAND_RUNTIME_AGENT_CHAT_ECHO_ENV: &str = "AGENT_WORLD_RUNTIME_AGENT_CHAT_ECHO";
 
 fn test_signer(seed: u8) -> (String, String) {
     let private_key = [seed; 32];
@@ -48,19 +40,19 @@ fn lock_test_llm_env() -> std::sync::MutexGuard<'static, ()> {
 fn clear_runtime_openclaw_env() {
     for env_name in [
         VIEWER_AGENT_PROVIDER_MODE_ENV,
-        COMPAT_OLD_BRAND_VIEWER_AGENT_PROVIDER_MODE_ENV,
         VIEWER_OPENCLAW_BASE_URL_ENV,
-        COMPAT_OLD_BRAND_VIEWER_OPENCLAW_BASE_URL_ENV,
         VIEWER_OPENCLAW_AUTH_TOKEN_ENV,
-        COMPAT_OLD_BRAND_VIEWER_OPENCLAW_AUTH_TOKEN_ENV,
         VIEWER_OPENCLAW_CONNECT_TIMEOUT_MS_ENV,
-        COMPAT_OLD_BRAND_VIEWER_OPENCLAW_CONNECT_TIMEOUT_MS_ENV,
         VIEWER_OPENCLAW_AGENT_PROFILE_ENV,
-        COMPAT_OLD_BRAND_VIEWER_OPENCLAW_AGENT_PROFILE_ENV,
         VIEWER_OPENCLAW_EXECUTION_MODE_ENV,
-        COMPAT_OLD_BRAND_VIEWER_OPENCLAW_EXECUTION_MODE_ENV,
         RUNTIME_AGENT_CHAT_ECHO_ENV,
-        COMPAT_OLD_BRAND_RUNTIME_AGENT_CHAT_ECHO_ENV,
+        "AGENT_WORLD_AGENT_PROVIDER_MODE",
+        "AGENT_WORLD_OPENCLAW_BASE_URL",
+        "AGENT_WORLD_OPENCLAW_AUTH_TOKEN",
+        "AGENT_WORLD_OPENCLAW_CONNECT_TIMEOUT_MS",
+        "AGENT_WORLD_OPENCLAW_AGENT_PROFILE",
+        "AGENT_WORLD_OPENCLAW_EXECUTION_MODE",
+        "AGENT_WORLD_RUNTIME_AGENT_CHAT_ECHO",
     ] {
         std::env::remove_var(env_name);
     }
@@ -142,10 +134,7 @@ fn openclaw_settings_from_env_parses_profile_and_timeout() {
     std::env::set_var(VIEWER_AGENT_PROVIDER_MODE_ENV, "openclaw_local_http");
     std::env::set_var(VIEWER_OPENCLAW_BASE_URL_ENV, "http://127.0.0.1:5841");
     std::env::set_var(VIEWER_OPENCLAW_CONNECT_TIMEOUT_MS_ENV, "4200");
-    std::env::set_var(
-        VIEWER_OPENCLAW_AGENT_PROFILE_ENV,
-        "oasis7_p0_low_freq_npc",
-    );
+    std::env::set_var(VIEWER_OPENCLAW_AGENT_PROFILE_ENV, "oasis7_p0_low_freq_npc");
     std::env::set_var(VIEWER_OPENCLAW_EXECUTION_MODE_ENV, "player_parity");
     std::env::set_var(VIEWER_OPENCLAW_AUTH_TOKEN_ENV, "secret-token");
     let settings = super::control_plane::runtime_openclaw_settings_from_env()
@@ -160,39 +149,22 @@ fn openclaw_settings_from_env_parses_profile_and_timeout() {
 }
 
 #[test]
-fn openclaw_settings_from_env_falls_back_to_compat_old_brand_prefix() {
+fn openclaw_settings_from_env_ignores_compat_old_brand_prefix() {
     let _guard = runtime_openclaw_env_lock().lock().expect("env lock");
     clear_runtime_openclaw_env();
+    std::env::set_var("AGENT_WORLD_AGENT_PROVIDER_MODE", "openclaw_local_http");
+    std::env::set_var("AGENT_WORLD_OPENCLAW_BASE_URL", "http://127.0.0.1:5842");
+    std::env::set_var("AGENT_WORLD_OPENCLAW_CONNECT_TIMEOUT_MS", "4300");
     std::env::set_var(
-        COMPAT_OLD_BRAND_VIEWER_AGENT_PROVIDER_MODE_ENV,
-        "openclaw_local_http",
-    );
-    std::env::set_var(
-        COMPAT_OLD_BRAND_VIEWER_OPENCLAW_BASE_URL_ENV,
-        "http://127.0.0.1:5842",
-    );
-    std::env::set_var(COMPAT_OLD_BRAND_VIEWER_OPENCLAW_CONNECT_TIMEOUT_MS_ENV, "4300");
-    std::env::set_var(
-        COMPAT_OLD_BRAND_VIEWER_OPENCLAW_AGENT_PROFILE_ENV,
+        "AGENT_WORLD_OPENCLAW_AGENT_PROFILE",
         "oasis7_p0_low_freq_npc",
     );
-    std::env::set_var(
-        COMPAT_OLD_BRAND_VIEWER_OPENCLAW_EXECUTION_MODE_ENV,
-        "player_parity",
-    );
-    std::env::set_var(
-        COMPAT_OLD_BRAND_VIEWER_OPENCLAW_AUTH_TOKEN_ENV,
-        "compat-old-brand-token",
-    );
+    std::env::set_var("AGENT_WORLD_OPENCLAW_EXECUTION_MODE", "player_parity");
+    std::env::set_var("AGENT_WORLD_OPENCLAW_AUTH_TOKEN", "compat-old-brand-token");
 
-    let settings = super::control_plane::runtime_openclaw_settings_from_env()
-        .expect("settings parse")
-        .expect("openclaw settings");
-    assert_eq!(settings.base_url, "http://127.0.0.1:5842");
-    assert_eq!(settings.connect_timeout_ms, 4300);
-    assert_eq!(settings.agent_profile, "oasis7_p0_low_freq_npc");
-    assert_eq!(settings.execution_mode, ProviderExecutionMode::PlayerParity);
-    assert_eq!(settings.auth_token.as_deref(), Some("compat-old-brand-token"));
+    let settings =
+        super::control_plane::runtime_openclaw_settings_from_env().expect("settings parse");
+    assert_eq!(settings, None);
     clear_runtime_openclaw_env();
 }
 
@@ -454,10 +426,7 @@ fn runtime_prompt_control_openclaw_mode_reports_unsupported() {
     clear_runtime_openclaw_env();
     std::env::set_var(VIEWER_AGENT_PROVIDER_MODE_ENV, "openclaw_local_http");
     std::env::set_var(VIEWER_OPENCLAW_BASE_URL_ENV, "http://127.0.0.1:5841");
-    std::env::set_var(
-        VIEWER_OPENCLAW_AGENT_PROFILE_ENV,
-        "oasis7_p0_low_freq_npc",
-    );
+    std::env::set_var(VIEWER_OPENCLAW_AGENT_PROFILE_ENV, "oasis7_p0_low_freq_npc");
     let mut server = ViewerRuntimeLiveServer::new(
         ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal)
             .with_decision_mode(ViewerLiveDecisionMode::Llm),
@@ -595,10 +564,7 @@ fn runtime_openclaw_compat_snapshot_exposes_agent_execution_debug_contexts() {
     clear_runtime_openclaw_env();
     std::env::set_var(VIEWER_AGENT_PROVIDER_MODE_ENV, "openclaw_local_http");
     std::env::set_var(VIEWER_OPENCLAW_BASE_URL_ENV, "http://127.0.0.1:5841");
-    std::env::set_var(
-        VIEWER_OPENCLAW_AGENT_PROFILE_ENV,
-        "oasis7_p0_low_freq_npc",
-    );
+    std::env::set_var(VIEWER_OPENCLAW_AGENT_PROFILE_ENV, "oasis7_p0_low_freq_npc");
     std::env::set_var(VIEWER_OPENCLAW_EXECUTION_MODE_ENV, "player_parity");
     let server = ViewerRuntimeLiveServer::new(
         ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal)
@@ -810,10 +776,7 @@ fn runtime_agent_chat_openclaw_mode_reports_unsupported() {
     clear_runtime_openclaw_env();
     std::env::set_var(VIEWER_AGENT_PROVIDER_MODE_ENV, "openclaw_local_http");
     std::env::set_var(VIEWER_OPENCLAW_BASE_URL_ENV, "http://127.0.0.1:5841");
-    std::env::set_var(
-        VIEWER_OPENCLAW_AGENT_PROFILE_ENV,
-        "oasis7_p0_low_freq_npc",
-    );
+    std::env::set_var(VIEWER_OPENCLAW_AGENT_PROFILE_ENV, "oasis7_p0_low_freq_npc");
     let mut server = ViewerRuntimeLiveServer::new(
         ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal)
             .with_decision_mode(ViewerLiveDecisionMode::Llm),
@@ -946,9 +909,9 @@ fn runtime_agent_chat_echo_env_enqueues_agent_spoke_virtual_event() {
 }
 
 #[test]
-fn runtime_agent_chat_echo_compat_old_brand_env_still_enqueues_agent_spoke_virtual_event() {
+fn runtime_agent_chat_echo_compat_old_brand_env_is_ignored() {
     let _guard = lock_test_llm_env();
-    std::env::set_var(COMPAT_OLD_BRAND_RUNTIME_AGENT_CHAT_ECHO_ENV, "1");
+    std::env::set_var("AGENT_WORLD_RUNTIME_AGENT_CHAT_ECHO", "1");
     let mut server = ViewerRuntimeLiveServer::new(
         ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal)
             .with_decision_mode(ViewerLiveDecisionMode::Llm),
@@ -982,7 +945,7 @@ fn runtime_agent_chat_echo_compat_old_brand_env_still_enqueues_agent_spoke_virtu
     assert_eq!(ack.agent_id, agent_id);
 
     let events: Vec<_> = server.pending_virtual_events.drain(..).collect();
-    assert!(events.iter().any(|event| matches!(
+    assert!(!events.iter().any(|event| matches!(
         &event.kind,
         crate::simulator::WorldEventKind::AgentSpoke { agent_id: event_agent_id, message, .. }
             if event_agent_id == &agent_id && message == "[qa-echo] hello legacy runtime echo"

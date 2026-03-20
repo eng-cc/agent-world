@@ -802,6 +802,8 @@
 - [x] TASK-WORLD_SIMULATOR-225 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 移除 `crates/oasis7_viewer/**` 中 `AGENT_WORLD_VIEWER_*` 与 `.agent_world_viewer` 的运行时 compat alias，使 Viewer 仅接受 `OASIS7_VIEWER_*` / `.oasis7_viewer` 当前入口，并同步删除对应 compat 测试。
 - [x] TASK-WORLD_SIMULATOR-226 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 移除 `crates/oasis7_client_launcher/{src/main.rs,src/platform_ops.rs,src/launcher_core.rs,src/app_process.rs,src/self_guided.rs,src/llm_settings_web.rs}` 中 `AGENT_WORLD_*` / `agent_world_*` 的 launcher 运行时 compat alias，收口 launcher env/path/state 当前入口，并把定向测试改为断言旧 alias 已失效。
 - [x] TASK-WORLD_SIMULATOR-227 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 移除 `crates/oasis7/src/bin/{world_game_launcher.rs,world_web_launcher/runtime_paths.rs,world_web_launcher/control_plane.rs}` 中 `AGENT_WORLD_*` 的 launcher/runtime compat alias，收口服务端 launcher 路径、viewer auth 注入与 console static dir 当前入口，并把定向测试改为断言旧 alias 已失效。
+- [x] TASK-WORLD_SIMULATOR-228 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 移除 `crates/oasis7/src/viewer/runtime_live/{llm_sidecar.rs,control_plane.rs,tests.rs}` 中 `AGENT_WORLD_AGENT_PROVIDER_MODE`、`AGENT_WORLD_OPENCLAW_*` 与 `AGENT_WORLD_RUNTIME_AGENT_CHAT_ECHO` 的 runtime compat alias，收口 runtime live 的 OpenClaw provider 配置与 QA chat echo 当前入口，并把定向测试改为断言旧 alias 已失效。
+- [ ] TASK-WORLD_SIMULATOR-229 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 移除 `crates/oasis7/src/{runtime/module_source_compiler.rs,runtime/builtin_wasm_materializer.rs,simulator/llm_agent.rs}` 与相关定向测试中的 `AGENT_WORLD_MODULE_SOURCE_*`、`AGENT_WORLD_BUILTIN_WASM_*` 与 `AGENT_WORLD_LLM_*` runtime compat alias，收口模块源码编译、builtin wasm 获取与 LLM 配置当前入口，并把 compat 测试改为断言旧 alias 已失效。
 - [x] TASK-WORLD_SIMULATOR-203 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 viewer/OpenClaw 脚本中的旧品牌 env helper 与局部变量命名切到 `compat` 语义，收口脚本层里残留的 `legacy_key` / `viewer_legacy_env_key` / `promote_legacy_viewer_envs` 口径。
   - 产物文件:
     - `doc/world-simulator/prd.md`
@@ -955,12 +957,10 @@
 ## 状态
 - 更新日期: 2026-03-20
 - 当前状态: active
-- 下一任务: `TASK-WORLD_SIMULATOR-227` 后续残项梳理
+- 下一任务: `TASK-WORLD_SIMULATOR-229`
+- 最新完成: `TASK-WORLD_SIMULATOR-228`（已移除 `crates/oasis7/src/viewer/runtime_live/{llm_sidecar.rs,control_plane.rs,tests.rs}` 中 OpenClaw provider 配置与 QA chat echo 的旧品牌 fallback，收口到 `OASIS7_*` 当前入口，并把定向测试改为断言旧 alias 已失效。）
 - 最新完成: `TASK-WORLD_SIMULATOR-227`（已移除 `crates/oasis7/src/bin/{world_game_launcher.rs,world_web_launcher/runtime_paths.rs,world_web_launcher/control_plane.rs}` 中服务端 launcher/runtime bin 覆盖 env、viewer auth bootstrap 注入对象/键名与 console/viewer static dir 覆盖 env 的旧品牌 fallback，收口到 `OASIS7_*` / `__OASIS7_VIEWER_AUTH_ENV` 当前入口，并把定向测试改为断言旧 alias 已失效。）
 - 最新完成: `TASK-WORLD_SIMULATOR-226`（已移除 `crates/oasis7_client_launcher/**` 中字体/语言/control-plane env、launcher/runtime/static dir 覆盖 env、UX 状态文件名与浏览器存储 key 的旧品牌 fallback，收口 client launcher 运行时入口到 `OASIS7_*` / `oasis7_*`，并把定向测试改为断言旧 alias 已失效。）
-- 最新完成: `TASK-WORLD_SIMULATOR-225`（已移除 `crates/oasis7_viewer/**` 中 `AGENT_WORLD_VIEWER_*` / `.agent_world_viewer` 的运行时 fallback，收口 `viewer_env`、auth/bootstrap、automation、perf probe 与 right-panel 模块可见性状态路径到 `OASIS7_VIEWER_*` / `.oasis7_viewer`，并把定向测试改为断言旧 alias 已失效。）
-- 最新完成: `TASK-WORLD_SIMULATOR-098~121`（已完成模块入口修正、launcher stale execution world 恢复、Viewer web fatal 透出，以及 `Decision Provider` / `OpenClaw(Local HTTP)` / parity 第一阶段建模与 contract 落地。）
-- 最新完成: `TASK-WORLD_SIMULATOR-122~138`（已完成 launcher/viewer/runtime/provider/parity 接线、本地 bridge、repo-owned runtime agent、`oasis7-run.sh` operator 能力，以及下载链路可观测性与 operator contract。）
 - 最新完成: `TASK-WORLD_SIMULATOR-167~179`（已完成 launcher/viewer/runtime/OpenClaw 第一轮 `oasis7` 公开品牌与 env/key/profile 兼容迁移，统一以 `oasis7` / `OASIS7_*` / `OPENCLAW_OASIS7_*` 为源码默认口径，并保留旧 `Agent World` / `AGENT_WORLD_*` / `OPENCLAW_AGENT_WORLD_*` fallback）。
 - 最新完成: `TASK-WORLD_SIMULATOR-195~208`（已完成 client launcher/viewer/runtime/launcher/wasm/OpenClaw/node replication/DistFS 兼容命名第二轮清理，将源码常量、helper 与定向测试里的 `LEGACY_*` / `legacy_*` 统一收口到 `compat` 或更准确的中性语义，同时保留旧品牌 fallback literal 的兼容行为不变）。
 - 最新完成: `TASK-WORLD_SIMULATOR-209~219`（已将 `agent_world_wasm_{sdk,abi,router,executor,store}`、`agent_world_proto`、`agent_world_{distfs,consensus,net,node}`、`agent_world_launcher_ui`、`agent_world_client_launcher`、`agent_world_viewer`、主 crate `agent_world` 以及 `agent_world_builtin_wasm_modules` / `agent_world_builtin_wasm_*` 的 crate name、workspace member 与目录名切到 `oasis7*`，并同步更新 runtime、chain runtime、viewer live、launcher bundle/Trunk/theme/dist 入口、builtin manifest map、模块锁文件、tests、脚本与协议层下游入口。）

@@ -200,6 +200,8 @@
   - SC-96: Viewer 运行时自身不再接受 `AGENT_WORLD_VIEWER_*` 与 `.agent_world_viewer` 兼容 alias；`viewer_env`、auth/bootstrap、automation、perf probe 与 right-panel 模块可见性状态路径必须只认 `OASIS7_VIEWER_*` / `.oasis7_viewer`，避免旧品牌 alias 继续作为有效运行入口。
   - SC-97: Client launcher 运行时自身不再接受 `AGENT_WORLD_*` 与 `agent_world_*` 的 launcher compat alias；字体/语言/control-plane env、launcher/runtime/static dir 覆盖 env、Web console static dir 覆盖 env，以及 UX/LLM 本地状态 key 必须只认 `OASIS7_*` / `oasis7_*` 当前入口，避免旧品牌 alias 继续作为有效运行入口。
   - SC-98: `world_game_launcher` / `world_web_launcher` 运行时自身不再接受 `AGENT_WORLD_*` 的 launcher compat alias；服务端 launcher/runtime bin 覆盖 env、viewer auth bootstrap 注入对象/键名与 console/viewer static dir 覆盖 env 必须只认 `OASIS7_*` 当前入口，避免旧品牌 alias 继续作为有效运行入口。
+  - SC-99: `viewer/runtime_live` 运行时自身不再接受 `AGENT_WORLD_AGENT_PROVIDER_MODE`、`AGENT_WORLD_OPENCLAW_*` 与 `AGENT_WORLD_RUNTIME_AGENT_CHAT_ECHO` compat alias；OpenClaw provider 配置与 QA chat echo 开关必须只认 `OASIS7_*` 当前入口，避免 runtime live 继续保留旧品牌运行入口。
+  - SC-100: runtime/simulator 自身不再接受 `AGENT_WORLD_MODULE_SOURCE_*`、`AGENT_WORLD_BUILTIN_WASM_*` 与 `AGENT_WORLD_LLM_*` compat alias；模块源码编译、builtin wasm 获取与 LLM 配置必须只认 `OASIS7_*` 当前入口，避免内核运行链继续保留旧品牌运行入口。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -457,6 +459,8 @@
   - AC-101: `crates/oasis7_viewer/{software_safe.js,src/viewer_env.rs,src/egui_right_panel_chat.rs,src/egui_right_panel_chat_auth.rs,src/viewer_automation.rs,src/perf_probe.rs,src/right_panel_module_visibility.rs}` 必须移除 `AGENT_WORLD_VIEWER_*` / `.agent_world_viewer` fallback 读取；相应 compat 测试必须删除或改为断言旧 alias 已失效，且 `cargo test -p oasis7_viewer` 的定向用例与 `cargo check -p oasis7_viewer --target wasm32-unknown-unknown` 必须通过。
   - AC-102: `crates/oasis7_client_launcher/{src/main.rs,src/platform_ops.rs,src/launcher_core.rs,src/app_process.rs,src/self_guided.rs,src/llm_settings_web.rs}` 必须移除 `AGENT_WORLD_*` / `agent_world_*` fallback 读取；相应 compat 测试必须删除或改为断言旧 alias 已失效，且 `cargo test -p oasis7_client_launcher --bin oasis7_client_launcher` 与 `cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown` 必须通过。
   - AC-103: `crates/oasis7/src/bin/{world_game_launcher.rs,world_web_launcher/runtime_paths.rs,world_web_launcher/control_plane.rs}` 必须移除 `AGENT_WORLD_*` launcher/runtime fallback 读取；`world_game_launcher` 只能注入 `__OASIS7_VIEWER_AUTH_ENV` 与 `OASIS7_VIEWER_*` auth key，`world_web_launcher` 只能接受 `OASIS7_*` 的 launcher/runtime/static dir 覆盖 env，相应定向测试必须改为断言旧 alias 已失效，且 `cargo test -p oasis7 --bin world_game_launcher`、`cargo test -p oasis7 --bin world_web_launcher`、`./scripts/doc-governance-check.sh` 与 `git diff --check` 必须通过。
+  - AC-104: `crates/oasis7/src/viewer/runtime_live/{llm_sidecar.rs,control_plane.rs,tests.rs}` 必须移除 `AGENT_WORLD_AGENT_PROVIDER_MODE`、`AGENT_WORLD_OPENCLAW_*` 与 `AGENT_WORLD_RUNTIME_AGENT_CHAT_ECHO` fallback 读取；OpenClaw provider 配置与 chat echo 定向测试必须改为断言旧 alias 已失效，且 `cargo test -p oasis7 runtime_live::tests -- --nocapture`、`./scripts/doc-governance-check.sh` 与 `git diff --check` 必须通过。
+  - AC-105: `crates/oasis7/src/{runtime/module_source_compiler.rs,runtime/builtin_wasm_materializer.rs,simulator/llm_agent.rs}` 与相关定向测试必须移除 `AGENT_WORLD_MODULE_SOURCE_*`、`AGENT_WORLD_BUILTIN_WASM_*` 与 `AGENT_WORLD_LLM_*` fallback 读取，并把 compat 测试改为断言旧 alias 已失效；变更后至少 `cargo test -p oasis7 builtin_wasm_materializer -- --nocapture`、`cargo test -p oasis7 module_action_loop -- --nocapture`、`cargo test -p oasis7 llm_agent -- --nocapture`、`./scripts/doc-governance-check.sh` 与 `git diff --check` 必须通过。
 - Non-Goals:
   - 不在本 PRD 中详细列出每个 UI 像素级规范。
   - 不替代 world-runtime/p2p 的底层协议设计。
