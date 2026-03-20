@@ -108,53 +108,16 @@ viewer_env_key() {
   echo "OASIS7_VIEWER_${suffix}"
 }
 
-viewer_compat_old_brand_env_key() {
-  local suffix=$1
-  echo "AGENT_WORLD_VIEWER_${suffix}"
-}
-
 set_or_unset_viewer_env() {
   local suffix=$1
   local value=$2
   local key
-  local compat_old_brand_key
   key=$(viewer_env_key "$suffix")
-  compat_old_brand_key=$(viewer_compat_old_brand_env_key "$suffix")
   if [[ -n "$value" ]]; then
     export "$key=$value"
-    unset "$compat_old_brand_key" || true
   else
     unset "$key" || true
-    unset "$compat_old_brand_key" || true
   fi
-}
-
-viewer_env_value() {
-  local suffix=$1
-  local key
-  local compat_old_brand_key
-  key=$(viewer_env_key "$suffix")
-  compat_old_brand_key=$(viewer_compat_old_brand_env_key "$suffix")
-  if [[ -n "${!key-}" ]]; then
-    printf '%s' "${!key}"
-  else
-    printf '%s' "${!compat_old_brand_key-}"
-  fi
-}
-
-promote_compat_old_brand_viewer_envs() {
-  local compat_old_brand_name
-  local value
-  local suffix
-  local key
-  while IFS='=' read -r compat_old_brand_name value; do
-    [[ "$compat_old_brand_name" == AGENT_WORLD_VIEWER_* ]] || continue
-    suffix=${compat_old_brand_name#AGENT_WORLD_VIEWER_}
-    key=$(viewer_env_key "$suffix")
-    if [[ -z "${!key+x}" ]]; then
-      export "$key=$value"
-    fi
-  done < <(env)
 }
 
 capture_status_value() {

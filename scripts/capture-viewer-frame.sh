@@ -57,12 +57,7 @@ run() {
 viewer_env_value() {
   local suffix=$1
   local primary_key="OASIS7_VIEWER_${suffix}"
-  local compat_old_brand_key="AGENT_WORLD_VIEWER_${suffix}"
-  if [[ -n "${!primary_key-}" ]]; then
-    printf '%s' "${!primary_key}"
-  else
-    printf '%s' "${!compat_old_brand_key-}"
-  fi
+  printf '%s' "${!primary_key-}"
 }
 
 detect_platform() {
@@ -173,7 +168,7 @@ wait_linux_window_line() {
   local display=$1
   local line=""
   for _ in $(seq 1 30); do
-    line=$(DISPLAY="$display" xwininfo -root -tree 2>/dev/null | grep -E "oasis7 Viewer|Agent World Viewer" | head -n1 || true)
+    line=$(DISPLAY="$display" xwininfo -root -tree 2>/dev/null | grep -E "oasis7 Viewer" | head -n1 || true)
     if [[ -n "$line" ]]; then
       echo "$line"
       return 0
@@ -326,7 +321,7 @@ capture_linux() {
 
   local window_line
   if ! window_line=$(wait_linux_window_line "$display"); then
-    echo "failed to find window: oasis7 Viewer (compat: Agent World Viewer)" >&2
+    echo "failed to find window: oasis7 Viewer" >&2
     exit 2
   fi
   echo "$window_line" > "$window_line_txt"

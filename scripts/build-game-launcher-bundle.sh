@@ -317,7 +317,7 @@ run bash -lc "cat > '$OUT_DIR/run-web-launcher.sh' <<'LAUNCH'
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT_DIR=\"\$(cd \"\$(dirname \"\${BASH_SOURCE[0]}\")\" && pwd)\"
-CHAIN_STORAGE_PROFILE=\"\${OASIS7_CHAIN_STORAGE_PROFILE:-\${AGENT_WORLD_CHAIN_STORAGE_PROFILE:-}}\"
+CHAIN_STORAGE_PROFILE=\"\${OASIS7_CHAIN_STORAGE_PROFILE:-}\"
 CHAIN_STORAGE_PROFILE_ARGS=()
 if [[ -n \"\$CHAIN_STORAGE_PROFILE\" ]]; then
   CHAIN_STORAGE_PROFILE_ARGS=(--chain-storage-profile \"\$CHAIN_STORAGE_PROFILE\")
@@ -334,7 +334,7 @@ run bash -lc "cat > '$OUT_DIR/run-chain-runtime.sh' <<'LAUNCH'
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT_DIR=\"\$(cd \"\$(dirname \"\${BASH_SOURCE[0]}\")\" && pwd)\"
-CHAIN_STORAGE_PROFILE=\"\${OASIS7_CHAIN_STORAGE_PROFILE:-\${AGENT_WORLD_CHAIN_STORAGE_PROFILE:-}}\"
+CHAIN_STORAGE_PROFILE=\"\${OASIS7_CHAIN_STORAGE_PROFILE:-}\"
 CHAIN_STORAGE_PROFILE_ARGS=()
 if [[ -n \"\$CHAIN_STORAGE_PROFILE\" ]]; then
   CHAIN_STORAGE_PROFILE_ARGS=(--storage-profile \"\$CHAIN_STORAGE_PROFILE\")
@@ -347,7 +347,7 @@ run bash -lc "cat > '$OUT_DIR/run-game.sh' <<'LAUNCH'
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT_DIR=\"\$(cd \"\$(dirname \"\${BASH_SOURCE[0]}\")\" && pwd)\"
-CHAIN_STORAGE_PROFILE=\"\${OASIS7_CHAIN_STORAGE_PROFILE:-\${AGENT_WORLD_CHAIN_STORAGE_PROFILE:-}}\"
+CHAIN_STORAGE_PROFILE=\"\${OASIS7_CHAIN_STORAGE_PROFILE:-}\"
 CHAIN_STORAGE_PROFILE_ARGS=()
 if [[ -n \"\$CHAIN_STORAGE_PROFILE\" ]]; then
   CHAIN_STORAGE_PROFILE_ARGS=(--chain-storage-profile \"\$CHAIN_STORAGE_PROFILE\")
@@ -375,7 +375,6 @@ Optional:
 - Override chain storage profile without hardcoding wrapper defaults:
   OASIS7_CHAIN_STORAGE_PROFILE=release_default ./run-game.sh
   OASIS7_CHAIN_STORAGE_PROFILE=soak_forensics ./run-web-launcher.sh --listen-bind 0.0.0.0:5410
-  Legacy fallback remains supported: AGENT_WORLD_CHAIN_STORAGE_PROFILE=release_default ./run-game.sh
 
 Bundle layout:
 - bin/oasis7_client_launcher
