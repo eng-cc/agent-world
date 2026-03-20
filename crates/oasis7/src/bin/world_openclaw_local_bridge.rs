@@ -28,7 +28,6 @@ const DEFAULT_PROTOCOL_VERSION: &str = "world-simulator-openclaw-local-http-v1";
 const MAX_RECENT_FEEDBACK: usize = 8;
 const MAX_MOVE_DISTANCE_CM_PER_TICK: i64 = 1_000_000;
 const DEFAULT_OPENCLAW_AGENT_PROFILE: &str = "oasis7_p0_low_freq_npc";
-const COMPAT_OPENCLAW_AGENT_PROFILE_ALIAS: &str = "agent_world_p0_low_freq_npc";
 
 #[derive(Debug, Clone)]
 struct CliOptions {
@@ -860,14 +859,11 @@ fn validate_profile(agent_profile: Option<&str>) -> Option<String> {
     else {
         return None;
     };
-    if matches!(
-        agent_profile,
-        DEFAULT_OPENCLAW_AGENT_PROFILE | COMPAT_OPENCLAW_AGENT_PROFILE_ALIAS
-    ) {
+    if matches!(agent_profile, DEFAULT_OPENCLAW_AGENT_PROFILE) {
         None
     } else {
         Some(format!(
-            "unsupported agent_profile `{agent_profile}`; expected {DEFAULT_OPENCLAW_AGENT_PROFILE} (legacy alias: {COMPAT_OPENCLAW_AGENT_PROFILE_ALIAS})"
+            "unsupported agent_profile `{agent_profile}`; expected {DEFAULT_OPENCLAW_AGENT_PROFILE}"
         ))
     }
 }
@@ -982,7 +978,7 @@ fn profile_guidance(
     nearest_non_current_location_id: Option<&str>,
 ) -> String {
     match request.agent_profile.as_deref() {
-        Some(DEFAULT_OPENCLAW_AGENT_PROFILE | COMPAT_OPENCLAW_AGENT_PROFILE_ALIAS) => {
+        Some(DEFAULT_OPENCLAW_AGENT_PROFILE) => {
             let current_location = current_location_id.unwrap_or("unknown");
             let next_location = nearest_non_current_location_id.unwrap_or("none");
             format!(
@@ -1523,9 +1519,14 @@ mod tests {
     }
 
     #[test]
-    fn validate_profile_accepts_oasis7_and_compat_alias() {
+    fn validate_profile_accepts_oasis7_and_rejects_old_brand_alias() {
         assert_eq!(validate_profile(Some(DEFAULT_OPENCLAW_AGENT_PROFILE)), None);
-        assert_eq!(validate_profile(Some(COMPAT_OPENCLAW_AGENT_PROFILE_ALIAS)), None);
+        assert_eq!(
+            validate_profile(Some("agent_world_p0_low_freq_npc")),
+            Some(format!(
+                "unsupported agent_profile `agent_world_p0_low_freq_npc`; expected {DEFAULT_OPENCLAW_AGENT_PROFILE}"
+            ))
+        );
     }
 
     fn sample_request() -> DecisionRequest {
