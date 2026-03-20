@@ -1,8 +1,9 @@
 use super::{
     build_chain_balances_payload_from_world, build_chain_status_payload,
     build_default_replication_network_config, build_node_replication_config, node_keypair_config,
-    parse_options, parse_validator_spec, release_security_policy_for_storage_profile, CliOptions,
-    DEFAULT_NODE_ID, DEFAULT_REPLICATION_NETWORK_LISTEN, DEFAULT_STATUS_BIND,
+    derive_node_consensus_signer_keypair, parse_options, parse_validator_spec,
+    release_security_policy_for_storage_profile, CliOptions, DEFAULT_NODE_ID,
+    DEFAULT_REPLICATION_NETWORK_LISTEN, DEFAULT_STATUS_BIND,
 };
 use agent_world::runtime::{ReleaseSecurityPolicy, World as RuntimeWorld};
 use agent_world_node::{NodeConsensusSnapshot, NodeRole, NodeSnapshot};
@@ -211,6 +212,26 @@ fn build_node_replication_config_uses_storage_profile_budget() {
         config.max_hot_commit_messages(),
         storage_profile.replication_max_hot_commit_messages
     );
+}
+
+#[test]
+fn derive_node_consensus_signer_keypair_is_deterministic_for_oasis7_namespace() {
+    let signing_key = SigningKey::from_bytes(&[7_u8; 32]);
+    let keypair = node_keypair_config::NodeKeypairConfig {
+        private_key_hex: hex::encode(signing_key.to_bytes()),
+        public_key_hex: hex::encode(signing_key.verifying_key().to_bytes()),
+    };
+
+    let signer_a =
+        derive_node_consensus_signer_keypair("node-a", &keypair).expect("derive signer a");
+    let signer_a_repeat =
+        derive_node_consensus_signer_keypair("node-a", &keypair).expect("derive signer a repeat");
+    let signer_b =
+        derive_node_consensus_signer_keypair("node-b", &keypair).expect("derive signer b");
+
+    assert_eq!(signer_a.private_key_hex, signer_a_repeat.private_key_hex);
+    assert_eq!(signer_a.public_key_hex, signer_a_repeat.public_key_hex);
+    assert_ne!(signer_a.public_key_hex, signer_b.public_key_hex);
 }
 
 #[test]

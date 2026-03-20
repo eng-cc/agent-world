@@ -1988,7 +1988,7 @@ mod tests {
     }
 
     fn test_module_artifact_signing_key() -> SigningKey {
-        let seed_bytes = sha256_bytes(b"agent-world-test-module-artifact-signer-v1");
+        let seed_bytes = sha256_bytes(b"oasis7-test-module-artifact-signer-v1");
         SigningKey::from_bytes(&seed_bytes)
     }
 

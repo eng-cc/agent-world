@@ -1305,7 +1305,7 @@ fn derive_node_consensus_signer_keypair(
         .map_err(|_| "root node.private_key must be 32-byte hex".to_string())?;
 
     let mut hasher = Sha256::new();
-    hasher.update(b"agent-world-node-consensus-signer-v1");
+    hasher.update(b"oasis7-node-consensus-signer-v1");
     hasher.update(root_private);
     hasher.update(b"|");
     hasher.update(node_id.as_bytes());

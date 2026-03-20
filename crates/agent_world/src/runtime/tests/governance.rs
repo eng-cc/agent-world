@@ -9,15 +9,15 @@ use std::collections::BTreeMap;
 
 const LOCAL_FINALITY_SIGNER_1: (&str, &str) = (
     "governance.local.finality.signer.1",
-    "agent-world-governance-local-finality-signer-1-v1",
+    "oasis7-governance-local-finality-signer-1-v1",
 );
 const LOCAL_FINALITY_SIGNER_2: (&str, &str) = (
     "governance.local.finality.signer.2",
-    "agent-world-governance-local-finality-signer-2-v1",
+    "oasis7-governance-local-finality-signer-2-v1",
 );
 const ROTATED_FINALITY_SIGNER_3: (&str, &str) = (
     "governance.test.finality.signer.3",
-    "agent-world-governance-test-finality-signer-3-v1",
+    "oasis7-governance-test-finality-signer-3-v1",
 );
 
 fn local_guardians() -> Vec<String> {

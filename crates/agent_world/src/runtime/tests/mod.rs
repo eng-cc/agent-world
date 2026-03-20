@@ -40,7 +40,7 @@ pub(super) fn signed_test_artifact_identity(wasm_hash: &str) -> ModuleArtifactId
 
 fn test_module_artifact_signing_key() -> SigningKey {
     // Deterministic testing key; production verification only trusts its public key.
-    let seed = util::sha256_hex(b"agent-world-test-module-artifact-signer-v1");
+    let seed = util::sha256_hex(b"oasis7-test-module-artifact-signer-v1");
     let seed_bytes = hex::decode(seed).expect("decode test module signing seed");
     let private_key_bytes: [u8; 32] = seed_bytes
         .as_slice()

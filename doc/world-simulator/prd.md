@@ -162,6 +162,7 @@
   - SC-58: `agent_world_distfs` 与 `agent_world_consensus` 的测试临时目录前缀必须默认使用 `oasis7_*`，避免 distfs/consensus 本地回归产物继续泄露旧 `agent-world` / `agent_world` 内部品牌字符串。
   - SC-59: `agent_world` 主包内 runtime / chain-runtime / simulator 的测试临时目录、缺失路径 helper 与 builtin wasm 临时构建目录必须默认使用 `oasis7_*`，避免主包回归产物与本地 `.tmp` 工作目录继续泄露旧 `agent-world` / `agent_world` 品牌字符串。
   - SC-60: `world_openclaw_parity_bench` 的自定义 OpenClaw profile 样例必须优先使用 `oasis7_*` 命名，避免 bench 参数解析测试继续把旧 `agent_world_*` profile id 当作非默认样例真值。
+  - SC-61: runtime test module signer seed、governance local finality signer seed 与 chain runtime node consensus signer 派生命名空间必须优先使用 `oasis7_*` 口径，避免确定性测试密钥与 validator signer 派生链路继续内嵌旧 `agent-world` 品牌字符串。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -381,6 +382,7 @@
   - AC-63: `crates/agent_world_distfs/src/{lib.rs,manifest.rs,replication.rs,feedback/tests.rs,feedback_p2p.rs,challenge/tests.rs,challenge_scheduler.rs}` 与 `crates/agent_world_consensus/src/**/*tests*.rs` 中的临时目录前缀必须默认改为 `oasis7_distfs_*` / `oasis7_consensus_*` 系列；对应包测试通过后，不得继续输出 `agent-world-*` 或 `agent_world_*` 作为当前默认值。
   - AC-64: `crates/agent_world/src/bin/world_chain_runtime/{execution_bridge.rs,reward_runtime_worker.rs,storage_metrics.rs}`、`crates/agent_world/src/runtime/{builtin_wasm_materializer.rs,segmenter.rs,node_points_runtime.rs}`、`crates/agent_world/src/runtime/tests/{audit.rs,builtin_wasm_materializer.rs,gameplay_protocol_split_part1.rs,persistence.rs,power_bootstrap_release_manifest_full.rs,storage_cold_index.rs,storage_footprint_fixture.rs}`、`crates/agent_world/src/simulator/tests/persist.rs` 与 `crates/agent_world/src/bin/world_game_launcher/world_game_launcher_tests.rs` 的临时目录/工作目录前缀必须默认改为 `oasis7_*`；定向回归通过后，主包不得继续输出这些旧 `agent-world-*` / `agent_world_*` 默认值。
   - AC-65: `crates/agent_world/src/bin/world_openclaw_parity_bench.rs` 的 `parse_options_accepts_custom_openclaw_agent_profile` 样例值必须改为 `oasis7_p1_memory_loop`，避免 bench 的自定义 profile 参数解析回归继续把旧 `agent_world_p1_memory_loop` 当作当前样例真值。
+  - AC-66: `crates/agent_world/src/runtime/world/{mod.rs,governance.rs}`、`crates/agent_world/src/runtime/tests/{mod.rs,governance.rs,module_action_loop_split_part1.rs}`、`crates/agent_world/src/bin/world_chain_runtime.rs` 与 `crates/agent_world/src/bin/world_chain_runtime/execution_bridge.rs` 中的 deterministic signer seed / namespace 字符串必须改为 `oasis7-test-module-artifact-signer-v1`、`oasis7-governance-local-finality-signer-{1,2}-v1`、`oasis7-governance-test-finality-signer-3-v1` 与 `oasis7-node-consensus-signer-v1`；相关 governance / module / execution 回归通过后，不得继续把旧 `agent-world-*signer*` 当作当前真值。
 - Non-Goals:
   - 不在本 PRD 中详细列出每个 UI 像素级规范。
   - 不替代 world-runtime/p2p 的底层协议设计。

@@ -16,9 +16,9 @@ const SOURCE_COMPILE_TIMEOUT_MS_ENV: &str = "OASIS7_MODULE_SOURCE_COMPILE_TIMEOU
 const SOURCE_SANDBOX_SECRET_ENV: &str = "OASIS7_SOURCE_SANDBOX_TEST_SECRET";
 static SOURCE_COMPILER_ENV_LOCK: Mutex<()> = Mutex::new(());
 const TEST_FINALITY_SIGNER_NODE_1: &str = "governance.local.finality.signer.1";
-const TEST_FINALITY_SIGNER_SEED_1: &str = "agent-world-governance-local-finality-signer-1-v1";
+const TEST_FINALITY_SIGNER_SEED_1: &str = "oasis7-governance-local-finality-signer-1-v1";
 const TEST_FINALITY_SIGNER_NODE_2: &str = "governance.local.finality.signer.2";
-const TEST_FINALITY_SIGNER_SEED_2: &str = "agent-world-governance-local-finality-signer-2-v1";
+const TEST_FINALITY_SIGNER_SEED_2: &str = "oasis7-governance-local-finality-signer-2-v1";
 
 fn register_agent(world: &mut World, agent_id: &str) {
     world.submit_action(Action::RegisterAgent {

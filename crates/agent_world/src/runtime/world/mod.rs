@@ -69,7 +69,7 @@ pub(super) const TEST_MODULE_SIGNER_NODE_ID: &str = "test.module.release.signer"
 fn test_module_signer_public_key_hex() -> String {
     use ed25519_dalek::SigningKey;
 
-    let seed = crate::runtime::util::sha256_hex(b"agent-world-test-module-artifact-signer-v1");
+    let seed = crate::runtime::util::sha256_hex(b"oasis7-test-module-artifact-signer-v1");
     let seed_bytes = hex::decode(seed).expect("decode test module signing seed");
     let private_key_bytes: [u8; 32] = seed_bytes
         .as_slice()

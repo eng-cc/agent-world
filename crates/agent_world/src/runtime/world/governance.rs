@@ -14,11 +14,11 @@ use std::collections::{BTreeMap, BTreeSet};
 const LOCAL_GOVERNANCE_FINALITY_SIGNERS: [(&str, &str); 2] = [
     (
         "governance.local.finality.signer.1",
-        "agent-world-governance-local-finality-signer-1-v1",
+        "oasis7-governance-local-finality-signer-1-v1",
     ),
     (
         "governance.local.finality.signer.2",
-        "agent-world-governance-local-finality-signer-2-v1",
+        "oasis7-governance-local-finality-signer-2-v1",
     ),
 ];
 const IDENTITY_PENALTY_DETECTION_SOURCE: &str = "world.threat_heatmap.v1";
