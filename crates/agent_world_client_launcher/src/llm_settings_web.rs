@@ -4,7 +4,8 @@ use serde::{Deserialize, Serialize};
 use super::{LaunchConfig, UiLanguage};
 
 const LLM_SETTINGS_STORAGE_KEY: &str = "oasis7_client_launcher.llm_settings.v1";
-const LEGACY_LLM_SETTINGS_STORAGE_KEY: &str = "agent_world_client_launcher.llm_settings.v1";
+const COMPAT_OLD_BRAND_LLM_SETTINGS_STORAGE_KEY: &str =
+    "agent_world_client_launcher.llm_settings.v1";
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 struct LlmSettingsDraft {
@@ -288,7 +289,7 @@ fn load_llm_settings_from_storage() -> Result<LlmSettingsDraft, String> {
     let storage = browser_storage()?;
     let raw = storage
         .get_item(LLM_SETTINGS_STORAGE_KEY)
-        .or_else(|_| storage.get_item(LEGACY_LLM_SETTINGS_STORAGE_KEY))
+        .or_else(|_| storage.get_item(COMPAT_OLD_BRAND_LLM_SETTINGS_STORAGE_KEY))
         .map_err(|err| format!("read browser storage failed: {err:?}"))?;
     let Some(raw) = raw else {
         return Ok(LlmSettingsDraft::default());

@@ -6,9 +6,10 @@ use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
 const MODULE_VISIBILITY_PATH_ENV: &str = "OASIS7_VIEWER_MODULE_VISIBILITY_PATH";
-const LEGACY_MODULE_VISIBILITY_PATH_ENV: &str = "AGENT_WORLD_VIEWER_MODULE_VISIBILITY_PATH";
+const COMPAT_OLD_BRAND_MODULE_VISIBILITY_PATH_ENV: &str =
+    "AGENT_WORLD_VIEWER_MODULE_VISIBILITY_PATH";
 const MODULE_VISIBILITY_DIR: &str = ".oasis7_viewer";
-const LEGACY_MODULE_VISIBILITY_DIR: &str = ".agent_world_viewer";
+const COMPAT_OLD_BRAND_MODULE_VISIBILITY_DIR: &str = ".agent_world_viewer";
 const MODULE_VISIBILITY_FILE: &str = "right_panel_modules.json";
 const MODULE_VISIBILITY_VERSION: u32 = 1;
 
@@ -127,17 +128,17 @@ pub(super) fn resolve_right_panel_module_visibility_resources(
 ) {
     let explicit_path = std::env::var(MODULE_VISIBILITY_PATH_ENV)
         .ok()
-        .or_else(|| std::env::var(LEGACY_MODULE_VISIBILITY_PATH_ENV).ok());
+        .or_else(|| std::env::var(COMPAT_OLD_BRAND_MODULE_VISIBILITY_PATH_ENV).ok());
     let home = std::env::var("HOME").ok();
     let path =
         resolve_visibility_path_from(explicit_path.clone(), home.clone(), MODULE_VISIBILITY_DIR);
-    let legacy_path = explicit_path
-        .is_none()
-        .then(|| resolve_visibility_path_from(None, home, LEGACY_MODULE_VISIBILITY_DIR));
+    let compat_old_brand_path = explicit_path.is_none().then(|| {
+        resolve_visibility_path_from(None, home, COMPAT_OLD_BRAND_MODULE_VISIBILITY_DIR)
+    });
 
     let state = load_right_panel_module_visibility(path.as_path())
         .or_else(|| {
-            legacy_path
+            compat_old_brand_path
                 .as_ref()
                 .and_then(|path| load_right_panel_module_visibility(path.as_path()))
         })
@@ -274,12 +275,12 @@ mod tests {
         let path = resolve_visibility_path_from(
             None,
             Some("/Users/tester".to_string()),
-            LEGACY_MODULE_VISIBILITY_DIR,
+            COMPAT_OLD_BRAND_MODULE_VISIBILITY_DIR,
         );
         assert_eq!(
             path,
             PathBuf::from("/Users/tester")
-                .join(LEGACY_MODULE_VISIBILITY_DIR)
+                .join(COMPAT_OLD_BRAND_MODULE_VISIBILITY_DIR)
                 .join(MODULE_VISIBILITY_FILE)
         );
     }
@@ -328,10 +329,10 @@ mod tests {
     }
 
     #[test]
-    fn load_visibility_supports_legacy_default_path() {
+    fn load_visibility_supports_compat_old_brand_default_path() {
         let base = unique_temp_dir("right_panel_modules_legacy");
-        let legacy_path = base
-            .join(LEGACY_MODULE_VISIBILITY_DIR)
+        let compat_old_brand_path = base
+            .join(COMPAT_OLD_BRAND_MODULE_VISIBILITY_DIR)
             .join(MODULE_VISIBILITY_FILE);
         let state = RightPanelModuleVisibilityState {
             show_controls: false,
@@ -343,7 +344,7 @@ mod tests {
             show_timeline: true,
             show_details: true,
         };
-        persist_right_panel_module_visibility_to_file(&state, legacy_path.as_path())
+        persist_right_panel_module_visibility_to_file(&state, compat_old_brand_path.as_path())
             .expect("persist legacy visibility");
 
         let path = resolve_visibility_path_from(
@@ -351,13 +352,13 @@ mod tests {
             Some(base.to_string_lossy().to_string()),
             MODULE_VISIBILITY_DIR,
         );
-        let legacy_path = resolve_visibility_path_from(
+        let compat_old_brand_path = resolve_visibility_path_from(
             None,
             Some(base.to_string_lossy().to_string()),
-            LEGACY_MODULE_VISIBILITY_DIR,
+            COMPAT_OLD_BRAND_MODULE_VISIBILITY_DIR,
         );
         let loaded = load_right_panel_module_visibility(path.as_path())
-            .or_else(|| load_right_panel_module_visibility(legacy_path.as_path()))
+            .or_else(|| load_right_panel_module_visibility(compat_old_brand_path.as_path()))
             .expect("load visibility");
         assert_eq!(loaded, state);
 
