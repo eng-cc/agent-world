@@ -1,9 +1,9 @@
 use super::*;
 #[cfg(not(target_arch = "wasm32"))]
-use agent_world_launcher_ui::launcher_ui_fields_for_native;
+use oasis7_launcher_ui::launcher_ui_fields_for_native;
 #[cfg(target_arch = "wasm32")]
-use agent_world_launcher_ui::launcher_ui_fields_for_web;
-use agent_world_launcher_ui::{LauncherUiField, LauncherUiFieldKind};
+use oasis7_launcher_ui::launcher_ui_fields_for_web;
+use oasis7_launcher_ui::{LauncherUiField, LauncherUiFieldKind};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum StartupGuideTarget {

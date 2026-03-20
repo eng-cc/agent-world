@@ -20,7 +20,7 @@ rand_core = { version = "0.6", features = ["getrandom"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 oasis7_distfs = { path = "../oasis7_distfs" }
-agent_world_launcher_ui = { path = "../agent_world_launcher_ui" }
+oasis7_launcher_ui = { path = "../oasis7_launcher_ui" }
 oasis7_node = { path = "../oasis7_node" }
 oasis7_wasm_executor = { path = "../oasis7_wasm_executor", default-features = false }
 oasis7_wasm_router = { path = "../oasis7_wasm_router" }

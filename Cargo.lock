@@ -139,7 +139,6 @@ dependencies = [
 name = "agent_world"
 version = "0.1.0"
 dependencies = [
- "agent_world_launcher_ui",
  "async-openai",
  "blake3",
  "ctrlc",
@@ -148,6 +147,7 @@ dependencies = [
  "hex",
  "hmac",
  "oasis7_distfs",
+ "oasis7_launcher_ui",
  "oasis7_node",
  "oasis7_proto",
  "oasis7_wasm_abi",
@@ -169,23 +169,16 @@ dependencies = [
 name = "agent_world_client_launcher"
 version = "0.1.0"
 dependencies = [
- "agent_world_launcher_ui",
  "eframe",
  "gloo-net",
  "libc",
+ "oasis7_launcher_ui",
  "serde",
  "serde_json",
  "toml 0.8.23",
  "wasm-bindgen-futures",
  "web-sys",
  "web-time",
-]
-
-[[package]]
-name = "agent_world_launcher_ui"
-version = "0.1.0"
-dependencies = [
- "serde",
 ]
 
 [[package]]
@@ -5746,6 +5739,13 @@ dependencies = [
  "serde_cbor",
  "serde_json",
  "sha2",
+]
+
+[[package]]
+name = "oasis7_launcher_ui"
+version = "0.1.0"
+dependencies = [
+ "serde",
 ]
 
 [[package]]

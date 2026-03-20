@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex, OnceLock};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use agent_world_launcher_ui::launcher_ui_fields_for_web;
+use oasis7_launcher_ui::launcher_ui_fields_for_web;
 use oasis7_proto::storage_profile::StorageProfile;
 use serde::{Deserialize, Serialize};
 
