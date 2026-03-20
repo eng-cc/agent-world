@@ -965,7 +965,7 @@
 - `testing-manual.md`
 ## 状态
 - 更新日期 / 当前状态 / 下一任务: 2026-03-20 / active / 无
-- 最新完成: `TASK-WORLD_SIMULATOR-245~248`（已收口 launcher 剩余活跃专题，以及 `unified-checklist`、`web-llm-evidence-template`、`blockchain-transfer`、模块主 PRD 验证矩阵/支撑文件路径、`visual-review-score-card` 和模块主 `project.md` 的 `TASK-WORLD_SIMULATOR-158/165~180` 任务块中仍把旧 `agent_world*` crate/path/command 写成当前真值的活跃文档口径；旧品牌仅保留在历史记录、兼容说明或负向输入语境中。）
+- 最新完成: `TASK-WORLD_SIMULATOR-245~248`（已收口 launcher 剩余活跃专题，以及 `unified-checklist`、`web-llm-evidence-template`、`blockchain-transfer`、模块主 PRD 的验证矩阵/兼容验收条款/支撑文件路径、`visual-review-score-card` 和模块主 `project.md` 的 `TASK-WORLD_SIMULATOR-158/165~180` 任务块中仍把旧 `agent_world*` crate/path/command 写成当前真值的活跃文档口径；旧品牌仅保留在历史记录、兼容说明或负向输入语境中。）
 - 最新完成: `TASK-WORLD_SIMULATOR-233~235`（已移除 `world_openclaw_local_bridge` 的旧 profile alias，并收口 viewer/client/runtime/tooling 源码内嵌负向测试中的旧品牌 helper / fixture 命名；保留必要旧 alias 字面量仅作为“已移除 alias”的负向输入。）
 - 最新完成: `TASK-WORLD_SIMULATOR-232`（已移除 `tools/wasm_build_suite/src/lib.rs` 与相关测试中的 `AGENT_WORLD_WASM_*` fallback，收口 wasm build suite library 当前入口到 `OASIS7_WASM_*`，并把 compat 测试改为断言旧 alias 已失效。）
 - 最新完成: `TASK-WORLD_SIMULATOR-230~231`（已移除 wasm build/sync 脚本与 operator 脚本中的 `AGENT_WORLD_WASM_*`、`AGENT_WORLD_VIEWER_*` 与 `AGENT_WORLD_CHAIN_STORAGE_PROFILE` fallback，并收口相关 operator 文案到 `OASIS7_*` 当前入口。）
