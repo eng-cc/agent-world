@@ -14,8 +14,8 @@
 
 ## 3. 关键接口 / 入口
 - `ViewerExternalMaterialConfig`
-- `AGENT_WORLD_VIEWER_*_BASE_COLOR`
-- `AGENT_WORLD_VIEWER_*_EMISSIVE_COLOR`
+- `OASIS7_VIEWER_*_BASE_COLOR`
+- `OASIS7_VIEWER_*_EMISSIVE_COLOR`
 - `viewer_3d_config.rs`
 - `setup_3d_scene`
 

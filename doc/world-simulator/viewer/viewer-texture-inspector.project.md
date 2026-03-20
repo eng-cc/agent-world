@@ -13,7 +13,7 @@
 - doc/world-simulator/viewer/viewer-texture-inspector.prd.md
 - `scripts/capture-viewer-frame.sh`
 - `scripts/viewer-theme-pack-preview.sh`
-- `crates/agent_world_viewer/assets/themes/industrial_v1/presets/`
+- `crates/oasis7_viewer/assets/themes/industrial_v1/presets/`
 - `doc/world-simulator/viewer/viewer-manual.md`
 - `testing-manual.md`
 

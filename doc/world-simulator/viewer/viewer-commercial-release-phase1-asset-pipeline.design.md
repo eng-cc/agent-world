@@ -14,7 +14,7 @@
 
 ## 3. 关键接口 / 入口
 - `ViewerAssetExternalMeshConfig`
-- `AGENT_WORLD_VIEWER_*_MESH_ASSET`
+- `OASIS7_VIEWER_*_MESH_ASSET`
 - `<asset_path>#<sub_asset_label>`
 - `setup_3d_scene`
 - `AssetServer`

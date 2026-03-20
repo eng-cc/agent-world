@@ -37,7 +37,7 @@
   - `--base-texture/--normal-texture/--mr-texture/--emissive-texture`：临时覆盖贴图。
 - 脚本内部策略：
   - 使用统一“观察载体”（location 槽位 + 固定镜头）渲染，保证不同来源贴图可在一致视角下对比。
-  - 通过环境变量把待检查贴图注入 `AGENT_WORLD_VIEWER_LOCATION_*_TEXTURE_ASSET`。
+- 通过环境变量把待检查贴图注入 `OASIS7_VIEWER_LOCATION_*_TEXTURE_ASSET`。
 - 产物目录（计划）：
   - `output/texture_inspector/<timestamp>/<entity>/<variant>/`
   - 每项包含：`viewer.png`、`viewer.log`、`live_server.log`、`meta.txt`。

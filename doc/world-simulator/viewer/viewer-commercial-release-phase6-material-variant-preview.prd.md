@@ -30,7 +30,7 @@
 
 ## 4. Technical Specifications
 - 新增环境变量：
-  - `AGENT_WORLD_VIEWER_MATERIAL_VARIANT_PRESET=default|matte|glossy`
+  - `OASIS7_VIEWER_MATERIAL_VARIANT_PRESET=default|matte|glossy`
 - 新增运行时交互：
   - `F8`：在 `default -> matte -> glossy -> default` 之间循环切换。
 - 数据结构（viewer 内部资源）：
