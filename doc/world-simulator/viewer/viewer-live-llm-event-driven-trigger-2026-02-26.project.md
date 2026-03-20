@@ -13,10 +13,10 @@
 
 ## 依赖
 - doc/world-simulator/viewer/viewer-live-llm-event-driven-trigger-2026-02-26.prd.md
-- `crates/agent_world/src/viewer/live_split_part1.rs`
-- `crates/agent_world/src/viewer/live_split_part2.rs`
-- `crates/agent_world/src/viewer/live/consensus_bridge.rs`
-- `crates/agent_world/src/viewer/live/tests.rs`
+- `crates/oasis7/src/viewer/live_split_part1.rs`
+- `crates/oasis7/src/viewer/live_split_part2.rs`
+- `crates/oasis7/src/viewer/live/consensus_bridge.rs`
+- `crates/oasis7/src/viewer/live/tests.rs`
 - `testing-manual.md`
 
 ## 状态

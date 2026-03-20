@@ -15,9 +15,9 @@
 - `doc/world-simulator/prd.md`
 - `doc/world-simulator/project.md`
 - `doc/world-simulator/prd.index.md`
-- `crates/agent_world/src/viewer/runtime_live/control_plane.rs`
-- `crates/agent_world/src/viewer/runtime_live.rs`
-- `crates/agent_world/src/bin/world_viewer_live.rs`
+- `crates/oasis7/src/viewer/runtime_live/control_plane.rs`
+- `crates/oasis7/src/viewer/runtime_live.rs`
+- `crates/oasis7/src/bin/world_viewer_live.rs`
 - `doc/world-simulator/viewer/viewer-manual.md`
 
 ## 状态

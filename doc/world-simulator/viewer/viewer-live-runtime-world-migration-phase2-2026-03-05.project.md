@@ -15,11 +15,11 @@
 - `doc/world-simulator/prd.md`
 - `doc/world-simulator/project.md`
 - `doc/world-simulator/prd.index.md`
-- `crates/agent_world/src/bin/world_viewer_live.rs`
-- `crates/agent_world/src/viewer/runtime_live.rs`
-- `crates/agent_world/src/viewer/auth.rs`
-- `crates/agent_world/src/viewer/protocol.rs`
-- `crates/agent_world/src/bin/world_llm_agent_demo/runtime_bridge.rs`
+- `crates/oasis7/src/bin/world_viewer_live.rs`
+- `crates/oasis7/src/viewer/runtime_live.rs`
+- `crates/oasis7/src/viewer/auth.rs`
+- `crates/oasis7/src/viewer/protocol.rs`
+- `crates/oasis7/src/bin/world_llm_agent_demo/runtime_bridge.rs`
 - `doc/world-simulator/viewer/viewer-manual.md`
 
 ## 状态

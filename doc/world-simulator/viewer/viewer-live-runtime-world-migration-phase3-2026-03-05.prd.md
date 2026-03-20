@@ -39,7 +39,7 @@
   - AC-2: 关键旧链路动作（move/transfer/gameplay/economic）等价回归通过。
   - AC-3: 不可映射动作仍返回结构化拒绝，不发生 panic 或服务中断。
   - AC-4: `world_viewer_live` 不再包含 simulator live 启动分支。
-  - AC-5: 命令通过：`env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_viewer_live` 与 `env -u RUSTC_WRAPPER cargo check -p agent_world --bin world_viewer_live`。
+  - AC-5: 命令通过：`env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_viewer_live` 与 `env -u RUSTC_WRAPPER cargo check -p oasis7 --bin world_viewer_live`。
 - Non-Goals:
   - 不在 Phase 3 完成 simulator action 到 runtime action 的全量 1:1 映射。
   - 不在 Phase 3 改动 viewer 协议或前端 UI。
@@ -57,9 +57,9 @@
   - runtime live 继续作为唯一 live server 驱动，控制面保持 `WorldSnapshot/WorldEvent` 协议兼容。
   - action bridge 扩展采用“可安全 1:1 转换优先，无法对齐保持结构化拒绝”策略。
 - Integration Points:
-  - `crates/agent_world/src/viewer/runtime_live/control_plane.rs`
-  - `crates/agent_world/src/viewer/runtime_live.rs`
-  - `crates/agent_world/src/bin/world_viewer_live.rs`
+  - `crates/oasis7/src/viewer/runtime_live/control_plane.rs`
+  - `crates/oasis7/src/viewer/runtime_live.rs`
+  - `crates/oasis7/src/bin/world_viewer_live.rs`
   - `doc/world-simulator/viewer/viewer-manual.md`
 - Edge Cases & Error Handling:
   - 模块动作字段不兼容：拒绝并返回 `ActionRejected::RuleDenied`。

@@ -12,11 +12,11 @@
 
 ## 依赖
 - `doc/world-simulator/viewer/viewer-live-disable-seek-p2p-2026-02-27.prd.md`
-- `crates/agent_world/src/viewer/live_split_part2.rs`
-- `crates/agent_world/src/viewer/live/tests.rs`
-- `crates/agent_world_viewer/src/web_test_api.rs`
-- `crates/agent_world_viewer/src/egui_right_panel_controls.rs`
-- `crates/agent_world_viewer/src/egui_right_panel_player_guide.rs`
+- `crates/oasis7/src/viewer/live_split_part2.rs`
+- `crates/oasis7/src/viewer/live/tests.rs`
+- `crates/oasis7_viewer/src/web_test_api.rs`
+- `crates/oasis7_viewer/src/egui_right_panel_controls.rs`
+- `crates/oasis7_viewer/src/egui_right_panel_player_guide.rs`
 
 ## 状态
 - 最近更新：2026-03-06（ROUND-005 I5-001 字段补齐）

@@ -12,8 +12,8 @@
 ## 2. User Experience & Functionality
 
 ### In Scope
-- `agent_world` live 请求处理：`ViewerControl::Seek` 在 live 模式不再生效。
-- `agent_world_viewer` 的玩家/测试控制入口收敛：不再把 `seek` 当作可用控制动作。
+- `oasis7` live 请求处理：`ViewerControl::Seek` 在 live 模式不再生效。
+- `oasis7_viewer` 的玩家/测试控制入口收敛：不再把 `seek` 当作可用控制动作。
 - 同步更新 live 相关测试与文档记录。
 
 ### Out of Scope

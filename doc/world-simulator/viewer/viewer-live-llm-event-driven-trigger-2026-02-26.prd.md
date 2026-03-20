@@ -11,10 +11,10 @@
 - 保持现有 `play/step/chat/prompt_control` 交互能力不退化。
 
 ## 2. User Experience & Functionality
-- `crates/agent_world/src/viewer/live_split_part1.rs`
-- `crates/agent_world/src/viewer/live_split_part2.rs`
-- `crates/agent_world/src/viewer/live/consensus_bridge.rs`
-- `crates/agent_world/src/viewer/live/tests.rs`
+- `crates/oasis7/src/viewer/live_split_part1.rs`
+- `crates/oasis7/src/viewer/live_split_part2.rs`
+- `crates/oasis7/src/viewer/live/consensus_bridge.rs`
+- `crates/oasis7/src/viewer/live/tests.rs`
 
 不在范围内：
 - 不重构 `WorldKernel` 的时间语义。
