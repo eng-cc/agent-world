@@ -6,26 +6,26 @@
 审计轮次: 5
 
 ## 1. Executive Summary
-- 降低 `agent_world_viewer` 的 wasm 构建产物体积，优先移除 web 端不需要参与编译的模块。
+- 降低 `oasis7_viewer` 的 wasm 构建产物体积，优先移除 web 端不需要参与编译的模块。
 - 在不改变 native 运行行为的前提下，收敛 wasm 目标的依赖图，减少无效编译与无效链接。
 - 保持 Web 闭环可用（`cargo check --target wasm32-unknown-unknown` 与 trunk release 构建通过）。
 
 ## 2. User Experience & Functionality
-- `crates/agent_world`：
+- `crates/oasis7`：
   - `viewer` 模块按 target 进行裁剪（wasm 仅保留 client 侧协议/鉴权相关）。
   - `runtime` 与 `consensus_action_payload` 从 wasm 编译路径剥离。
   - `simulator` 在 wasm 下对“源码编译模块”动作提供明确拒绝兜底，避免 runtime 依赖回流。
   - `llm_agent` 从 wasm 编译路径剥离，同时保留 viewer UI 需要的默认 prompt 常量导出。
   - `Cargo.toml` 中 native-only 依赖下沉到 `cfg(not(target_arch = "wasm32"))`。
-- `crates/agent_world_viewer`：
-  - 仅做必要兼容改动（若 `agent_world::simulator` 对外导出项发生条件化变化）。
+- `crates/oasis7_viewer`：
+  - 仅做必要兼容改动（若 `oasis7::simulator` 对外导出项发生条件化变化）。
 
 ## 3. AI System Requirements (If Applicable)
 - N/A: 本专题不新增 AI 专属要求。
 
 ## 4. Technical Specifications
 - 编译目标：
-  - `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-unknown`
+  - `env -u RUSTC_WRAPPER cargo check -p oasis7_viewer --target wasm32-unknown-unknown`
   - `trunk build --release`
 - 体积对比口径：
   - 关注 `*_bg.wasm` 文件字节大小变化。
@@ -50,12 +50,12 @@
 
 ## 完成态（2026-03-02）
 - 已完成 wasm 路径裁剪：
-  - `agent_world` 在 wasm 目标下不再编译 `runtime`、`consensus_action_payload`、`viewer` 的 live/server/web_bridge 分支。
+  - `oasis7` 在 wasm 目标下不再编译 `runtime`、`consensus_action_payload`、`viewer` 的 live/server/web_bridge 分支。
   - `simulator` 在 wasm 下对 `compile_module_artifact_from_source` 返回明确拒绝，避免 runtime 依赖回流。
   - native-only 依赖已迁移到 `cfg(not(target_arch = "wasm32"))`。
 - 依赖树收敛：
-  - `cargo tree -p agent_world_viewer --target wasm32-unknown-unknown` 行数从 `1838` 降到 `1375`。
-  - 已不再出现 `agent_world_node/libp2p/async-openai/reqwest/tokio/tungstenite` 于 wasm viewer 依赖树。
+  - `cargo tree -p oasis7_viewer --target wasm32-unknown-unknown` 行数从 `1838` 降到 `1375`。
+  - 已不再出现 `oasis7_node/libp2p/async-openai/reqwest/tokio/tungstenite` 于 wasm viewer 依赖树。
 - 体积结果：
   - baseline wasm：`70,761,540` bytes
   - pruned wasm：`70,754,079` bytes

@@ -6,14 +6,14 @@
 审计轮次: 5
 
 ## 1. Executive Summary
-- 为 `agent_world_viewer` 增加一条可执行的浏览器运行路径（`wasm32-unknown-unknown`），让 Viewer 支持在浏览器中启动与渲染。
+- 为 `oasis7_viewer` 增加一条可执行的浏览器运行路径（`wasm32-unknown-unknown`），让 Viewer 支持在浏览器中启动与渲染。
 - 保持现有桌面运行方式不受影响：桌面仍支持在线 TCP 连接 `world_viewer_live`。
 - 建立最小闭环：`wasm32` 编译可通过、可通过统一脚本启动本地 Web 调试服务、文档可直接指引使用。
 - 将 Web 路径设为 Viewer 闭环默认路径，闭环证据统一走 `agent-browser` 产物（截图 + console）。
 
 ## 2. User Experience & Functionality
 - 范围内：
-  - 修复 `agent_world`/`agent_world_viewer` 在 `wasm32` 目标下的编译不兼容点。
+  - 修复 `oasis7`/`oasis7_viewer` 在 `wasm32` 目标下的编译不兼容点。
   - 在 Viewer 中引入 Web 平台路径：浏览器端通过 WebSocket bridge 在线连接 live server（不做 TCP 直连）。
   - 新增基于 `trunk` 的浏览器启动入口（脚本 + `index.html`）。
   - 更新使用手册，补充 Web 运行步骤、agent-browser 闭环步骤与限制说明。
@@ -30,9 +30,9 @@
 ### 1) 构建与运行入口
 - 新增脚本：`scripts/run-viewer-web.sh`
   - 负责检查 `trunk` 与 `wasm32-unknown-unknown` target。
-  - 在 `crates/agent_world_viewer` 下执行 `trunk serve`。
-- 新增页面入口：`crates/agent_world_viewer/index.html`
-  - 使用 trunk rust pipeline（`data-bin=agent_world_viewer`）构建并加载 wasm。
+  - 在 `crates/oasis7_viewer` 下执行 `trunk serve`。
+- 新增页面入口：`crates/oasis7_viewer/index.html`
+  - 使用 trunk rust pipeline（`data-bin=oasis7_viewer`）构建并加载 wasm。
 
 ### 1.1) 默认闭环入口（策略约束）
 - Web 启动：`./scripts/run-viewer-web.sh --address 127.0.0.1 --port 4173`
@@ -54,12 +54,12 @@
   - 依赖 `world_viewer_live --web-bind <addr>` 启动 WebSocket bridge。
   - 不编译 TCP 连接链路（`TcpStream` 相关代码通过 `cfg` 隔离）。
 
-### 3) `agent_world` wasm 兼容点
+### 3) `oasis7` wasm 兼容点
 - `OpenAiChatCompletionClient::build_http_client` 在 `wasm32` 下不设置 `timeout`，避免 `reqwest` wasm 平台 API 差异导致编译失败。
 
 ## 5. Risks & Roadmap
 - WBR1：输出设计文档与项目管理文档，并挂载总项目文档入口。
-- WBR2：完成 `agent_world`/`agent_world_viewer` wasm 兼容改造并通过 `cargo check --target wasm32-unknown-unknown`。
+- WBR2：完成 `oasis7`/`oasis7_viewer` wasm 兼容改造并通过 `cargo check --target wasm32-unknown-unknown`。
 - WBR3：完成 Web 启动入口（脚本 + `index.html`）与手册更新。
 - WBR4：执行 `test_tier_required` 相关回归，更新项目状态与开发日志。
 - WBR5：闭环策略收口（Web 默认、native fallback）并同步 AGENTS/手册/脚本文档。

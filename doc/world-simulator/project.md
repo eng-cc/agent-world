@@ -825,6 +825,7 @@
 - [x] TASK-WORLD_SIMULATOR-250 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 收口 `doc/world-simulator/viewer/{viewer-visualization,viewer-web-semantic-test-api}.prd.md`、`viewer-web-semantic-test-api.project.md` 与 `{viewer-industry-graph-layered-symbolic-zoom-2026-02-28,viewer-industrial-visual-closure}.project.md` 中仍把旧 `agent_world*` crate/path/package/env/command 写成当前真值的活跃 Viewer 入口/测试 API/工业可视化专题口径，统一到 `oasis7*` / `OASIS7_VIEWER_*` 与当前 `cargo -p oasis7*`。
 - [x] TASK-WORLD_SIMULATOR-251 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 收口 `doc/world-simulator/viewer/{viewer-live-runtime-world-migration-phase1-2026-03-04,viewer-live-runtime-world-migration-phase2-2026-03-05,viewer-live-runtime-world-llm-full-bridge-2026-03-05}.prd.md` 与 `viewer-live-runtime-world-llm-full-bridge-2026-03-05.project.md` 中仍把旧 `agent_world*` crate/path/package/command 写成当前真值的活跃 runtime-world 迁移专题口径，统一到 `oasis7*` 与当前 `cargo -p oasis7*`。
 - [x] TASK-WORLD_SIMULATOR-252 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 收口 `doc/world-simulator/m4/m4-industrial-economy-wasm.project.md` 中仍把旧 `agent_world*` wasm/runtime package、内置模块目录与 `cargo -p` 包名写成当前真值的活跃 M4/WASM 专题口径，统一到 `oasis7*` 与当前 `cargo -p oasis7*`，并保留“已移除旧 env”语义不变。
+- [x] TASK-WORLD_SIMULATOR-253 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 收口 `doc/world-simulator/viewer/{viewer-bevy-web-runtime,viewer-web-build-pruning-2026-03-02,viewer-web-build-pruning-phase2-2026-03-02}.{prd,project}` 中仍把旧 `agent_world*` crate/path/package/command 写成当前真值的活跃 Web build/runtime 专题口径，统一到 `oasis7*` 与当前 `cargo -p oasis7_viewer`。
 - [x] TASK-WORLD_SIMULATOR-203 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 viewer/OpenClaw 脚本中的旧品牌 env helper 与局部变量命名切到 `compat` 语义，收口脚本层里残留的 `legacy_key` / `viewer_legacy_env_key` / `promote_legacy_viewer_envs` 口径。
   - 产物文件:
     - `doc/world-simulator/prd.md`
@@ -970,6 +971,7 @@
 - `testing-manual.md`
 ## 状态
 - 更新日期 / 当前状态 / 下一任务: 2026-03-20 / active / 无
+- 最新完成: `TASK-WORLD_SIMULATOR-253`（已收口 `doc/world-simulator/viewer/{viewer-bevy-web-runtime,viewer-web-build-pruning-2026-03-02,viewer-web-build-pruning-phase2-2026-03-02}.{prd,project}` 中仍把旧 `agent_world*` crate/path/package/command 写成当前真值的活跃 Web build/runtime 专题口径，统一到 `oasis7*` 与当前 `cargo -p oasis7_viewer`。）
 - 最新完成: `TASK-WORLD_SIMULATOR-252`（已收口 `doc/world-simulator/m4/m4-industrial-economy-wasm.project.md` 中仍把旧 `agent_world*` wasm/runtime package、内置模块目录与 `cargo -p` 包名写成当前真值的活跃 M4/WASM 专题口径，统一到 `oasis7*` 与当前 `cargo -p oasis7*`，并保留“已移除旧 env”语义不变。）
 - 最新完成: `TASK-WORLD_SIMULATOR-233~235`（已移除 `world_openclaw_local_bridge` 的旧 profile alias，并收口 viewer/client/runtime/tooling 源码内嵌负向测试中的旧品牌 helper / fixture 命名；保留必要旧 alias 字面量仅作为“已移除 alias”的负向输入。）
 - 最新完成: `TASK-WORLD_SIMULATOR-232`（已移除 `tools/wasm_build_suite/src/lib.rs` 与相关测试中的 `AGENT_WORLD_WASM_*` fallback，收口 wasm build suite library 当前入口到 `OASIS7_WASM_*`，并把 compat 测试改为断言旧 alias 已失效。）
@@ -984,8 +986,6 @@
 - 最新完成: `TASK-WORLD_SIMULATOR-189~194`（已完成 viewer dev dist fallback、launcher/node/net/wasm 支撑包与 integration tests 的一组 `oasis7_*` 内部命名迁移，统一 viewer dist 默认口径、测试临时目录前缀与 artifact signer seed，同时保留必要兼容回退）。
 - 最新完成: `TASK-WORLD_SIMULATOR-180~188`（已完成 launcher/CI/runtime/OpenClaw/storage/governance 多模块的第二批 `oasis7_*` 内部命名迁移，统一测试产物前缀、profile 样例、workspace 路径与 signer namespace，并保留必要兼容别名）。
 - 最新完成: `TASK-WORLD_SIMULATOR-160~166`（已完成 `oasis7` operator 口径重构、主入口 UI/reference 拆分、standard bootstrap overlay 收口、live seek profile 对齐、Viewer `PostOnboarding` 目标卡补齐，以及 Viewer 标题/手册和历史专题 title-only cleanup。）
-- 最新完成: `TASK-WORLD_SIMULATOR-133~136`（已为 `oasis7` 收口 bundle-first / repo-bootstrap 入口、GitHub Release bundle 下载、默认下载目录 `~` 展开与 `play` wrapper shutdown 残留问题。）
-- 最新完成: `TASK-WORLD_SIMULATOR-152~157`（已完成 `OpenClaw` 双轨模式真实 lane 接通、T4 QA/producer 对照采证、builtin/OpenClaw parity `P0-001` 收口、gateway timeout fallback 修复与 `latency_class B / keep experimental` 结论冻结。）
 - 当前优先任务: `fix3` 已恢复 builtin/OpenClaw 的行为等价基线；继续压缩 OpenClaw absolute wait latency，争取把 `latency_class` 从 `B (experimental-only)` 收敛到 `A (default-candidate)` 后再讨论默认启用。
 - 当前阻断说明: `PRD-WORLD_SIMULATOR-040` 已完成 T4 对照采证并解除阻断；`PRD-WORLD_SIMULATOR-038` 在 `openclaw_builtin_parity_20260317_fix3` 中已恢复 `completion_rate=100%`、`timeout_rate=0%` 与 `move_agent=4`，且 `relative_wait_gap` 满足行为等价硬门禁，但 OpenClaw `median_extra_wait_ms=13957`、`p95_extra_wait_ms=14062` 仅达到 `latency_class B`，因此当前允许保持 `experimental` / 受限试点，仍不得默认启用。
 - parity 执行入口: `scripts/openclaw-parity-p0.sh` + `world_openclaw_parity_bench` 已落地，可先跑 openclaw-only/mock smoke，再接真实 builtin/OpenClaw 双边样本。

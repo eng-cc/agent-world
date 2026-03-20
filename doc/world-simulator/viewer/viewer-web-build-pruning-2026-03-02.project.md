@@ -13,12 +13,12 @@
 ## 依赖
 - `doc/world-simulator/viewer/viewer-web-build-pruning-2026-03-02.design.md`
 - `doc/world-simulator/viewer/viewer-web-build-pruning-2026-03-02.prd.md`
-- `crates/agent_world/src/lib.rs`
-- `crates/agent_world/src/viewer/mod.rs`
-- `crates/agent_world/src/simulator/mod.rs`
-- `crates/agent_world/src/simulator/kernel/module_lifecycle.rs`
-- `crates/agent_world/src/simulator/llm_defaults.rs`（新增）
-- `crates/agent_world/Cargo.toml`
+- `crates/oasis7/src/lib.rs`
+- `crates/oasis7/src/viewer/mod.rs`
+- `crates/oasis7/src/simulator/mod.rs`
+- `crates/oasis7/src/simulator/kernel/module_lifecycle.rs`
+- `crates/oasis7/src/simulator/llm_defaults.rs`（新增）
+- `crates/oasis7/Cargo.toml`
 
 ## 状态
 - 最近更新：2026-03-06（ROUND-005 I5-001 字段补齐）

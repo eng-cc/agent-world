@@ -13,12 +13,12 @@
 - [x] WBR1.3 在总项目文档挂载任务入口
 
 ### WBR2 wasm 兼容改造
-- [x] WBR2.1 修复 `agent_world` 的 wasm 编译不兼容（LLM HTTP client）
-- [x] WBR2.2 修复 `agent_world_viewer` 的 wasm 编译不兼容（Web 离线路径）
-- [x] WBR2.3 执行 `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-unknown`
+- [x] WBR2.1 修复 `oasis7` 的 wasm 编译不兼容（LLM HTTP client）
+- [x] WBR2.2 修复 `oasis7_viewer` 的 wasm 编译不兼容（Web 离线路径）
+- [x] WBR2.3 执行 `env -u RUSTC_WRAPPER cargo check -p oasis7_viewer --target wasm32-unknown-unknown`
 
 ### WBR3 Web 入口与手册
-- [x] WBR3.1 新增 `trunk` 页面入口（`crates/agent_world_viewer/index.html`）
+- [x] WBR3.1 新增 `trunk` 页面入口（`crates/oasis7_viewer/index.html`）
 - [x] WBR3.2 新增 Web 启动脚本（`scripts/run-viewer-web.sh`）
 - [x] WBR3.3 更新 `doc/world-simulator/viewer/viewer-manual.md` Web 运行说明
 
@@ -32,10 +32,10 @@
 - [x] WBR5.2 在手册/AGENTS/脚本文档中统一“Web 默认，native fallback”口径
 
 ## 依赖
-- `crates/agent_world/src/simulator/llm_agent.rs`
-- `crates/agent_world_viewer/src/main.rs`
-- `crates/agent_world_viewer/src/app_bootstrap.rs`
-- `crates/agent_world_viewer/index.html`
+- `crates/oasis7/src/simulator/llm_agent.rs`
+- `crates/oasis7_viewer/src/main.rs`
+- `crates/oasis7_viewer/src/app_bootstrap.rs`
+- `crates/oasis7_viewer/index.html`
 - `scripts/run-viewer-web.sh`
 - `doc/world-simulator/viewer/viewer-manual.md`
 - `doc/world-simulator.project.md`
