@@ -13,7 +13,7 @@
 - Problem Statement: 在不破坏现有 `BlobStore`/`FileStore` 接口兼容性的前提下，补齐 DistFS 的基础生产语义能力。
 - Proposed Solution: 提供“可审计、可回收、可同步、可并发保护”的最小闭环，降低文件索引漂移和脏写风险。
 - Success Criteria:
-  - SC-1: 保持实现集中在 `agent_world_distfs`，便于上层 `agent_world_net` / `agent_world_node` 直接复用。
+  - SC-1: 保持实现集中在 `oasis7_distfs`，便于上层 `oasis7_net` / `oasis7_node` 直接复用。
 
 ## 2. User Experience & Functionality
 - User Personas: 协议维护者、任务执行者、质量复核者。

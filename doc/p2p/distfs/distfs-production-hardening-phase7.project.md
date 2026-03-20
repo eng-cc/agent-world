@@ -14,9 +14,9 @@
 - [x] DPH7-4 (PRD-P2P-MIG-073)：执行回归测试，回写文档状态与 devlog。
 
 ## 依赖
-- `crates/agent_world_distfs/src/challenge_scheduler.rs`
-- `crates/agent_world/src/bin/world_viewer_live.rs`
-- `crates/agent_world/src/bin/world_chain_runtime/distfs_probe_runtime.rs`
+- `crates/oasis7_distfs/src/challenge_scheduler.rs`
+- `crates/oasis7/src/bin/world_viewer_live.rs`
+- `crates/oasis7/src/bin/world_chain_runtime/distfs_probe_runtime.rs`
 - `doc/p2p/distfs/distfs-production-hardening-phase7.prd.md`
 
 ## 状态

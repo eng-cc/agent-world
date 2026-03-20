@@ -9,7 +9,7 @@
 - 本文件为 Phase 2 增量子文档（slave），仅维护本阶段增量内容。
 
 ## 1. Executive Summary
-- Problem Statement: 在 `agent_world_distfs` 增加可验证存储挑战（Storage Challenge）闭环能力，为“存储节点收益分配”提供可审计输入。
+- Problem Statement: 在 `oasis7_distfs` 增加可验证存储挑战（Storage Challenge）闭环能力，为“存储节点收益分配”提供可审计输入。
 - Proposed Solution: 保持 DistFS 本地 CAS 语义与现有复制路径兼容，不引入破坏性接口变更。
 - Success Criteria:
   - SC-1: 输出可被 reward runtime/链上结算层直接消费的挑战证明语义与统计结果。

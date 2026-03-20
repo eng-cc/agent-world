@@ -27,7 +27,7 @@
   - AC-1: **DPH3-1：文档与任务拆解**
   - AC-2: 输出 Phase 3 设计文档与项目管理文档。
   - AC-3: **DPH3-2：DistFS 挑战探测接口（Probe）**
-  - AC-4: 在 `agent_world_distfs` 增加“按 tick 发起挑战并汇总统计”的统一入口。
+  - AC-4: 在 `oasis7_distfs` 增加“按 tick 发起挑战并汇总统计”的统一入口。
   - AC-5: 输出节点维度挑战统计（total/pass/fail + 失败原因分布）。
   - AC-6: **DPH3-3：reward runtime 接线真实挑战计数**
 - Non-Goals:
