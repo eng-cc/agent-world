@@ -19,7 +19,7 @@ Options:
   --download-dir <path>           Release cache/output root (default: ~/.cache/oasis7/releases)
   --force-download                Redownload bundle even if cached bundle already exists
   --base-url <url>                OpenClaw local provider base url (default: http://127.0.0.1:5841)
-  --agent-id <id>                 OpenClaw runtime agent id (default: agent_world_runtime)
+  --agent-id <id>                 OpenClaw runtime agent id (default: oasis7_runtime)
   --agent-profile <profile>       OpenClaw agent profile (default: agent_world_p0_low_freq_npc)
   --execution-mode <mode>         OpenClaw execution mode (default: headless_agent)
   --scenario <name>               Gameplay scenario (default: llm_bootstrap)
@@ -726,7 +726,7 @@ release_repo="eng-cc/oasis7"
 download_dir="~/.cache/oasis7/releases"
 force_download="0"
 base_url="http://127.0.0.1:5841"
-agent_id="agent_world_runtime"
+agent_id="oasis7_runtime"
 agent_profile="agent_world_p0_low_freq_npc"
 execution_mode="headless_agent"
 scenario="llm_bootstrap"

@@ -2,9 +2,24 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-AGENT_ID="${1:-agent_world_runtime}"
-WORKSPACE_DIR="${OPENCLAW_AGENT_WORLD_WORKSPACE:-$ROOT_DIR/tools/openclaw/agent_world_runtime_workspace}"
-MODEL_ID="${OPENCLAW_AGENT_WORLD_MODEL:-custom-right-codes/gpt-5.4}"
+
+openclaw_env_or_default() {
+  local suffix="$1"
+  local default_value="${2-}"
+  local key="OPENCLAW_OASIS7_${suffix}"
+  local legacy_key="OPENCLAW_AGENT_WORLD_${suffix}"
+  if [[ -n "${!key+x}" ]]; then
+    printf '%s\n' "${!key}"
+  elif [[ -n "${!legacy_key+x}" ]]; then
+    printf '%s\n' "${!legacy_key}"
+  else
+    printf '%s\n' "$default_value"
+  fi
+}
+
+AGENT_ID="${1:-$(openclaw_env_or_default AGENT_ID oasis7_runtime)}"
+WORKSPACE_DIR="$(openclaw_env_or_default WORKSPACE "$ROOT_DIR/tools/openclaw/agent_world_runtime_workspace")"
+MODEL_ID="$(openclaw_env_or_default MODEL custom-right-codes/gpt-5.4)"
 
 if ! command -v openclaw >/dev/null 2>&1; then
   echo "openclaw CLI not found in PATH" >&2

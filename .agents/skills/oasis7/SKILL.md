@@ -96,7 +96,7 @@ scripts/setup-openclaw-agent-world-runtime.sh
 
 Defaults:
 
-- agent id: `agent_world_runtime`
+- agent id: `oasis7_runtime`
 - workspace: `tools/openclaw/agent_world_runtime_workspace`
 - model: `custom-right-codes/gpt-5.4`
 
@@ -107,7 +107,7 @@ The runtime workspace is intentionally slim and is not meant for daily chat.
 Run the local compatibility bridge that exposes world-simulator provider endpoints:
 
 ```bash
-env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_openclaw_local_bridge -- --openclaw-agent agent_world_runtime
+env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_openclaw_local_bridge -- --openclaw-agent oasis7_runtime
 ```
 
 Expected local provider URL:
@@ -267,7 +267,7 @@ What it does:
 
 - `download`: downloads and extracts the GitHub Release bundle, then prints the usable bundle directory
 - `doctor`: checks command availability, Gateway health, bridge health, provider info, runtime agent presence, and optional `--bundle-dir` validity; add `--json` for machine-readable output
-- `play`: bootstrap `agent_world_runtime` unless you disable it, verify Gateway health, start the local bridge unless you pass `--reuse-bridge`, then run launcher from the bundle or source tree
+- `play`: bootstrap `oasis7_runtime` unless you disable it, verify Gateway health, start the local bridge unless you pass `--reuse-bridge`, then run launcher from the bundle or source tree
 - `smoke`: remains repo-backed because the parity harness lives under `scripts/openclaw-parity-p0.sh`
 
 ## Debug Checklist

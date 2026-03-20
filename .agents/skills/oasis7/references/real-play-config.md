@@ -95,7 +95,7 @@ If you use `--download-dir ~/.cache/oasis7/releases`, the helper expands the cur
 
 Prefer the repo-owned lightweight runtime agent:
 
-- agent id: `agent_world_runtime`
+- agent id: `oasis7_runtime`
 - installer: `scripts/setup-openclaw-agent-world-runtime.sh`
 - workspace: `tools/openclaw/agent_world_runtime_workspace`
 
