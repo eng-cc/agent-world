@@ -23,7 +23,7 @@ fn module_store_roundtrip() {
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_nanos();
-    let dir = std::env::temp_dir().join(format!("agent-world-store-{unique}"));
+    let dir = std::env::temp_dir().join(format!("oasis7-store-{unique}"));
 
     let store = ModuleStore::new(&dir);
     let wasm_bytes = b"store-bytes";
@@ -82,7 +82,7 @@ fn module_store_rejects_version_mismatch() {
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_nanos();
-    let dir = std::env::temp_dir().join(format!("agent-world-store-bad-{unique}"));
+    let dir = std::env::temp_dir().join(format!("oasis7-store-bad-{unique}"));
 
     let store = ModuleStore::new(&dir);
     fs::create_dir_all(store.root()).unwrap();
@@ -108,7 +108,7 @@ fn world_module_store_roundtrip() {
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_nanos();
-    let dir = std::env::temp_dir().join(format!("agent-world-store-world-{unique}"));
+    let dir = std::env::temp_dir().join(format!("oasis7-store-world-{unique}"));
 
     let mut world = World::new();
     world.set_policy(PolicySet::allow_all());
@@ -180,7 +180,7 @@ fn world_save_to_dir_with_modules_roundtrip() {
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_nanos();
-    let dir = std::env::temp_dir().join(format!("agent-world-store-full-{unique}"));
+    let dir = std::env::temp_dir().join(format!("oasis7-store-full-{unique}"));
 
     let mut world = World::new();
     world.set_policy(PolicySet::allow_all());
