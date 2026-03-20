@@ -16,10 +16,10 @@
 ## 3. 关键接口 / 入口
 - `world_web_launcher/runtime_paths.rs`
 - `world_web_launcher/control_plane.rs`
-- `agent_world_client_launcher/src/config_ui.rs`
-- `agent_world_client_launcher/src/launcher_core.rs`
-- `agent_world_client_launcher/src/app_process.rs`
-- `agent_world_client_launcher/src/app_process_web.rs`
+- `oasis7_client_launcher/src/config_ui.rs`
+- `oasis7_client_launcher/src/launcher_core.rs`
+- `oasis7_client_launcher/src/app_process.rs`
+- `oasis7_client_launcher/src/app_process_web.rs`
 
 ## 4. 约束与边界
 - native/web 必须复用同一套状态语义和参数编码规则。

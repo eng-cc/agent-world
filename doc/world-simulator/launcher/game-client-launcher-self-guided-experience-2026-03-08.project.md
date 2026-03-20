@@ -3,7 +3,7 @@
 - 对应设计文档: `doc/world-simulator/launcher/game-client-launcher-self-guided-experience-2026-03-08.design.md`
 - 对应需求文档: `doc/world-simulator/launcher/game-client-launcher-self-guided-experience-2026-03-08.prd.md`
 
-审计轮次: 2
+审计轮次: 6
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0 (PRD-WORLD_SIMULATOR-030) [test_tier_required]: 完成专题 PRD 建模、验收标准冻结与模块文档树回写。
@@ -30,16 +30,16 @@
 - `doc/world-simulator/prd.md`
 - `doc/world-simulator/project.md`
 - `doc/world-simulator/prd.index.md`
-- `crates/agent_world_client_launcher/src/main.rs`
-- `crates/agent_world_client_launcher/src/main_app_shell.rs`
-- `crates/agent_world_client_launcher/src/main_ui_helpers.rs`
-- `crates/agent_world_client_launcher/src/config_ui.rs`
-- `crates/agent_world_client_launcher/src/transfer_window.rs`
-- `crates/agent_world_client_launcher/src/explorer_window.rs`
-- `crates/agent_world_client_launcher/src/explorer_window_view.rs`
-- `crates/agent_world_client_launcher/src/app_process.rs`
-- `crates/agent_world_client_launcher/src/app_process_web.rs`
-- `crates/agent_world_client_launcher/src/main_tests.rs`
+- `crates/oasis7_client_launcher/src/main.rs`
+- `crates/oasis7_client_launcher/src/main_app_shell.rs`
+- `crates/oasis7_client_launcher/src/main_ui_helpers.rs`
+- `crates/oasis7_client_launcher/src/config_ui.rs`
+- `crates/oasis7_client_launcher/src/transfer_window.rs`
+- `crates/oasis7_client_launcher/src/explorer_window.rs`
+- `crates/oasis7_client_launcher/src/explorer_window_view.rs`
+- `crates/oasis7_client_launcher/src/app_process.rs`
+- `crates/oasis7_client_launcher/src/app_process_web.rs`
+- `crates/oasis7_client_launcher/src/main_tests.rs`
 - `testing-manual.md`
 
 ## 状态

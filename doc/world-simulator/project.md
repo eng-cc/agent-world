@@ -814,6 +814,7 @@
 - [x] TASK-WORLD_SIMULATOR-239 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 收口一组 launcher 基础专题中仍把 `agent_world_client_launcher`、`agent_world_launcher_ui` 与旧 `cargo -p` 包名写成当前 package/path/command 的口径，统一到 `oasis7_client_launcher`、`oasis7_launcher_ui` 与当前 `cargo -p oasis7_client_launcher`。
 - [x] TASK-WORLD_SIMULATOR-240 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 收口同批 launcher 专题的 `project/design` 活跃文档中仍把 `agent_world_client_launcher`、`agent_world_launcher_ui` 与旧依赖路径写成当前 package/path 的口径，统一到 `oasis7_client_launcher`、`oasis7_launcher_ui` 与 `crates/oasis7*`。
 - [x] TASK-WORLD_SIMULATOR-241 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 收口另一组 launcher 活跃专题中仍把 `agent_world_client_launcher`、`agent_world`、`AGENT_WORLD_LLM_*` 与旧 `cargo -p` 包名写成当前 package/path/env/command 的口径，统一到 `oasis7_client_launcher`、`oasis7`、`OASIS7_LLM_*` 与当前 `cargo -p oasis7*`。
+- [x] TASK-WORLD_SIMULATOR-242 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 收口 launcher UX/self-guided 活跃专题中仍把 `agent_world_client_launcher`、`agent_world_launcher_ui`、`agent_world` 与旧 `cargo -p` 包名写成当前 package/path/command 的口径，统一到 `oasis7_client_launcher`、`oasis7_launcher_ui`、`oasis7` 与当前 `cargo -p oasis7*`。
 - [x] TASK-WORLD_SIMULATOR-203 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 viewer/OpenClaw 脚本中的旧品牌 env helper 与局部变量命名切到 `compat` 语义，收口脚本层里残留的 `legacy_key` / `viewer_legacy_env_key` / `promote_legacy_viewer_envs` 口径。
   - 产物文件:
     - `doc/world-simulator/prd.md`
@@ -856,7 +857,6 @@
 - [x] SUBTASK-WORLD_SIMULATOR-20260303-002 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: legacy launcher desktop 方案文档清理（旧文档已删除）
 - [x] SUBTASK-WORLD_SIMULATOR-20260303-003 (PRD-WORLD_SIMULATOR-006) [test_tier_required]: legacy launcher unified 方案文档清理（旧文档已删除）
 - [x] SUBTASK-WORLD_SIMULATOR-20260303-004 (PRD-WORLD_SIMULATOR-007) [test_tier_required]: `doc/world-simulator/launcher/game-client-launcher-llm-settings-panel-2026-03-02.project.md`
-
 ## 专题任务映射（2026-03-04 批次）
 - [x] SUBTASK-WORLD_SIMULATOR-20260304-001 (PRD-WORLD_SIMULATOR-010) [test_tier_required]: `doc/world-simulator/launcher/game-client-launcher-web-console-2026-03-04.project.md`
 - [x] SUBTASK-WORLD_SIMULATOR-20260304-002 (PRD-WORLD_SIMULATOR-011) [test_tier_required]: `doc/world-simulator/launcher/game-client-launcher-ui-schema-share-2026-03-04.project.md`
@@ -963,7 +963,7 @@
 ## 状态
 - 更新日期 / 当前状态: 2026-03-20 / active
 - 下一任务: 无
-- 最新完成: `TASK-WORLD_SIMULATOR-241`（已收口另一组 launcher 活跃专题口径，包括 LLM settings、wasm time、Web transfer、Web settings/feedback 与 transfer parity；旧 `agent_world_client_launcher` / `agent_world` / `AGENT_WORLD_LLM_*` / 旧 `cargo -p` 包名仅保留在历史记录或兼容说明语境中。）
+- 最新完成: `TASK-WORLD_SIMULATOR-242`（已收口 launcher UX/self-guided 活跃专题口径，包括 availability、full usability 与 self-guided；旧 `agent_world_client_launcher` / `agent_world_launcher_ui` / `agent_world` / 旧 `cargo -p` 包名仅保留在历史记录或兼容说明语境中。）
 - 最新完成: `TASK-WORLD_SIMULATOR-234~235`（已收口 viewer/client/runtime/tooling 源码内嵌负向测试中的旧品牌 helper / fixture 命名，保留必要旧 alias 字面量仅作为“已移除 alias”的负向输入。）
 - 最新完成: `TASK-WORLD_SIMULATOR-233`（已移除 `crates/oasis7/src/bin/world_openclaw_local_bridge.rs` 与相关测试中的旧 profile alias `agent_world_p0_low_freq_npc`，收口 OpenClaw local bridge 当前入口到 `oasis7_p0_low_freq_npc`，并把 compat 测试改为断言旧 alias 已失效。）
 - 最新完成: `TASK-WORLD_SIMULATOR-232`（已移除 `tools/wasm_build_suite/src/lib.rs` 与相关测试中的 `AGENT_WORLD_WASM_*` fallback，收口 wasm build suite library 当前入口到 `OASIS7_WASM_*`，并把 compat 测试改为断言旧 alias 已失效。）

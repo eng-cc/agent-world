@@ -3,7 +3,7 @@
 - 对应设计文档: `doc/world-simulator/launcher/game-client-launcher-self-guided-experience-2026-03-08.design.md`
 - 对应项目管理文档: `doc/world-simulator/launcher/game-client-launcher-self-guided-experience-2026-03-08.project.md`
 
-审计轮次: 1
+审计轮次: 6
 
 ## 1. Executive Summary
 - Problem Statement: 启动器已具备功能完备性，但新用户首次进入时仍需自行理解术语、按钮依赖与推荐操作路径，容易在“能做什么/下一步做什么”上卡住。
@@ -78,17 +78,17 @@
 
 ## 4. Technical Specifications
 - Architecture Overview:
-  - `agent_world_client_launcher` 新增自引导状态层（引导状态、任务卡状态、术语词典、演示模式与本地计数）。
+  - `oasis7_client_launcher` 新增自引导状态层（引导状态、任务卡状态、术语词典、演示模式与本地计数）。
   - 通过独立模块管理“成功配置画像 + 引导计数”持久化，native 落盘、web 端 localStorage。
   - 不改变控制面 API；所有引导动作复用既有 `/api/start`、`/api/chain/start`、`/api/state`、transfer/explorer 查询接口。
 - Integration Points:
-  - `crates/agent_world_client_launcher/src/main.rs`
-  - `crates/agent_world_client_launcher/src/config_ui.rs`
-  - `crates/agent_world_client_launcher/src/transfer_window.rs`
-  - `crates/agent_world_client_launcher/src/explorer_window.rs`
-  - `crates/agent_world_client_launcher/src/app_process.rs`
-  - `crates/agent_world_client_launcher/src/app_process_web.rs`
-  - `crates/agent_world_client_launcher/src/main_tests.rs`
+  - `crates/oasis7_client_launcher/src/main.rs`
+  - `crates/oasis7_client_launcher/src/config_ui.rs`
+  - `crates/oasis7_client_launcher/src/transfer_window.rs`
+  - `crates/oasis7_client_launcher/src/explorer_window.rs`
+  - `crates/oasis7_client_launcher/src/app_process.rs`
+  - `crates/oasis7_client_launcher/src/app_process_web.rs`
+  - `crates/oasis7_client_launcher/src/main_tests.rs`
   - `testing-manual.md`
 - Edge Cases & Error Handling:
   - 引导中点击“启动”但配置非法：保持在当前步骤并打开配置引导，不得静默失败。
@@ -122,7 +122,7 @@
 - Test Plan & Traceability:
 | PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |
 | --- | --- | --- | --- | --- |
-| PRD-WORLD_SIMULATOR-030 | TASK-WORLD_SIMULATOR-072/073/074/075/076/077/078/079/080/081/082/083/084 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown` + agent-browser（桌面+390x844）验证首次引导、任务流、CTA、转账预设、快捷跳转、演示模式与计数展示 | 启动器自引导可用性、跨端一致性与新用户首日留存路径 |
+| PRD-WORLD_SIMULATOR-030 | TASK-WORLD_SIMULATOR-072/073/074/075/076/077/078/079/080/081/082/083/084 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown` + agent-browser（桌面+390x844）验证首次引导、任务流、CTA、转账预设、快捷跳转、演示模式与计数展示 | 启动器自引导可用性、跨端一致性与新用户首日留存路径 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |

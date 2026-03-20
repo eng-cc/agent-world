@@ -3,7 +3,7 @@
 - 对应设计文档: `doc/world-simulator/launcher/game-client-launcher-availability-ux-hardening-2026-03-08.design.md`
 - 对应项目管理文档: `doc/world-simulator/launcher/game-client-launcher-availability-ux-hardening-2026-03-08.project.md`
 
-审计轮次: 3
+审计轮次: 6
 
 ## 1. Executive Summary
 - Problem Statement: 启动器在源码直接运行场景存在默认静态目录失效问题，且 Web 端仍有若干体验与可诊断性缺口（禁用态提示缺失、查询参数未编码、移动端布局拥挤、无效控制台噪声）；同时主界面长期展开低频配置表单，挤占高频启停与状态区域，影响日常操作效率。
@@ -59,7 +59,7 @@
 | favicon 噪声抑制 | 默认 favicon 声明 | 页面加载不再触发 `favicon.ico` 404 | `page_load -> console_clean` | 统一静态入口模板 | 无权限变化 |
 - Acceptance Criteria:
   - AC-1: `world_web_launcher` 在源码直跑场景（无 bundle `web/`）下可通过默认回退路径启动，或返回可操作错误信息。
-  - AC-1a: `world_web_launcher` 与 `agent_world_client_launcher` 对 `viewer_static_dir=web` 的预校验必须按目标 `launcher_bin` 的 bundle 相对路径解析，不得仅按当前工作目录判定缺失。
+  - AC-1a: `world_web_launcher` 与 `oasis7_client_launcher` 对 `viewer_static_dir=web` 的预校验必须按目标 `launcher_bin` 的 bundle 相对路径解析，不得仅按当前工作目录判定缺失。
   - AC-2: Web 端在 `disabled/not_started/starting/unreachable/config_error` 任一非 `ready` 状态时，必须显示反馈不可用原因。
   - AC-3: `app_process.rs` 与 `app_process_web.rs` 所有 explorer/transfer/search 查询参数构造均使用统一编码函数。
   - AC-4: `/api/stop` 与 `/api/chain/stop` 在 no-op 场景不覆盖 `StartFailed/QueryFailed/Unreachable/ConfigError` 等错误态。
@@ -81,18 +81,18 @@
 ## 4. Technical Specifications
 - Architecture Overview:
   - 控制面：`world_web_launcher` 负责配置校验、进程编排、状态快照与 API 代理。
-  - 客户端：`agent_world_client_launcher` native/web 共用状态模型与查询构造逻辑。
-  - UI schema：继续复用 `agent_world_launcher_ui`，仅调整渲染布局与提示逻辑。
+  - 客户端：`oasis7_client_launcher` native/web 共用状态模型与查询构造逻辑。
+  - UI schema：继续复用 `oasis7_launcher_ui`，仅调整渲染布局与提示逻辑。
 - Integration Points:
-  - `crates/agent_world/src/bin/world_web_launcher/runtime_paths.rs`
-  - `crates/agent_world/src/bin/world_web_launcher/control_plane.rs`
-  - `crates/agent_world_client_launcher/src/platform_ops.rs`
-  - `crates/agent_world_client_launcher/src/main.rs`
-  - `crates/agent_world_client_launcher/src/config_ui.rs`
-  - `crates/agent_world_client_launcher/src/launcher_core.rs`
-  - `crates/agent_world_client_launcher/src/app_process.rs`
-  - `crates/agent_world_client_launcher/src/app_process_web.rs`
-  - `crates/agent_world_client_launcher/index.html`
+  - `crates/oasis7/src/bin/world_web_launcher/runtime_paths.rs`
+  - `crates/oasis7/src/bin/world_web_launcher/control_plane.rs`
+  - `crates/oasis7_client_launcher/src/platform_ops.rs`
+  - `crates/oasis7_client_launcher/src/main.rs`
+  - `crates/oasis7_client_launcher/src/config_ui.rs`
+  - `crates/oasis7_client_launcher/src/launcher_core.rs`
+  - `crates/oasis7_client_launcher/src/app_process.rs`
+  - `crates/oasis7_client_launcher/src/app_process_web.rs`
+  - `crates/oasis7_client_launcher/index.html`
   - `testing-manual.md`
 - Edge Cases & Error Handling:
   - 启动路径不存在：按候选路径继续回退，全部失败时返回结构化 `invalid_config`。
@@ -132,7 +132,7 @@
 - Test Plan & Traceability:
 | PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |
 | --- | --- | --- | --- | --- |
-| PRD-WORLD_SIMULATOR-027 | TASK-WORLD_SIMULATOR-063/064/065/066 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown` + `agent-browser --headed`（桌面 + 390x844）采证 | 启动器控制面可用性、web 体验、native/web 请求一致性 |
+| PRD-WORLD_SIMULATOR-027 | TASK-WORLD_SIMULATOR-063/064/065/066 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_web_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown` + `agent-browser --headed`（桌面 + 390x844）采证 | 启动器控制面可用性、web 体验、native/web 请求一致性 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |

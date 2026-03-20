@@ -3,30 +3,30 @@
 - 对应设计文档: `doc/world-simulator/launcher/game-client-launcher-full-usability-remediation-2026-03-08.design.md`
 - 对应需求文档: `doc/world-simulator/launcher/game-client-launcher-full-usability-remediation-2026-03-08.prd.md`
 
-审计轮次: 5
+审计轮次: 6
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0 (PRD-WORLD_SIMULATOR-029) [test_tier_required]: 完成专题 PRD 建模、任务拆解与模块文档树回写。
 - [x] T1 (PRD-WORLD_SIMULATOR-029) [test_tier_required]: 落地配置防回写与请求并发域拆分（native/web 同步），补齐定向回归测试。
 - [x] T2 (PRD-WORLD_SIMULATOR-029) [test_tier_required]: 落地反馈窗口草稿保护、顶栏响应式与转账过滤重置，并完成 native/web 回归。
 - [x] T3 (PRD-WORLD_SIMULATOR-029) [test_tier_required]: 修复主 PRD 启动器条款冲突（AC 重号/语义重复、集成点重复）并通过文档治理检查。
-- [x] T4 (PRD-WORLD_SIMULATOR-029) [test_tier_required]: 拆分 `agent_world_client_launcher` 超长文件（`main.rs`、`explorer_window.rs`）至单文件 <=1200 行并完成 native/wasm 回归。
+- [x] T4 (PRD-WORLD_SIMULATOR-029) [test_tier_required]: 拆分 `oasis7_client_launcher` 超长文件（`main.rs`、`explorer_window.rs`）至单文件 <=1200 行并完成 native/wasm 回归。
 
 ## 依赖
 - `doc/world-simulator/prd.md`
 - `doc/world-simulator/project.md`
 - `doc/world-simulator/prd.index.md`
-- `crates/agent_world_client_launcher/src/main.rs`
-- `crates/agent_world_client_launcher/src/main_app_shell.rs`
-- `crates/agent_world_client_launcher/src/main_ui_helpers.rs`
-- `crates/agent_world_client_launcher/src/app_process.rs`
-- `crates/agent_world_client_launcher/src/app_process_web.rs`
-- `crates/agent_world_client_launcher/src/feedback_window.rs`
-- `crates/agent_world_client_launcher/src/feedback_window_web.rs`
-- `crates/agent_world_client_launcher/src/transfer_window.rs`
-- `crates/agent_world_client_launcher/src/explorer_window.rs`
-- `crates/agent_world_client_launcher/src/explorer_window_view.rs`
-- `crates/agent_world_client_launcher/src/main_tests.rs`
+- `crates/oasis7_client_launcher/src/main.rs`
+- `crates/oasis7_client_launcher/src/main_app_shell.rs`
+- `crates/oasis7_client_launcher/src/main_ui_helpers.rs`
+- `crates/oasis7_client_launcher/src/app_process.rs`
+- `crates/oasis7_client_launcher/src/app_process_web.rs`
+- `crates/oasis7_client_launcher/src/feedback_window.rs`
+- `crates/oasis7_client_launcher/src/feedback_window_web.rs`
+- `crates/oasis7_client_launcher/src/transfer_window.rs`
+- `crates/oasis7_client_launcher/src/explorer_window.rs`
+- `crates/oasis7_client_launcher/src/explorer_window_view.rs`
+- `crates/oasis7_client_launcher/src/main_tests.rs`
 - `testing-manual.md`
 
 ## 状态

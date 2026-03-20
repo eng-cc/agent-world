@@ -3,7 +3,7 @@
 - 对应设计文档: `doc/world-simulator/launcher/game-client-launcher-full-usability-remediation-2026-03-08.design.md`
 - 对应项目管理文档: `doc/world-simulator/launcher/game-client-launcher-full-usability-remediation-2026-03-08.project.md`
 
-审计轮次: 1
+审计轮次: 6
 
 ## 1. Executive Summary
 - Problem Statement: 启动器在最近一轮 UI/UX 优化后仍存在残余可用性风险：配置可能被轮询状态回写、全局单 in-flight 造成高频交互串行、反馈窗口会被链状态切换强制关闭、顶栏在窄屏下拥挤、转账历史过滤缺少一键重置。
@@ -15,7 +15,7 @@
   - SC-4: 顶栏在 390x844 视口下自动换行，状态/语言控件可读可操作。
   - SC-5: 转账历史过滤支持“应用 + 清空”，一键恢复默认查询。
   - SC-6: 主 PRD 启动器条款保持唯一且可追溯（AC 编号无重复、集成点无重复路径）。
-  - SC-7: `agent_world_client_launcher` 源码满足单文件 <=1200 行治理约束，不引入功能回归。
+  - SC-7: `oasis7_client_launcher` 源码满足单文件 <=1200 行治理约束，不引入功能回归。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -55,7 +55,7 @@
   - AC-5: 转账历史区提供“清空过滤”并在点击后触发刷新。
   - AC-6: native 测试与 wasm `cargo check` 通过。
   - AC-7: 主 PRD 中与启动器相关 AC 编号保持连续唯一，且集成点列表无重复路径。
-  - AC-8: `crates/agent_world_client_launcher/src/main.rs` 与 `crates/agent_world_client_launcher/src/explorer_window.rs` 行数均 <=1200。
+  - AC-8: `crates/oasis7_client_launcher/src/main.rs` 与 `crates/oasis7_client_launcher/src/explorer_window.rs` 行数均 <=1200。
 - Non-Goals:
   - 不新增链协议字段与后端 API。
   - 不重构 transfer/explorer 业务状态机。
@@ -70,14 +70,14 @@
   - 请求并发控制由“全局布尔”改为“按域布尔”，降低无关请求互斥。
   - UI 层保留现有入口，仅调整窗口开关策略与窄屏布局。
 - Integration Points:
-  - `crates/agent_world_client_launcher/src/main.rs`
-  - `crates/agent_world_client_launcher/src/app_process.rs`
-  - `crates/agent_world_client_launcher/src/app_process_web.rs`
-  - `crates/agent_world_client_launcher/src/feedback_window.rs`
-  - `crates/agent_world_client_launcher/src/feedback_window_web.rs`
-  - `crates/agent_world_client_launcher/src/transfer_window.rs`
-  - `crates/agent_world_client_launcher/src/explorer_window.rs`
-  - `crates/agent_world_client_launcher/src/main_tests.rs`
+  - `crates/oasis7_client_launcher/src/main.rs`
+  - `crates/oasis7_client_launcher/src/app_process.rs`
+  - `crates/oasis7_client_launcher/src/app_process_web.rs`
+  - `crates/oasis7_client_launcher/src/feedback_window.rs`
+  - `crates/oasis7_client_launcher/src/feedback_window_web.rs`
+  - `crates/oasis7_client_launcher/src/transfer_window.rs`
+  - `crates/oasis7_client_launcher/src/explorer_window.rs`
+  - `crates/oasis7_client_launcher/src/main_tests.rs`
 - Edge Cases & Error Handling:
   - 快照与本地配置冲突：保留本地 dirty 配置并持续更新状态/日志。
   - 同域重复请求：继续拒绝并提供明确日志，不跨域拒绝。
@@ -86,7 +86,7 @@
 - Non-Functional Requirements:
   - NFR-1: 状态轮询周期维持既有 1s，不新增轮询风暴。
   - NFR-2: 请求并发域拆分后，不允许出现“跨域操作被无关请求阻塞”。
-  - NFR-3: 改造后 `agent_world_client_launcher` 单文件行数仍满足既有约束。
+  - NFR-3: 改造后 `oasis7_client_launcher` 单文件行数仍满足既有约束。
   - NFR-4: native 与 wasm 行为一致性保持 100%。
 - Security & Privacy:
   - 本专题仅改客户端状态管理与 UI，不新增敏感数据采集或外发。
@@ -105,7 +105,7 @@
 - Test Plan & Traceability:
 | PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |
 | --- | --- | --- | --- | --- |
-| PRD-WORLD_SIMULATOR-029 | TASK-WORLD_SIMULATOR-069/070/071/089/090 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown` + `wc -l crates/agent_world_client_launcher/src/main.rs crates/agent_world_client_launcher/src/explorer_window.rs` | 启动器配置稳定性、高频交互并发性、反馈与转账窗口可用性、文档追溯一致性与代码维护可持续性 |
+| PRD-WORLD_SIMULATOR-029 | TASK-WORLD_SIMULATOR-069/070/071/089/090 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown` + `wc -l crates/oasis7_client_launcher/src/main.rs crates/oasis7_client_launcher/src/explorer_window.rs` | 启动器配置稳定性、高频交互并发性、反馈与转账窗口可用性、文档追溯一致性与代码维护可持续性 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |
