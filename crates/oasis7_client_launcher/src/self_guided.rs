@@ -3,14 +3,10 @@ use super::*;
 const ONBOARDING_STEP_TOTAL: usize = 3;
 #[cfg(not(target_arch = "wasm32"))]
 const UX_STATE_PATH: &str = ".oasis7_launcher_ux_state.json";
-#[cfg(not(target_arch = "wasm32"))]
-const COMPAT_OLD_BRAND_UX_STATE_PATH: &str = ".agent_world_launcher_ux_state.json";
 #[cfg(target_arch = "wasm32")]
 const UX_STATE_STORAGE_KEY: &str = "oasis7_launcher_ux_state_v1";
-#[cfg(target_arch = "wasm32")]
-const COMPAT_OLD_BRAND_UX_STATE_STORAGE_KEY: &str = "agent_world_launcher_ux_state_v1";
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub(super) struct LauncherUxState {
     pub(super) onboarding_completed: bool,
@@ -234,8 +230,7 @@ impl OnboardingState {
 pub(super) fn load_launcher_ux_state() -> LauncherUxState {
     #[cfg(not(target_arch = "wasm32"))]
     {
-        let content = std::fs::read_to_string(UX_STATE_PATH)
-            .or_else(|_| std::fs::read_to_string(COMPAT_OLD_BRAND_UX_STATE_PATH));
+        let content = std::fs::read_to_string(UX_STATE_PATH);
         let Ok(content) = content else {
             return LauncherUxState::default();
         };
@@ -251,14 +246,74 @@ pub(super) fn load_launcher_ux_state() -> LauncherUxState {
         let Ok(Some(storage)) = window.local_storage() else {
             return LauncherUxState::default();
         };
-        let content = storage
-            .get_item(UX_STATE_STORAGE_KEY)
-            .or_else(|_| storage.get_item(COMPAT_OLD_BRAND_UX_STATE_STORAGE_KEY));
+        let content = storage.get_item(UX_STATE_STORAGE_KEY);
         let Ok(Some(content)) = content else {
             return LauncherUxState::default();
         };
         return serde_json::from_str::<LauncherUxState>(content.as_str())
             .unwrap_or_else(|_| LauncherUxState::default());
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[cfg(not(target_arch = "wasm32"))]
+    use std::sync::Mutex;
+    #[cfg(not(target_arch = "wasm32"))]
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[cfg(not(target_arch = "wasm32"))]
+    static UX_STATE_FS_LOCK: Mutex<()> = Mutex::new(());
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn unique_temp_dir(label: &str) -> std::path::PathBuf {
+        let stamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("time")
+            .as_nanos();
+        std::env::temp_dir().join(format!(
+            "oasis7_client_launcher_{label}_{}_{}",
+            std::process::id(),
+            stamp
+        ))
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn load_launcher_ux_state_ignores_removed_old_brand_path() {
+        let _guard = UX_STATE_FS_LOCK.lock().expect("lock");
+        let temp_dir = unique_temp_dir("ux_state");
+        std::fs::create_dir_all(&temp_dir).expect("create temp dir");
+        let old_cwd = std::env::current_dir().expect("current dir");
+
+        let result = (|| -> Result<(), Box<dyn std::error::Error>> {
+            std::env::set_current_dir(&temp_dir)?;
+
+            let old_brand_state = LauncherUxState {
+                expert_mode: true,
+                ..LauncherUxState::default()
+            };
+            std::fs::write(
+                ".agent_world_launcher_ux_state.json",
+                serde_json::to_vec(&old_brand_state)?,
+            )?;
+            assert_eq!(load_launcher_ux_state(), LauncherUxState::default());
+
+            let current_state = LauncherUxState {
+                onboarding_completed: true,
+                expert_mode: true,
+                ..LauncherUxState::default()
+            };
+            std::fs::write(UX_STATE_PATH, serde_json::to_vec(&current_state)?)?;
+            assert_eq!(load_launcher_ux_state(), current_state);
+            Ok(())
+        })();
+
+        std::env::set_current_dir(old_cwd).expect("restore cwd");
+        std::fs::remove_dir_all(&temp_dir).ok();
+        result.expect("ux state checks should succeed");
     }
 }
 

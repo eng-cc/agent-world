@@ -10,6 +10,7 @@ use super::{
     },
     install_cjk_font, normalize_host_for_url, parse_chain_role, parse_chain_validators,
     parse_host_port, parse_port, probe_chain_status_endpoint, probe_openclaw_local_http,
+    read_named_env_value_with, resolve_control_plane_env_with,
     self_guided::{
         resolve_config_guide_target, resolve_next_task_hint, resolve_primary_disabled_cta,
         ConfigGuideTargetHint, DemoModePhase, DisabledActionCta, NextTaskHint, OnboardingStep,
@@ -22,9 +23,11 @@ use super::{
         WebTransferLifecycleStatus,
     },
     ChainRuntimeStatus, ClientLauncherApp, ConfigIssue, GlossaryTerm, LaunchConfig, LauncherStatus,
-    UiLanguage, WebChainRecoverySnapshot, WebRequestDomain, WebStateSnapshot, OASIS7_CJK_FONT_NAME,
+    UiLanguage, WebChainRecoverySnapshot, WebRequestDomain, WebStateSnapshot,
+    DEFAULT_CLIENT_LAUNCHER_CONTROL_BIND, OASIS7_CJK_FONT_NAME, OASIS7_CLIENT_LAUNCHER_LANG_ENV,
 };
 use eframe::egui;
+use std::collections::BTreeMap;
 use std::fs;
 use std::io::{Read, Write};
 use std::net::TcpListener;
@@ -124,16 +127,13 @@ fn build_game_url_brackets_ipv6_hosts() {
 }
 
 #[test]
-fn viewer_dev_dist_candidates_prefer_oasis7_name_before_compat_old_brand_name() {
+fn viewer_dev_dist_candidates_only_return_current_oasis7_name() {
     let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
     let candidates = viewer_dev_dist_candidates();
 
     assert_eq!(
         candidates,
-        vec![
-            repo_root.join("oasis7_viewer").join("dist"),
-            repo_root.join("oasis7_viewer").join("dist"),
-        ]
+        vec![repo_root.join("oasis7_viewer").join("dist")]
     );
 }
 
@@ -260,6 +260,54 @@ fn parse_ui_language_supports_zh_and_en_aliases() {
     assert_eq!(UiLanguage::from_tag("en"), Some(UiLanguage::EnUs));
     assert_eq!(UiLanguage::from_tag("EN_us"), Some(UiLanguage::EnUs));
     assert_eq!(UiLanguage::from_tag("ja"), None);
+}
+
+#[test]
+fn read_named_env_value_with_ignores_removed_old_brand_key_names() {
+    let values = BTreeMap::from([("AGENT_WORLD_CLIENT_LAUNCHER_LANG", "en-US")]);
+    let resolved = read_named_env_value_with(
+        &|key| values.get(key).map(|value| value.to_string()),
+        &[OASIS7_CLIENT_LAUNCHER_LANG_ENV],
+    );
+    assert_eq!(resolved, None);
+}
+
+#[test]
+fn ui_language_detect_from_values_prefers_current_launcher_key_and_falls_back_to_lang() {
+    assert_eq!(
+        UiLanguage::detect_from_values(Some("en-US"), Some("zh-CN")),
+        UiLanguage::EnUs
+    );
+    assert_eq!(
+        UiLanguage::detect_from_values(None, Some("en-US")),
+        UiLanguage::EnUs
+    );
+    assert_eq!(
+        UiLanguage::detect_from_values(Some("AGENT_WORLD_CLIENT_LAUNCHER_LANG"), Some("zh-CN")),
+        UiLanguage::ZhCn
+    );
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[test]
+fn resolve_control_plane_env_with_ignores_removed_old_brand_key_names() {
+    let values = BTreeMap::from([
+        (
+            "AGENT_WORLD_CLIENT_LAUNCHER_CONTROL_URL",
+            "http://127.0.0.1:9999",
+        ),
+        ("AGENT_WORLD_CLIENT_LAUNCHER_CONTROL_BIND", "127.0.0.1:9998"),
+    ]);
+    let (control_url_from_env, control_listen_bind, control_api_base, control_manage_service) =
+        resolve_control_plane_env_with(&|key| values.get(key).map(|value| value.to_string()));
+
+    assert_eq!(control_url_from_env, None);
+    assert_eq!(
+        control_listen_bind,
+        DEFAULT_CLIENT_LAUNCHER_CONTROL_BIND.to_string()
+    );
+    assert_eq!(control_api_base, "http://127.0.0.1:5410");
+    assert!(control_manage_service);
 }
 #[test]
 fn launcher_status_text_is_localized() {

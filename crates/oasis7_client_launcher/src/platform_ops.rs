@@ -6,9 +6,7 @@ use std::process::Command;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) fn resolve_launcher_binary_path() -> PathBuf {
-    if let Some((_, path)) =
-        crate::read_named_env_value(&["OASIS7_GAME_LAUNCHER_BIN", "AGENT_WORLD_GAME_LAUNCHER_BIN"])
-    {
+    if let Some((_, path)) = crate::read_named_env_value(&["OASIS7_GAME_LAUNCHER_BIN"]) {
         return PathBuf::from(path);
     }
 
@@ -28,10 +26,7 @@ pub(crate) fn resolve_launcher_binary_path() -> PathBuf {
 
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) fn resolve_chain_runtime_binary_path() -> PathBuf {
-    if let Some((_, path)) = crate::read_named_env_value(&[
-        "OASIS7_WORLD_CHAIN_RUNTIME_BIN",
-        "AGENT_WORLD_WORLD_CHAIN_RUNTIME_BIN",
-    ]) {
+    if let Some((_, path)) = crate::read_named_env_value(&["OASIS7_WORLD_CHAIN_RUNTIME_BIN"]) {
         return PathBuf::from(path);
     }
 
@@ -51,9 +46,7 @@ pub(crate) fn resolve_chain_runtime_binary_path() -> PathBuf {
 
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) fn resolve_web_launcher_binary_path() -> PathBuf {
-    if let Some((_, path)) =
-        crate::read_named_env_value(&["OASIS7_WEB_LAUNCHER_BIN", "AGENT_WORLD_WEB_LAUNCHER_BIN"])
-    {
+    if let Some((_, path)) = crate::read_named_env_value(&["OASIS7_WEB_LAUNCHER_BIN"]) {
         return PathBuf::from(path);
     }
 
@@ -73,9 +66,7 @@ pub(crate) fn resolve_web_launcher_binary_path() -> PathBuf {
 
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) fn resolve_static_dir_path() -> PathBuf {
-    if let Some((_, path)) =
-        crate::read_named_env_value(&["OASIS7_GAME_STATIC_DIR", "AGENT_WORLD_GAME_STATIC_DIR"])
-    {
+    if let Some((_, path)) = crate::read_named_env_value(&["OASIS7_GAME_STATIC_DIR"]) {
         return PathBuf::from(path);
     }
 
@@ -165,10 +156,7 @@ fn first_existing_dir(candidates: Vec<PathBuf>) -> Option<PathBuf> {
 
 pub(crate) fn viewer_dev_dist_candidates() -> Vec<PathBuf> {
     let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
-    vec![
-        repo_root.join("oasis7_viewer").join("dist"),
-        repo_root.join("oasis7_viewer").join("dist"),
-    ]
+    vec![repo_root.join("oasis7_viewer").join("dist")]
 }
 
 #[cfg(test)]
@@ -201,16 +189,13 @@ mod tests {
     }
 
     #[test]
-    fn viewer_dev_dist_candidates_prefer_oasis7_name_before_compat_old_brand_name() {
+    fn viewer_dev_dist_candidates_only_return_current_oasis7_name() {
         let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
         let candidates = viewer_dev_dist_candidates();
 
         assert_eq!(
             candidates,
-            vec![
-                repo_root.join("oasis7_viewer").join("dist"),
-                repo_root.join("oasis7_viewer").join("dist"),
-            ]
+            vec![repo_root.join("oasis7_viewer").join("dist")]
         );
     }
 

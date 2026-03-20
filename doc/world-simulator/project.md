@@ -800,7 +800,8 @@
 - [x] TASK-WORLD_SIMULATOR-223 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 `tools/wasm_build_suite/src/lib.rs` 中处理 `AGENT_WORLD_WASM_*` fallback 的旧品牌 helper / 常量 / 测试命名统一收口到 `compat_old_brand_*` 语义，保持兼容读取行为不变。
 - [x] TASK-WORLD_SIMULATOR-224 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 `crates/oasis7/src/simulator/llm_agent/tests_part3_module_lifecycle.rs` 中仍残留的测试名 `llm_agent_world_rules_guide_module_returns_stage_playbook` 对齐为 `oasis7` 语义，避免源码内部标识继续混用旧品牌前缀。
 - [x] TASK-WORLD_SIMULATOR-225 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 移除 `crates/oasis7_viewer/**` 中 `AGENT_WORLD_VIEWER_*` 与 `.agent_world_viewer` 的运行时 compat alias，使 Viewer 仅接受 `OASIS7_VIEWER_*` / `.oasis7_viewer` 当前入口，并同步删除对应 compat 测试。
-- [ ] TASK-WORLD_SIMULATOR-226 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 移除 `crates/oasis7_client_launcher/**` 中 `AGENT_WORLD_*` / `agent_world_*` 的 launcher 运行时 compat alias，先收口 launcher env/path/state 当前入口，再删除对应 compat 测试。
+- [x] TASK-WORLD_SIMULATOR-226 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 移除 `crates/oasis7_client_launcher/{src/main.rs,src/platform_ops.rs,src/launcher_core.rs,src/app_process.rs,src/self_guided.rs,src/llm_settings_web.rs}` 中 `AGENT_WORLD_*` / `agent_world_*` 的 launcher 运行时 compat alias，收口 launcher env/path/state 当前入口，并把定向测试改为断言旧 alias 已失效。
+- [ ] TASK-WORLD_SIMULATOR-227 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 移除 `crates/oasis7/src/bin/{world_game_launcher.rs,world_web_launcher/runtime_paths.rs,world_web_launcher/control_plane.rs}` 中 `AGENT_WORLD_*` 的 launcher/runtime compat alias，收口服务端 launcher 路径、viewer auth 注入与 console static dir 当前入口，并把定向测试改为断言旧 alias 已失效。
 - [x] TASK-WORLD_SIMULATOR-203 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 viewer/OpenClaw 脚本中的旧品牌 env helper 与局部变量命名切到 `compat` 语义，收口脚本层里残留的 `legacy_key` / `viewer_legacy_env_key` / `promote_legacy_viewer_envs` 口径。
   - 产物文件:
     - `doc/world-simulator/prd.md`
@@ -954,7 +955,8 @@
 ## 状态
 - 更新日期: 2026-03-20
 - 当前状态: active
-- 下一任务: `TASK-WORLD_SIMULATOR-226`
+- 下一任务: `TASK-WORLD_SIMULATOR-227`
+- 最新完成: `TASK-WORLD_SIMULATOR-226`（已移除 `crates/oasis7_client_launcher/**` 中字体/语言/control-plane env、launcher/runtime/static dir 覆盖 env、UX 状态文件名与浏览器存储 key 的旧品牌 fallback，收口 client launcher 运行时入口到 `OASIS7_*` / `oasis7_*`，并把定向测试改为断言旧 alias 已失效。）
 - 最新完成: `TASK-WORLD_SIMULATOR-225`（已移除 `crates/oasis7_viewer/**` 中 `AGENT_WORLD_VIEWER_*` / `.agent_world_viewer` 的运行时 fallback，收口 `viewer_env`、auth/bootstrap、automation、perf probe 与 right-panel 模块可见性状态路径到 `OASIS7_VIEWER_*` / `.oasis7_viewer`，并把定向测试改为断言旧 alias 已失效。）
 - 最新完成: `TASK-WORLD_SIMULATOR-098~121`（已完成模块入口修正、launcher stale execution world 恢复、Viewer web fatal 透出，以及 `Decision Provider` / `OpenClaw(Local HTTP)` / parity 第一阶段建模与 contract 落地。）
 - 最新完成: `TASK-WORLD_SIMULATOR-122~138`（已完成 launcher/viewer/runtime/provider/parity 接线、本地 bridge、repo-owned runtime agent、`oasis7-run.sh` operator 能力，以及下载链路可观测性与 operator contract。）

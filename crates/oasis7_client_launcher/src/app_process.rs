@@ -216,10 +216,7 @@ impl ClientLauncherApp {
             "--chain-runtime-bin".to_string(),
             chain_runtime_bin,
         ];
-        if let Some((_, static_dir)) = read_named_env_value(&[
-            "OASIS7_WEB_LAUNCHER_STATIC_DIR",
-            "AGENT_WORLD_WEB_LAUNCHER_STATIC_DIR",
-        ]) {
+        if let Some((_, static_dir)) = read_named_env_value(&["OASIS7_WEB_LAUNCHER_STATIC_DIR"]) {
             args.push("--console-static-dir".to_string());
             args.push(static_dir);
         }

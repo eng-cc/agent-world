@@ -90,20 +90,9 @@ const DEFAULT_CHAIN_POS_SLOT_CLOCK_GENESIS_UNIX_MS: &str = "";
 const DEFAULT_CHAIN_POS_MAX_PAST_SLOT_LAG: &str = "256";
 const MAX_LOG_LINES: usize = 2000;
 const OASIS7_CJK_FONT_NAME: &str = "oasis7-cjk";
-const EGUI_CJK_FONT_BYTES: &[u8] =
-    include_bytes!("../../oasis7_viewer/assets/fonts/ms-yahei.ttf");
+const EGUI_CJK_FONT_BYTES: &[u8] = include_bytes!("../../oasis7_viewer/assets/fonts/ms-yahei.ttf");
 const OASIS7_CLIENT_LAUNCHER_FONT_ENV: &str = "OASIS7_CLIENT_LAUNCHER_FONT";
-const COMPAT_OLD_BRAND_CLIENT_LAUNCHER_FONT_ENV: &str = "AGENT_WORLD_CLIENT_LAUNCHER_FONT";
-const CLIENT_LAUNCHER_FONT_ENV_ALIASES: &[&str] = &[
-    OASIS7_CLIENT_LAUNCHER_FONT_ENV,
-    COMPAT_OLD_BRAND_CLIENT_LAUNCHER_FONT_ENV,
-];
 const OASIS7_CLIENT_LAUNCHER_LANG_ENV: &str = "OASIS7_CLIENT_LAUNCHER_LANG";
-const COMPAT_OLD_BRAND_CLIENT_LAUNCHER_LANG_ENV: &str = "AGENT_WORLD_CLIENT_LAUNCHER_LANG";
-const CLIENT_LAUNCHER_LANG_ENV_ALIASES: &[&str] = &[
-    OASIS7_CLIENT_LAUNCHER_LANG_ENV,
-    COMPAT_OLD_BRAND_CLIENT_LAUNCHER_LANG_ENV,
-];
 #[cfg(not(target_arch = "wasm32"))]
 const GRACEFUL_STOP_TIMEOUT_MS: u64 = 4000;
 #[cfg(not(target_arch = "wasm32"))]
@@ -113,23 +102,7 @@ const CHAIN_STATUS_PROBE_TIMEOUT_MS: u64 = 300;
 #[cfg(not(target_arch = "wasm32"))]
 const OASIS7_CLIENT_LAUNCHER_CONTROL_URL_ENV: &str = "OASIS7_CLIENT_LAUNCHER_CONTROL_URL";
 #[cfg(not(target_arch = "wasm32"))]
-const COMPAT_OLD_BRAND_CLIENT_LAUNCHER_CONTROL_URL_ENV: &str =
-    "AGENT_WORLD_CLIENT_LAUNCHER_CONTROL_URL";
-#[cfg(not(target_arch = "wasm32"))]
-const CLIENT_LAUNCHER_CONTROL_URL_ENV_ALIASES: &[&str] = &[
-    OASIS7_CLIENT_LAUNCHER_CONTROL_URL_ENV,
-    COMPAT_OLD_BRAND_CLIENT_LAUNCHER_CONTROL_URL_ENV,
-];
-#[cfg(not(target_arch = "wasm32"))]
 const OASIS7_CLIENT_LAUNCHER_CONTROL_BIND_ENV: &str = "OASIS7_CLIENT_LAUNCHER_CONTROL_BIND";
-#[cfg(not(target_arch = "wasm32"))]
-const COMPAT_OLD_BRAND_CLIENT_LAUNCHER_CONTROL_BIND_ENV: &str =
-    "AGENT_WORLD_CLIENT_LAUNCHER_CONTROL_BIND";
-#[cfg(not(target_arch = "wasm32"))]
-const CLIENT_LAUNCHER_CONTROL_BIND_ENV_ALIASES: &[&str] = &[
-    OASIS7_CLIENT_LAUNCHER_CONTROL_BIND_ENV,
-    COMPAT_OLD_BRAND_CLIENT_LAUNCHER_CONTROL_BIND_ENV,
-];
 #[cfg(not(target_arch = "wasm32"))]
 const DEFAULT_CLIENT_LAUNCHER_CONTROL_BIND: &str = "127.0.0.1:5410";
 const NATIVE_UI_SECTIONS: &[&str] = &[
@@ -211,7 +184,7 @@ fn configure_egui_fonts(context: &egui::Context) {
 }
 
 fn load_font_override_from_env() -> Option<(String, egui::FontData)> {
-    let (env_name, path) = read_named_env_value(CLIENT_LAUNCHER_FONT_ENV_ALIASES)?;
+    let (env_name, path) = read_named_env_value(&[OASIS7_CLIENT_LAUNCHER_FONT_ENV])?;
 
     match std::fs::read(path.as_str()) {
         Ok(bytes) => Some((
@@ -249,9 +222,15 @@ fn install_cjk_font(
         .push(font_name);
 }
 
-fn read_named_env_value(env_names: &[&'static str]) -> Option<(&'static str, String)> {
+fn read_named_env_value_with<F>(
+    lookup: &F,
+    env_names: &[&'static str],
+) -> Option<(&'static str, String)>
+where
+    F: Fn(&str) -> Option<String>,
+{
     for env_name in env_names {
-        let Ok(raw) = env::var(env_name) else {
+        let Some(raw) = lookup(env_name) else {
             continue;
         };
         let trimmed = raw.trim();
@@ -260,6 +239,46 @@ fn read_named_env_value(env_names: &[&'static str]) -> Option<(&'static str, Str
         }
     }
     None
+}
+
+fn read_named_env_value(env_names: &[&'static str]) -> Option<(&'static str, String)> {
+    read_named_env_value_with(&|env_name| env::var(env_name).ok(), env_names)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn resolve_control_plane_env_with<F>(lookup: &F) -> (Option<String>, String, String, bool)
+where
+    F: Fn(&str) -> Option<String>,
+{
+    let control_url_from_env =
+        read_named_env_value_with(lookup, &[OASIS7_CLIENT_LAUNCHER_CONTROL_URL_ENV])
+            .map(|(_, value)| value);
+    let control_listen_bind =
+        read_named_env_value_with(lookup, &[OASIS7_CLIENT_LAUNCHER_CONTROL_BIND_ENV])
+            .map(|(_, value)| value)
+            .unwrap_or_else(|| DEFAULT_CLIENT_LAUNCHER_CONTROL_BIND.to_string());
+    let control_api_base = control_url_from_env.clone().unwrap_or_else(|| {
+        let (host, port) = parse_host_port(
+            control_listen_bind.as_str(),
+            OASIS7_CLIENT_LAUNCHER_CONTROL_BIND_ENV,
+        )
+        .unwrap_or(("127.0.0.1".to_string(), 5410));
+        let host = normalize_host_for_url(host.as_str());
+        let host = host_for_url(host.as_str());
+        format!("http://{host}:{port}")
+    });
+    let control_manage_service = control_url_from_env.is_none();
+    (
+        control_url_from_env,
+        control_listen_bind,
+        control_api_base,
+        control_manage_service,
+    )
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn resolve_control_plane_env() -> (Option<String>, String, String, bool) {
+    resolve_control_plane_env_with(&|env_name| env::var(env_name).ok())
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -285,20 +304,18 @@ impl UiLanguage {
         }
     }
 
+    fn detect_from_values(launcher_lang: Option<&str>, process_lang: Option<&str>) -> Self {
+        launcher_lang
+            .and_then(Self::from_tag)
+            .or_else(|| process_lang.and_then(Self::from_tag))
+            .unwrap_or(Self::ZhCn)
+    }
+
     fn detect_from_env() -> Self {
-        if let Some((_, raw)) = read_named_env_value(CLIENT_LAUNCHER_LANG_ENV_ALIASES) {
-            if let Some(language) = Self::from_tag(raw.as_str()) {
-                return language;
-            }
-        }
-
-        if let Ok(raw) = env::var("LANG") {
-            if let Some(language) = Self::from_tag(raw.as_str()) {
-                return language;
-            }
-        }
-
-        Self::ZhCn
+        let launcher_lang =
+            read_named_env_value(&[OASIS7_CLIENT_LAUNCHER_LANG_ENV]).map(|(_, raw)| raw);
+        let process_lang = env::var("LANG").ok();
+        Self::detect_from_values(launcher_lang.as_deref(), process_lang.as_deref())
     }
 
     fn display_name(self) -> &'static str {
@@ -1041,25 +1058,8 @@ impl Default for ClientLauncherApp {
         );
         let (web_api_tx, web_api_rx) = mpsc::channel::<WebApiEvent>();
         #[cfg(not(target_arch = "wasm32"))]
-        let control_url_from_env =
-            read_named_env_value(CLIENT_LAUNCHER_CONTROL_URL_ENV_ALIASES).map(|(_, value)| value);
-        #[cfg(not(target_arch = "wasm32"))]
-        let control_listen_bind = read_named_env_value(CLIENT_LAUNCHER_CONTROL_BIND_ENV_ALIASES)
-            .map(|(_, value)| value)
-            .unwrap_or_else(|| DEFAULT_CLIENT_LAUNCHER_CONTROL_BIND.to_string());
-        #[cfg(not(target_arch = "wasm32"))]
-        let control_api_base = control_url_from_env.clone().unwrap_or_else(|| {
-            let (host, port) = parse_host_port(
-                control_listen_bind.as_str(),
-                OASIS7_CLIENT_LAUNCHER_CONTROL_BIND_ENV,
-            )
-            .unwrap_or(("127.0.0.1".to_string(), 5410));
-            let host = normalize_host_for_url(host.as_str());
-            let host = host_for_url(host.as_str());
-            format!("http://{host}:{port}")
-        });
-        #[cfg(not(target_arch = "wasm32"))]
-        let control_manage_service = control_url_from_env.is_none();
+        let (_, control_listen_bind, control_api_base, control_manage_service) =
+            resolve_control_plane_env();
         let chain_runtime_status = if config.chain_enabled {
             ChainRuntimeStatus::NotStarted
         } else {

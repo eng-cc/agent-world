@@ -131,9 +131,7 @@ fn resolve_viewer_static_dir_for_launcher(
     launcher_bin: &str,
 ) -> Option<std::path::PathBuf> {
     if raw == DEFAULT_VIEWER_STATIC_DIR {
-        if let Some((_, override_path)) =
-            read_named_env_value(&[OASIS7_GAME_STATIC_DIR_ENV, "AGENT_WORLD_GAME_STATIC_DIR"])
-        {
+        if let Some((_, override_path)) = read_named_env_value(&[OASIS7_GAME_STATIC_DIR_ENV]) {
             return resolve_viewer_static_dir_candidate_for_launcher(
                 override_path.as_str(),
                 launcher_bin,
