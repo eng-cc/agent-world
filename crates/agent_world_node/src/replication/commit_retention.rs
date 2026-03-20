@@ -135,20 +135,20 @@ pub(super) fn load_commit_message_cold_index_from_root(
     root_dir: &Path,
 ) -> Result<CommitMessageColdIndex, NodeError> {
     let canonical_path = commit_message_cold_index_manifest_path_from_root(root_dir);
-    let legacy_path = legacy_commit_message_cold_index_path_from_root(root_dir);
+    let compat_alias_path = commit_message_cold_index_compat_alias_path_from_root(root_dir);
     if canonical_path.exists() {
         let loaded = load_json_or_default::<CommitMessageColdIndex>(canonical_path.as_path())?;
         let cold_index = normalize_commit_message_cold_index(loaded.clone());
-        if !legacy_path.exists() || cold_index != loaded {
+        if !compat_alias_path.exists() || cold_index != loaded {
             write_commit_message_cold_index_to_root(root_dir, &cold_index)?;
         }
         return Ok(cold_index);
     }
 
-    if legacy_path.exists() {
+    if compat_alias_path.exists() {
         let cold_index = normalize_commit_message_cold_index(load_json_or_default::<
             CommitMessageColdIndex,
-        >(legacy_path.as_path())?);
+        >(compat_alias_path.as_path())?);
         write_commit_message_cold_index_to_root(root_dir, &cold_index)?;
         return Ok(cold_index);
     }
@@ -158,7 +158,7 @@ pub(super) fn load_commit_message_cold_index_from_root(
 
 pub(super) fn has_commit_message_cold_index(root_dir: &Path) -> bool {
     commit_message_cold_index_manifest_path_from_root(root_dir).exists()
-        || legacy_commit_message_cold_index_path_from_root(root_dir).exists()
+        || commit_message_cold_index_compat_alias_path_from_root(root_dir).exists()
 }
 
 pub(super) fn write_commit_message_cold_index_to_root(
@@ -170,7 +170,7 @@ pub(super) fn write_commit_message_cold_index_to_root(
         cold_index,
     )?;
     write_json_pretty(
-        legacy_commit_message_cold_index_path_from_root(root_dir).as_path(),
+        commit_message_cold_index_compat_alias_path_from_root(root_dir).as_path(),
         cold_index,
     )
 }
@@ -226,7 +226,7 @@ fn commit_message_cold_index_manifest_path_from_root(root_dir: &Path) -> PathBuf
     commit_message_cold_index_root_dir(root_dir).join(STORAGE_COLD_INDEX_MANIFEST_FILE)
 }
 
-fn legacy_commit_message_cold_index_path_from_root(root_dir: &Path) -> PathBuf {
+fn commit_message_cold_index_compat_alias_path_from_root(root_dir: &Path) -> PathBuf {
     root_dir.join("replication_commit_messages_cold_index.json")
 }
 

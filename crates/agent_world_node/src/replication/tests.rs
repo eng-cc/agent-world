@@ -451,9 +451,9 @@ fn load_commit_message_by_height_migrates_legacy_only_cold_index_to_canonical_la
 }
 
 #[test]
-fn load_commit_message_cold_index_restores_legacy_alias_from_canonical_manifest() {
-    let dir = temp_dir("commit-cold-index-restore-legacy");
-    let world_id = "world-commit-cold-index-restore-legacy";
+fn load_commit_message_cold_index_restores_compat_alias_from_canonical_manifest() {
+    let dir = temp_dir("commit-cold-index-restore-compat");
+    let world_id = "world-commit-cold-index-restore-compat";
     let config = NodeReplicationConfig::new(&dir)
         .expect("config")
         .with_max_hot_commit_messages(2)
@@ -467,18 +467,18 @@ fn load_commit_message_cold_index_restores_legacy_alias_from_canonical_manifest(
         .persist_commit_message(100, &signed_remote_message(95, world_id, "node-b", 100))
         .expect("persist message 100");
 
-    let legacy_path = dir.join("replication_commit_messages_cold_index.json");
-    std::fs::remove_file(&legacy_path).expect("remove legacy alias");
+    let compat_alias_path = dir.join("replication_commit_messages_cold_index.json");
+    std::fs::remove_file(&compat_alias_path).expect("remove compat alias");
     assert!(
-        !legacy_path.exists(),
-        "legacy alias should be removed for test"
+        !compat_alias_path.exists(),
+        "compat alias should be removed for test"
     );
 
     let cold_index = load_commit_message_cold_index_from_root(dir.as_path()).expect("cold index");
     assert_eq!(cold_index.manifest.namespace, COMMIT_MESSAGE_DIR);
     assert!(
-        legacy_path.exists(),
-        "canonical load should restore legacy alias"
+        compat_alias_path.exists(),
+        "canonical load should restore compat alias"
     );
 
     let _ = std::fs::remove_dir_all(&dir);
