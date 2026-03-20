@@ -26,7 +26,7 @@ Options:
   --require-agent-spoke          Treat missing inbound `agent_spoke` as failure
   --headed                       Open browser in headed mode
   Note: when the script bootstraps its own stack, it enables
-  `AGENT_WORLD_RUNTIME_AGENT_CHAT_ECHO=1` automatically and treats missing
+  `OASIS7_RUNTIME_AGENT_CHAT_ECHO=1` automatically and treats missing
   inbound `agent_spoke` as a blocking failure.
   --headless                     Open browser in headless mode (default)
   -h, --help                     Show this help
@@ -370,9 +370,9 @@ if [[ -z "$GAME_URL" ]]; then
     REQUIRE_AGENT_SPOKE=1
   fi
   if command -v stdbuf >/dev/null 2>&1; then
-    stdbuf -oL -eL env AGENT_WORLD_RUNTIME_AGENT_CHAT_ECHO=1 ./scripts/run-game-test.sh "${STACK_ARGS[@]}" >"$run_game_test_log" 2>&1 &
+    stdbuf -oL -eL env OASIS7_RUNTIME_AGENT_CHAT_ECHO=1 ./scripts/run-game-test.sh "${STACK_ARGS[@]}" >"$run_game_test_log" 2>&1 &
   else
-    env AGENT_WORLD_RUNTIME_AGENT_CHAT_ECHO=1 ./scripts/run-game-test.sh "${STACK_ARGS[@]}" >"$run_game_test_log" 2>&1 &
+    env OASIS7_RUNTIME_AGENT_CHAT_ECHO=1 ./scripts/run-game-test.sh "${STACK_ARGS[@]}" >"$run_game_test_log" 2>&1 &
   fi
   stack_pid=$!
 

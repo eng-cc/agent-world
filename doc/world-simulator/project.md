@@ -315,6 +315,21 @@
     - `bash -n scripts/llm-longrun-stress.sh`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
+- [x] TASK-WORLD_SIMULATOR-176 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 runtime live 的 OpenClaw provider / QA chat echo 默认 env key 优先切到 `OASIS7_AGENT_PROVIDER_MODE`、`OASIS7_OPENCLAW_*` 与 `OASIS7_RUNTIME_AGENT_CHAT_ECHO`，并保留旧 `AGENT_WORLD_*` fallback，继续收口 runtime live / launcher / QA 脚本链路的低风险内部标识迁移。
+  - 产物文件:
+    - `doc/world-simulator/prd.md`
+    - `doc/world-simulator/project.md`
+    - `crates/agent_world/src/viewer/runtime_live/llm_sidecar.rs`
+    - `crates/agent_world/src/viewer/runtime_live/control_plane.rs`
+    - `crates/agent_world/src/viewer/runtime_live/tests.rs`
+    - `crates/agent_world/src/bin/world_game_launcher.rs`
+    - `scripts/viewer-software-safe-chat-regression.sh`
+  - 验收命令 (`test_tier_required`):
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_full openclaw_settings_from_env -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_full runtime_agent_chat_echo -- --nocapture`
+    - `bash -n scripts/viewer-software-safe-chat-regression.sh`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
 - [x] TASK-WORLD_SIMULATOR-162 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 修复标准模式 bootstrap `Loading standard viewer...` overlay 在 wasm 已启动后仍残留并压缩左侧视口的问题，补齐 cleanup 生命周期与最小回归验证。
 - [x] TASK-WORLD_SIMULATOR-148 (PRD-WORLD_SIMULATOR-040) [test_tier_required]: 完成 `OpenClaw` 双轨模式（`player_parity` / `headless_agent` / `debug_viewer`）专题 PRD / Project 建模，并回写模块主文档、索引与 devlog。
 - [x] TASK-WORLD_SIMULATOR-149 (PRD-WORLD_SIMULATOR-040) [test_tier_required]: 由 `agent_engineer` 冻结 `player_parity` / `headless_agent` 的 observation/action contract、schema version、模式元数据与禁止泄露真值边界，并形成 supporting spec。
@@ -499,6 +514,7 @@
 - 最新完成: `TASK-WORLD_SIMULATOR-173`（已将 `agent_world_viewer` 的 automation、auto-focus、auto-degrade、event window 与 internal capture 默认 env key 优先切到 `OASIS7_VIEWER_*`，并保留旧 `AGENT_WORLD_VIEWER_*` fallback）。
 - 最新完成: `TASK-WORLD_SIMULATOR-174`（已将 Viewer 抓帧、材质巡检与压力测试脚本默认 env key 与命令展示优先切到 `OASIS7_VIEWER_*`，并保留旧 `AGENT_WORLD_VIEWER_*` fallback / cleanup）。
 - 最新完成: `TASK-WORLD_SIMULATOR-175`（已将 simulator LLM 配置与 longrun stress 脚本的默认 env key 优先切到 `OASIS7_LLM_*`，并保留旧 `AGENT_WORLD_LLM_*` fallback）。
+- 最新完成: `TASK-WORLD_SIMULATOR-176`（已将 runtime live 的 OpenClaw provider / QA chat echo 默认 env key 优先切到 `OASIS7_AGENT_PROVIDER_MODE`、`OASIS7_OPENCLAW_*` 与 `OASIS7_RUNTIME_AGENT_CHAT_ECHO`，并保留旧 `AGENT_WORLD_*` fallback）。
 - 最新完成: `TASK-WORLD_SIMULATOR-166`（已完成 `doc/world-simulator/**` 历史专题首行标题的 title-only cleanup，将 `Agent World*` 公开标题统一切到 `oasis7*`，并保留旧品牌只出现在正文历史上下文中）。
 - 最新完成: `TASK-WORLD_SIMULATOR-164`（为 Viewer 首局 `4/4` 之后补 `PostOnboarding` 阶段目标卡、阻塞解释、分支解锁与 summary 文案更新，并通过定向 `test_tier_required` 回归）。
 - 最新完成: `TASK-WORLD_SIMULATOR-165`（已完成 Viewer 活跃手册、原生窗口标题、Web `<title>` 与抓帧脚本窗口匹配的 `oasis7 Viewer` 品牌对齐，并保留旧标题仅作兼容匹配）。

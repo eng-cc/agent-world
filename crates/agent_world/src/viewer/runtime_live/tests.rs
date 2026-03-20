@@ -8,6 +8,22 @@ use ed25519_dalek::SigningKey;
 use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
 
+const VIEWER_AGENT_PROVIDER_MODE_ENV: &str = "OASIS7_AGENT_PROVIDER_MODE";
+const LEGACY_VIEWER_AGENT_PROVIDER_MODE_ENV: &str = "AGENT_WORLD_AGENT_PROVIDER_MODE";
+const VIEWER_OPENCLAW_BASE_URL_ENV: &str = "OASIS7_OPENCLAW_BASE_URL";
+const LEGACY_VIEWER_OPENCLAW_BASE_URL_ENV: &str = "AGENT_WORLD_OPENCLAW_BASE_URL";
+const VIEWER_OPENCLAW_AUTH_TOKEN_ENV: &str = "OASIS7_OPENCLAW_AUTH_TOKEN";
+const LEGACY_VIEWER_OPENCLAW_AUTH_TOKEN_ENV: &str = "AGENT_WORLD_OPENCLAW_AUTH_TOKEN";
+const VIEWER_OPENCLAW_CONNECT_TIMEOUT_MS_ENV: &str = "OASIS7_OPENCLAW_CONNECT_TIMEOUT_MS";
+const LEGACY_VIEWER_OPENCLAW_CONNECT_TIMEOUT_MS_ENV: &str =
+    "AGENT_WORLD_OPENCLAW_CONNECT_TIMEOUT_MS";
+const VIEWER_OPENCLAW_AGENT_PROFILE_ENV: &str = "OASIS7_OPENCLAW_AGENT_PROFILE";
+const LEGACY_VIEWER_OPENCLAW_AGENT_PROFILE_ENV: &str = "AGENT_WORLD_OPENCLAW_AGENT_PROFILE";
+const VIEWER_OPENCLAW_EXECUTION_MODE_ENV: &str = "OASIS7_OPENCLAW_EXECUTION_MODE";
+const LEGACY_VIEWER_OPENCLAW_EXECUTION_MODE_ENV: &str = "AGENT_WORLD_OPENCLAW_EXECUTION_MODE";
+const RUNTIME_AGENT_CHAT_ECHO_ENV: &str = "OASIS7_RUNTIME_AGENT_CHAT_ECHO";
+const LEGACY_RUNTIME_AGENT_CHAT_ECHO_ENV: &str = "AGENT_WORLD_RUNTIME_AGENT_CHAT_ECHO";
+
 fn test_signer(seed: u8) -> (String, String) {
     let private_key = [seed; 32];
     let signing_key = SigningKey::from_bytes(&private_key);
@@ -30,13 +46,24 @@ fn lock_test_llm_env() -> std::sync::MutexGuard<'static, ()> {
 }
 
 fn clear_runtime_openclaw_env() {
-    std::env::remove_var("AGENT_WORLD_AGENT_PROVIDER_MODE");
-    std::env::remove_var("AGENT_WORLD_OPENCLAW_BASE_URL");
-    std::env::remove_var("AGENT_WORLD_OPENCLAW_AUTH_TOKEN");
-    std::env::remove_var("AGENT_WORLD_OPENCLAW_CONNECT_TIMEOUT_MS");
-    std::env::remove_var("AGENT_WORLD_OPENCLAW_AGENT_PROFILE");
-    std::env::remove_var("AGENT_WORLD_OPENCLAW_EXECUTION_MODE");
-    std::env::remove_var("AGENT_WORLD_RUNTIME_AGENT_CHAT_ECHO");
+    for env_name in [
+        VIEWER_AGENT_PROVIDER_MODE_ENV,
+        LEGACY_VIEWER_AGENT_PROVIDER_MODE_ENV,
+        VIEWER_OPENCLAW_BASE_URL_ENV,
+        LEGACY_VIEWER_OPENCLAW_BASE_URL_ENV,
+        VIEWER_OPENCLAW_AUTH_TOKEN_ENV,
+        LEGACY_VIEWER_OPENCLAW_AUTH_TOKEN_ENV,
+        VIEWER_OPENCLAW_CONNECT_TIMEOUT_MS_ENV,
+        LEGACY_VIEWER_OPENCLAW_CONNECT_TIMEOUT_MS_ENV,
+        VIEWER_OPENCLAW_AGENT_PROFILE_ENV,
+        LEGACY_VIEWER_OPENCLAW_AGENT_PROFILE_ENV,
+        VIEWER_OPENCLAW_EXECUTION_MODE_ENV,
+        LEGACY_VIEWER_OPENCLAW_EXECUTION_MODE_ENV,
+        RUNTIME_AGENT_CHAT_ECHO_ENV,
+        LEGACY_RUNTIME_AGENT_CHAT_ECHO_ENV,
+    ] {
+        std::env::remove_var(env_name);
+    }
 }
 
 fn runtime_openclaw_env_lock() -> &'static Mutex<()> {
@@ -112,15 +139,15 @@ fn openclaw_settings_from_env_defaults_to_none() {
 fn openclaw_settings_from_env_parses_profile_and_timeout() {
     let _guard = runtime_openclaw_env_lock().lock().expect("env lock");
     clear_runtime_openclaw_env();
-    std::env::set_var("AGENT_WORLD_AGENT_PROVIDER_MODE", "openclaw_local_http");
-    std::env::set_var("AGENT_WORLD_OPENCLAW_BASE_URL", "http://127.0.0.1:5841");
-    std::env::set_var("AGENT_WORLD_OPENCLAW_CONNECT_TIMEOUT_MS", "4200");
+    std::env::set_var(VIEWER_AGENT_PROVIDER_MODE_ENV, "openclaw_local_http");
+    std::env::set_var(VIEWER_OPENCLAW_BASE_URL_ENV, "http://127.0.0.1:5841");
+    std::env::set_var(VIEWER_OPENCLAW_CONNECT_TIMEOUT_MS_ENV, "4200");
     std::env::set_var(
-        "AGENT_WORLD_OPENCLAW_AGENT_PROFILE",
+        VIEWER_OPENCLAW_AGENT_PROFILE_ENV,
         "agent_world_p0_low_freq_npc",
     );
-    std::env::set_var("AGENT_WORLD_OPENCLAW_EXECUTION_MODE", "player_parity");
-    std::env::set_var("AGENT_WORLD_OPENCLAW_AUTH_TOKEN", "secret-token");
+    std::env::set_var(VIEWER_OPENCLAW_EXECUTION_MODE_ENV, "player_parity");
+    std::env::set_var(VIEWER_OPENCLAW_AUTH_TOKEN_ENV, "secret-token");
     let settings = super::control_plane::runtime_openclaw_settings_from_env()
         .expect("settings parse")
         .expect("openclaw settings");
@@ -129,6 +156,31 @@ fn openclaw_settings_from_env_parses_profile_and_timeout() {
     assert_eq!(settings.agent_profile, "agent_world_p0_low_freq_npc");
     assert_eq!(settings.execution_mode, ProviderExecutionMode::PlayerParity);
     assert_eq!(settings.auth_token.as_deref(), Some("secret-token"));
+    clear_runtime_openclaw_env();
+}
+
+#[test]
+fn openclaw_settings_from_env_falls_back_to_legacy_prefix() {
+    let _guard = runtime_openclaw_env_lock().lock().expect("env lock");
+    clear_runtime_openclaw_env();
+    std::env::set_var(LEGACY_VIEWER_AGENT_PROVIDER_MODE_ENV, "openclaw_local_http");
+    std::env::set_var(LEGACY_VIEWER_OPENCLAW_BASE_URL_ENV, "http://127.0.0.1:5842");
+    std::env::set_var(LEGACY_VIEWER_OPENCLAW_CONNECT_TIMEOUT_MS_ENV, "4300");
+    std::env::set_var(
+        LEGACY_VIEWER_OPENCLAW_AGENT_PROFILE_ENV,
+        "agent_world_p0_low_freq_npc",
+    );
+    std::env::set_var(LEGACY_VIEWER_OPENCLAW_EXECUTION_MODE_ENV, "player_parity");
+    std::env::set_var(LEGACY_VIEWER_OPENCLAW_AUTH_TOKEN_ENV, "legacy-token");
+
+    let settings = super::control_plane::runtime_openclaw_settings_from_env()
+        .expect("settings parse")
+        .expect("openclaw settings");
+    assert_eq!(settings.base_url, "http://127.0.0.1:5842");
+    assert_eq!(settings.connect_timeout_ms, 4300);
+    assert_eq!(settings.agent_profile, "agent_world_p0_low_freq_npc");
+    assert_eq!(settings.execution_mode, ProviderExecutionMode::PlayerParity);
+    assert_eq!(settings.auth_token.as_deref(), Some("legacy-token"));
     clear_runtime_openclaw_env();
 }
 
@@ -388,10 +440,10 @@ fn runtime_prompt_control_script_mode_requires_llm_mode() {
 fn runtime_prompt_control_openclaw_mode_reports_unsupported() {
     let _guard = runtime_openclaw_env_lock().lock().expect("env lock");
     clear_runtime_openclaw_env();
-    std::env::set_var("AGENT_WORLD_AGENT_PROVIDER_MODE", "openclaw_local_http");
-    std::env::set_var("AGENT_WORLD_OPENCLAW_BASE_URL", "http://127.0.0.1:5841");
+    std::env::set_var(VIEWER_AGENT_PROVIDER_MODE_ENV, "openclaw_local_http");
+    std::env::set_var(VIEWER_OPENCLAW_BASE_URL_ENV, "http://127.0.0.1:5841");
     std::env::set_var(
-        "AGENT_WORLD_OPENCLAW_AGENT_PROFILE",
+        VIEWER_OPENCLAW_AGENT_PROFILE_ENV,
         "agent_world_p0_low_freq_npc",
     );
     let mut server = ViewerRuntimeLiveServer::new(
@@ -529,13 +581,13 @@ fn runtime_agent_chat_script_mode_requires_llm_mode() {
 fn runtime_openclaw_compat_snapshot_exposes_agent_execution_debug_contexts() {
     let _guard = runtime_openclaw_env_lock().lock().expect("env lock");
     clear_runtime_openclaw_env();
-    std::env::set_var("AGENT_WORLD_AGENT_PROVIDER_MODE", "openclaw_local_http");
-    std::env::set_var("AGENT_WORLD_OPENCLAW_BASE_URL", "http://127.0.0.1:5841");
+    std::env::set_var(VIEWER_AGENT_PROVIDER_MODE_ENV, "openclaw_local_http");
+    std::env::set_var(VIEWER_OPENCLAW_BASE_URL_ENV, "http://127.0.0.1:5841");
     std::env::set_var(
-        "AGENT_WORLD_OPENCLAW_AGENT_PROFILE",
+        VIEWER_OPENCLAW_AGENT_PROFILE_ENV,
         "agent_world_p0_low_freq_npc",
     );
-    std::env::set_var("AGENT_WORLD_OPENCLAW_EXECUTION_MODE", "player_parity");
+    std::env::set_var(VIEWER_OPENCLAW_EXECUTION_MODE_ENV, "player_parity");
     let server = ViewerRuntimeLiveServer::new(
         ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal)
             .with_decision_mode(ViewerLiveDecisionMode::Llm),
@@ -744,10 +796,10 @@ fn runtime_gameplay_action_can_reach_first_capability_milestone_without_ui() {
 fn runtime_agent_chat_openclaw_mode_reports_unsupported() {
     let _guard = runtime_openclaw_env_lock().lock().expect("env lock");
     clear_runtime_openclaw_env();
-    std::env::set_var("AGENT_WORLD_AGENT_PROVIDER_MODE", "openclaw_local_http");
-    std::env::set_var("AGENT_WORLD_OPENCLAW_BASE_URL", "http://127.0.0.1:5841");
+    std::env::set_var(VIEWER_AGENT_PROVIDER_MODE_ENV, "openclaw_local_http");
+    std::env::set_var(VIEWER_OPENCLAW_BASE_URL_ENV, "http://127.0.0.1:5841");
     std::env::set_var(
-        "AGENT_WORLD_OPENCLAW_AGENT_PROFILE",
+        VIEWER_OPENCLAW_AGENT_PROFILE_ENV,
         "agent_world_p0_low_freq_npc",
     );
     let mut server = ViewerRuntimeLiveServer::new(
@@ -840,7 +892,7 @@ fn runtime_agent_chat_replay_returns_idempotent_ack() {
 #[test]
 fn runtime_agent_chat_echo_env_enqueues_agent_spoke_virtual_event() {
     let _guard = lock_test_llm_env();
-    std::env::set_var("AGENT_WORLD_RUNTIME_AGENT_CHAT_ECHO", "1");
+    std::env::set_var(RUNTIME_AGENT_CHAT_ECHO_ENV, "1");
     let mut server = ViewerRuntimeLiveServer::new(
         ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal)
             .with_decision_mode(ViewerLiveDecisionMode::Llm),
@@ -878,6 +930,50 @@ fn runtime_agent_chat_echo_env_enqueues_agent_spoke_virtual_event() {
         &event.kind,
         crate::simulator::WorldEventKind::AgentSpoke { agent_id: event_agent_id, message, .. }
             if event_agent_id == &agent_id && message == "[qa-echo] hello runtime echo"
+    )));
+}
+
+#[test]
+fn runtime_agent_chat_echo_legacy_env_still_enqueues_agent_spoke_virtual_event() {
+    let _guard = lock_test_llm_env();
+    std::env::set_var(LEGACY_RUNTIME_AGENT_CHAT_ECHO_ENV, "1");
+    let mut server = ViewerRuntimeLiveServer::new(
+        ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal)
+            .with_decision_mode(ViewerLiveDecisionMode::Llm),
+    )
+    .expect("runtime server");
+    let agent_id = server
+        .world
+        .state()
+        .agents
+        .keys()
+        .next()
+        .cloned()
+        .expect("seed agent");
+    let (public_key, private_key) = test_signer(32);
+    let request = signed_agent_chat_request(
+        crate::viewer::AgentChatRequest {
+            agent_id: agent_id.clone(),
+            player_id: Some("player-a".to_string()),
+            public_key: None,
+            auth: None,
+            message: "hello legacy runtime echo".to_string(),
+            intent_tick: Some(10),
+            intent_seq: Some(32),
+        },
+        32,
+        public_key.as_str(),
+        private_key.as_str(),
+    );
+
+    let ack = server.handle_agent_chat(request).expect("chat accepted");
+    assert_eq!(ack.agent_id, agent_id);
+
+    let events: Vec<_> = server.pending_virtual_events.drain(..).collect();
+    assert!(events.iter().any(|event| matches!(
+        &event.kind,
+        crate::simulator::WorldEventKind::AgentSpoke { agent_id: event_agent_id, message, .. }
+            if event_agent_id == &agent_id && message == "[qa-echo] hello legacy runtime echo"
     )));
 }
 
