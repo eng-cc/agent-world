@@ -16,12 +16,12 @@
 
 ## 依赖
 - `doc/world-simulator/viewer/viewer-visual-upgrade.prd.md`
-- `crates/agent_world/src/simulator/world_model.rs`
-- `crates/agent_world/src/simulator/kernel/*`
-- `crates/agent_world_viewer/src/scene_helpers.rs`
-- `crates/agent_world_viewer/src/scene_helpers_entities.rs`
-- `crates/agent_world_viewer/src/viewer_3d_config.rs`
-- `crates/agent_world_viewer/src/theme_runtime.rs`
+- `crates/oasis7/src/simulator/world_model.rs`
+- `crates/oasis7/src/simulator/kernel/*`
+- `crates/oasis7_viewer/src/scene_helpers.rs`
+- `crates/oasis7_viewer/src/scene_helpers_entities.rs`
+- `crates/oasis7_viewer/src/viewer_3d_config.rs`
+- `crates/oasis7_viewer/src/theme_runtime.rs`
 - `testing-manual.md`
 
 ## 状态

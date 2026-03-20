@@ -20,11 +20,11 @@
 
 ## 依赖
 - doc/world-simulator/viewer/viewer-dual-view-2d-3d.prd.md
-- `crates/agent_world_viewer/src/main.rs`
-- `crates/agent_world_viewer/src/camera_controls.rs`
-- `crates/agent_world_viewer/src/egui_right_panel.rs`
-- `crates/agent_world_viewer/src/i18n.rs`
-- `crates/agent_world_viewer/src/egui_right_panel_tests.rs`
+- `crates/oasis7_viewer/src/main.rs`
+- `crates/oasis7_viewer/src/camera_controls.rs`
+- `crates/oasis7_viewer/src/egui_right_panel.rs`
+- `crates/oasis7_viewer/src/i18n.rs`
+- `crates/oasis7_viewer/src/egui_right_panel_tests.rs`
 - `doc/devlog/2026-02-09.md`
 
 ## 状态

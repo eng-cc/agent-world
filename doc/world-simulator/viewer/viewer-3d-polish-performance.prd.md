@@ -42,7 +42,7 @@
   - `overlay_lod_distance`: 覆盖层远距降级阈值
   - `max_visible_labels`: 同屏标签上限（超限按优先级裁剪）
   - `line_render_mode`: `EntityLines | BatchedLines`
-- 环境变量覆盖（草案）：`AGENT_WORLD_VIEWER_RENDER_PROFILE`、`AGENT_WORLD_VIEWER_MAX_VISIBLE_LABELS` 等。
+- 环境变量覆盖（草案）：`OASIS7_VIEWER_RENDER_PROFILE`、`OASIS7_VIEWER_MAX_VISIBLE_LABELS` 等。
 
 ### 2) 场景视觉分层
 - 对象层次：将 Agent、Location、设施、覆盖层拆分视觉层级，统一色彩与亮度约束。

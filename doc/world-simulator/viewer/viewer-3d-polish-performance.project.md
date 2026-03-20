@@ -19,18 +19,18 @@
 - [x] VPP10：截图闭环与文档收口（设计/项目/日志同步）
 
 ## 依赖
-- `crates/agent_world_viewer/src/main.rs`
-- `crates/agent_world_viewer/src/scene_helpers.rs`
-- `crates/agent_world_viewer/src/camera_controls.rs`
-- `crates/agent_world_viewer/src/world_overlay.rs`
-- `crates/agent_world_viewer/src/egui_right_panel.rs`
+- `crates/oasis7_viewer/src/main.rs`
+- `crates/oasis7_viewer/src/scene_helpers.rs`
+- `crates/oasis7_viewer/src/camera_controls.rs`
+- `crates/oasis7_viewer/src/world_overlay.rs`
+- `crates/oasis7_viewer/src/egui_right_panel.rs`
 - `scripts/capture-viewer-frame.sh`
 - `doc/world-simulator/viewer/viewer-3d-polish-performance.prd.md`
 
 ## 状态
 - 当前阶段：VPP0~VPP10 全量完成（含 VPP5~VPP9 收口）
 - 下一阶段：进入 OWR4（规模化稳定性预算与压测基线）
-- 最近更新：完成 `cargo test -p agent_world_viewer`（157 tests）与 llm 场景截图闭环（2026-02-11）
+- 最近更新：完成 `cargo test -p oasis7_viewer`（157 tests）与 llm 场景截图闭环（2026-02-11）
 
 ## 里程碑检查点
 - Checkpoint A：完成基线采样并固化预算（VPP3）

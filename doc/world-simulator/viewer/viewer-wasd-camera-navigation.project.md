@@ -26,8 +26,8 @@
 - [x] WCM4.2 更新项目文档状态与开发日志
 
 ## 依赖
-- `crates/agent_world_viewer/src/camera_controls.rs`
-- `crates/agent_world_viewer/src/app_bootstrap.rs`
+- `crates/oasis7_viewer/src/camera_controls.rs`
+- `crates/oasis7_viewer/src/app_bootstrap.rs`
 - `doc/world-simulator/viewer/viewer-manual.md`
 - `doc/world-simulator.project.md`
 
