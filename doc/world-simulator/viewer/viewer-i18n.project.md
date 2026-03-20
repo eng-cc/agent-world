@@ -19,14 +19,14 @@
 - [x] I18N10：更新任务日志并提交
 
 ## 依赖
-- `crates/agent_world_viewer/src/main.rs`
-- `crates/agent_world_viewer/src/ui_text.rs`
-- `crates/agent_world_viewer/src/diagnosis.rs`
-- `crates/agent_world_viewer/src/timeline_controls.rs`
-- `crates/agent_world_viewer/src/panel_layout.rs`
-- `crates/agent_world_viewer/src/event_click_list.rs`
-- `crates/agent_world_viewer/src/selection_linking.rs`
-- `crates/agent_world_viewer/src/world_overlay.rs`
+- `crates/oasis7_viewer/src/main.rs`
+- `crates/oasis7_viewer/src/ui_text.rs`
+- `crates/oasis7_viewer/src/diagnosis.rs`
+- `crates/oasis7_viewer/src/timeline_controls.rs`
+- `crates/oasis7_viewer/src/panel_layout.rs`
+- `crates/oasis7_viewer/src/event_click_list.rs`
+- `crates/oasis7_viewer/src/selection_linking.rs`
+- `crates/oasis7_viewer/src/world_overlay.rs`
 
 ## 状态
 - 当前阶段：I18N10 完成（中英切换实现 + 文档收口）
@@ -34,12 +34,12 @@
 - 最近更新：完成 UI 多语言任务收口并提交前校验（2026-02-07）
 
 ## 增量任务（2026-02-07）：中文字体渲染修复
-- [x] I18N11：引入 CJK 字体资源并替换 `agent_world_viewer` 的 UI/3D 标签字体加载路径（`fonts/ms-yahei.ttf`）
+- [x] I18N11：引入 CJK 字体资源并替换 `oasis7_viewer` 的 UI/3D 标签字体加载路径（`fonts/ms-yahei.ttf`）
 - [x] I18N12：截图闭环验证中文渲染（方块字问题消除）
 
 ## 依赖（增量）
-- `crates/agent_world_viewer/assets/fonts/ms-yahei.ttf`
-- `crates/agent_world_viewer/src/main.rs`
+- `crates/oasis7_viewer/assets/fonts/ms-yahei.ttf`
+- `crates/oasis7_viewer/src/main.rs`
 - `./scripts/capture-viewer-frame.sh`
 
 ## 状态（增量）

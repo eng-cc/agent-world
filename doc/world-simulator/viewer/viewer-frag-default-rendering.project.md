@@ -14,18 +14,18 @@
 
 ## 依赖
 - doc/world-simulator/viewer/viewer-frag-default-rendering.prd.md
-- `crates/agent_world_viewer/src/scene_helpers.rs`
-- `crates/agent_world_viewer/src/scene_dirty_refresh.rs`
-- `crates/agent_world_viewer/src/world_overlay.rs`
-- `crates/agent_world_viewer/src/egui_right_panel.rs`
-- `crates/agent_world_viewer/src/location_fragment_render.rs`
-- `crates/agent_world_viewer/src/selection_linking.rs`
-- `crates/agent_world_viewer/src/ui_text.rs`
-- `crates/agent_world_viewer/src/main.rs`
-- `crates/agent_world_viewer/src/material_library.rs`
-- `crates/agent_world_viewer/src/scene_helpers_entities.rs`
-- `crates/agent_world_viewer/src/selection_emphasis.rs`
+- `crates/oasis7_viewer/src/scene_helpers.rs`
+- `crates/oasis7_viewer/src/scene_dirty_refresh.rs`
+- `crates/oasis7_viewer/src/world_overlay.rs`
+- `crates/oasis7_viewer/src/egui_right_panel.rs`
+- `crates/oasis7_viewer/src/location_fragment_render.rs`
+- `crates/oasis7_viewer/src/selection_linking.rs`
+- `crates/oasis7_viewer/src/ui_text.rs`
+- `crates/oasis7_viewer/src/main.rs`
+- `crates/oasis7_viewer/src/material_library.rs`
+- `crates/oasis7_viewer/src/scene_helpers_entities.rs`
+- `crates/oasis7_viewer/src/selection_emphasis.rs`
 
 ## 状态
 - 当前阶段：已完成
-- 最近更新：完成 FDR6（清理 `agent_world_viewer` 17 条编译告警，2026-02-15）
+- 最近更新：完成 FDR6（清理 `oasis7_viewer` 17 条编译告警，2026-02-15）

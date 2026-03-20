@@ -16,18 +16,18 @@
 - [x] ER9：修复 Step 在 LLM 失败时 pending 卡住（恢复按钮可点击）
 
 ## 依赖
-- `crates/agent_world_viewer/src/app_bootstrap.rs`
-- `crates/agent_world_viewer/src/main.rs`
-- `crates/agent_world_viewer/src/camera_controls.rs`
-- `crates/agent_world_viewer/src/selection_linking.rs`
-- `crates/agent_world_viewer/src/timeline_controls.rs`
-- `crates/agent_world_viewer/src/event_click_list.rs`
-- `crates/agent_world_viewer/src/egui_right_panel.rs`
-- `crates/agent_world_viewer/src/copyable_text.rs`
-- `crates/agent_world_viewer/src/world_overlay.rs`
-- `crates/agent_world_viewer/src/button_feedback.rs`
-- `crates/agent_world_viewer/src/panel_layout.rs`
-- `crates/agent_world_viewer/src/panel_scroll.rs`
+- `crates/oasis7_viewer/src/app_bootstrap.rs`
+- `crates/oasis7_viewer/src/main.rs`
+- `crates/oasis7_viewer/src/camera_controls.rs`
+- `crates/oasis7_viewer/src/selection_linking.rs`
+- `crates/oasis7_viewer/src/timeline_controls.rs`
+- `crates/oasis7_viewer/src/event_click_list.rs`
+- `crates/oasis7_viewer/src/egui_right_panel.rs`
+- `crates/oasis7_viewer/src/copyable_text.rs`
+- `crates/oasis7_viewer/src/world_overlay.rs`
+- `crates/oasis7_viewer/src/button_feedback.rs`
+- `crates/oasis7_viewer/src/panel_layout.rs`
+- `crates/oasis7_viewer/src/panel_scroll.rs`
 
 ## 状态
 - 当前阶段：已完成 ER1~ER9（迁移主线完成 + 控制状态修复）

@@ -10,19 +10,19 @@
 - `phase8/phase9` 内容已物理合并入本文件，对应阶段文档已合并并从仓库移除（不再保留 archive 目录）。
 
 ## 1. Executive Summary
-- 清理 `agent_world::viewer` 活跃运行链路中残留的 tick 轮询逻辑，统一为事件驱动推进。
+- 清理 `oasis7::viewer` 活跃运行链路中残留的 tick 轮询逻辑，统一为事件驱动推进。
 - 删除离线 viewer server 的定时回放推进（`tick_interval`），避免播放过程空 tick 空跑。
 - 删除 web bridge 的可配置轮询间隔（`poll_interval`）及其轮询 sleep 链路，收敛为事件触发转发模型。
 
 ## 2. User Experience & Functionality
-- `crates/agent_world/src/viewer/server.rs`
-- `crates/agent_world/src/viewer/web_bridge.rs`
-- `crates/agent_world/tests/viewer_offline_integration.rs`（如需同步）
+- `crates/oasis7/src/viewer/server.rs`
+- `crates/oasis7/src/viewer/web_bridge.rs`
+- `crates/oasis7/tests/viewer_offline_integration.rs`（如需同步）
 - 与以上接口变更相关的调用点与测试
 - 活跃手册/入口示例中的 viewer 旧 tick 参数残留（仅活跃文档，不改历史 devlog）
 
 不在范围内：
-- `agent_world_node` 共识/执行主循环中的 `tick_interval`（基础 runtime 机制，需单独阶段重构）
+- `oasis7_node` 共识/执行主循环中的 `tick_interval`（基础 runtime 机制，需单独阶段重构）
 - 历史归档文档与历史 devlog
 
 ## 3. AI System Requirements (If Applicable)
@@ -62,18 +62,18 @@
   - `doc/world-simulator/viewer/viewer-open-world-sandbox-readiness.stress-report.template.md`
   - `doc/testing/longrun/p2p-storage-consensus-longrun-online-stability-2026-02-24.prd.md`
 - 删除 legacy `--tick-ms` 拒绝断言测试，避免保留旧参数语义噪音：
-  - `crates/agent_world/src/bin/world_viewer_live.rs（`#[cfg(test)]`）`
+  - `crates/oasis7/src/bin/world_viewer_live.rs（`#[cfg(test)]`）`
 
 ### 验收证据
 - `env -u RUSTC_WRAPPER cargo fmt --all -- --check`
-- `env -u RUSTC_WRAPPER cargo check -p agent_world`
-- `env -u RUSTC_WRAPPER cargo test -p agent_world viewer::live::tests:: -- --nocapture`
-- `env -u RUSTC_WRAPPER cargo test -p agent_world viewer::web_bridge::tests:: -- --nocapture`
-- `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required --test viewer_offline_integration -- --nocapture`
+- `env -u RUSTC_WRAPPER cargo check -p oasis7`
+- `env -u RUSTC_WRAPPER cargo test -p oasis7 viewer::live::tests:: -- --nocapture`
+- `env -u RUSTC_WRAPPER cargo test -p oasis7 viewer::web_bridge::tests:: -- --nocapture`
+- `env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_required --test viewer_offline_integration -- --nocapture`
 
 ### 阶段结论
-- Phase 10 达成：`agent_world::viewer` 活跃链路已移除旧 tick/poll 驱动入口与可配置轮询参数，viewer 运行路径收敛为事件驱动语义。
-- 当前剩余 tick 仅在 node/runtime 基础机制及其测试中（例如 `agent_world_node` 与相关配置），不属于 viewer old-code 清理范围。
+- Phase 10 达成：`oasis7::viewer` 活跃链路已移除旧 tick/poll 驱动入口与可配置轮询参数，viewer 运行路径收敛为事件驱动语义。
+- 当前剩余 tick 仅在 node/runtime 基础机制及其测试中（例如 `oasis7_node` 与相关配置），不属于 viewer old-code 清理范围。
 
 ## Phase 8/9 增量记录（ROUND-002 物理合并）
 - 原阶段文档已合并并删除，以下记录用于追溯。
@@ -86,11 +86,11 @@
 - 保持对外 viewer 协议不变，在不引入空跑 tick 的前提下维持 play/step/seek 行为。
 
 #### 2. User Experience & Functionality
-- `crates/agent_world/src/viewer/live_split_part1.rs`
-- `crates/agent_world/src/viewer/live_split_part2.rs`
-- `crates/agent_world/src/viewer/live/tests.rs`
-- `crates/agent_world/src/viewer/mod.rs`
-- `crates/agent_world/src/bin/world_viewer_live.rs`
+- `crates/oasis7/src/viewer/live_split_part1.rs`
+- `crates/oasis7/src/viewer/live_split_part2.rs`
+- `crates/oasis7/src/viewer/live/tests.rs`
+- `crates/oasis7/src/viewer/mod.rs`
+- `crates/oasis7/src/bin/world_viewer_live.rs`
 
 不在范围内：
 - 不改动 viewer 对外协议字段。
@@ -133,9 +133,9 @@
 ##### 验收证据
 - 回归测试（test_tier_required）：
   - `env -u RUSTC_WRAPPER cargo fmt --all -- --check`
-  - `env -u RUSTC_WRAPPER cargo check -p agent_world`
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world viewer::live::tests:: -- --nocapture`
-- 仓库 pre-commit required 矩阵通过（`agent_world` / `agent_world_consensus` / `agent_world_distfs` / `agent_world_viewer`）。
+  - `env -u RUSTC_WRAPPER cargo check -p oasis7`
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7 viewer::live::tests:: -- --nocapture`
+- 仓库 pre-commit required 矩阵通过（`oasis7` / `oasis7_consensus` / `oasis7_distfs` / `oasis7_viewer`）。
 
 ##### 阶段结论
 - Phase 8 达成：script 路径已切换为默认且唯一事件驱动，`timer_pulse` 回退开关与回退链路代码已清理。
@@ -151,10 +151,10 @@
 - 保持 node/runtime 共识 tick 机制不变（不在本阶段改造范围内）。
 
 #### 2. User Experience & Functionality
-- `crates/agent_world/src/bin/world_viewer_live.rs`
-- `crates/agent_world/src/bin/world_viewer_live.rs`
-- `crates/agent_world/src/bin/world_viewer_live.rs（`#[cfg(test)]`）`
-- `crates/agent_world/tests/viewer_live_integration.rs`
+- `crates/oasis7/src/bin/world_viewer_live.rs`
+- `crates/oasis7/src/bin/world_viewer_live.rs`
+- `crates/oasis7/src/bin/world_viewer_live.rs（`#[cfg(test)]`）`
+- `crates/oasis7/tests/viewer_live_integration.rs`
 - `scripts/capture-viewer-frame.sh`
 - `scripts/viewer-theme-pack-preview.sh`
 - `scripts/run-game-test.sh`
@@ -165,7 +165,7 @@
 - 活跃手册文档（testing/manual 与 viewer/manual 相关）
 
 不在范围内：
-- `agent_world_node` runtime 的 `tick_interval`（共识与执行调度基础机制）。
+- `oasis7_node` runtime 的 `tick_interval`（共识与执行调度基础机制）。
 - 历史归档/历史 devlog 中的旧命令记录。
 
 #### 3. AI System Requirements (If Applicable)
@@ -205,10 +205,10 @@
 ##### 验收证据
 - 代码回归（test_tier_required / full）：
   - `env -u RUSTC_WRAPPER cargo fmt --all -- --check`
-  - `env -u RUSTC_WRAPPER cargo check -p agent_world`
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world viewer::live::tests:: -- --nocapture`
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world world_viewer_live_tests:: -- --nocapture`
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world --features "viewer_live_integration test_tier_full" --test viewer_live_integration -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo check -p oasis7`
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7 viewer::live::tests:: -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7 world_viewer_live_tests:: -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7 --features "viewer_live_integration test_tier_full" --test viewer_live_integration -- --nocapture`
 - 文档残留扫描：
   - 活跃手册范围内 `--tick-ms` 已清零（仅历史 devlog/历史文档保留存档记录）。
 

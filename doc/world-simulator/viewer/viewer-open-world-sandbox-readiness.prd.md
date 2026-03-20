@@ -128,7 +128,7 @@
 - 已完成 OWR1：
   - viewer 顶部新增 `模式` 切换（`Observe` / `Prompt Ops`）。
   - `Prompt Ops` 已提供 Prompt-only 约束提示、Agent 目标选择、Prompt 草稿编辑区与审计占位区。
-  - 支持环境变量 `AGENT_WORLD_VIEWER_PANEL_MODE=prompt_ops` 直接进入运营态。
+  - 支持环境变量 `OASIS7_VIEWER_PANEL_MODE=prompt_ops` 直接进入运营态。
 - 已完成 OWR2-Server：
   - `ViewerRequest/ViewerResponse` 扩展 `prompt_control.preview/apply/rollback`、`prompt_control_ack/error`，并补充协议回环测试。
   - simulator 新增 `AgentPromptProfile` 与 `AgentPromptUpdated` 事件；kernel/replay 支持 prompt 更新事件持久化与回放一致性。
@@ -142,11 +142,11 @@
   - 修复 3D 缩放输入兼容性：滚轮 Pixel 单位归一化，并接入 macOS `PinchGesture` 缩放链路。
   - 修复 2D 缩放链路：滚轮/Pinch 在 TwoD 模式下同步更新正交投影 `scale`，恢复俯视缩放可用性。
 - 已完成验证：
-  - `env -u RUSTC_WRAPPER cargo check -p agent_world` 通过。
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world prompt_control_ -- --nocapture` 通过。
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world replay_from_snapshot_applies_agent_prompt_updated_event -- --nocapture` 通过。
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world --test viewer_live_integration --features viewer_live_integration -- --nocapture` 通过。
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer` 通过（157 tests）。
+  - `env -u RUSTC_WRAPPER cargo check -p oasis7` 通过。
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7 prompt_control_ -- --nocapture` 通过。
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7 replay_from_snapshot_applies_agent_prompt_updated_event -- --nocapture` 通过。
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7 --test viewer_live_integration --features viewer_live_integration -- --nocapture` 通过。
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7_viewer` 通过（157 tests）。
 - 截图闭环通过：`./scripts/capture-viewer-frame.sh --scenario llm_bootstrap --addr 127.0.0.1:5163 --viewer-wait 10`。
 
 ## 实施进展（2026-02-12）
@@ -157,21 +157,21 @@
   - Prompt Ops 审计区接入 `AgentPromptUpdated` 事件流（按 Agent 过滤，展示 tick/version/operation/fields/digest）。
   - 为满足单 Rust 文件行数约束，将 Prompt Ops 面板逻辑从 `egui_right_panel.rs` 拆分到 `prompt_ops_panel.rs`。
 - 已完成验证：
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer prompt_control -- --nocapture` 通过。
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer prompt_ops -- --nocapture` 通过。
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer` 通过（171 tests）。
-  - `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer` 通过。
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7_viewer prompt_control -- --nocapture` 通过。
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7_viewer prompt_ops -- --nocapture` 通过。
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7_viewer` 通过（171 tests）。
+  - `env -u RUSTC_WRAPPER cargo check -p oasis7_viewer` 通过。
 - 已完成 OWR4.1：
   - 新增事件窗口策略模块 `event_window.rs`，在 `poll_viewer_messages` 入口对事件流执行“滚动窗口 + 采样”压缩：保留近期事件全量细节，对旧事件按步长采样，避免事件洪峰导致 UI 与内存线性增长。
   - `ViewerConfig` 增加事件窗口策略配置，启动时从环境变量读取并归一化：
-    - `AGENT_WORLD_VIEWER_EVENT_WINDOW_SIZE`：事件窗口上限；
-    - `AGENT_WORLD_VIEWER_EVENT_WINDOW_RECENT`：近期全量保留条数；
-    - `AGENT_WORLD_VIEWER_EVENT_SAMPLE_STRIDE`：旧事件采样步长。
+    - `OASIS7_VIEWER_EVENT_WINDOW_SIZE`：事件窗口上限；
+    - `OASIS7_VIEWER_EVENT_WINDOW_RECENT`：近期全量保留条数；
+    - `OASIS7_VIEWER_EVENT_SAMPLE_STRIDE`：旧事件采样步长。
   - 保持既有右侧性能摘要指标口径不变，`event_window_size` 继续反映压缩后窗口大小。
 - 已完成验证（OWR4.1）：
   - `env -u RUSTC_WRAPPER cargo fmt --all` 通过。
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer` 通过（176 tests，含事件窗口采样新增测试）。
-  - `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer` 通过。
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7_viewer` 通过（176 tests，含事件窗口采样新增测试）。
+  - `env -u RUSTC_WRAPPER cargo check -p oasis7_viewer` 通过。
 - 已完成 OWR4.2：
   - 引入场景增量刷新模块 `scene_dirty_refresh.rs`，将 3D 场景更新拆为“全量重建判定 + 脏区更新”：
     - 仅在首次快照、时间回退（seek 回放）、空间配置变化、fragment 可见性切换时触发 `rebuild_scene_from_snapshot`；
@@ -180,20 +180,20 @@
   - 为增量刷新补充回归测试（全量重建判定、location/agent 脏区判定）。
 - 已完成验证（OWR4.2）：
   - `env -u RUSTC_WRAPPER cargo fmt --all` 通过。
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer` 通过（179 tests）。
-  - `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer` 通过。
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7_viewer` 通过（179 tests）。
+  - `env -u RUSTC_WRAPPER cargo check -p oasis7_viewer` 通过。
 - 已完成 OWR4.3：
   - 新增自动降级模块 `auto_degrade.rs`，基于渲染压力实现三级降级与回升（带滞回）：
     - Level 1：收紧 `label_lod.max_visible_labels`；
     - Level 2：继续收紧标签并关闭 `heat overlay`；
     - Level 3：继续收紧标签并关闭 `flow overlay`。
   - 降级策略在压力缓解后按级别回升，并恢复到进入降级前的基线标签与覆盖层开关状态，避免一次降级后长期锁死。
-  - 启动配置新增 `AGENT_WORLD_VIEWER_AUTO_DEGRADE`（默认开启），支持显式关闭自动降级。
+  - 启动配置新增 `OASIS7_VIEWER_AUTO_DEGRADE`（默认开启），支持显式关闭自动降级。
   - 渲染主链路接入：`sample_render_perf_summary` 之后运行 `update_auto_degrade_policy`，确保降级决策使用最新采样窗口。
 - 已完成验证（OWR4.3）：
   - `env -u RUSTC_WRAPPER cargo fmt --all` 通过。
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer` 通过（181 tests，含自动降级新增测试）。
-  - `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer` 通过。
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7_viewer` 通过（181 tests，含自动降级新增测试）。
+  - `env -u RUSTC_WRAPPER cargo check -p oasis7_viewer` 通过。
 - 已完成 OWR4.4：
   - 新增高负载压测脚本 `scripts/viewer-owr4-stress.sh`：
     - 默认执行 `triad_region_bootstrap,llm_bootstrap`；
@@ -209,16 +209,16 @@
   - 固定记录三类基线指标：
     - 帧时间：`frame_ms_avg` / `frame_ms_p95`；
     - 事件吞吐：`events/s`；
-    - 卡顿指标：`over_budget_pct`（以 `AGENT_WORLD_VIEWER_PERF_BUDGET_MS=33` 为阈值）。
+    - 卡顿指标：`over_budget_pct`（以 `OASIS7_VIEWER_PERF_BUDGET_MS=33` 为阈值）。
   - 为基线采样补齐自动化可观测链路：
-    - viewer 新增 `perf_probe`（`AGENT_WORLD_VIEWER_PERF_PROBE*`）周期输出运行时性能摘要；
+    - viewer 新增 `perf_probe`（`OASIS7_VIEWER_PERF_PROBE*`）周期输出运行时性能摘要；
     - headless 模式新增自动 `Play`（默认开启）并落 `viewer status/events` 指标日志；
-    - UI 模式支持 `AGENT_WORLD_VIEWER_AUTO_PLAY=1`，用于截图闭环场景下的动态负载采样。
+    - UI 模式支持 `OASIS7_VIEWER_AUTO_PLAY=1`，用于截图闭环场景下的动态负载采样。
   - 当前批次基线结论已收口到项目管理文档 `doc/world-simulator/viewer/viewer-open-world-sandbox-readiness.project.md`，后续版本沿用同口径复跑并更新该文档。
 - 已完成验证（OWR4.5）：
 - `./scripts/viewer-owr4-stress.sh --duration-secs 12 --out-dir artifacts/owr4_baseline --no-prewarm` 通过。
-- `AGENT_WORLD_VIEWER_AUTO_PLAY=1 AGENT_WORLD_VIEWER_PERF_PROBE=1 AGENT_WORLD_VIEWER_PERF_PROBE_INTERVAL_SECS=1 AGENT_WORLD_VIEWER_PERF_BUDGET_MS=33 ./scripts/capture-viewer-frame.sh --scenario triad_region_bootstrap --addr 127.0.0.1:5640 --viewer-wait 10 --no-prewarm --keep-tmp` 通过。
-- `AGENT_WORLD_VIEWER_AUTO_PLAY=1 AGENT_WORLD_VIEWER_PERF_PROBE=1 AGENT_WORLD_VIEWER_PERF_PROBE_INTERVAL_SECS=1 AGENT_WORLD_VIEWER_PERF_BUDGET_MS=33 ./scripts/capture-viewer-frame.sh --scenario llm_bootstrap --addr 127.0.0.1:5641 --viewer-wait 10 --no-prewarm --keep-tmp` 通过。
+- `OASIS7_VIEWER_AUTO_PLAY=1 OASIS7_VIEWER_PERF_PROBE=1 OASIS7_VIEWER_PERF_PROBE_INTERVAL_SECS=1 OASIS7_VIEWER_PERF_BUDGET_MS=33 ./scripts/capture-viewer-frame.sh --scenario triad_region_bootstrap --addr 127.0.0.1:5640 --viewer-wait 10 --no-prewarm --keep-tmp` 通过。
+- `OASIS7_VIEWER_AUTO_PLAY=1 OASIS7_VIEWER_PERF_PROBE=1 OASIS7_VIEWER_PERF_PROBE_INTERVAL_SECS=1 OASIS7_VIEWER_PERF_BUDGET_MS=33 ./scripts/capture-viewer-frame.sh --scenario llm_bootstrap --addr 127.0.0.1:5641 --viewer-wait 10 --no-prewarm --keep-tmp` 通过。
 
 ## 6. Validation & Decision Record
 - 追溯: 对应同名 `.project.md`，保持原文约束语义不变。
