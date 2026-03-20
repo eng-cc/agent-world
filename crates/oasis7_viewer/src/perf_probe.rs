@@ -131,6 +131,11 @@ fn parse_bool(raw: Option<&str>) -> Option<bool> {
 mod tests {
     use super::*;
 
+    const REMOVED_OLD_BRAND_PERF_PROBE_ENV: &str = "AGENT_WORLD_VIEWER_PERF_PROBE";
+    const REMOVED_OLD_BRAND_PERF_PROBE_INTERVAL_ENV: &str =
+        "AGENT_WORLD_VIEWER_PERF_PROBE_INTERVAL_SECS";
+    const REMOVED_OLD_BRAND_PERF_BUDGET_ENV: &str = "AGENT_WORLD_VIEWER_PERF_BUDGET_MS";
+
     #[test]
     fn config_from_values_parses_and_defaults() {
         let default_config = config_from_values(None, None, None);
@@ -166,9 +171,9 @@ mod tests {
             std::env::remove_var(PERF_PROBE_ENV);
             std::env::remove_var(PERF_PROBE_INTERVAL_ENV);
             std::env::remove_var(PERF_BUDGET_ENV);
-            std::env::set_var("AGENT_WORLD_VIEWER_PERF_PROBE", "true");
-            std::env::set_var("AGENT_WORLD_VIEWER_PERF_PROBE_INTERVAL_SECS", "0.5");
-            std::env::set_var("AGENT_WORLD_VIEWER_PERF_BUDGET_MS", "25.0");
+            std::env::set_var(REMOVED_OLD_BRAND_PERF_PROBE_ENV, "true");
+            std::env::set_var(REMOVED_OLD_BRAND_PERF_PROBE_INTERVAL_ENV, "0.5");
+            std::env::set_var(REMOVED_OLD_BRAND_PERF_BUDGET_ENV, "25.0");
         }
         let config = perf_probe_config_from_env();
         assert_eq!(config, PerfProbeConfig::default());
@@ -177,9 +182,9 @@ mod tests {
             std::env::remove_var(PERF_PROBE_ENV);
             std::env::remove_var(PERF_PROBE_INTERVAL_ENV);
             std::env::remove_var(PERF_BUDGET_ENV);
-            std::env::remove_var("AGENT_WORLD_VIEWER_PERF_PROBE");
-            std::env::remove_var("AGENT_WORLD_VIEWER_PERF_PROBE_INTERVAL_SECS");
-            std::env::remove_var("AGENT_WORLD_VIEWER_PERF_BUDGET_MS");
+            std::env::remove_var(REMOVED_OLD_BRAND_PERF_PROBE_ENV);
+            std::env::remove_var(REMOVED_OLD_BRAND_PERF_PROBE_INTERVAL_ENV);
+            std::env::remove_var(REMOVED_OLD_BRAND_PERF_BUDGET_ENV);
         }
     }
 }

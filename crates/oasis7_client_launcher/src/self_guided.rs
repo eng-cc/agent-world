@@ -283,6 +283,8 @@ mod tests {
     #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn load_launcher_ux_state_ignores_removed_old_brand_path() {
+        const REMOVED_OLD_BRAND_UX_STATE_PATH: &str = ".agent_world_launcher_ux_state.json";
+
         let _guard = UX_STATE_FS_LOCK.lock().expect("lock");
         let temp_dir = unique_temp_dir("ux_state");
         std::fs::create_dir_all(&temp_dir).expect("create temp dir");
@@ -291,13 +293,13 @@ mod tests {
         let result = (|| -> Result<(), Box<dyn std::error::Error>> {
             std::env::set_current_dir(&temp_dir)?;
 
-            let old_brand_state = LauncherUxState {
+            let removed_old_brand_state = LauncherUxState {
                 expert_mode: true,
                 ..LauncherUxState::default()
             };
             std::fs::write(
-                ".agent_world_launcher_ux_state.json",
-                serde_json::to_vec(&old_brand_state)?,
+                REMOVED_OLD_BRAND_UX_STATE_PATH,
+                serde_json::to_vec(&removed_old_brand_state)?,
             )?;
             assert_eq!(load_launcher_ux_state(), LauncherUxState::default());
 
