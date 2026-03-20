@@ -818,6 +818,7 @@
 - [x] TASK-WORLD_SIMULATOR-243 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 收口 launcher explorer 活跃专题中仍把 `agent_world_client_launcher`、`agent_world` 与旧 `cargo -p` 包名写成当前 package/path/command 的口径，统一到 `oasis7_client_launcher`、`oasis7` 与当前 `cargo -p oasis7*`。
 - [x] TASK-WORLD_SIMULATOR-244 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 收口 launcher runtime/control-plane 活跃专题中仍把 `agent_world_client_launcher`、`agent_world` 与旧 `cargo -p` 包名写成当前 package/path/command 的口径，统一到 `oasis7_client_launcher`、`oasis7` 与当前 `cargo -p oasis7*`。
 - [x] TASK-WORLD_SIMULATOR-245 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 收口 launcher 剩余活跃专题中仍把 `agent_world_client_launcher`、`agent_world_launcher_ui`、`agent_world_node`、`agent_world_distfs`、`agent_world` 与旧 `cargo -p` 包名写成当前 package/path/command 的口径，统一到 `oasis7*` 与当前 `cargo -p oasis7*`。
+- [x] TASK-WORLD_SIMULATOR-246 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 收口 `unified-checklist`、`web-llm-evidence-template`、`blockchain-transfer` 与模块主 PRD 中仍把旧 `agent_world*` crate/path/command 写成当前真值的活跃验收/启动器文档口径，统一到 `oasis7*` 与当前 `cargo -p oasis7*`。
 - [x] TASK-WORLD_SIMULATOR-203 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 viewer/OpenClaw 脚本中的旧品牌 env helper 与局部变量命名切到 `compat` 语义，收口脚本层里残留的 `legacy_key` / `viewer_legacy_env_key` / `promote_legacy_viewer_envs` 口径。
   - 产物文件:
     - `doc/world-simulator/prd.md`
@@ -963,9 +964,8 @@
 - `testing-manual.md`
 ## 状态
 - 更新日期 / 当前状态 / 下一任务: 2026-03-20 / active / 无
-- 最新完成: `TASK-WORLD_SIMULATOR-245`（已收口 launcher 剩余活跃专题口径，包括 explorer UI/UX、chain runtime decouple、egui web unification project、feedback distributed submit、graceful stop、native-web control-plane、web console 与 web required config gating；旧 `agent_world*` / 旧 `cargo -p` 包名仅保留在历史记录或兼容说明语境中。）
-- 最新完成: `TASK-WORLD_SIMULATOR-234~235`（已收口 viewer/client/runtime/tooling 源码内嵌负向测试中的旧品牌 helper / fixture 命名，保留必要旧 alias 字面量仅作为“已移除 alias”的负向输入。）
-- 最新完成: `TASK-WORLD_SIMULATOR-233`（已移除 `crates/oasis7/src/bin/world_openclaw_local_bridge.rs` 与相关测试中的旧 profile alias `agent_world_p0_low_freq_npc`，收口 OpenClaw local bridge 当前入口到 `oasis7_p0_low_freq_npc`，并把 compat 测试改为断言旧 alias 已失效。）
+- 最新完成: `TASK-WORLD_SIMULATOR-245~246`（已收口 launcher 剩余活跃专题，以及 `unified-checklist`、`web-llm-evidence-template`、`blockchain-transfer` 和模块主 PRD 中仍把旧 `agent_world*` crate/path/command 写成当前真值的活跃文档口径；旧品牌仅保留在历史记录、兼容说明或负向输入语境中。）
+- 最新完成: `TASK-WORLD_SIMULATOR-233~235`（已移除 `world_openclaw_local_bridge` 的旧 profile alias，并收口 viewer/client/runtime/tooling 源码内嵌负向测试中的旧品牌 helper / fixture 命名；保留必要旧 alias 字面量仅作为“已移除 alias”的负向输入。）
 - 最新完成: `TASK-WORLD_SIMULATOR-232`（已移除 `tools/wasm_build_suite/src/lib.rs` 与相关测试中的 `AGENT_WORLD_WASM_*` fallback，收口 wasm build suite library 当前入口到 `OASIS7_WASM_*`，并把 compat 测试改为断言旧 alias 已失效。）
 - 最新完成: `TASK-WORLD_SIMULATOR-230~231`（已移除 wasm build/sync 脚本与 operator 脚本中的 `AGENT_WORLD_WASM_*`、`AGENT_WORLD_VIEWER_*` 与 `AGENT_WORLD_CHAIN_STORAGE_PROFILE` fallback，并收口相关 operator 文案到 `OASIS7_*` 当前入口。）
 - 最新完成: `TASK-WORLD_SIMULATOR-229`（已移除 `crates/oasis7/src/{runtime/module_source_compiler.rs,runtime/builtin_wasm_materializer.rs,simulator/llm_agent.rs}` 与相关定向测试中的 `AGENT_WORLD_MODULE_SOURCE_*`、`AGENT_WORLD_BUILTIN_WASM_*` 与 `AGENT_WORLD_LLM_*` 旧品牌 fallback，收口到 `OASIS7_*` 当前入口，并把 compat 测试改为断言旧 alias 已失效。）

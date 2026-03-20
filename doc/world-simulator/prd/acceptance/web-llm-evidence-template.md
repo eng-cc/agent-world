@@ -1,6 +1,6 @@
 # world-simulator PRD 分册：Web-first 与 LLM 测试证据模板
 
-审计轮次: 5
+审计轮次: 6
 ## 目标
 - 固化 Viewer Web-first 闭环（S6）与 LLM 链路（S8）的统一证据模板，减少“跑了测试但不可复核”的记录漂移。
 - 为 `TASK-WORLD_SIMULATOR-003` 提供可直接复制的结果卡片格式。
@@ -16,7 +16,7 @@
 - 执行者：
 - 环境：OS / Browser / Node / 是否 headed
 - 启动命令：
-  - `env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_game_launcher -- ...`
+  - `env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_game_launcher -- ...`
 - 闭环命令：
   - `agent-browser --headed open "$URL"`
   - `agent-browser wait --load networkidle`

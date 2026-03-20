@@ -1,6 +1,6 @@
 # world-simulator PRD 分册：启动器链上转账
 
-审计轮次: 5
+审计轮次: 6
 ## 目标
 - 在启动器链路中提供可操作的链上转账能力，形成“配置-提交-结果反馈”的发行级闭环体验。
 - 将转账能力拆分为可追溯条款（PRD-ID、验收、测试）并与主 PRD 同步。
@@ -16,10 +16,10 @@
 - 追踪主键：`PRD-WORLD_SIMULATOR-004`、`PRD-WORLD_SIMULATOR-005`
 - 关键集成点：
   - `doc/world-simulator/launcher/game-client-launcher-chain-runtime-decouple-2026-02-28.prd.md`
-  - `crates/agent_world/src/bin/world_chain_runtime.rs`
-  - `crates/agent_world_client_launcher/src/main.rs`
-  - `crates/agent_world/src/runtime/world/event_processing/action_to_event_core.rs`
-  - `crates/agent_world/src/runtime/state/apply_domain_event_main_token.rs`
+  - `crates/oasis7/src/bin/world_chain_runtime.rs`
+  - `crates/oasis7_client_launcher/src/main.rs`
+  - `crates/oasis7/src/runtime/world/event_processing/action_to_event_core.rs`
+  - `crates/oasis7/src/runtime/state/apply_domain_event_main_token.rs`
   - `testing-manual.md`
 
 ## 里程碑
@@ -35,11 +35,11 @@
 - 已完成：启动器-链运行时转账闭环测试已进入 `test_tier_required`，覆盖启动器请求提交、链运行时接口联动、runtime 转账失败路径（余额不足/nonce 回放）并沉淀执行证据（`TASK-WORLD_SIMULATOR-009`）。
 
 ## 闭环测试证据（2026-03-03）
-- test_tier_required：`env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher transfer_entry::tests:: -- --nocapture`
+- test_tier_required：`env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher transfer_entry::tests:: -- --nocapture`
   - 覆盖启动器提交路径：请求序列化、`/v1/chain/transfer/submit` 路径命中、成功/失败结构化响应解析。
-- test_tier_required：`env -u RUSTC_WRAPPER cargo test -p agent_world --tests --features test_tier_required transfer_submit_api::tests:: -- --nocapture`
+- test_tier_required：`env -u RUSTC_WRAPPER cargo test -p oasis7 --tests --features test_tier_required transfer_submit_api::tests:: -- --nocapture`
   - 覆盖链运行时提交接口联动：HTTP 处理、动作 payload 编码、runtime 接收并提交共识动作、错误请求拒绝。
-- test_tier_required：`env -u RUSTC_WRAPPER cargo test -p agent_world --tests --features test_tier_required main_token_transfer_action_ -- --nocapture`
+- test_tier_required：`env -u RUSTC_WRAPPER cargo test -p oasis7 --tests --features test_tier_required main_token_transfer_action_ -- --nocapture`
   - 覆盖 runtime 转账语义：成功转账、余额不足拒绝、nonce 重放拒绝。
 
 ## 风险

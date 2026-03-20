@@ -1,6 +1,6 @@
 # world-simulator PRD 分册：统一验收清单（场景 / Viewer / 启动器）
 
-审计轮次: 5
+审计轮次: 6
 ## 目标
 - 将场景系统、Viewer Web 闭环、启动器能力的验收口径统一为一份可执行清单，避免各链路各自为政。
 - 让 `PRD-WORLD_SIMULATOR-001/002` 在同一验收表里可追踪、可复跑、可留证据。
@@ -20,10 +20,10 @@
 
 | Gate-ID | 模块 | 通过标准 | 必跑命令（示例） | 证据要求 |
 | --- | --- | --- | --- | --- |
-| G1 | 场景系统 | 场景 ID 与模板稳定，核心场景可回放 | `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required scenario_specs_match_ids -- --nocapture`<br>`env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required scenarios_are_stable -- --nocapture` | 终端日志（通过/失败） |
+| G1 | 场景系统 | 场景 ID 与模板稳定，核心场景可回放 | `env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_required scenario_specs_match_ids -- --nocapture`<br>`env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_required scenarios_are_stable -- --nocapture` | 终端日志（通过/失败） |
 | G2 | Viewer Web 闭环 | 页面可加载、`console error = 0`、至少 1 张截图 | 按 `doc/testing/manual/web-ui-agent-browser-closure-manual.prd.md` 执行 S6（如 `./scripts/viewer-release-qa-loop.sh`） | `output/playwright/*.png` + `output/playwright/viewer/console.log` |
-| G3 | 启动器统一入口 | launcher 参数解析与 URL 组装路径通过 | `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_game_launcher` | 终端日志（通过/失败） |
-| G4 | 启动器客户端 | 配置校验、链路提交流程可执行 | `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher` | 终端日志（通过/失败） |
+| G3 | 启动器统一入口 | launcher 参数解析与 URL 组装路径通过 | `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_game_launcher` | 终端日志（通过/失败） |
+| G4 | 启动器客户端 | 配置校验、链路提交流程可执行 | `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher` | 终端日志（通过/失败） |
 | G5 | 文档追踪 | PRD 与 project 状态一致、依赖可达 | `./scripts/doc-governance-check.sh` | 治理脚本输出（OK） |
 
 ## 执行顺序
