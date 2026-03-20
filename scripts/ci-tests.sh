@@ -67,46 +67,46 @@ run_cargo() {
   fi
 }
 
-run_agent_world_required_tier_tests() {
+run_oasis7_required_tier_tests() {
   run_cargo test -p agent_world --tests --features test_tier_required
 }
 
-run_agent_world_full_tier_tests() {
+run_oasis7_full_tier_tests() {
   run_cargo test -p agent_world --tests --features "test_tier_full,wasmtime,viewer_live_integration" -- --skip live_server_accepts_client_and_emits_snapshot_and_event
   run_with_retries 3 \
     run_cargo test -p agent_world --features "test_tier_full,wasmtime,viewer_live_integration" \
       --test viewer_live_integration live_server_accepts_client_and_emits_snapshot_and_event -- --nocapture
 }
 
-run_agent_world_consensus_tests() {
+run_oasis7_consensus_tests() {
   run_cargo test -p agent_world_consensus --lib
 }
 
-run_agent_world_distfs_tests() {
+run_oasis7_distfs_tests() {
   run_cargo test -p agent_world_distfs --lib
 }
 
-run_agent_world_node_tests() {
+run_oasis7_node_tests() {
   run_cargo test -p agent_world_node --lib
 }
 
-run_agent_world_net_tests() {
+run_oasis7_net_tests() {
   run_cargo test -p agent_world_net --lib
 }
 
-run_agent_world_net_libp2p_tests() {
+run_oasis7_net_libp2p_tests() {
   run_cargo test -p agent_world_net --features libp2p --lib
 }
 
-run_agent_world_llm_baseline_fixture_smoke() {
+run_oasis7_llm_baseline_fixture_smoke() {
   run ./scripts/llm-baseline-fixture-smoke.sh
 }
 
-run_agent_world_viewer_tests() {
+run_oasis7_viewer_tests() {
   run_cargo test -p agent_world_viewer
 }
 
-run_agent_world_viewer_wasm_check() {
+run_oasis7_viewer_wasm_check() {
   run_cargo check -p agent_world_viewer --target wasm32-unknown-unknown
 }
 
@@ -117,18 +117,18 @@ run_required_gate_checks() {
 
 run_full_core_tier_tests() {
   run_required_gate_checks
-  run_agent_world_full_tier_tests
+  run_oasis7_full_tier_tests
 }
 
 run_full_support_tier_tests() {
-  run_agent_world_consensus_tests
-  run_agent_world_distfs_tests
-  run_agent_world_node_tests
-  run_agent_world_net_tests
-  run_agent_world_net_libp2p_tests
-  run_agent_world_llm_baseline_fixture_smoke
-  run_agent_world_viewer_tests
-  run_agent_world_viewer_wasm_check
+  run_oasis7_consensus_tests
+  run_oasis7_distfs_tests
+  run_oasis7_node_tests
+  run_oasis7_net_tests
+  run_oasis7_net_libp2p_tests
+  run_oasis7_llm_baseline_fixture_smoke
+  run_oasis7_viewer_tests
+  run_oasis7_viewer_wasm_check
   run_cargo test -p agent_world --features wasmtime --lib --bins
 }
 
@@ -136,11 +136,11 @@ echo "+ ci test tier: $tier"
 case "$tier" in
   required)
     run_required_gate_checks
-    run_agent_world_required_tier_tests
-    run_agent_world_consensus_tests
-    run_agent_world_distfs_tests
-    run_agent_world_viewer_tests
-    run_agent_world_viewer_wasm_check
+    run_oasis7_required_tier_tests
+    run_oasis7_consensus_tests
+    run_oasis7_distfs_tests
+    run_oasis7_viewer_tests
+    run_oasis7_viewer_wasm_check
     ;;
   full)
     run_full_core_tier_tests
