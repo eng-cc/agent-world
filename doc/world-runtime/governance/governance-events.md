@@ -67,6 +67,6 @@
 - 因果链通过 `caused_by` 保留 action/effect 关联。
 
 ## 实现锚点
-- `crates/agent_world/src/runtime/governance.rs`
-- `crates/agent_world/src/runtime/world_event.rs`
-- `crates/agent_world/src/runtime/audit.rs`
+- `crates/oasis7/src/runtime/governance.rs`
+- `crates/oasis7/src/runtime/world_event.rs`
+- `crates/oasis7/src/runtime/audit.rs`

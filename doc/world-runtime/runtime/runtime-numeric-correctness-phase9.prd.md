@@ -13,7 +13,7 @@
 
 ## 2. User Experience & Functionality
 ### In Scope（第九阶段）
-- `crates/agent_world_consensus/src/membership_recovery/replay_archive.rs`
+- `crates/oasis7_consensus/src/membership_recovery/replay_archive.rs`
   - recovery drill schedule：
     - `elapsed = scheduled_at_ms - last_drill_at_ms` 改为受检减法；
     - `next_due_at_ms = last_drill_at_ms + drill_interval_ms` 与 `scheduled_at_ms + drill_interval_ms` 改为受检加法。

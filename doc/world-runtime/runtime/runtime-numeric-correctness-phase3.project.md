@@ -26,10 +26,10 @@
 
 ## 依赖
 - Node：
-  - `crates/agent_world_node/src/lib.rs`
-  - `crates/agent_world_node/src/pos_state_store.rs`
+  - `crates/oasis7_node/src/lib.rs`
+  - `crates/oasis7_node/src/pos_state_store.rs`
 - 测试：
-  - `crates/agent_world_node/src/tests.rs`
+  - `crates/oasis7_node/src/tests.rs`
 
 ## 状态
 - 当前状态：`已完成`

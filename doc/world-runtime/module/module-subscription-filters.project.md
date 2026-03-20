@@ -17,12 +17,12 @@
 - [x] 支持正则匹配（re）
 - [x] 扩展测试覆盖（OR/数值/正则）
 - [x] 更新项目管理文档与任务日志
-- [x] 运行测试 `env -u RUSTC_WRAPPER cargo test -p agent_world`
+- [x] 运行测试 `env -u RUSTC_WRAPPER cargo test -p oasis7`
 - [x] 提交到 git
 
 ## 依赖
-- `ModuleSubscription` 数据结构（`crates/agent_world/src/runtime/modules.rs`）
-- 模块路由实现（`crates/agent_world/src/runtime/world/module_runtime.rs`）
+- `ModuleSubscription` 数据结构（`crates/oasis7/src/runtime/modules.rs`）
+- 模块路由实现（`crates/oasis7/src/runtime/world/module_runtime.rs`）
 
 ## 状态
 - 当前阶段：完成

@@ -72,7 +72,7 @@
   - `doc/world-runtime/module/module-lifecycle.md`（发布/治理事件）
   - `doc/world-runtime/module/module-storage.prd.md`（模块存储）
   - `doc/world-runtime/runtime/runtime-integration.md`（执行/路由）
-  - `crates/agent_world_wasm_abi`（`ModuleManifest` / `ProductProfileV1` / `RecipeProfileV1` / `FactoryProfileV1`）
+  - `crates/oasis7_wasm_abi`（`ModuleManifest` / `ProductProfileV1` / `RecipeProfileV1` / `FactoryProfileV1`）
 - Edge Cases & Error Handling:
   - artifact hash 不一致或 signature 校验失败 -> `ActionRejected::RuleDenied` + 审计记录。
   - profile 覆盖提交（同 `product_id/recipe_id/factory_id` 已存在，无论内容是否一致）-> `Shadow` 与 `Apply` 均拒绝并输出明确原因。
@@ -107,7 +107,7 @@
 | PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |
 | --- | --- | --- | --- | --- |
 | PRD-WORLD_RUNTIME-010 | TASK-WORLD_RUNTIME-010/011 | `test_tier_required` | 新增发布单 + profile 变更单测、`runtime::tests::module_action_loop` 回归 | 模块发布、profile 落账 |
-| PRD-WORLD_RUNTIME-011 | TASK-WORLD_RUNTIME-012 | `test_tier_full` | 三节点发布 SLA 测试：`crates/agent_world/tests/module_release_sla_triad.rs` 输出 `output/world-runtime/module_release_sla_triad.json` | 发布链路时延 |
+| PRD-WORLD_RUNTIME-011 | TASK-WORLD_RUNTIME-012 | `test_tier_full` | 三节点发布 SLA 测试：`crates/oasis7/tests/module_release_sla_triad.rs` 输出 `output/world-runtime/module_release_sla_triad.json` | 发布链路时延 |
 | PRD-WORLD_RUNTIME-012 | TASK-WORLD_RUNTIME-010/011/013/014/015 | `test_tier_required` | 角色审批、签名校验、冲突拒绝路径测试（`module_action_loop_split_part3.rs` + `module_action_loop_split_part4.rs` 覆盖 release shadow/approve/apply 拒绝场景） | 安全与治理门禁 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |

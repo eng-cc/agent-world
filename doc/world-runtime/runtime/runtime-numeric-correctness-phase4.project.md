@@ -21,10 +21,10 @@
 - [x] 更新设计/项目文档状态与 `doc/devlog/2026-02-23.md` 收口记录。
 
 ## 依赖
-- `crates/agent_world_node/src/replication.rs`
-- `crates/agent_world_node/src/lib.rs`
-- `crates/agent_world_node/src/tests.rs`
-- `crates/agent_world_node/src/tests_hardening.rs`
+- `crates/oasis7_node/src/replication.rs`
+- `crates/oasis7_node/src/lib.rs`
+- `crates/oasis7_node/src/tests.rs`
+- `crates/oasis7_node/src/tests_hardening.rs`
 
 ## 状态
 - 当前状态：`已完成`

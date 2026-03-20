@@ -18,7 +18,7 @@
 
 ## 依赖
 - `doc/world-runtime/module/module-storage.design.md`
-- Rust workspace（`crates/agent_world`）
+- Rust workspace（`crates/oasis7`）
 - 本地文件系统
 
 ## 状态

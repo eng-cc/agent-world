@@ -7,7 +7,7 @@
 
 
 ## 1. Executive Summary
-- 收口 `agent_world_node::replication` 中长期运行敏感的 writer `epoch/sequence` 递进语义。
+- 收口 `oasis7_node::replication` 中长期运行敏感的 writer `epoch/sequence` 递进语义。
 - 将 writer 位置推进中的 `saturating_add` 改为显式溢出错误，避免静默饱和导致复制位置停滞或漂移。
 - 在不改变复制协议格式的前提下，保证本地写入位置计算在越界时可观测、可测试、可拒绝。
 

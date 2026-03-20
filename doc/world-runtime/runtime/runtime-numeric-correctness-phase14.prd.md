@@ -13,10 +13,10 @@
 
 ## 2. User Experience & Functionality
 ### In Scope（第十四阶段）
-- `crates/agent_world_consensus/src/membership.rs`
+- `crates/oasis7_consensus/src/membership.rs`
   - `sync_key_revocations` / `sync_key_revocations_with_policy` / `sync_membership_directory` 的关键计数累加从 `saturating_add` 改为受检累加。
   - 新增受检计数 helper，统一错误语义与错误消息。
-- `crates/agent_world_consensus/src/mempool.rs`
+- `crates/oasis7_consensus/src/mempool.rs`
   - `take_batch_with_rules` 的 `total_bytes + size_bytes` 从饱和累加改为受检累加。
   - 保持失败路径原子性：若发生溢出，不移除 mempool 内现有 action。
 - 测试

@@ -17,13 +17,13 @@
 - [x] 新增 schedule/retention 溢出拒绝测试并验证无状态污染。
 
 ### T2 回归与收口
-- [x] 运行 `agent_world_consensus` 定向回归测试。
+- [x] 运行 `oasis7_consensus` 定向回归测试。
 - [x] 回写设计文档状态（M0~M3）。
 - [x] 回写项目状态与 `doc/devlog/2026-02-23.md`。
 
 ## 依赖
-- `crates/agent_world_consensus/src/membership_recovery/replay_archive.rs`
-- `crates/agent_world_consensus/src/membership_dead_letter_replay_archive_tests.rs`
+- `crates/oasis7_consensus/src/membership_recovery/replay_archive.rs`
+- `crates/oasis7_consensus/src/membership_dead_letter_replay_archive_tests.rs`
 
 ## 状态
 - 当前状态：`已完成`

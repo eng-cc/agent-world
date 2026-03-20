@@ -13,7 +13,7 @@
 
 ## 2. User Experience & Functionality
 ### In Scope（第十一阶段）
-- `crates/agent_world_consensus/src/membership_recovery/replay.rs`
+- `crates/oasis7_consensus/src/membership_recovery/replay.rs`
   - `run_revocation_dead_letter_replay_schedule_with_state_store` 的 interval gate 时间差改为受检减法。
   - `recommend_revocation_dead_letter_replay_policy_with_adaptive_guard` 的 policy cooldown 时间差改为受检减法。
   - `should_rollback_to_stable_policy` 的 rollback cooldown 时间差改为受检减法（并沿调用链显式失败）。

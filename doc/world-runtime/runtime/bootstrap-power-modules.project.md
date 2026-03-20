@@ -25,7 +25,7 @@
 ### B4 验证与回写
 - [x] 新增单元测试（安装生效、幂等、辐射发电事件、连续移动受限）
 - [x] 新增回归测试（已注册但停用后可重新激活）
-- [x] 运行 `env -u RUSTC_WRAPPER cargo test -p agent_world runtime::tests::power_bootstrap -- --nocapture`
+- [x] 运行 `env -u RUSTC_WRAPPER cargo test -p oasis7 runtime::tests::power_bootstrap -- --nocapture`
 - [x] 回写本项目管理文档状态与当日 devlog
 
 ## 依赖

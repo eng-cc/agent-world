@@ -13,7 +13,7 @@
 
 ## 2. User Experience & Functionality
 ### In Scope（第十二阶段）
-- `crates/agent_world_consensus/src/membership_recovery/mod.rs`
+- `crates/oasis7_consensus/src/membership_recovery/mod.rs`
   - `run_revocation_dead_letter_replay_schedule` 的 interval gate 时间差从 `saturating_sub` 改为受检减法。
   - `emit_revocation_reconcile_alerts_with_recovery_and_ack_retry_with_dead_letter` 的关键容量/计数累加从饱和语义改为受检语义（越界显式失败）。
   - 统一溢出错误语义为 `WorldError::DistributedValidationFailed`，错误消息包含关键现场值。

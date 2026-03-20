@@ -13,11 +13,11 @@
 
 ## 2. User Experience & Functionality
 ### In Scope（第十阶段）
-- `crates/agent_world_consensus/src/membership_recovery/replay_archive_tiered.rs`
+- `crates/oasis7_consensus/src/membership_recovery/replay_archive_tiered.rs`
   - tiered offload 的 `now_ms - audited_at_ms` 改为受检减法。
   - recovery drill alert 的 cooldown/silence 时间差改为受检减法。
   - 计数器路径去除不必要的饱和减法/加法，改为确定性递减/递增。
-- `crates/agent_world_consensus/src/membership_recovery/replay_audit.rs`
+- `crates/oasis7_consensus/src/membership_recovery/replay_audit.rs`
   - rollback governance `rollback_streak + 1` 改为受检递进。
   - rollback alert 的窗口与 cooldown 时间差改为受检减法。
 - 测试：

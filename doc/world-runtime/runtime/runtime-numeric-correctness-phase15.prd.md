@@ -13,7 +13,7 @@
 
 ## 2. User Experience & Functionality
 ### In Scope（第十五阶段）
-- `crates/agent_world_consensus/src/membership_recovery/replay_archive_federated.rs`
+- `crates/oasis7_consensus/src/membership_recovery/replay_archive_federated.rs`
   - `query_revocation_dead_letter_replay_rollback_governance_audit_archive_aggregated` 的 `scanned_hot/scanned_cold` 累加从 `saturating_add` 改为受检累加。
   - `query_revocation_dead_letter_replay_rollback_governance_recovery_drill_alert_events_incremental_since_composite_sequence_cursor` 的 `node_event_offset` 递进从 `saturating_add` 改为受检递进。
   - 新增受检计数 helper，溢出统一返回 `WorldError::DistributedValidationFailed`。

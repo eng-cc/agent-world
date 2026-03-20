@@ -13,7 +13,7 @@
 
 ## 2. User Experience & Functionality
 ### In Scope（第十三阶段）
-- `crates/agent_world_consensus/src/membership_reconciliation.rs`
+- `crates/oasis7_consensus/src/membership_reconciliation.rs`
   - `schedule_due` 时间差从 `saturating_sub` 改为受检减法并透传错误。
   - `deduplicate_revocation_alerts` 的 suppress window 时间差从 `saturating_sub` 改为受检减法。
   - `reconcile_revocations_with_policy` 报告计数（`rejected/in_sync/diverged/merged`）从饱和累加改为受检累加。
@@ -23,7 +23,7 @@
   - 在模块内增加受检计数 helper 的 overflow 单元测试。
 
 ### Out of Scope（后续阶段）
-- `membership.rs`、`mempool.rs`、`agent_world_node` 中尚未收口的计数饱和语义。
+- `membership.rs`、`mempool.rs`、`oasis7_node` 中尚未收口的计数饱和语义。
 - `membership_recovery/replay*.rs` 非本阶段增量（已收口路径除外）。
 - 全仓库数值 newtype 统一与跨模块时间源治理。
 

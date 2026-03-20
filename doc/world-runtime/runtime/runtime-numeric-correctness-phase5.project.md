@@ -22,14 +22,14 @@
 - [x] 新增对应溢出拒绝测试。
 
 ### T3 回归与收口
-- [x] 运行 `agent_world_consensus` 定向回归测试。
+- [x] 运行 `oasis7_consensus` 定向回归测试。
 - [x] 回写设计文档状态（M0~M3）。
 - [x] 回写项目状态与 `doc/devlog/2026-02-23.md`。
 
 ## 依赖
-- `crates/agent_world_consensus/src/sequencer_mainloop.rs`
-- `crates/agent_world_consensus/src/lease.rs`
-- `crates/agent_world_consensus/src/lib.rs`
+- `crates/oasis7_consensus/src/sequencer_mainloop.rs`
+- `crates/oasis7_consensus/src/lease.rs`
+- `crates/oasis7_consensus/src/lib.rs`
 - `doc/world-runtime/runtime/runtime-numeric-correctness-phase5.prd.md`
 
 ## 状态

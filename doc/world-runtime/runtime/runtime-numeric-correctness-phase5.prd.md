@@ -7,7 +7,7 @@
 
 
 ## 1. Executive Summary
-- 收口 `agent_world_consensus` 中仍位于主链路的饱和递进语义，避免长期运行时出现静默夹逼后继续执行。
+- 收口 `oasis7_consensus` 中仍位于主链路的饱和递进语义，避免长期运行时出现静默夹逼后继续执行。
 - 将 sequencer 的 `next_slot/next_height` 与 lease 的 `term/expires_at` 递进统一改为显式溢出失败。
 - 保证溢出失败路径不产生局部状态污染（不做部分写入），并补齐可回归测试。
 

@@ -20,13 +20,13 @@
 - [x] 补齐计数边界 overflow 测试并验证 pending/dead-letter 不被部分更新。
 
 ### T3 回归与收口
-- [x] 运行 `agent_world_consensus` 定向回归测试。
+- [x] 运行 `oasis7_consensus` 定向回归测试。
 - [x] 回写设计文档状态（M0~M3）。
 - [x] 回写项目状态与 `doc/devlog/2026-02-23.md`。
 
 ## 依赖
-- `crates/agent_world_consensus/src/membership_recovery/mod.rs`
-- `crates/agent_world_consensus/src/membership_recovery_tests.rs`
+- `crates/oasis7_consensus/src/membership_recovery/mod.rs`
+- `crates/oasis7_consensus/src/membership_recovery_tests.rs`
 
 ## 状态
 - 当前状态：`已完成`
