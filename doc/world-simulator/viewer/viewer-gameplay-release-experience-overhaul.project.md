@@ -39,11 +39,11 @@
 
 ## 依赖
 - doc/world-simulator/viewer/viewer-gameplay-release-experience-overhaul.prd.md
-- `crates/agent_world_viewer/src/app_bootstrap.rs`
-- `crates/agent_world_viewer/src/egui_right_panel.rs`
-- `crates/agent_world_viewer/src/right_panel_module_visibility.rs`
-- `crates/agent_world_viewer/src/ui_state_types.rs`
-- `crates/agent_world_viewer/src/tests.rs`
+- `crates/oasis7_viewer/src/app_bootstrap.rs`
+- `crates/oasis7_viewer/src/egui_right_panel.rs`
+- `crates/oasis7_viewer/src/right_panel_module_visibility.rs`
+- `crates/oasis7_viewer/src/ui_state_types.rs`
+- `crates/oasis7_viewer/src/tests.rs`
 - `testing-manual.md`
 
 ## 状态

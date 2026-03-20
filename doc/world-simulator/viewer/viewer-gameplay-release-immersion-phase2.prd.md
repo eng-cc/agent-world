@@ -13,7 +13,7 @@
 - 保持 Director 模式不受破坏，确保调试链路可用。
 
 ## 2. User Experience & Functionality
-- `crates/agent_world_viewer` 的 Web/UI 交互层：
+- `crates/oasis7_viewer` 的 Web/UI 交互层：
   - 事件驱动情绪反馈（toast/提示）
   - Player 首屏引导层与“下一步目标”提示
   - Player 轻量 HUD（非技术细节优先）
@@ -21,7 +21,7 @@
 
 ## 非目标
 - 本阶段不引入大型美术资源包（模型/贴图重做）。
-- 本阶段不改动 `agent_world` 协议与仿真核心逻辑。
+- 本阶段不改动 `oasis7` 协议与仿真核心逻辑。
 - 本阶段不改 `third_party` 目录。
 
 ## 3. AI System Requirements (If Applicable)

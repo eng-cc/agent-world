@@ -12,7 +12,7 @@
   - 降低技术信息噪声，保留可调试能力但默认不干扰 Player 体验。
 
 ## 2. User Experience & Functionality
-- `crates/agent_world_viewer` Player 模式 UI 重构：
+- `crates/oasis7_viewer` Player 模式 UI 重构：
   - 右侧面板隐藏态升级为边缘呼出式入口（Edge Drawer Entry），增强可发现性与低干扰并存。
   - Player 模式右侧面板宽度预算收紧，避免打开后再次占据过多视野。
   - 新手引导卡与目标卡联动为“任务闭环提示”（阶段描述 + 快捷入口 + 状态回显）。
@@ -20,7 +20,7 @@
 - 保持中英文文案一致可切换。
 
 ## 非目标
-- 不改动 `agent_world` 仿真协议与核心规则。
+- 不改动 `oasis7` 仿真协议与核心规则。
 - 不改 `third_party`。
 - 不引入大型美术资产包或外部 UI 框架。
 
@@ -66,8 +66,8 @@
 - 里程碑完成情况：
   - M1/M2/M3/M4 全部完成。
 - 回归结果：
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer` 通过（309/309）。
-  - `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-unknown` 通过。
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7_viewer` 通过（309/309）。
+  - `env -u RUSTC_WRAPPER cargo check -p oasis7_viewer --target wasm32-unknown-unknown` 通过。
 - Web 闭环（S6）结果：
   - `window.__AW_TEST__` 可访问，`getState()` 返回 `tick/connectionStatus`。
   - 语义动作链可用：`runSteps(...)` + `sendControl("pause")` + `Tab` 面板切换。

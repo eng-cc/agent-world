@@ -12,14 +12,14 @@
   - 保持 Player 低噪声设计，不回退为技术工具面板。
 
 ## 2. User Experience & Functionality
-- `crates/agent_world_viewer` UI 侧改造：
+- `crates/oasis7_viewer` UI 侧改造：
   - Player 成就弹层（解锁里程碑、分级展示、自动淡出）。
   - Player Agent 事件气泡层（增量事件驱动，短句高频反馈）。
   - 现有 Player 体验层（HUD/引导/toast）整合为统一渲染层。
 - 中英文文案保持一致并可切换。
 
 ## 非目标
-- 不修改仿真核心协议与 `agent_world` 核心逻辑。
+- 不修改仿真核心协议与 `oasis7` 核心逻辑。
 - 不改 `third_party` 目录。
 - 不引入大型美术资源包（模型/贴图资产）。
 
@@ -65,9 +65,9 @@
 
 ## 验收结论
 - 代码回归：
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer sync_player_achievements_ -- --nocapture`
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer sync_agent_chatter_bubbles_ -- --nocapture`
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer feedback_ -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7_viewer sync_player_achievements_ -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7_viewer sync_agent_chatter_bubbles_ -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7_viewer feedback_ -- --nocapture`
 - Web 闭环（agent-browser）：
   - `window.__AW_TEST__.getState()` 可访问，`connectionStatus=connected`；
   - 页面基础语义正常（`title=oasis7 Viewer (Web)`，`canvasCount=1`，`hasTestApi=true`）；

@@ -13,9 +13,9 @@
 
 ## 依赖
 - doc/world-simulator/viewer/viewer-gameplay-release-immersion-phase2.prd.md
-- `crates/agent_world_viewer/src/egui_right_panel.rs`
-- `crates/agent_world_viewer/src/egui_right_panel_tests.rs`
-- `crates/agent_world_viewer/src/i18n.rs`
+- `crates/oasis7_viewer/src/egui_right_panel.rs`
+- `crates/oasis7_viewer/src/egui_right_panel_tests.rs`
+- `crates/oasis7_viewer/src/i18n.rs`
 - `testing-manual.md`
 
 ## 状态
