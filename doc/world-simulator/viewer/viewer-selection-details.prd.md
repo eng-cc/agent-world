@@ -18,7 +18,7 @@
 
 ## 2. User Experience & Functionality
 - **范围内**
-  - `agent_world_viewer` 新增详情 UI 区块与文本渲染逻辑。
+  - `oasis7_viewer` 新增详情 UI 区块与文本渲染逻辑。
   - 选中对象范围扩展到 Asset/PowerPlant/Chunk。
   - `viewer` 协议新增决策 trace 消息（用于 live 模式）。
   - `LlmAgentBehavior` 暴露最近一次决策 trace（输入/输出/解析错误）。

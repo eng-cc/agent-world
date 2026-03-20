@@ -14,8 +14,8 @@
 
 ## 依赖
 - doc/world-simulator/viewer/viewer-auto-focus-capture.prd.md
-- `crates/agent_world_viewer/src/main.rs`
-- `crates/agent_world_viewer/src/camera_controls.rs`
+- `crates/oasis7_viewer/src/main.rs`
+- `crates/oasis7_viewer/src/camera_controls.rs`
 - `scripts/capture-viewer-frame.sh`
 
 ## 状态

@@ -14,9 +14,9 @@
 - [x] GFT-6 回写项目状态与 devlog，提交收口
 
 ## 依赖
-- `crates/agent_world_viewer/src/viewer_automation.rs`
-- `crates/agent_world_viewer/src/web_test_api.rs`
-- `crates/agent_world_viewer/src/main.rs`（`Viewer3dScene` 实体索引）
+- `crates/oasis7_viewer/src/viewer_automation.rs`
+- `crates/oasis7_viewer/src/web_test_api.rs`
+- `crates/oasis7_viewer/src/main.rs`（`Viewer3dScene` 实体索引）
 
 ## 状态
 - 当前阶段：GFT 完成（GFT-0 ~ GFT-6）

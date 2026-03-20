@@ -37,10 +37,10 @@
 - [x] 更新任务日志并提交
 
 ## 依赖
-- `crates/agent_world/src/simulator/llm_agent.rs`
-- `crates/agent_world/src/viewer/protocol.rs`
-- `crates/agent_world/src/viewer/live.rs`
-- `crates/agent_world_viewer/src/main.rs`
+- `crates/oasis7/src/simulator/llm_agent.rs`
+- `crates/oasis7/src/viewer/protocol.rs`
+- `crates/oasis7/src/viewer/live.rs`
+- `crates/oasis7_viewer/src/main.rs`
 
 ## 状态
 - 当前阶段：M9（上半区滚动 + 按钮反馈 + Step loading）完成

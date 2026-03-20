@@ -13,10 +13,10 @@
 - [x] QAG5：更新总项目文档与开发日志，完成任务收口
 
 ## 依赖
-- `crates/agent_world_viewer/src/selection_linking.rs`
-- `crates/agent_world_viewer/src/selection_linking/tests.rs`
-- `crates/agent_world_viewer/src/egui_right_panel.rs`
-- `crates/agent_world_viewer/src/ui_locale_text.rs`
+- `crates/oasis7_viewer/src/selection_linking.rs`
+- `crates/oasis7_viewer/src/selection_linking/tests.rs`
+- `crates/oasis7_viewer/src/egui_right_panel.rs`
+- `crates/oasis7_viewer/src/ui_locale_text.rs`
 - `doc/world-simulator.project.md`
 - `doc/devlog/2026-02-15.md`
 

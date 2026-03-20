@@ -14,11 +14,11 @@
 - [x] ASC-6：执行截图闭环验证并更新日志
 
 ## 依赖
-- `crates/agent_world_viewer/src/app_bootstrap.rs`
-- `crates/agent_world_viewer/src/main.rs`
-- `crates/agent_world_viewer/src/viewer_automation.rs`（新增）
-- `crates/agent_world_viewer/src/ui_state_types.rs`（新增）
-- `crates/agent_world_viewer/src/tests_camera_mode.rs`（新增）
+- `crates/oasis7_viewer/src/app_bootstrap.rs`
+- `crates/oasis7_viewer/src/main.rs`
+- `crates/oasis7_viewer/src/viewer_automation.rs`（新增）
+- `crates/oasis7_viewer/src/ui_state_types.rs`（新增）
+- `crates/oasis7_viewer/src/tests_camera_mode.rs`（新增）
 - `scripts/capture-viewer-frame.sh`
 
 ## 状态

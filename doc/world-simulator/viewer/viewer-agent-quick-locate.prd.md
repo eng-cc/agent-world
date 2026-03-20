@@ -13,8 +13,8 @@
 ## 2. User Experience & Functionality
 
 ### 范围内
-- `agent_world_viewer` 新增 Agent 快速定位动作：优先定位当前已选中的 Agent，否则定位当前场景字典序第一个 Agent。
-- `agent_world_viewer` 右侧 Egui 面板「事件联动」新增按钮并接入该动作。
+- `oasis7_viewer` 新增 Agent 快速定位动作：优先定位当前已选中的 Agent，否则定位当前场景字典序第一个 Agent。
+- `oasis7_viewer` 右侧 Egui 面板「事件联动」新增按钮并接入该动作。
 - 兼容旧 UI 控件路径（Bevy UI 按钮体系）并补齐标签更新。
 - 补充单元测试（动作行为、标签文案）。
 

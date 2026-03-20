@@ -12,10 +12,10 @@
 
 ## 2. User Experience & Functionality
 ### 范围内
-- `agent_world_viewer` 新增启动自动化系统（按步骤驱动相机与选中状态）。
+- `oasis7_viewer` 新增启动自动化系统（按步骤驱动相机与选中状态）。
 - 支持步骤类型：`wait`、`mode`、`focus`、`pan`、`zoom`、`orbit`、`select`。
 - 支持目标类型：`agent:<id>`、`location:<id>`、`first_agent`、`first_location`。
-- 保留向后兼容：`AGENT_WORLD_VIEWER_AUTO_SELECT*` 仍可单独触发自动选中。
+- 保留向后兼容：`OASIS7_VIEWER_AUTO_SELECT*` 仍可单独触发自动选中。
 - `scripts/capture-viewer-frame.sh` 新增参数 `--auto-select-target` 与 `--automation-steps`，并透传 viewer 环境变量。
 - 新增/更新测试，覆盖配置解析与相机/选中步骤语法。
 
@@ -29,9 +29,9 @@
 
 ## 4. Technical Specifications
 - viewer 环境变量：
-  - `AGENT_WORLD_VIEWER_AUTO_SELECT=1`
-  - `AGENT_WORLD_VIEWER_AUTO_SELECT_TARGET=<target>`
-  - `AGENT_WORLD_VIEWER_AUTOMATION_STEPS=<steps>`
+  - `OASIS7_VIEWER_AUTO_SELECT=1`
+  - `OASIS7_VIEWER_AUTO_SELECT_TARGET=<target>`
+  - `OASIS7_VIEWER_AUTOMATION_STEPS=<steps>`
 - target 语法：
   - `agent:agent-0`
   - `location:loc-1`
