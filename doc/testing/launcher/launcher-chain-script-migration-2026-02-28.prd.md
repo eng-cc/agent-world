@@ -42,14 +42,14 @@
 | 长跑脚本阻断 | 阻断条件、提示文案、替代入口 | 启动前检测旧参数并失败退出 | `legacy -> blocked-with-guidance` | 先阻断错误路径，再给替代建议 | 维护者定义阻断策略 |
 | 文档口径收口 | 手册条目、脚本调用示例、状态说明 | 同步更新文档并标明可执行边界 | `draft -> aligned` | 手册与脚本口径必须一致 | 文档维护者审批 |
 | 兼容日志/产物 | 日志路径、关键产物命名 | 尽量保持命名兼容避免下游破坏 | `unchanged -> validated` | 优先保持现有产物路径 | 测试维护者核验 |
-| 静态资源目录兼容 | `--viewer-static-dir`、`AGENT_WORLD_GAME_STATIC_DIR`、默认目录回退规则 | QA 脚本透传静态目录，launcher 支持环境覆盖并校验目录可用 | `implicit-default -> explicit-or-env-override -> compatible` | 显式参数优先，其次环境覆盖，再默认目录 | 发布负责人可指定，脚本维护者定义默认 |
+| 静态资源目录兼容 | `--viewer-static-dir`、`OASIS7_GAME_STATIC_DIR`、默认目录回退规则 | QA 脚本透传静态目录，launcher 支持环境覆盖并校验目录可用 | `implicit-default -> explicit-or-env-override -> compatible` | 显式参数优先，其次环境覆盖，再默认目录 | 发布负责人可指定，脚本维护者定义默认 |
 - Acceptance Criteria:
   - AC-1: 两条日常脚本完成 `world_game_launcher` 迁移并可执行。
   - AC-2: 两条长跑脚本对旧链路显式阻断，提示包含迁移方向。
   - AC-3: 手册与专题文档反映新启动口径与暂不可执行边界。
   - AC-4: 未重构的长跑多节点闭环不在本轮硬实现范围。
   - AC-5: 文档与任务状态可在项目文档/devlog 追溯。
-  - AC-6: `viewer-release-qa-loop.sh` 支持 `--viewer-static-dir` 并传递到 `world_game_launcher`；当 `AGENT_WORLD_GAME_STATIC_DIR` 配置有效目录时可覆盖默认 `web`。
+  - AC-6: `viewer-release-qa-loop.sh` 支持 `--viewer-static-dir` 并传递到 `world_game_launcher`；当 `OASIS7_GAME_STATIC_DIR` 配置有效目录时可覆盖默认 `web`。
 - Non-Goals:
   - 不在本轮重写 S10/P2P 为完整 `world_chain_runtime` 多节点闭环。
   - 不恢复 `world_viewer_live` 内嵌节点参数兼容。
@@ -66,9 +66,9 @@
   - `scripts/viewer-release-qa-loop.sh`
   - `scripts/s10-five-node-game-soak.sh`
   - `scripts/p2p-longrun-soak.sh`
-  - `crates/agent_world/src/bin/world_game_launcher.rs`
-  - `crates/agent_world/src/bin/world_chain_runtime.rs`
-  - `AGENT_WORLD_GAME_STATIC_DIR`
+  - `crates/oasis7/src/bin/world_game_launcher.rs`
+  - `crates/oasis7/src/bin/world_chain_runtime.rs`
+  - `OASIS7_GAME_STATIC_DIR`
   - `testing-manual.md`
 - Edge Cases & Error Handling:
   - 脚本仍传入 `world_viewer_live --node-*`：立即失败并提示替代入口。

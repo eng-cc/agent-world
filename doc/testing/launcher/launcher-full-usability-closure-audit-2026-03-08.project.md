@@ -15,9 +15,9 @@
 - doc/testing/launcher/launcher-full-usability-closure-audit-2026-03-08.prd.md
 - `testing-manual.md`
 - `doc/testing/manual/web-ui-agent-browser-closure-manual.prd.md`
-- `crates/agent_world/src/bin/world_game_launcher.rs`
-- `crates/agent_world/src/bin/world_game_launcher/world_game_launcher_tests.rs`
-- `crates/agent_world_client_launcher/src/main.rs`
+- `crates/oasis7/src/bin/world_game_launcher.rs`
+- `crates/oasis7/src/bin/world_game_launcher/world_game_launcher_tests.rs`
+- `crates/oasis7_client_launcher/src/main.rs`
 - `scripts/run-game-test.sh`
 - `scripts/viewer-release-qa-loop.sh`
 - `scripts/s10-five-node-game-soak.sh`

@@ -13,7 +13,7 @@
   - SC-1: 启动失败（如静态 HTTP 绑定失败）时已拉起子进程可立即回滚终止。
   - SC-2: 就绪探针仅在子进程持续存活且响应合法时判定成功。
   - SC-3: IPv6 地址解析强制 bracket 规范，URL 输出自动兼容 `[ipv6]:port`。
-  - SC-4: `world_game_launcher` 与 `agent_world_client_launcher` 规则一致并通过定向测试。
+  - SC-4: `world_game_launcher` 与 `oasis7_client_launcher` 规则一致并通过定向测试。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -44,7 +44,7 @@
   - AC-1: `world_game_launcher` 支持终止信号清理、启动失败回滚、就绪存活联动。
   - AC-2: HTTP ready 仅在合法响应前缀下判定成功。
   - AC-3: `parse_host_port` 支持 bracket IPv6，拒绝未 bracket 写法。
-  - AC-4: `agent_world_client_launcher` 与 `world_game_launcher` 地址规则一致。
+  - AC-4: `oasis7_client_launcher` 与 `world_game_launcher` 地址规则一致。
   - AC-5: 定向单测与文档收口完成，`--all-targets` 构建噪音下降。
 - Non-Goals:
   - 不改动 `world_chain_runtime` 业务协议。
@@ -58,11 +58,11 @@
 ## 4. Technical Specifications
 - Architecture Overview: 以 `world_game_launcher` 为核心执行器，围绕“启动-就绪-停止”阶段增加失败原子性和探针真实性保障，并由客户端启动器共享同一地址解析语义。
 - Integration Points:
-  - `crates/agent_world/src/bin/world_game_launcher.rs`
-  - `crates/agent_world/src/bin/world_game_launcher/world_game_launcher_tests.rs`
-  - `crates/agent_world_client_launcher/src/main.rs`
-  - `crates/agent_world/src/bin/world_chain_runtime/distfs_probe_runtime.rs`
-  - `crates/agent_world/src/bin/world_viewer_live.rs（`#[cfg(test)]`）`
+  - `crates/oasis7/src/bin/world_game_launcher.rs`
+  - `crates/oasis7/src/bin/world_game_launcher/world_game_launcher_tests.rs`
+  - `crates/oasis7_client_launcher/src/main.rs`
+  - `crates/oasis7/src/bin/world_chain_runtime/distfs_probe_runtime.rs`
+  - `crates/oasis7/src/bin/world_viewer_live.rs（`#[cfg(test)]`）`
 - Edge Cases & Error Handling:
   - 静态 HTTP 端口占用：视为启动失败并触发子进程回滚。
   - 子进程短暂启动后立即退出：ready 轮询中立即失败，避免误报成功。
@@ -80,7 +80,7 @@
 - Phased Rollout:
   - MVP (LCH-1): 设计/项目文档建档。
   - v1.1 (LCH-2): `world_game_launcher` 生命周期与就绪逻辑硬化。
-  - v2.0 (LCH-3): `agent_world_client_launcher` IPv6/URL 规则对齐。
+  - v2.0 (LCH-3): `oasis7_client_launcher` IPv6/URL 规则对齐。
   - v2.1 (LCH-4): 回归测试、文档收口与代码噪音清理。
 - Technical Risks:
   - 风险-1: 全局信号处理可能影响并行测试行为。
@@ -96,9 +96,9 @@
 | PRD-TESTING-LAUNCHER-HARDEN-003 | LCH-3/4 | `test_tier_required` | IPv6 解析/URL 规则单测与文档一致性检查 | CLI/GUI 联调与地址兼容 |
 
 ### 最小验收命令
-- `test -f crates/agent_world/src/bin/world_game_launcher/world_game_launcher_tests.rs`
-- `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_game_launcher`
-- `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher`
+- `test -f crates/oasis7/src/bin/world_game_launcher/world_game_launcher_tests.rs`
+- `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_game_launcher`
+- `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher`
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |

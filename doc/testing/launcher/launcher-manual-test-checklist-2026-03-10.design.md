@@ -14,8 +14,8 @@
 
 ## 3. 关键接口 / 入口
 - `testing-manual.md` 的 S6 Web UI 闭环 smoke 套件入口
-- `crates/agent_world/src/bin/world_web_launcher.rs`
-- `crates/agent_world/src/bin/world_web_launcher/gui_agent_api.rs`
+- `crates/oasis7/src/bin/world_web_launcher.rs`
+- `crates/oasis7/src/bin/world_web_launcher/gui_agent_api.rs`
 - `doc/testing/launcher/launcher-manual-test-checklist-2026-03-10.prd.md`
 
 ## 4. 约束与边界

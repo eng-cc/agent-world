@@ -61,9 +61,9 @@
 ## 4. Technical Specifications
 - Architecture Overview: 本审查以 `world_game_launcher` 为核心执行器，结合启动脚本与 agent-browser 形成“进程编排 -> Web 可达 -> 语义交互 -> 证据采集 -> 分级结论”的验证流水线。
 - Integration Points:
-  - `crates/agent_world/src/bin/world_game_launcher.rs`
-  - `crates/agent_world/src/bin/world_game_launcher/world_game_launcher_tests.rs`
-  - `crates/agent_world_client_launcher/src/main.rs`
+  - `crates/oasis7/src/bin/world_game_launcher.rs`
+  - `crates/oasis7/src/bin/world_game_launcher/world_game_launcher_tests.rs`
+  - `crates/oasis7_client_launcher/src/main.rs`
   - `scripts/run-game-test.sh`
   - `scripts/viewer-release-qa-loop.sh`
   - `scripts/s10-five-node-game-soak.sh`
@@ -75,7 +75,7 @@
   - 页面可开但 `__AW_TEST__` 不可用：标记 UI 语义层失败并保留 snapshot。
   - 仅截图通过但 state/console 异常：判定为 conditional/fail，不可直接放行。
   - 旧入口脚本未阻断：判定高风险回归并要求立即修复。
-  - 静态目录配置不一致导致资源错配：记录 `--viewer-static-dir` 与 `AGENT_WORLD_GAME_STATIC_DIR` 实际来源并分级。
+  - 静态目录配置不一致导致资源错配：记录 `--viewer-static-dir` 与 `OASIS7_GAME_STATIC_DIR` 实际来源并分级。
 - Non-Functional Requirements:
   - NFR-REVIEW-1: 首个可用性初判应在执行开始后 10 分钟内产出。
   - NFR-REVIEW-2: 所有证据产物必须落在仓库既有目录（如 `output/playwright/`）并可追溯。

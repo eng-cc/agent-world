@@ -7,12 +7,12 @@
 
 
 ## 1. Executive Summary
-- Problem Statement: 通过启动器打开 Web Viewer 时，聊天与 Prompt 控制鉴权依赖手工设置 `AGENT_WORLD_VIEWER_AUTH_PUBLIC_KEY/PRIVATE_KEY`，导致易错且与节点配置割裂。且 `agent_chat` 业务拒绝会被 Viewer 误判为连接失败，造成“发送消息后连接异常”的错误反馈。
+- Problem Statement: 通过启动器打开 Web Viewer 时，聊天与 Prompt 控制鉴权依赖手工设置 `OASIS7_VIEWER_AUTH_PUBLIC_KEY/PRIVATE_KEY`，导致易错且与节点配置割裂。且 `agent_chat` 业务拒绝会被 Viewer 误判为连接失败，造成“发送消息后连接异常”的错误反馈。
 - Proposed Solution: 将 Viewer 鉴权默认口径收敛到 `config.toml [node]` keypair，并在启动器注入/Viewer 回退链路中统一读取，同时保留环境变量覆盖能力。补充连接状态分类规则：`AgentChatError` 仅作为业务层错误，不降级全局连接状态。
 - Success Criteria:
-  - SC-1: `world_game_launcher` 在 Web 注入 `window.__AGENT_WORLD_VIEWER_AUTH_ENV`，默认带入 node keypair。
+  - SC-1: `world_game_launcher` 在 Web 注入 `window.__OASIS7_VIEWER_AUTH_ENV`，默认带入 node keypair。
   - SC-2: Viewer wasm 端优先读取注入配置，native 端支持 `config.toml [node]` 回退。
-  - SC-3: `AGENT_WORLD_VIEWER_*` 环境变量覆盖能力保持不变。
+  - SC-3: `OASIS7_VIEWER_*` 环境变量覆盖能力保持不变。
   - SC-4: 用户无需手工设置鉴权 env 即可在启动器链路使用聊天与 Prompt 控制。
   - SC-5: `AgentChatError` 发生时 UI 不再显示“连接异常”，连接状态保持 transport 真实状态。
 
@@ -32,20 +32,20 @@
   - PRD-TESTING-LAUNCHER-AUTH-003: As a 自动化维护者, I want env overrides preserved, so that existing scripts remain compatible.
   - PRD-TESTING-LAUNCHER-AUTH-004: As a 启动器体验验证者, I want agent_chat business errors to not be treated as transport disconnects, so that connection diagnosis is accurate.
 - Critical User Flows:
-  1. Flow-AUTH-001: `world_game_launcher 读取 config.toml[node] -> 注入 __AGENT_WORLD_VIEWER_AUTH_ENV -> Web Viewer 使用鉴权`
+  1. Flow-AUTH-001: `world_game_launcher 读取 config.toml[node] -> 注入 __OASIS7_VIEWER_AUTH_ENV -> Web Viewer 使用鉴权`
   2. Flow-AUTH-002: `wasm Viewer 优先读注入 -> 注入缺失时回退进程环境变量`
   3. Flow-AUTH-003: `native Viewer 读取环境变量 -> 无环境变量时回退 config.toml[node]`
   4. Flow-AUTH-004: `玩家发送 agent_chat -> runtime 返回 AgentChatError -> Viewer 显示聊天失败原因但保持连接状态`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
-| 启动器 Web 注入 | `window.__AGENT_WORLD_VIEWER_AUTH_ENV`、`PLAYER_ID/PUBLIC_KEY/PRIVATE_KEY` | 返回 `index.html` 时注入脚本变量 | `config-loaded -> injected -> served` | 注入键名与环境变量键名保持一致 | 启动器维护者可调整注入逻辑 |
+| 启动器 Web 注入 | `window.__OASIS7_VIEWER_AUTH_ENV`、`PLAYER_ID/PUBLIC_KEY/PRIVATE_KEY` | 返回 `index.html` 时注入脚本变量 | `config-loaded -> injected -> served` | 注入键名与环境变量键名保持一致 | 启动器维护者可调整注入逻辑 |
 | wasm 鉴权解析 | 注入对象、进程环境变量 | 读取鉴权来源并构建 signer | `resolved -> auth-ready/failed` | 优先级：注入 > 环境变量 | Viewer 客户端自动执行 |
 | native 鉴权回退 | 环境变量、`config.toml[node]` | 环境变量缺失时读配置文件回退 | `resolved -> auth-ready/failed` | 优先级：环境变量 > config 回退 | 本地运行用户可通过 env 覆盖 |
-| player_id 规则 | `viewer-player` 默认值、`AGENT_WORLD_VIEWER_PLAYER_ID` 覆盖 | 构建请求时附带 player_id | `defaulted -> overridden` | 存在 env 时优先使用 env | 运行者可显式覆盖 |
+| player_id 规则 | `viewer-player` 默认值、`OASIS7_VIEWER_PLAYER_ID` 覆盖 | 构建请求时附带 player_id | `defaulted -> overridden` | 存在 env 时优先使用 env | 运行者可显式覆盖 |
 | 聊天错误状态归类 | `ViewerResponse::AgentChatError`、`ConnectionStatus` | 收到业务错误时只更新聊天错误反馈，不覆盖 transport 状态 | `connected -> connected`（业务错误）/ `connected -> error`（仅 transport 错误） | transport 错误优先影响连接态；业务错误只影响功能反馈 | Viewer 客户端自动执行 |
 - Acceptance Criteria:
-  - AC-1: 启动器在 Web 响应中注入标准化 `AGENT_WORLD_VIEWER_AUTH_*` 键。
+  - AC-1: 启动器在 Web 响应中注入标准化 `OASIS7_VIEWER_AUTH_*` 键。
   - AC-2: wasm 端支持注入读取并保持环境变量兼容路径。
   - AC-3: native 端支持 `config.toml[node]` 回退。
   - AC-4: `player_id` 默认/覆盖逻辑稳定并可测试。
@@ -63,13 +63,13 @@
 ## 4. Technical Specifications
 - Architecture Overview: 通过启动器注入 + Viewer 双端回退策略，将鉴权默认源统一到 node 配置，兼容历史 env 覆盖并减少手工配置成本。
 - Integration Points:
-  - `crates/agent_world/src/bin/world_game_launcher.rs`
-  - `crates/agent_world/src/bin/world_game_launcher/world_game_launcher_tests.rs`
-  - `crates/agent_world_viewer/src/egui_right_panel_chat_auth.rs`
-  - `crates/agent_world_viewer/src/egui_right_panel_chat_tests.rs`
-  - `crates/agent_world_viewer/src/main_connection.rs`
-  - `crates/agent_world_viewer/src/tests.rs`
-  - `crates/agent_world_viewer/Cargo.toml`
+  - `crates/oasis7/src/bin/world_game_launcher.rs`
+  - `crates/oasis7/src/bin/world_game_launcher/world_game_launcher_tests.rs`
+  - `crates/oasis7_viewer/src/egui_right_panel_chat_auth.rs`
+  - `crates/oasis7_viewer/src/egui_right_panel_chat_tests.rs`
+  - `crates/oasis7_viewer/src/main_connection.rs`
+  - `crates/oasis7_viewer/src/tests.rs`
+  - `crates/oasis7_viewer/Cargo.toml`
   - `config.toml` (`[node] private_key/public_key`)
 - Edge Cases & Error Handling:
   - `config.toml` 缺失/损坏：回退路径失败时输出明确错误，建议使用 env 覆盖。
@@ -107,7 +107,7 @@
 | PRD-TESTING-LAUNCHER-AUTH-002 | AUTOWIRE-2/3 | `test_tier_required` | wasm/native 优先级与回退单测 | Viewer 鉴权解析稳定性 |
 | PRD-TESTING-LAUNCHER-AUTH-003 | AUTOWIRE-3/4 | `test_tier_required` | 环境变量覆盖兼容与文档收口检查 | 自动化脚本兼容性 |
 | PRD-TESTING-LAUNCHER-AUTH-004 | AUTOWIRE-6 | `test_tier_required` | `AgentChatError` 状态机分支单测（连接态保持） | Web 启动器聊天体验与连接诊断准确性 |
-- 执行记录（2026-03-08）: AUTOWIRE-6 已完成，`agent_world_viewer` 连接状态机不再将 `AgentChatError` 视为 transport 断连。
+- 执行记录（2026-03-08）: AUTOWIRE-6 已完成，`oasis7_viewer` 连接状态机不再将 `AgentChatError` 视为 transport 断连。
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |
