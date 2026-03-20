@@ -1075,7 +1075,7 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .expect("clock drift")
             .as_nanos();
-        let dir = std::env::temp_dir().join(format!("agent-world-wasm-cache-{suffix}-{nonce}"));
+        let dir = std::env::temp_dir().join(format!("oasis7-wasm-cache-{suffix}-{nonce}"));
         fs::create_dir_all(&dir).expect("create temp cache dir");
         dir
     }

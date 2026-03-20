@@ -167,6 +167,7 @@
   - SC-63: `agent_world_client_launcher` 的源码态 viewer static dir 默认探测与 launcher 端配置校验必须优先探测 `oasis7_viewer/dist`，同时保留 `agent_world_viewer/dist` 兼容回退，避免 client launcher 与其他 launcher 在品牌迁移期对 dev fallback 目录名产生分叉。
   - SC-64: `agent_world_viewer` 的 auth/node-config 相关测试临时目录前缀必须默认使用 `oasis7_*`，避免 viewer auth 回归产物继续泄露旧 `agent_world_viewer_*` 内部命名。
   - SC-65: `crates/agent_world/tests` 下的 module store 集成测试临时目录前缀与测试模块 artifact signer seed 必须优先使用 `oasis7_*` 口径，避免 integration test 产物与确定性签名种子继续内嵌旧 `agent-world` 品牌字符串。
+  - SC-66: `agent_world_wasm_executor` 与 `agent_world_wasm_store` 的测试/缓存临时目录前缀必须默认使用 `oasis7_*`，避免底层 wasm 编译缓存与模块仓库回归产物继续泄露旧 `agent-world` 内部命名。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -391,6 +392,7 @@
   - AC-68: `crates/agent_world_client_launcher/src/{platform_ops.rs,launcher_core.rs,main_tests.rs}` 必须把源码态 viewer fallback 候选顺序统一为 `oasis7_viewer/dist` 优先、`agent_world_viewer/dist` 次之；`resolve_static_dir_path` 与 launcher config 校验不得继续把旧 viewer 目录名当作 client launcher 当前默认真值。
   - AC-69: `crates/agent_world_viewer/src/egui_right_panel_chat_tests.rs` 的 viewer auth 临时目录前缀必须改为 `oasis7_viewer_chat_auth_*`；对应 node-config signer 定向回归通过后，不得继续输出 `agent_world_viewer_chat_auth_*` 作为当前默认测试产物命名。
   - AC-70: `crates/agent_world/tests/module_store.rs` 的集成测试临时目录前缀必须改为 `oasis7-store-*` 系列，且 `crates/agent_world/tests/common/mod.rs` 的 deterministic module artifact signer seed 必须改为 `oasis7-test-module-artifact-signer-v1`；module store 定向回归通过后，不得继续把 `agent-world-store-*` 或旧 `agent-world-test-module-artifact-signer-v1` 当作当前默认真值。
+  - AC-71: `crates/agent_world_wasm_executor/src/lib.rs` 的 disk cache 临时目录前缀必须改为 `oasis7-wasm-cache-*`，且 `crates/agent_world_wasm_store/src/lib.rs` 的测试临时目录前缀必须改为 `oasis7-wasm-store-*` / `oasis7-wasm-store-version-*`；对应包定向回归通过后，不得继续输出 `agent-world-wasm-*` 作为当前默认产物命名。
 - Non-Goals:
   - 不在本 PRD 中详细列出每个 UI 像素级规范。
   - 不替代 world-runtime/p2p 的底层协议设计。

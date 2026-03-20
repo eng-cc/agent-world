@@ -255,7 +255,7 @@ mod tests {
 
     #[test]
     fn roundtrip_artifact_meta_and_registry() {
-        let dir = temp_dir("agent-world-wasm-store");
+        let dir = temp_dir("oasis7-wasm-store");
         let store = ModuleStore::new(&dir);
 
         let wasm_hash = "abc123";
@@ -295,7 +295,7 @@ mod tests {
 
     #[test]
     fn load_registry_rejects_version_mismatch() {
-        let dir = temp_dir("agent-world-wasm-store-version");
+        let dir = temp_dir("oasis7-wasm-store-version");
         let store = ModuleStore::new(&dir);
         fs::create_dir_all(store.root()).expect("create root");
         let invalid = serde_json::json!({
