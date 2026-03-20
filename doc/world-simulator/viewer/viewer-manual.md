@@ -6,8 +6,8 @@
 - 统一人工调试与脚本闭环的命令入口，减少重复沟通成本。
 
 ## 适用范围
-- 可视化客户端：`crates/agent_world_viewer`
-- 联调服务端：`crates/agent_world --bin world_viewer_live`
+- 可视化客户端：`crates/oasis7_viewer`
+- 联调服务端：`crates/oasis7 --bin world_viewer_live`
 - Web 闭环入口：`scripts/run-viewer-web.sh` + agent-browser CLI
 - native fallback 脚本：`scripts/capture-viewer-frame.sh`
 - 角色边界：Web 端定位为 Viewer（观察/调试/间接控制），不承担完整分布式节点职责；共识与复制由后端节点进程负责。
@@ -17,12 +17,12 @@
 
 ### 1）启动 live server（推荐）
 ```bash
-env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011
+env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011
 ```
 `world_viewer_live` 默认使用内置脚本决策；如需 LLM 决策可显式传 `--llm`（需先配置 LLM key）。
 
 ```bash
-env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --no-llm --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011
+env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_viewer_live -- llm_bootstrap --no-llm --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011
 ```
 
 `world_viewer_live` 现已统一为 runtime/world 链路（协议兼容输出 `WorldSnapshot/WorldEvent`），不再提供 simulator fallback 启动分支。  
@@ -30,12 +30,12 @@ env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_boo
 
 ### 2）启动 viewer
 ```bash
-env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023
+env -u RUSTC_WRAPPER cargo run -p oasis7_viewer -- 127.0.0.1:5023
 ```
 
 ### 3）离线模式（仅查看本地 UI，不连服务端）
 ```bash
-AGENT_WORLD_VIEWER_OFFLINE=1 env -u RUSTC_WRAPPER cargo run -p agent_world_viewer
+OASIS7_VIEWER_OFFLINE=1 env -u RUSTC_WRAPPER cargo run -p oasis7_viewer
 ```
 
 ### 4）浏览器模式（Bevy + wasm）
@@ -44,7 +44,7 @@ env -u NO_COLOR ./scripts/run-viewer-web.sh --address 127.0.0.1 --port 4173
 ```
 - 打开浏览器访问：`http://127.0.0.1:4173/?ws=ws://127.0.0.1:5011`
 - Web 端通过 `world_viewer_live --web-bind` 提供的 WebSocket bridge 在线连接 live server（Viewer + 网关路径）。
-- Web 端不直接运行 `agent_world_node` 的完整分布式协议栈（不承担 gossip/replication/共识职责）。
+- Web 端不直接运行 `oasis7_node` 的完整分布式协议栈（不承担 gossip/replication/共识职责）。
 - 首次运行前需安装：
   - `trunk`（`cargo install trunk`）
   - `wasm32-unknown-unknown`（`rustup target add wasm32-unknown-unknown`）
@@ -58,7 +58,7 @@ env -u NO_COLOR ./scripts/run-viewer-web.sh --address 127.0.0.1 --port 4173
 ## 发行模式（P2P 推荐）
 
 `world_viewer_live` 当前为纯 Viewer live 服务，不再承载 `--release-config`、`--runtime-world` 与 `--node-*` 控制面参数。  
-P2P 发行建议使用 `world_chain_runtime`（可由 `world_game_launcher` / `world_web_launcher` / `agent_world_client_launcher` 托管）锁定链参数，Viewer 仅保留 `--bind`、`--web-bind`、`--llm/--no-llm`。
+P2P 发行建议使用 `world_chain_runtime`（可由 `world_game_launcher` / `world_web_launcher` / `oasis7_client_launcher` 托管）锁定链参数，Viewer 仅保留 `--bind`、`--web-bind`、`--llm/--no-llm`。
 
 ## 常用交互
 - 鼠标拖拽：旋转/平移观察视角。
@@ -76,10 +76,10 @@ P2P 发行建议使用 `world_chain_runtime`（可由 `world_game_launcher` / `w
 ## 自动聚焦（Auto Focus）
 
 ### 启动时自动聚焦（环境变量）
-- `AGENT_WORLD_VIEWER_AUTO_FOCUS=1`
-- `AGENT_WORLD_VIEWER_AUTO_FOCUS_TARGET=<target>`
-- `AGENT_WORLD_VIEWER_AUTO_FOCUS_FORCE_3D=1|0`（默认 `1`）
-- `AGENT_WORLD_VIEWER_AUTO_FOCUS_RADIUS=<number>`（可选）
+- `OASIS7_VIEWER_AUTO_FOCUS=1`
+- `OASIS7_VIEWER_AUTO_FOCUS_TARGET=<target>`
+- `OASIS7_VIEWER_AUTO_FOCUS_FORCE_3D=1|0`（默认 `1`）
+- `OASIS7_VIEWER_AUTO_FOCUS_RADIUS=<number>`（可选）
 
 支持目标：
 - `first_fragment`
@@ -90,10 +90,10 @@ P2P 发行建议使用 `world_chain_runtime`（可由 `world_game_launcher` / `w
 
 示例：
 ```bash
-AGENT_WORLD_VIEWER_AUTO_FOCUS=1 \
-AGENT_WORLD_VIEWER_AUTO_FOCUS_TARGET=first_fragment \
-AGENT_WORLD_VIEWER_AUTO_FOCUS_RADIUS=18 \
-env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023
+OASIS7_VIEWER_AUTO_FOCUS=1 \
+OASIS7_VIEWER_AUTO_FOCUS_TARGET=first_fragment \
+OASIS7_VIEWER_AUTO_FOCUS_RADIUS=18 \
+env -u RUSTC_WRAPPER cargo run -p oasis7_viewer -- 127.0.0.1:5023
 ```
 
 ## 自动步骤（Auto Select / Automation Steps）
@@ -166,7 +166,7 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023
 ## 3D 渲染档位与精调（商业化精致度）
 
 ### 档位入口
-- `AGENT_WORLD_VIEWER_RENDER_PROFILE=debug|balanced|cinematic`
+- `OASIS7_VIEWER_RENDER_PROFILE=debug|balanced|cinematic`
 - 默认：`balanced`
 - 建议：先选档位，再做单项覆盖（避免一次性改太多参数导致定位困难）。
 
@@ -176,125 +176,125 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023
 - `cinematic`：高几何复杂度 + 质感材质策略 + 阴影开启 + 三点光更强调轮廓 + `BlenderFilmic` + 更强 Bloom 与色彩后处理。
 
 ### 资产层（Geometry/Shell）
-- `AGENT_WORLD_VIEWER_ASSET_GEOMETRY_TIER=debug|balanced|cinematic`
-- `AGENT_WORLD_VIEWER_LOCATION_SHELL_ENABLED=1|0`
+- `OASIS7_VIEWER_ASSET_GEOMETRY_TIER=debug|balanced|cinematic`
+- `OASIS7_VIEWER_LOCATION_SHELL_ENABLED=1|0`
 - 外部 mesh 覆盖（可选，未配置时回退到内置基础几何）：
-  - `AGENT_WORLD_VIEWER_AGENT_MESH_ASSET=<path#label>`
-  - `AGENT_WORLD_VIEWER_LOCATION_MESH_ASSET=<path#label>`
-  - `AGENT_WORLD_VIEWER_ASSET_MESH_ASSET=<path#label>`
-  - `AGENT_WORLD_VIEWER_POWER_PLANT_MESH_ASSET=<path#label>`
-  - `AGENT_WORLD_VIEWER_POWER_STORAGE_MESH_ASSET=<path#label>`
+  - `OASIS7_VIEWER_AGENT_MESH_ASSET=<path#label>`
+  - `OASIS7_VIEWER_LOCATION_MESH_ASSET=<path#label>`
+  - `OASIS7_VIEWER_ASSET_MESH_ASSET=<path#label>`
+  - `OASIS7_VIEWER_POWER_PLANT_MESH_ASSET=<path#label>`
+  - `OASIS7_VIEWER_POWER_STORAGE_MESH_ASSET=<path#label>`
 - 示例：
 ```bash
-AGENT_WORLD_VIEWER_LOCATION_MESH_ASSET=models/world/location.glb#Mesh0/Primitive0 \
-AGENT_WORLD_VIEWER_AGENT_MESH_ASSET=models/agents/worker.glb#Mesh0/Primitive0 \
-env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023
+OASIS7_VIEWER_LOCATION_MESH_ASSET=models/world/location.glb#Mesh0/Primitive0 \
+OASIS7_VIEWER_AGENT_MESH_ASSET=models/agents/worker.glb#Mesh0/Primitive0 \
+env -u RUSTC_WRAPPER cargo run -p oasis7_viewer -- 127.0.0.1:5023
 ```
 
 ### 材质层（PBR/Fragment）
-- `AGENT_WORLD_VIEWER_FRAGMENT_MATERIAL_STRATEGY=readability|fidelity`
-- `AGENT_WORLD_VIEWER_FRAGMENT_UNLIT=1|0`
-- `AGENT_WORLD_VIEWER_FRAGMENT_ALPHA=<0.05..1.0>`
-- `AGENT_WORLD_VIEWER_FRAGMENT_EMISSIVE_BOOST=<>=0`
-- `AGENT_WORLD_VIEWER_MATERIAL_AGENT_ROUGHNESS=<0..1>`
-- `AGENT_WORLD_VIEWER_MATERIAL_AGENT_METALLIC=<0..1>`
-- `AGENT_WORLD_VIEWER_MATERIAL_AGENT_EMISSIVE_BOOST=<>=0`
-- `AGENT_WORLD_VIEWER_MATERIAL_ASSET_ROUGHNESS=<0..1>`
-- `AGENT_WORLD_VIEWER_MATERIAL_ASSET_METALLIC=<0..1>`
-- `AGENT_WORLD_VIEWER_MATERIAL_ASSET_EMISSIVE_BOOST=<>=0`
-- `AGENT_WORLD_VIEWER_MATERIAL_FACILITY_ROUGHNESS=<0..1>`
-- `AGENT_WORLD_VIEWER_MATERIAL_FACILITY_METALLIC=<0..1>`
-- `AGENT_WORLD_VIEWER_MATERIAL_FACILITY_EMISSIVE_BOOST=<>=0`
-- `AGENT_WORLD_VIEWER_MATERIAL_VARIANT_PRESET=default|matte|glossy`（可选，启动时指定材质变体预设；运行中可按 `F8` 切换）
+- `OASIS7_VIEWER_FRAGMENT_MATERIAL_STRATEGY=readability|fidelity`
+- `OASIS7_VIEWER_FRAGMENT_UNLIT=1|0`
+- `OASIS7_VIEWER_FRAGMENT_ALPHA=<0.05..1.0>`
+- `OASIS7_VIEWER_FRAGMENT_EMISSIVE_BOOST=<>=0`
+- `OASIS7_VIEWER_MATERIAL_AGENT_ROUGHNESS=<0..1>`
+- `OASIS7_VIEWER_MATERIAL_AGENT_METALLIC=<0..1>`
+- `OASIS7_VIEWER_MATERIAL_AGENT_EMISSIVE_BOOST=<>=0`
+- `OASIS7_VIEWER_MATERIAL_ASSET_ROUGHNESS=<0..1>`
+- `OASIS7_VIEWER_MATERIAL_ASSET_METALLIC=<0..1>`
+- `OASIS7_VIEWER_MATERIAL_ASSET_EMISSIVE_BOOST=<>=0`
+- `OASIS7_VIEWER_MATERIAL_FACILITY_ROUGHNESS=<0..1>`
+- `OASIS7_VIEWER_MATERIAL_FACILITY_METALLIC=<0..1>`
+- `OASIS7_VIEWER_MATERIAL_FACILITY_EMISSIVE_BOOST=<>=0`
+- `OASIS7_VIEWER_MATERIAL_VARIANT_PRESET=default|matte|glossy`（可选，启动时指定材质变体预设；运行中可按 `F8` 切换）
 - 外部颜色覆盖（可选，值为严格 `#RRGGBB`，非法值自动回退默认）：
-  - `AGENT_WORLD_VIEWER_AGENT_BASE_COLOR=<#RRGGBB>`
-  - `AGENT_WORLD_VIEWER_AGENT_EMISSIVE_COLOR=<#RRGGBB>`
-  - `AGENT_WORLD_VIEWER_LOCATION_BASE_COLOR=<#RRGGBB>`
-  - `AGENT_WORLD_VIEWER_LOCATION_EMISSIVE_COLOR=<#RRGGBB>`
-  - `AGENT_WORLD_VIEWER_ASSET_BASE_COLOR=<#RRGGBB>`
-  - `AGENT_WORLD_VIEWER_ASSET_EMISSIVE_COLOR=<#RRGGBB>`
-  - `AGENT_WORLD_VIEWER_POWER_PLANT_BASE_COLOR=<#RRGGBB>`
-  - `AGENT_WORLD_VIEWER_POWER_PLANT_EMISSIVE_COLOR=<#RRGGBB>`
-  - `AGENT_WORLD_VIEWER_POWER_STORAGE_BASE_COLOR=<#RRGGBB>`
-  - `AGENT_WORLD_VIEWER_POWER_STORAGE_EMISSIVE_COLOR=<#RRGGBB>`
+  - `OASIS7_VIEWER_AGENT_BASE_COLOR=<#RRGGBB>`
+  - `OASIS7_VIEWER_AGENT_EMISSIVE_COLOR=<#RRGGBB>`
+  - `OASIS7_VIEWER_LOCATION_BASE_COLOR=<#RRGGBB>`
+  - `OASIS7_VIEWER_LOCATION_EMISSIVE_COLOR=<#RRGGBB>`
+  - `OASIS7_VIEWER_ASSET_BASE_COLOR=<#RRGGBB>`
+  - `OASIS7_VIEWER_ASSET_EMISSIVE_COLOR=<#RRGGBB>`
+  - `OASIS7_VIEWER_POWER_PLANT_BASE_COLOR=<#RRGGBB>`
+  - `OASIS7_VIEWER_POWER_PLANT_EMISSIVE_COLOR=<#RRGGBB>`
+  - `OASIS7_VIEWER_POWER_STORAGE_BASE_COLOR=<#RRGGBB>`
+  - `OASIS7_VIEWER_POWER_STORAGE_EMISSIVE_COLOR=<#RRGGBB>`
 - 外部贴图覆盖（可选，值为 `<path#label>`；web/native 需按运行时支持选择贴图格式，如 `png/ktx2`）：
   - 基础色（Albedo/Base Color）：
-    - `AGENT_WORLD_VIEWER_AGENT_BASE_TEXTURE_ASSET=<path#label>`
-    - `AGENT_WORLD_VIEWER_LOCATION_BASE_TEXTURE_ASSET=<path#label>`
-    - `AGENT_WORLD_VIEWER_ASSET_BASE_TEXTURE_ASSET=<path#label>`
-    - `AGENT_WORLD_VIEWER_POWER_PLANT_BASE_TEXTURE_ASSET=<path#label>`
-    - `AGENT_WORLD_VIEWER_POWER_STORAGE_BASE_TEXTURE_ASSET=<path#label>`
+    - `OASIS7_VIEWER_AGENT_BASE_TEXTURE_ASSET=<path#label>`
+    - `OASIS7_VIEWER_LOCATION_BASE_TEXTURE_ASSET=<path#label>`
+    - `OASIS7_VIEWER_ASSET_BASE_TEXTURE_ASSET=<path#label>`
+    - `OASIS7_VIEWER_POWER_PLANT_BASE_TEXTURE_ASSET=<path#label>`
+    - `OASIS7_VIEWER_POWER_STORAGE_BASE_TEXTURE_ASSET=<path#label>`
   - 法线（Normal）：
-    - `AGENT_WORLD_VIEWER_AGENT_NORMAL_TEXTURE_ASSET=<path#label>`
-    - `AGENT_WORLD_VIEWER_LOCATION_NORMAL_TEXTURE_ASSET=<path#label>`
-    - `AGENT_WORLD_VIEWER_ASSET_NORMAL_TEXTURE_ASSET=<path#label>`
-    - `AGENT_WORLD_VIEWER_POWER_PLANT_NORMAL_TEXTURE_ASSET=<path#label>`
-    - `AGENT_WORLD_VIEWER_POWER_STORAGE_NORMAL_TEXTURE_ASSET=<path#label>`
+    - `OASIS7_VIEWER_AGENT_NORMAL_TEXTURE_ASSET=<path#label>`
+    - `OASIS7_VIEWER_LOCATION_NORMAL_TEXTURE_ASSET=<path#label>`
+    - `OASIS7_VIEWER_ASSET_NORMAL_TEXTURE_ASSET=<path#label>`
+    - `OASIS7_VIEWER_POWER_PLANT_NORMAL_TEXTURE_ASSET=<path#label>`
+    - `OASIS7_VIEWER_POWER_STORAGE_NORMAL_TEXTURE_ASSET=<path#label>`
   - 金属度/粗糙度（MetallicRoughness，ORM 贴图中的 MR 通道）：
-    - `AGENT_WORLD_VIEWER_AGENT_METALLIC_ROUGHNESS_TEXTURE_ASSET=<path#label>`
-    - `AGENT_WORLD_VIEWER_LOCATION_METALLIC_ROUGHNESS_TEXTURE_ASSET=<path#label>`
-    - `AGENT_WORLD_VIEWER_ASSET_METALLIC_ROUGHNESS_TEXTURE_ASSET=<path#label>`
-    - `AGENT_WORLD_VIEWER_POWER_PLANT_METALLIC_ROUGHNESS_TEXTURE_ASSET=<path#label>`
-    - `AGENT_WORLD_VIEWER_POWER_STORAGE_METALLIC_ROUGHNESS_TEXTURE_ASSET=<path#label>`
+    - `OASIS7_VIEWER_AGENT_METALLIC_ROUGHNESS_TEXTURE_ASSET=<path#label>`
+    - `OASIS7_VIEWER_LOCATION_METALLIC_ROUGHNESS_TEXTURE_ASSET=<path#label>`
+    - `OASIS7_VIEWER_ASSET_METALLIC_ROUGHNESS_TEXTURE_ASSET=<path#label>`
+    - `OASIS7_VIEWER_POWER_PLANT_METALLIC_ROUGHNESS_TEXTURE_ASSET=<path#label>`
+    - `OASIS7_VIEWER_POWER_STORAGE_METALLIC_ROUGHNESS_TEXTURE_ASSET=<path#label>`
   - 自发光（Emissive）：
-    - `AGENT_WORLD_VIEWER_AGENT_EMISSIVE_TEXTURE_ASSET=<path#label>`
-    - `AGENT_WORLD_VIEWER_LOCATION_EMISSIVE_TEXTURE_ASSET=<path#label>`
-    - `AGENT_WORLD_VIEWER_ASSET_EMISSIVE_TEXTURE_ASSET=<path#label>`
-    - `AGENT_WORLD_VIEWER_POWER_PLANT_EMISSIVE_TEXTURE_ASSET=<path#label>`
-    - `AGENT_WORLD_VIEWER_POWER_STORAGE_EMISSIVE_TEXTURE_ASSET=<path#label>`
+    - `OASIS7_VIEWER_AGENT_EMISSIVE_TEXTURE_ASSET=<path#label>`
+    - `OASIS7_VIEWER_LOCATION_EMISSIVE_TEXTURE_ASSET=<path#label>`
+    - `OASIS7_VIEWER_ASSET_EMISSIVE_TEXTURE_ASSET=<path#label>`
+    - `OASIS7_VIEWER_POWER_PLANT_EMISSIVE_TEXTURE_ASSET=<path#label>`
+    - `OASIS7_VIEWER_POWER_STORAGE_EMISSIVE_TEXTURE_ASSET=<path#label>`
   - 说明：任一通道配置即生效；location 在任一贴图通道覆盖时会启用专用 core/halo 材质，避免与 world/chunk 材质联动。
 - 示例：
 ```bash
-AGENT_WORLD_VIEWER_AGENT_BASE_COLOR=#FF6A38 \
-AGENT_WORLD_VIEWER_AGENT_EMISSIVE_COLOR=#E66230 \
-AGENT_WORLD_VIEWER_LOCATION_BASE_COLOR=#4B88D9 \
-AGENT_WORLD_VIEWER_LOCATION_EMISSIVE_COLOR=#B8D8FF \
-env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023
+OASIS7_VIEWER_AGENT_BASE_COLOR=#FF6A38 \
+OASIS7_VIEWER_AGENT_EMISSIVE_COLOR=#E66230 \
+OASIS7_VIEWER_LOCATION_BASE_COLOR=#4B88D9 \
+OASIS7_VIEWER_LOCATION_EMISSIVE_COLOR=#B8D8FF \
+env -u RUSTC_WRAPPER cargo run -p oasis7_viewer -- 127.0.0.1:5023
 ```
 - 材质变体预设示例：
 ```bash
-AGENT_WORLD_VIEWER_MATERIAL_VARIANT_PRESET=matte \
-env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023
+OASIS7_VIEWER_MATERIAL_VARIANT_PRESET=matte \
+env -u RUSTC_WRAPPER cargo run -p oasis7_viewer -- 127.0.0.1:5023
 ```
 - 贴图示例：
 ```bash
-AGENT_WORLD_VIEWER_AGENT_BASE_TEXTURE_ASSET=textures/agents/worker_albedo.png \
-AGENT_WORLD_VIEWER_AGENT_NORMAL_TEXTURE_ASSET=textures/agents/worker_normal.png \
-AGENT_WORLD_VIEWER_AGENT_METALLIC_ROUGHNESS_TEXTURE_ASSET=textures/agents/worker_mr.png \
-AGENT_WORLD_VIEWER_AGENT_EMISSIVE_TEXTURE_ASSET=textures/agents/worker_emissive.png \
-AGENT_WORLD_VIEWER_LOCATION_BASE_TEXTURE_ASSET=textures/world/location_albedo.png \
-AGENT_WORLD_VIEWER_ASSET_BASE_TEXTURE_ASSET=textures/world/asset_albedo.png \
-env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023
+OASIS7_VIEWER_AGENT_BASE_TEXTURE_ASSET=textures/agents/worker_albedo.png \
+OASIS7_VIEWER_AGENT_NORMAL_TEXTURE_ASSET=textures/agents/worker_normal.png \
+OASIS7_VIEWER_AGENT_METALLIC_ROUGHNESS_TEXTURE_ASSET=textures/agents/worker_mr.png \
+OASIS7_VIEWER_AGENT_EMISSIVE_TEXTURE_ASSET=textures/agents/worker_emissive.png \
+OASIS7_VIEWER_LOCATION_BASE_TEXTURE_ASSET=textures/world/location_albedo.png \
+OASIS7_VIEWER_ASSET_BASE_TEXTURE_ASSET=textures/world/asset_albedo.png \
+env -u RUSTC_WRAPPER cargo run -p oasis7_viewer -- 127.0.0.1:5023
 ```
 
 ### 光照层（三点光）
-- `AGENT_WORLD_VIEWER_SHADOWS_ENABLED=1|0`
-- `AGENT_WORLD_VIEWER_AMBIENT_BRIGHTNESS=<number>`
-- `AGENT_WORLD_VIEWER_FILL_LIGHT_RATIO=<>=0`
-- `AGENT_WORLD_VIEWER_RIM_LIGHT_RATIO=<>=0`
+- `OASIS7_VIEWER_SHADOWS_ENABLED=1|0`
+- `OASIS7_VIEWER_AMBIENT_BRIGHTNESS=<number>`
+- `OASIS7_VIEWER_FILL_LIGHT_RATIO=<>=0`
+- `OASIS7_VIEWER_RIM_LIGHT_RATIO=<>=0`
 
 ### 后处理层（Post Process）
-- `AGENT_WORLD_VIEWER_TONEMAPPING=none|reinhard|reinhard_luminance|aces|agx|sbdt|tony_mc_mapface|blender_filmic`
-- `AGENT_WORLD_VIEWER_DEBAND_DITHER_ENABLED=1|0`
-- `AGENT_WORLD_VIEWER_BLOOM_ENABLED=1|0`
-- `AGENT_WORLD_VIEWER_BLOOM_INTENSITY=<0..2>`
-- `AGENT_WORLD_VIEWER_COLOR_GRADING_EXPOSURE=<-8..8>`
-- `AGENT_WORLD_VIEWER_COLOR_GRADING_POST_SATURATION=<0..2>`
+- `OASIS7_VIEWER_TONEMAPPING=none|reinhard|reinhard_luminance|aces|agx|sbdt|tony_mc_mapface|blender_filmic`
+- `OASIS7_VIEWER_DEBAND_DITHER_ENABLED=1|0`
+- `OASIS7_VIEWER_BLOOM_ENABLED=1|0`
+- `OASIS7_VIEWER_BLOOM_INTENSITY=<0..2>`
+- `OASIS7_VIEWER_COLOR_GRADING_EXPOSURE=<-8..8>`
+- `OASIS7_VIEWER_COLOR_GRADING_POST_SATURATION=<0..2>`
 
 ### 推荐启动模板
 ```bash
-AGENT_WORLD_VIEWER_RENDER_PROFILE=cinematic \
-AGENT_WORLD_VIEWER_FRAGMENT_MATERIAL_STRATEGY=fidelity \
-AGENT_WORLD_VIEWER_BLOOM_INTENSITY=0.24 \
-AGENT_WORLD_VIEWER_COLOR_GRADING_EXPOSURE=0.35 \
-AGENT_WORLD_VIEWER_COLOR_GRADING_POST_SATURATION=1.08 \
-env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023
+OASIS7_VIEWER_RENDER_PROFILE=cinematic \
+OASIS7_VIEWER_FRAGMENT_MATERIAL_STRATEGY=fidelity \
+OASIS7_VIEWER_BLOOM_INTENSITY=0.24 \
+OASIS7_VIEWER_COLOR_GRADING_EXPOSURE=0.35 \
+OASIS7_VIEWER_COLOR_GRADING_POST_SATURATION=1.08 \
+env -u RUSTC_WRAPPER cargo run -p oasis7_viewer -- 127.0.0.1:5023
 ```
 
 ## 工业风主题包（industrial_v3，推荐）
 
 ### 资产内容
-- 路径：`crates/agent_world_viewer/assets/themes/industrial_v3/`
+- 路径：`crates/oasis7_viewer/assets/themes/industrial_v3/`
 - 包含：
   - 5 类实体 mesh（`*_industrial_v3.gltf + *.bin`）
   - 5 类实体 PBR 贴图（`base/normal/metallic_roughness/emissive`，默认 768x768）
@@ -302,16 +302,16 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023
 
 ### 一键应用（启动前）
 ```bash
-source crates/agent_world_viewer/assets/themes/industrial_v3/presets/industrial_v3_default.env
-env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023
+source crates/oasis7_viewer/assets/themes/industrial_v3/presets/industrial_v3_default.env
+env -u RUSTC_WRAPPER cargo run -p oasis7_viewer -- 127.0.0.1:5023
 ```
 
 切换变体（仅替换 preset）：
 ```bash
-source crates/agent_world_viewer/assets/themes/industrial_v3/presets/industrial_v3_matte.env
+source crates/oasis7_viewer/assets/themes/industrial_v3/presets/industrial_v3_matte.env
 ```
 ```bash
-source crates/agent_world_viewer/assets/themes/industrial_v3/presets/industrial_v3_glossy.env
+source crates/oasis7_viewer/assets/themes/industrial_v3/presets/industrial_v3_glossy.env
 ```
 
 ### 运行中主题切换（右侧 Theme Runtime）
@@ -322,45 +322,45 @@ source crates/agent_world_viewer/assets/themes/industrial_v3/presets/industrial_
 - 适用场景：美术调参与脚本生成资产后实时复验，无需重启 viewer。
 
 ### 运行中主题切换（环境变量）
-- `AGENT_WORLD_VIEWER_THEME_PRESET=none|industrial_v3_default|industrial_v3_matte|industrial_v3_glossy|industrial_v2_default|industrial_v2_matte|industrial_v2_glossy|custom`
-- `AGENT_WORLD_VIEWER_THEME_PRESET_FILE=<path/to/preset.env>`（设置后优先按文件路径加载）
-- `AGENT_WORLD_VIEWER_THEME_HOT_RELOAD=1|0`
+- `OASIS7_VIEWER_THEME_PRESET=none|industrial_v3_default|industrial_v3_matte|industrial_v3_glossy|industrial_v2_default|industrial_v2_matte|industrial_v2_glossy|custom`
+- `OASIS7_VIEWER_THEME_PRESET_FILE=<path/to/preset.env>`（设置后优先按文件路径加载）
+- `OASIS7_VIEWER_THEME_HOT_RELOAD=1|0`
 
 示例：
 ```bash
-AGENT_WORLD_VIEWER_THEME_PRESET=industrial_v3_default \
-AGENT_WORLD_VIEWER_THEME_HOT_RELOAD=1 \
-env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023
+OASIS7_VIEWER_THEME_PRESET=industrial_v3_default \
+OASIS7_VIEWER_THEME_HOT_RELOAD=1 \
+env -u RUSTC_WRAPPER cargo run -p oasis7_viewer -- 127.0.0.1:5023
 ```
 
 自定义 preset 示例：
 ```bash
-AGENT_WORLD_VIEWER_THEME_PRESET_FILE=.tmp/custom_theme.env \
-AGENT_WORLD_VIEWER_THEME_HOT_RELOAD=1 \
-env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023
+OASIS7_VIEWER_THEME_PRESET_FILE=.tmp/custom_theme.env \
+OASIS7_VIEWER_THEME_HOT_RELOAD=1 \
+env -u RUSTC_WRAPPER cargo run -p oasis7_viewer -- 127.0.0.1:5023
 ```
 
 ### 主题包校验（提交前）
 ```bash
 python3 scripts/validate-viewer-theme-pack.py \
-  --theme-dir crates/agent_world_viewer/assets/themes/industrial_v3 \
+  --theme-dir crates/oasis7_viewer/assets/themes/industrial_v3 \
   --profile v3
 ```
 
 ## 工业风主题包（industrial_v2 / industrial_v1，兼容）
-- `industrial_v2` 路径：`crates/agent_world_viewer/assets/themes/industrial_v2/`
-- `industrial_v1` 路径：`crates/agent_world_viewer/assets/themes/industrial_v1/`
+- `industrial_v2` 路径：`crates/oasis7_viewer/assets/themes/industrial_v2/`
+- `industrial_v1` 路径：`crates/oasis7_viewer/assets/themes/industrial_v1/`
 - `industrial_v2` 预设：`industrial_v2_default.env`、`industrial_v2_matte.env`、`industrial_v2_glossy.env`
 - `industrial_v1` 预设：`industrial_default.env`、`industrial_matte.env`、`industrial_glossy.env`
 - 校验：
 ```bash
 python3 scripts/validate-viewer-theme-pack.py \
-  --theme-dir crates/agent_world_viewer/assets/themes/industrial_v2 \
+  --theme-dir crates/oasis7_viewer/assets/themes/industrial_v2 \
   --profile v2
 ```
 ```bash
 python3 scripts/validate-viewer-theme-pack.py \
-  --theme-dir crates/agent_world_viewer/assets/themes/industrial_v1 \
+  --theme-dir crates/oasis7_viewer/assets/themes/industrial_v1 \
   --profile v1
 ```
 
@@ -386,13 +386,13 @@ python3 scripts/validate-viewer-theme-pack.py \
 
 ### 资产重生成
 ```bash
-python3 scripts/generate-viewer-industrial-theme-assets.py --quality v3 --out-dir crates/agent_world_viewer/assets/themes/industrial_v3
+python3 scripts/generate-viewer-industrial-theme-assets.py --quality v3 --out-dir crates/oasis7_viewer/assets/themes/industrial_v3
 ```
 ```bash
-python3 scripts/generate-viewer-industrial-theme-assets.py --quality v2 --out-dir crates/agent_world_viewer/assets/themes/industrial_v2
+python3 scripts/generate-viewer-industrial-theme-assets.py --quality v2 --out-dir crates/oasis7_viewer/assets/themes/industrial_v2
 ```
 ```bash
-python3 scripts/generate-viewer-industrial-theme-assets.py --quality v1 --out-dir crates/agent_world_viewer/assets/themes/industrial_v1
+python3 scripts/generate-viewer-industrial-theme-assets.py --quality v1 --out-dir crates/oasis7_viewer/assets/themes/industrial_v1
 ```
 
 ## 贴图查看器（可截图）
@@ -436,7 +436,7 @@ python3 scripts/generate-viewer-industrial-theme-assets.py --quality v1 --out-di
 ### 标准流程
 1) 启动 live server（终端 A）
 ```bash
-env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011
+env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011
 ```
 
 2) 启动 Web Viewer（终端 B）
@@ -493,8 +493,8 @@ agent-browser close
 - Chat 功能已拆分为独立最右侧面板，不再出现在综合右侧面板内容区。
 - `Chat` 可见性开关关闭时，不渲染独立 Chat 面板且不占用右侧宽度。
 - 开关状态会落盘并在重启后恢复。
-- 默认缓存路径：`$HOME/.agent_world_viewer/right_panel_modules.json`
-- 可通过环境变量覆盖：`AGENT_WORLD_VIEWER_MODULE_VISIBILITY_PATH`
+- 默认缓存路径：`$HOME/.oasis7_viewer/right_panel_modules.json`
+- 可通过环境变量覆盖：`OASIS7_VIEWER_MODULE_VISIBILITY_PATH`
 
 ## Web 全屏自适应（wasm）
 - Web 端 canvas 跟随浏览器父容器尺寸，默认占满可用视口（非固定 `1200x800` 逻辑窗口体验）。

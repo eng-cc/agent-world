@@ -231,17 +231,17 @@
           <article class="card">
             <h3>Offline Verification (Recommended)</h3>
             <p>Run replay first to verify data output, server startup, and viewer connectivity.</p>
-            <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_demo -- twin_region_bootstrap --out .data/world_viewer_data
-env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_server -- .data/world_viewer_data 127.0.0.1:5010
-env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010</code></pre>
+            <pre><code>env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_viewer_demo -- twin_region_bootstrap --out .data/world_viewer_data
+env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_viewer_server -- .data/world_viewer_data 127.0.0.1:5010
+env -u RUSTC_WRAPPER cargo run -p oasis7_viewer -- 127.0.0.1:5010</code></pre>
           </article>
 	          <article class="card">
 	            <h3>Online Verification (`standard_3d` / `software_safe`)</h3>
 	            <p>Run continuously to verify real-time events, panel updates, and control flow; use `standard_3d` on the normal hardware path and fall back to `software_safe` on weak-graphics environments.</p>
-	            <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011
+	            <pre><code>env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011
 # Optional: fallback to scripted decisions
-env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --no-llm --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011
-env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023</code></pre>
+env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_viewer_live -- llm_bootstrap --no-llm --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011
+env -u RUSTC_WRAPPER cargo run -p oasis7_viewer -- 127.0.0.1:5023</code></pre>
 	          </article>
         </div>
         <article class="quickstart card">

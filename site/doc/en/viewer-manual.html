@@ -53,7 +53,7 @@
       <section class="section docs-hero" data-reveal>
         <p class="eyebrow">Viewer Manual</p>
         <h1>oasis7 Viewer User Manual</h1>
-        <p class="subtitle">Covers startup modes, controls, auto-focus, automation steps, web closure debugging, and common issue diagnosis for `agent_world_viewer` workflows.</p>
+        <p class="subtitle">Covers startup modes, controls, auto-focus, automation steps, web closure debugging, and common issue diagnosis for `oasis7_viewer` workflows.</p>
         <div class="cta-row">
           <a class="button primary" href="#quickstart">Start Running</a>
           <a class="button secondary" href="#web-loop">Go to Web Loop</a>
@@ -64,15 +64,15 @@
       <section id="quickstart" class="section" data-reveal>
         <h2>Quick Start</h2>
         <h3>1) Start live server (recommended)</h3>
-        <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011</code></pre>
+        <pre><code>env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011</code></pre>
         <p>`world_viewer_live` runs script decisions by default; pass `--llm` to enable LLM mode (configure key(s) first).</p>
-        <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --no-llm --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011</code></pre>
+        <pre><code>env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_viewer_live -- llm_bootstrap --no-llm --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011</code></pre>
 
         <h3>2) Start viewer</h3>
-        <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023</code></pre>
+        <pre><code>env -u RUSTC_WRAPPER cargo run -p oasis7_viewer -- 127.0.0.1:5023</code></pre>
 
         <h3>3) Offline mode (no server connection)</h3>
-        <pre><code>AGENT_WORLD_VIEWER_OFFLINE=1 env -u RUSTC_WRAPPER cargo run -p agent_world_viewer</code></pre>
+        <pre><code>OASIS7_VIEWER_OFFLINE=1 env -u RUSTC_WRAPPER cargo run -p oasis7_viewer</code></pre>
 
         <h3>4) Browser mode (Bevy + wasm)</h3>
         <pre><code>env -u NO_COLOR ./scripts/run-viewer-web.sh --address 127.0.0.1 --port 4173</code></pre>
@@ -80,7 +80,7 @@
 
         <h3>5) Release mode (P2P recommended)</h3>
         <p>`world_viewer_live` is now a pure viewer live service and no longer accepts `--release-config`, `--runtime-world`, or `--node-*` control-plane flags.</p>
-        <p>For P2P release flows, lock chain parameters through `world_chain_runtime` (typically managed by `world_game_launcher` / `world_web_launcher` / `agent_world_client_launcher`). Viewer keeps only `--bind`, `--web-bind`, and `--llm/--no-llm`.</p>
+        <p>For P2P release flows, lock chain parameters through `world_chain_runtime` (typically managed by `world_game_launcher` / `world_web_launcher` / `oasis7_client_launcher`). Viewer keeps only `--bind`, `--web-bind`, and `--llm/--no-llm`.</p>
       </section>
 
       <section class="section" data-reveal>
@@ -102,10 +102,10 @@
         <h2>Auto Focus</h2>
         <p>Use environment variables to focus a target at startup:</p>
         <ul>
-          <li>`AGENT_WORLD_VIEWER_AUTO_FOCUS=1`</li>
-          <li>`AGENT_WORLD_VIEWER_AUTO_FOCUS_TARGET=&lt;target&gt;`</li>
-          <li>`AGENT_WORLD_VIEWER_AUTO_FOCUS_FORCE_3D=1|0` (default `1`)</li>
-          <li>`AGENT_WORLD_VIEWER_AUTO_FOCUS_RADIUS=&lt;number&gt;` (optional)</li>
+          <li>`OASIS7_VIEWER_AUTO_FOCUS=1`</li>
+          <li>`OASIS7_VIEWER_AUTO_FOCUS_TARGET=&lt;target&gt;`</li>
+          <li>`OASIS7_VIEWER_AUTO_FOCUS_FORCE_3D=1|0` (default `1`)</li>
+          <li>`OASIS7_VIEWER_AUTO_FOCUS_RADIUS=&lt;number&gt;` (optional)</li>
         </ul>
         <p>Supported syntax: `first_fragment`, `first_location`, `first_agent`, `location:&lt;id&gt;`, and `agent:&lt;id&gt;` (with shorthand aliases `fragment/location/agent`).</p>
         <p>Auto focus targets are limited to Agent / Location / Fragment.</p>
@@ -135,7 +135,7 @@
 
         <h3>Standard Flow</h3>
         <p>Terminal A: start live server.</p>
-        <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011</code></pre>
+        <pre><code>env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011</code></pre>
         <p>Terminal B: start web viewer.</p>
         <pre><code>env -u NO_COLOR ./scripts/run-viewer-web.sh --address 127.0.0.1 --port 4173</code></pre>
         <p>Terminal C: run the agent-browser capture loop.</p>
@@ -180,8 +180,8 @@ window.__AW_TEST__.getState();</code></pre>
           <li>The `Chat` toggle controls a dedicated rightmost Chat panel; when disabled, the chat panel is not rendered and takes no right-side width.</li>
           <li>Chat content is no longer rendered inside the main right panel.</li>
           <li>Toggle states are persisted and restored on restart.</li>
-          <li>Default file: `$HOME/.agent_world_viewer/right_panel_modules.json`.</li>
-          <li>Override path with: `AGENT_WORLD_VIEWER_MODULE_VISIBILITY_PATH`.</li>
+          <li>Default file: `$HOME/.oasis7_viewer/right_panel_modules.json`.</li>
+          <li>Override path with: `OASIS7_VIEWER_MODULE_VISIBILITY_PATH`.</li>
         </ul>
 
         <h3>Selection details panel</h3>

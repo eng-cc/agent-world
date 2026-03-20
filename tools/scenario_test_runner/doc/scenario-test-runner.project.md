@@ -5,7 +5,7 @@
 - [x] S2 实现独立 scenario runner（解析/断言/CLI）并提供示例场景
 
 ## 依赖
-- `agent_world`（WorldScenario / WorldInitConfig / WorldConfig）
+- `oasis7`（WorldScenario / WorldInitConfig / WorldConfig）
 - `serde`/`serde_yaml`/`serde_json`（场景文件解析）
 
 ## 状态

@@ -146,16 +146,16 @@ Web 端默认定位为 Viewer/间接控制客户端，通过 `world_viewer_live 
 
 ## 仓库结构
 
-对外品牌已统一为 `oasis7`；当前 workspace / crate / bin 仍保留 `agent_world*` 与 `world_*` 命名作为内部兼容标识。
+对外品牌与当前 workspace / crate 命名已统一为 `oasis7`；旧品牌前缀仅作为兼容 fallback、历史证据或迁移说明保留。
 
-- `agent_world_proto` — 协议与共享数据模型
-- `agent_world_net` — 网络层
-- `agent_world_consensus` — 共识与协调层
-- `agent_world_node` — 节点运行时
-- `agent_world_distfs` — 分布式存储
-- `agent_world_wasm_*` — WASM 执行与路由层
-- `agent_world` — 核心模拟层
-- `agent_world_viewer` — 可视化与调试工具
+- `oasis7_proto` — 协议与共享数据模型
+- `oasis7_net` — 网络层
+- `oasis7_consensus` — 共识与协调层
+- `oasis7_node` — 节点运行时
+- `oasis7_distfs` — 分布式存储
+- `oasis7_wasm_*` — WASM 执行与路由层
+- `oasis7` — 核心模拟层
+- `oasis7_viewer` — 可视化与调试工具
 
 ---
 

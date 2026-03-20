@@ -7,4 +7,4 @@
 # For P2P release locking, configure `world_chain_runtime` through:
 # - `world_game_launcher`
 # - `world_web_launcher`
-# - `agent_world_client_launcher`
+# - `oasis7_client_launcher`

@@ -1,4 +1,4 @@
-use agent_world::simulator::{
+use oasis7::simulator::{
     build_world_model, WorldConfig, WorldInitConfig, WorldInitReport, WorldModel, WorldScenario,
 };
 use serde::Deserialize;
@@ -228,9 +228,9 @@ fn evaluate_expectations(
     }
 
     for storage_id in &expect.require_power_storages {
-        if !model.power_storages.contains_key(storage_id) {
-            failures.push(format!("missing power storage: {storage_id}"));
-        }
+        failures.push(format!(
+            "unsupported legacy expectation `require_power_storages`: {storage_id}"
+        ));
     }
 
     if let Some(expect_asteroid_fragment) = expect.expect_asteroid_fragment {

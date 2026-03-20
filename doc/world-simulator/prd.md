@@ -195,6 +195,7 @@
   - SC-91: `agent_world` 主 crate 的 crate name、workspace member 与 crate 目录名必须直接切到 `oasis7`，并同步更新 workspace 下游依赖、`cargo -p` 包名、源码 `use agent_world::...` 入口与运行时构建脚本，避免主 runtime 包继续以内核旧品牌作为唯一包身份。
   - SC-92: `agent_world_builtin_wasm_modules` 目录与其下 `agent_world_builtin_wasm_*` crate name 必须直接切到 `oasis7_builtin_wasm_modules` / `oasis7_builtin_wasm_*`，并同步更新 builtin manifest map、模板、模块锁文件与构建脚本，避免内置模块生态继续以内核旧品牌作为真实产物前缀。
   - SC-93: 测试手册、CI 帮助文案与 Viewer HelloAck 默认 `server` 标识必须优先使用 `oasis7` 口径；兼容 payload / env fallback 可继续保留旧 `agent_world` 值，但 repo 当前默认说明与协议默认输出不得继续把旧品牌当作现行真值。
+  - SC-94: README、站点首页、Viewer 手册与 `scenario_test_runner` 等活跃入口中的当前命令、crate 路径、Viewer env key 与默认缓存路径必须切到 `oasis7` / `oasis7_*` / `OASIS7_VIEWER_*` / `.oasis7_*`；旧品牌仅允许作为兼容 fallback 被说明，不得继续以默认入口或有效路径示人。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -447,6 +448,7 @@
   - AC-96: workspace 根 `Cargo.toml`、`Cargo.lock`、`crates/oasis7/Cargo.toml`、所有 workspace 下游 crate、测试、脚本与源码入口中的 `agent_world` 依赖、路径、`use agent_world::...` 与 `cargo -p agent_world` 包名必须全部改为 `oasis7`，并将目录 `crates/agent_world` 重命名为 `crates/oasis7`；变更后主 runtime/launcher/chain runtime 必须能按新包名编译。
   - AC-97: `crates/oasis7_builtin_wasm_modules/**`、各模块 `Cargo.toml` / `Cargo.lock`、builtin manifest map、模板与构建脚本中的 `agent_world_builtin_wasm_modules` / `agent_world_builtin_wasm_*` 路径和包名必须全部改为 `oasis7_builtin_wasm_modules` / `oasis7_builtin_wasm_*`，并将目录 `crates/agent_world_builtin_wasm_modules` 重命名为 `crates/oasis7_builtin_wasm_modules`。
   - AC-98: `testing-manual.md`、`scripts/ci-tests.sh`、`scripts/viewer-release-qa-loop.sh` 与 `crates/oasis7/src/viewer/{server.rs,runtime_live.rs,live_split_part2.rs}` 中作为当前默认说明/输出使用的 `agent_world` 字符串必须全部改为 `oasis7`；`crates/oasis7_proto/src/viewer.rs` 中用于兼容测试的旧 payload 样例可保留，但其测试语义必须继续明确这是 compat payload，而非默认值。
+  - AC-99: `README.md`、`site/{index.html,en/index.html}`、`doc/world-simulator/viewer/viewer-manual.md`、`site/doc/{cn,en}/viewer-manual.html`、`world_viewer_live.release.example.toml` 与 `tools/scenario_test_runner/**` 中作为当前入口使用的 `agent_world*` crate/path/command/env/path 说明必须全部改为 `oasis7*` / `OASIS7_VIEWER_*` / `.oasis7_viewer`；其中 `tools/scenario_test_runner` 必须恢复到可解析 `../../crates/oasis7` 的依赖路径并能通过 cargo 检查。
 - Non-Goals:
   - 不在本 PRD 中详细列出每个 UI 像素级规范。
   - 不替代 world-runtime/p2p 的底层协议设计。
