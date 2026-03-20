@@ -3,7 +3,7 @@
 - 对应设计文档: `doc/world-simulator/launcher/game-client-launcher-chain-runtime-stale-execution-world-recovery-2026-03-12.design.md`
 - 对应项目管理文档: `doc/world-simulator/launcher/game-client-launcher-chain-runtime-stale-execution-world-recovery-2026-03-12.project.md`
 
-审计轮次: 1
+审计轮次: 6
 
 ## 1. Executive Summary
 - Problem Statement: 当前启动器默认使用固定 `chain_node_id=viewer-live-node` 与稳定 `execution_world_dir`；当目录下残留旧执行世界且状态根不匹配时，`world_chain_runtime` 会直接以 `DistributedValidationFailed` 退出，导致 launcher 只看到“链不可达”，用户缺少明确恢复路径。
@@ -14,7 +14,7 @@
   - SC-3: 至少一种受支持恢复路径可在不手工改 CLI 的前提下完成恢复（如 fresh node id 或受控清理后重试）。
   - SC-4: 恢复完成后，`start_chain -> query_explorer_overview -> start_game` 最小闭环可重新通过。
   - SC-5: `scripts/run-game-test.sh` 这类一键试玩包装脚本默认不再复用固定 `viewer-live-node`，而是使用 fresh `chain_node_id` 与明确的 `chain_status_bind`，避免把历史 execution world 脏状态带进新的试玩会话。
-  - SC-6: `world_web_launcher` / `agent_world_client_launcher` / `world_game_launcher` 的默认链配置不再预填固定 `viewer-live-node`，而是自动生成 fresh `chain_node_id`；用户显式输入的 `chain_node_id` 不受影响。
+  - SC-6: `world_web_launcher` / `oasis7_client_launcher` / `world_game_launcher` 的默认链配置不再预填固定 `viewer-live-node`，而是自动生成 fresh `chain_node_id`；用户显式输入的 `chain_node_id` 不受影响。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -45,7 +45,7 @@
   - AC-2: GUI Agent 对应动作返回中包含恢复所需字段（至少 `node_id`、恢复建议或恢复模式）。
   - AC-3: 默认 UI 至少提供 1 条非 CLI 的恢复路径（fresh node id 或受控清理）。
   - AC-4: 定向回归覆盖“旧默认目录失败 -> 恢复 -> explorer overview 查询成功”。
-  - AC-5: fresh 启动的 `world_web_launcher` / `agent_world_client_launcher` 默认状态中，`chain_node_id` 应为 `viewer-live-node-fresh-*` 形态而不是固定 `viewer-live-node`；按默认配置直接 `start_chain` 可进入 `ready` 并成功查询 `explorer overview`。
+  - AC-5: fresh 启动的 `world_web_launcher` / `oasis7_client_launcher` 默认状态中，`chain_node_id` 应为 `viewer-live-node-fresh-*` 形态而不是固定 `viewer-live-node`；按默认配置直接 `start_chain` 可进入 `ready` 并成功查询 `explorer overview`。
 - Non-Goals:
   - 不在本任务内改变 runtime 的状态校验算法或分布式一致性规则。
   - 不在本任务内放宽 `DistributedValidationFailed` 的安全门槛。
@@ -61,12 +61,12 @@
   - 恢复层：launcher 配置层支持 fresh node id 或受控目录重置恢复模式。
   - 表现层：GUI Agent / Web 控制面 / launcher UI 使用统一错误码和恢复建议。
 - Integration Points:
-  - `crates/agent_world/src/bin/world_game_launcher.rs`
-  - `crates/agent_world/src/bin/world_web_launcher/control_plane.rs`
-  - `crates/agent_world/src/bin/world_web_launcher/gui_agent_api.rs`
-  - `crates/agent_world/src/bin/world_web_launcher/world_web_launcher_tests.rs`
-  - `crates/agent_world/src/bin/world_game_launcher/world_game_launcher_tests.rs`
-  - `crates/agent_world_client_launcher/src/*`
+  - `crates/oasis7/src/bin/world_game_launcher.rs`
+  - `crates/oasis7/src/bin/world_web_launcher/control_plane.rs`
+  - `crates/oasis7/src/bin/world_web_launcher/gui_agent_api.rs`
+  - `crates/oasis7/src/bin/world_web_launcher/world_web_launcher_tests.rs`
+  - `crates/oasis7/src/bin/world_game_launcher/world_game_launcher_tests.rs`
+  - `crates/oasis7_client_launcher/src/*`
   - `doc/world-simulator/prd.md`
   - `doc/world-simulator/project.md`
 - Edge Cases & Error Handling:
@@ -95,7 +95,7 @@
 - Test Plan & Traceability:
 | PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |
 | --- | --- | --- | --- | --- |
-| PRD-WORLD_SIMULATOR-034 | TASK-WORLD_SIMULATOR-103/104/107/108/109 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_game_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher -- --nocapture` + GUI Agent 默认链闭环（`start_chain -> query_explorer_overview`） | launcher 链启动恢复体验、GUI Agent 契约、默认试玩链路 |
+| PRD-WORLD_SIMULATOR-034 | TASK-WORLD_SIMULATOR-103/104/107/108/109 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_web_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_game_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher -- --nocapture` + GUI Agent 默认链闭环（`start_chain -> query_explorer_overview`） | launcher 链启动恢复体验、GUI Agent 契约、默认试玩链路 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |

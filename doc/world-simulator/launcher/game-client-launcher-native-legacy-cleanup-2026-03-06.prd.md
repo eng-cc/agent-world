@@ -3,14 +3,14 @@
 - 对应设计文档: `doc/world-simulator/launcher/game-client-launcher-native-legacy-cleanup-2026-03-06.design.md`
 - 对应项目管理文档: `doc/world-simulator/launcher/game-client-launcher-native-legacy-cleanup-2026-03-06.project.md`
 
-审计轮次: 5
+审计轮次: 6
 
 ## 1. Executive Summary
 - Problem Statement: 启动器 native 已完成“客户端 + 控制面服务”迁移，但代码中仍保留部分无读写路径的历史状态字段与未被编译入口引用的旧测试文件，持续增加维护噪声。
 - Proposed Solution: 在不改变 native 运行时行为的前提下，清理已失效遗留代码（状态字段、常量边界与未引用测试资产），并用现有 required 回归验证行为稳定。
 - Success Criteria:
   - SC-1: 移除 native 端无读写路径的历史状态字段与初始化逻辑。
-  - SC-2: 删除 `agent_world_client_launcher` 中未被编译入口引用的旧测试文件。
+  - SC-2: 删除 `oasis7_client_launcher` 中未被编译入口引用的旧测试文件。
   - SC-3: 平台相关常量边界收敛后，不再保留明显的 native 历史残留告警。
   - SC-4: `test_tier_required` 回归全通过，启动器 native/web 功能行为不回退。
 
@@ -39,7 +39,7 @@
 - Acceptance Criteria:
   - AC-1: `ClientLauncherApp` 中控制面迁移后无读写路径的 native 历史字段被移除。
   - AC-2: native/wasm 相关常量按目标平台收敛，不再混用无效作用域。
-  - AC-3: `agent_world_client_launcher/src/tests.rs`（未被入口引用）被移除。
+  - AC-3: `oasis7_client_launcher/src/tests.rs`（未被入口引用）被移除。
   - AC-4: 启动器 UI 行为不变：启动/停止、设置、反馈、转账入口保持原语义。
   - AC-5: required 回归通过并可追溯到 `TASK-WORLD_SIMULATOR-051`。
 - Non-Goals:
@@ -52,14 +52,14 @@
 
 ## 4. Technical Specifications
 - Architecture Overview:
-  - 清理范围限定在 `agent_world_client_launcher` native 遗留资产。
+  - 清理范围限定在 `oasis7_client_launcher` native 遗留资产。
   - 不触碰 `world_web_launcher` 与 `world_chain_runtime` 业务协议。
   - 通过现有测试矩阵证明“代码清理 != 行为变更”。
 - Integration Points:
-  - `crates/agent_world_client_launcher/src/main.rs`
-  - `crates/agent_world_client_launcher/src/launcher_core.rs`
-  - `crates/agent_world_client_launcher/src/main_tests.rs`
-  - `crates/agent_world_client_launcher/src/tests.rs`（删除）
+  - `crates/oasis7_client_launcher/src/main.rs`
+  - `crates/oasis7_client_launcher/src/launcher_core.rs`
+  - `crates/oasis7_client_launcher/src/main_tests.rs`
+  - `crates/oasis7_client_launcher/src/tests.rs`（删除）
   - `doc/world-simulator/prd.md`
   - `doc/world-simulator/project.md`
 - Edge Cases & Error Handling:
@@ -88,9 +88,9 @@
 - Test Plan & Traceability:
   - PRD-WORLD_SIMULATOR-022 -> TASK-WORLD_SIMULATOR-050/051 -> `test_tier_required`。
   - 计划验证：
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher -- --nocapture`
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher -- --nocapture`
-    - `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_web_launcher -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown`
 - Decision Log:
   - DEC-LAUNCHER-NATIVE-LEGACY-001: 先清理“无读写路径 + 无入口引用”的确定性遗留，再做更大重构。理由：风险最低且可快速去噪。
   - DEC-LAUNCHER-NATIVE-LEGACY-002: 复用现有 required 回归，不新增独立测试框架。理由：保证变更可追溯并减少额外维护面。

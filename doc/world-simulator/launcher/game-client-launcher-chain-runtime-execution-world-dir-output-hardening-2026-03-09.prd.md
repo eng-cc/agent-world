@@ -3,7 +3,7 @@
 - 对应设计文档: `doc/world-simulator/launcher/game-client-launcher-chain-runtime-execution-world-dir-output-hardening-2026-03-09.design.md`
 - 对应项目管理文档: `doc/world-simulator/launcher/game-client-launcher-chain-runtime-execution-world-dir-output-hardening-2026-03-09.project.md`
 
-审计轮次: 1
+审计轮次: 6
 
 ## 1. Executive Summary
 - Problem Statement: 当前 `world_chain_runtime` 的 `explorer-index.json` 持久化路径受 `execution_world_dir` 影响；当启动链路依赖默认工作目录且 cwd 偏离时，运行时文件可能落到源码目录。
@@ -50,10 +50,10 @@
   - 改动点仅在启动器参数构建层：`world_game_launcher` 与 `world_web_launcher`。
   - runtime 继续消费 CLI 参数，不变更其持久化实现。
 - Integration Points:
-  - `crates/agent_world/src/bin/world_game_launcher.rs`
-  - `crates/agent_world/src/bin/world_game_launcher/world_game_launcher_tests.rs`
-  - `crates/agent_world/src/bin/world_web_launcher/control_plane.rs`
-  - `crates/agent_world/src/bin/world_web_launcher/world_web_launcher_tests.rs`
+  - `crates/oasis7/src/bin/world_game_launcher.rs`
+  - `crates/oasis7/src/bin/world_game_launcher/world_game_launcher_tests.rs`
+  - `crates/oasis7/src/bin/world_web_launcher/control_plane.rs`
+  - `crates/oasis7/src/bin/world_web_launcher/world_web_launcher_tests.rs`
   - `doc/world-simulator/prd.md`
   - `doc/world-simulator/project.md`
 - Edge Cases & Error Handling:
@@ -80,7 +80,7 @@
 - Test Plan & Traceability:
 | PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |
 | --- | --- | --- | --- | --- |
-| PRD-WORLD_SIMULATOR-033 | TASK-WORLD_SIMULATOR-095/096 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_game_launcher world_game_launcher_tests::build_world_chain_runtime_args_includes_storage_profile -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher world_web_launcher_tests::build_chain_runtime_args_includes_chain_overrides_when_on -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p agent_world --bin world_game_launcher --bin world_web_launcher` | 运行时产物目录可控性、启动器参数透传稳定性、双入口一致性 |
+| PRD-WORLD_SIMULATOR-033 | TASK-WORLD_SIMULATOR-095/096 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_game_launcher world_game_launcher_tests::build_world_chain_runtime_args_includes_storage_profile -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_web_launcher world_web_launcher_tests::build_chain_runtime_args_includes_chain_overrides_when_on -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p oasis7 --bin world_game_launcher --bin world_web_launcher` | 运行时产物目录可控性、启动器参数透传稳定性、双入口一致性 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |

@@ -13,7 +13,7 @@
 - 回归保护层：使用现有 required 测试确认 native/web 行为不漂移。
 
 ## 3. 关键接口 / 入口
-- `agent_world_client_launcher` native 状态结构
+- `oasis7_client_launcher` native 状态结构
 - 未引用测试文件与旧常量定义
 - `test_tier_required` 回归链路
 
