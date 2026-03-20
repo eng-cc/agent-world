@@ -4,8 +4,6 @@ use wasm_bindgen::JsValue;
 
 #[cfg(target_arch = "wasm32")]
 const VIEWER_AUTH_BOOTSTRAP_OBJECT: &str = "__OASIS7_VIEWER_AUTH_ENV";
-#[cfg(target_arch = "wasm32")]
-const COMPAT_OLD_BRAND_VIEWER_AUTH_BOOTSTRAP_OBJECT: &str = "__AGENT_WORLD_VIEWER_AUTH_ENV";
 #[cfg(not(target_arch = "wasm32"))]
 const NODE_CONFIG_FILE_NAME: &str = "config.toml";
 #[cfg(not(target_arch = "wasm32"))]
@@ -22,36 +20,20 @@ pub(super) struct ViewerAuthSigner {
     pub(super) private_key: String,
 }
 
-pub(super) fn resolve_required_env_trimmed<F>(get_env: &F, key: &str) -> Result<String, String>
+fn resolve_env_trimmed<F>(get_env: &F, key: &str) -> Option<String>
 where
     F: Fn(&str) -> Option<String>,
 {
-    let Some(raw) = get_env(key) else {
-        return Err(format!("{key} is not set"));
-    };
-    let value = raw.trim();
-    if value.is_empty() {
-        return Err(format!("{key} is empty"));
-    }
-    Ok(value.to_string())
-}
-
-fn resolve_first_env_trimmed<F>(get_env: &F, keys: &[&str]) -> Option<String>
-where
-    F: Fn(&str) -> Option<String>,
-{
-    keys.iter().find_map(|key| {
-        get_env(key)
-            .map(|raw| raw.trim().to_string())
-            .filter(|value| !value.is_empty())
-    })
+    get_env(key)
+        .map(|raw| raw.trim().to_string())
+        .filter(|value| !value.is_empty())
 }
 
 pub(super) fn resolve_viewer_player_id_from<F>(get_env: &F) -> Result<String, String>
 where
     F: Fn(&str) -> Option<String>,
 {
-    match resolve_first_env_trimmed(get_env, VIEWER_PLAYER_ID_ENV_ALIASES) {
+    match resolve_env_trimmed(get_env, VIEWER_PLAYER_ID_ENV) {
         Some(value) => Ok(value),
         None => Ok(VIEWER_PLAYER_ID.to_string()),
     }
@@ -62,9 +44,9 @@ where
     F: Fn(&str) -> Option<String>,
 {
     let player_id = resolve_viewer_player_id_from(&get_env)?;
-    let public_key = resolve_first_env_trimmed(&get_env, VIEWER_AUTH_PUBLIC_KEY_ENV_ALIASES)
+    let public_key = resolve_env_trimmed(&get_env, VIEWER_AUTH_PUBLIC_KEY_ENV)
         .ok_or_else(|| format!("{VIEWER_AUTH_PUBLIC_KEY_ENV} is not set"))?;
-    let private_key = resolve_first_env_trimmed(&get_env, VIEWER_AUTH_PRIVATE_KEY_ENV_ALIASES)
+    let private_key = resolve_env_trimmed(&get_env, VIEWER_AUTH_PRIVATE_KEY_ENV)
         .ok_or_else(|| format!("{VIEWER_AUTH_PRIVATE_KEY_ENV} is not set"))?;
     Ok(ViewerAuthSigner {
         player_id,
@@ -110,24 +92,19 @@ fn runtime_auth_value(key: &str) -> Option<String> {
 #[cfg(target_arch = "wasm32")]
 fn resolve_wasm_viewer_auth_value(key: &str) -> Option<String> {
     let window = web_sys::window()?;
-    for object_name in [
-        VIEWER_AUTH_BOOTSTRAP_OBJECT,
-        COMPAT_OLD_BRAND_VIEWER_AUTH_BOOTSTRAP_OBJECT,
-    ] {
-        let store = js_sys::Reflect::get(window.as_ref(), &JsValue::from_str(object_name)).ok()?;
-        if store.is_null() || store.is_undefined() {
-            continue;
-        }
-        let value = js_sys::Reflect::get(&store, &JsValue::from_str(key)).ok()?;
-        if let Some(value) = value
-            .as_string()
-            .map(|raw| raw.trim().to_string())
-            .filter(|value| !value.is_empty())
-        {
-            return Some(value);
-        }
+    let store = js_sys::Reflect::get(
+        window.as_ref(),
+        &JsValue::from_str(VIEWER_AUTH_BOOTSTRAP_OBJECT),
+    )
+    .ok()?;
+    if store.is_null() || store.is_undefined() {
+        return None;
     }
-    None
+    js_sys::Reflect::get(&store, &JsValue::from_str(key))
+        .ok()?
+        .as_string()
+        .map(|raw| raw.trim().to_string())
+        .filter(|value| !value.is_empty())
 }
 
 #[cfg(not(target_arch = "wasm32"))]

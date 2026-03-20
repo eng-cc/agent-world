@@ -1,9 +1,9 @@
 use super::*;
+use ed25519_dalek::SigningKey;
 use oasis7::simulator::{
     initialize_kernel, AgentDecision, AgentDecisionTrace, PromptUpdateOperation, WorldConfig,
     WorldEvent, WorldInitConfig, WorldScenario,
 };
-use ed25519_dalek::SigningKey;
 #[cfg(not(target_arch = "wasm32"))]
 use std::fs;
 #[cfg(not(target_arch = "wasm32"))]
@@ -362,30 +362,6 @@ fn resolve_viewer_auth_signer_from_uses_default_player_and_required_keys() {
 }
 
 #[test]
-fn resolve_viewer_auth_signer_from_accepts_compat_old_brand_key_names() {
-    let signer = test_signer(32);
-    let mut env = std::collections::BTreeMap::<String, String>::new();
-    env.insert(
-        COMPAT_OLD_BRAND_VIEWER_AUTH_PUBLIC_KEY_ENV.to_string(),
-        signer.public_key.clone(),
-    );
-    env.insert(
-        COMPAT_OLD_BRAND_VIEWER_AUTH_PRIVATE_KEY_ENV.to_string(),
-        signer.private_key.clone(),
-    );
-    env.insert(
-        COMPAT_OLD_BRAND_VIEWER_PLAYER_ID_ENV.to_string(),
-        "legacy-viewer-player".to_string(),
-    );
-
-    let resolved =
-        resolve_viewer_auth_signer_from(|key| env.get(key).cloned()).expect("resolve signer");
-    assert_eq!(resolved.player_id, "legacy-viewer-player");
-    assert_eq!(resolved.public_key, signer.public_key);
-    assert_eq!(resolved.private_key, signer.private_key);
-}
-
-#[test]
 fn resolve_viewer_auth_signer_from_rejects_missing_private_key() {
     let signer = test_signer(33);
     let mut env = std::collections::BTreeMap::<String, String>::new();
@@ -397,6 +373,28 @@ fn resolve_viewer_auth_signer_from_rejects_missing_private_key() {
     let err = resolve_viewer_auth_signer_from(|key| env.get(key).cloned())
         .expect_err("missing private key should fail");
     assert!(err.contains(VIEWER_AUTH_PRIVATE_KEY_ENV));
+}
+
+#[test]
+fn resolve_viewer_auth_signer_from_ignores_removed_old_brand_key_names() {
+    let signer = test_signer(35);
+    let mut env = std::collections::BTreeMap::<String, String>::new();
+    env.insert(
+        "AGENT_WORLD_VIEWER_AUTH_PUBLIC_KEY".to_string(),
+        signer.public_key.clone(),
+    );
+    env.insert(
+        "AGENT_WORLD_VIEWER_AUTH_PRIVATE_KEY".to_string(),
+        signer.private_key.clone(),
+    );
+    env.insert(
+        "AGENT_WORLD_VIEWER_PLAYER_ID".to_string(),
+        "legacy-viewer-player".to_string(),
+    );
+
+    let err = resolve_viewer_auth_signer_from(|key| env.get(key).cloned())
+        .expect_err("removed old-brand keys should fail");
+    assert!(err.contains(VIEWER_AUTH_PUBLIC_KEY_ENV));
 }
 
 #[test]

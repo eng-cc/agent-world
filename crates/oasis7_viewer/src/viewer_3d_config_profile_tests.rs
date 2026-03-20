@@ -372,14 +372,11 @@ fn load_viewer_3d_config_applies_env_overrides() {
 }
 
 #[test]
-fn load_viewer_3d_config_prefers_oasis7_key_over_compat_old_brand_key() {
-    let env = HashMap::from([
-        ("OASIS7_VIEWER_SHOW_AGENTS", "false"),
-        ("AGENT_WORLD_VIEWER_SHOW_AGENTS", "true"),
-    ]);
+fn load_viewer_3d_config_ignores_removed_old_brand_key() {
+    let env = HashMap::from([("AGENT_WORLD_VIEWER_SHOW_AGENTS", "true")]);
 
     let config = load_viewer_3d_config_from(|key| env.get(key).map(|v| v.to_string()));
-    assert!(!config.show_agents);
+    assert!(config.show_agents);
 }
 
 #[test]

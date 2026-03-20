@@ -1,11 +1,11 @@
 use std::collections::BTreeSet;
 use std::sync::atomic::{AtomicU64, Ordering};
 
+use bevy_egui::egui;
 use oasis7::simulator::{
     AgentPromptProfile, LlmChatMessageTrace, LlmChatRole, WorldEventKind,
     DEFAULT_LLM_LONG_TERM_GOAL, DEFAULT_LLM_SHORT_TERM_GOAL, DEFAULT_LLM_SYSTEM_PROMPT,
 };
-use bevy_egui::egui;
 
 use crate::{ViewerClient, ViewerState};
 #[path = "egui_right_panel_chat_auth.rs"]
@@ -26,21 +26,8 @@ const PROMPT_PRESET_DEFAULT_CONTENT_ROWS: usize = 4;
 const PROMPT_PRESET_SCROLL_MAX_HEIGHT: f32 = 320.0;
 const VIEWER_PLAYER_ID: &str = "viewer-player";
 const VIEWER_PLAYER_ID_ENV: &str = "OASIS7_VIEWER_PLAYER_ID";
-const COMPAT_OLD_BRAND_VIEWER_PLAYER_ID_ENV: &str = "AGENT_WORLD_VIEWER_PLAYER_ID";
-const VIEWER_PLAYER_ID_ENV_ALIASES: &[&str] =
-    &[VIEWER_PLAYER_ID_ENV, COMPAT_OLD_BRAND_VIEWER_PLAYER_ID_ENV];
 const VIEWER_AUTH_PUBLIC_KEY_ENV: &str = "OASIS7_VIEWER_AUTH_PUBLIC_KEY";
-const COMPAT_OLD_BRAND_VIEWER_AUTH_PUBLIC_KEY_ENV: &str = "AGENT_WORLD_VIEWER_AUTH_PUBLIC_KEY";
-const VIEWER_AUTH_PUBLIC_KEY_ENV_ALIASES: &[&str] = &[
-    VIEWER_AUTH_PUBLIC_KEY_ENV,
-    COMPAT_OLD_BRAND_VIEWER_AUTH_PUBLIC_KEY_ENV,
-];
 const VIEWER_AUTH_PRIVATE_KEY_ENV: &str = "OASIS7_VIEWER_AUTH_PRIVATE_KEY";
-const COMPAT_OLD_BRAND_VIEWER_AUTH_PRIVATE_KEY_ENV: &str = "AGENT_WORLD_VIEWER_AUTH_PRIVATE_KEY";
-const VIEWER_AUTH_PRIVATE_KEY_ENV_ALIASES: &[&str] = &[
-    VIEWER_AUTH_PRIVATE_KEY_ENV,
-    COMPAT_OLD_BRAND_VIEWER_AUTH_PRIVATE_KEY_ENV,
-];
 
 static VIEWER_AUTH_NONCE_COUNTER: AtomicU64 = AtomicU64::new(1);
 
@@ -451,9 +438,7 @@ fn normalize_prompt_text(raw: &str) -> Option<String> {
     }
 }
 
-fn prompt_apply_request_has_patch(
-    request: &oasis7::viewer::PromptControlApplyRequest,
-) -> bool {
+fn prompt_apply_request_has_patch(request: &oasis7::viewer::PromptControlApplyRequest) -> bool {
     request.system_prompt_override.is_some()
         || request.short_term_goal_override.is_some()
         || request.long_term_goal_override.is_some()

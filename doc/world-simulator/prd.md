@@ -197,6 +197,7 @@
   - SC-93: 测试手册、CI 帮助文案与 Viewer HelloAck 默认 `server` 标识必须优先使用 `oasis7` 口径；兼容 payload / env fallback 可继续保留旧 `agent_world` 值，但 repo 当前默认说明与协议默认输出不得继续把旧品牌当作现行真值。
   - SC-94: README、站点首页、Viewer 手册与 `scenario_test_runner` 等活跃入口中的当前命令、crate 路径、Viewer env key 与默认缓存路径必须切到 `oasis7` / `oasis7_*` / `OASIS7_VIEWER_*` / `.oasis7_*`；旧品牌仅允许作为兼容 fallback 被说明，不得继续以默认入口或有效路径示人。
   - SC-95: 活跃工具源码中的旧品牌 env helper / 常量命名也必须收口到 `compat_old_brand` 等中性语义；兼容字面量值可继续保留为 fallback，但内部实现不应继续使用 `LEGACY_WASM_ENV_PREFIX` 这类把旧品牌当作主语义的标识名。
+  - SC-96: Viewer 运行时自身不再接受 `AGENT_WORLD_VIEWER_*` 与 `.agent_world_viewer` 兼容 alias；`viewer_env`、auth/bootstrap、automation、perf probe 与 right-panel 模块可见性状态路径必须只认 `OASIS7_VIEWER_*` / `.oasis7_viewer`，避免旧品牌 alias 继续作为有效运行入口。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -451,6 +452,7 @@
   - AC-98: `testing-manual.md`、`scripts/ci-tests.sh`、`scripts/viewer-release-qa-loop.sh` 与 `crates/oasis7/src/viewer/{server.rs,runtime_live.rs,live_split_part2.rs}` 中作为当前默认说明/输出使用的 `agent_world` 字符串必须全部改为 `oasis7`；`crates/oasis7_proto/src/viewer.rs` 中用于兼容测试的旧 payload 样例可保留，但其测试语义必须继续明确这是 compat payload，而非默认值。
   - AC-99: `README.md`、`site/{index.html,en/index.html}`、`doc/world-simulator/viewer/viewer-manual.md`、`site/doc/{cn,en}/viewer-manual.html`、`world_viewer_live.release.example.toml` 与 `tools/scenario_test_runner/**` 中作为当前入口使用的 `agent_world*` crate/path/command/env/path 说明必须全部改为 `oasis7*` / `OASIS7_VIEWER_*` / `.oasis7_viewer`；其中 `tools/scenario_test_runner` 必须恢复到可解析 `../../crates/oasis7` 的依赖路径并能通过 cargo 检查。
   - AC-100: `tools/wasm_build_suite/src/lib.rs` 中处理 `AGENT_WORLD_WASM_*` fallback 的 helper / 常量 / 测试命名必须改为 `compat_old_brand_*` 语义，但 fallback 读取行为保持不变；变更后 `cargo test --manifest-path tools/wasm_build_suite/Cargo.toml` 必须通过。
+  - AC-101: `crates/oasis7_viewer/{software_safe.js,src/viewer_env.rs,src/egui_right_panel_chat.rs,src/egui_right_panel_chat_auth.rs,src/viewer_automation.rs,src/perf_probe.rs,src/right_panel_module_visibility.rs}` 必须移除 `AGENT_WORLD_VIEWER_*` / `.agent_world_viewer` fallback 读取；相应 compat 测试必须删除或改为断言旧 alias 已失效，且 `cargo test -p oasis7_viewer` 的定向用例与 `cargo check -p oasis7_viewer --target wasm32-unknown-unknown` 必须通过。
 - Non-Goals:
   - 不在本 PRD 中详细列出每个 UI 像素级规范。
   - 不替代 world-runtime/p2p 的底层协议设计。

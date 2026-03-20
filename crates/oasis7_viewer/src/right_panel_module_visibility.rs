@@ -6,10 +6,7 @@ use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
 const MODULE_VISIBILITY_PATH_ENV: &str = "OASIS7_VIEWER_MODULE_VISIBILITY_PATH";
-const COMPAT_OLD_BRAND_MODULE_VISIBILITY_PATH_ENV: &str =
-    "AGENT_WORLD_VIEWER_MODULE_VISIBILITY_PATH";
 const MODULE_VISIBILITY_DIR: &str = ".oasis7_viewer";
-const COMPAT_OLD_BRAND_MODULE_VISIBILITY_DIR: &str = ".agent_world_viewer";
 const MODULE_VISIBILITY_FILE: &str = "right_panel_modules.json";
 const MODULE_VISIBILITY_VERSION: u32 = 1;
 
@@ -126,23 +123,10 @@ pub(super) fn resolve_right_panel_module_visibility_resources(
     RightPanelModuleVisibilityState,
     RightPanelModuleVisibilityPath,
 ) {
-    let explicit_path = std::env::var(MODULE_VISIBILITY_PATH_ENV)
-        .ok()
-        .or_else(|| std::env::var(COMPAT_OLD_BRAND_MODULE_VISIBILITY_PATH_ENV).ok());
+    let explicit_path = std::env::var(MODULE_VISIBILITY_PATH_ENV).ok();
     let home = std::env::var("HOME").ok();
-    let path =
-        resolve_visibility_path_from(explicit_path.clone(), home.clone(), MODULE_VISIBILITY_DIR);
-    let compat_old_brand_path = explicit_path.is_none().then(|| {
-        resolve_visibility_path_from(None, home, COMPAT_OLD_BRAND_MODULE_VISIBILITY_DIR)
-    });
-
-    let state = load_right_panel_module_visibility(path.as_path())
-        .or_else(|| {
-            compat_old_brand_path
-                .as_ref()
-                .and_then(|path| load_right_panel_module_visibility(path.as_path()))
-        })
-        .unwrap_or(default_state);
+    let path = resolve_visibility_path_from(explicit_path, home, MODULE_VISIBILITY_DIR);
+    let state = load_right_panel_module_visibility(path.as_path()).unwrap_or(default_state);
     (state, RightPanelModuleVisibilityPath { path })
 }
 
@@ -271,21 +255,6 @@ mod tests {
     }
 
     #[test]
-    fn resolve_visibility_path_can_target_compat_old_brand_dir() {
-        let path = resolve_visibility_path_from(
-            None,
-            Some("/Users/tester".to_string()),
-            COMPAT_OLD_BRAND_MODULE_VISIBILITY_DIR,
-        );
-        assert_eq!(
-            path,
-            PathBuf::from("/Users/tester")
-                .join(COMPAT_OLD_BRAND_MODULE_VISIBILITY_DIR)
-                .join(MODULE_VISIBILITY_FILE)
-        );
-    }
-
-    #[test]
     fn parse_visibility_defaults_missing_fields_to_module_defaults() {
         let state = parse_right_panel_module_visibility(
             r#"{
@@ -329,11 +298,12 @@ mod tests {
     }
 
     #[test]
-    fn load_visibility_supports_compat_old_brand_default_path() {
-        let base = unique_temp_dir("right_panel_modules_legacy");
-        let compat_old_brand_path = base
-            .join(COMPAT_OLD_BRAND_MODULE_VISIBILITY_DIR)
+    fn resolve_visibility_resources_ignore_removed_old_brand_path() {
+        let base = unique_temp_dir("right_panel_modules_current_only");
+        let current_path = base
+            .join(MODULE_VISIBILITY_DIR)
             .join(MODULE_VISIBILITY_FILE);
+        let previous_home = std::env::var_os("HOME");
         let state = RightPanelModuleVisibilityState {
             show_controls: false,
             show_overview: false,
@@ -344,24 +314,24 @@ mod tests {
             show_timeline: true,
             show_details: true,
         };
-        persist_right_panel_module_visibility_to_file(&state, compat_old_brand_path.as_path())
-            .expect("persist legacy visibility");
+        persist_right_panel_module_visibility_to_file(&state, current_path.as_path())
+            .expect("persist visibility");
 
-        let path = resolve_visibility_path_from(
-            None,
-            Some(base.to_string_lossy().to_string()),
-            MODULE_VISIBILITY_DIR,
+        unsafe {
+            std::env::set_var("HOME", base.as_os_str());
+        }
+        let (loaded, path) = resolve_right_panel_module_visibility_resources(
+            RightPanelModuleVisibilityState::default(),
         );
-        let compat_old_brand_path = resolve_visibility_path_from(
-            None,
-            Some(base.to_string_lossy().to_string()),
-            COMPAT_OLD_BRAND_MODULE_VISIBILITY_DIR,
-        );
-        let loaded = load_right_panel_module_visibility(path.as_path())
-            .or_else(|| load_right_panel_module_visibility(compat_old_brand_path.as_path()))
-            .expect("load visibility");
+        assert_eq!(path.path, current_path);
         assert_eq!(loaded, state);
 
+        unsafe {
+            match previous_home {
+                Some(home) => std::env::set_var("HOME", home),
+                None => std::env::remove_var("HOME"),
+            }
+        }
         fs::remove_dir_all(base).ok();
     }
 

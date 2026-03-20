@@ -11,25 +11,10 @@ const AUTO_SELECT_ENV: &str = "OASIS7_VIEWER_AUTO_SELECT";
 const AUTO_SELECT_TARGET_ENV: &str = "OASIS7_VIEWER_AUTO_SELECT_TARGET";
 const VIEWER_PLAYER_ID_DEFAULT: &str = "viewer-player";
 const VIEWER_PLAYER_ID_ENV: &str = "OASIS7_VIEWER_PLAYER_ID";
-const COMPAT_OLD_BRAND_VIEWER_PLAYER_ID_ENV: &str = "AGENT_WORLD_VIEWER_PLAYER_ID";
-const VIEWER_PLAYER_ID_ENV_ALIASES: &[&str] =
-    &[VIEWER_PLAYER_ID_ENV, COMPAT_OLD_BRAND_VIEWER_PLAYER_ID_ENV];
 const VIEWER_AUTH_PUBLIC_KEY_ENV: &str = "OASIS7_VIEWER_AUTH_PUBLIC_KEY";
-const COMPAT_OLD_BRAND_VIEWER_AUTH_PUBLIC_KEY_ENV: &str = "AGENT_WORLD_VIEWER_AUTH_PUBLIC_KEY";
-const VIEWER_AUTH_PUBLIC_KEY_ENV_ALIASES: &[&str] = &[
-    VIEWER_AUTH_PUBLIC_KEY_ENV,
-    COMPAT_OLD_BRAND_VIEWER_AUTH_PUBLIC_KEY_ENV,
-];
 const VIEWER_AUTH_PRIVATE_KEY_ENV: &str = "OASIS7_VIEWER_AUTH_PRIVATE_KEY";
-const COMPAT_OLD_BRAND_VIEWER_AUTH_PRIVATE_KEY_ENV: &str = "AGENT_WORLD_VIEWER_AUTH_PRIVATE_KEY";
-const VIEWER_AUTH_PRIVATE_KEY_ENV_ALIASES: &[&str] = &[
-    VIEWER_AUTH_PRIVATE_KEY_ENV,
-    COMPAT_OLD_BRAND_VIEWER_AUTH_PRIVATE_KEY_ENV,
-];
 #[cfg(target_arch = "wasm32")]
 const VIEWER_AUTH_BOOTSTRAP_OBJECT: &str = "__OASIS7_VIEWER_AUTH_ENV";
-#[cfg(target_arch = "wasm32")]
-const COMPAT_OLD_BRAND_VIEWER_AUTH_BOOTSTRAP_OBJECT: &str = "__AGENT_WORLD_VIEWER_AUTH_ENV";
 
 #[derive(Resource, Clone, Debug, PartialEq)]
 pub(super) struct ViewerAutomationConfig {
@@ -775,8 +760,8 @@ fn prompt_override_patch(value: &ViewerAutomationPromptValue) -> Option<String> 
 
 fn resolve_automation_auth_signer() -> Result<ViewerAutomationAuthSigner, String> {
     let player_id = resolve_viewer_player_id()?;
-    let public_key = resolve_required_auth_env(VIEWER_AUTH_PUBLIC_KEY_ENV_ALIASES)?;
-    let private_key = resolve_required_auth_env(VIEWER_AUTH_PRIVATE_KEY_ENV_ALIASES)?;
+    let public_key = resolve_required_auth_env(VIEWER_AUTH_PUBLIC_KEY_ENV)?;
+    let private_key = resolve_required_auth_env(VIEWER_AUTH_PRIVATE_KEY_ENV)?;
     Ok(ViewerAutomationAuthSigner {
         player_id,
         public_key,
@@ -785,18 +770,14 @@ fn resolve_automation_auth_signer() -> Result<ViewerAutomationAuthSigner, String
 }
 
 fn resolve_viewer_player_id() -> Result<String, String> {
-    match resolve_runtime_auth_value_alias(VIEWER_PLAYER_ID_ENV_ALIASES) {
+    match resolve_runtime_auth_value(VIEWER_PLAYER_ID_ENV) {
         Some(value) => Ok(value),
         None => Ok(VIEWER_PLAYER_ID_DEFAULT.to_string()),
     }
 }
 
-fn resolve_required_auth_env(keys: &[&str]) -> Result<String, String> {
-    resolve_runtime_auth_value_alias(keys).ok_or_else(|| format!("{} is not set", keys[0]))
-}
-
-fn resolve_runtime_auth_value_alias(keys: &[&str]) -> Option<String> {
-    keys.iter().find_map(|key| resolve_runtime_auth_value(key))
+fn resolve_required_auth_env(key: &str) -> Result<String, String> {
+    resolve_runtime_auth_value(key).ok_or_else(|| format!("{key} is not set"))
 }
 
 fn resolve_runtime_auth_value(key: &str) -> Option<String> {
@@ -814,28 +795,19 @@ fn resolve_runtime_auth_value(key: &str) -> Option<String> {
 #[cfg(target_arch = "wasm32")]
 fn resolve_wasm_auth_value(key: &str) -> Option<String> {
     let window = web_sys::window()?;
-    for object_name in [
-        VIEWER_AUTH_BOOTSTRAP_OBJECT,
-        COMPAT_OLD_BRAND_VIEWER_AUTH_BOOTSTRAP_OBJECT,
-    ] {
-        let store = js_sys::Reflect::get(
-            window.as_ref(),
-            &wasm_bindgen::JsValue::from_str(object_name),
-        )
-        .ok()?;
-        if store.is_null() || store.is_undefined() {
-            continue;
-        }
-        let value = js_sys::Reflect::get(&store, &wasm_bindgen::JsValue::from_str(key)).ok()?;
-        if let Some(value) = value
-            .as_string()
-            .map(|raw| raw.trim().to_string())
-            .filter(|value| !value.is_empty())
-        {
-            return Some(value);
-        }
+    let store = js_sys::Reflect::get(
+        window.as_ref(),
+        &wasm_bindgen::JsValue::from_str(VIEWER_AUTH_BOOTSTRAP_OBJECT),
+    )
+    .ok()?;
+    if store.is_null() || store.is_undefined() {
+        return None;
     }
-    None
+    js_sys::Reflect::get(&store, &wasm_bindgen::JsValue::from_str(key))
+        .ok()?
+        .as_string()
+        .map(|raw| raw.trim().to_string())
+        .filter(|value| !value.is_empty())
 }
 
 fn next_auth_nonce(state: &mut ViewerAutomationState) -> u64 {

@@ -2,13 +2,9 @@ const TEST_API_GLOBAL_NAME = "__AW_TEST__";
 const RENDER_META_GLOBAL_NAME = "__AW_VIEWER_RENDER_META__";
 const SOFTWARE_SAFE_RENDER_MODE = "software_safe";
 const VIEWER_AUTH_BOOTSTRAP_OBJECT = "__OASIS7_VIEWER_AUTH_ENV";
-const COMPAT_OLD_BRAND_VIEWER_AUTH_BOOTSTRAP_OBJECT = "__AGENT_WORLD_VIEWER_AUTH_ENV";
 const VIEWER_PLAYER_ID_KEY = "OASIS7_VIEWER_PLAYER_ID";
-const COMPAT_OLD_BRAND_VIEWER_PLAYER_ID_KEY = "AGENT_WORLD_VIEWER_PLAYER_ID";
 const VIEWER_AUTH_PUBLIC_KEY = "OASIS7_VIEWER_AUTH_PUBLIC_KEY";
-const COMPAT_OLD_BRAND_VIEWER_AUTH_PUBLIC_KEY = "AGENT_WORLD_VIEWER_AUTH_PUBLIC_KEY";
 const VIEWER_AUTH_PRIVATE_KEY = "OASIS7_VIEWER_AUTH_PRIVATE_KEY";
-const COMPAT_OLD_BRAND_VIEWER_AUTH_PRIVATE_KEY = "AGENT_WORLD_VIEWER_AUTH_PRIVATE_KEY";
 const VIEWER_AUTH_SIGNATURE_PREFIX = "awviewauth:v1:";
 const DEFAULT_WS_ADDR = "ws://127.0.0.1:5011";
 const MAX_EVENTS = 24;
@@ -157,9 +153,7 @@ function detectRendererMeta() {
 }
 
 function resolveAuthBootstrap() {
-  const raw =
-    window[VIEWER_AUTH_BOOTSTRAP_OBJECT] ||
-    window[COMPAT_OLD_BRAND_VIEWER_AUTH_BOOTSTRAP_OBJECT];
+  const raw = window[VIEWER_AUTH_BOOTSTRAP_OBJECT];
   if (!raw || typeof raw !== "object") {
     return {
       available: false,
@@ -169,17 +163,11 @@ function resolveAuthBootstrap() {
       error: "viewer auth bootstrap is unavailable",
     };
   }
-  const playerId = String(
-    raw[VIEWER_PLAYER_ID_KEY] || raw[COMPAT_OLD_BRAND_VIEWER_PLAYER_ID_KEY] || "",
-  ).trim();
-  const publicKey = String(
-    raw[VIEWER_AUTH_PUBLIC_KEY] || raw[COMPAT_OLD_BRAND_VIEWER_AUTH_PUBLIC_KEY] || "",
-  )
+  const playerId = String(raw[VIEWER_PLAYER_ID_KEY] || "").trim();
+  const publicKey = String(raw[VIEWER_AUTH_PUBLIC_KEY] || "")
     .trim()
     .toLowerCase();
-  const privateKey = String(
-    raw[VIEWER_AUTH_PRIVATE_KEY] || raw[COMPAT_OLD_BRAND_VIEWER_AUTH_PRIVATE_KEY] || "",
-  )
+  const privateKey = String(raw[VIEWER_AUTH_PRIVATE_KEY] || "")
     .trim()
     .toLowerCase();
   if (!playerId || !publicKey || !privateKey) {

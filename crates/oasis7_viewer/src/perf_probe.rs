@@ -3,12 +3,8 @@ use bevy::prelude::*;
 use super::render_perf_summary::{infer_perf_hotspot, RenderPerfSummary};
 
 const PERF_PROBE_ENV: &str = "OASIS7_VIEWER_PERF_PROBE";
-const COMPAT_OLD_BRAND_PERF_PROBE_ENV: &str = "AGENT_WORLD_VIEWER_PERF_PROBE";
 const PERF_PROBE_INTERVAL_ENV: &str = "OASIS7_VIEWER_PERF_PROBE_INTERVAL_SECS";
-const COMPAT_OLD_BRAND_PERF_PROBE_INTERVAL_ENV: &str =
-    "AGENT_WORLD_VIEWER_PERF_PROBE_INTERVAL_SECS";
 const PERF_BUDGET_ENV: &str = "OASIS7_VIEWER_PERF_BUDGET_MS";
-const COMPAT_OLD_BRAND_PERF_BUDGET_ENV: &str = "AGENT_WORLD_VIEWER_PERF_BUDGET_MS";
 
 #[derive(Resource, Clone, Copy, Debug, PartialEq)]
 pub(super) struct PerfProbeConfig {
@@ -37,19 +33,10 @@ pub(super) struct PerfProbeState {
 
 pub(super) fn perf_probe_config_from_env() -> PerfProbeConfig {
     config_from_values(
-        read_env_alias(PERF_PROBE_ENV, COMPAT_OLD_BRAND_PERF_PROBE_ENV),
-        read_env_alias(
-            PERF_PROBE_INTERVAL_ENV,
-            COMPAT_OLD_BRAND_PERF_PROBE_INTERVAL_ENV,
-        ),
-        read_env_alias(PERF_BUDGET_ENV, COMPAT_OLD_BRAND_PERF_BUDGET_ENV),
+        std::env::var(PERF_PROBE_ENV).ok(),
+        std::env::var(PERF_PROBE_INTERVAL_ENV).ok(),
+        std::env::var(PERF_BUDGET_ENV).ok(),
     )
-}
-
-fn read_env_alias(primary: &str, legacy: &str) -> Option<String> {
-    std::env::var(primary)
-        .ok()
-        .or_else(|| std::env::var(legacy).ok())
 }
 
 pub(super) fn update_perf_probe(
@@ -174,28 +161,25 @@ mod tests {
     }
 
     #[test]
-    fn read_env_alias_prefers_primary_then_compat_old_brand() {
+    fn perf_probe_config_from_env_ignores_removed_old_brand_keys() {
         unsafe {
             std::env::remove_var(PERF_PROBE_ENV);
-            std::env::remove_var(COMPAT_OLD_BRAND_PERF_PROBE_ENV);
-            std::env::set_var(COMPAT_OLD_BRAND_PERF_PROBE_ENV, "true");
+            std::env::remove_var(PERF_PROBE_INTERVAL_ENV);
+            std::env::remove_var(PERF_BUDGET_ENV);
+            std::env::set_var("AGENT_WORLD_VIEWER_PERF_PROBE", "true");
+            std::env::set_var("AGENT_WORLD_VIEWER_PERF_PROBE_INTERVAL_SECS", "0.5");
+            std::env::set_var("AGENT_WORLD_VIEWER_PERF_BUDGET_MS", "25.0");
         }
-        assert_eq!(
-            read_env_alias(PERF_PROBE_ENV, COMPAT_OLD_BRAND_PERF_PROBE_ENV).as_deref(),
-            Some("true")
-        );
-
-        unsafe {
-            std::env::set_var(PERF_PROBE_ENV, "false");
-        }
-        assert_eq!(
-            read_env_alias(PERF_PROBE_ENV, COMPAT_OLD_BRAND_PERF_PROBE_ENV).as_deref(),
-            Some("false")
-        );
+        let config = perf_probe_config_from_env();
+        assert_eq!(config, PerfProbeConfig::default());
 
         unsafe {
             std::env::remove_var(PERF_PROBE_ENV);
-            std::env::remove_var(COMPAT_OLD_BRAND_PERF_PROBE_ENV);
+            std::env::remove_var(PERF_PROBE_INTERVAL_ENV);
+            std::env::remove_var(PERF_BUDGET_ENV);
+            std::env::remove_var("AGENT_WORLD_VIEWER_PERF_PROBE");
+            std::env::remove_var("AGENT_WORLD_VIEWER_PERF_PROBE_INTERVAL_SECS");
+            std::env::remove_var("AGENT_WORLD_VIEWER_PERF_BUDGET_MS");
         }
     }
 }
