@@ -18,8 +18,8 @@
 - [x] RPA-9：世界摘要物理口径可观测性（Render Physical 状态块）
 
 ## 依赖
-- `WorldSnapshot` / `WorldEvent` / `WorldConfig`（`crates/agent_world`）
-- `agent_world_viewer` 3D 渲染与 UI 管线（`crates/agent_world_viewer`）
+- `WorldSnapshot` / `WorldEvent` / `WorldConfig`（`crates/oasis7`）
+- `oasis7_viewer` 3D 渲染与 UI 管线（`crates/oasis7_viewer`）
 - 现有物理参数约束（`doc/world-simulator.prd.md`，C9 参数表）
 - 截图闭环脚本（`scripts/capture-viewer-frame.sh`）
 

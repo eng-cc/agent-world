@@ -12,7 +12,7 @@
 - 保证 agent-browser 3D 闭环可稳定执行，不因该管线创建失败导致 `RuntimeError: unreachable`。
 
 ## 2. User Experience & Functionality
-- 仅调整 `agent_world_viewer` 的 wasm 启动渲染插件配置。
+- 仅调整 `oasis7_viewer` 的 wasm 启动渲染插件配置。
 - 不改动 world 模拟逻辑、协议、UI 引导流程语义。
 - 不触碰 `third_party`。
 
@@ -20,7 +20,7 @@
 - N/A: 本专题不新增 AI 专属要求。
 
 ## 4. Technical Specifications
-- 模块：`crates/agent_world_viewer/src/app_bootstrap.rs`
+- 模块：`crates/oasis7_viewer/src/app_bootstrap.rs`
 - 方案：在 `target_arch = wasm32` 下显式配置 `PbrPlugin`：
   - `add_default_deferred_lighting_plugin = false`
   - 其余保持默认

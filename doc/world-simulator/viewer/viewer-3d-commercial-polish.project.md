@@ -34,13 +34,13 @@
 ### C3D-5 收口
 - [x] C3D5.1 更新 `doc/world-simulator/viewer/viewer-manual.md` 商业化 3D 配置说明
 - [x] C3D5.2 更新项目状态与 `doc/devlog/2026-02-20.md`
-- [x] C3D5.3 执行测试：`env -u RUSTC_WRAPPER cargo test -p agent_world_viewer`
+- [x] C3D5.3 执行测试：`env -u RUSTC_WRAPPER cargo test -p oasis7_viewer`
 
 ## 依赖
-- `crates/agent_world_viewer/src/viewer_3d_config.rs`
-- `crates/agent_world_viewer/src/main.rs`
-- `crates/agent_world_viewer/src/scene_helpers.rs`
-- `crates/agent_world_viewer/src/material_library.rs`
+- `crates/oasis7_viewer/src/viewer_3d_config.rs`
+- `crates/oasis7_viewer/src/main.rs`
+- `crates/oasis7_viewer/src/scene_helpers.rs`
+- `crates/oasis7_viewer/src/material_library.rs`
 - `doc/world-simulator/viewer/viewer-manual.md`
 
 ## 状态

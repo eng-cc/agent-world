@@ -21,7 +21,7 @@
 - 完成工业风 PBR 材质参数分层（主体、覆盖层、元素块、设施）。
 - 完成三点光照（key/fill/rim）与阴影开关策略（按档位）。
 - 完成后处理最小可发行链路：Tonemapping、DebandDither、Bloom、ColorGrading。
-- 补齐 `agent_world_viewer` 单测与配置解析回归。
+- 补齐 `oasis7_viewer` 单测与配置解析回归。
 
 ### Out of Scope
 - 本期不引入完整外部美术内容生产管线（高模烘焙、动画资产、贴图工具链）。
@@ -36,7 +36,7 @@
 ### 1) 渲染档位与统一配置
 - 新增 `ViewerRenderProfile`：`debug | balanced | cinematic`。
 - 新增环境变量：
-  - `AGENT_WORLD_VIEWER_RENDER_PROFILE`
+  - `OASIS7_VIEWER_RENDER_PROFILE`
 - 新增/扩展配置分组：
   - `assets`：几何精度、Location 壳层开关。
   - `materials`：碎片是否 unlit、发光增强、透明度。
@@ -84,7 +84,7 @@
 - 材质升级影响可读性：
   - 缓解：保留 Debug/Balanced 风格，Cinematic 作为可选高保真档位。
 - 渲染配置项增加导致运维复杂：
-  - 缓解：统一 `AGENT_WORLD_VIEWER_RENDER_PROFILE` 作为主入口，其它变量为细化覆盖。
+  - 缓解：统一 `OASIS7_VIEWER_RENDER_PROFILE` 作为主入口，其它变量为细化覆盖。
 
 ## 6. Validation & Decision Record
 - 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

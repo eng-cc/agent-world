@@ -14,10 +14,10 @@
 - [x] UI/3D 分区：右侧面板 + 3D viewport 切分
 
 ## 依赖
-- Viewer 协议与 live/offline server（`crates/agent_world/src/viewer`）
-- `WorldSnapshot` / `WorldEvent` / `GeoPos`（`crates/agent_world`）
-- 三节点场景文件（`crates/agent_world/scenarios/triad_p2p_bootstrap.json`）
-- Bevy 3D 渲染能力（`crates/agent_world_viewer`）
+- Viewer 协议与 live/offline server（`crates/oasis7/src/viewer`）
+- `WorldSnapshot` / `WorldEvent` / `GeoPos`（`crates/oasis7`）
+- 三节点场景文件（`crates/oasis7/scenarios/triad_p2p_bootstrap.json`）
+- Bevy 3D 渲染能力（`crates/oasis7_viewer`）
 
 ## 状态
 - 当前阶段：最小闭环与交互完成，待补齐更丰富渲染

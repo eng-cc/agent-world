@@ -17,7 +17,7 @@
 
 ## 2. User Experience & Functionality
 - **范围内**
-  - `agent_world_viewer` 增加 3D 场景层（Bevy 3D Camera + Mesh）。
+  - `oasis7_viewer` 增加 3D 场景层（Bevy 3D Camera + Mesh）。
   - 复用现有 viewer 协议，使用 `WorldSnapshot` + `WorldEvent` 驱动 3D 视图。
   - 将 `GeoPos` 映射为 3D 坐标（可配置比例尺），显示 Location/Agent 标记。
   - 支持最小事件更新：LocationRegistered / AgentRegistered / AgentMoved。
