@@ -1,6 +1,6 @@
 //! Module storage persistence for artifacts and registry.
 
-use agent_world_wasm_store::{ModuleStore as InnerModuleStore, ModuleStoreError};
+use oasis7_wasm_store::{ModuleStore as InnerModuleStore, ModuleStoreError};
 use std::path::{Path, PathBuf};
 
 use super::error::WorldError;

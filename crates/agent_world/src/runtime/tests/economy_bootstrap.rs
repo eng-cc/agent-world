@@ -4,7 +4,7 @@ use super::super::*;
 use super::pos;
 use crate::simulator::ResourceKind;
 use oasis7_wasm_abi::{FactoryModuleSpec, MaterialStack};
-use agent_world_wasm_executor::{WasmExecutor, WasmExecutorConfig};
+use oasis7_wasm_executor::{WasmExecutor, WasmExecutorConfig};
 
 fn has_active(world: &World, module_id: &str) -> bool {
     world.module_registry().active.contains_key(module_id)

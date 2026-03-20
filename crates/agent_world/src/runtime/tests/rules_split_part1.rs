@@ -6,9 +6,9 @@ use oasis7_wasm_abi::{
     ModuleCallErrorCode, ModuleCallFailure, ModuleCallRequest, ModuleEmit, ModuleOutput,
     ModuleSandbox,
 };
-use agent_world_wasm_executor::FixedSandbox;
+use oasis7_wasm_executor::FixedSandbox;
 #[cfg(feature = "wasmtime")]
-use agent_world_wasm_executor::{WasmExecutor, WasmExecutorConfig};
+use oasis7_wasm_executor::{WasmExecutor, WasmExecutorConfig};
 use std::collections::BTreeMap;
 
 #[cfg(feature = "wasmtime")]

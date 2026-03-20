@@ -9,7 +9,7 @@ use oasis7_wasm_abi::{
     FactoryBuildDecision, FactoryModuleSpec, MaterialStack, ModuleEmit, ModuleOutput,
     ProductValidationDecision, RecipeExecutionPlan,
 };
-use agent_world_wasm_executor::FixedSandbox;
+use oasis7_wasm_executor::FixedSandbox;
 use serde_json::json;
 
 fn factory_spec(factory_id: &str, build_time_ticks: u32, recipe_slots: u16) -> FactoryModuleSpec {

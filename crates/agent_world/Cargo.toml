@@ -22,9 +22,9 @@ rand_core = { version = "0.6", features = ["getrandom"] }
 agent_world_distfs = { path = "../agent_world_distfs" }
 agent_world_launcher_ui = { path = "../agent_world_launcher_ui" }
 agent_world_node = { path = "../agent_world_node" }
-agent_world_wasm_executor = { path = "../agent_world_wasm_executor", default-features = false }
+oasis7_wasm_executor = { path = "../oasis7_wasm_executor", default-features = false }
 oasis7_wasm_router = { path = "../oasis7_wasm_router" }
-agent_world_wasm_store = { path = "../agent_world_wasm_store" }
+oasis7_wasm_store = { path = "../oasis7_wasm_store" }
 async-openai = { version = "0.32.4", default-features = false, features = ["responses", "rustls"] }
 ctrlc = { version = "3.4", features = ["termination"] }
 hmac = "0.12"
@@ -38,7 +38,7 @@ getrandom = { version = "0.2", features = ["js"] }
 
 [features]
 default = ["wasmtime"]
-wasmtime = ["agent_world_wasm_executor/wasmtime"]
+wasmtime = ["oasis7_wasm_executor/wasmtime"]
 viewer_live_integration = []
 self_tests = []
 test_tier_required = []

@@ -18,7 +18,7 @@ use agent_world::runtime::WorldError;
 #[cfg(feature = "test_tier_full")]
 use oasis7_wasm_abi::ModuleCallErrorCode;
 #[cfg(feature = "test_tier_full")]
-use agent_world_wasm_executor::FixedSandbox;
+use oasis7_wasm_executor::FixedSandbox;
 
 fn pos(x: f64, y: f64) -> GeoPos {
     GeoPos {

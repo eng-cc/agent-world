@@ -3,7 +3,7 @@
 use super::super::m1_builtin_wasm_artifact::m1_builtin_manifest_hash_tokens;
 use super::super::*;
 use super::pos;
-use agent_world_wasm_executor::{WasmExecutor, WasmExecutorConfig};
+use oasis7_wasm_executor::{WasmExecutor, WasmExecutorConfig};
 use std::collections::BTreeMap;
 
 fn has_active(world: &World, module_id: &str) -> bool {

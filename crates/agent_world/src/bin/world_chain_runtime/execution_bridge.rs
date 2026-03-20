@@ -21,7 +21,7 @@ use agent_world_node::{
 };
 use agent_world_proto::storage_profile::StorageProfileConfig;
 use oasis7_wasm_abi::ModuleSandbox;
-use agent_world_wasm_executor::{WasmExecutor, WasmExecutorConfig};
+use oasis7_wasm_executor::{WasmExecutor, WasmExecutorConfig};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -1957,7 +1957,7 @@ mod tests {
     use agent_world::simulator::{Action as SimulatorAction, ActionSubmitter};
     use agent_world_node::{NodeConsensusSnapshot, NodeRole};
     use oasis7_wasm_abi::{ModuleCallFailure, ModuleOutput};
-    use agent_world_wasm_executor::FixedSandbox;
+    use oasis7_wasm_executor::FixedSandbox;
     use ed25519_dalek::{Signer, SigningKey};
     use sha2::{Digest, Sha256};
     use std::time::{SystemTime, UNIX_EPOCH};

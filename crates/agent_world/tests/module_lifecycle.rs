@@ -10,7 +10,7 @@ use agent_world::GeoPos;
 #[cfg(feature = "test_tier_full")]
 use oasis7_wasm_abi::{ModuleEmit, ModuleOutput};
 #[cfg(feature = "test_tier_full")]
-use agent_world_wasm_executor::FixedSandbox;
+use oasis7_wasm_executor::FixedSandbox;
 #[cfg(feature = "test_tier_full")]
 use serde_json::json;
 

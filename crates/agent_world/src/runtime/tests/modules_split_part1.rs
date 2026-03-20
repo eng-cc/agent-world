@@ -5,9 +5,9 @@ use oasis7_wasm_abi::{
     ModuleCallErrorCode, ModuleCallFailure, ModuleCallInput, ModuleCallRequest, ModuleEffectIntent,
     ModuleEmit, ModuleOutput, ModuleSandbox, ModuleTickLifecycleDirective,
 };
-use agent_world_wasm_executor::FixedSandbox;
+use oasis7_wasm_executor::FixedSandbox;
 #[cfg(not(feature = "wasmtime"))]
-use agent_world_wasm_executor::{WasmExecutor, WasmExecutorConfig};
+use oasis7_wasm_executor::{WasmExecutor, WasmExecutorConfig};
 use serde_json::json;
 use std::collections::VecDeque;
 

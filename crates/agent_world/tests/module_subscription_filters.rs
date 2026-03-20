@@ -9,7 +9,7 @@ use agent_world::runtime::{
 };
 use agent_world::GeoPos;
 use oasis7_wasm_abi::{ModuleEmit, ModuleOutput};
-use agent_world_wasm_executor::FixedSandbox;
+use oasis7_wasm_executor::FixedSandbox;
 use serde_json::json;
 use sha2::{Digest, Sha256};
 

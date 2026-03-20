@@ -9,10 +9,10 @@ members = [
     "crates/agent_world_node",
     "crates/agent_world_proto",
     "crates/oasis7_wasm_abi",
-    "crates/agent_world_wasm_executor",
+    "crates/oasis7_wasm_executor",
     "crates/oasis7_wasm_sdk",
     "crates/oasis7_wasm_router",
-    "crates/agent_world_wasm_store",
+    "crates/oasis7_wasm_store",
     "crates/agent_world_viewer",
 ]
 resolver = "2"

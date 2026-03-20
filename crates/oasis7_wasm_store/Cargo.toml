@@ -1,5 +1,5 @@
 [package]
-name = "agent_world_wasm_store"
+name = "oasis7_wasm_store"
 version = "0.1.0"
 edition = "2021"
 
