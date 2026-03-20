@@ -5,7 +5,7 @@ use wasm_bindgen::JsValue;
 #[cfg(target_arch = "wasm32")]
 const VIEWER_AUTH_BOOTSTRAP_OBJECT: &str = "__OASIS7_VIEWER_AUTH_ENV";
 #[cfg(target_arch = "wasm32")]
-const LEGACY_VIEWER_AUTH_BOOTSTRAP_OBJECT: &str = "__AGENT_WORLD_VIEWER_AUTH_ENV";
+const COMPAT_OLD_BRAND_VIEWER_AUTH_BOOTSTRAP_OBJECT: &str = "__AGENT_WORLD_VIEWER_AUTH_ENV";
 #[cfg(not(target_arch = "wasm32"))]
 const NODE_CONFIG_FILE_NAME: &str = "config.toml";
 #[cfg(not(target_arch = "wasm32"))]
@@ -112,7 +112,7 @@ fn resolve_wasm_viewer_auth_value(key: &str) -> Option<String> {
     let window = web_sys::window()?;
     for object_name in [
         VIEWER_AUTH_BOOTSTRAP_OBJECT,
-        LEGACY_VIEWER_AUTH_BOOTSTRAP_OBJECT,
+        COMPAT_OLD_BRAND_VIEWER_AUTH_BOOTSTRAP_OBJECT,
     ] {
         let store = js_sys::Reflect::get(window.as_ref(), &JsValue::from_str(object_name)).ok()?;
         if store.is_null() || store.is_undefined() {

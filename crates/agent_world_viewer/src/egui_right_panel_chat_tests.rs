@@ -362,19 +362,19 @@ fn resolve_viewer_auth_signer_from_uses_default_player_and_required_keys() {
 }
 
 #[test]
-fn resolve_viewer_auth_signer_from_accepts_legacy_key_names() {
+fn resolve_viewer_auth_signer_from_accepts_compat_old_brand_key_names() {
     let signer = test_signer(32);
     let mut env = std::collections::BTreeMap::<String, String>::new();
     env.insert(
-        LEGACY_VIEWER_AUTH_PUBLIC_KEY_ENV.to_string(),
+        COMPAT_OLD_BRAND_VIEWER_AUTH_PUBLIC_KEY_ENV.to_string(),
         signer.public_key.clone(),
     );
     env.insert(
-        LEGACY_VIEWER_AUTH_PRIVATE_KEY_ENV.to_string(),
+        COMPAT_OLD_BRAND_VIEWER_AUTH_PRIVATE_KEY_ENV.to_string(),
         signer.private_key.clone(),
     );
     env.insert(
-        LEGACY_VIEWER_PLAYER_ID_ENV.to_string(),
+        COMPAT_OLD_BRAND_VIEWER_PLAYER_ID_ENV.to_string(),
         "legacy-viewer-player".to_string(),
     );
 

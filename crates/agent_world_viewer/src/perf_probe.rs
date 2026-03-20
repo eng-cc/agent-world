@@ -3,11 +3,12 @@ use bevy::prelude::*;
 use super::render_perf_summary::{infer_perf_hotspot, RenderPerfSummary};
 
 const PERF_PROBE_ENV: &str = "OASIS7_VIEWER_PERF_PROBE";
-const LEGACY_PERF_PROBE_ENV: &str = "AGENT_WORLD_VIEWER_PERF_PROBE";
+const COMPAT_OLD_BRAND_PERF_PROBE_ENV: &str = "AGENT_WORLD_VIEWER_PERF_PROBE";
 const PERF_PROBE_INTERVAL_ENV: &str = "OASIS7_VIEWER_PERF_PROBE_INTERVAL_SECS";
-const LEGACY_PERF_PROBE_INTERVAL_ENV: &str = "AGENT_WORLD_VIEWER_PERF_PROBE_INTERVAL_SECS";
+const COMPAT_OLD_BRAND_PERF_PROBE_INTERVAL_ENV: &str =
+    "AGENT_WORLD_VIEWER_PERF_PROBE_INTERVAL_SECS";
 const PERF_BUDGET_ENV: &str = "OASIS7_VIEWER_PERF_BUDGET_MS";
-const LEGACY_PERF_BUDGET_ENV: &str = "AGENT_WORLD_VIEWER_PERF_BUDGET_MS";
+const COMPAT_OLD_BRAND_PERF_BUDGET_ENV: &str = "AGENT_WORLD_VIEWER_PERF_BUDGET_MS";
 
 #[derive(Resource, Clone, Copy, Debug, PartialEq)]
 pub(super) struct PerfProbeConfig {
@@ -36,9 +37,12 @@ pub(super) struct PerfProbeState {
 
 pub(super) fn perf_probe_config_from_env() -> PerfProbeConfig {
     config_from_values(
-        read_env_alias(PERF_PROBE_ENV, LEGACY_PERF_PROBE_ENV),
-        read_env_alias(PERF_PROBE_INTERVAL_ENV, LEGACY_PERF_PROBE_INTERVAL_ENV),
-        read_env_alias(PERF_BUDGET_ENV, LEGACY_PERF_BUDGET_ENV),
+        read_env_alias(PERF_PROBE_ENV, COMPAT_OLD_BRAND_PERF_PROBE_ENV),
+        read_env_alias(
+            PERF_PROBE_INTERVAL_ENV,
+            COMPAT_OLD_BRAND_PERF_PROBE_INTERVAL_ENV,
+        ),
+        read_env_alias(PERF_BUDGET_ENV, COMPAT_OLD_BRAND_PERF_BUDGET_ENV),
     )
 }
 
@@ -170,14 +174,14 @@ mod tests {
     }
 
     #[test]
-    fn read_env_alias_prefers_primary_then_legacy() {
+    fn read_env_alias_prefers_primary_then_compat_old_brand() {
         unsafe {
             std::env::remove_var(PERF_PROBE_ENV);
-            std::env::remove_var(LEGACY_PERF_PROBE_ENV);
-            std::env::set_var(LEGACY_PERF_PROBE_ENV, "true");
+            std::env::remove_var(COMPAT_OLD_BRAND_PERF_PROBE_ENV);
+            std::env::set_var(COMPAT_OLD_BRAND_PERF_PROBE_ENV, "true");
         }
         assert_eq!(
-            read_env_alias(PERF_PROBE_ENV, LEGACY_PERF_PROBE_ENV).as_deref(),
+            read_env_alias(PERF_PROBE_ENV, COMPAT_OLD_BRAND_PERF_PROBE_ENV).as_deref(),
             Some("true")
         );
 
@@ -185,13 +189,13 @@ mod tests {
             std::env::set_var(PERF_PROBE_ENV, "false");
         }
         assert_eq!(
-            read_env_alias(PERF_PROBE_ENV, LEGACY_PERF_PROBE_ENV).as_deref(),
+            read_env_alias(PERF_PROBE_ENV, COMPAT_OLD_BRAND_PERF_PROBE_ENV).as_deref(),
             Some("false")
         );
 
         unsafe {
             std::env::remove_var(PERF_PROBE_ENV);
-            std::env::remove_var(LEGACY_PERF_PROBE_ENV);
+            std::env::remove_var(COMPAT_OLD_BRAND_PERF_PROBE_ENV);
         }
     }
 }
