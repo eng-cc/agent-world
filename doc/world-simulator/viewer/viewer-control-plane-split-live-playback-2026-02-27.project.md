@@ -14,9 +14,9 @@
 
 ## 依赖
 - `doc/world-simulator/viewer/viewer-control-plane-split-live-playback-2026-02-27.prd.md`
-- `crates/agent_world_proto/src/viewer.rs`
-- `crates/agent_world/src/viewer/{protocol.rs,server.rs,live_split_part2.rs,mod.rs}`
-- `crates/agent_world_viewer/src/{main.rs,app_bootstrap.rs,main_connection.rs,timeline_controls.rs,egui_right_panel.rs,egui_right_panel_controls.rs,egui_right_panel_player_experience.rs,egui_right_panel_player_guide.rs,viewer_automation.rs,web_test_api.rs,headless.rs}`
+- `crates/oasis7_proto/src/viewer.rs`
+- `crates/oasis7/src/viewer/{protocol.rs,server.rs,live_split_part2.rs,mod.rs}`
+- `crates/oasis7_viewer/src/{main.rs,app_bootstrap.rs,main_connection.rs,timeline_controls.rs,egui_right_panel.rs,egui_right_panel_controls.rs,egui_right_panel_player_experience.rs,egui_right_panel_player_guide.rs,viewer_automation.rs,web_test_api.rs,headless.rs}`
 - `doc/devlog/2026-02-27.md`
 
 ## 状态

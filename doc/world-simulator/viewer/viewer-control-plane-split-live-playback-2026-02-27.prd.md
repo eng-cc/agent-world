@@ -11,7 +11,7 @@
 - 保持已有链路可渐进迁移：短期兼容 legacy `Control`，避免一次性破坏集成调用。
 
 ## 2. User Experience & Functionality
-- 协议层：`agent_world_proto::viewer` 新增 `PlaybackControl` 与 `LiveControl`，并在 `ViewerRequest` 中新增对应请求变体。
+- 协议层：`oasis7_proto::viewer` 新增 `PlaybackControl` 与 `LiveControl`，并在 `ViewerRequest` 中新增对应请求变体。
 - 握手层：`HelloAck` 增加服务端控制面 profile（`playback`/`live`）。
 - 服务端执行层：
   - `ViewerServer`（回放）仅执行回放控制。

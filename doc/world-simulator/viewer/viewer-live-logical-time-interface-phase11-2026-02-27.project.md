@@ -12,9 +12,9 @@
 
 ## 依赖
 - `doc/world-simulator/viewer/viewer-live-logical-time-interface-phase11-2026-02-27.prd.md`
-- `crates/agent_world_viewer/src/web_test_api.rs`
-- `crates/agent_world_viewer/src/main.rs`
-- `crates/agent_world_viewer/src/main_connection.rs`
+- `crates/oasis7_viewer/src/web_test_api.rs`
+- `crates/oasis7_viewer/src/main.rs`
+- `crates/oasis7_viewer/src/main_connection.rs`
 - `testing-manual.md`
 
 ## 状态

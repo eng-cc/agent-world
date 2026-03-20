@@ -15,8 +15,8 @@
 - doc/world-simulator/viewer/viewer-live-step-control-progress-stability-2026-02-28.prd.md
 - `scripts/run-game-test-ab.sh`
 - `scripts/run-game-test.sh`
-- `crates/agent_world/src/viewer/live_split_part1.rs`
-- `crates/agent_world/src/viewer/live/tests.rs`
+- `crates/oasis7/src/viewer/live_split_part1.rs`
+- `crates/oasis7/src/viewer/live/tests.rs`
 - `doc/playability_test_result/game-test.prd.md`
 
 ## 状态

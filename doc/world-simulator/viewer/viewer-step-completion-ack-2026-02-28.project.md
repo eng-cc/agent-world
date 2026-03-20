@@ -14,12 +14,12 @@
 
 ## 依赖
 - doc/world-simulator/viewer/viewer-step-completion-ack-2026-02-28.prd.md
-- `crates/agent_world_proto/src/viewer.rs`
-- `crates/agent_world/src/viewer/live_split_part1.rs`
-- `crates/agent_world/src/viewer/live_split_part2.rs`
-- `crates/agent_world/src/viewer/server.rs`
-- `crates/agent_world_viewer/src/main_connection.rs`
-- `crates/agent_world_viewer/src/web_test_api.rs`
+- `crates/oasis7_proto/src/viewer.rs`
+- `crates/oasis7/src/viewer/live_split_part1.rs`
+- `crates/oasis7/src/viewer/live_split_part2.rs`
+- `crates/oasis7/src/viewer/server.rs`
+- `crates/oasis7_viewer/src/main_connection.rs`
+- `crates/oasis7_viewer/src/web_test_api.rs`
 - `testing-manual.md`
 - `scripts/run-game-test-ab.sh`
 

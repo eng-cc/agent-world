@@ -13,7 +13,7 @@
 ## 2. User Experience & Functionality
 
 ### In Scope
-- `crates/agent_world_viewer/src/web_test_api.rs`：
+- `crates/oasis7_viewer/src/web_test_api.rs`：
   - `getState` 增加 `logicalTime`、`eventSeq` 字段。
   - 兼容保留 `tick`（作为 `logicalTime` 别名）。
   - `sendControl` 增加事件游标动作（`seek_event`），在前端本地转换为现有 `Seek { tick }` 请求。
@@ -22,7 +22,7 @@
 
 ### Out of Scope
 - 不删除 `kernel.time()` / `total_ticks` 等内部逻辑时间结构。
-- 不改 `agent_world_proto::ViewerControl::Seek { tick }` 协议定义（本阶段走兼容迁移）。
+- 不改 `oasis7_proto::ViewerControl::Seek { tick }` 协议定义（本阶段走兼容迁移）。
 - 不改所有 UI 文案（timeline 的彻底术语迁移放到后续阶段）。
 
 ## 3. AI System Requirements (If Applicable)
@@ -62,9 +62,9 @@
 
 ## 验收证据
 - `env -u RUSTC_WRAPPER cargo fmt --all -- --check`
-- `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer`
-- `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-unknown`
-- pre-commit required 套件（`agent_world`/`agent_world_consensus`/`agent_world_distfs`/`agent_world_viewer`）通过
+- `env -u RUSTC_WRAPPER cargo check -p oasis7_viewer`
+- `env -u RUSTC_WRAPPER cargo check -p oasis7_viewer --target wasm32-unknown-unknown`
+- pre-commit required 套件（`oasis7`/`oasis7_consensus`/`oasis7_distfs`/`oasis7_viewer`）通过
 
 ## 6. Validation & Decision Record
 - 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

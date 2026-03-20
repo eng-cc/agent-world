@@ -10,8 +10,8 @@
 - 在不改协议的前提下，提升 live + consensus 路径下 `step` 的可兑现性，降低玩家黑盒感。
 
 ## 2. User Experience & Functionality
-- 修改 `crates/agent_world/src/viewer/live_split_part1.rs` 中 live 主循环的控制推进逻辑。
-- 修改 `crates/agent_world/src/viewer/live/tests.rs`，新增针对 paused 会话下 consensus 提交回放的回归测试。
+- 修改 `crates/oasis7/src/viewer/live_split_part1.rs` 中 live 主循环的控制推进逻辑。
+- 修改 `crates/oasis7/src/viewer/live/tests.rs`，新增针对 paused 会话下 consensus 提交回放的回归测试。
 - 通过 `scripts/run-game-test-ab.sh --headless` 做实机复测并记录量化结果。
 
 ## 3. AI System Requirements (If Applicable)
