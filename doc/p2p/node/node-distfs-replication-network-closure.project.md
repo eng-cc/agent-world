@@ -12,12 +12,12 @@
 
 ## 依赖
 - doc/p2p/node/node-distfs-replication-network-closure.prd.md
-- `crates/agent_world_node`
-- `crates/agent_world_distfs`
-- `crates/agent_world/src/bin/world_viewer_live.rs`
+- `crates/oasis7_node`
+- `crates/oasis7_distfs`
+- `crates/oasis7/src/bin/world_viewer_live.rs`
 - `doc/p2p/node/node-keypair-config-bootstrap.prd.md`
 
 ## 状态
 - 当前阶段：NRX-0 ~ NRX-3 全部完成。
-- 下一步：将当前 UDP gossip 复制路径逐步迁移到 `agent_world_net/libp2p` 统一网络栈。
+- 下一步：将当前 UDP gossip 复制路径逐步迁移到 `oasis7_net/libp2p` 统一网络栈。
 - 最近更新：2026-02-16。

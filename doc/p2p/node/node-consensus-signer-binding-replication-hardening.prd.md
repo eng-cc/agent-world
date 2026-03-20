@@ -20,15 +20,15 @@
 | --- | --- | --- | --- | --- | --- |
 | 专题迁移 | 需求/任务/依赖/状态/测试层级 | 逐篇重写并校验 | `draft -> active -> done` | 以原文约束点映射为主线 | 维护者写入，复核者抽检 |
 - Acceptance Criteria:
-  - AC-1: `crates/agent_world_node/src/types.rs`
+  - AC-1: `crates/oasis7_node/src/types.rs`
   - AC-2: 为 `NodePosConfig` 增加 validator->signer 公钥绑定配置。
-  - AC-3: `crates/agent_world_node/src/pos_validation.rs`
+  - AC-3: `crates/oasis7_node/src/pos_validation.rs`
   - AC-4: 增加 signer 公钥格式与归一化校验。
   - AC-5: 校验 signer 绑定完整性（启用时要求与 validator 集一致）。
-  - AC-6: `crates/agent_world_node/src/lib.rs`
+  - AC-6: `crates/oasis7_node/src/lib.rs`
 - Non-Goals:
   - 不重写共识协议，不引入新密码学算法。
-  - 不改动 `agent_world_consensus` 的签名策略配置模型。
+  - 不改动 `oasis7_consensus` 的签名策略配置模型。
   - 不引入外部 KMS 或证书系统。
 
 ## 3. AI System Requirements (If Applicable)

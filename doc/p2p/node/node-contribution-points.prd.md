@@ -9,7 +9,7 @@
 - 从文档：`node-contribution-points-runtime-closure.prd.md`、`node-contribution-points-multi-node-closure-test.prd.md` 仅维护增量约束与专题闭环，主规格以本文件为准。
 
 ## 1. Executive Summary
-- Problem Statement: 在 Agent World 的区块链 + P2P FS 闭环内，引入可审计的节点积分激励（Node Points）。
+- Problem Statement: 在 oasis7 的区块链 + P2P FS 闭环内，引入可审计的节点积分激励（Node Points）。
 - Proposed Solution: 明确“基础义务”和“额外贡献”的边界：
 - Success Criteria:
   - SC-1: 为自身 Agent 提供模拟计算属于基础义务，不直接奖励；

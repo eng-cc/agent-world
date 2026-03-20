@@ -15,7 +15,7 @@
 
 ## 依赖
 - doc/p2p/node/node-contribution-points-multi-node-closure-test.prd.md
-- `crates/agent_world/src/runtime/node_points.rs`
+- `crates/oasis7/src/runtime/node_points.rs`
 - `doc/p2p/node/node-contribution-points.prd.md`
 - `doc/p2p/node/node-contribution-points.project.md`
 

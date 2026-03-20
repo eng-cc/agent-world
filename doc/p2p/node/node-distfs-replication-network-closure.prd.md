@@ -5,7 +5,7 @@
 
 审计轮次: 5
 ## 1. Executive Summary
-- Problem Statement: 将 `agent_world_distfs` 中已具备的 `FileReplicationRecord` 能力接入 node 运行时网络路径，形成“可广播、可验签、可恢复”的最小跨节点复制闭环。
+- Problem Statement: 将 `oasis7_distfs` 中已具备的 `FileReplicationRecord` 能力接入 node 运行时网络路径，形成“可广播、可验签、可恢复”的最小跨节点复制闭环。
 - Proposed Solution: 复用现有 node UDP gossip 主循环，避免引入第二套并行传输栈。
 - Success Criteria:
   - SC-1: 以最小代价把 `config.toml` 中的节点密钥用于复制消息签名链路。
@@ -61,7 +61,7 @@
   - **NRX-2**：复制消息签名验签接线（消费 config 节点密钥）。
   - **NRX-3**：多节点与重启恢复测试收口。
 - Technical Risks:
-  - `crates/agent_world_node/src/lib.rs` 文件接近 1200 行，需拆分测试/模块防止超限。
+  - `crates/oasis7_node/src/lib.rs` 文件接近 1200 行，需拆分测试/模块防止超限。
   - 当前 node 主循环以最小 UDP gossip 实现，吞吐与可靠性有限；本阶段仅保证功能闭环。
   - 验签策略先做最小可用，后续仍需补充节点身份绑定策略。
 

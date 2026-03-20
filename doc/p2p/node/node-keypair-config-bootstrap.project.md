@@ -7,14 +7,14 @@
 ## 任务拆解（含 PRD-ID 映射）
 - [x] NKEY-1 (PRD-P2P-MIG-095)：设计文档与项目管理文档落地。
 - [x] NKEY-2 (PRD-P2P-MIG-095)：实现启动阶段读取/生成/写回 `config.toml` 的节点密钥逻辑。
-- [x] NKEY-3 (PRD-P2P-MIG-095)：补齐单元测试并完成 `agent_world` 回归。
+- [x] NKEY-3 (PRD-P2P-MIG-095)：补齐单元测试并完成 `oasis7` 回归。
 - [x] NKEY-4 (PRD-P2P-MIG-095)：回写状态文档与 devlog。
 
 ## 依赖
 - doc/p2p/node/node-keypair-config-bootstrap.prd.md
-- `crates/agent_world/src/bin/world_viewer_live.rs`
+- `crates/oasis7/src/bin/world_viewer_live.rs`
 - `config.example.toml`
-- `crates/agent_world_node`
+- `crates/oasis7_node`
 
 ## 状态
 - 当前阶段：NKEY-1~NKEY-4 全部完成。

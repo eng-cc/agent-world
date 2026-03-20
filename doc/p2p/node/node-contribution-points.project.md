@@ -16,8 +16,8 @@
 
 ## 依赖
 - doc/p2p/node/node-contribution-points.prd.md
-- `crates/agent_world/src/runtime/mod.rs`
-- `crates/agent_world/src/runtime`（新增节点积分模块）
+- `crates/oasis7/src/runtime/mod.rs`
+- `crates/oasis7/src/runtime`（新增节点积分模块）
 - `doc/p2p/distributed/distributed-runtime.prd.md`
 - `doc/p2p/blockchain/blockchain-p2pfs-hardening-phase2.prd.md`
 

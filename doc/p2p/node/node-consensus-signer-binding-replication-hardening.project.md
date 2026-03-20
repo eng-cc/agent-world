@@ -10,7 +10,7 @@
 - [x] T1 (PRD-P2P-MIG-088)：实现 P0 数据模型与校验链路（`NodePosConfig` signer 绑定 + 配置校验 + ingest 校验）
 - [x] T2 (PRD-P2P-MIG-088)：补齐 P0 测试（合法路径、错绑拒绝、缺失公钥拒绝）
 - [x] T3 (PRD-P2P-MIG-088)：实现 P1 硬化（replication ingest 验证后观测 + 连续高度落库，错误上抛；PoS 状态恢复失败显式失败）
-- [x] T4 (PRD-P2P-MIG-088)：补齐 P1 测试并执行回归（`agent_world_node` 全量 + 相关定向）
+- [x] T4 (PRD-P2P-MIG-088)：补齐 P1 测试并执行回归（`oasis7_node` 全量 + 相关定向）
 
 ## 依赖
 - T2 依赖 T1（先完成数据模型和主链路，再补测试断言）。

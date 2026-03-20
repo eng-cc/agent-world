@@ -12,9 +12,9 @@
 
 ## 依赖
 - doc/p2p/node/node-storage-system-reward-pool.prd.md
-- `crates/agent_world/src/runtime/node_points.rs`
-- `crates/agent_world/src/runtime/node_points_runtime.rs`
-- `crates/agent_world/src/runtime/mod.rs`
+- `crates/oasis7/src/runtime/node_points.rs`
+- `crates/oasis7/src/runtime/node_points_runtime.rs`
+- `crates/oasis7/src/runtime/mod.rs`
 - `doc/devlog/2026-02-16.md`
 
 ## 状态

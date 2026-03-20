@@ -16,9 +16,9 @@
 
 ## 依赖
 - doc/p2p/node/node-contribution-points-runtime-closure.prd.md
-- `crates/agent_world/src/runtime/node_points.rs`
-- `crates/agent_world/src/runtime/mod.rs`
-- `crates/agent_world_node/src/lib.rs`（`NodeSnapshot`）
+- `crates/oasis7/src/runtime/node_points.rs`
+- `crates/oasis7/src/runtime/mod.rs`
+- `crates/oasis7_node/src/lib.rs`（`NodeSnapshot`）
 - `doc/p2p/node/node-contribution-points.prd.md`
 
 ## 状态

@@ -49,9 +49,9 @@
 
 ### 原文技术约束（保真）
 #### 接口/数据
-- 运行时模块：`crates/agent_world/src/runtime/node_points.rs`
-- 运行时接线：`crates/agent_world/src/runtime/mod.rs`
-- 节点快照输入：`crates/agent_world_node/src/lib.rs`（`NodeSnapshot`）
+- 运行时模块：`crates/oasis7/src/runtime/node_points.rs`
+- 运行时接线：`crates/oasis7/src/runtime/mod.rs`
+- 节点快照输入：`crates/oasis7_node/src/lib.rs`（`NodeSnapshot`）
 - 关联设计：`doc/p2p/node/node-contribution-points.prd.md`
 
 ## 5. Risks & Roadmap

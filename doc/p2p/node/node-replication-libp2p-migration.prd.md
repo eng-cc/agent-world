@@ -5,7 +5,7 @@
 
 审计轮次: 5
 ## 1. Executive Summary
-- Problem Statement: 将 `crates/agent_world_node` 的 DistFS 复制消息从“仅 UDP gossip”迁移为“优先使用 `distributed_net` 统一网络抽象（可接入 libp2p 实现）”。
+- Problem Statement: 将 `crates/oasis7_node` 的 DistFS 复制消息从“仅 UDP gossip”迁移为“优先使用 `distributed_net` 统一网络抽象（可接入 libp2p 实现）”。
 - Proposed Solution: 保持现有 UDP 共识提交广播不变，先迁移复制数据通道，降低改造风险。
 - Success Criteria:
   - SC-1: 提供可由上层集成的复制 topic 与网络注入能力，支持多节点复制走统一网络栈。
@@ -58,11 +58,11 @@
   - **NRM-1**：Node 支持统一网络复制通道 + InMemory 回归。
   - **NRM-2**：Node 外部注入接线增强（topic 配置）。
   - **NRM-3**：回归收口与文档状态完成。
-  - **NRM-4**：crate 路径标准化（`crates/agent_world_node`）。
+  - **NRM-4**：crate 路径标准化（`crates/oasis7_node`）。
 - Technical Risks:
-  - `crates/agent_world_node/src/lib.rs` 行数压力较高，改动需继续控制在 1200 行以下。
+  - `crates/oasis7_node/src/lib.rs` 行数压力较高，改动需继续控制在 1200 行以下。
   - 双通道（UDP+网络）并存期间需避免重复应用同一复制记录，依赖单调序列守卫兜底。
-  - 工作区存在 `agent_world_net -> agent_world -> agent_world_node` 依赖链约束，上层 libp2p 适配需避免形成反向循环依赖。
+  - 工作区存在 `oasis7_net -> oasis7 -> oasis7_node` 依赖链约束，上层 libp2p 适配需避免形成反向循环依赖。
 
 ## 6. Validation & Decision Record
 - Test Plan & Traceability:
