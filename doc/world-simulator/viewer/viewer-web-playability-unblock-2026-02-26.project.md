@@ -13,9 +13,9 @@
 
 ## 依赖
 - `doc/world-simulator/viewer/viewer-web-playability-unblock-2026-02-26.prd.md`
-- `crates/agent_world_viewer/src/web_test_api.rs`
-- `crates/agent_world_viewer/src/headless.rs`
-- `crates/agent_world_viewer/src/app_bootstrap.rs`
+- `crates/oasis7_viewer/src/web_test_api.rs`
+- `crates/oasis7_viewer/src/headless.rs`
+- `crates/oasis7_viewer/src/app_bootstrap.rs`
 - `scripts/run-game-test.sh`
 
 ## 状态

@@ -11,9 +11,9 @@
 - 让默认 Web Player 首次进入后能稳定推进 `tick`，并降低测试链路误报。
 
 ## 2. User Experience & Functionality
-- `crates/agent_world_viewer/src/web_test_api.rs`
-- `crates/agent_world_viewer/src/headless.rs`
-- `crates/agent_world_viewer/src/app_bootstrap.rs`
+- `crates/oasis7_viewer/src/web_test_api.rs`
+- `crates/oasis7_viewer/src/headless.rs`
+- `crates/oasis7_viewer/src/app_bootstrap.rs`
 - `scripts/run-game-test.sh`
 - 相关单元测试（viewer 侧）
 

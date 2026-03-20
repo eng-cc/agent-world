@@ -13,7 +13,7 @@
 ## 2. User Experience & Functionality
 
 ### In Scope
-- 文件：`crates/agent_world_viewer/src/web_test_api.rs`
+- 文件：`crates/oasis7_viewer/src/web_test_api.rs`
 - 文件：`scripts/run-game-test-ab.sh`
 - 文件：`doc/world-simulator/viewer/viewer-manual.md`
 - 文件：`testing-manual.md`

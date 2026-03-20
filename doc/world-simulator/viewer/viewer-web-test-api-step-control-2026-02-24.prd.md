@@ -13,7 +13,7 @@
 ## 2. User Experience & Functionality
 
 ### In Scope
-- 文件：`crates/agent_world_viewer/src/web_test_api.rs`
+- 文件：`crates/oasis7_viewer/src/web_test_api.rs`
 - 为 `sendControl` 增加 `step` 动作解析：
   - 支持 `sendControl("step")`（默认 `count=1`）。
   - 支持 `sendControl("step", { count: n })` 与数值 payload。

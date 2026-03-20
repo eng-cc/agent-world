@@ -15,7 +15,7 @@
 
 ## 依赖
 - `doc/world-simulator/viewer/viewer-web-runtime-fatal-surfacing-2026-03-12.prd.md`
-- `crates/agent_world_viewer/src/web_test_api.rs`
+- `crates/oasis7_viewer/src/web_test_api.rs`
 - `scripts/run-game-test-ab.sh`
 - `doc/world-simulator/viewer/viewer-manual.md`
 - `testing-manual.md`

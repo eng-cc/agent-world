@@ -7,7 +7,7 @@
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0：建档设计文档与项目管理文档。
 - [x] T1：在 `web_test_api` 补齐 `sendControl("step")` 解析与 `count` 规则。
-- [x] T2：执行定向回归（`cargo check -p agent_world_viewer` + agent-browser Web 闭环）。
+- [x] T2：执行定向回归（`cargo check -p oasis7_viewer` + agent-browser Web 闭环）。
 - [x] T3：回写文档状态与 devlog，完成收口。
 
 ## 依赖
