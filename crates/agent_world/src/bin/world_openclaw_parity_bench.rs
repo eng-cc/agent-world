@@ -1227,12 +1227,12 @@ mod tests {
                 "--openclaw-base-url",
                 "http://127.0.0.1:5841",
                 "--openclaw-agent-profile",
-                "agent_world_p1_memory_loop",
+                "oasis7_p1_memory_loop",
             ]
             .into_iter(),
         )
         .expect("parse custom profile");
-        assert_eq!(options.openclaw_agent_profile, "agent_world_p1_memory_loop");
+        assert_eq!(options.openclaw_agent_profile, "oasis7_p1_memory_loop");
     }
 
     #[test]
