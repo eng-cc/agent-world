@@ -24,10 +24,10 @@
 | --- | --- | --- | --- | --- | --- |
 | 专题迁移 | 需求/任务/依赖/状态/测试层级 | 逐篇重写并校验 | `draft -> active -> done` | 以原文约束点映射为主线 | 维护者写入，复核者抽检 |
 - Acceptance Criteria:
-  - AC-1: `crates/agent_world/src/bin/world_viewer_live.rs`
+  - AC-1: `crates/oasis7/src/bin/world_viewer_live.rs`
   - AC-2: 新增 `--no-llm` 参数解析，设置 `llm_mode=false`。
   - AC-3: 更新 CLI help/usage 文案，明确 `--llm` 默认开启且可由 `--no-llm` 关闭。
-  - AC-4: `crates/agent_world/src/bin/world_viewer_live.rs`（`#[cfg(test)]`）
+  - AC-4: `crates/oasis7/src/bin/world_viewer_live.rs`（`#[cfg(test)]`）
   - AC-5: 补充 `--no-llm` 参数行为测试。
   - AC-6: 覆盖 `--no-llm` 行为回归，不依赖 release-config 路径。
 - Non-Goals:

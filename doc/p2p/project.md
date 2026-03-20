@@ -289,6 +289,16 @@
     - `rg -n "oasis7_(node|net|distfs|consensus|proto)|crates/oasis7/" doc/p2p/node/node-replication-libp2p-migration.* doc/p2p/node/node-distfs-replication-network-closure.* doc/p2p/node/node-consensus-signer-binding-replication-hardening.* doc/p2p/node/node-uptime-base-reward.project.md doc/p2p/node/node-storage-system-reward-pool.project.md doc/p2p/node/node-contribution-points.* doc/p2p/node/node-contribution-points-runtime-closure.* doc/p2p/node/node-contribution-points-multi-node-closure-test.project.md doc/p2p/node/node-keypair-config-bootstrap.project.md`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
+- [x] TASK-P2P-030 (PRD-P2P-001/004) [test_tier_required]: 收口 `viewer-live` 活跃专题中仍把旧 `agent_world*` crate/path 或 launcher 名称写成当前实现载体的口径，统一到 `oasis7*`。
+  - 产物文件:
+    - `doc/p2p/viewer-live/world-viewer-live-release-locked-launch-2026-02-23.prd.md`
+    - `doc/p2p/viewer-live/world-viewer-live-no-llm-flag-2026-02-23.prd.md`
+    - `doc/p2p/viewer-live/world-viewer-live-llm-default-on-2026-02-23.prd.md`
+    - `doc/p2p/project.md`
+  - 验收命令 (`test_tier_required`):
+    - `rg -n "oasis7_client_launcher|crates/oasis7/" doc/p2p/viewer-live/world-viewer-live-release-locked-launch-2026-02-23.prd.md doc/p2p/viewer-live/world-viewer-live-no-llm-flag-2026-02-23.prd.md doc/p2p/viewer-live/world-viewer-live-llm-default-on-2026-02-23.prd.md`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
 
 ## 依赖
 - 模块设计总览：`doc/p2p/design.md`
@@ -315,8 +325,9 @@
 
 ## 状态
 - 更新日期: 2026-03-20
-- 当前状态: completed（ROUND-020）
+- 当前状态: completed（ROUND-021）
 - 下一任务: 无（等待新需求）
+- 最新完成: `TASK-P2P-030`（已完成 `viewer-live` 活跃专题中旧 `agent_world*` crate/path 与 launcher 名称当前真值口径的 `oasis7*` 收口。）
 - 最新完成: `TASK-P2P-029`（已完成 `node replication / contribution / reward` 活跃专题中旧 `agent_world*` crate/path 当前真值口径的 `oasis7*` 收口。）
 - 最新完成: `TASK-P2P-028`（已完成 `node` 活跃专题第二批中旧 `agent_world*` crate/path 与旧 builtin wasm 环境变量当前真值口径的 `oasis7*` 收口。）
 - 最新完成: `TASK-P2P-027`（已完成 `node/consensus` 活跃专题中旧 `agent_world*` crate/path 当前真值口径的 `oasis7*` 收口。）

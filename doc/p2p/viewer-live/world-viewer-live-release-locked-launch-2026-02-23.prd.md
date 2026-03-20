@@ -6,7 +6,7 @@
 审计轮次: 5
 > 状态更新（2026-03-08）:
 > - `world_viewer_live` 已移除 `--release-config` 与 `--node-*` 控制面参数。
-> - 链路控制面统一由 `world_chain_runtime`（通常经 `world_game_launcher/world_web_launcher/agent_world_client_launcher`）承载。
+> - 链路控制面统一由 `world_chain_runtime`（通常经 `world_game_launcher/world_web_launcher/oasis7_client_launcher`）承载。
 > - 本文仅保留历史归档，不再作为当前实现验收门禁。
 
 ## 1. Executive Summary
@@ -25,11 +25,11 @@
 | --- | --- | --- | --- | --- | --- |
 | 专题迁移 | 需求/任务/依赖/状态/测试层级 | 逐篇重写并校验 | `draft -> active -> done` | 以原文约束点映射为主线 | 维护者写入，复核者抽检 |
 - Acceptance Criteria:
-  - AC-1: `crates/agent_world/src/bin/world_viewer_live.rs`
+  - AC-1: `crates/oasis7/src/bin/world_viewer_live.rs`
   - AC-2: 新增发行锁定入口：`--release-config <path>`。
   - AC-3: 支持从 TOML 读取 `locked_args` 并复用现有 `parse_options` 解析。
   - AC-4: 在发行锁定模式限制 CLI 覆盖项白名单（仅允许 `--bind`、`--web-bind`、`--help`、`--release-config`）。
-  - AC-5: `crates/agent_world/src/bin/world_viewer_live.rs`（`#[cfg(test)]`）
+  - AC-5: `crates/oasis7/src/bin/world_viewer_live.rs`（`#[cfg(test)]`）
   - AC-6: 启动入口改为新解析函数（支持发行锁定模式）。
 - Non-Goals:
   - 不重构现有 `CliOptions` 数据模型。
