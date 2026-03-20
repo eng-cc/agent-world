@@ -13,7 +13,7 @@
   - 继续保持主场景优先，右侧面板作为可选辅助层。
 
 ## 2. User Experience & Functionality
-- `crates/agent_world_viewer` 的 Player 模式 UI 增强：
+- `crates/oasis7_viewer` 的 Player 模式 UI 增强：
   - 电影化开场层（连接后短时叙事覆盖 + 自动淡出）。
   - 任务追踪 HUD（主任务标题、步骤进度、当前动作提示）。
   - 奖励反馈升级（任务推进提示、完成态强化文案与颜色层级）。
@@ -23,7 +23,7 @@
 - 保持中英文文案可切换。
 
 ## 非目标
-- 不改动 `agent_world` 核心仿真协议、规则模块与事件定义。
+- 不改动 `oasis7` 核心仿真协议、规则模块与事件定义。
 - 不改 `third_party`。
 - 不引入大型美术资产包或外部 UI 框架。
 
@@ -60,8 +60,8 @@
 ## 验收与结论
 - 验收日期：2026-02-23（CST）。
 - 回归结果（S5）：
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer`：通过（317 passed, 0 failed）。
-  - `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-unknown`：通过。
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7_viewer`：通过（317 passed, 0 failed）。
+  - `env -u RUSTC_WRAPPER cargo check -p oasis7_viewer --target wasm32-unknown-unknown`：通过。
 - Web 闭环结果（S6）：
   - 语义 API：`window.__AW_TEST__` 可用，`getState()` 返回结构完整（`tick/connectionStatus`）。
   - 交互链路：`runSteps("mode=3d;focus=first_location;zoom=0.85;select=first_agent;wait=0.3")`、`sendControl("pause")`、`Tab` 折叠/展开均可执行。

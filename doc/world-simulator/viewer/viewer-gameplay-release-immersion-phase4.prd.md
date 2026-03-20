@@ -12,14 +12,14 @@
   - 保持 Player 低噪声原则，避免技术信息回流为主视觉。
 
 ## 2. User Experience & Functionality
-- `crates/agent_world_viewer` UI 侧改造：
+- `crates/oasis7_viewer` UI 侧改造：
   - Player 氛围背景层（呼吸光晕/层次暗角/边缘发光）。
   - Player 引导/目标卡片过渡动效（淡入、轻微位移、呼吸脉冲）。
   - Player 体验层现有元素（HUD/引导/成就/气泡）风格联动。
 - 中英文文案保持一致并可切换。
 
 ## 非目标
-- 不修改仿真核心协议与 `agent_world` 核心逻辑。
+- 不修改仿真核心协议与 `oasis7` 核心逻辑。
 - 不改 `third_party` 目录。
 - 不引入模型/贴图等大型美术资产包。
 
@@ -61,8 +61,8 @@
 - 里程碑完成情况：
   - M1/M2/M3/M4 全部完成。
 - 回归结果：
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer` 通过（307/307）。
-  - `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-unknown` 通过。
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7_viewer` 通过（307/307）。
+  - `env -u RUSTC_WRAPPER cargo check -p oasis7_viewer --target wasm32-unknown-unknown` 通过。
 - Web 闭环（S6）结果：
   - `window.__AW_TEST__` 可访问，`getState()` 返回 `tick/connectionStatus`。
   - 语义动作链可用：`runSteps(...)` + `sendControl("pause")` + `Tab` 面板切换。

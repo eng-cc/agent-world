@@ -11,7 +11,7 @@
 - 通过分层信息架构降低首次进入的信息压力，并保留进阶信息的可达性。
 
 ## 2. User Experience & Functionality
-- `crates/agent_world_viewer` 的 Player 模式布局与交互重构：
+- `crates/oasis7_viewer` 的 Player 模式布局与交互重构：
   - 引入 Player 布局预设（任务/指挥/情报）与快捷切换条。
   - 强化隐藏状态下的指挥入口（边缘入口卡可直接进入指挥态）。
   - 调整 Player 默认模块可见性，确保指挥链路默认可达。
@@ -19,7 +19,7 @@
 - Director 模式保持现有调试导向行为不变。
 
 ## 非目标
-- 不改动 `agent_world` 核心仿真协议与事件语义。
+- 不改动 `oasis7` 核心仿真协议与事件语义。
 - 不改动 `third_party`。
 - 不在本阶段引入新后端接口或外部 UI 框架。
 
@@ -57,8 +57,8 @@
 
 ## 验收与结论
 - 代码回归：
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer`（322 passed）
-  - `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-unknown`
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7_viewer`（322 passed）
+  - `env -u RUSTC_WRAPPER cargo check -p oasis7_viewer --target wasm32-unknown-unknown`
 - Web 闭环（`testing-manual.md` S6）：
   - `window.__AW_TEST__` 可用（`typeof window.__AW_TEST__ === "object"` 为 `true`）。
   - `getState()` 返回 `tick/connectionStatus` 等字段；采样时 `connectionStatus=connected`。
