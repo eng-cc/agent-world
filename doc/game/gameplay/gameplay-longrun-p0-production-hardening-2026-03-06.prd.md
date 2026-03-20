@@ -123,9 +123,9 @@
   - 新增审计事件模型 `TickConsensusRejectionAuditEvent`，记录 `attempted_source/attempted_role/existing_source/existing_role/reason`。
   - 快照与持久化链路已接线：`snapshot/save/load/from_snapshot` 保持权威配置与拒绝审计事件可恢复。
 - 已通过定向回归：
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required runtime::tests::basic::tick_consensus_ -- --nocapture`
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required runtime::tests::persistence::persist_and_restore_world -- --nocapture`
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required runtime::tests::basic::from_snapshot_replay_rebuilds_missing_tick_consensus_records -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_required runtime::tests::basic::tick_consensus_ -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_required runtime::tests::persistence::persist_and_restore_world -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_required runtime::tests::basic::from_snapshot_replay_rebuilds_missing_tick_consensus_records -- --nocapture`
 - 已完成 `TASK-GAME-014`（`PRD-GAME-006-02`）：
   - 增加漂移定位接口 `first_tick_consensus_drift()`，可返回首个 `mismatch_tick + reason`。
   - 新增恢复对账自动化接口 `rollback_to_snapshot_with_reconciliation(...)`，回滚后自动执行漂移复核并在异常时阻断返回。
@@ -133,7 +133,7 @@
   - 新增运行手册文档：`doc/game/gameplay/gameplay-longrun-p0-replay-rollback-runbook-2026-03-06.md`。
   - `testing-manual.md` 已补充漂移定位/回滚演练门禁命令与通过标准。
 - 已通过定向回归（TASK-GAME-014）：
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required runtime::tests::persistence::rollback_with_reconciliation_recovers_from_detected_tick_consensus_drift -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_required runtime::tests::persistence::rollback_with_reconciliation_recovers_from_detected_tick_consensus_drift -- --nocapture`
 - 已完成 `TASK-GAME-015`（`PRD-GAME-006-03`）：
   - `GovernanceIdentityPenaltyRecord` 增加检测与证据链字段：`detection_source/detection_risk_score/detection_incident_id/evidence_chain_hash/appeal_evidence_hash/resolution_evidence_hash`。
   - 惩罚事件应用路径补齐证据链闭环：
@@ -142,9 +142,9 @@
   - 新增治理监控快照接口 `governance_identity_penalty_monitor_stats(high_risk_threshold)`，输出误伤率（`false_positive_rate_bps`）与高风险未闭环数量。
   - 将身份惩罚入口与 helper 从 `runtime/world/governance.rs` 拆分到 `runtime/world/governance_identity_penalty.rs`，保持单文件行数约束（`<1200`）。
 - 已通过定向回归（TASK-GAME-015）：
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required runtime::tests::governance::governance_identity_penalty_ -- --nocapture`
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required governance_identity_penalty_and_appeal_drive_vote_rights -- --nocapture`
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required runtime::tests::persistence::persist_and_restore_world -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_required runtime::tests::governance::governance_identity_penalty_ -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_required governance_identity_penalty_and_appeal_drive_vote_rights -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_required runtime::tests::persistence::persist_and_restore_world -- --nocapture`
 - 已完成 `TASK-GAME-016`（`PRD-GAME-006-04`）：
   - 新增经济源汇审计模型：
     - `MainTokenEconomyAuditThresholds`
@@ -159,9 +159,9 @@
     - `epoch_issued_bps_of_total_supply`
     - `treasury_distribution_bps_of_total_supply`
 - 已通过定向回归（TASK-GAME-016）：
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required main_token_economy_ -- --nocapture`
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required main_token_treasury_distribution_applies_closed_loop_and_records_audit -- --nocapture`
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required main_token_fee_settlement_burns_supply_and_tracks_treasury_buckets -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_required main_token_economy_ -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_required main_token_treasury_distribution_applies_closed_loop_and_records_audit -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_required main_token_fee_settlement_burns_supply_and_tracks_treasury_buckets -- --nocapture`
 - 已完成 `TASK-GAME-017`（`PRD-GAME-006-05`）：
   - 新增可运维性发布门禁模型：
     - `LongRunReleaseStage`（`canary/full`）
@@ -179,8 +179,8 @@
     - 经济门禁联动：复用 `main_token_economy_audit_report` 告警项纳入阻断。
   - 阻断错误包含首个违规 `gate + reason`，可直接用于发布 go/no-go 判定。
 - 已通过定向回归（TASK-GAME-017）：
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required longrun_operability_release_gate_ -- --nocapture`
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required main_token_economy_ -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_required longrun_operability_release_gate_ -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_required main_token_economy_ -- --nocapture`
 
 ## 6. Validation & Decision Record
 - Test Plan & Traceability:

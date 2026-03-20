@@ -51,11 +51,11 @@
 
 | 维度 | 基线值 | 成本/收益/冷却含义 | 实现锚点 |
 |---|---|---|---|
-| 宣战强度 `intensity` | `1..=10` | 强度越高，宣战收益越高，但持续时长也更长 | `crates/agent_world/src/runtime/world/event_processing.rs` |
-| 战争持续时长 | `6 + 2 * intensity` ticks | 形成显式投入成本（占用冲突窗口） | `crates/agent_world/src/runtime/state.rs`、`crates/agent_world_builtin_wasm_modules/m5_gameplay_war_core/src/lib.rs` |
-| 战争结算评分 | `aggressor_score = members*10 + intensity`；`defender_score = members*10` | 进攻方获得强度加成；防守方依赖组织规模 | `crates/agent_world/src/runtime/world/gameplay_loop.rs` |
-| 胜负判定 | `aggressor_score >= defender_score` 时进攻方胜 | 平分时进攻方胜，鼓励主动冲突但保留成员规模价值 | `crates/agent_world/src/runtime/world/gameplay_loop.rs` |
-| 同对联盟重入 | 同一联盟对在 active 期间不可重复宣战 | 作为首轮“冲突冷却”约束，避免刷宣战事件 | `crates/agent_world/src/runtime/world/event_processing.rs` |
+| 宣战强度 `intensity` | `1..=10` | 强度越高，宣战收益越高，但持续时长也更长 | `crates/oasis7/src/runtime/world/event_processing.rs` |
+| 战争持续时长 | `6 + 2 * intensity` ticks | 形成显式投入成本（占用冲突窗口） | `crates/oasis7/src/runtime/state.rs`、`crates/oasis7_builtin_wasm_modules/m5_gameplay_war_core/src/lib.rs` |
+| 战争结算评分 | `aggressor_score = members*10 + intensity`；`defender_score = members*10` | 进攻方获得强度加成；防守方依赖组织规模 | `crates/oasis7/src/runtime/world/gameplay_loop.rs` |
+| 胜负判定 | `aggressor_score >= defender_score` 时进攻方胜 | 平分时进攻方胜，鼓励主动冲突但保留成员规模价值 | `crates/oasis7/src/runtime/world/gameplay_loop.rs` |
+| 同对联盟重入 | 同一联盟对在 active 期间不可重复宣战 | 作为首轮“冲突冷却”约束，避免刷宣战事件 | `crates/oasis7/src/runtime/world/event_processing.rs` |
 
 ### 1.1 战争推荐操作区间（用于评审）
 
@@ -74,12 +74,12 @@
 
 | 维度 | 基线值 | 成本/收益/冷却含义 | 实现锚点 |
 |---|---|---|---|
-| 投票窗口 `voting_window_ticks` | `1..=1440` | 窗口越长，参与覆盖更高，但反馈延迟更大 | `crates/agent_world/src/runtime/world/event_processing.rs` |
-| 通过阈值 `pass_threshold_bps` | `5000..=10000` | 阈值越高，提案稳定性越高，但通过成本更高 | `crates/agent_world/src/runtime/world/event_processing.rs` |
-| 法定人数 `quorum_weight` | `> 0` | 避免“零参与通过”，保证最小治理成本 | `crates/agent_world/src/runtime/world/event_processing.rs` |
-| 选项数 | 至少 2 个唯一选项 | 防止伪提案，确保存在真实选择 | `crates/agent_world/src/runtime/world/event_processing.rs` |
-| 重投规则 | 同一投票者可重投，后票覆盖前票 | 允许策略更新，但保持单人单权重口径 | `crates/agent_world/src/runtime/state.rs`、`crates/agent_world_builtin_wasm_modules/m5_gameplay_governance_council/src/lib.rs` |
-| 过期处理 | `now > closes_at` 的投票拒绝；到期自动结算 | 显式治理冷却边界，避免无限拖延 | `crates/agent_world/src/runtime/world/event_processing.rs`、`crates/agent_world/src/runtime/world/gameplay_loop.rs` |
+| 投票窗口 `voting_window_ticks` | `1..=1440` | 窗口越长，参与覆盖更高，但反馈延迟更大 | `crates/oasis7/src/runtime/world/event_processing.rs` |
+| 通过阈值 `pass_threshold_bps` | `5000..=10000` | 阈值越高，提案稳定性越高，但通过成本更高 | `crates/oasis7/src/runtime/world/event_processing.rs` |
+| 法定人数 `quorum_weight` | `> 0` | 避免“零参与通过”，保证最小治理成本 | `crates/oasis7/src/runtime/world/event_processing.rs` |
+| 选项数 | 至少 2 个唯一选项 | 防止伪提案，确保存在真实选择 | `crates/oasis7/src/runtime/world/event_processing.rs` |
+| 重投规则 | 同一投票者可重投，后票覆盖前票 | 允许策略更新，但保持单人单权重口径 | `crates/oasis7/src/runtime/state.rs`、`crates/oasis7_builtin_wasm_modules/m5_gameplay_governance_council/src/lib.rs` |
+| 过期处理 | `now > closes_at` 的投票拒绝；到期自动结算 | 显式治理冷却边界，避免无限拖延 | `crates/oasis7/src/runtime/world/event_processing.rs`、`crates/oasis7/src/runtime/world/gameplay_loop.rs` |
 
 ### 2.1 政治推荐参数模板（首轮）
 
@@ -102,9 +102,8 @@
 ## 3. 回归测试入口
 
 - 基线动作协议与状态闭环：
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world runtime::tests::gameplay_protocol:: -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7 runtime::tests::gameplay_protocol:: -- --nocapture`
 - 模块驱动结算链路：
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world runtime::tests::gameplay_protocol::step_with_modules_applies_gameplay_directive_emits_to_domain_events -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7 runtime::tests::gameplay_protocol::step_with_modules_applies_gameplay_directive_emits_to_domain_events -- --nocapture`
 - 全量 required-tier 门禁：
   - `./scripts/ci-tests.sh required`
-

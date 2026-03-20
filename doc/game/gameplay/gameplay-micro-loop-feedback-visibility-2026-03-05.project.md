@@ -41,17 +41,17 @@
 ### TASK-GAMEPLAY-MLF-001
 - `ActionAccepted` 在 runtime 事件流可持久化与可回放。
 - 对旧 schema 兼容，不破坏既有事件解析。
-- 关键测试：`env -u RUSTC_WRAPPER cargo test -p agent_world runtime::tests::gameplay_protocol:: -- --nocapture`。
+- 关键测试：`env -u RUSTC_WRAPPER cargo test -p oasis7 runtime::tests::gameplay_protocol:: -- --nocapture`。
 
 ### TASK-GAMEPLAY-MLF-002
 - gameplay 关键 DomainEvent 映射为结构化可读字段，不再仅显示笼统 `RuntimeEvent`。
 - ACK 与 DomainEvent 均可被 viewer 协议消费；缺失字段时有降级文案。
-- 关键测试：`env -u RUSTC_WRAPPER cargo test -p agent_world viewer::runtime_live::tests:: -- --nocapture`。
+- 关键测试：`env -u RUSTC_WRAPPER cargo test -p oasis7 viewer::runtime_live::tests:: -- --nocapture`。
 
 ### TASK-GAMEPLAY-MLF-003
 - 右侧面板可显示 war/governance/crisis/contract 倒计时与最近动作状态。
 - 无进展提示包含“原因 + 可执行建议”并支持 `zh/en`。
-- 关键测试：`env -u RUSTC_WRAPPER cargo test -p agent_world_viewer -- --nocapture`。
+- 关键测试：`env -u RUSTC_WRAPPER cargo test -p oasis7_viewer -- --nocapture`。
 
 ### TASK-GAMEPLAY-MLF-004
 - required/full 测试通过且产物可追溯。
@@ -64,22 +64,22 @@
 ### TASK-GAMEPLAY-MLF-005
 - Mission HUD 顶部新增“控制结果显著条”，可区分 `executing/completed_advanced/completed_no_progress/blocked`。
 - 在不丢失恢复动作（recover/retry）的前提下，减少重复反馈块。
-- 关键测试：`env -u RUSTC_WRAPPER cargo test -p agent_world_viewer player_mission_tests:: -- --nocapture`。
+- 关键测试：`env -u RUSTC_WRAPPER cargo test -p oasis7_viewer player_mission_tests:: -- --nocapture`。
 
 ### TASK-GAMEPLAY-MLF-006
 - 玩家模式首次进入默认 Mission 布局；模块开关改为折叠展开。
 - 修复模块可见性持久化“缺字段默认全开”问题，回落到运行时默认值。
 - 关键测试：
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer right_panel_module_visibility::tests:: -- --nocapture`
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer egui_right_panel_tests:: -- --nocapture`。
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7_viewer right_panel_module_visibility::tests:: -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7_viewer egui_right_panel_tests:: -- --nocapture`。
 
 ### TASK-GAMEPLAY-MLF-007
 - 选中强调 halo 与 2D marker 在玩家常用视角下可稳定辨识。
 - 可读性增强不触发渲染退化门禁。
 - 检查清单：`doc/game/gameplay/gameplay-micro-loop-readable-world-checklist-2026-03-10.md`。
 - 关键测试：
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer camera_controls_tests:: -- --nocapture`
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer selection_emphasis::tests:: -- --nocapture`。
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7_viewer camera_controls_tests:: -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7_viewer selection_emphasis::tests:: -- --nocapture`。
 
 ### TASK-GAMEPLAY-MLF-008
 - 每个实现任务完成后执行一轮手动实操并截图，输出视觉评估结论。

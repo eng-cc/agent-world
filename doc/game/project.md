@@ -40,6 +40,16 @@
     - `rg -n "cargo test -p oasis7|cargo test -p oasis7_viewer|crates/oasis7/src/bin/world_pure_api_client.rs" doc/game/prd.md doc/game/project.md`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
+- [x] TASK-GAME-025 (PRD-GAME-001/004/006) [test_tier_required]: 收口 `gameplay` 专题中当前真值实现锚点与 `cargo -p` 命令的 `oasis7` 品牌。
+  - 产物文件:
+    - `doc/game/gameplay/gameplay-war-politics-mvp-baseline.md`
+    - `doc/game/gameplay/gameplay-longrun-p0-production-hardening-2026-03-06.prd.md`
+    - `doc/game/gameplay/gameplay-micro-loop-feedback-visibility-2026-03-05.project.md`
+    - `doc/game/project.md`
+  - 验收命令 (`test_tier_required`):
+    - `rg -n "cargo test -p oasis7|cargo test -p oasis7_viewer|crates/oasis7|crates/oasis7_builtin_wasm_modules" doc/game/gameplay/gameplay-war-politics-mvp-baseline.md doc/game/gameplay/gameplay-longrun-p0-production-hardening-2026-03-06.prd.md doc/game/gameplay/gameplay-micro-loop-feedback-visibility-2026-03-05.project.md`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
 
 ## 依赖
 - 模块设计总览：`doc/game/design.md`
@@ -56,6 +66,7 @@
 - 更新日期: 2026-03-20
 - 当前状态: in_progress
 - 下一任务: `待新的 gameplay 闭环需求`
+- 最新完成: `TASK-GAME-025`（已将 gameplay 专题中仍作为当前真值使用的实现锚点与 `cargo -p` 命令统一切换到 `oasis7` / `oasis7_viewer` / `crates/oasis7*` 口径）。
 - 最新完成: `TASK-GAME-024`（已将根 PRD / project 的当前真值命令与 pure API 客户端源码路径统一切换到 `oasis7` 口径）。
 - 最新完成: `TASK-GAMEPLAY-API-004`（pure API required/full 验收收口，结论升级为 `parity_verified`）。
 - 最新完成: `TASK-GAMEPLAY-API-003`（`world_pure_api_client` 纯 API 正式玩家动作面交付）。
@@ -100,6 +111,7 @@
 - ROUND-029 进展: `runtime_engineer` / `viewer_engineer` 已补齐 `TASK-GAMEPLAY-API-004` 的两个收口切片：`world_pure_api_client reconnect-sync --with-snapshot` 现在会直接恢复 `player_gameplay`，Viewer Mission HUD / PostOnboarding 主卡也已优先消费 canonical `snapshot.player_gameplay`；当前剩余阻断只剩 pure API no-LLM required/full 仍未证明能到达首个持续能力里程碑，因此 `TASK-GAMEPLAY-API-004` 继续保持 in_progress。
 - ROUND-030 进展: `runtime_engineer` 已修复 pure API fresh no-LLM 路径中 `runtime_snapshot` 数值键 map 的反序列化阻断，`qa_engineer` 随后通过 `./scripts/world-pure-api-parity-smoke.sh --tier required --no-llm --viewer-port 4297 --web-bind 127.0.0.1:5161 --live-bind 127.0.0.1:5163 --chain-status-bind 127.0.0.1:5249` 与 `./scripts/world-pure-api-parity-smoke.sh --tier full --no-llm --viewer-port 4299 --web-bind 127.0.0.1:5171 --live-bind 127.0.0.1:5173 --chain-status-bind 127.0.0.1:5251` 完成 source required/full 收口复验；pure API 现已能以正式 `gameplay_action` 路径到达 `post_onboarding.choose_midloop_path`，`TASK-GAMEPLAY-API-004` 已完成，专题结论升级为 `parity_verified`。
 - ROUND-031 进展: `producer_system_designer` 已完成 `TASK-GAME-024`，将 `game` 根 PRD / project 中仍作为当前真值使用的 `cargo -p agent_world*` 命令与 pure API 客户端源码路径统一收口到 `oasis7` / `oasis7_viewer` / `crates/oasis7/src/bin/world_pure_api_client.rs`，确保 `game` 模块入口文档不再把旧品牌当作默认口径。
+- ROUND-032 进展: `producer_system_designer` 已完成 `TASK-GAME-025`，将 `gameplay` 专题里仍作为当前真值使用的 runtime 源码锚点、builtin wasm 模块路径与 `cargo -p agent_world*` 命令统一收口到 `oasis7` / `oasis7_viewer` / `crates/oasis7*`，且保留历史证据、手动量化记录与 devlog 引用不变。
 - 说明: 本文档仅维护 game 设计执行状态；过程记录在 `doc/devlog/2026-03-05.md`、`doc/devlog/2026-03-06.md`、`doc/devlog/2026-03-07.md`、`doc/devlog/2026-03-15.md` 与 `doc/devlog/2026-03-18.md`。
   - 最新过程记录补充见 `doc/devlog/2026-03-19.md`。
 
