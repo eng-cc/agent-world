@@ -157,6 +157,7 @@
   - SC-53: repo-owned OpenClaw lightweight runtime agent 的默认 agent id 与 setup 脚本 operator env key 必须优先迁移到 `oasis7_runtime` 与 `OPENCLAW_OASIS7_*`，同时兼容旧 `agent_world_runtime` / `OPENCLAW_AGENT_WORLD_*`；`oasis7-run.sh`、skill 文档、bridge 示例与 setup 脚本不得继续把旧品牌命名当作当前默认口径。
   - SC-54: `world_game_launcher` / `world_web_launcher` 相关测试与静态资源测试写入系统临时目录时，默认前缀必须使用 `oasis7_*`，避免本地测试产物与失败签名继续泄露旧 `agent_world_*` 品牌字符串。
   - SC-55: 内部 CI 编排脚本中的 helper 函数名与聚合入口必须优先使用 `oasis7_*` 口径，避免 `scripts/ci-tests.sh` 继续通过 `run_agent_world_*` 这类内部标识扩散旧品牌命名。
+  - SC-56: `world_chain_runtime` 转账提交相关测试写入系统临时目录时，默认前缀必须使用 `oasis7_*`，避免链运行时转账测试产物继续泄露旧 `agent_world_*` 内部命名。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -371,6 +372,7 @@
   - AC-58: `scripts/setup-openclaw-agent-world-runtime.sh`、`.agents/skills/oasis7/scripts/oasis7-run.sh`、`.agents/skills/oasis7/**/*.md` 与 `world_openclaw_local_bridge` 相关测试样例必须默认使用 `oasis7_runtime` 与 `OPENCLAW_OASIS7_{AGENT_ID,WORKSPACE,MODEL}`，同时继续兼容旧 `agent_world_runtime` / `OPENCLAW_AGENT_WORLD_*`；现有 `tools/openclaw/agent_world_runtime_workspace` 目录可暂不改名，但 operator-facing 默认说明不得继续把旧品牌作为真值。
   - AC-59: `crates/agent_world/src/bin/world_game_launcher/world_game_launcher_tests.rs`、`crates/agent_world/src/bin/world_web_launcher/world_web_launcher_tests.rs` 与 `crates/agent_world/src/bin/world_web_launcher/static_files.rs` 里的临时目录前缀必须默认改为 `oasis7_*`；launcher/web-launcher 定向测试通过后，临时目录命名不得继续输出 `agent_world_*` 作为当前默认值。
   - AC-60: `scripts/ci-tests.sh` 里的 required/full/support 分层 helper 与分发入口必须默认改为 `run_oasis7_*` 命名；脚本帮助、tier dispatch 与执行行为保持不变，且脚本内不得残留 `run_agent_world_*` 作为当前 helper 真值。
+  - AC-61: `crates/agent_world/src/bin/world_chain_runtime/transfer_submit_api_tests.rs` 的临时目录前缀必须默认改为 `oasis7_transfer_submit_api_tests_*`；转账提交/状态/浏览器查询定向测试通过后，不得继续输出 `agent_world_transfer_submit_api_tests_*` 作为当前默认值。
 - Non-Goals:
   - 不在本 PRD 中详细列出每个 UI 像素级规范。
   - 不替代 world-runtime/p2p 的底层协议设计。

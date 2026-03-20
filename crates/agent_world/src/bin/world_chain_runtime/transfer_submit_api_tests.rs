@@ -77,7 +77,7 @@ fn make_temp_dir(label: &str) -> std::path::PathBuf {
         .expect("time")
         .as_nanos();
     path.push(format!(
-        "agent_world_transfer_submit_api_tests_{label}_{}_{}",
+        "oasis7_transfer_submit_api_tests_{label}_{}_{}",
         std::process::id(),
         stamp
     ));

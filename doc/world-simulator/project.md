@@ -392,6 +392,16 @@
     - `rg -n "run_agent_world_|run_oasis7_" scripts/ci-tests.sh`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
+- [x] TASK-WORLD_SIMULATOR-182 (PRD-WORLD_SIMULATOR-003/005) [test_tier_required]: 将 `world_chain_runtime` 转账提交测试的系统临时目录默认前缀切到 `oasis7_*`，收口链运行时转账测试产物里残留的旧 `agent_world_*` 内部命名。
+  - 产物文件:
+    - `doc/world-simulator/prd.md`
+    - `doc/world-simulator/project.md`
+    - `crates/agent_world/src/bin/world_chain_runtime/transfer_submit_api_tests.rs`
+  - 验收命令 (`test_tier_required`):
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world transfer_submit_handler_returns_invalid_request_for_bad_payload -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world transfer_status_and_history_endpoint_report_confirmed_record -- --nocapture`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
 - [x] TASK-WORLD_SIMULATOR-162 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 修复标准模式 bootstrap `Loading standard viewer...` overlay 在 wasm 已启动后仍残留并压缩左侧视口的问题，补齐 cleanup 生命周期与最小回归验证。
 - [x] TASK-WORLD_SIMULATOR-148 (PRD-WORLD_SIMULATOR-040) [test_tier_required]: 完成 `OpenClaw` 双轨模式（`player_parity` / `headless_agent` / `debug_viewer`）专题 PRD / Project 建模，并回写模块主文档、索引与 devlog。
 - [x] TASK-WORLD_SIMULATOR-149 (PRD-WORLD_SIMULATOR-040) [test_tier_required]: 由 `agent_engineer` 冻结 `player_parity` / `headless_agent` 的 observation/action contract、schema version、模式元数据与禁止泄露真值边界，并形成 supporting spec。
@@ -582,6 +592,7 @@
 - 最新完成: `TASK-WORLD_SIMULATOR-179`（已将 repo-owned OpenClaw lightweight runtime agent 的默认 agent id 与 setup/operator env 命名优先切到 `oasis7_runtime` / `OPENCLAW_OASIS7_*`，并保留旧 `agent_world_runtime` / `OPENCLAW_AGENT_WORLD_*` fallback）。
 - 最新完成: `TASK-WORLD_SIMULATOR-180`（已将 `world_game_launcher` / `world_web_launcher` 相关测试的系统临时目录默认前缀切到 `oasis7_*`，收口 launcher 测试产物里残留的旧 `agent_world_*` 内部命名）。
 - 最新完成: `TASK-WORLD_SIMULATOR-181`（已将 `scripts/ci-tests.sh` 的内部 helper 函数命名统一切到 `run_oasis7_*`，收口 CI 编排脚本里残留的旧 `run_agent_world_*` 内部标识）。
+- 最新完成: `TASK-WORLD_SIMULATOR-182`（已将 `world_chain_runtime` 转账提交测试的系统临时目录默认前缀切到 `oasis7_*`，收口链运行时转账测试产物里残留的旧 `agent_world_*` 内部命名）。
 - 最新完成: `TASK-WORLD_SIMULATOR-166`（已完成 `doc/world-simulator/**` 历史专题首行标题的 title-only cleanup，将 `Agent World*` 公开标题统一切到 `oasis7*`，并保留旧品牌只出现在正文历史上下文中）。
 - 最新完成: `TASK-WORLD_SIMULATOR-164`（为 Viewer 首局 `4/4` 之后补 `PostOnboarding` 阶段目标卡、阻塞解释、分支解锁与 summary 文案更新，并通过定向 `test_tier_required` 回归）。
 - 最新完成: `TASK-WORLD_SIMULATOR-165`（已完成 Viewer 活跃手册、原生窗口标题、Web `<title>` 与抓帧脚本窗口匹配的 `oasis7 Viewer` 品牌对齐，并保留旧标题仅作兼容匹配）。
