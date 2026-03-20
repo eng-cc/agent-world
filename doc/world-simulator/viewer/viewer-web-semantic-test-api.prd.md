@@ -6,7 +6,7 @@
 审计轮次: 5
 
 ## 1. Executive Summary
-- 为 Web 端 `agent_world_viewer` 注入一套稳定的语义化测试 API，降低 agent-browser 对像素坐标点击的依赖。
+- 为 Web 端 `oasis7_viewer` 注入一套稳定的语义化测试 API，降低 agent-browser 对像素坐标点击的依赖。
 - 复用现有 `viewer_automation` 步骤执行器，统一测试动作语义（`mode/focus/select/zoom/orbit/wait`）。
 - 在不暴露生产攻击面的前提下，提供测试模式专用入口：`window.__AW_TEST__`。
 - 补齐 round-1 目标：对齐人类高频操作中的“面板显隐 / 模块显隐 / 选中聚焦 / 材质预览切换”四类语义动作，减少脚本对键盘事件与像素点击的耦合。
@@ -107,7 +107,7 @@
 - WTA-1：`viewer_automation` 支持运行时步骤入队。
 - WTA-2：`web_test_api`（wasm）桥接层实现与 `window.__AW_TEST__` 注入。
 - WTA-3：`app_bootstrap` 接入命令消费与状态发布系统。
-- WTA-4：单测与回归验证（`agent_world_viewer`）。
+- WTA-4：单测与回归验证（`oasis7_viewer`）。
 - WTA-5：文档状态与 devlog 收口。
 - WTA-6：`testing-manual.md` S6 示例迁移到语义 API。
 - WTA-7：`getState()` 扩展相机语义字段，支撑 zoom 可验证门禁。
@@ -135,16 +135,16 @@
 ## 6. Validation & Decision Record
 - Test Plan & Traceability:
   - PRD-WTA-R1-001 -> WTA-8 -> `test_tier_required`（文档存在性与条目一致性检查）
-  - PRD-WTA-R1-002 -> WTA-9 -> `test_tier_required`（`agent_world_viewer` 定向单测）
+  - PRD-WTA-R1-002 -> WTA-9 -> `test_tier_required`（`oasis7_viewer` 定向单测）
   - PRD-WTA-R1-003 -> WTA-10 -> `test_tier_required`（`cargo check` + 文档回写追溯）
   - PRD-WTA-R2-001 -> WTA-11 -> `test_tier_required`（文档存在性与条目一致性检查）
-  - PRD-WTA-R2-002 -> WTA-12 -> `test_tier_required`（`agent_world_viewer` 定向单测）
+  - PRD-WTA-R2-002 -> WTA-12 -> `test_tier_required`（`oasis7_viewer` 定向单测）
   - PRD-WTA-R2-003 -> WTA-13 -> `test_tier_required`（`cargo check` + 手册示例可达 + 文档回写追溯）
   - PRD-WTA-R3-001 -> WTA-14 -> `test_tier_required`（文档存在性与条目一致性检查）
-  - PRD-WTA-R3-002 -> WTA-15 -> `test_tier_required`（`agent_world_viewer` 定向单测）
+  - PRD-WTA-R3-002 -> WTA-15 -> `test_tier_required`（`oasis7_viewer` 定向单测）
   - PRD-WTA-R3-003 -> WTA-16 -> `test_tier_required`（`cargo check` + 手册示例可达 + 文档回写追溯）
   - PRD-WTA-R4-001 -> WTA-17 -> `test_tier_required`（文档存在性与条目一致性检查）
-  - PRD-WTA-R4-002 -> WTA-18 -> `test_tier_required`（`agent_world_viewer` 定向单测）
+  - PRD-WTA-R4-002 -> WTA-18 -> `test_tier_required`（`oasis7_viewer` 定向单测）
   - PRD-WTA-R4-003 -> WTA-19 -> `test_tier_required`（`cargo check` + 手册示例可达 + 文档回写追溯）
 - Decision Log:
   - 采用 `runSteps` 语义扩展而不是新增大量 JS API 方法，避免 `web_test_api.rs` 持续膨胀并贴近单文件上限。

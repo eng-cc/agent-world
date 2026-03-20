@@ -32,18 +32,18 @@
 
 ### T6 测试与收口
 - [x] T6.1 test_tier_required：viewer 定向单测
-- [x] T6.2 test_tier_full：`agent_world_viewer` 全量测试 + wasm check
+- [x] T6.2 test_tier_full：`oasis7_viewer` 全量测试 + wasm check
 - [x] T6.3 更新项目状态与 devlog
 
 ## 依赖
 - doc/world-simulator/viewer/viewer-industry-graph-layered-symbolic-zoom-2026-02-28.prd.md
-- `crates/agent_world_viewer/src/ui_text_industrial.rs`
-- `crates/agent_world_viewer/src/ui_text_economy.rs`
-- `crates/agent_world_viewer/src/ui_text_ops_navigation.rs`
-- `crates/agent_world_viewer/src/world_overlay.rs`
-- `crates/agent_world_viewer/src/egui_right_panel.rs`
-- `crates/agent_world_viewer/src/ui_locale_text.rs`
-- `crates/agent_world/src/simulator/kernel/types.rs`
+- `crates/oasis7_viewer/src/ui_text_industrial.rs`
+- `crates/oasis7_viewer/src/ui_text_economy.rs`
+- `crates/oasis7_viewer/src/ui_text_ops_navigation.rs`
+- `crates/oasis7_viewer/src/world_overlay.rs`
+- `crates/oasis7_viewer/src/egui_right_panel.rs`
+- `crates/oasis7_viewer/src/ui_locale_text.rs`
+- `crates/oasis7/src/simulator/kernel/types.rs`
 - `doc/world-simulator/m4/m4-resource-product-system-p3-layer-profile-chain-expansion-2026-02-27.prd.md`
 
 ## 状态

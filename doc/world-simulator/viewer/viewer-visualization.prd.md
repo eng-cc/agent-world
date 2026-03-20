@@ -17,12 +17,12 @@
 
 ## 2. User Experience & Functionality
 - **范围内**
-  - 新增 Bevy 可视化 crate：`crates/agent_world_viewer`。
-  - 新增数据服务（网络桥接）：由 `agent_world` 提供一个 viewer server（可为 binary）。
+  - 新增 Bevy 可视化 crate：`crates/oasis7_viewer`。
+  - 新增数据服务（网络桥接）：由 `oasis7` 提供一个 viewer server（可为 binary）。
   - 定义最小网络协议（JSON 行协议），支持：握手、快照、事件流、回放控制。
   - 事件浏览器支持按类型筛选（subscribe 时指定 event_kinds）。
-  - 支持 headless 模式（`AGENT_WORLD_VIEWER_HEADLESS=1`），默认离线以适配无网络权限环境，可用 `AGENT_WORLD_VIEWER_FORCE_ONLINE=1` 强制联网。
-  - 显式离线模式（`AGENT_WORLD_VIEWER_OFFLINE=1`）用于无网络权限环境的功能验证。
+  - 支持 headless 模式（`OASIS7_VIEWER_HEADLESS=1`），默认离线以适配无网络权限环境，可用 `OASIS7_VIEWER_FORCE_ONLINE=1` 强制联网。
+  - 显式离线模式（`OASIS7_VIEWER_OFFLINE=1`）用于无网络权限环境的功能验证。
   - UI：世界状态面板（地点/Agent/资源摘要）、事件浏览器（列表/筛选）、回放控制（暂停/单步/跳转）。
 - **范围外**
   - 复杂 3D 渲染、地形/模型资产、声音系统。
@@ -35,9 +35,9 @@
 ## 4. Technical Specifications
 
 ### 目录结构（拟）
-- `crates/agent_world_viewer/`：Bevy UI 客户端
-- `crates/agent_world/src/viewer/`：网络协议 + 数据服务（server）
-- `crates/agent_world/src/bin/world_viewer_server.rs`：启动数据服务（可选）
+- `crates/oasis7_viewer/`：Bevy UI 客户端
+- `crates/oasis7/src/viewer/`：网络协议 + 数据服务（server）
+- `crates/oasis7/src/bin/world_viewer_server.rs`：启动数据服务（可选）
 
 ### 协议形态
 - **传输层**：TCP（localhost 默认），单连接、JSON 行（NDJSON）
@@ -54,7 +54,7 @@
 { "type": "control", "mode": "seek", "tick": 120 }
 
 // 服务端 -> 客户端
-{ "type": "hello_ack", "server": "agent_world", "version": 1, "world_id": "w-1" }
+{ "type": "hello_ack", "server": "oasis7", "version": 1, "world_id": "w-1" }
 { "type": "snapshot", "tick": 120, "world": { /* WorldSnapshot */ } }
 { "type": "event", "tick": 121, "event": { /* WorldEvent */ } }
 { "type": "metrics", "tick": 121, "metrics": { /* RunnerMetrics */ } }
@@ -73,11 +73,11 @@
 
 ### 快速运行（离线回放）
 1) 生成 demo 数据：  
-`env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_demo -- twin_region_bootstrap --out .data/world_viewer_data`
+`env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_viewer_demo -- twin_region_bootstrap --out .data/world_viewer_data`
 2) 启动 viewer server：  
-`env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_server -- .data/world_viewer_data 127.0.0.1:5010`
+`env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_viewer_server -- .data/world_viewer_data 127.0.0.1:5010`
 3) 启动 UI：  
-`env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010`
+`env -u RUSTC_WRAPPER cargo run -p oasis7_viewer -- 127.0.0.1:5010`
 
 
 ### 在线模式（最小实现）
@@ -90,11 +90,11 @@
 
 #### 快速运行（在线模式）
 1) 启动 live server（脚本驱动，默认）：  
-`env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- twin_region_bootstrap --bind 127.0.0.1:5010`
+`env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_viewer_live -- twin_region_bootstrap --bind 127.0.0.1:5010`
 2) 启动 live server（LLM 驱动）：  
-`env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --llm --bind 127.0.0.1:5010`
+`env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_viewer_live -- llm_bootstrap --llm --bind 127.0.0.1:5010`
 3) 启动 UI：  
-`env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010`
+`env -u RUSTC_WRAPPER cargo run -p oasis7_viewer -- 127.0.0.1:5010`
 
 
 ### 在线模式时间轴 UI（2026-02-07 更新）
@@ -228,7 +228,7 @@
   3) 注入资源：`ViewerState`（包含 snapshot/events/metrics）。
   4) 执行 `app.update()`，用 Query 断言 `Text` 内容变化。
 - **要求**：新增 UI 功能必须同步新增 headless UI 测试，覆盖输入/状态变化与输出文本/结构。
-- **离线模式**：headless 默认离线；如需联网，设置 `AGENT_WORLD_VIEWER_FORCE_ONLINE=1`；也可显式设置 `AGENT_WORLD_VIEWER_OFFLINE=1` 强制离线。
+- **离线模式**：headless 默认离线；如需联网，设置 `OASIS7_VIEWER_FORCE_ONLINE=1`；也可显式设置 `OASIS7_VIEWER_OFFLINE=1` 强制离线。
 
 ### 可观测性增强（2026-02-07）
 - **背景问题**：当前 3D 视图缺少空间边界/背景参照，事件列表也难以直接回答“每个 Agent 正在做什么”。
