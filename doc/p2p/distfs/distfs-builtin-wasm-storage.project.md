@@ -17,11 +17,11 @@
 - `scripts/sync-m4-builtin-wasm-artifacts.sh`
 - `scripts/pre-commit.sh`
 - `scripts/ci-tests.sh`
-- `crates/agent_world/src/runtime/m1_builtin_wasm_artifact.rs`
-- `crates/agent_world/src/runtime/m4_builtin_wasm_artifact.rs`
-- `crates/agent_world/src/runtime/world/bootstrap_power.rs`
-- `crates/agent_world/src/runtime/world/bootstrap_economy.rs`
-- `crates/agent_world/src/runtime/world/artifacts/*.sha256`
+- `crates/oasis7/src/runtime/m1_builtin_wasm_artifact.rs`
+- `crates/oasis7/src/runtime/m4_builtin_wasm_artifact.rs`
+- `crates/oasis7/src/runtime/world/bootstrap_power.rs`
+- `crates/oasis7/src/runtime/world/bootstrap_economy.rs`
+- `crates/oasis7/src/runtime/world/artifacts/*.sha256`
 
 ## 状态
 - 当前阶段：已完成。

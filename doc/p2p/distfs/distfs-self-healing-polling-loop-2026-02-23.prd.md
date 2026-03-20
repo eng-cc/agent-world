@@ -24,7 +24,7 @@
 | --- | --- | --- | --- | --- | --- |
 | 专题迁移 | 需求/任务/依赖/状态/测试层级 | 逐篇重写并校验 | `draft -> active -> done` | 以原文约束点映射为主线 | 维护者写入，复核者抽检 |
 - Acceptance Criteria:
-  - AC-1: `agent_world_net::replica_maintenance` 新增轮询模型：
+  - AC-1: `oasis7_net::replica_maintenance` 新增轮询模型：
   - AC-2: 轮询策略（间隔毫秒）。
   - AC-3: 轮询状态（上次执行时间）。
   - AC-4: 轮询结果（计划+执行报告）。

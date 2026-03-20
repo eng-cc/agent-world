@@ -21,7 +21,7 @@
 | --- | --- | --- | --- | --- | --- |
 | 专题迁移 | 需求/任务/依赖/状态/测试层级 | 逐篇重写并校验 | `draft -> active -> done` | 以原文约束点映射为主线 | 维护者写入，复核者抽检 |
 - Acceptance Criteria:
-  - AC-1: `crates/agent_world_distfs` 新增 `feedback_p2p` 模块：
+  - AC-1: `crates/oasis7_distfs` 新增 `feedback_p2p` 模块：
   - AC-2: announce 数据结构与编解码。
   - AC-3: feedback announce topic 约定。
   - AC-4: 从本地 mutation receipt 构造 announce（包含 blob_ref）。

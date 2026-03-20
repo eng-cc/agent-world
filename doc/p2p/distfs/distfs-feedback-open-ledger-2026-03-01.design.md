@@ -4,7 +4,7 @@
 - 对应项目管理文档: `doc/p2p/distfs/distfs-feedback-open-ledger-2026-03-01.project.md`
 
 ## 1. 设计定位
-定义基于 `agent_world_distfs` 的公开反馈账本方案：在不引入数据库的前提下支持公开写入/公开读取，并通过 append-only、签名授权、nonce 防重放和审计限流维持基本可信性。
+定义基于 `oasis7_distfs` 的公开反馈账本方案：在不引入数据库的前提下支持公开写入/公开读取，并通过 append-only、签名授权、nonce 防重放和审计限流维持基本可信性。
 
 ## 2. 设计结构
 - 账本存储层：`root.json` + `events/*.json` + `nonces/*` + `audit/*` 构成 append-only 布局。

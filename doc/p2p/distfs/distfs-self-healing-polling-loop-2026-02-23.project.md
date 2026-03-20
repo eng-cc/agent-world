@@ -19,13 +19,13 @@
 - [x] 补齐单测 (PRD-P2P-MIG-078)：首轮执行/间隔未到跳过/非法策略
 
 ### T2 收口
-- [x] 回归 (PRD-P2P-MIG-078)：`agent_world_net`、`agent_world_distfs`、`agent_world_consensus`、`agent_world_node`
+- [x] 回归 (PRD-P2P-MIG-078)：`oasis7_net`、`oasis7_distfs`、`oasis7_consensus`、`oasis7_node`
 - [x] 更新设计/项目文档状态 (PRD-P2P-MIG-078)
 - [x] 追加 `doc/devlog/2026-02-23.md` 任务日志 (PRD-P2P-MIG-078)
 
 ## 依赖
-- `crates/agent_world_net/src/replica_maintenance.rs`
-- `crates/agent_world_net/src/lib.rs`
+- `crates/oasis7_net/src/replica_maintenance.rs`
+- `crates/oasis7_net/src/lib.rs`
 
 ## 状态
 - 当前状态：`已完成`

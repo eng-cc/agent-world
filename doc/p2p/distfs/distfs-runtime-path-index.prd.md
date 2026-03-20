@@ -5,7 +5,7 @@
 
 审计轮次: 5
 ## 1. Executive Summary
-- Problem Statement: 将 `agent_world_distfs::FileStore` 接入 `agent_world_net::execution_storage`，为执行产物提供稳定路径索引。
+- Problem Statement: 将 `oasis7_distfs::FileStore` 接入 `oasis7_net::execution_storage`，为执行产物提供稳定路径索引。
 - Proposed Solution: 保持 CAS（content hash）作为底层真相，路径索引只作为可读、可枚举入口。
 - Success Criteria:
   - SC-1: 提供最小闭环：执行结果写入时生成路径索引，后续可按 `world_id + height` 回读区块与最新 head。
@@ -20,7 +20,7 @@
 | --- | --- | --- | --- | --- | --- |
 | 专题迁移 | 需求/任务/依赖/状态/测试层级 | 逐篇重写并校验 | `draft -> active -> done` | 以原文约束点映射为主线 | 维护者写入，复核者抽检 |
 - Acceptance Criteria:
-  - AC-1: 在 `agent_world_net` 增加“写执行结果 + 写路径索引”的组合接口。
+  - AC-1: 在 `oasis7_net` 增加“写执行结果 + 写路径索引”的组合接口。
   - AC-2: 约定执行产物路径布局（`worlds/<world_id>/...`）。
   - AC-3: 提供路径读取接口（按高度读 block、读最新 head）。
   - AC-4: 补齐单元测试（写入、回读、非法 world_id）。

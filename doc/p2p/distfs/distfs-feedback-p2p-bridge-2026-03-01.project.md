@@ -11,9 +11,9 @@
 - [x] T3 (PRD-P2P-MIG-063)：回归测试、文档状态回写与 devlog 收口。
 
 ## 依赖
-- `crates/agent_world_distfs/src/feedback.rs`
-- `crates/agent_world_distfs/src/feedback_p2p.rs`（新增）
-- `crates/agent_world_distfs/src/lib.rs`
+- `crates/oasis7_distfs/src/feedback.rs`
+- `crates/oasis7_distfs/src/feedback_p2p.rs`（新增）
+- `crates/oasis7_distfs/src/lib.rs`
 - `doc/p2p/distfs/distfs-feedback-p2p-bridge-2026-03-01.prd.md`
 
 ## 状态

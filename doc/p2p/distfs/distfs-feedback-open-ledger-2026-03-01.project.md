@@ -10,9 +10,9 @@
 - [x] T2 (PRD-P2P-MIG-062)：实现 CLI 闭环与测试回归，回写文档/devlog 并收口。
 
 ## 依赖
-- `crates/agent_world_distfs/src/lib.rs`
-- `crates/agent_world_distfs/src/feedback.rs`（新增）
-- `crates/agent_world_distfs/src/bin/distfs_feedback.rs`（新增）
+- `crates/oasis7_distfs/src/lib.rs`
+- `crates/oasis7_distfs/src/feedback.rs`（新增）
+- `crates/oasis7_distfs/src/bin/distfs_feedback.rs`（新增）
 - `doc/p2p/distfs/distfs-feedback-open-ledger-2026-03-01.prd.md`
 
 ## 状态

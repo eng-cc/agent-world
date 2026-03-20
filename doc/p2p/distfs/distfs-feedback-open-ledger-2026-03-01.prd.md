@@ -5,7 +5,7 @@
 
 审计轮次: 5
 ## 1. Executive Summary
-- Problem Statement: 在不引入数据库的前提下，基于 `agent_world_distfs` 落地可运行的玩家反馈系统。
+- Problem Statement: 在不引入数据库的前提下，基于 `oasis7_distfs` 落地可运行的玩家反馈系统。
 - Proposed Solution: 支持公开写入与公开读取，同时保证反馈记录 append-only，不允许覆盖原始反馈。
 - Success Criteria:
   - SC-1: 支持作者控制：反馈追加与删除（tombstone）必须由原作者公钥签名授权。
@@ -22,7 +22,7 @@
 | --- | --- | --- | --- | --- | --- |
 | 专题迁移 | 需求/任务/依赖/状态/测试层级 | 逐篇重写并校验 | `draft -> active -> done` | 以原文约束点映射为主线 | 维护者写入，复核者抽检 |
 - Acceptance Criteria:
-  - AC-1: `crates/agent_world_distfs` 新增反馈模块（核心存储与校验逻辑）：
+  - AC-1: `crates/oasis7_distfs` 新增反馈模块（核心存储与校验逻辑）：
   - AC-2: feedback create / append / tombstone。
   - AC-3: Ed25519 签名校验（pubkey + signature）。
   - AC-4: nonce 重放保护（同 pubkey + nonce 只允许一次）。
@@ -114,7 +114,7 @@ FeedbackEvent {
 ## 5. Risks & Roadmap
 - Phased Rollout:
   - M1：T0 文档建档完成（设计 + 项目管理）。
-  - M2：T1 核心反馈模块完成并通过 `agent_world_distfs` 定向单测。
+  - M2：T1 核心反馈模块完成并通过 `oasis7_distfs` 定向单测。
   - M3：T2 CLI 与闭环测试完成，文档/devlog 收口。
 - Technical Risks:
   - 审计日志扫描限流在高并发场景会有性能开销；本期接受，后续可改为滚动索引。

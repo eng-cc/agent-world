@@ -5,7 +5,7 @@
 
 审计轮次: 5
 ## 1. Executive Summary
-- Problem Statement: 在 `agent_world_distfs` 内提供最小可用的“标准文件读写接口”，补齐当前仅有 blob/CAS 接口的缺口。
+- Problem Statement: 在 `oasis7_distfs` 内提供最小可用的“标准文件读写接口”，补齐当前仅有 blob/CAS 接口的缺口。
 - Proposed Solution: 保持内容寻址（CAS）为底层真相，文件路径只是到 `content_hash` 的可变索引映射。
 - Success Criteria:
   - SC-1: 提供本地可测试闭环：写文件、读文件、列目录、查询元信息、删除映射。
@@ -20,7 +20,7 @@
 | --- | --- | --- | --- | --- | --- |
 | 专题迁移 | 需求/任务/依赖/状态/测试层级 | 逐篇重写并校验 | `draft -> active -> done` | 以原文约束点映射为主线 | 维护者写入，复核者抽检 |
 - Acceptance Criteria:
-  - AC-1: 在 `agent_world_distfs` 增加文件抽象接口（path -> content_hash）。
+  - AC-1: 在 `oasis7_distfs` 增加文件抽象接口（path -> content_hash）。
   - AC-2: 本地索引存储（JSON）及原子写入。
   - AC-3: 路径校验（禁止空路径、`..` 穿越、绝对路径）。
   - AC-4: 基础单元测试：读写回读、覆盖写、删除、路径校验。

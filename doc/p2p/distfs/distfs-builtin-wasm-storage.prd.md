@@ -47,10 +47,10 @@
 ### 原文技术约束（保真）
 #### 接口 / 数据
 - git 跟踪：
-  - `crates/agent_world/src/runtime/world/artifacts/m1_builtin_modules.sha256`
-  - `crates/agent_world/src/runtime/world/artifacts/m4_builtin_modules.sha256`
-  - `crates/agent_world/src/runtime/world/artifacts/m1_builtin_module_ids.txt`
-  - `crates/agent_world/src/runtime/world/artifacts/m4_builtin_module_ids.txt`
+- `crates/oasis7/src/runtime/world/artifacts/m1_builtin_modules.sha256`
+- `crates/oasis7/src/runtime/world/artifacts/m4_builtin_modules.sha256`
+- `crates/oasis7/src/runtime/world/artifacts/m1_builtin_module_ids.txt`
+- `crates/oasis7/src/runtime/world/artifacts/m4_builtin_module_ids.txt`
 - git 不跟踪：
   - `.distfs/builtin_wasm/blobs/<sha256>.blob`
 - 脚本行为：
