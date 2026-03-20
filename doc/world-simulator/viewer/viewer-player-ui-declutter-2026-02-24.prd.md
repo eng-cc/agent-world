@@ -13,7 +13,7 @@
   - 右侧面板展开后仍显示小地图，造成右侧区域密度过高。
 
 ## 2. User Experience & Functionality
-- 仅调整 `agent_world_viewer` 玩家模式（Player experience）UI 浮层布局策略。
+- 仅调整 `oasis7_viewer` 玩家模式（Player experience）UI 浮层布局策略。
 - 不改动世界模拟逻辑、事件语义、控制协议（`__AW_TEST__`）和主流程交互。
 - 保持现有玩家引导卡、任务卡、侧边面板功能语义不变。
 
@@ -22,8 +22,8 @@
 
 ## 4. Technical Specifications
 - 涉及模块：
-  - `crates/agent_world_viewer/src/egui_right_panel_player_experience.rs`
-  - `crates/agent_world_viewer/src/egui_right_panel_player_guide.rs`
+  - `crates/oasis7_viewer/src/egui_right_panel_player_experience.rs`
+  - `crates/oasis7_viewer/src/egui_right_panel_player_guide.rs`
 - 布局策略调整：
   - `render_feedback_toasts`：锚点从 `CENTER_TOP` 调整为 `RIGHT_TOP`。
   - `render_player_achievement_popups`：整体下移，避开顶部反馈区域。

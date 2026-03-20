@@ -13,15 +13,15 @@
 ## 2. User Experience & Functionality
 
 ### In Scope
-- `crates/agent_world_viewer/src/egui_right_panel_player_guide.rs`
+- `crates/oasis7_viewer/src/egui_right_panel_player_guide.rs`
   - 主任务结构化文案（动作/条件/耗时）
   - 次任务折叠呈现
   - 主任务剩余量提示
-- `crates/agent_world_viewer/src/egui_right_panel_player_experience.rs`
+- `crates/oasis7_viewer/src/egui_right_panel_player_experience.rs`
   - 首局进度状态跟踪
   - 5 秒无进展卡住检测
   - 首局完成结算卡片
-- `crates/agent_world_viewer/src/egui_right_panel_player_*_tests.rs`
+- `crates/oasis7_viewer/src/egui_right_panel_player_*_tests.rs`
   - 新增/更新首局任务结构、卡住检测、结算触发单测
 
 ### Out of Scope

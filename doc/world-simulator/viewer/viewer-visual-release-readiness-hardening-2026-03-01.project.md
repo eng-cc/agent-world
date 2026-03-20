@@ -17,7 +17,7 @@
 - `scripts/viewer-theme-pack-preview.sh`
 - `scripts/validate-viewer-theme-pack.py`
 - `scripts/generate-viewer-industrial-theme-assets.py`
-- `crates/agent_world_viewer/assets/themes/`
+- `crates/oasis7_viewer/assets/themes/`
 - `testing-manual.md`
 
 ## 状态

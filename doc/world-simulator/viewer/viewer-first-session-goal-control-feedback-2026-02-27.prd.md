@@ -13,7 +13,7 @@
 ## 2. User Experience & Functionality
 
 ### In Scope
-- `crates/agent_world_viewer` 玩家引导 HUD 文案与结构改造。
+- `crates/oasis7_viewer` 玩家引导 HUD 文案与结构改造。
 - Web Test API 新增动作描述接口与 `sendControl` 结构化返回。
 - 控制输入反馈状态纳入 `getState` 输出，便于自动化与人工复盘。
 - 对应 viewer 单元测试补充（test_tier_required）。

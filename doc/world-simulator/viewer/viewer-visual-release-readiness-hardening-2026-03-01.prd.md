@@ -36,7 +36,7 @@
 
 ## 4. Technical Specifications
 - 新增主题包目录：
-  - `crates/agent_world_viewer/assets/themes/industrial_v3/`
+- `crates/oasis7_viewer/assets/themes/industrial_v3/`
 - 新增/调整脚本接口：
   - `scripts/viewer-texture-inspector.sh` 默认 preset 与 gate 行为调整；
   - `scripts/viewer-release-art-baseline.sh`（新）：生成外发样张。

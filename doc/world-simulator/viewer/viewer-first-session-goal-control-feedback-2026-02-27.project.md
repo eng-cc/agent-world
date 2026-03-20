@@ -14,10 +14,10 @@
 ## 依赖
 - doc/world-simulator/viewer/viewer-first-session-goal-control-feedback-2026-02-27.prd.md
 - `doc/playability_test_result/game-test.prd.md`
-- `crates/agent_world_viewer/src/egui_right_panel_player_guide.rs`
-- `crates/agent_world_viewer/src/egui_right_panel_player_experience.rs`
-- `crates/agent_world_viewer/src/web_test_api.rs`
-- `crates/agent_world_viewer/src/egui_right_panel_tests.rs`
+- `crates/oasis7_viewer/src/egui_right_panel_player_guide.rs`
+- `crates/oasis7_viewer/src/egui_right_panel_player_experience.rs`
+- `crates/oasis7_viewer/src/web_test_api.rs`
+- `crates/oasis7_viewer/src/egui_right_panel_tests.rs`
 
 ## 状态
 - 当前阶段：已完成（T0~T4）
