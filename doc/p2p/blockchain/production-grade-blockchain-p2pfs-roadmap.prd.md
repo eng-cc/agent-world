@@ -23,7 +23,7 @@
 | 专题迁移 | 需求/任务/依赖/状态/测试层级 | 逐篇重写并校验 | `draft -> active -> done` | 以原文约束点映射为主线 | 维护者写入，复核者抽检 |
 - Acceptance Criteria:
   - AC-1: **PRG-A1：共识区块哈希链式化**
-  - AC-2: 将 `agent_world_node` 的提案 `block_hash` 从字符串占位升级为链式哈希（包含 `parent_hash`）。
+  - AC-2: 将 `oasis7_node` 的提案 `block_hash` 从字符串占位升级为链式哈希（包含 `parent_hash`）。
   - AC-3: 持久化引擎最新已提交哈希，确保重启后哈希链连续。
   - AC-4: **PRG-A2：奖励结算 Envelope 传输签名**
   - AC-5: 为 `RewardSettlementEnvelope` 增加签名字段与验签流程。

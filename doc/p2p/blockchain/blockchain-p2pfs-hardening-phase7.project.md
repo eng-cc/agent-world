@@ -11,7 +11,7 @@
 
 ## 依赖
 - doc/p2p/blockchain/blockchain-p2pfs-hardening-phase7.prd.md
-- `crates/agent_world_consensus/src/sequencer_mainloop.rs`
+- `crates/oasis7_consensus/src/sequencer_mainloop.rs`
 - `doc/devlog/2026-02-17.md`
 
 ## 状态

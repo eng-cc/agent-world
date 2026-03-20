@@ -13,8 +13,8 @@
 
 ## 依赖
 - doc/p2p/blockchain/blockchain-p2pfs-hardening-phase2.prd.md
-- `crates/agent_world_node`
-- `crates/agent_world/src/bin/world_viewer_live.rs`
+- `crates/oasis7_node`
+- `crates/oasis7/src/bin/world_viewer_live.rs`
 - `doc/p2p/node/node-keypair-config-bootstrap.prd.md`
 
 ## 状态

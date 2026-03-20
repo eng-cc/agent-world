@@ -21,7 +21,7 @@
 | 专题迁移 | 需求/任务/依赖/状态/测试层级 | 逐篇重写并校验 | `draft -> active -> done` | 以原文约束点映射为主线 | 维护者写入，复核者抽检 |
 - Acceptance Criteria:
   - AC-1: **HP3-1：跨 crate ed25519 签名器**
-  - AC-2: 在 `agent_world_consensus` 新增 `Ed25519SignatureSigner`。
+  - AC-2: 在 `oasis7_consensus` 新增 `Ed25519SignatureSigner`。
   - AC-3: 支持 `ActionEnvelope`、`WorldHeadAnnounce` 的签名与验签。
   - AC-4: 定义统一签名串格式（不新增协议字段，复用 `signature` 字段）。
   - AC-5: **HP3-2：Sequencer 签名治理接线**
@@ -29,7 +29,7 @@
 - Non-Goals:
   - membership 目录签名体系从 HMAC 迁移到 ed25519。
   - 链上信任根、证书吊销、多签聚合与 HSM/KMS 托管。
-  - `agent_world_proto` 协议字段改版（本阶段不新增 `signature_scheme` 字段）。
+  - `oasis7_proto` 协议字段改版（本阶段不新增 `signature_scheme` 字段）。
 
 ## 3. AI System Requirements (If Applicable)
 - Tool Requirements: 不适用（本专题不涉及 AI 模型能力改造）。

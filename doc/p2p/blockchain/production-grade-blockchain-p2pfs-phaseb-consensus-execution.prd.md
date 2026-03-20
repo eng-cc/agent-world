@@ -21,7 +21,7 @@
 | 专题迁移 | 需求/任务/依赖/状态/测试层级 | 逐篇重写并校验 | `draft -> active -> done` | 以原文约束点映射为主线 | 维护者写入，复核者抽检 |
 - Acceptance Criteria:
   - AC-1: **PRG-B1：节点执行 Hook 接口与快照字段**
-  - AC-2: 在 `agent_world_node` 引入可注入的执行驱动接口（commit 后触发）。
+  - AC-2: 在 `oasis7_node` 引入可注入的执行驱动接口（commit 后触发）。
   - AC-3: `NodeConsensusSnapshot` 增加 execution 相关字段（执行高度、执行块哈希、执行状态根）。
   - AC-4: 运行时重启后恢复 execution 快照字段。
   - AC-5: **PRG-B2：world_viewer_live 内生执行接线**
@@ -92,7 +92,7 @@ PosNodeStateSnapshot {
 ## 5. Risks & Roadmap
 - Phased Rollout:
   - **PRG-BM0**：完成 Phase B 设计文档与项目管理文档。
-  - **PRG-BM1**：`agent_world_node` 执行 hook + 快照/持久化扩展。
+  - **PRG-BM1**：`oasis7_node` 执行 hook + 快照/持久化扩展。
   - **PRG-BM2**：`world_viewer_live` execution driver 接入 NodeRuntime。
   - **PRG-BM3**：测试回归、文档与 devlog 收口。
 - Technical Risks:

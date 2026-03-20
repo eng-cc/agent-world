@@ -28,7 +28,7 @@
   - AC-5: 保持旧消息兼容（未开启签名策略时可接收无签名消息）。
   - AC-6: **HP2-2：Node PoS 状态持久化**
 - Non-Goals:
-  - ActionEnvelope/WorldHeadAnnounce 在 `agent_world_consensus` 的签名算法替换（HMAC -> ed25519）与跨 crate 统一签名接口重构。
+  - ActionEnvelope/WorldHeadAnnounce 在 `oasis7_consensus` 的签名算法替换（HMAC -> ed25519）与跨 crate 统一签名接口重构。
   - observer 运行态指标到 viewer 运维面板的 UI 展示接线（进入下一阶段）。
   - 多节点身份治理（公钥绑定、信任根、吊销）完整治理闭环。
 

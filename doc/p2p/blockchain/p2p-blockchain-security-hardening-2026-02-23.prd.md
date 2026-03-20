@@ -22,12 +22,12 @@
 | --- | --- | --- | --- | --- | --- |
 | 专题迁移 | 需求/任务/依赖/状态/测试层级 | 逐篇重写并校验 | `draft -> active -> done` | 以原文约束点映射为主线 | 维护者写入，复核者抽检 |
 - Acceptance Criteria:
-  - AC-1: `crates/agent_world_distfs/src/replication.rs`
+  - AC-1: `crates/oasis7_distfs/src/replication.rs`
   - AC-2: `apply_replication_record` 改为原子语义（失败不污染 guard）。
-  - AC-3: `crates/agent_world_node/src/replication.rs`
+  - AC-3: `crates/oasis7_node/src/replication.rs`
   - AC-4: 增加远端 writer allowlist 与 fetch 请求签名鉴权数据模型。
   - AC-5: 增加远端复制消息授权校验（签名有效 + writer 授权）。
-  - AC-6: `crates/agent_world_node/src/lib.rs`
+  - AC-6: `crates/oasis7_node/src/lib.rs`
 - Non-Goals:
   - 不引入新密码学算法（继续使用当前 ed25519 / HMAC 体系）。
   - 不改造 libp2p 底层握手协议与 peer 信任模型。

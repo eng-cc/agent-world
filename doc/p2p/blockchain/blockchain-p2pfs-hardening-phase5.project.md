@@ -11,9 +11,9 @@
 
 ## 依赖
 - doc/p2p/blockchain/blockchain-p2pfs-hardening-phase5.prd.md
-- `crates/agent_world_consensus/src/membership.rs`
-- `crates/agent_world_consensus/src/membership_logic.rs`
-- `crates/agent_world_consensus/src/membership_tests.rs`
+- `crates/oasis7_consensus/src/membership.rs`
+- `crates/oasis7_consensus/src/membership_logic.rs`
+- `crates/oasis7_consensus/src/membership_tests.rs`
 - `doc/devlog/2026-02-17.md`
 
 ## 状态

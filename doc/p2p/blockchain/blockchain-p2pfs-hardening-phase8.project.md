@@ -11,10 +11,10 @@
 
 ## 依赖
 - doc/p2p/blockchain/blockchain-p2pfs-hardening-phase8.prd.md
-- `crates/agent_world_consensus/src/lib.rs`
-- `crates/agent_world_consensus/src/signature.rs`
-- `crates/agent_world_consensus/src/membership_logic.rs`
-- `crates/agent_world_consensus/src/sequencer_mainloop.rs`
+- `crates/oasis7_consensus/src/lib.rs`
+- `crates/oasis7_consensus/src/signature.rs`
+- `crates/oasis7_consensus/src/membership_logic.rs`
+- `crates/oasis7_consensus/src/sequencer_mainloop.rs`
 - `doc/devlog/2026-02-17.md`
 
 ## 状态
