@@ -724,6 +724,20 @@
     - `bash -n scripts/sync-m1-builtin-wasm-artifacts.sh`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
+- [x] TASK-WORLD_SIMULATOR-203 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 viewer/OpenClaw 脚本中的旧品牌 env helper 与局部变量命名切到 `compat` 语义，收口脚本层里残留的 `legacy_key` / `viewer_legacy_env_key` / `promote_legacy_viewer_envs` 口径。
+  - 产物文件:
+    - `doc/world-simulator/prd.md`
+    - `doc/world-simulator/project.md`
+    - `scripts/setup-openclaw-oasis7-runtime.sh`
+    - `scripts/viewer-texture-inspector-lib.sh`
+    - `scripts/viewer-texture-inspector.sh`
+    - `scripts/capture-viewer-frame.sh`
+  - 验收命令 (`test_tier_required`):
+    - `bash -n scripts/setup-openclaw-oasis7-runtime.sh`
+    - `bash -n scripts/viewer-texture-inspector-lib.sh`
+    - `bash -n scripts/capture-viewer-frame.sh`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
 - [x] TASK-WORLD_SIMULATOR-162 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 修复标准模式 bootstrap `Loading standard viewer...` overlay 在 wasm 已启动后仍残留并压缩左侧视口的问题，补齐 cleanup 生命周期与最小回归验证。
 - [x] TASK-WORLD_SIMULATOR-148 (PRD-WORLD_SIMULATOR-040) [test_tier_required]: 完成 `OpenClaw` 双轨模式（`player_parity` / `headless_agent` / `debug_viewer`）专题 PRD / Project 建模，并回写模块主文档、索引与 devlog。
 - [x] TASK-WORLD_SIMULATOR-149 (PRD-WORLD_SIMULATOR-040) [test_tier_required]: 由 `agent_engineer` 冻结 `player_parity` / `headless_agent` 的 observation/action contract、schema version、模式元数据与禁止泄露真值边界，并形成 supporting spec。
@@ -912,6 +926,7 @@
 - 最新完成: `TASK-WORLD_SIMULATOR-177`（已将 bundle 产物中的 launcher/runtime 路径 env 注入与 storage profile override 默认口径优先切到 `OASIS7_*` / `OASIS7_CHAIN_STORAGE_PROFILE`，并保留旧 `AGENT_WORLD_*` fallback）。
 - 最新完成: `TASK-WORLD_SIMULATOR-178`（已将 viewer theme preset `.env` 文件中的默认导出 env key 优先切到 `OASIS7_VIEWER_*`，收口 theme/operator 预设链路里残留的旧 `AGENT_WORLD_VIEWER_*` 默认口径）。
 - 最新完成: `TASK-WORLD_SIMULATOR-179`（已将 repo-owned OpenClaw lightweight runtime agent 的默认 agent id 与 setup/operator env 命名优先切到 `oasis7_runtime` / `OPENCLAW_OASIS7_*`，并保留旧 `agent_world_runtime` / `OPENCLAW_AGENT_WORLD_*` fallback）。
+- 最新完成: `TASK-WORLD_SIMULATOR-203`（已将 viewer/OpenClaw 脚本中的旧品牌 env helper 与局部变量命名切到 `compat` 语义，收口脚本层里残留的 `legacy_key` / `viewer_legacy_env_key` / `promote_legacy_viewer_envs` 口径）。
 - 最新完成: `TASK-WORLD_SIMULATOR-202`（已将 wasm 构建/摘要/同步脚本中的旧品牌 env helper 与局部变量命名切到 `compat` 语义，收口脚本层里残留的 `wasm_legacy_env_key` / `legacy_key` 口径）。
 - 最新完成: `TASK-WORLD_SIMULATOR-201`（已将 `power_bootstrap_release_manifest_full` 的 builtin wasm 兼容 env 常量/测试局部变量命名切到 `compat` 语义，收口 full-tier 测试层里残留的 `LEGACY_*AGENT_WORLD_*` 口径）。
 - 最新完成: `TASK-WORLD_SIMULATOR-200`（已将 `world_web_launcher` 与 `agent_world_client_launcher` 的 launcher 定向测试函数命名切到 `compat` 语义，收口测试层里残留的 `before_legacy` / `legacy_name` 口径）。

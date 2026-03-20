@@ -482,7 +482,7 @@ capture_variant_bundle() {
     if [[ -n "$resource_pack_file" ]]; then
       source "$resource_pack_file"
     fi
-    promote_legacy_viewer_envs
+    promote_compat_old_brand_viewer_envs
 
     material_variant_preset_for_run="$variant"
     if [[ "$material_profile" == "art_review_v1" ]]; then

@@ -108,7 +108,7 @@ viewer_env_key() {
   echo "OASIS7_VIEWER_${suffix}"
 }
 
-viewer_legacy_env_key() {
+viewer_compat_old_brand_env_key() {
   local suffix=$1
   echo "AGENT_WORLD_VIEWER_${suffix}"
 }
@@ -117,39 +117,39 @@ set_or_unset_viewer_env() {
   local suffix=$1
   local value=$2
   local key
-  local legacy_key
+  local compat_old_brand_key
   key=$(viewer_env_key "$suffix")
-  legacy_key=$(viewer_legacy_env_key "$suffix")
+  compat_old_brand_key=$(viewer_compat_old_brand_env_key "$suffix")
   if [[ -n "$value" ]]; then
     export "$key=$value"
-    unset "$legacy_key" || true
+    unset "$compat_old_brand_key" || true
   else
     unset "$key" || true
-    unset "$legacy_key" || true
+    unset "$compat_old_brand_key" || true
   fi
 }
 
 viewer_env_value() {
   local suffix=$1
   local key
-  local legacy_key
+  local compat_old_brand_key
   key=$(viewer_env_key "$suffix")
-  legacy_key=$(viewer_legacy_env_key "$suffix")
+  compat_old_brand_key=$(viewer_compat_old_brand_env_key "$suffix")
   if [[ -n "${!key-}" ]]; then
     printf '%s' "${!key}"
   else
-    printf '%s' "${!legacy_key-}"
+    printf '%s' "${!compat_old_brand_key-}"
   fi
 }
 
-promote_legacy_viewer_envs() {
-  local legacy_name
+promote_compat_old_brand_viewer_envs() {
+  local compat_old_brand_name
   local value
   local suffix
   local key
-  while IFS='=' read -r legacy_name value; do
-    [[ "$legacy_name" == AGENT_WORLD_VIEWER_* ]] || continue
-    suffix=${legacy_name#AGENT_WORLD_VIEWER_}
+  while IFS='=' read -r compat_old_brand_name value; do
+    [[ "$compat_old_brand_name" == AGENT_WORLD_VIEWER_* ]] || continue
+    suffix=${compat_old_brand_name#AGENT_WORLD_VIEWER_}
     key=$(viewer_env_key "$suffix")
     if [[ -z "${!key+x}" ]]; then
       export "$key=$value"

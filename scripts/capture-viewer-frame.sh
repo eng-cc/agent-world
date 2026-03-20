@@ -57,11 +57,11 @@ run() {
 viewer_env_value() {
   local suffix=$1
   local primary_key="OASIS7_VIEWER_${suffix}"
-  local legacy_key="AGENT_WORLD_VIEWER_${suffix}"
+  local compat_old_brand_key="AGENT_WORLD_VIEWER_${suffix}"
   if [[ -n "${!primary_key-}" ]]; then
     printf '%s' "${!primary_key}"
   else
-    printf '%s' "${!legacy_key-}"
+    printf '%s' "${!compat_old_brand_key-}"
   fi
 }
 
