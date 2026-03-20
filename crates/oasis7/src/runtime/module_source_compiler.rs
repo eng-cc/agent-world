@@ -6,7 +6,6 @@ use std::time::{Duration, Instant};
 use super::{ModuleSourcePackage, WorldError};
 
 const MODULE_SOURCE_ENV_PREFIX: &str = "OASIS7_MODULE_SOURCE_";
-const COMPAT_OLD_BRAND_MODULE_SOURCE_ENV_PREFIX: &str = "AGENT_WORLD_MODULE_SOURCE_";
 const MODULE_SOURCE_BUILD_PROFILE: &str = "release";
 
 const DEFAULT_MODULE_SOURCE_MAX_FILES: usize = 128;
@@ -340,13 +339,8 @@ fn module_source_env_key(suffix: &str) -> String {
     format!("{MODULE_SOURCE_ENV_PREFIX}{suffix}")
 }
 
-fn compat_old_brand_module_source_env_key(suffix: &str) -> String {
-    format!("{COMPAT_OLD_BRAND_MODULE_SOURCE_ENV_PREFIX}{suffix}")
-}
-
 fn module_source_env_non_empty(suffix: &str) -> Option<String> {
     env_non_empty(module_source_env_key(suffix).as_str())
-        .or_else(|| env_non_empty(compat_old_brand_module_source_env_key(suffix).as_str()))
 }
 
 fn module_source_env_limit_usize(suffix: &str, default: usize) -> usize {
@@ -376,4 +370,67 @@ fn temp_source_workspace(module_id: &str) -> PathBuf {
 
 fn repo_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("..").join("..")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{module_source_env_key, module_source_env_non_empty};
+    use std::sync::{Mutex, OnceLock};
+
+    #[test]
+    fn module_source_env_non_empty_returns_oasis7_value() {
+        let _guard = module_source_env_lock().lock().expect("env lock");
+        let key = module_source_env_key("COMPILER");
+        let _env_guard = TestEnvGuard::capture(key.as_str());
+        std::env::set_var(key.as_str(), "/tmp/oasis7-module-source-compiler");
+
+        assert_eq!(
+            module_source_env_non_empty("COMPILER").as_deref(),
+            Some("/tmp/oasis7-module-source-compiler")
+        );
+    }
+
+    #[test]
+    fn module_source_env_non_empty_ignores_compat_old_brand_value() {
+        let _guard = module_source_env_lock().lock().expect("env lock");
+        let key = module_source_env_key("COMPILER");
+        let _env_guard = TestEnvGuard::capture(key.as_str());
+        let _compat_guard = TestEnvGuard::capture("AGENT_WORLD_MODULE_SOURCE_COMPILER");
+        std::env::remove_var(key.as_str());
+        std::env::set_var(
+            "AGENT_WORLD_MODULE_SOURCE_COMPILER",
+            "/tmp/compat-old-brand-module-source-compiler",
+        );
+
+        assert!(module_source_env_non_empty("COMPILER").is_none());
+    }
+
+    fn module_source_env_lock() -> &'static Mutex<()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(()))
+    }
+
+    struct TestEnvGuard {
+        key: String,
+        previous: Option<String>,
+    }
+
+    impl TestEnvGuard {
+        fn capture(key: &str) -> Self {
+            Self {
+                key: key.to_string(),
+                previous: std::env::var(key).ok(),
+            }
+        }
+    }
+
+    impl Drop for TestEnvGuard {
+        fn drop(&mut self) {
+            if let Some(value) = self.previous.as_ref() {
+                std::env::set_var(self.key.as_str(), value);
+            } else {
+                std::env::remove_var(self.key.as_str());
+            }
+        }
+    }
 }

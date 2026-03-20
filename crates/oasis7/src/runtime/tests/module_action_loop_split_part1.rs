@@ -9,9 +9,7 @@ use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const SOURCE_COMPILER_ENV: &str = "OASIS7_MODULE_SOURCE_COMPILER";
-const COMPAT_OLD_BRAND_SOURCE_COMPILER_ENV: &str = "AGENT_WORLD_MODULE_SOURCE_COMPILER";
 const SOURCE_MAX_FILES_ENV: &str = "OASIS7_MODULE_SOURCE_MAX_FILES";
-const COMPAT_OLD_BRAND_SOURCE_MAX_FILES_ENV: &str = "AGENT_WORLD_MODULE_SOURCE_MAX_FILES";
 const SOURCE_COMPILE_TIMEOUT_MS_ENV: &str = "OASIS7_MODULE_SOURCE_COMPILE_TIMEOUT_MS";
 const SOURCE_SANDBOX_SECRET_ENV: &str = "OASIS7_SOURCE_SANDBOX_TEST_SECRET";
 static SOURCE_COMPILER_ENV_LOCK: Mutex<()> = Mutex::new(());
@@ -377,15 +375,14 @@ fn deploy_module_artifact_action_rejects_hash_mismatch() {
 fn compile_module_artifact_from_source_registers_compiled_artifact() {
     let _env_lock = SOURCE_COMPILER_ENV_LOCK.lock().expect("lock compile env");
     let _env_guard = EnvVarGuard::capture(SOURCE_COMPILER_ENV);
-    let _compat_old_brand_env_guard =
-        EnvVarGuard::capture(COMPAT_OLD_BRAND_SOURCE_COMPILER_ENV);
+    let _compat_old_brand_env_guard = EnvVarGuard::capture("AGENT_WORLD_MODULE_SOURCE_COMPILER");
     let temp_root = temp_dir("compile-module-artifact");
     fs::create_dir_all(&temp_root).expect("create temp dir");
     let compiler_script = temp_root.join("compiler.sh");
     let produced_wasm_bytes = "compiled-from-source-runtime";
     write_fake_source_compiler(compiler_script.as_path(), produced_wasm_bytes);
     std::env::set_var(SOURCE_COMPILER_ENV, compiler_script.as_os_str());
-    std::env::remove_var(COMPAT_OLD_BRAND_SOURCE_COMPILER_ENV);
+    std::env::remove_var("AGENT_WORLD_MODULE_SOURCE_COMPILER");
 
     let mut world = World::new();
     register_agent(&mut world, "publisher-1");
@@ -424,11 +421,10 @@ fn compile_module_artifact_from_source_registers_compiled_artifact() {
 }
 
 #[test]
-fn compile_module_artifact_from_source_prefers_oasis7_compiler_env() {
+fn compile_module_artifact_from_source_ignores_compat_old_brand_compiler_env() {
     let _env_lock = SOURCE_COMPILER_ENV_LOCK.lock().expect("lock compile env");
     let _env_guard = EnvVarGuard::capture(SOURCE_COMPILER_ENV);
-    let _compat_old_brand_env_guard =
-        EnvVarGuard::capture(COMPAT_OLD_BRAND_SOURCE_COMPILER_ENV);
+    let _compat_old_brand_env_guard = EnvVarGuard::capture("AGENT_WORLD_MODULE_SOURCE_COMPILER");
 
     let temp_root = temp_dir("compile-module-artifact-prefers-oasis7-env");
     fs::create_dir_all(&temp_root).expect("create temp dir");
@@ -441,7 +437,7 @@ fn compile_module_artifact_from_source_prefers_oasis7_compiler_env() {
     );
     std::env::set_var(SOURCE_COMPILER_ENV, primary_script.as_os_str());
     std::env::set_var(
-        COMPAT_OLD_BRAND_SOURCE_COMPILER_ENV,
+        "AGENT_WORLD_MODULE_SOURCE_COMPILER",
         compat_old_brand_script.as_os_str(),
     );
 
@@ -474,15 +470,14 @@ fn compile_module_artifact_from_source_prefers_oasis7_compiler_env() {
 fn compile_module_artifact_from_source_rejects_in_production_release_policy() {
     let _env_lock = SOURCE_COMPILER_ENV_LOCK.lock().expect("lock compile env");
     let _env_guard = EnvVarGuard::capture(SOURCE_COMPILER_ENV);
-    let _compat_old_brand_env_guard =
-        EnvVarGuard::capture(COMPAT_OLD_BRAND_SOURCE_COMPILER_ENV);
+    let _compat_old_brand_env_guard = EnvVarGuard::capture("AGENT_WORLD_MODULE_SOURCE_COMPILER");
 
     let temp_root = temp_dir("compile-module-artifact-production-disabled");
     fs::create_dir_all(&temp_root).expect("create temp dir");
     let compiler_script = temp_root.join("compiler.sh");
     write_fake_source_compiler(compiler_script.as_path(), "compiled-in-production");
     std::env::set_var(SOURCE_COMPILER_ENV, compiler_script.as_os_str());
-    std::env::remove_var(COMPAT_OLD_BRAND_SOURCE_COMPILER_ENV);
+    std::env::remove_var("AGENT_WORLD_MODULE_SOURCE_COMPILER");
 
     let mut world = World::new();
     world.enable_production_release_policy();
@@ -531,10 +526,9 @@ fn compile_module_artifact_from_source_rejects_when_manifest_path_missing_in_fil
 fn compile_module_artifact_from_source_rejects_when_file_count_exceeds_limit() {
     let _env_lock = SOURCE_COMPILER_ENV_LOCK.lock().expect("lock compile env");
     let _env_guard = EnvVarGuard::capture(SOURCE_MAX_FILES_ENV);
-    let _compat_old_brand_env_guard =
-        EnvVarGuard::capture(COMPAT_OLD_BRAND_SOURCE_MAX_FILES_ENV);
+    let _compat_old_brand_env_guard = EnvVarGuard::capture("AGENT_WORLD_MODULE_SOURCE_MAX_FILES");
     std::env::set_var(SOURCE_MAX_FILES_ENV, "1");
-    std::env::remove_var(COMPAT_OLD_BRAND_SOURCE_MAX_FILES_ENV);
+    std::env::remove_var("AGENT_WORLD_MODULE_SOURCE_MAX_FILES");
 
     let mut world = World::new();
     register_agent(&mut world, "publisher-1");
@@ -550,35 +544,11 @@ fn compile_module_artifact_from_source_rejects_when_file_count_exceeds_limit() {
 }
 
 #[test]
-fn compile_module_artifact_from_source_max_files_falls_back_to_compat_old_brand_env() {
-    let _env_lock = SOURCE_COMPILER_ENV_LOCK.lock().expect("lock compile env");
-    let _env_guard = EnvVarGuard::capture(SOURCE_MAX_FILES_ENV);
-    let _compat_old_brand_env_guard =
-        EnvVarGuard::capture(COMPAT_OLD_BRAND_SOURCE_MAX_FILES_ENV);
-    std::env::remove_var(SOURCE_MAX_FILES_ENV);
-    std::env::set_var(COMPAT_OLD_BRAND_SOURCE_MAX_FILES_ENV, "1");
-
-    let mut world = World::new();
-    register_agent(&mut world, "publisher-1");
-
-    let action_id = world.submit_action(Action::CompileModuleArtifactFromSource {
-        publisher_agent_id: "publisher-1".to_string(),
-        module_id: "m.loop.source.too-many-files.compat-old-brand-fallback".to_string(),
-        source_package: sample_module_source_package(),
-    });
-    world
-        .step()
-        .expect("compile source with compat old brand max files env");
-
-    assert_last_rejection_note(&world, action_id, "source file count exceeds limit");
-}
-
-#[test]
 fn compile_module_artifact_from_source_rejects_when_compiler_times_out() {
     let _env_lock = SOURCE_COMPILER_ENV_LOCK.lock().expect("lock compile env");
     let _compiler_guard = EnvVarGuard::capture(SOURCE_COMPILER_ENV);
     let _compat_old_brand_compiler_guard =
-        EnvVarGuard::capture(COMPAT_OLD_BRAND_SOURCE_COMPILER_ENV);
+        EnvVarGuard::capture("AGENT_WORLD_MODULE_SOURCE_COMPILER");
     let _timeout_guard = EnvVarGuard::capture(SOURCE_COMPILE_TIMEOUT_MS_ENV);
 
     let temp_root = temp_dir("compile-module-artifact-timeout");
@@ -589,7 +559,7 @@ fn compile_module_artifact_from_source_rejects_when_compiler_times_out() {
         "#!/usr/bin/env bash\nset -euo pipefail\nsleep 1\nprintf '%s' 'late-module' > \"$4\"\n",
     );
     std::env::set_var(SOURCE_COMPILER_ENV, compiler_script.as_os_str());
-    std::env::remove_var(COMPAT_OLD_BRAND_SOURCE_COMPILER_ENV);
+    std::env::remove_var("AGENT_WORLD_MODULE_SOURCE_COMPILER");
     std::env::set_var(SOURCE_COMPILE_TIMEOUT_MS_ENV, "20");
 
     let mut world = World::new();
@@ -611,7 +581,7 @@ fn compile_module_artifact_from_source_sanitizes_env_and_isolates_tmpdir() {
     let _env_lock = SOURCE_COMPILER_ENV_LOCK.lock().expect("lock compile env");
     let _compiler_guard = EnvVarGuard::capture(SOURCE_COMPILER_ENV);
     let _compat_old_brand_compiler_guard =
-        EnvVarGuard::capture(COMPAT_OLD_BRAND_SOURCE_COMPILER_ENV);
+        EnvVarGuard::capture("AGENT_WORLD_MODULE_SOURCE_COMPILER");
     let _secret_guard = EnvVarGuard::capture(SOURCE_SANDBOX_SECRET_ENV);
 
     let temp_root = temp_dir("compile-module-artifact-sandbox-env");
@@ -625,7 +595,7 @@ fn compile_module_artifact_from_source_sanitizes_env_and_isolates_tmpdir() {
         .as_str(),
     );
     std::env::set_var(SOURCE_COMPILER_ENV, compiler_script.as_os_str());
-    std::env::remove_var(COMPAT_OLD_BRAND_SOURCE_COMPILER_ENV);
+    std::env::remove_var("AGENT_WORLD_MODULE_SOURCE_COMPILER");
     std::env::set_var(SOURCE_SANDBOX_SECRET_ENV, "must-not-leak");
 
     let mut world = World::new();

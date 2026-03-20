@@ -65,9 +65,6 @@ use openai_payload::{
     output_item_to_completion_turn, responses_tools, responses_tools_with_debug_mode,
 };
 
-const LLM_ENV_PREFIX: &str = "OASIS7_LLM_";
-const COMPAT_OLD_BRAND_LLM_ENV_PREFIX: &str = "AGENT_WORLD_LLM_";
-
 pub const ENV_LLM_MODEL: &str = "OASIS7_LLM_MODEL";
 pub const ENV_LLM_BASE_URL: &str = "OASIS7_LLM_BASE_URL";
 pub const ENV_LLM_API_KEY: &str = "OASIS7_LLM_API_KEY";
@@ -489,18 +486,8 @@ impl LlmAgentConfig {
     }
 }
 
-fn compat_old_brand_llm_env_key(key: &str) -> Option<String> {
-    key.strip_prefix(LLM_ENV_PREFIX)
-        .map(|suffix| format!("{COMPAT_OLD_BRAND_LLM_ENV_PREFIX}{suffix}"))
-}
-
 fn llm_env_var(key: &str) -> Option<String> {
-    std::env::var(key)
-        .ok()
-        .or_else(|| {
-            compat_old_brand_llm_env_key(key)
-                .and_then(|compat_old_brand| std::env::var(compat_old_brand).ok())
-        })
+    std::env::var(key).ok()
 }
 
 fn llm_table<'a>(table: &'a toml::value::Table) -> Option<&'a toml::value::Table> {

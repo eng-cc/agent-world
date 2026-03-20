@@ -10,7 +10,7 @@ use std::collections::BTreeMap;
 use std::collections::VecDeque;
 use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Debug, Default, Clone)]
@@ -41,6 +41,11 @@ impl Drop for EnvVarGuard {
             None => std::env::remove_var(self.key.as_str()),
         }
     }
+}
+
+fn llm_env_lock() -> &'static Mutex<()> {
+    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    LOCK.get_or_init(|| Mutex::new(()))
 }
 
 fn completion_turn_from_value(value: serde_json::Value) -> LlmCompletionTurn {
@@ -625,17 +630,28 @@ fn llm_config_agent_scoped_goal_overrides_global_value() {
 }
 
 #[test]
-fn llm_env_var_prefers_oasis7_prefix() {
+fn llm_env_var_reads_oasis7_prefix() {
+    let _env_lock = llm_env_lock().lock().expect("env lock");
     let _primary_guard = EnvVarGuard::capture(ENV_LLM_MODEL);
-    let _compat_old_brand_guard = EnvVarGuard::capture("AGENT_WORLD_LLM_MODEL");
     std::env::set_var(ENV_LLM_MODEL, "oasis7-model");
-    std::env::set_var("AGENT_WORLD_LLM_MODEL", "compat-old-brand-model");
 
     assert_eq!(llm_env_var(ENV_LLM_MODEL).as_deref(), Some("oasis7-model"));
 }
 
 #[test]
-fn llm_config_from_env_for_agent_falls_back_to_compat_old_brand_prefix() {
+fn llm_env_var_ignores_compat_old_brand_prefix() {
+    let _env_lock = llm_env_lock().lock().expect("env lock");
+    let _primary_guard = EnvVarGuard::capture(ENV_LLM_MODEL);
+    let _compat_old_brand_guard = EnvVarGuard::capture("AGENT_WORLD_LLM_MODEL");
+    std::env::remove_var(ENV_LLM_MODEL);
+    std::env::set_var("AGENT_WORLD_LLM_MODEL", "compat-old-brand-model");
+
+    assert!(llm_env_var(ENV_LLM_MODEL).is_none());
+}
+
+#[test]
+fn llm_config_from_env_for_agent_ignores_compat_old_brand_prefix() {
+    let _env_lock = llm_env_lock().lock().expect("env lock");
     let _model_guard = EnvVarGuard::capture(ENV_LLM_MODEL);
     let _base_url_guard = EnvVarGuard::capture(ENV_LLM_BASE_URL);
     let _api_key_guard = EnvVarGuard::capture(ENV_LLM_API_KEY);
@@ -658,11 +674,11 @@ fn llm_config_from_env_for_agent_falls_back_to_compat_old_brand_prefix() {
         "compat-old-brand-agent-short",
     );
 
-    let config = LlmAgentConfig::from_env_for_agent("agent-1").unwrap();
-    assert_eq!(config.model, "compat-old-brand-model");
-    assert_eq!(config.base_url, "https://compat-old-brand.example.com/v1");
-    assert_eq!(config.api_key, "compat-old-brand-secret");
-    assert_eq!(config.short_term_goal, "compat-old-brand-agent-short");
+    let error = LlmAgentConfig::from_env_for_agent("agent-1").expect_err("missing oasis7 env");
+    assert!(matches!(
+        error,
+        LlmConfigError::MissingEnv { key } if key == ENV_LLM_MODEL
+    ));
 }
 
 #[test]
