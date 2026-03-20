@@ -10,7 +10,7 @@
 - 保证在小窗口或低分辨率下，预设编辑区与 Agent Prompt 字段可通过内部滚动完整访问。
 
 ## 2. User Experience & Functionality
-- `crates/agent_world_viewer/src/egui_right_panel_chat.rs` 的预设 Prompt 展开区域布局。
+- `crates/oasis7_viewer/src/egui_right_panel_chat.rs` 的预设 Prompt 展开区域布局。
 - `doc/world-simulator/viewer/viewer-manual.md` 的交互说明补充。
 - 不改动 Prompt 语义、apply 逻辑、消息发送逻辑。
 

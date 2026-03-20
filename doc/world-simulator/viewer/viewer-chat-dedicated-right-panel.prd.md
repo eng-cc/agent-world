@@ -13,7 +13,7 @@
 ## 2. User Experience & Functionality
 
 ### 范围内
-- `agent_world_viewer` EGUI 布局改造：
+- `oasis7_viewer` EGUI 布局改造：
   - 新增独立 `Chat SidePanel`（最右侧）。
   - 现有综合右侧面板移除聊天内容渲染。
 - 面板宽度状态改造：

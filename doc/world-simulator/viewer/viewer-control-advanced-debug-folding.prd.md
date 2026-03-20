@@ -13,7 +13,7 @@
 ## 2. User Experience & Functionality
 
 ### 范围内
-- 调整 `agent_world_viewer` EGUI 控制区按钮布局：
+- 调整 `oasis7_viewer` EGUI 控制区按钮布局：
   - `播放/暂停` 合并为单按钮（根据当前 UI 运行态切换发送 Play 或 Pause）。
   - 新增“高级调试”开关；展开后显示 `单步` 与 `跳转 0`。
 - 新增控制区本地 UI 状态（是否播放、是否展开高级调试）。

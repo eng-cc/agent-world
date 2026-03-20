@@ -13,7 +13,7 @@
 ## 2. User Experience & Functionality
 
 ### 范围内
-- `agent_world_viewer` Chat 输入区交互改造：
+- `oasis7_viewer` Chat 输入区交互改造：
   - 输入框聚焦时，`Enter` 触发发送（与按钮发送一致）。
   - `Shift+Enter` 不发送，用于换行。
 - 补充单元测试，覆盖 Enter 发送判定逻辑。

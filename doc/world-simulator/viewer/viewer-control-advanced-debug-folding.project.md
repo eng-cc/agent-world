@@ -13,9 +13,9 @@
 - [x] ADF5 更新手册、回写状态与 devlog 收口
 
 ## 依赖
-- `crates/agent_world_viewer/src/egui_right_panel.rs`
-- `crates/agent_world_viewer/src/i18n.rs`
-- `crates/agent_world_viewer/src/egui_right_panel_tests.rs`
+- `crates/oasis7_viewer/src/egui_right_panel.rs`
+- `crates/oasis7_viewer/src/i18n.rs`
+- `crates/oasis7_viewer/src/egui_right_panel_tests.rs`
 - `doc/world-simulator/viewer/viewer-manual.md`
 
 ## 状态
