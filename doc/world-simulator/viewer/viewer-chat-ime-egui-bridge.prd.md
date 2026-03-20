@@ -13,7 +13,7 @@
 ## 2. User Experience & Functionality
 
 ### In Scope
-- 在 `agent_world_viewer`（wasm32）中新增 EGUI 输入桥接模块。
+- 在 `oasis7_viewer`（wasm32）中新增 EGUI 输入桥接模块。
 - 通过隐藏 HTML input 捕获 `composition*` / `input` / 部分键盘事件，并转换为 `egui::Event`。
 - 将转换后的事件注入 `bevy_egui` 主上下文（Primary EGUI Context）。
 - 在 EGUI 文本编辑激活时自动 focus 输入桥接节点，非编辑态自动 blur。

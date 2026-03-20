@@ -6,7 +6,7 @@
 审计轮次: 5
 
 ## 1. Executive Summary
-- 让 `agent_world_viewer` 在 Web 端默认占满浏览器可用区域，避免固定窗口尺寸导致的显示受限。
+- 让 `oasis7_viewer` 在 Web 端默认占满浏览器可用区域，避免固定窗口尺寸导致的显示受限。
 - 让右侧综合面板支持“一键整体隐藏/显示”，隐藏后让 3D 视口可用区域最大化。
 - 保持现有模块级开关、Chat 独立面板、3D 输入命中边界逻辑不退化。
 
@@ -27,18 +27,18 @@
 ## 4. Technical Specifications
 
 ### 1) Web 窗口配置
-- 文件：`crates/agent_world_viewer/src/app_bootstrap.rs`
+- 文件：`crates/oasis7_viewer/src/app_bootstrap.rs`
 - 在 wasm32 路径下启用 `Window.fit_canvas_to_parent = true`，保持 `prevent_default_event_handling = false`。
 
 ### 2) 右侧面板布局状态扩展
-- 文件：`crates/agent_world_viewer/src/panel_layout.rs`
+- 文件：`crates/oasis7_viewer/src/panel_layout.rs`
 - 扩展 `RightPanelLayoutState`：
   - `panel_hidden: bool`（默认 `false`）
 - 语义：
   - `panel_hidden = true` 时，不渲染主面板和 Chat 面板，仅保留一个悬浮“显示面板”按钮。
 
 ### 3) 右侧面板渲染与宽度
-- 文件：`crates/agent_world_viewer/src/egui_right_panel.rs`
+- 文件：`crates/oasis7_viewer/src/egui_right_panel.rs`
 - 新增总开关按钮文案（复用 i18n）：
   - 面板显示时：`Hide Panel / 隐藏面板`
   - 面板隐藏时：`Show Panel / 显示面板`
@@ -52,7 +52,7 @@
 ## 5. Risks & Roadmap
 - M1：设计文档与项目管理文档完成。
 - M2：实现 Web 全屏自适应与右侧面板总开关。
-- M3：补充/更新单测，完成 `agent_world_viewer` 与 wasm 编译验证。
+- M3：补充/更新单测，完成 `oasis7_viewer` 与 wasm 编译验证。
 - M4：更新使用手册、任务日志与项目状态收口。
 
 ### Technical Risks

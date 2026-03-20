@@ -13,8 +13,8 @@
 - [x] CIM5 文档回写、devlog、提交收口
 
 ## 依赖
-- `crates/agent_world_viewer/src/app_bootstrap.rs`
-- `crates/agent_world_viewer/src/egui_right_panel_chat.rs`
+- `crates/oasis7_viewer/src/app_bootstrap.rs`
+- `crates/oasis7_viewer/src/egui_right_panel_chat.rs`
 - `scripts/run-viewer-web.sh`
 
 ## 状态

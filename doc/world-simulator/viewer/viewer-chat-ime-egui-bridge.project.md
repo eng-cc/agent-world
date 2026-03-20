@@ -24,10 +24,10 @@
 - [ ] CIB16 回归验证与提交收口（CIB15）
 
 ## 依赖
-- `crates/agent_world_viewer/src/main.rs`
-- `crates/agent_world_viewer/src/app_bootstrap.rs`
-- `crates/agent_world_viewer/src/wasm_egui_input_bridge.rs`（新增）
-- `crates/agent_world_viewer/Cargo.toml`
+- `crates/oasis7_viewer/src/main.rs`
+- `crates/oasis7_viewer/src/app_bootstrap.rs`
+- `crates/oasis7_viewer/src/wasm_egui_input_bridge.rs`（新增）
+- `crates/oasis7_viewer/Cargo.toml`
 
 ## 状态
 - 当前阶段：进行中（CIB16）

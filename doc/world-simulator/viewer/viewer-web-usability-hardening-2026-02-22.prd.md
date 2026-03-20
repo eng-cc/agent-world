@@ -11,7 +11,7 @@
 - 为连接异常提供自动重连与更友好的状态文案，降低用户排障成本并提升连续使用体验。
 
 ## 2. User Experience & Functionality
-- 仅修改 `crates/agent_world_viewer` 的 UI 面板布局、websocket 错误处理与连接恢复逻辑。
+- 仅修改 `crates/oasis7_viewer` 的 UI 面板布局、websocket 错误处理与连接恢复逻辑。
 - 仅覆盖问题 1/2/3：
   - 1）窄屏双面板可操作性问题。
   - 2）WebSocket `onerror` 类型错误问题。

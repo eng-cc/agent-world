@@ -14,11 +14,11 @@
 - [x] VWFP-7：更新使用手册与任务日志，回写状态并提交
 
 ## 依赖
-- `crates/agent_world_viewer/src/app_bootstrap.rs`
-- `crates/agent_world_viewer/src/egui_right_panel.rs`
-- `crates/agent_world_viewer/src/i18n.rs`
-- `crates/agent_world_viewer/src/panel_layout.rs`
-- `crates/agent_world_viewer/src/egui_right_panel_tests.rs`
+- `crates/oasis7_viewer/src/app_bootstrap.rs`
+- `crates/oasis7_viewer/src/egui_right_panel.rs`
+- `crates/oasis7_viewer/src/i18n.rs`
+- `crates/oasis7_viewer/src/panel_layout.rs`
+- `crates/oasis7_viewer/src/egui_right_panel_tests.rs`
 - `doc/world-simulator/viewer/viewer-manual.md`
 - `doc/devlog/2026-02-21.md`
 

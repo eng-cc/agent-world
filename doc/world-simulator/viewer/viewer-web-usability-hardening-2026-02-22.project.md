@@ -14,11 +14,11 @@
 
 ## 依赖
 - doc/world-simulator/viewer/viewer-web-usability-hardening-2026-02-22.prd.md
-- `crates/agent_world_viewer/src/egui_right_panel.rs`
-- `crates/agent_world_viewer/src/egui_right_panel_tests.rs`
-- `crates/agent_world_viewer/src/main.rs`
-- `crates/agent_world_viewer/src/tests.rs`
-- `crates/agent_world_viewer/src/app_bootstrap.rs`
+- `crates/oasis7_viewer/src/egui_right_panel.rs`
+- `crates/oasis7_viewer/src/egui_right_panel_tests.rs`
+- `crates/oasis7_viewer/src/main.rs`
+- `crates/oasis7_viewer/src/tests.rs`
+- `crates/oasis7_viewer/src/app_bootstrap.rs`
 - `testing-manual.md`
 
 ## 状态

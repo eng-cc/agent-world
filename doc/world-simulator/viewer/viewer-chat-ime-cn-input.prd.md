@@ -13,7 +13,7 @@
 ## 2. User Experience & Functionality
 
 ### In Scope
-- 调整 `agent_world_viewer` 的 Web 窗口输入事件处理配置，避免中文输入法组合态被提前拦截。
+- 调整 `oasis7_viewer` 的 Web 窗口输入事件处理配置，避免中文输入法组合态被提前拦截。
 - 保持 Chat 模块现有消息发送协议、UI 结构和 trace 展示逻辑不变。
 - 增加/更新必要的回归校验（`test_tier_required`）与 wasm 目标编译检查。
 
