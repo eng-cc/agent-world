@@ -23,12 +23,12 @@ from pathlib import Path
 repo_root = Path(sys.argv[1]).resolve()
 scope = [
     "Cargo.lock",
-    "crates/agent_world/Cargo.toml",
-    "crates/agent_world/src/viewer",
-    "crates/agent_world/src/bin/world_game_launcher.rs",
-    "crates/agent_world/src/bin/world_game_launcher",
-    "crates/agent_world/src/bin/world_web_launcher.rs",
-    "crates/agent_world/src/bin/world_web_launcher",
+    "crates/oasis7/Cargo.toml",
+    "crates/oasis7/src/viewer",
+    "crates/oasis7/src/bin/world_game_launcher.rs",
+    "crates/oasis7/src/bin/world_game_launcher",
+    "crates/oasis7/src/bin/world_web_launcher.rs",
+    "crates/oasis7/src/bin/world_web_launcher",
     "crates/oasis7_proto/Cargo.toml",
     "crates/oasis7_proto/src",
     "crates/oasis7_viewer/Cargo.toml",

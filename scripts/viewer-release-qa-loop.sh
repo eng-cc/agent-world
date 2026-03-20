@@ -333,11 +333,11 @@ live_args=(
   "--no-open-browser"
 )
 
-echo "+ env -u RUSTC_WRAPPER cargo build -p agent_world --bin world_viewer_live --bin world_chain_runtime"
-env -u RUSTC_WRAPPER cargo build -p agent_world --bin world_viewer_live --bin world_chain_runtime >>"$live_log" 2>&1
+echo "+ env -u RUSTC_WRAPPER cargo build -p oasis7 --bin world_viewer_live --bin world_chain_runtime"
+env -u RUSTC_WRAPPER cargo build -p oasis7 --bin world_viewer_live --bin world_chain_runtime >>"$live_log" 2>&1
 
-echo "+ env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_game_launcher -- ${live_args[*]}"
-env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_game_launcher -- "${live_args[@]}" >"$live_log" 2>&1 &
+echo "+ env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_game_launcher -- ${live_args[*]}"
+env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_game_launcher -- "${live_args[@]}" >"$live_log" 2>&1 &
 live_pid=$!
 
 echo "+ wait for bridge $web_host:$web_port"

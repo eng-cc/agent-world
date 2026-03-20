@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use agent_world::simulator::{RuntimePerfBottleneck, RuntimePerfHealth};
+use oasis7::simulator::{RuntimePerfBottleneck, RuntimePerfHealth};
 use bevy::prelude::*;
 
 use super::{LabelLodStats, Viewer3dConfig, Viewer3dScene, ViewerConfig, ViewerState};
@@ -215,7 +215,7 @@ fn scene_world_entity_count(scene: &Viewer3dScene) -> usize {
 
 fn apply_runtime_perf_summary(
     summary: &mut RenderPerfSummary,
-    metrics: Option<&agent_world::simulator::RunnerMetrics>,
+    metrics: Option<&oasis7::simulator::RunnerMetrics>,
 ) {
     let Some(metrics) = metrics else {
         summary.runtime_health = RuntimePerfHealth::Unknown;
@@ -264,7 +264,7 @@ fn event_backlog_hit(event_window_size: usize, max_events: usize) -> bool {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn snapshot_world_entity_count(snapshot: &agent_world::simulator::WorldSnapshot) -> usize {
+fn snapshot_world_entity_count(snapshot: &oasis7::simulator::WorldSnapshot) -> usize {
     let model = &snapshot.model;
     model.locations.len()
         + model.agents.len()

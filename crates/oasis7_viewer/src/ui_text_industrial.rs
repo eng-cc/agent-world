@@ -1,7 +1,7 @@
 use crate::industry_graph_view_model::{
     IndustryGraphViewModel, IndustryNodeKind, IndustrySemanticZoomLevel,
 };
-use agent_world::simulator::{WorldEvent, WorldEventKind, WorldSnapshot};
+use oasis7::simulator::{WorldEvent, WorldEventKind, WorldSnapshot};
 
 const INDUSTRIAL_TOP_ROUTE_LIMIT: usize = 3;
 const INDUSTRIAL_NODE_DETAIL_LIMIT: usize = 4;
@@ -252,9 +252,9 @@ fn collect_factory_runtime_rollup(
     let mut rollup = FactoryRuntimeRollup::default();
     for factory in runtime_snapshot.state.factories.values() {
         match factory.production.status {
-            agent_world::runtime::FactoryProductionStatus::Running => rollup.running += 1,
-            agent_world::runtime::FactoryProductionStatus::Blocked => rollup.blocked += 1,
-            agent_world::runtime::FactoryProductionStatus::Idle => rollup.idle += 1,
+            oasis7::runtime::FactoryProductionStatus::Running => rollup.running += 1,
+            oasis7::runtime::FactoryProductionStatus::Blocked => rollup.blocked += 1,
+            oasis7::runtime::FactoryProductionStatus::Idle => rollup.idle += 1,
         }
         rollup.active_jobs = rollup
             .active_jobs
@@ -264,7 +264,7 @@ fn collect_factory_runtime_rollup(
             .saturating_add(factory.production.completed_jobs);
         if matches!(
             factory.production.status,
-            agent_world::runtime::FactoryProductionStatus::Blocked
+            oasis7::runtime::FactoryProductionStatus::Blocked
         ) {
             rollup.blocked_factories.push(format!(
                 "factory={} reason={} detail={}",
@@ -342,12 +342,12 @@ fn collect_factory_runtime_rollup(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use agent_world::geometry::GeoPos;
-    use agent_world::runtime::{
+    use oasis7::geometry::GeoPos;
+    use oasis7::runtime::{
         FactoryModuleSpec, FactoryProductionState, FactoryProductionStatus, FactoryState,
         MaterialLedgerId, MaterialStack, World,
     };
-    use agent_world::simulator::{
+    use oasis7::simulator::{
         ChunkRuntimeConfig, ModuleVisualAnchor, ModuleVisualEntity, PowerEvent, ResourceKind,
         ResourceOwner, WorldConfig, WorldModel, CHUNK_GENERATION_SCHEMA_VERSION, SNAPSHOT_VERSION,
     };

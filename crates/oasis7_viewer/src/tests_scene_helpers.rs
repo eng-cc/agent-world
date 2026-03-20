@@ -99,13 +99,13 @@ pub(super) fn spawn_location_damage_detail_test_system(
     mut scene: ResMut<Viewer3dScene>,
 ) {
     let origin = GeoPos::new(0.0, 0.0, 0.0);
-    let mut budget = agent_world::simulator::FragmentResourceBudget::default();
+    let mut budget = oasis7::simulator::FragmentResourceBudget::default();
     budget
         .total_by_element_g
-        .insert(agent_world::simulator::FragmentElementKind::Iron, 1_000);
+        .insert(oasis7::simulator::FragmentElementKind::Iron, 1_000);
     budget
         .remaining_by_element_g
-        .insert(agent_world::simulator::FragmentElementKind::Iron, 100);
+        .insert(oasis7::simulator::FragmentElementKind::Iron, 100);
     spawn_location_entity_with_radiation(
         &mut commands,
         &config,
@@ -349,7 +349,7 @@ pub(super) fn spawn_agent_motion_feedback_test_system(
     mut scene: ResMut<Viewer3dScene>,
 ) {
     let origin = GeoPos::new(0.0, 0.0, 0.0);
-    let kinematics = agent_world::simulator::AgentKinematics {
+    let kinematics = oasis7::simulator::AgentKinematics {
         speed_cm_per_tick: 320_000,
         move_target_location_id: None,
         move_target: Some(GeoPos::new(10_000.0, 0.0, 0.0)),
@@ -378,47 +378,47 @@ pub(super) fn rebuild_scene_module_count_test_system(
     assets: Res<Viewer3dAssets>,
     mut scene: ResMut<Viewer3dScene>,
 ) {
-    let mut model = agent_world::simulator::WorldModel::default();
+    let mut model = oasis7::simulator::WorldModel::default();
     model.agents.insert(
         "agent-modules".to_string(),
-        agent_world::simulator::Agent::new("agent-modules", "loc-1", GeoPos::new(0.0, 0.0, 0.0)),
+        oasis7::simulator::Agent::new("agent-modules", "loc-1", GeoPos::new(0.0, 0.0, 0.0)),
     );
     model.locations.insert(
         "loc-1".to_string(),
-        agent_world::simulator::Location::new("loc-1", "Loc", GeoPos::new(0.0, 0.0, 0.0)),
+        oasis7::simulator::Location::new("loc-1", "Loc", GeoPos::new(0.0, 0.0, 0.0)),
     );
     model.module_visual_entities.insert(
         "mv-1".to_string(),
-        agent_world::simulator::ModuleVisualEntity {
+        oasis7::simulator::ModuleVisualEntity {
             entity_id: "mv-1".to_string(),
             module_id: "m.power".to_string(),
             kind: "artifact".to_string(),
             label: None,
-            anchor: agent_world::simulator::ModuleVisualAnchor::Agent {
+            anchor: oasis7::simulator::ModuleVisualAnchor::Agent {
                 agent_id: "agent-modules".to_string(),
             },
         },
     );
     model.module_visual_entities.insert(
         "mv-2".to_string(),
-        agent_world::simulator::ModuleVisualEntity {
+        oasis7::simulator::ModuleVisualEntity {
             entity_id: "mv-2".to_string(),
             module_id: "m.sensor".to_string(),
             kind: "artifact".to_string(),
             label: None,
-            anchor: agent_world::simulator::ModuleVisualAnchor::Agent {
+            anchor: oasis7::simulator::ModuleVisualAnchor::Agent {
                 agent_id: "agent-modules".to_string(),
             },
         },
     );
 
-    let snapshot = agent_world::simulator::WorldSnapshot {
-        version: agent_world::simulator::SNAPSHOT_VERSION,
-        chunk_generation_schema_version: agent_world::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
+    let snapshot = oasis7::simulator::WorldSnapshot {
+        version: oasis7::simulator::SNAPSHOT_VERSION,
+        chunk_generation_schema_version: oasis7::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
         time: 1,
-        config: agent_world::simulator::WorldConfig::default(),
+        config: oasis7::simulator::WorldConfig::default(),
         model,
-        chunk_runtime: agent_world::simulator::ChunkRuntimeConfig::default(),
+        chunk_runtime: oasis7::simulator::ChunkRuntimeConfig::default(),
         next_event_id: 1,
         next_action_id: 1,
         pending_actions: Vec::new(),
@@ -436,10 +436,10 @@ pub(super) fn rebuild_scene_default_module_count_test_system(
     assets: Res<Viewer3dAssets>,
     mut scene: ResMut<Viewer3dScene>,
 ) {
-    let mut model = agent_world::simulator::WorldModel::default();
+    let mut model = oasis7::simulator::WorldModel::default();
     model.agents.insert(
         "agent-default-modules".to_string(),
-        agent_world::simulator::Agent::new(
+        oasis7::simulator::Agent::new(
             "agent-default-modules",
             "loc-1",
             GeoPos::new(0.0, 0.0, 0.0),
@@ -447,16 +447,16 @@ pub(super) fn rebuild_scene_default_module_count_test_system(
     );
     model.locations.insert(
         "loc-1".to_string(),
-        agent_world::simulator::Location::new("loc-1", "Loc", GeoPos::new(0.0, 0.0, 0.0)),
+        oasis7::simulator::Location::new("loc-1", "Loc", GeoPos::new(0.0, 0.0, 0.0)),
     );
 
-    let snapshot = agent_world::simulator::WorldSnapshot {
-        version: agent_world::simulator::SNAPSHOT_VERSION,
-        chunk_generation_schema_version: agent_world::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
+    let snapshot = oasis7::simulator::WorldSnapshot {
+        version: oasis7::simulator::SNAPSHOT_VERSION,
+        chunk_generation_schema_version: oasis7::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
         time: 1,
-        config: agent_world::simulator::WorldConfig::default(),
+        config: oasis7::simulator::WorldConfig::default(),
         model,
-        chunk_runtime: agent_world::simulator::ChunkRuntimeConfig::default(),
+        chunk_runtime: oasis7::simulator::ChunkRuntimeConfig::default(),
         next_event_id: 1,
         next_action_id: 1,
         pending_actions: Vec::new(),

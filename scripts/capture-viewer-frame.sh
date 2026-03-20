@@ -271,7 +271,7 @@ resolve_capture_max_wait() {
 }
 
 prewarm_viewer_binaries() {
-  run env -u RUSTC_WRAPPER cargo build -p agent_world --bin world_viewer_live
+  run env -u RUSTC_WRAPPER cargo build -p oasis7 --bin world_viewer_live
   run env -u RUSTC_WRAPPER cargo build -p oasis7_viewer
 }
 
@@ -557,7 +557,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-server_cmd=(env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- "$scenario" --bind "$addr")
+server_cmd=(env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_viewer_live -- "$scenario" --bind "$addr")
 if [[ $enable_llm -eq 1 ]]; then
   server_cmd+=(--llm)
 fi

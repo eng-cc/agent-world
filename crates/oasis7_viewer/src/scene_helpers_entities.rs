@@ -1,5 +1,5 @@
 use super::*;
-use agent_world::simulator::{AssetKind, ResourceKind};
+use oasis7::simulator::{AssetKind, ResourceKind};
 
 const TWO_D_AGENT_MARKER_MIN_RADIUS_WORLD: f32 = 0.00045;
 const TWO_D_AGENT_MARKER_MIN_THICKNESS_WORLD: f32 = 0.00006;

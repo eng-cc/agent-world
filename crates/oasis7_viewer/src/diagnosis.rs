@@ -1,4 +1,4 @@
-use agent_world::simulator::{RejectReason, WorldEventKind};
+use oasis7::simulator::{RejectReason, WorldEventKind};
 use bevy::ecs::hierarchy::ChildSpawnerCommands;
 use bevy::prelude::*;
 
@@ -183,7 +183,7 @@ fn selection_kind_name(kind: SelectionKind) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use agent_world::simulator::{
+    use oasis7::simulator::{
         AgentDecision, AgentDecisionTrace, LlmDecisionDiagnostics, WorldEvent,
     };
 
@@ -241,10 +241,10 @@ mod tests {
                 time: 9,
                 kind: WorldEventKind::ActionRejected {
                     reason: RejectReason::InsufficientResource {
-                        owner: agent_world::simulator::ResourceOwner::Agent {
+                        owner: oasis7::simulator::ResourceOwner::Agent {
                             agent_id: "agent-1".to_string(),
                         },
-                        kind: agent_world::simulator::ResourceKind::Electricity,
+                        kind: oasis7::simulator::ResourceKind::Electricity,
                         requested: 20,
                         available: 5,
                     },

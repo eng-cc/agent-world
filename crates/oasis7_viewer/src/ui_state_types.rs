@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use super::UI_PANEL_WIDTH;
-use agent_world::viewer::ViewerControl;
+use oasis7::viewer::ViewerControl;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) enum ConnectionStatus {

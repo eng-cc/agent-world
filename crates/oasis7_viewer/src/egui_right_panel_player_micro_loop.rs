@@ -1,11 +1,11 @@
-use agent_world::simulator::{RejectReason, WorldEventKind};
+use oasis7::simulator::{RejectReason, WorldEventKind};
 use std::collections::BTreeMap;
 
 use crate::web_test_api::WebTestApiControlFeedbackSnapshot;
 use crate::ViewerState;
 
 #[cfg(test)]
-use agent_world::simulator::RunnerMetrics;
+use oasis7::simulator::RunnerMetrics;
 
 const WAR_BASE_DURATION_TICKS: u64 = 6;
 const WAR_DURATION_PER_INTENSITY_TICKS: u64 = 2;
@@ -612,7 +612,7 @@ fn default_recovery_suggestion(locale: crate::i18n::UiLocale) -> String {
 mod tests {
     use super::*;
     use crate::{ConnectionStatus, ViewerState};
-    use agent_world::simulator::WorldEvent;
+    use oasis7::simulator::WorldEvent;
 
     fn runtime_event(id: u64, time: u64, kind: &str, domain_kind: Option<&str>) -> WorldEvent {
         WorldEvent {

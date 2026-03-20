@@ -347,10 +347,10 @@ if [[ -n "$BUNDLE_DIR" ]]; then
   ) &
 else
   LAUNCH_MODE="source"
-  LAUNCH_CMD="cargo run -p agent_world --bin world_game_launcher"
+  LAUNCH_CMD="cargo run -p oasis7 --bin world_game_launcher"
   (
     cd "$ROOT_DIR"
-    env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_game_launcher -- "${WORLD_ARGS[@]}" >"$WORLD_LOG" 2>&1
+    env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_game_launcher -- "${WORLD_ARGS[@]}" >"$WORLD_LOG" 2>&1
   ) &
 fi
 LAUNCHER_PID=$!

@@ -136,36 +136,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "agent_world"
-version = "0.1.0"
-dependencies = [
- "async-openai",
- "blake3",
- "ctrlc",
- "ed25519-dalek",
- "getrandom 0.2.17",
- "hex",
- "hmac",
- "oasis7_distfs",
- "oasis7_launcher_ui",
- "oasis7_node",
- "oasis7_proto",
- "oasis7_wasm_abi",
- "oasis7_wasm_executor",
- "oasis7_wasm_router",
- "oasis7_wasm_store",
- "rand_core 0.6.4",
- "reqwest",
- "serde",
- "serde_cbor",
- "serde_json",
- "sha2",
- "tokio",
- "toml 0.8.23",
- "tungstenite",
-]
-
-[[package]]
 name = "ahash"
 version = "0.8.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5673,6 +5643,36 @@ dependencies = [
 ]
 
 [[package]]
+name = "oasis7"
+version = "0.1.0"
+dependencies = [
+ "async-openai",
+ "blake3",
+ "ctrlc",
+ "ed25519-dalek",
+ "getrandom 0.2.17",
+ "hex",
+ "hmac",
+ "oasis7_distfs",
+ "oasis7_launcher_ui",
+ "oasis7_node",
+ "oasis7_proto",
+ "oasis7_wasm_abi",
+ "oasis7_wasm_executor",
+ "oasis7_wasm_router",
+ "oasis7_wasm_store",
+ "rand_core 0.6.4",
+ "reqwest",
+ "serde",
+ "serde_cbor",
+ "serde_json",
+ "sha2",
+ "tokio",
+ "toml 0.8.23",
+ "tungstenite",
+]
+
+[[package]]
 name = "oasis7_client_launcher"
 version = "0.1.0"
 dependencies = [
@@ -5771,7 +5771,6 @@ dependencies = [
 name = "oasis7_viewer"
 version = "0.1.0"
 dependencies = [
- "agent_world",
  "bevy",
  "bevy_egui",
  "ed25519-dalek",
@@ -5782,6 +5781,7 @@ dependencies = [
  "hex",
  "image",
  "js-sys",
+ "oasis7",
  "pollster",
  "serde",
  "serde_json",

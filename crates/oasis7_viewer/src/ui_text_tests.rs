@@ -1,5 +1,5 @@
 use super::*;
-use agent_world::simulator::RejectReason;
+use oasis7::simulator::RejectReason;
 
 #[test]
 fn events_summary_without_focus_keeps_compact_view() {

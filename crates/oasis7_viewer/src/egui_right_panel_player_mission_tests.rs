@@ -11,22 +11,22 @@ use super::egui_right_panel_player_micro_loop::{
     build_player_micro_loop_snapshot, format_due_timer_line,
 };
 use crate::web_test_api::WebTestApiControlFeedbackSnapshot;
-use agent_world::simulator::{
+use oasis7::simulator::{
     PlayerGameplayGoalKind, PlayerGameplaySnapshot, PlayerGameplayStageId,
     PlayerGameplayStageStatus, WorldEvent, WorldEventKind,
 };
 
 fn sample_post_onboarding_viewer_state(gameplay: PlayerGameplaySnapshot) -> crate::ViewerState {
     let mut state = super::sample_viewer_state(crate::ConnectionStatus::Connected, Vec::new());
-    let snapshot = agent_world::simulator::WorldSnapshot {
-        version: agent_world::simulator::SNAPSHOT_VERSION,
-        chunk_generation_schema_version: agent_world::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
+    let snapshot = oasis7::simulator::WorldSnapshot {
+        version: oasis7::simulator::SNAPSHOT_VERSION,
+        chunk_generation_schema_version: oasis7::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
         time: 0,
-        config: agent_world::simulator::WorldConfig::default(),
-        model: agent_world::simulator::WorldModel::default(),
+        config: oasis7::simulator::WorldConfig::default(),
+        model: oasis7::simulator::WorldModel::default(),
         runtime_snapshot: None,
         player_gameplay: Some(gameplay),
-        chunk_runtime: agent_world::simulator::ChunkRuntimeConfig::default(),
+        chunk_runtime: oasis7::simulator::ChunkRuntimeConfig::default(),
         next_event_id: 1,
         next_action_id: 1,
         pending_actions: Vec::new(),
@@ -109,9 +109,9 @@ fn build_player_mission_remaining_hint_reports_tick_gap_after_feedback() {
         explore_ready: true,
     };
     let mut state = super::sample_viewer_state(crate::ConnectionStatus::Connected, Vec::new());
-    state.metrics = Some(agent_world::simulator::RunnerMetrics {
+    state.metrics = Some(oasis7::simulator::RunnerMetrics {
         total_ticks: 12,
-        ..agent_world::simulator::RunnerMetrics::default()
+        ..oasis7::simulator::RunnerMetrics::default()
     });
     let hint = build_player_mission_remaining_hint(
         PlayerGuideStep::ExploreAction,
@@ -256,9 +256,9 @@ fn player_micro_loop_snapshot_exposes_due_timer_lines() {
             },
         ],
     );
-    state.metrics = Some(agent_world::simulator::RunnerMetrics {
+    state.metrics = Some(oasis7::simulator::RunnerMetrics {
         total_ticks: 10,
-        ..agent_world::simulator::RunnerMetrics::default()
+        ..oasis7::simulator::RunnerMetrics::default()
     });
     let snapshot = build_player_micro_loop_snapshot(&state, crate::i18n::UiLocale::EnUs);
     assert_eq!(snapshot.action_status.headline, "Recent Action: Accepted");

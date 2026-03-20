@@ -1,5 +1,5 @@
 use super::viewer_3d_config::{ViewerFragmentMaterialConfig, ViewerFragmentMaterialStrategy};
-use agent_world::simulator::FragmentElementKind;
+use oasis7::simulator::FragmentElementKind;
 use bevy::prelude::*;
 use std::collections::BTreeMap;
 

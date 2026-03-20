@@ -1,4 +1,4 @@
-use agent_world::simulator::{ChunkState, ResourceKind, WorldEvent, WorldSnapshot};
+use oasis7::simulator::{ChunkState, ResourceKind, WorldEvent, WorldSnapshot};
 use bevy::ecs::hierarchy::ChildSpawnerCommands;
 use bevy::prelude::*;
 use std::collections::HashMap;
@@ -835,8 +835,8 @@ fn flow_arrow_transform(from: Vec3, to: Vec3, thickness: f32) -> Transform {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use agent_world::geometry::GeoPos;
-    use agent_world::simulator::{
+    use oasis7::geometry::GeoPos;
+    use oasis7::simulator::{
         Agent, ChunkRuntimeConfig, Location, PowerEvent, ResourceOwner, WorldConfig,
         WorldEventKind, WorldModel,
     };
@@ -863,9 +863,9 @@ mod tests {
         );
 
         WorldSnapshot {
-            version: agent_world::simulator::SNAPSHOT_VERSION,
+            version: oasis7::simulator::SNAPSHOT_VERSION,
             chunk_generation_schema_version:
-                agent_world::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
+                oasis7::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
             time: 5,
             config: WorldConfig::default(),
             model,
@@ -883,7 +883,7 @@ mod tests {
     fn overlay_status_contains_chunk_heat_and_flow() {
         let mut snapshot = sample_snapshot();
         snapshot.model.chunks.insert(
-            agent_world::simulator::ChunkCoord { x: 0, y: 0, z: 0 },
+            oasis7::simulator::ChunkCoord { x: 0, y: 0, z: 0 },
             ChunkState::Generated,
         );
 

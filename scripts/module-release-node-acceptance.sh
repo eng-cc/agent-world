@@ -233,7 +233,7 @@ jq -e '.proof_cid | startswith(\"sha256:\")' \"\$run_dir/proof/proof_payload.jso
       ;;
     required_submit_api)
       cmd=(
-        env -u RUSTC_WRAPPER cargo test -p agent_world
+        env -u RUSTC_WRAPPER cargo test -p oasis7
         module_release_attestation_submit
         --bin world_chain_runtime
         -- --nocapture
@@ -241,7 +241,7 @@ jq -e '.proof_cid | startswith(\"sha256:\")' \"\$run_dir/proof/proof_payload.jso
       ;;
     required_attestation)
       cmd=(
-        env -u RUSTC_WRAPPER cargo test -p agent_world
+        env -u RUSTC_WRAPPER cargo test -p oasis7
         module_release_submit_attestation_
         --features test_tier_required
         -- --nocapture
@@ -249,7 +249,7 @@ jq -e '.proof_cid | startswith(\"sha256:\")' \"\$run_dir/proof/proof_payload.jso
       ;;
     required_threshold)
       cmd=(
-        env -u RUSTC_WRAPPER cargo test -p agent_world
+        env -u RUSTC_WRAPPER cargo test -p oasis7
         module_release_apply_rejects_when_attestation_threshold_not_met
         --features test_tier_required
         -- --nocapture
@@ -257,7 +257,7 @@ jq -e '.proof_cid | startswith(\"sha256:\")' \"\$run_dir/proof/proof_payload.jso
       ;;
     required_receipt_evidence)
       cmd=(
-        env -u RUSTC_WRAPPER cargo test -p agent_world
+        env -u RUSTC_WRAPPER cargo test -p oasis7
         module_release_apply_rejects_when_attestation_receipt_evidence_mismatches
         --features test_tier_required
         -- --nocapture
@@ -265,14 +265,14 @@ jq -e '.proof_cid | startswith(\"sha256:\")' \"\$run_dir/proof/proof_payload.jso
       ;;
     required_release_policy)
       cmd=(
-        env -u RUSTC_WRAPPER cargo test -p agent_world
+        env -u RUSTC_WRAPPER cargo test -p oasis7
         production_release_policy_
         -- --nocapture
       )
       ;;
     full_manifest_faults)
       cmd=(
-        env -u RUSTC_WRAPPER cargo test -p agent_world
+        env -u RUSTC_WRAPPER cargo test -p oasis7
         power_bootstrap_release_manifest_full
         --features test_tier_full
         -- --nocapture

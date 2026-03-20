@@ -137,27 +137,27 @@ fn rebuild_scene_fragments_default_test_system(
 }
 
 fn sample_snapshot() -> WorldSnapshot {
-    let mut model = agent_world::simulator::WorldModel::default();
+    let mut model = oasis7::simulator::WorldModel::default();
     model.locations.insert(
         "loc-1".to_string(),
-        agent_world::simulator::Location::new(
+        oasis7::simulator::Location::new(
             "loc-1",
             "Alpha",
-            agent_world::geometry::GeoPos::new(0.0, 0.0, 0.0),
+            oasis7::geometry::GeoPos::new(0.0, 0.0, 0.0),
         ),
     );
-    let mut config = agent_world::simulator::WorldConfig::default();
+    let mut config = oasis7::simulator::WorldConfig::default();
     config.space.width_cm = 10_000_000;
     config.space.depth_cm = 10_000_000;
     config.space.height_cm = 1_000_000;
 
     WorldSnapshot {
-        version: agent_world::simulator::SNAPSHOT_VERSION,
-        chunk_generation_schema_version: agent_world::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
+        version: oasis7::simulator::SNAPSHOT_VERSION,
+        chunk_generation_schema_version: oasis7::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
         time: 1,
         config,
         model,
-        chunk_runtime: agent_world::simulator::ChunkRuntimeConfig::default(),
+        chunk_runtime: oasis7::simulator::ChunkRuntimeConfig::default(),
         next_event_id: 1,
         next_action_id: 1,
         pending_actions: Vec::new(),
@@ -174,10 +174,10 @@ fn sample_fragment_snapshot() -> WorldSnapshot {
         .locations
         .get_mut("loc-1")
         .expect("location exists");
-    location.fragment_profile = Some(agent_world::simulator::synthesize_fragment_profile(
+    location.fragment_profile = Some(oasis7::simulator::synthesize_fragment_profile(
         7,
         600,
-        agent_world::simulator::MaterialKind::Silicate,
+        oasis7::simulator::MaterialKind::Silicate,
     ));
     snapshot
 }

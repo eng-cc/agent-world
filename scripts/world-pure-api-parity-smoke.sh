@@ -193,7 +193,7 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-env -u RUSTC_WRAPPER cargo build -q -p agent_world --bin world_pure_api_client
+env -u RUSTC_WRAPPER cargo build -q -p oasis7 --bin world_pure_api_client
 client_bin="$repo_root/target/debug/world_pure_api_client"
 [[ -x "$client_bin" ]] || {
   echo "error: expected pure API client binary at $client_bin" >&2

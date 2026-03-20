@@ -214,7 +214,7 @@ fn agent_needs_refresh(
 }
 
 fn default_agent_module_count_estimate_local() -> usize {
-    agent_world::models::AgentBodyState::default()
+    oasis7::models::AgentBodyState::default()
         .slots
         .iter()
         .filter(|slot| slot.installed_module.is_some())
@@ -224,7 +224,7 @@ fn default_agent_module_count_estimate_local() -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use agent_world::simulator::{Agent, Location, WorldConfig, WorldModel, WorldSnapshot};
+    use oasis7::simulator::{Agent, Location, WorldConfig, WorldModel, WorldSnapshot};
 
     #[test]
     fn scene_requires_full_rebuild_only_for_topology_or_time_regression() {
@@ -365,13 +365,13 @@ mod tests {
             ),
         );
         WorldSnapshot {
-            version: agent_world::simulator::SNAPSHOT_VERSION,
+            version: oasis7::simulator::SNAPSHOT_VERSION,
             chunk_generation_schema_version:
-                agent_world::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
+                oasis7::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
             time,
             config: WorldConfig::default(),
             model,
-            chunk_runtime: agent_world::simulator::ChunkRuntimeConfig::default(),
+            chunk_runtime: oasis7::simulator::ChunkRuntimeConfig::default(),
             next_event_id: 1,
             next_action_id: 1,
             pending_actions: Vec::new(),

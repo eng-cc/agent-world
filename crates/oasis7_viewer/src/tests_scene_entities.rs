@@ -938,7 +938,7 @@ fn rebuild_scene_uses_default_module_count_when_no_module_visual_entities() {
 
     app.update();
 
-    let expected_default_count = agent_world::models::AgentBodyState::default()
+    let expected_default_count = oasis7::models::AgentBodyState::default()
         .slots
         .iter()
         .filter(|slot| slot.installed_module.is_some())

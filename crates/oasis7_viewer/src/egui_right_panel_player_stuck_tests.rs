@@ -30,9 +30,9 @@ fn stuck_hint_clears_after_tick_progress() {
     let _ = sync_player_stuck_hint_state(&mut onboarding, &state, 6.0);
 
     let mut progressed_state = state;
-    progressed_state.metrics = Some(agent_world::simulator::RunnerMetrics {
+    progressed_state.metrics = Some(oasis7::simulator::RunnerMetrics {
         total_ticks: 1,
-        ..agent_world::simulator::RunnerMetrics::default()
+        ..oasis7::simulator::RunnerMetrics::default()
     });
     assert_eq!(
         sync_player_stuck_hint_state(&mut onboarding, &progressed_state, 7.0),

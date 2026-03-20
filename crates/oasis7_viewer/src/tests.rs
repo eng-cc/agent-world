@@ -14,7 +14,7 @@ use crate::viewer_3d_config::{
     Viewer3dConfig, ViewerExternalMaterialSlotConfig, ViewerExternalTextureSlotConfig,
     ViewerTonemappingMode,
 };
-use agent_world::simulator::{MaterialKind, ResourceKind, WorldEventKind};
+use oasis7::simulator::{MaterialKind, ResourceKind, WorldEventKind};
 use bevy::core_pipeline::tonemapping::{DebandDither, Tonemapping};
 
 #[path = "tests_selection_details.rs"]
@@ -28,8 +28,8 @@ fn update_ui_sets_status_and_events() {
     let event = WorldEvent {
         id: 1,
         time: 7,
-        kind: agent_world::simulator::WorldEventKind::ActionRejected {
-            reason: agent_world::simulator::RejectReason::InvalidAmount { amount: 1 },
+        kind: oasis7::simulator::WorldEventKind::ActionRejected {
+            reason: oasis7::simulator::RejectReason::InvalidAmount { amount: 1 },
         },
         runtime_event: None,
     };
@@ -51,13 +51,13 @@ fn update_ui_sets_status_and_events() {
 
 #[test]
 fn update_ui_populates_world_summary_and_metrics() {
-    let mut model = agent_world::simulator::WorldModel::default();
+    let mut model = oasis7::simulator::WorldModel::default();
     model.locations.insert(
         "loc-1".to_string(),
-        agent_world::simulator::Location::new(
+        oasis7::simulator::Location::new(
             "loc-1",
             "Alpha",
-            agent_world::geometry::GeoPos {
+            oasis7::geometry::GeoPos {
                 x_cm: 0.0,
                 y_cm: 0.0,
                 z_cm: 0.0,
@@ -66,10 +66,10 @@ fn update_ui_populates_world_summary_and_metrics() {
     );
     model.locations.insert(
         "loc-2".to_string(),
-        agent_world::simulator::Location::new(
+        oasis7::simulator::Location::new(
             "loc-2",
             "Beta",
-            agent_world::geometry::GeoPos {
+            oasis7::geometry::GeoPos {
                 x_cm: 1.0,
                 y_cm: 1.0,
                 z_cm: 0.0,
@@ -78,10 +78,10 @@ fn update_ui_populates_world_summary_and_metrics() {
     );
     model.agents.insert(
         "agent-1".to_string(),
-        agent_world::simulator::Agent::new(
+        oasis7::simulator::Agent::new(
             "agent-1",
             "loc-1",
-            agent_world::geometry::GeoPos {
+            oasis7::geometry::GeoPos {
                 x_cm: 0.0,
                 y_cm: 0.0,
                 z_cm: 0.0,
@@ -89,13 +89,13 @@ fn update_ui_populates_world_summary_and_metrics() {
         ),
     );
 
-    let snapshot = agent_world::simulator::WorldSnapshot {
-        version: agent_world::simulator::SNAPSHOT_VERSION,
-        chunk_generation_schema_version: agent_world::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
+    let snapshot = oasis7::simulator::WorldSnapshot {
+        version: oasis7::simulator::SNAPSHOT_VERSION,
+        chunk_generation_schema_version: oasis7::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
         time: 42,
-        config: agent_world::simulator::WorldConfig::default(),
+        config: oasis7::simulator::WorldConfig::default(),
         model,
-        chunk_runtime: agent_world::simulator::ChunkRuntimeConfig::default(),
+        chunk_runtime: oasis7::simulator::ChunkRuntimeConfig::default(),
         next_event_id: 1,
         next_action_id: 1,
         pending_actions: Vec::new(),
@@ -136,11 +136,11 @@ fn update_ui_reflects_filtered_events() {
     let event = WorldEvent {
         id: 9,
         time: 5,
-        kind: agent_world::simulator::WorldEventKind::Power(
-            agent_world::simulator::PowerEvent::PowerConsumed {
+        kind: oasis7::simulator::WorldEventKind::Power(
+            oasis7::simulator::PowerEvent::PowerConsumed {
                 agent_id: "agent-1".to_string(),
                 amount: 3,
-                reason: agent_world::simulator::ConsumeReason::Decision,
+                reason: oasis7::simulator::ConsumeReason::Decision,
                 remaining: 7,
             },
         ),
@@ -161,39 +161,39 @@ fn update_ui_reflects_filtered_events() {
 
 #[test]
 fn update_ui_populates_agent_activity_panel() {
-    let mut model = agent_world::simulator::WorldModel::default();
+    let mut model = oasis7::simulator::WorldModel::default();
     model.locations.insert(
         "loc-1".to_string(),
-        agent_world::simulator::Location::new(
+        oasis7::simulator::Location::new(
             "loc-1",
             "Alpha",
-            agent_world::geometry::GeoPos::new(0.0, 0.0, 0.0),
+            oasis7::geometry::GeoPos::new(0.0, 0.0, 0.0),
         ),
     );
     model.locations.insert(
         "loc-2".to_string(),
-        agent_world::simulator::Location::new(
+        oasis7::simulator::Location::new(
             "loc-2",
             "Beta",
-            agent_world::geometry::GeoPos::new(1.0, 1.0, 0.0),
+            oasis7::geometry::GeoPos::new(1.0, 1.0, 0.0),
         ),
     );
 
     let mut agent =
-        agent_world::simulator::Agent::new("agent-1", "loc-2", GeoPos::new(1.0, 1.0, 0.0));
+        oasis7::simulator::Agent::new("agent-1", "loc-2", GeoPos::new(1.0, 1.0, 0.0));
     agent
         .resources
         .set(ResourceKind::Electricity, 42)
         .expect("set electricity");
     model.agents.insert("agent-1".to_string(), agent);
 
-    let snapshot = agent_world::simulator::WorldSnapshot {
-        version: agent_world::simulator::SNAPSHOT_VERSION,
-        chunk_generation_schema_version: agent_world::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
+    let snapshot = oasis7::simulator::WorldSnapshot {
+        version: oasis7::simulator::SNAPSHOT_VERSION,
+        chunk_generation_schema_version: oasis7::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
         time: 9,
-        config: agent_world::simulator::WorldConfig::default(),
+        config: oasis7::simulator::WorldConfig::default(),
         model,
-        chunk_runtime: agent_world::simulator::ChunkRuntimeConfig::default(),
+        chunk_runtime: oasis7::simulator::ChunkRuntimeConfig::default(),
         next_event_id: 1,
         next_action_id: 1,
         pending_actions: Vec::new(),
@@ -463,10 +463,10 @@ fn poll_viewer_messages_collects_decision_traces() {
     app.world_mut().insert_resource(ViewerState::default());
 
     tx.send(ViewerResponse::DecisionTrace {
-        trace: agent_world::simulator::AgentDecisionTrace {
+        trace: oasis7::simulator::AgentDecisionTrace {
             agent_id: "agent-1".to_string(),
             time: 1,
-            decision: agent_world::simulator::AgentDecision::Wait,
+            decision: oasis7::simulator::AgentDecision::Wait,
             llm_input: Some("p1".to_string()),
             llm_output: Some("o1".to_string()),
             llm_error: None,
@@ -481,10 +481,10 @@ fn poll_viewer_messages_collects_decision_traces() {
     })
     .expect("send trace1");
     tx.send(ViewerResponse::DecisionTrace {
-        trace: agent_world::simulator::AgentDecisionTrace {
+        trace: oasis7::simulator::AgentDecisionTrace {
             agent_id: "agent-1".to_string(),
             time: 2,
-            decision: agent_world::simulator::AgentDecision::Wait,
+            decision: oasis7::simulator::AgentDecision::Wait,
             llm_input: Some("p2".to_string()),
             llm_output: Some("o2".to_string()),
             llm_error: None,
@@ -499,10 +499,10 @@ fn poll_viewer_messages_collects_decision_traces() {
     })
     .expect("send trace2");
     tx.send(ViewerResponse::DecisionTrace {
-        trace: agent_world::simulator::AgentDecisionTrace {
+        trace: oasis7::simulator::AgentDecisionTrace {
             agent_id: "agent-1".to_string(),
             time: 3,
-            decision: agent_world::simulator::AgentDecision::Wait,
+            decision: oasis7::simulator::AgentDecision::Wait,
             llm_input: Some("p3".to_string()),
             llm_output: Some("o3".to_string()),
             llm_error: None,
@@ -551,8 +551,8 @@ fn headless_report_tracks_status_and_event_count() {
         events: vec![WorldEvent {
             id: 1,
             time: 1,
-            kind: agent_world::simulator::WorldEventKind::ActionRejected {
-                reason: agent_world::simulator::RejectReason::InvalidAmount { amount: 1 },
+            kind: oasis7::simulator::WorldEventKind::ActionRejected {
+                reason: oasis7::simulator::RejectReason::InvalidAmount { amount: 1 },
             },
             runtime_event: None,
         }],
@@ -632,8 +632,8 @@ fn poll_viewer_messages_applies_event_window_sampling_policy() {
             event: WorldEvent {
                 id,
                 time: id,
-                kind: agent_world::simulator::WorldEventKind::ActionRejected {
-                    reason: agent_world::simulator::RejectReason::InvalidAmount {
+                kind: oasis7::simulator::WorldEventKind::ActionRejected {
+                    reason: oasis7::simulator::RejectReason::InvalidAmount {
                         amount: id as i64,
                     },
                 },
@@ -675,7 +675,7 @@ fn poll_viewer_messages_keeps_transport_connected_on_agent_chat_error() {
     });
 
     tx.send(ViewerResponse::AgentChatError {
-        error: agent_world::viewer::AgentChatError {
+        error: oasis7::viewer::AgentChatError {
             code: "invalid_auth".to_string(),
             message: "signature mismatch".to_string(),
             agent_id: Some("agent-a".to_string()),

@@ -15,11 +15,11 @@ use std::sync::Mutex;
 #[cfg(not(target_arch = "wasm32"))]
 use std::thread;
 
-use agent_world::geometry::GeoPos;
-use agent_world::simulator::{
+use oasis7::geometry::GeoPos;
+use oasis7::simulator::{
     AgentDecisionTrace, AgentKinematics, RunnerMetrics, SpaceConfig, WorldEvent, WorldSnapshot,
 };
-use agent_world::viewer::{
+use oasis7::viewer::{
     ViewerControl, ViewerControlProfile, ViewerRequest, ViewerResponse, ViewerStream,
     VIEWER_PROTOCOL_VERSION,
 };

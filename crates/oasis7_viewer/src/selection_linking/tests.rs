@@ -1,5 +1,5 @@
 use super::*;
-use agent_world::simulator::{Agent, Location, PowerPlant, WorldModel, WorldSnapshot};
+use oasis7::simulator::{Agent, Location, PowerPlant, WorldModel, WorldSnapshot};
 
 #[test]
 fn nearest_event_uses_smallest_tick_distance() {
@@ -49,12 +49,12 @@ fn reject_reason_facility_maps_to_plant_target() {
         ),
     );
     let snapshot = WorldSnapshot {
-        version: agent_world::simulator::SNAPSHOT_VERSION,
-        chunk_generation_schema_version: agent_world::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
+        version: oasis7::simulator::SNAPSHOT_VERSION,
+        chunk_generation_schema_version: oasis7::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
         time: 1,
-        config: agent_world::simulator::WorldConfig::default(),
+        config: oasis7::simulator::WorldConfig::default(),
         model,
-        chunk_runtime: agent_world::simulator::ChunkRuntimeConfig::default(),
+        chunk_runtime: oasis7::simulator::ChunkRuntimeConfig::default(),
         next_event_id: 1,
         next_action_id: 1,
         pending_actions: Vec::new(),
@@ -87,7 +87,7 @@ fn selection_related_ticks_match_agent_events() {
         Location::new(
             "loc-1",
             "L1",
-            agent_world::geometry::GeoPos {
+            oasis7::geometry::GeoPos {
                 x_cm: 0.0,
                 y_cm: 0.0,
                 z_cm: 0.0,
@@ -99,7 +99,7 @@ fn selection_related_ticks_match_agent_events() {
         Agent::new(
             "agent-1",
             "loc-1",
-            agent_world::geometry::GeoPos {
+            oasis7::geometry::GeoPos {
                 x_cm: 0.0,
                 y_cm: 0.0,
                 z_cm: 0.0,
@@ -107,12 +107,12 @@ fn selection_related_ticks_match_agent_events() {
         ),
     );
     let snapshot = WorldSnapshot {
-        version: agent_world::simulator::SNAPSHOT_VERSION,
-        chunk_generation_schema_version: agent_world::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
+        version: oasis7::simulator::SNAPSHOT_VERSION,
+        chunk_generation_schema_version: oasis7::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
         time: 1,
-        config: agent_world::simulator::WorldConfig::default(),
+        config: oasis7::simulator::WorldConfig::default(),
         model,
-        chunk_runtime: agent_world::simulator::ChunkRuntimeConfig::default(),
+        chunk_runtime: oasis7::simulator::ChunkRuntimeConfig::default(),
         next_event_id: 1,
         next_action_id: 1,
         pending_actions: Vec::new(),
@@ -140,7 +140,7 @@ fn selection_related_ticks_match_agent_events() {
             kind: WorldEventKind::Power(PowerEvent::PowerConsumed {
                 agent_id: "agent-1".to_string(),
                 amount: 3,
-                reason: agent_world::simulator::ConsumeReason::Decision,
+                reason: oasis7::simulator::ConsumeReason::Decision,
                 remaining: 9,
             }),
             runtime_event: None,
@@ -151,12 +151,12 @@ fn selection_related_ticks_match_agent_events() {
             kind: WorldEventKind::LocationRegistered {
                 location_id: "loc-2".to_string(),
                 name: "L2".to_string(),
-                pos: agent_world::geometry::GeoPos {
+                pos: oasis7::geometry::GeoPos {
                     x_cm: 1.0,
                     y_cm: 1.0,
                     z_cm: 1.0,
                 },
-                profile: agent_world::simulator::LocationProfile::default(),
+                profile: oasis7::simulator::LocationProfile::default(),
             },
             runtime_event: None,
         },
@@ -366,7 +366,7 @@ fn jump_selection_events_button_moves_timeline_target() {
                 kind: WorldEventKind::Power(PowerEvent::PowerConsumed {
                     agent_id: "agent-1".to_string(),
                     amount: 3,
-                    reason: agent_world::simulator::ConsumeReason::Decision,
+                    reason: oasis7::simulator::ConsumeReason::Decision,
                     remaining: 5,
                 }),
                 runtime_event: None,

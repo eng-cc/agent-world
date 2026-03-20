@@ -1,4 +1,4 @@
-use agent_world::simulator::WorldEvent;
+use oasis7::simulator::WorldEvent;
 use bevy::prelude::Resource;
 
 const EVENT_WINDOW_SIZE_ENV: &str = "OASIS7_VIEWER_EVENT_WINDOW_SIZE";
@@ -96,7 +96,7 @@ fn compact_event_window(events: &mut Vec<WorldEvent>, policy: EventWindowPolicy)
 #[cfg(test)]
 mod tests {
     use super::*;
-    use agent_world::simulator::{RejectReason, WorldEventKind};
+    use oasis7::simulator::{RejectReason, WorldEventKind};
 
     #[test]
     fn event_window_policy_normalizes_values() {

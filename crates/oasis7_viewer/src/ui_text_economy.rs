@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use agent_world::simulator::{WorldEvent, WorldSnapshot};
+use oasis7::simulator::{WorldEvent, WorldSnapshot};
 
 use crate::industry_graph_view_model::{IndustryGraphViewModel, IndustrySemanticZoomLevel};
 
@@ -26,8 +26,8 @@ pub(super) fn economy_dashboard_summary_with_zoom(
 
     lines.push("Supply & Demand:".to_string());
     for kind in [
-        agent_world::simulator::ResourceKind::Electricity,
-        agent_world::simulator::ResourceKind::Data,
+        oasis7::simulator::ResourceKind::Electricity,
+        oasis7::simulator::ResourceKind::Data,
     ] {
         let stock = amount_or_zero(&graph.rollup.stock_by_kind, kind);
         let flow = amount_or_zero(&graph.rollup.flow_by_kind, kind);
@@ -71,11 +71,11 @@ pub(super) fn economy_dashboard_summary_with_zoom(
 
     let electricity_flow = amount_or_zero(
         &graph.rollup.flow_by_kind,
-        agent_world::simulator::ResourceKind::Electricity,
+        oasis7::simulator::ResourceKind::Electricity,
     );
     let data_flow = amount_or_zero(
         &graph.rollup.flow_by_kind,
-        agent_world::simulator::ResourceKind::Data,
+        oasis7::simulator::ResourceKind::Data,
     );
     let outbound_value_proxy = electricity_flow.saturating_add(data_flow.saturating_mul(2));
     let total_cost_proxy = graph
@@ -120,8 +120,8 @@ fn yes_no(value: bool) -> &'static str {
 }
 
 fn amount_or_zero(
-    map: &BTreeMap<agent_world::simulator::ResourceKind, i64>,
-    kind: agent_world::simulator::ResourceKind,
+    map: &BTreeMap<oasis7::simulator::ResourceKind, i64>,
+    kind: oasis7::simulator::ResourceKind,
 ) -> i64 {
     *map.get(&kind).unwrap_or(&0)
 }
@@ -144,8 +144,8 @@ fn inventory_health_label(stock: i64, flow: i64, shortfall: i64) -> &'static str
 #[cfg(test)]
 mod tests {
     use super::*;
-    use agent_world::geometry::GeoPos;
-    use agent_world::simulator::{
+    use oasis7::geometry::GeoPos;
+    use oasis7::simulator::{
         Agent, ChunkRuntimeConfig, Location, PowerEvent, RejectReason, ResourceKind, ResourceOwner,
         WorldConfig, WorldEvent, WorldEventKind, WorldModel, WorldSnapshot,
         CHUNK_GENERATION_SCHEMA_VERSION, SNAPSHOT_VERSION,

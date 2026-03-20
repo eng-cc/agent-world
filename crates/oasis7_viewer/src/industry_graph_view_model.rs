@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use agent_world::geometry::GeoPos;
-use agent_world::simulator::{
+use oasis7::geometry::GeoPos;
+use oasis7::simulator::{
     chunk_coord_of, AssetKind, ChunkCoord, ModuleVisualAnchor, ModuleVisualEntity, PowerEvent,
     RejectReason, ResourceKind, ResourceOwner, WorldEvent, WorldEventKind, WorldSnapshot,
 };
@@ -1435,7 +1435,7 @@ fn route_weight(route: &IndustryRouteStats) -> i64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use agent_world::simulator::{
+    use oasis7::simulator::{
         Agent, ChunkRuntimeConfig, Location, ModuleVisualAnchor, ModuleVisualEntity, WorldConfig,
         WorldModel, CHUNK_GENERATION_SCHEMA_VERSION, SNAPSHOT_VERSION,
     };

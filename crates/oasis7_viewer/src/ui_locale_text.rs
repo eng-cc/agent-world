@@ -1,4 +1,4 @@
-use agent_world::simulator::WorldEvent;
+use oasis7::simulator::WorldEvent;
 
 use crate::i18n::{on_off_label, selection_kind_label, UiLocale};
 use crate::{ConnectionStatus, SelectionKind, ViewerCameraMode, ViewerSelection};

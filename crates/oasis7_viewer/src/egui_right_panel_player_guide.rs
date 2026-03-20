@@ -1,6 +1,6 @@
 use crate::web_test_api::WebTestApiControlFeedbackSnapshot;
 use crate::{RightPanelLayoutState, ViewerSelection, ViewerState};
-use agent_world::simulator::{
+use oasis7::simulator::{
     PlayerGameplayGoalKind, PlayerGameplaySnapshot, PlayerGameplayStageId,
     PlayerGameplayStageStatus, WorldEventKind,
 };
@@ -2181,7 +2181,7 @@ pub(super) fn render_player_mission_hud(
             let _ = crate::dispatch_viewer_control(
                 client,
                 control_profile,
-                agent_world::viewer::ViewerControl::Step { count: 1 },
+                oasis7::viewer::ViewerControl::Step { count: 1 },
                 None,
             );
         }
@@ -2191,7 +2191,7 @@ pub(super) fn render_player_mission_hud(
             let _ = crate::dispatch_viewer_control(
                 client,
                 control_profile,
-                agent_world::viewer::ViewerControl::Step { count: 1 },
+                oasis7::viewer::ViewerControl::Step { count: 1 },
                 None,
             );
         }
@@ -2204,7 +2204,7 @@ pub(super) fn render_player_mission_hud(
             let _ = crate::dispatch_viewer_control(
                 client,
                 control_profile,
-                agent_world::viewer::ViewerControl::Step { count: 1 },
+                oasis7::viewer::ViewerControl::Step { count: 1 },
                 None,
             );
         }
@@ -2212,7 +2212,7 @@ pub(super) fn render_player_mission_hud(
             let _ = crate::dispatch_viewer_control(
                 client,
                 control_profile,
-                agent_world::viewer::ViewerControl::Step { count: 8 },
+                oasis7::viewer::ViewerControl::Step { count: 8 },
                 None,
             );
         }

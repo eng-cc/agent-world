@@ -760,7 +760,7 @@ run_scenario_to_log() {
     cmd+=("OASIS7_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS=$llm_execute_until_auto_reenter_ticks")
   fi
   cmd+=(
-    cargo run -p agent_world --bin world_llm_agent_demo --
+    cargo run -p oasis7 --bin world_llm_agent_demo --
     "$scenario_name"
     --ticks "$ticks"
     --report-json "$scenario_report_path"
@@ -1316,7 +1316,7 @@ for scenario in "${scenarios[@]}"; do
       cmd+=("OASIS7_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS=$llm_execute_until_auto_reenter_ticks")
     fi
     cmd+=(
-      cargo run -p agent_world --bin world_llm_agent_demo --
+      cargo run -p oasis7 --bin world_llm_agent_demo --
       "$scenario"
       --ticks "$ticks"
       --report-json "$scenario_report_json"

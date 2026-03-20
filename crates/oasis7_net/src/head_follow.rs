@@ -7,7 +7,7 @@ use super::distributed_client::DistributedClient;
 use super::distributed_dht::DistributedDht;
 use super::error::WorldError;
 use super::head_tracking::{HeadTracker, HeadUpdateDecision};
-use agent_world::runtime::World;
+use oasis7::runtime::World;
 use oasis7_distfs::{BlobStore, FileStore};
 
 #[derive(Debug, Clone)]

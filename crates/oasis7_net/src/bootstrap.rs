@@ -9,7 +9,7 @@ use super::distributed_storage::{
 };
 use super::distributed_validation::{validate_head_update, HeadValidationResult};
 use super::error::WorldError;
-use agent_world::runtime::{World, WorldError as RuntimeWorldError};
+use oasis7::runtime::{World, WorldError as RuntimeWorldError};
 use oasis7_distfs::{BlobStore, FileStore};
 use oasis7_proto::distributed::SnapshotManifest;
 use oasis7_proto::distributed_storage::JournalSegmentRef;
@@ -97,8 +97,8 @@ mod tests {
     use std::sync::Arc;
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    use agent_world::runtime::{Action, World};
-    use agent_world::GeoPos;
+    use oasis7::runtime::{Action, World};
+    use oasis7::GeoPos;
     use oasis7_distfs::{BlobStore as _, LocalCasStore};
     use oasis7_proto::distributed::{
         FetchBlobRequest, FetchBlobResponse, GetBlockRequest, GetBlockResponse, RR_FETCH_BLOB,

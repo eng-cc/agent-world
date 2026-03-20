@@ -12,31 +12,31 @@ fn update_ui_populates_agent_selection_details_with_llm_trace() {
         }),
     };
 
-    let mut model = agent_world::simulator::WorldModel::default();
+    let mut model = oasis7::simulator::WorldModel::default();
     model.locations.insert(
         "loc-1".to_string(),
-        agent_world::simulator::Location::new(
+        oasis7::simulator::Location::new(
             "loc-1",
             "Alpha",
-            agent_world::geometry::GeoPos::new(0.0, 0.0, 0.0),
+            oasis7::geometry::GeoPos::new(0.0, 0.0, 0.0),
         ),
     );
     model.agents.insert(
         "agent-1".to_string(),
-        agent_world::simulator::Agent::new(
+        oasis7::simulator::Agent::new(
             "agent-1",
             "loc-1",
-            agent_world::geometry::GeoPos::new(1.0, 2.0, 3.0),
+            oasis7::geometry::GeoPos::new(1.0, 2.0, 3.0),
         ),
     );
 
-    let snapshot = agent_world::simulator::WorldSnapshot {
-        version: agent_world::simulator::SNAPSHOT_VERSION,
-        chunk_generation_schema_version: agent_world::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
+    let snapshot = oasis7::simulator::WorldSnapshot {
+        version: oasis7::simulator::SNAPSHOT_VERSION,
+        chunk_generation_schema_version: oasis7::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
         time: 11,
-        config: agent_world::simulator::WorldConfig::default(),
+        config: oasis7::simulator::WorldConfig::default(),
         model,
-        chunk_runtime: agent_world::simulator::ChunkRuntimeConfig::default(),
+        chunk_runtime: oasis7::simulator::ChunkRuntimeConfig::default(),
         next_event_id: 3,
         next_action_id: 2,
         pending_actions: Vec::new(),
@@ -48,7 +48,7 @@ fn update_ui_populates_agent_selection_details_with_llm_trace() {
     let events = vec![WorldEvent {
         id: 2,
         time: 10,
-        kind: agent_world::simulator::WorldEventKind::AgentMoved {
+        kind: oasis7::simulator::WorldEventKind::AgentMoved {
             agent_id: "agent-1".to_string(),
             from: "loc-0".to_string(),
             to: "loc-1".to_string(),
@@ -58,15 +58,15 @@ fn update_ui_populates_agent_selection_details_with_llm_trace() {
         runtime_event: None,
     }];
 
-    let decision_traces = vec![agent_world::simulator::AgentDecisionTrace {
+    let decision_traces = vec![oasis7::simulator::AgentDecisionTrace {
         agent_id: "agent-1".to_string(),
         time: 10,
-        decision: agent_world::simulator::AgentDecision::Wait,
+        decision: oasis7::simulator::AgentDecision::Wait,
         llm_input: Some("prompt content".to_string()),
         llm_output: Some("{\"decision\":\"wait\"}".to_string()),
         llm_error: None,
         parse_error: None,
-        llm_diagnostics: Some(agent_world::simulator::LlmDecisionDiagnostics {
+        llm_diagnostics: Some(oasis7::simulator::LlmDecisionDiagnostics {
             model: Some("gpt-4o-mini".to_string()),
             latency_ms: Some(123),
             prompt_tokens: Some(77),
@@ -114,11 +114,11 @@ fn provider_debug_summary_filters_openclaw_and_errors() {
         snapshot: None,
         events: Vec::new(),
         decision_traces: vec![
-            agent_world::simulator::AgentDecisionTrace {
+            oasis7::simulator::AgentDecisionTrace {
                 agent_id: "agent-1".to_string(),
                 time: 12,
-                decision: agent_world::simulator::AgentDecision::Act(
-                    agent_world::simulator::Action::MoveAgent {
+                decision: oasis7::simulator::AgentDecision::Act(
+                    oasis7::simulator::Action::MoveAgent {
                         agent_id: "agent-1".to_string(),
                         to: "loc-2".to_string(),
                     },
@@ -127,7 +127,7 @@ fn provider_debug_summary_filters_openclaw_and_errors() {
                 llm_output: Some("move to loc-2".to_string()),
                 llm_error: None,
                 parse_error: None,
-                llm_diagnostics: Some(agent_world::simulator::LlmDecisionDiagnostics {
+                llm_diagnostics: Some(oasis7::simulator::LlmDecisionDiagnostics {
                     model: Some("openclaw-local".to_string()),
                     latency_ms: Some(87),
                     prompt_tokens: None,
@@ -141,15 +141,15 @@ fn provider_debug_summary_filters_openclaw_and_errors() {
                 llm_prompt_section_trace: Vec::new(),
                 llm_chat_messages: Vec::new(),
             },
-            agent_world::simulator::AgentDecisionTrace {
+            oasis7::simulator::AgentDecisionTrace {
                 agent_id: "agent-2".to_string(),
                 time: 13,
-                decision: agent_world::simulator::AgentDecision::Wait,
+                decision: oasis7::simulator::AgentDecision::Wait,
                 llm_input: Some("builtin request".to_string()),
                 llm_output: None,
                 llm_error: Some("provider timeout".to_string()),
                 parse_error: None,
-                llm_diagnostics: Some(agent_world::simulator::LlmDecisionDiagnostics {
+                llm_diagnostics: Some(oasis7::simulator::LlmDecisionDiagnostics {
                     model: Some("builtin-llm".to_string()),
                     latency_ms: Some(3010),
                     prompt_tokens: None,
@@ -198,35 +198,35 @@ fn update_ui_populates_location_selection_details() {
         }),
     };
 
-    let mut model = agent_world::simulator::WorldModel::default();
-    let mut location = agent_world::simulator::Location::new_with_profile(
+    let mut model = oasis7::simulator::WorldModel::default();
+    let mut location = oasis7::simulator::Location::new_with_profile(
         "loc-1",
         "Alpha",
-        agent_world::geometry::GeoPos::new(0.0, 0.0, 0.0),
-        agent_world::simulator::LocationProfile {
-            material: agent_world::simulator::MaterialKind::Silicate,
+        oasis7::geometry::GeoPos::new(0.0, 0.0, 0.0),
+        oasis7::simulator::LocationProfile {
+            material: oasis7::simulator::MaterialKind::Silicate,
             radius_cm: 320,
             radiation_emission_per_tick: 9,
         },
     );
-    let mut fragment_budget = agent_world::simulator::FragmentResourceBudget::default();
+    let mut fragment_budget = oasis7::simulator::FragmentResourceBudget::default();
     fragment_budget
         .total_by_element_g
-        .insert(agent_world::simulator::FragmentElementKind::Iron, 1_000);
+        .insert(oasis7::simulator::FragmentElementKind::Iron, 1_000);
     fragment_budget
         .remaining_by_element_g
-        .insert(agent_world::simulator::FragmentElementKind::Iron, 125);
+        .insert(oasis7::simulator::FragmentElementKind::Iron, 125);
     location.fragment_budget = Some(fragment_budget);
 
     model.locations.insert("loc-1".to_string(), location);
 
-    let snapshot = agent_world::simulator::WorldSnapshot {
-        version: agent_world::simulator::SNAPSHOT_VERSION,
-        chunk_generation_schema_version: agent_world::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
+    let snapshot = oasis7::simulator::WorldSnapshot {
+        version: oasis7::simulator::SNAPSHOT_VERSION,
+        chunk_generation_schema_version: oasis7::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
         time: 3,
-        config: agent_world::simulator::WorldConfig::default(),
+        config: oasis7::simulator::WorldConfig::default(),
         model,
-        chunk_runtime: agent_world::simulator::ChunkRuntimeConfig::default(),
+        chunk_runtime: oasis7::simulator::ChunkRuntimeConfig::default(),
         next_event_id: 1,
         next_action_id: 1,
         pending_actions: Vec::new(),

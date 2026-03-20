@@ -373,7 +373,7 @@ if [[ -n "$baseline_csv" ]]; then
 fi
 
 if [[ "$prewarm" == "1" ]]; then
-  run env -u RUSTC_WRAPPER cargo build -p agent_world --bin world_viewer_live
+  run env -u RUSTC_WRAPPER cargo build -p oasis7 --bin world_viewer_live
   run env -u RUSTC_WRAPPER cargo build -p oasis7_viewer
 fi
 
@@ -421,7 +421,7 @@ for scenario_raw in "${scenarios[@]}"; do
   viewer_log="$scenario_dir/viewer.log"
 
   mode="script"
-  server_cmd=(env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- "$scenario" --bind "$addr")
+  server_cmd=(env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_viewer_live -- "$scenario" --bind "$addr")
   if [[ "$scenario" == "llm_bootstrap" ]]; then
     if [[ -n "${OPENAI_API_KEY:-}" ]]; then
       mode="llm"

@@ -1,4 +1,4 @@
-use agent_world::simulator::{WorldEvent, WorldSnapshot};
+use oasis7::simulator::{WorldEvent, WorldSnapshot};
 
 use crate::industry_graph_view_model::{IndustryGraphViewModel, IndustrySemanticZoomLevel};
 
@@ -84,8 +84,8 @@ pub(super) fn ops_navigation_alert_summary_with_zoom(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use agent_world::geometry::GeoPos;
-    use agent_world::simulator::{
+    use oasis7::geometry::GeoPos;
+    use oasis7::simulator::{
         ChunkRuntimeConfig, Location, RejectReason, ResourceKind, ResourceOwner, WorldConfig,
         WorldEvent, WorldEventKind, WorldModel, WorldSnapshot, CHUNK_GENERATION_SCHEMA_VERSION,
         SNAPSHOT_VERSION,

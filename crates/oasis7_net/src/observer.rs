@@ -10,7 +10,7 @@ use super::head_sync::{
     compose_head_sync_report, follow_head_sync, HeadFollowReport as GenericHeadFollowReport,
     HeadSyncReport as GenericHeadSyncReport, HeadSyncResult as GenericHeadSyncResult,
 };
-use agent_world::runtime::World;
+use oasis7::runtime::World;
 use oasis7_distfs::{BlobStore, FileStore};
 
 #[derive(Debug, Clone)]
@@ -578,8 +578,8 @@ mod tests {
     use std::sync::Arc;
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    use agent_world::runtime::{Action, World};
-    use agent_world::GeoPos;
+    use oasis7::runtime::{Action, World};
+    use oasis7::GeoPos;
     use oasis7_distfs::{BlobStore as _, LocalCasStore};
     use oasis7_proto::distributed::{
         FetchBlobRequest, FetchBlobResponse, GetBlockRequest, GetBlockResponse, RR_FETCH_BLOB,

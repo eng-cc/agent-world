@@ -11,7 +11,7 @@ use super::egui_right_panel_player_guide::{
 use super::egui_right_panel_player_micro_loop::{
     build_player_micro_loop_snapshot, build_player_no_progress_diagnosis, PlayerNoProgressDiagnosis,
 };
-use agent_world::simulator::{ResourceOwner, WorldEvent, WorldEventKind};
+use oasis7::simulator::{ResourceOwner, WorldEvent, WorldEventKind};
 use bevy_egui::egui;
 use std::collections::BTreeSet;
 

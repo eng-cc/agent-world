@@ -12,36 +12,36 @@ fn update_ui_populates_asset_selection_details() {
         }),
     };
 
-    let mut model = agent_world::simulator::WorldModel::default();
+    let mut model = oasis7::simulator::WorldModel::default();
     model.locations.insert(
         "loc-1".to_string(),
-        agent_world::simulator::Location::new(
+        oasis7::simulator::Location::new(
             "loc-1",
             "Alpha",
-            agent_world::geometry::GeoPos::new(0.0, 0.0, 0.0),
+            oasis7::geometry::GeoPos::new(0.0, 0.0, 0.0),
         ),
     );
     model.assets.insert(
         "asset-1".to_string(),
-        agent_world::simulator::Asset {
+        oasis7::simulator::Asset {
             id: "asset-1".to_string(),
-            owner: agent_world::simulator::ResourceOwner::Location {
+            owner: oasis7::simulator::ResourceOwner::Location {
                 location_id: "loc-1".to_string(),
             },
-            kind: agent_world::simulator::AssetKind::Resource {
-                kind: agent_world::simulator::ResourceKind::Electricity,
+            kind: oasis7::simulator::AssetKind::Resource {
+                kind: oasis7::simulator::ResourceKind::Electricity,
             },
             quantity: 25,
         },
     );
 
-    let snapshot = agent_world::simulator::WorldSnapshot {
-        version: agent_world::simulator::SNAPSHOT_VERSION,
-        chunk_generation_schema_version: agent_world::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
+    let snapshot = oasis7::simulator::WorldSnapshot {
+        version: oasis7::simulator::SNAPSHOT_VERSION,
+        chunk_generation_schema_version: oasis7::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
         time: 8,
-        config: agent_world::simulator::WorldConfig::default(),
+        config: oasis7::simulator::WorldConfig::default(),
         model,
-        chunk_runtime: agent_world::simulator::ChunkRuntimeConfig::default(),
+        chunk_runtime: oasis7::simulator::ChunkRuntimeConfig::default(),
         next_event_id: 2,
         next_action_id: 1,
         pending_actions: Vec::new(),
@@ -53,14 +53,14 @@ fn update_ui_populates_asset_selection_details() {
     let events = vec![WorldEvent {
         id: 1,
         time: 8,
-        kind: agent_world::simulator::WorldEventKind::ResourceTransferred {
-            from: agent_world::simulator::ResourceOwner::Location {
+        kind: oasis7::simulator::WorldEventKind::ResourceTransferred {
+            from: oasis7::simulator::ResourceOwner::Location {
                 location_id: "loc-1".to_string(),
             },
-            to: agent_world::simulator::ResourceOwner::Location {
+            to: oasis7::simulator::ResourceOwner::Location {
                 location_id: "loc-1".to_string(),
             },
-            kind: agent_world::simulator::ResourceKind::Electricity,
+            kind: oasis7::simulator::ResourceKind::Electricity,
             amount: 3,
         },
         runtime_event: None,
@@ -92,40 +92,40 @@ fn update_ui_populates_power_plant_selection_details() {
         }),
     };
 
-    let mut model = agent_world::simulator::WorldModel::default();
+    let mut model = oasis7::simulator::WorldModel::default();
     model.locations.insert(
         "loc-1".to_string(),
-        agent_world::simulator::Location::new(
+        oasis7::simulator::Location::new(
             "loc-1",
             "Alpha",
-            agent_world::geometry::GeoPos::new(0.0, 0.0, 0.0),
+            oasis7::geometry::GeoPos::new(0.0, 0.0, 0.0),
         ),
     );
     model.power_plants.insert(
         "plant-1".to_string(),
-        agent_world::simulator::PowerPlant {
+        oasis7::simulator::PowerPlant {
             id: "plant-1".to_string(),
             location_id: "loc-1".to_string(),
-            owner: agent_world::simulator::ResourceOwner::Location {
+            owner: oasis7::simulator::ResourceOwner::Location {
                 location_id: "loc-1".to_string(),
             },
             capacity_per_tick: 30,
             current_output: 12,
             fuel_cost_per_pu: 2,
             maintenance_cost: 1,
-            status: agent_world::simulator::PlantStatus::Running,
+            status: oasis7::simulator::PlantStatus::Running,
             efficiency: 0.9,
             degradation: 0.1,
         },
     );
 
-    let snapshot = agent_world::simulator::WorldSnapshot {
-        version: agent_world::simulator::SNAPSHOT_VERSION,
-        chunk_generation_schema_version: agent_world::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
+    let snapshot = oasis7::simulator::WorldSnapshot {
+        version: oasis7::simulator::SNAPSHOT_VERSION,
+        chunk_generation_schema_version: oasis7::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
         time: 9,
-        config: agent_world::simulator::WorldConfig::default(),
+        config: oasis7::simulator::WorldConfig::default(),
         model,
-        chunk_runtime: agent_world::simulator::ChunkRuntimeConfig::default(),
+        chunk_runtime: oasis7::simulator::ChunkRuntimeConfig::default(),
         next_event_id: 3,
         next_action_id: 1,
         pending_actions: Vec::new(),
@@ -137,8 +137,8 @@ fn update_ui_populates_power_plant_selection_details() {
     let events = vec![WorldEvent {
         id: 2,
         time: 9,
-        kind: agent_world::simulator::WorldEventKind::Power(
-            agent_world::simulator::PowerEvent::PowerGenerated {
+        kind: oasis7::simulator::WorldEventKind::Power(
+            oasis7::simulator::PowerEvent::PowerGenerated {
                 plant_id: "plant-1".to_string(),
                 location_id: "loc-1".to_string(),
                 amount: 7,
@@ -173,31 +173,31 @@ fn update_ui_populates_chunk_selection_details() {
         }),
     };
 
-    let mut model = agent_world::simulator::WorldModel::default();
+    let mut model = oasis7::simulator::WorldModel::default();
     model.chunks.insert(
-        agent_world::simulator::ChunkCoord { x: 0, y: 0, z: 0 },
-        agent_world::simulator::ChunkState::Generated,
+        oasis7::simulator::ChunkCoord { x: 0, y: 0, z: 0 },
+        oasis7::simulator::ChunkState::Generated,
     );
 
-    let mut budget = agent_world::simulator::ChunkResourceBudget::default();
+    let mut budget = oasis7::simulator::ChunkResourceBudget::default();
     budget
         .total_by_element_g
-        .insert(agent_world::simulator::FragmentElementKind::Iron, 120);
+        .insert(oasis7::simulator::FragmentElementKind::Iron, 120);
     budget
         .remaining_by_element_g
-        .insert(agent_world::simulator::FragmentElementKind::Iron, 90);
+        .insert(oasis7::simulator::FragmentElementKind::Iron, 90);
     model.chunk_resource_budgets.insert(
-        agent_world::simulator::ChunkCoord { x: 0, y: 0, z: 0 },
+        oasis7::simulator::ChunkCoord { x: 0, y: 0, z: 0 },
         budget,
     );
 
-    let snapshot = agent_world::simulator::WorldSnapshot {
-        version: agent_world::simulator::SNAPSHOT_VERSION,
-        chunk_generation_schema_version: agent_world::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
+    let snapshot = oasis7::simulator::WorldSnapshot {
+        version: oasis7::simulator::SNAPSHOT_VERSION,
+        chunk_generation_schema_version: oasis7::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
         time: 12,
-        config: agent_world::simulator::WorldConfig::default(),
+        config: oasis7::simulator::WorldConfig::default(),
         model,
-        chunk_runtime: agent_world::simulator::ChunkRuntimeConfig::default(),
+        chunk_runtime: oasis7::simulator::ChunkRuntimeConfig::default(),
         next_event_id: 3,
         next_action_id: 1,
         pending_actions: Vec::new(),
@@ -209,13 +209,13 @@ fn update_ui_populates_chunk_selection_details() {
     let events = vec![WorldEvent {
         id: 2,
         time: 12,
-        kind: agent_world::simulator::WorldEventKind::ChunkGenerated {
-            coord: agent_world::simulator::ChunkCoord { x: 0, y: 0, z: 0 },
+        kind: oasis7::simulator::WorldEventKind::ChunkGenerated {
+            coord: oasis7::simulator::ChunkCoord { x: 0, y: 0, z: 0 },
             seed: 11,
             fragment_count: 4,
             block_count: 18,
-            chunk_budget: agent_world::simulator::ChunkResourceBudget::default(),
-            cause: agent_world::simulator::ChunkGenerationCause::Action,
+            chunk_budget: oasis7::simulator::ChunkResourceBudget::default(),
+            cause: oasis7::simulator::ChunkGenerationCause::Action,
         },
         runtime_event: None,
     }];
@@ -247,23 +247,23 @@ fn update_ui_populates_fragment_selection_details_with_owner_location() {
         }),
     };
 
-    let mut model = agent_world::simulator::WorldModel::default();
+    let mut model = oasis7::simulator::WorldModel::default();
     model.locations.insert(
         "loc-1".to_string(),
-        agent_world::simulator::Location::new(
+        oasis7::simulator::Location::new(
             "loc-1",
             "Alpha",
-            agent_world::geometry::GeoPos::new(0.0, 0.0, 0.0),
+            oasis7::geometry::GeoPos::new(0.0, 0.0, 0.0),
         ),
     );
 
-    let snapshot = agent_world::simulator::WorldSnapshot {
-        version: agent_world::simulator::SNAPSHOT_VERSION,
-        chunk_generation_schema_version: agent_world::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
+    let snapshot = oasis7::simulator::WorldSnapshot {
+        version: oasis7::simulator::SNAPSHOT_VERSION,
+        chunk_generation_schema_version: oasis7::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
         time: 12,
-        config: agent_world::simulator::WorldConfig::default(),
+        config: oasis7::simulator::WorldConfig::default(),
         model,
-        chunk_runtime: agent_world::simulator::ChunkRuntimeConfig::default(),
+        chunk_runtime: oasis7::simulator::ChunkRuntimeConfig::default(),
         next_event_id: 1,
         next_action_id: 1,
         pending_actions: Vec::new(),

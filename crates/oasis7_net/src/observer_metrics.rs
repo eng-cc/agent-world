@@ -197,8 +197,8 @@ mod tests {
     use std::sync::Arc;
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    use agent_world::runtime::{Action, World};
-    use agent_world::GeoPos;
+    use oasis7::runtime::{Action, World};
+    use oasis7::GeoPos;
     use oasis7_distfs::LocalCasStore;
 
     use super::super::distributed::topic_head;

@@ -1,7 +1,7 @@
 use bevy::ecs::hierarchy::ChildSpawnerCommands;
 use bevy::prelude::*;
 
-use agent_world::simulator::{
+use oasis7::simulator::{
     infer_element_ppm, FragmentBlock, FragmentElementKind, FragmentPhysicalProfile,
 };
 
@@ -75,7 +75,7 @@ fn fragment_block_local_transform(block: &FragmentBlock, radius_cm: i64) -> Tran
 #[cfg(test)]
 mod tests {
     use super::*;
-    use agent_world::simulator::{
+    use oasis7::simulator::{
         CompoundComposition, CuboidSizeCm, FragmentCompoundKind, FragmentElementKind, GridPosCm,
     };
 

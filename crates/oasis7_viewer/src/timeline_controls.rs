@@ -1,5 +1,5 @@
-use agent_world::simulator::{PowerEvent, WorldEvent, WorldEventKind};
-use agent_world::viewer::ViewerControl;
+use oasis7::simulator::{PowerEvent, WorldEvent, WorldEventKind};
+use oasis7::viewer::ViewerControl;
 use bevy::ecs::hierarchy::ChildSpawnerCommands;
 use bevy::prelude::*;
 use bevy::ui::RelativeCursorPosition;
@@ -995,7 +995,7 @@ fn mark_filter_label(kind: TimelineMarkKind, enabled: bool, locale: UiLocale) ->
 
 fn build_timeline_key_insights(
     events: &[WorldEvent],
-    decision_traces: &[agent_world::simulator::AgentDecisionTrace],
+    decision_traces: &[oasis7::simulator::AgentDecisionTrace],
     axis_max: u64,
 ) -> TimelineKeyInsights {
     let error_ticks = collect_error_ticks(events);
@@ -1020,7 +1020,7 @@ fn collect_error_ticks(events: &[WorldEvent]) -> Vec<u64> {
     dedup_sorted_ticks(ticks)
 }
 
-fn collect_llm_ticks(decision_traces: &[agent_world::simulator::AgentDecisionTrace]) -> Vec<u64> {
+fn collect_llm_ticks(decision_traces: &[oasis7::simulator::AgentDecisionTrace]) -> Vec<u64> {
     let ticks: Vec<u64> = decision_traces.iter().map(|trace| trace.time).collect();
     dedup_sorted_ticks(ticks)
 }
@@ -1162,10 +1162,10 @@ pub(super) fn handle_control_buttons(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use agent_world::simulator::{
+    use oasis7::simulator::{
         AgentDecision, AgentDecisionTrace, ConsumeReason, PowerEvent, RejectReason,
     };
-    use agent_world::viewer::ViewerControlProfile;
+    use oasis7::viewer::ViewerControlProfile;
 
     #[test]
     fn timeline_seek_button_is_disabled_for_live_profile_only() {
@@ -1203,13 +1203,13 @@ mod tests {
                 id: 3,
                 time: 8,
                 kind: WorldEventKind::ResourceTransferred {
-                    from: agent_world::simulator::ResourceOwner::Location {
+                    from: oasis7::simulator::ResourceOwner::Location {
                         location_id: "loc-1".to_string(),
                     },
-                    to: agent_world::simulator::ResourceOwner::Agent {
+                    to: oasis7::simulator::ResourceOwner::Agent {
                         agent_id: "agent-1".to_string(),
                     },
-                    kind: agent_world::simulator::ResourceKind::Electricity,
+                    kind: oasis7::simulator::ResourceKind::Electricity,
                     amount: 300,
                 },
                 runtime_event: None,

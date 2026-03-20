@@ -35,9 +35,9 @@ fn first_session_summary_becomes_visible_once_explore_step_is_ready() {
 fn first_session_summary_snapshot_reports_duration_and_gains() {
     let mut onboarding = PlayerOnboardingState::default();
     let mut state = super::sample_viewer_state(crate::ConnectionStatus::Connected, Vec::new());
-    state.metrics = Some(agent_world::simulator::RunnerMetrics {
+    state.metrics = Some(oasis7::simulator::RunnerMetrics {
         total_ticks: 10,
-        ..agent_world::simulator::RunnerMetrics::default()
+        ..oasis7::simulator::RunnerMetrics::default()
     });
     sync_player_first_session_summary_state(
         &mut onboarding,
@@ -51,9 +51,9 @@ fn first_session_summary_snapshot_reports_duration_and_gains() {
         0.0,
     );
 
-    state.metrics = Some(agent_world::simulator::RunnerMetrics {
+    state.metrics = Some(oasis7::simulator::RunnerMetrics {
         total_ticks: 18,
-        ..agent_world::simulator::RunnerMetrics::default()
+        ..oasis7::simulator::RunnerMetrics::default()
     });
     state.events = vec![
         super::sample_agent_moved_event(1, 12),

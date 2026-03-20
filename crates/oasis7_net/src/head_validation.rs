@@ -5,7 +5,7 @@ use serde::Serialize;
 use super::distributed::{SnapshotManifest, WorldBlock, WorldHeadAnnounce};
 use super::error::WorldError;
 use super::util::to_canonical_cbor;
-use agent_world::runtime::{
+use oasis7::runtime::{
     ActionId, CausedBy, Journal, Snapshot, World, WorldError as RuntimeWorldError, WorldEvent,
     WorldEventBody,
 };
@@ -192,8 +192,8 @@ mod tests {
     use std::fs;
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    use agent_world::runtime::{Action, World};
-    use agent_world::GeoPos;
+    use oasis7::runtime::{Action, World};
+    use oasis7::GeoPos;
     use oasis7_distfs::LocalCasStore;
 
     use super::super::distributed_storage::{store_execution_result, ExecutionWriteConfig};

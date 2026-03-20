@@ -1,5 +1,5 @@
 use super::*;
-use agent_world::simulator::FragmentElementKind;
+use oasis7::simulator::FragmentElementKind;
 
 #[test]
 fn location_visual_radius_cm_keeps_base_when_budget_missing() {

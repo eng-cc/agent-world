@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use agent_world::simulator::{
+use oasis7::simulator::{
     AgentPromptProfile, LlmChatMessageTrace, LlmChatRole, WorldEventKind,
     DEFAULT_LLM_LONG_TERM_GOAL, DEFAULT_LLM_SHORT_TERM_GOAL, DEFAULT_LLM_SYSTEM_PROMPT,
 };
@@ -250,7 +250,7 @@ pub(super) fn render_chat_section(
             if let Some(client) = client {
                 sync_viewer_auth_nonce_from_state(state);
                 let send_result: Result<(), String> = (|| {
-                    let mut request = agent_world::viewer::AgentChatRequest {
+                    let mut request = oasis7::viewer::AgentChatRequest {
                         agent_id: selected_agent_id.clone(),
                         message,
                         player_id: Some(VIEWER_PLAYER_ID.to_string()),
@@ -262,7 +262,7 @@ pub(super) fn render_chat_section(
                     sign_agent_chat_request(&mut request)?;
                     client
                         .tx
-                        .send(agent_world::viewer::ViewerRequest::AgentChat { request })
+                        .send(oasis7::viewer::ViewerRequest::AgentChat { request })
                         .map_err(|err| err.to_string())
                 })();
                 match send_result {
@@ -369,12 +369,12 @@ fn send_prompt_profile_apply_command(
     sync_viewer_auth_nonce_from_state(state);
     sign_prompt_control_apply_request(
         &mut request,
-        agent_world::viewer::PromptControlAuthIntent::Apply,
+        oasis7::viewer::PromptControlAuthIntent::Apply,
     )?;
     client
         .tx
-        .send(agent_world::viewer::ViewerRequest::PromptControl {
-            command: agent_world::viewer::PromptControlCommand::Apply { request },
+        .send(oasis7::viewer::ViewerRequest::PromptControl {
+            command: oasis7::viewer::PromptControlCommand::Apply { request },
         })
         .map_err(|err| err.to_string())
 }
@@ -383,14 +383,14 @@ fn build_prompt_profile_apply_request(
     selected_agent_id: &str,
     current_profile: &AgentPromptProfile,
     draft: &AgentChatDraftState,
-) -> agent_world::viewer::PromptControlApplyRequest {
+) -> oasis7::viewer::PromptControlApplyRequest {
     let next_system = normalize_prompt_text(draft.profile_system_prompt.as_str());
     let next_short = normalize_prompt_text(draft.profile_short_term_goal.as_str());
     let next_long = normalize_prompt_text(draft.profile_long_term_goal.as_str());
     let player_id = resolve_viewer_player_id_from(&|key| std::env::var(key).ok())
         .unwrap_or_else(|_| VIEWER_PLAYER_ID.to_string());
 
-    agent_world::viewer::PromptControlApplyRequest {
+    oasis7::viewer::PromptControlApplyRequest {
         agent_id: selected_agent_id.to_string(),
         player_id: player_id.clone(),
         public_key: None,
@@ -452,7 +452,7 @@ fn normalize_prompt_text(raw: &str) -> Option<String> {
 }
 
 fn prompt_apply_request_has_patch(
-    request: &agent_world::viewer::PromptControlApplyRequest,
+    request: &oasis7::viewer::PromptControlApplyRequest,
 ) -> bool {
     request.system_prompt_override.is_some()
         || request.short_term_goal_override.is_some()

@@ -233,7 +233,7 @@ run_case \
   required \
   "$required_samples" \
   0 \
-  env -u RUSTC_WRAPPER cargo test -p agent_world \
+  env -u RUSTC_WRAPPER cargo test -p oasis7 \
   governance_apply_with_finality_rejects_stake_root_mismatch \
   --features test_tier_required \
   -- --nocapture
@@ -243,7 +243,7 @@ run_case \
   required \
   "$required_samples" \
   0 \
-  env -u RUSTC_WRAPPER cargo test -p agent_world \
+  env -u RUSTC_WRAPPER cargo test -p oasis7 \
   governance_apply_with_finality_rejects_signer_outside_epoch_snapshot \
   --features test_tier_required \
   -- --nocapture
@@ -253,7 +253,7 @@ run_case \
   full \
   "$full_samples" \
   2 \
-  env -u RUSTC_WRAPPER cargo test -p agent_world \
+  env -u RUSTC_WRAPPER cargo test -p oasis7 \
   governance_finality_epoch_snapshot_rotation_rejects_stale_signers_and_accepts_rotated_set \
   --features test_tier_full \
   -- --nocapture

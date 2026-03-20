@@ -3,7 +3,7 @@ use super::egui_right_panel_player_experience::resolve_player_guide_step;
 use super::*;
 use crate::right_panel_module_visibility::RightPanelModuleVisibilityState;
 use crate::ViewerControl;
-use agent_world::simulator::{RejectReason, WorldEvent, WorldEventKind};
+use oasis7::simulator::{RejectReason, WorldEvent, WorldEventKind};
 use egui_kittest::{kittest::Queryable as _, Harness};
 use egui_wgpu::wgpu;
 use std::iter::once;
@@ -687,7 +687,7 @@ fn feedback_tone_for_event_maps_warning_positive_and_info() {
     let info = feedback_tone_for_event(&WorldEventKind::LocationRegistered {
         location_id: "loc-1".to_string(),
         name: "alpha".to_string(),
-        pos: agent_world::geometry::GeoPos::new(0.0, 0.0, 0.0),
+        pos: oasis7::geometry::GeoPos::new(0.0, 0.0, 0.0),
         profile: Default::default(),
     });
     assert_eq!(info, FeedbackTone::Info);
@@ -1234,7 +1234,7 @@ fn egui_kittest_snapshot_overview_manual_high_risk() {
 
 #[test]
 fn rejection_event_count_only_counts_rejected_events() {
-    use agent_world::geometry::GeoPos;
+    use oasis7::geometry::GeoPos;
 
     let events = vec![
         WorldEvent {

@@ -367,7 +367,7 @@ if ! command -v curl >/dev/null 2>&1; then
 fi
 
 if [[ "$prewarm" -eq 1 ]] && [[ "$dry_run" -eq 0 ]]; then
-  run env -u RUSTC_WRAPPER cargo build -p agent_world --bin world_chain_runtime
+  run env -u RUSTC_WRAPPER cargo build -p oasis7 --bin world_chain_runtime
 fi
 
 chain_bin="$repo_root/target/debug/world_chain_runtime"

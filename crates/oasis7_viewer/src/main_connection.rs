@@ -138,11 +138,11 @@ fn control_request_for_profile(
 ) -> Option<ViewerRequest> {
     match profile {
         Some(ViewerControlProfile::Playback) => Some(ViewerRequest::PlaybackControl {
-            mode: agent_world::viewer::PlaybackControl::from(control),
+            mode: oasis7::viewer::PlaybackControl::from(control),
             request_id,
         }),
         Some(ViewerControlProfile::Live) => {
-            let mode = agent_world::viewer::LiveControl::try_from(control).ok()?;
+            let mode = oasis7::viewer::LiveControl::try_from(control).ok()?;
             Some(ViewerRequest::LiveControl { mode, request_id })
         }
         None => Some(ViewerRequest::Control {
@@ -641,7 +641,7 @@ mod tests {
         assert_eq!(
             request,
             ViewerRequest::PlaybackControl {
-                mode: agent_world::viewer::PlaybackControl::Seek { tick: 42 },
+                mode: oasis7::viewer::PlaybackControl::Seek { tick: 42 },
                 request_id: Some(42),
             }
         );
@@ -658,7 +658,7 @@ mod tests {
         assert_eq!(
             request,
             ViewerRequest::LiveControl {
-                mode: agent_world::viewer::LiveControl::Step { count: 3 },
+                mode: oasis7::viewer::LiveControl::Step { count: 3 },
                 request_id: Some(8),
             }
         );
@@ -725,7 +725,7 @@ mod tests {
         assert_eq!(
             rx.recv().expect("request should be sent"),
             ViewerRequest::PlaybackControl {
-                mode: agent_world::viewer::PlaybackControl::Seek { tick: 42 },
+                mode: oasis7::viewer::PlaybackControl::Seek { tick: 42 },
                 request_id: Some(7),
             }
         );

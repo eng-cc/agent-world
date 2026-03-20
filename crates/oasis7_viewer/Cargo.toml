@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-agent_world = { path = "../agent_world", default-features = false }
+oasis7 = { path = "../oasis7", default-features = false }
 bevy = { version = "0.18.0", default-features = false, features = ["bevy_asset", "bevy_color", "bevy_core_pipeline", "bevy_gltf", "bevy_log", "bevy_pbr", "bevy_post_process", "bevy_render", "bevy_scene", "bevy_text", "bevy_ui", "bevy_ui_render", "bevy_window", "bevy_winit", "default_font", "multi_threaded", "png", "tonemapping_luts", "wayland", "webgl2", "x11"] }
 bevy_egui = "0.39.1"
 serde = { version = "1", features = ["derive"] }

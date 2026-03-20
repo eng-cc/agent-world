@@ -1,6 +1,6 @@
 use super::*;
-use agent_world::simulator::MaterialKind;
-use agent_world::simulator::{
+use oasis7::simulator::MaterialKind;
+use oasis7::simulator::{
     chunk_bounds, chunk_coords, AgentKinematics, ChunkCoord, ChunkState, FragmentResourceBudget,
     ModuleVisualAnchor, ModuleVisualEntity, PowerEvent, ResourceOwner, SpaceConfig, WorldEventKind,
     CHUNK_SIZE_X_CM, CHUNK_SIZE_Y_CM,
@@ -924,7 +924,7 @@ fn location_remaining_mass_ratio(fragment_budget: &FragmentResourceBudget) -> Op
 }
 
 fn agent_height_cm(height_cm: Option<i64>) -> i64 {
-    height_cm.unwrap_or(agent_world::models::DEFAULT_AGENT_HEIGHT_CM)
+    height_cm.unwrap_or(oasis7::models::DEFAULT_AGENT_HEIGHT_CM)
 }
 
 fn agent_body_scale(height_cm: i64, cm_to_unit: f32) -> Vec3 {
@@ -1224,7 +1224,7 @@ pub(super) fn agent_module_counts_in_snapshot(
 }
 
 fn default_agent_module_count_estimate() -> usize {
-    agent_world::models::AgentBodyState::default()
+    oasis7::models::AgentBodyState::default()
         .slots
         .iter()
         .filter(|slot| slot.installed_module.is_some())

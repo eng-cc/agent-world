@@ -1,6 +1,6 @@
 use crate::industry_graph_view_model::{IndustryGraphViewModel, IndustrySemanticZoomLevel};
-use agent_world::geometry::GeoPos;
-use agent_world::simulator::{
+use oasis7::geometry::GeoPos;
+use oasis7::simulator::{
     chunk_bounds, Action, AgentDecision, AgentDecisionTrace, Asset, AssetKind, ChunkCoord,
     ChunkState, FragmentElementKind, FragmentResourceBudget, ModuleVisualAnchor, PowerEvent,
     PowerPlant, ResourceKind, ResourceOwner, RunnerMetrics, WorldEvent, WorldEventKind,
@@ -725,7 +725,7 @@ fn facility_details_lines(
 }
 
 fn module_visual_details_summary(
-    module_entity: &agent_world::simulator::ModuleVisualEntity,
+    module_entity: &oasis7::simulator::ModuleVisualEntity,
     snapshot: &WorldSnapshot,
     events: &[WorldEvent],
 ) -> String {

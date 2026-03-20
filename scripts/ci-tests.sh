@@ -68,13 +68,13 @@ run_cargo() {
 }
 
 run_oasis7_required_tier_tests() {
-  run_cargo test -p agent_world --tests --features test_tier_required
+  run_cargo test -p oasis7 --tests --features test_tier_required
 }
 
 run_oasis7_full_tier_tests() {
-  run_cargo test -p agent_world --tests --features "test_tier_full,wasmtime,viewer_live_integration" -- --skip live_server_accepts_client_and_emits_snapshot_and_event
+  run_cargo test -p oasis7 --tests --features "test_tier_full,wasmtime,viewer_live_integration" -- --skip live_server_accepts_client_and_emits_snapshot_and_event
   run_with_retries 3 \
-    run_cargo test -p agent_world --features "test_tier_full,wasmtime,viewer_live_integration" \
+    run_cargo test -p oasis7 --features "test_tier_full,wasmtime,viewer_live_integration" \
       --test viewer_live_integration live_server_accepts_client_and_emits_snapshot_and_event -- --nocapture
 }
 
@@ -129,7 +129,7 @@ run_full_support_tier_tests() {
   run_oasis7_llm_baseline_fixture_smoke
   run_oasis7_viewer_tests
   run_oasis7_viewer_wasm_check
-  run_cargo test -p agent_world --features wasmtime --lib --bins
+  run_cargo test -p oasis7 --features wasmtime --lib --bins
 }
 
 echo "+ ci test tier: $tier"

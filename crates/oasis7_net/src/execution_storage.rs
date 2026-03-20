@@ -9,7 +9,7 @@ use super::distributed_storage::{
 };
 use super::error::WorldError;
 use super::util::to_canonical_cbor;
-use agent_world::runtime::{ActionId, CausedBy, Journal, Snapshot, WorldEventBody};
+use oasis7::runtime::{ActionId, CausedBy, Journal, Snapshot, WorldEventBody};
 use oasis7_distfs::{blake3_hex, segment_journal, segment_snapshot, BlobStore, FileStore};
 
 const WORLDS_ROOT_DIR: &str = "worlds";
@@ -281,8 +281,8 @@ mod tests {
     use std::fs;
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    use agent_world::runtime::{Action, World};
-    use agent_world::GeoPos;
+    use oasis7::runtime::{Action, World};
+    use oasis7::GeoPos;
     use oasis7_distfs::{BlobStore as _, FileStore as _, LocalCasStore};
 
     use super::super::distributed_storage::ExecutionWriteConfig;

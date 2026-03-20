@@ -1,4 +1,4 @@
-use agent_world::simulator::{WorldEvent, WorldEventKind};
+use oasis7::simulator::{WorldEvent, WorldEventKind};
 
 pub(super) fn rejection_event_count(events: &[WorldEvent]) -> usize {
     events

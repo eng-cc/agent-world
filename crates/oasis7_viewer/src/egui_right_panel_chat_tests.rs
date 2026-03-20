@@ -1,5 +1,5 @@
 use super::*;
-use agent_world::simulator::{
+use oasis7::simulator::{
     initialize_kernel, AgentDecision, AgentDecisionTrace, PromptUpdateOperation, WorldConfig,
     WorldEvent, WorldInitConfig, WorldScenario,
 };
@@ -402,7 +402,7 @@ fn resolve_viewer_auth_signer_from_rejects_missing_private_key() {
 #[test]
 fn attach_agent_chat_auth_sets_claims_and_verifiable_proof() {
     let signer = test_signer(34);
-    let mut request = agent_world::viewer::AgentChatRequest {
+    let mut request = oasis7::viewer::AgentChatRequest {
         agent_id: "agent-a".to_string(),
         message: "hello".to_string(),
         player_id: None,
@@ -423,7 +423,7 @@ fn attach_agent_chat_auth_sets_claims_and_verifiable_proof() {
     );
     let proof = request.auth.as_ref().expect("proof attached").clone();
     let verified =
-        agent_world::viewer::verify_agent_chat_auth_proof(&request, &proof).expect("proof verify");
+        oasis7::viewer::verify_agent_chat_auth_proof(&request, &proof).expect("proof verify");
     assert_eq!(verified.player_id, signer.player_id);
     assert_eq!(verified.public_key, signer.public_key);
     assert_eq!(verified.nonce, 41);
@@ -434,7 +434,7 @@ fn attach_agent_chat_auth_sets_claims_and_verifiable_proof() {
 #[test]
 fn attach_prompt_control_apply_auth_sets_updated_by_and_verifiable_proof() {
     let signer = test_signer(34);
-    let mut request = agent_world::viewer::PromptControlApplyRequest {
+    let mut request = oasis7::viewer::PromptControlApplyRequest {
         agent_id: "agent-a".to_string(),
         player_id: "legacy-player".to_string(),
         public_key: None,
@@ -450,7 +450,7 @@ fn attach_prompt_control_apply_auth_sets_updated_by_and_verifiable_proof() {
         &mut request,
         &signer,
         42,
-        agent_world::viewer::PromptControlAuthIntent::Apply,
+        oasis7::viewer::PromptControlAuthIntent::Apply,
     )
     .expect("attach auth");
     assert_eq!(request.player_id, signer.player_id);
@@ -463,8 +463,8 @@ fn attach_prompt_control_apply_auth_sets_updated_by_and_verifiable_proof() {
         Some(signer.public_key.as_str())
     );
     let proof = request.auth.as_ref().expect("proof attached").clone();
-    let verified = agent_world::viewer::verify_prompt_control_apply_auth_proof(
-        agent_world::viewer::PromptControlAuthIntent::Apply,
+    let verified = oasis7::viewer::verify_prompt_control_apply_auth_proof(
+        oasis7::viewer::PromptControlAuthIntent::Apply,
         &request,
         &proof,
     )
@@ -494,7 +494,7 @@ fn sync_viewer_auth_nonce_from_state_tracks_persisted_nonce() {
 
 #[test]
 fn prompt_apply_request_has_patch_returns_false_for_noop_request() {
-    let request = agent_world::viewer::PromptControlApplyRequest {
+    let request = oasis7::viewer::PromptControlApplyRequest {
         agent_id: "agent-a".to_string(),
         player_id: VIEWER_PLAYER_ID.to_string(),
         public_key: None,

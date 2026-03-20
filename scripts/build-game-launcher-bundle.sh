@@ -219,7 +219,7 @@ run mkdir -p "$BUNDLE_BIN_DIR" "$BUNDLE_WEB_DIR" "$BUNDLE_WEB_LAUNCHER_DIR"
 # 1) Build native binaries for launcher/live/client launcher.
 BUNDLE_NATIVE_BUILD_ARGS=(
   "${CARGO_TARGET_ARGS[@]}"
-  -p agent_world
+  -p oasis7
   -p oasis7_client_launcher
   --bin world_game_launcher
   --bin world_web_launcher

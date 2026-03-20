@@ -664,7 +664,7 @@ fn apply_timeline_seek_step(
         let _ = dispatch_viewer_control(
             client,
             control_profile,
-            agent_world::viewer::ViewerControl::Seek { tick },
+            oasis7::viewer::ViewerControl::Seek { tick },
             None,
         );
     }
@@ -697,7 +697,7 @@ fn dispatch_agent_chat_step(
     let client = viewer_client.ok_or_else(|| "viewer client unavailable".to_string())?;
     let signer = resolve_automation_auth_signer()?;
     let nonce = next_auth_nonce(automation_state);
-    let mut request = agent_world::viewer::AgentChatRequest {
+    let mut request = oasis7::viewer::AgentChatRequest {
         agent_id: agent_id.to_string(),
         message: message.to_string(),
         player_id: Some(signer.player_id.clone()),
@@ -706,7 +706,7 @@ fn dispatch_agent_chat_step(
         intent_tick: None,
         intent_seq: Some(nonce),
     };
-    let proof = agent_world::viewer::sign_agent_chat_auth_proof(
+    let proof = oasis7::viewer::sign_agent_chat_auth_proof(
         &request,
         nonce,
         signer.public_key.as_str(),
@@ -716,7 +716,7 @@ fn dispatch_agent_chat_step(
     request.auth = Some(proof);
     client
         .tx
-        .send(agent_world::viewer::ViewerRequest::AgentChat { request })
+        .send(oasis7::viewer::ViewerRequest::AgentChat { request })
         .map_err(|err| format!("send agent chat failed: {err}"))
 }
 
@@ -730,7 +730,7 @@ fn dispatch_prompt_override_step(
     let client = viewer_client.ok_or_else(|| "viewer client unavailable".to_string())?;
     let signer = resolve_automation_auth_signer()?;
     let nonce = next_auth_nonce(automation_state);
-    let mut request = agent_world::viewer::PromptControlApplyRequest {
+    let mut request = oasis7::viewer::PromptControlApplyRequest {
         agent_id: agent_id.to_string(),
         player_id: signer.player_id.clone(),
         public_key: Some(signer.public_key.clone()),
@@ -749,8 +749,8 @@ fn dispatch_prompt_override_step(
         ViewerAutomationPromptField::LongTerm => request.long_term_goal_override = patch,
     }
 
-    let proof = agent_world::viewer::sign_prompt_control_apply_auth_proof(
-        agent_world::viewer::PromptControlAuthIntent::Apply,
+    let proof = oasis7::viewer::sign_prompt_control_apply_auth_proof(
+        oasis7::viewer::PromptControlAuthIntent::Apply,
         &request,
         nonce,
         signer.public_key.as_str(),
@@ -760,8 +760,8 @@ fn dispatch_prompt_override_step(
     request.auth = Some(proof);
     client
         .tx
-        .send(agent_world::viewer::ViewerRequest::PromptControl {
-            command: agent_world::viewer::PromptControlCommand::Apply { request },
+        .send(oasis7::viewer::ViewerRequest::PromptControl {
+            command: oasis7::viewer::PromptControlCommand::Apply { request },
         })
         .map_err(|err| format!("send prompt apply failed: {err}"))
 }

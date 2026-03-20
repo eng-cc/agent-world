@@ -1,4 +1,4 @@
-use agent_world::simulator::{
+use oasis7::simulator::{
     ChunkCoord, PowerEvent, RejectReason, ResourceOwner, WorldEvent, WorldEventKind,
 };
 use bevy::ecs::hierarchy::ChildSpawnerCommands;

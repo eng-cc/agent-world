@@ -331,7 +331,7 @@ fn camera_clip_planes(cm_to_unit: f32, config: &Viewer3dConfig) -> (f32, f32) {
 }
 
 fn world_view_radius(cm_to_unit: f32) -> f32 {
-    let default_space = agent_world::simulator::SpaceConfig::default();
+    let default_space = oasis7::simulator::SpaceConfig::default();
     let cm_span = default_space
         .width_cm
         .max(default_space.depth_cm)
@@ -341,7 +341,7 @@ fn world_view_radius(cm_to_unit: f32) -> f32 {
 }
 
 fn world_view_ortho_scale(cm_to_unit: f32) -> f32 {
-    let default_space = agent_world::simulator::SpaceConfig::default();
+    let default_space = oasis7::simulator::SpaceConfig::default();
     let cm_span = default_space
         .width_cm
         .max(default_space.depth_cm)

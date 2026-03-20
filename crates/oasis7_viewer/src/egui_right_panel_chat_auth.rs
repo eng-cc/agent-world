@@ -180,16 +180,16 @@ pub(super) fn next_viewer_auth_nonce() -> Result<u64, String> {
 }
 
 pub(super) fn attach_prompt_control_apply_auth(
-    request: &mut agent_world::viewer::PromptControlApplyRequest,
+    request: &mut oasis7::viewer::PromptControlApplyRequest,
     signer: &ViewerAuthSigner,
     nonce: u64,
-    intent: agent_world::viewer::PromptControlAuthIntent,
+    intent: oasis7::viewer::PromptControlAuthIntent,
 ) -> Result<(), String> {
     request.player_id = signer.player_id.clone();
     request.updated_by = Some(signer.player_id.clone());
     request.public_key = Some(signer.public_key.clone());
     request.auth = None;
-    let proof = agent_world::viewer::sign_prompt_control_apply_auth_proof(
+    let proof = oasis7::viewer::sign_prompt_control_apply_auth_proof(
         intent,
         request,
         nonce,
@@ -201,7 +201,7 @@ pub(super) fn attach_prompt_control_apply_auth(
 }
 
 pub(super) fn attach_agent_chat_auth(
-    request: &mut agent_world::viewer::AgentChatRequest,
+    request: &mut oasis7::viewer::AgentChatRequest,
     signer: &ViewerAuthSigner,
     nonce: u64,
 ) -> Result<(), String> {
@@ -211,7 +211,7 @@ pub(super) fn attach_agent_chat_auth(
     request.player_id = Some(signer.player_id.clone());
     request.public_key = Some(signer.public_key.clone());
     request.auth = None;
-    let proof = agent_world::viewer::sign_agent_chat_auth_proof(
+    let proof = oasis7::viewer::sign_agent_chat_auth_proof(
         request,
         nonce,
         signer.public_key.as_str(),
@@ -222,8 +222,8 @@ pub(super) fn attach_agent_chat_auth(
 }
 
 pub(super) fn sign_prompt_control_apply_request(
-    request: &mut agent_world::viewer::PromptControlApplyRequest,
-    intent: agent_world::viewer::PromptControlAuthIntent,
+    request: &mut oasis7::viewer::PromptControlApplyRequest,
+    intent: oasis7::viewer::PromptControlAuthIntent,
 ) -> Result<(), String> {
     let signer = resolve_viewer_auth_signer()?;
     let nonce = next_viewer_auth_nonce()?;
@@ -231,7 +231,7 @@ pub(super) fn sign_prompt_control_apply_request(
 }
 
 pub(super) fn sign_agent_chat_request(
-    request: &mut agent_world::viewer::AgentChatRequest,
+    request: &mut oasis7::viewer::AgentChatRequest,
 ) -> Result<(), String> {
     let signer = resolve_viewer_auth_signer()?;
     let nonce = next_viewer_auth_nonce()?;

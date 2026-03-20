@@ -1,4 +1,4 @@
-use agent_world::simulator::WorldEvent;
+use oasis7::simulator::WorldEvent;
 use bevy::ecs::hierarchy::ChildSpawnerCommands;
 use bevy::prelude::*;
 
@@ -323,8 +323,8 @@ fn selection_kind_name(kind: SelectionKind) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use agent_world::geometry::GeoPos;
-    use agent_world::simulator::{
+    use oasis7::geometry::GeoPos;
+    use oasis7::simulator::{
         ChunkRuntimeConfig, Location, WorldConfig, WorldModel, WorldSnapshot,
     };
 
@@ -335,9 +335,9 @@ mod tests {
             Location::new("loc-1", "Alpha", GeoPos::new(0.0, 0.0, 0.0)),
         );
         WorldSnapshot {
-            version: agent_world::simulator::SNAPSHOT_VERSION,
+            version: oasis7::simulator::SNAPSHOT_VERSION,
             chunk_generation_schema_version:
-                agent_world::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
+                oasis7::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
             time: 7,
             config: WorldConfig::default(),
             model,
@@ -357,7 +357,7 @@ mod tests {
             WorldEvent {
                 id: 1,
                 time: 1,
-                kind: agent_world::simulator::WorldEventKind::LocationRegistered {
+                kind: oasis7::simulator::WorldEventKind::LocationRegistered {
                     location_id: "loc-1".to_string(),
                     name: "a".to_string(),
                     pos: GeoPos::new(0.0, 0.0, 0.0),
@@ -368,7 +368,7 @@ mod tests {
             WorldEvent {
                 id: 2,
                 time: 5,
-                kind: agent_world::simulator::WorldEventKind::LocationRegistered {
+                kind: oasis7::simulator::WorldEventKind::LocationRegistered {
                     location_id: "loc-2".to_string(),
                     name: "b".to_string(),
                     pos: GeoPos::new(0.0, 0.0, 0.0),
@@ -379,7 +379,7 @@ mod tests {
             WorldEvent {
                 id: 3,
                 time: 9,
-                kind: agent_world::simulator::WorldEventKind::LocationRegistered {
+                kind: oasis7::simulator::WorldEventKind::LocationRegistered {
                     location_id: "loc-3".to_string(),
                     name: "c".to_string(),
                     pos: GeoPos::new(0.0, 0.0, 0.0),
@@ -423,7 +423,7 @@ mod tests {
         let event = WorldEvent {
             id: 11,
             time: 9,
-            kind: agent_world::simulator::WorldEventKind::LocationRegistered {
+            kind: oasis7::simulator::WorldEventKind::LocationRegistered {
                 location_id: "loc-1".to_string(),
                 name: "Alpha".to_string(),
                 pos: GeoPos::new(0.0, 0.0, 0.0),
@@ -489,13 +489,13 @@ mod tests {
         let event = WorldEvent {
             id: 13,
             time: 12,
-            kind: agent_world::simulator::WorldEventKind::ModuleVisualEntityUpserted {
-                entity: agent_world::simulator::ModuleVisualEntity {
+            kind: oasis7::simulator::WorldEventKind::ModuleVisualEntityUpserted {
+                entity: oasis7::simulator::ModuleVisualEntity {
                     entity_id: "mv-1".to_string(),
                     module_id: "m.test".to_string(),
                     kind: "relay".to_string(),
                     label: None,
-                    anchor: agent_world::simulator::ModuleVisualAnchor::Absolute {
+                    anchor: oasis7::simulator::ModuleVisualAnchor::Absolute {
                         pos: GeoPos::new(0.0, 0.0, 0.0),
                     },
                 },
@@ -542,8 +542,8 @@ mod tests {
         let event = WorldEvent {
             id: 12,
             time: 10,
-            kind: agent_world::simulator::WorldEventKind::ActionRejected {
-                reason: agent_world::simulator::RejectReason::InvalidAmount { amount: 0 },
+            kind: oasis7::simulator::WorldEventKind::ActionRejected {
+                reason: oasis7::simulator::RejectReason::InvalidAmount { amount: 0 },
             },
             runtime_event: None,
         };

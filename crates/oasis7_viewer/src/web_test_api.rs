@@ -17,8 +17,8 @@ use crate::{
 use crate::{ConnectionStatus, SelectionKind};
 use crate::{OrbitCamera, Viewer3dCamera, ViewerCameraMode};
 #[cfg(target_arch = "wasm32")]
-use agent_world::viewer::ControlCompletionStatus;
-use agent_world::viewer::{ViewerControl, ViewerControlProfile};
+use oasis7::viewer::ControlCompletionStatus;
+use oasis7::viewer::{ViewerControl, ViewerControlProfile};
 use bevy::prelude::*;
 #[cfg(target_arch = "wasm32")]
 use std::cell::RefCell;
@@ -141,7 +141,7 @@ impl Default for WebTestApiStateSnapshot {
 thread_local! {
     static WEB_TEST_API_COMMAND_QUEUE: RefCell<VecDeque<WebTestApiCommand>> = RefCell::new(VecDeque::new());
     static WEB_TEST_API_STATE_SNAPSHOT: RefCell<WebTestApiStateSnapshot> = RefCell::new(WebTestApiStateSnapshot::default());
-    static WEB_TEST_API_COMPLETION_ACKS: RefCell<HashMap<u64, agent_world::viewer::ControlCompletionAck>> = RefCell::new(HashMap::new());
+    static WEB_TEST_API_COMPLETION_ACKS: RefCell<HashMap<u64, oasis7::viewer::ControlCompletionAck>> = RefCell::new(HashMap::new());
     static WEB_TEST_API_CONTROL_FEEDBACK_ID: RefCell<u64> = const { RefCell::new(0) };
     static WEB_TEST_API_RUNTIME_FATAL_ERROR: RefCell<Option<String>> = const { RefCell::new(None) };
 }
@@ -606,19 +606,19 @@ fn mutate_last_control_feedback(
 #[cfg(target_arch = "wasm32")]
 fn take_control_completion_ack(
     request_id: u64,
-) -> Option<agent_world::viewer::ControlCompletionAck> {
+) -> Option<oasis7::viewer::ControlCompletionAck> {
     WEB_TEST_API_COMPLETION_ACKS.with(|acks| acks.borrow_mut().remove(&request_id))
 }
 
 #[cfg(target_arch = "wasm32")]
-pub(super) fn record_control_completion_ack(ack: agent_world::viewer::ControlCompletionAck) {
+pub(super) fn record_control_completion_ack(ack: oasis7::viewer::ControlCompletionAck) {
     WEB_TEST_API_COMPLETION_ACKS.with(|acks| {
         acks.borrow_mut().insert(ack.request_id, ack);
     });
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub(super) fn record_control_completion_ack(_ack: agent_world::viewer::ControlCompletionAck) {}
+pub(super) fn record_control_completion_ack(_ack: oasis7::viewer::ControlCompletionAck) {}
 
 #[cfg(target_arch = "wasm32")]
 fn parse_step_count(payload: &JsValue) -> Option<usize> {
