@@ -3,7 +3,7 @@
 - 对应设计文档: `doc/world-simulator/launcher/game-client-launcher-blockchain-explorer-public-chain-p0-2026-03-07.design.md`
 - 对应项目管理文档: `doc/world-simulator/launcher/game-client-launcher-blockchain-explorer-public-chain-p0-2026-03-07.project.md`
 
-审计轮次: 1
+审计轮次: 6
 
 ## 1. Executive Summary
 - Problem Statement: 当前启动器浏览器仅覆盖 `overview/transactions/transaction(action_id)`，缺少区块分页、`tx_hash` 视图、统一搜索与重启可保留的索引，不满足“公共主链浏览器”最小可观测能力。
@@ -69,15 +69,15 @@
   - 控制面层: `world_web_launcher` 透传 explorer P0 查询到 runtime，保持统一错误封装。
   - 客户端层: 启动器 explorer 窗口扩展为 Blocks/Txs/Search 三视图，并增加分页与详情联动。
 - Integration Points:
-  - `crates/agent_world/src/bin/world_chain_runtime.rs`
-  - `crates/agent_world/src/bin/world_chain_runtime/transfer_submit_api.rs`
-  - `crates/agent_world/src/bin/world_chain_runtime/transfer_submit_api_tests.rs`
-  - `crates/agent_world/src/bin/world_chain_runtime/explorer_p0_api.rs`
-  - `crates/agent_world/src/bin/world_web_launcher.rs`
-  - `crates/agent_world/src/bin/world_web_launcher/world_web_launcher_tests.rs`
-  - `crates/agent_world_client_launcher/src/app_process.rs`
-  - `crates/agent_world_client_launcher/src/app_process_web.rs`
-  - `crates/agent_world_client_launcher/src/explorer_window.rs`
+  - `crates/oasis7/src/bin/world_chain_runtime.rs`
+  - `crates/oasis7/src/bin/world_chain_runtime/transfer_submit_api.rs`
+  - `crates/oasis7/src/bin/world_chain_runtime/transfer_submit_api_tests.rs`
+  - `crates/oasis7/src/bin/world_chain_runtime/explorer_p0_api.rs`
+  - `crates/oasis7/src/bin/world_web_launcher.rs`
+  - `crates/oasis7/src/bin/world_web_launcher/world_web_launcher_tests.rs`
+  - `crates/oasis7_client_launcher/src/app_process.rs`
+  - `crates/oasis7_client_launcher/src/app_process_web.rs`
+  - `crates/oasis7_client_launcher/src/explorer_window.rs`
 - Edge Cases & Error Handling:
   - `limit/cursor` 非法时返回 `invalid_request`（400）并给出字段级错误文案。
   - `block` 查询同时缺失 `height/hash` 时拒绝；两者同时提供按 `height` 优先并记录提示。
@@ -112,10 +112,10 @@
   - PRD-WORLD_SIMULATOR-025 -> TASK-WORLD_SIMULATOR-057/058/059 -> `test_tier_required`。
   - 计划验证命令:
     - `./scripts/doc-governance-check.sh`
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_chain_runtime transfer_submit_api::tests:: -- --nocapture`
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher -- --nocapture`
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher -- --nocapture`
-    - `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_chain_runtime transfer_submit_api::tests:: -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_web_launcher -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown`
 - Decision Log:
   - DEC-LAUNCHER-EXPLORER-P0-001: 采用统一 explorer store 消费 committed batches（单点 drain），旧/新查询接口共享该状态源。理由：避免多消费者竞争导致的批次丢失与查询漂移。
   - DEC-LAUNCHER-EXPLORER-P0-002: P0 分页采用 `cursor(offset)` 而非复杂游标签名。理由：先满足可翻页可重复读取，再在后续版本升级强一致游标。

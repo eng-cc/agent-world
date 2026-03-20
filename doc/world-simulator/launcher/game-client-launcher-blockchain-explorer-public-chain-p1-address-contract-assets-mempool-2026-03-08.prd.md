@@ -3,7 +3,7 @@
 - 对应设计文档: `doc/world-simulator/launcher/game-client-launcher-blockchain-explorer-public-chain-p1-address-contract-assets-mempool-2026-03-08.design.md`
 - 对应项目管理文档: `doc/world-simulator/launcher/game-client-launcher-blockchain-explorer-public-chain-p1-address-contract-assets-mempool-2026-03-08.project.md`
 
-审计轮次: 1
+审计轮次: 6
 
 ## 1. Executive Summary
 - Problem Statement: 当前启动器浏览器已具备 `blocks/txs/search`，但缺少地址页、合约页、Token/NFT 资产页与 mempool 视图，仍不足以支持“公共主链状态全景查询”。
@@ -68,14 +68,14 @@
   - 控制面层: `world_web_launcher` 新增 P1 路由 remap 到 runtime。
   - 客户端层: 扩展 explorer 窗口状态机与请求层，新增四个视图并复用统一事件通道。
 - Integration Points:
-  - `crates/agent_world/src/bin/world_chain_runtime/explorer_p0_api.rs`
-  - `crates/agent_world/src/bin/world_chain_runtime/transfer_submit_api.rs`
-  - `crates/agent_world/src/bin/world_chain_runtime/transfer_submit_api_tests.rs`
-  - `crates/agent_world/src/bin/world_web_launcher.rs`
-  - `crates/agent_world/src/bin/world_web_launcher/world_web_launcher_tests.rs`
-  - `crates/agent_world_client_launcher/src/app_process.rs`
-  - `crates/agent_world_client_launcher/src/app_process_web.rs`
-  - `crates/agent_world_client_launcher/src/explorer_window.rs`
+  - `crates/oasis7/src/bin/world_chain_runtime/explorer_p0_api.rs`
+  - `crates/oasis7/src/bin/world_chain_runtime/transfer_submit_api.rs`
+  - `crates/oasis7/src/bin/world_chain_runtime/transfer_submit_api_tests.rs`
+  - `crates/oasis7/src/bin/world_web_launcher.rs`
+  - `crates/oasis7/src/bin/world_web_launcher/world_web_launcher_tests.rs`
+  - `crates/oasis7_client_launcher/src/app_process.rs`
+  - `crates/oasis7_client_launcher/src/app_process_web.rs`
+  - `crates/oasis7_client_launcher/src/explorer_window.rs`
 - Edge Cases & Error Handling:
   - `account_id/contract_id` 为空时返回 `invalid_request`。
   - 地址不存在且无交易历史时返回 `not_found`。
@@ -107,10 +107,10 @@
   - PRD-WORLD_SIMULATOR-026 -> TASK-WORLD_SIMULATOR-060/061/062 -> `test_tier_required`。
   - 计划验证命令:
     - `./scripts/doc-governance-check.sh`
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_chain_runtime transfer_submit_api::tests:: -- --nocapture`
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher -- --nocapture`
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher -- --nocapture`
-    - `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_chain_runtime transfer_submit_api::tests:: -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_web_launcher -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown`
 - Decision Log:
   - DEC-LAUNCHER-EXPLORER-P1-001: 合约页先以“系统合约目录 + 单合约详情”落地，不引入泛化智能合约执行语义。理由：当前链 runtime 以系统能力为主，先保证可观测闭环。
   - DEC-LAUNCHER-EXPLORER-P1-002: 资产页先覆盖主 token 与 NFT 能力状态位（`nft_supported`），后续再扩展 NFT 索引。理由：符合当前链能力边界且可平滑扩展。

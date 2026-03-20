@@ -9,7 +9,7 @@
 ## 2. 设计结构
 - 运行时查询层：`world_chain_runtime` 暴露 overview、transactions、transaction 三类只读 explorer RPC。
 - 控制面代理层：`world_web_launcher` 将 explorer RPC 统一代理到 `/api/chain/explorer/*`，保留结构化错误语义。
-- 启动器展示层：`agent_world_client_launcher` 提供 explorer window，复用现有生命周期状态枚举与轮询机制。
+- 启动器展示层：`oasis7_client_launcher` 提供 explorer window，复用现有生命周期状态枚举与轮询机制。
 - 交互状态层：overview、filters、transactions、`selected_transaction` 分别维护 `idle/loading/ready/failed` 状态。
 
 ## 3. 关键接口 / 入口
@@ -19,7 +19,7 @@
 - `GET /api/chain/explorer/overview`
 - `GET /api/chain/explorer/transactions`
 - `GET /api/chain/explorer/transaction`
-- `crates/agent_world_client_launcher/src/explorer_window.rs`
+- `crates/oasis7_client_launcher/src/explorer_window.rs`
 
 ## 4. 约束与边界
 - native/web 必须共用同一控制面协议，避免字段与错误语义分叉。

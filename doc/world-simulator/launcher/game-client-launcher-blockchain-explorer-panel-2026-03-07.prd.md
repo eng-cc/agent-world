@@ -3,7 +3,7 @@
 - 对应设计文档: `doc/world-simulator/launcher/game-client-launcher-blockchain-explorer-panel-2026-03-07.design.md`
 - 对应项目管理文档: `doc/world-simulator/launcher/game-client-launcher-blockchain-explorer-panel-2026-03-07.project.md`
 
-审计轮次: 1
+审计轮次: 6
 
 ## 1. Executive Summary
 - Problem Statement: 启动器当前虽有转账入口，但缺少“链浏览器”可视化入口，玩家无法在同一界面查看链高度、区块哈希与交易状态明细，排障与验证依赖命令行。
@@ -11,7 +11,7 @@
 - Success Criteria:
   - SC-1: `world_chain_runtime` 提供可消费的浏览器 RPC，覆盖总览、交易列表、交易详情三类查询。
   - SC-2: `world_web_launcher` 暴露 `/api/chain/explorer/*` 代理，native/web 客户端统一消费同一控制面。
-  - SC-3: `agent_world_client_launcher` 新增“区块链浏览器”面板，支持按账户/状态过滤与按 `action_id` 明细查询。
+  - SC-3: `oasis7_client_launcher` 新增“区块链浏览器”面板，支持按账户/状态过滤与按 `action_id` 明细查询。
   - SC-4: 浏览器面板在链未就绪时给出结构化错误提示，不出现 panic 或卡死。
   - SC-5: `test_tier_required` 回归通过，且不回归既有转账/反馈/状态链路。
 
@@ -62,16 +62,16 @@
 - Architecture Overview:
   - 运行时层: `world_chain_runtime` 提供 explorer 查询 RPC（链总览 + 交易列表 + 交易详情）。
   - 控制面层: `world_web_launcher` 将 explorer 查询代理为 `/api/chain/explorer/*`。
-  - 客户端层: `agent_world_client_launcher` 新增 explorer window，消费控制面接口并展示结构化结果。
+  - 客户端层: `oasis7_client_launcher` 新增 explorer window，消费控制面接口并展示结构化结果。
 - Integration Points:
-  - `crates/agent_world/src/bin/world_chain_runtime/transfer_submit_api.rs`
-  - `crates/agent_world/src/bin/world_chain_runtime/transfer_submit_api_tests.rs`
-  - `crates/agent_world/src/bin/world_web_launcher.rs`
-  - `crates/agent_world/src/bin/world_web_launcher/world_web_launcher_tests.rs`
-  - `crates/agent_world_client_launcher/src/main.rs`
-  - `crates/agent_world_client_launcher/src/app_process.rs`
-  - `crates/agent_world_client_launcher/src/app_process_web.rs`
-  - `crates/agent_world_client_launcher/src/explorer_window.rs`
+  - `crates/oasis7/src/bin/world_chain_runtime/transfer_submit_api.rs`
+  - `crates/oasis7/src/bin/world_chain_runtime/transfer_submit_api_tests.rs`
+  - `crates/oasis7/src/bin/world_web_launcher.rs`
+  - `crates/oasis7/src/bin/world_web_launcher/world_web_launcher_tests.rs`
+  - `crates/oasis7_client_launcher/src/main.rs`
+  - `crates/oasis7_client_launcher/src/app_process.rs`
+  - `crates/oasis7_client_launcher/src/app_process_web.rs`
+  - `crates/oasis7_client_launcher/src/explorer_window.rs`
 - Edge Cases & Error Handling:
   - `status` 过滤参数非法时返回 `invalid_request`，并保持 400 语义。
   - `action_id` 非正整数时拒绝查询并返回结构化错误。
@@ -101,10 +101,10 @@
   - PRD-WORLD_SIMULATOR-024 -> TASK-WORLD_SIMULATOR-054/055/056 -> `test_tier_required`。
   - 计划验证命令:
     - `./scripts/doc-governance-check.sh`
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_chain_runtime transfer_submit_api::tests:: -- --nocapture`
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_web_launcher -- --nocapture`
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world_client_launcher -- --nocapture`
-    - `env -u RUSTC_WRAPPER cargo check -p agent_world_client_launcher --target wasm32-unknown-unknown`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_chain_runtime transfer_submit_api::tests:: -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_web_launcher -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown`
 - Decision Log:
   - DEC-LAUNCHER-EXPLORER-001: 先补 RPC，再接 UI。理由：避免 UI 与接口语义反复返工。
   - DEC-LAUNCHER-EXPLORER-002: explorer 复用 transfer tracker 与 lifecycle 状态枚举。理由：降低重复实现与语义分叉风险。

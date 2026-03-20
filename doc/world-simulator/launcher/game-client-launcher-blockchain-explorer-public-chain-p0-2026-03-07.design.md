@@ -19,7 +19,7 @@
 - `/v1/chain/explorer/tx`
 - `/v1/chain/explorer/search`
 - `/api/chain/explorer/*`
-- `agent_world_client_launcher/src/explorer_window.rs`
+- `oasis7_client_launcher/src/explorer_window.rs`
 
 ## 4. 约束与边界
 - 区块与交易列表排序必须稳定，支持可重复翻页。
